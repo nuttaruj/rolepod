@@ -5,8 +5,6 @@ model: haiku
 memory: user
 maxTurns: 20
 color: green
-skills:
-  - idea-refine
 tools:
   - Read
   - Glob

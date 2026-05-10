@@ -7,7 +7,6 @@ memory: project
 maxTurns: 30
 color: blue
 skills:
-  - idea-refine
   - spec-driven-development
   - planning-and-task-breakdown
   - user-facing-content

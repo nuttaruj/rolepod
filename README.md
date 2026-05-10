@@ -306,6 +306,7 @@ CHEATSHEET's skill picker references skills like `debugging-and-error-recovery`,
 | **[mattpocock/skills](https://github.com/mattpocock/skills)** | Skill patterns + meta utilities | Clone into `~/.claude/skills/` |
 | **[JuliusBrussee/caveman](https://github.com/JuliusBrussee/caveman)** | `caveman`, `caveman-commit`, `caveman-review`, `compress` | Per repo install |
 | **[GitNexus](https://github.com/abhigyanpatwari/GitNexus)** | `gitnexus-exploring`, `gitnexus-impact-analysis`, `gitnexus-debugging`, `gitnexus-refactoring`, `gitnexus-pr-review`, `gitnexus-cli`, `gitnexus-guide` | `npm i -g gitnexus` + MCP setup |
+| **[nextlevelbuilder/ui-ux-pro-max-skill](https://github.com/nextlevelbuilder/ui-ux-pro-max-skill)** | `ui-ux-pro-max` (50+ styles, 161 palettes, 161 product types, UX guidelines) | Per repo install |
 | **[claude-seo](https://github.com/AgriciDaniel/claude-seo)** (optional) | Deep technical SEO sub-agents | `/plugin install AgriciDaniel/claude-seo` |
 | **OpenAI Codex plugin** (optional) | Adversarial review skills | Plugin marketplace |
 
@@ -319,7 +320,7 @@ The 18 agents preload 28 skills via their frontmatter `skills:` field. Skill mis
 
 **Anthropic skills (26)** — `anti-spaghetti`, `api-and-interface-design`, `browser-testing-with-devtools`, `ci-cd-and-automation`, `claude-api`, `code-review-and-quality`, `code-simplification`, `context-engineering`, `conversion-copywriting`, `debugging-and-error-recovery`, `doc-coauthoring`, `documentation-and-adrs`, `frontend-ui-engineering`, `interaction-design`, `interface-design`, `internal-comms`, `performance-optimization`, `planning-and-task-breakdown`, `security-and-hardening`, `seo`, `shipping-and-launch`, `spec-driven-development`, `test-driven-development`, `user-facing-content`, `web-design-guidelines`, `webapp-testing`
 
-**Other plugins (2)** — `idea-refine`, `ui-ux-pro-max` (3rd-party skill packs — install separately or remove from agent frontmatter if not desired)
+**Other plugins (1)** — `ui-ux-pro-max` from [nextlevelbuilder/ui-ux-pro-max-skill](https://github.com/nextlevelbuilder/ui-ux-pro-max-skill) (used by `ui-ux-designer` agent — install separately or remove from agent frontmatter if not desired)
 
 Drop a skill from agent preload? Edit the agent's `skills:` list in `agents/<name>.md`. Agents work fine without preloaded skills (they can still auto-pull on description match if installed).
 
@@ -409,6 +410,7 @@ This system synthesizes patterns from many great open-source projects:
 - **[OpenAI Codex plugin](https://docs.claude.com/)** — adversarial code review
 - **[GitNexus](https://github.com/abhigyanpatwari/GitNexus)** — code intelligence (impact / context / rename)
 - **[MemPalace](https://github.com/mempalace/mempalace)** — cross-session memory + KG
+- **[nextlevelbuilder/ui-ux-pro-max-skill](https://github.com/nextlevelbuilder/ui-ux-pro-max-skill)** — `ui-ux-pro-max` skill (used by `ui-ux-designer` agent)
 
 ### Skills used (1 ships + plugin skills)
 This repo ships only `zoom-out`. Other skills referenced in rules and `CHEATSHEET.md` skill picker come from external plugins — install separately (see [Skill dependencies](#skill-dependencies)).
