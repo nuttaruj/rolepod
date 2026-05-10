@@ -3,7 +3,7 @@
 Always-on guidance for the Codex CLI Lead. Codex reads this file from
 `~/.codex/AGENTS.md` (global) or `<repo>/AGENTS.md` (project).
 
-Rolepod ships as a Codex plugin (`adapters/codex/.codex-plugin/plugin.json`).
+Rolepod ships as a Codex marketplace consumable (`adapters/codex/.agents/plugins/marketplace.json` + `plugins/rolepod/.codex-plugin/plugin.json`).
 Agents (`agents/*.toml`), skills (`skills/<name>/SKILL.md`), and hooks
 (`hooks/hooks.json`) all wire into Codex's native primitives — no wrapper, no
 manual reload. This file collects the always-on judgment guidance Lead applies

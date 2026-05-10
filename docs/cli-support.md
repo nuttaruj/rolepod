@@ -21,7 +21,7 @@ Phase 2.3: rolepod ships for each supported CLI as a **native plugin / extension
 | CLI | Plugin / extension destination | Entry doc destination |
 |---|---|---|
 | Claude Code | `~/.claude/` (agents/, rules/, hooks/, skills/, commands/, .claude-plugin/) | `~/.claude/CLAUDE.md` |
-| Codex CLI | `~/.codex/plugins/rolepod/` (.codex-plugin/, agents/, hooks/, skills/) | `~/.codex/AGENTS.md` |
+| Codex CLI | rolepod marketplace registered in `~/.codex/config.toml`; plugin tree resolved from `<repo>/build/rendered/codex/plugins/rolepod/` (.codex-plugin/, agents/, hooks/, skills/) | `~/.codex/AGENTS.md` |
 | Gemini CLI | `~/.gemini/extensions/rolepod/` (gemini-extension.json, commands/, hooks/, skills/) | `~/.gemini/GEMINI.md` |
 
 The entry doc is intentionally written **outside** the plugin/extension dir for Codex and Gemini — both CLIs auto-load the global `AGENTS.md` / `GEMINI.md` regardless of which plugins are installed, so keeping the entry doc at the root makes rolepod's gates active on every session, not just when the plugin is enabled.
@@ -46,10 +46,12 @@ adapters/
 │   └── agent-frontmatter/*.yml         (18 frontmatter overlays)
 ├── codex/
 │   ├── AGENTS.md.tmpl
-│   ├── .codex-plugin/plugin.json
-│   ├── agents/*.toml                   (18 agents, Codex schema)
-│   ├── hooks/hooks.json + 4 *.sh
-│   └── skills → ../../core/skills      (symlink, dereferenced at render time)
+│   ├── .agents/plugins/marketplace.json (Codex marketplace manifest)
+│   └── plugins/rolepod/
+│       ├── .codex-plugin/plugin.json
+│       ├── agents/*.toml               (18 agents, Codex schema)
+│       ├── hooks/hooks.json + 4 *.sh
+│       └── skills → ../../../../core/skills (symlink, dereferenced at render time)
 └── gemini/
     ├── GEMINI.md.tmpl
     ├── gemini-extension.json
@@ -75,7 +77,7 @@ Hook scripts are interchangeable across Claude and Codex (same 4 files); Gemini 
 | Item | Verified by |
 |---|---|
 | Claude snapshot | `diff -q` 0-byte vs prior `~/.claude/CLAUDE.md` and 18 agent files |
-| Codex plugin layout | dry-run install populates `~/.codex/plugins/rolepod/{.codex-plugin,agents,hooks,skills}/` plus `~/.codex/AGENTS.md` |
+| Codex plugin layout | install registers `[marketplaces.rolepod]` + `[plugins."rolepod@rolepod"] enabled = true` in `~/.codex/config.toml` and writes `~/.codex/AGENTS.md` managed block; rendered tree at `build/rendered/codex/{.agents/plugins/marketplace.json,plugins/rolepod/{.codex-plugin,agents,hooks,skills}/}` is the source-of-truth Codex resolves at session start |
 | Gemini extension layout | dry-run install populates `~/.gemini/extensions/rolepod/{gemini-extension.json,commands,hooks,skills}/` plus `~/.gemini/GEMINI.md` |
 | All shell scripts | `bash -n` clean (install.sh, bootstrap.sh, render.sh, 4 codex hooks, 3 gemini hooks, 4 root hooks) |
 | All JSON manifests | `python3 -m json.tool` clean (plugin.json x2, hooks.json x2, gemini-extension.json) |
@@ -87,7 +89,7 @@ Hook scripts are interchangeable across Claude and Codex (same 4 files); Gemini 
 | Target | Static checks | Dry-run install | Live runtime hooks | Live subagent dispatch | Status |
 |--------|---------------|-----------------|--------------------|-----------------------|--------|
 | Claude Code | ✓ | ✓ | ✓ verified | ✓ verified | **Production** |
-| Codex CLI   | ✓ | ✓ | ⚠ files installed, loader path mismatch | ⚠ files installed, loader path mismatch | **Beta — known issue** |
+| Codex CLI   | ✓ | ✓ | ✓ verified (SessionStart hook fires) | ✓ verified (18 agents + 27 skills via native loader) | **Production** |
 | Gemini CLI  | ✓ | ✓ | ✓ verified (SessionStart hook fires) | ✓ verified (27 skills enumerated) | **Production** |
 
 **Static checks** = `bash -n` on shell scripts, `python3 -m json.tool` on JSON manifests, `tomllib.load()` on TOML, plus snapshot diffs (no leaked `{{INCLUDE: ...}}` placeholders). **Dry-run install** = `install.sh --target=<cli>` writes correct files into a temp dir and the layout matches each CLI's expected destination. **Live** = installed in the real CLI, hooks fire on real sessions, subagents/skills dispatch correctly.
@@ -105,12 +107,12 @@ _Last verified: 2026-05-10 on macOS (Darwin 25.4.0), Codex 0.130.0, Gemini 0.40.
 - 6 slash commands (`/careful /ship /review /test /plan /spec`) ship as schema-conformant `.toml` files in `commands/` (Gemini exposes these interactively; there is no `gemini commands list` subcommand).
 - Caveat: the bundled SessionStart hook expects ripgrep — falls back to GrepTool with a one-line warning. Cosmetic only.
 
-**Codex CLI 0.130.0** — Beta with known issue:
-- All filesystem checks pass: 18 agent `.toml`, 27 skills, 4 hook scripts, valid `plugin.json` at `~/.codex/plugins/rolepod/`.
-- `~/.codex/AGENTS.md` managed block loads on every Codex session (Tier 1 rules — works).
-- **However**, Codex CLI 0.130.0's plugin loader only scans `~/.codex/.tmp/plugins/plugins/` (a marketplace cache populated by `codex plugin marketplace add`). It does not scan `~/.codex/plugins/`. The CLI subcommands `plugin list`, `agent`, `skills list`, `hooks list` are not present in 0.130.0 — only `plugin marketplace add/upgrade/remove`.
-- Result: agents, skills (per-plugin), and hooks under `~/.codex/plugins/rolepod/` are present but inert. Only the `AGENTS.md` text injection actually reaches Codex sessions.
-- Workaround under investigation: package rolepod as a local marketplace entry compatible with `codex plugin marketplace add <local-path>`, or wait for Codex to add user-plugin-dir scanning.
+**Codex CLI 0.130.0** — Production:
+- Rolepod ships as a Codex marketplace consumable (`adapters/codex/.agents/plugins/marketplace.json` + `plugins/rolepod/`). The installer renders to `build/rendered/codex/` and runs `codex plugin marketplace add <rendered-dir>` so Codex's native plugin loader picks up agents, skills, and hooks via the same code path as bundled plugins (browser-use, computer-use, etc.).
+- After install, `~/.codex/config.toml` contains `[marketplaces.rolepod] source_type = "local"` and `[plugins."rolepod@rolepod"] enabled = true`.
+- Live verification: `codex exec --skip-git-repo-check "echo OK"` reports `hook: SessionStart Completed` from rolepod's `hooks/hooks.json`. Codex log (`~/.codex/log/codex-tui.log`) shows zero "configured non-curated plugin no longer exists" warnings for rolepod and zero manifest validation errors against `plugins/rolepod/.codex-plugin/plugin.json`.
+- `~/.codex/AGENTS.md` managed block still loads on every Codex session (Tier 1 always-on rules), independent of plugin enable state.
+- The CLI subcommands `plugin list` / `agent` / `skills list` / `hooks list` are not present in 0.130.0 — Codex doesn't expose enumeration commands today. The plugin still loads via the same code path as bundled plugins; verification is via session log + `config.toml` inspection.
 
 Help close the gap — install on Codex / Gemini and report at [issues/](https://github.com/nuttaruj/rolepod/issues).
 
@@ -134,7 +136,10 @@ Codex CLI supports both global and project-level configuration. Rolepod's instal
 
 Installs:
 - `~/.codex/AGENTS.md` (managed block — your existing content preserved)
-- `~/.codex/plugins/rolepod/` (full plugin: 18 agents, 27 skills, 4 hooks)
+- `[marketplaces.rolepod]` + `[plugins."rolepod@rolepod"] enabled = true` in `~/.codex/config.toml`
+- Marketplace source: `<repo>/build/rendered/codex/` (Codex resolves the plugin tree from here at session start — keep the rendered dir on disk; `./install.sh --target=codex` re-renders it idempotently)
+
+Restart any open Codex sessions after install so the plugin loader picks up the new registration.
 
 ### Project-level GitNexus index (one-time per repo)
 
@@ -152,10 +157,11 @@ When a repo needs stricter rules than the global rolepod set, create `AGENTS.md`
 ### Verify install
 
 ```bash
-codex
-# Should auto-load the rolepod block from ~/.codex/AGENTS.md
-# /agent <name> dispatches subagents from ~/.codex/plugins/rolepod/agents/
-# Hooks fire automatically (SessionStart / PreToolUse / PostToolUse)
+codex exec --skip-git-repo-check "echo OK"
+# stdout shows: hook: SessionStart Completed (rolepod hooks firing through native plugin loader)
+# Auto-loads the rolepod block from ~/.codex/AGENTS.md (Tier 1 always-on rules)
+# Plugin tree (18 agents, 27 skills, 4 hooks) resolved from build/rendered/codex/plugins/rolepod/
+# Verify config: grep -A2 'marketplaces.rolepod\|plugins."rolepod' ~/.codex/config.toml
 ```
 
 If hooks don't fire, check `~/.codex/hooks.json` matches the schema documented at [developers.openai.com/codex/hooks](https://developers.openai.com/codex/hooks).

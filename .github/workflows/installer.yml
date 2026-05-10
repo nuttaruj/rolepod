@@ -29,7 +29,7 @@ jobs:
             install.sh \
             bootstrap.sh \
             build/render.sh \
-            $(find hooks adapters/codex/hooks adapters/gemini/hooks -maxdepth 1 -name '*.sh' 2>/dev/null))
+            $(find hooks adapters/codex/plugins/rolepod/hooks adapters/gemini/hooks -maxdepth 1 -name '*.sh' 2>/dev/null))
           exit "$fail"
 
       - name: JSON syntax check (adapter manifests + plugin metadata)
@@ -52,7 +52,7 @@ jobs:
           python3 - <<'PY'
           import sys, pathlib, tomllib
           fail = 0
-          roots = ["adapters/codex/agents", "adapters/gemini/commands"]
+          roots = ["adapters/codex/plugins/rolepod/agents", "adapters/gemini/commands"]
           for root in roots:
               p = pathlib.Path(root)
               if not p.exists():

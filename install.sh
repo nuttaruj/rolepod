@@ -365,10 +365,11 @@ done
 # Phase 2.3: each CLI ships as a native plugin/extension — no wrapper scripts.
 case "$CLI_TARGET" in
   codex|all)
-    [ -e "$REPO_DIR/adapters/codex/AGENTS.md.tmpl" ]            || fail "missing adapters/codex/AGENTS.md.tmpl"
-    [ -e "$REPO_DIR/adapters/codex/.codex-plugin/plugin.json" ] || fail "missing adapters/codex/.codex-plugin/plugin.json"
-    [ -d "$REPO_DIR/adapters/codex/agents" ]                     || fail "missing adapters/codex/agents/"
-    [ -e "$REPO_DIR/adapters/codex/hooks/hooks.json" ]           || fail "missing adapters/codex/hooks/hooks.json"
+    [ -e "$REPO_DIR/adapters/codex/AGENTS.md.tmpl" ]                                       || fail "missing adapters/codex/AGENTS.md.tmpl"
+    [ -e "$REPO_DIR/adapters/codex/.agents/plugins/marketplace.json" ]                     || fail "missing adapters/codex/.agents/plugins/marketplace.json"
+    [ -e "$REPO_DIR/adapters/codex/plugins/rolepod/.codex-plugin/plugin.json" ]            || fail "missing adapters/codex/plugins/rolepod/.codex-plugin/plugin.json"
+    [ -d "$REPO_DIR/adapters/codex/plugins/rolepod/agents" ]                               || fail "missing adapters/codex/plugins/rolepod/agents/"
+    [ -e "$REPO_DIR/adapters/codex/plugins/rolepod/hooks/hooks.json" ]                     || fail "missing adapters/codex/plugins/rolepod/hooks/hooks.json"
     ;;
 esac
 case "$CLI_TARGET" in
@@ -401,7 +402,7 @@ if [ "$UNINSTALL" -eq 1 ]; then
 
   echo "About to remove rolepod from:"
   [ "$uninstall_claude" -eq 1 ] && echo "  Claude → $C_TARGET (agents, skills, rules, hooks, managed CLAUDE.md block)"
-  [ "$uninstall_codex"  -eq 1 ] && echo "  Codex  → $X_TARGET/plugins/rolepod, managed AGENTS.md block"
+  [ "$uninstall_codex"  -eq 1 ] && echo "  Codex  → rolepod marketplace + [plugins.\"rolepod@rolepod\"] in $X_TARGET/config.toml + managed AGENTS.md block"
   [ "$uninstall_gemini" -eq 1 ] && echo "  Gemini → $G_TARGET/extensions/rolepod, managed GEMINI.md block"
   echo ""
 
@@ -525,13 +526,61 @@ PY
   fi
 
   if [ "$uninstall_codex" -eq 1 ]; then
-    step "Removing Codex rolepod plugin in $X_TARGET/plugins/rolepod"
-    do_or_dry "rm -rf $X_TARGET/plugins/rolepod" rm -rf "$X_TARGET/plugins/rolepod"
-    if [ "$DRY_RUN" -eq 1 ]; then
-      dry "rmdir $X_TARGET/plugins (if empty)"
+    X_CONFIG="$X_TARGET/config.toml"
+
+    if have_cmd codex; then
+      step "Removing rolepod marketplace from Codex"
+      if [ "$DRY_RUN" -eq 1 ]; then
+        dry "codex plugin marketplace remove rolepod"
+      else
+        # Backup config.toml before mutation (reversible).
+        if [ -f "$X_CONFIG" ]; then
+          STAMP=$(date +%Y%m%d-%H%M%S)
+          cp "$X_CONFIG" "$X_CONFIG.rolepod-bak.$STAMP" 2>/dev/null || true
+        fi
+        codex plugin marketplace remove rolepod >/dev/null 2>&1 || true
+      fi
     else
-      rmdir "$X_TARGET/plugins" 2>/dev/null || true
+      warn "codex binary not found — skipping marketplace removal"
     fi
+
+    # Strip [plugins."rolepod@rolepod"] block from config.toml (codex remove
+    # handles [marketplaces.rolepod], but the plugin enable line is ours).
+    if [ -f "$X_CONFIG" ] && [ "$DRY_RUN" -eq 0 ]; then
+      step "Stripping [plugins.\"rolepod@rolepod\"] from $X_CONFIG"
+      if have_cmd python3; then
+        python3 - "$X_CONFIG" <<'PY' || warn "python3 strip failed — remove [plugins.\"rolepod@rolepod\"] manually"
+import sys, re
+path = sys.argv[1]
+with open(path) as f:
+    text = f.read()
+# Match `[plugins."rolepod@rolepod"]` plus following key=value lines until next
+# [section] or EOF. Preserves all other tables.
+pattern = re.compile(
+    r'(?:^|\n)\[plugins\."rolepod@rolepod"\][^\[]*',
+    re.MULTILINE,
+)
+new = pattern.sub('\n', text)
+# Collapse 3+ blank lines to 2.
+new = re.sub(r'\n{3,}', '\n\n', new)
+with open(path, "w") as f:
+    f.write(new)
+PY
+      else
+        warn "python3 not found — strip [plugins.\"rolepod@rolepod\"] from $X_CONFIG manually"
+      fi
+    fi
+
+    # Legacy cleanup: remove the old plugin tree if a previous install put
+    # files at $X_TARGET/plugins/rolepod/. Newer installs leave that empty.
+    if [ -d "$X_TARGET/plugins/rolepod" ]; then
+      step "Removing legacy plugin tree at $X_TARGET/plugins/rolepod"
+      do_or_dry "rm -rf $X_TARGET/plugins/rolepod" rm -rf "$X_TARGET/plugins/rolepod"
+      if [ "$DRY_RUN" -eq 0 ]; then
+        rmdir "$X_TARGET/plugins" 2>/dev/null || true
+      fi
+    fi
+
     step "Stripping rolepod block from $X_TARGET/AGENTS.md"
     remove_managed_block "$X_TARGET/AGENTS.md"
     ok "Codex rolepod removed"
@@ -785,29 +834,30 @@ fi
 fi  # end claude_selected
 
 # ─── install_codex — Codex CLI path (~/.codex/) ────────────────────────
-# Phase 2.3: install as a native Codex plugin under ~/.codex/plugins/rolepod/.
-# AGENTS.md still goes to ~/.codex/AGENTS.md (Codex auto-loads global instructions
-# from there independently of the plugin tree).
+# Phase 2.4: install as a Codex marketplace consumable so the native plugin
+# loader actually wires up agents/skills/hooks (not just AGENTS.md text).
+# Flow:
+#   1. Render to build/rendered/codex/ (marketplace shape).
+#   2. `codex plugin marketplace add <rendered-dir>` — registers the marketplace.
+#   3. Set `[plugins."rolepod@rolepod"] enabled = true` in ~/.codex/config.toml.
+#   4. Update managed block in ~/.codex/AGENTS.md (Tier 1 always-on rules).
+# Fallback when codex binary missing: file-copy AGENTS.md only + warn.
 if codex_selected; then
   CODEX_TARGET="$(resolve_target_for codex)"
-  CODEX_PLUGIN_DEST="$CODEX_TARGET/plugins/rolepod"
-  echo ""
-  echo "${BOLD}─── Installing for Codex CLI ───${NC}"
-  echo "  target:        $CODEX_TARGET"
-  echo "  plugin dest:   $CODEX_PLUGIN_DEST"
-
-  if ! have_cmd codex; then
-    warn "codex binary not found — skipping Codex install (file copy only)"
-    warn "  Install Codex CLI: npm install -g @openai/codex"
-  fi
-
+  CODEX_CONFIG="$CODEX_TARGET/config.toml"
   RENDERED_CODEX_DIR="$REPO_DIR/build/rendered/codex"
   RENDERED_AGENTS_MD="$RENDERED_CODEX_DIR/AGENTS.md"
-  [ -f "$RENDERED_AGENTS_MD" ]                || fail "expected $RENDERED_AGENTS_MD after render"
-  [ -d "$RENDERED_CODEX_DIR/.codex-plugin" ]  || fail "expected $RENDERED_CODEX_DIR/.codex-plugin/ after render"
-  [ -d "$RENDERED_CODEX_DIR/agents" ]         || fail "expected $RENDERED_CODEX_DIR/agents/ after render"
-  [ -d "$RENDERED_CODEX_DIR/hooks" ]          || fail "expected $RENDERED_CODEX_DIR/hooks/ after render"
-  [ -d "$RENDERED_CODEX_DIR/skills" ]         || fail "expected $RENDERED_CODEX_DIR/skills/ after render"
+  echo ""
+  echo "${BOLD}─── Installing for Codex CLI ───${NC}"
+  echo "  target:                $CODEX_TARGET"
+  echo "  marketplace source:    $RENDERED_CODEX_DIR"
+
+  [ -f "$RENDERED_AGENTS_MD" ]                                                  || fail "expected $RENDERED_AGENTS_MD after render"
+  [ -f "$RENDERED_CODEX_DIR/.agents/plugins/marketplace.json" ]                 || fail "expected marketplace manifest after render"
+  [ -d "$RENDERED_CODEX_DIR/plugins/rolepod/.codex-plugin" ]                    || fail "expected plugins/rolepod/.codex-plugin/ after render"
+  [ -d "$RENDERED_CODEX_DIR/plugins/rolepod/agents" ]                           || fail "expected plugins/rolepod/agents/ after render"
+  [ -d "$RENDERED_CODEX_DIR/plugins/rolepod/hooks" ]                            || fail "expected plugins/rolepod/hooks/ after render"
+  [ -d "$RENDERED_CODEX_DIR/plugins/rolepod/skills" ]                           || fail "expected plugins/rolepod/skills/ after render"
 
   if [ "$FORCE" -eq 1 ] && [ -d "$CODEX_TARGET" ]; then
     STAMP=$(date +%Y%m%d-%H%M%S)
@@ -816,48 +866,83 @@ if codex_selected; then
     do_or_dry "cp -R $CODEX_TARGET $BACKUP" cp -R "$CODEX_TARGET" "$BACKUP"
   fi
 
-  step "Creating Codex plugin directory"
-  do_or_dry "mkdir -p $CODEX_PLUGIN_DEST" mkdir -p "$CODEX_PLUGIN_DEST"
-
-  # If --force, wipe plugin dir first so deletions in source propagate.
-  if [ "$FORCE" -eq 1 ]; then
-    do_or_dry "rm -rf $CODEX_PLUGIN_DEST && mkdir -p $CODEX_PLUGIN_DEST" \
-      bash -c "rm -rf '$CODEX_PLUGIN_DEST' && mkdir -p '$CODEX_PLUGIN_DEST'"
+  # Mark hook scripts executable in the rendered tree (codex resolves source from this path).
+  step "Marking hook scripts executable"
+  if [ "$DRY_RUN" -eq 1 ]; then
+    dry "chmod +x $RENDERED_CODEX_DIR/plugins/rolepod/hooks/*.sh"
+  else
+    chmod +x "$RENDERED_CODEX_DIR/plugins/rolepod/hooks"/*.sh 2>/dev/null || true
   fi
 
-  step "Copying plugin tree → $CODEX_PLUGIN_DEST/"
-  if [ "$DRY_RUN" -eq 1 ]; then
-    dry "cp -R $RENDERED_CODEX_DIR/. → $CODEX_PLUGIN_DEST/"
-    dry "rm -f $CODEX_PLUGIN_DEST/AGENTS.md (entry doc lives at root, not in plugin)"
+  if have_cmd codex; then
+    # Backup config.toml before any modification (reversible).
+    if [ -f "$CODEX_CONFIG" ] && [ "$DRY_RUN" -eq 0 ]; then
+      STAMP=$(date +%Y%m%d-%H%M%S)
+      cp "$CODEX_CONFIG" "$CODEX_CONFIG.rolepod-bak.$STAMP" 2>/dev/null || true
+    fi
+
+    # Detect existing marketplace registration via config.toml; pick add vs upgrade.
+    # Note: `codex plugin marketplace upgrade` only works for git sources, so for
+    # local sources we always re-add (which Codex handles idempotently for local).
+    if [ -f "$CODEX_CONFIG" ] && grep -q '^\[marketplaces\.rolepod\]' "$CODEX_CONFIG" 2>/dev/null; then
+      # Already registered — remove + re-add so source path stays current with rendered dir.
+      step "Refreshing rolepod marketplace registration"
+      if [ "$DRY_RUN" -eq 1 ]; then
+        dry "codex plugin marketplace remove rolepod && codex plugin marketplace add $RENDERED_CODEX_DIR"
+      else
+        codex plugin marketplace remove rolepod >/dev/null 2>&1 || true
+        if ! codex plugin marketplace add "$RENDERED_CODEX_DIR" 2>&1 | sed 's/^/    /'; then
+          fail "codex plugin marketplace add failed — see output above"
+        fi
+      fi
+    else
+      step "Registering rolepod marketplace with Codex"
+      if [ "$DRY_RUN" -eq 1 ]; then
+        dry "codex plugin marketplace add $RENDERED_CODEX_DIR"
+      else
+        if ! codex plugin marketplace add "$RENDERED_CODEX_DIR" 2>&1 | sed 's/^/    /'; then
+          fail "codex plugin marketplace add failed — see output above"
+        fi
+      fi
+    fi
+
+    # Enable plugin in config.toml. Codex enables plugins via:
+    #   [plugins."<plugin-name>@<marketplace-name>"]
+    #   enabled = true
+    # For rolepod the plugin name and marketplace name are both "rolepod".
+    step "Enabling rolepod plugin in $CODEX_CONFIG"
+    if [ "$DRY_RUN" -eq 1 ]; then
+      dry "ensure [plugins.\"rolepod@rolepod\"] enabled = true in $CODEX_CONFIG"
+    else
+      mkdir -p "$CODEX_TARGET"
+      touch "$CODEX_CONFIG"
+      if grep -q '^\[plugins\."rolepod@rolepod"\]' "$CODEX_CONFIG" 2>/dev/null; then
+        # Already enabled — no edit needed.
+        :
+      else
+        printf '\n[plugins."rolepod@rolepod"]\nenabled = true\n' >> "$CODEX_CONFIG"
+      fi
+    fi
   else
-    # cp -R src/. dest/ copies *contents* of src into dest (BSD + GNU compatible).
-    cp -R "$RENDERED_CODEX_DIR/." "$CODEX_PLUGIN_DEST/" 2>/dev/null || true
-    # AGENTS.md is the entry doc — it lives at the Codex root, not inside the plugin.
-    rm -f "$CODEX_PLUGIN_DEST/AGENTS.md"
+    warn "codex binary not found — installing AGENTS.md only (Tier 1 rules still active)"
+    warn "  Install Codex CLI: npm install -g @openai/codex"
+    warn "  After install, run: codex plugin marketplace add $RENDERED_CODEX_DIR"
   fi
 
   step "Updating AGENTS.md (managed block) → $CODEX_TARGET/AGENTS.md"
   update_managed_block "$CODEX_TARGET/AGENTS.md" "$RENDERED_AGENTS_MD"
 
-  step "Marking hook scripts executable"
-  if [ "$DRY_RUN" -eq 1 ]; then
-    dry "chmod +x $CODEX_PLUGIN_DEST/hooks/*.sh"
-  else
-    chmod +x "$CODEX_PLUGIN_DEST/hooks"/*.sh 2>/dev/null || true
-  fi
-
   if [ "$DRY_RUN" -eq 0 ]; then
     step "Verifying Codex install"
-    for required in \
-      AGENTS.md \
-      plugins/rolepod/.codex-plugin/plugin.json \
-      plugins/rolepod/agents/qa-tester.toml \
-      plugins/rolepod/hooks/hooks.json \
-      plugins/rolepod/skills/anti-spaghetti/SKILL.md
-    do
-      [ -e "$CODEX_TARGET/$required" ] || fail "Codex verification failed — $CODEX_TARGET/$required missing"
-    done
-    ok "rolepod codex plugin installed → $CODEX_PLUGIN_DEST"
+    [ -e "$CODEX_TARGET/AGENTS.md" ] || fail "Codex verification failed — $CODEX_TARGET/AGENTS.md missing"
+    if have_cmd codex; then
+      [ -f "$CODEX_CONFIG" ] || fail "Codex verification failed — $CODEX_CONFIG missing"
+      grep -q '^\[marketplaces\.rolepod\]' "$CODEX_CONFIG" || fail "Codex verification failed — [marketplaces.rolepod] not in $CODEX_CONFIG"
+      grep -q '^\[plugins\."rolepod@rolepod"\]' "$CODEX_CONFIG" || fail "Codex verification failed — [plugins.\"rolepod@rolepod\"] not in $CODEX_CONFIG"
+      # Confirm rendered tree still resolvable (codex stores source path in config).
+      [ -f "$RENDERED_CODEX_DIR/.agents/plugins/marketplace.json" ] || fail "Codex verification failed — rendered marketplace manifest missing"
+    fi
+    ok "rolepod codex marketplace registered → $RENDERED_CODEX_DIR"
     ok "AGENTS.md → $CODEX_TARGET/AGENTS.md"
   else
     skip "Codex verification skipped (dry-run)"

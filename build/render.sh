@@ -158,53 +158,64 @@ render_claude() {
 }
 
 # ─── Render Codex target ────────────────────────────────────────────────────
-# Phase 2.3: Codex now ships as a native plugin. Output layout:
-#   AGENTS.md                       (entry doc, written to ~/.codex/AGENTS.md)
-#   .codex-plugin/plugin.json       (plugin manifest)
-#   agents/*.toml                   (18 portable agents in TOML form)
-#   hooks/hooks.json + *.sh         (4 hook scripts, mirror Claude adapter)
-#   skills/<name>/SKILL.md ...      (dereferenced from core/skills via symlink)
+# Phase 2.4: Codex ships as a Codex marketplace consumable so the native
+# plugin loader actually wires up agents/skills/hooks (not just AGENTS.md text).
+# Output layout matches the bundled-marketplace shape Codex 0.130+ scans:
+#   AGENTS.md                                        (entry doc, ~/.codex/AGENTS.md)
+#   .agents/plugins/marketplace.json                 (marketplace manifest)
+#   plugins/rolepod/.codex-plugin/plugin.json        (plugin manifest)
+#   plugins/rolepod/agents/*.toml                    (18 portable agents)
+#   plugins/rolepod/hooks/hooks.json + *.sh          (4 hook scripts)
+#   plugins/rolepod/skills/<name>/SKILL.md ...       (real dir, copied from core/skills)
 
 render_codex() {
   local template="$REPO_DIR/adapters/codex/AGENTS.md.tmpl"
   local out_dir="$REPO_DIR/build/rendered/codex"
   local output="$out_dir/AGENTS.md"
   local adapter_dir="$REPO_DIR/adapters/codex"
+  local plugin_src="$adapter_dir/plugins/rolepod"
+  local plugin_dst="$out_dir/plugins/rolepod"
 
   [ -f "$template" ] || { echo "render: missing $template" >&2; exit 1; }
 
-  # Clean stale artifacts from previous runs (e.g. old manifest.json stub).
+  # Clean stale artifacts from previous runs (e.g. old top-level .codex-plugin/).
   rm -rf "$out_dir"
   mkdir -p "$out_dir"
   render_template "$template" "$output"
-  # Note: render_agents("codex") still writes the markdown agents under
-  # build/rendered/codex/agents/ as a courtesy export, but the plugin install
-  # uses agents/*.toml from this adapter dir.
 
-  # Copy plugin manifest under .codex-plugin/.
-  if [ -d "$adapter_dir/.codex-plugin" ]; then
-    cp -R "$adapter_dir/.codex-plugin" "$out_dir/"
+  # Marketplace manifest at .agents/plugins/marketplace.json.
+  if [ -f "$adapter_dir/.agents/plugins/marketplace.json" ]; then
+    mkdir -p "$out_dir/.agents/plugins"
+    cp "$adapter_dir/.agents/plugins/marketplace.json" "$out_dir/.agents/plugins/"
   else
-    echo "render: missing $adapter_dir/.codex-plugin/" >&2; exit 1
+    echo "render: missing $adapter_dir/.agents/plugins/marketplace.json" >&2; exit 1
   fi
 
-  # Copy TOML agents.
-  if [ -d "$adapter_dir/agents" ]; then
-    mkdir -p "$out_dir/agents"
-    cp "$adapter_dir/agents"/*.toml "$out_dir/agents/" 2>/dev/null || true
+  # Plugin manifest under plugins/rolepod/.codex-plugin/.
+  if [ -d "$plugin_src/.codex-plugin" ]; then
+    mkdir -p "$plugin_dst"
+    cp -R "$plugin_src/.codex-plugin" "$plugin_dst/"
+  else
+    echo "render: missing $plugin_src/.codex-plugin/" >&2; exit 1
   fi
 
-  # Copy hooks (json + executable scripts).
-  if [ -d "$adapter_dir/hooks" ]; then
-    cp -R "$adapter_dir/hooks" "$out_dir/"
-    chmod +x "$out_dir/hooks/"*.sh 2>/dev/null || true
+  # TOML agents.
+  if [ -d "$plugin_src/agents" ]; then
+    mkdir -p "$plugin_dst/agents"
+    cp "$plugin_src/agents"/*.toml "$plugin_dst/agents/" 2>/dev/null || true
+  fi
+
+  # Hooks (json + executable scripts).
+  if [ -d "$plugin_src/hooks" ]; then
+    cp -R "$plugin_src/hooks" "$plugin_dst/"
+    chmod +x "$plugin_dst/hooks/"*.sh 2>/dev/null || true
   fi
 
   # Dereference skills symlink into a real directory tree (tarball / commit safe).
-  mkdir -p "$out_dir/skills"
+  mkdir -p "$plugin_dst/skills"
   for skill_dir in "$REPO_DIR"/core/skills/*/; do
     local name; name="$(basename "$skill_dir")"
-    cp -R "$skill_dir" "$out_dir/skills/$name"
+    cp -R "$skill_dir" "$plugin_dst/skills/$name"
   done
 }
 

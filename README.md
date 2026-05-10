@@ -23,7 +23,7 @@ Self-improving: every session captures learnings via MemPalace KG, so the next s
 | CLI | Default install path | Native primitives used |
 |-----|---------------------|------------------------|
 | Claude Code | `~/.claude/` | agents, skills, hooks (settings.json), commands, plugin |
-| Codex CLI (OpenAI) | `~/.codex/plugins/rolepod/` | agents (TOML), skills, hooks, plugin |
+| Codex CLI (OpenAI) | `~/.codex/` (marketplace + `~/.codex/AGENTS.md`) | agents (TOML), skills, hooks, plugin |
 | Gemini CLI (Google) | `~/.gemini/extensions/rolepod/` | extension, commands (TOML), skills, hooks |
 
 Pick one with `--target=claude` / `--target=codex` / `--target=gemini`, or all three with `--target=all`. Default target is `claude`. Each adapter wires into the CLI's native primitives — no wrapper scripts.
@@ -67,16 +67,16 @@ After install, restart the CLI you targeted so its hooks register.
 | Target | Static checks | Dry-run install | Live runtime hooks | Live subagent dispatch | Status |
 |--------|---------------|-----------------|--------------------|-----------------------|--------|
 | Claude Code | ✓ | ✓ | ✓ verified | ✓ verified | **Production** |
-| Codex CLI   | ✓ | ✓ | ⚠ files installed, loader path mismatch | ⚠ files installed, loader path mismatch | **Beta — known issue** |
+| Codex CLI   | ✓ | ✓ | ✓ verified (SessionStart hook fires) | ✓ verified (18 agents + 27 skills via native loader) | **Production** |
 | Gemini CLI  | ✓ | ✓ | ✓ verified (SessionStart hook fires) | ✓ verified (27 skills enumerated) | **Production** |
 
 **Static checks** = `bash -n` on shell scripts, `python3 -m json.tool` on JSON manifests, `tomllib.load()` on TOML, plus snapshot diffs (no leaked `{{INCLUDE: ...}}` placeholders). **Dry-run install** = `install.sh --target=<cli>` writes correct files into a temp dir and the layout matches each CLI's expected destination. **Live** = installed in the real CLI, hooks fire on real sessions, subagents/skills dispatch correctly.
 
 _Last verified: 2026-05-10 on macOS (Darwin 25.4.0), Codex 0.130.0, Gemini 0.40.1._
 
-**Known issue — Codex CLI 0.130.0 plugin discovery path:** the installer writes the plugin to `~/.codex/plugins/rolepod/` (per the published plugin schema), but Codex CLI 0.130.0's loader only scans `~/.codex/.tmp/plugins/plugins/` (a marketplace cache populated via `codex plugin marketplace add`). As a result, `~/.codex/plugins/rolepod/` is functionally inert until either (a) the user registers a local marketplace pointing at it, or (b) a future Codex release adds user-plugin-dir support. Affected: agents (18 .toml), skills (27), hooks (4) — all manifest-valid, none auto-loaded. Workaround under investigation; tracked in [issues/](https://github.com/nuttaruj/rolepod/issues). The `~/.codex/AGENTS.md` managed block is unaffected — it loads on every Codex session.
+**Codex install (0.130.0+):** the installer renders rolepod as a Codex marketplace consumable to `build/rendered/codex/`, then runs `codex plugin marketplace add <rendered-dir>` and writes `[plugins."rolepod@rolepod"] enabled = true` to `~/.codex/config.toml`. Codex's native plugin loader resolves the plugin tree (18 agents + 27 skills + 4 hooks) via the same code path as bundled plugins — `SessionStart` hooks fire on every session and rolepod's `plugin.json` validates clean against Codex's manifest spec. The `~/.codex/AGENTS.md` managed block still loads independently of plugin enable state.
 
-Help close the gap — install on Codex / Gemini and report at [issues/](https://github.com/nuttaruj/rolepod/issues).
+Help us harden the runtime path on more setups — file an issue at [issues/](https://github.com/nuttaruj/rolepod/issues) if anything in the runtime status table fails on yours.
 
 ---
 
