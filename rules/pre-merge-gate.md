@@ -80,7 +80,7 @@ Touches **any** of these → NOT doc-only → use PR path:
 
 ## Step 4 — One ask, one ship
 
-User explicitly OK'd commit + PR (e.g. "let's go", "ship it", "commit + PR")
+User explicitly OK'd commit + PR (e.g. "ship it", "let's go", "commit + PR")
 → approval covers merge after **all required CI lanes green**
 → DO NOT ask second time post-CI
 → just merge + report

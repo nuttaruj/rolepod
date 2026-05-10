@@ -4,10 +4,9 @@ Read when: question on tone / language / output format.
 
 ## Language
 
-- Match user chat language
-- User writes English → reply English
+- Match user's chat language (e.g. user writes English → reply English)
 - Project requires English (PR/commit/code) → English regardless of chat language
-- Address user per stated preference
+- Address user per their stated preference
 
 ## Tone
 

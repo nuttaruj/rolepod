@@ -43,7 +43,7 @@
     },
     "skills": {
       "path": "../skills",
-      "added": ["zoom-out", "diagnose"]
+      "added": ["zoom-out"]
     },
     "commands": {
       "path": "../commands",
@@ -51,11 +51,19 @@
     },
     "hooks": {
       "path": "../hooks",
-      "session_start": ["mempalace hook run --hook session-start", "project-context-loader.sh"],
-      "pre_tool_use": ["context-awareness.sh", "qa-pass-check.sh", "gitnexus-hook.cjs"],
-      "post_tool_use": ["verify-reminder.sh", "post-ship-detect.sh", "gitnexus-hook.cjs"],
-      "stop": ["mempalace hook run --hook stop"],
-      "pre_compact": ["mempalace hook run --hook precompact"]
+      "shipped": {
+        "session_start": ["project-context-loader.sh"],
+        "pre_tool_use": ["context-awareness.sh"],
+        "post_tool_use": ["verify-reminder.sh", "post-ship-detect.sh"]
+      },
+      "external_optional": {
+        "_note": "Wired by separate plugins/installs. Not shipped in this repo.",
+        "session_start": ["mempalace hook run --hook session-start"],
+        "pre_tool_use": ["qa-pass-check.sh", "gitnexus-hook.cjs"],
+        "post_tool_use": ["gitnexus-hook.cjs"],
+        "stop": ["mempalace hook run --hook stop"],
+        "pre_compact": ["mempalace hook run --hook precompact"]
+      }
     },
     "cheatsheet": "../CHEATSHEET.md"
   },
