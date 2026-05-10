@@ -364,7 +364,6 @@ This system synthesizes patterns from many great open-source projects:
 ### Core patterns
 - **Anthropic Claude Code** — base platform + best practices ([code.claude.com](https://code.claude.com))
 - **[mattpocock/skills](https://github.com/mattpocock/skills)** — skill patterns + zoom-out concept (68k stars)
-- **[JuliusBrussee/caveman](https://github.com/JuliusBrussee/caveman)** — caveman compression mode (chat output ~75% reduction)
 - **[wshobson/agents](https://github.com/wshobson/agents)** — plugin packaging structure + agent orchestration patterns (35k stars)
 - **[AgriciDaniel/claude-seo](https://github.com/AgriciDaniel/claude-seo)** — specialized agent plugin pattern (6.2k stars)
 - **[OneRedOak/claude-code-workflows](https://github.com/OneRedOak/claude-code-workflows)** — review CI workflows + design review patterns (3.7k stars)
@@ -374,6 +373,7 @@ This system synthesizes patterns from many great open-source projects:
 
 ### External tools
 - **[rtk](https://github.com/rtk-ai/rtk)** (Rust Token Killer) — CLI token optimization
+- **[JuliusBrussee/caveman](https://github.com/JuliusBrussee/caveman)** — caveman compression mode (chat output ~75% reduction)
 - **[Gemini CLI](https://github.com/google-gemini/gemini-cli)** — Google AI CLI
 - **[OpenAI Codex plugin](https://docs.claude.com/)** — adversarial code review
 - **[GitNexus](https://github.com/abhigyanpatwari/GitNexus)** — code intelligence (impact / context / rename)
