@@ -21,3 +21,7 @@ HANDOFF.md
 
 # Build output
 build/rendered/
+
+# Python bytecode
+__pycache__/
+*.pyc

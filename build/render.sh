@@ -179,6 +179,8 @@ render_codex() {
 # ─── Render Gemini target ───────────────────────────────────────────────────
 
 render_gemini() {
+  # Gemini target: agent roster inlined in GEMINI.md (no per-agent files —
+  # Gemini has no native sub-agent loader). See docs/cli-support.md.
   local template="$REPO_DIR/adapters/gemini/GEMINI.md.tmpl"
   local out_dir="$REPO_DIR/build/rendered/gemini"
   local output="$out_dir/GEMINI.md"

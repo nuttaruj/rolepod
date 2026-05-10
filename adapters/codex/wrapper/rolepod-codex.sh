@@ -68,6 +68,9 @@ if [ "${#ARGS[@]}" -eq 0 ]; then
   exec codex
 else
   FIRST="${ARGS[0]}"
-  REST=("${ARGS[@]:1}")
-  exec codex "${REST[@]}" "$REMINDER"$'\n'"$FIRST"
+  REST=()
+  if [ "${#ARGS[@]}" -gt 1 ]; then
+    REST=("${ARGS[@]:1}")
+  fi
+  exec codex ${REST[@]+"${REST[@]}"} "$REMINDER"$'\n'"$FIRST"
 fi
