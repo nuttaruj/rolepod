@@ -62,6 +62,18 @@ After install, restart the CLI you targeted so its hooks register.
 
 > **Note:** Codex and Gemini adapters are spec-conformant against each CLI's published manifest schema and pass static checks (`bash -n`, `python3 -m json.tool`, `tomllib.load`). Runtime end-to-end behavior on those two CLIs is not yet user-verified — please file issues if anything misfires.
 
+### Runtime verification status
+
+| Target | Static checks | Dry-run install | Live runtime hooks | Live subagent dispatch | Status |
+|--------|---------------|-----------------|--------------------|-----------------------|--------|
+| Claude Code | ✓ | ✓ | ✓ verified | ✓ verified | **Production** |
+| Codex CLI   | ✓ | ✓ | ⚠ spec-conformant, not user-verified | ⚠ spec-conformant, not user-verified | **Beta** |
+| Gemini CLI  | ✓ | ✓ | ⚠ spec-conformant, not user-verified | ⚠ spec-conformant, not user-verified | **Beta** |
+
+**Static checks** = `bash -n` on shell scripts, `python3 -m json.tool` on JSON manifests, `tomllib.load()` on TOML, plus snapshot diffs (no leaked `{{INCLUDE: ...}}` placeholders). **Dry-run install** = `install.sh --target=<cli>` writes correct files into a temp dir and the layout matches each CLI's expected destination. **Live** = installed in the real CLI, hooks fire on real sessions, subagents dispatch correctly. **Beta** means the adapter follows each CLI's published spec but real-world testing on those CLIs is still pending.
+
+Help close the gap — install on Codex / Gemini and report at [issues/](https://github.com/nuttaruj/rolepod/issues).
+
 ---
 
 ## Architecture
