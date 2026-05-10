@@ -128,6 +128,17 @@ The path-based ownership rules from `team-org.md` apply identically across all t
 
 Codex CLI supports both global and project-level configuration. Rolepod's installer ships global by default (`~/.codex/`) but project-level overrides are useful when a repo needs strict rules.
 
+### Per-project install (`--scope=project`)
+
+Drop rolepod's Tier 1 rules into a single project without touching `~/.codex/`:
+
+```bash
+cd /your/project
+./install.sh --target=codex --scope=project
+```
+
+Writes only `$PWD/AGENTS.md` (managed block). Codex auto-loads `AGENTS.md` from the working directory on session start. Plugins/skills are global-only by Codex CLI design — for those, run `--scope=global` separately.
+
 ### Global core (one-time per machine)
 
 ```bash
@@ -185,6 +196,17 @@ If hooks don't fire, check `~/.codex/hooks.json` matches the schema documented a
 ## Recommended Gemini setup
 
 Gemini CLI uses an extension model. Rolepod ships as a global extension; project-level `GEMINI.md` overrides apply on top.
+
+### Per-project install (`--scope=project`)
+
+Drop rolepod's Tier 1 rules into a single project without touching `~/.gemini/`:
+
+```bash
+cd /your/project
+./install.sh --target=gemini --scope=project
+```
+
+Writes only `$PWD/GEMINI.md` (managed block). Gemini auto-loads `GEMINI.md` from the working directory on session start. The full extension (commands/skills/hooks) is global-only by Gemini CLI design — for those, run `--scope=global` separately.
 
 ### Global core (one-time per machine)
 

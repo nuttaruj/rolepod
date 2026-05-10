@@ -54,6 +54,24 @@ cd rolepod
 ./install.sh --minimum --target=gemini
 ```
 
+### Per-project install
+
+Default install is global (`~/.claude/`, `~/.codex/`, `~/.gemini/`). Pass `--scope=project` to land rolepod in the current directory instead — your global config stays untouched, rolepod only activates inside that project.
+
+```bash
+cd /your/project
+curl -fsSL https://raw.githubusercontent.com/nuttaruj/rolepod/main/bootstrap.sh | bash -s -- --target=claude --scope=project
+```
+
+Use case: keep your global Claude config (e.g. business workflow) untouched, opt rolepod into specific dev projects only.
+
+| Scope | Claude | Codex | Gemini |
+|-------|--------|-------|--------|
+| `global` (default) | full plugin (`~/.claude/`) | full plugin + AGENTS.md (`~/.codex/`) | full extension + GEMINI.md (`~/.gemini/`) |
+| `project` | full plugin (`$PWD/.claude/`) | AGENTS.md only (`$PWD/AGENTS.md`) | GEMINI.md only (`$PWD/GEMINI.md`) |
+
+Codex plugins and Gemini extensions are global-only by their CLI design, so per-project install for those two writes only the auto-loaded entry doc (`AGENTS.md` / `GEMINI.md`) — Tier 1 always-on rules still activate, but skills/agents/hooks need a separate `--scope=global` install. Claude per-project gets the full plugin (agents + skills + hooks via `$PWD/.claude/settings.json`).
+
 Every plugin is detected before installing — already-installed ones are skipped (no duplicate work). Failed installs print a manual fallback command and continue (no abort). Final summary lists what was installed / skipped / needs manual install.
 
 The shipped hooks auto-register in each CLI's native settings location (idempotent — re-running won't duplicate entries). In `--minimum`/`--full` mode, the installer also prompts at the end to run one-time setup commands when their tools are present: `mempalace init` (cross-session memory), `gemini auth login` (Gemini CLI auth), and a reminder to install the `openai-codex` plugin from inside Claude Code. Decline any prompt to skip — you can run them manually later.

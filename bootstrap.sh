@@ -11,13 +11,16 @@
 #   ROLEPOD_REF      branch/tag to check out (default: main)
 #
 # Args (forwarded to install.sh — skip interactive prompt if any are given):
-#   --core      rolepod files only — no plugins
-#   --minimum   core + ui-ux-pro-max + GitNexus + MemPalace
-#   --full      minimum + caveman + rtk + Codex CLI + Gemini CLI + openai-codex
-#   --force     overwrite existing ~/.claude (backup created)
-#   --dry-run   preview every action; write nothing to disk
+#   --core            rolepod files only — no plugins
+#   --minimum         core + ui-ux-pro-max + GitNexus + MemPalace
+#   --full            minimum + caveman + rtk + Codex CLI + Gemini CLI + openai-codex
+#   --force           overwrite existing ~/.claude (backup created)
+#   --dry-run         preview every action; write nothing to disk
+#   --target=<cli>    claude|codex|gemini|all (default claude)
+#   --scope=global    install to home (default — affects all projects)
+#   --scope=project   install to current dir's .claude/ etc. (no global config touched)
 #   --with-tools=<list> / --with-skills=<list> / --with-clis=<list> / --with-plugins=<list>
-#               compose your own bundle (see install.sh --help)
+#                     compose your own bundle (see install.sh --help)
 #
 # Examples:
 #   curl -fsSL .../bootstrap.sh | bash                       # interactive menu
@@ -42,6 +45,7 @@ fi
 
 # ─── Interactive menu (only if no args + we have a terminal) ────────────
 INTERACTIVE_TARGET=""
+INTERACTIVE_SCOPE=""
 if [ "${#ARGS[@]}" -eq 0 ]; then
   if [ -e /dev/tty ]; then
     cat >&2 <<EOF
@@ -92,6 +96,21 @@ EOF
       *) echo "Unknown choice '$target_choice' — defaulting to claude"; INTERACTIVE_TARGET="claude" ;;
     esac
 
+    cat >&2 <<EOF
+
+Choose install scope:
+  ${BOLD}1${NC}) ${CYAN}global${NC}    — install to ~/.claude/ etc. (affects all your projects) ${YELLOW}★ default${NC}
+  ${BOLD}2${NC}) ${CYAN}project${NC}   — install to current directory's .claude/ etc. (no global config touched)
+
+EOF
+    scope_choice=""
+    read -r -p "Scope [1/2] (default 1): " scope_choice </dev/tty || scope_choice=""
+    case "${scope_choice:-1}" in
+      1|global|"") INTERACTIVE_SCOPE="global" ;;
+      2|project)   INTERACTIVE_SCOPE="project" ;;
+      *) echo "Unknown choice '$scope_choice' — defaulting to global"; INTERACTIVE_SCOPE="global" ;;
+    esac
+
     force_choice=""
     read -r -p "Overwrite existing files (auto-backup first)? [y/N]: " force_choice </dev/tty || force_choice=""
     case "${force_choice:-n}" in
@@ -133,8 +152,17 @@ TARGET_FLAG="--target=${INTERACTIVE_TARGET:-claude}"
 for a in "${ARGS[@]+"${ARGS[@]}"}"; do
   case "$a" in --target=*) TARGET_FLAG="" ;; esac
 done
-if [ -n "$TARGET_FLAG" ]; then
-  exec ./install.sh "$TARGET_FLAG" "${ARGS[@]}"
-else
-  exec ./install.sh "${ARGS[@]}"
+# Same logic for --scope=. Only forward when interactive picked one (don't
+# clobber user's explicit --scope= in ARGS, and don't force global when ARGS
+# came from a non-interactive curl pipe — install.sh defaults to global).
+SCOPE_FLAG=""
+if [ -n "$INTERACTIVE_SCOPE" ]; then
+  SCOPE_FLAG="--scope=$INTERACTIVE_SCOPE"
 fi
+for a in "${ARGS[@]+"${ARGS[@]}"}"; do
+  case "$a" in --scope=*) SCOPE_FLAG="" ;; esac
+done
+EXTRA=()
+[ -n "$TARGET_FLAG" ] && EXTRA+=("$TARGET_FLAG")
+[ -n "$SCOPE_FLAG" ] && EXTRA+=("$SCOPE_FLAG")
+exec ./install.sh "${EXTRA[@]+"${EXTRA[@]}"}" "${ARGS[@]+"${ARGS[@]}"}"

@@ -469,6 +469,124 @@ jobs:
             exit 1
           fi
 
+      - name: --scope=project — claude lands at $PWD/.claude (refs #2 #3)
+        shell: bash
+        run: |
+          set -eo pipefail
+          # scope=project must NOT touch $HOME/.claude. It writes to $PWD/.claude.
+          unset ROLEPOD_TARGET
+          WORK="$(mktemp -d)"
+          # Snapshot HOME state before.
+          BEFORE_HOME=$(find "$HOME/.claude" -type f 2>/dev/null | wc -l)
+          out=$(cd "$WORK" && bash "$GITHUB_WORKSPACE/install.sh" --target=claude --scope=project --dry-run 2>&1)
+          # Must preview $WORK/.claude paths.
+          if ! grep -qF "$WORK/.claude" <<<"$out"; then
+            echo "::error::scope=project did not preview \$PWD/.claude paths"
+            printf '%s\n' "$out"
+            exit 1
+          fi
+          # Must NOT preview $HOME/.claude.
+          if grep -qF "$HOME/.claude" <<<"$out"; then
+            echo "::error::scope=project leaked \$HOME/.claude path"
+            printf '%s\n' "$out"
+            exit 1
+          fi
+          # Final message variant.
+          if ! grep -q 'restart Claude Code in this project' <<<"$out"; then
+            echo "::error::scope=project missing project-aware final message"
+            exit 1
+          fi
+          # HOME must not have grown.
+          AFTER_HOME=$(find "$HOME/.claude" -type f 2>/dev/null | wc -l)
+          if [ "$BEFORE_HOME" -ne "$AFTER_HOME" ]; then
+            echo "::error::scope=project --dry-run mutated \$HOME/.claude"
+            exit 1
+          fi
+
+      - name: --scope=project — codex writes only AGENTS.md (refs #2 #3)
+        shell: bash
+        run: |
+          set -eo pipefail
+          unset ROLEPOD_TARGET
+          WORK="$(mktemp -d)"
+          mkdir -p "$HOME/.codex"
+          touch "$HOME/.codex/config.toml"
+          BEFORE=$(sha256sum "$HOME/.codex/config.toml" | awk '{print $1}')
+          out=$(cd "$WORK" && bash "$GITHUB_WORKSPACE/install.sh" --target=codex --scope=project --dry-run 2>&1)
+          AFTER=$(sha256sum "$HOME/.codex/config.toml" | awk '{print $1}')
+          if [ "$BEFORE" != "$AFTER" ]; then
+            echo "::error::scope=project mutated \$HOME/.codex/config.toml"
+            exit 1
+          fi
+          if ! grep -qi 'Codex plugins are global only' <<<"$out"; then
+            echo "::error::scope=project missing 'plugins are global only' warning for codex"
+            exit 1
+          fi
+          if ! grep -qF "$WORK/AGENTS.md" <<<"$out"; then
+            echo "::error::scope=project did not preview \$PWD/AGENTS.md for codex"
+            exit 1
+          fi
+          # Must NOT preview the marketplace registration / plugin tree paths.
+          if grep -qi 'codex plugin marketplace add' <<<"$out"; then
+            echo "::error::scope=project should not run 'codex plugin marketplace add'"
+            exit 1
+          fi
+          if ! grep -q 'auto-loads' <<<"$out"; then
+            echo "::error::scope=project missing project-aware codex final message"
+            exit 1
+          fi
+
+      - name: --scope=project — gemini writes only GEMINI.md (refs #2 #3)
+        shell: bash
+        run: |
+          set -eo pipefail
+          unset ROLEPOD_TARGET
+          WORK="$(mktemp -d)"
+          BEFORE_HOME=$(find "$HOME/.gemini" -type f 2>/dev/null | wc -l)
+          out=$(cd "$WORK" && bash "$GITHUB_WORKSPACE/install.sh" --target=gemini --scope=project --dry-run 2>&1)
+          if ! grep -qi 'Gemini extensions are global only' <<<"$out"; then
+            echo "::error::scope=project missing 'extensions are global only' warning for gemini"
+            exit 1
+          fi
+          if ! grep -qF "$WORK/GEMINI.md" <<<"$out"; then
+            echo "::error::scope=project did not preview \$PWD/GEMINI.md for gemini"
+            exit 1
+          fi
+          # Must NOT preview the extension tree.
+          if grep -qF "$HOME/.gemini/extensions/rolepod" <<<"$out"; then
+            echo "::error::scope=project leaked \$HOME/.gemini/extensions path"
+            exit 1
+          fi
+          AFTER_HOME=$(find "$HOME/.gemini" -type f 2>/dev/null | wc -l)
+          if [ "$BEFORE_HOME" -ne "$AFTER_HOME" ]; then
+            echo "::error::scope=project --dry-run mutated \$HOME/.gemini"
+            exit 1
+          fi
+
+      - name: --scope=project --target=all — only project files (refs #2 #3)
+        shell: bash
+        run: |
+          set -eo pipefail
+          unset ROLEPOD_TARGET
+          WORK="$(mktemp -d)"
+          out=$(cd "$WORK" && bash "$GITHUB_WORKSPACE/install.sh" --target=all --scope=project --dry-run 2>&1)
+          # All three project paths must appear.
+          for p in "$WORK/.claude" "$WORK/AGENTS.md" "$WORK/GEMINI.md"; do
+            if ! grep -qF "$p" <<<"$out"; then
+              echo "::error::scope=project --target=all missing $p"
+              printf '%s\n' "$out"
+              exit 1
+            fi
+          done
+          # No global home paths.
+          for h in "$HOME/.claude" "$HOME/.codex" "$HOME/.gemini/extensions"; do
+            if grep -qF "$h" <<<"$out"; then
+              echo "::error::scope=project --target=all leaked global path: $h"
+              printf '%s\n' "$out"
+              exit 1
+            fi
+          done
+
       - name: No 'Device not configured' across all install runs (refs #2)
         shell: bash
         run: |

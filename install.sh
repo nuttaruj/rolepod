@@ -11,8 +11,14 @@
 #   ./install.sh --target=codex        # Codex CLI       → ~/.codex
 #   ./install.sh --target=gemini       # Gemini CLI      → ~/.gemini
 #   ./install.sh --target=all          # install all three
+#   ./install.sh --scope=global        # default — install to home (~/.claude/, etc.)
+#   ./install.sh --scope=project       # install to $PWD (no global config touched)
+#                                      #   Claude → $PWD/.claude/  (full plugin)
+#                                      #   Codex  → $PWD/AGENTS.md (managed block only)
+#                                      #   Gemini → $PWD/GEMINI.md (managed block only)
 #   ./install.sh --uninstall           # remove rolepod from selected --target
 #                                      # add --yes/-y to skip confirmation prompt
+#                                      # respects --scope (project = only project files)
 #   ./install.sh --dry-run             # preview every action; write nothing to disk
 #
 # Granular flags (compose your own bundle without --minimum/--full):
@@ -56,6 +62,7 @@ PLUGINS_DIR=""                  # set after TARGET resolves
 MODE="core"
 FORCE=0
 CLI_TARGET="claude"
+SCOPE="global"
 UNINSTALL=0
 ASSUME_YES=0
 DRY_RUN=0
@@ -78,12 +85,13 @@ for arg in "$@"; do
     --yes|-y)        ASSUME_YES=1 ;;
     --dry-run)       DRY_RUN=1 ;;
     --target=*)      CLI_TARGET="${arg#--target=}" ;;
+    --scope=*)       SCOPE="${arg#--scope=}" ;;
     --with-tools=*)   WANT_TOOLS="${arg#--with-tools=}" ;;
     --with-skills=*)  WANT_SKILLS="${arg#--with-skills=}" ;;
     --with-clis=*)    WANT_CLIS="${arg#--with-clis=}" ;;
     --with-plugins=*) WANT_PLUGINS="${arg#--with-plugins=}" ;;
     -h|--help)
-      sed -n '2,40p' "$0"
+      sed -n '2,46p' "$0"
       exit 0 ;;
     *) echo "Unknown arg: $arg" >&2; exit 1 ;;
   esac
@@ -93,6 +101,13 @@ case "$CLI_TARGET" in
   claude|codex|gemini|all) ;;
   *)
     echo "Unknown --target value: $CLI_TARGET (expected claude|codex|gemini|all)" >&2
+    exit 1 ;;
+esac
+
+case "$SCOPE" in
+  global|project) ;;
+  *)
+    echo "Unknown --scope value: $SCOPE (expected global|project)" >&2
     exit 1 ;;
 esac
 
@@ -115,7 +130,21 @@ esac
 
 # Resolve install destination per CLI target. ROLEPOD_TARGET (env) wins for
 # all targets when set, so dry-run installs into a tempdir keep working.
+# Scope-aware:
+#   global  → ~/.<cli>      (Claude: ~/.claude, Codex: ~/.codex, Gemini: ~/.gemini)
+#   project → $PWD          (Claude: $PWD/.claude, Codex/Gemini: $PWD itself —
+#                            their managed-block doc lives at $PWD/AGENTS.md or
+#                            $PWD/GEMINI.md, NOT under a hidden dotdir)
 default_target_path_for() {
+  if [ "$SCOPE" = "project" ]; then
+    case "$1" in
+      claude) echo "$PWD/.claude" ;;
+      codex)  echo "$PWD" ;;
+      gemini) echo "$PWD" ;;
+      *)      echo "$PWD" ;;
+    esac
+    return
+  fi
   case "$1" in
     claude) echo "$HOME/.claude" ;;
     codex)  echo "$HOME/.codex" ;;
@@ -129,8 +158,9 @@ default_target_path_for() {
 #   1. ROLEPOD_<CLI>_TARGET   per-CLI override
 #   2. ROLEPOD_TARGET + --target=all → $ROLEPOD_TARGET/<cli>/  (subdir layout)
 #   3. ROLEPOD_TARGET (single target only) → use as-is
-#   4. default_target_path_for <cli>
+#   4. default_target_path_for <cli> (scope-aware)
 # Keeps --target=all + ROLEPOD_TARGET consistent: all 3 CLIs land under one root.
+# ROLEPOD_TARGET / per-CLI overrides win regardless of scope (CI temp dirs).
 resolve_target_for() {
   local cli="$1"
   local override
@@ -347,6 +377,7 @@ note_failed()    { FAILED+=("$1"); }
 echo "${BOLD}rolepod installer${NC}"
 echo "  source:  $REPO_DIR"
 echo "  cli:     $CLI_TARGET"
+echo "  scope:   $SCOPE"
 echo "  mode:    $MODE"
 echo "  force:   $FORCE"
 echo "  dry-run: $DRY_RUN"
@@ -526,6 +557,16 @@ PY
   fi
 
   if [ "$uninstall_codex" -eq 1 ]; then
+    if [ "$SCOPE" = "project" ]; then
+      # Project uninstall: only strip the managed AGENTS.md block at $PWD.
+      step "Stripping rolepod block from $X_TARGET/AGENTS.md"
+      remove_managed_block "$X_TARGET/AGENTS.md"
+      ok "Codex project rolepod removed (global config untouched)"
+      uninstall_codex=0   # signal to skip global removal block below
+    fi
+  fi
+
+  if [ "$uninstall_codex" -eq 1 ]; then
     X_CONFIG="$X_TARGET/config.toml"
     # Same temp-target detection as install path: only touch global codex
     # commands when uninstalling against the real ~/.codex (refs #3).
@@ -596,16 +637,22 @@ PY
   fi
 
   if [ "$uninstall_gemini" -eq 1 ]; then
-    step "Removing Gemini rolepod extension in $G_TARGET/extensions/rolepod"
-    do_or_dry "rm -rf $G_TARGET/extensions/rolepod" rm -rf "$G_TARGET/extensions/rolepod"
-    if [ "$DRY_RUN" -eq 1 ]; then
-      dry "rmdir $G_TARGET/extensions (if empty)"
+    if [ "$SCOPE" = "project" ]; then
+      step "Stripping rolepod block from $G_TARGET/GEMINI.md"
+      remove_managed_block "$G_TARGET/GEMINI.md"
+      ok "Gemini project rolepod removed (global extension untouched)"
     else
-      rmdir "$G_TARGET/extensions" 2>/dev/null || true
+      step "Removing Gemini rolepod extension in $G_TARGET/extensions/rolepod"
+      do_or_dry "rm -rf $G_TARGET/extensions/rolepod" rm -rf "$G_TARGET/extensions/rolepod"
+      if [ "$DRY_RUN" -eq 1 ]; then
+        dry "rmdir $G_TARGET/extensions (if empty)"
+      else
+        rmdir "$G_TARGET/extensions" 2>/dev/null || true
+      fi
+      step "Stripping rolepod block from $G_TARGET/GEMINI.md"
+      remove_managed_block "$G_TARGET/GEMINI.md"
+      ok "Gemini rolepod removed"
     fi
-    step "Stripping rolepod block from $G_TARGET/GEMINI.md"
-    remove_managed_block "$G_TARGET/GEMINI.md"
-    ok "Gemini rolepod removed"
   fi
 
   echo ""
@@ -877,10 +924,36 @@ if codex_selected; then
   echo ""
   echo "${BOLD}─── Installing for Codex CLI ───${NC}"
   echo "  target:                $CODEX_TARGET"
-  echo "  marketplace source:    $RENDERED_CODEX_DIR"
-  if [ "$CODEX_IS_TEMP_TARGET" -eq 1 ]; then
-    echo "  mode:                  temp-target (filesystem only — global config NOT mutated)"
+  if [ "$SCOPE" = "project" ]; then
+    echo "  mode:                  project-scope (managed AGENTS.md only — global config NOT mutated)"
+  else
+    echo "  marketplace source:    $RENDERED_CODEX_DIR"
+    if [ "$CODEX_IS_TEMP_TARGET" -eq 1 ]; then
+      echo "  mode:                  temp-target (filesystem only — global config NOT mutated)"
+    fi
   fi
+
+  if [ "$SCOPE" = "project" ]; then
+    # Project scope: write only $PWD/AGENTS.md managed block. Codex plugins are
+    # global-only (marketplace registration + ~/.codex/config.toml), so per-project
+    # plugin install is impossible — warn so user knows the tradeoff.
+    warn "Codex plugins are global only. Per-project install writes AGENTS.md only."
+    warn "  For full plugin install, run --scope=global separately."
+    step "Updating AGENTS.md (managed block) → $CODEX_TARGET/AGENTS.md"
+    update_managed_block "$CODEX_TARGET/AGENTS.md" "$RENDERED_AGENTS_MD"
+    if [ "$DRY_RUN" -eq 0 ]; then
+      step "Verifying Codex project install"
+      [ -e "$CODEX_TARGET/AGENTS.md" ] || fail "Codex verification failed — $CODEX_TARGET/AGENTS.md missing"
+      ok "AGENTS.md → $CODEX_TARGET/AGENTS.md"
+    else
+      skip "Codex verification skipped (dry-run)"
+    fi
+    # Skip the rest of the codex install block — no marketplace, no plugin tree.
+    CODEX_PROJECT_DONE=1
+  else
+    CODEX_PROJECT_DONE=0
+  fi
+  if [ "${CODEX_PROJECT_DONE:-0}" -eq 0 ]; then
 
   [ -f "$RENDERED_AGENTS_MD" ]                                                  || fail "expected $RENDERED_AGENTS_MD after render"
   [ -f "$RENDERED_CODEX_DIR/.agents/plugins/marketplace.json" ]                 || fail "expected marketplace manifest after render"
@@ -1031,6 +1104,7 @@ if codex_selected; then
   else
     skip "Codex verification skipped (dry-run)"
   fi
+  fi  # end CODEX_PROJECT_DONE guard
 fi
 
 # ─── install_gemini — Gemini CLI path (~/.gemini/) ─────────────────────
@@ -1042,16 +1116,42 @@ if gemini_selected; then
   echo ""
   echo "${BOLD}─── Installing for Gemini CLI ───${NC}"
   echo "  target:           $GEMINI_TARGET"
-  echo "  extension dest:   $GEMINI_EXT_DEST"
+  if [ "$SCOPE" = "project" ]; then
+    echo "  mode:             project-scope (managed GEMINI.md only — extension NOT installed)"
+  else
+    echo "  extension dest:   $GEMINI_EXT_DEST"
+  fi
+
+  RENDERED_GEMINI_DIR="$REPO_DIR/build/rendered/gemini"
+  RENDERED_GEMINI_MD="$RENDERED_GEMINI_DIR/GEMINI.md"
+  [ -f "$RENDERED_GEMINI_MD" ] || fail "expected $RENDERED_GEMINI_MD after render"
+
+  if [ "$SCOPE" = "project" ]; then
+    # Project scope: only write $PWD/GEMINI.md managed block. Gemini extensions
+    # are global-only (load via ~/.gemini/extensions/) — same warn pattern as Codex.
+    warn "Gemini extensions are global only. Per-project install writes GEMINI.md only."
+    warn "  For full extension install, run --scope=global separately."
+    step "Updating GEMINI.md (managed block) → $GEMINI_TARGET/GEMINI.md"
+    update_managed_block "$GEMINI_TARGET/GEMINI.md" "$RENDERED_GEMINI_MD"
+    if [ "$DRY_RUN" -eq 0 ]; then
+      step "Verifying Gemini project install"
+      [ -e "$GEMINI_TARGET/GEMINI.md" ] || fail "Gemini verification failed — $GEMINI_TARGET/GEMINI.md missing"
+      ok "GEMINI.md → $GEMINI_TARGET/GEMINI.md"
+    else
+      skip "Gemini verification skipped (dry-run)"
+    fi
+    GEMINI_PROJECT_DONE=1
+  else
+    GEMINI_PROJECT_DONE=0
+  fi
+
+  if [ "${GEMINI_PROJECT_DONE:-0}" -eq 0 ]; then
 
   if ! have_cmd gemini; then
     warn "gemini binary not found — skipping Gemini install (file copy only)"
     warn "  Install Gemini CLI: npm install -g @google/gemini-cli"
   fi
 
-  RENDERED_GEMINI_DIR="$REPO_DIR/build/rendered/gemini"
-  RENDERED_GEMINI_MD="$RENDERED_GEMINI_DIR/GEMINI.md"
-  [ -f "$RENDERED_GEMINI_MD" ]                            || fail "expected $RENDERED_GEMINI_MD after render"
   [ -f "$RENDERED_GEMINI_DIR/gemini-extension.json" ]     || fail "expected $RENDERED_GEMINI_DIR/gemini-extension.json after render"
   [ -d "$RENDERED_GEMINI_DIR/commands" ]                  || fail "expected $RENDERED_GEMINI_DIR/commands/ after render"
   [ -d "$RENDERED_GEMINI_DIR/hooks" ]                     || fail "expected $RENDERED_GEMINI_DIR/hooks/ after render"
@@ -1108,6 +1208,7 @@ if gemini_selected; then
   else
     skip "Gemini verification skipped (dry-run)"
   fi
+  fi  # end GEMINI_PROJECT_DONE guard
 fi
 
 # Ensure TARGET is set for the rest of the script. Plugin install routing
@@ -1547,9 +1648,18 @@ if [ "$DRY_RUN" -eq 0 ] && [ "$_post_install_mode" -ne 0 ]; then
 fi
 
 echo ""
-case "$CLI_TARGET" in
-  claude) echo "${BOLD}Final step${NC}: restart Claude Code so the hooks register." ;;
-  codex)  echo "${BOLD}Final step${NC}: restart Codex CLI to load the new plugin and hooks." ;;
-  gemini) echo "${BOLD}Final step${NC}: restart Gemini CLI to load the new extension and hooks." ;;
-  all)    echo "${BOLD}Final step${NC}: restart Claude Code, Codex CLI, and Gemini CLI." ;;
-esac
+if [ "$SCOPE" = "project" ]; then
+  case "$CLI_TARGET" in
+    claude) echo "${BOLD}Final step${NC}: restart Claude Code in this project to load the rolepod workflow." ;;
+    codex)  echo "${BOLD}Final step${NC}: Codex auto-loads $PWD/AGENTS.md when you run codex in this project." ;;
+    gemini) echo "${BOLD}Final step${NC}: Gemini auto-loads $PWD/GEMINI.md when you run gemini in this project." ;;
+    all)    echo "${BOLD}Final step${NC}: restart Claude Code in this project; Codex/Gemini auto-load $PWD/AGENTS.md and $PWD/GEMINI.md." ;;
+  esac
+else
+  case "$CLI_TARGET" in
+    claude) echo "${BOLD}Final step${NC}: restart Claude Code so the hooks register." ;;
+    codex)  echo "${BOLD}Final step${NC}: restart Codex CLI to load the new plugin and hooks." ;;
+    gemini) echo "${BOLD}Final step${NC}: restart Gemini CLI to load the new extension and hooks." ;;
+    all)    echo "${BOLD}Final step${NC}: restart Claude Code, Codex CLI, and Gemini CLI." ;;
+  esac
+fi
