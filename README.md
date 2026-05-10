@@ -46,8 +46,6 @@ Every plugin is detected before installing — already-installed ones are skippe
 
 After install, restart Claude Code so the hooks register.
 
-Custom rolepod target: `ROLEPOD_TARGET=/path ./install.sh`
-
 ---
 
 ## Architecture
@@ -149,6 +147,24 @@ Session N+1 (any time later, any project)
 
 ---
 
+## Model + effort allocation
+
+The 18 agents are tuned for cost vs quality — bigger models only where adversarial depth or cross-system judgment pays off:
+
+| Tier | Count | Agents |
+|------|-------|--------|
+| **Opus xhigh** | 1 | security-engineer (adversarial depth) |
+| **Opus high** | 1 | system-architect |
+| **Sonnet high** | 5 | ai-ml-engineer, billing-engineer, performance-engineer, qa-tester, universal-reviewer |
+| **Sonnet standard** | 7 | backend-developer, frontend-developer, mobile-developer, data-scientist, devops-sre, ui-ux-designer, product-manager |
+| **Haiku** | 4 | business-analyst, customer-success, growth-marketer, tech-writer |
+
+Estimated **~50-60% cost reduction** vs naive "all Opus high" while keeping depth where bugs are expensive (auth / billing / migrations / arch).
+
+**Fallback escalation:** Lead spawns `qa-tester` and `universal-reviewer` with `model: opus` override when external reviewers (Codex / Gemini) are unavailable, when the PR touches high-risk surface (auth / billing / migrations), or when the user explicitly requests deep review. See `rules/reviewer-flow.md` for the full escalation matrix.
+
+---
+
 ## Skill dependencies
 
 This repo bundles 27 skills out-of-the-box. Agents preload them via frontmatter `skills:` field. Optional external plugins extend coverage.
@@ -166,7 +182,13 @@ Minimum baseline (core install only): 18 agents + 16 rules + 4 hooks + 27 bundle
 
 Full workflow → also install GitNexus + caveman + ui-ux-pro-max-skill.
 
-The 18 agents preload 27 skills via their frontmatter `skills:` field (26 ship in this repo, 1 from `nextlevelbuilder/ui-ux-pro-max-skill`). All work out-of-the-box after install — no extra plugin needed for the bundled 26. Drop unwanted preloads by editing `agents/<name>.md`'s `skills:` list.
+**Skills referenced by agent preloads.** The 18 agents reference **27 unique skill names** in their `skills:` frontmatter. The math:
+
+- **26 ship in `skills/`** in this repo → auto-installed by `./install.sh` (any mode).
+- **1 (`ui-ux-pro-max`)** comes from the external `nextlevelbuilder/ui-ux-pro-max-skill` plugin → installed when you run `./install.sh --minimum` or `--full`. Without it, the `ui-ux-designer` agent simply won't preload that one skill.
+- The repo also ships `zoom-out` (meta-cognitive recovery) which is **user-invoked**, not preloaded by any agent — so `skills/` total is 27 files, agent preloads reference 27 names, and they overlap on 26.
+
+Drop unwanted preloads by editing `agents/<name>.md`'s `skills:` list.
 
 ---
 
