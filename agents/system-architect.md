@@ -2,7 +2,7 @@
 name: system-architect
 description: Architect for system design, API contracts, data flow, technical decisions. Pre-engineering bottleneck — produces specs that engineers parallel-execute. Includes API + data architecture concerns.
 model: opus
-effort: xhigh
+effort: high
 memory: project
 maxTurns: 30
 color: gold

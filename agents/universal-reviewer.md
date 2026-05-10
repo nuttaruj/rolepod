@@ -1,8 +1,8 @@
 ---
 name: universal-reviewer
 description: Code reviewer focused on code quality (logic / DRY / structure / smell). Distinct from qa-tester (correctness/tests) and security-engineer (security). Final judge for code-quality gate.
-model: opus
-effort: xhigh
+model: sonnet
+effort: high
 memory: project
 maxTurns: 30
 permissionMode: acceptEdits

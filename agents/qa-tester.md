@@ -1,8 +1,8 @@
 ---
 name: qa-tester
 description: QA + Test Automation. Owns correctness — write/run tests, business logic verify, race conditions, integration. Universal floor + fallback when Codex/Gemini fail.
-model: opus
-effort: xhigh
+model: sonnet
+effort: high
 memory: project
 maxTurns: 50
 permissionMode: acceptEdits

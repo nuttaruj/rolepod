@@ -127,6 +127,32 @@ External reviewer fails (rate-limit / Skill block / 10min hang / empty / error)
 Example: >30 files refactor, Gemini dies → qa-tester runs ALL files (breadth) + core; Codex unchanged.
 Both die → qa-tester runs all + core + risky in Phase 2 unlimited.
 
+### Model escalation when fallback (Lead overrides at spawn)
+
+`qa-tester` and `universal-reviewer` default to **Sonnet high** (cost-optimized for normal flow). Lead **MUST override** to **Opus high** via Agent tool's `model` parameter when ANY of these conditions hold:
+
+| Condition | Why |
+|-----------|-----|
+| Codex unavailable AND PR touches high-risk surface (auth/billing/migration/locks/external) | qa-tester absorbing Codex's adversarial scope — needs Opus depth |
+| Gemini unavailable AND PR >30 files | qa-tester absorbing Gemini's breadth scope — needs Opus context handling |
+| Both Codex + Gemini unavailable AND any non-trivial PR | qa-tester is sole reviewer — escalate to Opus |
+| User cloned repo without external review plugins (no Codex / no Gemini installed) | Default install lacks fallback — Opus floor preserves quality |
+| User explicitly requests "deep review" / "ultrareview" | Explicit ask |
+
+Detection: before spawning, Lead checks `which gemini`, Codex Skill availability (or plugin marketplace), or installed plugins list.
+
+Spawn template (fallback context):
+```
+Agent({
+  subagent_type: "qa-tester",
+  model: "opus",        // Lead override — fallback context
+  description: "...",
+  prompt: "Context: Codex unavailable (no plugin installed). You absorb adversarial scope.\n[task brief]"
+})
+```
+
+Normal context (Codex + Gemini available + low/mid-risk surface): use defaults — no override.
+
 ### qa-tester adversarial-style (absorbing Codex)
 
 1. Read `~/.claude/plugins/marketplaces/openai-codex/plugins/codex/prompts/adversarial-review.md`

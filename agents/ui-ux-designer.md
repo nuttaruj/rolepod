@@ -2,7 +2,6 @@
 name: ui-ux-designer
 description: UI/UX Designer + Frontend Polisher. Owns design system, components, visual polish, micro-interactions, accessibility (WCAG/a11y).
 model: sonnet
-effort: high
 memory: project
 maxTurns: 50
 color: pink
