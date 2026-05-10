@@ -11,11 +11,17 @@
 #   ./install.sh --target=codex        # Codex CLI       → ~/.codex
 #   ./install.sh --target=gemini       # Gemini CLI      → ~/.gemini
 #   ./install.sh --target=all          # install all three
+#   ./install.sh --uninstall           # remove rolepod from selected --target
+#                                      # add --yes/-y to skip confirmation prompt
 #
 # Env:
 #   ROLEPOD_TARGET    where to write rolepod files. For single targets it
 #                     overrides the default path; for --target=all it is
 #                     ignored (each CLI uses its conventional path).
+#
+# Managed entry docs (CLAUDE.md / AGENTS.md / GEMINI.md): rolepod content is
+# wrapped in <!-- rolepod:start --> ... <!-- rolepod:end --> markers. User
+# content outside those markers is preserved across re-installs and uninstall.
 #
 # Detection: every plugin install is preceded by a check. Already-installed plugins
 # are skipped. Failed installs print a manual fallback command and continue.
@@ -28,6 +34,8 @@ PLUGINS_DIR=""                  # set after TARGET resolves
 MODE="core"
 FORCE=0
 CLI_TARGET="claude"
+UNINSTALL=0
+ASSUME_YES=0
 
 # Args
 for arg in "$@"; do
@@ -36,9 +44,11 @@ for arg in "$@"; do
     --full)          MODE="full" ;;
     --core|--merge)  MODE="core" ;;
     --force)         FORCE=1 ;;
+    --uninstall)     UNINSTALL=1 ;;
+    --yes|-y)        ASSUME_YES=1 ;;
     --target=*)      CLI_TARGET="${arg#--target=}" ;;
     -h|--help)
-      sed -n '2,22p' "$0"
+      sed -n '2,28p' "$0"
       exit 0 ;;
     *) echo "Unknown arg: $arg" >&2; exit 1 ;;
   esac
@@ -76,6 +86,110 @@ ok()   { echo "${GREEN}✓${NC} $*"; }
 warn() { echo "${YELLOW}!${NC} $*"; }
 fail() { echo "${RED}✗${NC} $*" >&2; exit 1; }
 skip() { echo "${YELLOW}~${NC} $*"; }
+
+# Generic helpers — defined early so install/uninstall blocks below can use them.
+have_cmd() { command -v "$1" >/dev/null 2>&1; }
+have_dir() { [ -d "$1" ]; }
+
+# ─── Managed-block helpers ──────────────────────────────────────────────
+# Entry docs (~/.claude/CLAUDE.md, ~/.codex/AGENTS.md, ~/.gemini/GEMINI.md)
+# may contain user content. Wrap rolepod content in HTML markers so we only
+# touch our own block on subsequent installs.
+ROLEPOD_BLOCK_START="<!-- rolepod:start -->"
+ROLEPOD_BLOCK_END="<!-- rolepod:end -->"
+
+# update_managed_block <target_file> <source_file>
+# - target missing/empty → write block-only
+# - target has markers   → replace content between markers
+# - target has no markers → append markers + block (preserve existing user content)
+update_managed_block() {
+  local target_file="$1"
+  local source_file="$2"
+  [ -f "$source_file" ] || { warn "managed block: source $source_file missing"; return 1; }
+
+  if [ ! -e "$target_file" ] || [ ! -s "$target_file" ]; then
+    mkdir -p "$(dirname "$target_file")"
+    {
+      printf '%s\n' "$ROLEPOD_BLOCK_START"
+      cat "$source_file"
+      printf '\n%s\n' "$ROLEPOD_BLOCK_END"
+    } > "$target_file"
+    return 0
+  fi
+
+  if grep -qF "$ROLEPOD_BLOCK_START" "$target_file" && grep -qF "$ROLEPOD_BLOCK_END" "$target_file"; then
+    # Replace block: strip existing block, then append fresh block.
+    # awk reads body from source file (not -v) to avoid escape issues with
+    # arbitrary content (em-dashes, backticks, backslashes, etc.).
+    local tmp
+    tmp=$(mktemp)
+    awk -v start="$ROLEPOD_BLOCK_START" -v end="$ROLEPOD_BLOCK_END" '
+      $0 == start { in_block = 1; next }
+      in_block { if ($0 == end) in_block = 0; next }
+      { print }
+    ' "$target_file" > "$tmp"
+    # Trim trailing blank lines from the surviving user content
+    awk '
+      { lines[NR] = $0 }
+      END {
+        last = NR
+        while (last > 0 && lines[last] ~ /^[[:space:]]*$/) last--
+        for (i = 1; i <= last; i++) print lines[i]
+      }
+    ' "$tmp" > "$target_file"
+    rm -f "$tmp"
+    {
+      printf '\n%s\n' "$ROLEPOD_BLOCK_START"
+      cat "$source_file"
+      printf '\n%s\n' "$ROLEPOD_BLOCK_END"
+    } >> "$target_file"
+    return 0
+  fi
+
+  # No markers → append block after existing user content
+  {
+    printf '\n%s\n' "$ROLEPOD_BLOCK_START"
+    cat "$source_file"
+    printf '\n%s\n' "$ROLEPOD_BLOCK_END"
+  } >> "$target_file"
+}
+
+# remove_managed_block <target_file>
+# - removes ROLEPOD_BLOCK_START..ROLEPOD_BLOCK_END (inclusive)
+# - leaves rest of file intact
+# - if file becomes empty (only contained our block), removes the file
+remove_managed_block() {
+  local target_file="$1"
+  [ -f "$target_file" ] || return 0
+  if ! grep -qF "$ROLEPOD_BLOCK_START" "$target_file"; then
+    return 0
+  fi
+  local tmp
+  tmp=$(mktemp)
+  awk -v start="$ROLEPOD_BLOCK_START" -v end="$ROLEPOD_BLOCK_END" '
+    {
+      if ($0 == start) { in_block = 1; next }
+      if (in_block) {
+        if ($0 == end) { in_block = 0 }
+        next
+      }
+      print
+    }
+  ' "$target_file" > "$tmp"
+  # Trim trailing blank lines
+  awk 'NF{p=1} p' "$tmp" | awk '
+    { lines[NR] = $0 }
+    END {
+      last = NR
+      while (last > 0 && lines[last] ~ /^[[:space:]]*$/) last--
+      for (i = 1; i <= last; i++) print lines[i]
+    }
+  ' > "$target_file"
+  rm -f "$tmp"
+  if [ ! -s "$target_file" ]; then
+    rm -f "$target_file"
+  fi
+}
 
 INSTALLED=()
 SKIPPED=()
@@ -115,6 +229,165 @@ case "$CLI_TARGET" in
     [ -e "$REPO_DIR/adapters/gemini/hooks/hooks.json" ]      || fail "missing adapters/gemini/hooks/hooks.json"
     ;;
 esac
+
+# ─── Uninstall path (early-exit) ────────────────────────────────────────
+# Removes rolepod files written by this installer. Preserves user content
+# outside our managed blocks. Idempotent — safe to run when nothing installed.
+if [ "$UNINSTALL" -eq 1 ]; then
+  echo "${BOLD}rolepod uninstaller${NC}"
+  echo "  cli:    $CLI_TARGET"
+  echo ""
+
+  # Discover what we'd remove so the user can decide.
+  uninstall_claude=0; uninstall_codex=0; uninstall_gemini=0
+  case "$CLI_TARGET" in claude|all) uninstall_claude=1 ;; esac
+  case "$CLI_TARGET" in codex|all)  uninstall_codex=1 ;; esac
+  case "$CLI_TARGET" in gemini|all) uninstall_gemini=1 ;; esac
+
+  C_TARGET="${ROLEPOD_TARGET:-$(default_target_path_for claude)}"
+  X_TARGET="${ROLEPOD_TARGET:-$(default_target_path_for codex)}"
+  G_TARGET="${ROLEPOD_TARGET:-$(default_target_path_for gemini)}"
+  if [ "$CLI_TARGET" = "all" ]; then
+    C_TARGET="$(default_target_path_for claude)"
+    X_TARGET="$(default_target_path_for codex)"
+    G_TARGET="$(default_target_path_for gemini)"
+  fi
+
+  echo "About to remove rolepod from:"
+  [ "$uninstall_claude" -eq 1 ] && echo "  Claude → $C_TARGET (agents, skills, rules, hooks, managed CLAUDE.md block)"
+  [ "$uninstall_codex"  -eq 1 ] && echo "  Codex  → $X_TARGET/plugins/rolepod, managed AGENTS.md block"
+  [ "$uninstall_gemini" -eq 1 ] && echo "  Gemini → $G_TARGET/extensions/rolepod, managed GEMINI.md block"
+  echo ""
+
+  if [ "$ASSUME_YES" -ne 1 ]; then
+    if [ -t 0 ] || [ -r /dev/tty ]; then
+      printf "Continue? [y/N] " > /dev/tty
+      read -r reply < /dev/tty || reply=""
+    else
+      reply=""
+    fi
+    case "$reply" in
+      y|Y|yes|YES) ;;
+      *) echo "Aborted."; exit 0 ;;
+    esac
+  fi
+
+  # Build name lists from source repo so we only remove what rolepod ships.
+  AGENT_NAMES=()
+  if [ -d "$REPO_DIR/core/agents" ]; then
+    while IFS= read -r f; do
+      AGENT_NAMES+=("$(basename "$f")")
+    done < <(find "$REPO_DIR/core/agents" -maxdepth 1 -name '*.md' 2>/dev/null)
+  fi
+  SKILL_NAMES=()
+  if [ -d "$REPO_DIR/core/skills" ]; then
+    for d in "$REPO_DIR"/core/skills/*/; do
+      [ -d "$d" ] && SKILL_NAMES+=("$(basename "$d")")
+    done
+  fi
+  RULE_NAMES=()
+  if [ -d "$REPO_DIR/core/rules" ]; then
+    while IFS= read -r f; do
+      RULE_NAMES+=("$(basename "$f")")
+    done < <(find "$REPO_DIR/core/rules" -maxdepth 1 -name '*.md' 2>/dev/null)
+  fi
+  HOOK_NAMES=()
+  if [ -d "$REPO_DIR/hooks" ]; then
+    while IFS= read -r f; do
+      HOOK_NAMES+=("$(basename "$f")")
+    done < <(find "$REPO_DIR/hooks" -maxdepth 1 -name '*.sh' 2>/dev/null)
+  fi
+  COMMAND_NAMES=()
+  if [ -d "$REPO_DIR/commands" ]; then
+    while IFS= read -r f; do
+      COMMAND_NAMES+=("$(basename "$f")")
+    done < <(find "$REPO_DIR/commands" -maxdepth 1 -name '*.md' 2>/dev/null)
+  fi
+
+  if [ "$uninstall_claude" -eq 1 ]; then
+    step "Removing Claude rolepod files in $C_TARGET"
+    for n in "${AGENT_NAMES[@]}";   do rm -f "$C_TARGET/agents/$n"; done
+    for n in "${RULE_NAMES[@]}";    do rm -f "$C_TARGET/rules/$n"; done
+    for n in "${COMMAND_NAMES[@]}"; do rm -f "$C_TARGET/commands/$n"; done
+    for n in "${HOOK_NAMES[@]}";    do rm -f "$C_TARGET/hooks/$n"; done
+    for n in "${SKILL_NAMES[@]}";   do rm -rf "$C_TARGET/skills/$n"; done
+    rm -f "$C_TARGET/CHEATSHEET.md"
+    rm -f "$C_TARGET/.claude-plugin/plugin.json"
+    # Empty dirs cleanup (rmdir; ignore failure if non-empty)
+    rmdir "$C_TARGET/agents" "$C_TARGET/rules" "$C_TARGET/commands" "$C_TARGET/hooks" "$C_TARGET/skills" "$C_TARGET/.claude-plugin" 2>/dev/null || true
+
+    # Strip rolepod hook entries from settings.json (keep user's other config).
+    SETTINGS_FILE="$C_TARGET/settings.json"
+    if [ -f "$SETTINGS_FILE" ]; then
+      step "Stripping rolepod hook entries from $SETTINGS_FILE"
+      if command -v python3 >/dev/null 2>&1; then
+        python3 - "$SETTINGS_FILE" "$C_TARGET/hooks" <<'PY' || warn "settings.json strip failed (non-fatal)"
+import json, sys, os
+path, hook_dir = sys.argv[1], sys.argv[2]
+try:
+    with open(path) as f:
+        data = json.load(f)
+except Exception:
+    sys.exit(0)
+if not isinstance(data, dict) or "hooks" not in data:
+    sys.exit(0)
+hooks = data.get("hooks") or {}
+def strip(arr):
+    out = []
+    for group in arr or []:
+        inner = [h for h in (group.get("hooks") or [])
+                 if hook_dir not in (h.get("command") or "")]
+        if inner:
+            group["hooks"] = inner
+            out.append(group)
+    return out
+for evt in list(hooks.keys()):
+    new = strip(hooks[evt])
+    if new:
+        hooks[evt] = new
+    else:
+        del hooks[evt]
+if hooks:
+    data["hooks"] = hooks
+else:
+    data.pop("hooks", None)
+with open(path, "w") as f:
+    json.dump(data, f, indent=2)
+    f.write("\n")
+PY
+      else
+        warn "python3 not found — leaving settings.json untouched (remove rolepod hook entries manually)"
+      fi
+    fi
+
+    step "Stripping rolepod block from $C_TARGET/CLAUDE.md"
+    remove_managed_block "$C_TARGET/CLAUDE.md"
+
+    ok "Claude rolepod files removed"
+  fi
+
+  if [ "$uninstall_codex" -eq 1 ]; then
+    step "Removing Codex rolepod plugin in $X_TARGET/plugins/rolepod"
+    rm -rf "$X_TARGET/plugins/rolepod"
+    rmdir "$X_TARGET/plugins" 2>/dev/null || true
+    step "Stripping rolepod block from $X_TARGET/AGENTS.md"
+    remove_managed_block "$X_TARGET/AGENTS.md"
+    ok "Codex rolepod removed"
+  fi
+
+  if [ "$uninstall_gemini" -eq 1 ]; then
+    step "Removing Gemini rolepod extension in $G_TARGET/extensions/rolepod"
+    rm -rf "$G_TARGET/extensions/rolepod"
+    rmdir "$G_TARGET/extensions" 2>/dev/null || true
+    step "Stripping rolepod block from $G_TARGET/GEMINI.md"
+    remove_managed_block "$G_TARGET/GEMINI.md"
+    ok "Gemini rolepod removed"
+  fi
+
+  echo ""
+  echo "${BOLD}Uninstall complete.${NC}"
+  exit 0
+fi
 
 # ─── Render all required entry docs up front ────────────────────────────
 RENDER_TARGET="$CLI_TARGET"
@@ -159,8 +432,8 @@ if claude_selected; then
 
   if [ "$FORCE" -eq 1 ]; then CP_FLAG=""; else CP_FLAG="-n"; fi
 
-  step "Copying core docs (CLAUDE.md from rendered output, CHEATSHEET.md)"
-  cp $CP_FLAG "$RENDERED_CLAUDE_MD"     "$TARGET/CLAUDE.md" 2>/dev/null || true
+  step "Updating CLAUDE.md (managed block) + CHEATSHEET.md"
+  update_managed_block "$TARGET/CLAUDE.md" "$RENDERED_CLAUDE_MD"
   cp $CP_FLAG "$REPO_DIR/CHEATSHEET.md" "$TARGET/" 2>/dev/null || true
 
   step "Copying agents (18 from rendered/) + rules (16) + commands"
@@ -358,12 +631,8 @@ if codex_selected; then
   # AGENTS.md is the entry doc — it lives at the Codex root, not inside the plugin.
   rm -f "$CODEX_PLUGIN_DEST/AGENTS.md"
 
-  step "Copying AGENTS.md → $CODEX_TARGET/AGENTS.md"
-  if [ "$FORCE" -eq 1 ]; then
-    cp "$RENDERED_AGENTS_MD" "$CODEX_TARGET/AGENTS.md"
-  else
-    cp -n "$RENDERED_AGENTS_MD" "$CODEX_TARGET/AGENTS.md" 2>/dev/null || true
-  fi
+  step "Updating AGENTS.md (managed block) → $CODEX_TARGET/AGENTS.md"
+  update_managed_block "$CODEX_TARGET/AGENTS.md" "$RENDERED_AGENTS_MD"
 
   step "Marking hook scripts executable"
   chmod +x "$CODEX_PLUGIN_DEST/hooks"/*.sh 2>/dev/null || true
@@ -429,12 +698,8 @@ if gemini_selected; then
   # GEMINI.md is the entry doc — it lives at the Gemini root, not in the extension.
   rm -f "$GEMINI_EXT_DEST/GEMINI.md"
 
-  step "Copying GEMINI.md → $GEMINI_TARGET/GEMINI.md"
-  if [ "$FORCE" -eq 1 ]; then
-    cp "$RENDERED_GEMINI_MD" "$GEMINI_TARGET/GEMINI.md"
-  else
-    cp -n "$RENDERED_GEMINI_MD" "$GEMINI_TARGET/GEMINI.md" 2>/dev/null || true
-  fi
+  step "Updating GEMINI.md (managed block) → $GEMINI_TARGET/GEMINI.md"
+  update_managed_block "$GEMINI_TARGET/GEMINI.md" "$RENDERED_GEMINI_MD"
 
   step "Marking hook scripts executable"
   chmod +x "$GEMINI_EXT_DEST/hooks"/*.sh 2>/dev/null || true
@@ -461,11 +726,8 @@ if [ -z "${TARGET:-}" ]; then
   PLUGINS_DIR="$TARGET/plugins"
 fi
 
-# ─── Helpers for plugin checks ──────────────────────────────────────────
-have_cmd()    { command -v "$1" >/dev/null 2>&1; }
-have_dir()    { [ -d "$1" ]; }
-
 # ─── Plugin definitions ─────────────────────────────────────────────────
+# (have_cmd / have_dir defined earlier near the log helpers)
 
 plugin_anthropic_skills() {
   local p="$TARGET/plugins/marketplaces"
@@ -781,4 +1043,9 @@ if [ -t 0 ] || [ -r /dev/tty ]; then
 fi
 
 echo ""
-echo "${BOLD}Final step${NC}: restart Claude Code so the hooks register."
+case "$CLI_TARGET" in
+  claude) echo "${BOLD}Final step${NC}: restart Claude Code so the hooks register." ;;
+  codex)  echo "${BOLD}Final step${NC}: restart Codex CLI to load the new plugin and hooks." ;;
+  gemini) echo "${BOLD}Final step${NC}: restart Gemini CLI to load the new extension and hooks." ;;
+  all)    echo "${BOLD}Final step${NC}: restart Claude Code, Codex CLI, and Gemini CLI." ;;
+esac
