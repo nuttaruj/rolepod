@@ -264,17 +264,31 @@ Install only if project needs deep technical SEO beyond `growth-marketer`'s gene
 
 ## Installation
 
-### Quick start (existing Claude Code)
+### Quick start (one command)
 
-1. Clone or copy `~/.claude/` files into your home directory
-2. Restart Claude Code
-3. Hooks register automatically via `~/.claude/settings.json`
-4. Skills auto-discover via `using-agent-skills` meta-skill at SessionStart
+```bash
+git clone https://github.com/nuttaruj/rolepod
+cd rolepod
+./install.sh                # safe merge — keeps your existing ~/.claude/ files
+# OR
+./install.sh --force        # overwrite (auto-creates ~/.claude.backup-<timestamp>/)
+```
+
+`install.sh` does:
+
+1. Copies the 18 agents, 16 rules, 4 hooks, `zoom-out` skill, `/careful` command, manifest, `CLAUDE.md`, and `CHEATSHEET.md` into `~/.claude/`
+2. Marks hooks executable
+3. Verifies critical files landed
+4. Prints exact install commands for optional plugins (caveman, GitNexus, MemPalace, ui-ux-pro-max, rtk, claude-seo) — you run only the ones you want
+
+After: restart Claude Code so the hooks register.
+
+Custom target dir: `ROLEPOD_TARGET=/path/to/dir ./install.sh`
 
 ### Plugin install (when packaged)
 
 ```bash
-# Future:
+# Future (when Claude Code marketplace ships):
 claude plugin install rolepod
 ```
 
