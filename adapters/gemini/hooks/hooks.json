@@ -1,0 +1,47 @@
+{
+  "_comment": "Rolepod hook config. Schema: https://github.com/google-gemini/gemini-cli/blob/main/docs/hooks/index.md (verified 2026-05-10). Events used: SessionStart (context inject), BeforeTool (verify-first / context-awareness warn), AfterTool (verify-after reminder on Edit/Write/replace).",
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "name": "rolepod-context-inject",
+            "type": "command",
+            "command": "${extensionPath}/hooks/session-start.sh",
+            "timeout": 5000,
+            "description": "Inject git log + hot files + rolepod gates reminder."
+          }
+        ]
+      }
+    ],
+    "BeforeTool": [
+      {
+        "matcher": "write_file|replace|edit",
+        "hooks": [
+          {
+            "name": "rolepod-verify-first",
+            "type": "command",
+            "command": "${extensionPath}/hooks/before-tool.sh",
+            "timeout": 3000,
+            "description": "Remind verify-first: confirm facts before claiming."
+          }
+        ]
+      }
+    ],
+    "AfterTool": [
+      {
+        "matcher": "write_file|replace|edit",
+        "hooks": [
+          {
+            "name": "rolepod-verify-after",
+            "type": "command",
+            "command": "${extensionPath}/hooks/after-tool.sh",
+            "timeout": 3000,
+            "description": "Remind: every change ends with evidence (test / screenshot / curl / log)."
+          }
+        ]
+      }
+    ]
+  }
+}

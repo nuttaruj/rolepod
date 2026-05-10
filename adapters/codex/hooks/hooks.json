@@ -1,0 +1,51 @@
+{
+  "_comment": "Rolepod Codex hooks. Mirror Claude adapter's 4 hooks. Scripts shipped at adapters/codex/hooks/*.sh — copies of root hooks/*.sh maintained by build/render.sh.",
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|resume",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ${CODEX_PLUGIN_DIR}/hooks/project-context-loader.sh",
+            "statusMessage": "Loading project context"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash|apply_patch",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ${CODEX_PLUGIN_DIR}/hooks/context-awareness.sh",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "apply_patch",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ${CODEX_PLUGIN_DIR}/hooks/verify-reminder.sh",
+            "timeout": 5
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ${CODEX_PLUGIN_DIR}/hooks/post-ship-detect.sh",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}

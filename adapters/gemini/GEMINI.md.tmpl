@@ -1,11 +1,17 @@
 # Rolepod — Gemini CLI Core Rules
 
-Always-on guidance for the Gemini CLI Lead. Gemini reads this file from
-`~/.gemini/GEMINI.md` (global) or `<repo>/GEMINI.md` (project).
+Always-on guidance for the Gemini CLI Lead. Rolepod ships as a Gemini CLI
+extension (`gemini-extension.json` at the extension root); this `GEMINI.md` is
+auto-loaded as the extension's context file.
 
-This is the heaviest of the three rolepod entry docs because Gemini has the
-least native plumbing — no hooks, no auto-pull skills, no subagent dispatch,
-no slash commands. Everything important is inlined here.
+Bundled with the extension:
+- Slash commands in `commands/*.toml` — `/careful`, `/ship`, `/review`,
+  `/test`, `/plan`, `/spec`
+- Hooks in `hooks/hooks.json` — `SessionStart` (context inject),
+  `BeforeTool` / `AfterTool` (verify-first / evidence reminders) on
+  `write_file|replace|edit`
+- Skills in `skills/<name>/SKILL.md` — full rolepod skill set (mirror of
+  `core/skills/`)
 
 ## Rule priority (when conflict)
 
@@ -13,8 +19,9 @@ Most-specific wins. Higher tier overrides lower:
 
 1. User explicit instruction this turn — overrides everything
 2. Project `<repo>/GEMINI.md`
-3. Global `~/.gemini/GEMINI.md` (this file when installed there)
-4. Default (silent: apply standard best practice)
+3. Global `~/.gemini/GEMINI.md`
+4. This file (when installed as extension context)
+5. Default (silent: apply standard best practice)
 
 Conflict unsafe to resolve → ask user. Don't pick silently.
 
@@ -22,18 +29,16 @@ Conflict unsafe to resolve → ask user. Don't pick silently.
 
 ## Gemini-specific Lead notes
 
-- **No subagent system** → Lead-only mode. The 18-agent team below is a
-  mental role-switching guide; Lead applies the relevant role per task.
-- **No automatic hook reminders** → run `rolepod-gemini.sh` (wrapper) to get
-  per-turn rule reminders. Without the wrapper, the rules below are still
-  loaded from `GEMINI.md` (lossy but not broken).
-- **No auto-pull skills** → see the skill index below; Lead reads
-  `core/skills/<name>/SKILL.md` on demand when a trigger phrase matches.
-- **No slash commands** → use `[CAREFUL MODE]` prompt prefix for high-risk
-  mode (mirrors Claude's `/careful`).
-- **Limited extension/MCP support** → external tooling (GitNexus, MemPalace,
-  Sentry, Stripe) may be available via Gemini's MCP server config; verify
-  per-project before relying on it.
+- **Sub-agents are preview** in Gemini CLI. The 18-agent team below is
+  primarily a mental role-switching guide; if your Gemini build supports
+  sub-agents, the rolepod agent definitions can be loaded from `agents/`.
+- **Slash commands enabled** — see `commands/*.toml`. Use `/careful` for
+  high-risk surface (it switches approval mode to plan / read-only).
+- **Hooks enabled** — `SessionStart` / `BeforeTool` / `AfterTool` fire
+  automatically. Configured in `hooks/hooks.json`.
+- **Skills auto-loaded** by Gemini's skill loader from `skills/<name>/SKILL.md`.
+- **MCP support** — external tooling (GitNexus, MemPalace, Sentry, Stripe) is
+  available via Gemini's MCP server config; verify per-project before relying.
 
 ## Language & Tone
 
@@ -51,7 +56,7 @@ For non-trivial work (multi-file / unfamiliar code / unclear approach):
 2. **Plan** — detailed plan. Simplicity check: simplest approach? new
    abstraction needed? new dep needed? If "yes" without strong reason → revise.
 3. **Implement** — code per plan. Every line traces to user request.
-4. **Pre-commit gate** — run S1-S5 + T1-T5 gates below.
+4. **Pre-commit gate** — run S1-S5 + T1-T5 gates below (or `/ship`).
 5. **Commit** — descriptive message + PR.
 
 Skip plan mode when diff describable in 1 sentence (typo / log line / rename).
@@ -81,37 +86,39 @@ User OK + commit + PR → wait CI → ALL Phase 1 + triggered Phase 2 green → 
 ## Anti-bloat — keep it simple
 
 - This file (GEMINI.md) = always-on judgment guidance
-- Skills = on-demand workflow (Lead reads `core/skills/<name>/SKILL.md`)
+- Slash commands (`commands/*.toml`) = on-demand workflow shortcuts
+- Hooks (`hooks/hooks.json`) = deterministic enforcement
+- Skills (`skills/<name>/SKILL.md`) = on-demand deep workflow
 - Bloat = Gemini ignores rules. Move infrequent guidance to skills.
 
-## Code intelligence — manual invocation
+## Code intelligence — manual + MCP
 
-Gemini has no auto-trigger hooks. Lead invokes manually:
+- Before edit symbol → read callers via Gemini's file tools or GitNexus MCP
+- Before commit → `git diff` + lint + typecheck
+- Before re-deciding → search project history (`git log --grep=...`) or
+  MemPalace MCP if connected
+- After major decision → write a brief ADR or save to MemPalace KG
 
-- Before edit symbol → read callers via Gemini's file tools
-- Before commit → run `git diff` + lint + typecheck
-- Before re-deciding → search project history (`git log --grep=...`)
-- After major decision → write a brief ADR if the project keeps one
-
-If GitNexus / MemPalace MCP servers are connected, use them via Gemini's MCP
-config (`gemini mcp`). Otherwise fall back to plain `git` + `rg`.
+If GitNexus / MemPalace MCP servers are connected via the user's Gemini MCP
+config, use them. Otherwise fall back to plain `git` + `rg`.
 
 ## Session hygiene
 
-- Restart Gemini between unrelated tasks (no `/clear` equivalent)
-- Use `gemini --resume <id>` to pick up a previous session
+- Restart Gemini between unrelated tasks
+- `gemini --resume <id>` to pick up a previous session
 - Long task spans sessions → summarize state before exiting
 
 ## Before ship — STOP
 
-- Run S1-S5, T1-T5, Q1-Q4 gates
-- For high-risk surface (auth/billing/migrations) → spawn external reviewer:
-  - If Codex is installed: `codex exec --prompt "review this diff..."`
-  - If Claude Code is installed: `claude -p "review this diff for correctness"`
-  - Otherwise: Lead self-reviews with adversarial mindset (skepticism by default)
+- Run `/ship` (S1-S5, T1-T5, evidence) — or run gates manually
+- For high-risk surface (auth/billing/migrations) → `/careful` first, then
+  spawn external reviewer:
+  - If Codex installed: `codex exec --prompt "review this diff..."`
+  - If Claude Code installed: `claude -p "review this diff for correctness"`
+  - Otherwise: Lead self-reviews with adversarial mindset
 
-Reviewer gap: Gemini has no native peer-review channel. Self-review carries
-more weight here than on Claude Code or Codex.
+Reviewer gap: Gemini's native peer-review channel is limited. Self-review
+carries more weight here than on Claude Code or Codex.
 
 ## Hard stops — STOP and ask user
 
@@ -155,21 +162,26 @@ skill's frontmatter `description:` field. The full table is auto-generated:
 
 {{INCLUDE: core/fragments/skill-index.md}}
 
-## Agent roster (Lead-only mode)
+## Agent roster
 
-Gemini CLI has no native subagent system. The 18 specialist agents below are
-documented for Lead's reference — Lead applies the appropriate role mentally
-when a task hits that domain.
+The 18 specialist agents below are documented for Lead's reference. If your
+Gemini build supports sub-agents, the rolepod agent definitions can be loaded
+from the extension's `agents/` directory.
 
 {{INCLUDE: core/fragments/agent-roster.md}}
 
 ## Careful mode
 
-When the user prefixes a prompt with `[CAREFUL MODE]` (or sets
-`ROLEPOD_CAREFUL=1` and runs through `rolepod-gemini.sh`):
+`/careful` switches Gemini's approval mode to **plan** (read-only) and locks
+in rolepod careful-mode rules:
 
-- Run all 5 simplicity questions explicitly before every commit
-- Run all 5 test questions explicitly
-- External reviewer required for auth/billing/migration changes
-- Smaller increments: ≤3 files per commit, not ≤5
-- Mandatory peer review even for small diffs
+- Smaller increments (≤30 lines per change)
+- Mandatory verify-first
+- Mandatory test BEFORE code (TDD strict)
+- Mandatory race-condition test for concurrent code
+- Mandatory rollback test for migrations
+- Mandatory adversarial review for high-risk surface
+- Hard cap 5 tool calls per task
+- No auto-merge — ask user before merge
+
+User runs `/approval-mode default` to resume mutating tools.

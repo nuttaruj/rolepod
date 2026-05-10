@@ -1,0 +1,16 @@
+{
+  "name": "rolepod",
+  "version": "1.0.0",
+  "description": "Universal Claude Code workflow system: 18-agent software-house team, 16 lazy-load workflow rules, 27 bundled skills, auto-trigger hooks, parallel-safe by path/concern ownership.",
+  "author": {
+    "name": "nuttaruj",
+    "url": "https://github.com/nuttaruj"
+  },
+  "homepage": "https://github.com/nuttaruj/rolepod",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/nuttaruj/rolepod.git"
+  },
+  "license": "MIT",
+  "keywords": ["workflow", "agents", "ai-agents", "claude-code", "automation", "prompt-engineering"]
+}

@@ -158,37 +158,103 @@ render_claude() {
 }
 
 # ─── Render Codex target ────────────────────────────────────────────────────
+# Phase 2.3: Codex now ships as a native plugin. Output layout:
+#   AGENTS.md                       (entry doc, written to ~/.codex/AGENTS.md)
+#   .codex-plugin/plugin.json       (plugin manifest)
+#   agents/*.toml                   (18 portable agents in TOML form)
+#   hooks/hooks.json + *.sh         (4 hook scripts, mirror Claude adapter)
+#   skills/<name>/SKILL.md ...      (dereferenced from core/skills via symlink)
 
 render_codex() {
   local template="$REPO_DIR/adapters/codex/AGENTS.md.tmpl"
   local out_dir="$REPO_DIR/build/rendered/codex"
   local output="$out_dir/AGENTS.md"
+  local adapter_dir="$REPO_DIR/adapters/codex"
 
   [ -f "$template" ] || { echo "render: missing $template" >&2; exit 1; }
 
+  # Clean stale artifacts from previous runs (e.g. old manifest.json stub).
+  rm -rf "$out_dir"
   mkdir -p "$out_dir"
   render_template "$template" "$output"
-  render_agents "codex"
+  # Note: render_agents("codex") still writes the markdown agents under
+  # build/rendered/codex/agents/ as a courtesy export, but the plugin install
+  # uses agents/*.toml from this adapter dir.
 
-  # Copy plugin manifest verbatim (best-effort schema; see adapter README).
-  if [ -f "$REPO_DIR/adapters/codex/manifest.json" ]; then
-    cp "$REPO_DIR/adapters/codex/manifest.json" "$out_dir/manifest.json"
+  # Copy plugin manifest under .codex-plugin/.
+  if [ -d "$adapter_dir/.codex-plugin" ]; then
+    cp -R "$adapter_dir/.codex-plugin" "$out_dir/"
+  else
+    echo "render: missing $adapter_dir/.codex-plugin/" >&2; exit 1
   fi
+
+  # Copy TOML agents.
+  if [ -d "$adapter_dir/agents" ]; then
+    mkdir -p "$out_dir/agents"
+    cp "$adapter_dir/agents"/*.toml "$out_dir/agents/" 2>/dev/null || true
+  fi
+
+  # Copy hooks (json + executable scripts).
+  if [ -d "$adapter_dir/hooks" ]; then
+    cp -R "$adapter_dir/hooks" "$out_dir/"
+    chmod +x "$out_dir/hooks/"*.sh 2>/dev/null || true
+  fi
+
+  # Dereference skills symlink into a real directory tree (tarball / commit safe).
+  mkdir -p "$out_dir/skills"
+  for skill_dir in "$REPO_DIR"/core/skills/*/; do
+    local name; name="$(basename "$skill_dir")"
+    cp -R "$skill_dir" "$out_dir/skills/$name"
+  done
 }
 
 # ─── Render Gemini target ───────────────────────────────────────────────────
+# Phase 2.3: Gemini now ships as a native extension. Output layout:
+#   GEMINI.md                       (entry doc, written to ~/.gemini/GEMINI.md)
+#   gemini-extension.json           (extension manifest)
+#   commands/*.toml                 (6 slash commands)
+#   hooks/hooks.json + *.sh         (3 hook scripts)
+#   skills/<name>/SKILL.md ...      (real dir, copied from core/skills/)
 
 render_gemini() {
-  # Gemini target: agent roster inlined in GEMINI.md (no per-agent files —
-  # Gemini has no native sub-agent loader). See docs/cli-support.md.
   local template="$REPO_DIR/adapters/gemini/GEMINI.md.tmpl"
   local out_dir="$REPO_DIR/build/rendered/gemini"
   local output="$out_dir/GEMINI.md"
+  local adapter_dir="$REPO_DIR/adapters/gemini"
 
   [ -f "$template" ] || { echo "render: missing $template" >&2; exit 1; }
 
+  rm -rf "$out_dir"
   mkdir -p "$out_dir"
   render_template "$template" "$output"
+
+  # Extension manifest.
+  if [ -f "$adapter_dir/gemini-extension.json" ]; then
+    cp "$adapter_dir/gemini-extension.json" "$out_dir/"
+  else
+    echo "render: missing $adapter_dir/gemini-extension.json" >&2; exit 1
+  fi
+
+  # Slash commands.
+  if [ -d "$adapter_dir/commands" ]; then
+    mkdir -p "$out_dir/commands"
+    cp "$adapter_dir/commands"/*.toml "$out_dir/commands/" 2>/dev/null || true
+  fi
+
+  # Hooks.
+  if [ -d "$adapter_dir/hooks" ]; then
+    cp -R "$adapter_dir/hooks" "$out_dir/"
+    chmod +x "$out_dir/hooks/"*.sh 2>/dev/null || true
+  fi
+
+  # Skills as real directory tree (Gemini extension expects directories,
+  # not symlinks — render-time copy guarantees this regardless of how the
+  # adapter side stores them).
+  mkdir -p "$out_dir/skills"
+  for skill_dir in "$REPO_DIR"/core/skills/*/; do
+    local name; name="$(basename "$skill_dir")"
+    cp -R "$skill_dir" "$out_dir/skills/$name"
+  done
 }
 
 generate_skill_index

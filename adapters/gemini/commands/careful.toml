@@ -1,0 +1,20 @@
+description = "Toggle careful mode for high-risk surface (auth/billing/migrations/locks/external). Switches Gemini approval mode to plan (read-only) and locks in rolepod careful-mode rules."
+prompt = """
+Activate rolepod CAREFUL MODE for the current task.
+
+Approval mode: switching to `plan` (read-only). User must run `/approval-mode default` to resume mutating tools.
+
+Rules in careful mode (all mandatory):
+1. Smaller increments — every change ≤30 lines; bigger = split into multiple commits
+2. Verify-first — Read all referenced files; never assume
+3. Test BEFORE code — TDD strict: failing test → code → pass
+4. Race-condition test — for any concurrent code
+5. Rollback test — for any migration / destructive op
+6. Adversarial review — for any high-risk surface
+7. User confirmation — before any destructive command
+8. Hard cap 5 tool calls per task — force smaller pieces
+9. No auto-merge — even after CI green, ask user before merge
+
+Acknowledge activation with the list of paths/files in scope, then wait for the user's task.
+{{args}}
+"""

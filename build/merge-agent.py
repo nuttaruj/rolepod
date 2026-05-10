@@ -43,6 +43,9 @@ def parse_yaml_block(text: str) -> dict[str, list[str]]:
     for line in text.split("\n"):
         if not line:
             continue
+        # Skip comment lines (full-line YAML comments only).
+        if line.lstrip().startswith("#"):
+            continue
         if line.startswith("  -") or line.startswith("\t-"):
             if current is None:
                 raise ValueError(f"orphan list item: {line!r}")

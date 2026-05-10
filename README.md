@@ -305,17 +305,17 @@ Reviewer flow → ship → CI auto-merge after green
 
 ## Multi-CLI support
 
-Rolepod ships for three coding CLIs. The same source-of-truth content (`core/rules/`, `core/skills/`, `core/agents/`, `core/fragments/`) is rendered through per-CLI adapter templates (`adapters/<cli>/`) into the entry doc each CLI expects. Run `./install.sh --target=<cli>` (or `--target=all`).
+Rolepod ships for three coding CLIs as a **native plugin / extension** for each — same source-of-truth content (`core/rules/`, `core/skills/`, `core/agents/`, `core/fragments/`), rendered through per-CLI adapters (`adapters/<cli>/`) into the layout each CLI expects. Run `./install.sh --target=<cli>` (or `--target=all`).
 
-| CLI | Status | Entry doc | Install command |
-|-----|--------|-----------|-----------------|
-| Claude Code | Reference (full hooks + subagents + slash commands) | `~/.claude/CLAUDE.md` | `./install.sh --target=claude` |
-| Codex CLI (OpenAI) | Lead-only mode + opt-in wrapper for rule reminders | `~/.codex/AGENTS.md` | `./install.sh --target=codex` |
-| Gemini CLI (Google) | Lead-only mode + opt-in wrapper for rule reminders | `~/.gemini/GEMINI.md` | `./install.sh --target=gemini` |
+| CLI | Packaging | Entry doc | Install dest | Install command |
+|-----|-----------|-----------|--------------|-----------------|
+| Claude Code | `.claude-plugin/plugin.json` (spec-conformant) | `~/.claude/CLAUDE.md` | `~/.claude/` (agents + rules + hooks + skills + commands) | `./install.sh --target=claude` |
+| Codex CLI (OpenAI) | `.codex-plugin/plugin.json` + agents/*.toml + hooks/ + skills/ | `~/.codex/AGENTS.md` | `~/.codex/plugins/rolepod/` | `./install.sh --target=codex` |
+| Gemini CLI (Google) | `gemini-extension.json` + commands/*.toml + hooks/ + skills/ | `~/.gemini/GEMINI.md` | `~/.gemini/extensions/rolepod/` | `./install.sh --target=gemini` |
 
-Where a Claude-Code-only feature has no equivalent (hooks, native subagent dispatch, slash commands), the rolepod adapter inlines the relevant rules into the entry doc and ships an opt-in wrapper that prepends a per-turn reminder. Rules from `~/.claude/rules/` are mirrored at `~/.codex/rules/` and `~/.gemini/rules/` so the same lazy-load file paths work across CLIs.
+Each adapter wires into the CLI's native primitives — no wrapper script required. Hooks fire on the CLI's own event system (Claude `SessionStart`/`PreToolUse`/`PostToolUse`, Codex `SessionStart`/`PreToolUse`/`PostToolUse`, Gemini `SessionStart`/`BeforeTool`/`AfterTool`). Skills are exposed as a real directory tree under each plugin/extension so agents in any CLI can pull them by name.
 
-See `docs/cli-support.md` for the full per-CLI capability matrix, what's verified locally, and known limitations (especially the Codex plugin manifest schema, which is currently a best-effort stub pending an OpenAI spec).
+See `docs/cli-support.md` for the full per-CLI capability matrix and per-CLI primitives.
 
 ## License
 
@@ -332,4 +332,4 @@ Personal workflow system. Fork freely. Adapt to your team. Send feedback / patte
 - `rules/INDEX.md` — full rule trigger map
 - `rules/team-org.md` — agent picker + parallel pattern
 - `rules/agent-protocol.md` — shared subagent rules
-- `.claude-plugin/manifest.json` — plugin metadata
+- `.claude-plugin/plugin.json` — plugin manifest (spec-conformant, 598B)

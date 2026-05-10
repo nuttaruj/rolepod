@@ -1,3 +1,6 @@
+name: growth-marketer
+description: Growth + Content Strategist. SEO, copywriting, conversion, marketing campaigns. For deep technical SEO (sitemaps/schema/Google APIs) → install claude-seo plugin sub-agents.
+# tools: SendMessage requires agent-teams context (Claude accepts standalone, may silently ignore).
 model: haiku
 memory: project
 maxTurns: 30

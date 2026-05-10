@@ -93,21 +93,26 @@ echo "  force:  $FORCE"
 echo ""
 
 # ─── Sanity check source ────────────────────────────────────────────────
-for f in CHEATSHEET.md core/agents core/rules hooks core/skills commands .claude-plugin/manifest.json build/render.sh adapters/claude/CLAUDE.md.tmpl; do
+for f in CHEATSHEET.md core/agents core/rules hooks core/skills commands .claude-plugin/plugin.json build/render.sh adapters/claude/CLAUDE.md.tmpl; do
   [ -e "$REPO_DIR/$f" ] || fail "missing $f in $REPO_DIR — run from rolepod repo"
 done
 
 # Codex/Gemini adapter sanity (only required if those targets selected).
+# Phase 2.3: each CLI ships as a native plugin/extension — no wrapper scripts.
 case "$CLI_TARGET" in
   codex|all)
-    [ -e "$REPO_DIR/adapters/codex/AGENTS.md.tmpl" ] || fail "missing adapters/codex/AGENTS.md.tmpl"
-    [ -e "$REPO_DIR/adapters/codex/wrapper/rolepod-codex.sh" ] || fail "missing codex wrapper"
+    [ -e "$REPO_DIR/adapters/codex/AGENTS.md.tmpl" ]            || fail "missing adapters/codex/AGENTS.md.tmpl"
+    [ -e "$REPO_DIR/adapters/codex/.codex-plugin/plugin.json" ] || fail "missing adapters/codex/.codex-plugin/plugin.json"
+    [ -d "$REPO_DIR/adapters/codex/agents" ]                     || fail "missing adapters/codex/agents/"
+    [ -e "$REPO_DIR/adapters/codex/hooks/hooks.json" ]           || fail "missing adapters/codex/hooks/hooks.json"
     ;;
 esac
 case "$CLI_TARGET" in
   gemini|all)
-    [ -e "$REPO_DIR/adapters/gemini/GEMINI.md.tmpl" ] || fail "missing adapters/gemini/GEMINI.md.tmpl"
-    [ -e "$REPO_DIR/adapters/gemini/wrapper/rolepod-gemini.sh" ] || fail "missing gemini wrapper"
+    [ -e "$REPO_DIR/adapters/gemini/GEMINI.md.tmpl" ]        || fail "missing adapters/gemini/GEMINI.md.tmpl"
+    [ -e "$REPO_DIR/adapters/gemini/gemini-extension.json" ] || fail "missing adapters/gemini/gemini-extension.json"
+    [ -d "$REPO_DIR/adapters/gemini/commands" ]              || fail "missing adapters/gemini/commands/"
+    [ -e "$REPO_DIR/adapters/gemini/hooks/hooks.json" ]      || fail "missing adapters/gemini/hooks/hooks.json"
     ;;
 esac
 
@@ -176,7 +181,7 @@ if claude_selected; then
   done
 
   step "Copying plugin manifest"
-  cp $CP_FLAG "$REPO_DIR/.claude-plugin/manifest.json" "$TARGET/.claude-plugin/" 2>/dev/null || true
+  cp $CP_FLAG "$REPO_DIR/.claude-plugin/plugin.json" "$TARGET/.claude-plugin/" 2>/dev/null || true
 
 # ─── Register hooks in settings.json ────────────────────────────────────
 # Claude Code reads hooks from ~/.claude/settings.json — manifest.json is
@@ -282,7 +287,7 @@ if [ "$REGISTER_OK" -eq 1 ]; then
   ok "Hooks registered in settings.json (SessionStart + PreToolUse + 2x PostToolUse)"
 else
   warn "Could not auto-register hooks — install jq or python3, or edit $SETTINGS_FILE manually"
-  warn "  See manifest.json 'components.hooks.shipped' for the 4 hook → event mappings"
+  warn "  Hooks shipped: project-context-loader.sh (SessionStart), context-awareness.sh (PreToolUse Edit|Write|Bash), verify-reminder.sh (PostToolUse Edit|Write), post-ship-detect.sh (PostToolUse Bash)"
 fi
 
 # ─── Verify Claude rolepod core ─────────────────────────────────────────
@@ -293,7 +298,7 @@ for required in \
   rules/INDEX.md rules/team-org.md \
   hooks/verify-reminder.sh hooks/project-context-loader.sh \
   skills/zoom-out/SKILL.md skills/anti-spaghetti/SKILL.md commands/careful.md \
-  .claude-plugin/manifest.json
+  .claude-plugin/plugin.json
 do
   [ -e "$TARGET/$required" ] || fail "verification failed — $TARGET/$required missing"
 done
@@ -301,6 +306,9 @@ ok "rolepod core installed → $TARGET"
 fi  # end claude_selected
 
 # ─── install_codex — Codex CLI path (~/.codex/) ────────────────────────
+# Phase 2.3: install as a native Codex plugin under ~/.codex/plugins/rolepod/.
+# AGENTS.md still goes to ~/.codex/AGENTS.md (Codex auto-loads global instructions
+# from there independently of the plugin tree).
 if codex_selected; then
   CODEX_TARGET="${ROLEPOD_TARGET:-$(default_target_path_for codex)}"
   # If --target=all, ROLEPOD_TARGET may have been used by claude block. For
@@ -309,17 +317,24 @@ if codex_selected; then
   if [ "$CLI_TARGET" = "all" ]; then
     CODEX_TARGET="$(default_target_path_for codex)"
   fi
+  CODEX_PLUGIN_DEST="$CODEX_TARGET/plugins/rolepod"
   echo ""
   echo "${BOLD}─── Installing for Codex CLI ───${NC}"
-  echo "  target: $CODEX_TARGET"
+  echo "  target:        $CODEX_TARGET"
+  echo "  plugin dest:   $CODEX_PLUGIN_DEST"
 
   if ! have_cmd codex; then
     warn "codex binary not found — skipping Codex install (file copy only)"
     warn "  Install Codex CLI: npm install -g @openai/codex"
   fi
 
-  RENDERED_AGENTS_MD="$REPO_DIR/build/rendered/codex/AGENTS.md"
-  [ -f "$RENDERED_AGENTS_MD" ] || fail "expected $RENDERED_AGENTS_MD after render"
+  RENDERED_CODEX_DIR="$REPO_DIR/build/rendered/codex"
+  RENDERED_AGENTS_MD="$RENDERED_CODEX_DIR/AGENTS.md"
+  [ -f "$RENDERED_AGENTS_MD" ]                || fail "expected $RENDERED_AGENTS_MD after render"
+  [ -d "$RENDERED_CODEX_DIR/.codex-plugin" ]  || fail "expected $RENDERED_CODEX_DIR/.codex-plugin/ after render"
+  [ -d "$RENDERED_CODEX_DIR/agents" ]         || fail "expected $RENDERED_CODEX_DIR/agents/ after render"
+  [ -d "$RENDERED_CODEX_DIR/hooks" ]          || fail "expected $RENDERED_CODEX_DIR/hooks/ after render"
+  [ -d "$RENDERED_CODEX_DIR/skills" ]         || fail "expected $RENDERED_CODEX_DIR/skills/ after render"
 
   if [ "$FORCE" -eq 1 ] && [ -d "$CODEX_TARGET" ]; then
     STAMP=$(date +%Y%m%d-%H%M%S)
@@ -328,58 +343,71 @@ if codex_selected; then
     cp -R "$CODEX_TARGET" "$BACKUP"
   fi
 
-  step "Creating Codex directory structure"
-  mkdir -p "$CODEX_TARGET"/{agents,skills,rules,bin}
+  step "Creating Codex plugin directory"
+  mkdir -p "$CODEX_PLUGIN_DEST"
 
-  if [ "$FORCE" -eq 1 ]; then CP_FLAG=""; else CP_FLAG="-n"; fi
-
-  step "Copying AGENTS.md (rendered)"
-  cp $CP_FLAG "$RENDERED_AGENTS_MD" "$CODEX_TARGET/AGENTS.md" 2>/dev/null || true
-
-  step "Copying agents (18 portable shape) + rules (16) + skills (27)"
-  cp $CP_FLAG "$REPO_DIR"/build/rendered/codex/agents/*.md "$CODEX_TARGET/agents/" 2>/dev/null || true
-  cp $CP_FLAG "$REPO_DIR"/core/rules/*.md                  "$CODEX_TARGET/rules/"  2>/dev/null || true
-  for skill_dir in "$REPO_DIR"/core/skills/*/; do
-    name=$(basename "$skill_dir")
-    if [ "$FORCE" -eq 1 ] || [ ! -e "$CODEX_TARGET/skills/$name" ]; then
-      cp -R "$REPO_DIR/core/skills/$name" "$CODEX_TARGET/skills/" 2>/dev/null || true
-    fi
-  done
-
-  step "Copying rolepod-codex.sh wrapper to $CODEX_TARGET/bin/"
-  cp $CP_FLAG "$REPO_DIR/adapters/codex/wrapper/rolepod-codex.sh" "$CODEX_TARGET/bin/" 2>/dev/null || true
-  chmod +x "$CODEX_TARGET/bin/rolepod-codex.sh" 2>/dev/null || true
-
-  step "Copying Codex plugin manifest"
-  if [ -f "$REPO_DIR/build/rendered/codex/manifest.json" ]; then
-    cp $CP_FLAG "$REPO_DIR/build/rendered/codex/manifest.json" "$CODEX_TARGET/" 2>/dev/null || true
+  # If --force, wipe plugin dir first so deletions in source propagate.
+  if [ "$FORCE" -eq 1 ]; then
+    rm -rf "$CODEX_PLUGIN_DEST"
+    mkdir -p "$CODEX_PLUGIN_DEST"
   fi
 
+  step "Copying plugin tree → $CODEX_PLUGIN_DEST/"
+  # cp -R src/. dest/ copies *contents* of src into dest (BSD + GNU compatible).
+  cp -R "$RENDERED_CODEX_DIR/." "$CODEX_PLUGIN_DEST/" 2>/dev/null || true
+  # AGENTS.md is the entry doc — it lives at the Codex root, not inside the plugin.
+  rm -f "$CODEX_PLUGIN_DEST/AGENTS.md"
+
+  step "Copying AGENTS.md → $CODEX_TARGET/AGENTS.md"
+  if [ "$FORCE" -eq 1 ]; then
+    cp "$RENDERED_AGENTS_MD" "$CODEX_TARGET/AGENTS.md"
+  else
+    cp -n "$RENDERED_AGENTS_MD" "$CODEX_TARGET/AGENTS.md" 2>/dev/null || true
+  fi
+
+  step "Marking hook scripts executable"
+  chmod +x "$CODEX_PLUGIN_DEST/hooks"/*.sh 2>/dev/null || true
+
   step "Verifying Codex install"
-  for required in AGENTS.md agents/qa-tester.md rules/INDEX.md bin/rolepod-codex.sh; do
+  for required in \
+    AGENTS.md \
+    plugins/rolepod/.codex-plugin/plugin.json \
+    plugins/rolepod/agents/qa-tester.toml \
+    plugins/rolepod/hooks/hooks.json \
+    plugins/rolepod/skills/anti-spaghetti/SKILL.md
+  do
     [ -e "$CODEX_TARGET/$required" ] || fail "Codex verification failed — $CODEX_TARGET/$required missing"
   done
-  ok "rolepod codex adapter installed → $CODEX_TARGET"
-  warn "Add to PATH for wrapper convenience: export PATH=\"$CODEX_TARGET/bin:\$PATH\""
+  ok "rolepod codex plugin installed → $CODEX_PLUGIN_DEST"
+  ok "AGENTS.md → $CODEX_TARGET/AGENTS.md"
 fi
 
 # ─── install_gemini — Gemini CLI path (~/.gemini/) ─────────────────────
+# Phase 2.3: install as a native Gemini extension under
+# ~/.gemini/extensions/rolepod/. GEMINI.md goes to ~/.gemini/GEMINI.md (auto-loaded).
 if gemini_selected; then
   GEMINI_TARGET="${ROLEPOD_TARGET:-$(default_target_path_for gemini)}"
   if [ "$CLI_TARGET" = "all" ]; then
     GEMINI_TARGET="$(default_target_path_for gemini)"
   fi
+  GEMINI_EXT_DEST="$GEMINI_TARGET/extensions/rolepod"
   echo ""
   echo "${BOLD}─── Installing for Gemini CLI ───${NC}"
-  echo "  target: $GEMINI_TARGET"
+  echo "  target:           $GEMINI_TARGET"
+  echo "  extension dest:   $GEMINI_EXT_DEST"
 
   if ! have_cmd gemini; then
     warn "gemini binary not found — skipping Gemini install (file copy only)"
     warn "  Install Gemini CLI: npm install -g @google/gemini-cli"
   fi
 
-  RENDERED_GEMINI_MD="$REPO_DIR/build/rendered/gemini/GEMINI.md"
-  [ -f "$RENDERED_GEMINI_MD" ] || fail "expected $RENDERED_GEMINI_MD after render"
+  RENDERED_GEMINI_DIR="$REPO_DIR/build/rendered/gemini"
+  RENDERED_GEMINI_MD="$RENDERED_GEMINI_DIR/GEMINI.md"
+  [ -f "$RENDERED_GEMINI_MD" ]                            || fail "expected $RENDERED_GEMINI_MD after render"
+  [ -f "$RENDERED_GEMINI_DIR/gemini-extension.json" ]     || fail "expected $RENDERED_GEMINI_DIR/gemini-extension.json after render"
+  [ -d "$RENDERED_GEMINI_DIR/commands" ]                  || fail "expected $RENDERED_GEMINI_DIR/commands/ after render"
+  [ -d "$RENDERED_GEMINI_DIR/hooks" ]                     || fail "expected $RENDERED_GEMINI_DIR/hooks/ after render"
+  [ -d "$RENDERED_GEMINI_DIR/skills" ]                    || fail "expected $RENDERED_GEMINI_DIR/skills/ after render"
 
   if [ "$FORCE" -eq 1 ] && [ -d "$GEMINI_TARGET" ]; then
     STAMP=$(date +%Y%m%d-%H%M%S)
@@ -388,33 +416,41 @@ if gemini_selected; then
     cp -R "$GEMINI_TARGET" "$BACKUP"
   fi
 
-  step "Creating Gemini directory structure"
-  mkdir -p "$GEMINI_TARGET"/{skills,rules,bin}
+  step "Creating Gemini extension directory"
+  mkdir -p "$GEMINI_EXT_DEST"
 
-  if [ "$FORCE" -eq 1 ]; then CP_FLAG=""; else CP_FLAG="-n"; fi
+  if [ "$FORCE" -eq 1 ]; then
+    rm -rf "$GEMINI_EXT_DEST"
+    mkdir -p "$GEMINI_EXT_DEST"
+  fi
 
-  step "Copying GEMINI.md (rendered)"
-  cp $CP_FLAG "$RENDERED_GEMINI_MD" "$GEMINI_TARGET/GEMINI.md" 2>/dev/null || true
+  step "Copying extension tree → $GEMINI_EXT_DEST/"
+  cp -R "$RENDERED_GEMINI_DIR/." "$GEMINI_EXT_DEST/" 2>/dev/null || true
+  # GEMINI.md is the entry doc — it lives at the Gemini root, not in the extension.
+  rm -f "$GEMINI_EXT_DEST/GEMINI.md"
 
-  step "Copying rules (16) + skills (27)"
-  cp $CP_FLAG "$REPO_DIR"/core/rules/*.md "$GEMINI_TARGET/rules/" 2>/dev/null || true
-  for skill_dir in "$REPO_DIR"/core/skills/*/; do
-    name=$(basename "$skill_dir")
-    if [ "$FORCE" -eq 1 ] || [ ! -e "$GEMINI_TARGET/skills/$name" ]; then
-      cp -R "$REPO_DIR/core/skills/$name" "$GEMINI_TARGET/skills/" 2>/dev/null || true
-    fi
-  done
+  step "Copying GEMINI.md → $GEMINI_TARGET/GEMINI.md"
+  if [ "$FORCE" -eq 1 ]; then
+    cp "$RENDERED_GEMINI_MD" "$GEMINI_TARGET/GEMINI.md"
+  else
+    cp -n "$RENDERED_GEMINI_MD" "$GEMINI_TARGET/GEMINI.md" 2>/dev/null || true
+  fi
 
-  step "Copying rolepod-gemini.sh wrapper to $GEMINI_TARGET/bin/"
-  cp $CP_FLAG "$REPO_DIR/adapters/gemini/wrapper/rolepod-gemini.sh" "$GEMINI_TARGET/bin/" 2>/dev/null || true
-  chmod +x "$GEMINI_TARGET/bin/rolepod-gemini.sh" 2>/dev/null || true
+  step "Marking hook scripts executable"
+  chmod +x "$GEMINI_EXT_DEST/hooks"/*.sh 2>/dev/null || true
 
   step "Verifying Gemini install"
-  for required in GEMINI.md rules/INDEX.md bin/rolepod-gemini.sh; do
+  for required in \
+    GEMINI.md \
+    extensions/rolepod/gemini-extension.json \
+    extensions/rolepod/commands/careful.toml \
+    extensions/rolepod/hooks/hooks.json \
+    extensions/rolepod/skills/anti-spaghetti/SKILL.md
+  do
     [ -e "$GEMINI_TARGET/$required" ] || fail "Gemini verification failed — $GEMINI_TARGET/$required missing"
   done
-  ok "rolepod gemini adapter installed → $GEMINI_TARGET"
-  warn "Add to PATH for wrapper convenience: export PATH=\"$GEMINI_TARGET/bin:\$PATH\""
+  ok "rolepod gemini extension installed → $GEMINI_EXT_DEST"
+  ok "GEMINI.md → $GEMINI_TARGET/GEMINI.md"
 fi
 
 # Ensure TARGET is set for the rest of the script (Claude plugin install paths

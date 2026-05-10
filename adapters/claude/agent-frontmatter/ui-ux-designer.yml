@@ -1,3 +1,6 @@
+name: ui-ux-designer
+description: UI/UX Designer + Frontend Polisher. Owns design system, components, visual polish, micro-interactions, accessibility (WCAG/a11y).
+# tools: SendMessage requires agent-teams context (Claude accepts standalone, may silently ignore).
 model: sonnet
 memory: project
 maxTurns: 50

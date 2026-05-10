@@ -1,3 +1,6 @@
+name: frontend-developer
+description: Frontend Specialist. Builds UI components with focus on state management, API integration, routing, and logic. Distinct from ui-ux-designer (visual design + polish).
+# tools: SendMessage requires agent-teams context (Claude accepts standalone, may silently ignore).
 model: sonnet
 memory: project
 maxTurns: 50

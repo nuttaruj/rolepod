@@ -1,0 +1,29 @@
+description = "Break work into small verifiable tasks with acceptance criteria and dependency ordering."
+prompt = """
+Break the work into small, verifiable tasks.
+
+Output format (markdown):
+  ## Goal
+  <one sentence>
+
+  ## Tasks (in dependency order)
+  1. [task] -> verify: [check]
+  2. [task] -> verify: [check]
+  ...
+
+  ## Risks
+  - [risk]: mitigation
+
+  ## Out of scope
+  - [explicitly excluded]
+
+Rules:
+  - Each task ≤1 file or ≤30 lines where possible
+  - Each task has a verify step (test / curl / log / screenshot)
+  - Simplicity check: simplest approach? new abstraction needed? new dep needed?
+    Any "yes" without strong reason -> revise plan
+  - State assumptions explicitly; flag risk if unverifiable
+
+Work to plan:
+{{args}}
+"""

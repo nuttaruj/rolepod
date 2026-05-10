@@ -3,9 +3,12 @@
 Always-on guidance for the Codex CLI Lead. Codex reads this file from
 `~/.codex/AGENTS.md` (global) or `<repo>/AGENTS.md` (project).
 
-This file is heavier than the Claude `CLAUDE.md` because Codex has no native
-hook system or auto-pull skill loader — gates must be inlined here so Lead
-sees them every turn.
+Rolepod ships as a Codex plugin (`adapters/codex/.codex-plugin/plugin.json`).
+Agents (`agents/*.toml`), skills (`skills/<name>/SKILL.md`), and hooks
+(`hooks/hooks.json`) all wire into Codex's native primitives — no wrapper, no
+manual reload. This file collects the always-on judgment guidance Lead applies
+every turn; deeper workflows live in skills that auto-trigger from their
+`description:` field.
 
 ## Rule priority (when conflict)
 
@@ -22,17 +25,20 @@ Conflict unsafe to resolve → ask user. Don't pick silently.
 
 ## Codex-specific Lead notes
 
-- **No subagent system** → Lead-only mode. All gates run in single context.
-  Optional out-of-band: `codex exec --prompt "$(cat path/to/agent-prompt.md)"`
-  spawns a separate Codex process for an isolated specialist run.
-- **No automatic hook reminders** → run `rolepod-codex.sh` (wrapper) to get
-  per-turn rule reminders. The wrapper reads `ROLEPOD_CAREFUL=1` for high-risk
-  mode (mirrors Claude's `/careful` slash command).
-- **No auto-pull skills** → see the skill index below. Lead reads
-  `core/skills/<name>/SKILL.md` on demand when a trigger phrase matches.
-- **No subagent peer review** → Lead self-reviews against the gates below.
-  For high-risk surface, spawn `codex exec` in a fresh context with the
-  `qa-tester` prompt baked in, then merge findings.
+- **Native subagents** → 18 specialists ship as `agents/*.toml`. Codex spawns
+  them by name (`description` field tells Codex when to dispatch). Same Q1-Q4
+  delegation rules apply.
+- **Native hooks** → `hooks/hooks.json` registers SessionStart, PreToolUse,
+  PostToolUse events that fire automatically (project context loader, context
+  pressure warning, post-edit verify reminder, post-ship reindex hint). No
+  wrapper script needed.
+- **Native skills** → `skills/<name>/SKILL.md` files auto-trigger from their
+  frontmatter `description:` when phrasing matches. Same on-demand pull as
+  Claude.
+- **Peer review via subagents** → for high-risk surface (auth/billing/
+  migrations), Lead delegates to the `qa-tester` subagent (or
+  `security-engineer`, `universal-reviewer`). Findings come back as a
+  separate-context report.
 
 ## Language & Tone
 
@@ -80,20 +86,24 @@ User OK + commit + PR → wait CI → ALL Phase 1 + triggered Phase 2 green → 
 ## Anti-bloat — keep it simple
 
 - This file (AGENTS.md) = always-on judgment guidance
-- Skills = on-demand workflow (Lead reads `core/skills/<name>/SKILL.md`)
-- Bloat = Codex ignores rules. Move infrequent guidance to skills.
+- Skills = on-demand workflow (auto-pulled by Codex when description matches)
+- Hooks = deterministic enforcement (`hooks/hooks.json`)
+- Bloat = Codex ignores rules. Move infrequent guidance to skills, move
+  enforcement to hooks.
 
-## Code intelligence — manual invocation
+## Code intelligence — auto + manual
 
-Codex has no auto-trigger hooks. Lead invokes manually:
+**Auto-triggers** (via `hooks/hooks.json`):
+- SessionStart → project context loader injects git activity + setup checklist
+- PreToolUse Bash/apply_patch → context-pressure warning when transcript large
+- PostToolUse apply_patch → verify reminder before claiming done
+- PostToolUse Bash → reindex hint after big merges
 
-- Before edit symbol → check git history + read callers
+**Manual** (Lead invokes):
+- Before edit symbol → check callers via `rg` or GitNexus MCP if connected
 - Before commit → run `git diff` + lint + typecheck
-- Before re-deciding → search project history (`git log --grep=...`)
-- After major decision → write a brief ADR in `decisions/` if the project keeps one
-
-If GitNexus / MemPalace MCP servers are connected, use them via Codex's MCP
-tooling. Otherwise fall back to plain `git` + `rg`.
+- Before re-deciding → search history (`git log --grep=...`) or MemPalace MCP
+- After major decision → write a brief ADR in `decisions/` if project keeps one
 
 ## Session hygiene
 
@@ -105,15 +115,17 @@ tooling. Otherwise fall back to plain `git` + `rg`.
 ## Before ship — STOP
 
 - Run S1-S5, T1-T5, Q1-Q4 gates
-- For high-risk surface (auth/billing/migrations) → spawn `codex exec` with
-  an adversarial-review prompt in a fresh context, then act on findings
+- For high-risk surface (auth/billing/migrations) → delegate to the
+  `qa-tester` subagent (universal floor) and `security-engineer` /
+  `universal-reviewer` as routing dictates
 
-Reviewer roles (Codex CLI):
-- **Self-review** — Lead applies adversarial mindset to own diff
-- **Out-of-band Codex exec** — fresh context with reviewer prompt for isolation
-- **External Claude qa-tester** — if Claude Code is installed, invoke
-  `claude --dangerously-skip-permissions -p "review this diff for correctness"`
-  in a separate shell
+Reviewer roles:
+- **`qa-tester`** — correctness, business logic, tests (universal floor)
+- **`security-engineer`** — security audit on auth/billing/data paths
+- **`universal-reviewer`** — code quality, DRY, architecture smell
+- **External Claude qa-tester** (cross-CLI) — if Claude Code installed, invoke
+  `claude --dangerously-skip-permissions -p "review this diff"` in a separate
+  shell for adversarial second opinion
 
 ## Hard stops — STOP and ask user
 
@@ -157,22 +169,22 @@ skill's frontmatter `description:` field. The full table is auto-generated:
 
 {{INCLUDE: core/fragments/skill-index.md}}
 
-## Agent roster (Lead-only mode)
+## Agent roster
 
-Codex CLI has no native subagent system. The 18 specialist agents below are
-documented for Lead's reference — Lead applies the appropriate role mentally
-when a task hits that domain. Optional: spawn a fresh Codex process via
-`codex exec --prompt "$(cat adapters/codex/agents/<name>.md)"` for isolated
-specialist work.
+The 18 specialists below ship as `agents/*.toml`. Codex auto-dispatches on
+domain match (per each agent's `description` field). Delegation rules:
+Q1-Q4 — see gates section above.
 
 {{INCLUDE: core/fragments/agent-roster.md}}
 
 ## Careful mode
 
-When `ROLEPOD_CAREFUL=1` is set (via `rolepod-codex.sh --careful` or env):
+For high-risk work (auth/billing/migrations/payments/data deletion), Lead
+manually escalates per-turn:
 
 - Run all 5 simplicity questions explicitly before every commit
 - Run all 5 test questions explicitly
-- Spawn out-of-band reviewer for any change touching auth/billing/migrations
+- Delegate to `qa-tester` + `security-engineer` (or `universal-reviewer`) for
+  the diff before commit
 - Smaller increments: ≤3 files per commit, not ≤5
 - Mandatory peer review even for small diffs

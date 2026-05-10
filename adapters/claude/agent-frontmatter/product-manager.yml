@@ -1,3 +1,6 @@
+name: product-manager
+description: Product Manager for feature prioritization, roadmap, user requirements, spec writing. Distinct from business-analyst (financial/ROI) and growth-marketer (acquisition/conversion).
+# tools: SendMessage requires agent-teams context (Claude accepts standalone, may silently ignore).
 model: sonnet
 memory: project
 maxTurns: 30

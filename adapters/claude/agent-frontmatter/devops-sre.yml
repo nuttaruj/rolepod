@@ -1,3 +1,6 @@
+name: devops-sre
+description: DevOps + SRE. Owns infra, CI/CD, deploy, monitoring, release process, versioning, runbooks. Includes release-management responsibilities.
+# tools: SendMessage requires agent-teams context (Claude accepts standalone, may silently ignore).
 model: sonnet
 memory: project
 maxTurns: 50

@@ -1,0 +1,21 @@
+description = "Run TDD workflow — write failing tests, implement, verify. For bugs, use the Prove-It pattern (reproducing test first)."
+prompt = """
+Run the TDD workflow.
+
+Decision matrix:
+  - Bug fix       -> Prove-It: write a test that reproduces the bug (must fail), then fix until it passes
+  - New feature   -> Happy path + edge cases + error path; failing tests first, then code
+  - Refactor      -> Existing tests must pass before AND after; add tests if coverage gap
+  - Migration     -> Dry run + rollback test + row count delta
+  - Race fix      -> Concurrent test (threads / async)
+  - Contract chg  -> Contract test (request shape + response shape)
+
+Quality bar:
+  - Test names describe behavior (`test_validate_rejects_empty_string`, not `test_works`)
+  - Self-contained (runs in isolation)
+  - Deterministic (same result every time)
+  - Never mock the database in integration tests
+
+Target:
+{{args}}
+"""
