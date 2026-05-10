@@ -396,7 +396,6 @@ This system synthesizes patterns from many great open-source projects:
 ### Core patterns
 - **Anthropic Claude Code** — base platform + best practices ([code.claude.com](https://code.claude.com))
 - **[mattpocock/skills](https://github.com/mattpocock/skills)** — skill patterns + zoom-out concept (68k stars)
-- **[wshobson/agents](https://github.com/wshobson/agents)** — plugin packaging structure + agent orchestration patterns (35k stars)
 - **[AgriciDaniel/claude-seo](https://github.com/AgriciDaniel/claude-seo)** — specialized agent plugin pattern (6.2k stars)
 
 ### External tools
