@@ -26,6 +26,17 @@ Phase 2.3: rolepod ships for each supported CLI as a **native plugin / extension
 
 The entry doc is intentionally written **outside** the plugin/extension dir for Codex and Gemini — both CLIs auto-load the global `AGENTS.md` / `GEMINI.md` regardless of which plugins are installed, so keeping the entry doc at the root makes rolepod's gates active on every session, not just when the plugin is enabled.
 
+### Install path env vars
+
+| Variable | Effect |
+|---|---|
+| `ROLEPOD_TARGET` | Single-target default OR root for `--target=all`. Single target overrides destination entirely; with `--target=all`, each CLI lands under `$ROLEPOD_TARGET/<cli>/` (e.g. `$ROLEPOD_TARGET/claude`, `/codex`, `/gemini`). |
+| `ROLEPOD_CLAUDE_TARGET` | Per-CLI override — wins over `ROLEPOD_TARGET` for Claude only. |
+| `ROLEPOD_CODEX_TARGET` | Per-CLI override — wins over `ROLEPOD_TARGET` for Codex only. |
+| `ROLEPOD_GEMINI_TARGET` | Per-CLI override — wins over `ROLEPOD_TARGET` for Gemini only. |
+
+Non-TTY contexts: `--uninstall` without `--yes` exits 0 with `Aborted. Re-run with --yes in non-interactive mode.` instead of crashing on a missing `/dev/tty`.
+
 ## Adapter source layout
 
 ```

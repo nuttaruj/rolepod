@@ -323,3 +323,143 @@ jobs:
             echo "::error::uninstall left rolepod managed-block markers in CLAUDE.md"
             exit 1
           fi
+
+      - name: Non-TTY uninstall without --yes — graceful abort (refs #2)
+        shell: bash
+        run: |
+          set -eo pipefail
+          # In a non-interactive context (no /dev/tty + stdin redirected),
+          # uninstall without --yes must NOT crash on /dev/tty redirect.
+          # It must exit 0 and print "Aborted" with re-run hint.
+          export ROLEPOD_TARGET="$(mktemp -d)"
+          out=$(bash install.sh --uninstall --target=codex < /dev/null 2>&1)
+          rc=$?
+          if [ "$rc" -ne 0 ]; then
+            echo "::error::non-TTY uninstall returned $rc (expected 0)"
+            printf '%s\n' "$out"
+            exit 1
+          fi
+          if ! grep -qi 'Aborted' <<<"$out"; then
+            echo "::error::non-TTY uninstall did not print 'Aborted'"
+            printf '%s\n' "$out"
+            exit 1
+          fi
+          if grep -qi 'Device not configured' <<<"$out"; then
+            echo "::error::non-TTY uninstall crashed with 'Device not configured'"
+            printf '%s\n' "$out"
+            exit 1
+          fi
+
+      - name: --target=all + ROLEPOD_TARGET — subdir layout (refs #2)
+        shell: bash
+        run: |
+          set -eo pipefail
+          # When --target=all AND ROLEPOD_TARGET is set, all 3 CLIs must land
+          # under $ROLEPOD_TARGET/<cli>/ — never default to $HOME/.claude etc.
+          export ROOT="$(mktemp -d)"
+          out=$(ROLEPOD_TARGET="$ROOT" bash install.sh --target=all --dry-run 2>&1)
+          # Must mention subdir-layout paths.
+          for sub in claude codex gemini; do
+            if ! grep -qF "$ROOT/$sub" <<<"$out"; then
+              echo "::error::--target=all + ROLEPOD_TARGET did not write $ROOT/$sub paths"
+              printf '%s\n' "$out"
+              exit 1
+            fi
+          done
+          # Must NOT fall back to real home paths.
+          for home_path in "$HOME/.claude" "$HOME/.codex" "$HOME/.gemini"; do
+            if grep -qF "$home_path" <<<"$out"; then
+              echo "::error::--target=all + ROLEPOD_TARGET leaked real home path: $home_path"
+              printf '%s\n' "$out"
+              exit 1
+            fi
+          done
+
+      - name: --target=all without ROLEPOD_TARGET — back-compat home paths
+        shell: bash
+        run: |
+          set -eo pipefail
+          # Unset ensures back-compat: --target=all with no env var → 3 home defaults.
+          unset ROLEPOD_TARGET
+          out=$(bash install.sh --target=all --dry-run 2>&1)
+          for home_path in "$HOME/.claude" "$HOME/.codex" "$HOME/.gemini"; do
+            if ! grep -qF "$home_path" <<<"$out"; then
+              echo "::error::--target=all without env var dropped expected home path: $home_path"
+              printf '%s\n' "$out"
+              exit 1
+            fi
+          done
+
+      - name: Per-CLI override env vars (refs #2)
+        shell: bash
+        run: |
+          set -eo pipefail
+          # ROLEPOD_<CLI>_TARGET wins over ROLEPOD_TARGET for that CLI only.
+          export ROOT="$(mktemp -d)"
+          export GEM_OVERRIDE="$(mktemp -d)/gem-custom"
+          out=$(ROLEPOD_TARGET="$ROOT" ROLEPOD_GEMINI_TARGET="$GEM_OVERRIDE" \
+                bash install.sh --target=all --dry-run 2>&1)
+          # Claude + Codex still under ROOT subdirs.
+          if ! grep -qF "$ROOT/claude" <<<"$out"; then
+            echo "::error::Claude target should be $ROOT/claude"
+            exit 1
+          fi
+          if ! grep -qF "$ROOT/codex" <<<"$out"; then
+            echo "::error::Codex target should be $ROOT/codex"
+            exit 1
+          fi
+          # Gemini uses the override.
+          if ! grep -qF "$GEM_OVERRIDE" <<<"$out"; then
+            echo "::error::Gemini target should be $GEM_OVERRIDE (override)"
+            exit 1
+          fi
+          # And NOT under ROOT/gemini.
+          if grep -qF "$ROOT/gemini" <<<"$out"; then
+            echo "::error::Gemini override should beat ROLEPOD_TARGET subdir"
+            exit 1
+          fi
+
+      - name: Dry-run writes nothing — file count snapshot
+        shell: bash
+        run: |
+          set -eo pipefail
+          export ROOT="$(mktemp -d)"
+          mkdir -p "$ROOT/.claude" "$ROOT/.codex" "$ROOT/.gemini"
+          BEFORE=$(find "$ROOT" -type f 2>/dev/null | wc -l)
+          ROLEPOD_TARGET="$ROOT" bash install.sh --target=all --dry-run > /dev/null 2>&1
+          AFTER=$(find "$ROOT" -type f 2>/dev/null | wc -l)
+          if [ "$BEFORE" -ne "$AFTER" ]; then
+            echo "::error::dry-run wrote files: before=$BEFORE after=$AFTER"
+            find "$ROOT" -type f
+            exit 1
+          fi
+
+      - name: No 'Device not configured' across all install runs (refs #2)
+        shell: bash
+        run: |
+          set -eo pipefail
+          # Global negative assertion: re-run a sweep of common install/uninstall
+          # invocations and confirm none emit the macOS "Device not configured"
+          # error from /dev/tty redirects.
+          fail=0
+          for cmd in \
+            "bash install.sh --target=claude --dry-run" \
+            "bash install.sh --target=codex --dry-run" \
+            "bash install.sh --target=gemini --dry-run" \
+            "bash install.sh --target=all --dry-run"
+          do
+            out=$(ROLEPOD_TARGET="$(mktemp -d)" $cmd < /dev/null 2>&1) || true
+            if grep -qi 'Device not configured' <<<"$out"; then
+              echo "::error::'$cmd' emitted 'Device not configured'"
+              printf '%s\n' "$out"
+              fail=1
+            fi
+          done
+          # Also non-TTY uninstall.
+          out=$(ROLEPOD_TARGET="$(mktemp -d)" bash install.sh --uninstall --target=codex < /dev/null 2>&1) || true
+          if grep -qi 'Device not configured' <<<"$out"; then
+            echo "::error::non-TTY uninstall emitted 'Device not configured'"
+            printf '%s\n' "$out"
+            fail=1
+          fi
+          exit "$fail"

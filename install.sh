@@ -27,9 +27,19 @@
 #                 --with-clis=codex,gemini --with-plugins=openai-codex
 #
 # Env:
-#   ROLEPOD_TARGET    where to write rolepod files. For single targets it
-#                     overrides the default path; for --target=all it is
-#                     ignored (each CLI uses its conventional path).
+#   ROLEPOD_TARGET           Single-target default OR root for --target=all.
+#                            • Single target (e.g. --target=codex): overrides the
+#                              destination path entirely.
+#                            • --target=all: each CLI installs into a subdir of
+#                              ROLEPOD_TARGET — claude/, codex/, gemini/. Unset
+#                              when --target=all → use ~/.claude, ~/.codex, ~/.gemini.
+#   ROLEPOD_CLAUDE_TARGET    Per-CLI override — wins over ROLEPOD_TARGET for Claude.
+#   ROLEPOD_CODEX_TARGET     Per-CLI override — wins over ROLEPOD_TARGET for Codex.
+#   ROLEPOD_GEMINI_TARGET    Per-CLI override — wins over ROLEPOD_TARGET for Gemini.
+#
+# Non-TTY behavior: --uninstall without --yes in a non-interactive context
+# (no /dev/tty available) prints "Aborted. Re-run with --yes in non-interactive
+# mode." and exits 0 — never crashes on a missing TTY.
 #
 # Managed entry docs (CLAUDE.md / AGENTS.md / GEMINI.md): rolepod content is
 # wrapped in <!-- rolepod:start --> ... <!-- rolepod:end --> markers. User
@@ -114,6 +124,34 @@ default_target_path_for() {
   esac
 }
 
+# Resolve where a given CLI's rolepod files actually land for the current
+# invocation. Precedence (highest first):
+#   1. ROLEPOD_<CLI>_TARGET   per-CLI override
+#   2. ROLEPOD_TARGET + --target=all → $ROLEPOD_TARGET/<cli>/  (subdir layout)
+#   3. ROLEPOD_TARGET (single target only) → use as-is
+#   4. default_target_path_for <cli>
+# Keeps --target=all + ROLEPOD_TARGET consistent: all 3 CLIs land under one root.
+resolve_target_for() {
+  local cli="$1"
+  local override
+  case "$cli" in
+    claude) override="${ROLEPOD_CLAUDE_TARGET:-}" ;;
+    codex)  override="${ROLEPOD_CODEX_TARGET:-}" ;;
+    gemini) override="${ROLEPOD_GEMINI_TARGET:-}" ;;
+    *)      override="" ;;
+  esac
+  if [ -n "$override" ]; then
+    echo "$override"; return 0
+  fi
+  if [ "$CLI_TARGET" = "all" ] && [ -n "${ROLEPOD_TARGET:-}" ]; then
+    echo "$ROLEPOD_TARGET/$cli"; return 0
+  fi
+  if [ -n "${ROLEPOD_TARGET:-}" ]; then
+    echo "$ROLEPOD_TARGET"; return 0
+  fi
+  default_target_path_for "$cli"
+}
+
 # Per-CLI plugin/extension dir (where 3rd-party skill bundles land).
 # Claude:  ~/.claude/plugins/<name>/
 # Codex:   ~/.codex/plugins/<name>/
@@ -146,6 +184,19 @@ dry()  { echo "${YELLOW}[DRY-RUN]${NC} would: $*"; }
 # Generic helpers — defined early so install/uninstall blocks below can use them.
 have_cmd() { command -v "$1" >/dev/null 2>&1; }
 have_dir() { [ -d "$1" ]; }
+
+# can_prompt: 0 = no TTY (don't prompt), 1 = stdin is a TTY, 2 = /dev/tty usable.
+# Some systems (macOS sandbox / CI runners / curl-piped install) have /dev/tty
+# as a device node but opening fails ("Device not configured"). `[ -r /dev/tty ]`
+# returns 0 for the path but the redirect crashes — must actually open-test it.
+can_prompt() {
+  if [ -t 0 ]; then
+    return 1
+  elif [ -e /dev/tty ] && (exec 9<>/dev/tty) 2>/dev/null; then
+    return 2
+  fi
+  return 0
+}
 
 # Membership test for comma-separated wanted-set strings.
 # wants "gitnexus" "$WANT_TOOLS" → 0 if listed, 1 otherwise.
@@ -344,14 +395,9 @@ if [ "$UNINSTALL" -eq 1 ]; then
   case "$CLI_TARGET" in codex|all)  uninstall_codex=1 ;; esac
   case "$CLI_TARGET" in gemini|all) uninstall_gemini=1 ;; esac
 
-  C_TARGET="${ROLEPOD_TARGET:-$(default_target_path_for claude)}"
-  X_TARGET="${ROLEPOD_TARGET:-$(default_target_path_for codex)}"
-  G_TARGET="${ROLEPOD_TARGET:-$(default_target_path_for gemini)}"
-  if [ "$CLI_TARGET" = "all" ]; then
-    C_TARGET="$(default_target_path_for claude)"
-    X_TARGET="$(default_target_path_for codex)"
-    G_TARGET="$(default_target_path_for gemini)"
-  fi
+  C_TARGET="$(resolve_target_for claude)"
+  X_TARGET="$(resolve_target_for codex)"
+  G_TARGET="$(resolve_target_for gemini)"
 
   echo "About to remove rolepod from:"
   [ "$uninstall_claude" -eq 1 ] && echo "  Claude → $C_TARGET (agents, skills, rules, hooks, managed CLAUDE.md block)"
@@ -360,11 +406,17 @@ if [ "$UNINSTALL" -eq 1 ]; then
   echo ""
 
   if [ "$ASSUME_YES" -ne 1 ] && [ "$DRY_RUN" -ne 1 ]; then
-    if [ -t 0 ] || [ -r /dev/tty ]; then
+    can_prompt; cp_mode=$?
+    if [ "$cp_mode" -eq 0 ]; then
+      echo "Aborted. Re-run with --yes in non-interactive mode."
+      exit 0
+    fi
+    if [ "$cp_mode" -eq 1 ]; then
+      printf "Continue? [y/N] "
+      read -r reply || reply=""
+    else
       printf "Continue? [y/N] " > /dev/tty
       read -r reply < /dev/tty || reply=""
-    else
-      reply=""
     fi
     case "$reply" in
       y|Y|yes|YES) ;;
@@ -527,7 +579,7 @@ gemini_selected() {
 }
 
 if claude_selected; then
-  TARGET="${ROLEPOD_TARGET:-$(default_target_path_for claude)}"
+  TARGET="$(resolve_target_for claude)"
   PLUGINS_DIR="$TARGET/plugins"
   echo ""
   echo "${BOLD}─── Installing for Claude Code ───${NC}"
@@ -737,13 +789,7 @@ fi  # end claude_selected
 # AGENTS.md still goes to ~/.codex/AGENTS.md (Codex auto-loads global instructions
 # from there independently of the plugin tree).
 if codex_selected; then
-  CODEX_TARGET="${ROLEPOD_TARGET:-$(default_target_path_for codex)}"
-  # If --target=all, ROLEPOD_TARGET may have been used by claude block. For
-  # multi-target installs we still want each CLI in its conventional path,
-  # so reset to default when CLI_TARGET=all.
-  if [ "$CLI_TARGET" = "all" ]; then
-    CODEX_TARGET="$(default_target_path_for codex)"
-  fi
+  CODEX_TARGET="$(resolve_target_for codex)"
   CODEX_PLUGIN_DEST="$CODEX_TARGET/plugins/rolepod"
   echo ""
   echo "${BOLD}─── Installing for Codex CLI ───${NC}"
@@ -822,10 +868,7 @@ fi
 # Phase 2.3: install as a native Gemini extension under
 # ~/.gemini/extensions/rolepod/. GEMINI.md goes to ~/.gemini/GEMINI.md (auto-loaded).
 if gemini_selected; then
-  GEMINI_TARGET="${ROLEPOD_TARGET:-$(default_target_path_for gemini)}"
-  if [ "$CLI_TARGET" = "all" ]; then
-    GEMINI_TARGET="$(default_target_path_for gemini)"
-  fi
+  GEMINI_TARGET="$(resolve_target_for gemini)"
   GEMINI_EXT_DEST="$GEMINI_TARGET/extensions/rolepod"
   echo ""
   echo "${BOLD}─── Installing for Gemini CLI ───${NC}"
@@ -1260,11 +1303,19 @@ was_installed() {
 }
 
 ask_yn() {
-  # ask_yn "Question" "Y"|"N"  → returns 0 for yes, 1 for no
-  local prompt="$1" default="$2" reply
+  # ask_yn "Question" "Y"|"N"  → returns 0 for yes, 1 for no.
+  # Uses can_prompt() to pick stdin vs /dev/tty. Returns 1 when no TTY at all.
+  local prompt="$1" default="$2" reply mode
   local hint="[y/N]"; [ "$default" = "Y" ] && hint="[Y/n]"
-  printf "%s %s " "$prompt" "$hint" > /dev/tty
-  if ! read -r reply < /dev/tty; then return 1; fi
+  can_prompt; mode=$?
+  if [ "$mode" -eq 0 ]; then return 1; fi
+  if [ "$mode" -eq 1 ]; then
+    printf "%s %s " "$prompt" "$hint"
+    if ! read -r reply; then return 1; fi
+  else
+    printf "%s %s " "$prompt" "$hint" > /dev/tty
+    if ! read -r reply < /dev/tty; then return 1; fi
+  fi
   reply="${reply:-$default}"
   case "$reply" in
     y|Y|yes|YES) return 0 ;;
@@ -1272,7 +1323,8 @@ ask_yn() {
   esac
 }
 
-if [ "$DRY_RUN" -eq 0 ] && { [ -t 0 ] || [ -r /dev/tty ]; }; then
+can_prompt; _post_install_mode=$?
+if [ "$DRY_RUN" -eq 0 ] && [ "$_post_install_mode" -ne 0 ]; then
   if [ "$ANY_PLUGIN" -eq 1 ]; then
     # Only prompt if at least one relevant tool is available.
     SHOW_PROMPTS=0
