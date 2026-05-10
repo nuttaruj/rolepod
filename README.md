@@ -313,6 +313,16 @@ Minimum baseline (works without any plugin): 18 agents + 16 rules + 4 hooks + `z
 
 Want full workflow → install Anthropic skills + GitNexus + caveman at minimum.
 
+#### Skills referenced by agent preloads
+
+The 18 agents preload 28 skills via their frontmatter `skills:` field. Skill missing = agent still runs, just no auto-pull for that skill. Full list grouped by source:
+
+**Anthropic skills (26)** — `anti-spaghetti`, `api-and-interface-design`, `browser-testing-with-devtools`, `ci-cd-and-automation`, `claude-api`, `code-review-and-quality`, `code-simplification`, `context-engineering`, `conversion-copywriting`, `debugging-and-error-recovery`, `doc-coauthoring`, `documentation-and-adrs`, `frontend-ui-engineering`, `interaction-design`, `interface-design`, `internal-comms`, `performance-optimization`, `planning-and-task-breakdown`, `security-and-hardening`, `seo`, `shipping-and-launch`, `spec-driven-development`, `test-driven-development`, `user-facing-content`, `web-design-guidelines`, `webapp-testing`
+
+**Other plugins (2)** — `idea-refine`, `ui-ux-pro-max` (3rd-party skill packs — install separately or remove from agent frontmatter if not desired)
+
+Drop a skill from agent preload? Edit the agent's `skills:` list in `agents/<name>.md`. Agents work fine without preloaded skills (they can still auto-pull on description match if installed).
+
 ---
 
 ## Usage examples
