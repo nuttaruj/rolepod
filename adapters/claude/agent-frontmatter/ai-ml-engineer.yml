@@ -1,0 +1,18 @@
+model: sonnet
+effort: high
+memory: project
+maxTurns: 50
+skills:
+  - claude-api
+  - context-engineering
+  - anti-spaghetti
+  - api-and-interface-design
+tools:
+  - Read
+  - Glob
+  - Grep
+  - Edit
+  - Bash
+  - Write
+  - Agent
+  - SendMessage

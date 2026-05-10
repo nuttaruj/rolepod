@@ -1,24 +1,7 @@
 ---
 name: backend-developer
 description: Backend Specialist. Builds APIs, business logic, database models, integrations. Excludes specialist domains (billing/AI/data analytics) which have dedicated agents.
-model: sonnet
-memory: project
-maxTurns: 50
 color: blue
-skills:
-  - api-and-interface-design
-  - anti-spaghetti
-  - debugging-and-error-recovery
-  - test-driven-development
-tools:
-  - Read
-  - Glob
-  - Grep
-  - Edit
-  - Bash
-  - Write
-  - Agent
-  - SendMessage
 ---
 
 # Backend Developer

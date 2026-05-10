@@ -1,0 +1,17 @@
+model: sonnet
+effort: high
+memory: project
+maxTurns: 50
+skills:
+  - performance-optimization
+  - debugging-and-error-recovery
+  - ci-cd-and-automation
+tools:
+  - Read
+  - Glob
+  - Grep
+  - Edit
+  - Bash
+  - Write
+  - Agent
+  - SendMessage

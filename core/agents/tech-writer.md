@@ -1,23 +1,7 @@
 ---
 name: tech-writer
 description: Technical writer for code docs, API docs, READMEs, ADRs, internal docs. Distinct from customer-success (user-facing) and growth-marketer (marketing copy).
-model: haiku
-memory: project
-maxTurns: 30
 color: white
-skills:
-  - doc-coauthoring
-  - documentation-and-adrs
-  - user-facing-content
-tools:
-  - Read
-  - Glob
-  - Grep
-  - Edit
-  - Bash
-  - Write
-  - Agent
-  - SendMessage
 ---
 
 # Tech Writer

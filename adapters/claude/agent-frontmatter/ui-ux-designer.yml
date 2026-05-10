@@ -1,0 +1,18 @@
+model: sonnet
+memory: project
+maxTurns: 50
+skills:
+  - ui-ux-pro-max
+  - frontend-ui-engineering
+  - web-design-guidelines
+  - interface-design
+  - interaction-design
+tools:
+  - Read
+  - Glob
+  - Grep
+  - Edit
+  - Bash
+  - Write
+  - Agent
+  - SendMessage

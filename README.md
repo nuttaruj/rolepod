@@ -24,7 +24,7 @@ Self-improving: every session captures learnings via MemPalace KG, so the next s
 | **minimum** | core + `ui-ux-pro-max-skill` + GitNexus + MemPalace (final skill + cross-session memory + code intelligence) | `./install.sh --minimum` |
 | **full** | minimum + caveman + rtk + Codex CLI + Gemini CLI + openai-codex Claude Code plugin | `./install.sh --full` |
 
-Add `--force` to overwrite existing `~/.claude/` files (auto-creates `~/.claude.backup-<timestamp>/`).
+Add `--force` to overwrite existing files (auto-creates a `~/.<cli>.backup-<timestamp>/` directory). Pick a different CLI by adding `--target=codex`, `--target=gemini`, or `--target=all` (see `docs/cli-support.md`).
 
 ### Install commands
 
@@ -305,15 +305,17 @@ Reviewer flow → ship → CI auto-merge after green
 
 ## Multi-CLI support
 
-Rolepod currently ships first-class support for Claude Code. Phase 2.1 (this release) introduces a `core/` + `adapters/<cli>/` layout with a small `build/render.sh` step that assembles the per-CLI entry doc from shared fragments, so the same source-of-truth content can power other coding CLIs without prose duplication.
+Rolepod ships for three coding CLIs. The same source-of-truth content (`core/rules/`, `core/skills/`, `core/agents/`, `core/fragments/`) is rendered through per-CLI adapter templates (`adapters/<cli>/`) into the entry doc each CLI expects. Run `./install.sh --target=<cli>` (or `--target=all`).
 
-| CLI | Status | Install command |
-|-----|--------|-----------------|
-| Claude Code | Shipping (default) | `./install.sh --target=claude` (default if flag omitted) |
-| Codex CLI (OpenAI) | Phase 2.2 — not yet implemented | will fail with a clear message |
-| Gemini CLI (Google) | Phase 2.2 — not yet implemented | will fail with a clear message |
+| CLI | Status | Entry doc | Install command |
+|-----|--------|-----------|-----------------|
+| Claude Code | Reference (full hooks + subagents + slash commands) | `~/.claude/CLAUDE.md` | `./install.sh --target=claude` |
+| Codex CLI (OpenAI) | Lead-only mode + opt-in wrapper for rule reminders | `~/.codex/AGENTS.md` | `./install.sh --target=codex` |
+| Gemini CLI (Google) | Lead-only mode + opt-in wrapper for rule reminders | `~/.gemini/GEMINI.md` | `./install.sh --target=gemini` |
 
-Phase 2.2 will add `adapters/codex/` + `adapters/gemini/` with their respective entry docs (`AGENTS.md`, `GEMINI.md`), wrapper scripts for opt-in rule reminders, and a per-CLI behavior matrix documenting which Claude-Code-only features (hooks, sub-agents, slash commands) gracefully degrade vs. ship as-is.
+Where a Claude-Code-only feature has no equivalent (hooks, native subagent dispatch, slash commands), the rolepod adapter inlines the relevant rules into the entry doc and ships an opt-in wrapper that prepends a per-turn reminder. Rules from `~/.claude/rules/` are mirrored at `~/.codex/rules/` and `~/.gemini/rules/` so the same lazy-load file paths work across CLIs.
+
+See `docs/cli-support.md` for the full per-CLI capability matrix, what's verified locally, and known limitations (especially the Codex plugin manifest schema, which is currently a best-effort stub pending an OpenAI spec).
 
 ## License
 

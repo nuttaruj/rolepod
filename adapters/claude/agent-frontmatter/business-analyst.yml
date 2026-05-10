@@ -1,0 +1,11 @@
+model: haiku
+memory: user
+maxTurns: 20
+tools:
+  - Read
+  - Glob
+  - Grep
+  - Edit
+  - Write
+  - Agent
+  - SendMessage

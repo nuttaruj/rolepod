@@ -1,0 +1,17 @@
+model: sonnet
+memory: project
+maxTurns: 50
+skills:
+  - frontend-ui-engineering
+  - anti-spaghetti
+  - debugging-and-error-recovery
+  - test-driven-development
+tools:
+  - Read
+  - Glob
+  - Grep
+  - Edit
+  - Bash
+  - Write
+  - Agent
+  - SendMessage

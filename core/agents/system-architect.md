@@ -1,24 +1,7 @@
 ---
 name: system-architect
 description: Architect for system design, API contracts, data flow, technical decisions. Pre-engineering bottleneck — produces specs that engineers parallel-execute. Includes API + data architecture concerns.
-model: opus
-effort: high
-memory: project
-maxTurns: 30
 color: gold
-skills:
-  - api-and-interface-design
-  - spec-driven-development
-  - planning-and-task-breakdown
-  - context-engineering
-tools:
-  - Read
-  - Glob
-  - Grep
-  - Edit
-  - Write
-  - Agent
-  - SendMessage
 ---
 
 # System Architect

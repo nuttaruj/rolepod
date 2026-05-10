@@ -1,26 +1,7 @@
 ---
 name: billing-engineer
 description: FinTech / Monetization Engineer. Owns billing, payments, credits, subscriptions, financial data integrity. Path-scoped to billing/payments/credits modules.
-model: sonnet
-effort: high
-memory: project
-maxTurns: 50
 color: green
-skills:
-  - api-and-interface-design
-  - anti-spaghetti
-  - debugging-and-error-recovery
-  - test-driven-development
-  - security-and-hardening
-tools:
-  - Read
-  - Glob
-  - Grep
-  - Edit
-  - Bash
-  - Write
-  - Agent
-  - SendMessage
 ---
 
 # Billing Engineer

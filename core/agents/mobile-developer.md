@@ -1,24 +1,7 @@
 ---
 name: mobile-developer
 description: Mobile Engineer for native iOS/Android + cross-platform (React Native / Flutter). Owns platform-specific code; cross-platform UI logic may overlap with frontend-developer.
-model: sonnet
-memory: project
-maxTurns: 50
 color: purple
-skills:
-  - frontend-ui-engineering
-  - anti-spaghetti
-  - debugging-and-error-recovery
-  - test-driven-development
-tools:
-  - Read
-  - Glob
-  - Grep
-  - Edit
-  - Bash
-  - Write
-  - Agent
-  - SendMessage
 ---
 
 # Mobile Developer

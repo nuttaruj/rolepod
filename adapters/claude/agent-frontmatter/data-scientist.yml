@@ -1,0 +1,15 @@
+model: sonnet
+memory: project
+maxTurns: 50
+skills:
+  - debugging-and-error-recovery
+  - anti-spaghetti
+tools:
+  - Read
+  - Glob
+  - Grep
+  - Edit
+  - Bash
+  - Write
+  - Agent
+  - SendMessage

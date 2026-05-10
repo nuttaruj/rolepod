@@ -1,26 +1,7 @@
 ---
 name: qa-tester
 description: QA + Test Automation. Owns correctness — write/run tests, business logic verify, race conditions, integration. Universal floor + fallback when Codex/Gemini fail.
-model: sonnet
-effort: high
-memory: project
-maxTurns: 50
-permissionMode: acceptEdits
 color: red
-skills:
-  - test-driven-development
-  - webapp-testing
-  - browser-testing-with-devtools
-  - debugging-and-error-recovery
-tools:
-  - Read
-  - Glob
-  - Grep
-  - Edit
-  - Bash
-  - Write
-  - Agent
-  - SendMessage
 ---
 
 # QA + Test Automation

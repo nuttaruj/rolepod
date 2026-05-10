@@ -1,22 +1,7 @@
 ---
 name: product-manager
 description: Product Manager for feature prioritization, roadmap, user requirements, spec writing. Distinct from business-analyst (financial/ROI) and growth-marketer (acquisition/conversion).
-model: sonnet
-memory: project
-maxTurns: 30
 color: blue
-skills:
-  - spec-driven-development
-  - planning-and-task-breakdown
-  - user-facing-content
-tools:
-  - Read
-  - Glob
-  - Grep
-  - Edit
-  - Write
-  - Agent
-  - SendMessage
 ---
 
 # Product Manager

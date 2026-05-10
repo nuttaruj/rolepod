@@ -1,25 +1,7 @@
 ---
 name: security-engineer
 description: Security Engineer for vuln audit, pentest, system hardening, compliance (GDPR/SOC2/HIPAA). Owns security concern across all layers.
-model: opus
-effort: xhigh
-memory: project
-maxTurns: 50
-permissionMode: acceptEdits
 color: red
-skills:
-  - security-and-hardening
-  - debugging-and-error-recovery
-  - anti-spaghetti
-tools:
-  - Read
-  - Glob
-  - Grep
-  - Edit
-  - Bash
-  - Write
-  - Agent
-  - SendMessage
 ---
 
 # Security Engineer

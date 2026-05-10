@@ -1,0 +1,19 @@
+model: sonnet
+effort: high
+memory: project
+maxTurns: 50
+permissionMode: acceptEdits
+skills:
+  - test-driven-development
+  - webapp-testing
+  - browser-testing-with-devtools
+  - debugging-and-error-recovery
+tools:
+  - Read
+  - Glob
+  - Grep
+  - Edit
+  - Bash
+  - Write
+  - Agent
+  - SendMessage

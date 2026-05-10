@@ -1,22 +1,7 @@
 ---
 name: data-scientist
 description: Data Scientist focused on statistical analysis, analytics queries, dashboards, and data pipelines. Distinct from ai-ml-engineer (LLM/RAG/agents).
-model: sonnet
-memory: project
-maxTurns: 50
 color: yellow
-skills:
-  - debugging-and-error-recovery
-  - anti-spaghetti
-tools:
-  - Read
-  - Glob
-  - Grep
-  - Edit
-  - Bash
-  - Write
-  - Agent
-  - SendMessage
 ---
 
 # Data Scientist

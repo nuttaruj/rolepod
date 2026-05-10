@@ -1,0 +1,17 @@
+model: opus
+effort: high
+memory: project
+maxTurns: 30
+skills:
+  - api-and-interface-design
+  - spec-driven-development
+  - planning-and-task-breakdown
+  - context-engineering
+tools:
+  - Read
+  - Glob
+  - Grep
+  - Edit
+  - Write
+  - Agent
+  - SendMessage

@@ -1,0 +1,15 @@
+model: sonnet
+memory: project
+maxTurns: 30
+skills:
+  - spec-driven-development
+  - planning-and-task-breakdown
+  - user-facing-content
+tools:
+  - Read
+  - Glob
+  - Grep
+  - Edit
+  - Write
+  - Agent
+  - SendMessage

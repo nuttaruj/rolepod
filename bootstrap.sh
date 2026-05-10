@@ -37,6 +37,7 @@ else
 fi
 
 # ─── Interactive menu (only if no args + we have a terminal) ────────────
+INTERACTIVE_TARGET=""
 if [ "${#ARGS[@]}" -eq 0 ]; then
   if [ -e /dev/tty ]; then
     cat >&2 <<EOF
@@ -58,8 +59,27 @@ EOF
       *) echo "Unknown choice '$choice' — defaulting to minimum"; ARGS=("--minimum") ;;
     esac
 
+    cat >&2 <<EOF
+
+Choose CLI target:
+  ${BOLD}1${NC}) ${CYAN}claude${NC}    — Claude Code (~/.claude/) ${YELLOW}★ default${NC}
+  ${BOLD}2${NC}) ${CYAN}codex${NC}     — Codex CLI (~/.codex/)
+  ${BOLD}3${NC}) ${CYAN}gemini${NC}    — Gemini CLI (~/.gemini/)
+  ${BOLD}4${NC}) ${GREEN}all${NC}       — install for all three CLIs
+
+EOF
+    target_choice=""
+    read -r -p "Target [1/2/3/4] (default 1): " target_choice </dev/tty || target_choice=""
+    case "${target_choice:-1}" in
+      1|claude|"") INTERACTIVE_TARGET="claude" ;;
+      2|codex)     INTERACTIVE_TARGET="codex" ;;
+      3|gemini)    INTERACTIVE_TARGET="gemini" ;;
+      4|all)       INTERACTIVE_TARGET="all" ;;
+      *) echo "Unknown choice '$target_choice' — defaulting to claude"; INTERACTIVE_TARGET="claude" ;;
+    esac
+
     force_choice=""
-    read -r -p "Overwrite existing ~/.claude files (auto-backup first)? [y/N]: " force_choice </dev/tty || force_choice=""
+    read -r -p "Overwrite existing files (auto-backup first)? [y/N]: " force_choice </dev/tty || force_choice=""
     case "${force_choice:-n}" in
       y|Y|yes|YES) ARGS+=("--force") ;;
     esac
@@ -92,6 +112,15 @@ else
 fi
 
 cd "$DEST"
-# Pin --target=claude defensively — install.sh defaults to claude already, but
-# pass it explicitly so a future default change can't surprise existing users.
-exec ./install.sh --target=claude "${ARGS[@]}"
+# Pin a --target value defensively. Default to claude unless the interactive
+# menu picked something else. CLI flags in $ARGS override anything we set here.
+TARGET_FLAG="--target=${INTERACTIVE_TARGET:-claude}"
+# If user already passed --target=... in ARGS, drop our default to avoid duplication.
+for a in "${ARGS[@]+"${ARGS[@]}"}"; do
+  case "$a" in --target=*) TARGET_FLAG="" ;; esac
+done
+if [ -n "$TARGET_FLAG" ]; then
+  exec ./install.sh "$TARGET_FLAG" "${ARGS[@]}"
+else
+  exec ./install.sh "${ARGS[@]}"
+fi

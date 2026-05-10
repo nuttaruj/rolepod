@@ -1,0 +1,18 @@
+model: opus
+effort: xhigh
+memory: project
+maxTurns: 50
+permissionMode: acceptEdits
+skills:
+  - security-and-hardening
+  - debugging-and-error-recovery
+  - anti-spaghetti
+tools:
+  - Read
+  - Glob
+  - Grep
+  - Edit
+  - Bash
+  - Write
+  - Agent
+  - SendMessage

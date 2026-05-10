@@ -2,15 +2,20 @@
 # rolepod installer — copies workflow files to ~/.claude/ and (optionally) installs plugins.
 #
 # Usage:
-#   ./install.sh                 # rolepod core only (no plugins) — safe default
-#   ./install.sh --minimum       # core + ui-ux-pro-max + GitNexus + MemPalace
-#   ./install.sh --full          # minimum + caveman + rtk + codex CLI + gemini CLI
-#   ./install.sh --force         # overwrite existing ~/.claude files (backup created)
-#                                # --force can be combined with any of the above
-#   ./install.sh --target=claude # CLI target (default; codex|gemini are Phase 2.2)
+#   ./install.sh                       # rolepod core only (no plugins) — safe default
+#   ./install.sh --minimum             # core + ui-ux-pro-max + GitNexus + MemPalace
+#   ./install.sh --full                # minimum + caveman + rtk + codex CLI + gemini CLI
+#   ./install.sh --force               # overwrite existing files (backup created)
+#                                      # --force can be combined with any of the above
+#   ./install.sh --target=claude       # CLI target (default → ~/.claude)
+#   ./install.sh --target=codex        # Codex CLI       → ~/.codex
+#   ./install.sh --target=gemini       # Gemini CLI      → ~/.gemini
+#   ./install.sh --target=all          # install all three
 #
 # Env:
-#   ROLEPOD_TARGET    where to write rolepod files (default ~/.claude)
+#   ROLEPOD_TARGET    where to write rolepod files. For single targets it
+#                     overrides the default path; for --target=all it is
+#                     ignored (each CLI uses its conventional path).
 #
 # Detection: every plugin install is preceded by a check. Already-installed plugins
 # are skipped. Failed installs print a manual fallback command and continue.
@@ -18,8 +23,8 @@
 set -euo pipefail
 
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-TARGET="${ROLEPOD_TARGET:-$HOME/.claude}"
-PLUGINS_DIR="$TARGET/plugins"
+TARGET="${ROLEPOD_TARGET:-}"   # final value depends on CLI_TARGET; resolved below
+PLUGINS_DIR=""                  # set after TARGET resolves
 MODE="core"
 FORCE=0
 CLI_TARGET="claude"
@@ -33,22 +38,29 @@ for arg in "$@"; do
     --force)         FORCE=1 ;;
     --target=*)      CLI_TARGET="${arg#--target=}" ;;
     -h|--help)
-      sed -n '2,18p' "$0"
+      sed -n '2,22p' "$0"
       exit 0 ;;
     *) echo "Unknown arg: $arg" >&2; exit 1 ;;
   esac
 done
 
 case "$CLI_TARGET" in
-  claude) ;;
-  codex|gemini)
-    echo "Phase 2.2 not yet implemented — install Claude target instead." >&2
-    echo "  Re-run: ./install.sh --target=claude" >&2
-    exit 1 ;;
+  claude|codex|gemini|all) ;;
   *)
-    echo "Unknown --target value: $CLI_TARGET (expected claude|codex|gemini)" >&2
+    echo "Unknown --target value: $CLI_TARGET (expected claude|codex|gemini|all)" >&2
     exit 1 ;;
 esac
+
+# Resolve install destination per CLI target. ROLEPOD_TARGET (env) wins for
+# all targets when set, so dry-run installs into a tempdir keep working.
+default_target_path_for() {
+  case "$1" in
+    claude) echo "$HOME/.claude" ;;
+    codex)  echo "$HOME/.codex" ;;
+    gemini) echo "$HOME/.gemini" ;;
+    *)      echo "$HOME/.$1" ;;
+  esac
+}
 
 # Colors
 if [ -t 1 ]; then
@@ -75,62 +87,96 @@ note_failed()    { FAILED+=("$1"); }
 
 echo "${BOLD}rolepod installer${NC}"
 echo "  source: $REPO_DIR"
-echo "  target: $TARGET"
 echo "  cli:    $CLI_TARGET"
 echo "  mode:   $MODE"
 echo "  force:  $FORCE"
 echo ""
 
 # ─── Sanity check source ────────────────────────────────────────────────
-for f in CLAUDE.md CHEATSHEET.md agents rules hooks skills commands .claude-plugin/manifest.json build/render.sh adapters/claude/CLAUDE.md.tmpl; do
+for f in CHEATSHEET.md core/agents core/rules hooks core/skills commands .claude-plugin/manifest.json build/render.sh adapters/claude/CLAUDE.md.tmpl; do
   [ -e "$REPO_DIR/$f" ] || fail "missing $f in $REPO_DIR — run from rolepod repo"
 done
 
-# ─── Render entry doc for selected CLI target ───────────────────────────
-step "Rendering CLAUDE.md from adapter template (target: $CLI_TARGET)"
-if ! bash "$REPO_DIR/build/render.sh" --target="$CLI_TARGET"; then
+# Codex/Gemini adapter sanity (only required if those targets selected).
+case "$CLI_TARGET" in
+  codex|all)
+    [ -e "$REPO_DIR/adapters/codex/AGENTS.md.tmpl" ] || fail "missing adapters/codex/AGENTS.md.tmpl"
+    [ -e "$REPO_DIR/adapters/codex/wrapper/rolepod-codex.sh" ] || fail "missing codex wrapper"
+    ;;
+esac
+case "$CLI_TARGET" in
+  gemini|all)
+    [ -e "$REPO_DIR/adapters/gemini/GEMINI.md.tmpl" ] || fail "missing adapters/gemini/GEMINI.md.tmpl"
+    [ -e "$REPO_DIR/adapters/gemini/wrapper/rolepod-gemini.sh" ] || fail "missing gemini wrapper"
+    ;;
+esac
+
+# ─── Render all required entry docs up front ────────────────────────────
+RENDER_TARGET="$CLI_TARGET"
+step "Rendering entry doc(s) (target: $RENDER_TARGET)"
+if ! bash "$REPO_DIR/build/render.sh" --target="$RENDER_TARGET"; then
   fail "render.sh failed — fix template/fragments before installing"
 fi
-RENDERED_CLAUDE_MD="$REPO_DIR/build/rendered/$CLI_TARGET/CLAUDE.md"
-[ -f "$RENDERED_CLAUDE_MD" ] || fail "expected $RENDERED_CLAUDE_MD after render"
 
-# ─── Backup if --force on existing ──────────────────────────────────────
-if [ "$FORCE" -eq 1 ] && [ -d "$TARGET" ]; then
-  STAMP=$(date +%Y%m%d-%H%M%S)
-  BACKUP="$HOME/.claude.backup-$STAMP"
-  warn "Backing up existing $TARGET → $BACKUP"
-  cp -R "$TARGET" "$BACKUP"
-fi
+# ─── install_claude — Claude Code path (~/.claude/) ────────────────────
+# This logic flows top-level (not in a function) for back-compat with the
+# original install.sh; gated by `if claude_selected` so other targets skip it.
+claude_selected() {
+  case "$CLI_TARGET" in claude|all) return 0 ;; *) return 1 ;; esac
+}
+codex_selected() {
+  case "$CLI_TARGET" in codex|all)  return 0 ;; *) return 1 ;; esac
+}
+gemini_selected() {
+  case "$CLI_TARGET" in gemini|all) return 0 ;; *) return 1 ;; esac
+}
 
-# ─── Copy rolepod core ──────────────────────────────────────────────────
-step "Creating directory structure"
-mkdir -p "$TARGET"/{agents,rules,hooks,skills,commands,.claude-plugin,plugins}
+if claude_selected; then
+  TARGET="${ROLEPOD_TARGET:-$(default_target_path_for claude)}"
+  PLUGINS_DIR="$TARGET/plugins"
+  echo ""
+  echo "${BOLD}─── Installing for Claude Code ───${NC}"
+  echo "  target: $TARGET"
 
-if [ "$FORCE" -eq 1 ]; then CP_FLAG=""; else CP_FLAG="-n"; fi
+  RENDERED_CLAUDE_MD="$REPO_DIR/build/rendered/claude/CLAUDE.md"
+  [ -f "$RENDERED_CLAUDE_MD" ] || fail "expected $RENDERED_CLAUDE_MD after render"
 
-step "Copying core docs (CLAUDE.md from rendered output, CHEATSHEET.md)"
-cp $CP_FLAG "$RENDERED_CLAUDE_MD"     "$TARGET/CLAUDE.md" 2>/dev/null || true
-cp $CP_FLAG "$REPO_DIR/CHEATSHEET.md" "$TARGET/" 2>/dev/null || true
-
-step "Copying agents (18) + rules (16) + commands"
-cp $CP_FLAG "$REPO_DIR"/agents/*.md   "$TARGET/agents/"   2>/dev/null || true
-cp $CP_FLAG "$REPO_DIR"/rules/*.md    "$TARGET/rules/"    2>/dev/null || true
-cp $CP_FLAG "$REPO_DIR"/commands/*.md "$TARGET/commands/" 2>/dev/null || true
-
-step "Copying hooks (4) and marking executable"
-cp $CP_FLAG "$REPO_DIR"/hooks/*.sh "$TARGET/hooks/" 2>/dev/null || true
-chmod +x "$TARGET"/hooks/*.sh 2>/dev/null || true
-
-step "Copying bundled skills (27)"
-for skill_dir in "$REPO_DIR"/skills/*/; do
-  name=$(basename "$skill_dir")
-  if [ "$FORCE" -eq 1 ] || [ ! -e "$TARGET/skills/$name" ]; then
-    cp -R "$REPO_DIR/skills/$name" "$TARGET/skills/" 2>/dev/null || true
+  # Backup if --force on existing
+  if [ "$FORCE" -eq 1 ] && [ -d "$TARGET" ]; then
+    STAMP=$(date +%Y%m%d-%H%M%S)
+    BACKUP="$HOME/.claude.backup-$STAMP"
+    warn "Backing up existing $TARGET → $BACKUP"
+    cp -R "$TARGET" "$BACKUP"
   fi
-done
 
-step "Copying plugin manifest"
-cp $CP_FLAG "$REPO_DIR/.claude-plugin/manifest.json" "$TARGET/.claude-plugin/" 2>/dev/null || true
+  step "Creating directory structure"
+  mkdir -p "$TARGET"/{agents,rules,hooks,skills,commands,.claude-plugin,plugins}
+
+  if [ "$FORCE" -eq 1 ]; then CP_FLAG=""; else CP_FLAG="-n"; fi
+
+  step "Copying core docs (CLAUDE.md from rendered output, CHEATSHEET.md)"
+  cp $CP_FLAG "$RENDERED_CLAUDE_MD"     "$TARGET/CLAUDE.md" 2>/dev/null || true
+  cp $CP_FLAG "$REPO_DIR/CHEATSHEET.md" "$TARGET/" 2>/dev/null || true
+
+  step "Copying agents (18 from rendered/) + rules (16) + commands"
+  cp $CP_FLAG "$REPO_DIR"/build/rendered/claude/agents/*.md "$TARGET/agents/"   2>/dev/null || true
+  cp $CP_FLAG "$REPO_DIR"/core/rules/*.md                   "$TARGET/rules/"    2>/dev/null || true
+  cp $CP_FLAG "$REPO_DIR"/commands/*.md                     "$TARGET/commands/" 2>/dev/null || true
+
+  step "Copying hooks (4) and marking executable"
+  cp $CP_FLAG "$REPO_DIR"/hooks/*.sh "$TARGET/hooks/" 2>/dev/null || true
+  chmod +x "$TARGET"/hooks/*.sh 2>/dev/null || true
+
+  step "Copying bundled skills (27)"
+  for skill_dir in "$REPO_DIR"/core/skills/*/; do
+    name=$(basename "$skill_dir")
+    if [ "$FORCE" -eq 1 ] || [ ! -e "$TARGET/skills/$name" ]; then
+      cp -R "$REPO_DIR/core/skills/$name" "$TARGET/skills/" 2>/dev/null || true
+    fi
+  done
+
+  step "Copying plugin manifest"
+  cp $CP_FLAG "$REPO_DIR/.claude-plugin/manifest.json" "$TARGET/.claude-plugin/" 2>/dev/null || true
 
 # ─── Register hooks in settings.json ────────────────────────────────────
 # Claude Code reads hooks from ~/.claude/settings.json — manifest.json is
@@ -239,7 +285,7 @@ else
   warn "  See manifest.json 'components.hooks.shipped' for the 4 hook → event mappings"
 fi
 
-# ─── Verify rolepod core ────────────────────────────────────────────────
+# ─── Verify Claude rolepod core ─────────────────────────────────────────
 step "Verifying rolepod core"
 for required in \
   CLAUDE.md CHEATSHEET.md \
@@ -252,6 +298,132 @@ do
   [ -e "$TARGET/$required" ] || fail "verification failed — $TARGET/$required missing"
 done
 ok "rolepod core installed → $TARGET"
+fi  # end claude_selected
+
+# ─── install_codex — Codex CLI path (~/.codex/) ────────────────────────
+if codex_selected; then
+  CODEX_TARGET="${ROLEPOD_TARGET:-$(default_target_path_for codex)}"
+  # If --target=all, ROLEPOD_TARGET may have been used by claude block. For
+  # multi-target installs we still want each CLI in its conventional path,
+  # so reset to default when CLI_TARGET=all.
+  if [ "$CLI_TARGET" = "all" ]; then
+    CODEX_TARGET="$(default_target_path_for codex)"
+  fi
+  echo ""
+  echo "${BOLD}─── Installing for Codex CLI ───${NC}"
+  echo "  target: $CODEX_TARGET"
+
+  if ! have_cmd codex; then
+    warn "codex binary not found — skipping Codex install (file copy only)"
+    warn "  Install Codex CLI: npm install -g @openai/codex"
+  fi
+
+  RENDERED_AGENTS_MD="$REPO_DIR/build/rendered/codex/AGENTS.md"
+  [ -f "$RENDERED_AGENTS_MD" ] || fail "expected $RENDERED_AGENTS_MD after render"
+
+  if [ "$FORCE" -eq 1 ] && [ -d "$CODEX_TARGET" ]; then
+    STAMP=$(date +%Y%m%d-%H%M%S)
+    BACKUP="$HOME/.codex.backup-$STAMP"
+    warn "Backing up existing $CODEX_TARGET → $BACKUP"
+    cp -R "$CODEX_TARGET" "$BACKUP"
+  fi
+
+  step "Creating Codex directory structure"
+  mkdir -p "$CODEX_TARGET"/{agents,skills,rules,bin}
+
+  if [ "$FORCE" -eq 1 ]; then CP_FLAG=""; else CP_FLAG="-n"; fi
+
+  step "Copying AGENTS.md (rendered)"
+  cp $CP_FLAG "$RENDERED_AGENTS_MD" "$CODEX_TARGET/AGENTS.md" 2>/dev/null || true
+
+  step "Copying agents (18 portable shape) + rules (16) + skills (27)"
+  cp $CP_FLAG "$REPO_DIR"/build/rendered/codex/agents/*.md "$CODEX_TARGET/agents/" 2>/dev/null || true
+  cp $CP_FLAG "$REPO_DIR"/core/rules/*.md                  "$CODEX_TARGET/rules/"  2>/dev/null || true
+  for skill_dir in "$REPO_DIR"/core/skills/*/; do
+    name=$(basename "$skill_dir")
+    if [ "$FORCE" -eq 1 ] || [ ! -e "$CODEX_TARGET/skills/$name" ]; then
+      cp -R "$REPO_DIR/core/skills/$name" "$CODEX_TARGET/skills/" 2>/dev/null || true
+    fi
+  done
+
+  step "Copying rolepod-codex.sh wrapper to $CODEX_TARGET/bin/"
+  cp $CP_FLAG "$REPO_DIR/adapters/codex/wrapper/rolepod-codex.sh" "$CODEX_TARGET/bin/" 2>/dev/null || true
+  chmod +x "$CODEX_TARGET/bin/rolepod-codex.sh" 2>/dev/null || true
+
+  step "Copying Codex plugin manifest"
+  if [ -f "$REPO_DIR/build/rendered/codex/manifest.json" ]; then
+    cp $CP_FLAG "$REPO_DIR/build/rendered/codex/manifest.json" "$CODEX_TARGET/" 2>/dev/null || true
+  fi
+
+  step "Verifying Codex install"
+  for required in AGENTS.md agents/qa-tester.md rules/INDEX.md bin/rolepod-codex.sh; do
+    [ -e "$CODEX_TARGET/$required" ] || fail "Codex verification failed — $CODEX_TARGET/$required missing"
+  done
+  ok "rolepod codex adapter installed → $CODEX_TARGET"
+  warn "Add to PATH for wrapper convenience: export PATH=\"$CODEX_TARGET/bin:\$PATH\""
+fi
+
+# ─── install_gemini — Gemini CLI path (~/.gemini/) ─────────────────────
+if gemini_selected; then
+  GEMINI_TARGET="${ROLEPOD_TARGET:-$(default_target_path_for gemini)}"
+  if [ "$CLI_TARGET" = "all" ]; then
+    GEMINI_TARGET="$(default_target_path_for gemini)"
+  fi
+  echo ""
+  echo "${BOLD}─── Installing for Gemini CLI ───${NC}"
+  echo "  target: $GEMINI_TARGET"
+
+  if ! have_cmd gemini; then
+    warn "gemini binary not found — skipping Gemini install (file copy only)"
+    warn "  Install Gemini CLI: npm install -g @google/gemini-cli"
+  fi
+
+  RENDERED_GEMINI_MD="$REPO_DIR/build/rendered/gemini/GEMINI.md"
+  [ -f "$RENDERED_GEMINI_MD" ] || fail "expected $RENDERED_GEMINI_MD after render"
+
+  if [ "$FORCE" -eq 1 ] && [ -d "$GEMINI_TARGET" ]; then
+    STAMP=$(date +%Y%m%d-%H%M%S)
+    BACKUP="$HOME/.gemini.backup-$STAMP"
+    warn "Backing up existing $GEMINI_TARGET → $BACKUP"
+    cp -R "$GEMINI_TARGET" "$BACKUP"
+  fi
+
+  step "Creating Gemini directory structure"
+  mkdir -p "$GEMINI_TARGET"/{skills,rules,bin}
+
+  if [ "$FORCE" -eq 1 ]; then CP_FLAG=""; else CP_FLAG="-n"; fi
+
+  step "Copying GEMINI.md (rendered)"
+  cp $CP_FLAG "$RENDERED_GEMINI_MD" "$GEMINI_TARGET/GEMINI.md" 2>/dev/null || true
+
+  step "Copying rules (16) + skills (27)"
+  cp $CP_FLAG "$REPO_DIR"/core/rules/*.md "$GEMINI_TARGET/rules/" 2>/dev/null || true
+  for skill_dir in "$REPO_DIR"/core/skills/*/; do
+    name=$(basename "$skill_dir")
+    if [ "$FORCE" -eq 1 ] || [ ! -e "$GEMINI_TARGET/skills/$name" ]; then
+      cp -R "$REPO_DIR/core/skills/$name" "$GEMINI_TARGET/skills/" 2>/dev/null || true
+    fi
+  done
+
+  step "Copying rolepod-gemini.sh wrapper to $GEMINI_TARGET/bin/"
+  cp $CP_FLAG "$REPO_DIR/adapters/gemini/wrapper/rolepod-gemini.sh" "$GEMINI_TARGET/bin/" 2>/dev/null || true
+  chmod +x "$GEMINI_TARGET/bin/rolepod-gemini.sh" 2>/dev/null || true
+
+  step "Verifying Gemini install"
+  for required in GEMINI.md rules/INDEX.md bin/rolepod-gemini.sh; do
+    [ -e "$GEMINI_TARGET/$required" ] || fail "Gemini verification failed — $GEMINI_TARGET/$required missing"
+  done
+  ok "rolepod gemini adapter installed → $GEMINI_TARGET"
+  warn "Add to PATH for wrapper convenience: export PATH=\"$GEMINI_TARGET/bin:\$PATH\""
+fi
+
+# Ensure TARGET is set for the rest of the script (Claude plugin install paths
+# below assume Claude conventions). For codex/gemini-only runs, plugin install
+# is skipped via mode gates anyway.
+if [ -z "${TARGET:-}" ]; then
+  TARGET="$(default_target_path_for claude)"
+  PLUGINS_DIR="$TARGET/plugins"
+fi
 
 # ─── Helpers for plugin checks ──────────────────────────────────────────
 have_cmd()    { command -v "$1" >/dev/null 2>&1; }

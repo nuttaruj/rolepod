@@ -1,0 +1,17 @@
+model: sonnet
+memory: project
+maxTurns: 50
+skills:
+  - ci-cd-and-automation
+  - shipping-and-launch
+  - debugging-and-error-recovery
+  - anti-spaghetti
+tools:
+  - Read
+  - Glob
+  - Grep
+  - Edit
+  - Bash
+  - Write
+  - Agent
+  - SendMessage
