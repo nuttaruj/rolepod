@@ -4,7 +4,7 @@
 # Usage:
 #   ./install.sh                       # rolepod core only (no plugins) — safe default
 #   ./install.sh --minimum             # core + ui-ux-pro-max + GitNexus + MemPalace
-#   ./install.sh --full                # minimum + caveman + rtk + codex CLI + gemini CLI
+#   ./install.sh --full                # minimum + caveman + rtk + codex CLI + gemini CLI + openai-codex plugin
 #   ./install.sh --force               # overwrite existing files (backup created)
 #                                      # --force can be combined with any of the above
 #   ./install.sh --target=claude       # CLI target (default → ~/.claude)
@@ -13,6 +13,18 @@
 #   ./install.sh --target=all          # install all three
 #   ./install.sh --uninstall           # remove rolepod from selected --target
 #                                      # add --yes/-y to skip confirmation prompt
+#   ./install.sh --dry-run             # preview every action; write nothing to disk
+#
+# Granular flags (compose your own bundle without --minimum/--full):
+#   --with-tools=gitnexus,mempalace,rtk    # global toolchain installs
+#   --with-skills=ui-ux-pro-max,caveman    # 3rd-party skill plugins
+#   --with-clis=codex,gemini               # install CLI binaries
+#   --with-plugins=openai-codex            # Claude marketplace plugins
+#
+# Bundle equivalents (back-compat):
+#   --minimum  ≡  --with-tools=gitnexus,mempalace --with-skills=ui-ux-pro-max
+#   --full     ≡  --with-tools=gitnexus,mempalace,rtk --with-skills=ui-ux-pro-max,caveman \
+#                 --with-clis=codex,gemini --with-plugins=openai-codex
 #
 # Env:
 #   ROLEPOD_TARGET    where to write rolepod files. For single targets it
@@ -36,6 +48,14 @@ FORCE=0
 CLI_TARGET="claude"
 UNINSTALL=0
 ASSUME_YES=0
+DRY_RUN=0
+
+# Granular opt-in sets (comma-separated lists, normalized below).
+# When empty + MODE=core, no plugins install. --minimum / --full populate these.
+WANT_TOOLS=""
+WANT_SKILLS=""
+WANT_CLIS=""
+WANT_PLUGINS=""
 
 # Args
 for arg in "$@"; do
@@ -46,9 +66,14 @@ for arg in "$@"; do
     --force)         FORCE=1 ;;
     --uninstall)     UNINSTALL=1 ;;
     --yes|-y)        ASSUME_YES=1 ;;
+    --dry-run)       DRY_RUN=1 ;;
     --target=*)      CLI_TARGET="${arg#--target=}" ;;
+    --with-tools=*)   WANT_TOOLS="${arg#--with-tools=}" ;;
+    --with-skills=*)  WANT_SKILLS="${arg#--with-skills=}" ;;
+    --with-clis=*)    WANT_CLIS="${arg#--with-clis=}" ;;
+    --with-plugins=*) WANT_PLUGINS="${arg#--with-plugins=}" ;;
     -h|--help)
-      sed -n '2,28p' "$0"
+      sed -n '2,40p' "$0"
       exit 0 ;;
     *) echo "Unknown arg: $arg" >&2; exit 1 ;;
   esac
@@ -61,6 +86,23 @@ case "$CLI_TARGET" in
     exit 1 ;;
 esac
 
+# Bundle expansion (only fills what user did NOT pass explicitly — explicit wins).
+# --minimum  → tools=gitnexus,mempalace + skills=ui-ux-pro-max
+# --full     → tools=gitnexus,mempalace,rtk + skills=ui-ux-pro-max,caveman
+#              clis=codex,gemini + plugins=openai-codex
+case "$MODE" in
+  minimum)
+    [ -z "$WANT_TOOLS"  ] && WANT_TOOLS="gitnexus,mempalace"
+    [ -z "$WANT_SKILLS" ] && WANT_SKILLS="ui-ux-pro-max"
+    ;;
+  full)
+    [ -z "$WANT_TOOLS"   ] && WANT_TOOLS="gitnexus,mempalace,rtk"
+    [ -z "$WANT_SKILLS"  ] && WANT_SKILLS="ui-ux-pro-max,caveman"
+    [ -z "$WANT_CLIS"    ] && WANT_CLIS="codex,gemini"
+    [ -z "$WANT_PLUGINS" ] && WANT_PLUGINS="openai-codex"
+    ;;
+esac
+
 # Resolve install destination per CLI target. ROLEPOD_TARGET (env) wins for
 # all targets when set, so dry-run installs into a tempdir keep working.
 default_target_path_for() {
@@ -69,6 +111,19 @@ default_target_path_for() {
     codex)  echo "$HOME/.codex" ;;
     gemini) echo "$HOME/.gemini" ;;
     *)      echo "$HOME/.$1" ;;
+  esac
+}
+
+# Per-CLI plugin/extension dir (where 3rd-party skill bundles land).
+# Claude:  ~/.claude/plugins/<name>/
+# Codex:   ~/.codex/plugins/<name>/
+# Gemini:  ~/.gemini/extensions/<name>/
+plugin_dir_for() {
+  case "$1" in
+    claude) echo "$(default_target_path_for claude)/plugins" ;;
+    codex)  echo "$(default_target_path_for codex)/plugins" ;;
+    gemini) echo "$(default_target_path_for gemini)/extensions" ;;
+    *)      echo "" ;;
   esac
 }
 
@@ -86,10 +141,32 @@ ok()   { echo "${GREEN}✓${NC} $*"; }
 warn() { echo "${YELLOW}!${NC} $*"; }
 fail() { echo "${RED}✗${NC} $*" >&2; exit 1; }
 skip() { echo "${YELLOW}~${NC} $*"; }
+dry()  { echo "${YELLOW}[DRY-RUN]${NC} would: $*"; }
 
 # Generic helpers — defined early so install/uninstall blocks below can use them.
 have_cmd() { command -v "$1" >/dev/null 2>&1; }
 have_dir() { [ -d "$1" ]; }
+
+# Membership test for comma-separated wanted-set strings.
+# wants "gitnexus" "$WANT_TOOLS" → 0 if listed, 1 otherwise.
+wants() {
+  local needle="$1" haystack="$2"
+  case ",$haystack," in
+    *",$needle,"*) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+# Run a destructive shell command, or print a [DRY-RUN] preview. Used to gate
+# every cp/mkdir/rm/chmod/git clone/npm/pip/cargo so dry-run never writes.
+do_or_dry() {
+  local desc="$1"; shift
+  if [ "$DRY_RUN" -eq 1 ]; then
+    dry "$desc"
+    return 0
+  fi
+  "$@"
+}
 
 # ─── Managed-block helpers ──────────────────────────────────────────────
 # Entry docs (~/.claude/CLAUDE.md, ~/.codex/AGENTS.md, ~/.gemini/GEMINI.md)
@@ -102,10 +179,22 @@ ROLEPOD_BLOCK_END="<!-- rolepod:end -->"
 # - target missing/empty → write block-only
 # - target has markers   → replace content between markers
 # - target has no markers → append markers + block (preserve existing user content)
+# Honors $DRY_RUN — emits a preview line and returns.
 update_managed_block() {
   local target_file="$1"
   local source_file="$2"
   [ -f "$source_file" ] || { warn "managed block: source $source_file missing"; return 1; }
+
+  if [ "$DRY_RUN" -eq 1 ]; then
+    if [ ! -e "$target_file" ] || [ ! -s "$target_file" ]; then
+      dry "create $target_file with rolepod managed block from $(basename "$source_file")"
+    elif grep -qF "$ROLEPOD_BLOCK_START" "$target_file" 2>/dev/null; then
+      dry "replace rolepod managed block in $target_file"
+    else
+      dry "append rolepod managed block to $target_file (preserves existing content)"
+    fi
+    return 0
+  fi
 
   if [ ! -e "$target_file" ] || [ ! -s "$target_file" ]; then
     mkdir -p "$(dirname "$target_file")"
@@ -158,10 +247,15 @@ update_managed_block() {
 # - removes ROLEPOD_BLOCK_START..ROLEPOD_BLOCK_END (inclusive)
 # - leaves rest of file intact
 # - if file becomes empty (only contained our block), removes the file
+# Honors $DRY_RUN.
 remove_managed_block() {
   local target_file="$1"
   [ -f "$target_file" ] || return 0
   if ! grep -qF "$ROLEPOD_BLOCK_START" "$target_file"; then
+    return 0
+  fi
+  if [ "$DRY_RUN" -eq 1 ]; then
+    dry "strip rolepod managed block from $target_file"
     return 0
   fi
   local tmp
@@ -200,10 +294,15 @@ note_skipped()   { SKIPPED+=("$1"); }
 note_failed()    { FAILED+=("$1"); }
 
 echo "${BOLD}rolepod installer${NC}"
-echo "  source: $REPO_DIR"
-echo "  cli:    $CLI_TARGET"
-echo "  mode:   $MODE"
-echo "  force:  $FORCE"
+echo "  source:  $REPO_DIR"
+echo "  cli:     $CLI_TARGET"
+echo "  mode:    $MODE"
+echo "  force:   $FORCE"
+echo "  dry-run: $DRY_RUN"
+[ -n "$WANT_TOOLS"   ] && echo "  tools:   $WANT_TOOLS"
+[ -n "$WANT_SKILLS"  ] && echo "  skills:  $WANT_SKILLS"
+[ -n "$WANT_CLIS"    ] && echo "  clis:    $WANT_CLIS"
+[ -n "$WANT_PLUGINS" ] && echo "  plugins: $WANT_PLUGINS"
 echo ""
 
 # ─── Sanity check source ────────────────────────────────────────────────
@@ -235,7 +334,8 @@ esac
 # outside our managed blocks. Idempotent — safe to run when nothing installed.
 if [ "$UNINSTALL" -eq 1 ]; then
   echo "${BOLD}rolepod uninstaller${NC}"
-  echo "  cli:    $CLI_TARGET"
+  echo "  cli:     $CLI_TARGET"
+  echo "  dry-run: $DRY_RUN"
   echo ""
 
   # Discover what we'd remove so the user can decide.
@@ -259,7 +359,7 @@ if [ "$UNINSTALL" -eq 1 ]; then
   [ "$uninstall_gemini" -eq 1 ] && echo "  Gemini → $G_TARGET/extensions/rolepod, managed GEMINI.md block"
   echo ""
 
-  if [ "$ASSUME_YES" -ne 1 ]; then
+  if [ "$ASSUME_YES" -ne 1 ] && [ "$DRY_RUN" -ne 1 ]; then
     if [ -t 0 ] || [ -r /dev/tty ]; then
       printf "Continue? [y/N] " > /dev/tty
       read -r reply < /dev/tty || reply=""
@@ -306,21 +406,27 @@ if [ "$UNINSTALL" -eq 1 ]; then
 
   if [ "$uninstall_claude" -eq 1 ]; then
     step "Removing Claude rolepod files in $C_TARGET"
-    for n in "${AGENT_NAMES[@]}";   do rm -f "$C_TARGET/agents/$n"; done
-    for n in "${RULE_NAMES[@]}";    do rm -f "$C_TARGET/rules/$n"; done
-    for n in "${COMMAND_NAMES[@]}"; do rm -f "$C_TARGET/commands/$n"; done
-    for n in "${HOOK_NAMES[@]}";    do rm -f "$C_TARGET/hooks/$n"; done
-    for n in "${SKILL_NAMES[@]}";   do rm -rf "$C_TARGET/skills/$n"; done
-    rm -f "$C_TARGET/CHEATSHEET.md"
-    rm -f "$C_TARGET/.claude-plugin/plugin.json"
+    for n in "${AGENT_NAMES[@]}";   do do_or_dry "rm -f $C_TARGET/agents/$n"   rm -f "$C_TARGET/agents/$n"; done
+    for n in "${RULE_NAMES[@]}";    do do_or_dry "rm -f $C_TARGET/rules/$n"    rm -f "$C_TARGET/rules/$n"; done
+    for n in "${COMMAND_NAMES[@]}"; do do_or_dry "rm -f $C_TARGET/commands/$n" rm -f "$C_TARGET/commands/$n"; done
+    for n in "${HOOK_NAMES[@]}";    do do_or_dry "rm -f $C_TARGET/hooks/$n"    rm -f "$C_TARGET/hooks/$n"; done
+    for n in "${SKILL_NAMES[@]}";   do do_or_dry "rm -rf $C_TARGET/skills/$n"  rm -rf "$C_TARGET/skills/$n"; done
+    do_or_dry "rm -f $C_TARGET/CHEATSHEET.md"               rm -f "$C_TARGET/CHEATSHEET.md"
+    do_or_dry "rm -f $C_TARGET/.claude-plugin/plugin.json"  rm -f "$C_TARGET/.claude-plugin/plugin.json"
     # Empty dirs cleanup (rmdir; ignore failure if non-empty)
-    rmdir "$C_TARGET/agents" "$C_TARGET/rules" "$C_TARGET/commands" "$C_TARGET/hooks" "$C_TARGET/skills" "$C_TARGET/.claude-plugin" 2>/dev/null || true
+    if [ "$DRY_RUN" -eq 1 ]; then
+      dry "rmdir empty agents/rules/commands/hooks/skills/.claude-plugin under $C_TARGET (if empty)"
+    else
+      rmdir "$C_TARGET/agents" "$C_TARGET/rules" "$C_TARGET/commands" "$C_TARGET/hooks" "$C_TARGET/skills" "$C_TARGET/.claude-plugin" 2>/dev/null || true
+    fi
 
     # Strip rolepod hook entries from settings.json (keep user's other config).
     SETTINGS_FILE="$C_TARGET/settings.json"
     if [ -f "$SETTINGS_FILE" ]; then
       step "Stripping rolepod hook entries from $SETTINGS_FILE"
-      if command -v python3 >/dev/null 2>&1; then
+      if [ "$DRY_RUN" -eq 1 ]; then
+        dry "strip rolepod hook entries (paths under $C_TARGET/hooks) from $SETTINGS_FILE"
+      elif command -v python3 >/dev/null 2>&1; then
         python3 - "$SETTINGS_FILE" "$C_TARGET/hooks" <<'PY' || warn "settings.json strip failed (non-fatal)"
 import json, sys, os
 path, hook_dir = sys.argv[1], sys.argv[2]
@@ -368,8 +474,12 @@ PY
 
   if [ "$uninstall_codex" -eq 1 ]; then
     step "Removing Codex rolepod plugin in $X_TARGET/plugins/rolepod"
-    rm -rf "$X_TARGET/plugins/rolepod"
-    rmdir "$X_TARGET/plugins" 2>/dev/null || true
+    do_or_dry "rm -rf $X_TARGET/plugins/rolepod" rm -rf "$X_TARGET/plugins/rolepod"
+    if [ "$DRY_RUN" -eq 1 ]; then
+      dry "rmdir $X_TARGET/plugins (if empty)"
+    else
+      rmdir "$X_TARGET/plugins" 2>/dev/null || true
+    fi
     step "Stripping rolepod block from $X_TARGET/AGENTS.md"
     remove_managed_block "$X_TARGET/AGENTS.md"
     ok "Codex rolepod removed"
@@ -377,8 +487,12 @@ PY
 
   if [ "$uninstall_gemini" -eq 1 ]; then
     step "Removing Gemini rolepod extension in $G_TARGET/extensions/rolepod"
-    rm -rf "$G_TARGET/extensions/rolepod"
-    rmdir "$G_TARGET/extensions" 2>/dev/null || true
+    do_or_dry "rm -rf $G_TARGET/extensions/rolepod" rm -rf "$G_TARGET/extensions/rolepod"
+    if [ "$DRY_RUN" -eq 1 ]; then
+      dry "rmdir $G_TARGET/extensions (if empty)"
+    else
+      rmdir "$G_TARGET/extensions" 2>/dev/null || true
+    fi
     step "Stripping rolepod block from $G_TARGET/GEMINI.md"
     remove_managed_block "$G_TARGET/GEMINI.md"
     ok "Gemini rolepod removed"
@@ -390,6 +504,9 @@ PY
 fi
 
 # ─── Render all required entry docs up front ────────────────────────────
+# render.sh is read-only (writes to build/rendered/ inside the repo, not the
+# user's home). It's safe to run during dry-run so subsequent verification
+# steps can still inspect rendered/.
 RENDER_TARGET="$CLI_TARGET"
 step "Rendering entry doc(s) (target: $RENDER_TARGET)"
 if ! bash "$REPO_DIR/build/render.sh" --target="$RENDER_TARGET"; then
@@ -424,37 +541,58 @@ if claude_selected; then
     STAMP=$(date +%Y%m%d-%H%M%S)
     BACKUP="$HOME/.claude.backup-$STAMP"
     warn "Backing up existing $TARGET → $BACKUP"
-    cp -R "$TARGET" "$BACKUP"
+    do_or_dry "cp -R $TARGET $BACKUP" cp -R "$TARGET" "$BACKUP"
   fi
 
   step "Creating directory structure"
-  mkdir -p "$TARGET"/{agents,rules,hooks,skills,commands,.claude-plugin,plugins}
+  do_or_dry "mkdir -p $TARGET/{agents,rules,hooks,skills,commands,.claude-plugin,plugins}" \
+    mkdir -p "$TARGET/agents" "$TARGET/rules" "$TARGET/hooks" "$TARGET/skills" \
+             "$TARGET/commands" "$TARGET/.claude-plugin" "$TARGET/plugins"
 
   if [ "$FORCE" -eq 1 ]; then CP_FLAG=""; else CP_FLAG="-n"; fi
 
   step "Updating CLAUDE.md (managed block) + CHEATSHEET.md"
   update_managed_block "$TARGET/CLAUDE.md" "$RENDERED_CLAUDE_MD"
-  cp $CP_FLAG "$REPO_DIR/CHEATSHEET.md" "$TARGET/" 2>/dev/null || true
+  if [ "$DRY_RUN" -eq 1 ]; then
+    dry "cp $CP_FLAG $REPO_DIR/CHEATSHEET.md → $TARGET/CHEATSHEET.md"
+  else
+    cp $CP_FLAG "$REPO_DIR/CHEATSHEET.md" "$TARGET/" 2>/dev/null || true
+  fi
 
   step "Copying agents (18 from rendered/) + rules (16) + commands"
-  cp $CP_FLAG "$REPO_DIR"/build/rendered/claude/agents/*.md "$TARGET/agents/"   2>/dev/null || true
-  cp $CP_FLAG "$REPO_DIR"/core/rules/*.md                   "$TARGET/rules/"    2>/dev/null || true
-  cp $CP_FLAG "$REPO_DIR"/commands/*.md                     "$TARGET/commands/" 2>/dev/null || true
+  if [ "$DRY_RUN" -eq 1 ]; then
+    dry "cp $CP_FLAG $REPO_DIR/build/rendered/claude/agents/*.md → $TARGET/agents/"
+    dry "cp $CP_FLAG $REPO_DIR/core/rules/*.md                   → $TARGET/rules/"
+    dry "cp $CP_FLAG $REPO_DIR/commands/*.md                     → $TARGET/commands/"
+  else
+    cp $CP_FLAG "$REPO_DIR"/build/rendered/claude/agents/*.md "$TARGET/agents/"   2>/dev/null || true
+    cp $CP_FLAG "$REPO_DIR"/core/rules/*.md                   "$TARGET/rules/"    2>/dev/null || true
+    cp $CP_FLAG "$REPO_DIR"/commands/*.md                     "$TARGET/commands/" 2>/dev/null || true
+  fi
 
   step "Copying hooks (4) and marking executable"
-  cp $CP_FLAG "$REPO_DIR"/hooks/*.sh "$TARGET/hooks/" 2>/dev/null || true
-  chmod +x "$TARGET"/hooks/*.sh 2>/dev/null || true
+  if [ "$DRY_RUN" -eq 1 ]; then
+    dry "cp $CP_FLAG $REPO_DIR/hooks/*.sh → $TARGET/hooks/  (chmod +x)"
+  else
+    cp $CP_FLAG "$REPO_DIR"/hooks/*.sh "$TARGET/hooks/" 2>/dev/null || true
+    chmod +x "$TARGET"/hooks/*.sh 2>/dev/null || true
+  fi
 
   step "Copying bundled skills (27)"
   for skill_dir in "$REPO_DIR"/core/skills/*/; do
     name=$(basename "$skill_dir")
     if [ "$FORCE" -eq 1 ] || [ ! -e "$TARGET/skills/$name" ]; then
-      cp -R "$REPO_DIR/core/skills/$name" "$TARGET/skills/" 2>/dev/null || true
+      do_or_dry "cp -R $REPO_DIR/core/skills/$name → $TARGET/skills/" \
+        cp -R "$REPO_DIR/core/skills/$name" "$TARGET/skills/" 2>/dev/null || true
     fi
   done
 
   step "Copying plugin manifest"
-  cp $CP_FLAG "$REPO_DIR/.claude-plugin/plugin.json" "$TARGET/.claude-plugin/" 2>/dev/null || true
+  if [ "$DRY_RUN" -eq 1 ]; then
+    dry "cp $CP_FLAG $REPO_DIR/.claude-plugin/plugin.json → $TARGET/.claude-plugin/"
+  else
+    cp $CP_FLAG "$REPO_DIR/.claude-plugin/plugin.json" "$TARGET/.claude-plugin/" 2>/dev/null || true
+  fi
 
 # ─── Register hooks in settings.json ────────────────────────────────────
 # Claude Code reads hooks from ~/.claude/settings.json — manifest.json is
@@ -466,6 +604,15 @@ SETTINGS_FILE="$TARGET/settings.json"
 HOOK_DIR="$TARGET/hooks"
 
 step "Registering rolepod hooks in $SETTINGS_FILE"
+
+if [ "$DRY_RUN" -eq 1 ]; then
+  dry "register hooks in $SETTINGS_FILE:"
+  dry "  SessionStart  startup|resume → $HOOK_DIR/project-context-loader.sh (timeout 5)"
+  dry "  PreToolUse    Edit|Write|Bash → $HOOK_DIR/context-awareness.sh    (timeout 3)"
+  dry "  PostToolUse   Edit|Write     → $HOOK_DIR/verify-reminder.sh       (timeout 3)"
+  dry "  PostToolUse   Bash           → $HOOK_DIR/post-ship-detect.sh      (timeout 5)"
+  REGISTER_OK=1
+else
 
 # Create empty settings.json if missing
 if [ ! -f "$SETTINGS_FILE" ]; then
@@ -563,19 +710,26 @@ else
   warn "  Hooks shipped: project-context-loader.sh (SessionStart), context-awareness.sh (PreToolUse Edit|Write|Bash), verify-reminder.sh (PostToolUse Edit|Write), post-ship-detect.sh (PostToolUse Bash)"
 fi
 
+fi  # end DRY_RUN gate around settings.json registration
+
 # ─── Verify Claude rolepod core ─────────────────────────────────────────
-step "Verifying rolepod core"
-for required in \
-  CLAUDE.md CHEATSHEET.md \
-  agents/qa-tester.md agents/system-architect.md \
-  rules/INDEX.md rules/team-org.md \
-  hooks/verify-reminder.sh hooks/project-context-loader.sh \
-  skills/zoom-out/SKILL.md skills/anti-spaghetti/SKILL.md commands/careful.md \
-  .claude-plugin/plugin.json
-do
-  [ -e "$TARGET/$required" ] || fail "verification failed — $TARGET/$required missing"
-done
-ok "rolepod core installed → $TARGET"
+# Skip in dry-run — files we'd verify weren't actually written.
+if [ "$DRY_RUN" -eq 0 ]; then
+  step "Verifying rolepod core"
+  for required in \
+    CLAUDE.md CHEATSHEET.md \
+    agents/qa-tester.md agents/system-architect.md \
+    rules/INDEX.md rules/team-org.md \
+    hooks/verify-reminder.sh hooks/project-context-loader.sh \
+    skills/zoom-out/SKILL.md skills/anti-spaghetti/SKILL.md commands/careful.md \
+    .claude-plugin/plugin.json
+  do
+    [ -e "$TARGET/$required" ] || fail "verification failed — $TARGET/$required missing"
+  done
+  ok "rolepod core installed → $TARGET"
+else
+  skip "verification skipped (dry-run)"
+fi
 fi  # end claude_selected
 
 # ─── install_codex — Codex CLI path (~/.codex/) ────────────────────────
@@ -613,42 +767,55 @@ if codex_selected; then
     STAMP=$(date +%Y%m%d-%H%M%S)
     BACKUP="$HOME/.codex.backup-$STAMP"
     warn "Backing up existing $CODEX_TARGET → $BACKUP"
-    cp -R "$CODEX_TARGET" "$BACKUP"
+    do_or_dry "cp -R $CODEX_TARGET $BACKUP" cp -R "$CODEX_TARGET" "$BACKUP"
   fi
 
   step "Creating Codex plugin directory"
-  mkdir -p "$CODEX_PLUGIN_DEST"
+  do_or_dry "mkdir -p $CODEX_PLUGIN_DEST" mkdir -p "$CODEX_PLUGIN_DEST"
 
   # If --force, wipe plugin dir first so deletions in source propagate.
   if [ "$FORCE" -eq 1 ]; then
-    rm -rf "$CODEX_PLUGIN_DEST"
-    mkdir -p "$CODEX_PLUGIN_DEST"
+    do_or_dry "rm -rf $CODEX_PLUGIN_DEST && mkdir -p $CODEX_PLUGIN_DEST" \
+      bash -c "rm -rf '$CODEX_PLUGIN_DEST' && mkdir -p '$CODEX_PLUGIN_DEST'"
   fi
 
   step "Copying plugin tree → $CODEX_PLUGIN_DEST/"
-  # cp -R src/. dest/ copies *contents* of src into dest (BSD + GNU compatible).
-  cp -R "$RENDERED_CODEX_DIR/." "$CODEX_PLUGIN_DEST/" 2>/dev/null || true
-  # AGENTS.md is the entry doc — it lives at the Codex root, not inside the plugin.
-  rm -f "$CODEX_PLUGIN_DEST/AGENTS.md"
+  if [ "$DRY_RUN" -eq 1 ]; then
+    dry "cp -R $RENDERED_CODEX_DIR/. → $CODEX_PLUGIN_DEST/"
+    dry "rm -f $CODEX_PLUGIN_DEST/AGENTS.md (entry doc lives at root, not in plugin)"
+  else
+    # cp -R src/. dest/ copies *contents* of src into dest (BSD + GNU compatible).
+    cp -R "$RENDERED_CODEX_DIR/." "$CODEX_PLUGIN_DEST/" 2>/dev/null || true
+    # AGENTS.md is the entry doc — it lives at the Codex root, not inside the plugin.
+    rm -f "$CODEX_PLUGIN_DEST/AGENTS.md"
+  fi
 
   step "Updating AGENTS.md (managed block) → $CODEX_TARGET/AGENTS.md"
   update_managed_block "$CODEX_TARGET/AGENTS.md" "$RENDERED_AGENTS_MD"
 
   step "Marking hook scripts executable"
-  chmod +x "$CODEX_PLUGIN_DEST/hooks"/*.sh 2>/dev/null || true
+  if [ "$DRY_RUN" -eq 1 ]; then
+    dry "chmod +x $CODEX_PLUGIN_DEST/hooks/*.sh"
+  else
+    chmod +x "$CODEX_PLUGIN_DEST/hooks"/*.sh 2>/dev/null || true
+  fi
 
-  step "Verifying Codex install"
-  for required in \
-    AGENTS.md \
-    plugins/rolepod/.codex-plugin/plugin.json \
-    plugins/rolepod/agents/qa-tester.toml \
-    plugins/rolepod/hooks/hooks.json \
-    plugins/rolepod/skills/anti-spaghetti/SKILL.md
-  do
-    [ -e "$CODEX_TARGET/$required" ] || fail "Codex verification failed — $CODEX_TARGET/$required missing"
-  done
-  ok "rolepod codex plugin installed → $CODEX_PLUGIN_DEST"
-  ok "AGENTS.md → $CODEX_TARGET/AGENTS.md"
+  if [ "$DRY_RUN" -eq 0 ]; then
+    step "Verifying Codex install"
+    for required in \
+      AGENTS.md \
+      plugins/rolepod/.codex-plugin/plugin.json \
+      plugins/rolepod/agents/qa-tester.toml \
+      plugins/rolepod/hooks/hooks.json \
+      plugins/rolepod/skills/anti-spaghetti/SKILL.md
+    do
+      [ -e "$CODEX_TARGET/$required" ] || fail "Codex verification failed — $CODEX_TARGET/$required missing"
+    done
+    ok "rolepod codex plugin installed → $CODEX_PLUGIN_DEST"
+    ok "AGENTS.md → $CODEX_TARGET/AGENTS.md"
+  else
+    skip "Codex verification skipped (dry-run)"
+  fi
 fi
 
 # ─── install_gemini — Gemini CLI path (~/.gemini/) ─────────────────────
@@ -682,59 +849,96 @@ if gemini_selected; then
     STAMP=$(date +%Y%m%d-%H%M%S)
     BACKUP="$HOME/.gemini.backup-$STAMP"
     warn "Backing up existing $GEMINI_TARGET → $BACKUP"
-    cp -R "$GEMINI_TARGET" "$BACKUP"
+    do_or_dry "cp -R $GEMINI_TARGET $BACKUP" cp -R "$GEMINI_TARGET" "$BACKUP"
   fi
 
   step "Creating Gemini extension directory"
-  mkdir -p "$GEMINI_EXT_DEST"
+  do_or_dry "mkdir -p $GEMINI_EXT_DEST" mkdir -p "$GEMINI_EXT_DEST"
 
   if [ "$FORCE" -eq 1 ]; then
-    rm -rf "$GEMINI_EXT_DEST"
-    mkdir -p "$GEMINI_EXT_DEST"
+    do_or_dry "rm -rf $GEMINI_EXT_DEST && mkdir -p $GEMINI_EXT_DEST" \
+      bash -c "rm -rf '$GEMINI_EXT_DEST' && mkdir -p '$GEMINI_EXT_DEST'"
   fi
 
   step "Copying extension tree → $GEMINI_EXT_DEST/"
-  cp -R "$RENDERED_GEMINI_DIR/." "$GEMINI_EXT_DEST/" 2>/dev/null || true
-  # GEMINI.md is the entry doc — it lives at the Gemini root, not in the extension.
-  rm -f "$GEMINI_EXT_DEST/GEMINI.md"
+  if [ "$DRY_RUN" -eq 1 ]; then
+    dry "cp -R $RENDERED_GEMINI_DIR/. → $GEMINI_EXT_DEST/"
+    dry "rm -f $GEMINI_EXT_DEST/GEMINI.md (entry doc lives at root, not in extension)"
+  else
+    cp -R "$RENDERED_GEMINI_DIR/." "$GEMINI_EXT_DEST/" 2>/dev/null || true
+    # GEMINI.md is the entry doc — it lives at the Gemini root, not in the extension.
+    rm -f "$GEMINI_EXT_DEST/GEMINI.md"
+  fi
 
   step "Updating GEMINI.md (managed block) → $GEMINI_TARGET/GEMINI.md"
   update_managed_block "$GEMINI_TARGET/GEMINI.md" "$RENDERED_GEMINI_MD"
 
   step "Marking hook scripts executable"
-  chmod +x "$GEMINI_EXT_DEST/hooks"/*.sh 2>/dev/null || true
+  if [ "$DRY_RUN" -eq 1 ]; then
+    dry "chmod +x $GEMINI_EXT_DEST/hooks/*.sh"
+  else
+    chmod +x "$GEMINI_EXT_DEST/hooks"/*.sh 2>/dev/null || true
+  fi
 
-  step "Verifying Gemini install"
-  for required in \
-    GEMINI.md \
-    extensions/rolepod/gemini-extension.json \
-    extensions/rolepod/commands/careful.toml \
-    extensions/rolepod/hooks/hooks.json \
-    extensions/rolepod/skills/anti-spaghetti/SKILL.md
-  do
-    [ -e "$GEMINI_TARGET/$required" ] || fail "Gemini verification failed — $GEMINI_TARGET/$required missing"
-  done
-  ok "rolepod gemini extension installed → $GEMINI_EXT_DEST"
-  ok "GEMINI.md → $GEMINI_TARGET/GEMINI.md"
+  if [ "$DRY_RUN" -eq 0 ]; then
+    step "Verifying Gemini install"
+    for required in \
+      GEMINI.md \
+      extensions/rolepod/gemini-extension.json \
+      extensions/rolepod/commands/careful.toml \
+      extensions/rolepod/hooks/hooks.json \
+      extensions/rolepod/skills/anti-spaghetti/SKILL.md
+    do
+      [ -e "$GEMINI_TARGET/$required" ] || fail "Gemini verification failed — $GEMINI_TARGET/$required missing"
+    done
+    ok "rolepod gemini extension installed → $GEMINI_EXT_DEST"
+    ok "GEMINI.md → $GEMINI_TARGET/GEMINI.md"
+  else
+    skip "Gemini verification skipped (dry-run)"
+  fi
 fi
 
-# Ensure TARGET is set for the rest of the script (Claude plugin install paths
-# below assume Claude conventions). For codex/gemini-only runs, plugin install
-# is skipped via mode gates anyway.
+# Ensure TARGET is set for the rest of the script. Plugin install routing
+# now uses per-CLI plugin_dir_for() lookups, so this is a fallback only when
+# claude wasn't selected at all.
 if [ -z "${TARGET:-}" ]; then
   TARGET="$(default_target_path_for claude)"
   PLUGINS_DIR="$TARGET/plugins"
 fi
 
 # ─── Plugin definitions ─────────────────────────────────────────────────
-# (have_cmd / have_dir defined earlier near the log helpers)
+# Per-CLI install routing:
+#   - Skill plugins (ui-ux-pro-max, caveman) clone into the SELECTED target's
+#     plugin/extension dir. For --target=all, clone once into Claude's plugins/
+#     (skills are read by Claude Code's plugin loader; Codex/Gemini have their
+#     own native skill discovery via the rendered plugin/extension tree).
+#   - Global tools (rtk, gitnexus, mempalace) install via system package
+#     managers and end up on $PATH — no per-target work.
+#   - openai-codex Claude Code plugin is Claude-specific (only installs when
+#     Claude is in the selected target set).
+
+# Pick the "primary" target for skill plugins. Claude wins if selected,
+# otherwise pick the single non-claude target.
+primary_skill_target() {
+  if claude_selected; then echo "claude"; return; fi
+  case "$CLI_TARGET" in
+    codex)  echo "codex"  ;;
+    gemini) echo "gemini" ;;
+    *)      echo "claude" ;;  # safe fallback
+  esac
+}
 
 plugin_anthropic_skills() {
+  # Anthropic skills are Claude-Code-only. Skip outside Claude target.
+  if ! claude_selected; then
+    skip "anthropic-skills (target: claude only — current: $CLI_TARGET)"
+    return 0
+  fi
   local p="$TARGET/plugins/marketplaces"
   if have_dir "$p" || have_dir "$TARGET/skills/test-driven-development" \
     || have_dir "$TARGET/skills/anthropic-skills" \
     || have_dir "$TARGET/plugins/marketplaces/anthropics"; then
-    ok "Anthropic skills detected (referenced by agent preloads — works as-is)"
+    ok "Anthropic skills detected (target: claude — referenced by agent preloads)"
     note_skipped "anthropic-skills (already present)"
   else
     warn "Anthropic skills not detected. Most are bundled with recent Claude Code."
@@ -744,9 +948,12 @@ plugin_anthropic_skills() {
 }
 
 plugin_ui_ux_pro_max() {
-  local dest="$PLUGINS_DIR/ui-ux-pro-max-skill"
+  local skill_target dest_root dest
+  skill_target="$(primary_skill_target)"
+  dest_root="$(plugin_dir_for "$skill_target")"
+  dest="$dest_root/ui-ux-pro-max-skill"
   if have_dir "$dest"; then
-    ok "ui-ux-pro-max already installed → $dest"
+    ok "ui-ux-pro-max already installed (target: $skill_target) → $dest"
     note_skipped "ui-ux-pro-max"
     return 0
   fi
@@ -755,9 +962,15 @@ plugin_ui_ux_pro_max() {
     note_failed "ui-ux-pro-max"
     return 1
   fi
-  step "Cloning ui-ux-pro-max-skill"
+  step "Cloning ui-ux-pro-max-skill (target: $skill_target) → $dest"
+  do_or_dry "mkdir -p $dest_root" mkdir -p "$dest_root"
+  if [ "$DRY_RUN" -eq 1 ]; then
+    dry "git clone https://github.com/nextlevelbuilder/ui-ux-pro-max-skill $dest"
+    note_installed "ui-ux-pro-max (dry-run)"
+    return 0
+  fi
   if git clone --quiet https://github.com/nextlevelbuilder/ui-ux-pro-max-skill "$dest"; then
-    ok "ui-ux-pro-max installed"
+    ok "ui-ux-pro-max installed (target: $skill_target)"
     note_installed "ui-ux-pro-max"
   else
     warn "ui-ux-pro-max clone failed"
@@ -767,7 +980,7 @@ plugin_ui_ux_pro_max() {
 
 plugin_gitnexus() {
   if have_cmd gitnexus; then
-    ok "GitNexus already installed → $(command -v gitnexus)"
+    ok "GitNexus already installed (target: global) → $(command -v gitnexus)"
     note_skipped "gitnexus"
     return 0
   fi
@@ -776,9 +989,14 @@ plugin_gitnexus() {
     note_failed "gitnexus"
     return 1
   fi
-  step "Installing GitNexus via npm"
+  step "Installing GitNexus via npm (target: global)"
+  if [ "$DRY_RUN" -eq 1 ]; then
+    dry "npm install -g gitnexus"
+    note_installed "gitnexus (dry-run)"
+    return 0
+  fi
   if npm install -g gitnexus 2>&1 | tail -3; then
-    ok "GitNexus installed"
+    ok "GitNexus installed (target: global)"
     note_installed "gitnexus"
   else
     warn "GitNexus install failed → manual: npm install -g gitnexus"
@@ -788,7 +1006,7 @@ plugin_gitnexus() {
 
 plugin_mempalace() {
   if have_cmd mempalace; then
-    ok "MemPalace already installed → $(command -v mempalace)"
+    ok "MemPalace already installed (target: global) → $(command -v mempalace)"
     note_skipped "mempalace"
     return 0
   fi
@@ -800,9 +1018,14 @@ plugin_mempalace() {
     note_failed "mempalace"
     return 1
   fi
-  step "Installing MemPalace via $pip_cmd"
+  step "Installing MemPalace via $pip_cmd (target: global)"
+  if [ "$DRY_RUN" -eq 1 ]; then
+    dry "$pip_cmd install --user mempalace"
+    note_installed "mempalace (dry-run)"
+    return 0
+  fi
   if "$pip_cmd" install --user mempalace 2>&1 | tail -3; then
-    ok "MemPalace installed"
+    ok "MemPalace installed (target: global)"
     note_installed "mempalace"
   else
     warn "MemPalace install failed → manual: $pip_cmd install mempalace"
@@ -811,9 +1034,12 @@ plugin_mempalace() {
 }
 
 plugin_caveman() {
-  local dest="$PLUGINS_DIR/caveman"
+  local skill_target dest_root dest
+  skill_target="$(primary_skill_target)"
+  dest_root="$(plugin_dir_for "$skill_target")"
+  dest="$dest_root/caveman"
   if have_dir "$dest"; then
-    ok "caveman already installed → $dest"
+    ok "caveman already installed (target: $skill_target) → $dest"
     note_skipped "caveman"
     return 0
   fi
@@ -822,9 +1048,15 @@ plugin_caveman() {
     note_failed "caveman"
     return 1
   fi
-  step "Cloning caveman"
+  step "Cloning caveman (target: $skill_target) → $dest"
+  do_or_dry "mkdir -p $dest_root" mkdir -p "$dest_root"
+  if [ "$DRY_RUN" -eq 1 ]; then
+    dry "git clone https://github.com/JuliusBrussee/caveman $dest"
+    note_installed "caveman (dry-run)"
+    return 0
+  fi
   if git clone --quiet https://github.com/JuliusBrussee/caveman "$dest"; then
-    ok "caveman installed"
+    ok "caveman installed (target: $skill_target)"
     note_installed "caveman"
   else
     warn "caveman clone failed"
@@ -834,7 +1066,7 @@ plugin_caveman() {
 
 plugin_rtk() {
   if have_cmd rtk; then
-    ok "rtk already installed → $(command -v rtk)"
+    ok "rtk already installed (target: global) → $(command -v rtk)"
     note_skipped "rtk"
     return 0
   fi
@@ -843,9 +1075,14 @@ plugin_rtk() {
     note_failed "rtk"
     return 1
   fi
-  step "Installing rtk via cargo (this can take a few minutes)"
+  step "Installing rtk via cargo (target: global, this can take a few minutes)"
+  if [ "$DRY_RUN" -eq 1 ]; then
+    dry "cargo install rtk"
+    note_installed "rtk (dry-run)"
+    return 0
+  fi
   if cargo install rtk 2>&1 | tail -3; then
-    ok "rtk installed"
+    ok "rtk installed (target: global)"
     note_installed "rtk"
   else
     warn "rtk install failed → manual: cargo install rtk"
@@ -855,23 +1092,33 @@ plugin_rtk() {
 
 plugin_gemini_cli() {
   if have_cmd gemini; then
-    ok "Gemini CLI already installed → $(command -v gemini)"
+    ok "Gemini CLI already installed (target: global) → $(command -v gemini)"
     note_skipped "gemini-cli"
     return 0
   fi
   if have_cmd npm; then
-    step "Installing Gemini CLI via npm"
+    step "Installing Gemini CLI via npm (target: global)"
+    if [ "$DRY_RUN" -eq 1 ]; then
+      dry "npm install -g @google/gemini-cli"
+      note_installed "gemini-cli (dry-run)"
+      return 0
+    fi
     if npm install -g @google/gemini-cli 2>&1 | tail -3; then
-      ok "Gemini CLI installed"
+      ok "Gemini CLI installed (target: global)"
       note_installed "gemini-cli"
       warn "Run: gemini auth login"
       return 0
     fi
   fi
   if have_cmd brew; then
-    step "Installing Gemini CLI via brew"
+    step "Installing Gemini CLI via brew (target: global)"
+    if [ "$DRY_RUN" -eq 1 ]; then
+      dry "brew install gemini-cli"
+      note_installed "gemini-cli (dry-run)"
+      return 0
+    fi
     if brew install gemini-cli 2>&1 | tail -3; then
-      ok "Gemini CLI installed"
+      ok "Gemini CLI installed (target: global)"
       note_installed "gemini-cli"
       warn "Run: gemini auth login"
       return 0
@@ -883,7 +1130,7 @@ plugin_gemini_cli() {
 
 plugin_codex_cli() {
   if have_cmd codex; then
-    ok "Codex CLI already installed → $(command -v codex)"
+    ok "Codex CLI already installed (target: global) → $(command -v codex)"
     note_skipped "codex-cli"
     return 0
   fi
@@ -892,9 +1139,14 @@ plugin_codex_cli() {
     note_failed "codex-cli"
     return 1
   fi
-  step "Installing Codex CLI via npm"
+  step "Installing Codex CLI via npm (target: global)"
+  if [ "$DRY_RUN" -eq 1 ]; then
+    dry "npm install -g @openai/codex"
+    note_installed "codex-cli (dry-run)"
+    return 0
+  fi
   if npm install -g @openai/codex 2>&1 | tail -3; then
-    ok "Codex CLI installed"
+    ok "Codex CLI installed (target: global)"
     note_installed "codex-cli"
   else
     warn "Codex CLI install failed → manual: npm install -g @openai/codex"
@@ -903,45 +1155,70 @@ plugin_codex_cli() {
 }
 
 plugin_openai_codex_marketplace() {
+  # Claude Code plugin — only meaningful when Claude is in the selected set.
+  if ! claude_selected; then
+    skip "openai-codex Claude Code plugin (target: claude only — current: $CLI_TARGET)"
+    return 0
+  fi
   local p="$TARGET/plugins/marketplaces/openai-codex"
   if have_dir "$p"; then
-    ok "openai-codex Claude Code plugin already installed"
+    ok "openai-codex Claude Code plugin already installed (target: claude)"
     note_skipped "openai-codex-plugin"
     return 0
   fi
-  warn "openai-codex plugin must be installed inside Claude Code:"
+  warn "openai-codex plugin (target: claude) must be installed inside Claude Code:"
   warn "  start Claude Code, then run: /plugin install openai-codex"
   note_failed "openai-codex-plugin (manual /plugin install)"
 }
 
-# ─── Run plugin install based on mode ───────────────────────────────────
+# ─── Run plugin installs based on granular sets ─────────────────────────
+# WANT_TOOLS / WANT_SKILLS / WANT_CLIS / WANT_PLUGINS were populated either
+# directly via --with-* flags or expanded from --minimum/--full above.
 
-if [ "$MODE" = "minimum" ] || [ "$MODE" = "full" ]; then
-  echo ""
-  echo "${BOLD}${CYAN}Installing minimum plugin set${NC}"
-  echo "  (Anthropic skills + ui-ux-pro-max + GitNexus + MemPalace)"
-  echo ""
-  plugin_anthropic_skills
-  plugin_ui_ux_pro_max
-  plugin_gitnexus
-  plugin_mempalace
-fi
+ANY_PLUGIN=0
+[ -n "$WANT_TOOLS"   ] && ANY_PLUGIN=1
+[ -n "$WANT_SKILLS"  ] && ANY_PLUGIN=1
+[ -n "$WANT_CLIS"    ] && ANY_PLUGIN=1
+[ -n "$WANT_PLUGINS" ] && ANY_PLUGIN=1
 
-if [ "$MODE" = "full" ]; then
+if [ "$ANY_PLUGIN" -eq 1 ]; then
   echo ""
-  echo "${BOLD}${CYAN}Installing full plugin set${NC}"
-  echo "  (caveman + rtk + Codex CLI + Gemini CLI + openai-codex plugin)"
+  echo "${BOLD}${CYAN}Installing requested extras${NC}"
+  [ -n "$WANT_TOOLS"   ] && echo "  tools:   $WANT_TOOLS"
+  [ -n "$WANT_SKILLS"  ] && echo "  skills:  $WANT_SKILLS"
+  [ -n "$WANT_CLIS"    ] && echo "  clis:    $WANT_CLIS"
+  [ -n "$WANT_PLUGINS" ] && echo "  plugins: $WANT_PLUGINS"
   echo ""
-  plugin_caveman
-  plugin_rtk
-  plugin_codex_cli
-  plugin_gemini_cli
-  plugin_openai_codex_marketplace
+
+  # Anthropic skills detection — always runs when Claude is the target and any
+  # extras are requested (cheap, read-only check).
+  if claude_selected; then
+    plugin_anthropic_skills
+  fi
+
+  # Skills (3rd-party clones into per-CLI plugin/extension dir)
+  if wants "ui-ux-pro-max" "$WANT_SKILLS"; then plugin_ui_ux_pro_max; fi
+  if wants "caveman"       "$WANT_SKILLS"; then plugin_caveman; fi
+
+  # Global tools (toolchain-installed, end up on $PATH)
+  if wants "gitnexus"  "$WANT_TOOLS"; then plugin_gitnexus; fi
+  if wants "mempalace" "$WANT_TOOLS"; then plugin_mempalace; fi
+  if wants "rtk"       "$WANT_TOOLS"; then plugin_rtk; fi
+
+  # CLI binaries
+  if wants "codex"  "$WANT_CLIS"; then plugin_codex_cli; fi
+  if wants "gemini" "$WANT_CLIS"; then plugin_gemini_cli; fi
+
+  # Claude marketplace plugins (Claude-only)
+  if wants "openai-codex" "$WANT_PLUGINS"; then plugin_openai_codex_marketplace; fi
 fi
 
 # ─── Summary ────────────────────────────────────────────────────────────
 echo ""
 echo "${BOLD}─── Summary ───${NC}"
+if [ "$DRY_RUN" -eq 1 ]; then
+  echo "${YELLOW}DRY-RUN: nothing was written to disk${NC}"
+fi
 if [ "${#INSTALLED[@]}" -gt 0 ]; then
   echo "${GREEN}Installed:${NC}"
   for x in "${INSTALLED[@]}"; do echo "  ✓ $x"; done
@@ -956,12 +1233,17 @@ if [ "${#FAILED[@]}" -gt 0 ]; then
 fi
 
 echo ""
-if [ "$MODE" = "core" ]; then
+if [ "$MODE" = "core" ] && [ "$ANY_PLUGIN" -eq 0 ]; then
   cat <<EOF
 ${BOLD}rolepod core installed.${NC} For plugin install:
 
   ./install.sh --minimum    # ui-ux-pro-max + GitNexus + MemPalace
   ./install.sh --full       # minimum + caveman + rtk + Codex + Gemini
+
+Granular alternatives:
+  ./install.sh --with-tools=gitnexus,mempalace
+  ./install.sh --with-skills=ui-ux-pro-max
+  ./install.sh --with-clis=codex,gemini --with-plugins=openai-codex
 
 EOF
 fi
@@ -969,7 +1251,7 @@ fi
 # ─── Post-install interactive prompts ───────────────────────────────────
 # Only when stdin is a TTY (or /dev/tty available), and only for modes that
 # actually installed the relevant tool. Each prompt reads from /dev/tty so
-# this also works when install.sh is piped via curl.
+# this also works when install.sh is piped via curl. Skipped in dry-run.
 
 was_installed() {
   local needle="$1"
@@ -990,14 +1272,14 @@ ask_yn() {
   esac
 }
 
-if [ -t 0 ] || [ -r /dev/tty ]; then
-  if [ "$MODE" = "minimum" ] || [ "$MODE" = "full" ]; then
+if [ "$DRY_RUN" -eq 0 ] && { [ -t 0 ] || [ -r /dev/tty ]; }; then
+  if [ "$ANY_PLUGIN" -eq 1 ]; then
     # Only prompt if at least one relevant tool is available.
     SHOW_PROMPTS=0
     if have_cmd mempalace || was_installed "mempalace" || have_cmd gemini || was_installed "gemini-cli"; then
       SHOW_PROMPTS=1
     fi
-    [ "$MODE" = "full" ] && SHOW_PROMPTS=1
+    wants "openai-codex" "$WANT_PLUGINS" && SHOW_PROMPTS=1
 
     if [ "$SHOW_PROMPTS" -eq 1 ]; then
       echo ""
@@ -1029,8 +1311,9 @@ if [ -t 0 ] || [ -r /dev/tty ]; then
         fi
       fi
 
-      # 3) openai-codex marketplace plugin (full mode + plugin not yet present)
-      if [ "$MODE" = "full" ] && [ ! -d "$TARGET/plugins/marketplaces/openai-codex" ]; then
+      # 3) openai-codex marketplace plugin (only when explicitly requested + missing)
+      if wants "openai-codex" "$WANT_PLUGINS" && claude_selected \
+         && [ ! -d "$TARGET/plugins/marketplaces/openai-codex" ]; then
         if ask_yn "Open Claude Code now to install the openai-codex plugin?" "N"; then
           echo "  Start Claude Code, then run inside it:"
           echo "    /plugin install openai-codex"

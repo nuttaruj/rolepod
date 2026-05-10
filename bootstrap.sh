@@ -15,11 +15,15 @@
 #   --minimum   core + ui-ux-pro-max + GitNexus + MemPalace
 #   --full      minimum + caveman + rtk + Codex CLI + Gemini CLI + openai-codex
 #   --force     overwrite existing ~/.claude (backup created)
+#   --dry-run   preview every action; write nothing to disk
+#   --with-tools=<list> / --with-skills=<list> / --with-clis=<list> / --with-plugins=<list>
+#               compose your own bundle (see install.sh --help)
 #
 # Examples:
 #   curl -fsSL .../bootstrap.sh | bash                       # interactive menu
 #   curl -fsSL .../bootstrap.sh | bash -s -- --minimum       # skip prompt
 #   curl -fsSL .../bootstrap.sh | bash -s -- --full --force
+#   curl -fsSL .../bootstrap.sh | bash -s -- --core --with-tools=gitnexus
 
 set -euo pipefail
 
@@ -48,13 +52,23 @@ Choose install mode:
   ${BOLD}1${NC}) ${CYAN}core${NC}      — rolepod files only (no external plugins)
   ${BOLD}2${NC}) ${GREEN}minimum${NC}   — core + ui-ux-pro-max + GitNexus + MemPalace ${YELLOW}★ recommended${NC}
   ${BOLD}3${NC}) ${CYAN}full${NC}      — minimum + caveman + rtk + Codex CLI + Gemini CLI + openai-codex plugin
+  ${BOLD}4${NC}) ${CYAN}custom${NC}    — abort here, re-run install.sh with --with-tools/--with-skills/--with-clis/--with-plugins
+                see: https://github.com/nuttaruj/rolepod#install-flags
 
 EOF
     choice=""
-    read -r -p "Mode [1/2/3] (default 2): " choice </dev/tty || choice=""
+    read -r -p "Mode [1/2/3/4] (default 2): " choice </dev/tty || choice=""
     case "${choice:-2}" in
       1|core)        ARGS=("--core") ;;
       3|full)        ARGS=("--full") ;;
+      4|custom)
+        echo ""
+        echo "${BOLD}Custom install — re-run install.sh with the granular flags:${NC}" >&2
+        echo "  cd $DEST 2>/dev/null || curl -fsSL .../bootstrap.sh | bash -s -- <flags>" >&2
+        echo "  ./install.sh --core --target=claude --with-tools=gitnexus,mempalace" >&2
+        echo "  ./install.sh --core --target=codex --with-skills=ui-ux-pro-max" >&2
+        echo "  ./install.sh --help    # full flag reference" >&2
+        exit 0 ;;
       2|minimum|"")  ARGS=("--minimum") ;;
       *) echo "Unknown choice '$choice' — defaulting to minimum"; ARGS=("--minimum") ;;
     esac
