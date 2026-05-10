@@ -90,3 +90,80 @@ Help close the gap — install on Codex / Gemini and report at [issues/](https:/
 - **Gemini CLI**: agents are inlined in `GEMINI.md` as a roster table. Lead reads the relevant agent's section and acts in-character. Gemini Code Assist is adding richer multi-agent primitives — when those land, the Gemini adapter will switch to native dispatch.
 
 The path-based ownership rules from `team-org.md` apply identically across all three CLIs — same agent picks the same paths regardless of which CLI is in charge of orchestration.
+
+## Recommended Codex setup
+
+Codex CLI supports both global and project-level configuration. Rolepod's installer ships global by default (`~/.codex/`) but project-level overrides are useful when a repo needs strict rules.
+
+### Global core (one-time per machine)
+
+```bash
+./install.sh --target=codex
+```
+
+Installs:
+- `~/.codex/AGENTS.md` (managed block — your existing content preserved)
+- `~/.codex/plugins/rolepod/` (full plugin: 18 agents, 27 skills, 4 hooks)
+
+### Project-level GitNexus index (one-time per repo)
+
+```bash
+cd /your/project
+npx gitnexus analyze
+```
+
+Indexes the codebase for impact-analysis tools. GitNexus index is per-repo, not per-CLI.
+
+### Project-specific AGENTS.md override (optional)
+
+When a repo needs stricter rules than the global rolepod set, create `AGENTS.md` at the repo root with project-specific overrides. Codex precedence: repo-root `AGENTS.md` > `~/.codex/AGENTS.md`. Rolepod's global rules still apply unless explicitly overridden. See [Codex config docs](https://github.com/openai/codex/blob/main/docs/config.md).
+
+### Verify install
+
+```bash
+codex
+# Should auto-load the rolepod block from ~/.codex/AGENTS.md
+# /agent <name> dispatches subagents from ~/.codex/plugins/rolepod/agents/
+# Hooks fire automatically (SessionStart / PreToolUse / PostToolUse)
+```
+
+If hooks don't fire, check `~/.codex/hooks.json` matches the schema documented at [developers.openai.com/codex/hooks](https://developers.openai.com/codex/hooks).
+
+## Recommended Gemini setup
+
+Gemini CLI uses an extension model. Rolepod ships as a global extension; project-level `GEMINI.md` overrides apply on top.
+
+### Global core (one-time per machine)
+
+```bash
+./install.sh --target=gemini
+```
+
+Installs:
+- `~/.gemini/GEMINI.md` (managed block — your existing content preserved)
+- `~/.gemini/extensions/rolepod/` (full extension: 18 agents inlined, 27 skills, 6 commands, 3 hooks)
+
+### Project-level GitNexus index (one-time per repo)
+
+```bash
+cd /your/project
+npx gitnexus analyze
+```
+
+Same per-repo index as the Codex flow — GitNexus is CLI-agnostic.
+
+### Project-specific GEMINI.md override (optional)
+
+Create `GEMINI.md` at the repo root with project-specific overrides. Gemini precedence: repo-root `GEMINI.md` > `~/.gemini/GEMINI.md`. See [Gemini CLI configuration docs](https://github.com/google-gemini/gemini-cli/blob/main/docs/cli/configuration.md).
+
+### Verify install
+
+```bash
+gemini extensions list
+# Should show 'rolepod' as an enabled extension
+gemini
+# /careful, /ship, /review, /test, /plan, /spec available as slash commands
+# Hooks fire automatically (SessionStart / BeforeTool / AfterTool)
+```
+
+If the extension doesn't appear, check `~/.gemini/extensions/rolepod/gemini-extension.json` matches the schema at [Gemini extensions docs](https://github.com/google-gemini/gemini-cli/blob/main/docs/extensions.md).
