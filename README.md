@@ -152,7 +152,7 @@ Multiple layers active by default:
   cargo install rtk
   # or per repo instructions at https://github.com/rtk-ai/rtk
   ```
-- **[caveman](https://github.com/mattpocock/skills)** mode — compress chat output ~75% while preserving technical accuracy. Skill provided by mattpocock/skills. Activate with `/caveman` or set as default.
+- **[caveman](https://github.com/JuliusBrussee/caveman)** mode — compress chat output ~75% while preserving technical accuracy. Skill by JuliusBrussee/caveman. Activate with `/caveman` or set as default.
 - **`/btw`** — side question that doesn't enter conversation history.
 
 ### Context architecture
@@ -363,7 +363,8 @@ This system synthesizes patterns from many great open-source projects:
 
 ### Core patterns
 - **Anthropic Claude Code** — base platform + best practices ([code.claude.com](https://code.claude.com))
-- **[mattpocock/skills](https://github.com/mattpocock/skills)** — skill patterns + caveman mode + zoom-out concept (68k stars)
+- **[mattpocock/skills](https://github.com/mattpocock/skills)** — skill patterns + zoom-out concept (68k stars)
+- **[JuliusBrussee/caveman](https://github.com/JuliusBrussee/caveman)** — caveman compression mode (chat output ~75% reduction)
 - **[wshobson/agents](https://github.com/wshobson/agents)** — plugin packaging structure + agent orchestration patterns (35k stars)
 - **[AgriciDaniel/claude-seo](https://github.com/AgriciDaniel/claude-seo)** — specialized agent plugin pattern (6.2k stars)
 - **[OneRedOak/claude-code-workflows](https://github.com/OneRedOak/claude-code-workflows)** — review CI workflows + design review patterns (3.7k stars)
