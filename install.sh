@@ -7,6 +7,7 @@
 #   ./install.sh --full          # minimum + caveman + rtk + codex CLI + gemini CLI
 #   ./install.sh --force         # overwrite existing ~/.claude files (backup created)
 #                                # --force can be combined with any of the above
+#   ./install.sh --target=claude # CLI target (default; codex|gemini are Phase 2.2)
 #
 # Env:
 #   ROLEPOD_TARGET    where to write rolepod files (default ~/.claude)
@@ -21,6 +22,7 @@ TARGET="${ROLEPOD_TARGET:-$HOME/.claude}"
 PLUGINS_DIR="$TARGET/plugins"
 MODE="core"
 FORCE=0
+CLI_TARGET="claude"
 
 # Args
 for arg in "$@"; do
@@ -29,12 +31,24 @@ for arg in "$@"; do
     --full)          MODE="full" ;;
     --core|--merge)  MODE="core" ;;
     --force)         FORCE=1 ;;
+    --target=*)      CLI_TARGET="${arg#--target=}" ;;
     -h|--help)
-      sed -n '2,17p' "$0"
+      sed -n '2,18p' "$0"
       exit 0 ;;
     *) echo "Unknown arg: $arg" >&2; exit 1 ;;
   esac
 done
+
+case "$CLI_TARGET" in
+  claude) ;;
+  codex|gemini)
+    echo "Phase 2.2 not yet implemented — install Claude target instead." >&2
+    echo "  Re-run: ./install.sh --target=claude" >&2
+    exit 1 ;;
+  *)
+    echo "Unknown --target value: $CLI_TARGET (expected claude|codex|gemini)" >&2
+    exit 1 ;;
+esac
 
 # Colors
 if [ -t 1 ]; then
@@ -62,14 +76,23 @@ note_failed()    { FAILED+=("$1"); }
 echo "${BOLD}rolepod installer${NC}"
 echo "  source: $REPO_DIR"
 echo "  target: $TARGET"
+echo "  cli:    $CLI_TARGET"
 echo "  mode:   $MODE"
 echo "  force:  $FORCE"
 echo ""
 
 # ─── Sanity check source ────────────────────────────────────────────────
-for f in CLAUDE.md CHEATSHEET.md agents rules hooks skills commands .claude-plugin/manifest.json; do
+for f in CLAUDE.md CHEATSHEET.md agents rules hooks skills commands .claude-plugin/manifest.json build/render.sh adapters/claude/CLAUDE.md.tmpl; do
   [ -e "$REPO_DIR/$f" ] || fail "missing $f in $REPO_DIR — run from rolepod repo"
 done
+
+# ─── Render entry doc for selected CLI target ───────────────────────────
+step "Rendering CLAUDE.md from adapter template (target: $CLI_TARGET)"
+if ! bash "$REPO_DIR/build/render.sh" --target="$CLI_TARGET"; then
+  fail "render.sh failed — fix template/fragments before installing"
+fi
+RENDERED_CLAUDE_MD="$REPO_DIR/build/rendered/$CLI_TARGET/CLAUDE.md"
+[ -f "$RENDERED_CLAUDE_MD" ] || fail "expected $RENDERED_CLAUDE_MD after render"
 
 # ─── Backup if --force on existing ──────────────────────────────────────
 if [ "$FORCE" -eq 1 ] && [ -d "$TARGET" ]; then
@@ -85,8 +108,8 @@ mkdir -p "$TARGET"/{agents,rules,hooks,skills,commands,.claude-plugin,plugins}
 
 if [ "$FORCE" -eq 1 ]; then CP_FLAG=""; else CP_FLAG="-n"; fi
 
-step "Copying core docs (CLAUDE.md, CHEATSHEET.md)"
-cp $CP_FLAG "$REPO_DIR/CLAUDE.md"     "$TARGET/" 2>/dev/null || true
+step "Copying core docs (CLAUDE.md from rendered output, CHEATSHEET.md)"
+cp $CP_FLAG "$RENDERED_CLAUDE_MD"     "$TARGET/CLAUDE.md" 2>/dev/null || true
 cp $CP_FLAG "$REPO_DIR/CHEATSHEET.md" "$TARGET/" 2>/dev/null || true
 
 step "Copying agents (18) + rules (16) + commands"

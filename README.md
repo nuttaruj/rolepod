@@ -303,6 +303,18 @@ Reviewer flow → ship → CI auto-merge after green
 
 ---
 
+## Multi-CLI support
+
+Rolepod currently ships first-class support for Claude Code. Phase 2.1 (this release) introduces a `core/` + `adapters/<cli>/` layout with a small `build/render.sh` step that assembles the per-CLI entry doc from shared fragments, so the same source-of-truth content can power other coding CLIs without prose duplication.
+
+| CLI | Status | Install command |
+|-----|--------|-----------------|
+| Claude Code | Shipping (default) | `./install.sh --target=claude` (default if flag omitted) |
+| Codex CLI (OpenAI) | Phase 2.2 — not yet implemented | will fail with a clear message |
+| Gemini CLI (Google) | Phase 2.2 — not yet implemented | will fail with a clear message |
+
+Phase 2.2 will add `adapters/codex/` + `adapters/gemini/` with their respective entry docs (`AGENTS.md`, `GEMINI.md`), wrapper scripts for opt-in rule reminders, and a per-CLI behavior matrix documenting which Claude-Code-only features (hooks, sub-agents, slash commands) gracefully degrade vs. ship as-is.
+
 ## License
 
 MIT — see `LICENSE`.

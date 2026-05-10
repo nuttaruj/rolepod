@@ -92,4 +92,6 @@ else
 fi
 
 cd "$DEST"
-exec ./install.sh "${ARGS[@]}"
+# Pin --target=claude defensively — install.sh defaults to claude already, but
+# pass it explicitly so a future default change can't surprise existing users.
+exec ./install.sh --target=claude "${ARGS[@]}"
