@@ -398,10 +398,6 @@ This system synthesizes patterns from many great open-source projects:
 - **[mattpocock/skills](https://github.com/mattpocock/skills)** — skill patterns + zoom-out concept (68k stars)
 - **[wshobson/agents](https://github.com/wshobson/agents)** — plugin packaging structure + agent orchestration patterns (35k stars)
 - **[AgriciDaniel/claude-seo](https://github.com/AgriciDaniel/claude-seo)** — specialized agent plugin pattern (6.2k stars)
-- **[OneRedOak/claude-code-workflows](https://github.com/OneRedOak/claude-code-workflows)** — review CI workflows + design review patterns (3.7k stars)
-- **[FlorianBruniaux/claude-code-ultimate-guide](https://github.com/FlorianBruniaux/claude-code-ultimate-guide)** — documentation + cheatsheet inspiration (4.2k stars)
-- **[nyldn/claude-octopus](https://github.com/nyldn/claude-octopus)** — careful mode + multi-AI patterns + context-awareness (3.3k stars)
-- **[pedrohcgs/claude-code-my-workflow](https://github.com/pedrohcgs/claude-code-my-workflow)** — verify-reminder hook + orchestration patterns (1k stars)
 
 ### External tools
 - **[rtk](https://github.com/rtk-ai/rtk)** (Rust Token Killer) — CLI token optimization
