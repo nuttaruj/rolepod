@@ -10,6 +10,7 @@ skills:
   - context-engineering
   - anti-spaghetti
   - api-and-interface-design
+  - parallel-contract-orchestration
 tools:
   - Read
   - Glob

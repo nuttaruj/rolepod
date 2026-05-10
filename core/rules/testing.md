@@ -65,7 +65,7 @@ Read when: planning task / before commit / question on what to test.
 - **Explore**: read existing tests for area touched, note flaky ones
 - **Plan**: test plan in output (unit / integration / edge cases / existing-to-verify) — vague "add tests" rejected
 - **Implement**: TDD-light for non-trivial (failing test → code → pass → refactor); tests AFTER code OK for mechanical changes
-- **Pre-commit gate**: T1-T5 checklist canonical in `~/.claude/CLAUDE.md` Test gate
+- **Pre-commit gate**: T1-T6 checklist canonical in `~/.claude/CLAUDE.md` Test gate
 - **Post-merge**: CI runs critical paths every merge; CI lacks coverage → flag as future work
 
 ## Internal execution — no external AI
@@ -128,6 +128,31 @@ Bad test = false confidence. Quality bar:
 | Test name: `test_function_works` | Test name: `test_validate_rejects_empty_string` |
 | Hidden setup (test fails alone) | Self-contained — runs in isolation |
 | Flaky (sometimes passes) | Deterministic — same result every time |
+
+## T6 — assertion correctness (LLM-specific failure mode)
+
+T6 in the pre-commit test gate: **would a 1-character bug in the code under test still let the assertion pass?** If yes, the assertion is too weak.
+
+Background: arXiv 2402.13521 ("An Empirical Study on Test Case Generation by LLMs") found that **62% of LLM-generated tests contain incorrect or weak assertions** — they execute the code but don't actually validate behavior. They pass even when the system under test is broken.
+
+Common weak assertions:
+
+| Weak (passes for broken code) | Strong (fails for broken code) |
+|-------------------------------|-------------------------------|
+| `assert result is not None` | `assert result == expected_value` |
+| `assert len(items) > 0` | `assert items == [a, b, c]` |
+| `assert response.status_code != 500` | `assert response.status_code == 200` |
+| `assert "error" not in output.lower()` | `assert output == "user created: alice"` |
+| `assert isinstance(x, dict)` | `assert x == {"id": 1, "name": "alice"}` |
+| `assert fn() != fn()` (just "different") | `assert fn() == specific_expected_value` |
+
+How to verify T6 yourself:
+1. Mentally introduce a 1-character bug in the function under test (flip `==` to `!=`, change `+` to `-`, return `None`)
+2. Would the assertion still pass?
+3. Yes → assertion too weak, tighten it to a specific expected value
+4. No → assertion is doing its job
+
+This applies especially when **you (the LLM) wrote the test**. Human-authored tests fail this less often; LLM tests fail it 62% of the time without explicit pressure to tighten.
 
 ## Coverage targets (not goals)
 

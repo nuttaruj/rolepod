@@ -8,7 +8,7 @@ Phase 2.3: rolepod ships for each supported CLI as a **native plugin / extension
 |---|---|---|---|
 | Always-on instructions | `~/.claude/CLAUDE.md` (native) | `~/.codex/AGENTS.md` (native) | `~/.gemini/GEMINI.md` (native) |
 | Lazy-load rules (Read on trigger) | full | full | full |
-| Skills (`<plugin>/skills/<name>/SKILL.md`) | 27 native | 27 native | 27 native |
+| Skills (`<plugin>/skills/<name>/SKILL.md`) | 28 native | 28 native | 28 native |
 | Subagents (parallel team) | full Task / SendMessage (18 agents) | 18 agents as Codex `agents/*.toml` (Lead-orchestrated) | 18 agents inlined in `GEMINI.md` (Lead-orchestrated) |
 | Hooks (auto reminders) | 4 hooks (`SessionStart` + `PreToolUse` + 2x `PostToolUse`) | 4 hooks (`SessionStart` + `PreToolUse` + 2x `PostToolUse`) | 3 hooks (`SessionStart` + `BeforeTool` + `AfterTool`) |
 | Slash commands | full (e.g. `/careful`, `/ship`, `/review`, `/test`, `/plan`, `/spec`) | n/a (commands not in current Codex schema) | full (6 commands as `commands/*.toml`) |
@@ -89,8 +89,8 @@ Hook scripts are interchangeable across Claude and Codex (same 4 files); Gemini 
 | Target | Static checks | Dry-run install | Live runtime hooks | Live subagent dispatch | Status |
 |--------|---------------|-----------------|--------------------|-----------------------|--------|
 | Claude Code | ✓ | ✓ | ✓ verified | ✓ verified | **Production** |
-| Codex CLI   | ✓ | ✓ | ✓ verified (SessionStart hook fires) | ✓ verified (18 agents + 27 skills via native loader) | **Production** |
-| Gemini CLI  | ✓ | ✓ | ✓ verified (SessionStart hook fires) | ✓ verified (27 skills enumerated) | **Production** |
+| Codex CLI   | ✓ | ✓ | ✓ verified (SessionStart hook fires) | ✓ verified (18 agents + 28 skills via native loader) | **Production** |
+| Gemini CLI  | ✓ | ✓ | ✓ verified (SessionStart hook fires) | ✓ verified (28 skills enumerated) | **Production** |
 
 **Static checks** = `bash -n` on shell scripts, `python3 -m json.tool` on JSON manifests, `tomllib.load()` on TOML, plus snapshot diffs (no leaked `{{INCLUDE: ...}}` placeholders). **Dry-run install** = `install.sh --target=<cli>` writes correct files into a temp dir and the layout matches each CLI's expected destination. **Live** = installed in the real CLI, hooks fire on real sessions, subagents/skills dispatch correctly.
 
@@ -101,8 +101,8 @@ _Last verified: 2026-05-10 on macOS (Darwin 25.4.0), Codex 0.130.0, Gemini 0.40.
 **Claude Code** — Production. Hooks/agents/skills load on session start; verified across the dev loop in this repository.
 
 **Gemini CLI 0.40.1** — Production:
-- `gemini skills list` enumerates all 27 rolepod skills from `~/.gemini/extensions/rolepod/skills/`.
-- SessionStart hook fires and emits the rolepod gates banner ("rolepod gates: S1-S5 simplicity + T1-T5 tests + Q1-Q4 delegation") on every Gemini session.
+- `gemini skills list` enumerates all 28 rolepod skills from `~/.gemini/extensions/rolepod/skills/`.
+- SessionStart hook fires and emits the rolepod gates banner ("rolepod gates: S1-S5 simplicity + T1-T6 tests + Q1-Q4 delegation + F1-F5 failure-mode") on every Gemini session.
 - The model recognizes the extension by name and version (`rolepod (v0.2.0)`) when asked.
 - 6 slash commands (`/careful /ship /review /test /plan /spec`) ship as schema-conformant `.toml` files in `commands/` (Gemini exposes these interactively; there is no `gemini commands list` subcommand).
 - Caveat: the bundled SessionStart hook expects ripgrep — falls back to GrepTool with a one-line warning. Cosmetic only.
@@ -176,7 +176,7 @@ When a repo needs stricter rules than the global rolepod set, create `AGENTS.md`
 codex exec --skip-git-repo-check "echo OK"
 # stdout shows: hook: SessionStart Completed (rolepod hooks firing through native plugin loader)
 # Auto-loads the rolepod block from ~/.codex/AGENTS.md (Tier 1 always-on rules)
-# Plugin tree (18 agents, 27 skills, 4 hooks) resolved from build/rendered/codex/plugins/rolepod/
+# Plugin tree (18 agents, 28 skills, 4 hooks) resolved from build/rendered/codex/plugins/rolepod/
 # Verify config: grep -A2 'marketplaces.rolepod\|plugins."rolepod' ~/.codex/config.toml
 ```
 
@@ -194,7 +194,7 @@ Gemini CLI uses an extension model. Rolepod ships as a global extension; project
 
 Installs:
 - `~/.gemini/GEMINI.md` (managed block — your existing content preserved)
-- `~/.gemini/extensions/rolepod/` (full extension: 18 agents inlined, 27 skills, 6 commands, 3 hooks)
+- `~/.gemini/extensions/rolepod/` (full extension: 18 agents inlined, 28 skills, 6 commands, 3 hooks)
 
 ### Project-level GitNexus index (one-time per repo)
 

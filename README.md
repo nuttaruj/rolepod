@@ -1,6 +1,6 @@
 # Rolepod — Multi-CLI AI Workflow System
 
-Complete software-house team for AI coding CLIs: 18 specialist agents, 16 lazy-load workflow rules, 27 bundled skills, 4 auto-trigger hooks, parallel-safe by path/concern ownership. Ships native plugins for Claude Code, Codex CLI, and Gemini CLI.
+Complete software-house team for AI coding CLIs: 18 specialist agents, 16 lazy-load workflow rules, 28 bundled skills, 4 auto-trigger hooks, parallel-safe by path/concern ownership. Ships native plugins for Claude Code, Codex CLI, and Gemini CLI.
 
 **Universal:** zero project-specific refs, works in any repo from day one.
 
@@ -32,7 +32,7 @@ Pick one with `--target=claude` / `--target=codex` / `--target=gemini`, or all t
 
 | Mode | What gets installed | Command |
 |------|---------------------|---------|
-| **core** (default) | rolepod files only — agents, rules, hooks, 27 bundled skills, slash commands, manifest, docs | `./install.sh` |
+| **core** (default) | rolepod files only — agents, rules, hooks, 28 bundled skills, slash commands, manifest, docs | `./install.sh` |
 | **minimum** | core + `ui-ux-pro-max-skill` + GitNexus + MemPalace (final skill + cross-session memory + code intelligence) | `./install.sh --minimum` |
 | **full** | minimum + caveman + rtk + the other two CLIs + openai-codex Claude Code plugin | `./install.sh --full` |
 
@@ -67,14 +67,14 @@ After install, restart the CLI you targeted so its hooks register.
 | Target | Static checks | Dry-run install | Live runtime hooks | Live subagent dispatch | Status |
 |--------|---------------|-----------------|--------------------|-----------------------|--------|
 | Claude Code | ✓ | ✓ | ✓ verified | ✓ verified | **Production** |
-| Codex CLI   | ✓ | ✓ | ✓ verified (SessionStart hook fires) | ✓ verified (18 agents + 27 skills via native loader) | **Production** (marketplace registration is global — see [cli-support.md](docs/cli-support.md#marketplace-registration-is-global)) |
-| Gemini CLI  | ✓ | ✓ | ✓ verified (SessionStart hook fires) | ✓ verified (27 skills enumerated) | **Production** |
+| Codex CLI   | ✓ | ✓ | ✓ verified (SessionStart hook fires) | ✓ verified (18 agents + 28 skills via native loader) | **Production** (marketplace registration is global — see [cli-support.md](docs/cli-support.md#marketplace-registration-is-global)) |
+| Gemini CLI  | ✓ | ✓ | ✓ verified (SessionStart hook fires) | ✓ verified (28 skills enumerated) | **Production** |
 
 **Static checks** = `bash -n` on shell scripts, `python3 -m json.tool` on JSON manifests, `tomllib.load()` on TOML, plus snapshot diffs (no leaked `{{INCLUDE: ...}}` placeholders). **Dry-run install** = `install.sh --target=<cli>` writes correct files into a temp dir and the layout matches each CLI's expected destination. **Live** = installed in the real CLI, hooks fire on real sessions, subagents/skills dispatch correctly.
 
 _Last verified: 2026-05-10 on macOS (Darwin 25.4.0), Codex 0.130.0, Gemini 0.40.1._
 
-**Codex install (0.130.0+):** the installer renders rolepod as a Codex marketplace consumable to `build/rendered/codex/`, then runs `codex plugin marketplace add <rendered-dir>` and writes `[plugins."rolepod@rolepod"] enabled = true` to `~/.codex/config.toml`. Codex's native plugin loader resolves the plugin tree (18 agents + 27 skills + 4 hooks) via the same code path as bundled plugins — `SessionStart` hooks fire on every session and rolepod's `plugin.json` validates clean against Codex's manifest spec. The `~/.codex/AGENTS.md` managed block still loads independently of plugin enable state.
+**Codex install (0.130.0+):** the installer renders rolepod as a Codex marketplace consumable to `build/rendered/codex/`, then runs `codex plugin marketplace add <rendered-dir>` and writes `[plugins."rolepod@rolepod"] enabled = true` to `~/.codex/config.toml`. Codex's native plugin loader resolves the plugin tree (18 agents + 28 skills + 4 hooks) via the same code path as bundled plugins — `SessionStart` hooks fire on every session and rolepod's `plugin.json` validates clean against Codex's manifest spec. The `~/.codex/AGENTS.md` managed block still loads independently of plugin enable state.
 
 Help us harden the runtime path on more setups — file an issue at [issues/](https://github.com/nuttaruj/rolepod/issues) if anything in the runtime status table fails on yours.
 
@@ -87,7 +87,7 @@ Three layers of guidance loaded by different mechanisms:
 ```
 Tier 1 (always loaded)        entry doc core            ~225 lines
 Tier 2 (Read on trigger)      rules/                    16 files
-Tier 3 (auto-pull on match)   skills/                   27 ships + plugin skills
+Tier 3 (auto-pull on match)   skills/                   28 ships + plugin skills
 ```
 
 Plus: hooks (auto-fire), agents (sub-process), commands (slash /).
@@ -120,7 +120,7 @@ Loaded from each CLI's native entry doc: `~/.claude/CLAUDE.md` (Claude Code), `~
 
 ### Tier 3 — Auto-pull skills
 
-Ships 27 skills covering anti-spaghetti, TDD, debugging, frontend UI, security, performance, design, marketing/copy, docs, planning, ops, etc. (`zoom-out` for meta-cognitive recovery + 26 domain skills authored fresh for rolepod). Plus integrates with external skill plugins (caveman, gitnexus, ui-ux-pro-max-skill) for additional coverage. Auto-discovery via `using-agent-skills` meta-skill at SessionStart. See [Skill dependencies](#skill-dependencies).
+Ships 28 skills covering anti-spaghetti, TDD, debugging, frontend UI, security, performance, design, marketing/copy, docs, planning, ops, etc. (`zoom-out` for meta-cognitive recovery + 26 domain skills authored fresh for rolepod). Plus integrates with external skill plugins (caveman, gitnexus, ui-ux-pro-max-skill) for additional coverage. Auto-discovery via `using-agent-skills` meta-skill at SessionStart. See [Skill dependencies](#skill-dependencies).
 
 Each CLI exposes skills as a real directory tree under its own plugin/extension dir, so agents in any CLI can pull them by name.
 
@@ -176,7 +176,8 @@ Claude and Codex share the same 4 scripts; Gemini ships 3 scripts adapted to its
 |------|------|------|
 | **Q1-Q4** | before any code edit | files>1 / verify-run / design / tools>3 → delegate |
 | **S1-S5** | before commit | feature beyond / abstraction single-use / config nobody asked / defensive impossible / pattern in 3+ |
-| **T1-T5** | before commit | task needs test / new pass / existing pass / fast / isolated |
+| **T1-T6** | before commit | task needs test / new pass / existing pass / fast / isolated / assertion correct |
+| **F1-F5** | before declaring done | hallucinated action / scope creep / cascading error / context loss / tool misuse |
 | **CI 3-phase** | before merge | Phase 1 always / Phase 2 path-triggered / Phase 3 nightly |
 | **Reviewer routing** | before merge | qa-tester floor + Codex/Gemini per PR profile |
 | **Hard stops** | escalation triggers | 3rd agent / 3rd PR / file vs agent / destructive / 50k+ |
@@ -242,22 +243,22 @@ This repo bundles 27 skills out-of-the-box. Agents preload them via frontmatter 
 
 | Plugin / source | Provides | Install |
 |----------------|----------|---------|
-| **Bundled in this repo** (`skills/`) | 27 skills covering engineering / frontend / ops / docs / content (anti-spaghetti, TDD, debugging, security, performance, design, marketing, planning, etc.) | Auto-installed by `./install.sh` |
+| **Bundled in this repo** (`skills/`) | 28 skills covering engineering / frontend / ops / docs / content (anti-spaghetti, TDD, debugging, security, performance, design, marketing, planning, parallel-contract-orchestration, etc.) | Auto-installed by `./install.sh` |
 | **[JuliusBrussee/caveman](https://github.com/JuliusBrussee/caveman)** | `caveman`, `caveman-commit`, `caveman-review`, `compress` | Per repo install |
 | **[GitNexus](https://github.com/abhigyanpatwari/GitNexus)** | `gitnexus-*` (7 skills) + MCP impact/context/rename tools | `npm i -g gitnexus` + MCP setup (works on all 3 CLIs via MCP) |
 | **[nextlevelbuilder/ui-ux-pro-max-skill](https://github.com/nextlevelbuilder/ui-ux-pro-max-skill)** | `ui-ux-pro-max` (used by `ui-ux-designer` agent) | Per repo install |
 | **[claude-seo](https://github.com/AgriciDaniel/claude-seo)** (optional) | 18 deep technical SEO sub-agents | Claude Code plugin marketplace |
 | **OpenAI Codex review plugin** (optional) | Adversarial review skills | Each CLI's plugin marketplace where available |
 
-Minimum baseline (core install only): 18 agents + 16 rules + 4 hooks + 27 bundled skills + Q1-Q4 / S1-S5 / T1-T5 gates.
+Minimum baseline (core install only): 18 agents + 16 rules + 4 hooks + 28 bundled skills + Q1-Q4 / S1-S5 / T1-T6 / F1-F5 gates.
 
 Full workflow → also install GitNexus + caveman + ui-ux-pro-max-skill.
 
-**Skills referenced by agent preloads.** The 18 agents reference **27 unique skill names** in their `skills:` frontmatter. The math:
+**Skills referenced by agent preloads.** The 18 agents reference **28 unique skill names** in their `skills:` frontmatter. The math:
 
-- **26 ship in `skills/`** in this repo → auto-installed by `./install.sh` (any mode, any target).
+- **27 ship in `skills/`** in this repo → auto-installed by `./install.sh` (any mode, any target).
 - **1 (`ui-ux-pro-max`)** comes from the external `nextlevelbuilder/ui-ux-pro-max-skill` plugin → installed when you run `./install.sh --minimum` or `--full`. Without it, the `ui-ux-designer` agent simply won't preload that one skill.
-- The repo also ships `zoom-out` (meta-cognitive recovery) which is **user-invoked**, not preloaded by any agent — so `skills/` total is 27 files, agent preloads reference 27 names, and they overlap on 26.
+- The repo also ships `zoom-out` (meta-cognitive recovery) which is **user-invoked**, not preloaded by any agent — so `skills/` total is 28 files, agent preloads reference 28 names, and they overlap on 27.
 
 Drop unwanted preloads by editing `agents/<name>.md`'s `skills:` list.
 
@@ -294,7 +295,7 @@ Lead: [Q1-Q4 check] → delegate to qa-tester for reproducing test
 qa-tester: writes failing test → returns to Lead
 Lead: [verify-first] → reads auth files → finds root cause
 Lead: edits → verify-reminder hook fires → run test → green
-Lead: [S1-S5 + T1-T5 gates] → all green
+Lead: [S1-S5 + T1-T6 + F1-F5 gates] → all green
 Lead: [pre-merge-gate] → routing: hotfix → qa-tester only → APPROVED
 Lead: commit + push
 ```

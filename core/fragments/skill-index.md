@@ -18,6 +18,7 @@
 | `interaction-design` | Design and implement microinteractions, motion, transitions, and feedback. Use when adding polish... | `core/skills/interaction-design/SKILL.md` |
 | `interface-design` | Design dashboards, admin panels, and tool/app interfaces — interfaces users return to and opera... | `core/skills/interface-design/SKILL.md` |
 | `internal-comms` | Write clear internal communication — status updates, announcements, decision memos, escalations... | `core/skills/internal-comms/SKILL.md` |
+| `parallel-contract-orchestration` | Write a cohesion contract before spawning multiple parallel agents on the same feature. Pattern a... | `core/skills/parallel-contract-orchestration/SKILL.md` |
 | `performance-optimization` | Optimize app performance — Core Web Vitals, load time, bundle size, render perf, query latency.... | `core/skills/performance-optimization/SKILL.md` |
 | `planning-and-task-breakdown` | Break a goal or spec into ordered, verifiable tasks. Use when work feels too big for a single ses... | `core/skills/planning-and-task-breakdown/SKILL.md` |
 | `security-and-hardening` | Defend code against real-world abuse. Use when handling untrusted input, building auth flows, per... | `core/skills/security-and-hardening/SKILL.md` |

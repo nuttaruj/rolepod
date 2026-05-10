@@ -9,6 +9,7 @@ skills:
   - anti-spaghetti
   - debugging-and-error-recovery
   - test-driven-development
+  - parallel-contract-orchestration
 tools:
   - Read
   - Glob

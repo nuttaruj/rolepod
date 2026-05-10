@@ -11,6 +11,7 @@ skills:
   - debugging-and-error-recovery
   - test-driven-development
   - security-and-hardening
+  - parallel-contract-orchestration
 tools:
   - Read
   - Glob

@@ -56,7 +56,7 @@ For non-trivial work (multi-file / unfamiliar code / unclear approach):
 2. **Plan** — detailed plan. Simplicity check: simplest approach? new
    abstraction needed? new dep needed? If "yes" without strong reason → revise.
 3. **Implement** — code per plan. Every line traces to user request.
-4. **Pre-commit gate** — run S1-S5 + T1-T5 gates below (or `/ship`).
+4. **Pre-commit gate** — run S1-S5 + T1-T6 + F1-F5 gates below (or `/ship`).
 5. **Commit** — descriptive message + PR.
 
 Skip plan mode when diff describable in 1 sentence (typo / log line / rename).
@@ -82,6 +82,8 @@ User OK + commit + PR → wait CI → ALL Phase 1 + triggered Phase 2 green → 
 {{INCLUDE: core/fragments/gates-t1-t5.md}}
 
 {{INCLUDE: core/fragments/gates-q1-q4.md}}
+
+{{INCLUDE: core/fragments/gates-f1-f5.md}}
 
 ## Anti-bloat — keep it simple
 
@@ -110,7 +112,7 @@ config, use them. Otherwise fall back to plain `git` + `rg`.
 
 ## Before ship — STOP
 
-- Run `/ship` (S1-S5, T1-T5, evidence) — or run gates manually
+- Run `/ship` (S1-S5, T1-T6, F1-F5, evidence) — or run gates manually
 - For high-risk surface (auth/billing/migrations) → `/careful` first, then
   spawn external reviewer:
   - If Codex installed: `codex exec --prompt "review this diff..."`

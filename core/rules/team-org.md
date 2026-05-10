@@ -172,6 +172,19 @@ For Lead orchestrating multiple agents:
 4. **Cap each agent** — ≤12 tool_uses, ≤5 files (per triage-deep.md)
 5. **Briefing** — Path + Lines + Criteria + Caps for every spawn
 
+## Parallel orchestration — cohesion contract
+
+When Phase 3 (Engineering parallel) spawns ≥2 agents whose outputs share types, invariants, or integration touchpoints, a written cohesion contract is **required**, not optional. Without it, agents drift and Lead spends the merge round patching incompatibilities.
+
+Workflow (full guide: skill `parallel-contract-orchestration`):
+1. Lead writes `.claude/orchestration/<topic>-contract.md` with shared types, invariants, integration touchpoints, named integration tests
+2. Lead writes the integration tests RED (failing) to file BEFORE spawning agents
+3. Spawn each agent with the contract path in its brief; agents may NOT mutate the contract
+4. RED-checkpoint: Lead verifies tests still fail for the right reason (missing impl, not contract drift)
+5. Agents implement; Lead merges via the integration test suite (only acceptance criterion)
+
+Pattern adopted from evanflow. Skip only when 2+ agents produce fully independent artifacts with no integration point.
+
 ## Optional: install plugin sub-agents
 
 For specialized domains, install plugins that add sub-agents:

@@ -688,7 +688,7 @@ if claude_selected; then
     chmod +x "$TARGET"/hooks/*.sh 2>/dev/null || true
   fi
 
-  step "Copying bundled skills (27)"
+  step "Copying bundled skills (28)"
   for skill_dir in "$REPO_DIR"/core/skills/*/; do
     name=$(basename "$skill_dir")
     if [ "$FORCE" -eq 1 ] || [ ! -e "$TARGET/skills/$name" ]; then

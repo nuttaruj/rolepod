@@ -1,7 +1,7 @@
 {
   "name": "rolepod",
   "version": "1.0.0",
-  "description": "Universal Claude Code workflow system: 18-agent software-house team, 16 lazy-load workflow rules, 27 bundled skills, auto-trigger hooks, parallel-safe by path/concern ownership.",
+  "description": "Universal Claude Code workflow system: 18-agent software-house team, 16 lazy-load workflow rules, 28 bundled skills, auto-trigger hooks, parallel-safe by path/concern ownership.",
   "author": {
     "name": "nuttaruj",
     "url": "https://github.com/nuttaruj"
