@@ -21,7 +21,7 @@ Three layers of guidance loaded by different mechanisms:
 ```
 Tier 1 (always loaded)        CLAUDE.md core            ~225 lines
 Tier 2 (Read on trigger)      rules/                    16 files
-Tier 3 (auto-pull on match)   skills/                   50 skills
+Tier 3 (auto-pull on match)   skills/                   1 ships (`zoom-out`) + plugin skills (see Skill dependencies)
 
 Plus: hooks (auto-fire), agents (sub-process), commands (slash /)
 ```
@@ -60,7 +60,9 @@ Workflow gates that fire every task:
 
 ### Tier 3 — Auto-pull skills
 
-50 skills covering: anti-spaghetti, TDD, debugging, frontend UI, security, performance, GitNexus, Claude API, design, marketing, etc. Auto-discover via meta-skill `using-agent-skills` loaded at SessionStart.
+This repo **ships 1 custom skill** (`zoom-out` — meta-cognitive recovery) and is designed to integrate with **external skill plugins** (Anthropic skills, mattpocock/skills, GitNexus plugin, caveman, etc.) for the full workflow surface (~30+ skills covering anti-spaghetti, TDD, debugging, frontend UI, security, performance, GitNexus, Claude API, design, marketing, etc.).
+
+Auto-discovery via meta-skill `using-agent-skills` loaded at SessionStart. Install plugins separately — see [Skill dependencies](#skill-dependencies) below.
 
 ### Agents — `~/.claude/agents/` (18 specialists)
 
@@ -287,10 +289,29 @@ claude plugin install rolepod
 ├── .claude-plugin/manifest.json # plugin metadata
 ├── rules/                       # 16 lazy-load files
 ├── agents/                      # 18 specialists
-├── skills/                      # 50 skills
+├── skills/                      # 1 ships (zoom-out) + external plugin skills
 ├── commands/                    # slash commands
 └── hooks/                       # auto-fire scripts
 ```
+
+### Skill dependencies
+
+This repo is a **workflow framework** (gates + agents + rules + hooks), not a skill bundle. The full workflow assumes you also install external skill plugins. Without them, agents/rules still work — but skill auto-pull (Tier 3) returns fewer matches.
+
+CHEATSHEET's skill picker references skills like `debugging-and-error-recovery`, `test-driven-development`, `webapp-testing`, `frontend-ui-engineering`, `security-and-hardening`, `gitnexus-*`, `claude-api`, `caveman`, etc. These ship from separate plugins:
+
+| Plugin / source | Provides | Install |
+|----------------|----------|---------|
+| **Anthropic skills** (built-in or plugin marketplace) | `debugging-*`, `test-driven-development`, `frontend-ui-engineering`, `security-and-hardening`, `code-review-and-quality`, `webapp-testing`, etc. | Bundled in recent Claude Code or via `/plugin install` |
+| **[mattpocock/skills](https://github.com/mattpocock/skills)** | Skill patterns + meta utilities | Clone into `~/.claude/skills/` |
+| **[JuliusBrussee/caveman](https://github.com/JuliusBrussee/caveman)** | `caveman`, `caveman-commit`, `caveman-review`, `compress` | Per repo install |
+| **[GitNexus](https://github.com/abhigyanpatwari/GitNexus)** | `gitnexus-exploring`, `gitnexus-impact-analysis`, `gitnexus-debugging`, `gitnexus-refactoring`, `gitnexus-pr-review`, `gitnexus-cli`, `gitnexus-guide` | `npm i -g gitnexus` + MCP setup |
+| **[claude-seo](https://github.com/AgriciDaniel/claude-seo)** (optional) | Deep technical SEO sub-agents | `/plugin install AgriciDaniel/claude-seo` |
+| **OpenAI Codex plugin** (optional) | Adversarial review skills | Plugin marketplace |
+
+Minimum baseline (works without any plugin): 18 agents + 16 rules + 4 hooks + `zoom-out` skill + Q1-Q4 / S1-S5 / T1-T5 gates.
+
+Want full workflow → install Anthropic skills + GitNexus + caveman at minimum.
 
 ---
 
@@ -379,8 +400,8 @@ This system synthesizes patterns from many great open-source projects:
 - **[GitNexus](https://github.com/abhigyanpatwari/GitNexus)** — code intelligence (impact / context / rename)
 - **[MemPalace](https://github.com/mempalace/mempalace)** — cross-session memory + KG
 
-### Skills used (subset of 50)
-Many skills come from Anthropic's open agent skills, mattpocock's skills repo, and various plugin authors. Full list in `CHEATSHEET.md` skill picker section.
+### Skills used (1 ships + plugin skills)
+This repo ships only `zoom-out`. Other skills referenced in rules and `CHEATSHEET.md` skill picker come from external plugins — install separately (see [Skill dependencies](#skill-dependencies)).
 
 ---
 
