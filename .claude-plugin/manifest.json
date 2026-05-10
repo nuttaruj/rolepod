@@ -43,7 +43,35 @@
     },
     "skills": {
       "path": "../skills",
-      "added": ["zoom-out"]
+      "added": [
+        "anti-spaghetti",
+        "api-and-interface-design",
+        "browser-testing-with-devtools",
+        "ci-cd-and-automation",
+        "claude-api",
+        "code-review-and-quality",
+        "code-simplification",
+        "context-engineering",
+        "conversion-copywriting",
+        "debugging-and-error-recovery",
+        "doc-coauthoring",
+        "documentation-and-adrs",
+        "frontend-ui-engineering",
+        "interaction-design",
+        "interface-design",
+        "internal-comms",
+        "performance-optimization",
+        "planning-and-task-breakdown",
+        "security-and-hardening",
+        "seo",
+        "shipping-and-launch",
+        "spec-driven-development",
+        "test-driven-development",
+        "user-facing-content",
+        "web-design-guidelines",
+        "webapp-testing",
+        "zoom-out"
+      ]
     },
     "commands": {
       "path": "../commands",

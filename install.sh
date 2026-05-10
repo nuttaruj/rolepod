@@ -98,10 +98,13 @@ step "Copying hooks (4) and marking executable"
 cp $CP_FLAG "$REPO_DIR"/hooks/*.sh "$TARGET/hooks/" 2>/dev/null || true
 chmod +x "$TARGET"/hooks/*.sh 2>/dev/null || true
 
-step "Copying custom skills (zoom-out)"
-if [ "$FORCE" -eq 1 ] || [ ! -e "$TARGET/skills/zoom-out" ]; then
-  cp -R "$REPO_DIR/skills/zoom-out" "$TARGET/skills/" 2>/dev/null || true
-fi
+step "Copying bundled skills (27)"
+for skill_dir in "$REPO_DIR"/skills/*/; do
+  name=$(basename "$skill_dir")
+  if [ "$FORCE" -eq 1 ] || [ ! -e "$TARGET/skills/$name" ]; then
+    cp -R "$REPO_DIR/skills/$name" "$TARGET/skills/" 2>/dev/null || true
+  fi
+done
 
 step "Copying plugin manifest"
 cp $CP_FLAG "$REPO_DIR/.claude-plugin/manifest.json" "$TARGET/.claude-plugin/" 2>/dev/null || true
@@ -113,7 +116,7 @@ for required in \
   agents/qa-tester.md agents/system-architect.md \
   rules/INDEX.md rules/team-org.md \
   hooks/verify-reminder.sh hooks/project-context-loader.sh \
-  skills/zoom-out/SKILL.md commands/careful.md \
+  skills/zoom-out/SKILL.md skills/anti-spaghetti/SKILL.md commands/careful.md \
   .claude-plugin/manifest.json
 do
   [ -e "$TARGET/$required" ] || fail "verification failed — $TARGET/$required missing"

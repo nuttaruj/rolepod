@@ -20,8 +20,8 @@ Self-improving: every session captures learnings via MemPalace KG, so the next s
 
 | Mode | What gets installed | Command |
 |------|---------------------|---------|
-| **core** (default) | rolepod files only — agents, rules, hooks, `zoom-out` skill, `/careful` command, manifest, docs | `./install.sh` |
-| **minimum** | core + `ui-ux-pro-max-skill` + GitNexus + MemPalace (full skill preload coverage + cross-session memory + code intelligence) | `./install.sh --minimum` |
+| **core** (default) | rolepod files only — agents, rules, hooks, 27 bundled skills, `/careful` command, manifest, docs | `./install.sh` |
+| **minimum** | core + `ui-ux-pro-max-skill` + GitNexus + MemPalace (final skill + cross-session memory + code intelligence) | `./install.sh --minimum` |
 | **full** | minimum + caveman + rtk + Codex CLI + Gemini CLI + openai-codex Claude Code plugin | `./install.sh --full` |
 
 Add `--force` to overwrite existing `~/.claude/` files (auto-creates `~/.claude.backup-<timestamp>/`).
@@ -57,7 +57,7 @@ Three layers of guidance loaded by different mechanisms:
 ```
 Tier 1 (always loaded)        CLAUDE.md core            ~225 lines
 Tier 2 (Read on trigger)      rules/                    16 files
-Tier 3 (auto-pull on match)   skills/                   1 ships + plugin skills
+Tier 3 (auto-pull on match)   skills/                   27 ships + plugin skills
 ```
 
 Plus: hooks (auto-fire), agents (sub-process), commands (slash /).
@@ -88,7 +88,7 @@ Workflow gates that fire every task — Identity (any model = Lead), Verify-firs
 
 ### Tier 3 — Auto-pull skills
 
-Ships 1 custom skill (`zoom-out` — meta-cognitive recovery). Designed to integrate with external skill plugins (Anthropic skills, mattpocock/skills, GitNexus, caveman, ui-ux-pro-max) for the full workflow surface. Auto-discovery via `using-agent-skills` meta-skill at SessionStart. See [Skill dependencies](#skill-dependencies).
+Ships 27 skills covering anti-spaghetti, TDD, debugging, frontend UI, security, performance, design, marketing/copy, docs, planning, ops, etc. (`zoom-out` for meta-cognitive recovery + 26 domain skills authored fresh for rolepod). Plus integrates with external skill plugins (caveman, gitnexus, ui-ux-pro-max-skill) for additional coverage. Auto-discovery via `using-agent-skills` meta-skill at SessionStart. See [Skill dependencies](#skill-dependencies).
 
 ### Agents — `agents/` (18 specialists, 7 layers)
 
@@ -151,23 +151,22 @@ Session N+1 (any time later, any project)
 
 ## Skill dependencies
 
-This repo is a **workflow framework** (gates + agents + rules + hooks), not a skill bundle. Without external plugins, agents/rules still work — just skill auto-pull (Tier 3) returns fewer matches.
+This repo bundles 27 skills out-of-the-box. Agents preload them via frontmatter `skills:` field. Optional external plugins extend coverage.
 
 | Plugin / source | Provides | Install |
 |----------------|----------|---------|
-| **Anthropic skills** (built-in or marketplace) | 26 skills used by agent preloads (debugging / TDD / frontend / security / docs / etc.) | Bundled in recent Claude Code or via `/plugin install` |
-| **[mattpocock/skills](https://github.com/mattpocock/skills)** | Skill patterns + meta utilities | Clone into `~/.claude/skills/` |
+| **Bundled in this repo** (`skills/`) | 27 skills covering engineering / frontend / ops / docs / content (anti-spaghetti, TDD, debugging, security, performance, design, marketing, planning, etc.) | Auto-installed by `./install.sh` |
 | **[JuliusBrussee/caveman](https://github.com/JuliusBrussee/caveman)** | `caveman`, `caveman-commit`, `caveman-review`, `compress` | Per repo install |
 | **[GitNexus](https://github.com/abhigyanpatwari/GitNexus)** | `gitnexus-*` (7 skills) + MCP impact/context/rename tools | `npm i -g gitnexus` + MCP setup |
 | **[nextlevelbuilder/ui-ux-pro-max-skill](https://github.com/nextlevelbuilder/ui-ux-pro-max-skill)** | `ui-ux-pro-max` (used by `ui-ux-designer` agent) | Per repo install |
 | **[claude-seo](https://github.com/AgriciDaniel/claude-seo)** (optional) | 18 deep technical SEO sub-agents | `/plugin install AgriciDaniel/claude-seo` |
 | **OpenAI Codex plugin** (optional) | Adversarial review skills | Plugin marketplace |
 
-Minimum baseline (no plugins): 18 agents + 16 rules + 4 hooks + `zoom-out` skill + Q1-Q4 / S1-S5 / T1-T5 gates.
+Minimum baseline (core install only): 18 agents + 16 rules + 4 hooks + 27 bundled skills + Q1-Q4 / S1-S5 / T1-T5 gates.
 
-Full workflow → install Anthropic skills + GitNexus + caveman + ui-ux-pro-max-skill at minimum.
+Full workflow → also install GitNexus + caveman + ui-ux-pro-max-skill.
 
-The 18 agents reference 28 skills via their frontmatter `skills:` field (26 from Anthropic skills, 1 from `nextlevelbuilder/ui-ux-pro-max-skill`, 1 from `mattpocock/skills` for `zoom-out`). Missing preload = agent still runs, just no auto-pull. Drop unwanted preloads by editing `agents/<name>.md`'s `skills:` list.
+The 18 agents preload 27 skills via their frontmatter `skills:` field (26 ship in this repo, 1 from `nextlevelbuilder/ui-ux-pro-max-skill`). All work out-of-the-box after install — no extra plugin needed for the bundled 26. Drop unwanted preloads by editing `agents/<name>.md`'s `skills:` list.
 
 ---
 
