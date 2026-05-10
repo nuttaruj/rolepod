@@ -53,6 +53,8 @@ Deep guides — skills:
 
 Tier 3 — past sessions, decisions, cross-conversation context.
 
+**Note — distinct from native agent memory.** Each rolepod agent has `memory: project` or `memory: user` in its frontmatter. That's Claude Code native — works without any plugin, scopes the agent's own memory to project or user. MemPalace KG (below) is an optional layer on top: cross-session decision recall via the Stop / SessionStart / PreCompact hooks. Without MemPalace → agents still have their native scoped memory; you just lose cross-session KG recall.
+
 ### Tools
 
 | Tool | Use for |

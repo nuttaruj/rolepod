@@ -149,6 +149,23 @@ Session N+1 (any time later, any project)
 
 ---
 
+## Memory architecture — two coexisting systems
+
+Rolepod uses two memory systems that work independently:
+
+| System | Scope | How it works | Plugin? |
+|--------|-------|--------------|---------|
+| **Native agent memory** (`memory:` frontmatter) | per-agent, scoped `project` or `user` | Set in each agent's frontmatter. Claude Code parses the agent file directly — same loader path as `model:`, `tools:`, `skills:`. | No — works out-of-box |
+| **MemPalace KG** | cross-session knowledge graph | Stop hook captures learnings → KG. SessionStart hook recalls. Powers the self-improvement loop above. | Yes — optional plugin |
+
+In rolepod's 18 agents: 17 use `memory: project` (codepaths / patterns / decisions stay scoped to the repo), 1 uses `memory: user` (`business-analyst` — pricing / competitor research is reusable across projects).
+
+Without MemPalace installed: agents still have their native `memory:` scoping. You just lose the cross-session KG decision recall and Stop-hook capture. The Q1-Q4 / S1-S5 / T1-T5 gates and reviewer flow are unaffected.
+
+> Note: `memory:` is part of Claude Code's agent frontmatter spec — it isn't surfaced in `claude agents --help`, but Claude Code reads it the same way it reads `model:` and `tools:`.
+
+---
+
 ## Model + effort allocation
 
 The 18 agents are tuned for cost vs quality — bigger models only where adversarial depth or cross-system judgment pays off:
