@@ -119,7 +119,7 @@ Help close the gap — install on Codex / Gemini and report at [issues/](https:/
 ## Notes on subagent behavior
 
 - **Claude Code**: agents auto-spawn via the `Task` / `SendMessage` tool — Lead delegates and merges results in parallel.
-- **Codex CLI**: 18 `agents/*.toml` are registered with the plugin so Codex can pull them by name. Codex doesn't currently have a parallel-fanout primitive equivalent to Claude's `Task`, so Lead orchestrates one agent at a time via `codex agent run` (or inline reading of the agent's `developer_instructions`).
+- **Codex CLI**: 18 `agents/*.toml` are registered with the plugin and load via the plugin loader. Codex doesn't currently expose a public `codex agent` subcommand or a parallel-fanout primitive equivalent to Claude's `Task`, so verification is via plugin config, session logs, and observed dispatch behavior — Lead orchestrates by inline reading of the relevant agent's `developer_instructions` block.
 - **Gemini CLI**: agents are inlined in `GEMINI.md` as a roster table. Lead reads the relevant agent's section and acts in-character. Gemini Code Assist is adding richer multi-agent primitives — when those land, the Gemini adapter will switch to native dispatch.
 
 The path-based ownership rules from `team-org.md` apply identically across all three CLIs — same agent picks the same paths regardless of which CLI is in charge of orchestration.
