@@ -1,0 +1,94 @@
+{
+  "name": "rolepod",
+  "version": "1.0.0",
+  "description": "Universal Claude Code workflow system: 18-agent software-house team (Strategy/Architecture/Engineering/Quality/Ops/Design/Review), 16 lazy-load workflow rules, auto-trigger hooks, MemPalace+GitNexus integration, 3-phase CI lanes, parallel-safe by path/concern ownership.",
+  "author": "nuttaruj",
+  "license": "MIT",
+  "homepage": "",
+  "components": {
+    "agents": {
+      "path": "../agents",
+      "count": 18,
+      "layers": [
+        {"layer": "Strategy", "agents": ["product-manager", "business-analyst", "growth-marketer", "customer-success"]},
+        {"layer": "Architecture", "agents": ["system-architect"]},
+        {"layer": "Engineering", "agents": ["backend-developer", "frontend-developer", "mobile-developer", "billing-engineer", "ai-ml-engineer", "data-scientist"]},
+        {"layer": "Quality", "agents": ["qa-tester", "security-engineer", "performance-engineer"]},
+        {"layer": "Operations", "agents": ["devops-sre"]},
+        {"layer": "Design+Docs", "agents": ["ui-ux-designer", "tech-writer"]},
+        {"layer": "Review", "agents": ["universal-reviewer"]}
+      ]
+    },
+    "rules": {
+      "path": "../rules",
+      "always_loaded": "../CLAUDE.md",
+      "lazy_load": [
+        "INDEX.md",
+        "advisor.md",
+        "agent-protocol.md",
+        "code-intel.md",
+        "code-intel-workflow.md",
+        "code-quality.md",
+        "communication.md",
+        "new-project.md",
+        "pre-merge-gate.md",
+        "reviewer-flow.md",
+        "session-management.md",
+        "team-org.md",
+        "testing.md",
+        "triage-deep.md",
+        "verification.md",
+        "verify-first.md"
+      ]
+    },
+    "skills": {
+      "path": "../skills",
+      "added": ["zoom-out", "diagnose"]
+    },
+    "commands": {
+      "path": "../commands",
+      "added": ["careful"]
+    },
+    "hooks": {
+      "path": "../hooks",
+      "session_start": ["mempalace hook run --hook session-start", "project-context-loader.sh"],
+      "pre_tool_use": ["context-awareness.sh", "qa-pass-check.sh", "gitnexus-hook.cjs"],
+      "post_tool_use": ["verify-reminder.sh", "post-ship-detect.sh", "gitnexus-hook.cjs"],
+      "stop": ["mempalace hook run --hook stop"],
+      "pre_compact": ["mempalace hook run --hook precompact"]
+    },
+    "cheatsheet": "../CHEATSHEET.md"
+  },
+  "features": {
+    "active_gates": ["Q1-Q4 delegation", "S1-S5 simplicity", "T1-T5 testing", "CI 3-phase", "Hard stops"],
+    "verify_first": "internal + external + volatility ladder",
+    "self_improvement_loop": "Stop hook → MemPalace KG → next session smarter",
+    "parallel_safety": "path-based + concern-based + artifact-based ownership",
+    "fallback_modes": ["bootstrap (no MemPalace/GitNexus)", "no-internet (verify-first degraded)", "tool-down (rg + Read)"]
+  },
+  "compatibility": {
+    "claude_code": ">=2.0.0",
+    "universal": true,
+    "project_specific_refs": 0
+  },
+  "external_integrations": {
+    "optional_plugins": [
+      {"name": "claude-seo", "url": "https://github.com/AgriciDaniel/claude-seo", "when": "deep technical SEO needs"},
+      {"name": "openai-codex", "when": "high-risk surface adversarial review"}
+    ],
+    "required_tools": [],
+    "recommended_tools": [
+      {"name": "GitNexus", "purpose": "code intelligence (impact/context/rename)"},
+      {"name": "MemPalace", "purpose": "cross-session memory + decision tracking"}
+    ]
+  },
+  "design_principles": [
+    "Identity: any model = Lead (Opus/Sonnet/Haiku same role)",
+    "Verify-first: never claim without primary source",
+    "Anti-bloat: gates active, not passive guidance",
+    "Anti-spaghetti: same pattern in 3+ → centralize",
+    "Universal: zero project-specific refs",
+    "Parallel-safe: path/concern ownership prevents collision",
+    "Self-improving: every session feeds next via KG"
+  ]
+}
