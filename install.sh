@@ -527,8 +527,15 @@ PY
 
   if [ "$uninstall_codex" -eq 1 ]; then
     X_CONFIG="$X_TARGET/config.toml"
+    # Same temp-target detection as install path: only touch global codex
+    # commands when uninstalling against the real ~/.codex (refs #3).
+    X_REAL_HOME="$HOME/.codex"
+    X_TARGET_RESOLVED="$(cd "$X_TARGET" 2>/dev/null && pwd -P || echo "$X_TARGET")"
+    X_REAL_RESOLVED="$(cd "$X_REAL_HOME" 2>/dev/null && pwd -P || echo "$X_REAL_HOME")"
+    X_IS_TEMP_TARGET=0
+    [ "$X_TARGET_RESOLVED" != "$X_REAL_RESOLVED" ] && X_IS_TEMP_TARGET=1
 
-    if have_cmd codex; then
+    if have_cmd codex && [ "$X_IS_TEMP_TARGET" -eq 0 ]; then
       step "Removing rolepod marketplace from Codex"
       if [ "$DRY_RUN" -eq 1 ]; then
         dry "codex plugin marketplace remove rolepod"
@@ -540,6 +547,8 @@ PY
         fi
         codex plugin marketplace remove rolepod >/dev/null 2>&1 || true
       fi
+    elif [ "$X_IS_TEMP_TARGET" -eq 1 ]; then
+      warn "ROLEPOD_TARGET set — skipping global marketplace removal (no global state was set during temp-target install)"
     else
       warn "codex binary not found — skipping marketplace removal"
     fi
@@ -842,8 +851,26 @@ fi  # end claude_selected
 #   3. Set `[plugins."rolepod@rolepod"] enabled = true` in ~/.codex/config.toml.
 #   4. Update managed block in ~/.codex/AGENTS.md (Tier 1 always-on rules).
 # Fallback when codex binary missing: file-copy AGENTS.md only + warn.
+#
+# Temp-target safety (refs #3): Codex CLI has no CODEX_HOME / --config-home —
+# `codex plugin marketplace add` always writes to ~/.codex/config.toml. When
+# the resolved CODEX_TARGET points away from $HOME/.codex (i.e. user set
+# ROLEPOD_TARGET or ROLEPOD_CODEX_TARGET for an isolated test), we MUST skip
+# the global codex commands or we mutate the user's real config. In that mode
+# we still write filesystem artifacts (AGENTS.md, rendered tree) so static
+# checks pass, then warn the user that the install is partial.
 if codex_selected; then
   CODEX_TARGET="$(resolve_target_for codex)"
+  CODEX_REAL_HOME="$HOME/.codex"
+  # Marketplace registration is global — skip when target diverges from the
+  # real Codex config home. Detect via path comparison (resolve symlinks where
+  # available so /tmp/foo vs /private/tmp/foo on macOS still matches).
+  CODEX_TARGET_RESOLVED="$(cd "$CODEX_TARGET" 2>/dev/null && pwd -P || echo "$CODEX_TARGET")"
+  CODEX_REAL_RESOLVED="$(cd "$CODEX_REAL_HOME" 2>/dev/null && pwd -P || echo "$CODEX_REAL_HOME")"
+  CODEX_IS_TEMP_TARGET=0
+  if [ "$CODEX_TARGET_RESOLVED" != "$CODEX_REAL_RESOLVED" ]; then
+    CODEX_IS_TEMP_TARGET=1
+  fi
   CODEX_CONFIG="$CODEX_TARGET/config.toml"
   RENDERED_CODEX_DIR="$REPO_DIR/build/rendered/codex"
   RENDERED_AGENTS_MD="$RENDERED_CODEX_DIR/AGENTS.md"
@@ -851,6 +878,9 @@ if codex_selected; then
   echo "${BOLD}─── Installing for Codex CLI ───${NC}"
   echo "  target:                $CODEX_TARGET"
   echo "  marketplace source:    $RENDERED_CODEX_DIR"
+  if [ "$CODEX_IS_TEMP_TARGET" -eq 1 ]; then
+    echo "  mode:                  temp-target (filesystem only — global config NOT mutated)"
+  fi
 
   [ -f "$RENDERED_AGENTS_MD" ]                                                  || fail "expected $RENDERED_AGENTS_MD after render"
   [ -f "$RENDERED_CODEX_DIR/.agents/plugins/marketplace.json" ]                 || fail "expected marketplace manifest after render"
@@ -874,7 +904,8 @@ if codex_selected; then
     chmod +x "$RENDERED_CODEX_DIR/plugins/rolepod/hooks"/*.sh 2>/dev/null || true
   fi
 
-  if have_cmd codex; then
+  if have_cmd codex && [ "$CODEX_IS_TEMP_TARGET" -eq 0 ]; then
+    # Real install path — codex commands write to $HOME/.codex/config.toml.
     # Backup config.toml before any modification (reversible).
     if [ -f "$CODEX_CONFIG" ] && [ "$DRY_RUN" -eq 0 ]; then
       STAMP=$(date +%Y%m%d-%H%M%S)
@@ -885,14 +916,41 @@ if codex_selected; then
     # Note: `codex plugin marketplace upgrade` only works for git sources, so for
     # local sources we always re-add (which Codex handles idempotently for local).
     if [ -f "$CODEX_CONFIG" ] && grep -q '^\[marketplaces\.rolepod\]' "$CODEX_CONFIG" 2>/dev/null; then
-      # Already registered — remove + re-add so source path stays current with rendered dir.
-      step "Refreshing rolepod marketplace registration"
-      if [ "$DRY_RUN" -eq 1 ]; then
-        dry "codex plugin marketplace remove rolepod && codex plugin marketplace add $RENDERED_CODEX_DIR"
+      # Already registered.
+      if [ "$FORCE" -eq 1 ]; then
+        # --force: auto-refresh source path with current rendered dir.
+        step "Refreshing rolepod marketplace registration (--force)"
+        if [ "$DRY_RUN" -eq 1 ]; then
+          dry "codex plugin marketplace remove rolepod && codex plugin marketplace add $RENDERED_CODEX_DIR"
+        else
+          echo "    Removing existing rolepod marketplace..."
+          codex plugin marketplace remove rolepod >/dev/null 2>&1 || true
+          echo "    Adding fresh marketplace registration..."
+          if ! codex plugin marketplace add "$RENDERED_CODEX_DIR" 2>&1 | sed 's/^/    /'; then
+            fail "codex plugin marketplace add failed — see output above"
+          fi
+        fi
       else
-        codex plugin marketplace remove rolepod >/dev/null 2>&1 || true
-        if ! codex plugin marketplace add "$RENDERED_CODEX_DIR" 2>&1 | sed 's/^/    /'; then
-          fail "codex plugin marketplace add failed — see output above"
+        # Without --force: detect "different source" conflict and surface a
+        # clean remediation. Try a no-op probe to capture the exact error.
+        step "rolepod marketplace already registered — probing for source mismatch"
+        if [ "$DRY_RUN" -eq 1 ]; then
+          dry "codex plugin marketplace add $RENDERED_CODEX_DIR (would detect conflict)"
+        else
+          probe_out=$(codex plugin marketplace add "$RENDERED_CODEX_DIR" 2>&1) || probe_rc=$?
+          probe_rc=${probe_rc:-0}
+          if [ "$probe_rc" -ne 0 ] && echo "$probe_out" | grep -qi 'already added from a different source'; then
+            warn "rolepod marketplace already registered from a different source"
+            warn ""
+            warn "  To refresh:    ./install.sh --target=codex --force"
+            warn "  To remove:     codex plugin marketplace remove rolepod"
+            warn "                 ./install.sh --target=codex"
+            fail "marketplace conflict — pick one of the options above"
+          elif [ "$probe_rc" -ne 0 ]; then
+            echo "$probe_out" | sed 's/^/    /'
+            fail "codex plugin marketplace add failed — see output above"
+          fi
+          # probe_rc == 0 → idempotent re-add succeeded, source matches.
         fi
       fi
     else
@@ -924,9 +982,25 @@ if codex_selected; then
       fi
     fi
   else
-    warn "codex binary not found — installing AGENTS.md only (Tier 1 rules still active)"
-    warn "  Install Codex CLI: npm install -g @openai/codex"
-    warn "  After install, run: codex plugin marketplace add $RENDERED_CODEX_DIR"
+    # Either temp-target mode OR codex binary missing. Both paths skip global
+    # codex commands and write only filesystem artifacts so static checks pass.
+    if [ "$CODEX_IS_TEMP_TARGET" -eq 1 ]; then
+      warn "ROLEPOD_TARGET set — skipping global marketplace registration."
+      warn "  Codex CLI has no per-target config home. Marketplace add would mutate $HOME/.codex/config.toml."
+      warn "  For real install, run without ROLEPOD_TARGET: ./install.sh --target=codex"
+      warn "  For isolated preview, use --dry-run: ROLEPOD_TARGET=$CODEX_TARGET ./install.sh --target=codex --dry-run"
+    else
+      warn "codex binary not found — installing AGENTS.md + filesystem artifacts only (Tier 1 rules still active)"
+      warn "  Install Codex CLI: npm install -g @openai/codex"
+      warn "  After install, run: codex plugin marketplace add $RENDERED_CODEX_DIR"
+    fi
+    step "Copying rendered plugin tree → $CODEX_TARGET/plugins/rolepod (filesystem only — Codex loader resolves from rendered dir)"
+    if [ "$DRY_RUN" -eq 1 ]; then
+      dry "mkdir -p $CODEX_TARGET/plugins/rolepod && cp -R $RENDERED_CODEX_DIR/plugins/rolepod/. $CODEX_TARGET/plugins/rolepod/"
+    else
+      mkdir -p "$CODEX_TARGET/plugins/rolepod"
+      cp -R "$RENDERED_CODEX_DIR/plugins/rolepod/." "$CODEX_TARGET/plugins/rolepod/" 2>/dev/null || true
+    fi
   fi
 
   step "Updating AGENTS.md (managed block) → $CODEX_TARGET/AGENTS.md"
@@ -935,14 +1009,24 @@ if codex_selected; then
   if [ "$DRY_RUN" -eq 0 ]; then
     step "Verifying Codex install"
     [ -e "$CODEX_TARGET/AGENTS.md" ] || fail "Codex verification failed — $CODEX_TARGET/AGENTS.md missing"
-    if have_cmd codex; then
+    if have_cmd codex && [ "$CODEX_IS_TEMP_TARGET" -eq 0 ]; then
+      # Real install — verify the actual config Codex wrote to (always $HOME/.codex/config.toml).
       [ -f "$CODEX_CONFIG" ] || fail "Codex verification failed — $CODEX_CONFIG missing"
       grep -q '^\[marketplaces\.rolepod\]' "$CODEX_CONFIG" || fail "Codex verification failed — [marketplaces.rolepod] not in $CODEX_CONFIG"
       grep -q '^\[plugins\."rolepod@rolepod"\]' "$CODEX_CONFIG" || fail "Codex verification failed — [plugins.\"rolepod@rolepod\"] not in $CODEX_CONFIG"
       # Confirm rendered tree still resolvable (codex stores source path in config).
       [ -f "$RENDERED_CODEX_DIR/.agents/plugins/marketplace.json" ] || fail "Codex verification failed — rendered marketplace manifest missing"
+      ok "rolepod codex marketplace registered → $RENDERED_CODEX_DIR"
+    else
+      # Temp-target OR codex binary missing — verify filesystem artifacts only.
+      [ -d "$CODEX_TARGET/plugins/rolepod" ] || fail "Codex verification failed — $CODEX_TARGET/plugins/rolepod missing"
+      [ -f "$CODEX_TARGET/plugins/rolepod/.codex-plugin/plugin.json" ] || fail "Codex verification failed — plugin.json missing"
+      if [ "$CODEX_IS_TEMP_TARGET" -eq 1 ]; then
+        ok "rolepod codex filesystem artifacts written → $CODEX_TARGET (global config NOT mutated)"
+      else
+        ok "rolepod codex filesystem artifacts written → $CODEX_TARGET (codex binary missing — Tier 1 rules still active via AGENTS.md)"
+      fi
     fi
-    ok "rolepod codex marketplace registered → $RENDERED_CODEX_DIR"
     ok "AGENTS.md → $CODEX_TARGET/AGENTS.md"
   else
     skip "Codex verification skipped (dry-run)"

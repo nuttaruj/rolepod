@@ -141,6 +141,22 @@ Installs:
 
 Restart any open Codex sessions after install so the plugin loader picks up the new registration.
 
+### Marketplace registration is global
+
+Codex CLI has no `CODEX_HOME` env var or `--config-home` flag — `codex plugin marketplace add` always writes to `~/.codex/config.toml`, no matter where rolepod's filesystem files land. Two things follow:
+
+1. **`ROLEPOD_TARGET` does NOT isolate the marketplace.** When `ROLEPOD_TARGET` (or `ROLEPOD_CODEX_TARGET`) points to a temp dir, the installer detects this and **skips** `codex plugin marketplace add` entirely so it cannot mutate the user's real `~/.codex/config.toml`. AGENTS.md and the rendered plugin tree still land under the temp dir for inspection, but the Codex loader will not see them. Use `--dry-run` for fully isolated previews:
+   ```bash
+   ROLEPOD_TARGET=/tmp/rolepod-test ./install.sh --target=codex --dry-run
+   ```
+2. **Re-installing from a different rendered path needs `--force`.** If rolepod is already registered from a different source (e.g. you moved the repo), a plain `./install.sh --target=codex` exits with a remediation message. Pick one:
+   ```bash
+   ./install.sh --target=codex --force        # auto remove + re-add with current source
+   # or
+   codex plugin marketplace remove rolepod    # manual cleanup
+   ./install.sh --target=codex
+   ```
+
 ### Project-level GitNexus index (one-time per repo)
 
 ```bash

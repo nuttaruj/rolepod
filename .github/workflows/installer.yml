@@ -419,6 +419,41 @@ jobs:
             exit 1
           fi
 
+      - name: Codex temp-target — global config not mutated (refs #3)
+        shell: bash
+        run: |
+          set -eo pipefail
+          # When ROLEPOD_TARGET points away from $HOME/.codex, the installer
+          # must NOT mutate the user's real ~/.codex/config.toml. Codex CLI has
+          # no per-target config home, so marketplace registration would
+          # otherwise leak into the global config.
+          mkdir -p "$HOME/.codex"
+          touch "$HOME/.codex/config.toml"
+          BEFORE=$(sha256sum "$HOME/.codex/config.toml" | awk '{print $1}')
+          ROLEPOD_TARGET="$(mktemp -d)" bash install.sh --core --target=codex --dry-run > out.log 2>&1
+          AFTER=$(sha256sum "$HOME/.codex/config.toml" | awk '{print $1}')
+          if [ "$BEFORE" != "$AFTER" ]; then
+            echo "::error::Codex temp-target dry-run mutated $HOME/.codex/config.toml"
+            cat out.log
+            exit 1
+          fi
+          # Sanity: warning was emitted referencing global skip behavior.
+          if ! grep -qi 'skipping global marketplace registration' out.log; then
+            echo "::error::expected 'skipping global marketplace registration' warning in temp-target mode"
+            cat out.log
+            exit 1
+          fi
+          # Real install (no ROLEPOD_TARGET) is also tested with dry-run to
+          # confirm the real-path branch fires the marketplace command (well,
+          # would have — dry-run shows the [DRY-RUN] preview).
+          unset ROLEPOD_TARGET
+          out=$(bash install.sh --core --target=codex --dry-run 2>&1) || true
+          if grep -qi 'skipping global marketplace registration' <<<"$out"; then
+            echo "::error::real-install path should NOT print temp-target warning"
+            printf '%s\n' "$out"
+            exit 1
+          fi
+
       - name: Dry-run writes nothing — file count snapshot
         shell: bash
         run: |
