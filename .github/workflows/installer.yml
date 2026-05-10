@@ -1,0 +1,325 @@
+name: installer
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  installer:
+    name: lint, render, install round-trip
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Static checks (bash -n on all shell scripts)
+        shell: bash
+        run: |
+          set -eo pipefail
+          fail=0
+          while IFS= read -r f; do
+            if ! bash -n "$f"; then
+              echo "::error file=$f::bash -n failed"
+              fail=1
+            fi
+          done < <(printf '%s\n' \
+            install.sh \
+            bootstrap.sh \
+            build/render.sh \
+            $(find hooks adapters/codex/hooks adapters/gemini/hooks -maxdepth 1 -name '*.sh' 2>/dev/null))
+          exit "$fail"
+
+      - name: JSON syntax check (adapter manifests + plugin metadata)
+        shell: bash
+        run: |
+          set -eo pipefail
+          fail=0
+          while IFS= read -r f; do
+            if ! python3 -m json.tool "$f" >/dev/null; then
+              echo "::error file=$f::invalid JSON"
+              fail=1
+            fi
+          done < <(find adapters .claude-plugin -name '*.json' 2>/dev/null)
+          exit "$fail"
+
+      - name: TOML syntax check (codex agents + gemini commands)
+        shell: bash
+        run: |
+          set -eo pipefail
+          python3 - <<'PY'
+          import sys, pathlib, tomllib
+          fail = 0
+          roots = ["adapters/codex/agents", "adapters/gemini/commands"]
+          for root in roots:
+              p = pathlib.Path(root)
+              if not p.exists():
+                  continue
+              for f in p.rglob("*.toml"):
+                  try:
+                      with open(f, "rb") as fh:
+                          tomllib.load(fh)
+                  except Exception as e:
+                      print(f"::error file={f}::invalid TOML: {e}")
+                      fail = 1
+          sys.exit(fail)
+          PY
+
+      - name: Thai char scan (English-only invariant)
+        shell: bash
+        run: |
+          set -eo pipefail
+          python3 - <<'PY'
+          import sys, subprocess
+          tracked = subprocess.check_output(
+              ["git", "ls-files"], text=True
+          ).splitlines()
+          fail = 0
+          for path in tracked:
+              try:
+                  with open(path, "r", encoding="utf-8", errors="ignore") as f:
+                      for lineno, line in enumerate(f, 1):
+                          for ch in line:
+                              if 0x0E00 <= ord(ch) <= 0x0E7F:
+                                  print(f"::error file={path},line={lineno}::Thai char detected (U+{ord(ch):04X})")
+                                  fail = 1
+                                  break
+              except (IsADirectoryError, FileNotFoundError):
+                  continue
+          sys.exit(fail)
+          PY
+
+      - name: Render all 3 targets
+        shell: bash
+        run: |
+          set -eo pipefail
+          if ! bash build/render.sh --target=all; then
+            echo "::error::build/render.sh --target=all failed"
+            exit 1
+          fi
+          # No template leaks
+          if grep -rn '{{INCLUDE:' build/rendered/ 2>/dev/null; then
+            echo "::error::Unrendered {{INCLUDE:...}} marker found in build/rendered/"
+            exit 1
+          fi
+
+      - name: Post-render JSON syntax check (rendered artifacts)
+        shell: bash
+        run: |
+          set -eo pipefail
+          fail=0
+          while IFS= read -r f; do
+            if ! python3 -m json.tool "$f" >/dev/null; then
+              echo "::error file=$f::invalid JSON in rendered output"
+              fail=1
+            fi
+          done < <(find build/rendered -name '*.json' 2>/dev/null)
+          exit "$fail"
+
+      - name: Snapshot test (Claude byte-identical)
+        shell: bash
+        run: |
+          set -eo pipefail
+          if ! diff -q CLAUDE.md build/rendered/claude/CLAUDE.md; then
+            echo "::error::CLAUDE.md drift — repo root differs from build/rendered/claude/CLAUDE.md"
+            diff -u CLAUDE.md build/rendered/claude/CLAUDE.md | head -80 || true
+            exit 1
+          fi
+
+      - name: Dry-run install — claude
+        shell: bash
+        run: |
+          set -eo pipefail
+          export ROLEPOD_TARGET="$(mktemp -d)"
+          echo "claude target: $ROLEPOD_TARGET"
+          out=$(bash install.sh --target=claude --force 2>&1) || {
+            echo "::error::install.sh --target=claude failed"
+            printf '%s\n' "$out"
+            exit 1
+          }
+          if grep -qi 'command not found' <<<"$out"; then
+            echo "::error::'command not found' in claude install output"
+            printf '%s\n' "$out"
+            exit 1
+          fi
+          # Expected files
+          for rel in \
+            agents/qa-tester.md \
+            rules/INDEX.md \
+            skills/anti-spaghetti/SKILL.md \
+            .claude-plugin/plugin.json \
+            settings.json
+          do
+            if [ ! -e "$ROLEPOD_TARGET/$rel" ]; then
+              echo "::error::missing post-install file: $ROLEPOD_TARGET/$rel"
+              exit 1
+            fi
+          done
+          # settings.json contains rolepod hook registrations (referenced by
+          # path under $ROLEPOD_TARGET/hooks/, not by the literal name).
+          if ! python3 -c "
+          import json, sys, os
+          target = os.environ['ROLEPOD_TARGET']
+          with open(os.path.join(target, 'settings.json')) as f:
+              data = json.load(f)
+          hooks = data.get('hooks', {})
+          required = ['SessionStart', 'PreToolUse', 'PostToolUse']
+          missing = [k for k in required if k not in hooks]
+          if missing:
+              print(f'missing hook keys: {missing}')
+              sys.exit(1)
+          # At least one hook entry must reference our hooks dir.
+          import re
+          payload = json.dumps(data)
+          if os.path.join(target, 'hooks') not in payload:
+              print('no hook command points at \$ROLEPOD_TARGET/hooks/')
+              sys.exit(1)
+          "; then
+            echo "::error::settings.json missing rolepod hook registration"
+            cat "$ROLEPOD_TARGET/settings.json"
+            exit 1
+          fi
+          # Final-message
+          if ! grep -q 'restart Claude Code' <<<"$out"; then
+            echo "::error::missing 'restart Claude Code' in final message"
+            exit 1
+          fi
+          echo "ROLEPOD_CLAUDE_TARGET=$ROLEPOD_TARGET" >> "$GITHUB_ENV"
+
+      - name: Dry-run install — codex
+        shell: bash
+        run: |
+          set -eo pipefail
+          export ROLEPOD_TARGET="$(mktemp -d)"
+          echo "codex target: $ROLEPOD_TARGET"
+          out=$(bash install.sh --target=codex --force 2>&1) || {
+            echo "::error::install.sh --target=codex failed"
+            printf '%s\n' "$out"
+            exit 1
+          }
+          if grep -qi 'command not found' <<<"$out"; then
+            echo "::error::'command not found' in codex install output"
+            printf '%s\n' "$out"
+            exit 1
+          fi
+          for rel in \
+            plugins/rolepod/.codex-plugin/plugin.json \
+            plugins/rolepod/agents/qa-tester.toml \
+            plugins/rolepod/skills/anti-spaghetti/SKILL.md \
+            AGENTS.md
+          do
+            if [ ! -e "$ROLEPOD_TARGET/$rel" ]; then
+              echo "::error::missing post-install file: $ROLEPOD_TARGET/$rel"
+              exit 1
+            fi
+          done
+          if ! grep -q 'restart Codex CLI' <<<"$out"; then
+            echo "::error::missing 'restart Codex CLI' in final message"
+            exit 1
+          fi
+          echo "ROLEPOD_CODEX_TARGET=$ROLEPOD_TARGET" >> "$GITHUB_ENV"
+
+      - name: Dry-run install — gemini
+        shell: bash
+        run: |
+          set -eo pipefail
+          export ROLEPOD_TARGET="$(mktemp -d)"
+          echo "gemini target: $ROLEPOD_TARGET"
+          out=$(bash install.sh --target=gemini --force 2>&1) || {
+            echo "::error::install.sh --target=gemini failed"
+            printf '%s\n' "$out"
+            exit 1
+          }
+          if grep -qi 'command not found' <<<"$out"; then
+            echo "::error::'command not found' in gemini install output"
+            printf '%s\n' "$out"
+            exit 1
+          fi
+          for rel in \
+            extensions/rolepod/gemini-extension.json \
+            extensions/rolepod/commands/careful.toml \
+            extensions/rolepod/skills/anti-spaghetti/SKILL.md \
+            GEMINI.md
+          do
+            if [ ! -e "$ROLEPOD_TARGET/$rel" ]; then
+              echo "::error::missing post-install file: $ROLEPOD_TARGET/$rel"
+              exit 1
+            fi
+          done
+          if ! grep -q 'restart Gemini CLI' <<<"$out"; then
+            echo "::error::missing 'restart Gemini CLI' in final message"
+            exit 1
+          fi
+          echo "ROLEPOD_GEMINI_TARGET=$ROLEPOD_TARGET" >> "$GITHUB_ENV"
+
+      - name: Dry-run install — all
+        shell: bash
+        run: |
+          set -eo pipefail
+          export ROLEPOD_TARGET="$(mktemp -d)"
+          echo "all target: $ROLEPOD_TARGET"
+          out=$(bash install.sh --target=all --force 2>&1) || {
+            echo "::error::install.sh --target=all failed"
+            printf '%s\n' "$out"
+            exit 1
+          }
+          if grep -qi 'command not found' <<<"$out"; then
+            echo "::error::'command not found' in 'all' install output"
+            printf '%s\n' "$out"
+            exit 1
+          fi
+          if ! grep -q 'restart Claude Code, Codex CLI, and Gemini CLI' <<<"$out"; then
+            echo "::error::missing combined restart message in --target=all output"
+            exit 1
+          fi
+
+      - name: Uninstall round-trip — managed-block preservation
+        shell: bash
+        run: |
+          set -eo pipefail
+          # Use the claude target from earlier install. Seed user content
+          # OUTSIDE the rolepod managed block; verify it survives uninstall.
+          target="${ROLEPOD_CLAUDE_TARGET:?missing target from earlier step}"
+          claude_md="$target/CLAUDE.md"
+          if [ ! -f "$claude_md" ]; then
+            echo "::error::expected $claude_md after install"
+            exit 1
+          fi
+          # Prepend a sentinel above the rolepod block.
+          sentinel='### user-sentinel-DO-NOT-REMOVE ###'
+          tmp="$(mktemp)"
+          { printf '%s\n\n' "$sentinel"; cat "$claude_md"; } > "$tmp"
+          mv "$tmp" "$claude_md"
+
+          # Run uninstall.
+          out=$(bash install.sh --target=claude --uninstall --yes 2>&1) || {
+            echo "::error::uninstall failed"
+            printf '%s\n' "$out"
+            exit 1
+          }
+
+          # Sentinel must survive.
+          if ! grep -qF "$sentinel" "$claude_md" 2>/dev/null; then
+            echo "::error::uninstall removed user content outside managed block"
+            cat "$claude_md" || true
+            exit 1
+          fi
+          # Rolepod artifacts gone.
+          for rel in \
+            agents/qa-tester.md \
+            rules/INDEX.md \
+            skills/anti-spaghetti/SKILL.md \
+            .claude-plugin/plugin.json
+          do
+            if [ -e "$target/$rel" ]; then
+              echo "::error::uninstall did not remove $target/$rel"
+              exit 1
+            fi
+          done
+          # Managed block markers gone from CLAUDE.md.
+          if grep -qE 'rolepod:(start|end)' "$claude_md"; then
+            echo "::error::uninstall left rolepod managed-block markers in CLAUDE.md"
+            exit 1
+          fi
