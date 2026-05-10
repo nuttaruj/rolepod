@@ -109,6 +109,113 @@ done
 step "Copying plugin manifest"
 cp $CP_FLAG "$REPO_DIR/.claude-plugin/manifest.json" "$TARGET/.claude-plugin/" 2>/dev/null || true
 
+# ─── Register hooks in settings.json ────────────────────────────────────
+# Claude Code reads hooks from ~/.claude/settings.json — manifest.json is
+# descriptive metadata only. Hooks shipped to ~/.claude/hooks/ do NOT auto-fire
+# unless registered here. This block is idempotent: existing entries are
+# preserved, rolepod entries are upserted by command path.
+
+SETTINGS_FILE="$TARGET/settings.json"
+HOOK_DIR="$TARGET/hooks"
+
+step "Registering rolepod hooks in $SETTINGS_FILE"
+
+# Create empty settings.json if missing
+if [ ! -f "$SETTINGS_FILE" ]; then
+  echo '{}' > "$SETTINGS_FILE"
+fi
+
+REGISTER_OK=0
+if command -v jq >/dev/null 2>&1; then
+  TMP_FILE=$(mktemp)
+  if jq \
+    --arg ctx "$HOOK_DIR/project-context-loader.sh" \
+    --arg awa "$HOOK_DIR/context-awareness.sh" \
+    --arg ver "$HOOK_DIR/verify-reminder.sh" \
+    --arg shp "$HOOK_DIR/post-ship-detect.sh" '
+    # Helper: ensure a matcher group exists with given matcher (returns updated array)
+    def ensure_group($arr; $matcher):
+      if ($arr | map(select(.matcher == $matcher)) | length) > 0 then $arr
+      else $arr + [{"matcher": $matcher, "hooks": []}] end;
+
+    # Helper: add command to matching matcher group if absent
+    def upsert_cmd($arr; $matcher; $cmd; $timeout):
+      ensure_group($arr; $matcher) | map(
+        if .matcher == $matcher then
+          if (.hooks | map(select(.command == $cmd)) | length) > 0 then .
+          else .hooks += [{"type": "command", "command": $cmd, "timeout": $timeout}] end
+        else . end
+      );
+
+    # Helper for SessionStart (uses startup|resume matcher)
+    def upsert_session($arr; $cmd; $timeout):
+      ensure_group($arr; "startup|resume") | map(
+        if .matcher == "startup|resume" then
+          if (.hooks | map(select(.command == $cmd)) | length) > 0 then .
+          else .hooks += [{"type": "command", "command": $cmd, "timeout": $timeout}] end
+        else . end
+      );
+
+    .hooks = (.hooks // {})
+    | .hooks.SessionStart = upsert_session((.hooks.SessionStart // []); $ctx; 5)
+    | .hooks.PreToolUse = upsert_cmd((.hooks.PreToolUse // []); "Edit|Write|Bash"; $awa; 3)
+    | .hooks.PostToolUse = upsert_cmd((.hooks.PostToolUse // []); "Edit|Write"; $ver; 3)
+    | .hooks.PostToolUse = upsert_cmd((.hooks.PostToolUse // []); "Bash"; $shp; 5)
+  ' "$SETTINGS_FILE" > "$TMP_FILE" 2>/dev/null && [ -s "$TMP_FILE" ]; then
+    mv "$TMP_FILE" "$SETTINGS_FILE"
+    REGISTER_OK=1
+  else
+    rm -f "$TMP_FILE"
+  fi
+fi
+
+if [ "$REGISTER_OK" -eq 0 ]; then
+  # Fallback: python3
+  if command -v python3 >/dev/null 2>&1; then
+    if python3 - "$SETTINGS_FILE" "$HOOK_DIR" <<'PY'
+import json, sys, os
+path, hook_dir = sys.argv[1], sys.argv[2]
+try:
+    with open(path) as f:
+        data = json.load(f)
+except Exception:
+    data = {}
+if not isinstance(data, dict):
+    data = {}
+hooks = data.setdefault("hooks", {})
+
+def upsert(event, matcher, cmd, timeout):
+    arr = hooks.setdefault(event, [])
+    group = next((g for g in arr if g.get("matcher") == matcher), None)
+    if group is None:
+        group = {"matcher": matcher, "hooks": []}
+        arr.append(group)
+    inner = group.setdefault("hooks", [])
+    if not any(h.get("command") == cmd for h in inner):
+        inner.append({"type": "command", "command": cmd, "timeout": timeout})
+
+upsert("SessionStart", "startup|resume", os.path.join(hook_dir, "project-context-loader.sh"), 5)
+upsert("PreToolUse", "Edit|Write|Bash", os.path.join(hook_dir, "context-awareness.sh"), 3)
+upsert("PostToolUse", "Edit|Write", os.path.join(hook_dir, "verify-reminder.sh"), 3)
+upsert("PostToolUse", "Bash", os.path.join(hook_dir, "post-ship-detect.sh"), 5)
+
+with open(path, "w") as f:
+    json.dump(data, f, indent=2)
+    f.write("\n")
+PY
+    then
+      REGISTER_OK=1
+    fi
+  fi
+fi
+
+if [ "$REGISTER_OK" -eq 1 ]; then
+  ok "Hooks registered in settings.json (SessionStart + PreToolUse + 2x PostToolUse)"
+else
+  warn "Could not auto-register hooks — install jq or python3, or edit $SETTINGS_FILE manually"
+  warn "  See manifest.json 'components.hooks.shipped' for the 4 hook → event mappings"
+fi
+
 # ─── Verify rolepod core ────────────────────────────────────────────────
 step "Verifying rolepod core"
 for required in \
@@ -366,4 +473,81 @@ ${BOLD}rolepod core installed.${NC} For plugin install:
 EOF
 fi
 
+# ─── Post-install interactive prompts ───────────────────────────────────
+# Only when stdin is a TTY (or /dev/tty available), and only for modes that
+# actually installed the relevant tool. Each prompt reads from /dev/tty so
+# this also works when install.sh is piped via curl.
+
+was_installed() {
+  local needle="$1"
+  for x in "${INSTALLED[@]}"; do [ "$x" = "$needle" ] && return 0; done
+  return 1
+}
+
+ask_yn() {
+  # ask_yn "Question" "Y"|"N"  → returns 0 for yes, 1 for no
+  local prompt="$1" default="$2" reply
+  local hint="[y/N]"; [ "$default" = "Y" ] && hint="[Y/n]"
+  printf "%s %s " "$prompt" "$hint" > /dev/tty
+  if ! read -r reply < /dev/tty; then return 1; fi
+  reply="${reply:-$default}"
+  case "$reply" in
+    y|Y|yes|YES) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+if [ -t 0 ] || [ -r /dev/tty ]; then
+  if [ "$MODE" = "minimum" ] || [ "$MODE" = "full" ]; then
+    # Only prompt if at least one relevant tool is available.
+    SHOW_PROMPTS=0
+    if have_cmd mempalace || was_installed "mempalace" || have_cmd gemini || was_installed "gemini-cli"; then
+      SHOW_PROMPTS=1
+    fi
+    [ "$MODE" = "full" ] && SHOW_PROMPTS=1
+
+    if [ "$SHOW_PROMPTS" -eq 1 ]; then
+      echo ""
+      echo "${BOLD}─── Post-install setup ───${NC}"
+
+      # 1) MemPalace init
+      if have_cmd mempalace; then
+        if ask_yn "Run \`mempalace init\` now to enable cross-session memory?" "Y"; then
+          if mempalace init </dev/tty; then
+            ok "mempalace init succeeded"
+          else
+            warn "mempalace init failed — run manually later"
+          fi
+        else
+          skip "Skipped mempalace init (run later: mempalace init)"
+        fi
+      fi
+
+      # 2) Gemini auth login
+      if have_cmd gemini; then
+        if ask_yn "Run \`gemini auth login\` now? (opens a browser)" "N"; then
+          if gemini auth login </dev/tty; then
+            ok "gemini auth login completed"
+          else
+            warn "gemini auth login failed — run manually later"
+          fi
+        else
+          skip "Skipped gemini auth login (run later: gemini auth login)"
+        fi
+      fi
+
+      # 3) openai-codex marketplace plugin (full mode + plugin not yet present)
+      if [ "$MODE" = "full" ] && [ ! -d "$TARGET/plugins/marketplaces/openai-codex" ]; then
+        if ask_yn "Open Claude Code now to install the openai-codex plugin?" "N"; then
+          echo "  Start Claude Code, then run inside it:"
+          echo "    /plugin install openai-codex"
+        else
+          skip "Skipped (later inside Claude Code: /plugin install openai-codex)"
+        fi
+      fi
+    fi
+  fi
+fi
+
+echo ""
 echo "${BOLD}Final step${NC}: restart Claude Code so the hooks register."
