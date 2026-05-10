@@ -29,12 +29,14 @@ Add `--force` to overwrite existing `~/.claude/` files (auto-creates `~/.claude.
 ### Install commands
 
 ```bash
-# Easiest — clone + install in one curl pipe:
-curl -fsSL https://raw.githubusercontent.com/nuttaruj/rolepod/main/bootstrap.sh | bash                  # core
-curl -fsSL https://raw.githubusercontent.com/nuttaruj/rolepod/main/bootstrap.sh | bash -s -- --minimum  # workflow plugins
-curl -fsSL https://raw.githubusercontent.com/nuttaruj/rolepod/main/bootstrap.sh | bash -s -- --full     # everything
+# Interactive — pops up a menu (mode + force prompt):
+curl -fsSL https://raw.githubusercontent.com/nuttaruj/rolepod/main/bootstrap.sh | bash
 
-# Or manually:
+# Or pass mode directly to skip the prompt:
+curl -fsSL https://raw.githubusercontent.com/nuttaruj/rolepod/main/bootstrap.sh | bash -s -- --minimum
+curl -fsSL https://raw.githubusercontent.com/nuttaruj/rolepod/main/bootstrap.sh | bash -s -- --full --force
+
+# Or fully manual:
 git clone https://github.com/nuttaruj/rolepod
 cd rolepod
 ./install.sh --minimum
