@@ -87,10 +87,30 @@ Hook scripts are interchangeable across Claude and Codex (same 4 files); Gemini 
 | Target | Static checks | Dry-run install | Live runtime hooks | Live subagent dispatch | Status |
 |--------|---------------|-----------------|--------------------|-----------------------|--------|
 | Claude Code | ✓ | ✓ | ✓ verified | ✓ verified | **Production** |
-| Codex CLI   | ✓ | ✓ | ⚠ spec-conformant, not user-verified | ⚠ spec-conformant, not user-verified | **Beta** |
-| Gemini CLI  | ✓ | ✓ | ⚠ spec-conformant, not user-verified | ⚠ spec-conformant, not user-verified | **Beta** |
+| Codex CLI   | ✓ | ✓ | ⚠ files installed, loader path mismatch | ⚠ files installed, loader path mismatch | **Beta — known issue** |
+| Gemini CLI  | ✓ | ✓ | ✓ verified (SessionStart hook fires) | ✓ verified (27 skills enumerated) | **Production** |
 
-**Static checks** = `bash -n` on shell scripts, `python3 -m json.tool` on JSON manifests, `tomllib.load()` on TOML, plus snapshot diffs (no leaked `{{INCLUDE: ...}}` placeholders). **Dry-run install** = `install.sh --target=<cli>` writes correct files into a temp dir and the layout matches each CLI's expected destination. **Live** = installed in the real CLI, hooks fire on real sessions, subagents dispatch correctly. **Beta** means the adapter follows each CLI's published spec but real-world testing on those CLIs is still pending.
+**Static checks** = `bash -n` on shell scripts, `python3 -m json.tool` on JSON manifests, `tomllib.load()` on TOML, plus snapshot diffs (no leaked `{{INCLUDE: ...}}` placeholders). **Dry-run install** = `install.sh --target=<cli>` writes correct files into a temp dir and the layout matches each CLI's expected destination. **Live** = installed in the real CLI, hooks fire on real sessions, subagents/skills dispatch correctly.
+
+_Last verified: 2026-05-10 on macOS (Darwin 25.4.0), Codex 0.130.0, Gemini 0.40.1._
+
+### Per-target runtime evidence
+
+**Claude Code** — Production. Hooks/agents/skills load on session start; verified across the dev loop in this repository.
+
+**Gemini CLI 0.40.1** — Production:
+- `gemini skills list` enumerates all 27 rolepod skills from `~/.gemini/extensions/rolepod/skills/`.
+- SessionStart hook fires and emits the rolepod gates banner ("rolepod gates: S1-S5 simplicity + T1-T5 tests + Q1-Q4 delegation") on every Gemini session.
+- The model recognizes the extension by name and version (`rolepod (v0.2.0)`) when asked.
+- 6 slash commands (`/careful /ship /review /test /plan /spec`) ship as schema-conformant `.toml` files in `commands/` (Gemini exposes these interactively; there is no `gemini commands list` subcommand).
+- Caveat: the bundled SessionStart hook expects ripgrep — falls back to GrepTool with a one-line warning. Cosmetic only.
+
+**Codex CLI 0.130.0** — Beta with known issue:
+- All filesystem checks pass: 18 agent `.toml`, 27 skills, 4 hook scripts, valid `plugin.json` at `~/.codex/plugins/rolepod/`.
+- `~/.codex/AGENTS.md` managed block loads on every Codex session (Tier 1 rules — works).
+- **However**, Codex CLI 0.130.0's plugin loader only scans `~/.codex/.tmp/plugins/plugins/` (a marketplace cache populated by `codex plugin marketplace add`). It does not scan `~/.codex/plugins/`. The CLI subcommands `plugin list`, `agent`, `skills list`, `hooks list` are not present in 0.130.0 — only `plugin marketplace add/upgrade/remove`.
+- Result: agents, skills (per-plugin), and hooks under `~/.codex/plugins/rolepod/` are present but inert. Only the `AGENTS.md` text injection actually reaches Codex sessions.
+- Workaround under investigation: package rolepod as a local marketplace entry compatible with `codex plugin marketplace add <local-path>`, or wait for Codex to add user-plugin-dir scanning.
 
 Help close the gap — install on Codex / Gemini and report at [issues/](https://github.com/nuttaruj/rolepod/issues).
 
