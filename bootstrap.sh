@@ -8,15 +8,22 @@
 #   ROLEPOD_TARGET   where install.sh writes to (default: ~/.claude — read by install.sh)
 #   ROLEPOD_REF      branch/tag to check out (default: main)
 #
-# Args:
-#   $1 — passed straight to install.sh ("--merge" or "--force"; default merge)
+# Args (forwarded to install.sh):
+#   --core      (default) rolepod files only — no plugins
+#   --minimum   core + ui-ux-pro-max + GitNexus + MemPalace
+#   --full      minimum + caveman + rtk + Codex CLI + Gemini CLI
+#   --force     overwrite existing ~/.claude (backup created)
+#
+# Examples:
+#   curl -fsSL .../bootstrap.sh | bash                       # core
+#   curl -fsSL .../bootstrap.sh | bash -s -- --minimum       # workflow plugins
+#   curl -fsSL .../bootstrap.sh | bash -s -- --full          # everything
 
 set -euo pipefail
 
 REPO_URL="https://github.com/nuttaruj/rolepod.git"
 DEST="${ROLEPOD_DEST:-$HOME/rolepod}"
 REF="${ROLEPOD_REF:-main}"
-INSTALL_MODE="${1:-}"
 
 echo "rolepod bootstrap"
 echo "  clone target: $DEST"
@@ -38,4 +45,4 @@ else
 fi
 
 cd "$DEST"
-exec ./install.sh "$INSTALL_MODE"
+exec ./install.sh "$@"

@@ -16,22 +16,35 @@ Self-improving: every session captures learnings via MemPalace KG, so the next s
 
 ## Quick start
 
+### Pick a mode
+
+| Mode | What gets installed | Command |
+|------|---------------------|---------|
+| **core** (default) | rolepod files only — agents, rules, hooks, `zoom-out` skill, `/careful` command, manifest, docs | `./install.sh` |
+| **minimum** | core + `ui-ux-pro-max-skill` + GitNexus + MemPalace (full skill preload coverage + cross-session memory + code intelligence) | `./install.sh --minimum` |
+| **full** | minimum + caveman + rtk + Codex CLI + Gemini CLI + openai-codex Claude Code plugin | `./install.sh --full` |
+
+Add `--force` to overwrite existing `~/.claude/` files (auto-creates `~/.claude.backup-<timestamp>/`).
+
+### Install commands
+
 ```bash
 # Easiest — clone + install in one curl pipe:
-curl -fsSL https://raw.githubusercontent.com/nuttaruj/rolepod/main/bootstrap.sh | bash
+curl -fsSL https://raw.githubusercontent.com/nuttaruj/rolepod/main/bootstrap.sh | bash                  # core
+curl -fsSL https://raw.githubusercontent.com/nuttaruj/rolepod/main/bootstrap.sh | bash -s -- --minimum  # workflow plugins
+curl -fsSL https://raw.githubusercontent.com/nuttaruj/rolepod/main/bootstrap.sh | bash -s -- --full     # everything
 
 # Or manually:
 git clone https://github.com/nuttaruj/rolepod
 cd rolepod
-./install.sh                # safe merge — keeps your existing ~/.claude/ files
-./install.sh --force        # overwrite (auto-creates ~/.claude.backup-<timestamp>/)
+./install.sh --minimum
 ```
 
-`install.sh` copies the 18 agents, 16 rules, 4 hooks, `zoom-out` skill, `/careful` command, manifest, and core docs into `~/.claude/`. It then prints exact install commands for optional plugins — you run only the ones you want.
+Every plugin is detected before installing — already-installed ones are skipped (no duplicate work). Failed installs print a manual fallback command and continue (no abort). Final summary lists what was installed / skipped / needs manual install.
 
 After install, restart Claude Code so the hooks register.
 
-Custom target: `ROLEPOD_TARGET=/path ./install.sh`
+Custom rolepod target: `ROLEPOD_TARGET=/path ./install.sh`
 
 ---
 
