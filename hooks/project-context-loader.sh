@@ -1,5 +1,6 @@
 #!/bin/bash
 # SessionStart — inject git activity for current repo + project setup checklist. Silent if not in git.
+# Each checklist warning fires AT MOST ONCE per repo (tracked in ~/.claude/.rolepod-warnings-shown).
 set -euo pipefail
 
 INPUT=$(cat 2>/dev/null || echo '{}')
@@ -20,26 +21,39 @@ HOT=$(git -C "$REPO" log --since="7 days ago" --name-only --pretty=format: 2>/de
 CTX="**$NAME** @ \`$BRANCH\` ($DIRTY uncommitted)\n\n**Recent:**\n\`\`\`\n$COMMITS\n\`\`\`"
 [ -n "$HOT" ] && CTX="$CTX\n\n**Hot (7d):**\n$HOT"
 
-# Project setup checklist — only append section when at least one item is missing.
+# Project setup checklist — each warning fires at most ONCE per repo, ever.
+# After the warning shows, suppress it forever (user might intentionally skip the suggestion).
+# Tracking: ~/.claude/.rolepod-warnings-shown, TSV format: <repo-path>\t<warning-id>
+WARN_FILE="$HOME/.claude/.rolepod-warnings-shown"
+mkdir -p "$HOME/.claude" 2>/dev/null || true
+
+# warn_once <warning-id> <message>
+# Emits message + records marker if not already shown for this repo.
+warn_once() {
+  local id="$1"
+  local msg="$2"
+  local marker="$REPO	$id"
+  if [ -f "$WARN_FILE" ] && grep -Fxq "$marker" "$WARN_FILE" 2>/dev/null; then
+    return
+  fi
+  CHECKLIST="$CHECKLIST\n- [ ] $msg"
+  printf '%s\n' "$marker" >> "$WARN_FILE" 2>/dev/null || true
+}
+
 CHECKLIST=""
 
 # 1. GitNexus indexed? Per-repo index lives at <repo>/.gitnexus/
 if [ ! -d "$REPO/.gitnexus" ]; then
-  CHECKLIST="$CHECKLIST\n- [ ] GitNexus index missing → run \`npx gitnexus analyze\` in project root for code intelligence"
+  warn_once "gitnexus-index" "GitNexus index missing → run \`npx gitnexus analyze\` in project root for code intelligence"
 fi
 
 # 2. Project CLAUDE.md exists?
 if [ ! -f "$REPO/CLAUDE.md" ]; then
-  CHECKLIST="$CHECKLIST\n- [ ] No project CLAUDE.md → run \`/init\` (or skip if global rules are enough)"
+  warn_once "project-claudemd" "No project CLAUDE.md → run \`/init\` (or skip if global rules are enough)"
 fi
 
-# 3. First-time session for this dir? Track in ~/.claude/.rolepod-seen-projects (one path per line, idempotent).
-SEEN_FILE="$HOME/.claude/.rolepod-seen-projects"
-mkdir -p "$HOME/.claude" 2>/dev/null || true
-if [ ! -f "$SEEN_FILE" ] || ! grep -Fxq "$REPO" "$SEEN_FILE" 2>/dev/null; then
-  CHECKLIST="$CHECKLIST\n- [ ] First session for this project → MemPalace will start capturing learnings now"
-  echo "$REPO" >> "$SEEN_FILE" 2>/dev/null || true
-fi
+# 3. First-time session for this dir?
+warn_once "first-session" "First session for this project → MemPalace will start capturing learnings now"
 
 [ -n "$CHECKLIST" ] && CTX="$CTX\n\n## Project setup checklist\n$CHECKLIST"
 
