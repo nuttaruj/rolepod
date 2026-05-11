@@ -1,8 +1,22 @@
 # Agent Teams — Lead-Orchestrated Recipes
 
+> **Disambiguation.** Rolepod's "team workflow" / `/team-*` slash commands are a **single-session orchestration pattern**: Lead spawns specialist subagents via the Task tool, all coordinated inside one Claude Code session.
+>
+> Anthropic's experimental **agent-teams feature** (gated by `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`, see [official doc](https://code.claude.com/docs/en/agent-teams)) is a **separate multi-process model** — each teammate is its own Claude Code instance with shared task list + mailbox. Different mechanism, different cost profile, different runtime state at `~/.claude/teams/{name}/config.json`.
+>
+> Both can coexist. Rolepod's pattern works in any Claude Code version + on Codex/Gemini (via default Subagent + Task pattern). Anthropic's experimental feature requires v2.1.32+ and env opt-in.
+
 > **Claude Code only.** Codex CLI and Gemini CLI Leads use the default Subagent + Task pattern. The `team-trigger` rule fragment and `/team-*` slash commands are deliberately NOT shipped into Codex `AGENTS.md` or Gemini `GEMINI.md` — those CLIs don't have a slash-command schema that maps cleanly, and surfacing Claude-specific instructions there would confuse the agent.
 
 Power-user pattern for multi-phase, multi-agent work. Opt-in. Default rolepod behavior (Subagent + Task spawn) is unchanged.
+
+## Caveat — Anthropic agent-teams compatibility
+
+Rolepod's subagent definitions (`core/agents/*.md`) can be used as teammate types in Anthropic's experimental agent-teams. However, per the official doc:
+
+> "The `skills` and `mcpServers` frontmatter fields in a subagent definition are not applied when that definition runs as a teammate."
+
+Rolepod adds `skills:` preload to specialist agents (e.g. `qa-tester` preloads `reviewer-flow`, `post-change-verify`, etc.). When invoked as a regular subagent via Task tool, these load. **When invoked as an Anthropic agent-teams teammate, they will NOT load** — the teammate falls back to project/user-level skill resolution. Plan accordingly if you're combining both patterns.
 
 Reference: https://code.claude.com/docs/en/agent-teams
 
