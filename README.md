@@ -245,12 +245,13 @@ Session N+1 (any time, any project, any CLI)
 
 | System | Scope | How | Plugin? |
 |--------|-------|-----|---------|
-| **Native agent memory** (`memory:` frontmatter) | per-agent, `project` or `user` | Set in frontmatter; Claude Code parses directly | No — works out-of-box |
-| **MemPalace KG** | cross-session graph | Stop captures → SessionStart recalls; powers self-improvement loop; works on all 3 CLIs | Yes — optional |
+| **Anthropic auto memory** (Tier 1 — fallback) | per-project (git path) | Built into Claude Code v2.1.59+. Claude writes `~/.claude/projects/<project>/memory/MEMORY.md` on memorable events. First 200 lines / 25KB loaded every session. | No — default ON |
+| **Native agent memory** (Tier 2 — `memory:` frontmatter) | per-agent, `project` or `user` | Set in frontmatter; Claude Code parses directly | No — works out-of-box |
+| **MemPalace KG** (Tier 3 — optional plugin) | cross-session graph | Stop captures → SessionStart recalls; powers self-improvement loop; works on all 3 CLIs | Yes — optional |
 
 In rolepod: 17 agents use `memory: project` (codepaths / patterns / decisions scoped to repo); 1 uses `memory: user` (`business-analyst` — pricing reusable). `memory:` is a Claude primitive; Codex/Gemini achieve same scoping via per-agent TOML / inlined roster.
 
-Without MemPalace: agents keep native scoping. You lose cross-session KG recall + Stop-hook capture. Q1-Q4 / S1-S5 / T1-T6 / F1-F5 gates and reviewer flow unaffected.
+**Graceful degradation** — install MemPalace for richest cross-session recall; without it, Anthropic auto memory (Tier 1) still gives per-project persistence built into Claude Code (Codex/Gemini: project-level git context only). Q1-Q4 / S1-S5 / T1-T6 / F1-F5 gates and reviewer flow unaffected by memory tier.
 
 ---
 
