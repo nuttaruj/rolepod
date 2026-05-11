@@ -11,6 +11,11 @@ skills:
   - anti-spaghetti
   - api-and-interface-design
   - parallel-contract-orchestration
+  - test-driven-development
+  - source-driven-development
+  - debugging-and-error-recovery
+  - subagent-task-execution
+  - using-worktrees
 tools:
   - Read
   - Glob

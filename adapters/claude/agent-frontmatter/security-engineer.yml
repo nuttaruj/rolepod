@@ -10,6 +10,9 @@ skills:
   - security-and-hardening
   - debugging-and-error-recovery
   - anti-spaghetti
+  - doubt-driven-development
+  - root-cause-tracing
+  - source-driven-development
 tools:
   - Read
   - Glob

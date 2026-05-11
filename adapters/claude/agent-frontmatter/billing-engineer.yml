@@ -12,6 +12,10 @@ skills:
   - test-driven-development
   - security-and-hardening
   - parallel-contract-orchestration
+  - doubt-driven-development
+  - source-driven-development
+  - subagent-task-execution
+  - using-worktrees
 tools:
   - Read
   - Glob

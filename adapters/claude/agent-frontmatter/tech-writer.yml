@@ -8,6 +8,8 @@ skills:
   - doc-coauthoring
   - documentation-and-adrs
   - user-facing-content
+  - internal-comms
+  - source-driven-development
 tools:
   - Read
   - Glob

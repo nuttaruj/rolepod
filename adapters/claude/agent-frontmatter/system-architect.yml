@@ -11,6 +11,9 @@ skills:
   - planning-and-task-breakdown
   - context-engineering
   - parallel-contract-orchestration
+  - anti-spaghetti
+  - documentation-and-adrs
+  - source-driven-development
 tools:
   - Read
   - Glob

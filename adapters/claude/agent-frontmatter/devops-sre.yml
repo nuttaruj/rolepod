@@ -9,6 +9,9 @@ skills:
   - shipping-and-launch
   - debugging-and-error-recovery
   - anti-spaghetti
+  - finishing-a-development-branch
+  - source-driven-development
+  - using-worktrees
 tools:
   - Read
   - Glob

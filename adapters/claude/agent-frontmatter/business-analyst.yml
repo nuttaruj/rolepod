@@ -4,6 +4,9 @@ description: Business Strategist for pricing models, cost/ROI analysis, financia
 model: haiku
 memory: user
 maxTurns: 20
+skills:
+  - doc-coauthoring
+  - planning-and-task-breakdown
 tools:
   - Read
   - Glob

@@ -10,6 +10,11 @@ skills:
   - debugging-and-error-recovery
   - test-driven-development
   - parallel-contract-orchestration
+  - webapp-testing
+  - browser-testing-with-devtools
+  - source-driven-development
+  - subagent-task-execution
+  - using-worktrees
 tools:
   - Read
   - Glob

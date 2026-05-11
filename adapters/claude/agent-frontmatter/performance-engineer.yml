@@ -9,6 +9,8 @@ skills:
   - performance-optimization
   - debugging-and-error-recovery
   - ci-cd-and-automation
+  - root-cause-tracing
+  - source-driven-development
 tools:
   - Read
   - Glob

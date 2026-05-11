@@ -8,6 +8,10 @@ skills:
   - debugging-and-error-recovery
   - anti-spaghetti
   - parallel-contract-orchestration
+  - test-driven-development
+  - source-driven-development
+  - subagent-task-execution
+  - using-worktrees
 tools:
   - Read
   - Glob

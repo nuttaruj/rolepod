@@ -11,6 +11,8 @@ skills:
   - webapp-testing
   - browser-testing-with-devtools
   - debugging-and-error-recovery
+  - root-cause-tracing
+  - doubt-driven-development
 tools:
   - Read
   - Glob
