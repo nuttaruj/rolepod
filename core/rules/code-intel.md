@@ -1,30 +1,28 @@
 # Code Intelligence — tools reference
 
-**Scope:** which tool to use for which lookup. CLI tools list. Decision tree.
-**NOT this file:** when in workflow to fire each → `code-intel-workflow.md`.
+**Scope:** which tool for which lookup. CLI list. Decision tree.
+**NOT this file:** when in workflow → `code-intel-workflow.md`.
 
 Read when: need symbol / caller / impact / rename / past decision / external service info.
 
-## Verify-first principle
+## Verify-first
 
-Never claim code/external fact without verifying. Memory + pattern-match = unreliable.
-Full guide: `verify-first.md`.
+Never claim code/external fact without verifying. Full guide: `verify-first.md`.
 
 ## Tier overview
 
 | Tier | Tool | When |
 |------|------|------|
-| 1 (text) | `rg` via Bash | Unique strings / specific pattern / speed |
-| 2 (live code) | GitNexus + LSP | Symbol meaning: definitions, callers, transitive deps |
-| 3 (history) | MemPalace KG | Past decisions / cross-session memory |
-| 4 (external) | WebFetch / WebSearch / CLI / MCP | Live 3rd-party state, current docs |
+| 1 (text) | `rg` | Unique strings / specific pattern |
+| 2 (live code) | GitNexus + LSP | Symbol meaning: defs, callers, deps |
+| 3 (history) | MemPalace KG | Past decisions / cross-session |
+| 4 (external) | WebFetch / WebSearch / CLI / MCP | Live 3rd-party, current docs |
 
 `grep` finds text. Code-intel understands meaning. Don't grep for symbol when GitNexus available.
 
 ## GitNexus
 
-Project indexed → check `gitnexus://repo/<name>/context` for freshness.
-Stale → reindex (see `code-intel-workflow.md`).
+Check `gitnexus://repo/<name>/context` for freshness. Stale → reindex (`code-intel-workflow.md`).
 
 ### Core tools
 
@@ -40,20 +38,13 @@ Stale → reindex (see `code-intel-workflow.md`).
 
 Exception: refactor >30 files OR ≥5 levels deep → subagent compresses graph first.
 
-Deep guides — skills:
-- `gitnexus-impact-analysis` — "what breaks if I change X"
-- `gitnexus-debugging` — bug tracing
-- `gitnexus-exploring` — architecture understanding
-- `gitnexus-refactoring` — rename/extract/split
-- `gitnexus-pr-review` — review workflow
-- `gitnexus-cli` — CLI commands
-- `gitnexus-guide` — full reference
+Deep guides (skills): `gitnexus-impact-analysis` / `gitnexus-debugging` / `gitnexus-exploring` / `gitnexus-refactoring` / `gitnexus-pr-review` / `gitnexus-cli` / `gitnexus-guide`.
 
-## MemPalace — Knowledge Graph
+## MemPalace — KG
 
-Tier 3 — past sessions, decisions, cross-conversation context.
+Tier 3 — past sessions, decisions, cross-conversation.
 
-**Note — distinct from native agent memory.** Each rolepod agent has `memory: project` or `memory: user` in its frontmatter. That's Claude Code native — works without any plugin, scopes the agent's own memory to project or user. MemPalace KG (below) is an optional layer on top: cross-session decision recall via the Stop / SessionStart / PreCompact hooks. Without MemPalace → agents still have their native scoped memory; you just lose cross-session KG recall.
+**Distinct from native agent memory.** Each rolepod agent has `memory: project` or `memory: user` in frontmatter (Claude Code native, scopes own memory). MemPalace KG = optional cross-session decision recall via Stop / SessionStart / PreCompact hooks. Without MemPalace → native memory still works, just no cross-session KG recall.
 
 ### Tools
 
@@ -62,31 +53,25 @@ Tier 3 — past sessions, decisions, cross-conversation context.
 | `mempalace_kg_query` | Find past decision / fact |
 | `mempalace_kg_add` | Save important decision |
 | `mempalace_kg_timeline` | Chronological view |
-| `mempalace_search` | Full-text search |
+| `mempalace_search` | Full-text |
 | `mempalace_find_tunnels` | Related concepts |
 | `mempalace_kg_invalidate` | Mark stale |
 
 ### Read-then-verify
 
-KG fact = snapshot at write time. Before acting on recalled fact:
-1. Verify by reading current state of files/resources
-2. If conflict → trust current state, update or remove stale memory
+KG fact = snapshot. Before acting:
+1. Verify current state of files
+2. Conflict → trust current, update/remove stale memory
 
 ## `rg` (ripgrep) — Tier 1
 
-Use for:
-- Unique error messages: `rg "ConnectionRefusedError"`
-- Config keys: `rg "DATABASE_URL"`
-- Filename pattern: `rg --files | rg "test_.*\.py"`
+Use: unique error messages (`rg "ConnectionRefusedError"`) / config keys (`rg "DATABASE_URL"`) / filename pattern (`rg --files | rg "test_.*\.py"`).
 
-Don't use for:
-- Symbol/caller lookup → `gitnexus_context`
-- Refactor planning → `gitnexus_rename`
-- Concept search → `gitnexus_query`
+Don't use: symbol/caller → `gitnexus_context`. Refactor → `gitnexus_rename`. Concept → `gitnexus_query`.
 
-## CLI tools — external services
+## CLI tools
 
-Anthropic best practice: "CLI = most context-efficient way to interact with external services."
+Anthropic: "CLI = most context-efficient way to interact with external services."
 
 | Service | CLI |
 |---------|-----|
@@ -101,7 +86,7 @@ Anthropic best practice: "CLI = most context-efficient way to interact with exte
 | Docker | `docker` |
 | K8s | `kubectl` |
 
-Without CLI → raw API → unauthenticated rate limits + verbose responses.
+Without CLI → raw API → rate limits + verbose responses.
 
 ### Learning unknown CLI
 
@@ -111,39 +96,37 @@ Use 'foo-cli --help' to learn about foo, then solve A, B, C.
 
 ### Order of preference
 
-1. Dedicated MCP server (if connected) — structured data
-2. CLI tool — context-efficient text
-3. Raw HTTP API — last resort
+1. MCP server (structured)
+2. CLI tool (context-efficient)
+3. Raw HTTP API (last resort)
 
 ## Decision tree
 
 ```
-Need to find something?
-├─ Plain text / unique string?           → rg
-├─ Symbol / function / class?            → gitnexus_context
-├─ "What breaks if I change X?"          → gitnexus_impact
-├─ "Where does concept X happen?"        → gitnexus_query
-├─ Rename / refactor?                    → gitnexus_rename
-├─ "What did we decide last time?"       → mempalace_kg_query
-├─ Past conversation / cross-session?    → mempalace_search
-├─ Live 3rd-party state?                 → MCP server / CLI tool
-├─ Library API / docs?                   → WebFetch official
-└─ Pricing / news / current state?       → WebSearch (current year)
+Plain text / unique string?       → rg
+Symbol / function / class?        → gitnexus_context
+"What breaks if I change X?"      → gitnexus_impact
+"Where does concept X happen?"    → gitnexus_query
+Rename / refactor?                → gitnexus_rename
+Past decision?                    → mempalace_kg_query
+Cross-session conversation?       → mempalace_search
+Live 3rd-party state?             → MCP / CLI
+Library API / docs?               → WebFetch official
+Pricing / news / current state?   → WebSearch (current year)
 ```
 
-## When tools unavailable — fallback
+## Fallback when tools unavailable
 
-- **GitNexus down / index missing** → `rg` for symbol search + Read for context (less precise, slower)
-- **MemPalace down** → check git log + project `decisions/` dir + recent PRs
-- **No internet (no WebSearch/WebFetch)** → state assumption + risk explicitly, ask user for any external fact needed
-- **MCP server disconnected** → CLI tool fallback; if no CLI, ask user
+- GitNexus down/missing → `rg` + Read (less precise)
+- MemPalace down → git log + `decisions/` dir + recent PRs
+- No internet → state assumption + risk, ask user
+- MCP disconnected → CLI; no CLI → ask user
 
 ## Common mistakes — DO NOT
 
-- `rg` for symbol lookup when GitNexus available
-- Edit symbol without `gitnexus_impact` first
+- `rg` for symbol when GitNexus available
+- Edit symbol without `gitnexus_impact`
 - Find-replace rename instead of `gitnexus_rename`
-- Trust MemPalace fact without verifying current state
-- Save trivial info to MemPalace KG (clutters graph)
-- Skip CLI for external service when MCP/CLI exists
-- Use raw API when MCP server provides structured access
+- Trust MemPalace without verifying current state
+- Save trivial info to KG
+- Raw API when MCP/CLI exists

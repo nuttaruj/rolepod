@@ -5,23 +5,23 @@ description: Design dashboards, admin panels, and tool/app interfaces — interf
 
 # Interface Design
 
-Marketing pages persuade once. Interfaces are inhabited. A dashboard is used 200 times a month by a power user who does not want a hero animation. This skill is for designing things people work in, not things people land on.
+For things people work in, not land on. Power user uses dashboard 200x/month — they don't want hero animation.
 
 ## When to use
 
-- Designing or auditing a dashboard, admin panel, internal tool, or SaaS app
-- Laying out data tables, metric cards, filter bars, settings pages
-- Choosing navigation structure (sidebar vs top nav vs combo)
+- Dashboard, admin panel, internal tool, SaaS app
+- Data tables, metric cards, filter bars, settings
+- Navigation structure (sidebar vs top vs combo)
 - Density decisions (compact vs comfortable)
-- NOT for: landing pages, marketing sites, blog posts, product pages
+- NOT for: landing pages, marketing, blog, product pages
 
 ## Core principles
 
-1. **Density rewards expertise** — power users want more on screen, not less. Don't whitespace yourself into uselessness.
-2. **Predictability over delight** — same action, same place, same feedback, every time.
-3. **Defaults matter most** — 80% of users will never change settings. Pick defaults that serve them.
-4. **Surface the next action** — the user came here to do something. Make that obvious.
-5. **Information hierarchy beats visual hierarchy** — the most important data should be most prominent, not the prettiest block.
+1. **Density rewards expertise** — power users want more on screen
+2. **Predictability over delight** — same action, same place, same feedback
+3. **Defaults matter most** — 80% never change settings
+4. **Surface next action** — user came to do something, make it obvious
+5. **Information hierarchy beats visual** — important data most prominent, not prettiest
 
 ## Layout primitives
 
@@ -29,100 +29,98 @@ Marketing pages persuade once. Interfaces are inhabited. A dashboard is used 200
 |---------|------------------|
 | Sidebar nav | Persistent, collapsible, sectioned by domain |
 | Top bar | Account, search, global actions, breadcrumb |
-| Page header | Title, subtitle, primary action (right-aligned), tabs (under) |
-| Content area | Cards, tables, or split-pane — pick one per page |
-| Footer | Rare in apps; reserve for dense settings pages |
+| Page header | Title, subtitle, primary action (right), tabs (under) |
+| Content area | Cards OR tables OR split-pane — one per page |
+| Footer | Rare in apps; reserve for dense settings |
 
-Don't mix navigation paradigms on the same page. Sidebar + tabs + top nav = the user can't predict where to click next.
+Don't mix navigation paradigms on same page.
 
-## Data display rules
+## Data display
 
 | Use | When |
 |-----|------|
-| Metric card | 1-4 KPIs at the top of a dashboard |
-| Table | 5+ rows of comparable records — the workhorse |
-| List | Variable-shape items, item is clickable to detail |
+| Metric card | 1-4 KPIs at dashboard top |
+| Table | 5+ rows of comparable records — workhorse |
+| List | Variable-shape, item clickable to detail |
 | Chart | Trend over time, comparison across categories |
-| Detail page | One record, all attributes, history, actions |
+| Detail page | One record, all attrs, history, actions |
 
-Tables: sticky header, sortable columns, per-row actions in last column or hover-revealed, density toggle if rows >50.
+Tables: sticky header, sortable columns, row actions in last column or hover, density toggle if >50 rows.
 
 ## Navigation hierarchy
 
 ```
 Primary nav     → top-level domains (Dashboard, Users, Reports, Settings)
-Secondary nav   → sub-sections within a domain (tabs or sub-sidebar)
+Secondary nav   → sub-sections (tabs or sub-sidebar)
 Tertiary        → in-page filters, segments, view modes
-Action          → the verb the user came to do (create, export, archive)
+Action          → verb user came to do (create, export, archive)
 ```
 
-If you need 4+ levels you have a structural problem, not a UI problem.
+4+ levels = structural problem, not UI problem.
 
 ## Density tiers
 
 | Tier | Row height | Use case |
 |------|-----------|----------|
-| Compact | 28-32px | Spreadsheet-replacement tools, traders, ops |
+| Compact | 28-32px | Spreadsheet-replacement, traders, ops |
 | Default | 40-48px | Most SaaS dashboards |
-| Comfortable | 56-64px | Consumer-facing or low-frequency apps |
+| Comfortable | 56-64px | Consumer or low-frequency apps |
 
-Pick one per surface. Mixing densities in one table = visual noise.
+One per surface. Mixing = visual noise.
 
 ## Empty / loading / error / partial
 
 Every data surface has 4 states. Design all 4:
 
-- **Empty** — what's missing? what's the next action to fix it? show a CTA, not just "No data"
-- **Loading** — skeleton matching the final layout, not a centered spinner
-- **Error** — what failed, what to try, where to get help
-- **Partial** — some loaded, some failed — show what worked, mark what didn't
+- **Empty** — what's missing? next action? CTA, not just "No data"
+- **Loading** — skeleton matching final layout, not centered spinner
+- **Error** — what failed, what to try, where for help
+- **Partial** — show what worked, mark what didn't
 
 ## Common mistakes
 
-- Marketing-style hero on a dashboard ("Welcome back!" eats the fold)
-- Whitespace-maxxing a tool that needs density
-- Hiding primary action behind a kebab menu
-- Card-ifying everything when a table would be clearer
-- Inventing a custom date picker / dropdown / modal instead of using a primitive
-- Different button styles for the same severity across pages
-- "Empty state" that's just a sad illustration with no path forward
-- Modal-stacking (modal opens modal opens modal)
-- Infinite scroll on data the user needs to compare or jump within
-- Sidebar that hides in `<lg` breakpoint with no replacement nav
+- Marketing-style hero on dashboard ("Welcome back!" eats fold)
+- Whitespace-maxxing tool that needs density
+- Primary action hidden behind kebab menu
+- Card-ifying everything when table clearer
+- Custom date picker/dropdown/modal instead of primitive
+- Different button styles for same severity across pages
+- "Empty state" = sad illustration, no path forward
+- Modal-stacking (modal opens modal)
+- Infinite scroll on data needing compare/jump
+- Sidebar that hides at `<lg` with no replacement nav
 
-## Quick reference — interface decisions
+## Quick reference
 
 | Decision | Default |
 |----------|---------|
 | Primary action position | Top-right of page header |
-| Destructive action | Confirm step + red color + away from primary |
-| Save behavior | Autosave for forms with continuous edits, explicit Save for atomic changes |
-| Pagination | Page numbers for browsing, cursor for feeds, "Load more" for short lists |
-| Filter UI | Persistent bar above table; chips for active filters |
-| Search | Top of page or top bar; debounced; results inline if possible |
-| Settings page | Left nav of sub-sections, right pane of fields, sticky save |
-| Notifications | Top-right toast for ephemeral, banner for persistent, inbox for log |
+| Destructive action | Confirm + red + away from primary |
+| Save behavior | Autosave continuous, explicit Save atomic |
+| Pagination | Pages for browse, cursor for feeds, "Load more" short |
+| Filter UI | Persistent bar above table, chips for active |
+| Search | Top of page or top bar, debounced, inline results |
+| Settings page | Left nav sub-sections, right pane fields, sticky save |
+| Notifications | Top-right toast ephemeral, banner persistent, inbox log |
 
 ## Pre-ship review
 
-- [ ] Primary action is the highest-contrast button on the page
-- [ ] Every state designed (empty / loading / error / partial)
-- [ ] No mystery icons (icon + label, not icon-only, unless universal)
-- [ ] Keyboard shortcuts for the 3 most-used actions
-- [ ] Density consistent within the surface
-- [ ] Page works at 1280px, 1440px, 1920px
-- [ ] Settings discoverable (not hidden behind 3 clicks)
-- [ ] Destructive actions require explicit confirmation
+- [ ] Primary action = highest-contrast button
+- [ ] All 4 states designed (empty/loading/error/partial)
+- [ ] No mystery icons (icon + label unless universal)
+- [ ] Keyboard shortcuts for 3 most-used actions
+- [ ] Density consistent within surface
+- [ ] Works at 1280px, 1440px, 1920px
+- [ ] Settings discoverable (not 3 clicks deep)
+- [ ] Destructive actions require explicit confirm
 
 ## Common Rationalizations
 
-When you're tempted to skip this skill, watch for these excuses:
-
 | Excuse | Reality |
 |--------|---------|
-| "Users will figure out the dashboard layout" | Users don't figure it out — they leave. Dashboards live or die in the first 30 seconds; layout discipline is non-optional. |
-| "This is a simple change, doesn't need <skill>" | Bugs hide in simple changes too — DAPLab data shows 41% of agentic-LLM failures land in 'trivial' diffs. |
-| "I already know the answer" | Confirmation bias — the skill exists to surface what you didn't think of, not to repeat what you did. |
-| "Time pressure, skip just this once" | Tech debt compounds; 5 minutes saved at write time costs 50 minutes of debugging later. |
+| "Users will figure out the layout" | They don't — they leave. Live or die in first 30s. |
+| "Simple change, no skill needed" | DAPLab: 41% failures in 'trivial' diffs. |
+| "I already know" | Confirmation bias. |
+| "Time pressure" | 5 min saved = 50 min debugging. |
 
-Default response when rationalizing: run the skill anyway. Cost of running it is bounded; cost of skipping when you needed it is not.
+Default: run skill.

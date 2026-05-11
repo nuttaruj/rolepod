@@ -5,78 +5,74 @@ description: Trace an error upstream from where it fires to where it was actuall
 
 # Root Cause Tracing
 
-Most bug fixes that "don't stick" share one pattern: the fix patched the place where the error became visible, not the place where the bad state was created. The display layer reports `null.name`, the engineer adds `?.name`, ships, and three weeks later a different field on the same null object throws somewhere else.
+Bug fixes that don't stick share a pattern: patched where error became visible, not where bad state was created. Display reports `null.name` → engineer adds `?.name` → ships → 3 weeks later different field on same null throws elsewhere.
 
-This skill is the upstream-tracing primitive — recurse from the symptom toward the source until you hit one of three legitimate stopping points. Stop earlier than that and you ship a patch on a patch.
+Upstream-tracing primitive — recurse from symptom to source until you hit one of three legitimate stopping points.
 
 ## Fire this skill (not `debugging-and-error-recovery`) when…
 
-`debugging-and-error-recovery` is the broader bug-fix workflow (reproduce → hypothesis → bisect → fix). This skill is the **upstream-tracing primitive** inside that workflow. Pick this one (or invoke it as a sub-step of the broader skill) when:
+`debugging-and-error-recovery` = broader workflow. This skill = upstream-tracing primitive inside it. Pick this when:
 
-- The **symptom is downstream of the cause** — e.g. null pointer at the display layer, but the null was produced three layers up at DB-read time
-- You need to **trace upstream through multiple layers** to reach the producer
-- "First plausible cause" isn't enough — you need the **root**, not the first place that *could* be it
-- The same bug keeps **recurring with different surfaces** after each fix at the symptom site
+- Symptom downstream of cause (null at display layer, produced 3 layers up at DB read)
+- Need to trace upstream through multiple layers
+- "First plausible cause" isn't enough — need root
+- Same bug recurs with different surfaces after each fix
 
-Stay with `debugging-and-error-recovery` (don't drop into this skill) when:
-
-- Bug is at the source already (validation rejecting bad input at the boundary)
-- Pure mechanical fix (typo, off-by-one, wrong constant in the same function)
-- You haven't reproduced yet — get the repro first, then come back here if needed
+Stay with broader skill when:
+- Bug at source already (validation rejecting bad input at boundary)
+- Pure mechanical (typo, off-by-one)
+- Haven't reproduced yet — get repro first
 
 ## When to use
 
-Trigger this skill when:
-
-- A stack trace points at code that is clearly downstream of where the bad state was introduced (rendering / serializing / asserting an invariant that should have held earlier)
-- The same bug recurs with different surfaces after each fix
-- A fix makes one error go away and a structurally similar one appears nearby
-- You catch yourself adding "defensive" null/undefined/optional handling without knowing why the value can be missing
+- Stack points at code clearly downstream of where bad state was introduced
+- Same bug recurs with different surfaces
+- Fix makes one error go away, structurally similar appears nearby
+- You're adding "defensive" null/undefined handling without knowing why
 
 ## When NOT to use
 
-- Error is at the source already (e.g. validation function rejecting bad input at the boundary — that's where bad state is supposed to be rejected; nothing upstream)
-- Pure mechanical fix (typo, wrong constant, off-by-one in the same function)
-- Time-boxed hotfix where you must stop the bleed first — patch the symptom now, file the root-cause trace as follow-up
+- Error at source already (boundary validation rejecting bad input)
+- Pure mechanical fix
+- Time-boxed hotfix — patch symptom now, file follow-up
 
 ## The recursion
 
-### Step 1 — Identify the proximate cause
+### Step 1 — Identify proximate cause
 
-Where does the error actually fire? Read the stack trace, find the file:line where the assertion / exception / wrong-output happens. This is the **symptom**, not the cause.
+Where does error fire? Read stack, find file:line. This is **symptom**, not cause.
 
 ### Step 2 — Ask "what made this state possible?"
 
-For the bad state at the proximate cause site (null, wrong type, out-of-range value, stale cache, missing record):
-
+For bad state at symptom site (null, wrong type, out-of-range, stale cache, missing record):
 - Who wrote this value last?
 - Who could have written it?
-- Is the value expected to be valid here, or is it the caller's responsibility to validate?
+- Is value expected valid here, or is caller's job to validate?
 
 Tools:
-- `gitnexus_impact({ target, direction: "upstream" })` when available — lists callers and data producers
-- `git log -p <file>` on the symptom file to see recent state-mutating changes
-- Plain reading of the data flow when graph tools unavailable
+- `gitnexus_impact({ target, direction: "upstream" })` when available
+- `git log -p <file>` on symptom file
+- Plain data-flow reading when graph unavailable
 
 ### Step 3 — Recurse
 
-Move up one layer (caller, data producer, deserializer, database query, external API response). Ask the same question. Repeat until you reach a **legitimate stopping point**:
+Move up one layer (caller, producer, deserializer, DB query, external API). Same question. Repeat until one of three **legitimate stopping points**:
 
-1. **External input** — value came from user / network / file / env. Fix = validate at the boundary, not at the symptom.
-2. **System boundary** — value crossed a process / service / language barrier and was malformed there. Fix = the contract at that boundary.
-3. **"It was designed this way"** — the value is legitimately allowed to be in this state at the producer. Fix = the *design*, not the consumer. The consumer was wrong to assume otherwise.
+1. **External input** — value came from user / network / file / env. Fix = validate at boundary.
+2. **System boundary** — value crossed process/service/language barrier, malformed there. Fix = contract at that boundary.
+3. **"Designed this way"** — value legitimately allowed in this state at producer. Fix = the design (consumer was wrong to assume otherwise).
 
-If none of the three apply yet, you have not reached the root — keep recursing.
+None of three apply → not at root, keep recursing.
 
-### Step 4 — Fix at the root, not the symptom
+### Step 4 — Fix at root, not symptom
 
-The fix lands at the stopping point. The symptom site may also need a small change (e.g. removing the now-unnecessary defensive check), but the load-bearing fix is upstream.
+Fix lands at stopping point. Symptom site may need small change (remove now-unnecessary defensive check), but load-bearing fix is upstream.
 
 ### Anti-pattern: "first plausible cause"
 
-The seductive trap is stopping at the first layer that *could* be the cause and patching there. Test: ask "if I fix this, can the bad state still arrive here through a different path?" If yes — keep recursing. If no — you're at the root.
+Stopping at first layer that *could* be cause and patching. Test: "if I fix this, can bad state still arrive through a different path?" Yes → keep recursing.
 
-## Worked example shape
+## Worked example
 
 ```
 Symptom: TypeError: cannot read property 'email' of null
@@ -87,38 +83,38 @@ Step 2 — Who passes user? <UserBadge user={currentUser} /> from layout.tsx
 Step 3 — Where does currentUser come from? useCurrentUser() hook
 Step 4 — Hook: returns null while loading. Designed to.
 Step 5 — Stopping point: "designed this way" — hook documents null-while-loading.
-         The CONSUMER (UserBadge) assumed the value was always present.
-Fix: at the design boundary — UserBadge handles loading state, OR layout
-     gates rendering until currentUser resolves. NOT a `?.email` at line 42.
+         CONSUMER (UserBadge) assumed always present.
+Fix: at design boundary — UserBadge handles loading state, OR layout
+     gates rendering until currentUser resolves. NOT a `?.email` patch.
 ```
 
-The `?.email` patch would have shipped a render-empty-badge bug to production for every page load.
+The `?.email` patch would have shipped render-empty-badge bug for every page load.
 
 ## Tools
 
-- **GitNexus impact (upstream)** when indexed — fastest data-flow lookup
-- **`git log -p` on the symptom file** when GitNexus unavailable — shows recent state mutations
-- **Manual data-flow reading** as fallback — slower but always works
+- **GitNexus impact (upstream)** when indexed — fastest
+- **`git log -p` on symptom file** — when GitNexus unavailable
+- **Manual data-flow reading** — fallback
 
-Pair with `gitnexus-debugging` skill for graph-driven traces.
+Pair with `gitnexus-debugging` for graph-driven traces.
 
 ## Pairs with
 
-- `debugging-and-error-recovery` — broader debugging skill that includes this primitive among others (reproduction, bisection, hypothesis-testing). Use this skill for the upstream-trace step; use the broader one for end-to-end debugging.
-- **Defense-in-depth** — once you find the root, the strongest fix is "make the bad state structurally impossible" (type-level, schema-level, invariant-level), not just patched at one site. Root cause + structural impossibility = the bug class is dead.
+- `debugging-and-error-recovery` — broader skill that includes this primitive among others
+- **Defense-in-depth** — strongest fix: make bad state structurally impossible (type/schema/invariant), not just patched at one site
 
 ## Influence
 
-Adapted from [obra/superpowers](https://github.com/obra/superpowers) `systematic-debugging/root-cause-tracing.md`. The three-stopping-points framing is the load-bearing idea. Worked-example structure and the "first plausible cause" anti-pattern naming are rolepod additions.
+Adapted from [obra/superpowers](https://github.com/obra/superpowers) `systematic-debugging/root-cause-tracing.md`. Three-stopping-points framing = load-bearing idea.
 
 ## Common Rationalizations
 
 | Excuse | Reality |
 |--------|---------|
-| "The fix at the symptom works, ship it" | Works for the case you tested. Bad state can still arrive via a different path you didn't test. |
-| "Recursing upstream is too expensive" | Recursing once is cheap. Recurring this bug three more times across the codebase is expensive. |
-| "Adding `?.` here is just defensive coding" | Defensive coding is the patch-on-patch pattern. Defense-in-depth is a structural fix at the boundary. |
-| "The root is in third-party code, can't fix there" | Yes you can — wrap or validate at the boundary where third-party meets your code. That IS the stopping point. |
-| "I already know the cause without tracing" | The trace exists to falsify your guess. If the trace agrees, you've lost 2 minutes. If it disagrees, you've avoided a wrong fix. |
+| "Symptom fix works, ship it" | Works for tested case. Bad state can arrive via untested paths. |
+| "Recursing is expensive" | Recursing once is cheap; recurring this bug 3 times across codebase is expensive. |
+| "`?.` is defensive coding" | Defensive coding = patch-on-patch. Defense-in-depth = structural fix at boundary. |
+| "Root is in third-party code" | Wrap or validate at boundary where third-party meets your code. |
+| "I know the cause without tracing" | Trace exists to falsify guess. Agrees = lost 2 min. Disagrees = avoided wrong fix. |
 
-Default when rationalizing: run the trace anyway. The asymmetric cost is large — symptom patches that ship to prod are the most expensive bugs to discover later.
+Default: run trace anyway. Symptom patches in prod = most expensive bugs to find later.

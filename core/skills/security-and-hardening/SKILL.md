@@ -5,139 +5,130 @@ description: Defend code against real-world abuse. Use when handling untrusted i
 
 # Security and Hardening
 
-Most production breaches come from a small set of repeated mistakes: trust where you shouldn't, missing checks at boundaries, secrets in the wrong place. This skill is the checklist for the boundaries you cross every day.
+Most breaches = small set of repeated mistakes: trust where you shouldn't, missing checks at boundaries, secrets in wrong place.
 
 ## Iron Law
 
 <EXTREMELY-IMPORTANT>
-1. NEVER trust input crossing a system boundary (HTTP, queue, file, env) without validation at that boundary. Internal layers may then trust the type.
-2. NEVER log secrets, tokens, full credit cards, PII, or raw passwords. Once in logs, assume compromised.
-3. ALWAYS check authorization at every endpoint touching tenant-scoped data. "Just this one place" auth bypass = data leak. ห้ามฝืน.
+1. NEVER trust input crossing a boundary (HTTP, queue, file, env) without validation at that boundary. Internal layers may then trust the type.
+2. NEVER log secrets, tokens, full credit cards, PII, raw passwords. Once in logs = compromised.
+3. ALWAYS check authorization at every endpoint touching tenant-scoped data. "Just this one place" auth bypass = data leak.
 
-Most production breaches are not novel exploits — they are these three rules ignored once.
+Breaches usually = these three ignored once.
 </EXTREMELY-IMPORTANT>
 
-## Red Flags — you are about to skip this skill
+## Red Flags
 
-| Red flag (your thought) | What it actually means |
-|-------------------------|------------------------|
-| "This endpoint is internal, no auth needed" | Internal = "I don't know who calls it yet". Add auth. |
-| "I'll validate downstream" | Downstream forgets. Boundary validation is the only reliable gate. |
-| "Logging this token helps debugging" | Logs leak. Use a redacted handle (last 4 chars), never the secret. |
-| "User-supplied URL is fine to fetch" | SSRF to internal network. Allowlist destination, never trust input URL. |
-| "Crypto is hard, I'll roll my own" | You will get it wrong. Use the platform primitive. |
+| Thought | Reality |
+|---------|---------|
+| "Endpoint is internal, no auth needed" | Internal = "I don't know who calls it yet". |
+| "I'll validate downstream" | Downstream forgets. |
+| "Logging this token helps debug" | Logs leak. Use redacted handle (last 4). |
+| "User-supplied URL fine to fetch" | SSRF to internal network. Allowlist. |
+| "Crypto is hard, I'll roll my own" | You'll get it wrong. Stdlib. |
 
 ## When to use
 
-- Adding a route that takes user input
-- Storing data tied to a user identity
-- Calling a third-party API on behalf of a user
-- Implementing login, sessions, password reset, MFA
-- Designing or changing permission rules
-- Reviewing a PR that touches any of the above
-- After an incident — hardening the surface that broke
+- New route taking user input
+- Storing data tied to user identity
+- Calling 3rd-party API on behalf of user
+- Login, sessions, password reset, MFA
+- Designing or changing permissions
+- Reviewing PR touching above
+- Post-incident hardening
 
-## Threat model first (5 minutes, not 5 hours)
+## Threat model first (5 min)
 
-Before writing code, answer:
-
-1. **Who is the attacker?** Random internet, logged-in user, insider, compromised dependency.
-2. **What's the asset?** PII, money, content, account control, compute.
-3. **What's the boundary?** Where does untrusted data become trusted?
-4. **What's the blast radius?** One user, one tenant, all users, the platform.
-
-Two minutes of this beats two days of "we'll add validation later."
+1. **Attacker?** Random internet, logged-in user, insider, compromised dep
+2. **Asset?** PII, money, content, account control, compute
+3. **Boundary?** Where untrusted becomes trusted
+4. **Blast radius?** One user, one tenant, all users, platform
 
 ## Boundary discipline
 
-Every byte that crosses a trust boundary gets validated, normalized, and bounded — once, at the boundary.
+Every byte across a trust boundary: validated, normalized, bounded — once, at the boundary.
 
 | Boundary | Defenses |
 |----------|----------|
-| HTTP request → handler | Schema validation, size limits, content-type check, rate limit |
-| User input → DB query | Parameterized queries (never string concat), allowlist columns for `ORDER BY` |
-| User input → shell/exec | Don't. If you must: argv array, no shell, allowlist binaries |
-| Server → external URL (SSRF) | Allowlist hosts; resolve DNS, reject private/link-local; no redirects to internal |
-| Untrusted file → storage | Validate MIME, cap size, randomize filename, store outside webroot |
-| Untrusted HTML → render | Escape by default; sanitize only when rich text is required, with an allowlist |
-| Deserialization | No pickle / native deserialize on user input. JSON with a schema. |
+| HTTP → handler | Schema validation, size limits, content-type, rate limit |
+| User input → DB | Parameterized queries; allowlist columns for ORDER BY |
+| User input → shell | Don't. If must: argv array, no shell, allowlist binaries |
+| Server → external URL (SSRF) | Allowlist hosts; resolve DNS, reject private/link-local; no internal redirects |
+| Untrusted file → storage | Validate MIME, cap size, randomize name, outside webroot |
+| Untrusted HTML → render | Escape by default; sanitize via allowlist if rich text needed |
+| Deserialization | No pickle/native on user input. JSON with schema. |
 
-## Auth — the parts that go wrong
+## Auth — parts that go wrong
 
-- **Authentication** ≠ **authorization**. Logged in is not the same as allowed. Check both at every endpoint.
-- **Object-level checks** — "user X owns row Y" must be enforced server-side, every time. URL guessing is the #1 leak.
-- **Session cookies** — `HttpOnly`, `Secure`, `SameSite=Lax` (or `Strict` where flows allow), short idle timeout, server-side revocation.
-- **Password storage** — Argon2id or bcrypt with a real cost factor. Never SHA / MD5 / unsalted.
-- **Token leakage** — never log JWTs, refresh tokens, OAuth codes. Treat URLs with tokens as secrets (don't email them, don't put in error pages).
-- **Reset flows** — single-use, time-bound, bound to the requesting account, invalidate on use, rate-limit on request.
-- **MFA** — TOTP or WebAuthn. SMS is a fallback, not a primary.
+- **Authentication ≠ authorization.** Logged in ≠ allowed. Check both, every endpoint.
+- **Object-level checks** — "user X owns row Y" enforced server-side, every time. URL guessing = #1 leak.
+- **Session cookies** — `HttpOnly`, `Secure`, `SameSite=Lax` (or Strict), short idle timeout, server-side revocation.
+- **Password storage** — Argon2id or bcrypt with real cost. Never SHA/MD5/unsalted.
+- **Token leakage** — never log JWTs, refresh, OAuth codes. Treat URLs with tokens as secrets.
+- **Reset flows** — single-use, time-bound, bound to requesting account, invalidate on use, rate-limit.
+- **MFA** — TOTP or WebAuthn. SMS is fallback.
 
 ## Secrets and storage
 
-- Secrets in the platform's secret manager. Not in `.env` in the repo. Not in CI logs. Not in error messages returned to users.
-- Encryption at rest: enable provider-level disk encryption + app-level encryption for high-sensitivity fields (tokens, PII).
-- TLS everywhere — internal too, if you cross a network you don't physically own.
-- Backups encrypted. Restores tested. An untested backup is not a backup.
-- Logs scrubbed: no full credit cards, no passwords, no tokens, no full session IDs.
+- Secrets in platform secret manager. Not `.env` in repo. Not CI logs. Not error messages.
+- Encryption at rest: provider disk encryption + app-level for high-sensitivity fields.
+- TLS everywhere, internal too.
+- Backups encrypted; restores tested.
+- Logs scrubbed.
 
 ## External integrations
 
-Third-party = untrusted. The vendor can be compromised, change behavior, return junk.
+3rd-party = untrusted. Vendor compromise, behavior change, junk responses.
 
-- Validate response shape. Don't trust their JSON to match yesterday's schema.
-- Set timeouts and circuit breakers. A hanging upstream becomes your outage.
-- Don't echo opaque error strings to users.
-- Webhooks: verify signatures, replay-protect with timestamp + nonce, idempotent handlers.
-- Outbound URLs derived from user input → SSRF allowlist (above).
+- Validate response shape
+- Set timeouts and circuit breakers
+- Don't echo opaque error strings to users
+- Webhooks: verify signatures, replay-protect with timestamp + nonce, idempotent handlers
+- Outbound URLs from user input → SSRF allowlist
 
 ## Common mistakes
 
-- Validating only on the client (attacker bypasses)
-- Adding `X-Frame-Options` headers but missing CSP
-- Storing API keys in localStorage "because it's convenient"
-- Logging the entire request body for debugging — including the password field
-- Trusting `req.user.id` from a client-supplied JWT without verifying signature + expiry
-- Auth check in 3 places, missed in the 4th — centralize
-- Sanitize-on-render instead of validate-on-input (different layer of defense, but not a substitute)
-- "We'll fix it before launch" — security debt compounds; ship hardened or don't ship
+- Client-only validation
+- `X-Frame-Options` but no CSP
+- API keys in localStorage
+- Logging entire request body (incl. password)
+- Trusting `req.user.id` from client JWT without verifying sig + expiry
+- Auth check in 3 places, missed in 4th — centralize
+- Sanitize-on-render instead of validate-on-input (different defense layer, not substitute)
+- "Fix before launch" — security debt compounds
 
 ## Output format — security review
-
-When auditing code, report findings as:
 
 ```
 Severity: critical | high | medium | low
 Class: [auth bypass / data leak / injection / SSRF / etc.]
 Location: file:line
-Reproduction: [minimal request or input that demonstrates]
-Impact: [what an attacker gets]
-Fix: [concrete change, not "validate input"]
+Reproduction: [minimal request demonstrating]
+Impact: [what attacker gets]
+Fix: [concrete change]
 ```
 
-## Quick reference — the 10 questions before merge
+## Quick reference — 10 questions before merge
 
-1. Does every endpoint check both authentication AND authorization?
-2. Is every user-controlled string going to SQL parameterized?
-3. Is every user-controlled URL going to an HTTP client allowlisted?
-4. Is every user-controlled value going to HTML escaped (or sanitized via allowlist)?
-5. Are file uploads bounded by size, type, and stored outside the webroot?
-6. Are passwords hashed with Argon2id/bcrypt at a real cost?
-7. Are session cookies `HttpOnly` + `Secure` + `SameSite`?
-8. Are secrets out of the repo and out of logs?
-9. Does the response avoid leaking stack traces / internal paths to users?
-10. Is rate-limiting in place on auth, password reset, and expensive endpoints?
+1. Every endpoint checks BOTH authentication AND authorization?
+2. Every user-controlled string going to SQL parameterized?
+3. Every user-controlled URL allowlisted?
+4. Every user-controlled value HTML-escaped (or sanitized via allowlist)?
+5. File uploads bounded by size, type, outside webroot?
+6. Passwords hashed with Argon2id/bcrypt at real cost?
+7. Session cookies `HttpOnly` + `Secure` + `SameSite`?
+8. Secrets out of repo and logs?
+9. Response avoids leaking stack traces/internal paths?
+10. Rate-limiting on auth, reset, expensive endpoints?
 
-Any "no" → block the merge or document the explicit risk acceptance.
+Any "no" → block merge or document explicit risk acceptance.
 
 ## Common Rationalizations
 
-When you're tempted to skip this skill, watch for these excuses:
-
 | Excuse | Reality |
 |--------|---------|
-| "It's behind auth, attackers can't reach it" | Auth bypass is one bug away. Defense-in-depth assumes any layer can fail. Validate at boundaries regardless of upstream guards. |
-| "This is a simple change, doesn't need <skill>" | Bugs hide in simple changes too — DAPLab data shows 41% of agentic-LLM failures land in 'trivial' diffs. |
-| "I already know the answer" | Confirmation bias — the skill exists to surface what you didn't think of, not to repeat what you did. |
-| "Time pressure, skip just this once" | Tech debt compounds; 5 minutes saved at write time costs 50 minutes of debugging later. |
+| "It's behind auth, attackers can't reach" | Auth bypass is one bug away. Defense-in-depth assumes any layer can fail. |
+| "Simple change" | 41% of agentic-LLM failures land in trivial diffs (DAPLab). |
+| "Time pressure" | Tech debt compounds. |
 
-Default response when rationalizing: run the skill anyway. Cost of running it is bounded; cost of skipping when you needed it is not.
+Default: run anyway.

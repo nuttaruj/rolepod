@@ -5,104 +5,94 @@ description: Two-stage per-task review pattern when Lead delegates an implementa
 
 # Subagent Task Execution
 
-The default delegation pattern — Lead briefs one subagent, subagent writes code, Lead glances at the diff and ships — has two failure modes that compound:
+Default pattern (Lead briefs subagent, subagent writes, Lead ships) has two failure modes:
 
-1. **Self-review blindness** — the implementer's review of their own work is biased toward "it works for the case I just thought of."
-2. **Spec drift** — implementer subtly reshapes the task to match what was easy to write, not what was asked.
+1. **Self-review blindness** — implementer's review of own work biased toward "works for case I thought of"
+2. **Spec drift** — implementer reshapes task to match what was easy to write
 
-This skill makes both failures expensive by interposing two **separate** reviewer subagents with **fresh context**. The implementer cannot persuade the reviewers; the reviewers cannot persuade each other; only Lead reconciles.
+Fix: two **separate** reviewers with **fresh context**. Implementer can't persuade reviewers; reviewers can't persuade each other; only Lead reconciles.
 
 ## When to use
 
-Use the two-stage pattern when ALL hold:
+ALL must hold:
+- Lead delegating (not self-doing)
+- Task touches business logic, public APIs, data integrity, security, money, migrations
+- Cost of silent regression > cost of two extra rounds (~5-10 min)
 
-- Lead is delegating to a subagent (not doing the work itself)
-- The task touches business logic, public APIs, data integrity, security, money, or migrations
-- The cost of a silent regression > cost of two extra review rounds (~5-10 min added)
-
-Skip the pattern when:
-
-- The change is mechanical (rename, lint fix, doc tweak)
-- The task is exploratory ("see if this approach works")
-- A single-agent self-review caught a bug already and the fix is 1-line
+Skip:
+- Mechanical (rename, lint, doc tweak)
+- Exploratory ("see if this approach works")
+- Single-agent self-review caught bug + 1-line fix
 
 ## The four-step pattern
 
 ### Step 1 — Implementer subagent
 
-Lead spawns a fresh subagent with the implementer prompt template (`templates/implementer-prompt.md`). The implementer:
-
-- Sees only the task brief + relevant code paths
-- Does NOT see Lead's prior thinking, the user's chat history, or any reviewer template
+Fresh subagent, implementer prompt (`templates/implementer-prompt.md`):
+- Sees task brief + relevant code paths
+- Does NOT see Lead's prior thinking, user chat history, reviewer templates
 - Returns: changed files + summary + self-stated risks
 
-The implementer's context is destroyed at task end. Future reviewers cannot inherit its biases.
+Context destroyed at task end → future reviewers don't inherit biases.
 
 ### Step 2 — Spec compliance reviewer (fresh subagent)
 
-Lead spawns a second subagent with the spec reviewer prompt (`templates/spec-reviewer-prompt.md`). This reviewer:
+Spec reviewer prompt (`templates/spec-reviewer-prompt.md`):
+- Sees original task brief (spec)
+- Sees implementer's diff
+- Does NOT see implementer's self-justification
+- Answers: **does diff satisfy brief verbatim?**
 
-- Sees the original task brief (the spec)
-- Sees the implementer's diff
-- Does NOT see the implementer's self-justification
-- Answers one question: **does the diff satisfy the brief verbatim?**
-
-Spec drift findings = list of `[spec line] not satisfied by [diff line/location]`. No code-quality comments — that's the next reviewer's job.
+Findings = `[spec line] not satisfied by [diff line/location]`. No code-quality comments.
 
 ### Step 3 — Code quality reviewer (third fresh subagent)
 
-Lead spawns a third subagent with the code-quality prompt (`templates/code-quality-reviewer-prompt.md`). This reviewer:
-
-- Sees only the diff (not the brief, not the spec reviewer's output)
+Code-quality prompt (`templates/code-quality-reviewer-prompt.md`):
+- Sees only diff (no brief, no spec reviewer's output)
 - Evaluates: simplicity, idiom match, anti-spaghetti, defensive-bloat, naming
-- Does NOT evaluate spec compliance — assumes that's already verified
+- Does NOT evaluate spec compliance
 
-Why separate from spec reviewer: combining them produces "the spec is met but the code is gnarly, hmm…" — the reviewer hedges. Separate prompts force separate verdicts.
+Why separate from spec reviewer: combined → "spec met but code gnarly, hmm…" hedge. Separate prompts force separate verdicts.
 
-### Step 4 — Lead reconciles, marks done
+### Step 4 — Lead reconciles
 
-Lead reads both reviewer reports:
-
-- Both clean → mark task done, commit
-- Spec reviewer flagged drift → either fix and re-run both reviewers, or re-spec with the user
-- Quality reviewer flagged smell → fix and re-run only the quality reviewer (spec hasn't changed)
-- Reviewers disagree (rare) → Lead is the tiebreaker. Don't spawn a 4th reviewer to break ties — that's reviewer-shopping.
+- Both clean → mark done, commit
+- Spec drift → fix and re-run both, or re-spec with user
+- Quality smell → fix and re-run only quality reviewer (spec unchanged)
+- Reviewers disagree → Lead is tiebreaker. Don't spawn 4th — that's reviewer-shopping.
 
 ## Round caps
 
-- Implementer: 1 round (if it can't produce a passing diff in one round, the brief is wrong — re-brief)
+- Implementer: 1 round (can't pass in one → brief is wrong, re-brief)
 - Spec reviewer: ≤2 rounds (drift fix + verify)
 - Quality reviewer: ≤3 rounds (smell fix iterations)
-- Hard total cap: 6 subagent invocations per task. Higher → escalate (advisor / hard stop).
+- Hard total: 6 subagent invocations per task. Higher → escalate.
 
 ## Templates
 
-Three prompt templates ship with this skill:
-
-- `templates/implementer-prompt.md` — brief shape for the implementer
-- `templates/spec-reviewer-prompt.md` — spec-compliance reviewer brief
-- `templates/code-quality-reviewer-prompt.md` — code-quality reviewer brief
-
-Templates are committed so they're reusable across tasks and so the pattern is auditable in PRs (reviewer who reads the PR can see exactly what prompts produced each artifact).
+Three prompt templates ship with this skill (committed for reuse + PR auditability):
+- `templates/implementer-prompt.md`
+- `templates/spec-reviewer-prompt.md`
+- `templates/code-quality-reviewer-prompt.md`
 
 ## Pairs with
 
-- `parallel-contract-orchestration` — when multiple implementer subagents run in parallel, each goes through its own two-stage review.
-- `using-worktrees` — implementer + reviewers can share a worktree (read-only for reviewers).
-- `test-driven-development` — the spec reviewer's verification of "brief satisfied" is strongest when the brief includes failing tests the implementer must turn green.
+- `parallel-contract-orchestration` — each parallel implementer goes through its own two-stage review
+- `using-worktrees` — implementer + reviewers share worktree (read-only for reviewers)
+- `test-driven-development` — spec reviewer's verification strongest when brief includes failing tests to turn green
 
 ## Influence
 
-Adapted from [obra/superpowers](https://github.com/obra/superpowers) `subagent-driven-development/SKILL.md`. The two-reviewer split (spec vs quality) is the load-bearing idea. Round caps and prompt-template commitment are rolepod additions.
+Adapted from [obra/superpowers](https://github.com/obra/superpowers) `subagent-driven-development/SKILL.md`. Two-reviewer split (spec vs quality) is load-bearing. Round caps + template commitment are rolepod additions.
 
 ## Common Rationalizations
 
 | Excuse | Reality |
 |--------|---------|
-| "The task is small, one reviewer is enough" | Spec drift is independent of size — a 10-line diff can quietly answer a different question than the brief asked. |
-| "I trust this implementer, skip reviewers" | Trust is not a review. The reviewer's job is to catch what trust missed. |
-| "Both reviewers will say the same thing, save tokens" | They won't — that's the whole design. Spec-clean code can still be gnarly; clean code can still miss spec. |
-| "I'll review it myself instead of spawning a reviewer" | Lead context is polluted by the brief-writing phase. The reviewer's fresh context catches what Lead can no longer see. |
-| "Three subagents per task is too many" | The compounding cost of one missed regression in production exceeds 100 extra reviewer rounds. |
+| "Task small, one reviewer enough" | Spec drift independent of size — 10-line diff can quietly answer different question. |
+| "Trust this implementer, skip reviewers" | Trust is not review. Reviewer catches what trust missed. |
+| "Both reviewers say same thing" | They won't — design. Spec-clean can still be gnarly; clean can miss spec. |
+| "I'll review myself" | Lead context polluted by brief-writing. Fresh reviewer context catches what Lead can't see. |
+| "3 subagents per task too many" | One missed regression in prod > 100 extra rounds. |
 
-Default when rationalizing: run all three. The total added latency is small; the asymmetric cost of skipping is large.
+Default: run all three. Asymmetric cost.

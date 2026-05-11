@@ -5,111 +5,109 @@ description: Co-author docs, specs, and proposals with a user through structured
 
 # Doc Co-Authoring
 
-A document the user co-wrote gets used. A document Claude wrote alone gets pasted, then deleted. This skill is about turning vague "write me X" into a tight loop where the user supplies judgment, you supply structure, and the output reflects both.
+User co-wrote → doc gets used. Claude wrote alone → pasted, deleted.
 
 ## When to use
 
-- User says "help me write a [proposal / spec / doc / RFC]"
-- Topic requires the user's domain knowledge — Claude can structure but not invent the facts
-- Multiple stakeholders will read it and the user owns the result
-- First draft already exists but feels off and needs rework
-- Long-form writing where one-shot output would miss context
+- "Help me write a [proposal / spec / doc / RFC]"
+- Topic needs user's domain knowledge (Claude structures, can't invent facts)
+- Multiple stakeholders, user owns result
+- First draft exists but feels off
+- Long-form where one-shot misses context
 
-Skip this skill when: the doc is purely templated (changelog, release notes from a diff), the user has a complete draft and wants only line edits, or the content is fully derivable from code.
+Skip: purely templated (changelog from diff), user has complete draft wanting line edits, fully derivable from code.
 
 ## The four phases
 
 ```
-1. Frame      → What is this, who reads it, what's the success criterion?
-2. Outline    → Section structure with one-line intent per section
-3. Draft      → Section by section, user reviews each before continuing
+1. Frame      → What is this, who reads it, success criterion?
+2. Outline    → Sections with one-line intent each
+3. Draft      → Section by section, user reviews each
 4. Refine     → Line-level pass for clarity, tone, redundancy
 ```
 
-Don't skip phases. Don't merge phases. Each one catches mistakes the next can't.
+Don't skip. Don't merge. Each catches mistakes the next can't.
 
 ### 1. Frame
 
-Ask, before writing anything:
+Ask before writing:
+- **Audience** — who reads? what do they know? not know?
+- **Decision** — what should reader do/decide after?
+- **Length budget** — one page? Five? 30-page deck? Hard cap up front.
+- **Voice** — first person, team, formal, conversational?
+- **Constraints** — must-include sections, must-avoid topics, templates
 
-- **Audience** — who reads this? What do they already know? What do they not know?
-- **Decision** — what should the reader do or decide after reading?
-- **Length budget** — one page? Five? A 30-page deck? Hard cap up front.
-- **Voice** — first person, team voice, formal, conversational?
-- **Constraints** — must-include sections, must-avoid topics, existing templates.
-
-Write Frame back to the user as a 5-line summary. Get a yes before moving on.
+Write Frame back as 5-line summary. Get yes before moving on.
 
 ### 2. Outline
 
-Produce a section list, each with a 1-line intent and rough length:
+Section list, 1-line intent + rough length:
 
 ```
-1. Problem (½ page) — what's broken today, with concrete examples
-2. Proposal (1 page) — what we're going to build, at a high level
-3. Tradeoffs (½ page) — what we're choosing not to do, and why
+1. Problem (½ page) — what's broken, with concrete examples
+2. Proposal (1 page) — what we'll build, high level
+3. Tradeoffs (½ page) — what we're not doing, why
 4. Rollout (½ page) — phasing, flags, fallback
-5. Open questions (¼ page) — what we still need to decide
+5. Open questions (¼ page) — what's still undecided
 ```
 
-Get user approval on the outline. This is the cheapest place to fix structural problems. Restructuring at draft stage is 10x more expensive.
+Get user approval. Cheapest place to fix structural problems. Restructuring at draft = 10x more expensive.
 
 ### 3. Draft
 
 Section by section, NOT all at once.
 
-- Draft the first section.
-- Show the user.
-- Get changes.
-- Apply them and check tone against the rest of the planned doc.
-- Draft the next section.
+- Draft first section
+- Show user
+- Get changes
+- Apply, check tone against rest of planned doc
+- Draft next section
 
-Why: tone calibrates early. If the user wanted "punchy and short" and you delivered "academic and exhaustive," catching it after section 1 saves the whole doc.
+Tone calibrates early. "Punchy and short" vs delivered "academic exhaustive" — catching after section 1 saves whole doc.
 
-When the user's input is needed for facts (numbers, internal context, specific stories), pause and ask. Don't make up plausible-sounding details.
+User input needed for facts (numbers, internal context, stories) → pause and ask. Don't make up plausible details.
 
 ### 4. Refine
 
-Final pass after the full draft exists. Read end-to-end and check:
+Final pass after full draft. Read end-to-end:
 
-- Does the opening hook match the closing call?
-- Is each section necessary? Cut what doesn't serve the decision.
-- Are there three different ways of saying the same thing? Pick one.
-- Is the ladder of abstraction stable? Don't bounce between "vision" and "implementation detail" paragraph to paragraph.
-- Does the doc work for someone who reads only the headings and bolded lines? (Many will.)
+- Opening hook matches closing call?
+- Each section necessary? Cut what doesn't serve decision.
+- Three different ways saying same thing? Pick one.
+- Ladder of abstraction stable? Don't bounce vision↔implementation per paragraph.
+- Works for reader who only reads headings + bold? (Many will.)
 
-## How to handle disagreement
+## Disagreement handling
 
-When the user pushes back on something you wrote:
-
-- Don't re-justify. Their judgment about their own audience beats your generic patterns.
-- Ask one clarifying question if you genuinely don't understand the change.
-- Apply the change in the user's voice, not yours.
-- Don't silently revert other parts to "your version" while editing.
+User pushes back:
+- Don't re-justify. Their judgment about their audience beats your patterns.
+- One clarifying question if you don't understand the change
+- Apply in user's voice
+- Don't silently revert other parts to "your version"
 
 ## Common mistakes
 
-- Skipping Frame and producing a beautifully-structured doc for the wrong audience
-- Drafting all sections at once and discovering the tone is off in section 5
-- Inventing numbers / quotes / names because the user didn't supply them — ASK
-- Adding boilerplate ("Background", "Glossary") because docs "usually have it" — only if the audience needs it
-- Treating user edits as wrong and re-arguing — they're the author
-- Refining before the draft is complete — you'll polish text that's about to be cut
-- Dumping the whole outline + draft + refine in one response — defeats the loop
+- Skip Frame, produce beautiful doc for wrong audience
+- Draft all sections at once, tone off by section 5
+- Invent numbers/quotes/names — ASK
+- Add boilerplate ("Background", "Glossary") because docs "usually have it"
+- Treat user edits as wrong and re-argue
+- Refine before draft complete (polish text about to be cut)
+- Dump outline + draft + refine in one response
 
 ## Quick reference
 
 | Symptom | Phase to revisit |
 |---------|------------------|
-| "This doesn't sound like us" | Frame — voice / audience |
+| "Doesn't sound like us" | Frame — voice/audience |
 | "Why is section 3 here?" | Outline — section intent |
-| "The numbers are wrong" | Draft — ask, don't invent |
-| "It's too long" | Refine — cut, don't compress |
-| "I rewrote it" (heavily) | Frame — likely missed audience |
+| "Numbers are wrong" | Draft — ask, don't invent |
+| "Too long" | Refine — cut, don't compress |
+| "I rewrote it heavily" | Frame — missed audience |
 
-## Output checkpoint format
+## Output checkpoint
 
-At each phase boundary, present:
+At each phase boundary:
 
 ```
 Phase complete: [Frame / Outline / Draft / Refine]
@@ -122,13 +120,11 @@ Don't proceed without user OK.
 
 ## Common Rationalizations
 
-When you're tempted to skip this skill, watch for these excuses:
-
 | Excuse | Reality |
 |--------|---------|
-| "I'll write the doc myself, faster than collaborating" | Solo docs miss the reader's actual question. Co-authoring catches the gap between author's model and reader's model — that's the whole point. |
-| "This is a simple change, doesn't need <skill>" | Bugs hide in simple changes too — DAPLab data shows 41% of agentic-LLM failures land in 'trivial' diffs. |
-| "I already know the answer" | Confirmation bias — the skill exists to surface what you didn't think of, not to repeat what you did. |
-| "Time pressure, skip just this once" | Tech debt compounds; 5 minutes saved at write time costs 50 minutes of debugging later. |
+| "Faster to write myself" | Solo docs miss reader's question. Co-authoring catches author↔reader model gap. |
+| "Simple change, no skill needed" | DAPLab: 41% failures in 'trivial' diffs. |
+| "I already know" | Confirmation bias. |
+| "Time pressure" | 5 min saved = 50 min debugging. |
 
-Default response when rationalizing: run the skill anyway. Cost of running it is bounded; cost of skipping when you needed it is not.
+Default: run skill.

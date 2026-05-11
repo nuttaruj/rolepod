@@ -5,89 +5,89 @@ description: Ground every framework or library decision in official documentatio
 
 # Source-Driven Development
 
-Training-cached API knowledge is a silent bug factory. Libraries deprecate, signatures change, "best practices" rotate. This skill makes every API call cite the version-pinned source it was derived from — at write time, not after a bug.
+Training-cached API knowledge = silent bug factory. Libraries deprecate, signatures change. Every API call cites version-pinned source — at write time.
 
-Adapted from addyosmani/agent-skills (`source-driven-development`). Complements `verify-first` (verify before claiming) and `claude-api` (Claude SDK specifics) with the proactive write-time citation.
+Adapted from addyosmani/agent-skills (`source-driven-development`). Complements `verify-first` and `claude-api`.
 
 ## Iron Law
 
 <EXTREMELY-IMPORTANT>
-1. NEVER write a library / framework API call from training recall alone. Fetch the version-pinned docs (WebFetch / official docs site) before the line lands in the diff.
-2. ALWAYS cite the source URL or doc path inline (comment or PR body) for non-obvious API usage. No citation = the next maintainer cannot verify.
-3. If the official docs and training memory disagree, ALWAYS trust the docs. Training is months-to-years stale; docs are live.
+1. NEVER write a library/framework API call from training recall alone. Fetch version-pinned docs before the line lands in diff.
+2. ALWAYS cite source URL or doc path inline (comment or PR body) for non-obvious API usage.
+3. Docs vs training memory disagree → trust docs. Training is months-to-years stale.
 
-API knowledge has a half-life. Cite or be wrong.
+API knowledge has half-life. Cite or be wrong.
 </EXTREMELY-IMPORTANT>
 
-## Red Flags — you are about to skip this skill
+## Red Flags
 
-| Red flag (your thought) | What it actually means |
-|-------------------------|------------------------|
-| "I've used this API a hundred times, I know the signature" | The signature may have changed in the last minor version. Verify. |
-| "Docs site is annoying to navigate, training recall is faster" | Faster to wrong code is not faster. |
-| "It's just a basic React hook, no need to cite" | "Basic" hooks change semantics across versions (e.g. React 18 Strict Mode). |
-| "WebFetch is overkill for this one call" | One uncited call begets ten. Set the precedent. |
-| "I'll grep the codebase for an existing example" | Existing example may itself be deprecated. Source the docs, not the precedent. |
+| Thought | Reality |
+|---------|---------|
+| "Used this API a hundred times" | May have changed in last minor. Verify. |
+| "Docs annoying, recall faster" | Faster to wrong code is not faster. |
+| "Basic React hook, no need to cite" | "Basic" hooks change semantics across versions. |
+| "WebFetch overkill for one call" | One uncited call begets ten. |
+| "Grep codebase for existing example" | Existing example may itself be deprecated. |
 
 ## When to use
 
-- Writing code that calls a framework / library API (React, Next, FastAPI, Django, AWS SDK, Stripe SDK, etc.)
-- Integrating a new SDK / service
-- Touching code that uses an API where the major version has shifted since training (Next 14→15+, React 18→19+, OpenAI v1→v2+, Stripe API version bumps)
-- Migration from one major version to another
-- User reports "this used to work" — pattern smells like silently-deprecated API
-- Any time a code path is generated from training recall instead of read
+- Writing code calling framework/library API (React, Next, FastAPI, AWS SDK, Stripe SDK)
+- Integrating new SDK/service
+- Touching code with API where major version shifted since training (Next 14→15+, React 18→19+, OpenAI v1→v2+, Stripe API bumps)
+- Migration between majors
+- "Used to work" — silently deprecated API smell
+- Any path generated from training recall
 
-Skip when: pure language semantics (loops, lists, math), stable stdlib (Python `os.path`, JS `Array.map`), project-internal code with no external API surface.
+Skip: pure language semantics (loops, math), stable stdlib (`os.path`, `Array.map`), project-internal code with no external API.
 
 ## How to apply
 
 ### Step 1 — DETECT
 
-Before writing API code, read dep manifest to identify stack + version:
+Read dep manifest to identify stack + version:
 
-| Stack | File | What to extract |
-|-------|------|-----------------|
-| Node / TS | `package.json` | dep name + semver |
-| Python | `pyproject.toml` / `requirements.txt` / `Pipfile` | dep name + version pin |
+| Stack | File | Extract |
+|-------|------|---------|
+| Node/TS | `package.json` | dep + semver |
+| Python | `pyproject.toml` / `requirements.txt` / `Pipfile` | dep + version pin |
 | Rust | `Cargo.toml` | crate + version |
 | Go | `go.mod` | module + version |
 | Ruby | `Gemfile.lock` | gem + version |
 | Java/Kotlin | `pom.xml` / `build.gradle` | groupId:artifactId:version |
 | PHP | `composer.json` | vendor/package + version |
 
-If version is `^1.2.3` / `~1.2.3` / `>=1.2.3` → resolve to actual installed version via lockfile (`package-lock.json`, `pnpm-lock.yaml`, `poetry.lock`, etc.) OR explicitly state the version assumed.
+If `^1.2.3`/`~1.2.3` → resolve via lockfile (`package-lock.json`, `pnpm-lock.yaml`, `poetry.lock`) OR explicitly state assumed version.
 
 ### Step 2 — FETCH
 
-WebFetch the official docs URL **for the detected version**, not the "latest" landing page.
+WebFetch official docs URL for **detected version**, not "latest" landing.
 
-Good URL patterns:
-- `https://nextjs.org/docs/app` (current major's app dir)
+Good URLs:
+- `https://nextjs.org/docs/app` (current major)
 - `https://react.dev/reference/react/<hook>`
-- `https://docs.stripe.com/api/<resource>` (Stripe pins API version per integration)
-- `https://docs.aws.amazon.com/sdk-for-javascript/v3/...` (v3 explicit)
+- `https://docs.stripe.com/api/<resource>`
+- `https://docs.aws.amazon.com/sdk-for-javascript/v3/...`
 
-Bad URL patterns (training-cached):
+Bad (training-cached):
 - Search-engine snippet
-- StackOverflow answer from 2019
+- StackOverflow 2019
 - "I remember the API does X"
-- AI-generated docs site (e.g. devdocs cached at training time)
+- AI-generated docs cached at training time
 
-If the project pins an older major, fetch THAT major's docs. Current docs may show APIs that don't exist yet in the project's version.
+Project pins older major → fetch THAT major's docs.
 
 ### Step 3 — CITE
 
-Every API call introduced in the diff has an inline comment OR PR-description link to the spec section it's derived from.
+Every API call in diff has inline comment OR PR-description link to spec section.
 
-Inline pattern (use sparingly — only when API choice is non-obvious):
+Inline (use sparingly):
 
 ```ts
 // Source: nextjs.org/docs/app/api-reference/file-conventions/route#response
 return NextResponse.json({ ok: true })
 ```
 
-PR-description pattern (preferred — keeps code clean):
+PR-description (preferred — keeps code clean):
 
 ```
 ## API sources cited
@@ -95,41 +95,25 @@ PR-description pattern (preferred — keeps code clean):
 - `lib/stripe.ts`: Stripe API 2025-04-30.basil — docs.stripe.com/api/payment_intents/create
 ```
 
-Citation is per-API-surface, not per-line. One link covers all calls into the same API in the same file.
+Per API-surface, not per-line.
 
 ### Step 4 — CONFLICT
 
-Read the surrounding code that ALREADY uses this API. If the existing pattern is deprecated in the version you fetched:
+Existing pattern is deprecated in fetched version:
 
-1. Flag it in the PR description (don't silently fix unrelated code — that's scope creep)
-2. Confirm with user: "Existing pattern in `<file>` uses deprecated `<api>`. Migrate now, file follow-up, or leave alone?"
-3. Apply user's choice; never just touch unrelated deprecated calls in the same PR
+1. Flag in PR description (don't silently fix unrelated code — scope creep)
+2. Confirm with user: "Existing pattern uses deprecated `<api>`. Migrate now, file follow-up, or leave?"
+3. Apply user's choice
 
-Why: silent deprecation fixes blow up review scope and bury the actual change.
+Silent deprecation fixes blow up review scope.
 
 ### Step 5 — HEAD-FIRST CACHE
 
-If the same docs page will be cited multiple times in one session, fetch once + reference. Don't re-fetch the same URL 5 times.
+Same docs page cited multiple times in session → fetch once, reference. Don't re-fetch 5x.
 
-If the harness has ETag-aware fetch (Anthropic Skills' default WebFetch has light caching), let it do its job — but don't rely on it for correctness. The cite is the truth, not the cache.
-
-## Common Rationalizations
-
-When you're tempted to skip this skill, watch for these excuses:
-
-| Excuse | Reality |
-|--------|---------|
-| "I know this API, I use it all the time" | Training data is months-to-years stale. Stripe deprecated `Charges.create` for `PaymentIntents`; many models still write the old API. Verify or be wrong. |
-| "The docs are easy to find later if needed" | Future-you debugging at 2am can't easily reconstruct WHICH version of WHICH page you derived from. Cite at write time. |
-| "Latest docs page should be fine" | "Latest" docs often show APIs that don't ship in the project's pinned major. Pin the docs URL to the project's version. |
-| "It's a small API call, not worth citing" | The small ones are where silent deprecation hides. Big migrations get reviewed; small calls don't. |
-| "Tests will catch a wrong API" | Tests catch API errors at runtime; they don't catch "this method works but is deprecated and removed in v3 next month." |
-
-Default response when rationalizing: detect + fetch + cite anyway. Cost = one WebFetch + one comment line. Cost of skipping = a class of bugs that surface during migration, not during the original PR.
+ETag-aware fetch helps but cite is truth, not cache.
 
 ## Output format
-
-End-of-task report includes:
 
 ```
 Source citations:
@@ -137,14 +121,26 @@ Source citations:
 - <api-surface 2>: <official-docs-url>
 
 Deprecated patterns spotted (not changed in this PR):
-- <file:line>: <pattern> → recommended replacement: <new pattern>
+- <file:line>: <pattern> → recommended: <new pattern>
 ```
 
 ## Anti-pattern — DO NOT
 
-- Cite a search-engine result or a blog post as "the source"
-- Cite "the latest docs" without specifying version
-- Generate API code from training recall and skip the fetch
-- Fix unrelated deprecated patterns in the same PR (file follow-up instead)
-- Re-fetch the same URL within a single task
-- Skip the manifest read ("I know the project uses Next 15") — read it, don't assume
+- Cite search-engine result or blog as "source"
+- Cite "latest docs" without specifying version
+- Generate API code from training recall, skip fetch
+- Fix unrelated deprecated patterns in same PR
+- Re-fetch same URL within single task
+- Skip manifest read ("I know the project uses Next 15")
+
+## Common Rationalizations
+
+| Excuse | Reality |
+|--------|---------|
+| "I know this API" | Training is months-to-years stale. Stripe deprecated `Charges.create` for `PaymentIntents`; many models still write the old API. |
+| "Docs easy to find later" | Future-you debugging at 2am can't easily reconstruct which version of which page you used. Cite at write time. |
+| "Latest docs page is fine" | "Latest" often shows APIs not shipping in pinned major. Pin URL to project version. |
+| "Small API call, not worth citing" | Small ones are where silent deprecation hides. |
+| "Tests catch wrong API" | Tests catch runtime errors, not "method works but deprecated, removed in v3 next month." |
+
+Default: detect + fetch + cite anyway.

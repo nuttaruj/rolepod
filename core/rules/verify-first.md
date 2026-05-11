@@ -1,109 +1,107 @@
 # Verify-First — claiming facts / answering questions
 
-**Scope:** rules for confirming facts BEFORE making claims.
-**NOT this file:** how to verify YOUR change works after editing → see `verification.md`.
+**Scope:** confirming facts BEFORE claims.
+**NOT this file:** verifying YOUR change after editing → `verification.md`.
 
-Read when: about to claim a fact / make recommendation / answer factual question.
+Read when: about to claim fact / make recommendation / answer factual question.
 
 ## Core principle
 
 **Before any plan / edit / recommendation / answer → confirm from primary source.**
-Memory + pattern-match = unreliable. Verify or state assumption + risk explicitly.
+Memory + pattern-match = unreliable. Verify or state assumption + risk.
 
-## Sources of truth (priority order)
+## Sources of truth (priority)
 
-### Internal (codebase / project)
+### Internal
 
-1. **File system** — `Read` actual file, don't recall content from memory
-2. **Code intel** — `gitnexus_impact` / `gitnexus_context` for symbol facts (NOT grep-and-guess)
-3. **Live state** — run command / query DB / check API response / curl endpoint
-4. **MemPalace** — past decision (verify still current before applying)
+1. **File system** — `Read` actual file, don't recall
+2. **Code intel** — `gitnexus_impact` / `gitnexus_context` (NOT grep-and-guess)
+3. **Live state** — run command / query DB / curl endpoint
+4. **MemPalace** — past decision (verify still current)
 
-### External (web / docs / 3rd-party)
+### External
 
-5. **WebFetch** — official docs page (specific URL)
-6. **WebSearch** — current state (pricing / news / library versions / API changes)
-7. **CLI tools** — `gh api`, `stripe`, `aws`, etc. for live 3rd-party state
-8. **MCP servers** — Stripe MCP, Sentry MCP, GitHub MCP for structured data
+5. **WebFetch** — official docs (specific URL)
+6. **WebSearch** — current state (pricing / news / lib versions / API changes)
+7. **CLI tools** — `gh api`, `stripe`, `aws`
+8. **MCP servers** — Stripe / Sentry / GitHub
 
 ### Last resort
 
-9. **User** — ask when can't determine from sources above
+9. **User** — ask when no source available
 
-## MUST verify before claiming
+## MUST verify
 
 ### Internal
-- "File X exists" / "function Y is at line Z" → Read it
-- "X is called by Y" → `gitnexus_impact` upstream
+- "File X exists" / "fn Y at line Z" → Read
+- "X called by Y" → `gitnexus_impact` upstream
 - "API returns Z" → curl / read actual response
-- "We decided X last time" → MemPalace query + verify code matches
-- "Build/test passes" → actually run it
+- "We decided X" → MemPalace + verify code matches
+- "Build/test passes" → actually run
 
 ### External
-- "Library X has method Y" → WebFetch current docs (training stale)
-- "Service X costs $Y" → WebSearch / official pricing page (volatile)
-- "API endpoint X behaves Z" → WebFetch official spec OR curl live
-- "Framework X v2 released" → WebSearch + check release notes
-- "Best practice for X" → WebFetch official guide, NOT training recall
-- "Company X announced Y" → WebSearch with current year qualifier
-- "Stripe/AWS/Vercel does X" → MCP server OR official CLI OR docs
+- "Library X has method Y" → WebFetch current docs
+- "Service X costs $Y" → WebSearch / pricing page
+- "API endpoint X behaves Z" → WebFetch spec OR curl
+- "Framework X v2 released" → WebSearch + release notes
+- "Best practice for X" → WebFetch official, NOT training recall
+- "Company X announced Y" → WebSearch with current year
+- "Stripe/AWS/Vercel does X" → MCP / CLI / docs
 
 ## Volatility ladder
 
-| Type | Trust training? | Verify how |
+| Type | Trust training? | How verify |
 |------|----------------|------------|
-| Math / algorithms / language semantics | Yes (stable) | Skip verify |
-| Stable library API (1.x → 1.x) | Partial | WebFetch if version-specific |
-| Pricing / quotas / limits | NO | Always WebSearch + cite source |
-| Current events / news | NO | WebSearch with current year |
+| Math / algorithms / language semantics | Yes | Skip |
+| Stable library API | Partial | WebFetch if version-specific |
+| Pricing / quotas / limits | NO | Always WebSearch + cite |
+| Current events / news | NO | WebSearch w/ current year |
 | API changes / new features | NO | Official docs / changelog |
-| Library version compat | NO | WebFetch latest docs |
+| Library version compat | NO | WebFetch latest |
 
-## Cross-verify when stakes high
+## Cross-verify high stakes
 
-1 source can be wrong/outdated. For high-stakes decision (architecture / cost / security):
-- Get 2 independent sources (e.g. official docs + recent blog post)
-- Note conflict if found, don't pick silently
-- Cite source with link when reporting
+For architecture / cost / security:
+- 2 independent sources (official docs + recent blog)
+- Note conflict, don't pick silently
+- Cite source with link
 
 ## Forbidden patterns
 
 ### Internal
-- Pattern-match from training: "this codebase probably has X"
-- Recall from earlier in session: "I remember reading that file said..."
-- Assume defaults: "should be using PostgreSQL" without checking
-- Confident claims about lines/symbols not just-verified
-- Citing function name from memory without `Read`/`gitnexus_context`
+- "This codebase probably has X"
+- "I remember earlier that file said..."
+- "Should be using PostgreSQL" without checking
+- Confident line/symbol claims not just-verified
+- Citing fn name from memory without `Read`/`gitnexus_context`
 
 ### External
-- Quote pricing / quota / limit from training (always volatile)
-- Cite library API from training without checking current version
-- Reference "recent" events / releases without WebSearch
-- Recommend service / tool without verifying it still exists + current state
-- Use training year (2025) when current year (2026) matters for search
-- Skip source link when reporting external fact to user
+- Quote pricing / quota from training
+- Cite library API from training without version check
+- "Recent" events without WebSearch
+- Recommend service without verifying current state
+- Training year when current year matters
+- Skip source link when reporting external fact
 
-## When verification impossible
+## When can't verify
 
-State explicitly:
 ```
-Assuming: [what assumed]
+Assuming: [what]
 Reason: [why can't verify]
 Risk if wrong: [impact]
-Verify by: [how user/Lead can confirm]
+Verify by: [how user can confirm]
 ```
 
-DO NOT proceed silently on assumption.
+DO NOT proceed silently.
 
 ## Memory decay
 
-MemPalace facts can be stale. Code referenced in memory may have moved/renamed/deleted.
-Before recommending from memory → verify file/symbol still exists.
+MemPalace facts can be stale. Before recommending from memory → verify file/symbol still exists.
 
 ## Common mistakes — DO NOT
 
-- Claim line number from memory (always Read first)
-- Quote pricing without WebSearch (always volatile)
-- Assume library API matches training (check version)
-- Skip source link when stating external fact
+- Claim line number from memory
+- Quote pricing without WebSearch
+- Assume library API matches training
+- Skip source link for external fact
 - Treat MemPalace as authoritative without verifying current state

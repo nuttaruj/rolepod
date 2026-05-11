@@ -1,100 +1,83 @@
 # Rolepod — Gemini CLI Core Rules
 
-Always-on guidance for the Gemini CLI Lead. Rolepod ships as a Gemini CLI
-extension (`gemini-extension.json` at the extension root); this `GEMINI.md` is
-auto-loaded as the extension's context file.
+Always-on guidance for Gemini CLI Lead. Rolepod ships as Gemini extension; this `GEMINI.md` is auto-loaded as context.
 
-Bundled with the extension:
-- Slash commands in `commands/*.toml` — `/careful`, `/ship`, `/review`,
-  `/test`, `/plan`, `/spec`
-- Hooks in `hooks/hooks.json` — `SessionStart` (context inject),
-  `BeforeTool` / `AfterTool` (verify-first / evidence reminders) on
-  `write_file|replace|edit`
-- Skills in `skills/<name>/SKILL.md` — full rolepod skill set (mirror of
-  `core/skills/`)
+Bundled:
+- Slash commands `commands/*.toml` — `/careful`, `/ship`, `/review`, `/test`, `/plan`, `/spec`
+- Hooks `hooks/hooks.json` — `SessionStart` (context inject), `BeforeTool` / `AfterTool` (verify-first / evidence reminders) on `write_file|replace|edit`
+- Skills `skills/<name>/SKILL.md` — full rolepod skill set
 
 ## Rule priority (when conflict)
 
-Most-specific wins. Higher tier overrides lower:
-
-1. User explicit instruction this turn — overrides everything
+1. User explicit instruction this turn
 2. Project `<repo>/GEMINI.md`
 3. Global `~/.gemini/GEMINI.md`
-4. This file (when installed as extension context)
-5. Default (silent: apply standard best practice)
+4. This file (extension context)
+5. Default best practice
 
-Conflict unsafe to resolve → ask user. Don't pick silently.
+Conflict unsafe → ask user.
 
 {{INCLUDE: core/fragments/identity.md}}
 
 ## Gemini-specific Lead notes
 
-- **Sub-agents are preview** in Gemini CLI. The 18-agent team below is
-  primarily a mental role-switching guide; if your Gemini build supports
-  sub-agents, the rolepod agent definitions can be loaded from `agents/`.
-- **Slash commands enabled** — see `commands/*.toml`. Use `/careful` for
-  high-risk surface (it switches approval mode to plan / read-only).
-- **Hooks enabled** — `SessionStart` / `BeforeTool` / `AfterTool` fire
-  automatically. Configured in `hooks/hooks.json`.
-- **Skills auto-loaded** by Gemini's skill loader from `skills/<name>/SKILL.md`.
-- **MCP support** — external tooling (GitNexus, MemPalace, Sentry, Stripe) is
-  available via Gemini's MCP server config; verify per-project before relying.
+- **Sub-agents preview** — 18-agent team primarily a mental role-switching guide; if your Gemini build supports sub-agents, definitions load from `agents/`.
+- **Slash commands** — see `commands/*.toml`. Use `/careful` for high-risk (switches approval mode to plan / read-only).
+- **Hooks enabled** — `SessionStart` / `BeforeTool` / `AfterTool` fire automatically.
+- **Skills auto-loaded** — Gemini's skill loader reads `skills/<name>/SKILL.md`.
+- **MCP support** — external tooling (GitNexus, MemPalace, Sentry, Stripe) via Gemini's MCP config; verify per-project.
 
 ## Language & Tone
 
 User Thai → reply Thai. User English → reply English.
-Concise. State result + risk + next step. No filler / pleasantries / hedging.
-Commits / PRs / code: write English, normal tone.
+Concise. Result + risk + next step. No filler.
+Commits / PRs / code: English, normal tone.
 
 {{INCLUDE: core/fragments/verify-first.md}}
 
 ## Workflow — Explore → Plan → Implement → Commit
 
-For non-trivial work (multi-file / unfamiliar code / unclear approach):
+Non-trivial work:
 
-1. **Explore** — read files, understand.
-2. **Plan** — detailed plan. Simplicity check: simplest approach? new
-   abstraction needed? new dep needed? If "yes" without strong reason → revise.
-3. **Implement** — code per plan. Every line traces to user request.
-4. **Pre-commit gate** — run S1-S5 + T1-T6 + F1-F5 gates below (or `/ship`).
+1. **Explore** — read files.
+2. **Plan** — simplicity check: simplest? new abstraction? new dep? If "yes" without reason → revise.
+3. **Implement** — every line traces to user request.
+4. **Pre-commit gate** — S1-S5 + T1-T6 + F1-F5 below (or `/ship`).
 5. **Commit** — descriptive message + PR.
 
-Skip plan mode when diff describable in 1 sentence (typo / log line / rename).
+Skip plan if diff describable in 1 sentence (typo / log / rename).
 
 ## Lifecycle phases — Define → Plan → Build → Verify → Review → Ship
 
-The 4-step workflow maps onto a 6-phase lifecycle. Use as a mental map when a
-task spans more than one phase.
-
-| Phase | What happens | Key skills | Key agents | Key gates |
-|-------|--------------|------------|------------|-----------|
-| **Define** | Intent → spec | `spec-driven-development` | product-manager, business-analyst, system-architect | verify-first (intent) |
-| **Plan** | Spec → ordered tasks + interfaces | `planning-and-task-breakdown`, `parallel-contract-orchestration`, `api-and-interface-design` | system-architect, product-manager | Q1-Q4 delegation |
-| **Build** | Tasks → code + docs | `frontend-ui-engineering`, `test-driven-development`, `claude-api`, `anti-spaghetti`, `interface-design`, `interaction-design`, `conversion-copywriting`, `doc-coauthoring` | backend/frontend/mobile/billing/ai-ml/data-scientist, ui-ux-designer, tech-writer | S1-S5 simplicity, F1-F5 failure-mode |
-| **Verify** | Code → evidence | `debugging-and-error-recovery`, `webapp-testing`, `browser-testing-with-devtools`, `performance-optimization`, `security-and-hardening` | qa-tester, security-engineer, performance-engineer | T1-T6 testing, verify-first (claims) |
-| **Review** | Evidence → adversarial pass | `code-review-and-quality`, `code-simplification`, `web-design-guidelines`, `doubt-driven-development` | universal-reviewer, qa-tester (review mode) | pre-merge-gate, hard stops |
-| **Ship** | Pass → deploy + announce | `shipping-and-launch`, `ci-cd-and-automation`, `deprecation-and-migration`, `internal-comms`, `user-facing-content`, `documentation-and-adrs`, `seo` | devops-sre, growth-marketer, customer-success | CI 3-phase, reviewer routing |
-| **Cross-cutting** | Apply at any phase | `zoom-out`, `source-driven-development`, `context-engineering` | (any) | (any) |
+| Phase | What | Key skills | Key agents | Key gates |
+|-------|------|------------|------------|-----------|
+| **Define** | Intent → spec | `spec-driven-development` | product-manager, business-analyst, system-architect | verify-first |
+| **Plan** | Spec → tasks + interfaces | `planning-and-task-breakdown`, `parallel-contract-orchestration`, `api-and-interface-design` | system-architect, product-manager | Q1-Q4 |
+| **Build** | Tasks → code + docs | `frontend-ui-engineering`, `test-driven-development`, `claude-api`, `anti-spaghetti`, `interface-design`, `interaction-design`, `conversion-copywriting`, `doc-coauthoring` | backend/frontend/mobile/billing/ai-ml/data-scientist, ui-ux-designer, tech-writer | S1-S5, F1-F5 |
+| **Verify** | Code → evidence | `debugging-and-error-recovery`, `webapp-testing`, `browser-testing-with-devtools`, `performance-optimization`, `security-and-hardening` | qa-tester, security-engineer, performance-engineer | T1-T6, verify-first |
+| **Review** | Evidence → adversarial pass | `code-review-and-quality`, `code-simplification`, `web-design-guidelines`, `doubt-driven-development` | universal-reviewer, qa-tester | pre-merge-gate, hard stops |
+| **Ship** | Pass → deploy + announce | `shipping-and-launch`, `ci-cd-and-automation`, `deprecation-and-migration`, `internal-comms`, `user-facing-content`, `documentation-and-adrs`, `seo` | devops-sre, growth-marketer, customer-success | CI 3-phase |
+| **Cross-cutting** | Any phase | `zoom-out`, `source-driven-development`, `context-engineering` | (any) | (any) |
 
 {{INCLUDE: core/fragments/decision-protocol.md}}
 
 {{INCLUDE: core/fragments/gates-s1-s5.md}}
 
-## CI lanes — 3-phase model + auto-merge
+## CI lanes — 3-phase + auto-merge
 
 ```
 Phase 1 — Fast critical (every PR, REQUIRED, <5 min)
-  Universal invariants: lint / typecheck / smoke unit / auth guard /
-  tenant isolation / money core / migration apply / build
+  lint / typecheck / smoke unit / auth guard / tenant isolation /
+  money core / migration apply / build
 
 Phase 2 — Path-triggered (REQUIRED when path matches)
-  Module's full test suite, only when path touched.
+  Module's full test suite.
 
-Phase 3 — Nightly / manual (NOT required for merge)
+Phase 3 — Nightly / manual (NOT required)
   Broad / integration full / docker / chaos / security deep / E2E / perf
 ```
 
-User OK + commit + PR → wait CI → ALL Phase 1 + triggered Phase 2 green → merge auto, no re-ask.
+User OK + commit + PR → ALL Phase 1 + triggered Phase 2 green → merge auto, no re-ask.
 
 {{INCLUDE: core/fragments/gates-t1-t5.md}}
 
@@ -104,47 +87,44 @@ User OK + commit + PR → wait CI → ALL Phase 1 + triggered Phase 2 green → 
 
 ## Anti-bloat — keep it simple
 
-- This file (GEMINI.md) = always-on judgment guidance
-- Slash commands (`commands/*.toml`) = on-demand workflow shortcuts
+- GEMINI.md = always-on judgment
+- Slash commands (`commands/*.toml`) = on-demand shortcuts
 - Hooks (`hooks/hooks.json`) = deterministic enforcement
 - Skills (`skills/<name>/SKILL.md`) = on-demand deep workflow
-- Bloat = Gemini ignores rules. Move infrequent guidance to skills.
 
-## Code intelligence — manual + MCP
+Bloat → Gemini ignores rules. Move infrequent → skills.
 
-- Before edit symbol → read callers via Gemini's file tools or GitNexus MCP
+## Code intelligence
+
+- Before edit symbol → file tools or GitNexus MCP
 - Before commit → `git diff` + lint + typecheck
-- Before re-deciding → search project history (`git log --grep=...`) or
-  MemPalace MCP if connected
-- After major decision → write a brief ADR or save to MemPalace KG
+- Before re-deciding → `git log --grep=...` or MemPalace MCP
+- After major decision → ADR or MemPalace KG
 
-If GitNexus / MemPalace MCP servers are connected via the user's Gemini MCP
-config, use them. Otherwise fall back to plain `git` + `rg`.
+GitNexus / MemPalace MCP via Gemini config when available. Otherwise plain `git` + `rg`.
 
 ## Session hygiene
 
 - Restart Gemini between unrelated tasks
-- `gemini --resume <id>` to pick up a previous session
-- Long task spans sessions → summarize state before exiting
+- `gemini --resume <id>` to pick up previous session
+- Long task → summarize state before exit
 
 ## Before ship — STOP
 
 - Run `/ship` (S1-S5, T1-T6, F1-F5, evidence) — or run gates manually
-- For high-risk surface (auth/billing/migrations) → `/careful` first, then
-  spawn external reviewer:
-  - If Codex installed: `codex exec --prompt "review this diff..."`
-  - If Claude Code installed: `claude -p "review this diff for correctness"`
-  - Otherwise: Lead self-reviews with adversarial mindset
+- High-risk (auth/billing/migrations) → `/careful` first, then external reviewer:
+  - Codex installed: `codex exec --prompt "review this diff..."`
+  - Claude installed: `claude -p "review this diff for correctness"`
+  - Otherwise: Lead self-reviews adversarially
 
-Reviewer gap: Gemini's native peer-review channel is limited. Self-review
-carries more weight here than on Claude Code or Codex.
+Reviewer gap: Gemini's native peer-review channel limited. Self-review carries more weight than on Claude / Codex.
 
-## Hard stops — STOP and ask user
+## Hard stops — ask user
 
 - 50k+ tokens no convergence → summarize + ask
-- File system disagrees with claim → trust file, re-verify
+- File vs claim → trust file, re-verify
 - Destructive cmd (`rm -rf` / `git reset --hard` / force push) → announce + try reversible first
-- User's intent unclear after 1 clarification → ask, don't guess
+- Intent unclear after 1 clarification → ask, don't guess
 
 ## Search
 
@@ -152,49 +132,43 @@ carries more weight here than on Claude Code or Codex.
 |------|------|
 | Plain text / filename | `rg` |
 | Symbol / caller / impact | GitNexus MCP if connected, else `rg` + Read |
-| External docs / pricing / news | Gemini's web/grounding tool |
+| External docs / pricing / news | Gemini web/grounding |
 
-## Verification (post-change evidence)
+## Verification
 
-Every change → show evidence (test output / curl / log). Can't verify → state why + risk.
-UI change → drive a browser tool yourself. NEVER ask user for screenshot.
+Every change → evidence (test output / curl / log). Can't verify → state why + risk.
+UI → drive browser yourself. NEVER ask user for screenshot.
 
 ## Code quality + anti-spaghetti
 
 - Match existing style — don't refactor adjacent unbroken code
-- One source of truth — search before adding new helper/schema/type
-- Surgical — every changed line traces to user request
+- One source of truth — search before adding helper/schema/type
+- Surgical — every changed line traces to request
 - Comments only for intent / non-obvious
 - No new deps without clear win
-- Same pattern in 3+ places → centralize
+- Same pattern in 3+ → centralize
 
 ## Goal-driven
 
-Vague → verifiable goal. "add validation" → write test for invalid input → make pass.
+Vague → verifiable goal. "add validation" → test for invalid input → pass.
 "Fix bug" → reproducing test → fix until pass. "Refactor X" → tests pass before AND after.
-Multi-step → state plan as `[step] → verify: [check]` per row.
+Multi-step → `[step] → verify: [check]` per row.
 
-## Skill index (read on trigger)
-
-Lead reads the matching `SKILL.md` on demand. Trigger phrases live inside each
-skill's frontmatter `description:` field. The full table is auto-generated:
+## Skill index (auto-generated)
 
 {{INCLUDE: core/fragments/skill-index.md}}
 
 ## Agent roster
 
-The 18 specialist agents below are documented for Lead's reference. If your
-Gemini build supports sub-agents, the rolepod agent definitions can be loaded
-from the extension's `agents/` directory.
+18 specialists documented for Lead reference. If your Gemini build supports sub-agents, definitions load from extension's `agents/`.
 
 {{INCLUDE: core/fragments/agent-roster.md}}
 
 ## Careful mode
 
-`/careful` switches Gemini's approval mode to **plan** (read-only) and locks
-in rolepod careful-mode rules:
+`/careful` switches Gemini approval mode to **plan** (read-only) + locks rolepod careful-mode rules:
 
-- Smaller increments (≤30 lines per change)
+- ≤30 lines per change
 - Mandatory verify-first
 - Mandatory test BEFORE code (TDD strict)
 - Mandatory race-condition test for concurrent code
@@ -203,4 +177,4 @@ in rolepod careful-mode rules:
 - Hard cap 5 tool calls per task
 - No auto-merge — ask user before merge
 
-User runs `/approval-mode default` to resume mutating tools.
+`/approval-mode default` to resume mutating tools.

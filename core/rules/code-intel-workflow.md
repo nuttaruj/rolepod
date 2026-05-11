@@ -1,175 +1,161 @@
 # Code Intelligence — workflow integration
 
-**Scope:** when in workflow to fire each tool. Reindex strategy. MemPalace lifecycle.
-**NOT this file:** tools reference / which tool to use → `code-intel.md`.
+**Scope:** when to fire each tool. Reindex strategy. MemPalace lifecycle.
+**NOT this file:** tools reference → `code-intel.md`.
 
-Read when: planning task with code intel / wondering when to reindex / lifecycle question.
+Read when: planning task with code intel / reindex question / lifecycle question.
 
-## Auto-triggers (configured globally)
+## Auto-triggers (global)
 
 | Event | Hook | Effect |
 |-------|------|--------|
-| SessionStart | `mempalace hook run --hook session-start` | Auto-recall recent decisions |
+| SessionStart | `mempalace hook --hook session-start` | Recall recent decisions |
 | SessionStart | `project-context-loader.sh` | Inject git log + hot files |
-| PreToolUse Grep/Glob/Bash | `gitnexus-hook.cjs` | Enrich query with graph context |
+| PreToolUse Grep/Glob/Bash | `gitnexus-hook.cjs` | Enrich query with graph |
 | PostToolUse Bash | `gitnexus-hook.cjs` | Index freshness check |
-| PostToolUse Bash (ship cmds) | `post-ship-detect.sh` | Suggest reindex on big merges |
-| Stop | `mempalace hook run --hook stop` | Capture session learnings → KG |
-| PreCompact | `mempalace hook run --hook precompact` | Save state before compaction |
+| PostToolUse Bash (ship) | `post-ship-detect.sh` | Suggest reindex on big merges |
+| Stop | `mempalace hook --hook stop` | Capture session → KG |
+| PreCompact | `mempalace hook --hook precompact` | Save state |
 
-Lead doesn't invoke these — they fire automatically.
+Lead doesn't invoke these — auto.
 
-## Workflow stage map — when Lead invokes manually
+## Workflow stage map
 
-### Stage 0 — Pre-task verify (before plan)
+### Stage 0 — Pre-task verify
 
 | Action | Tool |
 |--------|------|
-| Past decision on this topic? | `mempalace_kg_query` |
-| Index fresh? | `gitnexus://repo/<name>/context` resource |
-| Prior conversation on feature? | `mempalace_search` |
+| Past decision? | `mempalace_kg_query` |
+| Index fresh? | `gitnexus://repo/<name>/context` |
+| Prior conversation? | `mempalace_search` |
 
 ### Stage 1 — Explore
 
 | Action | Tool |
 |--------|------|
-| Concept search — "how does X work" | `gitnexus_query` |
+| Concept "how does X work" | `gitnexus_query` |
 | Symbol detail | `gitnexus_context` |
-| API endpoint discovery | `gitnexus_route_map` |
-| "Why was it built this way" | `mempalace_kg_query` + `kg_timeline` |
+| API endpoints | `gitnexus_route_map` |
+| "Why built this way" | `mempalace_kg_query` + `kg_timeline` |
 
-### Stage 2 — Plan (before code change)
+### Stage 2 — Plan (before edit)
 
 | Action | Tool | Mandatory? |
 |--------|------|-----------|
-| Blast radius for symbol | `gitnexus_impact({target, direction:"upstream"})` | **YES** |
-| API contract impact | `gitnexus_api_impact` | If touching API |
-| Schema impact | `gitnexus_shape_check` | If touching DB/types |
-| Past similar planning | `mempalace_kg_query` | When in doubt |
+| Blast radius | `gitnexus_impact({target, direction:"upstream"})` | **YES** |
+| API contract | `gitnexus_api_impact` | If touching API |
+| Schema | `gitnexus_shape_check` | If touching DB/types |
+| Past similar | `mempalace_kg_query` | When in doubt |
 
 ### Stage 3 — Implement
 
 | Action | Tool |
 |--------|------|
-| Rename symbol | `gitnexus_rename` |
-| Verify caller before mod | `gitnexus_context` |
+| Rename | `gitnexus_rename` |
+| Verify caller | `gitnexus_context` |
 
 ### Stage 4 — Pre-commit
 
 | Action | Tool | Mandatory? |
 |--------|------|-----------|
-| Verify scope of changes | `gitnexus_detect_changes()` | **YES** |
+| Verify scope | `gitnexus_detect_changes()` | **YES** |
 
 ### Stage 5 — Post-merge
 
 | Action | Tool | When |
 |--------|------|------|
-| Reindex | `npx gitnexus analyze` | ≥5 files / structural refactor / new module / index warning |
-| Save major decision | `mempalace_kg_add` | Architecture choice / non-obvious workaround |
+| Reindex | `npx gitnexus analyze` | ≥5 files / structural / new module / warning |
+| Save decision | `mempalace_kg_add` | Architecture / non-obvious workaround |
 
 ### Stage 6 — Session end
 
 | Action | Tool |
 |--------|------|
-| Summary note | `mempalace_diary_write` (or auto via Stop hook) |
-| Mark stale fact | `mempalace_kg_invalidate` if code contradicted memory |
+| Summary | `mempalace_diary_write` (or Stop hook auto) |
+| Mark stale | `mempalace_kg_invalidate` |
 
-## Reindex strategy — `npx gitnexus analyze`
+## Reindex — `npx gitnexus analyze`
 
-Index goes stale → tools return wrong facts (function moved, signature changed, calls renamed).
+Stale → tools return wrong facts.
 
-### Trigger reindex when
+### Trigger reindex
 
-- ✅ Tool warning "index is stale" appears
-- ✅ Just merged PR with ≥5 files changed
-- ✅ Structural refactor (split package / move module / rename namespace)
-- ✅ New module added (new top-level dir)
-- ✅ User asks "audit whole system"
-- ✅ Weekly cadence as safety net
+- Tool warning "index stale"
+- Merged PR ≥5 files
+- Structural refactor (split package / move module / rename namespace)
+- New module (new top-level dir)
+- User: "audit whole system"
+- Weekly cadence
 
-### Don't reindex when
+### Don't reindex
 
-- ❌ After every commit (too expensive)
-- ❌ After typo / 1-line fix
-- ❌ During active task (blocks tools mid-flow)
-- ❌ Recent reindex (<2 hours) + no big change since
+- Every commit (expensive)
+- Typo / 1-line fix
+- During active task (blocks tools)
+- Recent (<2 hrs) + no big change
 
-### How to run
+### Run
 
 ```bash
 cd /path/to/repo
 npx gitnexus analyze
 ```
 
-Run in user terminal, NOT via Bash tool (long-running, blocks Claude session).
-Lead suggests user run; user executes.
+Run in user terminal, NOT via Bash (long-running). Lead suggests, user executes.
 
 ## MemPalace lifecycle
 
-### When to query (read)
+### Query (read)
 
-- Verify-first phase: "have we decided this before?"
-- User asks "why" → check rationale in KG
-- About to make architecture decision → check past similar
-- 3rd agent same issue → past attempts may be in KG
+- Verify-first: "decided this before?"
+- User "why" → rationale in KG
+- Architecture decision → past similar
+- 3rd agent same issue → past attempts
 
-### When to add (write)
+### Add (write) — when ALL true
 
-Save when ALL true:
-- Decision is architectural / non-obvious / load-bearing
-- Future session would benefit
-- Fact won't be obvious from reading current code
+- Architectural / non-obvious / load-bearing
+- Future session benefits
+- Won't be obvious from current code
 
-| Save (architectural / non-obvious) | Skip (obvious from git log) |
+| Save | Skip |
 |------|------|
-| "Chose tech X over Y because of team expertise / constraint Z" | "Variable renamed from foo to bar" |
-| "Service offline, route to alternate" | "Fixed typo in README" |
-| "Cross-subdomain cookie requires `.example.com` domain" | "Bumped lib version" |
-| "Workaround for upstream bug #1234 — remove when fixed" | "Reformatted file" |
+| "Chose X over Y because constraint Z" | "Renamed foo to bar" |
+| "Service offline, route to alt" | "Fixed typo" |
+| "Cross-subdomain cookie requires `.example.com`" | "Bumped lib version" |
+| "Workaround for upstream bug #1234" | "Reformatted file" |
 
-### When to invalidate
+### Invalidate
 
-- Code change contradicts stored fact
-- User corrects ("no, we use Y now")
-- Periodic review reveals stale entry
+- Code contradicts stored fact
+- User corrects
+- Periodic review reveals stale
 
-### MemPalace + verify-first
+### Verify-first
 
 Before recommending from KG:
-1. Verify file/symbol still exists (`Read` / `gitnexus_context`)
+1. Verify file/symbol exists (`Read` / `gitnexus_context`)
 2. Check code matches stored claim
 3. Mismatch → invalidate + use current state
 
 ## When auto-trigger hooks fail
 
-If hook output silent / errors / mempalace CLI unavailable:
-- SessionStart no context → Lead manually checks git log, queries MemPalace via MCP if available
-- PostBash hooks silent → Lead manually runs `gitnexus_detect_changes` before commit
-- Stop hook fails → Lead manually saves key decision via `mempalace_kg_add` if session had architectural choice
+- SessionStart no context → Lead manually checks git log + queries MemPalace via MCP
+- PostBash silent → Lead manually `gitnexus_detect_changes` before commit
+- Stop fails → Lead manually `mempalace_kg_add` if session had arch choice
 
-Hooks = nice-to-have. Lead's manual checkpoints = mandatory regardless.
+Hooks = nice-to-have. Manual checkpoints = mandatory.
 
-## Skill commands (user-invokable)
+## Skill commands
 
-Existing project skills in `.claude/skills/gitnexus/`:
-- `gitnexus-exploring/SKILL.md`
-- `gitnexus-impact-analysis/SKILL.md`
-- `gitnexus-debugging/SKILL.md`
-- `gitnexus-refactoring/SKILL.md`
-- `gitnexus-pr-review/SKILL.md`
-- `gitnexus-cli/SKILL.md`
-- `gitnexus-guide/SKILL.md`
+`.claude/skills/gitnexus/`: `gitnexus-exploring/SKILL.md`, `gitnexus-impact-analysis/SKILL.md`, `gitnexus-debugging/SKILL.md`, `gitnexus-refactoring/SKILL.md`, `gitnexus-pr-review/SKILL.md`, `gitnexus-cli/SKILL.md`, `gitnexus-guide/SKILL.md`.
 
-Suggested additions (project-specific):
-- `/reindex` → `npx gitnexus analyze`
-- `/impact <symbol>` → `gitnexus_impact` + format
-- `/decision <text>` → `mempalace_kg_add`
-- `/recall <topic>` → `mempalace_kg_query` + format
+Suggested: `/reindex` → `npx gitnexus analyze`. `/impact <symbol>` → `gitnexus_impact`. `/decision <text>` → `mempalace_kg_add`. `/recall <topic>` → `mempalace_kg_query`.
 
 ## Common mistakes — DO NOT
 
 - Skip Stage 2 mandatory `gitnexus_impact` before edit
-- Skip Stage 4 mandatory `gitnexus_detect_changes` before commit
-- Reindex after every commit (waste)
+- Skip Stage 4 `gitnexus_detect_changes` before commit
+- Reindex after every commit
 - Save trivial info to KG
-- Trust auto-hook output without verifying when stakes are high
+- Trust auto-hook output without verifying when stakes high

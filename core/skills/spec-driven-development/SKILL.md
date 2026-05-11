@@ -5,51 +5,51 @@ description: Write a structured spec before writing code. Use at the start of a 
 
 # Spec-Driven Development
 
-Most rework comes from building the wrong thing well. A spec doesn't slow you down — it front-loads the disagreements and unknowns when they're cheap to resolve. This skill turns a fuzzy idea into a document that engineers can build from and stakeholders can sign off on.
+Most rework = building wrong thing well. Spec front-loads disagreements when cheap to resolve.
 
 ## When to use
 
-- New feature with non-trivial scope
-- Project has multiple stakeholders with different mental models
-- Requirements have been changing turn-to-turn
+- New feature, non-trivial scope
+- Multiple stakeholders with different mental models
+- Requirements changing turn-to-turn
 - Cross-team work where misalignment is expensive
 - Anything you'd regret building wrong (auth, billing, data integrity, public APIs)
 
-Skip when: the change is small and the answer is obvious; you're prototyping to learn, not shipping; the spec already exists and is current.
+Skip: small + obvious answer; prototype to learn; spec exists and is current.
 
 ## HARD-GATE: spec required before Build-phase skills
 
 <EXTREMELY-IMPORTANT>
-The following skills CANNOT BE INVOKED for a non-trivial feature until a written spec exists, has been user-approved, and is saved to `docs/specs/<feature>.md`:
+These skills CANNOT BE INVOKED for non-trivial features until a written spec exists, user-approved, saved to `docs/specs/<feature>.md`:
 
-- `test-driven-development` (writing implementation tests)
+- `test-driven-development` (impl tests)
 - `frontend-ui-engineering`
 - `interface-design`
 - `interaction-design`
-- `claude-api` (when building agentic features beyond a single call)
-- `api-and-interface-design` (when defining new public surface)
+- `claude-api` (agentic features beyond single call)
+- `api-and-interface-design` (new public surface)
 - backend code generation
-- any skill in the **Build** phase of the lifecycle taxonomy
+- any Build-phase skill
 
-If you attempt to invoke a Build-phase skill without a spec for a non-trivial feature:
+Attempting Build without spec for non-trivial feature:
 1. STOP
-2. Invoke this skill (`spec-driven-development`) first
-3. Get user approval on the written spec saved to `docs/specs/<feature>.md`
-4. Only then proceed to Build-phase work
+2. Invoke this skill first
+3. Get user approval, save to `docs/specs/<feature>.md`
+4. Then proceed
 
-This gate exists because feature-without-spec = 41% probability of scope drift (DAPLab failure-pattern data). "I'll iterate the spec in code" is the rationalization that produces the rework you tried to avoid.
+Feature-without-spec = 41% scope drift (DAPLab). "Iterate spec in code" = the rationalization that produces the rework.
 
-Skip cases (gate does NOT apply): typo / comment / docstring / one-line config / pure rename / dead-code removal / bug fix with reproducer / prototype explicitly scoped to learning.
+Gate does NOT apply: typo / comment / docstring / one-line config / pure rename / dead-code / bug fix with reproducer / explicitly scoped prototype.
 </EXTREMELY-IMPORTANT>
 
 ## What a good spec is — and isn't
 
-A spec describes **what** and **why**. It does not lock down **how**. Implementation freedom matters because the engineer (or future-you) will see the codebase context the spec author can't.
+Spec describes **what** and **why**. Not **how**.
 
 Spec **is**: scope, user outcomes, success criteria, constraints, open questions.
-Spec **is not**: function names, file structure, choice of library, line-by-line behavior.
+Spec **is not**: function names, file structure, library choice, line-by-line behavior.
 
-If your spec reads like pseudocode, you're writing a design doc. Different artifact, later phase.
+Reads like pseudocode → it's a design doc, different artifact.
 
 ## Spec template
 
@@ -62,124 +62,107 @@ Date: YYYY-MM-DD
 Stakeholders: [who must sign off]
 
 ## Problem
-What's broken, missing, or worth doing. One paragraph. Specific.
+What's broken or missing. One paragraph, specific.
 Not "users want more features" — "support sees 12 tickets/week from
-users who can't recover their account when they lose 2FA."
+users who can't recover account when they lose 2FA."
 
 ## Goals
-What we're solving. Bulleted, measurable where possible.
-- Reduce 2FA-recovery support tickets to <2/week
-- Median recovery time <10 minutes
-- No new attack surface for account takeover
+What we're solving. Bulleted, measurable.
 
 ## Non-goals
-What we are explicitly not doing. This is the most-skipped, most-valuable section.
-- Not building self-serve recovery for users without backup codes
-- Not changing the SMS-fallback policy
+What we're explicitly NOT doing. Most-skipped, most-valuable section.
 
 ## Users / personas
 Who's affected. What they're trying to do.
 
 ## User stories / scenarios
-Concrete walk-throughs. Happy path + at least 2 edge cases.
+Concrete walkthroughs. Happy path + 2+ edge cases.
 
 ## Requirements
-Functional: what the system must do.
-Non-functional: performance, security, accessibility, compliance.
+Functional + non-functional (perf, security, a11y, compliance).
 
 ## Success criteria
-How we'll know it worked. Metrics, tests, or qualitative bar.
+How we'll know it worked. Metrics, tests, qualitative bar.
 
 ## Constraints
 Time, budget, technical, regulatory, brand.
 
 ## Open questions
-Things we don't yet know that block the decision. Each one needs an
-owner and a target resolution date.
+Each gets owner + target resolution date.
 
-## Out of scope (for this version)
-What's explicitly punted to later. Saves arguments later.
+## Out of scope (this version)
+Explicitly punted.
 
 ## Risks
-What could go wrong, ordered by impact * likelihood.
+Ordered by impact * likelihood.
 
 ## Rollout
-Phasing, flagging, audience, fallback. (Brief — full launch plan
-lives in shipping-and-launch.)
+Phasing, flagging, audience, fallback.
 ```
 
 ## How to apply
 
-### 1. Start with the problem, not the solution
+### 1. Start with problem, not solution
 
-Write the Problem and Goals sections first. If you can't fill these without naming a solution, the user need isn't pinned down yet — go talk to users (or the user who's asking).
+Can't fill Problem + Goals without naming a solution → user need not pinned. Go talk to users.
 
 ### 2. Write Non-goals early
 
-Non-goals catch scope creep before it starts. Stakeholders argue about scope; non-goals prevent the argument from happening twice.
+Catches scope creep before it starts.
 
-### 3. Walk the scenarios
+### 3. Walk scenarios
 
-For each user story, walk through it concretely. What does the user see, click, type? What does the system do? What does the user see next?
+For each user story: what does user see, click, type? Edge cases surface here. Finds 80% of missing requirements.
 
-This phase finds 80% of the missing requirements. Edge cases surface here.
+### 4. Mark unknowns
 
-### 4. Mark unknowns explicitly
+Open questions blocking decision get owner + date. Non-blocking ("what color is button?") aren't spec material.
 
-Open questions that block the decision get a name and an owner. Open questions that don't block ("what color is the button?") aren't spec material.
+### 5. Sign-off before implementing
 
-### 5. Get sign-off before implementing
-
-The spec is a contract. Send it to stakeholders, get changes, get approval. Implementation against an unsigned spec is rework waiting to happen.
+Spec = contract. Get changes, get approval. Implementation against unsigned spec = rework.
 
 ### 6. Update or supersede — never silently rewrite
 
-If reality contradicts the spec mid-build:
-- **Small drift** — note it, get a thumbs up, keep going.
-- **Big drift** — pause, update the spec, re-confirm sign-off.
-- **Different feature now** — supersede with a new spec.
+- Small drift — note, thumbs up, continue
+- Big drift — pause, update, re-confirm sign-off
+- Different feature — supersede with new spec
 
-Don't quietly build something different from what was approved.
+## Interview the user (vague scope)
 
-## Interview the user (when scope is vague)
-
-Big features often arrive as one-line requests. Before drafting:
+Big features arrive as one-liners. Before drafting:
 
 ```
 Interview me. Cover:
-- The user's actual current behavior (not just the request)
-- What they'd do if this didn't get built
+- User's actual current behavior
+- What they'd do if this wasn't built
 - Edge cases I haven't named
-- Tradeoffs they're willing to accept
-- What "good enough for v1" looks like
+- Tradeoffs they accept
+- "Good enough for v1" definition
 ```
-
-Surfaces things the user hasn't yet considered. Cheaper than discovering them at implementation.
 
 ## Common mistakes
 
-- Spec that prescribes implementation ("use Redis with TTL=60s") — that's design, not spec
-- No Non-goals — the feature grows until it's everything
-- Vague goals ("better UX") — write the metric or write nothing
-- Open questions left as rhetorical — assign an owner
-- Skipping success criteria — "we'll know it when we see it" is how scope wars start
-- Spec written in isolation — stakeholders approve, then disown
-- Spec frozen forever — reality wins, the spec must evolve or be replaced
-- Treating the spec as paperwork — paperwork is what specs become when no one uses them; if no one uses it, write less of it next time
+- Spec prescribes implementation ("use Redis TTL=60s") — that's design
+- No Non-goals — feature grows to everything
+- Vague goals ("better UX") — write metric or nothing
+- Rhetorical open questions — assign owner
+- No success criteria — "we'll know it when we see it"
+- Spec in isolation — stakeholders approve then disown
+- Spec frozen forever — must evolve or be replaced
+- Treating spec as paperwork
 
 ## Quick reference
 
 | Symptom in execution | Likely spec gap |
 |----------------------|-----------------|
-| "Wait, are we doing X too?" | No Non-goals section |
-| "How will we know this works?" | Missing success criteria |
-| Multiple rebuilds of same component | Requirements too vague |
+| "Wait, are we doing X too?" | No Non-goals |
+| "How will we know it works?" | Missing success criteria |
+| Multiple rebuilds | Requirements too vague |
 | Stakeholder surprised at demo | Skipped sign-off |
-| Engineer paralyzed | Spec over-prescribed implementation |
+| Engineer paralyzed | Over-prescribed implementation |
 
 ## Output checkpoint
-
-After draft, before implementation, confirm:
 
 ```
 Spec status: [draft → review → approved]
@@ -188,17 +171,14 @@ Open questions still blocking: [list, or "none"]
 Implementation start condition: [what must be true to begin]
 ```
 
-Don't start building until that checkpoint is clean.
+Don't build until clean.
 
 ## Common Rationalizations
 
-When you're tempted to skip this skill, watch for these excuses:
-
 | Excuse | Reality |
 |--------|---------|
-| "Spec slows me down, I'll iterate in code" | Iterating in code without a spec = redoing the spec implicitly, in PR cycles, with more cleanup. Write 1 page first; ship faster overall. |
-| "This is a simple change, doesn't need <skill>" | Bugs hide in simple changes too — DAPLab data shows 41% of agentic-LLM failures land in 'trivial' diffs. |
-| "I already know the answer" | Confirmation bias — the skill exists to surface what you didn't think of, not to repeat what you did. |
-| "Time pressure, skip just this once" | Tech debt compounds; 5 minutes saved at write time costs 50 minutes of debugging later. |
+| "Spec slows me, iterate in code" | Iterating in code = redoing spec implicitly in PR cycles with more cleanup. |
+| "Simple change" | 41% of agentic-LLM failures land in trivial diffs (DAPLab). |
+| "Time pressure" | Tech debt compounds. |
 
-Default response when rationalizing: run the skill anyway. Cost of running it is bounded; cost of skipping when you needed it is not.
+Default: run anyway.

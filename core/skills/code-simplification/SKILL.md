@@ -5,30 +5,30 @@ description: Refactor for clarity without changing behavior. Apply when code wor
 
 # Code Simplification
 
-Working code that's hard to read is a tax every future change pays. This skill is the inverse of feature work: zero new behavior, smaller mental footprint. Tests stay green from start to finish — that's the proof you didn't change anything that mattered.
+Zero new behavior, smaller mental footprint. Tests green start to finish = proof nothing changed.
 
 ## When to use
 
-- Function over ~50 lines, doing more than one thing
-- Nesting depth ≥ 4
-- Comment explaining what code does (instead of why)
-- Variable named `data`, `tmp`, `result`, `obj`
-- "I'll come back to this" — you're back, simplify it now
-- Adding a feature feels disproportionately hard — design pushback signal
-- Code review found the logic but couldn't follow it
-- Onboarding a new teammate keeps tripping on the same file
+- Function >50 lines, doing >1 thing
+- Nesting depth ≥4
+- Comment explaining what code does (not why)
+- Variable named `data` / `tmp` / `result` / `obj`
+- "I'll come back to this" — you're back
+- Adding feature feels disproportionately hard
+- Review found logic but couldn't follow
+- Same file keeps tripping new teammates
 
 ## How to apply
 
-### Pre-flight check
+### Pre-flight
 
-- Tests exist for the behavior? If no, **write them first** (test-driven-development skill). You can't safely refactor without a green safety net.
+- Tests exist? No → write first (test-driven-development skill). Can't refactor safely without green safety net.
 - Run tests, confirm green
-- Commit (clean baseline to revert to)
+- Commit clean baseline
 
 ### 1. Rename for intent
 
-Cheapest, highest-leverage refactor. Names describe **what** the value represents, not its type or computation.
+Highest leverage. Names describe what, not type/computation.
 
 | Bad | Good |
 |-----|------|
@@ -38,21 +38,11 @@ Cheapest, highest-leverage refactor. Names describe **what** the value represent
 | `flag` | `isCheckoutOpen` |
 | `process(x)` | `validatePayment(x)` |
 
-Rename until comments become redundant. Delete the comment.
+Rename until comments redundant. Delete comment.
 
 ### 2. Extract for cohesion
 
-When a function does X-then-Y-then-Z and X/Y/Z each fit a name → extract.
-
-```
-function placeOrder(input) {
-  // 20 lines of validation
-  // 30 lines of pricing
-  // 15 lines of persistence
-}
-```
-
-becomes:
+Function does X-then-Y-then-Z where each fits a name → extract.
 
 ```
 function placeOrder(input) {
@@ -62,26 +52,12 @@ function placeOrder(input) {
 }
 ```
 
-Each helper has a single name-able purpose. Place them in order of use, top-down.
+Each helper has single name-able purpose, ordered top-down.
 
 ### 3. Invert nested conditionals
 
-Deep nesting hides the happy path. Use guard clauses to flatten.
+Deep nesting hides happy path. Guard clauses flatten.
 
-Before:
-```
-function ship(order) {
-  if (order) {
-    if (order.paid) {
-      if (order.address) {
-        // 40 lines of actual work
-      }
-    }
-  }
-}
-```
-
-After:
 ```
 function ship(order) {
   if (!order) return
@@ -91,7 +67,7 @@ function ship(order) {
 }
 ```
 
-### 4. Replace flag arguments with separate functions
+### 4. Flag arguments → separate functions
 
 ```
 // Before
@@ -105,56 +81,53 @@ finalizeOrder(order)
 
 Boolean parameters that change behavior = two functions hiding as one.
 
-### 5. Replace primitive obsession with types
+### 5. Replace primitive obsession
 
-`(number, number, number)` for an RGB color is a footgun. `Color { r, g, b }` documents itself.
+`(number, number, number)` for RGB is footgun. `Color { r, g, b }` self-documents.
 
-Same for: dates as strings, money as floats, IDs as plain strings without a brand.
+Same for: dates as strings, money as floats, IDs as unbranded strings.
 
 ### 6. Inline single-use abstractions
 
-If `function helper()` is called from exactly one place and isn't reused — inline it. The abstraction has no payoff.
+Called once, not reused → inline. No payoff.
 
-Counter-test: does the abstraction make the caller more readable? If yes, keep. If no, inline.
+Counter-test: does abstraction make caller more readable? Yes → keep. No → inline.
 
 ### 7. Remove dead branches
 
-- `if (false)` blocks
-- Unreachable code after `return` / `throw`
-- `else` after a `return` in `if`
-- Checks for conditions that types/contracts already prevent
+- `if (false)`
+- Unreachable after `return`/`throw`
+- `else` after `return` in `if`
+- Checks types/contracts already prevent
 
-### 8. Replace clever with obvious
+### 8. Clever → obvious
 
 | Clever | Obvious |
 |--------|---------|
-| `arr.reduce((a, b) => a + b, 0)` (in a hot path you'll re-read) | `let sum = 0; for (const x of arr) sum += x` |
-| Nested ternary (3+ levels) | `if/else if/else` block |
+| `arr.reduce((a, b) => a + b, 0)` in hot re-read path | `let sum = 0; for (const x of arr) sum += x` |
+| Nested ternary 3+ levels | `if/else if/else` |
 | One-line lambda doing 5 things | Named function |
 | Bit-twiddling without comment | Helper with intent name |
-
-Clever code looks impressive. Obvious code ships.
 
 ## Verifying
 
 After every step:
+1. Tests green? No → reverted behavior, revert + retry
+2. Diff readable? Huge diff = bundled too much
+3. New code shorter/clearer? Neither → undo
 
-1. Tests still green? If no, you changed behavior — revert and try again.
-2. Diff readable? If your diff is huge, you bundled too many simplifications.
-3. New code shorter or clearer (ideally both)? If neither, undo.
-
-Commit each step or small group of steps separately. Reviewer can verify each refactor is behavior-preserving.
+Commit each step or small group separately.
 
 ## Common mistakes
 
-- Refactoring without tests (you can't prove behavior preserved)
-- Renaming + extracting + inverting in one giant commit (un-reviewable)
-- Extracting helpers that are used once (just-in-case, no payoff)
-- "While I'm here" feature additions (scope creep — separate PR)
-- Adding new abstractions to "simplify" (often complicates)
-- Touching code that wasn't actually hard to read
-- Changing public API in a "simplification" PR — that's a breaking change
-- Simplifying generated code (will be regenerated — fix the generator instead)
+- Refactor without tests (can't prove preserved)
+- Rename + extract + invert in one giant commit
+- Extracting one-use helpers
+- "While I'm here" feature additions
+- Adding abstractions to "simplify" (often complicates)
+- Touching code that wasn't hard to read
+- Public API change in "simplification" PR = breaking
+- Simplifying generated code — fix generator
 
 ## Quick reference
 
@@ -164,8 +137,8 @@ Commit each step or small group of steps separately. Reviewer can verify each re
 | Deep nesting | Guard clauses |
 | Boolean argument | Split into two functions |
 | `data`, `tmp` | Rename for intent |
-| Comment explaining what | Rename until comment unneeded |
-| Flag chains (`if a && !b && c`) | Extract predicate function |
+| Comment explaining what | Rename until unneeded |
+| Flag chains | Extract predicate function |
 | Magic numbers/strings | Named constants |
 | Primitive obsession | Domain type |
 | Single-use helper | Inline |
@@ -174,20 +147,18 @@ Commit each step or small group of steps separately. Reviewer can verify each re
 ## After simplification
 
 - Tests green
-- Diff each step is small and reviewable
+- Each step diff small/reviewable
 - No new behavior
-- Documentation updated if public surface (signatures, types) changed
-- Mention to user any pre-existing dead code you found but didn't delete
+- Docs updated if public surface changed
+- Mention pre-existing dead code found but not deleted
 
 ## Common Rationalizations
 
-When you're tempted to skip this skill, watch for these excuses:
-
 | Excuse | Reality |
 |--------|---------|
-| "The code works, refactoring is risky" | Working ≠ understandable. Complexity tax accrues every read; simplification pays back on the next change, not this one. |
-| "This is a simple change, doesn't need <skill>" | Bugs hide in simple changes too — DAPLab data shows 41% of agentic-LLM failures land in 'trivial' diffs. |
-| "I already know the answer" | Confirmation bias — the skill exists to surface what you didn't think of, not to repeat what you did. |
-| "Time pressure, skip just this once" | Tech debt compounds; 5 minutes saved at write time costs 50 minutes of debugging later. |
+| "Code works, refactor risky" | Working ≠ understandable. Complexity tax accrues every read. |
+| "Simple change, no skill needed" | DAPLab: 41% failures in 'trivial' diffs. |
+| "I already know" | Confirmation bias. |
+| "Time pressure" | 5 min saved = 50 min debugging. |
 
-Default response when rationalizing: run the skill anyway. Cost of running it is bounded; cost of skipping when you needed it is not.
+Default: run skill.

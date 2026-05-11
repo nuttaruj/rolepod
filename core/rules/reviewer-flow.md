@@ -1,58 +1,58 @@
 # Reviewer Flow — Codex + Gemini + qa-tester
 
-Read BEFORE spawning any reviewer. Tier values read live from `~/.claude/agents/<name>.md` — don't hardcode model versions.
+Read BEFORE spawning reviewer. Tier values read live from `~/.claude/agents/<name>.md`.
 
-General review principles: skill `code-review-and-quality`. This file = AI-reviewer routing specifics.
+General review: skill `code-review-and-quality`. This file = AI-reviewer routing.
 
-## Three reviewers, three roles
+## Three reviewers
 
 | Reviewer | Strength | Tooling |
 |----------|----------|---------|
-| **Codex** | Correctness + security depth + adversarial mindset | Plugin Skill OR Bash companion |
-| **Gemini** | Repo-wide breadth + cross-file consistency + code smell + naming | Lead-direct CLI (`gemini -m pro -o text -p "..."`) |
-| **qa-tester** | Business logic + integration + races + multi-step + tests + Write tool | Subagent (Agent tool) |
+| **Codex** | Correctness + security + adversarial | Plugin Skill OR Bash companion |
+| **Gemini** | Repo breadth + cross-file + smell + naming | Lead-direct CLI |
+| **qa-tester** | Business logic + integration + races + tests + Write | Subagent |
 
-**qa-tester = universal floor + universal fallback.**
-- Always runs as minimum (every gate).
-- Auto-takes over Codex/Gemini scope when external reviewer fails (rate-limit, 10min hang, empty output, CLI error, Skill block).
-- qa-tester itself can't fail-over (it IS the internal subagent). If blocked → Lead does manual review via Read/Grep.
+**qa-tester = universal floor + fallback.**
+- Always runs (every gate).
+- Absorbs Codex/Gemini scope when they fail.
+- Itself can't fail-over → Lead does manual review via Read/Grep.
 
 ## Invocation
 
 | Reviewer | How |
 |----------|-----|
-| **Codex** | Try plugin Skill first: `Skill({skill: "codex:review"})` or `codex:adversarial-review`. On `disable-model-invocation` block → Bash background to `codex-companion.mjs` |
-| **Gemini** | Lead-direct sync: `gemini -m pro -o text -p "<prompt>" > /tmp/gemini-$TS.txt 2> /tmp/gemini-$TS.err` |
-| **qa-tester** | Subagent via Agent tool |
+| **Codex** | Plugin Skill: `codex:review` or `codex:adversarial-review`. On `disable-model-invocation` block → Bash to `codex-companion.mjs` |
+| **Gemini** | `gemini -m pro -o text -p "<prompt>" > /tmp/gemini-$TS.txt 2> /tmp/gemini-$TS.err` |
+| **qa-tester** | Agent tool |
 
 ### Gemini flag rules
 
 - Pin `-m pro` (default `auto` may downgrade to flash)
-- `-o text` for prose review; `-o json` if Lead wants `jq -r .response` + cache-hit tracking
-- **Don't `2>&1`** — Gemini emits 20-40 lines stderr noise (terminal-color / ripgrep fallback / classifier 500 / DEP0190). Always separate stderr to `.err` or `2>/dev/null`.
+- `-o text` for prose; `-o json` for `jq -r .response` + cache tracking
+- **Don't `2>&1`** — Gemini emits 20-40 lines stderr noise. Separate to `.err` or `2>/dev/null`.
 
 ### 3 valid Gemini patterns
 
 - **A** — PR-diff pipe: `git diff base..HEAD | gemini -p "..."`
-- **B** — whole-repo: `cd /repo && gemini -p "..."` (workspace = cwd, NO flag)
+- **B** — whole-repo: `cd /repo && gemini -p "..."` (cwd = workspace, NO flag)
 - **C** — exploration: B without findings format
 
-NOT a multi-step investigator — that's qa-tester's job.
+NOT a multi-step investigator — that's qa-tester.
 
 ### Codex routing
 
-- Bounded diff/commit/PR review = direct diff (`git diff`, `gh pr diff`, source files). Don't require GitNexus.
-- Reserve GitNexus-first for architecture / blast-radius / flow audits or user-requested "audit whole system".
-- Don't trigger `gitnexus analyze` during review unless user asks.
+- Bounded diff/commit/PR review = direct diff. Don't require GitNexus.
+- GitNexus-first only for architecture / blast-radius / user-requested "audit whole system".
+- Don't trigger `gitnexus analyze` during review unless asked.
 
-## Gemini security — read-only, hard constraints
+## Gemini security — read-only
 
-Gemini CLI NOT sandboxed like Codex. Treat as untrusted code execution:
+NOT sandboxed like Codex. Treat as untrusted:
 
 - Never `--yolo` / `--auto-approve`
-- Never interactive for review — always `-p "..."` non-interactive
-- Never let Gemini write project files. Output → `/tmp/gemini-*.txt` only. Lead applies edits via Edit/Write or delegates.
-- Never pipe credentials (`.env`, `.pgpass`, secrets, tokens, keys) into prompt
+- Always `-p "..."` non-interactive
+- Never let Gemini write project files. Output → `/tmp/gemini-*.txt` only
+- Never pipe credentials (`.env`, secrets, tokens, keys) into prompt
 - Never let Gemini commit/push/run git mutating commands
 - Run from repo root with `git diff` piped via stdin
 
@@ -60,116 +60,112 @@ Gemini CLI NOT sandboxed like Codex. Treat as untrusted code execution:
 
 - **Allowed**: `/codex:review`, `/codex:adversarial-review`, `/codex:status`, `/codex:result`
 - **Hard ban**: `/codex:rescue`, `codex-rescue` agent, any Codex command that edits files
-- Plugin v1.0.4+ blocks Skill-tool via `disable-model-invocation: true`. Try plugin first; fall back to Bash companion on block.
-- Lead-direct Gemini CLI = default. Context too hot? Spawn general-purpose subagent to wrap the Bash call.
+- Plugin v1.0.4+ blocks Skill-tool via `disable-model-invocation: true`. Try plugin first; fall back to Bash companion.
+- Lead-direct Gemini = default. Context hot? Wrap Bash call in general-purpose subagent.
 
-## Routing — pick reviewers by VALUE per profile
+## Routing by PR profile
 
-| PR profile | Reviewers | Why this set |
-|------------|-----------|--------------|
-| **<5 files** (hotfix) | qa-tester solo | Surgical; deep context check enough |
-| **5-30 files** (feature) | Gemini → qa-tester (skip Codex) | Breadth scan + business logic verify |
-| **>30 files** (refactor/epic) | Gemini (all) + qa-tester (core) + Codex (risky subsys) | Big context window + integration + race |
-| **High-risk surface** | Codex adversarial → qa-tester (skip Gemini) | Attacker mindset + integrity |
-| **Frontend / UI** | Gemini + qa-tester (skip Codex) | Perf + best practice + state |
+| Profile | Reviewers |
+|---------|-----------|
+| **<5 files** (hotfix) | qa-tester solo |
+| **5-30 files** (feature) | Gemini → qa-tester |
+| **>30 files** (refactor/epic) | Gemini all + qa-tester core + Codex risky |
+| **High-risk surface** | Codex adversarial → qa-tester |
+| **Frontend / UI** | Gemini + qa-tester |
 
 ### Skip rule
 
-Drop reviewer if their strength doesn't match profile.
-Don't trigger Codex on UI-only PR. Don't trigger Gemini on tiny hotfix.
+Drop reviewer if strength doesn't match. Don't trigger Codex on UI-only. Don't trigger Gemini on tiny hotfix.
 
-### Roles within profile (always)
+### Roles within profile
 
-- **Gemini** = breadth (code smell, cross-file consistency, naming)
-- **Codex** = depth + adversarial (correctness, security, race)
-- **qa-tester** = business logic + integration + tests + Write tool (acts on findings)
+- Gemini = breadth (smell, cross-file, naming)
+- Codex = depth + adversarial (correctness, security, race)
+- qa-tester = business logic + integration + tests + Write tool
 
-## High-risk surface — escalate to Codex `adversarial-review`
+## High-risk surface — Codex `adversarial-review`
 
-Project-agnostic. Bug here = irreversible / hard-to-detect damage:
+Bug here = irreversible / hard-to-detect:
 
 - Auth / permissions / tenant isolation
 - Money / billing / payments / credits
-- DB migrations / schema changes
+- DB migrations / schema
 - Distributed locks / concurrency / queue handlers
-- External integrations w/ side effects (third-party state mutations)
+- External integrations w/ side effects
 - File / storage ops on user data (delete / encrypt / move)
 - Crypto / signing / token issuance
-- Legal / compliance / regulatory
+- Legal / compliance
 - Irreversible business state (orders shipped, emails sent, payments captured)
 
-**Litmus**: "would a bug here be cheap to roll back?" If NO → high-risk → Codex adversarial.
+**Litmus**: "cheap to roll back?" NO → high-risk → Codex adversarial.
 
-## Cascade — 3 phases, hard cap 3 rounds per external reviewer
+## Cascade — 3 phases, cap 3 rounds per external
 
 | Phase | Reviewer | Cap |
 |-------|----------|-----|
-| **1** initial review | Codex ≤2 + Gemini ≤2 per routing | findings → fix → verify with **qa-tester** (NOT re-Codex/Gemini) |
-| **2** cleanup | qa-tester unlimited | When external reviewers at budget. Bash + unit-test scripts + Write tool. |
-| **3** final-gate (ONCE) | Codex 1 + Gemini 1 | Clean → ship. Findings → fix → qa-tester follow-up → ship (no re-trigger). |
+| 1 initial | Codex ≤2 + Gemini ≤2 | findings → fix → verify with qa-tester |
+| 2 cleanup | qa-tester unlimited | When external at budget |
+| 3 final-gate (ONCE) | Codex 1 + Gemini 1 | Clean → ship. Findings → fix → qa-tester → ship (no re-trigger) |
 
-**Hard cap per feature batch**: Codex 3 rounds, Gemini 3 rounds, qa-tester unlimited.
+**Hard cap per batch**: Codex 3, Gemini 3, qa-tester unlimited.
 
 ## Rules (all reviewers)
 
 - Round-level gate, NOT per-edit/per-commit/per-file
-- Batch all findings before re-running
+- Batch findings before re-running
 - Verify each finding in code; review = input, not orders
-- Don't hide unresolved findings — invalid/deferred = explain with file:line
-- Lead interprets, reviewers don't (CLIs → /tmp; subagents → raw/structured)
-- Lead-direct CLI output → `/tmp` → chunked Read; never spam main transcript
+- Don't hide unresolved → invalid/deferred = explain with file:line
+- Lead interprets, reviewers don't
+- CLI output → `/tmp` → chunked Read; never spam main transcript
 
-## Fallback — qa-tester absorbs failed reviewer's SCOPE
+## Fallback — qa-tester absorbs scope
 
-External reviewer fails (rate-limit / Skill block / 10min hang / empty / error)
-→ qa-tester takes **same scope + role**.
+External fails (rate-limit / Skill block / 10min hang / empty / error) → qa-tester takes same scope + role.
 
 Example: >30 files refactor, Gemini dies → qa-tester runs ALL files (breadth) + core; Codex unchanged.
-Both die → qa-tester runs all + core + risky in Phase 2 unlimited.
 
-### Model escalation when fallback (Lead overrides at spawn)
+### Model escalation when fallback
 
-`qa-tester` and `universal-reviewer` default to **Sonnet high** (cost-optimized for normal flow). Lead **MUST override** to **Opus high** via Agent tool's `model` parameter when ANY of these conditions hold:
+`qa-tester` / `universal-reviewer` default = Sonnet high. **Override to Opus high** via `model` param when:
 
 | Condition | Why |
 |-----------|-----|
-| Codex unavailable AND PR touches high-risk surface (auth/billing/migration/locks/external) | qa-tester absorbing Codex's adversarial scope — needs Opus depth |
-| Gemini unavailable AND PR >30 files | qa-tester absorbing Gemini's breadth scope — needs Opus context handling |
-| Both Codex + Gemini unavailable AND any non-trivial PR | qa-tester is sole reviewer — escalate to Opus |
-| User cloned repo without external review plugins (no Codex / no Gemini installed) | Default install lacks fallback — Opus floor preserves quality |
-| User explicitly requests "deep review" / "ultrareview" | Explicit ask |
+| Codex unavailable + high-risk surface | qa-tester absorbs adversarial scope |
+| Gemini unavailable + PR >30 files | qa-tester absorbs breadth scope |
+| Both unavailable + non-trivial PR | sole reviewer |
+| No external plugins installed | Opus floor preserves quality |
+| User asks "deep review" / "ultrareview" | Explicit |
 
-Detection: before spawning, Lead checks `which gemini`, Codex Skill availability (or plugin marketplace), or installed plugins list.
+Detection: `which gemini`, Codex Skill availability, installed plugins.
 
-Spawn template (fallback context):
+Spawn template (fallback):
 ```
 Agent({
   subagent_type: "qa-tester",
-  model: "opus",        // Lead override — fallback context
-  description: "...",
-  prompt: "Context: Codex unavailable (no plugin installed). You absorb adversarial scope.\n[task brief]"
+  model: "opus",
+  prompt: "Context: Codex unavailable. Absorb adversarial scope.\n[brief]"
 })
 ```
 
-Normal context (Codex + Gemini available + low/mid-risk surface): use defaults — no override.
+Normal context: use defaults.
 
-### qa-tester adversarial-style (absorbing Codex)
+### qa-tester adversarial (absorbing Codex)
 
 1. Read `~/.claude/plugins/marketplaces/openai-codex/plugins/codex/prompts/adversarial-review.md`
-2. Fallback if file missing:
+2. Fallback if missing:
    - Skepticism by default
    - Hunt: invariants / missing-guards / race / rollback / empty-state
    - Bug classes: auth bypass / data loss / corruption / race / migration hazard / observability gap
-   - Finding format: (what fails) + (why) + (impact) + (concrete fix)
+   - Format: (what fails) + (why) + (impact) + (concrete fix)
    - Ship-blocker if material risk
 
-User-invoked `/codex:review` = independent, NOT part of AI's per-round flow.
+User-invoked `/codex:review` = independent, NOT part of per-round flow.
 
 ## Common mistakes — DO NOT
 
-- Re-trigger Codex/Gemini per individual fix → batch findings
-- Skip qa-tester because Codex passed — qa-tester always runs
-- Trigger Codex on UI-only PR — wastes budget
-- Trigger Gemini interactively or with `--yolo`
-- Pipe credentials into Gemini prompt
-- Let Gemini commit/push/edit files
+- Re-trigger Codex/Gemini per fix → batch
+- Skip qa-tester because Codex passed
+- Codex on UI-only PR
+- Gemini interactive or `--yolo`
+- Pipe credentials into Gemini
+- Let Gemini commit/push/edit

@@ -1,71 +1,68 @@
 # Verification — proving your change works
 
-**Scope:** rules for verifying YOUR code change works (post-edit evidence).
-**NOT this file:** confirming facts before claiming → `verify-first.md`. Test planning/types/internal execution → `testing.md`.
+**Scope:** verify YOUR code change (post-edit evidence).
+**NOT this file:** confirming facts before claiming → `verify-first.md`. Test planning → `testing.md`.
 
-UI verification deep guide: skills `webapp-testing`, `browser-testing-with-devtools`
+UI verification: skills `webapp-testing`, `browser-testing-with-devtools`.
 
-Read when: about to verify a code change / report task done.
+Read when: about to verify code change / report task done.
 
 ## Core rule
 
 Every implementation ends with **evidence**. Smallest command that proves changed behavior. Widen as risk grows.
 
-Cannot verify → state why explicitly + remaining risk. **Don't claim success without proof.**
+Can't verify → state why + risk. **Don't claim success without proof.**
 
 ## Evidence by change type
 
 | Change | Verify with |
 |--------|-------------|
 | Logic / function | Unit test pass output |
-| API endpoint | `curl` / Postman / integration test response |
-| DB migration | Dry run + reversible rollback check + row count delta |
+| API endpoint | `curl` / Postman / integration response |
+| DB migration | Dry run + rollback check + row count delta |
 | UI / frontend | Browser screenshot + console clean + network OK |
-| CSS / styling | Browser screenshot at multiple viewports |
-| Background task | Log output / queue state / task result |
-| Config / env | Restart service + functional smoke test |
-| Refactor | Tests pass before AND after (no behavior change) |
-| Performance | Before/after metric (p95 latency / bundle size / etc.) |
+| CSS / styling | Screenshot at multiple viewports |
+| Background task | Log / queue state / task result |
+| Config / env | Restart + functional smoke |
+| Refactor | Tests pass before AND after |
+| Performance | Before/after metric (p95 / bundle / etc.) |
 | Type-only | `tsc --noEmit` / `mypy` clean |
 
-## UI changes — drive browser yourself
+## UI — drive browser yourself
 
-**NEVER ask user for screenshot.** Drive browser yourself in this order:
+**NEVER ask user for screenshot.** Order:
 
-1. **Playwright via Bash**
-   - `chromium.launch_persistent_context(user_data_dir=...)`
-   - First run headed → user logs in once → cookies persist
-2. **`webapp-testing` skill** if present
+1. **Playwright via Bash** — `chromium.launch_persistent_context(user_data_dir=...)`. First run headed → user logs in → cookies persist.
+2. **`webapp-testing` skill**
 3. **`browser-testing-with-devtools`** skill
-4. **DevTools paste** as last resort
+4. **DevTools paste** last resort
 
-`mcp__Claude_in_Chrome__*` not connected → fall back to Playwright immediately. Don't pause to chase MCP setup.
+`mcp__Claude_in_Chrome__*` not connected → Playwright. Don't pause to chase MCP setup.
 
 ### Preview tools (Claude Code preview MCP)
 
-If `preview_*` tools available:
-
+If `preview_*` available:
 1. `preview_start` — launch dev server
-2. `preview_eval` — `window.location.reload()` if needed (skip if HMR active)
-3. `preview_console_logs` / `preview_logs` / `preview_network` — check errors
+2. `preview_eval` — reload if needed (skip if HMR active)
+3. `preview_console_logs` / `preview_logs` / `preview_network` — errors
 4. `preview_snapshot` — content + structure
 5. `preview_inspect` — CSS values
-6. `preview_click` / `preview_fill` — test interactions → snapshot to confirm
+6. `preview_click` / `preview_fill` → snapshot to confirm
 7. `preview_resize` — responsive / dark mode
-8. `preview_screenshot` — visual proof for user
+8. `preview_screenshot` — visual proof
 
-Skip steps not relevant to change.
+Skip irrelevant steps.
 
-## Test scope — minimum to widen
+## Test scope — widen as needed
 
 ```
-Targeted tests first    → 1-2 tests covering changed code path
-↓ if change affects shared/public surface
-Module tests           → all tests in changed module
-↓ if change affects multiple modules
-Integration tests      → critical paths
-↓ if high-risk change (auth/billing/migrations)
-Full suite             → before merge
+Targeted    → 1-2 tests covering changed path
+↓ shared / public surface
+Module      → all tests in changed module
+↓ multiple modules
+Integration → critical paths
+↓ high-risk (auth/billing/migrations)
+Full suite  → before merge
 ```
 
 ## Integration vs Unit
@@ -73,48 +70,47 @@ Full suite             → before merge
 | | Unit | Integration |
 |---|---|---|
 | Speed | Fast | Slow |
-| Scope | Function/class isolated | Multi-component real deps |
+| Scope | Function isolated | Multi-component real deps |
 | Mocks | Yes (deps) | Minimal — real DB/cache |
-| Best for | Logic paths, edges | Mock/prod divergence, API contracts, races |
-| Risk | Mocks diverge → prod breaks | Flaky, harder debug |
+| Best for | Logic paths, edges | Mock/prod divergence, contracts, races |
+| Risk | Mocks diverge | Flaky, harder debug |
 
-**Balance**: unit for business logic depth. Integration for critical paths (auth, payments, migrations, external APIs, distributed locks).
+**Balance**: unit for business logic depth. Integration for critical paths (auth/payments/migrations/external/locks).
 
-**Never mock the database in integration tests.** Mock/prod divergence has burned us before.
+**Never mock DB in integration tests.** Mock/prod divergence burns.
 
 ## Goal-driven verification
 
-| Task type | Verify by |
-|-----------|-----------|
-| Add validation | Test with invalid input → expect rejection |
-| Fix bug | Reproducing test → was failing → now passing |
-| Add feature | New test for happy path + edge cases |
+| Task | Verify by |
+|------|-----------|
+| Add validation | Invalid input → expect rejection |
+| Fix bug | Reproducing test was failing → now passing |
+| Add feature | New test for happy path + edges |
 | Refactor | Existing tests pass unchanged |
 | Performance | Metric before vs after |
 
-## Reporting evidence to user
+## Reporting to user
 
-Format:
 ```
 Changed: [what]
-Verified: [how — test command + output snippet]
+Verified: [how — command + output snippet]
 Risk: [what this doesn't cover]
-Next: [what user should do / next step]
+Next: [what user should do]
 ```
 
 Example:
 ```
 Changed: hold_credit() now returns 409 on race
 Verified: pytest test_credit_race.py::test_concurrent_hold → 1 passed
-Risk: Doesn't cover Redis failover; manual test needed for that
+Risk: Doesn't cover Redis failover
 Next: Ship — gate is green
 ```
 
 ## Common mistakes — DO NOT
 
-- "Should work" without running it
+- "Should work" without running
 - Ask user to verify UI when you can drive browser
-- Skip verification on "trivial" change — trivial changes break too
-- Mock the database in integration test
-- Verify only happy path — test edge cases
-- Hide failed test output from user
+- Skip verification on "trivial" change
+- Mock DB in integration
+- Verify only happy path
+- Hide failed test output

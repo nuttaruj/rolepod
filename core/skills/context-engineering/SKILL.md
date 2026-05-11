@@ -5,93 +5,83 @@ description: Optimize agent context — what gets loaded, when, and at what cost
 
 # Context Engineering
 
-An agent's context is its working memory: precious, expensive, and finite. Stuff it with everything and the model gets dull, slow, and costly. Starve it of what matters and the agent guesses. This skill is about choosing what gets in, when, and how much.
+Context = working memory: precious, expensive, finite. Stuff it → dull/slow/costly. Starve it → guessing.
 
 ## When to use
 
-- Starting a new session — what to preload?
-- Agent output quality dropped mid-session
+- Starting new session
+- Output quality dropped mid-session
 - Token costs higher than expected
-- Designing a multi-agent system (lead + subagents)
-- Long-running task spans hours and many turns
-- Switching between unrelated tasks in same session
+- Designing multi-agent system
+- Long-running task across hours/turns
+- Switching unrelated tasks in same session
 - Cache hit rate degraded
-- Repeating the same explanation each turn
+- Repeating same explanation each turn
 
 ## How to apply
 
-### 1. Distinguish four context tiers
+### 1. Four context tiers
 
 | Tier | Examples | When loaded |
 |------|----------|-------------|
-| **Always-on** | Identity, project rules (CLAUDE.md), tool list | Every turn |
-| **Task-local** | Files being edited, current goal | Active task only |
+| **Always-on** | Identity, CLAUDE.md, tool list | Every turn |
+| **Task-local** | Files being edited, current goal | Active task |
 | **Lazy** | Reference docs, deep rules, skills | On trigger |
-| **Compressed** | Summaries of past work, KG entries | When recall needed |
+| **Compressed** | Summaries, KG entries | When recall needed |
 
-Tier mismatch is the most common waste — putting reference docs in always-on, putting load-bearing rules in lazy.
+Most common waste: reference docs in always-on; load-bearing rules in lazy.
 
 ### 2. Lazy load — pull, don't push
 
-Default: load on demand, not preemptively.
+Load on demand, not preemptively.
 
 ```
-GOOD: skill / rule fires when trigger condition met → load file → apply
-BAD:  preload 30 skill files at session start "just in case"
+GOOD: skill/rule fires when trigger met → load file → apply
+BAD:  preload 30 skills at session start "just in case"
 ```
 
-Triggers are explicit conditions:
-- "About to commit" → load pre-merge gate
-- "Editing auth code" → load security rules
-- "User asks about pricing" → fetch live pricing, don't recall
+Triggers fail when: they overlap (same condition fires 5 skills), they're vague ("when relevant"), they fire too late.
 
-A trigger system fails when:
-- Triggers overlap (same condition fires 5 skills)
-- Triggers are vague ("when relevant" — relevant to whom?)
-- Triggers fire too late (post-decision instead of pre-decision)
+Fix: each rule states ONE specific trigger.
 
-Fix: each rule states ONE specific trigger condition.
+### 3. Isolate — fresh context for subagents
 
-### 3. Isolate — give subagents fresh context
+Subagent context is separate. Doesn't pollute lead. Use aggressively.
 
-A subagent runs in a separate context window. Its work does not pollute the lead's context. Use this aggressively.
+| Task | Lead context | Subagent |
+|------|--------------|----------|
+| Investigate (5+ files) | ✗ pollutes | ✓ returns summary |
+| 1-file change | ✓ lead | ✗ overhead |
+| Run tests + report | ✗ output noise | ✓ summary |
+| Multi-step research | ✗ exhausts | ✓ findings |
+| Quick file read | ✓ lead | ✗ overhead |
 
-| Task | In lead context | In subagent |
-|------|----------------|-------------|
-| Investigate how X works (5+ files) | ✗ pollutes lead | ✓ returns summary |
-| Implement a 1-file change | ✓ lead does it | ✗ overhead |
-| Run tests + report | ✗ output noise | ✓ pass/fail summary |
-| Multi-step research | ✗ exhausts lead | ✓ returns findings |
-| Quick file read | ✓ lead does it | ✗ overhead |
-
-Lead receives **summary** from subagent — not raw outputs. Lead context stays clean.
+Lead gets summary, not raw outputs.
 
 ### 4. Compress — summarize, don't repeat
 
-When context approaches 50%+ full:
+Context >50% full:
 
-- `/compact <focus>` — manual compaction, biased toward what matters
-- Save key decisions to a knowledge graph or notes file
-- Drop transient state (tool errors, tangents, abandoned paths)
-- Keep: file paths touched, decisions made, current goal, open questions
+- `/compact <focus>` — manual, biased toward what matters
+- Save key decisions to KG/notes
+- Drop transient state (tool errors, abandoned paths)
+- Keep: file paths touched, decisions, current goal, open questions
 
-Compression is lossy. Lose what's truly transient, keep what's load-bearing.
+Compression is lossy. Drop transient, keep load-bearing.
 
-### 5. Refresh — reset between tasks
-
-Switching from morning bug-fix to afternoon feature? `/clear`. The morning's context contaminates the afternoon's plan.
+### 5. Refresh — `/clear` between tasks
 
 Signals to clear:
 - Unrelated next task
-- Repeatedly correcting the agent on same point (polluted context)
-- Token usage high but progress low
-- Stuck in a hypothesis loop
+- Repeatedly correcting same point
+- High tokens, low progress
+- Stuck in hypothesis loop
 
-After clear: write a better initial prompt that incorporates what you learned. Clean context + good prompt > polluted context + corrections.
+After clear: better prompt incorporating what you learned. Clean context + good prompt > polluted + corrections.
 
 ### 6. Cache-aware structure
 
-Cache (Anthropic prompt cache, similar systems) wants stable prefixes. Order content most-stable → least-stable:
+Cache wants stable prefixes. Order most-stable → least-stable:
 
 ```
 system prompt (stable)
@@ -102,97 +92,88 @@ project rules (stable per-project)
   ↓
 few-shot examples (stable per-task)
   ↓
-conversation history (grows, but append-only)
+conversation history (append-only)
   ↓
 current turn (volatile)
 ```
 
-Anything that varies (timestamp, random ID, reordered list) before the cache breakpoint kills the cache.
+Anything varying (timestamp, random ID, reordered list) before cache breakpoint kills cache.
 
 ### 7. Multi-agent: brief well, scope tight
 
-When delegating to a subagent:
-
-```
 Brief includes:
 - Paths (file paths, line numbers)
 - Lines (specific ranges)
 - Criteria (what "done" looks like)
 - Caps (≤12 tool uses, ≤5 files, time budget)
-```
 
-Vague brief → subagent guesses → wrong work → wasted round.
+Vague brief → wrong work → wasted round.
 
-Caps prevent runaway: a subagent that reads 40 files isn't isolating context, it's burning tokens. If the task requires 40 files, split into multiple subagents with non-overlapping scopes.
+Subagent reading 40 files isn't isolating, it's burning. Split into multi subagents with non-overlapping scopes.
 
 ### 8. Verify before recall
 
-Memory (knowledge graph, summaries, "we decided last time") is a snapshot. Code may have moved. Before acting on recalled fact:
+Memory is a snapshot. Code may have moved. Before acting on recalled fact:
+1. Verify file/symbol still exists
+2. Verify code matches claim
+3. Conflict → trust current state, update/invalidate
 
-1. Verify file/symbol still exists (Read or symbol lookup)
-2. Verify code still matches the recalled claim
-3. If conflict → trust current state, update or invalidate the memory
-
-A confident wrong recall is worse than a known-unknown.
+Confident wrong recall > known-unknown? No.
 
 ## Common mistakes
 
-- Loading every skill / rule at session start "for completeness"
-- Skipping subagent for big investigations because "context is already loaded"
-- Pasting huge command output into context instead of summarizing
-- Same explanation re-typed every turn instead of saving to a file the agent can reload
-- `/clear` never used — one giant session for everything
-- Subagent brief is "fix the bug" with no paths or criteria
-- Cache breakpoint after a varying field (timestamp, request ID)
-- Trusting memory without verifying current state
-- Multi-agent system where each agent reads the same 20 files (no scope filter)
-- Preemptively loading docs for libraries you might not even use this session
+- Loading every skill at session start "for completeness"
+- Skipping subagent for big investigations because "context already loaded"
+- Pasting huge command output instead of summarizing
+- Same explanation re-typed each turn instead of saving to file
+- `/clear` never used
+- Subagent brief is "fix the bug" with no paths/criteria
+- Cache breakpoint after varying field
+- Trusting memory without verifying
+- Multi-agent where each reads same 20 files
 
 ## Quick reference
 
 | Symptom | Fix |
 |---------|-----|
-| Agent quality dropped | `/clear` + re-prompt with key context |
+| Quality dropped | `/clear` + re-prompt |
 | Same correction 3+ times | Polluted context — restart |
 | Big investigation looming | Delegate to subagent |
-| Cost spike with no quality gain | Cache structure broken — find varying prefix |
-| Long session, context near limit | `/compact <focus>` |
-| Subagent returned wrong work | Brief was vague — re-brief with paths + criteria |
-| Forgotten decision from earlier | Save to KG / notes; recall + verify |
-| Repeating instructions per turn | Move to system prompt or project rules file |
+| Cost spike, no quality gain | Cache structure broken — find varying prefix |
+| Long session, near limit | `/compact <focus>` |
+| Subagent wrong work | Vague brief — re-brief with paths + criteria |
+| Forgotten earlier decision | Save to KG; recall + verify |
+| Repeating instructions per turn | Move to system prompt or rules file |
 
 ## Tradeoffs
 
 - **Lazy load** saves tokens, costs latency on first trigger
-- **Isolation** keeps lead clean, costs orchestration overhead
+- **Isolation** keeps lead clean, costs orchestration
 - **Compression** keeps long sessions alive, loses fidelity
-- **Refresh** removes pollution, loses session history
+- **Refresh** removes pollution, loses history
 
-Pick the right one for the situation. None is free; all are useful.
+None is free.
 
 ## Before each session
 
-- [ ] Clear if unrelated to last session
-- [ ] State the goal in one sentence at the top
-- [ ] Load only the rules/skills needed
-- [ ] Identify which work is delegable
+- [ ] Clear if unrelated to last
+- [ ] State goal in one sentence
+- [ ] Load only needed rules/skills
+- [ ] Identify delegable work
 
 ## During each session
 
-- [ ] Watch for drift signals (re-correction, off-topic)
+- [ ] Watch for drift signals
 - [ ] Delegate when scope grows
-- [ ] Compact if hitting 60%+ full mid-task
+- [ ] Compact at 60%+ mid-task
 - [ ] Save decisions worth recalling
 
 ## Common Rationalizations
 
-When you're tempted to skip this skill, watch for these excuses:
-
 | Excuse | Reality |
 |--------|---------|
-| "I'll just load everything, it's easier" | Loaded context degrades model attention — long context drops recall on middle items. Curate beats stuff. |
-| "This is a simple change, doesn't need <skill>" | Bugs hide in simple changes too — DAPLab data shows 41% of agentic-LLM failures land in 'trivial' diffs. |
-| "I already know the answer" | Confirmation bias — the skill exists to surface what you didn't think of, not to repeat what you did. |
-| "Time pressure, skip just this once" | Tech debt compounds; 5 minutes saved at write time costs 50 minutes of debugging later. |
+| "Load everything, it's easier" | Long context drops recall on middle items. Curate beats stuff. |
+| "Simple change" | 41% of agentic-LLM failures land in trivial diffs (DAPLab). |
+| "Time pressure" | Tech debt compounds. |
 
-Default response when rationalizing: run the skill anyway. Cost of running it is bounded; cost of skipping when you needed it is not.
+Default: run anyway.

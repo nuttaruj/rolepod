@@ -1,81 +1,55 @@
 # Team Organization — agent picker + parallel pattern
 
-**Scope:** which agent owns what, how to delegate, parallel execution pattern.
-
-Read when: choosing agent for task / planning multi-agent work / unclear ownership.
+Read when: choosing agent / planning multi-agent work / unclear ownership.
 
 ## Team layout (18 agents, 7 layers)
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│ Layer 1 — Strategy (4, all parallel)                    │
-│   product-manager · business-analyst · growth-marketer  │
-│   · customer-success                                    │
-└─────────────────────────────────────────────────────────┘
-┌─────────────────────────────────────────────────────────┐
-│ Layer 2 — Architecture (1, sequential gate)             │
-│   system-architect                                      │
-└─────────────────────────────────────────────────────────┘
-┌─────────────────────────────────────────────────────────┐
-│ Layer 3 — Engineering (6, parallel by PATH)             │
-│   backend-developer · frontend-developer                │
-│   · mobile-developer · billing-engineer                 │
-│   · ai-ml-engineer · data-scientist                     │
-└─────────────────────────────────────────────────────────┘
-┌─────────────────────────────────────────────────────────┐
-│ Layer 4 — Quality (3, parallel by CONCERN)              │
-│   qa-tester · security-engineer · performance-engineer  │
-└─────────────────────────────────────────────────────────┘
-┌─────────────────────────────────────────────────────────┐
-│ Layer 5 — Operations (1)                                │
-│   devops-sre                                            │
-└─────────────────────────────────────────────────────────┘
-┌─────────────────────────────────────────────────────────┐
-│ Layer 6 — Design + Docs (2, parallel)                   │
-│   ui-ux-designer · tech-writer                          │
-└─────────────────────────────────────────────────────────┘
-┌─────────────────────────────────────────────────────────┐
-│ Layer 7 — Code review (1, parallel with engineering)    │
-│   universal-reviewer (+ Gemini CLI fallback)            │
-└─────────────────────────────────────────────────────────┘
+Layer 1 Strategy (4, parallel)    product-manager · business-analyst · growth-marketer · customer-success
+Layer 2 Architecture (1, gate)    system-architect
+Layer 3 Engineering (6, by path)  backend · frontend · mobile · billing · ai-ml · data-scientist
+Layer 4 Quality (3, by concern)   qa-tester · security-engineer · performance-engineer
+Layer 5 Operations (1)            devops-sre
+Layer 6 Design + Docs (2)         ui-ux-designer · tech-writer
+Layer 7 Review (1, parallel)      universal-reviewer (+ Gemini CLI fallback)
 ```
 
-## Agent picker — task → agent
+## Agent picker
 
-### Strategy / planning
+### Strategy
 
 | Task | Agent |
 |------|-------|
 | Feature spec / roadmap / user story | `product-manager` |
-| Pricing / ROI / financial model / competitor research | `business-analyst` |
-| SEO content / marketing copy / conversion | `growth-marketer` |
-| Onboarding / FAQ / support content / user comms | `customer-success` |
+| Pricing / ROI / financial model | `business-analyst` |
+| SEO / marketing copy / conversion | `growth-marketer` |
+| Onboarding / FAQ / support / user comms | `customer-success` |
 
 ### Architecture / design
 
 | Task | Agent |
 |------|-------|
-| System design / API contract / data model / tech decision | `system-architect` |
+| System design / API contract / data model | `system-architect` |
 | Visual design / Tailwind / a11y / micro-interactions | `ui-ux-designer` |
 
-### Engineering (path-based)
+### Engineering (by path)
 
-| Path / domain | Agent |
-|--------------|-------|
+| Path | Agent |
+|------|-------|
 | `**/billing/**`, `**/payments/**`, `**/credits/**` | `billing-engineer` |
 | `**/ai/**`, `**/ml/**`, `**/llm/**`, `**/agents/**`, `**/prompts/**` | `ai-ml-engineer` |
-| `**/analytics/**`, `**/etl/**`, statistical models | `data-scientist` |
+| `**/analytics/**`, `**/etl/**`, stats models | `data-scientist` |
 | `**/ios/**`, `**/android/**`, RN, Flutter | `mobile-developer` |
 | Frontend (state/API/routing logic, NOT visuals) | `frontend-developer` |
 | Backend (everything else) | `backend-developer` |
 
-### Quality (concern-based)
+### Quality (by concern)
 
 | Concern | Agent |
 |---------|-------|
 | Test correctness / business logic / races | `qa-tester` |
 | Security / compliance / vuln audit | `security-engineer` |
-| Performance / load / profiling / p95 | `performance-engineer` |
+| Performance / load / p95 | `performance-engineer` |
 | Code quality / DRY / smell / structure | `universal-reviewer` |
 
 ### Operations
@@ -92,106 +66,77 @@ Read when: choosing agent for task / planning multi-agent work / unclear ownersh
 | User-facing help / FAQ / change announcements | `customer-success` |
 | Marketing copy / SEO content | `growth-marketer` |
 
-## Parallel execution pattern
+## Parallel execution
 
 ### Phase 1 — Strategy (parallel)
-Spawn 1-4 agents in parallel based on task needs:
-- `product-manager` (spec)
-- `business-analyst` (cost / pricing)
-- `growth-marketer` (positioning / GTM)
-- `customer-success` (rollout comms)
+1-4 agents based on task: `product-manager` (spec) / `business-analyst` (cost) / `growth-marketer` (GTM) / `customer-success` (rollout). Different artifacts → no conflict.
 
-Different artifacts → no conflict.
+### Phase 2 — Architecture (gate)
+`system-architect` produces SPEC.md + API contract + data model + service map. Engineers wait.
 
-### Phase 2 — Architecture (sequential gate)
-`system-architect` produces:
-- SPEC.md
-- API contract
-- Data model
-- Service map (which agent owns which path)
-
-Engineers wait for this gate before starting.
-
-### Phase 3 — Engineering + Design + Docs (massively parallel)
-Spawn in parallel by path/concern:
-- 1+ engineering agents (different paths)
-- `ui-ux-designer` (visual artifacts)
-- `tech-writer` (code docs in parallel with engineers)
-
-Path-based scoping prevents file collision.
+### Phase 3 — Engineering + Design + Docs (parallel)
+Engineers by path + `ui-ux-designer` + `tech-writer` in parallel. Path-scoping prevents collision.
 
 ### Phase 4 — Quality (parallel by concern)
-After engineering:
-- `qa-tester` (correctness)
-- `security-engineer` (security)
-- `performance-engineer` (speed)
-
-Different concerns → independent reports.
+`qa-tester` + `security-engineer` + `performance-engineer`. Independent reports.
 
 ### Phase 5 — Review
-- `universal-reviewer` (code quality)
-- Codex (high-risk surface, via plugin)
-- Gemini CLI (breadth scan, Lead-direct)
-
-Per `reviewer-flow.md` routing matrix.
+`universal-reviewer` + Codex (high-risk) + Gemini CLI (breadth). Per `reviewer-flow.md`.
 
 ### Phase 6 — Operations
-`devops-sre` for deploy + release.
+`devops-sre`.
 
-## Agent boundary rules
+## Boundary rules
 
-1. **Path-based ownership** — engineers DO NOT touch other agents' paths
-2. **Concern-based ownership** — quality agents own different concerns
-3. **Artifact-based ownership** — strategy/design/docs own different artifacts
-4. **No overlap escalate** — same path/concern conflict → STOP, ask Lead
+1. Path-based — engineers don't touch other agents' paths
+2. Concern-based — quality agents own different concerns
+3. Artifact-based — strategy/design/docs own different artifacts
+4. Overlap → STOP, ask Lead
 
 ## Escalation hierarchy
 
 ```
 Engineer stuck →
-  ├─ Specialist same domain (e.g. another backend dev)
-  ├─ Quality agent (qa-tester / security / performance)
-  ├─ Architect (system-architect)
+  ├─ Specialist same domain
+  ├─ Quality agent (qa/security/perf)
+  ├─ Architect
   ├─ Lead (Sonnet/Haiku) → Advisor (Opus) per advisor.md
   └─ Lead → ask user
 ```
 
-Final authority by domain:
-- **Correctness** → `qa-tester` (final judge)
-- **Security** → `security-engineer` (final judge)
-- **Code quality** → `universal-reviewer` (final judge)
-- **Architecture** → `system-architect` (final judge)
-- **Product priority** → user (commercial decision)
+Final authority:
+- Correctness → `qa-tester`
+- Security → `security-engineer`
+- Code quality → `universal-reviewer`
+- Architecture → `system-architect`
+- Product priority → user
 
-## Parallel safety rules
+## Parallel safety
 
-For Lead orchestrating multiple agents:
-1. **Path filter** — assign each agent unique path glob (no overlap)
-2. **Concern filter** — assign each agent unique concern
-3. **Artifact filter** — different output files
-4. **Cap each agent** — ≤12 tool_uses, ≤5 files (per triage-deep.md)
-5. **Briefing** — Path + Lines + Criteria + Caps for every spawn
+1. Path filter — unique glob per agent
+2. Concern filter — unique concern
+3. Artifact filter — different output files
+4. Cap each — ≤12 tool_uses, ≤5 files
+5. Brief: Path + Lines + Criteria + Caps
 
-## Parallel orchestration — cohesion contract
+## Cohesion contract (parallel orchestration)
 
-When Phase 3 (Engineering parallel) spawns ≥2 agents whose outputs share types, invariants, or integration touchpoints, a written cohesion contract is **required**, not optional. Without it, agents drift and Lead spends the merge round patching incompatibilities.
+Phase 3 spawns ≥2 agents sharing types/invariants/integration → written contract **required**.
 
-Workflow (full guide: skill `parallel-contract-orchestration`):
+Workflow (skill `parallel-contract-orchestration`):
 1. Lead writes `.claude/orchestration/<topic>-contract.md` with shared types, invariants, integration touchpoints, named integration tests
-2. Lead writes the integration tests RED (failing) to file BEFORE spawning agents
-3. Spawn each agent with the contract path in its brief; agents may NOT mutate the contract
-4. RED-checkpoint: Lead verifies tests still fail for the right reason (missing impl, not contract drift)
-5. Agents implement; Lead merges via the integration test suite (only acceptance criterion)
+2. Lead writes integration tests RED BEFORE spawning
+3. Spawn each agent with contract path; agents may NOT mutate contract
+4. RED-checkpoint: verify tests fail for right reason (missing impl, not contract drift)
+5. Agents implement; merge via integration test suite
 
-Pattern adopted from evanflow. Skip only when 2+ agents produce fully independent artifacts with no integration point.
+Skip only when agents produce fully independent artifacts.
 
-## Optional: install plugin sub-agents
-
-For specialized domains, install plugins that add sub-agents:
+## Optional plugin sub-agents
 
 | Plugin | Adds | When |
 |--------|------|------|
-| [claude-seo](https://github.com/AgriciDaniel/claude-seo) | `seo-technical`, `seo-schema`, `seo-google` (+15 more) | Deep technical SEO needs |
-| [openai-codex](https://...) | Codex review commands | Code review depth |
+| [claude-seo](https://github.com/AgriciDaniel/claude-seo) | `seo-technical`, `seo-schema`, `seo-google` (+15) | Deep technical SEO |
+| openai-codex | Codex review commands | Code review depth |
 
-`growth-marketer` delegates to claude-seo sub-agents for deep technical SEO.
+`growth-marketer` delegates to claude-seo for deep technical SEO.

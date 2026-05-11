@@ -1,92 +1,79 @@
 ---
 name: <skill-name>
-description: <one-paragraph trigger + scope. Describe when to apply. Keep under 250 chars.>
+description: <one-paragraph trigger + scope. When to apply. Under 250 chars.>
 ---
 
 # <Skill Title>
 
-<One-paragraph framing. State the core principle and why this skill exists. Tie to a concrete failure mode that the skill prevents. Cite research / production data where it sharpens authority (e.g. arXiv paper, DAPLab, Meincke 2025 — N=28k LLM persuasion study where structured framing moved compliance 33%→72%).>
+<One-paragraph framing. Core principle + why skill exists. Tie to concrete failure mode skill prevents. Cite research where it sharpens authority (arXiv, DAPLab, Meincke 2025 — N=28k LLM persuasion study, structured framing moved compliance 33%→72%).>
 
 ## Iron Law
 
 <EXTREMELY-IMPORTANT>
-1-3 absolute non-negotiable rules. Use second person. Each rule must be testable
-post-hoc ("did you do X?" → yes/no). No softeners ("try to", "consider",
-"usually"). ห้ามฝืน — these rules do not bend for time pressure / "simple change"
-/ "I already know" rationalizations.
+1-3 absolute non-negotiable rules. Second person. Testable post-hoc ("did you do X?" → yes/no). No softeners ("try to", "consider", "usually"). ห้ามฝืน — rules don't bend for time pressure / "simple change" / "I already know" rationalizations.
 
-Example shape:
+Example:
 1. NEVER <action> without <precondition>.
 2. ALWAYS <action> before <commit / ship / declare-done>.
 3. If <signal> → STOP and <recovery>. No exceptions.
 </EXTREMELY-IMPORTANT>
 
-## Red Flags — you are about to skip this skill
+## Red Flags — about to skip this skill
 
-If you catch yourself thinking any of these, the skill is firing correctly — do
-not override. Run the skill anyway.
+Catch yourself thinking any of these → skill is firing correctly. Run it anyway.
 
 | Red flag (your thought) | What it actually means |
 |-------------------------|------------------------|
-| "I'll do <skill action> after the code" | You will not. After-the-fact <action> proves nothing. |
-| "This case is too simple to need <skill>" | 41% of agentic-LLM failures land in 'trivial' diffs (DAPLab). |
-| "I already know the answer" | Confirmation bias — skill exists to surface what you missed. |
-| "Time pressure, skip just this once" | Skip cost is unbounded; run cost is fixed. |
-| "Pattern doesn't apply here" | Pattern-matching from training is unreliable; verify against rule. |
+| "I'll do <action> after the code" | You won't. After-the-fact proves nothing. |
+| "Too simple to need <skill>" | DAPLab: 41% of failures in 'trivial' diffs. |
+| "I already know" | Confirmation bias — skill surfaces what you missed. |
+| "Time pressure, skip just this once" | Skip cost unbounded; run cost fixed. |
+| "Pattern doesn't apply here" | Pattern-matching from training unreliable; verify rule. |
 
-3-5 rows. Tailor to the skill's specific failure modes.
+3-5 rows. Tailor to skill's failure modes.
 
 ## When to use
 
-<Bulleted list of concrete triggers. When does this skill fire?>
-<Bulleted list of explicit skip cases. When NOT to fire?>
+<Concrete triggers when skill fires.>
+<Explicit skip cases when NOT to fire.>
 
 ## How to apply
 
-<Numbered steps or sub-sections. Concrete, testable, with examples.>
+<Numbered steps. Concrete, testable, with examples.>
 
 ### 1. <step>
 
-<body>
-
 ### 2. <step>
-
-<body>
 
 ## Common mistakes
 
-<Bulleted list of failure modes seen in practice.>
+<Failure modes seen in practice.>
 
 ## Quick reference
 
-<Cheat-sheet table or numbered list — the thing you reach for under pressure.>
+<Cheat-sheet table — what you reach for under pressure.>
 
 ## Common Rationalizations
-
-When you're tempted to skip this skill, watch for these excuses:
 
 | Excuse | Reality |
 |--------|---------|
 | "<excuse 1>" | <reality 1> |
-| "This is a simple change, doesn't need <skill>" | Bugs hide in simple changes too — DAPLab data shows 41% of agentic-LLM failures land in 'trivial' diffs. |
-| "I already know the answer" | Confirmation bias — the skill exists to surface what you didn't think of, not to repeat what you did. |
-| "Time pressure, skip just this once" | Tech debt compounds; 5 minutes saved at write time costs 50 minutes of debugging later. |
+| "Simple change, no skill needed" | DAPLab: 41% failures in 'trivial' diffs. |
+| "I already know" | Confirmation bias. |
+| "Time pressure" | 5 min saved = 50 min debugging. |
 
-Default response when rationalizing: run the skill anyway. Cost of running it is bounded; cost of skipping when you needed it is not.
+Default: run skill. Bounded cost.
 
 <!--
-Voice-engineering notes for skill authors (do not include in final SKILL.md):
+Voice-engineering notes (do not include in final SKILL.md):
 
-- "Iron Law" + <EXTREMELY-IMPORTANT> tag: research-backed persuasion framing.
-  Meincke 2025 (N=28k) found structured authority+commitment framing moved LLM
-  compliance from 33% to 72%. Apply sparingly — only for the 1-3 non-negotiable
-  rules per skill. Inflation kills the signal.
-- "Red Flags" section: pre-empts the exact rationalizations users invent to skip
-  the skill. Phrase as the user's *own thought* so the skill catches them
-  red-handed.
-- Cite research / production data where applicable (DAPLab, arXiv 2402.13521,
-  Meincke 2025). Citations build authority without inflating length.
-- Preserve existing skill structure (when-to-use / how-to-apply / common-mistakes
-  / common-rationalizations). Iron Law + Red Flags are *additions*, not replacements.
-- Length target: skill grows ~15-25 lines vs un-retrofitted version.
+- "Iron Law" + <EXTREMELY-IMPORTANT>: Meincke 2025 (N=28k) — structured
+  authority+commitment framing moved LLM compliance 33%→72%. Apply only for
+  1-3 non-negotiable rules per skill. Inflation kills signal.
+- "Red Flags": pre-empts exact rationalizations users invent. Phrase as user's
+  *own thought* so skill catches red-handed.
+- Cite research where applicable (DAPLab, arXiv 2402.13521, Meincke 2025).
+- Preserve structure (when-to-use / how-to-apply / common-mistakes /
+  common-rationalizations). Iron Law + Red Flags are additions, not replacements.
+- Length: skill grows ~15-25 lines vs un-retrofitted.
 -->

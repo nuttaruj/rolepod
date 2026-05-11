@@ -5,83 +5,81 @@ description: Set up and harden CI/CD pipelines. Use when configuring build/test/
 
 # CI/CD and Automation
 
-A pipeline is a contract: every merge claims the code meets these gates. If the gates lie (flaky, skipped, slow), people stop trusting them and ship broken code. This skill is about designing gates that catch real problems fast and don't get in the way the rest of the time.
+Pipeline = contract: every merge claims code meets these gates. Flaky/skipped/slow gates → people stop trusting → broken code ships.
 
 ## When to use
 
-- Greenfield repo with no CI yet
-- Tests exist but aren't wired to PRs
-- Pipeline takes >10 minutes for a 1-line change
-- Required check is flaky (re-run to merge culture)
-- Adding a new module that needs its own test lane
-- Setting up auto-deploy / preview environments
-- Migrating between CI providers
+- Greenfield repo, no CI yet
+- Tests exist but not wired to PRs
+- Pipeline >10 min for 1-line change
+- Required check flaky (re-run-to-merge culture)
+- New module needs own test lane
+- Setup auto-deploy / preview environments
+- CI provider migration
 
 ## Three-phase model
 
-Match cost to signal. Don't run everything on every push.
+Match cost to signal.
 
 | Phase | Trigger | Budget | Required to merge |
 |-------|---------|--------|-------------------|
 | **1 Fast critical** | every PR | <5 min | YES |
 | **2 Path-triggered** | path glob match | <15 min | YES when triggered |
-| **3 Nightly / manual** | cron / dispatch | unbounded | NO (next-cycle catch) |
+| **3 Nightly / manual** | cron / dispatch | unbounded | NO |
 
 ### Phase 1 — universal invariants
 
-Things that MUST hold no matter what was touched: lint, typecheck, smoke unit subset, auth guard, tenant isolation, money-core path, migration apply on fresh DB, production build. Keep this lane under 5 minutes — if it bloats, demote candidates to Phase 2.
+Must hold regardless of touch: lint, typecheck, smoke unit subset, auth guard, tenant isolation, money-core path, migration apply on fresh DB, prod build. Keep <5 min — bloat → demote to Phase 2.
 
 ### Phase 2 — touched-only depth
 
-Each module owns a path glob and a test lane. Touch `apps/billing/**` → billing's full suite runs. Touch only frontend → billing lane skipped. Encode this in the workflow's `paths:` filter, not in conditional `if:` inside one big job (it's harder to read and required-checks behave oddly).
+Each module owns path glob + test lane. Touch `apps/billing/**` → billing's full suite. Touch only frontend → billing lane skipped. Use workflow `paths:` filter, not conditional `if:` inside one big job.
 
-### Phase 3 — slow / flaky / expensive
+### Phase 3 — slow / expensive
 
-Full integration, container build, chaos, security deep scan, E2E, perf benchmark. Cron or workflow_dispatch. NOT required for merge — they catch regressions next cycle. If a Phase 3 lane finds something, file an issue or open a fix PR.
+Full integration, container build, chaos, security deep scan, E2E, perf benchmark. Cron or workflow_dispatch. NOT required for merge. Finding → file issue or fix PR.
 
 ## How to apply
 
-1. **Audit current pipeline**: list every job, its runtime, its trigger, whether it's required. Mark flaky ones.
-2. **Categorize each job** into Phase 1/2/3 by speed and signal.
-3. **Add path filters** to Phase 2 jobs so they only run when relevant.
-4. **Move slow stuff to Phase 3** with a nightly cron.
-5. **Set required checks** in branch protection: only Phase 1 + currently-running Phase 2.
-6. **Cache aggressively**: dependencies, build artifacts, language toolchains. A cold pipeline that takes 8 minutes can usually hit 2 minutes warm.
-7. **Fail fast**: lint and typecheck before tests. Don't wait 4 minutes to learn a syntax error broke the build.
-8. **Surface flaky tests**: quarantine, don't disable. A flaky test is a real bug — race, ordering, time, network — fix or mark and track.
+1. **Audit current pipeline** — list jobs, runtime, trigger, required. Mark flaky.
+2. **Categorize** each into Phase 1/2/3 by speed and signal
+3. **Add path filters** to Phase 2
+4. **Move slow to Phase 3** with nightly cron
+5. **Set required checks** in branch protection: Phase 1 + currently-running Phase 2
+6. **Cache aggressively** — deps, artifacts, toolchains. Cold 8 min → warm 2 min.
+7. **Fail fast** — lint and typecheck before tests
+8. **Surface flaky tests** — quarantine, don't disable. Flaky = real bug (race/order/time/network).
 
 ## Deploy automation
 
-- **Preview per PR** — every PR gets an isolated preview URL. Reviewers click, not clone.
-- **Promote artifacts, not branches** — the same build that passed CI is what goes to prod. Don't rebuild between environments.
-- **Migrations apply before app rollout** — schema-first, code-second, with a rollback plan.
-- **Health check gates rollout** — automated smoke after deploy; failure auto-rolls-back or pauses traffic.
-- **Secrets via the platform's secret manager** — not in env files in the repo, not in CI logs.
+- **Preview per PR** — isolated preview URL. Reviewers click, not clone.
+- **Promote artifacts, not branches** — same build CI passed → prod. No rebuild between envs.
+- **Migrations before app rollout** — schema-first, code-second, rollback plan
+- **Health check gates rollout** — auto smoke after deploy; failure → auto-rollback or pause
+- **Secrets via platform's secret manager** — not in env files, not in CI logs
 
 ## Common mistakes
 
-- Running the full suite on every PR (slow → re-run culture → ignored failures)
-- Marking flaky tests as required (people merge red and shrug)
-- One mega-job that does lint + test + build + deploy (can't see what failed; no parallelism)
-- Skipping CI on docs PRs by accident (path filter too narrow blocks needed checks)
-- Caching the wrong layer (e.g. caching `node_modules` but not the pnpm store; cold every time)
-- Letting Phase 3 stay broken (nightly red for weeks → no signal value left)
-- Required checks that don't exist on some PRs (branch protection blocks merge forever)
+- Full suite every PR (slow → re-run culture → ignored failures)
+- Flaky tests marked required (merge red and shrug)
+- One mega-job lint+test+build+deploy (no parallelism, hard to debug)
+- Skipping CI on doc PRs accidentally (path filter too narrow)
+- Caching wrong layer (cache `node_modules` but not pnpm store)
+- Phase 3 stays broken (nightly red weeks → no signal)
+- Required checks not on all PRs (branch protection blocks merge forever)
 
 ## Quick reference
 
-| Symptom | Likely cause | Fix |
-|---------|--------------|-----|
-| Phase 1 >5 min | Too many tests in smoke set | Move slowest 20% to Phase 2 |
-| Re-run-to-green common | Flaky tests in required lane | Quarantine, fix root cause |
+| Symptom | Cause | Fix |
+|---------|-------|-----|
+| Phase 1 >5 min | Too many tests in smoke | Move slowest 20% to Phase 2 |
+| Re-run-to-green common | Flaky required tests | Quarantine, fix root cause |
 | PR blocked, all checks pass | Required check name mismatch | Sync branch protection with workflow names |
-| Same bug ships twice | No regression test added | Phase 1 invariant from postmortem |
+| Same bug ships twice | No regression test | Phase 1 invariant from postmortem |
 | Cold cache every run | Cache key includes timestamp | Key by lockfile hash |
-| Deploy succeeds, app broken | No post-deploy health check | Add smoke gate + auto-rollback |
+| Deploy ok, app broken | No post-deploy health check | Add smoke gate + auto-rollback |
 
 ## Output format
-
-When proposing a CI change, present:
 
 ```
 Goal: [what this enables / fixes]
@@ -94,13 +92,11 @@ Rollout: [how to ship without breaking current PRs]
 
 ## Common Rationalizations
 
-When you're tempted to skip this skill, watch for these excuses:
-
 | Excuse | Reality |
 |--------|---------|
-| "I'll add CI checks later, after we ship" | Untested merges accumulate; by 'later' the regression surface is too wide to bisect. Add the gate before the first merge, not after. |
-| "This is a simple change, doesn't need <skill>" | Bugs hide in simple changes too — DAPLab data shows 41% of agentic-LLM failures land in 'trivial' diffs. |
-| "I already know the answer" | Confirmation bias — the skill exists to surface what you didn't think of, not to repeat what you did. |
-| "Time pressure, skip just this once" | Tech debt compounds; 5 minutes saved at write time costs 50 minutes of debugging later. |
+| "Add CI later, after we ship" | Untested merges accumulate; regression surface too wide to bisect by 'later'. |
+| "Simple change, no skill needed" | DAPLab: 41% failures in 'trivial' diffs. |
+| "I already know" | Confirmation bias. |
+| "Time pressure" | 5 min saved = 50 min debugging. |
 
-Default response when rationalizing: run the skill anyway. Cost of running it is bounded; cost of skipping when you needed it is not.
+Default: run skill.

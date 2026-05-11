@@ -5,52 +5,50 @@ description: Design stable APIs and module boundaries that survive change. Apply
 
 # API and Interface Design
 
-Every interface is a promise. Cheap to make, expensive to break. This skill helps you design promises you can keep — for HTTP endpoints, gRPC services, package exports, or just a function signature another module will call.
+Every interface is a promise. Cheap to make, expensive to break.
 
 ## When to use
 
-- Creating a new public endpoint or RPC method
-- Adding a new exported function/type to a shared package
-- Defining a queue message shape, event payload, or webhook contract
-- Splitting a module — what does each side expose to the other?
-- Reviewing a PR that changes an existing API
-- About to break backwards compatibility (read this first, twice)
+- New public endpoint / RPC method
+- New exported function/type in shared package
+- Queue message, event payload, webhook contract
+- Splitting module — what does each side expose?
+- Reviewing PR that changes existing API
+- About to break backwards compatibility
 
 ## How to apply
 
-### 1. Identify the audience
+### 1. Identify audience
 
 | Audience | Stability bar |
 |----------|---------------|
-| External customers / partners | Highest — semver, deprecation cycle, migration guide |
-| Other teams in same org | High — versioned, deprecation notice |
-| Other modules in same service | Medium — coordinated change OK |
-| Internal helpers (same module) | Low — change freely |
+| External customers/partners | Highest — semver, deprecation, migration guide |
+| Other teams same org | High — versioned, deprecation notice |
+| Other modules same service | Medium — coordinated change OK |
+| Internal helpers same module | Low — change freely |
 
-Higher stability = more design effort upfront.
+### 2. Resource model first
 
-### 2. Design the resource model first
-
-For REST: nouns (resources), not verbs. Methods (`GET`, `POST`, `PATCH`, `DELETE`) supply the verb.
+REST: nouns, not verbs. Methods supply the verb.
 
 ```
 GOOD: POST /orders, GET /orders/{id}, PATCH /orders/{id}/status
 BAD:  POST /createOrder, POST /getOrder, POST /updateOrderStatus
 ```
 
-For RPC / GraphQL: verbs are fine, but pick consistent naming (`createX`, `updateX`, `deleteX` — not `makeX`, `modifyX`, `removeX`).
+RPC/GraphQL: verbs OK but consistent (`createX`/`updateX`/`deleteX`, not `makeX`/`modifyX`/`removeX`).
 
 ### 3. Request/response shape
 
-- **Required vs optional** — be explicit. Optional fields default to omitted, not `null`, unless `null` carries meaning.
-- **No flat sentinel values** — return structured errors, not `-1` or `""`.
-- **Pagination** — cursor-based for stable lists, offset for finite/cacheable ones. Pick before launch; switching later is painful.
-- **Timestamps** — ISO 8601 UTC, always. Include timezone in the field name only if it varies.
-- **IDs** — opaque strings. Even if it's a number internally, expose as string to allow future migration.
+- **Required vs optional** — explicit. Optional defaults to omitted, not `null`, unless `null` carries meaning.
+- **No flat sentinels** — structured errors, not `-1` or `""`
+- **Pagination** — cursor for live data, offset for finite/cacheable. Pick before launch.
+- **Timestamps** — ISO 8601 UTC always
+- **IDs** — opaque strings even if numeric internally
 
 ### 4. Errors
 
-Standard shape. Pick once, use everywhere:
+Standard shape, pick once:
 
 ```json
 {
@@ -62,69 +60,67 @@ Standard shape. Pick once, use everywhere:
 }
 ```
 
-- `code` is machine-readable (snake_case, stable)
-- `message` is human-readable (can change wording)
-- `details` is structured per-code
+- `code` — machine-readable (snake_case, stable)
+- `message` — human-readable (wording may change)
+- `details` — structured per-code
 
-HTTP status: use the standard codes (400, 401, 403, 404, 409, 422, 429, 500, 503). Don't invent.
+HTTP status: standard codes (400, 401, 403, 404, 409, 422, 429, 500, 503). Don't invent.
 
 ### 5. Idempotency
 
-Mutating endpoints that clients might retry → support an idempotency key:
+Mutating endpoints clients may retry:
 
 ```
 POST /payments
 Idempotency-Key: <client-generated-uuid>
 ```
 
-Server stores `key → response` for some retention window. Same key returns same response without re-executing. Prevents double-charges from network blips.
+Server stores `key → response`. Same key → same response, no re-execute. Prevents double-charge.
 
 ### 6. Versioning
 
-Pick a strategy and stick with it:
-
 | Strategy | Where | Tradeoff |
 |----------|-------|----------|
-| URL path | `/v1/orders` | Visible, easy to route, ugly URLs |
+| URL path | `/v1/orders` | Visible, easy route, ugly URLs |
 | Header | `Api-Version: 2024-01-15` | Clean URLs, less discoverable |
 | Date-based | `2024-01-15` | Stripe-style, encodes change-set |
 
-Breaking change = new version. Additive changes (new optional field, new endpoint) don't need a version bump.
+Breaking → new version. Additive (new optional field, new endpoint) → no bump.
 
 ### 7. Evolution rules
 
 Safe additions:
 - New endpoint
 - New optional request field
-- New response field (consumers must ignore unknown fields)
-- New error code (consumers must handle unknown codes gracefully)
+- New response field (consumers ignore unknown)
+- New error code (consumers handle unknown gracefully)
 
-Breaking changes (require new version + deprecation):
-- Removing a field
-- Renaming a field
-- Tightening a type (string → enum)
-- Changing semantics of an existing field
-- Making an optional field required
+Breaking (new version + deprecation):
+- Removing field
+- Renaming field
+- Tightening type (string → enum)
+- Changing field semantics
+- Optional → required
 
 ### 8. Internal module interfaces
 
-Same principles, lower ceremony. The function signature is the contract.
+Same principles, lower ceremony. Function signature is contract.
 
-- Keep parameters narrow — pass what the function needs, not the world
-- Return rich types, not booleans + side channels
-- Errors are part of the signature (return `Result`, throw typed errors, document what throws)
-- One responsibility per function — if you'd describe it as "does X and Y", split
+- Narrow parameters — pass what's needed, not the world
+- Rich return types, not bool + side channels
+- Errors part of signature (Result type / typed throws / documented)
+- One responsibility — "does X and Y" → split
 
 ## Common mistakes
 
-- Returning HTTP 200 with `{"success": false}` — use the right status code
-- Inventing a new error shape per endpoint — pick one, reuse
-- Bool flags that should be enums (`{ status: "draft" | "published" | "archived" }` beats `{ isDraft, isPublished }`)
-- Embedding huge objects when a reference would do (paginate, link, or expand on request)
-- Public field name leaks DB column name (`user_id_fk` — pick a clean external name)
-- Versioning by `/api2/` then `/api3/` with no deprecation plan
-- Idempotency only on some mutations — clients can't tell which
-- Returning different shapes for the same endpoint based on query param
+- HTTP 200 with `{"success": false}` — use right status
+- New error shape per endpoint — pick one, reuse
+- Bool flags that should be enums (`status: "draft"|"published"` beats `isDraft, isPublished`)
+- Embedding huge objects when reference would do
+- Public field leaks DB name (`user_id_fk`)
+- `/api2/` then `/api3/` with no deprecation plan
+- Idempotency only on some mutations
+- Different shapes for same endpoint based on query param
 
 ## Quick reference
 
@@ -134,29 +130,27 @@ Same principles, lower ceremony. The function signature is the contract.
 | ID format | Opaque string |
 | Time format | ISO 8601 UTC |
 | Error shape | `{ error: { code, message, details } }` |
-| Pagination | Cursor for live data, offset for finite |
-| Auth | Bearer token in `Authorization` header |
+| Pagination | Cursor live, offset finite |
+| Auth | Bearer in `Authorization` header |
 | Mutations | Support `Idempotency-Key` |
-| Versioning | URL path or date header — pick one |
+| Versioning | URL path or date header |
 
-## Before shipping the API
+## Before shipping
 
 - [ ] Documented (OpenAPI / SDL / typed exports)
-- [ ] Examples for each endpoint
+- [ ] Examples per endpoint
 - [ ] Error codes enumerated
 - [ ] Rate limits stated
 - [ ] Deprecation policy documented
-- [ ] Backwards compatibility strategy decided
+- [ ] Backwards compat strategy decided
 
 ## Common Rationalizations
 
-When you're tempted to skip this skill, watch for these excuses:
-
 | Excuse | Reality |
 |--------|---------|
-| "It's an internal API, no need for a stable contract" | Internal APIs become external as teams grow. Yesterday's internal `/admin/users` is today's mobile-app dependency. Design the boundary now. |
-| "This is a simple change, doesn't need <skill>" | Bugs hide in simple changes too — DAPLab data shows 41% of agentic-LLM failures land in 'trivial' diffs. |
-| "I already know the answer" | Confirmation bias — the skill exists to surface what you didn't think of, not to repeat what you did. |
-| "Time pressure, skip just this once" | Tech debt compounds; 5 minutes saved at write time costs 50 minutes of debugging later. |
+| "Internal API, no stable contract needed" | Internal becomes external. Yesterday's `/admin/users` is today's mobile dep. |
+| "Simple change, no skill needed" | DAPLab: 41% failures in 'trivial' diffs. |
+| "I already know" | Confirmation bias. |
+| "Time pressure" | 5 min saved = 50 min debugging. |
 
-Default response when rationalizing: run the skill anyway. Cost of running it is bounded; cost of skipping when you needed it is not.
+Default: run skill.

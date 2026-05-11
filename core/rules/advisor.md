@@ -1,88 +1,86 @@
 # Advisor Tool — Consult Opus
 
-Read when: Lead = Sonnet/Haiku + stuck on hard problem.
+Read when: Lead = Sonnet/Haiku + stuck.
 
 Docs: https://platform.claude.com/docs/en/agents-and-tools/tool-use/advisor-tool
 
-## What it is
+## What
 
-Advisor tool = consult Claude Opus from current session.
-Lead stays as-is. Opus answers 1 specific question. Result returned to Lead.
+Consult Claude Opus from current session. Lead stays. Opus answers 1 specific question.
 
-Pattern: smaller model handles execution, escalates judgment calls to bigger model.
+Pattern: smaller model executes, escalates judgment to bigger model.
 
 ## When to use
 
-Lead is **Sonnet or Haiku** AND any of:
+Lead = Sonnet/Haiku AND any of:
 
-- Root cause analysis too complex (current model spinning)
-- Architecture decision needs Opus-level second opinion
+- Root cause analysis too complex (model spinning)
+- Architecture decision needs Opus 2nd opinion
 - 3rd agent on same issue (CLAUDE.md hard stop)
 - 50k+ tokens no convergence
 - Multi-system tradeoff (perf vs correctness vs cost)
-- User explicitly says "consult Opus" / "advice mode" / "/advice"
-- Big task with high blast radius — verify approach before execution
+- User says "consult Opus" / "advice mode" / "/advice"
+- Big task high blast radius — verify approach before exec
 
 ## When NOT to use
 
-- **Lead = Opus already** → advisor adds latency + cost, zero gain
-- Simple lookup ("where is X defined") → use GitNexus
+- Lead = Opus already (latency + cost, zero gain)
+- Simple lookup ("where is X defined") → GitNexus
 - Mechanical task → just do it
-- Question user can answer faster → ask user instead
+- Question user answers faster → ask user
 
-## How to invoke
+## Invoke
 
 ```
 Advisor consultation needed.
 Context: [1-2 sentence problem]
 Specific question: [what you want Opus to decide]
-Constraints: [what's already tried / non-negotiable]
+Constraints: [tried / non-negotiable]
 Expected output: [decision / approach / yes-no / ranked options]
 ```
 
-Keep prompt focused. Opus answers the question — doesn't take over the task.
+Keep focused. Opus answers — doesn't take over.
 
-## What to ask Opus
+## What to ask
 
-Good asks:
-- "Two valid architectures: A (microservice) vs B (monolith). Tradeoffs for our scale?"
-- "Bug reproduces only under concurrent load. 3 hypotheses tried, all wrong. Other angles to investigate?"
-- "Plan for 30-file refactor: split as 1 PR or 5 PRs?"
-- "Race condition fix: optimistic lock vs pessimistic vs queue serialization — which fits this domain?"
+Good:
+- "Two architectures: A (microservice) vs B (monolith). Tradeoffs for our scale?"
+- "Bug under concurrent load. 3 hypotheses wrong. Other angles?"
+- "30-file refactor: 1 PR or 5?"
+- "Race fix: optimistic vs pessimistic vs queue serialization?"
 
-Bad asks:
-- "Can you fix this bug?" (too broad — Opus can't see your context)
-- "Write the code for X" (Lead's job, not Opus's)
-- "Is this code correct?" (use reviewer flow instead)
+Bad:
+- "Can you fix this bug?" (too broad — no context)
+- "Write the code for X" (Lead's job)
+- "Is this code correct?" (reviewer flow)
 
 ## After Opus responds
 
-Lead **interprets** advice. Doesn't blindly apply.
-- Disagree with reasoning → push back, ask follow-up
-- Advice misses context → re-ask with more detail
-- Advice clear → execute and verify
+Lead **interprets**. Doesn't blindly apply.
+- Disagree → push back, follow-up
+- Missing context → re-ask with more detail
+- Clear → execute and verify
 
 ## Position in workflow
 
 ```
-Stuck → 
-  ├─ Try once more with fresh angle
-  ├─ Check MemPalace for past similar problem
-  ├─ Spawn specialist subagent (might unstick)
-  └─ Still stuck → Advisor (Opus) → resume
+Stuck →
+  ├─ Fresh angle
+  ├─ MemPalace past similar
+  ├─ Specialist subagent
+  └─ Still stuck → Advisor → resume
 ```
 
 Advisor = escalation, not first resort.
 
-## Cost note
+## Cost
 
-Each advisor call = Opus tokens. Use sparingly.
-1 well-framed advisor call > 5 vague ones.
+Each call = Opus tokens. Sparingly. 1 well-framed > 5 vague.
 
 ## Common mistakes — DO NOT
 
-- Use advisor when Lead = Opus
-- Ask Opus to "do the task" — ask for **decision** or **approach**
-- Skip framing context — Opus has zero memory of your session
-- Use advisor instead of qa-tester (review = reviewer flow, not advisor)
-- Use advisor as default escalation — try MemPalace + subagent first
+- Advisor when Lead = Opus
+- Ask Opus to "do the task" — ask for decision/approach
+- Skip framing context — Opus has zero session memory
+- Advisor instead of qa-tester (review = reviewer flow)
+- Advisor as default escalation — try MemPalace + subagent first

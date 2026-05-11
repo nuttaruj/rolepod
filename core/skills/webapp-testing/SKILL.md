@@ -5,58 +5,57 @@ description: Test local web apps with Playwright. Use when verifying frontend fu
 
 # Webapp Testing
 
-Manual DevTools answers a one-time question. Playwright answers it the same way next week. Use Playwright when the verification needs to repeat, the flow has multiple steps, or you need an artifact to attach to a PR.
+Manual DevTools answers once. Playwright answers same way next week. Use Playwright when verification repeats, flow is multi-step, or you need a PR artifact.
 
 ## When to use
 
-- Multi-step flow needs end-to-end verification (login → action → result)
+- Multi-step E2E flow (login → action → result)
 - Bug reproduces only under specific UI conditions
-- Need a regression test, not just a one-time check
-- Need a screenshot / video / trace as evidence
-- Testing across viewports
-- Lead is verifying their own change before merge
+- Need regression test, not one-time check
+- Need screenshot / video / trace as evidence
+- Cross-viewport testing
+- Lead verifying own change before merge
 
 ## When NOT to use
 
-- One-off DOM inspection → use DevTools directly
-- Backend-only logic → use unit/integration tests
-- Visual design review → manual eye + screenshot is faster
-- Reproducing a bug once for diagnosis → DevTools
+- One-off DOM inspection → DevTools directly
+- Backend-only logic → unit/integration tests
+- Visual design review → manual eye + screenshot faster
+- Reproducing bug once for diagnosis → DevTools
 
 ## Test pyramid placement
 
 | Layer | Tool | Speed | Use for |
 |-------|------|-------|---------|
 | Unit | Vitest / Jest | <100ms | Logic, hooks, utils |
-| Component | Testing Library | <500ms | Single component behavior |
+| Component | Testing Library | <500ms | Single component |
 | Integration | Testing Library + MSW | 1-3s | Component + data layer |
 | E2E (Playwright) | Playwright | 5-30s | Full user flows in real browser |
 
-E2E is the slowest layer. Use it sparingly — for the 5-10 user flows that must never break.
+E2E slowest. Use sparingly — 5-10 flows that must never break.
 
 ## How to apply
 
-1. **Pick the flow** — login, primary path through your feature, the one users hit most. Don't E2E everything.
+1. **Pick flow** — login, primary path, most-hit
 2. **Stable selectors** — `data-testid` or accessible role/name. Never CSS classes or nth-child.
-3. **One assertion path per test** — happy path or one failure mode, not both.
-4. **Wait on conditions, not timers** — `expect(locator).toBeVisible()` not `setTimeout`.
-5. **Isolate state** — each test sets up its own data, doesn't depend on test order.
-6. **Screenshot on failure** — Playwright does this by default; keep it on.
+3. **One assertion path per test** — happy or one failure, not both
+4. **Wait on conditions, not timers** — `expect(locator).toBeVisible()` not `setTimeout`
+5. **Isolate state** — each test sets up own data, no order dependency
+6. **Screenshot on failure** — Playwright default; keep on
 
 ## Stable selector ladder
 
-| Best to worst |
-|---------------|
-| `getByRole('button', { name: 'Save' })` |
-| `getByLabel('Email')` |
-| `getByTestId('save-button')` |
-| `getByText('Save')` (if unique) |
-| `locator('.save-btn')` (avoid — class can change) |
-| `locator(':nth-child(3)')` (avoid — position can change) |
+Best to worst:
+- `getByRole('button', { name: 'Save' })`
+- `getByLabel('Email')`
+- `getByTestId('save-button')`
+- `getByText('Save')` (if unique)
+- `locator('.save-btn')` — avoid (class changes)
+- `locator(':nth-child(3)')` — avoid (position changes)
 
-Tests that fail when the CSS is restyled are noise. Selectors should target meaning, not pixels.
+Tests failing when CSS restyles = noise. Target meaning, not pixels.
 
-## Common test shapes
+## Test shape
 
 ```
 test('user can submit form', async ({ page }) => {
@@ -67,52 +66,50 @@ test('user can submit form', async ({ page }) => {
 })
 ```
 
-Three lines: setup, action, assertion. If a test grows past 10 lines, it's testing too much.
+3 lines: setup, action, assertion. >10 lines = testing too much.
 
-## Debugging a flaky test
+## Debugging flaky tests
 
-| Symptom | Likely cause |
-|---------|--------------|
+| Symptom | Cause |
+|---------|-------|
 | Passes locally, fails CI | Animation timing, viewport, font loading |
-| Passes alone, fails in suite | Shared state between tests |
-| Fails 1 in 10 runs | Race between assertion and async update |
-| Passes today, fails tomorrow | Date-dependent or timezone bug |
+| Passes alone, fails in suite | Shared state |
+| 1 in 10 runs | Race between assertion and async update |
+| Passes today, fails tomorrow | Date/timezone bug |
 
-Fix before merging. A flaky test is worse than no test — it teaches the team to ignore failures.
+Fix before merge. Flaky test < no test — teaches team to ignore failures.
 
 ## Common mistakes
 
-- E2E-ing every code path (slow, brittle, expensive)
-- Using CSS class selectors that break on style changes
-- `await page.waitForTimeout(2000)` instead of waiting on a condition
+- E2E every path (slow, brittle)
+- CSS class selectors that break on style changes
+- `await page.waitForTimeout(2000)` instead of waiting on condition
 - Sharing state between tests
-- Skipping the screenshot/trace artifact
-- Testing in only one viewport
-- Mocking the entire backend so you're not really testing E2E
-- Letting flaky tests stay green by retry-on-fail without diagnosing
+- Skipping screenshot/trace artifact
+- Testing one viewport only
+- Mocking entire backend → not really testing E2E
+- Flaky stays green via retry-on-fail without diagnosing
 
 ## Quick reference
 
-| Need | Playwright API |
-|------|---------------|
-| Find by accessible name | `getByRole('button', { name: 'Save' })` |
-| Find by label | `getByLabel('Email')` |
+| Need | API |
+|------|-----|
+| By accessible name | `getByRole('button', { name: 'Save' })` |
+| By label | `getByLabel('Email')` |
 | Wait for element | `await expect(locator).toBeVisible()` |
-| Wait for URL change | `await page.waitForURL('/dashboard')` |
-| Capture screenshot | `await page.screenshot({ path: 'x.png' })` |
-| Record trace | Run with `--trace on` |
+| Wait for URL | `await page.waitForURL('/dashboard')` |
+| Screenshot | `await page.screenshot({ path: 'x.png' })` |
+| Record trace | `--trace on` |
 | Mock network | `page.route('**/api/x', route => route.fulfill(...))` |
 | Set viewport | `page.setViewportSize({ width, height })` |
-| Run headed for debug | `--headed --debug` |
+| Headed debug | `--headed --debug` |
 
-## Verification report format
-
-After running tests, report:
+## Verification report
 
 ```
 Test run: <suite name>
 - Passed: N
-- Failed: N (with file:line + screenshot path)
+- Failed: N (file:line + screenshot path)
 - Flaky: N (passed on retry — investigate)
 - Duration: Ns
 
@@ -124,13 +121,11 @@ Don't claim "tests pass" without numbers.
 
 ## Common Rationalizations
 
-When you're tempted to skip this skill, watch for these excuses:
-
 | Excuse | Reality |
 |--------|---------|
-| "Manual click-through is faster than writing Playwright" | Manual passes degrade as features grow; Playwright passes scale. Write the test once, it runs forever — manual click-through doesn't. |
-| "This is a simple change, doesn't need <skill>" | Bugs hide in simple changes too — DAPLab data shows 41% of agentic-LLM failures land in 'trivial' diffs. |
-| "I already know the answer" | Confirmation bias — the skill exists to surface what you didn't think of, not to repeat what you did. |
-| "Time pressure, skip just this once" | Tech debt compounds; 5 minutes saved at write time costs 50 minutes of debugging later. |
+| "Manual click-through is faster" | Manual passes degrade as features grow; Playwright scales. Write once, runs forever. |
+| "Simple change, no skill needed" | DAPLab: 41% failures in 'trivial' diffs. |
+| "I already know" | Confirmation bias. |
+| "Time pressure" | 5 min saved = 50 min debugging. |
 
-Default response when rationalizing: run the skill anyway. Cost of running it is bounded; cost of skipping when you needed it is not.
+Default: run skill.

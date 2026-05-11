@@ -5,49 +5,49 @@ description: Write a cohesion contract before spawning multiple parallel agents 
 
 # Parallel Contract Orchestration
 
-When Lead spawns 2+ engineering agents in parallel on the same feature, each agent works in its own context with no view of the others. Without a written contract, the integration touchpoints drift — types diverge, invariants disagree, calling conventions clash — and Lead spends the next round merging incompatible work.
+2+ parallel agents on same feature each work in isolated context. Without a written contract, integration touchpoints drift — types diverge, invariants disagree — and Lead burns the next round merging.
 
-Pattern adopted from evanflow's orchestrator workflow: **write the contract before spawning, write the integration tests RED before any agent writes implementation, verify the RED checkpoint, then let agents work in parallel against a fixed target.**
+Pattern from evanflow: **write contract before spawning, write integration tests RED before any agent implements, verify RED checkpoint, then let agents work in parallel against fixed target.**
 
 ## Iron Law
 
 <EXTREMELY-IMPORTANT>
-1. NEVER spawn 2+ parallel agents touching shared types / invariants / integration points without a written cohesion contract.
-2. ALWAYS write integration tests RED before any agent writes implementation. RED checkpoint must pass (tests exist, run, fail correctly) before spawn.
-3. NEVER let agents amend the contract mid-flight. Drift = re-converge at Lead, update contract, re-spawn.
+1. NEVER spawn 2+ parallel agents touching shared types/invariants/integration points without a written cohesion contract.
+2. ALWAYS write integration tests RED before any agent writes implementation. RED checkpoint must pass before spawn.
+3. NEVER let agents amend contract mid-flight. Drift = re-converge at Lead, update contract, re-spawn.
 
-The contract is the only thing keeping parallel work composable. Skip it = merge hell next round.
+Contract = only thing keeping parallel work composable.
 </EXTREMELY-IMPORTANT>
 
-## Red Flags — you are about to skip this skill
+## Red Flags
 
-| Red flag (your thought) | What it actually means |
-|-------------------------|------------------------|
-| "Agents are smart enough to figure out the interface" | They are not. Each agent's context is isolated; the interface is invisible without the contract. |
-| "Just 2 agents, I'll merge it manually" | Manual merge of two disagreeing types = rework one of the two. Cheaper to contract upfront. |
-| "Integration tests can come after agents finish" | Then the interface is post-hoc rationalized. Integration tests = the contract executable. |
-| "Contract is in my head, I'll just brief each agent" | Two briefings drift by round 2. Write it down once. |
-| "Lead can patch up disagreements at merge time" | That is the rework you tried to avoid by going parallel. |
+| Thought | Reality |
+|---------|---------|
+| "Agents will figure out the interface" | They won't. Each context is isolated; interface invisible without contract. |
+| "Just 2 agents, I'll merge manually" | Manual merge of disagreeing types = rework one of them. |
+| "Integration tests can come after" | Then interface is post-hoc rationalized. Tests = contract executable. |
+| "Contract is in my head" | Two briefings drift by round 2. Write it down. |
+| "Lead can patch disagreements at merge" | That's the rework you tried to avoid. |
 
 ## When to use
 
-Trigger this skill when ALL of these are true:
-- Lead is about to spawn 2 or more agents (engineering, design, or mixed) in parallel
-- Their outputs have to compose — shared types, shared API surface, shared data schema, shared invariants, or one agent's output is another agent's input
-- The change is non-trivial (>1 file per agent, or any business logic)
+Trigger when ALL true:
+- About to spawn 2+ agents in parallel
+- Outputs must compose (shared types, API surface, schema, invariants, or one's output is another's input)
+- Non-trivial (>1 file per agent, or any business logic)
 
-If only 1 agent → contract is unnecessary, just brief the agent.
-If 2 agents but their outputs are independent (different artifacts, no integration point) → no contract needed.
+1 agent → no contract.
+2 agents producing independent artifacts → no contract.
 
 ## When NOT to use
 
-- Single agent task — overhead with no payoff
-- Two agents producing fully independent artifacts (e.g. `tech-writer` writes a doc while `frontend-developer` writes a component, and they never integrate)
-- "Quick" 2-agent task — the temptation is exactly when drift happens. Don't skip the contract because it feels small.
+- Single agent
+- 2 agents on fully independent artifacts (tech-writer + frontend that never integrate)
+- "Quick" 2-agent task — temptation is exactly when drift happens
 
 ## Workflow
 
-### Step 1 — Lead writes the contract BEFORE spawning
+### Step 1 — Lead writes contract BEFORE spawning
 
 Path: `.claude/orchestration/<topic>-contract.md`
 
@@ -57,95 +57,86 @@ Required sections:
 # Contract: <feature name>
 
 ## Shared types
-<every type that crosses an agent boundary, with exact field names + types>
+<every type crossing agent boundary, exact field names + types>
 
 ## Invariants
-<rules every agent's code must respect — e.g. "user_id is never null after auth", "credits >= 0 always">
+<rules every agent's code must respect — e.g. "user_id never null after auth">
 
 ## Integration touchpoints
-<exact functions/APIs/events that connect agents — name, signature, who calls, who implements>
+<exact functions/APIs/events connecting agents — name, signature, who calls, who implements>
 
 ## Named integration tests
-<test name + what it asserts + which agents it spans — these are the success criteria>
+<test name + assertion + which agents it spans — success criteria>
 
 ## Out of scope
-<things explicitly NOT covered, so agents don't grow into them>
+<things explicitly NOT covered>
 ```
 
-The contract is the source of truth. If something isn't in the contract, agents are not allowed to assume it.
+Contract = source of truth. Not in contract = not allowed to assume.
 
-### Step 2 — Lead writes the integration tests (RED) to file
+### Step 2 — Lead writes integration tests (RED) to file
 
-Lead writes the **failing** integration tests before spawning any implementation agent. The tests reference types and functions from the contract — they should fail to even import / compile, because nothing is implemented yet.
+Failing tests before spawning. Reference contract types/functions. Should fail to import/compile (nothing implemented yet). RED state, locked.
 
-This is the RED state in TDD terms. The tests are concrete, executable, and locked. They define "done" for the parallel work.
+### Step 3 — Spawn agents with contract in brief
 
-### Step 3 — Spawn agents with the contract in their brief
-
-Each agent's brief must include:
+Each brief includes:
 
 ```
 Path to contract: .claude/orchestration/<topic>-contract.md
 Path to integration tests (RED): tests/integration/<topic>_test.py
 Your scope: <which contract sections this agent owns>
-You may NOT change: contract types/signatures (escalate to Lead if needed)
-You MUST: respect named invariants, make your slice of the integration tests turn green
+You may NOT change: contract types/signatures (escalate to Lead)
+You MUST: respect invariants, make your slice of integration tests green
 ```
 
-### Step 4 — RED-checkpoint verification (Lead-side, before any GREEN)
+### Step 4 — RED-checkpoint (Lead-side, before any GREEN)
 
-Before any agent finishes, Lead verifies:
+Before any agent finishes:
+- Tests fail with right error (missing impl, NOT contract drift)
+- First commits reference contract types correctly
+- No agent renamed type or invented field
 
-```
-- Integration tests fail with the right error (missing impl, NOT contract drift)
-- Each agent's first commit/draft references the contract types correctly
-- No agent renamed a contract type or invented a new field
-```
+Agent diverged → correct same round (cheap), not end-of-round merge (expensive).
 
-If an agent diverged from the contract → Lead corrects in same round (cheap), don't wait for end-of-round merge (expensive).
+### Step 5 — Implement, Lead merges via integration tests
 
-### Step 5 — Agents implement, Lead merges via integration tests
+- Lead runs integration tests
+- Pass → ship to next phase
+- Fail → tests = source of truth, route failures back
 
-Once all agents return work:
-- Lead runs the integration test suite from Step 2
-- Tests pass → integration is real, ship to next phase
-- Tests fail → tests are the source of truth, Lead routes the failing assertions back to the right agent
-
-The integration tests are the only acceptance criterion. Individual agent self-reports do not override a failing integration test.
+Integration tests = only acceptance criterion. Self-reports don't override failing test.
 
 ## Quick reference
 
 | Stage | Who | Output |
 |-------|-----|--------|
 | 1. Write contract | Lead | `.claude/orchestration/<topic>-contract.md` |
-| 2. Write RED tests | Lead | `tests/integration/<topic>_test.py` (failing) |
-| 3. Spawn agents | Lead | N agent briefs, each with contract path |
-| 4. RED-check | Lead | Verify tests still fail for the right reason |
-| 5. Implement | Agents | Code that makes their slice green |
-| 6. Merge | Lead | Run integration tests, route failures back |
+| 2. Write RED tests | Lead | `tests/integration/<topic>_test.py` |
+| 3. Spawn agents | Lead | N briefs with contract path |
+| 4. RED-check | Lead | Verify tests still fail correctly |
+| 5. Implement | Agents | Code making their slice green |
+| 6. Merge | Lead | Run tests, route failures |
 
-## Common mistakes — DO NOT
+## Common mistakes
 
-- Skip the contract for "just 2 small agents" — that's exactly when drift starts
-- Write the contract AFTER spawning — agents have already diverged, contract becomes a referee instead of a spec
-- Let agents edit the contract — only Lead changes it; agents escalate if they disagree
-- Skip the RED-checkpoint — silent drift in the first 5 minutes is the most expensive bug to fix
-- Treat agent self-reports as proof of integration — only the integration test suite is proof
-- Allow agents to "improve" types beyond the contract — every type widening or renaming creates a new integration point Lead has to manage
+- Skip contract for "just 2 small agents"
+- Write contract AFTER spawning — agents already diverged
+- Let agents edit contract — only Lead changes
+- Skip RED-checkpoint — silent drift in first 5 minutes is most expensive
+- Treat self-reports as proof of integration
+- Allow "improve" types beyond contract
 
 ## Influence
 
-Cohesion-contract pattern adopted from [evanklem/evanflow](https://github.com/evanklem/evanflow) — their orchestrator writes a shared spec + RED tests before spawning sub-agents, which we found to be the highest-leverage anti-drift mechanism for multi-agent parallel work.
+Cohesion-contract from [evanklem/evanflow](https://github.com/evanklem/evanflow) — orchestrator writes shared spec + RED tests before spawning. Highest-leverage anti-drift mechanism for multi-agent parallel work.
 
 ## Common Rationalizations
 
-When you're tempted to skip this skill, watch for these excuses:
-
 | Excuse | Reality |
 |--------|---------|
-| "Just spawn the agents, they'll figure out the interface" | Parallel agents without a cohesion contract produce interface-divergent code 100% of the time. Contract first, then fanout. |
-| "This is a simple change, doesn't need <skill>" | Bugs hide in simple changes too — DAPLab data shows 41% of agentic-LLM failures land in 'trivial' diffs. |
-| "I already know the answer" | Confirmation bias — the skill exists to surface what you didn't think of, not to repeat what you did. |
-| "Time pressure, skip just this once" | Tech debt compounds; 5 minutes saved at write time costs 50 minutes of debugging later. |
+| "Spawn them, they'll figure out interface" | Parallel agents without contract = interface-divergent code 100% of the time. |
+| "Simple change" | 41% of agentic-LLM failures land in trivial diffs (DAPLab). |
+| "Time pressure" | Tech debt compounds. |
 
-Default response when rationalizing: run the skill anyway. Cost of running it is bounded; cost of skipping when you needed it is not.
+Default: run anyway.

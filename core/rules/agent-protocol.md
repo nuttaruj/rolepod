@@ -1,75 +1,74 @@
 # Agent Protocol — shared across all subagents
 
-**Scope:** mandatory rules every subagent follows. Referenced by all agent files via "follow agent-protocol".
+**Scope:** mandatory rules every subagent follows. Referenced via "follow agent-protocol".
 
-## 1. Verify-first (before any claim)
+## 1. Verify-first
 
 - Symbol/file exists? Read or `gitnexus_context` first
-- Behavior? Run actual command, don't assume
-- External fact (API/pricing/lib version)? WebFetch/WebSearch
+- Behavior? Run actual command
+- External fact (API/pricing/lib)? WebFetch/WebSearch
 - Past decision? `mempalace_kg_query` + verify code matches
 
 Pattern-match alone = forbidden. Can't verify → state `Assuming: X. Risk: Y. Verify by: Z`.
 
 ## 2. Tech-agnostic detection
 
-Before writing code, detect project tech via Read on config files (package.json / pyproject.toml / Cargo.toml / Makefile / etc.). Match existing patterns. Don't introduce new patterns "because better."
+Detect project tech via Read on config files (`package.json` / `pyproject.toml` / `Cargo.toml` / `Makefile` / etc.). Match existing patterns. Don't introduce new "because better."
 
-## 3. Completion verification (before reporting done)
+## 3. Completion verification
 
-1. **Verify edits exist** — Grep/Read each file you claim to have changed
-2. **Run project checks** — find available test/lint/typecheck commands, run them
-3. **Check silent failures** — DB column added → migration includes it. API field → schema + response. File created → exists.
+1. **Verify edits exist** — Grep/Read each file claimed changed
+2. **Run project checks** — test/lint/typecheck
+3. **Check silent failures** — DB column → migration includes it. API field → schema + response. File created → exists.
 4. **Never claim done with failing checks** — fix or report incomplete
-5. **Missing target** — STOP and report `MISSING TARGET: [what] at [where]`. Never silently skip.
+5. **Missing target** — STOP, report `MISSING TARGET: [what] at [where]`. Never silently skip.
 
 ## 4. Autonomous error handling
 
 - Never blind edit — Read/Grep first
 - Command fails → analyze, retry max 2x, then escalate
-- Empty/malformed result → diagnose root cause, don't assume it worked
-- Migration/schema/model produces empty diff → report explicitly
+- Empty/malformed result → diagnose, don't assume it worked
+- Migration/schema/model empty diff → report explicitly
 
 ## 5. Hand-off protocol
 
-When handing off to another agent:
 1. **Files** — exact paths modified
-2. **Summary** — what done + what next agent must do
-3. **Upstream check** — confirm prerequisite files/APIs/schemas exist before starting
-4. **API/schema changes** — list old vs new + downstream impact
-5. **Breaking changes** — prefix `BREAKING:`
-6. **Downstream deps** — name agent(s) that act next
+2. **Summary** — done + what next agent must do
+3. **Upstream check** — confirm prereqs exist before starting
+4. **API/schema changes** — old vs new + downstream impact
+5. **Breaking** — prefix `BREAKING:`
+6. **Downstream deps** — name next agent(s)
 
 ## 6. Mandatory peer review
 
-Cannot complete alone. Must request review from `universal-reviewer` (or domain-specific reviewer). Fix rejected issues.
+Cannot complete alone. Request review from `universal-reviewer` (or domain reviewer). Fix rejected issues.
 
-Exception: `universal-reviewer` itself = final judge. Cannot request review for its own feedback.
+Exception: `universal-reviewer` = final judge, cannot review its own feedback.
 
-## 7. Change manifest output (every task ends with)
+## 7. Change manifest
 
 ```
 **Changes Made:**
-- `[file path]`: [what changed] (verified: yes/no)
+- `[file]`: [what changed] (verified: yes/no)
 
 **Verification:**
 - Tests: [pass / fail / none found]
 - Lint/Type-check: [pass / fail / none found]
-- Domain-specific check: [as applicable]
+- Domain-specific: [as applicable]
 
 **Status:** COMPLETED | PARTIAL | BLOCKED
-- PARTIAL: list what remains + why
-- BLOCKED: state blocker + who must unblock
+- PARTIAL: list remains + why
+- BLOCKED: state blocker + who unblocks
 ```
 
-Never report COMPLETED if anything unverified.
+Never COMPLETED if anything unverified.
 
-## 8. Memory / institutional knowledge
+## 8. Memory
 
-Update agent memory with: codepaths discovered, patterns, library locations, architectural decisions. Concise notes — what found + where.
+Update agent memory with codepaths discovered, patterns, library locations, architectural decisions. Concise — what + where.
 
 ## 9. Scope discipline
 
-- You own ONE domain (defined in your agent file)
-- You DO NOT touch other agents' domains — escalate via hand-off
-- Same path/concern conflict with another agent → STOP, ask Lead to resolve
+- Own ONE domain (defined in agent file)
+- Don't touch other agents' domains — hand off
+- Same path/concern conflict → STOP, ask Lead

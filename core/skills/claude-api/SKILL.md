@@ -5,25 +5,25 @@ description: Build, debug, and optimize Claude API and Anthropic SDK application
 
 # Claude API
 
-The Claude API rewards careful structuring. Prompt caching cuts cost 90% on repeated context. Tool definitions belong in cached blocks. Model selection is a tradeoff curve, not a default. This skill covers the patterns that make Claude apps cheap, fast, and correct.
+Prompt caching cuts cost 90% on repeated context. Tool definitions belong in cached blocks. Model selection = tradeoff curve, not default.
 
 ## When to use
 
-- Code imports `anthropic` (Python) or `@anthropic-ai/sdk` (TypeScript)
-- Adding or modifying a Claude API call
-- Migrating between model versions (e.g. Sonnet 4.5 → Sonnet 4.6)
-- Tuning prompt caching for cost / latency
-- Implementing tool use, streaming, batching, or files API
-- Cache hit rate is below expectation
-- Cost suddenly spiked
+- Code imports `anthropic` (Python) or `@anthropic-ai/sdk` (TS)
+- Adding/modifying Claude API call
+- Migrating model versions (e.g. Sonnet 4.5 → 4.6)
+- Tuning prompt caching
+- Implementing tool use, streaming, batching, files API
+- Cache hit rate below expectation
+- Cost spiked
 
-Skip when: code uses a different LLM provider (OpenAI, Cohere, etc.), or generic ML / NLP work without Anthropic SDK.
+Skip: different LLM provider; generic ML/NLP without Anthropic SDK.
 
 ## How to apply
 
 ### 1. Always enable prompt caching
 
-Default for any non-trivial system prompt or tool list. Mark the cacheable suffix with `cache_control`:
+Default for non-trivial system prompt or tool list:
 
 ```python
 from anthropic import Anthropic
@@ -41,7 +41,6 @@ response = client.messages.create(
         }
     ],
     tools=[
-        # tool definitions...
         {**LAST_TOOL, "cache_control": {"type": "ephemeral"}}
     ],
     messages=[
@@ -50,29 +49,27 @@ response = client.messages.create(
 )
 ```
 
-Cache breakpoints (`cache_control`) mark the **end** of a cacheable prefix. Everything from the start of the request to that breakpoint is cached for ~5 minutes (TTL).
+`cache_control` marks end of cacheable prefix. Cached ~5 min TTL.
 
 ### 2. Cache structure that wins
 
-Order content from most-stable to least-stable:
+Order most-stable → least-stable:
 
 ```
 system prompt (rarely changes)
   ↓
 tool definitions (rarely changes)
   ↓
-few-shot examples (per-task, but stable)
+few-shot examples (per-task, stable)
   ↓
-conversation history (grows over time)
+conversation history (grows)
   ↓
 current user message (always new)
 ```
 
-Place `cache_control` after each stable layer. The cache hit you want: same system + tools + examples → only the new turn is uncached.
+Place `cache_control` after each stable layer.
 
-### 3. Read the response usage block
-
-Every response includes:
+### 3. Read response usage block
 
 ```
 usage: {
@@ -83,7 +80,7 @@ usage: {
 }
 ```
 
-On the next call with same prefix:
+Next call same prefix:
 
 ```
 usage: {
@@ -94,17 +91,17 @@ usage: {
 }
 ```
 
-If `cache_read_input_tokens` is consistently 0 on repeated calls, your cache key is changing — find what's drifting (timestamps, random IDs, varying message order).
+Consistently 0 `cache_read_input_tokens` on repeated calls → cache key drifting. Find varying field (timestamp, random ID, reordered messages).
 
 ### 4. Model selection
 
 | Model | Best for | Speed | Cost |
 |-------|----------|-------|------|
 | Opus 4.x | Hard reasoning, architecture, design judgment | Slowest | Highest |
-| Sonnet 4.x | Default for production tasks, balanced | Medium | Medium |
-| Haiku 4.x | High-volume classification, routing, simple extraction | Fastest | Lowest |
+| Sonnet 4.x | Default for production | Medium | Medium |
+| Haiku 4.x | Classification, routing, simple extraction | Fastest | Lowest |
 
-Default to Sonnet. Drop to Haiku when latency or cost dominates and the task is simple. Escalate to Opus when correctness on hard reasoning matters more than cost.
+Default Sonnet. Drop to Haiku when latency/cost dominates and task is simple. Escalate to Opus when correctness on hard reasoning > cost.
 
 ### 5. Tool use
 
@@ -134,10 +131,10 @@ if response.stop_reason == "tool_use":
     for block in response.content:
         if block.type == "tool_use":
             result = run_tool(block.name, block.input)
-            # Send tool_result back to continue conversation
+            # Send tool_result back to continue
 ```
 
-Tool use loop: call → `tool_use` block → run tool → send `tool_result` → next call. Cache the tool list — it's stable.
+Loop: call → `tool_use` block → run tool → send `tool_result` → next call. Cache tool list — it's stable.
 
 ### 6. Streaming
 
@@ -151,47 +148,41 @@ with client.messages.stream(
         print(text, end="", flush=True)
 ```
 
-Use streaming for UI responsiveness. Don't stream when you need the full response before acting (parsing JSON output, tool routing).
+Stream for UI. Don't stream when full response needed before acting (parse JSON, tool routing).
 
 ### 7. Batch API
 
-For non-realtime work, use the Batch API for ~50% cost savings:
+Non-realtime work → ~50% cost savings. Up to 100k requests, returns within 24h (often faster). Use for: backfills, evals, offline processing.
 
-- Submit a batch of up to 100k requests
-- Returns within 24 hours (often much faster)
-- Good for: backfills, evals, offline processing
-
-### 8. Migration between model versions
-
-When upgrading (e.g. 4.5 → 4.7):
+### 8. Migration between versions
 
 1. Update model string in one config point — never hardcode in N files
-2. Re-run eval suite with the new model
-3. Watch for regressions in: tool-use accuracy, JSON mode reliability, instruction following on long contexts
-4. Cache structure should not need changes — it's model-agnostic
-5. Spot-check token counts; tokenizer is similar but not identical between major versions
+2. Re-run eval suite
+3. Watch regressions in: tool-use accuracy, JSON mode, instruction following on long contexts
+4. Cache structure model-agnostic — no changes needed
+5. Spot-check token counts; tokenizer similar but not identical across majors
 
 ## Common mistakes
 
-- No `cache_control` on system prompt → paying full price every call
-- Cache breakpoint before something that varies (e.g. timestamp in system prompt) → cache never hits
-- Long system prompt under cache minimum (1024 tokens for most models) → cache silently doesn't activate
-- Reordering messages between calls → cache miss
-- Hardcoded model name in 10 files → migration is 10 PRs instead of 1
-- Using Opus for routing / classification → 5x cost for no quality gain
-- Using Haiku for hard reasoning → wrong answers, hidden cost in retries
-- Streaming when you need to parse the full output → wasted wrapper code
-- Not checking `stop_reason` — `max_tokens` cutoff looks like success otherwise
-- Tool descriptions vague ("does X stuff") → model picks wrong tool
+- No `cache_control` on system prompt → full price every call
+- Cache breakpoint before varying field (timestamp in system prompt) → never hits
+- Long system prompt under cache minimum (1024 tokens for most models) → silently doesn't activate
+- Reordering messages between calls → miss
+- Hardcoded model in 10 files → migration is 10 PRs
+- Opus for routing/classification → 5x cost, no quality gain
+- Haiku for hard reasoning → wrong answers, hidden retry cost
+- Streaming when parsing full output → wasted wrapper
+- Not checking `stop_reason` — `max_tokens` cutoff looks like success
+- Vague tool descriptions ("does X stuff") → model picks wrong tool
 
 ## Quick reference
 
 | Need | Solution |
 |------|----------|
 | Cut repeated-context cost 90% | `cache_control: ephemeral` after stable prefix |
-| Verify cache works | Check `cache_read_input_tokens > 0` on 2nd call |
+| Verify cache works | `cache_read_input_tokens > 0` on 2nd call |
 | Real-time UI | `client.messages.stream(...)` |
-| 50% cost on async work | Batch API |
+| 50% cost on async | Batch API |
 | Tool calling | Define tools, loop on `stop_reason == "tool_use"` |
 | Hard task | Opus |
 | Default | Sonnet |
@@ -201,22 +192,19 @@ When upgrading (e.g. 4.5 → 4.7):
 ## Verification before shipping
 
 - [ ] `cache_control` on system + tools
-- [ ] Confirmed cache hit on 2nd call (`cache_read_input_tokens > 0`)
+- [ ] Confirmed cache hit on 2nd call
 - [ ] Model name in one config location
 - [ ] Errors handled (rate limit, timeout, content filtered)
-- [ ] Token usage logged per request (for cost monitoring)
-- [ ] `stop_reason` checked (not just response text)
+- [ ] Token usage logged per request
+- [ ] `stop_reason` checked
 - [ ] Eval suite passes on chosen model
 
 ## Common Rationalizations
 
-When you're tempted to skip this skill, watch for these excuses:
-
 | Excuse | Reality |
 |--------|---------|
-| "Prompt caching is an optimization, not a correctness issue" | Cost per request scales with traffic — apps without caching burn 10x at scale. Cache from request #1, not request #100,000. |
-| "This is a simple change, doesn't need <skill>" | Bugs hide in simple changes too — DAPLab data shows 41% of agentic-LLM failures land in 'trivial' diffs. |
-| "I already know the answer" | Confirmation bias — the skill exists to surface what you didn't think of, not to repeat what you did. |
-| "Time pressure, skip just this once" | Tech debt compounds; 5 minutes saved at write time costs 50 minutes of debugging later. |
+| "Caching is optimization, not correctness" | Apps without caching burn 10x at scale. Cache from request #1. |
+| "Simple change" | 41% of agentic-LLM failures land in trivial diffs (DAPLab). |
+| "Time pressure" | Tech debt compounds. |
 
-Default response when rationalizing: run the skill anyway. Cost of running it is bounded; cost of skipping when you needed it is not.
+Default: run anyway.

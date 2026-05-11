@@ -5,172 +5,154 @@ description: Write user-facing content that helps people, not impresses them. Co
 
 # User-Facing Content
 
-The text in your product is part of the product. A confusing error message creates a support ticket. A clear one prevents one. This skill is about the writing that meets the user when something is harder than expected — and helps them keep going.
+Product text = part of the product. Confusing error = support ticket. Clear error = prevented one.
 
 ## When to use
 
-- Writing or auditing error messages
-- Onboarding flow copy (first-run, empty states, tutorials)
-- FAQ / help center articles
-- In-app tooltips, microcopy, button labels
-- Email templates triggered by product events (welcome, password reset, payment failed)
-- Status messages, system notifications, confirmation dialogs
+- Error messages
+- Onboarding (first-run, empty states, tutorials)
+- FAQ / help articles
+- Tooltips, microcopy, button labels
+- Email templates (welcome, reset, payment failed)
+- Status messages, notifications, confirms
 
-Skip for: marketing copy (different skill — different goal), internal docs, technical reference.
+Skip: marketing copy, internal docs, technical reference.
 
 ## Three principles
 
-1. **Help, don't sell.** Marketing copy persuades. User-facing content explains. The tone shift is real and visible.
-2. **Match the user's emotional state.** Frustrated users don't want jokes. Lost users don't want clever metaphors.
-3. **Be specific where it matters, brief where it doesn't.** "Your file couldn't be saved because the connection dropped — try again." beats "Oops! Something went wrong."
+1. **Help, don't sell.** Marketing persuades; this explains.
+2. **Match user's emotional state.** Frustrated users don't want jokes.
+3. **Specific where it matters, brief where it doesn't.**
 
 ## Plain language baseline
 
-- 8th-grade reading level for general audiences. Lower if you're addressing distress (errors, support).
-- Short sentences. One idea per sentence.
-- Active voice. "We saved your changes" beats "Your changes have been saved."
-- Concrete nouns. "Your invoice" beats "the requested document."
-- Cut filler. "Please note that you may want to consider..." → "You can..."
+- 8th-grade reading level (lower for distress)
+- Short sentences, one idea each
+- Active voice ("We saved your changes" > "Your changes have been saved")
+- Concrete nouns ("Your invoice" > "the requested document")
+- Cut filler
 
-## Error messages — the most important content in the product
+## Error messages — most important text in the product
 
-Most apps treat errors as a chore. Errors are the moment the user is most likely to leave. Write them carefully.
-
-A good error message has three parts:
+Three parts:
 
 ```
-1. What happened — in their language, not yours
-2. Why it happened — only if it helps them act
-3. What they can do next — concrete next step
+1. What happened — in their language
+2. Why — only if it helps them act
+3. What they can do next — concrete step
 ```
-
-Examples:
 
 | Bad | Good |
 |-----|------|
-| "Error 500: Internal Server Error" | "We couldn't save your post. We've been notified — try again in a minute." |
+| "Error 500" | "We couldn't save your post. We've been notified — try again in a minute." |
 | "Invalid credentials" | "Email or password didn't match. Try again, or reset your password." |
-| "Operation failed" | "We couldn't process your payment. Your card wasn't charged. Check the card details and try again." |
+| "Operation failed" | "We couldn't process your payment. Your card wasn't charged. Check the details and try again." |
 | "Required field" | "Add your email so we can send the receipt." |
 | "Network error" | "Couldn't reach the server. Check your connection and try again." |
 
 Rules:
-
-- Never blame the user. "You entered the wrong password" → "Email or password didn't match."
-- Never expose stack traces, codes, or internal paths to end users (logs are for engineers).
-- Always offer a next action. "Try again" is the minimum; specific is better.
-- Match severity to tone. A failed save needs calm clarity, not exclamation points.
+- Never blame ("You entered wrong password" → "Email or password didn't match")
+- Never expose stack traces / codes / paths to end users
+- Always offer next action
+- Match severity to tone — no exclamation points on failed save
 
 ## Onboarding and empty states
 
-The first 60 seconds set everything. The empty state is your first impression.
+First 60 seconds set everything.
 
-- **Show what success looks like.** Show a populated example, not just "Add your first item."
-- **One next action.** Don't list five things. Pick the most important.
-- **Reduce decision fatigue.** Sensible defaults, skip-able steps, clear progress.
-- **Talk like a teammate, not a wizard.** "Let's get your first project set up" beats "Welcome to the onboarding wizard."
-- **Acknowledge the user's reality.** "We know setting this up takes a few minutes — here's what you'll get."
+- **Show what success looks like** — populated example, not "Add your first item"
+- **One next action** — don't list five
+- **Sensible defaults, skip-able steps, clear progress**
+- **Talk like a teammate** — "Let's get your first project set up" > "Welcome to the onboarding wizard"
 
 Empty state hierarchy:
-
 1. Headline: what this view is for
-2. One sentence: why it's empty and what to do
-3. Primary action button
-4. Optional: link to a richer guide for users who want depth
+2. One sentence: why empty, what to do
+3. Primary action
+4. Optional: link to richer guide
 
 ## FAQ and help articles
 
-FAQs aren't a dumping ground for everything. They're a curated answer to questions you actually receive.
+- **Real questions only** — if support never gets asked, skip
+- **Question-shaped headings** — users scan for their question
+- **Answer first, context after** — "Yes — here's how" / "No — here's why" in first sentence
+- **Show with screenshots/GIFs for visual answers**
+- **Date articles** — "Last updated: Mar 2026"
+- **Link to action** — deep link to settings
 
-- **Real questions only.** If support has never been asked it, it doesn't go in the FAQ.
-- **Question-shaped headings.** Users scan for their question, not your topic name.
-- **Answer first, context after.** "Yes — here's how" or "No — here's why" in the first sentence.
-- **Show, don't only tell.** Screenshots, GIFs, short clips for anything visual.
-- **Date your articles.** "Last updated: Mar 2026" — UI changes; old screenshots mislead.
-- **Link to the action.** If the answer is "go to settings," provide a deep link.
+## Microcopy
 
-## Microcopy — the small text that does big work
+- **Action verbs on buttons** — "Save changes" > "Submit", "Send invite" > "OK"
+- **No yes/no on destructive** — "Delete account" / "Cancel" — action = label
+- **Placeholder ≠ label** — placeholders disappear
+- **Helper text explains intent** — "We'll send a confirmation here"
+- **Tooltips for clarification, not hiding critical info**
 
-Buttons, labels, hints, placeholders, tooltips.
-
-- **Action verbs on buttons.** "Save changes" beats "Submit." "Send invite" beats "OK."
-- **Avoid yes/no buttons in destructive flows.** "Delete account" / "Cancel" — the action is the label.
-- **Placeholder ≠ label.** Placeholders disappear; required labels stay.
-- **Helper text under inputs explains intent.** "We'll send a confirmation here."
-- **Tooltips for clarification, not for hiding important info.**
-
-## Tone and voice
-
-Match the moment. Same product, different moments, different tone.
+## Tone
 
 | Moment | Tone |
 |--------|------|
-| Welcoming new user | Warm, encouraging, brief |
+| New user | Warm, encouraging, brief |
 | Routine action | Neutral, fast |
 | Error | Calm, specific, no humor |
-| Success after effort | Brief acknowledgement, no fanfare |
-| Destructive action | Slow down, be precise, confirm |
-| Account / billing issue | Reassuring, factual, action-first |
-| Long wait / slow operation | Honest about what's happening |
+| Success after effort | Brief acknowledgment |
+| Destructive | Slow down, precise, confirm |
+| Account/billing | Reassuring, factual, action-first |
+| Long wait | Honest about what's happening |
 
-A friendly product can still be serious when the user is upset. Don't make jokes during outages.
+Friendly product can still be serious. Don't make jokes during outages.
 
 ## Accessibility and inclusion
 
-User-facing content is read by screen readers, translated, scanned by people who don't read English natively. Write for that.
-
-- Don't rely on color alone to convey meaning.
-- Write meaningful link text — never "click here" or "more."
-- Avoid idioms that don't translate ("piece of cake," "ballpark figure").
-- Use gender-neutral language by default — "they" works.
-- Don't use ableist phrasing ("crazy", "lame", "blind to") in product copy.
-- Read content aloud. Hard to say = hard to read.
+- Don't rely on color alone
+- Meaningful link text (never "click here")
+- Avoid idioms that don't translate
+- Gender-neutral default ("they")
+- No ableist phrasing
+- Read aloud — hard to say = hard to read
 
 ## Common mistakes
 
-- Error messages that say "something went wrong" with no next step
-- Onboarding that explains the UI instead of getting the user to value
+- "Something went wrong" with no next step
+- Onboarding that explains UI instead of getting to value
 - Empty states that scold ("You haven't added any...")
-- Tooltips full of critical information the user needed before clicking
+- Tooltips with critical info needed before clicking
 - "Please" + "kindly" + "if you wouldn't mind" — pad without warmth
-- Long welcome emails with five CTAs and no clear primary action
-- Help articles written for the system's vocabulary instead of the user's
-- Confirmation dialogs with "OK" / "Cancel" for destructive actions (re-state the action)
-- Copy approved by committee where every team added a sentence and clarity died
+- Long welcome emails with 5 CTAs
+- Articles using system's vocabulary, not user's
+- Confirm dialogs with "OK"/"Cancel" for destructive actions
+- Committee-edited copy where every team added a sentence
 
-## Quick reference — does this copy pass?
+## Quick reference — pass check
 
 ```
-1. Would my user understand this without internal context?
-2. Is there a clear next action?
-3. Does the tone match the moment?
-4. Is the most important word in the most important position?
-5. Did I cut every word that doesn't earn its space?
-6. Would a stressed user, on a phone, in a hurry, get this right?
+1. Understandable without internal context?
+2. Clear next action?
+3. Tone matches the moment?
+4. Most important word in most important position?
+5. Cut every word that doesn't earn space?
+6. Stressed user on phone in a hurry — gets it right?
 ```
 
-Six yeses → ship. Any no → revise.
+Six yeses → ship.
 
-## Output checklist for a content audit
+## Audit checklist
 
-- [ ] All error states have a clear next action
-- [ ] All empty states show what success looks like
-- [ ] No internal jargon visible to end users
-- [ ] No stack traces, codes, or paths leaked to users
-- [ ] Microcopy is verb-led where it should be
-- [ ] Tone matches each moment, not just one global voice
-- [ ] Accessibility checks pass (color, link text, language)
-- [ ] Help articles dated, with current screenshots
+- [ ] All error states have clear next action
+- [ ] All empty states show success
+- [ ] No internal jargon
+- [ ] No stack traces / codes / paths leaked
+- [ ] Microcopy is verb-led
+- [ ] Tone matches each moment
+- [ ] Accessibility passes (color, link text, language)
+- [ ] Help articles dated, current screenshots
 
 ## Common Rationalizations
 
-When you're tempted to skip this skill, watch for these excuses:
-
 | Excuse | Reality |
 |--------|---------|
-| "Engineers can write the user-facing copy, it's just words" | Engineer-default copy is jargon-loaded; users bounce on the second sentence. Empathy + plain-language discipline cuts support tickets measurably. |
-| "This is a simple change, doesn't need <skill>" | Bugs hide in simple changes too — DAPLab data shows 41% of agentic-LLM failures land in 'trivial' diffs. |
-| "I already know the answer" | Confirmation bias — the skill exists to surface what you didn't think of, not to repeat what you did. |
-| "Time pressure, skip just this once" | Tech debt compounds; 5 minutes saved at write time costs 50 minutes of debugging later. |
+| "Engineers can write it, it's just words" | Engineer-default copy is jargon-loaded; cuts support tickets when done right. |
+| "Simple change" | 41% of agentic-LLM failures hide in trivial diffs (DAPLab). |
+| "Time pressure" | Tech debt compounds. |
 
-Default response when rationalizing: run the skill anyway. Cost of running it is bounded; cost of skipping when you needed it is not.
+Default: run anyway.

@@ -1,100 +1,78 @@
 # Rolepod — Codex CLI Core Rules
 
-Always-on guidance for the Codex CLI Lead. Codex reads this file from
-`~/.codex/AGENTS.md` (global) or `<repo>/AGENTS.md` (project).
+Always-on guidance for Codex CLI Lead. Loaded from `~/.codex/AGENTS.md` (global) or `<repo>/AGENTS.md` (project).
 
-Rolepod ships as a Codex marketplace consumable (`adapters/codex/.agents/plugins/marketplace.json` + `plugins/rolepod/.codex-plugin/plugin.json`).
-Agents (`agents/*.toml`), skills (`skills/<name>/SKILL.md`), and hooks
-(`hooks/hooks.json`) all wire into Codex's native primitives — no wrapper, no
-manual reload. This file collects the always-on judgment guidance Lead applies
-every turn; deeper workflows live in skills that auto-trigger from their
-`description:` field.
+Rolepod ships as Codex marketplace consumable. Agents (`agents/*.toml`), skills (`skills/<name>/SKILL.md`), hooks (`hooks/hooks.json`) wire into Codex's native primitives. Deeper workflows live in skills (auto-trigger from `description:`).
 
 ## Rule priority (when conflict)
 
-Most-specific wins. Higher tier overrides lower:
-
-1. User explicit instruction this turn — overrides everything
+1. User explicit instruction this turn
 2. Project `<repo>/AGENTS.md`
-3. Global `~/.codex/AGENTS.md` (this file when installed there)
-4. Anthropic best practice (default if all silent)
+3. Global `~/.codex/AGENTS.md`
+4. Default best practice
 
-Conflict unsafe to resolve → ask user. Don't pick silently.
+Conflict unsafe → ask user.
 
 {{INCLUDE: core/fragments/identity.md}}
 
 ## Codex-specific Lead notes
 
-- **Native subagents** → 18 specialists ship as `agents/*.toml`. Codex spawns
-  them by name (`description` field tells Codex when to dispatch). Same Q1-Q4
-  delegation rules apply.
-- **Native hooks** → `hooks/hooks.json` registers SessionStart, PreToolUse,
-  PostToolUse events that fire automatically (project context loader, context
-  pressure warning, post-edit verify reminder, post-ship reindex hint). No
-  wrapper script needed.
-- **Native skills** → `skills/<name>/SKILL.md` files auto-trigger from their
-  frontmatter `description:` when phrasing matches. Same on-demand pull as
-  Claude.
-- **Peer review via subagents** → for high-risk surface (auth/billing/
-  migrations), Lead delegates to the `qa-tester` subagent (or
-  `security-engineer`, `universal-reviewer`). Findings come back as a
-  separate-context report.
+- **Subagents** → 18 specialists at `agents/*.toml`. Codex spawns by name from `description:`. Q1-Q4 applies.
+- **Hooks** → `hooks/hooks.json` registers SessionStart, PreToolUse, PostToolUse (context loader, context-pressure warning, post-edit verify, reindex hint).
+- **Skills** → `skills/<name>/SKILL.md` auto-trigger from frontmatter `description:`.
+- **Peer review** → high-risk → delegate to `qa-tester` / `security-engineer` / `universal-reviewer`. Findings come back as separate-context report.
 
 ## Language & Tone
 
 User Thai → reply Thai. User English → reply English.
-Concise. State result + risk + next step. No filler / pleasantries / hedging.
-Commits / PRs / code: write English, normal tone.
+Concise. Result + risk + next step. No filler.
+Commits / PRs / code: English, normal tone.
 
 {{INCLUDE: core/fragments/verify-first.md}}
 
 ## Workflow — Explore → Plan → Implement → Commit
 
-For non-trivial work (multi-file / unfamiliar code / unclear approach):
+Non-trivial work:
 
-1. **Explore** — read files, understand.
-2. **Plan** — detailed plan. Simplicity check: simplest approach? new
-   abstraction needed? new dep needed? If "yes" without strong reason → revise.
-3. **Implement** — code per plan. Every line traces to user request.
-4. **Pre-commit gate** — run S1-S5 + T1-T6 + F1-F5 gates below.
+1. **Explore** — read files.
+2. **Plan** — simplicity check: simplest? new abstraction? new dep? If "yes" without reason → revise.
+3. **Implement** — every line traces to user request.
+4. **Pre-commit gate** — S1-S5 + T1-T6 + F1-F5 below.
 5. **Commit** — descriptive message + PR.
 
-Skip plan mode when diff describable in 1 sentence (typo / log line / rename).
+Skip plan if diff describable in 1 sentence (typo / log / rename).
 
 ## Lifecycle phases — Define → Plan → Build → Verify → Review → Ship
 
-The 4-step workflow maps onto a 6-phase lifecycle. Use as a mental map when a
-task spans more than one phase.
-
-| Phase | What happens | Key skills | Key agents | Key gates |
-|-------|--------------|------------|------------|-----------|
-| **Define** | Intent → spec | `spec-driven-development` | product-manager, business-analyst, system-architect | verify-first (intent) |
-| **Plan** | Spec → ordered tasks + interfaces | `planning-and-task-breakdown`, `parallel-contract-orchestration`, `api-and-interface-design` | system-architect, product-manager | Q1-Q4 delegation |
-| **Build** | Tasks → code + docs | `frontend-ui-engineering`, `test-driven-development`, `claude-api`, `anti-spaghetti`, `interface-design`, `interaction-design`, `conversion-copywriting`, `doc-coauthoring` | backend/frontend/mobile/billing/ai-ml/data-scientist, ui-ux-designer, tech-writer | S1-S5 simplicity, F1-F5 failure-mode |
-| **Verify** | Code → evidence | `debugging-and-error-recovery`, `webapp-testing`, `browser-testing-with-devtools`, `performance-optimization`, `security-and-hardening` | qa-tester, security-engineer, performance-engineer | T1-T6 testing, verify-first (claims) |
-| **Review** | Evidence → adversarial pass | `code-review-and-quality`, `code-simplification`, `web-design-guidelines`, `doubt-driven-development` | universal-reviewer, qa-tester (review mode) | pre-merge-gate, hard stops |
-| **Ship** | Pass → deploy + announce | `shipping-and-launch`, `ci-cd-and-automation`, `deprecation-and-migration`, `internal-comms`, `user-facing-content`, `documentation-and-adrs`, `seo` | devops-sre, growth-marketer, customer-success | CI 3-phase, reviewer routing |
-| **Cross-cutting** | Apply at any phase | `zoom-out`, `source-driven-development`, `context-engineering` | (any) | (any) |
+| Phase | What | Key skills | Key agents | Key gates |
+|-------|------|------------|------------|-----------|
+| **Define** | Intent → spec | `spec-driven-development` | product-manager, business-analyst, system-architect | verify-first |
+| **Plan** | Spec → tasks + interfaces | `planning-and-task-breakdown`, `parallel-contract-orchestration`, `api-and-interface-design` | system-architect, product-manager | Q1-Q4 |
+| **Build** | Tasks → code + docs | `frontend-ui-engineering`, `test-driven-development`, `claude-api`, `anti-spaghetti`, `interface-design`, `interaction-design`, `conversion-copywriting`, `doc-coauthoring` | backend/frontend/mobile/billing/ai-ml/data-scientist, ui-ux-designer, tech-writer | S1-S5, F1-F5 |
+| **Verify** | Code → evidence | `debugging-and-error-recovery`, `webapp-testing`, `browser-testing-with-devtools`, `performance-optimization`, `security-and-hardening` | qa-tester, security-engineer, performance-engineer | T1-T6, verify-first |
+| **Review** | Evidence → adversarial pass | `code-review-and-quality`, `code-simplification`, `web-design-guidelines`, `doubt-driven-development` | universal-reviewer, qa-tester | pre-merge-gate, hard stops |
+| **Ship** | Pass → deploy + announce | `shipping-and-launch`, `ci-cd-and-automation`, `deprecation-and-migration`, `internal-comms`, `user-facing-content`, `documentation-and-adrs`, `seo` | devops-sre, growth-marketer, customer-success | CI 3-phase |
+| **Cross-cutting** | Any phase | `zoom-out`, `source-driven-development`, `context-engineering` | (any) | (any) |
 
 {{INCLUDE: core/fragments/decision-protocol.md}}
 
 {{INCLUDE: core/fragments/gates-s1-s5.md}}
 
-## CI lanes — 3-phase model + auto-merge
+## CI lanes — 3-phase + auto-merge
 
 ```
 Phase 1 — Fast critical (every PR, REQUIRED, <5 min)
-  Universal invariants: lint / typecheck / smoke unit / auth guard /
-  tenant isolation / money core / migration apply / build
+  lint / typecheck / smoke unit / auth guard / tenant isolation /
+  money core / migration apply / build
 
 Phase 2 — Path-triggered (REQUIRED when path matches)
-  Module's full test suite, only when path touched.
+  Module's full test suite.
 
-Phase 3 — Nightly / manual (NOT required for merge)
+Phase 3 — Nightly / manual (NOT required)
   Broad / integration full / docker / chaos / security deep / E2E / perf
 ```
 
-User OK + commit + PR → wait CI → ALL Phase 1 + triggered Phase 2 green → merge auto, no re-ask.
+User OK + commit + PR → ALL Phase 1 + triggered Phase 2 green → merge auto, no re-ask.
 
 {{INCLUDE: core/fragments/gates-t1-t5.md}}
 
@@ -104,54 +82,50 @@ User OK + commit + PR → wait CI → ALL Phase 1 + triggered Phase 2 green → 
 
 ## Anti-bloat — keep it simple
 
-- This file (AGENTS.md) = always-on judgment guidance
-- Skills = on-demand workflow (auto-pulled by Codex when description matches)
+- AGENTS.md = always-on judgment
+- Skills = on-demand workflow (auto-pulled by description match)
 - Hooks = deterministic enforcement (`hooks/hooks.json`)
-- Bloat = Codex ignores rules. Move infrequent guidance to skills, move
-  enforcement to hooks.
 
-## Code intelligence — auto + manual
+Bloat → Codex ignores rules. Move infrequent → skills. Enforcement → hooks.
 
-**Auto-triggers** (via `hooks/hooks.json`):
-- SessionStart → project context loader injects git activity + setup checklist
-- PreToolUse Bash/apply_patch → context-pressure warning when transcript large
-- PostToolUse apply_patch → verify reminder before claiming done
+## Code intelligence
+
+**Auto-triggers** (`hooks/hooks.json`):
+- SessionStart → project context loader + setup checklist
+- PreToolUse Bash/apply_patch → context-pressure warning
+- PostToolUse apply_patch → verify reminder
 - PostToolUse Bash → reindex hint after big merges
 
-**Manual** (Lead invokes):
-- Before edit symbol → check callers via `rg` or GitNexus MCP if connected
-- Before commit → run `git diff` + lint + typecheck
-- Before re-deciding → search history (`git log --grep=...`) or MemPalace MCP
-- After major decision → write a brief ADR in `decisions/` if project keeps one
+**Manual:**
+- Before edit symbol → `rg` or GitNexus MCP if connected
+- Before commit → `git diff` + lint + typecheck
+- Before re-deciding → `git log --grep=...` or MemPalace MCP
+- After major decision → ADR in `decisions/` if project keeps one
 
 ## Session hygiene
 
 - Restart Codex between unrelated tasks (no `/clear` equivalent)
-- Use `codex resume` to pick up a previous session
-- Use `codex fork` to branch from a checkpoint
-- Long task spans sessions → summarize state in a working note before exiting
+- `codex resume` to pick up previous session
+- `codex fork` to branch from checkpoint
+- Long task → summarize state in note before exit
 
 ## Before ship — STOP
 
-- Run S1-S5, T1-T6, Q1-Q4, F1-F5 gates
-- For high-risk surface (auth/billing/migrations) → delegate to the
-  `qa-tester` subagent (universal floor) and `security-engineer` /
-  `universal-reviewer` as routing dictates
+- Run S1-S5, T1-T6, Q1-Q4, F1-F5
+- High-risk (auth/billing/migrations) → delegate to `qa-tester` (floor) + `security-engineer` / `universal-reviewer` per routing
 
 Reviewer roles:
 - **`qa-tester`** — correctness, business logic, tests (universal floor)
-- **`security-engineer`** — security audit on auth/billing/data paths
-- **`universal-reviewer`** — code quality, DRY, architecture smell
-- **External Claude qa-tester** (cross-CLI) — if Claude Code installed, invoke
-  `claude --dangerously-skip-permissions -p "review this diff"` in a separate
-  shell for adversarial second opinion
+- **`security-engineer`** — security audit (auth/billing/data)
+- **`universal-reviewer`** — code quality, DRY, smell
+- **External Claude** — cross-CLI second opinion: `claude --dangerously-skip-permissions -p "review this diff"`
 
-## Hard stops — STOP and ask user
+## Hard stops — ask user
 
 - 50k+ tokens no convergence → summarize + ask
-- File system disagrees with claim → trust file, re-verify
+- File vs claim → trust file, re-verify
 - Destructive cmd (`rm -rf` / `git reset --hard` / force push) → announce + try reversible first
-- User's intent unclear after 1 clarification → ask, don't guess
+- Intent unclear after 1 clarification → ask, don't guess
 
 ## Search
 
@@ -159,51 +133,43 @@ Reviewer roles:
 |------|------|
 | Plain text / filename | `rg` |
 | Symbol / caller / impact | GitNexus MCP if connected, else `rg` + Read |
-| External docs / pricing / news | Codex web search (`--search` flag) |
+| External docs / pricing / news | Codex web search (`--search`) |
 
-## Verification (post-change evidence)
+## Verification
 
-Every change → show evidence (test output / curl / log). Can't verify → state why + risk.
-UI change → drive a browser tool yourself. NEVER ask user for screenshot.
+Every change → evidence (test output / curl / log). Can't verify → state why + risk.
+UI → drive browser yourself. NEVER ask user for screenshot.
 
 ## Code quality + anti-spaghetti
 
 - Match existing style — don't refactor adjacent unbroken code
-- One source of truth — search before adding new helper/schema/type
-- Surgical — every changed line traces to user request
+- One source of truth — search before adding helper/schema/type
+- Surgical — every changed line traces to request
 - Comments only for intent / non-obvious
 - No new deps without clear win
-- Same pattern in 3+ places → centralize
+- Same pattern in 3+ → centralize
 
 ## Goal-driven
 
-Vague → verifiable goal. "add validation" → write test for invalid input → make pass.
+Vague → verifiable goal. "add validation" → test for invalid input → pass.
 "Fix bug" → reproducing test → fix until pass. "Refactor X" → tests pass before AND after.
-Multi-step → state plan as `[step] → verify: [check]` per row.
+Multi-step → `[step] → verify: [check]` per row.
 
-## Skill index (read on trigger)
-
-Lead reads the matching `SKILL.md` on demand. Trigger phrases live inside each
-skill's frontmatter `description:` field. The full table is auto-generated:
+## Skill index (auto-generated)
 
 {{INCLUDE: core/fragments/skill-index.md}}
 
 ## Agent roster
 
-The 18 specialists below ship as `agents/*.toml`. Codex auto-dispatches on
-domain match (per each agent's `description` field). Delegation rules:
-Q1-Q4 — see gates section above.
+18 specialists at `agents/*.toml`. Codex auto-dispatches on domain match. Q1-Q4 applies.
 
 {{INCLUDE: core/fragments/agent-roster.md}}
 
 ## Careful mode
 
-For high-risk work (auth/billing/migrations/payments/data deletion), Lead
-manually escalates per-turn:
+High-risk work (auth/billing/migrations/payments/data deletion):
 
-- Run all 5 simplicity questions explicitly before every commit
-- Run all 5 test questions explicitly
-- Delegate to `qa-tester` + `security-engineer` (or `universal-reviewer`) for
-  the diff before commit
-- Smaller increments: ≤3 files per commit, not ≤5
+- Run all S1-S5 + T1-T6 explicitly before every commit
+- Delegate to `qa-tester` + `security-engineer` (or `universal-reviewer`) for diff review
+- ≤3 files per commit (not ≤5)
 - Mandatory peer review even for small diffs
