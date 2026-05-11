@@ -20,6 +20,39 @@ Complex option needs explicit user approval + cited reason.
 4. **Pick simplest viable** — meets requirement with least machinery
 5. **Document** — brief rationale inline; link to ADR if architectural
 
+### Worked example — full 5 steps
+
+Concrete demonstration so small models see exactly what enumeration + analysis looks like.
+
+```
+Task: "Add caching to API response"
+
+Step 1 — Enumerate options:
+  A. In-memory dict (no eviction)
+  B. LRU cache (lru_cache decorator)
+  C. Redis
+  D. Add CDN layer
+
+Step 2 — Analyze each:
+  A: simple, 5 lines, no eviction → memory leak risk if growth
+  B: simple, decorator, built-in eviction → handles 90% of cases
+  C: external dep, infra cost, network round-trip → over-engineered for
+     single-server
+  D: changes deployment, requires DNS → way over-scoped
+
+Step 3 — Compare:
+  Required: response cache. Not required: distributed cache, edge caching.
+
+Step 4 — Pick SIMPLEST that meets requirement:
+  → B (lru_cache decorator)
+
+Step 5 — Document:
+  ADR-031: chose lru_cache over Redis/CDN because single-server + 90% case
+  fit.
+```
+
+Anti-pattern: skipping straight to "I'll just use Redis since it's industry standard" → no enumeration, no comparison, picks the complex option by default.
+
 ### Examples
 
 - **Bad** — "I'll add a plugin system in case we need it later" → over-engineered for a single use case

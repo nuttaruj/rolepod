@@ -27,6 +27,12 @@ Guess-and-check debugging is how 4-hour bugs turn into 4-day bugs.
 | "I've tried 3 things, let me try 5 more" | After 2 failed attempts, stop and re-frame. More guesses ≠ progress. |
 | "Just add a try/except to make the error go away" | Silenced exceptions are tomorrow's mystery production incident. |
 
+## Boundary vs `root-cause-tracing`
+
+This skill = the broader debugging workflow (reproduce → hypothesis → bisect → fix → regression test). `root-cause-tracing` = the focused upstream-tracing primitive used **inside** step 8 (fix root cause, not symptom).
+
+**When symptom is downstream of cause** (null pointer at the display layer caused by bad data at the DB query, recurring bug under different surfaces), invoke `root-cause-tracing` first — then continue this workflow with the trace result. Don't try to handle deep upstream tracing inline here; that's what the dedicated primitive is for.
+
 ## When to use
 
 - A test that was green is red

@@ -9,6 +9,21 @@ Most bug fixes that "don't stick" share one pattern: the fix patched the place w
 
 This skill is the upstream-tracing primitive — recurse from the symptom toward the source until you hit one of three legitimate stopping points. Stop earlier than that and you ship a patch on a patch.
 
+## Fire this skill (not `debugging-and-error-recovery`) when…
+
+`debugging-and-error-recovery` is the broader bug-fix workflow (reproduce → hypothesis → bisect → fix). This skill is the **upstream-tracing primitive** inside that workflow. Pick this one (or invoke it as a sub-step of the broader skill) when:
+
+- The **symptom is downstream of the cause** — e.g. null pointer at the display layer, but the null was produced three layers up at DB-read time
+- You need to **trace upstream through multiple layers** to reach the producer
+- "First plausible cause" isn't enough — you need the **root**, not the first place that *could* be it
+- The same bug keeps **recurring with different surfaces** after each fix at the symptom site
+
+Stay with `debugging-and-error-recovery` (don't drop into this skill) when:
+
+- Bug is at the source already (validation rejecting bad input at the boundary)
+- Pure mechanical fix (typo, off-by-one, wrong constant in the same function)
+- You haven't reproduced yet — get the repro first, then come back here if needed
+
 ## When to use
 
 Trigger this skill when:

@@ -23,4 +23,24 @@ F6: Structurally fixable? Could this bug class be made structurally impossible
 
 Any "yes" → stop and fix before declaring done. Skip if task was a typo / comment / docstring / pure rename.
 
+### F6 — bad/good worked pairs
+
+Concrete pattern to match against (parallel to S4's structure):
+
+```
+Bad:  Runtime null check → catches null at every call site (forgets one → crash)
+Good: Type system enforces non-null (Optional<T> + .unwrap()/?.) — compiler
+      ensures handled
+
+Bad:  Validate user input at every function entry
+Good: Sanitize at boundary (HTTP layer) → typed value flows inward, no
+      re-check needed
+
+Bad:  if (!isAuthenticated()) throw — scattered through codebase
+Good: Middleware enforces auth → handler signatures only receive
+      authenticated users
+```
+
+Rule: if you can make the bug class structurally impossible, do that. Runtime check = fallback only when structural unavailable.
+
 Source: DAPLab failure-pattern research on agentic-LLM software failures (Foster, Jegan et al.).
