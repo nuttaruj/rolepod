@@ -89,8 +89,8 @@ Hook scripts are interchangeable across Claude and Codex (same 3 files: SessionS
 | Target | Static checks | Dry-run install | Live runtime hooks | Live subagent dispatch | Status |
 |--------|---------------|-----------------|--------------------|-----------------------|--------|
 | Claude Code | ✓ | ✓ | ✓ verified | ✓ verified | **Production** |
-| Codex CLI   | ✓ | ✓ | ✓ verified (SessionStart hook fires) | ✓ verified (18 agents + 34 skills via native loader) | **Production** |
-| Gemini CLI  | ✓ | ✓ | ✓ verified (SessionStart hook fires) | ✓ verified (34 skills enumerated) | **Production** |
+| Codex CLI   | ✓ | ✓ | ✓ verified (SessionStart hook fires) | ✓ verified (18 agents + 42 skills via native loader) | **Production** |
+| Gemini CLI  | ✓ | ✓ | ✓ verified (SessionStart hook fires) | ✓ verified (42 skills enumerated) | **Production** |
 
 **Static checks** = `bash -n` on shell scripts, `python3 -m json.tool` on JSON manifests, `tomllib.load()` on TOML, plus snapshot diffs (no leaked `{{INCLUDE: ...}}` placeholders). **Dry-run install** = `install.sh --target=<cli>` writes correct files into a temp dir and the layout matches each CLI's expected destination. **Live** = installed in the real CLI, hooks fire on real sessions, subagents/skills dispatch correctly.
 
@@ -122,7 +122,7 @@ Help close the gap — install on Codex / Gemini and report at [issues/](https:/
 - **Codex CLI**: 18 `agents/*.toml` are registered with the plugin and load via the plugin loader. Codex doesn't currently expose a public `codex agent` subcommand or a parallel-fanout primitive equivalent to Claude's `Task`, so verification is via plugin config, session logs, and observed dispatch behavior — Lead orchestrates by inline reading of the relevant agent's `developer_instructions` block.
 - **Gemini CLI**: agents are inlined in `GEMINI.md` as a roster table. Lead reads the relevant agent's section and acts in-character. Gemini Code Assist is adding richer multi-agent primitives — when those land, the Gemini adapter will switch to native dispatch.
 
-The path-based ownership rules from `team-org.md` apply identically across all three CLIs — same agent picks the same paths regardless of which CLI is in charge of orchestration.
+The path-based ownership rules from skill `team-routing` apply identically across all three CLIs — same agent picks the same paths regardless of which CLI is in charge of orchestration.
 
 ## Recommended Claude Code setup
 
@@ -148,7 +148,7 @@ Writes `$PWD/.claude/` with the full plugin tree plus `$PWD/CLAUDE.md` (managed 
 Installs:
 - `~/.claude/CLAUDE.md` (managed block — your existing content preserved)
 - `~/.claude/agents/*.md` (18 agents)
-- `~/.claude/skills/<name>/SKILL.md` (34 skills)
+- `~/.claude/skills/<name>/SKILL.md` (42 skills)
 - `~/.claude/commands/*.md` (slash commands)
 - Hook entries appended idempotently to `~/.claude/settings.json` (SessionStart + 2x PostToolUse)
 - `~/.claude/.claude-plugin/plugin.json` (manifest)
@@ -244,7 +244,7 @@ When a repo needs stricter rules than the global rolepod set, create `AGENTS.md`
 codex exec --skip-git-repo-check "echo OK"
 # stdout shows: hook: SessionStart Completed (rolepod hooks firing through native plugin loader)
 # Auto-loads the rolepod block from ~/.codex/AGENTS.md (Tier 1 always-on rules)
-# Plugin tree (18 agents, 34 skills, 3 hooks) resolved from build/rendered/codex/plugins/rolepod/
+# Plugin tree (18 agents, 42 skills, 3 hooks) resolved from build/rendered/codex/plugins/rolepod/
 # Verify config: grep -A2 'marketplaces.rolepod\|plugins."rolepod' ~/.codex/config.toml
 ```
 
@@ -273,7 +273,7 @@ Writes only `$PWD/GEMINI.md` (managed block). Gemini auto-loads `GEMINI.md` from
 
 Installs:
 - `~/.gemini/GEMINI.md` (managed block — your existing content preserved)
-- `~/.gemini/extensions/rolepod/` (full extension: 18 agents inlined, 34 skills, 6 commands, 3 hooks)
+- `~/.gemini/extensions/rolepod/` (full extension: 18 agents inlined, 42 skills, 6 commands, 3 hooks)
 
 ### Project-level GitNexus index (one-time per repo)
 

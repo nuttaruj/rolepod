@@ -1,6 +1,6 @@
 # Rolepod — Multi-CLI AI Workflow System
 
-Complete software-house team for AI coding CLIs: 18 specialist agents, 16 lazy-load rules, 34 bundled skills, 3 auto-trigger hooks, parallel-safe by path/concern. Native plugins for Claude Code, Codex CLI, and Gemini CLI.
+Complete software-house team for AI coding CLIs: 18 specialist agents, 7 rules (3 always-on + 4 path-scoped) + 8 lifecycle skills, 42 bundled skills, 3 auto-trigger hooks, parallel-safe by path/concern. Native plugins for Claude Code, Codex CLI, and Gemini CLI.
 
 **Universal:** zero project-specific refs, works in any repo from day one.
 
@@ -32,7 +32,7 @@ Pick one with `--target=claude` / `--target=codex` / `--target=gemini`, or all t
 
 | Mode | What gets installed | Command |
 |------|---------------------|---------|
-| **core** (default) | rolepod files only — agents, rules, hooks, 34 skills, commands, manifest, docs | `./install.sh` |
+| **core** (default) | rolepod files only — agents, rules, hooks, 42 skills, commands, manifest, docs | `./install.sh` |
 | **minimum** | core + `ui-ux-pro-max-skill` + GitNexus + MemPalace | `./install.sh --minimum` |
 | **full** | minimum + caveman + rtk + the other two CLIs + openai-codex Claude plugin | `./install.sh --full` |
 
@@ -89,14 +89,14 @@ After install, restart the CLI you targeted so hooks register.
 | Target | Static | Dry-run | Live hooks | Live dispatch | Status |
 |--------|--------|---------|-----------|--------------|--------|
 | Claude Code | ✓ | ✓ | ✓ | ✓ | **Production** |
-| Codex CLI | ✓ | ✓ | ✓ | ✓ (18 agents + 34 skills) | **Production** ([global registration](docs/cli-support.md#marketplace-registration-is-global)) |
-| Gemini CLI | ✓ | ✓ | ✓ | ✓ (34 skills) | **Production** |
+| Codex CLI | ✓ | ✓ | ✓ | ✓ (18 agents + 42 skills) | **Production** ([global registration](docs/cli-support.md#marketplace-registration-is-global)) |
+| Gemini CLI | ✓ | ✓ | ✓ | ✓ (42 skills) | **Production** |
 
 **Static** = `bash -n` + `json.tool` + `tomllib.load()` + snapshot diff (no leaked `{{INCLUDE: ...}}`). **Dry-run** = `install.sh` writes correct files to temp dir. **Live** = real CLI, hooks fire, subagents/skills dispatch.
 
 _Last verified: 2026-05-10, macOS Darwin 25.4.0, Codex 0.130.0, Gemini 0.40.1._
 
-**Codex install (0.130.0+):** installer renders to `build/rendered/codex/`, runs `codex plugin marketplace add <rendered-dir>`, writes `[plugins."rolepod@rolepod"] enabled = true` to `~/.codex/config.toml`. Native plugin loader resolves the tree (18 agents + 34 skills + 4 hooks); `SessionStart` fires on every session. `~/.codex/AGENTS.md` managed block loads independently.
+**Codex install (0.130.0+):** installer renders to `build/rendered/codex/`, runs `codex plugin marketplace add <rendered-dir>`, writes `[plugins."rolepod@rolepod"] enabled = true` to `~/.codex/config.toml`. Native plugin loader resolves the tree (18 agents + 42 skills + 4 hooks); `SessionStart` fires on every session. `~/.codex/AGENTS.md` managed block loads independently.
 
 File runtime issues at [issues/](https://github.com/nuttaruj/rolepod/issues).
 
@@ -272,23 +272,23 @@ Estimated **~50-60% cost reduction** vs "all Opus high" while keeping depth wher
 
 ## Skill dependencies
 
-34 skills out-of-the-box. Agents preload via `skills:` frontmatter. Optional plugins extend coverage.
+42 skills out-of-the-box. Agents preload via `skills:` frontmatter. Optional plugins extend coverage.
 
 | Plugin / source | Provides | Install |
 |----------------|----------|---------|
-| **Bundled** (`skills/`) | 34 skills covering engineering / frontend / ops / docs / content | Auto-installed by `./install.sh` |
+| **Bundled** (`skills/`) | 42 skills covering engineering / frontend / ops / docs / content | Auto-installed by `./install.sh` |
 | **[caveman](https://github.com/JuliusBrussee/caveman)** | `caveman`, `caveman-commit`, `caveman-review`, `compress` | Per repo |
 | **[GitNexus](https://github.com/abhigyanpatwari/GitNexus)** | `gitnexus-*` (7 skills) + MCP tools | `npm i -g gitnexus` + MCP setup |
 | **[ui-ux-pro-max-skill](https://github.com/nextlevelbuilder/ui-ux-pro-max-skill)** | `ui-ux-pro-max` (used by `ui-ux-designer`) | Per repo |
 | **[claude-seo](https://github.com/AgriciDaniel/claude-seo)** | 18 deep technical SEO sub-agents | Claude plugin marketplace |
 | **OpenAI Codex review plugin** | Adversarial review | Each CLI's marketplace |
 
-Minimum baseline: 18 agents + 16 rules + 3 hooks + 34 skills + Q1-Q4 / S1-S5 / T1-T6 / F1-F5 + 6-phase lifecycle.
+Minimum baseline: 18 agents + 7 rules (3 always-on + 4 path-scoped) + 3 hooks + 42 skills + Q1-Q4 / S1-S5 / T1-T6 / F1-F5 + 6-phase lifecycle.
 
 Full workflow → also install GitNexus + caveman + ui-ux-pro-max-skill.
 
 **Skills referenced by agent preloads:**
-- **34 bundled** → auto-installed by `./install.sh` (any mode/target)
+- **42 bundled** → auto-installed by `./install.sh` (any mode/target)
 - **1 external (`ui-ux-pro-max`)** → installed by `--minimum` / `--full`. Without it, `ui-ux-designer` skips that one preload.
 - Of the 34: most preloaded by ≥1 agent; `zoom-out`, `doubt-driven-development`, `source-driven-development` are **Lead-invoked** (not preloaded).
 

@@ -123,20 +123,20 @@ Lead = Opus → skip Advisor.
 
 | Trigger | File |
 |---------|------|
-| Pre-merge | `pre-merge-gate.md` |
-| Spawn reviewer | `reviewer-flow.md` |
-| Multi-agent / scope unclear | `triage-deep.md` |
-| Pick agent | `team-org.md` |
+| Pre-merge | skill `pre-merge-gate` |
+| Spawn reviewer | skill `reviewer-flow` |
+| Multi-agent / scope unclear | skill `triage-deep` |
+| Pick agent | skill `team-routing` |
 | Subagent protocol | `agent-protocol.md` |
 | Tools (search/GitNexus/MemPalace) | `code-intel.md` |
 | Workflow stage map | `code-intel-workflow.md` |
 | Claim a fact | `verify-first.md` |
-| Verify code change | `verification.md` |
+| Verify code change | skill `post-change-verify` |
 | Tone / CEO modes | `communication.md` |
 | Code edit pattern | `code-quality.md` |
-| New project / `/init` | `new-project.md` |
-| Context / `/clear` / `/rewind` | `session-management.md` |
-| Stuck (Sonnet/Haiku) | `advisor.md` |
+| New project / `/init` | skill `new-project-onboarding` |
+| Context / `/clear` / `/rewind` | skill `session-hygiene` |
+| Stuck (Sonnet/Haiku) | skill `advisor-escalation` |
 | Testing / CI lanes | `testing.md` |
 
 ## Key commands per-CLI
@@ -156,7 +156,7 @@ Lead = Opus → skip Advisor.
 
 > **Team workflow (Claude).** "use team" → all 6 phases. `/team-<phase>` → that phase only. Mandatory gates always apply. See [docs/agent-teams.md](docs/agent-teams.md).
 
-## Skill picker (34 rolepod-bundled)
+## Skill picker (42 rolepod-bundled)
 
 External plugin skills (caveman, gitnexus-*, ui-ux-pro-max, xlsx/docx/pptx/pdf, skill-creator, web-artifacts-builder, idea-refine, mcp-builder, git-workflow-and-versioning, canvas-design) ship via separate marketplaces.
 
