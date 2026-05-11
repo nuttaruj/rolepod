@@ -3,7 +3,7 @@ description: AI/ML Engineer specializing in LLM integration, RAG systems, prompt
 # tools: SendMessage requires agent-teams context (Claude accepts standalone, may silently ignore).
 model: sonnet
 effort: high
-memory: project
+memory: user
 maxTurns: 50
 skills:
   - claude-api
