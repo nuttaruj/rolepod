@@ -1,5 +1,5 @@
 {
-  "_comment": "Rolepod hook config. Schema: https://github.com/google-gemini/gemini-cli/blob/main/docs/hooks/index.md (verified 2026-05-10). Events used: SessionStart (context inject), BeforeTool (verify-first / context-awareness warn), AfterTool (verify-after reminder on Edit/Write/replace).",
+  "_comment": "Rolepod hook config. Schema: https://github.com/google-gemini/gemini-cli/blob/main/docs/hooks/index.md (verified 2026-05-10). Events used: SessionStart (context inject), BeforeTool (verify-first reminder), AfterTool (verify-after reminder on Edit/Write/replace).",
   "hooks": {
     "SessionStart": [
       {

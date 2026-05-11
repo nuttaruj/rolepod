@@ -174,17 +174,17 @@ Each agent has clear path/concern ownership, expertise list, escalation paths, s
 
 ### Hooks — `hooks/` (auto-fire)
 
-Ships 4 hook scripts: `project-context-loader.sh` (session start — git context), `context-awareness.sh` (before tool — context fill warning), `verify-reminder.sh` (after edit — verify reminder), `post-ship-detect.sh` (after bash — reindex suggestion after big merges).
+Ships 3 hook scripts: `project-context-loader.sh` (session start — git context), `verify-reminder.sh` (after edit — verify reminder), `post-ship-detect.sh` (after bash — reindex suggestion after big merges). Context-fill warnings are handled by each CLI's native compact/warning — rolepod doesn't duplicate that signal.
 
 Each CLI fires them on its own native event system:
 
 | Event class | Claude Code | Codex CLI | Gemini CLI |
 |---|---|---|---|
 | Session start | `SessionStart` | `SessionStart` | `SessionStart` |
-| Before tool run | `PreToolUse` | `PreToolUse` | `BeforeTool` |
+| Before tool run | — | — | `BeforeTool` (verify-first reminder only) |
 | After tool run | `PostToolUse` | `PostToolUse` | `AfterTool` |
 
-Claude and Codex share the same 4 scripts; Gemini ships 3 scripts adapted to its tool names and JSON envelope. External hooks integrate via separate plugins: MemPalace (Stop/SessionStart/PreCompact), GitNexus (PreToolUse/PostToolUse), `qa-pass-check.sh` (blocks merges without qa-tester gate).
+Claude and Codex share the same 3 scripts; Gemini ships 3 scripts adapted to its tool names and JSON envelope (SessionStart + BeforeTool verify-first + AfterTool verify-after). External hooks integrate via separate plugins: MemPalace (Stop/SessionStart/PreCompact), GitNexus (PreToolUse/PostToolUse), `qa-pass-check.sh` (blocks merges without qa-tester gate).
 
 ### Commands
 

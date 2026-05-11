@@ -10,10 +10,10 @@ Phase 2.3: rolepod ships for each supported CLI as a **native plugin / extension
 | Lazy-load rules (Read on trigger) | full | full | full |
 | Skills (`<plugin>/skills/<name>/SKILL.md`) | 28 native | 28 native | 28 native |
 | Subagents (parallel team) | full Task / SendMessage (18 agents) | 18 agents as Codex `agents/*.toml` (Lead-orchestrated) | 18 agents inlined in `GEMINI.md` (Lead-orchestrated) |
-| Hooks (auto reminders) | 4 hooks (`SessionStart` + `PreToolUse` + 2x `PostToolUse`) | 4 hooks (`SessionStart` + `PreToolUse` + 2x `PostToolUse`) | 3 hooks (`SessionStart` + `BeforeTool` + `AfterTool`) |
+| Hooks (auto reminders) | 3 hooks (`SessionStart` + 2x `PostToolUse`) | 3 hooks (`SessionStart` + 2x `PostToolUse`) | 3 hooks (`SessionStart` + `BeforeTool` + `AfterTool`) |
 | Slash commands | full (e.g. `/careful`, `/ship`, `/review`, `/test`, `/plan`, `/spec`) | n/a (commands not in current Codex schema) | full (6 commands as `commands/*.toml`) |
 | Plugin manifest | `.claude-plugin/plugin.json` (spec-conformant, 598B) | `.codex-plugin/plugin.json` (mirrors caveman schema, 1.6KB) | `gemini-extension.json` (extension schema, 551B) |
-| MemPalace / GitNexus integration | full hook coverage | full hook coverage (same 4 scripts as Claude) | full hook coverage (3 scripts) |
+| MemPalace / GitNexus integration | full hook coverage | full hook coverage (same 3 scripts as Claude) | full hook coverage (3 scripts) |
 | MCP server config | global + per-plugin | global (`codex mcp`) | global (`gemini mcp`) |
 
 ## Install destinations
@@ -50,7 +50,7 @@ adapters/
 │   └── plugins/rolepod/
 │       ├── .codex-plugin/plugin.json
 │       ├── agents/*.toml               (18 agents, Codex schema)
-│       ├── hooks/hooks.json + 4 *.sh
+│       ├── hooks/hooks.json + 3 *.sh
 │       └── skills → ../../../../core/skills (symlink, dereferenced at render time)
 └── gemini/
     ├── GEMINI.md.tmpl
@@ -67,10 +67,10 @@ adapters/
 | Event class | Claude Code | Codex CLI | Gemini CLI |
 |---|---|---|---|
 | Session start | `SessionStart` (matcher `startup\|resume`) | `SessionStart` (matcher `startup\|resume`) | `SessionStart` (matcher `*`) |
-| Before tool run | `PreToolUse` (matcher `Edit\|Write\|Bash`) | `PreToolUse` (matcher `Bash\|apply_patch`) | `BeforeTool` (matcher `write_file\|replace\|edit`) |
+| Before tool run | — (CLI handles native compact) | — (CLI handles native compact) | `BeforeTool` (matcher `write_file\|replace\|edit`, verify-first reminder) |
 | After tool run | `PostToolUse` (matcher `Edit\|Write` and `Bash`) | `PostToolUse` (matcher `apply_patch` and `Bash`) | `AfterTool` (matcher `write_file\|replace\|edit`) |
 
-Hook scripts are interchangeable across Claude and Codex (same 4 files); Gemini ships its own 3 scripts adapted to Gemini's tool names and JSON envelope.
+Hook scripts are interchangeable across Claude and Codex (same 3 files: SessionStart project-context-loader, PostToolUse verify-reminder, PostToolUse post-ship-detect); Gemini ships its own 3 scripts adapted to Gemini's tool names and JSON envelope.
 
 ## Verification status — what's confirmed locally
 
@@ -79,7 +79,7 @@ Hook scripts are interchangeable across Claude and Codex (same 4 files); Gemini 
 | Claude snapshot | `diff -q` 0-byte vs prior `~/.claude/CLAUDE.md` and 18 agent files |
 | Codex plugin layout | install registers `[marketplaces.rolepod]` + `[plugins."rolepod@rolepod"] enabled = true` in `~/.codex/config.toml` and writes `~/.codex/AGENTS.md` managed block; rendered tree at `build/rendered/codex/{.agents/plugins/marketplace.json,plugins/rolepod/{.codex-plugin,agents,hooks,skills}/}` is the source-of-truth Codex resolves at session start |
 | Gemini extension layout | dry-run install populates `~/.gemini/extensions/rolepod/{gemini-extension.json,commands,hooks,skills}/` plus `~/.gemini/GEMINI.md` |
-| All shell scripts | `bash -n` clean (install.sh, bootstrap.sh, render.sh, 4 codex hooks, 3 gemini hooks, 4 root hooks) |
+| All shell scripts | `bash -n` clean (install.sh, bootstrap.sh, render.sh, 3 codex hooks, 3 gemini hooks, 3 root hooks) |
 | All JSON manifests | `python3 -m json.tool` clean (plugin.json x2, hooks.json x2, gemini-extension.json) |
 | All TOML files | `tomllib.load()` clean (18 codex agents, 6 gemini commands) |
 | Render output | `build/render.sh --target=all` produces all 3 trees with no `{{INCLUDE: ...}}` leaks |
@@ -187,7 +187,7 @@ When a repo needs stricter rules than the global rolepod set, create `AGENTS.md`
 codex exec --skip-git-repo-check "echo OK"
 # stdout shows: hook: SessionStart Completed (rolepod hooks firing through native plugin loader)
 # Auto-loads the rolepod block from ~/.codex/AGENTS.md (Tier 1 always-on rules)
-# Plugin tree (18 agents, 28 skills, 4 hooks) resolved from build/rendered/codex/plugins/rolepod/
+# Plugin tree (18 agents, 28 skills, 3 hooks) resolved from build/rendered/codex/plugins/rolepod/
 # Verify config: grep -A2 'marketplaces.rolepod\|plugins."rolepod' ~/.codex/config.toml
 ```
 

@@ -1,5 +1,5 @@
 {
-  "_comment": "Rolepod Codex hooks. Mirror Claude adapter's 4 hooks. Scripts shipped at adapters/codex/hooks/*.sh — copies of root hooks/*.sh maintained by build/render.sh.",
+  "_comment": "Rolepod Codex hooks. Mirror Claude adapter's 3 hooks. Scripts shipped at adapters/codex/hooks/*.sh — copies of root hooks/*.sh maintained by build/render.sh.",
   "hooks": {
     "SessionStart": [
       {
@@ -9,18 +9,6 @@
             "type": "command",
             "command": "bash ${CODEX_PLUGIN_DIR}/hooks/project-context-loader.sh",
             "statusMessage": "Loading project context"
-          }
-        ]
-      }
-    ],
-    "PreToolUse": [
-      {
-        "matcher": "Bash|apply_patch",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash ${CODEX_PLUGIN_DIR}/hooks/context-awareness.sh",
-            "timeout": 5
           }
         ]
       }

@@ -765,7 +765,6 @@ step "Registering rolepod hooks in $SETTINGS_FILE"
 if [ "$DRY_RUN" -eq 1 ]; then
   dry "register hooks in $SETTINGS_FILE:"
   dry "  SessionStart  startup|resume → $HOOK_DIR/project-context-loader.sh (timeout 5)"
-  dry "  PreToolUse    Edit|Write|Bash → $HOOK_DIR/context-awareness.sh    (timeout 3)"
   dry "  PostToolUse   Edit|Write     → $HOOK_DIR/verify-reminder.sh       (timeout 3)"
   dry "  PostToolUse   Bash           → $HOOK_DIR/post-ship-detect.sh      (timeout 5)"
   REGISTER_OK=1
@@ -781,7 +780,6 @@ if command -v jq >/dev/null 2>&1; then
   TMP_FILE=$(mktemp)
   if jq \
     --arg ctx "$HOOK_DIR/project-context-loader.sh" \
-    --arg awa "$HOOK_DIR/context-awareness.sh" \
     --arg ver "$HOOK_DIR/verify-reminder.sh" \
     --arg shp "$HOOK_DIR/post-ship-detect.sh" '
     # Helper: ensure a matcher group exists with given matcher (returns updated array)
@@ -809,7 +807,6 @@ if command -v jq >/dev/null 2>&1; then
 
     .hooks = (.hooks // {})
     | .hooks.SessionStart = upsert_session((.hooks.SessionStart // []); $ctx; 5)
-    | .hooks.PreToolUse = upsert_cmd((.hooks.PreToolUse // []); "Edit|Write|Bash"; $awa; 3)
     | .hooks.PostToolUse = upsert_cmd((.hooks.PostToolUse // []); "Edit|Write"; $ver; 3)
     | .hooks.PostToolUse = upsert_cmd((.hooks.PostToolUse // []); "Bash"; $shp; 5)
   ' "$SETTINGS_FILE" > "$TMP_FILE" 2>/dev/null && [ -s "$TMP_FILE" ]; then
@@ -846,7 +843,6 @@ def upsert(event, matcher, cmd, timeout):
         inner.append({"type": "command", "command": cmd, "timeout": timeout})
 
 upsert("SessionStart", "startup|resume", os.path.join(hook_dir, "project-context-loader.sh"), 5)
-upsert("PreToolUse", "Edit|Write|Bash", os.path.join(hook_dir, "context-awareness.sh"), 3)
 upsert("PostToolUse", "Edit|Write", os.path.join(hook_dir, "verify-reminder.sh"), 3)
 upsert("PostToolUse", "Bash", os.path.join(hook_dir, "post-ship-detect.sh"), 5)
 
@@ -861,10 +857,10 @@ PY
 fi
 
 if [ "$REGISTER_OK" -eq 1 ]; then
-  ok "Hooks registered in settings.json (SessionStart + PreToolUse + 2x PostToolUse)"
+  ok "Hooks registered in settings.json (SessionStart + 2x PostToolUse)"
 else
   warn "Could not auto-register hooks — install jq or python3, or edit $SETTINGS_FILE manually"
-  warn "  Hooks shipped: project-context-loader.sh (SessionStart), context-awareness.sh (PreToolUse Edit|Write|Bash), verify-reminder.sh (PostToolUse Edit|Write), post-ship-detect.sh (PostToolUse Bash)"
+  warn "  Hooks shipped: project-context-loader.sh (SessionStart), verify-reminder.sh (PostToolUse Edit|Write), post-ship-detect.sh (PostToolUse Bash)"
 fi
 
 fi  # end DRY_RUN gate around settings.json registration
