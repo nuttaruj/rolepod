@@ -154,7 +154,9 @@ Lead = Opus → skip Advisor.
 | Pick from session list | `claude --resume` | `codex resume --list` | n/a |
 | Starter entry doc | `/init` (Anthropic native) | edit `~/.codex/AGENTS.md` directly | edit `~/.gemini/GEMINI.md` directly |
 | One-shot exec | `claude -p "..."` | `codex exec "..."` | `gemini -p "..."` |
-| Rolepod slash commands shipped | `/careful` | n/a (Codex schema lacks commands today) | `/careful /ship /review /test /plan /spec` |
+| Rolepod slash commands shipped | `/careful` + `/team-define /team-plan /team-build /team-verify /team-review /team-ship` | n/a (Codex schema lacks commands today) | `/careful /ship /review /test /plan /spec` |
+
+> **Team workflow (Claude).** Prefix any prompt with "use team" or run one of `/team-*` to trigger phase-based multi-agent orchestration. Default Subagent pattern is unchanged. See [docs/agent-teams.md](docs/agent-teams.md).
 
 ## Skill picker (when many skills look similar)
 
