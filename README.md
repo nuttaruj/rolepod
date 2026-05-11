@@ -1,6 +1,6 @@
 # Rolepod — Multi-CLI AI Workflow System
 
-Complete software-house team for AI coding CLIs: 18 specialist agents, 16 lazy-load workflow rules, 34 bundled skills, 4 auto-trigger hooks, parallel-safe by path/concern ownership. Ships native plugins for Claude Code, Codex CLI, and Gemini CLI.
+Complete software-house team for AI coding CLIs: 18 specialist agents, 16 lazy-load workflow rules, 34 bundled skills, 3 auto-trigger hooks, parallel-safe by path/concern ownership. Ships native plugins for Claude Code, Codex CLI, and Gemini CLI.
 
 **Universal:** zero project-specific refs, works in any repo from day one.
 
@@ -112,7 +112,7 @@ Plus: hooks (auto-fire), agents (sub-process), commands (slash /).
 
 ### Tier 1 — Always-on core (entry doc)
 
-Workflow gates that fire every task — Identity (any model = Lead), Verify-first, Q1-Q4 delegation, S1-S5 simplicity, T1-T5 testing, CI 3-phase, Hard stops.
+Workflow gates that fire every task — Identity (any model = Lead), Verify-first, Q1-Q4 delegation, S1-S5 simplicity, T1-T6 testing, F1-F6 failure-mode, CI 3-phase, Hard stops.
 
 Loaded from each CLI's native entry doc: `~/.claude/CLAUDE.md` (Claude Code), `~/.codex/AGENTS.md` (Codex CLI), `~/.gemini/GEMINI.md` (Gemini CLI).
 
@@ -249,7 +249,7 @@ Rolepod uses two memory systems that work independently:
 
 In rolepod's 18 agents: 17 use `memory: project` (codepaths / patterns / decisions stay scoped to the repo), 1 uses `memory: user` (`business-analyst` — pricing / competitor research is reusable across projects). The `memory:` frontmatter is a Claude Code primitive; on Codex / Gemini the same scoping is achieved via per-agent TOML / inlined roster fields rendered by the adapter.
 
-Without MemPalace installed: agents still have their native scoping. You just lose the cross-session KG decision recall and Stop-hook capture. The Q1-Q4 / S1-S5 / T1-T5 gates and reviewer flow are unaffected.
+Without MemPalace installed: agents still have their native scoping. You just lose the cross-session KG decision recall and Stop-hook capture. The Q1-Q4 / S1-S5 / T1-T6 / F1-F6 gates and reviewer flow are unaffected.
 
 ---
 
@@ -284,15 +284,15 @@ This repo bundles 34 skills out-of-the-box. Agents preload them via frontmatter 
 | **[claude-seo](https://github.com/AgriciDaniel/claude-seo)** (optional) | 18 deep technical SEO sub-agents | Claude Code plugin marketplace |
 | **OpenAI Codex review plugin** (optional) | Adversarial review skills | Each CLI's plugin marketplace where available |
 
-Minimum baseline (core install only): 18 agents + 16 rules + 4 hooks + 34 bundled skills + Q1-Q4 / S1-S5 / T1-T6 / F1-F6 gates + 6-phase lifecycle taxonomy (Define → Plan → Build → Verify → Review → Ship).
+Minimum baseline (core install only): 18 agents + 16 rules + 3 hooks + 34 bundled skills + Q1-Q4 / S1-S5 / T1-T6 / F1-F6 gates + 6-phase lifecycle taxonomy (Define → Plan → Build → Verify → Review → Ship).
 
 Full workflow → also install GitNexus + caveman + ui-ux-pro-max-skill.
 
 **Skills referenced by agent preloads.** The 18 agents reference skill names in their `skills:` frontmatter. The math:
 
-- **29 ship in `skills/`** in this repo → auto-installed by `./install.sh` (any mode, any target).
-- **1 (`ui-ux-pro-max`)** comes from the external `nextlevelbuilder/ui-ux-pro-max-skill` plugin → installed when you run `./install.sh --minimum` or `--full`. Without it, the `ui-ux-designer` agent simply won't preload that one skill.
-- The repo also ships `zoom-out` (meta-cognitive recovery), `doubt-driven-development` (adversarial review), and `source-driven-development` (proactive doc citation), which are **user-invoked / Lead-invoked**, not preloaded by any agent — so `skills/` total is 34 files.
+- **34 ship in `core/skills/`** in this repo → auto-installed by `./install.sh` (any mode, any target).
+- **1 external (`ui-ux-pro-max`)** comes from the `nextlevelbuilder/ui-ux-pro-max-skill` plugin → installed when you run `./install.sh --minimum` or `--full`. Without it, the `ui-ux-designer` agent simply won't preload that one skill.
+- Of the 34 bundled: most are preloaded by one or more agents; `zoom-out` (meta-cognitive recovery), `doubt-driven-development` (adversarial review), and `source-driven-development` (proactive doc citation) are **user-invoked / Lead-invoked**, not preloaded by any agent.
 
 Drop unwanted preloads by editing `agents/<name>.md`'s `skills:` list.
 
@@ -323,39 +323,52 @@ Auto-detects: git repo + recent commits, project type (next.config / pyproject.t
 
 ### Bug fix
 
-```
-User: fix the login bug where session expires too early
-Lead: [Q1-Q4 check] → delegate to qa-tester for reproducing test
-qa-tester: writes failing test → returns to Lead
-Lead: [verify-first] → reads auth files → finds root cause
-Lead: edits → verify-reminder hook fires → run test → green
-Lead: [S1-S5 + T1-T6 + F1-F6 gates] → all green
-Lead: [pre-merge-gate] → routing: hotfix → qa-tester only → APPROVED
-Lead: commit + push
-```
+The same 8-step flow on all 3 CLIs — only the dispatch primitive changes:
 
-Same flow runs in Codex / Gemini — Lead orchestrates one agent at a time on Codex (no parallel-fanout primitive yet) and via the inlined roster on Gemini, but the gates and routing are identical.
+| Step | What happens | Claude Code | Codex CLI | Gemini CLI |
+|------|--------------|-------------|-----------|------------|
+| 1 | User asks "fix the login bug where session expires too early" | `claude` prompt | `codex` prompt | `gemini` prompt |
+| 2 | Lead runs Q1-Q4 → delegate (qa-tester for repro test) | `Task` tool, `subagent_type: qa-tester` | Lead reads `~/.codex/plugins/rolepod/agents/qa-tester.toml` developer_instructions, role-switches | Lead reads the qa-tester block in inlined `GEMINI.md` roster, role-switches |
+| 3 | qa-tester writes failing reproducing test | separate subagent context | same Lead, qa-tester persona | same Lead, qa-tester persona |
+| 4 | Lead verify-first: Read auth files, find root cause | Read tool | Read tool | read_file tool |
+| 5 | Edit code | Edit tool → `verify-reminder.sh` PostToolUse hook fires | Edit tool → same `verify-reminder.sh` (Claude + Codex share scripts) | replace / edit tools → `after-tool.sh` fires |
+| 6 | Run test → green | Bash tool | Bash tool | run_shell_command tool |
+| 7 | S1-S5 + T1-T6 + F1-F6 gates run | inline by Lead | inline by Lead | inline by Lead |
+| 8 | Pre-merge: PR profile = hotfix → qa-tester only → APPROVED → commit + push | `gh pr create`, auto-merge after CI green | `gh pr create`, auto-merge after CI green | `gh pr create`, auto-merge after CI green |
+
+Gates and routing are identical across CLIs. The only structural difference: Claude Code spawns qa-tester in a separate context (parallel-capable); Codex and Gemini Lead-orchestrate by reading the agent persona inline (sequential).
 
 ### New feature (parallel team)
 
+Same agent waves, different orchestration model per CLI:
+
 ```
 User: add Google OAuth to login
-Lead: [interview] → SPEC.md
-Lead: spawns parallel:
-  - product-manager (user stories)
-  - system-architect (tech design)
-After architecture done, parallel engineering:
-  - backend-developer (auth endpoint)
-  - frontend-developer (OAuth flow UI)
-  - ui-ux-designer (button + flow polish)
-After engineering, parallel quality:
-  - qa-tester (integration tests)
-  - security-engineer (token storage audit)
-  - performance-engineer (auth perf check)
-Reviewer flow → ship → CI auto-merge after green
+
+Phase 1 — Lead interview → SPEC.md
+Phase 2 — Strategy + Architecture (parallel-eligible)
+  product-manager (user stories)
+  system-architect (tech design)
+Phase 3 — Engineering (parallel-eligible by path)
+  backend-developer (auth endpoint)
+  frontend-developer (OAuth flow UI)
+  ui-ux-designer (button + flow polish)
+Phase 4 — Quality (parallel-eligible by concern)
+  qa-tester (integration tests)
+  security-engineer (token storage audit)
+  performance-engineer (auth perf check)
+Phase 5 — Reviewer flow → ship → CI auto-merge after green
 ```
 
-On Claude Code the parallel fanout uses native `Task` / `SendMessage`. On Codex / Gemini, Lead serializes the same set via each CLI's native subagent dispatch (Codex `agents/*.toml`, Gemini inlined roster) — same agents, same hand-offs, sequential instead of fully parallel until those CLIs add fanout primitives.
+How each CLI executes the same plan:
+
+| CLI | Orchestration | Concrete dispatch | Parallel? |
+|-----|---------------|-------------------|-----------|
+| **Claude Code** | Native fanout via `Task` tool | `Agent({subagent_type: "system-architect", prompt: ...})` per agent, called in one assistant turn | YES — true parallel subagent contexts |
+| **Codex CLI** | Lead role-switches per agent | Lead reads `~/.codex/plugins/rolepod/agents/<name>.toml` `developer_instructions`, executes inline | Serial — one persona at a time per session |
+| **Gemini CLI** | Lead role-switches per agent | Lead reads the agent's block from inlined `GEMINI.md` roster (`~/.gemini/GEMINI.md`), executes inline | Serial — one persona at a time per session |
+
+For Codex / Gemini, the `parallel-contract-orchestration` skill still applies — Lead writes a cohesion contract first, then serially dispatches the same agents against it. The deliverable is identical; throughput differs because Codex/Gemini don't yet expose a native fanout primitive equivalent to Claude's `Task`. When those land, the adapters will switch to native dispatch with no change to the agent set.
 
 ---
 
@@ -395,9 +408,9 @@ Personal workflow system. Fork freely. Adapt to your team. Send feedback / patte
 
 ## See also
 
-- `docs/cli-support.md` — full per-CLI capability matrix + per-CLI primitives
-- `CHEATSHEET.md` — 1-page quick reference
-- `rules/INDEX.md` — full rule trigger map
-- `rules/team-org.md` — agent picker + parallel pattern
-- `rules/agent-protocol.md` — shared subagent rules
-- `.claude-plugin/plugin.json` / `.codex-plugin/plugin.json` / `gemini-extension.json` — per-CLI plugin manifests
+- [`docs/cli-support.md`](docs/cli-support.md) — full per-CLI capability matrix + per-CLI primitives
+- [`CHEATSHEET.md`](CHEATSHEET.md) — 1-page quick reference
+- [`core/rules/INDEX.md`](core/rules/INDEX.md) — full rule trigger map
+- [`core/rules/team-org.md`](core/rules/team-org.md) — agent picker + parallel pattern
+- [`core/rules/agent-protocol.md`](core/rules/agent-protocol.md) — shared subagent rules
+- [`.claude-plugin/plugin.json`](.claude-plugin/plugin.json) / [`adapters/codex/plugins/rolepod/.codex-plugin/plugin.json`](adapters/codex/plugins/rolepod/.codex-plugin/plugin.json) / [`adapters/gemini/gemini-extension.json`](adapters/gemini/gemini-extension.json) — per-CLI plugin manifests

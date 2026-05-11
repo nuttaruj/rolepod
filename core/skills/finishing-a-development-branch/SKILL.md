@@ -146,7 +146,7 @@ Echoing the branch name is the safety interlock; bare `y` is not enough.
 This skill is downstream of `pre-merge-gate.md`. Option 1 (Merge) requires:
 
 - Simplicity gate (S1-S5) passed
-- Test gate (T1-T5) passed
+- Test gate (T1-T6) passed
 - Reviewer cascade complete per `reviewer-flow.md`
 
 If any of those are not done, surface them in the menu's "Detected" block and refuse Option 1 until they're complete (or the user explicitly overrides per pre-merge-gate.md's override clause).

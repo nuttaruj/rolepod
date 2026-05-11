@@ -7,7 +7,7 @@
 set -euo pipefail
 
 MSG=$'rolepod verify-after: every change needs evidence — test output / curl / screenshot / log. '
-MSG+=$'No evidence = state risk explicitly. Pre-commit gate: S1-S5 simplicity + T1-T5 tests.'
+MSG+=$'No evidence = state risk explicitly. Pre-commit gate: S1-S5 simplicity + T1-T6 tests + F1-F6 failure-mode.'
 
 python3 -c 'import json,sys; print(json.dumps({"systemMessage": sys.stdin.read()}))' <<EOF
 $MSG

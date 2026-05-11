@@ -57,7 +57,7 @@ Per `reviewer-flow.md`:
 ## Mandatory rules
 
 - Per `testing.md` decision matrix: bug fix → reproducing test, feature → happy + edge + error, migration → forward + rollback, billing → race tests, etc.
-- Test gate T1-T5 must pass before commit (block if not)
+- Test gate T1-T6 must pass before commit (block if not)
 - Never disable failing test to ship — fix or quarantine with reason
 
 ## Escalation

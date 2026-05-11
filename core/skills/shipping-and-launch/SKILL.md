@@ -43,7 +43,7 @@ The five minutes you save by skipping the rollback plan cost five hours of incid
 - [ ] All required CI lanes green (Phase 1 + triggered Phase 2)
 - [ ] Reviewer passes: at least qa-tester; reviewer set per `reviewer-flow.md`
 - [ ] Simplicity gate (S1-S5) passed
-- [ ] Test gate (T1-T5) passed
+- [ ] Test gate (T1-T6) passed
 - [ ] No TODO/FIXME blocking the launch surface
 - [ ] No debug logs, no commented-out code, no `console.log` in hot paths
 
