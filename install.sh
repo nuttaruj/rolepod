@@ -744,7 +744,7 @@ if claude_selected; then
   # agent-memory/, backups/, teams/ — none are rolepod-managed.
   if [ "$FORCE" -eq 1 ] && [ -d "$TARGET" ]; then
     STAMP=$(date +%Y%m%d-%H%M%S)
-    BACKUP="$HOME/.claude.backup-$STAMP"
+    BACKUP="${TARGET}.backup-$STAMP"
     warn "Backing up rolepod-managed paths in $TARGET → $BACKUP"
     selective_backup "$TARGET" "$BACKUP" \
       CLAUDE.md \
@@ -1021,7 +1021,7 @@ if codex_selected; then
   # config.toml has its own .rolepod-bak.<stamp> backup later (see below).
   if [ "$FORCE" -eq 1 ] && [ -d "$CODEX_TARGET" ]; then
     STAMP=$(date +%Y%m%d-%H%M%S)
-    BACKUP="$HOME/.codex.backup-$STAMP"
+    BACKUP="${CODEX_TARGET}.backup-$STAMP"
     warn "Backing up rolepod-managed paths in $CODEX_TARGET → $BACKUP"
     selective_backup "$CODEX_TARGET" "$BACKUP" \
       AGENTS.md \
@@ -1222,7 +1222,7 @@ if gemini_selected; then
   # Excludes: history/, log/, tmp/ — Gemini runtime data, not rolepod-managed.
   if [ "$FORCE" -eq 1 ] && [ -d "$GEMINI_TARGET" ]; then
     STAMP=$(date +%Y%m%d-%H%M%S)
-    BACKUP="$HOME/.gemini.backup-$STAMP"
+    BACKUP="${GEMINI_TARGET}.backup-$STAMP"
     warn "Backing up rolepod-managed paths in $GEMINI_TARGET → $BACKUP"
     selective_backup "$GEMINI_TARGET" "$BACKUP" \
       GEMINI.md \

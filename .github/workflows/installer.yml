@@ -211,13 +211,21 @@ jobs:
 
           bash install.sh --target=claude --force >/dev/null
 
-          BACKUP=$(ls -d "$HOME"/.claude.backup-* 2>/dev/null | head -1)
+          # Backup MUST be sibling-of-target — NOT hardcoded to $HOME.
+          BACKUP=$(ls -d "${ROLEPOD_TARGET}".backup-* 2>/dev/null | head -1)
           if [ -z "$BACKUP" ]; then
-            echo "::error::no backup dir created by --force"
-            ls -la "$HOME/"
+            echo "::error::no backup dir created by --force at sibling of target ($ROLEPOD_TARGET.backup-*)"
+            ls -la "$(dirname "$ROLEPOD_TARGET")/"
             exit 1
           fi
-          echo "backup: $BACKUP"
+          # Assert no stray backup leaked into $HOME root when target != $HOME/.claude.
+          # Here target IS $HOME/.claude so sibling lands in $HOME — that's correct.
+          # The check: backup parent dir must equal target parent dir.
+          if [ "$(dirname "$BACKUP")" != "$(dirname "$ROLEPOD_TARGET")" ]; then
+            echo "::error::backup not a sibling of target — backup=$BACKUP target=$ROLEPOD_TARGET"
+            exit 1
+          fi
+          echo "backup: $BACKUP (sibling of $ROLEPOD_TARGET ✓)"
           # Excluded paths MUST NOT appear in backup.
           for excluded in projects plugins/cache file-history shell-snapshots agent-memory; do
             if [ -e "$BACKUP/$excluded" ]; then
