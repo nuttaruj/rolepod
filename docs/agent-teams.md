@@ -1,5 +1,7 @@
 # Agent Teams — Lead-Orchestrated Recipes
 
+> **Claude Code only.** Codex CLI and Gemini CLI Leads use the default Subagent + Task pattern. The `team-trigger` rule fragment and `/team-*` slash commands are deliberately NOT shipped into Codex `AGENTS.md` or Gemini `GEMINI.md` — those CLIs don't have a slash-command schema that maps cleanly, and surfacing Claude-specific instructions there would confuse the agent.
+
 Power-user pattern for multi-phase, multi-agent work. Opt-in. Default rolepod behavior (Subagent + Task spawn) is unchanged.
 
 Reference: https://code.claude.com/docs/en/agent-teams
