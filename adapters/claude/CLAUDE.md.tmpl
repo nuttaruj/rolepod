@@ -17,6 +17,26 @@ Conflict unsafe to resolve → ask user. Don't pick silently.
 
 {{INCLUDE: core/fragments/identity.md}}
 
+## Claude-specific Lead notes
+
+- **Native subagents** → 18 specialists ship as `~/.claude/agents/*.md`. Lead
+  dispatches via the **Task tool** (`Agent` in newer surfaces). Same Q1-Q4
+  delegation rules apply: >1 file / runs tests / design judgment / >3 tool
+  calls = delegate.
+- **Native hooks** → `.claude/settings.json` registers SessionStart,
+  PreToolUse, PostToolUse, Stop, PreCompact events (project context loader,
+  GitNexus enrichment, MemPalace capture). No wrapper script needed.
+- **Native skills** → `.claude/skills/<name>/SKILL.md` files auto-trigger from
+  their frontmatter `description:` when phrasing matches.
+- **Peer review via subagents + external CLIs** — for high-risk surface
+  (auth/billing/migrations), Lead delegates to the `qa-tester`,
+  `security-engineer`, `universal-reviewer` subagents (separate context).
+  Lead may also escalate to Codex (`codex exec`) or Gemini (`gemini -p`) for
+  cross-CLI adversarial review when those CLIs are installed.
+- **Cohesion contracts** → for multi-agent parallel work, use the
+  `parallel-contract-orchestration` skill to write a contract BEFORE spawning
+  parallel Task calls.
+
 ## Language & Tone
 
 User Thai → reply Thai. User English → reply English.
@@ -182,5 +202,32 @@ Read `~/.claude/rules/new-project.md` for fast-onboarding + `/init` + bootstrap 
 ## Rules index
 
 For full trigger → file mapping: `~/.claude/rules/INDEX.md`
+
+## Skill index (read on trigger)
+
+Lead reads the matching `SKILL.md` on demand. Trigger phrases live inside each
+skill's frontmatter `description:` field. The full table is auto-generated:
+
+{{INCLUDE: core/fragments/skill-index.md}}
+
+## Agent roster
+
+The 18 specialists below ship as `~/.claude/agents/*.md`. Lead dispatches via
+the Task tool on domain match (per each agent's `description` field).
+Delegation rules: Q1-Q4 — see gates section above.
+
+{{INCLUDE: core/fragments/agent-roster.md}}
+
+## Careful mode
+
+For high-risk work (auth/billing/migrations/payments/data deletion), Lead
+manually escalates per-turn:
+
+- Run all 5 simplicity questions (S1-S5) explicitly before every commit
+- Run all 6 test questions (T1-T6) explicitly
+- Delegate to `qa-tester` + `security-engineer` (or `universal-reviewer`) via
+  the Task tool for adversarial diff review before commit
+- Smaller increments: ≤3 files per commit, not ≤5
+- Mandatory peer review even for small diffs
 
 @RTK.md
