@@ -1,3 +1,8 @@
+---
+name: pre-merge-gate
+description: Run the pre-merge gate before pushing or merging. Use before `git push` to tracked branch, `gh pr merge`, "ship it", "before push", "before merge", "ship gate". Covers simplicity gate, test gate, reviewer routing, ask-user matrix, CI lanes.
+---
+
 # Pre-Merge Gate
 
 Read BEFORE: `gh pr merge`, `git push` to tracked branch, equivalent ship.
@@ -31,11 +36,11 @@ Internal only. Reviewer != tester. Tests pass BEFORE spawning reviewer.
 
 Skip if: typo / comment / docstring / pure rename / dead code removal.
 
-Full: `testing.md`.
+Full: rule `test/testing.md`.
 
 ## Step 1 — Pick reviewer
 
-Routing canonical: `reviewer-flow.md`.
+Routing canonical: skill `reviewer-flow`.
 
 Quick:
 - `<5 files` → qa-tester only
@@ -54,7 +59,7 @@ Quick:
 - Unresolved findings: explain with file:line if invalid/deferred
 - Lead interprets; reviewers don't decide
 
-Full cascade: `reviewer-flow.md`.
+Full cascade: skill `reviewer-flow`.
 
 ## Step 3 — Ask user before ship?
 
@@ -94,7 +99,7 @@ User OK'd commit + PR ("ship it", "let's go", "commit + PR")
 ALL Phase 1 + triggered Phase 2 green → merge auto.
 Required red → Lead fix + re-push (no ask).
 
-Lanes: `testing.md`.
+Lanes: rule `test/testing.md`.
 
 ### Re-ask only if
 

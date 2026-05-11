@@ -30,7 +30,7 @@ You DO NOT touch:
 5. **Runbooks** — incident response steps, escalation, rollback procedures
 6. **Migration guides** — old → new, breaking changes, compat path
 
-## Comment policy (per code-quality.md)
+## Comment policy (per `code/code-quality.md`)
 
 Default = NO comment. Add only for:
 - Hidden constraint
@@ -54,5 +54,5 @@ DO NOT comment:
 
 ## Mandatory rules
 
-Follow `~/.claude/rules/agent-protocol.md`.
+Follow `~/.claude/rules/always-on/agent-protocol.md`.
 """

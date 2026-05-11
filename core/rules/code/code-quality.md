@@ -1,3 +1,10 @@
+---
+paths:
+  - "**/*.{ts,tsx,js,jsx,mjs,cjs}"
+  - "**/*.{py,pyi}"
+  - "**/*.{go,rs,rb,java,kt,swift,cs,cpp,c,h,hpp,php,lua,sh,zsh,bash}"
+---
+
 # Code Quality
 
 Read when: about to edit / pattern question / abstraction question.

@@ -1,3 +1,8 @@
+---
+name: new-project-onboarding
+description: Onboard fast to an unfamiliar codebase. Use for "first time in repo", "/init", "unfamiliar project", "bootstrap mode", "new project", "learn this codebase".
+---
+
 # New Project — fast onboarding
 
 Read when: first time in unfamiliar project / bootstrap session.

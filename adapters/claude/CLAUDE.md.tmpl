@@ -1,66 +1,12 @@
 # Claude Code — Core Rules
 
-Universal core. Always loaded. Deep rules in `~/.claude/rules/` — Read on trigger.
+Universal core. Deep rules `~/.claude/rules/` (trigger→file: `INDEX.md`). Priority: user-this-turn > nested CLAUDE.md > project root > `~/.claude/rules/*.md` > this file > Anthropic default. Conflict unsafe → ask.
 
-## Rule priority (when conflict)
+## Identity + setup + workflow
 
-Most-specific wins:
-
-1. User explicit instruction this turn — overrides everything
-2. Project nested `CLAUDE.md`
-3. Project root `CLAUDE.md`
-4. `~/.claude/rules/*.md` (deep rules, on trigger)
-5. This file (universal core)
-6. Anthropic best practice (default if all silent)
-
-Conflict unsafe → ask user.
-
-{{INCLUDE: core/fragments/identity.md}}
-
-## Claude-specific Lead notes
-
-- **Subagents** → 18 specialists at `~/.claude/agents/*.md`. Lead dispatches via **Task tool**. Q1-Q4 applies.
-- **Hooks** → `.claude/settings.json` registers SessionStart, PreToolUse, PostToolUse, Stop, PreCompact (context loader, GitNexus enrich, MemPalace capture).
-- **Skills** → `.claude/skills/<name>/SKILL.md` auto-trigger from frontmatter `description:`.
-- **Peer review** → high-risk surface → delegate to `qa-tester` / `security-engineer` / `universal-reviewer` subagents. May escalate to Codex (`codex exec`) or Gemini (`gemini -p`) for cross-CLI adversarial review.
-- **Cohesion contracts** → multi-agent parallel work → use `parallel-contract-orchestration` skill BEFORE spawning Task calls.
-
-## Language & Tone
-
-User Thai → reply Thai. User English → reply English.
-Concise. Result + risk + next step. No filler / hedging.
-Commits / PRs / code: English, normal tone.
-Details: `~/.claude/rules/communication.md`
+Lead = whichever model reads this; Opus/Sonnet/Haiku same rules; self-do OR delegate to subagent. Subagents at `~/.claude/agents/*.md` (Task tool, Q1-Q4) · Hooks `.claude/settings.json` (SessionStart/PreToolUse/PostToolUse/Stop/PreCompact) · Skills `.claude/skills/<name>/SKILL.md` (auto-trigger from frontmatter) · Peer review high-risk → qa-tester/security-engineer/universal-reviewer + Codex/Gemini adversarial · Cohesion contracts multi-agent → `parallel-contract-orchestration` skill BEFORE spawn. Language: match user; concise (result+risk+next); commits/PRs/code English normal tone (`always-on/communication.md`). Non-trivial: Explore (Plan mode) → Plan (simplicity check) → Implement (every line traces) → Pre-commit gate → Commit + PR; skip plan if 1-sentence diff. Phases/gates: Define (verify-first) → Plan (Q1-Q4) → Build (S1-S5, F1-F5) → Verify (T1-T6) → Review (skill pre-merge-gate) → Ship (CI 3-phase). Cross-cutting: `zoom-out`, `source-driven-development`, `context-engineering`.
 
 {{INCLUDE: core/fragments/verify-first.md}}
-
-## Workflow — Explore → Plan → Implement → Commit
-
-Non-trivial work (multi-file / unfamiliar / unclear):
-
-1. **Explore** — read files. Plan mode (`Shift+Tab`).
-2. **Plan** — detailed plan. `Ctrl+G` to edit. Simplicity check: simplest? new abstraction? new dep? If "yes" without reason → revise.
-3. **Implement** — every line traces to user request.
-4. **Pre-commit gate** — pre-merge-gate.md + simplicity gate below.
-5. **Commit** — descriptive message + PR.
-
-Skip plan mode if diff describable in 1 sentence (typo / log line / rename / 1-line fix).
-
-## Lifecycle phases — Define → Plan → Build → Verify → Review → Ship
-
-The 4-step workflow maps onto 6 phases organizing skills, agents, gates:
-
-| Phase | What | Key skills | Key agents | Key gates |
-|-------|------|------------|------------|-----------|
-| **Define** | Intent → spec | `spec-driven-development` | product-manager, business-analyst, system-architect | verify-first |
-| **Plan** | Spec → tasks + interfaces | `planning-and-task-breakdown`, `parallel-contract-orchestration`, `api-and-interface-design` | system-architect, product-manager | Q1-Q4 |
-| **Build** | Tasks → code + docs | `frontend-ui-engineering`, `test-driven-development`, `claude-api`, `anti-spaghetti`, `interface-design`, `interaction-design`, `conversion-copywriting`, `doc-coauthoring` | backend/frontend/mobile/billing/ai-ml/data-scientist, ui-ux-designer, tech-writer | S1-S5, F1-F5 |
-| **Verify** | Code → evidence | `debugging-and-error-recovery`, `webapp-testing`, `browser-testing-with-devtools`, `performance-optimization`, `security-and-hardening` | qa-tester, security-engineer, performance-engineer | T1-T6, verify-first |
-| **Review** | Evidence → adversarial pass | `code-review-and-quality`, `code-simplification`, `web-design-guidelines`, `doubt-driven-development` | universal-reviewer, qa-tester | pre-merge-gate, hard stops |
-| **Ship** | Pass → deploy + announce | `shipping-and-launch`, `ci-cd-and-automation`, `deprecation-and-migration`, `internal-comms`, `user-facing-content`, `documentation-and-adrs`, `seo` | devops-sre, growth-marketer, customer-success | CI 3-phase |
-| **Cross-cutting** | Any phase | `zoom-out`, `source-driven-development`, `context-engineering` | (any) | (any) |
-
-Influence: addyosmani/agent-skills taxonomy.
 
 {{INCLUDE: core/fragments/team-trigger.md}}
 
@@ -71,22 +17,12 @@ Influence: addyosmani/agent-skills taxonomy.
 ## CI lanes — 3-phase + auto-merge
 
 ```
-Phase 1 — Fast critical (every PR, REQUIRED, <5 min)
-  Universal invariants (run regardless of touched):
-  lint / typecheck / smoke unit / auth guard / tenant isolation /
-  money core / migration apply / build
-
-Phase 2 — Path-triggered (REQUIRED when path matches)
-  Module's full test suite. Untouched module = lane skipped.
-
-Phase 3 — Nightly / manual (NOT required)
-  Broad / integration full / docker / chaos / security deep / E2E / perf
+Phase 1 (every PR, REQUIRED, <5min): lint/typecheck/smoke unit/auth guard/tenant isolation/money core/migration apply/build
+Phase 2 (path-triggered, REQUIRED when matched): module's full test suite
+Phase 3 (nightly/manual, NOT required): integration/docker/chaos/security/E2E/perf
 ```
 
-User OK + commit + PR → CI → ALL Phase 1 + triggered Phase 2 green → **merge auto, no re-ask**.
-Required red → Lead fix + re-push. Phase 3 issue → notify user.
-
-Details: `~/.claude/rules/testing.md`.
+User OK + PR → ALL Phase 1 + triggered Phase 2 green → merge auto, no re-ask. Required red → Lead fix + re-push. Details: `~/.claude/rules/test/testing.md`
 
 {{INCLUDE: core/fragments/gates-t1-t5.md}}
 
@@ -94,122 +30,20 @@ Details: `~/.claude/rules/testing.md`.
 
 {{INCLUDE: core/fragments/gates-f1-f6.md}}
 
-## Anti-bloat — keep it simple
+## Operational notes
 
-- **CLAUDE.md** = always-on judgment
-- **Skills** = on-demand workflow (`.claude/skills/`)
-- **Hooks** = deterministic enforcement (`.claude/settings.json`)
-
-Bloat → Claude ignores rules. Move infrequent → skills. Enforcement → hooks.
-
-## GitNexus + MemPalace
-
-**Auto-triggers (global):**
-- SessionStart → MemPalace recall + git context
-- PreToolUse Grep/Glob/Bash → GitNexus enrich
-- PostToolUse Bash → index freshness + reindex suggestion
-- Stop → MemPalace capture (self-improvement loop)
-- PreCompact → save state
-
-**Lead invokes manually:**
-- Before edit symbol → `gitnexus_impact({target, direction:"upstream"})`
-- Before commit → `gitnexus_detect_changes()`
-- Before re-deciding → `mempalace_kg_query`
-- After major decision → `mempalace_kg_add`
-- After ≥5 files merged → suggest `npx gitnexus analyze`
-
-Details: `~/.claude/rules/code-intel.md`
-
-## Session hygiene
-
-- `/clear` between unrelated tasks
-- `/rewind` (or `Esc Esc`) when wrong path
-- `/compact <focus>` when context near limit
-- Long task spans sessions → `/rename` + `claude --continue`
-
-Details: `~/.claude/rules/session-management.md`
-
-## Before ship — STOP
-
-- `gh pr merge` / `git push` tracked branch → `pre-merge-gate.md`
-- Spawning reviewer → `reviewer-flow.md`
-
-Reviewer roles:
-- **Codex** — correctness + security + adversarial (high-risk)
-- **Gemini** — breadth + cross-file + code smell (5-30 files / UI / refactor)
-- **qa-tester** — business logic + tests + universal floor + fallback
-
-## Hard stops — ask user
-
-- 3rd agent on same issue → scope wrong
-- 3rd PR on same surface in 1 session → strategy wrong
-- File system vs agent claim → trust file, re-verify
-- Destructive cmd (`rm -rf` / `git reset --hard` / force push / `git checkout --`) → announce + try reversible first
-- 50k+ tokens no convergence → summarize + ask
-- **Stuck (Sonnet/Haiku Lead)**: complex root cause / arch decision / 3rd same / 50k+ no progress → Advisor (Opus). Lead=Opus → skip. See `advisor.md`.
-
-Lead drift / scope cap / briefing / mid-creep / phase abort: `triage-deep.md`
-
-## Search
-
-| Need | Tool |
-|------|------|
-| Plain text / filename | `rg` |
-| Symbol / caller / impact / rename | GitNexus |
-| Past decision | MemPalace KG |
-| External docs / pricing / news | WebFetch / WebSearch |
-
-Details: `code-intel.md` + `code-intel-workflow.md`
-
-## Verification (post-change evidence)
-
-Every change → evidence (test / screenshot / curl / log). Can't verify → state why + risk.
-UI → drive browser yourself (Playwright / Chrome MCP). NEVER ask user for screenshot.
-Details: `~/.claude/rules/verification.md`
-
-## Code quality + anti-spaghetti
-
-- Match existing style — don't refactor adjacent unbroken code
-- One source of truth — search before adding helper/schema/type
-- Surgical — every changed line traces to request
-- Comments only for intent / non-obvious
-- No new deps without clear win
-- Same pattern in 3+ → centralize. No "just this one place" for auth/permissions/billing/credits/URL validation/redirects/SSRF/cookies/logging/retries/external API.
-
-Details: `~/.claude/rules/code-quality.md`
-
-## Goal-driven (Plan phase)
-
-Vague → verifiable goal: "add validation" → test for invalid input → pass. "Fix bug" → reproducing test → fix until pass. "Refactor X" → tests pass before AND after.
-Multi-step → `[step] → verify: [check]` per row.
-
-## New project
-
-`~/.claude/rules/new-project.md` for fast-onboarding + `/init` + bootstrap mode.
-
-## Rules index
-
-Full trigger → file: `~/.claude/rules/INDEX.md`
+**Anti-bloat:** CLAUDE.md always-on judgment / Skills on-demand / Hooks enforcement. **GitNexus + MemPalace** auto via hooks; manual: `gitnexus_impact` before edit · `gitnexus_detect_changes` before commit · `mempalace_kg_query` before re-deciding · `mempalace_kg_add` after major decision · `npx gitnexus analyze` after ≥5 files merged (`code/code-intel.md`). **Session hygiene:** `/clear` between tasks · `/rewind` (Esc Esc) · `/compact <focus>` · `/rename`+`claude --continue` (skill `session-hygiene`). **Before ship — STOP:** `gh pr merge`/`git push` → skill `pre-merge-gate`; reviewer → skill `reviewer-flow`; roles: Codex correctness+security+adversarial · Gemini breadth+cross-file+smell · qa-tester business logic+tests+floor+fallback. **Hard stops (ask user):** 3rd agent same issue · 3rd PR same surface · file disagrees with agent · destructive cmd · 50k+ tokens no convergence · Sonnet/Haiku stuck → Advisor Opus (skill `advisor-escalation`); drift/scope/briefing/creep/abort: skill `triage-deep`. **Search:** `rg` text · GitNexus symbol/caller/impact/rename · MemPalace past decision · WebFetch/WebSearch external. **Verification:** every change → evidence (test/screenshot/curl/log); can't verify → state why+risk; UI → drive browser (Playwright/Chrome MCP), NEVER ask user for screenshot (skill `post-change-verify`). **Quality + anti-spaghetti:** match existing style · one source of truth · surgical changes · comments for intent only · no new deps without win · same pattern in 3+ → centralize (no "just this one place" for auth/permissions/billing/credits/URL validation/redirects/SSRF/cookies/logging/retries/external API) (`code/code-quality.md`). **Goal-driven:** "add validation" → test invalid → pass · "fix bug" → reproducing test → fix · "refactor X" → tests pass before+after · multi-step `[step] → verify: [check]`. **New project:** skill `new-project-onboarding` + `/init`. **Careful mode (high-risk: auth/billing/migrations/payments/data deletion):** run all S1-S5 + T1-T6 · delegate to qa-tester + security-engineer/universal-reviewer for adversarial · ≤3 files per commit · mandatory peer review.
 
 ## Skill index (auto-generated)
 
-Trigger phrases live in each skill's frontmatter `description:`.
+Trigger phrases in each skill's frontmatter.
 
 {{INCLUDE: core/fragments/skill-index.md}}
 
 ## Agent roster
 
-18 specialists at `~/.claude/agents/*.md`. Lead dispatches via Task tool on domain match. Q1-Q4 applies.
+18 specialists. Dispatch via Task tool. Q1-Q4 applies.
 
 {{INCLUDE: core/fragments/agent-roster.md}}
-
-## Careful mode
-
-High-risk work (auth/billing/migrations/payments/data deletion):
-
-- Run all S1-S5 + T1-T6 explicitly before every commit
-- Delegate to `qa-tester` + `security-engineer` (or `universal-reviewer`) for adversarial diff review
-- ≤3 files per commit (not ≤5)
-- Mandatory peer review even for small diffs
 
 @RTK.md

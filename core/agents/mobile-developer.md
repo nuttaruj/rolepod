@@ -44,4 +44,4 @@ DO NOT touch: web frontend → `frontend-developer`. Backend → `backend-develo
 
 ## Mandatory rules
 
-Follow `~/.claude/rules/agent-protocol.md`.
+Follow `~/.claude/rules/always-on/agent-protocol.md`.

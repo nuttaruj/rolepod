@@ -45,7 +45,7 @@ Before engineers parallel-execute, you produce:
 
 - Decision must include trade-offs (not just chosen path)
 - Decision must include alternatives considered + why rejected
-- Save load-bearing decisions to MemPalace KG (`mempalace_kg_add`) per `code-intel-workflow.md`
+- Save load-bearing decisions to MemPalace KG (`mempalace_kg_add`) per `code/code-intel-workflow.md`
 - API contract must be backwards-compat unless explicit BREAKING approval
 
 ## Escalation
@@ -61,5 +61,5 @@ Before engineers parallel-execute, you produce:
 
 ## Mandatory rules
 
-Follow `~/.claude/rules/agent-protocol.md`.
+Follow `~/.claude/rules/always-on/agent-protocol.md`.
 """

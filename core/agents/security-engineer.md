@@ -55,4 +55,4 @@ Must NOT request review for own findings.
 
 ## Mandatory rules
 
-Follow `~/.claude/rules/agent-protocol.md`.
+Follow `~/.claude/rules/always-on/agent-protocol.md`.

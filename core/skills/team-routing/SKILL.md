@@ -1,3 +1,8 @@
+---
+name: team-routing
+description: Pick the right agent and route parallel multi-agent work. Use for "choose agent", "multi-agent parallel", "team layout", "agent picker", "unclear ownership", "cohesion contract".
+---
+
 # Team Organization — agent picker + parallel pattern
 
 Read when: choosing agent / planning multi-agent work / unclear ownership.
@@ -81,7 +86,7 @@ Engineers by path + `ui-ux-designer` + `tech-writer` in parallel. Path-scoping p
 `qa-tester` + `security-engineer` + `performance-engineer`. Independent reports.
 
 ### Phase 5 — Review
-`universal-reviewer` + Codex (high-risk) + Gemini CLI (breadth). Per `reviewer-flow.md`.
+`universal-reviewer` + Codex (high-risk) + Gemini CLI (breadth). Per skill `reviewer-flow`.
 
 ### Phase 6 — Operations
 `devops-sre`.
@@ -100,7 +105,7 @@ Engineer stuck →
   ├─ Specialist same domain
   ├─ Quality agent (qa/security/perf)
   ├─ Architect
-  ├─ Lead (Sonnet/Haiku) → Advisor (Opus) per advisor.md
+  ├─ Lead (Sonnet/Haiku) → Advisor (Opus) per skill advisor-escalation
   └─ Lead → ask user
 ```
 

@@ -35,7 +35,7 @@ You DO NOT touch:
 
 ## Spec template
 
-Per `triage-deep.md` interview pattern:
+Per skill `triage-deep` interview pattern:
 ```
 SPEC.md
 - Problem: [user pain + evidence]
@@ -61,5 +61,5 @@ SPEC.md
 
 ## Mandatory rules
 
-Follow `~/.claude/rules/agent-protocol.md`.
+Follow `~/.claude/rules/always-on/agent-protocol.md`.
 """

@@ -1,3 +1,8 @@
+---
+name: advisor-escalation
+description: Consult Claude Opus when Lead (Sonnet/Haiku) is stuck. Use for "stuck", "consult Opus", "advice mode", "/advice", third agent on same issue, 50k tokens no convergence, architecture decision needing 2nd opinion.
+---
+
 # Advisor Tool — Consult Opus
 
 Read when: Lead = Sonnet/Haiku + stuck.

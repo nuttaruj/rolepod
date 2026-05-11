@@ -104,12 +104,13 @@ File runtime issues at [issues/](https://github.com/nuttaruj/rolepod/issues).
 
 ## Architecture
 
-Three layers, different load mechanisms:
+Three layers, different load mechanisms (per [Anthropic memory doc](https://code.claude.com/docs/en/memory)):
 
 ```
-Tier 1 (always loaded)        entry doc core            ~225 lines
-Tier 2 (Read on trigger)      rules/                    16 files
-Tier 3 (auto-pull on match)   skills/                   34 ships + plugin skills
+Tier 1 (always loaded)        entry doc core            ≤200 lines
+Tier 2a (always-on rules)     rules/always-on/          3 files (eager)
+Tier 2b (path-scoped rules)   rules/{code,test}/        4 files (load on file match)
+Tier 3 (skill on trigger)     skills/                   42 skills + plugin skills
 ```
 
 Plus: hooks (auto-fire), agents (sub-process), commands (slash /).
@@ -120,29 +121,30 @@ Gates that fire every task — Identity, Verify-first, Q1-Q4 delegation, S1-S5 s
 
 Loaded from each CLI's entry doc: `~/.claude/CLAUDE.md` / `~/.codex/AGENTS.md` / `~/.gemini/GEMINI.md`.
 
-### Tier 2 — Lazy-load workflow rules (`rules/`)
+### Tier 2a — Always-on rules (`rules/always-on/`)
+
+Eager-loaded judgment shapers (no `paths:` frontmatter):
 
 | File | Trigger |
 |------|---------|
-| `INDEX.md` | meta navigation |
+| `communication.md` | tone / CEO modes — every reply |
+| `verify-first.md` | claiming a fact — every action |
 | `agent-protocol.md` | shared by all 18 agents |
-| `team-org.md` | agent picker + parallel pattern |
-| `triage-deep.md` | task >5 files / multi-agent |
-| `pre-merge-gate.md` | about to `gh pr merge` |
-| `reviewer-flow.md` | spawning reviewer |
-| `testing.md` | test plan / CI lanes |
-| `verify-first.md` | claiming a fact |
-| `verification.md` | post-change evidence |
-| `code-intel.md` / `code-intel-workflow.md` | tools |
-| `code-quality.md` | edit pattern / style |
-| `communication.md` | tone / CEO modes |
-| `session-management.md` | `/clear` / `/rewind` / `/compact` |
-| `advisor.md` | stuck (Sonnet/Haiku Lead) |
-| `new-project.md` | first-time / `/init` |
 
-### Tier 3 — Auto-pull skills
+### Tier 2b — Path-scoped rules (`rules/{code,test}/`)
 
-34 skills covering anti-spaghetti, TDD, debugging, frontend UI, security, performance, design, marketing, docs, planning, ops. (`zoom-out` meta-recovery + 27 domain skills authored fresh + `doubt-driven-development` / `source-driven-development` influenced by addyosmani/agent-skills.) Integrates with external skill plugins (caveman, gitnexus, ui-ux-pro-max-skill). Auto-discovery via `using-agent-skills` at SessionStart. See [Skill dependencies](#skill-dependencies).
+Lazy-load via `paths:` frontmatter — only enter context when Claude touches matching files:
+
+| File | Paths |
+|------|-------|
+| `code/code-quality.md` | source files (ts/py/go/rs/...) |
+| `code/code-intel.md` | source files |
+| `code/code-intel-workflow.md` | source files |
+| `test/testing.md` | test files (`*test*` / `*spec*` / `__tests__/`) |
+
+### Tier 3 — Skills (on trigger phrase)
+
+42 skills covering anti-spaghetti, TDD, debugging, frontend UI, security, performance, design, marketing, docs, planning, ops. (`zoom-out` meta-recovery + 27 domain skills authored fresh + `doubt-driven-development` / `source-driven-development` influenced by addyosmani/agent-skills.) Integrates with external skill plugins (caveman, gitnexus, ui-ux-pro-max-skill). Auto-discovery via `using-agent-skills` at SessionStart. See [Skill dependencies](#skill-dependencies).
 
 Each CLI exposes skills as a real directory tree. Every SKILL.md ends with "Common Rationalizations" — typical excuses + data-backed rebuttals.
 
@@ -264,7 +266,7 @@ Without MemPalace: agents keep native scoping. You lose cross-session KG recall 
 
 Estimated **~50-60% cost reduction** vs "all Opus high" while keeping depth where bugs are expensive (auth / billing / migrations / arch). Codex + Gemini adapters preserve same tiering.
 
-**Fallback escalation:** Lead spawns `qa-tester` / `universal-reviewer` with `model: opus` when external reviewers unavailable, when PR touches high-risk surface, or when user requests deep review. See `rules/reviewer-flow.md`.
+**Fallback escalation:** Lead spawns `qa-tester` / `universal-reviewer` with `model: opus` when external reviewers unavailable, when PR touches high-risk surface, or when user requests deep review. See skill `reviewer-flow`.
 
 ---
 
@@ -405,6 +407,6 @@ Personal workflow system. Fork freely. Send feedback via issues — especially C
 - [`docs/cli-support.md`](docs/cli-support.md) — per-CLI capability matrix + primitives
 - [`CHEATSHEET.md`](CHEATSHEET.md) — 1-page quick reference
 - [`core/rules/INDEX.md`](core/rules/INDEX.md) — full rule trigger map
-- [`core/rules/team-org.md`](core/rules/team-org.md) — agent picker + parallel pattern
-- [`core/rules/agent-protocol.md`](core/rules/agent-protocol.md) — shared subagent rules
+- [`core/skills/team-routing/SKILL.md`](core/skills/team-routing/SKILL.md) — agent picker + parallel pattern
+- [`core/rules/always-on/agent-protocol.md`](core/rules/always-on/agent-protocol.md) — shared subagent rules
 - [`.claude-plugin/plugin.json`](.claude-plugin/plugin.json) / [`adapters/codex/plugins/rolepod/.codex-plugin/plugin.json`](adapters/codex/plugins/rolepod/.codex-plugin/plugin.json) / [`adapters/gemini/gemini-extension.json`](adapters/gemini/gemini-extension.json) — per-CLI manifests

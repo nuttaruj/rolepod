@@ -35,4 +35,4 @@ DO NOT touch: visuals / Tailwind / CSS / a11y → `ui-ux-designer`. Backend APIs
 
 ## Mandatory rules
 
-Follow `~/.claude/rules/agent-protocol.md`.
+Follow `~/.claude/rules/always-on/agent-protocol.md`.

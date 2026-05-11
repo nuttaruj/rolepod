@@ -1,3 +1,8 @@
+---
+name: triage-deep
+description: Deep triage rules for multi-file tasks, multi-agent coordination, scope/drift control. Use for "multi-file task", "scope unclear", "drift suspected", "mid-implement creep", "phase abort", "lead drift", "rollback reflex".
+---
+
 # Triage — deep rules
 
 Read when: task >5 files / multi-agent / drift suspected / scope unclear.
@@ -10,7 +15,7 @@ Related skills: `planning-and-task-breakdown`, `incremental-implementation`, `sp
 
 ### Step 0 — Verify-first
 
-Per CLAUDE.md + `verify-first.md`. Pattern-match alone = forbidden. State assumption + risk if can't verify.
+Per CLAUDE.md + rule `always-on/verify-first.md`. Pattern-match alone = forbidden. State assumption + risk if can't verify.
 
 ### Step 1 — Rollback reflex
 
@@ -81,7 +86,7 @@ Before hard stop, in order:
 4. **Advisor (Opus)** — consult bigger model
 5. **Hard stop** — ask user (CLAUDE.md)
 
-Advisor only when Lead ≠ Opus. See `advisor.md`. Try 1-3 first.
+Advisor only when Lead ≠ Opus. See skill `advisor-escalation`. Try 1-3 first.
 
 ### When advisor fails
 
@@ -121,7 +126,7 @@ Test plan:
 - Existing tests to verify: <list>
 ```
 
-Vague ("add tests") → reject. Full guide: `testing.md`.
+Vague ("add tests") → reject. Full guide: rule `test/testing.md`.
 
 ## Goal-driven execution
 

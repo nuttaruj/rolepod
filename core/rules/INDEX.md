@@ -1,38 +1,48 @@
 # Rules Index
 
-Global rules. Read on-demand when trigger fires. NOT auto-loaded.
+Layout (Anthropic `.claude/rules/` spec):
 
-## Trigger → File map
+- `always-on/` — eager-loaded every session. Small, judgment-shaping.
+- `code/` — lazy via `paths:` frontmatter (source code globs).
+- `test/` — lazy via `paths:` frontmatter (test file globs).
 
-| Trigger | File |
-|---------|------|
-| About to `gh pr merge` / `git push` to tracked branch | `pre-merge-gate.md` |
-| About to spawn reviewer (Codex/Gemini/qa-tester) | `reviewer-flow.md` |
-| Task >5 files / multi-agent / non-trivial | `triage-deep.md` |
-| Need caller/impact/symbol/rename/blast-radius | `code-intel.md` |
-| Past decision / "what did we decide" | `code-intel.md` (MemPalace) |
-| CLI tool guidance (gh/aws/gcloud/etc.) | `code-intel.md` (CLI) |
-| When to fire each tool / reindex / lifecycle | `code-intel-workflow.md` |
-| About to claim a fact / make recommendation | `verify-first.md` |
-| About to verify a change (test/screenshot/log) | `verification.md` |
-| Planning task / when/how to test | `testing.md` |
-| Tone/language/output format | `communication.md` |
-| Big feature / interview user | `communication.md` (interview) |
-| About to edit code — pattern/abstraction question | `code-quality.md` |
-| First time in unfamiliar project / `/init` | `new-project.md` |
-| Session long / context near limit / wrong path | `session-management.md` |
-| Stuck (Sonnet/Haiku Lead) / `/advice` | `advisor.md` |
-| Choosing agent / multi-agent parallel | `team-org.md` |
-| Subagent protocol questions | `agent-protocol.md` |
+Skills (`core/skills/<name>/SKILL.md`) load on trigger phrase via `description:` — not rules.
 
-## How to read
+## Always-on rules (eager)
 
-Use Read with absolute path: `~/.claude/rules/<file>.md`.
-Apply to current task. Do NOT echo full content back.
+| File | What |
+|------|------|
+| `always-on/communication.md` | Tone, language, output volume, CEO oversight modes |
+| `always-on/verify-first.md` | Verify facts before claims |
+| `always-on/agent-protocol.md` | Mandatory protocol for every subagent |
+
+## Path-scoped rules (lazy, load when matching path touched)
+
+| File | Triggers on |
+|------|-------------|
+| `code/code-quality.md` | Source files (ts/tsx/js/py/go/rs/rb/java/kt/swift/cs/cpp/c/h/php/lua/sh) |
+| `code/code-intel.md` | Same source-file globs — GitNexus / MemPalace / rg / CLI tool reference |
+| `code/code-intel-workflow.md` | Same source-file globs — when to fire each code-intel tool |
+| `test/testing.md` | `test/**`, `tests/**`, `__tests__/**`, `*test*`, `*spec*`, `*.test.*`, `*.spec.*` |
+
+## Skill triggers (trigger-phrase load, not rules)
+
+| Trigger | Skill |
+|---------|-------|
+| Before push/merge, `gh pr merge`, `git push`, ship gate, "ship it" | `pre-merge-gate` |
+| Spawn reviewer, Codex/Gemini review, code review cascade, adversarial review | `reviewer-flow` |
+| Stuck, consult Opus, advice mode, `/advice`, third agent same issue | `advisor-escalation` |
+| `/clear`, `/compact`, `/rewind`, long session, context near limit, switching task | `session-hygiene` |
+| Multi-file task, scope unclear, drift suspected, mid-implement creep, phase abort | `triage-deep` |
+| First time in repo, `/init`, unfamiliar project, bootstrap mode | `new-project-onboarding` |
+| Choose agent, multi-agent parallel, team layout, agent picker, cohesion contract | `team-routing` |
+| Verify change, evidence after edit, verify build, verify task done | `post-change-verify` |
 
 ## Maintenance
 
 Add rule only after a real mistake would have been prevented. Prune monthly.
 
-- Rule must happen 100% of time → Hook (`.claude/settings.json`), NOT file
-- Rarely needed → Skill (`.claude/skills/<name>/SKILL.md`), NOT file
+- Must happen 100% of time → Hook (`.claude/settings.json`), NOT file
+- Rarely needed → Skill (`core/skills/<name>/SKILL.md`), NOT rule
+- Path-scoped → `paths:` frontmatter in `code/` or `test/`
+- Always-on → keep small; judgment, not deep procedure

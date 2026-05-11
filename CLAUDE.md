@@ -45,7 +45,7 @@ Lead receives user request, decides: self-do OR delegate to subagent (specialist
 User Thai → reply Thai. User English → reply English.
 Concise. State result + risk + next step. No filler / pleasantries / hedging.
 Commits / PRs / code: write English, normal tone (no caveman).
-Details: `~/.claude/rules/communication.md`
+Details: `~/.claude/rules/always-on/communication.md`
 
 ## Verify-first — NO guessing
 
@@ -60,7 +60,7 @@ Can't verify → state `Assuming: X. Risk if wrong: Y. Verify by: Z`. Don't proc
 
 **Uncertain about user intent?** Ask. Multiple interpretations → present them. Simpler approach → say so + push back.
 
-Details: `~/.claude/rules/verify-first.md`
+Details: `~/.claude/rules/always-on/verify-first.md`
 
 ## Workflow — Explore → Plan → Implement → Commit
 
@@ -312,7 +312,7 @@ Rule: bug class structurally impossible → do that. Runtime check = fallback on
 
 Source: DAPLab failure-pattern research on agentic-LLM software failures (Foster, Jegan et al.).
 
-Details: `~/.claude/rules/code-quality.md`
+Details: `~/.claude/rules/code/code-quality.md`
 
 ## CI lanes — 3-phase model + auto-merge
 
@@ -334,7 +334,7 @@ Phase 3 — Nightly / manual (NOT required for merge)
 User OK + commit + PR → wait CI → ALL Phase 1 + triggered Phase 2 green → **merge auto, no re-ask**.
 Required lane red → Lead fix + re-push (no ask). Phase 3 catches issue → notify user.
 
-Details: `~/.claude/rules/testing.md` (CI lanes section).
+Details: `~/.claude/rules/test/testing.md` (CI lanes section).
 
 ## Test gate — before every commit
 
@@ -372,7 +372,7 @@ Lead claiming "typo / pure rename" without diff inspection = honor-system bypass
 
 Internal execution: Lead via Bash (fast) or qa-tester subagent (complex). NEVER send to external AI.
 
-Details: `~/.claude/rules/testing.md`
+Details: `~/.claude/rules/test/testing.md`
 
 ## Before any code edit — answer 4 questions
 
@@ -385,7 +385,7 @@ Q4: Tool calls total?            >3     → delegate
 
 All 4 = "no" → self-do. Any 1 = "yes" → delegate via Agent tool.
 
-Pick agent by path/concern (`~/.claude/rules/team-org.md`):
+Pick agent by path/concern (skill `team-routing`):
 - Engineering by path: backend / frontend / mobile / billing / ai-ml / data
 - Quality by concern: qa-tester / security / performance / universal-reviewer
 - Strategy/design/docs/ops: product-manager / system-architect / ui-ux / tech-writer / devops-sre / growth-marketer / business-analyst / customer-success
@@ -458,7 +458,7 @@ Bloat = Claude ignores rules. Move infrequent guidance → skills. Move enforcem
 - After major decision → `mempalace_kg_add`
 - After ≥5 files merged → suggest user run `npx gitnexus analyze`
 
-Details: `~/.claude/rules/code-intel.md`
+Details: `~/.claude/rules/code/code-intel.md`
 
 ## Session hygiene
 
@@ -467,7 +467,7 @@ Details: `~/.claude/rules/code-intel.md`
 - `/compact <focus>` when context near limit
 - Long task spans sessions → `/rename` + `claude --continue`
 
-Details: `~/.claude/rules/session-management.md`
+Details: skill `session-hygiene`
 
 ## Before ship — STOP
 
@@ -505,7 +505,7 @@ Details: `code-intel.md` (tools) + `code-intel-workflow.md` (when in workflow)
 
 Every change → show evidence (test / screenshot / curl / log). Can't verify → state why + risk.
 UI change → drive browser yourself (Playwright / Chrome MCP) — NEVER ask user for screenshot.
-Details: `~/.claude/rules/verification.md`
+Details: skill `post-change-verify`
 
 ## Code quality + anti-spaghetti
 
@@ -516,7 +516,7 @@ Details: `~/.claude/rules/verification.md`
 - No new deps without clear win
 - Same pattern in 3+ places → centralize. No "just this one place" for auth/permissions/billing/credits/URL validation/redirects/SSRF/cookies/logging/retries/external API.
 
-Details: `~/.claude/rules/code-quality.md`
+Details: `~/.claude/rules/code/code-quality.md`
 
 ## Goal-driven (extends Workflow Plan phase)
 
@@ -525,7 +525,7 @@ Multi-step → state plan as `[step] → verify: [check]` per row.
 
 ## New project
 
-Read `~/.claude/rules/new-project.md` for fast-onboarding + `/init` + bootstrap mode.
+Use skill `new-project-onboarding` for fast-onboarding + `/init` + bootstrap mode.
 
 ## Rules index
 

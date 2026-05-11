@@ -50,4 +50,4 @@ Gemini CLI breadth review = Lead's job, not yours. You stay read-only.
 
 ## Mandatory rules
 
-Follow `~/.claude/rules/agent-protocol.md`.
+Follow `~/.claude/rules/always-on/agent-protocol.md`.

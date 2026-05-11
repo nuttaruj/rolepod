@@ -1,7 +1,19 @@
+---
+paths:
+  - "**/test/**"
+  - "**/tests/**"
+  - "**/__tests__/**"
+  - "**/*test*.{ts,tsx,js,jsx,py,go,rs}"
+  - "**/*_test.{go,rs}"
+  - "**/*spec*.{ts,tsx,js,jsx}"
+  - "**/*.test.{ts,tsx,js,jsx,py}"
+  - "**/*.spec.{ts,tsx,js,jsx,py}"
+---
+
 # Testing — internal execution
 
 **Scope:** when/what/how to test. Internal only (Lead + qa-tester — no external AI).
-**NOT this file:** post-change evidence → `verification.md`. Reviewer routing → `reviewer-flow.md`.
+**NOT this file:** post-change evidence → skill `post-change-verify`. Reviewer routing → skill `reviewer-flow`.
 
 Read when: planning task / before commit / question on what to test.
 

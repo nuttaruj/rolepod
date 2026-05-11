@@ -539,9 +539,10 @@ if [ "$UNINSTALL" -eq 1 ]; then
   fi
   RULE_NAMES=()
   if [ -d "$REPO_DIR/core/rules" ]; then
+    # Recurse subfolders (always-on/, code/, test/) — store paths relative to core/rules/
     while IFS= read -r f; do
-      RULE_NAMES+=("$(basename "$f")")
-    done < <(find "$REPO_DIR/core/rules" -maxdepth 1 -name '*.md' 2>/dev/null)
+      RULE_NAMES+=("${f#"$REPO_DIR/core/rules/"}")
+    done < <(find "$REPO_DIR/core/rules" -name '*.md' 2>/dev/null)
   fi
   HOOK_NAMES=()
   if [ -d "$REPO_DIR/hooks" ]; then
@@ -560,6 +561,10 @@ if [ "$UNINSTALL" -eq 1 ]; then
     step "Removing Claude rolepod files in $C_TARGET"
     for n in "${AGENT_NAMES[@]}";   do do_or_dry "rm -f $C_TARGET/agents/$n"   rm -f "$C_TARGET/agents/$n"; done
     for n in "${RULE_NAMES[@]}";    do do_or_dry "rm -f $C_TARGET/rules/$n"    rm -f "$C_TARGET/rules/$n"; done
+    # Prune empty rules subfolders left after file removal
+    if [ "$DRY_RUN" -eq 0 ]; then
+      find "$C_TARGET/rules" -mindepth 1 -type d -empty -delete 2>/dev/null || true
+    fi
     for n in "${COMMAND_NAMES[@]}"; do do_or_dry "rm -f $C_TARGET/commands/$n" rm -f "$C_TARGET/commands/$n"; done
     for n in "${HOOK_NAMES[@]}";    do do_or_dry "rm -f $C_TARGET/hooks/$n"    rm -f "$C_TARGET/hooks/$n"; done
     for n in "${SKILL_NAMES[@]}";   do do_or_dry "rm -rf $C_TARGET/skills/$n"  rm -rf "$C_TARGET/skills/$n"; done
@@ -797,15 +802,28 @@ if claude_selected; then
     cp $CP_FLAG "$REPO_DIR/CHEATSHEET.md" "$TARGET/" 2>/dev/null || true
   fi
 
-  step "Copying agents (18 from rendered/) + rules (16) + commands"
+  step "Copying agents (18 from rendered/) + rules (recursive, subfolders preserved) + commands"
   if [ "$DRY_RUN" -eq 1 ]; then
     dry "cp $CP_FLAG $REPO_DIR/build/rendered/claude/agents/*.md → $TARGET/agents/"
-    dry "cp $CP_FLAG $REPO_DIR/core/rules/*.md                   → $TARGET/rules/"
-    dry "cp $CP_FLAG $REPO_DIR/commands/*.md                     → $TARGET/commands/"
+    dry "clean stale legacy flat-path rolepod rules from $TARGET/rules/"
+    dry "cp -R $REPO_DIR/core/rules/. → $TARGET/rules/  (preserves always-on/ code/ test/ subdirs)"
+    dry "cp $CP_FLAG $REPO_DIR/commands/*.md → $TARGET/commands/"
   else
-    cp $CP_FLAG "$REPO_DIR"/build/rendered/claude/agents/*.md "$TARGET/agents/"   2>/dev/null || true
-    cp $CP_FLAG "$REPO_DIR"/core/rules/*.md                   "$TARGET/rules/"    2>/dev/null || true
-    cp $CP_FLAG "$REPO_DIR"/commands/*.md                     "$TARGET/commands/" 2>/dev/null || true
+    cp $CP_FLAG "$REPO_DIR"/build/rendered/claude/agents/*.md "$TARGET/agents/" 2>/dev/null || true
+    # Clean stale legacy flat-path rolepod rules (pre-subfolder layout).
+    # Known basenames that USED to live at rules/ root before restructure.
+    # Files now live in always-on/, code/, test/ subdirs OR converted to skills.
+    for legacy in pre-merge-gate.md reviewer-flow.md advisor.md \
+                  session-management.md triage-deep.md new-project.md \
+                  team-org.md verification.md \
+                  communication.md verify-first.md agent-protocol.md \
+                  code-quality.md code-intel.md code-intel-workflow.md \
+                  testing.md; do
+      rm -f "$TARGET/rules/$legacy"
+    done
+    # Recursive copy: preserves always-on/, code/, test/ subfolders
+    cp -R "$REPO_DIR"/core/rules/. "$TARGET/rules/" 2>/dev/null || true
+    cp $CP_FLAG "$REPO_DIR"/commands/*.md "$TARGET/commands/" 2>/dev/null || true
   fi
 
   step "Copying hooks (4) and marking executable"
@@ -816,7 +834,9 @@ if claude_selected; then
     chmod +x "$TARGET"/hooks/*.sh 2>/dev/null || true
   fi
 
-  step "Copying bundled skills (28)"
+  # Count skills locally — SKILL_NAMES is only populated in uninstall flow.
+  _skill_count=$(find "$REPO_DIR/core/skills" -maxdepth 1 -mindepth 1 -type d 2>/dev/null | wc -l | tr -d ' ')
+  step "Copying bundled skills ($_skill_count)"
   for skill_dir in "$REPO_DIR"/core/skills/*/; do
     name=$(basename "$skill_dir")
     if [ "$FORCE" -eq 1 ] || [ ! -e "$TARGET/skills/$name" ]; then
@@ -966,7 +986,7 @@ if [ "$DRY_RUN" -eq 0 ]; then
   for required in \
     CLAUDE.md CHEATSHEET.md \
     agents/qa-tester.md agents/system-architect.md \
-    rules/INDEX.md rules/team-org.md \
+    rules/INDEX.md rules/always-on/agent-protocol.md rules/always-on/verify-first.md rules/code/code-quality.md rules/test/testing.md \
     hooks/verify-reminder.sh hooks/project-context-loader.sh hooks/gate-reminder.sh hooks/precommit-gate.sh \
     skills/zoom-out/SKILL.md skills/anti-spaghetti/SKILL.md commands/careful.md \
     .claude-plugin/plugin.json

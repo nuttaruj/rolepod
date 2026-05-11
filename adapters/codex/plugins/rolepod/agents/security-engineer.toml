@@ -65,5 +65,5 @@ Final judge for security findings. Must NOT request review for your own findings
 
 ## Mandatory rules
 
-Follow `~/.claude/rules/agent-protocol.md`.
+Follow `~/.claude/rules/always-on/agent-protocol.md`.
 """

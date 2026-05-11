@@ -43,4 +43,4 @@ DO NOT touch: internal eng docs â†’ `tech-writer`. Marketing landing/blog/SEO â†
 
 ## Mandatory rules
 
-Follow `~/.claude/rules/agent-protocol.md`.
+Follow `~/.claude/rules/always-on/agent-protocol.md`.

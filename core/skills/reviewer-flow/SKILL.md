@@ -1,3 +1,8 @@
+---
+name: reviewer-flow
+description: Route code review across Codex, Gemini, and qa-tester. Use when spawning a reviewer, "code review cascade", "adversarial review", "Codex review", "Gemini review", high-risk surface review.
+---
+
 # Reviewer Flow — Codex + Gemini + qa-tester
 
 Read BEFORE spawning reviewer. Tier values read live from `~/.claude/agents/<name>.md`.

@@ -40,4 +40,4 @@ DO NOT comment WHAT code does, current task/fix/ticket reference, "Used by X" / 
 
 ## Mandatory rules
 
-Follow `~/.claude/rules/agent-protocol.md`.
+Follow `~/.claude/rules/always-on/agent-protocol.md`.

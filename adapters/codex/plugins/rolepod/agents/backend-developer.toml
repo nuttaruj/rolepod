@@ -47,5 +47,5 @@ You DO NOT touch (delegate via hand-off):
 
 ## Mandatory rules
 
-Follow `~/.claude/rules/agent-protocol.md` (verify-first, completion verification, hand-off, change manifest, peer review).
+Follow `~/.claude/rules/always-on/agent-protocol.md` (verify-first, completion verification, hand-off, change manifest, peer review).
 """

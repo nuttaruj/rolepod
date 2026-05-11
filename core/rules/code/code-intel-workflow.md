@@ -1,7 +1,14 @@
+---
+paths:
+  - "**/*.{ts,tsx,js,jsx,mjs,cjs}"
+  - "**/*.{py,pyi}"
+  - "**/*.{go,rs,rb,java,kt,swift,cs,cpp,c,h,hpp,php,lua,sh,zsh,bash}"
+---
+
 # Code Intelligence — workflow integration
 
 **Scope:** when to fire each tool. Reindex strategy. MemPalace lifecycle.
-**NOT this file:** tools reference → `code-intel.md`.
+**NOT this file:** tools reference → rule `code/code-intel.md`.
 
 Read when: planning task with code intel / reindex question / lifecycle question.
 

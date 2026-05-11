@@ -37,7 +37,7 @@ You DO NOT touch:
 
 ## Universal floor + fallback role
 
-Per `reviewer-flow.md`:
+Per skill `reviewer-flow`:
 - **Floor**: every PR gate runs qa-tester (minimum)
 - **Fallback**: when Codex / Gemini fail (rate-limit / hang / error / Skill block) → qa-tester takes over their scope
 - **Adversarial fallback**: when Codex unavailable + high-risk surface → read `~/.claude/plugins/marketplaces/openai-codex/plugins/codex/prompts/adversarial-review.md` and apply
@@ -53,7 +53,7 @@ Per `reviewer-flow.md`:
 
 ## Mandatory rules
 
-- Per `testing.md` decision matrix: bug fix → reproducing test, feature → happy + edge + error, migration → forward + rollback, billing → race tests, etc.
+- Per `test/testing.md` decision matrix: bug fix → reproducing test, feature → happy + edge + error, migration → forward + rollback, billing → race tests, etc.
 - Test gate T1-T5 must pass before commit (block if not)
 - Never disable failing test to ship — fix or quarantine with reason
 
@@ -74,5 +74,5 @@ You are final judge for **correctness gate**. Must NOT request review for your o
 
 ## Mandatory rules
 
-Follow `~/.claude/rules/agent-protocol.md`.
+Follow `~/.claude/rules/always-on/agent-protocol.md`.
 """

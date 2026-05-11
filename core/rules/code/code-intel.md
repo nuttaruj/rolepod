@@ -1,13 +1,20 @@
+---
+paths:
+  - "**/*.{ts,tsx,js,jsx,mjs,cjs}"
+  - "**/*.{py,pyi}"
+  - "**/*.{go,rs,rb,java,kt,swift,cs,cpp,c,h,hpp,php,lua,sh,zsh,bash}"
+---
+
 # Code Intelligence — tools reference
 
 **Scope:** which tool for which lookup. CLI list. Decision tree.
-**NOT this file:** when in workflow → `code-intel-workflow.md`.
+**NOT this file:** when in workflow → rule `code/code-intel-workflow.md`.
 
 Read when: need symbol / caller / impact / rename / past decision / external service info.
 
 ## Verify-first
 
-Never claim code/external fact without verifying. Full guide: `verify-first.md`.
+Never claim code/external fact without verifying. Full guide: rule `always-on/verify-first.md`.
 
 ## Tier overview
 
@@ -22,7 +29,7 @@ Never claim code/external fact without verifying. Full guide: `verify-first.md`.
 
 ## GitNexus
 
-Check `gitnexus://repo/<name>/context` for freshness. Stale → reindex (`code-intel-workflow.md`).
+Check `gitnexus://repo/<name>/context` for freshness. Stale → reindex (rule `code/code-intel-workflow.md`).
 
 ### Core tools
 

@@ -54,4 +54,4 @@ You own content + strategy; delegate technical SEO to these.
 
 ## Mandatory rules
 
-Follow `~/.claude/rules/agent-protocol.md`.
+Follow `~/.claude/rules/always-on/agent-protocol.md`.

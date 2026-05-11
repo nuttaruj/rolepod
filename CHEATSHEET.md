@@ -7,9 +7,10 @@
 | Component | Claude Code | Codex CLI | Gemini CLI |
 |-----------|-------------|-----------|------------|
 | Entry doc | `~/.claude/CLAUDE.md` | `~/.codex/AGENTS.md` | `~/.gemini/GEMINI.md` |
-| Lazy-load rules | `~/.claude/rules/` | (inlined in AGENTS.md) | (inlined in GEMINI.md) |
+| Always-on rules | `~/.claude/rules/always-on/` | (inlined in AGENTS.md) | (inlined in GEMINI.md) |
+| Path-scoped rules | `~/.claude/rules/{code,test}/` (paths: glob) | (inlined) | (inlined) |
 | Agents (18) | `~/.claude/agents/*.md` | `~/.codex/plugins/rolepod/agents/*.toml` | inlined in `GEMINI.md` |
-| Skills (34) | `~/.claude/skills/<name>/SKILL.md` | `~/.codex/plugins/rolepod/skills/<name>/SKILL.md` | `~/.gemini/extensions/rolepod/skills/<name>/SKILL.md` |
+| Skills (42) | `~/.claude/skills/<name>/SKILL.md` | `~/.codex/plugins/rolepod/skills/<name>/SKILL.md` | `~/.gemini/extensions/rolepod/skills/<name>/SKILL.md` |
 | Hooks (3) | `~/.claude/settings.json` | `~/.codex/plugins/rolepod/hooks/hooks.json` | `~/.gemini/extensions/rolepod/hooks/hooks.json` |
 | Slash commands | `~/.claude/commands/*.md` | n/a | `~/.gemini/extensions/rolepod/commands/*.toml` |
 
@@ -239,7 +240,7 @@ Session N+1 → SessionStart → MemPalace recall → smarter
 1. User explicit instruction this turn
 2. Project nested entry doc
 3. Project root entry doc
-4. `core/rules/*.md` (lazy-load)
+4. `core/rules/always-on/*.md` (eager) + `core/rules/{code,test}/*.md` (paths: lazy)
 5. Global entry doc
 6. CLI vendor best practice
 

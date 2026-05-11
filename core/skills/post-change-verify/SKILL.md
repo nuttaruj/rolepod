@@ -1,7 +1,12 @@
+---
+name: post-change-verify
+description: Prove a code change works with evidence (test pass, screenshot, curl, log). Use for "verify change", "evidence after edit", "verify build", "verify task done", "show test pass output", before reporting completion.
+---
+
 # Verification — proving your change works
 
 **Scope:** verify YOUR code change (post-edit evidence).
-**NOT this file:** confirming facts before claiming → `verify-first.md`. Test planning → `testing.md`.
+**NOT this file:** confirming facts before claiming → rule `always-on/verify-first.md`. Test planning → rule `test/testing.md`.
 
 UI verification: skills `webapp-testing`, `browser-testing-with-devtools`.
 

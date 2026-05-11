@@ -42,7 +42,7 @@ You configure + maintain:
 - Phase 2 lanes (path-triggered): per project requirements
 - Phase 3 lanes (nightly): full suite, integration, chaos, perf
 
-Per `testing.md` for full CI lane spec.
+Per `test/testing.md` for full CI lane spec.
 
 ## Escalation
 
@@ -56,5 +56,5 @@ Per `testing.md` for full CI lane spec.
 
 ## Mandatory rules
 
-Follow `~/.claude/rules/agent-protocol.md`.
+Follow `~/.claude/rules/always-on/agent-protocol.md`.
 """

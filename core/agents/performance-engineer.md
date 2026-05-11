@@ -82,4 +82,4 @@ Never COMPLETED without before/after metric.
 
 ## Mandatory rules
 
-Follow `~/.claude/rules/agent-protocol.md`.
+Follow `~/.claude/rules/always-on/agent-protocol.md`.
