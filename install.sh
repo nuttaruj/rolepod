@@ -343,6 +343,13 @@ update_managed_block() {
       in_block { if ($0 == end) in_block = 0; next }
       { print }
     ' "$target_file" > "$tmp"
+    # Migration: if surviving (non-block) content contains legacy rolepod
+    # H1, it's stale content from a pre-markers install — wipe it.
+    if grep -qE '^# (Claude Code|Codex|Gemini) — Core Rules' "$tmp"; then
+      warn "Detected legacy rolepod content outside managed block in $target_file. Wiping legacy — backup at ${target_file}.legacy-$(date +%Y%m%d-%H%M%S)"
+      cp "$target_file" "${target_file}.legacy-$(date +%Y%m%d-%H%M%S)"
+      : > "$tmp"
+    fi
     # Trim trailing blank lines from the surviving user content
     awk '
       { lines[NR] = $0 }
@@ -354,14 +361,30 @@ update_managed_block() {
     ' "$tmp" > "$target_file"
     rm -f "$tmp"
     {
-      printf '\n%s\n' "$ROLEPOD_BLOCK_START"
+      [ -s "$target_file" ] && printf '\n'
+      printf '%s\n' "$ROLEPOD_BLOCK_START"
       cat "$source_file"
       printf '\n%s\n' "$ROLEPOD_BLOCK_END"
     } >> "$target_file"
     return 0
   fi
 
-  # No markers → append block after existing user content
+  # No markers → check for legacy rolepod content (unmigrated install from
+  # before managed-block markers existed). Signature: H1 "Claude Code — Core
+  # Rules" / "Codex — Core Rules" / "Gemini — Core Rules" appears in file.
+  # If matched, wipe legacy content + write fresh marker-wrapped block.
+  # Otherwise treat as user's own content → append marker-wrapped block after.
+  if grep -qE '^# (Claude Code|Codex|Gemini) — Core Rules' "$target_file"; then
+    warn "Detected legacy rolepod content in $target_file (no markers). Migrating to managed block — backup at ${target_file}.legacy-$(date +%Y%m%d-%H%M%S)"
+    cp "$target_file" "${target_file}.legacy-$(date +%Y%m%d-%H%M%S)"
+    {
+      printf '%s\n' "$ROLEPOD_BLOCK_START"
+      cat "$source_file"
+      printf '\n%s\n' "$ROLEPOD_BLOCK_END"
+    } > "$target_file"
+    return 0
+  fi
+
   {
     printf '\n%s\n' "$ROLEPOD_BLOCK_START"
     cat "$source_file"
