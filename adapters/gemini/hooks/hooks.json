@@ -3,7 +3,8 @@
   "hooks": {
     "SessionStart": [
       {
-        "matcher": "*",
+        "_comment": "Lifecycle matcher = exact string per Gemini hooks spec. Pipe-separated covers all session start reasons.",
+        "matcher": "startup|resume|clear",
         "hooks": [
           {
             "name": "rolepod-context-inject",

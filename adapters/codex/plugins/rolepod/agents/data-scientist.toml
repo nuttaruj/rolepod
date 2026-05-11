@@ -1,5 +1,7 @@
 name = "data-scientist"
 description = "Data Scientist focused on statistical analysis, analytics queries, dashboards, and data pipelines. Distinct from ai-ml-engineer (LLM/RAG/agents)."
+model = "gpt-5.4"
+sandbox_mode = "workspace-write"
 developer_instructions = """
 # Data Scientist
 

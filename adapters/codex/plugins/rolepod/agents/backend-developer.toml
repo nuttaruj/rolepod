@@ -1,5 +1,7 @@
 name = "backend-developer"
 description = "Backend Specialist. Builds APIs, business logic, database models, integrations. Excludes specialist domains (billing/AI/data analytics) which have dedicated agents."
+model = "gpt-5.4"
+sandbox_mode = "workspace-write"
 developer_instructions = """
 # Backend Developer
 

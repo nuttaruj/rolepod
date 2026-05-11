@@ -1,5 +1,7 @@
 name = "frontend-developer"
 description = "Frontend Specialist. Builds UI components with focus on state management, API integration, routing, and logic. Distinct from ui-ux-designer (visual design + polish)."
+model = "gpt-5.4"
+sandbox_mode = "workspace-write"
 developer_instructions = """
 # Frontend Developer
 
