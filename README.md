@@ -118,7 +118,7 @@ Plus: hooks (auto-fire), agents (sub-process), commands (slash /).
 
 ### Tier 1 — Always-on core (entry doc)
 
-Workflow gates that fire every task — Identity (any model = Lead), Verify-first, Q1-Q4 delegation, S1-S5 simplicity, T1-T6 testing, F1-F6 failure-mode, CI 3-phase, Hard stops.
+Workflow gates that fire every task — Identity (any model = Lead), Verify-first, Q1-Q4 delegation, S1-S5 simplicity, T1-T6 testing, F1-F5 failure-mode, CI 3-phase, Hard stops.
 
 Loaded from each CLI's native entry doc: `~/.claude/CLAUDE.md` (Claude Code), `~/.codex/AGENTS.md` (Codex CLI), `~/.gemini/GEMINI.md` (Gemini CLI).
 
@@ -217,7 +217,7 @@ Claude and Codex share the same 3 scripts; Gemini ships 3 scripts adapted to its
 | **Q1-Q4** | before any code edit | files>1 / verify-run / design / tools>3 → delegate |
 | **S1-S5** | before commit | feature beyond / abstraction single-use / config nobody asked / defensive impossible / pattern in 3+ |
 | **T1-T6** | before commit | task needs test / new pass / existing pass / fast / isolated / assertion correct |
-| **F1-F6** | before declaring done | hallucinated action / scope creep / cascading error / context loss / tool misuse / structurally fixable |
+| **F1-F5** | before declaring done | hallucinated action / scope creep / cascading error / context loss / tool misuse (structural-fix folded into S4) |
 | **CI 3-phase** | before merge | Phase 1 always / Phase 2 path-triggered / Phase 3 nightly |
 | **Reviewer routing** | before merge | qa-tester floor + Codex/Gemini per PR profile |
 | **Hard stops** | escalation triggers | 3rd agent / 3rd PR / file vs agent / destructive / 50k+ |
@@ -255,7 +255,7 @@ Rolepod uses two memory systems that work independently:
 
 In rolepod's 18 agents: 17 use `memory: project` (codepaths / patterns / decisions stay scoped to the repo), 1 uses `memory: user` (`business-analyst` — pricing / competitor research is reusable across projects). The `memory:` frontmatter is a Claude Code primitive; on Codex / Gemini the same scoping is achieved via per-agent TOML / inlined roster fields rendered by the adapter.
 
-Without MemPalace installed: agents still have their native scoping. You just lose the cross-session KG decision recall and Stop-hook capture. The Q1-Q4 / S1-S5 / T1-T6 / F1-F6 gates and reviewer flow are unaffected.
+Without MemPalace installed: agents still have their native scoping. You just lose the cross-session KG decision recall and Stop-hook capture. The Q1-Q4 / S1-S5 / T1-T6 / F1-F5 gates and reviewer flow are unaffected.
 
 ---
 
@@ -290,7 +290,7 @@ This repo bundles 34 skills out-of-the-box. Agents preload them via frontmatter 
 | **[claude-seo](https://github.com/AgriciDaniel/claude-seo)** (optional) | 18 deep technical SEO sub-agents | Claude Code plugin marketplace |
 | **OpenAI Codex review plugin** (optional) | Adversarial review skills | Each CLI's plugin marketplace where available |
 
-Minimum baseline (core install only): 18 agents + 16 rules + 3 hooks + 34 bundled skills + Q1-Q4 / S1-S5 / T1-T6 / F1-F6 gates + 6-phase lifecycle taxonomy (Define → Plan → Build → Verify → Review → Ship).
+Minimum baseline (core install only): 18 agents + 16 rules + 3 hooks + 34 bundled skills + Q1-Q4 / S1-S5 / T1-T6 / F1-F5 gates + 6-phase lifecycle taxonomy (Define → Plan → Build → Verify → Review → Ship).
 
 Full workflow → also install GitNexus + caveman + ui-ux-pro-max-skill.
 
@@ -339,7 +339,7 @@ The same 8-step flow on all 3 CLIs — only the dispatch primitive changes:
 | 4 | Lead verify-first: Read auth files, find root cause | Read tool | Read tool | read_file tool |
 | 5 | Edit code | Edit tool → `verify-reminder.sh` PostToolUse hook fires | Edit tool → same `verify-reminder.sh` (Claude + Codex share scripts) | replace / edit tools → `after-tool.sh` fires |
 | 6 | Run test → green | Bash tool | Bash tool | run_shell_command tool |
-| 7 | S1-S5 + T1-T6 + F1-F6 gates run | inline by Lead | inline by Lead | inline by Lead |
+| 7 | S1-S5 + T1-T6 + F1-F5 gates run | inline by Lead | inline by Lead | inline by Lead |
 | 8 | Pre-merge: PR profile = hotfix → qa-tester only → APPROVED → commit + push | `gh pr create`, auto-merge after CI green | `gh pr create`, auto-merge after CI green | `gh pr create`, auto-merge after CI green |
 
 Gates and routing are identical across CLIs. The only structural difference: Claude Code spawns qa-tester in a separate context (parallel-capable); Codex and Gemini Lead-orchestrate by reading the agent persona inline (sequential).

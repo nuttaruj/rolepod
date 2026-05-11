@@ -1,6 +1,6 @@
 ## Failure-mode gate — before declaring task done
 
-Active checkpoint. Answer 6 questions before reporting completion to user:
+Active checkpoint. Answer 5 questions before reporting completion to user:
 
 ```
 F1: Hallucinated action?  Did you reference a function/file/API that doesn't exist?
@@ -14,33 +14,30 @@ F4: Context loss?         Did you forget an earlier constraint mid-task?
 F5: Tool misuse?          Did you use a destructive cmd unannounced or
                           run something without verify-first?
                           → review tool calls, announce + re-verify
-F6: Structurally fixable? Could this bug class be made structurally impossible
-                          (type system / data model / API constraint) instead of
-                          a runtime check?
-                          → prefer the structural fix; only fall back to a runtime
-                            check when the structural option is genuinely unavailable.
 ```
 
-Any "yes" → stop and fix before declaring done. Skip if task was a typo / comment / docstring / pure rename.
+Any "yes" → stop and fix before declaring done.
 
-### F6 — bad/good worked pairs
+### Skip criteria — mechanical, not category
 
-Concrete pattern to match against (parallel to S4's structure):
+Skip F-gate ONLY when ALL true (no rationalization by category):
 
 ```
-Bad:  Runtime null check → catches null at every call site (forgets one → crash)
-Good: Type system enforces non-null (Optional<T> + .unwrap()/?.) — compiler
-      ensures handled
-
-Bad:  Validate user input at every function entry
-Good: Sanitize at boundary (HTTP layer) → typed value flows inward, no
-      re-check needed
-
-Bad:  if (!isAuthenticated()) throw — scattered through codebase
-Good: Middleware enforces auth → handler signatures only receive
-      authenticated users
+- diff ≤5 lines changed (added + removed)
+- single file touched
+- zero logic-bearing lines (only comments / docstrings / whitespace / renames
+  caught by typechecker)
+- not on high-risk path (auth / billing / payment / migration / credit /
+  permission / secret / crypto / token)
 ```
 
-Rule: if you can make the bug class structurally impossible, do that. Runtime check = fallback only when structural unavailable.
+Any criterion fails → run full gate. Lead claiming "it's just a typo" without
+diff inspection = honor-system bypass. PreCommit hook enforces mechanically.
+
+### Structural-fix rule (former F6, now S4)
+
+Folded into S4 (gates-s1-s5.md) — forward-looking placement catches the
+design choice before code is written, not after. F-gate is now retrospective
+only (catch hallucination / scope / cascade / context / tool-misuse).
 
 Source: DAPLab failure-pattern research on agentic-LLM software failures (Foster, Jegan et al.).

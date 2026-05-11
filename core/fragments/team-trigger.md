@@ -44,7 +44,7 @@ User can mix multiple slash commands per task (e.g. `/team-build` + `/team-revie
 - Spawn parallel: engineers by path (backend / frontend / mobile / billing / ai-ml / data) via cohesion contract
 - Owner: `system-architect` (contract enforcer)
 - Cycle: RED → GREEN → REFACTOR per task
-- Gate focus: S1-S5 simplicity, F1-F6 failure-mode
+- Gate focus: S1-S5 simplicity, F1-F5 failure-mode
 
 **team-verify** — code → evidence
 - Spawn: `qa-tester` (universal floor) + `security-engineer` (auth/billing) + `performance-engineer` (perf-sensitive)
@@ -64,7 +64,7 @@ User can mix multiple slash commands per task (e.g. `/team-build` + `/team-revie
 Regardless of pattern (default Subagent / broad team / surgical team):
 - T1-T6 (testing) — must run before commit
 - S1-S5 (simplicity) — must run before commit
-- F1-F6 (failure-mode) — must run before declare done
+- F1-F5 (failure-mode) — must run before declare done
 - pre-merge-gate — must run before merge
 - CI 3-phase — must pass before auto-merge
 

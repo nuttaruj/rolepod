@@ -70,7 +70,7 @@ Lead orchestrates per intent — no slash chaining required.
 
 ### Mandatory gates regardless of pattern
 
-Both patterns enforce: T1-T6, S1-S5, F1-F6, pre-merge-gate, CI 3-phase.
+Both patterns enforce: T1-T6, S1-S5, F1-F5, pre-merge-gate, CI 3-phase.
 Team mode ≠ gate skip. Same quality bar.
 
 ## Overview
@@ -116,7 +116,7 @@ Lead reads the recipe, then spawns agents via the standard Task tool. Anthropic'
 - Spawn parallel: engineers by path
 - Owner: `system-architect` (contract enforcer)
 - Cycle: RED → GREEN → REFACTOR
-- Gate focus: S1-S5 simplicity + F1-F6 failure-mode
+- Gate focus: S1-S5 simplicity + F1-F5 failure-mode
 - Use when: contract + RED tests ready, multiple paths touched
 
 ### `/team-verify` — code → evidence
@@ -203,7 +203,7 @@ Codex and Gemini get the `team-trigger.md` fragment in their entry docs (`AGENTS
 Lead under Codex / Gemini can still orchestrate equivalently:
 - Read the recipe from the entry doc's "Team workflow trigger" section
 - Spawn the same 18 agents via Codex's / Gemini's native dispatch
-- Apply the same gates (S1-S5, T1-T6, Q1-Q4, F1-F6)
+- Apply the same gates (S1-S5, T1-T6, Q1-Q4, F1-F5)
 
 The orchestration logic is portable. Only the slash-command surface differs.
 

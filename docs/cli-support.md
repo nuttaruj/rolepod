@@ -102,7 +102,7 @@ _Last verified: 2026-05-10 on macOS (Darwin 25.4.0), Codex 0.130.0, Gemini 0.40.
 
 **Gemini CLI 0.40.1** — Production:
 - `gemini skills list` enumerates all 34 rolepod skills from `~/.gemini/extensions/rolepod/skills/`.
-- SessionStart hook fires and emits the rolepod gates banner ("rolepod gates: S1-S5 simplicity + T1-T6 tests + Q1-Q4 delegation + F1-F6 failure-mode") on every Gemini session.
+- SessionStart hook fires and emits the rolepod gates banner ("rolepod gates: S1-S5 simplicity + T1-T6 tests + Q1-Q4 delegation + F1-F5 failure-mode") on every Gemini session.
 - The model recognizes the extension by name and version (`rolepod (v0.2.0)`) when asked.
 - 6 slash commands (`/careful /ship /review /test /plan /spec`) ship as schema-conformant `.toml` files in `commands/` (Gemini exposes these interactively; there is no `gemini commands list` subcommand).
 - Caveat: the bundled SessionStart hook expects ripgrep — falls back to GrepTool with a one-line warning. Cosmetic only.

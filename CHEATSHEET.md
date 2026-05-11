@@ -20,7 +20,7 @@
 | **Q1-Q4** | before any code edit | files>1 / verify-run / design-judgment / tools>3 → delegate |
 | **S1-S5** | before commit (simplicity) | feature beyond / abstraction single-use / config nobody asked / defensive impossible / pattern in 3+ |
 | **T1-T6** | before commit (test) | task needs test / new pass / existing pass / fast / isolated / assertion correct (1-char bug still passes?) |
-| **F1-F6** | before declaring done | hallucinated action / scope creep / cascading error / context loss / tool misuse / structurally fixable |
+| **F1-F5** | before declaring done | hallucinated action / scope creep / cascading error / context loss / tool misuse (structural-fix folded into S4) |
 | **CI 3-phase** | merge | Phase 1 always / Phase 2 path-triggered / Phase 3 nightly |
 | **Hard stops** | escalation | 3rd agent / 3rd PR / file vs agent / destructive / 50k+ |
 
@@ -92,7 +92,7 @@ User OK + commit + PR → ALL Phase 1 + triggered Phase 2 green → merge auto. 
 1. Explore  (plan mode, read, understand)
 2. Plan     (Ctrl+G to edit, simplicity check)
 3. Implement (TDD-light, every line traces to request)
-4. Pre-commit gate (S1-S5 simplicity + T1-T6 test + F1-F6 failure-mode)
+4. Pre-commit gate (S1-S5 simplicity + T1-T6 test + F1-F5 failure-mode)
 5. Reviewer (per PR profile)
 6. CI (auto-merge after green)
 ```
@@ -103,7 +103,7 @@ User OK + commit + PR → ALL Phase 1 + triggered Phase 2 green → merge auto. 
 |-------|---------|------------|------------|-----------|
 | **Define** | new feature / spec | `spec-driven-development` | product-manager, system-architect | verify-first (intent) |
 | **Plan** | spec → tasks | `planning-and-task-breakdown`, `parallel-contract-orchestration`, `api-and-interface-design` | system-architect | Q1-Q4 |
-| **Build** | code edit | `test-driven-development`, `frontend-ui-engineering`, `anti-spaghetti`, `claude-api`, `interface-design`, `interaction-design`, `doc-coauthoring`, `conversion-copywriting` | backend/frontend/mobile/billing/ai-ml/data, ui-ux-designer, tech-writer | S1-S5, F1-F6 |
+| **Build** | code edit | `test-driven-development`, `frontend-ui-engineering`, `anti-spaghetti`, `claude-api`, `interface-design`, `interaction-design`, `doc-coauthoring`, `conversion-copywriting` | backend/frontend/mobile/billing/ai-ml/data, ui-ux-designer, tech-writer | S1-S5, F1-F5 |
 | **Verify** | post-edit evidence | `debugging-and-error-recovery`, `webapp-testing`, `browser-testing-with-devtools`, `performance-optimization`, `security-and-hardening` | qa-tester, security-engineer, performance-engineer | T1-T6, verify-first |
 | **Review** | pre-merge | `code-review-and-quality`, `code-simplification`, `web-design-guidelines`, `doubt-driven-development` | universal-reviewer, qa-tester | pre-merge-gate, hard stops |
 | **Ship** | deploy | `shipping-and-launch`, `ci-cd-and-automation`, `deprecation-and-migration`, `internal-comms`, `user-facing-content`, `documentation-and-adrs`, `seo` | devops-sre, growth-marketer, customer-success | CI 3-phase |
@@ -160,7 +160,7 @@ Lead = Opus → skip Advisor.
 > - "use team" (broad) → full lifecycle: all 6 phases use team recipes
 > - `/team-build` / `/team-verify` / etc. (surgical) → only that phase uses team; rest stay default Subagent
 >
-> Default Subagent pattern is unchanged when neither trigger fires. Mandatory gates (S1-S5, T1-T6, F1-F6, pre-merge, CI 3-phase) apply in all cases. See [docs/agent-teams.md](docs/agent-teams.md).
+> Default Subagent pattern is unchanged when neither trigger fires. Mandatory gates (S1-S5, T1-T6, F1-F5, pre-merge, CI 3-phase) apply in all cases. See [docs/agent-teams.md](docs/agent-teams.md).
 
 ## Skill picker (when many skills look similar)
 

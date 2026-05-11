@@ -19,7 +19,7 @@ You are entering Team-build phase. Orchestrate multi-agent build:
    - Their specific task slice
    - Instruction to RED → GREEN → REFACTOR per cycle
 4. `system-architect` monitors contract adherence
-5. Apply gates: S1-S5 (simplicity) + F1-F6 (failure-mode) per agent's output
+5. Apply gates: S1-S5 (simplicity) + F1-F5 (failure-mode) per agent's output
 6. Merge results when all agents pass their RED → GREEN → REFACTOR cycle
 
 If any engineer hits blocker → spawn `root-cause-tracing` skill workflow → fix → resume.
@@ -35,7 +35,7 @@ For high-risk surface (auth / billing / migrations): also spawn `security-engine
 ## Gate focus
 
 - **S1-S5 simplicity** — every commit run through 5-question gate
-- **F1-F6 failure-mode** — before declaring task done
+- **F1-F5 failure-mode** — before declaring task done
 
 ## Next phase
 

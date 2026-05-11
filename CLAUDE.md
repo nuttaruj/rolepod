@@ -82,7 +82,7 @@ The 4-step workflow above maps onto a 6-phase lifecycle that organizes which ski
 |-------|--------------|------------|------------|-----------|
 | **Define** | Intent → spec | `spec-driven-development` | product-manager, business-analyst, system-architect | verify-first (intent) |
 | **Plan** | Spec → ordered tasks + interfaces | `planning-and-task-breakdown`, `parallel-contract-orchestration`, `api-and-interface-design` | system-architect, product-manager | Q1-Q4 delegation |
-| **Build** | Tasks → code + docs | `frontend-ui-engineering`, `test-driven-development`, `claude-api`, `anti-spaghetti`, `interface-design`, `interaction-design`, `conversion-copywriting`, `doc-coauthoring` | backend/frontend/mobile/billing/ai-ml/data-scientist, ui-ux-designer, tech-writer | S1-S5 simplicity, F1-F6 failure-mode |
+| **Build** | Tasks → code + docs | `frontend-ui-engineering`, `test-driven-development`, `claude-api`, `anti-spaghetti`, `interface-design`, `interaction-design`, `conversion-copywriting`, `doc-coauthoring` | backend/frontend/mobile/billing/ai-ml/data-scientist, ui-ux-designer, tech-writer | S1-S5 simplicity, F1-F5 failure-mode |
 | **Verify** | Code → evidence | `debugging-and-error-recovery`, `webapp-testing`, `browser-testing-with-devtools`, `performance-optimization`, `security-and-hardening` | qa-tester, security-engineer, performance-engineer | T1-T6 testing, verify-first (claims) |
 | **Review** | Evidence → adversarial pass | `code-review-and-quality`, `code-simplification`, `web-design-guidelines`, `doubt-driven-development` | universal-reviewer, qa-tester (review mode) | pre-merge-gate, hard stops |
 | **Ship** | Pass → deploy + announce | `shipping-and-launch`, `ci-cd-and-automation`, `deprecation-and-migration`, `internal-comms`, `user-facing-content`, `documentation-and-adrs`, `seo` | devops-sre, growth-marketer, customer-success | CI 3-phase, reviewer routing |
@@ -136,7 +136,7 @@ User can mix multiple slash commands per task (e.g. `/team-build` + `/team-revie
 - Spawn parallel: engineers by path (backend / frontend / mobile / billing / ai-ml / data) via cohesion contract
 - Owner: `system-architect` (contract enforcer)
 - Cycle: RED → GREEN → REFACTOR per task
-- Gate focus: S1-S5 simplicity, F1-F6 failure-mode
+- Gate focus: S1-S5 simplicity, F1-F5 failure-mode
 
 **team-verify** — code → evidence
 - Spawn: `qa-tester` (universal floor) + `security-engineer` (auth/billing) + `performance-engineer` (perf-sensitive)
@@ -156,7 +156,7 @@ User can mix multiple slash commands per task (e.g. `/team-build` + `/team-revie
 Regardless of pattern (default Subagent / broad team / surgical team):
 - T1-T6 (testing) — must run before commit
 - S1-S5 (simplicity) — must run before commit
-- F1-F6 (failure-mode) — must run before declare done
+- F1-F5 (failure-mode) — must run before declare done
 - pre-merge-gate — must run before merge
 - CI 3-phase — must pass before auto-merge
 
@@ -267,7 +267,7 @@ Any red flag → stop, run the 5-step protocol, pick simpler.
 
 This protocol = upstream prevention (catch at plan time).
 S1-S5 = downstream gate (catch at commit time).
-F1-F6 = post-impl hallucination check.
+F1-F5 = post-impl hallucination check.
 
 If the protocol fires correctly, S-gate has nothing to flag.
 
@@ -279,11 +279,38 @@ Active checkpoint. Answer 5 questions:
 S1: Added feature beyond request?           yes → cut
 S2: Added abstraction for single-use?       yes → inline
 S3: Added config/flexibility nobody asked?  yes → cut
-S4: Added defensive code for impossible?    yes → make it structurally impossible (type system / data model / API constraint), not defensive. If you can't make it structurally impossible, the case is NOT impossible — handle properly.
+S4: Added defensive code for impossible?    yes → make it structurally impossible
+                                            (type system / data model / API
+                                            constraint), not defensive. If
+                                            structurally impossible is unavailable,
+                                            the case is NOT impossible — handle
+                                            properly.
 S5: Same pattern now in 3+ places?          yes → centralize before commit
 ```
 
 Any "yes" → revise. Senior engineer test: "would they call this overcomplicated?" Yes → simplify.
+
+### S4 — bad/good worked pairs
+
+Concrete pattern (S4 = forward-looking; catches design before code written. Folded from former F6 to remove redundancy):
+
+```
+Bad:  Runtime null check → catches null at every call site (forgets one → crash)
+Good: Type system enforces non-null (Optional<T> + .unwrap()/?.) — compiler
+      ensures handled
+
+Bad:  Validate user input at every function entry
+Good: Sanitize at boundary (HTTP layer) → typed value flows inward, no
+      re-check needed
+
+Bad:  if (!isAuthenticated()) throw — scattered through codebase
+Good: Middleware enforces auth → handler signatures only receive
+      authenticated users
+```
+
+Rule: bug class structurally impossible → do that. Runtime check = fallback only when structural unavailable.
+
+Source: DAPLab failure-pattern research on agentic-LLM software failures (Foster, Jegan et al.).
 
 Details: `~/.claude/rules/code-quality.md`
 
@@ -327,7 +354,21 @@ T6: Assertion correct?                        Would a 1-character bug still let 
                                               no → tighten the assertion
 ```
 
-Skip test for: typo / comment / docstring / pure rename / dead code removal.
+### Skip criteria — mechanical, not category
+
+Skip T-gate ONLY when ALL true (no rationalization by category):
+
+```
+- diff ≤5 lines changed
+- single file touched
+- zero logic-bearing lines (only comments / docstrings / whitespace / renames
+  caught by typechecker)
+- not on high-risk path (auth / billing / payment / migration / credit /
+  permission / secret / crypto / token)
+```
+
+Any criterion fails → write tests. PreCommit hook enforces mechanically.
+Lead claiming "typo / pure rename" without diff inspection = honor-system bypass.
 
 Internal execution: Lead via Bash (fast) or qa-tester subagent (complex). NEVER send to external AI.
 
@@ -351,7 +392,7 @@ Pick agent by path/concern (`~/.claude/rules/team-org.md`):
 
 ## Failure-mode gate — before declaring task done
 
-Active checkpoint. Answer 6 questions before reporting completion to user:
+Active checkpoint. Answer 5 questions before reporting completion to user:
 
 ```
 F1: Hallucinated action?  Did you reference a function/file/API that doesn't exist?
@@ -365,34 +406,31 @@ F4: Context loss?         Did you forget an earlier constraint mid-task?
 F5: Tool misuse?          Did you use a destructive cmd unannounced or
                           run something without verify-first?
                           → review tool calls, announce + re-verify
-F6: Structurally fixable? Could this bug class be made structurally impossible
-                          (type system / data model / API constraint) instead of
-                          a runtime check?
-                          → prefer the structural fix; only fall back to a runtime
-                            check when the structural option is genuinely unavailable.
 ```
 
-Any "yes" → stop and fix before declaring done. Skip if task was a typo / comment / docstring / pure rename.
+Any "yes" → stop and fix before declaring done.
 
-### F6 — bad/good worked pairs
+### Skip criteria — mechanical, not category
 
-Concrete pattern to match against (parallel to S4's structure):
+Skip F-gate ONLY when ALL true (no rationalization by category):
 
 ```
-Bad:  Runtime null check → catches null at every call site (forgets one → crash)
-Good: Type system enforces non-null (Optional<T> + .unwrap()/?.) — compiler
-      ensures handled
-
-Bad:  Validate user input at every function entry
-Good: Sanitize at boundary (HTTP layer) → typed value flows inward, no
-      re-check needed
-
-Bad:  if (!isAuthenticated()) throw — scattered through codebase
-Good: Middleware enforces auth → handler signatures only receive
-      authenticated users
+- diff ≤5 lines changed (added + removed)
+- single file touched
+- zero logic-bearing lines (only comments / docstrings / whitespace / renames
+  caught by typechecker)
+- not on high-risk path (auth / billing / payment / migration / credit /
+  permission / secret / crypto / token)
 ```
 
-Rule: if you can make the bug class structurally impossible, do that. Runtime check = fallback only when structural unavailable.
+Any criterion fails → run full gate. Lead claiming "it's just a typo" without
+diff inspection = honor-system bypass. PreCommit hook enforces mechanically.
+
+### Structural-fix rule (former F6, now S4)
+
+Folded into S4 (gates-s1-s5.md) — forward-looking placement catches the
+design choice before code is written, not after. F-gate is now retrospective
+only (catch hallucination / scope / cascade / context / tool-misuse).
 
 Source: DAPLab failure-pattern research on agentic-LLM software failures (Foster, Jegan et al.).
 

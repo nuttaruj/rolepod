@@ -16,7 +16,21 @@ T6: Assertion correct?                        Would a 1-character bug still let 
                                               no → tighten the assertion
 ```
 
-Skip test for: typo / comment / docstring / pure rename / dead code removal.
+### Skip criteria — mechanical, not category
+
+Skip T-gate ONLY when ALL true (no rationalization by category):
+
+```
+- diff ≤5 lines changed
+- single file touched
+- zero logic-bearing lines (only comments / docstrings / whitespace / renames
+  caught by typechecker)
+- not on high-risk path (auth / billing / payment / migration / credit /
+  permission / secret / crypto / token)
+```
+
+Any criterion fails → write tests. PreCommit hook enforces mechanically.
+Lead claiming "typo / pure rename" without diff inspection = honor-system bypass.
 
 Internal execution: Lead via Bash (fast) or qa-tester subagent (complex). NEVER send to external AI.
 

@@ -84,6 +84,6 @@ Any red flag → stop, run the 5-step protocol, pick simpler.
 
 This protocol = upstream prevention (catch at plan time).
 S1-S5 = downstream gate (catch at commit time).
-F1-F6 = post-impl hallucination check.
+F1-F5 = post-impl hallucination check.
 
 If the protocol fires correctly, S-gate has nothing to flag.
