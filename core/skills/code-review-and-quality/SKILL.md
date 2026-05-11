@@ -7,6 +7,26 @@ description: Conduct multi-axis code review across correctness, readability, arc
 
 Review is a separate cognitive mode from writing. The author proves it works; the reviewer proves it can fail. This skill structures that adversarial pass across five orthogonal axes so nothing slips by because you only checked one dimension.
 
+## Iron Law
+
+<EXTREMELY-IMPORTANT>
+1. NEVER approve a diff without running all five axes (correctness, readability, architecture, security, performance). Skipping an axis = blind spot shipped.
+2. ALWAYS produce findings with file:line + severity + concrete fix. Vague comments ("could be cleaner") are not review output.
+3. If a finding is rejected, ALWAYS state the explicit reason in code or comment — silent dismissal hides risk from the next reviewer.
+
+The author's confidence is not evidence. Reviewer's job: prove the change can fail, not confirm it works.
+</EXTREMELY-IMPORTANT>
+
+## Red Flags — you are about to skip this skill
+
+| Red flag (your thought) | What it actually means |
+|-------------------------|------------------------|
+| "I wrote it, I already know it works" | You verified your model of the code, not the code itself. |
+| "Diff is small, one axis is enough" | Small diffs hit global invariants (auth/money/locks) constantly. |
+| "LGTM with no comments" | Zero findings on a non-trivial diff = you didn't actually review. |
+| "CI passed, that's enough" | CI proves invariants with tests. Review proves the rest. |
+| "I'll address that in a follow-up PR" | Follow-up PR rate < 30% in practice. Fix now or file an issue. |
+
 ## When to use
 
 - Before merging your own work (self-review pass)

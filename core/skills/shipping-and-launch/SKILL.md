@@ -7,6 +7,26 @@ description: Run a disciplined production launch. Use when preparing to deploy, 
 
 Most production incidents aren't caused by the code change — they're caused by what wasn't planned around the code change. This skill turns "ship it" into a repeatable sequence: gate the release, watch the right signals, know exactly how to undo.
 
+## Iron Law
+
+<EXTREMELY-IMPORTANT>
+1. NEVER ship without a written rollback plan — exact command, exact owner, tested at least once. "Revert the commit" is not a rollback plan for migrations / data writes / external side effects.
+2. NEVER ship with a required CI lane red. Phase 1 + triggered Phase 2 must all be green. Red lane fixed by Lead, re-pushed, re-verified — no override.
+3. ALWAYS watch the right signal for ≥15 min post-deploy before declaring success. p95 latency, error rate, queue depth, business metric tied to the change.
+
+The five minutes you save by skipping the rollback plan cost five hours of incident response.
+</EXTREMELY-IMPORTANT>
+
+## Red Flags — you are about to skip this skill
+
+| Red flag (your thought) | What it actually means |
+|-------------------------|------------------------|
+| "Rollback is just `git revert`" | Not for migrations, queue messages, sent emails, charged cards. Plan per-change-type. |
+| "I'll watch metrics after lunch" | The first 15 minutes are when issues surface. Watch live. |
+| "Feature flag is off, no risk in shipping" | Flag-off code still executes import / startup paths. Verify the dark path too. |
+| "CI was flaky, that red lane isn't real" | Flaky lane = real signal you cannot read. Stabilize or treat as red. |
+| "Small change, no need for staged rollout" | The "small change" outage list is long. Stage by default for tenant-scoped systems. |
+
 ## When to use
 
 - About to merge to a deployed branch

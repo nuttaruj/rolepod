@@ -17,6 +17,31 @@ Most rework comes from building the wrong thing well. A spec doesn't slow you do
 
 Skip when: the change is small and the answer is obvious; you're prototyping to learn, not shipping; the spec already exists and is current.
 
+## HARD-GATE: spec required before Build-phase skills
+
+<EXTREMELY-IMPORTANT>
+The following skills CANNOT BE INVOKED for a non-trivial feature until a written spec exists, has been user-approved, and is saved to `docs/specs/<feature>.md`:
+
+- `test-driven-development` (writing implementation tests)
+- `frontend-ui-engineering`
+- `interface-design`
+- `interaction-design`
+- `claude-api` (when building agentic features beyond a single call)
+- `api-and-interface-design` (when defining new public surface)
+- backend code generation
+- any skill in the **Build** phase of the lifecycle taxonomy
+
+If you attempt to invoke a Build-phase skill without a spec for a non-trivial feature:
+1. STOP
+2. Invoke this skill (`spec-driven-development`) first
+3. Get user approval on the written spec saved to `docs/specs/<feature>.md`
+4. Only then proceed to Build-phase work
+
+This gate exists because feature-without-spec = 41% probability of scope drift (DAPLab failure-pattern data). "I'll iterate the spec in code" is the rationalization that produces the rework you tried to avoid.
+
+Skip cases (gate does NOT apply): typo / comment / docstring / one-line config / pure rename / dead-code removal / bug fix with reproducer / prototype explicitly scoped to learning.
+</EXTREMELY-IMPORTANT>
+
 ## What a good spec is — and isn't
 
 A spec describes **what** and **why**. It does not lock down **how**. Implementation freedom matters because the engineer (or future-you) will see the codebase context the spec author can't.

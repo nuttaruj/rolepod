@@ -9,6 +9,26 @@ Training-cached API knowledge is a silent bug factory. Libraries deprecate, sign
 
 Adapted from addyosmani/agent-skills (`source-driven-development`). Complements `verify-first` (verify before claiming) and `claude-api` (Claude SDK specifics) with the proactive write-time citation.
 
+## Iron Law
+
+<EXTREMELY-IMPORTANT>
+1. NEVER write a library / framework API call from training recall alone. Fetch the version-pinned docs (WebFetch / official docs site) before the line lands in the diff.
+2. ALWAYS cite the source URL or doc path inline (comment or PR body) for non-obvious API usage. No citation = the next maintainer cannot verify.
+3. If the official docs and training memory disagree, ALWAYS trust the docs. Training is months-to-years stale; docs are live.
+
+API knowledge has a half-life. Cite or be wrong.
+</EXTREMELY-IMPORTANT>
+
+## Red Flags — you are about to skip this skill
+
+| Red flag (your thought) | What it actually means |
+|-------------------------|------------------------|
+| "I've used this API a hundred times, I know the signature" | The signature may have changed in the last minor version. Verify. |
+| "Docs site is annoying to navigate, training recall is faster" | Faster to wrong code is not faster. |
+| "It's just a basic React hook, no need to cite" | "Basic" hooks change semantics across versions (e.g. React 18 Strict Mode). |
+| "WebFetch is overkill for this one call" | One uncited call begets ten. Set the precedent. |
+| "I'll grep the codebase for an existing example" | Existing example may itself be deprecated. Source the docs, not the precedent. |
+
 ## When to use
 
 - Writing code that calls a framework / library API (React, Next, FastAPI, Django, AWS SDK, Stripe SDK, etc.)

@@ -211,7 +211,7 @@ Claude and Codex share the same 4 scripts; Gemini ships 3 scripts adapted to its
 | **Q1-Q4** | before any code edit | files>1 / verify-run / design / tools>3 → delegate |
 | **S1-S5** | before commit | feature beyond / abstraction single-use / config nobody asked / defensive impossible / pattern in 3+ |
 | **T1-T6** | before commit | task needs test / new pass / existing pass / fast / isolated / assertion correct |
-| **F1-F5** | before declaring done | hallucinated action / scope creep / cascading error / context loss / tool misuse |
+| **F1-F6** | before declaring done | hallucinated action / scope creep / cascading error / context loss / tool misuse / structurally fixable |
 | **CI 3-phase** | before merge | Phase 1 always / Phase 2 path-triggered / Phase 3 nightly |
 | **Reviewer routing** | before merge | qa-tester floor + Codex/Gemini per PR profile |
 | **Hard stops** | escalation triggers | 3rd agent / 3rd PR / file vs agent / destructive / 50k+ |
@@ -284,7 +284,7 @@ This repo bundles 34 skills out-of-the-box. Agents preload them via frontmatter 
 | **[claude-seo](https://github.com/AgriciDaniel/claude-seo)** (optional) | 18 deep technical SEO sub-agents | Claude Code plugin marketplace |
 | **OpenAI Codex review plugin** (optional) | Adversarial review skills | Each CLI's plugin marketplace where available |
 
-Minimum baseline (core install only): 18 agents + 16 rules + 4 hooks + 34 bundled skills + Q1-Q4 / S1-S5 / T1-T6 / F1-F5 gates + 6-phase lifecycle taxonomy (Define → Plan → Build → Verify → Review → Ship).
+Minimum baseline (core install only): 18 agents + 16 rules + 4 hooks + 34 bundled skills + Q1-Q4 / S1-S5 / T1-T6 / F1-F6 gates + 6-phase lifecycle taxonomy (Define → Plan → Build → Verify → Review → Ship).
 
 Full workflow → also install GitNexus + caveman + ui-ux-pro-max-skill.
 
@@ -329,7 +329,7 @@ Lead: [Q1-Q4 check] → delegate to qa-tester for reproducing test
 qa-tester: writes failing test → returns to Lead
 Lead: [verify-first] → reads auth files → finds root cause
 Lead: edits → verify-reminder hook fires → run test → green
-Lead: [S1-S5 + T1-T6 + F1-F5 gates] → all green
+Lead: [S1-S5 + T1-T6 + F1-F6 gates] → all green
 Lead: [pre-merge-gate] → routing: hotfix → qa-tester only → APPROVED
 Lead: commit + push
 ```

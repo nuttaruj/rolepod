@@ -56,7 +56,7 @@ For non-trivial work (multi-file / unfamiliar code / unclear approach):
 2. **Plan** — detailed plan. Simplicity check: simplest approach? new
    abstraction needed? new dep needed? If "yes" without strong reason → revise.
 3. **Implement** — code per plan. Every line traces to user request.
-4. **Pre-commit gate** — run S1-S5 + T1-T6 + F1-F5 gates below (or `/ship`).
+4. **Pre-commit gate** — run S1-S5 + T1-T6 + F1-F6 gates below (or `/ship`).
 5. **Commit** — descriptive message + PR.
 
 Skip plan mode when diff describable in 1 sentence (typo / log line / rename).
@@ -70,7 +70,7 @@ task spans more than one phase.
 |-------|------------|------------|-----------|
 | **Define** | `spec-driven-development` | product-manager, business-analyst, system-architect | verify-first (intent) |
 | **Plan** | `planning-and-task-breakdown`, `parallel-contract-orchestration`, `api-and-interface-design` | system-architect, product-manager | Q1-Q4 |
-| **Build** | `frontend-ui-engineering`, `test-driven-development`, `claude-api`, `anti-spaghetti`, `interface-design`, `interaction-design`, `conversion-copywriting`, `doc-coauthoring` | backend/frontend/mobile/billing/ai-ml/data-scientist, ui-ux-designer, tech-writer | S1-S5, F1-F5 |
+| **Build** | `frontend-ui-engineering`, `test-driven-development`, `claude-api`, `anti-spaghetti`, `interface-design`, `interaction-design`, `conversion-copywriting`, `doc-coauthoring` | backend/frontend/mobile/billing/ai-ml/data-scientist, ui-ux-designer, tech-writer | S1-S5, F1-F6 |
 | **Verify** | `debugging-and-error-recovery`, `webapp-testing`, `browser-testing-with-devtools`, `performance-optimization`, `security-and-hardening` | qa-tester, security-engineer, performance-engineer | T1-T6, verify-first |
 | **Review** | `code-review-and-quality`, `code-simplification`, `web-design-guidelines`, `doubt-driven-development` | universal-reviewer, qa-tester | pre-merge-gate, hard stops |
 | **Ship** | `shipping-and-launch`, `ci-cd-and-automation`, `deprecation-and-migration`, `internal-comms`, `user-facing-content`, `documentation-and-adrs`, `seo` | devops-sre, growth-marketer, customer-success | CI 3-phase |
@@ -127,7 +127,7 @@ config, use them. Otherwise fall back to plain `git` + `rg`.
 
 ## Before ship — STOP
 
-- Run `/ship` (S1-S5, T1-T6, F1-F5, evidence) — or run gates manually
+- Run `/ship` (S1-S5, T1-T6, F1-F6, evidence) — or run gates manually
 - For high-risk surface (auth/billing/migrations) → `/careful` first, then
   spawn external reviewer:
   - If Codex installed: `codex exec --prompt "review this diff..."`

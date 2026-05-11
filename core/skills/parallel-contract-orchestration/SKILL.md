@@ -9,6 +9,26 @@ When Lead spawns 2+ engineering agents in parallel on the same feature, each age
 
 Pattern adopted from evanflow's orchestrator workflow: **write the contract before spawning, write the integration tests RED before any agent writes implementation, verify the RED checkpoint, then let agents work in parallel against a fixed target.**
 
+## Iron Law
+
+<EXTREMELY-IMPORTANT>
+1. NEVER spawn 2+ parallel agents touching shared types / invariants / integration points without a written cohesion contract.
+2. ALWAYS write integration tests RED before any agent writes implementation. RED checkpoint must pass (tests exist, run, fail correctly) before spawn.
+3. NEVER let agents amend the contract mid-flight. Drift = re-converge at Lead, update contract, re-spawn.
+
+The contract is the only thing keeping parallel work composable. Skip it = merge hell next round.
+</EXTREMELY-IMPORTANT>
+
+## Red Flags — you are about to skip this skill
+
+| Red flag (your thought) | What it actually means |
+|-------------------------|------------------------|
+| "Agents are smart enough to figure out the interface" | They are not. Each agent's context is isolated; the interface is invisible without the contract. |
+| "Just 2 agents, I'll merge it manually" | Manual merge of two disagreeing types = rework one of the two. Cheaper to contract upfront. |
+| "Integration tests can come after agents finish" | Then the interface is post-hoc rationalized. Integration tests = the contract executable. |
+| "Contract is in my head, I'll just brief each agent" | Two briefings drift by round 2. Write it down once. |
+| "Lead can patch up disagreements at merge time" | That is the rework you tried to avoid by going parallel. |
+
 ## When to use
 
 Trigger this skill when ALL of these are true:

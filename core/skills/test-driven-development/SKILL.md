@@ -7,6 +7,26 @@ description: Drive implementation with a failing test first. Apply when fixing b
 
 The test goes first not because of dogma but because of feedback. A failing test is proof your code wasn't doing the thing yet. A passing test on code that already passed is proof of nothing — it might run zero of the relevant lines. TDD closes the gap between "I wrote a test" and "the test actually checks the thing."
 
+## Iron Law
+
+<EXTREMELY-IMPORTANT>
+1. NEVER write implementation before a failing test for the change you intend. ห้ามฝืน.
+2. ALWAYS observe Red (test fails for the right reason — assertion mismatch, not import error) before writing implementation.
+3. For bug fixes: ALWAYS run the Prove-It revert step (revert fix → test fails → re-apply → test passes). Without this step you have not proven the test catches the bug.
+
+These rules do not bend for "simple change", "I already know it works", or time pressure. 62% of LLM-generated tests have wrong assertions (arXiv 2402.13521) precisely because the test was written after the code. Red-first is the only structural defense.
+</EXTREMELY-IMPORTANT>
+
+## Red Flags — you are about to skip this skill
+
+| Red flag (your thought) | What it actually means |
+|-------------------------|------------------------|
+| "I'll add the test after the implementation" | Test will assert what the code does, not what the spec requires. |
+| "The test passed on the first run" | You didn't see Red — the test isn't exercising the change. |
+| "Reverting the fix to confirm the test fails is overkill" | Skipping Prove-It step 4 is the #1 way bugs ship with green tests. |
+| "This bug is too obvious to need a regression test" | Obvious bugs reappear in 6 months when nobody remembers the obvious fix. |
+| "Mocking the function under test is fine here" | You are testing the mock, not the code. The test proves nothing. |
+
 ## When to use
 
 - Fixing any bug → write the reproducing test first

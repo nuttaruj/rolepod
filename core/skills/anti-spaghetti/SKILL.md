@@ -7,6 +7,26 @@ description: Prevent code rot — duplication, dead code, drift, circular depend
 
 Codebases rot one "just this once" at a time. This skill catches the rot before it spreads. Every line you add either reinforces structure or erodes it — there's no neutral edit.
 
+## Iron Law
+
+<EXTREMELY-IMPORTANT>
+1. NEVER add a 3rd copy of the same pattern. Centralize at occurrence 3, before commit. ห้ามฝืน.
+2. NEVER add a 2nd copy of: auth, permissions, billing, credits, URL validation, SSRF guards, cookies, logging, retries, external API client. These are 1-copy-or-bug categories.
+3. ALWAYS search the repo (`rg`, `gitnexus_query`) before creating a new helper / type / constant / schema. Found existing → reuse or extend. No exceptions.
+
+"Just this one place" is the lie that produced every security incident in this category. The second copy is the bug.
+</EXTREMELY-IMPORTANT>
+
+## Red Flags — you are about to skip this skill
+
+| Red flag (your thought) | What it actually means |
+|-------------------------|------------------------|
+| "Just this one place, I'll centralize next time" | Next time never comes. Copy 2 becomes copy 5. |
+| "It's slightly different so I can't reuse" | "Slightly different" = parameterize the existing helper, not fork it. |
+| "Faster to copy-paste than to find the original" | You will lose more time debugging the divergence than you save now. |
+| "Centralizing now is premature abstraction" | At occurrence 3 it is not premature. At occurrence 1 it is. Know which. |
+| "This `utils.ts` file is the right place" | Junk-drawer files become spaghetti epicenters. Organize by concern. |
+
 ## When to use
 
 - About to add a helper, type, constant, or schema

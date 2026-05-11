@@ -7,6 +7,26 @@ description: Systematic root-cause debugging when tests fail, builds break, or b
 
 Bugs hide in the gap between what you think the code does and what it actually does. The fix is to close that gap — not by guessing, but by checking. This skill imposes structure on debugging so you converge on the cause instead of chasing symptoms.
 
+## Iron Law
+
+<EXTREMELY-IMPORTANT>
+1. NEVER apply a fix before reproducing the bug locally with a deterministic command. No repro = no diagnosis = no fix, only guesses.
+2. NEVER fix the first symptom and stop. Trace to the root cause and decide explicitly whether to fix root or symptom — both are valid, silent symptom-patching is not.
+3. ALWAYS rollback last action first when an error appears immediately after your change. Don't chain downstream fixes on top of a broken state.
+
+Guess-and-check debugging is how 4-hour bugs turn into 4-day bugs.
+</EXTREMELY-IMPORTANT>
+
+## Red Flags — you are about to skip this skill
+
+| Red flag (your thought) | What it actually means |
+|-------------------------|------------------------|
+| "I think I know what's wrong, let me just try X" | You don't know — verify by reading code or running it. |
+| "Can't reproduce, but I'll fix it anyway" | You will fix the wrong thing. Get a repro first. |
+| "Tests pass on my machine, must be environmental" | "Environmental" is a diagnosis, not a hand-wave. Name the env delta. |
+| "I've tried 3 things, let me try 5 more" | After 2 failed attempts, stop and re-frame. More guesses ≠ progress. |
+| "Just add a try/except to make the error go away" | Silenced exceptions are tomorrow's mystery production incident. |
+
 ## When to use
 
 - A test that was green is red

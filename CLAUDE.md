@@ -62,7 +62,7 @@ The 4-step workflow above maps onto a 6-phase lifecycle that organizes which ski
 |-------|--------------|------------|------------|-----------|
 | **Define** | Intent → spec | `spec-driven-development` | product-manager, business-analyst, system-architect | verify-first (intent) |
 | **Plan** | Spec → ordered tasks + interfaces | `planning-and-task-breakdown`, `parallel-contract-orchestration`, `api-and-interface-design` | system-architect, product-manager | Q1-Q4 delegation |
-| **Build** | Tasks → code + docs | `frontend-ui-engineering`, `test-driven-development`, `claude-api`, `anti-spaghetti`, `interface-design`, `interaction-design`, `conversion-copywriting`, `doc-coauthoring` | backend/frontend/mobile/billing/ai-ml/data-scientist, ui-ux-designer, tech-writer | S1-S5 simplicity, F1-F5 failure-mode |
+| **Build** | Tasks → code + docs | `frontend-ui-engineering`, `test-driven-development`, `claude-api`, `anti-spaghetti`, `interface-design`, `interaction-design`, `conversion-copywriting`, `doc-coauthoring` | backend/frontend/mobile/billing/ai-ml/data-scientist, ui-ux-designer, tech-writer | S1-S5 simplicity, F1-F6 failure-mode |
 | **Verify** | Code → evidence | `debugging-and-error-recovery`, `webapp-testing`, `browser-testing-with-devtools`, `performance-optimization`, `security-and-hardening` | qa-tester, security-engineer, performance-engineer | T1-T6 testing, verify-first (claims) |
 | **Review** | Evidence → adversarial pass | `code-review-and-quality`, `code-simplification`, `web-design-guidelines`, `doubt-driven-development` | universal-reviewer, qa-tester (review mode) | pre-merge-gate, hard stops |
 | **Ship** | Pass → deploy + announce | `shipping-and-launch`, `ci-cd-and-automation`, `deprecation-and-migration`, `internal-comms`, `user-facing-content`, `documentation-and-adrs`, `seo` | devops-sre, growth-marketer, customer-success | CI 3-phase, reviewer routing |
@@ -78,7 +78,7 @@ Active checkpoint. Answer 5 questions:
 S1: Added feature beyond request?           yes → cut
 S2: Added abstraction for single-use?       yes → inline
 S3: Added config/flexibility nobody asked?  yes → cut
-S4: Added defensive code for impossible?    yes → cut
+S4: Added defensive code for impossible?    yes → make it structurally impossible (type system / data model / API constraint), not defensive. If you can't make it structurally impossible, the case is NOT impossible — handle properly.
 S5: Same pattern now in 3+ places?          yes → centralize before commit
 ```
 
@@ -150,7 +150,7 @@ Pick agent by path/concern (`~/.claude/rules/team-org.md`):
 
 ## Failure-mode gate — before declaring task done
 
-Active checkpoint. Answer 5 questions before reporting completion to user:
+Active checkpoint. Answer 6 questions before reporting completion to user:
 
 ```
 F1: Hallucinated action?  Did you reference a function/file/API that doesn't exist?
@@ -164,6 +164,11 @@ F4: Context loss?         Did you forget an earlier constraint mid-task?
 F5: Tool misuse?          Did you use a destructive cmd unannounced or
                           run something without verify-first?
                           → review tool calls, announce + re-verify
+F6: Structurally fixable? Could this bug class be made structurally impossible
+                          (type system / data model / API constraint) instead of
+                          a runtime check?
+                          → prefer the structural fix; only fall back to a runtime
+                            check when the structural option is genuinely unavailable.
 ```
 
 Any "yes" → stop and fix before declaring done. Skip if task was a typo / comment / docstring / pure rename.

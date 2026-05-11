@@ -7,6 +7,26 @@ description: Defend code against real-world abuse. Use when handling untrusted i
 
 Most production breaches come from a small set of repeated mistakes: trust where you shouldn't, missing checks at boundaries, secrets in the wrong place. This skill is the checklist for the boundaries you cross every day.
 
+## Iron Law
+
+<EXTREMELY-IMPORTANT>
+1. NEVER trust input crossing a system boundary (HTTP, queue, file, env) without validation at that boundary. Internal layers may then trust the type.
+2. NEVER log secrets, tokens, full credit cards, PII, or raw passwords. Once in logs, assume compromised.
+3. ALWAYS check authorization at every endpoint touching tenant-scoped data. "Just this one place" auth bypass = data leak. ห้ามฝืน.
+
+Most production breaches are not novel exploits — they are these three rules ignored once.
+</EXTREMELY-IMPORTANT>
+
+## Red Flags — you are about to skip this skill
+
+| Red flag (your thought) | What it actually means |
+|-------------------------|------------------------|
+| "This endpoint is internal, no auth needed" | Internal = "I don't know who calls it yet". Add auth. |
+| "I'll validate downstream" | Downstream forgets. Boundary validation is the only reliable gate. |
+| "Logging this token helps debugging" | Logs leak. Use a redacted handle (last 4 chars), never the secret. |
+| "User-supplied URL is fine to fetch" | SSRF to internal network. Allowlist destination, never trust input URL. |
+| "Crypto is hard, I'll roll my own" | You will get it wrong. Use the platform primitive. |
+
 ## When to use
 
 - Adding a route that takes user input
