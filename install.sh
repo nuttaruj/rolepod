@@ -844,31 +844,30 @@ if command -v jq >/dev/null 2>&1; then
     --arg pre "$HOOK_DIR/precommit-gate.sh" \
     --arg ver "$HOOK_DIR/verify-reminder.sh" \
     --arg shp "$HOOK_DIR/post-ship-detect.sh" '
-    # Helper: ensure a matcher group exists with given matcher (returns updated array)
+    # Helper: strip command from ALL matcher groups in event (handles
+    # matcher-rename across versions, e.g. "startup" → "startup|resume").
+    # Returns array with cmd removed everywhere, empty groups dropped.
+    def strip_cmd($arr; $cmd):
+      ($arr // []) | map(
+        .hooks = (.hooks // [] | map(select(.command != $cmd)))
+      ) | map(select(.hooks | length > 0));
+
+    # Helper: ensure matcher group exists, then add command to it.
     def ensure_group($arr; $matcher):
       if ($arr | map(select(.matcher == $matcher)) | length) > 0 then $arr
       else $arr + [{"matcher": $matcher, "hooks": []}] end;
 
-    # Helper: add command to matching matcher group if absent
+    # Cross-group dedup upsert: strip cmd anywhere in event, then add to
+    # canonical matcher group exactly once.
     def upsert_cmd($arr; $matcher; $cmd; $timeout):
-      ensure_group($arr; $matcher) | map(
+      (strip_cmd($arr; $cmd) | ensure_group(.; $matcher)) | map(
         if .matcher == $matcher then
-          if (.hooks | map(select(.command == $cmd)) | length) > 0 then .
-          else .hooks += [{"type": "command", "command": $cmd, "timeout": $timeout}] end
-        else . end
-      );
-
-    # Helper for SessionStart (uses startup|resume matcher)
-    def upsert_session($arr; $cmd; $timeout):
-      ensure_group($arr; "startup|resume") | map(
-        if .matcher == "startup|resume" then
-          if (.hooks | map(select(.command == $cmd)) | length) > 0 then .
-          else .hooks += [{"type": "command", "command": $cmd, "timeout": $timeout}] end
+          .hooks += [{"type": "command", "command": $cmd, "timeout": $timeout}]
         else . end
       );
 
     .hooks = (.hooks // {})
-    | .hooks.SessionStart = upsert_session((.hooks.SessionStart // []); $ctx; 5)
+    | .hooks.SessionStart = upsert_cmd((.hooks.SessionStart // []); "startup|resume"; $ctx; 5)
     | .hooks.PreToolUse = upsert_cmd((.hooks.PreToolUse // []); "Edit|Write|MultiEdit"; $gate; 3)
     | .hooks.PreToolUse = upsert_cmd((.hooks.PreToolUse // []); "Bash"; $pre; 5)
     | .hooks.PostToolUse = upsert_cmd((.hooks.PostToolUse // []); "Edit|Write"; $ver; 3)
@@ -898,13 +897,19 @@ hooks = data.setdefault("hooks", {})
 
 def upsert(event, matcher, cmd, timeout):
     arr = hooks.setdefault(event, [])
+    # Strip cmd from ALL groups in event (handles matcher-rename across
+    # versions, e.g. "startup" → "startup|resume"). Drop now-empty groups.
+    for g in arr:
+        g["hooks"] = [h for h in g.get("hooks", []) if h.get("command") != cmd]
+    arr[:] = [g for g in arr if g.get("hooks")]
+    # Find or create canonical matcher group, then add cmd exactly once.
     group = next((g for g in arr if g.get("matcher") == matcher), None)
     if group is None:
         group = {"matcher": matcher, "hooks": []}
         arr.append(group)
-    inner = group.setdefault("hooks", [])
-    if not any(h.get("command") == cmd for h in inner):
-        inner.append({"type": "command", "command": cmd, "timeout": timeout})
+    group.setdefault("hooks", []).append(
+        {"type": "command", "command": cmd, "timeout": timeout}
+    )
 
 upsert("SessionStart", "startup|resume", os.path.join(hook_dir, "project-context-loader.sh"), 5)
 upsert("PreToolUse", "Edit|Write|MultiEdit", os.path.join(hook_dir, "gate-reminder.sh"), 3)
