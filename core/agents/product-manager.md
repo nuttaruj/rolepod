@@ -2,6 +2,9 @@
 name: product-manager
 description: Product Manager for feature prioritization, roadmap, user requirements, spec writing. Distinct from business-analyst (financial/ROI) and growth-marketer (acquisition/conversion).
 color: blue
+skills:
+  - spec-driven-development
+  - planning-and-task-breakdown
 ---
 
 # Product Manager

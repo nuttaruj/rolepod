@@ -1,6 +1,7 @@
 ---
 name: session-hygiene
-description: Manage Claude Code session context — when to /clear, /compact, /rewind, switch task, or use a subagent. Use for "long session", "context near limit", "switching task", "wrong path", "/clear", "/compact", "/rewind".
+description: Manage Claude Code session context — when to /clear, /compact, /rewind, switch task, or use a subagent.
+when_to_use: '"long session", "context near limit", "switching task", "wrong path", "/clear", "/compact", "/rewind"'
 ---
 
 # Session Management

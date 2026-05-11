@@ -1,6 +1,7 @@
 ---
 name: debugging-and-error-recovery
-description: Systematic root-cause debugging when tests fail, builds break, or behavior diverges from expectation. Apply when an error appears, when output is wrong, or when something worked before and stopped. Replaces guess-and-check with a disciplined narrowing process.
+description: Systematic root-cause debugging when tests fail, builds break, or behavior diverges from expectation. Replaces guess-and-check with a disciplined narrowing process.
+when_to_use: when an error appears, when output is wrong, or when something worked before and stopped
 ---
 
 # Debugging and Error Recovery

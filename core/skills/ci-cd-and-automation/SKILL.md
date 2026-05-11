@@ -1,6 +1,7 @@
 ---
 name: ci-cd-and-automation
-description: Set up and harden CI/CD pipelines. Use when configuring build/test/deploy automation, adding quality gates, splitting CI lanes by speed and risk, or debugging slow/flaky pipelines.
+description: Set up and harden CI/CD pipelines — quality gates, lane splitting by speed/risk, slow/flaky pipeline debugging.
+when_to_use: when configuring build/test/deploy automation, adding quality gates, splitting CI lanes by speed and risk, or debugging slow/flaky pipelines
 ---
 
 # CI/CD and Automation

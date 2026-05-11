@@ -1,6 +1,7 @@
 ---
 name: internal-comms
-description: Write clear internal communication — status updates, announcements, decision memos, escalations, retros. Use for messages whose audience is teammates, leadership, or cross-functional partners and whose job is to convey information without selling.
+description: Write clear internal communication — status updates, announcements, decision memos, escalations, retros. Conveys information without selling.
+when_to_use: for messages whose audience is teammates, leadership, or cross-functional partners
 ---
 
 # Internal Comms

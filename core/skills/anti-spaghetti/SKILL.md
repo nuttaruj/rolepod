@@ -1,6 +1,7 @@
 ---
 name: anti-spaghetti
-description: Prevent code rot — duplication, dead code, drift, circular dependencies, and creeping complexity. Apply when adding new logic, when a pattern starts repeating, or when a module imports from where it shouldn't. Universal hygiene rules that work across language and framework.
+description: Prevent code rot — duplication, dead code, drift, circular dependencies, and creeping complexity. Universal hygiene rules that work across language and framework.
+when_to_use: when adding new logic, when a pattern starts repeating, or when a module imports from where it shouldn't
 ---
 
 # Anti-Spaghetti

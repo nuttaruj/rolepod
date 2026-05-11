@@ -2,6 +2,8 @@
 name: business-analyst
 description: Business Strategist for pricing models, cost/ROI analysis, financial modeling, competitor research. Commercial layer — distinct from product-manager (feature decisions).
 color: green
+skills:
+  - spec-driven-development
 ---
 
 # Business Analyst

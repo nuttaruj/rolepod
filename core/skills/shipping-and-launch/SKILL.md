@@ -1,6 +1,7 @@
 ---
 name: shipping-and-launch
-description: Run a disciplined production launch. Use when preparing to deploy, drafting a launch checklist, setting up monitoring/alerts, or planning a rollback for a risky change.
+description: Run a disciplined production launch — launch checklist, monitoring/alerts, rollback planning.
+when_to_use: when preparing to deploy, drafting a launch checklist, setting up monitoring/alerts, or planning a rollback for a risky change
 ---
 
 # Shipping and Launch

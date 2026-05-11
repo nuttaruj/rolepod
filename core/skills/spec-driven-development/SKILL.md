@@ -1,6 +1,7 @@
 ---
 name: spec-driven-development
-description: Write a structured spec before writing code. Use at the start of a new feature, project, or significant change when requirements aren't yet pinned down. Produces a PRD-style document that becomes the contract for implementation.
+description: Write a structured spec before writing code. Produces a PRD-style document that becomes the contract for implementation.
+when_to_use: at the start of a new feature, project, or significant change when requirements aren't yet pinned down
 ---
 
 # Spec-Driven Development

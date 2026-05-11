@@ -1,6 +1,7 @@
 ---
 name: security-and-hardening
-description: Defend code against real-world abuse. Use when handling untrusted input, building auth flows, persisting sensitive data, calling external services, or auditing existing code for vulnerabilities.
+description: Defend code against real-world abuse — input validation, auth, secret handling, vuln auditing.
+when_to_use: when handling untrusted input, building auth flows, persisting sensitive data, calling external services, or auditing existing code for vulnerabilities
 ---
 
 # Security and Hardening

@@ -1,6 +1,7 @@
 ---
 name: interaction-design
-description: Design and implement microinteractions, motion, transitions, and feedback. Use when adding polish to UI, building hover/focus/press states, animating state changes, or making the interface feel responsive. Covers when motion helps, when it hurts, and the timing rules behind both.
+description: Design and implement microinteractions, motion, transitions, and feedback. Covers when motion helps, when it hurts, and the timing rules behind both.
+when_to_use: when adding polish to UI, building hover/focus/press states, animating state changes, or making the interface feel responsive
 ---
 
 # Interaction Design

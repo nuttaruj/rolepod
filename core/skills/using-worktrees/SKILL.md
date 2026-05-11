@@ -1,6 +1,7 @@
 ---
 name: using-worktrees
-description: Use a git worktree (not a fresh clone, not a branch swap in place) when you need real filesystem isolation for parallel feature work, hotfix-on-top-of-feature, or experimental refactors that should not touch the main checkout. Triggers when Lead is about to spawn parallel agents on overlapping paths, when a hotfix interrupts an in-progress feature, when running long-lived builds/tests that must not be disrupted, or when comparing two branches side-by-side in editors and shells.
+description: Use a git worktree (not a fresh clone, not a branch swap in place) when you need real filesystem isolation for parallel feature work, hotfix-on-top-of-feature, or experimental refactors that should not touch the main checkout.
+when_to_use: when Lead is about to spawn parallel agents on overlapping paths, when a hotfix interrupts an in-progress feature, when running long-lived builds/tests that must not be disrupted, or when comparing two branches side-by-side in editors and shells
 ---
 
 # Using Worktrees

@@ -1,6 +1,7 @@
 ---
 name: planning-and-task-breakdown
-description: Break a goal or spec into ordered, verifiable tasks. Use when work feels too big for a single session, when dependencies are unclear, or when the next step isn't obvious. Pair with spec-driven-development for new features.
+description: Break a goal or spec into ordered, verifiable tasks. Pair with spec-driven-development for new features.
+when_to_use: when work feels too big for a single session, when dependencies are unclear, or when the next step isn't obvious
 ---
 
 # Planning and Task Breakdown

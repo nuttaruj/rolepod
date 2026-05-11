@@ -1,6 +1,7 @@
 ---
 name: claude-api
-description: Build, debug, and optimize Claude API and Anthropic SDK applications with prompt caching as a default. Apply when integrating the Anthropic Python or TypeScript SDK, when migrating between Claude model versions, when tuning cache hit rate, or when implementing tool use, streaming, or batching.
+description: Build, debug, and optimize Claude API and Anthropic SDK applications with prompt caching as a default.
+when_to_use: when integrating the Anthropic Python or TypeScript SDK, when migrating between Claude model versions, when tuning cache hit rate, or when implementing tool use, streaming, or batching
 ---
 
 # Claude API

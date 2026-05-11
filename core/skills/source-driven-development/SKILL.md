@@ -1,6 +1,7 @@
 ---
 name: source-driven-development
-description: Ground every framework or library decision in official documentation, not training-cached recall. Detect the project's stack and version, fetch current docs, cite inline, flag deprecated patterns. Complements verify-first (reactive) with proactive citation at write time. Use when writing framework code, integrating an SDK, or whenever an API call enters the diff.
+description: Ground every framework or library decision in official documentation, not training-cached recall. Detect the project's stack and version, fetch current docs, cite inline, flag deprecated patterns. Complements verify-first (reactive) with proactive citation at write time.
+when_to_use: when writing framework code, integrating an SDK, or whenever an API call enters the diff
 ---
 
 # Source-Driven Development

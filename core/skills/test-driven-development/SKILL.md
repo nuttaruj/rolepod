@@ -1,6 +1,10 @@
 ---
 name: test-driven-development
-description: Drive implementation with a failing test first. Apply when fixing bugs (Prove-It pattern), when adding new logic, when changing behavior, or when you need proof that code works AND that the test actually exercises the change. Red → Green → Refactor.
+description: Drive implementation with a failing test first. Red → Green → Refactor.
+when_to_use: when fixing bugs (Prove-It pattern), when adding new logic, when changing behavior, or when you need proof that code works AND that the test actually exercises the change
+paths:
+  - "**/*test*.{ts,js,py,go,rs}"
+  - "**/__tests__/**"
 ---
 
 # Test-Driven Development

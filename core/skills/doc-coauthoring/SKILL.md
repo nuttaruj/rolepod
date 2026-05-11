@@ -1,6 +1,7 @@
 ---
 name: doc-coauthoring
-description: Co-author docs, specs, and proposals with a user through structured iteration rather than one-shot drafting. Use when the user wants to write a document together — interview, outline, draft, refine — instead of "just write me one."
+description: Co-author docs, specs, and proposals with a user through structured iteration — interview, outline, draft, refine — rather than one-shot drafting.
+when_to_use: when the user wants to write a document together instead of "just write me one"
 ---
 
 # Doc Co-Authoring

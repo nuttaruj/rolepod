@@ -1,6 +1,7 @@
 ---
 name: performance-optimization
-description: Optimize app performance — Core Web Vitals, load time, bundle size, render perf, query latency. Use when performance budgets are missed, regressions appear, or users report slowness. Measure first, fix the biggest cost, re-measure.
+description: Optimize app performance — Core Web Vitals, load time, bundle size, render perf, query latency. Measure first, fix the biggest cost, re-measure.
+when_to_use: when performance budgets are missed, regressions appear, or users report slowness
 ---
 
 # Performance Optimization

@@ -1,6 +1,11 @@
 ---
 name: documentation-and-adrs
-description: Write durable technical docs and architectural decision records (ADRs). Use when capturing why a choice was made, documenting a public API, writing a runbook, or recording context that future readers will need.
+description: Write durable technical docs and architectural decision records (ADRs).
+when_to_use: when capturing why a choice was made, documenting a public API, writing a runbook, or recording context that future readers will need
+paths:
+  - "**/docs/**/*.md"
+  - "**/ADR-*.md"
+  - "**/decisions/**"
 ---
 
 # Documentation and ADRs

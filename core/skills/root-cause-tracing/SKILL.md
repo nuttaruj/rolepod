@@ -1,6 +1,7 @@
 ---
 name: root-cause-tracing
-description: Trace an error upstream from where it fires to where it was actually caused, instead of patching the proximate symptom. Use when a stack trace points at a display / boundary / late-stage symptom (e.g. null pointer in the render layer, but the null was produced three layers up at DB read time), when the same bug keeps recurring with different surfaces, or when a "fix" makes the original error go away but a similar one appears nearby. Standalone tracing primitive that the broader debugging-and-error-recovery skill pulls in.
+description: Trace an error upstream from where it fires to where it was actually caused, instead of patching the proximate symptom. Standalone tracing primitive that the broader debugging-and-error-recovery skill pulls in.
+when_to_use: when a stack trace points at a display / boundary / late-stage symptom (e.g. null pointer in the render layer, but the null was produced three layers up at DB read time), when the same bug keeps recurring with different surfaces, or when a "fix" makes the original error go away but a similar one appears nearby
 ---
 
 # Root Cause Tracing

@@ -2,6 +2,9 @@
 name: security-engineer
 description: Security Engineer for vuln audit, pentest, system hardening, compliance (GDPR/SOC2/HIPAA). Owns security concern across all layers.
 color: red
+skills:
+  - security-and-hardening
+  - doubt-driven-development
 ---
 
 # Security Engineer

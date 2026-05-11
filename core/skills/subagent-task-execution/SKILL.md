@@ -1,6 +1,7 @@
 ---
 name: subagent-task-execution
-description: Two-stage per-task review pattern when Lead delegates an implementation task to a subagent — fresh implementer subagent writes the code, then a separate spec-compliance reviewer subagent and a separate code-quality reviewer subagent each evaluate it in independent contexts. Mark the task done only when both reviewers pass. Use when Lead is about to delegate a non-trivial implementation task and the cost of a silent regression or spec drift is higher than the cost of two extra review rounds.
+description: Two-stage per-task review pattern when Lead delegates an implementation task to a subagent — fresh implementer subagent writes the code, then a separate spec-compliance reviewer subagent and a separate code-quality reviewer subagent each evaluate it in independent contexts. Mark the task done only when both reviewers pass.
+when_to_use: when Lead is about to delegate a non-trivial implementation task and the cost of a silent regression or spec drift is higher than the cost of two extra review rounds
 ---
 
 # Subagent Task Execution

@@ -1,6 +1,7 @@
 ---
 name: context-engineering
-description: Optimize agent context — what gets loaded, when, and at what cost. Apply when starting a new session, when output quality degrades, when costs spike, or when designing multi-agent systems. Covers lazy loading, isolation, compression, and the tradeoffs between them.
+description: Optimize agent context — what gets loaded, when, and at what cost. Covers lazy loading, isolation, compression, and the tradeoffs between them.
+when_to_use: when starting a new session, when output quality degrades, when costs spike, or when designing multi-agent systems
 ---
 
 # Context Engineering

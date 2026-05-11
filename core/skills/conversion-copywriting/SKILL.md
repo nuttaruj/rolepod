@@ -1,6 +1,7 @@
 ---
 name: conversion-copywriting
-description: Write marketing copy that gets a specific reader to take a specific action. Use for landing pages, email campaigns, ads, blog posts with a call to action, and any copy whose success is measured by clicks/signups/sales rather than reads.
+description: Write marketing copy that gets a specific reader to take a specific action — copy whose success is measured by clicks/signups/sales rather than reads.
+when_to_use: landing pages, email campaigns, ads, blog posts with a call to action
 ---
 
 # Conversion Copywriting

@@ -1,6 +1,7 @@
 ---
 name: triage-deep
-description: Deep triage rules for multi-file tasks, multi-agent coordination, scope/drift control. Use for "multi-file task", "scope unclear", "drift suspected", "mid-implement creep", "phase abort", "lead drift", "rollback reflex".
+description: Deep triage rules for multi-file tasks, multi-agent coordination, scope/drift control.
+when_to_use: '"multi-file task", "scope unclear", "drift suspected", "mid-implement creep", "phase abort", "lead drift", "rollback reflex"'
 ---
 
 # Triage — deep rules

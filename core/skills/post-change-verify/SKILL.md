@@ -1,6 +1,7 @@
 ---
 name: post-change-verify
-description: Prove a code change works with evidence (test pass, screenshot, curl, log). Use for "verify change", "evidence after edit", "verify build", "verify task done", "show test pass output", before reporting completion.
+description: Prove a code change works with evidence (test pass, screenshot, curl, log) before reporting completion.
+when_to_use: '"verify change", "evidence after edit", "verify build", "verify task done", "show test pass output"'
 ---
 
 # Verification — proving your change works

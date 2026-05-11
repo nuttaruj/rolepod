@@ -1,6 +1,11 @@
 ---
 name: webapp-testing
-description: Test local web apps with Playwright. Use when verifying frontend functionality, debugging UI behavior, or capturing repeatable evidence of UI changes. Covers when to use Playwright over manual DevTools, scripted flows, and how to keep tests stable.
+description: Test local web apps with Playwright. Covers when to use Playwright over manual DevTools, scripted flows, and how to keep tests stable.
+when_to_use: when verifying frontend functionality, debugging UI behavior, or capturing repeatable evidence of UI changes
+paths:
+  - "**/playwright.config.*"
+  - "**/*.spec.{ts,js}"
+  - "**/e2e/**"
 ---
 
 # Webapp Testing

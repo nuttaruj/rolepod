@@ -2,6 +2,10 @@
 name: ui-ux-designer
 description: UI/UX Designer + Frontend Polisher. Owns design system, components, visual polish, micro-interactions, accessibility (WCAG/a11y).
 color: pink
+skills:
+  - web-design-guidelines
+  - interaction-design
+  - interface-design
 ---
 
 # UI/UX Designer + Polisher

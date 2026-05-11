@@ -1,6 +1,11 @@
 ---
 name: seo
-description: Audit and improve SEO across technical, on-page, structured-data, and content layers. Use when planning content, before launching new pages, when traffic plateaus or drops, or when migrating a site.
+description: Audit and improve SEO across technical, on-page, structured-data, and content layers.
+when_to_use: when planning content, before launching new pages, when traffic plateaus or drops, or when migrating a site
+paths:
+  - "**/sitemap*"
+  - "**/robots.txt"
+  - "**/meta-*.{html,tsx,jsx}"
 ---
 
 # SEO

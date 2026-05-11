@@ -2,6 +2,10 @@
 name: backend-developer
 description: Backend Specialist. Builds APIs, business logic, database models, integrations. Excludes specialist domains (billing/AI/data analytics) which have dedicated agents.
 color: blue
+skills:
+  - api-and-interface-design
+  - anti-spaghetti
+  - test-driven-development
 ---
 
 # Backend Developer

@@ -1,6 +1,7 @@
 ---
 name: reviewer-flow
-description: Route code review across Codex, Gemini, and qa-tester. Use when spawning a reviewer, "code review cascade", "adversarial review", "Codex review", "Gemini review", high-risk surface review.
+description: Route code review across Codex, Gemini, and qa-tester — pick reviewer by PR profile and risk.
+when_to_use: 'when spawning a reviewer, "code review cascade", "adversarial review", "Codex review", "Gemini review", high-risk surface review'
 ---
 
 # Reviewer Flow — Codex + Gemini + qa-tester

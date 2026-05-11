@@ -1,6 +1,13 @@
 ---
 name: browser-testing-with-devtools
-description: Verify browser code by inspecting the live page. Use when building or debugging anything that runs in a browser — read the DOM, capture console errors, watch network traffic, check computed styles. Don't ask the user for screenshots when DevTools can answer.
+description: Verify browser code by inspecting the live page — read the DOM, capture console errors, watch network traffic, check computed styles. Don't ask the user for screenshots when DevTools can answer.
+when_to_use: when building or debugging anything that runs in a browser
+paths:
+  - "**/*.{tsx,jsx,vue,svelte}"
+  - "**/components/**"
+  - "**/playwright.config.*"
+  - "**/*.spec.{ts,js}"
+  - "**/e2e/**"
 ---
 
 # Browser Testing with DevTools

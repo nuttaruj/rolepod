@@ -2,6 +2,9 @@
 name: growth-marketer
 description: Growth + Content Strategist. SEO, copywriting, conversion, marketing campaigns. For deep technical SEO (sitemaps/schema/Google APIs) → install claude-seo plugin sub-agents.
 color: orange
+skills:
+  - conversion-copywriting
+  - seo
 ---
 
 # Growth Marketer

@@ -2,6 +2,10 @@
 name: frontend-developer
 description: Frontend Specialist. Builds UI components with focus on state management, API integration, routing, and logic. Distinct from ui-ux-designer (visual design + polish).
 color: cyan
+skills:
+  - frontend-ui-engineering
+  - interaction-design
+  - anti-spaghetti
 ---
 
 # Frontend Developer

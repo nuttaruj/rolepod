@@ -1,6 +1,7 @@
 ---
 name: zoom-out
-description: Step back from implementation details to high-level perspective. Use when stuck in details, drifting from goal, multiple correction rounds, or losing sight of the actual problem. Meta-cognitive recovery tool.
+description: Step back from implementation details to high-level perspective. Meta-cognitive recovery tool.
+when_to_use: when stuck in details, drifting from goal, multiple correction rounds, or losing sight of the actual problem
 ---
 
 # Zoom Out

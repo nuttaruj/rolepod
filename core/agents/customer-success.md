@@ -2,6 +2,8 @@
 name: customer-success
 description: Customer Success — user onboarding, FAQ, support content, technical-to-user translation. Distinct from tech-writer (internal docs) and growth-marketer (acquisition).
 color: cyan
+skills:
+  - user-facing-content
 ---
 
 # Customer Success

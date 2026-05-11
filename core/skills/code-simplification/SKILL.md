@@ -1,6 +1,7 @@
 ---
 name: code-simplification
-description: Refactor for clarity without changing behavior. Apply when code works but is hard to read, when nesting is deep, when a function is doing too much, or when the design fights you on every change. Behavior-preserving — every change is provable by tests staying green.
+description: Refactor for clarity without changing behavior. Behavior-preserving — every change is provable by tests staying green.
+when_to_use: when code works but is hard to read, when nesting is deep, when a function is doing too much, or when the design fights you on every change
 ---
 
 # Code Simplification

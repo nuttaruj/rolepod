@@ -1,6 +1,7 @@
 ---
 name: pre-merge-gate
-description: Run the pre-merge gate before pushing or merging. Use before `git push` to tracked branch, `gh pr merge`, "ship it", "before push", "before merge", "ship gate". Covers simplicity gate, test gate, reviewer routing, ask-user matrix, CI lanes.
+description: Run the pre-merge gate — simplicity + test + reviewer routing + ask-user matrix + CI lanes — before pushing or merging.
+when_to_use: 'before `git push` to tracked branch, `gh pr merge`, "ship it", "before push", "before merge", "ship gate", PR ready to merge'
 ---
 
 # Pre-Merge Gate

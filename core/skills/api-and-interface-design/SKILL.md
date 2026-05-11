@@ -1,6 +1,7 @@
 ---
 name: api-and-interface-design
-description: Design stable APIs and module boundaries that survive change. Apply when creating REST/GraphQL endpoints, RPC methods, public package exports, or internal module interfaces. Covers naming, versioning, error shape, idempotency, evolution.
+description: Design stable APIs and module boundaries that survive change. Covers naming, versioning, error shape, idempotency, evolution.
+when_to_use: when creating REST/GraphQL endpoints, RPC methods, public package exports, or internal module interfaces
 ---
 
 # API and Interface Design

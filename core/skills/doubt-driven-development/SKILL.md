@@ -1,6 +1,7 @@
 ---
 name: doubt-driven-development
-description: Adversarial 5-step review with reasoning-stripping. Use for irreversible operations (migrations, money, deploys), cross-module changes, or any unverifiable claim ("works correctly", "no edge cases"). A fresh reviewer sees only artifact + contract — never the author's reasoning — and must derive doubts from the code alone. Bounded to 3 cycles.
+description: Adversarial 5-step review with reasoning-stripping. A fresh reviewer sees only artifact + contract — never the author's reasoning — and must derive doubts from the code alone. Bounded to 3 cycles.
+when_to_use: irreversible operations (migrations, money, deploys), cross-module changes, or any unverifiable claim ("works correctly", "no edge cases")
 ---
 
 # Doubt-Driven Development

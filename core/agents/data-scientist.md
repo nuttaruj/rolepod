@@ -2,6 +2,8 @@
 name: data-scientist
 description: Data Scientist focused on statistical analysis, analytics queries, dashboards, and data pipelines. Distinct from ai-ml-engineer (LLM/RAG/agents).
 color: yellow
+skills:
+  - spec-driven-development
 ---
 
 # Data Scientist

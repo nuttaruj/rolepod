@@ -1,6 +1,7 @@
 ---
 name: team-routing
-description: Pick the right agent and route parallel multi-agent work. Use for "choose agent", "multi-agent parallel", "team layout", "agent picker", "unclear ownership", "cohesion contract".
+description: Pick the right agent and route parallel multi-agent work.
+when_to_use: '"choose agent", "multi-agent parallel", "team layout", "agent picker", "unclear ownership", "cohesion contract"'
 ---
 
 # Team Organization — agent picker + parallel pattern

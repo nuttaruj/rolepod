@@ -2,6 +2,9 @@
 name: mobile-developer
 description: Mobile Engineer for native iOS/Android + cross-platform (React Native / Flutter). Owns platform-specific code; cross-platform UI logic may overlap with frontend-developer.
 color: purple
+skills:
+  - frontend-ui-engineering
+  - test-driven-development
 ---
 
 # Mobile Developer

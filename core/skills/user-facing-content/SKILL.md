@@ -1,6 +1,7 @@
 ---
 name: user-facing-content
-description: Write user-facing content that helps people, not impresses them. Covers FAQs, error messages, onboarding flows, empty states, help articles, and any text the end user reads inside the product or in support contexts.
+description: Write user-facing content that helps people, not impresses them.
+when_to_use: FAQs, error messages, onboarding flows, empty states, help articles, and any text the end user reads inside the product or in support contexts
 ---
 
 # User-Facing Content

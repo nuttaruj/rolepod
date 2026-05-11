@@ -1,6 +1,10 @@
 ---
 name: frontend-ui-engineering
-description: Build production-quality UI. Use when creating components, implementing layouts, wiring state, or shipping user-facing screens. Covers component boundaries, state colocation, data fetching, and the discipline that keeps frontends maintainable as they grow.
+description: Build production-quality UI. Covers component boundaries, state colocation, data fetching, and the discipline that keeps frontends maintainable as they grow.
+when_to_use: when creating components, implementing layouts, wiring state, or shipping user-facing screens
+paths:
+  - "**/*.{tsx,jsx,vue,svelte}"
+  - "**/components/**"
 ---
 
 # Frontend UI Engineering

@@ -1,6 +1,7 @@
 ---
 name: code-review-and-quality
-description: Conduct multi-axis code review across correctness, readability, architecture, security, and performance. Apply before merging any change, when reviewing your own diff, another agent's output, or a human PR. Produces actionable findings with severity, file:line, and concrete fix.
+description: Conduct multi-axis code review across correctness, readability, architecture, security, and performance. Produces actionable findings with severity, file:line, and concrete fix.
+when_to_use: before merging any change, when reviewing your own diff, another agent's output, or a human PR
 ---
 
 # Code Review and Quality

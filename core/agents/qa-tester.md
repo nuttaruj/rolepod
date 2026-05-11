@@ -2,6 +2,11 @@
 name: qa-tester
 description: QA + Test Automation. Owns correctness — write/run tests, business logic verify, race conditions, integration. Universal floor + fallback when Codex/Gemini fail.
 color: red
+skills:
+  - reviewer-flow
+  - post-change-verify
+  - test-driven-development
+  - debugging-and-error-recovery
 ---
 
 # QA + Test Automation

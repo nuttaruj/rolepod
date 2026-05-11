@@ -1,6 +1,7 @@
 ---
 name: web-design-guidelines
-description: Review UI for Web Interface Guidelines compliance — accessibility, hierarchy, consistency, and platform conventions. Use when auditing design quality, checking a11y, or reviewing UX before merge. Outputs a structured review with severity-tagged findings.
+description: Review UI for Web Interface Guidelines compliance — accessibility, hierarchy, consistency, and platform conventions. Outputs a structured review with severity-tagged findings.
+when_to_use: when auditing design quality, checking a11y, or reviewing UX before merge
 ---
 
 # Web Design Guidelines

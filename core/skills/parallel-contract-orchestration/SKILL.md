@@ -1,6 +1,7 @@
 ---
 name: parallel-contract-orchestration
-description: Write a cohesion contract before spawning multiple parallel agents on the same feature. Pattern adopted from evanflow — prevents inter-agent interface drift when 2+ engineering agents touch shared types, invariants, or integration points. Use when Lead is about to spawn multiple agents in parallel and they will produce code that has to compose together.
+description: Write a cohesion contract before spawning multiple parallel agents on the same feature. Pattern adopted from evanflow — prevents inter-agent interface drift when 2+ engineering agents touch shared types, invariants, or integration points.
+when_to_use: when Lead is about to spawn multiple agents in parallel and they will produce code that has to compose together
 ---
 
 # Parallel Contract Orchestration

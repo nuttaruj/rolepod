@@ -1,6 +1,7 @@
 ---
 name: interface-design
-description: Design dashboards, admin panels, and tool/app interfaces — interfaces users return to and operate. NOT for marketing pages. Covers information density, navigation, data display, and the patterns that make complex products feel coherent.
+description: Design dashboards, admin panels, and tool/app interfaces — interfaces users return to and operate. Covers information density, navigation, data display, and the patterns that make complex products feel coherent. NOT for marketing pages.
+when_to_use: when designing a dashboard, admin panel, settings UI, internal tool, or any operational app interface
 ---
 
 # Interface Design

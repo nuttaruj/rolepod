@@ -1,6 +1,7 @@
 ---
 name: finishing-a-development-branch
-description: At the end of a development task, present a 4-option decision menu (merge, PR, keep open, discard) instead of silently guessing what to do next. Use whenever a feature / fix / refactor branch reaches a natural stopping point — work is committed, tests pass locally, and the next action depends on context Lead can detect (fork vs upstream, open PR vs not, ahead of main vs not) rather than guess. Pairs with pre-merge-gate.
+description: At the end of a development task, present a 4-option decision menu (merge, PR, keep open, discard) instead of silently guessing what to do next. Pairs with pre-merge-gate.
+when_to_use: whenever a feature / fix / refactor branch reaches a natural stopping point — work is committed, tests pass locally, and the next action depends on context Lead can detect (fork vs upstream, open PR vs not, ahead of main vs not) rather than guess
 ---
 
 # Finishing A Development Branch
