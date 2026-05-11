@@ -5,7 +5,12 @@
 #   ./install.sh                       # rolepod core only (no plugins) — safe default
 #   ./install.sh --minimum             # core + ui-ux-pro-max + GitNexus + MemPalace
 #   ./install.sh --full                # minimum + caveman + rtk + codex CLI + gemini CLI + openai-codex plugin
-#   ./install.sh --force               # overwrite existing files (backup created)
+#   ./install.sh --force               # overwrite existing files (selective backup created)
+#                                      # Backup includes ONLY rolepod-managed paths
+#                                      # (entry docs, agents/, rules/, hooks/, skills/, etc.)
+#                                      # Excluded: session history (projects/), plugin cache,
+#                                      # file-history/, shell-snapshots/, agent-memory/, etc.
+#                                      # Typical backup: <50MB (vs ~1.8GB full ~/.claude copy)
 #                                      # --force can be combined with any of the above
 #   ./install.sh --target=claude       # CLI target (default → ~/.claude)
 #   ./install.sh --target=codex        # Codex CLI       → ~/.codex
@@ -247,6 +252,46 @@ do_or_dry() {
     return 0
   fi
   "$@"
+}
+
+# selective_backup <src> <backup> <path1> [path2 ...]
+#
+# Back up ONLY rolepod-managed paths from <src> into <backup>, skipping bloat
+# dirs that aren't part of rolepod's workflow (session transcripts, plugin
+# caches, file-history, shell-snapshots, agent-memory, etc.). Original full
+# `cp -R ~/.claude ...` could exceed 1.8GB on active users; this stays small
+# (typically <50MB) and only protects what install.sh might overwrite.
+#
+# Honors $DRY_RUN. Missing source paths are silently skipped (not all paths
+# exist on every install — e.g. plugins/rolepod on a fresh Codex setup).
+selective_backup() {
+  local src="$1"; shift
+  local backup="$1"; shift
+  # Remaining args = include list (paths relative to src).
+
+  if [ "$DRY_RUN" -eq 1 ]; then
+    dry "selective backup: $src → $backup (rolepod-scoped — excludes session history / plugin cache)"
+    for path in "$@"; do
+      dry "  include: $path"
+    done
+    return 0
+  fi
+
+  mkdir -p "$backup"
+  for path in "$@"; do
+    if [ -e "$src/$path" ]; then
+      local parent
+      parent="$(dirname "$path")"
+      if [ "$parent" != "." ]; then
+        mkdir -p "$backup/$parent"
+      fi
+      cp -R "$src/$path" "$backup/$path" 2>/dev/null || true
+    fi
+  done
+
+  local size
+  size=$(du -sh "$backup" 2>/dev/null | awk '{print $1}')
+  warn "Backup created: $backup (${size:-?} — rolepod-scoped, excludes session history / plugin cache)"
 }
 
 # ─── Managed-block helpers ──────────────────────────────────────────────
@@ -693,12 +738,25 @@ if claude_selected; then
   RENDERED_CLAUDE_MD="$REPO_DIR/build/rendered/claude/CLAUDE.md"
   [ -f "$RENDERED_CLAUDE_MD" ] || fail "expected $RENDERED_CLAUDE_MD after render"
 
-  # Backup if --force on existing
+  # Backup if --force on existing — rolepod-scoped only.
+  # Excludes: projects/ (session history), plugins/cache/, plugins/marketplaces/,
+  # file-history/, shell-snapshots/, session-env/, scheduled-tasks/, cache/,
+  # agent-memory/, backups/, teams/ — none are rolepod-managed.
   if [ "$FORCE" -eq 1 ] && [ -d "$TARGET" ]; then
     STAMP=$(date +%Y%m%d-%H%M%S)
     BACKUP="$HOME/.claude.backup-$STAMP"
-    warn "Backing up existing $TARGET → $BACKUP"
-    do_or_dry "cp -R $TARGET $BACKUP" cp -R "$TARGET" "$BACKUP"
+    warn "Backing up rolepod-managed paths in $TARGET → $BACKUP"
+    selective_backup "$TARGET" "$BACKUP" \
+      CLAUDE.md \
+      CHEATSHEET.md \
+      README.md \
+      agents \
+      rules \
+      hooks \
+      skills \
+      commands \
+      .claude-plugin \
+      settings.json
   fi
 
   step "Creating directory structure"
@@ -958,11 +1016,18 @@ if codex_selected; then
   [ -d "$RENDERED_CODEX_DIR/plugins/rolepod/hooks" ]                            || fail "expected plugins/rolepod/hooks/ after render"
   [ -d "$RENDERED_CODEX_DIR/plugins/rolepod/skills" ]                           || fail "expected plugins/rolepod/skills/ after render"
 
+  # Backup if --force on existing — rolepod-scoped only.
+  # Excludes: log/, .tmp/, history/, sessions/ — Codex runtime data, not rolepod-managed.
+  # config.toml has its own .rolepod-bak.<stamp> backup later (see below).
   if [ "$FORCE" -eq 1 ] && [ -d "$CODEX_TARGET" ]; then
     STAMP=$(date +%Y%m%d-%H%M%S)
     BACKUP="$HOME/.codex.backup-$STAMP"
-    warn "Backing up existing $CODEX_TARGET → $BACKUP"
-    do_or_dry "cp -R $CODEX_TARGET $BACKUP" cp -R "$CODEX_TARGET" "$BACKUP"
+    warn "Backing up rolepod-managed paths in $CODEX_TARGET → $BACKUP"
+    selective_backup "$CODEX_TARGET" "$BACKUP" \
+      AGENTS.md \
+      config.toml \
+      plugins/rolepod \
+      .agents
   fi
 
   # Mark hook scripts executable in the rendered tree (codex resolves source from this path).
@@ -1153,11 +1218,16 @@ if gemini_selected; then
   [ -d "$RENDERED_GEMINI_DIR/hooks" ]                     || fail "expected $RENDERED_GEMINI_DIR/hooks/ after render"
   [ -d "$RENDERED_GEMINI_DIR/skills" ]                    || fail "expected $RENDERED_GEMINI_DIR/skills/ after render"
 
+  # Backup if --force on existing — rolepod-scoped only.
+  # Excludes: history/, log/, tmp/ — Gemini runtime data, not rolepod-managed.
   if [ "$FORCE" -eq 1 ] && [ -d "$GEMINI_TARGET" ]; then
     STAMP=$(date +%Y%m%d-%H%M%S)
     BACKUP="$HOME/.gemini.backup-$STAMP"
-    warn "Backing up existing $GEMINI_TARGET → $BACKUP"
-    do_or_dry "cp -R $GEMINI_TARGET $BACKUP" cp -R "$GEMINI_TARGET" "$BACKUP"
+    warn "Backing up rolepod-managed paths in $GEMINI_TARGET → $BACKUP"
+    selective_backup "$GEMINI_TARGET" "$BACKUP" \
+      GEMINI.md \
+      extensions/rolepod \
+      settings.json
   fi
 
   step "Creating Gemini extension directory"

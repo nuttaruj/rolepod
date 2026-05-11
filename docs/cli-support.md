@@ -213,6 +213,18 @@ Codex CLI has no `CODEX_HOME` env var or `--config-home` flag — `codex plugin 
    ./install.sh --target=codex
    ```
 
+### `--force` backup is rolepod-scoped
+
+When `--force` is used on an existing CLI home (`~/.claude/`, `~/.codex/`, `~/.gemini/`), the installer creates `~/.<cli>.backup-<timestamp>/` containing **only rolepod-managed paths**:
+
+| CLI | Backed up | Excluded |
+|-----|-----------|----------|
+| Claude  | `CLAUDE.md`, `CHEATSHEET.md`, `README.md`, `agents/`, `rules/`, `hooks/`, `skills/`, `commands/`, `.claude-plugin/`, `settings.json` | `projects/` (session history), `plugins/cache/`, `plugins/marketplaces/`, `file-history/`, `shell-snapshots/`, `session-env/`, `scheduled-tasks/`, `cache/`, `agent-memory/`, `backups/`, `teams/` |
+| Codex   | `AGENTS.md`, `config.toml`, `plugins/rolepod/`, `.agents/`                                                                          | `log/`, `.tmp/`, `history/`, `sessions/` |
+| Gemini  | `GEMINI.md`, `extensions/rolepod/`, `settings.json`                                                                                | `history/`, `log/`, `tmp/` |
+
+Rationale: a user's session transcripts (`~/.claude/projects/`) can exceed 1.8GB on active accounts. Duplicating them on every `--force` run wasted disk and time. Typical rolepod-scoped backup is <50MB. Restore is straightforward: `cp -R ~/.claude.backup-<stamp>/* ~/.claude/` (run from the backup directory).
+
 ### Project-level GitNexus index (one-time per repo)
 
 ```bash

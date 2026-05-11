@@ -36,7 +36,7 @@ Pick one with `--target=claude` / `--target=codex` / `--target=gemini`, or all t
 | **minimum** | core + `ui-ux-pro-max-skill` + GitNexus + MemPalace (final skill + cross-session memory + code intelligence) | `./install.sh --minimum` |
 | **full** | minimum + caveman + rtk + the other two CLIs + openai-codex Claude Code plugin | `./install.sh --full` |
 
-Add `--force` to overwrite existing files (auto-creates a `~/.<cli>.backup-<timestamp>/` directory). See `docs/cli-support.md` for the full per-CLI capability matrix.
+Add `--force` to overwrite existing files. This creates a `~/.<cli>.backup-<timestamp>/` directory containing **only rolepod-managed paths** (entry docs, agents/, rules/, hooks/, skills/, settings.json, etc.) — session history (`projects/`), plugin caches, file-history, and other runtime data stay in place and are not duplicated. Typical backup size: <50MB (vs ~1.8GB if everything were copied). See `docs/cli-support.md` for the full per-CLI capability matrix.
 
 ### Install commands
 

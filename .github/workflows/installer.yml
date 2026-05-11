@@ -188,6 +188,61 @@ jobs:
           fi
           echo "ROLEPOD_CLAUDE_TARGET=$ROLEPOD_TARGET" >> "$GITHUB_ENV"
 
+      - name: --force backup is rolepod-scoped (claude)
+        shell: bash
+        run: |
+          set -eo pipefail
+          # Fresh HOME so backup path is predictable + isolated from runner state.
+          export HOME="$(mktemp -d)"
+          export ROLEPOD_TARGET="$HOME/.claude"
+          # Pre-populate a "user" ~/.claude that mixes rolepod-managed paths
+          # with bloat dirs that --force backup MUST skip.
+          mkdir -p "$ROLEPOD_TARGET/projects/sess-abc" \
+                   "$ROLEPOD_TARGET/plugins/cache" \
+                   "$ROLEPOD_TARGET/file-history" \
+                   "$ROLEPOD_TARGET/shell-snapshots" \
+                   "$ROLEPOD_TARGET/agent-memory" \
+                   "$ROLEPOD_TARGET/agents" \
+                   "$ROLEPOD_TARGET/rules"
+          # 2 MB fake session blob — proxy for real session history.
+          dd if=/dev/zero of="$ROLEPOD_TARGET/projects/sess-abc/big.log" bs=1024 count=2048 2>/dev/null
+          echo "preexisting-claude-md" > "$ROLEPOD_TARGET/CLAUDE.md"
+          echo "preexisting-agent"     > "$ROLEPOD_TARGET/agents/old.md"
+
+          bash install.sh --target=claude --force >/dev/null
+
+          BACKUP=$(ls -d "$HOME"/.claude.backup-* 2>/dev/null | head -1)
+          if [ -z "$BACKUP" ]; then
+            echo "::error::no backup dir created by --force"
+            ls -la "$HOME/"
+            exit 1
+          fi
+          echo "backup: $BACKUP"
+          # Excluded paths MUST NOT appear in backup.
+          for excluded in projects plugins/cache file-history shell-snapshots agent-memory; do
+            if [ -e "$BACKUP/$excluded" ]; then
+              echo "::error::backup contains excluded path: $excluded"
+              ls -la "$BACKUP"
+              exit 1
+            fi
+          done
+          # Included paths MUST appear (and carry pre-existing content).
+          for included in CLAUDE.md agents/old.md; do
+            if [ ! -e "$BACKUP/$included" ]; then
+              echo "::error::backup missing rolepod-managed path: $included"
+              ls -la "$BACKUP"
+              exit 1
+            fi
+          done
+          # Size sanity check: backup should be far smaller than the 2 MB blob.
+          backup_kb=$(du -sk "$BACKUP" | awk '{print $1}')
+          if [ "$backup_kb" -gt 1024 ]; then
+            echo "::error::backup ($backup_kb KB) too large — bloat dirs may be slipping in"
+            du -sh "$BACKUP"/*
+            exit 1
+          fi
+          echo "✓ backup ${backup_kb}KB — rolepod-scoped (projects/ + bloat excluded)"
+
       - name: Dry-run install — codex
         shell: bash
         run: |
