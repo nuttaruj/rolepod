@@ -616,3 +616,19 @@ jobs:
             fail=1
           fi
           exit "$fail"
+
+      - name: Skill triggering harness
+        shell: bash
+        run: |
+          set -eo pipefail
+          # TDD-for-skills regression net. The runner skips cleanly when the
+          # `claude` CLI is not available on the runner (CI runners typically
+          # lack it), so this step is informational on CI but enforcing locally.
+          if [ ! -x tests/skill-triggering/run.sh ]; then
+            echo "::error::tests/skill-triggering/run.sh missing or not executable"
+            exit 1
+          fi
+          # bash -n syntax check is mandatory regardless of CLI availability.
+          bash -n tests/skill-triggering/run.sh
+          # Run the harness; missing CLI → exit 0 with a skip notice.
+          bash tests/skill-triggering/run.sh

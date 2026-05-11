@@ -99,12 +99,15 @@ generate_skill_index() {
       frontend-ui-engineering \
       interaction-design \
       interface-design \
-      test-driven-development
+      subagent-task-execution \
+      test-driven-development \
+      using-worktrees
 
     emit_phase_section "Verify" \
       browser-testing-with-devtools \
       debugging-and-error-recovery \
       performance-optimization \
+      root-cause-tracing \
       security-and-hardening \
       webapp-testing
 
@@ -117,6 +120,7 @@ generate_skill_index() {
     emit_phase_section "Ship" \
       ci-cd-and-automation \
       documentation-and-adrs \
+      finishing-a-development-branch \
       internal-comms \
       seo \
       shipping-and-launch \

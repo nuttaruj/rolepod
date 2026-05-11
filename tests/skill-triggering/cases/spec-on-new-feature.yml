@@ -1,0 +1,11 @@
+name: spec-on-new-feature
+skill: spec-driven-development
+prompt: |
+  Build me a notifications system. Users should get notifications when stuff
+  happens. Probably email and in-app, maybe SMS later. Start coding it up.
+must_trigger: true
+why: |
+  Vague feature request with multiple valid interpretations is the hard-gate
+  trigger for spec-driven-development — write the spec before any code.
+must_not_skip_excuse: |
+  I'll figure it out as I code

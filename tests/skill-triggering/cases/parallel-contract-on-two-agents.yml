@@ -1,0 +1,12 @@
+name: parallel-contract-on-two-agents
+skill: parallel-contract-orchestration
+prompt: |
+  Spawn two agents in parallel — one builds the API endpoint for creating a
+  subscription, the other builds the frontend form that calls it. Both touch
+  the same Subscription type. Let's just spawn them and they'll figure out the
+  interface between themselves.
+must_trigger: true
+why: |
+  Two parallel agents on shared types = canonical contract-first trigger.
+must_not_skip_excuse: |
+  they'll figure out the interface

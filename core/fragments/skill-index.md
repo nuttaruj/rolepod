@@ -26,7 +26,9 @@
 | `frontend-ui-engineering` | Build production-quality UI. Use when creating components, implementing layouts, wiring state, or... | `core/skills/frontend-ui-engineering/SKILL.md` |
 | `interaction-design` | Design and implement microinteractions, motion, transitions, and feedback. Use when adding polish... | `core/skills/interaction-design/SKILL.md` |
 | `interface-design` | Design dashboards, admin panels, and tool/app interfaces — interfaces users return to and opera... | `core/skills/interface-design/SKILL.md` |
+| `subagent-task-execution` | Two-stage per-task review pattern when Lead delegates an implementation task to a subagent — fr... | `core/skills/subagent-task-execution/SKILL.md` |
 | `test-driven-development` | Drive implementation with a failing test first. Apply when fixing bugs (Prove-It pattern), when a... | `core/skills/test-driven-development/SKILL.md` |
+| `using-worktrees` | Use a git worktree (not a fresh clone, not a branch swap in place) when you need real filesystem ... | `core/skills/using-worktrees/SKILL.md` |
 
 ### Verify
 
@@ -35,6 +37,7 @@
 | `browser-testing-with-devtools` | Verify browser code by inspecting the live page. Use when building or debugging anything that run... | `core/skills/browser-testing-with-devtools/SKILL.md` |
 | `debugging-and-error-recovery` | Systematic root-cause debugging when tests fail, builds break, or behavior diverges from expectat... | `core/skills/debugging-and-error-recovery/SKILL.md` |
 | `performance-optimization` | Optimize app performance — Core Web Vitals, load time, bundle size, render perf, query latency.... | `core/skills/performance-optimization/SKILL.md` |
+| `root-cause-tracing` | Trace an error upstream from where it fires to where it was actually caused, instead of patching ... | `core/skills/root-cause-tracing/SKILL.md` |
 | `security-and-hardening` | Defend code against real-world abuse. Use when handling untrusted input, building auth flows, per... | `core/skills/security-and-hardening/SKILL.md` |
 | `webapp-testing` | Test local web apps with Playwright. Use when verifying frontend functionality, debugging UI beha... | `core/skills/webapp-testing/SKILL.md` |
 
@@ -53,6 +56,7 @@
 |-------|-------------|------|
 | `ci-cd-and-automation` | Set up and harden CI/CD pipelines. Use when configuring build/test/deploy automation, adding qual... | `core/skills/ci-cd-and-automation/SKILL.md` |
 | `documentation-and-adrs` | Write durable technical docs and architectural decision records (ADRs). Use when capturing why a ... | `core/skills/documentation-and-adrs/SKILL.md` |
+| `finishing-a-development-branch` | At the end of a development task, present a 4-option decision menu (merge, PR, keep open, discard... | `core/skills/finishing-a-development-branch/SKILL.md` |
 | `internal-comms` | Write clear internal communication — status updates, announcements, decision memos, escalations... | `core/skills/internal-comms/SKILL.md` |
 | `seo` | Audit and improve SEO across technical, on-page, structured-data, and content layers. Use when pl... | `core/skills/seo/SKILL.md` |
 | `shipping-and-launch` | Run a disciplined production launch. Use when preparing to deploy, drafting a launch checklist, s... | `core/skills/shipping-and-launch/SKILL.md` |
