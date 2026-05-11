@@ -38,16 +38,33 @@ Lead orchestration:
 Team mode active ONLY in Build phase. Lead returns to default Subagent for rest.
 ```
 
-### Mix-and-match
+### Slash commands run individually
 
-User can combine slash commands per phase:
+Each slash command processes one phase per input. Claude Code does not chain slash commands. After Lead finishes a phase, ask for the next:
 
 ```
-User: /team-build then /team-review for auth refactor
-Lead: Build phase = team recipe
-      Review phase = team recipe
-      Other phases = default Subagent
+User: /team-build "auth refactor"
+Lead: [runs build phase] → "Build done. Next?"
+User: /team-review                              # separate input
+Lead: [runs review phase] → "Review done."
 ```
+
+### Multi-phase surgical via natural language
+
+For surgical opt-in on multiple specific phases in one go, use natural language:
+
+```
+User: "Auth refactor — use team for build and review, default for rest"
+Lead detects intent → applies team mode to those 2 phases:
+  Define   → default Subagent
+  Plan     → default Subagent
+  Build    → team recipe ★
+  Verify   → default Subagent
+  Review   → team recipe ★
+  Ship     → default Subagent
+```
+
+Lead orchestrates per intent — no slash chaining required.
 
 ### Mandatory gates regardless of pattern
 
