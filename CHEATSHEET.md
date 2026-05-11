@@ -134,7 +134,7 @@ Lead = Opus → skip Advisor.
 | Workflow stage map | `code-intel-workflow.md` |
 | Claim a fact | `verify-first.md` |
 | Verify code change | `verification.md` |
-| Tone / language | `communication.md` |
+| Tone / language / CEO modes (single / queue / continuous) | `communication.md` |
 | Code edit pattern | `code-quality.md` |
 | New project / `/init` | `new-project.md` |
 | Context full / `/clear` / `/rewind` | `session-management.md` |

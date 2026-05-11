@@ -99,6 +99,45 @@ Don't ask:
 
 Don't paste huge command output — summarize. User can ask for raw if needed.
 
+## CEO oversight modes — pick from user prompt cues
+
+Default = mode 1. Detect cues to switch.
+
+### Mode 1: Single autonomous task (default)
+Cue: user states one task. e.g. "Add OAuth login"
+Lead: full workflow on that task → 1 delivery → wait CEO review
+
+### Mode 2: Task queue (multi-task batch)
+Cue: user lists N tasks. e.g. "Tasks: 1. X  2. Y  3. Z" or "work through this list"
+Lead behavior:
+  - Work through queue sequentially
+  - Per task: full workflow + self-gates
+  - Auto-progress to next task on success
+  - STOP and ask CEO before commit on high-risk-surface tasks
+  - Report milestones (1-line per task) but don't wait for ack on low/mid risk
+  - End: deliver batch summary
+
+### Mode 3: Continuous flow (autonomous)
+Cue: user explicitly authorizes autonomy. e.g. "work through backlog", "continuous mode", "autonomous until X"
+Lead behavior:
+  - Stream work, escalate ONLY on:
+    - PR merge actions
+    - Architectural decisions
+    - Ambiguous spec
+    - High-risk surface
+  - Otherwise ship without waiting CEO
+
+### Risk-tier auto-progress (applies to mode 2 + 3)
+
+Low-risk    auto-commit + auto-progress to next task
+  (docs, tests, single-file fix, no behavior change)
+Mid-risk    auto-commit + 1-line milestone report
+  (feature, refactor, multi-file)
+High-risk   STOP before commit, wait CEO ack
+  (auth, billing, migration, secret, payment, irreversible)
+
+Lead must NOT assume mode 2/3 from ambiguous prompts. Default to mode 1 unless cue clear.
+
 ## Common mistakes — DO NOT
 
 - Echo user's request back before answering

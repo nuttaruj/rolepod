@@ -1,15 +1,25 @@
 #!/bin/bash
-# PreToolUse(Bash) — block `git commit` unless gates explicitly passed.
-# Mechanical enforcement of S1-S5 / T1-T6 / F1-F5 — Lead must consciously
-# acknowledge gates instead of skipping via flow-state rationalization.
+# PreToolUse(Bash) — path-aware gate on `git commit`.
 #
-# Bypass mechanisms (intentional — friction = conscious step):
-# 1. Set ROLEPOD_GATES_PASSED=1 inline: `ROLEPOD_GATES_PASSED=1 git commit ...`
-# 2. Include marker `[gates: pass]` in commit message body
-# 3. Soft mode: ROLEPOD_GATES_SOFT=1 → warn only, don't block
+# Default behavior (path-aware tiering — reduces overforce for day-to-day work):
+#   Trivial diff (≤5 lines, 1 file, 0 logic lines, no risky path)
+#                                  → silent auto-pass
+#   Normal code (logic but no high-risk path)
+#                                  → SOFT warn (additionalContext, exit 0)
+#                                    Lead sees S1-S5 / T1-T6 / F1-F5 reminder.
+#                                    Commit proceeds.
+#   High-risk path matched (auth/billing/payment/migration/credit/permission/
+#                            secret/crypto/token)
+#                                  → HARD block (exit 2 + permissionDecision: deny)
+#                                    Lead must run gates, bypass explicitly.
 #
-# Skip criteria (auto-pass — no gate friction for trivial changes):
-# - diff ≤5 lines, 1 file, zero logic-bearing lines, no high-risk path
+# Env overrides:
+#   ROLEPOD_GATES_HARD=1   — escalate normal code from SOFT warn to HARD block
+#                            (recovers pre-change behavior across the board).
+#   ROLEPOD_GATES_SOFT=1   — suppress ALL warnings entirely (silent).
+#   ROLEPOD_GATES_PASSED=1 — inline bypass for one commit
+#                            (e.g. `ROLEPOD_GATES_PASSED=1 git commit ...`).
+#   [gates: pass]          — bypass marker inside commit message body.
 set -euo pipefail
 
 INPUT=$(cat 2>/dev/null || echo '{}')
@@ -25,10 +35,6 @@ echo "$CMD" | grep -qE '(^|[;&|]|[[:space:]])git[[:space:]]+commit\b' || exit 0
 if echo "$CMD" | grep -qE 'ROLEPOD_GATES_PASSED=1'; then exit 0; fi
 if echo "$CMD" | grep -qE '\[gates:[[:space:]]*pass\]'; then exit 0; fi
 if [ "${ROLEPOD_GATES_SOFT:-0}" = "1" ]; then
-  python3 -c "
-import json
-print(json.dumps({'hookSpecificOutput': {'hookEventName': 'PreToolUse', 'additionalContext': '⚠️  precommit-gate SOFT mode: gates skipped (ROLEPOD_GATES_SOFT=1). Re-enable hard gate by unsetting env.'}}))
-" 2>/dev/null
   exit 0
 fi
 
@@ -48,7 +54,11 @@ HIGH_RISK=$(echo "$DIFF_STAT" | awk '{print $3}' | grep -iE '(auth|billing|payme
 
 # Logic-bearing line count — non-comment, non-blank, non-pure-rename lines
 LOGIC_LINES=$(git diff --cached -U0 2>/dev/null | grep -E '^[+-]' | grep -vE '^[+-]{3}' | grep -vE '^[+-][[:space:]]*$' | grep -vE '^[+-][[:space:]]*(#|//|/\*|\*/?|--|;)' || true)
-LOGIC_COUNT=$(echo -n "$LOGIC_LINES" | grep -c '^' 2>/dev/null || echo 0)
+if [ -z "$LOGIC_LINES" ]; then
+  LOGIC_COUNT=0
+else
+  LOGIC_COUNT=$(printf '%s\n' "$LOGIC_LINES" | wc -l | tr -d ' ')
+fi
 
 # Auto-skip path: trivial commit
 if [ "$FILES_CHANGED" -eq 1 ] && [ "$LINES_CHANGED" -le 5 ] && [ "$LOGIC_COUNT" -eq 0 ] && [ -z "$HIGH_RISK" ]; then
@@ -63,7 +73,16 @@ REASON+="Run gates explicitly: S1-S5 (simplicity) + T1-T6 (tests) + F1-F5 (failu
 REASON+="After passing, bypass with: prefix \`ROLEPOD_GATES_PASSED=1 git commit ...\` OR include \`[gates: pass]\` in commit message. "
 REASON+="Soft mode for incremental rollout: ROLEPOD_GATES_SOFT=1 in env."
 
-python3 -c "
+# Decide: HARD block vs SOFT warn
+HARD_BLOCK=0
+if [ -n "$HIGH_RISK" ]; then
+  HARD_BLOCK=1
+elif [ "${ROLEPOD_GATES_HARD:-0}" = "1" ]; then
+  HARD_BLOCK=1
+fi
+
+if [ "$HARD_BLOCK" -eq 1 ]; then
+  python3 -c "
 import json
 print(json.dumps({
   'hookSpecificOutput': {
@@ -73,6 +92,18 @@ print(json.dumps({
   }
 }))
 " 2>/dev/null || echo "{}"
+  exit 2
+fi
 
-# Exit 2 = block tool call (belt-and-suspenders alongside permissionDecision)
-exit 2
+# SOFT warn path — emit reminder, exit 0
+WARN="precommit-gate SOFT warn. "
+WARN+="Diff: $FILES_CHANGED files / $LINES_CHANGED lines / $LOGIC_COUNT logic lines (normal code, no high-risk path). "
+WARN+="Recommend running S1-S5 (simplicity) + T1-T6 (tests) + F1-F5 (failure-mode) before commit. "
+WARN+="Set ROLEPOD_GATES_HARD=1 to enforce blocking on normal diffs."
+
+python3 -c "
+import json
+print(json.dumps({'hookSpecificOutput': {'hookEventName': 'PreToolUse', 'additionalContext': '''$WARN'''}}))
+" 2>/dev/null || true
+
+exit 0

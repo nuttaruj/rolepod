@@ -137,7 +137,7 @@ Loaded from each CLI's native entry doc: `~/.claude/CLAUDE.md` (Claude Code), `~
 | `verification.md` | post-change evidence |
 | `code-intel.md` / `code-intel-workflow.md` | tools (GitNexus/MemPalace/CLI) |
 | `code-quality.md` | edit pattern / style |
-| `communication.md` | tone / language |
+| `communication.md` | tone / language / CEO oversight modes (single / queue / continuous) |
 | `session-management.md` | `/clear` / `/rewind` / `/compact` |
 | `advisor.md` | stuck (Sonnet/Haiku Lead) |
 | `new-project.md` | first-time / `/init` |
