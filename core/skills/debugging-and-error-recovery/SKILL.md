@@ -162,3 +162,16 @@ After ~30 minutes with no progress:
 ```
 
 Each step gates the next. Don't skip ahead.
+
+## Common Rationalizations
+
+When you're tempted to skip this skill, watch for these excuses:
+
+| Excuse | Reality |
+|--------|---------|
+| "I see the bug, I'll just fix it" | What you 'see' is usually the symptom. Root-cause discipline costs minutes; fixing the symptom costs follow-up PRs for weeks. |
+| "This is a simple change, doesn't need <skill>" | Bugs hide in simple changes too — DAPLab data shows 41% of agentic-LLM failures land in 'trivial' diffs. |
+| "I already know the answer" | Confirmation bias — the skill exists to surface what you didn't think of, not to repeat what you did. |
+| "Time pressure, skip just this once" | Tech debt compounds; 5 minutes saved at write time costs 50 minutes of debugging later. |
+
+Default response when rationalizing: run the skill anyway. Cost of running it is bounded; cost of skipping when you needed it is not.

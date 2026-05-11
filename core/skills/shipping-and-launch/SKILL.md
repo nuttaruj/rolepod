@@ -115,3 +115,16 @@ Blameless. Owners on actions, not on the cause. Ship the actions; otherwise the 
 | Medium | New endpoint, new schema column | Flag rollout, dashboard watch |
 | High | Migration with backfill, auth change, billing | Flag + gradual + on-call paged + roll-back-tested |
 | Critical | Cross-region cutover, irreversible data ops | Maintenance window, paired operator, dry run |
+
+## Common Rationalizations
+
+When you're tempted to skip this skill, watch for these excuses:
+
+| Excuse | Reality |
+|--------|---------|
+| "Rollback plan is overhead, deploys go fine 99% of the time" | The 1% costs your weekend. Rollback rehearsal at write time is 10 min; recovering a borked deploy without one is hours. |
+| "This is a simple change, doesn't need <skill>" | Bugs hide in simple changes too — DAPLab data shows 41% of agentic-LLM failures land in 'trivial' diffs. |
+| "I already know the answer" | Confirmation bias — the skill exists to surface what you didn't think of, not to repeat what you did. |
+| "Time pressure, skip just this once" | Tech debt compounds; 5 minutes saved at write time costs 50 minutes of debugging later. |
+
+Default response when rationalizing: run the skill anyway. Cost of running it is bounded; cost of skipping when you needed it is not.

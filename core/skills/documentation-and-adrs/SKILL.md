@@ -143,3 +143,16 @@ Runbooks are for the on-call who didn't write the system. Optimize for that read
 - When you change code, ask "is there a doc that just became wrong?"
 - Delete docs for systems that no longer exist. Stale docs poison trust in fresh ones.
 - Index from a single starting point — README → directory of doc types → individual docs.
+
+## Common Rationalizations
+
+When you're tempted to skip this skill, watch for these excuses:
+
+| Excuse | Reality |
+|--------|---------|
+| "We'll remember why we made this decision" | You won't. 6 months out, neither will the new hire. ADRs are cheaper than re-running the decision conversation. |
+| "This is a simple change, doesn't need <skill>" | Bugs hide in simple changes too — DAPLab data shows 41% of agentic-LLM failures land in 'trivial' diffs. |
+| "I already know the answer" | Confirmation bias — the skill exists to surface what you didn't think of, not to repeat what you did. |
+| "Time pressure, skip just this once" | Tech debt compounds; 5 minutes saved at write time costs 50 minutes of debugging later. |
+
+Default response when rationalizing: run the skill anyway. Cost of running it is bounded; cost of skipping when you needed it is not.

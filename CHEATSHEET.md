@@ -95,6 +95,18 @@ User OK + commit + PR → ALL Phase 1 + triggered Phase 2 green → merge auto. 
 6. CI (auto-merge after green)
 ```
 
+## Lifecycle phases (6-phase taxonomy)
+
+| Phase | Trigger | Key skills | Key agents | Key gates |
+|-------|---------|------------|------------|-----------|
+| **Define** | new feature / spec | `spec-driven-development` | product-manager, system-architect | verify-first (intent) |
+| **Plan** | spec → tasks | `planning-and-task-breakdown`, `parallel-contract-orchestration`, `api-and-interface-design` | system-architect | Q1-Q4 |
+| **Build** | code edit | `test-driven-development`, `frontend-ui-engineering`, `anti-spaghetti`, `claude-api`, `interface-design`, `interaction-design`, `doc-coauthoring`, `conversion-copywriting` | backend/frontend/mobile/billing/ai-ml/data, ui-ux-designer, tech-writer | S1-S5, F1-F5 |
+| **Verify** | post-edit evidence | `debugging-and-error-recovery`, `webapp-testing`, `browser-testing-with-devtools`, `performance-optimization`, `security-and-hardening` | qa-tester, security-engineer, performance-engineer | T1-T6, verify-first |
+| **Review** | pre-merge | `code-review-and-quality`, `code-simplification`, `web-design-guidelines`, `doubt-driven-development` | universal-reviewer, qa-tester | pre-merge-gate, hard stops |
+| **Ship** | deploy | `shipping-and-launch`, `ci-cd-and-automation`, `deprecation-and-migration`, `internal-comms`, `user-facing-content`, `documentation-and-adrs`, `seo` | devops-sre, growth-marketer, customer-success | CI 3-phase |
+| **Cross-cutting** | any phase | `zoom-out`, `source-driven-development`, `context-engineering` | (any) | (any) |
+
 ## Stuck escalation (Sonnet/Haiku Lead)
 
 ```

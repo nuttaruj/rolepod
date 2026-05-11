@@ -113,3 +113,16 @@ Every data surface has 4 states. Design all 4:
 - [ ] Page works at 1280px, 1440px, 1920px
 - [ ] Settings discoverable (not hidden behind 3 clicks)
 - [ ] Destructive actions require explicit confirmation
+
+## Common Rationalizations
+
+When you're tempted to skip this skill, watch for these excuses:
+
+| Excuse | Reality |
+|--------|---------|
+| "Users will figure out the dashboard layout" | Users don't figure it out — they leave. Dashboards live or die in the first 30 seconds; layout discipline is non-optional. |
+| "This is a simple change, doesn't need <skill>" | Bugs hide in simple changes too — DAPLab data shows 41% of agentic-LLM failures land in 'trivial' diffs. |
+| "I already know the answer" | Confirmation bias — the skill exists to surface what you didn't think of, not to repeat what you did. |
+| "Time pressure, skip just this once" | Tech debt compounds; 5 minutes saved at write time costs 50 minutes of debugging later. |
+
+Default response when rationalizing: run the skill anyway. Cost of running it is bounded; cost of skipping when you needed it is not.

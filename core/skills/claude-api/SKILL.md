@@ -207,3 +207,16 @@ When upgrading (e.g. 4.5 → 4.7):
 - [ ] Token usage logged per request (for cost monitoring)
 - [ ] `stop_reason` checked (not just response text)
 - [ ] Eval suite passes on chosen model
+
+## Common Rationalizations
+
+When you're tempted to skip this skill, watch for these excuses:
+
+| Excuse | Reality |
+|--------|---------|
+| "Prompt caching is an optimization, not a correctness issue" | Cost per request scales with traffic — apps without caching burn 10x at scale. Cache from request #1, not request #100,000. |
+| "This is a simple change, doesn't need <skill>" | Bugs hide in simple changes too — DAPLab data shows 41% of agentic-LLM failures land in 'trivial' diffs. |
+| "I already know the answer" | Confirmation bias — the skill exists to surface what you didn't think of, not to repeat what you did. |
+| "Time pressure, skip just this once" | Tech debt compounds; 5 minutes saved at write time costs 50 minutes of debugging later. |
+
+Default response when rationalizing: run the skill anyway. Cost of running it is bounded; cost of skipping when you needed it is not.

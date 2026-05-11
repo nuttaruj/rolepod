@@ -38,6 +38,22 @@ For non-trivial work (multi-file / unfamiliar code / unclear approach):
 
 Skip plan mode when diff describable in 1 sentence (typo / log line / rename / 1-line fix).
 
+## Lifecycle phases — Define → Plan → Build → Verify → Review → Ship
+
+The 4-step workflow above maps onto a 6-phase lifecycle that organizes which skills, agents, and gates fire when. Use as a mental map when a task spans more than one phase.
+
+| Phase | What happens | Key skills | Key agents | Key gates |
+|-------|--------------|------------|------------|-----------|
+| **Define** | Intent → spec | `spec-driven-development` | product-manager, business-analyst, system-architect | verify-first (intent) |
+| **Plan** | Spec → ordered tasks + interfaces | `planning-and-task-breakdown`, `parallel-contract-orchestration`, `api-and-interface-design` | system-architect, product-manager | Q1-Q4 delegation |
+| **Build** | Tasks → code + docs | `frontend-ui-engineering`, `test-driven-development`, `claude-api`, `anti-spaghetti`, `interface-design`, `interaction-design`, `conversion-copywriting`, `doc-coauthoring` | backend/frontend/mobile/billing/ai-ml/data-scientist, ui-ux-designer, tech-writer | S1-S5 simplicity, F1-F5 failure-mode |
+| **Verify** | Code → evidence | `debugging-and-error-recovery`, `webapp-testing`, `browser-testing-with-devtools`, `performance-optimization`, `security-and-hardening` | qa-tester, security-engineer, performance-engineer | T1-T6 testing, verify-first (claims) |
+| **Review** | Evidence → adversarial pass | `code-review-and-quality`, `code-simplification`, `web-design-guidelines`, `doubt-driven-development` | universal-reviewer, qa-tester (review mode) | pre-merge-gate, hard stops |
+| **Ship** | Pass → deploy + announce | `shipping-and-launch`, `ci-cd-and-automation`, `deprecation-and-migration`, `internal-comms`, `user-facing-content`, `documentation-and-adrs`, `seo` | devops-sre, growth-marketer, customer-success | CI 3-phase, reviewer routing |
+| **Cross-cutting** | Apply at any phase | `zoom-out`, `source-driven-development`, `context-engineering` | (any) | (any) |
+
+Influence: addyosmani/agent-skills lifecycle taxonomy. Rolepod's parallel-agent + gate primitives unchanged.
+
 {{INCLUDE: core/fragments/gates-s1-s5.md}}
 
 ## CI lanes — 3-phase model + auto-merge

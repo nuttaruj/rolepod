@@ -178,3 +178,16 @@ Commit each step or small group of steps separately. Reviewer can verify each re
 - No new behavior
 - Documentation updated if public surface (signatures, types) changed
 - Mention to user any pre-existing dead code you found but didn't delete
+
+## Common Rationalizations
+
+When you're tempted to skip this skill, watch for these excuses:
+
+| Excuse | Reality |
+|--------|---------|
+| "The code works, refactoring is risky" | Working ≠ understandable. Complexity tax accrues every read; simplification pays back on the next change, not this one. |
+| "This is a simple change, doesn't need <skill>" | Bugs hide in simple changes too — DAPLab data shows 41% of agentic-LLM failures land in 'trivial' diffs. |
+| "I already know the answer" | Confirmation bias — the skill exists to surface what you didn't think of, not to repeat what you did. |
+| "Time pressure, skip just this once" | Tech debt compounds; 5 minutes saved at write time costs 50 minutes of debugging later. |
+
+Default response when rationalizing: run the skill anyway. Cost of running it is bounded; cost of skipping when you needed it is not.

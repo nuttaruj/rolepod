@@ -107,3 +107,16 @@ Skip any of these = jank. Get all four = it feels designed.
 ```
 
 Or: replace slides with fades, replace bounces with linear, kill auto-playing motion entirely.
+
+## Common Rationalizations
+
+When you're tempted to skip this skill, watch for these excuses:
+
+| Excuse | Reality |
+|--------|---------|
+| "Animations are polish, skip them for v1" | Microinteractions ARE the perceived performance. A 200ms loading shimmer changes the feel of an app more than 200ms of actual latency reduction. |
+| "This is a simple change, doesn't need <skill>" | Bugs hide in simple changes too — DAPLab data shows 41% of agentic-LLM failures land in 'trivial' diffs. |
+| "I already know the answer" | Confirmation bias — the skill exists to surface what you didn't think of, not to repeat what you did. |
+| "Time pressure, skip just this once" | Tech debt compounds; 5 minutes saved at write time costs 50 minutes of debugging later. |
+
+Default response when rationalizing: run the skill anyway. Cost of running it is bounded; cost of skipping when you needed it is not.

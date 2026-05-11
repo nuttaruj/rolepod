@@ -161,3 +161,16 @@ Six yeses → ship. Any no → revise.
 - [ ] Tone matches each moment, not just one global voice
 - [ ] Accessibility checks pass (color, link text, language)
 - [ ] Help articles dated, with current screenshots
+
+## Common Rationalizations
+
+When you're tempted to skip this skill, watch for these excuses:
+
+| Excuse | Reality |
+|--------|---------|
+| "Engineers can write the user-facing copy, it's just words" | Engineer-default copy is jargon-loaded; users bounce on the second sentence. Empathy + plain-language discipline cuts support tickets measurably. |
+| "This is a simple change, doesn't need <skill>" | Bugs hide in simple changes too — DAPLab data shows 41% of agentic-LLM failures land in 'trivial' diffs. |
+| "I already know the answer" | Confirmation bias — the skill exists to surface what you didn't think of, not to repeat what you did. |
+| "Time pressure, skip just this once" | Tech debt compounds; 5 minutes saved at write time costs 50 minutes of debugging later. |
+
+Default response when rationalizing: run the skill anyway. Cost of running it is bounded; cost of skipping when you needed it is not.
