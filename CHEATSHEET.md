@@ -156,7 +156,11 @@ Lead = Opus → skip Advisor.
 | One-shot exec | `claude -p "..."` | `codex exec "..."` | `gemini -p "..."` |
 | Rolepod slash commands shipped | `/careful` + `/team-define /team-plan /team-build /team-verify /team-review /team-ship` | n/a (Codex schema lacks commands today) | `/careful /ship /review /test /plan /spec` |
 
-> **Team workflow (Claude).** Prefix any prompt with "use team" or run one of `/team-*` to trigger phase-based multi-agent orchestration. Default Subagent pattern is unchanged. See [docs/agent-teams.md](docs/agent-teams.md).
+> **Team workflow (Claude) — two opt-in patterns.**
+> - "use team" (broad) → full lifecycle: all 6 phases use team recipes
+> - `/team-build` / `/team-verify` / etc. (surgical) → only that phase uses team; rest stay default Subagent
+>
+> Default Subagent pattern is unchanged when neither trigger fires. Mandatory gates (S1-S5, T1-T6, F1-F6, pre-merge, CI 3-phase) apply in all cases. See [docs/agent-teams.md](docs/agent-teams.md).
 
 ## Skill picker (when many skills look similar)
 

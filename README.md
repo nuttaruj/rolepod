@@ -78,7 +78,11 @@ The shipped hooks auto-register in each CLI's native settings location (idempote
 
 After install, restart the CLI you targeted so its hooks register.
 
-> **Power-user: Agent Teams workflow.** Prefix any prompt with "use team" or run `/team-define` / `/team-plan` / `/team-build` / `/team-verify` / `/team-review` / `/team-ship` to trigger phase-based multi-agent orchestration on top of the default Subagent pattern. See [docs/agent-teams.md](docs/agent-teams.md).
+> **Power-user: Agent Teams workflow — two opt-in patterns.**
+> - Broad trigger "use team" → full-lifecycle team workflow (all 6 phases use team recipes)
+> - Slash command `/team-build` / `/team-verify` / etc. → surgical opt-in for that phase only (rest use default Subagent)
+>
+> See [docs/agent-teams.md](docs/agent-teams.md).
 
 > **Note:** Adapter conformance to each CLI's published manifest schema is verified by static checks (`bash -n`, `python3 -m json.tool`, `tomllib.load`). Runtime behavior status differs by CLI — see table.
 

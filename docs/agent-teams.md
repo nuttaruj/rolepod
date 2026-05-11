@@ -4,6 +4,56 @@ Power-user pattern for multi-phase, multi-agent work. Opt-in. Default rolepod be
 
 Reference: https://code.claude.com/docs/en/agent-teams
 
+## Two opt-in patterns
+
+Team mode has two distinct invocation shapes. Pick based on whether you want team coordination across the whole lifecycle or just one phase.
+
+### Pattern A — Full-lifecycle team
+
+Broad trigger ("use team") → Lead runs every phase via team recipes.
+For: end-to-end max effort on big features.
+
+```
+User: "Add Stripe billing — use team workflow, high-risk"
+Lead: /team-define → /team-plan → /team-build → /team-verify → /team-review → /team-ship
+      All 6 phases use multi-agent coordinated dispatch.
+      CEO sees final result after Ship.
+```
+
+### Pattern B — Surgical team
+
+Slash command (`/team-<phase>`) → only that phase uses team.
+For: focused intensity on one phase, default elsewhere.
+
+```
+User: /team-build "auth refactor across 30 files"
+Lead orchestration:
+  Define   → default Subagent (or skip if intent clear)
+  Plan     → default Subagent (system-architect alone)
+  Build    → /team-build recipe ★ multi-agent parallel via cohesion contract
+  Verify   → default Subagent (qa-tester floor)
+  Review   → default Subagent (universal-reviewer)
+  Ship     → default Subagent (devops-sre)
+
+Team mode active ONLY in Build phase. Lead returns to default Subagent for rest.
+```
+
+### Mix-and-match
+
+User can combine slash commands per phase:
+
+```
+User: /team-build then /team-review for auth refactor
+Lead: Build phase = team recipe
+      Review phase = team recipe
+      Other phases = default Subagent
+```
+
+### Mandatory gates regardless of pattern
+
+Both patterns enforce: T1-T6, S1-S5, F1-F6, pre-merge-gate, CI 3-phase.
+Team mode ≠ gate skip. Same quality bar.
+
 ## Overview
 
 Two orchestration patterns coexist:
