@@ -1,7 +1,7 @@
 {
   "name": "rolepod",
-  "version": "1.0.0",
-  "description": "Universal AI coding workflow — 18-agent dev team, 42 skills, 7 rules (3 always-on + 4 path-scoped), 5 hooks, 6-phase lifecycle. Simplicity / test / failure-mode gates fire pre-commit. Parallel-safe by path / concern ownership.",
+  "version": "1.1.0",
+  "description": "Turn Claude Code into a coordinated software-house team. 18 specialist agents (backend, frontend, QA, security, billing, performance, design, docs, ops, etc.) work in parallel by domain ownership. Pre-commit gates fire automatically — S1-S5 simplicity, T1-T6 testing, F1-F5 failure-mode — to catch bugs before they ship. A 6-phase lifecycle (Define → Plan → Build → Verify → Review → Ship) orchestrates big features through /team-* slash commands. Includes 42 skills (TDD, debugging, code review, security audit, performance, frontend UI, content writing, etc.) and 7 rules (3 always-on + 4 path-scoped). Universal — works in any repo, no project-specific config required.",
   "author": {
     "name": "nuttaruj",
     "url": "https://github.com/nuttaruj"
@@ -12,5 +12,19 @@
     "url": "https://github.com/nuttaruj/rolepod.git"
   },
   "license": "MIT",
-  "keywords": ["workflow", "agents", "ai-agents", "claude-code", "automation", "prompt-engineering"]
+  "keywords": [
+    "workflow",
+    "agents",
+    "ai-agents",
+    "claude-code",
+    "automation",
+    "prompt-engineering",
+    "team",
+    "review",
+    "testing",
+    "lifecycle",
+    "tdd",
+    "code-review"
+  ],
+  "hooks": "./hooks/hooks.json"
 }
