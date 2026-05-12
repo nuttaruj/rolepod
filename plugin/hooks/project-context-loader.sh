@@ -55,6 +55,38 @@ fi
 # 3. First-time session for this dir?
 warn_once "first-session" "First session for this project → MemPalace will start capturing learnings now"
 
+# 4. Dual install detected? install.sh artifacts + marketplace plugin both present
+#    → user has duplicates. Warn once + suggest migration.
+# 5. Plugin was once installed but now gone + user-scope artifacts remain
+#    → user uninstalled plugin, expected full removal. Warn once + suggest cleanup.
+INSTALLED_JSON="$HOME/.claude/plugins/installed_plugins.json"
+PLUGIN_MARKER="$HOME/.claude/.rolepod-plugin-was-installed"
+USER_SCOPE_PRESENT=0
+[ -f "$HOME/.claude/agents/qa-tester.md" ] && USER_SCOPE_PRESENT=1
+
+PLUGIN_PRESENT=0
+if [ -f "$INSTALLED_JSON" ] && python3 -c "
+import json, sys
+try:
+  d = json.load(open('$INSTALLED_JSON'))
+  sys.exit(0 if 'rolepod@rolepod' in d.get('plugins', {}) else 1)
+except Exception:
+  sys.exit(1)
+" 2>/dev/null; then
+  PLUGIN_PRESENT=1
+fi
+
+if [ "$PLUGIN_PRESENT" -eq 1 ]; then
+  # Mark plugin currently installed (tracks state for later removal detection)
+  touch "$PLUGIN_MARKER" 2>/dev/null || true
+  if [ "$USER_SCOPE_PRESENT" -eq 1 ]; then
+    warn_once "dual-install" "Dual install detected: rolepod@rolepod via marketplace AND install.sh user-scope artifacts. → Run \`bash <rolepod-repo>/install.sh --uninstall --target=claude\` to migrate to marketplace-only (recommended) and avoid duplicate agents/skills/rules."
+  fi
+elif [ -f "$PLUGIN_MARKER" ] && [ "$USER_SCOPE_PRESENT" -eq 1 ]; then
+  # Plugin was installed, now removed, but install.sh artifacts remain
+  warn_once "plugin-removed-cleanup" "rolepod plugin was removed via /plugin uninstall, but install.sh user-scope artifacts remain (~/.claude/agents/, rules/, skills/, hooks/). → Run \`bash <rolepod-repo>/install.sh --uninstall --target=claude\` for complete removal. (Skip if you intend to keep rolepod via install.sh path.)"
+fi
+
 [ -n "$CHECKLIST" ] && CTX="$CTX\n\n## Project setup checklist\n$CHECKLIST"
 
 python3 -c "
