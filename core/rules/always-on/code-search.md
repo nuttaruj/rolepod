@@ -2,13 +2,15 @@
 
 Read when: about to find/look up anything in codebase.
 
-## Hard rule
+## Hard rule (conditional on GitNexus being available)
 
 <EXTREMELY-IMPORTANT>
-**Symbol lookup → GitNexus. Plain text → rg. NEVER grep-and-guess for symbols.**
+**IF GitNexus installed + index fresh → Symbol lookup uses GitNexus, plain text uses rg.**
+**IF GitNexus NOT installed → rg / grep is correct default. No warning, no nag.**
 
-Default assumption: code-intel beats text search. `grep` / `rg` finds bytes.
-GitNexus understands meaning (defs, callers, impact, types). Pick by intent:
+Check availability: `gitnexus` MCP tools present in tool list OR `gitnexus://` resource resolvable. Absent → skip entire rule, use rg normally.
+
+Default assumption WHEN available: code-intel beats text search. `grep` / `rg` finds bytes. GitNexus understands meaning (defs, callers, impact, types). Pick by intent:
 </EXTREMELY-IMPORTANT>
 
 ## Decision tree
@@ -30,7 +32,7 @@ past decision / rationale?     mempalace_kg_query
 external service state?        MCP / CLI
 ```
 
-## Forbidden
+## Forbidden (only when GitNexus available)
 
 - `rg ClassName` — use `gitnexus_context`
 - `rg "function foo"` — use `gitnexus_context`
@@ -38,6 +40,13 @@ external service state?        MCP / CLI
 - find-replace rename — use `gitnexus_rename`
 - "let me grep for it" without checking GitNexus first
 
-## Fallback
+## Fallback behavior
 
-GitNexus index missing/stale → degrade to `rg` + state risk. Don't silently fall back.
+| Situation | Action |
+|---|---|
+| GitNexus not installed | Use `rg` / `grep` normally. No warning, no degraded-mode note. |
+| GitNexus installed + index fresh | Apply hard rule above |
+| GitNexus installed + index stale | Apply rule + suggest `npx gitnexus analyze` once per session |
+| GitNexus installed + offline/error | Degrade to `rg` + state risk in summary |
+
+Silent fallback is correct when the tool simply isn't there. Rule applies only when capability exists.
