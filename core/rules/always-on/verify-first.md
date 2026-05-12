@@ -48,6 +48,16 @@ Memory + pattern-match = unreliable. Verify or state assumption + risk.
 - "Company X announced Y" → WebSearch with current year
 - "Stripe/AWS/Vercel does X" → MCP / CLI / docs
 
+### Schema / integration decisions (extends to design, not just facts)
+- "Plugin manifest fields are ..." → WebFetch official plugin spec FIRST
+- "Marketplace JSON schema accepts ..." → WebFetch official marketplace doc FIRST
+- "Extension config supports ..." → WebFetch vendor extension reference
+- "Hook event names / matcher syntax" → WebFetch vendor hooks doc
+- "Webhook payload shape" → WebFetch vendor webhook spec
+- ANY new file targeting external schema → fetch spec BEFORE writing
+- Wrong field = silent install/runtime failure later. Pattern-match from
+  blog/community examples ≠ verified. Cite the official URL inline.
+
 ## Volatility ladder
 
 | Type | Trust training? | How verify |

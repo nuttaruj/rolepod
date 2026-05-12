@@ -67,5 +67,5 @@
 | Skill | Description | Path |
 |-------|-------------|------|
 | `context-engineering` | Optimize agent context — what gets loaded, when, and at what cost. Covers lazy loading, isolati... | `core/skills/context-engineering/SKILL.md` |
-| `source-driven-development` | Ground every framework or library decision in official documentation, not training-cached recall.... | `core/skills/source-driven-development/SKILL.md` |
+| `source-driven-development` | Ground every framework, library, schema, or platform-integration decision in official documentati... | `core/skills/source-driven-development/SKILL.md` |
 | `zoom-out` | Step back from implementation details to high-level perspective. Meta-cognitive recovery tool. | `core/skills/zoom-out/SKILL.md` |
