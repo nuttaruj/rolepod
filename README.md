@@ -46,7 +46,10 @@ Add `--force` to overwrite. Creates `~/.<cli>.backup-<timestamp>/` with **only r
 # Inside Claude Code (type these in the chat input):
 /plugin marketplace add nuttaruj/rolepod
 /plugin install rolepod@rolepod
-# /plugin enable rolepod@rolepod   ← only if previously disabled (install auto-enables in v2.1+)
+
+# Later — pull latest version:
+/plugin marketplace update rolepod
+/plugin install rolepod@rolepod    # re-install picks up new version
 ```
 
 Accepted source formats: `owner/repo` (GitHub shorthand), `https://github.com/owner/repo`, `git@github.com:owner/repo.git` (SSH), or `./path/to/local-marketplace`.
