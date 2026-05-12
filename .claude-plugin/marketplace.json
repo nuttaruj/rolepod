@@ -1,7 +1,7 @@
 {
   "$schema": "https://json.schemastore.org/claude-code-marketplace.json",
   "name": "rolepod",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Coordinated dev-team workflow — 18 specialist agents, pre-commit gates, lifecycle orchestration. Universal AI coding workflow for Claude / Codex / Gemini.",
   "owner": {
     "name": "nuttaruj",
