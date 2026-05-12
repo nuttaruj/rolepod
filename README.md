@@ -38,55 +38,39 @@ Pick one with `--target=claude` / `--target=codex` / `--target=gemini`, or all t
 
 Add `--force` to overwrite. Creates `~/.<cli>.backup-<timestamp>/` with **only rolepod-managed paths** (session history, plugin caches, file-history stay in place). Typical backup <50MB. See `docs/cli-support.md`.
 
-### Install commands
+### Install
 
 ```bash
-# Interactive — pops menu (mode + force prompt):
+# Interactive (mode prompt):
 curl -fsSL https://raw.githubusercontent.com/nuttaruj/rolepod/main/bootstrap.sh | bash
 
-# Pass mode + target directly:
+# Specify mode + target:
 curl -fsSL https://raw.githubusercontent.com/nuttaruj/rolepod/main/bootstrap.sh | bash -s -- --minimum --target=codex
 curl -fsSL https://raw.githubusercontent.com/nuttaruj/rolepod/main/bootstrap.sh | bash -s -- --full --target=all --force
-
-# Manual:
-git clone https://github.com/nuttaruj/rolepod
-cd rolepod
-./install.sh --minimum --target=gemini
 ```
 
-> **Note:** rolepod ships as a script installer, NOT a Claude Code marketplace plugin. The Anthropic plugin model doesn't support `CLAUDE.md` + `rules/` at plugin root — rolepod's core value (always-on judgment + path-scoped rules) needs user-scope file delivery, which only `install.sh` provides. Use `./install.sh` for Claude / Codex / Gemini; skip `/plugin marketplace add`.
+> **Note:** rolepod ships as a script installer, NOT a Claude Code marketplace plugin. The Anthropic plugin model doesn't support `CLAUDE.md` + `rules/` at plugin root — rolepod's core value (always-on judgment + path-scoped rules) needs user-scope file delivery, which only `install.sh` provides. Use the one-liner; skip `/plugin marketplace add`.
 
 ### Update
-
-Re-run install in the cloned repo — `--force` overwrites existing rolepod-managed paths (your other config + skills outside rolepod are preserved).
-
-```bash
-cd rolepod
-git pull
-./install.sh --target=claude --force          # or --target=all
-```
-
-Or via one-liner:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/nuttaruj/rolepod/main/bootstrap.sh | bash -s -- --target=claude --force
 ```
 
-Pre-overwrite backup is auto-created at `~/.<cli>.backup-<timestamp>/` (rolepod-scoped, typically <50 MB — session history / plugin caches stay in place).
+`--force` overwrites rolepod-managed paths. Auto-backup at `~/.<cli>.backup-<timestamp>/` (rolepod-scoped, typically <50 MB; session history / plugin caches stay in place).
 
 ### Uninstall
 
 ```bash
-cd rolepod
-./install.sh --uninstall --target=claude      # or codex / gemini / all
+curl -fsSL https://raw.githubusercontent.com/nuttaruj/rolepod/main/bootstrap.sh | bash -s -- --uninstall --target=claude
 ```
 
-What gets removed (per target):
-- **Claude** — `~/.claude/{agents,rules,skills,hooks,commands,.claude-plugin}` rolepod files + managed block in `~/.claude/CLAUDE.md` + rolepod hook entries in `~/.claude/settings.json`. Your other agents/skills/rules untouched.
+Targets: `claude` / `codex` / `gemini` / `all`. Removed per target:
+- **Claude** — `~/.claude/{agents,rules,skills,hooks,commands,.claude-plugin}` rolepod files + managed block in `~/.claude/CLAUDE.md` + rolepod hook entries in `~/.claude/settings.json`.
 - **Codex** — rolepod marketplace + `[plugins."rolepod@rolepod"]` line in `~/.codex/config.toml` + managed block in `~/.codex/AGENTS.md`.
 - **Gemini** — `~/.gemini/extensions/rolepod/` + managed block in `~/.gemini/GEMINI.md`.
 
-Non-rolepod content (your project CLAUDE.md, other plugin installs, custom skills) stays in place — uninstall is scoped, not nuclear.
+Non-rolepod content (project CLAUDE.md, other plugin installs, custom skills) untouched — uninstall is scoped.
 
 ### Per-project install
 
