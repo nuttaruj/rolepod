@@ -456,7 +456,7 @@ echo "  dry-run: $DRY_RUN"
 echo ""
 
 # ─── Sanity check source ────────────────────────────────────────────────
-for f in CHEATSHEET.md core/agents core/rules hooks core/skills commands .claude-plugin/plugin.json build/render.sh adapters/claude/CLAUDE.md.tmpl; do
+for f in CHEATSHEET.md core/agents core/rules hooks core/skills commands plugin/.claude-plugin/plugin.json .claude-plugin/marketplace.json build/render.sh adapters/claude/CLAUDE.md.tmpl; do
   [ -e "$REPO_DIR/$f" ] || fail "missing $f in $REPO_DIR — run from rolepod repo"
 done
 
@@ -847,9 +847,9 @@ if claude_selected; then
 
   step "Copying plugin manifest"
   if [ "$DRY_RUN" -eq 1 ]; then
-    dry "cp $CP_FLAG $REPO_DIR/.claude-plugin/plugin.json → $TARGET/.claude-plugin/"
+    dry "cp $CP_FLAG $REPO_DIR/plugin/.claude-plugin/plugin.json → $TARGET/.claude-plugin/"
   else
-    cp $CP_FLAG "$REPO_DIR/.claude-plugin/plugin.json" "$TARGET/.claude-plugin/" 2>/dev/null || true
+    cp $CP_FLAG "$REPO_DIR/plugin/.claude-plugin/plugin.json" "$TARGET/.claude-plugin/" 2>/dev/null || true
   fi
 
 # ─── Register hooks in settings.json ────────────────────────────────────
