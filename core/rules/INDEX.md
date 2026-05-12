@@ -14,6 +14,7 @@ Skills (`core/skills/<name>/SKILL.md`) load on trigger phrase via `description:`
 |------|------|
 | `always-on/communication.md` | Tone, language, output volume, CEO oversight modes |
 | `always-on/verify-first.md` | Verify facts before claims |
+| `always-on/code-search.md` | Tool picker — GitNexus for symbols, rg for plain text |
 | `always-on/agent-protocol.md` | Mandatory protocol for every subagent |
 
 ## Path-scoped rules (lazy, load when matching path touched)
