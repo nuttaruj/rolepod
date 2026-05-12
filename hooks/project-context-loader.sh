@@ -47,6 +47,21 @@ if [ ! -d "$REPO/.gitnexus" ]; then
   warn_once "gitnexus-index" "GitNexus index missing → run \`npx gitnexus analyze\` in project root for code intelligence"
 fi
 
+# 1b. Auto-recover stuck GitNexus FTS state. gitnexus plugin's own bg
+# reindex sometimes errors mid-run (npm destructure bug in node.target)
+# leaving the DB write-locked → every subsequent Bash hook fires
+# "Cannot execute write operations in a read-only database" noise.
+# Detect via failed log + wipe + fresh bg reindex. Once per repo per day.
+GITNEXUS_LOG="/tmp/gitnexus-reindex-${NAME}.log"
+RECOVERY_MARKER="$HOME/.claude/.gitnexus-recovered-${NAME}-$(date +%Y%m%d)"
+if [ -d "$REPO/.gitnexus" ] && [ -f "$GITNEXUS_LOG" ] && [ ! -f "$RECOVERY_MARKER" ]; then
+  if grep -q "npm error\|Cannot execute write operations" "$GITNEXUS_LOG" 2>/dev/null; then
+    rm -rf "$REPO/.gitnexus" 2>/dev/null || true
+    (cd "$REPO" && nohup npx gitnexus analyze > "$GITNEXUS_LOG" 2>&1 &) 2>/dev/null
+    touch "$RECOVERY_MARKER" 2>/dev/null || true
+  fi
+fi
+
 # 2. Project CLAUDE.md exists?
 if [ ! -f "$REPO/CLAUDE.md" ]; then
   warn_once "project-claudemd" "No project CLAUDE.md → run \`/init\` (or skip if global rules are enough)"
