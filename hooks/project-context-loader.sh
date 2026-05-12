@@ -44,7 +44,7 @@ CHECKLIST=""
 
 # 1. GitNexus indexed? Per-repo index lives at <repo>/.gitnexus/
 if [ ! -d "$REPO/.gitnexus" ]; then
-  warn_once "gitnexus-index" "GitNexus index missing → run \`npx gitnexus analyze\` in project root for code intelligence"
+  warn_once "gitnexus-index" "GitNexus index missing → run \`npx gitnexus analyze --no-stats\` in project root for code intelligence (--no-stats avoids volatile churn in CLAUDE.md/AGENTS.md)"
 fi
 
 # 1b. Auto-recover stuck GitNexus FTS state. gitnexus plugin's own bg
@@ -57,7 +57,8 @@ RECOVERY_MARKER="$HOME/.claude/.gitnexus-recovered-${NAME}-$(date +%Y%m%d)"
 if [ -d "$REPO/.gitnexus" ] && [ -f "$GITNEXUS_LOG" ] && [ ! -f "$RECOVERY_MARKER" ]; then
   if grep -q "npm error\|Cannot execute write operations" "$GITNEXUS_LOG" 2>/dev/null; then
     rm -rf "$REPO/.gitnexus" 2>/dev/null || true
-    (cd "$REPO" && nohup npx gitnexus analyze > "$GITNEXUS_LOG" 2>&1 &) 2>/dev/null
+    # --no-stats avoids per-commit churn in CLAUDE.md/AGENTS.md gitnexus block
+    (cd "$REPO" && nohup npx gitnexus analyze --no-stats > "$GITNEXUS_LOG" 2>&1 &) 2>/dev/null
     touch "$RECOVERY_MARKER" 2>/dev/null || true
   fi
 fi
