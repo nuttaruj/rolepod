@@ -1,7 +1,7 @@
 {
   "name": "rolepod",
   "version": "1.0.0",
-  "description": "Universal Claude Code workflow system: 18-agent software-house team, 16 lazy-load workflow rules, 34 bundled skills, 6-phase lifecycle taxonomy, auto-trigger hooks, parallel-safe by path/concern ownership.",
+  "description": "Universal AI coding workflow — 18-agent dev team, 42 skills, 7 rules (3 always-on + 4 path-scoped), 5 hooks, 6-phase lifecycle. Simplicity / test / failure-mode gates fire pre-commit. Parallel-safe by path / concern ownership.",
   "author": {
     "name": "nuttaruj",
     "url": "https://github.com/nuttaruj"

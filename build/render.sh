@@ -214,6 +214,29 @@ render_claude() {
   mkdir -p "$out_dir"
   render_template "$template" "$output"
   render_agents "claude"
+
+  # ─── Populate plugin/ (committed Claude Code marketplace plugin) ─────────
+  # The plugin/ directory at the repo root is the Claude Code marketplace
+  # consumable. Its layout matches Anthropic's expected plugin structure so
+  # /plugin marketplace add github:nuttaruj/rolepod just works.
+  local plugin_dir="$REPO_DIR/plugin"
+  mkdir -p "$plugin_dir/agents" "$plugin_dir/rules" "$plugin_dir/skills" \
+           "$plugin_dir/commands" "$plugin_dir/hooks"
+
+  cp "$output" "$plugin_dir/CLAUDE.md"
+  cp -R "$out_dir"/agents/. "$plugin_dir/agents/" 2>/dev/null || true
+  cp -R "$REPO_DIR"/core/rules/. "$plugin_dir/rules/" 2>/dev/null || true
+  # Skills: copy each subdir as nested entry (cp -R src/ dest/ merges
+  # contents on macOS; strip trailing slash to preserve subdir nesting).
+  rm -rf "$plugin_dir/skills"
+  mkdir -p "$plugin_dir/skills"
+  for skill_dir in "$REPO_DIR"/core/skills/*/; do
+    cp -R "${skill_dir%/}" "$plugin_dir/skills/"
+  done
+  cp "$REPO_DIR"/commands/*.md "$plugin_dir/commands/" 2>/dev/null || true
+  cp "$REPO_DIR"/hooks/*.sh "$plugin_dir/hooks/" 2>/dev/null || true
+  chmod +x "$plugin_dir"/hooks/*.sh 2>/dev/null || true
+  cp "$REPO_DIR"/CHEATSHEET.md "$plugin_dir/CHEATSHEET.md" 2>/dev/null || true
 }
 
 # ─── Render Codex target ────────────────────────────────────────────────────

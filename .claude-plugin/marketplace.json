@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-marketplace.json",
+  "name": "rolepod",
+  "version": "1.0.0",
+  "description": "18-agent dev team workflow with simplicity gates, test gates, and verify-first discipline. Universal AI coding CLI workflow (Claude / Codex / Gemini).",
+  "owner": {
+    "name": "nuttaruj",
+    "url": "https://github.com/nuttaruj/rolepod"
+  },
+  "plugins": [
+    {
+      "name": "rolepod",
+      "description": "Complete dev team — 18 specialists, 42 skills, 7 rules, 5 hooks, 6-phase lifecycle. Parallel-safe by path/concern.",
+      "source": "./plugin",
+      "category": "productivity"
+    }
+  ]
+}

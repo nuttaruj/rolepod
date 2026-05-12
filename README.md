@@ -40,6 +40,19 @@ Add `--force` to overwrite. Creates `~/.<cli>.backup-<timestamp>/` with **only r
 
 ### Install commands
 
+**Claude Code — native marketplace (shows in `/plugin` UI):**
+
+```bash
+# Inside Claude Code:
+/plugin marketplace add github:nuttaruj/rolepod
+/plugin install rolepod@rolepod
+/plugin enable rolepod@rolepod
+```
+
+Anthropic's marketplace flow — discoverable, updateable via `/plugin marketplace update`, manageable via `/plugin disable/enable`. **Claude Code only**; doesn't ship Codex/Gemini adapters.
+
+**Multi-CLI install (Claude + Codex + Gemini, or any subset):**
+
 ```bash
 # Interactive — pops menu (mode + force prompt):
 curl -fsSL https://raw.githubusercontent.com/nuttaruj/rolepod/main/bootstrap.sh | bash
@@ -53,6 +66,8 @@ git clone https://github.com/nuttaruj/rolepod
 cd rolepod
 ./install.sh --minimum --target=gemini
 ```
+
+The bootstrap/install.sh path handles Codex marketplace registration + Gemini extension install + optional plugin sidecars (MemPalace, GitNexus, etc). Use marketplace for Claude-only; use bootstrap for multi-CLI.
 
 ### Per-project install
 
