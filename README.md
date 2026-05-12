@@ -49,8 +49,6 @@ curl -fsSL https://raw.githubusercontent.com/nuttaruj/rolepod/main/bootstrap.sh 
 curl -fsSL https://raw.githubusercontent.com/nuttaruj/rolepod/main/bootstrap.sh | bash -s -- --full --target=all --force
 ```
 
-> **Note:** rolepod ships as a script installer, NOT a Claude Code marketplace plugin. The Anthropic plugin model doesn't support `CLAUDE.md` + `rules/` at plugin root — rolepod's core value (always-on judgment + path-scoped rules) needs user-scope file delivery, which only `install.sh` provides. Use the one-liner; skip `/plugin marketplace add`.
-
 ### Update
 
 ```bash
