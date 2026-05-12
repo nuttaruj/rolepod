@@ -456,7 +456,7 @@ echo "  dry-run: $DRY_RUN"
 echo ""
 
 # ─── Sanity check source ────────────────────────────────────────────────
-for f in CHEATSHEET.md core/agents core/rules hooks core/skills commands plugin/.claude-plugin/plugin.json .claude-plugin/marketplace.json build/render.sh adapters/claude/CLAUDE.md.tmpl; do
+for f in CHEATSHEET.md core/agents core/rules hooks core/skills commands .claude-plugin/plugin.json build/render.sh adapters/claude/CLAUDE.md.tmpl; do
   [ -e "$REPO_DIR/$f" ] || fail "missing $f in $REPO_DIR — run from rolepod repo"
 done
 
@@ -763,36 +763,6 @@ if claude_selected; then
   echo "${BOLD}─── Installing for Claude Code ───${NC}"
   echo "  target: $TARGET"
 
-  # Detect marketplace install. If rolepod@rolepod is already enabled via the
-  # native /plugin marketplace flow, skip user-scope writes to avoid duplicate
-  # agents/skills/rules (one set in ~/.claude/agents/, another in plugins/cache/).
-  # User stays on marketplace path; install.sh becomes Codex/Gemini-only here.
-  MARKETPLACE_INSTALLED=0
-  if [ -f "$TARGET/plugins/installed_plugins.json" ] && command -v python3 >/dev/null 2>&1; then
-    if python3 -c "
-import json, sys
-try:
-  data = json.load(open('$TARGET/plugins/installed_plugins.json'))
-  sys.exit(0 if 'rolepod@rolepod' in data.get('plugins', {}) else 1)
-except Exception:
-  sys.exit(1)
-" 2>/dev/null; then
-      MARKETPLACE_INSTALLED=1
-    fi
-  fi
-
-  if [ "$MARKETPLACE_INSTALLED" -eq 1 ] && [ "$FORCE" -ne 1 ]; then
-    warn "Detected rolepod@rolepod installed via /plugin marketplace."
-    warn "Skipping user-scope Claude install to avoid duplication."
-    warn "  - To switch to install.sh path: uninstall first (/plugin uninstall rolepod@rolepod), then rerun."
-    warn "  - To force-overwrite (parallel install, NOT recommended): pass --force."
-    note_skipped "claude (marketplace install detected)"
-    # Skip to Codex/Gemini handling below by closing this block early.
-    claude_marketplace_skip=1
-  fi
-fi
-
-if claude_selected && [ "${claude_marketplace_skip:-0}" -ne 1 ]; then
   RENDERED_CLAUDE_MD="$REPO_DIR/build/rendered/claude/CLAUDE.md"
   [ -f "$RENDERED_CLAUDE_MD" ] || fail "expected $RENDERED_CLAUDE_MD after render"
 
@@ -877,9 +847,9 @@ if claude_selected && [ "${claude_marketplace_skip:-0}" -ne 1 ]; then
 
   step "Copying plugin manifest"
   if [ "$DRY_RUN" -eq 1 ]; then
-    dry "cp $CP_FLAG $REPO_DIR/plugin/.claude-plugin/plugin.json → $TARGET/.claude-plugin/"
+    dry "cp $CP_FLAG $REPO_DIR/.claude-plugin/plugin.json → $TARGET/.claude-plugin/"
   else
-    cp $CP_FLAG "$REPO_DIR/plugin/.claude-plugin/plugin.json" "$TARGET/.claude-plugin/" 2>/dev/null || true
+    cp $CP_FLAG "$REPO_DIR/.claude-plugin/plugin.json" "$TARGET/.claude-plugin/" 2>/dev/null || true
   fi
 
 # ─── Register hooks in settings.json ────────────────────────────────────

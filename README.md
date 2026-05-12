@@ -40,24 +40,6 @@ Add `--force` to overwrite. Creates `~/.<cli>.backup-<timestamp>/` with **only r
 
 ### Install commands
 
-**Claude Code — native marketplace (shows in `/plugin` UI):**
-
-```
-# Inside Claude Code (type these in the chat input):
-/plugin marketplace add nuttaruj/rolepod
-/plugin install rolepod@rolepod
-
-# Later — pull latest version:
-/plugin marketplace update rolepod
-/plugin install rolepod@rolepod    # re-install picks up new version
-```
-
-Accepted source formats: `owner/repo` (GitHub shorthand), `https://github.com/owner/repo`, `git@github.com:owner/repo.git` (SSH), or `./path/to/local-marketplace`.
-
-Anthropic's marketplace flow — discoverable, updateable via `/plugin marketplace update`, manageable via `/plugin disable/enable`. **Claude Code only**; doesn't ship Codex/Gemini adapters.
-
-**Multi-CLI install (Claude + Codex + Gemini, or any subset):**
-
 ```bash
 # Interactive — pops menu (mode + force prompt):
 curl -fsSL https://raw.githubusercontent.com/nuttaruj/rolepod/main/bootstrap.sh | bash
@@ -72,7 +54,7 @@ cd rolepod
 ./install.sh --minimum --target=gemini
 ```
 
-The bootstrap/install.sh path handles Codex marketplace registration + Gemini extension install + optional plugin sidecars (MemPalace, GitNexus, etc). Use marketplace for Claude-only; use bootstrap for multi-CLI.
+> **Note:** rolepod ships as a script installer, NOT a Claude Code marketplace plugin. The Anthropic plugin model doesn't support `CLAUDE.md` + `rules/` at plugin root — rolepod's core value (always-on judgment + path-scoped rules) needs user-scope file delivery, which only `install.sh` provides. Use `./install.sh` for Claude / Codex / Gemini; skip `/plugin marketplace add`.
 
 ### Per-project install
 
