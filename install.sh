@@ -1443,28 +1443,128 @@ plugin_mempalace() {
   if have_cmd mempalace; then
     ok "MemPalace already installed (target: global) → $(command -v mempalace)"
     note_skipped "mempalace"
-    return 0
-  fi
-  local pip_cmd=""
-  if have_cmd pip3; then pip_cmd="pip3"
-  elif have_cmd pip; then pip_cmd="pip"
   else
-    warn "MemPalace needs pip. Install Python first → pip install mempalace"
-    note_failed "mempalace"
-    return 1
+    local pip_cmd=""
+    if have_cmd pip3; then pip_cmd="pip3"
+    elif have_cmd pip; then pip_cmd="pip"
+    else
+      warn "MemPalace needs pip. Install Python first → pip install mempalace"
+      note_failed "mempalace"
+      return 1
+    fi
+    step "Installing MemPalace via $pip_cmd (target: global)"
+    if [ "$DRY_RUN" -eq 1 ]; then
+      dry "$pip_cmd install --user mempalace"
+      note_installed "mempalace (dry-run)"
+    elif "$pip_cmd" install --user mempalace 2>&1 | tail -3; then
+      ok "MemPalace installed (target: global)"
+      note_installed "mempalace"
+    else
+      warn "MemPalace install failed → manual: $pip_cmd install mempalace"
+      note_failed "mempalace"
+      return 1
+    fi
   fi
-  step "Installing MemPalace via $pip_cmd (target: global)"
+
+  # Auto-register MemPalace's built-in hooks (SessionStart/Stop/PreCompact)
+  # so cross-session memory works without manual MCP calls. Idempotent.
+  register_mempalace_hooks
+}
+
+# Register MemPalace's session-start/stop/precompact hooks into the Claude
+# settings.json. Codex has separate config (deferred). Gemini unsupported by
+# upstream `mempalace hook run --harness`. Hooks are self-guarded so they
+# exit cleanly if user later `pip uninstall`s mempalace.
+register_mempalace_hooks() {
+  case "$CLI_TARGET" in claude|all) ;; *) return 0 ;; esac
+  have_cmd mempalace || return 0
+
+  local claude_target settings_file
+  claude_target="$(resolve_target_for claude)"
+  settings_file="$claude_target/settings.json"
+
   if [ "$DRY_RUN" -eq 1 ]; then
-    dry "$pip_cmd install --user mempalace"
-    note_installed "mempalace (dry-run)"
+    dry "register MemPalace hooks in $settings_file:"
+    dry "  SessionStart  startup|resume  → mempalace hook run --hook session-start --harness claude-code (timeout 10)"
+    dry "  Stop          (no matcher)    → mempalace hook run --hook stop          --harness claude-code (timeout 10)"
+    dry "  PreCompact    (no matcher)    → mempalace hook run --hook precompact    --harness claude-code (timeout 10)"
     return 0
   fi
-  if "$pip_cmd" install --user mempalace 2>&1 | tail -3; then
-    ok "MemPalace installed (target: global)"
-    note_installed "mempalace"
+
+  [ -f "$settings_file" ] || echo '{}' > "$settings_file"
+
+  if ! command -v python3 >/dev/null 2>&1; then
+    warn "python3 missing — skip MemPalace hook auto-register (run \`mempalace init\` or edit $settings_file manually)"
+    return 0
+  fi
+
+  if python3 - "$settings_file" <<'PY'
+import json, sys
+path = sys.argv[1]
+try:
+    with open(path) as f:
+        data = json.load(f)
+except Exception:
+    data = {}
+if not isinstance(data, dict):
+    data = {}
+hooks = data.setdefault("hooks", {})
+
+# Self-guard: command silently no-ops if mempalace uninstalled later (avoids
+# "command not found" noise on every session). exit 0 from `command -v` fail
+# is what we want.
+def guarded(sub):
+    # `if` form (not `&&`) so missing binary exits 0 cleanly — no hook
+    # noise when user uninstalls mempalace later.
+    return ("if command -v mempalace >/dev/null 2>&1; then "
+            "mempalace hook run --hook " + sub + " --harness claude-code; fi")
+
+ss   = guarded("session-start")
+stop = guarded("stop")
+pc   = guarded("precompact")
+
+def upsert(event, matcher, cmd, timeout):
+    arr = hooks.setdefault(event, [])
+    # Cross-group dedup: strip ANY entry whose command invokes the same
+    # mempalace hook (guarded or unguarded variant — `mempalace init` may
+    # have registered an unguarded version that we now want to replace).
+    # Match on `--hook <name>` substring inside cmd.
+    import re
+    m = re.search(r"--hook\s+(\S+)", cmd)
+    hook_id = m.group(1) if m else cmd
+    for g in arr:
+        g["hooks"] = [
+            h for h in g.get("hooks", [])
+            if not (
+                "mempalace hook run" in h.get("command", "")
+                and f"--hook {hook_id}" in h.get("command", "")
+            )
+        ]
+    arr[:] = [g for g in arr if g.get("hooks")]
+    # Find or create canonical group. matcher=None → group has no matcher key.
+    if matcher is None:
+        group = next((g for g in arr if not g.get("matcher")), None)
+    else:
+        group = next((g for g in arr if g.get("matcher") == matcher), None)
+    if group is None:
+        group = {"hooks": []} if matcher is None else {"matcher": matcher, "hooks": []}
+        arr.append(group)
+    group.setdefault("hooks", []).append(
+        {"type": "command", "command": cmd, "timeout": timeout}
+    )
+
+upsert("SessionStart", "startup|resume", ss,   10)
+upsert("Stop",         None,             stop, 10)
+upsert("PreCompact",   None,             pc,   10)
+
+with open(path, "w") as f:
+    json.dump(data, f, indent=2)
+    f.write("\n")
+PY
+  then
+    ok "MemPalace hooks registered (SessionStart + Stop + PreCompact)"
   else
-    warn "MemPalace install failed → manual: $pip_cmd install mempalace"
-    note_failed "mempalace"
+    warn "Could not auto-register MemPalace hooks — edit $settings_file manually"
   fi
 }
 
