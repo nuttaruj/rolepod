@@ -55,6 +55,22 @@ fi
 # 3. First-time session for this dir?
 warn_once "first-session" "First session for this project → MemPalace will start capturing learnings now"
 
+# 4. Dual install detected? install.sh artifacts + marketplace plugin both present
+#    → user has duplicates. Warn once + suggest migration.
+INSTALLED_JSON="$HOME/.claude/plugins/installed_plugins.json"
+if [ -f "$INSTALLED_JSON" ] && [ -f "$HOME/.claude/agents/qa-tester.md" ]; then
+  if python3 -c "
+import json, sys
+try:
+  d = json.load(open('$INSTALLED_JSON'))
+  sys.exit(0 if 'rolepod@rolepod' in d.get('plugins', {}) else 1)
+except Exception:
+  sys.exit(1)
+" 2>/dev/null; then
+    warn_once "dual-install" "Dual install detected: rolepod@rolepod via marketplace AND install.sh user-scope artifacts. → Run \`bash <rolepod-repo>/install.sh --uninstall --target=claude\` to migrate to marketplace-only (recommended) and avoid duplicate agents/skills/rules."
+  fi
+fi
+
 [ -n "$CHECKLIST" ] && CTX="$CTX\n\n## Project setup checklist\n$CHECKLIST"
 
 python3 -c "
