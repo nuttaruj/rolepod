@@ -42,12 +42,14 @@ Add `--force` to overwrite. Creates `~/.<cli>.backup-<timestamp>/` with **only r
 
 **Claude Code — native marketplace (shows in `/plugin` UI):**
 
-```bash
-# Inside Claude Code:
-/plugin marketplace add github:nuttaruj/rolepod
+```
+# Inside Claude Code (type these in the chat input):
+/plugin marketplace add nuttaruj/rolepod
 /plugin install rolepod@rolepod
 # /plugin enable rolepod@rolepod   ← only if previously disabled (install auto-enables in v2.1+)
 ```
+
+Accepted source formats: `owner/repo` (GitHub shorthand), `https://github.com/owner/repo`, `git@github.com:owner/repo.git` (SSH), or `./path/to/local-marketplace`.
 
 Anthropic's marketplace flow — discoverable, updateable via `/plugin marketplace update`, manageable via `/plugin disable/enable`. **Claude Code only**; doesn't ship Codex/Gemini adapters.
 
