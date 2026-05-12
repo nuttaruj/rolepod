@@ -46,7 +46,7 @@ external service state?        MCP / CLI
 |---|---|
 | GitNexus not installed | Use `rg` / `grep` normally. No warning, no degraded-mode note. |
 | GitNexus installed + index fresh | Apply hard rule above |
-| GitNexus installed + index stale | Apply rule + suggest `npx gitnexus analyze` once per session |
+| GitNexus installed + index stale | Apply rule normally — gitnexus plugin's own PostToolUse hook auto-queues `npx gitnexus analyze` in background. No prompt to user, no manual command needed. |
 | GitNexus installed + offline/error | Degrade to `rg` + state risk in summary |
 
 Silent fallback is correct when the tool simply isn't there. Rule applies only when capability exists.
