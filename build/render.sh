@@ -237,6 +237,24 @@ render_claude() {
   cp "$REPO_DIR"/hooks/*.sh "$plugin_dir/hooks/" 2>/dev/null || true
   chmod +x "$plugin_dir"/hooks/*.sh 2>/dev/null || true
   cp "$REPO_DIR"/CHEATSHEET.md "$plugin_dir/CHEATSHEET.md" 2>/dev/null || true
+
+  # Sync component arrays in plugin.json so Claude Code marketplace UI
+  # enumerates agents/skills/commands. hooks pointer stays as file ref.
+  python3 - "$plugin_dir" <<'PY'
+import json, glob, os, sys
+root = sys.argv[1]
+manifest = os.path.join(root, '.claude-plugin', 'plugin.json')
+agents = sorted(f'./agents/{os.path.basename(f)}' for f in glob.glob(f'{root}/agents/*.md'))
+skills = sorted(f'./skills/{os.path.basename(os.path.dirname(f))}' for f in glob.glob(f'{root}/skills/*/SKILL.md'))
+commands = sorted(f'./commands/{os.path.basename(f)}' for f in glob.glob(f'{root}/commands/*.md'))
+p = json.load(open(manifest))
+p['agents'] = agents
+p['skills'] = skills
+p['commands'] = commands
+with open(manifest, 'w') as f:
+    json.dump(p, f, indent=2, ensure_ascii=False)
+    f.write('\n')
+PY
 }
 
 # ─── Render Codex target ────────────────────────────────────────────────────
