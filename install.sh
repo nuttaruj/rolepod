@@ -979,6 +979,54 @@ fi
 
 fi  # end DRY_RUN gate around settings.json registration
 
+# ─── Patch gitnexus plugin registration → use rolepod wrapper ────────────
+# When gitnexus plugin is installed, swap its bare `node .../gitnexus-hook.cjs`
+# registration for `bash .../gitnexus-wrap.sh` so stale-index notices are
+# suppressed + auto-reindex fires in background (once/day/repo). Wrapper
+# forwards stdin/stdout transparently otherwise. Idempotent.
+GITNEXUS_PLUGIN_HOOK="$TARGET/hooks/gitnexus/gitnexus-hook.cjs"
+GITNEXUS_WRAP="$HOOK_DIR/gitnexus-wrap.sh"
+if [ "$DRY_RUN" -eq 0 ] && [ -f "$GITNEXUS_PLUGIN_HOOK" ] && [ -f "$GITNEXUS_WRAP" ] && command -v python3 >/dev/null 2>&1; then
+  step "Patching gitnexus hook registration → rolepod wrapper"
+  if python3 - "$SETTINGS_FILE" "$GITNEXUS_PLUGIN_HOOK" "$GITNEXUS_WRAP" <<'PY'
+import json, sys
+path, plugin_cjs, wrap_sh = sys.argv[1], sys.argv[2], sys.argv[3]
+try:
+    with open(path) as f:
+        data = json.load(f)
+except Exception:
+    data = {}
+if not isinstance(data, dict):
+    sys.exit(1)
+hooks = data.get("hooks", {})
+patched = 0
+old_node = f'node "{plugin_cjs}"'
+new_bash = f'bash "{wrap_sh}"'
+for event_arr in hooks.values():
+    if not isinstance(event_arr, list):
+        continue
+    for group in event_arr:
+        for h in group.get("hooks", []):
+            cmd = h.get("command", "")
+            # Match both quoted + unquoted forms the plugin/installer may emit.
+            if plugin_cjs in cmd and "gitnexus-wrap.sh" not in cmd:
+                h["command"] = new_bash
+                patched += 1
+if patched:
+    with open(path, "w") as f:
+        json.dump(data, f, indent=2)
+        f.write("\n")
+print(f"PATCHED={patched}")
+PY
+  then
+    ok "gitnexus hook registration patched (rolepod wrapper active)"
+  else
+    warn "Could not patch gitnexus registration — edit $SETTINGS_FILE manually"
+  fi
+elif [ "$DRY_RUN" -eq 1 ] && [ -f "$GITNEXUS_PLUGIN_HOOK" ]; then
+  dry "patch gitnexus hook registration → bash $GITNEXUS_WRAP"
+fi
+
 # ─── Verify Claude rolepod core ─────────────────────────────────────────
 # Skip in dry-run — files we'd verify weren't actually written.
 if [ "$DRY_RUN" -eq 0 ]; then
