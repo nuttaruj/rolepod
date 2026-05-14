@@ -31,11 +31,13 @@
 #   --with-skills=ui-ux-pro-max,caveman    # 3rd-party skill plugins
 #   --with-clis=codex,gemini               # install CLI binaries
 #   --with-plugins=openai-codex            # Claude marketplace plugins
+#   --with-mcps=chrome-devtools            # Claude MCP servers
 #
 # Bundle equivalents (back-compat):
 #   --minimum  ≡  --with-tools=gitnexus,mempalace --with-skills=ui-ux-pro-max
 #   --full     ≡  --with-tools=gitnexus,mempalace,rtk --with-skills=ui-ux-pro-max,caveman \
-#                 --with-clis=codex,gemini --with-plugins=openai-codex
+#                 --with-clis=codex,gemini --with-plugins=openai-codex \
+#                 --with-mcps=chrome-devtools
 #
 # Env:
 #   ROLEPOD_TARGET           Single-target default OR root for --target=all.
@@ -78,6 +80,7 @@ WANT_TOOLS=""
 WANT_SKILLS=""
 WANT_CLIS=""
 WANT_PLUGINS=""
+WANT_MCPS=""
 
 # Args
 for arg in "$@"; do
@@ -95,6 +98,7 @@ for arg in "$@"; do
     --with-skills=*)  WANT_SKILLS="${arg#--with-skills=}" ;;
     --with-clis=*)    WANT_CLIS="${arg#--with-clis=}" ;;
     --with-plugins=*) WANT_PLUGINS="${arg#--with-plugins=}" ;;
+--with-mcps=*)    WANT_MCPS="${arg#--with-mcps=}" ;;
     -h|--help)
       sed -n '2,46p' "$0"
       exit 0 ;;
@@ -130,6 +134,7 @@ case "$MODE" in
     [ -z "$WANT_SKILLS"  ] && WANT_SKILLS="ui-ux-pro-max,caveman"
     [ -z "$WANT_CLIS"    ] && WANT_CLIS="codex,gemini"
     [ -z "$WANT_PLUGINS" ] && WANT_PLUGINS="openai-codex"
+    [ -z "$WANT_MCPS"    ] && WANT_MCPS="chrome-devtools"
     ;;
 esac
 
@@ -1754,15 +1759,51 @@ plugin_openai_codex_marketplace() {
   note_failed "openai-codex-plugin (manual /plugin install)"
 }
 
+plugin_chrome_devtools_mcp() {
+  # Claude MCP server — only Claude target. Codex / Gemini have their own MCP
+  # registration mechanisms (not implemented here).
+  if ! claude_selected; then
+    skip "chrome-devtools MCP (target: claude only — current: $CLI_TARGET)"
+    return 0
+  fi
+  if ! have_cmd claude; then
+    warn "claude CLI not on PATH — skip chrome-devtools MCP install"
+    note_failed "chrome-devtools-mcp"
+    return 1
+  fi
+  # Idempotent: skip if already registered. `claude mcp list` returns lines
+  # like "chrome-devtools: npx -y chrome-devtools-mcp@latest - ✓ Connected"
+  if claude mcp list 2>/dev/null | grep -q "^chrome-devtools:"; then
+    ok "chrome-devtools MCP already registered (target: claude)"
+    note_skipped "chrome-devtools-mcp"
+    return 0
+  fi
+  step "Registering chrome-devtools MCP (target: claude)"
+  if [ "$DRY_RUN" -eq 1 ]; then
+    dry "claude mcp add chrome-devtools --scope user npx chrome-devtools-mcp@latest"
+    note_installed "chrome-devtools-mcp (dry-run)"
+    return 0
+  fi
+  if claude mcp add chrome-devtools --scope user npx chrome-devtools-mcp@latest 2>&1 | tail -3; then
+    ok "chrome-devtools MCP registered"
+    note_installed "chrome-devtools-mcp"
+  else
+    warn "chrome-devtools MCP register failed — manual: claude mcp add chrome-devtools --scope user npx chrome-devtools-mcp@latest"
+    note_failed "chrome-devtools-mcp"
+  fi
+}
+
 # ─── Run plugin installs based on granular sets ─────────────────────────
-# WANT_TOOLS / WANT_SKILLS / WANT_CLIS / WANT_PLUGINS were populated either
-# directly via --with-* flags or expanded from --minimum/--full above.
+# WANT_TOOLS / WANT_SKILLS / WANT_CLIS / WANT_PLUGINS / WANT_MCPS were
+# populated either directly via --with-* flags or expanded from
+# --minimum/--full above.
 
 ANY_PLUGIN=0
 [ -n "$WANT_TOOLS"   ] && ANY_PLUGIN=1
 [ -n "$WANT_SKILLS"  ] && ANY_PLUGIN=1
 [ -n "$WANT_CLIS"    ] && ANY_PLUGIN=1
 [ -n "$WANT_PLUGINS" ] && ANY_PLUGIN=1
+[ -n "$WANT_MCPS"    ] && ANY_PLUGIN=1
 
 if [ "$ANY_PLUGIN" -eq 1 ]; then
   echo ""
@@ -1771,6 +1812,7 @@ if [ "$ANY_PLUGIN" -eq 1 ]; then
   [ -n "$WANT_SKILLS"  ] && echo "  skills:  $WANT_SKILLS"
   [ -n "$WANT_CLIS"    ] && echo "  clis:    $WANT_CLIS"
   [ -n "$WANT_PLUGINS" ] && echo "  plugins: $WANT_PLUGINS"
+  [ -n "$WANT_MCPS"    ] && echo "  mcps:    $WANT_MCPS"
   echo ""
 
   # Anthropic skills detection — always runs when Claude is the target and any
@@ -1794,6 +1836,9 @@ if [ "$ANY_PLUGIN" -eq 1 ]; then
 
   # Claude marketplace plugins (Claude-only)
   if wants "openai-codex" "$WANT_PLUGINS"; then plugin_openai_codex_marketplace; fi
+
+  # Claude MCP servers (Claude-only via `claude mcp add`)
+  if wants "chrome-devtools" "$WANT_MCPS"; then plugin_chrome_devtools_mcp; fi
 fi
 
 # ─── Summary ────────────────────────────────────────────────────────────

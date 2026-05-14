@@ -34,7 +34,7 @@ Pick one with `--target=claude` / `--target=codex` / `--target=gemini`, or all t
 |------|---------------------|---------|
 | **core** (default) | rolepod files only — agents, rules, hooks, 42 skills, commands, manifest, docs | `./install.sh` |
 | **minimum** | core + `ui-ux-pro-max-skill` + GitNexus + MemPalace | `./install.sh --minimum` |
-| **full** | minimum + caveman + rtk + the other two CLIs + openai-codex Claude plugin | `./install.sh --full` |
+| **full** | minimum + caveman + rtk + the other two CLIs + openai-codex Claude plugin + chrome-devtools MCP | `./install.sh --full` |
 
 Add `--force` to overwrite. Creates `~/.<cli>.backup-<timestamp>/` with **only rolepod-managed paths** (session history, plugin caches, file-history stay in place). Typical backup <50MB. See `docs/cli-support.md`.
 
