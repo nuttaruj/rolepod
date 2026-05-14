@@ -298,7 +298,7 @@ Estimated **~50-60% cost reduction** vs "all Opus high" while keeping depth wher
 | **[GitNexus](https://github.com/abhigyanpatwari/GitNexus)** | `gitnexus-*` (7 skills) + MCP tools | `npm i -g gitnexus` + MCP setup |
 | **[ui-ux-pro-max-skill](https://github.com/nextlevelbuilder/ui-ux-pro-max-skill)** | `ui-ux-pro-max` (used by `ui-ux-designer`) | Per repo |
 | **[claude-seo](https://github.com/AgriciDaniel/claude-seo)** | 18 deep technical SEO sub-agents | Claude plugin marketplace |
-| **OpenAI Codex review plugin** | Adversarial review | Each CLI's marketplace |
+| **[OpenAI Codex review plugin](https://github.com/openai/codex-plugin-cc)** | Adversarial review | Each CLI's marketplace |
 
 Minimum baseline: 18 agents + 7 rules (3 always-on + 4 path-scoped) + 3 hooks + 42 skills + Q1-Q4 / S1-S5 / T1-T6 / F1-F5 + 6-phase lifecycle.
 
