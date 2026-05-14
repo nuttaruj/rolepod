@@ -14,6 +14,42 @@ paths:
 
 Browser is source of truth. DOM, console, network, computed styles say what actually happened. Drive DevTools yourself instead of guessing from code or asking user.
 
+## Tool: chrome-devtools-mcp (preferred driver)
+
+Live Chrome session via Chrome DevTools Protocol MCP server. No test file, no assertions — interactive inspection + ad-hoc verify. Companion to Playwright (which owns persistent CI suite, this skill owns interactive debug + verify-first).
+
+Install check: `claude mcp list | grep chrome-devtools`. Not installed → fall back to manual DevTools / Playwright.
+
+| Need | MCP tool |
+|------|---------|
+| Open URL | `mcp__chrome-devtools__navigate_page` |
+| Click element | `mcp__chrome-devtools__click` |
+| Fill form | `mcp__chrome-devtools__fill` / `fill_form` |
+| Read DOM | `mcp__chrome-devtools__take_snapshot` |
+| Screenshot | `mcp__chrome-devtools__take_screenshot` |
+| Console errors | `mcp__chrome-devtools__list_console_messages` |
+| Network requests | `mcp__chrome-devtools__list_network_requests` |
+| Eval JS | `mcp__chrome-devtools__evaluate_script` |
+| Lighthouse audit | `mcp__chrome-devtools__lighthouse_audit` |
+| Perf trace | `mcp__chrome-devtools__performance_start_trace` / `_stop_trace` |
+| Mobile emulate | `mcp__chrome-devtools__emulate` |
+| Wait for | `mcp__chrome-devtools__wait_for` |
+
+## DevTools MCP vs Playwright — boundary
+
+| Use case | Pick |
+|----------|------|
+| Persistent E2E suite (CI gate, PR check) | **Playwright** (`webapp-testing` skill) |
+| Cross-browser (Firefox / WebKit) | **Playwright** |
+| Visual regression w/ snapshot diff | **Playwright** |
+| Quick "did fix work?" verify | **DevTools MCP** |
+| Console error / network req inspect | **DevTools MCP** |
+| Lighthouse / perf trace | **DevTools MCP** |
+| Repro bug interactively | **DevTools MCP** |
+| Ad-hoc form fill + verify | **DevTools MCP** |
+
+Complementary, not competitor. QA/frontend-dev: write Playwright suite for CI **and** use DevTools MCP for live verify before commit.
+
 ## When to use
 
 - UI change shipped, need proof it renders correctly

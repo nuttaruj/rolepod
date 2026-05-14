@@ -11,6 +11,8 @@ skills:
   - ci-cd-and-automation
   - root-cause-tracing
   - source-driven-development
+  - browser-testing-with-devtools
+  - webapp-testing
 tools:
   - Read
   - Glob

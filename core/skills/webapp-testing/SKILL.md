@@ -12,6 +12,19 @@ paths:
 
 Manual DevTools answers once. Playwright answers same way next week. Use Playwright when verification repeats, flow is multi-step, or you need a PR artifact.
 
+## Playwright vs DevTools MCP
+
+| Need | Pick |
+|------|------|
+| Persistent E2E suite committed to repo (CI gate) | **Playwright** (this skill) |
+| Cross-browser (Chromium / Firefox / WebKit) | **Playwright** |
+| Visual regression w/ snapshot diff | **Playwright** |
+| Ad-hoc "did fix work?" before commit | **DevTools MCP** → `browser-testing-with-devtools` |
+| Inspect console / network / Lighthouse | **DevTools MCP** |
+| Repro bug interactively | **DevTools MCP** |
+
+Both: same QA agent owns both. DevTools MCP = interactive driver; Playwright = persistent suite. Don't skip Playwright because DevTools MCP "felt fine" — interactive verify is not regression coverage.
+
 ## When to use
 
 - Multi-step E2E flow (login → action → result)
