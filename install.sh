@@ -882,6 +882,7 @@ if [ "$DRY_RUN" -eq 1 ]; then
   dry "  SessionStart  startup|resume      → $HOOK_DIR/project-context-loader.sh (timeout 5)"
   dry "  PreToolUse    Edit|Write|MultiEdit → $HOOK_DIR/gate-reminder.sh        (timeout 3)"
   dry "  PreToolUse    Bash                 → $HOOK_DIR/precommit-gate.sh      (timeout 5)"
+  dry "  PreToolUse    Bash                 → $HOOK_DIR/block-subagent-commit.sh (timeout 3)"
   dry "  PostToolUse   Edit|Write           → $HOOK_DIR/verify-reminder.sh      (timeout 3)"
   dry "  PostToolUse   Bash                 → $HOOK_DIR/post-ship-detect.sh     (timeout 5)"
   REGISTER_OK=1
@@ -899,6 +900,7 @@ if command -v jq >/dev/null 2>&1; then
     --arg ctx "$HOOK_DIR/project-context-loader.sh" \
     --arg gate "$HOOK_DIR/gate-reminder.sh" \
     --arg pre "$HOOK_DIR/precommit-gate.sh" \
+    --arg bsc "$HOOK_DIR/block-subagent-commit.sh" \
     --arg ver "$HOOK_DIR/verify-reminder.sh" \
     --arg shp "$HOOK_DIR/post-ship-detect.sh" '
     # Helper: strip command from ALL matcher groups in event (handles
@@ -927,6 +929,7 @@ if command -v jq >/dev/null 2>&1; then
     | .hooks.SessionStart = upsert_cmd((.hooks.SessionStart // []); "startup|resume"; $ctx; 5)
     | .hooks.PreToolUse = upsert_cmd((.hooks.PreToolUse // []); "Edit|Write|MultiEdit"; $gate; 3)
     | .hooks.PreToolUse = upsert_cmd((.hooks.PreToolUse // []); "Bash"; $pre; 5)
+    | .hooks.PreToolUse = upsert_cmd((.hooks.PreToolUse // []); "Bash"; $bsc; 3)
     | .hooks.PostToolUse = upsert_cmd((.hooks.PostToolUse // []); "Edit|Write"; $ver; 3)
     | .hooks.PostToolUse = upsert_cmd((.hooks.PostToolUse // []); "Bash"; $shp; 5)
   ' "$SETTINGS_FILE" > "$TMP_FILE" 2>/dev/null && [ -s "$TMP_FILE" ]; then
@@ -971,6 +974,7 @@ def upsert(event, matcher, cmd, timeout):
 upsert("SessionStart", "startup|resume", os.path.join(hook_dir, "project-context-loader.sh"), 5)
 upsert("PreToolUse", "Edit|Write|MultiEdit", os.path.join(hook_dir, "gate-reminder.sh"), 3)
 upsert("PreToolUse", "Bash", os.path.join(hook_dir, "precommit-gate.sh"), 5)
+upsert("PreToolUse", "Bash", os.path.join(hook_dir, "block-subagent-commit.sh"), 3)
 upsert("PostToolUse", "Edit|Write", os.path.join(hook_dir, "verify-reminder.sh"), 3)
 upsert("PostToolUse", "Bash", os.path.join(hook_dir, "post-ship-detect.sh"), 5)
 
@@ -985,7 +989,7 @@ PY
 fi
 
 if [ "$REGISTER_OK" -eq 1 ]; then
-  ok "Hooks registered in settings.json (SessionStart + 2x PreToolUse + 2x PostToolUse)"
+  ok "Hooks registered in settings.json (SessionStart + 3x PreToolUse + 2x PostToolUse)"
 else
   warn "Could not auto-register hooks — install jq or python3, or edit $SETTINGS_FILE manually"
   warn "  Hooks shipped: project-context-loader.sh (SessionStart), gate-reminder.sh (PreToolUse Edit|Write|MultiEdit), precommit-gate.sh (PreToolUse Bash), verify-reminder.sh (PostToolUse Edit|Write), post-ship-detect.sh (PostToolUse Bash)"

@@ -72,3 +72,13 @@ Update agent memory with codepaths discovered, patterns, library locations, arch
 - Own ONE domain (defined in agent file)
 - Don't touch other agents' domains — hand off
 - Same path/concern conflict → STOP, ask Lead
+
+## 10. Sub-agent commit ban (HARD RULE)
+
+Sub-agents NEVER run `git commit`, `git push`, `gh pr merge`, `gh pr create`, `git reset --hard`, or `git push --force` directly. Lead owns version-control state after qa-tester + universal-reviewer verify pass.
+
+Sub-agent done → return COMPLETED + file list + verification evidence (test pass output / lint clean / typecheck clean). Lead reads, runs review gate, commits.
+
+Enforced via PreToolUse Bash hook (`hooks/block-subagent-commit.sh`) — Claude Code's hook input has `agent_id` field populated only for sub-agent calls. Hook denies with `permissionDecision: deny` + reason; agent sees hard stop, NOT advisory warning.
+
+Why this rule exists: real-world failure observed where a backend-developer sub-agent committed after marking COMPLETED + tsc=0, bypassing the qa-tester floor entirely. Soft reminder hooks were already in place but ignored under "success cue" flow-state. Hard block via permission deny is the only mechanism that survives flow-state drift.
