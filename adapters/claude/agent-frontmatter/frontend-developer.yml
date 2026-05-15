@@ -7,7 +7,7 @@ maxTurns: 50
 skills:
   - frontend-ui-engineering
   - anti-spaghetti
-  - debugging-and-error-recovery
+  - systematic-debugging
   - test-driven-development
   - parallel-contract-orchestration
   - webapp-testing

@@ -13,7 +13,7 @@ skills:
   - parallel-contract-orchestration
   - test-driven-development
   - source-driven-development
-  - debugging-and-error-recovery
+  - systematic-debugging
   - subagent-task-execution
   - using-worktrees
 tools:

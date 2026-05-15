@@ -22,7 +22,7 @@ You are entering Team-build phase. Orchestrate multi-agent build:
 5. Apply gates: S1-S5 (simplicity) + F1-F5 (failure-mode) per agent's output
 6. Merge results when all agents pass their RED → GREEN → REFACTOR cycle
 
-If any engineer hits blocker → spawn `root-cause-tracing` skill workflow → fix → resume.
+If any engineer hits blocker → spawn `systematic-debugging` skill workflow → fix → resume.
 
 For high-risk surface (auth / billing / migrations): also spawn `security-engineer` in parallel (catches issues early, not at `/team-verify`).
 

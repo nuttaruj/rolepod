@@ -7,9 +7,8 @@ memory: project
 maxTurns: 50
 skills:
   - performance-optimization
-  - debugging-and-error-recovery
+  - systematic-debugging
   - ci-cd-and-automation
-  - root-cause-tracing
   - source-driven-development
   - browser-testing-with-devtools
   - webapp-testing

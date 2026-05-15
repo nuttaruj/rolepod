@@ -179,7 +179,7 @@ If trigger is vague ("use team") → Lead detects scope and starts at the matchi
 
 ## Composability
 
-Inside any team phase, Lead can still spawn ad-hoc Subagents for narrow tasks. Example: during `/team-build`, an engineer hits a blocker → Lead spawns the `root-cause-tracing` skill workflow as a standalone subagent, then resumes the team.
+Inside any team phase, Lead can still spawn ad-hoc Subagents for narrow tasks. Example: during `/team-build`, an engineer hits a blocker → Lead spawns the `systematic-debugging` skill workflow as a standalone subagent, then resumes the team.
 
 Mix is the default. Team is not a lock-in.
 

@@ -6,7 +6,7 @@ skills:
   - reviewer-flow
   - post-change-verify
   - test-driven-development
-  - debugging-and-error-recovery
+  - systematic-debugging
 ---
 
 # QA + Test Automation

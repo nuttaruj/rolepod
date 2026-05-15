@@ -8,7 +8,7 @@ maxTurns: 50
 skills:
   - api-and-interface-design
   - anti-spaghetti
-  - debugging-and-error-recovery
+  - systematic-debugging
   - test-driven-development
   - security-and-hardening
   - parallel-contract-orchestration

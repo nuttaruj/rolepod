@@ -7,7 +7,7 @@ maxTurns: 50
 skills:
   - ci-cd-and-automation
   - shipping-and-launch
-  - debugging-and-error-recovery
+  - systematic-debugging
   - anti-spaghetti
   - finishing-a-development-branch
   - source-driven-development

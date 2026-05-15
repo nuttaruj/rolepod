@@ -43,10 +43,16 @@ test-static:
 	@$(MAKE) -s test-render-clean
 	@echo "  → static checks passed"
 
-# render-clean — run the renderer, then assert the working tree under
-# core/fragments/ + build/ has NO uncommitted diff. Catches the
-# "generator changed but committed fragment is stale" drift that bit us
-# on the skill-index.md tier switch.
+# render-clean — run the renderer, then:
+#   (a) assert core/fragments/ has no uncommitted diff (catches stale
+#       committed fragment vs current generator output — the drift that
+#       bit us on the skill-index.md tier switch).
+#   (b) assert build/rendered/ produced expected entry docs.
+#   (c) assert no `{{INCLUDE: ...}}` placeholders leaked into rendered
+#       output (template directive wasn't resolved).
+#
+# build/rendered/ itself is gitignored (per build/rendered/.gitignore) so
+# we don't git-diff it; we instead check structural invariants directly.
 test-render-clean:
 	@bash build/render.sh --target=all >/dev/null
 	@if ! git diff --quiet -- core/fragments/ 2>/dev/null; then \
@@ -55,7 +61,17 @@ test-render-clean:
 		git diff --stat -- core/fragments/; \
 		exit 1; \
 	fi
+	@for f in build/rendered/claude/CLAUDE.md build/rendered/codex/AGENTS.md build/rendered/gemini/GEMINI.md; do \
+		[ -f "$$f" ] || { echo "  ✗ render-clean: expected output missing: $$f"; exit 1; }; \
+	done
+	@leak_files=$$(grep -rl '{{INCLUDE:' build/rendered/ 2>/dev/null || true); \
+	if [ -n "$$leak_files" ]; then \
+		echo "  ✗ render-clean: unresolved {{INCLUDE: ...}} placeholders in:"; \
+		echo "$$leak_files" | sed 's/^/      /'; \
+		exit 1; \
+	fi
 	@echo "  ✓ render-clean: core/fragments/ matches generator output"
+	@echo "  ✓ render-clean: build/rendered/ has CLAUDE.md + AGENTS.md + GEMINI.md, no {{INCLUDE}} leak"
 
 test-workflow:
 	@echo "── test-workflow ──"

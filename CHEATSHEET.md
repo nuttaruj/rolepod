@@ -102,7 +102,7 @@ User OK + commit + PR → ALL Phase 1 + triggered Phase 2 green → merge auto. 
 | **Define** | `spec-driven-development` | product-manager, system-architect | verify-first |
 | **Plan** | `planning-and-task-breakdown`, `parallel-contract-orchestration`, `api-and-interface-design` | system-architect | Q1-Q4 |
 | **Build** | `test-driven-development`, `frontend-ui-engineering`, `anti-spaghetti`, `claude-api`, `interface-design`, `interaction-design`, `doc-coauthoring`, `conversion-copywriting` | backend/frontend/mobile/billing/ai-ml/data, ui-ux-designer, tech-writer | S1-S5, F1-F5 |
-| **Verify** | `debugging-and-error-recovery`, `webapp-testing`, `browser-testing-with-devtools`, `performance-optimization`, `security-and-hardening` | qa-tester, security-engineer, performance-engineer | T1-T6, verify-first |
+| **Verify** | `systematic-debugging`, `webapp-testing`, `browser-testing-with-devtools`, `performance-optimization`, `security-and-hardening` | qa-tester, security-engineer, performance-engineer | T1-T6, verify-first |
 | **Review** | `code-review-and-quality`, `code-simplification`, `web-design-guidelines`, `doubt-driven-development` | universal-reviewer, qa-tester | pre-merge-gate |
 | **Ship** | `shipping-and-launch`, `ci-cd-and-automation`, `deprecation-and-migration`, `internal-comms`, `user-facing-content`, `documentation-and-adrs`, `seo` | devops-sre, growth-marketer, customer-success | CI 3-phase |
 | **Cross-cutting** | `zoom-out`, `source-driven-development`, `context-engineering` | (any) | (any) |
@@ -176,8 +176,8 @@ External plugin skills (caveman, gitnexus-*, ui-ux-pro-max, xlsx/docx/pptx/pdf, 
 | Duplication / dead code / drift | `anti-spaghetti` |
 | Subagent brief / two-stage review | `subagent-task-execution` |
 | Filesystem isolation for agents | `using-worktrees` |
-| Debug failing test | `debugging-and-error-recovery` |
-| Trace error to true cause | `root-cause-tracing` |
+| Debug failing test | `systematic-debugging` |
+| Trace error to true cause | `systematic-debugging` (Step 6 — upstream tracing with 3 stopping points) |
 | Playwright tests | `webapp-testing` |
 | Inspect browser DOM | `browser-testing-with-devtools` |
 | Perf optimization | `performance-optimization` |

@@ -83,7 +83,7 @@ The 4-step workflow above maps onto a 6-phase lifecycle that organizes which ski
 | **Define** | Intent → spec | `spec-driven-development` | product-manager, business-analyst, system-architect | verify-first (intent) |
 | **Plan** | Spec → ordered tasks + interfaces | `planning-and-task-breakdown`, `parallel-contract-orchestration`, `api-and-interface-design` | system-architect, product-manager | Q1-Q4 delegation |
 | **Build** | Tasks → code + docs | `frontend-ui-engineering`, `test-driven-development`, `claude-api`, `anti-spaghetti`, `interface-design`, `interaction-design`, `conversion-copywriting`, `doc-coauthoring` | backend/frontend/mobile/billing/ai-ml/data-scientist, ui-ux-designer, tech-writer | S1-S5 simplicity, F1-F5 failure-mode |
-| **Verify** | Code → evidence | `debugging-and-error-recovery`, `webapp-testing`, `browser-testing-with-devtools`, `performance-optimization`, `security-and-hardening` | qa-tester, security-engineer, performance-engineer | T1-T6 testing, verify-first (claims) |
+| **Verify** | Code → evidence | `systematic-debugging`, `webapp-testing`, `browser-testing-with-devtools`, `performance-optimization`, `security-and-hardening` | qa-tester, security-engineer, performance-engineer | T1-T6 testing, verify-first (claims) |
 | **Review** | Evidence → adversarial pass | `code-review-and-quality`, `code-simplification`, `web-design-guidelines`, `doubt-driven-development` | universal-reviewer, qa-tester (review mode) | pre-merge-gate, hard stops |
 | **Ship** | Pass → deploy + announce | `shipping-and-launch`, `ci-cd-and-automation`, `deprecation-and-migration`, `internal-comms`, `user-facing-content`, `documentation-and-adrs`, `seo` | devops-sre, growth-marketer, customer-success | CI 3-phase, reviewer routing |
 | **Cross-cutting** | Apply at any phase | `zoom-out`, `source-driven-development`, `context-engineering` | (any) | (any) |
@@ -573,9 +573,8 @@ skill's frontmatter `description:` field. The full table is auto-generated:
 | Skill | Description | Path |
 |-------|-------------|------|
 | `browser-testing-with-devtools` | Verify browser code by inspecting the live page. Use when building or debugging anything that run... | `core/skills/browser-testing-with-devtools/SKILL.md` |
-| `debugging-and-error-recovery` | Systematic root-cause debugging when tests fail, builds break, or behavior diverges from expectat... | `core/skills/debugging-and-error-recovery/SKILL.md` |
+| `systematic-debugging` | Reproduce → trace upstream to root cause → write failing test → minimal fix → verify regression-clean. Canonical bug/failure/root-cause workflow. | `core/skills/systematic-debugging/SKILL.md` |
 | `performance-optimization` | Optimize app performance — Core Web Vitals, load time, bundle size, render perf, query latency.... | `core/skills/performance-optimization/SKILL.md` |
-| `root-cause-tracing` | Trace an error upstream from where it fires to where it was actually caused, instead of patching ... | `core/skills/root-cause-tracing/SKILL.md` |
 | `security-and-hardening` | Defend code against real-world abuse. Use when handling untrusted input, building auth flows, per... | `core/skills/security-and-hardening/SKILL.md` |
 | `webapp-testing` | Test local web apps with Playwright. Use when verifying frontend functionality, debugging UI beha... | `core/skills/webapp-testing/SKILL.md` |
 
