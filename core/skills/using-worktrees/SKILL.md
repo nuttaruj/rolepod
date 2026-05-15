@@ -82,7 +82,7 @@ Skipping `prune` → dangling refs in `.git/worktrees/` confuse future `worktree
 
 ## Influence
 
-Adapted from [obra/superpowers](https://github.com/obra/superpowers) `using-git-worktrees/SKILL.md`. Detection + submodule guard load-bearing; directory priority + native-first are rolepod additions.
+Detection + submodule guard are load-bearing — silent `git worktree add` inside a submodule corrupts state. Directory priority + native-first are rolepod additions on top.
 
 ## Common Rationalizations
 

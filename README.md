@@ -16,10 +16,9 @@ Self-improving: every session captures learnings via MemPalace KG so the next se
 
 ### Positioning
 
-> Superpowers makes one agent disciplined.
-> **Rolepod makes one agent operate like a disciplined full-stack software house.**
+**Lean workflow spine + specialist agent routing + cost-aware model tiers** for full-stack software-house work on AI coding CLIs.
 
-Rolepod ships a workflow router (`using-rolepod`) so every task flows through the same spine, then the right specialist agent picks the work up inside the right phase.
+Rolepod ships a workflow router (`using-rolepod`) so every task flows through the same spine, then `team-routing` picks the right specialist agent for the phase. Lead doesn't see the full 43-skill / 18-agent surface every turn — only Tier 0 (router) + Tier 1 (core workflow) load by default; specialists fire on domain match.
 
 ---
 

@@ -132,7 +132,7 @@ Missing → surface in "Detected" block, refuse Option 1 until done.
 
 ## Influence
 
-Adapted from [obra/superpowers](https://github.com/obra/superpowers). 4-option menu + never-auto-pick load-bearing. Detection blocks + pre-merge-gate wiring are rolepod additions.
+4-option menu + never-auto-pick are load-bearing — the silent "I'll just merge" default is what causes accidental merges of unfinished work. Detection blocks + pre-merge-gate wiring are rolepod additions on top.
 
 ## Common Rationalizations
 

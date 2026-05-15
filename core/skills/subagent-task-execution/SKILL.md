@@ -84,7 +84,7 @@ Three prompt templates ship with this skill (committed for reuse + PR auditabili
 
 ## Influence
 
-Adapted from [obra/superpowers](https://github.com/obra/superpowers) `subagent-driven-development/SKILL.md`. Two-reviewer split (spec vs quality) is load-bearing. Round caps + template commitment are rolepod additions.
+Two-reviewer split (spec-compliance vs code-quality) is load-bearing — fresh reviewer contexts catch what the implementer rationalized. Round caps + template commitment are rolepod additions on top.
 
 ## Common Rationalizations
 

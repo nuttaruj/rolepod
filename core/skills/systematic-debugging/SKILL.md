@@ -221,7 +221,7 @@ Each step gates the next.
 
 Folds two prior skills:
 - `debugging-and-error-recovery` — full reproduce → fix → regression workflow
-- `root-cause-tracing` — upstream-tracing primitive with three legitimate stopping points (adapted from [obra/superpowers](https://github.com/obra/superpowers) `systematic-debugging/root-cause-tracing.md`)
+- `root-cause-tracing` — upstream-tracing primitive with three legitimate stopping points (external input / system boundary / "designed this way")
 
 Both old skills remain as compatibility shims pointing here.
 

@@ -6,7 +6,7 @@ TDD for skills. Each test case is a prompt + expected skill activation. The runn
 
 Skills are useless if the model doesn't reach for them at the right time. The frontmatter `description:` field is the trigger — it has to be precise enough that the model recognizes the situation. This harness gives us a regression net: if a description rewrite degrades trigger sensitivity, we catch it before merging.
 
-Inspired by obra/superpowers `tests/skill-triggering/` + `writing-skills/testing-skills-with-subagents.md`.
+Behavior testing pattern: probe agent decisions with canonical prompts, assert by skill name + forbidden phrase.
 
 ## Layout
 
