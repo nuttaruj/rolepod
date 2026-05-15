@@ -82,3 +82,17 @@ Sub-agent done → return COMPLETED + file list + verification evidence (test pa
 Enforced via PreToolUse Bash hook (`hooks/block-subagent-commit.sh`) — Claude Code's hook input has `agent_id` field populated only for sub-agent calls. Hook denies with `permissionDecision: deny` + reason; agent sees hard stop, NOT advisory warning.
 
 Why this rule exists: real-world failure observed where a backend-developer sub-agent committed after marking COMPLETED + tsc=0, bypassing the qa-tester floor entirely. Soft reminder hooks were already in place but ignored under "success cue" flow-state. Hard block via permission deny is the only mechanism that survives flow-state drift.
+
+**Scope:** the rule itself applies universally; the hook-based enforcement is currently Claude Code only. Codex CLI sub-agent identity in hook input is unverified + Codex `plugin_hooks` flag is opt-in (default `under development, false`); Gemini CLI hook event model differs (no Agent matcher). On Codex/Gemini the rule relies on Lead self-discipline reading AGENTS.md / GEMINI.md until upstream parity exists.
+
+## 11. Discipline gates — high-risk path enforcement (Claude scope)
+
+Three additional PreToolUse blocks fire on Claude Code only (same scope limit as rule 10):
+
+- `gate-reminder.sh` denies on a high-risk path Edit when the session has 0 test edits (RED-test discipline) or ≥2 high-risk edits with 0 reviewer agents dispatched (qa-tester / security-engineer / universal-reviewer floor).
+- `precommit-gate.sh` escalates to HARD block at `git commit` time when the session touched high-risk code but never produced a test edit, even if the final diff looks small.
+- `cohesion-contract-check.sh` denies a 2nd+ engineering Agent spawn within 10 events when no `contract.md` / `SPEC.md` / `cohesion.md` / `specs/*.md` was written this session (skill `parallel-contract-orchestration`).
+
+Bypass envs for one-off legit cases: `ROLEPOD_GATES_SOFT=1` (downgrade hard → warn), `ROLEPOD_GATES_PASSED=1` (single-edit override), `ROLEPOD_NO_CONTRACT=1` (single-domain Agent spawn).
+
+High-risk path = path segment match on auth / authn / authz / billing / payment(s) / migration(s) / credit(s) / permission(s) / secret(s) / crypto / cryptography / token(s) / oauth / jwt / sso / saml / webhook(s) / stripe / paypal / charge(s) / invoice(s). Anchored to path segments (`/`, `.`, `_`, start/end), not substrings — avoids false positives like `session_state.py`.
