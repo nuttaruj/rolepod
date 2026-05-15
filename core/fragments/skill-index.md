@@ -13,15 +13,15 @@
 |-------|-------------|------|
 | `spec-driven-development` | Write a structured spec before writing code. Produces a PRD-style document that becomes the contr... | `core/skills/spec-driven-development/SKILL.md` |
 | `planning-and-task-breakdown` | Break a goal or spec into ordered, verifiable tasks. Pair with spec-driven-development for new fe... | `core/skills/planning-and-task-breakdown/SKILL.md` |
-| `systematic-debugging` | Reproduce → trace upstream to root cause → write failing test → minimal fix → verify regr... | `core/skills/systematic-debugging/SKILL.md` |
+| `systematic-debugging` | Reproduce → trace upstream to root cause → write failing test → minimal fix → verify regression-c... | `core/skills/systematic-debugging/SKILL.md` |
 | `test-driven-development` | Drive implementation with a failing test first. Red → Green → Refactor. | `core/skills/test-driven-development/SKILL.md` |
 | `team-routing` | Pick the right agent and route parallel multi-agent work. | `core/skills/team-routing/SKILL.md` |
 | `parallel-contract-orchestration` | Write a cohesion contract before spawning multiple parallel agents on the same feature. Pattern a... | `core/skills/parallel-contract-orchestration/SKILL.md` |
-| `subagent-task-execution` | Two-stage per-task review pattern when Lead delegates an implementation task to a subagent — fr... | `core/skills/subagent-task-execution/SKILL.md` |
+| `subagent-task-execution` | Two-stage per-task review pattern when Lead delegates an implementation task to a subagent — fres... | `core/skills/subagent-task-execution/SKILL.md` |
 | `post-change-verify` | Prove a code change works with evidence (test pass, screenshot, curl, log) before reporting compl... | `core/skills/post-change-verify/SKILL.md` |
 | `code-review-and-quality` | Conduct multi-axis code review across correctness, readability, architecture, security, and perfo... | `core/skills/code-review-and-quality/SKILL.md` |
-| `pre-merge-gate` | Run the pre-merge gate — simplicity + test + reviewer routing + ask-user matrix + CI lanes — ... | `core/skills/pre-merge-gate/SKILL.md` |
-| `code-simplification` | Refactor for clarity without changing behavior. Behavior-preserving — every change is provable ... | `core/skills/code-simplification/SKILL.md` |
+| `pre-merge-gate` | Run the pre-merge gate — simplicity + test + reviewer routing + ask-user matrix + CI lanes — befo... | `core/skills/pre-merge-gate/SKILL.md` |
+| `code-simplification` | Refactor for clarity without changing behavior. Behavior-preserving — every change is provable by... | `core/skills/code-simplification/SKILL.md` |
 
 ### Tier 2 — Specialist · Plan
 
@@ -33,21 +33,21 @@
 
 | Skill | Description | Path |
 |-------|-------------|------|
-| `anti-spaghetti` | Prevent code rot — duplication, dead code, drift, circular dependencies, and creeping complexit... | `core/skills/anti-spaghetti/SKILL.md` |
+| `anti-spaghetti` | Prevent code rot — duplication, dead code, drift, circular dependencies, and creeping complexity.... | `core/skills/anti-spaghetti/SKILL.md` |
 | `claude-api` | Build, debug, and optimize Claude API and Anthropic SDK applications with prompt caching as a def... | `core/skills/claude-api/SKILL.md` |
-| `conversion-copywriting` | Write marketing copy that gets a specific reader to take a specific action — copy whose success... | `core/skills/conversion-copywriting/SKILL.md` |
-| `doc-coauthoring` | Co-author docs, specs, and proposals with a user through structured iteration — interview, outl... | `core/skills/doc-coauthoring/SKILL.md` |
+| `conversion-copywriting` | Write marketing copy that gets a specific reader to take a specific action — copy whose success i... | `core/skills/conversion-copywriting/SKILL.md` |
+| `doc-coauthoring` | Co-author docs, specs, and proposals with a user through structured iteration — interview, outlin... | `core/skills/doc-coauthoring/SKILL.md` |
 | `frontend-ui-engineering` | Build production-quality UI. Covers component boundaries, state colocation, data fetching, and th... | `core/skills/frontend-ui-engineering/SKILL.md` |
 | `interaction-design` | Design and implement microinteractions, motion, transitions, and feedback. Covers when motion hel... | `core/skills/interaction-design/SKILL.md` |
-| `interface-design` | Design dashboards, admin panels, and tool/app interfaces — interfaces users return to and opera... | `core/skills/interface-design/SKILL.md` |
+| `interface-design` | Design dashboards, admin panels, and tool/app interfaces — interfaces users return to and operate... | `core/skills/interface-design/SKILL.md` |
 | `using-worktrees` | Use a git worktree (not a fresh clone, not a branch swap in place) when you need real filesystem ... | `core/skills/using-worktrees/SKILL.md` |
 
 ### Tier 2 — Specialist · Verify
 
 | Skill | Description | Path |
 |-------|-------------|------|
-| `browser-testing-with-devtools` | Verify browser code by inspecting the live page — read the DOM, capture console errors, watch n... | `core/skills/browser-testing-with-devtools/SKILL.md` |
-| `performance-optimization` | Optimize app performance — Core Web Vitals, load time, bundle size, render perf, query latency.... | `core/skills/performance-optimization/SKILL.md` |
+| `browser-testing-with-devtools` | Verify browser code by inspecting the live page — read the DOM, capture console errors, watch net... | `core/skills/browser-testing-with-devtools/SKILL.md` |
+| `performance-optimization` | Optimize app performance — Core Web Vitals, load time, bundle size, render perf, query latency. M... | `core/skills/performance-optimization/SKILL.md` |
 | `security-and-hardening` | Defend code against real-world abuse — input validation, auth, secret handling, vuln auditing. | `core/skills/security-and-hardening/SKILL.md` |
 | `webapp-testing` | Test local web apps with Playwright. Covers when to use Playwright over manual DevTools, scripted... | `core/skills/webapp-testing/SKILL.md` |
 
@@ -56,16 +56,16 @@
 | Skill | Description | Path |
 |-------|-------------|------|
 | `doubt-driven-development` | Adversarial 5-step review with reasoning-stripping. A fresh reviewer sees only artifact + contrac... | `core/skills/doubt-driven-development/SKILL.md` |
-| `web-design-guidelines` | Review UI for Web Interface Guidelines compliance — accessibility, hierarchy, consistency, and ... | `core/skills/web-design-guidelines/SKILL.md` |
+| `web-design-guidelines` | Review UI for Web Interface Guidelines compliance — accessibility, hierarchy, consistency, and pl... | `core/skills/web-design-guidelines/SKILL.md` |
 
 ### Tier 2 — Specialist · Ship
 
 | Skill | Description | Path |
 |-------|-------------|------|
-| `ci-cd-and-automation` | Set up and harden CI/CD pipelines — quality gates, lane splitting by speed/risk, slow/flaky pip... | `core/skills/ci-cd-and-automation/SKILL.md` |
+| `ci-cd-and-automation` | Set up and harden CI/CD pipelines — quality gates, lane splitting by speed/risk, slow/flaky pipel... | `core/skills/ci-cd-and-automation/SKILL.md` |
 | `documentation-and-adrs` | Write durable technical docs and architectural decision records (ADRs). | `core/skills/documentation-and-adrs/SKILL.md` |
 | `finishing-a-development-branch` | At the end of a development task, present a 4-option decision menu (merge, PR, keep open, discard... | `core/skills/finishing-a-development-branch/SKILL.md` |
-| `internal-comms` | Write clear internal communication — status updates, announcements, decision memos, escalations... | `core/skills/internal-comms/SKILL.md` |
+| `internal-comms` | Write clear internal communication — status updates, announcements, decision memos, escalations, ... | `core/skills/internal-comms/SKILL.md` |
 | `seo` | Audit and improve SEO across technical, on-page, structured-data, and content layers. | `core/skills/seo/SKILL.md` |
 | `shipping-and-launch` | Run a disciplined production launch — launch checklist, monitoring/alerts, rollback planning. | `core/skills/shipping-and-launch/SKILL.md` |
 | `user-facing-content` | Write user-facing content that helps people, not impresses them. | `core/skills/user-facing-content/SKILL.md` |
@@ -74,7 +74,7 @@
 
 | Skill | Description | Path |
 |-------|-------------|------|
-| `context-engineering` | Optimize agent context — what gets loaded, when, and at what cost. Covers lazy loading, isolati... | `core/skills/context-engineering/SKILL.md` |
+| `context-engineering` | Optimize agent context — what gets loaded, when, and at what cost. Covers lazy loading, isolation... | `core/skills/context-engineering/SKILL.md` |
 | `source-driven-development` | Ground every framework, library, schema, or platform-integration decision in official documentati... | `core/skills/source-driven-development/SKILL.md` |
 | `zoom-out` | Step back from implementation details to high-level perspective. Meta-cognitive recovery tool. | `core/skills/zoom-out/SKILL.md` |
 
@@ -82,5 +82,5 @@
 
 | Skill | Description | Path |
 |-------|-------------|------|
-| `debugging-and-error-recovery` | Compatibility shim — bug / failure / root-cause work is now handled by the canonical `systemati... | `core/skills/debugging-and-error-recovery/SKILL.md` |
-| `root-cause-tracing` | Compatibility shim — upstream-tracing is now part of the canonical `systematic-debugging` skill... | `core/skills/root-cause-tracing/SKILL.md` |
+| `debugging-and-error-recovery` | Compatibility shim — bug / failure / root-cause work is now handled by the canonical `systematic-... | `core/skills/debugging-and-error-recovery/SKILL.md` |
+| `root-cause-tracing` | Compatibility shim — upstream-tracing is now part of the canonical `systematic-debugging` skill (... | `core/skills/root-cause-tracing/SKILL.md` |

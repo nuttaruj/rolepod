@@ -71,9 +71,13 @@ generate_skill_index() {
       desc=$(awk '/^description:/{sub(/^description:[[:space:]]*/, ""); print; exit}' "$skill_md" | sed -e 's/^["'\'']//' -e 's/["'\'']$//')
       [ -z "$name" ] && name="$skill_name"
       [ -z "$desc" ] && desc=""
-      if [ "${#desc}" -gt 100 ]; then
-        desc="${desc:0:97}..."
-      fi
+      # Truncate description to 100 unicode characters. Use python so the
+      # cut point is locale-independent — bash `${#var}` counts BYTES on
+      # macOS (no LANG) but CHARS on Linux with UTF-8 locale, which would
+      # produce different output across systems for descriptions
+      # containing em-dash / arrows / other multi-byte chars and break
+      # the render-clean gate.
+      desc=$(printf '%s' "$desc" | python3 -c 'import sys; s=sys.stdin.read(); print(s if len(s) <= 100 else s[:97] + "...", end="")')
       desc="${desc//|/\\|}"
       echo "| \`$name\` | $desc | \`$rel_path\` |"
     done
