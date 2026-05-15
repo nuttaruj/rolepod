@@ -10,9 +10,19 @@
 #   Gemini global    → extension + commands + hooks + GEMINI.md
 #   Gemini project   → rules-only ($PWD/GEMINI.md)
 #
-# This case runs Claude install in a temp HOME (always available — no external
-# CLI required for the install itself). Codex/Gemini global cases skip if their
-# CLI is missing because they would touch real ~/.codex / ~/.gemini.
+# Test coverage (matrix):
+#   Claude global     ✓ always (uses ROLEPOD_TARGET into temp dir — no mutate to real ~/.claude)
+#   Claude project    ✓ always (project-scope install lands under $PWD/.claude/)
+#   Codex project     ✓ always (project-scope is rules-only — writes $PWD/AGENTS.md only)
+#   Gemini project    ✓ always (project-scope is rules-only — writes $PWD/GEMINI.md only)
+#   Codex global      gated by ROLEPOD_INTEGRATION_MUTATE=1 — codex CLI marketplace
+#                     add MUTATES the real ~/.codex/config.toml; no Codex-equivalent
+#                     of ROLEPOD_TARGET. Default = skip with clear message.
+#   Gemini global     gated by ROLEPOD_INTEGRATION_MUTATE=1 — gemini CLI extension
+#                     lands in real ~/.gemini/extensions/. Default = skip.
+#
+# To run the full 6-cell matrix locally:
+#   ROLEPOD_INTEGRATION_MUTATE=1 bash tests/integration/run.sh install-parity
 set -euo pipefail
 
 REPO_DIR="$(cd "$(dirname "$0")/../../.." && pwd)"
@@ -129,6 +139,63 @@ if [ -f "$TMP/gemini-proj/GEMINI.md" ]; then
 else
   echo "  ✗ Gemini project: GEMINI.md missing"
   FAIL=$((FAIL+1))
+fi
+
+# ─── Codex global (gated — mutates real ~/.codex/config.toml) ───────────
+echo ""
+if [ "${ROLEPOD_INTEGRATION_MUTATE:-0}" = "1" ]; then
+  if command -v codex >/dev/null 2>&1; then
+    echo "[codex global] install via codex marketplace add (MUTATES ~/.codex/config.toml)"
+    if ./install.sh --target=codex > "$TMP/codex-global.log" 2>&1; then
+      # Per docs/cli-support.md: marketplace registered + plugin cache populated
+      # + [plugins."rolepod@rolepod"] enabled = true + ~/.codex/AGENTS.md present.
+      ok=1
+      grep -q '^\[marketplaces\.rolepod\]' "$HOME/.codex/config.toml" 2>/dev/null || { echo "  ✗ [marketplaces.rolepod] not in ~/.codex/config.toml"; ok=0; }
+      grep -q '^\[plugins\."rolepod@rolepod"\]' "$HOME/.codex/config.toml" 2>/dev/null || { echo "  ✗ [plugins.\"rolepod@rolepod\"] not in ~/.codex/config.toml"; ok=0; }
+      ls "$HOME/.codex/plugins/cache/rolepod/rolepod/"*/skills >/dev/null 2>&1 || { echo "  ✗ plugin cache skills/ not populated"; ok=0; }
+      [ -f "$HOME/.codex/AGENTS.md" ] || { echo "  ✗ ~/.codex/AGENTS.md missing"; ok=0; }
+      if [ "$ok" -eq 1 ]; then
+        echo "  ✓ Codex global: marketplace + plugin cache + AGENTS.md"
+        PASS=$((PASS+1))
+      else
+        FAIL=$((FAIL+1))
+      fi
+    else
+      echo "  ✗ install failed (see $TMP/codex-global.log)"
+      FAIL=$((FAIL+1))
+    fi
+  else
+    echo "[codex global] SKIP — codex CLI not on PATH"
+  fi
+else
+  echo "[codex global] SKIP — ROLEPOD_INTEGRATION_MUTATE=1 required (mutates real ~/.codex/config.toml)"
+fi
+
+# ─── Gemini global (gated — mutates real ~/.gemini/extensions) ──────────
+echo ""
+if [ "${ROLEPOD_INTEGRATION_MUTATE:-0}" = "1" ]; then
+  if command -v gemini >/dev/null 2>&1; then
+    echo "[gemini global] install (MUTATES ~/.gemini/)"
+    if ./install.sh --target=gemini > "$TMP/gemini-global.log" 2>&1; then
+      ok=1
+      [ -d "$HOME/.gemini/extensions/rolepod" ] || { echo "  ✗ ~/.gemini/extensions/rolepod missing"; ok=0; }
+      [ -f "$HOME/.gemini/extensions/rolepod/gemini-extension.json" ] || { echo "  ✗ gemini-extension.json missing"; ok=0; }
+      [ -f "$HOME/.gemini/GEMINI.md" ] || { echo "  ✗ ~/.gemini/GEMINI.md missing"; ok=0; }
+      if [ "$ok" -eq 1 ]; then
+        echo "  ✓ Gemini global: extension tree + GEMINI.md"
+        PASS=$((PASS+1))
+      else
+        FAIL=$((FAIL+1))
+      fi
+    else
+      echo "  ✗ install failed (see $TMP/gemini-global.log)"
+      FAIL=$((FAIL+1))
+    fi
+  else
+    echo "[gemini global] SKIP — gemini CLI not on PATH"
+  fi
+else
+  echo "[gemini global] SKIP — ROLEPOD_INTEGRATION_MUTATE=1 required (mutates real ~/.gemini/)"
 fi
 
 # ─── Summary ────────────────────────────────────────────────────────────

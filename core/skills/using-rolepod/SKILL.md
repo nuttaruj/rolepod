@@ -138,11 +138,19 @@ Next step: ask 4-question interview to pin acceptance criteria.
 Example for typo fix:
 
 ```
-Routing: Build → direct edit (gate skip)
-Reason: typo fix, ≤5 lines, single file, no logic.
-Skipping: Define + Plan + Verify (per S+T+F gate skip rules).
-Next step: edit + commit.
+Routing: Build → direct edit (gate-light)
+Reason: typo fix, ≤5 lines, single file, no logic, not on high-risk path.
+Skipping: Define + Plan (gate-skip rule). Verify still runs — it's mechanical
+          (re-read the file, confirm the typo no longer appears). Never skip
+          Verify; it always runs, the bar just scales down to "the edit landed".
+Next step: edit + read-back to confirm + commit.
 ```
+
+(Verify never fully drops — `verify-first` is always-on and the F-gate
+runs on every change. "Skip Verify" would contradict that rule. What
+trivial fixes skip is the *heavyweight* part of Verify — running a full
+test suite or driving a browser. The lightweight verify — re-read the
+file, confirm the edit took — still runs.)
 
 ## Common Rationalizations
 

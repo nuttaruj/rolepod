@@ -13,14 +13,16 @@
 
 help:
 	@echo "Rolepod test commands:"
-	@echo "  make test-static       — bash syntax + JSON/TOML parse"
-	@echo "  make test-workflow     — workflow-behavior tests (needs claude CLI)"
-	@echo "  make test-integration  — integration tests (slow, local)"
-	@echo "  make test              — test-static + test-workflow"
-	@echo "  make test-all          — all three"
+	@echo "  make test-static            — bash syntax + JSON/TOML parse + render-clean"
+	@echo "  make test-workflow          — workflow-behavior parse + skip-clean (cheap)"
+	@echo "  make test-workflow-live     — run live claude -p prompts (needs ROLEPOD_RUN_LIVE=1)"
+	@echo "  make test-integration       — integration tests (slow, local)"
+	@echo "  make test                   — test-static + test-workflow (NO live model calls)"
+	@echo "  make test-all               — static + workflow (cheap) + integration"
+	@echo "  make test-release           — test-all + test-workflow-live (full gate, costs budget)"
 	@echo ""
-	@echo "  make render            — render adapters to build/rendered/"
-	@echo "  make install           — install --target=claude --force into ~/.claude/"
+	@echo "  make render                 — render adapters to build/rendered/"
+	@echo "  make install                — install --target=claude --force into ~/.claude/"
 
 test-static:
 	@echo "── test-static ──"
@@ -38,19 +40,46 @@ test-static:
 	@python3 -m json.tool .claude-plugin/plugin.json >/dev/null && echo "  ✓ claude plugin.json"
 	@python3 -c "import pathlib, tomllib; [tomllib.loads(p.read_text()) for p in pathlib.Path('adapters/codex/plugins/rolepod/agents').glob('*.toml')]" && echo "  ✓ codex agents/*.toml"
 	@python3 -c "import pathlib, tomllib; [tomllib.loads(p.read_text()) for p in pathlib.Path('adapters/gemini/commands').glob('*.toml')]" && echo "  ✓ gemini commands/*.toml"
+	@$(MAKE) -s test-render-clean
 	@echo "  → static checks passed"
+
+# render-clean — run the renderer, then assert the working tree under
+# core/fragments/ + build/ has NO uncommitted diff. Catches the
+# "generator changed but committed fragment is stale" drift that bit us
+# on the skill-index.md tier switch.
+test-render-clean:
+	@bash build/render.sh --target=all >/dev/null
+	@if ! git diff --quiet -- core/fragments/ 2>/dev/null; then \
+		echo "  ✗ render-clean: core/fragments/ has uncommitted diff after build/render.sh."; \
+		echo "    Run: make render && git add core/fragments/ && commit."; \
+		git diff --stat -- core/fragments/; \
+		exit 1; \
+	fi
+	@echo "  ✓ render-clean: core/fragments/ matches generator output"
 
 test-workflow:
 	@echo "── test-workflow ──"
 	@bash tests/workflow-behavior/run.sh
 
+# Opt-in live runner. Costs API budget + sends real prompts. Set
+# ROLEPOD_RUN_LIVE=1 in the environment OR run target directly.
+test-workflow-live:
+	@echo "── test-workflow-live (LIVE — costs API budget) ──"
+	@ROLEPOD_RUN_LIVE=1 bash tests/workflow-behavior/run.sh
+
 test-integration:
 	@echo "── test-integration ──"
 	@bash tests/integration/run.sh
 
+# Default `make test` = static + cheap workflow skip. NO live model calls.
 test: test-static test-workflow
 
+# Full local sweep w/o live API spend.
 test-all: test-static test-workflow test-integration
+
+# Release gate — adds the live workflow run on top of test-all. Run this
+# manually before tagging a release.
+test-release: test-static test-workflow test-integration test-workflow-live
 
 render:
 	@bash build/render.sh --target=all

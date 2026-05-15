@@ -16,7 +16,29 @@ CASES_DIR="$SCRIPT_DIR/cases"
 PARSER="$SCRIPT_DIR/parse_case.py"
 ONE_CASE="${1:-}"
 
-# ─── Dependency check ────────────────────────────────────────────────────
+# ─── Live execution gate ────────────────────────────────────────────────
+# These cases send live prompts to `claude -p` (e.g. "Build a React todo
+# list", "Ship it"). That costs API budget and produces real side-effect
+# text. NEVER fire from a default `make test` invocation. Require the
+# operator to opt in explicitly:
+#
+#   ROLEPOD_RUN_LIVE=1 bash tests/workflow-behavior/run.sh
+#
+# Default behavior (no flag): parse cases, report case count, skip clean
+# with exit 0. CI Phase 1 calls `make test` which calls this script —
+# without the flag it stays cheap.
+if [ "${ROLEPOD_RUN_LIVE:-0}" != "1" ]; then
+  case_count=0
+  if [ -d "$CASES_DIR" ]; then
+    case_count=$(find "$CASES_DIR" -maxdepth 1 -name '*.yml' | wc -l | tr -d ' ')
+  fi
+  echo "SKIP: workflow-behavior runs live \`claude -p\` prompts (mutates state, spends budget)."
+  echo "      $case_count case(s) found. To execute live:"
+  echo "        ROLEPOD_RUN_LIVE=1 bash tests/workflow-behavior/run.sh"
+  exit 0
+fi
+
+# ─── Dependency check (only after live opt-in) ──────────────────────────
 if ! command -v python3 >/dev/null 2>&1; then
   echo "SKIP: python3 not on PATH — workflow-behavior tests need YAML parsing"
   exit 0
@@ -30,6 +52,19 @@ fi
 
 [ -d "$CASES_DIR" ] || { echo "ERROR: cases directory missing: $CASES_DIR" >&2; exit 2; }
 [ -f "$PARSER" ]    || { echo "ERROR: parser missing: $PARSER" >&2; exit 2; }
+
+# Constrain live model spend: hard cap on turns + run from a temp cwd so
+# the model can't accidentally edit the rolepod repo while answering
+# "Build a React todo list".
+LIVE_TMP="$(mktemp -d -t rolepod-workflow-XXXXXX)"
+echo "live fixture cwd: $LIVE_TMP"
+cd "$LIVE_TMP"
+CLAUDE_FLAGS="-p"
+# Per Anthropic Claude Code docs, --max-turns limits agent recursion. Keep low
+# so prompts get one routing decision + one short response, not a full task.
+if claude --help 2>&1 | grep -q -- "--max-turns"; then
+  CLAUDE_FLAGS="$CLAUDE_FLAGS --max-turns 2"
+fi
 
 # ─── Log dir per run ─────────────────────────────────────────────────────
 LOG_DIR="/tmp/rolepod-workflow-behavior-$(date +%Y%m%d-%H%M%S)"
@@ -63,7 +98,8 @@ run_case() {
   forbidden_json="$(echo "$parsed" | python3 -c 'import sys,json; print(json.dumps(json.load(sys.stdin)["must_not_contain"]))')"
 
   local response_file="$LOG_DIR/$case_name.response.txt"
-  if ! claude -p "$prompt" > "$response_file" 2>&1; then
+  # Use $CLAUDE_FLAGS (set in dep check block) so --max-turns applies when supported.
+  if ! claude $CLAUDE_FLAGS "$prompt" > "$response_file" 2>&1; then
     echo "  ✗ FAIL — claude CLI errored. See $response_file"
     FAIL=$((FAIL+1)); FAILED_NAMES+=("$case_name (CLI error)"); return
   fi

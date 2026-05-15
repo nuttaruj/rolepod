@@ -224,7 +224,7 @@ Skills/agents/gates organize onto 6 phases orthogonal to the 4-step `Explore →
 Define   → spec-driven-development
 Plan     → planning-and-task-breakdown · parallel-contract-orchestration · api-and-interface-design
 Build    → test-driven-development · frontend-ui-engineering · anti-spaghetti · claude-api · interface-design · interaction-design · doc-coauthoring · conversion-copywriting
-Verify   → debugging-and-error-recovery · webapp-testing · browser-testing-with-devtools · performance-optimization · security-and-hardening
+Verify   → systematic-debugging · webapp-testing · browser-testing-with-devtools · performance-optimization · security-and-hardening
 Review   → code-review-and-quality · code-simplification · web-design-guidelines · doubt-driven-development
 Ship     → shipping-and-launch · ci-cd-and-automation · deprecation-and-migration · internal-comms · user-facing-content · documentation-and-adrs · seo
 Cross    → zoom-out · source-driven-development · context-engineering
