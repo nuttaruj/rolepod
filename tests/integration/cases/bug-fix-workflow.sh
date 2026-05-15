@@ -1,26 +1,41 @@
 #!/bin/bash
-# bug-fix-workflow — STUB.
-# Expected behavior when implemented:
-#   1. Fixture = small Node or Python project with one failing test.
-#   2. Send `claude -p "Fix the failing test"` to the Claude CLI.
-#   3. Assert agent runs systematic-debugging:
-#      - reproduces test failure with the exact pytest/npm test command
-#      - identifies file:line of failure
-#      - writes minimal fix at root cause (not symptom patch)
-#      - re-runs test → green
-#      - runs full suite → no regression
-#   4. Assert tool-use log contains: `systematic-debugging` skill reference.
-#   5. Assert response does NOT contain: "likely cause", "I think", "without running".
+# bug-fix-workflow — structural fixture.
+# Asserts the bug-fix workflow path is wired end-to-end:
+#   systematic-debugging → test-driven-development → post-change-verify
+# Plus router row, hook backstops, regression-test expectation.
 #
-# Skip condition: claude CLI not on PATH.
+# This is STRUCTURAL — proves wiring without needing a live `claude -p`.
+# Live behavior verification of "does Lead reproduce before patching" lives
+# in tests/workflow-behavior/cases/case-02-bug-fix.yml (gated by
+# ROLEPOD_RUN_LIVE=1).
 set -euo pipefail
+REPO_DIR="$(cd "$(dirname "$0")/../../.." && pwd)"
+cd "$REPO_DIR"
 
-if ! command -v claude >/dev/null 2>&1; then
-  echo "SKIP: claude CLI not on PATH"
-  exit 0
-fi
+fail=0
+check() {
+  if eval "$2"; then echo "  ✓ $1"; else echo "  ✗ $1"; fail=$((fail+1)); fi
+}
 
-# TODO: implement fixture + assertions once tests/workflow-behavior/ proves
-# routing works. Until then, document expected behavior + exit clean.
-echo "SKIP: bug-fix-workflow stub — fixture + assertions pending. See script header."
-exit 0
+# Canonical skills present
+check "systematic-debugging skill exists" "[ -f core/skills/systematic-debugging/SKILL.md ]"
+check "test-driven-development skill exists" "[ -f core/skills/test-driven-development/SKILL.md ]"
+check "post-change-verify skill exists" "[ -f core/skills/post-change-verify/SKILL.md ]"
+
+# systematic-debugging body has the required loop steps
+check "systematic-debugging covers reproduce step" "grep -qi 'reproduc' core/skills/systematic-debugging/SKILL.md"
+check "systematic-debugging covers root-cause tracing" "grep -qi 'root cause\|upstream' core/skills/systematic-debugging/SKILL.md"
+check "systematic-debugging covers failing-test step" "grep -qi 'failing test\|regression test' core/skills/systematic-debugging/SKILL.md"
+check "systematic-debugging covers minimal-fix expectation" "grep -qi 'minimal fix\|smallest fix\|root, not symptom' core/skills/systematic-debugging/SKILL.md"
+check "systematic-debugging covers verify step" "grep -qi 'verify\|regression-clean\|symptom: gone' core/skills/systematic-debugging/SKILL.md"
+
+# Router routes bug intent to systematic-debugging
+check "using-rolepod router routes 'fix bug' → systematic-debugging" "grep -qE 'fix.*bug|failing test|broken' core/skills/using-rolepod/SKILL.md && grep -q 'systematic-debugging' core/skills/using-rolepod/SKILL.md"
+
+# Compat shims redirect legacy triggers
+check "debugging-and-error-recovery shim points to systematic-debugging" "grep -q 'systematic-debugging' core/skills/debugging-and-error-recovery/SKILL.md"
+check "root-cause-tracing shim points to systematic-debugging" "grep -q 'systematic-debugging' core/skills/root-cause-tracing/SKILL.md"
+
+if [ $fail -eq 0 ]; then echo "bug-fix-workflow: pass"; exit 0; fi
+echo "bug-fix-workflow: $fail failure(s)"
+exit 1

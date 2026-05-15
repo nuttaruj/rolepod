@@ -55,112 +55,86 @@ If no row matches: ask the user what phase the task is in. Don't pattern-match y
 
 Agent frontmatter sets the model. Lead doesn't override unless user explicitly asks.
 
-## Phase rules
+## State machine — phase → exit evidence → next
 
-### Define — spec before code
+Router fires the **first** skill per phase. Phase exits only when its **exit evidence** is on the table (or user explicitly authorizes skip). Next phase reads from the **Next allowed** column — no jumping.
 
-Trigger: new feature, vague request, behavior change without exact implementation, UI/app/tool ask, product idea.
+| Phase | Required first skill | Exit evidence | Next allowed |
+|---|---|---|---|
+| **Define** | `spec-driven-development` | written spec OR approved one-line design (≤5-line task) OR explicit "skip spec" | Plan |
+| **Plan** | `planning-and-task-breakdown` (+ `team-routing` + `parallel-contract-orchestration` if multi-agent) | ordered task list with done-condition + verify command per task; dependencies marked | Build |
+| **Build** | `test-driven-development` (+ `subagent-task-execution` if delegated) (+ `systematic-debugging` for bug intent) | changed files + tests added (or explicit no-test justification) + red→green evidence | Verify |
+| **Verify** | `post-change-verify` | fresh command output / screenshot / curl / log evidence; OR explicit "verify impossible because X" risk note | Review (high-risk / multi-file) OR Ship (low-risk) |
+| **Review** | `code-review-and-quality` (+ `reviewer-flow` for high-risk routing → Codex / Gemini / security-engineer) | findings fixed OR rejected with line-anchored reason; no unresolved blocker | Ship |
+| **Ship** | `pre-merge-gate` then `finishing-a-development-branch` | S+T+F gates green; required CI lanes pass; user approval when policy requires; 4-option finish menu presented (merge / open PR / keep / discard) | **end** |
 
-Required skill: `spec-driven-development`.
+**Router decides the first move only.** Each downstream skill owns its own gates; using-rolepod doesn't re-explain them.
 
-Exit evidence: written spec OR concise approved design in chat OR explicit user instruction to skip spec.
+## Skip rule
 
-**Hard rule:** do NOT write implementation code before Define exits, unless user explicitly says skip.
+Skip a phase WHEN ALL true (state explicitly in response):
 
-### Plan — break + order
+- task is pure question / explanation / lookup (no file change)
+- OR diff ≤5 lines + 1 file + 0 logic-bearing lines + not on high-risk path
+- OR user explicit: "skip spec" / "just commit" / "answer only" / "no plan" / "ship as-is"
 
-Trigger: spec exists, task spans multiple files, execution order unclear, or multi-agent work possible.
-
-Required skill: `planning-and-task-breakdown`. If multi-agent or shared invariants → also `team-routing` + `parallel-contract-orchestration`.
-
-Exit evidence: ordered task list, done condition per task, verify command per task, dependencies marked.
-
-### Build — TDD by default
-
-Trigger: approved spec / plan, explicit small code task, bug fix after root cause confirmed.
-
-Required skill: `test-driven-development`. If delegated → `subagent-task-execution`.
-
-Exit evidence: changed files + tests added (or explicitly justified absent) + red/green proof.
-
-### Verify — evidence, not vibes
-
-Trigger: about to claim "done" / "fixed" / "works" / "passes"; after every edit; before commit/PR.
-
-Required skill: `post-change-verify`.
-
-Exit evidence: fresh command output, screenshot/browser proof for UI, curl/log for services, OR explicit risk statement when verification impossible.
-
-### Review — adversarial
-
-Trigger: after Build/Verify, before Ship, on high-risk surface, on multi-file work.
-
-Required skill: `code-review-and-quality`. For high-risk → `reviewer-flow` + `security-and-hardening`.
-
-Exit evidence: findings fixed or explicitly rejected with reason, line-anchored risks, no unresolved blocker.
-
-### Ship — pre-merge gate
-
-Trigger: "ship" / "merge" / "push" / "PR" / "ready" / "go live".
-
-Required skill: `pre-merge-gate`.
-
-Exit evidence: S gate passed (simplicity) + T gate passed (tests) + F gate passed (failure-mode) + required CI lanes green + user approval when policy requires.
-
-## Skip rules
-
-Skip the spine WHEN ALL true:
-
-- task is a pure question / explanation / lookup (no file change)
-- OR ≤5 lines + single file + zero logic-bearing (comments / whitespace / typechecked rename) + not on high-risk path
-- OR user explicit: "skip spec", "just commit", "answer only", "no plan", "ship as-is"
-
-Stating the skip is mandatory. Example: "Skipping Define+Plan: typo fix, ≤5 lines, no high-risk path."
+**Verify never fully skips** — `verify-first` is always-on. Trivial fixes drop the heavyweight verify (full suite, browser drive), not the lightweight one (re-read file, confirm edit landed).
 
 ## Stop conditions
 
-- Coding before spec/plan when request is ambiguous → STOP, run Define.
-- Claiming done before verification → STOP, run Verify.
-- Parallelizing shared work before contract → STOP, run `parallel-contract-orchestration`.
-- Shipping before pre-merge gate → STOP, run `pre-merge-gate`.
-- High-risk surface (auth / billing / migrations / crypto / payments / external integration) without reviewer → STOP, dispatch qa-tester + (Codex / Gemini / security-engineer when available).
+- Coding before Define on ambiguous request → STOP, run `spec-driven-development`.
+- Claiming done before Verify → STOP, run `post-change-verify`.
+- 2nd parallel agent spawn without contract → STOP, run `parallel-contract-orchestration` (hook will block anyway).
+- Sub-agent attempting `git commit` / `git push` / `gh pr merge` → blocked by `block-subagent-commit.sh`; Lead commits after reviewer pass.
+- High-risk path (auth/billing/migrations/crypto/payments) with 0 reviewer agents dispatched → STOP, dispatch qa-tester + (Codex / Gemini / security-engineer if available).
+- 3rd agent on same issue OR 3rd PR on same surface in one session → STOP, ask user (hard-stop rule).
+
+## Finish ritual (Ship phase exit)
+
+When the user says "done" / "finished" / "complete" / "ready" — or when the task obviously reached a natural stopping point — fire **in order**:
+
+1. `post-change-verify` — produce concrete evidence the change works (test output / screenshot / curl).
+2. `code-review-and-quality` — if multi-file or high-risk, route via `reviewer-flow` to pick adversarial reviewers (Codex / Gemini / qa-tester) per their domain match.
+3. `finishing-a-development-branch` — present the 4-option decision menu so the user picks the next step explicitly:
+   - **merge** to main
+   - **open PR** (current branch)
+   - **keep branch** open (still iterating)
+   - **discard** (work was exploratory)
+
+Never auto-pick. The branch decision is the user's, not Lead's.
 
 ## Output pattern
 
-When the router decides:
-
 ```
 Routing: <phase> → <skill>
-Reason: <one sentence why this phase fits user intent>
-Skipping: <list of phases skipped + why>, or "none"
+Reason: <one sentence>
+Skipping: <phases + why>, or "none"
 Next step: <concrete action>
 ```
 
-Example for vague feature:
-
+Example — vague feature:
 ```
 Routing: Define → spec-driven-development
-Reason: "build a React todo list" = vague target, no spec yet.
+Reason: "build a React todo list" = vague target, no spec.
 Skipping: none.
-Next step: ask 4-question interview to pin acceptance criteria.
+Next step: 4-question interview to pin acceptance criteria.
 ```
 
-Example for typo fix:
-
+Example — typo fix:
 ```
 Routing: Build → direct edit (gate-light)
-Reason: typo fix, ≤5 lines, single file, no logic, not on high-risk path.
-Skipping: Define + Plan (gate-skip rule). Verify still runs — it's mechanical
-          (re-read the file, confirm the typo no longer appears). Never skip
-          Verify; it always runs, the bar just scales down to "the edit landed".
-Next step: edit + read-back to confirm + commit.
+Reason: typo, ≤5 lines, 1 file, 0 logic, not high-risk.
+Skipping: Define + Plan + heavyweight Verify. Lightweight Verify runs.
+Next step: edit + re-read + commit.
 ```
 
-(Verify never fully drops — `verify-first` is always-on and the F-gate
-runs on every change. "Skip Verify" would contradict that rule. What
-trivial fixes skip is the *heavyweight* part of Verify — running a full
-test suite or driving a browser. The lightweight verify — re-read the
-file, confirm the edit took — still runs.)
+Example — done claim:
+```
+Routing: Ship → finish ritual
+Reason: user said "is this done?"
+Skipping: none — runs post-change-verify → code-review-and-quality → finishing-a-development-branch.
+Next step: run tests, paste pass output, present 4-option menu.
+```
 
 ## Common Rationalizations
 

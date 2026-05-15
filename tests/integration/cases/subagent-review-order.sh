@@ -1,23 +1,35 @@
 #!/bin/bash
-# subagent-review-order — STUB.
-# Expected behavior when implemented:
-#   1. Fixture = small implementation plan with 2 independent tasks.
-#   2. Send `claude -p "Execute the plan in docs/plans/<plan>.md"`.
-#   3. Assert sub-agent order per skill `subagent-task-execution`:
-#      - Stage 1: implementer subagent writes the code.
-#      - Stage 2a: spec-compliance reviewer runs in independent context.
-#      - Stage 2b: code-quality reviewer runs in independent context.
-#      - Task marked done ONLY when both reviewers pass.
-#      - Final review pass runs after both tasks complete.
-#   4. Assert code-quality reviewer does NOT replace spec-compliance reviewer.
-#
-# Skip condition: claude CLI not on PATH.
+# subagent-review-order — structural fixture.
+# Asserts the two-stage subagent review pattern is documented + wired:
+#   implementer subagent writes code →
+#     spec-compliance reviewer (fresh context) →
+#     code-quality reviewer (fresh context) →
+#     mark done only when both pass.
 set -euo pipefail
+REPO_DIR="$(cd "$(dirname "$0")/../../.." && pwd)"
+cd "$REPO_DIR"
 
-if ! command -v claude >/dev/null 2>&1; then
-  echo "SKIP: claude CLI not on PATH"
-  exit 0
-fi
+fail=0
+check() {
+  if eval "$2"; then echo "  ✓ $1"; else echo "  ✗ $1"; fail=$((fail+1)); fi
+}
 
-echo "SKIP: subagent-review-order stub — fixture + assertions pending. See script header."
-exit 0
+S="core/skills/subagent-task-execution/SKILL.md"
+
+check "subagent-task-execution skill exists" "[ -f $S ]"
+check "skill names the implementer stage" "grep -qiE 'implementer|stage 1' $S"
+check "skill names two distinct reviewers (spec + code-quality)" "grep -qiE 'spec.compliance|spec reviewer' $S && grep -qiE 'code.quality|quality reviewer' $S"
+check "skill requires independent reviewer contexts (not implementer)" "grep -qiE 'fresh|independent context|separate context' $S"
+check "skill requires both reviewers pass before marking done" "grep -qiE 'both.*pass|both reviewers|only when both|until.*pass' $S"
+check "skill caps cycle rounds to prevent infinite loops" "grep -qiE 'round|bounded|cap|3 cycles|3 rounds' $S"
+
+# Universal reviewer agent backstop
+check "universal-reviewer agent exists" "[ -f core/agents/universal-reviewer.md ]"
+check "universal-reviewer at opus tier (adversarial review)" "grep -q '^model: opus' adapters/claude/agent-frontmatter/universal-reviewer.yml"
+
+# Sub-agent commit ban prevents implementer from shipping
+check "block-subagent-commit hook prevents sub-agent commits" "[ -x hooks/block-subagent-commit.sh ] && grep -q 'agent_id' hooks/block-subagent-commit.sh"
+
+if [ $fail -eq 0 ]; then echo "subagent-review-order: pass"; exit 0; fi
+echo "subagent-review-order: $fail failure(s)"
+exit 1

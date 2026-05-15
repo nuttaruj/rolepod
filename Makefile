@@ -41,7 +41,19 @@ test-static:
 	@python3 -c "import pathlib, tomllib; [tomllib.loads(p.read_text()) for p in pathlib.Path('adapters/codex/plugins/rolepod/agents').glob('*.toml')]" && echo "  ✓ codex agents/*.toml"
 	@python3 -c "import pathlib, tomllib; [tomllib.loads(p.read_text()) for p in pathlib.Path('adapters/gemini/commands').glob('*.toml')]" && echo "  ✓ gemini commands/*.toml"
 	@$(MAKE) -s test-render-clean
+	@$(MAKE) -s test-lean-surface
 	@echo "  → static checks passed"
+
+# lean-surface — anti-drift guards that lock in the post-refactor invariants:
+#   - rendered entry doc size caps
+#   - Tier 0 + Tier 1 visible skill count (1 + 11 = 12)
+#   - no full 18-agent table leaked into entry docs
+#   - all 18 agents covered by model-tier policy
+#   - no competitor brand refs in source / entry docs
+#   - skill-index.md render reproducible under LC_ALL=C
+# Wired into test-static so every release gate sees it.
+test-lean-surface:
+	@bash tests/static/lean-surface.sh
 
 # render-clean — run the renderer, then:
 #   (a) assert core/fragments/ has no uncommitted diff (catches stale
