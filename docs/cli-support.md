@@ -92,7 +92,7 @@ Hook scripts are interchangeable across Claude and Codex (same 3 files: SessionS
 | Codex CLI   | ✓ | ✓ | ⚠️ opt-in only — `features.plugin_hooks` is "under development, false" by default; rolepod registers `hooks/hooks.json` but Codex won't fire them until user runs `codex features enable plugin_hooks` | ✓ verified (18 agents + 42 skills via native loader) | **Production** (hooks opt-in) |
 | Gemini CLI  | ✓ | ✓ | ✓ verified (SessionStart hook fires) | ✓ verified (42 skills enumerated) | **Production** |
 
-**Static checks** = `bash -n` on shell scripts, `python3 -m json.tool` on JSON manifests, `tomllib.load()` on TOML, plus snapshot diffs (no leaked `{{INCLUDE: ...}}` placeholders). **Dry-run install** = `install.sh --target=<cli>` writes correct files into a temp dir and the layout matches each CLI's expected destination. **Live** = installed in the real CLI, hooks fire on real sessions, subagents/skills dispatch correctly.
+**Static checks** = `bash -n` on shell scripts, `python3 -m json.tool` on JSON manifests, `tomllib.load()` on TOML, plus snapshot diffs (no leaked `{{INCLUDE: ...}}` placeholders). **Dry-run install** = `install.sh --target=<cli>` writes correct files into a temp dir and the layout matches each CLI's expected destination. **Live** = installed in the real CLI, hooks fire on real sessions (Claude + Gemini always; Codex only after `codex features enable plugin_hooks` opt-in), subagents/skills dispatch correctly.
 
 _Last verified: 2026-05-10 on macOS (Darwin 25.4.0), Codex 0.130.0, Gemini 0.40.1._
 
