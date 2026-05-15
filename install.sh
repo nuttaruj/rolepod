@@ -704,9 +704,18 @@ PY
     if [ -d "$X_TARGET/plugins/rolepod" ]; then
       step "Removing legacy plugin tree at $X_TARGET/plugins/rolepod"
       do_or_dry "rm -rf $X_TARGET/plugins/rolepod" rm -rf "$X_TARGET/plugins/rolepod"
-      if [ "$DRY_RUN" -eq 0 ]; then
-        rmdir "$X_TARGET/plugins" 2>/dev/null || true
-      fi
+    fi
+
+    # Remove Codex plugin cache (populated by `register cache populate` step
+    # during install — see install path).
+    if [ -d "$X_TARGET/plugins/cache/rolepod" ]; then
+      step "Removing Codex plugin cache at $X_TARGET/plugins/cache/rolepod"
+      do_or_dry "rm -rf $X_TARGET/plugins/cache/rolepod" rm -rf "$X_TARGET/plugins/cache/rolepod"
+    fi
+
+    if [ "$DRY_RUN" -eq 0 ]; then
+      rmdir "$X_TARGET/plugins/cache" 2>/dev/null || true
+      rmdir "$X_TARGET/plugins" 2>/dev/null || true
     fi
 
     step "Stripping rolepod block from $X_TARGET/AGENTS.md"
@@ -1224,6 +1233,34 @@ if codex_selected; then
         printf '\n[plugins."rolepod@rolepod"]\nenabled = true\n' >> "$CODEX_CONFIG"
       fi
     fi
+
+    # Populate Codex plugin cache. `codex plugin marketplace add` registers
+    # the marketplace reference in config.toml but for local-source plugins
+    # does NOT copy/symlink the plugin tree into ~/.codex/plugins/cache/.
+    # On startup Codex tries to load from
+    #   ~/.codex/plugins/cache/<marketplace>/<plugin>/<version>/
+    # and fails with "plugin is not installed" if that path is absent.
+    # Git-source plugins (e.g. caveman-repo) get cloned into cache by
+    # `marketplace add` itself; local-source needs explicit population.
+    PLUGIN_JSON="$RENDERED_CODEX_DIR/plugins/rolepod/.codex-plugin/plugin.json"
+    PLUGIN_VERSION=$(python3 -c "import json; print(json.load(open('$PLUGIN_JSON'))['version'])" 2>/dev/null || echo "0.1.0")
+    CACHE_DIR="$CODEX_TARGET/plugins/cache/rolepod/rolepod/$PLUGIN_VERSION"
+    step "Populating Codex plugin cache → $CACHE_DIR"
+    if [ "$DRY_RUN" -eq 1 ]; then
+      dry "rm -rf $CACHE_DIR && mkdir -p $CACHE_DIR && cp -RL $RENDERED_CODEX_DIR/plugins/rolepod/. $CACHE_DIR/"
+    else
+      # cp -RL dereferences the skills/ symlink (rendered tree points it at
+      # ../../../../core/skills via relative path; cache dir would resolve
+      # to wrong location without -L).
+      rm -rf "$CACHE_DIR" 2>/dev/null || true
+      mkdir -p "$CACHE_DIR"
+      if cp -RL "$RENDERED_CODEX_DIR/plugins/rolepod/." "$CACHE_DIR/" 2>/dev/null; then
+        chmod +x "$CACHE_DIR/hooks"/*.sh 2>/dev/null || true
+        ok "Codex plugin cache populated"
+      else
+        warn "Failed to populate Codex plugin cache → plugin will fail to load (\"plugin is not installed\")"
+      fi
+    fi
   else
     # Either temp-target mode OR codex binary missing. Both paths skip global
     # codex commands and write only filesystem artifacts so static checks pass.
@@ -1259,7 +1296,12 @@ if codex_selected; then
       grep -q '^\[plugins\."rolepod@rolepod"\]' "$CODEX_CONFIG" || fail "Codex verification failed — [plugins.\"rolepod@rolepod\"] not in $CODEX_CONFIG"
       # Confirm rendered tree still resolvable (codex stores source path in config).
       [ -f "$RENDERED_CODEX_DIR/.agents/plugins/marketplace.json" ] || fail "Codex verification failed — rendered marketplace manifest missing"
-      ok "rolepod codex marketplace registered → $RENDERED_CODEX_DIR"
+      # Verify cache populated — otherwise Codex fails "plugin is not installed" at runtime.
+      [ -d "$CACHE_DIR" ] && [ -f "$CACHE_DIR/.codex-plugin/plugin.json" ] || \
+        fail "Codex verification failed — plugin cache not populated at $CACHE_DIR (Codex will fail to load plugin)"
+      [ -d "$CACHE_DIR/skills" ] || fail "Codex verification failed — skills/ missing in cache dir"
+      [ -d "$CACHE_DIR/agents" ] || fail "Codex verification failed — agents/ missing in cache dir"
+      ok "rolepod codex marketplace registered + cache populated → $CACHE_DIR"
     else
       # Temp-target OR codex binary missing — verify filesystem artifacts only.
       [ -d "$CODEX_TARGET/plugins/rolepod" ] || fail "Codex verification failed — $CODEX_TARGET/plugins/rolepod missing"
