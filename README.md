@@ -56,7 +56,7 @@ Rolepod ships 43 skills total, organized by routing tier:
 | **2 — Specialist** | fire by domain match inside a phase (frontend / billing / security / browser / etc.) | 29 |
 | **3 — Compatibility shims** | redirect legacy trigger phrases to canonical Tier 1 skills | 2 |
 
-Tier 1 list: `using-rolepod`, `spec-driven-development`, `planning-and-task-breakdown`, `systematic-debugging`, `test-driven-development`, `team-routing`, `parallel-contract-orchestration`, `subagent-task-execution`, `post-change-verify`, `code-review-and-quality`, `pre-merge-gate`, `code-simplification`.
+Tier 1 (11 core workflow skills): `spec-driven-development`, `planning-and-task-breakdown`, `systematic-debugging`, `test-driven-development`, `team-routing`, `parallel-contract-orchestration`, `subagent-task-execution`, `post-change-verify`, `code-review-and-quality`, `pre-merge-gate`, `code-simplification`. Tier 0 (`using-rolepod`) loads ahead of these on every turn — combined default Lead surface = 12 skills.
 
 Specialists stay on disk and fire when their domain matches — the router doesn't hide them, just orders the work so phase decisions land before specialist selection.
 
