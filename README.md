@@ -14,6 +14,53 @@ Same source-of-truth content (`core/agents/`, `core/rules/`, `core/skills/`, `co
 
 Self-improving: every session captures learnings via MemPalace KG so the next session starts smarter (optional — works without it).
 
+### Positioning
+
+> Superpowers makes one agent disciplined.
+> **Rolepod makes one agent operate like a disciplined full-stack software house.**
+
+Rolepod ships a workflow router (`using-rolepod`) so every task flows through the same spine, then the right specialist agent picks the work up inside the right phase.
+
+---
+
+## Rolepod workflow spine
+
+Every request routes through this spine before code lands:
+
+```
+Define → Plan → Build → Verify → Review → Ship
+```
+
+The **`using-rolepod`** router skill (Tier 0) fires first on each request, picks the phase, and chains into the right Tier 1 core-workflow skill:
+
+| Phase | Trigger | Tier 1 skill |
+|---|---|---|
+| **Define** | vague feature / "build / add / create" | `spec-driven-development` |
+| **Plan** | spec exists or work spans multiple files | `planning-and-task-breakdown` (+ `team-routing` + `parallel-contract-orchestration` when multi-agent) |
+| **Build** | approved plan or explicit code task | `test-driven-development` (+ `subagent-task-execution` when delegated) |
+| **Build (bug)** | "fix / failing / broken" | `systematic-debugging` → `test-driven-development` |
+| **Build (refactor)** | "refactor / simplify / clean up" | `code-simplification` |
+| **Verify** | claim of "done / fixed / works" | `post-change-verify` |
+| **Review** | before ship / multi-file / high-risk | `code-review-and-quality` (+ `reviewer-flow` for adversarial routing) |
+| **Ship** | "ship / merge / push / PR" | `pre-merge-gate` |
+
+**Skip rule** — the spine is skippable only when (a) the task is trivial-answer-only with no file change, OR (b) the diff is ≤5 lines / single file / zero logic / not on a high-risk path, OR (c) the user explicitly authorizes skip ("skip spec", "just commit"). The skip must be stated in the response.
+
+### Skill tiers
+
+Rolepod ships 43 skills total, organized by routing tier:
+
+| Tier | Purpose | Count |
+|---|---|---|
+| **0 — Router** | `using-rolepod` — loaded first, decides the phase | 1 |
+| **1 — Core Workflow** | the default path each phase fires | 11 |
+| **2 — Specialist** | fire by domain match inside a phase (frontend / billing / security / browser / etc.) | 29 |
+| **3 — Compatibility shims** | redirect legacy trigger phrases to canonical Tier 1 skills | 2 |
+
+Tier 1 list: `using-rolepod`, `spec-driven-development`, `planning-and-task-breakdown`, `systematic-debugging`, `test-driven-development`, `team-routing`, `parallel-contract-orchestration`, `subagent-task-execution`, `post-change-verify`, `code-review-and-quality`, `pre-merge-gate`, `code-simplification`.
+
+Specialists stay on disk and fire when their domain matches — the router doesn't hide them, just orders the work so phase decisions land before specialist selection.
+
 ---
 
 ## Quick start
