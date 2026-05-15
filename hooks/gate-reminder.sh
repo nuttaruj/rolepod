@@ -103,9 +103,15 @@ fi
 
 # Fix 4: auto-Careful banner — on high-risk paths inject stronger gate
 # wording even when not blocking, so Lead can't shrug it off as advisory.
+# Adversarial reviewers (Codex / Gemini) added to recommended list when
+# their CLI binaries are present — Lead routinely defaults to qa-tester
+# alone and forgets external reviewers exist.
 CAREFUL_BANNER=""
 if [ -n "$HIGH_RISK" ]; then
-  CAREFUL_BANNER="⚠️  AUTO-CAREFUL MODE (high-risk path, session: $HIGH_RISK_EDITS high-risk edits / $TEST_EDITS tests / $REVIEWERS reviewers). MANDATORY before more edits: (1) test file exists or is being written this session, (2) qa-tester dispatched (security-engineer for auth/billing/crypto), (3) S1-S5 + T1-T6 checklist run before commit. Soft-mode opt-out: ROLEPOD_GATES_SOFT=1. "
+  REVIEWER_LIST="qa-tester"
+  command -v codex  >/dev/null 2>&1 && REVIEWER_LIST="$REVIEWER_LIST + Codex (\`codex exec\`, adversarial)"
+  command -v gemini >/dev/null 2>&1 && REVIEWER_LIST="$REVIEWER_LIST + Gemini (\`gemini -p\`, cross-file)"
+  CAREFUL_BANNER="⚠️  AUTO-CAREFUL MODE (high-risk path, session: $HIGH_RISK_EDITS high-risk edits / $TEST_EDITS tests / $REVIEWERS reviewers). MANDATORY before more edits: (1) test file exists or is being written this session, (2) reviewers dispatched — use ≥2 when available (${REVIEWER_LIST}; security-engineer for auth/billing/crypto), (3) S1-S5 + T1-T6 checklist run before commit. Soft-mode opt-out: ROLEPOD_GATES_SOFT=1. "
 fi
 
 # Emit reminder as additionalContext

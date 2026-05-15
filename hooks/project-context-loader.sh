@@ -73,6 +73,22 @@ warn_once "first-session" "First session for this project → MemPalace will sta
 
 [ -n "$CHECKLIST" ] && CTX="$CTX\n\n## Project setup checklist\n$CHECKLIST"
 
+# External reviewer availability — Lead routinely forgets Codex / Gemini
+# adversarial review and defaults to qa-tester only. Inject availability
+# fact ONCE per session start so the option is salient when needed.
+# Graceful: only mention installed binaries — users who skipped --full
+# never see Codex / Gemini lines.
+EXT_REVIEWERS=""
+if command -v codex >/dev/null 2>&1; then
+  EXT_REVIEWERS="$EXT_REVIEWERS · **Codex** (\`codex exec --skip-git-repo-check '<prompt>'\` — correctness + security + adversarial)"
+fi
+if command -v gemini >/dev/null 2>&1; then
+  EXT_REVIEWERS="$EXT_REVIEWERS · **Gemini** (\`gemini -p '<prompt>'\` — breadth + cross-file + code smell)"
+fi
+if [ -n "$EXT_REVIEWERS" ]; then
+  CTX="$CTX\n\n## Reviewers available this session\n- **qa-tester** (Task tool — universal floor, business logic + tests)${EXT_REVIEWERS}\n\nHigh-risk surface (auth / billing / migrations / crypto / payments / external integration) → use **≥2 reviewers** per skill \`reviewer-flow\`. Don't default to qa-tester alone when Codex / Gemini are available."
+fi
+
 python3 -c "
 import json
 print(json.dumps({'hookSpecificOutput':{'hookEventName':'SessionStart','additionalContext':'''$CTX'''}}))
