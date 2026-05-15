@@ -1,0 +1,17 @@
+name: case-08-security
+prompt: |
+  Change password reset token handling.
+expected_skills:
+  - using-rolepod
+  - security-and-hardening
+  - test-driven-development
+  - code-review-and-quality
+must_not_contain:
+  - "without tests"
+  - "skip the review"
+  - "trivial change"
+why: |
+  High-risk surface (auth + token + crypto). Must route through
+  security-and-hardening, TDD, and code review. Block-subagent-commit hook + Fix 3
+  reviewer-floor hook backstop this for sub-agent commits, but the doctrine path
+  fires first.

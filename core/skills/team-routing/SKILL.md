@@ -146,3 +146,14 @@ Skip only when agents produce fully independent artifacts.
 | openai-codex | Codex review commands | Code review depth |
 
 `growth-marketer` delegates to claude-seo for deep technical SEO.
+
+## Common Rationalizations
+
+| Excuse | Reality |
+|---|---|
+| "I'll pick the agent later" | Picking late = wrong path bias. Specialist decision before edit, not mid-implementation. |
+| "qa-tester can handle everything" | qa-tester is the universal floor, not the universal answer. Security needs `security-engineer`; perf needs `performance-engineer`. |
+| "Backend dev can do the frontend too" | Cross-domain agents skip domain-specific gates. Hand off at the path boundary. |
+| "No conflict — both agents on different files" | Files don't conflict; shared types and API contracts do. Cohesion contract first. |
+| "Just one extra agent, contract is overkill" | Two agents touching shared invariants without a contract drift silently. Contract takes 2 min, drift wastes hours. |
+| "I'll route inside the agent prompt" | Routing inside the prompt fragments the decision. Pick agent first, brief specifically second. |

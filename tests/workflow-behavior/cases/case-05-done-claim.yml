@@ -1,0 +1,13 @@
+name: case-05-done-claim
+prompt: |
+  Is this done?
+expected_skills:
+  - using-rolepod
+  - post-change-verify
+must_not_contain:
+  - "Yes, it's done"
+  - "Looks done to me"
+  - "should be done"
+why: |
+  Claim-of-done routes through post-change-verify. Must produce evidence (test
+  output, screenshot, curl) before answering "yes". No vibe-based confirmation.

@@ -1,0 +1,138 @@
+#!/bin/bash
+# install-parity — verify Claude / Codex / Gemini × global / project install
+# produces the artifacts each CLI's adapter promises, per docs/cli-support.md.
+#
+# Honest scope (matches README/docs):
+#   Claude global    → full plugin (~/.claude/ — agents, skills, hooks, settings)
+#   Claude project   → full plugin ($PWD/.claude/)
+#   Codex global     → marketplace + plugin cache + AGENTS.md
+#   Codex project    → rules-only ($PWD/AGENTS.md)
+#   Gemini global    → extension + commands + hooks + GEMINI.md
+#   Gemini project   → rules-only ($PWD/GEMINI.md)
+#
+# This case runs Claude install in a temp HOME (always available — no external
+# CLI required for the install itself). Codex/Gemini global cases skip if their
+# CLI is missing because they would touch real ~/.codex / ~/.gemini.
+set -euo pipefail
+
+REPO_DIR="$(cd "$(dirname "$0")/../../.." && pwd)"
+cd "$REPO_DIR"
+
+[ -f "./install.sh" ] || { echo "ERROR: install.sh missing in $REPO_DIR" >&2; exit 1; }
+
+TMP="$(mktemp -d)"
+trap 'rm -rf "$TMP"' EXIT
+
+PASS=0
+FAIL=0
+
+# ─── Claude global into temp HOME ───────────────────────────────────────
+echo "[claude global] install into $TMP/.claude"
+export ROLEPOD_TARGET="$TMP/.claude"
+mkdir -p "$ROLEPOD_TARGET"
+if ./install.sh --target=claude > "$TMP/claude.log" 2>&1; then
+  required_paths=(
+    "$ROLEPOD_TARGET/CLAUDE.md"
+    "$ROLEPOD_TARGET/agents"
+    "$ROLEPOD_TARGET/skills"
+    "$ROLEPOD_TARGET/rules/always-on"
+    "$ROLEPOD_TARGET/rules/code"
+    "$ROLEPOD_TARGET/hooks"
+    "$ROLEPOD_TARGET/hooks/lib/session_state.py"
+    "$ROLEPOD_TARGET/settings.json"
+    "$ROLEPOD_TARGET/.claude-plugin/plugin.json"
+  )
+  for p in "${required_paths[@]}"; do
+    if [ ! -e "$p" ]; then
+      echo "  ✗ missing: $p"
+      FAIL=$((FAIL+1))
+    fi
+  done
+  # Verify using-rolepod + systematic-debugging skills landed.
+  for skill in using-rolepod systematic-debugging; do
+    if [ ! -d "$ROLEPOD_TARGET/skills/$skill" ]; then
+      echo "  ✗ skill missing: $skill"
+      FAIL=$((FAIL+1))
+    fi
+  done
+  # Verify Phase 1-3 hooks present in settings.json.
+  for hook in project-context-loader gate-reminder precommit-gate block-subagent-commit cohesion-contract-check verify-reminder post-ship-detect; do
+    if ! grep -q "$hook" "$ROLEPOD_TARGET/settings.json"; then
+      echo "  ✗ hook not registered in settings.json: $hook"
+      FAIL=$((FAIL+1))
+    fi
+  done
+  if [ "$FAIL" -eq 0 ]; then
+    echo "  ✓ Claude global: 9 paths + 2 new skills + 7 hooks registered"
+    PASS=$((PASS+1))
+  fi
+else
+  echo "  ✗ install failed (see $TMP/claude.log)"
+  FAIL=$((FAIL+1))
+fi
+unset ROLEPOD_TARGET
+
+# ─── Claude project (--scope=project) ───────────────────────────────────
+echo ""
+echo "[claude project] install into $TMP/project/.claude"
+mkdir -p "$TMP/project"
+( cd "$TMP/project" && "$REPO_DIR/install.sh" --target=claude --scope=project > "$TMP/claude-project.log" 2>&1 ) || {
+  echo "  ✗ install failed (see $TMP/claude-project.log)"
+  FAIL=$((FAIL+1))
+}
+if [ -f "$TMP/project/.claude/CLAUDE.md" ] && [ -d "$TMP/project/.claude/agents" ] && [ -d "$TMP/project/.claude/skills" ] && [ -f "$TMP/project/.claude/settings.json" ]; then
+  echo "  ✓ Claude project: .claude/CLAUDE.md + .claude/agents + .claude/skills + .claude/settings.json (full native plugin tree under \$PWD/.claude/)"
+  PASS=$((PASS+1))
+else
+  echo "  ✗ Claude project: expected files missing under \$PWD/.claude/"
+  FAIL=$((FAIL+1))
+fi
+
+# ─── Codex project (--scope=project, rules-only) ────────────────────────
+echo ""
+echo "[codex project] install into $TMP/codex-proj"
+mkdir -p "$TMP/codex-proj"
+( cd "$TMP/codex-proj" && "$REPO_DIR/install.sh" --target=codex --scope=project > "$TMP/codex-project.log" 2>&1 ) || {
+  echo "  ✗ install failed (see $TMP/codex-project.log)"
+  FAIL=$((FAIL+1))
+}
+if [ -f "$TMP/codex-proj/AGENTS.md" ]; then
+  # Rules-only: no native plugin tree at $PWD/.codex/
+  if [ ! -d "$TMP/codex-proj/.codex/agents" ]; then
+    echo "  ✓ Codex project: AGENTS.md present, native plugin NOT installed (correct per docs)"
+    PASS=$((PASS+1))
+  else
+    echo "  ✗ Codex project: native plugin tree appeared at $TMP/codex-proj/.codex/ — should be rules-only"
+    FAIL=$((FAIL+1))
+  fi
+else
+  echo "  ✗ Codex project: AGENTS.md missing"
+  FAIL=$((FAIL+1))
+fi
+
+# ─── Gemini project (--scope=project, rules-only) ───────────────────────
+echo ""
+echo "[gemini project] install into $TMP/gemini-proj"
+mkdir -p "$TMP/gemini-proj"
+( cd "$TMP/gemini-proj" && "$REPO_DIR/install.sh" --target=gemini --scope=project > "$TMP/gemini-project.log" 2>&1 ) || {
+  echo "  ✗ install failed (see $TMP/gemini-project.log)"
+  FAIL=$((FAIL+1))
+}
+if [ -f "$TMP/gemini-proj/GEMINI.md" ]; then
+  if [ ! -d "$TMP/gemini-proj/.gemini/extensions/rolepod" ]; then
+    echo "  ✓ Gemini project: GEMINI.md present, extension NOT installed (correct per docs)"
+    PASS=$((PASS+1))
+  else
+    echo "  ✗ Gemini project: extension tree appeared — should be rules-only"
+    FAIL=$((FAIL+1))
+  fi
+else
+  echo "  ✗ Gemini project: GEMINI.md missing"
+  FAIL=$((FAIL+1))
+fi
+
+# ─── Summary ────────────────────────────────────────────────────────────
+echo ""
+echo "install-parity: $PASS pass / $FAIL fail"
+[ "$FAIL" -eq 0 ] || exit 1
+exit 0

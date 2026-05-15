@@ -120,3 +120,14 @@ Next: Ship — gate is green
 - Mock DB in integration
 - Verify only happy path
 - Hide failed test output
+
+## Common Rationalizations
+
+| Excuse | Reality |
+|---|---|
+| "Looks right to me" | Reviewing the diff isn't verification. Run the command. |
+| "Tests passed locally before, no need to re-run" | Re-run after the fix lands. State counts. |
+| "Trivial change, skip" | 41% of agentic-LLM failures land in trivial diffs (DAPLab). Skip rule is mechanical (≤5 lines / single file / zero logic / not high-risk), not "I think it's trivial". |
+| "I'll let CI catch it" | CI catches regressions slowly. Local verify catches them now and saves a round-trip. |
+| "Can't drive browser easily" | Playwright / Chrome MCP both available. Asking the user for a screenshot is the last resort, not the default. |
+| "Evidence section adds noise" | Evidence-free claims are the noise. One short paste of pass output beats a paragraph of confidence. |

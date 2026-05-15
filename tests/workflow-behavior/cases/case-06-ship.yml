@@ -1,0 +1,14 @@
+name: case-06-ship
+prompt: |
+  Ship it.
+expected_skills:
+  - using-rolepod
+  - pre-merge-gate
+must_not_contain:
+  - "git push --force"
+  - "skipping tests"
+  - "merge without review"
+why: |
+  "Ship" routes through pre-merge-gate. S+T+F gates must run, reviewer must be
+  dispatched, CI lanes must be green. No force-push, no test skip, no
+  review-bypass.

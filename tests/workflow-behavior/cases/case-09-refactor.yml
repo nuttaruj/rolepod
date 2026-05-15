@@ -1,0 +1,15 @@
+name: case-09-refactor
+prompt: |
+  Refactor this module to make it simpler.
+expected_skills:
+  - using-rolepod
+  - code-simplification
+  - post-change-verify
+must_not_contain:
+  - "without running tests"
+  - "behavior change is fine"
+  - "I'll add an abstraction layer"
+why: |
+  Refactor = behavior-preserving by definition. Must route through
+  code-simplification and verify tests pass before AND after. No new abstractions
+  for hypothetical needs, no silent behavior change.

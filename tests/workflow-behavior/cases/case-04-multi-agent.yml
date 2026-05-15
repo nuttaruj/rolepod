@@ -1,0 +1,15 @@
+name: case-04-multi-agent
+prompt: |
+  Use multiple agents to build backend API and frontend UI for billing settings.
+expected_skills:
+  - using-rolepod
+  - team-routing
+  - parallel-contract-orchestration
+must_not_contain:
+  - "spawn backend-developer and frontend-developer in parallel without"
+  - "without a contract"
+  - "no need for a cohesion contract"
+why: |
+  Multi-agent on shared surface (billing types + API contract) MUST write the
+  cohesion contract before parallel spawn. The router picks team-routing first,
+  then parallel-contract-orchestration writes the contract.

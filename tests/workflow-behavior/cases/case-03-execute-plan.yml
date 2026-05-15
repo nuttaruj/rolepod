@@ -1,0 +1,15 @@
+name: case-03-execute-plan
+prompt: |
+  Execute the implementation plan in docs/plans/auth-refresh.md.
+expected_skills:
+  - using-rolepod
+  - planning-and-task-breakdown
+  - subagent-task-execution
+must_not_contain:
+  - "start coding right away"
+  - "skip the plan"
+  - "without reading the plan"
+why: |
+  When a plan exists, route through planning-and-task-breakdown to read tasks,
+  then subagent-task-execution for the two-stage review pattern per task. Don't
+  jump straight into implementation.

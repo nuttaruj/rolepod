@@ -123,3 +123,14 @@ Requires explicit override ("skip gate, ship now"). Default = enforce.
 - Auto-merge `feat(*)` without asking
 - Treat config/schema change as doc-only
 - Ask second time after user said ship
+
+## Common Rationalizations
+
+| Excuse | Reality |
+|---|---|
+| "Small PR, skip the gate" | The gate is mechanical (S+T+F). Small PR still passes or fails the questions — answer them, don't skip. |
+| "Reviewer already saw it" | "Saw" ≠ "approved with line-anchored findings". If you can't paste the verdict, the review didn't happen. |
+| "Tests are flaky, ignore reds" | Flaky test = unverified state. Fix the flake or quarantine; don't merge red. |
+| "CI takes too long, push to main" | The full CI suite splits into Phase 1 (fast, required) + Phase 2 (path-triggered) + Phase 3 (nightly). Phase 1 + matched Phase 2 must be green. |
+| "User said ship, no need to ask twice" | First "ship" = approval, no second ask. But high-risk surface (auth / billing / migration) still needs the explicit reviewer pass before the gate clears. |
+| "Reviewer will catch it later" | Reviewer routing is the gate's job. If you reach the gate without a reviewer dispatched, the gate blocks. That's the design. |

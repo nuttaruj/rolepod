@@ -1,0 +1,15 @@
+name: case-07-ui-work
+prompt: |
+  Improve this dashboard layout and verify it in browser.
+expected_skills:
+  - using-rolepod
+  - frontend-ui-engineering
+  - webapp-testing
+must_not_contain:
+  - "send me a screenshot"
+  - "could you take a screenshot"
+  - "please verify in your browser"
+why: |
+  UI verification routes through webapp-testing (Playwright) or
+  browser-testing-with-devtools. Lead drives the browser, doesn't outsource
+  verification to the user.

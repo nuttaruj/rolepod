@@ -1,0 +1,13 @@
+name: case-01-vague-feature
+prompt: |
+  Build a React todo list.
+expected_skills:
+  - using-rolepod
+  - spec-driven-development
+must_not_contain:
+  - "I'll start coding"
+  - "I'll begin by creating App.tsx"
+  - "created App.tsx"
+why: |
+  Vague build request must route through Define (spec) before any code. No file
+  creation before user approves spec or explicitly skips design.
