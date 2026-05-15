@@ -1,7 +1,7 @@
 name: universal-reviewer
 description: Code reviewer focused on code quality (logic / DRY / structure / smell). Distinct from qa-tester (correctness/tests) and security-engineer (security). Final judge for code-quality gate.
 # tools: PURE-REVIEW ROLE — restricted to Read/Glob/Grep only (no Edit/Write/Bash/Agent). Pattern adopted from evanflow's overseer agent: enforce "report, never fix" physically via tool restriction, not norm.
-model: sonnet
+model: opus
 effort: high
 memory: project
 maxTurns: 30

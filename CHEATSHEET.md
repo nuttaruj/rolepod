@@ -156,46 +156,34 @@ Lead = Opus → skip Advisor.
 
 > **Team workflow (Claude).** "use team" → all 6 phases. `/team-<phase>` → that phase only. Mandatory gates always apply. See [docs/agent-teams.md](docs/agent-teams.md).
 
-## Skill picker (42 rolepod-bundled)
+## Skill picker — quick lookup
+
+Default Lead path = **Tier 0 + Tier 1** only (router + 11 core workflow skills). Specialists fire on domain match via `team-routing`. Full 43-skill catalog: [docs/skills.md](docs/skills.md).
+
+| Task | Skill | Tier |
+|------|-------|------|
+| Spec before code | `spec-driven-development` | 1 |
+| Plan → tasks | `planning-and-task-breakdown` | 1 |
+| Parallel agents shared contract | `parallel-contract-orchestration` | 1 |
+| Tests first / Prove-It | `test-driven-development` | 1 |
+| Debug failing test (incl. root-cause tracing) | `systematic-debugging` | 1 |
+| Subagent brief / two-stage review | `subagent-task-execution` | 1 |
+| Multi-axis code review | `code-review-and-quality` | 1 |
+| Reduce complexity | `code-simplification` | 1 |
+| Verify edit landed | `post-change-verify` | 1 |
+| Pre-merge gate | `pre-merge-gate` | 1 |
+| Workflow router (always loaded first) | `using-rolepod` | 0 |
+| API / interface design | `api-and-interface-design` | 2 |
+| Production UI / dashboard / motion | `frontend-ui-engineering` / `interface-design` / `interaction-design` | 2 |
+| Browser / Playwright | `browser-testing-with-devtools` / `webapp-testing` | 2 |
+| Security hardening | `security-and-hardening` | 2 |
+| Perf optimization | `performance-optimization` | 2 |
+| Reviewer flow / adversarial | `reviewer-flow` / `doubt-driven-development` | 2 |
+| ADR / docs / comms | `documentation-and-adrs` / `doc-coauthoring` / `internal-comms` / `user-facing-content` | 2 |
+| Ship / CI / SEO | `shipping-and-launch` / `ci-cd-and-automation` / `seo` | 2 |
+| Stuck / drift recovery | `zoom-out` / `triage-deep` / `advisor-escalation` | 2 |
 
 External plugin skills (caveman, gitnexus-*, ui-ux-pro-max, xlsx/docx/pptx/pdf, skill-creator, web-artifacts-builder, idea-refine, mcp-builder, git-workflow-and-versioning, canvas-design) ship via separate marketplaces.
-
-| Task | Skill |
-|------|-------|
-| Spec before code | `spec-driven-development` |
-| Plan → tasks | `planning-and-task-breakdown` |
-| Parallel agents shared contract | `parallel-contract-orchestration` |
-| API / interface design | `api-and-interface-design` |
-| Tests first / Prove-It | `test-driven-development` |
-| Production UI | `frontend-ui-engineering` |
-| Dashboard / admin panel | `interface-design` |
-| Microinteractions / motion | `interaction-design` |
-| Marketing copy / landing | `conversion-copywriting` |
-| Co-author docs | `doc-coauthoring` |
-| Anthropic API / caching | `claude-api` |
-| Duplication / dead code / drift | `anti-spaghetti` |
-| Subagent brief / two-stage review | `subagent-task-execution` |
-| Filesystem isolation for agents | `using-worktrees` |
-| Debug failing test | `systematic-debugging` |
-| Trace error to true cause | `systematic-debugging` (Step 6 — upstream tracing with 3 stopping points) |
-| Playwright tests | `webapp-testing` |
-| Inspect browser DOM | `browser-testing-with-devtools` |
-| Perf optimization | `performance-optimization` |
-| Security hardening | `security-and-hardening` |
-| Multi-axis code review | `code-review-and-quality` |
-| Reduce complexity | `code-simplification` |
-| WCAG / a11y | `web-design-guidelines` |
-| Adversarial review (irreversible) | `doubt-driven-development` |
-| Pre-launch checklist | `shipping-and-launch` |
-| CI/CD pipeline | `ci-cd-and-automation` |
-| ADR / architecture decision | `documentation-and-adrs` |
-| Internal comms | `internal-comms` |
-| User-facing FAQ / error msgs | `user-facing-content` |
-| SEO audit | `seo` |
-| Finish dev branch (4-option) | `finishing-a-development-branch` |
-| Stuck / drifted | `zoom-out` |
-| Source-grounded impl | `source-driven-development` |
-| Optimize agent context | `context-engineering` |
 
 ## Hooks active
 

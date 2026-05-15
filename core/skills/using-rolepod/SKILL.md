@@ -26,24 +26,34 @@ Default: route through the spine. Skipping is allowed only when (a) the task is 
 
 ## Quick router
 
-Match the user intent to the FIRST skill that fires. The skill itself decides what comes next.
+Match the user intent to the FIRST skill that fires. The skill itself decides what comes next. The **Model tier** column hints which agent tier is appropriate when the work delegates — see `core/fragments/model-tier-policy.md` for the full policy.
 
-| User intent (verbs / phrases) | Phase | First skill fires |
-|---|---|---|
-| "build / add / create / make / design" + vague target | **Define** | `spec-driven-development` |
-| "build X to spec" + spec exists | **Plan** | `planning-and-task-breakdown` |
-| "execute plan / work the plan / implement plan.md" | **Plan→Build** | `planning-and-task-breakdown` → `subagent-task-execution` |
-| "fix bug / failing test / broken / regression / why does X fail" | **Build (bug)** | `systematic-debugging` → `test-driven-development` |
-| "refactor / simplify / clean up" | **Build (refactor)** | `code-simplification` → `post-change-verify` |
-| "use agents / multi-agent / in parallel / parallel-safe" | **Plan** | `team-routing` → `parallel-contract-orchestration` |
-| UI / browser / frontend / dashboard work | **Build (UI)** | `frontend-ui-engineering` → `webapp-testing` |
-| security / auth / billing / token / payment surface | **Build (high-risk)** | `security-and-hardening` → `test-driven-development` → `code-review-and-quality` |
-| "is this done / fixed / does it work / verify" | **Verify** | `post-change-verify` |
-| "review / check this / look at the diff" | **Review** | `code-review-and-quality` (route via `reviewer-flow` for high-risk) |
-| "ship / merge / push / PR / ready / go live" | **Ship** | `pre-merge-gate` |
-| "document / explain the choice / write ADR / runbook" | (cross-cut) | `documentation-and-adrs` |
+| User intent (verbs / phrases) | Phase | First skill fires | Model tier |
+|---|---|---|---|
+| "build / add / create / make / design" + vague target | **Define** | `spec-driven-development` | cheap (PM/spec) |
+| "build X to spec" + spec exists | **Plan** | `planning-and-task-breakdown` | cheap–balanced |
+| "execute plan / work the plan / implement plan.md" | **Plan→Build** | `planning-and-task-breakdown` → `subagent-task-execution` | balanced |
+| "fix bug / failing test / broken / regression / why does X fail" | **Build (bug)** | `systematic-debugging` → `test-driven-development` | balanced |
+| "refactor / simplify / clean up" | **Build (refactor)** | `code-simplification` → `post-change-verify` | balanced |
+| "use agents / multi-agent / in parallel / parallel-safe" | **Plan** | `team-routing` → `parallel-contract-orchestration` | balanced |
+| UI / browser / frontend / dashboard work | **Build (UI)** | `frontend-ui-engineering` → `webapp-testing` | balanced |
+| **security / auth / billing / token / payment / migration** | **Build (high-risk)** | `security-and-hardening` → `test-driven-development` → `code-review-and-quality` | **strong** |
+| architecture decision (DB schema / API contract / module split) | **Plan** | `api-and-interface-design` → `system-architect` agent | **strong** |
+| "is this done / fixed / does it work / verify" | **Verify** | `post-change-verify` | balanced |
+| "review / check this / look at the diff" | **Review** | `code-review-and-quality` (route via `reviewer-flow` for high-risk) | **adversarial** |
+| "ship / merge / push / PR / ready / go live" | **Ship** | `pre-merge-gate` | **adversarial** (final review) |
+| "document / explain the choice / write ADR / runbook" | (cross-cut) | `documentation-and-adrs` | cheap |
 
 If no row matches: ask the user what phase the task is in. Don't pattern-match yourself into Build.
+
+### Model tier hint reading
+
+- **cheap** = haiku-class. Docs, PM, business analysis, customer-facing copy.
+- **balanced** = sonnet-class (default). Normal implementation.
+- **strong** = opus-class. Architecture, billing, security, migration code.
+- **adversarial** = opus-class reviewer. Final-pass code review; security review of high-risk paths.
+
+Agent frontmatter sets the model. Lead doesn't override unless user explicitly asks.
 
 ## Phase rules
 
