@@ -249,14 +249,26 @@ When a repo needs stricter rules than the global rolepod set, create `AGENTS.md`
 ### Verify install
 
 ```bash
+# Plugin loaded (agents + skills work regardless of plugin_hooks state):
+ls ~/.codex/plugins/cache/rolepod/rolepod/0.1.0/skills | wc -l   # 42
+
+# Hooks ONLY fire after opt-in. Confirm flag state first:
+codex features list | grep plugin_hooks
+# default: plugin_hooks  under development  false
+
+# Enable hooks:
+codex features enable plugin_hooks
+
+# After opt-in, verify hooks fire:
 codex exec --skip-git-repo-check "echo OK"
 # stdout shows: hook: SessionStart Completed (rolepod hooks firing through native plugin loader)
-# Auto-loads the rolepod block from ~/.codex/AGENTS.md (Tier 1 always-on rules)
-# Plugin tree (18 agents, 42 skills, 3 hooks) resolved from build/rendered/codex/plugins/rolepod/
-# Verify config: grep -A2 'marketplaces.rolepod\|plugins."rolepod' ~/.codex/config.toml
+# Without plugin_hooks=true, this line is absent — rolepod's hooks/hooks.json is registered but inert.
+
+# AGENTS.md (Tier 1) always loads regardless of plugin_hooks:
+grep -A2 'marketplaces.rolepod\|plugins."rolepod' ~/.codex/config.toml
 ```
 
-If hooks don't fire, check `~/.codex/hooks.json` matches the schema documented at [developers.openai.com/codex/hooks](https://developers.openai.com/codex/hooks).
+If hooks don't fire after the opt-in, check `plugins/rolepod/hooks/hooks.json` schema matches [developers.openai.com/codex/hooks](https://developers.openai.com/codex/hooks).
 
 ## Recommended Gemini setup
 

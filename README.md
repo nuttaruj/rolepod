@@ -110,14 +110,14 @@ After install, restart the CLI you targeted so hooks register.
 | Target | Static | Dry-run | Live hooks | Live dispatch | Status |
 |--------|--------|---------|-----------|--------------|--------|
 | Claude Code | ✓ | ✓ | ✓ | ✓ | **Production** |
-| Codex CLI | ✓ | ✓ | ✓ | ✓ (18 agents + 42 skills) | **Production** ([global registration](docs/cli-support.md#marketplace-registration-is-global)) |
+| Codex CLI | ✓ | ✓ | ⚠️ opt-in only — `codex features enable plugin_hooks` required (default: `under development, false`) | ✓ (18 agents + 42 skills via plugin cache) | **Production** (hooks opt-in) |
 | Gemini CLI | ✓ | ✓ | ✓ | ✓ (42 skills) | **Production** |
 
-**Static** = `bash -n` + `json.tool` + `tomllib.load()` + snapshot diff (no leaked `{{INCLUDE: ...}}`). **Dry-run** = `install.sh` writes correct files to temp dir. **Live** = real CLI, hooks fire, subagents/skills dispatch.
+**Static** = `bash -n` + `json.tool` + `tomllib.load()` + snapshot diff (no leaked `{{INCLUDE: ...}}`). **Dry-run** = `install.sh` writes correct files to temp dir. **Live** = real CLI; hooks fire (Claude + Gemini always; Codex only after `plugin_hooks` opt-in); subagents/skills dispatch.
 
-_Last verified: 2026-05-10, macOS Darwin 25.4.0, Codex 0.130.0, Gemini 0.40.1._
+_Last verified: 2026-05-15, macOS Darwin 25.4.0, Codex 0.130.0, Gemini 0.40.1._
 
-**Codex install (0.130.0+):** installer renders to `build/rendered/codex/`, runs `codex plugin marketplace add <rendered-dir>`, writes `[plugins."rolepod@rolepod"] enabled = true` to `~/.codex/config.toml`. Native plugin loader resolves the tree (18 agents + 42 skills + 4 hooks); `SessionStart` fires on every session. `~/.codex/AGENTS.md` managed block loads independently.
+**Codex install (0.130.0+):** installer renders to `build/rendered/codex/`, runs `codex plugin marketplace add <rendered-dir>`, populates `~/.codex/plugins/cache/rolepod/rolepod/<version>/`, writes `[plugins."rolepod@rolepod"] enabled = true` to `~/.codex/config.toml`. Native plugin loader resolves agents + skills (18 + 42) from cache. `SessionStart` fires **only after `codex features enable plugin_hooks`** (default flag is `under development, false`). `~/.codex/AGENTS.md` managed block loads independently of `plugin_hooks` state.
 
 File runtime issues at [issues/](https://github.com/nuttaruj/rolepod/issues).
 
@@ -134,7 +134,7 @@ Tier 2b (path-scoped rules)   rules/{code,test}/        4 files (load on file ma
 Tier 3 (skill on trigger)     skills/                   42 skills + plugin skills
 ```
 
-Plus: hooks (auto-fire), agents (sub-process), commands (slash /).
+Plus: hooks (Claude/Gemini auto-fire; Codex opt-in via `plugin_hooks`), agents (sub-process), commands (slash /).
 
 ### Tier 1 — Always-on core (entry doc)
 
@@ -199,9 +199,11 @@ Full mapping: [CHEATSHEET.md](CHEATSHEET.md#lifecycle-phases-6-phase-taxonomy). 
 
 Path/concern ownership + expertise list + escalation paths + skill preloads. Shared `agent-protocol.md`. Identical across all 3 CLIs.
 
-### Hooks — `hooks/` (auto-fire)
+### Hooks — `hooks/` (auto-fire on Claude/Gemini; opt-in on Codex)
 
 3 hook scripts: `project-context-loader.sh` (session start — git context), `verify-reminder.sh` (after edit), `post-ship-detect.sh` (reindex suggestion after big merges). Context-fill warnings handled by each CLI's native compact.
+
+**Codex caveat:** hooks register via `hooks/hooks.json` inside the plugin but require `codex features enable plugin_hooks` (default flag: `under development, false`). Without the opt-in, rolepod's hooks are registered but inert — Tier 1 rules in AGENTS.md still drive gate compliance.
 
 | Event class | Claude | Codex | Gemini |
 |---|---|---|---|
