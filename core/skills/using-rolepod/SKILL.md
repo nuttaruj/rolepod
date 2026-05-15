@@ -41,6 +41,7 @@ Match the user intent to the FIRST skill that fires. The skill itself decides wh
 | architecture decision (DB schema / API contract / module split) | **Plan** | `api-and-interface-design` → `system-architect` agent | **strong** |
 | "is this done / fixed / does it work / verify" | **Verify** | `post-change-verify` | balanced |
 | "review / check this / look at the diff" | **Review** | `code-review-and-quality` (route via `reviewer-flow` for high-risk) | **adversarial** |
+| "audit / full audit / review whole repo / find all X / sweep / map" | **Review (repo-wide)** | **scope-then-spawn** (see below) | balanced |
 | "ship / merge / push / PR / ready / go live" | **Ship** | `pre-merge-gate` | **adversarial** (final review) |
 | "document / explain the choice / write ADR / runbook" | (cross-cut) | `documentation-and-adrs` | cheap |
 
@@ -54,6 +55,37 @@ If no row matches: ask the user what phase the task is in. Don't pattern-match y
 - **adversarial** = opus-class reviewer. Final-pass code review; security review of high-risk paths.
 
 Agent frontmatter sets the model. Lead doesn't override unless user explicitly asks.
+
+## Scope-then-spawn — repo-wide audit / sweep / "find all X"
+
+Default for any task that touches the **whole repo** (audit, refactor sweep, dead-code hunt, security pass, dependency map, "find every usage of X"). Stops Lead from fanning out parallel agents over hundreds of files when a structural query can narrow the list first.
+
+```
+1. Scope    →  list the files / symbols / processes actually in scope
+2. Narrow   →  filter to the suspicious / risky / changed subset
+3. Spawn    →  parallel agents ONLY on the narrowed list (or self-do)
+```
+
+### Tool order — GitNexus if available, fallback otherwise
+
+| Step | GitNexus installed + fresh | GitNexus NOT installed |
+|---|---|---|
+| Scope | `gitnexus_query("audit target")` → process / cluster list | `rg -l <pattern>` + `find` |
+| Narrow | `gitnexus_impact(target, upstream)` + `gitnexus_context(symbol)` → callers + blast radius | `rg` cross-reference + Read on hotspots |
+| Spawn | Parallel agents on 5-10 narrowed files | Parallel agents on rg-filtered list |
+
+GitNexus path: sub-second graph query, no per-file LLM read. Cuts token cost ~90% on structural audits.
+Fallback path: `rg` + `find` are universal. No GitNexus = no block. Lead doesn't nag the user to install anything.
+
+### When scope-then-spawn does NOT apply
+
+- Single-file change → direct edit, no scoping
+- Semantic-only audit (logic bugs, design smell, security reasoning) → GitNexus can't reason about meaning; spawn agents directly but cap the file count and ask user to narrow if >20
+- User already named the files → skip step 1
+
+### Anti-pattern
+
+Spawning 1 agent per file across 100+ files for "audit the whole repo" without a scoping pass. Burns tokens, drowns Lead in summaries, misses cross-file patterns GitNexus would surface in one query.
 
 ## State machine — phase → exit evidence → next
 
