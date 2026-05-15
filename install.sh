@@ -840,12 +840,20 @@ if claude_selected; then
     cp $CP_FLAG "$REPO_DIR"/commands/*.md "$TARGET/commands/" 2>/dev/null || true
   fi
 
-  step "Copying hooks (4) and marking executable"
+  step "Copying hooks + lib helpers and marking executable"
   if [ "$DRY_RUN" -eq 1 ]; then
     dry "cp $CP_FLAG $REPO_DIR/hooks/*.sh → $TARGET/hooks/  (chmod +x)"
+    dry "cp -R $REPO_DIR/hooks/lib → $TARGET/hooks/lib"
   else
     cp $CP_FLAG "$REPO_DIR"/hooks/*.sh "$TARGET/hooks/" 2>/dev/null || true
     chmod +x "$TARGET"/hooks/*.sh 2>/dev/null || true
+    # Copy hooks/lib/ — session_state.py is the shared session-state inspector
+    # that gate-reminder.sh, precommit-gate.sh, cohesion-contract-check.sh
+    # all shell out to. Missing → those hooks degrade to soft-warn (safe).
+    if [ -d "$REPO_DIR/hooks/lib" ]; then
+      mkdir -p "$TARGET/hooks/lib"
+      cp $CP_FLAG "$REPO_DIR"/hooks/lib/*.py "$TARGET/hooks/lib/" 2>/dev/null || true
+    fi
   fi
 
   # Count skills locally — SKILL_NAMES is only populated in uninstall flow.
@@ -883,6 +891,7 @@ if [ "$DRY_RUN" -eq 1 ]; then
   dry "  PreToolUse    Edit|Write|MultiEdit → $HOOK_DIR/gate-reminder.sh        (timeout 3)"
   dry "  PreToolUse    Bash                 → $HOOK_DIR/precommit-gate.sh      (timeout 5)"
   dry "  PreToolUse    Bash                 → $HOOK_DIR/block-subagent-commit.sh (timeout 3)"
+  dry "  PreToolUse    Agent                → $HOOK_DIR/cohesion-contract-check.sh (timeout 5)"
   dry "  PostToolUse   Edit|Write           → $HOOK_DIR/verify-reminder.sh      (timeout 3)"
   dry "  PostToolUse   Bash                 → $HOOK_DIR/post-ship-detect.sh     (timeout 5)"
   REGISTER_OK=1
@@ -901,6 +910,7 @@ if command -v jq >/dev/null 2>&1; then
     --arg gate "$HOOK_DIR/gate-reminder.sh" \
     --arg pre "$HOOK_DIR/precommit-gate.sh" \
     --arg bsc "$HOOK_DIR/block-subagent-commit.sh" \
+    --arg coh "$HOOK_DIR/cohesion-contract-check.sh" \
     --arg ver "$HOOK_DIR/verify-reminder.sh" \
     --arg shp "$HOOK_DIR/post-ship-detect.sh" '
     # Helper: strip command from ALL matcher groups in event (handles
@@ -930,6 +940,7 @@ if command -v jq >/dev/null 2>&1; then
     | .hooks.PreToolUse = upsert_cmd((.hooks.PreToolUse // []); "Edit|Write|MultiEdit"; $gate; 3)
     | .hooks.PreToolUse = upsert_cmd((.hooks.PreToolUse // []); "Bash"; $pre; 5)
     | .hooks.PreToolUse = upsert_cmd((.hooks.PreToolUse // []); "Bash"; $bsc; 3)
+    | .hooks.PreToolUse = upsert_cmd((.hooks.PreToolUse // []); "Agent"; $coh; 5)
     | .hooks.PostToolUse = upsert_cmd((.hooks.PostToolUse // []); "Edit|Write"; $ver; 3)
     | .hooks.PostToolUse = upsert_cmd((.hooks.PostToolUse // []); "Bash"; $shp; 5)
   ' "$SETTINGS_FILE" > "$TMP_FILE" 2>/dev/null && [ -s "$TMP_FILE" ]; then
@@ -975,6 +986,7 @@ upsert("SessionStart", "startup|resume", os.path.join(hook_dir, "project-context
 upsert("PreToolUse", "Edit|Write|MultiEdit", os.path.join(hook_dir, "gate-reminder.sh"), 3)
 upsert("PreToolUse", "Bash", os.path.join(hook_dir, "precommit-gate.sh"), 5)
 upsert("PreToolUse", "Bash", os.path.join(hook_dir, "block-subagent-commit.sh"), 3)
+upsert("PreToolUse", "Agent", os.path.join(hook_dir, "cohesion-contract-check.sh"), 5)
 upsert("PostToolUse", "Edit|Write", os.path.join(hook_dir, "verify-reminder.sh"), 3)
 upsert("PostToolUse", "Bash", os.path.join(hook_dir, "post-ship-detect.sh"), 5)
 
@@ -989,7 +1001,7 @@ PY
 fi
 
 if [ "$REGISTER_OK" -eq 1 ]; then
-  ok "Hooks registered in settings.json (SessionStart + 3x PreToolUse + 2x PostToolUse)"
+  ok "Hooks registered in settings.json (SessionStart + 4x PreToolUse + 2x PostToolUse)"
 else
   warn "Could not auto-register hooks — install jq or python3, or edit $SETTINGS_FILE manually"
   warn "  Hooks shipped: project-context-loader.sh (SessionStart), gate-reminder.sh (PreToolUse Edit|Write|MultiEdit), precommit-gate.sh (PreToolUse Bash), verify-reminder.sh (PostToolUse Edit|Write), post-ship-detect.sh (PostToolUse Bash)"
