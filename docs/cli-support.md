@@ -182,7 +182,9 @@ cd /your/project
 ./install.sh --target=codex --scope=project
 ```
 
-Writes only `$PWD/AGENTS.md` (managed block). Codex auto-loads `AGENTS.md` from the working directory on session start. Plugins/skills are global-only by Codex CLI design — for those, run `--scope=global` separately.
+**Rules-only project install.** Writes only `$PWD/AGENTS.md` (managed block). Codex auto-loads `AGENTS.md` from the working directory on session start. **Native plugin agents/skills/hooks are NOT installed per-project** — Codex CLI's marketplace + plugin cache are global-only by design. For full Codex activation (18 agents, 42 skills, hooks), run `--scope=global` separately.
+
+Codex hooks (`features.plugin_hooks = true`) require explicit opt-in in `~/.codex/config.toml` — not auto-enabled by rolepod install.
 
 ### Global core (one-time per machine)
 
@@ -263,7 +265,7 @@ cd /your/project
 ./install.sh --target=gemini --scope=project
 ```
 
-Writes only `$PWD/GEMINI.md` (managed block). Gemini auto-loads `GEMINI.md` from the working directory on session start. The full extension (commands/skills/hooks) is global-only by Gemini CLI design — for those, run `--scope=global` separately.
+**Rules-only project install.** Writes only `$PWD/GEMINI.md` (managed block). Gemini auto-loads `GEMINI.md` from the working directory on session start. **Native extension commands/skills/hooks are NOT installed per-project** — Gemini CLI's extension system is global-only by design. For full Gemini activation, run `--scope=global` separately.
 
 ### Global core (one-time per machine)
 

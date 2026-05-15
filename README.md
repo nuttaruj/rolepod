@@ -70,9 +70,12 @@ Targets: `claude` / `codex` / `gemini` / `all`. Removed per target:
 
 Non-rolepod content (project CLAUDE.md, other plugin installs, custom skills) untouched — uninstall is scoped.
 
-### Per-project install
+### Install scope — pick by user intent
 
-Default install is global. Pass `--scope=project` to land rolepod in the current directory only — your global config stays untouched.
+Two intents rolepod supports:
+
+1. **Global default** — rolepod as your main framework everywhere. Use `--scope=global` (default). Installs full native integration for each CLI.
+2. **Project-only** — you already use another global framework, want rolepod in one repo. Use `--scope=project`. No global config touched.
 
 ```bash
 cd /your/project
@@ -81,10 +84,12 @@ curl -fsSL https://raw.githubusercontent.com/nuttaruj/rolepod/main/bootstrap.sh 
 
 | Scope | Claude | Codex | Gemini |
 |-------|--------|-------|--------|
-| `global` (default) | full plugin (`~/.claude/`) | full plugin + AGENTS.md (`~/.codex/`) | full extension + GEMINI.md (`~/.gemini/`) |
-| `project` | full plugin (`$PWD/.claude/`) | AGENTS.md only (`$PWD/AGENTS.md`) | GEMINI.md only (`$PWD/GEMINI.md`) |
+| `global` (default) | **full native install** (`~/.claude/` — agents, skills, hooks, settings) | full marketplace + plugin cache + AGENTS.md (`~/.codex/`) | full extension + GEMINI.md (`~/.gemini/`) |
+| `project` | **full native install** (`$PWD/.claude/` — agents, skills, hooks, settings) | **rules-only** (`$PWD/AGENTS.md`) | **rules-only** (`$PWD/GEMINI.md`) |
 
-Codex plugins and Gemini extensions are global-only by CLI design — per-project for those writes only the auto-loaded entry doc. Claude per-project gets the full plugin.
+**Project scope is full for Claude; rules-only for Codex/Gemini.** Codex plugins and Gemini extensions are global-only by CLI design — `--scope=project` writes only the auto-loaded entry doc (AGENTS.md / GEMINI.md). Native plugin agents/skills/hooks are NOT installed per-project for those CLIs. For full Codex/Gemini activation, run `--scope=global` separately.
+
+Codex hooks (`features.plugin_hooks = true`) require explicit opt-in inside `~/.codex/config.toml` — not auto-enabled by rolepod install.
 
 Plugins detected before install — already-installed skipped. Failed installs print fallback + continue (no abort). Final summary lists installed / skipped / manual.
 
