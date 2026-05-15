@@ -89,7 +89,7 @@ Hook scripts are interchangeable across Claude and Codex (same 3 files: SessionS
 | Target | Static checks | Dry-run install | Live runtime hooks | Live subagent dispatch | Status |
 |--------|---------------|-----------------|--------------------|-----------------------|--------|
 | Claude Code | ✓ | ✓ | ✓ verified | ✓ verified | **Production** |
-| Codex CLI   | ✓ | ✓ | ✓ verified (SessionStart hook fires) | ✓ verified (18 agents + 42 skills via native loader) | **Production** |
+| Codex CLI   | ✓ | ✓ | ⚠️ opt-in only — `features.plugin_hooks` is "under development, false" by default; rolepod registers `hooks/hooks.json` but Codex won't fire them until user runs `codex features enable plugin_hooks` | ✓ verified (18 agents + 42 skills via native loader) | **Production** (hooks opt-in) |
 | Gemini CLI  | ✓ | ✓ | ✓ verified (SessionStart hook fires) | ✓ verified (42 skills enumerated) | **Production** |
 
 **Static checks** = `bash -n` on shell scripts, `python3 -m json.tool` on JSON manifests, `tomllib.load()` on TOML, plus snapshot diffs (no leaked `{{INCLUDE: ...}}` placeholders). **Dry-run install** = `install.sh --target=<cli>` writes correct files into a temp dir and the layout matches each CLI's expected destination. **Live** = installed in the real CLI, hooks fire on real sessions, subagents/skills dispatch correctly.
@@ -110,7 +110,13 @@ _Last verified: 2026-05-10 on macOS (Darwin 25.4.0), Codex 0.130.0, Gemini 0.40.
 **Codex CLI 0.130.0** — Production:
 - Rolepod ships as a Codex marketplace consumable (`adapters/codex/.agents/plugins/marketplace.json` + `plugins/rolepod/`). The installer renders to `build/rendered/codex/` and runs `codex plugin marketplace add <rendered-dir>` so Codex's native plugin loader picks up agents, skills, and hooks via the same code path as bundled plugins (browser-use, computer-use, etc.).
 - After install, `~/.codex/config.toml` contains `[marketplaces.rolepod] source_type = "local"` and `[plugins."rolepod@rolepod"] enabled = true`.
-- Live verification: `codex exec --skip-git-repo-check "echo OK"` reports `hook: SessionStart Completed` from rolepod's `hooks/hooks.json`. Codex log (`~/.codex/log/codex-tui.log`) shows zero "configured non-curated plugin no longer exists" warnings for rolepod and zero manifest validation errors against `plugins/rolepod/.codex-plugin/plugin.json`.
+- Plugin hooks (`hooks/hooks.json`) require explicit opt-in. Default Codex install has `plugin_hooks` flagged `under development, false` — registered hooks won't fire until the user enables it:
+  ```bash
+  codex features list | grep plugin_hooks      # confirm current state
+  codex features enable plugin_hooks           # writes [features] plugin_hooks = true
+  ```
+  Without that flag, rolepod's `hooks/hooks.json` is registered but inert. Agents + skills still load via the plugin cache regardless of `plugin_hooks` state.
+- Live verification after enabling `plugin_hooks`: `codex exec --skip-git-repo-check "echo OK"` reports `hook: SessionStart Completed` from rolepod's `hooks/hooks.json`. Codex log (`~/.codex/log/codex-tui.log`) shows zero "configured non-curated plugin no longer exists" warnings for rolepod and zero manifest validation errors against `plugins/rolepod/.codex-plugin/plugin.json`.
 - `~/.codex/AGENTS.md` managed block still loads on every Codex session (Tier 1 always-on rules), independent of plugin enable state.
 - The CLI subcommands `plugin list` / `agent` / `skills list` / `hooks list` are not present in 0.130.0 — Codex doesn't expose enumeration commands today. The plugin still loads via the same code path as bundled plugins; verification is via session log + `config.toml` inspection.
 

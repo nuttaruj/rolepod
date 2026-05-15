@@ -89,7 +89,7 @@ curl -fsSL https://raw.githubusercontent.com/nuttaruj/rolepod/main/bootstrap.sh 
 
 **Project scope is full for Claude; rules-only for Codex/Gemini.** Codex plugins and Gemini extensions are global-only by CLI design — `--scope=project` writes only the auto-loaded entry doc (AGENTS.md / GEMINI.md). Native plugin agents/skills/hooks are NOT installed per-project for those CLIs. For full Codex/Gemini activation, run `--scope=global` separately.
 
-Codex hooks (`features.plugin_hooks = true`) require explicit opt-in inside `~/.codex/config.toml` — not auto-enabled by rolepod install.
+**Codex hooks require explicit opt-in.** Fresh Codex install has `plugin_hooks` flagged `under development, false` — rolepod registers `hooks/hooks.json` in the plugin but Codex won't fire them until the user enables it: `codex features enable plugin_hooks`. Agents + skills load regardless. Without the opt-in, gate enforcement on Codex relies entirely on AGENTS.md (Tier 1) — hooks are inert.
 
 Plugins detected before install — already-installed skipped. Failed installs print fallback + continue (no abort). Final summary lists installed / skipped / manual.
 
@@ -216,7 +216,7 @@ Claude + Codex share 3 scripts; Gemini ships 3 adapted to its JSON envelope. Ext
 | CLI | Slash commands |
 |-----|----------------|
 | Claude Code | `/careful` + Anthropic native (`/init`, `/review`, `/clear`, `/rewind`, `/compact`, `/btw`) + openai-codex plugin commands |
-| Codex CLI | n/a (commands not in Codex schema today; gates fire via hooks + entry doc) |
+| Codex CLI | n/a (commands not in Codex schema today; gates fire via entry doc — hooks require `codex features enable plugin_hooks` opt-in) |
 | Gemini CLI | 6 native commands as `commands/*.toml` (`/careful`, `/ship`, `/review`, `/test`, `/plan`, `/spec`) |
 
 ### Plugin manifest

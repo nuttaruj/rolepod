@@ -2015,8 +2015,10 @@ if [ "$SCOPE" = "project" ]; then
 else
   case "$CLI_TARGET" in
     claude) echo "${BOLD}Final step${NC}: restart Claude Code so the hooks register." ;;
-    codex)  echo "${BOLD}Final step${NC}: restart Codex CLI to load the new plugin and hooks." ;;
+    codex)  echo "${BOLD}Final step${NC}: restart Codex CLI to load the new plugin."
+            echo "  Hooks require opt-in: ${BOLD}codex features enable plugin_hooks${NC} (plugin_hooks is 'under development, false' by default; rolepod's hooks/hooks.json is inert without this flag)." ;;
     gemini) echo "${BOLD}Final step${NC}: restart Gemini CLI to load the new extension and hooks." ;;
-    all)    echo "${BOLD}Final step${NC}: restart Claude Code, Codex CLI, and Gemini CLI." ;;
+    all)    echo "${BOLD}Final step${NC}: restart Claude Code, Codex CLI, and Gemini CLI."
+            echo "  Codex hooks require opt-in: ${BOLD}codex features enable plugin_hooks${NC}." ;;
   esac
 fi
