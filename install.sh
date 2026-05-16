@@ -820,12 +820,14 @@ step "Registering rolepod hooks in $SETTINGS_FILE"
 if [ "$DRY_RUN" -eq 1 ]; then
   dry "register hooks in $SETTINGS_FILE:"
   dry "  SessionStart  startup|resume      → $HOOK_DIR/project-context-loader.sh (timeout 5)"
+  dry "  SessionStart  startup|resume      → $HOOK_DIR/session-lock.sh           (timeout 3)"
   dry "  PreToolUse    Edit|Write|MultiEdit → $HOOK_DIR/gate-reminder.sh        (timeout 3)"
   dry "  PreToolUse    Bash                 → $HOOK_DIR/precommit-gate.sh      (timeout 5)"
   dry "  PreToolUse    Bash                 → $HOOK_DIR/block-subagent-commit.sh (timeout 3)"
   dry "  PreToolUse    Agent                → $HOOK_DIR/cohesion-contract-check.sh (timeout 5)"
   dry "  PostToolUse   Edit|Write           → $HOOK_DIR/verify-reminder.sh      (timeout 3)"
   dry "  PostToolUse   Bash                 → $HOOK_DIR/post-ship-detect.sh     (timeout 5)"
+  dry "  Stop          (no matcher)         → $HOOK_DIR/session-unlock.sh       (timeout 3)"
   REGISTER_OK=1
 else
 
@@ -839,6 +841,8 @@ if command -v jq >/dev/null 2>&1; then
   TMP_FILE=$(mktemp)
   if jq \
     --arg ctx "$HOOK_DIR/project-context-loader.sh" \
+    --arg slk "$HOOK_DIR/session-lock.sh" \
+    --arg sul "$HOOK_DIR/session-unlock.sh" \
     --arg gate "$HOOK_DIR/gate-reminder.sh" \
     --arg pre "$HOOK_DIR/precommit-gate.sh" \
     --arg bsc "$HOOK_DIR/block-subagent-commit.sh" \
@@ -854,27 +858,36 @@ if command -v jq >/dev/null 2>&1; then
       ) | map(select(.hooks | length > 0));
 
     # Helper: ensure matcher group exists, then add command to it.
+    # Matcher="" is treated as "no matcher" group (Stop hooks etc.) — the
+    # group is created/found without a .matcher key, per Claude Code schema.
     def ensure_group($arr; $matcher):
-      if ($arr | map(select(.matcher == $matcher)) | length) > 0 then $arr
-      else $arr + [{"matcher": $matcher, "hooks": []}] end;
+      if $matcher == "" then
+        if ($arr | map(select((.matcher // "") == "")) | length) > 0 then $arr
+        else $arr + [{"hooks": []}] end
+      else
+        if ($arr | map(select(.matcher == $matcher)) | length) > 0 then $arr
+        else $arr + [{"matcher": $matcher, "hooks": []}] end
+      end;
 
     # Cross-group dedup upsert: strip cmd anywhere in event, then add to
-    # canonical matcher group exactly once.
+    # canonical matcher group exactly once. Empty matcher → no-matcher group.
     def upsert_cmd($arr; $matcher; $cmd; $timeout):
       (strip_cmd($arr; $cmd) | ensure_group(.; $matcher)) | map(
-        if .matcher == $matcher then
+        if ($matcher == "" and ((.matcher // "") == "")) or (.matcher == $matcher) then
           .hooks += [{"type": "command", "command": $cmd, "timeout": $timeout}]
         else . end
       );
 
     .hooks = (.hooks // {})
     | .hooks.SessionStart = upsert_cmd((.hooks.SessionStart // []); "startup|resume"; $ctx; 5)
+    | .hooks.SessionStart = upsert_cmd((.hooks.SessionStart // []); "startup|resume"; $slk; 3)
     | .hooks.PreToolUse = upsert_cmd((.hooks.PreToolUse // []); "Edit|Write|MultiEdit"; $gate; 3)
     | .hooks.PreToolUse = upsert_cmd((.hooks.PreToolUse // []); "Bash"; $pre; 5)
     | .hooks.PreToolUse = upsert_cmd((.hooks.PreToolUse // []); "Bash"; $bsc; 3)
     | .hooks.PreToolUse = upsert_cmd((.hooks.PreToolUse // []); "Agent"; $coh; 5)
     | .hooks.PostToolUse = upsert_cmd((.hooks.PostToolUse // []); "Edit|Write"; $ver; 3)
     | .hooks.PostToolUse = upsert_cmd((.hooks.PostToolUse // []); "Bash"; $shp; 5)
+    | .hooks.Stop = upsert_cmd((.hooks.Stop // []); ""; $sul; 3)
   ' "$SETTINGS_FILE" > "$TMP_FILE" 2>/dev/null && [ -s "$TMP_FILE" ]; then
     mv "$TMP_FILE" "$SETTINGS_FILE"
     REGISTER_OK=1
@@ -906,21 +919,27 @@ def upsert(event, matcher, cmd, timeout):
         g["hooks"] = [h for h in g.get("hooks", []) if h.get("command") != cmd]
     arr[:] = [g for g in arr if g.get("hooks")]
     # Find or create canonical matcher group, then add cmd exactly once.
-    group = next((g for g in arr if g.get("matcher") == matcher), None)
+    # matcher=None → group has no matcher key (Stop / PreCompact pattern).
+    if matcher is None:
+        group = next((g for g in arr if not g.get("matcher")), None)
+    else:
+        group = next((g for g in arr if g.get("matcher") == matcher), None)
     if group is None:
-        group = {"matcher": matcher, "hooks": []}
+        group = {"hooks": []} if matcher is None else {"matcher": matcher, "hooks": []}
         arr.append(group)
     group.setdefault("hooks", []).append(
         {"type": "command", "command": cmd, "timeout": timeout}
     )
 
 upsert("SessionStart", "startup|resume", os.path.join(hook_dir, "project-context-loader.sh"), 5)
+upsert("SessionStart", "startup|resume", os.path.join(hook_dir, "session-lock.sh"), 3)
 upsert("PreToolUse", "Edit|Write|MultiEdit", os.path.join(hook_dir, "gate-reminder.sh"), 3)
 upsert("PreToolUse", "Bash", os.path.join(hook_dir, "precommit-gate.sh"), 5)
 upsert("PreToolUse", "Bash", os.path.join(hook_dir, "block-subagent-commit.sh"), 3)
 upsert("PreToolUse", "Agent", os.path.join(hook_dir, "cohesion-contract-check.sh"), 5)
 upsert("PostToolUse", "Edit|Write", os.path.join(hook_dir, "verify-reminder.sh"), 3)
 upsert("PostToolUse", "Bash", os.path.join(hook_dir, "post-ship-detect.sh"), 5)
+upsert("Stop", None, os.path.join(hook_dir, "session-unlock.sh"), 3)
 
 with open(path, "w") as f:
     json.dump(data, f, indent=2)
@@ -933,10 +952,10 @@ PY
 fi
 
 if [ "$REGISTER_OK" -eq 1 ]; then
-  ok "Hooks registered in settings.json (SessionStart + 4x PreToolUse + 2x PostToolUse)"
+  ok "Hooks registered in settings.json (2x SessionStart + 4x PreToolUse + 2x PostToolUse + 1x Stop)"
 else
   warn "Could not auto-register hooks — install jq or python3, or edit $SETTINGS_FILE manually"
-  warn "  Hooks shipped: project-context-loader.sh (SessionStart), gate-reminder.sh (PreToolUse Edit|Write|MultiEdit), precommit-gate.sh (PreToolUse Bash), verify-reminder.sh (PostToolUse Edit|Write), post-ship-detect.sh (PostToolUse Bash)"
+  warn "  Hooks shipped: project-context-loader.sh + session-lock.sh (SessionStart), gate-reminder.sh (PreToolUse Edit|Write|MultiEdit), precommit-gate.sh + block-subagent-commit.sh (PreToolUse Bash), cohesion-contract-check.sh (PreToolUse Agent), verify-reminder.sh (PostToolUse Edit|Write), post-ship-detect.sh (PostToolUse Bash), session-unlock.sh (Stop)"
 fi
 
 fi  # end DRY_RUN gate around settings.json registration

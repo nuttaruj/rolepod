@@ -12,11 +12,37 @@ Physical-isolation companion to `parallel-contract-orchestration`. Contract = sh
 
 ## When to use
 
+- **Sibling Claude session detected** — SessionStart hook `session-lock.sh` emits `⚠️ Sibling Claude session(s) detected`. Spawn worktree FIRST before any Edit/Write to prevent stomp (see Auto-spawn pattern below).
 - **Parallel feature dev** — two features, different owners, don't disturb each other's watchers/dev server
 - **Hotfix while feature ongoing** — prod fix urgent, main checkout mid-feature with uncommitted state
 - **Isolated test branches** — compare perf/behavior between two refs in parallel
 - **Long-running builds** — keep editing while build runs against frozen ref
 - **Multiple parallel implementer agents** — each gets own worktree. Pairs with `parallel-contract-orchestration`.
+
+## Auto-spawn pattern — Lead-driven, no user command
+
+Trigger: SessionStart additionalContext contains `Sibling Claude session(s) detected`.
+
+Lead's first turn (BEFORE any Edit/Write):
+
+```bash
+BRANCH=$(git branch --show-current)
+WORKTREE_PATH="$(git rev-parse --show-toplevel)-task-$(date +%s)"
+git worktree add "$WORKTREE_PATH" "$BRANCH"
+cd "$WORKTREE_PATH"
+```
+
+Then reply to user:
+
+```
+Detected sibling session in this worktree → spawned isolated tree at:
+  <path>
+Continuing work there. To follow along in your shell: cd <path>
+```
+
+User does ONE thing — `cd <path>` in their terminal. Lead handles spawn + work.
+
+**Override:** `ROLEPOD_ALLOW_SHARED_WORKTREE=1` suppresses the warning for intentional shared sessions (read-only review, paired exploration). Don't override silently — explain to user why this session shares.
 
 ## When NOT to use
 
