@@ -94,7 +94,12 @@ Rolepod ships two hooks that auto-spawn `npx gitnexus analyze --no-stats` in the
 | `gitnexus-wrap.sh` | Plugin emits "index stale" notice on any PostToolUse Bash | Once/day/repo (shared marker) |
 | `post-ship-detect.sh` | Ship cmd (`gh pr merge` / `git push main` / `git merge main`) touched ≥5 files in last 5 commits | Once/day/repo (shared marker) |
 
-Both write to `/tmp/gitnexus-reindex-<repo>.log` and use `--skip-agents-md` so the gitnexus block in CLAUDE.md/AGENTS.md stays frozen across reindexes — no post-reindex diff churn.
+Both write to `/tmp/gitnexus-reindex-<repo>.log`. Block seeding is auto-detected:
+
+- **First-time repo** (no `<!-- gitnexus:start -->` in CLAUDE.md/AGENTS.md) → reindex runs WITHOUT `--skip-agents-md` → block seeded. User commits the block once.
+- **Subsequent reindex** (block already present) → hooks add `--skip-agents-md` → block frozen, zero diff churn.
+
+User never has to run `gitnexus analyze` manually — first reindex seeds, all future reindexes stay clean.
 
 ### Manual reindex (rare)
 

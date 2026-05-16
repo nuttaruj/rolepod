@@ -51,9 +51,19 @@ if [ -d "$REPO/.git" ] && [ -f "$EXCLUDE_FILE" ]; then
   fi
 fi
 
-# Spawn bg reindex. --skip-agents-md freezes the gitnexus block in
-# CLAUDE.md/AGENTS.md entirely — no diff churn after reindex.
-(cd "$REPO" && nohup npx gitnexus analyze --skip-agents-md \
+# Block-seeded detection: freeze with --skip-agents-md only if the
+# gitnexus block already exists in CLAUDE.md / AGENTS.md. First-time
+# repo: let the reindex seed the block, user commits it once, all
+# subsequent reindexes stay clean.
+FREEZE_FLAG="--skip-agents-md"
+for entry in "$REPO/CLAUDE.md" "$REPO/AGENTS.md"; do
+  [ -f "$entry" ] || continue
+  if ! grep -q "<!-- gitnexus:start -->" "$entry" 2>/dev/null; then
+    FREEZE_FLAG=""
+    break
+  fi
+done
+(cd "$REPO" && nohup npx gitnexus analyze $FREEZE_FLAG \
    > "/tmp/gitnexus-reindex-${REPO_NAME}.log" 2>&1 &) 2>/dev/null
 
 # Silent additionalContext: brief Lead-facing note (no user action requested).
