@@ -51,8 +51,9 @@ if [ -d "$REPO/.git" ] && [ -f "$EXCLUDE_FILE" ]; then
   fi
 fi
 
-# Spawn bg reindex. --no-stats keeps gitnexus block stable (no diff churn).
-(cd "$REPO" && nohup npx gitnexus analyze --no-stats \
+# Spawn bg reindex. --skip-agents-md freezes the gitnexus block in
+# CLAUDE.md/AGENTS.md entirely — no diff churn after reindex.
+(cd "$REPO" && nohup npx gitnexus analyze --skip-agents-md \
    > "/tmp/gitnexus-reindex-${REPO_NAME}.log" 2>&1 &) 2>/dev/null
 
 # Silent additionalContext: brief Lead-facing note (no user action requested).

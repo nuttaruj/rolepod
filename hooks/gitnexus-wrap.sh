@@ -65,8 +65,12 @@ if [ -n "$REPO" ] && [ -d "$REPO/.gitnexus" ]; then
   MARKER="$HOME/.claude/.gitnexus-bg-reindex-${REPO_NAME}-$(date +%Y%m%d)"
   if [ ! -f "$MARKER" ]; then
     touch "$MARKER" 2>/dev/null || true
-    # --no-stats avoids volatile churn in CLAUDE.md/AGENTS.md gitnexus block
-    (cd "$REPO" && nohup npx gitnexus analyze --no-stats \
+    # --skip-agents-md freezes the gitnexus block in CLAUDE.md/AGENTS.md so
+    # auto-reindex doesn't produce diff churn. Block content is reference
+    # doctrine Lead already knows via skills; counters drift is the main
+    # source of post-reindex diff noise. Stronger than --no-stats (which
+    # still rewrites surrounding block).
+    (cd "$REPO" && nohup npx gitnexus analyze --skip-agents-md \
        > "/tmp/gitnexus-reindex-${REPO_NAME}.log" 2>&1 &) 2>/dev/null
   fi
 fi
