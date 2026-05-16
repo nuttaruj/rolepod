@@ -1,17 +1,20 @@
 #!/usr/bin/env bash
-# rolepod installer — copies workflow files to ~/.claude/ and (optionally) installs plugins.
+# rolepod installer — copies workflow files to the selected CLI's config dir.
+#
+# Rolepod ships PURE FRAMEWORK ONLY — no 3rd-party tools, plugins, or CLIs are
+# auto-installed. Recommended add-ons (GitNexus, MemPalace, rtk, caveman,
+# ui-ux-pro-max, OpenAI Codex review plugin, Codex CLI, Gemini CLI) live in
+# README → "Recommended add-ons". The framework auto-integrates with each one
+# when the user installs it themselves (graceful degradation everywhere).
 #
 # Usage:
-#   ./install.sh                       # rolepod core only (no plugins) — safe default
-#   ./install.sh --minimum             # core + ui-ux-pro-max + GitNexus + MemPalace
-#   ./install.sh --full                # minimum + caveman + rtk + codex CLI + gemini CLI + openai-codex plugin
+#   ./install.sh                       # install rolepod framework (default target: claude)
 #   ./install.sh --force               # overwrite existing files (selective backup created)
 #                                      # Backup includes ONLY rolepod-managed paths
 #                                      # (entry docs, agents/, rules/, hooks/, skills/, etc.)
 #                                      # Excluded: session history (projects/), plugin cache,
 #                                      # file-history/, shell-snapshots/, agent-memory/, etc.
 #                                      # Typical backup: <50MB (vs ~1.8GB full ~/.claude copy)
-#                                      # --force can be combined with any of the above
 #   ./install.sh --target=claude       # CLI target (default → ~/.claude)
 #   ./install.sh --target=codex        # Codex CLI       → ~/.codex
 #   ./install.sh --target=gemini       # Gemini CLI      → ~/.gemini
@@ -25,19 +28,6 @@
 #                                      # add --yes/-y to skip confirmation prompt
 #                                      # respects --scope (project = only project files)
 #   ./install.sh --dry-run             # preview every action; write nothing to disk
-#
-# Granular flags (compose your own bundle without --minimum/--full):
-#   --with-tools=gitnexus,mempalace,rtk    # global toolchain installs
-#   --with-skills=ui-ux-pro-max,caveman    # 3rd-party skill plugins
-#   --with-clis=codex,gemini               # install CLI binaries
-#   --with-plugins=openai-codex            # Claude marketplace plugins
-#   --with-mcps=chrome-devtools            # Claude MCP servers
-#
-# Bundle equivalents (back-compat):
-#   --minimum  ≡  --with-tools=gitnexus,mempalace --with-skills=ui-ux-pro-max
-#   --full     ≡  --with-tools=gitnexus,mempalace,rtk --with-skills=ui-ux-pro-max,caveman \
-#                 --with-clis=codex,gemini --with-plugins=openai-codex \
-#                 --with-mcps=chrome-devtools
 #
 # Env:
 #   ROLEPOD_TARGET           Single-target default OR root for --target=all.
@@ -58,15 +48,15 @@
 # wrapped in <!-- rolepod:start --> ... <!-- rolepod:end --> markers. User
 # content outside those markers is preserved across re-installs and uninstall.
 #
-# Detection: every plugin install is preceded by a check. Already-installed plugins
-# are skipped. Failed installs print a manual fallback command and continue.
+# Add-on detection: if MemPalace / GitNexus / etc. are already installed on the
+# user's system, framework hooks/rules wire to them automatically. Nothing is
+# installed by this script.
 
 set -euo pipefail
 
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 TARGET="${ROLEPOD_TARGET:-}"   # final value depends on CLI_TARGET; resolved below
 PLUGINS_DIR=""                  # set after TARGET resolves
-MODE="core"
 FORCE=0
 CLI_TARGET="claude"
 SCOPE="global"
@@ -74,35 +64,19 @@ UNINSTALL=0
 ASSUME_YES=0
 DRY_RUN=0
 
-# Granular opt-in sets (comma-separated lists, normalized below).
-# When empty + MODE=core, no plugins install. --minimum / --full populate these.
-WANT_TOOLS=""
-WANT_SKILLS=""
-WANT_CLIS=""
-WANT_PLUGINS=""
-WANT_MCPS=""
-
 # Args
 for arg in "$@"; do
   case "$arg" in
-    --minimum|--min) MODE="minimum" ;;
-    --full)          MODE="full" ;;
-    --core|--merge)  MODE="core" ;;
     --force)         FORCE=1 ;;
     --uninstall)     UNINSTALL=1 ;;
     --yes|-y)        ASSUME_YES=1 ;;
     --dry-run)       DRY_RUN=1 ;;
     --target=*)      CLI_TARGET="${arg#--target=}" ;;
     --scope=*)       SCOPE="${arg#--scope=}" ;;
-    --with-tools=*)   WANT_TOOLS="${arg#--with-tools=}" ;;
-    --with-skills=*)  WANT_SKILLS="${arg#--with-skills=}" ;;
-    --with-clis=*)    WANT_CLIS="${arg#--with-clis=}" ;;
-    --with-plugins=*) WANT_PLUGINS="${arg#--with-plugins=}" ;;
---with-mcps=*)    WANT_MCPS="${arg#--with-mcps=}" ;;
     -h|--help)
-      sed -n '2,46p' "$0"
+      sed -n '2,53p' "$0"
       exit 0 ;;
-    *) echo "Unknown arg: $arg" >&2; exit 1 ;;
+    *) echo "Unknown arg: $arg" >&2; echo "" >&2; echo "Rolepod ships framework only. For 3rd-party add-ons (GitNexus / MemPalace / etc.), see README → Recommended add-ons." >&2; exit 1 ;;
   esac
 done
 
@@ -118,24 +92,6 @@ case "$SCOPE" in
   *)
     echo "Unknown --scope value: $SCOPE (expected global|project)" >&2
     exit 1 ;;
-esac
-
-# Bundle expansion (only fills what user did NOT pass explicitly — explicit wins).
-# --minimum  → tools=gitnexus,mempalace + skills=ui-ux-pro-max
-# --full     → tools=gitnexus,mempalace,rtk + skills=ui-ux-pro-max,caveman
-#              clis=codex,gemini + plugins=openai-codex
-case "$MODE" in
-  minimum)
-    [ -z "$WANT_TOOLS"  ] && WANT_TOOLS="gitnexus,mempalace"
-    [ -z "$WANT_SKILLS" ] && WANT_SKILLS="ui-ux-pro-max"
-    ;;
-  full)
-    [ -z "$WANT_TOOLS"   ] && WANT_TOOLS="gitnexus,mempalace,rtk"
-    [ -z "$WANT_SKILLS"  ] && WANT_SKILLS="ui-ux-pro-max,caveman"
-    [ -z "$WANT_CLIS"    ] && WANT_CLIS="codex,gemini"
-    [ -z "$WANT_PLUGINS" ] && WANT_PLUGINS="openai-codex"
-    [ -z "$WANT_MCPS"    ] && WANT_MCPS="chrome-devtools"
-    ;;
 esac
 
 # Resolve install destination per CLI target. ROLEPOD_TARGET (env) wins for
@@ -196,15 +152,6 @@ resolve_target_for() {
 # Claude:  ~/.claude/plugins/<name>/
 # Codex:   ~/.codex/plugins/<name>/
 # Gemini:  ~/.gemini/extensions/<name>/
-plugin_dir_for() {
-  case "$1" in
-    claude) echo "$(default_target_path_for claude)/plugins" ;;
-    codex)  echo "$(default_target_path_for codex)/plugins" ;;
-    gemini) echo "$(default_target_path_for gemini)/extensions" ;;
-    *)      echo "" ;;
-  esac
-}
-
 # Colors
 if [ -t 1 ]; then
   CYAN=$(tput setaf 6 || true); GREEN=$(tput setaf 2 || true)
@@ -236,16 +183,6 @@ can_prompt() {
     return 2
   fi
   return 0
-}
-
-# Membership test for comma-separated wanted-set strings.
-# wants "gitnexus" "$WANT_TOOLS" → 0 if listed, 1 otherwise.
-wants() {
-  local needle="$1" haystack="$2"
-  case ",$haystack," in
-    *",$needle,"*) return 0 ;;
-    *) return 1 ;;
-  esac
 }
 
 # Run a destructive shell command, or print a [DRY-RUN] preview. Used to gate
@@ -451,13 +388,8 @@ echo "${BOLD}rolepod installer${NC}"
 echo "  source:  $REPO_DIR"
 echo "  cli:     $CLI_TARGET"
 echo "  scope:   $SCOPE"
-echo "  mode:    $MODE"
 echo "  force:   $FORCE"
 echo "  dry-run: $DRY_RUN"
-[ -n "$WANT_TOOLS"   ] && echo "  tools:   $WANT_TOOLS"
-[ -n "$WANT_SKILLS"  ] && echo "  skills:  $WANT_SKILLS"
-[ -n "$WANT_CLIS"    ] && echo "  clis:    $WANT_CLIS"
-[ -n "$WANT_PLUGINS" ] && echo "  plugins: $WANT_PLUGINS"
 echo ""
 
 # ─── Sanity check source ────────────────────────────────────────────────
@@ -1256,8 +1188,8 @@ if codex_selected; then
     # On startup Codex tries to load from
     #   ~/.codex/plugins/cache/<marketplace>/<plugin>/<version>/
     # and fails with "plugin is not installed" if that path is absent.
-    # Git-source plugins (e.g. caveman-repo) get cloned into cache by
-    # `marketplace add` itself; local-source needs explicit population.
+    # Git-source plugins get cloned into cache by `marketplace add` itself;
+    # local-source needs explicit population.
     PLUGIN_JSON="$RENDERED_CODEX_DIR/plugins/rolepod/.codex-plugin/plugin.json"
     PLUGIN_VERSION=$(python3 -c "import json; print(json.load(open('$PLUGIN_JSON'))['version'])" 2>/dev/null || echo "0.1.0")
     CACHE_DIR="$CODEX_TARGET/plugins/cache/rolepod/rolepod/$PLUGIN_VERSION"
@@ -1444,143 +1376,17 @@ if gemini_selected; then
   fi  # end GEMINI_PROJECT_DONE guard
 fi
 
-# Ensure TARGET is set for the rest of the script. Plugin install routing
-# now uses per-CLI plugin_dir_for() lookups, so this is a fallback only when
+# Ensure TARGET is set for the rest of the script. Fallback only when
 # claude wasn't selected at all.
 if [ -z "${TARGET:-}" ]; then
   TARGET="$(default_target_path_for claude)"
   PLUGINS_DIR="$TARGET/plugins"
 fi
 
-# ─── Plugin definitions ─────────────────────────────────────────────────
-# Per-CLI install routing:
-#   - Skill plugins (ui-ux-pro-max, caveman) clone into the SELECTED target's
-#     plugin/extension dir. For --target=all, clone once into Claude's plugins/
-#     (skills are read by Claude Code's plugin loader; Codex/Gemini have their
-#     own native skill discovery via the rendered plugin/extension tree).
-#   - Global tools (rtk, gitnexus, mempalace) install via system package
-#     managers and end up on $PATH — no per-target work.
-#   - openai-codex Claude Code plugin is Claude-specific (only installs when
-#     Claude is in the selected target set).
-
-# Pick the "primary" target for skill plugins. Claude wins if selected,
-# otherwise pick the single non-claude target.
-primary_skill_target() {
-  if claude_selected; then echo "claude"; return; fi
-  case "$CLI_TARGET" in
-    codex)  echo "codex"  ;;
-    gemini) echo "gemini" ;;
-    *)      echo "claude" ;;  # safe fallback
-  esac
-}
-
-plugin_anthropic_skills() {
-  # Anthropic skills are Claude-Code-only. Skip outside Claude target.
-  if ! claude_selected; then
-    skip "anthropic-skills (target: claude only — current: $CLI_TARGET)"
-    return 0
-  fi
-  local p="$TARGET/plugins/marketplaces"
-  if have_dir "$p" || have_dir "$TARGET/skills/test-driven-development" \
-    || have_dir "$TARGET/skills/anthropic-skills" \
-    || have_dir "$TARGET/plugins/marketplaces/anthropics"; then
-    ok "Anthropic skills detected (target: claude — referenced by agent preloads)"
-    note_skipped "anthropic-skills (already present)"
-  else
-    warn "Anthropic skills not detected. Most are bundled with recent Claude Code."
-    warn "  Update Claude Code, or install via: claude plugin install anthropic-skills"
-    note_failed "anthropic-skills (manual)"
-  fi
-}
-
-plugin_ui_ux_pro_max() {
-  local skill_target dest_root dest
-  skill_target="$(primary_skill_target)"
-  dest_root="$(plugin_dir_for "$skill_target")"
-  dest="$dest_root/ui-ux-pro-max-skill"
-  if have_dir "$dest"; then
-    ok "ui-ux-pro-max already installed (target: $skill_target) → $dest"
-    note_skipped "ui-ux-pro-max"
-    return 0
-  fi
-  if ! have_cmd git; then
-    warn "git not found — install: brew install git"
-    note_failed "ui-ux-pro-max"
-    return 1
-  fi
-  step "Cloning ui-ux-pro-max-skill (target: $skill_target) → $dest"
-  do_or_dry "mkdir -p $dest_root" mkdir -p "$dest_root"
-  if [ "$DRY_RUN" -eq 1 ]; then
-    dry "git clone https://github.com/nextlevelbuilder/ui-ux-pro-max-skill $dest"
-    note_installed "ui-ux-pro-max (dry-run)"
-    return 0
-  fi
-  if git clone --quiet https://github.com/nextlevelbuilder/ui-ux-pro-max-skill "$dest"; then
-    ok "ui-ux-pro-max installed (target: $skill_target)"
-    note_installed "ui-ux-pro-max"
-  else
-    warn "ui-ux-pro-max clone failed"
-    note_failed "ui-ux-pro-max"
-  fi
-}
-
-plugin_gitnexus() {
-  if have_cmd gitnexus; then
-    ok "GitNexus already installed (target: global) → $(command -v gitnexus)"
-    note_skipped "gitnexus"
-    return 0
-  fi
-  if ! have_cmd npm; then
-    warn "GitNexus needs npm. Install Node.js first → npm install -g gitnexus"
-    note_failed "gitnexus"
-    return 1
-  fi
-  step "Installing GitNexus via npm (target: global)"
-  if [ "$DRY_RUN" -eq 1 ]; then
-    dry "npm install -g gitnexus"
-    note_installed "gitnexus (dry-run)"
-    return 0
-  fi
-  if npm install -g gitnexus 2>&1 | tail -3; then
-    ok "GitNexus installed (target: global)"
-    note_installed "gitnexus"
-  else
-    warn "GitNexus install failed → manual: npm install -g gitnexus"
-    note_failed "gitnexus"
-  fi
-}
-
-plugin_mempalace() {
-  if have_cmd mempalace; then
-    ok "MemPalace already installed (target: global) → $(command -v mempalace)"
-    note_skipped "mempalace"
-  else
-    local pip_cmd=""
-    if have_cmd pip3; then pip_cmd="pip3"
-    elif have_cmd pip; then pip_cmd="pip"
-    else
-      warn "MemPalace needs pip. Install Python first → pip install mempalace"
-      note_failed "mempalace"
-      return 1
-    fi
-    step "Installing MemPalace via $pip_cmd (target: global)"
-    if [ "$DRY_RUN" -eq 1 ]; then
-      dry "$pip_cmd install --user mempalace"
-      note_installed "mempalace (dry-run)"
-    elif "$pip_cmd" install --user mempalace 2>&1 | tail -3; then
-      ok "MemPalace installed (target: global)"
-      note_installed "mempalace"
-    else
-      warn "MemPalace install failed → manual: $pip_cmd install mempalace"
-      note_failed "mempalace"
-      return 1
-    fi
-  fi
-
-  # Auto-register MemPalace's built-in hooks (SessionStart/Stop/PreCompact)
-  # so cross-session memory works without manual MCP calls. Idempotent.
-  register_mempalace_hooks
-}
+# ─── Add-on integration helpers ─────────────────────────────────────────
+# Rolepod does NOT install 3rd-party tools. Recommended add-ons (GitNexus,
+# MemPalace, etc.) are listed in README → "Recommended add-ons". If the user
+# already has one installed, the helpers below wire the framework to it.
 
 # Register MemPalace's session-start/stop/precompact hooks into the Claude
 # settings.json. Codex has separate config (deferred). Gemini unsupported by
@@ -1679,224 +1485,10 @@ PY
   fi
 }
 
-plugin_caveman() {
-  local skill_target dest_root dest
-  skill_target="$(primary_skill_target)"
-  dest_root="$(plugin_dir_for "$skill_target")"
-  dest="$dest_root/caveman"
-  if have_dir "$dest"; then
-    ok "caveman already installed (target: $skill_target) → $dest"
-    note_skipped "caveman"
-    return 0
-  fi
-  if ! have_cmd git; then
-    warn "git not found"
-    note_failed "caveman"
-    return 1
-  fi
-  step "Cloning caveman (target: $skill_target) → $dest"
-  do_or_dry "mkdir -p $dest_root" mkdir -p "$dest_root"
-  if [ "$DRY_RUN" -eq 1 ]; then
-    dry "git clone https://github.com/JuliusBrussee/caveman $dest"
-    note_installed "caveman (dry-run)"
-    return 0
-  fi
-  if git clone --quiet https://github.com/JuliusBrussee/caveman "$dest"; then
-    ok "caveman installed (target: $skill_target)"
-    note_installed "caveman"
-  else
-    warn "caveman clone failed"
-    note_failed "caveman"
-  fi
-}
-
-plugin_rtk() {
-  if have_cmd rtk; then
-    ok "rtk already installed (target: global) → $(command -v rtk)"
-    note_skipped "rtk"
-    return 0
-  fi
-  if ! have_cmd cargo; then
-    warn "rtk needs cargo. Install Rust (https://rustup.rs) → cargo install rtk"
-    note_failed "rtk"
-    return 1
-  fi
-  step "Installing rtk via cargo (target: global, this can take a few minutes)"
-  if [ "$DRY_RUN" -eq 1 ]; then
-    dry "cargo install rtk"
-    note_installed "rtk (dry-run)"
-    return 0
-  fi
-  if cargo install rtk 2>&1 | tail -3; then
-    ok "rtk installed (target: global)"
-    note_installed "rtk"
-  else
-    warn "rtk install failed → manual: cargo install rtk"
-    note_failed "rtk"
-  fi
-}
-
-plugin_gemini_cli() {
-  if have_cmd gemini; then
-    ok "Gemini CLI already installed (target: global) → $(command -v gemini)"
-    note_skipped "gemini-cli"
-    return 0
-  fi
-  if have_cmd npm; then
-    step "Installing Gemini CLI via npm (target: global)"
-    if [ "$DRY_RUN" -eq 1 ]; then
-      dry "npm install -g @google/gemini-cli"
-      note_installed "gemini-cli (dry-run)"
-      return 0
-    fi
-    if npm install -g @google/gemini-cli 2>&1 | tail -3; then
-      ok "Gemini CLI installed (target: global)"
-      note_installed "gemini-cli"
-      warn "Run: gemini auth login"
-      return 0
-    fi
-  fi
-  if have_cmd brew; then
-    step "Installing Gemini CLI via brew (target: global)"
-    if [ "$DRY_RUN" -eq 1 ]; then
-      dry "brew install gemini-cli"
-      note_installed "gemini-cli (dry-run)"
-      return 0
-    fi
-    if brew install gemini-cli 2>&1 | tail -3; then
-      ok "Gemini CLI installed (target: global)"
-      note_installed "gemini-cli"
-      warn "Run: gemini auth login"
-      return 0
-    fi
-  fi
-  warn "Gemini CLI needs npm or brew. Manual: npm install -g @google/gemini-cli"
-  note_failed "gemini-cli"
-}
-
-plugin_codex_cli() {
-  if have_cmd codex; then
-    ok "Codex CLI already installed (target: global) → $(command -v codex)"
-    note_skipped "codex-cli"
-    return 0
-  fi
-  if ! have_cmd npm; then
-    warn "Codex CLI needs npm. Manual: npm install -g @openai/codex"
-    note_failed "codex-cli"
-    return 1
-  fi
-  step "Installing Codex CLI via npm (target: global)"
-  if [ "$DRY_RUN" -eq 1 ]; then
-    dry "npm install -g @openai/codex"
-    note_installed "codex-cli (dry-run)"
-    return 0
-  fi
-  if npm install -g @openai/codex 2>&1 | tail -3; then
-    ok "Codex CLI installed (target: global)"
-    note_installed "codex-cli"
-  else
-    warn "Codex CLI install failed → manual: npm install -g @openai/codex"
-    note_failed "codex-cli"
-  fi
-}
-
-plugin_openai_codex_marketplace() {
-  # Claude Code plugin — only meaningful when Claude is in the selected set.
-  if ! claude_selected; then
-    skip "openai-codex Claude Code plugin (target: claude only — current: $CLI_TARGET)"
-    return 0
-  fi
-  local p="$TARGET/plugins/marketplaces/openai-codex"
-  if have_dir "$p"; then
-    ok "openai-codex Claude Code plugin already installed (target: claude)"
-    note_skipped "openai-codex-plugin"
-    return 0
-  fi
-  warn "openai-codex plugin (target: claude) must be installed inside Claude Code:"
-  warn "  start Claude Code, then run: /plugin install openai-codex"
-  note_failed "openai-codex-plugin (manual /plugin install)"
-}
-
-plugin_chrome_devtools_mcp() {
-  # Claude MCP server — only Claude target. Codex / Gemini have their own MCP
-  # registration mechanisms (not implemented here).
-  if ! claude_selected; then
-    skip "chrome-devtools MCP (target: claude only — current: $CLI_TARGET)"
-    return 0
-  fi
-  if ! have_cmd claude; then
-    warn "claude CLI not on PATH — skip chrome-devtools MCP install"
-    note_failed "chrome-devtools-mcp"
-    return 1
-  fi
-  # Idempotent: skip if already registered. `claude mcp list` returns lines
-  # like "chrome-devtools: npx -y chrome-devtools-mcp@latest - ✓ Connected"
-  if claude mcp list 2>/dev/null | grep -q "^chrome-devtools:"; then
-    ok "chrome-devtools MCP already registered (target: claude)"
-    note_skipped "chrome-devtools-mcp"
-    return 0
-  fi
-  step "Registering chrome-devtools MCP (target: claude)"
-  if [ "$DRY_RUN" -eq 1 ]; then
-    dry "claude mcp add chrome-devtools --scope user npx chrome-devtools-mcp@latest"
-    note_installed "chrome-devtools-mcp (dry-run)"
-    return 0
-  fi
-  if claude mcp add chrome-devtools --scope user npx chrome-devtools-mcp@latest 2>&1 | tail -3; then
-    ok "chrome-devtools MCP registered"
-    note_installed "chrome-devtools-mcp"
-  else
-    warn "chrome-devtools MCP register failed — manual: claude mcp add chrome-devtools --scope user npx chrome-devtools-mcp@latest"
-    note_failed "chrome-devtools-mcp"
-  fi
-}
-
-# ─── Run plugin installs based on granular sets ─────────────────────────
-# WANT_TOOLS / WANT_SKILLS / WANT_CLIS / WANT_PLUGINS / WANT_MCPS were
-# populated either directly via --with-* flags or expanded from
-# --minimum/--full above.
-
-ANY_PLUGIN=0
-[ -n "$WANT_TOOLS"   ] && ANY_PLUGIN=1
-[ -n "$WANT_SKILLS"  ] && ANY_PLUGIN=1
-[ -n "$WANT_CLIS"    ] && ANY_PLUGIN=1
-[ -n "$WANT_PLUGINS" ] && ANY_PLUGIN=1
-[ -n "$WANT_MCPS"    ] && ANY_PLUGIN=1
-
-if [ "$ANY_PLUGIN" -eq 1 ]; then
-  echo ""
-  echo "${BOLD}${CYAN}Installing requested extras${NC}"
-  [ -n "$WANT_TOOLS"   ] && echo "  tools:   $WANT_TOOLS"
-  [ -n "$WANT_SKILLS"  ] && echo "  skills:  $WANT_SKILLS"
-  [ -n "$WANT_CLIS"    ] && echo "  clis:    $WANT_CLIS"
-  [ -n "$WANT_PLUGINS" ] && echo "  plugins: $WANT_PLUGINS"
-  [ -n "$WANT_MCPS"    ] && echo "  mcps:    $WANT_MCPS"
-  echo ""
-
-  # Anthropic skills detection — always runs when Claude is the target and any
-  # extras are requested (cheap, read-only check).
-  if claude_selected; then
-    plugin_anthropic_skills
-  fi
-
-  # Skills (3rd-party clones into per-CLI plugin/extension dir)
-  if wants "ui-ux-pro-max" "$WANT_SKILLS"; then plugin_ui_ux_pro_max; fi
-  if wants "caveman"       "$WANT_SKILLS"; then plugin_caveman; fi
-
-  # Global tools (toolchain-installed, end up on $PATH)
-  if wants "gitnexus"  "$WANT_TOOLS"; then plugin_gitnexus; fi
-  if wants "mempalace" "$WANT_TOOLS"; then plugin_mempalace; fi
-  if wants "rtk"       "$WANT_TOOLS"; then plugin_rtk; fi
-
-  # CLI binaries
-  if wants "codex"  "$WANT_CLIS"; then plugin_codex_cli; fi
-  if wants "gemini" "$WANT_CLIS"; then plugin_gemini_cli; fi
-
-  # Claude marketplace plugins (Claude-only)
-  if wants "openai-codex" "$WANT_PLUGINS"; then plugin_openai_codex_marketplace; fi
-
-  # Claude MCP servers (Claude-only via `claude mcp add`)
-  if wants "chrome-devtools" "$WANT_MCPS"; then plugin_chrome_devtools_mcp; fi
+# Self-guarded add-on wiring: if user has MemPalace installed, register its
+# Claude hooks (SessionStart/Stop/PreCompact). No-op if mempalace absent.
+if [ "$CLI_TARGET" = "claude" ] || [ "$CLI_TARGET" = "all" ]; then
+  register_mempalace_hooks
 fi
 
 # ─── Summary ────────────────────────────────────────────────────────────
@@ -1919,106 +1511,18 @@ if [ "${#FAILED[@]}" -gt 0 ]; then
 fi
 
 echo ""
-if [ "$MODE" = "core" ] && [ "$ANY_PLUGIN" -eq 0 ]; then
-  cat <<EOF
-${BOLD}rolepod core installed.${NC} For plugin install:
+cat <<EOF
+${BOLD}rolepod framework installed.${NC} (Pure framework — no 3rd-party add-ons bundled.)
 
-  ./install.sh --minimum    # ui-ux-pro-max + GitNexus + MemPalace
-  ./install.sh --full       # minimum + caveman + rtk + Codex + Gemini
+Recommended add-ons (install separately — framework auto-integrates each):
+  • Token Optimize       — rtk, caveman, GitNexus
+  • Self-improvement     — MemPalace
+  • Design               — ui-ux-pro-max
+  • QA Multi-opinion     — OpenAI Codex review plugin, Codex CLI, Gemini CLI
 
-Granular alternatives:
-  ./install.sh --with-tools=gitnexus,mempalace
-  ./install.sh --with-skills=ui-ux-pro-max
-  ./install.sh --with-clis=codex,gemini --with-plugins=openai-codex
+See README → "Recommended add-ons" for install commands + integration notes.
 
 EOF
-fi
-
-# ─── Post-install interactive prompts ───────────────────────────────────
-# Only when stdin is a TTY (or /dev/tty available), and only for modes that
-# actually installed the relevant tool. Each prompt reads from /dev/tty so
-# this also works when install.sh is piped via curl. Skipped in dry-run.
-
-was_installed() {
-  local needle="$1"
-  for x in "${INSTALLED[@]}"; do [ "$x" = "$needle" ] && return 0; done
-  return 1
-}
-
-ask_yn() {
-  # ask_yn "Question" "Y"|"N"  → returns 0 for yes, 1 for no.
-  # Uses can_prompt() to pick stdin vs /dev/tty. Returns 1 when no TTY at all.
-  local prompt="$1" default="$2" reply mode
-  local hint="[y/N]"; [ "$default" = "Y" ] && hint="[Y/n]"
-  can_prompt; mode=$?
-  if [ "$mode" -eq 0 ]; then return 1; fi
-  if [ "$mode" -eq 1 ]; then
-    printf "%s %s " "$prompt" "$hint"
-    if ! read -r reply; then return 1; fi
-  else
-    printf "%s %s " "$prompt" "$hint" > /dev/tty
-    if ! read -r reply < /dev/tty; then return 1; fi
-  fi
-  reply="${reply:-$default}"
-  case "$reply" in
-    y|Y|yes|YES) return 0 ;;
-    *) return 1 ;;
-  esac
-}
-
-can_prompt; _post_install_mode=$?
-if [ "$DRY_RUN" -eq 0 ] && [ "$_post_install_mode" -ne 0 ]; then
-  if [ "$ANY_PLUGIN" -eq 1 ]; then
-    # Only prompt if at least one relevant tool is available.
-    SHOW_PROMPTS=0
-    if have_cmd mempalace || was_installed "mempalace" || have_cmd gemini || was_installed "gemini-cli"; then
-      SHOW_PROMPTS=1
-    fi
-    wants "openai-codex" "$WANT_PLUGINS" && SHOW_PROMPTS=1
-
-    if [ "$SHOW_PROMPTS" -eq 1 ]; then
-      echo ""
-      echo "${BOLD}─── Post-install setup ───${NC}"
-
-      # 1) MemPalace init
-      if have_cmd mempalace; then
-        if ask_yn "Run \`mempalace init\` now to enable cross-session memory?" "Y"; then
-          if mempalace init </dev/tty; then
-            ok "mempalace init succeeded"
-          else
-            warn "mempalace init failed — run manually later"
-          fi
-        else
-          skip "Skipped mempalace init (run later: mempalace init)"
-        fi
-      fi
-
-      # 2) Gemini auth login
-      if have_cmd gemini; then
-        if ask_yn "Run \`gemini auth login\` now? (opens a browser)" "N"; then
-          if gemini auth login </dev/tty; then
-            ok "gemini auth login completed"
-          else
-            warn "gemini auth login failed — run manually later"
-          fi
-        else
-          skip "Skipped gemini auth login (run later: gemini auth login)"
-        fi
-      fi
-
-      # 3) openai-codex marketplace plugin (only when explicitly requested + missing)
-      if wants "openai-codex" "$WANT_PLUGINS" && claude_selected \
-         && [ ! -d "$TARGET/plugins/marketplaces/openai-codex" ]; then
-        if ask_yn "Open Claude Code now to install the openai-codex plugin?" "N"; then
-          echo "  Start Claude Code, then run inside it:"
-          echo "    /plugin install openai-codex"
-        else
-          skip "Skipped (later inside Claude Code: /plugin install openai-codex)"
-        fi
-      fi
-    fi
-  fi
-fi
 
 echo ""
 if [ "$SCOPE" = "project" ]; then

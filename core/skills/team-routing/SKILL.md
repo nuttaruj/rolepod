@@ -138,14 +138,9 @@ Workflow (skill `parallel-contract-orchestration`):
 
 Skip only when agents produce fully independent artifacts.
 
-## Optional plugin sub-agents
+## Optional add-ons (user-installed, not bundled)
 
-| Plugin | Adds | When |
-|--------|------|------|
-| [claude-seo](https://github.com/AgriciDaniel/claude-seo) | `seo-technical`, `seo-schema`, `seo-google` (+15) | Deep technical SEO |
-| openai-codex | Codex review commands | Code review depth |
-
-`growth-marketer` delegates to claude-seo for deep technical SEO.
+See README → "Recommended add-ons" for the catalog (Token Optimize / Self-improvement / Design / QA Multi-opinion). When present, the framework auto-routes to them; when absent, default agents handle the work (e.g. `growth-marketer` does content + on-page SEO inline; deep technical SEO is out of scope unless user installs a dedicated plugin).
 
 ## Common Rationalizations
 

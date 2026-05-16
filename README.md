@@ -74,25 +74,19 @@ Specialists stay on disk and fire when their domain matches — the router doesn
 
 Pick one with `--target=claude` / `--target=codex` / `--target=gemini`, or all three with `--target=all`. Default: `claude`. Each adapter wires into native primitives — no wrapper scripts.
 
-### Pick a mode
+### Install — pure framework only
 
-| Mode | What gets installed | Command |
-|------|---------------------|---------|
-| **core** (default) | rolepod files only — agents, rules, hooks, 42 skills, commands, manifest, docs | `./install.sh` |
-| **minimum** | core + `ui-ux-pro-max-skill` + GitNexus + MemPalace | `./install.sh --minimum` |
-| **full** | minimum + caveman + rtk + the other two CLIs + openai-codex Claude plugin + chrome-devtools MCP | `./install.sh --full` |
+Rolepod installs the framework itself: agents, rules, hooks, 42 skills, commands, manifest, docs. **No 3rd-party tools, plugins, or CLIs are auto-installed.** For add-ons that pair well with rolepod, see [Recommended add-ons](#recommended-add-ons) below — install each one yourself; the framework auto-integrates when present.
 
 Add `--force` to overwrite. Creates `~/.<cli>.backup-<timestamp>/` with **only rolepod-managed paths** (session history, plugin caches, file-history stay in place). Typical backup <50MB. See `docs/cli-support.md`.
 
-### Install
-
 ```bash
-# Interactive (mode prompt):
+# Interactive (target + scope prompt):
 curl -fsSL https://raw.githubusercontent.com/nuttaruj/rolepod/main/bootstrap.sh | bash
 
-# Specify mode + target:
-curl -fsSL https://raw.githubusercontent.com/nuttaruj/rolepod/main/bootstrap.sh | bash -s -- --minimum --target=codex
-curl -fsSL https://raw.githubusercontent.com/nuttaruj/rolepod/main/bootstrap.sh | bash -s -- --full --target=all --force
+# Specify target:
+curl -fsSL https://raw.githubusercontent.com/nuttaruj/rolepod/main/bootstrap.sh | bash -s -- --target=codex
+curl -fsSL https://raw.githubusercontent.com/nuttaruj/rolepod/main/bootstrap.sh | bash -s -- --target=all --force
 ```
 
 ### Update
@@ -137,9 +131,7 @@ curl -fsSL https://raw.githubusercontent.com/nuttaruj/rolepod/main/bootstrap.sh 
 
 **Codex hooks require explicit opt-in.** Fresh Codex install has `plugin_hooks` flagged `under development, false` — rolepod registers `hooks/hooks.json` in the plugin but Codex won't fire them until the user enables it: `codex features enable plugin_hooks`. Agents + skills load regardless. Without the opt-in, gate enforcement on Codex relies entirely on AGENTS.md (Tier 1) — hooks are inert.
 
-Plugins detected before install — already-installed skipped. Failed installs print fallback + continue (no abort). Final summary lists installed / skipped / manual.
-
-Shipped hooks auto-register in each CLI's native settings (idempotent). In `--minimum`/`--full` mode, the installer prompts to run one-time setup (`mempalace init`, `gemini auth login`, openai-codex plugin reminder). Decline to skip.
+Shipped hooks auto-register in each CLI's native settings (idempotent). If MemPalace is detected on `$PATH`, its `SessionStart` / `Stop` / `PreCompact` hooks are also auto-registered (self-guarded — silently no-ops if uninstalled later). For other add-ons see [Recommended add-ons](#recommended-add-ons).
 
 After install, restart the CLI you targeted so hooks register.
 
@@ -211,7 +203,7 @@ Lazy-load via `paths:` frontmatter — only enter context when Claude touches ma
 
 ### Tier 3 — Skills (on trigger phrase)
 
-42 skills covering anti-spaghetti, TDD, debugging, frontend UI, security, performance, design, marketing, docs, planning, ops. (`zoom-out` meta-recovery + 27 domain skills authored fresh + `doubt-driven-development` / `source-driven-development` influenced by addyosmani/agent-skills.) Integrates with external skill plugins (caveman, gitnexus, ui-ux-pro-max-skill). Auto-discovery via `using-agent-skills` at SessionStart. See [Skill dependencies](#skill-dependencies).
+42 skills covering anti-spaghetti, TDD, debugging, frontend UI, security, performance, design, marketing, docs, planning, ops. (`zoom-out` meta-recovery + 27 domain skills authored fresh + `doubt-driven-development` / `source-driven-development` influenced by addyosmani/agent-skills.) Auto-discovery via `using-agent-skills` at SessionStart. Optional add-on skills (caveman, gitnexus, ui-ux-pro-max) integrate when the user installs them — see [Recommended add-ons](#recommended-add-ons).
 
 Each CLI exposes skills as a real directory tree. Every SKILL.md ends with "Common Rationalizations" — typical excuses + data-backed rebuttals.
 
@@ -263,7 +255,7 @@ Claude + Codex share 3 scripts; Gemini ships 3 adapted to its JSON envelope. Ext
 
 | CLI | Slash commands |
 |-----|----------------|
-| Claude Code | `/careful` + Anthropic native (`/init`, `/review`, `/clear`, `/rewind`, `/compact`, `/btw`) + openai-codex plugin commands |
+| Claude Code | `/careful` + Anthropic native (`/init`, `/review`, `/clear`, `/rewind`, `/compact`, `/btw`) |
 | Codex CLI | n/a (commands not in Codex schema today; gates fire via entry doc — hooks require `codex features enable plugin_hooks` opt-in) |
 | Gemini CLI | 6 native commands as `commands/*.toml` (`/careful`, `/ship`, `/review`, `/test`, `/plan`, `/spec`) |
 
@@ -272,7 +264,7 @@ Claude + Codex share 3 scripts; Gemini ships 3 adapted to its JSON envelope. Ext
 | CLI | Manifest | Schema |
 |-----|----------|--------|
 | Claude | `.claude-plugin/plugin.json` | spec-conformant, 598B |
-| Codex | `.codex-plugin/plugin.json` | mirrors caveman schema, 1.6KB |
+| Codex | `.codex-plugin/plugin.json` | Codex plugin schema, 1.6KB |
 | Gemini | `gemini-extension.json` | extension schema, 551B |
 
 ---
@@ -340,41 +332,57 @@ Estimated **~50-60% cost reduction** vs "all Opus high" while keeping depth wher
 
 ---
 
-## Skill dependencies
+## Recommended add-ons
 
-42 skills out-of-the-box. Agents preload via `skills:` frontmatter. Optional plugins extend coverage.
+Rolepod ships **pure framework only** — agents, rules, hooks, 42 skills, commands, manifests. No 3rd-party tools, plugins, or CLIs are auto-installed by `./install.sh`.
 
-| Plugin / source | Provides | Install |
-|----------------|----------|---------|
-| **Bundled** (`skills/`) | 42 skills covering engineering / frontend / ops / docs / content | Auto-installed by `./install.sh` |
-| **[caveman](https://github.com/JuliusBrussee/caveman)** | `caveman`, `caveman-commit`, `caveman-review`, `compress` | Per repo |
-| **[GitNexus](https://github.com/abhigyanpatwari/GitNexus)** | `gitnexus-*` (7 skills) + MCP tools | `npm i -g gitnexus` + MCP setup |
-| **[ui-ux-pro-max-skill](https://github.com/nextlevelbuilder/ui-ux-pro-max-skill)** | `ui-ux-pro-max` (used by `ui-ux-designer`) | Per repo |
-| **[claude-seo](https://github.com/AgriciDaniel/claude-seo)** | 18 deep technical SEO sub-agents | Claude plugin marketplace |
-| **[OpenAI Codex review plugin](https://github.com/openai/codex-plugin-cc)** | Adversarial review | Each CLI's marketplace |
+The framework is designed to **auto-integrate** when a recommended add-on is present on the user's system. Install whichever ones you want, on your own; rolepod hooks/rules/skills detect them at runtime and wire up. **Nothing breaks if an add-on is missing** — every integration has a documented fallback.
 
-Minimum baseline: 18 agents + 7 rules (3 always-on + 4 path-scoped) + 3 hooks + 42 skills + Q1-Q4 / S1-S5 / T1-T6 / F1-F5 + 6-phase lifecycle.
+### Token Optimize
 
-Full workflow → also install GitNexus + caveman + ui-ux-pro-max-skill.
+Cut token usage on routine commands and code-intel queries.
 
-**Skills referenced by agent preloads:**
-- **42 bundled** → auto-installed by `./install.sh` (any mode/target)
-- **1 external (`ui-ux-pro-max`)** → installed by `--minimum` / `--full`. Without it, `ui-ux-designer` skips that one preload.
-- Of the 34: most preloaded by ≥1 agent; `zoom-out`, `doubt-driven-development`, `source-driven-development` are **Lead-invoked** (not preloaded).
+| Add-on | What rolepod auto-uses it for | Fallback when missing | Install |
+|---|---|---|---|
+| **[rtk](https://github.com/rtk-ai/rtk)** | Wraps `git` / `npm` / `cargo` calls — 60-90% token reduction on routine output | Raw command output (no compression) | `cargo install rtk` |
+| **[caveman](https://github.com/JuliusBrussee/caveman)** | Compressed reply mode (`/caveman` slash command, ~75% token cut) | Normal verbose replies | Per repo: `git clone` into `~/.claude/plugins/caveman` |
+| **[GitNexus](https://github.com/abhigyanpatwari/GitNexus)** | `gitnexus_impact` / `gitnexus_context` / `gitnexus_query` — sub-second graph queries instead of fan-out file reads. `code-search.md` rule auto-prefers it for symbol lookups; `using-rolepod` audit row uses it for scope-then-spawn | `rg` + `find` text search (slower for symbol/caller lookups) | `npm i -g gitnexus` then `npx gitnexus analyze` per repo |
 
-Drop unwanted preloads by editing `agents/<name>.md`'s `skills:` list.
+### Self-improvement
 
----
+Cross-session memory so each session starts smarter.
 
-## Optional integrations
+| Add-on | What rolepod auto-uses it for | Fallback when missing | Install |
+|---|---|---|---|
+| **[MemPalace](https://github.com/mempalace/mempalace)** | KG of past decisions, codepaths, architectural choices. `install.sh` auto-registers `SessionStart` / `Stop` / `PreCompact` hooks (self-guarded — silently no-ops if uninstalled). Lead queries via `mempalace_kg_query` before re-deciding | Anthropic auto memory (Tier 1) + per-agent `memory:` frontmatter still work — just no cross-session KG recall | `pip install mempalace` then `mempalace init` |
 
-| Tool | Purpose | Install |
-|------|---------|---------|
-| **[rtk](https://github.com/rtk-ai/rtk)** | Rust Token Killer — 60-90% savings on `git`/`npm`/`cargo` | `cargo install rtk` |
-| **[GitNexus](https://github.com/abhigyanpatwari/GitNexus)** | Impact analysis, symbol context, graph-aware rename | `npm i -g gitnexus`, then `npx gitnexus analyze` per repo |
-| **[MemPalace](https://github.com/mempalace/mempalace)** | Cross-session memory KG — drives self-improvement loop | `pip install mempalace`, then `mempalace init` |
+### Design
 
-Without external reviewers → `qa-tester` is floor + auto-fallback. Without GitNexus → `rg` + Read fallback. Without MemPalace → no cross-session memory; rules still work.
+Component recipes + style guidance for the `ui-ux-designer` agent.
+
+| Add-on | What rolepod auto-uses it for | Fallback when missing | Install |
+|---|---|---|---|
+| **[ui-ux-pro-max-skill](https://github.com/nextlevelbuilder/ui-ux-pro-max-skill)** | `ui-ux-designer` agent preloads the `ui-ux-pro-max` skill when present (50+ styles, 161 palettes, 57 font pairings) | `ui-ux-designer` skips that one preload — other design skills (`interface-design`, `interaction-design`, `web-design-guidelines`) still load | Per repo: `git clone` into `~/.claude/plugins/ui-ux-pro-max-skill` |
+
+### QA Multi-opinion
+
+Adversarial review beyond the in-process `qa-tester` floor.
+
+| Add-on | What rolepod auto-uses it for | Fallback when missing | Install |
+|---|---|---|---|
+| **[OpenAI Codex review plugin](https://github.com/openai/codex-plugin-cc)** (Claude Code plugin) | `reviewer-flow` skill routes high-risk PRs through it for adversarial pass | `qa-tester` agent (universal floor) handles correctness alone | Inside Claude Code: `/plugin install openai-codex` |
+| **Codex CLI** ([@openai/codex](https://www.npmjs.com/package/@openai/codex)) | `reviewer-flow` invokes `codex exec --skip-git-repo-check '<prompt>'` for cross-CLI adversarial review (correctness + security) | qa-tester only | `npm install -g @openai/codex` then `codex login` |
+| **Gemini CLI** ([@google/gemini-cli](https://www.npmjs.com/package/@google/gemini-cli)) | `reviewer-flow` invokes `gemini -p '<prompt>'` for breadth + cross-file + code-smell review | qa-tester only | `npm install -g @google/gemini-cli` then `gemini auth login` |
+
+### Detection
+
+`SessionStart` hook (`project-context-loader.sh`) scans for `codex` / `gemini` / `mempalace` / `gitnexus` binaries on `$PATH` and surfaces availability to Lead. No add-on detected = no banner, no nag.
+
+### Skill preloads
+
+42 skills ship bundled. Agents preload skills via `skills:` frontmatter. `ui-ux-pro-max` is the **only** preload that points at an external add-on — every other preload is bundled. Drop unwanted preloads by editing `core/agents/<name>.md`'s `skills:` list.
+
+`zoom-out`, `doubt-driven-development`, `source-driven-development` are **Lead-invoked** (not preloaded by any agent).
 
 ---
 
@@ -458,9 +466,9 @@ For Codex/Gemini, `parallel-contract-orchestration` still applies — Lead write
 
 **Platforms:** Anthropic Claude Code ([code.claude.com](https://code.claude.com)) · OpenAI Codex CLI · [Google Gemini CLI](https://github.com/google-gemini/gemini-cli).
 
-**Patterns:** [mattpocock/skills](https://github.com/mattpocock/skills) (skill patterns + zoom-out) · [AgriciDaniel/claude-seo](https://github.com/AgriciDaniel/claude-seo) (specialized agent plugin pattern).
+**Patterns:** [mattpocock/skills](https://github.com/mattpocock/skills) (skill patterns + zoom-out).
 
-**External tools:** [rtk](https://github.com/rtk-ai/rtk) · [caveman](https://github.com/JuliusBrussee/caveman) · [GitNexus](https://github.com/abhigyanpatwari/GitNexus) · [MemPalace](https://github.com/mempalace/mempalace) · [ui-ux-pro-max-skill](https://github.com/nextlevelbuilder/ui-ux-pro-max-skill) · OpenAI Codex review plugin.
+**Recommended add-ons (not bundled — install separately):** see [Recommended add-ons](#recommended-add-ons).
 
 ---
 

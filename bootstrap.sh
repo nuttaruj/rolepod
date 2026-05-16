@@ -1,9 +1,14 @@
 #!/usr/bin/env bash
 # rolepod bootstrap — clones the repo + runs install.sh.
-# Interactive: prompts for install mode if no args provided.
+# Interactive: prompts for target/scope if no args provided.
 # Non-interactive: pass args to skip the prompt.
 #
 # Designed for: curl -fsSL https://raw.githubusercontent.com/nuttaruj/rolepod/main/bootstrap.sh | bash
+#
+# Rolepod ships PURE FRAMEWORK ONLY. Recommended add-ons (rtk, caveman,
+# GitNexus, MemPalace, ui-ux-pro-max, OpenAI Codex review plugin, Codex CLI,
+# Gemini CLI) live in README → "Recommended add-ons" — install separately
+# yourself. The framework auto-integrates when each is present.
 #
 # Env vars:
 #   ROLEPOD_DEST     where to clone the repo (default: ~/rolepod)
@@ -11,22 +16,16 @@
 #   ROLEPOD_REF      branch/tag to check out (default: main)
 #
 # Args (forwarded to install.sh — skip interactive prompt if any are given):
-#   --core            rolepod files only — no plugins
-#   --minimum         core + ui-ux-pro-max + GitNexus + MemPalace
-#   --full            minimum + caveman + rtk + Codex CLI + Gemini CLI + openai-codex
-#   --force           overwrite existing ~/.claude (backup created)
+#   --force           overwrite existing files (selective backup created)
 #   --dry-run         preview every action; write nothing to disk
 #   --target=<cli>    claude|codex|gemini|all (default claude)
 #   --scope=global    install to home (default — affects all projects)
 #   --scope=project   install to current dir's .claude/ etc. (no global config touched)
-#   --with-tools=<list> / --with-skills=<list> / --with-clis=<list> / --with-plugins=<list>
-#                     compose your own bundle (see install.sh --help)
 #
 # Examples:
-#   curl -fsSL .../bootstrap.sh | bash                       # interactive menu
-#   curl -fsSL .../bootstrap.sh | bash -s -- --minimum       # skip prompt
-#   curl -fsSL .../bootstrap.sh | bash -s -- --full --force
-#   curl -fsSL .../bootstrap.sh | bash -s -- --core --with-tools=gitnexus
+#   curl -fsSL .../bootstrap.sh | bash                              # interactive
+#   curl -fsSL .../bootstrap.sh | bash -s -- --target=codex         # codex, no prompt
+#   curl -fsSL .../bootstrap.sh | bash -s -- --target=all --force   # all CLIs, overwrite
 
 set -euo pipefail
 
@@ -50,34 +49,7 @@ if [ "${#ARGS[@]}" -eq 0 ]; then
   if [ -e /dev/tty ]; then
     cat >&2 <<EOF
 
-${BOLD}rolepod installer${NC}
-
-Choose install mode:
-  ${BOLD}1${NC}) ${CYAN}core${NC}      — rolepod files only (no external plugins)
-  ${BOLD}2${NC}) ${GREEN}minimum${NC}   — core + ui-ux-pro-max + GitNexus + MemPalace ${YELLOW}★ recommended${NC}
-  ${BOLD}3${NC}) ${CYAN}full${NC}      — minimum + caveman + rtk + Codex CLI + Gemini CLI + openai-codex plugin
-  ${BOLD}4${NC}) ${CYAN}custom${NC}    — abort here, re-run install.sh with --with-tools/--with-skills/--with-clis/--with-plugins
-                see: https://github.com/nuttaruj/rolepod#install-flags
-
-EOF
-    choice=""
-    read -r -p "Mode [1/2/3/4] (default 2): " choice </dev/tty || choice=""
-    case "${choice:-2}" in
-      1|core)        ARGS=("--core") ;;
-      3|full)        ARGS=("--full") ;;
-      4|custom)
-        echo ""
-        echo "${BOLD}Custom install — re-run install.sh with the granular flags:${NC}" >&2
-        echo "  cd $DEST 2>/dev/null || curl -fsSL .../bootstrap.sh | bash -s -- <flags>" >&2
-        echo "  ./install.sh --core --target=claude --with-tools=gitnexus,mempalace" >&2
-        echo "  ./install.sh --core --target=codex --with-skills=ui-ux-pro-max" >&2
-        echo "  ./install.sh --help    # full flag reference" >&2
-        exit 0 ;;
-      2|minimum|"")  ARGS=("--minimum") ;;
-      *) echo "Unknown choice '$choice' — defaulting to minimum"; ARGS=("--minimum") ;;
-    esac
-
-    cat >&2 <<EOF
+${BOLD}rolepod installer${NC} — pure framework (no 3rd-party add-ons bundled)
 
 Choose CLI target:
   ${BOLD}1${NC}) ${CYAN}claude${NC}    — Claude Code (~/.claude/) ${YELLOW}★ default${NC}
@@ -117,16 +89,15 @@ EOF
       y|Y|yes|YES) ARGS+=("--force") ;;
     esac
   else
-    # No TTY → default minimum (most useful baseline)
-    echo "${YELLOW}No TTY available — defaulting to --minimum${NC}" >&2
-    ARGS=("--minimum")
+    # No TTY → install with all defaults (claude, global, no force)
+    echo "${YELLOW}No TTY available — installing with defaults (claude, global)${NC}" >&2
   fi
 fi
 
 echo "${BOLD}rolepod bootstrap${NC}"
 echo "  clone target: $DEST"
 echo "  ref:          $REF"
-echo "  install args: ${ARGS[*]}"
+echo "  install args: ${ARGS[*]:-<defaults>}"
 echo ""
 
 # ─── Clone or update repo ───────────────────────────────────────────────

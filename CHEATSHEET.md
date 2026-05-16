@@ -183,7 +183,7 @@ Default Lead path = **Tier 0 + Tier 1** only (router + 11 core workflow skills).
 | Ship / CI / SEO | `shipping-and-launch` / `ci-cd-and-automation` / `seo` | 2 |
 | Stuck / drift recovery | `zoom-out` / `triage-deep` / `advisor-escalation` | 2 |
 
-External plugin skills (caveman, gitnexus-*, ui-ux-pro-max, xlsx/docx/pptx/pdf, skill-creator, web-artifacts-builder, idea-refine, mcp-builder, git-workflow-and-versioning, canvas-design) ship via separate marketplaces.
+Optional add-on skills (caveman, gitnexus-*, ui-ux-pro-max) integrate when the user installs them — see README → Recommended add-ons.
 
 ## Hooks active
 

@@ -10,7 +10,7 @@
 | `data-scientist` | Data Scientist focused on statistical analysis, analytics queries, dashboards, and data pipelines. Distinct from ai-ml-engineer (LLM/RAG/agents). |
 | `devops-sre` | DevOps + SRE. Owns infra, CI/CD, deploy, monitoring, release process, versioning, runbooks. Includes release-management responsibilities. |
 | `frontend-developer` | Frontend Specialist. Builds UI components with focus on state management, API integration, routing, and logic. Distinct from ui-ux-designer (visual design + polish). |
-| `growth-marketer` | Growth + Content Strategist. SEO, copywriting, conversion, marketing campaigns. For deep technical SEO (sitemaps/schema/Google APIs) → install claude-seo plugin sub-agents. |
+| `growth-marketer` | Growth + Content Strategist. SEO, copywriting, conversion, marketing campaigns. Owns content + strategy; deep technical SEO (sitemaps/schema/Google APIs) is out of scope — defer to a dedicated SEO plugin if installed. |
 | `mobile-developer` | Mobile Engineer for native iOS/Android + cross-platform (React Native / Flutter). Owns platform-specific code; cross-platform UI logic may overlap with frontend-developer. |
 | `performance-engineer` | Performance Engineer focused on load testing, profiling, latency optimization, bundle size, DB query performance, and p95/p99 metrics. Owns speed concern — distinct from qa-tester (correctness) and security-engineer (security). |
 | `product-manager` | Product Manager for feature prioritization, roadmap, user requirements, spec writing. Distinct from business-analyst (financial/ROI) and growth-marketer (acquisition/conversion). |
