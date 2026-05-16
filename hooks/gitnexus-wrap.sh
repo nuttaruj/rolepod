@@ -46,6 +46,19 @@ except Exception:
 REPO=$(git -C "$CWD" rev-parse --show-toplevel 2>/dev/null || echo "")
 if [ -n "$REPO" ] && [ -d "$REPO/.gitnexus" ]; then
   REPO_NAME=$(basename "$REPO")
+
+  # Auto-add .gitnexus/ to .git/info/exclude so `npx gitnexus analyze` doesn't
+  # leave the 38MB DB dir as untracked noise in `git status`. We use
+  # info/exclude (per-clone, NOT tracked) instead of project .gitignore to
+  # avoid polluting user's tracked ignore file with a tool they may not have
+  # adopted project-wide. Idempotent — only appends if line missing.
+  EXCLUDE_FILE="$REPO/.git/info/exclude"
+  if [ -d "$REPO/.git" ] && [ -f "$EXCLUDE_FILE" ]; then
+    if ! grep -qxF ".gitnexus/" "$EXCLUDE_FILE" 2>/dev/null; then
+      printf '\n# rolepod: auto-added by gitnexus-wrap.sh\n.gitnexus/\n' >> "$EXCLUDE_FILE" 2>/dev/null || true
+    fi
+  fi
+
   # Once/day/repo marker — prevents spamming `npx gitnexus analyze` after
   # every commit. Day boundary because reindex run takes minutes; daily
   # cadence keeps DB current enough for typical workflow.
