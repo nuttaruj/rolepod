@@ -22,6 +22,44 @@ S5: Same pattern in 3+ places?            yes → centralize
 
 Any yes → revise. Don't waste reviewer rounds on bloat.
 
+## Step 0.3 — PR scope gate — one concern per PR
+
+```
+P1: Diff mixes 2+ unrelated concerns?      yes → SPLIT into separate PRs
+P2: "and also" / "while I'm at it" commits? yes → cherry-pick into new branch
+P3: Bugfix + refactor + feature together?  yes → 3 PRs, not 1
+P4: Multiple users / domains affected?     yes → split per surface
+```
+
+**One PR = one concern.** Reviewer attention, blast radius, and rollback all assume one purpose per merge. Bundled PRs:
+- multiply review cycles (reviewer rejects unrelated bits)
+- expand blast radius (revert the fix → also reverts unrelated work)
+- hide intent in commit log (`git blame` finds the wrong commit)
+
+### How to split
+
+```
+git checkout main
+git checkout -b fix/<concern-A>
+git cherry-pick <commits-A>
+gh pr create --title "fix: <A>" ...
+
+git checkout main
+git checkout -b feat/<concern-B>
+git cherry-pick <commits-B>
+gh pr create --title "feat: <B>" ...
+```
+
+Mark dependent PRs in description: "depends on #123, merge after."
+
+### Exceptions (one PR is OK)
+
+- All changes serve a single user-stated goal (e.g. "add OAuth" → schema + backend + frontend + tests)
+- Atomic refactor that breaks if split (rename across files, codemod sweep)
+- Touched-because-of-cohesion files (updating one shared type forces N callers — same concern)
+
+If unsure → split. Smaller PRs ship faster.
+
 ## Step 0.5 — Test gate (BEFORE reviewer)
 
 ```
@@ -123,6 +161,7 @@ Requires explicit override ("skip gate, ship now"). Default = enforce.
 - Auto-merge `feat(*)` without asking
 - Treat config/schema change as doc-only
 - Ask second time after user said ship
+- Bundle unrelated concerns into one PR ("and also fixed X while I was there")
 
 ## Common Rationalizations
 
@@ -134,3 +173,4 @@ Requires explicit override ("skip gate, ship now"). Default = enforce.
 | "CI takes too long, push to main" | The full CI suite splits into Phase 1 (fast, required) + Phase 2 (path-triggered) + Phase 3 (nightly). Phase 1 + matched Phase 2 must be green. |
 | "User said ship, no need to ask twice" | First "ship" = approval, no second ask. But high-risk surface (auth / billing / migration) still needs the explicit reviewer pass before the gate clears. |
 | "Reviewer will catch it later" | Reviewer routing is the gate's job. If you reach the gate without a reviewer dispatched, the gate blocks. That's the design. |
+| "It's all related, one PR is fine" | If you need 2 sentences to describe the PR scope, split. Reviewer rejects unrelated bits; rollback drags unrelated work; commit log loses intent. P1-P4 are mechanical — answer them. |

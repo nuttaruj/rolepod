@@ -98,7 +98,7 @@ Router fires the **first** skill per phase. Phase exits only when its **exit evi
 | **Build** | `test-driven-development` (+ `subagent-task-execution` if delegated) (+ `systematic-debugging` for bug intent) | changed files + tests added (or explicit no-test justification) + red→green evidence | Verify |
 | **Verify** | `post-change-verify` | fresh command output / screenshot / curl / log evidence; OR explicit "verify impossible because X" risk note | Review (high-risk / multi-file) OR Ship (low-risk) |
 | **Review** | `code-review-and-quality` (+ `reviewer-flow` for high-risk routing → Codex / Gemini / security-engineer) | findings fixed OR rejected with line-anchored reason; no unresolved blocker | Ship |
-| **Ship** | `pre-merge-gate` then `finishing-a-development-branch` | S+T+F gates green; required CI lanes pass; user approval when policy requires; 4-option finish menu presented (merge / open PR / keep / discard) | **end** |
+| **Ship** | `pre-merge-gate` then `finishing-a-development-branch` | S+T+F+P gates green (P = PR scope, one concern per PR); required CI lanes pass; user approval when policy requires; 4-option finish menu presented (merge / open PR / keep / discard) | **end** |
 
 **Router decides the first move only.** Each downstream skill owns its own gates; using-rolepod doesn't re-explain them.
 
@@ -120,6 +120,7 @@ Skip a phase WHEN ALL true (state explicitly in response):
 - Sub-agent attempting `git commit` / `git push` / `gh pr merge` → blocked by `block-subagent-commit.sh`; Lead commits after reviewer pass.
 - High-risk path (auth/billing/migrations/crypto/payments) with 0 reviewer agents dispatched → STOP, dispatch qa-tester + (Codex / Gemini / security-engineer if available).
 - 3rd agent on same issue OR 3rd PR on same surface in one session → STOP, ask user (hard-stop rule).
+- Diff mixes 2+ unrelated concerns at push/merge time → STOP, split into separate PRs (`pre-merge-gate` P1-P4 gate).
 
 ## Finish ritual (Ship phase exit)
 

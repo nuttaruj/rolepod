@@ -35,9 +35,19 @@ Detected:
 - Open PR for this branch: <yes #<num> | no>
 - Commits ahead of <base>: <N>
 - Pre-merge gate: <pass | not-yet-run>
+- Concerns in diff: <N> (≥2 → SPLIT before merge — pre-merge-gate P1-P4)
 ```
 
 Never auto-pick unless user passes `--auto-pick`.
+
+### Scope check before menu
+
+Run `pre-merge-gate` Step 0.3 (PR scope gate) FIRST. If the diff mixes 2+ unrelated concerns:
+- Block options [1] and [2]
+- Offer split: `git checkout -b <split-branch> && git cherry-pick <commits>` per concern
+- Re-present menu per split branch
+
+One PR = one concern. Bundling forces reviewer to reject the whole thing when one sub-concern is bad.
 
 ## Detection
 
