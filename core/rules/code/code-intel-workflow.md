@@ -85,30 +85,35 @@ Lead doesn't invoke these — auto.
 
 Stale → tools return wrong facts.
 
-### Trigger reindex
+### Auto-reindex (default — no user action)
 
-- Tool warning "index stale"
-- Merged PR ≥5 files
-- Structural refactor (split package / move module / rename namespace)
-- New module (new top-level dir)
-- User: "audit whole system"
-- Weekly cadence
+Rolepod ships two hooks that auto-spawn `npx gitnexus analyze --no-stats` in the background. Lead never asks the user to run analyze manually.
 
-### Don't reindex
+| Hook | Trigger | Cadence |
+|------|---------|---------|
+| `gitnexus-wrap.sh` | Plugin emits "index stale" notice on any PostToolUse Bash | Once/day/repo (shared marker) |
+| `post-ship-detect.sh` | Ship cmd (`gh pr merge` / `git push main` / `git merge main`) touched ≥5 files in last 5 commits | Once/day/repo (shared marker) |
 
-- Every commit (expensive)
-- Typo / 1-line fix
-- During active task (blocks tools)
-- Recent (<2 hrs) + no big change
+Both write to `/tmp/gitnexus-reindex-<repo>.log` and use `--no-stats` so the gitnexus block in CLAUDE.md/AGENTS.md stays diff-stable across reindexes.
 
-### Run
+### Manual reindex (rare)
 
 ```bash
 cd /path/to/repo
 npx gitnexus analyze
 ```
 
-Run in user terminal, NOT via Bash (long-running). Lead suggests, user executes.
+Only when:
+- GitNexus plugin uninstalled after install (hooks no-op)
+- Lead needs immediate fresh index mid-task (structural refactor in progress)
+- User explicitly asks ("reindex now")
+
+### Don't reindex
+
+- Every commit (expensive — daily cadence is enough)
+- Typo / 1-line fix
+- During active task (blocks tools)
+- Recent (<2 hrs) + no big change → marker already in place
 
 ## MemPalace lifecycle
 
