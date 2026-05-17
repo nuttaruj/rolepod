@@ -132,6 +132,17 @@ Removes own session lock so the next session in this worktree doesn't see a phan
 
 Never set these globally — apply per-command only. Hard rules exist because real-world failures triggered them.
 
+### Env namespace — `ROLEPOD_*` vs `CLAUDE_CODE_*`
+
+Rolepod uses the `ROLEPOD_*` prefix exclusively for its bypass envs. This is **framework-scoped, not core-scoped** — completely separate from Anthropic's `CLAUDE_CODE_*` env namespace (which controls Claude Code's own runtime behavior).
+
+| Prefix | Owner | Scope |
+|---|---|---|
+| `CLAUDE_CODE_*` | Anthropic / Claude Code | Core CLI behavior (e.g. `CLAUDE_CODE_ADDITIONAL_DIRECTORIES_CLAUDE_MD`) |
+| `ROLEPOD_*` | Rolepod framework | Hook bypass + framework-level toggles |
+
+No collision possible — different prefixes, different consumers. But: if rolepod ever needs to override a Claude Code core behavior, use the `CLAUDE_CODE_*` env directly per Anthropic docs — don't shadow it with a `ROLEPOD_*` wrapper.
+
 ## Why hooks, not just doctrine
 
 Doctrine (CLAUDE.md text) tells the model what to do. Hooks **enforce** it. Models drift, especially under flow-state success cues — soft reminders get ignored. Hard blocks via `permissionDecision: deny` are the only mechanism that survives drift.

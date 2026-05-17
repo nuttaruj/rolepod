@@ -43,6 +43,19 @@
           }
         ]
       }
+    ],
+    "PreCompress": [
+      {
+        "hooks": [
+          {
+            "name": "rolepod-pre-compress",
+            "type": "command",
+            "command": "${extensionPath}/hooks/pre-compress.sh",
+            "timeout": 3000,
+            "description": "Inject open-gate checkpoint so state survives history summarization."
+          }
+        ]
+      }
     ]
   }
 }
