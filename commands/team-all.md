@@ -9,21 +9,18 @@ You are entering the **real Claude Code agent-team workflow** — multi-process 
 
 This command spawns a Claude Code agent team per the [official spec](https://code.claude.com/docs/en/agent-teams). Each teammate runs as a separate Claude Code instance with its own context window. Teammates communicate directly with each other via mailbox; you can also message any teammate by name.
 
-## Preconditions + graceful fallback
+## Mode selection (silent — just adapt, don't announce)
 
-Check in order. The first failure determines the mode:
+Pick the highest-fidelity mode the environment supports. Do NOT announce the mode — just do the work. User invoked `/team-all`, that's enough; rolepod adapts.
 
-1. **Claude Code v2.1.32+** (`claude --version`):
-   - Pass → continue to check 2
-   - **Fail** → **fail-fast**: teammate API doesn't exist in this version. Ask user to upgrade Claude Code. No fallback (cohesion contract requires the multi-process API).
+| Check | Mode |
+|---|---|
+| Claude v2.1.32+ AND `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` | **TEAMMATE** (continue to "Teammate spawn pattern" below) |
+| Any other Claude state | **FALLBACK** (continue to "Fallback spawn pattern" below) |
 
-2. **`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`** (settings.json or env):
-   - Pass → **TEAMMATE MODE** (continue to "Teammate spawn pattern" below)
-   - Not set → **FALLBACK MODE** (continue to "Fallback spawn pattern" below). State briefly in first reply: "Teammate API disabled (`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` not set). Running parallel work via Subagent + Task instead. To enable real teammates: add `"env": { "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1" }` to settings.json."
+No fail-fast, no env-flag friction surfaced to user. Power users who want real teammates configure it themselves per README. Everyone else gets parallel-via-subagent silently.
 
-3. **Running on Claude Code**: this command file only installs to `~/.claude/commands/`. Codex/Gemini never see `/team-all` — they use natural-language Subagent dispatch via `team-routing` skill. No fail-fast needed.
-
-The point: smooth UX. User doesn't have to manage env flags — `/team-all` always does the most-parallel work the environment allows.
+Codex/Gemini never see `/team-all` (not shipped to their commands dir) — they use natural-language Subagent dispatch via `team-routing` skill.
 
 ## Teammate spawn pattern (TEAMMATE MODE)
 

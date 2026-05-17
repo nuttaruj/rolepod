@@ -135,14 +135,22 @@ Shipped hooks auto-register in each CLI's native settings (idempotent). If MemPa
 
 After install, restart the CLI you targeted so hooks register.
 
-> **Power-user: Agent Teams (Claude Code only).**
-> `/team-all` spawns a real Claude Code agent team — multi-process teammates with shared task list + mailbox messaging per the [official agent-teams spec](https://code.claude.com/docs/en/agent-teams).
+> **`/team-all` — adaptive parallel orchestration (Claude only).**
+> Always works. Adapts silently to the environment:
+> - Claude v2.1.32+ AND `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` → real multi-process teammates per [official agent-teams spec](https://code.claude.com/docs/en/agent-teams)
+> - Any other Claude state → Subagent + Task + cohesion contract (single-process, same outcome shape)
 >
-> Requires `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` + Claude Code v2.1.32+. `disable-model-invocation: true` so Lead never auto-fires it — user invokes explicitly.
+> No friction either way — invoke it, get parallel work. Lead does not announce which mode it picked.
 >
-> Per-phase team commands (`/team-define`, `/team-build`, etc.) have been removed — they were subagent recipes (single-process) that Lead routinely pattern-matched into regular Subagent dispatch.
+> **Want real teammate mode?** Add to `~/.claude/settings.json`:
+> ```json
+> { "env": { "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1" } }
+> ```
+> Plus Claude Code v2.1.32+ (`claude --version`). Note: also set `ROLEPOD_ALLOW_SHARED_WORKTREE=1` before spawning the team so rolepod's session-lock hook doesn't warn on teammate sessions sharing the Lead's worktree.
 >
-> Codex / Gemini have no teammate equivalent — use default Subagent + Task via `team-routing` skill. See [docs/agent-teams.md](docs/agent-teams.md).
+> Per-phase team commands (`/team-define`, `/team-build`, etc.) removed — they were subagent recipes that Lead routinely pattern-matched into regular dispatch.
+>
+> Codex / Gemini have no `/team-all` command — use natural-language Subagent dispatch via `team-routing` skill. See [docs/agent-teams.md](docs/agent-teams.md).
 
 > **Note:** Adapter conformance verified by static checks (`bash -n`, `python3 -m json.tool`, `tomllib.load`). Runtime status per CLI — see table.
 

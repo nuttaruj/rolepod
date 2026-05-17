@@ -1,15 +1,6 @@
 ## Team workflow trigger (Claude only)
 
-Default = Subagent + Task spawn (single-process, all CLIs). Opt-in: **`/team-all`** slash command. Behavior adapts to environment — smooth UX, no friction on missing config:
-
-| Env state | `/team-all` mode |
-|---|---|
-| Claude v2.1.32+ + `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` | **TEAMMATE MODE** — real multi-process teammates per [official agent-teams spec](https://code.claude.com/docs/en/agent-teams), shared task list + mailbox messaging |
-| Claude v2.1.32+ + env flag NOT set | **FALLBACK MODE** — Lead orchestrates parallel Subagent + Task with cohesion contract, single-process. Lead announces the fallback briefly + suggests enabling the flag if user wants real teammates |
-| Claude < v2.1.32 | **FAIL-FAST** — upgrade required (teammate API unavailable; contract requires multi-process API) |
-| Codex / Gemini | `/team-all` not installed there. Use natural-language Subagent dispatch via `team-routing` skill |
-
-`/team-all` is `disable-model-invocation: true` — only user can fire it. Lead never auto-spawns a team.
+Default = Subagent + Task spawn (single-process, all CLIs). Opt-in: **`/team-all`** slash command — adapts silently to env (TEAMMATE mode when Claude v2.1.32+ + `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`, else FALLBACK via Subagent + Task + cohesion contract). Codex/Gemini don't ship `/team-all`; use natural-language Subagent dispatch via `team-routing` skill. Power users want real teammates: see README. `/team-all` is `disable-model-invocation: true` — only user can fire it.
 
 Per-phase team commands (`/team-define`, `/team-plan`, `/team-build`, `/team-verify`, `/team-review`, `/team-ship`) have been removed — they were subagent recipes that Lead routinely pattern-matched into regular Subagent dispatch (drift documented in commits `0f8de4f`, `6da9fe0`). For phase-scoped parallel work, tell `/team-all` to spawn teammates focused on that phase only.
 
