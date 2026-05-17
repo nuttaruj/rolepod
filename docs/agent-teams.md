@@ -1,229 +1,132 @@
-# Agent Teams — Lead-Orchestrated Recipes
+# Agent Teams (Claude only)
 
-> **Disambiguation.** Rolepod's "team workflow" / `/team-*` slash commands are a **single-session orchestration pattern**: Lead spawns specialist subagents via the Task tool, all coordinated inside one Claude Code session.
->
-> Anthropic's experimental **agent-teams feature** (gated by `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`, see [official doc](https://code.claude.com/docs/en/agent-teams)) is a **separate multi-process model** — each teammate is its own Claude Code instance with shared task list + mailbox. Different mechanism, different cost profile, different runtime state at `~/.claude/teams/{name}/config.json`.
->
-> Both can coexist. Rolepod's pattern works in any Claude Code version + on Codex/Gemini (via default Subagent + Task pattern). Anthropic's experimental feature requires v2.1.32+ and env opt-in.
+`/team-all` spawns a real Claude Code agent team — multi-process teammates with shared task list and direct mailbox messaging. This is the [official agent-teams feature](https://code.claude.com/docs/en/agent-teams), NOT rolepod's old subagent-recipe pattern.
 
-> **Claude Code only.** Codex CLI and Gemini CLI Leads use the default Subagent + Task pattern. The `team-trigger` rule fragment and `/team-*` slash commands are deliberately NOT shipped into Codex `AGENTS.md` or Gemini `GEMINI.md` — those CLIs don't have a slash-command schema that maps cleanly, and surfacing Claude-specific instructions there would confuse the agent.
+## Preconditions
 
-Power-user pattern for multi-phase, multi-agent work. Opt-in. Default rolepod behavior (Subagent + Task spawn) is unchanged.
-
-## Caveat — Anthropic agent-teams compatibility
-
-Rolepod's subagent definitions (`core/agents/*.md`) can be used as teammate types in Anthropic's experimental agent-teams. However, per the official doc:
-
-> "The `skills` and `mcpServers` frontmatter fields in a subagent definition are not applied when that definition runs as a teammate."
-
-Rolepod adds `skills:` preload to specialist agents (e.g. `qa-tester` preloads `reviewer-flow`, `post-change-verify`, etc.). When invoked as a regular subagent via Task tool, these load. **When invoked as an Anthropic agent-teams teammate, they will NOT load** — the teammate falls back to project/user-level skill resolution. Plan accordingly if you're combining both patterns.
-
-Reference: https://code.claude.com/docs/en/agent-teams
-
-## Two opt-in patterns
-
-Team mode has two distinct invocation shapes. Pick based on whether you want team coordination across the whole lifecycle or just one phase.
-
-### Pattern A — Full-lifecycle team
-
-Explicit slash command `/team-all` → Lead runs every phase via team recipes.
-For: end-to-end max effort on big features.
-
-```
-User: /team-all "Add Stripe billing — high-risk"
-Lead: define → plan → build → verify → review → ship
-      All 6 phases use multi-agent coordinated dispatch.
-      CEO sees final result after Ship.
-```
-
-**Why `/team-all` and not plain "use team"?** Plain trigger phrases ("use team", "use the team", "run team workflow") proved unreliable — Lead routinely pattern-matched them as regular subagent dispatch and skipped team recipes. The slash command is `disable-model-invocation: true` so it can ONLY fire from explicit user invocation, eliminating drift.
-
-### Pattern B — Surgical team
-
-Slash command (`/team-<phase>`) → only that phase uses team.
-For: focused intensity on one phase, default elsewhere.
-
-```
-User: /team-build "auth refactor across 30 files"
-Lead orchestration:
-  Define   → default Subagent (or skip if intent clear)
-  Plan     → default Subagent (system-architect alone)
-  Build    → /team-build recipe ★ multi-agent parallel via cohesion contract
-  Verify   → default Subagent (qa-tester floor)
-  Review   → default Subagent (universal-reviewer)
-  Ship     → default Subagent (devops-sre)
-
-Team mode active ONLY in Build phase. Lead returns to default Subagent for rest.
-```
-
-### Slash commands run individually
-
-Each slash command processes one phase per input. Claude Code does not chain slash commands. After Lead finishes a phase, ask for the next:
-
-```
-User: /team-build "auth refactor"
-Lead: [runs build phase] → "Build done. Next?"
-User: /team-review                              # separate input
-Lead: [runs review phase] → "Review done."
-```
-
-### Multi-phase surgical via natural language
-
-For surgical opt-in on multiple specific phases in one go, use natural language:
-
-```
-User: "Auth refactor — use team for build and review, default for rest"
-Lead detects intent → applies team mode to those 2 phases:
-  Define   → default Subagent
-  Plan     → default Subagent
-  Build    → team recipe ★
-  Verify   → default Subagent
-  Review   → team recipe ★
-  Ship     → default Subagent
-```
-
-Lead orchestrates per intent — no slash chaining required.
-
-### Mandatory gates regardless of pattern
-
-Both patterns enforce: T1-T6, S1-S5, F1-F5, pre-merge-gate, CI 3-phase.
-Team mode ≠ gate skip. Same quality bar.
-
-## Overview
-
-Two orchestration patterns coexist:
-
-| Pattern | When | How |
-|---------|------|-----|
-| **Subagent** (default) | Single-task delegation, ad-hoc | Lead spawns one Task per need (covers 80%+ of work) |
-| **Team** (opt-in) | Big feature, multi-phase, high coordination | Lead runs a lifecycle recipe — spawns multiple agents per phase with cohesion contract |
-
-Same 18 specialists. Different orchestration shape.
-
-## Why Lead-orchestrated (no YAML pre-auth)
-
-Anthropic's Agent Teams runtime manages team configuration schema in `~/.claude/teams/`. Rolepod does NOT pre-author those YAML files — they're Anthropic's domain. Instead rolepod ships:
-
-- A trigger fragment (`team-trigger.md`) that teaches the Lead when + how to switch into team mode
-- 6 slash commands (`/team-define` etc.) that load the relevant recipe
-- A docs reference (this file) for power users
-
-Lead reads the recipe, then spawns agents via the standard Task tool. Anthropic's runtime can layer YAML team configs on top whenever the user wants — rolepod stays out of the way.
-
-## 6 lifecycle recipes
-
-### `/team-define` — frame intent → spec
-
-- Spawn: `product-manager` + `business-analyst` + `system-architect`
-- Output: `SPEC.md`
-- Gate focus: verify-first (intent verification)
-- Use when: vague feature request, no spec yet
-
-### `/team-plan` — spec → ordered tasks + cohesion contract
-
-- Spawn: `system-architect` (contract + RED tests) + `product-manager` (task breakdown)
-- Path joiners: `billing-engineer` / `ai-ml-engineer` / `security-engineer` / `data-scientist`
-- Output: `contract.md` + RED tests + task list
-- Gate focus: Q1-Q4 delegation
-- Use when: SPEC.md exists, ready to break into work
-
-### `/team-build` — tasks → code (parallel-safe by path)
-
-- Spawn parallel: engineers by path
-- Owner: `system-architect` (contract enforcer)
-- Cycle: RED → GREEN → REFACTOR
-- Gate focus: S1-S5 simplicity + F1-F5 failure-mode
-- Use when: contract + RED tests ready, multiple paths touched
-
-### `/team-verify` — code → evidence
-
-- Spawn: `qa-tester` (always) + `security-engineer` (auth/billing) + `performance-engineer` (perf-sensitive)
-- Output: test evidence + security report + perf delta
-- Gate focus: T1-T6 testing, verify-first
-- Use when: code merged from `/team-build`, need auditable evidence
-
-### `/team-review` — evidence → adversarial pass
-
-- Spawn: `universal-reviewer` + `qa-tester` (review-mode)
-- Adversarial: `doubt-driven-development` cycle, bounded 3 rounds
-- High-risk: escalate to Codex (and Gemini for >30 files)
-- Gate focus: pre-merge-gate, hard stops
-- Use when: evidence clean, need ship sign-off
-
-### `/team-ship` — approved → deploy + announce
-
-- Spawn: `devops-sre` + `tech-writer` + `growth-marketer` + `customer-success`
-- Skip lanes that don't apply (internal-only → no marketer)
-- Gate focus: CI 3-phase, auto-merge rule
-- Use when: review green, ready to deploy
-
-## Triggers
-
-**Slash commands only** (Claude). Natural-language triggers were retired because Lead routinely pattern-matched them as regular subagent dispatch.
-
-| Command | Scope |
+| Requirement | Why |
 |---|---|
-| `/team-all` | All 6 phases (full lifecycle) |
-| `/team-define` | Define phase only |
-| `/team-plan` | Plan phase only |
-| `/team-build` | Build phase only |
-| `/team-verify` | Verify phase only |
-| `/team-review` | Review phase only |
-| `/team-ship` | Ship phase only |
+| Claude Code v2.1.32+ | Agent teams API introduced in this version. Check: `claude --version`. |
+| `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` | Experimental flag, disabled by default. Set in `settings.json` or shell env. |
+| Claude Code as the CLI | Codex + Gemini have no teammate equivalent. |
 
-All have `disable-model-invocation: true` so Lead can't auto-fire them — explicit user invocation required. For multi-phase surgical via natural language (e.g. "use team for build and review, default for rest"), see [Pattern C above](#multi-phase-surgical-via-natural-language).
+```json settings.json
+{
+  "env": {
+    "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"
+  }
+}
+```
 
-## Composability
+If any precondition fails, `/team-all` fails fast with the missing-piece guidance — no silent fallback to subagent recipe.
 
-Inside any team phase, Lead can still spawn ad-hoc Subagents for narrow tasks. Example: during `/team-build`, an engineer hits a blocker → Lead spawns the `systematic-debugging` skill workflow as a standalone subagent, then resumes the team.
+## How it differs from subagents
 
-Mix is the default. Team is not a lock-in.
+| Aspect | Default Subagent + Task | Agent team (`/team-all`) |
+|---|---|---|
+| Process model | Single Claude session, Lead spawns sub-context via Task tool | Multi-process — each teammate = full Claude Code instance |
+| Communication | Subagent reports back to Lead only | Teammates message each other directly + Lead can talk to any teammate |
+| Context window | Subagent has own context but it's a forked context | Each teammate has independent context window from spawn |
+| Coordination | Lead orchestrates everything | Shared task list + self-claim + lead can intervene |
+| Token cost | ~1× per subagent invocation | Linear: N teammates × N independent contexts |
+| Resume | `/resume` works | No `/resume` for in-process teammates (upstream limitation) |
+| CLI support | Cross-CLI (Claude / Codex / Gemini) | Claude only |
+| Stability | Stable | Experimental |
 
-## Subagent vs. Team — quick comparison
+## When to use `/team-all`
 
-| Concern | Subagent (default) | Team (opt-in) |
-|---------|-------------------|----------------|
-| Scope | One task | Whole lifecycle phase |
-| Agents per spawn | 1 | 2-4 |
-| Coordination | Lead reads result | Cohesion contract + integration tests |
-| Phase awareness | Implicit | Explicit recipe |
-| Output | Diff or report | Phase artifact (SPEC / contract / evidence / deploy) |
-| Cost | Low | Higher (parallel agents) |
-| Best for | <3-file fix, narrow investigation | Big feature, multi-system change |
+Per official guidance, agent teams shine on:
 
-## CEO interaction pattern
+| Use case | Why team helps |
+|---|---|
+| **Research + review** | Parallel exploration of different aspects, then cross-challenge findings |
+| **New feature with cross-domain impact** | Each teammate owns frontend / backend / DB / tests independently |
+| **Refactor across modules** | One teammate per module, no file-conflict overlap |
+| **Debugging with competing hypotheses** | Adversarial debate — teammates try to disprove each other |
+| **High-risk surface (auth/billing/migrations)** | Multiple independent reviewers + implementers, lower bug-survival rate |
 
-Lead is your team's CEO. CEO does NOT micromanage:
-- Spawns the team per recipe
-- Reviews final output (SPEC.md / contract / evidence / deploy report)
-- Asks user only on ambiguity, hard stop, or destructive op
+When NOT to use:
+- Single-file change
+- Typo / docs edit
+- Hotfix
+- Sequential work with many dependencies (team-coordination overhead > benefit)
+- Token budget tight (4-teammate team ≈ 4× cost)
 
-CEO interaction = one approval per phase (where required), not per agent spawn.
+## Spawn pattern
 
-## Claude-specific notes
+Default suggested composition for a full lifecycle (3-5 teammates per official guidance):
 
-- **Experimental flag** (optional, if Anthropic's runtime requires it): set `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` in your shell or `.envrc`. Rolepod does not require this flag — recipes work as Lead-orchestration even without it.
-- **Version**: Claude Code 2.1.32+ recommended for native Agent Teams runtime support if/when Anthropic ships YAML team configs.
-- **Slash commands** live in `~/.claude/commands/team-*.md` after `install.sh` runs.
+```
+/team-all "Add Stripe billing — high-risk"
+```
 
-## Codex / Gemini notes
+The command body in `commands/team-all.md` instructs Lead to:
+1. Verify preconditions (version + env flag + CLI)
+2. Pick 3-5 teammates using rolepod subagent definitions (system-architect, backend/frontend/mobile-developer per `team-routing` skill, qa-tester, etc.)
+3. Have system-architect teammate write the cohesion contract FIRST
+4. Other teammates read contract before implementing
+5. qa-tester teammate blocks task-completion if evidence missing
+6. For high-risk surface: teammates ALSO invoke Codex + Gemini via Bash per `reviewer-flow` skill
 
-Codex and Gemini get the `team-trigger.md` fragment in their entry docs (`AGENTS.md` / `GEMINI.md`) so the Lead knows the recipes exist. They do NOT get the 6 slash commands — those are Claude-only.
+### Manual fine-grain control
 
-Lead under Codex / Gemini can still orchestrate equivalently:
-- Read the recipe from the entry doc's "Team workflow trigger" section
-- Spawn the same 18 agents via Codex's / Gemini's native dispatch
-- Apply the same gates (S1-S5, T1-T6, Q1-Q4, F1-F5)
+Use plain prompts to Lead for surgical team work — no slash command needed:
 
-The orchestration logic is portable. Only the slash-command surface differs.
+```
+Spawn a 3-teammate agent team to investigate the auth-bug at src/auth/login.ts.
+Teammate 1: race-condition hypothesis.
+Teammate 2: token-expiry hypothesis.
+Teammate 3: middleware-ordering hypothesis.
+Have them message each other to disprove the other theories.
+```
 
-## When NOT to use Team
+This is the official pattern for [competing hypotheses](https://code.claude.com/docs/en/agent-teams#investigate-with-competing-hypotheses). Lead reads the prompt + spawns the team.
 
-Default Subagent is the right call when:
-- Single-file fix / typo / quick refactor
-- Tasks needing <3 agents
-- Independent investigations (qa OR security OR perf alone)
-- Lead's Q1-Q4 already routes correctly
-- Time-sensitive hotfix (recipe overhead > value)
+## Rolepod gates inside teammates
 
-Team trigger is opt-in for a reason — overhead pays off only when coordination is the bottleneck.
+Each teammate is a full Claude Code session — meaning rolepod's CLAUDE.md + skills + hooks all load. Gates that fire inside each teammate:
+
+- **S1-S5 / T1-T6 / F1-F5** — every teammate's pre-commit / pre-edit checks.
+- **`block-subagent-commit.sh`** — teammates can NOT `git commit` directly. Lead commits after teammates report COMPLETED + evidence.
+- **`gate-reminder.sh`** — high-risk path detection fires per teammate edit.
+- **`reviewer-flow` skill** — adversarial review (Codex + Gemini both if available) still applies inside teammates.
+- **`session-lock.sh`** — does NOT fire across teammates (same worktree shared by design).
+
+Lead's job is coordination + cleanup. Gate enforcement is per-teammate.
+
+## Why no per-phase team commands
+
+Previous rolepod versions shipped `/team-define`, `/team-plan`, `/team-build`, `/team-verify`, `/team-review`, `/team-ship` as subagent recipes (single-process). These have been removed because:
+
+1. **Lead drifted on the trigger phrase** — pattern-matched "team" prompts into regular Subagent dispatch and skipped the recipe entirely (drift documented in commits `0f8de4f`, `6da9fe0`).
+2. **They duplicated default Subagent + Task tool** — Lead can already spawn N subagents in parallel within one session; the recipe added doctrine but no execution mechanism.
+3. **They confused "team" semantics** — users expected multi-process teammates (the official Claude feature), got single-process recipes instead.
+
+For phase-scoped parallel work, tell `/team-all` to spawn teammates focused on that phase:
+
+```
+/team-all "Just the Build phase — spawn 3 engineers in parallel,
+each owning a different module of the auth refactor."
+```
+
+Lead will spawn 3 teammates scoped to Build, skipping Define/Plan/etc. (the prompt narrows the scope).
+
+## Limitations (from upstream)
+
+Per [official docs](https://code.claude.com/docs/en/agent-teams#limitations):
+- No session resumption for in-process teammates
+- One team per Lead at a time
+- No nested teams
+- Lead is fixed (can't transfer leadership)
+- Tmux or iTerm2 required for split-pane mode
+- Permissions set at spawn
+
+These are upstream constraints — rolepod cannot work around them.
+
+## See also
+
+- [Official Claude Code agent-teams docs](https://code.claude.com/docs/en/agent-teams)
+- `commands/team-all.md` — the slash command body
+- `core/skills/team-routing/SKILL.md` — picks which subagent definition each teammate uses
+- `core/skills/parallel-contract-orchestration/SKILL.md` — cohesion contract pattern (teammates share)
+- `core/skills/reviewer-flow/SKILL.md` — adversarial review rule (applies inside teammates)

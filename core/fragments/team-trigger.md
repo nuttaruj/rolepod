@@ -1,3 +1,16 @@
-## Team workflow trigger
+## Team workflow trigger (Claude only)
 
-Default = Subagent + Task spawn. Opt-in: **`/team-all`** explicit slash command → all 6 phases (5-10x cost) · `/team-<phase>` → that phase only. Plain trigger phrases like "use team" no longer fire team workflow — Lead routinely pattern-matched them as regular subagent dispatch instead. `/team-all` is `disable-model-invocation: true` so Lead can't auto-trigger it; user must invoke. Recipes (phase → spawn → gate): **define** product-manager+business-analyst+system-architect / verify-first · **plan** system-architect (contract+RED)+product-manager / Q1-Q4 · **build** parallel engineers by path, owner=system-architect / S1-S5,F1-F5 · **verify** qa-tester+security-engineer+performance-engineer / T1-T6 · **review** universal-reviewer+qa-tester (doubt-driven bounded 3) / pre-merge · **ship** devops-sre+tech-writer+growth-marketer+customer-success / CI 3-phase. Mandatory gates apply both. Skip for single-file/typo / <3 agents / independent / hotfix. Rolepod team = single-session Lead orchestration via Task tool. NOT Anthropic experimental agent-teams (CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1; multi-process). Both coexist.
+Default = Subagent + Task spawn (single-process, all CLIs). Opt-in: **`/team-all`** slash command spawns a real Claude Code agent team — multi-process teammates with shared task list + mailbox messaging per the [official agent-teams spec](https://code.claude.com/docs/en/agent-teams).
+
+Preconditions:
+- Claude Code v2.1.32+
+- `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` in settings.json or env
+- Claude-only — Codex + Gemini have no teammate equivalent; on those CLIs use default Subagent + Task via `team-routing` skill
+
+`/team-all` is `disable-model-invocation: true` — only user can fire it. Lead never auto-spawns a team.
+
+Per-phase team commands (`/team-define`, `/team-plan`, `/team-build`, `/team-verify`, `/team-review`, `/team-ship`) have been removed — they were subagent recipes that Lead routinely pattern-matched into regular Subagent dispatch (drift documented in commits `0f8de4f`, `6da9fe0`). For phase-scoped parallel work, tell `/team-all` to spawn teammates focused on that phase only.
+
+Cost: each teammate = separate Claude instance with own context window. 4-teammate team ≈ 4× single-session tokens. Use for genuinely parallel work (cross-domain features, parallel investigation, multi-module refactor) — for sequential / trivial tasks, default Subagent + Task is more cost-effective.
+
+Mandatory gates (S1-S5 / T1-T6 / F1-F5 / verify-first / reviewer-flow) fire inside each teammate — rolepod CLAUDE.md + skills load in every teammate session. Lead's job = coordination, not gate enforcement.

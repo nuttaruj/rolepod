@@ -135,11 +135,14 @@ Shipped hooks auto-register in each CLI's native settings (idempotent). If MemPa
 
 After install, restart the CLI you targeted so hooks register.
 
-> **Power-user: Agent Teams (Claude Code only) — two opt-in patterns.**
-> - `/team-all` → full-lifecycle (all 6 phases use team recipes). Plain trigger phrases like "use team" no longer fire team mode; the explicit slash command is required so Lead can't pattern-match it as regular subagent dispatch.
-> - `/team-build` / `/team-verify` / etc. → surgical (that phase only)
+> **Power-user: Agent Teams (Claude Code only).**
+> `/team-all` spawns a real Claude Code agent team — multi-process teammates with shared task list + mailbox messaging per the [official agent-teams spec](https://code.claude.com/docs/en/agent-teams).
 >
-> Codex / Gemini Leads use default Subagent + Task pattern. See [docs/agent-teams.md](docs/agent-teams.md).
+> Requires `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` + Claude Code v2.1.32+. `disable-model-invocation: true` so Lead never auto-fires it — user invokes explicitly.
+>
+> Per-phase team commands (`/team-define`, `/team-build`, etc.) have been removed — they were subagent recipes (single-process) that Lead routinely pattern-matched into regular Subagent dispatch.
+>
+> Codex / Gemini have no teammate equivalent — use default Subagent + Task via `team-routing` skill. See [docs/agent-teams.md](docs/agent-teams.md).
 
 > **Note:** Adapter conformance verified by static checks (`bash -n`, `python3 -m json.tool`, `tomllib.load`). Runtime status per CLI — see table.
 
