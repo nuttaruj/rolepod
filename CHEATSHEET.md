@@ -154,7 +154,7 @@ Lead = Opus → skip Advisor.
 | One-shot | `claude -p "..."` | `codex exec "..."` | `gemini -p "..."` |
 | Rolepod commands | `/careful` + `/team-define /team-plan /team-build /team-verify /team-review /team-ship` | n/a | `/careful /ship /review /test /plan /spec` |
 
-> **Team workflow (Claude).** "use team" → all 6 phases. `/team-<phase>` → that phase only. Mandatory gates always apply. See [docs/agent-teams.md](docs/agent-teams.md).
+> **Team workflow (Claude).** `/team-all` → all 6 phases. `/team-<phase>` → that phase only. Mandatory gates always apply. See [docs/agent-teams.md](docs/agent-teams.md).
 
 ## Skill picker — quick lookup
 

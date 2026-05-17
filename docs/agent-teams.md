@@ -26,15 +26,17 @@ Team mode has two distinct invocation shapes. Pick based on whether you want tea
 
 ### Pattern A — Full-lifecycle team
 
-Broad trigger ("use team") → Lead runs every phase via team recipes.
+Explicit slash command `/team-all` → Lead runs every phase via team recipes.
 For: end-to-end max effort on big features.
 
 ```
-User: "Add Stripe billing — use team workflow, high-risk"
-Lead: /team-define → /team-plan → /team-build → /team-verify → /team-review → /team-ship
+User: /team-all "Add Stripe billing — high-risk"
+Lead: define → plan → build → verify → review → ship
       All 6 phases use multi-agent coordinated dispatch.
       CEO sees final result after Ship.
 ```
+
+**Why `/team-all` and not plain "use team"?** Plain trigger phrases ("use team", "use the team", "run team workflow") proved unreliable — Lead routinely pattern-matched them as regular subagent dispatch and skipped team recipes. The slash command is `disable-model-invocation: true` so it can ONLY fire from explicit user invocation, eliminating drift.
 
 ### Pattern B — Surgical team
 
@@ -157,25 +159,19 @@ Lead reads the recipe, then spawns agents via the standard Task tool. Anthropic'
 
 ## Triggers
 
-Either form works:
+**Slash commands only** (Claude). Natural-language triggers were retired because Lead routinely pattern-matched them as regular subagent dispatch.
 
-**Natural language**
-- "use team"
-- "team workflow"
-- "with team"
-- "as a team"
-- "big feature, team"
-- "use teams"
+| Command | Scope |
+|---|---|
+| `/team-all` | All 6 phases (full lifecycle) |
+| `/team-define` | Define phase only |
+| `/team-plan` | Plan phase only |
+| `/team-build` | Build phase only |
+| `/team-verify` | Verify phase only |
+| `/team-review` | Review phase only |
+| `/team-ship` | Ship phase only |
 
-**Slash commands** (Claude only)
-- `/team-define`
-- `/team-plan`
-- `/team-build`
-- `/team-verify`
-- `/team-review`
-- `/team-ship`
-
-If trigger is vague ("use team") → Lead detects scope and starts at the matching phase (typically `/team-define`).
+All have `disable-model-invocation: true` so Lead can't auto-fire them — explicit user invocation required. For multi-phase surgical via natural language (e.g. "use team for build and review, default for rest"), see [Pattern C above](#multi-phase-surgical-via-natural-language).
 
 ## Composability
 

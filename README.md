@@ -136,7 +136,7 @@ Shipped hooks auto-register in each CLI's native settings (idempotent). If MemPa
 After install, restart the CLI you targeted so hooks register.
 
 > **Power-user: Agent Teams (Claude Code only) — two opt-in patterns.**
-> - Broad trigger "use team" → full-lifecycle (all 6 phases use team recipes)
+> - `/team-all` → full-lifecycle (all 6 phases use team recipes). Plain trigger phrases like "use team" no longer fire team mode; the explicit slash command is required so Lead can't pattern-match it as regular subagent dispatch.
 > - `/team-build` / `/team-verify` / etc. → surgical (that phase only)
 >
 > Codex / Gemini Leads use default Subagent + Task pattern. See [docs/agent-teams.md](docs/agent-teams.md).
