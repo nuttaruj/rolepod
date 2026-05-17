@@ -83,12 +83,13 @@ Routing canonical: skill `reviewer-flow`.
 
 Quick:
 - `<5 files` → qa-tester only
-- `5-30 files` → Gemini + qa-tester
-- `>30 files` → Gemini + qa-tester + Codex (risky)
-- High-risk surface (auth/billing/migration/locks/external) → Codex adversarial + qa-tester
-- UI / frontend → Gemini + qa-tester
+- `5-30 files` → Gemini + qa-tester (+ Codex if available)
+- `>30 files` → **Codex + Gemini + qa-tester** (all 3)
+- High-risk surface (auth/billing/migration/locks/external) → **Codex + Gemini + qa-tester** (both adversarial reviewers, never one alone)
+- UI / frontend → Gemini + qa-tester (+ Codex if available)
 
 **qa-tester = minimum floor. Never skip.**
+**Both Codex AND Gemini if both installed.** Picking only one (usually Codex) is the most common drift — they cover different surfaces (depth vs breadth), not redundant.
 
 ## Step 2 — Run reviewers
 

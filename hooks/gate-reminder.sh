@@ -108,10 +108,17 @@ fi
 # alone and forgets external reviewers exist.
 CAREFUL_BANNER=""
 if [ -n "$HIGH_RISK" ]; then
+  HAS_CODEX_BIN=0; HAS_GEMINI_BIN=0
+  command -v codex  >/dev/null 2>&1 && HAS_CODEX_BIN=1
+  command -v gemini >/dev/null 2>&1 && HAS_GEMINI_BIN=1
   REVIEWER_LIST="qa-tester"
-  command -v codex  >/dev/null 2>&1 && REVIEWER_LIST="$REVIEWER_LIST + Codex (\`codex exec\`, adversarial)"
-  command -v gemini >/dev/null 2>&1 && REVIEWER_LIST="$REVIEWER_LIST + Gemini (\`gemini -p\`, cross-file)"
-  CAREFUL_BANNER="⚠️  AUTO-CAREFUL MODE (high-risk path, session: $HIGH_RISK_EDITS high-risk edits / $TEST_EDITS tests / $REVIEWERS reviewers). MANDATORY before more edits: (1) test file exists or is being written this session, (2) reviewers dispatched — use ≥2 when available (${REVIEWER_LIST}; security-engineer for auth/billing/crypto), (3) S1-S5 + T1-T6 checklist run before commit. Soft-mode opt-out: ROLEPOD_GATES_SOFT=1. "
+  [ "$HAS_CODEX_BIN" -eq 1 ] && REVIEWER_LIST="$REVIEWER_LIST + Codex (\`codex exec\`, depth/security)"
+  [ "$HAS_GEMINI_BIN" -eq 1 ] && REVIEWER_LIST="$REVIEWER_LIST + Gemini (\`gemini -m pro -p\`, breadth/cross-file)"
+  BOTH_RULE=""
+  if [ "$HAS_CODEX_BIN" -eq 1 ] && [ "$HAS_GEMINI_BIN" -eq 1 ]; then
+    BOTH_RULE=" Both Codex AND Gemini installed → use BOTH on high-risk (not Codex alone — that's the documented drift)."
+  fi
+  CAREFUL_BANNER="⚠️  AUTO-CAREFUL MODE (high-risk path, session: $HIGH_RISK_EDITS high-risk edits / $TEST_EDITS tests / $REVIEWERS reviewers). MANDATORY before more edits: (1) test file exists or is being written this session, (2) reviewers dispatched — use ≥2 when available (${REVIEWER_LIST}; security-engineer for auth/billing/crypto).${BOTH_RULE} (3) S1-S5 + T1-T6 checklist run before commit. Soft-mode opt-out: ROLEPOD_GATES_SOFT=1. "
 fi
 
 # Emit reminder as additionalContext

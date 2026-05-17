@@ -74,14 +74,18 @@ NOT sandboxed like Codex. Treat as untrusted:
 | Profile | Reviewers |
 |---------|-----------|
 | **<5 files** (hotfix) | qa-tester solo |
-| **5-30 files** (feature) | Gemini → qa-tester |
-| **>30 files** (refactor/epic) | Gemini all + qa-tester core + Codex risky |
-| **High-risk surface** | Codex adversarial → qa-tester |
-| **Frontend / UI** | Gemini + qa-tester |
+| **5-30 files** (feature) | Gemini + qa-tester (+ Codex if available) |
+| **>30 files** (refactor/epic) | **Codex + Gemini + qa-tester** (all 3) |
+| **High-risk surface** | **Codex + Gemini + qa-tester** (all 3 — both adversarial reviewers, never one) |
+| **Frontend / UI** | Gemini + qa-tester (+ Codex if available) |
 
 ### Skip rule
 
 Drop reviewer if strength doesn't match. Don't trigger Codex on UI-only. Don't trigger Gemini on tiny hotfix.
+
+### Don't default to Codex alone
+
+If Codex AND Gemini are both available (check SessionStart context loader), HIGH-RISK + LARGE-REFACTOR profiles use BOTH. Picking only Codex is the most common drift. They cover different surfaces: Codex = depth/correctness/security, Gemini = breadth/cross-file/smell. Both = orthogonal coverage, not redundant.
 
 ### Roles within profile
 

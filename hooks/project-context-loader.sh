@@ -79,14 +79,22 @@ warn_once "first-session" "First session for this project → MemPalace will sta
 # Graceful: only mention installed binaries — users who skipped --full
 # never see Codex / Gemini lines.
 EXT_REVIEWERS=""
+HAS_CODEX=0
+HAS_GEMINI=0
 if command -v codex >/dev/null 2>&1; then
-  EXT_REVIEWERS="$EXT_REVIEWERS · **Codex** (\`codex exec --skip-git-repo-check '<prompt>'\` — correctness + security + adversarial)"
+  EXT_REVIEWERS="$EXT_REVIEWERS · **Codex** (\`codex exec --skip-git-repo-check '<prompt>'\` — depth: correctness + security + adversarial)"
+  HAS_CODEX=1
 fi
 if command -v gemini >/dev/null 2>&1; then
-  EXT_REVIEWERS="$EXT_REVIEWERS · **Gemini** (\`gemini -p '<prompt>'\` — breadth + cross-file + code smell)"
+  EXT_REVIEWERS="$EXT_REVIEWERS · **Gemini** (\`gemini -m pro -p '<prompt>'\` — breadth: cross-file + code smell + naming)"
+  HAS_GEMINI=1
 fi
 if [ -n "$EXT_REVIEWERS" ]; then
-  CTX="$CTX\n\n## Reviewers available this session\n- **qa-tester** (Task tool — universal floor, business logic + tests)${EXT_REVIEWERS}\n\nHigh-risk surface (auth / billing / migrations / crypto / payments / external integration) → use **≥2 reviewers** per skill \`reviewer-flow\`. Don't default to qa-tester alone when Codex / Gemini are available."
+  BOTH_NOTE=""
+  if [ "$HAS_CODEX" -eq 1 ] && [ "$HAS_GEMINI" -eq 1 ]; then
+    BOTH_NOTE="\n\n**Both Codex AND Gemini installed → use BOTH on high-risk + large refactor.** Codex = depth, Gemini = breadth — orthogonal coverage, not redundant. Picking only one (usually Codex) is the documented drift; the rule is \`reviewer-flow\` ≥2 external reviewers when both available."
+  fi
+  CTX="$CTX\n\n## Reviewers available this session\n- **qa-tester** (Task tool — universal floor, business logic + tests)${EXT_REVIEWERS}\n\nHigh-risk surface (auth / billing / migrations / crypto / payments / external integration) → use **≥2 reviewers** per skill \`reviewer-flow\`. Don't default to qa-tester alone when Codex / Gemini are available.${BOTH_NOTE}"
 fi
 
 python3 -c "
