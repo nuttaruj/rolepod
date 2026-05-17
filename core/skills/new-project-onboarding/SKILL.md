@@ -2,6 +2,8 @@
 name: new-project-onboarding
 description: Onboard fast to an unfamiliar codebase — detect stack, find conventions, identify entry points.
 when_to_use: '"first time in repo", "/init", "unfamiliar project", "bootstrap mode", "new project", "learn this codebase"'
+context: fork
+agent: Explore
 ---
 
 # New Project — fast onboarding

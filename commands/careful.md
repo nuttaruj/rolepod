@@ -1,5 +1,6 @@
 ---
 description: Toggle careful mode for high-risk operations — extra verification, smaller increments, mandatory peer review.
+disable-model-invocation: true
 ---
 
 # Careful Mode

@@ -483,6 +483,7 @@ Personal workflow system. Fork freely. Send feedback via issues — especially C
 ## See also
 
 - [`docs/cli-support.md`](docs/cli-support.md) — per-CLI capability matrix + primitives
+- [`docs/hooks.md`](docs/hooks.md) — 10 hooks reference (triggers, gates, bypass envs)
 - [`CHEATSHEET.md`](CHEATSHEET.md) — 1-page quick reference
 - [`core/rules/INDEX.md`](core/rules/INDEX.md) — full rule trigger map
 - [`core/skills/team-routing/SKILL.md`](core/skills/team-routing/SKILL.md) — agent picker + parallel pattern

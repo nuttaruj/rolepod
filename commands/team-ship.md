@@ -1,5 +1,6 @@
 ---
 description: Invoke Team-ship phase — approved → deploy + announce + post-ship support
+disable-model-invocation: true
 ---
 
 # Team Ship Recipe
