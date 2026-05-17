@@ -7,7 +7,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash ${CODEX_PLUGIN_DIR}/hooks/project-context-loader.sh",
+            "command": "bash ${PLUGIN_ROOT}/hooks/project-context-loader.sh",
             "statusMessage": "Loading project context"
           }
         ]
@@ -19,7 +19,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash ${CODEX_PLUGIN_DIR}/hooks/gate-reminder.sh",
+            "command": "bash ${PLUGIN_ROOT}/hooks/gate-reminder.sh",
             "timeout": 5
           }
         ]
@@ -29,7 +29,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash ${CODEX_PLUGIN_DIR}/hooks/precommit-gate.sh",
+            "command": "bash ${PLUGIN_ROOT}/hooks/precommit-gate.sh",
             "timeout": 5
           }
         ]
@@ -41,7 +41,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash ${CODEX_PLUGIN_DIR}/hooks/verify-reminder.sh",
+            "command": "bash ${PLUGIN_ROOT}/hooks/verify-reminder.sh",
             "timeout": 5
           }
         ]
@@ -51,7 +51,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash ${CODEX_PLUGIN_DIR}/hooks/post-ship-detect.sh",
+            "command": "bash ${PLUGIN_ROOT}/hooks/post-ship-detect.sh",
             "timeout": 10
           }
         ]

@@ -645,6 +645,17 @@ PY
       do_or_dry "rm -rf $X_TARGET/plugins/cache/rolepod" rm -rf "$X_TARGET/plugins/cache/rolepod"
     fi
 
+    # Remove rolepod-*.toml agents installed under $X_TARGET/agents/ (install
+    # step copies adapters/codex/plugins/rolepod/agents/*.toml with rolepod-
+    # prefix). User-authored agents without the prefix are preserved.
+    if [ -d "$X_TARGET/agents" ]; then
+      ROLEPOD_AGENTS=$(ls "$X_TARGET/agents"/rolepod-*.toml 2>/dev/null | wc -l | tr -d ' ')
+      if [ "$ROLEPOD_AGENTS" -gt 0 ]; then
+        step "Removing $ROLEPOD_AGENTS rolepod agents at $X_TARGET/agents/rolepod-*.toml"
+        do_or_dry "rm -f $X_TARGET/agents/rolepod-*.toml" sh -c "rm -f \"$X_TARGET/agents\"/rolepod-*.toml"
+      fi
+    fi
+
     if [ "$DRY_RUN" -eq 0 ]; then
       rmdir "$X_TARGET/plugins/cache" 2>/dev/null || true
       rmdir "$X_TARGET/plugins" 2>/dev/null || true
@@ -1228,6 +1239,25 @@ if codex_selected; then
         warn "Failed to populate Codex plugin cache → plugin will fail to load (\"plugin is not installed\")"
       fi
     fi
+
+    # Codex reads agent TOMLs from ~/.codex/agents/ (global) — NOT from plugin
+    # bundle. The plugin.json `agents` field is not in the Codex schema and is
+    # silently ignored. We copy rolepod's 18 agent TOMLs with a "rolepod-"
+    # filename prefix so they (a) don't collide with user-authored agents and
+    # (b) can be cleanly removed on uninstall via glob match.
+    AGENTS_DEST="$CODEX_TARGET/agents"
+    step "Installing 18 rolepod agents → $AGENTS_DEST/rolepod-*.toml"
+    if [ "$DRY_RUN" -eq 1 ]; then
+      dry "mkdir -p $AGENTS_DEST && copy *.toml from rendered plugin agents/ with rolepod- prefix"
+    else
+      mkdir -p "$AGENTS_DEST"
+      copied=0
+      for f in "$RENDERED_CODEX_DIR/plugins/rolepod/agents"/*.toml; do
+        [ -f "$f" ] || continue
+        cp "$f" "$AGENTS_DEST/rolepod-$(basename "$f")" 2>/dev/null && copied=$((copied+1))
+      done
+      ok "rolepod agents installed → $AGENTS_DEST/rolepod-*.toml (count: $copied)"
+    fi
   else
     # Either temp-target mode OR codex binary missing. Both paths skip global
     # codex commands and write only filesystem artifacts so static checks pass.
@@ -1247,6 +1277,23 @@ if codex_selected; then
     else
       mkdir -p "$CODEX_TARGET/plugins/rolepod"
       cp -R "$RENDERED_CODEX_DIR/plugins/rolepod/." "$CODEX_TARGET/plugins/rolepod/" 2>/dev/null || true
+    fi
+
+    # Mirror the agent copy in the temp-target / no-binary path so smoke tests
+    # and offline installs land 18 agent TOMLs at $CODEX_TARGET/agents/. Safe
+    # because $CODEX_TARGET is per definition NOT $HOME/.codex here.
+    AGENTS_DEST="$CODEX_TARGET/agents"
+    step "Installing 18 rolepod agents → $AGENTS_DEST/rolepod-*.toml"
+    if [ "$DRY_RUN" -eq 1 ]; then
+      dry "mkdir -p $AGENTS_DEST && copy *.toml from rendered plugin agents/ with rolepod- prefix"
+    else
+      mkdir -p "$AGENTS_DEST"
+      copied=0
+      for f in "$RENDERED_CODEX_DIR/plugins/rolepod/agents"/*.toml; do
+        [ -f "$f" ] || continue
+        cp "$f" "$AGENTS_DEST/rolepod-$(basename "$f")" 2>/dev/null && copied=$((copied+1))
+      done
+      ok "rolepod agents installed → $AGENTS_DEST/rolepod-*.toml (count: $copied)"
     fi
   fi
 
@@ -1561,3 +1608,17 @@ else
             echo "  Codex hooks require opt-in: ${BOLD}codex features enable plugin_hooks${NC}." ;;
   esac
 fi
+
+# Post-install validation hint: best-practice from Claude Code docs.
+# `/doctor` validates settings.json schema + flags broken hooks. `/hooks` lists
+# registered hooks. `/mcp` lists connected MCP servers. Recommended after every
+# install to catch misregistrations early.
+case "$CLI_TARGET" in
+  claude|all)
+    echo ""
+    echo "${BOLD}Validate config${NC} (run inside Claude Code):"
+    echo "  ${CYAN}/doctor${NC}  — schema + hook validation"
+    echo "  ${CYAN}/hooks${NC}   — list registered hooks"
+    echo "  ${CYAN}/mcp${NC}     — list MCP servers"
+    ;;
+esac

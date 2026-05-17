@@ -34,6 +34,10 @@ GATES+=$'careful mode: /careful for high-risk surface (auth/billing/migrations/l
 
 PAYLOAD="${GATES}"$'\n'"--- git context ---"$'\n'"${CTX}"
 
-# Output strict JSON. systemMessage is shown to the user in the session log.
+# Output strict JSON. SessionStart should use hookSpecificOutput.additionalContext
+# (injected as first turn in history / prepended to non-interactive prompt) so
+# Lead actually sees the gates + git context. systemMessage is operator-facing
+# only — visible noise that doesn't reach the model. Spec:
+# https://github.com/google-gemini/gemini-cli/blob/main/docs/hooks/reference.md
 ESCAPED="$(printf '%s' "$PAYLOAD" | escape_json)"
-printf '{"systemMessage": %s}\n' "$ESCAPED"
+printf '{"hookSpecificOutput": {"hookEventName": "SessionStart", "additionalContext": %s}}\n' "$ESCAPED"

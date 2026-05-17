@@ -21,7 +21,6 @@
     "team",
     "discipline"
   ],
-  "agents": "./agents/",
   "skills": "./skills/",
   "hooks": "./hooks/hooks.json",
   "interface": {

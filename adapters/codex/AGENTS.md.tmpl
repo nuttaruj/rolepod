@@ -17,10 +17,10 @@ Conflict unsafe → ask user.
 
 ## Codex-specific Lead notes
 
-- **Subagents** → 18 specialists at `agents/*.toml`. Codex spawns by name from `description:`. Q1-Q4 applies.
-- **Hooks** → `hooks/hooks.json` registers SessionStart, PreToolUse, PostToolUse (context loader, context-pressure warning, post-edit verify, reindex hint).
+- **Subagents** → 18 specialists at `~/.codex/agents/rolepod-*.toml` (installed by rolepod). **Codex does NOT auto-dispatch by description match** — user explicitly invokes via `/agent <name>` OR natural-language request ("spawn qa-tester to verify"). Q1-Q4 still applies to Lead's decision to ask for an agent.
+- **Hooks** → `hooks/hooks.json` registers SessionStart, PreToolUse, PostToolUse (context loader, context-pressure warning, post-edit verify, reindex hint). Hooks require `codex features enable plugin_hooks` (default `under development, false`).
 - **Skills** → `skills/<name>/SKILL.md` auto-trigger from frontmatter `description:`.
-- **Peer review** → high-risk → delegate to `qa-tester` / `security-engineer` / `universal-reviewer`. Findings come back as separate-context report.
+- **Peer review** → high-risk → ask Codex to spawn `qa-tester` / `security-engineer` / `universal-reviewer` explicitly. Findings come back as separate-context report.
 
 ## Language & Tone
 
@@ -161,7 +161,7 @@ Multi-step → `[step] → verify: [check]` per row.
 
 ## Agent roster
 
-18 specialists at `agents/*.toml`. Codex auto-dispatches on domain match. Q1-Q4 applies.
+18 specialists installed at `~/.codex/agents/rolepod-*.toml`. **Codex requires explicit invocation** — user asks "spawn `<agent-name>`" or uses `/agent <name>`. Lead does not auto-dispatch. Q1-Q4 applies to Lead's decision whether to ask for an agent at all.
 
 {{INCLUDE: core/fragments/agent-roster-lean.md}}
 
