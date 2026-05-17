@@ -2,13 +2,18 @@
 
 `/team-all` spawns a real Claude Code agent team — multi-process teammates with shared task list and direct mailbox messaging. This is the [official agent-teams feature](https://code.claude.com/docs/en/agent-teams), NOT rolepod's old subagent-recipe pattern.
 
-## Preconditions
+## Modes — graceful fallback by environment
 
-| Requirement | Why |
-|---|---|
-| Claude Code v2.1.32+ | Agent teams API introduced in this version. Check: `claude --version`. |
-| `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` | Experimental flag, disabled by default. Set in `settings.json` or shell env. |
-| Claude Code as the CLI | Codex + Gemini have no teammate equivalent. |
+`/team-all` adapts to whatever the environment supports. User doesn't manage flags up front; Lead picks the highest-fidelity mode available and announces what it chose.
+
+| Env state | Mode | Behavior |
+|---|---|---|
+| Claude v2.1.32+ + `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` | **TEAMMATE** | Real multi-process teammates (this doc) |
+| Claude v2.1.32+ + env flag unset | **FALLBACK** | Lead-orchestrated Subagent + Task with cohesion contract (single-process). Lead announces fallback briefly + how to enable real teammates |
+| Claude < v2.1.32 | **FAIL-FAST** | Upgrade required — teammate API doesn't exist; no fallback can match the contract |
+| Codex / Gemini | not installed | `/team-all` not shipped to those CLIs. Use natural-language Subagent dispatch via `team-routing` skill |
+
+To enable teammate mode:
 
 ```json settings.json
 {
@@ -18,7 +23,7 @@
 }
 ```
 
-If any precondition fails, `/team-all` fails fast with the missing-piece guidance — no silent fallback to subagent recipe.
+Until then, fallback mode delivers the same outcome shape (parallel work, contract-coordinated) at single-process cost.
 
 ## How it differs from subagents
 

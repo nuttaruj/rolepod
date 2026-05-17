@@ -9,18 +9,23 @@ You are entering the **real Claude Code agent-team workflow** — multi-process 
 
 This command spawns a Claude Code agent team per the [official spec](https://code.claude.com/docs/en/agent-teams). Each teammate runs as a separate Claude Code instance with its own context window. Teammates communicate directly with each other via mailbox; you can also message any teammate by name.
 
-## Preconditions (verify before spawning)
+## Preconditions + graceful fallback
 
-1. **Claude Code v2.1.32+**: `claude --version`. Below 2.1.32 → fail-fast, ask user to upgrade.
-2. **`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`**: check `settings.json` or env. Not set → fail-fast, instruct user:
-   ```json
-   { "env": { "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1" } }
-   ```
-3. **Running on Claude Code** (not Codex/Gemini): teammate feature is Claude-only. Other CLIs have no equivalent → respond "team feature is Claude-only; on Codex/Gemini use default subagent dispatch with `team-routing` skill for per-task delegation."
+Check in order. The first failure determines the mode:
 
-If ANY precondition fails → respond with what's missing + how to fix. Do NOT attempt teammate spawn.
+1. **Claude Code v2.1.32+** (`claude --version`):
+   - Pass → continue to check 2
+   - **Fail** → **fail-fast**: teammate API doesn't exist in this version. Ask user to upgrade Claude Code. No fallback (cohesion contract requires the multi-process API).
 
-## Spawn pattern
+2. **`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`** (settings.json or env):
+   - Pass → **TEAMMATE MODE** (continue to "Teammate spawn pattern" below)
+   - Not set → **FALLBACK MODE** (continue to "Fallback spawn pattern" below). State briefly in first reply: "Teammate API disabled (`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` not set). Running parallel work via Subagent + Task instead. To enable real teammates: add `"env": { "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1" }` to settings.json."
+
+3. **Running on Claude Code**: this command file only installs to `~/.claude/commands/`. Codex/Gemini never see `/team-all` — they use natural-language Subagent dispatch via `team-routing` skill. No fail-fast needed.
+
+The point: smooth UX. User doesn't have to manage env flags — `/team-all` always does the most-parallel work the environment allows.
+
+## Teammate spawn pattern (TEAMMATE MODE)
 
 You (Lead) are the team lead. Spawn 3-5 teammates per the official guidance ("Start with 3-5 teammates for most workflows. Three focused teammates often outperform five scattered ones."). Use rolepod's phase taxonomy to inform teammate roles — but each teammate is a full independent Claude Code session, not a subagent.
 
@@ -64,7 +69,42 @@ Wait for all teammates to finish before synthesizing.
 - Refactor across modules: 1 teammate per module + 1 orchestrator.
 - Drop teammates that don't have a clear independent unit of work.
 
-## Rolepod gates still apply (inside each teammate)
+## Fallback spawn pattern (FALLBACK MODE — env flag not set)
+
+Lead orchestrates parallel work using Subagent + Task tool in a single session — same outcome shape (parallel work, contract-coordinated), different mechanism (single-process, no inter-teammate messaging, Lead synthesizes).
+
+### Recipe
+
+1. **Write cohesion contract first** (skill `parallel-contract-orchestration`). One shared file at `docs/specs/<feature>-contract.md` (or `SPEC.md` if simpler). Covers: shared types, invariants, integration points, per-agent path ownership.
+
+2. **Spawn parallel Subagents via Task tool** — one per independent unit, pick agent type via `team-routing` skill:
+   - system-architect → owns spec + contract authoring (if not already done)
+   - backend-developer / frontend-developer / etc. → per path ownership
+   - qa-tester → owns evidence collection (runs after engineers finish)
+
+3. **Each Subagent reads contract before edits.** Hook `cohesion-contract-check.sh` enforces — blocks 2nd+ Agent spawn within 10 events if no contract file written.
+
+4. **For high-risk surface**, also dispatch external adversarial review (skill `reviewer-flow`):
+   - `codex exec --skip-git-repo-check '<prompt>'` if Codex on PATH
+   - `gemini -m pro -p '<prompt>'` if Gemini on PATH
+   - Both if both installed (the documented drift; rolepod rule).
+
+5. **Synthesize results in Lead context** — Subagents report back, Lead reviews, commits when all green (sub-agent commit ban — hook `block-subagent-commit.sh`).
+
+### Difference from teammate mode
+
+| Aspect | Teammate mode | Fallback mode |
+|---|---|---|
+| Process | N separate Claude instances | 1 Lead process, N subagent contexts |
+| Inter-agent talk | Direct mailbox messaging | None — Lead is the bus |
+| Context | Each teammate fully independent | Each subagent forked, results return to Lead |
+| Token cost | ~4× Lead alone | ~Lead + subagent context per Task call |
+| Resume | Broken (upstream limit) | Works |
+| Real parallelism | Yes | No (sequential Task calls, but each in own context) |
+
+Fallback is good enough for most rolepod work — the cohesion contract + reviewer-flow rules still hold. Real teammate mode is a token-budget premium for genuinely-parallel exploration / debate.
+
+## Rolepod gates still apply (inside each teammate or subagent)
 
 Each teammate is a full Claude Code session with CLAUDE.md + skills loaded — meaning all rolepod gates (S1-S5, T1-T6, F1-F5, verify-first, etc.) fire inside each teammate. The team-lead's job is coordination, not gate enforcement.
 
