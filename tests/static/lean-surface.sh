@@ -39,6 +39,25 @@ FS_SKILLS=$(find core/skills -maxdepth 1 -mindepth 1 -type d | wc -l | tr -d ' '
 RENDERED_SKILLS=$(awk '/^\| `/{c++} END{print c+0}' core/fragments/skill-index.md)
 check "skill catalog: filesystem=$FS_SKILLS rendered=$RENDERED_SKILLS (must match)" "[ $FS_SKILLS -eq $RENDERED_SKILLS ]"
 
+# ── Stale doc count keywords — guard against drift in prose ────────────
+# After every skill add/remove, the count appears in ~6 places (README,
+# CHEATSHEET, docs/cli-support.md, docs/skill-inventory-audit.md, plugin
+# manifest, AGENTS.md). The filesystem-vs-rendered check above only
+# catches the catalog fragment. Block known-stale numbers from slipping
+# back into prose.
+STALE_PATTERNS='\b(42 bundled|42 skills|43 skills|43-skill|34 native|3 auto-trigger hooks|# 34$|# 42$|Total 43)\b'
+STALE_HITS=$(grep -rEn "$STALE_PATTERNS" \
+  --include='*.md' --include='*.json' --include='*.tmpl' \
+  README.md CHEATSHEET.md docs/ .claude-plugin/ adapters/ 2>/dev/null \
+  | grep -v 'build/rendered/' || true)
+if [ -z "$STALE_HITS" ]; then
+  echo "  ✓ no stale doc count keywords (42/43-skill, 34 native, 3 hooks, etc.)"
+else
+  echo "  ✗ stale doc count keywords found:"
+  printf '%s\n' "$STALE_HITS" | sed 's/^/      /'
+  fail=$((fail+1))
+fi
+
 # ── 18-agent full table must NOT appear in rendered entry docs ────────
 # Heuristic: a full agent table has the agent-roster header pattern.
 # The lean fragment uses a single "**18 specialists**" line instead.

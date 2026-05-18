@@ -8,7 +8,7 @@ Phase 2.3: rolepod ships for each supported CLI as a **native plugin / extension
 |---|---|---|---|
 | Always-on instructions | `~/.claude/CLAUDE.md` (native) | `~/.codex/AGENTS.md` (native) | `~/.gemini/GEMINI.md` (native) |
 | Lazy-load rules (Read on trigger) | full | full | full |
-| Skills (`<plugin>/skills/<name>/SKILL.md`) | 34 native | 34 native | 34 native |
+| Skills (`<plugin>/skills/<name>/SKILL.md`) | 44 native | 44 native | 44 native |
 | Subagents (parallel team) | full Task / SendMessage (18 agents) | 18 agents as Codex `agents/*.toml` (Lead-orchestrated) | 18 agents inlined in `GEMINI.md` (Lead-orchestrated) |
 | Hooks (auto reminders) | 3 hooks (`SessionStart` + 2x `PostToolUse`) | 3 hooks (`SessionStart` + 2x `PostToolUse`) | 3 hooks (`SessionStart` + `BeforeTool` + `AfterTool`) |
 | Slash commands | full (e.g. `/careful`, `/ship`, `/review`, `/test`, `/plan`, `/spec`) | n/a (commands not in current Codex schema) | full (6 commands as `commands/*.toml`) |
@@ -168,7 +168,7 @@ When a repo needs stricter rules than the global rolepod set, create `CLAUDE.md`
 ```bash
 claude --help                           # CLI present
 ls ~/.claude/agents/ | wc -l            # 18
-ls ~/.claude/skills/ | wc -l            # 34
+ls ~/.claude/skills/ | wc -l            # 44
 grep rolepod ~/.claude/settings.json    # hook entries present
 claude -p "say OK"                      # SessionStart hook fires; banner appears in transcript
 ```
@@ -250,7 +250,7 @@ When a repo needs stricter rules than the global rolepod set, create `AGENTS.md`
 
 ```bash
 # Plugin loaded (agents + skills work regardless of plugin_hooks state):
-ls ~/.codex/plugins/cache/rolepod/rolepod/0.1.0/skills | wc -l   # 42
+ls ~/.codex/plugins/cache/rolepod/rolepod/0.1.0/skills | wc -l   # 44
 
 # Hooks ONLY fire after opt-in. Confirm flag state first:
 codex features list | grep plugin_hooks

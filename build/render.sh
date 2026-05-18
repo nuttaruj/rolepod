@@ -216,7 +216,7 @@ generate_skill_index_lean() {
       code-simplification
 
     echo ""
-    echo "**Tier 2 (Specialist, 29 skills) + Tier 3 (Compatibility shims, 2 skills)** — fire by domain match via \`team-routing\`. Full catalog: [docs/skills.md](docs/skills.md)."
+    echo "**Tier 2 (Specialist + Meta-workflow) + Tier 3 (Compatibility shims)** — fire by domain or situational match via \`team-routing\`. Full catalog: [docs/skills.md](docs/skills.md)."
   } > "$out"
 }
 

@@ -158,7 +158,7 @@ Lead = Opus → skip Advisor.
 
 ## Skill picker — quick lookup
 
-Default Lead path = **Tier 0 + Tier 1** only (router + 11 core workflow skills). Specialists fire on domain match via `team-routing`. Full 43-skill catalog: [docs/skills.md](docs/skills.md).
+Default Lead path = **Tier 0 + Tier 1** only (router + 11 core workflow skills). Specialists fire on domain match via `team-routing`. Full 44-skill catalog: [docs/skills.md](docs/skills.md).
 
 | Task | Skill | Tier |
 |------|-------|------|
