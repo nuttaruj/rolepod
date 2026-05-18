@@ -44,11 +44,19 @@ Fail = router doctrine has drifted. Either fix the prompt routing in `using-role
 make test-integration
 ```
 
-Runs:
-- `install-parity` — fresh temp install for Claude global / Claude project / Codex project / Gemini project, asserts each produces the documented artifacts
-- Stub cases (`bug-fix-workflow`, `feature-from-spec`, `subagent-review-order`) skip until implemented
+Runs 7 structural integration cases (~3-5s total, no live `claude -p` invocations):
 
-Fail on `install-parity` = installer or adapter regressed. Block release.
+| Case | Asserts |
+|------|---------|
+| `install-parity` | Fresh temp install across Claude global / Claude project / Codex project / Gemini project produces documented artifacts |
+| `bug-fix-workflow` | systematic-debugging → TDD → post-change-verify wiring (skill bodies, router row, compat shims) |
+| `feature-from-spec` | Define → Plan → Build path: spec-driven → planning-and-task-breakdown → TDD → post-change-verify wiring |
+| `subagent-review-order` | Two-stage review order (implementer → spec-compliance → code-quality) baked into skill body + prompt templates |
+| `high-risk-gates` | Auth/billing/migration paths route through security-engineer + reviewer-flow |
+| `multi-agent-contract` | parallel-contract-orchestration cohesion-contract requirement before 2nd parallel agent spawn |
+| `ship-gate` | pre-merge-gate fires as final ship phase, S+T+F+P gates documented |
+
+Expected output: `pass: 7 / skip: 0 / fail: 0`. Any fail = doctrine drift, block release until reconciled (fix wiring OR update case expectation if intentional).
 
 ## 5. Honest-doc audit
 

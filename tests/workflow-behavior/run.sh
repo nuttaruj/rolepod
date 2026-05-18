@@ -94,6 +94,8 @@ run_case() {
   prompt="$(echo "$parsed" | python3 -c 'import sys,json; print(json.load(sys.stdin)["prompt"])')"
   local expected_json
   expected_json="$(echo "$parsed" | python3 -c 'import sys,json; print(json.dumps(json.load(sys.stdin)["expected_skills"]))')"
+  local must_contain_json
+  must_contain_json="$(echo "$parsed" | python3 -c 'import sys,json; print(json.dumps(json.load(sys.stdin).get("must_contain", [])))')"
   local forbidden_json
   forbidden_json="$(echo "$parsed" | python3 -c 'import sys,json; print(json.dumps(json.load(sys.stdin)["must_not_contain"]))')"
 
@@ -104,24 +106,26 @@ run_case() {
     FAIL=$((FAIL+1)); FAILED_NAMES+=("$case_name (CLI error)"); return
   fi
 
-  # Two-line output from parser: missing, then found.
+  # Three-line output from parser: missing-expected, missing-required (must_contain), found-forbidden.
   local result
-  result="$(python3 "$PARSER" assert "$expected_json" "$forbidden_json" "$response_file" 2>"$LOG_DIR/$case_name.assert.err")" || {
+  result="$(python3 "$PARSER" assert "$expected_json" "$must_contain_json" "$forbidden_json" "$response_file" 2>"$LOG_DIR/$case_name.assert.err")" || {
     echo "  ✗ FAIL — assert helper errored. See $LOG_DIR/$case_name.assert.err"
     FAIL=$((FAIL+1)); FAILED_NAMES+=("$case_name (assert)"); return
   }
 
-  local missing found
-  missing="$(echo "$result" | sed -n '1p')"
-  found="$(echo "$result" | sed -n '2p')"
+  local missing_expected missing_required found_forbidden
+  missing_expected="$(echo "$result" | sed -n '1p')"
+  missing_required="$(echo "$result" | sed -n '2p')"
+  found_forbidden="$(echo "$result" | sed -n '3p')"
 
-  if [ -z "$missing" ] && [ -z "$found" ]; then
+  if [ -z "$missing_expected" ] && [ -z "$missing_required" ] && [ -z "$found_forbidden" ]; then
     echo "  ✓ pass"
     PASS=$((PASS+1))
   else
     echo "  ✗ FAIL"
-    [ -n "$missing" ] && echo "    missing expected: $missing"
-    [ -n "$found" ] && echo "    forbidden found: $found"
+    [ -n "$missing_expected" ] && echo "    missing expected_skills: $missing_expected"
+    [ -n "$missing_required" ] && echo "    missing must_contain: $missing_required"
+    [ -n "$found_forbidden" ] && echo "    forbidden found: $found_forbidden"
     echo "    response: $response_file"
     FAIL=$((FAIL+1))
     FAILED_NAMES+=("$case_name")
