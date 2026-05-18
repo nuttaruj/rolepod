@@ -50,13 +50,13 @@ adapters/
 │   └── plugins/rolepod/
 │       ├── .codex-plugin/plugin.json
 │       ├── agents/*.toml               (18 agents, Codex schema)
-│       ├── hooks/hooks.json + 3 *.sh
+│       ├── hooks/hooks.json + 5 *.sh
 │       └── skills → ../../../../core/skills (symlink, dereferenced at render time)
 └── gemini/
     ├── GEMINI.md.tmpl
     ├── gemini-extension.json
     ├── commands/*.toml                 (6 slash commands)
-    ├── hooks/hooks.json + 3 *.sh
+    ├── hooks/hooks.json + 4 *.sh
     └── skills/                         (real dir, populated at render time)
 ```
 
@@ -70,7 +70,7 @@ adapters/
 | Before tool run | — (CLI handles native compact) | — (CLI handles native compact) | `BeforeTool` (matcher `write_file\|replace\|edit`, verify-first reminder) |
 | After tool run | `PostToolUse` (matcher `Edit\|Write` and `Bash`) | `PostToolUse` (matcher `apply_patch` and `Bash`) | `AfterTool` (matcher `write_file\|replace\|edit`) |
 
-Hook scripts are interchangeable across Claude and Codex (same 3 files: SessionStart project-context-loader, PostToolUse verify-reminder, PostToolUse post-ship-detect); Gemini ships its own 3 scripts adapted to Gemini's tool names and JSON envelope.
+Per-CLI hook counts: Claude registers 9 (6 context + 3 enforcement) via `~/.claude/settings.json`; Codex ships 5 command hooks across `SessionStart` / `PreToolUse` / `PostToolUse` via `hooks/hooks.json`; Gemini ships 4 commands across `SessionStart` / `BeforeTool` / `AfterTool` / `PreCompress`. Enforcement (`block-subagent-commit`, `precommit-gate`, `gate-reminder`, `cohesion-contract-check`) is Claude-only — relies on the `agent_id` field in PreToolUse input. Context scripts (`project-context-loader`, `verify-reminder`, `post-ship-detect`, `gitnexus-wrap`, `session-lock`/`unlock`) are portable across Claude and Codex.
 
 ## Verification status — what's confirmed locally
 
@@ -79,7 +79,7 @@ Hook scripts are interchangeable across Claude and Codex (same 3 files: SessionS
 | Claude snapshot | `diff -q` 0-byte vs prior `~/.claude/CLAUDE.md` and 18 agent files |
 | Codex plugin layout | install registers `[marketplaces.rolepod]` + `[plugins."rolepod@rolepod"] enabled = true` in `~/.codex/config.toml` and writes `~/.codex/AGENTS.md` managed block; rendered tree at `build/rendered/codex/{.agents/plugins/marketplace.json,plugins/rolepod/{.codex-plugin,agents,hooks,skills}/}` is the source-of-truth Codex resolves at session start |
 | Gemini extension layout | dry-run install populates `~/.gemini/extensions/rolepod/{gemini-extension.json,commands,hooks,skills}/` plus `~/.gemini/GEMINI.md` |
-| All shell scripts | `bash -n` clean (install.sh, bootstrap.sh, render.sh, 3 codex hooks, 3 gemini hooks, 3 root hooks) |
+| All shell scripts | `bash -n` clean (install.sh, bootstrap.sh, render.sh, 5 codex hook scripts, 4 gemini hook scripts, 9 root hook scripts) |
 | All JSON manifests | `python3 -m json.tool` clean (plugin.json x2, hooks.json x2, gemini-extension.json) |
 | All TOML files | `tomllib.load()` clean (18 codex agents, 6 gemini commands) |
 | Render output | `build/render.sh --target=all` produces all 3 trees with no `{{INCLUDE: ...}}` leaks |
@@ -143,7 +143,7 @@ cd /your/project
 ./install.sh --target=claude --scope=project
 ```
 
-Writes `$PWD/.claude/` with the full plugin tree plus `$PWD/CLAUDE.md` (managed block). Claude auto-loads project `.claude/settings.json` so the 3 hooks fire on this project only.
+Writes `$PWD/.claude/` with the full plugin tree plus `$PWD/CLAUDE.md` (managed block). Claude auto-loads project `.claude/settings.json` so the rolepod hooks fire on this project only.
 
 ### Global core (one-time per machine)
 
@@ -173,7 +173,7 @@ grep rolepod ~/.claude/settings.json    # hook entries present
 claude -p "say OK"                      # SessionStart hook fires; banner appears in transcript
 ```
 
-If hooks don't fire, check `~/.claude/settings.json` contains the three rolepod entries pointing at `~/.claude/hooks/*.sh`.
+If hooks don't fire, check `~/.claude/settings.json` contains the rolepod hook entries pointing at `~/.claude/hooks/*.sh`.
 
 ## Recommended Codex setup
 
@@ -293,7 +293,7 @@ cd /your/project
 
 Installs:
 - `~/.gemini/GEMINI.md` (managed block — your existing content preserved)
-- `~/.gemini/extensions/rolepod/` (full extension: 18 agents inlined, 44 skills, 6 commands, 3 hooks)
+- `~/.gemini/extensions/rolepod/` (full extension: 18 agents inlined, 44 skills, 6 commands, 4 hooks)
 
 ### Project-level GitNexus index (one-time per repo)
 
