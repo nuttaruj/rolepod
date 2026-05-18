@@ -4,10 +4,19 @@ prompt: |
 expected_skills:
   - using-rolepod
   - spec-driven-development
+must_contain:
+  - "?"
+why: |
+  Vague build request must route through Define (spec) before any code, AND
+  Phase 0 of spec-driven-development requires Lead to ask clarifying questions
+  before drafting the spec (one question per message, options with Recommended
+  pick). The "?" assertion proves Lead opened a question instead of jumping
+  straight to a spec draft or code. must_not_contain blocks the two skips:
+  premature spec body (## Problem / ## Requirements headers without dialogue)
+  and premature code (App.tsx creation, "I'll start coding" pattern).
 must_not_contain:
   - "I'll start coding"
   - "I'll begin by creating App.tsx"
   - "created App.tsx"
-why: |
-  Vague build request must route through Define (spec) before any code. No file
-  creation before user approves spec or explicitly skips design.
+  - "## Problem\n"
+  - "## Requirements\n"

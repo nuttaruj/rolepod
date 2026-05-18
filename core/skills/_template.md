@@ -10,7 +10,7 @@ description: <one-paragraph trigger + scope. When to apply. Under 250 chars.>
 ## Iron Law
 
 <EXTREMELY-IMPORTANT>
-1-3 absolute non-negotiable rules. Second person. Testable post-hoc ("did you do X?" → yes/no). No softeners ("try to", "consider", "usually"). ห้ามฝืน — rules don't bend for time pressure / "simple change" / "I already know" rationalizations.
+1-3 absolute non-negotiable rules. Second person. Testable post-hoc ("did you do X?" → yes/no). No softeners ("try to", "consider", "usually"). Rules don't bend for time pressure / "simple change" / "I already know" rationalizations.
 
 Example:
 1. NEVER <action> without <precondition>.
