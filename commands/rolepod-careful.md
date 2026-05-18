@@ -31,7 +31,7 @@ Activate for high-risk surface (auth / billing / migrations / locks / external i
 
 ## How to invoke
 
-User types `/careful` → Lead acknowledges + applies rules above for next operations until user types `/normal` or session ends.
+User types `/rolepod-careful` → Lead acknowledges + applies rules above for next operations until user types `/normal` or session ends.
 
 ## After careful mode
 

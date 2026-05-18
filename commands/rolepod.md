@@ -87,4 +87,4 @@ Then run the spine.
 ## Pairs with
 
 - `/rolepod-all` — same idea but spawns a real multi-process Claude Code agent team to run the phases in parallel (Claude Code v2.1.32+ + `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` required). Use `/rolepod` for single-Lead execution, `/rolepod-all` for genuinely parallel cross-domain work.
-- `/careful` — overlapping but different: forces Careful mode (≤3 files / commit + mandatory peer review + Codex+Gemini adversarial) for high-risk surface. `/rolepod` is about *phases*; `/careful` is about *rigor inside Build/Verify/Review*. They compose.
+- `/rolepod-careful` — overlapping but different: forces Careful mode (≤3 files / commit + mandatory peer review + Codex+Gemini adversarial) for high-risk surface. `/rolepod` is about *phases*; `/rolepod-careful` is about *rigor inside Build/Verify/Review*. They compose.

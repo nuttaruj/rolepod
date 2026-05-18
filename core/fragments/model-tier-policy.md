@@ -47,6 +47,6 @@ Auto-escalate to **adversarial** tier (regardless of agent default) when:
 - Touching auth / authn / authz / billing / payment / migration / credit / permission / secret / crypto / token / oauth / jwt / sso / saml / webhook / stripe / paypal / charge / invoice paths.
 - About to ship to production (final `pre-merge-gate` review).
 - 3rd agent attempt on same surface (per CLAUDE.md hard stops).
-- User explicit "use careful mode" or `/careful` invocation.
+- User explicit "use careful mode" or `/rolepod-careful` invocation.
 
 The `gate-reminder.sh` and `precommit-gate.sh` hooks already block edits on high-risk paths without a reviewer agent dispatched. The tier policy makes the *which* reviewer explicit.
