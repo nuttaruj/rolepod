@@ -45,7 +45,15 @@ check "skill catalog: filesystem=$FS_SKILLS rendered=$RENDERED_SKILLS (must matc
 # manifest, AGENTS.md). The filesystem-vs-rendered check above only
 # catches the catalog fragment. Block known-stale numbers from slipping
 # back into prose.
-STALE_PATTERNS='\b(42 bundled|42 skills|43 skills|43-skill|34 native|3 auto-trigger hooks|# 34$|# 42$|Total 43)\b'
+# Patterns catch the count appearing in many shapes:
+#   bare: "42 skills" "43 skills" "34 native"
+#   parenthesized: "Skills (42)"
+#   sum form: "18 + 42"
+#   bold form: "**43**" "**42**" when right after "skills" or "Total"
+#   compound: "all 34 rolepod skills" / "Total skills on disk: **43**"
+#   comment form: trailing "# 34" / "# 42" (cli verify commands)
+#   hook drift: "3 hooks" / "3 auto-trigger hooks" / "3 scripts"
+STALE_PATTERNS='\b(42 bundled|42 skills|43 skills|43-skill|34 native|3 auto-trigger hooks|same 3 scripts|Skills \(42\)|Skills \(43\)|18 \+ 42|18 \+ 43|all 34 rolepod|all 43 rolepod|Total skills on disk: \*\*4[23]\*\*|Total 4[23])\b|(^|[^0-9])(#|`) ?4[23]\b'
 STALE_HITS=$(grep -rEn "$STALE_PATTERNS" \
   --include='*.md' --include='*.json' --include='*.tmpl' \
   README.md CHEATSHEET.md docs/ .claude-plugin/ adapters/ 2>/dev/null \

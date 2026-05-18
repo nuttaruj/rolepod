@@ -166,7 +166,7 @@ After install, restart the CLI you targeted so hooks register.
 
 _Last verified: 2026-05-15, macOS Darwin 25.4.0, Codex 0.130.0, Gemini 0.40.1._
 
-**Codex install (0.130.0+):** installer renders to `build/rendered/codex/`, runs `codex plugin marketplace add <rendered-dir>`, populates `~/.codex/plugins/cache/rolepod/rolepod/<version>/`, writes `[plugins."rolepod@rolepod"] enabled = true` to `~/.codex/config.toml`. Native plugin loader resolves agents + skills (18 + 42) from cache. `SessionStart` fires **only after `codex features enable plugin_hooks`** (default flag is `under development, false`). `~/.codex/AGENTS.md` managed block loads independently of `plugin_hooks` state.
+**Codex install (0.130.0+):** installer renders to `build/rendered/codex/`, runs `codex plugin marketplace add <rendered-dir>`, populates `~/.codex/plugins/cache/rolepod/rolepod/<version>/`, writes `[plugins."rolepod@rolepod"] enabled = true` to `~/.codex/config.toml`. Native plugin loader resolves agents + skills (18 + 44) from cache. `SessionStart` fires **only after `codex features enable plugin_hooks`** (default flag is `under development, false`). `~/.codex/AGENTS.md` managed block loads independently of `plugin_hooks` state.
 
 File runtime issues at [issues/](https://github.com/nuttaruj/rolepod/issues).
 
@@ -265,7 +265,7 @@ Codex / Gemini fire the context hooks; enforcement hooks are Claude-only because
 | Before tool | — | — | `BeforeTool` |
 | After tool | `PostToolUse` | `PostToolUse` | `AfterTool` |
 
-Claude + Codex share 3 scripts; Gemini ships 3 adapted to its JSON envelope. External hooks integrate via plugins: MemPalace (Stop/SessionStart/PreCompact), GitNexus (PreToolUse/PostToolUse), `qa-pass-check.sh`.
+Claude registers 9 hooks (6 context + 3 enforcement). Codex ships 5 command hooks across 3 event classes (SessionStart/PreToolUse/PostToolUse). Gemini ships 4 hooks across 4 event classes (SessionStart/BeforeTool/AfterTool/PreCompress). External hooks integrate via plugins: MemPalace (Stop/SessionStart/PreCompact), GitNexus (PreToolUse/PostToolUse), `qa-pass-check.sh`.
 
 ### Commands
 
