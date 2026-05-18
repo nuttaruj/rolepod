@@ -195,18 +195,19 @@ jobs:
           # Fresh HOME so backup path is predictable + isolated from runner state.
           export HOME="$(mktemp -d)"
           export ROLEPOD_TARGET="$HOME/.claude"
-          # Prior CI step "Dry-run install — claude" persisted ROLEPOD_CLAUDE_TARGET
-          # via $GITHUB_ENV. install.sh treats ROLEPOD_CLAUDE_TARGET as a
-          # per-CLI override that WINS over ROLEPOD_TARGET (see install.sh
-          # usage block). Without this unset, install.sh writes the new
-          # --force install into the previous step's target, and the backup
-          # lands beside THAT path — not beside $HOME/.claude — making the
-          # `ls -d "${ROLEPOD_TARGET}".backup-*` lookup return no match.
-          # `ls` then exits 2, `set -eo pipefail` propagates the 2, and the
-          # step fails before any assertion can fire. Local / Docker repros
-          # don't hit this because the env doesn't carry across invocations
-          # the way GitHub Actions' $GITHUB_ENV does.
-          unset ROLEPOD_CLAUDE_TARGET
+          # Prior CI steps persisted ROLEPOD_<CLI>_TARGET via $GITHUB_ENV
+          # (the uninstall round-trip downstream needs ROLEPOD_CLAUDE_TARGET).
+          # install.sh treats per-CLI overrides as winning over ROLEPOD_TARGET
+          # (see install.sh:130 resolve_target_for). Without this unset,
+          # install.sh writes the new --force install into the previous step's
+          # target, the backup lands beside THAT path, and the lookup beside
+          # $HOME/.claude returns no match. `ls` then exits 2, `set -eo pipefail`
+          # propagates the 2, and the step fails before any assertion fires.
+          # Local / Docker repros don't hit this because env doesn't carry
+          # across invocations the way GitHub Actions' $GITHUB_ENV does.
+          # Same issue applies to several steps below — unset is the minimal
+          # per-step fix that preserves the export for the uninstall round-trip.
+          unset ROLEPOD_CLAUDE_TARGET ROLEPOD_CODEX_TARGET ROLEPOD_GEMINI_TARGET
           # Pre-populate a "user" ~/.claude that mixes rolepod-managed paths
           # with bloat dirs that --force backup MUST skip.
           mkdir -p "$ROLEPOD_TARGET/projects/sess-abc" \
@@ -333,6 +334,8 @@ jobs:
         shell: bash
         run: |
           set -eo pipefail
+          # See "--force backup" step for why these must be unset.
+          unset ROLEPOD_CLAUDE_TARGET ROLEPOD_CODEX_TARGET ROLEPOD_GEMINI_TARGET
           export ROLEPOD_TARGET="$(mktemp -d)"
           echo "all target: $ROLEPOD_TARGET"
           out=$(bash install.sh --target=all --force 2>&1) || {
@@ -429,6 +432,8 @@ jobs:
         shell: bash
         run: |
           set -eo pipefail
+          # See "--force backup" step for why these must be unset.
+          unset ROLEPOD_CLAUDE_TARGET ROLEPOD_CODEX_TARGET ROLEPOD_GEMINI_TARGET
           # When --target=all AND ROLEPOD_TARGET is set, all 3 CLIs must land
           # under $ROLEPOD_TARGET/<cli>/ — never default to $HOME/.claude etc.
           export ROOT="$(mktemp -d)"
@@ -455,7 +460,8 @@ jobs:
         run: |
           set -eo pipefail
           # Unset ensures back-compat: --target=all with no env var → 3 home defaults.
-          unset ROLEPOD_TARGET
+          # Per-CLI overrides also leak from earlier steps; clear them too.
+          unset ROLEPOD_TARGET ROLEPOD_CLAUDE_TARGET ROLEPOD_CODEX_TARGET ROLEPOD_GEMINI_TARGET
           out=$(bash install.sh --target=all --dry-run 2>&1)
           for home_path in "$HOME/.claude" "$HOME/.codex" "$HOME/.gemini"; do
             if ! grep -qF "$home_path" <<<"$out"; then
@@ -469,6 +475,10 @@ jobs:
         shell: bash
         run: |
           set -eo pipefail
+          # See "--force backup" step for why these must be unset.
+          # The step then re-sets ROLEPOD_GEMINI_TARGET intentionally below
+          # to test that the per-CLI override wins over ROLEPOD_TARGET.
+          unset ROLEPOD_CLAUDE_TARGET ROLEPOD_CODEX_TARGET ROLEPOD_GEMINI_TARGET
           # ROLEPOD_<CLI>_TARGET wins over ROLEPOD_TARGET for that CLI only.
           export ROOT="$(mktemp -d)"
           export GEM_OVERRIDE="$(mktemp -d)/gem-custom"
@@ -498,6 +508,8 @@ jobs:
         shell: bash
         run: |
           set -eo pipefail
+          # See "--force backup" step for why these must be unset.
+          unset ROLEPOD_CLAUDE_TARGET ROLEPOD_CODEX_TARGET ROLEPOD_GEMINI_TARGET
           # When ROLEPOD_TARGET points away from $HOME/.codex, the installer
           # must NOT mutate the user's real ~/.codex/config.toml. Codex CLI has
           # no per-target config home, so marketplace registration would
@@ -521,7 +533,8 @@ jobs:
           # Real install (no ROLEPOD_TARGET) is also tested with dry-run to
           # confirm the real-path branch fires the marketplace command (well,
           # would have — dry-run shows the [DRY-RUN] preview).
-          unset ROLEPOD_TARGET
+          # Per-CLI overrides also leak from earlier steps; clear them too.
+          unset ROLEPOD_TARGET ROLEPOD_CLAUDE_TARGET ROLEPOD_CODEX_TARGET ROLEPOD_GEMINI_TARGET
           out=$(bash install.sh --core --target=codex --dry-run 2>&1) || true
           if grep -qi 'skipping global marketplace registration' <<<"$out"; then
             echo "::error::real-install path should NOT print temp-target warning"
@@ -533,6 +546,8 @@ jobs:
         shell: bash
         run: |
           set -eo pipefail
+          # See "--force backup" step for why these must be unset.
+          unset ROLEPOD_CLAUDE_TARGET ROLEPOD_CODEX_TARGET ROLEPOD_GEMINI_TARGET
           export ROOT="$(mktemp -d)"
           mkdir -p "$ROOT/.claude" "$ROOT/.codex" "$ROOT/.gemini"
           BEFORE=$(find "$ROOT" -type f 2>/dev/null | wc -l)
@@ -549,7 +564,8 @@ jobs:
         run: |
           set -eo pipefail
           # scope=project must NOT touch $HOME/.claude. It writes to $PWD/.claude.
-          unset ROLEPOD_TARGET
+          # Per-CLI overrides also leak from earlier steps; clear them too.
+          unset ROLEPOD_TARGET ROLEPOD_CLAUDE_TARGET ROLEPOD_CODEX_TARGET ROLEPOD_GEMINI_TARGET
           WORK="$(mktemp -d)"
           # Snapshot HOME state before.
           BEFORE_HOME=$(find "$HOME/.claude" -type f 2>/dev/null | wc -l)
@@ -582,7 +598,8 @@ jobs:
         shell: bash
         run: |
           set -eo pipefail
-          unset ROLEPOD_TARGET
+          # Per-CLI overrides also leak from earlier steps; clear them too.
+          unset ROLEPOD_TARGET ROLEPOD_CLAUDE_TARGET ROLEPOD_CODEX_TARGET ROLEPOD_GEMINI_TARGET
           WORK="$(mktemp -d)"
           mkdir -p "$HOME/.codex"
           touch "$HOME/.codex/config.toml"
@@ -615,7 +632,8 @@ jobs:
         shell: bash
         run: |
           set -eo pipefail
-          unset ROLEPOD_TARGET
+          # Per-CLI overrides also leak from earlier steps; clear them too.
+          unset ROLEPOD_TARGET ROLEPOD_CLAUDE_TARGET ROLEPOD_CODEX_TARGET ROLEPOD_GEMINI_TARGET
           WORK="$(mktemp -d)"
           BEFORE_HOME=$(find "$HOME/.gemini" -type f 2>/dev/null | wc -l)
           out=$(cd "$WORK" && bash "$GITHUB_WORKSPACE/install.sh" --target=gemini --scope=project --dry-run 2>&1)
@@ -642,7 +660,8 @@ jobs:
         shell: bash
         run: |
           set -eo pipefail
-          unset ROLEPOD_TARGET
+          # Per-CLI overrides also leak from earlier steps; clear them too.
+          unset ROLEPOD_TARGET ROLEPOD_CLAUDE_TARGET ROLEPOD_CODEX_TARGET ROLEPOD_GEMINI_TARGET
           WORK="$(mktemp -d)"
           out=$(cd "$WORK" && bash "$GITHUB_WORKSPACE/install.sh" --target=all --scope=project --dry-run 2>&1)
           # All three project paths must appear.
