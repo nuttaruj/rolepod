@@ -31,6 +31,10 @@ test-static:
 	@bash -n build/render.sh && echo "  ✓ render.sh syntax"
 	@for f in hooks/*.sh; do bash -n "$$f" || { echo "  ✗ $$f"; exit 1; }; done
 	@echo "  ✓ hooks/*.sh syntax"
+	@for f in adapters/codex/plugins/rolepod/hooks/*.sh; do bash -n "$$f" || { echo "  ✗ $$f"; exit 1; }; done
+	@echo "  ✓ codex hooks/*.sh syntax"
+	@for f in adapters/gemini/hooks/*.sh; do bash -n "$$f" || { echo "  ✗ $$f"; exit 1; }; done
+	@echo "  ✓ gemini hooks/*.sh syntax"
 	@python3 -c "import ast; ast.parse(open('hooks/lib/session_state.py').read())" && echo "  ✓ hooks/lib/session_state.py syntax"
 	@python3 -c "import ast; ast.parse(open('tests/workflow-behavior/parse_case.py').read())" && echo "  ✓ tests/workflow-behavior/parse_case.py syntax"
 	@python3 -m json.tool adapters/codex/plugins/rolepod/.codex-plugin/plugin.json >/dev/null && echo "  ✓ codex plugin.json"

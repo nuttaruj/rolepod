@@ -53,13 +53,15 @@ check "skill catalog: filesystem=$FS_SKILLS rendered=$RENDERED_SKILLS (must matc
 #   compound: "all 34 rolepod skills" / "Total skills on disk: **43**"
 #   comment form: trailing "# 34" / "# 42" (cli verify commands)
 #   hook drift: "3 hooks" / "3 auto-trigger hooks" / "3 scripts"
+#   hook-truth drift: broad cross-CLI claims that hide per-CLI coverage
 # Two groups: word-boundary patterns + non-word-end patterns. The second
 # group covers forms ending in `)` or `*` where trailing `\b` is dead
 # (qa-tester PR #10 caught this).
-STALE_WB='\b(42 bundled|42 skills|43 skills|43-skill|34 native|3 auto-trigger hooks|same 3 scripts|same 3 files|18 \+ 42|18 \+ 43|all 34 rolepod|all 43 rolepod|Total 4[23]|three rolepod entries|3 codex hooks|3 gemini hooks|3 root hooks|own 3 scripts|3 \*\.sh)\b'
+STALE_WB='\b(42 bundled|42 skills|43 skills|43-skill|34 native|3 auto-trigger hooks|same 3 scripts|same 3 files|18 \+ 42|18 \+ 43|all 34 rolepod|all 43 rolepod|Total 4[23]|three rolepod entries|3 codex hooks|3 gemini hooks|3 root hooks|9 root hook scripts|own 3 scripts|3 \*\.sh)\b'
 STALE_NONWORD='Skills \(4[23]\)|Total skills on disk: \*\*4[23]\*\*|Hooks \(3\)|, 3 hooks\)'
 STALE_COMMENT='(^|[^0-9])(#|`) ?4[23]\b'
-STALE_PATTERNS="${STALE_WB}|${STALE_NONWORD}|${STALE_COMMENT}"
+STALE_HOOK_TRUTH='Context hooks \(cross-CLI\)|Codex / Gemini fire the context hooks|full hook coverage|Before tool run.*CLI handles native compact|SessionStart \+ 2x PostToolUse|10 bash hooks that auto-register|portable across Claude and Codex'
+STALE_PATTERNS="${STALE_WB}|${STALE_NONWORD}|${STALE_COMMENT}|${STALE_HOOK_TRUTH}"
 STALE_HITS=$(grep -rEn "$STALE_PATTERNS" \
   --include='*.md' --include='*.json' --include='*.tmpl' \
   README.md CHEATSHEET.md docs/ .claude-plugin/ adapters/ 2>/dev/null \

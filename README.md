@@ -250,22 +250,22 @@ Path/concern ownership + expertise list + escalation paths + skill preloads. Sha
 
 ### Hooks — `hooks/` (auto-fire on Claude/Gemini; opt-in on Codex)
 
-10 hook scripts split into two roles:
+Rolepod keeps 10 root hook scripts in `hooks/`, but each CLI exposes a different subset:
 
-- **Context hooks (cross-CLI):** `project-context-loader.sh` (session start — git context), `verify-reminder.sh` (after edit), `post-ship-detect.sh` (reindex suggestion after big merges), `gitnexus-wrap.sh` (gitnexus index freshness + auto-reindex queue), `session-lock.sh` / `session-unlock.sh` (sibling-session safety).
-- **Enforcement hooks (Claude-only hard gates):** `block-subagent-commit.sh` (sub-agents can't commit / push / merge), `precommit-gate.sh` (test gate on high-risk paths), `gate-reminder.sh` (RED-test + reviewer-floor reminders on auth/billing/migration), `cohesion-contract-check.sh` (multi-agent parallel spawn requires a contract).
-
-Codex / Gemini fire the context hooks; enforcement hooks are Claude-only because they rely on the `agent_id` field in `PreToolUse` hook input (Codex `plugin_hooks` opt-in is under development; Gemini has no `Agent` matcher).
+- **Claude:** copies all 10 scripts and registers 9 rolepod entries in `settings.json` (2x `SessionStart`, 4x `PreToolUse`, 2x `PostToolUse`, 1x `Stop`). `gitnexus-wrap.sh` is not a standalone rolepod entry; it patches the optional GitNexus hook when GitNexus is installed.
+- **Codex:** ships 5 plugin command hooks: `project-context-loader.sh`, `gate-reminder.sh`, `precommit-gate.sh`, `verify-reminder.sh`, `post-ship-detect.sh`.
+- **Gemini:** ships 4 adapter command hooks: `session-start.sh`, `before-tool.sh`, `after-tool.sh`, `pre-compress.sh`.
 
 **Codex caveat:** hooks register via `hooks/hooks.json` inside the plugin but require `codex features enable plugin_hooks` (default flag: `under development, false`). Without the opt-in, rolepod's hooks are registered but inert — Tier 1 rules in AGENTS.md still drive gate compliance.
 
 | Event class | Claude | Codex | Gemini |
 |---|---|---|---|
-| Session start | `SessionStart` | `SessionStart` | `SessionStart` |
-| Before tool | — | — | `BeforeTool` |
-| After tool | `PostToolUse` | `PostToolUse` | `AfterTool` |
+| Session start | `SessionStart` (`project-context-loader`, `session-lock`) | `SessionStart` (`project-context-loader`) | `SessionStart` (`session-start`) |
+| Before tool | `PreToolUse` (`gate-reminder`, `precommit-gate`, `block-subagent-commit`, `cohesion-contract-check`) | `PreToolUse` (`gate-reminder`, `precommit-gate`) | `BeforeTool` (`before-tool`) |
+| After tool | `PostToolUse` (`verify-reminder`, `post-ship-detect`) | `PostToolUse` (`verify-reminder`, `post-ship-detect`) | `AfterTool` (`after-tool`) |
+| Stop / compact | `Stop` (`session-unlock`) | — | `PreCompress` (`pre-compress`) |
 
-Claude registers 9 hooks (6 context + 3 enforcement). Codex ships 5 command hooks across 3 event classes (SessionStart/PreToolUse/PostToolUse). Gemini ships 4 hooks across 4 event classes (SessionStart/BeforeTool/AfterTool/PreCompress). External hooks integrate via plugins: MemPalace (Stop/SessionStart/PreCompact), GitNexus (PreToolUse/PostToolUse), `qa-pass-check.sh`.
+External hooks integrate via plugins: MemPalace (Stop/SessionStart/PreCompact), GitNexus (PreToolUse/PostToolUse), `qa-pass-check.sh`.
 
 ### Commands
 
