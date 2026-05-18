@@ -47,7 +47,7 @@ The **`using-rolepod`** router skill (Tier 0) fires first on each request, picks
 
 ### Skill tiers
 
-Rolepod ships 43 skills total, organized by routing tier:
+Rolepod ships 44 skills total, organized by routing tier:
 
 | Tier | Purpose | Count |
 |---|---|---|
@@ -76,7 +76,7 @@ Pick one with `--target=claude` / `--target=codex` / `--target=gemini`, or all t
 
 ### Install — pure framework only
 
-Rolepod installs the framework itself: agents, rules, hooks, 42 skills, commands, manifest, docs. **No 3rd-party tools, plugins, or CLIs are auto-installed.** For add-ons that pair well with rolepod, see [Recommended add-ons](#recommended-add-ons) below — install each one yourself; the framework auto-integrates when present.
+Rolepod installs the framework itself: agents, rules, hooks, 44 skills, commands, manifest, docs. **No 3rd-party tools, plugins, or CLIs are auto-installed.** For add-ons that pair well with rolepod, see [Recommended add-ons](#recommended-add-ons) below — install each one yourself; the framework auto-integrates when present.
 
 Add `--force` to overwrite. Creates `~/.<cli>.backup-<timestamp>/` with **only rolepod-managed paths** (session history, plugin caches, file-history stay in place). Typical backup <50MB. See `docs/cli-support.md`.
 
@@ -159,8 +159,8 @@ After install, restart the CLI you targeted so hooks register.
 | Target | Static | Dry-run | Live hooks | Live dispatch | Status |
 |--------|--------|---------|-----------|--------------|--------|
 | Claude Code | ✓ | ✓ | ✓ | ✓ | **Production** |
-| Codex CLI | ✓ | ✓ | ⚠️ opt-in only — `codex features enable plugin_hooks` required (default: `under development, false`) | ✓ (18 agents + 42 skills via plugin cache) | **Production** (hooks opt-in) |
-| Gemini CLI | ✓ | ✓ | ✓ | ✓ (42 skills) | **Production** |
+| Codex CLI | ✓ | ✓ | ⚠️ opt-in only — `codex features enable plugin_hooks` required (default: `under development, false`) | ✓ (18 agents + 44 skills via plugin cache) | **Production** (hooks opt-in) |
+| Gemini CLI | ✓ | ✓ | ✓ | ✓ (44 skills) | **Production** |
 
 **Static** = `bash -n` + `json.tool` + `tomllib.load()` + snapshot diff (no leaked `{{INCLUDE: ...}}`). **Dry-run** = `install.sh` writes correct files to temp dir. **Live** = real CLI; hooks fire (Claude + Gemini always; Codex only after `plugin_hooks` opt-in); subagents/skills dispatch.
 
@@ -180,7 +180,7 @@ Three layers, different load mechanisms (per [Anthropic memory doc](https://code
 Tier 1 (always loaded)        entry doc core            ≤200 lines
 Tier 2a (always-on rules)     rules/always-on/          3 files (eager)
 Tier 2b (path-scoped rules)   rules/{code,test}/        4 files (load on file match)
-Tier 3 (skill on trigger)     skills/                   42 skills + plugin skills
+Tier 3 (skill on trigger)     skills/                   44 skills + plugin skills
 ```
 
 Plus: hooks (Claude/Gemini auto-fire; Codex opt-in via `plugin_hooks`), agents (sub-process), commands (slash /).
@@ -214,7 +214,7 @@ Lazy-load via `paths:` frontmatter — only enter context when Claude touches ma
 
 ### Tier 3 — Skills (on trigger phrase)
 
-42 skills covering anti-spaghetti, TDD, debugging, frontend UI, security, performance, design, marketing, docs, planning, ops. (`zoom-out` meta-recovery + 27 domain skills authored fresh + `doubt-driven-development` / `source-driven-development` influenced by addyosmani/agent-skills.) Auto-discovery via `using-agent-skills` at SessionStart. Optional add-on skills (caveman, gitnexus, ui-ux-pro-max) integrate when the user installs them — see [Recommended add-ons](#recommended-add-ons).
+44 skills covering anti-spaghetti, TDD, debugging, frontend UI, security, performance, design, marketing, docs, planning, ops. (`zoom-out` meta-recovery + 27 domain skills authored fresh + `doubt-driven-development` / `source-driven-development` influenced by addyosmani/agent-skills.) Auto-discovery via `using-agent-skills` at SessionStart. Optional add-on skills (caveman, gitnexus, ui-ux-pro-max) integrate when the user installs them — see [Recommended add-ons](#recommended-add-ons).
 
 Each CLI exposes skills as a real directory tree. Every SKILL.md ends with "Common Rationalizations" — typical excuses + data-backed rebuttals.
 
@@ -228,7 +228,7 @@ Plan     → planning-and-task-breakdown · parallel-contract-orchestration · a
 Build    → test-driven-development · frontend-ui-engineering · anti-spaghetti · claude-api · interface-design · interaction-design · doc-coauthoring · conversion-copywriting
 Verify   → systematic-debugging · webapp-testing · browser-testing-with-devtools · performance-optimization · security-and-hardening
 Review   → code-review-and-quality · code-simplification · web-design-guidelines · doubt-driven-development
-Ship     → shipping-and-launch · ci-cd-and-automation · deprecation-and-migration · internal-comms · user-facing-content · documentation-and-adrs · seo
+Ship     → shipping-and-launch · ci-cd-and-automation · internal-comms · user-facing-content · documentation-and-adrs · seo
 Cross    → zoom-out · source-driven-development · context-engineering
 ```
 
@@ -250,7 +250,12 @@ Path/concern ownership + expertise list + escalation paths + skill preloads. Sha
 
 ### Hooks — `hooks/` (auto-fire on Claude/Gemini; opt-in on Codex)
 
-3 hook scripts: `project-context-loader.sh` (session start — git context), `verify-reminder.sh` (after edit), `post-ship-detect.sh` (reindex suggestion after big merges). Context-fill warnings handled by each CLI's native compact.
+10 hook scripts split into two roles:
+
+- **Context hooks (cross-CLI):** `project-context-loader.sh` (session start — git context), `verify-reminder.sh` (after edit), `post-ship-detect.sh` (reindex suggestion after big merges), `gitnexus-wrap.sh` (gitnexus index freshness + auto-reindex queue), `session-lock.sh` / `session-unlock.sh` (sibling-session safety).
+- **Enforcement hooks (Claude-only hard gates):** `block-subagent-commit.sh` (sub-agents can't commit / push / merge), `precommit-gate.sh` (test gate on high-risk paths), `gate-reminder.sh` (RED-test + reviewer-floor reminders on auth/billing/migration), `cohesion-contract-check.sh` (multi-agent parallel spawn requires a contract).
+
+Codex / Gemini fire the context hooks; enforcement hooks are Claude-only because they rely on the `agent_id` field in `PreToolUse` hook input (Codex `plugin_hooks` opt-in is under development; Gemini has no `Agent` matcher).
 
 **Codex caveat:** hooks register via `hooks/hooks.json` inside the plugin but require `codex features enable plugin_hooks` (default flag: `under development, false`). Without the opt-in, rolepod's hooks are registered but inert — Tier 1 rules in AGENTS.md still drive gate compliance.
 
@@ -345,7 +350,7 @@ Estimated **~50-60% cost reduction** vs "all Opus high" while keeping depth wher
 
 ## Recommended add-ons
 
-Rolepod ships **pure framework only** — agents, rules, hooks, 42 skills, commands, manifests. No 3rd-party tools, plugins, or CLIs are auto-installed by `./install.sh`.
+Rolepod ships **pure framework only** — agents, rules, hooks, 44 skills, commands, manifests. No 3rd-party tools, plugins, or CLIs are auto-installed by `./install.sh`.
 
 The framework is designed to **auto-integrate** when a recommended add-on is present on the user's system. Install whichever ones you want, on your own; rolepod hooks/rules/skills detect them at runtime and wire up. **Nothing breaks if an add-on is missing** — every integration has a documented fallback.
 
@@ -391,7 +396,7 @@ Adversarial review beyond the in-process `qa-tester` floor.
 
 ### Skill preloads
 
-42 skills ship bundled. Agents preload skills via `skills:` frontmatter. `ui-ux-pro-max` is the **only** preload that points at an external add-on — every other preload is bundled. Drop unwanted preloads by editing `core/agents/<name>.md`'s `skills:` list.
+44 skills ship bundled. Agents preload skills via `skills:` frontmatter. `ui-ux-pro-max` is the **only** preload that points at an external add-on — every other preload is bundled. Drop unwanted preloads by editing `core/agents/<name>.md`'s `skills:` list.
 
 `zoom-out`, `doubt-driven-development`, `source-driven-development` are **Lead-invoked** (not preloaded by any agent).
 

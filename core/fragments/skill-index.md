@@ -78,6 +78,16 @@
 | `source-driven-development` | Ground every framework, library, schema, or platform-integration decision in official documentati... | `core/skills/source-driven-development/SKILL.md` |
 | `zoom-out` | Step back from implementation details to high-level perspective. Meta-cognitive recovery tool. | `core/skills/zoom-out/SKILL.md` |
 
+### Tier 2 — Meta-workflow
+
+| Skill | Description | Path |
+|-------|-------------|------|
+| `advisor-escalation` | Consult Claude Opus when Lead (Sonnet/Haiku) is stuck on root cause, architecture, or convergence. | `core/skills/advisor-escalation/SKILL.md` |
+| `new-project-onboarding` | Onboard fast to an unfamiliar codebase — detect stack, find conventions, identify entry points. | `core/skills/new-project-onboarding/SKILL.md` |
+| `reviewer-flow` | Route code review across Codex, Gemini, and qa-tester — pick reviewer by PR profile and risk. | `core/skills/reviewer-flow/SKILL.md` |
+| `session-hygiene` | Manage Claude Code session context — when to /clear, /compact, /rewind, switch task, or use a sub... | `core/skills/session-hygiene/SKILL.md` |
+| `triage-deep` | Deep triage rules for multi-file tasks, multi-agent coordination, scope/drift control. | `core/skills/triage-deep/SKILL.md` |
+
 ### Tier 3 — Compatibility shims
 
 | Skill | Description | Path |

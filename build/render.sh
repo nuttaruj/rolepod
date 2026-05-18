@@ -144,6 +144,17 @@ generate_skill_index() {
       source-driven-development \
       zoom-out
 
+    # Tier 2 — Meta-workflow utilities. Fire on situational triggers (stuck,
+    # new repo, session pressure, multi-file complexity) rather than by
+    # lifecycle phase. Don't belong in Tier 1 (not always-on) but aren't
+    # specialists either — they're Lead's coordination toolkit.
+    emit_phase_section "Tier 2 — Meta-workflow" \
+      advisor-escalation \
+      new-project-onboarding \
+      reviewer-flow \
+      session-hygiene \
+      triage-deep
+
     # Tier 3 — Compatibility shims. Old skill paths still routed via legacy
     # trigger phrases; bodies redirect to the canonical Tier 1 skill.
     emit_phase_section "Tier 3 — Compatibility shims" \

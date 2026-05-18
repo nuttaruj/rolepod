@@ -1,7 +1,7 @@
 {
   "name": "rolepod",
   "version": "1.2.0",
-  "description": "Coordinated software-house team for AI coding CLIs — 18 specialist agents, 42 skills, 7 rules, 5 hooks, 6-phase lifecycle. Pre-commit gates (S1-S5 simplicity / T1-T6 testing / F1-F5 failure-mode) catch bugs before ship. Installs via install.sh; not a Claude Code marketplace plugin (rolepod's CLAUDE.md + rules/ pattern doesn't map cleanly to the marketplace plugin model). See https://github.com/nuttaruj/rolepod.",
+  "description": "Coordinated software-house team for AI coding CLIs — 18 specialist agents, 44 skills, 7 rules, 5 hooks, 6-phase lifecycle. Pre-commit gates (S1-S5 simplicity / T1-T6 testing / F1-F5 failure-mode) catch bugs before ship. Installs via install.sh; not a Claude Code marketplace plugin (rolepod's CLAUDE.md + rules/ pattern doesn't map cleanly to the marketplace plugin model). See https://github.com/nuttaruj/rolepod.",
   "author": {
     "name": "nuttaruj",
     "url": "https://github.com/nuttaruj"
