@@ -128,7 +128,7 @@ Trigger phrases in each skill's frontmatter.
 | `pre-merge-gate` | Run the pre-merge gate — simplicity + test + reviewer routing + ask-user matrix + CI lanes — befo... |
 | `code-simplification` | Refactor for clarity without changing behavior. Behavior-preserving — every change is provable by... |
 
-**Tier 2 (Specialist, 29 skills) + Tier 3 (Compatibility shims, 2 skills)** — fire by domain match via `team-routing`. Full catalog: [docs/skills.md](docs/skills.md).
+**Tier 2 (Specialist + Meta-workflow) + Tier 3 (Compatibility shims)** — fire by domain or situational match via `team-routing`. Full catalog: [docs/skills.md](docs/skills.md).
 
 ## Agent roster
 

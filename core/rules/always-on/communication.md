@@ -57,7 +57,9 @@ Resolve repo URL via `gh` if unknown — never bare `PR #123`.
 ## Interview pattern (big features)
 
 ```
-I want to build [brief]. Interview me using AskUserQuestion tool.
+I want to build [brief]. Interview me one question at a time
+(use the native question UI if available — Claude `AskUserQuestion`;
+otherwise plain-text with 2-4 options and one marked `(Recommended)`).
 Cover: technical impl, UI/UX, edge cases, tradeoffs.
 Don't ask obvious questions, dig into hard parts.
 Write spec to SPEC.md when done.

@@ -1,6 +1,6 @@
 # Rolepod — Multi-CLI AI Workflow System
 
-Complete software-house team for AI coding CLIs: 18 specialist agents, 7 rules (3 always-on + 4 path-scoped) + 8 lifecycle skills, 42 bundled skills, 3 auto-trigger hooks, parallel-safe by path/concern. Native plugins for Claude Code, Codex CLI, and Gemini CLI.
+Complete software-house team for AI coding CLIs: 18 specialist agents, 7 rules (3 always-on + 4 path-scoped) + 8 lifecycle skills, 44 bundled skills, 10 hooks (6 context + 4 enforcement), parallel-safe by path/concern. Native plugins for Claude Code, Codex CLI, and Gemini CLI.
 
 **Universal:** zero project-specific refs, works in any repo from day one.
 
@@ -18,7 +18,7 @@ Self-improving: every session captures learnings via MemPalace KG so the next se
 
 **Lean workflow spine + specialist agent routing + cost-aware model tiers** for full-stack software-house work on AI coding CLIs.
 
-Rolepod ships a workflow router (`using-rolepod`) so every task flows through the same spine, then `team-routing` picks the right specialist agent for the phase. Lead doesn't see the full 43-skill / 18-agent surface every turn — only Tier 0 (router) + Tier 1 (core workflow) load by default; specialists fire on domain match.
+Rolepod ships a workflow router (`using-rolepod`) so every task flows through the same spine, then `team-routing` picks the right specialist agent for the phase. Lead doesn't see the full 44-skill / 18-agent surface every turn — only Tier 0 (router) + Tier 1 (core workflow) load by default; specialists fire on domain match.
 
 ---
 
