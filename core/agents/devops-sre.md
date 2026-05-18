@@ -5,7 +5,6 @@ color: gray
 skills:
   - ci-cd-and-automation
   - shipping-and-launch
-  - deprecation-and-migration
 ---
 
 # DevOps + SRE

@@ -25,7 +25,7 @@ For a non-trivial feature, **two gates** stand between user's request and any co
 
 **Gate A — Discovery dialogue must run before drafting spec.** Lead does NOT pre-fill the spec template from the request text. Lead runs Phase 0 (below) — one question per message, options with a Recommended pick, 2-3 approaches with tradeoffs — until the spec can be filled without TBDs.
 
-**Gate B — Spec must be user-approved and saved to `docs/specs/<feature>.md`** before any of these fire:
+**Gate B — Spec must exist in user-approved form** before any of these fire:
 
 - `test-driven-development` (impl tests)
 - `frontend-ui-engineering`
@@ -36,13 +36,23 @@ For a non-trivial feature, **two gates** stand between user's request and any co
 - backend code generation
 - any Build-phase skill
 
-Attempting Build without both gates passed:
+**Spec persistence — tiered by risk + scope:**
+
+| Tier | Trigger | Persistence | Approval shape |
+|------|---------|-------------|----------------|
+| **Small** | ≤1 module, no high-risk surface, no multi-agent, ≤5 vertical slices | Spec lives **in chat** — short brief (problem + goals + non-goals + success criteria, ~10-15 lines). No file. | User replies "approved" / "OK go" in chat |
+| **Medium / High-risk** | auth / billing / migrations / payments / public APIs / data deletion / multi-agent / cross-module / >5 vertical slices | Spec saved to `docs/specs/<feature>.md` | User-approved comment on the file (or explicit "approved" referencing the path) |
+| **External repo / open source** | Touching a repo where future contributors need the spec | Always save to `docs/specs/<feature>.md` regardless of tier | Same as Medium |
+
+Default: Small if you can defend it; Medium if unsure. When in doubt, file it.
+
+Attempting Build without the appropriate Gate B form:
 1. STOP
 2. Run Phase 0 (dialogue) → Phase 1 (write spec) → Phase 2 (self-review) → Phase 3 (user approval)
-3. Save to `docs/specs/<feature>.md`
+3. For Medium/High-risk: save to `docs/specs/<feature>.md` before invoking Build
 4. Then proceed
 
-Feature-without-spec = 41% scope drift (DAPLab). "Iterate spec in code" = the rationalization that produces the rework. **"Too simple to design" is also a rationalization** — write a 5-line spec for "simple" things; the dialogue takes 60 seconds and prevents the rework.
+Feature-without-spec = 41% scope drift (DAPLab). "Iterate spec in code" = the rationalization that produces the rework. **"Too simple to design" is also a rationalization** — write a 5-line brief even for "simple" things; the dialogue takes 60 seconds and prevents the rework.
 
 Gate does NOT apply: typo / comment / docstring / one-line config / pure rename / dead-code / bug fix with reproducer / explicitly scoped prototype / user explicit "skip spec, just code".
 </EXTREMELY-IMPORTANT>
@@ -120,7 +130,27 @@ Lead runs all four in order. Skipping Phase 0 is the most common (and most expen
 
 **Goal:** end the phase able to fill the spec template with zero placeholders.
 
-**Method:** structured Q&A via `AskUserQuestion` tool — one question per message, 2-4 options each, one option labeled `(Recommended)`. Free-text "Other" always available. The point is **lowering the cost of answering** so the user can shape the spec in 30 seconds of clicks instead of 5 minutes of typing.
+**Method:** structured Q&A, one question per message, 2-4 options each, one option labeled `(Recommended)`. Free-text "Other" always available. The point is **lowering the cost of answering** so the user can shape the spec in 30 seconds of clicks instead of 5 minutes of typing.
+
+**Native question UI (preferred when available):**
+- **Claude Code** — invoke the `AskUserQuestion` tool. Renders as a clickable multi-choice prompt with an "Other" free-text fallback.
+- **Codex CLI / Gemini CLI** — no structured question tool yet. Emit a plain-text message with the same shape (see below) and wait for the user's reply.
+
+When falling back to plain text, format the question this way so the affordance is identical to the native widget:
+
+```
+Q1. <question text>?
+
+  A. <option label> (Recommended)
+     <one-line description>
+  B. <option label>
+     <one-line description>
+  C. <option label>
+     <one-line description>
+  D. Other — reply with free-form text
+```
+
+Single question per message regardless of UI — the constraint is about user attention, not tool surface.
 
 ### 0.1 — Explore project context FIRST
 
@@ -138,7 +168,9 @@ If the request describes multiple independent subsystems ("build a platform with
 
 ### 0.3 — Ask clarifying questions, one per message
 
-Use `AskUserQuestion` with this shape:
+Use the native question UI when present (Claude Code's `AskUserQuestion`); otherwise emit the plain-text format from Phase 0's Method block. Same question content either way.
+
+Example (Claude Code `AskUserQuestion` shape):
 
 ```
 question: "Who's the primary user for this feature?"
@@ -150,6 +182,20 @@ options:
     description: "Acquisition surface; needs onboarding consideration."
   - label: "Internal admin / ops"
     description: "Internal-only; UX bar is lower, audit bar is higher."
+```
+
+Equivalent plain-text (Codex CLI / Gemini CLI fallback):
+
+```
+Q1. Who's the primary user for this feature?
+
+  A. Existing paying customer (Recommended)
+     User who already pays; we know their behavior from telemetry.
+  B. New free-tier signup
+     Acquisition surface; needs onboarding consideration.
+  C. Internal admin / ops
+     Internal-only; UX bar is lower, audit bar is higher.
+  D. Other — reply with free-form text
 ```
 
 Cover (in roughly this order — but adapt based on what the repo already answers):
@@ -180,7 +226,7 @@ Approach C — [name]:    [1-line description] · pros: ... · cons: ... · effo
 Recommended: A — [why, in one sentence].
 ```
 
-Use `AskUserQuestion` to let the user pick. Free-text "Other" lets them combine or veto.
+Let the user pick (native widget if available, plain-text format otherwise). Free-text "Other" lets them combine or veto.
 
 Why this matters: the user usually has a preferred approach in their head but didn't state it. Surfacing alternatives gives them a chance to redirect cheaply, before any code or spec is written against the wrong shape.
 
@@ -199,7 +245,12 @@ For simple features (≤5-line spec total), skip incremental approval — write 
 
 ## Phase 1 — Draft the spec
 
-Fill the template using Phase 0 answers. **No TBDs, no "TODO".** If a slot is genuinely deferrable, write `Out of scope (this version): X — revisit when Y`. Deferral is a decision; "TBD" is a half-decision.
+Pick the form by tier (see HARD-GATE → Spec persistence table):
+
+- **Small tier** — write a short brief directly in chat (problem + goals + non-goals + success criteria, ~10-15 lines). No file. Skip the full template.
+- **Medium / High-risk / External repo** — fill the full template and save to `docs/specs/<feature>.md`. Commit the file with the implementation later.
+
+**Either form: No TBDs, no "TODO".** If a slot is genuinely deferrable, write `Out of scope (this version): X — revisit when Y`. Deferral is a decision; "TBD" is a half-decision.
 
 ### Apply these as you draft
 
@@ -241,8 +292,12 @@ Fix all findings inline. **No round-trip with the user for self-review findings.
 
 ## Phase 3 — User approval (sign-off)
 
-Present the spec for approval:
+Present the spec for approval. Format depends on tier:
 
+**Small tier (in-chat brief):**
+> "Here's the brief — problem, goals, non-goals, success criteria. Passed self-review. Reply 'approved' / 'OK go' to proceed, or call out anything off."
+
+**Medium / High-risk / External (saved file):**
 > "Spec drafted at `docs/specs/<feature>.md`. It passed self-review (no placeholders, scope checked, ambiguities resolved). Please skim — request changes if anything's off, or approve so we can move to planning."
 
 Wait for explicit approval. If user requests changes:
@@ -298,7 +353,7 @@ Don't build until Phase 3 lands on "user-approved".
 |--------|---------|
 | "Spec slows me, iterate in code" | Iterating in code = redoing spec implicitly in PR cycles with more cleanup. |
 | "Simple change" | 41% of agentic-LLM failures land in trivial diffs (DAPLab). "Simple" projects are where unexamined assumptions cause the most wasted work. Write a 5-line spec; the dialogue takes 60 seconds. |
-| "I already know what the user wants — skip the dialogue" | If you knew, the spec template wouldn't have TBDs in it. Run Phase 0; the AskUserQuestion clicks cost the user 30 seconds and prevent the 30-minute rework. |
+| "I already know what the user wants — skip the dialogue" | If you knew, the spec template wouldn't have TBDs in it. Run Phase 0; one round of multi-choice picks costs the user 30 seconds and prevents the 30-minute rework. |
 | "I'll just pre-fill the template and let the user correct it" | Drafting first puts the user in editing-mode (reactive) instead of shaping-mode (generative). Phase 0 dialogue first, draft after — the order matters. |
 | "Self-review is busywork, ship the draft" | Self-review catches placeholder/contradiction/scope/ambiguity that the user shouldn't be the one to find. Spec quality is Lead's job, not user's. |
 | "Time pressure" | Tech debt compounds. |

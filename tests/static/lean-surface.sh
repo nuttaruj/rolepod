@@ -31,6 +31,14 @@ LEAN_TIER1=$(awk '/^### Tier 1/{f=1;next} /^### Tier/{f=0} f && /^\| `/{c++} END
 check "lean skill-index Tier 0 = 1 (actual: $LEAN_TIER0)"    "[ $LEAN_TIER0 -eq 1 ]"
 check "lean skill-index Tier 1 = 11 (actual: $LEAN_TIER1)"   "[ $LEAN_TIER1 -eq 11 ]"
 
+# ── Skill catalog drift — filesystem must match rendered fragment ──────
+# Catches the "render.sh skips utility skills" failure mode that bit us
+# pre-PR-doc-catalog-drift (advisor-escalation, new-project-onboarding,
+# reviewer-flow, session-hygiene, triage-deep all silently missing).
+FS_SKILLS=$(find core/skills -maxdepth 1 -mindepth 1 -type d | wc -l | tr -d ' ')
+RENDERED_SKILLS=$(awk '/^\| `/{c++} END{print c+0}' core/fragments/skill-index.md)
+check "skill catalog: filesystem=$FS_SKILLS rendered=$RENDERED_SKILLS (must match)" "[ $FS_SKILLS -eq $RENDERED_SKILLS ]"
+
 # ── 18-agent full table must NOT appear in rendered entry docs ────────
 # Heuristic: a full agent table has the agent-roster header pattern.
 # The lean fragment uses a single "**18 specialists**" line instead.

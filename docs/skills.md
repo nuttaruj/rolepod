@@ -1,6 +1,6 @@
 # Rolepod Skill Catalog
 
-Full skill library — 43 skills organized by routing tier. Default Lead context only loads Tier 0 + Tier 1; Tier 2 specialists fire on domain match; Tier 3 shims redirect legacy trigger phrases to canonical Tier 1 skills.
+Full skill library — 44 skills organized by routing tier. Default Lead context only loads Tier 0 + Tier 1; Tier 2 specialists fire on domain match; Tier 3 shims redirect legacy trigger phrases to canonical Tier 1 skills.
 
 This doc is the **reference**. Entry docs (`CLAUDE.md` / `AGENTS.md` / `GEMINI.md`) embed only the lean view to keep per-turn context small.
 
