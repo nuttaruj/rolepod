@@ -18,10 +18,14 @@ Most rework = building wrong thing well. Spec front-loads disagreements when che
 
 Skip: small + obvious answer; prototype to learn; spec exists and is current.
 
-## HARD-GATE: spec required before Build-phase skills
+## HARD-GATE: dialogue → spec → approval, before any Build-phase skill
 
 <EXTREMELY-IMPORTANT>
-These skills CANNOT BE INVOKED for non-trivial features until a written spec exists, user-approved, saved to `docs/specs/<feature>.md`:
+For a non-trivial feature, **two gates** stand between user's request and any code:
+
+**Gate A — Discovery dialogue must run before drafting spec.** Lead does NOT pre-fill the spec template from the request text. Lead runs Phase 0 (below) — one question per message, options with a Recommended pick, 2-3 approaches with tradeoffs — until the spec can be filled without TBDs.
+
+**Gate B — Spec must be user-approved and saved to `docs/specs/<feature>.md`** before any of these fire:
 
 - `test-driven-development` (impl tests)
 - `frontend-ui-engineering`
@@ -32,15 +36,15 @@ These skills CANNOT BE INVOKED for non-trivial features until a written spec exi
 - backend code generation
 - any Build-phase skill
 
-Attempting Build without spec for non-trivial feature:
+Attempting Build without both gates passed:
 1. STOP
-2. Invoke this skill first
-3. Get user approval, save to `docs/specs/<feature>.md`
+2. Run Phase 0 (dialogue) → Phase 1 (write spec) → Phase 2 (self-review) → Phase 3 (user approval)
+3. Save to `docs/specs/<feature>.md`
 4. Then proceed
 
-Feature-without-spec = 41% scope drift (DAPLab). "Iterate spec in code" = the rationalization that produces the rework.
+Feature-without-spec = 41% scope drift (DAPLab). "Iterate spec in code" = the rationalization that produces the rework. **"Too simple to design" is also a rationalization** — write a 5-line spec for "simple" things; the dialogue takes 60 seconds and prevents the rework.
 
-Gate does NOT apply: typo / comment / docstring / one-line config / pure rename / dead-code / bug fix with reproducer / explicitly scoped prototype.
+Gate does NOT apply: typo / comment / docstring / one-line config / pure rename / dead-code / bug fix with reproducer / explicitly scoped prototype / user explicit "skip spec, just code".
 </EXTREMELY-IMPORTANT>
 
 ## What a good spec is — and isn't
@@ -101,46 +105,158 @@ Ordered by impact * likelihood.
 Phasing, flagging, audience, fallback.
 ```
 
-## How to apply
+## The four phases
 
-### 1. Start with problem, not solution
+```
+Phase 0: Discovery dialogue  → understand intent + constraints
+Phase 1: Draft spec          → fill template, no TBDs
+Phase 2: Self-review         → scan placeholder / contradiction / scope / ambiguity
+Phase 3: User approval       → sign-off, then Build can fire
+```
 
-Can't fill Problem + Goals without naming a solution → user need not pinned. Go talk to users.
+Lead runs all four in order. Skipping Phase 0 is the most common (and most expensive) failure — Lead pattern-matches the user's one-liner into a half-filled template, user spends approval round filling in blanks Lead should have asked about.
 
-### 2. Write Non-goals early
+## Phase 0 — Discovery dialogue (the real entry point)
 
-Catches scope creep before it starts.
+**Goal:** end the phase able to fill the spec template with zero placeholders.
 
-### 3. Walk scenarios
+**Method:** structured Q&A via `AskUserQuestion` tool — one question per message, 2-4 options each, one option labeled `(Recommended)`. Free-text "Other" always available. The point is **lowering the cost of answering** so the user can shape the spec in 30 seconds of clicks instead of 5 minutes of typing.
 
-For each user story: what does user see, click, type? Edge cases surface here. Finds 80% of missing requirements.
+### 0.1 — Explore project context FIRST
 
-### 4. Mark unknowns
+Before asking the user anything:
+- `Read` the relevant existing files (entry points, nearby modules, schema)
+- `git log --oneline -20` for recent direction
+- Glance at related specs in `docs/specs/`
+- `gitnexus_context` / `gitnexus_query` if installed — symbol + concept map
 
-Open questions blocking decision get owner + date. Non-blocking ("what color is button?") aren't spec material.
+If a clarifying question is answerable from the repo, **answer it from the repo, don't ask the user.** Asking what's already visible burns trust.
 
-### 5. Sign-off before implementing
+### 0.2 — Spot scope before asking details
 
-Spec = contract. Get changes, get approval. Implementation against unsigned spec = rework.
+If the request describes multiple independent subsystems ("build a platform with chat + storage + billing + analytics"), STOP and surface this. Don't burn questions refining a project that needs decomposition first. Help the user split into sub-projects; each gets its own spec → plan → build cycle.
 
-### 6. Update or supersede — never silently rewrite
+### 0.3 — Ask clarifying questions, one per message
 
-- Small drift — note, thumbs up, continue
+Use `AskUserQuestion` with this shape:
+
+```
+question: "Who's the primary user for this feature?"
+header:   "Primary user"
+options:
+  - label: "Existing paying customer (Recommended)"
+    description: "User who already pays; we know their behavior from telemetry."
+  - label: "New free-tier signup"
+    description: "Acquisition surface; needs onboarding consideration."
+  - label: "Internal admin / ops"
+    description: "Internal-only; UX bar is lower, audit bar is higher."
+```
+
+Cover (in roughly this order — but adapt based on what the repo already answers):
+
+1. **Primary user** — who, specifically
+2. **Current behavior** — what they do today without this feature
+3. **Success definition** — what observable state means "shipped well"
+4. **Hard constraints** — time / budget / tech / regulatory
+5. **Non-goals** — what we're explicitly NOT doing
+6. **Edge cases** — at least 2 the user hasn't named
+7. **Tradeoffs they accept** — speed vs polish, breadth vs depth, etc.
+
+**Question discipline:**
+- One topic per message — if a topic needs depth, break into multiple sequential questions
+- Multiple-choice > open-ended (lowers user effort, surfaces options they hadn't considered)
+- Always provide a `(Recommended)` option — that's Lead's judgment showing through; user can override
+- Stop asking when you have enough to fill the template without TBDs. Don't fish for more.
+
+### 0.4 — Propose 2-3 approaches with tradeoffs
+
+Once intent is clear, **before drafting the spec**, present approaches:
+
+```
+Approach A — [name]:    [1-line description] · pros: ... · cons: ... · effort: S/M/L
+Approach B — [name]:    [1-line description] · pros: ... · cons: ... · effort: S/M/L
+Approach C — [name]:    [1-line description] · pros: ... · cons: ... · effort: S/M/L
+
+Recommended: A — [why, in one sentence].
+```
+
+Use `AskUserQuestion` to let the user pick. Free-text "Other" lets them combine or veto.
+
+Why this matters: the user usually has a preferred approach in their head but didn't state it. Surfacing alternatives gives them a chance to redirect cheaply, before any code or spec is written against the wrong shape.
+
+### 0.5 — Incremental section approval (for nuanced features)
+
+For features with >1 design decision, don't write the whole spec then ask "approve?". Instead present in chunks:
+
+- "Here's the **Problem + Goals** section — does this match your read?" → user adjusts → continue
+- "Here's the **Non-goals + Out of scope** section — anything to add/remove?" → continue
+- "Here's the **User stories + edge cases** section — did I miss any?" → continue
+- ...
+
+Each section gets a tiny approval before the next is written. Catches drift early instead of at full-spec review.
+
+For simple features (≤5-line spec total), skip incremental approval — write the whole thing, one approval round.
+
+## Phase 1 — Draft the spec
+
+Fill the template using Phase 0 answers. **No TBDs, no "TODO".** If a slot is genuinely deferrable, write `Out of scope (this version): X — revisit when Y`. Deferral is a decision; "TBD" is a half-decision.
+
+### Apply these as you draft
+
+- **Problem before solution** — Problem + Goals must read coherently without naming any implementation. If you can't fill these without naming Redis / React / a specific table, Phase 0 didn't surface the actual user need; go back.
+- **Non-goals early** — write Non-goals + Out of scope BEFORE Requirements. Catches scope creep before it lands in the requirement list.
+- **Walk scenarios concretely** — "user clicks X, sees Y, types Z" for happy path + ≥2 edge cases. Surfaces 80% of missing requirements.
+- **Mark blocking unknowns with owners** — Open questions that block decisions get owner + target date. Non-blocking ("button color?") aren't spec material — strip them.
+
+## Phase 2 — Spec self-review (before showing the user)
+
+After writing the spec, **read it fresh** through this checklist. Fix inline; don't make the user catch these.
+
+### 2.1 Placeholder scan
+- Any `TBD` / `TODO` / `???` / `<fill in>` / "to be determined" / "we'll figure out" / "depends" / "later"? → Resolve or move to Out-of-scope.
+- Any section header with one-line content that's obviously a stub? → Fill or remove.
+
+### 2.2 Internal consistency
+- Does the **Architecture** described match the **Requirements**? (e.g., requirement says "real-time updates" but no streaming surface in the design)
+- Do **Success criteria** actually measure the **Goals**? (Goal: "reduce signup friction." Success: "p50 signup ≤45s" — match. Success: "100 daily signups" — mismatch, measures volume not friction.)
+- Do **Non-goals** contradict any **Requirements**? (Both saying "must support SSO" + "SSO out of scope" = pick one)
+- Do **User stories** all map to a **Requirement**? Orphan stories = either a missing requirement or a story that doesn't belong.
+
+### 2.3 Scope check
+- Is this a single coherent feature, or did three features sneak in?
+- Can one implementation plan cover the whole spec, or does it need decomposition into 2+ specs?
+- If scope spans >5 vertical slices (per `planning-and-task-breakdown`), strong signal to split.
+
+### 2.4 Ambiguity check
+- Pick any 3 requirements at random. Could each be interpreted two different ways by a reasonable implementer?
+  - "fast" → state the p95 budget
+  - "secure" → state which threat model
+  - "configurable" → state which knobs, who turns them
+- If yes, pick one interpretation and make it explicit.
+
+### 2.5 "Skim test"
+- Read only the section headers + first sentence of each. Could a stakeholder approve from that alone? If no, the lead sentences are buried — rewrite them.
+
+Fix all findings inline. **No round-trip with the user for self-review findings.** Phase 2 ends when the spec passes its own checklist.
+
+## Phase 3 — User approval (sign-off)
+
+Present the spec for approval:
+
+> "Spec drafted at `docs/specs/<feature>.md`. It passed self-review (no placeholders, scope checked, ambiguities resolved). Please skim — request changes if anything's off, or approve so we can move to planning."
+
+Wait for explicit approval. If user requests changes:
+- Make them
+- Re-run Phase 2 self-review (changes can introduce new contradictions)
+- Re-present
+
+Only proceed to `planning-and-task-breakdown` once approval is on the table.
+
+### Spec = contract. Update or supersede — never silently rewrite
+
+- Small drift mid-build — note, thumbs up, continue
 - Big drift — pause, update, re-confirm sign-off
-- Different feature — supersede with new spec
-
-## Interview the user (vague scope)
-
-Big features arrive as one-liners. Before drafting:
-
-```
-Interview me. Cover:
-- User's actual current behavior
-- What they'd do if this wasn't built
-- Edge cases I haven't named
-- Tradeoffs they accept
-- "Good enough for v1" definition
-```
+- Different feature emerging — supersede with a new spec, link old → new
 
 ## Common mistakes
 
@@ -166,20 +282,25 @@ Interview me. Cover:
 ## Output checkpoint
 
 ```
-Spec status: [draft → review → approved]
-Sign-off from: [names]
+Phase 0 dialogue: [N questions asked, approach picked, or "skipped — user authorized"]
+Phase 1 draft:    [path to docs/specs/<feature>.md]
+Phase 2 self-review: [pass / findings fixed inline]
+Phase 3 approval: [user-approved on YYYY-MM-DD] or [awaiting approval]
 Open questions still blocking: [list, or "none"]
 Implementation start condition: [what must be true to begin]
 ```
 
-Don't build until clean.
+Don't build until Phase 3 lands on "user-approved".
 
 ## Common Rationalizations
 
 | Excuse | Reality |
 |--------|---------|
 | "Spec slows me, iterate in code" | Iterating in code = redoing spec implicitly in PR cycles with more cleanup. |
-| "Simple change" | 41% of agentic-LLM failures land in trivial diffs (DAPLab). |
+| "Simple change" | 41% of agentic-LLM failures land in trivial diffs (DAPLab). "Simple" projects are where unexamined assumptions cause the most wasted work. Write a 5-line spec; the dialogue takes 60 seconds. |
+| "I already know what the user wants — skip the dialogue" | If you knew, the spec template wouldn't have TBDs in it. Run Phase 0; the AskUserQuestion clicks cost the user 30 seconds and prevent the 30-minute rework. |
+| "I'll just pre-fill the template and let the user correct it" | Drafting first puts the user in editing-mode (reactive) instead of shaping-mode (generative). Phase 0 dialogue first, draft after — the order matters. |
+| "Self-review is busywork, ship the draft" | Self-review catches placeholder/contradiction/scope/ambiguity that the user shouldn't be the one to find. Spec quality is Lead's job, not user's. |
 | "Time pressure" | Tech debt compounds. |
 
-Default: run anyway.
+Default: run all four phases anyway.

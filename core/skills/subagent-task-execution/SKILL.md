@@ -62,6 +62,49 @@ Why separate from spec reviewer: combined → "spec met but code gnarly, hmm…"
 - Quality smell → fix and re-run only quality reviewer (spec unchanged)
 - Reviewers disagree → Lead is tiebreaker. Don't spawn 4th — that's reviewer-shopping.
 
+## Continuous execution — between tasks
+
+<EXTREMELY-IMPORTANT>
+Once a plan is approved and execution starts, Lead does NOT pause to chat with the user between tasks. Execute the whole task list end-to-end. "Should I continue?" / "Want me to do the next one?" / progress check-ins waste user attention and tokens — the user already approved the plan, executing it is the agreement.
+</EXTREMELY-IMPORTANT>
+
+**Only stop between tasks when:**
+
+- **BLOCKED** — missing dep / failing verify / instruction genuinely unclear and you cannot resolve from spec + code
+- **AMBIGUITY** — two valid interpretations and picking the wrong one would burn rework
+- **HIGH-RISK BOUNDARY** — about to touch auth / billing / migrations / payments / secret rotation AND plan did not flag this for explicit user gate
+- **PLAN DRIFT** — discovered the next task depends on something the spec missed; replanning needed
+- **ALL TASKS COMPLETE** — final reconcile + ship handoff
+
+**Don't stop for:**
+
+- Progress summaries (each task already commits + verifies, the git log IS the summary)
+- "Just confirming" before next task (plan said do it, do it)
+- Asking permission to read more files (read what you need)
+- Reporting that a task passed (commit message + verify output already say so)
+
+**Pattern in practice:**
+
+```
+Lead: dispatching T-01 implementer...
+[implementer subagent runs]
+Lead: T-01 implementer done. Dispatching spec reviewer...
+[spec reviewer runs]
+Lead: T-01 spec pass. Dispatching quality reviewer...
+[quality reviewer runs]
+Lead: T-01 all green, committed abc1234. Dispatching T-02 implementer...
+```
+
+NOT:
+
+```
+Lead: T-01 done — want me to start T-02?       ← wasted ask
+User: yes
+Lead: starting T-02...
+```
+
+If user actually needs to interrupt, they will. Default to flow.
+
 ## Round caps
 
 - Implementer: 1 round (can't pass in one → brief is wrong, re-brief)

@@ -46,8 +46,40 @@ Each task:
 - **Done when** — observable state
 - **Effort** — S (<2h) / M (half day) / L (>1 day → split)
 - **Depends on** — prerequisite tasks
+- **Steps** — bite-sized list (see Step granularity below)
 
 Hard rule: every task has `verify:` clause. No verify = wish, not task.
+
+### 3a. Step granularity — single action, 2-5 minutes each
+
+A task is the unit a subagent picks up. **Steps** are the moves inside that unit. Each step must:
+
+- Be **one observable action** — not a paragraph, not "implement the feature"
+- Take **2-5 minutes** for a focused implementer (S agent, no context-switching)
+- Be **independently checkable** — you could pause after any step and know whether it worked
+- Use **imperative verbs** — "Write failing test", "Run pytest, confirm red", "Implement minimal fix", "Run pytest, confirm green", "Commit"
+
+**Canonical TDD pattern** (5 steps per logic task — copy this shape):
+
+```
+- [ ] Step 1: Write failing test for [behavior] at tests/foo_test.py
+- [ ] Step 2: Run `pytest tests/foo_test.py::test_x` — confirm it fails with expected error
+- [ ] Step 3: Implement minimal change in src/foo.py to make test pass
+- [ ] Step 4: Run `pytest tests/foo_test.py::test_x` — confirm it passes
+- [ ] Step 5: Commit with message "feat(foo): X"
+```
+
+**Why this granularity**:
+- Subagent context is finite — small steps mean small recovery scope on failure
+- Lead can resume at exact step boundary after `/clear` or hand-off
+- Each step generates its own verification signal (test output, commit hash) so progress is auditable
+- "Implement feature X" as one step = LLM hallucinates whole files; "Write test → Run → Implement → Run → Commit" = 5 verifiable checkpoints
+
+**Anti-patterns**:
+- One step = "Implement the auth flow" → unverifiable, agent will drift
+- 30-step list for a 1-hour task → over-decomposed, becomes accounting overhead
+- Steps that mix concerns ("Write test and implement and commit") → lose checkpoint value
+- Skipping the "Run to confirm fail/pass" steps → red→green discipline collapses
 
 ### 4. Order — sequence by dependency
 
@@ -71,6 +103,23 @@ After each task: run verify, get green, move on. Don't batch. Failure at task 3 
     Effort: S | M | L
     Depends on: T-MM (or "none")
     Notes: [load-bearing context for future-you]
+    Steps:
+      - [ ] Step 1: [single 2-5 min action]
+      - [ ] Step 2: [single 2-5 min action]
+      - [ ] Step 3: ...
+      - [ ] Step N: Commit
+```
+
+**Plan document header — required at top of any plan file:**
+
+```markdown
+# [Feature] Implementation Plan
+
+> **For agentic workers:** REQUIRED SUB-SKILL — use `subagent-task-execution` to dispatch each task to a fresh subagent (default), or `systematic-debugging` if task type is bug. Steps use checkbox (`- [ ]`) for tracking.
+
+**Goal:** [one sentence]
+**Architecture:** [2-3 sentences]
+**Verify suite:** [command(s) that prove the whole plan worked]
 ```
 
 ## Slicing — vertical not horizontal
@@ -117,12 +166,14 @@ Slices: [N vertical slices]
 
 Slice 1: [name] — ships [user-visible value]
   T-01: [task] | done when: ... | verify: ... | S
+    Steps: 5 bite-sized (write test → run red → impl → run green → commit)
   T-02: [task] | done when: ... | verify: ... | M | depends T-01
+    Steps: 7 bite-sized
 
 Slice 2: ...
 ```
 
-Hand plan to user before starting work.
+Hand plan to user before starting work. Save plan to `docs/plans/<feature>-plan.md`.
 
 ## Common Rationalizations
 

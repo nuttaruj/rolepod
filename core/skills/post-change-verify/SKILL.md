@@ -13,6 +13,54 @@ UI verification: skills `webapp-testing`, `browser-testing-with-devtools`.
 
 Read when: about to verify code change / report task done.
 
+## Iron Law
+
+<EXTREMELY-IMPORTANT>
+**NO COMPLETION CLAIM WITHOUT FRESH VERIFICATION EVIDENCE IN THIS MESSAGE.**
+
+If you haven't run the verification command in this message, you cannot claim it passes. Previous run in earlier message ≠ fresh. "Should pass" ≠ pass. Linter clean ≠ tests pass. Agent self-report ≠ verified.
+
+Violating the letter = violating the spirit. Different wording ("seems to work" / "logic looks right" / "the fix should hold") = same violation.
+</EXTREMELY-IMPORTANT>
+
+## Gate function — before ANY completion / "done" / "fixed" claim
+
+```
+1. IDENTIFY: What command proves this claim?
+2. RUN:      Execute the full command — fresh, complete, this message
+3. READ:     Full output. Check exit code. Count failures.
+4. VERIFY:   Does output confirm the claim?
+              NO  → state actual status with evidence, do NOT claim done
+              YES → state claim WITH evidence (command + output snippet)
+5. ONLY THEN make the claim
+```
+
+Skip any step = lying, not verifying.
+
+## Red flag words — STOP if you're about to type these without fresh evidence
+
+- "should work" / "should pass" / "should be fine"
+- "probably" / "likely" / "I think"
+- "seems to" / "looks right" / "appears to"
+- "this is done" / "fix is in" / "all green"
+- "" / "" / "" — any expression of satisfaction before verification command ran in current message
+- "trust me" / "I'm confident" / "it's a small change"
+
+Any of these → STOP, run gate function, then speak.
+
+## Claim → proof mapping
+
+| Claim | Sufficient proof | NOT sufficient |
+|-------|------------------|----------------|
+| Tests pass | Test command output: 0 failures, this message | Previous run, "should pass", linter green |
+| Linter clean | Linter output: 0 errors, this message | "I fixed the warnings" |
+| Build succeeds | Build command: exit 0, this message | "Type-check passed" |
+| Bug fixed | Reproducer test was red → now green, both runs shown | "Code changed, assumed fixed" |
+| Regression test works | Red-green cycle in same diff (test fails without fix, passes with) | Test passes once |
+| Agent completed task | Diff inspected + verify command ran | Agent's "success" report |
+| Requirements met | Line-by-line spec checklist + verify command | "Tests passing" |
+| UI works | Screenshot + console clean + interaction confirmed | "Page renders" |
+
 ## Core rule
 
 Every implementation ends with **evidence**. Smallest command that proves changed behavior. Widen as risk grows.
@@ -114,12 +162,15 @@ Next: Ship — gate is green
 
 ## Common mistakes — DO NOT
 
-- "Should work" without running
+- Use red flag words ("should work" / "looks right" / "seems to") before running gate function in this message
+- Cite previous-message test run as proof for current claim — re-run, paste fresh output
+- Express satisfaction ("", "", "all green") before verify command ran in current message
 - Ask user to verify UI when you can drive browser
 - Skip verification on "trivial" change
 - Mock DB in integration
 - Verify only happy path
 - Hide failed test output
+- Treat agent's self-report as verification — inspect diff + run verify yourself
 
 ## Common Rationalizations
 
