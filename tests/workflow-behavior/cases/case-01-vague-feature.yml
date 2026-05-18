@@ -6,14 +6,25 @@ expected_skills:
   - spec-driven-development
 must_contain:
   - "?"
+  - "Recommended"
+  - "user"
 why: |
   Vague build request must route through Define (spec) before any code, AND
   Phase 0 of spec-driven-development requires Lead to ask clarifying questions
   before drafting the spec (one question per message, options with Recommended
-  pick). The "?" assertion proves Lead opened a question instead of jumping
-  straight to a spec draft or code. must_not_contain blocks the two skips:
-  premature spec body (## Problem / ## Requirements headers without dialogue)
-  and premature code (App.tsx creation, "I'll start coding" pattern).
+  pick). The three must_contain assertions together prove the dialogue shape,
+  not just the presence of a question mark:
+    - "?"           — Lead opened a question instead of writing a spec
+    - "Recommended" — Lead presented multi-choice options with a recommended
+                      pick (Phase 0 mandate; "options" alone could mean a
+                      bulleted list without judgment)
+    - "user"        — Lead asked about user / primary user / user behavior /
+                      success-from-user-pov, which Phase 0 lists as the
+                      first topic to cover. Any well-formed Phase 0 turn
+                      mentions "user" because it's the foundational dimension.
+  must_not_contain blocks the skips: premature spec body (## Problem /
+  ## Requirements headers without dialogue) and premature code (App.tsx
+  creation, "I'll start coding" pattern).
 must_not_contain:
   - "I'll start coding"
   - "I'll begin by creating App.tsx"
