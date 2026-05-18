@@ -10,7 +10,7 @@
 | Always-on rules | `~/.claude/rules/always-on/` | (inlined in AGENTS.md) | (inlined in GEMINI.md) |
 | Path-scoped rules | `~/.claude/rules/{code,test}/` (paths: glob) | (inlined) | (inlined) |
 | Agents (18) | `~/.claude/agents/*.md` | `~/.codex/plugins/rolepod/agents/*.toml` | inlined in `GEMINI.md` |
-| Skills (42) | `~/.claude/skills/<name>/SKILL.md` | `~/.codex/plugins/rolepod/skills/<name>/SKILL.md` | `~/.gemini/extensions/rolepod/skills/<name>/SKILL.md` |
+| Skills (44) | `~/.claude/skills/<name>/SKILL.md` | `~/.codex/plugins/rolepod/skills/<name>/SKILL.md` | `~/.gemini/extensions/rolepod/skills/<name>/SKILL.md` |
 | Hooks (3) | `~/.claude/settings.json` | `~/.codex/plugins/rolepod/hooks/hooks.json` | `~/.gemini/extensions/rolepod/hooks/hooks.json` |
 | Slash commands | `~/.claude/commands/*.md` | n/a | `~/.gemini/extensions/rolepod/commands/*.toml` |
 
@@ -187,23 +187,43 @@ Optional add-on skills (caveman, gitnexus-*, ui-ux-pro-max) integrate when the u
 
 ## Hooks active
 
-Rolepod ships **3 hooks** per CLI. External plugins add their own.
+Counts differ per CLI surface — Claude has the deepest matcher model so it carries enforcement hooks; Codex/Gemini run context hooks only.
 
-### Claude / Codex (same 3 scripts)
+### Claude (9 registered: 6 context + 3 enforcement)
 
-| Event | Script | Action |
-|-------|--------|--------|
+| Event | Script | Role |
+|-------|--------|------|
 | SessionStart | `project-context-loader.sh` | git context + gates banner |
-| PostToolUse (Edit/Write) | `verify-reminder.sh` | nudge to verify after edits |
+| SessionStart | `session-lock.sh` | sibling-session warning |
+| PreToolUse (Bash) | `gitnexus-wrap.sh` | gitnexus index freshness |
+| PreToolUse (Edit/Write on high-risk paths) | `gate-reminder.sh` | RED-test + reviewer-floor reminders |
+| PreToolUse (Bash on git commit) | `precommit-gate.sh` | test gate, hard block |
+| PreToolUse (Bash, sub-agent) | `block-subagent-commit.sh` | sub-agents can't commit/push |
+| PreToolUse (Agent spawn) | `cohesion-contract-check.sh` | multi-agent contract required |
+| PostToolUse (Edit/Write) | `verify-reminder.sh` | verify-after evidence nudge |
 | PostToolUse (Bash) | `post-ship-detect.sh` | suggest `gitnexus analyze` after big merges |
+| Stop | `session-unlock.sh` | release sibling lock |
 
-### Gemini
+### Codex (5 commands across 3 event classes)
 
-| Event | Script | Action |
-|-------|--------|--------|
+| Event | Matcher | Script | Role |
+|-------|---------|--------|------|
+| SessionStart | `startup\|resume` | `project-context-loader.sh` | git context + gates banner |
+| PreToolUse | `apply_patch` | `gate-reminder.sh` | RED-test + reviewer-floor reminders on high-risk paths |
+| PreToolUse | `Bash` | `precommit-gate.sh` | test gate before commit |
+| PostToolUse | `apply_patch` | `verify-reminder.sh` | verify-after evidence nudge |
+| PostToolUse | `Bash` | `post-ship-detect.sh` | suggest `gitnexus analyze` after big merges |
+
+Note: Codex hooks require `codex features enable plugin_hooks` (default `under development, false`). Without opt-in, hooks are registered but inert.
+
+### Gemini (4 commands across 4 event classes)
+
+| Event | Script | Role |
+|-------|--------|------|
 | SessionStart | `session-start.sh` | git context + gates banner |
 | BeforeTool (write/replace/edit) | `before-tool.sh` | verify-first reminder |
 | AfterTool (write/replace/edit) | `after-tool.sh` | verify-after evidence reminder |
+| PreCompress | `pre-compress.sh` | session-snapshot before context compaction |
 
 ### External plugins (optional)
 

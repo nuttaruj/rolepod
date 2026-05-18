@@ -10,10 +10,10 @@ Phase 2.3: rolepod ships for each supported CLI as a **native plugin / extension
 | Lazy-load rules (Read on trigger) | full | full | full |
 | Skills (`<plugin>/skills/<name>/SKILL.md`) | 44 native | 44 native | 44 native |
 | Subagents (parallel team) | full Task / SendMessage (18 agents) | 18 agents as Codex `agents/*.toml` (Lead-orchestrated) | 18 agents inlined in `GEMINI.md` (Lead-orchestrated) |
-| Hooks (auto reminders) | 3 hooks (`SessionStart` + 2x `PostToolUse`) | 3 hooks (`SessionStart` + 2x `PostToolUse`) | 3 hooks (`SessionStart` + `BeforeTool` + `AfterTool`) |
+| Hooks (auto reminders) | 9 hooks (6 context + 3 enforcement, 5 event classes) | 5 commands across 3 event classes (`SessionStart`/`PreToolUse`/`PostToolUse`) | 4 commands across 4 event classes (`SessionStart`/`BeforeTool`/`AfterTool`/`PreCompress`) |
 | Slash commands | full (e.g. `/careful`, `/ship`, `/review`, `/test`, `/plan`, `/spec`) | n/a (commands not in current Codex schema) | full (6 commands as `commands/*.toml`) |
 | Plugin manifest | `.claude-plugin/plugin.json` (spec-conformant, 598B) | `.codex-plugin/plugin.json` (mirrors caveman schema, 1.6KB) | `gemini-extension.json` (extension schema, 551B) |
-| MemPalace / GitNexus integration | full hook coverage | full hook coverage (same 3 scripts as Claude) | full hook coverage (3 scripts) |
+| MemPalace / GitNexus integration | full hook coverage | full hook coverage (context hooks adapted; enforcement is Claude-only — Codex `agent_id` field not yet stable) | full hook coverage (context hooks adapted; enforcement is Claude-only) |
 | MCP server config | global + per-plugin | global (`codex mcp`) | global (`gemini mcp`) |
 
 ## Install destinations
@@ -101,7 +101,7 @@ _Last verified: 2026-05-10 on macOS (Darwin 25.4.0), Codex 0.130.0, Gemini 0.40.
 **Claude Code** — Production. Hooks/agents/skills load on session start; verified across the dev loop in this repository.
 
 **Gemini CLI 0.40.1** — Production:
-- `gemini skills list` enumerates all 34 rolepod skills from `~/.gemini/extensions/rolepod/skills/`.
+- `gemini skills list` enumerates all 44 rolepod skills from `~/.gemini/extensions/rolepod/skills/`.
 - SessionStart hook fires and emits the rolepod gates banner ("rolepod gates: S1-S5 simplicity + T1-T6 tests + Q1-Q4 delegation + F1-F5 failure-mode") on every Gemini session.
 - The model recognizes the extension by name and version (`rolepod (v0.2.0)`) when asked.
 - 6 slash commands (`/careful /ship /review /test /plan /spec`) ship as schema-conformant `.toml` files in `commands/` (Gemini exposes these interactively; there is no `gemini commands list` subcommand).

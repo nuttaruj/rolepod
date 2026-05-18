@@ -113,7 +113,7 @@ Purpose: mark every shipped skill with its tier, trigger purpose, overlap status
 | 2 — Compat / utility (not phase-tagged) | 5 | yes |
 | 3 — Compat shims | 2 | "shim" → remove later |
 
-Total skills on disk: **43**.
+Total skills on disk: **44**.
 Default Lead surface (Tier 0 + 1 in entry docs): **12**.
 Future-removal candidates after behavior tests prove canonical route works: **3** (`anti-spaghetti` merge-into-`code-simplification`, plus 2 Tier-3 shims).
 
