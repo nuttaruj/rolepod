@@ -447,8 +447,14 @@ jobs:
             fi
           done
           # Must NOT fall back to real home paths.
+          # Exclude install.sh's intentional warning about Codex's no-per-target
+          # config home: when ROLEPOD_TARGET points away from $HOME/.codex, the
+          # installer prints a note about $HOME/.codex/config.toml being the
+          # global config that would have been touched. That note legitimately
+          # mentions the real home path; it's NOT a leak.
+          out_no_warn=$(printf '%s\n' "$out" | grep -v 'Codex CLI has no per-target config')
           for home_path in "$HOME/.claude" "$HOME/.codex" "$HOME/.gemini"; do
-            if grep -qF "$home_path" <<<"$out"; then
+            if grep -qF "$home_path" <<<"$out_no_warn"; then
               echo "::error::--target=all + ROLEPOD_TARGET leaked real home path: $home_path"
               printf '%s\n' "$out"
               exit 1
