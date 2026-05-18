@@ -3,7 +3,7 @@ description: Spawn a Claude Code agent team (real multi-process teammates) to ru
 disable-model-invocation: true
 ---
 
-# Team All — Claude Agent Team (Multi-Process)
+# Rolepod All — Claude Agent Team (Multi-Process)
 
 You are entering the **real Claude Code agent-team workflow** — multi-process teammates with shared task list, mailbox messaging, and self-coordination. NOT subagent recipes.
 
@@ -11,7 +11,7 @@ This command spawns a Claude Code agent team per the [official spec](https://cod
 
 ## Mode selection (silent — just adapt, don't announce)
 
-Pick the highest-fidelity mode the environment supports. Do NOT announce the mode — just do the work. User invoked `/team-all`, that's enough; rolepod adapts.
+Pick the highest-fidelity mode the environment supports. Do NOT announce the mode — just do the work. User invoked `/rolepod-all`, that's enough; rolepod adapts.
 
 | Check | Mode |
 |---|---|
@@ -20,7 +20,7 @@ Pick the highest-fidelity mode the environment supports. Do NOT announce the mod
 
 No fail-fast, no env-flag friction surfaced to user. Power users who want real teammates configure it themselves per README. Everyone else gets parallel-via-subagent silently.
 
-Codex/Gemini never see `/team-all` (not shipped to their commands dir) — they use natural-language Subagent dispatch via `team-routing` skill.
+Codex/Gemini never see `/rolepod-all` (not shipped to their commands dir) — they use natural-language Subagent dispatch via `team-routing` skill.
 
 ## Teammate spawn pattern (TEAMMATE MODE)
 
@@ -121,7 +121,7 @@ Per official docs:
 
 ## Cost note
 
-Per official docs: "Token costs scale linearly — each teammate has its own context window." A 4-teammate team ≈ 4× single-session tokens for the duration of the team. Use `/team-all` for genuinely parallel work — for sequential or trivial tasks, default Subagent + Task is more cost-effective.
+Per official docs: "Token costs scale linearly — each teammate has its own context window." A 4-teammate team ≈ 4× single-session tokens for the duration of the team. Use `/rolepod-all` for genuinely parallel work — for sequential or trivial tasks, default Subagent + Task is more cost-effective.
 
 ## Pairs with
 
@@ -135,7 +135,7 @@ Per official docs: "Token costs scale linearly — each teammate has its own con
 Previous rolepod versions shipped per-phase team slash commands (`/team-define` → spawn define-phase subagents, etc.). These were **subagent recipes**, not real teammates — Lead orchestrated single-process. The pattern proved confusing (Lead routinely pattern-matched the trigger phrase into regular subagent dispatch, drift documented in `0f8de4f` and `6da9fe0`).
 
 Per-phase team commands have been removed. For phase-scoped parallel work:
-- Want a single phase done in parallel? → Tell `/team-all` to scope teammates to that phase only.
+- Want a single phase done in parallel? → Tell `/rolepod-all` to scope teammates to that phase only.
 - Want fast Lead-orchestrated single-process work? → Default Subagent + Task tool (no slash command needed — just describe what you want; Lead spawns via `team-routing`).
 
 ## Limitations (from upstream)

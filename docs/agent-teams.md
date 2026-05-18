@@ -1,17 +1,17 @@
 # Agent Teams (Claude only)
 
-`/team-all` spawns a real Claude Code agent team — multi-process teammates with shared task list and direct mailbox messaging. This is the [official agent-teams feature](https://code.claude.com/docs/en/agent-teams), NOT rolepod's old subagent-recipe pattern.
+`/rolepod-all` spawns a real Claude Code agent team — multi-process teammates with shared task list and direct mailbox messaging. This is the [official agent-teams feature](https://code.claude.com/docs/en/agent-teams), NOT rolepod's old subagent-recipe pattern.
 
 ## Modes — graceful fallback by environment
 
-`/team-all` adapts to whatever the environment supports. User doesn't manage flags up front; Lead picks the highest-fidelity mode available and announces what it chose.
+`/rolepod-all` adapts to whatever the environment supports. User doesn't manage flags up front; Lead picks the highest-fidelity mode available and announces what it chose.
 
 | Env state | Mode | Behavior |
 |---|---|---|
 | Claude v2.1.32+ + `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` | **TEAMMATE** | Real multi-process teammates (this doc) |
 | Claude v2.1.32+ + env flag unset | **FALLBACK** | Lead-orchestrated Subagent + Task with cohesion contract (single-process). Lead announces fallback briefly + how to enable real teammates |
 | Claude < v2.1.32 | **FAIL-FAST** | Upgrade required — teammate API doesn't exist; no fallback can match the contract |
-| Codex / Gemini | not installed | `/team-all` not shipped to those CLIs. Use natural-language Subagent dispatch via `team-routing` skill |
+| Codex / Gemini | not installed | `/rolepod-all` not shipped to those CLIs. Use natural-language Subagent dispatch via `team-routing` skill |
 
 To enable teammate mode:
 
@@ -27,7 +27,7 @@ Until then, fallback mode delivers the same outcome shape (parallel work, contra
 
 ## How it differs from subagents
 
-| Aspect | Default Subagent + Task | Agent team (`/team-all`) |
+| Aspect | Default Subagent + Task | Agent team (`/rolepod-all`) |
 |---|---|---|
 | Process model | Single Claude session, Lead spawns sub-context via Task tool | Multi-process — each teammate = full Claude Code instance |
 | Communication | Subagent reports back to Lead only | Teammates message each other directly + Lead can talk to any teammate |
@@ -38,7 +38,7 @@ Until then, fallback mode delivers the same outcome shape (parallel work, contra
 | CLI support | Cross-CLI (Claude / Codex / Gemini) | Claude only |
 | Stability | Stable | Experimental |
 
-## When to use `/team-all`
+## When to use `/rolepod-all`
 
 Per official guidance, agent teams shine on:
 
@@ -62,10 +62,10 @@ When NOT to use:
 Default suggested composition for a full lifecycle (3-5 teammates per official guidance):
 
 ```
-/team-all "Add Stripe billing — high-risk"
+/rolepod-all "Add Stripe billing — high-risk"
 ```
 
-The command body in `commands/team-all.md` instructs Lead to:
+The command body in `commands/rolepod-all.md` instructs Lead to:
 1. Verify preconditions (version + env flag + CLI)
 2. Pick 3-5 teammates using rolepod subagent definitions (system-architect, backend/frontend/mobile-developer per `team-routing` skill, qa-tester, etc.)
 3. Have system-architect teammate write the cohesion contract FIRST
@@ -107,10 +107,10 @@ Previous rolepod versions shipped `/team-define`, `/team-plan`, `/team-build`, `
 2. **They duplicated default Subagent + Task tool** — Lead can already spawn N subagents in parallel within one session; the recipe added doctrine but no execution mechanism.
 3. **They confused "team" semantics** — users expected multi-process teammates (the official Claude feature), got single-process recipes instead.
 
-For phase-scoped parallel work, tell `/team-all` to spawn teammates focused on that phase:
+For phase-scoped parallel work, tell `/rolepod-all` to spawn teammates focused on that phase:
 
 ```
-/team-all "Just the Build phase — spawn 3 engineers in parallel,
+/rolepod-all "Just the Build phase — spawn 3 engineers in parallel,
 each owning a different module of the auth refactor."
 ```
 
@@ -131,7 +131,7 @@ These are upstream constraints — rolepod cannot work around them.
 ## See also
 
 - [Official Claude Code agent-teams docs](https://code.claude.com/docs/en/agent-teams)
-- `commands/team-all.md` — the slash command body
+- `commands/rolepod-all.md` — the slash command body
 - `core/skills/team-routing/SKILL.md` — picks which subagent definition each teammate uses
 - `core/skills/parallel-contract-orchestration/SKILL.md` — cohesion contract pattern (teammates share)
 - `core/skills/reviewer-flow/SKILL.md` — adversarial review rule (applies inside teammates)

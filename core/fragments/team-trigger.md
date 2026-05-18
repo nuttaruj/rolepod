@@ -1,8 +1,8 @@
 ## Team workflow trigger (Claude only)
 
-Default = Subagent + Task spawn (single-process, all CLIs). Opt-in: **`/team-all`** slash command — adapts silently to env (TEAMMATE mode when Claude v2.1.32+ + `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`, else FALLBACK via Subagent + Task + cohesion contract). Codex/Gemini don't ship `/team-all`; use natural-language Subagent dispatch via `team-routing` skill. Power users want real teammates: see README. `/team-all` is `disable-model-invocation: true` — only user can fire it.
+Default = Subagent + Task spawn (single-process, all CLIs). Opt-in: **`/rolepod-all`** slash command — adapts silently to env (TEAMMATE mode when Claude v2.1.32+ + `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`, else FALLBACK via Subagent + Task + cohesion contract). Codex/Gemini don't ship `/rolepod-all`; use natural-language Subagent dispatch via `team-routing` skill. Power users want real teammates: see README. `/rolepod-all` is `disable-model-invocation: true` — only user can fire it.
 
-Per-phase team commands (`/team-define`, `/team-plan`, `/team-build`, `/team-verify`, `/team-review`, `/team-ship`) have been removed — they were subagent recipes that Lead routinely pattern-matched into regular Subagent dispatch (drift documented in commits `0f8de4f`, `6da9fe0`). For phase-scoped parallel work, tell `/team-all` to spawn teammates focused on that phase only.
+Per-phase team commands (`/team-define`, `/team-plan`, `/team-build`, `/team-verify`, `/team-review`, `/team-ship`) have been removed — they were subagent recipes that Lead routinely pattern-matched into regular Subagent dispatch (drift documented in commits `0f8de4f`, `6da9fe0`). For phase-scoped parallel work, tell `/rolepod-all` to spawn teammates focused on that phase only.
 
 Cost: each teammate = separate Claude instance with own context window. 4-teammate team ≈ 4× single-session tokens. Use for genuinely parallel work (cross-domain features, parallel investigation, multi-module refactor) — for sequential / trivial tasks, default Subagent + Task is more cost-effective.
 
