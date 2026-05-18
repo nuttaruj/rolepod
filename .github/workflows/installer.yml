@@ -574,7 +574,7 @@ jobs:
           unset ROLEPOD_TARGET ROLEPOD_CLAUDE_TARGET ROLEPOD_CODEX_TARGET ROLEPOD_GEMINI_TARGET
           WORK="$(mktemp -d)"
           # Snapshot HOME state before.
-          BEFORE_HOME=$(find "$HOME/.claude" -type f 2>/dev/null | wc -l)
+          BEFORE_HOME=$(find "$HOME/.claude" -type f 2>/dev/null | wc -l || echo 0)
           out=$(cd "$WORK" && bash "$GITHUB_WORKSPACE/install.sh" --target=claude --scope=project --dry-run 2>&1)
           # Must preview $WORK/.claude paths.
           if ! grep -qF "$WORK/.claude" <<<"$out"; then
@@ -594,7 +594,7 @@ jobs:
             exit 1
           fi
           # HOME must not have grown.
-          AFTER_HOME=$(find "$HOME/.claude" -type f 2>/dev/null | wc -l)
+          AFTER_HOME=$(find "$HOME/.claude" -type f 2>/dev/null | wc -l || echo 0)
           if [ "$BEFORE_HOME" -ne "$AFTER_HOME" ]; then
             echo "::error::scope=project --dry-run mutated \$HOME/.claude"
             exit 1
@@ -641,7 +641,7 @@ jobs:
           # Per-CLI overrides also leak from earlier steps; clear them too.
           unset ROLEPOD_TARGET ROLEPOD_CLAUDE_TARGET ROLEPOD_CODEX_TARGET ROLEPOD_GEMINI_TARGET
           WORK="$(mktemp -d)"
-          BEFORE_HOME=$(find "$HOME/.gemini" -type f 2>/dev/null | wc -l)
+          BEFORE_HOME=$(find "$HOME/.gemini" -type f 2>/dev/null | wc -l || echo 0)
           out=$(cd "$WORK" && bash "$GITHUB_WORKSPACE/install.sh" --target=gemini --scope=project --dry-run 2>&1)
           if ! grep -qi 'Gemini extensions are global only' <<<"$out"; then
             echo "::error::scope=project missing 'extensions are global only' warning for gemini"
@@ -656,7 +656,7 @@ jobs:
             echo "::error::scope=project leaked \$HOME/.gemini/extensions path"
             exit 1
           fi
-          AFTER_HOME=$(find "$HOME/.gemini" -type f 2>/dev/null | wc -l)
+          AFTER_HOME=$(find "$HOME/.gemini" -type f 2>/dev/null | wc -l || echo 0)
           if [ "$BEFORE_HOME" -ne "$AFTER_HOME" ]; then
             echo "::error::scope=project --dry-run mutated \$HOME/.gemini"
             exit 1
