@@ -1428,7 +1428,7 @@ if gemini_selected; then
     for required in \
       GEMINI.md \
       extensions/rolepod/gemini-extension.json \
-      extensions/rolepod/commands/careful.toml \
+      extensions/rolepod/commands/spec.toml \
       extensions/rolepod/hooks/hooks.json \
       extensions/rolepod/skills/anti-spaghetti/SKILL.md
     do
