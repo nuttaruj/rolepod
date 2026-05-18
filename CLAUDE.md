@@ -139,3 +139,20 @@ Trigger phrases in each skill's frontmatter.
 **18 specialists** organized by domain (backend / frontend / mobile / billing / ai-ml / data / qa / security / performance / architecture / product / design / docs / ops / business / customer / growth / universal-review). Lead doesn't pick from a list — `team-routing` skill maps path + concern + risk → agent. Full catalog: [docs/agents.md](docs/agents.md).
 
 @RTK.md
+
+<!--
+  Intentionally-empty GitNexus block.
+
+  Why: gitnexus-wrap.sh (hooks/gitnexus-wrap.sh) seeds project-specific
+  GitNexus content into CLAUDE.md/AGENTS.md the first time the index is built.
+  Rolepod is a UNIVERSAL framework — project-specific content (symbol counts,
+  process names, repo-scoped tool tables) does not belong in upstream tracked
+  files. Empty markers below tell the wrap hook the block is "already present"
+  → it adds `--skip-agents-md` → no inject → no dirty diff on every session.
+
+  If you ever DO want GitNexus seeded into your local clone, remove these
+  markers; the next `npx gitnexus analyze` will populate them. Don't commit
+  the populated form back to rolepod main — it's project-specific noise here.
+-->
+<!-- gitnexus:start -->
+<!-- gitnexus:end -->

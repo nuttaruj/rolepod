@@ -195,6 +195,18 @@ jobs:
           # Fresh HOME so backup path is predictable + isolated from runner state.
           export HOME="$(mktemp -d)"
           export ROLEPOD_TARGET="$HOME/.claude"
+          # Prior CI step "Dry-run install — claude" persisted ROLEPOD_CLAUDE_TARGET
+          # via $GITHUB_ENV. install.sh treats ROLEPOD_CLAUDE_TARGET as a
+          # per-CLI override that WINS over ROLEPOD_TARGET (see install.sh
+          # usage block). Without this unset, install.sh writes the new
+          # --force install into the previous step's target, and the backup
+          # lands beside THAT path — not beside $HOME/.claude — making the
+          # `ls -d "${ROLEPOD_TARGET}".backup-*` lookup return no match.
+          # `ls` then exits 2, `set -eo pipefail` propagates the 2, and the
+          # step fails before any assertion can fire. Local / Docker repros
+          # don't hit this because the env doesn't carry across invocations
+          # the way GitHub Actions' $GITHUB_ENV does.
+          unset ROLEPOD_CLAUDE_TARGET
           # Pre-populate a "user" ~/.claude that mixes rolepod-managed paths
           # with bloat dirs that --force backup MUST skip.
           mkdir -p "$ROLEPOD_TARGET/projects/sess-abc" \
