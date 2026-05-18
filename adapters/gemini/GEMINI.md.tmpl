@@ -3,7 +3,7 @@
 Always-on guidance for Gemini CLI Lead. Rolepod ships as Gemini extension; this `GEMINI.md` is auto-loaded as context.
 
 Bundled:
-- Slash commands `commands/*.toml` — `/rolepod-careful`, `/ship`, `/review`, `/test`, `/plan`, `/spec`
+- Slash commands `commands/*.toml` — `/rolepod`, `/ship`, `/review`, `/test`, `/plan`, `/spec`
 - Hooks `hooks/hooks.json` — `SessionStart` (context inject), `BeforeTool` / `AfterTool` (verify-first / evidence reminders) on `write_file|replace|edit`
 - Skills `skills/<name>/SKILL.md` — full rolepod skill set
 
@@ -22,7 +22,7 @@ Conflict unsafe → ask user.
 ## Gemini-specific Lead notes
 
 - **Sub-agents preview** — 18-agent team primarily a mental role-switching guide; if your Gemini build supports sub-agents, definitions load from `agents/`.
-- **Slash commands** — see `commands/*.toml`. Use `/rolepod-careful` for high-risk (switches approval mode to plan / read-only).
+- **Slash commands** — see `commands/*.toml`. Use `/rolepod` for high-risk (switches approval mode to plan / read-only).
 - **Hooks enabled** — `SessionStart` / `BeforeTool` / `AfterTool` fire automatically.
 - **Skills auto-loaded** — Gemini's skill loader reads `skills/<name>/SKILL.md`.
 - **MCP support** — external tooling (GitNexus, MemPalace, Sentry, Stripe) via Gemini's MCP config; verify per-project.
@@ -112,7 +112,7 @@ GitNexus / MemPalace MCP via Gemini config when available. Otherwise plain `git`
 ## Before ship — STOP
 
 - Run `/ship` (S1-S5, T1-T6, F1-F5, evidence) — or run gates manually
-- High-risk (auth/billing/migrations) → `/rolepod-careful` first, then external reviewer:
+- High-risk (auth/billing/migrations) → `/rolepod` first, then external reviewer:
   - Codex installed: `codex exec --prompt "review this diff..."`
   - Claude installed: `claude -p "review this diff for correctness"`
   - Otherwise: Lead self-reviews adversarially
@@ -166,7 +166,7 @@ Multi-step → `[step] → verify: [check]` per row.
 
 ## Careful mode
 
-`/rolepod-careful` switches Gemini approval mode to **plan** (read-only) + locks rolepod careful-mode rules:
+`/rolepod` switches Gemini approval mode to **plan** (read-only) + locks rolepod careful-mode rules:
 
 - ≤30 lines per change
 - Mandatory verify-first

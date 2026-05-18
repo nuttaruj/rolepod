@@ -42,7 +42,7 @@ Detects sibling Claude session(s) in the same worktree to prevent concurrent-edi
 Soft gate enforcing rolepod's S+T+F discipline before edits land. Three fixes:
 
 - **Fix 3 (reviewer floor)**: high-risk path Edit when ≥2 high-risk edits + 0 reviewer agents dispatched → warn / block.
-- **Fix 4 (auto-Careful banner)**: high-risk path edit → injects `/rolepod-careful` mode reminder.
+- **Fix 4 (auto-Careful banner)**: high-risk path edit → injects `/rolepod` mode reminder.
 - **Fix 5 (RED-test discipline)**: high-risk path Edit when session has 0 test edits → warn / block.
 
 - **Trigger**: PreToolUse `Edit|Write|MultiEdit`

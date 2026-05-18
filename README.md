@@ -271,9 +271,9 @@ External hooks integrate via plugins: MemPalace (Stop/SessionStart/PreCompact), 
 
 | CLI | Slash commands |
 |-----|----------------|
-| Claude Code | `/rolepod-careful` + Anthropic native (`/init`, `/review`, `/clear`, `/rewind`, `/compact`, `/btw`) |
+| Claude Code | `/rolepod` + Anthropic native (`/init`, `/review`, `/clear`, `/rewind`, `/compact`, `/btw`) |
 | Codex CLI | n/a (commands not in Codex schema today; gates fire via entry doc — hooks require `codex features enable plugin_hooks` opt-in) |
-| Gemini CLI | 6 native commands as `commands/*.toml` (`/rolepod-careful`, `/ship`, `/review`, `/test`, `/plan`, `/spec`) |
+| Gemini CLI | 6 native commands as `commands/*.toml` (`/rolepod`, `/ship`, `/review`, `/test`, `/plan`, `/spec`) |
 
 ### Plugin manifest
 

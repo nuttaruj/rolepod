@@ -84,7 +84,19 @@ Then run the spine.
 | "User probably meant just Build" | If they wanted just Build they'd type the task without `/rolepod`. Read the directive literally. |
 | "I'll merge Define + Plan into one turn to save time" | Each phase has its own exit evidence. Compressing them collapses the gates. Run them sequentially. |
 
+## Careful-mode rigor (folded in by default)
+
+`/rolepod` absorbs the rigor that used to live in a separate `/rolepod-careful` command. For tasks the user has chosen to force the full lifecycle on, the rigor inside Build/Verify/Review tightens automatically:
+
+- **≤3 files per commit** (default workflow allows ≤5)
+- **Mandatory peer review** even for small diffs (no skip on ≤5 lines / single file / zero logic)
+- **All S1-S5 + T1-T6 gates explicit** every commit (no router skip judgment)
+- **Codex + Gemini adversarial reviewers** dispatched regardless of path-keyword match (manual risk escalation)
+
+If the user wants only the phases without the tighter rigor, they can say so mid-flow ("normal review is fine, skip careful rigor") and you opt back. Default is rigor on whenever `/rolepod` fires — they explicitly asked for the full ceremony, give them the full ceremony.
+
+For routine tasks where router auto-detection of high-risk path is enough, the user simply doesn't type `/rolepod` — the auto-trigger spine covers it (`qa-tester` floor + Codex/Gemini adversarial when path matches `auth` / `billing` / `migration` / `payment` / etc.).
+
 ## Pairs with
 
-- `/rolepod-all` — same idea but spawns a real multi-process Claude Code agent team to run the phases in parallel (Claude Code v2.1.32+ + `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` required). Use `/rolepod` for single-Lead execution, `/rolepod-all` for genuinely parallel cross-domain work.
-- `/rolepod-careful` — overlapping but different: forces Careful mode (≤3 files / commit + mandatory peer review + Codex+Gemini adversarial) for high-risk surface. `/rolepod` is about *phases*; `/rolepod-careful` is about *rigor inside Build/Verify/Review*. They compose.
+- `/rolepod-all` — same lifecycle but spawns a real multi-process Claude Code agent team running the phases in parallel (Claude Code v2.1.32+ + `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` required). Use `/rolepod` for single-Lead execution, `/rolepod-all` for genuinely parallel cross-domain work.
