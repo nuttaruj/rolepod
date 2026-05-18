@@ -56,8 +56,8 @@ check "skill catalog: filesystem=$FS_SKILLS rendered=$RENDERED_SKILLS (must matc
 # Two groups: word-boundary patterns + non-word-end patterns. The second
 # group covers forms ending in `)` or `*` where trailing `\b` is dead
 # (qa-tester PR #10 caught this).
-STALE_WB='\b(42 bundled|42 skills|43 skills|43-skill|34 native|3 auto-trigger hooks|same 3 scripts|18 \+ 42|18 \+ 43|all 34 rolepod|all 43 rolepod|Total 4[23])\b'
-STALE_NONWORD='Skills \(4[23]\)|Total skills on disk: \*\*4[23]\*\*'
+STALE_WB='\b(42 bundled|42 skills|43 skills|43-skill|34 native|3 auto-trigger hooks|same 3 scripts|same 3 files|18 \+ 42|18 \+ 43|all 34 rolepod|all 43 rolepod|Total 4[23]|three rolepod entries|3 codex hooks|3 gemini hooks|3 root hooks|own 3 scripts|3 \*\.sh)\b'
+STALE_NONWORD='Skills \(4[23]\)|Total skills on disk: \*\*4[23]\*\*|Hooks \(3\)|, 3 hooks\)'
 STALE_COMMENT='(^|[^0-9])(#|`) ?4[23]\b'
 STALE_PATTERNS="${STALE_WB}|${STALE_NONWORD}|${STALE_COMMENT}"
 STALE_HITS=$(grep -rEn "$STALE_PATTERNS" \
