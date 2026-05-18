@@ -523,7 +523,7 @@ jobs:
           mkdir -p "$HOME/.codex"
           touch "$HOME/.codex/config.toml"
           BEFORE=$(sha256sum "$HOME/.codex/config.toml" | awk '{print $1}')
-          ROLEPOD_TARGET="$(mktemp -d)" bash install.sh --core --target=codex --dry-run > out.log 2>&1
+          ROLEPOD_TARGET="$(mktemp -d)" bash install.sh --target=codex --dry-run > out.log 2>&1
           AFTER=$(sha256sum "$HOME/.codex/config.toml" | awk '{print $1}')
           if [ "$BEFORE" != "$AFTER" ]; then
             echo "::error::Codex temp-target dry-run mutated $HOME/.codex/config.toml"
@@ -541,7 +541,7 @@ jobs:
           # would have — dry-run shows the [DRY-RUN] preview).
           # Per-CLI overrides also leak from earlier steps; clear them too.
           unset ROLEPOD_TARGET ROLEPOD_CLAUDE_TARGET ROLEPOD_CODEX_TARGET ROLEPOD_GEMINI_TARGET
-          out=$(bash install.sh --core --target=codex --dry-run 2>&1) || true
+          out=$(bash install.sh --target=codex --dry-run 2>&1) || true
           if grep -qi 'skipping global marketplace registration' <<<"$out"; then
             echo "::error::real-install path should NOT print temp-target warning"
             printf '%s\n' "$out"
