@@ -1,6 +1,6 @@
 # Rolepod — Multi-CLI AI Workflow System
 
-Complete software-house team for AI coding CLIs: 18 specialist agents, 7 rules (3 always-on + 4 path-scoped) + 8 lifecycle skills, 44 bundled skills, 10 hooks (6 context + 4 enforcement), parallel-safe by path/concern. Native plugins for Claude Code, Codex CLI, and Gemini CLI.
+Complete software-house team for AI coding CLIs: 18 specialist agents, 7 rules (3 always-on + 4 path-scoped), 10 public workflow skills (Core 10: 1 router + 9 phase skills) plus compatibility shims for legacy trigger phrases, 10 hooks (6 context + 4 enforcement), parallel-safe by path/concern. Native plugins for Claude Code, Codex CLI, and Gemini CLI.
 
 **Universal:** zero project-specific refs, works in any repo from day one.
 
@@ -18,7 +18,7 @@ Self-improving: every session captures learnings via MemPalace KG so the next se
 
 **Lean workflow spine + specialist agent routing + cost-aware model tiers** for full-stack software-house work on AI coding CLIs.
 
-Rolepod ships a workflow router (`using-rolepod`) so every task flows through the same spine, then `team-routing` picks the right specialist agent for the phase. Lead doesn't see the full 44-skill / 18-agent surface every turn — only Tier 0 (router) + Tier 1 (core workflow) load by default; specialists fire on domain match.
+Rolepod ships a workflow router (`using-rolepod`) so every task flows through the same spine, then each Core 10 phase skill routes specialist work to the right agent. Lead does not see the full skill surface every turn — only Tier 0 (router) + Tier 1 (Core 10 phase skills) load by default; specialist depth lives in the 18 agents and fires on domain match.
 
 ---
 
@@ -30,35 +30,36 @@ Every request routes through this spine before code lands:
 Define → Plan → Build → Verify → Review → Ship
 ```
 
-The **`using-rolepod`** router skill (Tier 0) fires first on each request, picks the phase, and chains into the right Tier 1 core-workflow skill:
+The **`using-rolepod`** router skill (Tier 0) fires first on each request, picks the phase, and chains into the right Tier 1 Core 10 skill:
 
 | Phase | Trigger | Tier 1 skill |
 |---|---|---|
-| **Define** | vague feature / "build / add / create" | `spec-driven-development` |
-| **Plan** | spec exists or work spans multiple files | `planning-and-task-breakdown` (+ `team-routing` + `parallel-contract-orchestration` when multi-agent) |
-| **Build** | approved plan or explicit code task | `test-driven-development` (+ `subagent-task-execution` when delegated) |
-| **Build (bug)** | "fix / failing / broken" | `systematic-debugging` → `test-driven-development` |
-| **Build (refactor)** | "refactor / simplify / clean up" | `code-simplification` |
-| **Verify** | claim of "done / fixed / works" | `post-change-verify` |
-| **Review** | before ship / multi-file / high-risk | `code-review-and-quality` (+ `reviewer-flow` for adversarial routing) |
-| **Ship** | "ship / merge / push / PR" | `pre-merge-gate` |
+| **Define** | vague feature / "build / add / create" | `write-spec` |
+| **Plan** | spec exists or work spans multiple files | `write-plan` (covers task breakdown, agent routing, cohesion contracts) |
+| **Build** | approved plan or explicit code task | `implement-plan` (TDD, bounded delegation, worktree discipline) |
+| **Build (bug)** | "fix / failing / broken" | `debug-issue` |
+| **Build (refactor)** | "refactor / simplify / clean up" | `simplify-code` |
+| **Verify** | claim of "done / fixed / works" | `check-work` |
+| **Review** | before ship / multi-file / high-risk | `review-code` (covers multi-axis review, reviewer routing, adversarial mode) |
+| **Ship** | "ship / merge / push / PR" | `finish-work` (pre-merge gate, CI lanes, 4-option finish menu) |
+| **Recovery** | stuck / context heavy / unfamiliar repo | `manage-context` |
 
 **Skip rule** — the spine is skippable only when (a) the task is trivial-answer-only with no file change, OR (b) the diff is ≤5 lines / single file / zero logic / not on a high-risk path, OR (c) the user explicitly authorizes skip ("skip spec", "just commit"). The skip must be stated in the response.
 
-### Skill tiers
+### Skill tiers (Core 10)
 
-Rolepod ships 44 skills total, organized by routing tier:
+Rolepod ships 53 skills total — 10 public Core 10 skills (1 router + 9 phase skills) plus 43 compatibility shims that redirect legacy trigger phrases to a Core 10 skill:
 
 | Tier | Purpose | Count |
 |---|---|---|
 | **0 — Router** | `using-rolepod` — loaded first, decides the phase | 1 |
-| **1 — Core Workflow** | the default path each phase fires | 11 |
-| **2 — Specialist** | fire by domain match inside a phase (frontend / billing / security / browser / etc.) | 29 |
-| **3 — Compatibility shims** | redirect legacy trigger phrases to canonical Tier 1 skills | 2 |
+| **1 — Core 10 phase skills** | one skill per phase: Define / Plan / Build / Verify / Review / Ship + recovery | 9 |
+| **2 — Specialist** | empty by default; domain depth lives in the 18 specialist agents | 0 |
+| **3 — Compatibility shims** | redirect legacy trigger phrases to a Core 10 skill (hidden from lean view) | 43 |
 
-Tier 1 (11 core workflow skills): `spec-driven-development`, `planning-and-task-breakdown`, `systematic-debugging`, `test-driven-development`, `team-routing`, `parallel-contract-orchestration`, `subagent-task-execution`, `post-change-verify`, `code-review-and-quality`, `pre-merge-gate`, `code-simplification`. Tier 0 (`using-rolepod`) loads ahead of these on every turn — combined default Lead surface = 12 skills.
+Tier 1 (Core 9 phase skills): `write-spec`, `write-plan`, `implement-plan`, `debug-issue`, `check-work`, `review-code`, `finish-work`, `simplify-code`, `manage-context`. Tier 0 (`using-rolepod`) loads ahead of these on every turn — combined default Lead surface = 10 skills.
 
-Specialists stay on disk and fire when their domain matches — the router doesn't hide them, just orders the work so phase decisions land before specialist selection.
+Domain expertise (frontend / API / security / performance / SEO / content / platform) lives in the 18 specialist agents and is routed from inside the Core 10 phase skills. Legacy skill names still work via Tier 3 shims for one migration release — see [docs/skills.md](docs/skills.md) for the full catalog.
 
 ---
 
@@ -76,7 +77,7 @@ Pick one with `--target=claude` / `--target=codex` / `--target=gemini`, or all t
 
 ### Install — pure framework only
 
-Rolepod installs the framework itself: agents, rules, hooks, 44 skills, commands, manifest, docs. **No 3rd-party tools, plugins, or CLIs are auto-installed.** For add-ons that pair well with rolepod, see [Recommended add-ons](#recommended-add-ons) below — install each one yourself; the framework auto-integrates when present.
+Rolepod installs the framework itself: agents, rules, hooks, Core 10 skills + compatibility shims, commands, manifest, docs. **No 3rd-party tools, plugins, or CLIs are auto-installed.** For add-ons that pair well with rolepod, see [Recommended add-ons](#recommended-add-ons) below — install each one yourself; the framework auto-integrates when present.
 
 Add `--force` to overwrite. Creates `~/.<cli>.backup-<timestamp>/` with **only rolepod-managed paths** (session history, plugin caches, file-history stay in place). Typical backup <50MB. See `docs/cli-support.md`.
 
@@ -159,14 +160,14 @@ After install, restart the CLI you targeted so hooks register.
 | Target | Static | Dry-run | Live hooks | Live dispatch | Status |
 |--------|--------|---------|-----------|--------------|--------|
 | Claude Code | ✓ | ✓ | ✓ | ✓ | **Production** |
-| Codex CLI | ✓ | ✓ | ⚠️ opt-in only — `codex features enable plugin_hooks` required (default: `under development, false`) | ✓ (18 agents + 44 skills via plugin cache) | **Production** (hooks opt-in) |
-| Gemini CLI | ✓ | ✓ | ✓ | ✓ (44 skills) | **Production** |
+| Codex CLI | ✓ | ✓ | ⚠️ opt-in only — `codex features enable plugin_hooks` required (default: `under development, false`) | ✓ (18 agents + 53 skill files via plugin cache) | **Production** (hooks opt-in) |
+| Gemini CLI | ✓ | ✓ | ✓ | ✓ (53 skill files) | **Production** |
 
 **Static** = `bash -n` + `json.tool` + `tomllib.load()` + snapshot diff (no leaked `{{INCLUDE: ...}}`). **Dry-run** = `install.sh` writes correct files to temp dir. **Live** = real CLI; hooks fire (Claude + Gemini always; Codex only after `plugin_hooks` opt-in); subagents/skills dispatch.
 
 _Last verified: 2026-05-15, macOS Darwin 25.4.0, Codex 0.130.0, Gemini 0.40.1._
 
-**Codex install (0.130.0+):** installer renders to `build/rendered/codex/`, runs `codex plugin marketplace add <rendered-dir>`, populates `~/.codex/plugins/cache/rolepod/rolepod/<version>/`, writes `[plugins."rolepod@rolepod"] enabled = true` to `~/.codex/config.toml`. Native plugin loader resolves agents + skills (18 + 44) from cache. `SessionStart` fires **only after `codex features enable plugin_hooks`** (default flag is `under development, false`). `~/.codex/AGENTS.md` managed block loads independently of `plugin_hooks` state.
+**Codex install (0.130.0+):** installer renders to `build/rendered/codex/`, runs `codex plugin marketplace add <rendered-dir>`, populates `~/.codex/plugins/cache/rolepod/rolepod/<version>/`, writes `[plugins."rolepod@rolepod"] enabled = true` to `~/.codex/config.toml`. Native plugin loader resolves agents + skills (18 + 53) from cache. `SessionStart` fires **only after `codex features enable plugin_hooks`** (default flag is `under development, false`). `~/.codex/AGENTS.md` managed block loads independently of `plugin_hooks` state.
 
 File runtime issues at [issues/](https://github.com/nuttaruj/rolepod/issues).
 
@@ -180,7 +181,7 @@ Three layers, different load mechanisms (per [Anthropic memory doc](https://code
 Tier 1 (always loaded)        entry doc core            ≤200 lines
 Tier 2a (always-on rules)     rules/always-on/          3 files (eager)
 Tier 2b (path-scoped rules)   rules/{code,test}/        4 files (load on file match)
-Tier 3 (skill on trigger)     skills/                   44 skills + plugin skills
+Tier 3 (skill on trigger)     skills/                   53 skill files (10 Core + 43 shims) + plugin skills
 ```
 
 Plus: hooks (Claude/Gemini auto-fire; Codex opt-in via `plugin_hooks`), agents (sub-process), commands (slash /).
@@ -214,25 +215,27 @@ Lazy-load via `paths:` frontmatter — only enter context when Claude touches ma
 
 ### Tier 3 — Skills (on trigger phrase)
 
-44 skills covering anti-spaghetti, TDD, debugging, frontend UI, security, performance, design, marketing, docs, planning, ops. (`zoom-out` meta-recovery + 27 domain skills authored fresh + `doubt-driven-development` / `source-driven-development` influenced by addyosmani/agent-skills.) Auto-discovery via `using-agent-skills` at SessionStart. Optional add-on skills (caveman, gitnexus, ui-ux-pro-max) integrate when the user installs them — see [Recommended add-ons](#recommended-add-ons).
+Core 10 public skills cover the workflow spine (define / plan / build / verify / review / ship / recovery). Deep domain expertise (frontend, API, security, performance, SEO, content, platform integration) lives in the 18 specialist agents and is routed from inside the Core 10 phase skills. 43 compatibility shims keep legacy trigger phrases routing correctly for one migration release. Auto-discovery via `using-rolepod` at SessionStart. Optional add-on skills (caveman, gitnexus, ui-ux-pro-max) integrate when the user installs them — see [Recommended add-ons](#recommended-add-ons).
 
-Each CLI exposes skills as a real directory tree. Every SKILL.md ends with "Common Rationalizations" — typical excuses + data-backed rebuttals.
+Each CLI exposes skills as a real directory tree. Every Core 10 SKILL.md follows the standalone contract: agent-available path + no-agent fallback path + Full Rolepod enhancement note + Hard stops.
 
 ### Lifecycle phases (6-phase taxonomy)
 
-Skills/agents/gates organize onto 6 phases orthogonal to the 4-step `Explore → Plan → Implement → Commit` workflow:
+Core 10 maps one phase skill per workflow state; recovery handles re-context / stuck / unfamiliar repo:
 
 ```
-Define   → spec-driven-development
-Plan     → planning-and-task-breakdown · parallel-contract-orchestration · api-and-interface-design
-Build    → test-driven-development · frontend-ui-engineering · anti-spaghetti · claude-api · interface-design · interaction-design · doc-coauthoring · conversion-copywriting
-Verify   → systematic-debugging · webapp-testing · browser-testing-with-devtools · performance-optimization · security-and-hardening
-Review   → code-review-and-quality · code-simplification · web-design-guidelines · doubt-driven-development
-Ship     → shipping-and-launch · ci-cd-and-automation · internal-comms · user-facing-content · documentation-and-adrs · seo
-Cross    → zoom-out · source-driven-development · context-engineering
+Define   → write-spec
+Plan     → write-plan          (task breakdown + agent routing + cohesion contracts)
+Build    → implement-plan      (TDD + bounded delegation + worktrees)
+Build    → debug-issue         (bug fix path: reproduce → trace → failing test → minimal fix)
+Verify   → check-work          (evidence: tests / build / curl / browser / screenshot)
+Review   → review-code         (multi-axis review + adversarial mode for high-risk diffs)
+Ship     → finish-work         (pre-merge gate + CI lanes + 4-option finish menu)
+Simplify → simplify-code       (behavior-preserving cleanup)
+Recovery → manage-context      (re-context / session hygiene / advisor escalation / onboarding)
 ```
 
-Full mapping: [CHEATSHEET.md](CHEATSHEET.md#lifecycle-phases-6-phase-taxonomy). Influence: addyosmani/agent-skills taxonomy.
+Full skill detail: [docs/skills.md](docs/skills.md) + [CHEATSHEET.md](CHEATSHEET.md).
 
 ### Agents — `agents/` (18 specialists, 7 layers)
 
@@ -344,13 +347,13 @@ In rolepod: 15 agents use `memory: project` (codepaths / patterns / decisions sc
 
 Estimated **~50-60% cost reduction** vs "all Opus high" while keeping depth where bugs are expensive (auth / billing / migrations / arch). Codex + Gemini adapters preserve same tiering.
 
-**Fallback escalation:** Lead spawns `qa-tester` / `universal-reviewer` with `model: opus` when external reviewers unavailable, when PR touches high-risk surface, or when user requests deep review. See skill `reviewer-flow`.
+**Fallback escalation:** Lead spawns `qa-tester` / `universal-reviewer` with `model: opus` when external reviewers unavailable, when PR touches high-risk surface, or when user requests deep review. See skill `review-code`.
 
 ---
 
 ## Recommended add-ons
 
-Rolepod ships **pure framework only** — agents, rules, hooks, 44 skills, commands, manifests. No 3rd-party tools, plugins, or CLIs are auto-installed by `./install.sh`.
+Rolepod ships **pure framework only** — agents, rules, hooks, Core 10 skills + compatibility shims, commands, manifests. No 3rd-party tools, plugins, or CLIs are auto-installed by `./install.sh`.
 
 The framework is designed to **auto-integrate** when a recommended add-on is present on the user's system. Install whichever ones you want, on your own; rolepod hooks/rules/skills detect them at runtime and wire up. **Nothing breaks if an add-on is missing** — every integration has a documented fallback.
 
@@ -386,9 +389,9 @@ Adversarial review beyond the in-process `qa-tester` floor.
 
 | Add-on | What rolepod auto-uses it for | Fallback when missing | Install |
 |---|---|---|---|
-| **[OpenAI Codex review plugin](https://github.com/openai/codex-plugin-cc)** (Claude Code plugin) | `reviewer-flow` skill routes high-risk PRs through it for adversarial pass | `qa-tester` agent (universal floor) handles correctness alone | Inside Claude Code: `/plugin install openai-codex` |
-| **Codex CLI** ([@openai/codex](https://www.npmjs.com/package/@openai/codex)) | `reviewer-flow` invokes `codex exec --skip-git-repo-check '<prompt>'` for cross-CLI adversarial review (correctness + security) | qa-tester only | `npm install -g @openai/codex` then `codex login` |
-| **Gemini CLI** ([@google/gemini-cli](https://www.npmjs.com/package/@google/gemini-cli)) | `reviewer-flow` invokes `gemini -p '<prompt>'` for breadth + cross-file + code-smell review | qa-tester only | `npm install -g @google/gemini-cli` then `gemini auth login` |
+| **[OpenAI Codex review plugin](https://github.com/openai/codex-plugin-cc)** (Claude Code plugin) | `review-code` routes high-risk PRs through it for adversarial pass | `qa-tester` agent (universal floor) handles correctness alone | Inside Claude Code: `/plugin install openai-codex` |
+| **Codex CLI** ([@openai/codex](https://www.npmjs.com/package/@openai/codex)) | `review-code` invokes `codex exec --skip-git-repo-check '<prompt>'` for cross-CLI adversarial review (correctness + security) | qa-tester only | `npm install -g @openai/codex` then `codex login` |
+| **Gemini CLI** ([@google/gemini-cli](https://www.npmjs.com/package/@google/gemini-cli)) | `review-code` invokes `gemini -p '<prompt>'` for breadth + cross-file + code-smell review | qa-tester only | `npm install -g @google/gemini-cli` then `gemini auth login` |
 
 ### Detection
 
@@ -396,9 +399,9 @@ Adversarial review beyond the in-process `qa-tester` floor.
 
 ### Skill preloads
 
-44 skills ship bundled. Agents preload skills via `skills:` frontmatter. `ui-ux-pro-max` is the **only** preload that points at an external add-on — every other preload is bundled. Drop unwanted preloads by editing `core/agents/<name>.md`'s `skills:` list.
+53 skill files ship bundled (10 public Core 10 skills + 43 compatibility shims). Agents preload skills via `skills:` frontmatter. `ui-ux-pro-max` is the **only** preload that points at an external add-on — every other preload is bundled. Drop unwanted preloads by editing `core/agents/<name>.md`'s `skills:` list.
 
-`zoom-out`, `doubt-driven-development`, `source-driven-development` are **Lead-invoked** (not preloaded by any agent).
+Recovery / adversarial / source-grounding patterns live inside the relevant Core 10 skills (`manage-context`, `review-code`, `write-plan`) — Lead invokes them via the phase trigger rather than preloading them on every agent.
 
 ---
 
@@ -458,7 +461,7 @@ How each CLI executes:
 | **Codex CLI** | Lead role-switches | Reads `agents/<name>.toml` `developer_instructions`, inline | Serial |
 | **Gemini CLI** | Lead role-switches | Reads agent block from inlined `GEMINI.md`, inline | Serial |
 
-For Codex/Gemini, `parallel-contract-orchestration` still applies — Lead writes cohesion contract, then serially dispatches against it. Deliverable identical; throughput differs. When fanout primitives land, adapters switch to native dispatch with no agent-set change.
+For Codex/Gemini, the cohesion contract step inside `write-plan` still applies — Lead writes the contract first, then serially dispatches against it. Deliverable identical; throughput differs. When fanout primitives land, adapters switch to native dispatch with no agent-set change.
 
 ---
 
@@ -502,6 +505,6 @@ Personal workflow system. Fork freely. Send feedback via issues — especially C
 - [`docs/hooks.md`](docs/hooks.md) — 10 hooks reference (triggers, gates, bypass envs)
 - [`CHEATSHEET.md`](CHEATSHEET.md) — 1-page quick reference
 - [`core/rules/INDEX.md`](core/rules/INDEX.md) — full rule trigger map
-- [`core/skills/team-routing/SKILL.md`](core/skills/team-routing/SKILL.md) — agent picker + parallel pattern
+- [`core/skills/write-plan/SKILL.md`](core/skills/write-plan/SKILL.md) — agent picker + parallel cohesion contract (Core 10)
 - [`core/rules/always-on/agent-protocol.md`](core/rules/always-on/agent-protocol.md) — shared subagent rules
 - [`.claude-plugin/plugin.json`](.claude-plugin/plugin.json) / [`adapters/codex/plugins/rolepod/.codex-plugin/plugin.json`](adapters/codex/plugins/rolepod/.codex-plugin/plugin.json) / [`adapters/gemini/gemini-extension.json`](adapters/gemini/gemini-extension.json) — per-CLI manifests

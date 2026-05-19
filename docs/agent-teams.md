@@ -67,11 +67,11 @@ Default suggested composition for a full lifecycle (3-5 teammates per official g
 
 The command body in `commands/rolepod-team.md` instructs Lead to:
 1. Verify preconditions (version + env flag + CLI)
-2. Pick 3-5 teammates using rolepod subagent definitions (system-architect, backend/frontend/mobile-developer per `team-routing` skill, qa-tester, etc.)
-3. Have system-architect teammate write the cohesion contract FIRST
+2. Pick 3-5 teammates using rolepod subagent definitions (system-architect, backend/frontend/mobile-developer per `write-plan` skill's agent-routing step, qa-tester, etc.)
+3. Have system-architect teammate write the cohesion contract FIRST (per `write-plan` parallel layout)
 4. Other teammates read contract before implementing
 5. qa-tester teammate blocks task-completion if evidence missing
-6. For high-risk surface: teammates ALSO invoke Codex + Gemini via Bash per `reviewer-flow` skill
+6. For high-risk surface: teammates ALSO invoke Codex + Gemini via Bash per `review-code` skill
 
 ### Manual fine-grain control
 
@@ -94,7 +94,7 @@ Each teammate is a full Claude Code session — meaning rolepod's CLAUDE.md + sk
 - **S1-S5 / T1-T6 / F1-F5** — every teammate's pre-commit / pre-edit checks.
 - **`block-subagent-commit.sh`** — teammates can NOT `git commit` directly. Lead commits after teammates report COMPLETED + evidence.
 - **`gate-reminder.sh`** — high-risk path detection fires per teammate edit.
-- **`reviewer-flow` skill** — adversarial review (Codex + Gemini both if available) still applies inside teammates.
+- **`review-code` skill** — adversarial review (Codex + Gemini both if available) still applies inside teammates.
 - **`session-lock.sh`** — does NOT fire across teammates (same worktree shared by design).
 
 Lead's job is coordination + cleanup. Gate enforcement is per-teammate.
@@ -132,6 +132,5 @@ These are upstream constraints — rolepod cannot work around them.
 
 - [Official Claude Code agent-teams docs](https://code.claude.com/docs/en/agent-teams)
 - `commands/rolepod-team.md` — the slash command body
-- `core/skills/team-routing/SKILL.md` — picks which subagent definition each teammate uses
-- `core/skills/parallel-contract-orchestration/SKILL.md` — cohesion contract pattern (teammates share)
-- `core/skills/reviewer-flow/SKILL.md` — adversarial review rule (applies inside teammates)
+- `core/skills/write-plan/SKILL.md` — Core 10 plan skill that owns agent routing + cohesion contract (legacy `team-routing` + `parallel-contract-orchestration` shims redirect here)
+- `core/skills/review-code/SKILL.md` — Core 10 review skill with reviewer routing + adversarial mode (legacy `reviewer-flow` shim redirects here)

@@ -1,124 +1,147 @@
-# Skill Inventory Audit
+# Skill Inventory Audit (Core 10)
 
-Purpose: mark every shipped skill with its tier, trigger purpose, overlap status, and a future-action verdict. **No deletions in this pass.** Audit identifies merge / docs-only / keep candidates for future rounds — behavior tests must prove the route works *without* a skill before that skill can be retired.
+Purpose: snapshot every shipped skill after the Core 10 consolidation. **No further deletions in PR 1.** Audit confirms each public skill is load-bearing and each shim redirects to a Core 10 target. Behavior tests (`tests/workflow-behavior/cases/`) must continue to pass for one migration release before shims are removed.
 
 ## Verdict legend
 
-- **keep** — load-bearing, no overlap.
-- **merge later** — covered by another skill semantically; keep as compat shim or fold body when a behavior test proves no regression.
-- **docs-only later** — content valuable as reference but doesn't need to be a triggerable skill; move into `docs/` and remove SKILL.md.
-- **shim** — already a compatibility redirect; remove after a release once behavior tests confirm the canonical path catches the trigger.
+- **keep** — Core 10 public skill, load-bearing, no overlap.
+- **shim** — compatibility redirect to a Core 10 skill. Remove after one release once behavior tests confirm the canonical route catches the legacy trigger.
 
 ## Tier 0 — Router (1)
 
-| Skill | Trigger purpose | Overlap | Verdict |
-|---|---|---|---|
-| `using-rolepod` | Phase router; fires first on every request | none | **keep** |
+| Skill | Trigger purpose | Verdict |
+|---|---|---|
+| `using-rolepod` | Phase router; fires first on every request | **keep** |
 
-## Tier 1 — Core workflow (11)
+## Tier 1 — Core 10 phase skills (9)
 
-| Skill | Trigger purpose | Overlap | Verdict |
-|---|---|---|---|
-| `spec-driven-development` | Vague feature → write spec before code | none | **keep** |
-| `planning-and-task-breakdown` | Big goal / spec → ordered task list | none | **keep** |
-| `systematic-debugging` | Bug / failing test / regression → reproduce + trace + fix | absorbs `debugging-and-error-recovery` + `root-cause-tracing` | **keep** |
-| `test-driven-development` | Write failing test → impl → green | none | **keep** |
-| `team-routing` | Pick specialist agent by path/concern | none | **keep** |
-| `parallel-contract-orchestration` | 2+ parallel agents → write contract first | hook-enforced by `cohesion-contract-check.sh` | **keep** |
-| `subagent-task-execution` | Lead delegates → implementer + 2-stage review | none | **keep** |
-| `post-change-verify` | Claim of done → evidence required | partial overlap with `webapp-testing` + `browser-testing-with-devtools` (verify ≠ test infra, but related) | **keep** |
-| `code-review-and-quality` | Multi-axis review before merge | overlap with `reviewer-flow` (routing) — distinct: review vs route | **keep** |
-| `pre-merge-gate` | Ship intent → S+T+F gates + CI lanes | overlap with `shipping-and-launch` (Tier 2 launch checklist) — distinct: gate vs launch ritual | **keep** |
-| `code-simplification` | Refactor → behavior-preserving cut | partial overlap with `anti-spaghetti` (Tier 2 — duplication/dead code) | **keep** |
+| Skill | Phase | Trigger purpose | Absorbs (now shims) | Verdict |
+|---|---|---|---|---|
+| `write-spec` | Define | Vague feature → spec + approval gate | `spec-driven-development`, `doc-coauthoring` | **keep** |
+| `write-plan` | Plan | Spec → tasks + agent routing + cohesion contract | `planning-and-task-breakdown`, `team-routing`, `parallel-contract-orchestration`, `api-and-interface-design`, `source-driven-development` | **keep** |
+| `implement-plan` | Build | Plan → TDD + delegation + worktrees + artifact writing | `subagent-task-execution`, `test-driven-development`, `using-worktrees`, `frontend-ui-engineering`, `interface-design`, `interaction-design`, `claude-api`, `seo`, `documentation-and-adrs`, `user-facing-content`, `internal-comms`, `conversion-copywriting` | **keep** |
+| `debug-issue` | Build (bug) | Bug / failing test → reproduce → root → failing test → fix | `systematic-debugging`, `debugging-and-error-recovery`, `root-cause-tracing` | **keep** |
+| `check-work` | Verify | Done claim → evidence required | `post-change-verify`, `webapp-testing`, `browser-testing-with-devtools` | **keep** |
+| `review-code` | Review | Pre-merge multi-axis review + adversarial for high-risk | `code-review-and-quality`, `reviewer-flow`, `doubt-driven-development`, `web-design-guidelines`, `security-and-hardening`, `performance-optimization` | **keep** |
+| `finish-work` | Ship | Pre-merge gate + CI lanes + 4-option finish + launch | `pre-merge-gate`, `finishing-a-development-branch`, `shipping-and-launch`, `ci-cd-and-automation` | **keep** |
+| `simplify-code` | Simplify | Behavior-preserving cleanup | `code-simplification`, `anti-spaghetti` | **keep** |
+| `manage-context` | Recovery | Context heavy / stuck / unfamiliar repo / advisor / onboarding | `context-engineering`, `session-hygiene`, `zoom-out`, `triage-deep`, `advisor-escalation`, `new-project-onboarding` | **keep** |
 
-## Tier 2 — Specialist · Plan (1)
+## Tier 2 — Specialist (0 public)
 
-| Skill | Trigger purpose | Overlap | Verdict |
-|---|---|---|---|
-| `api-and-interface-design` | API / module boundary design | none in Tier 2 (different layer than `system-architect` agent) | **keep** |
+Empty by default. Domain depth lives in the 18 specialist agents and is routed from inside each Core 10 phase skill. Optional exception: `check-security` may be added later if product direction demands an explicit public security workflow surface.
 
-## Tier 2 — Specialist · Build (8)
+## Tier 3 — Compatibility shims (43)
 
-| Skill | Trigger purpose | Overlap | Verdict |
-|---|---|---|---|
-| `anti-spaghetti` | Duplication / dead code / drift | with `code-simplification` (Tier 1) — refactor vs hygiene | **merge later** if behavior tests prove `code-simplification` catches duplication |
-| `claude-api` | Anthropic SDK + caching | none | **keep** |
-| `conversion-copywriting` | Marketing copy with measured action | none | **keep** |
-| `doc-coauthoring` | Co-author docs with user (interview pattern) | with `documentation-and-adrs` — co-author vs final-form | **keep** |
-| `frontend-ui-engineering` | Production UI implementation | none | **keep** |
-| `interaction-design` | Motion / microinteractions / transitions | partial overlap with `frontend-ui-engineering` | **keep** |
-| `interface-design` | Dashboards / admin panels / dense apps | partial overlap with `frontend-ui-engineering` | **keep** |
-| `using-worktrees` | Filesystem isolation for parallel work | none | **keep** |
+Each shim has `tier: 3`, `redirect_to: <core-skill>`, and a tiny fallback (5-8 bullets) so a copy-only install still works.
 
-## Tier 2 — Specialist · Verify (4)
+### → `write-spec` (2)
 
-| Skill | Trigger purpose | Overlap | Verdict |
-|---|---|---|---|
-| `browser-testing-with-devtools` | DevTools MCP — live page inspection | with `webapp-testing` (Playwright) — interactive vs persistent suite | **keep** (complementary, documented boundary) |
-| `performance-optimization` | Core Web Vitals / bundle / render perf | none | **keep** |
-| `security-and-hardening` | Auth / secrets / vuln audit | overlap with `security-engineer` agent — skill vs agent | **keep** |
-| `webapp-testing` | Playwright E2E suite | with `browser-testing-with-devtools` — see above | **keep** |
+| Shim | Legacy trigger |
+|---|---|
+| `spec-driven-development` | "start a new feature", "write a spec", "requirements not pinned" |
+| `doc-coauthoring` | "write a document together" |
 
-## Tier 2 — Specialist · Review (2)
+### → `write-plan` (5)
 
-| Skill | Trigger purpose | Overlap | Verdict |
-|---|---|---|---|
-| `doubt-driven-development` | Adversarial 5-step review w/ reasoning strip | overlap with `code-review-and-quality` (Tier 1) — adversarial vs multi-axis | **keep** |
-| `web-design-guidelines` | UI compliance checklist (a11y / hierarchy) | overlap with `interface-design` | **keep** |
+| Shim | Legacy trigger |
+|---|---|
+| `planning-and-task-breakdown` | "break this into tasks", "too big for one session" |
+| `team-routing` | "choose agent", "multi-agent parallel", "team layout" |
+| `parallel-contract-orchestration` | "spawn parallel agents", "cohesion contract" |
+| `api-and-interface-design` | "design REST/GraphQL", "module interface" |
+| `source-driven-development` | "integrate SDK", "plugin manifest", "schema-bound config" |
 
-## Tier 2 — Specialist · Ship (6)
+### → `implement-plan` (12)
 
-| Skill | Trigger purpose | Overlap | Verdict |
-|---|---|---|---|
-| `ci-cd-and-automation` | CI/CD pipeline + quality gates | none | **keep** |
-| `documentation-and-adrs` | ADRs / runbooks / durable tech docs | with `doc-coauthoring` (build vs final-form) | **keep** |
-| `finishing-a-development-branch` | 4-option menu at branch end | none (wired into router finish ritual) | **keep** |
-| `internal-comms` | Status updates / decision memos / escalations | none | **keep** |
-| `seo` | SEO audit (technical / on-page / content) | none | **keep** |
-| `shipping-and-launch` | Launch checklist + rollback + monitoring | with `pre-merge-gate` (Tier 1) — launch vs gate | **keep** |
-| `user-facing-content` | FAQ / error msgs / empty states | with `conversion-copywriting` — UX vs marketing | **keep** |
+| Shim | Legacy trigger |
+|---|---|
+| `subagent-task-execution` | "delegate to subagent", "two-stage review" |
+| `test-driven-development` | "TDD", "failing test first", "Prove-It" |
+| `using-worktrees` | "parallel agents overlapping paths", "hotfix interrupt", "compare branches" |
+| `frontend-ui-engineering` | "build component", "frontend implementation" |
+| `interface-design` | "dashboard", "admin panel", "operational UI" |
+| `interaction-design` | "motion", "microinteraction", "hover/focus/press states" |
+| `claude-api` | "Anthropic SDK", "prompt cache", "Claude model migration" |
+| `seo` | "SEO audit", "Core Web Vitals", "site migration" |
+| `documentation-and-adrs` | "ADR", "runbook", "durable tech docs" |
+| `user-facing-content` | "FAQ", "error message", "empty state", "onboarding copy" |
+| `internal-comms` | "status update", "decision memo", "escalation" |
+| `conversion-copywriting` | "landing page", "email campaign", "CTA" |
 
-## Tier 2 — Specialist · Cross-cutting (3)
+### → `debug-issue` (3)
 
-| Skill | Trigger purpose | Overlap | Verdict |
-|---|---|---|---|
-| `context-engineering` | Load / unload / compress agent context | none | **keep** |
-| `source-driven-development` | Cite official docs at write time | with `verify-first` (rule, not skill) | **keep** |
-| `zoom-out` | Meta-cognitive recovery from drift | partial overlap with `triage-deep` (deep triage rules) | **keep** |
+| Shim | Legacy trigger |
+|---|---|
+| `systematic-debugging` | "error appears", "test fails", "recurring bug different surface" |
+| `debugging-and-error-recovery` | "something worked before and stopped" |
+| `root-cause-tracing` | "stack trace late-stage symptom", "fix moves the bug" |
 
-## Compatibility / utility (5 not yet tiered)
+### → `check-work` (3)
 
-| Skill | Trigger purpose | Overlap | Verdict |
-|---|---|---|---|
-| `advisor-escalation` | Sonnet/Haiku stuck → consult Opus | none | **keep** |
-| `new-project-onboarding` | First time in unfamiliar repo | none | **keep** |
-| `reviewer-flow` | Route review across Codex / Gemini / qa-tester | with `code-review-and-quality` — routing vs reviewing | **keep** |
-| `session-hygiene` | `/clear` / `/compact` / `/rewind` decisions | none | **keep** |
-| `triage-deep` | Multi-file / scope / drift control | with `zoom-out` — see above | **keep** |
+| Shim | Legacy trigger |
+|---|---|
+| `post-change-verify` | "verify change", "evidence after edit", "show test pass output" |
+| `webapp-testing` | "Playwright", "UI verify with persistent suite" |
+| `browser-testing-with-devtools` | "DevTools", "live page inspect", "console error capture" |
 
-## Tier 3 — Compatibility shims (2)
+### → `review-code` (6)
 
-| Skill | Trigger purpose | Overlap | Verdict |
-|---|---|---|---|
-| `debugging-and-error-recovery` | Legacy bug-fix trigger | redirects to `systematic-debugging` | **shim** — remove after a release once `case-02-bug-fix.yml` proves canonical route catches both trigger phrasings |
-| `root-cause-tracing` | Legacy upstream-trace trigger | redirects to `systematic-debugging` | **shim** — remove after same gate |
+| Shim | Legacy trigger |
+|---|---|
+| `code-review-and-quality` | "review this PR", "multi-axis review before merge" |
+| `reviewer-flow` | "spawn reviewer", "Codex review", "Gemini review", "review cascade" |
+| `doubt-driven-development` | "adversarial review", "irreversible operation review" |
+| `web-design-guidelines` | "audit design quality", "a11y review" |
+| `security-and-hardening` | "auth flow", "secret handling", "vuln audit" |
+| `performance-optimization` | "perf regression", "Core Web Vitals", "p95/p99" |
+
+### → `finish-work` (4)
+
+| Shim | Legacy trigger |
+|---|---|
+| `pre-merge-gate` | "before push", "before merge", "ship gate", "ship it" |
+| `finishing-a-development-branch` | "branch end", "4-option finish menu" |
+| `shipping-and-launch` | "production launch", "monitoring", "rollback plan" |
+| `ci-cd-and-automation` | "CI/CD lane", "pipeline config", "flaky pipeline" |
+
+### → `simplify-code` (2)
+
+| Shim | Legacy trigger |
+|---|---|
+| `code-simplification` | "refactor for clarity", "behavior-preserving cleanup" |
+| `anti-spaghetti` | "duplication", "dead code", "dependency drift" |
+
+### → `manage-context` (6)
+
+| Shim | Legacy trigger |
+|---|---|
+| `context-engineering` | "context budget", "lazy loading", "multi-agent context isolation" |
+| `session-hygiene` | "/clear", "/compact", "/rewind", "switching task" |
+| `zoom-out` | "stuck in details", "drift from goal", "lost the actual problem" |
+| `triage-deep` | "multi-file task", "scope unclear", "phase abort" |
+| `advisor-escalation` | "stuck", "consult Opus", "third agent same issue" |
+| `new-project-onboarding` | "first time in repo", "/init", "unfamiliar project" |
 
 ## Summary
 
-| Tier | Count | All "keep"? |
-|---|---|---|
-| 0 — Router | 1 | yes |
-| 1 — Core workflow | 11 | yes |
-| 2 — Specialist | 24 | yes (1 marked "merge later" candidate: `anti-spaghetti`) |
-| 2 — Compat / utility (not phase-tagged) | 5 | yes |
-| 3 — Compat shims | 2 | "shim" → remove later |
+| Tier | Count | All "keep" / "shim" ? |
+|---|---:|---|
+| 0 — Router | 1 | keep |
+| 1 — Core 10 phase skills | 9 | keep |
+| 2 — Specialist (public) | 0 | — |
+| 3 — Compatibility shims | 43 | shim → remove after one migration release |
 
-Total skills on disk: **44**.
-Default Lead surface (Tier 0 + 1 in entry docs): **12**.
-Future-removal candidates after behavior tests prove canonical route works: **3** (`anti-spaghetti` merge-into-`code-simplification`, plus 2 Tier-3 shims).
+- Total skill files on disk: **53**.
+- Public non-shim skills: **10** (1 router + 9 Core 10 phase skills).
+- Default Lead surface (Tier 0 + Tier 1 in entry docs): **10**.
 
 ## When to act on this audit
 
-- **Now:** nothing. Audit captures state; no deletions or renames.
-- **After 2 weeks of live use + workflow-behavior tests passing reliably:** evaluate the "merge later" + "shim" candidates. Behavior tests must show the canonical Tier 1 skill catches the legacy trigger phrase before the legacy skill can be removed.
-- **Every release:** re-run this audit (or its successor). New skills must justify their tier per the non-negotiables in `docs/rolepod-hardening-plan.md` (unique trigger / behavior not covered / drift test exists).
+- **Now (PR 1):** Core 10 in place + shims preserve legacy triggers. Tests + render-clean enforce the contract.
+- **Release N+1:** delete shims after one migration release once behavior tests confirm the canonical Core 10 route catches every legacy trigger phrase in production usage. Move surviving notes to `docs/legacy-skills.md`.
+- **Release N+2:** distill agent playbooks (18 specialists) to absorb the deep domain expertise that used to live in shims. PR 2 of this consolidation owns that work — see `docs/agent-standalone-audit.md`.
+
+## Optional exception
+
+`check-security` is the only Tier 2 candidate left on the table. It is NOT shipped in PR 1. Add it only if product direction confirms users want an explicit public security workflow; otherwise security routes through `review-code` (fallback inside the skill) and escalates to `security-engineer` agent.

@@ -76,7 +76,7 @@ When Lead is about to spawn the 2nd+ engineering agent within 10 events, require
 - **Effect**: `permissionDecision: deny` if 2+ agents spawned without contract
 - **Self-guards**: 1st agent → silent; contract present → silent
 - **Bypass**: `ROLEPOD_NO_CONTRACT=1` (single-domain Agent spawn legit)
-- **Pair**: skill `parallel-contract-orchestration`
+- **Pair**: skill `write-plan` (cohesion-contract step) — legacy `parallel-contract-orchestration` shim also routes here
 
 ### `verify-reminder.sh` — PostToolUse Edit/Write
 
@@ -155,7 +155,7 @@ Three real failures that motivated hard hooks:
 ## Why no "spec required" hook
 
 Spec discipline is enforced via:
-- `core/skills/spec-driven-development/SKILL.md` — HARD-GATE doctrine
+- `core/skills/write-spec/SKILL.md` — Iron Rule + approval gate + self-review
 - `using-rolepod` router — Define phase exit evidence
 
 Adding a `PreToolUse Bash` hook that checks for `docs/specs/<feature>.md` before Build-phase skills would:
