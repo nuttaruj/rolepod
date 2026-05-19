@@ -1159,16 +1159,24 @@ if not isinstance(data, dict):
     sys.exit(1)
 hooks = data.get("hooks", {})
 patched = 0
-old_node = f'node "{plugin_cjs}"'
 new_bash = f'bash "{wrap_sh}"'
+# Pre-PR-6 patched entries point at hooks/gitnexus-wrap.sh (root). The file
+# moved to hooks/optional/gitnexus/gitnexus-wrap.sh; upgrade those entries
+# in place. Also still catch the un-patched plugin entry (`node ".../cjs"`).
+import os
+old_wrap_basename_pattern = "/hooks/gitnexus-wrap.sh"
 for event_arr in hooks.values():
     if not isinstance(event_arr, list):
         continue
     for group in event_arr:
         for h in group.get("hooks", []):
             cmd = h.get("command", "")
-            # Match both quoted + unquoted forms the plugin/installer may emit.
-            if plugin_cjs in cmd and "gitnexus-wrap.sh" not in cmd:
+            already_new = wrap_sh in cmd
+            if already_new:
+                continue
+            # Match both quoted + unquoted forms the plugin/installer may emit,
+            # plus the pre-PR-6 root-level wrap path that no longer exists.
+            if plugin_cjs in cmd or old_wrap_basename_pattern in cmd:
                 h["command"] = new_bash
                 patched += 1
 if patched:
