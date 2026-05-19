@@ -930,10 +930,30 @@ if command -v jq >/dev/null 2>&1; then
         else $arr + [{"matcher": $matcher, "hooks": []}] end
       end;
 
+    # Consolidate duplicate no-matcher groups in an event array. Other
+    # tools (mempalace, orca, etc.) may add their own no-matcher Stop /
+    # SessionStart groups — if rolepod ran upsert without consolidating
+    # first, the `map` body below adds the command to EVERY no-matcher
+    # group, producing duplicates on every re-install. Pre-collapse so the
+    # event has at most one canonical no-matcher group.
+    def consolidate_no_matcher($arr):
+      ($arr // []) as $a
+      | ($a | map(select((.matcher // "") == ""))) as $nm
+      | if ($nm | length) <= 1 then $a
+        else (
+          ([$nm[].hooks // []] | add | unique_by(.command)) as $merged
+          | ($a | map(select((.matcher // "") != "")))
+              + (if ($merged | length) > 0 then [{"hooks": $merged}] else [] end)
+        ) end;
+
     # Cross-group dedup upsert: strip cmd anywhere in event, then add to
     # canonical matcher group exactly once. Empty matcher → no-matcher group.
+    # Pre-consolidate so multiple pre-existing no-matcher groups collapse
+    # into one before we add the new cmd (otherwise upsert hits all of them).
     def upsert_cmd($arr; $matcher; $cmd; $timeout):
-      (strip_cmd($arr; $cmd) | ensure_group(.; $matcher)) | map(
+      (consolidate_no_matcher($arr)
+       | strip_cmd(.; $cmd)
+       | ensure_group(.; $matcher)) | map(
         if ($matcher == "" and ((.matcher // "") == "")) or (.matcher == $matcher) then
           .hooks += [{"type": "command", "command": $cmd, "timeout": $timeout}]
         else . end
@@ -976,7 +996,35 @@ if not isinstance(data, dict):
     data = {}
 hooks = data.setdefault("hooks", {})
 
+def consolidate_no_matcher(event):
+    # Other tools (mempalace, orca, etc.) may add no-matcher groups for
+    # Stop / SessionStart. Without consolidation, every install run leaves
+    # stale duplicate groups behind. Collapse multiple no-matcher groups
+    # in `event` into one, dedup by command.
+    arr = hooks.get(event) or []
+    no_matcher = [g for g in arr if not g.get("matcher")]
+    if len(no_matcher) <= 1:
+        return
+    seen = set()
+    merged_hooks = []
+    for g in no_matcher:
+        for h in g.get("hooks", []):
+            cmd = h.get("command")
+            if cmd not in seen:
+                seen.add(cmd)
+                merged_hooks.append(h)
+    rest = [g for g in arr if g.get("matcher")]
+    if merged_hooks:
+        rest.append({"hooks": merged_hooks})
+    hooks[event] = rest
+
+
 def upsert(event, matcher, cmd, timeout):
+    # Pre-consolidate so multiple pre-existing no-matcher groups collapse
+    # into one before we add the new cmd (otherwise next() picks the first
+    # group and leaves stale duplicates in the others — observed in real
+    # ~/.claude/settings.json after PR 5 hit a mempalace + orca Stop layout).
+    consolidate_no_matcher(event)
     arr = hooks.setdefault(event, [])
     # Strip cmd from ALL groups in event (handles matcher-rename across
     # versions, e.g. "startup" → "startup|resume"). Drop now-empty groups.
