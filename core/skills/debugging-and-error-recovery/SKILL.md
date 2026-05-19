@@ -1,20 +1,27 @@
 ---
 name: debugging-and-error-recovery
-description: Compatibility shim — bug / failure / root-cause work is now handled by the canonical `systematic-debugging` skill. Use `systematic-debugging` directly for all debugging tasks.
+description: Compatibility shim — bug / failure / root-cause work is now handled by `debug-issue`.
 when_to_use: when an error appears, when output is wrong, or when something worked before and stopped
+tier: 3
+redirect_to: debug-issue
 ---
 
-# Compatibility shim
+# debugging-and-error-recovery
 
-This skill has been merged into **`systematic-debugging`**.
+Compatibility shim. The debug workflow now lives in **`debug-issue`**.
 
-`systematic-debugging` covers the full workflow:
+→ Open `core/skills/debug-issue/SKILL.md` and follow that instead.
 
-- reproduce → trace upstream to root → write failing test → minimal fix → verify regression-clean
-- the three legitimate stopping points (external input / system boundary / "designed this way")
-- common error patterns + bisection tactics
-- worked example
+This shim preserves the legacy trigger phrase during the migration release.
 
-→ Open `core/skills/systematic-debugging/SKILL.md` and follow that instead.
+## If `debug-issue` is not available
 
-This shim exists so older trigger phrases ("when an error appears", "output is wrong", "something worked before and stopped") still route to the canonical skill. The shim will be removed after a release once behavior tests confirm the route works without it.
+Minimum viable fallback:
+
+1. Capture the exact error message, stack, and throw site
+2. Reproduce deterministically before any fix attempt
+3. State one hypothesis at a time; pick the cheapest falsifier
+4. Do not spray fixes — one hypothesis, one test
+5. Trace upstream until you hit external input / system boundary / designed-this-way
+6. Write the failing test before shipping the fix
+7. Verify regression-clean after the fix

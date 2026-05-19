@@ -1,115 +1,27 @@
 ---
 name: new-project-onboarding
-description: Onboard fast to an unfamiliar codebase — detect stack, find conventions, identify entry points.
+description: Compatibility shim — unfamiliar-repo onboarding (stack detection, conventions, entry points) now lives in `manage-context`.
 when_to_use: '"first time in repo", "/init", "unfamiliar project", "bootstrap mode", "new project", "learn this codebase"'
-context: fork
-agent: Explore
+tier: 3
+redirect_to: manage-context
 ---
 
-# New Project — fast onboarding
+# new-project-onboarding
 
-Read when: first time in unfamiliar project / bootstrap session.
+Compatibility shim. Repo onboarding now lives in **`manage-context`**.
 
-## Bootstrap mode — first session ever
+→ Open `core/skills/manage-context/SKILL.md` and follow that instead.
 
-No MemPalace data, no GitNexus index, no project CLAUDE.md → degraded but functional:
+This shim preserves the legacy trigger phrase during the migration release.
 
-| Feature | Fallback |
-|---------|----------|
-| MemPalace recall | git log + git blame + READMEs |
-| GitNexus impact | `rg` + manual Read |
-| Project conventions | Read 2-3 nearby files |
-| Past decisions | None — ask user when ambiguous |
-| Auto-context loader | git log only |
+## If `manage-context` is not available
 
-After 1st productive session → suggest user:
-- `npx gitnexus analyze` to index
-- `mempalace mine <repo> --wing <project-name>` to capture session
-- Create project `CLAUDE.md` (`/init` for starter)
+Minimum viable fallback:
 
-Until then: conservative — verify more, claim less, ask user.
-
-## Learn fast checklist
-
-5-10 min context floor.
-
-### Must know
-
-- [ ] Tech stack — language + runtime version
-- [ ] Package manager — npm/yarn/pnpm/pip/poetry/uv/cargo/go mod
-- [ ] Framework — read main config
-- [ ] Repo map — `tree -L 2` or `ls`
-- [ ] Build / test / lint / typecheck / dev server commands (from `package.json` / `Makefile` / `pyproject.toml`)
-- [ ] Required env vars — `.env.example` / README
-
-### Should know (relevant)
-
-- [ ] Deploy / CI — `.github/workflows/` / `vercel.json` / `railway.toml`
-- [ ] Generated files + ownership boundaries
-- [ ] DB migration tool + commands
-- [ ] Project `CLAUDE.md`
-- [ ] `.claude/rules/` and `.claude/skills/`
-- [ ] GitNexus indexed? — `gitnexus://repo/<name>/context`
-
-### Nice to know (JIT)
-
-- Architecture decisions — `docs/` / `decisions/` / ADRs
-- External services — `.env.example` clues
-- Auth model — login route + middleware
-
-## Order of operations
-
-1. Project `CLAUDE.md` if exists (most important)
-2. `package.json` / `pyproject.toml` / equivalent
-3. `ls` repo root
-4. `.claude/` dir — rules + skills
-5. README briefly (setup / run / test sections)
-6. git log recent activity
-
-## Sanity check before editing
-
-- GitNexus indexed?
-- Project-specific style rules (`.editorconfig`, `pyproject.toml`)?
-- Existing test for file?
-- Build/test command for THIS project?
-
-## Common pitfalls
-
-- Wrong package manager (`npm install` in pnpm project breaks lockfile)
-- Wrong test command (`pytest` instead of project's `make test`)
-- Edit generated files (Prisma schema-output, OpenAPI clients, build artifacts)
-- Miss project-specific style enforced by hook/CI
-- Skip project `CLAUDE.md`, re-invent existing patterns
-
-## `/init` command
-
-Anthropic slash command. Run in project root → analyzes codebase → generates starter CLAUDE.md based on build systems, test frameworks, patterns.
-
-Use when: no `CLAUDE.md` / want quick foundation.
-
-After `/init`:
-- Read generated
-- Prune anything Claude can infer from code
-- Add project-specific gotchas
-- Commit to git
-
-## Project CLAUDE.md template
-
-```md
-# Project Name
-
-## What
-Purpose / users / tech stack / repo map / key deps / env vars
-
-## Why
-Architecture decisions / code style / naming / anti-patterns / error handling / security
-
-## How
-install / dev / build / test / lint / typecheck / format / migrations / CI / PR conventions
-
-## Verification
-minimum check / broader check / UI checks / known flaky tests
-
-## Gotchas
-non-obvious behaviors / generated files / external services / local quirks
-```
+1. Read `README.md` and `CLAUDE.md` (if present) before any edit
+2. Detect stack from `package.json` / `pyproject.toml` / `Cargo.toml` / `Makefile`
+3. Read 2-3 representative files to match style and conventions
+4. Find the test runner and run a smoke test
+5. Identify the entry point and the main module
+6. List the high-risk surfaces present in this repo (auth / billing / migration / payments)
+7. Do not write a single line of code until the above is complete
