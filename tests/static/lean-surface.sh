@@ -197,6 +197,28 @@ else
   echo "  ✓ no redirect_to_agent field in source"
 fi
 
+# Core skills that name a next skill in their "Next phase" section must
+# also include either an unavailable-next-skill fallback OR a terminal
+# handoff (return to using-rolepod / surface to user / route back to a
+# Core 10 skill family). Spec line 813 — keeps the phase skill usable
+# when copied alone without the next phase skill.
+NEXT_FALLBACK_RX='If .*(is not available|are not available)|If neither|If not[, ]|otherwise|outline below|return to (using-rolepod|the phase|`)|surface (the blocker|to the user)|ask the user'
+NEXT_FAIL=0
+for s in "${CORE_SKILLS[@]}"; do
+  f="core/skills/$s/SKILL.md"
+  [ -f "$f" ] || continue
+  if grep -q "^## Next phase" "$f"; then
+    if awk '/^## Next phase/{f=1;next} /^## /{if(f){exit}} f' "$f" | grep -Eq "$NEXT_FALLBACK_RX"; then
+      :  # fallback / terminal handoff present
+    else
+      echo "  ✗ core skill names a next phase without a fallback or terminal handoff: $s"
+      fail=$((fail+1))
+      NEXT_FAIL=$((NEXT_FAIL+1))
+    fi
+  fi
+done
+[ "$NEXT_FAIL" -eq 0 ] && echo "  ✓ every core skill with a next-phase pointer has a fallback or terminal handoff"
+
 # Core skill fallback sections must stay concise (line guard). A
 # fallback that grows past ~25 lines is on its way to becoming a domain
 # manual — push detail into agent / docs instead.
