@@ -264,7 +264,7 @@ Rolepod keeps **9 root hook scripts** in `hooks/`, split into **Core** (always a
 
 Per-CLI exposure:
 
-- **Claude:** copies all 9 scripts and registers 8 rolepod entries in `settings.json` (2× `SessionStart`, 4× `PreToolUse`, 2× `PostToolUse`, 1× `Stop`). `gitnexus-wrap.sh` is not a standalone rolepod entry; it patches the optional GitNexus hook when GitNexus is installed.
+- **Claude:** copies all 9 scripts and registers 9 rolepod entries in `settings.json` (2× `SessionStart`, 4× `PreToolUse`, 2× `PostToolUse`, 1× `Stop`). `gitnexus-wrap.sh` is not a standalone rolepod entry; it patches the optional GitNexus hook when GitNexus is installed.
 - **Codex:** ships 5 plugin command hooks (byte-exact mirrors of root scripts, parity enforced by lean-surface): `project-context-loader.sh`, `gate-reminder.sh`, `precommit-gate.sh`, `verify-reminder.sh`, `post-ship-detect.sh`. Claude-only hooks (block-subagent-commit, cohesion-contract-check, session-lifecycle) are not registered — Codex has no `Agent` or `Stop` event API.
 - **Gemini:** ships 4 adapter command hooks: `session-start.sh`, `before-tool.sh`, `after-tool.sh`, `pre-compress.sh`.
 

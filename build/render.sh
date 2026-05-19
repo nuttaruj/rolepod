@@ -272,7 +272,7 @@ render_claude() {
 #   .agents/plugins/marketplace.json                 (marketplace manifest)
 #   plugins/rolepod/.codex-plugin/plugin.json        (plugin manifest)
 #   plugins/rolepod/agents/*.toml                    (18 portable agents)
-#   plugins/rolepod/hooks/hooks.json + *.sh          (4 hook scripts)
+#   plugins/rolepod/hooks/hooks.json + *.sh          (5 hook scripts)
 #   plugins/rolepod/skills/<name>/SKILL.md ...       (real dir, copied from core/skills)
 
 render_codex() {
@@ -331,7 +331,7 @@ render_codex() {
 #   GEMINI.md                       (entry doc, written to ~/.gemini/GEMINI.md)
 #   gemini-extension.json           (extension manifest)
 #   commands/*.toml                 (6 slash commands)
-#   hooks/hooks.json + *.sh         (3 hook scripts)
+#   hooks/hooks.json + *.sh         (4 hook scripts)
 #   skills/<name>/SKILL.md ...      (real dir, copied from core/skills/)
 
 render_gemini() {

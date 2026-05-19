@@ -1,6 +1,6 @@
 # Hooks reference
 
-Rolepod ships **9 root bash hook scripts**. Claude install copies all 9, then registers 8 rolepod entries in `~/.claude/settings.json`; `gitnexus-wrap.sh` only patches the optional GitNexus plugin hook when GitNexus is installed. Each registered hook fires on a specific Claude Code event + matcher and either enforces a gate (`permissionDecision: deny`) or injects context (JSON `additionalContext`). All hooks are **self-guarded** — silent no-op when a dependency is missing.
+Rolepod ships **9 root bash hook scripts**. Claude install copies all 9, then registers 9 rolepod entries in `~/.claude/settings.json` (2× `SessionStart` + 4× `PreToolUse` + 2× `PostToolUse` + 1× `Stop`); `gitnexus-wrap.sh` only patches the optional GitNexus plugin hook when GitNexus is installed. Each registered hook fires on a specific Claude Code event + matcher and either enforces a gate (`permissionDecision: deny`) or injects context (JSON `additionalContext`). All hooks are **self-guarded** — silent no-op when a dependency is missing.
 
 Lead does not invoke these manually. They fire automatically.
 
