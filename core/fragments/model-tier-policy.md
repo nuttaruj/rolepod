@@ -45,7 +45,7 @@ Per-task override: explicit user instruction always wins. If the user says "use 
 Auto-escalate to **adversarial** tier (regardless of agent default) when:
 
 - Touching auth / authn / authz / billing / payment / migration / credit / permission / secret / crypto / token / oauth / jwt / sso / saml / webhook / stripe / paypal / charge / invoice paths.
-- About to ship to production (final `pre-merge-gate` review).
+- About to ship to production (final `finish-work` review).
 - 3rd agent attempt on same surface (per CLAUDE.md hard stops).
 - User explicit "use careful mode" or `/rolepod` invocation.
 

@@ -26,10 +26,21 @@ check "rendered Codex  AGENTS.md ≤ 280 lines (actual: $CODEX_LINES)"   "[ $COD
 check "rendered Gemini GEMINI.md ≤ 280 lines (actual: $GEMINI_LINES)"  "[ $GEMINI_LINES -le 280 ]"
 
 # ── Tier 0 + Tier 1 visible skill count ───────────────────────────────
+# Core 10 target: Tier 0 = 1 router (using-rolepod), Tier 1 = 9 core
+# workflow skills (write-spec / write-plan / implement-plan / debug-issue
+# / check-work / review-code / finish-work / simplify-code / manage-context).
+# Default Lead surface = Tier 0 + Tier 1 = 10 skills.
 LEAN_TIER0=$(awk '/^### Tier 0/{f=1;next} /^### Tier/{f=0} f && /^\| `/{c++} END{print c+0}' core/fragments/skill-index-lean.md)
 LEAN_TIER1=$(awk '/^### Tier 1/{f=1;next} /^### Tier/{f=0} f && /^\| `/{c++} END{print c+0}' core/fragments/skill-index-lean.md)
 check "lean skill-index Tier 0 = 1 (actual: $LEAN_TIER0)"    "[ $LEAN_TIER0 -eq 1 ]"
-check "lean skill-index Tier 1 = 11 (actual: $LEAN_TIER1)"   "[ $LEAN_TIER1 -eq 11 ]"
+check "lean skill-index Tier 1 = 9 (actual: $LEAN_TIER1)"    "[ $LEAN_TIER1 -eq 9 ]"
+LEAN_SURFACE=$((LEAN_TIER0 + LEAN_TIER1))
+check "default Lead surface ≤ 10 (actual: $LEAN_SURFACE)"    "[ $LEAN_SURFACE -le 10 ]"
+
+# ── Public non-shim skills ≤ 11 (Core 10 + optional check-security) ────
+# Public non-shim = filesystem skills without `tier: 3` frontmatter.
+PUBLIC_NONSHIM=$(grep -L "^tier: 3" core/skills/*/SKILL.md 2>/dev/null | wc -l | tr -d ' ')
+check "public non-shim skills ≤ 11 (actual: $PUBLIC_NONSHIM)" "[ $PUBLIC_NONSHIM -le 11 ]"
 
 # ── Skill catalog drift — filesystem must match rendered fragment ──────
 # Catches the "render.sh skips utility skills" failure mode that bit us
@@ -97,6 +108,171 @@ else
   echo "$BRAND_LEAKS" | sed 's/^/      /'
   fail=$((fail+1))
 fi
+
+# ── Core 10 portability invariants ────────────────────────────────────
+# Each of the 9 core workflow skills must include both an agent-available
+# path and a no-agent fallback path so a copy-only install still works.
+# These checks back the spec's Acceptance Criteria #6-#10 + Risks #11.
+CORE_SKILLS=(write-spec write-plan implement-plan debug-issue check-work review-code finish-work simplify-code manage-context)
+FALLBACK_RX='(If no matching agent is available|If \`[a-z-]+\` is not available|no-agent fallback|standalone fallback|Execute (as Lead|the checklist directly as Lead))'
+for s in "${CORE_SKILLS[@]}"; do
+  f="core/skills/$s/SKILL.md"
+  if [ ! -f "$f" ]; then
+    echo "  ✗ core skill missing on disk: $s"; fail=$((fail+1)); continue
+  fi
+  if grep -Eq "$FALLBACK_RX" "$f"; then
+    echo "  ✓ core skill has no-agent fallback section: $s"
+  else
+    echo "  ✗ core skill missing no-agent fallback section: $s"; fail=$((fail+1))
+  fi
+done
+
+# Tier 0 router must point at canonical Core 10 skills, not at Tier 3
+# compatibility shims. This catches the subtle failure mode where the
+# visible surface is lean but the first-loaded router still sends Lead
+# through legacy skill names.
+ROUTER="core/skills/using-rolepod/SKILL.md"
+for s in "${CORE_SKILLS[@]}"; do
+  if grep -q "\`$s\`" "$ROUTER"; then
+    echo "  ✓ using-rolepod router references canonical core skill: $s"
+  else
+    echo "  ✗ using-rolepod router missing canonical core skill: $s"; fail=$((fail+1))
+  fi
+done
+LEGACY_ROUTER_RX='(spec-driven-development|planning-and-task-breakdown|systematic-debugging|team-routing|parallel-contract-orchestration|subagent-task-execution|post-change-verify|code-review-and-quality|pre-merge-gate|finishing-a-development-branch|code-simplification|frontend-ui-engineering|api-and-interface-design|security-and-hardening|documentation-and-adrs|test-driven-development|reviewer-flow|webapp-testing)'
+if grep -En "$LEGACY_ROUTER_RX" "$ROUTER" >/tmp/rolepod-router-legacy-hits.txt 2>/dev/null; then
+  echo "  ✗ using-rolepod active router still references legacy shim names:"
+  sed 's/^/      /' /tmp/rolepod-router-legacy-hits.txt
+  fail=$((fail+1))
+else
+  echo "  ✓ using-rolepod router uses Core 10 names only"
+fi
+rm -f /tmp/rolepod-router-legacy-hits.txt
+
+# Active docs and generated lean fragments must name Core 10 routing.
+# Legacy names are allowed in docs/skills.md and audit docs, but not in
+# the install/readme surfaces that teach users what to invoke.
+ACTIVE_DOCS=(README.md CHEATSHEET.md CLAUDE.md AGENTS.md GEMINI.md adapters/claude/CLAUDE.md.tmpl adapters/codex/AGENTS.md.tmpl adapters/gemini/GEMINI.md.tmpl build/rendered/claude/CLAUDE.md build/rendered/codex/AGENTS.md build/rendered/gemini/GEMINI.md docs/agents.md docs/cli-support.md core/fragments/team-trigger.md core/fragments/agent-roster-lean.md core/fragments/model-tier-policy.md)
+ACTIVE_LEGACY_RX='(team-routing|parallel-contract-orchestration|pre-merge-gate|post-change-verify|code-review-and-quality|spec-driven-development|planning-and-task-breakdown|systematic-debugging|finishing-a-development-branch|reviewer-flow)'
+ACTIVE_LEGACY_HITS=""
+for f in "${ACTIVE_DOCS[@]}"; do
+  [ -f "$f" ] || continue
+  hits=$(grep -En "$ACTIVE_LEGACY_RX" "$f" 2>/dev/null || true)
+  [ -z "$hits" ] || ACTIVE_LEGACY_HITS="${ACTIVE_LEGACY_HITS}${hits}
+"
+done
+if [ -z "$ACTIVE_LEGACY_HITS" ]; then
+  echo "  ✓ active docs route through Core 10 names only"
+else
+  echo "  ✗ active docs still route through legacy shim names:"
+  printf '%s' "$ACTIVE_LEGACY_HITS" | sed 's/^/      /'
+  fail=$((fail+1))
+fi
+
+# Core skills must not contain hard-dependency language. Forbidden:
+# "Always delegate to <agent>", "Requires <skill>", "Load <other> before"
+# (with skill-name pattern), "must use agent".
+HARD_DEP_RX='(Always delegate to|Requires Rolepod (agents|hooks)|must use (a |an |the )?agent|Only works inside full Rolepod)'
+for s in "${CORE_SKILLS[@]}"; do
+  f="core/skills/$s/SKILL.md"
+  [ -f "$f" ] || continue
+  if grep -Eq "$HARD_DEP_RX" "$f"; then
+    echo "  ✗ core skill contains hard-dependency language: $s"
+    grep -En "$HARD_DEP_RX" "$f" | sed 's/^/      /' || true
+    fail=$((fail+1))
+  fi
+done
+echo "  ✓ no core skill contains hard-dependency language"
+
+# Every core skill must include the "Full Rolepod enhancement" note.
+for s in "${CORE_SKILLS[@]}"; do
+  f="core/skills/$s/SKILL.md"
+  [ -f "$f" ] || continue
+  if ! grep -q "^## Full Rolepod enhancement" "$f"; then
+    echo "  ✗ core skill missing 'Full Rolepod enhancement' section: $s"; fail=$((fail+1))
+  fi
+done
+echo "  ✓ every core skill has Full Rolepod enhancement note"
+
+# write-spec must include an approval gate + self-review (Acceptance #7-#9).
+if grep -Eiq "(approval|approve)" core/skills/write-spec/SKILL.md && \
+   grep -Eiq "self.review" core/skills/write-spec/SKILL.md; then
+  echo "  ✓ write-spec contains approval gate + self-review"
+else
+  echo "  ✗ write-spec missing approval gate or self-review"; fail=$((fail+1))
+fi
+
+# Every shim (tier 3) must include both `redirect_to` and a fallback
+# section so a copy-only shim does not dead-end.
+SHIM_FILES=$(grep -l "^tier: 3" core/skills/*/SKILL.md 2>/dev/null)
+for f in $SHIM_FILES; do
+  name=$(basename "$(dirname "$f")")
+  if ! grep -q "^redirect_to: " "$f"; then
+    echo "  ✗ shim missing redirect_to: $name"; fail=$((fail+1)); continue
+  fi
+  if ! grep -Eq "^## If \`[a-z-]+\` is not available" "$f"; then
+    echo "  ✗ shim missing fallback section: $name"; fail=$((fail+1))
+  fi
+done
+echo "  ✓ every shim has redirect_to + fallback section"
+
+# Every redirect_to target must point at an existing public skill.
+BAD_TARGETS=""
+for f in $SHIM_FILES; do
+  target=$(awk '/^redirect_to:/{gsub(/^redirect_to:[[:space:]]*/, ""); print; exit}' "$f")
+  if [ -z "$target" ] || [ ! -f "core/skills/$target/SKILL.md" ]; then
+    BAD_TARGETS="$BAD_TARGETS $(basename "$(dirname "$f")")→$target"
+  fi
+done
+if [ -z "$BAD_TARGETS" ]; then
+  echo "  ✓ every shim redirect_to points at an existing skill"
+else
+  echo "  ✗ shim redirect_to targets missing:$BAD_TARGETS"; fail=$((fail+1))
+fi
+
+# `redirect_to_agent` field must NOT appear anywhere (spec verdict #2).
+if grep -lr "^redirect_to_agent:" core/skills/ 2>/dev/null | grep -q .; then
+  echo "  ✗ forbidden `redirect_to_agent` field appears in source:"
+  grep -lr "^redirect_to_agent:" core/skills/ | sed 's/^/      /'
+  fail=$((fail+1))
+else
+  echo "  ✓ no redirect_to_agent field in source"
+fi
+
+# Core skills that name a next skill in their "Next phase" section must
+# also include either an unavailable-next-skill fallback OR a terminal
+# handoff (return to using-rolepod / surface to user / route back to a
+# Core 10 skill family). Spec line 813 — keeps the phase skill usable
+# when copied alone without the next phase skill.
+NEXT_FALLBACK_RX='If .*(is not available|are not available)|If neither|If not[, ]|otherwise|outline below|return to (using-rolepod|the phase|`)|surface (the blocker|to the user)|ask the user'
+NEXT_FAIL=0
+for s in "${CORE_SKILLS[@]}"; do
+  f="core/skills/$s/SKILL.md"
+  [ -f "$f" ] || continue
+  if grep -q "^## Next phase" "$f"; then
+    if awk '/^## Next phase/{f=1;next} /^## /{if(f){exit}} f' "$f" | grep -Eq "$NEXT_FALLBACK_RX"; then
+      :  # fallback / terminal handoff present
+    else
+      echo "  ✗ core skill names a next phase without a fallback or terminal handoff: $s"
+      fail=$((fail+1))
+      NEXT_FAIL=$((NEXT_FAIL+1))
+    fi
+  fi
+done
+[ "$NEXT_FAIL" -eq 0 ] && echo "  ✓ every core skill with a next-phase pointer has a fallback or terminal handoff"
+
+# Core skill fallback sections must stay concise (line guard). A
+# fallback that grows past ~25 lines is on its way to becoming a domain
+# manual — push detail into agent / docs instead.
+for s in "${CORE_SKILLS[@]}"; do
+  f="core/skills/$s/SKILL.md"
+  [ -f "$f" ] || continue
+  fallback_lines=$(awk '/^## If no matching agent is available/{f=1;next} /^## /{if(f){exit}} f{c++} END{print c+0}' "$f")
+  if [ "$fallback_lines" -gt 25 ]; then
+    echo "  ✗ core skill fallback section > 25 lines ($fallback_lines): $s"; fail=$((fail+1))
+  fi
+done
+echo "  ✓ core skill fallback sections concise (≤ 25 lines)"
 
 # ── Render reproducibility under LC_ALL=C ─────────────────────────────
 cp core/fragments/skill-index.md /tmp/.lean-surface-snap.md

@@ -3,12 +3,12 @@ prompt: |
   Ship it.
 expected_skills:
   - using-rolepod
-  - pre-merge-gate
+  - finish-work
 must_not_contain:
   - "git push --force"
   - "skipping tests"
   - "merge without review"
 why: |
-  "Ship" routes through pre-merge-gate. S+T+F gates must run, reviewer must be
-  dispatched, CI lanes must be green. No force-push, no test skip, no
-  review-bypass.
+  "Ship" routes through finish-work. The pre-merge gate (S+T+F) must run,
+  reviewer must be appropriate, CI lanes must be green. No force-push, no
+  test skip, no review-bypass.

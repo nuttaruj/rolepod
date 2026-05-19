@@ -1,177 +1,28 @@
 ---
 name: pre-merge-gate
-description: Run the pre-merge gate — simplicity + test + reviewer routing + ask-user matrix + CI lanes — before pushing or merging.
+description: Compatibility shim — pre-merge gate (simplicity + tests + reviewer + CI lanes) now lives in `finish-work`.
 when_to_use: 'before `git push` to tracked branch, `gh pr merge`, "ship it", "before push", "before merge", "ship gate", PR ready to merge'
+tier: 3
+redirect_to: finish-work
 ---
 
-# Pre-Merge Gate
+# pre-merge-gate
 
-Read BEFORE: `gh pr merge`, `git push` to tracked branch, equivalent ship.
+Compatibility shim. The pre-merge gate now lives in **`finish-work`**.
 
-Deep guide: skill `shipping-and-launch`.
+→ Open `core/skills/finish-work/SKILL.md` and follow that instead.
 
-## Step 0 — Simplicity gate (BEFORE reviewer)
+This shim preserves the legacy trigger phrase during the migration release.
 
-```
-S1: Feature beyond user request?          yes → cut
-S2: Abstraction for single-use?           yes → inline
-S3: Config/flexibility nobody asked?      yes → cut
-S4: Defensive code for impossible case?   yes → cut
-S5: Same pattern in 3+ places?            yes → centralize
-```
+## If `finish-work` is not available
 
-Any yes → revise. Don't waste reviewer rounds on bloat.
+Minimum viable fallback:
 
-## Step 0.3 — PR scope gate — one concern per PR
-
-```
-P1: Diff mixes 2+ unrelated concerns?      yes → SPLIT into separate PRs
-P2: "and also" / "while I'm at it" commits? yes → cherry-pick into new branch
-P3: Bugfix + refactor + feature together?  yes → 3 PRs, not 1
-P4: Multiple users / domains affected?     yes → split per surface
-```
-
-**One PR = one concern.** Reviewer attention, blast radius, and rollback all assume one purpose per merge. Bundled PRs:
-- multiply review cycles (reviewer rejects unrelated bits)
-- expand blast radius (revert the fix → also reverts unrelated work)
-- hide intent in commit log (`git blame` finds the wrong commit)
-
-### How to split
-
-```
-git checkout main
-git checkout -b fix/<concern-A>
-git cherry-pick <commits-A>
-gh pr create --title "fix: <A>" ...
-
-git checkout main
-git checkout -b feat/<concern-B>
-git cherry-pick <commits-B>
-gh pr create --title "feat: <B>" ...
-```
-
-Mark dependent PRs in description: "depends on #123, merge after."
-
-### Exceptions (one PR is OK)
-
-- All changes serve a single user-stated goal (e.g. "add OAuth" → schema + backend + frontend + tests)
-- Atomic refactor that breaks if split (rename across files, codemod sweep)
-- Touched-because-of-cohesion files (updating one shared type forces N callers — same concern)
-
-If unsure → split. Smaller PRs ship faster.
-
-## Step 0.5 — Test gate (BEFORE reviewer)
-
-```
-T1: Task type requires test (bug/feature/migration/auth/billing/race/contract/perf/security)?
-     yes + no test → block, write (Lead or qa-tester)
-T2: New tests pass?              no → fix
-T3: Existing tests pass?         no → fix regression
-T4: Tests fast enough?           no → tier
-T5: Tests isolated?              no → fix order dep
-```
-
-Internal only. Reviewer != tester. Tests pass BEFORE spawning reviewer.
-
-Skip if: typo / comment / docstring / pure rename / dead code removal.
-
-Full: rule `test/testing.md`.
-
-## Step 1 — Pick reviewer
-
-Routing canonical: skill `reviewer-flow`.
-
-Quick:
-- `<5 files` → qa-tester only
-- `5-30 files` → Gemini + qa-tester (+ Codex if available)
-- `>30 files` → **Codex + Gemini + qa-tester** (all 3)
-- High-risk surface (auth/billing/migration/locks/external) → **Codex + Gemini + qa-tester** (both adversarial reviewers, never one alone)
-- UI / frontend → Gemini + qa-tester (+ Codex if available)
-
-**qa-tester = minimum floor. Never skip.**
-**Both Codex AND Gemini if both installed.** Picking only one (usually Codex) is the most common drift — they cover different surfaces (depth vs breadth), not redundant.
-
-## Step 2 — Run reviewers
-
-- Cap per batch: Codex 3, Gemini 3, qa-tester unlimited
-- Batch findings before re-running
-- Verify each in code — review = input not orders
-- Unresolved findings: explain with file:line if invalid/deferred
-- Lead interprets; reviewers don't decide
-
-Full cascade: skill `reviewer-flow`.
-
-## Step 3 — Ask user before ship?
-
-| Profile | Action |
-|---------|--------|
-| Doc-only (`*.md`, `docs/`, comments, docstrings) | **Push direct to main**. No PR. |
-| `fix/refactor/chore` AND ≤3 files AND ≤50 lines | **Auto-merge** via PR. Report after. |
-| `feat(*)` | **ASK first** |
-| ≥4 files OR ≥100 lines | **ASK first** |
-| Auth / billing / payments / migrations / Stripe / external | **ASK first** regardless of size |
-| Breaking change / removes public API | **ASK first** + flag breaking |
-
-### "Doc-only" definition
-
-= ONLY `*.md` / `docs/` / comments / docstrings.
-Touches any of these → NOT doc-only → PR path:
-- Source code (`.py`, `.ts`, `.tsx`, `.go`, `.rs`, `.php`, `.rb`, `.java`, `.kt`, `.swift`, `.cs`, `.cpp`, etc.)
-- Config (`.json`, `.yaml`, `.toml`, `.env*`, `Dockerfile`, `Makefile`)
-- Schema / migration
-- Hook / build script / CI workflow
-
-## Step 4 — One ask, one ship
-
-User OK'd commit + PR ("ship it", "let's go", "commit + PR")
-→ covers merge after all required CI green
-→ DO NOT ask second time post-CI
-→ merge + report
-
-### CI lanes — 3-phase
-
-| Phase | Trigger | Scope | Required? |
-|-------|---------|-------|-----------|
-| **1 Fast critical** | every PR | Lint / typecheck / smoke unit / auth guard / tenant isolation / money core / migration apply / build | YES |
-| **2 Path-triggered** | path matches | Module's full tests (only touched modules) | YES when triggered |
-| **3 Nightly / manual** | cron / on-demand | Broad / integration / docker / chaos / security deep / E2E / perf | NO |
-
-ALL Phase 1 + triggered Phase 2 green → merge auto.
-Required red → Lead fix + re-push (no ask).
-
-Lanes: rule `test/testing.md`.
-
-### Re-ask only if
-
-- Required lane fails after Lead fix → "tried X, still red, advise?"
-- Phase 3 catches material issue → notify
-- User requests changes mid-CI
-
-## Step 5 — Push after merge
-
-User memory: "Auto-push after fixes complete" — push to main immediately after commit + gate pass. No ask.
-
-## Skipping the gate
-
-Requires explicit override ("skip gate, ship now"). Default = enforce.
-
-## Common mistakes — DO NOT
-
-- Skip qa-tester because PR is "small"
-- Re-trigger Codex/Gemini per fix instead of batching
-- Auto-merge `feat(*)` without asking
-- Treat config/schema change as doc-only
-- Ask second time after user said ship
-- Bundle unrelated concerns into one PR ("and also fixed X while I was there")
-
-## Common Rationalizations
-
-| Excuse | Reality |
-|---|---|
-| "Small PR, skip the gate" | The gate is mechanical (S+T+F). Small PR still passes or fails the questions — answer them, don't skip. |
-| "Reviewer already saw it" | "Saw" ≠ "approved with line-anchored findings". If you can't paste the verdict, the review didn't happen. |
-| "Tests are flaky, ignore reds" | Flaky test = unverified state. Fix the flake or quarantine; don't merge red. |
-| "CI takes too long, push to main" | The full CI suite splits into Phase 1 (fast, required) + Phase 2 (path-triggered) + Phase 3 (nightly). Phase 1 + matched Phase 2 must be green. |
-| "User said ship, no need to ask twice" | First "ship" = approval, no second ask. But high-risk surface (auth / billing / migration) still needs the explicit reviewer pass before the gate clears. |
-| "Reviewer will catch it later" | Reviewer routing is the gate's job. If you reach the gate without a reviewer dispatched, the gate blocks. That's the design. |
-| "It's all related, one PR is fine" | If you need 2 sentences to describe the PR scope, split. Reviewer rejects unrelated bits; rollback drags unrelated work; commit log loses intent. P1-P4 are mechanical — answer them. |
+1. Simplicity (S1-S5): cut features beyond request, single-use abstractions, config nobody asked for, defensive-for-impossible, same-pattern-in-3+
+2. Test (T1-T6): required test exists, new tests pass, existing pass, tier-appropriate speed, isolated, tight assertions
+3. Reviewer routed by risk profile (qa-tester floor; security-engineer on high-risk)
+4. Failure-mode (F1-F5): no hallucinated action, no scope creep, no cascade error, no context loss, no destructive misuse
+5. Phase 1 CI required green for merge
+6. Phase 2 path-triggered CI required green when triggered
+7. Phase 3 nightly = notify, not block
+8. Never merge without explicit user authorization for THIS specific action

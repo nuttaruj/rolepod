@@ -1,10 +1,15 @@
 #!/bin/bash
-# subagent-review-order — structural fixture.
-# Asserts the two-stage subagent review pattern is documented + wired:
-#   implementer subagent writes code →
-#     spec-compliance reviewer (fresh context) →
-#     code-quality reviewer (fresh context) →
-#     mark done only when both pass.
+# subagent-review-order — structural fixture (Core 10).
+# Asserts the bounded-delegation + fresh-context reviewer pattern is
+# documented + wired:
+#   implementer subagent writes code (bounded scope) →
+#     fresh-context reviewer reads the diff with no prior chat →
+#     reject COMPLETED with failing tests or scope creep →
+#     subagent NEVER commits (Lead commits after both pass).
+#
+# After Core 10, the doctrine lives inside `implement-plan` (the bounded
+# delegation section + the fresh-reviewer pattern). The legacy skill
+# `subagent-task-execution` is a Tier 3 shim that redirects there.
 set -euo pipefail
 REPO_DIR="$(cd "$(dirname "$0")/../../.." && pwd)"
 cd "$REPO_DIR"
@@ -14,14 +19,21 @@ check() {
   if eval "$2"; then echo "  ✓ $1"; else echo "  ✗ $1"; fail=$((fail+1)); fi
 }
 
+I="core/skills/implement-plan/SKILL.md"
 S="core/skills/subagent-task-execution/SKILL.md"
 
-check "subagent-task-execution skill exists" "[ -f $S ]"
-check "skill names the implementer stage" "grep -qiE 'implementer|stage 1' $S"
-check "skill names two distinct reviewers (spec + code-quality)" "grep -qiE 'spec.compliance|spec reviewer' $S && grep -qiE 'code.quality|quality reviewer' $S"
-check "skill requires independent reviewer contexts (not implementer)" "grep -qiE 'fresh|independent context|separate context' $S"
-check "skill requires both reviewers pass before marking done" "grep -qiE 'both.*pass|both reviewers|only when both|until.*pass' $S"
-check "skill caps cycle rounds to prevent infinite loops" "grep -qiE 'round|bounded|cap|3 cycles|3 rounds' $S"
+# Core 10 skill owns the doctrine
+check "implement-plan skill exists" "[ -f $I ]"
+check "implement-plan names the bounded-delegation pattern" "grep -qiE 'bounded delegation|bounded scope|task scope' $I"
+check "implement-plan describes the implementer stage" "grep -qiE 'implementer|subagent|delegate' $I"
+check "implement-plan describes the fresh-context reviewer pattern" "grep -qiE 'fresh.context|fresh reviewer|two-stage' $I"
+check "implement-plan caps subagent tool use" "grep -qiE '12 tool uses|tool cap|tool[- ]uses' $I"
+check "implement-plan bans subagent commits (Lead commits)" "grep -qiE 'subagents? NEVER commit|never commit|Lead commits' $I"
+check "implement-plan rejects COMPLETED with failing tests or scope creep" "grep -qiE 'reject.*COMPLETED|COMPLETED.*reject|scope creep' $I"
+
+# Legacy skill is a Tier 3 shim that redirects to implement-plan
+check "subagent-task-execution shim exists" "[ -f $S ]"
+check "subagent-task-execution shim redirects to implement-plan" "grep -q '^redirect_to: implement-plan' $S"
 
 # Universal reviewer agent backstop
 check "universal-reviewer agent exists" "[ -f core/agents/universal-reviewer.md ]"

@@ -1,131 +1,26 @@
 ---
 name: doc-coauthoring
-description: Co-author docs, specs, and proposals with a user through structured iteration — interview, outline, draft, refine — rather than one-shot drafting.
+description: Compatibility shim — interview-style document and spec shaping now starts in `write-spec`. Final-form docs and ADRs are an artifact produced inside `implement-plan` once the spec is approved.
 when_to_use: when the user wants to write a document together instead of "just write me one"
+tier: 3
+redirect_to: write-spec
 ---
 
-# Doc Co-Authoring
+# doc-coauthoring
 
-User co-wrote → doc gets used. Claude wrote alone → pasted, deleted.
+Compatibility shim. The collaborative-shaping entry point now lives in **`write-spec`** (interview + approval gate). Producing the final document is handled by `implement-plan` (or the relevant writing agent) once the spec is approved.
 
-## When to use
+→ Open `core/skills/write-spec/SKILL.md` for shaping, then `core/skills/implement-plan/SKILL.md` for the final draft.
 
-- "Help me write a [proposal / spec / doc / RFC]"
-- Topic needs user's domain knowledge (Claude structures, can't invent facts)
-- Multiple stakeholders, user owns result
-- First draft exists but feels off
-- Long-form where one-shot misses context
+This shim preserves the legacy trigger phrase during the migration release.
 
-Skip: purely templated (changelog from diff), user has complete draft wanting line edits, fully derivable from code.
+## If `write-spec` is not available
 
-## The four phases
+Minimum viable fallback:
 
-```
-1. Frame      → What is this, who reads it, success criterion?
-2. Outline    → Sections with one-line intent each
-3. Draft      → Section by section, user reviews each
-4. Refine     → Line-level pass for clarity, tone, redundancy
-```
-
-Don't skip. Don't merge. Each catches mistakes the next can't.
-
-### 1. Frame
-
-Ask before writing:
-- **Audience** — who reads? what do they know? not know?
-- **Decision** — what should reader do/decide after?
-- **Length budget** — one page? Five? 30-page deck? Hard cap up front.
-- **Voice** — first person, team, formal, conversational?
-- **Constraints** — must-include sections, must-avoid topics, templates
-
-Write Frame back as 5-line summary. Get yes before moving on.
-
-### 2. Outline
-
-Section list, 1-line intent + rough length:
-
-```
-1. Problem (½ page) — what's broken, with concrete examples
-2. Proposal (1 page) — what we'll build, high level
-3. Tradeoffs (½ page) — what we're not doing, why
-4. Rollout (½ page) — phasing, flags, fallback
-5. Open questions (¼ page) — what's still undecided
-```
-
-Get user approval. Cheapest place to fix structural problems. Restructuring at draft = 10x more expensive.
-
-### 3. Draft
-
-Section by section, NOT all at once.
-
-- Draft first section
-- Show user
-- Get changes
-- Apply, check tone against rest of planned doc
-- Draft next section
-
-Tone calibrates early. "Punchy and short" vs delivered "academic exhaustive" — catching after section 1 saves whole doc.
-
-User input needed for facts (numbers, internal context, stories) → pause and ask. Don't make up plausible details.
-
-### 4. Refine
-
-Final pass after full draft. Read end-to-end:
-
-- Opening hook matches closing call?
-- Each section necessary? Cut what doesn't serve decision.
-- Three different ways saying same thing? Pick one.
-- Ladder of abstraction stable? Don't bounce vision↔implementation per paragraph.
-- Works for reader who only reads headings + bold? (Many will.)
-
-## Disagreement handling
-
-User pushes back:
-- Don't re-justify. Their judgment about their audience beats your patterns.
-- One clarifying question if you don't understand the change
-- Apply in user's voice
-- Don't silently revert other parts to "your version"
-
-## Common mistakes
-
-- Skip Frame, produce beautiful doc for wrong audience
-- Draft all sections at once, tone off by section 5
-- Invent numbers/quotes/names — ASK
-- Add boilerplate ("Background", "Glossary") because docs "usually have it"
-- Treat user edits as wrong and re-argue
-- Refine before draft complete (polish text about to be cut)
-- Dump outline + draft + refine in one response
-
-## Quick reference
-
-| Symptom | Phase to revisit |
-|---------|------------------|
-| "Doesn't sound like us" | Frame — voice/audience |
-| "Why is section 3 here?" | Outline — section intent |
-| "Numbers are wrong" | Draft — ask, don't invent |
-| "Too long" | Refine — cut, don't compress |
-| "I rewrote it heavily" | Frame — missed audience |
-
-## Output checkpoint
-
-At each phase boundary:
-
-```
-Phase complete: [Frame / Outline / Draft / Refine]
-Decisions captured: [bullets]
-Open questions for you: [bullets, or "none"]
-Proposed next step: [phase + scope]
-```
-
-Don't proceed without user OK.
-
-## Common Rationalizations
-
-| Excuse | Reality |
-|--------|---------|
-| "Faster to write myself" | Solo docs miss reader's question. Co-authoring catches author↔reader model gap. |
-| "Simple change, no skill needed" | DAPLab: 41% failures in 'trivial' diffs. |
-| "I already know" | Confirmation bias. |
-| "Time pressure" | 5 min saved = 50 min debugging. |
-
-Default: run skill.
+1. Interview to discover the user's intent (one question at a time)
+2. Sketch an outline before drafting
+3. Iterate section by section
+4. Get user approval at each section
+5. Self-review for clarity, contradictions, placeholders
+6. Produce the final document only after the outline is accepted

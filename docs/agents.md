@@ -1,6 +1,6 @@
 # Rolepod Agent Catalog
 
-Full 18-agent specialist roster. Lead never picks from this list directly — the `team-routing` skill maps path + concern + risk to the right agent.
+Full 18-agent specialist roster. Lead never picks from this list directly — the `write-plan` skill maps path + concern + risk to the right agent when delegation helps.
 
 This doc is the **reference**. Entry docs (`CLAUDE.md` / `AGENTS.md` / `GEMINI.md`) embed only a 1-line pointer so per-turn context stays small.
 
@@ -9,7 +9,7 @@ This doc is the **reference**. Entry docs (`CLAUDE.md` / `AGENTS.md` / `GEMINI.m
 ```
 User intent
   → using-rolepod router picks the phase (Define / Plan / Build / Verify / Review / Ship)
-  → team-routing picks the specialist agent by path + concern + risk
+  → write-plan picks the specialist agent by path + concern + risk
   → agent's own frontmatter picks the model tier (cheap / balanced / strong / adversarial)
 ```
 
@@ -47,12 +47,12 @@ Source of truth: [`core/fragments/agent-roster.md`](../core/fragments/agent-rost
 1. Add `core/agents/<name>.md` with `name:` + `description:` frontmatter.
 2. Add `adapters/claude/agent-frontmatter/<name>.yml` with model + memory + tools + skills preload.
 3. For Codex: add `adapters/codex/plugins/rolepod/agents/<name>.toml`.
-4. Update the domain map above + `team-routing` skill's routing table.
+4. Update the domain map above + `write-plan` agent-routing guidance.
 5. `make render` — regenerates `agent-roster.md`.
 6. `make test-static` — render-clean gate verifies.
 
 ## Why not fewer agents?
 
-The 18-specialist count comes from cost-aware role separation, not workflow stages. A senior backend developer model is cheap; a strongest model doing security review is expensive. Mixing them inside one agent collapses the cost-control dimension and forces the workflow to pay strongest-model rates for every task. Keeping them separate lets `team-routing` pick the right model tier per role.
+The 18-specialist count comes from cost-aware role separation, not workflow stages. A senior backend developer model is cheap; a strongest model doing security review is expensive. Mixing them inside one agent collapses the cost-control dimension and forces the workflow to pay strongest-model rates for every task. Keeping them separate lets `write-plan` pick the right model tier per role.
 
 Roadmap: Phase B of the hardening plan adds explicit model-tier policy per agent (currently most agents default to `model: sonnet`; some will move to haiku for cheap roles, opus for high-risk).

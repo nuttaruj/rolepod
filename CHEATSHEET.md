@@ -95,17 +95,21 @@ User OK + commit + PR → ALL Phase 1 + triggered Phase 2 green → merge auto. 
 6. CI        (auto-merge after green)
 ```
 
-## Lifecycle phases (6-phase taxonomy)
+## Lifecycle phases (Core 10)
 
-| Phase | Key skills | Key agents | Key gates |
-|-------|------------|------------|-----------|
-| **Define** | `spec-driven-development` | product-manager, system-architect | verify-first |
-| **Plan** | `planning-and-task-breakdown`, `parallel-contract-orchestration`, `api-and-interface-design` | system-architect | Q1-Q4 |
-| **Build** | `test-driven-development`, `frontend-ui-engineering`, `anti-spaghetti`, `claude-api`, `interface-design`, `interaction-design`, `doc-coauthoring`, `conversion-copywriting` | backend/frontend/mobile/billing/ai-ml/data, ui-ux-designer, tech-writer | S1-S5, F1-F5 |
-| **Verify** | `systematic-debugging`, `webapp-testing`, `browser-testing-with-devtools`, `performance-optimization`, `security-and-hardening` | qa-tester, security-engineer, performance-engineer | T1-T6, verify-first |
-| **Review** | `code-review-and-quality`, `code-simplification`, `web-design-guidelines`, `doubt-driven-development` | universal-reviewer, qa-tester | pre-merge-gate |
-| **Ship** | `shipping-and-launch`, `ci-cd-and-automation`, `internal-comms`, `user-facing-content`, `documentation-and-adrs`, `seo` | devops-sre, growth-marketer, customer-success | CI 3-phase |
-| **Cross-cutting** | `zoom-out`, `source-driven-development`, `context-engineering` | (any) | (any) |
+One public skill per phase. Domain depth lives in the 18 specialist agents and is routed from inside each phase skill.
+
+| Phase | Phase skill | Key agents | Key gates |
+|-------|-------------|------------|-----------|
+| **Define** | `write-spec` | product-manager, system-architect, tech-writer, business-analyst | verify-first, approval gate, self-review |
+| **Plan** | `write-plan` | system-architect, backend / frontend / mobile, qa-tester, security-engineer | Q1-Q4, cohesion contract before parallel spawn |
+| **Build** | `implement-plan` | frontend / backend / mobile / billing / ai-ml / data, ui-ux-designer, tech-writer, growth-marketer, customer-success | S1-S5, F1-F5, TDD for risky paths |
+| **Build (bug)** | `debug-issue` | qa-tester, security-engineer, performance-engineer, devops-sre | reproduce-first, trace upstream, failing test |
+| **Verify** | `check-work` | qa-tester, performance-engineer, security-engineer, devops-sre | evidence required, browser observation for UI |
+| **Review** | `review-code` | qa-tester (floor), security-engineer, performance-engineer, ui-ux-designer, system-architect, universal-reviewer | adversarial for high-risk surfaces |
+| **Ship** | `finish-work` | devops-sre, qa-tester, security-engineer, product-manager | pre-merge gate (S+T+F), CI lanes |
+| **Simplify** | `simplify-code` | universal-reviewer, system-architect, security-engineer | behavior-preserving (tests green before + after) |
+| **Recovery** | `manage-context` | system-architect, qa-tester, universal-reviewer | 3-attempt advisor escalation, onboarding before edit |
 
 ## Stuck escalation (Sonnet/Haiku Lead)
 
@@ -123,20 +127,20 @@ Lead = Opus → skip Advisor.
 
 | Trigger | File |
 |---------|------|
-| Pre-merge | skill `pre-merge-gate` |
-| Spawn reviewer | skill `reviewer-flow` |
-| Multi-agent / scope unclear | skill `triage-deep` |
-| Pick agent | skill `team-routing` |
+| Pre-merge / ship / merge | skill `finish-work` |
+| Spawn reviewer / adversarial review | skill `review-code` |
+| Multi-agent / scope unclear | skill `manage-context` |
+| Pick agent / cohesion contract | skill `write-plan` |
 | Subagent protocol | `agent-protocol.md` |
 | Tools (search/GitNexus/MemPalace) | `code-intel.md` |
 | Workflow stage map | `code-intel-workflow.md` |
 | Claim a fact | `verify-first.md` |
-| Verify code change | skill `post-change-verify` |
+| Verify code change | skill `check-work` |
 | Tone / CEO modes | `communication.md` |
 | Code edit pattern | `code-quality.md` |
-| New project / `/init` | skill `new-project-onboarding` |
-| Context / `/clear` / `/rewind` | skill `session-hygiene` |
-| Stuck (Sonnet/Haiku) | skill `advisor-escalation` |
+| New project / `/init` | skill `manage-context` |
+| Context / `/clear` / `/rewind` | skill `manage-context` |
+| Stuck (Sonnet/Haiku) | skill `manage-context` |
 | Testing / CI lanes | `testing.md` |
 
 ## Key commands per-CLI
@@ -154,34 +158,24 @@ Lead = Opus → skip Advisor.
 | One-shot | `claude -p "..."` | `codex exec "..."` | `gemini -p "..."` |
 | Rolepod commands | `/rolepod` (skill) + `/rolepod-team` (slash) | `/rolepod` (skill) | `/rolepod` (skill) |
 
-> **Agent team (Claude only).** `/rolepod-team` spawns a real Claude Code agent team — multi-process teammates with shared task list + mailbox per [official spec](https://code.claude.com/docs/en/agent-teams). Requires `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` + v2.1.32+. Codex/Gemini have no teammate equivalent — use default Subagent dispatch via `team-routing` skill. See [docs/agent-teams.md](docs/agent-teams.md).
+> **Agent team (Claude only).** `/rolepod-team` spawns a real Claude Code agent team — multi-process teammates with shared task list + mailbox per [official spec](https://code.claude.com/docs/en/agent-teams). Requires `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` + v2.1.32+. Codex/Gemini have no teammate equivalent — use default Subagent dispatch through `write-plan` agent routing. See [docs/agent-teams.md](docs/agent-teams.md).
 
-## Skill picker — quick lookup
+## Skill picker — Core 10 quick lookup
 
-Default Lead path = **Tier 0 + Tier 1** only (router + 11 core workflow skills). Specialists fire on domain match via `team-routing`. Full 44-skill catalog: [docs/skills.md](docs/skills.md).
+Default Lead path = **Tier 0 + Tier 1** (router + 9 Core 10 phase skills) = 10 skills total. Domain depth lives in the 18 specialist agents. Legacy skill names still route via Tier 3 shims (one migration release). Full catalog: [docs/skills.md](docs/skills.md).
 
-| Task | Skill | Tier |
-|------|-------|------|
-| Spec before code | `spec-driven-development` | 1 |
-| Plan → tasks | `planning-and-task-breakdown` | 1 |
-| Parallel agents shared contract | `parallel-contract-orchestration` | 1 |
-| Tests first / Prove-It | `test-driven-development` | 1 |
-| Debug failing test (incl. root-cause tracing) | `systematic-debugging` | 1 |
-| Subagent brief / two-stage review | `subagent-task-execution` | 1 |
-| Multi-axis code review | `code-review-and-quality` | 1 |
-| Reduce complexity | `code-simplification` | 1 |
-| Verify edit landed | `post-change-verify` | 1 |
-| Pre-merge gate | `pre-merge-gate` | 1 |
-| Workflow router (always loaded first) | `using-rolepod` | 0 |
-| API / interface design | `api-and-interface-design` | 2 |
-| Production UI / dashboard / motion | `frontend-ui-engineering` / `interface-design` / `interaction-design` | 2 |
-| Browser / Playwright | `browser-testing-with-devtools` / `webapp-testing` | 2 |
-| Security hardening | `security-and-hardening` | 2 |
-| Perf optimization | `performance-optimization` | 2 |
-| Reviewer flow / adversarial | `reviewer-flow` / `doubt-driven-development` | 2 |
-| ADR / docs / comms | `documentation-and-adrs` / `doc-coauthoring` / `internal-comms` / `user-facing-content` | 2 |
-| Ship / CI / SEO | `shipping-and-launch` / `ci-cd-and-automation` / `seo` | 2 |
-| Stuck / drift recovery | `zoom-out` / `triage-deep` / `advisor-escalation` | 2 |
+| Task | Skill | Tier | Specialist agent (when available) |
+|------|-------|------|------------------------------------|
+| Workflow router (always loaded first) | `using-rolepod` | 0 | — |
+| Spec before code (vague feature, define scope, get approval) | `write-spec` | 1 | product-manager / system-architect / tech-writer |
+| Plan → tasks (file list, test plan, agent routing, cohesion contract) | `write-plan` | 1 | system-architect / backend / frontend / mobile / qa-tester |
+| Implement / build (TDD, bounded delegation, worktrees, frontend / API / content / platform) | `implement-plan` | 1 | frontend-developer / backend-developer / ui-ux-designer / ai-ml-engineer / tech-writer / growth-marketer / customer-success |
+| Debug bug (reproduce → trace → failing test → minimal fix) | `debug-issue` | 1 | qa-tester / security-engineer / performance-engineer / devops-sre |
+| Verify edit landed (tests / build / curl / browser / log / screenshot) | `check-work` | 1 | qa-tester / performance-engineer / security-engineer |
+| Multi-axis review (security / perf / UI / architecture / adversarial) | `review-code` | 1 | qa-tester (floor) / security-engineer / performance-engineer / ui-ux-designer / universal-reviewer |
+| Pre-merge gate / merge / launch / CI | `finish-work` | 1 | devops-sre / qa-tester |
+| Simplify code / cut abstraction / centralize | `simplify-code` | 1 | universal-reviewer / system-architect |
+| Stuck / drift / context heavy / unfamiliar repo / advisor | `manage-context` | 1 | system-architect / qa-tester (advisor → Opus) |
 
 Optional add-on skills (caveman, gitnexus-*, ui-ux-pro-max) integrate when the user installs them — see README → Recommended add-ons.
 

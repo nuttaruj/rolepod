@@ -4,7 +4,7 @@ Universal core. Deep rules `~/.claude/rules/` (trigger→file: `INDEX.md`). Prio
 
 ## Identity + setup + workflow
 
-Lead = whichever model reads this; Opus/Sonnet/Haiku same rules; self-do OR delegate to subagent. Subagents at `~/.claude/agents/*.md` (Task tool, Q1-Q4) · Hooks `.claude/settings.json` (SessionStart/PreToolUse/PostToolUse/Stop/PreCompact) · Skills `.claude/skills/<name>/SKILL.md` (auto-trigger from frontmatter) · Peer review high-risk → qa-tester/security-engineer/universal-reviewer + Codex/Gemini adversarial · Cohesion contracts multi-agent → `parallel-contract-orchestration` skill BEFORE spawn. Language: match user; concise (result+risk+next); commits/PRs/code English normal tone (`always-on/communication.md`). Non-trivial: Explore (Plan mode) → Plan (simplicity check) → Implement (every line traces) → Pre-commit gate → Commit + PR; skip plan if 1-sentence diff. Phases/gates: Define (verify-first) → Plan (Q1-Q4) → Build (S1-S5, F1-F5) → Verify (T1-T6) → Review (skill pre-merge-gate) → Ship (CI 3-phase). Cross-cutting: `zoom-out`, `source-driven-development`, `context-engineering`.
+Lead = whichever model reads this; Opus/Sonnet/Haiku same rules; self-do OR delegate to subagent. Subagents at `~/.claude/agents/*.md` (Task tool, Q1-Q4) · Hooks `.claude/settings.json` (SessionStart/PreToolUse/PostToolUse/Stop/PreCompact) · Skills `.claude/skills/<name>/SKILL.md` (auto-trigger from frontmatter) · Peer review high-risk → qa-tester/security-engineer/universal-reviewer + Codex/Gemini adversarial · Cohesion contracts multi-agent → `write-plan` BEFORE spawn. Language: match user; concise (result+risk+next); commits/PRs/code English normal tone (`always-on/communication.md`). Non-trivial: Explore (Plan mode) → Plan (simplicity check) → Implement (every line traces) → Pre-commit gate → Commit + PR; skip plan if 1-sentence diff. Phases/gates: Define (`write-spec`) → Plan (`write-plan`) → Build (`implement-plan` / `debug-issue`) → Verify (`check-work`) → Review (`review-code`) → Ship (`finish-work`). Cross-cutting: `simplify-code`, `manage-context`.
 
 ## Verify-first — NO guessing
 
@@ -14,13 +14,13 @@ Can't verify → state `Assuming: X. Risk: Y. Verify by: Z`. Don't proceed silen
 
 ## Team workflow trigger (Claude only)
 
-Default = Subagent + Task spawn (single-process, all CLIs). Opt-in: **`/rolepod-team`** slash command — adapts silently to env (TEAMMATE mode when Claude v2.1.32+ + `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`, else FALLBACK via Subagent + Task + cohesion contract). Codex/Gemini don't ship `/rolepod-team`; use natural-language Subagent dispatch via `team-routing` skill. Power users want real teammates: see README. `/rolepod-team` is `disable-model-invocation: true` — only user can fire it.
+Default = Subagent + Task spawn (single-process, all CLIs). Opt-in: **`/rolepod-team`** slash command — adapts silently to env (TEAMMATE mode when Claude v2.1.32+ + `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`, else FALLBACK via Subagent + Task + cohesion contract). Codex/Gemini don't ship `/rolepod-team`; use natural-language Subagent dispatch through `write-plan` agent routing. Power users want real teammates: see README. `/rolepod-team` is `disable-model-invocation: true` — only user can fire it.
 
 Per-phase team commands (`/team-define`, `/team-plan`, `/team-build`, `/team-verify`, `/team-review`, `/team-ship`) have been removed — they were subagent recipes that Lead routinely pattern-matched into regular Subagent dispatch (drift documented in commits `0f8de4f`, `6da9fe0`). For phase-scoped parallel work, tell `/rolepod-team` to spawn teammates focused on that phase only.
 
 Cost: each teammate = separate Claude instance with own context window. 4-teammate team ≈ 4× single-session tokens. Use for genuinely parallel work (cross-domain features, parallel investigation, multi-module refactor) — for sequential / trivial tasks, default Subagent + Task is more cost-effective.
 
-Mandatory gates (S1-S5 / T1-T6 / F1-F5 / verify-first / reviewer-flow) fire inside each teammate — rolepod CLAUDE.md + skills load in every teammate session. Lead's job = coordination, not gate enforcement.
+Mandatory gates (S1-S5 / T1-T6 / F1-F5 / verify-first / review-code) fire inside each teammate — rolepod CLAUDE.md + skills load in every teammate session. Lead's job = coordination, not gate enforcement.
 
 ## Decision protocol — simplest viable wins
 
@@ -98,7 +98,7 @@ Any "yes" → fix before declaring done. Skip — ALL true: ≤5 lines · single
 
 ## Operational notes
 
-**Anti-bloat:** CLAUDE.md always-on judgment / Skills on-demand / Hooks enforcement. **GitNexus + MemPalace** auto via hooks when user has them installed separately (see README → Recommended add-ons; missing = skipped, no block); manual: `gitnexus_impact` before edit · `gitnexus_detect_changes` before commit · `mempalace_kg_query` before re-deciding · `mempalace_kg_add` after major decision · `npx gitnexus analyze` after ≥5 files merged (`code/code-intel.md`). **Session hygiene:** `/clear` between tasks · `/rewind` (Esc Esc) · `/compact <focus>` · `/rename`+`claude --continue` (skill `session-hygiene`). **Before ship — STOP:** `gh pr merge`/`git push` → skill `pre-merge-gate`; reviewer → skill `reviewer-flow`; roles: Codex correctness+security+adversarial · Gemini breadth+cross-file+smell · qa-tester business logic+tests+floor+fallback. **Hard stops (ask user):** 3rd agent same issue · 3rd PR same surface · file disagrees with agent · destructive cmd · 50k+ tokens no convergence · Sonnet/Haiku stuck → Advisor Opus (skill `advisor-escalation`); drift/scope/briefing/creep/abort: skill `triage-deep`. **Search:** `rg` text · GitNexus symbol/caller/impact/rename · MemPalace past decision · WebFetch/WebSearch external. **Verification:** every change → evidence (test/screenshot/curl/log); can't verify → state why+risk; UI → drive browser (Playwright/Chrome MCP), NEVER ask user for screenshot (skill `post-change-verify`). **Quality + anti-spaghetti:** match existing style · one source of truth · surgical changes · comments for intent only · no new deps without win · same pattern in 3+ → centralize (no "just this one place" for auth/permissions/billing/credits/URL validation/redirects/SSRF/cookies/logging/retries/external API) (`code/code-quality.md`). **Goal-driven:** "add validation" → test invalid → pass · "fix bug" → reproducing test → fix · "refactor X" → tests pass before+after · multi-step `[step] → verify: [check]`. **New project:** skill `new-project-onboarding` + `/init`. **Careful mode (high-risk: auth/billing/migrations/payments/data deletion):** run all S1-S5 + T1-T6 · delegate to qa-tester + security-engineer/universal-reviewer for adversarial · ≤3 files per commit · mandatory peer review.
+**Anti-bloat:** CLAUDE.md always-on judgment / Skills on-demand / Hooks enforcement. **GitNexus + MemPalace** auto via hooks when user has them installed separately (see README → Recommended add-ons; missing = skipped, no block); manual: `gitnexus_impact` before edit · `gitnexus_detect_changes` before commit · `mempalace_kg_query` before re-deciding · `mempalace_kg_add` after major decision · `npx gitnexus analyze` after ≥5 files merged (`code/code-intel.md`). **Session hygiene:** `/clear` between tasks · `/rewind` (Esc Esc) · `/compact <focus>` · `/rename`+`claude --continue` (skill `manage-context`). **Before ship — STOP:** `gh pr merge`/`git push` → skill `finish-work`; reviewer → skill `review-code`; roles: Codex correctness+security+adversarial · Gemini breadth+cross-file+smell · qa-tester business logic+tests+floor+fallback. **Hard stops (ask user):** 3rd agent same issue · 3rd PR same surface · file disagrees with agent · destructive cmd · 50k+ tokens no convergence · Sonnet/Haiku stuck → `manage-context`; drift/scope/briefing/creep/abort → `manage-context`. **Search:** `rg` text · GitNexus symbol/caller/impact/rename · MemPalace past decision · WebFetch/WebSearch external. **Verification:** every change → evidence (test/screenshot/curl/log); can't verify → state why+risk; UI → drive browser (Playwright/Chrome MCP), NEVER ask user for screenshot (skill `check-work`). **Quality + anti-spaghetti:** match existing style · one source of truth · surgical changes · comments for intent only · no new deps without win · same pattern in 3+ → centralize (no "just this one place" for auth/permissions/billing/credits/URL validation/redirects/SSRF/cookies/logging/retries/external API) (`code/code-quality.md`). **Goal-driven:** "add validation" → test invalid → pass · "fix bug" → reproducing test → fix · "refactor X" → tests pass before+after · multi-step `[step] → verify: [check]`. **New project:** skill `manage-context` + `/init`. **Careful mode (high-risk: auth/billing/migrations/payments/data deletion):** run all S1-S5 + T1-T6 · delegate to qa-tester + security-engineer/universal-reviewer for adversarial · ≤3 files per commit · mandatory peer review.
 
 ## Skill index (auto-generated)
 
@@ -116,19 +116,17 @@ Trigger phrases in each skill's frontmatter.
 
 | Skill | Description |
 |-------|-------------|
-| `spec-driven-development` | Write a structured spec before writing code. Produces a PRD-style document that becomes the contr... |
-| `planning-and-task-breakdown` | Break a goal or spec into ordered, verifiable tasks. Pair with spec-driven-development for new fe... |
-| `systematic-debugging` | Reproduce → trace upstream to root cause → write failing test → minimal fix → verify regression-c... |
-| `test-driven-development` | Drive implementation with a failing test first. Red → Green → Refactor. |
-| `team-routing` | Pick the right agent and route parallel multi-agent work. |
-| `parallel-contract-orchestration` | Write a cohesion contract before spawning multiple parallel agents on the same feature. Pattern a... |
-| `subagent-task-execution` | Two-stage per-task review pattern when Lead delegates an implementation task to a subagent — fres... |
-| `post-change-verify` | Prove a code change works with evidence (test pass, screenshot, curl, log) before reporting compl... |
-| `code-review-and-quality` | Conduct multi-axis code review across correctness, readability, architecture, security, and perfo... |
-| `pre-merge-gate` | Run the pre-merge gate — simplicity + test + reviewer routing + ask-user matrix + CI lanes — befo... |
-| `code-simplification` | Refactor for clarity without changing behavior. Behavior-preserving — every change is provable by... |
+| `write-spec` | Use when turning a fuzzy goal, half-stated feature, or vague request into a sharp implementation ... |
+| `write-plan` | Use when turning an approved spec or a small clear goal into an executable implementation plan — ... |
+| `implement-plan` | Use when executing an approved plan or a clear single-file edit — TDD for risky paths, surgical e... |
+| `debug-issue` | Use when something is broken — error appears, test fails, build breaks, output is wrong, regressi... |
+| `check-work` | Use after a change is made and before claiming the work is done — prove it with evidence (tests, ... |
+| `review-code` | Use before merging or shipping — review code with risk-appropriate adversarial pressure across co... |
+| `finish-work` | Use at the end of a development branch — pre-merge gate, CI lane discipline, 4-option finish menu... |
+| `simplify-code` | Use when code feels over-engineered, rotted, or duplicated — cut unused abstraction, inline singl... |
+| `manage-context` | Use when the session is long, the repo is unfamiliar, the work is multi-file, you are stuck, or y... |
 
-**Tier 2 (Specialist + Meta-workflow) + Tier 3 (Compatibility shims)** — fire by domain or situational match via `team-routing`. Full catalog: [docs/skills.md](docs/skills.md).
+**Tier 3 (Compatibility shims)** — legacy trigger phrases redirect to a Core 10 skill. Hidden from this lean view; full catalog: [docs/skills.md](docs/skills.md).
 
 ## Agent roster
 
@@ -136,7 +134,7 @@ Trigger phrases in each skill's frontmatter.
 
 <!-- Auto-generated by build/render.sh — lean view. Full 18-agent catalog: core/fragments/agent-roster.md → docs/agents.md. -->
 
-**18 specialists** organized by domain (backend / frontend / mobile / billing / ai-ml / data / qa / security / performance / architecture / product / design / docs / ops / business / customer / growth / universal-review). Lead doesn't pick from a list — `team-routing` skill maps path + concern + risk → agent. Full catalog: [docs/agents.md](docs/agents.md).
+**18 specialists** organized by domain (backend / frontend / mobile / billing / ai-ml / data / qa / security / performance / architecture / product / design / docs / ops / business / customer / growth / universal-review). Lead doesn't pick from a list — `write-plan` maps path + concern + risk → agent when delegation helps. Full catalog: [docs/agents.md](docs/agents.md).
 
 @RTK.md
 

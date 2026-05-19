@@ -12,12 +12,12 @@ tests/integration/
   run.sh               ← runner (skips per-case if deps missing)
   cases/
     install-parity.sh         ← Claude/Codex/Gemini × global/project install behavior
-    bug-fix-workflow.sh       ← systematic-debugging → TDD → post-change-verify wiring
-    feature-from-spec.sh      ← spec-driven → planning → TDD → verify wiring
+    bug-fix-workflow.sh       ← debug-issue → check-work wiring
+    feature-from-spec.sh      ← write-spec → write-plan → implement-plan → check-work wiring
     subagent-review-order.sh  ← implementer → spec-compliance → code-quality review order
-    high-risk-gates.sh        ← auth/billing/migration → security-engineer + reviewer-flow
+    high-risk-gates.sh        ← auth/billing/migration → review-code + security-engineer
     multi-agent-contract.sh   ← cohesion-contract gate before 2nd parallel agent spawn
-    ship-gate.sh              ← pre-merge-gate as final Ship phase + S+T+F+P gates
+    ship-gate.sh              ← finish-work as final Ship phase + S+T+F+P gates
 ```
 
 Current state: **7 cases, all pass structurally** (no live `claude -p` calls — fast, deterministic, run in ~3-5s).
@@ -42,15 +42,15 @@ Exit codes:
 | `bug-fix-workflow` | none | Structural grep over skill bodies — no CLI |
 | `feature-from-spec` | none | Structural grep over skill bodies — no CLI |
 | `subagent-review-order` | none | Structural grep — skill body + template prompts |
-| `high-risk-gates` | none | Structural grep over `team-routing` + `reviewer-flow` |
+| `high-risk-gates` | none | Structural grep over `review-code` + high-risk hooks |
 | `multi-agent-contract` | none | Structural grep + hook script presence check |
-| `ship-gate` | none | Structural grep over `pre-merge-gate` skill body |
+| `ship-gate` | none | Structural grep over `finish-work` skill body |
 
 All cases run without live CLIs by design — they assert **wiring** (skill bodies say the right thing, router rows exist, hook scripts present). Live-behavior assertions (does Lead actually reproduce-before-patching, does Phase 0 dialogue actually ask before drafting) live in `tests/workflow-behavior/` and are gated by `ROLEPOD_RUN_LIVE=1` + an installed Claude CLI.
 
 ## Why structural (and not live)
 
-Live invocations are slow (~10-30s each), nondeterministic (model variance), and depend on a working `claude -p` install. Structural tests catch ~80% of doctrine drift in <5 seconds: if a skill body stops saying "reproduce first" or the router stops pointing `fix bug` at `systematic-debugging`, the wiring test fails. Live tests then cover the remaining 20% (the agent actually behaves the way the skill body says).
+Live invocations are slow (~10-30s each), nondeterministic (model variance), and depend on a working `claude -p` install. Structural tests catch ~80% of doctrine drift in <5 seconds: if a skill body stops saying "reproduce first" or the router stops pointing `fix bug` at `debug-issue`, the wiring test fails. Live tests then cover the remaining 20% (the agent actually behaves the way the skill body says).
 
 ## Workflow
 

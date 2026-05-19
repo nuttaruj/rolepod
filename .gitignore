@@ -13,6 +13,7 @@ Thumbs.db
 
 # Local-only
 .claude/
+brief/
 session-env/
 shell-snapshots/
 file-history/

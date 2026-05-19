@@ -48,9 +48,17 @@ test-static:
 	@$(MAKE) -s test-lean-surface
 	@echo "  → static checks passed"
 
-# lean-surface — anti-drift guards that lock in the post-refactor invariants:
+# lean-surface — anti-drift guards that lock in the Core 10 invariants:
 #   - rendered entry doc size caps
-#   - Tier 0 + Tier 1 visible skill count (1 + 11 = 12)
+#   - Tier 0 + Tier 1 visible skill count (Core 10: 1 + 9 = 10)
+#   - public non-shim skills ≤ 11 (Core 10 default, +1 only for optional check-security)
+#   - every shim has redirect_to + fallback section
+#   - every redirect_to target points at an existing skill
+#   - no `redirect_to_agent` field anywhere (verdict #2)
+#   - core skills include agent-available + no-agent fallback paths
+#   - core skills include Full Rolepod enhancement note
+#   - write-spec includes approval gate + self-review
+#   - core skill fallback sections concise (≤ 25 lines)
 #   - no full 18-agent table leaked into entry docs
 #   - all 18 agents covered by model-tier policy
 #   - no competitor brand refs in source / entry docs

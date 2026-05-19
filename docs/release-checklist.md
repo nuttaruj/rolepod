@@ -34,7 +34,7 @@ Confirms:
 make test-workflow
 ```
 
-Sends 10 canonical prompts to local Claude CLI. Skips cleanly if CLI absent (acceptable). When CLI present, all 10 cases must pass — they prove the workflow spine routes correctly (vague feature → spec, bug → systematic-debugging, "ship" → pre-merge-gate, etc.).
+Sends 13 canonical prompts to local Claude CLI. Skips cleanly if CLI absent (acceptable). When CLI present, all 13 cases must pass — they prove the workflow spine routes correctly (vague feature → `write-spec`, bug → `debug-issue`, "ship" → `finish-work`, etc.) and that legacy trigger phrases still route through Tier 3 shims to the canonical Core 10 skill.
 
 Fail = router doctrine has drifted. Either fix the prompt routing in `using-rolepod` / skill frontmatter, or update the case expectation if the new behavior is intentional.
 
@@ -49,12 +49,12 @@ Runs 7 structural integration cases (~3-5s total, no live `claude -p` invocation
 | Case | Asserts |
 |------|---------|
 | `install-parity` | Fresh temp install across Claude global / Claude project / Codex project / Gemini project produces documented artifacts |
-| `bug-fix-workflow` | systematic-debugging → TDD → post-change-verify wiring (skill bodies, router row, compat shims) |
-| `feature-from-spec` | Define → Plan → Build path: spec-driven → planning-and-task-breakdown → TDD → post-change-verify wiring |
-| `subagent-review-order` | Two-stage review order (implementer → spec-compliance → code-quality) baked into skill body + prompt templates |
-| `high-risk-gates` | Auth/billing/migration paths route through security-engineer + reviewer-flow |
-| `multi-agent-contract` | parallel-contract-orchestration cohesion-contract requirement before 2nd parallel agent spawn |
-| `ship-gate` | pre-merge-gate fires as final ship phase, S+T+F+P gates documented |
+| `bug-fix-workflow` | `debug-issue` → failing test → minimal fix → `check-work` wiring (skill bodies, router row, Tier 3 shims) |
+| `feature-from-spec` | Define → Plan → Build path: `write-spec` → `write-plan` → `implement-plan` → `check-work` wiring |
+| `subagent-review-order` | Two-stage review order (implementer → spec-compliance → code-quality) baked into `implement-plan` body + prompt templates |
+| `high-risk-gates` | Auth/billing/migration paths route through `security-engineer` agent + `review-code` adversarial mode |
+| `multi-agent-contract` | Cohesion-contract requirement (inside `write-plan`) before 2nd parallel agent spawn |
+| `ship-gate` | `finish-work` fires as final ship phase, S+T+F+P gates documented |
 
 Expected output: `pass: 7 / skip: 0 / fail: 0`. Any fail = doctrine drift, block release until reconciled (fix wiring OR update case expectation if intentional).
 
@@ -77,8 +77,9 @@ Manually verify that user-facing docs match runtime behavior:
 # Fresh install on a temp HOME:
 TMP="$(mktemp -d)"
 HOME="$TMP/home" ROLEPOD_TARGET="$TMP/.claude" ./install.sh --target=claude
-ls "$TMP/.claude/skills/using-rolepod"      # should exist
-ls "$TMP/.claude/skills/systematic-debugging" # should exist
+ls "$TMP/.claude/skills/using-rolepod"      # should exist (Tier 0 router)
+ls "$TMP/.claude/skills/debug-issue"         # should exist (Core 10 — Build/Debug)
+ls "$TMP/.claude/skills/systematic-debugging" # should exist (Tier 3 shim → debug-issue)
 ls "$TMP/.claude/hooks/lib/session_state.py" # should exist
 grep using-rolepod "$TMP/.claude/CLAUDE.md"  # should match
 ```

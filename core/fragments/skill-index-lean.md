@@ -10,16 +10,14 @@
 
 | Skill | Description |
 |-------|-------------|
-| `spec-driven-development` | Write a structured spec before writing code. Produces a PRD-style document that becomes the contr... |
-| `planning-and-task-breakdown` | Break a goal or spec into ordered, verifiable tasks. Pair with spec-driven-development for new fe... |
-| `systematic-debugging` | Reproduce → trace upstream to root cause → write failing test → minimal fix → verify regression-c... |
-| `test-driven-development` | Drive implementation with a failing test first. Red → Green → Refactor. |
-| `team-routing` | Pick the right agent and route parallel multi-agent work. |
-| `parallel-contract-orchestration` | Write a cohesion contract before spawning multiple parallel agents on the same feature. Pattern a... |
-| `subagent-task-execution` | Two-stage per-task review pattern when Lead delegates an implementation task to a subagent — fres... |
-| `post-change-verify` | Prove a code change works with evidence (test pass, screenshot, curl, log) before reporting compl... |
-| `code-review-and-quality` | Conduct multi-axis code review across correctness, readability, architecture, security, and perfo... |
-| `pre-merge-gate` | Run the pre-merge gate — simplicity + test + reviewer routing + ask-user matrix + CI lanes — befo... |
-| `code-simplification` | Refactor for clarity without changing behavior. Behavior-preserving — every change is provable by... |
+| `write-spec` | Use when turning a fuzzy goal, half-stated feature, or vague request into a sharp implementation ... |
+| `write-plan` | Use when turning an approved spec or a small clear goal into an executable implementation plan — ... |
+| `implement-plan` | Use when executing an approved plan or a clear single-file edit — TDD for risky paths, surgical e... |
+| `debug-issue` | Use when something is broken — error appears, test fails, build breaks, output is wrong, regressi... |
+| `check-work` | Use after a change is made and before claiming the work is done — prove it with evidence (tests, ... |
+| `review-code` | Use before merging or shipping — review code with risk-appropriate adversarial pressure across co... |
+| `finish-work` | Use at the end of a development branch — pre-merge gate, CI lane discipline, 4-option finish menu... |
+| `simplify-code` | Use when code feels over-engineered, rotted, or duplicated — cut unused abstraction, inline singl... |
+| `manage-context` | Use when the session is long, the repo is unfamiliar, the work is multi-file, you are stuck, or y... |
 
-**Tier 2 (Specialist + Meta-workflow) + Tier 3 (Compatibility shims)** — fire by domain or situational match via `team-routing`. Full catalog: [docs/skills.md](docs/skills.md).
+**Tier 3 (Compatibility shims)** — legacy trigger phrases redirect to a Core 10 skill. Hidden from this lean view; full catalog: [docs/skills.md](docs/skills.md).

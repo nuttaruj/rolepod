@@ -1,8 +1,8 @@
 #!/bin/bash
-# bug-fix-workflow — structural fixture.
+# bug-fix-workflow — structural fixture (Core 10).
 # Asserts the bug-fix workflow path is wired end-to-end:
-#   systematic-debugging → test-driven-development → post-change-verify
-# Plus router row, hook backstops, regression-test expectation.
+#   debug-issue → check-work
+# Plus router row, shim redirect, hook backstops, regression-test expectation.
 #
 # This is STRUCTURAL — proves wiring without needing a live `claude -p`.
 # Live behavior verification of "does Lead reproduce before patching" lives
@@ -17,24 +17,24 @@ check() {
   if eval "$2"; then echo "  ✓ $1"; else echo "  ✗ $1"; fail=$((fail+1)); fi
 }
 
-# Canonical skills present
-check "systematic-debugging skill exists" "[ -f core/skills/systematic-debugging/SKILL.md ]"
-check "test-driven-development skill exists" "[ -f core/skills/test-driven-development/SKILL.md ]"
-check "post-change-verify skill exists" "[ -f core/skills/post-change-verify/SKILL.md ]"
+# Core 10 skills present
+check "debug-issue skill exists" "[ -f core/skills/debug-issue/SKILL.md ]"
+check "check-work skill exists" "[ -f core/skills/check-work/SKILL.md ]"
 
-# systematic-debugging body has the required loop steps
-check "systematic-debugging covers reproduce step" "grep -qi 'reproduc' core/skills/systematic-debugging/SKILL.md"
-check "systematic-debugging covers root-cause tracing" "grep -qi 'root cause\|upstream' core/skills/systematic-debugging/SKILL.md"
-check "systematic-debugging covers failing-test step" "grep -qi 'failing test\|regression test' core/skills/systematic-debugging/SKILL.md"
-check "systematic-debugging covers minimal-fix expectation" "grep -qi 'minimal fix\|smallest fix\|root, not symptom' core/skills/systematic-debugging/SKILL.md"
-check "systematic-debugging covers verify step" "grep -qi 'verify\|regression-clean\|symptom: gone' core/skills/systematic-debugging/SKILL.md"
+# debug-issue body has the required loop steps
+check "debug-issue covers reproduce step" "grep -qi 'reproduc' core/skills/debug-issue/SKILL.md"
+check "debug-issue covers root-cause tracing" "grep -qi 'root cause\|trace upstream\|upstream' core/skills/debug-issue/SKILL.md"
+check "debug-issue covers failing-test step" "grep -qi 'failing test\|regression test' core/skills/debug-issue/SKILL.md"
+check "debug-issue covers minimal-fix expectation" "grep -qi 'minimal fix\|smallest fix\|smallest change' core/skills/debug-issue/SKILL.md"
+check "debug-issue covers verify step (regression-clean)" "grep -qi 'verify\|regression-clean\|symptom: gone' core/skills/debug-issue/SKILL.md"
 
-# Router routes bug intent to systematic-debugging
-check "using-rolepod router routes 'fix bug' → systematic-debugging" "grep -qE 'fix.*bug|failing test|broken' core/skills/using-rolepod/SKILL.md && grep -q 'systematic-debugging' core/skills/using-rolepod/SKILL.md"
+# Router routes bug intent through the canonical Core 10 skill
+check "using-rolepod router sends bug intent → debug-issue" "grep -qE 'fix bug.*debug-issue|failing test.*debug-issue|debug-issue.*failing test' core/skills/using-rolepod/SKILL.md"
 
-# Compat shims redirect legacy triggers
-check "debugging-and-error-recovery shim points to systematic-debugging" "grep -q 'systematic-debugging' core/skills/debugging-and-error-recovery/SKILL.md"
-check "root-cause-tracing shim points to systematic-debugging" "grep -q 'systematic-debugging' core/skills/root-cause-tracing/SKILL.md"
+# Tier 3 shims redirect legacy triggers to debug-issue
+check "systematic-debugging shim redirects to debug-issue" "grep -q '^redirect_to: debug-issue' core/skills/systematic-debugging/SKILL.md"
+check "debugging-and-error-recovery shim redirects to debug-issue" "grep -q '^redirect_to: debug-issue' core/skills/debugging-and-error-recovery/SKILL.md"
+check "root-cause-tracing shim redirects to debug-issue" "grep -q '^redirect_to: debug-issue' core/skills/root-cause-tracing/SKILL.md"
 
 if [ $fail -eq 0 ]; then echo "bug-fix-workflow: pass"; exit 0; fi
 echo "bug-fix-workflow: $fail failure(s)"
