@@ -261,6 +261,7 @@ Rolepod keeps **8 hook scripts**: **6 core** in `hooks/` (always active) and **2
 | **Core context** | `project-context-loader` |
 | **Core session safety** | `session-lifecycle` (SessionStart `--lock` + Stop `--unlock`) |
 | **Optional add-on · GitNexus** | `optional/gitnexus/post-ship-detect`, `optional/gitnexus/gitnexus-wrap` |
+| **Optional add-on · MemPalace × Codex** | `optional/mempalace/codex-session-start` (registered in Codex plugin cache `hooks.json` only when `command -v mempalace` succeeds at install time) |
 
 Per-CLI exposure:
 

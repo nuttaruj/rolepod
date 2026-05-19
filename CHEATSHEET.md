@@ -198,13 +198,14 @@ Counts differ per CLI surface — Claude has the deepest matcher model so it car
 | PreToolUse + PostToolUse (Bash) | `optional/gitnexus/gitnexus-wrap.sh` | wrap GitNexus plugin's bare hook · only when plugin detected |
 | Stop | `session-lifecycle.sh --unlock` | release sibling lock |
 
-### Codex (3 core commands · 1 optional GitNexus available)
+### Codex (3 core commands · 1 optional GitNexus + 1 optional MemPalace bridge)
 
 | Event | Matcher | Script | Role |
 |-------|---------|--------|------|
 | SessionStart | `startup\|resume` | `project-context-loader.sh` | git context (repo / branch / dirty / recent / hot 7d) |
 | PreToolUse | `apply_patch` | `gate-reminder.sh` | schema-bound + RED-test + reviewer-floor on high-risk paths |
 | PreToolUse | `Bash` | `precommit-gate.sh` | test gate before commit |
+| _(auto-registered if `mempalace` on PATH at install)_ | SessionStart `startup\|resume` | `optional/mempalace/codex-session-start.sh` | bridge to MemPalace's session-start hook (cross-session KG recall on Codex) — self-guarded |
 | _(optional, manual)_ | PostToolUse `Bash` | `optional/gitnexus/post-ship-detect.sh` | auto-reindex after big merges (only if GitNexus adopted) |
 
 Note: Codex hooks require `codex features enable plugin_hooks` (default `under development, false`). Without opt-in, hooks are registered but inert.
