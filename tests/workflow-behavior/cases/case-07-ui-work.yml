@@ -3,13 +3,13 @@ prompt: |
   Improve this dashboard layout and verify it in browser.
 expected_skills:
   - using-rolepod
-  - frontend-ui-engineering
-  - webapp-testing
+  - implement-plan
+  - check-work
 must_not_contain:
   - "send me a screenshot"
   - "could you take a screenshot"
   - "please verify in your browser"
 why: |
-  UI verification routes through webapp-testing (Playwright) or
-  browser-testing-with-devtools. Lead drives the browser, doesn't outsource
-  verification to the user.
+  UI implementation routes through implement-plan; browser verification routes
+  through check-work (Playwright / DevTools MCP). Lead drives the browser,
+  does not outsource verification to the user.

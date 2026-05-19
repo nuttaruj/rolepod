@@ -3,13 +3,12 @@ prompt: |
   Fix this failing login test.
 expected_skills:
   - using-rolepod
-  - systematic-debugging
-  - test-driven-development
+  - debug-issue
 must_not_contain:
   - "likely cause is"
   - "I think the problem is"
   - "without running it"
 why: |
-  Bug-fix request must route through systematic-debugging (reproduce first, trace
-  upstream to root) and write a failing test before the fix. No "I think" patch
+  Bug-fix request must route through debug-issue (reproduce first, trace
+  upstream to root, write a failing test before the fix). No "I think" patch
   before the reproduction step.

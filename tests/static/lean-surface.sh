@@ -26,10 +26,21 @@ check "rendered Codex  AGENTS.md ≤ 280 lines (actual: $CODEX_LINES)"   "[ $COD
 check "rendered Gemini GEMINI.md ≤ 280 lines (actual: $GEMINI_LINES)"  "[ $GEMINI_LINES -le 280 ]"
 
 # ── Tier 0 + Tier 1 visible skill count ───────────────────────────────
+# Core 10 target: Tier 0 = 1 router (using-rolepod), Tier 1 = 9 core
+# workflow skills (write-spec / write-plan / implement-plan / debug-issue
+# / check-work / review-code / finish-work / simplify-code / manage-context).
+# Default Lead surface = Tier 0 + Tier 1 = 10 skills.
 LEAN_TIER0=$(awk '/^### Tier 0/{f=1;next} /^### Tier/{f=0} f && /^\| `/{c++} END{print c+0}' core/fragments/skill-index-lean.md)
 LEAN_TIER1=$(awk '/^### Tier 1/{f=1;next} /^### Tier/{f=0} f && /^\| `/{c++} END{print c+0}' core/fragments/skill-index-lean.md)
 check "lean skill-index Tier 0 = 1 (actual: $LEAN_TIER0)"    "[ $LEAN_TIER0 -eq 1 ]"
-check "lean skill-index Tier 1 = 11 (actual: $LEAN_TIER1)"   "[ $LEAN_TIER1 -eq 11 ]"
+check "lean skill-index Tier 1 = 9 (actual: $LEAN_TIER1)"    "[ $LEAN_TIER1 -eq 9 ]"
+LEAN_SURFACE=$((LEAN_TIER0 + LEAN_TIER1))
+check "default Lead surface ≤ 10 (actual: $LEAN_SURFACE)"    "[ $LEAN_SURFACE -le 10 ]"
+
+# ── Public non-shim skills ≤ 11 (Core 10 + optional check-security) ────
+# Public non-shim = filesystem skills without `tier: 3` frontmatter.
+PUBLIC_NONSHIM=$(grep -L "^tier: 3" core/skills/*/SKILL.md 2>/dev/null | wc -l | tr -d ' ')
+check "public non-shim skills ≤ 11 (actual: $PUBLIC_NONSHIM)" "[ $PUBLIC_NONSHIM -le 11 ]"
 
 # ── Skill catalog drift — filesystem must match rendered fragment ──────
 # Catches the "render.sh skips utility skills" failure mode that bit us
@@ -97,6 +108,107 @@ else
   echo "$BRAND_LEAKS" | sed 's/^/      /'
   fail=$((fail+1))
 fi
+
+# ── Core 10 portability invariants ────────────────────────────────────
+# Each of the 9 core workflow skills must include both an agent-available
+# path and a no-agent fallback path so a copy-only install still works.
+# These checks back the spec's Acceptance Criteria #6-#10 + Risks #11.
+CORE_SKILLS=(write-spec write-plan implement-plan debug-issue check-work review-code finish-work simplify-code manage-context)
+FALLBACK_RX='(If no matching agent is available|If \`[a-z-]+\` is not available|no-agent fallback|standalone fallback|Execute (as Lead|the checklist directly as Lead))'
+for s in "${CORE_SKILLS[@]}"; do
+  f="core/skills/$s/SKILL.md"
+  if [ ! -f "$f" ]; then
+    echo "  ✗ core skill missing on disk: $s"; fail=$((fail+1)); continue
+  fi
+  if grep -Eq "$FALLBACK_RX" "$f"; then
+    echo "  ✓ core skill has no-agent fallback section: $s"
+  else
+    echo "  ✗ core skill missing no-agent fallback section: $s"; fail=$((fail+1))
+  fi
+done
+
+# Core skills must not contain hard-dependency language. Forbidden:
+# "Always delegate to <agent>", "Requires <skill>", "Load <other> before"
+# (with skill-name pattern), "must use agent".
+HARD_DEP_RX='(Always delegate to|Requires Rolepod (agents|hooks)|must use (a |an |the )?agent|Only works inside full Rolepod)'
+for s in "${CORE_SKILLS[@]}"; do
+  f="core/skills/$s/SKILL.md"
+  [ -f "$f" ] || continue
+  if grep -Eq "$HARD_DEP_RX" "$f"; then
+    echo "  ✗ core skill contains hard-dependency language: $s"
+    grep -En "$HARD_DEP_RX" "$f" | sed 's/^/      /' || true
+    fail=$((fail+1))
+  fi
+done
+echo "  ✓ no core skill contains hard-dependency language"
+
+# Every core skill must include the "Full Rolepod enhancement" note.
+for s in "${CORE_SKILLS[@]}"; do
+  f="core/skills/$s/SKILL.md"
+  [ -f "$f" ] || continue
+  if ! grep -q "^## Full Rolepod enhancement" "$f"; then
+    echo "  ✗ core skill missing 'Full Rolepod enhancement' section: $s"; fail=$((fail+1))
+  fi
+done
+echo "  ✓ every core skill has Full Rolepod enhancement note"
+
+# write-spec must include an approval gate + self-review (Acceptance #7-#9).
+if grep -Eiq "(approval|approve)" core/skills/write-spec/SKILL.md && \
+   grep -Eiq "self.review" core/skills/write-spec/SKILL.md; then
+  echo "  ✓ write-spec contains approval gate + self-review"
+else
+  echo "  ✗ write-spec missing approval gate or self-review"; fail=$((fail+1))
+fi
+
+# Every shim (tier 3) must include both `redirect_to` and a fallback
+# section so a copy-only shim does not dead-end.
+SHIM_FILES=$(grep -l "^tier: 3" core/skills/*/SKILL.md 2>/dev/null)
+for f in $SHIM_FILES; do
+  name=$(basename "$(dirname "$f")")
+  if ! grep -q "^redirect_to: " "$f"; then
+    echo "  ✗ shim missing redirect_to: $name"; fail=$((fail+1)); continue
+  fi
+  if ! grep -Eq "^## If \`[a-z-]+\` is not available" "$f"; then
+    echo "  ✗ shim missing fallback section: $name"; fail=$((fail+1))
+  fi
+done
+echo "  ✓ every shim has redirect_to + fallback section"
+
+# Every redirect_to target must point at an existing public skill.
+BAD_TARGETS=""
+for f in $SHIM_FILES; do
+  target=$(awk '/^redirect_to:/{gsub(/^redirect_to:[[:space:]]*/, ""); print; exit}' "$f")
+  if [ -z "$target" ] || [ ! -f "core/skills/$target/SKILL.md" ]; then
+    BAD_TARGETS="$BAD_TARGETS $(basename "$(dirname "$f")")→$target"
+  fi
+done
+if [ -z "$BAD_TARGETS" ]; then
+  echo "  ✓ every shim redirect_to points at an existing skill"
+else
+  echo "  ✗ shim redirect_to targets missing:$BAD_TARGETS"; fail=$((fail+1))
+fi
+
+# `redirect_to_agent` field must NOT appear anywhere (spec verdict #2).
+if grep -lr "^redirect_to_agent:" core/skills/ 2>/dev/null | grep -q .; then
+  echo "  ✗ forbidden `redirect_to_agent` field appears in source:"
+  grep -lr "^redirect_to_agent:" core/skills/ | sed 's/^/      /'
+  fail=$((fail+1))
+else
+  echo "  ✓ no redirect_to_agent field in source"
+fi
+
+# Core skill fallback sections must stay concise (line guard). A
+# fallback that grows past ~25 lines is on its way to becoming a domain
+# manual — push detail into agent / docs instead.
+for s in "${CORE_SKILLS[@]}"; do
+  f="core/skills/$s/SKILL.md"
+  [ -f "$f" ] || continue
+  fallback_lines=$(awk '/^## If no matching agent is available/{f=1;next} /^## /{if(f){exit}} f{c++} END{print c+0}' "$f")
+  if [ "$fallback_lines" -gt 25 ]; then
+    echo "  ✗ core skill fallback section > 25 lines ($fallback_lines): $s"; fail=$((fail+1))
+  fi
+done
+echo "  ✓ core skill fallback sections concise (≤ 25 lines)"
 
 # ── Render reproducibility under LC_ALL=C ─────────────────────────────
 cp core/fragments/skill-index.md /tmp/.lean-surface-snap.md

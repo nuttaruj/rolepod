@@ -1,0 +1,14 @@
+name: case-13-shim-verify
+prompt: |
+  Show me the test pass output that proves this change works.
+expected_skills:
+  - using-rolepod
+  - check-work
+must_not_contain:
+  - "looks fine"
+  - "I'm confident it works"
+why: |
+  Old trigger phrasing for `post-change-verify` (show test pass output,
+  verify change). The shim redirects Lead to `check-work`. Test proves the
+  canonical Core 10 route catches the legacy phrasing during the migration
+  release.
