@@ -1,6 +1,6 @@
 # Hooks reference
 
-Rolepod ships **9 root bash hook scripts**. Claude install copies all 9, then registers 9 rolepod entries in `~/.claude/settings.json` (2× `SessionStart` + 4× `PreToolUse` + 2× `PostToolUse` + 1× `Stop`); `gitnexus-wrap.sh` only patches the optional GitNexus plugin hook when GitNexus is installed. Each registered hook fires on a specific Claude Code event + matcher and either enforces a gate (`permissionDecision: deny`) or injects context (JSON `additionalContext`). All hooks are **self-guarded** — silent no-op when a dependency is missing.
+Rolepod ships **8 bash hook scripts** — 6 core in `hooks/` and 2 GitNexus add-on in `hooks/optional/gitnexus/`. Claude install copies all 8 (the optional scripts always ship so they are auditable), then registers **7 core entries** in `~/.claude/settings.json` by default (2× `SessionStart` + 4× `PreToolUse` + 1× `Stop`). When the GitNexus plugin is detected at install time, an additional `PostToolUse Bash` entry registers `optional/gitnexus/post-ship-detect.sh` and `optional/gitnexus/gitnexus-wrap.sh` patches the plugin's bare hook (= 8 entries in a GitNexus-enabled install). Each registered hook fires on a specific Claude Code event + matcher and either enforces a gate (`permissionDecision: deny`) or injects context (JSON `additionalContext`). All hooks are **self-guarded** — silent no-op when a dependency is missing.
 
 Lead does not invoke these manually. They fire automatically.
 
@@ -9,11 +9,18 @@ Lead does not invoke these manually. They fire automatically.
 | Category | Hooks | Purpose |
 |---|---|---|
 | **Core enforcement** | `block-subagent-commit`, `cohesion-contract-check`, `gate-reminder`, `precommit-gate` | Hard / soft blocks on discipline violations (high-risk path, parallel-without-contract, sub-agent commit, schema-bound new file) |
-| **Core context / reminder** | `project-context-loader`, `verify-reminder` | Inject git state + verify-after-edit reminder |
+| **Core context** | `project-context-loader` | Inject git state at SessionStart |
 | **Core session safety** | `session-lifecycle` | SessionStart lock + Stop unlock — prevents concurrent-edit stomp |
-| **Optional add-on (GitNexus)** | `post-ship-detect`, `gitnexus-wrap` | Auto-reindex when GitNexus is present in repo. Self-guarded to no-op when GitNexus is not adopted (no nag, no overhead surface) |
+| **Optional add-on (GitNexus)** | `post-ship-detect`, `gitnexus-wrap` | Auto-reindex when GitNexus is present in repo. Live in `hooks/optional/gitnexus/`; register only when the GitNexus plugin is detected at install time |
 
-Core hooks ship + register on every install. Add-on hooks ship + register too, but their scripts exit silently when the add-on (GitNexus binary + `.gitnexus/` dir in repo) is absent. No "missing add-on" nag fires from any hook.
+Core hooks register on every install. Optional GitNexus hooks ship at the path for auditability but only register in `settings.json` when the GitNexus plugin is detected.
+
+PR 6 dropped `verify-reminder.sh` (PostToolUse Edit/Write per-edit nag). The same discipline lives in:
+- skill `check-work` — Iron Rule + evidence-required output contract
+- `precommit-gate.sh` — hard-blocks commit on high-risk + zero tests
+- skill `using-rolepod` — Verify phase exit gate
+
+A per-edit reminder hook duplicated all three without enforcement teeth — so it was removed instead of replicated.
 
 ## Event coverage
 
@@ -23,8 +30,7 @@ Core hooks ship + register on every install. Add-on hooks ship + register too, b
 | `PreToolUse` | `Edit\|Write\|MultiEdit` | `gate-reminder.sh` |
 | `PreToolUse` | `Bash` | `precommit-gate.sh`, `block-subagent-commit.sh` |
 | `PreToolUse` | `Agent` | `cohesion-contract-check.sh` |
-| `PostToolUse` | `Edit\|Write` | `verify-reminder.sh` |
-| `PostToolUse` | `Bash` | `post-ship-detect.sh`, `gitnexus-wrap.sh` (when GitNexus plugin installed) |
+| `PostToolUse` | `Bash` | `optional/gitnexus/post-ship-detect.sh` + `optional/gitnexus/gitnexus-wrap.sh` (only when GitNexus plugin installed) |
 | `Stop` | (no matcher) | `session-lifecycle.sh --unlock` |
 
 ## Per-hook reference
@@ -84,15 +90,7 @@ When Lead is about to spawn the 2nd+ engineering agent within 10 events, require
 - **Effect**: `permissionDecision: deny` if 2+ agents spawned without contract.
 - **Self-guards**: 1st agent → silent; contract present → silent.
 - **Bypass**: `ROLEPOD_NO_CONTRACT=1` (single-domain Agent spawn legit).
-- **Pair**: skill `write-plan` (cohesion-contract step) — legacy `parallel-contract-orchestration` shim also routes here.
-
-### `verify-reminder.sh` — PostToolUse Edit/Write (core)
-
-After Lead edits, injects reminder to verify the change with evidence before claiming done.
-
-- **Effect**: `additionalContext` reminder.
-- **Self-guards**: none.
-- **Bypass**: none (informational).
+- **Pair**: skill `write-plan` (cohesion-contract step).
 
 ### `session-lifecycle.sh --unlock` — Stop (core)
 
@@ -102,20 +100,21 @@ Removes own session lock so the next session in this worktree does not see a pha
 - **Self-guards**: not in a git repo → silent; no `session_id` → silent.
 - **Bypass**: none (idempotent cleanup).
 
-### `post-ship-detect.sh` — PostToolUse Bash (optional add-on · GitNexus)
+### `optional/gitnexus/post-ship-detect.sh` — PostToolUse Bash (optional add-on)
 
 After ship cmd (`gh pr merge` / `git push main` / `git merge main`) touched ≥5 files in last 5 commits, auto-spawns `npx gitnexus analyze` in background (Lead-owned, no user nag).
 
+- **Registration**: only registered in `settings.json` when the GitNexus plugin is detected at install time. Script always ships at `hooks/optional/gitnexus/post-ship-detect.sh` for auditability.
 - **Effect**: `additionalContext` "GitNexus auto-reindex spawned in background. No user action needed."
-- **Self-guards**: no `.gitnexus/` dir → silent; no `npx` on PATH → silent. **The hook is harmless to leave registered when GitNexus is not adopted.**
+- **Self-guards**: no `.gitnexus/` dir → silent; no `npx` on PATH → silent.
 - **Dedup**: shares once/day/repo marker with `gitnexus-wrap.sh`.
 - **Bypass**: none (background spawn, doesn't block).
 
-### `gitnexus-wrap.sh` — PreToolUse + PostToolUse Bash (optional add-on · GitNexus)
+### `optional/gitnexus/gitnexus-wrap.sh` — PreToolUse + PostToolUse Bash (optional add-on)
 
 Wraps the GitNexus plugin's bare `gitnexus-hook.cjs` to: forward stdin/stdout transparently when no stale notice; strip "index stale" notice + auto-spawn bg reindex (once/day/repo marker); auto-add `.gitnexus/` to `.git/info/exclude`; block-seeded detection.
 
-Installed by `install.sh` only when the GitNexus plugin is detected — script is shipped but the registration only swaps the plugin's bare hook when the plugin is present.
+`install.sh` patches the GitNexus plugin's hook entry only when the plugin is detected — script is shipped but the registration swap only happens when the plugin is present.
 
 - **Self-guards**: plugin `.cjs` missing → silent no-op (uninstall safety).
 - **Bypass**: none.
@@ -161,21 +160,22 @@ Adding a `PreToolUse Bash` hook that checks for `docs/specs/<feature>.md` before
 
 ## Root vs Codex adapter parity
 
-Root `hooks/*.sh` is canonical. The Codex adapter mirrors the 5 hooks Codex's event model can fire (`SessionStart`, `PreToolUse apply_patch|Bash`, `PostToolUse apply_patch|Bash`):
+Root `hooks/*.sh` is canonical. The Codex adapter mirrors only the hooks whose events Codex supports (`SessionStart`, `PreToolUse apply_patch|Bash`, `PostToolUse Bash`):
 
-- `gate-reminder.sh`, `post-ship-detect.sh`, `precommit-gate.sh`, `project-context-loader.sh`, `verify-reminder.sh`.
+- **3 core** byte-exact mirrors: `gate-reminder.sh`, `precommit-gate.sh`, `project-context-loader.sh`.
+- **1 optional add-on** mirror at `hooks/optional/gitnexus/post-ship-detect.sh` — ships but not registered by default; enable manually if GitNexus is adopted on Codex.
 
-`block-subagent-commit`, `cohesion-contract-check`, `gitnexus-wrap`, `session-lifecycle` stay Claude-only (Codex has no `Agent` event API and no `Stop` event for unlock).
+`block-subagent-commit`, `cohesion-contract-check`, `gitnexus-wrap`, `session-lifecycle` stay Claude-only (Codex has no `Agent` event API and no `Stop` event for unlock; the GitNexus plugin model also differs per Codex).
 
-`tests/static/lean-surface.sh` enforces byte-exact parity between root and Codex adapter for the 5 shared hooks — any drift fails the release gate.
+`tests/static/lean-surface.sh` enforces byte-exact parity between root and Codex adapter for the shared hooks (3 core + 1 optional/gitnexus) — any drift fails the release gate.
 
 ## Installation
 
-Hooks are copied to `~/.claude/hooks/` and registered in `~/.claude/settings.json` by `install.sh`. Re-running install is idempotent — existing entries are upserted by command path, not duplicated. The PR 5 migration step also strips the pre-PR-5 `session-lock.sh` / `session-unlock.sh` commands (replaced by `session-lifecycle.sh --lock` / `--unlock`).
+Hooks are copied to `~/.claude/hooks/` and registered in `~/.claude/settings.json` by `install.sh`. Re-running install is idempotent — existing entries are upserted by command path, not duplicated. Migration steps strip the pre-PR-5 `session-lock.sh` / `session-unlock.sh` commands (replaced by `session-lifecycle.sh --lock` / `--unlock`) and the pre-PR-6 `verify-reminder.sh` + root `post-ship-detect.sh` commands.
 
 To verify registration:
 ```bash
 jq '.hooks' ~/.claude/settings.json
 ```
 
-Expected: 2× SessionStart + 4× PreToolUse + 2× PostToolUse + 1× Stop = 9 rolepod entries (10 if GitNexus plugin installed → `gitnexus-wrap.sh` also patches the plugin's bare hook).
+Expected by default: 2× SessionStart + 4× PreToolUse + 1× Stop = 7 rolepod entries. When the GitNexus plugin is detected at install time, an additional 1× PostToolUse Bash entry registers `optional/gitnexus/post-ship-detect.sh` (= 8 entries total), and `optional/gitnexus/gitnexus-wrap.sh` swaps the GitNexus plugin's bare hook command.

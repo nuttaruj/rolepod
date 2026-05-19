@@ -183,7 +183,7 @@ Optional add-on skills (caveman, gitnexus-*, ui-ux-pro-max) integrate when the u
 
 Counts differ per CLI surface — Claude has the deepest matcher model so it carries enforcement hooks; Codex/Gemini run context hooks only.
 
-### Claude (9 hook scripts · 7 core + 2 GitNexus add-on, all self-guarded)
+### Claude (8 hook scripts · 6 core + 2 GitNexus add-on, all self-guarded)
 
 | Event | Script | Role |
 |-------|--------|------|
@@ -194,19 +194,18 @@ Counts differ per CLI surface — Claude has the deepest matcher model so it car
 | PreToolUse (Bash on git commit) | `precommit-gate.sh` | test gate, hard block on high-risk + 0 tests |
 | PreToolUse (Bash, sub-agent) | `block-subagent-commit.sh` | sub-agents cannot commit/push/merge |
 | PreToolUse (Agent spawn) | `cohesion-contract-check.sh` | multi-agent contract required (2+ spawns) |
-| PostToolUse (Edit/Write) | `verify-reminder.sh` | verify-after-edit evidence nudge |
-| PostToolUse (Bash) | `post-ship-detect.sh` | auto-reindex after ship cmd (add-on, no-op without GitNexus) |
+| PostToolUse (Bash) | `optional/gitnexus/post-ship-detect.sh` | auto-reindex after ship cmd · registered only when GitNexus plugin detected |
+| PreToolUse + PostToolUse (Bash) | `optional/gitnexus/gitnexus-wrap.sh` | wrap GitNexus plugin's bare hook · only when plugin detected |
 | Stop | `session-lifecycle.sh --unlock` | release sibling lock |
 
-### Codex (5 commands across 3 event classes)
+### Codex (3 core commands · 1 optional GitNexus available)
 
 | Event | Matcher | Script | Role |
 |-------|---------|--------|------|
-| SessionStart | `startup\|resume` | `project-context-loader.sh` | git context + gates banner |
-| PreToolUse | `apply_patch` | `gate-reminder.sh` | RED-test + reviewer-floor reminders on high-risk paths |
+| SessionStart | `startup\|resume` | `project-context-loader.sh` | git context (repo / branch / dirty / recent / hot 7d) |
+| PreToolUse | `apply_patch` | `gate-reminder.sh` | schema-bound + RED-test + reviewer-floor on high-risk paths |
 | PreToolUse | `Bash` | `precommit-gate.sh` | test gate before commit |
-| PostToolUse | `apply_patch` | `verify-reminder.sh` | verify-after evidence nudge |
-| PostToolUse | `Bash` | `post-ship-detect.sh` | suggest `gitnexus analyze` after big merges |
+| _(optional, manual)_ | PostToolUse `Bash` | `optional/gitnexus/post-ship-detect.sh` | auto-reindex after big merges (only if GitNexus adopted) |
 
 Note: Codex hooks require `codex features enable plugin_hooks` (default `under development, false`). Without opt-in, hooks are registered but inert.
 

@@ -10,7 +10,7 @@ Phase 2.3: rolepod ships for each supported CLI as a **native plugin / extension
 | Lazy-load rules (Read on trigger) | full | full | full |
 | Skills (`<plugin>/skills/<name>/SKILL.md`) | 44 native | 44 native | 44 native |
 | Subagents (parallel team) | full Task / SendMessage (18 agents) | 18 agents as Codex `agents/*.toml` (Lead-orchestrated) | 18 agents inlined in `GEMINI.md` (Lead-orchestrated) |
-| Hooks (auto reminders) | 9 hooks (6 context + 3 enforcement, 5 event classes) | 5 commands across 3 event classes (`SessionStart`/`PreToolUse`/`PostToolUse`) | 4 commands across 4 event classes (`SessionStart`/`BeforeTool`/`AfterTool`/`PreCompress`) |
+| Hooks (auto reminders) | 8 hooks (6 core + 2 GitNexus add-on) · 7 registered by default, +1 when GitNexus plugin detected | 3 commands across 2 event classes (`SessionStart`/`PreToolUse`) · optional GitNexus `post-ship-detect.sh` ships but not registered by default | 4 commands across 4 event classes (`SessionStart`/`BeforeTool`/`AfterTool`/`PreCompress`) |
 | Slash commands | `/rolepod-team` (slash) + `/rolepod` (skill explicit-invoke) | n/a (Codex slash schema — `/rolepod` reaches the skill via Codex skill-slash UI) | `/rolepod` via skill (no native `.toml` commands — phase commands were dropped to match Claude's design) |
 | Plugin manifest | `.claude-plugin/plugin.json` (spec-conformant, 598B) | `.codex-plugin/plugin.json` (mirrors caveman schema, 1.6KB) | `gemini-extension.json` (extension schema, 551B) |
 | MemPalace / GitNexus integration | hook-level integration (MemPalace + GitNexus wrapper when installed) | plugin/entry-doc integration; hooks require `plugin_hooks` opt-in | extension/entry-doc integration; Claude-only enforcement hooks do not apply |
@@ -71,7 +71,7 @@ adapters/
 | After tool run | `PostToolUse` (`Edit\|Write`, `Bash`) | `PostToolUse` (`apply_patch`, `Bash`) | `AfterTool` (`write_file\|replace\|edit`) |
 | Stop / compact | `Stop` (no matcher) | — | `PreCompress` |
 
-Per-CLI hook counts: Claude copies 9 root scripts and registers 9 rolepod entries via `~/.claude/settings.json`; `gitnexus-wrap.sh` only patches the optional GitNexus plugin hook when GitNexus is installed. Codex ships 5 adapter command hooks across `SessionStart` / `PreToolUse` / `PostToolUse` via `hooks/hooks.json` and requires `codex features enable plugin_hooks` before they fire. Gemini ships 4 adapter command hooks across `SessionStart` / `BeforeTool` / `AfterTool` / `PreCompress`.
+Per-CLI hook counts: Claude copies 8 hook scripts (6 core + 2 in `hooks/optional/gitnexus/`) and registers 7 rolepod entries via `~/.claude/settings.json` by default (8 when the GitNexus plugin is detected at install time); `gitnexus-wrap.sh` only patches the optional GitNexus plugin hook when GitNexus is installed. Codex ships 5 adapter command hooks across `SessionStart` / `PreToolUse` / `PostToolUse` via `hooks/hooks.json` and requires `codex features enable plugin_hooks` before they fire. Gemini ships 4 adapter command hooks across `SessionStart` / `BeforeTool` / `AfterTool` / `PreCompress`.
 
 ## Verification status — what's confirmed locally
 
@@ -80,7 +80,7 @@ Per-CLI hook counts: Claude copies 9 root scripts and registers 9 rolepod entrie
 | Claude snapshot | `diff -q` 0-byte vs prior `~/.claude/CLAUDE.md` and 18 agent files |
 | Codex plugin layout | install registers `[marketplaces.rolepod]` + `[plugins."rolepod@rolepod"] enabled = true` in `~/.codex/config.toml` and writes `~/.codex/AGENTS.md` managed block; rendered tree at `build/rendered/codex/{.agents/plugins/marketplace.json,plugins/rolepod/{.codex-plugin,agents,hooks,skills}/}` is the source-of-truth Codex resolves at session start |
 | Gemini extension layout | dry-run install populates `~/.gemini/extensions/rolepod/{gemini-extension.json,commands,hooks,skills}/` plus `~/.gemini/GEMINI.md` |
-| All shell scripts | `bash -n` clean (install.sh, bootstrap.sh, render.sh, 9 root hook scripts, 5 codex hook scripts, 4 gemini hook scripts) |
+| All shell scripts | `bash -n` clean (install.sh, bootstrap.sh, render.sh, 8 hook scripts (6 core + 2 GitNexus add-on), 4 codex hook scripts (3 core + 1 GitNexus add-on), 4 gemini hook scripts) |
 | All JSON manifests | `python3 -m json.tool` clean (plugin.json x2, hooks.json x2, gemini-extension.json) |
 | All TOML files | `tomllib.load()` clean (18 codex agents, 6 gemini commands) |
 | Render output | `build/render.sh --target=all` produces all 3 trees with no `{{INCLUDE: ...}}` leaks |
