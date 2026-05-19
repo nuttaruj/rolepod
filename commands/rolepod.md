@@ -99,4 +99,4 @@ For routine tasks where router auto-detection of high-risk path is enough, the u
 
 ## Pairs with
 
-- `/rolepod-all` — same lifecycle but spawns a real multi-process Claude Code agent team running the phases in parallel (Claude Code v2.1.32+ + `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` required). Use `/rolepod` for single-Lead execution, `/rolepod-all` for genuinely parallel cross-domain work.
+- `/rolepod-team` — same lifecycle but spawns a real multi-process Claude Code agent team running the phases in parallel (Claude Code v2.1.32+ + `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` required). Use `/rolepod` for single-Lead execution, `/rolepod-team` for genuinely parallel cross-domain work.
