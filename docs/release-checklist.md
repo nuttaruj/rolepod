@@ -30,13 +30,51 @@ Confirms:
 
 ## 3. Workflow behavior
 
+Two modes — contract is the release gate, organic is advisory.
+
+### 3a. Contract mode (release gate — required green)
+
 ```bash
-make test-workflow
+make test-workflow-contract
+# or: ROLEPOD_RUN_LIVE=1 bash tests/workflow-behavior/run.sh --mode=contract
 ```
 
-Sends 14 canonical prompts to local Claude CLI. Skips cleanly if CLI absent (acceptable). When CLI present, all 14 cases must pass — they prove the workflow spine routes correctly (vague feature → `write-spec`, bug → `debug-issue`, "ship" → `finish-work`, etc.) and that old trigger phrases route directly to the canonical Core 10 skill without executable shims.
+Wraps each raw user prompt with a routing-test harness that forbids edits, tools, subagent spawns, and clarifying questions. Forces a 4-line response:
+
+```
+Routing: <phase> -> <skill>
+Reason: ...
+Skipping: ...
+Next step: ...
+```
+
+Asserts only the routing decision (`expected_skills` substring match). 14 cases must pass. **Failure blocks release.**
 
 Fail = router doctrine has drifted. Either fix the prompt routing in `using-rolepod` / skill frontmatter, or update the case expectation if the new behavior is intentional.
+
+### 3b. Organic mode (advisory — does NOT fail the gate)
+
+```bash
+make test-workflow-organic
+# or: ROLEPOD_RUN_LIVE=1 bash tests/workflow-behavior/run.sh --mode=organic
+```
+
+Sends raw user prompts as-is. Asserts the full case (`expected_skills` + `must_contain` + `must_not_contain`). Records whether Lead naturally follows Rolepod without coaching. Exit always 0.
+
+Use organic failures to decide whether to strengthen always-on entry instructions in `CLAUDE.md` / `AGENTS.md` / `GEMINI.md`. **Do not auto-merge while organic regressions exist on critical surfaces — review the report and decide.**
+
+### 3c. Both modes (release combo)
+
+```bash
+make test-workflow-live
+# or: ROLEPOD_RUN_LIVE=1 bash tests/workflow-behavior/run.sh --mode=both
+```
+
+Runs contract first (gates merge), then organic (reports drift). The default combo for `make test-release`.
+
+### Skip-clean (default in `make test`)
+
+`make test-workflow` parses cases + reports count + exits 0 without calling the model. Cheap for CI Phase 1.
 
 ## 4. Integration (optional but recommended)
 
