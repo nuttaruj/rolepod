@@ -11,7 +11,7 @@ Phase 2.3: rolepod ships for each supported CLI as a **native plugin / extension
 | Skills (`<plugin>/skills/<name>/SKILL.md`) | 44 native | 44 native | 44 native |
 | Subagents (parallel team) | full Task / SendMessage (18 agents) | 18 agents as Codex `agents/*.toml` (Lead-orchestrated) | 18 agents inlined in `GEMINI.md` (Lead-orchestrated) |
 | Hooks (auto reminders) | 9 hooks (6 context + 3 enforcement, 5 event classes) | 5 commands across 3 event classes (`SessionStart`/`PreToolUse`/`PostToolUse`) | 4 commands across 4 event classes (`SessionStart`/`BeforeTool`/`AfterTool`/`PreCompress`) |
-| Slash commands | `/rolepod-team` (slash) + `/rolepod` (skill explicit-invoke) | n/a (Codex slash schema — `/rolepod` reaches the skill via Codex skill-slash UI) | 5 native commands (`/spec`/`/plan`/`/review`/`/test`/`/ship`) + `/rolepod` via skill |
+| Slash commands | `/rolepod-team` (slash) + `/rolepod` (skill explicit-invoke) | n/a (Codex slash schema — `/rolepod` reaches the skill via Codex skill-slash UI) | `/rolepod` via skill (no native `.toml` commands — phase commands were dropped to match Claude's design) |
 | Plugin manifest | `.claude-plugin/plugin.json` (spec-conformant, 598B) | `.codex-plugin/plugin.json` (mirrors caveman schema, 1.6KB) | `gemini-extension.json` (extension schema, 551B) |
 | MemPalace / GitNexus integration | hook-level integration (MemPalace + GitNexus wrapper when installed) | plugin/entry-doc integration; hooks require `plugin_hooks` opt-in | extension/entry-doc integration; Claude-only enforcement hooks do not apply |
 | MCP server config | global + per-plugin | global (`codex mcp`) | global (`gemini mcp`) |
@@ -105,7 +105,7 @@ _Last verified: 2026-05-10 on macOS (Darwin 25.4.0), Codex 0.130.0, Gemini 0.40.
 - `gemini skills list` enumerates all 44 rolepod skills from `~/.gemini/extensions/rolepod/skills/`.
 - SessionStart hook fires and emits the rolepod gates banner ("rolepod gates: S1-S5 simplicity + T1-T6 tests + Q1-Q4 delegation + F1-F5 failure-mode") on every Gemini session.
 - The model recognizes the extension by name and version (`rolepod (v0.2.0)`) when asked.
-- 6 slash commands (`/rolepod /ship /review /test /plan /spec`) ship as schema-conformant `.toml` files in `commands/` (Gemini exposes these interactively; there is no `gemini commands list` subcommand).
+- No native `.toml` slash commands ship — `/rolepod` reaches the `using-rolepod` skill via Gemini's skill auto-trigger, same as Claude/Codex. Phase commands (`/spec`/`/plan`/`/review`/`/test`/`/ship`) were dropped to match Claude's design (commits 0f8de4f / 6da9fe0 documented pattern-match drift).
 - Caveat: the bundled SessionStart hook expects ripgrep — falls back to GrepTool with a one-line warning. Cosmetic only.
 
 **Codex CLI 0.130.0** — Production:
@@ -315,7 +315,7 @@ Create `GEMINI.md` at the repo root with project-specific overrides. Gemini prec
 gemini extensions list
 # Should show 'rolepod' as an enabled extension
 gemini
-# /rolepod, /ship, /review, /test, /plan, /spec available as slash commands
+# /rolepod available via using-rolepod skill explicit-invoke (cross-CLI)
 # Hooks fire automatically (SessionStart / BeforeTool / AfterTool)
 ```
 

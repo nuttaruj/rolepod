@@ -412,7 +412,6 @@ case "$CLI_TARGET" in
   gemini|all)
     [ -e "$REPO_DIR/adapters/gemini/GEMINI.md.tmpl" ]        || fail "missing adapters/gemini/GEMINI.md.tmpl"
     [ -e "$REPO_DIR/adapters/gemini/gemini-extension.json" ] || fail "missing adapters/gemini/gemini-extension.json"
-    [ -d "$REPO_DIR/adapters/gemini/commands" ]              || fail "missing adapters/gemini/commands/"
     [ -e "$REPO_DIR/adapters/gemini/hooks/hooks.json" ]      || fail "missing adapters/gemini/hooks/hooks.json"
     ;;
 esac
@@ -1428,7 +1427,6 @@ if gemini_selected; then
     for required in \
       GEMINI.md \
       extensions/rolepod/gemini-extension.json \
-      extensions/rolepod/commands/spec.toml \
       extensions/rolepod/hooks/hooks.json \
       extensions/rolepod/skills/anti-spaghetti/SKILL.md
     do
