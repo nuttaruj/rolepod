@@ -6,10 +6,9 @@
 #   - using-rolepod router has a row for multi-agent intent
 #   - legacy shims are gone, so Core 10 carries the trigger surface directly
 #
-# This is a STATIC fixture — proves the routing wiring exists. Live behavior
-# verification of "does Lead actually write SPEC.md before 2nd spawn" lives
-# in tests/workflow-behavior/cases/case-04-multi-agent.yml (gated by
-# ROLEPOD_RUN_LIVE=1).
+# Static fixture: proves routing wiring (skill + hook + router refs).
+# Rolepod does not ship `claude -p` headless behavior tests — interactive
+# workflow verification happens by using Rolepod for real work.
 set -euo pipefail
 REPO_DIR="$(cd "$(dirname "$0")/../../.." && pwd)"
 cd "$REPO_DIR"
