@@ -9,20 +9,22 @@
 #
 # Each command exits 0 on pass/skip and non-zero only on hard fail.
 
-.PHONY: test test-static test-workflow test-integration test-all render install help
+.PHONY: test test-static test-workflow test-workflow-contract test-workflow-organic test-workflow-live test-integration test-all test-release render install help
 
 help:
 	@echo "Rolepod test commands:"
-	@echo "  make test-static            — bash syntax + JSON/TOML parse + render-clean"
-	@echo "  make test-workflow          — workflow-behavior parse + skip-clean (cheap)"
-	@echo "  make test-workflow-live     — run live claude -p prompts (needs ROLEPOD_RUN_LIVE=1)"
-	@echo "  make test-integration       — integration tests (slow, local)"
-	@echo "  make test                   — test-static + test-workflow (NO live model calls)"
-	@echo "  make test-all               — static + workflow (cheap) + integration"
-	@echo "  make test-release           — test-all + test-workflow-live (full gate, costs budget)"
+	@echo "  make test-static                  — bash syntax + JSON/TOML parse + render-clean"
+	@echo "  make test-workflow                — workflow-behavior parse + skip-clean (cheap)"
+	@echo "  make test-workflow-contract       — LIVE contract mode (release gate, harness-wrapped routing test)"
+	@echo "  make test-workflow-organic        — LIVE organic mode (advisory, raw user prompts)"
+	@echo "  make test-workflow-live           — LIVE both modes (release gate + advisory)"
+	@echo "  make test-integration             — integration tests (slow, local)"
+	@echo "  make test                         — test-static + test-workflow (NO live model calls)"
+	@echo "  make test-all                     — static + workflow (cheap) + integration"
+	@echo "  make test-release                 — test-all + test-workflow-live (full gate, costs budget)"
 	@echo ""
-	@echo "  make render                 — render adapters to build/rendered/"
-	@echo "  make install                — install --target=claude --force into ~/.claude/"
+	@echo "  make render                       — render adapters to build/rendered/"
+	@echo "  make install                      — install --target=claude --force into ~/.claude/"
 
 test-static:
 	@echo "── test-static ──"
@@ -96,15 +98,33 @@ test-render-clean:
 	@echo "  ✓ render-clean: core/fragments/ matches generator output"
 	@echo "  ✓ render-clean: build/rendered/ has CLAUDE.md + AGENTS.md + GEMINI.md, no {{INCLUDE}} leak"
 
+# test-workflow — cheap default. Parse + skip when ROLEPOD_RUN_LIVE absent.
+# Lives in `make test` so CI Phase 1 stays cheap (no live `claude -p`).
 test-workflow:
 	@echo "── test-workflow ──"
 	@bash tests/workflow-behavior/run.sh
 
-# Opt-in live runner. Costs API budget + sends real prompts. Set
-# ROLEPOD_RUN_LIVE=1 in the environment OR run target directly.
+# test-workflow-contract — LIVE release gate. Wraps each raw user prompt
+# with a routing-test harness that forbids edits / tools / questions and
+# forces a 4-line "Routing: <phase> -> <skill>" response. Asserts only the
+# routing decision (expected_skills). Failure exits non-zero.
+test-workflow-contract:
+	@echo "── test-workflow-contract (LIVE · release gate) ──"
+	@ROLEPOD_RUN_LIVE=1 bash tests/workflow-behavior/run.sh --mode=contract
+
+# test-workflow-organic — LIVE advisory. Sends raw user prompts as-is, no
+# harness. Asserts full case (expected_skills + must_contain + must_not_contain).
+# Failures DO NOT fail the release gate; they signal that always-on entry
+# instructions in CLAUDE.md / AGENTS.md / GEMINI.md may need tightening.
+test-workflow-organic:
+	@echo "── test-workflow-organic (LIVE · advisory) ──"
+	@ROLEPOD_RUN_LIVE=1 bash tests/workflow-behavior/run.sh --mode=organic
+
+# test-workflow-live — both modes in order: contract first (gates merge),
+# organic second (advice only). Default release-gate combo.
 test-workflow-live:
-	@echo "── test-workflow-live (LIVE — costs API budget) ──"
-	@ROLEPOD_RUN_LIVE=1 bash tests/workflow-behavior/run.sh
+	@echo "── test-workflow-live (LIVE · contract gate + organic advisory) ──"
+	@ROLEPOD_RUN_LIVE=1 bash tests/workflow-behavior/run.sh --mode=both
 
 test-integration:
 	@echo "── test-integration ──"
@@ -116,8 +136,8 @@ test: test-static test-workflow
 # Full local sweep w/o live API spend.
 test-all: test-static test-workflow test-integration
 
-# Release gate — adds the live workflow run on top of test-all. Run this
-# manually before tagging a release.
+# Release gate — adds the live workflow run (contract gate + organic advisory)
+# on top of test-all. Run this manually before tagging a release.
 test-release: test-static test-workflow test-integration test-workflow-live
 
 render:
