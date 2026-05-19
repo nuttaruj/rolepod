@@ -829,7 +829,12 @@ if claude_selected; then
   if [ "$DRY_RUN" -eq 1 ]; then
     dry "cp $CP_FLAG $REPO_DIR/hooks/*.sh → $TARGET/hooks/  (chmod +x)"
     dry "cp -R $REPO_DIR/hooks/lib → $TARGET/hooks/lib"
+    dry "rm stale hooks: session-lock.sh, session-unlock.sh (replaced by session-lifecycle.sh in PR 5)"
   else
+    # Remove pre-PR-5 hook files replaced by session-lifecycle.sh so the
+    # plugin dir mirrors the canonical set. settings.json entries for the
+    # old commands are stripped in the registration block below.
+    rm -f "$TARGET/hooks/session-lock.sh" "$TARGET/hooks/session-unlock.sh" 2>/dev/null || true
     cp $CP_FLAG "$REPO_DIR"/hooks/*.sh "$TARGET/hooks/" 2>/dev/null || true
     chmod +x "$TARGET"/hooks/*.sh 2>/dev/null || true
     # Copy hooks/lib/ — session_state.py is the shared session-state inspector
@@ -873,15 +878,15 @@ step "Registering rolepod hooks in $SETTINGS_FILE"
 
 if [ "$DRY_RUN" -eq 1 ]; then
   dry "register hooks in $SETTINGS_FILE:"
-  dry "  SessionStart  startup|resume      → $HOOK_DIR/project-context-loader.sh (timeout 5)"
-  dry "  SessionStart  startup|resume      → $HOOK_DIR/session-lock.sh           (timeout 3)"
-  dry "  PreToolUse    Edit|Write|MultiEdit → $HOOK_DIR/gate-reminder.sh        (timeout 3)"
-  dry "  PreToolUse    Bash                 → $HOOK_DIR/precommit-gate.sh      (timeout 5)"
-  dry "  PreToolUse    Bash                 → $HOOK_DIR/block-subagent-commit.sh (timeout 3)"
-  dry "  PreToolUse    Agent                → $HOOK_DIR/cohesion-contract-check.sh (timeout 5)"
-  dry "  PostToolUse   Edit|Write           → $HOOK_DIR/verify-reminder.sh      (timeout 3)"
-  dry "  PostToolUse   Bash                 → $HOOK_DIR/post-ship-detect.sh     (timeout 5)"
-  dry "  Stop          (no matcher)         → $HOOK_DIR/session-unlock.sh       (timeout 3)"
+  dry "  SessionStart  startup|resume      → $HOOK_DIR/project-context-loader.sh   (timeout 5)"
+  dry "  SessionStart  startup|resume      → $HOOK_DIR/session-lifecycle.sh --lock (timeout 3)"
+  dry "  PreToolUse    Edit|Write|MultiEdit → $HOOK_DIR/gate-reminder.sh             (timeout 3)"
+  dry "  PreToolUse    Bash                 → $HOOK_DIR/precommit-gate.sh            (timeout 5)"
+  dry "  PreToolUse    Bash                 → $HOOK_DIR/block-subagent-commit.sh    (timeout 3)"
+  dry "  PreToolUse    Agent                → $HOOK_DIR/cohesion-contract-check.sh  (timeout 5)"
+  dry "  PostToolUse   Edit|Write           → $HOOK_DIR/verify-reminder.sh           (timeout 3)"
+  dry "  PostToolUse   Bash                 → $HOOK_DIR/post-ship-detect.sh          (timeout 5)"
+  dry "  Stop          (no matcher)         → $HOOK_DIR/session-lifecycle.sh --unlock (timeout 3)"
   REGISTER_OK=1
 else
 
@@ -895,8 +900,10 @@ if command -v jq >/dev/null 2>&1; then
   TMP_FILE=$(mktemp)
   if jq \
     --arg ctx "$HOOK_DIR/project-context-loader.sh" \
-    --arg slk "$HOOK_DIR/session-lock.sh" \
-    --arg sul "$HOOK_DIR/session-unlock.sh" \
+    --arg slk "$HOOK_DIR/session-lifecycle.sh --lock" \
+    --arg sul "$HOOK_DIR/session-lifecycle.sh --unlock" \
+    --arg old_slk "$HOOK_DIR/session-lock.sh" \
+    --arg old_sul "$HOOK_DIR/session-unlock.sh" \
     --arg gate "$HOOK_DIR/gate-reminder.sh" \
     --arg pre "$HOOK_DIR/precommit-gate.sh" \
     --arg bsc "$HOOK_DIR/block-subagent-commit.sh" \
@@ -933,6 +940,10 @@ if command -v jq >/dev/null 2>&1; then
       );
 
     .hooks = (.hooks // {})
+    # Migrate: strip the pre-PR-5 session-lock.sh / session-unlock.sh
+    # commands before upserting the new session-lifecycle.sh entries.
+    | .hooks.SessionStart = (strip_cmd((.hooks.SessionStart // []); $old_slk))
+    | .hooks.Stop = (strip_cmd((.hooks.Stop // []); $old_sul))
     | .hooks.SessionStart = upsert_cmd((.hooks.SessionStart // []); "startup|resume"; $ctx; 5)
     | .hooks.SessionStart = upsert_cmd((.hooks.SessionStart // []); "startup|resume"; $slk; 3)
     | .hooks.PreToolUse = upsert_cmd((.hooks.PreToolUse // []); "Edit|Write|MultiEdit"; $gate; 3)
@@ -985,15 +996,26 @@ def upsert(event, matcher, cmd, timeout):
         {"type": "command", "command": cmd, "timeout": timeout}
     )
 
+# Migrate: strip the pre-PR-5 session-lock.sh / session-unlock.sh
+# commands before upserting the new session-lifecycle.sh entries.
+def strip_event(event, cmd):
+    arr = hooks.get(event) or []
+    for g in arr:
+        g["hooks"] = [h for h in g.get("hooks", []) if h.get("command") != cmd]
+    hooks[event] = [g for g in arr if g.get("hooks")]
+strip_event("SessionStart", os.path.join(hook_dir, "session-lock.sh"))
+strip_event("Stop", os.path.join(hook_dir, "session-unlock.sh"))
+
+life = os.path.join(hook_dir, "session-lifecycle.sh")
 upsert("SessionStart", "startup|resume", os.path.join(hook_dir, "project-context-loader.sh"), 5)
-upsert("SessionStart", "startup|resume", os.path.join(hook_dir, "session-lock.sh"), 3)
+upsert("SessionStart", "startup|resume", f"{life} --lock", 3)
 upsert("PreToolUse", "Edit|Write|MultiEdit", os.path.join(hook_dir, "gate-reminder.sh"), 3)
 upsert("PreToolUse", "Bash", os.path.join(hook_dir, "precommit-gate.sh"), 5)
 upsert("PreToolUse", "Bash", os.path.join(hook_dir, "block-subagent-commit.sh"), 3)
 upsert("PreToolUse", "Agent", os.path.join(hook_dir, "cohesion-contract-check.sh"), 5)
 upsert("PostToolUse", "Edit|Write", os.path.join(hook_dir, "verify-reminder.sh"), 3)
 upsert("PostToolUse", "Bash", os.path.join(hook_dir, "post-ship-detect.sh"), 5)
-upsert("Stop", None, os.path.join(hook_dir, "session-unlock.sh"), 3)
+upsert("Stop", None, f"{life} --unlock", 3)
 
 with open(path, "w") as f:
     json.dump(data, f, indent=2)
@@ -1009,7 +1031,7 @@ if [ "$REGISTER_OK" -eq 1 ]; then
   ok "Hooks registered in settings.json (2x SessionStart + 4x PreToolUse + 2x PostToolUse + 1x Stop)"
 else
   warn "Could not auto-register hooks — install jq or python3, or edit $SETTINGS_FILE manually"
-  warn "  Hooks shipped: project-context-loader.sh + session-lock.sh (SessionStart), gate-reminder.sh (PreToolUse Edit|Write|MultiEdit), precommit-gate.sh + block-subagent-commit.sh (PreToolUse Bash), cohesion-contract-check.sh (PreToolUse Agent), verify-reminder.sh (PostToolUse Edit|Write), post-ship-detect.sh (PostToolUse Bash), session-unlock.sh (Stop)"
+  warn "  Hooks shipped: project-context-loader.sh + session-lifecycle.sh --lock (SessionStart), gate-reminder.sh (PreToolUse Edit|Write|MultiEdit), precommit-gate.sh + block-subagent-commit.sh (PreToolUse Bash), cohesion-contract-check.sh (PreToolUse Agent), verify-reminder.sh (PostToolUse Edit|Write), post-ship-detect.sh (PostToolUse Bash), session-lifecycle.sh --unlock (Stop)"
 fi
 
 fi  # end DRY_RUN gate around settings.json registration

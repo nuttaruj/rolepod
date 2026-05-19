@@ -80,7 +80,7 @@ Per-CLI hook counts: Claude copies 10 root scripts and registers 9 rolepod entri
 | Claude snapshot | `diff -q` 0-byte vs prior `~/.claude/CLAUDE.md` and 18 agent files |
 | Codex plugin layout | install registers `[marketplaces.rolepod]` + `[plugins."rolepod@rolepod"] enabled = true` in `~/.codex/config.toml` and writes `~/.codex/AGENTS.md` managed block; rendered tree at `build/rendered/codex/{.agents/plugins/marketplace.json,plugins/rolepod/{.codex-plugin,agents,hooks,skills}/}` is the source-of-truth Codex resolves at session start |
 | Gemini extension layout | dry-run install populates `~/.gemini/extensions/rolepod/{gemini-extension.json,commands,hooks,skills}/` plus `~/.gemini/GEMINI.md` |
-| All shell scripts | `bash -n` clean (install.sh, bootstrap.sh, render.sh, 10 root hook scripts, 5 codex hook scripts, 4 gemini hook scripts) |
+| All shell scripts | `bash -n` clean (install.sh, bootstrap.sh, render.sh, 9 root hook scripts, 5 codex hook scripts, 4 gemini hook scripts) |
 | All JSON manifests | `python3 -m json.tool` clean (plugin.json x2, hooks.json x2, gemini-extension.json) |
 | All TOML files | `tomllib.load()` clean (18 codex agents, 6 gemini commands) |
 | Render output | `build/render.sh --target=all` produces all 3 trees with no `{{INCLUDE: ...}}` leaks |
@@ -90,8 +90,8 @@ Per-CLI hook counts: Claude copies 10 root scripts and registers 9 rolepod entri
 | Target | Static checks | Dry-run install | Live runtime hooks | Live subagent dispatch | Status |
 |--------|---------------|-----------------|--------------------|-----------------------|--------|
 | Claude Code | ✓ | ✓ | ✓ verified | ✓ verified | **Production** |
-| Codex CLI   | ✓ | ✓ | ⚠️ opt-in only — `features.plugin_hooks` is "under development, false" by default; rolepod registers `hooks/hooks.json` but Codex won't fire them until user runs `codex features enable plugin_hooks` | ✓ verified (18 agents + 44 skills via native loader) | **Production** (hooks opt-in) |
-| Gemini CLI  | ✓ | ✓ | ✓ verified (SessionStart hook fires) | ✓ verified (44 skills enumerated) | **Production** |
+| Codex CLI   | ✓ | ✓ | ⚠️ opt-in only — `features.plugin_hooks` is "under development, false" by default; rolepod registers `hooks/hooks.json` but Codex won't fire them until user runs `codex features enable plugin_hooks` | ✓ verified (18 agents + 10 skills via native loader) | **Production** (hooks opt-in) |
+| Gemini CLI  | ✓ | ✓ | ✓ verified (SessionStart hook fires) | ✓ verified (10 skills enumerated) | **Production** |
 
 **Static checks** = `bash -n` on shell scripts, `python3 -m json.tool` on JSON manifests, `tomllib.load()` on TOML, plus snapshot diffs (no leaked `{{INCLUDE: ...}}` placeholders). **Dry-run install** = `install.sh --target=<cli>` writes correct files into a temp dir and the layout matches each CLI's expected destination. **Live** = installed in the real CLI, hooks fire on real sessions (Claude + Gemini always; Codex only after `codex features enable plugin_hooks` opt-in), subagents/skills dispatch correctly.
 
@@ -155,7 +155,7 @@ Writes `$PWD/.claude/` with the full plugin tree plus `$PWD/CLAUDE.md` (managed 
 Installs:
 - `~/.claude/CLAUDE.md` (managed block — your existing content preserved)
 - `~/.claude/agents/*.md` (18 agents)
-- `~/.claude/skills/<name>/SKILL.md` (44 skills)
+- `~/.claude/skills/<name>/SKILL.md` (10 Core 10 skills)
 - `~/.claude/commands/*.md` (slash commands)
 - Hook entries appended idempotently to `~/.claude/settings.json` (2x `SessionStart`, 4x `PreToolUse`, 2x `PostToolUse`, 1x `Stop`; GitNexus wrapper patch is optional)
 - `~/.claude/.claude-plugin/plugin.json` (manifest)
@@ -189,7 +189,7 @@ cd /your/project
 ./install.sh --target=codex --scope=project
 ```
 
-**Rules-only project install.** Writes only `$PWD/AGENTS.md` (managed block). Codex auto-loads `AGENTS.md` from the working directory on session start. **Native plugin agents/skills/hooks are NOT installed per-project** — Codex CLI's marketplace + plugin cache are global-only by design. For full Codex activation (18 agents, 44 skills, hooks), run `--scope=global` separately.
+**Rules-only project install.** Writes only `$PWD/AGENTS.md` (managed block). Codex auto-loads `AGENTS.md` from the working directory on session start. **Native plugin agents/skills/hooks are NOT installed per-project** — Codex CLI's marketplace + plugin cache are global-only by design. For full Codex activation (18 agents, 10 skills, hooks), run `--scope=global` separately.
 
 Codex hooks (`features.plugin_hooks = true`) require explicit opt-in in `~/.codex/config.toml` — not auto-enabled by rolepod install.
 
@@ -294,7 +294,7 @@ cd /your/project
 
 Installs:
 - `~/.gemini/GEMINI.md` (managed block — your existing content preserved)
-- `~/.gemini/extensions/rolepod/` (full extension: 18 agents inlined, 44 skills, 6 commands, 4 hooks)
+- `~/.gemini/extensions/rolepod/` (full extension: 18 agents inlined, 10 Core 10 skills, 6 commands, 4 hooks)
 
 ### Project-level GitNexus index (one-time per repo)
 

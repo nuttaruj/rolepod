@@ -1,5 +1,5 @@
 {
-  "_comment": "Rolepod Codex hooks. Mirror Claude adapter's 4 hooks. Scripts shipped at adapters/codex/hooks/*.sh — copies of root hooks/*.sh maintained by build/render.sh.",
+  "_comment": "Rolepod Codex hooks. 5 plugin hooks — byte-exact mirrors of root hooks/*.sh (parity enforced by tests/static/lean-surface.sh). Claude-only hooks (block-subagent-commit, cohesion-contract-check, session-lifecycle, gitnexus-wrap) are not registered here because Codex has no Agent / Stop event API and uses a different plugin model.",
   "hooks": {
     "SessionStart": [
       {

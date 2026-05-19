@@ -1,21 +1,37 @@
 #!/bin/bash
-# SessionStart hook — detect sibling Claude sessions on the same worktree.
+# Session lifecycle hook — lock at SessionStart, unlock at Stop.
 #
 # Why: 2+ Claude sessions editing the same checkout race each other —
 # Session A writes file.ts → Session B opens stale → B writes back → A's
 # edits lost. Hard to spot, easy to repeat. This hook surfaces the
 # situation at SessionStart so Lead spawns an isolated worktree before
-# any edit lands.
+# any edit lands. At Stop the lock is released so the next session does
+# not see a phantom sibling.
 #
 # Mechanism: HOME-scoped lock dir per worktree (sha256 of abs path),
-# one file per session. Scan siblings whose mtime is within 30 min.
-# Stale locks (>30 min) get pruned on contact. No repo pollution.
+# one file per session. SessionStart scans siblings whose mtime is within
+# 30 min. Stale locks (>30 min) get pruned on contact. Stop removes the
+# current session's lock. No repo pollution.
 #
-# Override: ROLEPOD_ALLOW_SHARED_WORKTREE=1 silences the warning for
-# the rare intentional case (e.g. read-only review session).
+# Override: ROLEPOD_ALLOW_SHARED_WORKTREE=1 silences the SessionStart
+# warning for the rare intentional case (e.g. read-only review session).
+#
+# Modes:
+#   --lock     SessionStart entry — register session + warn on siblings
+#   --unlock   Stop entry — remove this session's lock
+#
+# Single file replaces the previous session-lock.sh + session-unlock.sh
+# pair (PR 5 — hook consolidation).
 set -euo pipefail
 
-# Honor override env. Still write our lock so siblings detect us.
+MODE="${1:---lock}"
+case "$MODE" in
+  --lock|--unlock) ;;
+  *) echo "session-lifecycle.sh: unknown mode: $MODE (expected --lock | --unlock)" >&2; exit 0 ;;
+esac
+
+# Honor override env. SessionStart still writes our lock so siblings
+# detect us; the env only silences the warning.
 SILENT=0
 [ "${ROLEPOD_ALLOW_SHARED_WORKTREE:-0}" = "1" ] && SILENT=1
 
@@ -27,16 +43,21 @@ CWD=$(printf '%s' "$INPUT" | python3 -c "import sys,json
 try: print(json.load(sys.stdin).get('cwd','') or '')
 except Exception: print('')" 2>/dev/null || echo "")
 [ -z "$CWD" ] && CWD="$PWD"
-[ -z "$SESSION_ID" ] && SESSION_ID="unknown-$$-$(date +%s)"
 
 # Only act inside a git worktree. Non-git dirs = no stomp risk.
 WORKTREE=$(cd "$CWD" 2>/dev/null && git rev-parse --show-toplevel 2>/dev/null) || exit 0
-
-# Lock dir keyed by absolute worktree path — siblings in different
-# worktrees don't collide (which is the whole point of worktrees).
 PATH_HASH=$(printf '%s' "$WORKTREE" | shasum -a 256 2>/dev/null | awk '{print $1}' | head -c 16)
 [ -z "$PATH_HASH" ] && exit 0
 LOCK_DIR="$HOME/.claude/.session-locks/$PATH_HASH"
+
+if [ "$MODE" = "--unlock" ]; then
+  [ -z "$SESSION_ID" ] && exit 0
+  rm -f "$LOCK_DIR/$SESSION_ID.lock" 2>/dev/null || true
+  exit 0
+fi
+
+# --lock path (SessionStart)
+[ -z "$SESSION_ID" ] && SESSION_ID="unknown-$$-$(date +%s)"
 mkdir -p "$LOCK_DIR" 2>/dev/null || exit 0
 
 NOW=$(date +%s)

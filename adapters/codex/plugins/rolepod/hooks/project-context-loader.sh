@@ -1,6 +1,17 @@
 #!/bin/bash
-# SessionStart — inject git activity for current repo + project setup checklist. Silent if not in git.
-# Each checklist warning fires AT MOST ONCE per repo (tracked in ~/.claude/.rolepod-warnings-shown).
+# SessionStart — inject git activity for current repo. Silent if not in git.
+#
+# Scope (post-PR-5 slim): repo name, branch, dirty count, recent commits,
+# hot files. Add-on availability (GitNexus, MemPalace, Codex / Gemini
+# external reviewers) used to nag from here; the nags moved into docs +
+# skills where they belong. Per-session reminder noise was the bigger
+# tax than the missing-add-on surface itself.
+#
+# GitNexus auto-recovery still lives here because the plugin's own
+# background reindex can wedge the DB write-lock, causing every
+# subsequent Bash hook to print a noisy error. Detect via failed log
+# marker + wipe + fresh bg reindex. Once per repo per day. Silent on
+# success.
 set -euo pipefail
 
 INPUT=$(cat 2>/dev/null || echo '{}')
@@ -21,41 +32,18 @@ HOT=$(git -C "$REPO" log --since="7 days ago" --name-only --pretty=format: 2>/de
 CTX="**$NAME** @ \`$BRANCH\` ($DIRTY uncommitted)\n\n**Recent:**\n\`\`\`\n$COMMITS\n\`\`\`"
 [ -n "$HOT" ] && CTX="$CTX\n\n**Hot (7d):**\n$HOT"
 
-# Project setup checklist — each warning fires at most ONCE per repo, ever.
-# After the warning shows, suppress it forever (user might intentionally skip the suggestion).
-# Tracking: ~/.claude/.rolepod-warnings-shown, TSV format: <repo-path>\t<warning-id>
-WARN_FILE="$HOME/.claude/.rolepod-warnings-shown"
-mkdir -p "$HOME/.claude" 2>/dev/null || true
-
-# warn_once <warning-id> <message>
-# Emits message + records marker if not already shown for this repo.
-warn_once() {
-  local id="$1"
-  local msg="$2"
-  local marker="$REPO	$id"
-  if [ -f "$WARN_FILE" ] && grep -Fxq "$marker" "$WARN_FILE" 2>/dev/null; then
-    return
+# GitNexus auto-recovery — silent unless the plugin's bg reindex actually
+# wedged the DB. No "missing index" nag (moved to docs).
+GITNEXUS_LOG="/tmp/gitnexus-reindex-${NAME}.log"
+RECOVERY_MARKER="$HOME/.claude/.gitnexus-recovered-${NAME}-$(date +%Y%m%d)"
+if [ -d "$REPO/.gitnexus" ] && [ -f "$GITNEXUS_LOG" ] && [ ! -f "$RECOVERY_MARKER" ]; then
+  if grep -q "npm error\|Cannot execute write operations" "$GITNEXUS_LOG" 2>/dev/null; then
+    rm -rf "$REPO/.gitnexus" 2>/dev/null || true
+    (cd "$REPO" && nohup npx gitnexus analyze --no-stats > "$GITNEXUS_LOG" 2>&1 &) 2>/dev/null
+    mkdir -p "$HOME/.claude" 2>/dev/null || true
+    touch "$RECOVERY_MARKER" 2>/dev/null || true
   fi
-  CHECKLIST="$CHECKLIST\n- [ ] $msg"
-  printf '%s\n' "$marker" >> "$WARN_FILE" 2>/dev/null || true
-}
-
-CHECKLIST=""
-
-# 1. GitNexus indexed? Per-repo index lives at <repo>/.gitnexus/
-if [ ! -d "$REPO/.gitnexus" ]; then
-  warn_once "gitnexus-index" "GitNexus index missing → run \`npx gitnexus analyze\` in project root for code intelligence"
 fi
-
-# 2. Project CLAUDE.md exists?
-if [ ! -f "$REPO/CLAUDE.md" ]; then
-  warn_once "project-claudemd" "No project CLAUDE.md → run \`/init\` (or skip if global rules are enough)"
-fi
-
-# 3. First-time session for this dir?
-warn_once "first-session" "First session for this project → MemPalace will start capturing learnings now"
-
-[ -n "$CHECKLIST" ] && CTX="$CTX\n\n## Project setup checklist\n$CHECKLIST"
 
 python3 -c "
 import json
