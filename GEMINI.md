@@ -3,7 +3,7 @@
 Always-on guidance for Gemini CLI Lead. Rolepod ships as Gemini extension; this `GEMINI.md` is auto-loaded as context.
 
 Bundled:
-- Slash commands `commands/*.toml` — `/rolepod`, `/ship`, `/review`, `/test`, `/plan`, `/spec`
+- Slash commands: `/rolepod` works cross-CLI via the `using-rolepod` skill (explicit-invoke detection). Gemini ships no native `commands/*.toml` — phase-named commands (/spec, /plan, /review, /test, /ship) were dropped to match Claude's design (per-phase commands caused pattern-match drift; see commits 0f8de4f / 6da9fe0).
 - Hooks `hooks/hooks.json` — `SessionStart` (context inject), `BeforeTool` / `AfterTool` (verify-first / evidence reminders) on `write_file|replace|edit`
 - Skills `skills/<name>/SKILL.md` — full rolepod skill set
 
@@ -48,7 +48,7 @@ Non-trivial work:
 1. **Explore** — read files.
 2. **Plan** — simplicity check: simplest? new abstraction? new dep? If "yes" without reason → revise.
 3. **Implement** — every line traces to user request.
-4. **Pre-commit gate** — S1-S5 + T1-T6 + F1-F5 below (or `/ship`).
+4. **Pre-commit gate** — S1-S5 + T1-T6 + F1-F5 below.
 5. **Commit** — descriptive message + PR.
 
 Skip plan if diff describable in 1 sentence (typo / log / rename).
@@ -171,7 +171,7 @@ GitNexus / MemPalace MCP via Gemini config when available. Otherwise plain `git`
 
 ## Before ship — STOP
 
-- Run `/ship` (S1-S5, T1-T6, F1-F5, evidence) — or run gates manually
+- Run S1-S5 + T1-T6 + F1-F5 gates manually before commit (evidence required)
 - High-risk (auth/billing/migrations) → `/rolepod` first, then external reviewer:
   - Codex installed: `codex exec --prompt "review this diff..."`
   - Claude installed: `claude -p "review this diff for correctness"`
@@ -240,7 +240,7 @@ Multi-step → `[step] → verify: [check]` per row.
 | `pre-merge-gate` | Run the pre-merge gate — simplicity + test + reviewer routing + ask-user matrix + CI lanes — befo... |
 | `code-simplification` | Refactor for clarity without changing behavior. Behavior-preserving — every change is provable by... |
 
-**Tier 2 (Specialist, 29 skills) + Tier 3 (Compatibility shims, 2 skills)** — fire by domain match via `team-routing`. Full catalog: [docs/skills.md](docs/skills.md).
+**Tier 2 (Specialist + Meta-workflow) + Tier 3 (Compatibility shims)** — fire by domain or situational match via `team-routing`. Full catalog: [docs/skills.md](docs/skills.md).
 
 ## Agent roster
 

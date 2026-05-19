@@ -12,7 +12,7 @@
 | Agents (18) | `~/.claude/agents/*.md` | `~/.codex/plugins/rolepod/agents/*.toml` | inlined in `GEMINI.md` |
 | Skills (44) | `~/.claude/skills/<name>/SKILL.md` | `~/.codex/plugins/rolepod/skills/<name>/SKILL.md` | `~/.gemini/extensions/rolepod/skills/<name>/SKILL.md` |
 | Hooks (Claude 9 / Codex 5 / Gemini 4) | `~/.claude/settings.json` | `~/.codex/plugins/rolepod/hooks/hooks.json` | `~/.gemini/extensions/rolepod/hooks/hooks.json` |
-| Slash commands | `~/.claude/commands/*.md` | n/a | `~/.gemini/extensions/rolepod/commands/*.toml` |
+| Slash commands | `~/.claude/commands/*.md` | n/a | n/a (no Gemini-native slash commands; use `/rolepod` via skill) |
 
 ## Active gates
 
@@ -152,7 +152,7 @@ Lead = Opus → skip Advisor.
 | Pick session | `claude --resume` | `codex resume --list` | n/a |
 | Starter doc | `/init` | edit `~/.codex/AGENTS.md` | edit `~/.gemini/GEMINI.md` |
 | One-shot | `claude -p "..."` | `codex exec "..."` | `gemini -p "..."` |
-| Rolepod commands | `/rolepod` + `/rolepod-team` | n/a | `/rolepod /ship /review /test /plan /spec` |
+| Rolepod commands | `/rolepod` (skill) + `/rolepod-team` (slash) | `/rolepod` (skill) | `/rolepod` (skill) |
 
 > **Agent team (Claude only).** `/rolepod-team` spawns a real Claude Code agent team — multi-process teammates with shared task list + mailbox per [official spec](https://code.claude.com/docs/en/agent-teams). Requires `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` + v2.1.32+. Codex/Gemini have no teammate equivalent — use default Subagent dispatch via `team-routing` skill. See [docs/agent-teams.md](docs/agent-teams.md).
 
