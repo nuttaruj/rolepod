@@ -274,6 +274,63 @@ for s in "${CORE_SKILLS[@]}"; do
 done
 echo "  ✓ core skill fallback sections concise (≤ 25 lines)"
 
+# ── Agent standalone invariants (PR 2) ────────────────────────────────
+# Every agent file must:
+#   (a) preload only Core 10 skills (no legacy shim names in `skills:` frontmatter)
+#   (b) carry a standalone output contract (either ## Output contract or ## Final authority)
+#   (c) carry a labeled "## When to use" + "## Hand-off" + "## Escalation back to Core 10" section
+# Body text may still mention a legacy shim, but only in an explicit
+# compatibility / hand-off context — not as the active route.
+CORE_10_SKILLS=(using-rolepod write-spec write-plan implement-plan debug-issue check-work review-code finish-work simplify-code manage-context)
+AGENT_LEGACY_PRELOADS=""
+AGENT_MISSING_OUTPUT=""
+AGENT_MISSING_SECTIONS=""
+for a in core/agents/*.md; do
+  name=$(basename "$a" .md)
+  # (a) skills: preload must be subset of Core 10
+  preloads=$(awk '/^skills:/{f=1;next} /^[a-z]/{f=0} f && /^  - /{sub(/^  - /, ""); print}' "$a")
+  for skill in $preloads; do
+    is_core_10=0
+    for c in "${CORE_10_SKILLS[@]}"; do
+      [ "$skill" = "$c" ] && { is_core_10=1; break; }
+    done
+    if [ $is_core_10 -eq 0 ]; then
+      AGENT_LEGACY_PRELOADS="${AGENT_LEGACY_PRELOADS}${name}: ${skill}\n"
+    fi
+  done
+  # (b) output contract
+  if ! grep -Eq "^## (Output contract|Final authority)" "$a"; then
+    AGENT_MISSING_OUTPUT="${AGENT_MISSING_OUTPUT}${name}\n"
+  fi
+  # (c) labeled sections
+  for sec in "## When to use" "## Hand-off" "## Escalation back to Core 10"; do
+    if ! grep -Fq "$sec" "$a"; then
+      AGENT_MISSING_SECTIONS="${AGENT_MISSING_SECTIONS}${name}: ${sec}\n"
+    fi
+  done
+done
+if [ -z "$AGENT_LEGACY_PRELOADS" ]; then
+  echo "  ✓ all agents preload only Core 10 skills"
+else
+  echo "  ✗ agents preload legacy shim skills:"
+  printf "%b" "$AGENT_LEGACY_PRELOADS" | sed 's/^/      /'
+  fail=$((fail+1))
+fi
+if [ -z "$AGENT_MISSING_OUTPUT" ]; then
+  echo "  ✓ all agents have a standalone output contract"
+else
+  echo "  ✗ agents missing output contract (## Output contract or ## Final authority):"
+  printf "%b" "$AGENT_MISSING_OUTPUT" | sed 's/^/      /'
+  fail=$((fail+1))
+fi
+if [ -z "$AGENT_MISSING_SECTIONS" ]; then
+  echo "  ✓ every agent has When-to-use + Hand-off + Escalation sections"
+else
+  echo "  ✗ agents missing required sections:"
+  printf "%b" "$AGENT_MISSING_SECTIONS" | sed 's/^/      /'
+  fail=$((fail+1))
+fi
+
 # ── Render reproducibility under LC_ALL=C ─────────────────────────────
 cp core/fragments/skill-index.md /tmp/.lean-surface-snap.md
 LC_ALL=C bash build/render.sh --target=all >/dev/null 2>&1
