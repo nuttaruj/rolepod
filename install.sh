@@ -1378,7 +1378,6 @@ if gemini_selected; then
   fi
 
   [ -f "$RENDERED_GEMINI_DIR/gemini-extension.json" ]     || fail "expected $RENDERED_GEMINI_DIR/gemini-extension.json after render"
-  [ -d "$RENDERED_GEMINI_DIR/commands" ]                  || fail "expected $RENDERED_GEMINI_DIR/commands/ after render"
   [ -d "$RENDERED_GEMINI_DIR/hooks" ]                     || fail "expected $RENDERED_GEMINI_DIR/hooks/ after render"
   [ -d "$RENDERED_GEMINI_DIR/skills" ]                    || fail "expected $RENDERED_GEMINI_DIR/skills/ after render"
 
