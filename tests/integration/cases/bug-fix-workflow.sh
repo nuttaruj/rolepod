@@ -4,10 +4,9 @@
 #   debug-issue → check-work
 # Plus router row, no legacy shim dependency, regression-test expectation.
 #
-# This is STRUCTURAL — proves wiring without needing a live `claude -p`.
-# Live behavior verification of "does Lead reproduce before patching" lives
-# in tests/workflow-behavior/cases/case-02-bug-fix.yml (gated by
-# ROLEPOD_RUN_LIVE=1).
+# Structural: proves wiring (skill body + router refs + shim absence).
+# Rolepod does not ship `claude -p` headless behavior tests — interactive
+# workflow verification happens by using Rolepod for real work.
 set -euo pipefail
 REPO_DIR="$(cd "$(dirname "$0")/../../.." && pwd)"
 cd "$REPO_DIR"

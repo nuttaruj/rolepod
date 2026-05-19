@@ -10,9 +10,11 @@ make test-static
 
 Verifies:
 - `install.sh`, `bootstrap.sh`, `build/render.sh`, `hooks/*.sh` syntax
-- `hooks/lib/session_state.py`, `tests/workflow-behavior/parse_case.py` Python AST
+- `hooks/lib/session_state.py` Python AST
 - Plugin manifests: Claude `plugin.json`, Codex `plugin.json` + `hooks.json`, Gemini `gemini-extension.json` + `hooks.json`
 - TOML files: Codex `agents/*.toml`, Gemini `commands/*.toml`
+- `render-clean`: `core/fragments/` matches generator output, no leaked `{{INCLUDE}}` placeholders
+- `lean-surface`: ~70 invariants — Tier 0 = 1 / Tier 1 = 9 / `tier: 3` = 0 / agent preloads Core 10 only / router refs canonical / no hard-dependency language / no `redirect_to_agent` / fallback sections concise / LC_ALL=C reproducible
 
 Fail = release blocked. Fix syntax first.
 
@@ -28,55 +30,7 @@ Confirms:
 - `build/rendered/gemini/GEMINI.md` + extension tree
 - No leaked `{{INCLUDE: ...}}` placeholders
 
-## 3. Workflow behavior
-
-Two modes — contract is the release gate, organic is advisory.
-
-### 3a. Contract mode (release gate — required green)
-
-```bash
-make test-workflow-contract
-# or: ROLEPOD_RUN_LIVE=1 bash tests/workflow-behavior/run.sh --mode=contract
-```
-
-Wraps each raw user prompt with a routing-test harness that forbids edits, tools, subagent spawns, and clarifying questions. Forces a 4-line response:
-
-```
-Routing: <phase> -> <skill>
-Reason: ...
-Skipping: ...
-Next step: ...
-```
-
-Asserts only the routing decision (`expected_skills` substring match). 14 cases must pass. **Failure blocks release.**
-
-Fail = router doctrine has drifted. Either fix the prompt routing in `using-rolepod` / skill frontmatter, or update the case expectation if the new behavior is intentional.
-
-### 3b. Organic mode (advisory — does NOT fail the gate)
-
-```bash
-make test-workflow-organic
-# or: ROLEPOD_RUN_LIVE=1 bash tests/workflow-behavior/run.sh --mode=organic
-```
-
-Sends raw user prompts as-is. Asserts the full case (`expected_skills` + `must_contain` + `must_not_contain`). Records whether Lead naturally follows Rolepod without coaching. Exit always 0.
-
-Use organic failures to decide whether to strengthen always-on entry instructions in `CLAUDE.md` / `AGENTS.md` / `GEMINI.md`. **Do not auto-merge while organic regressions exist on critical surfaces — review the report and decide.**
-
-### 3c. Both modes (release combo)
-
-```bash
-make test-workflow-live
-# or: ROLEPOD_RUN_LIVE=1 bash tests/workflow-behavior/run.sh --mode=both
-```
-
-Runs contract first (gates merge), then organic (reports drift). The default combo for `make test-release`.
-
-### Skip-clean (default in `make test`)
-
-`make test-workflow` parses cases + reports count + exits 0 without calling the model. Cheap for CI Phase 1.
-
-## 4. Integration (optional but recommended)
+## 3. Integration (optional but recommended)
 
 ```bash
 make test-integration
@@ -96,7 +50,9 @@ Runs 7 structural integration cases (~3-5s total, no live `claude -p` invocation
 
 Expected output: `pass: 7 / skip: 0 / fail: 0`. Any fail = doctrine drift, block release until reconciled (fix wiring OR update case expectation if intentional).
 
-## 5. Honest-doc audit
+> **Why no live `claude -p` behavior tests?** Rolepod targets interactive Claude Code sessions (Define → Plan → Build → Verify → Review → Ship multi-turn). `claude -p` is headless single-turn — used for Q&A and one-shot scripts, not for long workflow sessions. Testing routing through `-p` is testing the wrong shape: it cannot exercise phase progression or hook firing. Routing correctness is instead proven structurally by lean-surface (router references Core 10 skill names directly) and by these integration fixtures (skill body content + agent wiring). Real-world workflow behavior is verified by using Rolepod for actual work.
+
+## 4. Honest-doc audit
 
 Manually verify that user-facing docs match runtime behavior:
 
@@ -109,7 +65,7 @@ Manually verify that user-facing docs match runtime behavior:
 - No "auto-fire" claims for Codex hooks.
 - `agent-protocol.md` rule 10 + 11 scope statement matches actual hook coverage (Claude-only).
 
-## 6. Local install smoke
+## 5. Local install smoke
 
 ```bash
 # Fresh install on a temp HOME:
@@ -124,13 +80,13 @@ grep using-rolepod "$TMP/.claude/CLAUDE.md"  # should match
 
 All commands should succeed.
 
-## 7. Git hygiene
+## 6. Git hygiene
 
 - `git status` clean (no uncommitted CLAUDE.md / AGENTS.md churn from gitnexus volatile fields).
 - Tag matches `package.json` / plugin version if applicable.
 - CHANGELOG updated.
 
-## 8. Push
+## 7. Push
 
 ```bash
 git push origin main
@@ -145,10 +101,10 @@ Required CI lanes (Phase 1) green before promotion. Auto-merge OK iff:
 ## Fast-loop (working from a hardening branch)
 
 ```bash
-make test-static && make render && make install && make test-workflow
+make test-static && make render && make install && make test-integration
 ```
 
-This is the inner loop: lint → render → install locally → run behavior tests against the freshly installed plugin.
+Inner loop: lint → render → install locally → run integration fixtures against the freshly installed plugin.
 
 ## When something fails
 
@@ -157,6 +113,7 @@ This is the inner loop: lint → render → install locally → run behavior tes
 | `bash -n` syntax | Open the file, find unmatched quote / paren / heredoc |
 | JSON `json.tool` | `python3 -m json.tool <file>` shows line:col |
 | TOML parse | Open file, check for trailing comma / unquoted string |
-| Workflow case missing skill | Either Lead drifted (fix `using-rolepod`) or skill desc weak (sharpen `description:` + `when_to_use:`) |
-| Workflow case forbidden phrase appears | Check skill's "Common Rationalizations" section — likely missing an excuse + reality row |
+| `lean-surface` invariant red | Read the specific check that failed — most map directly to a file path + expected pattern |
+| `render-clean` red | `make render && git add core/fragments/` — generator output diverged from committed fragment |
+| Integration case missing skill | Either Lead drifted (fix `using-rolepod` router refs) or skill body lost a required phrase (sharpen the skill or relax the fixture's regex) |
 | `install-parity` fails | `install.sh` regressed; check the temp dir contents at the failing step |

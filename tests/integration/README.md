@@ -46,18 +46,21 @@ Exit codes:
 | `multi-agent-contract` | none | Structural grep + hook script presence check |
 | `ship-gate` | none | Structural grep over `finish-work` skill body |
 
-All cases run without live CLIs by design — they assert **wiring** (skill bodies say the right thing, router rows exist, hook scripts present). Live-behavior assertions (does Lead actually reproduce-before-patching, does Phase 0 dialogue actually ask before drafting) live in `tests/workflow-behavior/` and are gated by `ROLEPOD_RUN_LIVE=1` + an installed Claude CLI.
+All cases run without live CLIs by design — they assert **wiring** (skill bodies say the right thing, router rows exist, hook scripts present).
 
-## Why structural (and not live)
+## Why structural (and not live `claude -p`)
 
-Live invocations are slow (~10-30s each), nondeterministic (model variance), and depend on a working `claude -p` install. Structural tests catch ~80% of doctrine drift in <5 seconds: if a skill body stops saying "reproduce first" or the router stops pointing `fix bug` at `debug-issue`, the wiring test fails. Live tests then cover the remaining 20% (the agent actually behaves the way the skill body says).
+Rolepod targets interactive Claude Code sessions (Define → Plan → Build → Verify → Review → Ship multi-turn). `claude -p` is headless single-turn — used for Q&A and one-shot scripts, not workflow sessions. Testing routing through `-p` is testing the wrong shape: it cannot exercise phase progression, hook firing, or agent escalation.
+
+Structural tests catch the relevant doctrine drift cheaply: if a skill body stops saying "reproduce first" or the router stops pointing `fix bug` at `debug-issue`, the wiring test fails. Real-world workflow behavior is verified by using Rolepod for actual work, not by `-p` smoke runs.
+
+Live invocations also slow (~10-30s each), nondeterministic (model variance), and depend on a working `claude -p` install — and prove nothing the static + integration gate cannot already prove.
 
 ## Workflow
 
 When adding a new integration case:
 
-1. Decide: structural (grep skill bodies / file presence) or live (Claude CLI invocation).
-2. Structural → add `tests/integration/cases/<name>.sh`; runner picks it up automatically.
-3. Live → add to `tests/workflow-behavior/cases/<name>.yml`; gate via `ROLEPOD_RUN_LIVE=1`.
-4. Document expected behavior in the script header.
-5. Run locally; commit script (and fixture, if any) together.
+1. Add `tests/integration/cases/<name>.sh`; runner picks it up automatically.
+2. Assert wiring with `grep` over skill bodies, router, hook scripts, or installer output.
+3. Document expected behavior in the script header.
+4. Run locally; commit the script.
