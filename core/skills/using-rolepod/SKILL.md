@@ -24,6 +24,70 @@ User explicit instruction wins. If user says "skip spec", "answer only", "just w
 Default: route through the spine. Skipping is allowed only when (a) the task is trivial-answer-only, (b) user explicitly authorizes the skip, OR (c) the request is a question with no action attached.
 </EXTREMELY-IMPORTANT>
 
+## Explicit-invoke detection — `/rolepod` force-full-lifecycle mode
+
+**Cross-CLI universal trigger.** When the user opens their message with any of these tokens, switch from auto-router mode to **force-full-lifecycle mode** (no phase skips):
+
+- `/rolepod <task>` — Claude / Gemini slash style
+- `/using-rolepod <task>` — Codex skill-slash style
+- `$using-rolepod <task>` — Codex dollar-skill UI style
+- Natural language: `force full lifecycle`, `rolepod mode`, `run all phases`, `no skip`
+
+The auto-trigger of this skill fires on every request regardless of CLI; the **detection above is what changes the mode**. No separate slash command file is needed — Claude/Codex/Gemini all funnel through this skill.
+
+### Force-full-lifecycle behavior
+
+When detected, run **every phase in order, no skips**:
+
+```
+Define → Plan → Build → Verify → Review → Ship
+```
+
+Even if the task looks like a one-line fix, a typo, or a tiny config change — the user has explicitly opted out of skip rules. They want the full ceremony.
+
+**Phase-by-phase under force-full mode:**
+
+1. **Define — `spec-driven-development`** — Phase 0 discovery dialogue (explore context, ask clarifying questions one at a time via native question UI or plain-text fallback, propose 2-3 approaches, incremental section approval, spec self-review). Pick persistence tier (in-chat brief vs `docs/specs/<feature>.md`) per the skill's HARD-GATE table.
+2. **Plan — `planning-and-task-breakdown`** — break approved spec into bite-sized steps (2-5 min each, single observable action). TDD canonical: `write failing test → run red → implement → run green → commit`. If multi-agent, fire `parallel-contract-orchestration` for the cohesion contract.
+3. **Build** — execute task-by-task. Subagent delegation goes through `subagent-task-execution` (implementer → spec-compliance reviewer → code-quality reviewer). Bug-flavored tasks route through `systematic-debugging`. Apply S1-S5 / T1-T6 / F1-F5 per commit.
+4. **Verify — `post-change-verify`** — Iron Law: no completion claim without fresh verification evidence in this message.
+5. **Review — `code-review-and-quality`** + `reviewer-flow` — route to qa-tester floor + adversarial reviewers (Codex / Gemini / security-engineer / universal-reviewer) for high-risk surface. For force-full mode, dispatch reviewers **regardless of path-keyword match** (manual risk escalation).
+6. **Ship — `pre-merge-gate` → `finishing-a-development-branch`** — S+T+F+P gates, then 4-option branch finish menu (merge / open PR / keep / discard).
+
+### Careful-mode rigor (default-on in force-full mode)
+
+`/rolepod` invocation also tightens rigor inside Build/Verify/Review:
+
+- **≤3 files per commit** (default workflow allows ≤5)
+- **Mandatory peer review** even for small diffs (no skip on ≤5 lines / single file / zero logic)
+- **All S1-S5 + T1-T6 gates explicit** every commit (no router skip judgment)
+- **Codex + Gemini adversarial reviewers** dispatched regardless of path-keyword match
+
+User can opt back to lighter review mid-flow ("normal review is fine, skip careful rigor") — rigor is default-on, not mandatory-on.
+
+### What still applies under force-full mode
+
+- `verify-first` for any factual claim
+- Hooks (subagent-commit block, precommit-gate, gate-reminder, cohesion-contract-check) — fire regardless
+- User override mid-flow: if user says "skip review" or "just ship", obey them
+
+### Output pattern (announce at start of force-full mode)
+
+```
+Routing: Force full lifecycle via /rolepod (skill explicit-invoke)
+Phase: Define (entering Phase 0 discovery dialogue)
+Skipping: none (user opted out of router skip rules)
+Next step: <first question or context read>
+```
+
+### Common rationalizations to reject (force-full mode)
+
+| Excuse | Reality |
+|--------|---------|
+| "Task is trivial, Define is overkill" | User invoked `/rolepod` precisely to disable that judgment. Run it. |
+| "User probably meant just Build" | If they wanted just Build they'd type the task without `/rolepod`. Read the directive literally. |
+| "I'll merge Define + Plan into one turn to save time" | Each phase has its own exit evidence. Compressing them collapses the gates. Run them sequentially. |
+
 ## Quick router
 
 Match the user intent to the FIRST skill that fires. The skill itself decides what comes next. The **Model tier** column hints which agent tier is appropriate when the work delegates — see `core/fragments/model-tier-policy.md` for the full policy.

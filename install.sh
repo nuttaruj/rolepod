@@ -1028,7 +1028,7 @@ if [ "$DRY_RUN" -eq 0 ]; then
     agents/qa-tester.md agents/system-architect.md \
     rules/INDEX.md rules/always-on/agent-protocol.md rules/always-on/verify-first.md rules/code/code-quality.md rules/test/testing.md \
     hooks/verify-reminder.sh hooks/project-context-loader.sh hooks/gate-reminder.sh hooks/precommit-gate.sh \
-    skills/zoom-out/SKILL.md skills/anti-spaghetti/SKILL.md commands/rolepod.md \
+    skills/zoom-out/SKILL.md skills/anti-spaghetti/SKILL.md \
     .claude-plugin/plugin.json
   do
     [ -e "$TARGET/$required" ] || fail "verification failed — $TARGET/$required missing"

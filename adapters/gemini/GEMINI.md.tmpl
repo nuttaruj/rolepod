@@ -3,7 +3,7 @@
 Always-on guidance for Gemini CLI Lead. Rolepod ships as Gemini extension; this `GEMINI.md` is auto-loaded as context.
 
 Bundled:
-- Slash commands `commands/*.toml` — `/rolepod`, `/ship`, `/review`, `/test`, `/plan`, `/spec`
+- Slash commands `commands/*.toml` — `/spec`, `/plan`, `/review`, `/test`, `/ship`. `/rolepod` works cross-CLI via the `using-rolepod` skill (explicit-invoke detection), no `.toml` needed.
 - Hooks `hooks/hooks.json` — `SessionStart` (context inject), `BeforeTool` / `AfterTool` (verify-first / evidence reminders) on `write_file|replace|edit`
 - Skills `skills/<name>/SKILL.md` — full rolepod skill set
 
