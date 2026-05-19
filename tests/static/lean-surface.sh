@@ -70,7 +70,7 @@ check "skill catalog: filesystem=$FS_SKILLS rendered=$RENDERED_SKILLS (must matc
 # Two groups: word-boundary patterns + non-word-end patterns. The second
 # group covers forms ending in `)` or `*` where trailing `\b` is dead
 # (qa-tester PR #10 caught this).
-STALE_WB='\b(42 bundled|42 skills|43 skills|53 skills|43-skill|53-skill|53 skill files|34 native|44 native|44 rolepod skills|44 skills|3 auto-trigger hooks|same 3 scripts|same 3 files|18 \+ 42|18 \+ 43|18 \+ 53|18 \+ 44|all 34 rolepod|all 43 rolepod|Total 4[23]|Total 53|three rolepod entries|3 codex hooks|3 gemini hooks|3 root hooks|10 root hook scripts|10 hook scripts|9 root hook scripts|9 hook scripts|own 3 scripts|3 \*\.sh|5 \*\.sh|5 hook scripts|5 codex hook)\b'
+STALE_WB='\b(42 bundled|42 skills|43 skills|53 skills|43-skill|53-skill|53 skill files|34 native|44 native|44 rolepod skills|44 skills|3 auto-trigger hooks|same 3 scripts|same 3 files|18 \+ 42|18 \+ 43|18 \+ 53|18 \+ 44|all 34 rolepod|all 43 rolepod|Total 4[23]|Total 53|three rolepod entries|3 codex hooks|3 gemini hooks|3 root hooks|10 root hook scripts|10 hook scripts|9 root hook scripts|9 hook scripts|own 3 scripts|3 \*\.sh|5 \*\.sh|5 hook scripts|4 codex hook)\b'
 STALE_NONWORD='Skills \(4[23]\)|Skills \(53\)|Total skills on disk: \*\*(4[23]|53)\*\*|Hooks \(3\)|, 3 hooks\)'
 STALE_COMMENT='(^|[^0-9])(#|`) ?4[23]\b'
 STALE_HOOK_TRUTH='Context hooks \(cross-CLI\)|Codex / Gemini fire the context hooks|full hook coverage|Before tool run.*CLI handles native compact|SessionStart \+ 2x PostToolUse|10 bash hooks that auto-register|portable across Claude and Codex'
@@ -363,7 +363,8 @@ fi
 # Optional GitNexus hook (post-ship-detect) lives in hooks/optional/gitnexus/
 # on both sides; parity holds when the file exists in both trees.
 SHARED_CORE_HOOKS=(gate-reminder.sh precommit-gate.sh project-context-loader.sh)
-SHARED_OPTIONAL_HOOKS=(post-ship-detect.sh)
+SHARED_OPTIONAL_GITNEXUS=(post-ship-detect.sh)
+SHARED_OPTIONAL_MEMPALACE=(codex-session-start.sh)
 HOOK_DRIFT=""
 for h in "${SHARED_CORE_HOOKS[@]}"; do
   root="hooks/$h"
@@ -376,7 +377,7 @@ for h in "${SHARED_CORE_HOOKS[@]}"; do
     HOOK_DRIFT="${HOOK_DRIFT}${h}: root vs Codex adapter diverged\n"
   fi
 done
-for h in "${SHARED_OPTIONAL_HOOKS[@]}"; do
+for h in "${SHARED_OPTIONAL_GITNEXUS[@]}"; do
   root="hooks/optional/gitnexus/$h"
   codex="adapters/codex/plugins/rolepod/hooks/optional/gitnexus/$h"
   if [ ! -f "$root" ] || [ ! -f "$codex" ]; then
@@ -387,8 +388,19 @@ for h in "${SHARED_OPTIONAL_HOOKS[@]}"; do
     HOOK_DRIFT="${HOOK_DRIFT}${h} (optional/gitnexus): root vs Codex adapter diverged\n"
   fi
 done
+for h in "${SHARED_OPTIONAL_MEMPALACE[@]}"; do
+  root="hooks/optional/mempalace/$h"
+  codex="adapters/codex/plugins/rolepod/hooks/optional/mempalace/$h"
+  if [ ! -f "$root" ] || [ ! -f "$codex" ]; then
+    HOOK_DRIFT="${HOOK_DRIFT}${h} (optional/mempalace): missing on one side\n"
+    continue
+  fi
+  if ! diff -q "$root" "$codex" >/dev/null 2>&1; then
+    HOOK_DRIFT="${HOOK_DRIFT}${h} (optional/mempalace): root vs Codex adapter diverged\n"
+  fi
+done
 if [ -z "$HOOK_DRIFT" ]; then
-  echo "  ✓ root vs Codex adapter hook parity (3 core + 1 optional/gitnexus identical)"
+  echo "  ✓ root vs Codex adapter hook parity (3 core + 1 optional/gitnexus + 1 optional/mempalace identical)"
 else
   echo "  ✗ root vs Codex adapter hook drift:"
   printf "%b" "$HOOK_DRIFT" | sed 's/^/      /'

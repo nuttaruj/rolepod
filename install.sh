@@ -1410,9 +1410,60 @@ if codex_selected; then
       mkdir -p "$CACHE_DIR"
       if cp -RL "$RENDERED_CODEX_DIR/plugins/rolepod/." "$CACHE_DIR/" 2>/dev/null; then
         chmod +x "$CACHE_DIR/hooks"/*.sh 2>/dev/null || true
+        find "$CACHE_DIR/hooks/optional" -name '*.sh' -exec chmod +x {} \; 2>/dev/null || true
         ok "Codex plugin cache populated"
       else
         warn "Failed to populate Codex plugin cache → plugin will fail to load (\"plugin is not installed\")"
+      fi
+    fi
+
+    # ─── Optional Codex × MemPalace bridge ─────────────────────────────
+    # Inject a SessionStart entry into the cache hooks.json pointing at
+    # optional/mempalace/codex-session-start.sh, gated on:
+    #   (a) `command -v mempalace` succeeds at install time, AND
+    #   (b) target is a real Codex global install (not a temp ROLEPOD_TARGET),
+    #       AND not dry-run.
+    # The script itself is always copied (auditable surface); only the
+    # registration is conditional. Idempotent — strip + add. Codex hooks
+    # are still inert without `codex features enable plugin_hooks`.
+    CODEX_MP_HOOK_REL="hooks/optional/mempalace/codex-session-start.sh"
+    if [ "$DRY_RUN" -eq 0 ] && [ "$CODEX_IS_TEMP_TARGET" -eq 0 ] \
+       && command -v mempalace >/dev/null 2>&1 \
+       && command -v python3 >/dev/null 2>&1 \
+       && [ -f "$CACHE_DIR/$CODEX_MP_HOOK_REL" ] \
+       && [ -f "$CACHE_DIR/hooks/hooks.json" ]; then
+      step "Registering Codex × MemPalace SessionStart bridge"
+      if python3 - "$CACHE_DIR/hooks/hooks.json" "$CODEX_MP_HOOK_REL" <<'PY' 2>/dev/null
+import json, sys
+path, hook_rel = sys.argv[1], sys.argv[2]
+cmd = "bash ${PLUGIN_ROOT}/" + hook_rel
+with open(path) as f:
+    data = json.load(f)
+hooks = data.setdefault("hooks", {})
+arr = hooks.setdefault("SessionStart", [])
+# Strip any prior MemPalace SessionStart entry (idempotent re-install).
+for g in arr:
+    g["hooks"] = [h for h in g.get("hooks", []) if hook_rel not in h.get("command", "")]
+arr[:] = [g for g in arr if g.get("hooks")]
+# Find canonical "startup|resume" group; create if missing.
+grp = next((g for g in arr if g.get("matcher") == "startup|resume"), None)
+if grp is None:
+    grp = {"matcher": "startup|resume", "hooks": []}
+    arr.append(grp)
+grp.setdefault("hooks", []).append({
+    "type": "command",
+    "command": cmd,
+    "timeout": 10,
+    "statusMessage": "MemPalace: recalling cross-session decisions"
+})
+with open(path, "w") as f:
+    json.dump(data, f, indent=2)
+    f.write("\n")
+PY
+      then
+        ok "Codex × MemPalace SessionStart bridge registered"
+      else
+        warn "Could not register Codex × MemPalace bridge — edit $CACHE_DIR/hooks/hooks.json manually"
       fi
     fi
 

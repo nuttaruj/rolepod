@@ -12,6 +12,7 @@ Lead does not invoke these manually. They fire automatically.
 | **Core context** | `project-context-loader` | Inject git state at SessionStart |
 | **Core session safety** | `session-lifecycle` | SessionStart lock + Stop unlock — prevents concurrent-edit stomp |
 | **Optional add-on (GitNexus)** | `post-ship-detect`, `gitnexus-wrap` | Auto-reindex when GitNexus is present in repo. Live in `hooks/optional/gitnexus/`; register only when the GitNexus plugin is detected at install time |
+| **Optional add-on (MemPalace × Codex)** | `codex-session-start` | Bridge Codex sessions into MemPalace cross-session recall. Lives in `hooks/optional/mempalace/`; registered in the Codex plugin cache `hooks.json` at install time only when `command -v mempalace` succeeds AND target is a real Codex global install. Codex Stop / PreCompact equivalents not shipped — Codex 0.130 plugin hook schema only exposes SessionStart / PreToolUse / PostToolUse |
 
 Core hooks register on every install. Optional GitNexus hooks ship at the path for auditability but only register in `settings.json` when the GitNexus plugin is detected.
 
@@ -118,6 +119,16 @@ Wraps the GitNexus plugin's bare `gitnexus-hook.cjs` to: forward stdin/stdout tr
 
 - **Self-guards**: plugin `.cjs` missing → silent no-op (uninstall safety).
 - **Bypass**: none.
+
+### `optional/mempalace/codex-session-start.sh` — Codex SessionStart (optional add-on)
+
+Bridge Codex sessions into MemPalace cross-session knowledge-graph recall. Calls `mempalace hook run --hook session-start --harness codex` (with `--harness claude-code` fallback for current upstream MemPalace, which only ships the claude-code harness format today).
+
+- **Registration**: only registered in the Codex plugin cache `hooks/hooks.json` when `command -v mempalace` succeeds at install time AND target is a real Codex global install (not a temp `ROLEPOD_TARGET`). Idempotent — re-install strips + re-adds.
+- **Self-guards**: `mempalace` binary missing at runtime → exit 0 silently. Survives MemPalace uninstall without leaving noisy hooks.
+- **Codex caveat**: the entry is registered in `hooks.json` but Codex itself only fires plugin hooks after `codex features enable plugin_hooks` (default flag: `under development, false`).
+- **Why no Stop / PreCompact equivalents**: Codex 0.130 plugin hook schema exposes `SessionStart`, `PreToolUse`, `PostToolUse` only — no Stop event for "session ended", no PreCompact for "context compressed". When upstream Codex adds those events, mirror this script for `codex-stop.sh` / `codex-precompact.sh`.
+- **Gemini**: not auto-wired in rolepod yet. MemPalace upstream does not yet support `--harness gemini`; current Gemini integration is manual / MCP-assisted. README documents the limitation.
 
 ## Bypass envs — when to use
 
