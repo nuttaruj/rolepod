@@ -71,7 +71,7 @@ adapters/
 | After tool run | `PostToolUse` (`Edit\|Write`, `Bash`) | `PostToolUse` (`apply_patch`, `Bash`) | `AfterTool` (`write_file\|replace\|edit`) |
 | Stop / compact | `Stop` (no matcher) | — | `PreCompress` |
 
-Per-CLI hook counts: Claude copies 10 root scripts and registers 9 rolepod entries via `~/.claude/settings.json`; `gitnexus-wrap.sh` only patches the optional GitNexus plugin hook when GitNexus is installed. Codex ships 5 adapter command hooks across `SessionStart` / `PreToolUse` / `PostToolUse` via `hooks/hooks.json` and requires `codex features enable plugin_hooks` before they fire. Gemini ships 4 adapter command hooks across `SessionStart` / `BeforeTool` / `AfterTool` / `PreCompress`.
+Per-CLI hook counts: Claude copies 9 root scripts and registers 9 rolepod entries via `~/.claude/settings.json`; `gitnexus-wrap.sh` only patches the optional GitNexus plugin hook when GitNexus is installed. Codex ships 5 adapter command hooks across `SessionStart` / `PreToolUse` / `PostToolUse` via `hooks/hooks.json` and requires `codex features enable plugin_hooks` before they fire. Gemini ships 4 adapter command hooks across `SessionStart` / `BeforeTool` / `AfterTool` / `PreCompress`.
 
 ## Verification status — what's confirmed locally
 
