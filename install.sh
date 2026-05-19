@@ -829,12 +829,18 @@ if claude_selected; then
   if [ "$DRY_RUN" -eq 1 ]; then
     dry "cp $CP_FLAG $REPO_DIR/hooks/*.sh → $TARGET/hooks/  (chmod +x)"
     dry "cp -R $REPO_DIR/hooks/lib → $TARGET/hooks/lib"
-    dry "rm stale hooks: session-lock.sh, session-unlock.sh (replaced by session-lifecycle.sh in PR 5)"
+    dry "rm stale hooks: session-lock.sh, session-unlock.sh (PR 5 — session-lifecycle.sh)"
+    dry "rm stale hooks: verify-reminder.sh (PR 6 — deleted)"
+    dry "rm stale hooks: post-ship-detect.sh, gitnexus-wrap.sh (PR 6 — moved to optional/gitnexus/)"
+    dry "cp $CP_FLAG $REPO_DIR/hooks/optional/gitnexus/*.sh → $TARGET/hooks/optional/gitnexus/ (only registered when GitNexus plugin detected)"
   else
-    # Remove pre-PR-5 hook files replaced by session-lifecycle.sh so the
-    # plugin dir mirrors the canonical set. settings.json entries for the
-    # old commands are stripped in the registration block below.
-    rm -f "$TARGET/hooks/session-lock.sh" "$TARGET/hooks/session-unlock.sh" 2>/dev/null || true
+    # Remove pre-PR-6 hook files. settings.json entries for the old
+    # commands are stripped in the registration block below.
+    rm -f \
+      "$TARGET/hooks/session-lock.sh" "$TARGET/hooks/session-unlock.sh" \
+      "$TARGET/hooks/verify-reminder.sh" \
+      "$TARGET/hooks/post-ship-detect.sh" "$TARGET/hooks/gitnexus-wrap.sh" \
+      2>/dev/null || true
     cp $CP_FLAG "$REPO_DIR"/hooks/*.sh "$TARGET/hooks/" 2>/dev/null || true
     chmod +x "$TARGET"/hooks/*.sh 2>/dev/null || true
     # Copy hooks/lib/ — session_state.py is the shared session-state inspector
@@ -843,6 +849,14 @@ if claude_selected; then
     if [ -d "$REPO_DIR/hooks/lib" ]; then
       mkdir -p "$TARGET/hooks/lib"
       cp $CP_FLAG "$REPO_DIR"/hooks/lib/*.py "$TARGET/hooks/lib/" 2>/dev/null || true
+    fi
+    # Copy optional/gitnexus hooks. Scripts are always shipped (so the
+    # surface is auditable) but their settings.json registration is gated
+    # on GitNexus plugin detection further down.
+    if [ -d "$REPO_DIR/hooks/optional/gitnexus" ]; then
+      mkdir -p "$TARGET/hooks/optional/gitnexus"
+      cp $CP_FLAG "$REPO_DIR"/hooks/optional/gitnexus/*.sh "$TARGET/hooks/optional/gitnexus/" 2>/dev/null || true
+      chmod +x "$TARGET"/hooks/optional/gitnexus/*.sh 2>/dev/null || true
     fi
   fi
 
@@ -884,9 +898,9 @@ if [ "$DRY_RUN" -eq 1 ]; then
   dry "  PreToolUse    Bash                 → $HOOK_DIR/precommit-gate.sh            (timeout 5)"
   dry "  PreToolUse    Bash                 → $HOOK_DIR/block-subagent-commit.sh    (timeout 3)"
   dry "  PreToolUse    Agent                → $HOOK_DIR/cohesion-contract-check.sh  (timeout 5)"
-  dry "  PostToolUse   Edit|Write           → $HOOK_DIR/verify-reminder.sh           (timeout 3)"
-  dry "  PostToolUse   Bash                 → $HOOK_DIR/post-ship-detect.sh          (timeout 5)"
   dry "  Stop          (no matcher)         → $HOOK_DIR/session-lifecycle.sh --unlock (timeout 3)"
+  dry "  (optional · only when GitNexus plugin detected)"
+  dry "  PostToolUse   Bash                 → $HOOK_DIR/optional/gitnexus/post-ship-detect.sh (timeout 5)"
   REGISTER_OK=1
 else
 
@@ -904,12 +918,12 @@ if command -v jq >/dev/null 2>&1; then
     --arg sul "$HOOK_DIR/session-lifecycle.sh --unlock" \
     --arg old_slk "$HOOK_DIR/session-lock.sh" \
     --arg old_sul "$HOOK_DIR/session-unlock.sh" \
+    --arg old_ver "$HOOK_DIR/verify-reminder.sh" \
+    --arg old_shp_root "$HOOK_DIR/post-ship-detect.sh" \
     --arg gate "$HOOK_DIR/gate-reminder.sh" \
     --arg pre "$HOOK_DIR/precommit-gate.sh" \
     --arg bsc "$HOOK_DIR/block-subagent-commit.sh" \
-    --arg coh "$HOOK_DIR/cohesion-contract-check.sh" \
-    --arg ver "$HOOK_DIR/verify-reminder.sh" \
-    --arg shp "$HOOK_DIR/post-ship-detect.sh" '
+    --arg coh "$HOOK_DIR/cohesion-contract-check.sh" '
     # Helper: strip command from ALL matcher groups in event (handles
     # matcher-rename across versions, e.g. "startup" → "startup|resume").
     # Returns array with cmd removed everywhere, empty groups dropped.
@@ -960,18 +974,19 @@ if command -v jq >/dev/null 2>&1; then
       );
 
     .hooks = (.hooks // {})
-    # Migrate: strip the pre-PR-5 session-lock.sh / session-unlock.sh
-    # commands before upserting the new session-lifecycle.sh entries.
+    # Migrate: strip pre-PR-5 session-lock / session-unlock and pre-PR-6
+    # verify-reminder / root post-ship-detect commands before upserting.
+    # PR 6 deletes verify-reminder + moves post-ship-detect to optional/gitnexus/.
     | .hooks.SessionStart = (strip_cmd((.hooks.SessionStart // []); $old_slk))
     | .hooks.Stop = (strip_cmd((.hooks.Stop // []); $old_sul))
+    | .hooks.PostToolUse = (strip_cmd((.hooks.PostToolUse // []); $old_ver))
+    | .hooks.PostToolUse = (strip_cmd((.hooks.PostToolUse // []); $old_shp_root))
     | .hooks.SessionStart = upsert_cmd((.hooks.SessionStart // []); "startup|resume"; $ctx; 5)
     | .hooks.SessionStart = upsert_cmd((.hooks.SessionStart // []); "startup|resume"; $slk; 3)
     | .hooks.PreToolUse = upsert_cmd((.hooks.PreToolUse // []); "Edit|Write|MultiEdit"; $gate; 3)
     | .hooks.PreToolUse = upsert_cmd((.hooks.PreToolUse // []); "Bash"; $pre; 5)
     | .hooks.PreToolUse = upsert_cmd((.hooks.PreToolUse // []); "Bash"; $bsc; 3)
     | .hooks.PreToolUse = upsert_cmd((.hooks.PreToolUse // []); "Agent"; $coh; 5)
-    | .hooks.PostToolUse = upsert_cmd((.hooks.PostToolUse // []); "Edit|Write"; $ver; 3)
-    | .hooks.PostToolUse = upsert_cmd((.hooks.PostToolUse // []); "Bash"; $shp; 5)
     | .hooks.Stop = upsert_cmd((.hooks.Stop // []); ""; $sul; 3)
   ' "$SETTINGS_FILE" > "$TMP_FILE" 2>/dev/null && [ -s "$TMP_FILE" ]; then
     mv "$TMP_FILE" "$SETTINGS_FILE"
@@ -1053,6 +1068,9 @@ def strip_event(event, cmd):
     hooks[event] = [g for g in arr if g.get("hooks")]
 strip_event("SessionStart", os.path.join(hook_dir, "session-lock.sh"))
 strip_event("Stop", os.path.join(hook_dir, "session-unlock.sh"))
+# PR 6: verify-reminder deleted; root post-ship-detect moved to optional/gitnexus/.
+strip_event("PostToolUse", os.path.join(hook_dir, "verify-reminder.sh"))
+strip_event("PostToolUse", os.path.join(hook_dir, "post-ship-detect.sh"))
 
 life = os.path.join(hook_dir, "session-lifecycle.sh")
 upsert("SessionStart", "startup|resume", os.path.join(hook_dir, "project-context-loader.sh"), 5)
@@ -1061,8 +1079,6 @@ upsert("PreToolUse", "Edit|Write|MultiEdit", os.path.join(hook_dir, "gate-remind
 upsert("PreToolUse", "Bash", os.path.join(hook_dir, "precommit-gate.sh"), 5)
 upsert("PreToolUse", "Bash", os.path.join(hook_dir, "block-subagent-commit.sh"), 3)
 upsert("PreToolUse", "Agent", os.path.join(hook_dir, "cohesion-contract-check.sh"), 5)
-upsert("PostToolUse", "Edit|Write", os.path.join(hook_dir, "verify-reminder.sh"), 3)
-upsert("PostToolUse", "Bash", os.path.join(hook_dir, "post-ship-detect.sh"), 5)
 upsert("Stop", None, f"{life} --unlock", 3)
 
 with open(path, "w") as f:
@@ -1076,21 +1092,59 @@ PY
 fi
 
 if [ "$REGISTER_OK" -eq 1 ]; then
-  ok "Hooks registered in settings.json (2x SessionStart + 4x PreToolUse + 2x PostToolUse + 1x Stop)"
+  ok "Hooks registered in settings.json (2x SessionStart + 4x PreToolUse + 1x Stop = 7 core entries)"
 else
   warn "Could not auto-register hooks — install jq or python3, or edit $SETTINGS_FILE manually"
-  warn "  Hooks shipped: project-context-loader.sh + session-lifecycle.sh --lock (SessionStart), gate-reminder.sh (PreToolUse Edit|Write|MultiEdit), precommit-gate.sh + block-subagent-commit.sh (PreToolUse Bash), cohesion-contract-check.sh (PreToolUse Agent), verify-reminder.sh (PostToolUse Edit|Write), post-ship-detect.sh (PostToolUse Bash), session-lifecycle.sh --unlock (Stop)"
+  warn "  Hooks shipped: project-context-loader.sh + session-lifecycle.sh --lock (SessionStart), gate-reminder.sh (PreToolUse Edit|Write|MultiEdit), precommit-gate.sh + block-subagent-commit.sh (PreToolUse Bash), cohesion-contract-check.sh (PreToolUse Agent), session-lifecycle.sh --unlock (Stop). Optional GitNexus hooks at hooks/optional/gitnexus/ register only when the GitNexus plugin is detected."
 fi
 
 fi  # end DRY_RUN gate around settings.json registration
 
+# ─── Optional GitNexus integration hooks ─────────────────────────────────
+# post-ship-detect.sh (auto-reindex after big merges) and gitnexus-wrap.sh
+# (wrap plugin's stale-notice hook) only register when the GitNexus plugin
+# is installed in this Claude home. The scripts ship in
+# hooks/optional/gitnexus/ regardless so users can audit them; registration
+# is the conditional surface.
+GITNEXUS_PLUGIN_HOOK="$TARGET/hooks/gitnexus/gitnexus-hook.cjs"
+GITNEXUS_WRAP="$HOOK_DIR/optional/gitnexus/gitnexus-wrap.sh"
+GITNEXUS_POST_SHIP="$HOOK_DIR/optional/gitnexus/post-ship-detect.sh"
+
+if [ "$DRY_RUN" -eq 0 ] && [ -f "$GITNEXUS_PLUGIN_HOOK" ] && [ -f "$GITNEXUS_POST_SHIP" ] && command -v python3 >/dev/null 2>&1; then
+  step "Registering optional GitNexus hooks (plugin detected)"
+  python3 - "$SETTINGS_FILE" "$GITNEXUS_POST_SHIP" <<'PY' 2>/dev/null && \
+    ok "GitNexus post-ship-detect registered (PostToolUse Bash)"
+import json, sys
+path, cmd = sys.argv[1], sys.argv[2]
+try:
+    with open(path) as f:
+        data = json.load(f)
+except Exception:
+    data = {}
+if not isinstance(data, dict):
+    data = {}
+hooks = data.setdefault("hooks", {})
+arr = hooks.setdefault("PostToolUse", [])
+# Strip + re-add (idempotent).
+for g in arr:
+    g["hooks"] = [h for h in g.get("hooks", []) if h.get("command") != cmd]
+arr[:] = [g for g in arr if g.get("hooks")]
+group = next((g for g in arr if g.get("matcher") == "Bash"), None)
+if group is None:
+    group = {"matcher": "Bash", "hooks": []}
+    arr.append(group)
+group["hooks"].append({"type": "command", "command": cmd, "timeout": 5})
+with open(path, "w") as f:
+    json.dump(data, f, indent=2)
+    f.write("\n")
+PY
+fi
+
 # ─── Patch gitnexus plugin registration → use rolepod wrapper ────────────
 # When gitnexus plugin is installed, swap its bare `node .../gitnexus-hook.cjs`
-# registration for `bash .../gitnexus-wrap.sh` so stale-index notices are
-# suppressed + auto-reindex fires in background (once/day/repo). Wrapper
-# forwards stdin/stdout transparently otherwise. Idempotent.
-GITNEXUS_PLUGIN_HOOK="$TARGET/hooks/gitnexus/gitnexus-hook.cjs"
-GITNEXUS_WRAP="$HOOK_DIR/gitnexus-wrap.sh"
+# registration for `bash .../optional/gitnexus/gitnexus-wrap.sh` so stale-index
+# notices are suppressed + auto-reindex fires in background (once/day/repo).
+# Wrapper forwards stdin/stdout transparently otherwise. Idempotent.
 if [ "$DRY_RUN" -eq 0 ] && [ -f "$GITNEXUS_PLUGIN_HOOK" ] && [ -f "$GITNEXUS_WRAP" ] && command -v python3 >/dev/null 2>&1; then
   step "Patching gitnexus hook registration → rolepod wrapper"
   if python3 - "$SETTINGS_FILE" "$GITNEXUS_PLUGIN_HOOK" "$GITNEXUS_WRAP" <<'PY'
@@ -1140,7 +1194,8 @@ if [ "$DRY_RUN" -eq 0 ]; then
     CLAUDE.md CHEATSHEET.md \
     agents/qa-tester.md agents/system-architect.md \
     rules/INDEX.md rules/always-on/agent-protocol.md rules/always-on/verify-first.md rules/code/code-quality.md rules/test/testing.md \
-    hooks/verify-reminder.sh hooks/project-context-loader.sh hooks/gate-reminder.sh hooks/precommit-gate.sh \
+    hooks/session-lifecycle.sh hooks/project-context-loader.sh hooks/gate-reminder.sh hooks/precommit-gate.sh \
+    hooks/block-subagent-commit.sh hooks/cohesion-contract-check.sh \
     skills/using-rolepod/SKILL.md skills/debug-issue/SKILL.md skills/check-work/SKILL.md \
     .claude-plugin/plugin.json
   do

@@ -84,15 +84,18 @@ if ./install.sh --target=claude > "$TMP/claude.log" 2>&1; then
     echo "  ✗ stale legacy skill survived cleanup: systematic-debugging"
     FAIL=$((FAIL+1))
   fi
-  # Verify Phase 1-3 hooks present in settings.json.
-  for hook in project-context-loader gate-reminder precommit-gate block-subagent-commit cohesion-contract-check verify-reminder post-ship-detect; do
+  # Verify 7 core hook entries present in settings.json (PR 6 layout).
+  # verify-reminder was removed (PR 6); post-ship-detect + gitnexus-wrap
+  # moved to hooks/optional/gitnexus/ and only register when the GitNexus
+  # plugin is detected at install time (not present in this temp install).
+  for hook in project-context-loader gate-reminder precommit-gate block-subagent-commit cohesion-contract-check session-lifecycle; do
     if ! grep -q "$hook" "$ROLEPOD_TARGET/settings.json"; then
       echo "  ✗ hook not registered in settings.json: $hook"
       FAIL=$((FAIL+1))
     fi
   done
   if [ "$FAIL" -eq 0 ]; then
-    echo "  ✓ Claude global: 9 paths + Core 10 skills + stale legacy cleanup + 7 hooks registered"
+    echo "  ✓ Claude global: 9 paths + Core 10 skills + stale legacy cleanup + 7 core hook entries registered (GitNexus add-on skipped — plugin not present)"
     PASS=$((PASS+1))
   fi
 else

@@ -2,8 +2,8 @@
 # PreToolUse(Agent) — enforce cohesion contract before parallel Agent spawn.
 #
 # Real-world failure: Lead spawned 2 parallel engineering agents on shared
-# API contract without writing a contract.md first. The skill
-# `parallel-contract-orchestration` exists but nothing forces Lead to use
+# API contract without writing a contract.md first. The Core 10 `write-plan`
+# skill owns the cohesion-contract step but nothing forces Lead to use
 # it. This hook makes the trigger structural.
 #
 # Logic:
@@ -75,7 +75,7 @@ tp = d.get('transcript_path') or ''
 if not tp or not os.path.isfile(tp):
     print('no'); sys.exit(0)
 
-pat = re.compile(r'(^|/)(contract|cohesion|SPEC|spec)\.(md|markdown)\$|(^|/)specs/.+\.md\$|(^|/)contracts/.+\.md\$', re.IGNORECASE)
+pat = re.compile(r'(^|/)(contract|cohesion|SPEC|spec)\.(md|markdown)$|(^|/)specs/.+\.md$|(^|/)contracts/.+\.md$', re.IGNORECASE)
 EDIT_TOOLS = {'Edit', 'Write', 'MultiEdit', 'NotebookEdit'}
 
 try:
@@ -115,7 +115,7 @@ print('no')
 
 # No contract + parallel Agent spawn detected → block (or warn in soft mode).
 REASON="cohesion-contract gate: about to spawn parallel Agent ('$SUBAGENT') with $RECENT_AGENTS recent Agent spawn(s) in session and NO contract artifact written. "
-REASON+="Skill \`parallel-contract-orchestration\` requires a cohesion contract BEFORE multi-agent fan-out — write contract.md (or SPEC.md) defining: shared interfaces, RED tests, integration points, who owns each path. Then re-spawn. "
+REASON+="The Core 10 \`write-plan\` skill requires a cohesion contract BEFORE multi-agent fan-out — write contract.md (or SPEC.md / cohesion.md / specs/<name>.md / contracts/<name>.md) defining: shared interfaces, RED tests, integration points, who owns each path. Then re-spawn. "
 REASON+="Single-domain / read-only spawn? Pass ROLEPOD_NO_CONTRACT=1 in env to bypass."
 
 if [ "$SOFT_MODE" -eq 1 ]; then
