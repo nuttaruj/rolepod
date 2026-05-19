@@ -28,8 +28,8 @@ check "debug-issue covers failing-test step" "grep -qi 'failing test\|regression
 check "debug-issue covers minimal-fix expectation" "grep -qi 'minimal fix\|smallest fix\|smallest change' core/skills/debug-issue/SKILL.md"
 check "debug-issue covers verify step (regression-clean)" "grep -qi 'verify\|regression-clean\|symptom: gone' core/skills/debug-issue/SKILL.md"
 
-# Router routes bug intent through phase model
-check "using-rolepod router covers bug-fix trigger" "grep -qE 'fix.*bug|failing test|broken|debug' core/skills/using-rolepod/SKILL.md"
+# Router routes bug intent through the canonical Core 10 skill
+check "using-rolepod router sends bug intent → debug-issue" "grep -qE 'fix bug.*debug-issue|failing test.*debug-issue|debug-issue.*failing test' core/skills/using-rolepod/SKILL.md"
 
 # Tier 3 shims redirect legacy triggers to debug-issue
 check "systematic-debugging shim redirects to debug-issue" "grep -q '^redirect_to: debug-issue' core/skills/systematic-debugging/SKILL.md"

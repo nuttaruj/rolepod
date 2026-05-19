@@ -11,7 +11,7 @@
 | Claude v2.1.32+ + `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` | **TEAMMATE** | Real multi-process teammates (this doc) |
 | Claude v2.1.32+ + env flag unset | **FALLBACK** | Lead-orchestrated Subagent + Task with cohesion contract (single-process). Lead announces fallback briefly + how to enable real teammates |
 | Claude < v2.1.32 | **FAIL-FAST** | Upgrade required — teammate API doesn't exist; no fallback can match the contract |
-| Codex / Gemini | not installed | `/rolepod-team` not shipped to those CLIs. Use natural-language Subagent dispatch via `team-routing` skill |
+| Codex / Gemini | not installed | `/rolepod-team` not shipped to those CLIs. Use natural-language Subagent dispatch through `write-plan` agent routing |
 
 To enable teammate mode:
 

@@ -151,7 +151,7 @@ After install, restart the CLI you targeted so hooks register.
 >
 > Per-phase team commands (`/team-define`, `/team-build`, etc.) removed — they were subagent recipes that Lead routinely pattern-matched into regular dispatch.
 >
-> Codex / Gemini have no `/rolepod-team` command — use natural-language Subagent dispatch via `team-routing` skill. See [docs/agent-teams.md](docs/agent-teams.md).
+> Codex / Gemini have no `/rolepod-team` command — use natural-language Subagent dispatch through `write-plan` agent routing. See [docs/agent-teams.md](docs/agent-teams.md).
 
 > **Note:** Adapter conformance verified by static checks (`bash -n`, `python3 -m json.tool`, `tomllib.load`). Runtime status per CLI — see table.
 

@@ -29,8 +29,10 @@ check "write-plan covers cohesion contract before parallel spawn" "grep -qiE 'co
 check "implement-plan describes bounded delegation" "grep -qiE 'bounded delegation|bounded scope|task scope' core/skills/implement-plan/SKILL.md"
 check "implement-plan describes fresh-context reviewer pattern" "grep -qiE 'fresh.context|fresh reviewer|two-stage' core/skills/implement-plan/SKILL.md"
 
-# Router routes vague feature into Define phase
-check "using-rolepod routes vague feature → Define phase" "grep -qE 'build.*add.*create|vague target' core/skills/using-rolepod/SKILL.md"
+# Router routes vague feature into the canonical Core 10 path
+check "using-rolepod routes vague feature → write-spec" "grep -qE 'vague target.*write-spec|write-spec.*vague target' core/skills/using-rolepod/SKILL.md"
+check "using-rolepod routes spec-backed feature → write-plan" "grep -qE 'spec exists.*write-plan|write-plan.*spec exists' core/skills/using-rolepod/SKILL.md"
+check "using-rolepod routes plan execution → implement-plan" "grep -qE 'implement plan.*implement-plan|implement-plan.*execute plan' core/skills/using-rolepod/SKILL.md"
 
 # Legacy shims still route to Core 10 targets
 check "spec-driven-development shim redirects to write-spec" "grep -q '^redirect_to: write-spec' core/skills/spec-driven-development/SKILL.md"

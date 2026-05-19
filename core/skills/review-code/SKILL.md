@@ -55,7 +55,7 @@ Skip when:
 | Architecture / cross-module | `system-architect` |
 | Generic quality / DRY / smell | `universal-reviewer` |
 
-When external reviewer CLIs are installed (Codex / Gemini), route per `reviewer-flow` knowledge: Codex for correctness + security adversarial, Gemini for breadth and cross-file. qa-tester is the universal floor and the fallback when externals fail.
+When external reviewer CLIs are installed (Codex / Gemini), route per this skill's reviewer matrix: Codex for correctness + security adversarial, Gemini for breadth and cross-file. qa-tester is the universal floor and the fallback when externals fail.
 
 ### 2. Multi-axis read
 

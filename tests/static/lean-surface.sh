@@ -127,6 +127,48 @@ for s in "${CORE_SKILLS[@]}"; do
   fi
 done
 
+# Tier 0 router must point at canonical Core 10 skills, not at Tier 3
+# compatibility shims. This catches the subtle failure mode where the
+# visible surface is lean but the first-loaded router still sends Lead
+# through legacy skill names.
+ROUTER="core/skills/using-rolepod/SKILL.md"
+for s in "${CORE_SKILLS[@]}"; do
+  if grep -q "\`$s\`" "$ROUTER"; then
+    echo "  ✓ using-rolepod router references canonical core skill: $s"
+  else
+    echo "  ✗ using-rolepod router missing canonical core skill: $s"; fail=$((fail+1))
+  fi
+done
+LEGACY_ROUTER_RX='(spec-driven-development|planning-and-task-breakdown|systematic-debugging|team-routing|parallel-contract-orchestration|subagent-task-execution|post-change-verify|code-review-and-quality|pre-merge-gate|finishing-a-development-branch|code-simplification|frontend-ui-engineering|api-and-interface-design|security-and-hardening|documentation-and-adrs|test-driven-development|reviewer-flow|webapp-testing)'
+if grep -En "$LEGACY_ROUTER_RX" "$ROUTER" >/tmp/rolepod-router-legacy-hits.txt 2>/dev/null; then
+  echo "  ✗ using-rolepod active router still references legacy shim names:"
+  sed 's/^/      /' /tmp/rolepod-router-legacy-hits.txt
+  fail=$((fail+1))
+else
+  echo "  ✓ using-rolepod router uses Core 10 names only"
+fi
+rm -f /tmp/rolepod-router-legacy-hits.txt
+
+# Active docs and generated lean fragments must name Core 10 routing.
+# Legacy names are allowed in docs/skills.md and audit docs, but not in
+# the install/readme surfaces that teach users what to invoke.
+ACTIVE_DOCS=(README.md CHEATSHEET.md CLAUDE.md AGENTS.md GEMINI.md adapters/claude/CLAUDE.md.tmpl adapters/codex/AGENTS.md.tmpl adapters/gemini/GEMINI.md.tmpl build/rendered/claude/CLAUDE.md build/rendered/codex/AGENTS.md build/rendered/gemini/GEMINI.md docs/agents.md docs/cli-support.md core/fragments/team-trigger.md core/fragments/agent-roster-lean.md core/fragments/model-tier-policy.md)
+ACTIVE_LEGACY_RX='(team-routing|parallel-contract-orchestration|pre-merge-gate|post-change-verify|code-review-and-quality|spec-driven-development|planning-and-task-breakdown|systematic-debugging|finishing-a-development-branch|reviewer-flow)'
+ACTIVE_LEGACY_HITS=""
+for f in "${ACTIVE_DOCS[@]}"; do
+  [ -f "$f" ] || continue
+  hits=$(grep -En "$ACTIVE_LEGACY_RX" "$f" 2>/dev/null || true)
+  [ -z "$hits" ] || ACTIVE_LEGACY_HITS="${ACTIVE_LEGACY_HITS}${hits}
+"
+done
+if [ -z "$ACTIVE_LEGACY_HITS" ]; then
+  echo "  ✓ active docs route through Core 10 names only"
+else
+  echo "  ✗ active docs still route through legacy shim names:"
+  printf '%s' "$ACTIVE_LEGACY_HITS" | sed 's/^/      /'
+  fail=$((fail+1))
+fi
+
 # Core skills must not contain hard-dependency language. Forbidden:
 # "Always delegate to <agent>", "Requires <skill>", "Load <other> before"
 # (with skill-name pattern), "must use agent".

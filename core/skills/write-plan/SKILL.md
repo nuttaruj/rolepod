@@ -114,7 +114,7 @@ For multi-session work, save to `docs/plans/<feature>.md`. For one-session work,
 
 ## Full Rolepod enhancement
 
-Full Rolepod improves this phase by adding `team-routing` heuristics, cohesion contracts as a first-class artifact, model-tier / cost-aware routing across the 18 agents, and tests that prove every shipped plan named a test per task.
+Full Rolepod improves this phase by adding agent-routing heuristics, cohesion contracts as a first-class artifact, model-tier / cost-aware routing across the 18 agents, and tests that prove every shipped plan named a test per task.
 
 ## Next phase
 

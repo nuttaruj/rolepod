@@ -158,7 +158,7 @@ Lead = Opus → skip Advisor.
 | One-shot | `claude -p "..."` | `codex exec "..."` | `gemini -p "..."` |
 | Rolepod commands | `/rolepod` (skill) + `/rolepod-team` (slash) | `/rolepod` (skill) | `/rolepod` (skill) |
 
-> **Agent team (Claude only).** `/rolepod-team` spawns a real Claude Code agent team — multi-process teammates with shared task list + mailbox per [official spec](https://code.claude.com/docs/en/agent-teams). Requires `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` + v2.1.32+. Codex/Gemini have no teammate equivalent — use default Subagent dispatch via `team-routing` skill. See [docs/agent-teams.md](docs/agent-teams.md).
+> **Agent team (Claude only).** `/rolepod-team` spawns a real Claude Code agent team — multi-process teammates with shared task list + mailbox per [official spec](https://code.claude.com/docs/en/agent-teams). Requires `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` + v2.1.32+. Codex/Gemini have no teammate equivalent — use default Subagent dispatch through `write-plan` agent routing. See [docs/agent-teams.md](docs/agent-teams.md).
 
 ## Skill picker — Core 10 quick lookup
 

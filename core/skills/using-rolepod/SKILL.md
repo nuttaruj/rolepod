@@ -47,12 +47,12 @@ Even if the task looks like a one-line fix, a typo, or a tiny config change — 
 
 **Phase-by-phase under force-full mode:**
 
-1. **Define — `spec-driven-development`** — Phase 0 discovery dialogue (explore context, ask clarifying questions one at a time via native question UI or plain-text fallback, propose 2-3 approaches, incremental section approval, spec self-review). Pick persistence tier (in-chat brief vs `docs/specs/<feature>.md`) per the skill's HARD-GATE table.
-2. **Plan — `planning-and-task-breakdown`** — break approved spec into bite-sized steps (2-5 min each, single observable action). TDD canonical: `write failing test → run red → implement → run green → commit`. If multi-agent, fire `parallel-contract-orchestration` for the cohesion contract.
-3. **Build** — execute task-by-task. Subagent delegation goes through `subagent-task-execution` (implementer → spec-compliance reviewer → code-quality reviewer). Bug-flavored tasks route through `systematic-debugging`. Apply S1-S5 / T1-T6 / F1-F5 per commit.
-4. **Verify — `post-change-verify`** — Iron Law: no completion claim without fresh verification evidence in this message.
-5. **Review — `code-review-and-quality`** + `reviewer-flow` — route to qa-tester floor + adversarial reviewers (Codex / Gemini / security-engineer / universal-reviewer) for high-risk surface. For force-full mode, dispatch reviewers **regardless of path-keyword match** (manual risk escalation).
-6. **Ship — `pre-merge-gate` → `finishing-a-development-branch`** — S+T+F+P gates, then 4-option branch finish menu (merge / open PR / keep / discard).
+1. **Define — `write-spec`** — Phase 0 discovery dialogue (explore context, ask clarifying questions one at a time via native question UI or plain-text fallback, propose 2-3 approaches, incremental section approval, spec self-review). Pick persistence tier (in-chat brief vs `docs/specs/<feature>.md`) per the skill's hard-gate table.
+2. **Plan — `write-plan`** — break approved spec into bite-sized steps (2-5 min each, single observable action). TDD canonical: `write failing test → run red → implement → run green → commit`. If multi-agent, write the cohesion contract inside the plan before spawning.
+3. **Build — `implement-plan`** — execute task-by-task. Delegated tasks use bounded scope, explicit file ownership, and fresh-review handoff. Bug-flavored tasks route through `debug-issue`. Apply S1-S5 / T1-T6 / F1-F5 per commit.
+4. **Verify — `check-work`** — Iron Law: no completion claim without fresh verification evidence in this message.
+5. **Review — `review-code`** — route to qa-tester floor + adversarial reviewers (Codex / Gemini / security-engineer / universal-reviewer) for high-risk surface. For force-full mode, dispatch reviewers **regardless of path-keyword match** (manual risk escalation).
+6. **Ship — `finish-work`** — S+T+F+P gates, required CI lane checks, then 4-option branch finish menu (merge / open PR / keep / discard).
 
 ### Careful-mode rigor (default-on in force-full mode)
 
@@ -94,20 +94,21 @@ Match the user intent to the FIRST skill that fires. The skill itself decides wh
 
 | User intent (verbs / phrases) | Phase | First skill fires | Model tier |
 |---|---|---|---|
-| "build / add / create / make / design" + vague target | **Define** | `spec-driven-development` | cheap (PM/spec) |
-| "build X to spec" + spec exists | **Plan** | `planning-and-task-breakdown` | cheap–balanced |
-| "execute plan / work the plan / implement plan.md" | **Plan→Build** | `planning-and-task-breakdown` → `subagent-task-execution` | balanced |
-| "fix bug / failing test / broken / regression / why does X fail" | **Build (bug)** | `systematic-debugging` → `test-driven-development` | balanced |
-| "refactor / simplify / clean up" | **Build (refactor)** | `code-simplification` → `post-change-verify` | balanced |
-| "use agents / multi-agent / in parallel / parallel-safe" | **Plan** | `team-routing` → `parallel-contract-orchestration` | balanced |
-| UI / browser / frontend / dashboard work | **Build (UI)** | `frontend-ui-engineering` → `webapp-testing` | balanced |
-| **security / auth / billing / token / payment / migration** | **Build (high-risk)** | `security-and-hardening` → `test-driven-development` → `code-review-and-quality` | **strong** |
-| architecture decision (DB schema / API contract / module split) | **Plan** | `api-and-interface-design` → `system-architect` agent | **strong** |
-| "is this done / fixed / does it work / verify" | **Verify** | `post-change-verify` | balanced |
-| "review / check this / look at the diff" | **Review** | `code-review-and-quality` (route via `reviewer-flow` for high-risk) | **adversarial** |
+| "build / add / create / make / design" + vague target | **Define** | `write-spec` | cheap (PM/spec) |
+| "build X to spec" + spec exists | **Plan** | `write-plan` | cheap–balanced |
+| "execute plan / work the plan / implement plan.md" | **Plan→Build** | `write-plan` → `implement-plan` | balanced |
+| "fix bug / failing test / broken / regression / why does X fail" | **Build (bug)** | `debug-issue` | balanced |
+| "refactor / simplify / clean up" | **Build (refactor)** | `simplify-code` → `check-work` | balanced |
+| "use agents / multi-agent / in parallel / parallel-safe" | **Plan** | `write-plan` (agent routing + cohesion contract) | balanced |
+| UI / browser / frontend / dashboard work | **Build (UI)** | `implement-plan` → `check-work` | balanced |
+| **security / auth / billing / token / payment / migration** | **Build (high-risk)** | `implement-plan` → `review-code` | **strong** |
+| architecture decision (DB schema / API contract / module split) | **Plan** | `write-plan` → `system-architect` agent when available | **strong** |
+| "is this done / fixed / does it work / verify" | **Verify** | `check-work` | balanced |
+| "review / check this / look at the diff" | **Review** | `review-code` | **adversarial** |
 | "audit / full audit / review whole repo / find all X / sweep / map" | **Review (repo-wide)** | **scope-then-spawn** (see below) | balanced |
-| "ship / merge / push / PR / ready / go live" | **Ship** | `pre-merge-gate` | **adversarial** (final review) |
-| "document / explain the choice / write ADR / runbook" | (cross-cut) | `documentation-and-adrs` | cheap |
+| "ship / merge / push / PR / ready / go live" | **Ship** | `finish-work` | **adversarial** (final review) |
+| "document / explain the choice / write ADR / runbook" | (cross-cut) | `implement-plan` | cheap |
+| "context too large / compact / resume / handoff / manage session" | (cross-cut) | `manage-context` | cheap |
 
 If no row matches: ask the user what phase the task is in. Don't pattern-match yourself into Build.
 
@@ -157,12 +158,12 @@ Router fires the **first** skill per phase. Phase exits only when its **exit evi
 
 | Phase | Required first skill | Exit evidence | Next allowed |
 |---|---|---|---|
-| **Define** | `spec-driven-development` | written spec OR approved one-line design (≤5-line task) OR explicit "skip spec" | Plan |
-| **Plan** | `planning-and-task-breakdown` (+ `team-routing` + `parallel-contract-orchestration` if multi-agent) | ordered task list with done-condition + verify command per task; dependencies marked | Build |
-| **Build** | `test-driven-development` (+ `subagent-task-execution` if delegated) (+ `systematic-debugging` for bug intent) | changed files + tests added (or explicit no-test justification) + red→green evidence | Verify |
-| **Verify** | `post-change-verify` | fresh command output / screenshot / curl / log evidence; OR explicit "verify impossible because X" risk note | Review (high-risk / multi-file) OR Ship (low-risk) |
-| **Review** | `code-review-and-quality` (+ `reviewer-flow` for high-risk routing → Codex / Gemini / security-engineer) | findings fixed OR rejected with line-anchored reason; no unresolved blocker | Ship |
-| **Ship** | `pre-merge-gate` then `finishing-a-development-branch` | S+T+F+P gates green (P = PR scope, one concern per PR); required CI lanes pass; user approval when policy requires; 4-option finish menu presented (merge / open PR / keep / discard) | **end** |
+| **Define** | `write-spec` | written spec OR approved one-line design (≤5-line task) OR explicit "skip spec" | Plan |
+| **Plan** | `write-plan` (+ agent routing + cohesion contract if multi-agent) | ordered task list with done-condition + verify command per task; dependencies marked | Build |
+| **Build** | `implement-plan` (+ `debug-issue` for bug intent) | changed files + tests added (or explicit no-test justification) + red→green evidence | Verify |
+| **Verify** | `check-work` | fresh command output / screenshot / curl / log evidence; OR explicit "verify impossible because X" risk note | Review (high-risk / multi-file) OR Ship (low-risk) |
+| **Review** | `review-code` | findings fixed OR rejected with line-anchored reason; no unresolved blocker | Ship |
+| **Ship** | `finish-work` | S+T+F+P gates green (P = PR scope, one concern per PR); required CI lanes pass; user approval when policy requires; 4-option finish menu presented (merge / open PR / keep / discard) | **end** |
 
 **Router decides the first move only.** Each downstream skill owns its own gates; using-rolepod doesn't re-explain them.
 
@@ -178,22 +179,22 @@ Skip a phase WHEN ALL true (state explicitly in response):
 
 ## Stop conditions
 
-- Coding before Define on ambiguous request → STOP, run `spec-driven-development`.
-- Claiming done before Verify → STOP, run `post-change-verify`.
-- 2nd parallel agent spawn without contract → STOP, run `parallel-contract-orchestration` (hook will block anyway).
+- Coding before Define on ambiguous request → STOP, run `write-spec`.
+- Claiming done before Verify → STOP, run `check-work`.
+- 2nd parallel agent spawn without contract → STOP, run `write-plan` and write the cohesion contract (hook will block anyway).
 - Sub-agent attempting `git commit` / `git push` / `gh pr merge` → blocked by `block-subagent-commit.sh`; Lead commits after reviewer pass.
 - High-risk path (auth/billing/migrations/crypto/payments) with 0 reviewer agents dispatched → STOP, dispatch qa-tester + (Codex / Gemini / security-engineer if available).
 - 3rd agent on same issue OR 3rd PR on same surface in one session → STOP, ask user (hard-stop rule).
-- Diff mixes 2+ unrelated concerns at push/merge time → STOP, split into separate PRs (`pre-merge-gate` P1-P4 gate).
+- Diff mixes 2+ unrelated concerns at push/merge time → STOP, split into separate PRs (`finish-work` P1-P4 gate).
 - SessionStart warning "Sibling Claude session(s) detected in this worktree" → STOP before any Edit/Write. Spawn isolated worktree first (`git worktree add ../<repo>-task-<ts> <branch> && cd`), continue work there. Override: `ROLEPOD_ALLOW_SHARED_WORKTREE=1` for intentional read-only review sessions.
 
 ## Finish ritual (Ship phase exit)
 
 When the user says "done" / "finished" / "complete" / "ready" — or when the task obviously reached a natural stopping point — fire **in order**:
 
-1. `post-change-verify` — produce concrete evidence the change works (test output / screenshot / curl).
-2. `code-review-and-quality` — if multi-file or high-risk, route via `reviewer-flow` to pick adversarial reviewers (Codex / Gemini / qa-tester) per their domain match.
-3. `finishing-a-development-branch` — present the 4-option decision menu so the user picks the next step explicitly:
+1. `check-work` — produce concrete evidence the change works (test output / screenshot / curl).
+2. `review-code` — if multi-file or high-risk, pick adversarial reviewers (Codex / Gemini / qa-tester) per their domain match.
+3. `finish-work` — present the 4-option decision menu so the user picks the next step explicitly:
    - **merge** to main
    - **open PR** (current branch)
    - **keep branch** open (still iterating)
@@ -212,7 +213,7 @@ Next step: <concrete action>
 
 Example — vague feature:
 ```
-Routing: Define → spec-driven-development
+Routing: Define → write-spec
 Reason: "build a React todo list" = vague target, no spec.
 Skipping: none.
 Next step: 4-question interview to pin acceptance criteria.
@@ -230,7 +231,7 @@ Example — done claim:
 ```
 Routing: Ship → finish ritual
 Reason: user said "is this done?"
-Skipping: none — runs post-change-verify → code-review-and-quality → finishing-a-development-branch.
+Skipping: none — runs check-work → review-code → finish-work.
 Next step: run tests, paste pass output, present 4-option menu.
 ```
 
@@ -240,7 +241,7 @@ Next step: run tests, paste pass output, present 4-option menu.
 |---|---|
 | "Simple task, skip the spine" | Trivial-answer-only skips are explicit. Coding 5+ lines = run the spine. |
 | "I already know what to build" | Even right answers without a spec drift mid-implementation. Write the 5-line spec; 30 seconds. |
-| "User just wants a fix" | They want a *correct* fix. systematic-debugging finds the root; symptom patches recur. |
+| "User just wants a fix" | They want a *correct* fix. `debug-issue` finds the root; symptom patches recur. |
 | "Tests are obvious, I'll add later" | Later never comes. TDD adds the test now or admits in writing it won't have one. |
 | "Solo work, no contract needed" | The moment a second agent (or future-you in a fresh session) touches the surface, contract pays off. |
 | "Reviewer takes too long" | Skip review = ship bugs. Codex/Gemini take ~30s for adversarial pass. |
@@ -248,11 +249,11 @@ Next step: run tests, paste pass output, present 4-option menu.
 ## Don't
 
 - Spawn specialist agents (frontend / backend / billing / etc.) before the phase is clear.
-- Use `pre-merge-gate` as a placeholder ("I'll add it later"). It's the last skill, fires only at Ship.
-- Replace `post-change-verify` with the agent's confidence ("looks right to me").
+- Use `finish-work` as a placeholder ("I'll add it later"). It's the last skill, fires only at Ship.
+- Replace `check-work` with the agent's confidence ("looks right to me").
 - Skip Define just because the user typed in a hurry. Ask 1-2 questions.
 - Treat this skill as documentation. It's a router — pick a row, fire the skill.
 
 ## Influence
 
-Sharpens the workflow spine that already exists in CLAUDE.md / AGENTS.md / GEMINI.md so that small models route the same way large ones do. Pairs with `team-routing` (specialist selection inside Build) and `pre-merge-gate` (final gate at Ship).
+Sharpens the workflow spine that already exists in CLAUDE.md / AGENTS.md / GEMINI.md so that small models route the same way large ones do. Pairs with `write-plan` for specialist selection and `finish-work` for the final gate.

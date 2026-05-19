@@ -4,7 +4,7 @@
 #   - gate-reminder.sh blocks on high-risk + no test edits
 #   - precommit-gate.sh escalates to HARD on high-risk + 0 tests in session
 #   - block-subagent-commit.sh denies sub-agent commits
-#   - security-engineer agent + skill security-and-hardening exist
+#   - security-engineer agent + Core 10 review-code skill exist
 #   - model-tier-policy.md marks security-engineer / billing-engineer as strong
 set -euo pipefail
 REPO_DIR="$(cd "$(dirname "$0")/../../.." && pwd)"
@@ -22,7 +22,9 @@ check "precommit-gate escalates on high-risk + 0 tests" "grep -q 'HIGH_RISK_EDIT
 check "block-subagent-commit hook exists" "[ -x hooks/block-subagent-commit.sh ]"
 check "hook checks agent_id field" "grep -q 'agent_id' hooks/block-subagent-commit.sh"
 check "session_state helper exists" "[ -f hooks/lib/session_state.py ]"
-check "security-and-hardening skill exists" "[ -f core/skills/security-and-hardening/SKILL.md ]"
+check "review-code skill exists" "[ -f core/skills/review-code/SKILL.md ]"
+check "security-and-hardening shim redirects to review-code" "grep -q '^redirect_to: review-code' core/skills/security-and-hardening/SKILL.md"
+check "using-rolepod routes high-risk work through review-code" "grep -qE 'security.*review-code|auth.*review-code|billing.*review-code|payment.*review-code|migration.*review-code' core/skills/using-rolepod/SKILL.md"
 check "security-engineer agent exists" "[ -f core/agents/security-engineer.md ]"
 check "billing-engineer at opus tier" "grep -q '^model: opus' adapters/claude/agent-frontmatter/billing-engineer.yml"
 check "security-engineer at opus tier" "grep -q '^model: opus' adapters/claude/agent-frontmatter/security-engineer.yml"
