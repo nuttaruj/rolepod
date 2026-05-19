@@ -11,7 +11,7 @@ Phase 2.3: rolepod ships for each supported CLI as a **native plugin / extension
 | Skills (`<plugin>/skills/<name>/SKILL.md`) | 44 native | 44 native | 44 native |
 | Subagents (parallel team) | full Task / SendMessage (18 agents) | 18 agents as Codex `agents/*.toml` (Lead-orchestrated) | 18 agents inlined in `GEMINI.md` (Lead-orchestrated) |
 | Hooks (auto reminders) | 9 hooks (6 context + 3 enforcement, 5 event classes) | 5 commands across 3 event classes (`SessionStart`/`PreToolUse`/`PostToolUse`) | 4 commands across 4 event classes (`SessionStart`/`BeforeTool`/`AfterTool`/`PreCompress`) |
-| Slash commands | full (e.g. `/rolepod`, `/ship`, `/review`, `/test`, `/plan`, `/spec`) | n/a (commands not in current Codex schema) | full (6 commands as `commands/*.toml`) |
+| Slash commands | `/rolepod-team` (slash) + `/rolepod` (skill explicit-invoke) | n/a (Codex slash schema — `/rolepod` reaches the skill via Codex skill-slash UI) | 5 native commands (`/spec`/`/plan`/`/review`/`/test`/`/ship`) + `/rolepod` via skill |
 | Plugin manifest | `.claude-plugin/plugin.json` (spec-conformant, 598B) | `.codex-plugin/plugin.json` (mirrors caveman schema, 1.6KB) | `gemini-extension.json` (extension schema, 551B) |
 | MemPalace / GitNexus integration | hook-level integration (MemPalace + GitNexus wrapper when installed) | plugin/entry-doc integration; hooks require `plugin_hooks` opt-in | extension/entry-doc integration; Claude-only enforcement hooks do not apply |
 | MCP server config | global + per-plugin | global (`codex mcp`) | global (`gemini mcp`) |
