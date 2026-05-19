@@ -132,7 +132,7 @@ curl -fsSL https://raw.githubusercontent.com/nuttaruj/rolepod/main/bootstrap.sh 
 
 **Codex hooks require explicit opt-in.** Fresh Codex install has `plugin_hooks` flagged `under development, false` — rolepod registers `hooks/hooks.json` in the plugin but Codex won't fire them until the user enables it: `codex features enable plugin_hooks`. Agents + skills load regardless. Without the opt-in, gate enforcement on Codex relies entirely on AGENTS.md (Tier 1) — hooks are inert.
 
-Shipped hooks auto-register in each CLI's native settings (idempotent). If MemPalace is detected on `$PATH`, its `SessionStart` / `Stop` / `PreCompact` hooks are also auto-registered (self-guarded — silently no-ops if uninstalled later). For other add-ons see [Recommended add-ons](#recommended-add-ons).
+Shipped hooks auto-register in each CLI's native settings (idempotent). If MemPalace is detected on `$PATH`, Claude gets its `SessionStart` / `Stop` / `PreCompact` hooks and Codex gets an optional `SessionStart` bridge in the plugin cache (self-guarded — silently no-ops if uninstalled later). Gemini remains manual / MCP-assisted until MemPalace ships a native Gemini harness. For other add-ons see [Recommended add-ons](#recommended-add-ons).
 
 After install, restart the CLI you targeted so hooks register.
 
@@ -266,19 +266,19 @@ Rolepod keeps **8 hook scripts**: **6 core** in `hooks/` (always active) and **2
 Per-CLI exposure:
 
 - **Claude:** copies all 8 scripts and registers 7 rolepod entries in `settings.json` by default — 2× `SessionStart`, 4× `PreToolUse`, 1× `Stop`. When the GitNexus plugin is detected at install time, an additional `PostToolUse Bash` entry registers `hooks/optional/gitnexus/post-ship-detect.sh` and `hooks/optional/gitnexus/gitnexus-wrap.sh` patches the plugin's bare hook (= 8 entries total in a GitNexus-enabled install).
-- **Codex:** ships 4 plugin command hooks — 3 core mirrors of root scripts (`project-context-loader.sh`, `gate-reminder.sh`, `precommit-gate.sh`) registered by default + 1 optional GitNexus mirror (`optional/gitnexus/post-ship-detect.sh`) that ships but is not auto-registered. Parity for the shared 3 core + 1 optional enforced by lean-surface. Claude-only hooks (`block-subagent-commit`, `cohesion-contract-check`, `session-lifecycle`, `gitnexus-wrap`) are not registered — Codex has no `Agent` or `Stop` event API and a different plugin model.
+- **Codex:** ships 5 plugin command hooks — 3 core mirrors of root scripts (`project-context-loader.sh`, `gate-reminder.sh`, `precommit-gate.sh`) registered by default + 1 optional GitNexus mirror (`optional/gitnexus/post-ship-detect.sh`) that ships but is not auto-registered + 1 optional MemPalace SessionStart bridge registered when `command -v mempalace` succeeds at install time. Claude-only hooks (`block-subagent-commit`, `cohesion-contract-check`, `session-lifecycle`, `gitnexus-wrap`) are not registered — Codex has no `Agent` or `Stop` event API and a different plugin model.
 - **Gemini:** ships 4 adapter command hooks: `session-start.sh`, `before-tool.sh`, `after-tool.sh`, `pre-compress.sh`.
 
 **Codex caveat:** hooks register via `hooks/hooks.json` inside the plugin but require `codex features enable plugin_hooks` (default flag: `under development, false`). Without the opt-in, rolepod's hooks are registered but inert — Tier 1 rules in AGENTS.md still drive gate compliance.
 
 | Event class | Claude | Codex | Gemini |
 |---|---|---|---|
-| Session start | `SessionStart` (`project-context-loader`, `session-lifecycle --lock`) | `SessionStart` (`project-context-loader`) | `SessionStart` (`session-start`) |
+| Session start | `SessionStart` (`project-context-loader`, `session-lifecycle --lock`) | `SessionStart` (`project-context-loader`, optional `mempalace/codex-session-start`) | `SessionStart` (`session-start`) |
 | Before tool | `PreToolUse` (`gate-reminder`, `precommit-gate`, `block-subagent-commit`, `cohesion-contract-check`) | `PreToolUse` (`gate-reminder`, `precommit-gate`) | `BeforeTool` (`before-tool`) |
 | After tool | `PostToolUse` (`optional/gitnexus/post-ship-detect` when GitNexus plugin detected) | _(optional)_ `PostToolUse` (`optional/gitnexus/post-ship-detect` — manual register) | `AfterTool` (`after-tool`) |
 | Stop / compact | `Stop` (`session-lifecycle --unlock`) | — | `PreCompress` (`pre-compress`) |
 
-External hooks integrate via plugins: MemPalace (Stop/SessionStart/PreCompact), GitNexus (PreToolUse/PostToolUse), `qa-pass-check.sh`.
+External hooks integrate via plugins: MemPalace (Claude Stop/SessionStart/PreCompact; Codex SessionStart bridge only), GitNexus (PreToolUse/PostToolUse), `qa-pass-check.sh`.
 
 ### Commands
 
@@ -317,14 +317,14 @@ External hooks integrate via plugins: MemPalace (Stop/SessionStart/PreCompact), 
 
 ```
 Session N
-  ↓ Stop hook (or equivalent per CLI)
-  ↓ MemPalace KG saves learnings
+  ↓ Stop hook (Claude) / manual capture (Codex + Gemini)
+  ↓ MemPalace KG saves load-bearing learnings
 
-Session N+1 (any time, any project, any CLI)
-  ↓ SessionStart hook → MemPalace recall
-  ↓ Lead starts task knowing past context
+Session N+1
+  ↓ SessionStart hook (Claude + Codex with plugin_hooks) / manual MCP recall (Gemini)
+  ↓ Lead starts task with past context
   ↓ Avoids re-deciding solved problems
-  ↓ Stop hook captures more learnings
+  ↓ Capture more learnings before ship / stop
 
 → Each session smarter than the last
 ```
@@ -337,7 +337,7 @@ Session N+1 (any time, any project, any CLI)
 |--------|-------|-----|---------|
 | **Anthropic auto memory** (Tier 1 — fallback) | per-project (git path) | Built into Claude Code v2.1.59+. Claude writes `~/.claude/projects/<project>/memory/MEMORY.md` on memorable events. First 200 lines / 25KB loaded every session. | No — default ON |
 | **Native agent memory** (Tier 2 — `memory:` frontmatter) | per-agent, `project` or `user` | Set in frontmatter; Claude Code parses directly | No — works out-of-box |
-| **MemPalace KG** (optional plugin) | cross-session graph | Stop captures → SessionStart recalls; powers self-improvement loop; works on all 3 CLIs | Yes — optional |
+| **MemPalace KG** (optional plugin) | cross-session graph | Claude: Stop captures + SessionStart recalls. Codex: SessionStart bridge when `plugin_hooks` is enabled; capture remains manual. Gemini: manual / MCP-assisted until native harness support. | Yes — optional |
 
 In rolepod: 15 agents use `memory: project` (codepaths / patterns / decisions scoped to repo); 3 use `memory: user` — `business-analyst` (pricing / ROI / competitor research generic), `ai-ml-engineer` (LLM API patterns + prompt caching idioms travel across projects), `growth-marketer` (SEO frameworks + copy formulas + conversion patterns reusable). `memory:` is a Claude primitive; Codex/Gemini achieve same scoping via per-agent TOML / inlined roster.
 
@@ -383,7 +383,7 @@ Cross-session memory so each session starts smarter.
 
 | Add-on | What rolepod auto-uses it for | Fallback when missing | Install |
 |---|---|---|---|
-| **[MemPalace](https://github.com/mempalace/mempalace)** | KG of past decisions, codepaths, architectural choices. `install.sh` auto-registers `SessionStart` / `Stop` / `PreCompact` hooks (self-guarded — silently no-ops if uninstalled). Lead queries via `mempalace_kg_query` before re-deciding | Anthropic auto memory (Tier 1) + per-agent `memory:` frontmatter still work — just no cross-session KG recall | `pip install mempalace` then `mempalace init` |
+| **[MemPalace](https://github.com/mempalace/mempalace)** | KG of past decisions, codepaths, architectural choices. `install.sh` auto-registers Claude `SessionStart` / `Stop` / `PreCompact` hooks and Codex's optional `SessionStart` bridge when MemPalace is on `$PATH`. Lead queries via `mempalace_kg_query` before re-deciding | Anthropic auto memory (Tier 1) + per-agent `memory:` frontmatter still work — just no cross-session KG recall | `pip install mempalace` then `mempalace init` |
 
 ### Design
 
@@ -424,7 +424,7 @@ cd /your/new/project
 claude   # or: codex, or: gemini
 ```
 
-Auto-detects git repo + recent commits, project type (next.config / pyproject.toml / etc.), past sessions (MemPalace recall, empty first time). Bootstrap mode active until first session captured. Same on all 3 CLIs.
+Auto-detects git repo + recent commits and project type (next.config / pyproject.toml / etc.). Claude also gets MemPalace recall when installed; Codex gets the optional SessionStart bridge when MemPalace is installed and `plugin_hooks` is enabled; Gemini uses manual / MCP recall for now.
 
 ### Bug fix
 

@@ -122,7 +122,7 @@ Wraps the GitNexus plugin's bare `gitnexus-hook.cjs` to: forward stdin/stdout tr
 
 ### `optional/mempalace/codex-session-start.sh` — Codex SessionStart (optional add-on)
 
-Bridge Codex sessions into MemPalace cross-session knowledge-graph recall. Calls `mempalace hook run --hook session-start --harness codex` (with `--harness claude-code` fallback for current upstream MemPalace, which only ships the claude-code harness format today).
+Bridge Codex sessions into MemPalace cross-session knowledge-graph recall. Calls `mempalace hook run --hook session-start --harness codex` (with `--harness claude-code` fallback for older MemPalace releases).
 
 - **Registration**: only registered in the Codex plugin cache `hooks/hooks.json` when `command -v mempalace` succeeds at install time AND target is a real Codex global install (not a temp `ROLEPOD_TARGET`). Idempotent — re-install strips + re-adds.
 - **Self-guards**: `mempalace` binary missing at runtime → exit 0 silently. Survives MemPalace uninstall without leaving noisy hooks.

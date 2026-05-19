@@ -3,8 +3,8 @@
 # Codex sessions get the same cross-session KG recall that Claude sessions
 # get via MemPalace's own integration.
 #
-# Why this exists: MemPalace upstream ships built-in integration for
-# `--harness claude-code`, but Codex needs an adapter. Rolepod's install
+# Why this exists: MemPalace supports `--harness codex`, but Rolepod needs
+# to wire that command into Codex's plugin hook schema. Rolepod's install
 # only registers this hook in the Codex plugin cache's hooks.json when
 # `command -v mempalace` succeeds at install time. The script also self-
 # guards on `mempalace` presence at runtime so an upgrade-then-uninstall
@@ -16,9 +16,8 @@
 # compressed"). When upstream Codex adds those events, mirror this
 # script for codex-stop.sh / codex-precompact.sh.
 #
-# Harness flag: try `--harness codex` first (when MemPalace upstream adds
-# it), fall back to `--harness claude-code` (current — MemPalace records
-# the event regardless; the harness flag controls only log shape).
+# Harness flag: try `--harness codex` first. Fall back to
+# `--harness claude-code` only for older MemPalace releases.
 set -euo pipefail
 
 # Self-guard: silent no-op when MemPalace not installed. Same pattern
