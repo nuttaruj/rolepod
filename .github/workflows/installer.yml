@@ -315,7 +315,7 @@ jobs:
           fi
           for rel in \
             extensions/rolepod/gemini-extension.json \
-            extensions/rolepod/commands/careful.toml \
+            extensions/rolepod/commands/spec.toml \
             extensions/rolepod/skills/anti-spaghetti/SKILL.md \
             GEMINI.md
           do

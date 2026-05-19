@@ -135,7 +135,7 @@ Shipped hooks auto-register in each CLI's native settings (idempotent). If MemPa
 
 After install, restart the CLI you targeted so hooks register.
 
-> **`/team-all` — adaptive parallel orchestration (Claude only).**
+> **`/rolepod-all` — adaptive parallel orchestration (Claude only).**
 > Always works. Adapts silently to the environment:
 > - Claude v2.1.32+ AND `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` → real multi-process teammates per [official agent-teams spec](https://code.claude.com/docs/en/agent-teams)
 > - Any other Claude state → Subagent + Task + cohesion contract (single-process, same outcome shape)
@@ -150,7 +150,7 @@ After install, restart the CLI you targeted so hooks register.
 >
 > Per-phase team commands (`/team-define`, `/team-build`, etc.) removed — they were subagent recipes that Lead routinely pattern-matched into regular dispatch.
 >
-> Codex / Gemini have no `/team-all` command — use natural-language Subagent dispatch via `team-routing` skill. See [docs/agent-teams.md](docs/agent-teams.md).
+> Codex / Gemini have no `/rolepod-all` command — use natural-language Subagent dispatch via `team-routing` skill. See [docs/agent-teams.md](docs/agent-teams.md).
 
 > **Note:** Adapter conformance verified by static checks (`bash -n`, `python3 -m json.tool`, `tomllib.load`). Runtime status per CLI — see table.
 
@@ -271,9 +271,9 @@ External hooks integrate via plugins: MemPalace (Stop/SessionStart/PreCompact), 
 
 | CLI | Slash commands |
 |-----|----------------|
-| Claude Code | `/careful` + Anthropic native (`/init`, `/review`, `/clear`, `/rewind`, `/compact`, `/btw`) |
+| Claude Code | `/rolepod` + Anthropic native (`/init`, `/review`, `/clear`, `/rewind`, `/compact`, `/btw`) |
 | Codex CLI | n/a (commands not in Codex schema today; gates fire via entry doc — hooks require `codex features enable plugin_hooks` opt-in) |
-| Gemini CLI | 6 native commands as `commands/*.toml` (`/careful`, `/ship`, `/review`, `/test`, `/plan`, `/spec`) |
+| Gemini CLI | 6 native commands as `commands/*.toml` (`/rolepod`, `/ship`, `/review`, `/test`, `/plan`, `/spec`) |
 
 ### Plugin manifest
 
