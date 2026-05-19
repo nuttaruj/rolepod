@@ -272,7 +272,7 @@ render_claude() {
 #   .agents/plugins/marketplace.json                 (marketplace manifest)
 #   plugins/rolepod/.codex-plugin/plugin.json        (plugin manifest)
 #   plugins/rolepod/agents/*.toml                    (18 portable agents)
-#   plugins/rolepod/hooks/hooks.json + *.sh          (5 hook scripts)
+#   plugins/rolepod/hooks/hooks.json + *.sh          (3 core hook scripts + 1 in optional/gitnexus/)
 #   plugins/rolepod/skills/<name>/SKILL.md ...       (real dir, copied from core/skills)
 
 render_codex() {
