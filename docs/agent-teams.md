@@ -95,7 +95,7 @@ Each teammate is a full Claude Code session — meaning rolepod's CLAUDE.md + sk
 - **`block-subagent-commit.sh`** — teammates can NOT `git commit` directly. Lead commits after teammates report COMPLETED + evidence.
 - **`gate-reminder.sh`** — high-risk path detection fires per teammate edit.
 - **`review-code` skill** — adversarial review (Codex + Gemini both if available) still applies inside teammates.
-- **`session-lock.sh`** — does NOT fire across teammates (same worktree shared by design).
+- **`session-lifecycle.sh --lock`** — does NOT fire across teammates (same worktree shared by design).
 
 Lead's job is coordination + cleanup. Gate enforcement is per-teammate.
 

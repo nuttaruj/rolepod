@@ -50,7 +50,10 @@ LINES_CHANGED=$(echo "$DIFF_STAT" | awk '{a+=$1; b+=$2} END {print a+b}')
 LINES_CHANGED=${LINES_CHANGED:-0}
 
 # High-risk path detection
-HIGH_RISK=$(echo "$DIFF_STAT" | awk '{print $3}' | grep -iE '(auth|billing|payment|migration|credit|permission|secret|crypto|token)' | head -1 || true)
+# High-risk path detection — anchored to path segments (avoids matching e.g.
+# `session_state.py` for the hooks helper, where "session" is part of the
+# identifier not a security surface).
+HIGH_RISK=$(echo "$DIFF_STAT" | awk '{print $3}' | grep -iE '(^|/|_)(auth|authn|authz|authentication|authorization|billing|payment|payments|migration|migrations|credit|credits|permission|permissions|secret|secrets|crypto|cryptography|token|tokens|oauth|jwt|sso|saml|webhook|webhooks|stripe|paypal|charge|charges|invoice|invoices)(/|\.|_|$)' | head -1 || true)
 
 # Logic-bearing line count — non-comment, non-blank, non-pure-rename lines
 LOGIC_LINES=$(git diff --cached -U0 2>/dev/null | grep -E '^[+-]' | grep -vE '^[+-]{3}' | grep -vE '^[+-][[:space:]]*$' | grep -vE '^[+-][[:space:]]*(#|//|/\*|\*/?|--|;)' || true)
@@ -65,10 +68,33 @@ if [ "$FILES_CHANGED" -eq 1 ] && [ "$LINES_CHANGED" -le 5 ] && [ "$LOGIC_COUNT" 
   exit 0
 fi
 
+# T-gate addition (Fix 2): inspect session transcript for test edits.
+# Logic: high-risk path diff + 0 test edits this session → strengthen block.
+#        Normal code diff + 0 test edits → escalate warn wording.
+SESSION_STATE="$(dirname "$0")/lib/session_state.py"
+TEST_EDITS=0
+HIGH_RISK_EDITS=0
+REVIEWERS=0
+if [ -f "$SESSION_STATE" ] && command -v python3 >/dev/null 2>&1; then
+  TEST_EDITS=$(printf '%s' "$INPUT" | python3 "$SESSION_STATE" count-test-edits 2>/dev/null || echo 0)
+  HIGH_RISK_EDITS=$(printf '%s' "$INPUT" | python3 "$SESSION_STATE" count-high-risk-edits 2>/dev/null || echo 0)
+  REVIEWERS=$(printf '%s' "$INPUT" | python3 "$SESSION_STATE" count-reviewers-dispatched 2>/dev/null || echo 0)
+fi
+TEST_EDITS=${TEST_EDITS:-0}
+HIGH_RISK_EDITS=${HIGH_RISK_EDITS:-0}
+REVIEWERS=${REVIEWERS:-0}
+
 # Build deny reason
 REASON="precommit-gate BLOCKED. "
 REASON+="Diff: $FILES_CHANGED files / $LINES_CHANGED lines / $LOGIC_COUNT logic lines. "
+REASON+="Session: $TEST_EDITS test edits / $HIGH_RISK_EDITS high-risk edits / $REVIEWERS reviewer dispatches. "
 [ -n "$HIGH_RISK" ] && REASON+="HIGH-RISK path: $HIGH_RISK → mandatory qa-tester + security-engineer review. "
+if [ "$HIGH_RISK_EDITS" -gt 0 ] && [ "$TEST_EDITS" -eq 0 ]; then
+  REASON+="NO TEST EDITS in this session despite touching high-risk code — T-gate violation (T1: bug/feature/migration/auth/billing → test required). "
+fi
+if [ -n "$HIGH_RISK" ] && [ "$REVIEWERS" -eq 0 ]; then
+  REASON+="NO REVIEWER AGENT dispatched (qa-tester / security-engineer / universal-reviewer) — high-risk path requires adversarial review. "
+fi
 REASON+="Run gates explicitly: S1-S5 (simplicity) + T1-T6 (tests) + F1-F5 (failure-mode). "
 REASON+="After passing, bypass with: prefix \`ROLEPOD_GATES_PASSED=1 git commit ...\` OR include \`[gates: pass]\` in commit message. "
 REASON+="Soft mode for incremental rollout: ROLEPOD_GATES_SOFT=1 in env."
@@ -78,6 +104,11 @@ HARD_BLOCK=0
 if [ -n "$HIGH_RISK" ]; then
   HARD_BLOCK=1
 elif [ "${ROLEPOD_GATES_HARD:-0}" = "1" ]; then
+  HARD_BLOCK=1
+# Fix 2: escalate to HARD when high-risk *code edits* happened this session
+# but Lead never wrote a test. Catches the "session touched auth + nobody
+# wrote a test" pattern even when the FINAL commit diff is small.
+elif [ "$HIGH_RISK_EDITS" -gt 0 ] && [ "$TEST_EDITS" -eq 0 ]; then
   HARD_BLOCK=1
 fi
 

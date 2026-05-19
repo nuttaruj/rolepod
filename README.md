@@ -1,6 +1,6 @@
 # Rolepod — Multi-CLI AI Workflow System
 
-Complete software-house team for AI coding CLIs: 18 specialist agents, 7 rules (3 always-on + 4 path-scoped), 10 workflow skills (Core 10: 1 router + 9 phase skills), 10 hooks (6 context + 4 enforcement), parallel-safe by path/concern. Native plugins for Claude Code, Codex CLI, and Gemini CLI.
+Complete software-house team for AI coding CLIs: 18 specialist agents, 7 rules (3 always-on + 4 path-scoped), 10 workflow skills (Core 10: 1 router + 9 phase skills), 9 hooks (7 core + 2 GitNexus add-on, self-guarded), parallel-safe by path/concern. Native plugins for Claude Code, Codex CLI, and Gemini CLI.
 
 **Universal:** zero project-specific refs, works in any repo from day one.
 
@@ -253,20 +253,29 @@ Path/concern ownership + expertise list + escalation paths + skill preloads. Sha
 
 ### Hooks — `hooks/` (auto-fire on Claude/Gemini; opt-in on Codex)
 
-Rolepod keeps 10 root hook scripts in `hooks/`, but each CLI exposes a different subset:
+Rolepod keeps **9 root hook scripts** in `hooks/`, split into **Core** (always active) and **Optional add-on** (self-guarded, no-op when the add-on is absent). Full reference: [docs/hooks.md](docs/hooks.md).
 
-- **Claude:** copies all 10 scripts and registers 9 rolepod entries in `settings.json` (2x `SessionStart`, 4x `PreToolUse`, 2x `PostToolUse`, 1x `Stop`). `gitnexus-wrap.sh` is not a standalone rolepod entry; it patches the optional GitNexus hook when GitNexus is installed.
-- **Codex:** ships 5 plugin command hooks: `project-context-loader.sh`, `gate-reminder.sh`, `precommit-gate.sh`, `verify-reminder.sh`, `post-ship-detect.sh`.
+| Category | Hooks |
+|---|---|
+| **Core enforcement** | `block-subagent-commit`, `cohesion-contract-check`, `gate-reminder`, `precommit-gate` |
+| **Core context / reminder** | `project-context-loader`, `verify-reminder` |
+| **Core session safety** | `session-lifecycle` (SessionStart `--lock` + Stop `--unlock`) |
+| **Optional add-on · GitNexus** | `post-ship-detect`, `gitnexus-wrap` |
+
+Per-CLI exposure:
+
+- **Claude:** copies all 9 scripts and registers 8 rolepod entries in `settings.json` (2× `SessionStart`, 4× `PreToolUse`, 2× `PostToolUse`, 1× `Stop`). `gitnexus-wrap.sh` is not a standalone rolepod entry; it patches the optional GitNexus hook when GitNexus is installed.
+- **Codex:** ships 5 plugin command hooks (byte-exact mirrors of root scripts, parity enforced by lean-surface): `project-context-loader.sh`, `gate-reminder.sh`, `precommit-gate.sh`, `verify-reminder.sh`, `post-ship-detect.sh`. Claude-only hooks (block-subagent-commit, cohesion-contract-check, session-lifecycle) are not registered — Codex has no `Agent` or `Stop` event API.
 - **Gemini:** ships 4 adapter command hooks: `session-start.sh`, `before-tool.sh`, `after-tool.sh`, `pre-compress.sh`.
 
 **Codex caveat:** hooks register via `hooks/hooks.json` inside the plugin but require `codex features enable plugin_hooks` (default flag: `under development, false`). Without the opt-in, rolepod's hooks are registered but inert — Tier 1 rules in AGENTS.md still drive gate compliance.
 
 | Event class | Claude | Codex | Gemini |
 |---|---|---|---|
-| Session start | `SessionStart` (`project-context-loader`, `session-lock`) | `SessionStart` (`project-context-loader`) | `SessionStart` (`session-start`) |
+| Session start | `SessionStart` (`project-context-loader`, `session-lifecycle --lock`) | `SessionStart` (`project-context-loader`) | `SessionStart` (`session-start`) |
 | Before tool | `PreToolUse` (`gate-reminder`, `precommit-gate`, `block-subagent-commit`, `cohesion-contract-check`) | `PreToolUse` (`gate-reminder`, `precommit-gate`) | `BeforeTool` (`before-tool`) |
 | After tool | `PostToolUse` (`verify-reminder`, `post-ship-detect`) | `PostToolUse` (`verify-reminder`, `post-ship-detect`) | `AfterTool` (`after-tool`) |
-| Stop / compact | `Stop` (`session-unlock`) | — | `PreCompress` (`pre-compress`) |
+| Stop / compact | `Stop` (`session-lifecycle --unlock`) | — | `PreCompress` (`pre-compress`) |
 
 External hooks integrate via plugins: MemPalace (Stop/SessionStart/PreCompact), GitNexus (PreToolUse/PostToolUse), `qa-pass-check.sh`.
 
@@ -502,7 +511,7 @@ Personal workflow system. Fork freely. Send feedback via issues — especially C
 ## See also
 
 - [`docs/cli-support.md`](docs/cli-support.md) — per-CLI capability matrix + primitives
-- [`docs/hooks.md`](docs/hooks.md) — 10 hooks reference (triggers, gates, bypass envs)
+- [`docs/hooks.md`](docs/hooks.md) — 9 hooks reference (Core + Optional add-on, triggers, gates, bypass envs)
 - [`CHEATSHEET.md`](CHEATSHEET.md) — 1-page quick reference
 - [`core/rules/INDEX.md`](core/rules/INDEX.md) — full rule trigger map
 - [`core/skills/write-plan/SKILL.md`](core/skills/write-plan/SKILL.md) — agent picker + parallel cohesion contract (Core 10)

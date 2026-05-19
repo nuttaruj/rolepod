@@ -183,20 +183,20 @@ Optional add-on skills (caveman, gitnexus-*, ui-ux-pro-max) integrate when the u
 
 Counts differ per CLI surface — Claude has the deepest matcher model so it carries enforcement hooks; Codex/Gemini run context hooks only.
 
-### Claude (9 registered: 6 context + 3 enforcement)
+### Claude (9 hook scripts · 7 core + 2 GitNexus add-on, all self-guarded)
 
 | Event | Script | Role |
 |-------|--------|------|
-| SessionStart | `project-context-loader.sh` | git context + gates banner |
-| SessionStart | `session-lock.sh` | sibling-session warning |
-| PreToolUse (Bash) | `gitnexus-wrap.sh` | gitnexus index freshness |
-| PreToolUse (Edit/Write on high-risk paths) | `gate-reminder.sh` | RED-test + reviewer-floor reminders |
-| PreToolUse (Bash on git commit) | `precommit-gate.sh` | test gate, hard block |
-| PreToolUse (Bash, sub-agent) | `block-subagent-commit.sh` | sub-agents can't commit/push |
-| PreToolUse (Agent spawn) | `cohesion-contract-check.sh` | multi-agent contract required |
-| PostToolUse (Edit/Write) | `verify-reminder.sh` | verify-after evidence nudge |
-| PostToolUse (Bash) | `post-ship-detect.sh` | suggest `gitnexus analyze` after big merges |
-| Stop | `session-unlock.sh` | release sibling lock |
+| SessionStart | `project-context-loader.sh` | git context (repo / branch / dirty / recent / hot 7d) |
+| SessionStart | `session-lifecycle.sh --lock` | sibling-session warning |
+| PreToolUse (Bash) | `gitnexus-wrap.sh` | gitnexus index freshness (add-on, no-op without GitNexus) |
+| PreToolUse (Edit/Write on high-risk paths) | `gate-reminder.sh` | schema-bound + RED-test + reviewer-floor (silent on normal edits) |
+| PreToolUse (Bash on git commit) | `precommit-gate.sh` | test gate, hard block on high-risk + 0 tests |
+| PreToolUse (Bash, sub-agent) | `block-subagent-commit.sh` | sub-agents cannot commit/push/merge |
+| PreToolUse (Agent spawn) | `cohesion-contract-check.sh` | multi-agent contract required (2+ spawns) |
+| PostToolUse (Edit/Write) | `verify-reminder.sh` | verify-after-edit evidence nudge |
+| PostToolUse (Bash) | `post-ship-detect.sh` | auto-reindex after ship cmd (add-on, no-op without GitNexus) |
+| Stop | `session-lifecycle.sh --unlock` | release sibling lock |
 
 ### Codex (5 commands across 3 event classes)
 

@@ -355,6 +355,32 @@ else
   fail=$((fail+1))
 fi
 
+# ── Root vs Codex adapter hook parity ─────────────────────────────────
+# Canonical = root `hooks/*.sh`. Codex adapter mirrors a subset (events
+# Codex supports: SessionStart, PreToolUse Bash / apply_patch, PostToolUse
+# Bash / apply_patch). Drift means a fix landed in root but Codex still
+# runs the old script — caught the gate-reminder drift in PR 5.
+SHARED_HOOKS=(gate-reminder.sh post-ship-detect.sh precommit-gate.sh project-context-loader.sh verify-reminder.sh)
+HOOK_DRIFT=""
+for h in "${SHARED_HOOKS[@]}"; do
+  root="hooks/$h"
+  codex="adapters/codex/plugins/rolepod/hooks/$h"
+  if [ ! -f "$root" ] || [ ! -f "$codex" ]; then
+    HOOK_DRIFT="${HOOK_DRIFT}${h}: missing on one side\n"
+    continue
+  fi
+  if ! diff -q "$root" "$codex" >/dev/null 2>&1; then
+    HOOK_DRIFT="${HOOK_DRIFT}${h}: root vs Codex adapter diverged\n"
+  fi
+done
+if [ -z "$HOOK_DRIFT" ]; then
+  echo "  ✓ root vs Codex adapter hook parity (5 shared hooks identical)"
+else
+  echo "  ✗ root vs Codex adapter hook drift:"
+  printf "%b" "$HOOK_DRIFT" | sed 's/^/      /'
+  fail=$((fail+1))
+fi
+
 # ── Render reproducibility under LC_ALL=C ─────────────────────────────
 cp core/fragments/skill-index.md /tmp/.lean-surface-snap.md
 LC_ALL=C bash build/render.sh --target=all >/dev/null 2>&1
