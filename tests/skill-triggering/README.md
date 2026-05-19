@@ -15,11 +15,11 @@ tests/skill-triggering/
 ├── README.md          (this file)
 ├── run.sh             (runner — bash, no Python deps)
 └── cases/             (one .yml file per test case)
-    ├── tdd-on-bug-fix.yml
-    ├── anti-spaghetti-on-3rd-pattern.yml
-    ├── doubt-on-confident-claim.yml
-    ├── spec-on-new-feature.yml
-    └── parallel-contract-on-two-agents.yml
+    ├── debug-issue-on-bug-fix.yml
+    ├── simplify-code-on-3rd-pattern.yml
+    ├── review-code-on-confident-claim.yml
+    ├── write-spec-on-new-feature.yml
+    └── write-plan-on-two-agents.yml
 ```
 
 ## Case format
@@ -73,5 +73,5 @@ Keep cases narrow: one skill per case, one trigger pattern per case. Broad cases
 ## Caveats
 
 - Model output is non-deterministic. The runner uses substring assertions, not full-text equality. False negatives are possible on rare phrasing variations — when one fires, re-run before declaring a regression.
-- The harness only verifies **mention** of the skill, not that the model executed the skill's full procedure. Procedure correctness is verified by the skill's own use-cases and by `code-review-and-quality` review of the output.
+- The harness only verifies **mention** of the skill, not that the model executed the skill's full procedure. Procedure correctness is verified by the skill's own use-cases and by `review-code` review of the output.
 - This is TDD-for-skills, not TDD-for-code. It catches description drift, not implementation bugs.

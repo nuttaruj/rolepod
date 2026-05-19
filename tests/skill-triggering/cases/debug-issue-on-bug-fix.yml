@@ -1,10 +1,10 @@
-name: tdd-on-bug-fix
-skill: test-driven-development
+name: debug-issue-on-bug-fix
+skill: debug-issue
 prompt: |
   Fix the auth bug — session expires too early. Users are getting logged out
   after about 5 minutes instead of the configured 24 hours.
 must_trigger: true
 why: |
-  Bug fix → reproducing test first → fix until pass = canonical TDD trigger.
+  Bug fix → reproduce → failing regression test → fix until pass = canonical debug-issue trigger.
 must_not_skip_excuse: |
   I already know the bug

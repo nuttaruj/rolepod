@@ -91,7 +91,7 @@ Three additional PreToolUse blocks fire on Claude Code only (same scope limit as
 
 - `gate-reminder.sh` denies on a high-risk path Edit when the session has 0 test edits (RED-test discipline) or ≥2 high-risk edits with 0 reviewer agents dispatched (qa-tester / security-engineer / universal-reviewer floor).
 - `precommit-gate.sh` escalates to HARD block at `git commit` time when the session touched high-risk code but never produced a test edit, even if the final diff looks small.
-- `cohesion-contract-check.sh` denies a 2nd+ engineering Agent spawn within 10 events when no `contract.md` / `SPEC.md` / `cohesion.md` / `specs/*.md` was written this session (skill `parallel-contract-orchestration`).
+- `cohesion-contract-check.sh` denies a 2nd+ engineering Agent spawn within 10 events when no `contract.md` / `SPEC.md` / `cohesion.md` / `specs/*.md` was written this session (skill `write-plan`).
 
 Bypass envs for one-off legit cases: `ROLEPOD_GATES_SOFT=1` (downgrade hard → warn), `ROLEPOD_GATES_PASSED=1` (single-edit override), `ROLEPOD_NO_CONTRACT=1` (single-domain Agent spawn).
 

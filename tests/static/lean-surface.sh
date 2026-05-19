@@ -37,16 +37,18 @@ check "lean skill-index Tier 1 = 9 (actual: $LEAN_TIER1)"    "[ $LEAN_TIER1 -eq 
 LEAN_SURFACE=$((LEAN_TIER0 + LEAN_TIER1))
 check "default Lead surface ≤ 10 (actual: $LEAN_SURFACE)"    "[ $LEAN_SURFACE -le 10 ]"
 
-# ── Public non-shim skills ≤ 11 (Core 10 + optional check-security) ────
-# Public non-shim = filesystem skills without `tier: 3` frontmatter.
-PUBLIC_NONSHIM=$(grep -L "^tier: 3" core/skills/*/SKILL.md 2>/dev/null | wc -l | tr -d ' ')
-check "public non-shim skills ≤ 11 (actual: $PUBLIC_NONSHIM)" "[ $PUBLIC_NONSHIM -le 11 ]"
+# ── Core 10 only — no executable legacy shims ─────────────────────────
+FS_SKILLS=$(find core/skills -maxdepth 1 -mindepth 1 -type d | wc -l | tr -d ' ')
+TIER3_SKILLS=$( { grep -Rsl "^tier: 3" core/skills/*/SKILL.md 2>/dev/null || true; } | wc -l | tr -d ' ')
+REDIRECT_FIELDS=$( { grep -Rsl "^redirect_to:" core/skills/*/SKILL.md 2>/dev/null || true; } | wc -l | tr -d ' ')
+check "filesystem skill dirs = Core 10 only (actual: $FS_SKILLS)" "[ $FS_SKILLS -eq 10 ]"
+check "no tier: 3 skill files remain (actual: $TIER3_SKILLS)" "[ $TIER3_SKILLS -eq 0 ]"
+check "no redirect_to shim fields remain (actual: $REDIRECT_FIELDS)" "[ $REDIRECT_FIELDS -eq 0 ]"
 
 # ── Skill catalog drift — filesystem must match rendered fragment ──────
 # Catches the "render.sh skips utility skills" failure mode that bit us
 # pre-PR-doc-catalog-drift (advisor-escalation, new-project-onboarding,
 # reviewer-flow, session-hygiene, triage-deep all silently missing).
-FS_SKILLS=$(find core/skills -maxdepth 1 -mindepth 1 -type d | wc -l | tr -d ' ')
 RENDERED_SKILLS=$(awk '/^\| `/{c++} END{print c+0}' core/fragments/skill-index.md)
 check "skill catalog: filesystem=$FS_SKILLS rendered=$RENDERED_SKILLS (must match)" "[ $FS_SKILLS -eq $RENDERED_SKILLS ]"
 
@@ -57,7 +59,7 @@ check "skill catalog: filesystem=$FS_SKILLS rendered=$RENDERED_SKILLS (must matc
 # catches the catalog fragment. Block known-stale numbers from slipping
 # back into prose.
 # Patterns catch the count appearing in many shapes:
-#   bare: "42 skills" "43 skills" "34 native"
+#   bare: "42 skills" "43 skills" "53 skills" "34 native"
 #   parenthesized: "Skills (42)"
 #   sum form: "18 + 42"
 #   bold form: "**43**" "**42**" when right after "skills" or "Total"
@@ -68,8 +70,8 @@ check "skill catalog: filesystem=$FS_SKILLS rendered=$RENDERED_SKILLS (must matc
 # Two groups: word-boundary patterns + non-word-end patterns. The second
 # group covers forms ending in `)` or `*` where trailing `\b` is dead
 # (qa-tester PR #10 caught this).
-STALE_WB='\b(42 bundled|42 skills|43 skills|43-skill|34 native|3 auto-trigger hooks|same 3 scripts|same 3 files|18 \+ 42|18 \+ 43|all 34 rolepod|all 43 rolepod|Total 4[23]|three rolepod entries|3 codex hooks|3 gemini hooks|3 root hooks|9 root hook scripts|own 3 scripts|3 \*\.sh)\b'
-STALE_NONWORD='Skills \(4[23]\)|Total skills on disk: \*\*4[23]\*\*|Hooks \(3\)|, 3 hooks\)'
+STALE_WB='\b(42 bundled|42 skills|43 skills|53 skills|43-skill|53-skill|53 skill files|34 native|3 auto-trigger hooks|same 3 scripts|same 3 files|18 \+ 42|18 \+ 43|18 \+ 53|all 34 rolepod|all 43 rolepod|Total 4[23]|Total 53|three rolepod entries|3 codex hooks|3 gemini hooks|3 root hooks|9 root hook scripts|own 3 scripts|3 \*\.sh)\b'
+STALE_NONWORD='Skills \(4[23]\)|Skills \(53\)|Total skills on disk: \*\*(4[23]|53)\*\*|Hooks \(3\)|, 3 hooks\)'
 STALE_COMMENT='(^|[^0-9])(#|`) ?4[23]\b'
 STALE_HOOK_TRUTH='Context hooks \(cross-CLI\)|Codex / Gemini fire the context hooks|full hook coverage|Before tool run.*CLI handles native compact|SessionStart \+ 2x PostToolUse|10 bash hooks that auto-register|portable across Claude and Codex'
 STALE_PATTERNS="${STALE_WB}|${STALE_NONWORD}|${STALE_COMMENT}|${STALE_HOOK_TRUTH}"
@@ -78,7 +80,7 @@ STALE_HITS=$(grep -rEn "$STALE_PATTERNS" \
   README.md CHEATSHEET.md docs/ .claude-plugin/ adapters/ 2>/dev/null \
   | grep -v 'build/rendered/' || true)
 if [ -z "$STALE_HITS" ]; then
-  echo "  ✓ no stale doc count keywords (42/43-skill, 34 native, 3 hooks, etc.)"
+  echo "  ✓ no stale doc count keywords (42/43/53-skill, 34 native, 3 hooks, etc.)"
 else
   echo "  ✗ stale doc count keywords found:"
   printf '%s\n' "$STALE_HITS" | sed 's/^/      /'
@@ -127,8 +129,8 @@ for s in "${CORE_SKILLS[@]}"; do
   fi
 done
 
-# Tier 0 router must point at canonical Core 10 skills, not at Tier 3
-# compatibility shims. This catches the subtle failure mode where the
+# Tier 0 router must point at canonical Core 10 skills, not legacy names.
+# This catches the subtle failure mode where the
 # visible surface is lean but the first-loaded router still sends Lead
 # through legacy skill names.
 ROUTER="core/skills/using-rolepod/SKILL.md"
@@ -202,32 +204,31 @@ else
   echo "  ✗ write-spec missing approval gate or self-review"; fail=$((fail+1))
 fi
 
-# Every shim (tier 3) must include both `redirect_to` and a fallback
-# section so a copy-only shim does not dead-end.
-SHIM_FILES=$(grep -l "^tier: 3" core/skills/*/SKILL.md 2>/dev/null)
-for f in $SHIM_FILES; do
-  name=$(basename "$(dirname "$f")")
-  if ! grep -q "^redirect_to: " "$f"; then
-    echo "  ✗ shim missing redirect_to: $name"; fail=$((fail+1)); continue
-  fi
-  if ! grep -Eq "^## If \`[a-z-]+\` is not available" "$f"; then
-    echo "  ✗ shim missing fallback section: $name"; fail=$((fail+1))
-  fi
+# Deleted legacy skill dirs must not creep back in. The migration map lives in
+# docs/legacy-skill-map.md; executable routing must stay Core 10 only.
+LEGACY_SKILLS=(
+  advisor-escalation anti-spaghetti api-and-interface-design browser-testing-with-devtools
+  ci-cd-and-automation claude-api code-review-and-quality code-simplification
+  context-engineering conversion-copywriting debugging-and-error-recovery doc-coauthoring
+  documentation-and-adrs doubt-driven-development finishing-a-development-branch
+  frontend-ui-engineering interaction-design interface-design internal-comms
+  new-project-onboarding parallel-contract-orchestration performance-optimization
+  planning-and-task-breakdown post-change-verify pre-merge-gate reviewer-flow
+  root-cause-tracing security-and-hardening seo session-hygiene shipping-and-launch
+  source-driven-development spec-driven-development subagent-task-execution
+  systematic-debugging team-routing test-driven-development triage-deep
+  user-facing-content using-worktrees web-design-guidelines webapp-testing zoom-out
+)
+LEGACY_FOUND=""
+for s in "${LEGACY_SKILLS[@]}"; do
+  [ ! -d "core/skills/$s" ] || LEGACY_FOUND="${LEGACY_FOUND}${s}\n"
 done
-echo "  ✓ every shim has redirect_to + fallback section"
-
-# Every redirect_to target must point at an existing public skill.
-BAD_TARGETS=""
-for f in $SHIM_FILES; do
-  target=$(awk '/^redirect_to:/{gsub(/^redirect_to:[[:space:]]*/, ""); print; exit}' "$f")
-  if [ -z "$target" ] || [ ! -f "core/skills/$target/SKILL.md" ]; then
-    BAD_TARGETS="$BAD_TARGETS $(basename "$(dirname "$f")")→$target"
-  fi
-done
-if [ -z "$BAD_TARGETS" ]; then
-  echo "  ✓ every shim redirect_to points at an existing skill"
+if [ -z "$LEGACY_FOUND" ]; then
+  echo "  ✓ deleted legacy skill directories stay absent"
 else
-  echo "  ✗ shim redirect_to targets missing:$BAD_TARGETS"; fail=$((fail+1))
+  echo "  ✗ deleted legacy skill directories reappeared:"
+  printf "%b" "$LEGACY_FOUND" | sed 's/^/      /'
+  fail=$((fail+1))
 fi
 
 # `redirect_to_agent` field must NOT appear anywhere (spec verdict #2).
@@ -276,11 +277,9 @@ echo "  ✓ core skill fallback sections concise (≤ 25 lines)"
 
 # ── Agent standalone invariants (PR 2) ────────────────────────────────
 # Every agent file must:
-#   (a) preload only Core 10 skills (no legacy shim names in `skills:` frontmatter)
+#   (a) preload only Core 10 skills (no legacy names in `skills:` frontmatter)
 #   (b) carry a standalone output contract (either ## Output contract or ## Final authority)
 #   (c) carry a labeled "## When to use" + "## Hand-off" + "## Escalation back to Core 10" section
-# Body text may still mention a legacy shim, but only in an explicit
-# compatibility / hand-off context — not as the active route.
 CORE_10_SKILLS=(using-rolepod write-spec write-plan implement-plan debug-issue check-work review-code finish-work simplify-code manage-context)
 AGENT_LEGACY_PRELOADS=""
 AGENT_MISSING_OUTPUT=""
@@ -314,6 +313,31 @@ if [ -z "$AGENT_LEGACY_PRELOADS" ]; then
 else
   echo "  ✗ agents preload legacy shim skills:"
   printf "%b" "$AGENT_LEGACY_PRELOADS" | sed 's/^/      /'
+  fail=$((fail+1))
+fi
+
+# Claude adapter frontmatter is what rendered Claude agents actually use.
+# Keep it in the same contract as core/agents; ui-ux-pro-max is the only
+# optional external add-on preload allowed.
+ADAPTER_BAD_PRELOADS=""
+for a in adapters/claude/agent-frontmatter/*.yml; do
+  name=$(basename "$a" .yml)
+  preloads=$(awk '/^skills:/{f=1;next} /^[a-zA-Z]/{f=0} f && /^  - /{sub(/^  - /, ""); print}' "$a")
+  for skill in $preloads; do
+    allowed=0
+    for c in "${CORE_10_SKILLS[@]}" ui-ux-pro-max; do
+      [ "$skill" = "$c" ] && { allowed=1; break; }
+    done
+    if [ $allowed -eq 0 ]; then
+      ADAPTER_BAD_PRELOADS="${ADAPTER_BAD_PRELOADS}${name}: ${skill}\n"
+    fi
+  done
+done
+if [ -z "$ADAPTER_BAD_PRELOADS" ]; then
+  echo "  ✓ Claude adapter frontmatter preloads only Core 10 (+ ui-ux-pro-max)"
+else
+  echo "  ✗ Claude adapter frontmatter preloads deleted legacy skills:"
+  printf "%b" "$ADAPTER_BAD_PRELOADS" | sed 's/^/      /'
   fail=$((fail+1))
 fi
 if [ -z "$AGENT_MISSING_OUTPUT" ]; then

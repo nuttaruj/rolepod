@@ -34,11 +34,11 @@ check "using-rolepod routes vague feature → write-spec" "grep -qE 'vague targe
 check "using-rolepod routes spec-backed feature → write-plan" "grep -qE 'spec exists.*write-plan|write-plan.*spec exists' core/skills/using-rolepod/SKILL.md"
 check "using-rolepod routes plan execution → implement-plan" "grep -qE 'implement plan.*implement-plan|implement-plan.*execute plan' core/skills/using-rolepod/SKILL.md"
 
-# Legacy shims still route to Core 10 targets
-check "spec-driven-development shim redirects to write-spec" "grep -q '^redirect_to: write-spec' core/skills/spec-driven-development/SKILL.md"
-check "planning-and-task-breakdown shim redirects to write-plan" "grep -q '^redirect_to: write-plan' core/skills/planning-and-task-breakdown/SKILL.md"
-check "subagent-task-execution shim redirects to implement-plan" "grep -q '^redirect_to: implement-plan' core/skills/subagent-task-execution/SKILL.md"
-check "post-change-verify shim redirects to check-work" "grep -q '^redirect_to: check-work' core/skills/post-change-verify/SKILL.md"
+# Deleted legacy shims must stay absent; Core 10 skills own those trigger phrases.
+check "legacy spec-driven-development skill absent" "[ ! -d core/skills/spec-driven-development ]"
+check "legacy planning-and-task-breakdown skill absent" "[ ! -d core/skills/planning-and-task-breakdown ]"
+check "legacy subagent-task-execution skill absent" "[ ! -d core/skills/subagent-task-execution ]"
+check "legacy post-change-verify skill absent" "[ ! -d core/skills/post-change-verify ]"
 
 if [ $fail -eq 0 ]; then echo "feature-from-spec: pass"; exit 0; fi
 echo "feature-from-spec: $fail failure(s)"

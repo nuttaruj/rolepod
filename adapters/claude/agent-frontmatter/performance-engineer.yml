@@ -6,12 +6,10 @@ effort: high
 memory: project
 maxTurns: 50
 skills:
-  - performance-optimization
-  - systematic-debugging
-  - ci-cd-and-automation
-  - source-driven-development
-  - browser-testing-with-devtools
-  - webapp-testing
+  - review-code
+  - check-work
+  - debug-issue
+  - finish-work
 tools:
   - Read
   - Glob

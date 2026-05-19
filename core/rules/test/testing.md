@@ -13,7 +13,7 @@ paths:
 # Testing — internal execution
 
 **Scope:** when/what/how to test. Internal only (Lead + qa-tester — no external AI).
-**NOT this file:** post-change evidence → skill `post-change-verify`. Reviewer routing → skill `reviewer-flow`.
+**NOT this file:** post-change evidence → skill `check-work`. Reviewer routing → skill `review-code`.
 
 Read when: planning task / before commit / question on what to test.
 
@@ -111,7 +111,7 @@ Cap: ≤12 tool_uses, ≤5 files
 
 ### TDD-light (Lead)
 
-1 file, 1 function: failing test → code → pass → refactor. Deep guide: skill `test-driven-development`.
+1 file, 1 function: failing test → code → pass → refactor. Deep guide: skill `implement-plan`.
 
 ## Test quality
 

@@ -2,7 +2,7 @@
 # bug-fix-workflow — structural fixture (Core 10).
 # Asserts the bug-fix workflow path is wired end-to-end:
 #   debug-issue → check-work
-# Plus router row, shim redirect, hook backstops, regression-test expectation.
+# Plus router row, no legacy shim dependency, regression-test expectation.
 #
 # This is STRUCTURAL — proves wiring without needing a live `claude -p`.
 # Live behavior verification of "does Lead reproduce before patching" lives
@@ -31,10 +31,11 @@ check "debug-issue covers verify step (regression-clean)" "grep -qi 'verify\|reg
 # Router routes bug intent through the canonical Core 10 skill
 check "using-rolepod router sends bug intent → debug-issue" "grep -qE 'fix bug.*debug-issue|failing test.*debug-issue|debug-issue.*failing test' core/skills/using-rolepod/SKILL.md"
 
-# Tier 3 shims redirect legacy triggers to debug-issue
-check "systematic-debugging shim redirects to debug-issue" "grep -q '^redirect_to: debug-issue' core/skills/systematic-debugging/SKILL.md"
-check "debugging-and-error-recovery shim redirects to debug-issue" "grep -q '^redirect_to: debug-issue' core/skills/debugging-and-error-recovery/SKILL.md"
-check "root-cause-tracing shim redirects to debug-issue" "grep -q '^redirect_to: debug-issue' core/skills/root-cause-tracing/SKILL.md"
+# Deleted legacy shims must stay absent; Core 10 router/frontmatter carries
+# the old phrases directly.
+check "legacy systematic-debugging skill absent" "[ ! -d core/skills/systematic-debugging ]"
+check "legacy debugging-and-error-recovery skill absent" "[ ! -d core/skills/debugging-and-error-recovery ]"
+check "legacy root-cause-tracing skill absent" "[ ! -d core/skills/root-cause-tracing ]"
 
 if [ $fail -eq 0 ]; then echo "bug-fix-workflow: pass"; exit 0; fi
 echo "bug-fix-workflow: $fail failure(s)"

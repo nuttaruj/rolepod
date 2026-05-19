@@ -7,9 +7,8 @@
 #     reject COMPLETED with failing tests or scope creep →
 #     subagent NEVER commits (Lead commits after both pass).
 #
-# After Core 10, the doctrine lives inside `implement-plan` (the bounded
-# delegation section + the fresh-reviewer pattern). The legacy skill
-# `subagent-task-execution` is a Tier 3 shim that redirects there.
+# The doctrine lives inside `implement-plan` (the bounded delegation section
+# + the fresh-reviewer pattern). The old standalone subagent skill is gone.
 set -euo pipefail
 REPO_DIR="$(cd "$(dirname "$0")/../../.." && pwd)"
 cd "$REPO_DIR"
@@ -20,7 +19,6 @@ check() {
 }
 
 I="core/skills/implement-plan/SKILL.md"
-S="core/skills/subagent-task-execution/SKILL.md"
 
 # Core 10 skill owns the doctrine
 check "implement-plan skill exists" "[ -f $I ]"
@@ -31,9 +29,7 @@ check "implement-plan caps subagent tool use" "grep -qiE '12 tool uses|tool cap|
 check "implement-plan bans subagent commits (Lead commits)" "grep -qiE 'subagents? NEVER commit|never commit|Lead commits' $I"
 check "implement-plan rejects COMPLETED with failing tests or scope creep" "grep -qiE 'reject.*COMPLETED|COMPLETED.*reject|scope creep' $I"
 
-# Legacy skill is a Tier 3 shim that redirects to implement-plan
-check "subagent-task-execution shim exists" "[ -f $S ]"
-check "subagent-task-execution shim redirects to implement-plan" "grep -q '^redirect_to: implement-plan' $S"
+check "legacy subagent-task-execution skill absent" "[ ! -d core/skills/subagent-task-execution ]"
 
 # Universal reviewer agent backstop
 check "universal-reviewer agent exists" "[ -f core/agents/universal-reviewer.md ]"

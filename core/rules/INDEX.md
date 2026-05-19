@@ -30,14 +30,14 @@ Skills (`core/skills/<name>/SKILL.md`) load on trigger phrase via `description:`
 
 | Trigger | Skill |
 |---------|-------|
-| Before push/merge, `gh pr merge`, `git push`, ship gate, "ship it" | `pre-merge-gate` |
-| Spawn reviewer, Codex/Gemini review, code review cascade, adversarial review | `reviewer-flow` |
+| Before push/merge, `gh pr merge`, `git push`, ship gate, "ship it" | `finish-work` |
+| Spawn reviewer, Codex/Gemini review, code review cascade, adversarial review | `review-code` |
 | Stuck, consult Opus, advice mode, `/advice`, third agent same issue | `advisor-escalation` |
 | `/clear`, `/compact`, `/rewind`, long session, context near limit, switching task | `session-hygiene` |
 | Multi-file task, scope unclear, drift suspected, mid-implement creep, phase abort | `triage-deep` |
 | First time in repo, `/init`, unfamiliar project, bootstrap mode | `new-project-onboarding` |
-| Choose agent, multi-agent parallel, team layout, agent picker, cohesion contract | `team-routing` |
-| Verify change, evidence after edit, verify build, verify task done | `post-change-verify` |
+| Choose agent, multi-agent parallel, team layout, agent picker, cohesion contract | `write-plan` |
+| Verify change, evidence after edit, verify build, verify task done | `check-work` |
 
 ## Maintenance
 

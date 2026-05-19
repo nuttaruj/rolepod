@@ -1,4 +1,4 @@
-name: case-12-shim-plan
+name: case-12-legacy-plan-phrase
 prompt: |
   Break this goal into ordered tasks with tests per task.
 expected_skills:
@@ -9,6 +9,6 @@ must_not_contain:
   - "without a task list"
 why: |
   Old trigger phrasing for `planning-and-task-breakdown` (break goal,
-  ordered tasks). The shim redirects Lead to `write-plan`. Test proves the
-  canonical Core 10 route catches the legacy phrasing during the migration
-  release.
+  ordered tasks). There is no `planning-and-task-breakdown` skill file
+  anymore; this proves the canonical Core 10 route catches the legacy
+  phrasing directly.

@@ -43,7 +43,7 @@ You are final judge for code quality. Must NOT request review for your own findi
 
 ## Gemini CLI fallback (Lead-direct, not this agent)
 
-Breadth review via Gemini CLI = Lead's job, not yours. Per skill `reviewer-flow`, Lead invokes `gemini -m pro -o text -p "..."` directly and feeds the output back. You stay read-only.
+Breadth review via Gemini CLI = Lead's job, not yours. Per skill `review-code`, Lead invokes `gemini -m pro -o text -p "..."` directly and feeds the output back. You stay read-only.
 
 ## Domain expertise
 

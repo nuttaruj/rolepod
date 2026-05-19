@@ -7,10 +7,8 @@ memory: project
 maxTurns: 30
 permissionMode: acceptEdits
 skills:
-  - code-review-and-quality
-  - anti-spaghetti
-  - code-simplification
-  - doubt-driven-development
+  - review-code
+  - simplify-code
 tools:
   - Read
   - Glob

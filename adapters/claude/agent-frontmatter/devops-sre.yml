@@ -5,13 +5,10 @@ model: sonnet
 memory: project
 maxTurns: 50
 skills:
-  - ci-cd-and-automation
-  - shipping-and-launch
-  - systematic-debugging
-  - anti-spaghetti
-  - finishing-a-development-branch
-  - source-driven-development
-  - using-worktrees
+  - finish-work
+  - implement-plan
+  - debug-issue
+  - simplify-code
 tools:
   - Read
   - Glob

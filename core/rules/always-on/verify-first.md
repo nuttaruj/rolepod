@@ -1,7 +1,7 @@
 # Verify-First — claiming facts / answering questions
 
 **Scope:** confirming facts BEFORE claims.
-**NOT this file:** verifying YOUR change after editing → skill `post-change-verify`.
+**NOT this file:** verifying YOUR change after editing → skill `check-work`.
 
 Read when: about to claim fact / make recommendation / answer factual question.
 

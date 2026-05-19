@@ -172,6 +172,49 @@ dry()  { echo "${YELLOW}[DRY-RUN]${NC} would: $*"; }
 have_cmd() { command -v "$1" >/dev/null 2>&1; }
 have_dir() { [ -d "$1" ]; }
 
+# Rolepod no longer ships executable legacy skill shims. On upgrade, clean
+# previously installed shim dirs so users do not keep seeing the old bloated
+# skill surface forever.
+LEGACY_SKILL_NAMES=(
+  advisor-escalation anti-spaghetti api-and-interface-design browser-testing-with-devtools
+  ci-cd-and-automation claude-api code-review-and-quality code-simplification
+  context-engineering conversion-copywriting debugging-and-error-recovery doc-coauthoring
+  documentation-and-adrs doubt-driven-development finishing-a-development-branch
+  frontend-ui-engineering interaction-design interface-design internal-comms
+  new-project-onboarding parallel-contract-orchestration performance-optimization
+  planning-and-task-breakdown post-change-verify pre-merge-gate reviewer-flow
+  root-cause-tracing security-and-hardening seo session-hygiene shipping-and-launch
+  source-driven-development spec-driven-development subagent-task-execution
+  systematic-debugging team-routing test-driven-development triage-deep
+  user-facing-content using-worktrees web-design-guidelines webapp-testing zoom-out
+)
+
+remove_stale_legacy_skills() {
+  local skills_dir="$1"
+  [ -d "$skills_dir" ] || return 0
+
+  local removed=0 skipped=0 name dir md
+  for name in "${LEGACY_SKILL_NAMES[@]}"; do
+    dir="$skills_dir/$name"
+    md="$dir/SKILL.md"
+    [ -d "$dir" ] || continue
+    if [ -f "$md" ] && grep -Eq '^(tier: 3|redirect_to:)|Compatibility shim|This shim preserves' "$md"; then
+      do_or_dry "rm -r $dir (stale rolepod legacy skill)" rm -r "$dir"
+      removed=$((removed+1))
+    else
+      warn "Skipping possible user-owned skill while cleaning legacy rolepod names: $dir"
+      skipped=$((skipped+1))
+    fi
+  done
+
+  if [ "$removed" -gt 0 ]; then
+    ok "Removed $removed stale legacy rolepod skill(s)"
+  fi
+  if [ "$skipped" -gt 0 ]; then
+    warn "Skipped $skipped legacy-named skill(s) that did not look rolepod-managed"
+  fi
+}
+
 # can_prompt: 0 = no TTY (don't prompt), 1 = stdin is a TTY, 2 = /dev/tty usable.
 # Some systems (macOS sandbox / CI runners / curl-piped install) have /dev/tty
 # as a device node but opening fails ("Device not configured"). `[ -r /dev/tty ]`
@@ -800,7 +843,8 @@ if claude_selected; then
 
   # Count skills locally — SKILL_NAMES is only populated in uninstall flow.
   _skill_count=$(find "$REPO_DIR/core/skills" -maxdepth 1 -mindepth 1 -type d 2>/dev/null | wc -l | tr -d ' ')
-  step "Copying bundled skills ($_skill_count)"
+  step "Cleaning stale legacy skills, then copying bundled skills ($_skill_count)"
+  remove_stale_legacy_skills "$TARGET/skills"
   for skill_dir in "$REPO_DIR"/core/skills/*/; do
     name=$(basename "$skill_dir")
     if [ "$FORCE" -eq 1 ] || [ ! -e "$TARGET/skills/$name" ]; then
@@ -1027,7 +1071,7 @@ if [ "$DRY_RUN" -eq 0 ]; then
     agents/qa-tester.md agents/system-architect.md \
     rules/INDEX.md rules/always-on/agent-protocol.md rules/always-on/verify-first.md rules/code/code-quality.md rules/test/testing.md \
     hooks/verify-reminder.sh hooks/project-context-loader.sh hooks/gate-reminder.sh hooks/precommit-gate.sh \
-    skills/zoom-out/SKILL.md skills/anti-spaghetti/SKILL.md \
+    skills/using-rolepod/SKILL.md skills/debug-issue/SKILL.md skills/check-work/SKILL.md \
     .claude-plugin/plugin.json
   do
     [ -e "$TARGET/$required" ] || fail "verification failed — $TARGET/$required missing"
@@ -1272,8 +1316,9 @@ if codex_selected; then
     fi
     step "Copying rendered plugin tree → $CODEX_TARGET/plugins/rolepod (filesystem only — Codex loader resolves from rendered dir)"
     if [ "$DRY_RUN" -eq 1 ]; then
-      dry "mkdir -p $CODEX_TARGET/plugins/rolepod && cp -R $RENDERED_CODEX_DIR/plugins/rolepod/. $CODEX_TARGET/plugins/rolepod/"
+      dry "rm -rf $CODEX_TARGET/plugins/rolepod && mkdir -p $CODEX_TARGET/plugins/rolepod && cp -R $RENDERED_CODEX_DIR/plugins/rolepod/. $CODEX_TARGET/plugins/rolepod/"
     else
+      rm -rf "$CODEX_TARGET/plugins/rolepod" 2>/dev/null || true
       mkdir -p "$CODEX_TARGET/plugins/rolepod"
       cp -R "$RENDERED_CODEX_DIR/plugins/rolepod/." "$CODEX_TARGET/plugins/rolepod/" 2>/dev/null || true
     fi
@@ -1399,6 +1444,9 @@ if gemini_selected; then
   if [ "$FORCE" -eq 1 ]; then
     do_or_dry "rm -rf $GEMINI_EXT_DEST && mkdir -p $GEMINI_EXT_DEST" \
       bash -c "rm -rf '$GEMINI_EXT_DEST' && mkdir -p '$GEMINI_EXT_DEST'"
+  else
+    do_or_dry "rm -rf $GEMINI_EXT_DEST/skills (stale legacy skill cleanup)" \
+      rm -rf "$GEMINI_EXT_DEST/skills"
   fi
 
   step "Copying extension tree → $GEMINI_EXT_DEST/"
@@ -1427,7 +1475,8 @@ if gemini_selected; then
       GEMINI.md \
       extensions/rolepod/gemini-extension.json \
       extensions/rolepod/hooks/hooks.json \
-      extensions/rolepod/skills/anti-spaghetti/SKILL.md
+      extensions/rolepod/skills/using-rolepod/SKILL.md \
+      extensions/rolepod/skills/debug-issue/SKILL.md
     do
       [ -e "$GEMINI_TARGET/$required" ] || fail "Gemini verification failed — $GEMINI_TARGET/$required missing"
     done

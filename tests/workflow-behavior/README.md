@@ -63,7 +63,7 @@ A skip is **not** a failure. CI lanes that exclude `workflow-behavior` from Phas
 ## Caveats
 
 - Model variance: the runner uses substring assertions, not exact-text, so phrasing drift doesn't cause flakes.
-- Multiple valid routes: when more than one skill chain is acceptable (e.g. a refactor task may legitimately route through `code-simplification` OR `code-review-and-quality`), list both in `expected_skills` and update the runner to accept ANY match.
+- Multiple valid routes: when more than one skill chain is acceptable (e.g. a refactor task may legitimately route through `simplify-code` OR `review-code`), list both in `expected_skills` and update the runner to accept ANY match.
 - Logs: each run saves a per-case log under `/tmp/rolepod-workflow-behavior-<timestamp>/` for inspection.
 
 ## When to add a case

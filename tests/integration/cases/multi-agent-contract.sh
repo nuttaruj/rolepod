@@ -4,7 +4,7 @@
 #   - Core 10 skill `write-plan` owns agent routing + the contract pattern
 #   - hook `cohesion-contract-check.sh` is registered for PreToolUse Agent
 #   - using-rolepod router has a row for multi-agent intent
-#   - legacy shims redirect to write-plan instead of acting as active routers
+#   - legacy shims are gone, so Core 10 carries the trigger surface directly
 #
 # This is a STATIC fixture — proves the routing wiring exists. Live behavior
 # verification of "does Lead actually write SPEC.md before 2nd spawn" lives
@@ -25,8 +25,8 @@ check "write-plan owns agent routing" "grep -qiE 'Route to agents|agent routing|
 check "cohesion-contract-check hook exists" "[ -x hooks/cohesion-contract-check.sh ]"
 check "hook checks for contract artifact" "grep -q 'contract\.md\|SPEC\.md\|cohesion\.md' hooks/cohesion-contract-check.sh"
 check "using-rolepod routes multi-agent → write-plan" "grep -qiE 'multi-agent.*write-plan|write-plan.*cohesion contract|parallel.*write-plan' core/skills/using-rolepod/SKILL.md"
-check "team-routing shim redirects to write-plan" "grep -q '^redirect_to: write-plan' core/skills/team-routing/SKILL.md"
-check "parallel-contract-orchestration shim redirects to write-plan" "grep -q '^redirect_to: write-plan' core/skills/parallel-contract-orchestration/SKILL.md"
+check "legacy team-routing skill absent" "[ ! -d core/skills/team-routing ]"
+check "legacy parallel-contract-orchestration skill absent" "[ ! -d core/skills/parallel-contract-orchestration ]"
 
 if [ $fail -eq 0 ]; then echo "multi-agent-contract: pass"; exit 0; fi
 echo "multi-agent-contract: $fail failure(s)"

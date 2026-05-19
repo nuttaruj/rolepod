@@ -1,4 +1,4 @@
-name: case-13-shim-verify
+name: case-13-legacy-verify-phrase
 prompt: |
   Show me the test pass output that proves this change works.
 expected_skills:
@@ -9,6 +9,5 @@ must_not_contain:
   - "I'm confident it works"
 why: |
   Old trigger phrasing for `post-change-verify` (show test pass output,
-  verify change). The shim redirects Lead to `check-work`. Test proves the
-  canonical Core 10 route catches the legacy phrasing during the migration
-  release.
+  verify change). There is no `post-change-verify` skill file anymore; this
+  proves the canonical Core 10 route catches the legacy phrasing directly.

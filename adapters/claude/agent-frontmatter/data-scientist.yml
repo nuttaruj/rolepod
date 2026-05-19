@@ -5,13 +5,11 @@ model: sonnet
 memory: project
 maxTurns: 50
 skills:
-  - systematic-debugging
-  - anti-spaghetti
-  - parallel-contract-orchestration
-  - test-driven-development
-  - source-driven-development
-  - subagent-task-execution
-  - using-worktrees
+  - write-spec
+  - write-plan
+  - implement-plan
+  - debug-issue
+  - simplify-code
 tools:
   - Read
   - Glob

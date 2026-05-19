@@ -41,7 +41,7 @@ DO:
 
 Senior test: "overcomplicated?" Yes → simplify.
 
-Deep: skill `code-simplification`.
+Deep: skill `simplify-code`.
 
 ## One source of truth
 

@@ -5,9 +5,8 @@ model: haiku
 memory: project
 maxTurns: 30
 skills:
-  - user-facing-content
-  - internal-comms
-  - doc-coauthoring
+  - write-spec
+  - implement-plan
 tools:
   - Read
   - Glob

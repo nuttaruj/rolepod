@@ -34,7 +34,7 @@ Confirms:
 make test-workflow
 ```
 
-Sends 13 canonical prompts to local Claude CLI. Skips cleanly if CLI absent (acceptable). When CLI present, all 13 cases must pass — they prove the workflow spine routes correctly (vague feature → `write-spec`, bug → `debug-issue`, "ship" → `finish-work`, etc.) and that legacy trigger phrases still route through Tier 3 shims to the canonical Core 10 skill.
+Sends 14 canonical prompts to local Claude CLI. Skips cleanly if CLI absent (acceptable). When CLI present, all 14 cases must pass — they prove the workflow spine routes correctly (vague feature → `write-spec`, bug → `debug-issue`, "ship" → `finish-work`, etc.) and that old trigger phrases route directly to the canonical Core 10 skill without executable shims.
 
 Fail = router doctrine has drifted. Either fix the prompt routing in `using-rolepod` / skill frontmatter, or update the case expectation if the new behavior is intentional.
 
@@ -49,7 +49,7 @@ Runs 7 structural integration cases (~3-5s total, no live `claude -p` invocation
 | Case | Asserts |
 |------|---------|
 | `install-parity` | Fresh temp install across Claude global / Claude project / Codex project / Gemini project produces documented artifacts |
-| `bug-fix-workflow` | `debug-issue` → failing test → minimal fix → `check-work` wiring (skill bodies, router row, Tier 3 shims) |
+| `bug-fix-workflow` | `debug-issue` → failing test → minimal fix → `check-work` wiring (skill bodies, router row, no legacy shim dependency) |
 | `feature-from-spec` | Define → Plan → Build path: `write-spec` → `write-plan` → `implement-plan` → `check-work` wiring |
 | `subagent-review-order` | Two-stage review order (implementer → spec-compliance → code-quality) baked into `implement-plan` body + prompt templates |
 | `high-risk-gates` | Auth/billing/migration paths route through `security-engineer` agent + `review-code` adversarial mode |
@@ -79,7 +79,7 @@ TMP="$(mktemp -d)"
 HOME="$TMP/home" ROLEPOD_TARGET="$TMP/.claude" ./install.sh --target=claude
 ls "$TMP/.claude/skills/using-rolepod"      # should exist (Tier 0 router)
 ls "$TMP/.claude/skills/debug-issue"         # should exist (Core 10 — Build/Debug)
-ls "$TMP/.claude/skills/systematic-debugging" # should exist (Tier 3 shim → debug-issue)
+test ! -e "$TMP/.claude/skills/systematic-debugging" # should be absent (legacy shim removed)
 ls "$TMP/.claude/hooks/lib/session_state.py" # should exist
 grep using-rolepod "$TMP/.claude/CLAUDE.md"  # should match
 ```

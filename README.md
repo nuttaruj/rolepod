@@ -1,6 +1,6 @@
 # Rolepod — Multi-CLI AI Workflow System
 
-Complete software-house team for AI coding CLIs: 18 specialist agents, 7 rules (3 always-on + 4 path-scoped), 10 public workflow skills (Core 10: 1 router + 9 phase skills) plus compatibility shims for legacy trigger phrases, 10 hooks (6 context + 4 enforcement), parallel-safe by path/concern. Native plugins for Claude Code, Codex CLI, and Gemini CLI.
+Complete software-house team for AI coding CLIs: 18 specialist agents, 7 rules (3 always-on + 4 path-scoped), 10 workflow skills (Core 10: 1 router + 9 phase skills), 10 hooks (6 context + 4 enforcement), parallel-safe by path/concern. Native plugins for Claude Code, Codex CLI, and Gemini CLI.
 
 **Universal:** zero project-specific refs, works in any repo from day one.
 
@@ -48,18 +48,18 @@ The **`using-rolepod`** router skill (Tier 0) fires first on each request, picks
 
 ### Skill tiers (Core 10)
 
-Rolepod ships 53 skills total — 10 public Core 10 skills (1 router + 9 phase skills) plus 43 compatibility shims that redirect legacy trigger phrases to a Core 10 skill:
+Rolepod ships 10 executable skills total — 1 router + 9 Core workflow skills. Legacy skill names are documented in [docs/legacy-skill-map.md](docs/legacy-skill-map.md), not installed as executable shims:
 
 | Tier | Purpose | Count |
 |---|---|---|
 | **0 — Router** | `using-rolepod` — loaded first, decides the phase | 1 |
 | **1 — Core 10 phase skills** | one skill per phase: Define / Plan / Build / Verify / Review / Ship + recovery | 9 |
 | **2 — Specialist** | empty by default; domain depth lives in the 18 specialist agents | 0 |
-| **3 — Compatibility shims** | redirect legacy trigger phrases to a Core 10 skill (hidden from lean view) | 43 |
+| **3 — Legacy map** | prose-only migration map; no executable skill dirs | 0 |
 
 Tier 1 (Core 9 phase skills): `write-spec`, `write-plan`, `implement-plan`, `debug-issue`, `check-work`, `review-code`, `finish-work`, `simplify-code`, `manage-context`. Tier 0 (`using-rolepod`) loads ahead of these on every turn — combined default Lead surface = 10 skills.
 
-Domain expertise (frontend / API / security / performance / SEO / content / platform) lives in the 18 specialist agents and is routed from inside the Core 10 phase skills. Legacy skill names still work via Tier 3 shims for one migration release — see [docs/skills.md](docs/skills.md) for the full catalog.
+Domain expertise (frontend / API / security / performance / SEO / content / platform) lives in the 18 specialist agents and is routed from inside the Core 10 phase skills. If an old trigger phrase stops routing correctly, update the matching Core 10 frontmatter instead of adding a new shim.
 
 ---
 
@@ -77,7 +77,7 @@ Pick one with `--target=claude` / `--target=codex` / `--target=gemini`, or all t
 
 ### Install — pure framework only
 
-Rolepod installs the framework itself: agents, rules, hooks, Core 10 skills + compatibility shims, commands, manifest, docs. **No 3rd-party tools, plugins, or CLIs are auto-installed.** For add-ons that pair well with rolepod, see [Recommended add-ons](#recommended-add-ons) below — install each one yourself; the framework auto-integrates when present.
+Rolepod installs the framework itself: agents, rules, hooks, Core 10 skills, commands, manifest, docs. **No 3rd-party tools, plugins, or CLIs are auto-installed.** For add-ons that pair well with rolepod, see [Recommended add-ons](#recommended-add-ons) below — install each one yourself; the framework auto-integrates when present.
 
 Add `--force` to overwrite. Creates `~/.<cli>.backup-<timestamp>/` with **only rolepod-managed paths** (session history, plugin caches, file-history stay in place). Typical backup <50MB. See `docs/cli-support.md`.
 
@@ -160,14 +160,14 @@ After install, restart the CLI you targeted so hooks register.
 | Target | Static | Dry-run | Live hooks | Live dispatch | Status |
 |--------|--------|---------|-----------|--------------|--------|
 | Claude Code | ✓ | ✓ | ✓ | ✓ | **Production** |
-| Codex CLI | ✓ | ✓ | ⚠️ opt-in only — `codex features enable plugin_hooks` required (default: `under development, false`) | ✓ (18 agents + 53 skill files via plugin cache) | **Production** (hooks opt-in) |
-| Gemini CLI | ✓ | ✓ | ✓ | ✓ (53 skill files) | **Production** |
+| Codex CLI | ✓ | ✓ | ⚠️ opt-in only — `codex features enable plugin_hooks` required (default: `under development, false`) | ✓ (18 agents + 10 skill files via plugin cache) | **Production** (hooks opt-in) |
+| Gemini CLI | ✓ | ✓ | ✓ | ✓ (10 skill files) | **Production** |
 
 **Static** = `bash -n` + `json.tool` + `tomllib.load()` + snapshot diff (no leaked `{{INCLUDE: ...}}`). **Dry-run** = `install.sh` writes correct files to temp dir. **Live** = real CLI; hooks fire (Claude + Gemini always; Codex only after `plugin_hooks` opt-in); subagents/skills dispatch.
 
 _Last verified: 2026-05-15, macOS Darwin 25.4.0, Codex 0.130.0, Gemini 0.40.1._
 
-**Codex install (0.130.0+):** installer renders to `build/rendered/codex/`, runs `codex plugin marketplace add <rendered-dir>`, populates `~/.codex/plugins/cache/rolepod/rolepod/<version>/`, writes `[plugins."rolepod@rolepod"] enabled = true` to `~/.codex/config.toml`. Native plugin loader resolves agents + skills (18 + 53) from cache. `SessionStart` fires **only after `codex features enable plugin_hooks`** (default flag is `under development, false`). `~/.codex/AGENTS.md` managed block loads independently of `plugin_hooks` state.
+**Codex install (0.130.0+):** installer renders to `build/rendered/codex/`, runs `codex plugin marketplace add <rendered-dir>`, populates `~/.codex/plugins/cache/rolepod/rolepod/<version>/`, writes `[plugins."rolepod@rolepod"] enabled = true` to `~/.codex/config.toml`. Native plugin loader resolves agents + skills (18 + 10) from cache. `SessionStart` fires **only after `codex features enable plugin_hooks`** (default flag is `under development, false`). `~/.codex/AGENTS.md` managed block loads independently of `plugin_hooks` state.
 
 File runtime issues at [issues/](https://github.com/nuttaruj/rolepod/issues).
 
@@ -181,7 +181,7 @@ Three layers, different load mechanisms (per [Anthropic memory doc](https://code
 Tier 1 (always loaded)        entry doc core            ≤200 lines
 Tier 2a (always-on rules)     rules/always-on/          3 files (eager)
 Tier 2b (path-scoped rules)   rules/{code,test}/        4 files (load on file match)
-Tier 3 (skill on trigger)     skills/                   53 skill files (10 Core + 43 shims) + plugin skills
+Skill layer (on trigger)      skills/                   10 Core skill files + optional plugin skills
 ```
 
 Plus: hooks (Claude/Gemini auto-fire; Codex opt-in via `plugin_hooks`), agents (sub-process), commands (slash /).
@@ -213,9 +213,9 @@ Lazy-load via `paths:` frontmatter — only enter context when Claude touches ma
 | `code/code-intel-workflow.md` | source files |
 | `test/testing.md` | test files (`*test*` / `*spec*` / `__tests__/`) |
 
-### Tier 3 — Skills (on trigger phrase)
+### Skill layer — Core 10 on trigger phrase
 
-Core 10 public skills cover the workflow spine (define / plan / build / verify / review / ship / recovery). Deep domain expertise (frontend, API, security, performance, SEO, content, platform integration) lives in the 18 specialist agents and is routed from inside the Core 10 phase skills. 43 compatibility shims keep legacy trigger phrases routing correctly for one migration release. Auto-discovery via `using-rolepod` at SessionStart. Optional add-on skills (caveman, gitnexus, ui-ux-pro-max) integrate when the user installs them — see [Recommended add-ons](#recommended-add-ons).
+Core 10 public skills cover the workflow spine (define / plan / build / verify / review / ship / recovery). Deep domain expertise (frontend, API, security, performance, SEO, content, platform integration) lives in the 18 specialist agents and is routed from inside the Core 10 phase skills. Old skill names are documented in [docs/legacy-skill-map.md](docs/legacy-skill-map.md) but are not installed as executable shims. Optional add-on skills (caveman, gitnexus, ui-ux-pro-max) integrate when the user installs them — see [Recommended add-ons](#recommended-add-ons).
 
 Each CLI exposes skills as a real directory tree. Every Core 10 SKILL.md follows the standalone contract: agent-available path + no-agent fallback path + Full Rolepod enhancement note + Hard stops.
 
@@ -327,7 +327,7 @@ Session N+1 (any time, any project, any CLI)
 |--------|-------|-----|---------|
 | **Anthropic auto memory** (Tier 1 — fallback) | per-project (git path) | Built into Claude Code v2.1.59+. Claude writes `~/.claude/projects/<project>/memory/MEMORY.md` on memorable events. First 200 lines / 25KB loaded every session. | No — default ON |
 | **Native agent memory** (Tier 2 — `memory:` frontmatter) | per-agent, `project` or `user` | Set in frontmatter; Claude Code parses directly | No — works out-of-box |
-| **MemPalace KG** (Tier 3 — optional plugin) | cross-session graph | Stop captures → SessionStart recalls; powers self-improvement loop; works on all 3 CLIs | Yes — optional |
+| **MemPalace KG** (optional plugin) | cross-session graph | Stop captures → SessionStart recalls; powers self-improvement loop; works on all 3 CLIs | Yes — optional |
 
 In rolepod: 15 agents use `memory: project` (codepaths / patterns / decisions scoped to repo); 3 use `memory: user` — `business-analyst` (pricing / ROI / competitor research generic), `ai-ml-engineer` (LLM API patterns + prompt caching idioms travel across projects), `growth-marketer` (SEO frameworks + copy formulas + conversion patterns reusable). `memory:` is a Claude primitive; Codex/Gemini achieve same scoping via per-agent TOML / inlined roster.
 
@@ -353,7 +353,7 @@ Estimated **~50-60% cost reduction** vs "all Opus high" while keeping depth wher
 
 ## Recommended add-ons
 
-Rolepod ships **pure framework only** — agents, rules, hooks, Core 10 skills + compatibility shims, commands, manifests. No 3rd-party tools, plugins, or CLIs are auto-installed by `./install.sh`.
+Rolepod ships **pure framework only** — agents, rules, hooks, Core 10 skills, commands, manifests. No 3rd-party tools, plugins, or CLIs are auto-installed by `./install.sh`.
 
 The framework is designed to **auto-integrate** when a recommended add-on is present on the user's system. Install whichever ones you want, on your own; rolepod hooks/rules/skills detect them at runtime and wire up. **Nothing breaks if an add-on is missing** — every integration has a documented fallback.
 
@@ -399,7 +399,7 @@ Adversarial review beyond the in-process `qa-tester` floor.
 
 ### Skill preloads
 
-53 skill files ship bundled (10 public Core 10 skills + 43 compatibility shims). Agents preload skills via `skills:` frontmatter. `ui-ux-pro-max` is the **only** preload that points at an external add-on — every other preload is bundled. Drop unwanted preloads by editing `core/agents/<name>.md`'s `skills:` list.
+10 Core skill files ship bundled. Agents preload Core 10 skills via `skills:` frontmatter. `ui-ux-pro-max` is the **only** preload that points at an external add-on — every other preload is bundled. Drop unwanted preloads by editing `core/agents/<name>.md`'s `skills:` list.
 
 Recovery / adversarial / source-grounding patterns live inside the relevant Core 10 skills (`manage-context`, `review-code`, `write-plan`) — Lead invokes them via the phase trigger rather than preloading them on every agent.
 

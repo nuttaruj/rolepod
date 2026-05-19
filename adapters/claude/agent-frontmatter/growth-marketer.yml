@@ -5,10 +5,9 @@ model: haiku
 memory: user
 maxTurns: 30
 skills:
-  - seo
-  - conversion-copywriting
-  - user-facing-content
-  - internal-comms
+  - write-spec
+  - implement-plan
+  - review-code
 tools:
   - Read
   - Glob

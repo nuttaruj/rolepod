@@ -5,8 +5,8 @@ model: haiku
 memory: user
 maxTurns: 20
 skills:
-  - doc-coauthoring
-  - planning-and-task-breakdown
+  - write-spec
+  - write-plan
 tools:
   - Read
   - Glob

@@ -39,7 +39,7 @@ You DO NOT touch:
 
 ## Universal floor + fallback role
 
-Per skill `reviewer-flow`:
+Per skill `review-code`:
 - **Floor**: every PR gate runs qa-tester (minimum)
 - **Fallback**: when Codex / Gemini fail (rate-limit / hang / error / Skill block) → qa-tester takes over their scope
 - **Adversarial fallback**: when Codex unavailable + high-risk surface → read `~/.claude/plugins/marketplaces/openai-codex/plugins/codex/prompts/adversarial-review.md` and apply

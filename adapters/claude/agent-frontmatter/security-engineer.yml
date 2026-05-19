@@ -7,11 +7,9 @@ memory: project
 maxTurns: 50
 permissionMode: acceptEdits
 skills:
-  - security-and-hardening
-  - systematic-debugging
-  - anti-spaghetti
-  - doubt-driven-development
-  - source-driven-development
+  - review-code
+  - debug-issue
+  - simplify-code
 tools:
   - Read
   - Glob

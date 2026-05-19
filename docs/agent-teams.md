@@ -132,5 +132,5 @@ These are upstream constraints — rolepod cannot work around them.
 
 - [Official Claude Code agent-teams docs](https://code.claude.com/docs/en/agent-teams)
 - `commands/rolepod-team.md` — the slash command body
-- `core/skills/write-plan/SKILL.md` — Core 10 plan skill that owns agent routing + cohesion contract (legacy `team-routing` + `parallel-contract-orchestration` shims redirect here)
-- `core/skills/review-code/SKILL.md` — Core 10 review skill with reviewer routing + adversarial mode (legacy `reviewer-flow` shim redirects here)
+- `core/skills/write-plan/SKILL.md` — Core 10 plan skill that owns agent routing + cohesion contract
+- `core/skills/review-code/SKILL.md` — Core 10 review skill with reviewer routing + adversarial mode

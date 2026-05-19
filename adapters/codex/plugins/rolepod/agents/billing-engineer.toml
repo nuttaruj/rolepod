@@ -38,7 +38,7 @@ You DO NOT touch:
 Money = irreversible. Every change here = high-risk surface:
 - Always run **race condition tests** for credit/billing flows (concurrent operations)
 - Always run **idempotency tests** (replay same webhook → same result)
-- Always **escalate to Codex adversarial-review** before merge (per skill `reviewer-flow`)
+- Always **escalate to Codex adversarial-review** before merge (per skill `review-code`)
 - Never log full card numbers / CVV / sensitive financial PII
 - Always use atomic DB operations (transactions, row locks) for credit changes
 

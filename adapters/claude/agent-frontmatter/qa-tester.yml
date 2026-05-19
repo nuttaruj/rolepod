@@ -7,11 +7,10 @@ memory: project
 maxTurns: 50
 permissionMode: acceptEdits
 skills:
-  - test-driven-development
-  - webapp-testing
-  - browser-testing-with-devtools
-  - systematic-debugging
-  - doubt-driven-development
+  - implement-plan
+  - debug-issue
+  - check-work
+  - review-code
 tools:
   - Read
   - Glob

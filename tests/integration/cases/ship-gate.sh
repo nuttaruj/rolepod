@@ -17,8 +17,8 @@ check "using-rolepod routes ship/merge/push → finish-work" "grep -qE 'ship.*me
 check "precommit-gate hook exists" "[ -x hooks/precommit-gate.sh ]"
 check "block-subagent-commit denies push/merge" "grep -qE 'git push|gh pr merge' hooks/block-subagent-commit.sh"
 check "review-code skill exists" "[ -f core/skills/review-code/SKILL.md ]"
-check "pre-merge-gate shim redirects to finish-work" "grep -q '^redirect_to: finish-work' core/skills/pre-merge-gate/SKILL.md"
-check "finishing-a-development-branch shim redirects to finish-work" "grep -q '^redirect_to: finish-work' core/skills/finishing-a-development-branch/SKILL.md"
+check "legacy pre-merge-gate skill absent" "[ ! -d core/skills/pre-merge-gate ]"
+check "legacy finishing-a-development-branch skill absent" "[ ! -d core/skills/finishing-a-development-branch ]"
 
 if [ $fail -eq 0 ]; then echo "ship-gate: pass"; exit 0; fi
 echo "ship-gate: $fail failure(s)"

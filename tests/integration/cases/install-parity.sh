@@ -40,6 +40,16 @@ FAIL=0
 echo "[claude global] install into $TMP/.claude"
 export ROLEPOD_TARGET="$TMP/.claude"
 mkdir -p "$ROLEPOD_TARGET"
+mkdir -p "$ROLEPOD_TARGET/skills/systematic-debugging"
+cat > "$ROLEPOD_TARGET/skills/systematic-debugging/SKILL.md" <<'EOF'
+---
+name: systematic-debugging
+tier: 3
+redirect_to: debug-issue
+---
+
+Compatibility shim from an older rolepod install.
+EOF
 if ./install.sh --target=claude > "$TMP/claude.log" 2>&1; then
   required_paths=(
     "$ROLEPOD_TARGET/CLAUDE.md"
@@ -58,13 +68,22 @@ if ./install.sh --target=claude > "$TMP/claude.log" 2>&1; then
       FAIL=$((FAIL+1))
     fi
   done
-  # Verify using-rolepod + systematic-debugging skills landed.
-  for skill in using-rolepod systematic-debugging; do
+  # Verify Core 10 skills landed and stale legacy shims were cleaned.
+  for skill in using-rolepod debug-issue check-work; do
     if [ ! -d "$ROLEPOD_TARGET/skills/$skill" ]; then
       echo "  ✗ skill missing: $skill"
       FAIL=$((FAIL+1))
     fi
   done
+  skill_count=$(find "$ROLEPOD_TARGET/skills" -mindepth 1 -maxdepth 1 -type d | wc -l | tr -d ' ')
+  if [ "$skill_count" -ne 10 ]; then
+    echo "  ✗ expected exactly 10 installed skills, got $skill_count"
+    FAIL=$((FAIL+1))
+  fi
+  if [ -d "$ROLEPOD_TARGET/skills/systematic-debugging" ]; then
+    echo "  ✗ stale legacy skill survived cleanup: systematic-debugging"
+    FAIL=$((FAIL+1))
+  fi
   # Verify Phase 1-3 hooks present in settings.json.
   for hook in project-context-loader gate-reminder precommit-gate block-subagent-commit cohesion-contract-check verify-reminder post-ship-detect; do
     if ! grep -q "$hook" "$ROLEPOD_TARGET/settings.json"; then
@@ -73,7 +92,7 @@ if ./install.sh --target=claude > "$TMP/claude.log" 2>&1; then
     fi
   done
   if [ "$FAIL" -eq 0 ]; then
-    echo "  ✓ Claude global: 9 paths + 2 new skills + 7 hooks registered"
+    echo "  ✓ Claude global: 9 paths + Core 10 skills + stale legacy cleanup + 7 hooks registered"
     PASS=$((PASS+1))
   fi
 else

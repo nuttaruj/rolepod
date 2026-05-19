@@ -51,10 +51,9 @@ test-static:
 # lean-surface — anti-drift guards that lock in the Core 10 invariants:
 #   - rendered entry doc size caps
 #   - Tier 0 + Tier 1 visible skill count (Core 10: 1 + 9 = 10)
-#   - public non-shim skills ≤ 11 (Core 10 default, +1 only for optional check-security)
-#   - every shim has redirect_to + fallback section
-#   - every redirect_to target points at an existing skill
-#   - no `redirect_to_agent` field anywhere (verdict #2)
+#   - filesystem skill dirs = 10 (Core 10 only)
+#   - no tier: 3 / redirect_to shim fields remain
+#   - deleted legacy skill directories stay absent
 #   - core skills include agent-available + no-agent fallback paths
 #   - core skills include Full Rolepod enhancement note
 #   - write-spec includes approval gate + self-review

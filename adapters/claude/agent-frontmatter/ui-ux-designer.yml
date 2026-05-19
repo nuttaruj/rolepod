@@ -6,11 +6,9 @@ memory: project
 maxTurns: 50
 skills:
   - ui-ux-pro-max
-  - frontend-ui-engineering
-  - web-design-guidelines
-  - interface-design
-  - interaction-design
-  - browser-testing-with-devtools
+  - implement-plan
+  - review-code
+  - check-work
 tools:
   - Read
   - Glob

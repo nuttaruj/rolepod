@@ -6,14 +6,11 @@ effort: high
 memory: project
 maxTurns: 30
 skills:
-  - api-and-interface-design
-  - spec-driven-development
-  - planning-and-task-breakdown
-  - context-engineering
-  - parallel-contract-orchestration
-  - anti-spaghetti
-  - documentation-and-adrs
-  - source-driven-development
+  - write-spec
+  - write-plan
+  - implement-plan
+  - simplify-code
+  - manage-context
 tools:
   - Read
   - Glob

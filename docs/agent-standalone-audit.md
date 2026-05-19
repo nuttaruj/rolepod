@@ -1,6 +1,6 @@
-# 18-Agent Standalone Audit (post PR 2)
+# 18-Agent Standalone Audit
 
-Purpose: snapshot of agent files after the Core 10 consolidation (PR 1) and the standalone hardening (PR 2). Every agent file is now usable when copied alone — labeled sections, output contract, escalation back to Core 10 — and references no legacy shim names in its `skills:` preload.
+Purpose: snapshot of agent files after Core 10 consolidation and legacy-shim removal. Every agent file is usable when copied alone — labeled sections, output contract, escalation back to Core 10 — and references no deleted legacy skill names in its `skills:` preload.
 
 ## Standalone contract (spec line 708-722, enforced by lean-surface)
 
@@ -59,7 +59,7 @@ Forbidden language (none in current source):
 | **broken** | 0 | None in PR 1 or PR 2 |
 
 `skills:` preload audit:
-- 0 agents reference a Tier 3 compatibility shim
+- 0 agents reference a deleted legacy skill name
 - 18 agents reference only Core 10 skill names
 
 Forbidden-language scan: 0 hits across all 18 files.
@@ -78,9 +78,8 @@ Forbidden-language scan: 0 hits across all 18 files.
 - **Every release:** re-run this audit.
 - **New agent added:** must classify as **pass** at landing time (labeled sections from day one, `skills:` preload subset of Core 10).
 - **Agent file > 200 lines:** review for bloat — agent expertise is concise checklists, not full domain manuals. The Core 10 phase skill owns workflow; the agent owns deep expertise within that phase.
-- **Legacy shim referenced as the active route:** the lean-surface check flags any active route through legacy names. Compatibility-context mentions (eg "legacy `team-routing` shim redirects here") are allowed; active routing is not.
+- **Legacy skill referenced as the active route:** the lean-surface check flags any active route through deleted legacy names. Old-name mapping belongs only in `docs/legacy-skill-map.md`.
 
 ## What still defers to a future release
 
-- **Release N+1 shim removal:** the 43 Tier 3 compatibility shims remain in place for one migration release. Once behavior tests confirm the Core 10 route catches every legacy trigger phrase in production usage, the shims may be deleted or moved to `docs/legacy-skills.md`.
-- **`check-security` optional Tier 2:** not shipped in PR 1 or PR 2. Add only if product direction confirms users want an explicit public security workflow (otherwise security routes through `review-code` + `security-engineer`).
+- **`check-security` optional Tier 2:** not shipped. Add only if product direction confirms users want an explicit public security workflow; otherwise security routes through `review-code` + `security-engineer`.

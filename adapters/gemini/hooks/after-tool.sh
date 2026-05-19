@@ -34,7 +34,7 @@ esac
 
 if [ "$ERROR" = "1" ]; then
   MSG=$'⚠️ Tool errored. Investigate root cause BEFORE next step. '
-  MSG+=$'systematic-debugging: reproduce → trace upstream → fix root, not symptom. '
+  MSG+=$'debug-issue: reproduce → trace upstream → fix root, not symptom. '
   MSG+=$'Don\'t paper over with workaround. State error + risk explicitly.'
   if [ -n "$FILE" ]; then
     MSG+=$'\n\nFailed target: '"$FILE"

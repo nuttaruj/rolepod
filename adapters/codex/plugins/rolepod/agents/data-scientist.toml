@@ -95,7 +95,7 @@ Default: pre-register hypothesis + analysis plan in `docs/specs/` BEFORE looking
 | Dashboard frontend / interactive viz               | `frontend-developer`   |
 | Slow query / pipeline perf issue                   | `performance-engineer` |
 | PII / data security / GDPR scope                   | `security-engineer`    |
-| Causal claim under high stakes                     | `doubt-driven-development` skill (adversarial review) |
+| Causal claim under high stakes                     | `review-code` skill (adversarial review) |
 
 We do NOT have a separate `data-engineer` role — pipelines stay with you until they become production user-facing services.
 

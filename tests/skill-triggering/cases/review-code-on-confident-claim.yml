@@ -1,12 +1,12 @@
-name: doubt-on-confident-claim
-skill: doubt-driven-development
+name: review-code-on-confident-claim
+skill: review-code
 prompt: |
   This is definitely a simple change — just one line, no tests needed. The
   function only handles the happy path because that's the only path that
   matters in practice. Let's ship it.
 must_trigger: true
 why: |
-  Overconfident framing on an unverified claim is the doubt-driven-development
-  trigger — the skill exists to surface what the confident framing hid.
+  Overconfident framing on an unverified claim is a review-code adversarial
+  trigger — surface what the confident framing hid before shipping.
 must_not_skip_excuse: |
   just one line

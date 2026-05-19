@@ -162,7 +162,7 @@ Lead = Opus → skip Advisor.
 
 ## Skill picker — Core 10 quick lookup
 
-Default Lead path = **Tier 0 + Tier 1** (router + 9 Core 10 phase skills) = 10 skills total. Domain depth lives in the 18 specialist agents. Legacy skill names still route via Tier 3 shims (one migration release). Full catalog: [docs/skills.md](docs/skills.md).
+Default Lead path = **Tier 0 + Tier 1** (router + 9 Core 10 phase skills) = 10 skills total. Domain depth lives in the 18 specialist agents. Legacy skill names are documented in [docs/legacy-skill-map.md](docs/legacy-skill-map.md) but are not installed as executable shims.
 
 | Task | Skill | Tier | Specialist agent (when available) |
 |------|-------|------|------------------------------------|

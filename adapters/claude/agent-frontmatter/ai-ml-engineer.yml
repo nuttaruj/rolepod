@@ -6,16 +6,10 @@ effort: high
 memory: user
 maxTurns: 50
 skills:
-  - claude-api
-  - context-engineering
-  - anti-spaghetti
-  - api-and-interface-design
-  - parallel-contract-orchestration
-  - test-driven-development
-  - source-driven-development
-  - systematic-debugging
-  - subagent-task-execution
-  - using-worktrees
+  - write-plan
+  - implement-plan
+  - debug-issue
+  - simplify-code
 tools:
   - Read
   - Glob

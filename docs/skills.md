@@ -1,17 +1,17 @@
 # Rolepod Skill Catalog (Core 10)
 
-Full skill library — 53 skill files on disk: 10 public Core 10 skills (1 router + 9 phase skills) plus 43 compatibility shims that redirect legacy trigger phrases to a Core 10 skill. Default Lead context loads only Tier 0 + Tier 1 (= 10 skills); Tier 3 shims stay hidden from the lean view; deep domain expertise lives in the 18 specialist agents.
+Rolepod now ships **10 executable skills total**: 1 router + 9 workflow phase skills. There are no legacy compatibility shim skill files in the install tree. Old skill names are preserved only as documentation in [legacy-skill-map.md](legacy-skill-map.md).
 
-This doc is the **reference**. Entry docs (`CLAUDE.md` / `AGENTS.md` / `GEMINI.md`) embed only the lean view to keep per-turn context small.
+Entry docs (`CLAUDE.md` / `AGENTS.md` / `GEMINI.md`) embed this same lean surface so the Lead does not spend context choosing among dozens of tiny workflow fragments. Deep domain expertise lives in the 18 specialist agents.
 
 ## Tier model
 
 | Tier | Purpose | Count | Visible in entry doc? | Fire on |
 |---|---|---:|---|---|
-| **0** | Workflow router | 1 | ✓ every turn | First read of every request |
-| **1** | Core 10 phase skills | 9 | ✓ every turn | Phase match (Define / Plan / Build / Verify / Review / Ship / Simplify / Recovery) |
-| **2** | Specialist | 0 default | — | Empty by default; domain depth lives in the 18 specialist agents and is routed from inside each phase skill |
-| **3** | Compatibility shim | 43 | only as pointer | Legacy trigger phrase still fires; body redirects to a Core 10 skill + tiny fallback for copy-only installs |
+| **0** | Workflow router | 1 | yes | First read of every request |
+| **1** | Core workflow skills | 9 | yes | Phase match |
+| **2** | Specialist public skills | 0 default | no | Domain depth lives in agents |
+| **3** | Legacy compatibility shims | 0 | no | Removed; see migration map |
 
 ## Core 10 skills
 
@@ -40,7 +40,7 @@ Domain depth that used to live in standalone skills now lives in the 18 speciali
 | Source-driven library / platform decisions | `write-plan` + `implement-plan` | `system-architect` + `ai-ml-engineer` |
 | Security review / hardening / token / crypto | `review-code` | `security-engineer` |
 | Performance audit / Core Web Vitals / perf | `review-code` + `check-work` | `performance-engineer` |
-| Technical docs / ADRs / runbooks | `write-spec` (shaping) + `implement-plan` (writing) | `tech-writer` |
+| Technical docs / ADRs / runbooks | `write-spec` + `implement-plan` | `tech-writer` |
 | User-facing content / FAQ / onboarding / error msgs | `write-spec` + `implement-plan` | `customer-success` |
 | Marketing / conversion copy / SEO | `write-spec` + `implement-plan` + `review-code` | `growth-marketer` |
 | CI/CD / deploy / monitoring / release | `finish-work` | `devops-sre` |
@@ -53,23 +53,22 @@ Source of truth: [`core/fragments/skill-index.md`](../core/fragments/skill-index
 
 ## Execution context — inline vs fork
 
-Per Claude Code [skills spec](https://code.claude.com/docs/en/skills#run-skills-in-a-subagent), skills can run inline (default — body becomes part of Lead's conversation) or `context: fork` (body becomes prompt to a forked subagent with `agent:` type, e.g. Explore / Plan / general-purpose). All Core 10 phase skills run **inline** by default — they need access to Lead's live conversation to make phase / approval / routing decisions.
+Skills can run inline (default — body becomes part of Lead's conversation) or as a forked subagent when a CLI supports that mode. All Core 10 phase skills run **inline** by default because they need the live conversation to make phase / approval / routing decisions.
 
-`context: fork` may be added later when a phase skill grows a self-contained read-heavy sub-step (e.g. onboarding scan inside `manage-context`), but Core 10 ships inline-only to keep the contract simple.
+`context: fork` may be added later when a phase skill grows a self-contained read-heavy sub-step, but Core 10 ships inline-only to keep the contract simple.
 
-## How a skill is added or moved between tiers
+## How a skill is added or moved
 
-1. Add the SKILL.md under `core/skills/<name>/` with `name:`, `description:`, `when_to_use:` frontmatter. Public phase skills also include `tier: 1` and `phase: <name>`.
-2. Edit `build/render.sh` — `generate_skill_index()` to place it in the right tier section.
-3. If it belongs to Tier 1, edit `generate_skill_index_lean()` too so the entry doc lean view picks it up.
-4. `make render` — re-generates both `skill-index.md` and `skill-index-lean.md`.
-5. `make test-static` — render-clean gate + lean-surface invariants confirm the committed fragment matches the generator and Core 10 caps still hold.
+1. Add `core/skills/<name>/SKILL.md` with `name:`, `description:`, `when_to_use:`, `tier: 1`, and `phase: <name>` when it is a public phase skill.
+2. Edit `build/render.sh` in both `generate_skill_index()` and `generate_skill_index_lean()` if it belongs in the public surface.
+3. `make render` — regenerates both skill-index fragments.
+4. `make test-static` — render-clean + lean-surface confirm Core 10 caps and portability.
 
-## Skill design principles (Core 10)
+## Skill design principles
 
-- **One public skill per workflow phase.** Domain expertise lives in agents, not in standalone skills. Add a public domain skill only when users naturally ask for it directly and no single agent owns it cleanly.
-- **Each core skill is standalone.** Includes an agent-available path and a no-agent fallback so a copy-only install still works (target 70-80% usefulness alone, 100% with full Rolepod).
-- **No hard dependency language.** Forbidden: `Requires <agent>`, `Always delegate to <agent>`, `Load <skill> before continuing`. Required: `If a matching Rolepod agent is available, delegate/escalate. If no matching agent is available, execute the checklist directly as Lead.`
-- **Frontmatter triggers are the routing surface.** `description:` and `when_to_use:` must include the exact phrases Lead will see in user requests.
-- **Length cap.** Public phase skills target 80-140 lines. Fallback sections stay concise (≤ 25 lines) — deep playbooks belong in agents, not in skill body.
-- **Every core skill has a Full Rolepod enhancement note** — describes what full Rolepod adds without making it a requirement.
+- **One public skill per workflow phase.** Domain expertise belongs in agents unless users naturally invoke that workflow directly.
+- **Each core skill is standalone.** It includes an agent-available path and a no-agent fallback so a copy-only install still works.
+- **No hard dependency language.** Forbidden: `Requires <agent>`, `Always delegate to <agent>`, `Only works inside full Rolepod`.
+- **Frontmatter triggers are the routing surface.** `description:` and `when_to_use:` must include the phrases users actually type.
+- **Length cap.** Public phase skills target 80-140 lines. Fallback sections stay concise; deep playbooks belong in agents.
+- **Every core skill has a Full Rolepod enhancement note** describing what full Rolepod adds without making it a requirement.
