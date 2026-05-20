@@ -3,8 +3,8 @@
 # produces the artifacts each CLI's adapter promises, per docs/cli-support.md.
 #
 # Honest scope (matches README/docs):
-#   Claude global    → full plugin (~/.claude/ — agents, skills, hooks, settings)
-#   Claude project   → full plugin ($PWD/.claude/)
+#   Claude global    → marketplace plugin (~/.claude/plugins/) + CLAUDE.md block + rules/
+#   Claude project   → filesystem plugin tree ($PWD/.claude/) + CLAUDE.md block + rules/
 #   Codex global     → marketplace + plugin cache + AGENTS.md
 #   Codex project    → rules-only ($PWD/AGENTS.md)
 #   Gemini global    → extension + hooks + extension-local GEMINI.md
@@ -37,6 +37,11 @@ PASS=0
 FAIL=0
 
 # ─── Claude global into temp HOME ───────────────────────────────────────
+# Temp target (ROLEPOD_TARGET diverges from ~/.claude) → install does the
+# filesystem-only plugin-tree copy (the `claude plugin` CLI would mutate the
+# real Claude home, so it is skipped). Expected layout: CLAUDE.md managed
+# block + rules/ copy + plugins/rolepod/ tree. Hooks live INSIDE the plugin
+# manifest, not in settings.json.
 echo "[claude global] install into $TMP/.claude"
 export ROLEPOD_TARGET="$TMP/.claude"
 mkdir -p "$ROLEPOD_TARGET"
@@ -51,16 +56,17 @@ redirect_to: debug-issue
 Compatibility shim from an older rolepod install.
 EOF
 if ./install.sh --target=claude > "$TMP/claude.log" 2>&1; then
+  PLUGIN_DIR="$ROLEPOD_TARGET/plugins/rolepod"
   required_paths=(
     "$ROLEPOD_TARGET/CLAUDE.md"
-    "$ROLEPOD_TARGET/agents"
-    "$ROLEPOD_TARGET/skills"
+    "$ROLEPOD_TARGET/CHEATSHEET.md"
     "$ROLEPOD_TARGET/rules/always-on"
     "$ROLEPOD_TARGET/rules/code"
-    "$ROLEPOD_TARGET/hooks"
-    "$ROLEPOD_TARGET/hooks/lib/session_state.py"
-    "$ROLEPOD_TARGET/settings.json"
-    "$ROLEPOD_TARGET/.claude-plugin/plugin.json"
+    "$PLUGIN_DIR/.claude-plugin/plugin.json"
+    "$PLUGIN_DIR/agents"
+    "$PLUGIN_DIR/skills"
+    "$PLUGIN_DIR/commands"
+    "$PLUGIN_DIR/hooks/lib/session_state.py"
   )
   for p in "${required_paths[@]}"; do
     if [ ! -e "$p" ]; then
@@ -68,34 +74,36 @@ if ./install.sh --target=claude > "$TMP/claude.log" 2>&1; then
       FAIL=$((FAIL+1))
     fi
   done
-  # Verify Core 10 skills landed and stale legacy shims were cleaned.
+  # Core 10 skills land inside the plugin tree, not ~/.claude/skills/.
   for skill in using-rolepod debug-issue check-work; do
-    if [ ! -d "$ROLEPOD_TARGET/skills/$skill" ]; then
-      echo "  ✗ skill missing: $skill"
+    if [ ! -d "$PLUGIN_DIR/skills/$skill" ]; then
+      echo "  ✗ skill missing from plugin: $skill"
       FAIL=$((FAIL+1))
     fi
   done
-  skill_count=$(find "$ROLEPOD_TARGET/skills" -mindepth 1 -maxdepth 1 -type d | wc -l | tr -d ' ')
+  skill_count=$(find "$PLUGIN_DIR/skills" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | wc -l | tr -d ' ')
   if [ "$skill_count" -ne 10 ]; then
-    echo "  ✗ expected exactly 10 installed skills, got $skill_count"
+    echo "  ✗ expected exactly 10 plugin skills, got $skill_count"
     FAIL=$((FAIL+1))
   fi
+  # Migration must clean a pre-2.0 legacy shim skill from ~/.claude/skills/.
   if [ -d "$ROLEPOD_TARGET/skills/systematic-debugging" ]; then
-    echo "  ✗ stale legacy skill survived cleanup: systematic-debugging"
+    echo "  ✗ stale legacy skill survived migration: systematic-debugging"
     FAIL=$((FAIL+1))
   fi
-  # Verify 7 core hook entries present in settings.json (PR 6 layout).
-  # verify-reminder was removed (PR 6); post-ship-detect + gitnexus-wrap
-  # moved to hooks/optional/gitnexus/ and only register when the GitNexus
-  # plugin is detected at install time (not present in this temp install).
+  # Hooks live inline in the plugin manifest — NOT in settings.json.
   for hook in project-context-loader gate-reminder precommit-gate block-subagent-commit cohesion-contract-check session-lifecycle; do
-    if ! grep -q "$hook" "$ROLEPOD_TARGET/settings.json"; then
-      echo "  ✗ hook not registered in settings.json: $hook"
+    if ! grep -q "$hook" "$PLUGIN_DIR/.claude-plugin/plugin.json"; then
+      echo "  ✗ hook not in plugin manifest: $hook"
       FAIL=$((FAIL+1))
     fi
   done
+  if [ -f "$ROLEPOD_TARGET/settings.json" ] && grep -q '/hooks/gate-reminder.sh' "$ROLEPOD_TARGET/settings.json" 2>/dev/null; then
+    echo "  ✗ rolepod hook entry leaked into settings.json (should be plugin-only)"
+    FAIL=$((FAIL+1))
+  fi
   if [ "$FAIL" -eq 0 ]; then
-    echo "  ✓ Claude global: 9 paths + Core 10 skills + stale legacy cleanup + 7 core hook entries registered (GitNexus add-on skipped — plugin not present)"
+    echo "  ✓ Claude global: CLAUDE.md block + rules/ + plugin tree (agents/skills/commands/hooks) + inline hooks + legacy migration"
     PASS=$((PASS+1))
   fi
 else
@@ -105,6 +113,8 @@ fi
 unset ROLEPOD_TARGET
 
 # ─── Claude project (--scope=project) ───────────────────────────────────
+# Project target ($PWD/.claude) diverges from ~/.claude → same filesystem-only
+# plugin-tree copy as the temp-target global path.
 echo ""
 echo "[claude project] install into $TMP/project/.claude"
 mkdir -p "$TMP/project"
@@ -112,8 +122,8 @@ mkdir -p "$TMP/project"
   echo "  ✗ install failed (see $TMP/claude-project.log)"
   FAIL=$((FAIL+1))
 }
-if [ -f "$TMP/project/.claude/CLAUDE.md" ] && [ -d "$TMP/project/.claude/agents" ] && [ -d "$TMP/project/.claude/skills" ] && [ -f "$TMP/project/.claude/settings.json" ]; then
-  echo "  ✓ Claude project: .claude/CLAUDE.md + .claude/agents + .claude/skills + .claude/settings.json (full native plugin tree under \$PWD/.claude/)"
+if [ -f "$TMP/project/.claude/CLAUDE.md" ] && [ -d "$TMP/project/.claude/rules" ] && [ -f "$TMP/project/.claude/plugins/rolepod/.claude-plugin/plugin.json" ]; then
+  echo "  ✓ Claude project: .claude/CLAUDE.md + .claude/rules/ + .claude/plugins/rolepod/ tree under \$PWD/.claude/"
   PASS=$((PASS+1))
 else
   echo "  ✗ Claude project: expected files missing under \$PWD/.claude/"

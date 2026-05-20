@@ -9,9 +9,9 @@
 | Entry doc | `~/.claude/CLAUDE.md` | `~/.codex/AGENTS.md` | `~/.gemini/extensions/rolepod/GEMINI.md` |
 | Always-on rules | `~/.claude/rules/always-on/` | (inlined in AGENTS.md) | (inlined in GEMINI.md) |
 | Path-scoped rules | `~/.claude/rules/{code,test}/` (paths: glob) | (inlined) | (inlined) |
-| Agents (18) | `~/.claude/agents/*.md` | `~/.codex/plugins/rolepod/agents/*.toml` | inlined in `GEMINI.md` |
-| Skills (44) | `~/.claude/skills/<name>/SKILL.md` | `~/.codex/plugins/rolepod/skills/<name>/SKILL.md` | `~/.gemini/extensions/rolepod/skills/<name>/SKILL.md` |
-| Hooks (Claude 9 / Codex 5 / Gemini 4) | `~/.claude/settings.json` | `~/.codex/plugins/rolepod/hooks/hooks.json` | `~/.gemini/extensions/rolepod/hooks/hooks.json` |
+| Agents (18) | auto-discovered in plugin | `~/.codex/plugins/rolepod/agents/*.toml` | inlined in `GEMINI.md` |
+| Skills (10) | auto-discovered in plugin | `~/.codex/plugins/rolepod/skills/<name>/SKILL.md` | `~/.gemini/extensions/rolepod/skills/<name>/SKILL.md` |
+| Hooks (Claude 6 core + 1 opt / Codex 5 / Gemini 4) | inline in plugin manifest `.claude-plugin/plugin.json` | `~/.codex/plugins/rolepod/hooks/hooks.json` | `~/.gemini/extensions/rolepod/hooks/hooks.json` |
 | Slash commands | `~/.claude/commands/*.md` | n/a | n/a (no Gemini-native slash commands; use `/rolepod` via skill) |
 
 ## Active gates
@@ -183,19 +183,17 @@ Optional add-on skills (caveman, gitnexus-*, ui-ux-pro-max) integrate when the u
 
 Counts differ per CLI surface — Claude has the deepest matcher model so it carries enforcement hooks; Codex/Gemini run context hooks only.
 
-### Claude (8 hook scripts · 6 core + 2 GitNexus add-on, all self-guarded)
+### Claude (6 core hooks + 1 optional GitNexus, inline in plugin manifest, all self-guarded)
 
 | Event | Script | Role |
 |-------|--------|------|
 | SessionStart | `project-context-loader.sh` | git context (repo / branch / dirty / recent / hot 7d) |
 | SessionStart | `session-lifecycle.sh --lock` | sibling-session warning |
-| PreToolUse (Bash) | `gitnexus-wrap.sh` | gitnexus index freshness (add-on, no-op without GitNexus) |
 | PreToolUse (Edit/Write on high-risk paths) | `gate-reminder.sh` | schema-bound + RED-test + reviewer-floor (silent on normal edits) |
 | PreToolUse (Bash on git commit) | `precommit-gate.sh` | test gate, hard block on high-risk + 0 tests |
 | PreToolUse (Bash, sub-agent) | `block-subagent-commit.sh` | sub-agents cannot commit/push/merge |
 | PreToolUse (Agent spawn) | `cohesion-contract-check.sh` | multi-agent contract required (2+ spawns) |
-| PostToolUse (Bash) | `optional/gitnexus/post-ship-detect.sh` | auto-reindex after ship cmd · registered only when GitNexus plugin detected |
-| PreToolUse + PostToolUse (Bash) | `optional/gitnexus/gitnexus-wrap.sh` | wrap GitNexus plugin's bare hook · only when plugin detected |
+| PostToolUse (Bash) | `optional/gitnexus/post-ship-detect.sh` | auto-reindex after ship cmd (optional add-on, inline in manifest when GitNexus detected) |
 | Stop | `session-lifecycle.sh --unlock` | release sibling lock |
 
 ### Codex (3 core commands · 1 optional GitNexus + 1 optional MemPalace bridge)

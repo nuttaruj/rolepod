@@ -237,7 +237,7 @@ render_template() {
 
 render_agents() {
   local target="$1"
-  local out_dir="$REPO_DIR/build/rendered/$target/agents"
+  local out_dir="${2:-$REPO_DIR/build/rendered/$target/agents}"
   mkdir -p "$out_dir"
   local count=0
   for core_md in "$REPO_DIR"/core/agents/*.md; do
@@ -247,21 +247,74 @@ render_agents() {
       > "$out_dir/$name.md"
     count=$((count + 1))
   done
-  echo "rendered $count agents → build/rendered/$target/agents/"
+  echo "rendered $count agents → ${out_dir#"$REPO_DIR"/}"
 }
 
 # ─── Render Claude target ───────────────────────────────────────────────────
+# Claude ships as a marketplace plugin. Output layout matches the local
+# marketplace shape `claude plugin marketplace add` consumes:
+#   CLAUDE.md                                  (entry doc, script-installed as
+#                                               a managed block — plugins have
+#                                               no always-on instruction surface)
+#   .claude-plugin/marketplace.json            (marketplace manifest)
+#   plugins/rolepod/.claude-plugin/plugin.json (plugin manifest, inline hooks)
+#   plugins/rolepod/agents/*.md                (18 rendered agents)
+#   plugins/rolepod/skills/<name>/SKILL.md     (real dir, copied from core/skills)
+#   plugins/rolepod/commands/*.md              (slash commands)
+#   plugins/rolepod/hooks/*.sh + lib/ + optional/
 
 render_claude() {
   local template="$REPO_DIR/adapters/claude/CLAUDE.md.tmpl"
   local out_dir="$REPO_DIR/build/rendered/claude"
   local output="$out_dir/CLAUDE.md"
+  local adapter_dir="$REPO_DIR/adapters/claude"
+  local plugin_dst="$out_dir/plugins/rolepod"
 
   [ -f "$template" ] || { echo "render: missing $template" >&2; exit 1; }
 
+  rm -rf "$out_dir"
   mkdir -p "$out_dir"
   render_template "$template" "$output"
-  render_agents "claude"
+
+  # Marketplace manifest at .claude-plugin/marketplace.json.
+  if [ -f "$adapter_dir/.claude-plugin/marketplace.json" ]; then
+    mkdir -p "$out_dir/.claude-plugin"
+    cp "$adapter_dir/.claude-plugin/marketplace.json" "$out_dir/.claude-plugin/"
+  else
+    echo "render: missing $adapter_dir/.claude-plugin/marketplace.json" >&2; exit 1
+  fi
+
+  # Plugin manifest under plugins/rolepod/.claude-plugin/.
+  if [ -f "$REPO_DIR/.claude-plugin/plugin.json" ]; then
+    mkdir -p "$plugin_dst/.claude-plugin"
+    cp "$REPO_DIR/.claude-plugin/plugin.json" "$plugin_dst/.claude-plugin/"
+  else
+    echo "render: missing $REPO_DIR/.claude-plugin/plugin.json" >&2; exit 1
+  fi
+
+  # Rendered agents into the plugin tree.
+  render_agents "claude" "$plugin_dst/agents"
+
+  # Skills as a real directory tree (copied from core/skills/).
+  mkdir -p "$plugin_dst/skills"
+  for skill_dir in "$REPO_DIR"/core/skills/*/; do
+    local name; name="$(basename "$skill_dir")"
+    cp -R "$skill_dir" "$plugin_dst/skills/$name"
+  done
+
+  # Slash commands.
+  if [ -d "$REPO_DIR/commands" ]; then
+    mkdir -p "$plugin_dst/commands"
+    cp "$REPO_DIR/commands"/*.md "$plugin_dst/commands/" 2>/dev/null || true
+  fi
+
+  # Hooks: 6 core scripts + lib/ helpers + optional/ add-ons.
+  mkdir -p "$plugin_dst/hooks"
+  cp "$REPO_DIR/hooks"/*.sh "$plugin_dst/hooks/" 2>/dev/null || true
+  [ -d "$REPO_DIR/hooks/lib" ]      && cp -R "$REPO_DIR/hooks/lib" "$plugin_dst/hooks/"
+  [ -d "$REPO_DIR/hooks/optional" ] && cp -R "$REPO_DIR/hooks/optional" "$plugin_dst/hooks/"
+  chmod +x "$plugin_dst/hooks/"*.sh 2>/dev/null || true
+  find "$plugin_dst/hooks/optional" -name '*.sh' -exec chmod +x {} \; 2>/dev/null || true
 }
 
 # ─── Render Codex target ────────────────────────────────────────────────────

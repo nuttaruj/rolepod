@@ -538,6 +538,35 @@ if [ "$UNINSTALL" -eq 1 ]; then
 
   if [ "$uninstall_claude" -eq 1 ]; then
     step "Removing Claude rolepod files in $C_TARGET"
+
+    # Resolve whether C_TARGET is the real ~/.claude, same as install path.
+    # `claude plugin uninstall` writes to the real home with no override flag —
+    # skip it when uninstalling against a temp/test target.
+    C_REAL_HOME="$HOME/.claude"
+    C_TARGET_RESOLVED="$(cd "$C_TARGET" 2>/dev/null && pwd -P || echo "$C_TARGET")"
+    C_REAL_RESOLVED="$(cd "$C_REAL_HOME" 2>/dev/null && pwd -P || echo "$C_REAL_HOME")"
+    C_IS_TEMP_TARGET=0
+    [ "$C_TARGET_RESOLVED" != "$C_REAL_RESOLVED" ] && C_IS_TEMP_TARGET=1
+
+    # 1. Uninstall the plugin via the CLI (real target only).
+    if have_cmd claude && [ "$C_IS_TEMP_TARGET" -eq 0 ]; then
+      if [ "$DRY_RUN" -eq 1 ]; then
+        dry "claude plugin uninstall rolepod@rolepod --scope user -y"
+        dry "claude plugin marketplace remove rolepod"
+      else
+        claude plugin uninstall rolepod@rolepod --scope user -y >/dev/null 2>&1 || true
+        claude plugin marketplace remove rolepod >/dev/null 2>&1 || true
+      fi
+    elif [ "$C_IS_TEMP_TARGET" -eq 1 ]; then
+      warn "Target diverges from ~/.claude — skipping 'claude plugin' CLI during uninstall."
+    fi
+
+    # 2. Remove filesystem copy of the plugin tree (temp-target installs write
+    #    this path; also cleans up if the CLI uninstall left it behind).
+    do_or_dry "rm -rf $C_TARGET/plugins/rolepod" rm -rf "$C_TARGET/plugins/rolepod"
+
+    # 3. Legacy flat-file cleanup (pre-2.0 non-plugin installs). Doubles as
+    #    cleanup for any leftover files the plugin install might have left.
     for n in "${AGENT_NAMES[@]}";   do do_or_dry "rm -f $C_TARGET/agents/$n"   rm -f "$C_TARGET/agents/$n"; done
     for n in "${RULE_NAMES[@]}";    do do_or_dry "rm -f $C_TARGET/rules/$n"    rm -f "$C_TARGET/rules/$n"; done
     # Prune empty rules subfolders left after file removal
@@ -547,16 +576,17 @@ if [ "$UNINSTALL" -eq 1 ]; then
     for n in "${COMMAND_NAMES[@]}"; do do_or_dry "rm -f $C_TARGET/commands/$n" rm -f "$C_TARGET/commands/$n"; done
     for n in "${HOOK_NAMES[@]}";    do do_or_dry "rm -f $C_TARGET/hooks/$n"    rm -f "$C_TARGET/hooks/$n"; done
     for n in "${SKILL_NAMES[@]}";   do do_or_dry "rm -rf $C_TARGET/skills/$n"  rm -rf "$C_TARGET/skills/$n"; done
-    do_or_dry "rm -f $C_TARGET/CHEATSHEET.md"               rm -f "$C_TARGET/CHEATSHEET.md"
-    do_or_dry "rm -f $C_TARGET/.claude-plugin/plugin.json"  rm -f "$C_TARGET/.claude-plugin/plugin.json"
+    do_or_dry "rm -f $C_TARGET/CHEATSHEET.md"              rm -f "$C_TARGET/CHEATSHEET.md"
+    do_or_dry "rm -f $C_TARGET/.claude-plugin/plugin.json" rm -f "$C_TARGET/.claude-plugin/plugin.json"
     # Empty dirs cleanup (rmdir; ignore failure if non-empty)
     if [ "$DRY_RUN" -eq 1 ]; then
       dry "rmdir empty agents/rules/commands/hooks/skills/.claude-plugin under $C_TARGET (if empty)"
     else
-      rmdir "$C_TARGET/agents" "$C_TARGET/rules" "$C_TARGET/commands" "$C_TARGET/hooks" "$C_TARGET/skills" "$C_TARGET/.claude-plugin" 2>/dev/null || true
+      rmdir "$C_TARGET/agents" "$C_TARGET/rules" "$C_TARGET/commands" \
+            "$C_TARGET/hooks" "$C_TARGET/skills" "$C_TARGET/.claude-plugin" 2>/dev/null || true
     fi
 
-    # Strip rolepod hook entries from settings.json (keep user's other config).
+    # 4. Strip rolepod hook entries from settings.json (cleans pre-2.0 entries).
     SETTINGS_FILE="$C_TARGET/settings.json"
     if [ -f "$SETTINGS_FILE" ]; then
       step "Stripping rolepod hook entries from $SETTINGS_FILE"
@@ -602,6 +632,7 @@ PY
       fi
     fi
 
+    # 5. Strip rolepod managed block from CLAUDE.md.
     step "Stripping rolepod block from $C_TARGET/CLAUDE.md"
     remove_managed_block "$C_TARGET/CLAUDE.md"
 
@@ -783,16 +814,30 @@ if claude_selected; then
       skills \
       commands \
       .claude-plugin \
+      plugins/rolepod \
       settings.json
   fi
 
-  step "Creating directory structure"
-  do_or_dry "mkdir -p $TARGET/{agents,rules,hooks,skills,commands,.claude-plugin,plugins}" \
-    mkdir -p "$TARGET/agents" "$TARGET/rules" "$TARGET/hooks" "$TARGET/skills" \
-             "$TARGET/commands" "$TARGET/.claude-plugin" "$TARGET/plugins"
+  # `claude plugin` CLI writes to the real ~/.claude and has no home-override
+  # flag. On a temp/diverged target (test isolation, ROLEPOD_TARGET set) skip
+  # the CLI and fall back to a filesystem-only plugin-tree copy. Mirror the
+  # Codex temp-target detection at the codex install block.
+  CLAUDE_REAL_HOME="$HOME/.claude"
+  TARGET_RESOLVED="$(cd "$TARGET" 2>/dev/null && pwd -P || echo "$TARGET")"
+  CLAUDE_REAL_RESOLVED="$(cd "$CLAUDE_REAL_HOME" 2>/dev/null && pwd -P || echo "$CLAUDE_REAL_HOME")"
+  CLAUDE_IS_TEMP_TARGET=0
+  [ "$TARGET_RESOLVED" != "$CLAUDE_REAL_RESOLVED" ] && CLAUDE_IS_TEMP_TARGET=1
+
+  RENDERED_CLAUDE_DIR="$REPO_DIR/build/rendered/claude"
+  [ -d "$RENDERED_CLAUDE_DIR/plugins/rolepod" ] || fail "expected $RENDERED_CLAUDE_DIR/plugins/rolepod after render"
 
   if [ "$FORCE" -eq 1 ]; then CP_FLAG=""; else CP_FLAG="-n"; fi
 
+  step "Creating directory structure"
+  do_or_dry "mkdir -p $TARGET/rules" mkdir -p "$TARGET/rules"
+
+  # Entry doc — CLAUDE.md managed block + CHEATSHEET. The plugin model has no
+  # always-on instruction surface, so the gate block stays a managed block.
   step "Updating CLAUDE.md (managed block) + CHEATSHEET.md"
   update_managed_block "$TARGET/CLAUDE.md" "$RENDERED_CLAUDE_MD"
   if [ "$DRY_RUN" -eq 1 ]; then
@@ -801,17 +846,14 @@ if claude_selected; then
     cp $CP_FLAG "$REPO_DIR/CHEATSHEET.md" "$TARGET/" 2>/dev/null || true
   fi
 
-  step "Copying agents (18 from rendered/) + rules (recursive, subfolders preserved) + commands"
+  # rules/ — not a plugin component, stays a ~/.claude/rules/ copy. Reuse the
+  # legacy-rule cleanup loop + recursive copy. Keep it dry-run aware.
+  step "Copying rules (recursive, subfolders preserved)"
   if [ "$DRY_RUN" -eq 1 ]; then
-    dry "cp $CP_FLAG $REPO_DIR/build/rendered/claude/agents/*.md → $TARGET/agents/"
     dry "clean stale legacy flat-path rolepod rules from $TARGET/rules/"
     dry "cp -R $REPO_DIR/core/rules/. → $TARGET/rules/  (preserves always-on/ code/ test/ subdirs)"
-    dry "cp $CP_FLAG $REPO_DIR/commands/*.md → $TARGET/commands/"
   else
-    cp $CP_FLAG "$REPO_DIR"/build/rendered/claude/agents/*.md "$TARGET/agents/" 2>/dev/null || true
     # Clean stale legacy flat-path rolepod rules (pre-subfolder layout).
-    # Known basenames that USED to live at rules/ root before restructure.
-    # Files now live in always-on/, code/, test/ subdirs OR converted to skills.
     for legacy in pre-merge-gate.md reviewer-flow.md advisor.md \
                   session-management.md triage-deep.md new-project.md \
                   team-org.md verification.md \
@@ -822,397 +864,136 @@ if claude_selected; then
     done
     # Recursive copy: preserves always-on/, code/, test/ subfolders
     cp -R "$REPO_DIR"/core/rules/. "$TARGET/rules/" 2>/dev/null || true
-    cp $CP_FLAG "$REPO_DIR"/commands/*.md "$TARGET/commands/" 2>/dev/null || true
   fi
 
-  step "Copying hooks + lib helpers and marking executable"
-  if [ "$DRY_RUN" -eq 1 ]; then
-    dry "cp $CP_FLAG $REPO_DIR/hooks/*.sh → $TARGET/hooks/  (chmod +x)"
-    dry "cp -R $REPO_DIR/hooks/lib → $TARGET/hooks/lib"
-    dry "rm stale hooks: session-lock.sh, session-unlock.sh (PR 5 — session-lifecycle.sh)"
-    dry "rm stale hooks: verify-reminder.sh (PR 6 — deleted)"
-    dry "rm stale hooks: post-ship-detect.sh, gitnexus-wrap.sh (PR 6 — moved to optional/gitnexus/)"
-    dry "cp $CP_FLAG $REPO_DIR/hooks/optional/gitnexus/*.sh → $TARGET/hooks/optional/gitnexus/ (only registered when GitNexus plugin detected)"
-  else
-    # Remove pre-PR-6 hook files. settings.json entries for the old
-    # commands are stripped in the registration block below.
-    rm -f \
-      "$TARGET/hooks/session-lock.sh" "$TARGET/hooks/session-unlock.sh" \
-      "$TARGET/hooks/verify-reminder.sh" \
-      "$TARGET/hooks/post-ship-detect.sh" "$TARGET/hooks/gitnexus-wrap.sh" \
-      2>/dev/null || true
-    cp $CP_FLAG "$REPO_DIR"/hooks/*.sh "$TARGET/hooks/" 2>/dev/null || true
-    chmod +x "$TARGET"/hooks/*.sh 2>/dev/null || true
-    # Copy hooks/lib/ — session_state.py is the shared session-state inspector
-    # that gate-reminder.sh, precommit-gate.sh, cohesion-contract-check.sh
-    # all shell out to. Missing → those hooks degrade to soft-warn (safe).
-    if [ -d "$REPO_DIR/hooks/lib" ]; then
-      mkdir -p "$TARGET/hooks/lib"
-      cp $CP_FLAG "$REPO_DIR"/hooks/lib/*.py "$TARGET/hooks/lib/" 2>/dev/null || true
-    fi
-    # Copy optional/gitnexus hooks. Scripts are always shipped (so the
-    # surface is auditable) but their settings.json registration is gated
-    # on GitNexus plugin detection further down.
-    if [ -d "$REPO_DIR/hooks/optional/gitnexus" ]; then
-      mkdir -p "$TARGET/hooks/optional/gitnexus"
-      cp $CP_FLAG "$REPO_DIR"/hooks/optional/gitnexus/*.sh "$TARGET/hooks/optional/gitnexus/" 2>/dev/null || true
-      chmod +x "$TARGET"/hooks/optional/gitnexus/*.sh 2>/dev/null || true
-    fi
-  fi
+  # Migration — strip a pre-2.0 non-plugin install. Older rolepod copied
+  # agents/skills/commands/hooks into ~/.claude/* and registered hooks in
+  # settings.json. The plugin now owns all of that; leftovers would double up
+  # (duplicate skills/agents loaded, duplicate hooks fired). Best-effort,
+  # non-fatal, dry-run aware.
+  step "Migration — removing any pre-2.0 non-plugin rolepod files"
 
-  # Count skills locally — SKILL_NAMES is only populated in uninstall flow.
-  _skill_count=$(find "$REPO_DIR/core/skills" -maxdepth 1 -mindepth 1 -type d 2>/dev/null | wc -l | tr -d ' ')
-  step "Cleaning stale legacy skills, then copying bundled skills ($_skill_count)"
-  remove_stale_legacy_skills "$TARGET/skills"
-  for skill_dir in "$REPO_DIR"/core/skills/*/; do
-    name=$(basename "$skill_dir")
-    if [ "$FORCE" -eq 1 ] || [ ! -e "$TARGET/skills/$name" ]; then
-      do_or_dry "cp -R $REPO_DIR/core/skills/$name → $TARGET/skills/" \
-        cp -R "$REPO_DIR/core/skills/$name" "$TARGET/skills/" 2>/dev/null || true
-    fi
-  done
-
-  step "Copying plugin manifest"
-  if [ "$DRY_RUN" -eq 1 ]; then
-    dry "cp $CP_FLAG $REPO_DIR/.claude-plugin/plugin.json → $TARGET/.claude-plugin/"
-  else
-    cp $CP_FLAG "$REPO_DIR/.claude-plugin/plugin.json" "$TARGET/.claude-plugin/" 2>/dev/null || true
-  fi
-
-# ─── Register hooks in settings.json ────────────────────────────────────
-# Claude Code reads hooks from ~/.claude/settings.json — manifest.json is
-# descriptive metadata only. Hooks shipped to ~/.claude/hooks/ do NOT auto-fire
-# unless registered here. This block is idempotent: existing entries are
-# preserved, rolepod entries are upserted by command path.
-
-SETTINGS_FILE="$TARGET/settings.json"
-HOOK_DIR="$TARGET/hooks"
-
-step "Registering rolepod hooks in $SETTINGS_FILE"
-
-if [ "$DRY_RUN" -eq 1 ]; then
-  dry "register hooks in $SETTINGS_FILE:"
-  dry "  SessionStart  startup|resume      → $HOOK_DIR/project-context-loader.sh   (timeout 5)"
-  dry "  SessionStart  startup|resume      → $HOOK_DIR/session-lifecycle.sh --lock (timeout 3)"
-  dry "  PreToolUse    Edit|Write|MultiEdit → $HOOK_DIR/gate-reminder.sh             (timeout 3)"
-  dry "  PreToolUse    Bash                 → $HOOK_DIR/precommit-gate.sh            (timeout 5)"
-  dry "  PreToolUse    Bash                 → $HOOK_DIR/block-subagent-commit.sh    (timeout 3)"
-  dry "  PreToolUse    Agent                → $HOOK_DIR/cohesion-contract-check.sh  (timeout 5)"
-  dry "  Stop          (no matcher)         → $HOOK_DIR/session-lifecycle.sh --unlock (timeout 3)"
-  dry "  (optional · only when GitNexus plugin detected)"
-  dry "  PostToolUse   Bash                 → $HOOK_DIR/optional/gitnexus/post-ship-detect.sh (timeout 5)"
-  REGISTER_OK=1
-else
-
-# Create empty settings.json if missing
-if [ ! -f "$SETTINGS_FILE" ]; then
-  echo '{}' > "$SETTINGS_FILE"
-fi
-
-REGISTER_OK=0
-if command -v jq >/dev/null 2>&1; then
-  TMP_FILE=$(mktemp)
-  if jq \
-    --arg ctx "$HOOK_DIR/project-context-loader.sh" \
-    --arg slk "$HOOK_DIR/session-lifecycle.sh --lock" \
-    --arg sul "$HOOK_DIR/session-lifecycle.sh --unlock" \
-    --arg old_slk "$HOOK_DIR/session-lock.sh" \
-    --arg old_sul "$HOOK_DIR/session-unlock.sh" \
-    --arg old_ver "$HOOK_DIR/verify-reminder.sh" \
-    --arg old_shp_root "$HOOK_DIR/post-ship-detect.sh" \
-    --arg gate "$HOOK_DIR/gate-reminder.sh" \
-    --arg pre "$HOOK_DIR/precommit-gate.sh" \
-    --arg bsc "$HOOK_DIR/block-subagent-commit.sh" \
-    --arg coh "$HOOK_DIR/cohesion-contract-check.sh" '
-    # Helper: strip command from ALL matcher groups in event (handles
-    # matcher-rename across versions, e.g. "startup" → "startup|resume").
-    # Returns array with cmd removed everywhere, empty groups dropped.
-    def strip_cmd($arr; $cmd):
-      ($arr // []) | map(
-        .hooks = (.hooks // [] | map(select(.command != $cmd)))
-      ) | map(select(.hooks | length > 0));
-
-    # Helper: ensure matcher group exists, then add command to it.
-    # Matcher="" is treated as "no matcher" group (Stop hooks etc.) — the
-    # group is created/found without a .matcher key, per Claude Code schema.
-    def ensure_group($arr; $matcher):
-      if $matcher == "" then
-        if ($arr | map(select((.matcher // "") == "")) | length) > 0 then $arr
-        else $arr + [{"hooks": []}] end
-      else
-        if ($arr | map(select(.matcher == $matcher)) | length) > 0 then $arr
-        else $arr + [{"matcher": $matcher, "hooks": []}] end
-      end;
-
-    # Consolidate duplicate no-matcher groups in an event array. Other
-    # tools (mempalace, orca, etc.) may add their own no-matcher Stop /
-    # SessionStart groups — if rolepod ran upsert without consolidating
-    # first, the `map` body below adds the command to EVERY no-matcher
-    # group, producing duplicates on every re-install. Pre-collapse so the
-    # event has at most one canonical no-matcher group.
-    def consolidate_no_matcher($arr):
-      ($arr // []) as $a
-      | ($a | map(select((.matcher // "") == ""))) as $nm
-      | if ($nm | length) <= 1 then $a
-        else (
-          ([$nm[].hooks // []] | add | unique_by(.command)) as $merged
-          | ($a | map(select((.matcher // "") != "")))
-              + (if ($merged | length) > 0 then [{"hooks": $merged}] else [] end)
-        ) end;
-
-    # Cross-group dedup upsert: strip cmd anywhere in event, then add to
-    # canonical matcher group exactly once. Empty matcher → no-matcher group.
-    # Pre-consolidate so multiple pre-existing no-matcher groups collapse
-    # into one before we add the new cmd (otherwise upsert hits all of them).
-    def upsert_cmd($arr; $matcher; $cmd; $timeout):
-      (consolidate_no_matcher($arr)
-       | strip_cmd(.; $cmd)
-       | ensure_group(.; $matcher)) | map(
-        if ($matcher == "" and ((.matcher // "") == "")) or (.matcher == $matcher) then
-          .hooks += [{"type": "command", "command": $cmd, "timeout": $timeout}]
-        else . end
-      );
-
-    .hooks = (.hooks // {})
-    # Migrate: strip pre-PR-5 session-lock / session-unlock and pre-PR-6
-    # verify-reminder / root post-ship-detect commands before upserting.
-    # PR 6 deletes verify-reminder + moves post-ship-detect to optional/gitnexus/.
-    | .hooks.SessionStart = (strip_cmd((.hooks.SessionStart // []); $old_slk))
-    | .hooks.Stop = (strip_cmd((.hooks.Stop // []); $old_sul))
-    | .hooks.PostToolUse = (strip_cmd((.hooks.PostToolUse // []); $old_ver))
-    | .hooks.PostToolUse = (strip_cmd((.hooks.PostToolUse // []); $old_shp_root))
-    | .hooks.SessionStart = upsert_cmd((.hooks.SessionStart // []); "startup|resume"; $ctx; 5)
-    | .hooks.SessionStart = upsert_cmd((.hooks.SessionStart // []); "startup|resume"; $slk; 3)
-    | .hooks.PreToolUse = upsert_cmd((.hooks.PreToolUse // []); "Edit|Write|MultiEdit"; $gate; 3)
-    | .hooks.PreToolUse = upsert_cmd((.hooks.PreToolUse // []); "Bash"; $pre; 5)
-    | .hooks.PreToolUse = upsert_cmd((.hooks.PreToolUse // []); "Bash"; $bsc; 3)
-    | .hooks.PreToolUse = upsert_cmd((.hooks.PreToolUse // []); "Agent"; $coh; 5)
-    | .hooks.Stop = upsert_cmd((.hooks.Stop // []); ""; $sul; 3)
-  ' "$SETTINGS_FILE" > "$TMP_FILE" 2>/dev/null && [ -s "$TMP_FILE" ]; then
-    mv "$TMP_FILE" "$SETTINGS_FILE"
-    REGISTER_OK=1
-  else
-    rm -f "$TMP_FILE"
-  fi
-fi
-
-if [ "$REGISTER_OK" -eq 0 ]; then
-  # Fallback: python3
-  if command -v python3 >/dev/null 2>&1; then
-    if python3 - "$SETTINGS_FILE" "$HOOK_DIR" <<'PY'
+  # 1. Strip rolepod hook entries from settings.json. Reuse the exact
+  #    python strip-by-hook-dir-substring block from the uninstall path
+  #    with hook_dir="$TARGET/hooks".
+  _LEGACY_SETTINGS_FILE="$TARGET/settings.json"
+  if [ -f "$_LEGACY_SETTINGS_FILE" ]; then
+    if [ "$DRY_RUN" -eq 1 ]; then
+      dry "strip rolepod hook entries (paths under $TARGET/hooks) from $_LEGACY_SETTINGS_FILE"
+    elif command -v python3 >/dev/null 2>&1; then
+      python3 - "$_LEGACY_SETTINGS_FILE" "$TARGET/hooks" <<'PY' || warn "settings.json migration strip failed (non-fatal)"
 import json, sys, os
 path, hook_dir = sys.argv[1], sys.argv[2]
 try:
     with open(path) as f:
         data = json.load(f)
 except Exception:
-    data = {}
-if not isinstance(data, dict):
-    data = {}
-hooks = data.setdefault("hooks", {})
-
-def consolidate_no_matcher(event):
-    # Other tools (mempalace, orca, etc.) may add no-matcher groups for
-    # Stop / SessionStart. Without consolidation, every install run leaves
-    # stale duplicate groups behind. Collapse multiple no-matcher groups
-    # in `event` into one, dedup by command.
-    arr = hooks.get(event) or []
-    no_matcher = [g for g in arr if not g.get("matcher")]
-    if len(no_matcher) <= 1:
-        return
-    seen = set()
-    merged_hooks = []
-    for g in no_matcher:
-        for h in g.get("hooks", []):
-            cmd = h.get("command")
-            if cmd not in seen:
-                seen.add(cmd)
-                merged_hooks.append(h)
-    rest = [g for g in arr if g.get("matcher")]
-    if merged_hooks:
-        rest.append({"hooks": merged_hooks})
-    hooks[event] = rest
-
-
-def upsert(event, matcher, cmd, timeout):
-    # Pre-consolidate so multiple pre-existing no-matcher groups collapse
-    # into one before we add the new cmd (otherwise next() picks the first
-    # group and leaves stale duplicates in the others — observed in real
-    # ~/.claude/settings.json after PR 5 hit a mempalace + orca Stop layout).
-    consolidate_no_matcher(event)
-    arr = hooks.setdefault(event, [])
-    # Strip cmd from ALL groups in event (handles matcher-rename across
-    # versions, e.g. "startup" → "startup|resume"). Drop now-empty groups.
-    for g in arr:
-        g["hooks"] = [h for h in g.get("hooks", []) if h.get("command") != cmd]
-    arr[:] = [g for g in arr if g.get("hooks")]
-    # Find or create canonical matcher group, then add cmd exactly once.
-    # matcher=None → group has no matcher key (Stop / PreCompact pattern).
-    if matcher is None:
-        group = next((g for g in arr if not g.get("matcher")), None)
+    sys.exit(0)
+if not isinstance(data, dict) or "hooks" not in data:
+    sys.exit(0)
+hooks = data.get("hooks") or {}
+def strip(arr):
+    out = []
+    for group in arr or []:
+        inner = [h for h in (group.get("hooks") or [])
+                 if hook_dir not in (h.get("command") or "")]
+        if inner:
+            group["hooks"] = inner
+            out.append(group)
+    return out
+for evt in list(hooks.keys()):
+    new = strip(hooks[evt])
+    if new:
+        hooks[evt] = new
     else:
-        group = next((g for g in arr if g.get("matcher") == matcher), None)
-    if group is None:
-        group = {"hooks": []} if matcher is None else {"matcher": matcher, "hooks": []}
-        arr.append(group)
-    group.setdefault("hooks", []).append(
-        {"type": "command", "command": cmd, "timeout": timeout}
-    )
-
-# Migrate: strip the pre-PR-5 session-lock.sh / session-unlock.sh
-# commands before upserting the new session-lifecycle.sh entries.
-def strip_event(event, cmd):
-    arr = hooks.get(event) or []
-    for g in arr:
-        g["hooks"] = [h for h in g.get("hooks", []) if h.get("command") != cmd]
-    hooks[event] = [g for g in arr if g.get("hooks")]
-strip_event("SessionStart", os.path.join(hook_dir, "session-lock.sh"))
-strip_event("Stop", os.path.join(hook_dir, "session-unlock.sh"))
-# PR 6: verify-reminder deleted; root post-ship-detect moved to optional/gitnexus/.
-strip_event("PostToolUse", os.path.join(hook_dir, "verify-reminder.sh"))
-strip_event("PostToolUse", os.path.join(hook_dir, "post-ship-detect.sh"))
-
-life = os.path.join(hook_dir, "session-lifecycle.sh")
-upsert("SessionStart", "startup|resume", os.path.join(hook_dir, "project-context-loader.sh"), 5)
-upsert("SessionStart", "startup|resume", f"{life} --lock", 3)
-upsert("PreToolUse", "Edit|Write|MultiEdit", os.path.join(hook_dir, "gate-reminder.sh"), 3)
-upsert("PreToolUse", "Bash", os.path.join(hook_dir, "precommit-gate.sh"), 5)
-upsert("PreToolUse", "Bash", os.path.join(hook_dir, "block-subagent-commit.sh"), 3)
-upsert("PreToolUse", "Agent", os.path.join(hook_dir, "cohesion-contract-check.sh"), 5)
-upsert("Stop", None, f"{life} --unlock", 3)
-
+        del hooks[evt]
+if hooks:
+    data["hooks"] = hooks
+else:
+    data.pop("hooks", None)
 with open(path, "w") as f:
     json.dump(data, f, indent=2)
     f.write("\n")
 PY
-    then
-      REGISTER_OK=1
+    else
+      warn "python3 not found — leaving settings.json hook entries untouched (remove rolepod entries manually)"
     fi
   fi
-fi
 
-if [ "$REGISTER_OK" -eq 1 ]; then
-  ok "Hooks registered in settings.json (2x SessionStart + 4x PreToolUse + 1x Stop = 7 core entries)"
-else
-  warn "Could not auto-register hooks — install jq or python3, or edit $SETTINGS_FILE manually"
-  warn "  Hooks shipped: project-context-loader.sh + session-lifecycle.sh --lock (SessionStart), gate-reminder.sh (PreToolUse Edit|Write|MultiEdit), precommit-gate.sh + block-subagent-commit.sh (PreToolUse Bash), cohesion-contract-check.sh (PreToolUse Agent), session-lifecycle.sh --unlock (Stop). Optional GitNexus hooks at hooks/optional/gitnexus/ register only when the GitNexus plugin is detected."
-fi
-
-fi  # end DRY_RUN gate around settings.json registration
-
-# ─── Optional GitNexus integration hooks ─────────────────────────────────
-# post-ship-detect.sh (auto-reindex after big merges) and gitnexus-wrap.sh
-# (wrap plugin's stale-notice hook) only register when the GitNexus plugin
-# is installed in this Claude home. The scripts ship in
-# hooks/optional/gitnexus/ regardless so users can audit them; registration
-# is the conditional surface.
-GITNEXUS_PLUGIN_HOOK="$TARGET/hooks/gitnexus/gitnexus-hook.cjs"
-GITNEXUS_WRAP="$HOOK_DIR/optional/gitnexus/gitnexus-wrap.sh"
-GITNEXUS_POST_SHIP="$HOOK_DIR/optional/gitnexus/post-ship-detect.sh"
-
-if [ "$DRY_RUN" -eq 0 ] && [ -f "$GITNEXUS_PLUGIN_HOOK" ] && [ -f "$GITNEXUS_POST_SHIP" ] && command -v python3 >/dev/null 2>&1; then
-  step "Registering optional GitNexus hooks (plugin detected)"
-  python3 - "$SETTINGS_FILE" "$GITNEXUS_POST_SHIP" <<'PY' 2>/dev/null && \
-    ok "GitNexus post-ship-detect registered (PostToolUse Bash)"
-import json, sys
-path, cmd = sys.argv[1], sys.argv[2]
-try:
-    with open(path) as f:
-        data = json.load(f)
-except Exception:
-    data = {}
-if not isinstance(data, dict):
-    data = {}
-hooks = data.setdefault("hooks", {})
-arr = hooks.setdefault("PostToolUse", [])
-# Strip + re-add (idempotent).
-for g in arr:
-    g["hooks"] = [h for h in g.get("hooks", []) if h.get("command") != cmd]
-arr[:] = [g for g in arr if g.get("hooks")]
-group = next((g for g in arr if g.get("matcher") == "Bash"), None)
-if group is None:
-    group = {"matcher": "Bash", "hooks": []}
-    arr.append(group)
-group["hooks"].append({"type": "command", "command": cmd, "timeout": 5})
-with open(path, "w") as f:
-    json.dump(data, f, indent=2)
-    f.write("\n")
-PY
-fi
-
-# ─── Patch gitnexus plugin registration → use rolepod wrapper ────────────
-# When gitnexus plugin is installed, swap its bare `node .../gitnexus-hook.cjs`
-# registration for `bash .../optional/gitnexus/gitnexus-wrap.sh` so stale-index
-# notices are suppressed + auto-reindex fires in background (once/day/repo).
-# Wrapper forwards stdin/stdout transparently otherwise. Idempotent.
-if [ "$DRY_RUN" -eq 0 ] && [ -f "$GITNEXUS_PLUGIN_HOOK" ] && [ -f "$GITNEXUS_WRAP" ] && command -v python3 >/dev/null 2>&1; then
-  step "Patching gitnexus hook registration → rolepod wrapper"
-  if python3 - "$SETTINGS_FILE" "$GITNEXUS_PLUGIN_HOOK" "$GITNEXUS_WRAP" <<'PY'
-import json, sys
-path, plugin_cjs, wrap_sh = sys.argv[1], sys.argv[2], sys.argv[3]
-try:
-    with open(path) as f:
-        data = json.load(f)
-except Exception:
-    data = {}
-if not isinstance(data, dict):
-    sys.exit(1)
-hooks = data.get("hooks", {})
-patched = 0
-new_bash = f'bash "{wrap_sh}"'
-# Pre-PR-6 patched entries point at hooks/gitnexus-wrap.sh (root). The file
-# moved to hooks/optional/gitnexus/gitnexus-wrap.sh; upgrade those entries
-# in place. Also still catch the un-patched plugin entry (`node ".../cjs"`).
-import os
-old_wrap_basename_pattern = "/hooks/gitnexus-wrap.sh"
-for event_arr in hooks.values():
-    if not isinstance(event_arr, list):
-        continue
-    for group in event_arr:
-        for h in group.get("hooks", []):
-            cmd = h.get("command", "")
-            already_new = wrap_sh in cmd
-            if already_new:
-                continue
-            # Match both quoted + unquoted forms the plugin/installer may emit,
-            # plus the pre-PR-6 root-level wrap path that no longer exists.
-            if plugin_cjs in cmd or old_wrap_basename_pattern in cmd:
-                h["command"] = new_bash
-                patched += 1
-if patched:
-    with open(path, "w") as f:
-        json.dump(data, f, indent=2)
-        f.write("\n")
-print(f"PATCHED={patched}")
-PY
-  then
-    ok "gitnexus hook registration patched (rolepod wrapper active)"
+  # 2. Remove legacy rolepod flat-file install artifacts (only if they exist).
+  #    Agents — match by basename from the rendered plugin agents/ dir.
+  if [ "$DRY_RUN" -eq 1 ]; then
+    dry "rm legacy agents/skills/commands/hooks/.claude-plugin from $TARGET (pre-2.0 non-plugin install)"
   else
-    warn "Could not patch gitnexus registration — edit $SETTINGS_FILE manually"
+    if [ -d "$RENDERED_CLAUDE_DIR/plugins/rolepod/agents" ]; then
+      for f in "$RENDERED_CLAUDE_DIR/plugins/rolepod/agents"/*.md; do
+        [ -f "$f" ] || continue
+        rm -f "$TARGET/agents/$(basename "$f")" 2>/dev/null || true
+      done
+    fi
+    # Skills — match by dir name from core/skills/
+    for d in "$REPO_DIR"/core/skills/*/; do
+      [ -d "$d" ] || continue
+      rm -rf "$TARGET/skills/$(basename "$d")" 2>/dev/null || true
+    done
+    # Commands — match by basename from commands/
+    for f in "$REPO_DIR"/commands/*.md; do
+      [ -f "$f" ] || continue
+      rm -f "$TARGET/commands/$(basename "$f")" 2>/dev/null || true
+    done
+    # Hooks — match by basename from hooks/*.sh
+    for f in "$REPO_DIR"/hooks/*.sh; do
+      [ -f "$f" ] || continue
+      rm -f "$TARGET/hooks/$(basename "$f")" 2>/dev/null || true
+    done
+    rm -rf "$TARGET/hooks/optional" "$TARGET/hooks/lib" 2>/dev/null || true
+    # Old root-level plugin manifest (not the plugin's own manifest)
+    rm -f "$TARGET/.claude-plugin/plugin.json" 2>/dev/null || true
+    # Prune now-possibly-empty dirs (ignore failure if non-empty — other tools may share them)
+    rmdir "$TARGET/agents" "$TARGET/skills" "$TARGET/commands" \
+          "$TARGET/hooks" "$TARGET/.claude-plugin" 2>/dev/null || true
   fi
-elif [ "$DRY_RUN" -eq 1 ] && [ -f "$GITNEXUS_PLUGIN_HOOK" ]; then
-  dry "patch gitnexus hook registration → bash $GITNEXUS_WRAP"
-fi
 
-# ─── Verify Claude rolepod core ─────────────────────────────────────────
-# Skip in dry-run — files we'd verify weren't actually written.
-if [ "$DRY_RUN" -eq 0 ]; then
-  step "Verifying rolepod core"
-  for required in \
-    CLAUDE.md CHEATSHEET.md \
-    agents/qa-tester.md agents/system-architect.md \
-    rules/INDEX.md rules/always-on/agent-protocol.md rules/always-on/verify-first.md rules/code/code-quality.md rules/test/testing.md \
-    hooks/session-lifecycle.sh hooks/project-context-loader.sh hooks/gate-reminder.sh hooks/precommit-gate.sh \
-    hooks/block-subagent-commit.sh hooks/cohesion-contract-check.sh \
-    skills/using-rolepod/SKILL.md skills/debug-issue/SKILL.md skills/check-work/SKILL.md \
-    .claude-plugin/plugin.json
-  do
-    [ -e "$TARGET/$required" ] || fail "verification failed — $TARGET/$required missing"
-  done
-  ok "rolepod core installed → $TARGET"
-else
-  skip "verification skipped (dry-run)"
-fi
+  # 3. Stale Tier-3 legacy shim skills (pre-Core-10 names) a pre-2.0 install
+  #    left in $TARGET/skills/. do_or_dry-aware — safe in dry-run.
+  remove_stale_legacy_skills "$TARGET/skills"
+
+  # Plugin install.
+  if [ "$DRY_RUN" -eq 1 ]; then
+    dry "claude plugin marketplace add $RENDERED_CLAUDE_DIR"
+    dry "claude plugin install rolepod@rolepod --scope user"
+  elif [ "$CLAUDE_IS_TEMP_TARGET" -eq 1 ]; then
+    warn "Target diverges from ~/.claude — skipping 'claude plugin' CLI (would mutate real Claude home)."
+    warn "  Copying plugin tree to $TARGET/plugins/rolepod/ for filesystem checks only."
+    rm -rf "$TARGET/plugins/rolepod"; mkdir -p "$TARGET/plugins"
+    cp -R "$RENDERED_CLAUDE_DIR/plugins/rolepod" "$TARGET/plugins/"
+  elif have_cmd claude; then
+    step "Registering rolepod marketplace + installing plugin"
+    claude plugin marketplace remove rolepod >/dev/null 2>&1 || true
+    if claude plugin marketplace add "$RENDERED_CLAUDE_DIR" >/dev/null 2>&1 \
+       && claude plugin install rolepod@rolepod --scope user >/dev/null 2>&1; then
+      ok "rolepod plugin installed (marketplace: rolepod)"
+    else
+      warn "Could not install via 'claude plugin' CLI — run: claude plugin marketplace add $RENDERED_CLAUDE_DIR && claude plugin install rolepod@rolepod"
+    fi
+  else
+    warn "claude binary not found — skipping plugin install."
+    warn "  Then run: claude plugin marketplace add $RENDERED_CLAUDE_DIR && claude plugin install rolepod@rolepod"
+  fi
+
+  # Verify.
+  if [ "$DRY_RUN" -eq 0 ]; then
+    step "Verifying rolepod install"
+    [ -e "$TARGET/CLAUDE.md" ]      || fail "verification failed — $TARGET/CLAUDE.md missing"
+    [ -e "$TARGET/rules/INDEX.md" ] || fail "verification failed — $TARGET/rules/INDEX.md missing"
+    if [ "$CLAUDE_IS_TEMP_TARGET" -eq 0 ] && have_cmd claude; then
+      claude plugin list 2>/dev/null | grep -q rolepod \
+        || warn "rolepod not in 'claude plugin list' — restart Claude Code, check /plugin."
+    fi
+    ok "rolepod installed → CLAUDE.md block + rules/ + plugin"
+  else
+    skip "verification skipped (dry-run)"
+  fi
 fi  # end claude_selected
 
 # ─── install_codex — Codex CLI path (~/.codex/) ────────────────────────

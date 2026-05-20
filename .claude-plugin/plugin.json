@@ -1,7 +1,7 @@
 {
   "name": "rolepod",
-  "version": "1.5.0",
-  "description": "Coordinated software-house team for AI coding CLIs — 18 specialist agents, Core 10 phase skills (1 router + 9 phase), 7 rules, 9 hooks (6 core + 2 optional GitNexus add-on + 1 optional MemPalace × Codex bridge, all self-guarded), 6-phase lifecycle. Pre-commit gates (S1-S5 simplicity / T1-T6 testing / F1-F5 failure-mode) catch bugs before ship. Installs via install.sh; not a Claude Code marketplace plugin (rolepod's CLAUDE.md + rules/ pattern doesn't map cleanly to the marketplace plugin model). See https://github.com/nuttaruj/rolepod.",
+  "version": "2.0.0",
+  "description": "Coordinated software-house team for AI coding CLIs — 18 specialist agents, Core 10 phase skills (1 router + 9 phase), 6-phase lifecycle. Pre-commit gates (S1-S5 simplicity / T1-T6 testing / F1-F5 failure-mode) catch bugs before ship. On Claude Code, ships as a marketplace plugin (agents/skills/commands/hooks); the always-on CLAUDE.md gate block + rules/ are script-installed by install.sh because the plugin model has no always-on instruction surface. See https://github.com/nuttaruj/rolepod.",
   "author": {
     "name": "nuttaruj",
     "url": "https://github.com/nuttaruj"
@@ -16,5 +16,84 @@
     "claude-code",
     "automation",
     "prompt-engineering"
-  ]
+  ],
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|resume",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/project-context-loader.sh\"",
+            "timeout": 5
+          },
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/session-lifecycle.sh\" --lock",
+            "timeout": 3
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/gate-reminder.sh\"",
+            "timeout": 3
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/precommit-gate.sh\"",
+            "timeout": 5
+          },
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/block-subagent-commit.sh\"",
+            "timeout": 3
+          }
+        ]
+      },
+      {
+        "matcher": "Agent",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/cohesion-contract-check.sh\"",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/optional/gitnexus/post-ship-detect.sh\"",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/session-lifecycle.sh\" --unlock",
+            "timeout": 3
+          }
+        ]
+      }
+    ]
+  }
 }
