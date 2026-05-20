@@ -10,7 +10,7 @@ Phase 2.3: rolepod ships for each supported CLI as a **native plugin / extension
 | Lazy-load rules (Read on trigger) | full | full | full |
 | Skills (`<plugin>/skills/<name>/SKILL.md`) | 10 Core 10 (native) | 10 Core 10 (native) | 10 Core 10 (native) |
 | Subagents (parallel team) | full Task / SendMessage (18 agents) | 18 agents as Codex `agents/*.toml` (Lead-orchestrated) | 18 agents inlined in `GEMINI.md` (Lead-orchestrated) |
-| Hooks (auto reminders) | 8 hooks (6 core + 2 GitNexus add-on) · 7 registered by default, +1 when GitNexus plugin detected | 3 commands across 2 event classes (`SessionStart`/`PreToolUse`) · optional GitNexus `post-ship-detect.sh` ships but not registered by default · optional MemPalace `optional/mempalace/codex-session-start.sh` registered automatically when `command -v mempalace` succeeds at install time (self-guarded otherwise) | 4 commands across 4 event classes (`SessionStart`/`BeforeTool`/`AfterTool`/`PreCompress`) |
+| Hooks (auto reminders) | 6 core + 1 optional GitNexus, all inline in plugin manifest · auto-registered on install | 3 commands across 2 event classes (`SessionStart`/`PreToolUse`) · optional GitNexus `post-ship-detect.sh` ships but not registered by default · optional MemPalace `optional/mempalace/codex-session-start.sh` registered automatically when `command -v mempalace` succeeds at install time (self-guarded otherwise) | 4 commands across 4 event classes (`SessionStart`/`BeforeTool`/`AfterTool`/`PreCompress`) |
 | Slash commands | `/rolepod-team` (slash) + `/rolepod` (skill explicit-invoke) | n/a (Codex slash schema — `/rolepod` reaches the skill via Codex skill-slash UI) | `/rolepod` via skill (no native `.toml` commands — phase commands were dropped to match Claude's design) |
 | Plugin manifest | `.claude-plugin/plugin.json` (spec-conformant, 598B) | `.codex-plugin/plugin.json` (mirrors caveman schema, 1.6KB) | `gemini-extension.json` (extension schema, 551B) |
 | MemPalace / GitNexus integration | hook-level integration (MemPalace + GitNexus wrapper when installed) | plugin/entry-doc integration; hooks require `plugin_hooks` opt-in | extension/entry-doc integration; Claude-only enforcement hooks do not apply |
@@ -135,32 +135,30 @@ The path-based ownership rules from `write-plan` apply identically across all th
 
 ## Recommended Claude Code setup
 
-Claude Code supports both global and project-level configuration. Rolepod's installer ships global by default (`~/.claude/`) but per-project installs land the full plugin in `$PWD/.claude/`.
+Claude Code supports both global and project-level configuration. Rolepod installs as a marketplace plugin.
+
+### Global install (one-time per machine)
+
+```bash
+./install.sh --target=claude
+```
+
+Runs `claude plugin marketplace add <rendered-dir>` + `claude plugin install rolepod@rolepod --scope user` to register and enable the plugin. Installs:
+- `~/.claude/plugins/rolepod/` (plugin tree: agents, skills, hooks, commands, manifest)
+- `~/.claude/CLAUDE.md` (managed block — your existing content preserved)
+- `~/.claude/rules/{always-on,code,test}/` (always-on and path-scoped rules — script-installed, no plugin model for rules)
+- Plugin manifest hooks (6 core + 1 optional GitNexus when detected) declared inline in `.claude-plugin/plugin.json` using `${CLAUDE_PLUGIN_ROOT}` paths
 
 ### Per-project install (`--scope=project`)
 
-Drop the full rolepod plugin (agents + skills + hooks + entry doc) into a single project without touching `~/.claude/`:
+Drop the rolepod plugin + rules into a single project without touching `~/.claude/`:
 
 ```bash
 cd /your/project
 ./install.sh --target=claude --scope=project
 ```
 
-Writes `$PWD/.claude/` with the full plugin tree plus `$PWD/CLAUDE.md` (managed block). Claude auto-loads project `.claude/settings.json` so the rolepod hooks fire on this project only.
-
-### Global core (one-time per machine)
-
-```bash
-./install.sh --target=claude
-```
-
-Installs:
-- `~/.claude/CLAUDE.md` (managed block — your existing content preserved)
-- `~/.claude/agents/*.md` (18 agents)
-- `~/.claude/skills/<name>/SKILL.md` (10 Core 10 skills)
-- `~/.claude/commands/*.md` (slash commands)
-- Hook entries appended idempotently to `~/.claude/settings.json` (2x `SessionStart`, 4x `PreToolUse`, 2x `PostToolUse`, 1x `Stop`; GitNexus wrapper patch is optional)
-- `~/.claude/.claude-plugin/plugin.json` (manifest)
+Writes `$PWD/.claude/` with the full plugin tree, rules, and `$PWD/CLAUDE.md` (managed block). Claude auto-loads project `.claude/settings.json` (plugin settings) and `.claude/CLAUDE.md` (entry doc), so rolepod fires on this project only.
 
 ### Project-specific CLAUDE.md override (optional)
 
@@ -169,14 +167,12 @@ When a repo needs stricter rules than the global rolepod set, create `CLAUDE.md`
 ### Verify install
 
 ```bash
-claude --help                           # CLI present
-ls ~/.claude/agents/ | wc -l            # 18
-ls ~/.claude/skills/ | wc -l            # 44
-grep rolepod ~/.claude/settings.json    # hook entries present
+claude plugin list                      # Should show "rolepod" as enabled
+ls ~/.claude/rules/                     # Always-on and path-scoped rules present
 claude -p "say OK"                      # SessionStart hook fires; banner appears in transcript
 ```
 
-If hooks don't fire, check `~/.claude/settings.json` contains the rolepod hook entries pointing at `~/.claude/hooks/*.sh`.
+If the plugin doesn't appear, run `claude plugin list` to check registration. If hooks don't fire, restart Claude Code so the plugin system reloads.
 
 ## Recommended Codex setup
 
@@ -230,7 +226,7 @@ When `--force` is used on an existing CLI home (`~/.claude/`, `~/.codex/`, `~/.g
 
 | CLI | Backed up | Excluded |
 |-----|-----------|----------|
-| Claude  | `CLAUDE.md`, `CHEATSHEET.md`, `README.md`, `agents/`, `rules/`, `hooks/`, `skills/`, `commands/`, `.claude-plugin/`, `settings.json` | `projects/` (session history), `plugins/cache/`, `plugins/marketplaces/`, `file-history/`, `shell-snapshots/`, `session-env/`, `scheduled-tasks/`, `cache/`, `agent-memory/`, `backups/`, `teams/` |
+| Claude  | `CLAUDE.md`, `CHEATSHEET.md`, `README.md`, `rules/`, `settings.json`, `agents/`, `hooks/`, `skills/`, `commands/`, `.claude-plugin/`, `plugins/rolepod/` | `projects/` (session history), `plugins/cache/`, `plugins/marketplaces/`, `file-history/`, `shell-snapshots/`, `session-env/`, `scheduled-tasks/`, `cache/`, `agent-memory/`, `backups/`, `teams/` |
 | Codex   | `AGENTS.md`, `config.toml`, `plugins/rolepod/`, `.agents/`                                                                          | `log/`, `.tmp/`, `history/`, `sessions/` |
 | Gemini  | `GEMINI.md`, `extensions/rolepod/`, `settings.json`                                                                                | `history/`, `log/`, `tmp/` |
 

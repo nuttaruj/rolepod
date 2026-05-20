@@ -1,6 +1,6 @@
 # Hooks reference
 
-Rolepod ships **8 bash hook scripts** — 6 core in `hooks/` and 2 GitNexus add-on in `hooks/optional/gitnexus/`. Claude install copies all 8 (the optional scripts always ship so they are auditable), then registers **7 core entries** in `~/.claude/settings.json` by default (2× `SessionStart` + 4× `PreToolUse` + 1× `Stop`). When the GitNexus plugin is detected at install time, an additional `PostToolUse Bash` entry registers `optional/gitnexus/post-ship-detect.sh` and `optional/gitnexus/gitnexus-wrap.sh` patches the plugin's bare hook (= 8 entries in a GitNexus-enabled install). Each registered hook fires on a specific Claude Code event + matcher and either enforces a gate (`permissionDecision: deny`) or injects context (JSON `additionalContext`). All hooks are **self-guarded** — silent no-op when a dependency is missing.
+Rolepod ships **6 core bash hook scripts** in `hooks/` and **1 optional GitNexus add-on** in `hooks/optional/gitnexus/`. Claude install ships them in the plugin tree and declares all 6 core + 1 optional (when detected) inline in the plugin manifest (`.claude-plugin/plugin.json` `hooks` field). The manifest entries use `${CLAUDE_PLUGIN_ROOT}` paths and fire on specific Claude Code events + matchers, either enforcing a gate (`permissionDecision: deny`) or injecting context (JSON `additionalContext`). All hooks are **self-guarded** — silent no-op when a dependency is missing. For auditability, `gitnexus-wrap.sh` ships in `hooks/optional/gitnexus/` even though it is not wired into the manifest.
 
 Lead does not invoke these manually. They fire automatically.
 
@@ -105,7 +105,7 @@ Removes own session lock so the next session in this worktree does not see a pha
 
 After ship cmd (`gh pr merge` / `git push main` / `git merge main`) touched ≥5 files in last 5 commits, auto-spawns `npx gitnexus analyze` in background (Lead-owned, no user nag).
 
-- **Registration**: only registered in `settings.json` when the GitNexus plugin is detected at install time. Script always ships at `hooks/optional/gitnexus/post-ship-detect.sh` for auditability.
+- **Registration**: declared inline in the Claude plugin manifest `hooks` field only when the GitNexus plugin is detected at install time. Script always ships at `hooks/optional/gitnexus/post-ship-detect.sh` for auditability.
 - **Effect**: `additionalContext` "GitNexus auto-reindex spawned in background. No user action needed."
 - **Self-guards**: no `.gitnexus/` dir → silent; no `npx` on PATH → silent.
 - **Dedup**: shares once/day/repo marker with `gitnexus-wrap.sh`.
@@ -182,11 +182,15 @@ Root `hooks/*.sh` is canonical. The Codex adapter mirrors only the hooks whose e
 
 ## Installation
 
-Hooks are copied to `~/.claude/hooks/` and registered in `~/.claude/settings.json` by `install.sh`. Re-running install is idempotent — existing entries are upserted by command path, not duplicated. Migration steps strip the pre-PR-5 `session-lock.sh` / `session-unlock.sh` commands (replaced by `session-lifecycle.sh --lock` / `--unlock`) and the pre-PR-6 `verify-reminder.sh` + root `post-ship-detect.sh` commands.
+Hooks are shipped in the rolepod plugin tree (`~/.claude/plugins/rolepod/hooks/`) and declared inline in the plugin manifest (`.claude-plugin/plugin.json` `hooks` field) by `install.sh`. Re-running install is idempotent — the manifest is regenerated with current hook declarations. Migration steps (pre-2.0 installs) strip any legacy hook entries from `~/.claude/settings.json`.
 
-To verify registration:
+To verify installation:
 ```bash
-jq '.hooks' ~/.claude/settings.json
+claude plugin list
+# Should show "rolepod" as enabled
+
+cat ~/.claude/.claude-plugin/plugin.json | jq '.hooks'
+# Should show 6 core hooks + (optional) 1 GitNexus hook, all with ${CLAUDE_PLUGIN_ROOT} paths
 ```
 
-Expected by default: 2× SessionStart + 4× PreToolUse + 1× Stop = 7 rolepod entries. When the GitNexus plugin is detected at install time, an additional 1× PostToolUse Bash entry registers `optional/gitnexus/post-ship-detect.sh` (= 8 entries total), and `optional/gitnexus/gitnexus-wrap.sh` swaps the GitNexus plugin's bare hook command.
+Expected: 6 core hooks (SessionStart × 2, PreToolUse × 3, Stop × 1) + optional GitNexus hook (PostToolUse × 1 when GitNexus plugin is detected).
