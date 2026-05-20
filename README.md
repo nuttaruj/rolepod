@@ -98,6 +98,8 @@ curl -fsSL https://raw.githubusercontent.com/nuttaruj/rolepod/main/bootstrap.sh 
 
 `--force` overwrites rolepod-managed paths. Auto-backup at `~/.<cli>.backup-<timestamp>/` (rolepod-scoped, typically <50 MB; session history / plugin caches stay in place).
 
+> **Update via the script only.** Claude Code's `claude plugin update` / `/plugin` UI refresh only the plugin payload (agents, skills, hooks) — they do **not** touch the always-on CLAUDE.md gate block or `~/.claude/rules/`, which are script-installed. Re-run the command above for a complete update. Same applies to Codex and Gemini — all three CLIs update through `install.sh`.
+
 ### Uninstall
 
 ```bash
