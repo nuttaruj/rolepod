@@ -91,13 +91,19 @@ if ./install.sh --target=claude > "$TMP/claude.log" 2>&1; then
     echo "  ✗ stale legacy skill survived migration: systematic-debugging"
     FAIL=$((FAIL+1))
   fi
-  # Hooks live inline in the plugin manifest — NOT in settings.json.
-  for hook in project-context-loader gate-reminder precommit-gate block-subagent-commit cohesion-contract-check session-lifecycle; do
-    if ! grep -q "$hook" "$PLUGIN_DIR/.claude-plugin/plugin.json"; then
-      echo "  ✗ hook not in plugin manifest: $hook"
-      FAIL=$((FAIL+1))
-    fi
-  done
+  # Hooks live in the plugin's hooks/hooks.json (canonical form) — NOT in
+  # settings.json, NOT inline in plugin.json.
+  if [ ! -f "$PLUGIN_DIR/hooks/hooks.json" ]; then
+    echo "  ✗ plugin hooks/hooks.json missing"
+    FAIL=$((FAIL+1))
+  else
+    for hook in project-context-loader gate-reminder precommit-gate block-subagent-commit cohesion-contract-check session-lifecycle; do
+      if ! grep -q "$hook" "$PLUGIN_DIR/hooks/hooks.json"; then
+        echo "  ✗ hook not in hooks/hooks.json: $hook"
+        FAIL=$((FAIL+1))
+      fi
+    done
+  fi
   if [ -f "$ROLEPOD_TARGET/settings.json" ] && grep -q '/hooks/gate-reminder.sh' "$ROLEPOD_TARGET/settings.json" 2>/dev/null; then
     echo "  ✗ rolepod hook entry leaked into settings.json (should be plugin-only)"
     FAIL=$((FAIL+1))
