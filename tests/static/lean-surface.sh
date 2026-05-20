@@ -67,20 +67,28 @@ check "skill catalog: filesystem=$FS_SKILLS rendered=$RENDERED_SKILLS (must matc
 #   comment form: trailing "# 34" / "# 42" (cli verify commands)
 #   hook drift: "3 hooks" / "3 auto-trigger hooks" / "3 scripts"
 #   hook-truth drift: broad cross-CLI claims that hide per-CLI coverage
+#   add-on drift: PR 10 removed all add-on hooks — phrasings that assert
+#     rolepod still ships/wraps MemPalace/GitNexus hooks are stale. The
+#     number-only guard missed these (PR 10 follow-up b9c69a2 caught 3).
 # Two groups: word-boundary patterns + non-word-end patterns. The second
 # group covers forms ending in `)` or `*` where trailing `\b` is dead
 # (qa-tester PR #10 caught this).
-STALE_WB='\b(42 bundled|42 skills|43 skills|53 skills|43-skill|53-skill|53 skill files|34 native|44 native|44 rolepod skills|44 skills|3 auto-trigger hooks|same 3 scripts|same 3 files|18 \+ 42|18 \+ 43|18 \+ 53|18 \+ 44|all 34 rolepod|all 43 rolepod|Total 4[23]|Total 53|three rolepod entries|3 codex hooks|3 gemini hooks|3 root hooks|10 root hook scripts|10 hook scripts|9 root hook scripts|9 hook scripts|own 3 scripts|3 \*\.sh|5 \*\.sh|5 hook scripts|4 codex hook)\b'
+STALE_WB='\b(42 bundled|42 skills|43 skills|53 skills|43-skill|53-skill|53 skill files|34 native|44 native|44 rolepod skills|44 skills|3 auto-trigger hooks|same 3 scripts|same 3 files|18 \+ 42|18 \+ 43|18 \+ 53|18 \+ 44|all 34 rolepod|all 43 rolepod|Total 4[23]|Total 53|three rolepod entries|3 codex hooks|3 gemini hooks|3 root hooks|10 root hook scripts|10 hook scripts|9 root hook scripts|9 hook scripts|own 3 scripts|3 \*\.sh|5 \*\.sh|5 hook scripts|4 codex hook|8 hooks|9 hooks)\b'
 STALE_NONWORD='Skills \(4[23]\)|Skills \(53\)|Total skills on disk: \*\*(4[23]|53)\*\*|Hooks \(3\)|, 3 hooks\)'
 STALE_COMMENT='(^|[^0-9])(#|`) ?4[23]\b'
 STALE_HOOK_TRUTH='Context hooks \(cross-CLI\)|Codex / Gemini fire the context hooks|full hook coverage|Before tool run.*CLI handles native compact|SessionStart \+ 2x PostToolUse|10 bash hooks that auto-register|portable across Claude and Codex'
-STALE_PATTERNS="${STALE_WB}|${STALE_NONWORD}|${STALE_COMMENT}|${STALE_HOOK_TRUTH}"
+# Add-on-hook drift — phrasings, not numbers. Each asserts a wrong current
+# state (rolepod ships 6 core hooks, 0 add-on hooks since PR 10). Bare
+# filenames like `gitnexus-wrap.sh` are NOT banned — they appear in legit
+# historical / changelog prose.
+STALE_ADDON='optional GitNexus|optional MemPalace|GitNexus add-on|MemPalace add-on|reindex hint|MemPalace bridge|post-ship reindex|6 core \+ [0-9]+ optional'
+STALE_PATTERNS="${STALE_WB}|${STALE_NONWORD}|${STALE_COMMENT}|${STALE_HOOK_TRUTH}|${STALE_ADDON}"
 STALE_HITS=$(grep -rEn "$STALE_PATTERNS" \
   --include='*.md' --include='*.json' --include='*.tmpl' \
-  README.md CHEATSHEET.md docs/ .claude-plugin/ adapters/ 2>/dev/null \
+  README.md CHEATSHEET.md docs/ .claude-plugin/ adapters/ core/skills/ core/rules/ core/fragments/ 2>/dev/null \
   | grep -v 'build/rendered/' || true)
 if [ -z "$STALE_HITS" ]; then
-  echo "  ✓ no stale doc count keywords (42/43/53-skill, 34 native, 3 hooks, etc.)"
+  echo "  ✓ no stale doc keywords (skill counts, hook counts, add-on-hook phrasings)"
 else
   echo "  ✗ stale doc count keywords found:"
   printf '%s\n' "$STALE_HITS" | sed 's/^/      /'
