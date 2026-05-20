@@ -1,6 +1,6 @@
 # Hooks reference
 
-Rolepod ships **6 core bash hook scripts** in `hooks/`. Each CLI adapter declares these inline in its native hook mechanisms: Claude via the plugin manifest (`.claude-plugin/plugin.json` `hooks` field), Codex/Gemini via their native hooks config. All hooks are **self-guarded** — silent no-op when a dependency is missing.
+Rolepod ships **6 core bash hook scripts** in `hooks/`. Each CLI adapter declares these in a plugin/extension `hooks/hooks.json` — Claude, Codex, and Gemini all use the same `hooks/hooks.json` form. All hooks are **self-guarded** — silent no-op when a dependency is missing.
 
 Lead does not invoke these manually. They fire automatically.
 
@@ -149,15 +149,15 @@ Root `hooks/*.sh` is canonical. The Codex adapter mirrors only the hooks whose e
 
 ## Installation
 
-Hooks are shipped in the rolepod plugin tree (`~/.claude/plugins/rolepod/hooks/`) and declared inline in the plugin manifest (`.claude-plugin/plugin.json` `hooks` field) by `install.sh`. Re-running install is idempotent — the manifest is regenerated with current hook declarations. Migration steps (pre-2.0 installs) strip any legacy hook entries from `~/.claude/settings.json`.
+Hooks are shipped in the rolepod plugin tree (`~/.claude/plugins/rolepod/hooks/`) and declared in the plugin's `hooks/hooks.json` (the canonical plugin-root form). Re-running install is idempotent. Migration steps (pre-2.0 installs) strip any legacy hook entries from `~/.claude/settings.json`.
 
 To verify installation:
 ```bash
 claude plugin list
 # Should show "rolepod" as enabled
 
-cat ~/.claude/.claude-plugin/plugin.json | jq '.hooks'
-# Should show 6 core hooks, all with ${CLAUDE_PLUGIN_ROOT} paths
+claude plugin details rolepod@rolepod
+# Component inventory should list a Hooks line covering SessionStart, PreToolUse, Stop
 ```
 
 Expected: 6 core hooks (SessionStart × 2, PreToolUse × 3, Stop × 1).

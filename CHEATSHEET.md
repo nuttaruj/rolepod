@@ -11,7 +11,7 @@
 | Path-scoped rules | `~/.claude/rules/{code,test}/` (paths: glob) | (inlined) | (inlined) |
 | Agents (18) | auto-discovered in plugin | `~/.codex/plugins/rolepod/agents/*.toml` | inlined in `GEMINI.md` |
 | Skills (10) | auto-discovered in plugin | `~/.codex/plugins/rolepod/skills/<name>/SKILL.md` | `~/.gemini/extensions/rolepod/skills/<name>/SKILL.md` |
-| Hooks (core only) | 6 core hooks in plugin manifest `.claude-plugin/plugin.json` | 3 core hooks in `~/.codex/plugins/rolepod/hooks/hooks.json` | 4 core hooks in `~/.gemini/extensions/rolepod/hooks/hooks.json` |
+| Hooks (core only) | 6 core hooks in `~/.claude/plugins/rolepod/hooks/hooks.json` | 3 core hooks in `~/.codex/plugins/rolepod/hooks/hooks.json` | 4 core hooks in `~/.gemini/extensions/rolepod/hooks/hooks.json` |
 | Slash commands | `~/.claude/commands/*.md` | n/a | n/a (no Gemini-native slash commands; use `/rolepod` via skill) |
 
 ## Active gates
@@ -181,7 +181,7 @@ Optional add-on skills (caveman, gitnexus-*, ui-ux-pro-max) integrate when the u
 
 ## Hooks active — 6 core hooks (no add-on hooks)
 
-### Claude (6 core hooks, inline in plugin manifest, all self-guarded)
+### Claude (6 core hooks in plugin `hooks/hooks.json`, all self-guarded)
 
 | Event | Script | Role |
 |-------|--------|------|

@@ -10,7 +10,7 @@ Phase 2.3: rolepod ships for each supported CLI as a **native plugin / extension
 | Lazy-load rules (Read on trigger) | full | full | full |
 | Skills (`<plugin>/skills/<name>/SKILL.md`) | 10 Core 10 (native) | 10 Core 10 (native) | 10 Core 10 (native) |
 | Subagents (parallel team) | full Task / SendMessage (18 agents) | 18 agents as Codex `agents/*.toml` (Lead-orchestrated) | 18 agents inlined in `GEMINI.md` (Lead-orchestrated) |
-| Hooks (core only) | 6 core hooks, inline in plugin manifest · auto-registered on install | 3 core hooks across `SessionStart`/`PreToolUse` · hooks require `plugin_hooks` opt-in | 4 core hooks across `SessionStart`/`BeforeTool`/`AfterTool`/`PreCompress` |
+| Hooks (core only) | 6 core hooks in the plugin's `hooks/hooks.json` · auto-registered on install | 3 core hooks across `SessionStart`/`PreToolUse` · hooks require `plugin_hooks` opt-in | 4 core hooks across `SessionStart`/`BeforeTool`/`AfterTool`/`PreCompress` |
 | Slash commands | `/rolepod-team` (slash) + `/rolepod` (skill explicit-invoke) | n/a (Codex slash schema — `/rolepod` reaches the skill via Codex skill-slash UI) | `/rolepod` via skill (no native `.toml` commands — phase commands were dropped to match Claude's design) |
 | Plugin manifest | `.claude-plugin/plugin.json` (spec-conformant, 598B) | `.codex-plugin/plugin.json` (mirrors caveman schema, 1.6KB) | `gemini-extension.json` (extension schema, 551B) |
 | MemPalace / GitNexus integration | vendor install via marketplace plugin (MemPalace) + MCP (GitNexus); rolepod provides workflow rules | vendor install via `.codex-plugin` (MemPalace) + MCP (GitNexus); rolepod provides workflow rules | vendor install via MCP (GitNexus); MemPalace manual; rolepod provides workflow rules |
@@ -83,7 +83,7 @@ Per-CLI hook counts: Claude registers 6 core hooks via the plugin manifest. Code
 | Codex plugin layout | install registers `[marketplaces.rolepod]` + `[plugins."rolepod@rolepod"] enabled = true` in `~/.codex/config.toml` and writes `~/.codex/AGENTS.md` managed block; rendered tree at `build/rendered/codex/{.agents/plugins/marketplace.json,agents/*.toml,plugins/rolepod/{.codex-plugin,hooks,skills}/}` — the plugin bundles hooks + skills, the 18 agents install to `~/.codex/agents/` |
 | Gemini extension layout | dry-run install populates `~/.gemini/extensions/rolepod/{GEMINI.md,gemini-extension.json,hooks,skills}/` — entry doc ships inside the extension dir, global `~/.gemini/GEMINI.md` untouched |
 | All shell scripts | `bash -n` clean (install.sh, bootstrap.sh, render.sh, 6 core hook scripts, 3 codex hook scripts, 4 gemini hook scripts) |
-| All JSON manifests | `python3 -m json.tool` clean (plugin.json x2, hooks.json x2, gemini-extension.json) |
+| All JSON manifests | `python3 -m json.tool` clean (plugin.json x2, hooks.json x3 — claude/codex/gemini, marketplace.json, gemini-extension.json) |
 | All TOML files | `tomllib.load()` clean (18 codex agents, 6 gemini commands) |
 | Render output | `build/render.sh --target=all` produces all 3 trees with no `{{INCLUDE: ...}}` leaks |
 
@@ -147,7 +147,7 @@ Runs `claude plugin marketplace add <rendered-dir>` + `claude plugin install rol
 - `~/.claude/plugins/rolepod/` (plugin tree: agents, skills, hooks, commands, manifest)
 - `~/.claude/CLAUDE.md` (managed block — your existing content preserved)
 - `~/.claude/rules/{always-on,code,test}/` (always-on and path-scoped rules — script-installed, no plugin model for rules)
-- Plugin manifest hooks (6 core) declared inline in `.claude-plugin/plugin.json` using `${CLAUDE_PLUGIN_ROOT}` paths
+- Plugin hooks (6 core) in the plugin's `hooks/hooks.json` using `${CLAUDE_PLUGIN_ROOT}` paths
 
 ### Per-project install (`--scope=project`)
 

@@ -308,8 +308,14 @@ render_claude() {
     cp "$REPO_DIR/commands"/*.md "$plugin_dst/commands/" 2>/dev/null || true
   fi
 
-  # Hooks: 6 core scripts + lib/ helpers.
+  # Hooks: hooks/hooks.json config (canonical plugin-root form) + 6 core
+  # scripts + lib/ helpers.
   mkdir -p "$plugin_dst/hooks"
+  if [ -f "$adapter_dir/hooks.json" ]; then
+    cp "$adapter_dir/hooks.json" "$plugin_dst/hooks/hooks.json"
+  else
+    echo "render: missing $adapter_dir/hooks.json" >&2; exit 1
+  fi
   cp "$REPO_DIR/hooks"/*.sh "$plugin_dst/hooks/" 2>/dev/null || true
   [ -d "$REPO_DIR/hooks/lib" ] && cp -R "$REPO_DIR/hooks/lib" "$plugin_dst/hooks/"
   chmod +x "$plugin_dst/hooks/"*.sh 2>/dev/null || true
