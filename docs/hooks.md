@@ -1,20 +1,18 @@
 # Hooks reference
 
-Rolepod ships **6 core bash hook scripts** in `hooks/` and **1 optional GitNexus add-on** in `hooks/optional/gitnexus/`. Claude install ships them in the plugin tree and declares all 6 core + 1 optional (when detected) inline in the plugin manifest (`.claude-plugin/plugin.json` `hooks` field). The manifest entries use `${CLAUDE_PLUGIN_ROOT}` paths and fire on specific Claude Code events + matchers, either enforcing a gate (`permissionDecision: deny`) or injecting context (JSON `additionalContext`). All hooks are **self-guarded** — silent no-op when a dependency is missing. For auditability, `gitnexus-wrap.sh` ships in `hooks/optional/gitnexus/` even though it is not wired into the manifest.
+Rolepod ships **6 core bash hook scripts** in `hooks/`. Each CLI adapter declares these inline in its native hook mechanisms: Claude via the plugin manifest (`.claude-plugin/plugin.json` `hooks` field), Codex/Gemini via their native hooks config. All hooks are **self-guarded** — silent no-op when a dependency is missing.
 
 Lead does not invoke these manually. They fire automatically.
 
-## Hook categories — Core vs Optional add-on
+## Hook categories — All core (no add-on hooks)
 
 | Category | Hooks | Purpose |
 |---|---|---|
-| **Core enforcement** | `block-subagent-commit`, `cohesion-contract-check`, `gate-reminder`, `precommit-gate` | Hard / soft blocks on discipline violations (high-risk path, parallel-without-contract, sub-agent commit, schema-bound new file) |
-| **Core context** | `project-context-loader` | Inject git state at SessionStart |
-| **Core session safety** | `session-lifecycle` | SessionStart lock + Stop unlock — prevents concurrent-edit stomp |
-| **Optional add-on (GitNexus)** | `post-ship-detect`, `gitnexus-wrap` | Auto-reindex when GitNexus is present in repo. Live in `hooks/optional/gitnexus/`; register only when the GitNexus plugin is detected at install time |
-| **Optional add-on (MemPalace × Codex)** | `codex-session-start` | Bridge Codex sessions into MemPalace cross-session recall. Lives in `hooks/optional/mempalace/`; registered in the Codex plugin cache `hooks.json` at install time only when `command -v mempalace` succeeds AND target is a real Codex global install. Codex Stop / PreCompact equivalents not shipped — Codex 0.130 plugin hook schema only exposes SessionStart / PreToolUse / PostToolUse |
+| **Enforcement** | `block-subagent-commit`, `cohesion-contract-check`, `gate-reminder`, `precommit-gate` | Hard / soft blocks on discipline violations (high-risk path, parallel-without-contract, sub-agent commit, schema-bound new file) |
+| **Context** | `project-context-loader` | Inject git state at SessionStart |
+| **Session safety** | `session-lifecycle` | SessionStart lock + Stop unlock — prevents concurrent-edit stomp |
 
-Core hooks register on every install. Optional GitNexus hooks ship at the path for auditability but only register in `settings.json` when the GitNexus plugin is detected.
+All 6 hooks register on every install. MemPalace and GitNexus integrate via their own vendor plugins/CLI, not rolepod hooks.
 
 PR 6 dropped `verify-reminder.sh` (PostToolUse Edit/Write per-edit nag). The same discipline lives in:
 - skill `check-work` — Iron Rule + evidence-required output contract
@@ -31,7 +29,6 @@ A per-edit reminder hook duplicated all three without enforcement teeth — so i
 | `PreToolUse` | `Edit\|Write\|MultiEdit` | `gate-reminder.sh` |
 | `PreToolUse` | `Bash` | `precommit-gate.sh`, `block-subagent-commit.sh` |
 | `PreToolUse` | `Agent` | `cohesion-contract-check.sh` |
-| `PostToolUse` | `Bash` | `optional/gitnexus/post-ship-detect.sh` + `optional/gitnexus/gitnexus-wrap.sh` (only when GitNexus plugin installed) |
 | `Stop` | (no matcher) | `session-lifecycle.sh --unlock` |
 
 ## Per-hook reference
@@ -101,35 +98,6 @@ Removes own session lock so the next session in this worktree does not see a pha
 - **Self-guards**: not in a git repo → silent; no `session_id` → silent.
 - **Bypass**: none (idempotent cleanup).
 
-### `optional/gitnexus/post-ship-detect.sh` — PostToolUse Bash (optional add-on)
-
-After ship cmd (`gh pr merge` / `git push main` / `git merge main`) touched ≥5 files in last 5 commits, auto-spawns `npx gitnexus analyze` in background (Lead-owned, no user nag).
-
-- **Registration**: declared inline in the Claude plugin manifest `hooks` field only when the GitNexus plugin is detected at install time. Script always ships at `hooks/optional/gitnexus/post-ship-detect.sh` for auditability.
-- **Effect**: `additionalContext` "GitNexus auto-reindex spawned in background. No user action needed."
-- **Self-guards**: no `.gitnexus/` dir → silent; no `npx` on PATH → silent.
-- **Dedup**: shares once/day/repo marker with `gitnexus-wrap.sh`.
-- **Bypass**: none (background spawn, doesn't block).
-
-### `optional/gitnexus/gitnexus-wrap.sh` — PreToolUse + PostToolUse Bash (optional add-on)
-
-Wraps the GitNexus plugin's bare `gitnexus-hook.cjs` to: forward stdin/stdout transparently when no stale notice; strip "index stale" notice + auto-spawn bg reindex (once/day/repo marker); auto-add `.gitnexus/` to `.git/info/exclude`; block-seeded detection.
-
-`install.sh` patches the GitNexus plugin's hook entry only when the plugin is detected — script is shipped but the registration swap only happens when the plugin is present.
-
-- **Self-guards**: plugin `.cjs` missing → silent no-op (uninstall safety).
-- **Bypass**: none.
-
-### `optional/mempalace/codex-session-start.sh` — Codex SessionStart (optional add-on)
-
-Bridge Codex sessions into MemPalace cross-session knowledge-graph recall. Calls `mempalace hook run --hook session-start --harness codex` (with `--harness claude-code` fallback for older MemPalace releases).
-
-- **Registration**: only registered in the Codex plugin cache `hooks/hooks.json` when `command -v mempalace` succeeds at install time AND target is a real Codex global install (not a temp `ROLEPOD_TARGET`). Idempotent — re-install strips + re-adds.
-- **Self-guards**: `mempalace` binary missing at runtime → exit 0 silently. Survives MemPalace uninstall without leaving noisy hooks.
-- **Codex caveat**: the entry is registered in `hooks.json` but Codex itself only fires plugin hooks after `codex features enable plugin_hooks` (default flag: `under development, false`).
-- **Why no Stop / PreCompact equivalents**: Codex 0.130 plugin hook schema exposes `SessionStart`, `PreToolUse`, `PostToolUse` only — no Stop event for "session ended", no PreCompact for "context compressed". When upstream Codex adds those events, mirror this script for `codex-stop.sh` / `codex-precompact.sh`.
-- **Gemini**: not auto-wired in rolepod yet. MemPalace upstream does not yet support `--harness gemini`; current Gemini integration is manual / MCP-assisted. README documents the limitation.
-
 ## Bypass envs — when to use
 
 | Env | When |
@@ -174,11 +142,10 @@ Adding a `PreToolUse Bash` hook that checks for `docs/specs/<feature>.md` before
 Root `hooks/*.sh` is canonical. The Codex adapter mirrors only the hooks whose events Codex supports (`SessionStart`, `PreToolUse apply_patch|Bash`, `PostToolUse Bash`):
 
 - **3 core** byte-exact mirrors: `gate-reminder.sh`, `precommit-gate.sh`, `project-context-loader.sh`.
-- **1 optional add-on** mirror at `hooks/optional/gitnexus/post-ship-detect.sh` — ships but not registered by default; enable manually if GitNexus is adopted on Codex.
 
-`block-subagent-commit`, `cohesion-contract-check`, `gitnexus-wrap`, `session-lifecycle` stay Claude-only (Codex has no `Agent` event API and no `Stop` event for unlock; the GitNexus plugin model also differs per Codex).
+`block-subagent-commit`, `cohesion-contract-check`, `session-lifecycle` stay Claude-only (Codex has no `Agent` event API and no `Stop` event for unlock).
 
-`tests/static/lean-surface.sh` enforces byte-exact parity between root and Codex adapter for the shared hooks (3 core + 1 optional/gitnexus) — any drift fails the release gate.
+`tests/static/lean-surface.sh` enforces byte-exact parity between root and Codex adapter for the shared hooks (3 core) — any drift fails the release gate.
 
 ## Installation
 
@@ -190,7 +157,7 @@ claude plugin list
 # Should show "rolepod" as enabled
 
 cat ~/.claude/.claude-plugin/plugin.json | jq '.hooks'
-# Should show 6 core hooks + (optional) 1 GitNexus hook, all with ${CLAUDE_PLUGIN_ROOT} paths
+# Should show 6 core hooks, all with ${CLAUDE_PLUGIN_ROOT} paths
 ```
 
-Expected: 6 core hooks (SessionStart × 2, PreToolUse × 3, Stop × 1) + optional GitNexus hook (PostToolUse × 1 when GitNexus plugin is detected).
+Expected: 6 core hooks (SessionStart × 2, PreToolUse × 3, Stop × 1).

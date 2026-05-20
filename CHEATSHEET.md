@@ -11,7 +11,7 @@
 | Path-scoped rules | `~/.claude/rules/{code,test}/` (paths: glob) | (inlined) | (inlined) |
 | Agents (18) | auto-discovered in plugin | `~/.codex/plugins/rolepod/agents/*.toml` | inlined in `GEMINI.md` |
 | Skills (10) | auto-discovered in plugin | `~/.codex/plugins/rolepod/skills/<name>/SKILL.md` | `~/.gemini/extensions/rolepod/skills/<name>/SKILL.md` |
-| Hooks (Claude 6 core + 1 opt / Codex 5 / Gemini 4) | inline in plugin manifest `.claude-plugin/plugin.json` | `~/.codex/plugins/rolepod/hooks/hooks.json` | `~/.gemini/extensions/rolepod/hooks/hooks.json` |
+| Hooks (core only) | 6 core hooks in plugin manifest `.claude-plugin/plugin.json` | 3 core hooks in `~/.codex/plugins/rolepod/hooks/hooks.json` | 4 core hooks in `~/.gemini/extensions/rolepod/hooks/hooks.json` |
 | Slash commands | `~/.claude/commands/*.md` | n/a | n/a (no Gemini-native slash commands; use `/rolepod` via skill) |
 
 ## Active gates
@@ -179,34 +179,29 @@ Default Lead path = **Tier 0 + Tier 1** (router + 9 Core 10 phase skills) = 10 s
 
 Optional add-on skills (caveman, gitnexus-*, ui-ux-pro-max) integrate when the user installs them — see README → Recommended add-ons.
 
-## Hooks active
+## Hooks active — 6 core hooks (no add-on hooks)
 
-Counts differ per CLI surface — Claude has the deepest matcher model so it carries enforcement hooks; Codex/Gemini run context hooks only.
-
-### Claude (6 core hooks + 1 optional GitNexus, inline in plugin manifest, all self-guarded)
+### Claude (6 core hooks, inline in plugin manifest, all self-guarded)
 
 | Event | Script | Role |
 |-------|--------|------|
 | SessionStart | `project-context-loader.sh` | git context (repo / branch / dirty / recent / hot 7d) |
 | SessionStart | `session-lifecycle.sh --lock` | sibling-session warning |
-| PreToolUse (Edit/Write on high-risk paths) | `gate-reminder.sh` | schema-bound + RED-test + reviewer-floor (silent on normal edits) |
+| PreToolUse (Edit/Write on high-risk paths) | `gate-reminder.sh` | schema-bound + RED-test + reviewer-floor |
 | PreToolUse (Bash on git commit) | `precommit-gate.sh` | test gate, hard block on high-risk + 0 tests |
 | PreToolUse (Bash, sub-agent) | `block-subagent-commit.sh` | sub-agents cannot commit/push/merge |
 | PreToolUse (Agent spawn) | `cohesion-contract-check.sh` | multi-agent contract required (2+ spawns) |
-| PostToolUse (Bash) | `optional/gitnexus/post-ship-detect.sh` | auto-reindex after ship cmd (optional add-on, inline in manifest when GitNexus detected) |
 | Stop | `session-lifecycle.sh --unlock` | release sibling lock |
 
-### Codex (3 core commands · 1 optional GitNexus + 1 optional MemPalace bridge)
+### Codex (3 core hooks)
 
 | Event | Matcher | Script | Role |
 |-------|---------|--------|------|
 | SessionStart | `startup\|resume` | `project-context-loader.sh` | git context (repo / branch / dirty / recent / hot 7d) |
 | PreToolUse | `apply_patch` | `gate-reminder.sh` | schema-bound + RED-test + reviewer-floor on high-risk paths |
 | PreToolUse | `Bash` | `precommit-gate.sh` | test gate before commit |
-| _(auto-registered if `mempalace` on PATH at install)_ | SessionStart `startup\|resume` | `optional/mempalace/codex-session-start.sh` | bridge to MemPalace's session-start hook (cross-session KG recall on Codex) — self-guarded |
-| _(optional, manual)_ | PostToolUse `Bash` | `optional/gitnexus/post-ship-detect.sh` | auto-reindex after big merges (only if GitNexus adopted) |
 
-Note: Codex hooks require `codex features enable plugin_hooks` (default `under development, false`). Without opt-in, hooks are registered but inert.
+Note: Codex hooks require `codex features enable plugin_hooks` (default `under development, false`). Without opt-in, hooks are registered but inert. Rolepod ships no add-on hooks — MemPalace / GitNexus integrate via their own vendor plugins.
 
 ### Gemini (4 commands across 4 event classes)
 
@@ -217,16 +212,11 @@ Note: Codex hooks require `codex features enable plugin_hooks` (default `under d
 | AfterTool (write/replace/edit) | `after-tool.sh` | verify-after evidence reminder |
 | PreCompress | `pre-compress.sh` | session-snapshot before context compaction |
 
-### External plugins (optional)
+### External add-ons (optional)
 
-| Event | Hook (plugin) |
-|-------|---------------|
-| SessionStart | MemPalace recall |
-| PreToolUse | GitNexus enrich / rtk proxy / qa-pass-check |
-| PostToolUse Bash | GitNexus freshness check |
-| PostToolUse Agent | qa-pass-record |
-| Stop | MemPalace capture |
-| PreCompact | MemPalace save state |
+MemPalace and GitNexus register their own hooks through their own vendor
+plugins / CLI — rolepod ships none of them and does not wrap or bridge them.
+Install per README → "Recommended add-ons"; each integrates when present.
 
 ## Self-improvement loop
 

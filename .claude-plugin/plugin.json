@@ -1,7 +1,7 @@
 {
   "name": "rolepod",
-  "version": "2.0.0",
-  "description": "Coordinated software-house team for AI coding CLIs — 18 specialist agents, Core 10 phase skills (1 router + 9 phase), 6-phase lifecycle. Pre-commit gates (S1-S5 simplicity / T1-T6 testing / F1-F5 failure-mode) catch bugs before ship. On Claude Code, ships as a marketplace plugin (agents/skills/commands/hooks); the always-on CLAUDE.md gate block + rules/ are script-installed by install.sh because the plugin model has no always-on instruction surface. See https://github.com/nuttaruj/rolepod.",
+  "version": "2.1.0",
+  "description": "Coordinated software-house team for AI coding CLIs — 18 specialist agents, Core 10 phase skills (1 router + 9 phase), 6-phase lifecycle. Pre-commit gates (S1-S5 simplicity / T1-T6 testing / F1-F5 failure-mode) catch bugs before ship. On Claude Code, ships as a marketplace plugin (agents/skills/commands/6 hooks); the always-on CLAUDE.md gate block + rules/ are script-installed by install.sh because the plugin model has no always-on instruction surface. See https://github.com/nuttaruj/rolepod.",
   "author": {
     "name": "nuttaruj",
     "url": "https://github.com/nuttaruj"
@@ -67,18 +67,6 @@
           {
             "type": "command",
             "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/cohesion-contract-check.sh\"",
-            "timeout": 5
-          }
-        ]
-      }
-    ],
-    "PostToolUse": [
-      {
-        "matcher": "Bash",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/optional/gitnexus/post-ship-detect.sh\"",
             "timeout": 5
           }
         ]

@@ -261,7 +261,7 @@ render_agents() {
 #   plugins/rolepod/agents/*.md                (18 rendered agents)
 #   plugins/rolepod/skills/<name>/SKILL.md     (real dir, copied from core/skills)
 #   plugins/rolepod/commands/*.md              (slash commands)
-#   plugins/rolepod/hooks/*.sh + lib/ + optional/
+#   plugins/rolepod/hooks/*.sh + lib/
 
 render_claude() {
   local template="$REPO_DIR/adapters/claude/CLAUDE.md.tmpl"
@@ -308,13 +308,11 @@ render_claude() {
     cp "$REPO_DIR/commands"/*.md "$plugin_dst/commands/" 2>/dev/null || true
   fi
 
-  # Hooks: 6 core scripts + lib/ helpers + optional/ add-ons.
+  # Hooks: 6 core scripts + lib/ helpers.
   mkdir -p "$plugin_dst/hooks"
   cp "$REPO_DIR/hooks"/*.sh "$plugin_dst/hooks/" 2>/dev/null || true
-  [ -d "$REPO_DIR/hooks/lib" ]      && cp -R "$REPO_DIR/hooks/lib" "$plugin_dst/hooks/"
-  [ -d "$REPO_DIR/hooks/optional" ] && cp -R "$REPO_DIR/hooks/optional" "$plugin_dst/hooks/"
+  [ -d "$REPO_DIR/hooks/lib" ] && cp -R "$REPO_DIR/hooks/lib" "$plugin_dst/hooks/"
   chmod +x "$plugin_dst/hooks/"*.sh 2>/dev/null || true
-  find "$plugin_dst/hooks/optional" -name '*.sh' -exec chmod +x {} \; 2>/dev/null || true
 }
 
 # ─── Render Codex target ────────────────────────────────────────────────────
@@ -325,7 +323,7 @@ render_claude() {
 #   .agents/plugins/marketplace.json                 (marketplace manifest)
 #   plugins/rolepod/.codex-plugin/plugin.json        (plugin manifest)
 #   plugins/rolepod/agents/*.toml                    (18 portable agents)
-#   plugins/rolepod/hooks/hooks.json + *.sh          (3 core hook scripts + 1 in optional/gitnexus/)
+#   plugins/rolepod/hooks/hooks.json + *.sh          (3 core hook scripts)
 #   plugins/rolepod/skills/<name>/SKILL.md ...       (real dir, copied from core/skills)
 
 render_codex() {

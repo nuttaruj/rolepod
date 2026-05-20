@@ -1,6 +1,6 @@
 # Rolepod — Multi-CLI AI Workflow System
 
-Complete software-house team for AI coding CLIs: 18 specialist agents, 7 rules (3 always-on + 4 path-scoped), 10 workflow skills (Core 10: 1 router + 9 phase skills), 8 hooks (6 core + 2 GitNexus add-on, self-guarded), parallel-safe by path/concern. Native plugins for Claude Code, Codex CLI, and Gemini CLI.
+Complete software-house team for AI coding CLIs: 18 specialist agents, 7 rules (3 always-on + 4 path-scoped), 10 workflow skills (Core 10: 1 router + 9 phase skills), 6 core hooks (self-guarded). Native plugins for Claude Code, Codex CLI, and Gemini CLI.
 
 **Universal:** zero project-specific refs, works in any repo from day one.
 
@@ -134,7 +134,14 @@ curl -fsSL https://raw.githubusercontent.com/nuttaruj/rolepod/main/bootstrap.sh 
 
 **Codex hooks require explicit opt-in.** Fresh Codex install has `plugin_hooks` flagged `under development, false` — rolepod registers `hooks/hooks.json` in the plugin but Codex won't fire them until the user enables it: `codex features enable plugin_hooks`. Agents + skills load regardless. Without the opt-in, gate enforcement on Codex relies entirely on AGENTS.md (Tier 1) — hooks are inert.
 
-Shipped hooks auto-register in each CLI's native mechanisms (idempotent): Claude via plugin manifest, Codex/Gemini via their native hooks config. If MemPalace is detected on `$PATH`, Claude gets its `SessionStart` / `Stop` / `PreCompact` hooks and Codex gets an optional `SessionStart` bridge in the plugin cache (self-guarded — silently no-ops if uninstalled later). Gemini remains manual / MCP-assisted until MemPalace ships a native Gemini harness. For other add-ons see [Recommended add-ons](#recommended-add-ons).
+Rolepod ships **6 core hooks** (context loader, session safety, discipline gates, pre-commit enforcement, multi-agent contract check) — no add-on hooks. MemPalace and GitNexus integrate via their own vendor plugins/CLI:
+
+| Vendor | Claude | Codex | Gemini |
+|---|---|---|---|
+| **MemPalace** | Marketplace plugin (`claude plugin marketplace add MemPalace/mempalace` + `claude plugin install --scope user mempalace`) | `.codex-plugin` (install via `uv tool install mempalace`) | manual — clone + `uv sync` + `gemini mcp add` + PreCompress hook |
+| **GitNexus** | `claude mcp add gitnexus -- npx -y gitnexus@latest mcp` | `codex mcp add gitnexus -- npx -y gitnexus@latest mcp` | no GitNexus integration |
+
+Rolepod's value-add is **workflow rules** (when to call `gitnexus_impact`, `mempalace_kg_query`, etc.) — not hook plumbing. The vendors own their own integrations.
 
 After install, restart the CLI you targeted so the plugin system loads.
 
@@ -253,34 +260,32 @@ Full skill detail: [docs/skills.md](docs/skills.md) + [CHEATSHEET.md](CHEATSHEET
 
 Path/concern ownership + expertise list + escalation paths + skill preloads. Shared `agent-protocol.md`. Identical across all 3 CLIs.
 
-### Hooks — `hooks/` (auto-fire on Claude/Gemini; opt-in on Codex)
+### Hooks — `hooks/` (6 core, self-guarded)
 
-Rolepod keeps **6 core hook scripts** in `hooks/` (always active) and **1 optional GitNexus add-on** in `hooks/optional/gitnexus/` (declared inline in the Claude plugin manifest when detected; `gitnexus-wrap.sh` ships in `hooks/optional/gitnexus/` for auditability but is not wired into the manifest). Full reference: [docs/hooks.md](docs/hooks.md).
+Rolepod ships **6 core hook scripts** in `hooks/` — no add-on hooks. MemPalace and GitNexus integrate through their own vendor plugins / MCP, not through rolepod-shipped hooks. Full reference: [docs/hooks.md](docs/hooks.md).
 
 | Category | Hooks |
 |---|---|
 | **Core enforcement** | `block-subagent-commit`, `cohesion-contract-check`, `gate-reminder`, `precommit-gate` |
 | **Core context** | `project-context-loader` |
 | **Core session safety** | `session-lifecycle` (SessionStart `--lock` + Stop `--unlock`) |
-| **Optional add-on · GitNexus** | `post-ship-detect` (inline in Claude plugin manifest when detected; shipped for auditability) |
-| **Optional add-on · MemPalace × Codex** | `optional/mempalace/codex-session-start` (registered in Codex plugin cache `hooks.json` only when `command -v mempalace` succeeds at install time) |
 
 Per-CLI exposure:
 
-- **Claude:** ships as a marketplace plugin. The installer renders rolepod to a temp dir, runs `claude plugin marketplace add <rendered-dir>` + `claude plugin install rolepod@rolepod --scope user`. The plugin tree (agents, skills, hooks, commands) lives under `~/.claude/plugins/rolepod/` and is auto-discovered by Claude Code. Hooks (6 core + 1 optional GitNexus) are declared inline in `.claude-plugin/plugin.json` `hooks` field using `${CLAUDE_PLUGIN_ROOT}` paths, registered automatically on install. The CLAUDE.md managed block in `~/.claude/CLAUDE.md` and `~/.claude/rules/` still install via script (no plugin model for always-on rules). `~/.claude/settings.json` is only touched by the Claude Code CLI itself (for `enabledPlugins` / `extraKnownMarketplaces`).
-- **Codex:** ships 5 plugin command hooks — 3 core mirrors of root scripts (`project-context-loader.sh`, `gate-reminder.sh`, `precommit-gate.sh`) registered by default + 1 optional GitNexus mirror (`optional/gitnexus/post-ship-detect.sh`) that ships but is not auto-registered + 1 optional MemPalace SessionStart bridge registered when `command -v mempalace` succeeds at install time. Claude-only hooks (`block-subagent-commit`, `cohesion-contract-check`, `session-lifecycle`, `gitnexus-wrap`) are not registered — Codex has no `Agent` or `Stop` event API and a different plugin model.
+- **Claude:** ships as a marketplace plugin. The installer renders rolepod to a temp dir, runs `claude plugin marketplace add <rendered-dir>` + `claude plugin install rolepod@rolepod --scope user`. The plugin tree (agents, skills, hooks, commands) lives under `~/.claude/plugins/rolepod/` and is auto-discovered by Claude Code. The 6 core hooks are declared inline in `.claude-plugin/plugin.json` `hooks` field using `${CLAUDE_PLUGIN_ROOT}` paths, registered automatically on install. The CLAUDE.md managed block in `~/.claude/CLAUDE.md` and `~/.claude/rules/` still install via script (no plugin model for always-on rules). `~/.claude/settings.json` is only touched by the Claude Code CLI itself (for `enabledPlugins` / `extraKnownMarketplaces`).
+- **Codex:** ships 3 core command hooks (`project-context-loader.sh`, `gate-reminder.sh`, `precommit-gate.sh`) via `hooks/hooks.json`. Claude-only hooks (`block-subagent-commit`, `cohesion-contract-check`, `session-lifecycle`) are not registered — Codex has no `Agent` or `Stop` event API and a different plugin model.
 - **Gemini:** ships 4 adapter command hooks: `session-start.sh`, `before-tool.sh`, `after-tool.sh`, `pre-compress.sh`.
 
 **Codex caveat:** hooks register via `hooks/hooks.json` inside the plugin but require `codex features enable plugin_hooks` (default flag: `under development, false`). Without the opt-in, rolepod's hooks are registered but inert — Tier 1 rules in AGENTS.md still drive gate compliance.
 
 | Event class | Claude | Codex | Gemini |
 |---|---|---|---|
-| Session start | `SessionStart` (`project-context-loader`, `session-lifecycle --lock`) | `SessionStart` (`project-context-loader`, optional `mempalace/codex-session-start`) | `SessionStart` (`session-start`) |
+| Session start | `SessionStart` (`project-context-loader`, `session-lifecycle --lock`) | `SessionStart` (`project-context-loader`) | `SessionStart` (`session-start`) |
 | Before tool | `PreToolUse` (`gate-reminder`, `precommit-gate`, `block-subagent-commit`, `cohesion-contract-check`) | `PreToolUse` (`gate-reminder`, `precommit-gate`) | `BeforeTool` (`before-tool`) |
-| After tool | `PostToolUse` (`optional/gitnexus/post-ship-detect` when GitNexus plugin detected) | _(optional)_ `PostToolUse` (`optional/gitnexus/post-ship-detect` — manual register) | `AfterTool` (`after-tool`) |
+| After tool | — | — | `AfterTool` (`after-tool`) |
 | Stop / compact | `Stop` (`session-lifecycle --unlock`) | — | `PreCompress` (`pre-compress`) |
 
-External hooks integrate via plugins: MemPalace (Claude Stop/SessionStart/PreCompact; Codex SessionStart bridge only), GitNexus (PreToolUse/PostToolUse), `qa-pass-check.sh`.
+MemPalace and GitNexus ship their own hooks through their own integration — install them per [Recommended add-ons](#recommended-add-ons). Rolepod does not register, wrap, or bridge any vendor hook.
 
 ### Commands
 
@@ -514,7 +519,7 @@ Personal workflow system. Fork freely. Send feedback via issues — especially C
 ## See also
 
 - [`docs/cli-support.md`](docs/cli-support.md) — per-CLI capability matrix + primitives
-- [`docs/hooks.md`](docs/hooks.md) — 8 hooks reference (6 core + 2 GitNexus add-on, triggers, gates, bypass envs)
+- [`docs/hooks.md`](docs/hooks.md) — 6 core hooks reference (triggers, gates, bypass envs)
 - [`CHEATSHEET.md`](CHEATSHEET.md) — 1-page quick reference
 - [`core/rules/INDEX.md`](core/rules/INDEX.md) — full rule trigger map
 - [`core/skills/write-plan/SKILL.md`](core/skills/write-plan/SKILL.md) — agent picker + parallel cohesion contract (Core 10)
