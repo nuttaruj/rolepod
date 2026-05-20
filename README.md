@@ -169,7 +169,7 @@ After install, restart the CLI you targeted so the plugin system loads.
 | Target | Static | Dry-run | Live hooks | Live dispatch | Status |
 |--------|--------|---------|-----------|--------------|--------|
 | Claude Code | ✓ | ✓ | ✓ | ✓ | **Production** |
-| Codex CLI | ✓ | ✓ | ⚠️ opt-in only — `codex features enable plugin_hooks` required (default: `under development, false`) | ✓ (18 agents + 10 skill files via plugin cache) | **Production** (hooks opt-in) |
+| Codex CLI | ✓ | ✓ | ⚠️ opt-in only — `codex features enable plugin_hooks` required (default: `under development, false`) | ✓ (10 skills via plugin cache + 18 agents in `~/.codex/agents/`) | **Production** (hooks opt-in) |
 | Gemini CLI | ✓ | ✓ | ✓ | ✓ (10 skill files) | **Production** |
 
 **Static** = `bash -n` + `json.tool` + `tomllib.load()` + snapshot diff (no leaked `{{INCLUDE: ...}}`). **Dry-run** = `install.sh` writes correct files to temp dir. **Live** = real CLI; hooks fire (Claude + Gemini always; Codex only after `plugin_hooks` opt-in); subagents/skills dispatch.

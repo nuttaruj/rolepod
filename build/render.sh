@@ -321,8 +321,11 @@ render_claude() {
 # Output layout matches the bundled-marketplace shape Codex 0.130+ scans:
 #   AGENTS.md                                        (entry doc, ~/.codex/AGENTS.md)
 #   .agents/plugins/marketplace.json                 (marketplace manifest)
+#   agents/*.toml                                    (18 agents — installed to
+#                                                     ~/.codex/agents/, NOT in
+#                                                     the plugin; Codex's plugin
+#                                                     loader has no agents field)
 #   plugins/rolepod/.codex-plugin/plugin.json        (plugin manifest)
-#   plugins/rolepod/agents/*.toml                    (18 portable agents)
 #   plugins/rolepod/hooks/hooks.json + *.sh          (3 core hook scripts)
 #   plugins/rolepod/skills/<name>/SKILL.md ...       (real dir, copied from core/skills)
 
@@ -357,10 +360,12 @@ render_codex() {
     echo "render: missing $plugin_src/.codex-plugin/" >&2; exit 1
   fi
 
-  # TOML agents.
+  # TOML agents — rendered OUTSIDE the plugin tree. Codex's plugin loader has
+  # no agent-discovery path (manifest has no `agents` field); agents load only
+  # from the global ~/.codex/agents/ directory. install.sh copies these there.
   if [ -d "$plugin_src/agents" ]; then
-    mkdir -p "$plugin_dst/agents"
-    cp "$plugin_src/agents"/*.toml "$plugin_dst/agents/" 2>/dev/null || true
+    mkdir -p "$out_dir/agents"
+    cp "$plugin_src/agents"/*.toml "$out_dir/agents/" 2>/dev/null || true
   fi
 
   # Hooks (json + executable scripts).
