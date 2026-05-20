@@ -7,7 +7,7 @@
 #   Claude project   → full plugin ($PWD/.claude/)
 #   Codex global     → marketplace + plugin cache + AGENTS.md
 #   Codex project    → rules-only ($PWD/AGENTS.md)
-#   Gemini global    → extension + commands + hooks + GEMINI.md
+#   Gemini global    → extension + hooks + extension-local GEMINI.md
 #   Gemini project   → rules-only ($PWD/GEMINI.md)
 #
 # Test coverage (matrix):
@@ -202,9 +202,9 @@ if [ "${ROLEPOD_INTEGRATION_MUTATE:-0}" = "1" ]; then
       ok=1
       [ -d "$HOME/.gemini/extensions/rolepod" ] || { echo "  ✗ ~/.gemini/extensions/rolepod missing"; ok=0; }
       [ -f "$HOME/.gemini/extensions/rolepod/gemini-extension.json" ] || { echo "  ✗ gemini-extension.json missing"; ok=0; }
-      [ -f "$HOME/.gemini/GEMINI.md" ] || { echo "  ✗ ~/.gemini/GEMINI.md missing"; ok=0; }
+      [ -f "$HOME/.gemini/extensions/rolepod/GEMINI.md" ] || { echo "  ✗ extensions/rolepod/GEMINI.md missing"; ok=0; }
       if [ "$ok" -eq 1 ]; then
-        echo "  ✓ Gemini global: extension tree + GEMINI.md"
+        echo "  ✓ Gemini global: extension tree + extension-local GEMINI.md"
         PASS=$((PASS+1))
       else
         FAIL=$((FAIL+1))

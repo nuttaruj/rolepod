@@ -107,7 +107,7 @@ curl -fsSL https://raw.githubusercontent.com/nuttaruj/rolepod/main/bootstrap.sh 
 Targets: `claude` / `codex` / `gemini` / `all`. Removed per target:
 - **Claude** — `~/.claude/{agents,rules,skills,hooks,commands,.claude-plugin}` rolepod files + managed block in `~/.claude/CLAUDE.md` + rolepod hook entries in `~/.claude/settings.json`.
 - **Codex** — rolepod marketplace + `[plugins."rolepod@rolepod"]` line in `~/.codex/config.toml` + managed block in `~/.codex/AGENTS.md`.
-- **Gemini** — `~/.gemini/extensions/rolepod/` + managed block in `~/.gemini/GEMINI.md`.
+- **Gemini** — `~/.gemini/extensions/rolepod/` (entry doc `GEMINI.md` ships inside the extension dir; uninstall also strips any stale pre-PR-8 managed block from the global `~/.gemini/GEMINI.md`).
 
 Non-rolepod content (project CLAUDE.md, other plugin installs, custom skills) untouched — uninstall is scoped.
 
@@ -190,7 +190,7 @@ Plus: hooks (Claude/Gemini auto-fire; Codex opt-in via `plugin_hooks`), agents (
 
 Gates that fire every task — Identity, Verify-first, Q1-Q4 delegation, S1-S5 simplicity, T1-T6 testing, F1-F5 failure-mode, CI 3-phase, Hard stops.
 
-Loaded from each CLI's entry doc: `~/.claude/CLAUDE.md` / `~/.codex/AGENTS.md` / `~/.gemini/GEMINI.md`.
+Loaded from each CLI's entry doc: `~/.claude/CLAUDE.md` / `~/.codex/AGENTS.md` / `~/.gemini/extensions/rolepod/GEMINI.md`.
 
 ### Tier 2a — Always-on rules (`rules/always-on/`)
 
