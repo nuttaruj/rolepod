@@ -328,9 +328,10 @@ render_codex() {
 
 # ─── Render Gemini target ───────────────────────────────────────────────────
 # Phase 2.3: Gemini now ships as a native extension. Output layout:
-#   GEMINI.md                       (entry doc, written to ~/.gemini/GEMINI.md)
+#   GEMINI.md                       (extension context file — installed INSIDE
+#                                    extensions/rolepod/, auto-loaded by Gemini
+#                                    via the manifest's contextFileName)
 #   gemini-extension.json           (extension manifest)
-#   commands/*.toml                 (6 slash commands)
 #   hooks/hooks.json + *.sh         (4 hook scripts)
 #   skills/<name>/SKILL.md ...      (real dir, copied from core/skills/)
 

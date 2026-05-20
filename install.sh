@@ -1635,16 +1635,19 @@ if gemini_selected; then
 
   step "Copying extension tree → $GEMINI_EXT_DEST/"
   if [ "$DRY_RUN" -eq 1 ]; then
-    dry "cp -R $RENDERED_GEMINI_DIR/. → $GEMINI_EXT_DEST/"
-    dry "rm -f $GEMINI_EXT_DEST/GEMINI.md (entry doc lives at root, not in extension)"
+    dry "cp -R $RENDERED_GEMINI_DIR/. → $GEMINI_EXT_DEST/ (incl. GEMINI.md context file)"
   else
     cp -R "$RENDERED_GEMINI_DIR/." "$GEMINI_EXT_DEST/" 2>/dev/null || true
-    # GEMINI.md is the entry doc — it lives at the Gemini root, not in the extension.
-    rm -f "$GEMINI_EXT_DEST/GEMINI.md"
+    # GEMINI.md ships INSIDE the extension dir. Gemini auto-loads it via the
+    # extension's contextFileName, so rolepod's context never touches the
+    # user's global ~/.gemini/GEMINI.md.
   fi
 
-  step "Updating GEMINI.md (managed block) → $GEMINI_TARGET/GEMINI.md"
-  update_managed_block "$GEMINI_TARGET/GEMINI.md" "$RENDERED_GEMINI_MD"
+  # Migration: older installs wrote a rolepod managed block into the global
+  # ~/.gemini/GEMINI.md. The entry doc now lives in the extension dir, so
+  # strip any stale global block left behind by a pre-PR-8 install.
+  step "Stripping stale rolepod block from global $GEMINI_TARGET/GEMINI.md (migration)"
+  remove_managed_block "$GEMINI_TARGET/GEMINI.md"
 
   step "Marking hook scripts executable"
   if [ "$DRY_RUN" -eq 1 ]; then
@@ -1656,7 +1659,7 @@ if gemini_selected; then
   if [ "$DRY_RUN" -eq 0 ]; then
     step "Verifying Gemini install"
     for required in \
-      GEMINI.md \
+      extensions/rolepod/GEMINI.md \
       extensions/rolepod/gemini-extension.json \
       extensions/rolepod/hooks/hooks.json \
       extensions/rolepod/skills/using-rolepod/SKILL.md \
@@ -1665,7 +1668,7 @@ if gemini_selected; then
       [ -e "$GEMINI_TARGET/$required" ] || fail "Gemini verification failed — $GEMINI_TARGET/$required missing"
     done
     ok "rolepod gemini extension installed → $GEMINI_EXT_DEST"
-    ok "GEMINI.md → $GEMINI_TARGET/GEMINI.md"
+    ok "GEMINI.md (extension context file) → $GEMINI_EXT_DEST/GEMINI.md"
   else
     skip "Gemini verification skipped (dry-run)"
   fi
