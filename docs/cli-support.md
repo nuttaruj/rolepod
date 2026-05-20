@@ -10,10 +10,10 @@ Phase 2.3: rolepod ships for each supported CLI as a **native plugin / extension
 | Lazy-load rules (Read on trigger) | full | full | full |
 | Skills (`<plugin>/skills/<name>/SKILL.md`) | 10 Core 10 (native) | 10 Core 10 (native) | 10 Core 10 (native) |
 | Subagents (parallel team) | full Task / SendMessage (18 agents) | 18 agents as Codex `agents/*.toml` (Lead-orchestrated) | 18 agents inlined in `GEMINI.md` (Lead-orchestrated) |
-| Hooks (auto reminders) | 6 core + 1 optional GitNexus, all inline in plugin manifest · auto-registered on install | 3 commands across 2 event classes (`SessionStart`/`PreToolUse`) · optional GitNexus `post-ship-detect.sh` ships but not registered by default · optional MemPalace `optional/mempalace/codex-session-start.sh` registered automatically when `command -v mempalace` succeeds at install time (self-guarded otherwise) | 4 commands across 4 event classes (`SessionStart`/`BeforeTool`/`AfterTool`/`PreCompress`) |
+| Hooks (core only) | 6 core hooks, inline in plugin manifest · auto-registered on install | 3 core hooks across `SessionStart`/`PreToolUse` · hooks require `plugin_hooks` opt-in | 4 core hooks across `SessionStart`/`BeforeTool`/`AfterTool`/`PreCompress` |
 | Slash commands | `/rolepod-team` (slash) + `/rolepod` (skill explicit-invoke) | n/a (Codex slash schema — `/rolepod` reaches the skill via Codex skill-slash UI) | `/rolepod` via skill (no native `.toml` commands — phase commands were dropped to match Claude's design) |
 | Plugin manifest | `.claude-plugin/plugin.json` (spec-conformant, 598B) | `.codex-plugin/plugin.json` (mirrors caveman schema, 1.6KB) | `gemini-extension.json` (extension schema, 551B) |
-| MemPalace / GitNexus integration | hook-level integration (MemPalace + GitNexus wrapper when installed) | plugin/entry-doc integration; hooks require `plugin_hooks` opt-in | extension/entry-doc integration; Claude-only enforcement hooks do not apply |
+| MemPalace / GitNexus integration | vendor install via marketplace plugin (MemPalace) + MCP (GitNexus); rolepod provides workflow rules | vendor install via `.codex-plugin` (MemPalace) + MCP (GitNexus); rolepod provides workflow rules | vendor install via MCP (GitNexus); MemPalace manual; rolepod provides workflow rules |
 | MCP server config | global + per-plugin | global (`codex mcp`) | global (`gemini mcp`) |
 
 ## Install destinations
@@ -52,7 +52,7 @@ adapters/
 │   └── plugins/rolepod/
 │       ├── .codex-plugin/plugin.json
 │       ├── agents/*.toml               (18 agents, Codex schema)
-│       ├── hooks/hooks.json + 3 core *.sh (+ 1 optional in hooks/optional/gitnexus/, + 1 optional in hooks/optional/mempalace/)
+│       ├── hooks/hooks.json + 3 core *.sh
 │       └── skills → ../../../../core/skills (symlink, dereferenced at render time)
 └── gemini/
     ├── GEMINI.md.tmpl
@@ -73,7 +73,7 @@ adapters/
 | After tool run | `PostToolUse` (`Edit\|Write`, `Bash`) | `PostToolUse` (`apply_patch`, `Bash`) | `AfterTool` (`write_file\|replace\|edit`) |
 | Stop / compact | `Stop` (no matcher) | — | `PreCompress` |
 
-Per-CLI hook counts: Claude copies 8 hook scripts (6 core + 2 in `hooks/optional/gitnexus/`) and registers 7 rolepod entries via `~/.claude/settings.json` by default (8 when the GitNexus plugin is detected at install time); `gitnexus-wrap.sh` only patches the optional GitNexus plugin hook when GitNexus is installed. Codex ships 5 adapter scripts (3 core + 1 in `hooks/optional/gitnexus/` + 1 in `hooks/optional/mempalace/`); by default `hooks/hooks.json` registers 3 entries across `SessionStart` / `PreToolUse`, and `install.sh` upserts a 4th SessionStart entry pointing at `optional/mempalace/codex-session-start.sh` when `command -v mempalace` succeeds at install time. All Codex hooks require `codex features enable plugin_hooks` before they fire. Gemini ships 4 adapter command hooks across `SessionStart` / `BeforeTool` / `AfterTool` / `PreCompress`.
+Per-CLI hook counts: Claude registers 6 core hooks via the plugin manifest. Codex registers 3 core hooks in `hooks/hooks.json` (requires `codex features enable plugin_hooks` opt-in). Gemini registers 4 core hooks in `hooks/hooks.json`. Rolepod ships no add-on hooks — MemPalace and GitNexus integrate via their own vendor plugins/CLI.
 
 ## Verification status — what's confirmed locally
 
@@ -82,7 +82,7 @@ Per-CLI hook counts: Claude copies 8 hook scripts (6 core + 2 in `hooks/optional
 | Claude snapshot | `diff -q` 0-byte vs prior `~/.claude/CLAUDE.md` and 18 agent files |
 | Codex plugin layout | install registers `[marketplaces.rolepod]` + `[plugins."rolepod@rolepod"] enabled = true` in `~/.codex/config.toml` and writes `~/.codex/AGENTS.md` managed block; rendered tree at `build/rendered/codex/{.agents/plugins/marketplace.json,plugins/rolepod/{.codex-plugin,agents,hooks,skills}/}` is the source-of-truth Codex resolves at session start |
 | Gemini extension layout | dry-run install populates `~/.gemini/extensions/rolepod/{GEMINI.md,gemini-extension.json,hooks,skills}/` — entry doc ships inside the extension dir, global `~/.gemini/GEMINI.md` untouched |
-| All shell scripts | `bash -n` clean (install.sh, bootstrap.sh, render.sh, 8 hook scripts (6 core + 2 GitNexus add-on), 5 codex hook scripts (3 core + 1 GitNexus add-on + 1 MemPalace add-on), 4 gemini hook scripts) |
+| All shell scripts | `bash -n` clean (install.sh, bootstrap.sh, render.sh, 6 core hook scripts, 3 codex hook scripts, 4 gemini hook scripts) |
 | All JSON manifests | `python3 -m json.tool` clean (plugin.json x2, hooks.json x2, gemini-extension.json) |
 | All TOML files | `tomllib.load()` clean (18 codex agents, 6 gemini commands) |
 | Render output | `build/render.sh --target=all` produces all 3 trees with no `{{INCLUDE: ...}}` leaks |

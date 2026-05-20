@@ -138,7 +138,7 @@ Trigger phrases in each skill's frontmatter.
 
 @RTK.md
 
-<!-- gitnexus suppressor: empty markers freeze auto-inject (hooks/gitnexus-wrap.sh). Full rationale in docs/gitnexus-suppressor.md. -->
+<!-- gitnexus suppressor: empty markers + GitNexus's own --skip-agents-md keep auto-inject off. Full rationale in docs/gitnexus-suppressor.md. -->
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence
 

@@ -258,7 +258,7 @@ High-risk work (auth/billing/migrations/payments/data deletion):
 - ≤3 files per commit (not ≤5)
 - Mandatory peer review even for small diffs
 
-<!-- gitnexus suppressor: empty markers freeze auto-inject (hooks/gitnexus-wrap.sh). Full rationale in docs/gitnexus-suppressor.md. -->
+<!-- gitnexus suppressor: empty markers + GitNexus's own --skip-agents-md keep auto-inject off. Full rationale in docs/gitnexus-suppressor.md. -->
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence
 

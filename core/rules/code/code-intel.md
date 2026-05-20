@@ -58,9 +58,10 @@ Tier 3 — past sessions, decisions, cross-conversation.
 | Tool | Use for |
 |------|---------|
 | `mempalace_kg_query` | Find past decision / fact |
-| `mempalace_kg_add` | Save important decision |
+| `mempalace_kg_add` | Save entity-relationship triple (subject/predicate/object) |
+| `mempalace_add_drawer` | File freeform decision to a drawer (e.g. "decisions") |
 | `mempalace_kg_timeline` | Chronological view |
-| `mempalace_search` | Full-text |
+| `mempalace_search` | Semantic search (similarity scored) |
 | `mempalace_find_tunnels` | Related concepts |
 | `mempalace_kg_invalidate` | Mark stale |
 

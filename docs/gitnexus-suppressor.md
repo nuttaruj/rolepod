@@ -11,23 +11,20 @@ These markers are **intentionally empty**. Don't delete them. Don't populate the
 
 ## Why
 
-The GitNexus plugin's wrap hook (`hooks/gitnexus-wrap.sh`) auto-seeds project-specific GitNexus content (symbol counts, process names, repo-scoped tool tables) into CLAUDE.md and AGENTS.md the first time `npx gitnexus analyze` runs against a fresh clone. The hook decides whether to seed by checking whether the markers are already present:
+`npx gitnexus analyze` seeds project-specific GitNexus content (symbol counts,
+process names, repo-scoped tool tables) into the `<!-- gitnexus:start -->` /
+`<!-- gitnexus:end -->` block of CLAUDE.md and AGENTS.md. GitNexus owns that
+behaviour — rolepod ships no hook of its own around it (the pre-PR-10
+`gitnexus-wrap.sh` wrapper was removed; rolepod no longer wraps vendor hooks).
 
-```bash
-# hooks/gitnexus-wrap.sh (paraphrased)
-FREEZE_FLAG="--skip-agents-md"
-for entry in "$REPO/CLAUDE.md" "$REPO/AGENTS.md"; do
-  [ -f "$entry" ] || continue
-  if ! grep -q "<!-- gitnexus:start -->" "$entry"; then
-    FREEZE_FLAG=""   # → next analyze will seed
-    break
-  fi
-done
-```
-
-When *either* file lacks the marker, the freeze flag clears and the next analyze writes 40+ lines of repo-specific content into both files.
-
-Rolepod is a **universal framework**. Project-specific content (`rolepod is indexed as 1593 symbols / 8 execution flows / ...`) does not belong in upstream tracked files — it pollutes the diff for every contributor and makes the framework look bound to one project. The empty markers tell the wrap hook "block already present" so it always passes `--skip-agents-md` → no inject → no dirty diff.
+Rolepod is a **universal framework**. Project-specific content (`rolepod is
+indexed as 1593 symbols / 8 execution flows / ...`) does not belong in upstream
+tracked files — it pollutes the diff for every contributor and makes the
+framework look bound to one project. The markers are kept **empty** in the
+tracked files as a convention; to keep them that way, run GitNexus's own
+`npx gitnexus analyze --skip-agents-md` (which preserves the block) or simply
+do not run `analyze` against the rolepod repo itself. If a populated block
+slips into a commit, restore the empty markers before merging.
 
 ## Where the markers must live
 
@@ -51,7 +48,7 @@ If you (a downstream user, not rolepod itself) want GitNexus seeded in your own 
 `tests/static/lean-surface.sh` caps the rendered CLAUDE.md at 150 lines. Earlier versions of the suppressor had a 14-line HTML comment explaining the rationale inline; that pushed rendered CLAUDE.md to 158 lines and tripped the cap. The comment now lives in this doc, the templates keep a one-line pointer:
 
 ```html
-<!-- gitnexus suppressor: empty markers freeze auto-inject (hooks/gitnexus-wrap.sh). Full rationale in docs/gitnexus-suppressor.md. -->
+<!-- gitnexus suppressor: empty markers + GitNexus's own --skip-agents-md keep auto-inject off. Full rationale in docs/gitnexus-suppressor.md. -->
 <!-- gitnexus:start -->
 <!-- gitnexus:end -->
 ```

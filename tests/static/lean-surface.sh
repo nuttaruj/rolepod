@@ -360,11 +360,8 @@ fi
 # whose events Codex supports (SessionStart, PreToolUse Bash / apply_patch).
 # Claude-only hooks (block-subagent-commit, cohesion-contract-check,
 # session-lifecycle) stay root-only — Codex has no Agent / Stop event API.
-# Optional GitNexus hook (post-ship-detect) lives in hooks/optional/gitnexus/
-# on both sides; parity holds when the file exists in both trees.
+# Root hooks/: 6 *.sh + lib/. Codex adapter hooks/: 3 *.sh. No optional/.
 SHARED_CORE_HOOKS=(gate-reminder.sh precommit-gate.sh project-context-loader.sh)
-SHARED_OPTIONAL_GITNEXUS=(post-ship-detect.sh)
-SHARED_OPTIONAL_MEMPALACE=(codex-session-start.sh)
 HOOK_DRIFT=""
 for h in "${SHARED_CORE_HOOKS[@]}"; do
   root="hooks/$h"
@@ -377,30 +374,8 @@ for h in "${SHARED_CORE_HOOKS[@]}"; do
     HOOK_DRIFT="${HOOK_DRIFT}${h}: root vs Codex adapter diverged\n"
   fi
 done
-for h in "${SHARED_OPTIONAL_GITNEXUS[@]}"; do
-  root="hooks/optional/gitnexus/$h"
-  codex="adapters/codex/plugins/rolepod/hooks/optional/gitnexus/$h"
-  if [ ! -f "$root" ] || [ ! -f "$codex" ]; then
-    HOOK_DRIFT="${HOOK_DRIFT}${h} (optional/gitnexus): missing on one side\n"
-    continue
-  fi
-  if ! diff -q "$root" "$codex" >/dev/null 2>&1; then
-    HOOK_DRIFT="${HOOK_DRIFT}${h} (optional/gitnexus): root vs Codex adapter diverged\n"
-  fi
-done
-for h in "${SHARED_OPTIONAL_MEMPALACE[@]}"; do
-  root="hooks/optional/mempalace/$h"
-  codex="adapters/codex/plugins/rolepod/hooks/optional/mempalace/$h"
-  if [ ! -f "$root" ] || [ ! -f "$codex" ]; then
-    HOOK_DRIFT="${HOOK_DRIFT}${h} (optional/mempalace): missing on one side\n"
-    continue
-  fi
-  if ! diff -q "$root" "$codex" >/dev/null 2>&1; then
-    HOOK_DRIFT="${HOOK_DRIFT}${h} (optional/mempalace): root vs Codex adapter diverged\n"
-  fi
-done
 if [ -z "$HOOK_DRIFT" ]; then
-  echo "  ✓ root vs Codex adapter hook parity (3 core + 1 optional/gitnexus + 1 optional/mempalace identical)"
+  echo "  ✓ root vs Codex adapter hook parity (3 core hooks identical, no add-on hooks)"
 else
   echo "  ✗ root vs Codex adapter hook drift:"
   printf "%b" "$HOOK_DRIFT" | sed 's/^/      /'
