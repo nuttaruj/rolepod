@@ -134,7 +134,7 @@ Awaiting user authorization for: <specific action>
 
 ## Full Rolepod enhancement
 
-Full Rolepod improves this phase by adding the 3-phase CI lane policy, auto-merge wiring when required lanes pass, the qa-tester floor enforced via hooks, MemPalace decision capture, and the GitNexus post-ship reindex hook.
+Full Rolepod improves this phase by adding the 3-phase CI lane policy, auto-merge wiring when required lanes pass, and the qa-tester floor enforced via hooks. With MemPalace / GitNexus installed (their own vendor plugins), the agent also captures the ship decision and reindexes per the `code-intel` rules.
 
 ## Next phase
 

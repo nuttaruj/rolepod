@@ -147,7 +147,7 @@ Runs `claude plugin marketplace add <rendered-dir>` + `claude plugin install rol
 - `~/.claude/plugins/rolepod/` (plugin tree: agents, skills, hooks, commands, manifest)
 - `~/.claude/CLAUDE.md` (managed block — your existing content preserved)
 - `~/.claude/rules/{always-on,code,test}/` (always-on and path-scoped rules — script-installed, no plugin model for rules)
-- Plugin manifest hooks (6 core + 1 optional GitNexus when detected) declared inline in `.claude-plugin/plugin.json` using `${CLAUDE_PLUGIN_ROOT}` paths
+- Plugin manifest hooks (6 core) declared inline in `.claude-plugin/plugin.json` using `${CLAUDE_PLUGIN_ROOT}` paths
 
 ### Per-project install (`--scope=project`)
 

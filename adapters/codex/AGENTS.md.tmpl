@@ -18,7 +18,7 @@ Conflict unsafe → ask user.
 ## Codex-specific Lead notes
 
 - **Subagents** → 18 specialists at `~/.codex/agents/rolepod-*.toml` (installed by rolepod). **Codex does NOT auto-dispatch by description match** — user explicitly invokes via `/agent <name>` OR natural-language request ("spawn qa-tester to verify"). Q1-Q4 still applies to Lead's decision to ask for an agent.
-- **Hooks** → `hooks/hooks.json` registers SessionStart, PreToolUse, PostToolUse (context loader, context-pressure warning, post-edit verify, reindex hint). Hooks require `codex features enable plugin_hooks` (default `under development, false`).
+- **Hooks** → `hooks/hooks.json` registers 3 core hooks across SessionStart + PreToolUse (project context loader, schema-bound gate reminder, pre-commit test gate). Hooks require `codex features enable plugin_hooks` (default `under development, false`).
 - **Skills** → `skills/<name>/SKILL.md` auto-trigger from frontmatter `description:`.
 - **Peer review** → high-risk → ask Codex to spawn `qa-tester` / `security-engineer` / `universal-reviewer` explicitly. Findings come back as separate-context report.
 
@@ -91,10 +91,9 @@ Bloat → Codex ignores rules. Move infrequent → skills. Enforcement → hooks
 ## Code intelligence
 
 **Auto-triggers** (`hooks/hooks.json`):
-- SessionStart → project context loader + setup checklist
-- PreToolUse Bash/apply_patch → context-pressure warning
-- PostToolUse apply_patch → verify reminder
-- PostToolUse Bash → reindex hint after big merges
+- SessionStart → project context loader
+- PreToolUse apply_patch → schema-bound gate reminder (RED-test + reviewer-floor on high-risk paths)
+- PreToolUse Bash → pre-commit test gate
 
 **Manual:**
 - Before edit symbol → `rg` or GitNexus MCP if connected
