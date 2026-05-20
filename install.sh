@@ -1065,7 +1065,7 @@ if codex_selected; then
   [ -f "$RENDERED_AGENTS_MD" ]                                                  || fail "expected $RENDERED_AGENTS_MD after render"
   [ -f "$RENDERED_CODEX_DIR/.agents/plugins/marketplace.json" ]                 || fail "expected marketplace manifest after render"
   [ -d "$RENDERED_CODEX_DIR/plugins/rolepod/.codex-plugin" ]                    || fail "expected plugins/rolepod/.codex-plugin/ after render"
-  [ -d "$RENDERED_CODEX_DIR/plugins/rolepod/agents" ]                           || fail "expected plugins/rolepod/agents/ after render"
+  [ -d "$RENDERED_CODEX_DIR/agents" ]                                           || fail "expected agents/ after render (outside plugin tree)"
   [ -d "$RENDERED_CODEX_DIR/plugins/rolepod/hooks" ]                            || fail "expected plugins/rolepod/hooks/ after render"
   [ -d "$RENDERED_CODEX_DIR/plugins/rolepod/skills" ]                           || fail "expected plugins/rolepod/skills/ after render"
 
@@ -1205,11 +1205,11 @@ if codex_selected; then
     AGENTS_DEST="$CODEX_TARGET/agents"
     step "Installing 18 rolepod agents → $AGENTS_DEST/rolepod-*.toml"
     if [ "$DRY_RUN" -eq 1 ]; then
-      dry "mkdir -p $AGENTS_DEST && copy *.toml from rendered plugin agents/ with rolepod- prefix"
+      dry "mkdir -p $AGENTS_DEST && copy *.toml from rendered agents/ with rolepod- prefix"
     else
       mkdir -p "$AGENTS_DEST"
       copied=0
-      for f in "$RENDERED_CODEX_DIR/plugins/rolepod/agents"/*.toml; do
+      for f in "$RENDERED_CODEX_DIR/agents"/*.toml; do
         [ -f "$f" ] || continue
         cp "$f" "$AGENTS_DEST/rolepod-$(basename "$f")" 2>/dev/null && copied=$((copied+1))
       done
@@ -1243,11 +1243,11 @@ if codex_selected; then
     AGENTS_DEST="$CODEX_TARGET/agents"
     step "Installing 18 rolepod agents → $AGENTS_DEST/rolepod-*.toml"
     if [ "$DRY_RUN" -eq 1 ]; then
-      dry "mkdir -p $AGENTS_DEST && copy *.toml from rendered plugin agents/ with rolepod- prefix"
+      dry "mkdir -p $AGENTS_DEST && copy *.toml from rendered agents/ with rolepod- prefix"
     else
       mkdir -p "$AGENTS_DEST"
       copied=0
-      for f in "$RENDERED_CODEX_DIR/plugins/rolepod/agents"/*.toml; do
+      for f in "$RENDERED_CODEX_DIR/agents"/*.toml; do
         [ -f "$f" ] || continue
         cp "$f" "$AGENTS_DEST/rolepod-$(basename "$f")" 2>/dev/null && copied=$((copied+1))
       done
@@ -1272,7 +1272,9 @@ if codex_selected; then
       [ -d "$CACHE_DIR" ] && [ -f "$CACHE_DIR/.codex-plugin/plugin.json" ] || \
         fail "Codex verification failed — plugin cache not populated at $CACHE_DIR (Codex will fail to load plugin)"
       [ -d "$CACHE_DIR/skills" ] || fail "Codex verification failed — skills/ missing in cache dir"
-      [ -d "$CACHE_DIR/agents" ] || fail "Codex verification failed — agents/ missing in cache dir"
+      # No agents/ check — Codex's plugin loader has no agents field; the 18
+      # agent TOMLs install to ~/.codex/agents/ (verified separately), not the
+      # plugin cache.
       ok "rolepod codex marketplace registered + cache populated → $CACHE_DIR"
     else
       # Temp-target OR codex binary missing — verify filesystem artifacts only.
