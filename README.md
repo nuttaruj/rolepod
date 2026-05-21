@@ -1,6 +1,6 @@
 # Rolepod — Multi-CLI AI Workflow System
 
-Complete software-house team for AI coding CLIs: 18 specialist agents, 7 rules (3 always-on + 4 path-scoped), 10 workflow skills (Core 10: 1 router + 9 phase skills), 6 core hooks (self-guarded). Native plugins for Claude Code, Codex CLI, and Gemini CLI.
+Complete software-house team for AI coding CLIs: 18 specialist agents, 10 workflow skills (Core 10: 1 router + 9 phase skills), 7 core hooks (self-guarded). Native plugins for Claude Code, Codex CLI, and Gemini CLI.
 
 **Universal:** zero project-specific refs, works in any repo from day one.
 
@@ -98,7 +98,7 @@ curl -fsSL https://raw.githubusercontent.com/nuttaruj/rolepod/main/bootstrap.sh 
 
 `--force` overwrites rolepod-managed paths. Auto-backup at `~/.<cli>.backup-<timestamp>/` (rolepod-scoped, typically <50 MB; session history / plugin caches stay in place).
 
-> **Update via the script only.** Claude Code's `claude plugin update` / `/plugin` UI refresh only the plugin payload (agents, skills, hooks) — they do **not** touch the always-on CLAUDE.md gate block or `~/.claude/rules/`, which are script-installed. Re-run the command above for a complete update. Same applies to Codex and Gemini — all three CLIs update through `install.sh`.
+> **Update via the script only.** Claude Code is a pure plugin — `claude plugin update` / `/plugin` UI refresh update the plugin. Re-run the command above for a complete update. Same applies to Codex and Gemini — all three CLIs update through `install.sh`.
 
 ### Uninstall
 
@@ -107,7 +107,7 @@ curl -fsSL https://raw.githubusercontent.com/nuttaruj/rolepod/main/bootstrap.sh 
 ```
 
 Targets: `claude` / `codex` / `gemini` / `all`. Removed per target:
-- **Claude** — rolepod plugin (via `claude plugin uninstall rolepod@rolepod`) + rolepod marketplace (via `claude plugin marketplace remove rolepod`) + managed block in `~/.claude/CLAUDE.md` + `~/.claude/rules/` rolepod files. For pre-2.0 installs, also strips any legacy hook entries from `~/.claude/settings.json`.
+- **Claude** — rolepod plugin (via `claude plugin uninstall rolepod@rolepod`) + rolepod marketplace (via `claude plugin marketplace remove rolepod`) + strips any legacy pre-redesign managed block from `~/.claude/CLAUDE.md`. For pre-2.0 installs, also strips any legacy hook entries from `~/.claude/settings.json`.
 - **Codex** — rolepod marketplace + `[plugins."rolepod@rolepod"]` line in `~/.codex/config.toml` + managed block in `~/.codex/AGENTS.md`.
 - **Gemini** — `~/.gemini/extensions/rolepod/` (entry doc `GEMINI.md` ships inside the extension dir; uninstall also strips any stale pre-PR-8 managed block from the global `~/.gemini/GEMINI.md`).
 
@@ -127,14 +127,14 @@ curl -fsSL https://raw.githubusercontent.com/nuttaruj/rolepod/main/bootstrap.sh 
 
 | Scope | Claude | Codex | Gemini |
 |-------|--------|-------|--------|
-| `global` (default) | **full native install** (`~/.claude/plugins/rolepod/` plugin + rules + CLAUDE.md) | full marketplace + plugin cache + AGENTS.md (`~/.codex/`) | full extension + GEMINI.md (`~/.gemini/`) |
-| `project` | **full native install** (`$PWD/.claude/plugins/rolepod/` plugin + rules + CLAUDE.md) | **rules-only** (`$PWD/AGENTS.md`) | **rules-only** (`$PWD/GEMINI.md`) |
+| `global` (default) | **full native install** (`~/.claude/plugins/rolepod/` plugin) | full marketplace + plugin cache + AGENTS.md (`~/.codex/`) | full extension + GEMINI.md (`~/.gemini/`) |
+| `project` | **full native install** (`$PWD/.claude/plugins/rolepod/` plugin) | **rules-only** (`$PWD/AGENTS.md`) | **rules-only** (`$PWD/GEMINI.md`) |
 
 **Project scope is full for Claude; rules-only for Codex/Gemini.** Codex plugins and Gemini extensions are global-only by CLI design — `--scope=project` writes only the auto-loaded entry doc (AGENTS.md / GEMINI.md). Native plugin agents/skills/hooks are NOT installed per-project for those CLIs. For full Codex/Gemini activation, run `--scope=global` separately.
 
 **Codex hooks require explicit opt-in.** Fresh Codex install has `plugin_hooks` flagged `under development, false` — rolepod registers `hooks/hooks.json` in the plugin but Codex won't fire them until the user enables it: `codex features enable plugin_hooks`. Agents + skills load regardless. Without the opt-in, gate enforcement on Codex relies entirely on AGENTS.md (Tier 1) — hooks are inert.
 
-Rolepod ships **6 core hooks** (context loader, session safety, discipline gates, pre-commit enforcement, multi-agent contract check) — no add-on hooks. MemPalace and GitNexus integrate via their own vendor plugins/CLI:
+Rolepod ships **7 core hooks** (always-on loader, context loader, session safety, discipline gates, pre-commit enforcement, multi-agent contract check) — no add-on hooks. MemPalace and GitNexus integrate via their own vendor plugins/CLI:
 
 | Vendor | Claude | Codex | Gemini |
 |---|---|---|---|
@@ -187,9 +187,8 @@ Three layers, different load mechanisms (per [Anthropic memory doc](https://code
 
 ```
 Tier 1 (always loaded)        entry doc core            ≤200 lines
-Tier 2a (always-on rules)     rules/always-on/          3 files (eager)
-Tier 2b (path-scoped rules)   rules/{code,test}/        4 files (load on file match)
 Skill layer (on trigger)      skills/                   10 Core skill files + optional plugin skills
+Hook layer (auto-fire)        hooks/ + always-on-core.md SessionStart injects always-on judgment
 ```
 
 Plus: hooks (Claude/Gemini auto-fire; Codex opt-in via `plugin_hooks`), agents (sub-process), commands (slash /).
@@ -198,28 +197,7 @@ Plus: hooks (Claude/Gemini auto-fire; Codex opt-in via `plugin_hooks`), agents (
 
 Gates that fire every task — Identity, Verify-first, Q1-Q4 delegation, S1-S5 simplicity, T1-T6 testing, F1-F5 failure-mode, CI 3-phase, Hard stops.
 
-Loaded from each CLI's entry doc: `~/.claude/CLAUDE.md` / `~/.codex/AGENTS.md` / `~/.gemini/extensions/rolepod/GEMINI.md`.
-
-### Tier 2a — Always-on rules (`rules/always-on/`)
-
-Eager-loaded judgment shapers (no `paths:` frontmatter):
-
-| File | Trigger |
-|------|---------|
-| `communication.md` | tone / CEO modes — every reply |
-| `verify-first.md` | claiming a fact — every action |
-| `agent-protocol.md` | shared by all 18 agents |
-
-### Tier 2b — Path-scoped rules (`rules/{code,test}/`)
-
-Lazy-load via `paths:` frontmatter — only enter context when Claude touches matching files:
-
-| File | Paths |
-|------|-------|
-| `code/code-quality.md` | source files (ts/py/go/rs/...) |
-| `code/code-intel.md` | source files |
-| `code/code-intel-workflow.md` | source files |
-| `test/testing.md` | test files (`*test*` / `*spec*` / `__tests__/`) |
+Loaded from each CLI's entry doc: `~/.codex/AGENTS.md` / `~/.gemini/extensions/rolepod/GEMINI.md`. Claude loads always-on judgment via the SessionStart `always-on-loader.sh` hook, which emits `hooks/always-on-core.md` as `additionalContext`.
 
 ### Skill layer — Core 10 on trigger phrase
 
@@ -259,20 +237,21 @@ Full skill detail: [docs/skills.md](docs/skills.md) + [CHEATSHEET.md](CHEATSHEET
 
 Path/concern ownership + expertise list + escalation paths + skill preloads. Shared `agent-protocol.md`. Identical across all 3 CLIs.
 
-### Hooks — `hooks/` (6 core, self-guarded)
+### Hooks — `hooks/` (7 core, self-guarded)
 
-Rolepod ships **6 core hook scripts** in `hooks/` — no add-on hooks. MemPalace and GitNexus integrate through their own vendor plugins / MCP, not through rolepod-shipped hooks. Full reference: [docs/hooks.md](docs/hooks.md).
+Rolepod ships **7 core hook scripts** in `hooks/` — no add-on hooks. MemPalace and GitNexus integrate through their own vendor plugins / MCP, not through rolepod-shipped hooks. Full reference: [docs/hooks.md](docs/hooks.md).
 
 | Category | Hooks |
 |---|---|
+| **Core always-on** | `always-on-loader` (SessionStart → emits always-on-core.md) |
 | **Core enforcement** | `block-subagent-commit`, `cohesion-contract-check`, `gate-reminder`, `precommit-gate` |
 | **Core context** | `project-context-loader` |
 | **Core session safety** | `session-lifecycle` (SessionStart `--lock` + Stop `--unlock`) |
 
 Per-CLI exposure:
 
-- **Claude:** ships as a marketplace plugin. The installer renders rolepod to a temp dir, runs `claude plugin marketplace add <rendered-dir>` + `claude plugin install rolepod@rolepod --scope user`. The plugin tree (agents, skills, hooks) lives under `~/.claude/plugins/rolepod/` and is auto-discovered by Claude Code. The 6 core hooks are declared in the plugin's `hooks/hooks.json` (canonical plugin-root form) using `${CLAUDE_PLUGIN_ROOT}` paths, registered automatically on install. The CLAUDE.md managed block in `~/.claude/CLAUDE.md` and `~/.claude/rules/` still install via script (no plugin model for always-on rules). `~/.claude/settings.json` is only touched by the Claude Code CLI itself (for `enabledPlugins` / `extraKnownMarketplaces`).
-- **Codex:** ships 3 core command hooks (`project-context-loader.sh`, `gate-reminder.sh`, `precommit-gate.sh`) via `hooks/hooks.json`. Claude-only hooks (`block-subagent-commit`, `cohesion-contract-check`, `session-lifecycle`) are not registered — Codex has no `Agent` or `Stop` event API and a different plugin model.
+- **Claude:** ships as a marketplace plugin. The installer renders rolepod to a temp dir, runs `claude plugin marketplace add <rendered-dir>` + `claude plugin install rolepod@rolepod --scope user`. The plugin tree (agents, skills, hooks) lives under `~/.claude/plugins/rolepod/` and is auto-discovered by Claude Code. The 7 core hooks are declared in the plugin's `hooks/hooks.json` (canonical plugin-root form) using `${CLAUDE_PLUGIN_ROOT}` paths, registered automatically on install. `~/.claude/settings.json` is only touched by the Claude Code CLI itself (for `enabledPlugins` / `extraKnownMarketplaces`).
+- **Codex:** ships 3 core command hooks (`project-context-loader.sh`, `gate-reminder.sh`, `precommit-gate.sh`) via `hooks/hooks.json`. Claude-only hooks (`always-on-loader`, `block-subagent-commit`, `cohesion-contract-check`, `session-lifecycle`) are not registered — Codex has no `Agent` or `Stop` event API and a different plugin model.
 - **Gemini:** ships 4 adapter command hooks: `session-start.sh`, `before-tool.sh`, `after-tool.sh`, `pre-compress.sh`.
 
 **Codex caveat:** hooks register via `hooks/hooks.json` inside the plugin but require `codex features enable plugin_hooks` (default flag: `under development, false`). Without the opt-in, rolepod's hooks are registered but inert — Tier 1 rules in AGENTS.md still drive gate compliance.
@@ -518,9 +497,7 @@ Personal workflow system. Fork freely. Send feedback via issues — especially C
 ## See also
 
 - [`docs/cli-support.md`](docs/cli-support.md) — per-CLI capability matrix + primitives
-- [`docs/hooks.md`](docs/hooks.md) — 6 core hooks reference (triggers, gates, bypass envs)
+- [`docs/hooks.md`](docs/hooks.md) — 7 core hooks reference (triggers, gates, bypass envs)
 - [`CHEATSHEET.md`](CHEATSHEET.md) — 1-page quick reference
-- [`core/rules/INDEX.md`](core/rules/INDEX.md) — full rule trigger map
 - [`core/skills/write-plan/SKILL.md`](core/skills/write-plan/SKILL.md) — agent picker + parallel cohesion contract (Core 10)
-- [`core/rules/always-on/agent-protocol.md`](core/rules/always-on/agent-protocol.md) — shared subagent rules
 - [`.claude-plugin/plugin.json`](.claude-plugin/plugin.json) / [`adapters/codex/plugins/rolepod/.codex-plugin/plugin.json`](adapters/codex/plugins/rolepod/.codex-plugin/plugin.json) / [`adapters/gemini/gemini-extension.json`](adapters/gemini/gemini-extension.json) — per-CLI manifests

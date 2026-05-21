@@ -82,9 +82,28 @@ no cohesion contract needed. Each slice leaves rolepod fully working.
   Static + 8 integration + codex dry-run green. The gate fragments +
   skill-index-lean + agent-roster-lean stay because `GEMINI.md.tmpl` (frozen)
   still includes them — so the render generators stay too.
-- **NEXT: Slice 7.** `install.sh` cleanup + docs (README, CHEATSHEET,
-  cli-support, hooks, release-checklist) + `.claude-plugin/plugin.json`
-  version bump and description rewrite.
+- **Slice 7 — DONE (not yet committed, 2026-05-21).** Docs + version bump.
+  `.claude-plugin/plugin.json` + the Codex `.codex-plugin/plugin.json` bumped
+  2.1.0 → 2.2.0; the Claude plugin.json description rewritten to drop the
+  stale "always-on CLAUDE.md gate block + rules/ are script-installed" clause
+  (now: pure marketplace plugin, always-on via SessionStart hook, no global
+  config touched). Docs synced to the new architecture — `README.md`,
+  `CHEATSHEET.md`, `docs/cli-support.md` (the bulk delegated to tech-writer,
+  reviewed), `docs/hooks.md` (6 → 7 core hooks; new `always-on-loader.sh`
+  entry + category + event-coverage rows; Claude-only parity note), and
+  `docs/release-checklist.md` (smoke check rewritten for the pure-plugin
+  layout — no CLAUDE.md). `install.sh` needed no further reduction — slices
+  2 + 4 already removed the CLAUDE.md block + rules/ copy; the pre-2.0
+  migration scaffolding stays for upgraders. Static + 8 integration green.
+
+## Status: COMPLETE
+
+All 7 slices shipped. `claude plugin install/uninstall rolepod` is the
+complete Claude flow with no write to `~/.claude/CLAUDE.md` or
+`~/.claude/rules/`; the always-on judgment core is delivered by the
+SessionStart hook. Codex `AGENTS.md` reduced to a judgment core (still a
+native managed block — Codex has no reliable plugin always-on surface).
+Gemini untouched (frozen). Gate enforcement preserved (hooks unchanged).
 
 ## Files in scope
 

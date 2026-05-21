@@ -6,11 +6,11 @@ Phase 2.3: rolepod ships for each supported CLI as a **native plugin / extension
 
 | Capability | Claude Code | Codex CLI | Gemini CLI |
 |---|---|---|---|
-| Always-on instructions | `~/.claude/CLAUDE.md` (native) | `~/.codex/AGENTS.md` (native) | `~/.gemini/extensions/rolepod/GEMINI.md` (extension context file) |
+| Always-on instructions | SessionStart hook → `hooks/always-on-core.md` (additionalContext) | `~/.codex/AGENTS.md` (native) | `~/.gemini/extensions/rolepod/GEMINI.md` (extension context file) |
 | Lazy-load rules (Read on trigger) | full | full | full |
 | Skills (`<plugin>/skills/<name>/SKILL.md`) | 10 Core 10 + 1 alias (native) | 10 Core 10 + 1 alias (native) | 10 Core 10 + 1 alias (native) |
 | Subagents (parallel team) | full Task / SendMessage (18 agents) | 18 agents as Codex `agents/*.toml` (Lead-orchestrated) | 18 agents inlined in `GEMINI.md` (Lead-orchestrated) |
-| Hooks (core only) | 6 core hooks in the plugin's `hooks/hooks.json` · auto-registered on install | 3 core hooks across `SessionStart`/`PreToolUse` · hooks require `plugin_hooks` opt-in | 4 core hooks across `SessionStart`/`BeforeTool`/`AfterTool`/`PreCompress` |
+| Hooks (core only) | 7 core hooks in the plugin's `hooks/hooks.json` · auto-registered on install | 3 core hooks across `SessionStart`/`PreToolUse` · hooks require `plugin_hooks` opt-in | 4 core hooks across `SessionStart`/`BeforeTool`/`AfterTool`/`PreCompress` |
 | Slash commands | `/rolepod-full` (skill — force-full lifecycle) | `$rolepod-full` (skill via Codex skill UI) | `/rolepod-full` (skill; no native `.toml` commands) |
 | Plugin manifest | `.claude-plugin/plugin.json` (spec-conformant, 598B) | `.codex-plugin/plugin.json` (mirrors caveman schema, 1.6KB) | `gemini-extension.json` (extension schema, 551B) |
 | MemPalace / GitNexus integration | vendor install via marketplace plugin (MemPalace) + MCP (GitNexus); rolepod provides workflow rules | vendor install via `.codex-plugin` (MemPalace) + MCP (GitNexus); rolepod provides workflow rules | vendor install via MCP (GitNexus); MemPalace manual; rolepod provides workflow rules |
@@ -18,9 +18,9 @@ Phase 2.3: rolepod ships for each supported CLI as a **native plugin / extension
 
 ## Install destinations
 
-| CLI | Plugin / extension destination | Entry doc destination |
+| CLI | Plugin / extension destination | Always-on core destination |
 |---|---|---|
-| Claude Code | `~/.claude/` (agents/, rules/, hooks/, skills/, commands/, .claude-plugin/) | `~/.claude/CLAUDE.md` |
+| Claude Code | `~/.claude/plugins/rolepod/` (agents/, hooks/, skills/, commands/, .claude-plugin/) | SessionStart hook emits `hooks/always-on-core.md` (no CLAUDE.md) |
 | Codex CLI | rolepod marketplace registered in `~/.codex/config.toml`; plugin tree resolved from `<repo>/build/rendered/codex/plugins/rolepod/` (.codex-plugin/, hooks/, skills/). The 18 agent TOMLs install to `~/.codex/agents/rolepod-*.toml` — Codex's plugin loader has no agents field | `~/.codex/AGENTS.md` |
 | Gemini CLI | `~/.gemini/extensions/rolepod/` (gemini-extension.json, GEMINI.md, hooks/, skills/) | `~/.gemini/extensions/rolepod/GEMINI.md` (extension context file) |
 
@@ -44,7 +44,6 @@ Non-TTY contexts: `--uninstall` without `--yes` exits 0 with `Aborted. Re-run wi
 ```
 adapters/
 ├── claude/
-│   ├── CLAUDE.md.tmpl
 │   └── agent-frontmatter/*.yml         (18 frontmatter overlays)
 ├── codex/
 │   ├── AGENTS.md.tmpl
@@ -73,16 +72,16 @@ adapters/
 | After tool run | `PostToolUse` (`Edit\|Write`, `Bash`) | `PostToolUse` (`apply_patch`, `Bash`) | `AfterTool` (`write_file\|replace\|edit`) |
 | Stop / compact | `Stop` (no matcher) | — | `PreCompress` |
 
-Per-CLI hook counts: Claude registers 6 core hooks via the plugin manifest. Codex registers 3 core hooks in `hooks/hooks.json` (requires `codex features enable plugin_hooks` opt-in). Gemini registers 4 core hooks in `hooks/hooks.json`. Rolepod ships no add-on hooks — MemPalace and GitNexus integrate via their own vendor plugins/CLI.
+Per-CLI hook counts: Claude registers 7 core hooks via the plugin manifest. Codex registers 3 core hooks in `hooks/hooks.json` (requires `codex features enable plugin_hooks` opt-in). Gemini registers 4 core hooks in `hooks/hooks.json`. Rolepod ships no add-on hooks — MemPalace and GitNexus integrate via their own vendor plugins/CLI.
 
 ## Verification status — what's confirmed locally
 
 | Item | Verified by |
 |---|---|
-| Claude snapshot | `diff -q` 0-byte vs prior `~/.claude/CLAUDE.md` and 18 agent files |
+| Claude snapshot | 18 agent files + plugin tree layout |
 | Codex plugin layout | install registers `[marketplaces.rolepod]` + `[plugins."rolepod@rolepod"] enabled = true` in `~/.codex/config.toml` and writes `~/.codex/AGENTS.md` managed block; rendered tree at `build/rendered/codex/{.agents/plugins/marketplace.json,agents/*.toml,plugins/rolepod/{.codex-plugin,hooks,skills}/}` — the plugin bundles hooks + skills, the 18 agents install to `~/.codex/agents/` |
 | Gemini extension layout | dry-run install populates `~/.gemini/extensions/rolepod/{GEMINI.md,gemini-extension.json,hooks,skills}/` — entry doc ships inside the extension dir, global `~/.gemini/GEMINI.md` untouched |
-| All shell scripts | `bash -n` clean (install.sh, bootstrap.sh, render.sh, 6 core hook scripts, 3 codex hook scripts, 4 gemini hook scripts) |
+| All shell scripts | `bash -n` clean (install.sh, bootstrap.sh, render.sh, 7 core hook scripts, 3 codex hook scripts, 4 gemini hook scripts) |
 | All JSON manifests | `python3 -m json.tool` clean (plugin.json x2, hooks.json x3 — claude/codex/gemini, marketplace.json, gemini-extension.json) |
 | All TOML files | `tomllib.load()` clean (18 codex agents, 6 gemini commands) |
 | Render output | `build/render.sh --target=all` produces all 3 trees with no `{{INCLUDE: ...}}` leaks |
@@ -145,9 +144,7 @@ Claude Code supports both global and project-level configuration. Rolepod instal
 
 Runs `claude plugin marketplace add <rendered-dir>` + `claude plugin install rolepod@rolepod --scope user` to register and enable the plugin. Installs:
 - `~/.claude/plugins/rolepod/` (plugin tree: agents, skills, hooks, manifest)
-- `~/.claude/CLAUDE.md` (managed block — your existing content preserved)
-- `~/.claude/rules/{always-on,code,test}/` (always-on and path-scoped rules — script-installed, no plugin model for rules)
-- Plugin hooks (6 core) in the plugin's `hooks/hooks.json` using `${CLAUDE_PLUGIN_ROOT}` paths
+- Plugin hooks (7 core) in the plugin's `hooks/hooks.json` using `${CLAUDE_PLUGIN_ROOT}` paths
 
 ### Per-project install (`--scope=project`)
 
@@ -158,18 +155,18 @@ cd /your/project
 ./install.sh --target=claude --scope=project
 ```
 
-Writes `$PWD/.claude/` with the full plugin tree, rules, and `$PWD/CLAUDE.md` (managed block). Claude auto-loads project `.claude/settings.json` (plugin settings) and `.claude/CLAUDE.md` (entry doc), so rolepod fires on this project only.
+Writes `$PWD/.claude/plugins/rolepod/` with the full plugin tree. Claude auto-loads project `.claude/settings.json` (plugin settings), so rolepod fires on this project only.
 
-### Project-specific CLAUDE.md override (optional)
+### Project-specific CLAUDE.md override (optional, user-level)
 
-When a repo needs stricter rules than the global rolepod set, create `CLAUDE.md` at the repo root with project-specific overrides. Claude precedence: repo-root `CLAUDE.md` > `~/.claude/CLAUDE.md`. Rolepod's global rules still apply unless explicitly overridden. See [Claude Code docs](https://docs.claude.com/en/docs/claude-code/memory).
+When a repo needs stricter rules beyond rolepod, create your own `CLAUDE.md` at the repo root with custom overrides. Claude precedence: repo-root `CLAUDE.md` > global always-on-core. Rolepod's rules still apply unless explicitly overridden. See [Claude Code docs](https://docs.claude.com/en/docs/claude-code/memory).
 
 ### Verify install
 
 ```bash
 claude plugin list                      # Should show "rolepod" as enabled
-ls ~/.claude/rules/                     # Always-on and path-scoped rules present
-claude -p "say OK"                      # SessionStart hook fires; banner appears in transcript
+ls ~/.claude/plugins/rolepod/           # Plugin tree present
+claude -p "say OK"                      # SessionStart hook fires; always-on-core emitted
 ```
 
 If the plugin doesn't appear, run `claude plugin list` to check registration. If hooks don't fire, restart Claude Code so the plugin system reloads.

@@ -71,18 +71,20 @@ Manually verify that user-facing docs match runtime behavior:
 # Fresh install on a temp HOME:
 TMP="$(mktemp -d)"
 HOME="$TMP/home" ROLEPOD_TARGET="$TMP/.claude" ./install.sh --target=claude
-ls "$TMP/.claude/skills/using-rolepod"      # should exist (Tier 0 router)
-ls "$TMP/.claude/skills/debug-issue"         # should exist (Core 10 — Build/Debug)
-test ! -e "$TMP/.claude/skills/systematic-debugging" # should be absent (legacy shim removed)
-ls "$TMP/.claude/hooks/lib/session_state.py" # should exist
-grep using-rolepod "$TMP/.claude/CLAUDE.md"  # should match
+PLUGIN="$TMP/.claude/plugins/rolepod"
+ls "$PLUGIN/skills/using-rolepod"            # should exist (Tier 0 router)
+ls "$PLUGIN/skills/debug-issue"              # should exist (Core 10 — Build/Debug)
+test ! -e "$TMP/.claude/skills/systematic-debugging" # legacy shim removed by migration
+ls "$PLUGIN/hooks/lib/session_state.py"      # should exist
+ls "$PLUGIN/hooks/always-on-core.md"         # always-on judgment core ships with the plugin
+test ! -e "$TMP/.claude/CLAUDE.md"           # pure plugin — install writes no managed block
 ```
 
 All commands should succeed.
 
 ## 6. Git hygiene
 
-- `git status` clean (no uncommitted CLAUDE.md / AGENTS.md churn from gitnexus volatile fields).
+- `git status` clean (no uncommitted AGENTS.md / GEMINI.md churn from gitnexus volatile fields).
 - Tag matches `package.json` / plugin version if applicable.
 - CHANGELOG updated.
 
