@@ -436,7 +436,7 @@ echo "  dry-run: $DRY_RUN"
 echo ""
 
 # ─── Sanity check source ────────────────────────────────────────────────
-for f in CHEATSHEET.md core/agents core/rules hooks core/skills .claude-plugin/plugin.json build/render.sh adapters/claude/CLAUDE.md.tmpl; do
+for f in CHEATSHEET.md core/agents core/rules hooks core/skills .claude-plugin/plugin.json build/render.sh; do
   [ -e "$REPO_DIR/$f" ] || fail "missing $f in $REPO_DIR — run from rolepod repo"
 done
 
@@ -797,9 +797,6 @@ if claude_selected; then
   echo "${BOLD}─── Installing for Claude Code ───${NC}"
   echo "  target: $TARGET"
 
-  RENDERED_CLAUDE_MD="$REPO_DIR/build/rendered/claude/CLAUDE.md"
-  [ -f "$RENDERED_CLAUDE_MD" ] || fail "expected $RENDERED_CLAUDE_MD after render"
-
   # Backup if --force on existing — rolepod-scoped only.
   # Excludes: projects/ (session history), plugins/cache/, plugins/marketplaces/,
   # file-history/, shell-snapshots/, session-env/, scheduled-tasks/, cache/,
@@ -840,34 +837,47 @@ if claude_selected; then
   step "Creating directory structure"
   do_or_dry "mkdir -p $TARGET/rules" mkdir -p "$TARGET/rules"
 
-  # Entry doc — CLAUDE.md managed block + CHEATSHEET. The plugin model has no
-  # always-on instruction surface, so the gate block stays a managed block.
-  step "Updating CLAUDE.md (managed block) + CHEATSHEET.md"
-  update_managed_block "$TARGET/CLAUDE.md" "$RENDERED_CLAUDE_MD"
+  # CHEATSHEET reference doc. The always-on judgment core ships via the
+  # plugin's SessionStart hook (hooks/always-on-loader.sh) — rolepod no longer
+  # writes a managed block into the user's ~/.claude/CLAUDE.md.
+  step "Copying CHEATSHEET.md"
   if [ "$DRY_RUN" -eq 1 ]; then
     dry "cp $CP_FLAG $REPO_DIR/CHEATSHEET.md → $TARGET/CHEATSHEET.md"
   else
     cp $CP_FLAG "$REPO_DIR/CHEATSHEET.md" "$TARGET/" 2>/dev/null || true
   fi
 
-  # rules/ — not a plugin component, stays a ~/.claude/rules/ copy. Reuse the
-  # legacy-rule cleanup loop + recursive copy. Keep it dry-run aware.
-  step "Copying rules (recursive, subfolders preserved)"
+  # Migration — strip a stale rolepod managed block from a pre-redesign
+  # install. Rolepod no longer manages a CLAUDE.md block; leaving the old one
+  # would double up with the hook-delivered always-on core. A fresh install
+  # has no block, so remove_managed_block is a no-op (no file write).
+  remove_managed_block "$TARGET/CLAUDE.md"
+
+  # rules/ — not a plugin component, stays a ~/.claude/rules/ copy. Only the
+  # path-scoped code/ + test/ rules ship now; the always-on/ rules are
+  # delivered by the SessionStart hook's judgment core, so they are no longer
+  # copied (and a stale always-on/ dir from a prior install is removed).
+  step "Copying path-scoped rules (code/, test/)"
   if [ "$DRY_RUN" -eq 1 ]; then
-    dry "clean stale legacy flat-path rolepod rules from $TARGET/rules/"
-    dry "cp -R $REPO_DIR/core/rules/. → $TARGET/rules/  (preserves always-on/ code/ test/ subdirs)"
+    dry "clean stale legacy flat-path rolepod rules + redundant always-on/ from $TARGET/rules/"
+    dry "cp -R $REPO_DIR/core/rules/code $REPO_DIR/core/rules/test → $TARGET/rules/"
   else
-    # Clean stale legacy flat-path rolepod rules (pre-subfolder layout).
+    # Clean stale legacy flat-path rolepod rules (pre-subfolder layout) +
+    # the now-redundant rules index.
     for legacy in pre-merge-gate.md reviewer-flow.md advisor.md \
                   session-management.md triage-deep.md new-project.md \
                   team-org.md verification.md \
                   communication.md verify-first.md agent-protocol.md \
                   code-quality.md code-intel.md code-intel-workflow.md \
-                  testing.md; do
+                  testing.md INDEX.md; do
       rm -f "$TARGET/rules/$legacy"
     done
-    # Recursive copy: preserves always-on/, code/, test/ subfolders
-    cp -R "$REPO_DIR"/core/rules/. "$TARGET/rules/" 2>/dev/null || true
+    # always-on/ judgment now ships via the SessionStart hook — strip a stale
+    # copy from a prior install.
+    rm -rf "$TARGET/rules/always-on"
+    # Path-scoped rules only: code/ + test/ subfolders.
+    cp -R "$REPO_DIR"/core/rules/code "$TARGET/rules/" 2>/dev/null || true
+    cp -R "$REPO_DIR"/core/rules/test "$TARGET/rules/" 2>/dev/null || true
   fi
 
   # Migration — strip a pre-2.0 non-plugin install. Older rolepod copied
@@ -988,13 +998,12 @@ PY
   # Verify.
   if [ "$DRY_RUN" -eq 0 ]; then
     step "Verifying rolepod install"
-    [ -e "$TARGET/CLAUDE.md" ]      || fail "verification failed — $TARGET/CLAUDE.md missing"
-    [ -e "$TARGET/rules/INDEX.md" ] || fail "verification failed — $TARGET/rules/INDEX.md missing"
+    [ -d "$TARGET/rules/code" ] || fail "verification failed — $TARGET/rules/code missing"
     if [ "$CLAUDE_IS_TEMP_TARGET" -eq 0 ] && have_cmd claude; then
       claude plugin list 2>/dev/null | grep -q rolepod \
         || warn "rolepod not in 'claude plugin list' — restart Claude Code, check /plugin."
     fi
-    ok "rolepod installed → CLAUDE.md block + rules/ + plugin"
+    ok "rolepod installed → path-scoped rules/ + plugin (always-on via SessionStart hook)"
   else
     skip "verification skipped (dry-run)"
   fi

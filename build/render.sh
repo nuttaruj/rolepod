@@ -260,30 +260,24 @@ render_agents() {
 }
 
 # ─── Render Claude target ───────────────────────────────────────────────────
-# Claude ships as a marketplace plugin. Output layout matches the local
+# Claude ships as a pure marketplace plugin — no entry doc, no managed block.
+# The always-on judgment core is delivered at runtime by the SessionStart
+# hook (hooks/always-on-loader.sh). Output layout matches the local
 # marketplace shape `claude plugin marketplace add` consumes:
-#   CLAUDE.md                                  (entry doc, script-installed as
-#                                               a managed block — plugins have
-#                                               no always-on instruction surface)
 #   .claude-plugin/marketplace.json            (marketplace manifest)
 #   plugins/rolepod/.claude-plugin/plugin.json (plugin manifest, inline hooks)
 #   plugins/rolepod/agents/*.md                (18 rendered agents)
 #   plugins/rolepod/skills/<name>/SKILL.md     (real dir, copied from core/skills)
 #   plugins/rolepod/commands/*.md              (slash commands)
-#   plugins/rolepod/hooks/*.sh + lib/
+#   plugins/rolepod/hooks/*.sh + *.md + lib/
 
 render_claude() {
-  local template="$REPO_DIR/adapters/claude/CLAUDE.md.tmpl"
   local out_dir="$REPO_DIR/build/rendered/claude"
-  local output="$out_dir/CLAUDE.md"
   local adapter_dir="$REPO_DIR/adapters/claude"
   local plugin_dst="$out_dir/plugins/rolepod"
 
-  [ -f "$template" ] || { echo "render: missing $template" >&2; exit 1; }
-
   rm -rf "$out_dir"
   mkdir -p "$out_dir"
-  render_template "$template" "$output"
 
   # Marketplace manifest at .claude-plugin/marketplace.json.
   if [ -f "$adapter_dir/.claude-plugin/marketplace.json" ]; then

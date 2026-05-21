@@ -3,8 +3,8 @@
 # produces the artifacts each CLI's adapter promises, per docs/cli-support.md.
 #
 # Honest scope (matches README/docs):
-#   Claude global    → marketplace plugin (~/.claude/plugins/) + CLAUDE.md block + rules/
-#   Claude project   → filesystem plugin tree ($PWD/.claude/) + CLAUDE.md block + rules/
+#   Claude global    → marketplace plugin (~/.claude/plugins/) + path-scoped rules/
+#   Claude project   → filesystem plugin tree ($PWD/.claude/) + path-scoped rules/
 #   Codex global     → marketplace + plugin cache + AGENTS.md
 #   Codex project    → rules-only ($PWD/AGENTS.md)
 #   Gemini global    → extension + hooks + extension-local GEMINI.md
@@ -39,9 +39,10 @@ FAIL=0
 # ─── Claude global into temp HOME ───────────────────────────────────────
 # Temp target (ROLEPOD_TARGET diverges from ~/.claude) → install does the
 # filesystem-only plugin-tree copy (the `claude plugin` CLI would mutate the
-# real Claude home, so it is skipped). Expected layout: CLAUDE.md managed
-# block + rules/ copy + plugins/rolepod/ tree. Hooks live INSIDE the plugin
-# manifest, not in settings.json.
+# real Claude home, so it is skipped). Expected layout: path-scoped rules/
+# (code/ + test/, NO always-on/) + plugins/rolepod/ tree, and NO CLAUDE.md
+# managed block. Always-on judgment ships via the SessionStart hook. Hooks
+# live INSIDE the plugin manifest, not in settings.json.
 echo "[claude global] install into $TMP/.claude"
 export ROLEPOD_TARGET="$TMP/.claude"
 mkdir -p "$ROLEPOD_TARGET"
@@ -58,10 +59,9 @@ EOF
 if ./install.sh --target=claude > "$TMP/claude.log" 2>&1; then
   PLUGIN_DIR="$ROLEPOD_TARGET/plugins/rolepod"
   required_paths=(
-    "$ROLEPOD_TARGET/CLAUDE.md"
     "$ROLEPOD_TARGET/CHEATSHEET.md"
-    "$ROLEPOD_TARGET/rules/always-on"
     "$ROLEPOD_TARGET/rules/code"
+    "$ROLEPOD_TARGET/rules/test"
     "$PLUGIN_DIR/.claude-plugin/plugin.json"
     "$PLUGIN_DIR/agents"
     "$PLUGIN_DIR/skills"
@@ -73,6 +73,16 @@ if ./install.sh --target=claude > "$TMP/claude.log" 2>&1; then
       FAIL=$((FAIL+1))
     fi
   done
+  # Pure plugin — no managed CLAUDE.md block, no always-on/ rules copy.
+  # Always-on judgment is delivered by the SessionStart hook.
+  if [ -e "$ROLEPOD_TARGET/CLAUDE.md" ]; then
+    echo "  ✗ CLAUDE.md should not be written (pure plugin — no managed block)"
+    FAIL=$((FAIL+1))
+  fi
+  if [ -e "$ROLEPOD_TARGET/rules/always-on" ]; then
+    echo "  ✗ rules/always-on/ should not be installed (hook delivers always-on core)"
+    FAIL=$((FAIL+1))
+  fi
   # Core 10 skills land inside the plugin tree, not ~/.claude/skills/.
   for skill in using-rolepod debug-issue check-work rolepod-full; do
     if [ ! -d "$PLUGIN_DIR/skills/$skill" ]; then
@@ -108,7 +118,7 @@ if ./install.sh --target=claude > "$TMP/claude.log" 2>&1; then
     FAIL=$((FAIL+1))
   fi
   if [ "$FAIL" -eq 0 ]; then
-    echo "  ✓ Claude global: CLAUDE.md block + rules/ + plugin tree (agents/skills/hooks) + plugin hooks/hooks.json + legacy migration"
+    echo "  ✓ Claude global: path-scoped rules/ + plugin tree (agents/skills/hooks) + plugin hooks/hooks.json + no CLAUDE.md block + legacy migration"
     PASS=$((PASS+1))
   fi
 else
@@ -127,11 +137,11 @@ mkdir -p "$TMP/project"
   echo "  ✗ install failed (see $TMP/claude-project.log)"
   FAIL=$((FAIL+1))
 }
-if [ -f "$TMP/project/.claude/CLAUDE.md" ] && [ -d "$TMP/project/.claude/rules" ] && [ -f "$TMP/project/.claude/plugins/rolepod/.claude-plugin/plugin.json" ]; then
-  echo "  ✓ Claude project: .claude/CLAUDE.md + .claude/rules/ + .claude/plugins/rolepod/ tree under \$PWD/.claude/"
+if [ ! -e "$TMP/project/.claude/CLAUDE.md" ] && [ -d "$TMP/project/.claude/rules/code" ] && [ -f "$TMP/project/.claude/plugins/rolepod/.claude-plugin/plugin.json" ]; then
+  echo "  ✓ Claude project: .claude/rules/ + .claude/plugins/rolepod/ tree under \$PWD/.claude/ (no CLAUDE.md block)"
   PASS=$((PASS+1))
 else
-  echo "  ✗ Claude project: expected files missing under \$PWD/.claude/"
+  echo "  ✗ Claude project: expected files missing, or CLAUDE.md wrongly written, under \$PWD/.claude/"
   FAIL=$((FAIL+1))
 fi
 

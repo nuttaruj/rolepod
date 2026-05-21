@@ -18,10 +18,11 @@ check() {
 echo "── lean-surface ──"
 
 # ── Rendered entry doc size caps ───────────────────────────────────────
-CLAUDE_LINES=$(wc -l < build/rendered/claude/CLAUDE.md)
+# Claude ships no entry doc — the always-on judgment core is delivered by
+# the SessionStart hook (size-guarded by tests/static/always-on-hook.sh).
+check "Claude ships no rendered managed-block doc" "[ ! -f build/rendered/claude/CLAUDE.md ]"
 CODEX_LINES=$(wc -l < build/rendered/codex/AGENTS.md)
 GEMINI_LINES=$(wc -l < build/rendered/gemini/GEMINI.md)
-check "rendered Claude CLAUDE.md ≤ 150 lines (actual: $CLAUDE_LINES)"  "[ $CLAUDE_LINES -le 150 ]"
 check "rendered Codex  AGENTS.md ≤ 280 lines (actual: $CODEX_LINES)"   "[ $CODEX_LINES  -le 280 ]"
 check "rendered Gemini GEMINI.md ≤ 280 lines (actual: $GEMINI_LINES)"  "[ $GEMINI_LINES -le 280 ]"
 
@@ -156,7 +157,7 @@ fi
 # ── 18-agent full table must NOT appear in rendered entry docs ────────
 # Heuristic: a full agent table has the agent-roster header pattern.
 # The lean fragment uses a single "**18 specialists**" line instead.
-for f in build/rendered/claude/CLAUDE.md build/rendered/codex/AGENTS.md build/rendered/gemini/GEMINI.md; do
+for f in build/rendered/codex/AGENTS.md build/rendered/gemini/GEMINI.md; do
   rows=$(grep -c "^| \`[a-z-]*-engineer\`\|^| \`backend-developer\`\|^| \`frontend-developer\`" "$f" 2>/dev/null || true)
   check "no full agent table leaked into $(basename $(dirname $f))/$(basename $f) (rows: $rows)" "[ $rows -le 1 ]"
 done
@@ -220,7 +221,7 @@ rm -f /tmp/rolepod-router-legacy-hits.txt
 # Active docs and generated lean fragments must name Core 10 routing.
 # Legacy names are allowed in docs/skills.md and audit docs, but not in
 # the install/readme surfaces that teach users what to invoke.
-ACTIVE_DOCS=(README.md CHEATSHEET.md CLAUDE.md AGENTS.md GEMINI.md adapters/claude/CLAUDE.md.tmpl adapters/codex/AGENTS.md.tmpl adapters/gemini/GEMINI.md.tmpl build/rendered/claude/CLAUDE.md build/rendered/codex/AGENTS.md build/rendered/gemini/GEMINI.md docs/agents.md docs/cli-support.md core/fragments/team-trigger.md core/fragments/agent-roster-lean.md core/fragments/model-tier-policy.md)
+ACTIVE_DOCS=(README.md CHEATSHEET.md CLAUDE.md AGENTS.md GEMINI.md adapters/codex/AGENTS.md.tmpl adapters/gemini/GEMINI.md.tmpl build/rendered/codex/AGENTS.md build/rendered/gemini/GEMINI.md docs/agents.md docs/cli-support.md core/fragments/team-trigger.md core/fragments/agent-roster-lean.md core/fragments/model-tier-policy.md)
 ACTIVE_LEGACY_RX='(team-routing|parallel-contract-orchestration|pre-merge-gate|post-change-verify|code-review-and-quality|spec-driven-development|planning-and-task-breakdown|systematic-debugging|finishing-a-development-branch|reviewer-flow)'
 ACTIVE_LEGACY_HITS=""
 for f in "${ACTIVE_DOCS[@]}"; do
