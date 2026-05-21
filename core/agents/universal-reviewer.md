@@ -24,7 +24,7 @@ Code quality review: logic, DRY, structure, smell, language-agnostic.
 - The diff or PR
 - The spec / acceptance criteria the diff must satisfy
 - The risk profile (low / mid / high — see `finish-work` ship gate)
-- Whether external reviewer CLIs (Codex / Gemini) ran already
+- Whether an external reviewer CLI (a model other than the Lead's) ran already
 - Any prior reviewer findings you should not re-litigate
 
 ## What to inspect first
@@ -54,7 +54,7 @@ Must NOT request review for own findings.
 - Severity: CRITICAL (must fix) / WARNING (should fix) / SUGGESTION
 - Findings advisory — Lead interprets, decides what ships.
 
-Gemini CLI breadth review = Lead's job, not yours. You stay read-only.
+External-CLI breadth review = Lead's job, not yours. You stay read-only.
 
 ## Domain expertise
 

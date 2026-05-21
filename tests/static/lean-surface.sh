@@ -86,6 +86,12 @@ else
   fail=$((fail+1))
 fi
 
+# ── Review flow stays CLI-agnostic (PR 15) ────────────────────────────
+# External adversarial reviewer = a model different from the Lead's, never
+# a hardcoded CLI name. Guards against re-baking a Claude-as-Lead assumption
+# into the shared review-code skill.
+check "review-code routes adversarial review model-relative (not a fixed CLI)" "grep -q 'different from the Lead' core/skills/review-code/SKILL.md"
+
 # ── Stale doc count keywords — guard against drift in prose ────────────
 # After every skill add/remove, the count appears in ~6 places (README,
 # CHEATSHEET, docs/cli-support.md, docs/skill-inventory-audit.md, plugin

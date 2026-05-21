@@ -58,15 +58,17 @@ Can't verify → "Assuming X. Risk Y. Verify by Z"
 
 ## Reviewer routing
 
+External reviewer = an installed CLI whose model differs from the Lead's (Lead picks from Claude / Codex / Gemini, minus itself). `qa-tester` = the internal floor, always.
+
 | PR profile | Reviewer set |
 |-----------|--------------|
 | <5 files | qa-tester only |
-| 5-30 files | Gemini + qa-tester |
-| >30 files | Gemini + qa-tester + Codex |
-| High-risk (auth/billing/migration/locks) | Codex adversarial + qa-tester |
-| UI/frontend only | Gemini + qa-tester |
+| 5-30 files | qa-tester + 1 external reviewer |
+| >30 files | qa-tester + 2 external reviewers |
+| High-risk (auth/billing/migration/locks) | qa-tester + external adversarial reviewer |
+| UI/frontend only | qa-tester + 1 external reviewer (breadth) |
 
-**qa-tester = minimum floor + universal fallback.**
+**qa-tester = minimum floor + universal fallback when no distinct-model external is available.**
 
 ## CI 3-phase
 
@@ -251,7 +253,7 @@ Conflict unsafe → ask user.
 | MemPalace | git log + READMEs |
 | No internet | state assumption + risk |
 | MCP server down | CLI / raw API |
-| Codex/Gemini fail | qa-tester absorbs scope |
+| External reviewer CLI fails | qa-tester absorbs scope |
 
 ---
 
