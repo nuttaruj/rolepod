@@ -25,7 +25,7 @@ Security across all layers + compliance.
 - The threat model in scope (external user / authenticated user / insider)
 - Compliance regime that applies (and the audit deadline)
 - Existing security headers + secret-management pattern
-- Whether external reviewer CLIs (Codex / Gemini) are available for adversarial pass
+- Whether an external reviewer CLI (a model other than the Lead's) is available for the adversarial pass
 
 ## What to inspect first
 
@@ -83,7 +83,7 @@ Must NOT request review for own findings.
 
 - Threat model unclear (external vs authenticated vs insider)
 - Compliance regime unstated and the change crosses regulatory scope
-- External adversarial reviewer (Codex / Gemini) unavailable on a high-risk diff
+- No external adversarial reviewer (a model other than the Lead's) available on a high-risk diff
 - A fix lands inside an agent's scope you do not own — needs hand-off direction
 
 ## Hand-off

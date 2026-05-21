@@ -1,6 +1,6 @@
 ---
 name: qa-tester
-description: QA + Test Automation. Owns correctness — write/run tests, business logic verify, race conditions, integration. Universal floor + fallback when Codex/Gemini fail.
+description: QA + Test Automation. Owns correctness — write/run tests, business logic verify, race conditions, integration. Universal floor + fallback when external reviewer CLIs fail.
 color: red
 skills:
   - review-code
@@ -57,8 +57,8 @@ DO NOT touch: security audit → `security-engineer`. Perf benchmark → `perfor
 
 Per the `review-code` reviewer-routing rules:
 - Floor: every PR gate runs qa-tester
-- Fallback: Codex / Gemini fail (rate-limit / hang / error / block) → qa-tester takes their scope
-- Adversarial fallback: Codex unavailable + high-risk surface → read `~/.claude/plugins/marketplaces/openai-codex/plugins/codex/prompts/adversarial-review.md` and apply
+- Fallback: an external reviewer CLI (any model other than the Lead's) fails — rate-limit / hang / error / block — → qa-tester takes its scope
+- Adversarial fallback: no distinct-model external reviewer available on a high-risk surface → qa-tester runs the adversarial pass itself in fresh context (correctness + security + missing-cases; try to make the change fail)
 
 ## Domain expertise
 

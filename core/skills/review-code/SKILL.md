@@ -14,7 +14,7 @@ Review-phase entry skill. Apply risk-appropriate review pressure to a finished c
 
 <EXTREMELY-IMPORTANT>
 1. NEVER merge code on a high-risk surface (auth, billing, migration, secret, crypto, token, payment) without an adversarial fresh-context review.
-2. NEVER let the author also be the final reviewer of their own change.
+2. NEVER let the author — or, for the adversarial pass, the author's own model — be the final reviewer of their own change. The external adversarial review runs on a model different from the Lead's.
 3. NEVER skip review because "tests pass". Tests prove the assertion, not the design.
 4. Findings before fixes. List issues with severity first; do not silently rewrite.
 </EXTREMELY-IMPORTANT>
@@ -55,7 +55,7 @@ Skip when:
 | Architecture / cross-module | `system-architect` |
 | Generic quality / DRY / smell | `universal-reviewer` |
 
-When external reviewer CLIs are installed (Codex / Gemini), route per this skill's reviewer matrix: Codex for correctness + security adversarial, Gemini for breadth and cross-file. qa-tester is the universal floor and the fallback when externals fail.
+When external reviewer CLIs are installed, route the adversarial pass to a model **different from the Lead's own** — the Lead must never review its own work with its own model. Lead = Claude → route to Codex and/or Gemini; Lead = Codex → route to Claude and/or Gemini; Lead = Gemini → route to Codex and/or Claude (`codex exec` / `gemini -p` / `claude -p`). Add a second distinct-model external for breadth + cross-file on a large diff. qa-tester is the universal floor and the fallback when no distinct-model external is available.
 
 ### 2. Multi-axis read
 
@@ -134,7 +134,7 @@ Recommendation: APPROVED | APPROVED-WITH-NITS | REJECTED — <reason>
 
 ## Full Rolepod enhancement
 
-Full Rolepod improves this phase by adding the qa-tester floor, external adversarial CLI reviewers (Codex / Gemini) routed by risk, hooks that block subagent commits, and the two-stage fresh-context review pattern for delegated work.
+Full Rolepod improves this phase by adding the qa-tester floor, external adversarial CLI reviewers (any installed CLI whose model differs from the Lead's) routed by risk, hooks that block subagent commits, and the two-stage fresh-context review pattern for delegated work.
 
 ## Next phase
 
