@@ -53,8 +53,21 @@ no cohesion contract needed. Each slice leaves rolepod fully working.
   the gate fragments (`gates-s1-s5.md`, `gates-t1-t5.md`) still carry stale
   `Details: ~/.claude/rules/...` pointers — fixed when slice 6 reworks the
   Codex/Gemini always-on surface. `core/rules/` now holds only `always-on/`.
-- **NEXT: Slice 5.** Inline `agent-protocol.md` into each of the 18 agent
-  files; drop the skill-index + agent-roster from the always-on surface.
+- **Slice 5 — DONE (not yet committed, 2026-05-21).** The shared agent
+  protocol is inlined: each of the 18 `core/agents/*.md` files had its
+  `## Mandatory rules` → "Follow `agent-protocol.md`" pointer replaced with a
+  self-contained `## Agent protocol` section (~26 lines, condensed from the
+  98-line rule — verify-first, completion check, scope, peer review, the HARD
+  commit ban, hand-off). The render.sh skill-index / agent-roster removal was
+  already accomplished by slice 2 (deleting `CLAUDE.md.tmpl` took both off the
+  Claude always-on surface); the generators stay because the Codex/Gemini lean
+  templates + `lean-surface.sh` + docs still consume the fragments — removed in
+  slice 6. `core/rules/always-on/agent-protocol.md` is kept (still referenced
+  by the 16 Codex agent `.toml` files + `block-subagent-commit.sh` + README) —
+  removed once slice 6/7 updates those last referrers. Static + 8 integration
+  cases green.
+- **NEXT: Slice 6.** Codex parity — SessionStart hook delivers the always-on
+  core; reduce `AGENTS.md.tmpl`; install emits the `plugin_hooks` notice.
 
 ## Files in scope
 
