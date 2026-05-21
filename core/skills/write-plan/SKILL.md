@@ -30,6 +30,21 @@ Skip when:
 - The task is a one-line fix on a single file (just do it)
 - The user asks for a question / explanation only
 
+## Boundary
+
+Owns:
+- HOW / WHO / WHERE / ORDER.
+- File list, task order, test plan per task, agent routing, cohesion contract.
+
+Does not own:
+- Re-opening product scope or acceptance criteria unless the spec is incomplete.
+- Editing files.
+- Final verification evidence.
+
+Return / hand off:
+- Spec unclear → return to `write-spec`.
+- Plan approved → `implement-plan`.
+
 ## Inputs to gather
 
 - Approved spec or clear goal statement

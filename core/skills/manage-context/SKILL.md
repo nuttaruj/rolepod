@@ -29,6 +29,20 @@ Recovery-phase skill. Keep work stable when context grows long, the codebase is 
 - Sonnet / Haiku is stuck on architecture or root cause
 - The previous attempt produced a wrong fix that almost looked right
 
+## Boundary
+
+Owns:
+- Context recovery, constraint re-read, session hygiene, zoom-out, onboarding, escalation.
+
+Does not own:
+- Product scope decisions.
+- Implementation edits.
+- Final verification or branch fate.
+
+Return / hand off:
+- After recovery, route back through `using-rolepod` or the current phase skill.
+- If still stuck after recovery, escalate the model / session instead of widening scope.
+
 ## Inputs to gather
 
 - The user's original request (literal quote if possible)

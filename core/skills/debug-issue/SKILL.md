@@ -30,6 +30,21 @@ Canonical debug workflow. Replace guess-and-check with disciplined narrowing: re
 - Symptom keeps returning at a different surface
 - About to add defensive `?.` / null-check / try-catch without knowing why
 
+## Boundary
+
+Owns:
+- Unknown failure triage: reproduce, trace upstream, identify root cause, write a failing regression test, minimal fix.
+
+Does not own:
+- Planned feature work with known requirements.
+- Broad refactor / simplification.
+- Shipping decision.
+
+Return / hand off:
+- Requirements unclear → `write-spec`.
+- Fix spans multiple files / needs sequencing → `write-plan`.
+- Minimal fix applied → `check-work`.
+
 ## Inputs to gather
 
 - Exact error message (literal quote)
