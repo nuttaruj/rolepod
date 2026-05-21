@@ -121,6 +121,15 @@ Loose ends deferred during the slices, cleaned in one follow-up pass:
   stale since slice 6) and `GEMINI.md` from the rendered output.
 - `lean-surface.sh` guard updated: asserts the whole `core/rules/` tree
   stays deleted.
+- Removed the `tests/skill-triggering/` harness (run.sh + 5 cases + README)
+  and its `installer.yml` step. Diagnosis: the mechanism was unsound — it
+  ran content-specific prompts (auth bug, email sender) via `claude --print`
+  from the rolepod repo, which has no such code, so the model correctly
+  asked for clarification instead of triggering a skill; and the assertion
+  grepped for the literal skill slug, which a model correctly *applying* a
+  skill does not print. Chronic 4/5 fail, blocked nothing (not in
+  `make test`, CI-skipped). No reliable CLI-grep mechanism can verify skill
+  triggering — removed rather than reshaped into a brittle keyword matcher.
 
 ## Files in scope
 
