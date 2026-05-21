@@ -66,8 +66,25 @@ no cohesion contract needed. Each slice leaves rolepod fully working.
   by the 16 Codex agent `.toml` files + `block-subagent-commit.sh` + README) —
   removed once slice 6/7 updates those last referrers. Static + 8 integration
   cases green.
-- **NEXT: Slice 6.** Codex parity — SessionStart hook delivers the always-on
-  core; reduce `AGENTS.md.tmpl`; install emits the `plugin_hooks` notice.
+- **Slice 6 — DONE (not yet committed, 2026-05-21).** Codex parity. Design
+  decision (user-approved): no new always-on hook for Codex — `~/.codex/AGENTS.md`
+  is a reliable native always-on surface loaded every session, whereas a
+  plugin hook is opt-in (`plugin_hooks` default off), so a hook would be a
+  redundant + unreliable second delivery path. `adapters/codex/AGENTS.md.tmpl`
+  reduced 178 → 90 rendered lines: kept the judgment core (rule priority,
+  identity, verify-first, simplest-viable, code-search, communication, risky
+  actions, hard stops) + Codex-specific notes (skills auto-trigger, agents
+  explicit-invoke, hooks opt-in, peer review); dropped the S/T/Q/F gate
+  fragment includes, the CI lane block, skill-index, agent-roster, and the
+  operational-notes bloat — all now carried by the phase skills. `install.sh`
+  already emits the `plugin_hooks` enable notice (no change needed).
+  `render_codex` needed no code change — it renders the reduced template.
+  Static + 8 integration + codex dry-run green. The gate fragments +
+  skill-index-lean + agent-roster-lean stay because `GEMINI.md.tmpl` (frozen)
+  still includes them — so the render generators stay too.
+- **NEXT: Slice 7.** `install.sh` cleanup + docs (README, CHEATSHEET,
+  cli-support, hooks, release-checklist) + `.claude-plugin/plugin.json`
+  version bump and description rewrite.
 
 ## Files in scope
 
