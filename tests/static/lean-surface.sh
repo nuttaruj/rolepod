@@ -30,18 +30,18 @@ check "rendered Gemini GEMINI.md ≤ 280 lines (actual: $GEMINI_LINES)"  "[ $GEM
 # workflow skills (write-spec / write-plan / implement-plan / debug-issue
 # / check-work / review-code / finish-work / simplify-code / manage-context).
 # Default Lead surface = Tier 0 + Tier 1 = 10 skills.
-LEAN_TIER0=$(awk '/^### Tier 0/{f=1;next} /^### Tier/{f=0} f && /^\| `/{c++} END{print c+0}' core/fragments/skill-index-lean.md)
-LEAN_TIER1=$(awk '/^### Tier 1/{f=1;next} /^### Tier/{f=0} f && /^\| `/{c++} END{print c+0}' core/fragments/skill-index-lean.md)
+LEAN_TIER0=$(awk '/^### Tier 0/{f=1;next} /^### /{f=0} f && /^\| `/{c++} END{print c+0}' core/fragments/skill-index-lean.md)
+LEAN_TIER1=$(awk '/^### Tier 1/{f=1;next} /^### /{f=0} f && /^\| `/{c++} END{print c+0}' core/fragments/skill-index-lean.md)
 check "lean skill-index Tier 0 = 1 (actual: $LEAN_TIER0)"    "[ $LEAN_TIER0 -eq 1 ]"
 check "lean skill-index Tier 1 = 9 (actual: $LEAN_TIER1)"    "[ $LEAN_TIER1 -eq 9 ]"
 LEAN_SURFACE=$((LEAN_TIER0 + LEAN_TIER1))
 check "default Lead surface ≤ 10 (actual: $LEAN_SURFACE)"    "[ $LEAN_SURFACE -le 10 ]"
 
-# ── Core 10 only — no executable legacy shims ─────────────────────────
+# ── Core 10 workflow + 1 command alias — no executable legacy shims ───
 FS_SKILLS=$(find core/skills -maxdepth 1 -mindepth 1 -type d | wc -l | tr -d ' ')
 TIER3_SKILLS=$( { grep -Rsl "^tier: 3" core/skills/*/SKILL.md 2>/dev/null || true; } | wc -l | tr -d ' ')
 REDIRECT_FIELDS=$( { grep -Rsl "^redirect_to:" core/skills/*/SKILL.md 2>/dev/null || true; } | wc -l | tr -d ' ')
-check "filesystem skill dirs = Core 10 only (actual: $FS_SKILLS)" "[ $FS_SKILLS -eq 10 ]"
+check "filesystem skill dirs = Core 10 + 1 alias = 11 (actual: $FS_SKILLS)" "[ $FS_SKILLS -eq 11 ]"
 check "no tier: 3 skill files remain (actual: $TIER3_SKILLS)" "[ $TIER3_SKILLS -eq 0 ]"
 check "no redirect_to shim fields remain (actual: $REDIRECT_FIELDS)" "[ $REDIRECT_FIELDS -eq 0 ]"
 
@@ -51,6 +51,40 @@ check "no redirect_to shim fields remain (actual: $REDIRECT_FIELDS)" "[ $REDIREC
 # reviewer-flow, session-hygiene, triage-deep all silently missing).
 RENDERED_SKILLS=$(awk '/^\| `/{c++} END{print c+0}' core/fragments/skill-index.md)
 check "skill catalog: filesystem=$FS_SKILLS rendered=$RENDERED_SKILLS (must match)" "[ $FS_SKILLS -eq $RENDERED_SKILLS ]"
+
+# ── rolepod-full command alias + force-full trigger semantics ─────────
+# rolepod-full is the 11th skill dir — the /rolepod-full force-full alias,
+# NOT part of the Core 10 workflow spine. The default auto-router surface
+# stays using-rolepod + 9 phase skills; the explicit command surface adds
+# rolepod-full. These checks lock that split + the sharpened router.
+RF="core/skills/rolepod-full/SKILL.md"
+RTR="core/skills/using-rolepod/SKILL.md"
+check "rolepod-full alias skill exists" "[ -f $RF ]"
+if [ -f "$RF" ]; then
+  RF_LINES=$(wc -l < "$RF" | tr -d ' ')
+  check "rolepod-full skill ≤ 80 lines (actual: $RF_LINES)" "[ $RF_LINES -le 80 ]"
+  check "rolepod-full is manual-invoke only (disable-model-invocation)" "grep -q '^disable-model-invocation: true' $RF"
+fi
+check "rolepod-full rendered as a Command alias section (not Tier 0/1)" "grep -q '^### Command [Aa]lias' core/fragments/skill-index-lean.md"
+check "router documents /rolepod-full as the force-full entrypoint" "grep -q '/rolepod-full' $RTR"
+check "router demotes bare /rolepod + 'no skip' from force-full triggers" "grep -q 'are NOT force-full triggers' $RTR"
+check "router routes vague UI / dashboard request to write-spec" "grep -Eq 'vague UI.*write-spec' $RTR"
+check "router routes clear UI edit to implement-plan" "grep -Eq 'clear UI edit.*implement-plan' $RTR"
+check "router routes explain-only question to a direct answer" "grep -Eq 'explain-only.*answer directly' $RTR"
+check "router reviewer wording is conditional ('when configured')" "grep -q 'when configured' $RTR"
+check "router marks sibling-session stop condition Claude-only" "grep -q 'Claude-only: if SessionStart' $RTR"
+
+# /rolepod-team removed entirely — no command file, absent from active
+# command docs. Migration note is allowed only in docs/agent-teams.md.
+check "commands/rolepod-team.md deleted" "[ ! -f commands/rolepod-team.md ]"
+TEAM_HITS=$(grep -rEn '/rolepod-team' README.md CHEATSHEET.md docs/cli-support.md core/fragments/team-trigger.md 2>/dev/null || true)
+if [ -z "$TEAM_HITS" ]; then
+  echo "  ✓ /rolepod-team absent from active command docs"
+else
+  echo "  ✗ /rolepod-team still referenced as a public command:"
+  printf '%s\n' "$TEAM_HITS" | sed 's/^/      /'
+  fail=$((fail+1))
+fi
 
 # ── Stale doc count keywords — guard against drift in prose ────────────
 # After every skill add/remove, the count appears in ~6 places (README,
