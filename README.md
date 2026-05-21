@@ -286,7 +286,7 @@ MemPalace and GitNexus ship their own hooks through their own integration — in
 
 | CLI | Manifest | Schema |
 |-----|----------|--------|
-| Claude | `.claude-plugin/plugin.json` | spec-conformant, 598B |
+| Claude | `plugins/rolepod/.claude-plugin/plugin.json` | spec-conformant |
 | Codex | `.codex-plugin/plugin.json` | Codex plugin schema, 1.6KB |
 | Gemini | `gemini-extension.json` | extension schema, 551B |
 
@@ -377,7 +377,7 @@ Cross-session memory so each session starts smarter.
 
 | Add-on | What rolepod auto-uses it for | Fallback when missing | Install |
 |---|---|---|---|
-| **[MemPalace](https://github.com/mempalace/mempalace)** | KG of past decisions, codepaths, architectural choices. `install.sh` auto-registers Claude `SessionStart` / `Stop` / `PreCompact` hooks and Codex's optional `SessionStart` bridge when MemPalace is on `$PATH`. Lead queries via `mempalace_kg_query` before re-deciding | Anthropic auto memory (Tier 1) + per-agent `memory:` frontmatter still work — just no cross-session KG recall | `pip install mempalace` then `mempalace init` |
+| **[MemPalace](https://github.com/mempalace/mempalace)** | KG of past decisions, codepaths, architectural choices. MemPalace installs as its own vendor plugin and registers its own `SessionStart` / `Stop` / `PreCompact` hooks — rolepod ships none of them. rolepod only provides the workflow rules: Lead queries `mempalace_kg_query` before re-deciding | Anthropic auto memory (Tier 1) + per-agent `memory:` frontmatter still work — just no cross-session KG recall | `pip install mempalace` then `mempalace init` |
 
 ### Design
 
@@ -509,4 +509,5 @@ Personal workflow system. Fork freely. Send feedback via issues — especially C
 - [`docs/hooks.md`](docs/hooks.md) — 7 core hooks reference (triggers, gates, bypass envs)
 - [`CHEATSHEET.md`](CHEATSHEET.md) — 1-page quick reference
 - [`core/skills/write-plan/SKILL.md`](core/skills/write-plan/SKILL.md) — agent picker + parallel cohesion contract (Core 10)
-- [`.claude-plugin/plugin.json`](.claude-plugin/plugin.json) / [`adapters/codex/plugins/rolepod/.codex-plugin/plugin.json`](adapters/codex/plugins/rolepod/.codex-plugin/plugin.json) / [`adapters/gemini/gemini-extension.json`](adapters/gemini/gemini-extension.json) — per-CLI manifests
+- [`.claude-plugin/marketplace.json`](.claude-plugin/marketplace.json) — the Claude plugin marketplace catalog (repo root)
+- [`adapters/claude/.claude-plugin/plugin.json`](adapters/claude/.claude-plugin/plugin.json) / [`adapters/codex/plugins/rolepod/.codex-plugin/plugin.json`](adapters/codex/plugins/rolepod/.codex-plugin/plugin.json) / [`adapters/gemini/gemini-extension.json`](adapters/gemini/gemini-extension.json) — per-CLI plugin manifests
