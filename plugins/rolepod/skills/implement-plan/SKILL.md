@@ -152,6 +152,7 @@ Status: COMPLETED | PARTIAL | BLOCKED
 - A planned file does not exist where expected → stop, verify or re-plan
 - A test you wrote passes before you added the code → assertion is too weak; tighten
 - A subagent returns COMPLETED with failing tests → reject, re-brief
+- A subagent's diff accepted without a fresh-context read of it → stop, review before building further
 - Scope creep beyond the task list → stop, write a follow-up, finish current task
 
 ## Full Rolepod enhancement
