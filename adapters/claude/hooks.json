@@ -7,6 +7,11 @@
         "hooks": [
           {
             "type": "command",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/always-on-loader.sh\"",
+            "timeout": 3
+          },
+          {
+            "type": "command",
             "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/project-context-loader.sh\"",
             "timeout": 5
           },
