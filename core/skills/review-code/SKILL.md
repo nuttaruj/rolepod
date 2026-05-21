@@ -76,6 +76,7 @@ When external reviewer CLIs are installed, route the adversarial pass to a model
 ### 2. Multi-axis read
 
 For every diff, scan:
+- **Intent** — state the goal in one sentence. Is there a simpler/smaller way, or should the change exist at all? Surface this before the line-by-line read.
 - **Correctness** — does the logic match the spec? Edge cases? Off-by-one? Null / undefined / empty?
 - **Security** — input validation, auth check, secret handling, SSRF, injection, token leak in logs
 - **Performance** — N+1, blocking calls, unbounded loops, big payloads, missing index

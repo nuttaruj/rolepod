@@ -124,6 +124,7 @@ Cap: ≤12 tool_uses, ≤5 files
 | `test_function_works` | `test_validate_rejects_empty_string` |
 | Hidden setup | Self-contained |
 | Flaky | Deterministic |
+| Breaks when an internal fn is renamed | Survives a refactor that keeps behavior |
 
 ## T6 — assertion correctness (LLM-specific)
 

@@ -73,6 +73,8 @@ If context is heavy:
 
 Only load what the current task actually needs. Tier 1 skills + the touched files is usually enough.
 
+Starting fresh instead of `/compact` → write a handoff brief: original request, state (last commit, tests green/red), constraints still in force, artifacts linked by path (never pasted in full), and which skill resumes.
+
 ### 3. Session hygiene
 
 Re-read the original request literally. List the constraints still in force. Verify the touched files match what you remember; they may have changed since you last read them.

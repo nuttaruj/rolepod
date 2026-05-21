@@ -75,6 +75,7 @@ Run the touched module's test suite. If red, fix or write tests first. You canno
 | Same 5-line pattern in 3+ files | Extract to one source of truth |
 | Backwards-compat shim for code nobody calls | Delete the shim |
 | Comment that restates what the code does | Delete the comment |
+| Wrapper that only forwards calls (delete it → complexity vanishes) | Inline; a pure pass-through earns nothing |
 
 ### 3. Prefer structural over runtime
 

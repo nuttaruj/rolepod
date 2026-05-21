@@ -61,7 +61,7 @@ Capture the exact error, the throw site, and the stack trace before editing. The
 
 ### 2. Reproduce reliably
 
-One command, same failure every time. Pytest: `pytest path/test_x.py::name -v`. API: exact failing `curl`. UI: steps + browser + console. Intermittent: note frequency and trigger.
+One command, same failure every time. Pytest: `pytest path/test_x.py::name -v`. API: exact failing `curl`. UI: steps + browser + console. Intermittent: raise the rate first — loop the trigger, add stress, inject sleeps — until you have a 50%+ signal. A 1% flake is not yet debuggable.
 
 If you cannot repro locally, reproduce in CI / staging. Do not fix what you cannot see fail.
 
@@ -69,13 +69,17 @@ If you cannot repro locally, reproduce in CI / staging. Do not fix what you cann
 
 If the bug appeared right after your change, undo first. Confirm green. Re-apply piece by piece.
 
+If the bug predates your changes and the last-good commit is unknown, `git bisect run <test>` finds the breaking commit automatically.
+
 ### 4. One hypothesis at a time
 
 ```
 Hypothesis: <variable / state / condition> is <value> because <upstream cause>.
 ```
 
-Cheapest falsifier first: log, breakpoint, read the called function, check the fixture. Don't spray fixes.
+Cheapest falsifier first: log, breakpoint, read the called function, check the fixture. Don't spray fixes. Tag every debug log with a unique prefix (`[DBG-a4f2]`) so cleanup is one grep.
+
+Keep a running ledger of every experiment — what changed, what happened, what it ruled in or out. A new hypothesis must hold against every prior entry, not just the last run.
 
 ### 5. Trace upstream
 
