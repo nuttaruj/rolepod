@@ -165,6 +165,7 @@ Awaiting user authorization for: <specific action>
 - High-risk diff without adversarial review → route back to `review-code`
 - About to push --force or reset --hard published history → stop, confirm
 - 3rd PR on the same surface, or 3rd agent on the same issue → stop, ask
+- Production launch with no rollback plan, monitoring, or on-call confirmed → stop, do not send traffic
 
 ## Full Rolepod enhancement
 
