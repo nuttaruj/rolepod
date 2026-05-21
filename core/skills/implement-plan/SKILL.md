@@ -70,9 +70,16 @@ Bug / new logic / billing / migration / auth / race / security:
 
 Pure rename / typo / comment fix: tests-after or skip per the test gate.
 
-### 3. Surgical edit
+### 3. Surgical edit + quality reflexes
 
 Touch only what the task requires. No "while I'm here" refactors. No reformatting. No new abstraction for single-use.
+
+While editing, hold these reflexes:
+- **Comments** — default to none. Add one only when the WHY is non-obvious (a hidden constraint, a workaround, a surprising invariant). Never comment WHAT the code does.
+- **One source of truth** — before adding a helper, constant, type, or validation, search for an existing one (`rg`, or `gitnexus_query` when GitNexus is installed) and extend it instead of duplicating.
+- **New dependency** — justify it: not already covered by stdlib or an existing dep, maintained, reasonable size, compatible license. Unsure → ask.
+- **Tests** — never mock the database in an integration test; prefer a real dependency over a fake / stub / mock.
+- **Code intel** — when GitNexus is installed, run `gitnexus_impact` before a wide edit and `gitnexus_detect_changes` before commit; otherwise `rg` + Read.
 
 ### 4. Bounded delegation
 

@@ -39,10 +39,10 @@ FAIL=0
 # ─── Claude global into temp HOME ───────────────────────────────────────
 # Temp target (ROLEPOD_TARGET diverges from ~/.claude) → install does the
 # filesystem-only plugin-tree copy (the `claude plugin` CLI would mutate the
-# real Claude home, so it is skipped). Expected layout: path-scoped rules/
-# (code/ + test/, NO always-on/) + plugins/rolepod/ tree, and NO CLAUDE.md
-# managed block. Always-on judgment ships via the SessionStart hook. Hooks
-# live INSIDE the plugin manifest, not in settings.json.
+# real Claude home, so it is skipped). Expected layout: a plugins/rolepod/
+# tree and NOTHING else — no CLAUDE.md managed block, no rules/ copy.
+# Path-scoped guidance is folded into the skills, always-on into the
+# SessionStart hook. Hooks live INSIDE the plugin manifest, not settings.json.
 echo "[claude global] install into $TMP/.claude"
 export ROLEPOD_TARGET="$TMP/.claude"
 mkdir -p "$ROLEPOD_TARGET"
@@ -60,8 +60,6 @@ if ./install.sh --target=claude > "$TMP/claude.log" 2>&1; then
   PLUGIN_DIR="$ROLEPOD_TARGET/plugins/rolepod"
   required_paths=(
     "$ROLEPOD_TARGET/CHEATSHEET.md"
-    "$ROLEPOD_TARGET/rules/code"
-    "$ROLEPOD_TARGET/rules/test"
     "$PLUGIN_DIR/.claude-plugin/plugin.json"
     "$PLUGIN_DIR/agents"
     "$PLUGIN_DIR/skills"
@@ -73,16 +71,18 @@ if ./install.sh --target=claude > "$TMP/claude.log" 2>&1; then
       FAIL=$((FAIL+1))
     fi
   done
-  # Pure plugin — no managed CLAUDE.md block, no always-on/ rules copy.
-  # Always-on judgment is delivered by the SessionStart hook.
+  # Pure plugin — no managed CLAUDE.md block, no rules/ copy at all.
+  # Path-scoped guidance is in the skills; always-on is in the hook.
   if [ -e "$ROLEPOD_TARGET/CLAUDE.md" ]; then
     echo "  ✗ CLAUDE.md should not be written (pure plugin — no managed block)"
     FAIL=$((FAIL+1))
   fi
-  if [ -e "$ROLEPOD_TARGET/rules/always-on" ]; then
-    echo "  ✗ rules/always-on/ should not be installed (hook delivers always-on core)"
-    FAIL=$((FAIL+1))
-  fi
+  for forbidden in rules/always-on rules/code rules/test; do
+    if [ -e "$ROLEPOD_TARGET/$forbidden" ]; then
+      echo "  ✗ $forbidden should not be installed (skills + hook carry it)"
+      FAIL=$((FAIL+1))
+    fi
+  done
   # Core 10 skills land inside the plugin tree, not ~/.claude/skills/.
   for skill in using-rolepod debug-issue check-work rolepod-full; do
     if [ ! -d "$PLUGIN_DIR/skills/$skill" ]; then
@@ -137,11 +137,11 @@ mkdir -p "$TMP/project"
   echo "  ✗ install failed (see $TMP/claude-project.log)"
   FAIL=$((FAIL+1))
 }
-if [ ! -e "$TMP/project/.claude/CLAUDE.md" ] && [ -d "$TMP/project/.claude/rules/code" ] && [ -f "$TMP/project/.claude/plugins/rolepod/.claude-plugin/plugin.json" ]; then
-  echo "  ✓ Claude project: .claude/rules/ + .claude/plugins/rolepod/ tree under \$PWD/.claude/ (no CLAUDE.md block)"
+if [ ! -e "$TMP/project/.claude/CLAUDE.md" ] && [ ! -e "$TMP/project/.claude/rules" ] && [ -f "$TMP/project/.claude/plugins/rolepod/.claude-plugin/plugin.json" ]; then
+  echo "  ✓ Claude project: .claude/plugins/rolepod/ tree under \$PWD/.claude/ (no CLAUDE.md block, no rules/ copy)"
   PASS=$((PASS+1))
 else
-  echo "  ✗ Claude project: expected files missing, or CLAUDE.md wrongly written, under \$PWD/.claude/"
+  echo "  ✗ Claude project: plugin tree missing, or CLAUDE.md / rules/ wrongly written, under \$PWD/.claude/"
   FAIL=$((FAIL+1))
 fi
 

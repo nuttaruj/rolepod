@@ -37,8 +37,24 @@ no cohesion contract needed. Each slice leaves rolepod fully working.
   176, implement-plan 157, check-work 165 — all ≤220. Static + 8 integration
   cases green; gate enforcement (`high-risk-gates`, `ship-gate`) intact. The
   gate fragments stay (Codex/Gemini tmpls still use them — folded out in Slice 6).
-- **NEXT: Slice 4.** Fold `code/` + `test/` path rules into the phase skills;
-  remove `core/rules/code/` + `core/rules/test/`.
+- **Slice 4 — DONE (not yet committed, 2026-05-21).** Path-scoped rules folded
+  into the phase skills and the `core/rules/code/` + `core/rules/test/` dirs
+  removed. Net-new was small — slice 3 + the existing skills already covered
+  most of it. Folds: `implement-plan` §3 gained quality reflexes (comments
+  WHY-only · one source of truth · new-dependency justification · no DB mocks
+  in integration tests · GitNexus-if-installed); `finish-work` §2 CI table
+  gained a per-lane content column. Removed 5 files: `code/code-quality.md`,
+  `code/code-intel.md`, `code/code-intel-workflow.md`, `test/testing.md`,
+  `INDEX.md`. `install.sh` no longer copies or mkdir's `rules/` — it only
+  strips stale rolepod rules on upgrade; verification + `installer.yml` +
+  `install-parity.sh` updated to the no-rules-copy contract; `lean-surface.sh`
+  gained an anti-drift guard that `core/rules/code` + `core/rules/test` stay
+  deleted. Static + 8 integration + CI install repro green. Known follow-up:
+  the gate fragments (`gates-s1-s5.md`, `gates-t1-t5.md`) still carry stale
+  `Details: ~/.claude/rules/...` pointers — fixed when slice 6 reworks the
+  Codex/Gemini always-on surface. `core/rules/` now holds only `always-on/`.
+- **NEXT: Slice 5.** Inline `agent-protocol.md` into each of the 18 agent
+  files; drop the skill-index + agent-roster from the always-on surface.
 
 ## Files in scope
 
