@@ -1109,97 +1109,58 @@ if codex_selected; then
       cp "$CODEX_CONFIG" "$CODEX_CONFIG.rolepod-bak.$STAMP" 2>/dev/null || true
     fi
 
-    # Detect existing marketplace registration via config.toml; pick add vs upgrade.
-    # Note: `codex plugin marketplace upgrade` only works for git sources, so for
-    # local sources we always re-add (which Codex handles idempotently for local).
+    # The rolepod repo is a Codex marketplace published on GitHub. install.sh
+    # registers it from GitHub (codex plugin marketplace add nuttaruj/rolepod)
+    # so `codex plugin marketplace upgrade` works and the source matches a
+    # manual install. `codex plugin add` then installs the plugin — Codex
+    # clones the git source into its own cache and records the install; no
+    # manual config.toml [plugins.*] edit, no manual cache copy.
+    CODEX_MARKETPLACE_REF="nuttaruj/rolepod"
     if [ -f "$CODEX_CONFIG" ] && grep -q '^\[marketplaces\.rolepod\]' "$CODEX_CONFIG" 2>/dev/null; then
-      # Already registered.
       if [ "$FORCE" -eq 1 ]; then
-        # --force: auto-refresh source path with current rendered dir.
-        step "Refreshing rolepod marketplace registration (--force)"
+        step "Re-registering rolepod marketplace from GitHub (--force)"
         if [ "$DRY_RUN" -eq 1 ]; then
-          dry "codex plugin marketplace remove rolepod && codex plugin marketplace add $REPO_DIR"
+          dry "codex plugin marketplace remove rolepod && codex plugin marketplace add $CODEX_MARKETPLACE_REF"
         else
-          echo "    Removing existing rolepod marketplace..."
           codex plugin marketplace remove rolepod >/dev/null 2>&1 || true
-          echo "    Adding fresh marketplace registration..."
-          if ! codex plugin marketplace add "$REPO_DIR" 2>&1 | sed 's/^/    /'; then
+          if ! codex plugin marketplace add "$CODEX_MARKETPLACE_REF" 2>&1 | sed 's/^/    /'; then
             fail "codex plugin marketplace add failed — see output above"
           fi
         fi
       else
-        # Without --force: the rolepod marketplace is already registered —
-        # e.g. the user ran `codex plugin marketplace add nuttaruj/rolepod`
-        # to install from GitHub. Keep that registration untouched (do NOT
-        # re-point it at this local clone, and do not clobber a GitHub source
-        # with a local one). Install only the pieces the marketplace cannot
-        # carry: the 18 agents + the AGENTS.md block. `--force` re-registers
-        # the marketplace from this clone instead.
+        # The rolepod marketplace is already registered (e.g. a prior
+        # `codex plugin marketplace add nuttaruj/rolepod`). Keep it untouched —
+        # do not re-point or re-fetch it — and install only the pieces the
+        # marketplace cannot carry: the 18 agents + the AGENTS.md block.
+        # `--force` re-registers the marketplace from GitHub instead.
         step "rolepod marketplace already registered — keeping it; installing agents + AGENTS.md only"
-        warn "  Marketplace left as-is. To re-register from this clone: ./install.sh --target=codex --force"
+        warn "  Marketplace left as-is. To re-register from GitHub: ./install.sh --target=codex --force"
         CODEX_KEEP_MARKETPLACE=1
       fi
     else
-      step "Registering rolepod marketplace with Codex"
+      step "Registering rolepod marketplace from GitHub"
       if [ "$DRY_RUN" -eq 1 ]; then
-        dry "codex plugin marketplace add $REPO_DIR"
+        dry "codex plugin marketplace add $CODEX_MARKETPLACE_REF"
       else
-        if ! codex plugin marketplace add "$REPO_DIR" 2>&1 | sed 's/^/    /'; then
+        if ! codex plugin marketplace add "$CODEX_MARKETPLACE_REF" 2>&1 | sed 's/^/    /'; then
           fail "codex plugin marketplace add failed — see output above"
         fi
       fi
     fi
 
-    # Enable plugin in config.toml. Codex enables plugins via:
-    #   [plugins."<plugin-name>@<marketplace-name>"]
-    #   enabled = true
-    # For rolepod the plugin name and marketplace name are both "rolepod".
-    step "Enabling rolepod plugin in $CODEX_CONFIG"
-    if [ "$DRY_RUN" -eq 1 ]; then
-      dry "ensure [plugins.\"rolepod@rolepod\"] enabled = true in $CODEX_CONFIG"
-    else
-      mkdir -p "$CODEX_TARGET"
-      touch "$CODEX_CONFIG"
-      if grep -q '^\[plugins\."rolepod@rolepod"\]' "$CODEX_CONFIG" 2>/dev/null; then
-        # Already enabled — no edit needed.
-        :
-      else
-        printf '\n[plugins."rolepod@rolepod"]\nenabled = true\n' >> "$CODEX_CONFIG"
-      fi
-    fi
-
-    # Populate Codex plugin cache. `codex plugin marketplace add` registers
-    # the marketplace reference in config.toml but for local-source plugins
-    # does NOT copy/symlink the plugin tree into ~/.codex/plugins/cache/.
-    # On startup Codex tries to load from
-    #   ~/.codex/plugins/cache/<marketplace>/<plugin>/<version>/
-    # and fails with "plugin is not installed" if that path is absent.
-    # Git-source plugins get cloned into cache by `marketplace add` itself;
-    # local-source needs explicit population.
-    PLUGIN_JSON="$CODEX_PLUGIN_SRC/.codex-plugin/plugin.json"
-    PLUGIN_VERSION=$(python3 -c "import json; print(json.load(open('$PLUGIN_JSON'))['version'])" 2>/dev/null || echo "0.1.0")
-    CACHE_DIR="$CODEX_TARGET/plugins/cache/rolepod/rolepod/$PLUGIN_VERSION"
+    # Install the plugin. `codex plugin add` clones the marketplace's git
+    # source into the plugin cache and records the install — it replaces the
+    # older manual config.toml [plugins.*] enable + manual cache copy. Skipped
+    # in keep-marketplace mode (the plugin is already installed).
     if [ "${CODEX_KEEP_MARKETPLACE:-0}" -eq 1 ]; then
-      # Keep-marketplace mode: the existing marketplace owns its own cache
-      # (a GitHub source is cloned into cache by `marketplace add` itself).
-      # Re-populating from this local clone would silently swap the plugin
-      # content away from the registered source — skip it.
-      skip "Codex plugin cache — keeping the existing marketplace's cache"
+      skip "Codex plugin install — already installed; keeping it"
     else
-      step "Populating Codex plugin cache → $CACHE_DIR"
+      step "Installing rolepod plugin (codex plugin add)"
       if [ "$DRY_RUN" -eq 1 ]; then
-        dry "rm -rf $CACHE_DIR && mkdir -p $CACHE_DIR && cp -RL $CODEX_PLUGIN_SRC/. $CACHE_DIR/"
+        dry "codex plugin add rolepod@rolepod"
       else
-        # cp -RL dereferences the skills/ symlink (rendered tree points it at
-        # ../../../../core/skills via relative path; cache dir would resolve
-        # to wrong location without -L).
-        rm -rf "$CACHE_DIR" 2>/dev/null || true
-        mkdir -p "$CACHE_DIR"
-        if cp -RL "$CODEX_PLUGIN_SRC/." "$CACHE_DIR/" 2>/dev/null; then
-          chmod +x "$CACHE_DIR/hooks"/*.sh 2>/dev/null || true
-          ok "Codex plugin cache populated"
-        else
-          warn "Failed to populate Codex plugin cache → plugin will fail to load (\"plugin is not installed\")"
+        if ! codex plugin add rolepod@rolepod 2>&1 | sed 's/^/    /'; then
+          fail "codex plugin add failed — see output above"
         fi
       fi
     fi
@@ -1272,21 +1233,15 @@ if codex_selected; then
       # Real install — verify the actual config Codex wrote to (always $HOME/.codex/config.toml).
       [ -f "$CODEX_CONFIG" ] || fail "Codex verification failed — $CODEX_CONFIG missing"
       grep -q '^\[marketplaces\.rolepod\]' "$CODEX_CONFIG" || fail "Codex verification failed — [marketplaces.rolepod] not in $CODEX_CONFIG"
-      grep -q '^\[plugins\."rolepod@rolepod"\]' "$CODEX_CONFIG" || fail "Codex verification failed — [plugins.\"rolepod@rolepod\"] not in $CODEX_CONFIG"
-      # Confirm rendered tree still resolvable (codex stores source path in config).
-      [ -f "$REPO_DIR/.agents/plugins/marketplace.json" ] || fail "Codex verification failed — rendered marketplace manifest missing"
-      # Verify cache populated — otherwise Codex fails "plugin is not installed"
-      # at runtime. Skipped in keep-marketplace mode: the existing marketplace
-      # (e.g. a GitHub source) owns its own cache, populated by Codex itself.
-      if [ "${CODEX_KEEP_MARKETPLACE:-0}" -eq 0 ]; then
-        [ -d "$CACHE_DIR" ] && [ -f "$CACHE_DIR/.codex-plugin/plugin.json" ] || \
-          fail "Codex verification failed — plugin cache not populated at $CACHE_DIR (Codex will fail to load plugin)"
-        [ -d "$CACHE_DIR/skills" ] || fail "Codex verification failed — skills/ missing in cache dir"
-      fi
-      # No agents/ check — Codex's plugin loader has no agents field; the 18
-      # agent TOMLs install to ~/.codex/agents/ (verified separately), not the
-      # plugin cache.
-      ok "rolepod codex marketplace registered → $CODEX_CONFIG"
+      # Confirm the committed marketplace tree is intact in the repo.
+      [ -f "$REPO_DIR/.agents/plugins/marketplace.json" ] || fail "Codex verification failed — committed marketplace manifest missing"
+      # The plugin install is verified by the `codex plugin add` step above —
+      # it fails the install hard on any error. A post-hoc `codex plugin list`
+      # check is intentionally omitted: the list can lag right after
+      # `plugin add` and produce a false negative.
+      # No agents/ check here — Codex's plugin loader has no agents field; the
+      # 18 agent TOMLs install to ~/.codex/agents/ (verified separately).
+      ok "rolepod codex marketplace registered (GitHub) → $CODEX_CONFIG"
     else
       # Temp-target OR codex binary missing — verify filesystem artifacts only.
       [ -d "$CODEX_TARGET/plugins/rolepod" ] || fail "Codex verification failed — $CODEX_TARGET/plugins/rolepod missing"
