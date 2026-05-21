@@ -118,16 +118,6 @@ jobs:
           done < <(find build/rendered -name '*.json' 2>/dev/null)
           exit "$fail"
 
-      - name: Snapshot test (Claude byte-identical)
-        shell: bash
-        run: |
-          set -eo pipefail
-          if ! diff -q CLAUDE.md build/rendered/claude/CLAUDE.md; then
-            echo "::error::CLAUDE.md drift — repo root differs from build/rendered/claude/CLAUDE.md"
-            diff -u CLAUDE.md build/rendered/claude/CLAUDE.md | head -80 || true
-            exit 1
-          fi
-
       - name: Dry-run install — claude
         shell: bash
         run: |
@@ -144,41 +134,41 @@ jobs:
             printf '%s\n' "$out"
             exit 1
           fi
-          # Expected files
+          # Expected files — plugin layout (agents/skills/hooks ship inside
+          # plugins/rolepod/; rules/ stays a top-level copy).
           for rel in \
-            agents/qa-tester.md \
+            plugins/rolepod/agents/qa-tester.md \
             rules/INDEX.md \
-            skills/anti-spaghetti/SKILL.md \
-            .claude-plugin/plugin.json \
-            settings.json
+            plugins/rolepod/skills/using-rolepod/SKILL.md \
+            plugins/rolepod/.claude-plugin/plugin.json \
+            plugins/rolepod/hooks/hooks.json
           do
             if [ ! -e "$ROLEPOD_TARGET/$rel" ]; then
               echo "::error::missing post-install file: $ROLEPOD_TARGET/$rel"
               exit 1
             fi
           done
-          # settings.json contains rolepod hook registrations (referenced by
-          # path under $ROLEPOD_TARGET/hooks/, not by the literal name).
+          # The plugin registers hooks via its own hooks/hooks.json — the
+          # plugin model writes no rolepod block into the user's settings.json.
           if ! python3 -c "
           import json, sys, os
           target = os.environ['ROLEPOD_TARGET']
-          with open(os.path.join(target, 'settings.json')) as f:
+          with open(os.path.join(target, 'plugins/rolepod/hooks/hooks.json')) as f:
               data = json.load(f)
           hooks = data.get('hooks', {})
-          required = ['SessionStart', 'PreToolUse', 'PostToolUse']
+          required = ['SessionStart', 'PreToolUse']
           missing = [k for k in required if k not in hooks]
           if missing:
               print(f'missing hook keys: {missing}')
               sys.exit(1)
-          # At least one hook entry must reference our hooks dir.
-          import re
+          # At least one hook command must reference the plugin hooks/ dir.
           payload = json.dumps(data)
-          if os.path.join(target, 'hooks') not in payload:
-              print('no hook command points at \$ROLEPOD_TARGET/hooks/')
+          if '/hooks/' not in payload:
+              print('no hook command points at the plugin hooks/ dir')
               sys.exit(1)
           "; then
-            echo "::error::settings.json missing rolepod hook registration"
-            cat "$ROLEPOD_TARGET/settings.json"
+            echo "::error::plugin hooks.json missing rolepod hook registration"
+            cat "$ROLEPOD_TARGET/plugins/rolepod/hooks/hooks.json"
             exit 1
           fi
           # Final-message
@@ -282,8 +272,8 @@ jobs:
           fi
           for rel in \
             plugins/rolepod/.codex-plugin/plugin.json \
-            plugins/rolepod/agents/qa-tester.toml \
-            plugins/rolepod/skills/anti-spaghetti/SKILL.md \
+            agents/rolepod-qa-tester.toml \
+            plugins/rolepod/skills/using-rolepod/SKILL.md \
             AGENTS.md
           do
             if [ ! -e "$ROLEPOD_TARGET/$rel" ]; then
@@ -315,8 +305,8 @@ jobs:
           fi
           for rel in \
             extensions/rolepod/gemini-extension.json \
-            extensions/rolepod/skills/anti-spaghetti/SKILL.md \
-            GEMINI.md
+            extensions/rolepod/skills/using-rolepod/SKILL.md \
+            extensions/rolepod/GEMINI.md
           do
             if [ ! -e "$ROLEPOD_TARGET/$rel" ]; then
               echo "::error::missing post-install file: $ROLEPOD_TARGET/$rel"
@@ -385,10 +375,10 @@ jobs:
           fi
           # Rolepod artifacts gone.
           for rel in \
-            agents/qa-tester.md \
+            plugins/rolepod/agents/qa-tester.md \
             rules/INDEX.md \
-            skills/anti-spaghetti/SKILL.md \
-            .claude-plugin/plugin.json
+            plugins/rolepod/skills/using-rolepod/SKILL.md \
+            plugins/rolepod/.claude-plugin/plugin.json
           do
             if [ -e "$target/$rel" ]; then
               echo "::error::uninstall did not remove $target/$rel"

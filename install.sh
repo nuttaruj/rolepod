@@ -573,7 +573,11 @@ if [ "$UNINSTALL" -eq 1 ]; then
     if [ "$DRY_RUN" -eq 0 ]; then
       find "$C_TARGET/rules" -mindepth 1 -type d -empty -delete 2>/dev/null || true
     fi
-    for n in "${COMMAND_NAMES[@]}"; do do_or_dry "rm -f $C_TARGET/commands/$n" rm -f "$C_TARGET/commands/$n"; done
+    # COMMAND_NAMES is empty whenever the repo has no top-level commands/ dir
+    # (the normal case — commands ship per-adapter). Expanding an empty array
+    # with "${arr[@]}" trips `set -u` on bash 3.2 (macOS); the +-form expands
+    # to nothing when unset and to the quoted elements otherwise.
+    for n in ${COMMAND_NAMES[@]+"${COMMAND_NAMES[@]}"}; do do_or_dry "rm -f $C_TARGET/commands/$n" rm -f "$C_TARGET/commands/$n"; done
     for n in "${HOOK_NAMES[@]}";    do do_or_dry "rm -f $C_TARGET/hooks/$n"    rm -f "$C_TARGET/hooks/$n"; done
     for n in "${SKILL_NAMES[@]}";   do do_or_dry "rm -rf $C_TARGET/skills/$n"  rm -rf "$C_TARGET/skills/$n"; done
     do_or_dry "rm -f $C_TARGET/CHEATSHEET.md"              rm -f "$C_TARGET/CHEATSHEET.md"
