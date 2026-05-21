@@ -20,7 +20,8 @@ echo "── lean-surface ──"
 # ── Rendered entry doc size caps ───────────────────────────────────────
 # Claude ships no entry doc — the always-on judgment core is delivered by
 # the SessionStart hook (size-guarded by tests/static/always-on-hook.sh).
-check "Claude ships no rendered managed-block doc" "[ ! -f build/rendered/claude/CLAUDE.md ]"
+# The committed Claude plugin tree (plugins/rolepod/) must carry no CLAUDE.md.
+check "Claude ships no managed-block doc" "[ ! -f plugins/rolepod/CLAUDE.md ]"
 CODEX_LINES=$(wc -l < build/rendered/codex/AGENTS.md)
 GEMINI_LINES=$(wc -l < build/rendered/gemini/GEMINI.md)
 check "rendered Codex  AGENTS.md ≤ 280 lines (actual: $CODEX_LINES)"   "[ $CODEX_LINES  -le 280 ]"

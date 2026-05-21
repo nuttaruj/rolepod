@@ -81,6 +81,15 @@ Rolepod installs the framework itself: agents, rules, hooks, Core 10 skills, com
 
 Add `--force` to overwrite. Creates `~/.<cli>.backup-<timestamp>/` with **only rolepod-managed paths** (session history, plugin caches, file-history stay in place). Typical backup <50MB. See `docs/cli-support.md`.
 
+**Claude Code — install straight from GitHub** (no clone, no script — the repo is a plugin marketplace):
+
+```bash
+claude plugin marketplace add nuttaruj/rolepod
+claude plugin install rolepod@rolepod
+```
+
+**Codex / Gemini, or a scripted multi-CLI install** — use the installer:
+
 ```bash
 # Interactive (target + scope prompt):
 curl -fsSL https://raw.githubusercontent.com/nuttaruj/rolepod/main/bootstrap.sh | bash
@@ -98,7 +107,7 @@ curl -fsSL https://raw.githubusercontent.com/nuttaruj/rolepod/main/bootstrap.sh 
 
 `--force` overwrites rolepod-managed paths. Auto-backup at `~/.<cli>.backup-<timestamp>/` (rolepod-scoped, typically <50 MB; session history / plugin caches stay in place).
 
-> **Update via the script only.** Claude Code is a pure plugin — `claude plugin update` / `/plugin` UI refresh update the plugin. Re-run the command above for a complete update. Same applies to Codex and Gemini — all three CLIs update through `install.sh`.
+> **Updating.** Claude Code installs from the GitHub marketplace, so `claude plugin marketplace update rolepod` + `claude plugin update rolepod@rolepod` is a complete update — no script needed. Codex and Gemini update through `install.sh` (re-run the command above).
 
 ### Uninstall
 
@@ -250,7 +259,7 @@ Rolepod ships **7 core hook scripts** in `hooks/` — no add-on hooks. MemPalace
 
 Per-CLI exposure:
 
-- **Claude:** ships as a marketplace plugin. The installer renders rolepod to a temp dir, runs `claude plugin marketplace add <rendered-dir>` + `claude plugin install rolepod@rolepod --scope user`. The plugin tree (agents, skills, hooks) lives under `~/.claude/plugins/rolepod/` and is auto-discovered by Claude Code. The 7 core hooks are declared in the plugin's `hooks/hooks.json` (canonical plugin-root form) using `${CLAUDE_PLUGIN_ROOT}` paths, registered automatically on install. `~/.claude/settings.json` is only touched by the Claude Code CLI itself (for `enabledPlugins` / `extraKnownMarketplaces`).
+- **Claude:** ships as a marketplace plugin. The rolepod repo **is** the marketplace — `.claude-plugin/marketplace.json` + the committed `plugins/rolepod/` tree at the repo root — so `claude plugin marketplace add nuttaruj/rolepod` + `claude plugin install rolepod@rolepod` installs straight from GitHub (`install.sh` does the same against the local clone). The 7 core hooks are declared in the plugin's `hooks/hooks.json` (canonical plugin-root form) using `${CLAUDE_PLUGIN_ROOT}` paths, registered automatically on install. `~/.claude/settings.json` is only touched by the Claude Code CLI itself (for `enabledPlugins` / `extraKnownMarketplaces`).
 - **Codex:** ships 3 core command hooks (`project-context-loader.sh`, `gate-reminder.sh`, `precommit-gate.sh`) via `hooks/hooks.json`. Claude-only hooks (`always-on-loader`, `block-subagent-commit`, `cohesion-contract-check`, `session-lifecycle`) are not registered — Codex has no `Agent` or `Stop` event API and a different plugin model.
 - **Gemini:** ships 4 adapter command hooks: `session-start.sh`, `before-tool.sh`, `after-tool.sh`, `pre-compress.sh`.
 

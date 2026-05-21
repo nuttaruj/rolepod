@@ -8,11 +8,16 @@
 #   ./build/render.sh --target=all               # render all three
 #
 # Outputs:
-#   build/rendered/claude/CLAUDE.md
-#   build/rendered/claude/agents/<name>.md             # 18 files (Claude frontmatter)
-#   build/rendered/codex/AGENTS.md
+#   .claude-plugin/marketplace.json                    # committed — repo IS the Claude marketplace
+#   plugins/rolepod/                                   # committed — rendered Claude plugin tree
+#   plugins/rolepod/agents/<name>.md                   # 18 files (Claude frontmatter)
+#   build/rendered/codex/AGENTS.md                     # gitignored build output
 #   build/rendered/codex/agents/<name>.md              # 18 files (portable frontmatter)
-#   build/rendered/gemini/GEMINI.md
+#   build/rendered/gemini/GEMINI.md                    # gitignored build output
+#
+# The Claude target renders into committed repo-root paths so the repo is a
+# directly installable marketplace (`claude plugin marketplace add <repo>`).
+# Codex + Gemini stay under build/rendered/ (adapters, not the marketplace).
 #
 # Template directives (one per line):
 #   {{INCLUDE: <path-relative-to-repo-root>}}
@@ -262,37 +267,43 @@ render_agents() {
 # ─── Render Claude target ───────────────────────────────────────────────────
 # Claude ships as a pure marketplace plugin — no entry doc, no managed block.
 # The always-on judgment core is delivered at runtime by the SessionStart
-# hook (hooks/always-on-loader.sh). Output layout matches the local
-# marketplace shape `claude plugin marketplace add` consumes:
-#   .claude-plugin/marketplace.json            (marketplace manifest)
-#   plugins/rolepod/.claude-plugin/plugin.json (plugin manifest, inline hooks)
+# hook (hooks/always-on-loader.sh).
+#
+# The Claude target renders into COMMITTED repo-root paths so the repo is a
+# directly installable marketplace — `claude plugin marketplace add <repo>`
+# reads the repo-root .claude-plugin/marketplace.json and resolves the plugin
+# from ./plugins/rolepod. Both paths are committed (a CI render-clean check
+# guards against drift). Only the plugin tree is rebuilt — never the repo root.
+#   .claude-plugin/marketplace.json            (marketplace manifest — repo root)
+#   plugins/rolepod/.claude-plugin/plugin.json (plugin manifest)
 #   plugins/rolepod/agents/*.md                (18 rendered agents)
 #   plugins/rolepod/skills/<name>/SKILL.md     (real dir, copied from core/skills)
 #   plugins/rolepod/commands/*.md              (slash commands)
 #   plugins/rolepod/hooks/*.sh + *.md + lib/
+# Sources: adapters/claude/.claude-plugin/{marketplace,plugin}.json.
 
 render_claude() {
-  local out_dir="$REPO_DIR/build/rendered/claude"
   local adapter_dir="$REPO_DIR/adapters/claude"
-  local plugin_dst="$out_dir/plugins/rolepod"
+  local plugin_dst="$REPO_DIR/plugins/rolepod"
 
-  rm -rf "$out_dir"
-  mkdir -p "$out_dir"
+  # Rebuild only the plugin tree — the repo root is never rm'd.
+  rm -rf "$plugin_dst"
+  mkdir -p "$plugin_dst"
 
-  # Marketplace manifest at .claude-plugin/marketplace.json.
+  # Marketplace manifest at the repo-root .claude-plugin/.
   if [ -f "$adapter_dir/.claude-plugin/marketplace.json" ]; then
-    mkdir -p "$out_dir/.claude-plugin"
-    cp "$adapter_dir/.claude-plugin/marketplace.json" "$out_dir/.claude-plugin/"
+    mkdir -p "$REPO_DIR/.claude-plugin"
+    cp "$adapter_dir/.claude-plugin/marketplace.json" "$REPO_DIR/.claude-plugin/"
   else
     echo "render: missing $adapter_dir/.claude-plugin/marketplace.json" >&2; exit 1
   fi
 
   # Plugin manifest under plugins/rolepod/.claude-plugin/.
-  if [ -f "$REPO_DIR/.claude-plugin/plugin.json" ]; then
+  if [ -f "$adapter_dir/.claude-plugin/plugin.json" ]; then
     mkdir -p "$plugin_dst/.claude-plugin"
-    cp "$REPO_DIR/.claude-plugin/plugin.json" "$plugin_dst/.claude-plugin/"
+    cp "$adapter_dir/.claude-plugin/plugin.json" "$plugin_dst/.claude-plugin/"
   else
-    echo "render: missing $REPO_DIR/.claude-plugin/plugin.json" >&2; exit 1
+    echo "render: missing $adapter_dir/.claude-plugin/plugin.json" >&2; exit 1
   fi
 
   # Rendered agents into the plugin tree.
