@@ -66,6 +66,27 @@ if [ -f "$RF" ]; then
   check "rolepod-full skill ≤ 80 lines (actual: $RF_LINES)" "[ $RF_LINES -le 80 ]"
   check "rolepod-full is manual-invoke only (disable-model-invocation)" "grep -q '^disable-model-invocation: true' $RF"
 fi
+
+# ── Phase SKILL.md line cap (spec: ≤ 220 lines) ───────────────────────
+# Gate prose folded into the 9 phase skills must stay lean — a skill past
+# 220 lines is drifting into a domain manual. Progressive disclosure (a
+# sibling reference .md) is the escape hatch, not an ever-growing SKILL.md.
+# Scope: the 9 phase skills. The using-rolepod router is excluded — it is
+# the dispatch table, not a phase skill, and is naturally denser.
+OVER_CAP=""
+for s in write-spec write-plan implement-plan debug-issue check-work review-code finish-work simplify-code manage-context; do
+  f="core/skills/$s/SKILL.md"
+  [ -f "$f" ] || continue
+  n=$(wc -l < "$f" | tr -d ' ')
+  [ "$n" -le 220 ] || OVER_CAP="${OVER_CAP}${s} (${n}) "
+done
+if [ -z "$OVER_CAP" ]; then
+  echo "  ✓ all phase skills ≤ 220 lines"
+else
+  echo "  ✗ phase skill(s) over the 220-line cap: $OVER_CAP"
+  fail=$((fail+1))
+fi
+
 check "rolepod-full rendered as a Command alias section (not Tier 0/1)" "grep -q '^### Command [Aa]lias' core/fragments/skill-index-lean.md"
 check "router documents /rolepod-full as the force-full entrypoint" "grep -q '/rolepod-full' $RTR"
 check "router demotes bare /rolepod + 'no skip' from force-full triggers" "grep -q 'are NOT force-full triggers' $RTR"

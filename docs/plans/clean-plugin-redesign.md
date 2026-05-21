@@ -16,19 +16,29 @@ no cohesion contract needed. Each slice leaves rolepod fully working.
   always-on hook proven: `hooks/always-on-loader.sh` + `hooks/always-on-core.md`
   (~3KB judgment core) + `tests/static/always-on-hook.sh`. Wired in
   `adapters/claude/hooks.json`; `build/render.sh` copies `hooks/*.md` into the plugin.
-- **Slice 2 — DONE (not yet committed, 2026-05-21).** Claude install is now a
-  pure plugin: no `~/.claude/CLAUDE.md` managed block, no `rules/always-on/`
-  copy. `install.sh` Claude path drops `update_managed_block`, copies only
-  `rules/code/` + `rules/test/`, strips a stale `always-on/` dir + `rules/INDEX.md`,
-  and runs `remove_managed_block` as an upgrade migration (no-op on fresh
-  install). `render_claude` no longer emits `CLAUDE.md`; `adapters/claude/CLAUDE.md.tmpl`
-  deleted. Tests updated: `Makefile` (render-clean), `tests/static/lean-surface.sh`,
-  `tests/integration/cases/install-parity.sh` (+negative checks: no CLAUDE.md,
-  no always-on/). All static + 8 integration cases green; always-on-hook payload
-  3021B. Known follow-up: `core/fragments/team-trigger.md` is now an orphaned
+- **Slice 2 — DONE (PR #18, merged 2026-05-21).** Commits `ae85d3e` + `7088088`.
+  Claude install is now a pure plugin: no `~/.claude/CLAUDE.md` managed block,
+  no `rules/always-on/` copy. `install.sh` Claude path drops `update_managed_block`,
+  copies only `rules/code/` + `rules/test/`, strips a stale `always-on/` dir +
+  `rules/INDEX.md`, runs `remove_managed_block` as an upgrade migration.
+  `render_claude` no longer emits `CLAUDE.md`; `adapters/claude/CLAUDE.md.tmpl`
+  deleted. Tests + `.github/workflows/installer.yml` updated for the pure-plugin
+  contract. Known follow-up: `core/fragments/team-trigger.md` is now an orphaned
   fragment (was Claude-tmpl-only) — clean up in a later fragment-fold slice.
-- **NEXT: Slice 3.** Redistribute S/T/F/Q gates + CI lanes + operational notes
-  into the phase skills (`finish-work`, `implement-plan`, `check-work`).
+- **Slice 3 — DONE (not yet committed, 2026-05-21).** Gate checklists folded
+  into the phase skills they belong to: `finish-work` pre-merge gate now carries
+  the full S1-S5 + T1-T6 checklists (F1-F5 references the `check-work` gate to
+  avoid duplication); `implement-plan` §4 carries the Q1-Q4 delegation test;
+  `check-work` gains a §6 F1-F5 failure-mode gate. CI lanes were already present
+  in `finish-work` §2 from a prior PR — no net-new (dedup). Operational notes:
+  added a "3rd PR / 3rd agent on the same surface" ship hard-stop; the rest is
+  already distributed across skills. `lean-surface.sh` gains a ≤220-line cap
+  guard for the 9 phase skills (router excluded). Touched skills: finish-work
+  176, implement-plan 157, check-work 165 — all ≤220. Static + 8 integration
+  cases green; gate enforcement (`high-risk-gates`, `ship-gate`) intact. The
+  gate fragments stay (Codex/Gemini tmpls still use them — folded out in Slice 6).
+- **NEXT: Slice 4.** Fold `code/` + `test/` path rules into the phase skills;
+  remove `core/rules/code/` + `core/rules/test/`.
 
 ## Files in scope
 
