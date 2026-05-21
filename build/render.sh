@@ -326,6 +326,9 @@ render_claude() {
     echo "render: missing $adapter_dir/hooks.json" >&2; exit 1
   fi
   cp "$REPO_DIR/hooks"/*.sh "$plugin_dst/hooks/" 2>/dev/null || true
+  # Content files read by hooks at runtime (e.g. always-on-core.md, the
+  # judgment core emitted by always-on-loader.sh).
+  cp "$REPO_DIR/hooks"/*.md "$plugin_dst/hooks/" 2>/dev/null || true
   [ -d "$REPO_DIR/hooks/lib" ] && cp -R "$REPO_DIR/hooks/lib" "$plugin_dst/hooks/"
   chmod +x "$plugin_dst/hooks/"*.sh 2>/dev/null || true
 }
