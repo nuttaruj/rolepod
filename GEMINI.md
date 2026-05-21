@@ -39,7 +39,7 @@ Commits / PRs / code: English, normal tone.
 
 Confirm from primary source before plan/edit/answer. Internal (file/symbol) → Read or `gitnexus_context`. Live state → run command. External (pricing/lib/news) → WebFetch/WebSearch. Past decisions → `mempalace_kg_query` + verify code matches.
 
-Can't verify → state `Assuming: X. Risk: Y. Verify by: Z`. Don't proceed silently. Uncertain intent → ask. Simpler approach → push back. Details: `~/.claude/rules/always-on/verify-first.md`
+Can't verify → state `Assuming: X. Risk: Y. Verify by: Z`. Don't proceed silently. Uncertain intent → ask. Simpler approach → push back.
 
 ## Workflow — Explore → Plan → Implement → Commit
 
@@ -88,7 +88,7 @@ S4: Defensive code for impossible?    yes → make structurally impossible
 S5: Same pattern in 3+ places?        yes → centralize before commit
 ```
 
-Any "yes" → revise. S4 example: runtime null check → `Optional<T>` compiler-enforced. Details: `~/.claude/rules/code/code-quality.md`
+Any "yes" → revise. S4 example: runtime null check → `Optional<T>` compiler-enforced. Deep guide: skill `simplify-code`.
 
 ## CI lanes — 3-phase + auto-merge
 
@@ -120,7 +120,7 @@ T6: Assertion correct? 1-char bug still passes?
      yes-too-weak → tighten (62% LLM tests weak, arXiv 2402.13521)
 ```
 
-Skip — ALL true: ≤5 lines · single file · zero logic-bearing (comments/docstrings/whitespace/typechecked renames) · NOT high-risk (auth/billing/payment/migration/credit/permission/secret/crypto/token). Any fail → write tests. PreCommit hook enforces. Internal only. Details: `~/.claude/rules/test/testing.md`
+Skip — ALL true: ≤5 lines · single file · zero logic-bearing (comments/docstrings/whitespace/typechecked renames) · NOT high-risk (auth/billing/payment/migration/credit/permission/secret/crypto/token). Any fail → write tests. PreCommit hook enforces. Internal only. Deep guide: skills `implement-plan` / `finish-work`.
 
 ## Before any code edit — 4 questions
 

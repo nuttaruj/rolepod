@@ -87,13 +87,12 @@ else
   fail=$((fail+1))
 fi
 
-# ── No path-scoped rules directory (spec: pure plugin) ────────────────
-# code/ + test/ rules were folded into the phase skills (slice 4). The
-# dirs must stay deleted — re-adding them re-introduces a parallel
-# guidance surface that drifts from the skills.
-for d in core/rules/code core/rules/test; do
-  check "no $d directory (folded into phase skills)" "[ ! -d $d ]"
-done
+# ── No rules directory (spec: pure plugin) ────────────────────────────
+# The whole core/rules/ tree is gone: code/ + test/ rules were folded
+# into the phase skills, the always-on rules into the SessionStart hook
+# core + the inlined agent protocol. It must stay deleted — re-adding it
+# re-introduces a parallel guidance surface that drifts from the skills.
+check "no core/rules directory (folded into skills + hook + agents)" "[ ! -d core/rules ]"
 
 check "rolepod-full rendered as a Command alias section (not Tier 0/1)" "grep -q '^### Command [Aa]lias' core/fragments/skill-index-lean.md"
 check "router documents /rolepod-full as the force-full entrypoint" "grep -q '/rolepod-full' $RTR"
@@ -107,7 +106,7 @@ check "router marks sibling-session stop condition Claude-only" "grep -q 'Claude
 # /rolepod-team removed entirely — no command file, absent from active
 # command docs. Migration note is allowed only in docs/agent-teams.md.
 check "commands/rolepod-team.md deleted" "[ ! -f commands/rolepod-team.md ]"
-TEAM_HITS=$(grep -rEn '/rolepod-team' README.md CHEATSHEET.md docs/cli-support.md core/fragments/team-trigger.md 2>/dev/null || true)
+TEAM_HITS=$(grep -rEn '/rolepod-team' README.md CHEATSHEET.md docs/cli-support.md 2>/dev/null || true)
 if [ -z "$TEAM_HITS" ]; then
   echo "  ✓ /rolepod-team absent from active command docs"
 else
@@ -173,7 +172,7 @@ STALE_ADDON='optional GitNexus|optional MemPalace|GitNexus add-on|MemPalace add-
 STALE_PATTERNS="${STALE_WB}|${STALE_NONWORD}|${STALE_COMMENT}|${STALE_HOOK_TRUTH}|${STALE_ADDON}"
 STALE_HITS=$(grep -rEn "$STALE_PATTERNS" \
   --include='*.md' --include='*.json' --include='*.tmpl' \
-  README.md CHEATSHEET.md docs/ .claude-plugin/ adapters/ core/skills/ core/rules/ core/fragments/ 2>/dev/null \
+  README.md CHEATSHEET.md docs/ .claude-plugin/ adapters/ core/skills/ core/fragments/ 2>/dev/null \
   | grep -v 'build/rendered/' || true)
 if [ -z "$STALE_HITS" ]; then
   echo "  ✓ no stale doc keywords (skill counts, hook counts, add-on-hook phrasings)"
@@ -250,7 +249,7 @@ rm -f /tmp/rolepod-router-legacy-hits.txt
 # Active docs and generated lean fragments must name Core 10 routing.
 # Legacy names are allowed in docs/skills.md and audit docs, but not in
 # the install/readme surfaces that teach users what to invoke.
-ACTIVE_DOCS=(README.md CHEATSHEET.md CLAUDE.md AGENTS.md GEMINI.md adapters/codex/AGENTS.md.tmpl adapters/gemini/GEMINI.md.tmpl build/rendered/codex/AGENTS.md build/rendered/gemini/GEMINI.md docs/agents.md docs/cli-support.md core/fragments/team-trigger.md core/fragments/agent-roster-lean.md core/fragments/model-tier-policy.md)
+ACTIVE_DOCS=(README.md CHEATSHEET.md CLAUDE.md AGENTS.md GEMINI.md adapters/codex/AGENTS.md.tmpl adapters/gemini/GEMINI.md.tmpl build/rendered/codex/AGENTS.md build/rendered/gemini/GEMINI.md docs/agents.md docs/cli-support.md core/fragments/agent-roster-lean.md core/fragments/model-tier-policy.md)
 ACTIVE_LEGACY_RX='(team-routing|parallel-contract-orchestration|pre-merge-gate|post-change-verify|code-review-and-quality|spec-driven-development|planning-and-task-breakdown|systematic-debugging|finishing-a-development-branch|reviewer-flow)'
 ACTIVE_LEGACY_HITS=""
 for f in "${ACTIVE_DOCS[@]}"; do

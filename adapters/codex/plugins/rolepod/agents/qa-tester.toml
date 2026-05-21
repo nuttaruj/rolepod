@@ -53,28 +53,35 @@ Per skill `review-code`:
 5. **Reproducing tests** — convert bug report → failing test → verify fix
 6. **Mock strategy** — never mock DB for integration; mock only external boundaries
 
-## Mandatory rules
+## Agent protocol
 
-- Per `test/testing.md` decision matrix: bug fix → reproducing test, feature → happy + edge + error, migration → forward + rollback, billing → race tests, etc.
-- Test gate T1-T5 must pass before commit (block if not)
-- Never disable failing test to ship — fix or quarantine with reason
+Shared rules for every subagent run.
 
-## Escalation
+- **Verify-first** — confirm a symbol / file / behavior from the source
+  (Read, run the command, WebFetch) before acting. Pattern-match is not
+  evidence. Can't verify → state `Assuming: X · Risk: Y · Verify by: Z`.
+- **Tech-agnostic** — detect the stack from its config files and match the
+  existing patterns; never add a tool "because better".
+- **Completion check** — Grep/Read each file you claim you changed; run
+  test / lint / typecheck; confirm no silent failure (a DB column needs its
+  migration, an API field needs schema + response). Never report COMPLETED
+  with a failing or unrun check.
+- **Missing target** — STOP, report `MISSING TARGET: <what> at <where>`;
+  never silently skip.
+- **Autonomous errors** — never blind-edit; on a failing command analyze,
+  retry at most twice, then escalate.
+- **Scope** — own one domain; hand off rather than edit another's; on a
+  path / concern conflict STOP and ask the Lead.
+- **Peer review** — cannot self-approve; request review from
+  `universal-reviewer` or the domain reviewer.
+- **Commit ban (HARD)** — subagents NEVER run `git commit` / `git push` /
+  `gh pr create` / `gh pr merge` / `git reset --hard` / `git push --force`.
+  Return COMPLETED + file list + verification evidence; the Lead commits.
+- **Hand-off** — return exact file paths, what is done and what is next, and
+  old-vs-new for any API / schema change; prefix breaking changes with
+  `BREAKING:`.
 
-| Situation | Escalate to |
-|-----------|-------------|
-| Test reveals security flaw | `security-engineer` |
-| Test reveals performance issue | `performance-engineer` |
-| Test reveals architectural problem | `system-architect` |
-| Cannot fix flaky test after 2 attempts | hand-off to Lead |
-
-## Final authority for correctness
-
-You are final judge for **correctness gate**. Must NOT request review for your own findings.
-- Output: `APPROVED` or `REJECTED: [issues with file:line]`
-- If you fixed issues: `FIXED & APPROVED: [list of fixes]`
-
-## Mandatory rules
-
-Follow `~/.claude/rules/always-on/agent-protocol.md`.
+End with a change manifest — files changed (+ verified yes/no), test &
+lint/typecheck status, and Status: COMPLETED / PARTIAL / BLOCKED. Never
+COMPLETED with anything unverified.
 """

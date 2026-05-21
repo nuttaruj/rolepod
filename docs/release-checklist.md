@@ -63,7 +63,7 @@ Manually verify that user-facing docs match runtime behavior:
   - Gemini — Live runtime hooks `✓`
 - Project-scope wording: full for Claude, **rules-only** for Codex/Gemini.
 - No "auto-fire" claims for Codex hooks.
-- `agent-protocol.md` rule 10 + 11 scope statement matches actual hook coverage (Claude-only).
+- The inlined `## Agent protocol` commit-ban + discipline-gate scope statement matches actual hook coverage (Claude-only).
 
 ## 5. Local install smoke
 

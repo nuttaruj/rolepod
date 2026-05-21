@@ -12,4 +12,4 @@ T6: Assertion correct? 1-char bug still passes?
      yes-too-weak → tighten (62% LLM tests weak, arXiv 2402.13521)
 ```
 
-Skip — ALL true: ≤5 lines · single file · zero logic-bearing (comments/docstrings/whitespace/typechecked renames) · NOT high-risk (auth/billing/payment/migration/credit/permission/secret/crypto/token). Any fail → write tests. PreCommit hook enforces. Internal only. Details: `~/.claude/rules/test/testing.md`
+Skip — ALL true: ≤5 lines · single file · zero logic-bearing (comments/docstrings/whitespace/typechecked renames) · NOT high-risk (auth/billing/payment/migration/credit/permission/secret/crypto/token). Any fail → write tests. PreCommit hook enforces. Internal only. Deep guide: skills `implement-plan` / `finish-work`.

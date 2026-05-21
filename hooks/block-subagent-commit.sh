@@ -76,7 +76,7 @@ print(json.dumps({
       'responsibility after qa-tester + universal-reviewer verify. '
       'Return COMPLETED status with file list and verification evidence; '
       'Lead will commit. '
-      'See core/rules/always-on/agent-protocol.md \\'Sub-agent commit ban\\'.'
+      'See the Agent protocol section in your agent file — sub-agent commit ban.'
     )
   }
 }))
