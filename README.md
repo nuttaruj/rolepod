@@ -81,14 +81,20 @@ Rolepod installs the framework itself: agents, rules, hooks, Core 10 skills, com
 
 Add `--force` to overwrite. Creates `~/.<cli>.backup-<timestamp>/` with **only rolepod-managed paths** (session history, plugin caches, file-history stay in place). Typical backup <50MB. See `docs/cli-support.md`.
 
-**Claude Code — install straight from GitHub** (no clone, no script — the repo is a plugin marketplace):
+**Claude Code / Codex CLI — install straight from GitHub** (no clone, no script — the repo is a plugin marketplace for both):
 
 ```bash
+# Claude Code
 claude plugin marketplace add nuttaruj/rolepod
 claude plugin install rolepod@rolepod
+
+# Codex CLI — installs the plugin (skills + hooks). The 18 agents still
+# need install.sh (Codex has no plugin agents component).
+codex plugin marketplace add nuttaruj/rolepod
+codex plugin install rolepod@rolepod
 ```
 
-**Codex / Gemini, or a scripted multi-CLI install** — use the installer:
+**Gemini, the 18 Codex agents, or a scripted multi-CLI install** — use the installer:
 
 ```bash
 # Interactive (target + scope prompt):
@@ -184,7 +190,7 @@ After install, restart the CLI you targeted so the plugin system loads.
 
 _Last verified: 2026-05-15, macOS Darwin 25.4.0, Codex 0.130.0, Gemini 0.40.1._
 
-**Codex install (0.130.0+):** installer renders to `build/rendered/codex/`, runs `codex plugin marketplace add <rendered-dir>`, populates `~/.codex/plugins/cache/rolepod/rolepod/<version>/`, writes `[plugins."rolepod@rolepod"] enabled = true` to `~/.codex/config.toml`. Native plugin loader resolves agents + skills (18 + 10) from cache. `SessionStart` fires **only after `codex features enable plugin_hooks`** (default flag is `under development, false`). `~/.codex/AGENTS.md` managed block loads independently of `plugin_hooks` state.
+**Codex install (0.130.0+):** the repo is a Codex marketplace too — `codex plugin marketplace add nuttaruj/rolepod` reads the repo-root `.agents/plugins/marketplace.json` and resolves the plugin from `./plugins/rolepod-codex` (`install.sh` does the same against the local clone). It writes `[plugins."rolepod@rolepod"] enabled = true` to `~/.codex/config.toml` and populates `~/.codex/plugins/cache/`. The marketplace plugin carries skills + hooks; the 18 agents are **not** a Codex plugin component — `install.sh` copies them to `~/.codex/agents/`. `SessionStart` fires **only after `codex features enable plugin_hooks`** (default flag `under development, false`). The `~/.codex/AGENTS.md` managed block loads independently of `plugin_hooks` state.
 
 File runtime issues at [issues/](https://github.com/nuttaruj/rolepod/issues).
 

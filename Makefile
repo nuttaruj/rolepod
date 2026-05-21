@@ -86,18 +86,19 @@ test-render-clean:
 		git diff --stat -- core/fragments/; \
 		exit 1; \
 	fi
-	@if ! git diff --quiet -- .claude-plugin/ plugins/rolepod/ 2>/dev/null; then \
-		echo "  ✗ render-clean: committed Claude marketplace tree drifted from build/render.sh output."; \
-		echo "    Run: make render && git add .claude-plugin/ plugins/rolepod/ && commit."; \
-		git diff --stat -- .claude-plugin/ plugins/rolepod/; \
+	@if ! git diff --quiet -- .claude-plugin/ plugins/rolepod/ .agents/ plugins/rolepod-codex/ 2>/dev/null; then \
+		echo "  ✗ render-clean: committed marketplace tree drifted from build/render.sh output."; \
+		echo "    Run: make render && git add .claude-plugin/ plugins/rolepod/ .agents/ plugins/rolepod-codex/ && commit."; \
+		git diff --stat -- .claude-plugin/ plugins/rolepod/ .agents/ plugins/rolepod-codex/; \
 		exit 1; \
 	fi
 	@for f in build/rendered/codex/AGENTS.md build/rendered/gemini/GEMINI.md; do \
 		[ -f "$$f" ] || { echo "  ✗ render-clean: expected output missing: $$f"; exit 1; }; \
 	done
 	@[ -f .claude-plugin/marketplace.json ] && [ -f plugins/rolepod/.claude-plugin/plugin.json ] || { echo "  ✗ render-clean: committed Claude marketplace tree missing"; exit 1; }
+	@[ -f .agents/plugins/marketplace.json ] && [ -f plugins/rolepod-codex/.codex-plugin/plugin.json ] || { echo "  ✗ render-clean: committed Codex marketplace tree missing"; exit 1; }
 	@[ ! -f plugins/rolepod/CLAUDE.md ] || { echo "  ✗ render-clean: Claude ships no entry doc — plugins/rolepod/CLAUDE.md should not exist"; exit 1; }
-	@leak_files=$$(grep -rl '{{INCLUDE:' build/rendered/ plugins/rolepod/ 2>/dev/null || true); \
+	@leak_files=$$(grep -rl '{{INCLUDE:' build/rendered/ plugins/rolepod/ plugins/rolepod-codex/ 2>/dev/null || true); \
 	if [ -n "$$leak_files" ]; then \
 		echo "  ✗ render-clean: unresolved {{INCLUDE: ...}} placeholders in:"; \
 		echo "$$leak_files" | sed 's/^/      /'; \
