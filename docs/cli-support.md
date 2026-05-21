@@ -12,7 +12,7 @@ Phase 2.3: rolepod ships for each supported CLI as a **native plugin / extension
 | Subagents (parallel team) | full Task / SendMessage (18 agents) | 18 agents as Codex `agents/*.toml` (Lead-orchestrated) | 18 agents inlined in `GEMINI.md` (Lead-orchestrated) |
 | Hooks (core only) | 7 core hooks in the plugin's `hooks/hooks.json` · auto-registered on install | 3 core hooks across `SessionStart`/`PreToolUse` · hooks require `plugin_hooks` opt-in | 4 core hooks across `SessionStart`/`BeforeTool`/`AfterTool`/`PreCompress` |
 | Slash commands | `/rolepod-full` (skill — force-full lifecycle) | `$rolepod-full` (skill via Codex skill UI) | `/rolepod-full` (skill; no native `.toml` commands) |
-| Plugin manifest | `.claude-plugin/plugin.json` (spec-conformant, 598B) | `.codex-plugin/plugin.json` (mirrors caveman schema, 1.6KB) | `gemini-extension.json` (extension schema, 551B) |
+| Plugin manifest | `plugins/rolepod/.claude-plugin/plugin.json` (spec-conformant) + `.claude-plugin/marketplace.json` catalog at the repo root | `.codex-plugin/plugin.json` (mirrors caveman schema, 1.6KB) | `gemini-extension.json` (extension schema, 551B) |
 | MemPalace / GitNexus integration | vendor install via marketplace plugin (MemPalace) + MCP (GitNexus); rolepod provides workflow rules | vendor install via `.codex-plugin` (MemPalace) + MCP (GitNexus); rolepod provides workflow rules | vendor install via MCP (GitNexus); MemPalace manual; rolepod provides workflow rules |
 | MCP server config | global + per-plugin | global (`codex mcp`) | global (`gemini mcp`) |
 
@@ -142,8 +142,8 @@ Claude Code supports both global and project-level configuration. Rolepod instal
 ./install.sh --target=claude
 ```
 
-Runs `claude plugin marketplace add <rendered-dir>` + `claude plugin install rolepod@rolepod --scope user` to register and enable the plugin. Installs:
-- `~/.claude/plugins/rolepod/` (plugin tree: agents, skills, hooks, manifest)
+Runs `claude plugin marketplace add <repo>` + `claude plugin install rolepod@rolepod --scope user` to register and enable the plugin — the repo IS the marketplace (`.claude-plugin/marketplace.json` + committed `plugins/rolepod/`), so `claude plugin marketplace add nuttaruj/rolepod` does the same straight from GitHub. Installs:
+- the rolepod plugin (agents, skills, hooks, manifest) — Claude Code resolves it from the marketplace cache
 - Plugin hooks (7 core) in the plugin's `hooks/hooks.json` using `${CLAUDE_PLUGIN_ROOT}` paths
 
 ### Per-project install (`--scope=project`)
