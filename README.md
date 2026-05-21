@@ -10,7 +10,7 @@ Complete software-house team for AI coding CLIs: 18 specialist agents, 10 workfl
 
 Turns any supported AI coding CLI into a coordinated software-house team. 18 specialists handle different domains in parallel — backend, frontend, QA, security, performance, design, docs, ops — with explicit gates, ownership boundaries, and hand-off protocols.
 
-Same source-of-truth content (`core/agents/`, `core/rules/`, `core/skills/`, `core/fragments/`) rendered through per-CLI adapters. No CLI is "default" — each is first-class.
+Same source-of-truth content (`core/agents/`, `core/skills/`, `core/fragments/`) rendered through per-CLI adapters. No CLI is "default" — each is first-class.
 
 Self-improving: every session captures learnings via MemPalace KG so the next session starts smarter (optional — works without it).
 
@@ -235,7 +235,7 @@ Full skill detail: [docs/skills.md](docs/skills.md) + [CHEATSHEET.md](CHEATSHEET
 | **Design + Docs (2 parallel)** | ui-ux-designer, tech-writer |
 | **Code Review (1)** | universal-reviewer |
 
-Path/concern ownership + expertise list + escalation paths + skill preloads. Shared `agent-protocol.md`. Identical across all 3 CLIs.
+Path/concern ownership + expertise list + escalation paths + skill preloads. Each agent carries its own inlined `## Agent protocol` section. Identical across all 3 CLIs.
 
 ### Hooks — `hooks/` (7 core, self-guarded)
 

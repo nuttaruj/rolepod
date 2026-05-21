@@ -436,7 +436,7 @@ echo "  dry-run: $DRY_RUN"
 echo ""
 
 # ─── Sanity check source ────────────────────────────────────────────────
-for f in CHEATSHEET.md core/agents core/rules hooks core/skills .claude-plugin/plugin.json build/render.sh; do
+for f in CHEATSHEET.md core/agents hooks core/skills .claude-plugin/plugin.json build/render.sh; do
   [ -e "$REPO_DIR/$f" ] || fail "missing $f in $REPO_DIR — run from rolepod repo"
 done
 
@@ -516,13 +516,6 @@ if [ "$UNINSTALL" -eq 1 ]; then
       [ -d "$d" ] && SKILL_NAMES+=("$(basename "$d")")
     done
   fi
-  RULE_NAMES=()
-  if [ -d "$REPO_DIR/core/rules" ]; then
-    # Recurse subfolders (always-on/, code/, test/) — store paths relative to core/rules/
-    while IFS= read -r f; do
-      RULE_NAMES+=("${f#"$REPO_DIR/core/rules/"}")
-    done < <(find "$REPO_DIR/core/rules" -name '*.md' 2>/dev/null)
-  fi
   HOOK_NAMES=()
   if [ -d "$REPO_DIR/hooks" ]; then
     while IFS= read -r f; do
@@ -568,7 +561,12 @@ if [ "$UNINSTALL" -eq 1 ]; then
     # 3. Legacy flat-file cleanup (pre-2.0 non-plugin installs). Doubles as
     #    cleanup for any leftover files the plugin install might have left.
     for n in "${AGENT_NAMES[@]}";   do do_or_dry "rm -f $C_TARGET/agents/$n"   rm -f "$C_TARGET/agents/$n"; done
-    for n in "${RULE_NAMES[@]}";    do do_or_dry "rm -f $C_TARGET/rules/$n"    rm -f "$C_TARGET/rules/$n"; done
+    # Rolepod no longer ships rules/ — strip the known rolepod rule paths a
+    # pre-redesign install left behind, leaving any user-authored rules intact.
+    do_or_dry "rm -rf rolepod rule dirs under $C_TARGET/rules" rm -rf "$C_TARGET/rules/always-on" "$C_TARGET/rules/code" "$C_TARGET/rules/test"
+    for n in INDEX.md communication.md verify-first.md code-search.md agent-protocol.md code-quality.md code-intel.md code-intel-workflow.md testing.md; do
+      do_or_dry "rm -f $C_TARGET/rules/$n" rm -f "$C_TARGET/rules/$n"
+    done
     # Prune empty rules subfolders left after file removal
     if [ "$DRY_RUN" -eq 0 ]; then
       find "$C_TARGET/rules" -mindepth 1 -type d -empty -delete 2>/dev/null || true

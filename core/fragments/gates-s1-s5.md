@@ -11,4 +11,4 @@ S4: Defensive code for impossible?    yes → make structurally impossible
 S5: Same pattern in 3+ places?        yes → centralize before commit
 ```
 
-Any "yes" → revise. S4 example: runtime null check → `Optional<T>` compiler-enforced. Details: `~/.claude/rules/code/code-quality.md`
+Any "yes" → revise. S4 example: runtime null check → `Optional<T>` compiler-enforced. Deep guide: skill `simplify-code`.

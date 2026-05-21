@@ -105,6 +105,23 @@ SessionStart hook. Codex `AGENTS.md` reduced to a judgment core (still a
 native managed block — Codex has no reliable plugin always-on surface).
 Gemini untouched (frozen). Gate enforcement preserved (hooks unchanged).
 
+## Post-redesign cleanup (not yet committed, 2026-05-21)
+
+Loose ends deferred during the slices, cleaned in one follow-up pass:
+- Inlined the agent protocol into the 16 Codex agent `.toml` files (parity
+  with the Claude `.md` agents from slice 5).
+- Deleted `core/rules/` entirely — all 4 `always-on/` files were now
+  unreferenced (judgment core in the hook, protocol inlined into agents).
+  `install.sh` sanity + uninstall reworked to the no-`core/rules/` shape.
+- Deleted the orphaned `core/fragments/team-trigger.md` (only the deleted
+  Claude `CLAUDE.md.tmpl` ever included it).
+- Dropped stale `Details: ~/.claude/rules/...` pointers from the gate +
+  verify-first fragments; fixed the `block-subagent-commit.sh` + README refs.
+- Re-synced the repo-root dogfood entry docs `AGENTS.md` (268 → 90 lines,
+  stale since slice 6) and `GEMINI.md` from the rendered output.
+- `lean-surface.sh` guard updated: asserts the whole `core/rules/` tree
+  stays deleted.
+
 ## Files in scope
 
 - `hooks/` — new `always-on-loader.sh`; existing `session-lifecycle.sh`,
