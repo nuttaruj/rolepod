@@ -134,17 +134,27 @@ jobs:
             printf '%s\n' "$out"
             exit 1
           fi
-          # Expected files — plugin layout (agents/skills/hooks ship inside
-          # plugins/rolepod/; rules/ stays a top-level copy).
+          # Expected files — pure-plugin layout (agents/skills/hooks ship
+          # inside plugins/rolepod/; only the path-scoped code/ + test/ rules
+          # stay a top-level copy — always-on judgment is hook-delivered).
           for rel in \
             plugins/rolepod/agents/qa-tester.md \
-            rules/INDEX.md \
+            rules/code/code-quality.md \
+            rules/test/testing.md \
             plugins/rolepod/skills/using-rolepod/SKILL.md \
             plugins/rolepod/.claude-plugin/plugin.json \
             plugins/rolepod/hooks/hooks.json
           do
             if [ ! -e "$ROLEPOD_TARGET/$rel" ]; then
               echo "::error::missing post-install file: $ROLEPOD_TARGET/$rel"
+              exit 1
+            fi
+          done
+          # Pure plugin — install writes no managed CLAUDE.md block and no
+          # always-on/ rules copy (the SessionStart hook delivers always-on).
+          for forbidden in CLAUDE.md rules/always-on; do
+            if [ -e "$ROLEPOD_TARGET/$forbidden" ]; then
+              echo "::error::install wrote $forbidden — should be pure plugin (no managed block / no always-on copy)"
               exit 1
             fi
           done
@@ -346,19 +356,23 @@ jobs:
         shell: bash
         run: |
           set -eo pipefail
-          # Use the claude target from earlier install. Seed user content
-          # OUTSIDE the rolepod managed block; verify it survives uninstall.
+          # Use the claude target from earlier install. The pure-plugin install
+          # writes no CLAUDE.md, but uninstall must still strip a stale rolepod
+          # managed block left by a pre-redesign install. Simulate that upgrade
+          # state: a CLAUDE.md with user content OUTSIDE a rolepod block.
           target="${ROLEPOD_CLAUDE_TARGET:?missing target from earlier step}"
           claude_md="$target/CLAUDE.md"
-          if [ ! -f "$claude_md" ]; then
-            echo "::error::expected $claude_md after install"
+          if [ -e "$claude_md" ]; then
+            echo "::error::pure-plugin install must not create $claude_md"
             exit 1
           fi
-          # Prepend a sentinel above the rolepod block.
           sentinel='### user-sentinel-DO-NOT-REMOVE ###'
-          tmp="$(mktemp)"
-          { printf '%s\n\n' "$sentinel"; cat "$claude_md"; } > "$tmp"
-          mv "$tmp" "$claude_md"
+          {
+            printf '%s\n\n' "$sentinel"
+            printf '<!-- rolepod:start -->\n'
+            printf 'stale managed block from a pre-redesign install\n'
+            printf '<!-- rolepod:end -->\n'
+          } > "$claude_md"
 
           # Run uninstall.
           out=$(bash install.sh --target=claude --uninstall --yes 2>&1) || {
@@ -376,7 +390,7 @@ jobs:
           # Rolepod artifacts gone.
           for rel in \
             plugins/rolepod/agents/qa-tester.md \
-            rules/INDEX.md \
+            rules/code/code-quality.md \
             plugins/rolepod/skills/using-rolepod/SKILL.md \
             plugins/rolepod/.claude-plugin/plugin.json
           do
@@ -385,7 +399,7 @@ jobs:
               exit 1
             fi
           done
-          # Managed block markers gone from CLAUDE.md.
+          # Stale managed-block markers stripped from CLAUDE.md.
           if grep -qE 'rolepod:(start|end)' "$claude_md"; then
             echo "::error::uninstall left rolepod managed-block markers in CLAUDE.md"
             exit 1
