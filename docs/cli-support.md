@@ -20,7 +20,7 @@ Phase 2.3: rolepod ships for each supported CLI as a **native plugin / extension
 
 | CLI | Plugin / extension destination | Always-on core destination |
 |---|---|---|
-| Claude Code | `~/.claude/plugins/rolepod/` (agents/, hooks/, skills/, commands/, .claude-plugin/) | SessionStart hook emits `hooks/always-on-core.md` (no CLAUDE.md) |
+| Claude Code | repo IS the marketplace — `.claude-plugin/marketplace.json` + committed `plugins/rolepod/` (agents/, hooks/, skills/, .claude-plugin/) at the repo root; `claude plugin marketplace add nuttaruj/rolepod` installs straight from GitHub | SessionStart hook emits `hooks/always-on-core.md` (no CLAUDE.md) |
 | Codex CLI | rolepod marketplace registered in `~/.codex/config.toml`; plugin tree resolved from `<repo>/build/rendered/codex/plugins/rolepod/` (.codex-plugin/, hooks/, skills/). The 18 agent TOMLs install to `~/.codex/agents/rolepod-*.toml` — Codex's plugin loader has no agents field | `~/.codex/AGENTS.md` |
 | Gemini CLI | `~/.gemini/extensions/rolepod/` (gemini-extension.json, GEMINI.md, hooks/, skills/) | `~/.gemini/extensions/rolepod/GEMINI.md` (extension context file) |
 

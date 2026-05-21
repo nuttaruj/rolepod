@@ -436,7 +436,7 @@ echo "  dry-run: $DRY_RUN"
 echo ""
 
 # ─── Sanity check source ────────────────────────────────────────────────
-for f in CHEATSHEET.md core/agents hooks core/skills .claude-plugin/plugin.json build/render.sh; do
+for f in CHEATSHEET.md core/agents hooks core/skills adapters/claude/.claude-plugin/plugin.json adapters/claude/.claude-plugin/marketplace.json build/render.sh; do
   [ -e "$REPO_DIR/$f" ] || fail "missing $f in $REPO_DIR — run from rolepod repo"
 done
 
@@ -827,7 +827,10 @@ if claude_selected; then
   CLAUDE_IS_TEMP_TARGET=0
   [ "$TARGET_RESOLVED" != "$CLAUDE_REAL_RESOLVED" ] && CLAUDE_IS_TEMP_TARGET=1
 
-  RENDERED_CLAUDE_DIR="$REPO_DIR/build/rendered/claude"
+  # The repo root IS the Claude marketplace — .claude-plugin/marketplace.json
+  # + plugins/rolepod/ are committed and refreshed by render. `claude plugin
+  # marketplace add` consumes the repo directly.
+  RENDERED_CLAUDE_DIR="$REPO_DIR"
   [ -d "$RENDERED_CLAUDE_DIR/plugins/rolepod" ] || fail "expected $RENDERED_CLAUDE_DIR/plugins/rolepod after render"
 
   if [ "$FORCE" -eq 1 ]; then CP_FLAG=""; else CP_FLAG="-n"; fi

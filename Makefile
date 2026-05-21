@@ -41,7 +41,8 @@ test-static:
 	@python3 -m json.tool adapters/codex/plugins/rolepod/hooks/hooks.json >/dev/null && echo "  ✓ codex hooks.json"
 	@python3 -m json.tool adapters/gemini/gemini-extension.json >/dev/null && echo "  ✓ gemini-extension.json"
 	@python3 -m json.tool adapters/gemini/hooks/hooks.json >/dev/null && echo "  ✓ gemini hooks.json"
-	@python3 -m json.tool .claude-plugin/plugin.json >/dev/null && echo "  ✓ claude plugin.json"
+	@python3 -m json.tool adapters/claude/.claude-plugin/plugin.json >/dev/null && echo "  ✓ claude plugin.json"
+	@python3 -m json.tool adapters/claude/.claude-plugin/marketplace.json >/dev/null && echo "  ✓ claude marketplace.json"
 	@python3 -m json.tool adapters/claude/hooks.json >/dev/null && echo "  ✓ claude hooks.json"
 	@python3 -c "import pathlib, tomllib; [tomllib.loads(p.read_text()) for p in pathlib.Path('adapters/codex/plugins/rolepod/agents').glob('*.toml')]" && echo "  ✓ codex agents/*.toml"
 	@python3 -c "import pathlib, tomllib; [tomllib.loads(p.read_text()) for p in pathlib.Path('adapters/gemini/commands').glob('*.toml')]" && echo "  ✓ gemini commands/*.toml"
@@ -85,18 +86,25 @@ test-render-clean:
 		git diff --stat -- core/fragments/; \
 		exit 1; \
 	fi
+	@if ! git diff --quiet -- .claude-plugin/ plugins/rolepod/ 2>/dev/null; then \
+		echo "  ✗ render-clean: committed Claude marketplace tree drifted from build/render.sh output."; \
+		echo "    Run: make render && git add .claude-plugin/ plugins/rolepod/ && commit."; \
+		git diff --stat -- .claude-plugin/ plugins/rolepod/; \
+		exit 1; \
+	fi
 	@for f in build/rendered/codex/AGENTS.md build/rendered/gemini/GEMINI.md; do \
 		[ -f "$$f" ] || { echo "  ✗ render-clean: expected output missing: $$f"; exit 1; }; \
 	done
-	@[ ! -f build/rendered/claude/CLAUDE.md ] || { echo "  ✗ render-clean: Claude ships no entry doc — build/rendered/claude/CLAUDE.md should not exist"; exit 1; }
-	@leak_files=$$(grep -rl '{{INCLUDE:' build/rendered/ 2>/dev/null || true); \
+	@[ -f .claude-plugin/marketplace.json ] && [ -f plugins/rolepod/.claude-plugin/plugin.json ] || { echo "  ✗ render-clean: committed Claude marketplace tree missing"; exit 1; }
+	@[ ! -f plugins/rolepod/CLAUDE.md ] || { echo "  ✗ render-clean: Claude ships no entry doc — plugins/rolepod/CLAUDE.md should not exist"; exit 1; }
+	@leak_files=$$(grep -rl '{{INCLUDE:' build/rendered/ plugins/rolepod/ 2>/dev/null || true); \
 	if [ -n "$$leak_files" ]; then \
 		echo "  ✗ render-clean: unresolved {{INCLUDE: ...}} placeholders in:"; \
 		echo "$$leak_files" | sed 's/^/      /'; \
 		exit 1; \
 	fi
-	@echo "  ✓ render-clean: core/fragments/ matches generator output"
-	@echo "  ✓ render-clean: build/rendered/ has AGENTS.md + GEMINI.md (Claude = pure plugin, no entry doc), no {{INCLUDE}} leak"
+	@echo "  ✓ render-clean: core/fragments/ + committed Claude marketplace tree match generator output"
+	@echo "  ✓ render-clean: codex AGENTS.md + gemini GEMINI.md present, no {{INCLUDE}} leak"
 
 test-integration:
 	@echo "── test-integration ──"
