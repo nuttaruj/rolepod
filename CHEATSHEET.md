@@ -6,12 +6,10 @@
 
 | Component | Claude Code | Codex CLI | Gemini CLI |
 |-----------|-------------|-----------|------------|
-| Entry doc | `~/.claude/CLAUDE.md` | `~/.codex/AGENTS.md` | `~/.gemini/extensions/rolepod/GEMINI.md` |
-| Always-on rules | `~/.claude/rules/always-on/` | (inlined in AGENTS.md) | (inlined in GEMINI.md) |
-| Path-scoped rules | `~/.claude/rules/{code,test}/` (paths: glob) | (inlined) | (inlined) |
+| Always-on core | SessionStart hook → `hooks/always-on-core.md` (additionalContext) | `~/.codex/AGENTS.md` | `~/.gemini/extensions/rolepod/GEMINI.md` |
 | Agents (18) | auto-discovered in plugin | `~/.codex/plugins/rolepod/agents/*.toml` | inlined in `GEMINI.md` |
 | Skills (10 + 1 alias) | auto-discovered in plugin | `~/.codex/plugins/rolepod/skills/<name>/SKILL.md` | `~/.gemini/extensions/rolepod/skills/<name>/SKILL.md` |
-| Hooks (core only) | 6 core hooks in `~/.claude/plugins/rolepod/hooks/hooks.json` | 3 core hooks in `~/.codex/plugins/rolepod/hooks/hooks.json` | 4 core hooks in `~/.gemini/extensions/rolepod/hooks/hooks.json` |
+| Hooks (core only) | 7 core hooks in `~/.claude/plugins/rolepod/hooks/hooks.json` | 3 core hooks in `~/.codex/plugins/rolepod/hooks/hooks.json` | 4 core hooks in `~/.gemini/extensions/rolepod/hooks/hooks.json` |
 | Slash commands | `/rolepod-full` (skill) | `$rolepod-full` (skill) | `/rolepod-full` (skill) |
 
 ## Active gates
@@ -133,17 +131,12 @@ Lead = Opus → skip Advisor.
 | Spawn reviewer / adversarial review | skill `review-code` |
 | Multi-agent / scope unclear | skill `manage-context` |
 | Pick agent / cohesion contract | skill `write-plan` |
-| Subagent protocol | `agent-protocol.md` |
-| Tools (search/GitNexus/MemPalace) | `code-intel.md` |
-| Workflow stage map | `code-intel-workflow.md` |
-| Claim a fact | `verify-first.md` |
+| Claim a fact | (always-on via SessionStart hook) |
 | Verify code change | skill `check-work` |
-| Tone / CEO modes | `communication.md` |
-| Code edit pattern | `code-quality.md` |
+| Tone / CEO modes | (always-on via SessionStart hook) |
 | New project / `/init` | skill `manage-context` |
 | Context / `/clear` / `/rewind` | skill `manage-context` |
 | Stuck (Sonnet/Haiku) | skill `manage-context` |
-| Testing / CI lanes | `testing.md` |
 
 ## Key commands per-CLI
 
@@ -181,12 +174,13 @@ Default Lead path = **Tier 0 + Tier 1** (router + 9 Core 10 phase skills) = 10 s
 
 Optional add-on skills (caveman, gitnexus-*, ui-ux-pro-max) integrate when the user installs them — see README → Recommended add-ons.
 
-## Hooks active — 6 core hooks (no add-on hooks)
+## Hooks active — 7 core hooks (no add-on hooks)
 
-### Claude (6 core hooks in plugin `hooks/hooks.json`, all self-guarded)
+### Claude (7 core hooks in plugin `hooks/hooks.json`, all self-guarded)
 
 | Event | Script | Role |
 |-------|--------|------|
+| SessionStart | `always-on-loader.sh` | emit `hooks/always-on-core.md` as additionalContext |
 | SessionStart | `project-context-loader.sh` | git context (repo / branch / dirty / recent / hot 7d) |
 | SessionStart | `session-lifecycle.sh --lock` | sibling-session warning |
 | PreToolUse (Edit/Write on high-risk paths) | `gate-reminder.sh` | schema-bound + RED-test + reviewer-floor |
@@ -232,9 +226,8 @@ Session N+1 → SessionStart → MemPalace recall → smarter
 1. User explicit instruction this turn
 2. Project nested entry doc
 3. Project root entry doc
-4. `core/rules/always-on/*.md` (eager) + `core/rules/{code,test}/*.md` (paths: lazy)
-5. Global entry doc
-6. CLI vendor best practice
+4. Global entry doc (SessionStart hook injects always-on core for Claude)
+5. CLI vendor best practice
 
 Conflict unsafe → ask user.
 
@@ -257,4 +250,4 @@ Conflict unsafe → ask user.
 
 ---
 
-Full guide: your CLI's entry doc → drill into `core/rules/` via [`core/rules/INDEX.md`](core/rules/INDEX.md).
+Full guide: your CLI's entry doc or SessionStart hook → full skill and agent references per CLI.

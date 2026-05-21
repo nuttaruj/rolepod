@@ -1,6 +1,6 @@
 # Hooks reference
 
-Rolepod ships **6 core bash hook scripts** in `hooks/`. Each CLI adapter declares these in a plugin/extension `hooks/hooks.json` — Claude, Codex, and Gemini all use the same `hooks/hooks.json` form. All hooks are **self-guarded** — silent no-op when a dependency is missing.
+Rolepod ships **7 core bash hook scripts** in `hooks/`. Each CLI adapter declares these in a plugin/extension `hooks/hooks.json` — Claude, Codex, and Gemini all use the same `hooks/hooks.json` form. All hooks are **self-guarded** — silent no-op when a dependency is missing.
 
 Lead does not invoke these manually. They fire automatically.
 
@@ -8,11 +8,12 @@ Lead does not invoke these manually. They fire automatically.
 
 | Category | Hooks | Purpose |
 |---|---|---|
+| **Always-on** | `always-on-loader` | Inject the rolepod always-on judgment core as SessionStart context |
 | **Enforcement** | `block-subagent-commit`, `cohesion-contract-check`, `gate-reminder`, `precommit-gate` | Hard / soft blocks on discipline violations (high-risk path, parallel-without-contract, sub-agent commit, schema-bound new file) |
 | **Context** | `project-context-loader` | Inject git state at SessionStart |
 | **Session safety** | `session-lifecycle` | SessionStart lock + Stop unlock — prevents concurrent-edit stomp |
 
-All 6 hooks register on every install. MemPalace and GitNexus integrate via their own vendor plugins/CLI, not rolepod hooks.
+All 7 hooks register on every Claude install. MemPalace and GitNexus integrate via their own vendor plugins/CLI, not rolepod hooks.
 
 PR 6 dropped `verify-reminder.sh` (PostToolUse Edit/Write per-edit nag). The same discipline lives in:
 - skill `check-work` — Iron Rule + evidence-required output contract
@@ -25,13 +26,30 @@ A per-edit reminder hook duplicated all three without enforcement teeth — so i
 
 | Event | Matcher | Hooks |
 |---|---|---|
-| `SessionStart` | `startup\|resume` | `project-context-loader.sh`, `session-lifecycle.sh --lock` |
+| `SessionStart` | `startup\|resume` | `always-on-loader.sh`, `project-context-loader.sh`, `session-lifecycle.sh --lock` |
 | `PreToolUse` | `Edit\|Write\|MultiEdit` | `gate-reminder.sh` |
 | `PreToolUse` | `Bash` | `precommit-gate.sh`, `block-subagent-commit.sh` |
 | `PreToolUse` | `Agent` | `cohesion-contract-check.sh` |
 | `Stop` | (no matcher) | `session-lifecycle.sh --unlock` |
 
 ## Per-hook reference
+
+### `always-on-loader.sh` — SessionStart (core)
+
+Deliver the rolepod always-on judgment core to a Claude session. A Claude
+Code plugin has no always-on instruction surface — a plugin-root file is not
+loaded — so this hook is that surface. It is why the pure-plugin install
+writes nothing into `~/.claude/CLAUDE.md`.
+
+- **Effect**: reads the judgment core shipped beside the script
+  (`hooks/always-on-core.md`, ~3KB — verify-first, simplest-viable,
+  code-search, communication, risky actions, hard stops) and emits it as
+  SessionStart `additionalContext`.
+- **Self-guards**: core file missing → silent exit; non-JSON failure → emits
+  `{}` rather than crashing the session.
+- **Claude-only**: Codex loads its always-on core natively from
+  `~/.codex/AGENTS.md`; Gemini from its extension `GEMINI.md`. Neither
+  registers this hook.
 
 ### `project-context-loader.sh` — SessionStart (core)
 
@@ -52,7 +70,7 @@ Detect sibling Claude session(s) in the same worktree to prevent concurrent-edit
 
 ### `gate-reminder.sh` — PreToolUse Edit/Write/MultiEdit (core)
 
-Schema-bound + high-risk edit guard. Silent on normal code edits (PR 5 slim — generic Q1-Q4 reminder moved to CLAUDE.md / AGENTS.md / using-rolepod skill, read once per session, not per edit).
+Schema-bound + high-risk edit guard. Silent on normal code edits (PR 5 slim — the generic Q1-Q4 reminder lives in the always-on core / AGENTS.md / the using-rolepod skill, read once per session, not per edit).
 
 Fires output ONLY when:
 1. **Schema-bound NEW file** (plugin.json, marketplace.json, hooks.json, extension manifests) → soft warn: WebFetch spec FIRST.
@@ -143,7 +161,7 @@ Root `hooks/*.sh` is canonical. The Codex adapter mirrors only the hooks whose e
 
 - **3 core** byte-exact mirrors: `gate-reminder.sh`, `precommit-gate.sh`, `project-context-loader.sh`.
 
-`block-subagent-commit`, `cohesion-contract-check`, `session-lifecycle` stay Claude-only (Codex has no `Agent` event API and no `Stop` event for unlock).
+`always-on-loader`, `block-subagent-commit`, `cohesion-contract-check`, `session-lifecycle` stay Claude-only (`always-on-loader` is unnecessary on Codex/Gemini — they load their always-on core natively from `AGENTS.md` / `GEMINI.md`; Codex also has no `Agent` event API and no `Stop` event for unlock).
 
 `tests/static/lean-surface.sh` enforces byte-exact parity between root and Codex adapter for the shared hooks (3 core) — any drift fails the release gate.
 
@@ -160,4 +178,4 @@ claude plugin details rolepod@rolepod
 # Component inventory should list a Hooks line covering SessionStart, PreToolUse, Stop
 ```
 
-Expected: 6 core hooks (SessionStart × 2, PreToolUse × 3, Stop × 1).
+Expected: 7 core hooks (SessionStart × 3, PreToolUse × 3, Stop × 1).
