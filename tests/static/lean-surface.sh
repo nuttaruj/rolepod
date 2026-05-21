@@ -87,6 +87,14 @@ else
   fail=$((fail+1))
 fi
 
+# ── No path-scoped rules directory (spec: pure plugin) ────────────────
+# code/ + test/ rules were folded into the phase skills (slice 4). The
+# dirs must stay deleted — re-adding them re-introduces a parallel
+# guidance surface that drifts from the skills.
+for d in core/rules/code core/rules/test; do
+  check "no $d directory (folded into phase skills)" "[ ! -d $d ]"
+done
+
 check "rolepod-full rendered as a Command alias section (not Tier 0/1)" "grep -q '^### Command [Aa]lias' core/fragments/skill-index-lean.md"
 check "router documents /rolepod-full as the force-full entrypoint" "grep -q '/rolepod-full' $RTR"
 check "router demotes bare /rolepod + 'no skip' from force-full triggers" "grep -q 'are NOT force-full triggers' $RTR"

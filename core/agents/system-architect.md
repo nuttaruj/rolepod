@@ -63,7 +63,7 @@ Before engineers parallel-execute:
 ## Rules
 
 - Decision includes trade-offs (not just chosen path) + alternatives + why rejected
-- Save load-bearing decisions to MemPalace KG (`mempalace_kg_add`) per `code-intel-workflow.md`
+- Save load-bearing decisions to MemPalace KG (`mempalace_kg_add`) when GitNexus / MemPalace is installed
 - API contract backwards-compatible unless explicit BREAKING approval
 
 ## Hard stops

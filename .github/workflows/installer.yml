@@ -134,13 +134,11 @@ jobs:
             printf '%s\n' "$out"
             exit 1
           fi
-          # Expected files — pure-plugin layout (agents/skills/hooks ship
-          # inside plugins/rolepod/; only the path-scoped code/ + test/ rules
-          # stay a top-level copy — always-on judgment is hook-delivered).
+          # Expected files — pure-plugin layout: agents / skills / hooks all
+          # ship inside plugins/rolepod/. No rules/ copy — path-scoped
+          # guidance is folded into the skills, always-on into the hook.
           for rel in \
             plugins/rolepod/agents/qa-tester.md \
-            rules/code/code-quality.md \
-            rules/test/testing.md \
             plugins/rolepod/skills/using-rolepod/SKILL.md \
             plugins/rolepod/.claude-plugin/plugin.json \
             plugins/rolepod/hooks/hooks.json
@@ -151,10 +149,10 @@ jobs:
             fi
           done
           # Pure plugin — install writes no managed CLAUDE.md block and no
-          # always-on/ rules copy (the SessionStart hook delivers always-on).
-          for forbidden in CLAUDE.md rules/always-on; do
+          # rules/ copy at all (skills + the SessionStart hook carry it).
+          for forbidden in CLAUDE.md rules/always-on rules/code rules/test; do
             if [ -e "$ROLEPOD_TARGET/$forbidden" ]; then
-              echo "::error::install wrote $forbidden — should be pure plugin (no managed block / no always-on copy)"
+              echo "::error::install wrote $forbidden — should be pure plugin (no managed block / no rules copy)"
               exit 1
             fi
           done
@@ -390,7 +388,6 @@ jobs:
           # Rolepod artifacts gone.
           for rel in \
             plugins/rolepod/agents/qa-tester.md \
-            rules/code/code-quality.md \
             plugins/rolepod/skills/using-rolepod/SKILL.md \
             plugins/rolepod/.claude-plugin/plugin.json
           do

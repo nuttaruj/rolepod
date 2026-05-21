@@ -93,11 +93,11 @@ Any failure → fix or report; do not merge.
 
 ### 2. CI lane discipline
 
-| Lane | Required for merge? |
-|------|---------------------|
-| Phase 1 (always-on, < 5 min) | YES |
-| Phase 2 (path-triggered) | YES when triggered |
-| Phase 3 (nightly / manual) | NO (post-merge notify only) |
+| Lane | Content | Required for merge? |
+|------|---------|---------------------|
+| Phase 1 (always-on, < 5 min) | lint · typecheck · smoke unit · auth / tenant guard · money core · migration apply · build | YES |
+| Phase 2 (path-triggered) | the touched module's full test suite | YES when triggered |
+| Phase 3 (nightly / manual) | integration · E2E · chaos · security deep · perf benchmark | NO (post-merge notify only) |
 
 Red required lane → Lead fixes and re-pushes; do not ask user permission for each iteration of fix-and-rerun once the merge intent is approved.
 
