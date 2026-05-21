@@ -65,6 +65,8 @@ Run the touched module's test suite. If red, fix or write tests first. You canno
 
 ### 2. Scan for these patterns
 
+Before removing anything, `git blame` the origin commit — code with no callers may still encode a reason (Chesterton's Fence). Verify the why, not just the call sites.
+
 | Pattern | Action |
 |---------|--------|
 | Interface / type with one implementation | Inline the impl, delete the interface |

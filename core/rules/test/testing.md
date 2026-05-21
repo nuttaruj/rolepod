@@ -69,6 +69,7 @@ Read when: planning task / before commit / question on what to test.
 - Unit = business logic depth (every branch)
 - Integration = critical paths (auth/payments/migrations/external/locks)
 - **Never mock DB in integration tests** — mock/prod divergence burns
+- Prefer real > fake > stub > mock — reach for a mock only when the real dependency is slow, non-deterministic, or external
 - Contract when changing API surface
 - E2E sparingly — slow + flaky
 

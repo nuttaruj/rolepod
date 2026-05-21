@@ -108,6 +108,8 @@ QUESTIONS
 
 After the author fixes, re-read the diff. Confirm fixes don't introduce new BLOCKER / MAJOR issues. The reviewer who flagged the issue is not the final authority on whether it is fixed — Lead or qa-tester gives the final APPROVED.
 
+When author and reviewer disagree on the merits, resolve by precedence: technical data > documented style guide > engineering principle > codebase consistency.
+
 ## If a matching Rolepod agent is available
 
 Delegate the review to the closest specialist:

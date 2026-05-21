@@ -65,6 +65,10 @@ Smallest reversible unit first. Tests-first for bugs, features, and high-risk su
 
 Prefer vertical slices — each task cuts through all layers and is demoable on its own — over horizontal layers (all schema, then all API). Many thin slices beat a few thick ones.
 
+When one slice carries a major unknown (a new integration, an unproven assumption), sequence it first — fail fast before investing in dependent slices.
+
+Break a task down further if any holds: >2hr of work, acceptance needs more than 3 bullets, it touches 2+ independent subsystems, or its title contains "and".
+
 ### 3. Test plan per task
 
 For each task, name the test type (unit / integration / contract / E2E / smoke / benchmark / repro) and the assertion that would prove it works. "Adds tests" is not a test plan.
