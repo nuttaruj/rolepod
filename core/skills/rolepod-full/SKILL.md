@@ -23,6 +23,19 @@ If the `using-rolepod` skill is available, use it in **force-full-lifecycle mode
 
 If `using-rolepod` is not available (this skill was copied standalone), run the embedded fallback at the bottom.
 
+## Boundary
+
+Owns:
+- Explicit `/rolepod-full` intent and execution backend selection.
+- Start banner: phase, execution backend, no phase skips.
+
+Does not own:
+- Router table, phase definitions, agent roster, domain expertise.
+
+Hand off:
+- Use `using-rolepod` force-full mode when available.
+- If standalone, run the fallback checklist only.
+
 ## Step 2 — pick the execution backend
 
 Every CLI runs the same intent; only the backend differs by capability. Pick the best available and announce it at the start.
@@ -64,7 +77,3 @@ If copied standalone, run the lifecycle directly as Lead:
 6. **Ship** — present an explicit finish choice (merge / PR / keep / discard). Never auto-pick.
 
 This fallback is ~70% of the full behavior. With `using-rolepod` present it is router-backed; with a full Rolepod install it is best.
-
-## Not here
-
-No domain expertise, no agent roster, no router table. This file only forces the lifecycle and selects a backend — routing logic lives in `using-rolepod`.

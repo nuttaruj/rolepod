@@ -33,6 +33,23 @@ Skip when:
 - The "complexity" is load-bearing (security boundary, data invariant)
 - It is mid-feature; finish the feature first
 
+## Boundary
+
+Owns:
+- Behavior-preserving complexity cuts: inline single-use helpers, delete unused config, centralize repeated patterns, structural simplification.
+
+Does not own:
+- Feature changes.
+- Bug fixes with unknown root cause.
+- Refactors without a test baseline.
+- Product / API behavior changes.
+
+Return / hand off:
+- Behavior must change → `write-spec` or `write-plan`.
+- Tests missing for a risky area → `implement-plan` to add baseline tests.
+- Bug found while simplifying → `debug-issue`.
+- Simplification complete → `check-work`.
+
 ## Inputs to gather
 
 - The code region or file(s) flagged as complex

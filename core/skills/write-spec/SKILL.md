@@ -32,6 +32,21 @@ Skip when:
 - The user has already supplied a written spec
 - The user explicitly says "skip spec" or "just write the code"
 
+## Boundary
+
+Owns:
+- WHAT / WHY / scope / non-goals / success criteria / risk surfaces / chosen direction / user approval.
+
+Does not own:
+- File-by-file implementation order.
+- Agent file ownership.
+- Exact test commands per task.
+- Editing code.
+
+Hand off:
+- Approved spec → `write-plan`.
+- If the user already supplied a complete spec → skip to `write-plan`.
+
 ## Inputs to gather
 
 - Exact user request (literal quote)

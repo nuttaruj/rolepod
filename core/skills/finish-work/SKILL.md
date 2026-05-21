@@ -31,6 +31,22 @@ Skip when:
 - The branch is not yet implementation-complete
 - User explicitly said "don't ship, just experiment"
 
+## Boundary
+
+Owns:
+- Branch fate: merge, PR, keep open, discard.
+- Pre-merge gate, CI lane discipline, release / launch checklist.
+
+Does not own:
+- New feature scope.
+- New review discovery except gate failures.
+- Implementing fixes directly.
+
+Return / hand off:
+- Gate fails on evidence → `check-work`.
+- Gate fails on reviewer / blocker → `review-code` or `implement-plan`.
+- User has not authorized merge / push → ask, do not act.
+
 ## Inputs to gather
 
 - The branch name and base

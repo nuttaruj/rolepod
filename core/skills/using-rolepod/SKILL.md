@@ -109,6 +109,18 @@ Next step: <first question or context read>
 | "User probably meant just Build" | If they wanted just Build they'd type the task without `/rolepod-full`. Read the directive literally. |
 | "I'll merge Define + Plan into one turn to save time" | Each phase has its own exit evidence. Run them sequentially. |
 
+## Boundary
+
+Owns:
+- Phase selection, skip decision, force-full detection, next skill.
+
+Does not own:
+- Detailed spec content, task planning, implementation, verification, review findings, or branch fate.
+- Specialist / domain decisions before the phase is clear.
+
+Hand off:
+- Once the phase is chosen, the phase skill owns its own gates.
+
 ## Quick router
 
 Match the user intent to the FIRST skill that fires. The skill itself decides what comes next. The **Model tier** column hints which agent tier is appropriate when the work delegates — see `core/fragments/model-tier-policy.md` for the full policy.

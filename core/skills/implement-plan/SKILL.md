@@ -30,6 +30,23 @@ Skip when:
 - The task is a question only
 - The plan is still vague — go back to `write-plan` first
 
+## Boundary
+
+Owns:
+- Executing the approved plan.
+- Reading touched files, making surgical edits, writing/running task-level tests, bounded delegation.
+
+Does not own:
+- Changing product scope.
+- Redesigning the plan silently.
+- Declaring final done.
+- Merging or branch fate.
+
+Return / hand off:
+- Plan vague / wrong / missing file → return to `write-plan`.
+- Root cause unknown → `debug-issue`.
+- Edits complete → `check-work`.
+
 ## Inputs to gather
 
 - The plan or task list (file paths, ordered tasks, tests)

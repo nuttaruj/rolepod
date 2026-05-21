@@ -31,6 +31,22 @@ Skip when:
 - The change is a no-op (comment, whitespace, docstring) with no behavior risk
 - The user explicitly said "just commit, I'll verify"
 
+## Boundary
+
+Owns:
+- Fresh evidence that the change works: tests, build, curl, logs, screenshot / browser.
+- Verification limits and the risk statement when evidence is impossible.
+
+Does not own:
+- Finding new design / code issues beyond verification failures.
+- Merge / PR / branch fate.
+- Rewriting implementation unless evidence fails.
+
+Return / hand off:
+- Evidence fails → `debug-issue` or `implement-plan`.
+- Evidence passes and risk exists → `review-code`.
+- Evidence passes and low risk → `finish-work`.
+
 ## Inputs to gather
 
 - The diff (file list + changed regions)

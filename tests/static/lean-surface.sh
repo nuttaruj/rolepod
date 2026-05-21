@@ -92,6 +92,24 @@ fi
 # into the shared review-code skill.
 check "review-code routes adversarial review model-relative (not a fixed CLI)" "grep -q 'different from the Lead' core/skills/review-code/SKILL.md"
 
+# ── Skill boundary sections (PR 16) ───────────────────────────────────
+# Every skill carries a labeled `## Boundary` (Owns / Does not own /
+# Hand off) so Lead routes cleanly and phases do not duplicate work.
+BOUNDARY_MISSING=""
+for s in using-rolepod rolepod-full write-spec write-plan implement-plan debug-issue check-work review-code finish-work simplify-code manage-context; do
+  grep -q '^## Boundary' "core/skills/$s/SKILL.md" 2>/dev/null || BOUNDARY_MISSING="${BOUNDARY_MISSING}${s} "
+done
+if [ -z "$BOUNDARY_MISSING" ]; then
+  echo "  ✓ all 11 skills carry a ## Boundary section"
+else
+  echo "  ✗ skills missing ## Boundary: $BOUNDARY_MISSING"
+  fail=$((fail+1))
+fi
+check "write-spec Boundary owns WHAT / WHY" "grep -q 'WHAT / WHY' core/skills/write-spec/SKILL.md"
+check "write-plan Boundary owns HOW / WHO / WHERE / ORDER" "grep -q 'HOW / WHO / WHERE / ORDER' core/skills/write-plan/SKILL.md"
+check "implement-plan Boundary keeps the plan/execute split" "grep -q 'Redesigning the plan' core/skills/implement-plan/SKILL.md"
+check "rolepod-full Boundary disclaims the router table" "grep -q 'Router table' core/skills/rolepod-full/SKILL.md"
+
 # ── Stale doc count keywords — guard against drift in prose ────────────
 # After every skill add/remove, the count appears in ~6 places (README,
 # CHEATSHEET, docs/cli-support.md, docs/skill-inventory-audit.md, plugin

@@ -34,6 +34,22 @@ Skip when:
 - The user explicitly accepts the change with no review
 - The change is < 5 lines, single file, zero logic, NOT high-risk
 
+## Boundary
+
+Owns:
+- Risk-appropriate second-pass review.
+- Finding discovery, severity ordering, adversarial read.
+
+Does not own:
+- Silent implementation fixes.
+- Final merge / PR decision.
+- Re-running the full verification suite unless needed to validate a finding.
+
+Return / hand off:
+- Findings need fixes → `implement-plan` or `debug-issue`.
+- Fixes landed → `check-work`.
+- No blockers → `finish-work`.
+
 ## Inputs to gather
 
 - The diff (`git diff` or PR view)
