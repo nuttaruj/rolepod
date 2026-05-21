@@ -85,9 +85,10 @@ test-render-clean:
 		git diff --stat -- core/fragments/; \
 		exit 1; \
 	fi
-	@for f in build/rendered/claude/CLAUDE.md build/rendered/codex/AGENTS.md build/rendered/gemini/GEMINI.md; do \
+	@for f in build/rendered/codex/AGENTS.md build/rendered/gemini/GEMINI.md; do \
 		[ -f "$$f" ] || { echo "  ✗ render-clean: expected output missing: $$f"; exit 1; }; \
 	done
+	@[ ! -f build/rendered/claude/CLAUDE.md ] || { echo "  ✗ render-clean: Claude ships no entry doc — build/rendered/claude/CLAUDE.md should not exist"; exit 1; }
 	@leak_files=$$(grep -rl '{{INCLUDE:' build/rendered/ 2>/dev/null || true); \
 	if [ -n "$$leak_files" ]; then \
 		echo "  ✗ render-clean: unresolved {{INCLUDE: ...}} placeholders in:"; \
@@ -95,7 +96,7 @@ test-render-clean:
 		exit 1; \
 	fi
 	@echo "  ✓ render-clean: core/fragments/ matches generator output"
-	@echo "  ✓ render-clean: build/rendered/ has CLAUDE.md + AGENTS.md + GEMINI.md, no {{INCLUDE}} leak"
+	@echo "  ✓ render-clean: build/rendered/ has AGENTS.md + GEMINI.md (Claude = pure plugin, no entry doc), no {{INCLUDE}} leak"
 
 test-integration:
 	@echo "── test-integration ──"
