@@ -83,7 +83,7 @@ Enforced via PreToolUse Bash hook (`hooks/block-subagent-commit.sh`) — Claude 
 
 Why this rule exists: real-world failure observed where a backend-developer sub-agent committed after marking COMPLETED + tsc=0, bypassing the qa-tester floor entirely. Soft reminder hooks were already in place but ignored under "success cue" flow-state. Hard block via permission deny is the only mechanism that survives flow-state drift.
 
-**Scope:** the rule itself applies universally; the hook-based enforcement is currently Claude Code only. Codex CLI sub-agent identity in hook input is unverified + Codex `plugin_hooks` flag is opt-in (default `under development, false`); Gemini CLI hook event model differs (no Agent matcher). On Codex/Gemini the rule relies on Lead self-discipline reading AGENTS.md / GEMINI.md until upstream parity exists.
+**Scope:** the rule itself applies universally; the hook-based enforcement is currently Claude Code only. Codex CLI's PreToolUse hook input exposes no caller identity — there is no `agent_id` or sub-agent field (confirmed against the Codex hooks docs), so Lead vs sub-agent cannot be distinguished; Codex plugin-bundled hooks are also opt-in via `[features].plugin_hooks`. Gemini CLI hook event model differs (no Agent matcher). On Codex/Gemini the rule relies on Lead self-discipline reading AGENTS.md / GEMINI.md until upstream parity exists.
 
 ## 11. Discipline gates — high-risk path enforcement (Claude scope)
 
