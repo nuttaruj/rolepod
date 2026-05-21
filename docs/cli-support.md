@@ -8,10 +8,10 @@ Phase 2.3: rolepod ships for each supported CLI as a **native plugin / extension
 |---|---|---|---|
 | Always-on instructions | `~/.claude/CLAUDE.md` (native) | `~/.codex/AGENTS.md` (native) | `~/.gemini/extensions/rolepod/GEMINI.md` (extension context file) |
 | Lazy-load rules (Read on trigger) | full | full | full |
-| Skills (`<plugin>/skills/<name>/SKILL.md`) | 10 Core 10 (native) | 10 Core 10 (native) | 10 Core 10 (native) |
+| Skills (`<plugin>/skills/<name>/SKILL.md`) | 10 Core 10 + 1 alias (native) | 10 Core 10 + 1 alias (native) | 10 Core 10 + 1 alias (native) |
 | Subagents (parallel team) | full Task / SendMessage (18 agents) | 18 agents as Codex `agents/*.toml` (Lead-orchestrated) | 18 agents inlined in `GEMINI.md` (Lead-orchestrated) |
 | Hooks (core only) | 6 core hooks in the plugin's `hooks/hooks.json` · auto-registered on install | 3 core hooks across `SessionStart`/`PreToolUse` · hooks require `plugin_hooks` opt-in | 4 core hooks across `SessionStart`/`BeforeTool`/`AfterTool`/`PreCompress` |
-| Slash commands | `/rolepod-team` (slash) + `/rolepod` (skill explicit-invoke) | n/a (Codex slash schema — `/rolepod` reaches the skill via Codex skill-slash UI) | `/rolepod` via skill (no native `.toml` commands — phase commands were dropped to match Claude's design) |
+| Slash commands | `/rolepod-full` (skill — force-full lifecycle) | `$rolepod-full` (skill via Codex skill UI) | `/rolepod-full` (skill; no native `.toml` commands) |
 | Plugin manifest | `.claude-plugin/plugin.json` (spec-conformant, 598B) | `.codex-plugin/plugin.json` (mirrors caveman schema, 1.6KB) | `gemini-extension.json` (extension schema, 551B) |
 | MemPalace / GitNexus integration | vendor install via marketplace plugin (MemPalace) + MCP (GitNexus); rolepod provides workflow rules | vendor install via `.codex-plugin` (MemPalace) + MCP (GitNexus); rolepod provides workflow rules | vendor install via MCP (GitNexus); MemPalace manual; rolepod provides workflow rules |
 | MCP server config | global + per-plugin | global (`codex mcp`) | global (`gemini mcp`) |
@@ -104,10 +104,10 @@ _Last verified: 2026-05-10 on macOS (Darwin 25.4.0), Codex 0.130.0, Gemini 0.40.
 **Claude Code** — Production. Hooks/agents/skills load on session start; verified across the dev loop in this repository.
 
 **Gemini CLI 0.40.1** — Production:
-- `gemini skills list` enumerates all 10 rolepod Core 10 skills from `~/.gemini/extensions/rolepod/skills/`.
+- `gemini skills list` enumerates all 11 rolepod skills (Core 10 + the `rolepod-full` alias) from `~/.gemini/extensions/rolepod/skills/`.
 - SessionStart hook fires and emits the rolepod gates banner ("rolepod gates: S1-S5 simplicity + T1-T6 tests + Q1-Q4 delegation + F1-F5 failure-mode") on every Gemini session.
 - The model recognizes the extension by name and version (`rolepod (v0.2.0)`) when asked.
-- No native `.toml` slash commands ship — `/rolepod` reaches the `using-rolepod` skill via Gemini's skill auto-trigger, same as Claude/Codex. Phase commands (`/spec`/`/plan`/`/review`/`/test`/`/ship`) were dropped to match Claude's design (commits 0f8de4f / 6da9fe0 documented pattern-match drift).
+- No native `.toml` slash commands ship — `/rolepod-full` is the `rolepod-full` skill, invocable across Claude/Codex/Gemini skill UIs. Phase commands (`/spec`/`/plan`/`/review`/`/test`/`/ship`) were dropped to match Claude's design (commits 0f8de4f / 6da9fe0 documented pattern-match drift).
 - Caveat: the bundled SessionStart hook expects ripgrep — falls back to GrepTool with a one-line warning. Cosmetic only.
 
 **Codex CLI 0.130.0** — Production:
@@ -144,7 +144,7 @@ Claude Code supports both global and project-level configuration. Rolepod instal
 ```
 
 Runs `claude plugin marketplace add <rendered-dir>` + `claude plugin install rolepod@rolepod --scope user` to register and enable the plugin. Installs:
-- `~/.claude/plugins/rolepod/` (plugin tree: agents, skills, hooks, commands, manifest)
+- `~/.claude/plugins/rolepod/` (plugin tree: agents, skills, hooks, manifest)
 - `~/.claude/CLAUDE.md` (managed block — your existing content preserved)
 - `~/.claude/rules/{always-on,code,test}/` (always-on and path-scoped rules — script-installed, no plugin model for rules)
 - Plugin hooks (6 core) in the plugin's `hooks/hooks.json` using `${CLAUDE_PLUGIN_ROOT}` paths
@@ -291,7 +291,7 @@ cd /your/project
 ```
 
 Installs:
-- `~/.gemini/extensions/rolepod/` (full extension: `GEMINI.md` context file, 18 agents inlined, 10 Core 10 skills, 4 hooks)
+- `~/.gemini/extensions/rolepod/` (full extension: `GEMINI.md` context file, 18 agents inlined, 11 skills, 4 hooks)
 - The global `~/.gemini/GEMINI.md` is left untouched — rolepod's context loads via the extension's `contextFileName`. A pre-PR-8 install's stale managed block in the global file is stripped on the next run.
 
 ### Project-level GitNexus index (one-time per repo)
@@ -313,7 +313,7 @@ Create `GEMINI.md` at the repo root with project-specific overrides. Gemini prec
 gemini extensions list
 # Should show 'rolepod' as an enabled extension
 gemini
-# /rolepod available via using-rolepod skill explicit-invoke (cross-CLI)
+# /rolepod-full available via the rolepod-full skill (cross-CLI)
 # Hooks fire automatically (SessionStart / BeforeTool / AfterTool)
 ```
 

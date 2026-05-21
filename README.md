@@ -145,22 +145,21 @@ Rolepod's value-add is **workflow rules** (when to call `gitnexus_impact`, `memp
 
 After install, restart the CLI you targeted so the plugin system loads.
 
-> **`/rolepod-team` — adaptive parallel orchestration (Claude only).**
-> Always works. Adapts silently to the environment:
-> - Claude v2.1.32+ AND `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` → real multi-process teammates per [official agent-teams spec](https://code.claude.com/docs/en/agent-teams)
-> - Any other Claude state → Subagent + Task + cohesion contract (single-process, same outcome shape)
+> **`/rolepod-full` — force-full lifecycle (cross-CLI).**
+> A normal prompt auto-routes through the `using-rolepod` skill — lean, phase skips allowed, the user invokes nothing. For the deliberate full lifecycle the user invokes **`/rolepod-full`** (or `$rolepod-full`): Define → Plan → Build → Verify → Review → Ship, no phase skips.
 >
-> No friction either way — invoke it, get parallel work. Lead does not announce which mode it picked.
+> `/rolepod-full` picks the best execution backend per CLI:
+> - **Claude with agent-teams enabled** → real multi-process teammates per [official agent-teams spec](https://code.claude.com/docs/en/agent-teams)
+> - **Claude without agent-teams** → Subagent + Task + cohesion contract (single-process, same outcome shape)
+> - **Codex / Gemini** → native subagent dispatch; inline fallback when unsupported
 >
-> **Want real teammate mode?** Add to `~/.claude/settings.json`:
+> **Want real teammate mode on Claude?** Add to `~/.claude/settings.json`:
 > ```json
 > { "env": { "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1" } }
 > ```
-> Plus Claude Code v2.1.32+ (`claude --version`). Note: also set `ROLEPOD_ALLOW_SHARED_WORKTREE=1` before spawning the team so rolepod's session-lock hook doesn't warn on teammate sessions sharing the Lead's worktree.
+> Plus Claude Code v2.1.32+ (`claude --version`). Also set `ROLEPOD_ALLOW_SHARED_WORKTREE=1` before spawning a team so rolepod's session-lock hook doesn't warn on teammate sessions sharing the Lead's worktree.
 >
-> Per-phase team commands (`/team-define`, `/team-build`, etc.) removed — they were subagent recipes that Lead routinely pattern-matched into regular dispatch.
->
-> Codex / Gemini have no `/rolepod-team` command — use natural-language Subagent dispatch through `write-plan` agent routing. See [docs/agent-teams.md](docs/agent-teams.md).
+> `/rolepod` is not needed for normal use — a normal prompt auto-routes. See [docs/agent-teams.md](docs/agent-teams.md) for the teammate backend.
 
 > **Note:** Adapter conformance verified by static checks (`bash -n`, `python3 -m json.tool`, `tomllib.load`). Runtime status per CLI — see table.
 
@@ -272,7 +271,7 @@ Rolepod ships **6 core hook scripts** in `hooks/` — no add-on hooks. MemPalace
 
 Per-CLI exposure:
 
-- **Claude:** ships as a marketplace plugin. The installer renders rolepod to a temp dir, runs `claude plugin marketplace add <rendered-dir>` + `claude plugin install rolepod@rolepod --scope user`. The plugin tree (agents, skills, hooks, commands) lives under `~/.claude/plugins/rolepod/` and is auto-discovered by Claude Code. The 6 core hooks are declared in the plugin's `hooks/hooks.json` (canonical plugin-root form) using `${CLAUDE_PLUGIN_ROOT}` paths, registered automatically on install. The CLAUDE.md managed block in `~/.claude/CLAUDE.md` and `~/.claude/rules/` still install via script (no plugin model for always-on rules). `~/.claude/settings.json` is only touched by the Claude Code CLI itself (for `enabledPlugins` / `extraKnownMarketplaces`).
+- **Claude:** ships as a marketplace plugin. The installer renders rolepod to a temp dir, runs `claude plugin marketplace add <rendered-dir>` + `claude plugin install rolepod@rolepod --scope user`. The plugin tree (agents, skills, hooks) lives under `~/.claude/plugins/rolepod/` and is auto-discovered by Claude Code. The 6 core hooks are declared in the plugin's `hooks/hooks.json` (canonical plugin-root form) using `${CLAUDE_PLUGIN_ROOT}` paths, registered automatically on install. The CLAUDE.md managed block in `~/.claude/CLAUDE.md` and `~/.claude/rules/` still install via script (no plugin model for always-on rules). `~/.claude/settings.json` is only touched by the Claude Code CLI itself (for `enabledPlugins` / `extraKnownMarketplaces`).
 - **Codex:** ships 3 core command hooks (`project-context-loader.sh`, `gate-reminder.sh`, `precommit-gate.sh`) via `hooks/hooks.json`. Claude-only hooks (`block-subagent-commit`, `cohesion-contract-check`, `session-lifecycle`) are not registered — Codex has no `Agent` or `Stop` event API and a different plugin model.
 - **Gemini:** ships 4 adapter command hooks: `session-start.sh`, `before-tool.sh`, `after-tool.sh`, `pre-compress.sh`.
 
@@ -291,9 +290,9 @@ MemPalace and GitNexus ship their own hooks through their own integration — in
 
 | CLI | Slash commands |
 |-----|----------------|
-| Claude Code | `/rolepod-team` (slash command) + `/rolepod` (skill explicit-invoke — see `using-rolepod`) + Anthropic native (`/init`, `/review`, `/clear`, `/rewind`, `/compact`, `/btw`) |
-| Codex CLI | n/a (commands not in Codex schema today; gates fire via entry doc — hooks require `codex features enable plugin_hooks` opt-in) |
-| Gemini CLI | Slash commands removed (phase-named drift, per Claude commits 0f8de4f / 6da9fe0); `/rolepod` available cross-CLI via `using-rolepod` skill |
+| Claude Code | `/rolepod-full` (skill — force-full lifecycle) + Anthropic native (`/init`, `/review`, `/clear`, `/rewind`, `/compact`, `/btw`) |
+| Codex CLI | `$rolepod-full` (skill via Codex skill UI); gates fire via entry doc — hooks require `codex features enable plugin_hooks` opt-in |
+| Gemini CLI | `/rolepod-full` available cross-CLI via the `rolepod-full` skill; no native `.toml` slash commands |
 
 ### Plugin manifest
 

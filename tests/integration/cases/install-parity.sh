@@ -65,7 +65,6 @@ if ./install.sh --target=claude > "$TMP/claude.log" 2>&1; then
     "$PLUGIN_DIR/.claude-plugin/plugin.json"
     "$PLUGIN_DIR/agents"
     "$PLUGIN_DIR/skills"
-    "$PLUGIN_DIR/commands"
     "$PLUGIN_DIR/hooks/lib/session_state.py"
   )
   for p in "${required_paths[@]}"; do
@@ -75,15 +74,15 @@ if ./install.sh --target=claude > "$TMP/claude.log" 2>&1; then
     fi
   done
   # Core 10 skills land inside the plugin tree, not ~/.claude/skills/.
-  for skill in using-rolepod debug-issue check-work; do
+  for skill in using-rolepod debug-issue check-work rolepod-full; do
     if [ ! -d "$PLUGIN_DIR/skills/$skill" ]; then
       echo "  ✗ skill missing from plugin: $skill"
       FAIL=$((FAIL+1))
     fi
   done
   skill_count=$(find "$PLUGIN_DIR/skills" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | wc -l | tr -d ' ')
-  if [ "$skill_count" -ne 10 ]; then
-    echo "  ✗ expected exactly 10 plugin skills, got $skill_count"
+  if [ "$skill_count" -ne 11 ]; then
+    echo "  ✗ expected exactly 11 plugin skills (Core 10 + rolepod-full alias), got $skill_count"
     FAIL=$((FAIL+1))
   fi
   # Migration must clean a pre-2.0 legacy shim skill from ~/.claude/skills/.
@@ -109,7 +108,7 @@ if ./install.sh --target=claude > "$TMP/claude.log" 2>&1; then
     FAIL=$((FAIL+1))
   fi
   if [ "$FAIL" -eq 0 ]; then
-    echo "  ✓ Claude global: CLAUDE.md block + rules/ + plugin tree (agents/skills/commands/hooks) + inline hooks + legacy migration"
+    echo "  ✓ Claude global: CLAUDE.md block + rules/ + plugin tree (agents/skills/hooks) + plugin hooks/hooks.json + legacy migration"
     PASS=$((PASS+1))
   fi
 else

@@ -10,9 +10,9 @@
 | Always-on rules | `~/.claude/rules/always-on/` | (inlined in AGENTS.md) | (inlined in GEMINI.md) |
 | Path-scoped rules | `~/.claude/rules/{code,test}/` (paths: glob) | (inlined) | (inlined) |
 | Agents (18) | auto-discovered in plugin | `~/.codex/plugins/rolepod/agents/*.toml` | inlined in `GEMINI.md` |
-| Skills (10) | auto-discovered in plugin | `~/.codex/plugins/rolepod/skills/<name>/SKILL.md` | `~/.gemini/extensions/rolepod/skills/<name>/SKILL.md` |
+| Skills (10 + 1 alias) | auto-discovered in plugin | `~/.codex/plugins/rolepod/skills/<name>/SKILL.md` | `~/.gemini/extensions/rolepod/skills/<name>/SKILL.md` |
 | Hooks (core only) | 6 core hooks in `~/.claude/plugins/rolepod/hooks/hooks.json` | 3 core hooks in `~/.codex/plugins/rolepod/hooks/hooks.json` | 4 core hooks in `~/.gemini/extensions/rolepod/hooks/hooks.json` |
-| Slash commands | `~/.claude/commands/*.md` | n/a | n/a (no Gemini-native slash commands; use `/rolepod` via skill) |
+| Slash commands | `/rolepod-full` (skill) | `$rolepod-full` (skill) | `/rolepod-full` (skill) |
 
 ## Active gates
 
@@ -156,9 +156,9 @@ Lead = Opus → skip Advisor.
 | Pick session | `claude --resume` | `codex resume --list` | n/a |
 | Starter doc | `/init` | edit `~/.codex/AGENTS.md` | edit `~/.gemini/GEMINI.md` |
 | One-shot | `claude -p "..."` | `codex exec "..."` | `gemini -p "..."` |
-| Rolepod commands | `/rolepod` (skill) + `/rolepod-team` (slash) | `/rolepod` (skill) | `/rolepod` (skill) |
+| Rolepod commands | `/rolepod-full` (skill) | `$rolepod-full` (skill) | `/rolepod-full` (skill) |
 
-> **Agent team (Claude only).** `/rolepod-team` spawns a real Claude Code agent team — multi-process teammates with shared task list + mailbox per [official spec](https://code.claude.com/docs/en/agent-teams). Requires `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` + v2.1.32+. Codex/Gemini have no teammate equivalent — use default Subagent dispatch through `write-plan` agent routing. See [docs/agent-teams.md](docs/agent-teams.md).
+> **Agent team (Claude only).** With `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` + v2.1.32+, `/rolepod-full` runs on the teammate backend — a real Claude Code agent team (multi-process teammates, shared task list + mailbox) per [official spec](https://code.claude.com/docs/en/agent-teams). Without it, `/rolepod-full` falls back to Subagent + Task dispatch. Codex/Gemini use native subagents. See [docs/agent-teams.md](docs/agent-teams.md).
 
 ## Skill picker — Core 10 quick lookup
 

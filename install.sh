@@ -436,7 +436,7 @@ echo "  dry-run: $DRY_RUN"
 echo ""
 
 # ─── Sanity check source ────────────────────────────────────────────────
-for f in CHEATSHEET.md core/agents core/rules hooks core/skills commands .claude-plugin/plugin.json build/render.sh adapters/claude/CLAUDE.md.tmpl; do
+for f in CHEATSHEET.md core/agents core/rules hooks core/skills .claude-plugin/plugin.json build/render.sh adapters/claude/CLAUDE.md.tmpl; do
   [ -e "$REPO_DIR/$f" ] || fail "missing $f in $REPO_DIR — run from rolepod repo"
 done
 

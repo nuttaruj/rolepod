@@ -1,9 +1,7 @@
-## Team workflow trigger (Claude only)
+## Full-lifecycle trigger + team execution
 
-Default = Subagent + Task spawn (single-process, all CLIs). Opt-in: **`/rolepod-team`** slash command — adapts silently to env (TEAMMATE mode when Claude v2.1.32+ + `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`, else FALLBACK via Subagent + Task + cohesion contract). Codex/Gemini don't ship `/rolepod-team`; use natural-language Subagent dispatch through `write-plan` agent routing. Power users want real teammates: see README. `/rolepod-team` is `disable-model-invocation: true` — only user can fire it.
+Normal requests auto-route through the `using-rolepod` skill — lean, phase skips allowed, the user invokes nothing. For the deliberate full lifecycle the user invokes **`/rolepod-full`** (the `rolepod-full` skill): Define → Plan → Build → Verify → Review → Ship, no skips. `/rolepod-full` is `disable-model-invocation` — only the user fires it; Lead never forces full ceremony on its own.
 
-Per-phase team commands (`/team-define`, `/team-plan`, `/team-build`, `/team-verify`, `/team-review`, `/team-ship`) have been removed — they were subagent recipes that Lead routinely pattern-matched into regular Subagent dispatch (drift documented in commits `0f8de4f`, `6da9fe0`). For phase-scoped parallel work, tell `/rolepod-team` to spawn teammates focused on that phase only.
+`/rolepod-full` picks an execution backend by capability: **Claude + agent-teams enabled** (`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`, v2.1.32+) → real multi-process teammates (~4× tokens; see [docs/agent-teams.md](docs/agent-teams.md)); **Claude without agent-teams**, or user-requested single-process → Subagent + Task + cohesion contract; **Codex / Gemini** → native subagent dispatch, inline fallback when unsupported. Default Subagent + Task spawn stays the everyday parallel mechanism for normal requests.
 
-Cost: each teammate = separate Claude instance with own context window. 4-teammate team ≈ 4× single-session tokens. Use for genuinely parallel work (cross-domain features, parallel investigation, multi-module refactor) — for sequential / trivial tasks, default Subagent + Task is more cost-effective.
-
-Mandatory gates (S1-S5 / T1-T6 / F1-F5 / verify-first / review-code) fire inside each teammate — rolepod CLAUDE.md + skills load in every teammate session. Lead's job = coordination, not gate enforcement.
+Mandatory gates (S1-S5 / T1-T6 / F1-F5 / verify-first / review-code) fire inside each teammate or subagent — rolepod CLAUDE.md + skills load in every session. Lead's job = coordination, not gate enforcement.
