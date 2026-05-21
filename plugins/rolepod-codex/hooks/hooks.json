@@ -1,0 +1,39 @@
+{
+  "_comment": "Rolepod Codex hooks. 3 core plugin hooks — byte-exact mirrors of root hooks/*.sh (parity enforced by tests/static/lean-surface.sh). Claude-only hooks (block-subagent-commit, cohesion-contract-check, session-lifecycle) are NOT registered here because Codex has no Agent / Stop event API and uses a different plugin model. Codex still needs `codex features enable plugin_hooks` before any hook here fires. verify-reminder was removed in PR 6 — verification is owned by the check-work skill + precommit-gate, not by a per-edit nag hook.",
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|resume",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ${PLUGIN_ROOT}/hooks/project-context-loader.sh",
+            "statusMessage": "Loading project context"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "apply_patch",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ${PLUGIN_ROOT}/hooks/gate-reminder.sh",
+            "timeout": 5
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ${PLUGIN_ROOT}/hooks/precommit-gate.sh",
+            "timeout": 5
+          }
+        ]
+      }
+    ]
+  }
+}

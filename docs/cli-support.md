@@ -21,7 +21,7 @@ Phase 2.3: rolepod ships for each supported CLI as a **native plugin / extension
 | CLI | Plugin / extension destination | Always-on core destination |
 |---|---|---|
 | Claude Code | repo IS the marketplace — `.claude-plugin/marketplace.json` + committed `plugins/rolepod/` (agents/, hooks/, skills/, .claude-plugin/) at the repo root; `claude plugin marketplace add nuttaruj/rolepod` installs straight from GitHub | SessionStart hook emits `hooks/always-on-core.md` (no CLAUDE.md) |
-| Codex CLI | rolepod marketplace registered in `~/.codex/config.toml`; plugin tree resolved from `<repo>/build/rendered/codex/plugins/rolepod/` (.codex-plugin/, hooks/, skills/). The 18 agent TOMLs install to `~/.codex/agents/rolepod-*.toml` — Codex's plugin loader has no agents field | `~/.codex/AGENTS.md` |
+| Codex CLI | repo IS the marketplace — `.agents/plugins/marketplace.json` + committed `plugins/rolepod-codex/` (.codex-plugin/, hooks/, skills/) at the repo root; `codex plugin marketplace add nuttaruj/rolepod` installs straight from GitHub. The 18 agent TOMLs install to `~/.codex/agents/rolepod-*.toml` — Codex's plugin loader has no agents field, so they need `install.sh` | `~/.codex/AGENTS.md` |
 | Gemini CLI | `~/.gemini/extensions/rolepod/` (gemini-extension.json, GEMINI.md, hooks/, skills/) | `~/.gemini/extensions/rolepod/GEMINI.md` (extension context file) |
 
 For Codex the entry doc is intentionally written **outside** the plugin dir (`~/.codex/AGENTS.md`) — Codex auto-loads the global `AGENTS.md` regardless of which plugins are installed, so keeping it at the root makes rolepod's gates active on every session, not just when the plugin is enabled.
@@ -79,7 +79,7 @@ Per-CLI hook counts: Claude registers 7 core hooks via the plugin manifest. Code
 | Item | Verified by |
 |---|---|
 | Claude snapshot | 18 agent files + plugin tree layout |
-| Codex plugin layout | install registers `[marketplaces.rolepod]` + `[plugins."rolepod@rolepod"] enabled = true` in `~/.codex/config.toml` and writes `~/.codex/AGENTS.md` managed block; rendered tree at `build/rendered/codex/{.agents/plugins/marketplace.json,agents/*.toml,plugins/rolepod/{.codex-plugin,hooks,skills}/}` — the plugin bundles hooks + skills, the 18 agents install to `~/.codex/agents/` |
+| Codex plugin layout | install registers `[marketplaces.rolepod]` + `[plugins."rolepod@rolepod"] enabled = true` in `~/.codex/config.toml` and writes the `~/.codex/AGENTS.md` managed block; committed marketplace tree at the repo root (`.agents/plugins/marketplace.json` + `plugins/rolepod-codex/{.codex-plugin,hooks,skills}/`) — the plugin bundles hooks + skills, the 18 agent TOMLs install to `~/.codex/agents/` |
 | Gemini extension layout | dry-run install populates `~/.gemini/extensions/rolepod/{GEMINI.md,gemini-extension.json,hooks,skills}/` — entry doc ships inside the extension dir, global `~/.gemini/GEMINI.md` untouched |
 | All shell scripts | `bash -n` clean (install.sh, bootstrap.sh, render.sh, 7 core hook scripts, 3 codex hook scripts, 4 gemini hook scripts) |
 | All JSON manifests | `python3 -m json.tool` clean (plugin.json x2, hooks.json x3 — claude/codex/gemini, marketplace.json, gemini-extension.json) |
@@ -110,7 +110,7 @@ _Last verified: 2026-05-10 on macOS (Darwin 25.4.0), Codex 0.130.0, Gemini 0.40.
 - Caveat: the bundled SessionStart hook expects ripgrep — falls back to GrepTool with a one-line warning. Cosmetic only.
 
 **Codex CLI 0.130.0** — Production:
-- Rolepod ships as a Codex marketplace consumable (`adapters/codex/.agents/plugins/marketplace.json` + `plugins/rolepod/`). The installer renders to `build/rendered/codex/` and runs `codex plugin marketplace add <rendered-dir>` so Codex's native plugin loader picks up agents, skills, and hooks via the same code path as bundled plugins (browser-use, computer-use, etc.).
+- The rolepod repo IS a Codex marketplace — `.agents/plugins/marketplace.json` + the committed `plugins/rolepod-codex/` tree at the repo root. `codex plugin marketplace add nuttaruj/rolepod` installs straight from GitHub; `install.sh` runs the same `codex plugin marketplace add <repo>` against the local clone. Codex's native plugin loader picks up skills + hooks via the same code path as bundled plugins (browser-use, computer-use, etc.).
 - After install, `~/.codex/config.toml` contains `[marketplaces.rolepod] source_type = "local"` and `[plugins."rolepod@rolepod"] enabled = true`.
 - Plugin hooks (`hooks/hooks.json`) require explicit opt-in. Default Codex install has `plugin_hooks` flagged `under development, false` — registered hooks won't fire until the user enables it:
   ```bash
@@ -197,7 +197,7 @@ Codex hooks (`features.plugin_hooks = true`) require explicit opt-in in `~/.code
 Installs:
 - `~/.codex/AGENTS.md` (managed block — your existing content preserved)
 - `[marketplaces.rolepod]` + `[plugins."rolepod@rolepod"] enabled = true` in `~/.codex/config.toml`
-- Marketplace source: `<repo>/build/rendered/codex/` (Codex resolves the plugin tree from here at session start — keep the rendered dir on disk; `./install.sh --target=codex` re-renders it idempotently)
+- Marketplace source: the rolepod repo root (`.agents/plugins/marketplace.json` + the committed `plugins/rolepod-codex/` tree). `codex plugin marketplace add nuttaruj/rolepod` consumes it from GitHub; `install.sh` registers the local clone
 
 Restart any open Codex sessions after install so the plugin loader picks up the new registration.
 

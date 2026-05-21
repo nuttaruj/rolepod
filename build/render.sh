@@ -339,18 +339,21 @@ render_claude() {
 }
 
 # ─── Render Codex target ────────────────────────────────────────────────────
-# Phase 2.4: Codex ships as a Codex marketplace consumable so the native
-# plugin loader actually wires up agents/skills/hooks (not just AGENTS.md text).
-# Output layout matches the bundled-marketplace shape Codex 0.130+ scans:
-#   AGENTS.md                                        (entry doc, ~/.codex/AGENTS.md)
-#   .agents/plugins/marketplace.json                 (marketplace manifest)
-#   agents/*.toml                                    (18 agents — installed to
-#                                                     ~/.codex/agents/, NOT in
-#                                                     the plugin; Codex's plugin
-#                                                     loader has no agents field)
-#   plugins/rolepod/.codex-plugin/plugin.json        (plugin manifest)
-#   plugins/rolepod/hooks/hooks.json + *.sh          (3 core hook scripts)
-#   plugins/rolepod/skills/<name>/SKILL.md ...       (real dir, copied from core/skills)
+# Codex ships as a Codex marketplace consumable. Like the Claude target, the
+# marketplace catalog + plugin tree render into COMMITTED repo-root paths so
+# the repo is directly installable — `codex marketplace add nuttaruj/rolepod`
+# reads the repo-root .agents/plugins/marketplace.json and resolves the plugin
+# from ./plugins/rolepod-codex. A CI render-clean check guards against drift.
+#
+# Committed (repo root):
+#   .agents/plugins/marketplace.json                 (marketplace catalog)
+#   plugins/rolepod-codex/.codex-plugin/plugin.json  (plugin manifest)
+#   plugins/rolepod-codex/hooks/hooks.json + *.sh    (3 core hook scripts)
+#   plugins/rolepod-codex/skills/<name>/SKILL.md     (copied from core/skills)
+# Gitignored (build/rendered/codex/ — read by install.sh only):
+#   AGENTS.md                                        (~/.codex/AGENTS.md block)
+#   agents/*.toml                                    (18 agents → ~/.codex/agents/,
+#                                                     NOT a plugin component)
 
 render_codex() {
   local template="$REPO_DIR/adapters/codex/AGENTS.md.tmpl"
@@ -358,34 +361,36 @@ render_codex() {
   local output="$out_dir/AGENTS.md"
   local adapter_dir="$REPO_DIR/adapters/codex"
   local plugin_src="$adapter_dir/plugins/rolepod"
-  local plugin_dst="$out_dir/plugins/rolepod"
+  local plugin_dst="$REPO_DIR/plugins/rolepod-codex"
 
   [ -f "$template" ] || { echo "render: missing $template" >&2; exit 1; }
 
-  # Clean stale artifacts from previous runs (e.g. old top-level .codex-plugin/).
+  # Rebuild only the committed plugin tree — the repo root is never rm'd.
+  rm -rf "$plugin_dst"
+  mkdir -p "$plugin_dst"
+  # AGENTS.md + agent-TOML staging stay in the gitignored build dir.
   rm -rf "$out_dir"
   mkdir -p "$out_dir"
   render_template "$template" "$output"
 
-  # Marketplace manifest at .agents/plugins/marketplace.json.
+  # Marketplace catalog at the repo-root .agents/plugins/.
   if [ -f "$adapter_dir/.agents/plugins/marketplace.json" ]; then
-    mkdir -p "$out_dir/.agents/plugins"
-    cp "$adapter_dir/.agents/plugins/marketplace.json" "$out_dir/.agents/plugins/"
+    mkdir -p "$REPO_DIR/.agents/plugins"
+    cp "$adapter_dir/.agents/plugins/marketplace.json" "$REPO_DIR/.agents/plugins/"
   else
     echo "render: missing $adapter_dir/.agents/plugins/marketplace.json" >&2; exit 1
   fi
 
-  # Plugin manifest under plugins/rolepod/.codex-plugin/.
+  # Plugin manifest under plugins/rolepod-codex/.codex-plugin/.
   if [ -d "$plugin_src/.codex-plugin" ]; then
-    mkdir -p "$plugin_dst"
     cp -R "$plugin_src/.codex-plugin" "$plugin_dst/"
   else
     echo "render: missing $plugin_src/.codex-plugin/" >&2; exit 1
   fi
 
-  # TOML agents — rendered OUTSIDE the plugin tree. Codex's plugin loader has
-  # no agent-discovery path (manifest has no `agents` field); agents load only
-  # from the global ~/.codex/agents/ directory. install.sh copies these there.
+  # TOML agents — staged in the gitignored build dir, NOT in the plugin tree.
+  # Codex's plugin loader has no agent-discovery path; agents load only from
+  # the global ~/.codex/agents/ directory. install.sh copies these there.
   if [ -d "$plugin_src/agents" ]; then
     mkdir -p "$out_dir/agents"
     cp "$plugin_src/agents"/*.toml "$out_dir/agents/" 2>/dev/null || true
@@ -397,7 +402,7 @@ render_codex() {
     chmod +x "$plugin_dst/hooks/"*.sh 2>/dev/null || true
   fi
 
-  # Dereference skills symlink into a real directory tree (tarball / commit safe).
+  # Skills as a real directory tree (copied from core/skills/).
   mkdir -p "$plugin_dst/skills"
   for skill_dir in "$REPO_DIR"/core/skills/*/; do
     local name; name="$(basename "$skill_dir")"
