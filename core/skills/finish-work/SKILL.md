@@ -59,18 +59,35 @@ Return / hand off:
 
 ### 1. Pre-merge gate
 
-Run the gate before any merge / push action:
+Run all four gates before any merge / push action.
 
+**Simplicity (S1-S5)** — revise on any "yes":
 ```
-Simplicity:  S1-S5 (cut beyond-request, abstraction-for-single-use,
-             config-nobody-asked, defensive-for-impossible,
-             pattern-in-3-places-centralized)
-Tests:       T1-T6 (required test exists, new tests pass, existing pass,
-             tier-appropriate speed, isolated, assertions tight)
-Reviewer:    appropriate review for risk profile completed
-Failure-mode: F1-F5 (no hallucinated action, no scope creep, no cascade
-             error, no context loss, no destructive misuse)
+S1: Feature beyond request?            → cut
+S2: Abstraction for single-use?        → inline
+S3: Config / flexibility nobody asked? → cut
+S4: Defensive code for impossible?     → make it structurally impossible
+                                         (type system / data model / API
+                                         constraint); if structure can't,
+                                         the case is NOT impossible — handle it
+S5: Same pattern in 3+ places?         → centralize before commit
 ```
+
+**Tests (T1-T6)** — block the commit on a failure:
+```
+T1: Task needs a test (bug/feature/migration/auth/billing/race/
+    contract/perf/security) and none exists?  → write it
+T2: New tests pass?     T3: Existing tests pass (no regression)?
+T4: Tier-appropriate speed?   T5: Isolated (no order dependency)?
+T6: Assertion tight — would a 1-char bug still pass? → tighten if so
+```
+Skip the T-gate only when ALL hold: ≤5 lines · single file · zero
+logic-bearing · NOT a high-risk path. The PreCommit hook also enforces.
+
+**Failure-mode (F1-F5)** — run the `check-work` failure-mode gate; do
+not merge with an unresolved F-finding.
+
+**Reviewer** — risk-appropriate review completed (see `review-code`).
 
 Any failure → fix or report; do not merge.
 
@@ -147,6 +164,7 @@ Awaiting user authorization for: <specific action>
 - Required CI lane red → fix or report; do not merge
 - High-risk diff without adversarial review → route back to `review-code`
 - About to push --force or reset --hard published history → stop, confirm
+- 3rd PR on the same surface, or 3rd agent on the same issue → stop, ask
 
 ## Full Rolepod enhancement
 
