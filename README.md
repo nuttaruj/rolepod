@@ -113,7 +113,10 @@ curl -fsSL https://raw.githubusercontent.com/nuttaruj/rolepod/main/bootstrap.sh 
 
 `--force` overwrites rolepod-managed paths. Auto-backup at `~/.<cli>.backup-<timestamp>/` (rolepod-scoped, typically <50 MB; session history / plugin caches stay in place).
 
-> **Updating.** Claude Code installs from the GitHub marketplace, so `claude plugin marketplace update rolepod` + `claude plugin update rolepod@rolepod` is a complete update — no script needed. Codex and Gemini update through `install.sh` (re-run the command above).
+> **Updating.**
+> - **Claude Code:** `claude plugin marketplace update rolepod` + `claude plugin update rolepod@rolepod` — no script needed.
+> - **Codex CLI:** `codex plugin marketplace upgrade rolepod` to pull the latest snapshot, then reinstall: `codex plugin remove rolepod@rolepod` + `codex plugin add rolepod@rolepod`.
+> - **Gemini:** re-run the `install.sh` command above.
 
 ### Uninstall
 
