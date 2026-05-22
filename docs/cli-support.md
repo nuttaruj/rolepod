@@ -107,7 +107,7 @@ _Last live-verified: 2026-05-10 on macOS (Darwin 25.4.0), Codex 0.130.0, Gemini 
 **Gemini CLI 0.40.1** — Production:
 - `gemini skills list` enumerates all 11 rolepod skills (Core 10 + the `rolepod-full` alias) from `~/.gemini/extensions/rolepod/skills/`.
 - SessionStart hook fires and emits the rolepod gates banner ("rolepod gates: S1-S5 simplicity + T1-T6 tests + Q1-Q4 delegation + F1-F5 failure-mode") on every Gemini session.
-- The model recognizes the extension by name and version (`rolepod (v0.2.0)`) when asked.
+- The model recognizes the extension by name and version (`rolepod (v0.6.0)`) when asked.
 - No native `.toml` slash commands ship — `/rolepod-full` is the `rolepod-full` skill, invocable across Claude/Codex/Gemini skill UIs. Phase commands (`/spec`/`/plan`/`/review`/`/test`/`/ship`) were dropped to match Claude's design (commits 0f8de4f / 6da9fe0 documented pattern-match drift).
 - Caveat: the bundled SessionStart hook expects ripgrep — falls back to GrepTool with a one-line warning. Cosmetic only.
 
@@ -239,7 +239,7 @@ When a repo needs stricter rules than the global rolepod set, create `AGENTS.md`
 
 ```bash
 # Plugin loaded (agents + skills work regardless of plugin_hooks state):
-ls ~/.codex/plugins/cache/rolepod/rolepod/0.1.0/skills | wc -l   # 44
+ls ~/.codex/plugins/cache/rolepod/rolepod/2.5.0/skills | wc -l   # 11
 
 # Hooks ONLY fire after opt-in. Confirm flag state first:
 codex features list | grep plugin_hooks
