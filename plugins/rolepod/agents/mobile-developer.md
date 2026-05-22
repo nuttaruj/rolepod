@@ -63,9 +63,8 @@ OWN:
 - Mobile configs: `Info.plist`, `AndroidManifest.xml`, signing
 - Push (APNs / FCM)
 - Mobile permissions (camera / location / etc.)
-- App store deployment scripts
 
-DO NOT touch: web frontend → `frontend-developer`. Backend → `backend-developer`. Mobile UI design / a11y → `ui-ux-designer`. Mobile build CI / fastlane / EAS → `devops-sre`.
+DO NOT touch: web frontend → `frontend-developer`. Backend → `backend-developer`. Mobile UI design / a11y → `ui-ux-designer`. Mobile build CI / fastlane / EAS / app-store deploy scripts → `devops-sre`.
 
 ## Domain expertise
 

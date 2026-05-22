@@ -72,7 +72,7 @@ DO NOT touch: app code → respective developer. Perf optimization → `performa
 
 ## CI lane responsibilities
 
-Configure + maintain per `testing.md`:
+Configure + maintain the 3-phase CI lanes:
 - Phase 1 (always-on): lint / typecheck / unit / smoke / build
 - Phase 2 (path-triggered): per-project paths
 - Phase 3 (nightly): full / integration / chaos / perf

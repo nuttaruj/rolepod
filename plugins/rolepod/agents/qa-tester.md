@@ -40,7 +40,7 @@ Correctness verification: tests, business logic, edge cases, races.
 
 ## Inputs to request from Lead
 
-- The task type (bug fix / new feature / migration / billing / race / etc.) per `testing.md`
+- The task type (bug fix / new feature / migration / billing / race / etc.) — sets the test discipline
 - The change spec / acceptance criteria
 - Which mode Lead expects (write-mode vs review-mode)
 - The existing test runner + fixture layout

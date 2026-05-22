@@ -90,13 +90,7 @@ SPEC.md
 ## Output contract
 
 ```
-**Spec:** [link / inline]
-
-**Acceptance criteria:** [list, each testable]
-
-**Edge cases:** [enumerated]
-
-**Tradeoffs:** [alternatives + why rejected]
+**Spec:** [link / inline — filled to the Spec template above]
 
 **Rollout:** [flag name + default + segment + sunset criteria]
 
