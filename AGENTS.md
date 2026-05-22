@@ -84,7 +84,3 @@ what was asked — it is not a blanket grant.
 - **Peer review** — high-risk work → ask Codex to spawn `qa-tester` (the
   floor) plus `security-engineer` / `universal-reviewer`. An external Claude
   review (`claude -p "review this diff"`) is a useful cross-model opinion.
-
-<!-- gitnexus suppressor: empty markers + GitNexus's own --skip-agents-md keep auto-inject off. Full rationale in docs/gitnexus-suppressor.md. -->
-<!-- gitnexus:start -->
-<!-- gitnexus:end -->

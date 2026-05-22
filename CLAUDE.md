@@ -10,6 +10,3 @@ Developing this repo with rolepod installed globally would double-load the same
 avoids that duplication. Install rolepod globally to get the gate block while
 working here; run `make` to refresh the build artifact.
 -->
-<!-- gitnexus suppressor: empty markers + GitNexus's own --skip-agents-md keep auto-inject off. Full rationale in docs/gitnexus-suppressor.md. -->
-<!-- gitnexus:start -->
-<!-- gitnexus:end -->
