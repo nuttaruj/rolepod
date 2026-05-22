@@ -44,7 +44,9 @@ Non-TTY contexts: `--uninstall` without `--yes` exits 0 with `Aborted. Re-run wi
 ```
 adapters/
 ├── claude/
-│   └── agent-frontmatter/*.yml         (18 frontmatter overlays)
+│   ├── .claude-plugin/                 (plugin.json + marketplace.json)
+│   ├── agent-frontmatter/*.yml         (18 frontmatter overlays)
+│   └── hooks.json                      (plugin hooks manifest)
 ├── codex/
 │   ├── AGENTS.md.tmpl
 │   ├── agent-frontmatter/*.yml          (18 overlays — model / effort / sandbox)
@@ -57,7 +59,6 @@ adapters/
     ├── GEMINI.md.tmpl
     ├── gemini-extension.json
     ├── agent-frontmatter/*.yml          (18 overlays — model)
-    ├── commands/*.toml                 (6 slash commands)
     ├── hooks/hooks.json + 4 *.sh
     └── skills/                         (real dir, populated at render time)
 ```
@@ -97,7 +98,7 @@ Per-CLI hook counts: Claude registers 7 core hooks via the plugin manifest. Code
 
 **Static checks** = `bash -n` on shell scripts, `python3 -m json.tool` on JSON manifests, `tomllib.load()` on TOML, plus snapshot diffs (no leaked `{{INCLUDE: ...}}` placeholders). **Dry-run install** = `install.sh --target=<cli>` writes correct files into a temp dir and the layout matches each CLI's expected destination. **Live** = installed in the real CLI, hooks fire on real sessions (Claude + Gemini always; Codex only after `codex features enable plugin_hooks` opt-in), subagents/skills dispatch correctly.
 
-_Last verified: 2026-05-10 on macOS (Darwin 25.4.0), Codex 0.130.0, Gemini 0.40.1._
+_Last live-verified: 2026-05-10 on macOS (Darwin 25.4.0), Codex 0.130.0, Gemini 0.40.1. Changes since are covered by `make test-all` (static + integration); live re-verification pending._
 
 ### Per-target runtime evidence
 

@@ -184,7 +184,7 @@ After install, restart the CLI you targeted so the plugin system loads.
 
 **Static** = `bash -n` + `json.tool` + `tomllib.load()` + snapshot diff (no leaked `{{INCLUDE: ...}}`). **Dry-run** = `install.sh` writes correct files to temp dir. **Live** = real CLI; hooks fire (Claude + Gemini always; Codex only after `plugin_hooks` opt-in); subagents/skills dispatch.
 
-_Last verified: 2026-05-15, macOS Darwin 25.4.0, Codex 0.130.0, Gemini 0.40.1._
+_Last live-verified: 2026-05-15, macOS Darwin 25.4.0, Codex 0.130.0, Gemini 0.40.1. Changes since are covered by `make test-all` (static + integration); live re-verification pending._
 
 **Codex install (0.130.0+):** the repo is a Codex marketplace too — `codex plugin marketplace add nuttaruj/rolepod` reads the repo-root `.agents/plugins/marketplace.json` and resolves the plugin from `./plugins/rolepod-codex` (`install.sh` does the same against the local clone). It writes `[plugins."rolepod@rolepod"] enabled = true` to `~/.codex/config.toml` and populates `~/.codex/plugins/cache/`. The marketplace plugin carries skills + hooks; the 18 agents are **not** a Codex plugin component — `install.sh` copies them to `~/.codex/agents/`. `SessionStart` fires **only after `codex features enable plugin_hooks`** (default flag `under development, false`). The `~/.codex/AGENTS.md` managed block loads independently of `plugin_hooks` state.
 

@@ -1,12 +1,15 @@
 <!-- rolepod: in-repo CLAUDE.md kept as a thin stub.
 
-The full rolepod gate block is a build artifact — build/rendered/claude/CLAUDE.md,
-generated from adapters/claude/CLAUDE.md.tmpl + core/ via build/render.sh.
-install.sh installs that block into ~/.claude/CLAUDE.md (global) or a target
-project's CLAUDE.md; it never reads this file.
+Rolepod's Claude always-on core is delivered by the plugin's SessionStart
+hook — hooks/always-on-loader.sh emits hooks/always-on-core.md as
+additionalContext. install.sh registers the plugin; it writes no managed
+block into ~/.claude/CLAUDE.md (rolepod no longer manages one).
 
-Developing this repo with rolepod installed globally would double-load the same
-~3k-token block (global ~/.claude/CLAUDE.md + this project CLAUDE.md). This stub
-avoids that duplication. Install rolepod globally to get the gate block while
-working here; run `make` to refresh the build artifact.
+hooks/always-on-core.md is a build artifact, rendered from
+hooks/always-on-core.md.tmpl + core/fragments/ by build/render.sh.
+
+A full gate block here would load on top of the hook-injected copy — the
+same block twice on every session in this repo. This stub avoids that.
+Install rolepod globally to dogfood the gates while working here; run
+`make render` to refresh the build artifacts.
 -->
