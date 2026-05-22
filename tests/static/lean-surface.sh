@@ -51,7 +51,7 @@ check "no redirect_to shim fields remain (actual: $REDIRECT_FIELDS)" "[ $REDIREC
 # Catches the "render.sh skips utility skills" failure mode that bit us
 # pre-PR-doc-catalog-drift (advisor-escalation, new-project-onboarding,
 # reviewer-flow, session-hygiene, triage-deep all silently missing).
-RENDERED_SKILLS=$(awk '/^\| `/{c++} END{print c+0}' core/fragments/skill-index.md)
+RENDERED_SKILLS=$(awk '/^\| `/{c++} END{print c+0}' core/fragments/skill-index-lean.md)
 check "skill catalog: filesystem=$FS_SKILLS rendered=$RENDERED_SKILLS (must match)" "[ $FS_SKILLS -eq $RENDERED_SKILLS ]"
 
 # ── rolepod-full command alias + force-full trigger semantics ─────────
@@ -297,7 +297,7 @@ rm -f /tmp/rolepod-router-legacy-hits.txt
 # Active docs and generated lean fragments must name Core 10 routing.
 # Legacy names are allowed in docs/skills.md and audit docs, but not in
 # the install/readme surfaces that teach users what to invoke.
-ACTIVE_DOCS=(README.md CHEATSHEET.md CLAUDE.md AGENTS.md GEMINI.md adapters/codex/AGENTS.md.tmpl adapters/gemini/GEMINI.md.tmpl build/rendered/codex/AGENTS.md build/rendered/gemini/GEMINI.md docs/agents.md docs/cli-support.md core/fragments/agent-roster-lean.md core/fragments/model-tier-policy.md)
+ACTIVE_DOCS=(README.md CHEATSHEET.md CLAUDE.md AGENTS.md GEMINI.md adapters/codex/AGENTS.md.tmpl adapters/gemini/GEMINI.md.tmpl build/rendered/codex/AGENTS.md build/rendered/gemini/GEMINI.md docs/agents.md docs/cli-support.md core/fragments/agent-roster-lean.md docs/model-tier-policy.md)
 ACTIVE_LEGACY_RX='(team-routing|parallel-contract-orchestration|pre-merge-gate|post-change-verify|code-review-and-quality|spec-driven-development|planning-and-task-breakdown|systematic-debugging|finishing-a-development-branch|reviewer-flow)'
 ACTIVE_LEGACY_HITS=""
 for f in "${ACTIVE_DOCS[@]}"; do
@@ -526,12 +526,12 @@ else
 fi
 
 # ── Render reproducibility under LC_ALL=C ─────────────────────────────
-cp core/fragments/skill-index.md /tmp/.lean-surface-snap.md
+cp core/fragments/skill-index-lean.md /tmp/.lean-surface-snap.md
 LC_ALL=C bash build/render.sh --target=all >/dev/null 2>&1
-if diff -q /tmp/.lean-surface-snap.md core/fragments/skill-index.md >/dev/null 2>&1; then
-  echo "  ✓ skill-index.md render stable under LC_ALL=C"
+if diff -q /tmp/.lean-surface-snap.md core/fragments/skill-index-lean.md >/dev/null 2>&1; then
+  echo "  ✓ skill-index-lean.md render stable under LC_ALL=C"
 else
-  echo "  ✗ skill-index.md drifts under LC_ALL=C (locale-dependent generator)"
+  echo "  ✗ skill-index-lean.md drifts under LC_ALL=C (locale-dependent generator)"
   fail=$((fail+1))
 fi
 rm -f /tmp/.lean-surface-snap.md

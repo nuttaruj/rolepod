@@ -28,7 +28,7 @@ check "using-rolepod routes high-risk work through review-code" "grep -qE 'secur
 check "security-engineer agent exists" "[ -f core/agents/security-engineer.md ]"
 check "billing-engineer at opus tier" "grep -q '^model: opus' adapters/claude/agent-frontmatter/billing-engineer.yml"
 check "security-engineer at opus tier" "grep -q '^model: opus' adapters/claude/agent-frontmatter/security-engineer.yml"
-check "model-tier-policy fragment present" "[ -f core/fragments/model-tier-policy.md ]"
+check "model-tier-policy doc present" "[ -f docs/model-tier-policy.md ]"
 
 if [ $fail -eq 0 ]; then echo "high-risk-gates: pass"; exit 0; fi
 echo "high-risk-gates: $fail failure(s)"

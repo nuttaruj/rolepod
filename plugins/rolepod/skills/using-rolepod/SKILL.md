@@ -72,7 +72,7 @@ Hand off:
 
 ## Quick router
 
-Match the user intent to the FIRST skill that fires. The skill itself decides what comes next. The **Model tier** column hints which agent tier is appropriate when the work delegates — see `core/fragments/model-tier-policy.md` for the full policy.
+Match the user intent to the FIRST skill that fires. The skill itself decides what comes next. The **Model tier** column hints which agent tier is appropriate when the work delegates — see `docs/model-tier-policy.md` for the full policy.
 
 | User intent (verbs / phrases) | Phase | First skill fires | Model tier |
 |---|---|---|---|
