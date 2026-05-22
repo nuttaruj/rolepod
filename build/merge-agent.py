@@ -75,6 +75,25 @@ def split_core_agent(text: str) -> tuple[dict[str, list[str]], str]:
     return parse_yaml_block(fm), body
 
 
+def resolve_includes(text: str) -> str:
+    """Replace `{{INCLUDE: <path>}}` directive lines with the file's contents.
+
+    Lets an agent body pull a shared fragment (e.g. agent-protocol.md) instead
+    of restating it. Mirrors render_template's directive in build/render.sh.
+    """
+    out: list[str] = []
+    for line in text.split("\n"):
+        m = re.match(r"^\{\{INCLUDE: (.+)\}\}$", line)
+        if m:
+            inc = REPO_DIR / m.group(1)
+            if not inc.exists():
+                raise FileNotFoundError(f"missing include {m.group(1)}")
+            out.append(inc.read_text().rstrip("\n"))
+        else:
+            out.append(line)
+    return "\n".join(out)
+
+
 def emit(keys_in_order: list[str], fields: dict[str, list[str]]) -> str:
     out: list[str] = []
     for key in keys_in_order:
@@ -88,6 +107,7 @@ def merge(target: str, name: str) -> str:
     if not core_path.exists():
         raise FileNotFoundError(f"missing {core_path}")
     core_fields, body = split_core_agent(core_path.read_text())
+    body = resolve_includes(body)
 
     if target == "claude":
         overlay_path = REPO_DIR / "adapters" / "claude" / "agent-frontmatter" / f"{name}.yml"
