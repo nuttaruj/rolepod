@@ -166,6 +166,23 @@ render_agents() {
   echo "rendered $count agents → ${out_dir#"$REPO_DIR"/}"
 }
 
+# ─── Render skills — copy each skill dir; resolve {{INCLUDE}} in SKILL.md ──
+# Supporting files (references/, examples/, templates/) copy verbatim. SKILL.md
+# is processed through render_template so a skill body can {{INCLUDE}} a shared
+# fragment instead of restating it. A SKILL.md with no directive renders
+# byte-identical, so this is a safe no-op for skills that include nothing.
+
+render_skills() {
+  local skills_dst="$1"
+  mkdir -p "$skills_dst"
+  for skill_dir in "$REPO_DIR"/core/skills/*/; do
+    local name; name="$(basename "$skill_dir")"
+    cp -R "$skill_dir" "$skills_dst/$name"
+    [ -f "$skill_dir/SKILL.md" ] && \
+      render_template "$skill_dir/SKILL.md" "$skills_dst/$name/SKILL.md"
+  done
+}
+
 # ─── Render Claude target ───────────────────────────────────────────────────
 # Claude ships as a pure marketplace plugin — no entry doc, no managed block.
 # The always-on judgment core is delivered at runtime by the SessionStart
@@ -211,12 +228,8 @@ render_claude() {
   # Rendered agents into the plugin tree.
   render_agents "claude" "$plugin_dst/agents"
 
-  # Skills as a real directory tree (copied from core/skills/).
-  mkdir -p "$plugin_dst/skills"
-  for skill_dir in "$REPO_DIR"/core/skills/*/; do
-    local name; name="$(basename "$skill_dir")"
-    cp -R "$skill_dir" "$plugin_dst/skills/$name"
-  done
+  # Skills as a real directory tree (rendered from core/skills/).
+  render_skills "$plugin_dst/skills"
 
   # Slash commands.
   if [ -d "$REPO_DIR/commands" ]; then
@@ -234,8 +247,13 @@ render_claude() {
   fi
   cp "$REPO_DIR/hooks"/*.sh "$plugin_dst/hooks/" 2>/dev/null || true
   # Content files read by hooks at runtime (e.g. always-on-core.md, the
-  # judgment core emitted by always-on-loader.sh).
-  cp "$REPO_DIR/hooks"/*.md "$plugin_dst/hooks/" 2>/dev/null || true
+  # judgment core emitted by always-on-loader.sh). Rendered through
+  # render_template so the judgment core can {{INCLUDE}} shared fragments;
+  # a .md with no directive renders byte-identical.
+  for hook_md in "$REPO_DIR/hooks"/*.md; do
+    [ -f "$hook_md" ] && \
+      render_template "$hook_md" "$plugin_dst/hooks/$(basename "$hook_md")"
+  done
   [ -d "$REPO_DIR/hooks/lib" ] && cp -R "$REPO_DIR/hooks/lib" "$plugin_dst/hooks/"
   chmod +x "$plugin_dst/hooks/"*.sh 2>/dev/null || true
 }
@@ -304,12 +322,8 @@ render_codex() {
     chmod +x "$plugin_dst/hooks/"*.sh 2>/dev/null || true
   fi
 
-  # Skills as a real directory tree (copied from core/skills/).
-  mkdir -p "$plugin_dst/skills"
-  for skill_dir in "$REPO_DIR"/core/skills/*/; do
-    local name; name="$(basename "$skill_dir")"
-    cp -R "$skill_dir" "$plugin_dst/skills/$name"
-  done
+  # Skills as a real directory tree (rendered from core/skills/).
+  render_skills "$plugin_dst/skills"
 }
 
 # ─── Render Gemini target ───────────────────────────────────────────────────
@@ -355,11 +369,7 @@ render_gemini() {
   # Skills as real directory tree (Gemini extension expects directories,
   # not symlinks — render-time copy guarantees this regardless of how the
   # adapter side stores them).
-  mkdir -p "$out_dir/skills"
-  for skill_dir in "$REPO_DIR"/core/skills/*/; do
-    local name; name="$(basename "$skill_dir")"
-    cp -R "$skill_dir" "$out_dir/skills/$name"
-  done
+  render_skills "$out_dir/skills"
 
   # Agents — Gemini extension loads agents/<name>.md (md + YAML frontmatter).
   render_agents "gemini" "$out_dir/agents"
