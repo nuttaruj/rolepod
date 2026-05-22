@@ -374,6 +374,7 @@ Cut token usage on routine commands and code-intel queries.
 | **[rtk](https://github.com/rtk-ai/rtk)** | Wraps `git` / `npm` / `cargo` calls — 60-90% token reduction on routine output | Raw command output (no compression) | `cargo install rtk` |
 | **[caveman](https://github.com/JuliusBrussee/caveman)** | Compressed reply mode (`/caveman` slash command, ~75% token cut) | Normal verbose replies | Per repo: `git clone` into `~/.claude/plugins/caveman` |
 | **[GitNexus](https://github.com/abhigyanpatwari/GitNexus)** | Sub-second code-graph queries for symbol / caller / impact lookups. rolepod skills prefer any installed code-intel index over fan-out file reads — tool-agnostic, no GitNexus-specific rule | `rg` + `find` text search (slower for symbol/caller lookups) | `npm i -g gitnexus` then `npx gitnexus analyze` per repo |
+| **[CodeGraph](https://www.npmjs.com/package/codegraph)** | Tree-sitter-parsed symbol graph — `codegraph_impact` / `codegraph_callers` / `codegraph_search` for sub-millisecond structural queries. Auto file-watcher sync (no manual reindex). rolepod skills prefer any installed code-intel index over fan-out file reads | `rg` + Read (slower for symbol/caller/impact lookups) | `npm i -g codegraph` then `codegraph init -i` per repo + `claude mcp add codegraph -- codegraph serve --mcp` |
 
 ### Self-improvement
 
