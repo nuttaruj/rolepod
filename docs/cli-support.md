@@ -13,7 +13,7 @@ Phase 2.3: rolepod ships for each supported CLI as a **native plugin / extension
 | Hooks (core only) | 7 core hooks in the plugin's `hooks/hooks.json` · auto-registered on install | 3 core hooks across `SessionStart`/`PreToolUse` · hooks require `plugin_hooks` opt-in | 4 core hooks across `SessionStart`/`BeforeTool`/`AfterTool`/`PreCompress` |
 | Slash commands | `/rolepod-full` (skill — force-full lifecycle) | `$rolepod-full` (skill via Codex skill UI) | `/rolepod-full` (skill; no native `.toml` commands) |
 | Plugin manifest | `plugins/rolepod/.claude-plugin/plugin.json` (spec-conformant) + `.claude-plugin/marketplace.json` catalog at the repo root | `.codex-plugin/plugin.json` (mirrors caveman schema, 1.6KB) | `gemini-extension.json` (extension schema, 551B) |
-| MemPalace / GitNexus integration | vendor install via marketplace plugin (MemPalace) + MCP (GitNexus); rolepod provides workflow rules | vendor install via `.codex-plugin` (MemPalace) + MCP (GitNexus); rolepod provides workflow rules | vendor install via MCP (GitNexus); MemPalace manual; rolepod provides workflow rules |
+| Optional add-on integration | vendor-installed (own plugin / MCP); rolepod auto-detects, falls back to `rg` + `git log` | vendor-installed (own plugin / MCP); rolepod auto-detects, falls back to `rg` + `git log` | vendor-installed (own plugin / MCP); rolepod auto-detects, falls back to `rg` + `git log` |
 | MCP server config | global + per-plugin | global (`codex mcp`) | global (`gemini mcp`) |
 
 ## Install destinations
@@ -229,15 +229,6 @@ When `--force` is used on an existing CLI home (`~/.claude/`, `~/.codex/`, `~/.g
 
 Rationale: a user's session transcripts (`~/.claude/projects/`) can exceed 1.8GB on active accounts. Duplicating them on every `--force` run wasted disk and time. Typical rolepod-scoped backup is <50MB. Restore is straightforward: `cp -R ~/.claude.backup-<stamp>/* ~/.claude/` (run from the backup directory).
 
-### Project-level GitNexus index (one-time per repo)
-
-```bash
-cd /your/project
-npx gitnexus analyze
-```
-
-Indexes the codebase for impact-analysis tools. GitNexus index is per-repo, not per-CLI.
-
 ### Project-specific AGENTS.md override (optional)
 
 When a repo needs stricter rules than the global rolepod set, create `AGENTS.md` at the repo root with project-specific overrides. Codex precedence: repo-root `AGENTS.md` > `~/.codex/AGENTS.md`. Rolepod's global rules still apply unless explicitly overridden. See [Codex config docs](https://github.com/openai/codex/blob/main/docs/config.md).
@@ -290,15 +281,6 @@ cd /your/project
 Installs:
 - `~/.gemini/extensions/rolepod/` (full extension: `GEMINI.md` context file, 18 agents inlined, 11 skills, 4 hooks)
 - The global `~/.gemini/GEMINI.md` is left untouched — rolepod's context loads via the extension's `contextFileName`. A pre-PR-8 install's stale managed block in the global file is stripped on the next run.
-
-### Project-level GitNexus index (one-time per repo)
-
-```bash
-cd /your/project
-npx gitnexus analyze
-```
-
-Same per-repo index as the Codex flow — GitNexus is CLI-agnostic.
 
 ### Project-specific GEMINI.md override (optional)
 

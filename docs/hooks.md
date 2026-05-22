@@ -55,9 +55,9 @@ writes nothing into `~/.claude/CLAUDE.md`.
 
 Inject git context at session start.
 
-- **Effect**: `additionalContext` with repo name, branch, dirty count, recent commits (last 5), hot files (last 7 days). Also silently auto-recovers GitNexus DB if the plugin's bg reindex wedged it (once/day/repo).
-- **Self-guards**: not in a git repo → silent. GitNexus recovery only fires when `.gitnexus/` exists + a wedged-log marker is present.
-- **What this hook no longer does** (PR 5 slim): GitNexus-missing nag, MemPalace first-session nag, external reviewer banner. Add-on availability is documented in README + skills, not nagged per SessionStart.
+- **Effect**: `additionalContext` with repo name, branch, dirty count, recent commits (last 5), hot files (last 7 days).
+- **Self-guards**: not in a git repo → silent; non-JSON failure → emits `{}`.
+- **What this hook does not do**: no add-on detection, no vendor-tool recovery, no first-session nag, no external-reviewer banner. Add-on availability is documented in README + skills, never nagged per SessionStart.
 
 ### `session-lifecycle.sh --lock` — SessionStart (core)
 

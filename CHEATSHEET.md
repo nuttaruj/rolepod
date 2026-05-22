@@ -26,7 +26,7 @@
 ## Verify-first
 
 ```
-Internal:  Read / gitnexus_context / run cmd / mempalace_kg_query
+Internal:  Read / rg / run cmd / git log
 External:  WebFetch / WebSearch / CLI / MCP
 Can't verify → "Assuming X. Risk Y. Verify by Z"
 ```
@@ -115,7 +115,7 @@ One public skill per phase. Domain depth lives in the 18 specialist agents and i
 
 ```
 1. Fresh angle / re-frame
-2. MemPalace kg_query
+2. Re-check decision records / git log
 3. Specialist subagent
 4. Advisor (Opus)
 5. Hard stop — ask user
@@ -217,9 +217,11 @@ Install per README → "Recommended add-ons"; each integrates when present.
 ## Self-improvement loop
 
 ```
-Session N → Stop hook → MemPalace KG saves learnings
-Session N+1 → SessionStart → MemPalace recall → smarter
+Session N → Stop hook → learnings persist to per-project memory
+Session N+1 → SessionStart → recall past context → smarter
 ```
+
+Built-in via Claude auto memory. Optional memory add-on adds cross-session KG — see README → Recommended add-ons.
 
 ## Rule priority on conflict
 

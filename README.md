@@ -12,7 +12,7 @@ Turns any supported AI coding CLI into a coordinated software-house team. 18 spe
 
 Same source-of-truth content (`core/agents/`, `core/skills/`, `core/fragments/`) rendered through per-CLI adapters. No CLI is "default" — each is first-class.
 
-Self-improving: every session captures learnings via MemPalace KG so the next session starts smarter (optional — works without it).
+Self-improving: each session's learnings persist to per-project memory so the next session starts smarter.
 
 ### Positioning
 
@@ -149,14 +149,7 @@ curl -fsSL https://raw.githubusercontent.com/nuttaruj/rolepod/main/bootstrap.sh 
 
 **Codex hooks require explicit opt-in.** Fresh Codex install has `plugin_hooks` flagged `under development, false` — rolepod registers `hooks/hooks.json` in the plugin but Codex won't fire them until the user enables it: `codex features enable plugin_hooks`. Agents + skills load regardless. Without the opt-in, gate enforcement on Codex relies entirely on AGENTS.md (Tier 1) — hooks are inert.
 
-Rolepod ships **7 core hooks** (always-on loader, context loader, session safety, discipline gates, pre-commit enforcement, multi-agent contract check) — no add-on hooks. MemPalace and GitNexus integrate via their own vendor plugins/CLI:
-
-| Vendor | Claude | Codex | Gemini |
-|---|---|---|---|
-| **MemPalace** | Marketplace plugin (`claude plugin marketplace add MemPalace/mempalace` + `claude plugin install --scope user mempalace`) | `.codex-plugin` (install via `uv tool install mempalace`) | manual — clone + `uv sync` + `gemini mcp add` + PreCompress hook |
-| **GitNexus** | `claude mcp add gitnexus -- npx -y gitnexus@latest mcp` | `codex mcp add gitnexus -- npx -y gitnexus@latest mcp` | no GitNexus integration |
-
-Rolepod's value-add is **workflow rules** (when to call `gitnexus_impact`, `mempalace_kg_query`, etc.) — not hook plumbing. The vendors own their own integrations.
+Rolepod ships **7 core hooks** (always-on loader, context loader, session safety, discipline gates, pre-commit enforcement, multi-agent contract check) — no add-on hooks. Optional tools (code-intel index, cross-session memory, external reviewers) install as their own plugins/CLI; rolepod auto-integrates when one is present and falls back gracefully when it is not. See [Recommended add-ons](#recommended-add-ons).
 
 After install, restart the CLI you targeted so the plugin system loads.
 
@@ -318,16 +311,18 @@ MemPalace and GitNexus ship their own hooks through their own integration — in
 ```
 Session N
   ↓ Stop hook (Claude) / manual capture (Codex + Gemini)
-  ↓ MemPalace KG saves load-bearing learnings
+  ↓ load-bearing learnings persist to per-project memory
 
 Session N+1
-  ↓ SessionStart hook (Claude + Codex with plugin_hooks) / manual MCP recall (Gemini)
+  ↓ SessionStart recalls past context
   ↓ Lead starts task with past context
   ↓ Avoids re-deciding solved problems
   ↓ Capture more learnings before ship / stop
 
 → Each session smarter than the last
 ```
+
+Built-in path: Anthropic auto memory (per-project, Claude Code). An optional cross-session knowledge-graph add-on adds richer recall — see [Recommended add-ons](#recommended-add-ons).
 
 ---
 
@@ -375,7 +370,7 @@ Cut token usage on routine commands and code-intel queries.
 |---|---|---|---|
 | **[rtk](https://github.com/rtk-ai/rtk)** | Wraps `git` / `npm` / `cargo` calls — 60-90% token reduction on routine output | Raw command output (no compression) | `cargo install rtk` |
 | **[caveman](https://github.com/JuliusBrussee/caveman)** | Compressed reply mode (`/caveman` slash command, ~75% token cut) | Normal verbose replies | Per repo: `git clone` into `~/.claude/plugins/caveman` |
-| **[GitNexus](https://github.com/abhigyanpatwari/GitNexus)** | `gitnexus_impact` / `gitnexus_context` / `gitnexus_query` — sub-second graph queries instead of fan-out file reads. `code-search.md` rule auto-prefers it for symbol lookups; `using-rolepod` audit row uses it for scope-then-spawn | `rg` + `find` text search (slower for symbol/caller lookups) | `npm i -g gitnexus` then `npx gitnexus analyze` per repo |
+| **[GitNexus](https://github.com/abhigyanpatwari/GitNexus)** | Sub-second code-graph queries for symbol / caller / impact lookups. rolepod skills prefer any installed code-intel index over fan-out file reads — tool-agnostic, no GitNexus-specific rule | `rg` + `find` text search (slower for symbol/caller lookups) | `npm i -g gitnexus` then `npx gitnexus analyze` per repo |
 
 ### Self-improvement
 
@@ -383,7 +378,7 @@ Cross-session memory so each session starts smarter.
 
 | Add-on | What rolepod auto-uses it for | Fallback when missing | Install |
 |---|---|---|---|
-| **[MemPalace](https://github.com/mempalace/mempalace)** | KG of past decisions, codepaths, architectural choices. MemPalace installs as its own vendor plugin and registers its own `SessionStart` / `Stop` / `PreCompact` hooks — rolepod ships none of them. rolepod only provides the workflow rules: Lead queries `mempalace_kg_query` before re-deciding | Anthropic auto memory (Tier 1) + per-agent `memory:` frontmatter still work — just no cross-session KG recall | `pip install mempalace` then `mempalace init` |
+| **[MemPalace](https://github.com/mempalace/mempalace)** | Cross-session KG of past decisions, codepaths, architectural choices. MemPalace installs as its own vendor plugin with its own `SessionStart` / `Stop` / `PreCompact` hooks — rolepod ships none. rolepod skills say "check decision records before re-deciding" — tool-agnostic; MemPalace satisfies that with a queryable KG | Anthropic auto memory (Tier 1) + per-agent `memory:` frontmatter still work — just no cross-session KG recall | `pip install mempalace` then `mempalace init` |
 
 ### Design
 
@@ -405,7 +400,7 @@ Adversarial review beyond the in-process `qa-tester` floor.
 
 ### Detection
 
-`SessionStart` hook (`project-context-loader.sh`) scans for `codex` / `gemini` / `mempalace` / `gitnexus` binaries on `$PATH` and surfaces availability to Lead. No add-on detected = no banner, no nag.
+Rolepod does not scan for or nag about add-ons. Each add-on integrates passively — its skills/hooks/MCP tools become available when the user installs it, and rolepod skills route to them when present. No add-on installed = no banner, no degradation beyond the documented fallback.
 
 ### Skill preloads
 
@@ -424,7 +419,7 @@ cd /your/new/project
 claude   # or: codex, or: gemini
 ```
 
-Auto-detects git repo + recent commits and project type (next.config / pyproject.toml / etc.). Claude also gets MemPalace recall when installed; Codex gets the optional SessionStart bridge when MemPalace is installed and `plugin_hooks` is enabled; Gemini uses manual / MCP recall for now.
+Auto-detects git repo + recent commits and project type (next.config / pyproject.toml / etc.) via the SessionStart context hook.
 
 ### Bug fix
 
@@ -485,8 +480,8 @@ For Codex/Gemini, the cohesion contract step inside `write-plan` still applies �
 6. **Anti-spaghetti** — same pattern in 3+ → centralize
 7. **Universal** — zero project-specific refs
 8. **Parallel-safe** — path/concern/artifact ownership prevents collision
-9. **Self-improving** — every session feeds the next via MemPalace KG
-10. **Graceful degradation** — works without MemPalace / GitNexus / external AIs
+9. **Self-improving** — each session's learnings persist to memory for the next
+10. **Graceful degradation** — works without optional add-ons / external AIs
 11. **Small-model friendly** — concrete triggers, no fuzzy judgment calls
 
 ---
