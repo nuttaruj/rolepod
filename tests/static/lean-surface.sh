@@ -238,10 +238,74 @@ for f in build/rendered/codex/AGENTS.md build/rendered/gemini/GEMINI.md; do
   check "no full agent table leaked into $(basename $(dirname $f))/$(basename $f) (rows: $rows)" "[ $rows -le 1 ]"
 done
 
-# ── Model tier coverage — all 18 agents must have a model: line ───────
-COVERED=$(grep -l "^model: \(haiku\|sonnet\|opus\)" adapters/claude/agent-frontmatter/*.yml | wc -l | tr -d ' ')
-TOTAL=$(ls adapters/claude/agent-frontmatter/*.yml | wc -l | tr -d ' ')
-check "model tier covers all $TOTAL agents (actual: $COVERED/$TOTAL)" "[ $COVERED -eq $TOTAL ]"
+# ── Model tier — frontmatter must match docs/model-tier-policy.md ─────
+# The policy doc is the single source for the agent→tier assignment and the
+# tier→model mapping. Each CLI's per-agent frontmatter implements it. This
+# parses both policy tables and verifies all three frontmatter files for
+# every agent — any drift across the 54 files fails here.
+if python3 - <<'PYEOF' 2>&1
+import sys, pathlib, re
+
+policy = pathlib.Path("docs/model-tier-policy.md").read_text()
+
+def clean(c): return c.strip().strip("*").strip("`").strip()
+
+def section(title):
+    out, grab = [], False
+    for ln in policy.split("\n"):
+        if ln.startswith("## "):
+            grab = ln[3:].strip() == title
+            continue
+        if grab: out.append(ln)
+    return out
+
+def rows(lines):
+    return [[clean(c) for c in ln.strip().strip("|").split("|")]
+            for ln in lines if ln.strip().startswith("|")]
+
+TIERS = ("cheap", "balanced", "strong")
+tier_models = {r[0]: (r[1], r[2], r[3]) for r in rows(section("Model tiers"))
+               if len(r) >= 4 and r[0] in TIERS}
+agent_tier = {r[0]: r[1] for r in rows(section("Default agent → tier mapping"))
+              if len(r) >= 2 and r[1] in TIERS}
+
+errs = []
+if len(tier_models) != 3:
+    errs.append(f"Model tiers table parsed {sorted(tier_models)} (expected 3)")
+
+claude_d = pathlib.Path("adapters/claude/agent-frontmatter")
+codex_d = pathlib.Path("adapters/codex/plugins/rolepod/agents")
+gemini_d = pathlib.Path("adapters/gemini/agent-frontmatter")
+
+def model_of(path, pat):
+    if not path.exists(): return None
+    m = re.search(pat, path.read_text(), re.M)
+    return m.group(1) if m else None
+
+for a in sorted(p.stem for p in claude_d.glob("*.yml")):
+    if a not in agent_tier:
+        errs.append(f"{a}: not in policy agent→tier table")
+        continue
+    tier = agent_tier[a]
+    if tier not in tier_models:
+        errs.append(f"{a}: tier '{tier}' not in Model tiers table"); continue
+    exp_c, exp_x, exp_g = tier_models[tier]
+    got_c = model_of(claude_d / f"{a}.yml", r'^model:\s*(\S+)')
+    got_x = model_of(codex_d / f"{a}.toml", r'^model\s*=\s*"([^"]+)"')
+    got_g = model_of(gemini_d / f"{a}.yml", r'^model:\s*(\S+)')
+    if got_c != exp_c: errs.append(f"{a}: claude {got_c} != {exp_c} ({tier})")
+    if got_x != exp_x: errs.append(f"{a}: codex {got_x} != {exp_x} ({tier})")
+    if got_g != exp_g: errs.append(f"{a}: gemini {got_g} != {exp_g} ({tier})")
+
+for e in errs: print("      " + e)
+sys.exit(1 if errs else 0)
+PYEOF
+then
+  echo "  ✓ model tier: 18 agents match policy across claude / codex / gemini"
+else
+  echo "  ✗ model tier drift from docs/model-tier-policy.md (see above)"
+  fail=$((fail+1))
+fi
 
 # ── Competitor brand scrub ─────────────────────────────────────────────
 # Allowed: nothing. system files, entry docs, rendered output all clean.

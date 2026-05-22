@@ -347,13 +347,15 @@ In rolepod: 15 agents use `memory: project` (codepaths / patterns / decisions sc
 
 Each agent carries a tier-mapped model in its per-CLI frontmatter — Claude `model` + `effort`, Codex `model` + `model_reasoning_effort`, Gemini `model` (no effort field). Tiering is identical across all three CLIs.
 
-| Tier | Count | Claude | Codex | Gemini | Agents |
-|------|-------|--------|-------|--------|--------|
-| **strong+** | 1 | `opus` / xhigh | `gpt-5.5` / xhigh | `gemini-3-pro-preview` | security-engineer |
-| **strong** | 3 | `opus` / high | `gpt-5.5` / high | `gemini-3-pro-preview` | system-architect, billing-engineer, universal-reviewer |
-| **balanced+** | 3 | `sonnet` / high | `gpt-5.4` / high | `gemini-3-pro-preview` | ai-ml-engineer, performance-engineer, qa-tester |
-| **balanced** | 6 | `sonnet` / medium | `gpt-5.4` / medium | `gemini-3-pro-preview` | backend-developer, frontend-developer, mobile-developer, data-scientist, devops-sre, ui-ux-designer |
-| **cheap** | 5 | `haiku` / medium | `gpt-5.4-mini` / medium | `gemini-3-flash-preview` | product-manager, business-analyst, customer-success, growth-marketer, tech-writer |
+| Tier | Count | Claude | Codex | Gemini |
+|------|-------|--------|-------|--------|
+| **strong+** | 1 | `opus` / xhigh | `gpt-5.5` / xhigh | `gemini-3-pro-preview` |
+| **strong** | 3 | `opus` / high | `gpt-5.5` / high | `gemini-3-pro-preview` |
+| **balanced+** | 3 | `sonnet` / high | `gpt-5.4` / high | `gemini-3-pro-preview` |
+| **balanced** | 6 | `sonnet` / medium | `gpt-5.4` / medium | `gemini-3-pro-preview` |
+| **cheap** | 5 | `haiku` / medium | `gpt-5.4-mini` / medium | `gemini-3-flash-preview` |
+
+Per-agent tier assignments live in [`docs/model-tier-policy.md`](docs/model-tier-policy.md) — the policy is the single source, each agent's frontmatter implements it, and a static check verifies the two never drift.
 
 Estimated **~50-60% cost reduction** vs "all strong tier" while keeping depth where bugs are expensive (auth / billing / migrations / arch). Codex + Gemini adapters preserve the same tiering.
 
