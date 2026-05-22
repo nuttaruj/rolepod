@@ -138,7 +138,7 @@ not a quota. Lean caps (`lean-surface.sh` enforces):
 - ≤ 4 supporting files per skill
 - ≤ 5 for `debug-issue` and `finish-work` (the deepest skills)
 - ≤ 3 for the `using-rolepod` router · 0 for the `rolepod-full` alias
-- ≤ 35 supporting files total across all skills
+- ≤ 36 supporting files total across all skills
 
 Decide each folder on its own merit:
 

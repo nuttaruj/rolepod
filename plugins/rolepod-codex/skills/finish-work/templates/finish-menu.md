@@ -4,7 +4,7 @@
 # <Branch> — Finish
 
 ## Gate status
-- Pre-merge gate (S + T + F): <PASS / FAIL — name what failed>
+- Pre-merge gate (S/T/F — simplicity, test, failure-mode): <PASS / FAIL — name what failed>
 - CI: Phase 1 <status> · Phase 2 <status, or n/a>
 - Review verdict: <APPROVED / APPROVED-WITH-NITS / REJECTED>
 

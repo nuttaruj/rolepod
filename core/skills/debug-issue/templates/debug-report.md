@@ -24,3 +24,9 @@
 ## Verification
 <Commands run + result. Full module suite green, no new red.>
 - `<command>` — <result>
+
+## Status
+<COMPLETED — bug fixed, the failing test now green, suite clean.
+ PARTIAL — root cause found, fix incomplete — what remains.
+ BLOCKED — cannot reproduce or cannot fix — what is needed.>
+COMPLETED | PARTIAL | BLOCKED

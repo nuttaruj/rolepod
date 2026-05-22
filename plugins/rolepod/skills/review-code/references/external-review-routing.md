@@ -44,11 +44,10 @@ multi-axis read (the step-2 axis walk). It is the universal generalist: it
 reviews **every** axis — correctness, security, breadth, architecture, perf,
 UI — not one specialty.
 
-Strength routing is an optimisation on top of the floor. It assigns a
-specialist to an axis when one is available; it never removes an axis. If
-the specialist for an axis is missing, is the Lead, or has failed, that axis
-still gets reviewed — by the floor. No axis is ever skipped because "that
-was the other CLI's job".
+Strength routing is an optimisation on top of the floor: it assigns a
+specialist to an axis when one is available; it never removes an axis. A
+specialist that is missing, is the Lead, or has failed → that axis falls
+back to the floor.
 
 ## Degradation
 

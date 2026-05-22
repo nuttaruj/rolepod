@@ -12,13 +12,11 @@
 <Test files touched + what each new test asserts.>
 - `path` — <assertion>
 
-## Commands run
-<Exact commands used to verify, each with its result.>
+## Verification
+<Exact commands run, each with its result, plus the proof — the specific
+ test output lines / lint-typecheck result / screenshot path that show they
+ passed, not the full log.>
 - `<command>` — <result>
-
-## Evidence
-<The proof: test output lines, lint / typecheck result, screenshot path for
- UI. The specific lines that prove the claim, not the full log.>
 
 ## Scope check
 <Confirm the diff matches the task — no "while I'm here" extras. List any
