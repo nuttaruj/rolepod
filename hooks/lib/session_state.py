@@ -69,6 +69,10 @@ REVIEWER_AGENTS = {
 
 EDIT_TOOLS = {"Edit", "Write", "MultiEdit", "NotebookEdit"}
 
+# Subagent-spawn tools. Claude Code has used both names across versions;
+# match either so reviewer counting does not depend on the CLI version.
+AGENT_TOOLS = {"Agent", "Task"}
+
 
 def _load_hook_input() -> dict:
     raw = sys.stdin.read() or "{}"
@@ -190,14 +194,28 @@ def count_code_edits(transcript_path: str) -> int:
     return n
 
 
+def _bare_agent_name(subagent_type: str | None) -> str:
+    """Strip a plugin namespace prefix — 'rolepod:qa-tester' -> 'qa-tester'.
+
+    Plugin-installed agents are addressed as '<plugin>:<agent>'. A bare name
+    with no colon is returned unchanged.
+    """
+    return (subagent_type or "").strip().rsplit(":", 1)[-1]
+
+
 def count_reviewers_dispatched(transcript_path: str) -> int:
-    """Number of times Lead spawned qa-tester / security-engineer / universal-reviewer."""
+    """Times Lead spawned qa-tester / security-engineer / universal-reviewer.
+
+    Matches the bare agent name and the plugin-namespaced form alike
+    ('rolepod:qa-tester'), and both the 'Agent' and 'Task' subagent tools.
+    A plugin-namespaced reviewer used to count as 0 — which false-blocked
+    commits at the precommit gate even after review actually ran.
+    """
     n = 0
     for tool, inp in _iter_tool_uses(transcript_path):
-        if tool != "Agent":
+        if tool not in AGENT_TOOLS:
             continue
-        subagent_type = (inp.get("subagent_type") or "").strip()
-        if subagent_type in REVIEWER_AGENTS:
+        if _bare_agent_name(inp.get("subagent_type")) in REVIEWER_AGENTS:
             n += 1
     return n
 
@@ -216,7 +234,7 @@ def count_parallel_agent_spawns_on_path(
         if len(recent) > recent_window:
             recent.pop(0)
 
-    return sum(1 for tool, _ in recent if tool == "Agent")
+    return sum(1 for tool, _ in recent if tool in AGENT_TOOLS)
 
 
 def main() -> int:

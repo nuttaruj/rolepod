@@ -44,7 +44,11 @@ except Exception:
     print('')
 " 2>/dev/null || echo "")
 
-case "$SUBAGENT" in
+# Strip a plugin namespace prefix (rolepod:qa-tester -> qa-tester) so
+# plugin-installed agents match the whitelist exactly like built-in ones.
+SUBAGENT_BARE="${SUBAGENT##*:}"
+
+case "$SUBAGENT_BARE" in
   Explore|Plan|general-purpose|universal-reviewer|qa-tester|security-engineer|claude-code-guide|business-analyst|product-manager|customer-success|growth-marketer|tech-writer|ui-ux-designer)
     # These are either read-only / advisory / single-domain — no contract concern.
     exit 0

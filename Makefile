@@ -48,6 +48,7 @@ test-static:
 	@python3 -c "import pathlib, tomllib; [tomllib.loads(p.read_text()) for p in pathlib.Path('adapters/gemini/commands').glob('*.toml')]" && echo "  ✓ gemini commands/*.toml"
 	@$(MAKE) -s test-render-clean
 	@$(MAKE) -s test-lean-surface
+	@bash tests/static/hook-agent-matching.sh
 	@echo "  → static checks passed"
 
 # lean-surface — anti-drift guards that lock in the Core 10 invariants:
