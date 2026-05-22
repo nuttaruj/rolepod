@@ -42,9 +42,10 @@ loaded — so this hook is that surface. It is why the pure-plugin install
 writes nothing into `~/.claude/CLAUDE.md`.
 
 - **Effect**: reads the judgment core shipped beside the script
-  (`hooks/always-on-core.md`, ~3KB — verify-first, simplest-viable,
-  code-search, communication, risky actions, hard stops) and emits it as
-  SessionStart `additionalContext`.
+  (`hooks/always-on-core.md`, ~4KB — identity, precedence, verify-first,
+  simplest-viable, code search, communication, risky actions, hard stops;
+  authored as `always-on-core.md.tmpl` + `core/fragments/`, resolved at
+  render) and emits it as SessionStart `additionalContext`.
 - **Self-guards**: core file missing → silent exit; non-JSON failure → emits
   `{}` rather than crashing the session.
 - **Claude-only**: Codex loads its always-on core natively from
