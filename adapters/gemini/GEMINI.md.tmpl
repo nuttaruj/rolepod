@@ -25,7 +25,7 @@ Conflict unsafe → ask user.
 - **Slash commands** — `/rolepod-full` (the `rolepod-full` skill) forces the full lifecycle for feature-scale / high-risk work; it also switches Gemini approval mode to plan (read-only).
 - **Hooks enabled** — `SessionStart` / `BeforeTool` / `AfterTool` fire automatically.
 - **Skills auto-loaded** — Gemini's skill loader reads `skills/<name>/SKILL.md`.
-- **MCP support** — external tooling (GitNexus, MemPalace, Sentry, Stripe) via Gemini's MCP config; verify per-project.
+- **MCP support** — any MCP tools your project uses, via Gemini's MCP config; verify per-project.
 
 ## Language & Tone
 
@@ -96,12 +96,12 @@ Bloat → Gemini ignores rules. Move infrequent → skills.
 
 ## Code intelligence
 
-- Before edit symbol → file tools or GitNexus MCP
+- Before edit symbol → file tools or code-intel index
 - Before commit → `git diff` + lint + typecheck
-- Before re-deciding → `git log --grep=...` or MemPalace MCP
-- After major decision → ADR or MemPalace KG
+- Before re-deciding → `git log --grep=...` or decision records
+- After major decision → ADR or decision record
 
-GitNexus / MemPalace MCP via Gemini config when available. Otherwise plain `git` + `rg`.
+Code-intel index via Gemini MCP config when available. Otherwise plain `git` + `rg`.
 
 ## Session hygiene
 
@@ -131,7 +131,7 @@ Reviewer gap: Gemini's native peer-review channel limited. Self-review carries m
 | Need | Tool |
 |------|------|
 | Plain text / filename | `rg` |
-| Symbol / caller / impact | GitNexus MCP if connected, else `rg` + Read |
+| Symbol / caller / impact | code-intel index if connected, else `rg` + Read |
 | External docs / pricing / news | Gemini web/grounding |
 
 ## Verification

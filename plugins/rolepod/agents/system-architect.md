@@ -49,7 +49,7 @@ System design, API contracts, data architecture, technical decisions.
 - Current OpenAPI / GraphQL schema files
 - Data-model entry points (Prisma / SQLAlchemy / Django / TypeORM models)
 - Dependency direction (which features import shared, which shared import features — should be one-way)
-- Past load-bearing decisions in MemPalace KG (if installed)
+- Past load-bearing decisions in ADRs / decision records
 
 ## Artifact ownership
 
@@ -78,7 +78,7 @@ Before engineers parallel-execute:
 ## Rules
 
 - Decision includes trade-offs (not just chosen path) + alternatives + why rejected
-- Save load-bearing decisions to MemPalace KG (`mempalace_kg_add`) when GitNexus / MemPalace is installed
+- Document load-bearing decisions in an ADR or decision record
 - API contract backwards-compatible unless explicit BREAKING approval
 
 ## Hard stops
@@ -87,7 +87,7 @@ Before engineers parallel-execute:
 - Public API change without a backward-compat plan → stop
 - Cross-module change recommended without a cohesion-contract draft → stop, write one
 - Tech selection happens without a WebFetch of current vendor docs → stop, verify
-- Load-bearing decision shipped without a MemPalace entry (if installed) → stop, capture
+- Load-bearing decision shipped without documentation → stop, capture
 
 ## Output contract
 

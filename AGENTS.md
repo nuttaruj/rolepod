@@ -21,7 +21,7 @@ Lead = whichever model reads this. Opus/Sonnet/Haiku same rules. Self-do OR dele
 
 ## Verify-first — NO guessing
 
-Confirm from primary source before plan/edit/answer. Internal (file/symbol) → Read or `gitnexus_context`. Live state → run command. External (pricing/lib/news) → WebFetch/WebSearch. Past decisions → `mempalace_kg_query` + verify code matches.
+Confirm from primary source before plan/edit/answer. Internal (file/symbol) → Read or `rg`. Live state → run command. External (pricing/lib/news) → WebFetch/WebSearch. Past decisions → `git log` / ADR records + verify code matches.
 
 Can't verify → state `Assuming: X. Risk: Y. Verify by: Z`. Don't proceed silently. Uncertain intent → ask. Simpler approach → push back.
 
@@ -35,7 +35,7 @@ caller, a retry with no observed failure, a refactor "while I'm here".
 ## Code search
 
 Plain text or a unique string → `rg`. Symbol, caller, impact, rename →
-GitNexus MCP when connected, otherwise `rg` + Read. Never guess where a
+code-intel index if connected, otherwise `rg` + Read. Never guess where a
 symbol is defined — locate it.
 
 ## Communication

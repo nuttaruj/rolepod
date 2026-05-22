@@ -122,7 +122,7 @@ Fill `templates/pr-body.md` — summary, test plan checklist, risks, linked arti
 
 Launch ritual for production traffic: fill `templates/release-checklist.md` — rollback, monitoring, on-call, feature flag default, and migration safety all confirmed before traffic.
 
-Post-merge: update spec / plan if reality drifted, capture non-obvious decisions to MemPalace, queue `gitnexus analyze` if ≥ 5 files changed and the plugin is installed.
+Post-merge: update spec / plan if reality drifted, document non-obvious decisions.
 
 ## If a matching Rolepod agent is available
 
@@ -173,7 +173,7 @@ Load only when the task needs it:
 
 ## Full Rolepod enhancement
 
-Full Rolepod improves this phase by adding the 3-phase CI lane policy, auto-merge wiring when required lanes pass, and the qa-tester floor enforced via hooks. With MemPalace / GitNexus installed (their own vendor plugins), the agent also captures the ship decision and reindexes per the `code-intel` rules.
+Full Rolepod improves this phase by adding the 3-phase CI lane policy, auto-merge wiring when required lanes pass, and the qa-tester floor enforced via hooks.
 
 ## Next phase
 

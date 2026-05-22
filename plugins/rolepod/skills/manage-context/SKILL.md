@@ -48,7 +48,7 @@ Return / hand off:
 - The user's original request (literal quote if possible)
 - The current state of the work (last commit, files staged, tests green / red)
 - The constraint set the user stated (deadline, no-touch zones, style)
-- Available tools (`/clear`, `/compact`, `/rewind`, MemPalace, GitNexus, Advisor model)
+- Available tools (`/clear`, `/compact`, `/rewind`, Advisor model)
 
 ## Workflow
 
@@ -162,7 +162,7 @@ Load only when the task needs it:
 
 ## Full Rolepod enhancement
 
-Full Rolepod improves this phase by adding `/clear`, `/compact`, `/rewind` hooks, MemPalace cross-session decision recall, the Advisor escalation pattern, the deep triage checklist, and the onboarding skill auto-fired by `/init`.
+Full Rolepod improves this phase by adding `/clear`, `/compact`, `/rewind` hooks, the Advisor escalation pattern, the deep triage checklist, and the onboarding skill auto-fired by `/init`.
 
 ## Next phase
 

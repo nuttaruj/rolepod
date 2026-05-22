@@ -61,7 +61,7 @@ User: "find every place we build a SQL query by string concatenation"
 Routing: Review (repo-wide) → scope-then-spawn
 Reason: a whole-repo sweep. Fanning agents over every file first burns
 tokens and misses cross-file patterns.
-Next step: SCOPE — `rg -l` (or `gitnexus_query`) to list candidate files;
+Next step: SCOPE — `rg -l` to list candidate files;
 NARROW to the risky subset; SPAWN agents only on that list.
 
 ✗ Anti-pattern: spawn one agent per file across 300 files, no scoping pass.

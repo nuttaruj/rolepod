@@ -146,7 +146,7 @@ Load only when the task needs it:
 
 ## Full Rolepod enhancement
 
-Full Rolepod improves this phase by adding the qa-tester floor for test depth, `gitnexus_impact` for upstream tracing, hooks that flag silenced exceptions, and the adversarial reviewer pattern for fixes on high-risk surfaces.
+Full Rolepod improves this phase by adding the qa-tester floor for test depth, hooks that flag silenced exceptions, and the adversarial reviewer pattern for fixes on high-risk surfaces.
 
 ## Next phase
 

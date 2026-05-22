@@ -136,7 +136,7 @@ Non-blocking — read only when unsure whether a cut is behavior-preserving:
 
 ## Full Rolepod enhancement
 
-Full Rolepod improves this phase by adding the simplicity gate S1-S5 in pre-commit hooks, `gitnexus_impact` for safe abstraction removal, `universal-reviewer` adversarial pressure on DRY violations, and the centralization rule enforced for auth / billing / credit / URL validation paths.
+Full Rolepod improves this phase by adding the simplicity gate S1-S5 in pre-commit hooks, `universal-reviewer` adversarial pressure on DRY violations, and the centralization rule enforced for auth / billing / credit / URL validation paths.
 
 ## Next phase
 

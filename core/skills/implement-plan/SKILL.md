@@ -76,10 +76,10 @@ Touch only what the task requires. No "while I'm here" refactors. No reformattin
 
 While editing, hold these reflexes:
 - **Comments** — default to none. Add one only when the WHY is non-obvious (a hidden constraint, a workaround, a surprising invariant). Never comment WHAT the code does.
-- **One source of truth** — before adding a helper, constant, type, or validation, search for an existing one (`rg`, or `gitnexus_query` when GitNexus is installed) and extend it instead of duplicating.
+- **One source of truth** — before adding a helper, constant, type, or validation, search for an existing one (`rg`) and extend it instead of duplicating.
 - **New dependency** — justify it: not already covered by stdlib or an existing dep, maintained, reasonable size, compatible license. Unsure → ask.
 - **Tests** — never mock the database in an integration test; prefer a real dependency over a fake / stub / mock.
-- **Code intel** — when GitNexus is installed, run `gitnexus_impact` before a wide edit and `gitnexus_detect_changes` before commit; otherwise `rg` + Read.
+- **Code intel** — if code-intel index available, use it for blast radius before wide edits; otherwise `rg` + Read.
 
 ### 4. Bounded delegation
 

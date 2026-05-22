@@ -57,7 +57,7 @@ Return / hand off:
 
 ### 1. List files likely to touch
 
-Concrete paths, not categories. If `gitnexus_impact` is available, use it to widen blast radius. Otherwise read or `rg` adjacent code.
+Concrete paths, not categories. If code-intel index available, use it to widen blast radius. Otherwise `rg` + Read adjacent code.
 
 ### 2. Order the tasks
 

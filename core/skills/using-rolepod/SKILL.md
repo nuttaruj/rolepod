@@ -109,7 +109,7 @@ Agent frontmatter sets the model. Lead doesn't override unless user explicitly a
 
 ## Scope-then-spawn — repo-wide audit / sweep
 
-For any task touching the whole repo (audit, refactor sweep, dead-code hunt, dependency map, "find every usage of X"): scope the file list first, narrow to the risky subset, then spawn agents only on that subset — never fan one agent per file across hundreds. The 3-step flow, the GitNexus-vs-fallback tool order, and the exceptions live in `references/scope-then-spawn.md`.
+For any task touching the whole repo (audit, refactor sweep, dead-code hunt, dependency map, "find every usage of X"): scope the file list first, narrow to the risky subset, then spawn agents only on that subset — never fan one agent per file across hundreds. The 3-step flow, tool order, and exceptions live in `references/scope-then-spawn.md`.
 
 ## State machine — phase → exit evidence → next
 
