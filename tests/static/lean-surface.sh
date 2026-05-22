@@ -307,6 +307,35 @@ else
   fail=$((fail+1))
 fi
 
+# ── Single-source guard — shared fragments must not be re-inlined ─────
+# Each reusable fragment in core/fragments/ has a signature line. Every
+# consumer — skill SKILL.md, always-on-core.md.tmpl, the entry-doc
+# templates — must pull it via {{INCLUDE}}, never paste the text back in.
+# If a signature surfaces in a consumer source, the single source forked.
+SSV_CONSUMERS="core/skills/*/SKILL.md hooks/always-on-core.md.tmpl adapters/codex/AGENTS.md.tmpl adapters/gemini/GEMINI.md.tmpl"
+ssv_leak=""
+while IFS= read -r sig; do
+  [ -z "$sig" ] && continue
+  hits=$(grep -Fl "$sig" $SSV_CONSUMERS 2>/dev/null || true)
+  [ -z "$hits" ] || ssv_leak="${ssv_leak}  \"$sig\" → $(echo $hits | tr '\n' ' ')
+"
+done <<'SIGS'
+S1: Feature beyond request?
+T1: Task needs a test
+Q1: More than 1 file to edit?
+F1: Hallucinated a fn
+Lead = whichever model
+Memory and pattern-match are not evidence
+NEVER pick complex when simple
+SIGS
+if [ -z "$ssv_leak" ]; then
+  echo "  ✓ gate/doctrine single-sourced — no fragment re-inlined in a consumer"
+else
+  echo "  ✗ fragment content re-inlined (consumer must {{INCLUDE}} instead):"
+  printf '%s' "$ssv_leak" | sed 's/^/    /'
+  fail=$((fail+1))
+fi
+
 # ── Competitor brand scrub ─────────────────────────────────────────────
 # Allowed: nothing. system files, entry docs, rendered output all clean.
 BRAND_LEAKS=$(grep -rl -i "superpower" --include="*.md" --include="*.tmpl" --include="*.yml" . 2>/dev/null | grep -v "^./build/rendered/" | grep -v "^./.git/" | grep -v "^./brief/" || true)
