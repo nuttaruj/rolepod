@@ -12,7 +12,7 @@ Verifies:
 - `install.sh`, `bootstrap.sh`, `build/render.sh`, `hooks/*.sh` syntax
 - `hooks/lib/session_state.py` Python AST
 - Plugin manifests: Claude `plugin.json`, Codex `plugin.json` + `hooks.json`, Gemini `gemini-extension.json` + `hooks.json`
-- TOML files: Codex `agents/*.toml`, Gemini `commands/*.toml`
+- TOML files: generated Codex `agents/*.toml`
 - `render-clean`: `core/fragments/` matches generator output, no leaked `{{INCLUDE}}` placeholders
 - `lean-surface`: ~70 invariants — Tier 0 = 1 / Tier 1 = 9 / `tier: 3` = 0 / agent preloads Core 10 only / router refs canonical / no hard-dependency language / no `redirect_to_agent` / fallback sections concise / LC_ALL=C reproducible
 
@@ -25,9 +25,9 @@ make render
 ```
 
 Confirms:
-- `build/rendered/claude/CLAUDE.md`, 18 agents, skill-index, rules
-- `build/rendered/codex/AGENTS.md` + plugin tree
-- `build/rendered/gemini/GEMINI.md` + extension tree
+- `plugins/rolepod/` — committed Claude plugin tree (18 agents, skills, hooks, manifest)
+- `plugins/rolepod-codex/` — committed Codex plugin tree, plus `build/rendered/codex/AGENTS.md`
+- `build/rendered/gemini/` — Gemini extension tree (`GEMINI.md`, skills, hooks)
 - No leaked `{{INCLUDE: ...}}` placeholders
 
 ## 3. Integration (optional but recommended)
@@ -36,11 +36,12 @@ Confirms:
 make test-integration
 ```
 
-Runs 7 structural integration cases (~3-5s total, no live `claude -p` invocations):
+Runs 8 structural integration cases (~3-5s total, no live `claude -p` invocations):
 
 | Case | Asserts |
 |------|---------|
 | `install-parity` | Fresh temp install across Claude global / Claude project / Codex project / Gemini project produces documented artifacts |
+| `install-idempotency` | Re-running `install.sh` over an existing install is idempotent — no duplicated hooks, managed blocks, or registry entries |
 | `bug-fix-workflow` | `debug-issue` → failing test → minimal fix → `check-work` wiring (skill bodies, router row, no legacy shim dependency) |
 | `feature-from-spec` | Define → Plan → Build path: `write-spec` → `write-plan` → `implement-plan` → `check-work` wiring |
 | `subagent-review-order` | Two-stage review order (implementer → spec-compliance → code-quality) baked into `implement-plan` body + prompt templates |
@@ -48,7 +49,7 @@ Runs 7 structural integration cases (~3-5s total, no live `claude -p` invocation
 | `multi-agent-contract` | Cohesion-contract requirement (inside `write-plan`) before 2nd parallel agent spawn |
 | `ship-gate` | `finish-work` fires as final ship phase, S+T+F+P gates documented |
 
-Expected output: `pass: 7 / skip: 0 / fail: 0`. Any fail = doctrine drift, block release until reconciled (fix wiring OR update case expectation if intentional).
+Expected output: `pass: 8 / skip: 0 / fail: 0`. Any fail = doctrine drift, block release until reconciled (fix wiring OR update case expectation if intentional).
 
 > **Why no live `claude -p` behavior tests?** Rolepod targets interactive Claude Code sessions (Define → Plan → Build → Verify → Review → Ship multi-turn). `claude -p` is headless single-turn — used for Q&A and one-shot scripts, not for long workflow sessions. Testing routing through `-p` is testing the wrong shape: it cannot exercise phase progression or hook firing. Routing correctness is instead proven structurally by lean-surface (router references Core 10 skill names directly) and by these integration fixtures (skill body content + agent wiring). Real-world workflow behavior is verified by using Rolepod for actual work.
 
@@ -84,9 +85,9 @@ All commands should succeed.
 
 ## 6. Git hygiene
 
-- `git status` clean (no uncommitted AGENTS.md / GEMINI.md churn from gitnexus volatile fields).
-- Tag matches `package.json` / plugin version if applicable.
-- CHANGELOG updated.
+- `git status` clean — committed render trees (`plugins/rolepod/`, `plugins/rolepod-codex/`) match `make render` output.
+- Tag matches the plugin / extension version (`.claude-plugin/plugin.json`, `gemini-extension.json`).
+- Release recorded as a `chore(release): <version>` commit (rolepod keeps no separate CHANGELOG).
 
 ## 7. Push
 
