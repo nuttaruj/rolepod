@@ -47,7 +47,7 @@ Per-task override: explicit user instruction always wins. If the user says "use 
 
 ## When to escalate tier
 
-Auto-escalate to **adversarial** tier (regardless of agent default) when:
+Auto-escalate to the **strong** tier for adversarial review (regardless of agent default) when:
 
 - Touching auth / authn / authz / billing / payment / migration / credit / permission / secret / crypto / token / oauth / jwt / sso / saml / webhook / stripe / paypal / charge / invoice paths.
 - About to ship to production (final `finish-work` review).

@@ -88,9 +88,9 @@ Match the user intent to the FIRST skill that fires. The skill itself decides wh
 | **security / auth / billing / token / payment / migration** | **Build (high-risk)** | `implement-plan` → `review-code` | **strong** |
 | architecture decision (DB schema / API contract / module split) | **Plan** | `write-plan` → `system-architect` agent when available | **strong** |
 | "is this done / fixed / does it work / verify" | **Verify** | `check-work` | balanced |
-| "review / check this / look at the diff" | **Review** | `review-code` | **adversarial** |
+| "review / check this / look at the diff" | **Review** | `review-code` | **strong** (review) |
 | "audit / full audit / review whole repo / find all X / sweep / map" | **Review (repo-wide)** | **scope-then-spawn** (see below) | balanced |
-| "ship / merge / push / PR / ready / go live" | **Ship** | `finish-work` | **adversarial** (final review) |
+| "ship / merge / push / PR / ready / go live" | **Ship** | `finish-work` | **strong** (final review) |
 | explain-only / conceptual question (no artifact) | (no phase) | answer directly | cheap |
 | unclear doc artifact / proposal / ADR scope | **Define** | `write-spec` | cheap |
 | clear doc edit / add runbook section / update README | **Build** | `implement-plan` | cheap |
@@ -102,8 +102,7 @@ If no row matches: ask the user what phase the task is in. Don't pattern-match y
 
 - **cheap** = haiku-class. Docs, PM, business analysis, customer-facing copy.
 - **balanced** = sonnet-class (default). Normal implementation.
-- **strong** = opus-class. Architecture, billing, security, migration code.
-- **adversarial** = opus-class reviewer. Final-pass code review; security review of high-risk paths.
+- **strong** = opus-class. Architecture, billing, security, migration code, and final-pass / adversarial code review (a review context, not a separate tier).
 
 Agent frontmatter sets the model. Lead doesn't override unless user explicitly asks.
 
