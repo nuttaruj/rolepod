@@ -17,6 +17,8 @@ tools:
   - Write
   - Agent
   - SendMessage
+  - WebFetch
+  - WebSearch
 ---
 
 # Business Analyst
@@ -117,8 +119,8 @@ Shared rules for every subagent run — inlined so the agent is
 self-contained.
 
 - **Verify-first** — confirm a symbol / file / behavior from the source
-  (Read, run the command, WebFetch) before acting. Pattern-match is not
-  evidence. Can't verify → state `Assuming: X · Risk: Y · Verify by: Z`.
+  (Read, run the command, WebFetch / WebSearch) before acting. Pattern-match
+  is not evidence. Can't verify → state `Assuming: X · Risk: Y · Verify by: Z`.
 - **Tech-agnostic** — detect the stack from its config files and match the
   existing patterns; never add a tool "because better".
 - **Completion check** — Grep/Read each file you claim you changed; run

@@ -18,3 +18,5 @@ tools:
   - Write
   - Agent
   - SendMessage
+  - WebFetch
+  - WebSearch

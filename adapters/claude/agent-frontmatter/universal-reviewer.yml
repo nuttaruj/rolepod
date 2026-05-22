@@ -13,3 +13,5 @@ tools:
   - Read
   - Glob
   - Grep
+  - WebFetch
+  - WebSearch
