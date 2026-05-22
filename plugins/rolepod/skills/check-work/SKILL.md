@@ -77,11 +77,11 @@ Run the test, build, curl, browser observation. Capture the exact command and th
 
 ### 3. UI verification when relevant
 
-Open the page, render the component, interact with the affected flow. Use MCP browser tools, Playwright, or local devtools — never ask the user to do it for you when tools are available.
+Open the page, render the component, interact with the affected flow. Use MCP browser tools, Playwright, or local devtools — never ask the user to do it for you when tools are available. For the tool order and what to observe, see `references/ui-verification.md`.
 
 ### 4. Watch for false greens
 
-A passing test with weak assertions is a false green. Mentally flip `==` to `!=`. If the test still passes, the assertion is too weak — tighten it before trusting.
+A passing test with weak assertions is a false green. Mentally flip `==` to `!=`. If the test still passes, the assertion is too weak — tighten it before trusting. For weak-vs-strong assertion patterns by type, see `references/assertion-strength.md`.
 
 ### 5. State limitations honestly
 
@@ -108,7 +108,7 @@ logic-bearing · NOT a high-risk path.
 
 ### 7. Compose the evidence block
 
-Include the exact commands run, the relevant output, and the change manifest in the final response.
+Fill `templates/evidence-block.md` — exact commands, the specific proof line per check, the change manifest, and honest limitations.
 
 ## If a matching Rolepod agent is available
 
@@ -134,18 +134,20 @@ Execute as Lead with this minimum viable checklist:
 7. Compose an evidence block in the response
 8. If a verification path is missing, state it explicitly with risk
 
-## Output format
+## Output
 
-```
-Evidence
-- <command>: <result summary>
-- <command>: <result summary>
+The evidence block is the canonical artifact: `templates/evidence-block.md`. It carries the change manifest, per-check evidence, limitations, and the status verdict. Do not restate the block shape here; the template is the single source.
 
-Limitations (if any)
-- Cannot verify: <what> · Reason: <why> · Risk: <impact>
+## Examples
 
-Status: VERIFIED | PARTIAL | UNVERIFIED
-```
+Non-blocking — read only when unsure whether your evidence is strong enough:
+- `examples/evidence-examples.md` — a bug-fix and a UI verification, each a strong/false-green pair with a "why good wins" table. Read the whole file; the contrast is the lesson.
+
+## References
+
+Load only when the task needs it:
+- `references/ui-verification.md` — how to verify a UI change: tool order, what to observe
+- `references/assertion-strength.md` — spot a weak assertion that passes with the bug present
 
 ## Hard stops
 

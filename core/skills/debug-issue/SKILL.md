@@ -61,7 +61,7 @@ Capture the exact error, the throw site, and the stack trace before editing. The
 
 ### 2. Reproduce reliably
 
-One command, same failure every time. Pytest: `pytest path/test_x.py::name -v`. API: exact failing `curl`. UI: steps + browser + console. Intermittent: raise the rate first — loop the trigger, add stress, inject sleeps — until you have a 50%+ signal. A 1% flake is not yet debuggable.
+One command, same failure every time. Pytest: `pytest path/test_x.py::name -v`. API: exact failing `curl`. UI: steps + browser + console. Intermittent: raise the rate first — loop the trigger, add stress, inject sleeps — until you have a 50%+ signal. A 1% flake is not yet debuggable. For the flake cause decision tree, see `references/flake-triage.md`.
 
 If you cannot repro locally, reproduce in CI / staging. Do not fix what you cannot see fail.
 
@@ -73,13 +73,9 @@ If the bug predates your changes and the last-good commit is unknown, `git bisec
 
 ### 4. One hypothesis at a time
 
-```
-Hypothesis: <variable / state / condition> is <value> because <upstream cause>.
-```
+State one hypothesis: `<variable / state / condition> is <value> because <upstream cause>`. Test the cheapest falsifier first — log, breakpoint, read the called function, check the fixture. Don't spray fixes. Tag every debug log with a unique prefix (`[DBG-a4f2]`) so cleanup is one grep.
 
-Cheapest falsifier first: log, breakpoint, read the called function, check the fixture. Don't spray fixes. Tag every debug log with a unique prefix (`[DBG-a4f2]`) so cleanup is one grep.
-
-Keep a running ledger of every experiment — what changed, what happened, what it ruled in or out. A new hypothesis must hold against every prior entry, not just the last run.
+Track experiments in `templates/hypothesis-ledger.md` — one row each. A new hypothesis must hold against every prior row, not just the last run.
 
 ### 5. Trace upstream
 
@@ -88,7 +84,7 @@ Symptom → caller → caller's caller, until one of:
 - System boundary (network, OS, third-party lib)
 - "Designed this way" (intentional invariant)
 
-Stop at one of those, not at the first place the value looks wrong.
+Stop at one of those, not at the first place the value looks wrong. For the upstream-walk technique and the symptom-vs-root distinction, see `references/root-cause-tracing.md`.
 
 ### 6. Write the failing test
 
@@ -126,16 +122,20 @@ Execute as Lead with this minimum viable checklist:
 7. Make the smallest fix that turns it green
 8. Run the full touched suite to confirm no regression
 
-## Output format
+## Output
 
-```
-Error: <literal>
-Repro: <command>
-Root cause: <upstream condition, file:line>
-Failing test: <path::name>
-Fix: <files changed>
-Verification: <commands run, output summary>
-```
+The debug report is the canonical artifact: `templates/debug-report.md`. It carries the error, repro, root cause, the failing test, the fix, and verification. Do not restate the report shape here; the template is the single source.
+
+## Examples
+
+Non-blocking — read only when unsure whether a fix reaches the root:
+- `examples/debug-examples.md` — a symptom-vs-root fix and a retry-hack-vs-triaged flake fix, each a good/bad pair with a "why good wins" table. Read the whole file; the contrast is the lesson.
+
+## References
+
+Load only when the task needs it:
+- `references/root-cause-tracing.md` — the upstream walk: trace a bad value to where it is born
+- `references/flake-triage.md` — diagnose an intermittent test instead of retrying it
 
 ## Hard stops
 

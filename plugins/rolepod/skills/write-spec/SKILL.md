@@ -58,13 +58,15 @@ Hand off:
 
 ### 1. Frame the goal
 
-State the user goal in one sentence. State 2-3 likely constraints. Flag any high-risk surface up front.
+State the user goal in one sentence. State 2-3 likely constraints. Flag any high-risk surface up front. If the goal needs an "and" to be stated, the request may be several specs — see `references/scope-splitting.md` before continuing.
 
 ### 2. Discovery dialogue
 
 Ask up to 5 targeted questions, one at a time. Each question must change the implementation if the answer changes. Skip obvious questions. Use the native question UI when available; otherwise plain-text prompts.
 
 If a question can be answered by reading the codebase, explore the codebase instead — never spend a user question on what you can verify yourself. Walk the decision tree by dependency: resolve the question that gates the others first, since its answer changes which downstream questions still matter.
+
+Unsure which questions actually change the implementation? See `references/question-bank.md` for question types and skip rules.
 
 ### 3. Present 2-3 approaches
 
@@ -85,7 +87,7 @@ Present the proposed spec. Wait for the user to accept, edit, or reject the dire
 
 ### 6. Produce the contract
 
-A compact spec artifact: goal, non-goals, constraints, success criteria, high-risk surfaces, chosen approach with rationale, open questions if any.
+Fill `templates/spec-template.md` — every section resolved, no placeholders, no contradictions.
 
 ## If a matching Rolepod agent is available
 
@@ -111,27 +113,28 @@ Execute the discovery + design checklist directly as Lead. Use this minimum viab
 7. Wait for user approval before continuing
 8. Save the spec inline or as `docs/specs/<feature>.md` if the work spans more than one session
 
-## Output format
+## Output
 
-A compact spec artifact (inline or file) with these sections:
+The spec template is the canonical artifact: `templates/spec-template.md`. Fill every section — it is the contract `write-plan` consumes. Do not restate the section list here; the template is the single source of the spec shape.
 
-```
-Goal
-Non-goals
-Constraints
-Success criteria
-High-risk surfaces
-Approach (chosen, with rationale)
-Open questions (if any)
-```
+For one-session work, inline the filled template in chat. For repeat or multi-session features, save it to `docs/specs/<feature>.md`.
 
-For repeat work or multi-session features, save to `docs/specs/<feature>.md`. For one-session work, inline in chat is enough.
+## Examples
+
+Non-blocking — read only when the spec being drafted is unclear:
+- `examples/spec-examples.md` — two good/bad scenario pairs (one high-risk, one not) with a "why good wins" table. Read the whole file; the contrast is the lesson.
+
+## References
+
+Load only when the task needs it:
+- `references/question-bank.md` — discovery question types + skip rules, when unsure what to ask
+- `references/scope-splitting.md` — when a request is too big for one spec
 
 ## Hard stops
 
 - Goal still ambiguous after 5 questions → ask the user to choose between two concrete framings
 - User declines to approve any approach → stop, report what is blocking
-- A high-risk surface is touched without a security / migration / audit plan → stop, route to `review-code` first
+- A high-risk surface is touched without a security / migration / audit plan → stop; add that plan to the spec, or delegate to `security-engineer` / `system-architect`, before handing off to `write-plan`
 
 ## Full Rolepod enhancement
 

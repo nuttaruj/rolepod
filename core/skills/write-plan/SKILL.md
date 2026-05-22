@@ -79,7 +79,7 @@ Parallel agents only help when file ownership is genuinely disjoint and the work
 
 ### 5. If parallel, write a cohesion contract
 
-A short doc that pins: who owns which files, what interfaces they share, what merges first, what each agent must not touch. Save to `contract.md` or `specs/<feature>-cohesion.md`.
+Fill `templates/cohesion-contract-template.md` — it pins file ownership, shared interfaces, merge order, the do-not-touch list, and the integration owner. Save to `contract.md` or `docs/plans/<feature>-cohesion.md`.
 
 ### 6. Route to agents
 
@@ -113,18 +113,16 @@ Execute as Lead with this minimum viable checklist:
 7. Note where the API or schema contract changes
 8. Decide sequential vs parallel honestly — sequential is the default
 
-## Output format
+## Output
 
-```
-Files to touch
-Tasks (ordered, with test plan per task)
-High-risk surfaces touched
-Parallel layout (if any) + cohesion contract path
-Done criteria
-Risks
-```
+The plan template is the canonical artifact: `templates/plan-template.md`. Fill every section — it is the contract `implement-plan` executes. A multi-agent plan adds a cohesion contract (`templates/cohesion-contract-template.md`). Do not restate the section list here; the templates are the single source of plan shape.
 
-For multi-session work, save to `docs/plans/<feature>.md`. For one-session work, inline is fine.
+For one-session work, inline the filled template in chat. For multi-session work, save it to `docs/plans/<feature>.md`.
+
+## Examples
+
+Non-blocking — read only when the plan being drafted is unclear:
+- `examples/plan-examples.md` — a sequential single-owner plan and a parallel multi-agent plan, each good/bad with a "why good wins" table. Read the whole file; the contrast is the lesson.
 
 ## Hard stops
 

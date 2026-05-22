@@ -56,58 +56,7 @@ The `rolepod-full` skill is the explicit entrypoint — it loads this skill in f
 
 ### Force-full behavior
 
-Run **every phase in order, no skips** — even a one-line fix. The user opted out of skip rules.
-
-1. **Define — `write-spec`** — Phase 0 discovery dialogue (explore context, clarifying questions one at a time, propose 2-3 approaches, incremental approval, spec self-review). Pick persistence tier per the skill's hard-gate table.
-2. **Plan — `write-plan`** — break the approved spec into bite-sized steps (2-5 min each). If multi-agent, write the cohesion contract before spawning.
-3. **Build — `implement-plan`** — execute task-by-task with bounded scope + explicit file ownership. Bug-flavored tasks route through `debug-issue`. Apply S1-S5 / T1-T6 / F1-F5 per commit.
-4. **Verify — `check-work`** — no completion claim without fresh verification evidence in this message.
-5. **Review — `review-code`** — qa-tester floor + risk-appropriate reviewers. External adversarial reviewers (Codex / Gemini) when configured; otherwise qa-tester / security-engineer / universal-reviewer.
-6. **Ship — `finish-work`** — S+T+F+P gates, required CI lane checks, then the 4-option branch finish menu (merge / open PR / keep / discard).
-
-### Execution backend (force-full)
-
-Same intent on every CLI; the backend differs by capability. Pick the best available and announce it.
-
-| Environment | Backend |
-|---|---|
-| Claude + agent-teams enabled (`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`, v2.1.32+) | teammate mode — multi-process team (`docs/agent-teams.md`) |
-| Claude without agent-teams, or user asked for single-process | Task / subagent dispatch + cohesion contract |
-| Codex | Codex subagents |
-| Gemini | Gemini subagents; inline fallback when unsupported |
-
-### Careful-mode rigor (default-on in force-full mode)
-
-- ≤3 files per commit (default workflow allows ≤5)
-- Mandatory peer review even for small diffs (no skip on ≤5 lines / single file / zero logic)
-- All S1-S5 + T1-T6 gates explicit every commit
-- External adversarial reviewers (Codex / Gemini) when configured
-
-User can opt back to lighter review mid-flow ("normal review is fine") — rigor is default-on, not mandatory-on.
-
-### What still applies under force-full mode
-
-- `verify-first` for any factual claim
-- Hooks (subagent-commit block, precommit-gate, gate-reminder, cohesion-contract-check) fire regardless
-- User override mid-flow: "skip review" / "just ship" → obey
-
-### Output pattern (announce at start of force-full mode)
-
-```
-Routing: Force full lifecycle via /rolepod-full
-Phase: Define (entering Phase 0 discovery dialogue)
-Execution: <teammate mode | Task/subagents | Codex subagents | Gemini subagents | inline fallback>
-Skipping: none (user opted out of router skip rules)
-Next step: <first question or context read>
-```
-
-### Common rationalizations to reject (force-full mode)
-
-| Excuse | Reality |
-|--------|---------|
-| "Task is trivial, Define is overkill" | User invoked `/rolepod-full` precisely to disable that judgment. Run it. |
-| "User probably meant just Build" | If they wanted just Build they'd type the task without `/rolepod-full`. Read the directive literally. |
-| "I'll merge Define + Plan into one turn to save time" | Each phase has its own exit evidence. Run them sequentially. |
+Force-full runs all six phases in order with no skips — even a one-line fix — with external adversarial reviewers when configured. The full phase-by-phase detail, the execution backend table, the start banner, careful-mode rigor, and the force-full rationalizations live in `references/force-full-lifecycle.md`. Load it when entering force-full mode.
 
 ## Boundary
 
@@ -158,36 +107,9 @@ If no row matches: ask the user what phase the task is in. Don't pattern-match y
 
 Agent frontmatter sets the model. Lead doesn't override unless user explicitly asks.
 
-## Scope-then-spawn — repo-wide audit / sweep / "find all X"
+## Scope-then-spawn — repo-wide audit / sweep
 
-Default for any task that touches the **whole repo** (audit, refactor sweep, dead-code hunt, security pass, dependency map, "find every usage of X"). Stops Lead from fanning out parallel agents over hundreds of files when a structural query can narrow the list first.
-
-```
-1. Scope    →  list the files / symbols / processes actually in scope
-2. Narrow   →  filter to the suspicious / risky / changed subset
-3. Spawn    →  parallel agents ONLY on the narrowed list (or self-do)
-```
-
-### Tool order — GitNexus if available, fallback otherwise
-
-| Step | GitNexus installed + fresh | GitNexus NOT installed |
-|---|---|---|
-| Scope | `gitnexus_query("audit target")` → process / cluster list | `rg -l <pattern>` + `find` |
-| Narrow | `gitnexus_impact(target, upstream)` + `gitnexus_context(symbol)` → callers + blast radius | `rg` cross-reference + Read on hotspots |
-| Spawn | Parallel agents on 5-10 narrowed files | Parallel agents on rg-filtered list |
-
-GitNexus path: sub-second graph query, no per-file LLM read. Cuts token cost ~90% on structural audits.
-Fallback path: `rg` + `find` are universal. No GitNexus = no block. Lead doesn't nag the user to install anything.
-
-### When scope-then-spawn does NOT apply
-
-- Single-file change → direct edit, no scoping
-- Semantic-only audit (logic bugs, design smell, security reasoning) → GitNexus can't reason about meaning; spawn agents directly but cap the file count and ask user to narrow if >20
-- User already named the files → skip step 1
-
-### Anti-pattern
-
-Spawning 1 agent per file across 100+ files for "audit the whole repo" without a scoping pass. Burns tokens, drowns Lead in summaries, misses cross-file patterns GitNexus would surface in one query.
+For any task touching the whole repo (audit, refactor sweep, dead-code hunt, dependency map, "find every usage of X"): scope the file list first, narrow to the risky subset, then spawn agents only on that subset — never fan one agent per file across hundreds. The 3-step flow, the GitNexus-vs-fallback tool order, and the exceptions live in `references/scope-then-spawn.md`.
 
 ## State machine — phase → exit evidence → next
 
@@ -273,6 +195,11 @@ Reason: user said "is this done?"
 Skipping: none — runs check-work → review-code → finish-work.
 Next step: run tests, paste pass output, present 4-option menu.
 ```
+
+## Examples
+
+Non-blocking — read when a request does not obviously match a Quick-router row:
+- `examples/routing-transcripts.md` — eight worked routing transcripts (vague feature, clear edit, bug, done-claim, repo-wide audit, `/rolepod-full`, refactor, and a pattern-matched-into-Build correction). Each shows the user message, the routing decision, and the next step.
 
 ## Common Rationalizations
 

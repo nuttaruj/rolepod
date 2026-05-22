@@ -68,7 +68,7 @@ Bug / new logic / billing / migration / auth / race / security:
 - Write the smallest code change that makes it pass
 - Run all tests (must stay green)
 
-Pure rename / typo / comment fix: tests-after or skip per the test gate.
+Pure rename / typo / comment fix: tests-after or skip per the test gate. For the full task-type → discipline matrix, see `references/tdd-by-risk.md`.
 
 ### 3. Surgical edit + quality reflexes
 
@@ -91,12 +91,7 @@ Q3: A real design-judgment call?      Q4: More than 3 tool calls total?
 All "no" → do it yourself. Any "yes" → delegate to the closest specialist
 (see the agent list below), picked by path / concern / strategy.
 
-When delegating to a subagent or specialist:
-- Task scope: 1-2 files or 1 module
-- Inputs: spec / plan reference, exact files, test plan
-- Done criterion: test pass + lint clean + no scope creep
-- Tool cap: ≤ 12 tool uses
-- Subagents NEVER commit; they return a manifest, Lead commits
+When delegating, fill `templates/task-brief.md` — it scopes the task to 1-2 files, names allowed / forbidden paths, the test command, the done criteria, and the tool cap. Two rules are absolute: the subagent NEVER commits (it returns a manifest, the Lead commits), and it NEVER expands scope.
 
 ### 5. Worktrees only for real parallel
 
@@ -135,17 +130,19 @@ Execute as Lead with this minimum viable checklist:
 7. Mention any dead code adjacent to your change; do not delete it without asking
 8. Verify the change before claiming done — see `check-work`
 
-## Output format
+## Output
 
-A task-level manifest:
+The implementation manifest is the canonical artifact: `templates/implementation-manifest.md`. It carries files changed, tests, commands, evidence, a scope check, and the status. A subagent returns this; the Lead commits. Do not restate the manifest shape here; the template is the single source.
 
-```
-Files changed (paths)
-Tests added / changed
-Commands run to verify
-Evidence (test output, lint, typecheck, screenshot for UI)
-Status: COMPLETED | PARTIAL | BLOCKED
-```
+## Examples
+
+Non-blocking — read only when unsure about scope or whether to trust a subagent:
+- `examples/execution-examples.md` — a surgical-vs-scope-creep execution and an accept-vs-reject subagent manifest, each a good/bad pair with a "why good wins" table. Read the whole file; the contrast is the lesson.
+
+## References
+
+Load only when the task needs it:
+- `references/tdd-by-risk.md` — task type → test discipline: test-first vs evidence-after
 
 ## Hard stops
 

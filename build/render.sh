@@ -46,6 +46,11 @@ case "$TARGET" in
     exit 1 ;;
 esac
 
+# Strip macOS .DS_Store noise from source before any copy — skill dirs now
+# carry templates/examples/references subfolders, and `cp -R` would otherwise
+# propagate Finder's .DS_Store into every rendered plugin tree.
+find "$REPO_DIR/core" -name .DS_Store -delete 2>/dev/null || true
+
 # ─── Generate skill-index fragment from SKILL.md frontmatter ───────────────
 # Each SKILL.md has YAML frontmatter with `name:` and `description:` keys.
 # Fragment format: one row per skill, sorted by name, plus a header.

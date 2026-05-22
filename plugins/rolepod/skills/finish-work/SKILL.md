@@ -99,7 +99,7 @@ Any failure → fix or report; do not merge.
 | Phase 2 (path-triggered) | the touched module's full test suite | YES when triggered |
 | Phase 3 (nightly / manual) | integration · E2E · chaos · security deep · perf benchmark | NO (post-merge notify only) |
 
-Red required lane → Lead fixes and re-pushes; do not ask user permission for each iteration of fix-and-rerun once the merge intent is approved.
+Red required lane → Lead fixes and re-pushes; do not ask user permission for each iteration of fix-and-rerun once the merge intent is approved. Triage the cause before re-running — see `references/ci-triage.md`.
 
 ### 3. 4-option finish menu
 
@@ -112,15 +112,15 @@ Present concrete options:
 | **Keep open** | More work planned; checkpoint commit only |
 | **Discard** | Branch is an experiment that did not pan out |
 
-State the recommendation. Wait for the user to pick before acting.
+Fill `templates/finish-menu.md` — gate status, the four options, the recommendation, and the one specific action awaiting authorization. State the recommendation, then wait for the user to pick before acting.
 
 ### 4. PR composition (if PR path)
 
-Title under 70 chars. Body: Summary (1-3 bullets), Test Plan (checklist), risks. Use `gh pr create` with HEREDOC body. Cite touched files and the spec / plan artifact path if it exists.
+Fill `templates/pr-body.md` — summary, test plan checklist, risks, linked artifacts. Title under 70 chars. Open with `gh pr create` using a HEREDOC body.
 
 ### 5. Launch + post-merge (if production)
 
-Launch ritual for production traffic: rollback plan (SHA + revert command), monitoring dashboard URL, alert thresholds named, on-call notified, feature flag default confirmed, migration forward + rollback safe.
+Launch ritual for production traffic: fill `templates/release-checklist.md` — rollback, monitoring, on-call, feature flag default, and migration safety all confirmed before traffic.
 
 Post-merge: update spec / plan if reality drifted, capture non-obvious decisions to MemPalace, queue `gitnexus analyze` if ≥ 5 files changed and the plugin is installed.
 
@@ -148,15 +148,19 @@ Execute as Lead with this minimum viable checklist:
 7. For launch: confirm rollback + monitoring + on-call before traffic
 8. For discard: confirm intent; suggest a `git tag` or branch backup before delete
 
-## Output format
+## Output
 
-```
-Pre-merge gate: PASS / FAIL
-CI: phase 1 = <status>, phase 2 = <status>
-Review: <verdict>
-Recommendation: <merge / PR / keep / discard / launch>
-Awaiting user authorization for: <specific action>
-```
+The finish menu is the canonical artifact: `templates/finish-menu.md`. It carries the gate status, the four options, the recommendation, and the specific action awaiting authorization. The PR path adds `templates/pr-body.md`; a production launch adds `templates/release-checklist.md`. Do not restate these shapes here; the templates are the single source.
+
+## Examples
+
+Non-blocking — read only when unsure about authorization or PR quality:
+- `examples/finish-examples.md` — an authorization-discipline finish and a PR-body pair, each good/bad with a "why good wins" table. Read the whole file; the contrast is the lesson.
+
+## References
+
+Load only when the task needs it:
+- `references/ci-triage.md` — triage a red required CI lane by cause before re-running
 
 ## Hard stops
 

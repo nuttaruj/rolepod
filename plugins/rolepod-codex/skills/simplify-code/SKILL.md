@@ -118,15 +118,14 @@ Execute as Lead with this minimum viable checklist:
 7. Stop when further cuts would change behavior or break tests
 8. Centralize anything that appears in 3+ files into one source of truth
 
-## Output format
+## Output
 
-```
-Cuts made (file:line + before/after summary, one entry per cut)
-Tests before: PASS / FAIL — output line
-Tests after: PASS / FAIL — output line
-Patterns centralized (if any): <name> → <new home>
-Behavior preserved: YES (proven by tests) / NO (call out the change)
-```
+The simplification report is the canonical artifact: `templates/simplification-report.md`. It carries the green baseline, each cut, anything centralized, the post-cut tests, and the behavior-preserved verdict. Do not restate the report shape here; the template is the single source.
+
+## Examples
+
+Non-blocking — read only when unsure whether a cut is behavior-preserving:
+- `examples/simplify-examples.md` — a single-use-helper inline and a defensive-check cut, each a good/bad pair with a "why good wins" table. Read the whole file; the contrast is the lesson.
 
 ## Hard stops
 

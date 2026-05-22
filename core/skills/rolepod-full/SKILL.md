@@ -9,61 +9,34 @@ phase: router
 
 # Rolepod Full — force-full lifecycle entrypoint
 
-The user typed `/rolepod-full` (or `$rolepod-full`). This is a **command alias / full-lifecycle entrypoint**, not a new workflow. It forces Rolepod's complete 6-phase lifecycle with no phase skips:
+The user typed `/rolepod-full` (or `$rolepod-full`). This is a **command alias**, not a new workflow. It forces Rolepod's complete 6-phase lifecycle with no phase skips:
 
 ```
 Define → Plan → Build → Verify → Review → Ship
 ```
 
-Run every phase even if the task looks trivial — the user opted out of the auto-router's skip rules on purpose. They can still override mid-flow ("skip review", "just ship").
+Run every phase even if the task looks trivial — the user opted out of the auto-router's skip rules. They can still override mid-flow ("skip review", "just ship").
 
-## Step 1 — defer to the real router
+## Step 1 — defer to the router
 
-If the `using-rolepod` skill is available, use it in **force-full-lifecycle mode**. `using-rolepod` owns the phase-by-phase definition, the state machine, and the gates — this alias does not duplicate them.
+If `using-rolepod` is available, load `using-rolepod` and `using-rolepod/references/force-full-lifecycle.md`, then enter **force-full-lifecycle mode**. The phase-by-phase detail, the execution backend table, the start banner, and careful-mode rigor all live in that reference — this alias does not duplicate them.
 
-If `using-rolepod` is not available (this skill was copied standalone), run the embedded fallback at the bottom.
+If `using-rolepod` is not available (this skill was copied standalone), run the embedded fallback below.
 
 ## Boundary
 
 Owns:
-- Explicit `/rolepod-full` intent and execution backend selection.
-- Start banner: phase, execution backend, no phase skips.
+- Detecting the explicit `/rolepod-full` intent and entering force-full mode.
 
 Does not own:
-- Router table, phase definitions, agent roster, domain expertise.
+- Phase definitions, the execution backend, the Router table, agent roster — `using-rolepod` and its `using-rolepod/references/force-full-lifecycle.md` reference own these.
 
 Hand off:
-- Use `using-rolepod` force-full mode when available.
-- If standalone, run the fallback checklist only.
-
-## Step 2 — pick the execution backend
-
-Every CLI runs the same intent; only the backend differs by capability. Pick the best available and announce it at the start.
-
-| Environment | Backend |
-|---|---|
-| Claude + agent-teams enabled (`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`, v2.1.32+) | teammate mode — real multi-process team ([docs/agent-teams.md](../../../docs/agent-teams.md)) |
-| Claude without agent-teams, or the user asked for single-process | Task / subagent dispatch + cohesion contract |
-| Codex | Codex subagents |
-| Gemini | Gemini subagents; inline fallback when subagents are unsupported |
-
-Teammate mode costs ~4× tokens (one context window per teammate). It is the default heavy backend for `/rolepod-full` on a teams-enabled Claude — `/rolepod-full` already signals feature-scale, full ceremony. If the user wants the lighter single-process path, they say so and the backend drops to Task / subagents.
-
-## Step 3 — announce + run
-
-```
-Routing: Force full lifecycle via /rolepod-full
-Phase: Define
-Execution: <teammate mode | Task/subagents | Codex subagents | Gemini subagents | inline fallback>
-Skipping: none (user opted out of router skip rules)
-Next step: <first discovery question or context read>
-```
-
-Then run Define → Plan → Build → Verify → Review → Ship through `using-rolepod` force-full mode.
+- `using-rolepod` force-full mode when available; the embedded fallback when standalone.
 
 ## Sanity check — is this feature-scale work?
 
-`/rolepod-full` is for feature-scale work: new feature, major refactor, architecture change, product workflow, high-risk change. If the prompt is obviously non-workflow or trivial (`/rolepod-full what time is it`), ask the user whether they meant force-full mode before running the full ceremony.
+`/rolepod-full` is for feature-scale work: new feature, major refactor, architecture change, product workflow, high-risk change. If the prompt is obviously trivial (`/rolepod-full what time is it`), ask the user whether they meant force-full mode before running the full ceremony.
 
 ## Embedded fallback — `using-rolepod` not available
 

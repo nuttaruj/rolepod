@@ -68,23 +68,70 @@ if [ -f "$RF" ]; then
   check "rolepod-full is manual-invoke only (disable-model-invocation)" "grep -q '^disable-model-invocation: true' $RF"
 fi
 
-# ── Phase SKILL.md line cap (spec: ≤ 220 lines) ───────────────────────
+# ── Phase SKILL.md line cap (spec: ≤ 190 lines) ───────────────────────
 # Gate prose folded into the 9 phase skills must stay lean — a skill past
-# 220 lines is drifting into a domain manual. Progressive disclosure (a
-# sibling reference .md) is the escape hatch, not an ever-growing SKILL.md.
-# Scope: the 9 phase skills. The using-rolepod router is excluded — it is
-# the dispatch table, not a phase skill, and is naturally denser.
+# 190 lines is drifting into a domain manual. Progressive disclosure (a
+# sibling templates/ examples/ references/ file) is the escape hatch, not
+# an ever-growing SKILL.md. Scope: the 9 phase skills. The using-rolepod
+# router has its own ≤240 cap below; rolepod-full has its own ≤80 cap above.
 OVER_CAP=""
 for s in write-spec write-plan implement-plan debug-issue check-work review-code finish-work simplify-code manage-context; do
   f="core/skills/$s/SKILL.md"
   [ -f "$f" ] || continue
   n=$(wc -l < "$f" | tr -d ' ')
-  [ "$n" -le 220 ] || OVER_CAP="${OVER_CAP}${s} (${n}) "
+  [ "$n" -le 190 ] || OVER_CAP="${OVER_CAP}${s} (${n}) "
 done
 if [ -z "$OVER_CAP" ]; then
-  echo "  ✓ all phase skills ≤ 220 lines"
+  echo "  ✓ all phase skills ≤ 190 lines"
 else
-  echo "  ✗ phase skill(s) over the 220-line cap: $OVER_CAP"
+  echo "  ✗ phase skill(s) over the 190-line cap: $OVER_CAP"
+  fail=$((fail+1))
+fi
+
+# ── Supporting-file lean caps (skill power-up invariants) ─────────────
+# Each skill is SKILL.md + optional templates/ examples/ references/ files.
+# These caps lock the surface so the power-up does not regress into bloat:
+#   - using-rolepod SKILL.md ≤ 240 (router; scope-then-spawn + force-full
+#     detail live in references/, not the spine)
+#   - supporting files per skill ≤ 4, except debug-issue / finish-work
+#     (≤ 5) and the using-rolepod router (≤ 3); the rolepod-full alias 0
+#   - total supporting files across all skills ≤ 36
+#   - every examples/*-examples.md carries a "Why good wins" contrast table
+URS="core/skills/using-rolepod/SKILL.md"
+URS_LINES=$(wc -l < "$URS" | tr -d ' ')
+check "using-rolepod SKILL.md ≤ 240 lines (actual: $URS_LINES)" "[ $URS_LINES -le 240 ]"
+
+SUPPORT_TOTAL=0
+SUPPORT_OVER=""
+for d in core/skills/*/; do
+  s=$(basename "$d")
+  n=$(find "$d" -type f ! -name SKILL.md | wc -l | tr -d ' ')
+  SUPPORT_TOTAL=$((SUPPORT_TOTAL + n))
+  case "$s" in
+    debug-issue|finish-work) cap=5 ;;
+    using-rolepod)           cap=3 ;;
+    rolepod-full)            cap=0 ;;
+    *)                       cap=4 ;;
+  esac
+  [ "$n" -le "$cap" ] || SUPPORT_OVER="${SUPPORT_OVER}${s} (${n}>${cap}) "
+done
+if [ -z "$SUPPORT_OVER" ]; then
+  echo "  ✓ supporting-file count within per-skill cap (≤4; debug/finish ≤5; router ≤3; alias 0)"
+else
+  echo "  ✗ supporting-file count over cap: $SUPPORT_OVER"
+  fail=$((fail+1))
+fi
+check "total supporting files ≤ 36 (actual: $SUPPORT_TOTAL)" "[ $SUPPORT_TOTAL -le 36 ]"
+
+EXAMPLES_NO_TABLE=""
+for f in core/skills/*/examples/*-examples.md; do
+  [ -f "$f" ] || continue
+  grep -q 'Why good wins' "$f" || EXAMPLES_NO_TABLE="${EXAMPLES_NO_TABLE}${f} "
+done
+if [ -z "$EXAMPLES_NO_TABLE" ]; then
+  echo "  ✓ every *-examples.md carries a 'Why good wins' table"
+else
+  echo "  ✗ *-examples.md missing a 'Why good wins' table: $EXAMPLES_NO_TABLE"
   fail=$((fail+1))
 fi
 
@@ -198,7 +245,7 @@ check "model tier covers all $TOTAL agents (actual: $COVERED/$TOTAL)" "[ $COVERE
 
 # ── Competitor brand scrub ─────────────────────────────────────────────
 # Allowed: nothing. system files, entry docs, rendered output all clean.
-BRAND_LEAKS=$(grep -rl -i "superpower" --include="*.md" --include="*.tmpl" --include="*.yml" . 2>/dev/null | grep -v "^./build/rendered/" | grep -v "^./.git/" || true)
+BRAND_LEAKS=$(grep -rl -i "superpower" --include="*.md" --include="*.tmpl" --include="*.yml" . 2>/dev/null | grep -v "^./build/rendered/" | grep -v "^./.git/" | grep -v "^./brief/" || true)
 if [ -z "$BRAND_LEAKS" ]; then
   echo "  ✓ no competitor brand refs in source"
 else

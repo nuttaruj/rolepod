@@ -38,7 +38,7 @@
     "privacyPolicyURL": "https://github.com/nuttaruj/rolepod/blob/main/README.md",
     "termsOfServiceURL": "https://github.com/nuttaruj/rolepod/blob/main/LICENSE",
     "defaultPrompt": [
-      "Use rolepod gates before every commit: S1-S5 simplicity, T1-T6 tests, Q1-Q4 triage, F1-F5 failure-mode."
+      "Use Rolepod to turn my feature idea into a clear spec, plan, implementation path, and verification checklist."
     ],
     "brandColor": "#2563EB"
   }

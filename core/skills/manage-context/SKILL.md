@@ -71,9 +71,11 @@ If context is heavy:
 - `/rewind` — undo a recent path you regret
 - `claude --continue` after `/rename` to switch session focus
 
+These are Claude commands; for the Codex / Gemini equivalents see `references/cli-fallbacks.md`.
+
 Only load what the current task actually needs. Tier 1 skills + the touched files is usually enough.
 
-Starting fresh instead of `/compact` → write a handoff brief: original request, state (last commit, tests green/red), constraints still in force, artifacts linked by path (never pasted in full), and which skill resumes.
+Starting fresh instead of `/compact` → fill `templates/handoff-brief.md` so the next session resumes without re-asking. The brief, not the CLI command, is what makes work resumable.
 
 ### 3. Session hygiene
 
@@ -138,6 +140,18 @@ Action taken: <command run / re-read / escalation>
 State after: <what is loaded, what is dropped>
 Next: <which skill resumes work>
 ```
+
+When starting a fresh session, the durable artifact is `templates/handoff-brief.md`.
+
+## Examples
+
+Non-blocking — read only when unsure how to recover or hand off:
+- `examples/context-examples.md` — a zoom-out recovery and a session handoff, each a good/bad pair with a "why good wins" table. Read the whole file; the contrast is the lesson.
+
+## References
+
+Load only when the task needs it:
+- `references/cli-fallbacks.md` — context-management commands per CLI (Claude / Codex / Gemini)
 
 ## Hard stops
 

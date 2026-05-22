@@ -71,7 +71,7 @@ Return / hand off:
 | Architecture / cross-module | `system-architect` |
 | Generic quality / DRY / smell | `universal-reviewer` |
 
-When external reviewer CLIs are installed, route the adversarial pass to a model **different from the Lead's own** — the Lead must never review its own work with its own model. Lead = Claude → route to Codex and/or Gemini; Lead = Codex → route to Claude and/or Gemini; Lead = Gemini → route to Codex and/or Claude (`codex exec` / `gemini -p` / `claude -p`). Add a second distinct-model external for breadth + cross-file on a large diff. qa-tester is the universal floor and the fallback when no distinct-model external is available.
+**External adversarial review — route by model strength, never the Lead's own model.** Iron Rule 2 holds: the adversarial pass runs on a model **different from the Lead's**. Detect the pool first — the Lead is the CLI running this session; the externals are the others on PATH (`command -v codex` / `command -v gemini` / `command -v claude`). When the diff is high-risk OR multi-file and an external is available, routing to it is mandatory, not optional. Each CLI reviews the axis it is strongest at — Codex depth/security, Gemini breadth/cross-file, Claude architecture/quality — and a diff spanning two axes uses two externals. The Lead floor (`qa-tester` + the Lead's own multi-axis read) covers every axis and backstops any reviewer that is missing or fails — no axis is skipped. Full routing matrix, the Lead-exclusion rule, and degradation: `references/external-review-routing.md`.
 
 ### 2. Multi-axis read
 
@@ -90,19 +90,7 @@ Fresh context. Reviewer reads only the artifact + acceptance criteria. Tries to 
 
 ### 4. Report findings, severity-ordered
 
-```
-BLOCKER (must fix before merge)
-- <file:line>: <issue>
-
-MAJOR (should fix or document)
-- <file:line>: <issue>
-
-MINOR (nice to fix)
-- <file:line>: <issue>
-
-QUESTIONS
-- <file:line>: <unclear>
-```
+Fill `templates/review-report.md`. Each finding names file:line, the issue, why it matters, and a fix direction — never a silent rewrite (Iron Rule 4).
 
 ### 5. Fix-verify loop
 
@@ -136,14 +124,19 @@ Execute as Lead with this minimum viable checklist:
 7. Walk the test axis: assertion strength, mock boundary
 8. Report findings severity-ordered with file:line
 
-## Output format
+## Output
 
-```
-Findings (severity-ordered with file:line)
-Risk surfaces touched
-Tests reviewed: yes / no — verdict
-Recommendation: APPROVED | APPROVED-WITH-NITS | REJECTED — <reason>
-```
+The review report is the canonical artifact: `templates/review-report.md`. It carries scope, risk surfaces, reviewers, severity-ordered findings, the test verdict, and the recommendation. Do not restate the report shape here; the template is the single source.
+
+## Examples
+
+Non-blocking — read only when unsure whether a finding is actionable:
+- `examples/finding-examples.md` — a security BLOCKER and a performance MAJOR, each an actionable/vague pair with a "why good wins" table. Read the whole file; the contrast is the lesson.
+
+## References
+
+Load only when the task needs it:
+- `references/external-review-routing.md` — cross-CLI adversarial review: model strengths, Lead-exclusion, degradation
 
 ## Hard stops
 
