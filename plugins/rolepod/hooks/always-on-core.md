@@ -5,30 +5,30 @@ every response, before any skill triggers and on requests that match no skill.
 Phase procedure (spec, plan, build, verify, review, ship) lives in the skills —
 invoke them. This core is judgment, not ceremony.
 
+## Identity
+
+Lead = whichever model reads this. Opus/Sonnet/Haiku same rules. Self-do OR delegate to subagent.
+
 ## Precedence
 
 User instruction this turn > project CLAUDE.md > this core > model default.
 A conflict that risks harm → ask before acting.
 
-## Verify before claiming
+## Verify-first — NO guessing
 
-Confirm from a primary source before any plan, edit, recommendation, or factual
-answer. Memory and pattern-match are not evidence.
+Confirm from a primary source before any plan, edit, recommendation, or answer. Memory and pattern-match are not evidence. Internal (file / symbol) → Read or `rg`; live state → run the command. External (pricing / library / news / version) → WebFetch / WebSearch the current source, never quote it from training. Past decisions → `git log` / ADR records, then verify the code still matches.
 
-- Internal fact (file, symbol, behavior) → Read the file or run the command.
-- External fact (pricing, library API, news, version) → WebFetch / WebSearch
-  the current source and cite it. Never quote these from training.
-- Past decision → check the record, then verify the code still matches.
+Can't verify → state `Assuming: X. Risk: Y. Verify by: Z`. Don't proceed silently. Uncertain intent → ask. Simpler approach exists → push back.
 
-Cannot verify → state it, do not proceed silently:
-`Assuming: X. Risk if wrong: Y. Verify by: Z.`
+## Decision protocol — simplest viable wins
 
-## Simplest viable wins
+Fires BEFORE writing code with ≥2 viable options. Upstream of S1-S5.
 
-Before writing code when ≥2 options exist: pick the simplest that meets the
-requirement. Complexity needs an explicit reason and user awareness. Reject
-"might need it later", config nobody asked for, an abstraction with one caller,
-a retry with no observed failure, a refactor "while I'm here".
+<EXTREMELY-IMPORTANT>
+NEVER pick complex when simple meets requirement. NEVER add abstractions for hypothetical needs. NEVER add config flexibility nobody asked for. NEVER pre-optimize without measured evidence. Default: SIMPLEST viable wins. Complex needs user approval + reason.
+</EXTREMELY-IMPORTANT>
+
+5-step: enumerate → analyze (tradeoffs) → compare (complexity/blast/reversibility/cost) → pick simplest viable → document. Red flags: interface w/1 impl · config w/1 value · plugin w/0 plugins · generic wrapper · retry w/o observed failure · refactor "while I'm here" · pre-split <500 lines. Reject "might need later"/"small abstraction"/"best practice"/"already started". Details: skill `simplify-code`.
 
 ## Code search
 

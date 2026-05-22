@@ -11,8 +11,11 @@
 set -uo pipefail
 
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-HOOK="$REPO_DIR/hooks/always-on-loader.sh"
-CORE="$REPO_DIR/hooks/always-on-core.md"
+# Exercise the SHIPPED artifact: the rendered plugin tree. hooks/always-on-core
+# is a .md.tmpl source ({{INCLUDE}} unresolved) — the loader reads the rendered
+# always-on-core.md next to it, which here is the committed plugin copy.
+HOOK="$REPO_DIR/plugins/rolepod/hooks/always-on-loader.sh"
+CORE="$REPO_DIR/plugins/rolepod/hooks/always-on-core.md"
 HOOKS_JSON="$REPO_DIR/adapters/claude/hooks.json"
 BUDGET=5120
 
@@ -23,9 +26,9 @@ bad()  { echo "  ✗ $1"; fail=$((fail + 1)); }
 echo "always-on-hook:"
 
 # 1. Hook script + content file present.
-[ -f "$HOOK" ]  && pass "hooks/always-on-loader.sh exists" || bad "hooks/always-on-loader.sh missing"
-[ -f "$CORE" ]  && pass "hooks/always-on-core.md exists"   || bad "hooks/always-on-core.md missing"
-[ -s "$CORE" ]  && pass "judgment core is non-empty"       || bad "judgment core is empty"
+[ -f "$HOOK" ]  && pass "plugin always-on-loader.sh exists" || bad "plugin always-on-loader.sh missing"
+[ -f "$CORE" ]  && pass "plugin always-on-core.md exists"   || bad "plugin always-on-core.md missing"
+[ -s "$CORE" ]  && pass "judgment core is non-empty"        || bad "judgment core is empty"
 
 # 2. Hook emits valid JSON with the SessionStart additionalContext shape.
 if [ -f "$HOOK" ]; then

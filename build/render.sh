@@ -246,14 +246,12 @@ render_claude() {
     echo "render: missing $adapter_dir/hooks.json" >&2; exit 1
   fi
   cp "$REPO_DIR/hooks"/*.sh "$plugin_dst/hooks/" 2>/dev/null || true
-  # Content files read by hooks at runtime (e.g. always-on-core.md, the
-  # judgment core emitted by always-on-loader.sh). Rendered through
-  # render_template so the judgment core can {{INCLUDE}} shared fragments;
-  # a .md with no directive renders byte-identical.
-  for hook_md in "$REPO_DIR/hooks"/*.md; do
-    [ -f "$hook_md" ] && \
-      render_template "$hook_md" "$plugin_dst/hooks/$(basename "$hook_md")"
-  done
+  # always-on-core — the judgment core emitted at runtime by
+  # always-on-loader.sh. The .md.tmpl source resolves {{INCLUDE}} of shared
+  # fragments into the shipped .md, so doctrine is single-sourced from
+  # core/fragments/.
+  render_template "$REPO_DIR/hooks/always-on-core.md.tmpl" \
+    "$plugin_dst/hooks/always-on-core.md"
   [ -d "$REPO_DIR/hooks/lib" ] && cp -R "$REPO_DIR/hooks/lib" "$plugin_dst/hooks/"
   chmod +x "$plugin_dst/hooks/"*.sh 2>/dev/null || true
 }

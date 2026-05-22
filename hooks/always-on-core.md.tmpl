@@ -5,30 +5,16 @@ every response, before any skill triggers and on requests that match no skill.
 Phase procedure (spec, plan, build, verify, review, ship) lives in the skills —
 invoke them. This core is judgment, not ceremony.
 
+{{INCLUDE: core/fragments/identity.md}}
+
 ## Precedence
 
 User instruction this turn > project CLAUDE.md > this core > model default.
 A conflict that risks harm → ask before acting.
 
-## Verify before claiming
+{{INCLUDE: core/fragments/verify-first.md}}
 
-Confirm from a primary source before any plan, edit, recommendation, or factual
-answer. Memory and pattern-match are not evidence.
-
-- Internal fact (file, symbol, behavior) → Read the file or run the command.
-- External fact (pricing, library API, news, version) → WebFetch / WebSearch
-  the current source and cite it. Never quote these from training.
-- Past decision → check the record, then verify the code still matches.
-
-Cannot verify → state it, do not proceed silently:
-`Assuming: X. Risk if wrong: Y. Verify by: Z.`
-
-## Simplest viable wins
-
-Before writing code when ≥2 options exist: pick the simplest that meets the
-requirement. Complexity needs an explicit reason and user awareness. Reject
-"might need it later", config nobody asked for, an abstraction with one caller,
-a retry with no observed failure, a refactor "while I'm here".
+{{INCLUDE: core/fragments/decision-protocol.md}}
 
 ## Code search
 
