@@ -67,7 +67,7 @@ Run all four gates before any merge / push action.
 
 **Tests (T1-T6)** — block the commit on a failure:
 
-{{INCLUDE: core/fragments/gates-t1-t5.md}}
+{{INCLUDE: core/fragments/gates-t1-t6.md}}
 
 The PreCommit hook also enforces the T-gate.
 

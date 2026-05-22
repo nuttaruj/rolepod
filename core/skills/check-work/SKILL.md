@@ -97,7 +97,7 @@ Suggested check: <command / step user can run>
 
 Before declaring done, clear all five:
 
-{{INCLUDE: core/fragments/gates-f1-f6.md}}
+{{INCLUDE: core/fragments/gates-f1-f5.md}}
 
 ### 7. Compose the evidence block
 
