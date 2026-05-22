@@ -188,9 +188,9 @@ check "implement-plan Boundary keeps the plan/execute split" "grep -q 'Redesigni
 check "rolepod-full Boundary disclaims the router table" "grep -q 'Router table' core/skills/rolepod-full/SKILL.md"
 
 # ── Stale doc count keywords — guard against drift in prose ────────────
-# After every skill add/remove, the count appears in ~6 places (README,
-# CHEATSHEET, docs/cli-support.md, docs/skill-inventory-audit.md, plugin
-# manifest, AGENTS.md). The filesystem-vs-rendered check above only
+# After every skill add/remove, the count appears in several places
+# (README, CHEATSHEET, docs/cli-support.md, plugin manifest, AGENTS.md).
+# The filesystem-vs-rendered check above only
 # catches the catalog fragment. Block known-stale numbers from slipping
 # back into prose.
 # Patterns catch the count appearing in many shapes:
