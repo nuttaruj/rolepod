@@ -355,6 +355,9 @@ Memory and pattern-match are not evidence
 NEVER pick complex when simple
 Hard-to-reverse or shared-state actions
 Shared rules for every subagent run
+result + risk + next step. Drop filler
+Plain text or a unique string
+escalate, do not retry blind
 SIGS
 if [ -z "$ssv_leak" ]; then
   echo "  ✓ gate/doctrine single-sourced — no fragment re-inlined in a consumer"

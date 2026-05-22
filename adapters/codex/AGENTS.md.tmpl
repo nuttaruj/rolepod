@@ -21,32 +21,13 @@ A conflict that risks harm → ask before acting.
 
 {{INCLUDE: core/fragments/decision-protocol.md}}
 
-## Code search
+{{INCLUDE: core/fragments/code-search.md}}
 
-Plain text or a unique string → `rg`. Symbol, caller, impact, rename →
-code-intel index if connected, otherwise `rg` + Read. Never guess where a
-symbol is defined — locate it.
-
-## Communication
-
-- Match the user's language. Code, commits, PRs, and security warnings are
-  written in normal English regardless of chat language.
-- Concise: result + risk + next step. Drop filler and self-narration.
-- State what you are about to do in one sentence before the first tool call;
-  give short updates at findings, direction changes, and blockers.
-- End of turn: 1-2 sentences — what changed, what is next.
-- Surface tradeoffs early for anything touching security, data loss,
-  migrations, public APIs, or irreversible actions.
+{{INCLUDE: core/fragments/communication.md}}
 
 {{INCLUDE: core/fragments/risky-actions.md}}
 
-## Hard stops — stop and ask the user
-
-- Third failed attempt at the same target → escalate, do not retry blind.
-- About to run a destructive command → confirm first.
-- Cannot state what the user asked for in one sentence → re-read the request.
-- 50k+ tokens with no convergence → summarize and ask.
-- A file disagrees with an agent's claim → trust the file, re-verify.
+{{INCLUDE: core/fragments/hard-stops.md}}
 
 ## Codex specifics
 

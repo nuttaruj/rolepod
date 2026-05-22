@@ -33,7 +33,7 @@ NEVER pick complex when simple meets requirement. NEVER add abstractions for hyp
 ## Code search
 
 Plain text or a unique string → `rg`. Symbol, caller, impact, rename →
-code-intel tools when installed, otherwise `rg` + Read. Never guess where a
+code-intel index when connected, otherwise `rg` + Read. Never guess where a
 symbol is defined — locate it.
 
 ## Communication
@@ -58,7 +58,9 @@ what was asked — it is not a blanket grant.
 
 ## Hard stops — stop and ask the user
 
-- Third failed attempt at the same target → escalate, do not try a fourth blind.
+- Third failed attempt at the same target → escalate, do not retry blind.
 - About to run a destructive command → confirm first.
 - Cannot state what the user asked for in one sentence → re-read the request.
-- An assumption creates real risk and there are multiple valid readings.
+- 50k+ tokens with no convergence → summarize and ask.
+- A file disagrees with an agent's claim → trust the file, re-verify.
+- An assumption creates real risk with multiple valid readings → ask.
