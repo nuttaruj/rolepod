@@ -6,9 +6,9 @@ Reassembles a target-flavored agent file from:
   - adapter-specific frontmatter overlay
 
 Usage:
-  merge-agent.py --target=claude --name=qa-tester
-  merge-agent.py --target=codex  --name=qa-tester
-  merge-agent.py --target=gemini --name=qa-tester  (model overlay)
+  merge-agent.py --target=claude --name=qa-tester  (md — model/effort overlay)
+  merge-agent.py --target=codex  --name=qa-tester  (toml — model/sandbox overlay)
+  merge-agent.py --target=gemini --name=qa-tester  (md — model overlay)
 
 Writes to stdout. Render driver pipes into the per-target rendered/ directory.
 
@@ -26,8 +26,8 @@ from pathlib import Path
 # Field order for re-emission. Keep aligned with split-agents.py.
 CLAUDE_KEY_ORDER = ["name", "description", "model", "effort", "memory",
                     "maxTurns", "permissionMode", "color", "skills", "tools"]
-CODEX_KEY_ORDER = ["name", "description", "color"]
 GEMINI_KEY_ORDER = ["name", "description", "model"]
+# Codex agents are TOML, not frontmatter — see emit_codex_toml().
 
 REPO_DIR = Path(__file__).resolve().parent.parent
 
@@ -51,7 +51,7 @@ def parse_yaml_block(text: str) -> dict[str, list[str]]:
                 raise ValueError(f"orphan list item: {line!r}")
             fields[current].append(line)
             continue
-        m = re.match(r"^([A-Za-z][A-Za-z0-9]*):\s*(.*)$", line)
+        m = re.match(r"^([A-Za-z][A-Za-z0-9_]*):\s*(.*)$", line)
         if not m:
             raise ValueError(f"unparseable yaml line: {line!r}")
         current = m.group(1)
@@ -102,6 +102,32 @@ def emit(keys_in_order: list[str], fields: dict[str, list[str]]) -> str:
     return "\n".join(out) + "\n"
 
 
+def field_value(fields: dict[str, list[str]], key: str) -> str:
+    """Scalar value of a simple `key: value` field."""
+    return fields[key][0].split(":", 1)[1].strip()
+
+
+def emit_codex_toml(fields: dict[str, list[str]], body: str) -> str:
+    """Emit a Codex agent TOML — name/description from core, model /
+    model_reasoning_effort / sandbox_mode from the Codex overlay, and the
+    core agent body as the developer_instructions multiline string.
+
+    Agent bodies are plain markdown — no backslash, no `\"\"\"` — so the body
+    drops straight into a TOML basic multiline string without escaping.
+    """
+    out = [
+        f'name = "{field_value(fields, "name")}"',
+        f'description = "{field_value(fields, "description")}"',
+        f'model = "{field_value(fields, "model")}"',
+        f'model_reasoning_effort = "{field_value(fields, "model_reasoning_effort")}"',
+        f'sandbox_mode = "{field_value(fields, "sandbox_mode")}"',
+        'developer_instructions = """',
+        body.rstrip("\n"),
+        '"""',
+    ]
+    return "\n".join(out) + "\n"
+
+
 def merge(target: str, name: str) -> str:
     core_path = REPO_DIR / "core" / "agents" / f"{name}.md"
     if not core_path.exists():
@@ -119,9 +145,14 @@ def merge(target: str, name: str) -> str:
         return "---\n" + emit(CLAUDE_KEY_ORDER, merged) + "---\n" + body
 
     if target == "codex":
-        # Codex sub-agent prompt: portable frontmatter only (Codex has no documented
-        # frontmatter spec yet; use a minimal common subset that won't break parsing).
-        return "---\n" + emit(CODEX_KEY_ORDER, core_fields) + "---\n" + body
+        # Codex agents are TOML in ~/.codex/agents/. Generated from the same
+        # core/agents body as Claude/Gemini — no separate hand-maintained copy.
+        overlay_path = REPO_DIR / "adapters" / "codex" / "agent-frontmatter" / f"{name}.yml"
+        if not overlay_path.exists():
+            raise FileNotFoundError(f"missing {overlay_path}")
+        overlay = parse_yaml_block(overlay_path.read_text())
+        merged = {**core_fields, **overlay}
+        return emit_codex_toml(merged, body)
 
     if target == "gemini":
         # Gemini extension ships agents/<name>.md (md + YAML frontmatter).

@@ -274,7 +274,7 @@ if len(tier_models) != 3:
     errs.append(f"Model tiers table parsed {sorted(tier_models)} (expected 3)")
 
 claude_d = pathlib.Path("adapters/claude/agent-frontmatter")
-codex_d = pathlib.Path("adapters/codex/plugins/rolepod/agents")
+codex_d = pathlib.Path("adapters/codex/agent-frontmatter")
 gemini_d = pathlib.Path("adapters/gemini/agent-frontmatter")
 
 def model_of(path, pat):
@@ -291,7 +291,7 @@ for a in sorted(p.stem for p in claude_d.glob("*.yml")):
         errs.append(f"{a}: tier '{tier}' not in Model tiers table"); continue
     exp_c, exp_x, exp_g = tier_models[tier]
     got_c = model_of(claude_d / f"{a}.yml", r'^model:\s*(\S+)')
-    got_x = model_of(codex_d / f"{a}.toml", r'^model\s*=\s*"([^"]+)"')
+    got_x = model_of(codex_d / f"{a}.yml", r'^model:\s*(\S+)')
     got_g = model_of(gemini_d / f"{a}.yml", r'^model:\s*(\S+)')
     if got_c != exp_c: errs.append(f"{a}: claude {got_c} != {exp_c} ({tier})")
     if got_x != exp_x: errs.append(f"{a}: codex {got_x} != {exp_x} ({tier})")
@@ -304,6 +304,32 @@ then
   echo "  ✓ model tier: 18 agents match policy across claude / codex / gemini"
 else
   echo "  ✗ model tier drift from docs/model-tier-policy.md (see above)"
+  fail=$((fail+1))
+fi
+
+# ── Generated Codex agent TOML — must be valid TOML ───────────────────
+# Codex agents are generated (merge-agent.py → build/rendered/codex/agents/)
+# from core/agents bodies. A malformed developer_instructions multiline
+# string would only surface as a TOML parse error here.
+if python3 - <<'PYEOF' 2>&1
+import pathlib, tomllib, sys
+errs = []
+toml = sorted(pathlib.Path("build/rendered/codex/agents").glob("*.toml"))
+if len(toml) != 18:
+    errs.append(f"expected 18 rendered codex agent TOMLs, found {len(toml)}")
+for f in toml:
+    try:
+        tomllib.load(open(f, "rb"))
+    except Exception as e:
+        errs.append(f"{f.name}: {e}")
+for e in errs:
+    print("      " + e)
+sys.exit(1 if errs else 0)
+PYEOF
+then
+  echo "  ✓ 18 generated Codex agent TOMLs parse valid"
+else
+  echo "  ✗ generated Codex agent TOML invalid (see above)"
   fail=$((fail+1))
 fi
 

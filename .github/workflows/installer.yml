@@ -52,7 +52,7 @@ jobs:
           python3 - <<'PY'
           import sys, pathlib, tomllib
           fail = 0
-          roots = ["adapters/codex/plugins/rolepod/agents", "adapters/gemini/commands"]
+          roots = ["adapters/gemini/commands"]
           for root in roots:
               p = pathlib.Path(root)
               if not p.exists():
@@ -117,6 +117,23 @@ jobs:
             fi
           done < <(find build/rendered -name '*.json' 2>/dev/null)
           exit "$fail"
+
+      - name: Post-render TOML syntax check (rendered codex agents)
+        shell: bash
+        run: |
+          set -eo pipefail
+          python3 - <<'PY'
+          import sys, pathlib, tomllib
+          fail = 0
+          for f in pathlib.Path("build/rendered").rglob("*.toml"):
+              try:
+                  with open(f, "rb") as fh:
+                      tomllib.load(fh)
+              except Exception as e:
+                  print(f"::error file={f}::invalid TOML in rendered output: {e}")
+                  fail = 1
+          sys.exit(fail)
+          PY
 
       - name: Dry-run install — claude
         shell: bash

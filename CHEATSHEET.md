@@ -7,7 +7,7 @@
 | Component | Claude Code | Codex CLI | Gemini CLI |
 |-----------|-------------|-----------|------------|
 | Always-on core | SessionStart hook → `hooks/always-on-core.md` (additionalContext) | `~/.codex/AGENTS.md` | `~/.gemini/extensions/rolepod/GEMINI.md` |
-| Agents (18) | auto-discovered in plugin | `~/.codex/plugins/rolepod/agents/*.toml` | inlined in `GEMINI.md` |
+| Agents (18) | auto-discovered in plugin | `~/.codex/agents/rolepod-*.toml` | `~/.gemini/extensions/rolepod/agents/*.md` |
 | Skills (10 + 1 alias) | auto-discovered in plugin | `~/.codex/plugins/rolepod/skills/<name>/SKILL.md` | `~/.gemini/extensions/rolepod/skills/<name>/SKILL.md` |
 | Hooks (core only) | 7 core hooks in `~/.claude/plugins/rolepod/hooks/hooks.json` | 3 core hooks in `~/.codex/plugins/rolepod/hooks/hooks.json` | 4 core hooks in `~/.gemini/extensions/rolepod/hooks/hooks.json` |
 | Slash commands | `/rolepod-full` (skill) | `$rolepod-full` (skill) | `/rolepod-full` (skill) |

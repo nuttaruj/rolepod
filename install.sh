@@ -447,7 +447,7 @@ case "$CLI_TARGET" in
     [ -e "$REPO_DIR/adapters/codex/AGENTS.md.tmpl" ]                                       || fail "missing adapters/codex/AGENTS.md.tmpl"
     [ -e "$REPO_DIR/adapters/codex/.agents/plugins/marketplace.json" ]                     || fail "missing adapters/codex/.agents/plugins/marketplace.json"
     [ -e "$REPO_DIR/adapters/codex/plugins/rolepod/.codex-plugin/plugin.json" ]            || fail "missing adapters/codex/plugins/rolepod/.codex-plugin/plugin.json"
-    [ -d "$REPO_DIR/adapters/codex/plugins/rolepod/agents" ]                               || fail "missing adapters/codex/plugins/rolepod/agents/"
+    [ -d "$REPO_DIR/adapters/codex/agent-frontmatter" ]                                    || fail "missing adapters/codex/agent-frontmatter/ (codex agent overlays)"
     [ -e "$REPO_DIR/adapters/codex/plugins/rolepod/hooks/hooks.json" ]                     || fail "missing adapters/codex/plugins/rolepod/hooks/hooks.json"
     ;;
 esac
@@ -721,8 +721,8 @@ PY
     fi
 
     # Remove rolepod-*.toml agents installed under $X_TARGET/agents/ (install
-    # step copies adapters/codex/plugins/rolepod/agents/*.toml with rolepod-
-    # prefix). User-authored agents without the prefix are preserved.
+    # step copies the rendered build/rendered/codex/agents/*.toml with a
+    # rolepod- prefix). User-authored agents without the prefix are preserved.
     if [ -d "$X_TARGET/agents" ]; then
       ROLEPOD_AGENTS=$(ls "$X_TARGET/agents"/rolepod-*.toml 2>/dev/null | wc -l | tr -d ' ')
       if [ "$ROLEPOD_AGENTS" -gt 0 ]; then

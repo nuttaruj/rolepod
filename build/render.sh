@@ -155,12 +155,15 @@ render_agents() {
   local target="$1"
   local out_dir="${2:-$REPO_DIR/build/rendered/$target/agents}"
   mkdir -p "$out_dir"
+  # Codex agents are TOML; Claude/Gemini are markdown.
+  local ext="md"
+  [ "$target" = "codex" ] && ext="toml"
   local count=0
   for core_md in "$REPO_DIR"/core/agents/*.md; do
     local name
     name="$(basename "$core_md" .md)"
     python3 "$REPO_DIR/build/merge-agent.py" --target="$target" --name="$name" \
-      > "$out_dir/$name.md"
+      > "$out_dir/$name.$ext"
     count=$((count + 1))
   done
   echo "rendered $count agents → ${out_dir#"$REPO_DIR"/}"
@@ -306,13 +309,11 @@ render_codex() {
     echo "render: missing $plugin_src/.codex-plugin/" >&2; exit 1
   fi
 
-  # TOML agents — staged in the gitignored build dir, NOT in the plugin tree.
-  # Codex's plugin loader has no agent-discovery path; agents load only from
-  # the global ~/.codex/agents/ directory. install.sh copies these there.
-  if [ -d "$plugin_src/agents" ]; then
-    mkdir -p "$out_dir/agents"
-    cp "$plugin_src/agents"/*.toml "$out_dir/agents/" 2>/dev/null || true
-  fi
+  # TOML agents — generated from core/agents/ + adapters/codex/agent-frontmatter/
+  # into the gitignored build dir, NOT the plugin tree. Codex's plugin loader
+  # has no agent-discovery path; agents load only from the global
+  # ~/.codex/agents/ directory. install.sh copies these there.
+  render_agents "codex" "$out_dir/agents"
 
   # Hooks (json + executable scripts).
   if [ -d "$plugin_src/hooks" ]; then

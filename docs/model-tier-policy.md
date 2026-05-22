@@ -2,7 +2,7 @@
 
 ## Model tiers
 
-Rolepod ships a cost-aware policy that maps **role + risk → model tier**. Lead doesn't pick a model; the agent's per-CLI frontmatter does — `adapters/claude/agent-frontmatter/<agent>.yml`, `adapters/codex/plugins/rolepod/agents/<agent>.toml`, `adapters/gemini/agent-frontmatter/<agent>.yml`. Each org can override by editing those.
+Rolepod ships a cost-aware policy that maps **role + risk → model tier**. Lead doesn't pick a model; the agent's per-CLI frontmatter overlay does — `adapters/claude/agent-frontmatter/<agent>.yml`, `adapters/codex/agent-frontmatter/<agent>.yml`, `adapters/gemini/agent-frontmatter/<agent>.yml`. Each org can override by editing those.
 
 | Tier | Claude | Codex | Gemini | Use for |
 |---|---|---|---|---|

@@ -44,7 +44,6 @@ test-static:
 	@python3 -m json.tool adapters/claude/.claude-plugin/plugin.json >/dev/null && echo "  ✓ claude plugin.json"
 	@python3 -m json.tool adapters/claude/.claude-plugin/marketplace.json >/dev/null && echo "  ✓ claude marketplace.json"
 	@python3 -m json.tool adapters/claude/hooks.json >/dev/null && echo "  ✓ claude hooks.json"
-	@python3 -c "import pathlib, tomllib; [tomllib.loads(p.read_text()) for p in pathlib.Path('adapters/codex/plugins/rolepod/agents').glob('*.toml')]" && echo "  ✓ codex agents/*.toml"
 	@python3 -c "import pathlib, tomllib; [tomllib.loads(p.read_text()) for p in pathlib.Path('adapters/gemini/commands').glob('*.toml')]" && echo "  ✓ gemini commands/*.toml"
 	@$(MAKE) -s test-render-clean
 	@$(MAKE) -s test-lean-surface
