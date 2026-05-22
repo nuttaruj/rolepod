@@ -152,13 +152,7 @@ When the user says "done" / "finished" / "complete" / "ready" — or when the ta
 
 1. `check-work` — produce concrete evidence the change works (test output / screenshot / curl).
 2. `review-code` — if multi-file or high-risk, pick adversarial reviewers (Codex / Gemini / qa-tester) per their domain match.
-3. `finish-work` — present the 4-option decision menu so the user picks the next step explicitly:
-   - **merge** to main
-   - **open PR** (current branch)
-   - **keep branch** open (still iterating)
-   - **discard** (work was exploratory)
-
-Never auto-pick. The branch decision is the user's, not Lead's.
+3. `finish-work` — owns the 4-option finish menu (merge / open PR / keep branch / discard); never auto-pick — the branch decision is the user's.
 
 ## Output pattern
 

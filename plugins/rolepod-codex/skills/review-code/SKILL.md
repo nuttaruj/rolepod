@@ -71,7 +71,7 @@ Return / hand off:
 | Architecture / cross-module | `system-architect` |
 | Generic quality / DRY / smell | `universal-reviewer` |
 
-**External adversarial review — route by model strength, never the Lead's own model.** Iron Rule 2 holds: the adversarial pass runs on a model **different from the Lead's**. Detect the pool first — the Lead is the CLI running this session; the externals are the others on PATH (`command -v codex` / `command -v gemini` / `command -v claude`). When the diff is high-risk OR multi-file and an external is available, routing to it is mandatory, not optional. Each CLI reviews the axis it is strongest at — Codex depth/security, Gemini breadth/cross-file, Claude architecture/quality — and a diff spanning two axes uses two externals. The Lead floor (`qa-tester` + the Lead's own multi-axis read) covers every axis and backstops any reviewer that is missing or fails — no axis is skipped. Full routing matrix, the Lead-exclusion rule, and degradation: `references/external-review-routing.md`.
+**External adversarial review — route by model strength, never the Lead's own model.** Iron Rule 2: the adversarial pass runs on a model **different from the Lead's**. Detect the pool — the Lead is this session's CLI; externals are the others on PATH (`codex` / `gemini` / `claude`). High-risk OR multi-file diff with an external available → routing to it is mandatory. `qa-tester` + the Lead's own multi-axis read are the floor, and backstop any reviewer that is missing or fails. Per-CLI axis strengths, the Lead-exclusion rule, and degradation: `references/external-review-routing.md`.
 
 ### 2. Multi-axis read
 
