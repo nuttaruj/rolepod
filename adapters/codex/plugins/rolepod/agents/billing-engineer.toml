@@ -1,6 +1,7 @@
 name = "billing-engineer"
 description = "FinTech / Monetization Engineer. Owns billing, payments, credits, subscriptions, financial data integrity. Path-scoped to billing/payments/credits modules."
-model = "gpt-5.4"
+model = "gpt-5.5"
+model_reasoning_effort = "high"
 sandbox_mode = "workspace-write"
 developer_instructions = """
 # Billing Engineer

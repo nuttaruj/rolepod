@@ -1,6 +1,7 @@
 name = "product-manager"
 description = "Product Manager for feature prioritization, roadmap, user requirements, spec writing. Distinct from business-analyst (financial/ROI) and growth-marketer (acquisition/conversion)."
-model = "gpt-5.4"
+model = "gpt-5.4-mini"
+model_reasoning_effort = "medium"
 sandbox_mode = "read-only"
 developer_instructions = """
 # Product Manager

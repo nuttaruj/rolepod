@@ -1,6 +1,7 @@
 name = "customer-success"
 description = "Customer Success — user onboarding, FAQ, support content, technical-to-user translation. Distinct from tech-writer (internal docs) and growth-marketer (acquisition)."
-model = "gpt-5.4"
+model = "gpt-5.4-mini"
+model_reasoning_effort = "medium"
 sandbox_mode = "read-only"
 developer_instructions = """
 # Customer Success

@@ -2,6 +2,7 @@
 name: product-manager
 description: Product Manager for feature prioritization, roadmap, user requirements, spec writing. Distinct from business-analyst (financial/ROI) and growth-marketer (acquisition/conversion).
 model: haiku
+effort: medium
 memory: project
 maxTurns: 30
 color: blue

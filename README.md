@@ -345,15 +345,17 @@ In rolepod: 15 agents use `memory: project` (codepaths / patterns / decisions sc
 
 ## Model + effort allocation
 
-| Tier | Count | Agents |
-|------|-------|--------|
-| **Opus xhigh** | 1 | security-engineer |
-| **Opus high** | 1 | system-architect |
-| **Sonnet high** | 5 | ai-ml-engineer, billing-engineer, performance-engineer, qa-tester, universal-reviewer |
-| **Sonnet standard** | 7 | backend-developer, frontend-developer, mobile-developer, data-scientist, devops-sre, ui-ux-designer, product-manager |
-| **Haiku** | 4 | business-analyst, customer-success, growth-marketer, tech-writer |
+Each agent carries a tier-mapped model in its per-CLI frontmatter — Claude `model` + `effort`, Codex `model` + `model_reasoning_effort`, Gemini `model` (no effort field). Tiering is identical across all three CLIs.
 
-Estimated **~50-60% cost reduction** vs "all Opus high" while keeping depth where bugs are expensive (auth / billing / migrations / arch). Codex + Gemini adapters preserve same tiering.
+| Tier | Count | Claude | Codex | Gemini | Agents |
+|------|-------|--------|-------|--------|--------|
+| **strong+** | 1 | `opus` / xhigh | `gpt-5.5` / xhigh | `gemini-3-pro-preview` | security-engineer |
+| **strong** | 3 | `opus` / high | `gpt-5.5` / high | `gemini-3-pro-preview` | system-architect, billing-engineer, universal-reviewer |
+| **balanced+** | 3 | `sonnet` / high | `gpt-5.4` / high | `gemini-3-pro-preview` | ai-ml-engineer, performance-engineer, qa-tester |
+| **balanced** | 6 | `sonnet` / medium | `gpt-5.4` / medium | `gemini-3-pro-preview` | backend-developer, frontend-developer, mobile-developer, data-scientist, devops-sre, ui-ux-designer |
+| **cheap** | 5 | `haiku` / medium | `gpt-5.4-mini` / medium | `gemini-3-flash-preview` | product-manager, business-analyst, customer-success, growth-marketer, tech-writer |
+
+Estimated **~50-60% cost reduction** vs "all strong tier" while keeping depth where bugs are expensive (auth / billing / migrations / arch). Codex + Gemini adapters preserve the same tiering.
 
 **Fallback escalation:** Lead spawns `qa-tester` / `universal-reviewer` with `model: opus` when external reviewers unavailable, when PR touches high-risk surface, or when user requests deep review. See skill `review-code`.
 

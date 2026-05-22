@@ -2,6 +2,7 @@ name: customer-success
 description: Customer Success — user onboarding, FAQ, support content, technical-to-user translation. Distinct from tech-writer (internal docs) and growth-marketer (acquisition).
 # tools: SendMessage requires agent-teams context (Claude accepts standalone, may silently ignore).
 model: haiku
+effort: medium
 memory: project
 maxTurns: 30
 skills:

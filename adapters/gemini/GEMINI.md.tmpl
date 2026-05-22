@@ -21,7 +21,7 @@ Conflict unsafe → ask user.
 
 ## Gemini-specific Lead notes
 
-- **Sub-agents preview** — 18-agent team primarily a mental role-switching guide; if your Gemini build supports sub-agents, definitions load from `agents/`.
+- **Sub-agents** — the extension ships 18 agent definitions in `agents/<name>.md` (tier-mapped `model` per agent). Gemini CLI builds with sub-agent support load them automatically; older builds treat the roster below as a mental role-switching guide.
 - **Slash commands** — `/rolepod-full` (the `rolepod-full` skill) forces the full lifecycle for feature-scale / high-risk work; it also switches Gemini approval mode to plan (read-only).
 - **Hooks enabled** — `SessionStart` / `BeforeTool` / `AfterTool` fire automatically.
 - **Skills auto-loaded** — Gemini's skill loader reads `skills/<name>/SKILL.md`.
@@ -160,7 +160,7 @@ Multi-step → `[step] → verify: [check]` per row.
 
 ## Agent roster
 
-18 specialists documented for Lead reference. If your Gemini build supports sub-agents, definitions load from extension's `agents/`.
+18 specialists. The extension ships each as `agents/<name>.md` with a tier-mapped `model`; Gemini builds with sub-agent support load them, otherwise the roster below is Lead's role-switching reference.
 
 {{INCLUDE: core/fragments/agent-roster-lean.md}}
 

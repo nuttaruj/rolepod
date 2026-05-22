@@ -8,7 +8,7 @@ Reassembles a target-flavored agent file from:
 Usage:
   merge-agent.py --target=claude --name=qa-tester
   merge-agent.py --target=codex  --name=qa-tester
-  merge-agent.py --target=gemini --name=qa-tester  (no overlay — portable only)
+  merge-agent.py --target=gemini --name=qa-tester  (model overlay)
 
 Writes to stdout. Render driver pipes into the per-target rendered/ directory.
 
@@ -27,7 +27,7 @@ from pathlib import Path
 CLAUDE_KEY_ORDER = ["name", "description", "model", "effort", "memory",
                     "maxTurns", "permissionMode", "color", "skills", "tools"]
 CODEX_KEY_ORDER = ["name", "description", "color"]
-GEMINI_KEY_ORDER = ["name", "description", "color"]
+GEMINI_KEY_ORDER = ["name", "description", "model"]
 
 REPO_DIR = Path(__file__).resolve().parent.parent
 
@@ -104,9 +104,14 @@ def merge(target: str, name: str) -> str:
         return "---\n" + emit(CODEX_KEY_ORDER, core_fields) + "---\n" + body
 
     if target == "gemini":
-        # Gemini has no agent system; this path is unused at the moment but kept
-        # for symmetry. Returns portable shape.
-        return "---\n" + emit(GEMINI_KEY_ORDER, core_fields) + "---\n" + body
+        # Gemini extension ships agents/<name>.md (md + YAML frontmatter).
+        # Overlay carries the tier-mapped `model:`; no effort field on Gemini.
+        overlay_path = REPO_DIR / "adapters" / "gemini" / "agent-frontmatter" / f"{name}.yml"
+        if not overlay_path.exists():
+            raise FileNotFoundError(f"missing {overlay_path}")
+        overlay = parse_yaml_block(overlay_path.read_text())
+        merged = {**core_fields, **overlay}
+        return "---\n" + emit(GEMINI_KEY_ORDER, merged) + "---\n" + body
 
     raise ValueError(f"unknown target: {target}")
 

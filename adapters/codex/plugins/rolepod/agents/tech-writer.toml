@@ -1,6 +1,7 @@
 name = "tech-writer"
 description = "Technical writer for code docs, API docs, READMEs, ADRs, internal docs. Distinct from customer-success (user-facing) and growth-marketer (marketing copy)."
-model = "gpt-5.4"
+model = "gpt-5.4-mini"
+model_reasoning_effort = "medium"
 sandbox_mode = "read-only"
 developer_instructions = """
 # Tech Writer

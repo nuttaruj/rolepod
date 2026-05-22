@@ -2,14 +2,19 @@
 
 ## Model tiers
 
-Rolepod ships a cost-aware policy that maps **role + risk → model tier**. Lead doesn't pick a model; the agent's frontmatter does. The default tier per agent is set in `adapters/claude/agent-frontmatter/<agent>.yml` (and the matching Codex / Gemini configs). Each org can override by editing the YAML.
+Rolepod ships a cost-aware policy that maps **role + risk → model tier**. Lead doesn't pick a model; the agent's per-CLI frontmatter does — `adapters/claude/agent-frontmatter/<agent>.yml`, `adapters/codex/plugins/rolepod/agents/<agent>.toml`, `adapters/gemini/agent-frontmatter/<agent>.yml`. Each org can override by editing those.
 
-| Tier | Default model | Use for | Why |
-|---|---|---|---|
-| **cheap** | `haiku` | docs, PM, business analysis, customer-facing copy, marketing, FAQ, ADR drafting | Repeatable structured output. No deep architectural reasoning required. Most expensive per-token spent here = waste. |
-| **balanced** | `sonnet` | normal implementation (backend, frontend, mobile, AI/ML features, data pipelines, perf optimization, UI/UX, devops), QA test writing | The default working tier. Strong reasoning + reasonable cost. |
-| **strong** | `opus` | architecture decisions, billing/payments code, security implementation, migrations, anything where wrong code costs real money or blocks recovery | Cost/risk trade flips here — pay opus rates because the cost of a wrong sonnet output is higher. |
-| **adversarial** | `opus` | final code review, security review of high-risk paths, doubt-driven review | Reviewer must be at least as smart as the implementer or the review is theater. |
+| Tier | Claude | Codex | Gemini | Use for |
+|---|---|---|---|---|
+| **cheap** | `haiku` | `gpt-5.4-mini` | `gemini-3-flash-preview` | docs, PM, business analysis, customer-facing copy, marketing, FAQ, ADR drafting — repeatable structured output, no deep architectural reasoning |
+| **balanced** | `sonnet` | `gpt-5.4` | `gemini-3-pro-preview` | normal implementation (backend, frontend, mobile, AI/ML features, data pipelines, perf, UI/UX, devops), QA test writing — the default working tier |
+| **strong** | `opus` | `gpt-5.5` | `gemini-3-pro-preview` | architecture, billing/payments, security implementation, migrations, adversarial code review — wrong code costs real money or blocks recovery; reviewer must match implementer depth |
+
+**Effort** layers on top of the model. Claude uses `effort`, Codex uses `model_reasoning_effort` (`xhigh` / `high` / `medium`); Gemini has no effort field.
+
+- `xhigh` — security-engineer only (breach blast radius).
+- `high` — strong tier (system-architect, billing-engineer, universal-reviewer) + balanced-tier roles where reasoning depth pays off (ai-ml-engineer, performance-engineer, qa-tester).
+- `medium` — everything else.
 
 ## Default agent → tier mapping
 

@@ -1,6 +1,7 @@
 name = "ui-ux-designer"
 description = "UI/UX Designer + Frontend Polisher. Owns design system, components, visual polish, micro-interactions, accessibility (WCAG/a11y)."
 model = "gpt-5.4"
+model_reasoning_effort = "medium"
 sandbox_mode = "workspace-write"
 developer_instructions = """
 # UI/UX Designer + Polisher

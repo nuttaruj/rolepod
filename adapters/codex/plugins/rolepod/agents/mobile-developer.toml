@@ -1,6 +1,7 @@
 name = "mobile-developer"
 description = "Mobile Engineer for native iOS/Android + cross-platform (React Native / Flutter). Owns platform-specific code; cross-platform UI logic may overlap with frontend-developer."
 model = "gpt-5.4"
+model_reasoning_effort = "medium"
 sandbox_mode = "workspace-write"
 developer_instructions = """
 # Mobile Developer

@@ -463,6 +463,9 @@ render_gemini() {
     local name; name="$(basename "$skill_dir")"
     cp -R "$skill_dir" "$out_dir/skills/$name"
   done
+
+  # Agents — Gemini extension loads agents/<name>.md (md + YAML frontmatter).
+  render_agents "gemini" "$out_dir/agents"
 }
 
 generate_skill_index

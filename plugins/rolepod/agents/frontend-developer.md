@@ -2,6 +2,7 @@
 name: frontend-developer
 description: Frontend Specialist. Builds UI components with focus on state management, API integration, routing, and logic. Distinct from ui-ux-designer (visual design + polish).
 model: sonnet
+effort: medium
 memory: project
 maxTurns: 50
 color: cyan

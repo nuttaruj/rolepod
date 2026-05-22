@@ -1,6 +1,7 @@
 name = "growth-marketer"
 description = "Growth + Content Strategist. SEO, copywriting, conversion, marketing campaigns. Owns content + strategy; deep technical SEO (sitemaps/schema/Google APIs) is out of scope — defer to a dedicated SEO plugin if installed."
-model = "gpt-5.4"
+model = "gpt-5.4-mini"
+model_reasoning_effort = "medium"
 sandbox_mode = "read-only"
 developer_instructions = """
 # Growth Marketer

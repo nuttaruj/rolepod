@@ -1,6 +1,7 @@
 name = "qa-tester"
 description = "QA + Test Automation. Owns correctness — write/run tests, business logic verify, race conditions, integration. Universal floor + fallback when Codex/Gemini fail."
 model = "gpt-5.4"
+model_reasoning_effort = "high"
 sandbox_mode = "workspace-write"
 developer_instructions = """
 # QA + Test Automation

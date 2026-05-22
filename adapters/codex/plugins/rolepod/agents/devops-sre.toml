@@ -1,6 +1,7 @@
 name = "devops-sre"
 description = "DevOps + SRE. Owns infra, CI/CD, deploy, monitoring, release process, versioning, runbooks. Includes release-management responsibilities."
 model = "gpt-5.4"
+model_reasoning_effort = "medium"
 sandbox_mode = "workspace-write"
 developer_instructions = """
 # DevOps + SRE

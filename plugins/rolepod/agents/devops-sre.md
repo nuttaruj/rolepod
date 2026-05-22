@@ -2,6 +2,7 @@
 name: devops-sre
 description: DevOps + SRE. Owns infra, CI/CD, deploy, monitoring, release process, versioning, runbooks. Includes release-management responsibilities.
 model: sonnet
+effort: medium
 memory: project
 maxTurns: 50
 color: gray

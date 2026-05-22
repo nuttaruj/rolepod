@@ -2,6 +2,7 @@
 name: customer-success
 description: Customer Success — user onboarding, FAQ, support content, technical-to-user translation. Distinct from tech-writer (internal docs) and growth-marketer (acquisition).
 model: haiku
+effort: medium
 memory: project
 maxTurns: 30
 color: cyan

@@ -2,6 +2,7 @@
 name: business-analyst
 description: Business Strategist for pricing models, cost/ROI analysis, financial modeling, competitor research. Commercial layer — distinct from product-manager (feature decisions).
 model: haiku
+effort: medium
 memory: user
 maxTurns: 20
 color: green
