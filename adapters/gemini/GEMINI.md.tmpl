@@ -49,15 +49,7 @@ Skip plan if diff describable in 1 sentence (typo / log / rename).
 
 ## Lifecycle phases — Define → Plan → Build → Verify → Review → Ship
 
-| Phase | What | Key skills | Key agents | Key gates |
-|-------|------|------------|------------|-----------|
-| **Define** | Intent → spec | `write-spec` | product-manager, business-analyst, system-architect | verify-first |
-| **Plan** | Spec → tasks + interfaces | `write-plan` | system-architect, product-manager | Q1-Q4 |
-| **Build** | Tasks → code + docs | `implement-plan`, `debug-issue` | backend/frontend/mobile/billing/ai-ml/data-scientist, ui-ux-designer, tech-writer | S1-S5, F1-F5 |
-| **Verify** | Code → evidence | `check-work` | qa-tester, security-engineer, performance-engineer | T1-T6, verify-first |
-| **Review** | Evidence → adversarial pass | `review-code`, `simplify-code` | universal-reviewer, qa-tester | hard stops |
-| **Ship** | Pass → deploy + announce | `finish-work` | devops-sre, growth-marketer, customer-success | CI 3-phase |
-| **Cross-cutting** | Any phase | `manage-context` | (any) | (any) |
+The `using-rolepod` router skill auto-fires on every request and maps intent → phase → skill — skip rules, exit evidence, and specialist-agent routing all live there. The per-phase gates are the sections below.
 
 {{INCLUDE: core/fragments/decision-protocol.md}}
 

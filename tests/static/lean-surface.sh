@@ -338,7 +338,7 @@ fi
 # consumer — skill SKILL.md, always-on-core.md.tmpl, the entry-doc
 # templates — must pull it via {{INCLUDE}}, never paste the text back in.
 # If a signature surfaces in a consumer source, the single source forked.
-SSV_CONSUMERS="core/skills/*/SKILL.md hooks/always-on-core.md.tmpl adapters/codex/AGENTS.md.tmpl adapters/gemini/GEMINI.md.tmpl"
+SSV_CONSUMERS="core/skills/*/SKILL.md core/agents/*.md hooks/always-on-core.md.tmpl adapters/codex/AGENTS.md.tmpl adapters/gemini/GEMINI.md.tmpl"
 ssv_leak=""
 while IFS= read -r sig; do
   [ -z "$sig" ] && continue
@@ -353,6 +353,8 @@ F1: Hallucinated a fn
 Lead = whichever model
 Memory and pattern-match are not evidence
 NEVER pick complex when simple
+Hard-to-reverse or shared-state actions
+Shared rules for every subagent run
 SIGS
 if [ -z "$ssv_leak" ]; then
   echo "  ✓ gate/doctrine single-sourced — no fragment re-inlined in a consumer"
