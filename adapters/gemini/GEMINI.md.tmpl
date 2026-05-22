@@ -61,6 +61,8 @@ Skip plan if diff describable in 1 sentence (typo / log / rename).
 
 {{INCLUDE: core/fragments/decision-protocol.md}}
 
+## Simplicity gate — before every commit
+
 {{INCLUDE: core/fragments/gates-s1-s5.md}}
 
 ## CI lanes — 3-phase + auto-merge
@@ -79,9 +81,15 @@ Phase 3 — Nightly / manual (NOT required)
 
 User OK + commit + PR → ALL Phase 1 + triggered Phase 2 green → merge auto, no re-ask.
 
+## Test gate — before every commit
+
 {{INCLUDE: core/fragments/gates-t1-t5.md}}
 
+## Before any code edit — 4 questions
+
 {{INCLUDE: core/fragments/gates-q1-q4.md}}
+
+## Failure-mode gate — before declaring done
 
 {{INCLUDE: core/fragments/gates-f1-f6.md}}
 

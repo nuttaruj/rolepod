@@ -83,13 +83,11 @@ While editing, hold these reflexes:
 
 ### 4. Bounded delegation
 
-First decide *whether* to delegate — the Q1-Q4 test, any "yes" → delegate:
-```
-Q1: More than 1 file to edit?         Q2: Need to run tests / build / server?
-Q3: A real design-judgment call?      Q4: More than 3 tool calls total?
-```
-All "no" → do it yourself. Any "yes" → delegate to the closest specialist
-(see the agent list below), picked by path / concern / strategy.
+First decide *whether* to delegate — the Q1-Q4 test:
+
+{{INCLUDE: core/fragments/gates-q1-q4.md}}
+
+When delegating, pick from the agent list below.
 
 When delegating, fill `templates/task-brief.md` — it scopes the task to 1-2 files, names allowed / forbidden paths, the test command, the done criteria, and the tool cap. Two rules are absolute: the subagent NEVER commits (it returns a manifest, the Lead commits), and it NEVER expands scope.
 

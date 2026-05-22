@@ -1,10 +1,5 @@
-## Before any code edit — 4 questions
-
 ```
-Q1: Files to edit?           >1   → delegate
-Q2: Run tests/build/server?  yes  → delegate
-Q3: Design judgment?         yes  → delegate
-Q4: Tool calls total?        >3   → delegate
+Q1: More than 1 file to edit?        Q2: Run tests / build / server?
+Q3: A real design-judgment call?     Q4: More than 3 tool calls total?
 ```
-
-All "no" → self-do. Any "yes" → delegate via Agent. Pick by path/concern/strategy per agent roster below.
+All "no" → self-do. Any "yes" → delegate to the closest specialist by path / concern / strategy.

@@ -62,27 +62,14 @@ Return / hand off:
 Run all four gates before any merge / push action.
 
 **Simplicity (S1-S5)** — revise on any "yes":
-```
-S1: Feature beyond request?            → cut
-S2: Abstraction for single-use?        → inline
-S3: Config / flexibility nobody asked? → cut
-S4: Defensive code for impossible?     → make it structurally impossible
-                                         (type system / data model / API
-                                         constraint); if structure can't,
-                                         the case is NOT impossible — handle it
-S5: Same pattern in 3+ places?         → centralize before commit
-```
+
+{{INCLUDE: core/fragments/gates-s1-s5.md}}
 
 **Tests (T1-T6)** — block the commit on a failure:
-```
-T1: Task needs a test (bug/feature/migration/auth/billing/race/
-    contract/perf/security) and none exists?  → write it
-T2: New tests pass?     T3: Existing tests pass (no regression)?
-T4: Tier-appropriate speed?   T5: Isolated (no order dependency)?
-T6: Assertion tight — would a 1-char bug still pass? → tighten if so
-```
-Skip the T-gate only when ALL hold: ≤5 lines · single file · zero
-logic-bearing · NOT a high-risk path. The PreCommit hook also enforces.
+
+{{INCLUDE: core/fragments/gates-t1-t5.md}}
+
+The PreCommit hook also enforces the T-gate.
 
 **Failure-mode (F1-F5)** — run the `check-work` failure-mode gate; do
 not merge with an unresolved F-finding.

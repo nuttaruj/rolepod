@@ -1,15 +1,9 @@
-## Test gate — before every commit
-
 ```
-T1: Task type requires test (bug/feature/migration/auth/billing/race/contract/perf/security)?
-     yes + no test → block, write test
-T2: New tests pass?                          no → fix
-T3: Existing tests pass?                     no → fix regression
-T4: Tests fast enough for pre-commit tier?   no → mark slow, move tier
-T5: Tests isolated (no order dependency)?    no → fix
-T6: Assertion correct? 1-char bug still passes?
-     Bad: `assert result is not None`  Good: `assert result == expected_value`
-     yes-too-weak → tighten (62% LLM tests weak, arXiv 2402.13521)
+T1: Task needs a test (bug / feature / migration / auth / billing / race /
+    contract / perf / security) and none exists?   → write it
+T2: New tests pass?      T3: Existing tests pass (no regression)?
+T4: Tier-appropriate speed?    T5: Isolated (no order dependency)?
+T6: Assertion tight — would a 1-char bug still pass?   → tighten
+    (weak: `assert x is not None` · tight: `assert x == expected`)
 ```
-
-Skip — ALL true: ≤5 lines · single file · zero logic-bearing (comments/docstrings/whitespace/typechecked renames) · NOT high-risk (auth/billing/payment/migration/credit/permission/secret/crypto/token). Any fail → write tests. PreCommit hook enforces. Internal only. Deep guide: skills `implement-plan` / `finish-work`.
+Skip only when ALL hold: ≤5 lines · single file · zero logic-bearing · NOT a high-risk path. Any fail → write the test.

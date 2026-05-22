@@ -1,14 +1,11 @@
-## Simplicity gate — before every commit
-
 ```
-S1: Feature beyond request?           yes → cut
-S2: Abstraction for single-use?       yes → inline
-S3: Config/flexibility nobody asked?  yes → cut
-S4: Defensive code for impossible?    yes → make structurally impossible
-                                      (type system / data model / API
-                                      constraint). Structural unavailable →
-                                      case NOT impossible, handle properly.
-S5: Same pattern in 3+ places?        yes → centralize before commit
+S1: Feature beyond request?            → cut
+S2: Abstraction for single-use?        → inline
+S3: Config / flexibility nobody asked? → cut
+S4: Defensive code for impossible?     → make it structurally impossible
+                                         (type system / data model / API
+                                         constraint); if structure can't, the
+                                         case is NOT impossible — handle it
+S5: Same pattern in 3+ places?         → centralize before commit
 ```
-
-Any "yes" → revise. S4 example: runtime null check → `Optional<T>` compiler-enforced. Deep guide: skill `simplify-code`.
+Any "yes" → revise before commit. S4 example: a runtime null check becomes a compiler-enforced `Optional<T>`.

@@ -1,11 +1,8 @@
-## Failure-mode gate — before declaring done
-
 ```
-F1: Hallucinated action?  fn/file/API doesn't exist?  → Read/Grep verify
-F2: Scope creep?          diff > user request?        → cut unrequested
-F3: Cascading error?      fix introduced new bug?     → run full tests
-F4: Context loss?         forgot constraint?          → re-read request + gates
-F5: Tool misuse?          destructive unannounced?    → review, announce, re-verify
+F1: Hallucinated a fn / file / API that does not exist?  → Read / Grep to verify
+F2: Scope creep — diff wider than the request?           → cut the extra
+F3: Cascading error — the fix introduced a new bug?      → run the full suite
+F4: Context loss — forgot an earlier constraint?         → re-read the request
+F5: Tool misuse — ran something destructive unannounced? → review + announce
 ```
-
-Any "yes" → fix before declaring done. Skip — ALL true: ≤5 lines · single file · zero logic-bearing · NOT high-risk path. Structural-fix folded into S4. Source: DAPLab failure-pattern research.
+Any "yes" → fix before declaring done. Skip only when ALL hold: ≤5 lines · single file · zero logic-bearing · NOT a high-risk path.
