@@ -1428,12 +1428,16 @@ if cursor_selected; then
   [ -d "$RENDERED_CURSOR_DIR/agents" ]                    || fail "expected $RENDERED_CURSOR_DIR/agents/ after render"
   [ -d "$RENDERED_CURSOR_DIR/hooks" ]                     || fail "expected $RENDERED_CURSOR_DIR/hooks/ after render"
 
-  # Backup if --force on existing — rolepod-scoped only (the plugin's own dir).
+  # Backup if --force on existing — write OUTSIDE Cursor's plugin scan path.
+  # Cursor scans every subdir of ~/.cursor/plugins/local/ as a plugin, so a
+  # sibling .backup-<stamp> there would show up as a duplicate "rolepod.backup"
+  # entry in Settings → Plugins. Move backups to ~/.rolepod/backups/cursor/.
   if [ "$FORCE" -eq 1 ] && [ -d "$CURSOR_PLUGIN_DEST" ]; then
     STAMP=$(date +%Y%m%d-%H%M%S)
-    BACKUP="${CURSOR_PLUGIN_DEST}.backup-$STAMP"
+    BACKUP="${HOME}/.rolepod/backups/cursor/rolepod-$STAMP"
     warn "Backing up existing $CURSOR_PLUGIN_DEST → $BACKUP"
-    do_or_dry "cp -R $CURSOR_PLUGIN_DEST $BACKUP" cp -R "$CURSOR_PLUGIN_DEST" "$BACKUP"
+    do_or_dry "mkdir -p $(dirname "$BACKUP") && cp -R $CURSOR_PLUGIN_DEST $BACKUP" \
+      bash -c "mkdir -p '$(dirname "$BACKUP")' && cp -R '$CURSOR_PLUGIN_DEST' '$BACKUP'"
   fi
 
   step "Creating Cursor plugin directory"
