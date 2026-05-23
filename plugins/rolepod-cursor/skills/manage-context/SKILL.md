@@ -1,11 +1,11 @@
 ---
 name: manage-context
-description: Use when the session is long, the repo is unfamiliar, the work is multi-file, you are stuck, or you need to escalate to a stronger model. Context budget, session hygiene, zoom-out, deep triage, advisor escalation, onboarding. Phase = Recovery / Re-context / Escalate.
+description: Use when the session is long, the repo is unfamiliar, the work is multi-file, you are stuck, or you need to escalate to a stronger model. Context budget, session hygiene, zoom-out, deep triage, escalate, onboarding. Phase = Recovery / Re-context / Escalate.
 ---
 
 # Manage Context
 
-Recovery-phase skill. Keep work stable when context grows long, the codebase is unfamiliar, attention drifts, or the model is stuck. Combines context budget, session hygiene, zoom-out, deep triage, advisor escalation, and onboarding.
+Recovery-phase skill. Keep work stable when context grows long, the codebase is unfamiliar, attention drifts, or the model is stuck. Combines context budget, session hygiene, zoom-out, deep triage, escalate, and onboarding.
 
 ## Iron Rule
 
@@ -18,12 +18,12 @@ Recovery-phase skill. Keep work stable when context grows long, the codebase is 
 
 ## When to use
 
-- Session is long (50k+ tokens, or context bar is yellow)
+- Context window is past ~60-80% used (or context bar yellow/red) — exact tokens depend on the model's window; modern windows range from 200k to 1M+, so use ratio, not absolute
 - The same bug keeps reappearing at a different surface
 - You forgot a constraint the user stated earlier
 - You are starting in an unfamiliar codebase
 - A multi-file refactor is fanning out beyond the plan
-- Sonnet / Haiku is stuck on architecture or root cause
+- The current model is stuck on architecture or root cause
 - The previous attempt produced a wrong fix that almost looked right
 
 ## Boundary
@@ -45,7 +45,7 @@ Return / hand off:
 - The user's original request (literal quote if possible)
 - The current state of the work (last commit, files staged, tests green / red)
 - The constraint set the user stated (deadline, no-touch zones, style)
-- Available tools (`/clear`, `/compact`, `/rewind`, Advisor model)
+- Available tools (`/clear`, `/compact`, `/rewind`)
 
 ## Workflow
 
@@ -53,10 +53,10 @@ Return / hand off:
 
 | Symptom | Mode |
 |---------|------|
-| Context bar yellow / red | Context budget |
+| Context window past ~60-80% (or bar yellow/red) | Context budget |
 | Forgot a stated constraint | Session hygiene |
 | Same bug at 3 surfaces | Zoom-out |
-| 3+ failed fix attempts on the same target | Advisor escalation |
+| 3+ failed fix attempts on the same target | Escalate |
 | Multi-file edits beyond the plan | Deep triage |
 | Unfamiliar repo, no clear entry point | Onboarding |
 
@@ -86,12 +86,12 @@ Step back from the immediate edit. Ask: what is the user actually trying to acco
 
 Map the actual surface: list every file you have edited or planned to edit. Group by concern. Re-check the plan against the spec. If the surface is wider than the plan, write a new plan, do not keep widening edits.
 
-### 6. Advisor escalation
+### 6. Escalate
 
-If you are Sonnet / Haiku and stuck:
+If stuck after multiple attempts:
 - Capture the exact problem (error, what was tried, what failed)
-- Ask the Advisor (Opus) for direction
-- Bring back the recommendation, then continue
+- Surface the blocker to the user with a concrete ask, or start a fresh session with the captured context
+- Resume with the user's direction, not another blind attempt
 
 Three failed attempts is the trigger. Do not "try one more thing" past that.
 
@@ -111,7 +111,6 @@ Delegate the recovery action to the closest specialist:
 - `system-architect` for multi-file refactor scope decisions
 - `qa-tester` when the recurring failure is in test discipline
 - `universal-reviewer` to read your in-flight diff with fresh context
-- Advisor model (Opus) for architectural or root-cause direction
 
 Brief: original user request, what has been tried, what failed, what you suspect is wrong.
 
@@ -125,13 +124,13 @@ Execute as Lead with this minimum viable checklist:
 4. Identify which of the six modes above matches the current symptom
 5. Run the appropriate session command (`/compact`, `/clear`, `/rewind`)
 6. For unfamiliar repo: read README + config + 2-3 representative files before editing
-7. For stuck: capture exact failure and ask the Advisor / user for direction
+7. For stuck: capture exact failure and ask the user for direction
 8. For multi-file drift: stop, write the new plan, then continue
 
 ## Output format
 
 ```
-Mode: <context budget | session hygiene | zoom-out | advisor | triage | onboarding>
+Mode: <context budget | session hygiene | zoom-out | escalate | triage | onboarding>
 Trigger: <what tipped this skill>
 Action taken: <command run / re-read / escalation>
 State after: <what is loaded, what is dropped>
@@ -159,7 +158,7 @@ Load only when the task needs it:
 
 ## Full Rolepod enhancement
 
-Full Rolepod improves this phase by adding `/clear`, `/compact`, `/rewind` hooks, the Advisor escalation pattern, the deep triage checklist, and the onboarding skill auto-fired by `/init`.
+Full Rolepod improves this phase by adding `/clear`, `/compact`, `/rewind` hooks, the escalation pattern, the deep triage checklist, and the onboarding skill auto-fired by `/init`.
 
 ## Next phase
 

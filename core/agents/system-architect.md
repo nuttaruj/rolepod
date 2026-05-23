@@ -105,7 +105,7 @@ Before engineers parallel-execute:
 | Security / compliance | `security-engineer` |
 | Performance budget | `performance-engineer` |
 | Product priority conflict | `product-manager` |
-| Stuck on cross-system trade-off (Sonnet) | Advisor (Opus) via `manage-context` |
+| Stuck on cross-system trade-off | Escalate via `manage-context` |
 
 ## Escalation back to Core 10
 

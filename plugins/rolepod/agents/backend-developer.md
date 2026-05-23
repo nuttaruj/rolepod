@@ -111,7 +111,7 @@ DO NOT touch:
 | LLM / AI | `ai-ml-engineer` |
 | Performance bottleneck | `performance-engineer` |
 | Security concern | `security-engineer` |
-| Architecture decision | `system-architect` (or Advisor if Sonnet stuck) |
+| Architecture decision | `system-architect` |
 | Test plan unclear | `qa-tester` |
 | Cannot resolve after 2 retries | hand-off to Lead |
 
