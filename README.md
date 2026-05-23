@@ -107,7 +107,6 @@ Rolepod ships pure framework. These optional tools pair well — install any of 
 | [CodeGraph](https://www.npmjs.com/package/codegraph) · [GitNexus](https://github.com/abhigyanpatwari/GitNexus) | Sub-millisecond symbol / caller / impact queries | `rg` + `find` text search |
 | [MemPalace](https://github.com/mempalace/mempalace) | Cross-session knowledge graph of past decisions | Built-in per-project memory |
 | [rtk](https://github.com/rtk-ai/rtk) · [caveman](https://github.com/JuliusBrussee/caveman) | Token cuts on routine commands and replies | Normal output |
-| [Codex CLI](https://www.npmjs.com/package/@openai/codex) · [Gemini CLI](https://www.npmjs.com/package/@google/gemini-cli) | Cross-model adversarial review inside `review-code` | `qa-tester` agent alone |
 | [ui-ux-pro-max](https://github.com/nextlevelbuilder/ui-ux-pro-max-skill) | Design recipes for the `ui-ux-designer` agent | Bundled design skills |
 
 ## Docs
