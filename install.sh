@@ -15,6 +15,9 @@
 #                                      # Excluded: session history (projects/), plugin cache,
 #                                      # file-history/, shell-snapshots/, agent-memory/, etc.
 #                                      # Typical backup: <50MB (vs ~1.8GB full ~/.claude copy)
+#                                      # Location: ~/.rolepod/backups/<cli>/rolepod-<stamp>/
+#                                      # (off the CLI scan paths — so Cursor doesn't surface
+#                                      # the backup as a duplicate plugin entry)
 #   ./install.sh --target=claude       # CLI target (default → ~/.claude)
 #   ./install.sh --target=codex        # Codex CLI       → ~/.codex
 #   ./install.sh --target=gemini       # Gemini CLI      → ~/.gemini
@@ -833,7 +836,7 @@ if claude_selected; then
   # agent-memory/, backups/, teams/ — none are rolepod-managed.
   if [ "$FORCE" -eq 1 ] && [ -d "$TARGET" ]; then
     STAMP=$(date +%Y%m%d-%H%M%S)
-    BACKUP="${TARGET}.backup-$STAMP"
+    BACKUP="${HOME}/.rolepod/backups/claude/rolepod-$STAMP"
     warn "Backing up rolepod-managed paths in $TARGET → $BACKUP"
     selective_backup "$TARGET" "$BACKUP" \
       CLAUDE.md \
@@ -1116,7 +1119,7 @@ if codex_selected; then
   # config.toml has its own .rolepod-bak.<stamp> backup later (see below).
   if [ "$FORCE" -eq 1 ] && [ -d "$CODEX_TARGET" ]; then
     STAMP=$(date +%Y%m%d-%H%M%S)
-    BACKUP="${CODEX_TARGET}.backup-$STAMP"
+    BACKUP="${HOME}/.rolepod/backups/codex/rolepod-$STAMP"
     warn "Backing up rolepod-managed paths in $CODEX_TARGET → $BACKUP"
     selective_backup "$CODEX_TARGET" "$BACKUP" \
       AGENTS.md \
@@ -1344,7 +1347,7 @@ if gemini_selected; then
   # Excludes: history/, log/, tmp/ — Gemini runtime data, not rolepod-managed.
   if [ "$FORCE" -eq 1 ] && [ -d "$GEMINI_TARGET" ]; then
     STAMP=$(date +%Y%m%d-%H%M%S)
-    BACKUP="${GEMINI_TARGET}.backup-$STAMP"
+    BACKUP="${HOME}/.rolepod/backups/gemini/rolepod-$STAMP"
     warn "Backing up rolepod-managed paths in $GEMINI_TARGET → $BACKUP"
     selective_backup "$GEMINI_TARGET" "$BACKUP" \
       GEMINI.md \
