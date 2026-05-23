@@ -98,20 +98,20 @@ Per-CLI hook counts: Claude registers 7 core hooks via the plugin manifest. Code
 
 **Static checks** = `bash -n` on shell scripts, `python3 -m json.tool` on JSON manifests, `tomllib.load()` on TOML, plus snapshot diffs (no leaked `{{INCLUDE: ...}}` placeholders). **Dry-run install** = `install.sh --target=<cli>` writes correct files into a temp dir and the layout matches each CLI's expected destination. **Live** = installed in the real CLI, hooks fire on real sessions (Claude + Gemini always; Codex only after `codex features enable plugin_hooks` opt-in), subagents/skills dispatch correctly.
 
-_Last live-verified: 2026-05-10 on macOS (Darwin 25.4.0), Codex 0.130.0, Gemini 0.40.1. Changes since are covered by `make test-all` (static + integration); live re-verification pending._
+_Last live-verified: 2026-05-23 on macOS (Darwin 25.5.0), Codex 0.132.0, Gemini 0.42.0. All 3 CLIs running rolepod 2.5.0 / Gemini extension 0.6.0 — 18 agents, 11 skills, hooks present on each (Claude 7, Codex 3, Gemini 4)._
 
 ### Per-target runtime evidence
 
 **Claude Code** — Production. Hooks/agents/skills load on session start; verified across the dev loop in this repository.
 
-**Gemini CLI 0.40.1** — Production:
+**Gemini CLI 0.42.0** — Production:
 - `gemini skills list` enumerates all 11 rolepod skills (Core 10 + the `rolepod-full` alias) from `~/.gemini/extensions/rolepod/skills/`.
 - SessionStart hook fires and emits the rolepod gates banner ("rolepod gates: S1-S5 simplicity + T1-T6 tests + Q1-Q4 delegation + F1-F5 failure-mode") on every Gemini session.
 - The model recognizes the extension by name and version (`rolepod (v0.6.0)`) when asked.
 - No native `.toml` slash commands ship — `/rolepod-full` is the `rolepod-full` skill, invocable across Claude/Codex/Gemini skill UIs. Phase commands (`/spec`/`/plan`/`/review`/`/test`/`/ship`) were dropped to match Claude's design (commits 0f8de4f / 6da9fe0 documented pattern-match drift).
 - Caveat: the bundled SessionStart hook expects ripgrep — falls back to GrepTool with a one-line warning. Cosmetic only.
 
-**Codex CLI 0.130.0** — Production:
+**Codex CLI 0.132.0** — Production:
 - The rolepod repo IS a Codex marketplace — `.agents/plugins/marketplace.json` + the committed `plugins/rolepod-codex/` tree at the repo root. `codex plugin marketplace add nuttaruj/rolepod` installs straight from GitHub; `install.sh` runs the same `codex plugin marketplace add <repo>` against the local clone. Codex's native plugin loader picks up skills + hooks via the same code path as bundled plugins (browser-use, computer-use, etc.).
 - After install, `~/.codex/config.toml` contains `[marketplaces.rolepod] source_type = "local"` and `[plugins."rolepod@rolepod"] enabled = true`.
 - Plugin hooks (`hooks/hooks.json`) require explicit opt-in. Default Codex install has `plugin_hooks` flagged `under development, false` — registered hooks won't fire until the user enables it:
@@ -122,7 +122,7 @@ _Last live-verified: 2026-05-10 on macOS (Darwin 25.4.0), Codex 0.130.0, Gemini 
   Without that flag, rolepod's `hooks/hooks.json` is registered but inert. Agents + skills still load via the plugin cache regardless of `plugin_hooks` state.
 - Live verification after enabling `plugin_hooks`: `codex exec --skip-git-repo-check "echo OK"` reports `hook: SessionStart Completed` from rolepod's `hooks/hooks.json`. Codex log (`~/.codex/log/codex-tui.log`) shows zero "configured non-curated plugin no longer exists" warnings for rolepod and zero manifest validation errors against `plugins/rolepod/.codex-plugin/plugin.json`.
 - `~/.codex/AGENTS.md` managed block still loads on every Codex session (Tier 1 always-on rules), independent of plugin enable state.
-- The CLI subcommands `plugin list` / `agent` / `skills list` / `hooks list` are not present in 0.130.0 — Codex doesn't expose enumeration commands today. The plugin still loads via the same code path as bundled plugins; verification is via session log + `config.toml` inspection.
+- The CLI subcommands `plugin list` / `agent` / `skills list` / `hooks list` are not present in 0.132.0 — Codex doesn't expose enumeration commands today. The plugin still loads via the same code path as bundled plugins; verification is via session log + `config.toml` inspection.
 
 Help close the gap — install on Codex / Gemini and report at [issues/](https://github.com/nuttaruj/rolepod/issues).
 
