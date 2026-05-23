@@ -11,7 +11,7 @@ make test-static
 Verifies:
 - `install.sh`, `bootstrap.sh`, `build/render.sh`, `hooks/*.sh` syntax
 - `hooks/lib/session_state.py` Python AST
-- Plugin manifests: Claude `plugin.json`, Codex `plugin.json` + `hooks.json`, Gemini `gemini-extension.json` + `hooks.json`
+- Plugin manifests: Claude `plugin.json`, Codex `plugin.json` + `hooks.json`, Gemini `gemini-extension.json` + `hooks.json`, Cursor `plugin.json` + `marketplace.json` + `hooks.json`
 - TOML files: generated Codex `agents/*.toml`
 - `render-clean`: `core/fragments/` matches generator output, no leaked `{{INCLUDE}}` placeholders
 - `lean-surface`: ~70 invariants — Tier 0 = 1 / Tier 1 = 9 / `tier: 3` = 0 / agent preloads Core 10 only / router refs canonical / no hard-dependency language / no `redirect_to_agent` / fallback sections concise / LC_ALL=C reproducible
@@ -28,6 +28,7 @@ Confirms:
 - `plugins/rolepod/` — committed Claude plugin tree (18 agents, skills, hooks, manifest)
 - `plugins/rolepod-codex/` — committed Codex plugin tree, plus `build/rendered/codex/AGENTS.md`
 - `build/rendered/gemini/` — Gemini extension tree (`GEMINI.md`, skills, hooks)
+- `plugins/rolepod-cursor/` — committed Cursor plugin tree (`rules/always-on-core.mdc` + 18 agents + 11 skills + 3 hook scripts under `scripts/`)
 - No leaked `{{INCLUDE: ...}}` placeholders
 
 ## 3. Integration (optional but recommended)
@@ -40,7 +41,7 @@ Runs 8 structural integration cases (~3-5s total, no live `claude -p` invocation
 
 | Case | Asserts |
 |------|---------|
-| `install-parity` | Fresh temp install across Claude global / Claude project / Codex project / Gemini project produces documented artifacts |
+| `install-parity` | Fresh temp install across Claude global / Claude project / Codex project / Gemini project / Cursor global produces documented artifacts |
 | `install-idempotency` | Re-running `install.sh` over an existing install is idempotent — no duplicated hooks, managed blocks, or registry entries |
 | `bug-fix-workflow` | `debug-issue` → failing test → minimal fix → `check-work` wiring (skill bodies, router row, no legacy shim dependency) |
 | `feature-from-spec` | Define → Plan → Build path: `write-spec` → `write-plan` → `implement-plan` → `check-work` wiring |
@@ -62,7 +63,8 @@ Manually verify that user-facing docs match runtime behavior:
   - Claude — Live runtime hooks `✓`
   - **Codex — Live runtime hooks `⚠️ opt-in only` (per `codex features enable plugin_hooks`)**
   - Gemini — Live runtime hooks `✓`
-- Project-scope wording: full for Claude, **rules-only** for Codex/Gemini.
+  - **Cursor — Live runtime hooks `⚠️ pending live re-verification` (static + install-path verified; live runtime confirmation on a real Cursor session is the next step)**
+- Project-scope wording: full for Claude / Cursor, **rules-only** for Codex/Gemini.
 - No "auto-fire" claims for Codex hooks.
 - The inlined `## Agent protocol` commit-ban + discipline-gate scope statement matches actual hook coverage (Claude-only).
 

@@ -55,4 +55,4 @@ Source of truth: [`core/fragments/agent-roster-lean.md`](../core/fragments/agent
 
 The 18-specialist count comes from cost-aware role separation, not workflow stages. A senior backend developer model is cheap; a strongest model doing security review is expensive. Mixing them inside one agent collapses the cost-control dimension and forces the workflow to pay strongest-model rates for every task. Keeping them separate lets each agent carry its own tier-mapped model.
 
-Model tiering is implemented per agent across all three CLIs — see [model-tier-policy.md](model-tier-policy.md).
+Model tiering is implemented per agent on Claude / Codex / Gemini — see [model-tier-policy.md](model-tier-policy.md). Cursor agent files ship with `name` + `description` frontmatter only (Cursor users pick the model in-IDE), so per-agent tiering is not enforced there.

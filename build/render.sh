@@ -5,19 +5,25 @@
 #   ./build/render.sh --target=claude            # default
 #   ./build/render.sh --target=codex
 #   ./build/render.sh --target=gemini
-#   ./build/render.sh --target=all               # render all three
+#   ./build/render.sh --target=cursor
+#   ./build/render.sh --target=all               # render all four
 #
 # Outputs:
 #   .claude-plugin/marketplace.json                    # committed — repo IS the Claude marketplace
+#   .cursor-plugin/marketplace.json                    # committed — repo IS the Cursor marketplace
 #   plugins/rolepod/                                   # committed — rendered Claude plugin tree
 #   plugins/rolepod/agents/<name>.md                   # 18 files (Claude frontmatter)
+#   plugins/rolepod-codex/                             # committed — rendered Codex plugin tree
+#   plugins/rolepod-cursor/                            # committed — rendered Cursor plugin tree
 #   build/rendered/codex/AGENTS.md                     # gitignored build output
 #   build/rendered/codex/agents/<name>.md              # 18 files (portable frontmatter)
 #   build/rendered/gemini/GEMINI.md                    # gitignored build output
 #
-# The Claude target renders into committed repo-root paths so the repo is a
-# directly installable marketplace (`claude plugin marketplace add <repo>`).
-# Codex + Gemini stay under build/rendered/ (adapters, not the marketplace).
+# The Claude + Cursor targets render into committed repo-root paths so the
+# repo is a directly installable marketplace for each (`claude plugin
+# marketplace add <repo>` / Cursor team-marketplace import). Codex similarly
+# commits its plugin tree. Gemini stays under build/rendered/ (extension, not
+# a marketplace).
 #
 # Template directives (one per line):
 #   {{INCLUDE: <path-relative-to-repo-root>}}
@@ -40,9 +46,9 @@ for arg in "$@"; do
 done
 
 case "$TARGET" in
-  claude|codex|gemini|all) ;;
+  claude|codex|gemini|cursor|all) ;;
   *)
-    echo "Unknown target: $TARGET (expected claude|codex|gemini|all)" >&2
+    echo "Unknown target: $TARGET (expected claude|codex|gemini|cursor|all)" >&2
     exit 1 ;;
 esac
 
@@ -374,6 +380,109 @@ render_gemini() {
   render_agents "gemini" "$out_dir/agents"
 }
 
+# ─── Render Cursor target ───────────────────────────────────────────────────
+# Cursor ships as a native plugin under ~/.cursor/plugins/local/rolepod/.
+# Layout mirrors Claude's plugin tree (skills/, agents/, hooks/, commands/)
+# with three Cursor-specific adjustments:
+#   1. .cursor-plugin/plugin.json (manifest) instead of .claude-plugin/
+#   2. rules/always-on-core.mdc (alwaysApply: true) replaces the SessionStart
+#      hook that emits always-on-core.md on Claude. Cleaner Cursor-native
+#      delivery; caveat — a user who disables "Rules" in Cursor settings loses
+#      the always-on core, parallel to Claude users who suppress hooks.
+#   3. Hooks live under hooks/hooks.json with shell scripts under scripts/
+#      (per Cursor template convention) and use camelCase event names
+#      (sessionStart / preToolUse / beforeShellExecution).
+#
+# Committed (repo root):
+#   .cursor-plugin/marketplace.json                  (marketplace catalog)
+#   plugins/rolepod-cursor/.cursor-plugin/plugin.json
+#   plugins/rolepod-cursor/rules/always-on-core.mdc  (fully resolved)
+#   plugins/rolepod-cursor/skills/<name>/SKILL.md    (stripped to name+description)
+#   plugins/rolepod-cursor/agents/<name>.md          (18 files, minimal frontmatter)
+#   plugins/rolepod-cursor/hooks/hooks.json
+#   plugins/rolepod-cursor/scripts/*.sh              (3 hook scripts)
+
+render_cursor() {
+  local adapter_dir="$REPO_DIR/adapters/cursor"
+  local plugin_dst="$REPO_DIR/plugins/rolepod-cursor"
+
+  rm -rf "$plugin_dst"
+  mkdir -p "$plugin_dst"
+
+  if [ -f "$adapter_dir/.cursor-plugin/marketplace.json" ]; then
+    mkdir -p "$REPO_DIR/.cursor-plugin"
+    cp "$adapter_dir/.cursor-plugin/marketplace.json" "$REPO_DIR/.cursor-plugin/"
+  else
+    echo "render: missing $adapter_dir/.cursor-plugin/marketplace.json" >&2; exit 1
+  fi
+
+  if [ -f "$adapter_dir/.cursor-plugin/plugin.json" ]; then
+    mkdir -p "$plugin_dst/.cursor-plugin"
+    cp "$adapter_dir/.cursor-plugin/plugin.json" "$plugin_dst/.cursor-plugin/"
+  else
+    echo "render: missing $adapter_dir/.cursor-plugin/plugin.json" >&2; exit 1
+  fi
+
+  # Always-on judgment core — two-pass include resolution. Pass 1 splices the
+  # adapter's rule template (frontmatter + single {{INCLUDE}} to the always-on
+  # body template). Pass 2 expands the body template's own {{INCLUDE: core/fragments/...}}
+  # directives. render_template is intentionally non-recursive; two passes
+  # cover the one-deep nesting used here.
+  mkdir -p "$plugin_dst/rules"
+  local pass1="$plugin_dst/rules/.always-on-core.pass1"
+  render_template "$adapter_dir/rules/always-on-core.mdc.tmpl" "$pass1"
+  render_template "$pass1" "$plugin_dst/rules/always-on-core.mdc"
+  rm -f "$pass1"
+
+  # Skills — render the same source as Claude, then post-process each
+  # frontmatter to keep only the fields Cursor documents (name + description).
+  # Defensive: the Cursor docs only acknowledge name/description in SKILL.md;
+  # we don't want to gamble that Cursor silently ignores tier / phase /
+  # when_to_use / disable-model-invocation. The rolepod-full alias loses its
+  # disable-model-invocation guard on Cursor — its description is phrased
+  # ("explicit user invocation only") to keep auto-trigger rare even so.
+  render_skills "$plugin_dst/skills"
+  python3 - "$plugin_dst/skills" <<'PY'
+import re
+import sys
+from pathlib import Path
+
+target_dir = Path(sys.argv[1])
+keep = {"name", "description"}
+for skill in target_dir.glob("*/SKILL.md"):
+    text = skill.read_text()
+    if not text.startswith("---\n"):
+        continue
+    end = text.find("\n---\n", 4)
+    if end == -1:
+        continue
+    fm = text[4:end]
+    body = text[end + 5:]
+    kept_lines = []
+    for line in fm.split("\n"):
+        m = re.match(r"^([A-Za-z][A-Za-z0-9_-]*):\s", line)
+        if m and m.group(1) in keep:
+            kept_lines.append(line)
+    skill.write_text("---\n" + "\n".join(kept_lines) + "\n---\n" + body)
+PY
+
+  # Agents — minimal name+description frontmatter (see merge-agent.py cursor target).
+  render_agents "cursor" "$plugin_dst/agents"
+
+  # Hooks (config + scripts).
+  mkdir -p "$plugin_dst/hooks"
+  if [ -f "$adapter_dir/hooks/hooks.json" ]; then
+    cp "$adapter_dir/hooks/hooks.json" "$plugin_dst/hooks/hooks.json"
+  else
+    echo "render: missing $adapter_dir/hooks/hooks.json" >&2; exit 1
+  fi
+  if [ -d "$adapter_dir/scripts" ]; then
+    mkdir -p "$plugin_dst/scripts"
+    cp "$adapter_dir/scripts"/*.sh "$plugin_dst/scripts/" 2>/dev/null || true
+    chmod +x "$plugin_dst/scripts/"*.sh 2>/dev/null || true
+  fi
+}
+
 generate_skill_index_lean
 generate_agent_roster_lean
 
@@ -381,5 +490,6 @@ case "$TARGET" in
   claude) render_claude ;;
   codex)  render_codex ;;
   gemini) render_gemini ;;
-  all)    render_claude; render_codex; render_gemini ;;
+  cursor) render_cursor ;;
+  all)    render_claude; render_codex; render_gemini; render_cursor ;;
 esac

@@ -1,0 +1,32 @@
+{
+  "_comment": "Rolepod Cursor marketplace catalog — single plugin entry. Schema reference: https://cursor.com/docs/reference/plugins (verified 2026-05-23). Repo is directly importable as a team marketplace via this manifest at the repo root.",
+  "name": "rolepod",
+  "owner": {
+    "name": "nuttaruj"
+  },
+  "metadata": {
+    "description": "Rolepod — coordinated 18-agent dev team workflow with gates and verify-first discipline.",
+    "version": "2.6.0"
+  },
+  "plugins": [
+    {
+      "name": "rolepod",
+      "source": "./plugins/rolepod-cursor",
+      "description": "18 specialist agents, Core 10 phase skills, pre-commit gates. Always-on judgment core delivered as an alwaysApply rule.",
+      "version": "2.6.0",
+      "author": {
+        "name": "nuttaruj"
+      },
+      "homepage": "https://github.com/nuttaruj/rolepod",
+      "repository": "https://github.com/nuttaruj/rolepod",
+      "license": "MIT",
+      "keywords": [
+        "workflow",
+        "agents",
+        "ai-agents",
+        "cursor",
+        "automation"
+      ]
+    }
+  ]
+}

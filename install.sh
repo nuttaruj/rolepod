@@ -39,6 +39,7 @@
 #   ROLEPOD_CLAUDE_TARGET    Per-CLI override — wins over ROLEPOD_TARGET for Claude.
 #   ROLEPOD_CODEX_TARGET     Per-CLI override — wins over ROLEPOD_TARGET for Codex.
 #   ROLEPOD_GEMINI_TARGET    Per-CLI override — wins over ROLEPOD_TARGET for Gemini.
+#   ROLEPOD_CURSOR_TARGET    Per-CLI override — wins over ROLEPOD_TARGET for Cursor.
 #
 # Non-TTY behavior: --uninstall without --yes in a non-interactive context
 # (no /dev/tty available) prints "Aborted. Re-run with --yes in non-interactive
@@ -81,9 +82,9 @@ for arg in "$@"; do
 done
 
 case "$CLI_TARGET" in
-  claude|codex|gemini|all) ;;
+  claude|codex|gemini|cursor|all) ;;
   *)
-    echo "Unknown --target value: $CLI_TARGET (expected claude|codex|gemini|all)" >&2
+    echo "Unknown --target value: $CLI_TARGET (expected claude|codex|gemini|cursor|all)" >&2
     exit 1 ;;
 esac
 
@@ -107,6 +108,7 @@ default_target_path_for() {
       claude) echo "$PWD/.claude" ;;
       codex)  echo "$PWD" ;;
       gemini) echo "$PWD" ;;
+      cursor) echo "$PWD/.cursor" ;;
       *)      echo "$PWD" ;;
     esac
     return
@@ -115,6 +117,7 @@ default_target_path_for() {
     claude) echo "$HOME/.claude" ;;
     codex)  echo "$HOME/.codex" ;;
     gemini) echo "$HOME/.gemini" ;;
+    cursor) echo "$HOME/.cursor" ;;
     *)      echo "$HOME/.$1" ;;
   esac
 }
@@ -134,6 +137,7 @@ resolve_target_for() {
     claude) override="${ROLEPOD_CLAUDE_TARGET:-}" ;;
     codex)  override="${ROLEPOD_CODEX_TARGET:-}" ;;
     gemini) override="${ROLEPOD_GEMINI_TARGET:-}" ;;
+    cursor) override="${ROLEPOD_CURSOR_TARGET:-}" ;;
     *)      override="" ;;
   esac
   if [ -n "$override" ]; then
@@ -458,6 +462,15 @@ case "$CLI_TARGET" in
     [ -e "$REPO_DIR/adapters/gemini/hooks/hooks.json" ]      || fail "missing adapters/gemini/hooks/hooks.json"
     ;;
 esac
+case "$CLI_TARGET" in
+  cursor|all)
+    [ -e "$REPO_DIR/adapters/cursor/.cursor-plugin/plugin.json" ]      || fail "missing adapters/cursor/.cursor-plugin/plugin.json"
+    [ -e "$REPO_DIR/adapters/cursor/.cursor-plugin/marketplace.json" ] || fail "missing adapters/cursor/.cursor-plugin/marketplace.json"
+    [ -e "$REPO_DIR/adapters/cursor/rules/always-on-core.mdc.tmpl" ]   || fail "missing adapters/cursor/rules/always-on-core.mdc.tmpl"
+    [ -e "$REPO_DIR/adapters/cursor/hooks/hooks.json" ]                || fail "missing adapters/cursor/hooks/hooks.json"
+    [ -d "$REPO_DIR/adapters/cursor/scripts" ]                         || fail "missing adapters/cursor/scripts/ (cursor hook scripts)"
+    ;;
+esac
 
 # ─── Uninstall path (early-exit) ────────────────────────────────────────
 # Removes rolepod files written by this installer. Preserves user content
@@ -469,19 +482,22 @@ if [ "$UNINSTALL" -eq 1 ]; then
   echo ""
 
   # Discover what we'd remove so the user can decide.
-  uninstall_claude=0; uninstall_codex=0; uninstall_gemini=0
+  uninstall_claude=0; uninstall_codex=0; uninstall_gemini=0; uninstall_cursor=0
   case "$CLI_TARGET" in claude|all) uninstall_claude=1 ;; esac
   case "$CLI_TARGET" in codex|all)  uninstall_codex=1 ;; esac
   case "$CLI_TARGET" in gemini|all) uninstall_gemini=1 ;; esac
+  case "$CLI_TARGET" in cursor|all) uninstall_cursor=1 ;; esac
 
   C_TARGET="$(resolve_target_for claude)"
   X_TARGET="$(resolve_target_for codex)"
   G_TARGET="$(resolve_target_for gemini)"
+  R_TARGET="$(resolve_target_for cursor)"
 
   echo "About to remove rolepod from:"
   [ "$uninstall_claude" -eq 1 ] && echo "  Claude → $C_TARGET (agents, skills, rules, hooks, managed CLAUDE.md block)"
   [ "$uninstall_codex"  -eq 1 ] && echo "  Codex  → rolepod marketplace + [plugins.\"rolepod@rolepod\"] in $X_TARGET/config.toml + managed AGENTS.md block"
   [ "$uninstall_gemini" -eq 1 ] && echo "  Gemini → $G_TARGET/extensions/rolepod, managed GEMINI.md block"
+  [ "$uninstall_cursor" -eq 1 ] && echo "  Cursor → $R_TARGET/plugins/local/rolepod"
   echo ""
 
   if [ "$ASSUME_YES" -ne 1 ] && [ "$DRY_RUN" -ne 1 ]; then
@@ -760,6 +776,19 @@ PY
     fi
   fi
 
+  if [ "$uninstall_cursor" -eq 1 ]; then
+    step "Removing Cursor rolepod plugin in $R_TARGET/plugins/local/rolepod"
+    do_or_dry "rm -rf $R_TARGET/plugins/local/rolepod" rm -rf "$R_TARGET/plugins/local/rolepod"
+    if [ "$DRY_RUN" -eq 1 ]; then
+      dry "rmdir $R_TARGET/plugins/local (if empty)"
+      dry "rmdir $R_TARGET/plugins (if empty)"
+    else
+      rmdir "$R_TARGET/plugins/local" 2>/dev/null || true
+      rmdir "$R_TARGET/plugins" 2>/dev/null || true
+    fi
+    ok "Cursor rolepod removed"
+  fi
+
   echo ""
   echo "${BOLD}Uninstall complete.${NC}"
   exit 0
@@ -786,6 +815,9 @@ codex_selected() {
 }
 gemini_selected() {
   case "$CLI_TARGET" in gemini|all) return 0 ;; *) return 1 ;; esac
+}
+cursor_selected() {
+  case "$CLI_TARGET" in cursor|all) return 0 ;; *) return 1 ;; esac
 }
 
 if claude_selected; then
@@ -1373,6 +1405,73 @@ if gemini_selected; then
   fi  # end GEMINI_PROJECT_DONE guard
 fi
 
+# ─── install_cursor — Cursor IDE path (~/.cursor/) ─────────────────────
+# Cursor loads local plugins from ~/.cursor/plugins/local/<plugin-name>/
+# (per Cursor docs: cursor.com/docs/plugins). We copy the committed
+# plugins/rolepod-cursor/ tree there. Cursor auto-discovers the plugin on
+# next session start; no marketplace install command is required for local
+# install. The plugin's rules/always-on-core.mdc (alwaysApply: true)
+# delivers the always-on judgment core without touching user-global config.
+if cursor_selected; then
+  CURSOR_TARGET="$(resolve_target_for cursor)"
+  CURSOR_PLUGIN_DEST="$CURSOR_TARGET/plugins/local/rolepod"
+  echo ""
+  echo "${BOLD}─── Installing for Cursor ───${NC}"
+  echo "  target:        $CURSOR_TARGET"
+  echo "  plugin dest:   $CURSOR_PLUGIN_DEST"
+
+  RENDERED_CURSOR_DIR="$REPO_DIR/plugins/rolepod-cursor"
+  [ -d "$RENDERED_CURSOR_DIR" ] || fail "expected $RENDERED_CURSOR_DIR after render"
+  [ -f "$RENDERED_CURSOR_DIR/.cursor-plugin/plugin.json" ] || fail "expected $RENDERED_CURSOR_DIR/.cursor-plugin/plugin.json after render"
+  [ -d "$RENDERED_CURSOR_DIR/rules" ]                     || fail "expected $RENDERED_CURSOR_DIR/rules/ after render"
+  [ -d "$RENDERED_CURSOR_DIR/skills" ]                    || fail "expected $RENDERED_CURSOR_DIR/skills/ after render"
+  [ -d "$RENDERED_CURSOR_DIR/agents" ]                    || fail "expected $RENDERED_CURSOR_DIR/agents/ after render"
+  [ -d "$RENDERED_CURSOR_DIR/hooks" ]                     || fail "expected $RENDERED_CURSOR_DIR/hooks/ after render"
+
+  # Backup if --force on existing — rolepod-scoped only (the plugin's own dir).
+  if [ "$FORCE" -eq 1 ] && [ -d "$CURSOR_PLUGIN_DEST" ]; then
+    STAMP=$(date +%Y%m%d-%H%M%S)
+    BACKUP="${CURSOR_PLUGIN_DEST}.backup-$STAMP"
+    warn "Backing up existing $CURSOR_PLUGIN_DEST → $BACKUP"
+    do_or_dry "cp -R $CURSOR_PLUGIN_DEST $BACKUP" cp -R "$CURSOR_PLUGIN_DEST" "$BACKUP"
+  fi
+
+  step "Creating Cursor plugin directory"
+  do_or_dry "mkdir -p $CURSOR_PLUGIN_DEST" mkdir -p "$CURSOR_PLUGIN_DEST"
+
+  if [ "$FORCE" -eq 1 ]; then
+    do_or_dry "rm -rf $CURSOR_PLUGIN_DEST && mkdir -p $CURSOR_PLUGIN_DEST" \
+      bash -c "rm -rf '$CURSOR_PLUGIN_DEST' && mkdir -p '$CURSOR_PLUGIN_DEST'"
+  fi
+
+  step "Copying plugin tree → $CURSOR_PLUGIN_DEST/"
+  if [ "$DRY_RUN" -eq 1 ]; then
+    dry "cp -R $RENDERED_CURSOR_DIR/. → $CURSOR_PLUGIN_DEST/"
+  else
+    cp -R "$RENDERED_CURSOR_DIR/." "$CURSOR_PLUGIN_DEST/" 2>/dev/null || true
+    chmod +x "$CURSOR_PLUGIN_DEST/scripts/"*.sh 2>/dev/null || true
+  fi
+
+  if [ "$DRY_RUN" -eq 0 ]; then
+    step "Verifying Cursor install"
+    for required in \
+      .cursor-plugin/plugin.json \
+      rules/always-on-core.mdc \
+      hooks/hooks.json \
+      skills/using-rolepod/SKILL.md \
+      skills/debug-issue/SKILL.md \
+      agents/qa-tester.md \
+      scripts/precommit-gate.sh
+    do
+      [ -e "$CURSOR_PLUGIN_DEST/$required" ] || fail "Cursor verification failed — $CURSOR_PLUGIN_DEST/$required missing"
+    done
+    ok "rolepod Cursor plugin installed → $CURSOR_PLUGIN_DEST"
+    ok "always-on judgment core → $CURSOR_PLUGIN_DEST/rules/always-on-core.mdc (alwaysApply: true)"
+  else
+    skip "Cursor verification skipped (dry-run)"
+  fi
+fi
+
 # Ensure TARGET is set for the rest of the script. Fallback only when
 # claude wasn't selected at all.
 if [ -z "${TARGET:-}" ]; then
@@ -1419,7 +1518,8 @@ if [ "$SCOPE" = "project" ]; then
     claude) echo "${BOLD}Final step${NC}: restart Claude Code in this project to load the rolepod workflow." ;;
     codex)  echo "${BOLD}Final step${NC}: Codex auto-loads $PWD/AGENTS.md when you run codex in this project." ;;
     gemini) echo "${BOLD}Final step${NC}: Gemini auto-loads $PWD/GEMINI.md when you run gemini in this project." ;;
-    all)    echo "${BOLD}Final step${NC}: restart Claude Code in this project; Codex/Gemini auto-load $PWD/AGENTS.md and $PWD/GEMINI.md." ;;
+    cursor) echo "${BOLD}Final step${NC}: restart Cursor in this project to load the rolepod plugin." ;;
+    all)    echo "${BOLD}Final step${NC}: restart Claude Code + Cursor in this project; Codex/Gemini auto-load $PWD/AGENTS.md and $PWD/GEMINI.md." ;;
   esac
 else
   case "$CLI_TARGET" in
@@ -1427,7 +1527,9 @@ else
     codex)  echo "${BOLD}Final step${NC}: restart Codex CLI to load the new plugin."
             echo "  Hooks require opt-in: ${BOLD}codex features enable plugin_hooks${NC} (plugin_hooks is 'under development, false' by default; rolepod's hooks/hooks.json is inert without this flag)." ;;
     gemini) echo "${BOLD}Final step${NC}: restart Gemini CLI to load the new extension and hooks." ;;
-    all)    echo "${BOLD}Final step${NC}: restart Claude Code, Codex CLI, and Gemini CLI."
+    cursor) echo "${BOLD}Final step${NC}: restart Cursor (or reload window) so the plugin + rules register."
+            echo "  Verify under Cursor → Settings → Features → Rules / Plugins." ;;
+    all)    echo "${BOLD}Final step${NC}: restart Claude Code, Codex CLI, Gemini CLI, and Cursor."
             echo "  Codex hooks require opt-in: ${BOLD}codex features enable plugin_hooks${NC}." ;;
   esac
 fi

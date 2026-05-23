@@ -36,6 +36,8 @@ test-static:
 	@echo "  ✓ codex hooks/*.sh syntax"
 	@for f in adapters/gemini/hooks/*.sh; do bash -n "$$f" || { echo "  ✗ $$f"; exit 1; }; done
 	@echo "  ✓ gemini hooks/*.sh syntax"
+	@for f in adapters/cursor/scripts/*.sh; do bash -n "$$f" || { echo "  ✗ $$f"; exit 1; }; done
+	@echo "  ✓ cursor scripts/*.sh syntax"
 	@python3 -c "import ast; ast.parse(open('hooks/lib/session_state.py').read())" && echo "  ✓ hooks/lib/session_state.py syntax"
 	@python3 -m json.tool adapters/codex/plugins/rolepod/.codex-plugin/plugin.json >/dev/null && echo "  ✓ codex plugin.json"
 	@python3 -m json.tool adapters/codex/plugins/rolepod/hooks/hooks.json >/dev/null && echo "  ✓ codex hooks.json"
@@ -44,6 +46,9 @@ test-static:
 	@python3 -m json.tool adapters/claude/.claude-plugin/plugin.json >/dev/null && echo "  ✓ claude plugin.json"
 	@python3 -m json.tool adapters/claude/.claude-plugin/marketplace.json >/dev/null && echo "  ✓ claude marketplace.json"
 	@python3 -m json.tool adapters/claude/hooks.json >/dev/null && echo "  ✓ claude hooks.json"
+	@python3 -m json.tool adapters/cursor/.cursor-plugin/plugin.json >/dev/null && echo "  ✓ cursor plugin.json"
+	@python3 -m json.tool adapters/cursor/.cursor-plugin/marketplace.json >/dev/null && echo "  ✓ cursor marketplace.json"
+	@python3 -m json.tool adapters/cursor/hooks/hooks.json >/dev/null && echo "  ✓ cursor hooks.json"
 	@python3 -c "import pathlib, tomllib; [tomllib.loads(p.read_text()) for p in pathlib.Path('adapters/gemini/commands').glob('*.toml')]" && echo "  ✓ gemini commands/*.toml"
 	@$(MAKE) -s test-render-clean
 	@$(MAKE) -s test-lean-surface
@@ -86,10 +91,10 @@ test-render-clean:
 		git diff --stat -- core/fragments/; \
 		exit 1; \
 	fi
-	@if ! git diff --quiet -- .claude-plugin/ plugins/rolepod/ .agents/ plugins/rolepod-codex/ 2>/dev/null; then \
+	@if ! git diff --quiet -- .claude-plugin/ plugins/rolepod/ .agents/ plugins/rolepod-codex/ .cursor-plugin/ plugins/rolepod-cursor/ 2>/dev/null; then \
 		echo "  ✗ render-clean: committed marketplace tree drifted from build/render.sh output."; \
-		echo "    Run: make render && git add .claude-plugin/ plugins/rolepod/ .agents/ plugins/rolepod-codex/ && commit."; \
-		git diff --stat -- .claude-plugin/ plugins/rolepod/ .agents/ plugins/rolepod-codex/; \
+		echo "    Run: make render && git add .claude-plugin/ plugins/rolepod/ .agents/ plugins/rolepod-codex/ .cursor-plugin/ plugins/rolepod-cursor/ && commit."; \
+		git diff --stat -- .claude-plugin/ plugins/rolepod/ .agents/ plugins/rolepod-codex/ .cursor-plugin/ plugins/rolepod-cursor/; \
 		exit 1; \
 	fi
 	@for f in build/rendered/codex/AGENTS.md build/rendered/gemini/GEMINI.md; do \
@@ -97,8 +102,10 @@ test-render-clean:
 	done
 	@[ -f .claude-plugin/marketplace.json ] && [ -f plugins/rolepod/.claude-plugin/plugin.json ] || { echo "  ✗ render-clean: committed Claude marketplace tree missing"; exit 1; }
 	@[ -f .agents/plugins/marketplace.json ] && [ -f plugins/rolepod-codex/.codex-plugin/plugin.json ] || { echo "  ✗ render-clean: committed Codex marketplace tree missing"; exit 1; }
+	@[ -f .cursor-plugin/marketplace.json ] && [ -f plugins/rolepod-cursor/.cursor-plugin/plugin.json ] || { echo "  ✗ render-clean: committed Cursor marketplace tree missing"; exit 1; }
+	@[ -f plugins/rolepod-cursor/rules/always-on-core.mdc ] || { echo "  ✗ render-clean: cursor always-on-core.mdc missing"; exit 1; }
 	@[ ! -f plugins/rolepod/CLAUDE.md ] || { echo "  ✗ render-clean: Claude ships no entry doc — plugins/rolepod/CLAUDE.md should not exist"; exit 1; }
-	@leak_files=$$(grep -rl '{{INCLUDE:' build/rendered/ plugins/rolepod/ plugins/rolepod-codex/ 2>/dev/null || true); \
+	@leak_files=$$(grep -rl '{{INCLUDE:' build/rendered/ plugins/rolepod/ plugins/rolepod-codex/ plugins/rolepod-cursor/ 2>/dev/null || true); \
 	if [ -n "$$leak_files" ]; then \
 		echo "  ✗ render-clean: unresolved {{INCLUDE: ...}} placeholders in:"; \
 		echo "$$leak_files" | sed 's/^/      /'; \

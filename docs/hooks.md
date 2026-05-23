@@ -1,6 +1,6 @@
 # Hooks reference
 
-Rolepod ships **7 core bash hook scripts** in `hooks/`. Each CLI adapter declares these in a plugin/extension `hooks/hooks.json` — Claude, Codex, and Gemini all use the same `hooks/hooks.json` form. All hooks are **self-guarded** — silent no-op when a dependency is missing.
+Rolepod ships **7 core bash hook scripts** in `hooks/`. Each CLI adapter declares these in a plugin/extension `hooks/hooks.json` — Claude, Codex, Gemini, and Cursor all use the same `hooks/hooks.json` form (Cursor uses camelCase event names; the others use PascalCase). All hooks are **self-guarded** — silent no-op when a dependency is missing.
 
 Lead does not invoke these manually. They fire automatically.
 
@@ -162,9 +162,25 @@ Root `hooks/*.sh` is canonical. The Codex adapter mirrors only the hooks whose e
 
 - **3 core** byte-exact mirrors: `gate-reminder.sh`, `precommit-gate.sh`, `project-context-loader.sh`.
 
-`always-on-loader`, `block-subagent-commit`, `cohesion-contract-check`, `session-lifecycle` stay Claude-only (`always-on-loader` is unnecessary on Codex/Gemini — they load their always-on core natively from `AGENTS.md` / `GEMINI.md`; Codex also has no `Agent` event API and no `Stop` event for unlock).
+`always-on-loader`, `block-subagent-commit`, `cohesion-contract-check`, `session-lifecycle` stay Claude-only (`always-on-loader` is unnecessary on Codex/Gemini/Cursor — they load their always-on core natively from `AGENTS.md` / `GEMINI.md` / `rules/*.mdc`; Codex also has no `Agent` event API and no `Stop` event for unlock).
 
 `tests/static/lean-surface.sh` enforces byte-exact parity between root and Codex adapter for the shared hooks (3 core) — any drift fails the release gate.
+
+## Cursor adapter mapping
+
+The Cursor adapter ships **3 core hooks** in `adapters/cursor/scripts/`, parallel to Codex but with Cursor's I/O contract (stdin JSON / stdout JSON / exit-code 2 to deny):
+
+| Claude hook | Cursor mapping |
+|---|---|
+| `always-on-loader.sh` (SessionStart) | replaced by `rules/always-on-core.mdc` with `alwaysApply: true` — Cursor's native always-on mechanism |
+| `project-context-loader.sh` (SessionStart) | `scripts/project-context-loader.sh` on `sessionStart` — emits `{"additional_context": "..."}` |
+| `gate-reminder.sh` (PreToolUse:Edit\|Write\|MultiEdit) | `scripts/gate-reminder.sh` on `preToolUse` with matcher `Write\|Edit\|MultiEdit` — emits `{"permission": "allow", "agent_message": "..."}` for soft warns and `{"permission": "deny", ...}` + exit 2 for hard blocks |
+| `precommit-gate.sh` (PreToolUse:Bash) | `scripts/precommit-gate.sh` on `beforeShellExecution` with matcher `git[[:space:]]+commit` — same tiering (silent / soft / hard), same env overrides (`ROLEPOD_GATES_HARD`, `ROLEPOD_GATES_SOFT`, `ROLEPOD_GATES_PASSED`, `[gates: pass]` marker) |
+| `session-lifecycle.sh` (SessionStart/Stop lock) | not ported — Cursor's session model differs from Claude's; sibling-session lock has no clear Cursor equivalent yet |
+| `block-subagent-commit.sh` (PreToolUse:Bash) | not ported — Cursor's subagent identity differs; deferred until `subagentStart` payload is exercised |
+| `cohesion-contract-check.sh` (PreToolUse:Agent) | not ported — same reason |
+
+Cursor uses camelCase event names (`sessionStart`, `preToolUse`, `beforeShellExecution`) vs Claude's PascalCase. The `matcher` field accepts regex patterns matched against tool name (`preToolUse`) or full shell command (`beforeShellExecution`).
 
 ## Installation
 

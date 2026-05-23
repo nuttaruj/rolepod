@@ -9,6 +9,7 @@ Usage:
   merge-agent.py --target=claude --name=qa-tester  (md — model/effort overlay)
   merge-agent.py --target=codex  --name=qa-tester  (toml — model/sandbox overlay)
   merge-agent.py --target=gemini --name=qa-tester  (md — model overlay)
+  merge-agent.py --target=cursor --name=qa-tester  (md — minimal name+description only)
 
 Writes to stdout. Render driver pipes into the per-target rendered/ directory.
 
@@ -27,6 +28,7 @@ from pathlib import Path
 CLAUDE_KEY_ORDER = ["name", "description", "model", "effort", "memory",
                     "maxTurns", "permissionMode", "color", "skills", "tools"]
 GEMINI_KEY_ORDER = ["name", "description", "model"]
+CURSOR_KEY_ORDER = ["name", "description"]
 # Codex agents are TOML, not frontmatter — see emit_codex_toml().
 
 REPO_DIR = Path(__file__).resolve().parent.parent
@@ -164,12 +166,21 @@ def merge(target: str, name: str) -> str:
         merged = {**core_fields, **overlay}
         return "---\n" + emit(GEMINI_KEY_ORDER, merged) + "---\n" + body
 
+    if target == "cursor":
+        # Cursor agents ship agents/<name>.md with minimal frontmatter — the
+        # documented spec only acknowledges `name` and `description`. We drop
+        # Claude's model / effort / color / tools / skills fields rather than
+        # gambling on Cursor tolerating unknown keys (the official
+        # plugin-template uses minimal frontmatter only).
+        # No overlay needed: name + description already live in core/agents.
+        return "---\n" + emit(CURSOR_KEY_ORDER, core_fields) + "---\n" + body
+
     raise ValueError(f"unknown target: {target}")
 
 
 def main() -> int:
     p = argparse.ArgumentParser()
-    p.add_argument("--target", required=True, choices=["claude", "codex", "gemini"])
+    p.add_argument("--target", required=True, choices=["claude", "codex", "gemini", "cursor"])
     p.add_argument("--name", required=True)
     args = p.parse_args()
     sys.stdout.write(merge(args.target, args.name))

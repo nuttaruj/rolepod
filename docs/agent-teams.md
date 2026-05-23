@@ -40,7 +40,7 @@ Until the flag is set, the Task/subagent backend delivers the same outcome shape
 | Coordination | Lead orchestrates everything | Shared task list + self-claim + Lead can intervene |
 | Token cost | ~1× per subagent invocation | Linear: N teammates × N independent contexts (~4× for a 4-teammate team) |
 | Resume | `/resume` works | No `/resume` for in-process teammates (upstream limitation) |
-| CLI support | Cross-CLI (Claude / Codex / Gemini) | Claude only |
+| CLI support | Cross-CLI (Claude / Codex / Gemini / Cursor) | Claude only |
 | Stability | Stable | Experimental |
 
 ## When teammate mode is worth the cost

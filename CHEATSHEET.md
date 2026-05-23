@@ -1,6 +1,6 @@
 # Rolepod — Cheatsheet
 
-Quick reference for all 3 CLIs (Claude / Codex / Gemini). Install, architecture, and full hook / model reference live in [README](README.md) and [docs/](docs/).
+Quick reference for all 4 CLIs (Claude / Codex / Gemini / Cursor). Install, architecture, and full hook / model reference live in [README](README.md) and [docs/](docs/).
 
 ## Workflow — phase → skill
 
@@ -69,7 +69,7 @@ Can't verify  → state "Assuming X. Risk Y. Verify by Z" — never proceed sile
 
 ## Reviewer routing
 
-`qa-tester` is the always-on internal floor. An external reviewer = an installed CLI on a different model from the Lead (Claude / Codex / Gemini, minus itself).
+`qa-tester` is the always-on internal floor. An external reviewer = an installed CLI on a different model from the Lead (Claude / Codex / Gemini / Cursor, minus itself).
 
 | PR profile | Reviewers |
 |-----------|-----------|
@@ -91,20 +91,20 @@ Can't verify  → state "Assuming X. Risk Y. Verify by Z" — never proceed sile
 
 ## Key commands — per CLI
 
-| Action | Claude | Codex | Gemini |
-|--------|--------|-------|--------|
-| Start | `claude` | `codex` | `gemini` |
-| Force-full lifecycle | `/rolepod-full` | `$rolepod-full` | `/rolepod-full` |
-| Reset context | `/clear` | exit + restart | exit + restart |
-| Restore checkpoint | `/rewind` (`Esc Esc`) | git | git |
-| Manual compaction | `/compact <focus>` | auto | auto |
-| Resume last session | `claude --continue` | `codex resume` | `gemini` |
-| Pick a session | `claude --resume` | `codex resume --list` | — |
-| One-shot prompt | `claude -p "…"` | `codex exec "…"` | `gemini -p "…"` |
+| Action | Claude | Codex | Gemini | Cursor |
+|--------|--------|-------|--------|--------|
+| Start | `claude` | `codex` | `gemini` | open Cursor |
+| Force-full lifecycle | `/rolepod-full` | `$rolepod-full` | `/rolepod-full` | `/rolepod-full` |
+| Reset context | `/clear` | exit + restart | exit + restart | new chat |
+| Restore checkpoint | `/rewind` (`Esc Esc`) | git | git | git |
+| Manual compaction | `/compact <focus>` | auto | auto | auto |
+| Resume last session | `claude --continue` | `codex resume` | `gemini` | last chat (sidebar) |
+| Pick a session | `claude --resume` | `codex resume --list` | — | chat history (sidebar) |
+| One-shot prompt | `claude -p "…"` | `codex exec "…"` | `gemini -p "…"` | Cmd+K |
 
 ## Hooks
 
-7 Claude / 3 Codex / 4 Gemini core hooks — self-guarded, auto-fire, no add-on hooks. Codex hooks stay inert until `codex features enable plugin_hooks`. Full reference: [docs/hooks.md](docs/hooks.md).
+7 Claude / 3 Codex / 4 Gemini / 3 Cursor core hooks — self-guarded, auto-fire, no add-on hooks. Codex hooks stay inert until `codex features enable plugin_hooks`. Cursor + Gemini hooks fire by default. Full reference: [docs/hooks.md](docs/hooks.md).
 
 ## Rule priority on conflict
 

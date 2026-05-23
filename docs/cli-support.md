@@ -4,17 +4,17 @@ Phase 2.3: rolepod ships for each supported CLI as a **native plugin / extension
 
 ## Capability matrix
 
-| Capability | Claude Code | Codex CLI | Gemini CLI |
-|---|---|---|---|
-| Always-on instructions | SessionStart hook → `hooks/always-on-core.md` (additionalContext) | `~/.codex/AGENTS.md` (native) | `~/.gemini/extensions/rolepod/GEMINI.md` (extension context file) |
-| Lazy-load rules (Read on trigger) | full | full | full |
-| Skills (`<plugin>/skills/<name>/SKILL.md`) | 10 Core 10 + 1 alias (native) | 10 Core 10 + 1 alias (native) | 10 Core 10 + 1 alias (native) |
-| Subagents (parallel team) | full Task / SendMessage (18 agents) | 18 agents as Codex `agents/*.toml` (Lead-orchestrated) | 18 agents inlined in `GEMINI.md` (Lead-orchestrated) |
-| Hooks (core only) | 7 core hooks in the plugin's `hooks/hooks.json` · auto-registered on install | 3 core hooks across `SessionStart`/`PreToolUse` · hooks require `plugin_hooks` opt-in | 4 core hooks across `SessionStart`/`BeforeTool`/`AfterTool`/`PreCompress` |
-| Slash commands | `/rolepod-full` (skill — force-full lifecycle) | `$rolepod-full` (skill via Codex skill UI) | `/rolepod-full` (skill; no native `.toml` commands) |
-| Plugin manifest | `plugins/rolepod/.claude-plugin/plugin.json` (spec-conformant) + `.claude-plugin/marketplace.json` catalog at the repo root | `.codex-plugin/plugin.json` (mirrors caveman schema, 1.6KB) | `gemini-extension.json` (extension schema, 551B) |
-| Optional add-on integration | vendor-installed (own plugin / MCP); rolepod auto-detects, falls back to `rg` + `git log` | vendor-installed (own plugin / MCP); rolepod auto-detects, falls back to `rg` + `git log` | vendor-installed (own plugin / MCP); rolepod auto-detects, falls back to `rg` + `git log` |
-| MCP server config | global + per-plugin | global (`codex mcp`) | global (`gemini mcp`) |
+| Capability | Claude Code | Codex CLI | Gemini CLI | Cursor IDE |
+|---|---|---|---|---|
+| Always-on instructions | SessionStart hook → `hooks/always-on-core.md` (additionalContext) | `~/.codex/AGENTS.md` (native) | `~/.gemini/extensions/rolepod/GEMINI.md` (extension context file) | `rules/always-on-core.mdc` with `alwaysApply: true` (Cursor native) |
+| Lazy-load rules (Read on trigger) | full | full | full | full (`.mdc` rules with explicit `alwaysApply: false` or glob match) |
+| Skills (`<plugin>/skills/<name>/SKILL.md`) | 10 Core 10 + 1 alias (native) | 10 Core 10 + 1 alias (native) | 10 Core 10 + 1 alias (native) | 10 Core 10 + 1 alias (native; frontmatter stripped to `name` + `description` per Cursor spec) |
+| Subagents (parallel team) | full Task / SendMessage (18 agents) | 18 agents as Codex `agents/*.toml` (Lead-orchestrated) | 18 agents inlined in `GEMINI.md` (Lead-orchestrated) | 18 agents in `agents/*.md` (Lead-orchestrated) |
+| Hooks (core only) | 7 core hooks in the plugin's `hooks/hooks.json` · auto-registered on install | 3 core hooks across `SessionStart`/`PreToolUse` · hooks require `plugin_hooks` opt-in | 4 core hooks across `SessionStart`/`BeforeTool`/`AfterTool`/`PreCompress` | 3 core hooks across `sessionStart`/`preToolUse`/`beforeShellExecution` · auto-fires |
+| Slash commands | `/rolepod-full` (skill — force-full lifecycle) | `$rolepod-full` (skill via Codex skill UI) | `/rolepod-full` (skill; no native `.toml` commands) | `/rolepod-full` (skill) |
+| Plugin manifest | `plugins/rolepod/.claude-plugin/plugin.json` (spec-conformant) + `.claude-plugin/marketplace.json` catalog at the repo root | `.codex-plugin/plugin.json` (mirrors caveman schema, 1.6KB) | `gemini-extension.json` (extension schema, 551B) | `plugins/rolepod-cursor/.cursor-plugin/plugin.json` (spec-conformant) + `.cursor-plugin/marketplace.json` catalog at the repo root |
+| Optional add-on integration | vendor-installed (own plugin / MCP); rolepod auto-detects, falls back to `rg` + `find` | vendor-installed (own plugin / MCP); rolepod auto-detects, falls back to `rg` + `find` | vendor-installed (own plugin / MCP); rolepod auto-detects, falls back to `rg` + `find` | vendor-installed (Cursor MCP / `mcp.json`); rolepod auto-detects, falls back to `rg` + `find` |
+| MCP server config | global + per-plugin | global (`codex mcp`) | global (`gemini mcp`) | global (`~/.cursor/mcp.json`) + per-plugin (`plugin/mcp.json`) |
 
 ## Install destinations
 
@@ -23,10 +23,13 @@ Phase 2.3: rolepod ships for each supported CLI as a **native plugin / extension
 | Claude Code | repo IS the marketplace — `.claude-plugin/marketplace.json` + committed `plugins/rolepod/` (agents/, hooks/, skills/, .claude-plugin/) at the repo root; `claude plugin marketplace add nuttaruj/rolepod` installs straight from GitHub | SessionStart hook emits `hooks/always-on-core.md` (no CLAUDE.md) |
 | Codex CLI | repo IS the marketplace — `.agents/plugins/marketplace.json` + committed `plugins/rolepod-codex/` (.codex-plugin/, hooks/, skills/) at the repo root; `codex plugin marketplace add nuttaruj/rolepod` installs straight from GitHub. The 18 agent TOMLs install to `~/.codex/agents/rolepod-*.toml` — Codex's plugin loader has no agents field, so they need `install.sh` | `~/.codex/AGENTS.md` |
 | Gemini CLI | `~/.gemini/extensions/rolepod/` (gemini-extension.json, GEMINI.md, hooks/, skills/) | `~/.gemini/extensions/rolepod/GEMINI.md` (extension context file) |
+| Cursor IDE | repo IS the marketplace — `.cursor-plugin/marketplace.json` + committed `plugins/rolepod-cursor/` (.cursor-plugin/, rules/, agents/, skills/, hooks/, scripts/) at the repo root; `install.sh --target=cursor` copies that tree to `~/.cursor/plugins/local/rolepod/` for local install | `plugins/rolepod-cursor/rules/always-on-core.mdc` (`alwaysApply: true`) |
 
 For Codex the entry doc is intentionally written **outside** the plugin dir (`~/.codex/AGENTS.md`) — Codex auto-loads the global `AGENTS.md` regardless of which plugins are installed, so keeping it at the root makes rolepod's gates active on every session, not just when the plugin is enabled.
 
 For Gemini the entry doc ships **inside** the extension dir as `extensions/rolepod/GEMINI.md`. Gemini auto-loads it via the manifest's `contextFileName` field when the extension is enabled (the default after install). This keeps rolepod's context fully self-contained — install never touches the user's own `~/.gemini/GEMINI.md`, and uninstall is a clean `rm -rf` of the extension dir. (Pre-PR-8 installs wrote a managed block into the global `~/.gemini/GEMINI.md`; the installer strips that stale block on the next run.)
+
+For Cursor the always-on core ships as `rules/always-on-core.mdc` with `alwaysApply: true`. Cursor auto-loads any `.mdc` rule carrying that frontmatter on every session, so the install is fully self-contained — nothing is written to user-global config and uninstall is a clean `rm -rf ~/.cursor/plugins/local/rolepod/`. Caveat: a user who disables **Settings → Features → Rules** in Cursor suppresses the always-on core (the parallel of a Claude user disabling SessionStart hooks).
 
 ### Install path env vars
 
@@ -36,6 +39,7 @@ For Gemini the entry doc ships **inside** the extension dir as `extensions/rolep
 | `ROLEPOD_CLAUDE_TARGET` | Per-CLI override — wins over `ROLEPOD_TARGET` for Claude only. |
 | `ROLEPOD_CODEX_TARGET` | Per-CLI override — wins over `ROLEPOD_TARGET` for Codex only. |
 | `ROLEPOD_GEMINI_TARGET` | Per-CLI override — wins over `ROLEPOD_TARGET` for Gemini only. |
+| `ROLEPOD_CURSOR_TARGET` | Per-CLI override — wins over `ROLEPOD_TARGET` for Cursor only. |
 
 Non-TTY contexts: `--uninstall` without `--yes` exits 0 with `Aborted. Re-run with --yes in non-interactive mode.` instead of crashing on a missing `/dev/tty`.
 
@@ -55,26 +59,31 @@ adapters/
 │       ├── .codex-plugin/plugin.json
 │       ├── hooks/hooks.json + 3 core *.sh
 │       └── skills → ../../../../core/skills (symlink, dereferenced at render time)
-└── gemini/
-    ├── GEMINI.md.tmpl
-    ├── gemini-extension.json
-    ├── agent-frontmatter/*.yml          (18 overlays — model)
-    ├── hooks/hooks.json + 4 *.sh
-    └── skills/                         (real dir, populated at render time)
+├── gemini/
+│   ├── GEMINI.md.tmpl
+│   ├── gemini-extension.json
+│   ├── agent-frontmatter/*.yml          (18 overlays — model)
+│   ├── hooks/hooks.json + 4 *.sh
+│   └── skills/                         (real dir, populated at render time)
+└── cursor/
+    ├── .cursor-plugin/                  (plugin.json + marketplace.json)
+    ├── rules/always-on-core.mdc.tmpl    (alwaysApply: true wrapper around hooks/always-on-core.md.tmpl)
+    ├── hooks/hooks.json                 (sessionStart / preToolUse / beforeShellExecution)
+    └── scripts/*.sh                     (3 hook scripts — Cursor JSON I/O)
 ```
 
-`build/render.sh` renders the Claude plugin into the committed `plugins/rolepod/` tree and the Codex + Gemini trees into `build/rendered/<cli>/`. Per-CLI agent files are generated by `build/merge-agent.py` from `core/agents/<name>.md` + the `agent-frontmatter/` overlay (Codex agents emit as TOML, Claude / Gemini as Markdown). `install.sh` copies the rendered tree to the install destination above.
+`build/render.sh` renders the Claude, Codex, and Cursor plugin trees into committed `plugins/rolepod/`, `plugins/rolepod-codex/`, `plugins/rolepod-cursor/` paths, and the Gemini extension into `build/rendered/gemini/`. Per-CLI agent files are generated by `build/merge-agent.py` from `core/agents/<name>.md` + the `agent-frontmatter/` overlay (Codex agents emit as TOML; Claude / Gemini emit Markdown with full frontmatter; Cursor emits Markdown with `name` + `description` only — no overlay needed). `install.sh` copies the rendered tree to the install destination above.
 
 ## Hook event mapping
 
-| Event class | Claude Code | Codex CLI | Gemini CLI |
-|---|---|---|---|
-| Session start | `SessionStart` (`startup\|resume`) | `SessionStart` (`startup\|resume`) | `SessionStart` (`startup\|resume\|clear`) |
-| Before tool run | `PreToolUse` (`Edit\|Write\|MultiEdit`, `Bash`, `Agent`) | `PreToolUse` (`apply_patch`, `Bash`) | `BeforeTool` (`write_file\|replace\|edit`) |
-| After tool run | `PostToolUse` (`Edit\|Write`, `Bash`) | `PostToolUse` (`apply_patch`, `Bash`) | `AfterTool` (`write_file\|replace\|edit`) |
-| Stop / compact | `Stop` (no matcher) | — | `PreCompress` |
+| Event class | Claude Code | Codex CLI | Gemini CLI | Cursor IDE |
+|---|---|---|---|---|
+| Session start | `SessionStart` (`startup\|resume`) | `SessionStart` (`startup\|resume`) | `SessionStart` (`startup\|resume\|clear`) | `sessionStart` (no matcher) |
+| Before tool run | `PreToolUse` (`Edit\|Write\|MultiEdit`, `Bash`, `Agent`) | `PreToolUse` (`apply_patch`, `Bash`) | `BeforeTool` (`write_file\|replace\|edit`) | `preToolUse` (`Write\|Edit\|MultiEdit`); `beforeShellExecution` (`git[[:space:]]+commit`) |
+| After tool run | `PostToolUse` (`Edit\|Write`, `Bash`) | `PostToolUse` (`apply_patch`, `Bash`) | `AfterTool` (`write_file\|replace\|edit`) | — (uses `beforeShellExecution` for commit gate; no observational hooks yet) |
+| Stop / compact | `Stop` (no matcher) | — | `PreCompress` | — (sessionEnd/stop reserved for future use) |
 
-Per-CLI hook counts: Claude registers 7 core hooks via the plugin manifest. Codex registers 3 core hooks in `hooks/hooks.json` (requires `codex features enable plugin_hooks` opt-in). Gemini registers 4 core hooks in `hooks/hooks.json`. Rolepod ships no add-on hooks — MemPalace and GitNexus integrate via their own vendor plugins/CLI.
+Per-CLI hook counts: Claude registers 7 core hooks via the plugin manifest. Codex registers 3 core hooks in `hooks/hooks.json` (requires `codex features enable plugin_hooks` opt-in). Gemini registers 4 core hooks in `hooks/hooks.json`. Cursor registers 3 core hooks in `hooks/hooks.json` (always-on judgment uses an `alwaysApply` rule instead of a SessionStart hook, so the loader script is folded into the rule). Rolepod ships no add-on hooks — MemPalace and GitNexus integrate via their own vendor plugins/CLI.
 
 ## Verification status — what's confirmed locally
 
@@ -83,10 +92,10 @@ Per-CLI hook counts: Claude registers 7 core hooks via the plugin manifest. Code
 | Claude snapshot | 18 agent files + plugin tree layout |
 | Codex plugin layout | install registers `[marketplaces.rolepod]` + `[plugins."rolepod@rolepod"] enabled = true` in `~/.codex/config.toml` and writes the `~/.codex/AGENTS.md` managed block; committed marketplace tree at the repo root (`.agents/plugins/marketplace.json` + `plugins/rolepod-codex/{.codex-plugin,hooks,skills}/`) — the plugin bundles hooks + skills, the 18 agent TOMLs install to `~/.codex/agents/` |
 | Gemini extension layout | dry-run install populates `~/.gemini/extensions/rolepod/{GEMINI.md,gemini-extension.json,hooks,skills}/` — entry doc ships inside the extension dir, global `~/.gemini/GEMINI.md` untouched |
-| All shell scripts | `bash -n` clean (install.sh, bootstrap.sh, render.sh, 7 core hook scripts, 3 codex hook scripts, 4 gemini hook scripts) |
-| All JSON manifests | `python3 -m json.tool` clean (plugin.json x2, hooks.json x3 — claude/codex/gemini, marketplace.json, gemini-extension.json) |
+| All shell scripts | `bash -n` clean (install.sh, bootstrap.sh, render.sh, 7 core hook scripts, 3 codex hook scripts, 4 gemini hook scripts, 3 cursor scripts) |
+| All JSON manifests | `python3 -m json.tool` clean (plugin.json x3 — claude/codex/cursor, hooks.json x4 — claude/codex/gemini/cursor, marketplace.json x2 — claude/cursor, gemini-extension.json) |
 | All TOML files | `tomllib.load()` clean (18 codex agents, 6 gemini commands) |
-| Render output | `build/render.sh --target=all` produces all 3 trees with no `{{INCLUDE: ...}}` leaks |
+| Render output | `build/render.sh --target=all` produces all 4 trees with no `{{INCLUDE: ...}}` leaks |
 
 ## Runtime verification status
 
@@ -95,10 +104,11 @@ Per-CLI hook counts: Claude registers 7 core hooks via the plugin manifest. Code
 | Claude Code | ✓ | ✓ | ✓ verified | ✓ verified | **Production** |
 | Codex CLI   | ✓ | ✓ | ⚠️ opt-in only — `features.plugin_hooks` is "under development, false" by default; rolepod registers `hooks/hooks.json` but Codex won't fire them until user runs `codex features enable plugin_hooks` | ✓ verified (18 agents + 10 skills via native loader) | **Production** (hooks opt-in) |
 | Gemini CLI  | ✓ | ✓ | ✓ verified (SessionStart hook fires) | ✓ verified (10 skills enumerated) | **Production** |
+| Cursor IDE  | ✓ | ✓ | ⚠️ live re-verification pending (always-on rule + 3 hooks ship; hook JSON I/O contract verified against [cursor.com/docs/hooks](https://cursor.com/docs/hooks) 2026-05-23 fetch but not exercised on a live Cursor session yet) | ⚠️ live re-verification pending (18 agents + 11 skills ship with minimal-frontmatter shape; subagent dispatch unverified) | **Beta** (static + install paths verified; live runtime confirmation pending) |
 
-**Static checks** = `bash -n` on shell scripts, `python3 -m json.tool` on JSON manifests, `tomllib.load()` on TOML, plus snapshot diffs (no leaked `{{INCLUDE: ...}}` placeholders). **Dry-run install** = `install.sh --target=<cli>` writes correct files into a temp dir and the layout matches each CLI's expected destination. **Live** = installed in the real CLI, hooks fire on real sessions (Claude + Gemini always; Codex only after `codex features enable plugin_hooks` opt-in), subagents/skills dispatch correctly.
+**Static checks** = `bash -n` on shell scripts, `python3 -m json.tool` on JSON manifests, `tomllib.load()` on TOML, plus snapshot diffs (no leaked `{{INCLUDE: ...}}` placeholders). **Dry-run install** = `install.sh --target=<cli>` writes correct files into a temp dir and the layout matches each CLI's expected destination. **Live** = installed in the real CLI, hooks fire on real sessions (Claude + Gemini always; Codex only after `codex features enable plugin_hooks` opt-in; Cursor pending), subagents/skills dispatch correctly.
 
-_Last live-verified: 2026-05-23 on macOS (Darwin 25.5.0), Codex 0.132.0, Gemini 0.42.0. All 3 CLIs running rolepod 2.5.0 / Gemini extension 0.6.0 — 18 agents, 11 skills, hooks present on each (Claude 7, Codex 3, Gemini 4)._
+_Last live-verified: 2026-05-23 on macOS (Darwin 25.5.0), Codex 0.132.0, Gemini 0.42.0. Claude / Codex / Gemini running rolepod 2.6.0 / Gemini extension 0.6.0 — 18 agents, 11 skills, hooks present on each (Claude 7, Codex 3, Gemini 4, Cursor 3). Cursor target ships at 2.6.0 with static + install-path verification; live runtime confirmation on a real Cursor session is the next step._
 
 ### Per-target runtime evidence
 
@@ -124,7 +134,16 @@ _Last live-verified: 2026-05-23 on macOS (Darwin 25.5.0), Codex 0.132.0, Gemini 
 - `~/.codex/AGENTS.md` managed block still loads on every Codex session (Tier 1 always-on rules), independent of plugin enable state.
 - The CLI subcommands `plugin list` / `agent` / `skills list` / `hooks list` are not present in 0.132.0 — Codex doesn't expose enumeration commands today. The plugin still loads via the same code path as bundled plugins; verification is via session log + `config.toml` inspection.
 
-Help close the gap — install on Codex / Gemini and report at [issues/](https://github.com/nuttaruj/rolepod/issues).
+**Cursor IDE** — Beta (static + install verified; live runtime confirmation pending):
+- Plugin layout follows the official [cursor.com/docs/plugins](https://cursor.com/docs/plugins) spec and the [cursor/plugin-template](https://github.com/cursor/plugin-template) starter (verified against both 2026-05-23): `.cursor-plugin/plugin.json`, `rules/*.mdc`, `skills/<name>/SKILL.md`, `agents/*.md`, `hooks/hooks.json`, `scripts/*.sh`.
+- Always-on judgment core ships as `rules/always-on-core.mdc` with `alwaysApply: true` — Cursor's native equivalent of Claude's SessionStart-emit pattern. No user-global config is touched on install or uninstall.
+- 3 core hooks: `sessionStart` (project context loader), `preToolUse:Write|Edit|MultiEdit` (gate-reminder for schema-bound + high-risk paths), `beforeShellExecution:git commit` (precommit-gate). Hook JSON I/O follows [cursor.com/docs/hooks](https://cursor.com/docs/hooks): stdin JSON with `tool_name`/`tool_input`/`command` fields, stdout JSON with `permission`/`user_message`/`agent_message`/`additional_context`. Exit code 2 = deny.
+- Skill frontmatter is intentionally stripped to `name` + `description` only (the two fields Cursor documents). Claude-specific keys (`tier`, `phase`, `when_to_use`, `disable-model-invocation`) are dropped at render time to avoid gambling on tolerance for unknown fields. Caveat: the `rolepod-full` alias loses its `disable-model-invocation: true` guard — its description ("Use only when the user explicitly invokes `/rolepod-full` ...") is phrased to keep auto-trigger rare.
+- Agent frontmatter likewise reduces to `name` + `description` only — no Cursor-specific overlay file exists. The same 18 agent bodies ship across all CLIs.
+- Local install path: `~/.cursor/plugins/local/rolepod/` (per Cursor's local-plugin convention). The repo's committed `.cursor-plugin/marketplace.json` also makes the GitHub URL importable as a team marketplace.
+- Live re-verification pending: hook JSON I/O fields match the doc but have not yet been exercised on a real Cursor session.
+
+Help close the gap — install on Codex / Gemini / Cursor and report at [issues/](https://github.com/nuttaruj/rolepod/issues).
 
 ## Notes on subagent behavior
 

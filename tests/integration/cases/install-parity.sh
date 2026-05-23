@@ -167,6 +167,60 @@ else
   FAIL=$((FAIL+1))
 fi
 
+# ─── Cursor global into temp target ─────────────────────────────────────
+# Cursor install is filesystem-only (copy the committed plugins/rolepod-cursor/
+# tree into <CURSOR_TARGET>/plugins/local/rolepod/). No CLI mutation, so this
+# runs by default with ROLEPOD_CURSOR_TARGET pointed at a temp dir.
+echo ""
+echo "[cursor global] install into $TMP/cursor/.cursor"
+export ROLEPOD_CURSOR_TARGET="$TMP/cursor/.cursor"
+mkdir -p "$ROLEPOD_CURSOR_TARGET"
+if ./install.sh --target=cursor > "$TMP/cursor.log" 2>&1; then
+  PLUGIN_DEST="$ROLEPOD_CURSOR_TARGET/plugins/local/rolepod"
+  required_paths=(
+    "$PLUGIN_DEST/.cursor-plugin/plugin.json"
+    "$PLUGIN_DEST/rules/always-on-core.mdc"
+    "$PLUGIN_DEST/hooks/hooks.json"
+    "$PLUGIN_DEST/scripts/precommit-gate.sh"
+    "$PLUGIN_DEST/skills/using-rolepod/SKILL.md"
+    "$PLUGIN_DEST/agents/qa-tester.md"
+  )
+  cursor_fail=0
+  for p in "${required_paths[@]}"; do
+    if [ ! -e "$p" ]; then
+      echo "  ✗ missing: $p"
+      cursor_fail=1
+    fi
+  done
+  # Exactly 11 skills (Core 10 + rolepod-full alias) — same as Claude.
+  skill_count=$(find "$PLUGIN_DEST/skills" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | wc -l | tr -d ' ')
+  if [ "$skill_count" -ne 11 ]; then
+    echo "  ✗ expected 11 cursor skills (Core 10 + rolepod-full alias), got $skill_count"
+    cursor_fail=1
+  fi
+  # Exactly 18 agents.
+  agent_count=$(find "$PLUGIN_DEST/agents" -maxdepth 1 -name '*.md' 2>/dev/null | wc -l | tr -d ' ')
+  if [ "$agent_count" -ne 18 ]; then
+    echo "  ✗ expected 18 cursor agents, got $agent_count"
+    cursor_fail=1
+  fi
+  # Always-on rule must carry alwaysApply: true.
+  if ! grep -q '^alwaysApply: true' "$PLUGIN_DEST/rules/always-on-core.mdc" 2>/dev/null; then
+    echo "  ✗ rules/always-on-core.mdc missing 'alwaysApply: true'"
+    cursor_fail=1
+  fi
+  if [ "$cursor_fail" -eq 0 ]; then
+    echo "  ✓ Cursor global: plugin tree (rules/ + skills/ + agents/ + hooks/ + scripts/) under <target>/plugins/local/rolepod/"
+    PASS=$((PASS+1))
+  else
+    FAIL=$((FAIL+1))
+  fi
+else
+  echo "  ✗ install failed (see $TMP/cursor.log)"
+  FAIL=$((FAIL+1))
+fi
+unset ROLEPOD_CURSOR_TARGET
+
 # ─── Gemini project (--scope=project, rules-only) ───────────────────────
 echo ""
 echo "[gemini project] install into $TMP/gemini-proj"

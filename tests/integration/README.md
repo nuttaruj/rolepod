@@ -11,7 +11,7 @@ tests/integration/
   README.md            ← this file
   run.sh               ← runner (skips per-case if deps missing)
   cases/
-    install-parity.sh         ← Claude/Codex/Gemini × global/project install behavior
+    install-parity.sh         ← Claude/Codex/Gemini/Cursor × global/project install behavior
     bug-fix-workflow.sh       ← debug-issue → check-work wiring
     feature-from-spec.sh      ← write-spec → write-plan → implement-plan → check-work wiring
     subagent-review-order.sh  ← implementer → spec-compliance → code-quality review order

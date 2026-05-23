@@ -220,7 +220,7 @@ STALE_ADDON='optional GitNexus|optional MemPalace|GitNexus add-on|MemPalace add-
 STALE_PATTERNS="${STALE_WB}|${STALE_NONWORD}|${STALE_COMMENT}|${STALE_HOOK_TRUTH}|${STALE_ADDON}"
 STALE_HITS=$(grep -rEn "$STALE_PATTERNS" \
   --include='*.md' --include='*.json' --include='*.tmpl' \
-  README.md CHEATSHEET.md docs/ .claude-plugin/ adapters/ core/skills/ core/fragments/ 2>/dev/null \
+  README.md CHEATSHEET.md docs/ .claude-plugin/ .cursor-plugin/ adapters/ core/skills/ core/fragments/ 2>/dev/null \
   | grep -v 'build/rendered/' || true)
 if [ -z "$STALE_HITS" ]; then
   echo "  ✓ no stale doc keywords (skill counts, hook counts, add-on-hook phrasings)"
