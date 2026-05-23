@@ -200,6 +200,14 @@ Name it `examples/<skill>-examples.md`. It must:
   softeners ("try to", "usually"). Structured authority framing measurably
   lifts compliance (Meincke 2025, N=28k) — reserve it for the few
   non-negotiables; inflation kills the signal.
+- **Multi-option at user-decision points**: when a workflow step needs
+  human judgment (spec direction, plan shape, ship path, debug
+  hypothesis), surface 2+ viable options with one-line trade-offs and
+  recommend one — do not propose a single answer. The user picks; the
+  skill then proceeds. Pattern refs: `write-spec` § "Present 2-3
+  approaches", `finish-work` § "4-option finish menu". Exception:
+  mechanical/auto-detected choices (router backend, manage-context
+  mode, Q1-Q4 delegate gate).
 - **Cite research** where it sharpens a claim (arXiv, DAPLab) — e.g. weak
   LLM test assertions, ~62% (arXiv 2402.13521).
 - **Placeholders** belong only in `templates/` (`<hints>`) and in the bad

@@ -73,7 +73,7 @@ If the bug predates your changes and the last-good commit is unknown, `git bisec
 
 ### 4. One hypothesis at a time
 
-State one hypothesis: `<variable / state / condition> is <value> because <upstream cause>`. Test the cheapest falsifier first — log, breakpoint, read the called function, check the fixture. Don't spray fixes. Tag every debug log with a unique prefix (`[DBG-a4f2]`) so cleanup is one grep.
+When 2+ plausible causes exist, list 2-3 candidates with the cheapest falsifier per row, recommend which to test first, and let the user pick if the choice is non-obvious. Then state the chosen hypothesis: `<variable / state / condition> is <value> because <upstream cause>`. Test the cheapest falsifier first — log, breakpoint, read the called function, check the fixture. Don't spray fixes. Tag every debug log with a unique prefix (`[DBG-a4f2]`) so cleanup is one grep.
 
 Track experiments in `templates/hypothesis-ledger.md` — one row each. A new hypothesis must hold against every prior row, not just the last run.
 

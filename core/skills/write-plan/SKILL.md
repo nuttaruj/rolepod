@@ -75,7 +75,7 @@ For each task, name the test type (unit / integration / contract / E2E / smoke /
 
 ### 4. Decide if parallelism helps
 
-Parallel agents only help when file ownership is genuinely disjoint and the work does not need handoff between agents. Otherwise sequential is faster and cheaper.
+Parallel agents only help when file ownership is genuinely disjoint and the work does not need handoff between agents. Otherwise sequential is faster and cheaper. When the call is borderline (e.g. two slices that might overlap on a shared interface), present both shapes — sequential single-owner vs parallel + contract — with one-line trade-offs and let the user pick before drafting tasks.
 
 ### 5. If parallel, write a cohesion contract
 
