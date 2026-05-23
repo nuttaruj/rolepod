@@ -89,7 +89,26 @@ curl -fsSL https://raw.githubusercontent.com/nuttaruj/rolepod/main/bootstrap.sh 
 
 ### Cursor IDE
 
-Open **Cursor → Settings → Plugins**.
+**Recommended — native team marketplace (no terminal, no `~/.cursor/plugins/local/` clutter).** Cursor reads the committed `.cursor-plugin/marketplace.json` at the repo root and lists rolepod in the IDE plugin panel for one-click install / update / uninstall:
+
+1. Open **Cursor → Settings → Plugins**
+2. Paste `https://github.com/nuttaruj/rolepod`
+3. Click **Install** on the `rolepod` entry
+
+Updates appear in the same panel when a new release ships. Uninstall is a single click.
+
+**Alternative — terminal install via `bootstrap.sh`** (useful for headless / CI / scripted setups; copies the same plugin tree to `~/.cursor/plugins/local/rolepod/`):
+
+```bash
+# Install
+curl -fsSL https://raw.githubusercontent.com/nuttaruj/rolepod/main/bootstrap.sh | bash -s -- --target=cursor
+
+# Update — re-run with --force
+curl -fsSL https://raw.githubusercontent.com/nuttaruj/rolepod/main/bootstrap.sh | bash -s -- --target=cursor --force
+
+# Uninstall
+curl -fsSL https://raw.githubusercontent.com/nuttaruj/rolepod/main/bootstrap.sh | bash -s -- --uninstall --target=cursor
+```
 
 The always-on judgment core ships as an `alwaysApply: true` rule (`rules/always-on-core.mdc`) — loaded automatically on every Cursor session. Disabling **Settings → Features → Rules** suppresses it.
 
