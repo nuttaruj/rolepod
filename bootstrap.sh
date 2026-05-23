@@ -11,7 +11,10 @@
 # yourself. The framework auto-integrates when each is present.
 #
 # Env vars:
-#   ROLEPOD_DEST     where to clone the repo (default: ~/rolepod)
+#   ROLEPOD_DEST     where to clone the repo. Default resolution:
+#                      1. honor $ROLEPOD_DEST if set (user-owned, never cleaned)
+#                      2. reuse $HOME/rolepod if it's already a git repo (legacy installs)
+#                      3. otherwise clone into a $(mktemp -d) and auto-clean on exit
 #   ROLEPOD_TARGET   where install.sh writes to (default: ~/.claude — read by install.sh)
 #   ROLEPOD_REF      branch/tag to check out (default: main)
 #
@@ -30,9 +33,30 @@
 set -euo pipefail
 
 REPO_URL="https://github.com/nuttaruj/rolepod.git"
-DEST="${ROLEPOD_DEST:-$HOME/rolepod}"
 REF="${ROLEPOD_REF:-main}"
 ARGS=("$@")
+
+# DEST resolution — pick the safest path that respects user choice:
+#   1. honor explicit $ROLEPOD_DEST (user-managed, never cleaned)
+#   2. reuse existing ~/rolepod clone (legacy installs, backward compat)
+#   3. fall back to ephemeral $(mktemp -d) and clean on exit
+CLEANUP_DEST=""
+if [ -n "${ROLEPOD_DEST:-}" ]; then
+  DEST="$ROLEPOD_DEST"
+elif [ -d "$HOME/rolepod/.git" ]; then
+  DEST="$HOME/rolepod"
+else
+  TMP_PARENT="$(mktemp -d -t rolepod-install.XXXXXX)"
+  DEST="$TMP_PARENT/rolepod"
+  CLEANUP_DEST="$TMP_PARENT"
+fi
+
+cleanup() {
+  if [ -n "$CLEANUP_DEST" ] && [ -d "$CLEANUP_DEST" ]; then
+    rm -rf "$CLEANUP_DEST" 2>/dev/null || true
+  fi
+}
+trap cleanup EXIT INT TERM
 
 # Colors
 if [ -t 1 ]; then
@@ -136,4 +160,5 @@ done
 EXTRA=()
 [ -n "$TARGET_FLAG" ] && EXTRA+=("$TARGET_FLAG")
 [ -n "$SCOPE_FLAG" ] && EXTRA+=("$SCOPE_FLAG")
-exec ./install.sh "${EXTRA[@]+"${EXTRA[@]}"}" "${ARGS[@]+"${ARGS[@]}"}"
+# Run install.sh in-process so the EXIT trap can clean up the temp clone.
+./install.sh "${EXTRA[@]+"${EXTRA[@]}"}" "${ARGS[@]+"${ARGS[@]}"}"
