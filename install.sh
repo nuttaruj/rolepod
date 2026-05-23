@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 # rolepod installer — copies workflow files to the selected CLI's config dir.
 #
-# Rolepod ships PURE FRAMEWORK ONLY — no 3rd-party tools, plugins, or CLIs are
-# auto-installed. Recommended add-ons (GitNexus, MemPalace, rtk, caveman,
-# ui-ux-pro-max, OpenAI Codex review plugin, Codex CLI, Gemini CLI) live in
-# README → "Recommended add-ons". The framework auto-integrates with each one
-# when the user installs it themselves (graceful degradation everywhere).
+# Rolepod ships PURE FRAMEWORK ONLY — no 3rd-party tools or plugins are
+# auto-installed. Recommended add-ons (CodeGraph, GitNexus, MemPalace, rtk,
+# caveman, ui-ux-pro-max) live in README → "Recommended add-ons". The
+# framework auto-integrates with each one when the user installs it themselves
+# (graceful degradation everywhere).
 #
 # Usage:
 #   ./install.sh                       # install rolepod framework (default target: claude)
@@ -1503,10 +1503,10 @@ cat <<EOF
 ${BOLD}rolepod framework installed.${NC} (Pure framework — no 3rd-party add-ons bundled.)
 
 Recommended add-ons (install separately — framework auto-integrates each):
-  • Token Optimize       — rtk, caveman, GitNexus
-  • Self-improvement     — MemPalace
-  • Design               — ui-ux-pro-max
-  • QA Multi-opinion     — OpenAI Codex review plugin, Codex CLI, Gemini CLI
+  • Code intel    — CodeGraph, GitNexus
+  • Memory        — MemPalace
+  • Token cuts    — rtk, caveman
+  • Design        — ui-ux-pro-max
 
 See README → "Recommended add-ons" for install commands + integration notes.
 
