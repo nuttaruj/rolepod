@@ -1,6 +1,4 @@
 {
-  "_comment": "Rolepod Cursor plugin hooks — 3 core hooks (subset of Claude's 7; Claude-specific session-lifecycle / always-on-loader / cohesion-contract-check / block-subagent-commit have no clean Cursor mapping yet). Schema: https://cursor.com/docs/hooks (verified 2026-05-23). Plugin hooks run with cwd = plugin root, so the ./scripts/ paths resolve as-shipped.",
-  "version": 1,
   "hooks": {
     "sessionStart": [
       {

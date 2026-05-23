@@ -1,5 +1,4 @@
 {
-  "_comment": "Rolepod Cursor marketplace catalog — single plugin entry. Schema reference: https://cursor.com/docs/reference/plugins (verified 2026-05-23). Repo is directly importable as a team marketplace via this manifest at the repo root.",
   "name": "rolepod",
   "owner": {
     "name": "nuttaruj"
