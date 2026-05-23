@@ -89,8 +89,18 @@ curl -fsSL https://raw.githubusercontent.com/nuttaruj/rolepod/main/bootstrap.sh 
 
 ### Cursor IDE
 
+**Recommended — native team marketplace (no terminal, no `~/.cursor/plugins/local/` clutter).** Cursor reads the committed `.cursor-plugin/marketplace.json` at the repo root and lists rolepod in the IDE plugin panel for one-click install / update / uninstall:
+
+1. Open **Cursor → Settings → Plugins → Add team marketplace**
+2. Paste `https://github.com/nuttaruj/rolepod`
+3. Click **Install** on the `rolepod` entry
+
+Updates appear in the same panel when a new release ships. Uninstall is a single click.
+
+**Alternative — terminal install via `bootstrap.sh`** (useful for headless / CI / scripted setups; copies the same plugin tree to `~/.cursor/plugins/local/rolepod/`):
+
 ```bash
-# Install — copies the rolepod plugin into ~/.cursor/plugins/local/rolepod/
+# Install
 curl -fsSL https://raw.githubusercontent.com/nuttaruj/rolepod/main/bootstrap.sh | bash -s -- --target=cursor
 
 # Update — re-run with --force
