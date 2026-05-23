@@ -48,7 +48,7 @@ Return / hand off:
 - The user's original request (literal quote if possible)
 - The current state of the work (last commit, files staged, tests green / red)
 - The constraint set the user stated (deadline, no-touch zones, style)
-- Available tools (`/clear`, `/compact`, `/rewind`)
+- Available context-trim commands for your CLI (see `references/cli-fallbacks.md`)
 
 ## Workflow
 
@@ -125,7 +125,7 @@ Execute as Lead with this minimum viable checklist:
 2. List the constraints still in force
 3. List the files you have actually touched vs the plan
 4. Identify which of the six modes above matches the current symptom
-5. Run the appropriate session command (`/compact`, `/clear`, `/rewind`)
+5. Run the appropriate context command for your CLI (see `references/cli-fallbacks.md`)
 6. For unfamiliar repo: read README + config + 2-3 representative files before editing
 7. For stuck: capture exact failure and ask the user for direction
 8. For multi-file drift: stop, write the new plan, then continue
@@ -154,14 +154,14 @@ Load only when the task needs it:
 
 ## Hard stops
 
-- Context is too heavy to /compact safely → start a fresh session with a written handoff brief
+- Context is too heavy to trim safely → start a fresh session with a written handoff brief
 - 3 failed attempts at the same target → stop, escalate, do not try a fourth blind
 - You cannot name what the user asked for in one sentence → stop, re-read the request
 - An unfamiliar repo has no README and no obvious entry → ask the user before editing
 
 ## Full Rolepod enhancement
 
-Full Rolepod improves this phase by adding `/clear`, `/compact`, `/rewind` hooks, the escalation pattern, the deep triage checklist, and the onboarding skill auto-fired by `/init`.
+Full Rolepod improves this phase by surfacing context-budget reminders via SessionStart hooks (where the CLI supports them), the escalation pattern, the deep triage checklist, and onboarding on first session in a new repo.
 
 ## Next phase
 

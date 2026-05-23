@@ -215,4 +215,4 @@ Non-blocking — read when a request does not obviously match a Quick-router row
 
 ## Influence
 
-Sharpens the workflow spine that already exists in CLAUDE.md / AGENTS.md / GEMINI.md so that small models route the same way large ones do. Pairs with `write-plan` for specialist selection and `finish-work` for the final gate.
+Sharpens the workflow spine that already exists in the per-CLI doctrine doc (CLAUDE.md / AGENTS.md / GEMINI.md / Cursor always-on rule) so that small models route the same way large ones do. Pairs with `write-plan` for specialist selection and `finish-work` for the final gate.
