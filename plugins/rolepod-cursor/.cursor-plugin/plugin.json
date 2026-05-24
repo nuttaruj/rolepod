@@ -1,7 +1,7 @@
 {
   "name": "rolepod",
   "displayName": "Rolepod",
-  "version": "2.6.2",
+  "version": "2.6.3",
   "description": "Coordinated software-house team for AI coding CLIs — 16 specialist agents, Core 10 phase skills (1 router + 9 phase), 6-phase lifecycle. Pre-commit gates (S1-S5 simplicity / T1-T6 testing / F1-F5 failure-mode) catch bugs before ship. On Cursor, the always-on judgment core is delivered by an alwaysApply rule (rules/always-on-core.mdc); agents/skills/hooks load via Cursor's native plugin loader. See https://github.com/nuttaruj/rolepod.",
   "author": {
     "name": "nuttaruj"
