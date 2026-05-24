@@ -198,10 +198,10 @@ if ./install.sh --target=cursor > "$TMP/cursor.log" 2>&1; then
     echo "  ✗ expected 11 cursor skills (Core 10 + rolepod-full alias), got $skill_count"
     cursor_fail=1
   fi
-  # Exactly 18 agents.
+  # Exactly 16 agents.
   agent_count=$(find "$PLUGIN_DEST/agents" -maxdepth 1 -name '*.md' 2>/dev/null | wc -l | tr -d ' ')
-  if [ "$agent_count" -ne 18 ]; then
-    echo "  ✗ expected 18 cursor agents, got $agent_count"
+  if [ "$agent_count" -ne 16 ]; then
+    echo "  ✗ expected 16 cursor agents, got $agent_count"
     cursor_fail=1
   fi
   # Always-on rule must carry alwaysApply: true.

@@ -230,9 +230,9 @@ else
   fail=$((fail+1))
 fi
 
-# ── 18-agent full table must NOT appear in rendered entry docs ────────
+# ── Full agent table must NOT appear in rendered entry docs ──────────
 # Heuristic: a full agent table has the agent-roster header pattern.
-# The lean fragment uses a single "**18 specialists**" line instead.
+# The lean fragment uses a single "**16 specialists**" line instead.
 for f in build/rendered/codex/AGENTS.md build/rendered/gemini/GEMINI.md; do
   rows=$(grep -c "^| \`[a-z-]*-engineer\`\|^| \`backend-developer\`\|^| \`frontend-developer\`" "$f" 2>/dev/null || true)
   check "no full agent table leaked into $(basename $(dirname $f))/$(basename $f) (rows: $rows)" "[ $rows -le 1 ]"
@@ -301,7 +301,7 @@ for e in errs: print("      " + e)
 sys.exit(1 if errs else 0)
 PYEOF
 then
-  echo "  ✓ model tier: 18 agents match policy across claude / codex / gemini"
+  echo "  ✓ model tier: 16 agents match policy across claude / codex / gemini"
 else
   echo "  ✗ model tier drift from docs/model-tier-policy.md (see above)"
   fail=$((fail+1))
@@ -315,8 +315,8 @@ if python3 - <<'PYEOF' 2>&1
 import pathlib, tomllib, sys
 errs = []
 toml = sorted(pathlib.Path("build/rendered/codex/agents").glob("*.toml"))
-if len(toml) != 18:
-    errs.append(f"expected 18 rendered codex agent TOMLs, found {len(toml)}")
+if len(toml) != 16:
+    errs.append(f"expected 16 rendered codex agent TOMLs, found {len(toml)}")
 for f in toml:
     try:
         tomllib.load(open(f, "rb"))

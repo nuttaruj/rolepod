@@ -1,6 +1,6 @@
 # Rolepod Agent Catalog
 
-Full 18-agent specialist roster. Lead never picks from this list directly — the `write-plan` skill maps path + concern + risk to the right agent when delegation helps.
+Full 16-agent specialist roster. Lead never picks from this list directly — the `write-plan` skill maps path + concern + risk to the right agent when delegation helps.
 
 This doc is the **reference**. Entry docs (`CLAUDE.md` / `AGENTS.md` / `GEMINI.md`) embed only a 1-line pointer so per-turn context stays small.
 
@@ -36,10 +36,8 @@ Source of truth: [`core/fragments/agent-roster-lean.md`](../core/fragments/agent
 | Feature prioritization, user stories | `product-manager` |
 | Pricing, ROI, financial modeling | `business-analyst` |
 | Visual design, design system, a11y | `ui-ux-designer` |
-| Internal technical docs, ADRs, READMEs | `tech-writer` |
 | CI/CD, deploy, monitoring, release | `devops-sre` |
-| Onboarding, FAQ, support docs | `customer-success` |
-| Marketing, SEO, conversion copy | `growth-marketer` |
+| Any human-readable written output — docs / FAQ / marketing copy (caller specifies `audience: dev \| user \| prospect`) | `content-strategist` |
 | Final code-quality review (logic / DRY / structure) | `universal-reviewer` |
 
 ## How to add a new agent
@@ -53,6 +51,8 @@ Source of truth: [`core/fragments/agent-roster-lean.md`](../core/fragments/agent
 
 ## Why not fewer agents?
 
-The 18-specialist count comes from cost-aware role separation, not workflow stages. A senior backend developer model is cheap; a strongest model doing security review is expensive. Mixing them inside one agent collapses the cost-control dimension and forces the workflow to pay strongest-model rates for every task. Keeping them separate lets each agent carry its own tier-mapped model.
+The 16-specialist count comes from cost-aware role separation, not workflow stages. A senior backend developer model is cheap; a strongest model doing security review is expensive. Mixing them inside one agent collapses the cost-control dimension and forces the workflow to pay strongest-model rates for every task. Keeping them separate lets each agent carry its own tier-mapped model.
+
+The one within-tier consolidation in the roster is `content-strategist`, which folds tech-writer + customer-success + growth-marketer (all cheap-tier writers) into a single agent that takes a mandatory `audience: dev | user | prospect` parameter. Each audience carries its own scope, voice, and framework set so specialist depth is preserved while collapsing 3 → 1 reduces selection overhead at the lead.
 
 Model tiering is implemented per agent on Claude / Codex / Gemini — see [model-tier-policy.md](model-tier-policy.md). Cursor agent files ship with `name` + `description` frontmatter only (Cursor users pick the model in-IDE), so per-agent tiering is not enforced there.

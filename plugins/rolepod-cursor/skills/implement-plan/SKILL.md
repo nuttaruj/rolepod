@@ -110,9 +110,7 @@ Delegate the bounded task to the closest specialist:
 - `billing-engineer` for billing / credits / subscription paths
 - `ai-ml-engineer` for LLM / RAG / Anthropic SDK / prompt-cache work
 - `data-scientist` for analytics / pipelines / dashboards
-- `tech-writer` for ADRs / runbooks / durable docs
-- `growth-marketer` for SEO / conversion copy
-- `customer-success` for FAQ / onboarding / support content
+- `content-strategist` for any human-readable written output — pass `audience: dev` for ADRs / runbooks / durable docs, `audience: user` for FAQ / onboarding / support content, `audience: prospect` for SEO / conversion copy
 
 Brief: spec + plan + files + tests + done criterion + handoff partner.
 

@@ -2,7 +2,7 @@
 
 Rolepod now ships **10 executable skills total**: 1 router + 9 workflow phase skills. There are no legacy compatibility shim skill files in the install tree. Old skill names are preserved only as documentation in [legacy-skill-map.md](legacy-skill-map.md).
 
-Entry docs (`CLAUDE.md` / `AGENTS.md` / `GEMINI.md`) embed this same lean surface so the Lead does not spend context choosing among dozens of tiny workflow fragments. Deep domain expertise lives in the 18 specialist agents.
+Entry docs (`CLAUDE.md` / `AGENTS.md` / `GEMINI.md`) embed this same lean surface so the Lead does not spend context choosing among dozens of tiny workflow fragments. Deep domain expertise lives in the 16 specialist agents.
 
 ## Tier model
 
@@ -30,7 +30,7 @@ Entry docs (`CLAUDE.md` / `AGENTS.md` / `GEMINI.md`) embed this same lean surfac
 
 ## Domain expertise → specialist agents
 
-Domain depth that used to live in standalone skills now lives in the 18 specialist agents (see [agents.md](agents.md)) and is routed from inside the Core 10 phase skills:
+Domain depth that used to live in standalone skills now lives in the 16 specialist agents (see [agents.md](agents.md)) and is routed from inside the Core 10 phase skills:
 
 | Domain | Phase skill that routes here | Specialist agent |
 |--------|------------------------------|------------------|
@@ -40,9 +40,9 @@ Domain depth that used to live in standalone skills now lives in the 18 speciali
 | Source-driven library / platform decisions | `write-plan` + `implement-plan` | `system-architect` + `ai-ml-engineer` |
 | Security review / hardening / token / crypto | `review-code` | `security-engineer` |
 | Performance audit / Core Web Vitals / perf | `review-code` + `check-work` | `performance-engineer` |
-| Technical docs / ADRs / runbooks | `write-spec` + `implement-plan` | `tech-writer` |
-| User-facing content / FAQ / onboarding / error msgs | `write-spec` + `implement-plan` | `customer-success` |
-| Marketing / conversion copy / SEO | `write-spec` + `implement-plan` + `review-code` | `growth-marketer` |
+| Technical docs / ADRs / runbooks | `write-spec` + `implement-plan` | `content-strategist` (`audience: dev`) |
+| User-facing content / FAQ / onboarding / error msgs | `write-spec` + `implement-plan` | `content-strategist` (`audience: user`) |
+| Marketing / conversion copy / SEO | `write-spec` + `implement-plan` + `review-code` | `content-strategist` (`audience: prospect`) |
 | CI/CD / deploy / monitoring / release | `finish-work` | `devops-sre` |
 | Tests / business logic verify / race | `write-plan` + `check-work` + `review-code` | `qa-tester` |
 | LLM / RAG / Anthropic SDK / prompt cache | `implement-plan` | `ai-ml-engineer` |

@@ -77,7 +77,7 @@ DO NOT touch: generic backend → `backend-developer`. LLM cost display → `ai-
 
 - Pricing model not pinned by `business-analyst`
 - New provider not previously approved by `system-architect`
-- Behavior change affects existing customers without a comms plan from `customer-success`
+- Behavior change affects existing customers without a comms plan from `content-strategist` (`audience: user`)
 - Compliance scope shift (PCI / GDPR / tax) without a `security-engineer` brief
 
 ## Hand-off
@@ -90,7 +90,7 @@ DO NOT touch: generic backend → `backend-developer`. LLM cost display → `ai-
 | Security audit (PCI / fraud) | `security-engineer` |
 | New payment flow architecture | `system-architect` |
 | Pricing strategy / plan design | `business-analyst` |
-| User comms for change | `customer-success` |
+| User comms for change | `content-strategist` (`audience: user`) |
 
 ## Escalation back to Core 10
 

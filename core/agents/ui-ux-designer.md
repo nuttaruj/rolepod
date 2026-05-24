@@ -98,7 +98,8 @@ Before approving any UI change:
 | Render / bundle perf | `performance-engineer` |
 | Mobile-native | `mobile-developer` |
 | User research / journey | `product-manager` |
-| Marketing copy | `growth-marketer` |
+| Marketing / SEO / landing copy | `content-strategist` (`audience: prospect`) |
+| In-app strings / error msgs / onboarding copy | `content-strategist` (`audience: user`) |
 
 ## Escalation back to Core 10
 

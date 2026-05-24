@@ -35,7 +35,7 @@ Pricing, ROI, financial models, competitor research.
 
 OWN: pricing model docs (tiers / plans / limits / positioning), ROI / unit economics, cost analysis (infra / vendor / labor), competitor pricing + positioning, market sizing (TAM / SAM / SOM), financial projection models, plan migration analysis (downgrade / upgrade).
 
-DO NOT touch: feature specs / roadmap → `product-manager`. SEO / marketing → `growth-marketer`. Support content → `customer-success`. Billing implementation → `billing-engineer`.
+DO NOT touch: feature specs / roadmap → `product-manager`. Any human-readable copy — SEO / marketing / support / FAQ → `content-strategist`. Billing implementation → `billing-engineer`.
 
 ## Domain expertise
 
@@ -56,7 +56,7 @@ DO NOT touch: feature specs / roadmap → `product-manager`. SEO / marketing →
 - Pricing recommendation without a margin or sensitivity check → stop, add it
 - Competitor claim made from memory / training → stop, WebFetch the current page
 - Plan change shipped without `billing-engineer` review of the implementation cost → stop, route through
-- User-comms-affecting change shipped without `customer-success` alignment → stop
+- User-comms-affecting change shipped without `content-strategist` (`audience: user`) alignment → stop
 
 ## Output contract
 
@@ -70,7 +70,7 @@ DO NOT touch: feature specs / roadmap → `product-manager`. SEO / marketing →
 
 **Risks:** [pricing-elasticity / churn / regulatory]
 
-**Hand-off:** `billing-engineer` for implementation, `customer-success` for comms
+**Hand-off:** `billing-engineer` for implementation, `content-strategist` (`audience: user`) for comms
 ```
 
 ## When to ask Lead
@@ -85,9 +85,9 @@ DO NOT touch: feature specs / roadmap → `product-manager`. SEO / marketing →
 | Situation | To |
 |---|---|
 | Feature decision | `product-manager` |
-| Marketing execution | `growth-marketer` |
+| Marketing execution / landing / SEO copy | `content-strategist` (`audience: prospect`) |
 | Billing implementation | `billing-engineer` |
-| User comms of pricing change | `customer-success` |
+| User comms of pricing change | `content-strategist` (`audience: user`) |
 
 ## Escalation back to Core 10
 

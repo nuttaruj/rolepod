@@ -35,9 +35,7 @@ Rolepod ships a cost-aware policy that maps **role + risk → model tier**. Lead
 | `universal-reviewer` | **strong** | Adversarial code review; must match implementer's depth |
 | `product-manager` | cheap | Spec writing + prioritization |
 | `business-analyst` | cheap | Pricing models + ROI analysis |
-| `tech-writer` | cheap | Internal docs + ADRs + READMEs |
-| `customer-success` | cheap | FAQ + onboarding + user-facing copy |
-| `growth-marketer` | cheap | SEO + conversion copy |
+| `content-strategist` | cheap | All human-readable written output — internal docs / ADRs / READMEs (`audience: dev`), FAQ / onboarding / user-facing copy (`audience: user`), SEO / conversion copy (`audience: prospect`) |
 
 ## Override path
 

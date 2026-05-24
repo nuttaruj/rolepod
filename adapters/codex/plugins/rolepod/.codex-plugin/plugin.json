@@ -1,7 +1,7 @@
 {
   "name": "rolepod",
-  "version": "2.6.1",
-  "description": "18-agent dev team workflow with simplicity gates, test gates, and verify-first discipline. Codex plugin ships skills + hooks; the 18 agents install to ~/.codex/agents/ (Codex's plugin loader has no agents field).",
+  "version": "2.6.2",
+  "description": "16-agent dev team workflow with simplicity gates, test gates, and verify-first discipline. Codex plugin ships skills + hooks; the 16 agents install to ~/.codex/agents/ (Codex's plugin loader has no agents field).",
   "author": {
     "name": "nuttaruj",
     "url": "https://github.com/nuttaruj"
@@ -25,8 +25,8 @@
   "hooks": "./hooks/hooks.json",
   "interface": {
     "displayName": "Rolepod",
-    "shortDescription": "18-agent dev team with gates and verify-first discipline.",
-    "longDescription": "Rolepod gives Codex an 18-specialist dev team (engineering, quality, design, ops, strategy) plus simplicity / test / triage gates that fire before every commit. The plugin bundles skills and hooks; the 18 agents install to ~/.codex/agents/ (Codex loads agents from there, not from a plugin).",
+    "shortDescription": "16-agent dev team with gates and verify-first discipline.",
+    "longDescription": "Rolepod gives Codex a 16-specialist dev team (engineering, quality, design, ops, strategy, content) plus simplicity / test / triage gates that fire before every commit. The plugin bundles skills and hooks; the 16 agents install to ~/.codex/agents/ (Codex loads agents from there, not from a plugin).",
     "developerName": "nuttaruj",
     "category": "Productivity",
     "capabilities": [

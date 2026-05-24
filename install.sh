@@ -1166,7 +1166,7 @@ if codex_selected; then
         # The rolepod marketplace is already registered (e.g. a prior
         # `codex plugin marketplace add nuttaruj/rolepod`). Keep it untouched —
         # do not re-point or re-fetch it — and install only the pieces the
-        # marketplace cannot carry: the 18 agents + the AGENTS.md block.
+        # marketplace cannot carry: the 16 agents + the AGENTS.md block.
         # `--force` re-registers the marketplace from GitHub instead.
         step "rolepod marketplace already registered — keeping it; installing agents + AGENTS.md only"
         warn "  Marketplace left as-is. To re-register from GitHub: ./install.sh --target=codex --force"
@@ -1202,11 +1202,11 @@ if codex_selected; then
 
     # Codex reads agent TOMLs from ~/.codex/agents/ (global) — NOT from plugin
     # bundle. The plugin.json `agents` field is not in the Codex schema and is
-    # silently ignored. We copy rolepod's 18 agent TOMLs with a "rolepod-"
+    # silently ignored. We copy rolepod's 16 agent TOMLs with a "rolepod-"
     # filename prefix so they (a) don't collide with user-authored agents and
     # (b) can be cleanly removed on uninstall via glob match.
     AGENTS_DEST="$CODEX_TARGET/agents"
-    step "Installing 18 rolepod agents → $AGENTS_DEST/rolepod-*.toml"
+    step "Installing 16 rolepod agents → $AGENTS_DEST/rolepod-*.toml"
     if [ "$DRY_RUN" -eq 1 ]; then
       dry "mkdir -p $AGENTS_DEST && copy *.toml from rendered agents/ with rolepod- prefix"
     else
@@ -1241,10 +1241,10 @@ if codex_selected; then
     fi
 
     # Mirror the agent copy in the temp-target / no-binary path so smoke tests
-    # and offline installs land 18 agent TOMLs at $CODEX_TARGET/agents/. Safe
+    # and offline installs land 16 agent TOMLs at $CODEX_TARGET/agents/. Safe
     # because $CODEX_TARGET is per definition NOT $HOME/.codex here.
     AGENTS_DEST="$CODEX_TARGET/agents"
-    step "Installing 18 rolepod agents → $AGENTS_DEST/rolepod-*.toml"
+    step "Installing 16 rolepod agents → $AGENTS_DEST/rolepod-*.toml"
     if [ "$DRY_RUN" -eq 1 ]; then
       dry "mkdir -p $AGENTS_DEST && copy *.toml from rendered agents/ with rolepod- prefix"
     else
@@ -1275,7 +1275,7 @@ if codex_selected; then
       # check is intentionally omitted: the list can lag right after
       # `plugin add` and produce a false negative.
       # No agents/ check here — Codex's plugin loader has no agents field; the
-      # 18 agent TOMLs install to ~/.codex/agents/ (verified separately).
+      # 16 agent TOMLs install to ~/.codex/agents/ (verified separately).
       ok "rolepod codex marketplace registered (GitHub) → $CODEX_CONFIG"
     else
       # Temp-target OR codex binary missing — verify filesystem artifacts only.

@@ -95,7 +95,7 @@ Delegate discovery / drafting to the most appropriate specialist:
 
 - `product-manager` for feature scope, user stories, success criteria
 - `system-architect` for API / data-model / integration design
-- `tech-writer` for ADRs and durable spec artifacts
+- `content-strategist` (`audience: dev`) for ADRs and durable spec artifacts
 - `business-analyst` for cost / ROI / commercial framing
 
 Brief the agent with the user request, the discovery questions answered so far, and the approval gate the user expects.

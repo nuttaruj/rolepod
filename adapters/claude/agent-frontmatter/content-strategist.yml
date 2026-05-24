@@ -1,0 +1,22 @@
+name: content-strategist
+description: Content Strategist — writes all human-readable output for the project across 3 audiences (dev / user / prospect). Caller MUST specify audience; each audience carries its own scope, voice, and framework set. Replaces the former tech-writer + customer-success + growth-marketer trio.
+# tools: SendMessage requires agent-teams context (Claude accepts standalone, may silently ignore).
+model: haiku
+effort: medium
+memory: project
+maxTurns: 30
+skills:
+  - write-spec
+  - implement-plan
+  - review-code
+tools:
+  - Read
+  - Glob
+  - Grep
+  - Edit
+  - Bash
+  - Write
+  - Agent
+  - SendMessage
+  - WebFetch
+  - WebSearch

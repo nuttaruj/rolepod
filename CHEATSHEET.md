@@ -50,8 +50,6 @@ Can't verify  → state "Assuming X. Risk Y. Verify by Z" — never proceed sile
 |------|-------|
 | Spec / roadmap / requirements | `product-manager` |
 | Pricing / ROI / competitor research | `business-analyst` |
-| SEO / marketing / conversion copy | `growth-marketer` |
-| Onboarding / FAQ / user-facing content | `customer-success` |
 | Architecture / API contract / data model | `system-architect` |
 | Visual / Tailwind / a11y / interaction | `ui-ux-designer` |
 | Backend (general) | `backend-developer` |
@@ -64,7 +62,7 @@ Can't verify  → state "Assuming X. Risk Y. Verify by Z" — never proceed sile
 | Security / vulnerabilities / compliance | `security-engineer` |
 | Load / profiling / p95-p99 | `performance-engineer` |
 | Infra / CI-CD / deploy / release | `devops-sre` |
-| Code docs / ADRs / runbooks | `tech-writer` |
+| Any human-readable written output (caller picks `audience: dev \| user \| prospect`) — code docs / ADRs / runbooks, FAQ / onboarding / in-app copy, SEO / marketing / conversion copy | `content-strategist` |
 | Code quality / DRY / structure | `universal-reviewer` |
 
 ## Reviewer routing
