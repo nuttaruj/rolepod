@@ -129,7 +129,7 @@ Rolepod ships pure framework. These optional tools pair well — install any of 
 | [MemPalace](https://github.com/mempalace/mempalace) | Cross-session knowledge graph of past decisions | Built-in per-project memory |
 | [rtk](https://github.com/rtk-ai/rtk) · [caveman](https://github.com/JuliusBrussee/caveman) | Token cuts on routine commands and replies | Normal output |
 | [ui-ux-pro-max](https://github.com/nextlevelbuilder/ui-ux-pro-max-skill) | Design recipes for the `ui-ux-designer` agent | Bundled design skills |
-| [rolepod-mcp](https://github.com/nuttaruj/rolepod-mcp) — sibling plugin | Multi-platform UI / mobile MCP — adds `/verify-ui`, `/audit-a11y`, `/visual-diff`, `/scaffold-e2e` (web + iOS + Android). `check-work` and `debug-issue` use it automatically when present. | Playwright MCP / Chrome DevTools MCP (web only), or manual verification |
+| [rolepod-mcp](https://github.com/nuttaruj/rolepod-mcp) — sibling plugin | Multi-platform UI / mobile MCP — adds `/verify-ui`, `/audit-a11y`, `/visual-diff`, `/scaffold-e2e` (web + iOS + Android). `check-work` and `debug-issue` use it automatically when present. | [Playwright MCP](https://github.com/microsoft/playwright-mcp) / [Chrome DevTools MCP](https://github.com/ChromeDevTools/chrome-devtools-mcp) (web only), or manual verification |
 
 ## Docs
 

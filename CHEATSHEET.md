@@ -108,7 +108,7 @@ Can't verify  → state "Assuming X. Risk Y. Verify by Z" — never proceed sile
 
 | Plugin | Adds | Used by |
 |--------|------|---------|
-| [rolepod-mcp](https://github.com/nuttaruj/rolepod-mcp) | `/verify-ui` (assert + reproduce), `/audit-a11y`, `/visual-diff`, `/scaffold-e2e` — multi-platform UI / mobile automation MCP. | `check-work` (UI verify), `debug-issue` (browser repro), `review-code` (a11y / visual). Auto-detected; falls back to Playwright MCP / manual when absent. |
+| [rolepod-mcp](https://github.com/nuttaruj/rolepod-mcp) | `/verify-ui` (assert + reproduce), `/audit-a11y`, `/visual-diff`, `/scaffold-e2e` — multi-platform UI / mobile automation MCP. | `check-work` (UI verify), `debug-issue` (browser repro), `review-code` (a11y / visual). Auto-detected; falls back through [Playwright MCP](https://github.com/microsoft/playwright-mcp) → [Chrome DevTools MCP](https://github.com/ChromeDevTools/chrome-devtools-mcp) → manual when absent. |
 
 ## Rule priority on conflict
 

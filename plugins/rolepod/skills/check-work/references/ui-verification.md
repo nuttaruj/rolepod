@@ -16,8 +16,10 @@ passing typecheck or build. Pick the strongest tool available.
    Playwright MCP server installed), orchestrate atomic calls: open →
    snapshot → resolve refs from your step intent → click / type →
    re-snapshot → assert each expectation. Web only.
-3. **Chrome DevTools MCP** — similar atomic orchestration if its tools are
-   registered. Web only, Chromium-only.
+3. **Chrome DevTools MCP** (https://github.com/ChromeDevTools/chrome-devtools-mcp)
+   — similar atomic orchestration if its tools are registered. CDP-level
+   access (console / network / performance) is sharper than Playwright for
+   bugs that sit below the rendered DOM. Web only, Chromium-only.
 4. **Playwright (direct)** — if the repo has its own Playwright setup:
    drive the real flow, assert on the DOM, capture a screenshot.
 5. **Browser MCP / devtools** — navigate, read the DOM, take a screenshot.
