@@ -65,6 +65,12 @@ One command, same failure every time. Pytest: `pytest path/test_x.py::name -v`. 
 
 If you cannot repro locally, reproduce in CI / staging. Do not fix what you cannot see fail.
 
+**For UI / browser bugs, pick a backend (preferred → fallback):**
+
+1. **rolepod-mcp** — if the `/verify-ui` skill is available, invoke it with `mode: 'reproduce'`, supplying the candidate steps and the bug-surface assertions. On a successful repro, the skill returns minimized repro steps + artifacts (screenshots, HAR, console). Use those steps in your failing test (step 6).
+2. **Playwright MCP** — orchestrate atomic `browser_*` calls to reproduce; minimize the step sequence yourself.
+3. **Manual** — describe the candidate repro to the user and ask them to confirm. Capture the steps they confirm.
+
 ### 3. Rollback reflex
 
 If the bug appeared right after your change, undo first. Confirm green. Re-apply piece by piece.

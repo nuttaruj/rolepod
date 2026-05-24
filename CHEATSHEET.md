@@ -104,6 +104,12 @@ Can't verify  → state "Assuming X. Risk Y. Verify by Z" — never proceed sile
 
 7 Claude / 3 Codex / 4 Gemini / 3 Cursor core hooks — self-guarded, auto-fire, no add-on hooks. Codex hooks stay inert until `codex features enable plugin_hooks`. Cursor + Gemini hooks fire by default. Full reference: [docs/hooks.md](docs/hooks.md).
 
+## Optional sibling plugins
+
+| Plugin | Adds | Used by |
+|--------|------|---------|
+| [rolepod-mcp](https://github.com/nuttaruj/rolepod-mcp) | `/verify-ui` (assert + reproduce), `/audit-a11y`, `/visual-diff`, `/scaffold-e2e` — multi-platform UI / mobile automation MCP. | `check-work` (UI verify), `debug-issue` (browser repro), `review-code` (a11y / visual). Auto-detected; falls back to Playwright MCP / manual when absent. |
+
 ## Rule priority on conflict
 
 ```
