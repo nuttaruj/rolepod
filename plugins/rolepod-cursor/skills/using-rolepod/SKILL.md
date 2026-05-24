@@ -192,12 +192,12 @@ Next step: run tests, paste pass output, present 4-option menu.
 
 If the user has installed a sibling plugin that exposes phase-aware skills, prefer them over manual orchestration. Currently recognised:
 
-- **`rolepod-mcp`** — adds `/verify-ui` (with `mode: assert | reproduce`), `/audit-a11y`, `/visual-diff`, `/scaffold-e2e`. Multi-platform (web + iOS + Android).
+- **`rolepod-uiproof`** — adds `/verify-ui` (with `mode: assert | reproduce`), `/audit-a11y`, `/visual-diff`, `/scaffold-e2e`. Multi-platform (web + iOS + Android).
   - `check-work` → suggest `/verify-ui` for UI verification.
   - `debug-issue` → suggest `/verify-ui` with `mode: 'reproduce'` for browser bug reproduction.
   - `review-code` → suggest `/audit-a11y` and `/visual-diff` for accessibility and visual regression.
 
-When `rolepod-mcp` is not installed, the relevant phase skill falls back to: (a) [Playwright MCP](https://github.com/microsoft/playwright-mcp) atomic orchestration if registered, (b) [Chrome DevTools MCP](https://github.com/ChromeDevTools/chrome-devtools-mcp) atomic orchestration if registered (sharper for sub-DOM signals — console / network / perf), or (c) manual instruction to the user. The phase skill markdown carries the explicit chain; this section is the router's awareness that the chain exists.
+When `rolepod-uiproof` is not installed, the relevant phase skill falls back to: (a) [Playwright MCP](https://github.com/microsoft/playwright-mcp) atomic orchestration if registered, (b) [Chrome DevTools MCP](https://github.com/ChromeDevTools/chrome-devtools-mcp) atomic orchestration if registered (sharper for sub-DOM signals — console / network / perf), or (c) manual instruction to the user. The phase skill markdown carries the explicit chain; this section is the router's awareness that the chain exists.
 
 Detect availability by inspecting whether the slash command appears in the available skill list, or by attempting the tool call and treating absence as a fallback signal.
 

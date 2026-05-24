@@ -1,6 +1,6 @@
 {
   "name": "rolepod",
-  "version": "2.6.4",
+  "version": "2.6.5",
   "description": "Coordinated software-house team for AI coding CLIs \u2014 16 specialist agents, Core 10 phase skills (1 router + 9 phase), 6-phase lifecycle. Pre-commit gates (S1-S5 simplicity / T1-T6 testing / F1-F5 failure-mode) catch bugs before ship. On Claude Code, ships as a pure marketplace plugin (agents / skills / commands / hooks) \u2014 the always-on judgment core is delivered by a SessionStart hook, so install and uninstall touch no global config. See https://github.com/nuttaruj/rolepod.",
   "author": {
     "name": "nuttaruj",

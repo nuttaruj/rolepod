@@ -5,11 +5,11 @@ passing typecheck or build. Pick the strongest tool available.
 
 ## Tool, in order of preference
 
-1. **rolepod-mcp plugin** — if the `/verify-ui` skill is available
-   (`rolepod-mcp` sibling plugin installed), invoke it. Multi-platform
+1. **rolepod-uiproof plugin** — if the `/verify-ui` skill is available
+   (`rolepod-uiproof` sibling plugin installed), invoke it. Multi-platform
    (web + iOS + Android). Pass target URL/app, step sequence, and expected
    assertions; the skill returns evidence paths under
-   `./.rolepod-mcp/artifacts/{run_id}/`. Related capabilities the same
+   `./.rolepod-uiproof/artifacts/{run_id}/`. Related capabilities the same
    plugin ships: `/audit-a11y` (WCAG audit) and `/visual-diff` (pixel
    baseline comparison).
 2. **Playwright MCP** — if `browser_snapshot` is registered (Microsoft's

@@ -67,7 +67,7 @@ If you cannot repro locally, reproduce in CI / staging. Do not fix what you cann
 
 **For UI / browser bugs, pick a backend (preferred → fallback):**
 
-1. **rolepod-mcp** — if the `/verify-ui` skill is available, invoke it with `mode: 'reproduce'`, supplying the candidate steps and the bug-surface assertions. On a successful repro, the skill returns minimized repro steps + artifacts (screenshots, HAR, console). Use those steps in your failing test (step 6).
+1. **rolepod-uiproof** — if the `/verify-ui` skill is available, invoke it with `mode: 'reproduce'`, supplying the candidate steps and the bug-surface assertions. On a successful repro, the skill returns minimized repro steps + artifacts (screenshots, HAR, console). Use those steps in your failing test (step 6).
 2. **Playwright MCP** — orchestrate atomic `browser_*` calls to reproduce; minimize the step sequence yourself.
 3. **Chrome DevTools MCP** — if the `chrome-devtools-mcp` server is registered, orchestrate atomic calls (Chromium only); CDP-level access gives sharper console / network / perf signal for UI bugs whose cause sits below the rendered DOM. https://github.com/ChromeDevTools/chrome-devtools-mcp
 4. **Manual** — describe the candidate repro to the user and ask them to confirm. Capture the steps they confirm.

@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "run_id": "verify_20260524T145959_0d906240",
+  "recorded_at": "2026-05-24T14:59:59.920Z",
+  "open": {
+    "platform": "web",
+    "url": "https://example.com"
+  },
+  "steps": [],
+  "expect": [
+    {
+      "kind": "text_visible",
+      "text": "Example Domain"
+    },
+    {
+      "kind": "text_visible",
+      "text": "More information"
+    }
+  ]
+}

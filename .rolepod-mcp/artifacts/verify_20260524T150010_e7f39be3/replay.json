@@ -1,0 +1,32 @@
+{
+  "version": 1,
+  "run_id": "verify_20260524T150010_e7f39be3",
+  "recorded_at": "2026-05-24T15:00:19.658Z",
+  "open": {
+    "platform": "web",
+    "url": "https://example.com"
+  },
+  "steps": [
+    {
+      "kind": "click",
+      "query": "More"
+    },
+    {
+      "kind": "wait_for",
+      "condition": {
+        "kind": "url_matches",
+        "pattern": "iana"
+      }
+    }
+  ],
+  "expect": [
+    {
+      "kind": "url_matches",
+      "pattern": "iana.org"
+    },
+    {
+      "kind": "text_visible",
+      "text": "IANA"
+    }
+  ]
+}
