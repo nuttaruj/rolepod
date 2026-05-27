@@ -99,6 +99,15 @@ Use a git worktree when two sessions actually need the same files at the same ti
 
 After a subagent finishes, a fresh reviewer (Lead or another agent) reads the diff with no context from the implementer's session. Catches over-fitting and scope creep.
 
+## If a matching child plugin skill is available
+
+Prefer sibling-plugin edit primitives over hand-rolled file writes when the domain matches. Children are registered under Extension Protocol v1 — see `docs/EXTENSION-PROTOCOL.md`.
+
+- **`rolepod-uiproof`** — `/scaffold-e2e` generates a runnable e2e test file (playwright-test / vitest+playwright / pytest+selenium) from a scenario + optional replay bundle. Use when the task is "write e2e tests for flow X" rather than authoring the test file by hand.
+- **`rolepod-wplab`** — `/wp-edit-design`, `/wp-edit-plugin`, `/wp-edit-theme` are WP-specific edit primitives; `/wp-scaffold` handles WP file/structure scaffolding. Use when editing inside `wp-content/` or generating WP boilerplate.
+
+These children write their evidence under `<git-root>/.rolepod/evidence/` when the parent marker is active; `check-work` aggregates automatically. Children fall back to standalone mode (own artifact paths) when the parent is absent — no breakage either way.
+
 ## If a matching Rolepod agent is available
 
 Delegate the bounded task to the closest specialist:

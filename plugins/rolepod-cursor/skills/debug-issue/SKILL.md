@@ -64,10 +64,16 @@ If you cannot repro locally, reproduce in CI / staging. Do not fix what you cann
 
 **For UI / browser bugs, pick a backend (preferred → fallback):**
 
-1. **rolepod-uiproof** — if the `/verify-ui` skill is available, invoke it with `mode: 'reproduce'`, supplying the candidate steps and the bug-surface assertions. On a successful repro, the skill returns minimized repro steps + artifacts (screenshots, HAR, console). Use those steps in your failing test (step 6).
+1. **rolepod-uiproof** — if the `/verify-ui` or `/check-errors` skill is available, invoke it with the candidate steps and the bug-surface assertions. `/check-errors` returns console + network failures during the flow; `/verify-ui` returns minimized repro steps + artifacts (screenshots, HAR, console). Use those steps in your failing test (step 6).
 2. **Playwright MCP** — orchestrate atomic `browser_*` calls to reproduce; minimize the step sequence yourself.
 3. **Chrome DevTools MCP** — if the `chrome-devtools-mcp` server is registered, orchestrate atomic calls (Chromium only); CDP-level access gives sharper console / network / perf signal for UI bugs whose cause sits below the rendered DOM. https://github.com/ChromeDevTools/chrome-devtools-mcp
 4. **Manual** — describe the candidate repro to the user and ask them to confirm. Capture the steps they confirm.
+
+**For WordPress runtime / plugin / theme bugs:**
+
+- **rolepod-wplab** — if the `/wp-diagnose` skill is available, invoke it for WP-specific tracing (error log, hook trace, query log). It returns WP-runtime findings only; the surrounding debug flow (reproduce → root cause → failing test → fix) stays in this skill. Without `rolepod-wplab`, fall back to `wp-cli` directly or read `wp-content/debug.log`.
+
+When children write evidence under `<git-root>/.rolepod/evidence/` (Extension Protocol v1), reference those artifacts in your hypothesis-ledger and final fix. The marker `<git-root>/.rolepod/parent-active` confirms the protocol is active.
 
 ### 3. Rollback reflex
 

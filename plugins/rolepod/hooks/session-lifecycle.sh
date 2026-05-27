@@ -22,6 +22,10 @@
 #
 # Single file replaces the previous session-lock.sh + session-unlock.sh
 # pair (PR 5 — hook consolidation).
+#
+# v2.7: also writes/removes .rolepod/parent-active in the worktree as the
+# Extension Protocol v1 marker for sibling plugins (rolepod-uiproof,
+# rolepod-wplab). See docs/EXTENSION-PROTOCOL.md.
 set -euo pipefail
 
 MODE="${1:---lock}"
@@ -53,6 +57,15 @@ LOCK_DIR="$HOME/.claude/.session-locks/$PATH_HASH"
 if [ "$MODE" = "--unlock" ]; then
   [ -z "$SESSION_ID" ] && exit 0
   rm -f "$LOCK_DIR/$SESSION_ID.lock" 2>/dev/null || true
+
+  # Extension Protocol v1: if no rolepod sessions remain in this worktree,
+  # drop the parent-active marker so child plugins (rolepod-uiproof, wplab)
+  # fall back to standalone mode on their next skill run.
+  remaining=$(find "$LOCK_DIR" -maxdepth 1 -name "*.lock" 2>/dev/null | wc -l | tr -d ' ')
+  if [ "${remaining:-0}" -eq 0 ]; then
+    rm -f "$WORKTREE/.rolepod/parent-active" 2>/dev/null || true
+    rmdir "$WORKTREE/.rolepod" 2>/dev/null || true
+  fi
   exit 0
 fi
 
@@ -81,6 +94,13 @@ done
 
 # Write our lock (touch updates mtime on each SessionStart resume).
 touch "$LOCK_DIR/$SESSION_ID.lock" 2>/dev/null || true
+
+# Extension Protocol v1: signal to child plugins (rolepod-uiproof, wplab)
+# that rolepod parent is active in this worktree. Children read this file
+# at skill execution to switch from standalone to with-rolepod mode.
+# Content = protocol version. Refreshed every SessionStart.
+mkdir -p "$WORKTREE/.rolepod" 2>/dev/null && \
+  printf 'v1\n' > "$WORKTREE/.rolepod/parent-active" 2>/dev/null || true
 
 # No sibling, or override active → silent.
 if [ "$ACTIVE_SIBLINGS" -eq 0 ] || [ "$SILENT" -eq 1 ]; then

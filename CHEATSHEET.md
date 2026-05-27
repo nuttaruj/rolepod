@@ -106,9 +106,12 @@ Can't verify  → state "Assuming X. Risk Y. Verify by Z" — never proceed sile
 
 ## Optional sibling plugins
 
+Children plug in via **Extension Protocol v1** — parent writes `<git-root>/.rolepod/parent-active` at SessionStart, children read it to route evidence into `.rolepod/evidence/` for `check-work` aggregation. Spec: [docs/EXTENSION-PROTOCOL.md](docs/EXTENSION-PROTOCOL.md).
+
 | Plugin | Adds | Used by |
 |--------|------|---------|
-| [rolepod-uiproof](https://github.com/nuttaruj/rolepod-uiproof) | `/verify-ui` (assert + reproduce), `/audit-a11y`, `/visual-diff`, `/scaffold-e2e` — multi-platform UI / mobile automation MCP. | `check-work` (UI verify), `debug-issue` (browser repro), `review-code` (a11y / visual). Auto-detected; falls back through [Playwright MCP](https://github.com/microsoft/playwright-mcp) → [Chrome DevTools MCP](https://github.com/ChromeDevTools/chrome-devtools-mcp) → manual when absent. |
+| [rolepod-uiproof](https://github.com/nuttaruj/rolepod-uiproof) (v0.6+) | `/verify-ui`, `/audit-a11y`, `/visual-diff`, `/scaffold-e2e`, `/check-errors` — browser automation + UI evidence MCP (26 tools). | `check-work` (UI verify + a11y + visual), `debug-issue` (browser repro / console errors), `review-code` (a11y + visual regression). Falls back through [Playwright MCP](https://github.com/microsoft/playwright-mcp) → [Chrome DevTools MCP](https://github.com/ChromeDevTools/chrome-devtools-mcp) → manual when absent. |
+| [rolepod-wplab](https://github.com/nuttaruj/rolepod-wplab) (v1.9+) | 14 WordPress skills + 82 MCP tools — wp-cli + REST + scoped fs. | `check-work` (`/wp-health-check`), `debug-issue` (`/wp-diagnose`), `implement-plan` (`/wp-edit-*`, `/wp-scaffold`), `review-code` (`/wp-changes`). Skills narrow to tool-only role when parent is active; full flow when standalone. |
 
 ## Rule priority on conflict
 

@@ -119,9 +119,28 @@ The always-on judgment core ships as an `alwaysApply: true` rule (`rules/always-
 
 The source lives in `core/`; per-CLI adapters render it into a native plugin for each CLI.
 
-## Recommended add-ons
+## Plugin family — standalone × combined
 
-Rolepod ships pure framework. These optional tools pair well — install any of them yourself and rolepod auto-integrates; nothing breaks and nothing nags if they are absent.
+Rolepod is the **parent** of a plugin family. Each sibling works standalone; together they unlock end-to-end flows across domains. Children plug into the parent via **Extension Protocol v1** — they detect `<git-root>/.rolepod/parent-active` and switch from standalone mode to with-rolepod mode, routing evidence into `.rolepod/evidence/` for `check-work` to aggregate.
+
+See [docs/EXTENSION-PROTOCOL.md](docs/EXTENSION-PROTOCOL.md) for the full contract.
+
+| Install | Standalone value | What it adds when combined |
+|---|---|---|
+| **rolepod** (this repo) | Workflow + 16 agents + judgment for any project | Routes by phase, aggregates evidence, suggests siblings by domain signal |
+| [**rolepod-uiproof**](https://github.com/nuttaruj/rolepod-uiproof) (v0.6+) | 5 browser skills — `/verify-ui`, `/audit-a11y`, `/visual-diff`, `/scaffold-e2e`, `/check-errors` + 26 MCP tools | Verify-phase provider for UI artifacts; evidence auto-routes to `check-work` |
+| [**rolepod-wplab**](https://github.com/nuttaruj/rolepod-wplab) (v1.9+) | 14 WordPress skills + 82 MCP tools — wp-cli + REST + scoped fs | Build/Verify/Review primitives for WP; phase-flavored skills narrow under parent |
+
+### Synergy matrix
+
+| Combo | Flows unlocked |
+|---|---|
+| rolepod + uiproof | Verify reads browser evidence automatically; UI regressions blocked at pre-commit |
+| rolepod + wplab | `implement-plan` knows `/wp-edit-*`; `debug-issue` routes to `/wp-diagnose`; `check-work` reads `/wp-health-check` |
+| uiproof + wplab (no parent) | Browser test on WP site, a11y on themes, visual-diff on migrations — each runs standalone |
+| **all three** | Full WP dev flow with verified evidence at every phase — spec → plan → wp-edit-theme → wp-health-check + verify-ui + audit-a11y + visual-diff → review → ship |
+
+### Other recommended add-ons
 
 | Add-on | What it adds | Fallback without it |
 |--------|--------------|---------------------|
@@ -129,7 +148,9 @@ Rolepod ships pure framework. These optional tools pair well — install any of 
 | [MemPalace](https://github.com/mempalace/mempalace) | Cross-session knowledge graph of past decisions | Built-in per-project memory |
 | [rtk](https://github.com/rtk-ai/rtk) · [caveman](https://github.com/JuliusBrussee/caveman) | Token cuts on routine commands and replies | Normal output |
 | [ui-ux-pro-max](https://github.com/nextlevelbuilder/ui-ux-pro-max-skill) | Design recipes for the `ui-ux-designer` agent | Bundled design skills |
-| [rolepod-uiproof](https://github.com/nuttaruj/rolepod-uiproof) — sibling plugin | Multi-platform UI / mobile MCP — adds `/verify-ui`, `/audit-a11y`, `/visual-diff`, `/scaffold-e2e` (web + iOS + Android). `check-work` and `debug-issue` use it automatically when present. | [Playwright MCP](https://github.com/microsoft/playwright-mcp) / [Chrome DevTools MCP](https://github.com/ChromeDevTools/chrome-devtools-mcp) (web only), or manual verification |
+| [Playwright MCP](https://github.com/microsoft/playwright-mcp) · [Chrome DevTools MCP](https://github.com/ChromeDevTools/chrome-devtools-mcp) | Browser automation fallback when rolepod-uiproof not installed (web only) | Manual verification |
+
+**Tip:** add `.rolepod/` to your repo's `.gitignore`. The parent writes session markers and child plugins write evidence under that path — both are ephemeral and shouldn't be committed.
 
 ## Docs
 

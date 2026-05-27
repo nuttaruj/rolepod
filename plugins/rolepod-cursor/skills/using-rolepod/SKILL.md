@@ -190,16 +190,22 @@ Next step: run tests, paste pass output, present 4-option menu.
 
 ## Optional plugin skills (backend awareness)
 
-If the user has installed a sibling plugin that exposes phase-aware skills, prefer them over manual orchestration. Currently recognised:
+If the user has installed a sibling plugin under **Extension Protocol v1** (see `docs/EXTENSION-PROTOCOL.md`), prefer its skills over manual orchestration. The parent writes `<git-root>/.rolepod/parent-active` at SessionStart so children switch to with-rolepod mode and route evidence into `.rolepod/evidence/` for `check-work` to aggregate. Currently recognised:
 
-- **`rolepod-uiproof`** — adds `/verify-ui` (with `mode: assert | reproduce`), `/audit-a11y`, `/visual-diff`, `/scaffold-e2e`. Multi-platform (web + iOS + Android).
-  - `check-work` → suggest `/verify-ui` for UI verification.
-  - `debug-issue` → suggest `/verify-ui` with `mode: 'reproduce'` for browser bug reproduction.
-  - `review-code` → suggest `/audit-a11y` and `/visual-diff` for accessibility and visual regression.
+- **`rolepod-uiproof`** (v0.6+) — `/verify-ui`, `/audit-a11y`, `/visual-diff`, `/scaffold-e2e`, `/check-errors`. Used by `check-work` (verify + a11y + visual), `debug-issue` (browser repro / console errors), `review-code` (WCAG + visual regression).
+- **`rolepod-wplab`** (v1.9+) — 14 WP skills + 82 MCP tools. Used by `check-work` (`/wp-health-check`), `debug-issue` (`/wp-diagnose`), `implement-plan` (`/wp-edit-*`, `/wp-scaffold`), `review-code` (`/wp-changes`).
 
-When `rolepod-uiproof` is not installed, the relevant phase skill falls back to: (a) [Playwright MCP](https://github.com/microsoft/playwright-mcp) atomic orchestration if registered, (b) [Chrome DevTools MCP](https://github.com/ChromeDevTools/chrome-devtools-mcp) atomic orchestration if registered (sharper for sub-DOM signals — console / network / perf), or (c) manual instruction to the user. The phase skill markdown carries the explicit chain; this section is the router's awareness that the chain exists.
+When a child is not installed, the phase skill falls back to: (a) [Playwright MCP](https://github.com/microsoft/playwright-mcp), (b) [Chrome DevTools MCP](https://github.com/ChromeDevTools/chrome-devtools-mcp) (sharper console / network / perf), or (c) manual instruction. Phase skills carry the explicit chain.
 
-Detect availability by inspecting whether the slash command appears in the available skill list, or by attempting the tool call and treating absence as a fallback signal.
+### Domain detection — when to suggest a child
+
+| Signal | Suggest |
+|---|---|
+| `wp-config.php` at repo root | `rolepod-wplab` |
+| `package.json` lists `playwright`, `cypress`, `react`, `vue`, `svelte`, `next`, `nuxt`, `astro` | `rolepod-uiproof` |
+| `.rolepod-uiproof/` or `.rolepod-wplab/` exists | the matching child already in use |
+
+Detect availability by inspecting whether the slash command appears in the available skill list, or by treating tool-call absence as a fallback signal.
 
 ## Examples
 

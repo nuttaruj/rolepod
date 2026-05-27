@@ -75,6 +75,23 @@ Return / hand off:
 
 Run the test, build, curl, browser observation. Capture the exact command and the relevant output (not all of it — the lines that prove the claim).
 
+### 2b. Aggregate child plugin evidence
+
+If sibling plugins ran during this work (`rolepod-uiproof`, `rolepod-wplab`, or any future Extension Protocol v1 plugin), check for their output under `<git-root>/.rolepod/evidence/`:
+
+```bash
+ROOT=$(git rev-parse --show-toplevel 2>/dev/null || echo .)
+find "$ROOT/.rolepod/evidence" -name manifest.json -type f 2>/dev/null
+```
+
+Each `manifest.json` describes one child run with fields `plugin`, `skill`, `phase`, `status` (pass/fail/warn), `summary`, and `artifacts[]`. Aggregation rules:
+
+- Any child manifest with `status: fail` → verify fails as a whole. Surface the summary + path to the failing artifact.
+- All `pass` or `warn` → verify passes; list warnings inline so they don't get lost.
+- Child artifacts (screenshots, HARs, reports) are referenced by relative path from the manifest directory — include those paths in the evidence block.
+
+Schema details and the full protocol live in `docs/EXTENSION-PROTOCOL.md`. Children write manifests automatically when they detect the rolepod parent marker (`.rolepod/parent-active`); no manual wiring needed.
+
 ### 3. UI verification when relevant
 
 Open the page, render the component, interact with the affected flow. Use MCP browser tools, Playwright, or local devtools — never ask the user to do it for you when tools are available. For the tool order and what to observe, see `references/ui-verification.md`.
