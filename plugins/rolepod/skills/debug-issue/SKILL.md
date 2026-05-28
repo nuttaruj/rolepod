@@ -17,6 +17,7 @@ Canonical debug workflow. Replace guess-and-check with disciplined narrowing: re
 2. NEVER stop at the first symptom fix. Trace upstream to a legitimate stopping point (external input, system boundary, "designed this way"), then fix at root.
 3. ALWAYS roll back your last action first when the error appeared right after your change.
 4. ALWAYS write the failing test you wish had existed before shipping the fix.
+5. After 3 failed fix attempts on the same surface, STOP fixing. Question the architecture, the repro, or the hypothesis. Fix #4 without architectural review = thrashing.
 </EXTREMELY-IMPORTANT>
 
 ## When to use
@@ -88,6 +89,8 @@ If the bug predates your changes and the last-good commit is unknown, `git bisec
 
 When 2+ plausible causes exist, list 2-3 candidates with the cheapest falsifier per row, recommend which to test first, and let the user pick if the choice is non-obvious. Then state the chosen hypothesis: `<variable / state / condition> is <value> because <upstream cause>`. Test the cheapest falsifier first — log, breakpoint, read the called function, check the fixture. Don't spray fixes. Tag every debug log with a unique prefix (`[DBG-a4f2]`) so cleanup is one grep.
 
+**Find a working analog.** Before testing hypotheses, locate code in the same codebase that does the similar thing successfully — adjacent feature, sibling endpoint, parallel module. List every difference between the working analog and the broken surface, however small. Cheap signal for which difference matters; expensive to skip when "that can't possibly matter" turns out to matter.
+
 Track experiments in `templates/hypothesis-ledger.md` — one row each. A new hypothesis must hold against every prior row, not just the last run.
 
 ### 5. Trace upstream
@@ -98,6 +101,8 @@ Symptom → caller → caller's caller, until one of:
 - "Designed this way" (intentional invariant)
 
 Stop at one of those, not at the first place the value looks wrong. For the upstream-walk technique and the symptom-vs-root distinction, see `references/root-cause-tracing.md`.
+
+**Multi-component? Instrument boundaries first.** When the failure crosses layers (CI → build → signing, or API → service → DB, or worker → queue → store), add boundary logging at every layer in one pass — what data enters, what exits, what env / config / state is visible. Run once. The log reveals **which layer fails**. Pick the failing layer; investigate inside it. Guessing which layer without boundary evidence wastes hypotheses.
 
 ### 6. Write the failing test
 
@@ -156,6 +161,8 @@ Load only when the task needs it:
 - Two upstream traces lead to contradictory causes → re-read; you missed an interaction
 - Fix passes the test but the symptom returns → root cause is wrong, trace further
 - Defensive null-check without a known cause → not a fix; remove and trace again
+- Fix attempt #4 about to start on the same surface → stop; Iron Rule 5. Question the architecture, the repro, or the hypothesis before the next change
+- Multi-component failure being guessed at without boundary instrumentation → stop, instrument first (§5)
 
 ## Full Rolepod enhancement
 
