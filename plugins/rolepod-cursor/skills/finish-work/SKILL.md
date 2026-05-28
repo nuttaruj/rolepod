@@ -14,6 +14,7 @@ Ship-phase entry skill. Close out a branch safely. Run the pre-merge gate, decid
 2. NEVER auto-merge a PR with a failing required CI lane.
 3. NEVER skip the pre-merge gate (simplicity + tests + reviewer) because "the diff is small".
 4. The reviewer who flagged a BLOCKER is not the final authority on whether it is fixed — the qa-tester / Lead floor confirms before merge.
+5. Worktree cleanup follows order: merge → verify → `cd` to main root → `git worktree remove` → `git worktree prune` → delete branch. Reversed order leaves stuck refs. Only remove worktrees we created (path under `.worktrees/` or `worktrees/`); never touch harness-owned workspaces.
 </EXTREMELY-IMPORTANT>
 
 ## When to use
@@ -103,24 +104,39 @@ Any failure → fix or report; do not merge.
 
 Red required lane → Lead fixes and re-pushes; do not ask user permission for each iteration of fix-and-rerun once the merge intent is approved. Triage the cause before re-running — see `references/ci-triage.md`.
 
-### 3. 4-option finish menu
+### 3. Detect environment
+
+Before presenting the menu, detect the workspace state — it changes which options are valid:
+
+```bash
+GIT_DIR=$(cd "$(git rev-parse --git-dir)" 2>/dev/null && pwd -P)
+GIT_COMMON=$(cd "$(git rev-parse --git-common-dir)" 2>/dev/null && pwd -P)
+```
+
+- `GIT_DIR == GIT_COMMON` → normal repo, 4-option menu, no worktree cleanup
+- `GIT_DIR != GIT_COMMON`, named branch → 4-option menu, worktree cleanup per Iron Rule 5
+- `GIT_DIR != GIT_COMMON`, detached HEAD → **3-option menu (no local merge)**, externally managed cleanup
+
+### 4. Finish menu
 
 Present concrete options:
 
-| Option | When |
-|--------|------|
-| **Merge to main** | All gates green, user authorized |
-| **Open PR** | Needs upstream review or CI on PR runner |
-| **Keep open** | More work planned; checkpoint commit only |
-| **Discard** | Branch is an experiment that did not pan out |
+| Option | When | Valid in detached HEAD? |
+|--------|------|-------------------------|
+| **Merge to main** | All gates green, user authorized | no |
+| **Open PR** | Needs upstream review or CI on PR runner | yes |
+| **Keep open** | More work planned; checkpoint commit only | yes |
+| **Discard** | Branch is an experiment that did not pan out | yes |
 
-Fill `templates/finish-menu.md` — gate status, the four options, the recommendation, and the one specific action awaiting authorization. State the recommendation, then wait for the user to pick before acting.
+**Typed confirmation for Discard.** Before destructive deletion, require the user to type the literal word `discard`. Generic yes / ok / sure is not enough — destructive ops need shape-matching confirmation to defeat reflex assent.
 
-### 4. PR composition (if PR path)
+Fill `templates/finish-menu.md` — gate status, the available options (3 or 4 per the detection above), the recommendation, and the one specific action awaiting authorization. State the recommendation, then wait for the user to pick before acting.
 
-Fill `templates/pr-body.md` — summary, test plan checklist, risks, linked artifacts. Title under 70 chars. Open with `gh pr create` using a HEREDOC body.
+### 5. PR composition (if PR path)
 
-### 5. Launch + post-merge (if production)
+Fill `templates/pr-body.md` — summary, test plan checklist, risks, linked artifacts. Title under 70 chars. Open with `gh pr create` using a HEREDOC body. **Do not** clean up the worktree on this path — the user iterates on PR feedback in the same workspace.
+
+### 6. Launch + post-merge (if production)
 
 Launch ritual for production traffic: fill `templates/release-checklist.md` — rollback, monitoring, on-call, feature flag default, and migration safety all confirmed before traffic.
 
@@ -172,6 +188,8 @@ Load only when the task needs it:
 - About to push --force or reset --hard published history → stop, confirm
 - 3rd PR on the same surface, or 3rd agent on the same issue → stop, ask
 - Production launch with no rollback plan, monitoring, or on-call confirmed → stop, do not send traffic
+- About to `git worktree remove` from inside the worktree, or before merge succeeded, or on a path outside `.worktrees/` / `worktrees/` → stop, Iron Rule 5
+- Discard action requested with generic confirmation only ("ok" / "yes" / "sure") → stop, require typed `discard`
 
 ## Full Rolepod enhancement
 
