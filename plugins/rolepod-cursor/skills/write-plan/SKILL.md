@@ -76,7 +76,7 @@ Parallel agents only help when file ownership is genuinely disjoint and the work
 
 ### 5. If parallel, write a cohesion contract
 
-Fill `templates/cohesion-contract-template.md` — it pins file ownership, shared interfaces, merge order, the do-not-touch list, and the integration owner. Save to `contract.md` or `docs/plans/<feature>-cohesion.md`.
+Fill `templates/cohesion-contract-template.md` — it pins file ownership, shared interfaces, merge order, the do-not-touch list, and the integration owner. Save to `contract.md` or `docs/rolepod/plans/<feature>-cohesion-YYYY-MM-DD.md`.
 
 ### 6. Route to agents
 
@@ -114,7 +114,7 @@ Execute as Lead with this minimum viable checklist:
 
 The plan template is the canonical artifact: `templates/plan-template.md`. Fill every section — it is the contract `implement-plan` executes. A multi-agent plan adds a cohesion contract (`templates/cohesion-contract-template.md`). Do not restate the section list here; the templates are the single source of plan shape.
 
-For one-session work, inline the filled template in chat. For multi-session work, save it to `docs/plans/<feature>.md`.
+For one-session work, inline the filled template in chat. For multi-session work, save it to `docs/rolepod/plans/<feature>-YYYY-MM-DD.md`.
 
 ## Examples
 

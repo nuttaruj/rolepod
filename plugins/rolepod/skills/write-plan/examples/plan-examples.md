@@ -134,7 +134,7 @@ None.
 
 ## Parallel layout
 Parallel — 2 agents, disjoint files.
-Cohesion contract: docs/plans/notifications-cohesion.md
+Cohesion contract: docs/rolepod/plans/notifications-cohesion-2026-05-20.md
 Merge order: Task 1 (backend) first — it provides the API contract.
 
 ## Done criteria
