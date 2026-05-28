@@ -95,7 +95,7 @@ fi
 #     detail live in references/, not the spine)
 #   - supporting files per skill ≤ 5, except the using-rolepod router
 #     (≤ 3) and the rolepod-full alias (0)
-#   - total supporting files across all skills ≤ 39
+#   - total supporting files across all skills ≤ 40
 #   - every examples/*-examples.md carries a "Why good wins" contrast table
 URS="core/skills/using-rolepod/SKILL.md"
 URS_LINES=$(wc -l < "$URS" | tr -d ' ')
@@ -120,7 +120,7 @@ else
   echo "  ✗ supporting-file count over cap: $SUPPORT_OVER"
   fail=$((fail+1))
 fi
-check "total supporting files ≤ 39 (actual: $SUPPORT_TOTAL)" "[ $SUPPORT_TOTAL -le 39 ]"
+check "total supporting files ≤ 40 (actual: $SUPPORT_TOTAL)" "[ $SUPPORT_TOTAL -le 40 ]"
 
 EXAMPLES_NO_TABLE=""
 for f in core/skills/*/examples/*-examples.md; do

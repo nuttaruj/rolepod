@@ -14,9 +14,10 @@ Verify-phase entry skill. Prove the change behaves as intended with concrete evi
 
 <EXTREMELY-IMPORTANT>
 1. NEVER claim done without evidence. "Looks right" is not evidence.
-2. UI changes require a browser observation (screenshot, MCP devtools, Playwright). A passing typecheck does not prove the UI works.
-3. If you cannot verify, STATE explicitly: what you cannot verify, why, and the risk if you are wrong.
-4. NEVER ask the user to take a screenshot for you when you have browser automation available.
+2. Verification must be FRESH in this turn. If you have not run the command in this message, you cannot claim it passes. Yesterday's green run does not count. "Should still work" does not count.
+3. UI changes require a browser observation (screenshot, MCP devtools, Playwright). A passing typecheck does not prove the UI works.
+4. If you cannot verify, STATE explicitly: what you cannot verify, why, and the risk if you are wrong.
+5. NEVER ask the user to take a screenshot for you when you have browser automation available.
 </EXTREMELY-IMPORTANT>
 
 ## When to use
@@ -60,7 +61,7 @@ Return / hand off:
 
 | Change type | Required evidence |
 |-------------|-------------------|
-| Logic / bug fix | Test pass (the failing test that proved the bug) |
+| Logic / bug fix | Red-green-revert cycle: failing test → fix → green → revert fix → MUST fail → restore fix → green. A test that does not fail without the fix is not testing the fix. |
 | New feature | Happy + edge + error test pass |
 | Refactor | Existing suite green before and after |
 | Schema / migration | Forward + rollback dry run + row count delta |
@@ -96,9 +97,21 @@ Schema details and the full protocol live in `docs/EXTENSION-PROTOCOL.md`. Child
 
 Open the page, render the component, interact with the affected flow. Use MCP browser tools, Playwright, or local devtools — never ask the user to do it for you when tools are available. For the tool order and what to observe, see `references/ui-verification.md`.
 
-### 4. Watch for false greens
+### 4. Anti-false-green discipline
 
-A passing test with weak assertions is a false green. Mentally flip `==` to `!=`. If the test still passes, the assertion is too weak — tighten it before trusting. For weak-vs-strong assertion patterns by type, see `references/assertion-strength.md`.
+A passing test with weak assertions is a false green. Three trip wires:
+
+- **Flip-the-assertion check** — mentally flip `==` to `!=`. If the test still passes, assertion is too weak. Tighten before trusting.
+- **Wording trip wires** — about to say "should pass", "probably works", "seems right", "Great!", "Perfect!", "Done!" before running the command? Stop. Run it first. Pre-completion wording without fresh evidence is the same lie in two registers.
+- **Common false equivalences** — "linter clean ≠ build passes". "Build passes ≠ tests pass". "Tests pass ≠ requirements met". "Agent reports COMPLETED ≠ verified". Each layer proves only what it actually ran.
+
+Weak-vs-strong assertion patterns by type: `references/assertion-strength.md`. Common-failure table + rationalization-prevention table: `references/verification-discipline.md`.
+
+### 4b. Spec-back-reference
+
+For every acceptance criterion in the spec / plan / task, name the evidence that verifies it. A criterion with no named evidence = unverified, regardless of how many other tests pass. Mirror of plan's spec-coverage trace, applied to evidence instead of tasks.
+
+Format inline in the evidence block: `<criterion> → <evidence command + result line>`.
 
 ### 5. State limitations honestly
 
@@ -122,12 +135,12 @@ Fill `templates/evidence-block.md` — exact commands, the specific proof line p
 
 ## If a matching Rolepod agent is available
 
-Delegate verification depth to the specialist:
+Delegate verification depth:
 
-- `qa-tester` for test suite design and failure analysis
-- `performance-engineer` for p95 / p99 / bundle / benchmark proof
-- `security-engineer` for exploit-blocked proof
-- `devops-sre` for CI lane behavior and deploy smoke
+- `qa-tester` — test suite design / failure analysis
+- `performance-engineer` — p95/p99/bundle/benchmark proof
+- `security-engineer` — exploit-blocked proof
+- `devops-sre` — CI lane behavior / deploy smoke
 
 Brief: change manifest + acceptance criteria + available tools.
 
@@ -135,14 +148,10 @@ Brief: change manifest + acceptance criteria + available tools.
 
 Execute as Lead with this minimum viable checklist:
 
-1. Run the tests for the touched module
-2. Run typecheck and lint if the stack has them
-3. For UI: take a screenshot or read the DOM with browser tools
-4. For API: curl the endpoint and verify the response shape
-5. For schema / migration: dry-run forward and rollback
-6. For docs / spec: render output, check links, scan for placeholders
-7. Compose an evidence block in the response
-8. If a verification path is missing, state it explicitly with risk
+1. Run tests for the touched module + typecheck/lint if the stack has them
+2. UI → screenshot or DOM read via browser tools; API → curl + assert response shape
+3. Schema/migration → dry-run forward + rollback; docs → render + link-check + placeholder scan
+4. Compose evidence block; state any missing verification path with risk
 
 ## Output
 
@@ -158,6 +167,7 @@ Non-blocking — read only when unsure whether your evidence is strong enough:
 Load only when the task needs it:
 - `references/ui-verification.md` — how to verify a UI change: tool order, what to observe
 - `references/assertion-strength.md` — spot a weak assertion that passes with the bug present
+- `references/verification-discipline.md` — common-failures table (Claim / Requires / Not Sufficient), rationalization-prevention table, red-green-revert protocol, anti-rationalization wording catalog
 
 ## Hard stops
 
@@ -165,6 +175,8 @@ Load only when the task needs it:
 - UI change with no browser observation → not verified
 - "It compiled" is offered as the only evidence for runtime behavior → not verified
 - Subagent claims COMPLETED but evidence is absent → reject
+- About to say "should pass" / "looks right" / "Great!" / "Done!" without running the command fresh in this turn → stop; Iron Rule 2
+- Acceptance criterion has no named evidence in the evidence block → not verified, even if other tests pass
 
 ## Full Rolepod enhancement
 
