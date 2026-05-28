@@ -84,7 +84,26 @@ For each task, name the best specialist if one is available. Brief = task + file
 
 ### 7. Self-review the plan
 
-Scan for placeholders, vague tasks, missing tests, untouched high-risk surfaces, and unowned files in a parallel layout.
+Scan for:
+- **Placeholders** — see Anti-placeholder section below for the six failure patterns
+- **Spec-coverage trace** — for each spec requirement, name the task that implements it. List gaps. A spec requirement with no task is a plan failure
+- **Symbol consistency cross-task** — function / method / property names must match across tasks. `clearLayers()` in Task 3 and `clearFullLayers()` in Task 7 is a bug — pick one and propagate
+- **Missing tests** on any task
+- **Untouched high-risk surfaces**
+- **Unowned files** in a parallel layout
+
+## Anti-placeholder
+
+Plan-failure patterns. Never ship a plan that contains:
+
+- `TBD`, `TODO`, "implement later", "fill in details"
+- "Add appropriate error handling" / "add validation" / "handle edge cases" — name the cases, name the handling
+- "Write tests for the above" without the test type and assertion
+- "Similar to Task N" — repeat the shape; the engineer may read tasks out of order
+- Steps that describe what to do without showing where (file path + the change)
+- References to types, functions, or symbols not defined in any task or in the existing codebase
+
+If self-review finds any pattern, fix it inline. Do not hand off to `implement-plan` with these unresolved.
 
 ## If a matching Rolepod agent is available
 
@@ -114,12 +133,19 @@ Execute as Lead with this minimum viable checklist:
 
 The plan template is the canonical artifact: `templates/plan-template.md`. Fill every section — it is the contract `implement-plan` executes. A multi-agent plan adds a cohesion contract (`templates/cohesion-contract-template.md`). Do not restate the section list here; the templates are the single source of plan shape.
 
+Tasks use `- [ ]` checkboxes so progress is visible in the artifact itself — survives session compaction.
+
 For one-session work, inline the filled template in chat. For multi-session work, save it to `docs/rolepod/plans/<feature>-YYYY-MM-DD.md`.
 
 ## Examples
 
 Non-blocking — read only when the plan being drafted is unclear:
 - `examples/plan-examples.md` — a sequential single-owner plan and a parallel multi-agent plan, each good/bad with a "why good wins" table. Read the whole file; the contrast is the lesson.
+
+## References
+
+Load only when the task needs it:
+- `references/plan-reviewer-prompt.md` — reusable subagent prompt for dispatching an independent plan reviewer when the plan is risky or large. Use via the Agent tool (subagent_type=universal-reviewer).
 
 ## Hard stops
 

@@ -1,7 +1,14 @@
 <!-- Rolepod plan template — the canonical Plan-phase artifact. -->
 <!-- Fill every section. Delete the <hints>. implement-plan executes this. -->
+<!-- Tasks use - [ ] checkboxes so progress survives session compaction. -->
 
 # <Feature> Plan
+
+**Goal:** <one sentence — what this builds, the outcome>
+**Architecture:** <2-3 sentences — chosen approach in one breath>
+**Stack:** <key libraries / frameworks / services this plan depends on>
+
+---
 
 ## Source spec
 <Link or one-line pointer to the approved spec this plan implements.>
@@ -15,17 +22,17 @@
  verifiable. A task whose title needs "and" is two tasks.>
 
 ### Task 1: <title>
-- **Files:** <paths this task touches>
-- **Change:** <what to do, concretely>
-- **Test / evidence:** <test type + the assertion that proves it works>
-- **Expected failing signal:** <for test-first tasks — the error the test
-  shows before the fix. Omit if not test-first.>
-- **Command:** <exact command to run the test, if known>
+- [ ] **Files:** <paths this task touches>
+- [ ] **Change:** <what to do, concretely>
+- [ ] **Test / evidence:** <test type + the assertion that proves it works>
+- [ ] **Expected failing signal:** <for test-first tasks — the error the test
+      shows before the fix. Omit if not test-first.>
+- [ ] **Command:** <exact command to run the test, if known>
 - **Owner:** <Lead, or the specialist agent if delegated>
 - **Done when:** <pass/fail condition>
 
 ### Task 2: <title>
-<same shape>
+<same shape — checkbox each step>
 
 ## High-risk surfaces touched
 <auth / billing / migration / data deletion / security. "None" is valid —
