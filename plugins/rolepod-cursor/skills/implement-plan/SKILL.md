@@ -14,6 +14,7 @@ Build-phase entry skill. Execute the approved plan with discipline: TDD where it
 2. NEVER expand scope mid-implementation. New idea → write it down and finish the planned task first.
 3. ALWAYS write the failing test first for bug fixes and high-risk-surface work.
 4. NEVER delegate to a subagent without a written task scope and a clear done criterion.
+5. CONTINUOUS execution between tasks on a multi-task plan — no "should I continue?" check-ins, no progress summaries. Stop only on BLOCKED that the Lead cannot resolve, a spec/plan gap, or scope ambiguity.
 </EXTREMELY-IMPORTANT>
 
 ## When to use
@@ -92,34 +93,57 @@ When delegating, pick from the agent list below.
 
 When delegating, fill `templates/task-brief.md` — it scopes the task to 1-2 files, names allowed / forbidden paths, the test command, the done criteria, and the tool cap. Two rules are absolute: the subagent NEVER commits (it returns a manifest, the Lead commits), and it NEVER expands scope.
 
+Pass the full task text + scene-setting context inline in the brief. Do not point the subagent at the plan file path — controller curates exactly the slice the subagent needs.
+
+**Implementer self-review before manifest.** The subagent scans its own diff for placeholders, missing tests, and plan coverage before returning the manifest. Self-review is not a substitute for the §6 review pipeline; it is a cheap pre-filter.
+
+**Implementer return status.** Manifest declares one of: `DONE` → §6 pipeline; `DONE_WITH_CONCERNS` → address scope/correctness first, then §6; `NEEDS_CONTEXT` → add context, redispatch; `BLOCKED` → change a variable (context / model / scope / escalate), never retry blind. Deep handling in `references/subagent-dispatch.md`.
+
 ### 5. Worktrees only for real parallel
 
 Use a git worktree when two sessions actually need the same files at the same time. A branch is enough for sequential work.
 
-### 6. Fresh-context review of delegated work
+### 6. Per-task review pipeline
 
-After a subagent finishes, a fresh reviewer (Lead or another agent) reads the diff with no context from the implementer's session. Catches over-fitting and scope creep.
+After a subagent returns `DONE`, dispatch two reviewers in order on the diff alone — no context from the implementer's session:
+
+1. **Spec compliance** — does the diff match the task spec exactly? No missing requirements, no extras. Issue → implementer fixes → re-review. Approve before stage 2.
+2. **Code quality** — patterns, DRY, smell, test strength. Issue → implementer fixes → re-review.
+
+Both stages mandatory for delegated work. Lead-executed tasks: §6 collapses to one self-review of the diff with a 5-minute pause before reading (fresh-context simulation).
+
+After all tasks pass per-task review, dispatch a **final whole-implementation review** on the cumulative diff to catch cross-task drift (type/symbol/contract mismatch, unowned files in parallel layouts). Hand off to `check-work` only after the final review clears.
+
+### 7. Model selection by task complexity
+
+Use the least powerful model that can handle each role. Cost compounds across N tasks × M reviews.
+
+- **Mechanical** (1-2 files, complete spec, isolated logic) → fast/cheap model
+- **Integration** (multi-file coordination, pattern matching, debugging) → standard model
+- **Architecture / judgment / final review** (broad codebase, design tradeoffs) → most capable model
+
+Implementer status `BLOCKED` after a fast-model dispatch → re-dispatch with a stronger model before declaring the task unfixable.
 
 ## If a matching child plugin skill is available
 
-Prefer sibling-plugin edit primitives over hand-rolled file writes when the domain matches. Children are registered under Extension Protocol v1 — see `docs/EXTENSION-PROTOCOL.md`.
+Prefer sibling edit primitives over hand-rolled writes when the domain matches (Extension Protocol v1 — `docs/EXTENSION-PROTOCOL.md`):
 
-- **`rolepod-uiproof`** — `/scaffold-e2e` generates a runnable e2e test file (playwright-test / vitest+playwright / pytest+selenium) from a scenario + optional replay bundle. Use when the task is "write e2e tests for flow X" rather than authoring the test file by hand.
-- **`rolepod-wplab`** — `/wp-edit-design`, `/wp-edit-plugin`, `/wp-edit-theme` are WP-specific edit primitives; `/wp-scaffold` handles WP file/structure scaffolding. Use when editing inside `wp-content/` or generating WP boilerplate.
+- `rolepod-uiproof` `/scaffold-e2e` — e2e test scaffold from scenario + replay (playwright / vitest+playwright / pytest+selenium)
+- `rolepod-wplab` `/wp-edit-{design,plugin,theme}`, `/wp-scaffold` — WP edit primitives + boilerplate inside `wp-content/`
 
-These children write their evidence under `<git-root>/.rolepod/evidence/` when the parent marker is active; `check-work` aggregates automatically. Children fall back to standalone mode (own artifact paths) when the parent is absent — no breakage either way.
+Evidence auto-routes to `<git-root>/.rolepod/evidence/` under parent; standalone path otherwise. `check-work` aggregates.
 
 ## If a matching Rolepod agent is available
 
 Delegate the bounded task to the closest specialist:
 
-- `frontend-developer` / `ui-ux-designer` for UI work and interaction design
-- `backend-developer` for API / business logic / DB models
-- `mobile-developer` for iOS / Android / React Native / Flutter
-- `billing-engineer` for billing / credits / subscription paths
-- `ai-ml-engineer` for LLM / RAG / Anthropic SDK / prompt-cache work
-- `data-scientist` for analytics / pipelines / dashboards
-- `content-strategist` for any human-readable written output — pass `audience: dev` for ADRs / runbooks / durable docs, `audience: user` for FAQ / onboarding / support content, `audience: prospect` for SEO / conversion copy
+- `frontend-developer` / `ui-ux-designer` — UI / interaction
+- `backend-developer` — API / business logic / DB models
+- `mobile-developer` — iOS / Android / RN / Flutter
+- `billing-engineer` — billing / credits / subscription
+- `ai-ml-engineer` — LLM / RAG / Anthropic SDK / prompt cache
+- `data-scientist` — analytics / pipelines / dashboards
+- `content-strategist` — written output; pass `audience: dev|user|prospect`
 
 Brief: spec + plan + files + tests + done criterion + handoff partner.
 
@@ -127,14 +151,11 @@ Brief: spec + plan + files + tests + done criterion + handoff partner.
 
 Execute as Lead with this minimum viable checklist:
 
-1. Read the plan and the touched files
-2. Write the failing test first for risky paths
-3. Make the smallest change that satisfies the test
-4. Run the full test suite (or at least the touched module's suite)
-5. Match local style — naming, error handling, imports
-6. Do not invent new patterns unless the plan requires it
-7. Mention any dead code adjacent to your change; do not delete it without asking
-8. Verify the change before claiming done — see `check-work`
+1. Read the plan + touched files; write failing test first for risky paths
+2. Make the smallest change that satisfies the test; run the full test suite (or the touched module's)
+3. Match local style — naming, error handling, imports; do not invent new patterns unless the plan requires it
+4. Flag dead code adjacent to your change; do not delete without asking
+5. Verify before claiming done — see `check-work`
 
 ## Output
 
@@ -149,18 +170,20 @@ Non-blocking — read only when unsure about scope or whether to trust a subagen
 
 Load only when the task needs it:
 - `references/tdd-by-risk.md` — task type → test discipline: test-first vs evidence-after
+- `references/subagent-dispatch.md` — implementer status taxonomy (DONE / DONE_WITH_CONCERNS / NEEDS_CONTEXT / BLOCKED) and handling, two-stage review prompt scaffolds (spec compliance / code quality), model selection table, continuous-execution rationale
 
 ## Hard stops
 
 - A planned file does not exist where expected → stop, verify or re-plan
 - A test you wrote passes before you added the code → assertion is too weak; tighten
-- A subagent returns COMPLETED with failing tests → reject, re-brief
-- A subagent's diff accepted without a fresh-context read of it → stop, review before building further
+- Subagent returns `DONE` with failing tests, or `BLOCKED` re-dispatched unchanged → reject / change a variable (context / model / scope); never accept unchanged retry
+- A subagent's diff accepted without spec-compliance + code-quality reviews → stop, run the §6 pipeline before building further
 - Scope creep beyond the task list → stop, write a follow-up, finish current task
+- About to write "should I continue?" between tasks on a multi-task plan → don't; Iron Rule 5
 
 ## Full Rolepod enhancement
 
-Full Rolepod improves this phase by adding cohesion contracts for parallel work, model-tier-aware agent routing, hooks that block subagent commits, the qa-tester floor, and the two-stage fresh-context review pattern.
+Adds cohesion contracts for parallel work, model-tier-aware agent routing, hooks that block subagent commits, the qa-tester floor, and the two-stage fresh-context review pattern.
 
 ## Next phase
 

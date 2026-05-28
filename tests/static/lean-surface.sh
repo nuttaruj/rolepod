@@ -93,9 +93,9 @@ fi
 # These caps lock the surface so the power-up does not regress into bloat:
 #   - using-rolepod SKILL.md ≤ 240 (router; scope-then-spawn + force-full
 #     detail live in references/, not the spine)
-#   - supporting files per skill ≤ 4, except debug-issue / finish-work
-#     (≤ 5) and the using-rolepod router (≤ 3); the rolepod-full alias 0
-#   - total supporting files across all skills ≤ 38
+#   - supporting files per skill ≤ 5, except the using-rolepod router
+#     (≤ 3) and the rolepod-full alias (0)
+#   - total supporting files across all skills ≤ 39
 #   - every examples/*-examples.md carries a "Why good wins" contrast table
 URS="core/skills/using-rolepod/SKILL.md"
 URS_LINES=$(wc -l < "$URS" | tr -d ' ')
@@ -108,20 +108,19 @@ for d in core/skills/*/; do
   n=$(find "$d" -type f ! -name SKILL.md | wc -l | tr -d ' ')
   SUPPORT_TOTAL=$((SUPPORT_TOTAL + n))
   case "$s" in
-    debug-issue|finish-work) cap=5 ;;
-    using-rolepod)           cap=3 ;;
-    rolepod-full)            cap=0 ;;
-    *)                       cap=4 ;;
+    using-rolepod) cap=3 ;;
+    rolepod-full)  cap=0 ;;
+    *)             cap=5 ;;
   esac
   [ "$n" -le "$cap" ] || SUPPORT_OVER="${SUPPORT_OVER}${s} (${n}>${cap}) "
 done
 if [ -z "$SUPPORT_OVER" ]; then
-  echo "  ✓ supporting-file count within per-skill cap (≤4; debug/finish ≤5; router ≤3; alias 0)"
+  echo "  ✓ supporting-file count within per-skill cap (≤5; router ≤3; alias 0)"
 else
   echo "  ✗ supporting-file count over cap: $SUPPORT_OVER"
   fail=$((fail+1))
 fi
-check "total supporting files ≤ 38 (actual: $SUPPORT_TOTAL)" "[ $SUPPORT_TOTAL -le 38 ]"
+check "total supporting files ≤ 39 (actual: $SUPPORT_TOTAL)" "[ $SUPPORT_TOTAL -le 39 ]"
 
 EXAMPLES_NO_TABLE=""
 for f in core/skills/*/examples/*-examples.md; do
