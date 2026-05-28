@@ -17,6 +17,7 @@ Recovery-phase skill. Cut complexity that does not earn its keep. Behavior-prese
 2. NEVER remove an abstraction the codebase actually depends on — verify call sites first.
 3. NEVER add a new abstraction for "hypothetical future use". One concrete user is not enough.
 4. Same pattern in 3+ places → centralize. "Just this one place" is the start of rot for auth, billing, credits, URL validation, redirects, SSRF, cookies, logging, retries, external API.
+5. Apply the deletion test before any cut. Imagine deleting the module: if complexity vanishes, it was a pass-through — delete safely. If complexity reappears scattered across N callers, the abstraction was earning its keep — keep it.
 </EXTREMELY-IMPORTANT>
 
 ## When to use
@@ -65,7 +66,7 @@ Run the touched module's test suite. If red, fix or write tests first. You canno
 
 ### 2. Scan for these patterns
 
-Before removing anything, `git blame` the origin commit — code with no callers may still encode a reason (Chesterton's Fence). Verify the why, not just the call sites.
+Before removing anything, run **Chesterton's Fence** + the **deletion test** together. Chesterton: `git blame` the origin commit — code with no callers may still encode a reason. Verify the why, not just the call sites. Deletion test: imagine the module gone — does complexity vanish (pass-through, cut it) or reappear scattered across N callers (it was earning its keep, leave it). Both tests pass = safe to delete; either fails = stop.
 
 | Pattern | Action |
 |---------|--------|
@@ -86,6 +87,14 @@ A runtime `if (x === null) throw` becomes a non-nullable type. A "must be set" c
 ### 4. Centralize at 3 occurrences
 
 Two is a coincidence. Three is a pattern. For auth / billing / credit / URL validation / redirects / SSRF / cookies / logging / retries / external API, two is already too many — centralize on appearance.
+
+**Inverse rule for keeping abstractions.** One adapter behind an interface = hypothetical seam, candidate for inline. Two real adapters = real seam, keep the interface. The rule mirrors centralization: counts decide structure. An interface with one implementation is the same shape as a five-line pattern in one file — it does not yet earn the abstraction.
+
+### 4b. Refactor before fix
+
+When a planned change is hard because the surrounding shape is wrong, first cut the shape until the change is easy, then make the easy change. Two commits, not one. Cut commits are behavior-preserving (this skill); the change commit is the feature (`implement-plan`). Mixing them in one commit makes the diff unreviewable and hides which line caused which regression.
+
+Skip this rule if the change is genuinely small and the shape is fine; do not invent friction to justify a refactor.
 
 ### 5. One change at a time
 
@@ -133,6 +142,8 @@ Non-blocking — read only when unsure whether a cut is behavior-preserving:
 - A cut required a test assertion change → that is a behavior change, route to `implement-plan`
 - An "unused" abstraction has callers you missed → restore it and verify before another attempt
 - About to invent a new abstraction for one caller → reject; that is complexity, not simplification
+- About to delete a module without running the deletion test → stop; Iron Rule 5
+- Refactor-before-fix commits mixed with the feature change in one commit → stop, split; cut commits stay behavior-preserving
 
 ## Full Rolepod enhancement
 
