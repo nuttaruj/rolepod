@@ -5,14 +5,14 @@
   },
   "metadata": {
     "description": "Rolepod — coordinated 16-agent dev team workflow with gates and verify-first discipline.",
-    "version": "2.7.0"
+    "version": "2.8.0"
   },
   "plugins": [
     {
       "name": "rolepod",
       "source": "./plugins/rolepod-cursor",
       "description": "16 specialist agents, Core 10 phase skills, pre-commit gates. Always-on judgment core delivered as an alwaysApply rule.",
-      "version": "2.7.0",
+      "version": "2.8.0",
       "author": {
         "name": "nuttaruj"
       },
