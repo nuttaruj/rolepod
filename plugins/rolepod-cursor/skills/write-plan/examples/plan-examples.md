@@ -18,7 +18,7 @@ why the good version wins. Compare the pair — do not read one half alone.
 # Orders CSV Export Plan
 
 ## Source spec
-docs/specs/orders-csv-export.md (approved)
+docs/rolepod/specs/orders-csv-export-2026-05-20.md (approved)
 
 ## Files to touch
 - app/services/orders_csv.rb — new — builds the CSV from the report query
@@ -104,7 +104,7 @@ Touch the reports stuff and the frontend. Should be quick.
 # Notifications Center Plan
 
 ## Source spec
-docs/specs/notifications-center.md (approved)
+docs/rolepod/specs/notifications-center-2026-05-20.md (approved)
 
 ## Files to touch
 - app/models/notification.rb — new — backend

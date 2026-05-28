@@ -89,7 +89,7 @@ NEVER report only significant results.
 NEVER conflate statistical with practical significance.
 </EXTREMELY-IMPORTANT>
 
-Default: pre-register hypothesis + plan in `docs/specs/` BEFORE data. Exploratory work → label as such; p-values are hypothesis-generating only.
+Default: pre-register hypothesis + plan in `docs/rolepod/specs/` BEFORE data. Exploratory work → label as such; p-values are hypothesis-generating only.
 
 ## Reproducibility
 

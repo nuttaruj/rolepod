@@ -71,7 +71,7 @@ Low — read-only export, no schema or auth change. Large exports verified
 against a 10k-order range within the 30s timeout.
 
 ## Linked artifacts
-Spec: docs/specs/orders-csv-export.md
+Spec: docs/rolepod/specs/orders-csv-export-2026-05-20.md
 ```
 
 ### Bad

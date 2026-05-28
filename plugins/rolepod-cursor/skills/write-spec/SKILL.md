@@ -11,9 +11,10 @@ Define-phase entry skill. Convert a vague request into a sharp spec the next pha
 
 <EXTREMELY-IMPORTANT>
 1. NEVER skip the spec when the goal, scope, or success criteria are ambiguous, or when the request touches a high-risk surface (auth, billing, migration, data deletion, security).
-2. NEVER start implementation before the user approves the design direction.
-3. ASK one focused question at a time during discovery unless the user explicitly asks for a full questionnaire.
+2. NEVER start implementation before the user approves the design direction (Gate 1).
+3. ASK one focused question at a time during discovery unless the user explicitly asks for a full questionnaire. RECOMMEND a default answer per question — user confirms or overrides.
 4. NEVER ship a spec that contains placeholders, contradictions, or untested assumptions about the user's intent.
+5. WHEN the spec is saved as a file, require a second approval on the written file itself (Gate 2) — verbal agreement and written file drift apart.
 </EXTREMELY-IMPORTANT>
 
 ## When to use
@@ -53,6 +54,21 @@ Hand off:
 
 ## Workflow
 
+```mermaid
+flowchart LR
+  A[Frame goal] --> B[Discover Qs<br/>+ recommend default per Q]
+  B --> C[2-3 approaches]
+  C --> D{Gate 1<br/>direction OK?}
+  D -- no --> C
+  D -- yes --> E[Self-review]
+  E --> F[Produce contract]
+  F --> G{Inline or file?}
+  G -- inline --> Z[Hand off → write-plan]
+  G -- file --> H{Gate 2<br/>file OK?}
+  H -- no --> F
+  H -- yes --> Z
+```
+
 ### 1. Frame the goal
 
 State the user goal in one sentence. State 2-3 likely constraints. Flag any high-risk surface up front. If the goal needs an "and" to be stated, the request may be several specs — see `references/scope-splitting.md` before continuing.
@@ -61,7 +77,11 @@ State the user goal in one sentence. State 2-3 likely constraints. Flag any high
 
 Ask up to 5 targeted questions, one at a time. Each question must change the implementation if the answer changes. Skip obvious questions. Use the native question UI when available; otherwise plain-text prompts.
 
+**Recommend a default per question.** State the simplest viable answer alongside the question — user confirms or overrides. Faster than open-ended and forces you to commit to a position you can defend.
+
 If a question can be answered by reading the codebase, explore the codebase instead — never spend a user question on what you can verify yourself. Walk the decision tree by dependency: resolve the question that gates the others first, since its answer changes which downstream questions still matter.
+
+**Visual companion for UI-shape questions.** If a question is about UI layout, flow, or visual hierarchy and `rolepod-uiproof` is installed, offer a browser mockup or reference screenshot via `/verify-ui` or `/visual-diff` before asking the text question. Visual answers beat text for visual decisions.
 
 Unsure which questions actually change the implementation? See `references/question-bank.md` for question types and skip rules.
 
@@ -78,13 +98,25 @@ Scan for:
 - Scope creep beyond the user request
 - Over-engineering for hypothetical needs
 
-### 5. Get user approval
+### 5. Gate 1 — direction approval
 
-Present the proposed spec. Wait for the user to accept, edit, or reject the direction. Do not proceed to planning before approval.
+Present the proposed direction (chosen approach + rationale). Wait for the user to accept, edit, or reject. Do not write the contract before Gate 1 passes.
 
 ### 6. Produce the contract
 
 Fill `templates/spec-template.md` — every section resolved, no placeholders, no contradictions.
+
+- One-session work → inline the filled template in chat. **No Gate 2** — Gate 1 is the only approval.
+- Multi-session work, high-risk surface touched, or repeat feature → save to `docs/rolepod/specs/<feature>-YYYY-MM-DD.md` (optional `-vN` or `-draft` suffix). Proceed to Gate 2.
+
+### 7. Gate 2 — file review (file-mode only)
+
+After saving, ask the user to read the file and confirm — not the chat transcript. Catches three drifts:
+- **Word drift** — chat said "soft delete", file wrote "delete"
+- **Implicit edge case** — user meant "except admin", file omits it
+- **Reconsideration** — user sees concrete shape, changes mind
+
+Patch the file and re-confirm if requested. Hand off to `write-plan` only after Gate 2 passes.
 
 ## If a matching Rolepod agent is available
 
@@ -107,14 +139,14 @@ Execute the discovery + design checklist directly as Lead. Use this minimum viab
 4. Ask the smallest set of questions needed
 5. Sketch 2-3 viable approaches with tradeoffs
 6. Recommend one approach with rationale
-7. Wait for user approval before continuing
-8. Save the spec inline or as `docs/specs/<feature>.md` if the work spans more than one session
+7. Wait for Gate 1 (direction) before producing the contract
+8. Save inline for one-session work, or `docs/rolepod/specs/<feature>-YYYY-MM-DD.md` for multi-session / high-risk / repeat features — then require Gate 2 (file review)
 
 ## Output
 
 The spec template is the canonical artifact: `templates/spec-template.md`. Fill every section — it is the contract `write-plan` consumes. Do not restate the section list here; the template is the single source of the spec shape.
 
-For one-session work, inline the filled template in chat. For repeat or multi-session features, save it to `docs/specs/<feature>.md`.
+For one-session work, inline the filled template in chat (Gate 1 only). For repeat, multi-session, or high-risk features, save it to `docs/rolepod/specs/<feature>-YYYY-MM-DD.md` and require Gate 2 (file review) before handoff.
 
 ## Examples
 

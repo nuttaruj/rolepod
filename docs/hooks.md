@@ -154,7 +154,7 @@ Spec discipline is enforced via:
 - `core/skills/write-spec/SKILL.md` — Iron Rule + approval gate + self-review
 - `using-rolepod` router — Define phase exit evidence
 
-Adding a `PreToolUse Bash` hook that checks for `docs/specs/<feature>.md` before Build-phase skills would duplicate `precommit-gate.sh`, block legitimate trivial builds, and force a layout schema on user repos. Decision: keep spec gating as doctrine.
+Adding a `PreToolUse Bash` hook that checks for `docs/rolepod/specs/<feature>-YYYY-MM-DD.md` before Build-phase skills would duplicate `precommit-gate.sh`, block legitimate trivial builds, and force a layout schema on user repos. Decision: keep spec gating as doctrine.
 
 ## Root vs Codex adapter parity
 

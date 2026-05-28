@@ -26,7 +26,7 @@ Feature prioritization, roadmap, user requirements, spec writing.
 
 ## What to inspect first
 
-- Existing specs in `docs/specs/` and recent PRDs
+- Existing specs in `docs/rolepod/specs/` and recent PRDs
 - Roadmap themes + current quarter's priorities
 - Feature flags currently in use + flag-naming convention
 - Support tickets + recent user feedback touching the topic
