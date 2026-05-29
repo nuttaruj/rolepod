@@ -83,7 +83,7 @@ adapters/
 | After tool run | `PostToolUse` (`Edit\|Write`, `Bash`) | `PostToolUse` (`apply_patch`, `Bash`) | `AfterTool` (`write_file\|replace\|edit`) | — (uses `beforeShellExecution` for commit gate; no observational hooks yet) |
 | Stop / compact | `Stop` (no matcher) | — | `PreCompress` | — (sessionEnd/stop reserved for future use) |
 
-Per-CLI hook counts: Claude registers 7 core hooks via the plugin manifest. Codex registers 3 core hooks in `hooks/hooks.json` (requires `codex features enable plugin_hooks` opt-in). Gemini registers 4 core hooks in `hooks/hooks.json`. Cursor registers 3 core hooks in `hooks/hooks.json` (always-on judgment uses an `alwaysApply` rule instead of a SessionStart hook, so the loader script is folded into the rule). Rolepod ships no add-on hooks — MemPalace and GitNexus integrate via their own vendor plugins/CLI.
+Per-CLI hook counts: Claude registers 7 core hooks via the plugin manifest. Codex registers 3 core hooks in `hooks/hooks.json` (requires `codex features enable plugin_hooks` opt-in). Gemini registers 4 core hooks in `hooks/hooks.json`. Cursor registers 3 core hooks in `hooks/hooks.json` (always-on judgment uses an `alwaysApply` rule instead of a SessionStart hook, so the loader script is folded into the rule). Rolepod ships no add-on hooks — claude-mem and GitNexus integrate via their own vendor plugins/CLI.
 
 ## Verification status — what's confirmed locally
 

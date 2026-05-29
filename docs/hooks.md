@@ -13,7 +13,7 @@ Lead does not invoke these manually. They fire automatically.
 | **Context** | `project-context-loader` | Inject git state at SessionStart |
 | **Session safety** | `session-lifecycle` | SessionStart lock + Stop unlock — prevents concurrent-edit stomp |
 
-All 7 hooks register on every Claude install. MemPalace and GitNexus integrate via their own vendor plugins/CLI, not rolepod hooks.
+All 7 hooks register on every Claude install. claude-mem and GitNexus integrate via their own vendor plugins/CLI, not rolepod hooks.
 
 PR 6 dropped `verify-reminder.sh` (PostToolUse Edit/Write per-edit nag). The same discipline lives in:
 - skill `check-work` — Iron Rule + evidence-required output contract
