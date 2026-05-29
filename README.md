@@ -130,6 +130,7 @@ See [docs/EXTENSION-PROTOCOL.md](docs/EXTENSION-PROTOCOL.md) for the full contra
 | **rolepod** (this repo) | Workflow + 16 agents + judgment for any project | Routes by phase, aggregates evidence, suggests siblings by domain signal |
 | [**rolepod-uiproof**](https://github.com/nuttaruj/rolepod-uiproof) (v0.6+) | 5 browser skills — `/verify-ui`, `/audit-a11y`, `/visual-diff`, `/scaffold-e2e`, `/check-errors` + 26 MCP tools | Verify-phase provider for UI artifacts; evidence auto-routes to `check-work` |
 | [**rolepod-wplab**](https://github.com/nuttaruj/rolepod-wplab) (v1.9+) | 14 WordPress skills + 82 MCP tools — wp-cli + REST + scoped fs | Build/Verify/Review primitives for WP; phase-flavored skills narrow under parent |
+| [**rolepod-dblab**](https://github.com/nuttaruj/rolepod-dblab) (v0.1+) | 5 Postgres skills — `/db-introspect`, `/db-query`, `/db-explain`, `/db-migrate-verify`, `/db-write` + 5 MCP tools | Data-layer provider; `check-work` gains DB evidence, `finish-work` gates on schema drift |
 
 ### Synergy matrix
 
@@ -137,6 +138,7 @@ See [docs/EXTENSION-PROTOCOL.md](docs/EXTENSION-PROTOCOL.md) for the full contra
 |---|---|
 | rolepod + uiproof | Verify reads browser evidence automatically; UI regressions blocked at pre-commit |
 | rolepod + wplab | `implement-plan` knows `/wp-edit-*`; `debug-issue` routes to `/wp-diagnose`; `check-work` reads `/wp-health-check` |
+| rolepod + dblab | `check-work` reads DB state as PASS/FAIL evidence; `review-code` / `finish-work` call `/db-migrate-verify` on migration/auth/billing paths; `debug-issue` inspects live data state. Seam rule: WordPress DB → wplab, any other DB → dblab |
 | uiproof + wplab (no parent) | Browser test on WP site, a11y on themes, visual-diff on migrations — each runs standalone |
 | **all three** | Full WP dev flow with verified evidence at every phase — spec → plan → wp-edit-theme → wp-health-check + verify-ui + audit-a11y + visual-diff → review → ship |
 
