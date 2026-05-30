@@ -37,6 +37,10 @@ You invoke nothing for this; it just happens. For a deliberate run through every
 
 Two skills run across phases: **`simplify-code`** (behavior-preserving cleanup) and **`manage-context`** (recovery when a session is long, stuck, or in an unfamiliar repo).
 
+## Works with Claude Code Ultracode
+
+Rolepod composes with Claude Code's **Ultracode** mode out of the box — no setup. Ultracode is the harness orchestration layer (parallel multi-agent workflows, adversarial verification); Rolepod is the structure it runs — phases, specialist agents, cohesion contracts, and gates. Ultracode supplies the horsepower; Rolepod keeps it targeted and safe. The two principles are orthogonal, not opposed: Rolepod's *simplest-viable* governs the solution, Ultracode's *exhaustiveness* governs the process — so an exhaustive run still converges on a simple result. For a deliberate max-rigor pass, invoke **`/rolepod-full`**.
+
 ## Install
 
 Pick your CLI. Rolepod installs **only itself** — agents, skills, hooks, manifests. No third-party tools are installed for you.
