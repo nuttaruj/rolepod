@@ -194,6 +194,7 @@ If the user has installed a sibling plugin under **Extension Protocol v1** (see 
 
 - **`rolepod-uiproof`** (v0.6+) — `/verify-ui`, `/audit-a11y`, `/visual-diff`, `/scaffold-e2e`, `/check-errors`. Used by `check-work` (verify + a11y + visual), `debug-issue` (browser repro / console errors), `review-code` (WCAG + visual regression).
 - **`rolepod-wplab`** (v1.9+) — 14 WP skills + 82 MCP tools. Used by `check-work` (`/wp-health-check`), `debug-issue` (`/wp-diagnose`), `implement-plan` (`/wp-edit-*`, `/wp-scaffold`), `review-code` (`/wp-changes`).
+- **`rolepod-dblab`** (v0.1+) — `/db-introspect`, `/db-query`, `/db-explain`, `/db-migrate-verify`, `/db-write`. Used by `check-work` (DB state as PASS/FAIL evidence), `debug-issue` (live data state as root cause), `review-code` / `finish-work` (`/db-migrate-verify` on migration / auth / billing paths). Seam with wplab: a WordPress DB → `wplab` (WP-semantic); any other database → `dblab` (raw engine).
 
 When a child is not installed, the phase skill falls back to: (a) [Playwright MCP](https://github.com/microsoft/playwright-mcp), (b) [Chrome DevTools MCP](https://github.com/ChromeDevTools/chrome-devtools-mcp) (sharper console / network / perf), or (c) manual instruction. Phase skills carry the explicit chain.
 
@@ -203,7 +204,8 @@ When a child is not installed, the phase skill falls back to: (a) [Playwright MC
 |---|---|
 | `wp-config.php` at repo root | `rolepod-wplab` |
 | `package.json` lists `playwright`, `cypress`, `react`, `vue`, `svelte`, `next`, `nuxt`, `astro` | `rolepod-uiproof` |
-| `.rolepod-uiproof/` or `.rolepod-wplab/` exists | the matching child already in use |
+| `alembic.ini` at repo root, or `sqlalchemy` / `psycopg` / `psycopg2` / `asyncpg` in `requirements.txt` / `pyproject.toml` (non-WordPress DB) | `rolepod-dblab` |
+| `.rolepod-uiproof/`, `.rolepod-wplab/`, or `.rolepod-dblab/` exists | the matching child already in use |
 
 Detect availability by inspecting whether the slash command appears in the available skill list, or by treating tool-call absence as a fallback signal.
 

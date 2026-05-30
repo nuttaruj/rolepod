@@ -2,7 +2,7 @@
 
 The shared contract between **rolepod** (parent — workflow + agents + judgment)
 and **child plugins** (domain-specific tool suites: `rolepod-uiproof`,
-`rolepod-wplab`, and future siblings).
+`rolepod-wplab`, `rolepod-dblab`, and future siblings).
 
 Goal: every plugin works **standalone**; combined installs unlock **end-to-end
 flows** without forcing the user to install all of them.
@@ -228,8 +228,10 @@ suggests installing a child plugin when the domain matches:
 | `wp-config.php` exists at repo root | `rolepod-wplab` |
 | `package.json` contains `playwright`, `cypress`, `@playwright/test` | `rolepod-uiproof` |
 | `package.json` depends on `react`, `vue`, `svelte`, `next`, `nuxt`, `astro` | `rolepod-uiproof` |
+| `alembic.ini` at repo root, or `sqlalchemy` / `psycopg` / `asyncpg` in `requirements.txt` / `pyproject.toml` (non-WordPress DB) | `rolepod-dblab` |
 | `.rolepod-uiproof/baselines/` exists | `rolepod-uiproof` already in use |
 | `.rolepod-wplab/` exists | `rolepod-wplab` already in use |
+| `.rolepod-dblab/` exists | `rolepod-dblab` already in use |
 | iOS / Android native project (`*.xcworkspace`, `build.gradle`) | future: `rolepod-mobile` |
 
 This is **suggestion only** — the parent never auto-installs. The user
@@ -272,6 +274,7 @@ Cross-CLI marker support will land in a future protocol revision once the adapte
 | `rolepod` (parent) | 2.7.0 |
 | `rolepod-uiproof` | 0.6.0 |
 | `rolepod-wplab` | 1.9.0 |
+| `rolepod-dblab` | 0.1.0 |
 
 Lower versions cannot participate in combined mode — they will fall back to
 their own pre-protocol behavior, which is functionally standalone. No
