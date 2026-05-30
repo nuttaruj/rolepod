@@ -143,7 +143,7 @@ Skip a phase WHEN ALL true (state explicitly in response):
 - High-risk path (auth/billing/migrations/crypto/payments) with 0 reviewer agents dispatched → STOP, dispatch qa-tester + (Codex / Gemini / security-engineer if available).
 - 3rd agent on same issue OR 3rd PR on same surface in one session → STOP, ask user (hard-stop rule).
 - Diff mixes 2+ unrelated concerns at push/merge time → STOP, split into separate PRs (`finish-work` P1-P4 gate).
-- Claude-only: if SessionStart warns "Sibling Claude session(s) detected in this worktree" → STOP before any Edit/Write. Spawn isolated worktree first (`git worktree add ../<repo>-task-<ts> <branch> && cd`), continue work there. Override: `ROLEPOD_ALLOW_SHARED_WORKTREE=1` for intentional read-only review sessions.
+- Concurrent sessions: if SessionStart warns "concurrent session(s) detected in this worktree" (all CLIs — soft warn) → before editing a SHARED file, spawn an isolated worktree first (`git worktree add ../<repo>-task-<ts> <branch> && cd`), continue work there. On Claude this is also hard-enforced: `worktree-guard` denies an Edit only when a live sibling owns that exact file (disjoint/solo edits flow free). Override: `ROLEPOD_ALLOW_SHARED_WORKTREE=1` for intentional shared/read-only review sessions.
 
 ## Finish ritual (Ship phase exit)
 

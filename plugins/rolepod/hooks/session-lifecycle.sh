@@ -52,7 +52,7 @@ except Exception: print('')" 2>/dev/null || echo "")
 WORKTREE=$(cd "$CWD" 2>/dev/null && git rev-parse --show-toplevel 2>/dev/null) || exit 0
 PATH_HASH=$(printf '%s' "$WORKTREE" | shasum -a 256 2>/dev/null | awk '{print $1}' | head -c 16)
 [ -z "$PATH_HASH" ] && exit 0
-LOCK_DIR="$HOME/.claude/.session-locks/$PATH_HASH"
+LOCK_DIR="$HOME/.rolepod/session-locks/$PATH_HASH"
 
 if [ "$MODE" = "--unlock" ]; then
   [ -z "$SESSION_ID" ] && exit 0

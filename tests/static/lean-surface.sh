@@ -148,7 +148,7 @@ check "router routes vague UI / dashboard request to write-spec" "grep -Eq 'vagu
 check "router routes clear UI edit to implement-plan" "grep -Eq 'clear UI edit.*implement-plan' $RTR"
 check "router routes explain-only question to a direct answer" "grep -Eq 'explain-only.*answer directly' $RTR"
 check "router reviewer wording is conditional ('when configured')" "grep -q 'when configured' $RTR"
-check "router marks sibling-session stop condition Claude-only" "grep -q 'Claude-only: if SessionStart' $RTR"
+check "router marks concurrent-session stop condition (cross-CLI soft warn)" "grep -q 'concurrent session(s) detected in this worktree' $RTR"
 
 # /rolepod-team removed entirely — no command file, absent from active
 # command docs. Migration note is allowed only in docs/agent-teams.md.

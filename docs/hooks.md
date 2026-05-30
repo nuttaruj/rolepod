@@ -58,13 +58,14 @@ Inject git context at session start.
 
 - **Effect**: `additionalContext` with repo name, branch, dirty count, recent commits (last 5), hot files (last 7 days).
 - **Self-guards**: not in a git repo → silent; non-JSON failure → emits `{}`.
+- **Concurrent-session soft-warn (Codex / Gemini / Cursor)**: on the CLIs that have no `session-lifecycle` hook, this loader also registers a lock in the neutral `~/.rolepod/session-locks/<sha256(worktree)>/` dir and appends a soft warning when a live sibling (any CLI, <30 min) is present. On Claude it skips this (detected via `CLAUDE_PROJECT_DIR`) because `session-lifecycle` already owns the warning — no double-fire. This is the soft-warn-everywhere floor; the hard `worktree-guard` gate remains Claude-only.
 - **What this hook does not do**: no add-on detection, no vendor-tool recovery, no first-session nag, no external-reviewer banner. Add-on availability is documented in README + skills, never nagged per SessionStart.
 
 ### `session-lifecycle.sh --lock` — SessionStart (core)
 
 Detect sibling Claude session(s) in the same worktree to prevent concurrent-edit stomp.
 
-- **Effect**: write own lock to `~/.claude/.session-locks/<sha256(worktree)>/<session_id>.lock`. If sibling locks (<30 min old) detected → warn + suggest `git worktree add` path. Auto-prune stale locks (>30 min) and their `.files` registry.
+- **Effect**: write own lock to `~/.rolepod/session-locks/<sha256(worktree)>/<session_id>.lock`. If sibling locks (<30 min old) detected → warn + suggest `git worktree add` path. Auto-prune stale locks (>30 min) and their `.files` registry. The lock dir is CLI-neutral so Codex/Gemini/Cursor sessions (which warn via their SessionStart context-loader) are detected too.
 - **Self-guards**: not in a git repo → silent; no sibling → silent.
 - **Bypass**: `ROLEPOD_ALLOW_SHARED_WORKTREE=1` (for intentional read-only review sessions).
 - **Pair**: same script `--unlock` on Stop; `worktree-guard.sh` enforces per-file at edit time (this hook only warns once at start).
@@ -127,7 +128,7 @@ When Lead is about to spawn the 2nd+ engineering agent within 10 events, require
 
 Removes own session lock so the next session in this worktree does not see a phantom sibling. Same script as the SessionStart `--lock` invocation, different mode flag.
 
-- **Effect**: `rm -f $HOME/.claude/.session-locks/<sha256(worktree)>/<session_id>.lock` and the matching `.files` registry (releases the files `worktree-guard` recorded for this session).
+- **Effect**: `rm -f $HOME/.rolepod/session-locks/<sha256(worktree)>/<session_id>.lock` and the matching `.files` registry (releases the files `worktree-guard` recorded for this session).
 - **Self-guards**: not in a git repo → silent; no `session_id` → silent.
 - **Bypass**: none (idempotent cleanup).
 
