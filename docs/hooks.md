@@ -1,6 +1,6 @@
 # Hooks reference
 
-Rolepod ships **7 core bash hook scripts** in `hooks/`. Each CLI adapter declares these in a plugin/extension `hooks/hooks.json` — Claude, Codex, Gemini, and Cursor all use the same `hooks/hooks.json` form (Cursor uses camelCase event names; the others use PascalCase). All hooks are **self-guarded** — silent no-op when a dependency is missing.
+Rolepod ships **8 core bash hook scripts** in `hooks/`. Each CLI adapter declares these in a plugin/extension `hooks/hooks.json` — Claude, Codex, Gemini, and Cursor all use the same `hooks/hooks.json` form (Cursor uses camelCase event names; the others use PascalCase). All hooks are **self-guarded** — silent no-op when a dependency is missing.
 
 Lead does not invoke these manually. They fire automatically.
 
@@ -11,9 +11,9 @@ Lead does not invoke these manually. They fire automatically.
 | **Always-on** | `always-on-loader` | Inject the rolepod always-on judgment core as SessionStart context |
 | **Enforcement** | `block-subagent-commit`, `cohesion-contract-check`, `gate-reminder`, `precommit-gate` | Hard / soft blocks on discipline violations (high-risk path, parallel-without-contract, sub-agent commit, schema-bound new file) |
 | **Context** | `project-context-loader` | Inject git state at SessionStart |
-| **Session safety** | `session-lifecycle` | SessionStart lock + Stop unlock — prevents concurrent-edit stomp |
+| **Session safety** | `session-lifecycle`, `worktree-guard` | `session-lifecycle`: SessionStart lock + Stop unlock. `worktree-guard`: hard-blocks an edit only when a live sibling owns that exact file — disjoint/solo edits flow free |
 
-All 7 hooks register on every Claude install. claude-mem and GitNexus integrate via their own vendor plugins/CLI, not rolepod hooks.
+All 8 hooks register on every Claude install. claude-mem and GitNexus integrate via their own vendor plugins/CLI, not rolepod hooks.
 
 PR 6 dropped `verify-reminder.sh` (PostToolUse Edit/Write per-edit nag). The same discipline lives in:
 - skill `check-work` — Iron Rule + evidence-required output contract
@@ -27,7 +27,7 @@ A per-edit reminder hook duplicated all three without enforcement teeth — so i
 | Event | Matcher | Hooks |
 |---|---|---|
 | `SessionStart` | `startup\|resume` | `always-on-loader.sh`, `project-context-loader.sh`, `session-lifecycle.sh --lock` |
-| `PreToolUse` | `Edit\|Write\|MultiEdit` | `gate-reminder.sh` |
+| `PreToolUse` | `Edit\|Write\|MultiEdit` | `worktree-guard.sh`, `gate-reminder.sh` |
 | `PreToolUse` | `Bash` | `precommit-gate.sh`, `block-subagent-commit.sh` |
 | `PreToolUse` | `Agent` | `cohesion-contract-check.sh` |
 | `Stop` | (no matcher) | `session-lifecycle.sh --unlock` |
@@ -64,10 +64,10 @@ Inject git context at session start.
 
 Detect sibling Claude session(s) in the same worktree to prevent concurrent-edit stomp.
 
-- **Effect**: write own lock to `~/.claude/.session-locks/<sha256(worktree)>/<session_id>.lock`. If sibling locks (<30 min old) detected → warn + suggest `git worktree add` path. Auto-prune stale locks (>30 min).
+- **Effect**: write own lock to `~/.claude/.session-locks/<sha256(worktree)>/<session_id>.lock`. If sibling locks (<30 min old) detected → warn + suggest `git worktree add` path. Auto-prune stale locks (>30 min) and their `.files` registry.
 - **Self-guards**: not in a git repo → silent; no sibling → silent.
 - **Bypass**: `ROLEPOD_ALLOW_SHARED_WORKTREE=1` (for intentional read-only review sessions).
-- **Pair**: same script invoked with `--unlock` on Stop.
+- **Pair**: same script `--unlock` on Stop; `worktree-guard.sh` enforces per-file at edit time (this hook only warns once at start).
 
 ### `gate-reminder.sh` — PreToolUse Edit/Write/MultiEdit (core)
 
@@ -82,6 +82,20 @@ Fires output ONLY when:
 
 - **Self-guards**: docs / lockfiles / non-high-risk code → silent.
 - **Bypass**: `ROLEPOD_GATES_SOFT=1` (downgrade hard → warn), `ROLEPOD_GATES_PASSED=1` (single-edit override).
+
+### `worktree-guard.sh` — PreToolUse Edit/Write/MultiEdit/NotebookEdit (core)
+
+Enforcement layer for the concurrent-edit problem `session-lifecycle` only *warns* about. The SessionStart warning is advisory and scrolls out of context in a long session; this hook acts at the moment of risk — the edit — but **only on a real file collision**, so it never punishes solo or disjoint parallel work.
+
+- **Mechanism**: a per-session touched-files registry (`<session_id>.files`) alongside the `session-lifecycle` locks, keyed by `sha256(worktree)`. On each edit it (1) scans live siblings' `.files` for the resolved target path, (2) refreshes its own `.lock` so an actively-editing session never goes stale, (3) records the target into its own `.files` **only on the pass path** (a blocked attempt must not claim ownership — that would deadlock the rightful owner).
+- **Tiers**:
+  - no live sibling → silent (record + pass)
+  - live sibling, target file **not** shared → silent (record + pass) — disjoint work flows free
+  - live sibling owns this **exact** file → `permissionDecision: deny` (real stomp) — points at `EnterWorktree` (native) then `git worktree add` fallback
+- **Self-guards**: not in a git repo → silent; not an edit tool → silent; no file path → silent.
+- **Bypass**: `ROLEPOD_ALLOW_SHARED_WORKTREE=1` (intentional shared session — read-only review, or coordinated file ownership).
+- **Pair**: `session-lifecycle.sh --unlock` releases this session's `.files` at Stop so a sibling can pick them up.
+- **Scope (v1)**: Claude-only. Cross-CLI collisions (a Claude and a Codex session on the same checkout) are not yet detected — a shared lock dir is the next step.
 
 ### `precommit-gate.sh` — PreToolUse Bash (core)
 
@@ -113,7 +127,7 @@ When Lead is about to spawn the 2nd+ engineering agent within 10 events, require
 
 Removes own session lock so the next session in this worktree does not see a phantom sibling. Same script as the SessionStart `--lock` invocation, different mode flag.
 
-- **Effect**: `rm -f $HOME/.claude/.session-locks/<sha256(worktree)>/<session_id>.lock`.
+- **Effect**: `rm -f $HOME/.claude/.session-locks/<sha256(worktree)>/<session_id>.lock` and the matching `.files` registry (releases the files `worktree-guard` recorded for this session).
 - **Self-guards**: not in a git repo → silent; no `session_id` → silent.
 - **Bypass**: none (idempotent cleanup).
 

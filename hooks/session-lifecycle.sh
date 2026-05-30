@@ -57,6 +57,9 @@ LOCK_DIR="$HOME/.claude/.session-locks/$PATH_HASH"
 if [ "$MODE" = "--unlock" ]; then
   [ -z "$SESSION_ID" ] && exit 0
   rm -f "$LOCK_DIR/$SESSION_ID.lock" 2>/dev/null || true
+  # Release the files this session claimed (worktree-guard.sh registry) so a
+  # sibling can pick them up once we are gone.
+  rm -f "$LOCK_DIR/$SESSION_ID.files" 2>/dev/null || true
 
   # Extension Protocol v1: if no rolepod sessions remain in this worktree,
   # drop the parent-active marker so child plugins (rolepod-uiproof, wplab)
@@ -88,7 +91,7 @@ for lock in "$LOCK_DIR"/*.lock; do
   if [ "$age" -lt "$STALE_THRESHOLD" ]; then
     ACTIVE_SIBLINGS=$((ACTIVE_SIBLINGS + 1))
   else
-    rm -f "$lock" 2>/dev/null || true
+    rm -f "$lock" "$LOCK_DIR/$lock_basename.files" 2>/dev/null || true
   fi
 done
 

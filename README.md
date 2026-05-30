@@ -118,7 +118,7 @@ The always-on judgment core ships as an `alwaysApply: true` rule (`rules/always-
 
 - **16 specialist agents** — strategy, architecture, engineering, quality, ops, design, content, and review. Each owns a path or concern and runs on a cost-tiered model (~50-60% cheaper than all-strong). → [docs/agents.md](docs/agents.md), [docs/model-tier-policy.md](docs/model-tier-policy.md)
 - **Core 10 skills** — one router plus nine phase skills, the workflow spine. → [docs/skills.md](docs/skills.md)
-- **Per-CLI hooks** — deterministic enforcement: gate reminders, a pre-commit test gate, a sub-agent commit block, session safety. Counts vary by CLI capability (Claude 7 / Codex 3 / Gemini 4 / Cursor 3). → [docs/hooks.md](docs/hooks.md)
+- **Per-CLI hooks** — deterministic enforcement: gate reminders, a pre-commit test gate, a sub-agent commit block, a concurrent-edit stomp guard, session safety. Counts vary by CLI capability (Claude 8 / Codex 3 / Gemini 4 / Cursor 3). → [docs/hooks.md](docs/hooks.md)
 - **Active gates** — Q1-Q4 delegation, S1-S5 simplicity, T1-T6 tests, F1-F5 failure-mode — checked before every commit.
 
 The source lives in `core/`; per-CLI adapters render it into a native plugin for each CLI.
