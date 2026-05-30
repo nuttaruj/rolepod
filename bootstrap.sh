@@ -6,7 +6,7 @@
 # Designed for: curl -fsSL https://raw.githubusercontent.com/nuttaruj/rolepod/main/bootstrap.sh | bash
 #
 # Rolepod ships PURE FRAMEWORK ONLY. Recommended add-ons (rtk, caveman,
-# GitNexus, MemPalace, ui-ux-pro-max, OpenAI Codex review plugin, Codex CLI,
+# GitNexus, claude-mem, ui-ux-pro-max, OpenAI Codex review plugin, Codex CLI,
 # Gemini CLI) live in README → "Recommended add-ons" — install separately
 # yourself. The framework auto-integrates when each is present.
 #

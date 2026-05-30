@@ -2,7 +2,7 @@
 # rolepod installer — copies workflow files to the selected CLI's config dir.
 #
 # Rolepod ships PURE FRAMEWORK ONLY — no 3rd-party tools or plugins are
-# auto-installed. Recommended add-ons (CodeGraph, GitNexus, MemPalace, rtk,
+# auto-installed. Recommended add-ons (CodeGraph, GitNexus, claude-mem, rtk,
 # caveman, ui-ux-pro-max) live in README → "Recommended add-ons". The
 # framework auto-integrates with each one when the user installs it themselves
 # (graceful degradation everywhere).
@@ -52,7 +52,7 @@
 # wrapped in <!-- rolepod:start --> ... <!-- rolepod:end --> markers. User
 # content outside those markers is preserved across re-installs and uninstall.
 #
-# Add-on detection: if MemPalace / GitNexus / etc. are already installed on the
+# Add-on detection: if claude-mem / GitNexus / etc. are already installed on the
 # user's system, framework hooks/rules wire to them automatically. Nothing is
 # installed by this script.
 
@@ -80,7 +80,7 @@ for arg in "$@"; do
     -h|--help)
       sed -n '2,53p' "$0"
       exit 0 ;;
-    *) echo "Unknown arg: $arg" >&2; echo "" >&2; echo "Rolepod ships framework only. For 3rd-party add-ons (GitNexus / MemPalace / etc.), see README → Recommended add-ons." >&2; exit 1 ;;
+    *) echo "Unknown arg: $arg" >&2; echo "" >&2; echo "Rolepod ships framework only. For 3rd-party add-ons (GitNexus / claude-mem / etc.), see README → Recommended add-ons." >&2; exit 1 ;;
   esac
 done
 
@@ -1511,7 +1511,7 @@ ${BOLD}rolepod framework installed.${NC} (Pure framework — no 3rd-party add-on
 
 Recommended add-ons (install separately — framework auto-integrates each):
   • Code intel    — CodeGraph, GitNexus
-  • Memory        — MemPalace
+  • Memory        — claude-mem
   • Token cuts    — rtk, caveman
   • Design        — ui-ux-pro-max
 
