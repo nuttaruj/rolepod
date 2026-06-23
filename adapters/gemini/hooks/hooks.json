@@ -1,6 +1,20 @@
 {
-  "_comment": "Rolepod hook config. Schema: https://github.com/google-gemini/gemini-cli/blob/main/docs/hooks/index.md (verified 2026-05-10). Events used: SessionStart (context inject), BeforeTool (verify-first reminder), AfterTool (verify-after reminder on Edit/Write/replace).",
+  "_comment": "Rolepod hook config. Schema: https://github.com/google-gemini/gemini-cli/blob/main/docs/hooks/reference.md (verified 2026-06-23). Events used: BeforeAgent (claim-verify nudge on the answer path — Gemini's equivalent of Claude/Codex UserPromptSubmit; injects hookSpecificOutput.additionalContext before the agent plans), SessionStart (context inject), BeforeTool (verify-first reminder), AfterTool (verify-after reminder on Edit/Write/replace), PreCompress (state checkpoint).",
   "hooks": {
+    "BeforeAgent": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "name": "rolepod-claim-verify-nudge",
+            "type": "command",
+            "command": "${extensionPath}/hooks/claim-verify-nudge.sh",
+            "timeout": 3000,
+            "description": "Soft read-first nudge when the prompt asks for an analysis/diagnosis/status about real code."
+          }
+        ]
+      }
+    ],
     "SessionStart": [
       {
         "_comment": "Lifecycle matcher = exact string per Gemini hooks spec. Pipe-separated covers all session start reasons.",

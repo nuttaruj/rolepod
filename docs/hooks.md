@@ -1,6 +1,6 @@
 # Hooks reference
 
-Rolepod ships **8 core bash hook scripts** in `hooks/`. Each CLI adapter declares these in a plugin/extension `hooks/hooks.json` — Claude, Codex, Gemini, and Cursor all use the same `hooks/hooks.json` form (Cursor uses camelCase event names; the others use PascalCase). All hooks are **self-guarded** — silent no-op when a dependency is missing.
+Rolepod ships a family of **core bash hook scripts** in `hooks/`. Each CLI adapter declares the applicable ones in a plugin/extension `hooks/hooks.json` — Claude, Codex, Gemini, and Cursor all use the same `hooks/hooks.json` form (Cursor uses camelCase event names; the others use PascalCase). All hooks are **self-guarded** — silent no-op when a dependency is missing.
 
 Lead does not invoke these manually. They fire automatically.
 
@@ -12,8 +12,9 @@ Lead does not invoke these manually. They fire automatically.
 | **Enforcement** | `block-subagent-commit`, `cohesion-contract-check`, `gate-reminder`, `precommit-gate` | Hard / soft blocks on discipline violations (high-risk path, parallel-without-contract, sub-agent commit, schema-bound new file) |
 | **Context** | `project-context-loader` | Inject git state at SessionStart |
 | **Session safety** | `session-lifecycle`, `worktree-guard` | `session-lifecycle`: SessionStart lock + Stop unlock. `worktree-guard`: hard-blocks an edit only when a live sibling owns that exact file — disjoint/solo edits flow free |
+| **Answer-path** | `claim-verify-nudge` | Soft read-first nudge when a prompt asks for an analysis / diagnosis / "how does X work" / status — covers the claim/answer path that tool + lifecycle hooks miss. Claude/Codex `UserPromptSubmit`, Gemini `BeforeAgent`; soft (`additionalContext`), never blocks |
 
-All 8 hooks register on every Claude install. claude-mem and GitNexus integrate via their own vendor plugins/CLI, not rolepod hooks.
+All core hooks register on every Claude install. claude-mem and GitNexus integrate via their own vendor plugins/CLI, not rolepod hooks.
 
 PR 6 dropped `verify-reminder.sh` (PostToolUse Edit/Write per-edit nag). The same discipline lives in:
 - skill `check-work` — Iron Rule + evidence-required output contract
@@ -27,6 +28,7 @@ A per-edit reminder hook duplicated all three without enforcement teeth — so i
 | Event | Matcher | Hooks |
 |---|---|---|
 | `SessionStart` | `startup\|resume` | `always-on-loader.sh`, `project-context-loader.sh`, `session-lifecycle.sh --lock` |
+| `UserPromptSubmit` | (no matcher) | `claim-verify-nudge.sh` |
 | `PreToolUse` | `Edit\|Write\|MultiEdit` | `worktree-guard.sh`, `gate-reminder.sh` |
 | `PreToolUse` | `Bash` | `precommit-gate.sh`, `block-subagent-commit.sh` |
 | `PreToolUse` | `Agent` | `cohesion-contract-check.sh` |
@@ -173,9 +175,10 @@ Adding a `PreToolUse Bash` hook that checks for `docs/rolepod/specs/<feature>-YY
 
 ## Root vs Codex adapter parity
 
-Root `hooks/*.sh` is canonical. The Codex adapter mirrors only the hooks whose events Codex supports (`SessionStart`, `PreToolUse apply_patch|Bash`, `PostToolUse Bash`):
+Root `hooks/*.sh` is canonical. The Codex adapter mirrors only the hooks whose events Codex supports (`SessionStart`, `UserPromptSubmit`, `PreToolUse apply_patch|Bash`, `PostToolUse Bash`):
 
 - **3 core** byte-exact mirrors: `gate-reminder.sh`, `precommit-gate.sh`, `project-context-loader.sh`.
+- `claim-verify-nudge.sh` mirrors the root `UserPromptSubmit` hook 1:1 — Codex uses the same event name and camelCase `additionalContext` as Claude, so the script is shared verbatim (not part of the parity-enforced trio, but identical at ship).
 
 `always-on-loader`, `block-subagent-commit`, `cohesion-contract-check`, `session-lifecycle` stay Claude-only (`always-on-loader` is unnecessary on Codex/Gemini/Cursor — they load their always-on core natively from `AGENTS.md` / `GEMINI.md` / `rules/*.mdc`; Codex also has no `Agent` event API and no `Stop` event for unlock).
 
@@ -194,6 +197,7 @@ The Cursor adapter ships **3 core hooks** in `adapters/cursor/scripts/`, paralle
 | `session-lifecycle.sh` (SessionStart/Stop lock) | not ported — Cursor's session model differs from Claude's; sibling-session lock has no clear Cursor equivalent yet |
 | `block-subagent-commit.sh` (PreToolUse:Bash) | not ported — Cursor's subagent identity differs; deferred until `subagentStart` payload is exercised |
 | `cohesion-contract-check.sh` (PreToolUse:Agent) | not ported — same reason |
+| `claim-verify-nudge.sh` (UserPromptSubmit) | not ported — Cursor's `beforeSubmitPrompt` is block-only (`{continue, user_message}`) and cannot inject pre-answer context; deferred until Cursor adds `additional_context` to that event ([feature request](https://forum.cursor.com/t/add-additional-context-to-beforesubmitprompt-hook-output/157231)) |
 
 Cursor uses camelCase event names (`sessionStart`, `preToolUse`, `beforeShellExecution`) vs Claude's PascalCase. The `matcher` field accepts regex patterns matched against tool name (`preToolUse`) or full shell command (`beforeShellExecution`).
 

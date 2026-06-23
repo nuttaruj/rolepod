@@ -1,6 +1,17 @@
 {
-  "_comment": "Rolepod Codex hooks. 3 core plugin hooks — byte-exact mirrors of root hooks/*.sh (parity enforced by tests/static/lean-surface.sh). Claude-only hooks (block-subagent-commit, cohesion-contract-check, session-lifecycle) are NOT registered here because Codex has no Agent / Stop event API and uses a different plugin model. Codex still needs `codex features enable plugin_hooks` before any hook here fires. verify-reminder was removed in PR 6 — verification is owned by the check-work skill + precommit-gate, not by a per-edit nag hook.",
+  "_comment": "Rolepod Codex hooks. Core plugin hooks mirror the applicable root hooks/*.sh (the SessionStart/PreToolUse trio is byte-exact parity-enforced by tests/static/lean-surface.sh; claim-verify-nudge mirrors the root UserPromptSubmit hook 1:1 — Codex uses the same event name + camelCase additionalContext as Claude). Claude-only hooks (block-subagent-commit, cohesion-contract-check, session-lifecycle) are NOT registered here because Codex has no Agent / Stop event API and uses a different plugin model. Codex still needs `codex features enable plugin_hooks` before any hook here fires, and plugin-bundled hooks must be trusted by the user before they run.",
   "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ${PLUGIN_ROOT}/hooks/claim-verify-nudge.sh",
+            "timeout": 3
+          }
+        ]
+      }
+    ],
     "SessionStart": [
       {
         "matcher": "startup|resume",

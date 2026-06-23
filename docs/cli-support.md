@@ -79,11 +79,12 @@ adapters/
 | Event class | Claude Code | Codex CLI | Gemini CLI | Cursor IDE |
 |---|---|---|---|---|
 | Session start | `SessionStart` (`startup\|resume`) | `SessionStart` (`startup\|resume`) | `SessionStart` (`startup\|resume\|clear`) | `sessionStart` (no matcher) |
+| Prompt submit (claim-verify nudge) | `UserPromptSubmit` (no matcher) | `UserPromptSubmit` (no matcher) | `BeforeAgent` (`*`) | — (`beforeSubmitPrompt` fires on submit but cannot inject pre-answer context) |
 | Before tool run | `PreToolUse` (`Edit\|Write\|MultiEdit`, `Bash`, `Agent`) | `PreToolUse` (`apply_patch`, `Bash`) | `BeforeTool` (`write_file\|replace\|edit`) | `preToolUse` (`Write\|Edit\|MultiEdit`); `beforeShellExecution` (`git[[:space:]]+commit`) |
 | After tool run | `PostToolUse` (`Edit\|Write`, `Bash`) | `PostToolUse` (`apply_patch`, `Bash`) | `AfterTool` (`write_file\|replace\|edit`) | — (uses `beforeShellExecution` for commit gate; no observational hooks yet) |
 | Stop / compact | `Stop` (no matcher) | — | `PreCompress` | — (sessionEnd/stop reserved for future use) |
 
-Per-CLI hook counts: Claude registers 7 core hooks via the plugin manifest. Codex registers 3 core hooks in `hooks/hooks.json` (requires `codex features enable plugin_hooks` opt-in). Gemini registers 4 core hooks in `hooks/hooks.json`. Cursor registers 3 core hooks in `hooks/hooks.json` (always-on judgment uses an `alwaysApply` rule instead of a SessionStart hook, so the loader script is folded into the rule). Rolepod ships no add-on hooks — claude-mem and GitNexus integrate via their own vendor plugins/CLI.
+Per-CLI hook counts: Claude registers 8 core hooks via the plugin manifest. Codex registers 4 core hooks in `hooks/hooks.json` (requires `codex features enable plugin_hooks` opt-in; plugin-bundled hooks must be trusted by the user before they fire). Gemini registers 5 core hooks in `hooks/hooks.json`. Cursor registers 3 core hooks in `hooks/hooks.json` (always-on judgment uses an `alwaysApply` rule instead of a SessionStart hook, so the loader script is folded into the rule). The `claim-verify-nudge` answer-path hook ships on Claude / Codex / Gemini but not Cursor — Cursor's `beforeSubmitPrompt` cannot inject pre-answer context. Rolepod ships no add-on hooks — claude-mem and GitNexus integrate via their own vendor plugins/CLI.
 
 ## Verification status — what's confirmed locally
 
