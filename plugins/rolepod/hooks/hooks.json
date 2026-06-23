@@ -1,6 +1,17 @@
 {
-  "_comment": "Rolepod Claude plugin hooks — 7 core hooks. Canonical `hooks/hooks.json` form (plugin root); rendered into plugins/rolepod/hooks/ alongside the *.sh scripts. ${CLAUDE_PLUGIN_ROOT} resolves to the installed plugin dir.",
+  "_comment": "Rolepod Claude plugin hooks — 8 core hooks. Canonical `hooks/hooks.json` form (plugin root); rendered into plugins/rolepod/hooks/ alongside the *.sh scripts. ${CLAUDE_PLUGIN_ROOT} resolves to the installed plugin dir.",
   "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/claim-verify-nudge.sh\"",
+            "timeout": 3
+          }
+        ]
+      }
+    ],
     "SessionStart": [
       {
         "matcher": "startup|resume",
