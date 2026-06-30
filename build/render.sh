@@ -6,7 +6,8 @@
 #   ./build/render.sh --target=codex
 #   ./build/render.sh --target=gemini
 #   ./build/render.sh --target=cursor
-#   ./build/render.sh --target=all               # render all four
+#   ./build/render.sh --target=antigravity       # Antigravity CLI (agy)
+#   ./build/render.sh --target=all               # render all five
 #
 # Outputs:
 #   .claude-plugin/marketplace.json                    # committed — repo IS the Claude marketplace
@@ -46,9 +47,9 @@ for arg in "$@"; do
 done
 
 case "$TARGET" in
-  claude|codex|gemini|cursor|all) ;;
+  claude|codex|gemini|cursor|antigravity|all) ;;
   *)
-    echo "Unknown target: $TARGET (expected claude|codex|gemini|cursor|all)" >&2
+    echo "Unknown target: $TARGET (expected claude|codex|gemini|cursor|antigravity|all)" >&2
     exit 1 ;;
 esac
 
@@ -483,13 +484,74 @@ PY
   fi
 }
 
+# ─── Render Antigravity (agy) target ────────────────────────────────────────
+# agy (Antigravity CLI) is the consumer-tier successor to Gemini CLI. It ships
+# as a PLUGIN (skills + subagents + hooks) installed to
+# ~/.gemini/config/plugins/rolepod/, plus an AGENTS.md context file that lives
+# in the agy customization root (NOT a plugin component). Like gemini, output
+# stays under build/rendered/ (gitignored) — install.sh copies the plugin to
+# the agy plugin dir and AGENTS.md to the customization root.
+#
+# Gitignored (build/rendered/antigravity/ — read by install.sh only):
+#   AGENTS.md                  (always-on core → agy customization root)
+#   plugin/plugin.json         (agy plugin manifest)
+#   plugin/skills/<name>/...    (copied from core/skills)
+#   plugin/agents/<name>.md     (16 agents, gemini md+frontmatter shape)
+#   plugin/hooks/hooks.json     (agy-native event wiring: PreInvocation/PreToolUse/PostToolUse)
+#   plugin/hooks/*.sh           (gemini hook scripts reused; pre-compress dropped)
+
+render_antigravity() {
+  local template="$REPO_DIR/adapters/antigravity/AGENTS.md.tmpl"
+  local out_dir="$REPO_DIR/build/rendered/antigravity"
+  local adapter_dir="$REPO_DIR/adapters/antigravity"
+  local plugin_dst="$out_dir/plugin"
+
+  [ -f "$template" ] || { echo "render: missing $template" >&2; exit 1; }
+
+  rm -rf "$out_dir"
+  mkdir -p "$plugin_dst"
+
+  # AGENTS.md context file — installed to the agy customization root, NOT the
+  # plugin (agy loads always-on rules from the root, not a plugin component).
+  render_template "$template" "$out_dir/AGENTS.md"
+
+  # Plugin manifest.
+  if [ -f "$adapter_dir/plugin.json" ]; then
+    cp "$adapter_dir/plugin.json" "$plugin_dst/plugin.json"
+  else
+    echo "render: missing $adapter_dir/plugin.json" >&2; exit 1
+  fi
+
+  # Skills as a real directory tree (rendered from core/skills/).
+  render_skills "$plugin_dst/skills"
+
+  # Agents — md + YAML frontmatter (agy subagents reuse the gemini shape).
+  render_agents "gemini" "$plugin_dst/agents"
+
+  # Hooks — agy-native event wiring (hooks.json) + the gemini hook scripts
+  # reused verbatim (CLI-agnostic context emitters). agy has no PreCompress
+  # event, so the gemini pre-compress checkpoint script is not copied.
+  mkdir -p "$plugin_dst/hooks"
+  if [ -f "$adapter_dir/hooks/hooks.json" ]; then
+    cp "$adapter_dir/hooks/hooks.json" "$plugin_dst/hooks/hooks.json"
+  else
+    echo "render: missing $adapter_dir/hooks/hooks.json" >&2; exit 1
+  fi
+  local h
+  for h in session-start before-tool after-tool claim-verify-nudge; do
+    cp "$REPO_DIR/adapters/gemini/hooks/$h.sh" "$plugin_dst/hooks/$h.sh"
+  done
+  chmod +x "$plugin_dst/hooks/"*.sh 2>/dev/null || true
+}
+
 generate_skill_index_lean
 generate_agent_roster_lean
 
 case "$TARGET" in
-  claude) render_claude ;;
-  codex)  render_codex ;;
-  gemini) render_gemini ;;
-  cursor) render_cursor ;;
-  all)    render_claude; render_codex; render_gemini; render_cursor ;;
+  claude)      render_claude ;;
+  codex)       render_codex ;;
+  gemini)      render_gemini ;;
+  cursor)      render_cursor ;;
+  antigravity) render_antigravity ;;
+  all)         render_claude; render_codex; render_gemini; render_cursor; render_antigravity ;;
 esac

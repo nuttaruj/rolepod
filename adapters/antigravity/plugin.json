@@ -1,0 +1,8 @@
+{
+  "_comment": "Rolepod Antigravity CLI (agy) plugin manifest. Schema verified against agy 1.0.13 installed plugins (~/.gemini/config/plugins/*/plugin.json) on 2026-06-30: name required (^[a-zA-Z0-9-_]+$), version/description/license/keywords optional. Installed via `agy plugin install <dir>` into ~/.gemini/config/plugins/rolepod/. Bundles skills/ + agents + hooks/hooks.json. The always-on core (AGENTS.md) is NOT a plugin component — it installs to the agy customization root.",
+  "name": "rolepod",
+  "version": "0.9.0",
+  "description": "16-agent dev team workflow with gates, simplicity rules, and verify-first discipline. Antigravity CLI (agy) plugin.",
+  "license": "MIT",
+  "keywords": ["workflow", "agents", "gates", "verify-first", "spec-driven"]
+}
