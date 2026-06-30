@@ -497,7 +497,7 @@ PY
 #   plugin/plugin.json         (agy plugin manifest)
 #   plugin/skills/<name>/...    (copied from core/skills)
 #   plugin/agents/<name>.md     (16 agents, gemini md+frontmatter shape)
-#   plugin/hooks/hooks.json     (agy-native event wiring: PreInvocation/PreToolUse/PostToolUse)
+#   plugin/hooks.json           (agy-native event wiring at PLUGIN ROOT: PreInvocation/PreToolUse/PostToolUse)
 #   plugin/hooks/*.sh           (gemini hook scripts reused; pre-compress dropped)
 
 render_antigravity() {

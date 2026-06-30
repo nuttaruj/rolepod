@@ -30,7 +30,7 @@ check "plugin name is rolepod"              "python3 -c \"import json;assert jso
 check "hooks.json at PLUGIN ROOT"           "[ -f $P/hooks.json ]"
 check "no stray hooks/hooks.json subpath"   "[ ! -f $P/hooks/hooks.json ]"
 check "hook scripts under hooks/ (4)"       "[ \"\$(ls $P/hooks/*.sh 2>/dev/null | wc -l | tr -d ' ')\" = 4 ]"
-check "skills present (Core 10 + alias)"    "[ \"\$(ls $P/skills | wc -l | tr -d ' ')\" -ge 10 ]"
+check "exactly 11 skills (Core 10 + rolepod-full alias)" "[ \"\$(ls $P/skills | wc -l | tr -d ' ')\" = 11 ]"
 check "16 agents present"                   "[ \"\$(ls $P/agents/*.md | wc -l | tr -d ' ')\" = 16 ]"
 
 # hooks.json schema: agy-native events, top-level, no wrapper, no _comment.
