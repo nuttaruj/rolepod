@@ -27,9 +27,11 @@
 - [ ] **Test / evidence:** <test type + the assertion that proves it works>
 - [ ] **Expected failing signal:** <for test-first tasks — the error the test
       shows before the fix. Omit if not test-first.>
-- [ ] **Command:** <exact command to run the test, if known>
+- [ ] **Command:** <exact command to run the check — runnable copy-paste as-is,
+      so the build loop can verify this task without guessing>
 - **Owner:** <Lead, or the specialist agent if delegated>
 - **Done when:** <pass/fail condition>
+- **On fail:** <non-default recovery, if any. Omit to use the Failure policy below.>
 
 ### Task 2: <title>
 <same shape — checkbox each step>
@@ -45,6 +47,14 @@
 
 ## Done criteria
 <The whole-plan finish line. Every task done AND this is true.>
+
+## Failure policy
+<The build loop's circuit-breaker — in the artifact, so the plan runs without
+ relying on the always-on core. Default per task: a failing **Command** →
+ debug-issue (reproduce → minimal fix → re-run the same Command). Stop and
+ escalate to the user after 3 failed attempts on one task, or on oscillation
+ (a fix for one task reopens another). A task needing a different fallback
+ states it in its **On fail:**.>
 
 ## Risks
 <What could go wrong, and the fallback.>

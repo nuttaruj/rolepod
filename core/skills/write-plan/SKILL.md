@@ -15,7 +15,7 @@ Plan-phase entry skill. Convert an approved spec or a clear small goal into a co
 <EXTREMELY-IMPORTANT>
 1. NEVER start editing code before the plan names the files, the order, and the verification per task.
 2. NEVER spawn more than one parallel agent on the same feature without a written cohesion contract that pins file ownership and merge order.
-3. NEVER write a vague task like "add tests" — every task must name a test or evidence that proves it is done.
+3. NEVER write a vague task like "add tests" — every task must name a test or evidence that proves it is done, AND the exact runnable command that checks it, so the build loop can verify the task without guessing.
 4. Pick the simplest viable approach. Complexity needs an explicit reason and user awareness.
 </EXTREMELY-IMPORTANT>
 
@@ -71,7 +71,7 @@ Break a task down further if any holds: >2hr of work, acceptance needs more than
 
 ### 3. Test plan per task
 
-For each task, name the test type (unit / integration / contract / E2E / smoke / benchmark / repro) and the assertion that would prove it works. "Adds tests" is not a test plan.
+For each task, name the test type (unit / integration / contract / E2E / smoke / benchmark / repro), the assertion that would prove it works, and the exact command to run it — copy-paste runnable, not "run the tests". The runnable command is what lets the build loop verify each task autonomously. "Adds tests" is not a test plan.
 
 ### 4. Decide if parallelism helps
 
@@ -92,6 +92,7 @@ Scan for:
 - **Spec-coverage trace** — for each spec requirement, name the task that implements it. List gaps. A spec requirement with no task is a plan failure
 - **Symbol consistency cross-task** — function / method / property names must match across tasks. `clearLayers()` in Task 3 and `clearFullLayers()` in Task 7 is a bug — pick one and propagate
 - **Missing tests** on any task
+- **Loop-runnable** — every task carries an exact runnable Command, and the plan states a Failure policy, so the build loop can execute → verify → recover without re-asking the user
 - **Untouched high-risk surfaces**
 - **Unowned files** in a parallel layout
 
@@ -101,7 +102,7 @@ Plan-failure patterns. Never ship a plan that contains:
 
 - `TBD`, `TODO`, "implement later", "fill in details"
 - "Add appropriate error handling" / "add validation" / "handle edge cases" — name the cases, name the handling
-- "Write tests for the above" without the test type and assertion
+- "Write tests for the above" without the test type, the assertion, and the exact runnable command
 - "Similar to Task N" — repeat the shape; the engineer may read tasks out of order
 - Steps that describe what to do without showing where (file path + the change)
 - References to types, functions, or symbols not defined in any task or in the existing codebase
