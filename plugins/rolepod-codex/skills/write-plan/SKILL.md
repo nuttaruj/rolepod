@@ -159,7 +159,7 @@ Load only when the task needs it:
 
 ## Full Rolepod enhancement
 
-Full Rolepod improves this phase by adding agent-routing heuristics, cohesion contracts as a first-class artifact, model-tier / cost-aware routing across the 18 agents, and tests that prove every shipped plan named a test per task.
+Full Rolepod improves this phase by adding agent-routing heuristics, cohesion contracts as a first-class artifact, model-tier / cost-aware routing across the 16 agents, and tests that prove every shipped plan named a test per task.
 
 ## Next phase
 

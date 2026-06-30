@@ -63,7 +63,7 @@ curl -fsSL https://raw.githubusercontent.com/nuttaruj/rolepod/main/bootstrap.sh 
 ### Codex CLI
 
 ```bash
-# Install — the plugin carries skills + hooks; the 18 agents need the installer
+# Install — the plugin carries skills + hooks; the 16 agents need the installer
 codex plugin marketplace add nuttaruj/rolepod
 codex plugin add rolepod@rolepod
 curl -fsSL https://raw.githubusercontent.com/nuttaruj/rolepod/main/bootstrap.sh | bash -s -- --target=codex

@@ -13,11 +13,11 @@
 #   .claude-plugin/marketplace.json                    # committed — repo IS the Claude marketplace
 #   .cursor-plugin/marketplace.json                    # committed — repo IS the Cursor marketplace
 #   plugins/rolepod/                                   # committed — rendered Claude plugin tree
-#   plugins/rolepod/agents/<name>.md                   # 18 files (Claude frontmatter)
+#   plugins/rolepod/agents/<name>.md                   # 16 files (Claude frontmatter)
 #   plugins/rolepod-codex/                             # committed — rendered Codex plugin tree
 #   plugins/rolepod-cursor/                            # committed — rendered Cursor plugin tree
 #   build/rendered/codex/AGENTS.md                     # gitignored build output
-#   build/rendered/codex/agents/<name>.md              # 18 files (portable frontmatter)
+#   build/rendered/codex/agents/<name>.md              # 16 files (portable frontmatter)
 #   build/rendered/gemini/GEMINI.md                    # gitignored build output
 #
 # The Claude + Cursor targets render into committed repo-root paths so the
@@ -205,7 +205,7 @@ render_skills() {
 # guards against drift). Only the plugin tree is rebuilt — never the repo root.
 #   .claude-plugin/marketplace.json            (marketplace manifest — repo root)
 #   plugins/rolepod/.claude-plugin/plugin.json (plugin manifest)
-#   plugins/rolepod/agents/*.md                (18 rendered agents)
+#   plugins/rolepod/agents/*.md                (16 rendered agents)
 #   plugins/rolepod/skills/<name>/SKILL.md     (real dir, copied from core/skills)
 #   plugins/rolepod/commands/*.md              (slash commands)
 #   plugins/rolepod/hooks/*.sh + *.md + lib/
@@ -280,7 +280,7 @@ render_claude() {
 #   plugins/rolepod-codex/skills/<name>/SKILL.md     (copied from core/skills)
 # Gitignored (build/rendered/codex/ — read by install.sh only):
 #   AGENTS.md                                        (~/.codex/AGENTS.md block)
-#   agents/*.toml                                    (18 agents → ~/.codex/agents/,
+#   agents/*.toml                                    (16 agents → ~/.codex/agents/,
 #                                                     NOT a plugin component)
 
 render_codex() {
@@ -399,7 +399,7 @@ render_gemini() {
 #   plugins/rolepod-cursor/.cursor-plugin/plugin.json
 #   plugins/rolepod-cursor/rules/always-on-core.mdc  (fully resolved)
 #   plugins/rolepod-cursor/skills/<name>/SKILL.md    (stripped to name+description)
-#   plugins/rolepod-cursor/agents/<name>.md          (18 files, minimal frontmatter)
+#   plugins/rolepod-cursor/agents/<name>.md          (16 files, minimal frontmatter)
 #   plugins/rolepod-cursor/hooks/hooks.json
 #   plugins/rolepod-cursor/scripts/*.sh              (3 hook scripts)
 
