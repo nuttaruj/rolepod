@@ -1,41 +1,38 @@
 {
-  "_comment": "Rolepod Antigravity CLI (agy) hook config. Event names + structure verified against the live ~/.gemini/config/hooks.json on agy 1.0.13 (2026-06-30): agy uses Claude-style events (PreInvocation/PostInvocation/Stop/PreToolUse/PostToolUse), NOT Gemini's (BeforeAgent/SessionStart/BeforeTool/AfterTool/PreCompress). The hook .sh scripts are reused from the gemini adapter (CLI-agnostic context emitters); only this event wiring is agy-specific. timeout is in SECONDS (per the live orca-status example). ${extensionPath} resolves to the installed plugin dir (CHANGELOG v1.0.5). No PreCompress equivalent on agy, so the gemini pre-compress checkpoint is dropped. Confirm with `agy hooks` after install.",
-  "rolepod": {
-    "PreInvocation": [
-      {
-        "type": "command",
-        "command": "${extensionPath}/hooks/session-start.sh",
-        "timeout": 5
-      },
-      {
-        "type": "command",
-        "command": "${extensionPath}/hooks/claim-verify-nudge.sh",
-        "timeout": 3
-      }
-    ],
-    "PreToolUse": [
-      {
-        "matcher": "write_file|replace|edit",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "${extensionPath}/hooks/before-tool.sh",
-            "timeout": 3
-          }
-        ]
-      }
-    ],
-    "PostToolUse": [
-      {
-        "matcher": "write_file|replace|edit",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "${extensionPath}/hooks/after-tool.sh",
-            "timeout": 3
-          }
-        ]
-      }
-    ]
-  }
+  "PreInvocation": [
+    {
+      "type": "command",
+      "command": "${extensionPath}/hooks/session-start.sh",
+      "timeout": 5
+    },
+    {
+      "type": "command",
+      "command": "${extensionPath}/hooks/claim-verify-nudge.sh",
+      "timeout": 3
+    }
+  ],
+  "PreToolUse": [
+    {
+      "matcher": "write_file|replace|edit",
+      "hooks": [
+        {
+          "type": "command",
+          "command": "${extensionPath}/hooks/before-tool.sh",
+          "timeout": 3
+        }
+      ]
+    }
+  ],
+  "PostToolUse": [
+    {
+      "matcher": "write_file|replace|edit",
+      "hooks": [
+        {
+          "type": "command",
+          "command": "${extensionPath}/hooks/after-tool.sh",
+          "timeout": 3
+        }
+      ]
+    }
+  ]
 }

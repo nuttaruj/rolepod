@@ -531,9 +531,13 @@ render_antigravity() {
   # Hooks — agy-native event wiring (hooks.json) + the gemini hook scripts
   # reused verbatim (CLI-agnostic context emitters). agy has no PreCompress
   # event, so the gemini pre-compress checkpoint script is not copied.
+  # agy plugin hooks.json lives at the PLUGIN ROOT (verified via `agy plugin
+  # validate` on agy 1.0.13 — a hooks/hooks.json subpath is "not found", and
+  # events must be top-level, not wrapped in a plugin-name key). Hook scripts
+  # stay under hooks/ and are referenced as ${extensionPath}/hooks/*.sh.
   mkdir -p "$plugin_dst/hooks"
   if [ -f "$adapter_dir/hooks/hooks.json" ]; then
-    cp "$adapter_dir/hooks/hooks.json" "$plugin_dst/hooks/hooks.json"
+    cp "$adapter_dir/hooks/hooks.json" "$plugin_dst/hooks.json"
   else
     echo "render: missing $adapter_dir/hooks/hooks.json" >&2; exit 1
   fi
