@@ -13,7 +13,7 @@
 <What this explicitly does NOT do. Cut scope creep here.>
 
 ## Current behavior
-<What happens today. "Nothing — new surface" is a valid answer.>
+<What happens today. "Nothing — new surface" is a valid answer. Repeat feature: seed from the latest docs/rolepod/specs/<feature>-*.md Desired behavior, but verify it shipped before trusting it.>
 
 ## Desired behavior
 <What should happen after. Observable, not internal.>
