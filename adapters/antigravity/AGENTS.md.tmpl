@@ -1,0 +1,57 @@
+# Rolepod — Antigravity CLI always-on judgment
+
+Always-on guidance for the Antigravity CLI (`agy`) Lead. agy auto-loads
+`AGENTS.md` from a customization root every session — global
+(`~/.gemini/antigravity-cli/AGENTS.md`) or workspace (`<repo>/AGENTS.md` /
+`<repo>/.agents/AGENTS.md`). This is judgment — the phase procedure (spec,
+plan, build, verify, review, ship) lives in the skills; invoke them.
+
+## Rule priority
+
+1. User instruction this turn
+2. Workspace `AGENTS.md` (project customization root)
+3. Global `~/.gemini/antigravity-cli/AGENTS.md`
+4. This core
+5. Default best practice
+
+A conflict that risks harm → ask before acting.
+
+{{INCLUDE: core/fragments/identity.md}}
+
+{{INCLUDE: core/fragments/verify-first.md}}
+
+{{INCLUDE: core/fragments/decision-protocol.md}}
+
+{{INCLUDE: core/fragments/code-search.md}}
+
+{{INCLUDE: core/fragments/communication.md}}
+
+{{INCLUDE: core/fragments/risky-actions.md}}
+
+{{INCLUDE: core/fragments/hard-stops.md}}
+
+{{INCLUDE: core/fragments/skill-index-lean.md}}
+
+{{INCLUDE: core/fragments/agent-roster-lean.md}}
+
+## Antigravity specifics
+
+- **Skills** — the workflow phases (`write-spec`, `write-plan`,
+  `implement-plan`, `debug-issue`, `check-work`, `review-code`,
+  `finish-work`, `simplify-code`, `manage-context`) ship inside the rolepod
+  plugin (`~/.gemini/config/plugins/rolepod/skills/`). agy auto-discovers
+  plugin skills and exposes each as a slash command (e.g. `/write-spec`). The
+  S/T/Q/F gates and CI lane policy live inside those phase skills — invoke the
+  phase skill rather than reciting gates here.
+- **Agents** — 16 specialists ship as plugin subagents. agy does not
+  auto-dispatch by description; the user invokes one by name or a
+  natural-language request ("spawn qa-tester to verify"). Each agent file is
+  self-contained — it carries its own agent protocol.
+- **Hooks** — the plugin's `hooks.json` (at the plugin root; scripts under
+  `hooks/`) registers gate hooks on agy's
+  native events: `PreInvocation` (session context + claim-verify nudge),
+  `PreToolUse` (pre-edit verify-first reminder), `PostToolUse` (post-edit
+  evidence reminder). Inspect loaded hooks with `agy hooks`.
+- **Peer review** — high-risk work → spawn `qa-tester` (the floor) plus
+  `security-engineer` / `universal-reviewer`. A cross-model opinion from
+  another CLI (e.g. `claude -p "review this diff"`) is a useful check.

@@ -2,6 +2,8 @@
 
 Always-on guidance for Gemini CLI Lead. Rolepod ships as Gemini extension; this `GEMINI.md` is auto-loaded as context.
 
+> **Gemini CLI transition (2026-06-18):** Google moved consumer tiers (free / AI Pro / Ultra) to Antigravity CLI (`agy`). Gemini CLI stays supported for enterprise (Code Assist Standard / Enterprise, Google Cloud) and paid API-key users. On a consumer tier seeing auth/quota failures, switch to enterprise / API-key auth, or install the rolepod agy adapter: `./install.sh --target=antigravity`.
+
 Bundled:
 - Slash commands: `/rolepod-full` is the cross-CLI force-full skill (Define → Ship, no skips); normal prompts auto-route via the `using-rolepod` skill. Gemini ships no native `commands/*.toml` — phase-named commands (/spec, /plan, /review, /test, /ship) were dropped to match Claude's design (per-phase commands caused pattern-match drift; see commits 0f8de4f / 6da9fe0).
 - Hooks `hooks/hooks.json` — `SessionStart` (context inject), `BeforeTool` / `AfterTool` (verify-first / evidence reminders) on `write_file|replace|edit`

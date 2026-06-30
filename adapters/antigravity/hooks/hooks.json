@@ -1,0 +1,38 @@
+{
+  "PreInvocation": [
+    {
+      "type": "command",
+      "command": "${extensionPath}/hooks/session-start.sh",
+      "timeout": 5
+    },
+    {
+      "type": "command",
+      "command": "${extensionPath}/hooks/claim-verify-nudge.sh",
+      "timeout": 3
+    }
+  ],
+  "PreToolUse": [
+    {
+      "matcher": "write_file|replace|edit",
+      "hooks": [
+        {
+          "type": "command",
+          "command": "${extensionPath}/hooks/before-tool.sh",
+          "timeout": 3
+        }
+      ]
+    }
+  ],
+  "PostToolUse": [
+    {
+      "matcher": "write_file|replace|edit",
+      "hooks": [
+        {
+          "type": "command",
+          "command": "${extensionPath}/hooks/after-tool.sh",
+          "timeout": 3
+        }
+      ]
+    }
+  ]
+}

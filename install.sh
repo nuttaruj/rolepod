@@ -21,12 +21,15 @@
 #   ./install.sh --target=claude       # CLI target (default → ~/.claude)
 #   ./install.sh --target=codex        # Codex CLI       → ~/.codex
 #   ./install.sh --target=gemini       # Gemini CLI      → ~/.gemini
-#   ./install.sh --target=all          # install all three
+#   ./install.sh --target=cursor       # Cursor IDE      → ~/.cursor
+#   ./install.sh --target=antigravity  # Antigravity CLI (agy) → ~/.gemini
+#   ./install.sh --target=all          # install all five
 #   ./install.sh --scope=global        # default — install to home (~/.claude/, etc.)
 #   ./install.sh --scope=project       # install to $PWD (no global config touched)
 #                                      #   Claude → $PWD/.claude/  (full plugin)
 #                                      #   Codex  → $PWD/AGENTS.md (managed block only)
 #                                      #   Gemini → $PWD/GEMINI.md (managed block only)
+#                                      #   Antigravity → $PWD/AGENTS.md (managed block only)
 #   ./install.sh --uninstall           # remove rolepod from selected --target
 #                                      # add --yes/-y to skip confirmation prompt
 #                                      # respects --scope (project = only project files)
@@ -43,6 +46,7 @@
 #   ROLEPOD_CODEX_TARGET     Per-CLI override — wins over ROLEPOD_TARGET for Codex.
 #   ROLEPOD_GEMINI_TARGET    Per-CLI override — wins over ROLEPOD_TARGET for Gemini.
 #   ROLEPOD_CURSOR_TARGET    Per-CLI override — wins over ROLEPOD_TARGET for Cursor.
+#   ROLEPOD_ANTIGRAVITY_TARGET  Per-CLI override — wins over ROLEPOD_TARGET for Antigravity.
 #
 # Non-TTY behavior: --uninstall without --yes in a non-interactive context
 # (no /dev/tty available) prints "Aborted. Re-run with --yes in non-interactive
@@ -85,9 +89,9 @@ for arg in "$@"; do
 done
 
 case "$CLI_TARGET" in
-  claude|codex|gemini|cursor|all) ;;
+  claude|codex|gemini|cursor|antigravity|all) ;;
   *)
-    echo "Unknown --target value: $CLI_TARGET (expected claude|codex|gemini|cursor|all)" >&2
+    echo "Unknown --target value: $CLI_TARGET (expected claude|codex|gemini|cursor|antigravity|all)" >&2
     exit 1 ;;
 esac
 
@@ -112,6 +116,7 @@ default_target_path_for() {
       codex)  echo "$PWD" ;;
       gemini) echo "$PWD" ;;
       cursor) echo "$PWD/.cursor" ;;
+      antigravity) echo "$PWD" ;;
       *)      echo "$PWD" ;;
     esac
     return
@@ -121,6 +126,7 @@ default_target_path_for() {
     codex)  echo "$HOME/.codex" ;;
     gemini) echo "$HOME/.gemini" ;;
     cursor) echo "$HOME/.cursor" ;;
+    antigravity) echo "$HOME/.gemini" ;;
     *)      echo "$HOME/.$1" ;;
   esac
 }
@@ -141,6 +147,7 @@ resolve_target_for() {
     codex)  override="${ROLEPOD_CODEX_TARGET:-}" ;;
     gemini) override="${ROLEPOD_GEMINI_TARGET:-}" ;;
     cursor) override="${ROLEPOD_CURSOR_TARGET:-}" ;;
+    antigravity) override="${ROLEPOD_ANTIGRAVITY_TARGET:-}" ;;
     *)      override="" ;;
   esac
   if [ -n "$override" ]; then
@@ -474,6 +481,13 @@ case "$CLI_TARGET" in
     [ -d "$REPO_DIR/adapters/cursor/scripts" ]                         || fail "missing adapters/cursor/scripts/ (cursor hook scripts)"
     ;;
 esac
+case "$CLI_TARGET" in
+  antigravity|all)
+    [ -e "$REPO_DIR/adapters/antigravity/AGENTS.md.tmpl" ]   || fail "missing adapters/antigravity/AGENTS.md.tmpl"
+    [ -e "$REPO_DIR/adapters/antigravity/plugin.json" ]      || fail "missing adapters/antigravity/plugin.json"
+    [ -e "$REPO_DIR/adapters/antigravity/hooks/hooks.json" ] || fail "missing adapters/antigravity/hooks/hooks.json"
+    ;;
+esac
 
 # ─── Uninstall path (early-exit) ────────────────────────────────────────
 # Removes rolepod files written by this installer. Preserves user content
@@ -485,22 +499,25 @@ if [ "$UNINSTALL" -eq 1 ]; then
   echo ""
 
   # Discover what we'd remove so the user can decide.
-  uninstall_claude=0; uninstall_codex=0; uninstall_gemini=0; uninstall_cursor=0
+  uninstall_claude=0; uninstall_codex=0; uninstall_gemini=0; uninstall_cursor=0; uninstall_antigravity=0
   case "$CLI_TARGET" in claude|all) uninstall_claude=1 ;; esac
   case "$CLI_TARGET" in codex|all)  uninstall_codex=1 ;; esac
   case "$CLI_TARGET" in gemini|all) uninstall_gemini=1 ;; esac
   case "$CLI_TARGET" in cursor|all) uninstall_cursor=1 ;; esac
+  case "$CLI_TARGET" in antigravity|all) uninstall_antigravity=1 ;; esac
 
   C_TARGET="$(resolve_target_for claude)"
   X_TARGET="$(resolve_target_for codex)"
   G_TARGET="$(resolve_target_for gemini)"
   R_TARGET="$(resolve_target_for cursor)"
+  A_TARGET="$(resolve_target_for antigravity)"
 
   echo "About to remove rolepod from:"
   [ "$uninstall_claude" -eq 1 ] && echo "  Claude → $C_TARGET (agents, skills, rules, hooks, managed CLAUDE.md block)"
   [ "$uninstall_codex"  -eq 1 ] && echo "  Codex  → rolepod marketplace + [plugins.\"rolepod@rolepod\"] in $X_TARGET/config.toml + managed AGENTS.md block"
   [ "$uninstall_gemini" -eq 1 ] && echo "  Gemini → $G_TARGET/extensions/rolepod, managed GEMINI.md block"
   [ "$uninstall_cursor" -eq 1 ] && echo "  Cursor → $R_TARGET/plugins/local/rolepod"
+  [ "$uninstall_antigravity" -eq 1 ] && echo "  Antigravity → agy plugin 'rolepod' + managed AGENTS.md block in $A_TARGET/antigravity-cli/"
   echo ""
 
   if [ "$ASSUME_YES" -ne 1 ] && [ "$DRY_RUN" -ne 1 ]; then
@@ -792,6 +809,34 @@ PY
     ok "Cursor rolepod removed"
   fi
 
+  if [ "$uninstall_antigravity" -eq 1 ]; then
+    if [ "$SCOPE" = "project" ]; then
+      step "Stripping rolepod block from $A_TARGET/AGENTS.md"
+      remove_managed_block "$A_TARGET/AGENTS.md"
+      ok "Antigravity project rolepod removed (global plugin untouched)"
+    else
+      # Same temp-target detection as install: only touch the real agy plugin
+      # registry when uninstalling against the real ~/.gemini (refs #3).
+      A_REAL_HOME="$HOME/.gemini"
+      A_TARGET_RESOLVED="$(cd "$A_TARGET" 2>/dev/null && pwd -P || echo "$A_TARGET")"
+      A_REAL_RESOLVED="$(cd "$A_REAL_HOME" 2>/dev/null && pwd -P || echo "$A_REAL_HOME")"
+      A_IS_TEMP_TARGET=0
+      [ "$A_TARGET_RESOLVED" != "$A_REAL_RESOLVED" ] && A_IS_TEMP_TARGET=1
+
+      if have_cmd agy && [ "$A_IS_TEMP_TARGET" -eq 0 ]; then
+        step "Uninstalling agy plugin 'rolepod'"
+        do_or_dry "agy plugin uninstall rolepod" bash -c "agy plugin uninstall rolepod 2>/dev/null || true"
+      elif [ "$A_IS_TEMP_TARGET" -eq 1 ]; then
+        warn "ROLEPOD_TARGET set — skipping global agy plugin uninstall (no global state was set during temp-target install)"
+      fi
+      step "Removing rolepod plugin dir in $A_TARGET/config/plugins/rolepod"
+      do_or_dry "rm -rf $A_TARGET/config/plugins/rolepod" rm -rf "$A_TARGET/config/plugins/rolepod"
+      step "Stripping rolepod block from $A_TARGET/antigravity-cli/AGENTS.md"
+      remove_managed_block "$A_TARGET/antigravity-cli/AGENTS.md"
+      ok "Antigravity rolepod removed"
+    fi
+  fi
+
   echo ""
   echo "${BOLD}Uninstall complete.${NC}"
   exit 0
@@ -821,6 +866,9 @@ gemini_selected() {
 }
 cursor_selected() {
   case "$CLI_TARGET" in cursor|all) return 0 ;; *) return 1 ;; esac
+}
+antigravity_selected() {
+  case "$CLI_TARGET" in antigravity|all) return 0 ;; *) return 1 ;; esac
 }
 
 if claude_selected; then
@@ -1303,6 +1351,10 @@ if gemini_selected; then
   echo ""
   echo "${BOLD}─── Installing for Gemini CLI ───${NC}"
   echo "  target:           $GEMINI_TARGET"
+  warn "Gemini CLI consumer tiers (free / AI Pro / Ultra) lost hosted serving on 2026-06-18."
+  warn "  Google migrated them to Antigravity CLI. If gemini requests fail with auth/quota"
+  warn "  errors, use enterprise / paid-API-key auth, or install the agy adapter:"
+  warn "    ./install.sh --target=antigravity"
   if [ "$SCOPE" = "project" ]; then
     echo "  mode:             project-scope (managed GEMINI.md only — extension NOT installed)"
   else
@@ -1479,6 +1531,89 @@ if cursor_selected; then
   fi
 fi
 
+# ─── install_antigravity — Antigravity CLI (agy) path (~/.gemini/) ─────
+# agy is the consumer-tier successor to Gemini CLI. It ships as a PLUGIN
+# (skills + subagents + hooks) installed via `agy plugin install <dir>` to
+# ~/.gemini/config/plugins/rolepod/, plus an AGENTS.md context file written as
+# a managed block in the agy customization root (global:
+# ~/.gemini/antigravity-cli/AGENTS.md; project: $PWD/AGENTS.md). Verified
+# against agy 1.0.13. The plugin reuses the shared core skills/agents + the
+# gemini hook scripts; only the hooks.json event wiring is agy-native.
+if antigravity_selected; then
+  AGY_TARGET="$(resolve_target_for antigravity)"
+  RENDERED_AGY_DIR="$REPO_DIR/build/rendered/antigravity"
+  RENDERED_AGY_MD="$RENDERED_AGY_DIR/AGENTS.md"
+  RENDERED_AGY_PLUGIN="$RENDERED_AGY_DIR/plugin"
+  echo ""
+  echo "${BOLD}─── Installing for Antigravity CLI (agy) ───${NC}"
+  echo "  target:           $AGY_TARGET"
+
+  [ -f "$RENDERED_AGY_MD" ]                  || fail "expected $RENDERED_AGY_MD after render"
+  [ -f "$RENDERED_AGY_PLUGIN/plugin.json" ]  || fail "expected $RENDERED_AGY_PLUGIN/plugin.json after render"
+
+  if [ "$SCOPE" = "project" ]; then
+    warn "agy plugins are global only. Per-project install writes AGENTS.md only."
+    warn "  For the full plugin install, run --scope=global separately."
+    step "Updating AGENTS.md (managed block) → $AGY_TARGET/AGENTS.md"
+    update_managed_block "$AGY_TARGET/AGENTS.md" "$RENDERED_AGY_MD"
+    if [ "$DRY_RUN" -eq 0 ]; then
+      [ -e "$AGY_TARGET/AGENTS.md" ] || fail "Antigravity verification failed — $AGY_TARGET/AGENTS.md missing"
+      ok "AGENTS.md → $AGY_TARGET/AGENTS.md"
+    else
+      skip "Antigravity verification skipped (dry-run)"
+    fi
+  else
+    # `agy plugin` CLI writes to the real ~/.gemini and has no home-override
+    # flag. On a temp/diverged target (test isolation, ROLEPOD_TARGET set) skip
+    # the CLI and fall back to a filesystem-only plugin-tree copy. Mirror the
+    # claude/codex temp-target detection (refs #3).
+    AGY_REAL_HOME="$HOME/.gemini"
+    AGY_TARGET_RESOLVED="$(cd "$AGY_TARGET" 2>/dev/null && pwd -P || echo "$AGY_TARGET")"
+    AGY_REAL_RESOLVED="$(cd "$AGY_REAL_HOME" 2>/dev/null && pwd -P || echo "$AGY_REAL_HOME")"
+    AGY_IS_TEMP_TARGET=0
+    [ "$AGY_TARGET_RESOLVED" != "$AGY_REAL_RESOLVED" ] && AGY_IS_TEMP_TARGET=1
+
+    AGY_PLUGIN_DEST="$AGY_TARGET/config/plugins/rolepod"
+    if have_cmd agy && [ "$AGY_IS_TEMP_TARGET" -eq 0 ]; then
+      step "Installing rolepod plugin via agy plugin install (idempotent)"
+      do_or_dry "agy plugin uninstall rolepod (if present); agy plugin install $RENDERED_AGY_PLUGIN" \
+        bash -c "agy plugin uninstall rolepod >/dev/null 2>&1 || true; agy plugin install '$RENDERED_AGY_PLUGIN'"
+    else
+      if [ "$AGY_IS_TEMP_TARGET" -eq 1 ]; then
+        warn "ROLEPOD_TARGET set — temp target; copying plugin tree instead of invoking the real agy (skipping agy plugin install)"
+      elif ! have_cmd agy; then
+        warn "agy binary not found — copying plugin tree (auto-discovered on launch)"
+        warn "  Install Antigravity CLI: curl -fsSL https://antigravity.google/cli/install.sh | bash"
+      fi
+      step "Copying rolepod plugin → $AGY_PLUGIN_DEST/"
+      do_or_dry "rm -rf $AGY_PLUGIN_DEST && mkdir -p $AGY_PLUGIN_DEST && cp -R $RENDERED_AGY_PLUGIN/. $AGY_PLUGIN_DEST/" \
+        bash -c "rm -rf '$AGY_PLUGIN_DEST' && mkdir -p '$AGY_PLUGIN_DEST' && cp -R '$RENDERED_AGY_PLUGIN/.' '$AGY_PLUGIN_DEST/'"
+    fi
+
+    step "Updating AGENTS.md (managed block) → $AGY_TARGET/antigravity-cli/AGENTS.md"
+    do_or_dry "mkdir -p $AGY_TARGET/antigravity-cli" mkdir -p "$AGY_TARGET/antigravity-cli"
+    update_managed_block "$AGY_TARGET/antigravity-cli/AGENTS.md" "$RENDERED_AGY_MD"
+
+    if [ "$DRY_RUN" -eq 0 ]; then
+      step "Verifying Antigravity install"
+      [ -e "$AGY_TARGET/antigravity-cli/AGENTS.md" ] || fail "Antigravity verification failed — AGENTS.md missing"
+      if [ "$AGY_IS_TEMP_TARGET" -eq 1 ]; then
+        [ -e "$AGY_PLUGIN_DEST/plugin.json" ] || fail "Antigravity verification failed — $AGY_PLUGIN_DEST/plugin.json missing"
+        ok "rolepod plugin tree → $AGY_PLUGIN_DEST (temp target; agy CLI not invoked)"
+      elif have_cmd agy; then
+        if agy plugin list 2>/dev/null | grep -q rolepod; then
+          ok "agy plugin 'rolepod' registered"
+        else
+          warn "agy plugin 'rolepod' not listed — check: agy plugin validate $RENDERED_AGY_PLUGIN"
+        fi
+      fi
+      ok "rolepod agy plugin + AGENTS.md installed → $AGY_TARGET"
+    else
+      skip "Antigravity verification skipped (dry-run)"
+    fi
+  fi
+fi
+
 # Ensure TARGET is set for the rest of the script. Fallback only when
 # claude wasn't selected at all.
 if [ -z "${TARGET:-}" ]; then
@@ -1526,7 +1661,8 @@ if [ "$SCOPE" = "project" ]; then
     codex)  echo "${BOLD}Final step${NC}: Codex auto-loads $PWD/AGENTS.md when you run codex in this project." ;;
     gemini) echo "${BOLD}Final step${NC}: Gemini auto-loads $PWD/GEMINI.md when you run gemini in this project." ;;
     cursor) echo "${BOLD}Final step${NC}: restart Cursor in this project to load the rolepod plugin." ;;
-    all)    echo "${BOLD}Final step${NC}: restart Claude Code + Cursor in this project; Codex/Gemini auto-load $PWD/AGENTS.md and $PWD/GEMINI.md." ;;
+    antigravity) echo "${BOLD}Final step${NC}: agy auto-loads $PWD/AGENTS.md when you run agy in this project." ;;
+    all)    echo "${BOLD}Final step${NC}: restart Claude Code + Cursor in this project; Codex/Gemini/Antigravity auto-load $PWD/AGENTS.md and $PWD/GEMINI.md." ;;
   esac
 else
   case "$CLI_TARGET" in
@@ -1536,7 +1672,8 @@ else
     gemini) echo "${BOLD}Final step${NC}: restart Gemini CLI to load the new extension and hooks." ;;
     cursor) echo "${BOLD}Final step${NC}: restart Cursor (or reload window) so the plugin + rules register."
             echo "  Verify under Cursor → Settings → Features → Rules / Plugins." ;;
-    all)    echo "${BOLD}Final step${NC}: restart Claude Code, Codex CLI, Gemini CLI, and Cursor."
+    antigravity) echo "${BOLD}Final step${NC}: launch agy to load the rolepod plugin + AGENTS.md (verify: ${BOLD}agy plugin list${NC})." ;;
+    all)    echo "${BOLD}Final step${NC}: restart Claude Code, Codex CLI, Gemini CLI, Cursor, and Antigravity (agy)."
             echo "  Codex hooks require opt-in: ${BOLD}codex features enable plugin_hooks${NC}." ;;
   esac
 fi
