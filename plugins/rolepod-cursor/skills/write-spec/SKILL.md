@@ -48,7 +48,7 @@ Hand off:
 ## Inputs to gather
 
 - Exact user request (literal quote)
-- Repo state relevant to the request (existing patterns, prior decisions)
+- Repo state relevant to the request (existing patterns, prior decisions). Repeat feature: read the most recent `docs/rolepod/specs/<feature>-*.md` and treat its Desired behavior as a *hypothesis* for today's Current behavior — verify it against the code before trusting it, never re-derive prior state from a blank slate.
 - Constraints the user has already stated (deadline, stack, no-touch zones)
 - High-risk surfaces likely touched
 
@@ -104,14 +104,14 @@ Present the proposed direction (chosen approach + rationale). Wait for the user 
 
 ### 6. Produce the contract
 
-Fill `templates/spec-template.md` — every section resolved, no placeholders, no contradictions.
+Fill `templates/spec-template.md` — every section resolved, no placeholders, no contradictions. Then run the **spec-lint** — `grep -niE '<[^>]+>|TODO|TBD'` on the result must return nothing (a deterministic backstop to the step-4 self-review; it catches leftover template hints and TODO/TBD markers, not vague wording).
 
 - One-session work → inline the filled template in chat. **No Gate 2** — Gate 1 is the only approval.
 - Multi-session work, high-risk surface touched, or repeat feature → save to `docs/rolepod/specs/<feature>-YYYY-MM-DD.md` (optional `-vN` or `-draft` suffix). Proceed to Gate 2.
 
 ### 7. Gate 2 — file review (file-mode only)
 
-After saving, ask the user to read the file and confirm — not the chat transcript. Catches three drifts:
+After saving, run the spec-lint (`grep -niE '<[^>]+>|TODO|TBD'`) on the file — it must be clean — then ask the user to read the file and confirm, not the chat transcript. Catches three drifts:
 - **Word drift** — chat said "soft delete", file wrote "delete"
 - **Implicit edge case** — user meant "except admin", file omits it
 - **Reconsideration** — user sees concrete shape, changes mind
@@ -167,7 +167,7 @@ Load only when the task needs it:
 
 ## Full Rolepod enhancement
 
-Full Rolepod improves this phase by adding router continuity into `write-plan`, specialist agents for deeper domain shaping, hooks that remind on high-risk surfaces, and tests that prove the spec did not leak placeholders.
+Full Rolepod improves this phase by adding router continuity into `write-plan`, specialist agents for deeper domain shaping, hooks that remind on high-risk surfaces, and a deterministic spec-lint backed by `tests/integration/cases/spec-lint.sh` — which proves the lint catches placeholder leaks (`<…>`/TODO/TBD) and passes a clean spec.
 
 ## Next phase
 
