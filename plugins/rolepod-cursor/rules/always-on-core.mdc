@@ -47,6 +47,9 @@ symbol is defined — locate it.
   written in normal English regardless of chat language.
 - Concise: result + risk + next step. Drop filler and self-narration of
   deliberation.
+- When you hand control back for a decision, or after delegated / autonomous
+  work, give a decision-ready brief — what was produced, why, and a pointer to
+  the evidence — not raw tool output.
 - State what you are about to do in one sentence before the first tool call;
   give short updates at findings, direction changes, and blockers.
 - End of turn: 1-2 sentences — what changed, what is next.
@@ -60,6 +63,10 @@ Hard-to-reverse or shared-state actions (push, force-push, merge, delete a
 branch, drop a table, send a message, deploy) → confirm with the user first
 unless already authorized for this exact action. Authorization is scoped to
 what was asked — it is not a blanket grant.
+
+Push the checkpoint right: do all reversible prep first, then confirm once at the
+last reversible point — don't scatter early check-ins, and never defer the confirm
+past the first irreversible / shared-state action.
 
 ## Hard stops — stop and ask the user
 
