@@ -1256,9 +1256,13 @@ if codex_selected; then
     AGENTS_DEST="$CODEX_TARGET/agents"
     step "Installing 16 rolepod agents → $AGENTS_DEST/rolepod-*.toml"
     if [ "$DRY_RUN" -eq 1 ]; then
-      dry "mkdir -p $AGENTS_DEST && copy *.toml from rendered agents/ with rolepod- prefix"
+      dry "mkdir -p $AGENTS_DEST && rm -f rolepod-*.toml && copy *.toml from rendered agents/ with rolepod- prefix"
     else
       mkdir -p "$AGENTS_DEST"
+      # Prefix-scoped wipe-before-copy: ~/.codex/agents/ is a SHARED dir (user
+      # agents live here too), so wipe ONLY rolepod-*.toml — otherwise agents
+      # retired upstream (e.g. the 2.6.2 content trio) persist forever.
+      rm -f "$AGENTS_DEST"/rolepod-*.toml 2>/dev/null || true
       copied=0
       for f in "$RENDERED_CODEX_DIR/agents"/*.toml; do
         [ -f "$f" ] || continue
@@ -1294,9 +1298,12 @@ if codex_selected; then
     AGENTS_DEST="$CODEX_TARGET/agents"
     step "Installing 16 rolepod agents → $AGENTS_DEST/rolepod-*.toml"
     if [ "$DRY_RUN" -eq 1 ]; then
-      dry "mkdir -p $AGENTS_DEST && copy *.toml from rendered agents/ with rolepod- prefix"
+      dry "mkdir -p $AGENTS_DEST && rm -f rolepod-*.toml && copy *.toml from rendered agents/ with rolepod- prefix"
     else
       mkdir -p "$AGENTS_DEST"
+      # Same prefix-scoped wipe as the real-install path — retired agents
+      # must not persist across updates.
+      rm -f "$AGENTS_DEST"/rolepod-*.toml 2>/dev/null || true
       copied=0
       for f in "$RENDERED_CODEX_DIR/agents"/*.toml; do
         [ -f "$f" ] || continue
