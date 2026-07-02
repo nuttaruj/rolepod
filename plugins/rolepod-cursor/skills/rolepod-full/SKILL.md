@@ -42,7 +42,7 @@ If copied standalone, run the lifecycle directly as Lead:
 2. **Plan** — ordered task list; one verification command per task.
 3. **Build** — implement surgically; every line traces to the goal.
 4. **Verify** — fresh evidence (test / build / curl / screenshot). No completion claim without it.
-5. **Review** — risk-appropriate review; external adversarial reviewers (Codex / Gemini) when configured, otherwise qa-tester / security-engineer / universal-reviewer.
+5. **Review** — risk-appropriate review; external adversarial reviewers (any installed CLI on a model different from the Lead's) when configured, otherwise qa-tester / security-engineer / universal-reviewer.
 6. **Ship** — present an explicit finish choice (merge / PR / keep / discard). Never auto-pick.
 
 This fallback is ~70% of the full behavior. With `using-rolepod` present it is router-backed; with a full Rolepod install it is best.

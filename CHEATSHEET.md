@@ -102,7 +102,7 @@ Can't verify  → state "Assuming X. Risk Y. Verify by Z" — never proceed sile
 
 ## Hooks
 
-7 Claude / 3 Codex / 4 Gemini / 3 Cursor core hooks — self-guarded, auto-fire, no add-on hooks. Codex hooks stay inert until `codex features enable plugin_hooks`. Cursor + Gemini hooks fire by default. Full reference: [docs/hooks.md](docs/hooks.md).
+9 Claude / 4 Codex / 5 Gemini / 3 Cursor / 4 Antigravity core hook scripts — self-guarded, auto-fire, no add-on hooks. Codex hooks stay inert until `codex features enable plugin_hooks`. Cursor + Gemini + Antigravity hooks fire by default. Full reference: [docs/hooks.md](docs/hooks.md).
 
 ## Optional sibling plugins
 

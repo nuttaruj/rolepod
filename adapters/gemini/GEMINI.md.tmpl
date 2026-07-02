@@ -6,7 +6,7 @@ Always-on guidance for Gemini CLI Lead. Rolepod ships as Gemini extension; this 
 
 Bundled:
 - Slash commands: `/rolepod-full` is the cross-CLI force-full skill (Define → Ship, no skips); normal prompts auto-route via the `using-rolepod` skill. Gemini ships no native `commands/*.toml` — phase-named commands (/spec, /plan, /review, /test, /ship) were dropped to match Claude's design (per-phase commands caused pattern-match drift; see commits 0f8de4f / 6da9fe0).
-- Hooks `hooks/hooks.json` — `SessionStart` (context inject), `BeforeTool` / `AfterTool` (verify-first / evidence reminders) on `write_file|replace|edit`
+- Hooks `hooks/hooks.json` — 5 registered: `SessionStart` (context inject), `BeforeAgent` (claim-verify nudge), `BeforeTool` / `AfterTool` (verify-first / evidence reminders) on `write_file|replace|edit`, `PreCompress` (state summary)
 - Skills `skills/<name>/SKILL.md` — full rolepod skill set
 
 ## Rule priority (when conflict)
@@ -25,7 +25,7 @@ Conflict unsafe → ask user.
 
 - **Sub-agents** — the extension ships 16 agent definitions in `agents/<name>.md` (tier-mapped `model` per agent). Gemini CLI builds with sub-agent support load them automatically; older builds treat the roster below as a mental role-switching guide.
 - **Slash commands** — `/rolepod-full` (the `rolepod-full` skill) forces the full lifecycle for feature-scale / high-risk work; it also switches Gemini approval mode to plan (read-only).
-- **Hooks enabled** — `SessionStart` / `BeforeTool` / `AfterTool` fire automatically.
+- **Hooks enabled** — `SessionStart` / `BeforeAgent` / `BeforeTool` / `AfterTool` / `PreCompress` fire automatically.
 - **Skills auto-loaded** — Gemini's skill loader reads `skills/<name>/SKILL.md`.
 - **MCP support** — any MCP tools your project uses, via Gemini's MCP config; verify per-project.
 

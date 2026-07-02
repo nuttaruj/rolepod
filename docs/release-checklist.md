@@ -11,7 +11,7 @@ make test-static
 Verifies:
 - `install.sh`, `bootstrap.sh`, `build/render.sh`, `hooks/*.sh` syntax
 - `hooks/lib/session_state.py` Python AST
-- Plugin manifests: Claude `plugin.json`, Codex `plugin.json` + `hooks.json`, Gemini `gemini-extension.json` + `hooks.json`, Cursor `plugin.json` + `marketplace.json` + `hooks.json`
+- Plugin manifests: Claude `plugin.json`, Codex `plugin.json` + `hooks.json`, Gemini `gemini-extension.json` + `hooks.json`, Cursor `plugin.json` + `marketplace.json` + `hooks.json`, Antigravity `plugin.json` + `hooks.json`
 - TOML files: generated Codex `agents/*.toml`
 - `render-clean`: `core/fragments/` matches generator output, no leaked `{{INCLUDE}}` placeholders
 - `lean-surface`: ~70 invariants — Tier 0 = 1 / Tier 1 = 9 / `tier: 3` = 0 / agent preloads Core 10 only / router refs canonical / no hard-dependency language / no `redirect_to_agent` / fallback sections concise / LC_ALL=C reproducible
@@ -28,6 +28,7 @@ Confirms:
 - `plugins/rolepod/` — committed Claude plugin tree (16 agents, skills, hooks, manifest)
 - `plugins/rolepod-codex/` — committed Codex plugin tree, plus `build/rendered/codex/AGENTS.md`
 - `build/rendered/gemini/` — Gemini extension tree (`GEMINI.md`, skills, hooks)
+- `build/rendered/antigravity/` — Antigravity plugin tree (`AGENTS.md`, `plugin/` with plugin.json + hooks.json at plugin root)
 - `plugins/rolepod-cursor/` — committed Cursor plugin tree (`rules/always-on-core.mdc` + 16 agents + 11 skills + 3 hook scripts under `scripts/`)
 - No leaked `{{INCLUDE: ...}}` placeholders
 
@@ -64,6 +65,7 @@ Manually verify that user-facing docs match runtime behavior:
   - **Codex — Live runtime hooks `⚠️ opt-in only` (per `codex features enable plugin_hooks`)**
   - Gemini — Live runtime hooks `✓`
   - **Cursor — Live runtime hooks `⚠️ pending live re-verification` (static + install-path verified; live runtime confirmation on a real Cursor session is the next step)**
+  - **Antigravity — install-path verified live (`agy plugin validate/install/uninstall`); runtime session confirmation `⚠️ pending`**
 - Project-scope wording: full for Claude / Cursor, **rules-only** for Codex/Gemini.
 - No "auto-fire" claims for Codex hooks.
 - The inlined `## Agent protocol` commit-ban + discipline-gate scope statement matches actual hook coverage (Claude-only).
@@ -88,7 +90,7 @@ All commands should succeed.
 ## 6. Git hygiene
 
 - `git status` clean — committed render trees (`plugins/rolepod/`, `plugins/rolepod-codex/`) match `make render` output.
-- Tag matches the plugin / extension version (`.claude-plugin/plugin.json`, `gemini-extension.json`).
+- Tag follows the 2.x track (`.claude-plugin/plugin.json`). The Gemini / Antigravity manifests track the same release on a 0.x line in lockstep (e.g. 2.9.0 ↔ 0.9.0) — they are not expected to literally match the tag.
 - Release recorded as a `chore(release): <version>` commit (rolepod keeps no separate CHANGELOG).
 
 ## 7. Push

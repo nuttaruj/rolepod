@@ -44,6 +44,7 @@ Return / hand off:
 - Plan vague / wrong / missing file → return to `write-plan`.
 - Root cause unknown → `debug-issue`.
 - Edits complete → `check-work`.
+- Stuck — `BLOCKED` survives all four variable changes → `manage-context` (escalate mode).
 
 ## Inputs to gather
 
@@ -57,6 +58,8 @@ Return / hand off:
 ### 1. Read first
 
 Read the touched files end-to-end (or the relevant region with line numbers). Don't pattern-match — verify the symbols and behavior exist where the plan expects.
+
+**The plan is the loop contract.** Verify each task by running its **Command** verbatim — never a re-derived guess. When it passes, flip the task's `- [ ]` to `- [x]` in the plan artifact (that is how progress survives compaction). On a failing Command, follow the task's **On fail**, or the plan's **Failure policy** when the task has none.
 
 ### 2. TDD-light for risky paths
 
@@ -89,15 +92,13 @@ Q3: A real design-judgment call?     Q4: More than 3 tool calls total?
 ```
 All "no" → self-do. Any "yes" → delegate to the closest specialist by path / concern / strategy.
 
-When delegating, pick from the agent list below.
-
 When delegating, fill `templates/task-brief.md` — it scopes the task to 1-2 files, names allowed / forbidden paths, the test command, the done criteria, and the tool cap. Two rules are absolute: the subagent NEVER commits (it returns a manifest, the Lead commits), and it NEVER expands scope.
 
 Pass the full task text + scene-setting context inline in the brief. Do not point the subagent at the plan file path — controller curates exactly the slice the subagent needs.
 
 **Implementer self-review before manifest.** The subagent scans its own diff for placeholders, missing tests, and plan coverage before returning the manifest. Self-review is not a substitute for the §6 review pipeline; it is a cheap pre-filter.
 
-**Implementer return status.** Manifest declares one of: `DONE` → §6 pipeline; `DONE_WITH_CONCERNS` → address scope/correctness first, then §6; `NEEDS_CONTEXT` → add context, redispatch; `BLOCKED` → change a variable (context / model / scope / escalate), never retry blind. Deep handling in `references/subagent-dispatch.md`.
+**Implementer return status.** Manifest declares one of: `COMPLETED` with no concerns → §6 pipeline; `COMPLETED` with Concerns listed → address scope/correctness first, then §6; `PARTIAL` → review the done slice, redispatch the remainder narrowed; `BLOCKED` → change a variable (context / model / scope / escalate), never retry blind. Deep handling in `references/subagent-dispatch.md`.
 
 ### 5. Worktrees only for real parallel
 
@@ -105,7 +106,7 @@ Use a git worktree when two sessions actually need the same files at the same ti
 
 ### 6. Per-task review pipeline
 
-After a subagent returns `DONE`, dispatch two reviewers in order on the diff alone — no context from the implementer's session:
+After a subagent returns `COMPLETED`, dispatch two reviewers in order on the diff alone — no context from the implementer's session:
 
 1. **Spec compliance** — does the diff match the task spec exactly? No missing requirements, no extras. Issue → implementer fixes → re-review. Approve before stage 2.
 2. **Code quality** — patterns, DRY, smell, test strength. Issue → implementer fixes → re-review.
@@ -121,8 +122,6 @@ Use the least powerful model that can handle each role. Cost compounds across N 
 - **Mechanical** (1-2 files, complete spec, isolated logic) → fast/cheap model
 - **Integration** (multi-file coordination, pattern matching, debugging) → standard model
 - **Architecture / judgment / final review** (broad codebase, design tradeoffs) → most capable model
-
-Implementer status `BLOCKED` after a fast-model dispatch → re-dispatch with a stronger model before declaring the task unfixable.
 
 ## If a matching child plugin skill is available
 
@@ -170,16 +169,17 @@ Non-blocking — read only when unsure about scope or whether to trust a subagen
 
 Load only when the task needs it:
 - `references/tdd-by-risk.md` — task type → test discipline: test-first vs evidence-after
-- `references/subagent-dispatch.md` — implementer status taxonomy (DONE / DONE_WITH_CONCERNS / NEEDS_CONTEXT / BLOCKED) and handling, two-stage review prompt scaffolds (spec compliance / code quality), model selection table, continuous-execution rationale
+- `references/subagent-dispatch.md` — implementer status taxonomy (COMPLETED ± concerns / PARTIAL / BLOCKED) and handling, two-stage review prompt scaffolds (spec compliance / code quality), model selection table, continuous-execution rationale
 
 ## Hard stops
 
 - A planned file does not exist where expected → stop, verify or re-plan
 - A test you wrote passes before you added the code → assertion is too weak; tighten
-- Subagent returns `DONE` with failing tests, or `BLOCKED` re-dispatched unchanged → reject / change a variable (context / model / scope); never accept unchanged retry
+- Subagent returns `COMPLETED` with failing tests, or `BLOCKED` re-dispatched unchanged → reject / change a variable (context / model / scope); never accept unchanged retry
 - A subagent's diff accepted without spec-compliance + code-quality reviews → stop, run the §6 pipeline before building further
 - Scope creep beyond the task list → stop, write a follow-up, finish current task
 - About to write "should I continue?" between tasks on a multi-task plan → don't; Iron Rule 5
+- About to verify a task with a self-invented check while the plan names a **Command** → run the plan's Command
 
 ## Full Rolepod enhancement
 

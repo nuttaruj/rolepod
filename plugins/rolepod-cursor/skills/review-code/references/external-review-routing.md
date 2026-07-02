@@ -58,5 +58,6 @@ back to the floor.
 | 0 externals | Lead floor only — `qa-tester` + the full multi-axis read |
 
 On a high-risk surface with 0 externals, the floor still reviews every axis —
-but `check-work` must record that no different-model adversarial pass ran.
-That is a real verification limitation, not a pass.
+but the review report's **Cross-model adversarial pass** line must record
+NOT RUN and why, and `finish-work`'s Reviewer gate surfaces that limitation
+to the user before merge. It is a real verification limitation, not a pass.

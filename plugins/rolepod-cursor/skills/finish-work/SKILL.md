@@ -90,7 +90,7 @@ The PreCommit hook also enforces the T-gate.
 **Failure-mode (F1-F5)** — run the `check-work` failure-mode gate; do
 not merge with an unresolved F-finding.
 
-**Reviewer** — risk-appropriate review completed (see `review-code`).
+**Reviewer** — risk-appropriate review completed (see `review-code`). On a high-risk diff, read the review report's **Cross-model adversarial pass** line: NOT RUN means the user must see that limitation before merge — state it in the finish summary, never clear the gate silently.
 
 Any failure → fix or report; do not merge.
 

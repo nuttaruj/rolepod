@@ -41,10 +41,11 @@ A conflict that risks harm → ask before acting.
   Codex does NOT auto-dispatch by description; the user invokes one via
   `/agent <name>` or a natural-language request ("spawn qa-tester to verify").
   Each agent file is self-contained — it carries its own agent protocol.
-- **Hooks** — the plugin's `hooks/hooks.json` registers 3 core gate hooks
-  (SessionStart context loader, pre-edit gate reminder, pre-commit test
-  gate). They fire only after `codex features enable plugin_hooks` (opt-in;
-  default off). Until enabled, the gates are skill-enforced, not hook-blocked.
+- **Hooks** — the plugin's `hooks/hooks.json` registers 4 core hooks
+  (SessionStart context loader, UserPromptSubmit claim-verify nudge,
+  pre-edit gate reminder, pre-commit test gate). They fire only after
+  `codex features enable plugin_hooks` (opt-in; default off). Until
+  enabled, the gates are skill-enforced, not hook-blocked.
 - **Peer review** — high-risk work → ask Codex to spawn `qa-tester` (the
   floor) plus `security-engineer` / `universal-reviewer`. An external Claude
   review (`claude -p "review this diff"`) is a useful cross-model opinion.

@@ -22,6 +22,11 @@
 <Confirm the diff matches the task — no "while I'm here" extras. List any
  follow-up ideas deferred; do not act on them here.>
 
+## Concerns
+<Doubts to flag for the Lead — correctness ("not sure this covers the empty
+ case"), scope ("this spilled into module Y"), or observation ("this file is
+ getting large"). "None" is valid — state it deliberately.>
+
 ## Status
 <COMPLETED — task done, evidence attached.
  PARTIAL — some done, what remains stated.

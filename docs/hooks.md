@@ -211,7 +211,7 @@ claude plugin list
 # Should show "rolepod" as enabled
 
 claude plugin details rolepod@rolepod
-# Component inventory should list a Hooks line covering SessionStart, PreToolUse, Stop
+# Component inventory should list a Hooks line covering UserPromptSubmit, SessionStart, PreToolUse, Stop
 ```
 
-Expected: 7 core hooks (SessionStart × 3, PreToolUse × 3, Stop × 1).
+Expected: 9 core hook scripts / 10 registrations (UserPromptSubmit × 1, SessionStart × 3, PreToolUse × 5, Stop × 1 — `session-lifecycle.sh` registers twice, `--lock`/`--unlock`).

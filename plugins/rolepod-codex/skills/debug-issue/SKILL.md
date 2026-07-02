@@ -45,6 +45,7 @@ Return / hand off:
 - Requirements unclear → `write-spec`.
 - Fix spans multiple files / needs sequencing → `write-plan`.
 - Minimal fix applied → `check-work`.
+- Stuck — 3 failed fix attempts on the same target → `manage-context` (escalate mode).
 
 ## Inputs to gather
 

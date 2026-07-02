@@ -209,20 +209,21 @@ check "rolepod-full Boundary disclaims the router table" "grep -q 'Router table'
 # Two groups: word-boundary patterns + non-word-end patterns. The second
 # group covers forms ending in `)` or `*` where trailing `\b` is dead
 # (qa-tester PR #10 caught this).
-STALE_WB='\b(42 bundled|42 skills|43 skills|53 skills|43-skill|53-skill|53 skill files|34 native|44 native|44 rolepod skills|44 skills|3 auto-trigger hooks|same 3 scripts|same 3 files|18 \+ 42|18 \+ 43|18 \+ 53|18 \+ 44|all 34 rolepod|all 43 rolepod|Total 4[23]|Total 53|three rolepod entries|3 codex hooks|3 gemini hooks|3 root hooks|10 root hook scripts|10 hook scripts|9 root hook scripts|9 hook scripts|own 3 scripts|3 \*\.sh|5 \*\.sh|5 hook scripts|4 codex hook|7 hooks|9 hooks)\b'
+STALE_WB='\b(42 bundled|42 skills|43 skills|53 skills|43-skill|53-skill|53 skill files|34 native|44 native|44 rolepod skills|44 skills|3 auto-trigger hooks|same 3 scripts|same 3 files|18 \+ 42|18 \+ 43|18 \+ 53|18 \+ 44|all 34 rolepod|all 43 rolepod|Total 4[23]|Total 53|three rolepod entries|3 codex hooks|3 gemini hooks|3 root hooks|10 root hook scripts|10 hook scripts|9 root hook scripts|own 3 scripts|3 \*\.sh|7 hooks|7 core hooks|8 core hooks|3 core gate hooks|10 executable skills|10 skills total|18 frontmatter overlays|18 overlays|6 gemini commands|all four are first-class|Claude 8 / Codex|Claude 7, Codex)\b'
 STALE_NONWORD='Skills \(4[23]\)|Skills \(53\)|Total skills on disk: \*\*(4[23]|53)\*\*|Hooks \(3\)|, 3 hooks\)'
 STALE_COMMENT='(^|[^0-9])(#|`) ?4[23]\b'
 STALE_HOOK_TRUTH='Context hooks \(cross-CLI\)|Codex / Gemini fire the context hooks|full hook coverage|Before tool run.*CLI handles native compact|SessionStart \+ 2x PostToolUse|10 bash hooks that auto-register|portable across Claude and Codex'
 # Add-on-hook drift — phrasings, not numbers. Each asserts a wrong current
-# state (rolepod ships 6 core hooks, 0 add-on hooks since PR 10). Bare
-# filenames like `gitnexus-wrap.sh` are NOT banned — they appear in legit
-# historical / changelog prose.
+# state (rolepod ships 9 core hook scripts, 0 add-on hooks since PR 10).
+# Bare filenames like `gitnexus-wrap.sh` are NOT banned — they appear in
+# legit historical / changelog prose.
 STALE_ADDON='optional GitNexus|optional MemPalace|GitNexus add-on|MemPalace add-on|reindex hint|MemPalace bridge|post-ship reindex|6 core \+ [0-9]+ optional'
 STALE_PATTERNS="${STALE_WB}|${STALE_NONWORD}|${STALE_COMMENT}|${STALE_HOOK_TRUTH}|${STALE_ADDON}"
 STALE_HITS=$(grep -rEn "$STALE_PATTERNS" \
   --include='*.md' --include='*.json' --include='*.tmpl' \
   README.md CHEATSHEET.md docs/ .claude-plugin/ .cursor-plugin/ adapters/ core/skills/ core/fragments/ 2>/dev/null \
-  | grep -v 'build/rendered/' || true)
+  | grep -v 'build/rendered/' \
+  | grep -v 'docs/plans/' | grep -v 'docs/specs/' | grep -v 'docs/legacy-skill-map' || true)
 if [ -z "$STALE_HITS" ]; then
   echo "  ✓ no stale doc keywords (skill counts, hook counts, add-on-hook phrasings)"
 else
@@ -230,6 +231,43 @@ else
   printf '%s\n' "$STALE_HITS" | sed 's/^/      /'
   fail=$((fail+1))
 fi
+
+# ── Hook counts derived from manifests, not hand-maintained ────────────
+# The denylist above can only ban counts we already know went stale. This
+# check derives the per-CLI distinct-script count from each hooks.json and
+# pins the canonical doc strings to it — add/remove a hook and the docs
+# MUST follow in the same commit.
+hook_script_count() {  # $1 = hooks.json path
+  python3 - "$1" <<'PYEOF'
+import json, re, sys
+data = json.load(open(sys.argv[1]))
+cmds = set()
+def walk(node):
+    if isinstance(node, dict):
+        for k, v in node.items():
+            if k == "command" and isinstance(v, str):
+                m = re.search(r'([A-Za-z0-9_-]+\.(?:sh|py))', v)
+                cmds.add(m.group(1) if m else v)
+            else:
+                walk(v)
+    elif isinstance(node, list):
+        for item in node:
+            walk(item)
+walk(data)
+print(len(cmds))
+PYEOF
+}
+HC_CLAUDE=$(hook_script_count adapters/claude/hooks.json)
+HC_CODEX=$(hook_script_count adapters/codex/plugins/rolepod/hooks/hooks.json)
+HC_GEMINI=$(hook_script_count adapters/gemini/hooks/hooks.json)
+HC_CURSOR=$(hook_script_count adapters/cursor/hooks/hooks.json)
+HC_AGY=$(hook_script_count adapters/antigravity/hooks/hooks.json)
+check "hook scripts per manifest = Claude 9 / Codex 4 / Gemini 5 / Cursor 3 / Antigravity 4 (actual: $HC_CLAUDE/$HC_CODEX/$HC_GEMINI/$HC_CURSOR/$HC_AGY)" \
+  "[ $HC_CLAUDE -eq 9 ] && [ $HC_CODEX -eq 4 ] && [ $HC_GEMINI -eq 5 ] && [ $HC_CURSOR -eq 3 ] && [ $HC_AGY -eq 4 ]"
+check "README hook counts match manifests" \
+  "grep -q \"Claude $HC_CLAUDE / Codex $HC_CODEX / Gemini $HC_GEMINI / Cursor $HC_CURSOR / Antigravity $HC_AGY\" README.md"
+check "CHEATSHEET hook counts match manifests" \
+  "grep -q \"$HC_CLAUDE Claude / $HC_CODEX Codex / $HC_GEMINI Gemini / $HC_CURSOR Cursor / $HC_AGY Antigravity\" CHEATSHEET.md"
 
 # ── Full agent table must NOT appear in rendered entry docs ──────────
 # Heuristic: a full agent table has the agent-roster header pattern.
@@ -628,8 +666,8 @@ fi
 # whose events Codex supports (SessionStart, PreToolUse Bash / apply_patch).
 # Claude-only hooks (block-subagent-commit, cohesion-contract-check,
 # session-lifecycle) stay root-only — Codex has no Agent / Stop event API.
-# Root hooks/: 6 *.sh + lib/. Codex adapter hooks/: 3 *.sh. No optional/.
-SHARED_CORE_HOOKS=(gate-reminder.sh precommit-gate.sh project-context-loader.sh)
+# Root hooks/: 9 *.sh + lib/. Codex adapter hooks/: 4 *.sh. No optional/.
+SHARED_CORE_HOOKS=(gate-reminder.sh precommit-gate.sh project-context-loader.sh claim-verify-nudge.sh)
 HOOK_DRIFT=""
 for h in "${SHARED_CORE_HOOKS[@]}"; do
   root="hooks/$h"
@@ -643,7 +681,7 @@ for h in "${SHARED_CORE_HOOKS[@]}"; do
   fi
 done
 if [ -z "$HOOK_DRIFT" ]; then
-  echo "  ✓ root vs Codex adapter hook parity (3 core hooks identical, no add-on hooks)"
+  echo "  ✓ root vs Codex adapter hook parity (4 shared hooks identical, no add-on hooks)"
 else
   echo "  ✗ root vs Codex adapter hook drift:"
   printf "%b" "$HOOK_DRIFT" | sed 's/^/      /'

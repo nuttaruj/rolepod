@@ -24,8 +24,9 @@ mid-flow ("skip review", "just ship").
 4. **Verify — `check-work`** — no completion claim without fresh verification
    evidence in this message.
 5. **Review — `review-code`** — qa-tester floor + risk-appropriate reviewers.
-   External adversarial reviewers (Codex / Gemini) when configured; otherwise
-   qa-tester / security-engineer / universal-reviewer.
+   External adversarial reviewers (any installed CLI on a model different
+   from the Lead's) when configured; otherwise qa-tester / security-engineer /
+   universal-reviewer.
 6. **Ship — `finish-work`** — S+T+F+P gates, required CI lane checks, then
    the 4-option branch finish menu (merge / open PR / keep / discard).
 
@@ -64,7 +65,7 @@ Next step: <first question or context read>
   file / zero logic)
 - All S1-S5 + T1-T6 gates explicit every commit
 - Cross-CLI advisory panel on high-stakes multi-option plan decisions when configured
-- External adversarial reviewers (Codex / Gemini) when configured
+- External adversarial reviewers (a different model than the Lead's) when configured
 
 The user can opt back to lighter review mid-flow ("normal review is fine") —
 rigor is default-on, not mandatory-on.

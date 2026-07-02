@@ -21,7 +21,7 @@
 # Args (forwarded to install.sh — skip interactive prompt if any are given):
 #   --force           overwrite existing files (selective backup created)
 #   --dry-run         preview every action; write nothing to disk
-#   --target=<cli>    claude|codex|gemini|cursor|all (default claude)
+#   --target=<cli>    claude|codex|gemini|cursor|antigravity|all (default claude)
 #   --scope=global    install to home (default — affects all projects)
 #   --scope=project   install to current dir's .claude/ etc. (no global config touched)
 #
@@ -76,21 +76,23 @@ if [ "${#ARGS[@]}" -eq 0 ]; then
 ${BOLD}rolepod installer${NC} — pure framework (no 3rd-party add-ons bundled)
 
 Choose CLI target:
-  ${BOLD}1${NC}) ${CYAN}claude${NC}    — Claude Code (~/.claude/) ${YELLOW}★ default${NC}
-  ${BOLD}2${NC}) ${CYAN}codex${NC}     — Codex CLI (~/.codex/)
-  ${BOLD}3${NC}) ${CYAN}gemini${NC}    — Gemini CLI (~/.gemini/)
-  ${BOLD}4${NC}) ${CYAN}cursor${NC}    — Cursor IDE (~/.cursor/)
-  ${BOLD}5${NC}) ${GREEN}all${NC}       — install for all four CLIs
+  ${BOLD}1${NC}) ${CYAN}claude${NC}      — Claude Code (~/.claude/) ${YELLOW}★ default${NC}
+  ${BOLD}2${NC}) ${CYAN}codex${NC}       — Codex CLI (~/.codex/)
+  ${BOLD}3${NC}) ${CYAN}gemini${NC}      — Gemini CLI (~/.gemini/)
+  ${BOLD}4${NC}) ${CYAN}cursor${NC}      — Cursor IDE (~/.cursor/)
+  ${BOLD}5${NC}) ${CYAN}antigravity${NC} — Antigravity CLI / agy (~/.gemini/)
+  ${BOLD}6${NC}) ${GREEN}all${NC}         — install for all five CLIs
 
 EOF
     target_choice=""
-    read -r -p "Target [1/2/3/4/5] (default 1): " target_choice </dev/tty || target_choice=""
+    read -r -p "Target [1/2/3/4/5/6] (default 1): " target_choice </dev/tty || target_choice=""
     case "${target_choice:-1}" in
-      1|claude|"") INTERACTIVE_TARGET="claude" ;;
-      2|codex)     INTERACTIVE_TARGET="codex" ;;
-      3|gemini)    INTERACTIVE_TARGET="gemini" ;;
-      4|cursor)    INTERACTIVE_TARGET="cursor" ;;
-      5|all)       INTERACTIVE_TARGET="all" ;;
+      1|claude|"")    INTERACTIVE_TARGET="claude" ;;
+      2|codex)        INTERACTIVE_TARGET="codex" ;;
+      3|gemini)       INTERACTIVE_TARGET="gemini" ;;
+      4|cursor)       INTERACTIVE_TARGET="cursor" ;;
+      5|antigravity)  INTERACTIVE_TARGET="antigravity" ;;
+      6|all)          INTERACTIVE_TARGET="all" ;;
       *) echo "Unknown choice '$target_choice' — defaulting to claude"; INTERACTIVE_TARGET="claude" ;;
     esac
 

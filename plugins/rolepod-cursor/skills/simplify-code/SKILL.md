@@ -5,7 +5,7 @@ description: Use when code feels over-engineered, rotted, or duplicated — cut 
 
 # Simplify Code
 
-Recovery-phase skill. Cut complexity that does not earn its keep. Behavior-preserving — every change is provable by the existing tests.
+Simplify-phase skill — cross-phase, usable during Build (refactor intent) or as standalone cleanup. Cut complexity that does not earn its keep. Behavior-preserving — every change is provable by the existing tests.
 
 ## Iron Rule
 

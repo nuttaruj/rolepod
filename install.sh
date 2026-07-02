@@ -1408,15 +1408,11 @@ if gemini_selected; then
   fi
 
   step "Creating Gemini extension directory"
-  do_or_dry "mkdir -p $GEMINI_EXT_DEST" mkdir -p "$GEMINI_EXT_DEST"
-
-  if [ "$FORCE" -eq 1 ]; then
-    do_or_dry "rm -rf $GEMINI_EXT_DEST && mkdir -p $GEMINI_EXT_DEST" \
-      bash -c "rm -rf '$GEMINI_EXT_DEST' && mkdir -p '$GEMINI_EXT_DEST'"
-  else
-    do_or_dry "rm -rf $GEMINI_EXT_DEST/skills (stale legacy skill cleanup)" \
-      rm -rf "$GEMINI_EXT_DEST/skills"
-  fi
+  # Wipe-before-copy: the extension dir is fully rolepod-managed. An additive
+  # copy would resurrect files removed upstream (stale skills, dropped hooks),
+  # so every install replaces the tree — same as the Codex / Antigravity path.
+  do_or_dry "rm -rf $GEMINI_EXT_DEST && mkdir -p $GEMINI_EXT_DEST" \
+    bash -c "rm -rf '$GEMINI_EXT_DEST' && mkdir -p '$GEMINI_EXT_DEST'"
 
   step "Copying extension tree → $GEMINI_EXT_DEST/"
   if [ "$DRY_RUN" -eq 1 ]; then
@@ -1496,12 +1492,11 @@ if cursor_selected; then
   fi
 
   step "Creating Cursor plugin directory"
-  do_or_dry "mkdir -p $CURSOR_PLUGIN_DEST" mkdir -p "$CURSOR_PLUGIN_DEST"
-
-  if [ "$FORCE" -eq 1 ]; then
-    do_or_dry "rm -rf $CURSOR_PLUGIN_DEST && mkdir -p $CURSOR_PLUGIN_DEST" \
-      bash -c "rm -rf '$CURSOR_PLUGIN_DEST' && mkdir -p '$CURSOR_PLUGIN_DEST'"
-  fi
+  # Wipe-before-copy: the plugin dir is fully rolepod-managed. An additive
+  # copy would resurrect files removed upstream, so every install replaces
+  # the tree — same as the Codex / Antigravity path.
+  do_or_dry "rm -rf $CURSOR_PLUGIN_DEST && mkdir -p $CURSOR_PLUGIN_DEST" \
+    bash -c "rm -rf '$CURSOR_PLUGIN_DEST' && mkdir -p '$CURSOR_PLUGIN_DEST'"
 
   step "Copying plugin tree → $CURSOR_PLUGIN_DEST/"
   if [ "$DRY_RUN" -eq 1 ]; then

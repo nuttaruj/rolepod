@@ -1,6 +1,6 @@
-# Rolepod Skill Catalog (Core 10)
+# Rolepod Skill Catalog (Core 10 + 1 alias)
 
-Rolepod now ships **10 executable skills total**: 1 router + 9 workflow phase skills. There are no legacy compatibility shim skill files in the install tree. Old skill names are preserved only as documentation in [legacy-skill-map.md](legacy-skill-map.md).
+Rolepod ships **11 skills total**: Core 10 (1 router + 9 workflow phase skills) plus the `rolepod-full` command alias. There are no legacy compatibility shim skill files in the install tree. Old skill names are preserved only as documentation in [legacy-skill-map.md](legacy-skill-map.md).
 
 Entry docs (`CLAUDE.md` / `AGENTS.md` / `GEMINI.md`) embed this same lean surface so the Lead does not spend context choosing among dozens of tiny workflow fragments. Deep domain expertise lives in the 16 specialist agents.
 
@@ -10,6 +10,7 @@ Entry docs (`CLAUDE.md` / `AGENTS.md` / `GEMINI.md`) embed this same lean surfac
 |---|---|---:|---|---|
 | **0** | Workflow router | 1 | yes | First read of every request |
 | **1** | Core workflow skills | 9 | yes | Phase match |
+| — | Command alias (`rolepod-full`) | 1 | yes (own section) | Explicit `/rolepod-full` invocation only (`disable-model-invocation: true`) |
 | **2** | Specialist public skills | 0 default | no | Domain depth lives in agents |
 | **3** | Legacy compatibility shims | 0 | no | Removed; see migration map |
 
@@ -62,7 +63,7 @@ Skills can run inline (default — body becomes part of Lead's conversation) or 
 1. Add `core/skills/<name>/SKILL.md` with `name:`, `description:`, `when_to_use:`, `tier: 1`, and `phase: <name>` when it is a public phase skill.
 2. Edit `build/render.sh` in both `generate_skill_index()` and `generate_skill_index_lean()` if it belongs in the public surface.
 3. `make render` — regenerates both skill-index fragments.
-4. `make test-static` — render-clean + lean-surface confirm Core 10 caps and portability.
+4. `make test-static` — render-clean + lean-surface confirm the Core 10 + 1 alias caps and portability.
 
 ## Skill design principles
 

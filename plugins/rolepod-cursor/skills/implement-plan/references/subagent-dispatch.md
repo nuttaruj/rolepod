@@ -14,17 +14,17 @@ Fresh subagent per task = no leakage. Cost: extra dispatch overhead. Buy: clean 
 
 ## Implementer status taxonomy
 
-The implementer manifest declares one of four statuses. Handle each with a specific protocol.
+The implementer manifest declares `COMPLETED | PARTIAL | BLOCKED` (the enum every agent brief and `agent-protocol.md` teach) plus a **Concerns** section. Handle each with a specific protocol.
 
-### `DONE`
+### `COMPLETED`, Concerns empty
 
-Implementation complete, tests green, self-review clean.
+Implementation complete, tests green, self-review clean, no doubts flagged.
 
 **Action:** proceed to §6 spec-compliance review.
 
-### `DONE_WITH_CONCERNS`
+### `COMPLETED`, Concerns listed
 
-Work complete, but the implementer flagged doubts in the manifest's concerns section.
+Work complete, but the implementer flagged doubts in the manifest's Concerns section.
 
 **Action:** read concerns first. Classify each:
 - **Correctness concern** (e.g., "I'm not sure this handles the empty case") → resolve before review. Either confirm coverage exists or send back to implementer with the case named.
@@ -33,18 +33,18 @@ Work complete, but the implementer flagged doubts in the manifest's concerns sec
 
 Never proceed to review with unresolved correctness or scope concerns.
 
-### `NEEDS_CONTEXT`
+### `PARTIAL`
 
-The implementer cannot proceed because information is missing — a file path, an API contract, a stylistic decision, a constraint not in the brief.
+Some of the task is done; the manifest states what remains.
 
-**Action:** identify exactly which context is missing. Re-dispatch the same subagent (same model, fresh context) with the original brief plus the new context. The subagent is not at fault; the controller's brief was incomplete.
+**Action:** review the completed slice (§6 Stage 1 on the diff so far), then redispatch the stated remainder as its own narrowed brief — fresh context, same model. Do not merge an unreviewed partial into the next task's diff.
 
 ### `BLOCKED`
 
-The implementer cannot complete the task even with more context.
+The implementer cannot complete the task; the manifest states what blocks and what is needed.
 
-**Action:** never re-dispatch unchanged. Change at least one variable:
-1. **More context** — the brief was understatement; expand and redispatch
+**Action:** never re-dispatch unchanged. Read "what is needed" and change at least one variable:
+1. **More context** — the brief was incomplete (a missing file path, API contract, constraint); expand the brief and redispatch the same model, fresh context. The subagent is not at fault; the controller's brief was.
 2. **Stronger model** — task complexity exceeded the model tier; redispatch at the next tier
 3. **Smaller scope** — task is genuinely two tasks; split in the plan and redispatch the smaller one
 4. **Escalate** — the plan itself is wrong; return to `write-plan`
@@ -166,11 +166,11 @@ Read plan → extract tasks inline → TodoWrite (or Task tool)
 For each task:
   Dispatch implementer (model = task complexity tier)
   Implementer asks Q? → answer inline, redispatch
-  Implementer returns: DONE | DONE_WITH_CONCERNS | NEEDS_CONTEXT | BLOCKED
-    DONE                 → §6 Stage 1 (spec compliance)
-    DONE_WITH_CONCERNS   → resolve correctness/scope first → §6 Stage 1
-    NEEDS_CONTEXT        → add context, redispatch
-    BLOCKED              → change a variable, redispatch
+  Implementer returns: COMPLETED | PARTIAL | BLOCKED (+ Concerns section)
+    COMPLETED, no concerns → §6 Stage 1 (spec compliance)
+    COMPLETED + concerns   → resolve correctness/scope first → §6 Stage 1
+    PARTIAL                → review done slice, redispatch remainder narrowed
+    BLOCKED                → change a variable, redispatch
   Stage 1 issues? → implementer fixes → Stage 1 again
   Stage 1 approved → Stage 2 (code quality)
   Stage 2 issues? → implementer fixes → Stage 2 again

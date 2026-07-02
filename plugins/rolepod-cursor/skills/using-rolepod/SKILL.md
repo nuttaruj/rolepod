@@ -140,7 +140,7 @@ Skip a phase WHEN ALL true (state explicitly in response):
 - Claiming done before Verify → STOP, run `check-work`.
 - 2nd parallel agent spawn without contract → STOP, run `write-plan` and write the cohesion contract first.
 - Sub-agent attempting `git commit` / `git push` / `gh pr merge` → not allowed; Lead commits after the reviewer pass.
-- High-risk path (auth/billing/migrations/crypto/payments) with 0 reviewer agents dispatched → STOP, dispatch qa-tester + (Codex / Gemini / security-engineer if available).
+- High-risk path (auth/billing/migrations/crypto/payments) with 0 reviewer agents dispatched → STOP, dispatch qa-tester + security-engineer, plus an external CLI reviewer on a model different from the Lead's if one is installed (routing: review-code's `external-review-routing.md`).
 - 3rd agent on same issue OR 3rd PR on same surface in one session → STOP, ask user (hard-stop rule).
 - Diff mixes 2+ unrelated concerns at push/merge time → STOP, split into separate PRs (`finish-work` P1-P4 gate).
 - Concurrent sessions: if SessionStart warns "concurrent session(s) detected in this worktree" → before editing a SHARED file, spawn an isolated worktree first (`git worktree add ../<repo>-task-<ts> <branch> && cd`) and continue there. rolepod guards against same-file stomp between concurrent sessions; disjoint and solo edits flow free. Override: `ROLEPOD_ALLOW_SHARED_WORKTREE=1` for intentional shared/read-only review sessions.
@@ -150,7 +150,7 @@ Skip a phase WHEN ALL true (state explicitly in response):
 When the user says "done" / "finished" / "complete" / "ready" — or when the task obviously reached a natural stopping point — fire **in order**:
 
 1. `check-work` — produce concrete evidence the change works (test output / screenshot / curl).
-2. `review-code` — if multi-file or high-risk, pick adversarial reviewers (Codex / Gemini / qa-tester) per their domain match.
+2. `review-code` — if multi-file or high-risk, pick adversarial reviewers per their domain match: an external CLI whose model differs from the Lead's, plus qa-tester.
 3. `finish-work` — owns the 4-option finish menu (merge / open PR / keep branch / discard); never auto-pick — the branch decision is the user's.
 
 ## Output pattern
@@ -223,7 +223,7 @@ Non-blocking — read when a request does not obviously match a Quick-router row
 | "User just wants a fix" | They want a *correct* fix. `debug-issue` finds the root; symptom patches recur. |
 | "Tests are obvious, I'll add later" | Later never comes. TDD adds the test now or admits in writing it won't have one. |
 | "Solo work, no contract needed" | The moment a second agent (or future-you in a fresh session) touches the surface, contract pays off. |
-| "Reviewer takes too long" | Skip review = ship bugs. Codex/Gemini take ~30s for adversarial pass. |
+| "Reviewer takes too long" | Skip review = ship bugs. An external-CLI adversarial pass takes ~30s. |
 
 ## Don't
 

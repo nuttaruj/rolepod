@@ -29,7 +29,7 @@ name: <skill-name>
 description: <when to apply + scope, one sentence. Phase = <Phase>.>
 when_to_use: <the trigger condition, prose>
 tier: 1
-phase: <define|plan|build|verify|review|ship|recovery>
+phase: <define|plan|build|verify|review|ship|simplify|recovery>
 ---
 
 # <Skill Title>

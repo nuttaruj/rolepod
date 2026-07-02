@@ -8,7 +8,7 @@ phase: simplify
 
 # Simplify Code
 
-Recovery-phase skill. Cut complexity that does not earn its keep. Behavior-preserving — every change is provable by the existing tests.
+Simplify-phase skill — cross-phase, usable during Build (refactor intent) or as standalone cleanup. Cut complexity that does not earn its keep. Behavior-preserving — every change is provable by the existing tests.
 
 ## Iron Rule
 
