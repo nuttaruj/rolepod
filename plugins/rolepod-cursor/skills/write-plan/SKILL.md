@@ -74,6 +74,8 @@ For each task, name the test type (unit / integration / contract / E2E / smoke /
 
 Parallel agents only help when file ownership is genuinely disjoint and the work does not need handoff between agents. Otherwise sequential is faster and cheaper. When the call is borderline (e.g. two slices that might overlap on a shared interface), present both shapes — sequential single-owner vs parallel + contract — with one-line trade-offs and let the user pick before drafting tasks.
 
+For this — or any high-stakes multi-option plan decision (approach, architecture, sequencing) — gather a **cross-CLI advisory panel** before deciding, but only when opted in (`/rolepod-full` or an explicit ask) and the decision is genuinely high-stakes. The other CLIs advise on the approach; the Lead reconciles and owns the choice. Gating, per-model strengths, and the collect-then-decide protocol: `references/advisory-routing.md`. Default is Lead-only — a panel costs ~3× tokens, so it is off unless the decision earns it.
+
 ### 5. If parallel, write a cohesion contract
 
 Fill `templates/cohesion-contract-template.md` — it pins file ownership, shared interfaces, merge order, the do-not-touch list, and the integration owner. Save to `contract.md` or `docs/rolepod/plans/<feature>-cohesion-YYYY-MM-DD.md`.
@@ -147,6 +149,7 @@ Non-blocking — read only when the plan being drafted is unclear:
 
 Load only when the task needs it:
 - `references/plan-reviewer-prompt.md` — reusable subagent prompt for dispatching an independent plan reviewer when the plan is risky or large. Use via the Agent tool (subagent_type=universal-reviewer).
+- `references/advisory-routing.md` — cross-CLI advisory panel for high-stakes multi-option decisions: gating, per-model strengths, and the collect-then-Lead-decides protocol. The advisory mirror of `review-code`'s external adversarial review.
 
 ## Hard stops
 

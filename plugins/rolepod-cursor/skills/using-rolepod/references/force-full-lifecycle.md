@@ -15,6 +15,9 @@ mid-flow ("skip review", "just ship").
    hard-gate table.
 2. **Plan — `write-plan`** — break the approved spec into bite-sized steps
    (2-5 min each). If multi-agent, write the cohesion contract before spawning.
+   On a high-stakes multi-option decision (approach / architecture / sequencing),
+   gather a cross-CLI advisory panel first — see write-plan's
+   `references/advisory-routing.md`. The Lead reconciles and owns the choice.
 3. **Build — `implement-plan`** — execute task-by-task with bounded scope +
    explicit file ownership. Bug-flavored tasks route through `debug-issue`.
    Apply S1-S5 / T1-T6 / F1-F5 per commit.
@@ -60,6 +63,7 @@ Next step: <first question or context read>
 - Mandatory peer review even for small diffs (no skip on ≤5 lines / single
   file / zero logic)
 - All S1-S5 + T1-T6 gates explicit every commit
+- Cross-CLI advisory panel on high-stakes multi-option plan decisions when configured
 - External adversarial reviewers (Codex / Gemini) when configured
 
 The user can opt back to lighter review mid-flow ("normal review is fine") —
