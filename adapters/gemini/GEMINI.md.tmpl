@@ -29,10 +29,9 @@ Conflict unsafe → ask user.
 - **Skills auto-loaded** — Gemini's skill loader reads `skills/<name>/SKILL.md`.
 - **MCP support** — any MCP tools your project uses, via Gemini's MCP config; verify per-project.
 
-## Language & Tone
+{{INCLUDE: core/fragments/communication.md}}
 
 User Thai → reply Thai. User English → reply English.
-Concise. Result + risk + next step. No filler.
 Commits / PRs / code: English, normal tone.
 
 {{INCLUDE: core/fragments/verify-first.md}}
@@ -121,20 +120,11 @@ Code-intel index via Gemini MCP config when available. Otherwise plain `git` + `
 
 Reviewer gap: Gemini's native peer-review channel limited. Self-review carries more weight than on Claude / Codex.
 
-## Hard stops — ask user
+{{INCLUDE: core/fragments/hard-stops.md}}
 
-- Context window past ~60-80% no convergence → summarize + ask
-- File vs claim → trust file, re-verify
-- Destructive cmd (`rm -rf` / `git reset --hard` / force push) → announce + try reversible first
-- Intent unclear after 1 clarification → ask, don't guess
+{{INCLUDE: core/fragments/code-search.md}}
 
-## Search
-
-| Need | Tool |
-|------|------|
-| Plain text / filename | `rg` |
-| Symbol / caller / impact | code-intel index if connected, else `rg` + Read |
-| External docs / pricing / news | Gemini web/grounding |
+External docs / pricing / news → Gemini web/grounding.
 
 ## Verification
 

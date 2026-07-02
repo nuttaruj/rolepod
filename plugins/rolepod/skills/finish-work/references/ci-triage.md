@@ -1,4 +1,4 @@
-<!-- Load when a required CI lane is red before merge. -->
+<!-- Load when a required CI lane is red before merge, or a merge/rebase conflicts. -->
 
 A red required lane blocks the merge. Before re-running or escalating,
 triage WHY it is red — the response differs by cause.
@@ -21,3 +21,22 @@ it is telling you before you silence it.
 ## Once the merge intent is approved
 Fix-and-rerun does not need per-iteration user permission. Iterate until the
 required lanes are green, then proceed with the authorized merge.
+
+## Merge conflicts
+
+A conflicted merge or rebase is a STOP-and-decide, not a dead end — and not
+free rein. Every line written during resolution is NEW, UNREVIEWED code.
+
+1. **Rebase onto latest main BEFORE the pre-merge gate** — gates must never
+   pass on a stale base and then meet the conflict after.
+2. **Trivial conflict** (imports, adjacent independent lines, lockfiles) —
+   resolve by picking sides; regenerate lockfiles with their tool. Do not
+   author logic inside conflict markers.
+3. **Semantic conflict** (both sides changed the same behavior) — abort
+   (`git merge --abort` / `git rebase --abort`), read the other side's
+   change end-to-end, return to `implement-plan` for a real reconciliation.
+4. **After ANY resolution, re-verify** — re-run `check-work` with the same
+   Commands. A gate that passed pre-conflict has NOT passed on the resolved
+   tree.
+5. High-risk surface in the conflict → the adversarial review re-runs on
+   the resolved diff before merge.

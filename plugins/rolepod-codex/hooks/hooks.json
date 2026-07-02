@@ -30,7 +30,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash ${PLUGIN_ROOT}/hooks/gate-reminder.sh",
+            "command": "ROLEPOD_LEAD_CLI=codex bash ${PLUGIN_ROOT}/hooks/gate-reminder.sh",
             "timeout": 5
           }
         ]
@@ -40,7 +40,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash ${PLUGIN_ROOT}/hooks/precommit-gate.sh",
+            "command": "ROLEPOD_LEAD_CLI=codex bash ${PLUGIN_ROOT}/hooks/precommit-gate.sh",
             "timeout": 5
           }
         ]

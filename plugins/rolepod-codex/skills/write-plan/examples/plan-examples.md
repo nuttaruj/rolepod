@@ -28,30 +28,32 @@ docs/rolepod/specs/orders-csv-export-2026-05-20.md (approved)
 ## Tasks
 
 ### Task 1: OrdersCsv service
-- Files: app/services/orders_csv.rb, spec/services/orders_csv_spec.rb
-- Change: build CSV rows from the same scope ReportsController#index uses
-- Test / evidence: unit — a 3-order scope yields 1 header + 3 rows, columns
+- [ ] Files: app/services/orders_csv.rb, spec/services/orders_csv_spec.rb
+- [ ] Change: build CSV rows from the same scope ReportsController#index uses
+- [ ] Test / evidence: unit — a 3-order scope yields 1 header + 3 rows, columns
   in on-screen table order
-- Expected failing signal: NameError: uninitialized constant OrdersCsv
-- Command: bundle exec rspec spec/services/orders_csv_spec.rb
+- [ ] Expected failing signal: NameError: uninitialized constant OrdersCsv
+- [ ] Command: bundle exec rspec spec/services/orders_csv_spec.rb
 - Owner: Lead
 - Done when: spec green, columns match the report table
 
 ### Task 2: export action
-- Files: app/controllers/reports_controller.rb
-- Change: add #export, reuse the index filter scope, stream as attachment
-- Test / evidence: request spec — filtered export row count == table count;
+- [ ] Files: app/controllers/reports_controller.rb
+- [ ] Change: add #export, reuse the index filter scope, stream as attachment
+- [ ] Test / evidence: request spec — filtered export row count == table count;
   an empty range returns a header-only CSV
-- Command: bundle exec rspec spec/requests/reports_spec.rb
+- [ ] Command: bundle exec rspec spec/requests/reports_spec.rb
 - Owner: Lead
 - Done when: request spec green; 30s timeout not exceeded on a 10k-order range
+- On fail: timeout on the 10k range → switch to the chunked streamed
+  response (Risks) instead of debugging the buffered path.
 
 ### Task 3: Export CSV button
-- Files: app/views/reports/_toolbar.html.erb
-- Change: add the button wired to #export; disable + spinner while generating
-- Test / evidence: system spec — click exports the current filter; button
+- [ ] Files: app/views/reports/_toolbar.html.erb
+- [ ] Change: add the button wired to #export; disable + spinner while generating
+- [ ] Test / evidence: system spec — click exports the current filter; button
   is disabled mid-generation
-- Command: bundle exec rspec spec/system/reports_export_spec.rb
+- [ ] Command: bundle exec rspec spec/system/reports_export_spec.rb
 - Owner: Lead
 - Done when: system spec green
 
@@ -63,6 +65,11 @@ Sequential — single owner. Task 1 → 2 → 3; each depends on the prior.
 
 ## Done criteria
 All 3 specs green; the exported CSV row set equals the filtered table.
+
+## Failure policy
+Default: a failing Command → debug-issue (reproduce → minimal fix → re-run
+the same Command). Stop and escalate after 3 failed attempts on one task,
+or if a fix reopens a previously green task.
 
 ## Risks
 Large exports near the 30s timeout — Task 2 verifies a 10k-order range; if it
@@ -92,7 +99,8 @@ Touch the reports stuff and the frontend. Should be quick.
 | Tests | "Add tests" — no assertion | Per task: test type + the assertion that proves done |
 | Order | Unstated | Sequential, dependency named (1 → 2 → 3) |
 | Commands | None | Exact `rspec` command per task |
-| Risk | "Should be quick" | Timeout risk named with a fallback |
+| Loop | Not runnable — no checkboxes, no failure path | Checkbox state + Failure policy: the build loop executes, verifies, and recovers without re-asking |
+| Risk | "Should be quick" | Timeout risk named with a fallback + a per-task On fail |
 
 ---
 
@@ -116,16 +124,18 @@ docs/rolepod/specs/notifications-center-2026-05-20.md (approved)
 ## Tasks
 
 ### Task 1: Notification model + API (backend)
-- Files: app/models/notification.rb, app/controllers/api/notifications_controller.rb
-- Change: model + GET /api/notifications + POST /api/notifications/:id/read
-- Test / evidence: request spec — list returns unread first; read marks read
+- [ ] Files: app/models/notification.rb, app/controllers/api/notifications_controller.rb
+- [ ] Change: model + GET /api/notifications + POST /api/notifications/:id/read
+- [ ] Test / evidence: request spec — list returns unread first; read marks read
+- [ ] Command: bundle exec rspec spec/requests/api/notifications_spec.rb
 - Owner: backend-developer
 - Done when: request spec green; API matches the frozen contract
 
 ### Task 2: API client + bell + dropdown (frontend)
-- Files: app/javascript/api/notifications.ts, NotificationBell.tsx, NotificationDropdown.tsx
-- Change: typed client, bell with unread count, dropdown with read-on-click
-- Test / evidence: component test — bell shows the count; click marks read
+- [ ] Files: app/javascript/api/notifications.ts, NotificationBell.tsx, NotificationDropdown.tsx
+- [ ] Change: typed client, bell with unread count, dropdown with read-on-click
+- [ ] Test / evidence: component test — bell shows the count; click marks read
+- [ ] Command: yarn vitest run app/javascript/components/__tests__/notifications
 - Owner: frontend-developer
 - Done when: component tests green against the contract's mock
 
@@ -139,6 +149,11 @@ Merge order: Task 1 (backend) first — it provides the API contract.
 
 ## Done criteria
 Both task sets green; the live bell updates against the real API.
+
+## Failure policy
+Default: a failing Command → debug-issue → re-run the same Command; stop
+after 3 failed attempts on one task. Contract drift found at integration →
+STOP both agents, fix the contract first (do not patch around it).
 
 ## Risks
 Contract drift — the API shape is frozen in the cohesion contract; the
@@ -167,7 +182,8 @@ Run them in parallel to go faster.
 | Cohesion contract | None — parallel with no contract | Contract path named, interface frozen |
 | Merge order | Unstated | Backend first — it provides the contract |
 | API contract | Unstated — drift guaranteed | Frozen in the contract; integration owner re-verifies |
-| Tests | None | Per task: request spec / component test with an assertion |
+| Tests | None | Per task: request spec / component test with an assertion + a runnable Command |
+| Loop | Not runnable | Checkboxes + Failure policy incl. the contract-drift stop rule |
 
 > Scenario 2 is parallel — but the good plan still names a merge order and a
 > single integration owner. Parallel is not "everyone edits at once"; it is

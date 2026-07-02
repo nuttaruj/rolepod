@@ -21,9 +21,23 @@ set -euo pipefail
 INPUT=$(cat 2>/dev/null || echo '{}')
 TOOL=$(echo "$INPUT" | python3 -c "import sys,json;print(json.load(sys.stdin).get('tool_name',''))" 2>/dev/null || echo "")
 
-echo "$TOOL" | grep -qE '^(Edit|Write|MultiEdit|NotebookEdit)$' || exit 0
+# Claude edit tools + Codex's apply_patch (the Codex adapter registers this
+# same script on matcher "apply_patch" — without it here the hook is inert
+# on Codex: disjoint tool-name sets).
+echo "$TOOL" | grep -qE '^(Edit|Write|MultiEdit|NotebookEdit|apply_patch)$' || exit 0
 
-FILE=$(echo "$INPUT" | python3 -c "import sys,json;d=json.load(sys.stdin).get('tool_input',{});print(d.get('file_path','') or d.get('notebook_path',''))" 2>/dev/null || echo "")
+# file_path (Claude tools) → notebook_path → path → apply_patch body markers
+# (Codex patches carry "*** Add/Update/Delete File: <path>" lines, no field).
+FILE=$(echo "$INPUT" | python3 -c "
+import sys, json, re
+d = json.load(sys.stdin).get('tool_input', {})
+p = d.get('file_path', '') or d.get('notebook_path', '') or d.get('path', '')
+if not p:
+    body = d.get('input', '') or d.get('patch', '') or ''
+    m = re.search(r'\*\*\* (?:Add|Update|Delete) File: (.+)', body)
+    p = m.group(1).strip() if m else ''
+print(p)
+" 2>/dev/null || echo "")
 
 # Schema-bound NEW file → emit STRONG verify-doc reminder.
 SCHEMA_BOUND=""
@@ -73,44 +87,55 @@ if [ -n "$HIGH_RISK" ] && [ "$SOFT_MODE" -eq 0 ]; then
 fi
 
 if [ -n "$BLOCK_REASON" ]; then
-  python3 -c "
-import json
+  # Pass via env, NOT string interpolation — a quote in the reason must not
+  # break the JSON emitter (silent-failure bug caught by hook-behavior.sh).
+  ROLEPOD_HOOK_MSG="$BLOCK_REASON" python3 -c "
+import json, os
 print(json.dumps({
   'hookSpecificOutput': {
     'hookEventName': 'PreToolUse',
     'permissionDecision': 'deny',
-    'permissionDecisionReason': '''$BLOCK_REASON'''
+    'permissionDecisionReason': os.environ.get('ROLEPOD_HOOK_MSG', '')
   }
 }))
 " 2>/dev/null || echo '{}'
   exit 0
 fi
 
-# auto-Careful banner — high-risk path, no hard-block trigger. Adversarial
-# reviewers (Codex / Gemini) added to recommended list when their CLI
-# binaries are present.
+# auto-Careful banner — high-risk path, no hard-block trigger. External
+# adversarial reviewers listed Lead-relative: every installed CLI EXCEPT
+# the one running this session (Iron Rule 2 — the adversarial pass runs on
+# a model different from the Lead's). This same script ships on all CLIs,
+# so it must never nudge a Lead toward its own model.
 CAREFUL_BANNER=""
 if [ -n "$HIGH_RISK" ]; then
-  HAS_CODEX_BIN=0; HAS_GEMINI_BIN=0
-  command -v codex  >/dev/null 2>&1 && HAS_CODEX_BIN=1
-  command -v gemini >/dev/null 2>&1 && HAS_GEMINI_BIN=1
+  # Self-identification: ROLEPOD_LEAD_CLI (set by the adapter's hooks.json
+  # command), else CLAUDE_PLUGIN_ROOT (Claude hook runtime). Unknown → list
+  # all; the exclusion sentence carries the discipline. Do NOT sniff shell
+  # env like CODEX_HOME — it leaks from the user's rc files.
+  SELF_CLI="${ROLEPOD_LEAD_CLI:-}"
+  [ -z "$SELF_CLI" ] && [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && SELF_CLI="claude"
   REVIEWER_LIST="qa-tester"
-  [ "$HAS_CODEX_BIN" -eq 1 ] && REVIEWER_LIST="$REVIEWER_LIST + Codex (\`codex exec\`, depth/security)"
-  [ "$HAS_GEMINI_BIN" -eq 1 ] && REVIEWER_LIST="$REVIEWER_LIST + Gemini (\`gemini -m pro -p\`, breadth/cross-file)"
-  BOTH_RULE=""
-  if [ "$HAS_CODEX_BIN" -eq 1 ] && [ "$HAS_GEMINI_BIN" -eq 1 ]; then
-    BOTH_RULE=" Both Codex AND Gemini installed → use BOTH on high-risk (not Codex alone — that's the documented drift)."
+  [ "$SELF_CLI" != "codex" ]  && command -v codex  >/dev/null 2>&1 && REVIEWER_LIST="$REVIEWER_LIST + Codex (\`codex exec\`, depth/security)"
+  [ "$SELF_CLI" != "claude" ] && command -v claude >/dev/null 2>&1 && REVIEWER_LIST="$REVIEWER_LIST + Claude (\`claude -p\`, architecture/quality)"
+  if [ "$SELF_CLI" != "gemini" ] && [ "$SELF_CLI" != "antigravity" ]; then
+    if command -v gemini >/dev/null 2>&1; then
+      REVIEWER_LIST="$REVIEWER_LIST + Gemini (\`gemini -m pro -p\`, breadth/cross-file)"
+    elif command -v agy >/dev/null 2>&1; then
+      REVIEWER_LIST="$REVIEWER_LIST + Antigravity (\`agy -p\`, breadth/cross-file — Gemini family)"
+    fi
   fi
-  CAREFUL_BANNER="⚠️  AUTO-CAREFUL MODE (high-risk path, session: $HIGH_RISK_EDITS high-risk edits / $TEST_EDITS tests / $REVIEWERS reviewers). MANDATORY before more edits: (1) test file exists or is being written this session, (2) reviewers dispatched — use ≥2 when available (${REVIEWER_LIST}; security-engineer for auth/billing/crypto).${BOTH_RULE} (3) S1-S5 + T1-T6 checklist run before commit. Soft-mode opt-out: ROLEPOD_GATES_SOFT=1. "
+  CAREFUL_BANNER="⚠️  AUTO-CAREFUL MODE (high-risk path, session: $HIGH_RISK_EDITS high-risk edits / $TEST_EDITS tests / $REVIEWERS reviewers). MANDATORY before more edits: (1) test file exists or is being written this session, (2) reviewers dispatched — use ≥2 when available (${REVIEWER_LIST}; security-engineer for auth/billing/crypto). Exclude this session's own CLI — the adversarial pass runs on a DIFFERENT model (gemini and agy are the same model family). (3) S1-S5 + T1-T6 checklist run before commit. Soft-mode opt-out: ROLEPOD_GATES_SOFT=1. "
 fi
 
 # Emit reminder ONLY when schema-bound or high-risk — no generic Q1-Q4 nag.
-python3 -c "
-import json
+# Env-passed (see deny path) so apostrophes in the banner cannot break it.
+ROLEPOD_HOOK_MSG="${SCHEMA_BOUND}${CAREFUL_BANNER}${HIGH_RISK}" python3 -c "
+import json, os
 print(json.dumps({
   'hookSpecificOutput': {
     'hookEventName': 'PreToolUse',
-    'additionalContext': '${SCHEMA_BOUND}${CAREFUL_BANNER}${HIGH_RISK}'
+    'additionalContext': os.environ.get('ROLEPOD_HOOK_MSG', '')
   }
 }))
 " 2>/dev/null || echo '{}'

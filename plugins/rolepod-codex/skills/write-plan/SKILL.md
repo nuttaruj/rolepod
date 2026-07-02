@@ -73,6 +73,8 @@ Break a task down further if any holds: >2hr of work, acceptance needs more than
 
 For each task, name the test type (unit / integration / contract / E2E / smoke / benchmark / repro), the assertion that would prove it works, and the exact command to run it — copy-paste runnable, not "run the tests". The runnable command is what lets the build loop verify each task autonomously. "Adds tests" is not a test plan.
 
+Repo has no test infrastructure at all → the FIRST task bootstraps the minimal harness (runner config + one passing smoke test) so every later Command is runnable. Never plan Commands against a runner that does not exist.
+
 ### 4. Decide if parallelism helps
 
 Parallel agents only help when file ownership is genuinely disjoint and the work does not need handoff between agents. Otherwise sequential is faster and cheaper. When the call is borderline (e.g. two slices that might overlap on a shared interface), present both shapes — sequential single-owner vs parallel + contract — with one-line trade-offs and let the user pick before drafting tasks.
@@ -94,7 +96,7 @@ Scan for:
 - **Spec-coverage trace** — for each spec requirement, name the task that implements it. List gaps. A spec requirement with no task is a plan failure
 - **Symbol consistency cross-task** — function / method / property names must match across tasks. `clearLayers()` in Task 3 and `clearFullLayers()` in Task 7 is a bug — pick one and propagate
 - **Missing tests** on any task
-- **Loop-runnable** — every task carries an exact runnable Command, and the plan states a Failure policy, so the build loop can execute → verify → recover without re-asking the user
+- **Loop-runnable** — every task carries an exact runnable Command, and the plan states a Failure policy, so the build loop can execute → verify → recover without re-asking the user. Deterministic check on the filled plan: `grep -q '^## Failure policy' <plan> && [ "$(grep -c 'Command:' <plan>)" -ge "$(grep -c '^### Task' <plan>)" ]` — plan-lint, the sibling of write-spec's spec-lint (`tests/integration/cases/plan-lint.sh`)
 - **Untouched high-risk surfaces**
 - **Unowned files** in a parallel layout
 

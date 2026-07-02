@@ -25,12 +25,13 @@ Two deliberate divergences from the single-vendor version:
   to claw back frontier reasoning cheaply (asymmetric). Cross-vendor is the
   opposite on both counts. The advisors are not stronger — they are **frontier
   peers from a different lineage** (symmetric), and it costs *more*, not less.
-  The win is a **better decision**: Codex (GPT-5.5), Gemini Pro, and Claude
-  reason, fail, and notice differently, so a panel surfaces approaches and risks
-  any single model misses. This holds *even when the Lead is already the
-  strongest model available* — Lead on Opus still consults GPT-5.5 and Gemini
-  Pro, because cross-vendor frontier diversity beats one model on a hard call.
-  You spend the extra tokens to decide better, never to decide cheaper.
+  The win is a **better decision**: the Codex, Gemini, and Claude frontier
+  models reason, fail, and notice differently, so a panel surfaces approaches
+  and risks any single model misses. This holds *even when the Lead is already
+  the strongest model available* — a Lead on the top Claude model still
+  consults the other two families, because cross-vendor frontier diversity
+  beats one model on a hard call. You spend the extra tokens to decide better,
+  never to decide cheaper.
 - **Cold context.** The Anthropic advisor shares the executor's context. A
   cross-CLI advisor does not — it starts cold. The Lead must pack the decision,
   the options, and the constraints into the prompt; the advisor sees only what
@@ -62,8 +63,11 @@ when ALL hold:
 
 - **Lead (executor)** — this session's CLI. It frames the decision and owns the
   outcome; it is not a panelist (it is already the one deciding).
-- **Advisor pool** — the other CLIs on PATH: `command -v codex` /
-  `command -v gemini` / `command -v claude`. Same detection as review.
+- **Advisor pool** — the other model **families** on PATH: `command -v codex` /
+  `command -v gemini` / `command -v claude` / `command -v agy`. Same detection
+  and family rule as review: gemini and agy are one family (one pool member,
+  prefer `gemini`; invoke `agy -p` when only agy is installed), and a family
+  matching the Lead's is excluded.
 
 ## What an advisor returns
 
@@ -82,10 +86,10 @@ Its output is input to the Lead.
 Mirrors the review axes — same strengths, applied to *advising on an approach*
 instead of *reviewing a diff*.
 
-| Model | Advises best on | Invoke |
+| Model family | Advises best on | Invoke |
 |-------|-----------------|--------|
 | Codex | correctness risk, security implications, logic depth of an approach | `codex exec` |
-| Gemini | breadth, cross-file / large-surface impact, alternatives sweep | `gemini -m pro -p` |
+| Gemini | breadth, cross-file / large-surface impact, alternatives sweep | `gemini -m pro -p`, or `agy -p` when only agy is installed |
 | Claude | architecture, maintainability, API / interface shape | `claude -p` |
 
 Route the decision's dominant dimension to the model that owns it; a decision

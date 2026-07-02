@@ -3,23 +3,27 @@
 
 # External review routing
 
-Rolepod runs on three CLIs — Claude, Codex, Gemini. Any one can be the Lead.
-The adversarial review pass routes by model strength, never to the Lead's
-own model.
+Rolepod's CLIs span three model families — Claude, Codex (GPT), and
+Gemini (served by both `gemini` and `agy`/Antigravity). Any CLI can be the
+Lead. The adversarial review pass routes by model strength, never to the
+Lead's own model **family** — gemini and agy run the same family, so one
+never reviews the other's work as "external".
 
 ## The pool
 
 - **Lead** — the CLI running this session. It reviews its own work only
   through the Lead floor (below), never as the adversarial reviewer.
-- **External pool** — the other two CLIs, when the binary is on PATH:
-  `command -v codex` / `command -v gemini` / `command -v claude`.
+- **External pool** — the other model families, when a binary is on PATH:
+  `command -v codex` / `command -v gemini` / `command -v claude` /
+  `command -v agy`. When both `gemini` and `agy` are installed they count
+  as ONE pool member (same family); prefer `gemini`.
 
 ## Model strength — one axis each, no overlap
 
-| Model | Reviews best | Invoke |
+| Model family | Reviews best | Invoke |
 |-------|--------------|--------|
 | Codex | depth · security · logic rigor | `codex exec` |
-| Gemini | breadth · cross-file · large-diff sweep | `gemini -m pro -p` |
+| Gemini | breadth · cross-file · large-diff sweep | `gemini -m pro -p`, or `agy -p` when only agy is installed |
 | Claude | architecture · code quality · maintainability | `claude -p` |
 
 ## Routing
@@ -29,9 +33,10 @@ own model.
    external is in the pool (installed AND not the Lead).
 3. A diff spanning two axes uses two externals, one per axis.
 
-**Lead-exclusion overrides strength.** If the strength-matched reviewer is
-the Lead itself, that axis cannot go to it — route the axis to the next
-available external, or to the Lead floor.
+**Lead-exclusion overrides strength — and it excludes the family, not just
+the binary.** If the strength-matched reviewer runs the Lead's model family
+(a Gemini Lead vs `agy`, an agy Lead vs `gemini`), that axis cannot go to
+it — route the axis to the next available external, or to the Lead floor.
 
 > Example: a breadth-heavy diff, Lead = Gemini. Gemini owns breadth but is
 > the Lead — it cannot review its own work. The breadth axis falls to Claude

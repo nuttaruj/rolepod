@@ -110,7 +110,7 @@ After a subagent returns `COMPLETED`, dispatch two reviewers in order on the dif
 1. **Spec compliance** — does the diff match the task spec exactly? No missing requirements, no extras. Issue → implementer fixes → re-review. Approve before stage 2.
 2. **Code quality** — patterns, DRY, smell, test strength. Issue → implementer fixes → re-review.
 
-Both stages mandatory for delegated work. Lead-executed tasks: §6 collapses to one self-review of the diff with a 5-minute pause before reading (fresh-context simulation).
+Both stages mandatory for delegated work. Lead-executed tasks: §6 collapses to one self-review read cold — run `git diff`, then re-read each touched file from disk (not from memory) before judging (fresh-context simulation).
 
 After all tasks pass per-task review, dispatch a **final whole-implementation review** on the cumulative diff to catch cross-task drift (type/symbol/contract mismatch, unowned files in parallel layouts). Hand off to `check-work` only after the final review clears.
 

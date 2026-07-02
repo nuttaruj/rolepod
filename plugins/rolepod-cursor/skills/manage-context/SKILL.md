@@ -18,7 +18,7 @@ Recovery-phase skill. Keep work stable when context grows long, the codebase is 
 
 ## When to use
 
-- Context window is past ~60-80% used (or context bar yellow/red) — exact tokens depend on the model's window; modern windows range from 200k to 1M+, so use ratio, not absolute
+- An observable context signal fires: the context bar turns yellow/red, the harness warns about compaction, or you notice degraded recall (re-reading files you already read, forgetting stated constraints). When a meter exists, ~70% used is the line — but act on the observable signal, not the estimate
 - The same bug keeps reappearing at a different surface
 - You forgot a constraint the user stated earlier
 - You are starting in an unfamiliar codebase
@@ -53,7 +53,7 @@ Return / hand off:
 
 | Symptom | Mode |
 |---------|------|
-| Context window past ~60-80% (or bar yellow/red) | Context budget |
+| Context signal: bar yellow/red, compaction warning, or degraded recall | Context budget |
 | Forgot a stated constraint | Session hygiene |
 | Same bug at 3 surfaces | Zoom-out |
 | 3+ failed fix attempts on the same target | Escalate |

@@ -48,36 +48,66 @@ except Exception:
     print('')
 " 2>/dev/null || echo "")
 
-# Detect destructive git ops. Match the command boundary so `git committed`
-# in a comment string doesn't false-positive, but `git commit -m ...` does.
-BLOCKED=""
-case "$CMD" in
-  *"git commit"*|*"git commit --"*) BLOCKED="git commit" ;;
-  *"git push"*) BLOCKED="git push" ;;
-  *"gh pr merge"*) BLOCKED="gh pr merge" ;;
-  *"gh pr create"*) BLOCKED="gh pr create" ;;
-  *"git reset --hard"*) BLOCKED="git reset --hard" ;;
-  *"git push --force"*|*"git push -f"*) BLOCKED="git push --force" ;;
-esac
+# Detect destructive git ops by walking the argv tokens — NOT substring
+# match. Substring missed flag-separated forms (`git -C . commit`,
+# `git -c k=v commit`), which a blocked agent can trivially discover.
+# Token walk skips git's pre-subcommand options (and their values) so the
+# real subcommand is what gets matched.
+BLOCKED=$(printf '%s' "$CMD" | python3 -c "
+import sys, shlex
+cmd = sys.stdin.read()
+try:
+    toks = shlex.split(cmd)
+except ValueError:
+    toks = cmd.split()
+VALUE_OPTS = {'-C', '--git-dir', '--work-tree', '--namespace', '--exec-path'}
+blocked = ''
+for i, t in enumerate(toks):
+    if t == 'git':
+        j = i + 1
+        while j < len(toks) and toks[j].startswith('-'):
+            if toks[j] in VALUE_OPTS:
+                j += 2
+            elif toks[j] == '-c' and j + 1 < len(toks) and '=' in toks[j + 1]:
+                j += 2
+            else:
+                j += 1
+        if j < len(toks):
+            sub = toks[j]
+            rest = toks[j:]
+            if sub == 'commit':
+                blocked = 'git commit'
+            elif sub == 'push':
+                blocked = 'git push --force' if ('--force' in rest or '-f' in rest) else 'git push'
+            elif sub == 'reset' and '--hard' in rest:
+                blocked = 'git reset --hard'
+    elif t == 'gh' and i + 2 < len(toks) and toks[i + 1] == 'pr' and toks[i + 2] in ('merge', 'create'):
+        blocked = 'gh pr ' + toks[i + 2]
+    if blocked:
+        break
+print(blocked)
+" 2>/dev/null || echo "")
 
 [ -z "$BLOCKED" ] && exit 0
 
 # Block via PreToolUse deny JSON. Claude Code surfaces `reason` back to the
-# agent so it knows WHY the call failed and what to do next.
-python3 -c "
-import json
+# agent so it knows WHY the call failed and what to do next. Fields are
+# env-passed — a quote inside agent_type/command must not break (or inject
+# into) the JSON emitter.
+RP_AGENT_TYPE="$AGENT_TYPE" RP_BLOCKED="$BLOCKED" python3 -c "
+import json, os
 print(json.dumps({
   'hookSpecificOutput': {
     'hookEventName': 'PreToolUse',
     'permissionDecision': 'deny',
     'permissionDecisionReason': (
-      'BLOCKED: sub-agent \\'$AGENT_TYPE\\' attempted \\'$BLOCKED\\'. '
+      'BLOCKED: sub-agent %r attempted %r. '
       'Sub-agents NEVER commit, push, or merge directly — that is the Lead '
       'responsibility after qa-tester + universal-reviewer verify. '
       'Return COMPLETED status with file list and verification evidence; '
       'Lead will commit. '
       'See the Agent protocol section in your agent file — sub-agent commit ban.'
-    )
+    ) % (os.environ.get('RP_AGENT_TYPE', ''), os.environ.get('RP_BLOCKED', ''))
   }
 }))
 " 2>/dev/null

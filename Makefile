@@ -53,6 +53,7 @@ test-static:
 	@$(MAKE) -s test-render-clean
 	@$(MAKE) -s test-lean-surface
 	@bash tests/static/hook-agent-matching.sh
+	@bash tests/static/always-on-hook.sh
 	@echo "  → static checks passed"
 
 # lean-surface — anti-drift guards that lock in the Core 10 invariants:

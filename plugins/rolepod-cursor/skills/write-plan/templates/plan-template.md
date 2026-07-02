@@ -49,12 +49,14 @@
 <The whole-plan finish line. Every task done AND this is true.>
 
 ## Failure policy
-<The build loop's circuit-breaker — in the artifact, so the plan runs without
- relying on the always-on core. Default per task: a failing **Command** →
- debug-issue (reproduce → minimal fix → re-run the same Command). Stop and
- escalate to the user after 3 failed attempts on one task, or on oscillation
- (a fix for one task reopens another). A task needing a different fallback
- states it in its **On fail:**.>
+Default: a failing **Command** → debug-issue (reproduce → minimal fix →
+re-run the same Command). Stop and escalate to the user after 3 failed
+attempts on one task, or on oscillation (a fix for one task reopens
+another). A task needing a different fallback states it in its **On fail:**.
+<This default is body text, NOT a hint — keep it in the filled plan (the
+ circuit-breaker must survive in the artifact so the build loop runs without
+ the always-on core). Add plan-specific deviations below it, then delete
+ this hint.>
 
 ## Risks
 <What could go wrong, and the fallback.>

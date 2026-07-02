@@ -20,7 +20,9 @@ self-contained.
   path / concern conflict STOP and ask the Lead.
 - **Peer review** — cannot self-approve; request review from
   `universal-reviewer` or the domain reviewer. `universal-reviewer` is the
-  final judge and cannot review its own feedback.
+  final judge and cannot review its own feedback. No dispatch tool in your
+  runtime → do NOT skip or fake it: add `REVIEW NEEDED: <what to check>`
+  to your manifest — the Lead runs the review pass after you return.
 - **Commit ban (HARD)** — subagents NEVER run `git commit` / `git push` /
   `gh pr create` / `gh pr merge` / `git reset --hard` / `git push --force`.
   Return COMPLETED + file list + verification evidence; the Lead commits.

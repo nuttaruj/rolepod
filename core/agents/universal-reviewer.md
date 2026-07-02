@@ -51,6 +51,7 @@ Spot a fix needed → document in report with file:line + concrete recommendatio
 
 Must NOT request review for own findings.
 - Output: `APPROVED` or `REJECTED: [issues with file:line]`
+- Only SUGGESTION-level findings remain: `APPROVED-WITH-NITS: [nits]` — matches the review-report / finish-menu verdict enum
 - Severity: CRITICAL (must fix) / WARNING (should fix) / SUGGESTION
 - Findings advisory — Lead interprets, decides what ships.
 

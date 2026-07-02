@@ -15,7 +15,7 @@ Ship-phase entry skill. Close out a branch safely. Run the pre-merge gate, decid
 <EXTREMELY-IMPORTANT>
 1. NEVER push to main, force-push, merge a PR, or stage a launch without explicit user authorization for THIS specific action. Prior approval for unrelated work does not transfer.
 2. NEVER auto-merge a PR with a failing required CI lane.
-3. NEVER skip the pre-merge gate (simplicity + tests + reviewer) because "the diff is small".
+3. NEVER skip the pre-merge gate (simplicity + tests + reviewer) because "the diff is small". A user waiver granted at an earlier phase carries forward — quote it in the finish menu's gate status (which gate, the user's words) instead of re-demanding the waived work or skipping silently.
 4. The reviewer who flagged a BLOCKER is not the final authority on whether it is fixed — the qa-tester / Lead floor confirms before merge.
 5. Worktree cleanup follows order: merge → verify → `cd` to main root → `git worktree remove` → `git worktree prune` → delete branch. Reversed order leaves stuck refs. Only remove worktrees we created (path under `.worktrees/` or `worktrees/`); never touch harness-owned workspaces.
 </EXTREMELY-IMPORTANT>
@@ -112,6 +112,8 @@ Present concrete options:
 | **Open PR** | Needs upstream review or CI on PR runner | yes |
 | **Keep open** | More work planned; checkpoint commit only | yes |
 | **Discard** | Branch is an experiment that did not pan out | yes |
+
+**Merge conflict / stale base.** Rebase onto latest main before the pre-merge gate. A conflicted merge or rebase is neither a dead end nor free rein — resolution rules (pick-sides vs abort-and-reconcile) and the mandatory `check-work` re-run live in `references/ci-triage.md` (Merge conflicts).
 
 **Typed confirmation for Discard.** Before destructive deletion, require the user to type the literal word `discard`. Generic yes / ok / sure is not enough — destructive ops need shape-matching confirmation to defeat reflex assent.
 

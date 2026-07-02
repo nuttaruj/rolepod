@@ -81,6 +81,7 @@ Per the `review-code` reviewer-routing rules:
 
 Final judge for correctness. Must NOT request review for own findings.
 - Output: `APPROVED` or `REJECTED: [issues with file:line]`
+- Only minor / cosmetic issues remain (nothing above MINOR): `APPROVED-WITH-NITS: [nits]` — matches the review-report / finish-menu verdict enum
 - Fixed issues: `FIXED & APPROVED: [list]`
 
 ## When to ask Lead

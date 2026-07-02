@@ -28,12 +28,34 @@ TOOL=$(echo "$INPUT" | python3 -c "import sys,json;print(json.load(sys.stdin).ge
 
 CMD=$(echo "$INPUT" | python3 -c "import sys,json;print(json.load(sys.stdin).get('tool_input',{}).get('command',''))" 2>/dev/null || echo "")
 
-# Match git commit (allow flags, env prefix, heredoc syntax)
-echo "$CMD" | grep -qE '(^|[;&|]|[[:space:]])git[[:space:]]+commit\b' || exit 0
+# Match git commit — token walk, not adjacency, so flag-separated forms
+# (`git -C . commit`, `git -c k=v commit`) are gated too.
+IS_COMMIT=$(printf '%s' "$CMD" | python3 -c "
+import sys, shlex
+cmd = sys.stdin.read()
+try:
+    toks = shlex.split(cmd)
+except ValueError:
+    toks = cmd.split()
+VALUE_OPTS = {'-C', '--git-dir', '--work-tree', '--namespace', '--exec-path'}
+hit = 0
+for i, t in enumerate(toks):
+    if t == 'git':
+        j = i + 1
+        while j < len(toks) and toks[j].startswith('-'):
+            if toks[j] in VALUE_OPTS:
+                j += 2
+            elif toks[j] == '-c' and j + 1 < len(toks) and '=' in toks[j + 1]:
+                j += 2
+            else:
+                j += 1
+        if j < len(toks) and toks[j] == 'commit':
+            hit = 1
+            break
+print(hit)
+" 2>/dev/null || echo 0)
+[ "$IS_COMMIT" = "1" ] || exit 0
 
-# Allow if explicit bypass present in command itself (env prefix or marker)
-if echo "$CMD" | grep -qE 'ROLEPOD_GATES_PASSED=1'; then exit 0; fi
-if echo "$CMD" | grep -qE '\[gates:[[:space:]]*pass\]'; then exit 0; fi
 if [ "${ROLEPOD_GATES_SOFT:-0}" = "1" ]; then
   exit 0
 fi
@@ -84,8 +106,28 @@ TEST_EDITS=${TEST_EDITS:-0}
 HIGH_RISK_EDITS=${HIGH_RISK_EDITS:-0}
 REVIEWERS=${REVIEWERS:-0}
 
+# Bypass markers are honored ONLY with observable session evidence — a
+# blocked model must not be able to self-release by echoing the marker in
+# its very next tool call ("claim-based bypass"). Evidence = the session
+# transcript shows ≥1 test edit or ≥1 reviewer dispatch. Every honored
+# bypass is logged.
+BYPASS_REQUESTED=0
+echo "$CMD" | grep -qE 'ROLEPOD_GATES_PASSED=1' && BYPASS_REQUESTED=1
+echo "$CMD" | grep -qE '\[gates:[[:space:]]*pass\]' && BYPASS_REQUESTED=1
+BYPASS_IGNORED=""
+if [ "$BYPASS_REQUESTED" -eq 1 ]; then
+  if [ "$TEST_EDITS" -gt 0 ] || [ "$REVIEWERS" -gt 0 ]; then
+    mkdir -p "$HOME/.rolepod" 2>/dev/null || true
+    printf '%s bypass honored (tests=%s reviewers=%s): %.200s\n' \
+      "$(date '+%Y-%m-%dT%H:%M:%S')" "$TEST_EDITS" "$REVIEWERS" "$CMD" \
+      >> "$HOME/.rolepod/gate-bypass.log" 2>/dev/null || true
+    exit 0
+  fi
+  BYPASS_IGNORED="Bypass marker present but IGNORED — session shows 0 test edits and 0 reviewer dispatches; the marker is honored only with gate evidence. "
+fi
+
 # Build deny reason
-REASON="precommit-gate BLOCKED. "
+REASON="precommit-gate BLOCKED. ${BYPASS_IGNORED}"
 REASON+="Diff: $FILES_CHANGED files / $LINES_CHANGED lines / $LOGIC_COUNT logic lines. "
 REASON+="Session: $TEST_EDITS test edits / $HIGH_RISK_EDITS high-risk edits / $REVIEWERS reviewer dispatches. "
 [ -n "$HIGH_RISK" ] && REASON+="HIGH-RISK path: $HIGH_RISK → mandatory qa-tester + security-engineer review. "
@@ -96,8 +138,7 @@ if [ -n "$HIGH_RISK" ] && [ "$REVIEWERS" -eq 0 ]; then
   REASON+="NO REVIEWER AGENT dispatched (qa-tester / security-engineer / universal-reviewer) — high-risk path requires adversarial review. "
 fi
 REASON+="Run gates explicitly: S1-S5 (simplicity) + T1-T6 (tests) + F1-F5 (failure-mode). "
-REASON+="After passing, bypass with: prefix \`ROLEPOD_GATES_PASSED=1 git commit ...\` OR include \`[gates: pass]\` in commit message. "
-REASON+="Soft mode for incremental rollout: ROLEPOD_GATES_SOFT=1 in env."
+REASON+="The fast path is running the gates for real — a bypass marker is honored only when the session already shows test or reviewer evidence."
 
 # Decide: HARD block vs SOFT warn
 HARD_BLOCK=0
@@ -113,13 +154,14 @@ elif [ "$HIGH_RISK_EDITS" -gt 0 ] && [ "$TEST_EDITS" -eq 0 ]; then
 fi
 
 if [ "$HARD_BLOCK" -eq 1 ]; then
-  python3 -c "
-import json
+  # Env-passed — quotes in the reason must not break the JSON emitter.
+  ROLEPOD_HOOK_MSG="$REASON" python3 -c "
+import json, os
 print(json.dumps({
   'hookSpecificOutput': {
     'hookEventName': 'PreToolUse',
     'permissionDecision': 'deny',
-    'permissionDecisionReason': '''$REASON'''
+    'permissionDecisionReason': os.environ.get('ROLEPOD_HOOK_MSG', '')
   }
 }))
 " 2>/dev/null || echo "{}"
@@ -132,9 +174,9 @@ WARN+="Diff: $FILES_CHANGED files / $LINES_CHANGED lines / $LOGIC_COUNT logic li
 WARN+="Recommend running S1-S5 (simplicity) + T1-T6 (tests) + F1-F5 (failure-mode) before commit. "
 WARN+="Set ROLEPOD_GATES_HARD=1 to enforce blocking on normal diffs."
 
-python3 -c "
-import json
-print(json.dumps({'hookSpecificOutput': {'hookEventName': 'PreToolUse', 'additionalContext': '''$WARN'''}}))
+ROLEPOD_HOOK_MSG="$WARN" python3 -c "
+import json, os
+print(json.dumps({'hookSpecificOutput': {'hookEventName': 'PreToolUse', 'additionalContext': os.environ.get('ROLEPOD_HOOK_MSG', '')}}))
 " 2>/dev/null || true
 
 exit 0

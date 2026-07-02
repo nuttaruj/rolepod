@@ -7,6 +7,8 @@
 - Pre-merge gate (S/T/F — simplicity, test, failure-mode): <PASS / FAIL — name what failed>
 - CI: Phase 1 <status> · Phase 2 <status, or n/a>
 - Review verdict: <APPROVED / APPROVED-WITH-NITS / REJECTED>
+- User waivers this session: <none, or per waiver: which gate — the user's
+  words, quoted. A waiver is recorded here, never silently applied.>
 
 ## Options
 1. **Merge to main** — ready because <evidence the gates are green>
