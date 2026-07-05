@@ -62,6 +62,13 @@ back to the floor.
 | 1 external | It takes the diff's dominant axis; the Lead floor covers the rest |
 | 0 externals | Lead floor only — `qa-tester` + the full multi-axis read |
 
+**Installed ≠ usable.** A binary on PATH can still fail at invoke — auth
+error, quota exhausted, empty output. On failure: retry ONCE at most, then
+treat that external as not installed — route the axis to the next external
+or the Lead floor, and record the failure reason (e.g. "gemini: quota
+exhausted") in the review report's Cross-model line. Never loop on a dead
+external, never silently drop the axis.
+
 On a high-risk surface with 0 externals, the floor still reviews every axis —
 but the review report's **Cross-model adversarial pass** line must record
 NOT RUN and why, and `finish-work`'s Reviewer gate surfaces that limitation

@@ -119,6 +119,12 @@ conflicting plans and no decision — the protocol exists to prevent it.
 | 1 advisor | Single advisor on the dominant dimension; Lead reasons through the rest |
 | 0 advisors | Lead reasons through the options solo; record in the plan that no cross-model advice was gathered — a coverage note, not a failure |
 
+**Installed ≠ usable.** An advisor that fails at invoke (auth error, quota
+exhausted, empty output) → retry ONCE at most, then treat it as absent and
+drop to the matching degradation row, noting the reason in the plan (e.g.
+"agy: quota exhausted — advised by Codex only"). Never loop on a dead
+advisor.
+
 ## Cost discipline
 
 A better decision buys the cost — so spend it only where a better decision
