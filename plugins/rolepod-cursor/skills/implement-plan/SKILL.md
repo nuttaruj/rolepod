@@ -44,7 +44,7 @@ Return / hand off:
 - Plan vague / wrong / missing file → return to `write-plan`.
 - Root cause unknown → `debug-issue`.
 - Edits complete → `check-work`.
-- Stuck — `BLOCKED` survives all four variable changes → `manage-context` (escalate mode).
+- Stuck — `BLOCKED` survives context / model / scope changes and a re-plan → `manage-context` (escalate mode).
 
 ## Inputs to gather
 

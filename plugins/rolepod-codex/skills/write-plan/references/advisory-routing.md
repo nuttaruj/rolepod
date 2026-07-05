@@ -59,6 +59,24 @@ when ALL hold:
 3. **Opted in** — `/rolepod-full`, or the user explicitly asked other CLIs to
    help decide ("get Codex and Gemini to weigh in on the approach").
 
+## Stuck-state consult (Build / Debug) — auto, NOT gated
+
+The plan panel above is opt-in because a plan decision is speculative. The
+debug variant is not: **three failed fix attempts** (debug-issue Iron Rule 5)
+are objective evidence the Lead cannot resolve it alone. So there:
+
+- the consult fires **automatically** — no `/rolepod-full`, no user ask;
+- it uses **ONE advisor**, never a panel — debug-issue §9 fixes the pick
+  deterministically (first installed non-family external, in §9's listed
+  order). No strength-table routing mid-bug: a stuck Lead needs a recipe,
+  not a judgment call;
+- the advisor's correction unlocks exactly **one** advisor-informed fix
+  attempt, then escalation to the user proceeds regardless.
+
+The step-by-step recipe lives inline in debug-issue §9, so the Lead never
+opens this file mid-bug; this file carries the shared machinery — pool
+detection, the family rule, fail-at-invoke, cold-context framing.
+
 ## The pool
 
 - **Lead (executor)** — this session's CLI. It frames the decision and owns the

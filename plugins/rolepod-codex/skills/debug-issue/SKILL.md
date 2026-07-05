@@ -17,7 +17,7 @@ Canonical debug workflow. Replace guess-and-check with disciplined narrowing: re
 2. NEVER stop at the first symptom fix. Trace upstream to a legitimate stopping point (external input, system boundary, "designed this way"), then fix at root.
 3. ALWAYS roll back your last action first when the error appeared right after your change.
 4. ALWAYS write the failing test you wish had existed before shipping the fix.
-5. After 3 failed fix attempts on the same surface, STOP fixing. Question the architecture, the repro, or the hypothesis. Fix #4 without architectural review = thrashing.
+5. After 3 failed fix attempts on the same surface, STOP fixing — get one cross-model opinion (§9). Its correction is the outside review that permits exactly ONE more attempt; fix #4 without it = thrashing.
 </EXTREMELY-IMPORTANT>
 
 ## When to use
@@ -45,7 +45,7 @@ Return / hand off:
 - Requirements unclear → `write-spec`.
 - Fix spans multiple files / needs sequencing → `write-plan`.
 - Minimal fix applied → `check-work`.
-- Stuck — 3 failed fix attempts on the same target → `manage-context` (escalate mode).
+- Stuck — 3 failed fix attempts on the same target → §9 cross-model consult first, then `manage-context` (escalate mode) with the opinion attached.
 
 ## Inputs to gather
 
@@ -117,6 +117,15 @@ Smallest change that turns the failing test green without breaking the rest of t
 
 Run the full module suite (or full suite for high-risk surfaces). Confirm no new red.
 
+### 9. Third failed attempt — one cross-model opinion, then the user
+
+Three failed fixes = proven hard-to-resolve. Get ONE outside opinion automatically (no opt-in needed) before escalating. Do these steps in order:
+
+1. List the installed externals NOT in the Lead's model family, in this order: `codex exec` / `claude -p` / `gemini -m pro -p` (or `agy -p` when only agy exists; gemini ≡ agy — same family as a Gemini/agy Lead). Empty list → step 4. Take the first.
+2. Write ONE self-contained prompt to a file — the advisor is cold; it sees only this: the symptom, the repro command, the 3 failed hypotheses with why each failed, and the suspect code inline. Invoke with the file — never paste code into a quoted argument: `codex exec "$(cat /tmp/consult.md)"` (same pattern for `claude -p` / `gemini -m pro -p`).
+3. Read the reply as one of: **correction** (new hypothesis → run exactly ONE advisor-informed fix attempt against the same repro — this consult is the outside review Iron Rule 5 requires), **confirmation** ("approach right, check X"), or **stop** ("wrong path"). Invoke failed (auth / quota / empty output)? Retry once; still failing → cross that CLI off and take the NEXT one from step 1's list; list exhausted → step 4.
+4. Still failing, or no usable external → escalate via `manage-context` (escalate mode): hypothesis ledger + the advisor's opinion (or "no usable external — <reason>") attached. Never start fix #5.
+
 ## If a matching Rolepod agent is available
 
 Delegate to the closest specialist:
@@ -162,7 +171,7 @@ Load only when the task needs it:
 - Two upstream traces lead to contradictory causes → re-read; you missed an interaction
 - Fix passes the test but the symptom returns → root cause is wrong, trace further
 - Defensive null-check without a known cause → not a fix; remove and trace again
-- Fix attempt #4 about to start on the same surface → stop; Iron Rule 5. Question the architecture, the repro, or the hypothesis before the next change
+- Fix attempt #4 about to start without a §9 cross-model correction in hand → stop; Iron Rule 5
 - Multi-component failure being guessed at without boundary instrumentation → stop, instrument first (§5)
 
 ## Full Rolepod enhancement
