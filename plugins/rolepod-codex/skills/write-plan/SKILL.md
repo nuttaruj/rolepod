@@ -79,7 +79,7 @@ Repo has no test infrastructure at all → the FIRST task bootstraps the minimal
 
 Parallel agents only help when file ownership is genuinely disjoint and the work does not need handoff between agents. Otherwise sequential is faster and cheaper. When the call is borderline (e.g. two slices that might overlap on a shared interface), present both shapes — sequential single-owner vs parallel + contract — with one-line trade-offs and let the user pick before drafting tasks.
 
-For this — or any high-stakes multi-option plan decision (approach, architecture, sequencing) — gather a **cross-CLI advisory panel** before deciding, but only when opted in (`/rolepod-full` or an explicit ask) and the decision is genuinely high-stakes. The other CLIs advise on the approach; the Lead reconciles and owns the choice. Gating, per-model strengths, and the collect-then-decide protocol: `references/advisory-routing.md`. Default is Lead-only — a panel costs ~3× tokens, so it is off unless the decision earns it.
+For this — or any high-stakes multi-option plan decision (approach, architecture, sequencing) — gather a **cross-CLI advisory panel** before deciding, but only when opted in (`/rolepod-full` or an explicit ask) and the decision is genuinely high-stakes. The other CLIs advise on the approach; the Lead reconciles and owns the choice. Gating, per-model strengths, and the collect-then-decide protocol: `references/advisory-routing.md`. Default is Lead-only — a panel costs ~3× tokens, so it is off unless the decision earns it. A single-family machine still gets an advisor when the panel fires — the vertical fallback (the Lead's own CLI at its strongest model) in the same reference.
 
 ### 5. If parallel, write a cohesion contract
 

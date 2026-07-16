@@ -31,7 +31,9 @@ Two deliberate divergences from the single-vendor version:
   the strongest model available* — a Lead on the top Claude model still
   consults the other two families, because cross-vendor frontier diversity
   beats one model on a hard call. You spend the extra tokens to decide better,
-  never to decide cheaper.
+  never to decide cheaper. (One exception: on a single-family machine the
+  **vertical fallback** below reverts to Anthropic's original vertical shape —
+  the Lead's own family at a stronger tier.)
 - **Cold context.** The Anthropic advisor shares the executor's context. A
   cross-CLI advisor does not — it starts cold. The Lead must pack the decision,
   the options, and the constraints into the prompt; the advisor sees only what
@@ -52,7 +54,8 @@ when ALL hold:
 
 1. **Hard to resolve** — the Lead cannot confidently settle the call alone:
    two or more genuinely viable approaches, or a decision blocked on real
-   uncertainty. Not a call the Lead can make cheaply.
+   uncertainty. Not a call the Lead can make cheaply. A Lead running a
+   small / fast tier sets this bar lower — the tier gap is itself uncertainty.
 2. **High-stakes** — at least one of: high-risk surface (auth / billing /
    migration / data-model / security), hard to reverse, or a new integration /
    unproven assumption.
@@ -67,9 +70,10 @@ are objective evidence the Lead cannot resolve it alone. So there:
 
 - the consult fires **automatically** — no `/rolepod-full`, no user ask;
 - it uses **ONE advisor**, never a panel — debug-issue §9 fixes the pick
-  deterministically (first installed non-family external, in §9's listed
-  order). No strength-table routing mid-bug: a stuck Lead needs a recipe,
-  not a judgment call;
+  deterministically (first installed non-family external in §9's listed
+  order, or §9's vertical fallback on a single-family machine). No
+  strength-table routing mid-bug: a stuck Lead needs a recipe, not a
+  judgment call;
 - the advisor's correction unlocks exactly **one** advisor-informed fix
   attempt, then escalation to the user proceeds regardless.
 
@@ -86,6 +90,16 @@ detection, the family rule, fail-at-invoke, cold-context framing.
   and family rule as review: gemini and agy are one family (one pool member,
   prefer `gemini`; invoke `agy -p` when only agy is installed), and a family
   matching the Lead's is excluded.
+- **Vertical fallback — same family, stronger tier.** When the cross-family
+  pool is empty (single-CLI machine) or every member failed at invoke, the
+  advisor is the Lead's **own CLI at the strongest model it exposes**: `claude
+  -p --model <strongest>` / `codex exec -m <strongest>` / `gemini -m pro -p`.
+  Valid only when that model differs from the one now running — discover the
+  strongest tier from the CLI itself (model list / `--help`); never pin model
+  names in a skill or plan, they go stale. Same-lineage advice trades
+  cross-vendor diversity for a second frontier opinion — strictly better than
+  solo. Already running the strongest model of the only family → solo row
+  below.
 
 ## What an advisor returns
 
@@ -135,7 +149,8 @@ conflicting plans and no decision — the protocol exists to prevent it.
 |---------------|---------|
 | 2 advisors | Full panel by strength; Lead reconciles and decides |
 | 1 advisor | Single advisor on the dominant dimension; Lead reasons through the rest |
-| 0 advisors | Lead reasons through the options solo; record in the plan that no cross-model advice was gathered — a coverage note, not a failure |
+| 0 cross-family | **Vertical fallback**: the Lead's own CLI at its strongest model (≠ the running model) as the single advisor; record "vertical consult — same family" in the plan |
+| 0 + no vertical | Lead reasons through the options solo; record in the plan that no cross-model advice was gathered — a coverage note, not a failure |
 
 **Installed ≠ usable.** An advisor that fails at invoke (auth error, quota
 exhausted, empty output) → retry ONCE at most, then treat it as absent and

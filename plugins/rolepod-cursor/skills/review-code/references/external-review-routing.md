@@ -17,6 +17,12 @@ never reviews the other's work as "external".
   `command -v codex` / `command -v gemini` / `command -v claude` /
   `command -v agy`. When both `gemini` and `agy` are installed they count
   as ONE pool member (same family); prefer `gemini`.
+- **Vertical fallback — same family, stronger tier.** When the external pool
+  is empty (single-CLI machine) or every member failed at invoke: the Lead's
+  own CLI at the strongest model it exposes (`claude -p --model <strongest>` /
+  `codex exec -m <strongest>` / `gemini -m pro -p`), cold context, only valid
+  when that model differs from the one now running. Same family — it never
+  counts as the cross-family adversarial pass; it upgrades the Lead floor.
 
 ## Model strength — one axis each, no overlap
 
@@ -60,7 +66,8 @@ back to the floor.
 |---------------|---------|
 | 2 externals | Route axes to both by strength; the floor backstops correctness |
 | 1 external | It takes the diff's dominant axis; the Lead floor covers the rest |
-| 0 externals | Lead floor only — `qa-tester` + the full multi-axis read |
+| 0 cross-family | Vertical fallback takes the dominant axis as a cold-context reviewer; the floor covers the rest. Record "vertical — same family" in the Cross-model line |
+| 0 + no vertical | Lead floor only — `qa-tester` + the full multi-axis read |
 
 **Installed ≠ usable.** A binary on PATH can still fail at invoke — auth
 error, quota exhausted, empty output. On failure: retry ONCE at most, then
@@ -69,7 +76,9 @@ or the Lead floor, and record the failure reason (e.g. "gemini: quota
 exhausted") in the review report's Cross-model line. Never loop on a dead
 external, never silently drop the axis.
 
-On a high-risk surface with 0 externals, the floor still reviews every axis —
-but the review report's **Cross-model adversarial pass** line must record
-NOT RUN and why, and `finish-work`'s Reviewer gate surfaces that limitation
-to the user before merge. It is a real verification limitation, not a pass.
+On a high-risk surface with no cross-family external, the floor (plus the
+vertical fallback when one exists) still reviews every axis — but the review
+report's **Cross-model adversarial pass** line must record NOT RUN (or
+"vertical — same family") and why, and `finish-work`'s Reviewer gate surfaces
+that limitation to the user before merge. It is a real verification
+limitation, not a pass.
