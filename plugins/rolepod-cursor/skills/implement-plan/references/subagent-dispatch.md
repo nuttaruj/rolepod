@@ -129,6 +129,7 @@ Use the least powerful model that can handle the role. Cost compounds across N t
 
 | Role | Signals | Model tier |
 |---|---|---|
+| **Explorer / scout** | Read-only wide sweep — repo or online sources; returns a research report (conclusion + file:line / URL pointers), never dumps; never edits | Fast / cheap |
 | **Implementer — mechanical** | 1-2 files, complete spec, isolated logic, no API contract change | Fast / cheap |
 | **Implementer — integration** | Multi-file, pattern matching, debugging touch | Standard |
 | **Implementer — architecture / judgment** | Broad codebase, design tradeoffs, new abstraction | Most capable |
