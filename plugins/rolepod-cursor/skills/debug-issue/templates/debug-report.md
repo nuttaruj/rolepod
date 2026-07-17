@@ -3,8 +3,16 @@
 
 # <Bug> Debug Report
 
+<!-- Report-only mode (QA hand-off): fill Error / Repro / Severity, Root
+     cause only if cheap to trace; leave Failing test + Fix empty — the
+     owning dev continues from this artifact. -->
+
 ## Error
 <The literal error message / wrong output.>
+
+## Severity
+<BLOCKER / MAJOR / MINOR — user impact + affected flows. Required in
+ report-only mode; optional when the same person fixes it below.>
 
 ## Repro
 <The one deterministic command that reproduces it.>
@@ -27,6 +35,8 @@
 
 ## Status
 <COMPLETED — bug fixed, the failing test now green, suite clean.
+ COMPLETED (report-only) — repro + severity documented; fix intentionally
+ handed to the owning dev, not in scope.
  PARTIAL — root cause found, fix incomplete — what remains.
  BLOCKED — cannot reproduce or cannot fix — what is needed.>
 COMPLETED | PARTIAL | BLOCKED

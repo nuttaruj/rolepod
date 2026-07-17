@@ -10,6 +10,7 @@ Correctness verification: tests, business logic, edge cases, races.
 ## When to use
 
 - Author new tests (unit / integration / contract / E2E / property / fuzz / smoke / benchmark)
+- Derive test cases from a spec — QA persona, table output, no code required
 - Run an existing suite + analyze failures
 - Verify business-logic correctness across a feature
 - Race / concurrency test design
@@ -62,6 +63,23 @@ Per the `review-code` reviewer-routing rules:
 4. Flake elimination — deterministic ordering, isolated state, no time-dependence
 5. Repro tests — bug report → failing test → verify fix
 6. Mock strategy — never mock DB for integration; mock only external boundaries
+
+## Test-case design — spec-first, no code required
+
+For a brief that starts from a spec / requirement instead of a diff (QA
+persona), derive cases with these five techniques, in order:
+
+1. **Equivalence classes** — partition every input into valid / invalid classes; one case per class
+2. **Boundary values** — min−1 / min / min+1 and max−1 / max / max+1 for every range or length limit
+3. **Decision table** — when 2+ inputs interact: conditions × actions grid, one case per rule column
+4. **State transitions** — stateful flows: every legal transition + one illegal attempt per state
+5. **Error guessing** — empty, null, duplicate, unicode, oversized input, concurrent same-action
+
+Output is a hand-off document, not code:
+
+| ID | Given | When | Then | Technique | Priority (P1/P2/P3) |
+
+Automation comes AFTER the table: each P1 row becomes an automated test (write-mode), or hands to the owning dev / `/scaffold-e2e` when rolepod-uiproof is installed. A bug found while executing cases → debug-issue's report-only exit (document + severity, never fix).
 
 ## Hard stops
 

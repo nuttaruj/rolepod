@@ -41,6 +41,7 @@ Does not own:
 Return / hand off:
 - Requirements unclear → `write-spec`.
 - Fix spans multiple files / needs sequencing → `write-plan`.
+- **Report-only (QA hand-off)** — the user wants the bug documented, not fixed → stop after §2 (repro); trace §5 only when cheap. Fill the debug report with repro + severity + evidence, leave Failing test / Fix empty, hand to the owning dev. §6-§8 belong to whoever fixes.
 - Minimal fix applied → `check-work`.
 - Stuck — 3 failed fix attempts on the same target → §9 cross-model consult first, then `manage-context` (escalate mode) with the opinion attached.
 

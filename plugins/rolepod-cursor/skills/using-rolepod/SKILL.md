@@ -69,6 +69,7 @@ Match the user intent to the FIRST skill that fires. The skill itself decides wh
 | "build / add / create / make / design" + vague target | **Define** | `write-spec` | cheap (PM/spec) |
 | "build X to spec" + spec exists | **Plan** | `write-plan` | cheap–balanced |
 | "execute plan / work the plan / implement plan.md" | **Plan→Build** | `write-plan` → `implement-plan` | balanced |
+| "write test cases / test this feature / report a bug" — QA hand-off, no fix wanted | **Verify (QA)** | `qa-tester` agent (spec-first test-case design); a found bug → `debug-issue` report-only exit | cheap–balanced |
 | "fix bug / failing test / broken / regression / why does X fail" | **Build (bug)** | `debug-issue` | balanced |
 | "refactor / simplify / clean up" | **Build (refactor)** | `simplify-code` → `check-work` | balanced |
 | "use agents / multi-agent / in parallel / parallel-safe" | **Plan** | `write-plan` (agent routing + cohesion contract) | balanced |
