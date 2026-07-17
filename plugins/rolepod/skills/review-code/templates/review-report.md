@@ -7,7 +7,8 @@
 <What was reviewed — the diff, the files, the spec it implements.>
 
 ## Risk surfaces touched
-<auth / billing / migration / secret / payment / API contract / perf / UI.
+<auth / billing / payments / credits / migration / data deletion / secrets /
+ tokens / crypto / permissions / security — plus API contract / perf / UI.
  "None" is valid — state it deliberately.>
 
 ## Reviewers

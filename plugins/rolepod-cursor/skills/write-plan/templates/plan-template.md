@@ -37,8 +37,9 @@
 <same shape — checkbox each step>
 
 ## High-risk surfaces touched
-<auth / billing / migration / data deletion / security. "None" is valid —
- but state it deliberately.>
+<auth / billing / payments / credits / migration / data deletion / secrets /
+ tokens / crypto / permissions / security. "None" is valid — but state it
+ deliberately.>
 
 ## Parallel layout
 <If one owner: "Sequential — single owner." plus the task dependency order.

@@ -10,7 +10,7 @@ Review-phase entry skill. Apply risk-appropriate review pressure to a finished c
 ## Iron Rule
 
 <EXTREMELY-IMPORTANT>
-1. NEVER merge code on a high-risk surface (auth, billing, migration, secret, crypto, token, payment) without an adversarial fresh-context review.
+1. NEVER merge code on a high-risk surface (auth, billing, payments, credits, migration, data deletion, secrets, tokens, crypto, permissions, security) without an adversarial fresh-context review.
 2. NEVER let the author — or, for the adversarial pass, the author's own model — be the final reviewer of their own change. The external adversarial review runs on a model **family** different from the Lead's; the vertical fallback (same family, stronger tier) never satisfies it — it only upgrades the Lead floor and is recorded as a limitation.
 3. NEVER skip review because "tests pass". Tests prove the assertion, not the design.
 4. Findings before fixes. List issues with severity first; do not silently rewrite.
@@ -20,7 +20,7 @@ Review-phase entry skill. Apply risk-appropriate review pressure to a finished c
 ## When to use
 
 - Change is implementation-complete and verified
-- High-risk surface touched (auth / billing / migration / secret / payment)
+- High-risk surface touched (auth / billing / payments / credits / migration / data deletion / secrets / tokens / crypto / permissions / security)
 - Public API or schema contract changed
 - Performance-sensitive code path
 - UI shipped to end users
@@ -62,7 +62,7 @@ Return / hand off:
 
 | Risk profile | Reviewer |
 |--------------|----------|
-| High-risk surface (auth / billing / migration / secret / payment) | `security-engineer` + adversarial fresh-context |
+| High-risk surface (auth / billing / payments / credits / migration / data deletion / secrets / tokens / crypto / permissions / security) | `security-engineer` + adversarial fresh-context |
 | Correctness / business logic | `qa-tester` |
 | Performance regression risk | `performance-engineer` |
 | UI / interaction / a11y | `ui-ux-designer` |

@@ -13,7 +13,7 @@ Define-phase entry skill. Convert a vague request into a sharp spec the next pha
 ## Iron Rule
 
 <EXTREMELY-IMPORTANT>
-1. NEVER skip the spec when the goal, scope, or success criteria are ambiguous, or when the request touches a high-risk surface (auth, billing, migration, data deletion, security).
+1. NEVER skip the spec when the goal, scope, or success criteria are ambiguous, or when the request touches a high-risk surface (auth, billing, payments, credits, migration, data deletion, secrets, tokens, crypto, permissions, security).
 2. NEVER start implementation before the user approves the design direction (Gate 1).
 3. ASK one focused question at a time during discovery unless the user explicitly asks for a full questionnaire. RECOMMEND a default answer per question — user confirms or overrides.
 4. NEVER ship a spec that contains placeholders, contradictions, or untested assumptions about the user's intent.
@@ -98,6 +98,7 @@ Scan for:
 - Placeholders (`TODO`, `<...>`, `tbd`)
 - Contradictions between sections
 - Ambiguous wording ("maybe", "should", "if needed")
+- A Success criterion with no "proven by" — pair each with the command / observation that will prove it, or it is not checkable
 - Scope creep beyond the user request
 - Over-engineering for hypothetical needs
 

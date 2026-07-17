@@ -90,7 +90,7 @@ For each task, name the best specialist if one is available. Brief = task + file
 
 Scan for:
 - **Placeholders** — see Anti-placeholder section below for the six failure patterns
-- **Spec-coverage trace** — for each spec requirement, name the task that implements it. List gaps. A spec requirement with no task is a plan failure
+- **Spec-coverage trace, both directions** — for each spec requirement, name the task that implements it (a requirement with no task is a plan failure); and for each task, name the spec line that asked for it (a task no spec line asked for is scope creep — cut it or move it to a follow-up list)
 - **Symbol consistency cross-task** — function / method / property names must match across tasks. `clearLayers()` in Task 3 and `clearFullLayers()` in Task 7 is a bug — pick one and propagate
 - **Missing tests** on any task
 - **Loop-runnable** — every task carries an exact runnable Command, and the plan states a Failure policy, so the build loop can execute → verify → recover without re-asking the user. Deterministic check on the filled plan: `grep -q '^## Failure policy' <plan> && [ "$(grep -c 'Command:' <plan>)" -ge "$(grep -c '^### Task' <plan>)" ]` — plan-lint, the sibling of write-spec's spec-lint (`tests/integration/cases/plan-lint.sh`)
@@ -117,7 +117,7 @@ Route specialist work upfront:
 - `system-architect` for API / interface / data-model decisions
 - `backend-developer` / `frontend-developer` / `mobile-developer` for stack-specific implementation
 - `qa-tester` for test plan depth
-- `security-engineer` on touched auth / billing / migration / secret surfaces
+- `security-engineer` on any touched high-risk surface (auth / billing / payments / credits / migration / data deletion / secrets / tokens / crypto / permissions / security)
 
 Brief each agent with the spec, the file list, the test plan, and the handoff partner.
 

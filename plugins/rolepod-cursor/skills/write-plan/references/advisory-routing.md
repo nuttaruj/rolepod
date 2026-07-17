@@ -57,8 +57,9 @@ when ALL hold:
    uncertainty. Not a call the Lead can make cheaply. A Lead running a
    small / fast tier sets this bar lower — the tier gap is itself uncertainty.
 2. **High-stakes** — at least one of: high-risk surface (auth / billing /
-   migration / data-model / security), hard to reverse, or a new integration /
-   unproven assumption.
+   payments / credits / migration / data deletion / secrets / tokens / crypto /
+   permissions / security), hard to reverse, or a new integration / unproven
+   assumption.
 3. **Opted in** — `/rolepod-full`, or the user explicitly asked other CLIs to
    help decide ("get Codex and Gemini to weigh in on the approach").
 

@@ -6,7 +6,7 @@
 
 ## When to dispatch
 
-- Plan touches a high-risk surface (auth / billing / migration / data deletion / security)
+- Plan touches a high-risk surface (auth / billing / payments / credits / migration / data deletion / secrets / tokens / crypto / permissions / security)
 - Plan has more than ~8 tasks or spans multiple specialists
 - Plan was drafted by Lead in an unfamiliar module
 - User asked for a second opinion
@@ -46,7 +46,8 @@ Check, in order:
    tasks (foo() in Task 3 vs fooBar() in Task 7 is a bug).
 4. Test discipline — every task names a test type and an assertion.
    "Adds tests" alone is a fail.
-5. High-risk surfaces — any auth/billing/migration/data-deletion/
+5. High-risk surfaces — any auth / billing / payments / credits /
+   migration / data-deletion / secrets / tokens / crypto / permissions /
    security surface touched has a test plan and an owner.
 6. Parallel layout — if more than one owner, a cohesion contract is
    referenced with file ownership and merge order.

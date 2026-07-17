@@ -77,7 +77,7 @@ Match the user intent to the FIRST skill that fires. The skill itself decides wh
 | clear UI edit (existing design / screenshot / exact acceptance criteria) | **Build (UI)** | `implement-plan` → `check-work` | balanced |
 | browser verification / "does the UI work?" | **Verify** | `check-work` | balanced |
 | "audit UX / UI / a11y" of a page or flow (single surface) | **Verify→Review (UI audit)** | `check-work` §3 ladder observes → `review-code` UI axis (`ui-ux-designer` when available; `/audit-a11y` when uiproof installed) | balanced |
-| edit / implement / fix on **security / auth / billing / token / payment / migration** (a "plan / design" ask on these → Plan row below) | **Define (high-risk)** | `write-spec` → `write-plan` → `implement-plan` → `review-code` | **strong** |
+| edit / implement / fix on **auth / billing / payments / credits / migration / data deletion / secrets / tokens / crypto / permissions / security** (a "plan / design" ask on these → Plan row below) | **Define (high-risk)** | `write-spec` → `write-plan` → `implement-plan` → `review-code` | **strong** |
 | architecture decision (DB schema / API contract / module split) | **Plan** | `write-plan` → `system-architect` agent when available | **strong** |
 | "is this done / fixed / does it work / verify" | **Verify** | `check-work` | balanced |
 | "review / check this / look at the diff" | **Review** | `review-code` | **strong** (review) |
@@ -133,7 +133,7 @@ Skip a phase WHEN ANY of these holds (state explicitly in response):
 - Claiming done before Verify → STOP, run `check-work`.
 - 2nd parallel agent spawn without contract → STOP, run `write-plan` and write the cohesion contract first.
 - Sub-agent attempting `git commit` / `git push` / `gh pr merge` → not allowed; Lead commits after the reviewer pass.
-- High-risk path (auth/billing/migrations/crypto/payments) with 0 reviewer agents dispatched → STOP, dispatch qa-tester + security-engineer, plus an external CLI reviewer on a model different from the Lead's if one is installed (routing: review-code's `external-review-routing.md`).
+- High-risk path (auth / billing / payments / credits / migration / data deletion / secrets / tokens / crypto / permissions / security) with 0 reviewer agents dispatched → STOP, dispatch qa-tester + security-engineer, plus an external CLI reviewer on a model family different from the Lead's if one is installed (routing: review-code's `external-review-routing.md`).
 - 3rd agent on same issue OR 3rd PR on same surface in one session → STOP, ask user (hard-stop rule).
 - Diff mixes 2+ unrelated concerns at push/merge time → STOP, split into separate PRs (`finish-work` P1-P4 gate).
 - Concurrent sessions: if SessionStart warns "concurrent session(s) detected in this worktree" → before editing a SHARED file, spawn an isolated worktree first (`git worktree add ../<repo>-task-<ts> <branch> && cd`) and continue there. rolepod guards against same-file stomp between concurrent sessions; disjoint and solo edits flow free. Override: `ROLEPOD_ALLOW_SHARED_WORKTREE=1` for intentional shared/read-only review sessions.

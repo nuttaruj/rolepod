@@ -39,7 +39,7 @@ Security across all layers + compliance.
 
 ## Inputs to request from Lead
 
-- The diff or PR + the high-risk surface touched (auth / billing / migration / secret / crypto / token)
+- The diff or PR + the high-risk surface touched (auth / billing / payments / credits / migration / data deletion / secrets / tokens / crypto / permissions / security)
 - The threat model in scope (external user / authenticated user / insider)
 - Compliance regime that applies (and the audit deadline)
 - Existing security headers + secret-management pattern

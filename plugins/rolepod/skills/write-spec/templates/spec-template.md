@@ -19,15 +19,17 @@
 <What should happen after. Observable, not internal.>
 
 ## Success criteria
-<Checkable conditions. Each must be pass/fail, not "works well".>
-- <criterion 1>
-- <criterion 2>
+<Checkable conditions. Each must be pass/fail, not "works well", and each
+ names how it will be proven — a command, an observation, or a user action.>
+- <criterion 1> — proven by: <command / observation>
+- <criterion 2> — proven by: <command / observation>
 
 ## Constraints
 <Stack, deadline, no-touch zones, compatibility the user already stated.>
 
 ## High-risk surfaces
-<auth / billing / migration / data deletion / security / permissions touched.
+<auth / billing / payments / credits / migration / data deletion / secrets /
+ tokens / crypto / permissions / security touched.
  "None" is valid — but state it deliberately, do not omit the section.>
 
 ## Chosen approach
