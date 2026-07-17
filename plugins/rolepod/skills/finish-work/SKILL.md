@@ -15,7 +15,7 @@ Ship-phase entry skill. Close out a branch safely. Run the pre-merge gate, decid
 <EXTREMELY-IMPORTANT>
 1. NEVER push to main, force-push, merge a PR, or stage a launch without explicit user authorization for THIS specific action. Prior approval for unrelated work does not transfer.
 2. NEVER auto-merge a PR with a failing required CI lane.
-3. NEVER skip the pre-merge gate (simplicity + tests + reviewer) because "the diff is small". A user waiver granted at an earlier phase carries forward — quote it in the finish menu's gate status (which gate, the user's words) instead of re-demanding the waived work or skipping silently.
+3. NEVER skip the pre-merge gate (simplicity + tests + failure-mode + evidence + reviewer) because "the diff is small". A user waiver granted at an earlier phase carries forward — quote it in the finish menu's gate status (which gate, the user's words) instead of re-demanding the waived work or skipping silently.
 4. The reviewer who flagged a BLOCKER is not the final authority on whether it is fixed — the qa-tester / Lead floor confirms before merge.
 5. Worktree cleanup follows order: merge → verify → `cd` to main root → `git worktree remove` → `git worktree prune` → delete branch. Reversed order leaves stuck refs. Only remove worktrees we created (path under `.worktrees/` or `worktrees/`); never touch harness-owned workspaces.
 </EXTREMELY-IMPORTANT>
@@ -53,14 +53,14 @@ Return / hand off:
 - The branch name and base
 - Diff summary (files + line count + risk surfaces)
 - CI status per lane (Phase 1 required, Phase 2 path-triggered, Phase 3 nightly)
-- Review verdict (`APPROVED` / `APPROVED-WITH-NITS` / `REJECTED`)
+- Review verdict (`APPROVED` / `APPROVED-WITH-NITS` / `REJECTED`) and `check-work`'s evidence block (its `Status:` line)
 - The user's stated intent (merge / PR / keep / discard / launch)
 
 ## Workflow
 
 ### 1. Pre-merge gate
 
-Run all four gates before any merge / push action.
+Run all five gates before any merge / push action.
 
 **Simplicity (S1-S5)** — revise on any "yes":
 
@@ -93,7 +93,9 @@ The PreCommit hook also enforces the T-gate.
 **Failure-mode (F1-F5)** — run the `check-work` failure-mode gate; do
 not merge with an unresolved F-finding.
 
-**Reviewer** — risk-appropriate review completed (see `review-code`). On a high-risk diff, read the review report's **Cross-model adversarial pass** line: NOT RUN means the user must see that limitation before merge — state it in the finish summary, never clear the gate silently.
+**Evidence** — read `check-work`'s evidence block: `Status: UNVERIFIED` or `PARTIAL` blocks merge unless the user explicitly waives it (quote the waiver in the finish menu); green tests alone do not satisfy this gate.
+
+**Reviewer** — risk-appropriate review completed (see `review-code`). On a high-risk diff, read the review report's **Cross-model adversarial pass** line: anything other than a cross-family pass — `NOT RUN` or `vertical — same family` — means the user must see that limitation before merge; state it in the finish summary, never clear the gate silently.
 
 Any failure → fix or report; do not merge.
 
@@ -164,7 +166,7 @@ Execute as Lead with this minimum viable checklist:
 
 1. Run the pre-merge gate (S+T+F)
 2. Confirm Phase 1 + triggered Phase 2 CI lanes are green
-3. Present the 4-option finish menu
+3. Present the 3- or 4-option finish menu per §3 detection
 4. Wait for the user to pick
 5. For PR: open with title + body + test plan
 6. For merge: run the merge command with the user's explicit authorization

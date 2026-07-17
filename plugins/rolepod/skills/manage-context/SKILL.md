@@ -65,17 +65,11 @@ Return / hand off:
 
 ### 2. Context budget
 
-If context is heavy:
-- `/compact <focus>` — keep the relevant work, drop the rest
-- `/clear` — start fresh between unrelated tasks
-- `/rewind` — undo a recent path you regret
-- `claude --continue` after `/rename` to switch session focus
-
-These are Claude commands; for the Codex / Gemini equivalents see `references/cli-fallbacks.md`.
+If context is heavy, run your CLI's trim command — the per-CLI table (Claude `/compact` · `/clear` · `/rewind` / Codex / Gemini equivalents) lives in `references/cli-fallbacks.md`.
 
 Only load what the current task actually needs. Tier 1 skills + the touched files is usually enough.
 
-Starting fresh instead of `/compact` → fill `templates/handoff-brief.md` so the next session resumes without re-asking. The brief, not the CLI command, is what makes work resumable.
+Starting fresh instead of trimming → fill `templates/handoff-brief.md` so the next session resumes without re-asking.
 
 ### 3. Session hygiene
 
@@ -93,10 +87,11 @@ Map the actual surface: list every file you have edited or planned to edit. Grou
 
 If stuck after multiple attempts:
 - Capture the exact problem (error, what was tried, what failed)
+- Change the model, not just the prompt: redispatch the task at a stronger tier, or in a debug flow run debug-issue §9's one cross-model consult — a fresh session on the same model is the weakest lever
 - Surface the blocker to the user with a concrete ask, or start a fresh session with the captured context
 - Resume with the user's direction, not another blind attempt
 
-Three failed attempts is the trigger. Do not "try one more thing" past that.
+Three failed attempts is the trigger. Past that, the only permitted attempt is the single advisor-informed one from debug-issue §9 — never another blind try.
 
 ### 7. Onboarding (new repo)
 
@@ -133,7 +128,7 @@ Execute as Lead with this minimum viable checklist:
 ## Output format
 
 ```
-Mode: <context budget | session hygiene | zoom-out | escalate | triage | onboarding>
+Mode: <context budget | session hygiene | zoom-out | escalate | deep triage | onboarding>
 Trigger: <what tipped this skill>
 Action taken: <command run / re-read / escalation>
 State after: <what is loaded, what is dropped>

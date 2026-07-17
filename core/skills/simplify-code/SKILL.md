@@ -16,7 +16,7 @@ Simplify-phase skill — cross-phase, usable during Build (refactor intent) or a
 1. NEVER simplify without a test suite that proves behavior before and after.
 2. NEVER remove an abstraction the codebase actually depends on — verify call sites first.
 3. NEVER add a new abstraction for "hypothetical future use". One concrete user is not enough.
-4. Same pattern in 3+ places → centralize. "Just this one place" is the start of rot for auth, billing, credits, URL validation, redirects, SSRF, cookies, logging, retries, external API.
+4. Same pattern in 3+ places → centralize. On the high-risk list — auth, billing, credits, URL validation, redirects, SSRF, cookies, logging, retries, external API — TWO occurrences already force it.
 5. Apply the deletion test before any cut. Imagine deleting the module: if complexity vanishes, it was a pass-through — delete safely. If complexity reappears scattered across N callers, the abstraction was earning its keep — keep it.
 </EXTREMELY-IMPORTANT>
 
@@ -66,7 +66,7 @@ Run the touched module's test suite. If red, fix or write tests first. You canno
 
 ### 2. Scan for these patterns
 
-Before removing anything, run **Chesterton's Fence** + the **deletion test** together. Chesterton: `git blame` the origin commit — code with no callers may still encode a reason. Verify the why, not just the call sites. Deletion test: imagine the module gone — does complexity vanish (pass-through, cut it) or reappear scattered across N callers (it was earning its keep, leave it). Both tests pass = safe to delete; either fails = stop.
+Before removing anything, run **Chesterton's Fence** + the **deletion test** (Iron Rule 5) together. Chesterton: `git blame` the origin commit — code with no callers may still encode a reason. Verify the why, not just the call sites. Both tests pass = safe to delete; either fails = stop.
 
 | Pattern | Action |
 |---------|--------|
@@ -86,7 +86,7 @@ A runtime `if (x === null) throw` becomes a non-nullable type. A "must be set" c
 
 ### 4. Centralize at 3 occurrences
 
-Two is a coincidence. Three is a pattern. For auth / billing / credit / URL validation / redirects / SSRF / cookies / logging / retries / external API, two is already too many — centralize on appearance.
+Two is a coincidence. Three is a pattern — centralize. On Iron Rule 4's high-risk list (auth / billing / credits / URL validation / redirects / SSRF / cookies / logging / retries / external API), two occurrences already force it.
 
 **Inverse rule for keeping abstractions.** One adapter behind an interface = hypothetical seam, candidate for inline. Two real adapters = real seam, keep the interface. The rule mirrors centralization: counts decide structure. An interface with one implementation is the same shape as a five-line pattern in one file — it does not yet earn the abstraction.
 

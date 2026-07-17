@@ -92,7 +92,7 @@ VERIFIED
 |------|------|--------|
 | UI proof | "it compiles" — typecheck is not UI proof | Browser DOM read + screenshot of the real empty state |
 | Evidence type | Typecheck only | Typecheck + browser observation + component test |
-| Iron Rule #2 | Violated — UI claimed with no browser | Satisfied — page loaded, DOM observed |
+| Iron Rule #3 | Violated — UI claimed with no browser | Satisfied — page loaded, DOM observed |
 | Status honesty | "VERIFIED" with no runtime proof | VERIFIED, backed by an observed render |
 
 > A passing typecheck proves the code is type-correct — never that the UI

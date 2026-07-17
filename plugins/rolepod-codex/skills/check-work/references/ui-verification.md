@@ -22,11 +22,11 @@ passing typecheck or build. Pick the strongest tool available.
    bugs that sit below the rendered DOM. Web only, Chromium-only.
 4. **Playwright (direct)** — if the repo has its own Playwright setup:
    drive the real flow, assert on the DOM, capture a screenshot.
-5. **Browser MCP / devtools** — navigate, read the DOM, take a screenshot.
-6. **Component test renderer** (Testing Library, etc.) — renders the
+5. **Component test renderer** (Testing Library, etc.) — renders the
    component in isolation; proves render + props, not full-page layout.
-7. **Local dev server + manual screenshot** — last resort, still a real
-   observation.
+6. **Ask the user** — last resort, still a real observation: describe the
+   page / flow and the exact states to capture; the user runs the dev
+   server and sends screenshots, which you then read and assert against.
 
 Never ask the user to screenshot for you when any tool above is available.
 
@@ -47,3 +47,13 @@ and use it; do not descend to a weaker tier when a stronger one is present.
 ## Evidence to record
 The tool used, the DOM node or text observed, the screenshot path, and the
 interaction performed. One line in the evidence block.
+
+## UI audit mode (no diff to verify)
+"Audit the UX / UI / a11y of this page" uses the SAME tool ladder — the
+ladder observes, then judgment runs against `core/agents/ui-ux-designer.md`
+(A11y mandatory checks: contrast, keyboard, screen reader, reduced motion,
+labels, focus) plus the spec'd states above. Findings return in review-code's
+finding format (severity + location + fix direction), not as a pass/fail
+verdict. With `rolepod-uiproof` installed, `/audit-a11y` runs the WCAG axis
+directly. No tool available → tier 6: the user sends screenshots, audit
+those, and record the coverage limit in the evidence block.

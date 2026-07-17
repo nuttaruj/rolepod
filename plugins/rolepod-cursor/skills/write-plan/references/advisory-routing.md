@@ -92,14 +92,14 @@ detection, the family rule, fail-at-invoke, cold-context framing.
   matching the Lead's is excluded.
 - **Vertical fallback — same family, stronger tier.** When the cross-family
   pool is empty (single-CLI machine) or every member failed at invoke, the
-  advisor is the Lead's **own CLI at the strongest model it exposes**: `claude
-  -p --model <strongest>` / `codex exec -m <strongest>` / `gemini -m pro -p`.
-  Valid only when that model differs from the one now running — discover the
-  strongest tier from the CLI itself (model list / `--help`); never pin model
-  names in a skill or plan, they go stale. Same-lineage advice trades
+  advisor is the Lead's **own CLI at its strongest model** — ask the CLI
+  which models it exposes (`--help` / model list), then invoke `claude -p
+  --model <that name>` / `codex exec -m <that name>` / `gemini -m pro -p`.
+  Valid only when that model differs from the one now running; never pin
+  model names in a skill or plan, they go stale. Same-lineage advice trades
   cross-vendor diversity for a second frontier opinion — strictly better than
-  solo. Already running the strongest model of the only family → solo row
-  below.
+  solo. Already running the strongest model of the only family, or cannot
+  tell which model is running → vertical is unavailable; solo row below.
 
 ## What an advisor returns
 

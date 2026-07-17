@@ -2,6 +2,8 @@
 name: using-rolepod
 description: Use at the start of every request to route work into Rolepod's workflow spine before planning, editing, delegating, verifying, reviewing, or shipping. Determines phase, required skills, skip rules, and evidence needed.
 when_to_use: every user request unless the task is a clearly trivial answer that requires no repo state, no action, no recommendation, and no workflow decision
+tier: 0
+phase: router
 ---
 
 # Using Rolepod — workflow router
@@ -21,23 +23,14 @@ Before plan / edit / recommendation / answer → identify task type + required p
 
 User explicit instruction wins. If user says "skip spec", "answer only", "just write the code" → obey, state which gate was skipped, proceed.
 
-Default: route through the spine. Skipping is allowed only when (a) the task is trivial-answer-only, (b) user explicitly authorizes the skip, OR (c) the request is a question with no action attached.
+Default: route through the spine. Skipping is allowed only when (a) the task is trivial-answer-only, (b) user explicitly authorizes the skip, (c) the request is a question with no action attached, OR (d) the Skip rule below passes (diff ≤5 lines + 1 file + 0 logic-bearing lines + not high-risk).
 </EXTREMELY-IMPORTANT>
 
 ## Router modes
 
 This skill auto-fires on every request and runs in one of two modes.
 
-**Auto-router mode (default)** — fires on normal requests. Picks the FIRST needed phase only; does not run every phase. May skip Define / Plan / Review / Ship when task size and risk justify it (see Skip rule). The user invokes nothing — routing is automatic.
-
-```
-question only         → answer directly
-vague feature         → write-spec
-clear small edit      → implement-plan
-bug / failing test    → debug-issue
-done / fixed / verify → check-work
-merge / push / PR     → finish-work
-```
+**Auto-router mode (default)** — fires on normal requests. Picks the FIRST needed phase only; does not run every phase. May skip Define / Plan / Review / Ship when task size and risk justify it (see Skip rule). The user invokes nothing — routing is automatic. The Quick router table below is the single routing source.
 
 **Force-full-lifecycle mode** — the user explicitly asks for the full workflow. Run Define → Plan → Build → Verify → Review → Ship with no phase skips unless the user later overrides.
 
@@ -52,7 +45,7 @@ Switch from auto-router to force-full mode when the user's message opens with an
 
 Bare `/rolepod`, bare `rolepod mode`, bare `run all phases`, and bare `no skip` are NOT force-full triggers — they fall through to auto-router. `/rolepod` is not needed for normal use; a normal prompt auto-routes.
 
-The `rolepod-full` skill is the explicit entrypoint — it loads this skill in force-full mode and selects an execution backend. If the user invoked `rolepod-full`, you are already in force-full mode; run it here.
+The `rolepod-full` skill is the explicit entrypoint — it loads this skill in force-full mode; the execution backend table lives in `references/force-full-lifecycle.md`. If the user invoked `rolepod-full`, you are already in force-full mode; run it here.
 
 ### Force-full behavior
 
@@ -72,7 +65,7 @@ Hand off:
 
 ## Quick router
 
-Match the user intent to the FIRST skill that fires. The skill itself decides what comes next. The **Model tier** column hints which agent tier is appropriate when the work delegates — see `docs/model-tier-policy.md` for the full policy.
+Match the user intent to the FIRST skill that fires. The skill itself decides what comes next. The **Model tier** column hints which agent tier is appropriate when the work delegates — the tier legend below is the operating rule; the full policy is `docs/model-tier-policy.md` in the rolepod source repo (not shipped with the plugin).
 
 | User intent (verbs / phrases) | Phase | First skill fires | Model tier |
 |---|---|---|---|
@@ -85,16 +78,17 @@ Match the user intent to the FIRST skill that fires. The skill itself decides wh
 | vague UI / dashboard / product-design request | **Define** | `write-spec` | cheap (PM/spec) |
 | clear UI edit (existing design / screenshot / exact acceptance criteria) | **Build (UI)** | `implement-plan` → `check-work` | balanced |
 | browser verification / "does the UI work?" | **Verify** | `check-work` | balanced |
-| **security / auth / billing / token / payment / migration** | **Build (high-risk)** | `implement-plan` → `review-code` | **strong** |
+| "audit UX / UI / a11y" of a page or flow (single surface) | **Verify→Review (UI audit)** | `check-work` §3 ladder observes → `review-code` UI axis (`ui-ux-designer` when available; `/audit-a11y` when uiproof installed) | balanced |
+| edit / implement / fix on **security / auth / billing / token / payment / migration** (a "plan / design" ask on these → Plan row below) | **Define (high-risk)** | `write-spec` → `write-plan` → `implement-plan` → `review-code` | **strong** |
 | architecture decision (DB schema / API contract / module split) | **Plan** | `write-plan` → `system-architect` agent when available | **strong** |
 | "is this done / fixed / does it work / verify" | **Verify** | `check-work` | balanced |
 | "review / check this / look at the diff" | **Review** | `review-code` | **strong** (review) |
-| "audit / full audit / review whole repo / find all X / sweep / map" | **Review (repo-wide)** | **scope-then-spawn** (see below) | balanced |
-| "ship / merge / push / PR / ready / go live" | **Ship** | `finish-work` | **strong** (final review) |
+| "audit / sweep / map / find all X" on **the whole repo** | **Review (repo-wide)** | **scope-then-spawn** method (see below) → `review-code` | balanced |
+| "ship / merge / push / PR / ready / go live" | **Ship** | Finish ritual below (`check-work` → `review-code` → `finish-work`) | **strong** (final review) |
 | explain-only / conceptual question (no artifact) | (no phase) | answer directly | cheap |
 | unclear doc artifact / proposal / ADR scope | **Define** | `write-spec` | cheap |
 | clear doc edit / add runbook section / update README | **Build** | `implement-plan` | cheap |
-| "context too large / compact / resume / handoff / manage session" | (cross-cut) | `manage-context` | cheap |
+| "context too large / compact / resume / handoff / manage session" / stuck after repeated attempts | (cross-cut) | `manage-context` | cheap |
 
 If no row matches: ask the user what phase the task is in. Don't pattern-match yourself into Build.
 
@@ -121,13 +115,13 @@ Router fires the **first** skill per phase. Phase exits only when its **exit evi
 | **Build** | `implement-plan` (+ `debug-issue` for bug intent) | changed files + tests added (or explicit no-test justification) + red→green evidence | Verify |
 | **Verify** | `check-work` | fresh command output / screenshot / curl / log evidence; OR explicit "verify impossible because X" risk note | Review (high-risk / multi-file) OR Ship (low-risk) |
 | **Review** | `review-code` | findings fixed OR rejected with line-anchored reason; no unresolved blocker | Ship |
-| **Ship** | `finish-work` | S+T+F+P gates green (P = PR scope, one concern per PR); required CI lanes pass; user approval when policy requires; 4-option finish menu presented (merge / open PR / keep / discard) | **end** |
+| **Ship** | `finish-work` | S+T+F+P gates green (P = PR scope, one concern per PR); required CI lanes pass; user approval when policy requires; 4-option finish menu presented (merge / open PR / keep open / discard) | **end** |
 
 **Router decides the first move only.** Each downstream skill owns its own gates; using-rolepod doesn't re-explain them.
 
 ## Skip rule
 
-Skip a phase WHEN ALL true (state explicitly in response):
+Skip a phase WHEN ANY of these holds (state explicitly in response):
 
 - task is pure question / explanation / lookup (no file change)
 - OR diff ≤5 lines + 1 file + 0 logic-bearing lines + not on high-risk path
@@ -152,7 +146,7 @@ When the user says "done" / "finished" / "complete" / "ready" — or when the ta
 
 1. `check-work` — produce concrete evidence the change works (test output / screenshot / curl).
 2. `review-code` — if multi-file or high-risk, pick adversarial reviewers per their domain match: an external CLI whose model differs from the Lead's, plus qa-tester.
-3. `finish-work` — owns the 4-option finish menu (merge / open PR / keep branch / discard); never auto-pick — the branch decision is the user's.
+3. `finish-work` — owns the 4-option finish menu (merge / open PR / keep open / discard); never auto-pick — the branch decision is the user's.
 
 ## Output pattern
 
@@ -191,7 +185,7 @@ Next step: run tests, paste pass output, present 4-option menu.
 
 ## Optional plugin skills (backend awareness)
 
-If the user has installed a sibling plugin under **Extension Protocol v1** (see `docs/EXTENSION-PROTOCOL.md`), prefer its skills over manual orchestration. The parent writes `<git-root>/.rolepod/parent-active` at SessionStart so children switch to with-rolepod mode and route evidence into `.rolepod/evidence/` for `check-work` to aggregate. Currently recognised:
+If the user has installed a sibling plugin under **Extension Protocol v1** (spec: `docs/EXTENSION-PROTOCOL.md` in the rolepod source repo), prefer its skills over manual orchestration. The parent writes `<git-root>/.rolepod/parent-active` at SessionStart so children switch to with-rolepod mode and route evidence into `.rolepod/evidence/` for `check-work` to aggregate. Currently recognised:
 
 - **`rolepod-uiproof`** (v0.6+) — `/verify-ui`, `/audit-a11y`, `/visual-diff`, `/scaffold-e2e`, `/check-errors`. Used by `check-work` (verify + a11y + visual), `debug-issue` (browser repro / console errors), `review-code` (WCAG + visual regression).
 - **`rolepod-wplab`** (v1.9+) — 14 WP skills + 82 MCP tools. Used by `check-work` (`/wp-health-check`), `debug-issue` (`/wp-diagnose`), `implement-plan` (`/wp-edit-*`, `/wp-scaffold`), `review-code` (`/wp-changes`).

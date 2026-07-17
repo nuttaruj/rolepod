@@ -19,9 +19,11 @@ never reviews the other's work as "external".
   as ONE pool member (same family); prefer `gemini`.
 - **Vertical fallback — same family, stronger tier.** When the external pool
   is empty (single-CLI machine) or every member failed at invoke: the Lead's
-  own CLI at the strongest model it exposes (`claude -p --model <strongest>` /
-  `codex exec -m <strongest>` / `gemini -m pro -p`), cold context, only valid
-  when that model differs from the one now running. Same family — it never
+  own CLI at its strongest model — ask the CLI which models it exposes
+  (`--help` / model list), then invoke `claude -p --model <that name>` /
+  `codex exec -m <that name>` / `gemini -m pro -p` — cold context, only valid
+  when that model differs from the one now running (cannot tell which model
+  is running → vertical unavailable, record NOT RUN). Same family — it never
   counts as the cross-family adversarial pass; it upgrades the Lead floor.
 
 ## Model strength — one axis each, no overlap

@@ -62,7 +62,7 @@ Return / hand off:
 
 Read the touched files end-to-end (or the relevant region with line numbers). Don't pattern-match — verify the symbols and behavior exist where the plan expects.
 
-**The plan is the loop contract.** Verify each task by running its **Command** verbatim — never a re-derived guess. When it passes, flip the task's `- [ ]` to `- [x]` in the plan artifact (that is how progress survives compaction). On a failing Command, follow the task's **On fail**, or the plan's **Failure policy** when the task has none.
+**The plan is the loop contract.** Verify each task by running its **Command** verbatim — never a re-derived guess. When it passes, flip EVERY `- [ ]` under that task to `- [x]` in the plan artifact (tasks carry one checkbox per step; all flip together — that is how progress survives compaction). On a failing Command, follow the task's **On fail**, or the plan's **Failure policy** when the task has none.
 
 ### 2. TDD-light for risky paths
 
@@ -87,7 +87,7 @@ While editing, hold these reflexes:
 
 ### 4. Bounded delegation
 
-First decide *whether* to delegate — the Q1-Q4 test:
+First decide *whether* to delegate. The plan's **Owner:** line wins when set — `Owner: Lead` → self-do, a named agent → delegate to it. Only a task with no Owner runs the Q1-Q4 test:
 
 ```
 Q1: More than 1 file to edit?        Q2: Run tests / build / server?
@@ -120,15 +120,11 @@ After all tasks pass per-task review, dispatch a **final whole-implementation re
 
 ### 7. Model selection by task complexity
 
-Use the least powerful model that can handle each role. Cost compounds across N tasks × M reviews.
-
-- **Mechanical** (1-2 files, complete spec, isolated logic) → fast/cheap model
-- **Integration** (multi-file coordination, pattern matching, debugging) → standard model
-- **Architecture / judgment / final review** (broad codebase, design tradeoffs) → most capable model
+Use the least powerful model that can handle each role — cost compounds across N tasks × M reviews. The task-type → tier table lives in `references/subagent-dispatch.md`.
 
 ## If a matching child plugin skill is available
 
-Prefer sibling edit primitives over hand-rolled writes when the domain matches (Extension Protocol v1 — `docs/EXTENSION-PROTOCOL.md`):
+Prefer sibling edit primitives over hand-rolled writes when the domain matches (Extension Protocol v1 — spec in the rolepod source repo):
 
 - `rolepod-uiproof` `/scaffold-e2e` — e2e test scaffold from scenario + replay (playwright / vitest+playwright / pytest+selenium)
 - `rolepod-wplab` `/wp-edit-{design,plugin,theme}`, `/wp-scaffold` — WP edit primitives + boilerplate inside `wp-content/`

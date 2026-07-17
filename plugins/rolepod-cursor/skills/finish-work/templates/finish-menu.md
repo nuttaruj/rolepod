@@ -5,8 +5,13 @@
 
 ## Gate status
 - Pre-merge gate (S/T/F — simplicity, test, failure-mode): <PASS / FAIL — name what failed>
+- Evidence status (from check-work's evidence block): <VERIFIED / PARTIAL /
+  UNVERIFIED — reason. PARTIAL / UNVERIFIED blocks merge unless waived.>
 - CI: Phase 1 <status> · Phase 2 <status, or n/a>
 - Review verdict: <APPROVED / APPROVED-WITH-NITS / REJECTED>
+- Cross-model adversarial pass (high-risk diff only): <ran on `model`
+  (cross-family) / vertical — same family / NOT RUN — reason. Anything
+  other than a cross-family pass is a limitation the user must see.>
 - User waivers this session: <none, or per waiver: which gate — the user's
   words, quoted. A waiver is recorded here, never silently applied.>
 

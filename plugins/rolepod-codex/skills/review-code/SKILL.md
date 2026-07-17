@@ -14,7 +14,7 @@ Review-phase entry skill. Apply risk-appropriate review pressure to a finished c
 
 <EXTREMELY-IMPORTANT>
 1. NEVER merge code on a high-risk surface (auth, billing, migration, secret, crypto, token, payment) without an adversarial fresh-context review.
-2. NEVER let the author — or, for the adversarial pass, the author's own model — be the final reviewer of their own change. The external adversarial review runs on a model different from the Lead's.
+2. NEVER let the author — or, for the adversarial pass, the author's own model — be the final reviewer of their own change. The external adversarial review runs on a model **family** different from the Lead's; the vertical fallback (same family, stronger tier) never satisfies it — it only upgrades the Lead floor and is recorded as a limitation.
 3. NEVER skip review because "tests pass". Tests prove the assertion, not the design.
 4. Findings before fixes. List issues with severity first; do not silently rewrite.
 5. Author MUST verify findings against the codebase before implementing. No performative agreement ("you're absolutely right!", "great point!", "thanks!"). No blind implementation. Clarify all unclear items before partial implementation — findings may be linked.
@@ -101,23 +101,9 @@ When author and reviewer disagree on the merits, resolve by precedence: technica
 
 ### 6. Author-side response
 
-When the author is Lead receiving findings from a reviewer subagent or external CLI reviewer, follow this pattern. Forbidden phrases first — they corrupt the rest:
+When the author is Lead receiving findings from a reviewer subagent or external CLI reviewer: READ all findings without reacting → VERIFY each against the codebase (does it hold for THIS code?) → RESPOND with a technical ack or reasoned pushback → IMPLEMENT. Clarify ALL unclear findings before touching any — findings may be linked; order: blocking → simple → complex, testing each individually. No gratitude phrases ("You're absolutely right!" / "Thanks for catching that!") — the diff shows you heard; "Fixed in <file:line>." is the whole reply.
 
-**Forbidden phrases.** Cut every gratitude expression. The diff shows you heard the feedback; words add noise.
-- ❌ "You're absolutely right!" / "Great point!" / "Thanks for catching that!"
-- ✅ "Fixed in <file:line>." / "Verified — implementing." / just patch and show the change
-
-**Response pattern.** READ all findings without reacting → UNDERSTAND (restate the requirement in own words; if unclear, ask) → VERIFY against the codebase (does the finding hold for THIS code?) → EVALUATE (technically sound for this stack?) → RESPOND (technical ack or reasoned pushback) → IMPLEMENT.
-
-**Clarify before partial implementation.** If you understand findings 1, 2, 3, 6 but not 4, 5 — do NOT implement the four and ask about the rest later. Findings may be linked; partial understanding = wrong implementation. State: "Understand 1, 2, 3, 6. Need clarification on 4 and 5 before proceeding."
-
-**Implementation order for multi-finding.** Clarify all unclear → blocking (breaks / security) → simple (typo / import / rename) → complex (refactor / logic). Test each individually; verify no regressions before next.
-
-**Pushback discipline.** Push back when a finding breaks existing functionality, lacks codebase context, violates YAGNI on an unused surface, is wrong for the stack, or conflicts with a documented user decision. Use technical reasoning + specific Q + reference to working tests — not defensive tone. If you pushed back and were wrong: state the correction in one line ("You were right — checked X, does Y. Fixing.") and move on. No long apology.
-
-**GitHub thread replies.** When replying to an inline review comment on a PR, reply in the thread (`gh api repos/{owner}/{repo}/pulls/{pr}/comments/{id}/replies`), not as a top-level PR comment.
-
-Deep playbook (source-specific handling, YAGNI grep, common mistakes): `references/receiving-findings.md`.
+The full playbook — forbidden-phrase list, pushback discipline, GitHub thread replies (`gh api .../replies`), YAGNI grep, source-specific handling — lives in `references/receiving-findings.md`.
 
 ## If a matching Rolepod agent is available
 

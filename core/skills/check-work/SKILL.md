@@ -45,8 +45,8 @@ Does not own:
 
 Return / hand off:
 - Evidence fails → `debug-issue` or `implement-plan`.
-- Evidence passes and risk exists → `review-code`.
-- Evidence passes and low risk → `finish-work`.
+- Evidence passes and risk exists (fails review-code's skip test: >5 lines, multi-file, logic-bearing, or a high-risk surface) → `review-code`.
+- Evidence passes and low risk (review-code's skip test passes) → `finish-work`.
 
 ## Inputs to gather
 
@@ -91,7 +91,7 @@ Each `manifest.json` describes one child run with fields `plugin`, `skill`, `pha
 - All `pass` or `warn` → verify passes; list warnings inline so they don't get lost.
 - Child artifacts (screenshots, HARs, reports) are referenced by relative path from the manifest directory — include those paths in the evidence block.
 
-Schema details and the full protocol live in `docs/EXTENSION-PROTOCOL.md`. Children write manifests automatically when they detect the rolepod parent marker (`.rolepod/parent-active`); no manual wiring needed.
+Schema details and the full protocol live in `docs/EXTENSION-PROTOCOL.md` (rolepod source repo; the aggregation rules above are self-sufficient). Children write manifests automatically when they detect the rolepod parent marker (`.rolepod/parent-active`); no manual wiring needed.
 
 ### 3. UI verification when relevant
 
@@ -115,13 +115,7 @@ Format inline in the evidence block: `<criterion> → <evidence command + result
 
 ### 5. State limitations honestly
 
-If you cannot verify (no test infra, no network, no browser):
-```
-Cannot verify: <what>
-Reason: <why>
-Risk if wrong: <impact>
-Suggested check: <command / step user can run>
-```
+If you cannot verify (no test infra, no network, no browser), fill the four-field limitation block — Cannot verify / Reason / Risk if wrong / Suggested check — shaped in `templates/evidence-block.md`; never claim done over an unstated limitation.
 
 ### 6. Failure-mode gate (F1-F5)
 

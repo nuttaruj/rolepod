@@ -28,7 +28,7 @@ mid-flow ("skip review", "just ship").
    from the Lead's) when configured; otherwise qa-tester / security-engineer /
    universal-reviewer.
 6. **Ship — `finish-work`** — S+T+F+P gates, required CI lane checks, then
-   the 4-option branch finish menu (merge / open PR / keep / discard).
+   the 4-option branch finish menu (merge / open PR / keep open / discard).
 
 ## Execution backend
 
@@ -37,7 +37,7 @@ available and announce it.
 
 | Environment | Backend |
 |---|---|
-| Claude + agent-teams enabled (`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`, v2.1.32+) | teammate mode — multi-process team (see docs/agent-teams.md) |
+| Claude + agent-teams enabled (`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`, v2.1.32+) | teammate mode — multi-process team (docs/agent-teams.md, rolepod source repo) |
 | Claude without agent-teams, or user asked for single-process | Task / subagent dispatch + cohesion contract |
 | Codex | Codex subagents |
 | Gemini | Gemini subagents; inline fallback when unsupported |
@@ -60,7 +60,7 @@ Next step: <first question or context read>
 
 ## Careful-mode rigor (default-on in force-full mode)
 
-- ≤3 files per commit (default workflow allows ≤5)
+- ≤3 files per commit
 - Mandatory peer review even for small diffs (no skip on ≤5 lines / single
   file / zero logic)
 - All S1-S5 + T1-T6 gates explicit every commit

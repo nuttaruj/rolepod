@@ -36,7 +36,7 @@ free rein. Every line written during resolution is NEW, UNREVIEWED code.
    (`git merge --abort` / `git rebase --abort`), read the other side's
    change end-to-end, return to `implement-plan` for a real reconciliation.
 4. **After ANY resolution, re-verify** — re-run `check-work` with the same
-   Commands. A gate that passed pre-conflict has NOT passed on the resolved
-   tree.
+   commands recorded in its evidence block. A gate that passed pre-conflict
+   has NOT passed on the resolved tree.
 5. High-risk surface in the conflict → the adversarial review re-runs on
    the resolved diff before merge.

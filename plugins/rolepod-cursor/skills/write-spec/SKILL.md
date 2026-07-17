@@ -104,9 +104,9 @@ Present the proposed direction (chosen approach + rationale). Wait for the user 
 
 ### 6. Produce the contract
 
-Fill `templates/spec-template.md` — every section resolved, no placeholders, no contradictions. Then run the **spec-lint** — `grep -niE '<[^>]+>|TODO|TBD'` on the result must return nothing (a deterministic backstop to the step-4 self-review; it catches leftover template hints and TODO/TBD markers, not vague wording).
+Fill `templates/spec-template.md` — every section resolved, no placeholders, no contradictions. Then run the **spec-lint**: write the filled spec to a file first (in inline mode too — a scratch path like `/tmp/spec.md` is fine), then `grep -niE '<[^>]+>|TODO|TBD' <spec-file>` must return nothing (a deterministic backstop to the step-4 self-review; it catches leftover template hints and TODO/TBD markers, not vague wording).
 
-- One-session work → inline the filled template in chat. **No Gate 2** — Gate 1 is the only approval.
+- One-session work → inline the filled template in chat. **No Gate 2** — Gate 1 is the only approval. Default when unsure: one-session/inline, unless the user names a multi-day scope or the high-risk / repeat test below applies.
 - Multi-session work, high-risk surface touched, or repeat feature → save to `docs/rolepod/specs/<feature>-YYYY-MM-DD.md` (optional `-vN` or `-draft` suffix). Proceed to Gate 2.
 
 ### 7. Gate 2 — file review (file-mode only)
@@ -140,13 +140,11 @@ Execute the discovery + design checklist directly as Lead. Use this minimum viab
 5. Sketch 2-3 viable approaches with tradeoffs
 6. Recommend one approach with rationale
 7. Wait for Gate 1 (direction) before producing the contract
-8. Save inline for one-session work, or `docs/rolepod/specs/<feature>-YYYY-MM-DD.md` for multi-session / high-risk / repeat features — then require Gate 2 (file review)
+8. Apply §6's inline-vs-file rule, then the matching gate (Gate 1 only, or Gate 2 for file mode)
 
 ## Output
 
-The spec template is the canonical artifact: `templates/spec-template.md`. Fill every section — it is the contract `write-plan` consumes. Do not restate the section list here; the template is the single source of the spec shape.
-
-For one-session work, inline the filled template in chat (Gate 1 only). For repeat, multi-session, or high-risk features, save it to `docs/rolepod/specs/<feature>-YYYY-MM-DD.md` and require Gate 2 (file review) before handoff.
+The spec template is the canonical artifact: `templates/spec-template.md`. Fill every section — it is the contract `write-plan` consumes. Do not restate the section list here; the template is the single source of the spec shape. Inline vs file and the matching gate: §6 owns that rule.
 
 ## Examples
 
