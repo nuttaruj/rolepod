@@ -1,7 +1,7 @@
 name: mobile-developer
 description: Mobile Engineer for native iOS/Android + cross-platform (React Native / Flutter). Owns platform-specific code; cross-platform UI logic may overlap with frontend-developer.
 # tools: SendMessage requires agent-teams context (Claude accepts standalone, may silently ignore).
-model: sonnet
+tier: balanced
 effort: medium
 memory: project
 maxTurns: 50

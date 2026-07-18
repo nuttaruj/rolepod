@@ -1,7 +1,7 @@
 ---
 name: billing-engineer
 description: FinTech / Monetization Engineer. Owns billing, payments, credits, subscriptions, financial data integrity. Path-scoped to billing/payments/credits modules.
-model: opus
+model: inherit
 effort: high
 memory: project
 maxTurns: 50

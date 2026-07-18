@@ -2,13 +2,21 @@
 
 ## Model tiers
 
-Rolepod ships a cost-aware policy that maps **role + risk → model tier**. Lead doesn't pick a model; the agent's per-CLI frontmatter overlay does — `adapters/claude/agent-frontmatter/<agent>.yml`, `adapters/codex/agent-frontmatter/<agent>.yml`, `adapters/gemini/agent-frontmatter/<agent>.yml`. Each org can override by editing those.
+Rolepod ships a cost-aware policy that maps **role + risk → model tier**. Each agent's per-CLI overlay carries only a **`tier:`** (a stable, semantic label) — never a model name. `build/merge-agent.py`'s `TIER_MODELS` resolves tier → model per CLI at render time, so a model rename or a new generation is **one edit there**, not 48 across the overlays. This table is the human-readable view of that map; the static gate verifies the two never drift.
 
 | Tier | Claude | Codex | Gemini | Use for |
 |---|---|---|---|---|
 | **cheap** | `haiku` | `gpt-5.6-luna` | `gemini-3-flash-preview` | docs, PM (feature + commercial), customer-facing copy, marketing, FAQ, ADR drafting, read-only scout sweeps — repeatable structured output, no deep architectural reasoning |
 | **balanced** | `sonnet` | `gpt-5.6-terra` | `gemini-3-pro-preview` | normal implementation (backend, frontend, mobile, AI/ML features, data pipelines, perf, UI/UX, devops), QA test writing — the default working tier |
-| **strong** | `opus` | `gpt-5.6-sol` | `gemini-3-pro-preview` | architecture, billing/payments, security implementation, migrations, adversarial code review — wrong code costs real money or blocks recovery; reviewer must match implementer depth |
+| **strong** | `inherit` | `gpt-5.6-sol` | `gemini-3-pro-preview` | architecture, billing/payments, security implementation, migrations, adversarial code review — wrong code costs real money or blocks recovery; reviewer must match implementer depth |
+
+**Why the tiers resolve the way they do**
+
+- **cheap / balanced pin LOW on purpose.** A cheap component stays cheap even under an expensive Lead — that is the cost saving. Claude uses aliases (`haiku` / `sonnet`), which auto-resolve to the newest model of that family, so a Claude version bump needs no edit.
+- **strong on Claude is `inherit`** — the subagent runs on the **same model as the Lead**. This is the direct expression of "reviewer must match implementer depth": a Fable Lead gets a Fable reviewer (never downgraded to a fixed older model), and there is no model name to go stale. Claude Code supports `inherit` and treats it as the default.
+- **The high-risk floor is NOT this pin.** A Lead weaker than the strong tier (e.g. a Sonnet Lead touching billing) still gets an independent strong check, because `review-code`'s Iron Rule mandates a **cross-family** adversarial pass (a different vendor's CLI) on high-risk surfaces. Depth on money/security paths is guaranteed by that pass, not by pinning a model here.
+- **strong on Codex pins its ceiling (`sol`)** — Codex exposes no `inherit`, so the top model is the safe default: an upgrade for a lower Lead, a match when the Lead is already `sol`.
+- **Gemini values are advisory.** Antigravity (`agy`) auto-selects the model per task and does not consume this field; it is recorded only to keep the frozen Gemini-CLI adapter internally consistent (see the Antigravity note below).
 
 **Effort** layers on top of the model. Claude uses `effort`, Codex uses `model_reasoning_effort` (`xhigh` / `high` / `medium`); Gemini has no effort field.
 
@@ -43,7 +51,9 @@ Rolepod ships a cost-aware policy that maps **role + risk → model tier**. Lead
 
 ## Override path
 
-Per-org override: edit `~/.claude/agents/<agent-name>.md` frontmatter `model:` field. The rolepod default is whatever the rendered template specifies; user override takes precedence (Claude Code precedence: user > project > plugin defaults).
+Change what a whole tier resolves to: edit `TIER_MODELS` in `build/merge-agent.py` (the one map) and re-render — e.g. point Claude `strong` at a fixed `opus` instead of `inherit`, or bump the Codex line to a new generation. Move a single agent between tiers: edit its `tier:` in the three overlays (or just the one CLI you use).
+
+Per-user override: edit `~/.claude/agents/<agent-name>.md` frontmatter `model:` field on the installed file. User override takes precedence (Claude Code precedence: user > project > plugin defaults).
 
 Per-task override: explicit user instruction always wins. If the user says "use opus for this," that overrides the tier policy for the turn.
 

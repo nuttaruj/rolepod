@@ -1,7 +1,7 @@
 ---
 name: security-engineer
 description: Security Engineer for vuln audit, pentest, system hardening, compliance (GDPR/SOC2/HIPAA). Owns security concern across all layers.
-model: opus
+model: inherit
 effort: xhigh
 memory: project
 maxTurns: 50

@@ -32,7 +32,47 @@ GEMINI_KEY_ORDER = ["name", "description", "model"]
 CURSOR_KEY_ORDER = ["name", "description"]
 # Codex agents are TOML, not frontmatter — see emit_codex_toml().
 
+# ── Tier → model: THE single source of model identity ────────────────────────
+# Overlays carry `tier:` (stable, semantic); this map resolves it to a concrete
+# model per CLI at render time. A model rename or a new generation is one edit
+# here, never 48 across the overlays.
+#
+#   cheap / balanced  → pinned LOW on purpose: a cheap component stays cheap even
+#                       under an expensive Lead. Claude uses aliases, which
+#                       auto-resolve to the newest model of that family — so a
+#                       Claude version bump needs no edit at all.
+#   strong (Claude)   → `inherit`: the subagent runs on the SAME model as the
+#                       Lead. A Fable Lead gets a Fable reviewer — never a
+#                       downgrade, and no model name to go stale. High-risk depth
+#                       for a below-strong Lead is guaranteed by review-code's
+#                       mandatory cross-family adversarial pass, not by this pin.
+#   strong (Codex)    → its ceiling (sol): Codex has no `inherit`, so pin the top
+#                       — an upgrade for a lower Lead, a match when the Lead is sol.
+#   Gemini/agy        → advisory only: agy auto-selects the model per task and
+#                       does not consume this value (documented in model-tier-policy).
+TIER_MODELS = {
+    "claude": {"cheap": "haiku", "balanced": "sonnet", "strong": "inherit"},
+    "codex": {"cheap": "gpt-5.6-luna", "balanced": "gpt-5.6-terra", "strong": "gpt-5.6-sol"},
+    "gemini": {"cheap": "gemini-3-flash-preview", "balanced": "gemini-3-pro-preview", "strong": "gemini-3-pro-preview"},
+}
+
 REPO_DIR = Path(__file__).resolve().parent.parent
+
+
+def resolve_model(target: str, merged: dict[str, list[str]]) -> None:
+    """Convert the overlay's `tier:` into a concrete `model:` for the target CLI.
+
+    Mutates `merged` in place: sets `model` from TIER_MODELS and drops `tier`
+    (it is a rolepod concept, not a valid CLI frontmatter field).
+    """
+    if "tier" not in merged:
+        raise ValueError(f"{target}: overlay is missing the required `tier:` field")
+    tier = field_value(merged, "tier")
+    models = TIER_MODELS.get(target, {})
+    if tier not in models:
+        raise ValueError(f"{target}: unknown tier {tier!r} (expected {sorted(models)})")
+    merged["model"] = [f"model: {models[tier]}"]
+    merged.pop("tier", None)
 
 
 def parse_yaml_block(text: str) -> dict[str, list[str]]:
@@ -158,6 +198,7 @@ def merge(target: str, name: str) -> str:
             raise FileNotFoundError(f"missing {overlay_path}")
         overlay = parse_yaml_block(overlay_path.read_text())
         merged = {**core_fields, **overlay}
+        resolve_model("claude", merged)
         # Re-order to match Claude original
         return "---\n" + emit(CLAUDE_KEY_ORDER, merged) + "---\n" + body
 
@@ -169,6 +210,7 @@ def merge(target: str, name: str) -> str:
             raise FileNotFoundError(f"missing {overlay_path}")
         overlay = parse_yaml_block(overlay_path.read_text())
         merged = {**core_fields, **overlay}
+        resolve_model("codex", merged)
         return emit_codex_toml(merged, body)
 
     if target == "gemini":
@@ -179,6 +221,7 @@ def merge(target: str, name: str) -> str:
             raise FileNotFoundError(f"missing {overlay_path}")
         overlay = parse_yaml_block(overlay_path.read_text())
         merged = {**core_fields, **overlay}
+        resolve_model("gemini", merged)
         return "---\n" + emit(GEMINI_KEY_ORDER, merged) + "---\n" + body
 
     if target == "cursor":

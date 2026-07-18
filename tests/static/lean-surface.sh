@@ -302,6 +302,7 @@ def rows(lines):
     return [[clean(c) for c in ln.strip().strip("|").split("|")]
             for ln in lines if ln.strip().startswith("|")]
 
+import ast
 TIERS = ("cheap", "balanced", "strong")
 tier_models = {r[0]: (r[1], r[2], r[3]) for r in rows(section("Model tiers"))
                if len(r) >= 4 and r[0] in TIERS}
@@ -312,35 +313,47 @@ errs = []
 if len(tier_models) != 3:
     errs.append(f"Model tiers table parsed {sorted(tier_models)} (expected 3)")
 
+# Model identity now lives in ONE place — build/merge-agent.py's TIER_MODELS.
+# Overlays carry `tier:`, resolved to a model at render time. Verify (a) that
+# map matches the policy doc's Model-tiers table, and (b) every overlay's tier
+# matches the policy's agent→tier mapping across all three CLIs.
+mtext = pathlib.Path("build/merge-agent.py").read_text()
+mm = re.search(r'^TIER_MODELS = (\{.*?^\})', mtext, re.M | re.S)
+TM = ast.literal_eval(mm.group(1)) if mm else {}
+if not mm:
+    errs.append("could not locate TIER_MODELS in build/merge-agent.py")
+for tier, (pc, px, pg) in tier_models.items():
+    if TM.get("claude", {}).get(tier) != pc:
+        errs.append(f"TIER_MODELS claude[{tier}]={TM.get('claude',{}).get(tier)} != policy {pc}")
+    if TM.get("codex", {}).get(tier) != px:
+        errs.append(f"TIER_MODELS codex[{tier}]={TM.get('codex',{}).get(tier)} != policy {px}")
+    if TM.get("gemini", {}).get(tier) != pg:
+        errs.append(f"TIER_MODELS gemini[{tier}]={TM.get('gemini',{}).get(tier)} != policy {pg}")
+
 claude_d = pathlib.Path("adapters/claude/agent-frontmatter")
 codex_d = pathlib.Path("adapters/codex/agent-frontmatter")
 gemini_d = pathlib.Path("adapters/gemini/agent-frontmatter")
 
-def model_of(path, pat):
+def tier_of(path):
     if not path.exists(): return None
-    m = re.search(pat, path.read_text(), re.M)
+    m = re.search(r'^tier:\s*(\S+)', path.read_text(), re.M)
     return m.group(1) if m else None
 
 for a in sorted(p.stem for p in claude_d.glob("*.yml")):
     if a not in agent_tier:
         errs.append(f"{a}: not in policy agent→tier table")
         continue
-    tier = agent_tier[a]
-    if tier not in tier_models:
-        errs.append(f"{a}: tier '{tier}' not in Model tiers table"); continue
-    exp_c, exp_x, exp_g = tier_models[tier]
-    got_c = model_of(claude_d / f"{a}.yml", r'^model:\s*(\S+)')
-    got_x = model_of(codex_d / f"{a}.yml", r'^model:\s*(\S+)')
-    got_g = model_of(gemini_d / f"{a}.yml", r'^model:\s*(\S+)')
-    if got_c != exp_c: errs.append(f"{a}: claude {got_c} != {exp_c} ({tier})")
-    if got_x != exp_x: errs.append(f"{a}: codex {got_x} != {exp_x} ({tier})")
-    if got_g != exp_g: errs.append(f"{a}: gemini {got_g} != {exp_g} ({tier})")
+    exp = agent_tier[a]
+    for label, d in (("claude", claude_d), ("codex", codex_d), ("gemini", gemini_d)):
+        got = tier_of(d / f"{a}.yml")
+        if got != exp:
+            errs.append(f"{a}: {label} tier {got} != policy {exp}")
 
 for e in errs: print("      " + e)
 sys.exit(1 if errs else 0)
 PYEOF
 then
-  echo "  ✓ model tier: 16 agents match policy across claude / codex / gemini"
+  echo "  ✓ model tier: 16 agents carry policy tier; TIER_MODELS matches policy"
 else
   echo "  ✗ model tier drift from docs/model-tier-policy.md (see above)"
   fail=$((fail+1))

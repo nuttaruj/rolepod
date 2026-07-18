@@ -44,8 +44,8 @@ Source of truth: [`core/fragments/agent-roster-lean.md`](../core/fragments/agent
 ## How to add a new agent
 
 1. Add `core/agents/<name>.md` with `name:` + `description:` frontmatter.
-2. Add `adapters/claude/agent-frontmatter/<name>.yml` with model + effort + memory + tools + skills preload.
-3. Add `adapters/codex/agent-frontmatter/<name>.yml` (model + `model_reasoning_effort` + `sandbox_mode`) and `adapters/gemini/agent-frontmatter/<name>.yml` (model).
+2. Add `adapters/claude/agent-frontmatter/<name>.yml` with `tier:` (cheap / balanced / strong) + effort + memory + tools + skills preload. The concrete model comes from `TIER_MODELS` in `build/merge-agent.py` — do NOT put a model name in the overlay.
+3. Add `adapters/codex/agent-frontmatter/<name>.yml` (`tier:` + `model_reasoning_effort` + `sandbox_mode`) and `adapters/gemini/agent-frontmatter/<name>.yml` (`tier:`). Add the agent's row to the "Default agent → tier mapping" table in `model-tier-policy.md` so the static gate can verify it.
 4. Update the domain map above + `write-plan` agent-routing guidance.
 5. `make render` — regenerates `agent-roster-lean.md` + per-CLI agent files (Codex `.toml` generated from the core body, no hand-maintained copy).
 6. `make test-static` — render-clean gate verifies.
