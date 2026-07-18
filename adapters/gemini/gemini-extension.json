@@ -1,7 +1,7 @@
 {
   "_comment": "Rolepod Gemini CLI extension. Schema reference: https://github.com/google-gemini/gemini-cli/blob/main/docs/extensions/reference.md (verified 2026-05-10). Layout: hooks/hooks.json -> SessionStart/BeforeTool/AfterTool wiring; skills/<name>/SKILL.md -> agent skills; agents/<name>.md -> 16 tier-mapped sub-agents; GEMINI.md -> auto-loaded context.",
   "name": "rolepod",
-  "version": "0.9.3",
+  "version": "0.9.4",
   "description": "16-agent dev team workflow with gates, simplicity rules, and verify-first discipline. Gemini CLI extension.",
   "contextFileName": "GEMINI.md"
 }

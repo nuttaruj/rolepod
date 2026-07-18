@@ -220,6 +220,25 @@ def count_reviewers_dispatched(transcript_path: str) -> int:
     return n
 
 
+def count_all(transcript_path: str) -> tuple[int, int, int]:
+    """Single-pass tally of the three gate counts — one transcript scan instead
+    of three. Returns (test_edits, high_risk_edits, reviewers), each identical
+    to the standalone count_* it replaces (test/high-risk are mutually exclusive
+    per edit; test wins — same precedence as count_high_risk_edits' skip)."""
+    test_edits = high_risk_edits = reviewers = 0
+    for tool, inp in _iter_tool_uses(transcript_path):
+        if tool in EDIT_TOOLS:
+            path = _file_from_input(inp)
+            if is_test_file(path):
+                test_edits += 1
+            elif is_high_risk_path(path) and is_code_file(path):
+                high_risk_edits += 1
+        elif tool in AGENT_TOOLS:
+            if _bare_agent_name(inp.get("subagent_type")) in REVIEWER_AGENTS:
+                reviewers += 1
+    return test_edits, high_risk_edits, reviewers
+
+
 def count_parallel_agent_spawns_on_path(
     transcript_path: str, recent_window: int = 10
 ) -> int:
@@ -257,7 +276,10 @@ def main() -> int:
     hook_input = _load_hook_input()
     transcript_path = hook_input.get("transcript_path") or ""
 
-    if query == "count-test-edits":
+    if query == "count-all":
+        # test_edits high_risk_edits reviewers — one line, one transcript scan.
+        print("%d %d %d" % count_all(transcript_path))
+    elif query == "count-test-edits":
         print(count_test_edits(transcript_path))
     elif query == "count-high-risk-edits":
         print(count_high_risk_edits(transcript_path))

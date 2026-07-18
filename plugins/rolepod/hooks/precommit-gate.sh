@@ -98,9 +98,9 @@ TEST_EDITS=0
 HIGH_RISK_EDITS=0
 REVIEWERS=0
 if [ -f "$SESSION_STATE" ] && command -v python3 >/dev/null 2>&1; then
-  TEST_EDITS=$(printf '%s' "$INPUT" | python3 "$SESSION_STATE" count-test-edits 2>/dev/null || echo 0)
-  HIGH_RISK_EDITS=$(printf '%s' "$INPUT" | python3 "$SESSION_STATE" count-high-risk-edits 2>/dev/null || echo 0)
-  REVIEWERS=$(printf '%s' "$INPUT" | python3 "$SESSION_STATE" count-reviewers-dispatched 2>/dev/null || echo 0)
+  # ONE transcript scan for all three counts (see gate-reminder.sh).
+  COUNTS=$(printf '%s' "$INPUT" | python3 "$SESSION_STATE" count-all 2>/dev/null || echo "0 0 0")
+  read -r TEST_EDITS HIGH_RISK_EDITS REVIEWERS <<< "$COUNTS"
 fi
 TEST_EDITS=${TEST_EDITS:-0}
 HIGH_RISK_EDITS=${HIGH_RISK_EDITS:-0}
