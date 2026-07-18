@@ -54,38 +54,54 @@ except Exception:
 # Token walk skips git's pre-subcommand options (and their values) so the
 # real subcommand is what gets matched.
 BLOCKED=$(printf '%s' "$CMD" | python3 -c "
-import sys, shlex
+import sys, shlex, os
 cmd = sys.stdin.read()
-try:
-    toks = shlex.split(cmd)
-except ValueError:
-    toks = cmd.split()
+
+def toks_of(s):
+    try:
+        return shlex.split(s)
+    except ValueError:
+        return s.split()
+
 VALUE_OPTS = {'-C', '--git-dir', '--work-tree', '--namespace', '--exec-path'}
-blocked = ''
-for i, t in enumerate(toks):
-    if t == 'git':
-        j = i + 1
-        while j < len(toks) and toks[j].startswith('-'):
-            if toks[j] in VALUE_OPTS:
-                j += 2
-            elif toks[j] == '-c' and j + 1 < len(toks) and '=' in toks[j + 1]:
-                j += 2
-            else:
-                j += 1
-        if j < len(toks):
-            sub = toks[j]
-            rest = toks[j:]
-            if sub == 'commit':
-                blocked = 'git commit'
-            elif sub == 'push':
-                blocked = 'git push --force' if ('--force' in rest or '-f' in rest) else 'git push'
-            elif sub == 'reset' and '--hard' in rest:
-                blocked = 'git reset --hard'
-    elif t == 'gh' and i + 2 < len(toks) and toks[i + 1] == 'pr' and toks[i + 2] in ('merge', 'create'):
-        blocked = 'gh pr ' + toks[i + 2]
-    if blocked:
-        break
-print(blocked)
+SHELLS = {'bash', 'sh', 'zsh', 'dash', 'ksh'}
+
+# basename() catches absolute paths (/usr/bin/git); shell recursion catches
+# 'bash -c \"git commit\"' where the real command hides inside a quoted arg.
+def scan(toks, depth=0):
+    if depth > 4:
+        return ''
+    for i, t in enumerate(toks):
+        base = os.path.basename(t)
+        if base == 'git':
+            j = i + 1
+            while j < len(toks) and toks[j].startswith('-'):
+                if toks[j] in VALUE_OPTS:
+                    j += 2
+                elif toks[j] == '-c' and j + 1 < len(toks) and '=' in toks[j + 1]:
+                    j += 2
+                else:
+                    j += 1
+            if j < len(toks):
+                sub = toks[j]
+                rest = toks[j:]
+                if sub == 'commit':
+                    return 'git commit'
+                elif sub == 'push':
+                    return 'git push --force' if ('--force' in rest or '-f' in rest) else 'git push'
+                elif sub == 'reset' and '--hard' in rest:
+                    return 'git reset --hard'
+        elif base == 'gh' and i + 2 < len(toks) and toks[i + 1] == 'pr' and toks[i + 2] in ('merge', 'create'):
+            return 'gh pr ' + toks[i + 2]
+        elif base in SHELLS:
+            for k in range(i + 1, len(toks)):
+                if toks[k] == '-c' and k + 1 < len(toks):
+                    r = scan(toks_of(toks[k + 1]), depth + 1)
+                    if r:
+                        return r
+    return ''
+
+print(scan(toks_of(cmd)))
 " 2>/dev/null || echo "")
 
 [ -z "$BLOCKED" ] && exit 0

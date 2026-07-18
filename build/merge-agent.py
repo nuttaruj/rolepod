@@ -20,6 +20,7 @@ the Claude target output is byte-identical to the pre-split source.
 from __future__ import annotations
 
 import argparse
+import json
 import re
 import sys
 from pathlib import Path
@@ -109,20 +110,34 @@ def field_value(fields: dict[str, list[str]], key: str) -> str:
     return fields[key][0].split(":", 1)[1].strip()
 
 
+def _toml_basic(s: str) -> str:
+    """Quote a scalar as a TOML basic string. JSON string escaping (`"`, `\\`,
+    control chars) is a subset of TOML basic-string escaping, so json.dumps is
+    a correct, dependency-free encoder — and it stops a stray quote in a
+    description from producing invalid TOML."""
+    return json.dumps(s, ensure_ascii=False)
+
+
 def emit_codex_toml(fields: dict[str, list[str]], body: str) -> str:
     """Emit a Codex agent TOML — name/description from core, model /
     model_reasoning_effort / sandbox_mode from the Codex overlay, and the
     core agent body as the developer_instructions multiline string.
 
-    Agent bodies are plain markdown — no backslash, no `\"\"\"` — so the body
-    drops straight into a TOML basic multiline string without escaping.
+    Scalars are escaped via _toml_basic. Agent bodies are plain markdown; a
+    literal `\"\"\"` would close the multiline string early, so guard against it
+    rather than silently emit invalid TOML.
     """
+    if '"""' in body:
+        raise ValueError(
+            "agent body contains '\"\"\"', which would terminate the TOML "
+            "multiline string — escape it or rewrite the fence"
+        )
     out = [
-        f'name = "{field_value(fields, "name")}"',
-        f'description = "{field_value(fields, "description")}"',
-        f'model = "{field_value(fields, "model")}"',
-        f'model_reasoning_effort = "{field_value(fields, "model_reasoning_effort")}"',
-        f'sandbox_mode = "{field_value(fields, "sandbox_mode")}"',
+        f'name = {_toml_basic(field_value(fields, "name"))}',
+        f'description = {_toml_basic(field_value(fields, "description"))}',
+        f'model = {_toml_basic(field_value(fields, "model"))}',
+        f'model_reasoning_effort = {_toml_basic(field_value(fields, "model_reasoning_effort"))}',
+        f'sandbox_mode = {_toml_basic(field_value(fields, "sandbox_mode"))}',
         'developer_instructions = """',
         body.rstrip("\n"),
         '"""',

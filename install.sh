@@ -1218,6 +1218,9 @@ if codex_selected; then
         # `--force` re-registers the marketplace from GitHub instead.
         step "rolepod marketplace already registered — keeping it; installing agents + AGENTS.md only"
         warn "  Marketplace left as-is. To re-register from GitHub: ./install.sh --target=codex --force"
+        warn "  Codex sources the plugin from GitHub ($CODEX_MARKETPLACE_REF) and caches it by plugin version."
+        warn "  So local edits reach ~/.codex only after you: (1) commit + push, (2) bump the version in"
+        warn "  .codex-plugin/plugin.json when content changed but the version did not, then (3) --force."
         CODEX_KEEP_MARKETPLACE=1
       fi
     else

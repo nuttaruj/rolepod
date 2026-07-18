@@ -57,7 +57,10 @@ fi
 
 # High-risk path flag — match on path segments only, not substrings.
 HIGH_RISK=""
-if [ "$IS_TEST" -eq 0 ] && [[ "$FILE" =~ (/|^)(auth|authn|authz|authentication|authorization|billing|payment|payments|migration|migrations|credit|credits|permission|permissions|secret|secrets|crypto|cryptography|token|tokens|oauth|jwt|sso|saml|webhook|webhooks|stripe|paypal|charge|charges|invoice|invoices)(/|\.|$|_) ]]; then
+# Canonical high-risk regex — byte-for-byte the same segment/anchor set as
+# precommit-gate.sh:78 and session_state.py's HIGH_RISK_PATH, so a file cannot
+# pass at edit time and then block at commit time.
+if [ "$IS_TEST" -eq 0 ] && [[ "$FILE" =~ (^|/|_)(auth|authn|authz|authentication|authorization|billing|payment|payments|migration|migrations|credit|credits|permission|permissions|secret|secrets|crypto|cryptography|token|tokens|oauth|jwt|sso|saml|webhook|webhooks|stripe|paypal|charge|charges|invoice|invoices)(/|\.|_|$) ]]; then
   HIGH_RISK="⚠️  HIGH-RISK path detected → mandatory: qa-tester + security-engineer review BEFORE commit. "
 fi
 

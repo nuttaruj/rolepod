@@ -31,7 +31,7 @@ CMD=$(echo "$INPUT" | python3 -c "import sys,json;print(json.load(sys.stdin).get
 # Match git commit — token walk, not adjacency, so flag-separated forms
 # (`git -C . commit`, `git -c k=v commit`) are gated too.
 IS_COMMIT=$(printf '%s' "$CMD" | python3 -c "
-import sys, shlex
+import sys, shlex, os
 cmd = sys.stdin.read()
 try:
     toks = shlex.split(cmd)
@@ -40,7 +40,7 @@ except ValueError:
 VALUE_OPTS = {'-C', '--git-dir', '--work-tree', '--namespace', '--exec-path'}
 hit = 0
 for i, t in enumerate(toks):
-    if t == 'git':
+    if os.path.basename(t) == 'git':
         j = i + 1
         while j < len(toks) and toks[j].startswith('-'):
             if toks[j] in VALUE_OPTS:
