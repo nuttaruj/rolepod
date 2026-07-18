@@ -42,7 +42,10 @@ if [ -z "${CLAUDE_PROJECT_DIR:-}" ] && [ "${ROLEPOD_ALLOW_SHARED_WORKTREE:-0}" !
   [ "$_act" -gt 0 ] && CTX="$CTX\n\n⚠️ **$_act concurrent session(s)** in this worktree. Edits to the SAME file stomp each other — isolate with a git worktree before editing a shared file. Override: \`ROLEPOD_ALLOW_SHARED_WORKTREE=1\`."
 fi
 
-python3 -c "
-import json
-print(json.dumps({'hookSpecificOutput':{'hookEventName':'SessionStart','additionalContext':'''$CTX'''}}))
+# Env-pass the context so a crafted commit message / branch name cannot escape
+# the Python string literal (RCE). CTX is built with literal `\n`; convert to
+# real newlines here since the old inline literal relied on Python to do it.
+ROLEPOD_HOOK_CTX="${CTX//\\n/$'\n'}" python3 -c "
+import json, os
+print(json.dumps({'hookSpecificOutput':{'hookEventName':'SessionStart','additionalContext':os.environ.get('ROLEPOD_HOOK_CTX','')}}))
 " 2>/dev/null || echo '{}'

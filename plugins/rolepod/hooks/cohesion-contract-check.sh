@@ -123,22 +123,24 @@ REASON+="The Core 10 \`write-plan\` skill requires a cohesion contract BEFORE mu
 REASON+="Single-domain / read-only spawn? Pass ROLEPOD_NO_CONTRACT=1 in env to bypass."
 
 if [ "$SOFT_MODE" -eq 1 ]; then
-  # Soft mode: emit additionalContext, don't block.
-  python3 -c "
-import json
-print(json.dumps({'hookSpecificOutput': {'hookEventName': 'PreToolUse', 'additionalContext': '⚠️  $REASON'}}))
+  # Soft mode: emit additionalContext, don't block. Env-pass REASON so a crafted
+  # subagent_type cannot escape the Python string literal (RCE).
+  ROLEPOD_HOOK_MSG="$REASON" python3 -c "
+import json, os
+print(json.dumps({'hookSpecificOutput': {'hookEventName': 'PreToolUse', 'additionalContext': '⚠️  ' + os.environ.get('ROLEPOD_HOOK_MSG', '')}}))
 " 2>/dev/null || true
   exit 0
 fi
 
-# Hard block: deny JSON.
-python3 -c "
-import json
+# Hard block: deny JSON. Env-pass REASON so a crafted subagent_type cannot
+# escape the Python string literal (RCE).
+ROLEPOD_HOOK_MSG="$REASON" python3 -c "
+import json, os
 print(json.dumps({
   'hookSpecificOutput': {
     'hookEventName': 'PreToolUse',
     'permissionDecision': 'deny',
-    'permissionDecisionReason': '''$REASON'''
+    'permissionDecisionReason': os.environ.get('ROLEPOD_HOOK_MSG', '')
   }
 }))
 " 2>/dev/null || echo '{}'

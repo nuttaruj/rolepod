@@ -113,15 +113,20 @@ fi
 BRANCH=$(git -C "$WORKTREE" branch --show-current 2>/dev/null || echo "HEAD")
 SUGGEST_PATH="${WORKTREE}-task-$(date +%s)"
 
-# Emit additionalContext so Lead reads it on turn 1 and self-acts.
-python3 -c "
-import json
-msg = ('⚠️ Sibling Claude session(s) detected in this worktree ($ACTIVE_SIBLINGS active). '
+# Emit additionalContext so Lead reads it on turn 1 and self-acts. Env-pass the
+# branch / path / count so a quote in a branch name cannot break the emitter
+# (which would fail open on the exact concurrency risk this hook flags).
+ROLEPOD_HOOK_SIBLINGS="$ACTIVE_SIBLINGS" ROLEPOD_HOOK_PATH="$SUGGEST_PATH" ROLEPOD_HOOK_BRANCH="$BRANCH" python3 -c "
+import json, os
+n = os.environ.get('ROLEPOD_HOOK_SIBLINGS', '?')
+path = os.environ.get('ROLEPOD_HOOK_PATH', '')
+branch = os.environ.get('ROLEPOD_HOOK_BRANCH', 'HEAD')
+msg = ('⚠️ Sibling Claude session(s) detected in this worktree (%s active). '
        'Concurrent edits will stomp each other. '
        'Before any Edit/Write: spawn an isolated worktree FIRST:\n\n'
-       '  git worktree add $SUGGEST_PATH $BRANCH\n'
-       '  cd $SUGGEST_PATH\n\n'
+       '  git worktree add %s %s\n'
+       '  cd %s\n\n'
        'Then continue work there. Override with ROLEPOD_ALLOW_SHARED_WORKTREE=1 '
-       'if this session is intentionally shared (e.g. read-only review).')
+       'if this session is intentionally shared (e.g. read-only review).') % (n, path, branch, path)
 print(json.dumps({'hookSpecificOutput': {'hookEventName': 'SessionStart', 'additionalContext': msg}}))
 " 2>/dev/null || echo '{}'

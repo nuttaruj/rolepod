@@ -54,16 +54,16 @@ MSG="${SCHEMA_BOUND}${HIGH_RISK}"
 
 if [ "$SOFT_MODE" -eq 0 ] && [ -n "$HIGH_RISK" ] && [ ! -e "$FILE" ]; then
   REASON="HARD BLOCK: editing high-risk new file '$FILE' without prior verification. Spawn qa-tester (and security-engineer for auth/billing/crypto/secret paths) BEFORE writing. Bypass: ROLEPOD_GATES_PASSED=1."
-  python3 -c "
-import json
-print(json.dumps({'permission':'deny','user_message':'''$REASON'''}))
+  ROLEPOD_HOOK_MSG="$REASON" python3 -c "
+import json, os
+print(json.dumps({'permission':'deny','user_message':os.environ.get('ROLEPOD_HOOK_MSG','')}))
 " 2>/dev/null || echo '{}'
   exit 2
 fi
 
-python3 -c "
-import json
-print(json.dumps({'permission':'allow','agent_message':'''$MSG'''}))
+ROLEPOD_HOOK_MSG="$MSG" python3 -c "
+import json, os
+print(json.dumps({'permission':'allow','agent_message':os.environ.get('ROLEPOD_HOOK_MSG','')}))
 " 2>/dev/null || echo '{}'
 
 exit 0

@@ -70,9 +70,9 @@ elif [ "${ROLEPOD_GATES_HARD:-0}" = "1" ]; then
 fi
 
 if [ "$HARD_BLOCK" -eq 1 ]; then
-  python3 -c "
-import json
-print(json.dumps({'permission':'deny','user_message':'''$REASON'''}))
+  ROLEPOD_HOOK_MSG="$REASON" python3 -c "
+import json, os
+print(json.dumps({'permission':'deny','user_message':os.environ.get('ROLEPOD_HOOK_MSG','')}))
 " 2>/dev/null || echo "{}"
   exit 2
 fi
@@ -82,9 +82,9 @@ WARN+="Diff: $FILES_CHANGED files / $LINES_CHANGED lines / $LOGIC_COUNT logic li
 WARN+="Recommend running S1-S5 (simplicity) + T1-T6 (tests) + F1-F5 (failure-mode) before commit. "
 WARN+="Set ROLEPOD_GATES_HARD=1 to enforce blocking on normal diffs."
 
-python3 -c "
-import json
-print(json.dumps({'permission':'allow','agent_message':'''$WARN'''}))
+ROLEPOD_HOOK_MSG="$WARN" python3 -c "
+import json, os
+print(json.dumps({'permission':'allow','agent_message':os.environ.get('ROLEPOD_HOOK_MSG','')}))
 " 2>/dev/null || true
 
 exit 0
