@@ -6,15 +6,19 @@ Rolepod ships a cost-aware policy that maps **role + risk → model tier**. Lead
 
 | Tier | Claude | Codex | Gemini | Use for |
 |---|---|---|---|---|
-| **cheap** | `haiku` | `gpt-5.4-mini` | `gemini-3-flash-preview` | docs, PM (feature + commercial), customer-facing copy, marketing, FAQ, ADR drafting, read-only scout sweeps — repeatable structured output, no deep architectural reasoning |
-| **balanced** | `sonnet` | `gpt-5.4` | `gemini-3-pro-preview` | normal implementation (backend, frontend, mobile, AI/ML features, data pipelines, perf, UI/UX, devops), QA test writing — the default working tier |
-| **strong** | `opus` | `gpt-5.5` | `gemini-3-pro-preview` | architecture, billing/payments, security implementation, migrations, adversarial code review — wrong code costs real money or blocks recovery; reviewer must match implementer depth |
+| **cheap** | `haiku` | `gpt-5.6-luna` | `gemini-3-flash-preview` | docs, PM (feature + commercial), customer-facing copy, marketing, FAQ, ADR drafting, read-only scout sweeps — repeatable structured output, no deep architectural reasoning |
+| **balanced** | `sonnet` | `gpt-5.6-terra` | `gemini-3-pro-preview` | normal implementation (backend, frontend, mobile, AI/ML features, data pipelines, perf, UI/UX, devops), QA test writing — the default working tier |
+| **strong** | `opus` | `gpt-5.6-sol` | `gemini-3-pro-preview` | architecture, billing/payments, security implementation, migrations, adversarial code review — wrong code costs real money or blocks recovery; reviewer must match implementer depth |
 
 **Effort** layers on top of the model. Claude uses `effort`, Codex uses `model_reasoning_effort` (`xhigh` / `high` / `medium`); Gemini has no effort field.
 
 - `xhigh` — security-engineer only (breach blast radius).
 - `high` — strong tier (system-architect, billing-engineer, universal-reviewer) + balanced-tier roles where reasoning depth pays off (ai-ml-engineer, performance-engineer, qa-tester).
 - `medium` — everything else.
+
+**Codex** runs the GPT-5.6 line — `luna` (fast/cheap), `terra` (balanced workhorse), `sol` (deepest). All three verified against the local `codex exec -m`.
+
+**Gemini / Antigravity.** Google retired the standalone Gemini CLI for individual accounts on 2026-06-18; the live path is now Antigravity (`agy`), which **auto-selects** the model per task and does not consume a per-agent API model id. The `gemini-3-*-preview` values above are frozen artifacts of the retired Gemini-CLI adapter (kept only so the frozen adapter stays internally consistent; the ids still resolve as aliases). On `agy` the tier is advisory, not enforced. Do not treat these ids as an active knob until an agy-native per-agent model field is verified — pinning an unverified id there would silently break dispatch.
 
 ## Default agent → tier mapping
 
