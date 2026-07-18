@@ -49,8 +49,11 @@ except Exception:
 SUBAGENT_BARE="${SUBAGENT##*:}"
 
 case "$SUBAGENT_BARE" in
-  Explore|Plan|general-purpose|universal-reviewer|qa-tester|security-engineer|claude-code-guide|scout|product-manager|ui-ux-designer)
-    # These are either read-only / advisory / single-domain — no contract concern.
+  Explore|Plan|general-purpose|universal-reviewer|qa-tester|security-engineer|claude-code-guide|scout)
+    # Read-only / research / review roles — a parallel fan-out of these writes no
+    # product code, so no cohesion contract is needed. Primary writers (incl.
+    # product-manager, ui-ux-designer, and every *-developer / *-engineer) are
+    # deliberately NOT here: fanned out in parallel they can stomp shared files.
     exit 0
     ;;
 esac

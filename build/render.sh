@@ -34,7 +34,10 @@
 set -euo pipefail
 
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-TARGET="claude"
+# Default to all targets. A single-target default (claude) silently left the
+# other four committed trees stale on a bare `render.sh`, which is the recurring
+# "render-clean" amend loop. Pick one target explicitly with --target=<name>.
+TARGET="all"
 
 for arg in "$@"; do
   case "$arg" in

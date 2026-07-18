@@ -102,6 +102,15 @@ touch "$LOCK_DIR/$SESSION_ID.lock" 2>/dev/null || true
 # that rolepod parent is active in this worktree. Children read this file
 # at skill execution to switch from standalone to with-rolepod mode.
 # Content = protocol version. Refreshed every SessionStart.
+#
+# The marker MUST live at <git-root>/.rolepod/ — that path is the child-plugin
+# IPC contract. To keep it from leaking into the user's commits, register it in
+# .git/info/exclude (local, never committed) rather than the tracked .gitignore.
+EXCLUDE_FILE=$(git -C "$WORKTREE" rev-parse --git-path info/exclude 2>/dev/null)
+if [ -n "$EXCLUDE_FILE" ]; then
+  [ -f "$EXCLUDE_FILE" ] || : > "$EXCLUDE_FILE" 2>/dev/null || true
+  grep -qxF '.rolepod/' "$EXCLUDE_FILE" 2>/dev/null || printf '.rolepod/\n' >> "$EXCLUDE_FILE" 2>/dev/null || true
+fi
 mkdir -p "$WORKTREE/.rolepod" 2>/dev/null && \
   printf 'v1\n' > "$WORKTREE/.rolepod/parent-active" 2>/dev/null || true
 

@@ -45,9 +45,19 @@ if [ ! -e "$FILE" ] && [[ "$FILE" =~ (\.claude-plugin/|\.codex-plugin/|/extensio
   SCHEMA_BOUND="⚠️  SCHEMA-BOUND new file. Before writing: WebFetch the official spec for this surface (not training-cached recall). State the source URL in your reasoning. Wrong schema = silent install failure later. "
 fi
 
+# Test files are exempt: writing the RED test on a high-risk path is the very
+# action the hard block demands, so flagging it would deadlock. Mirrors
+# session_state.py's TEST_FILE exclusion.
+IS_TEST=0
+if [[ "$FILE" =~ (^|/)(test|tests|__tests__|spec|specs|e2e)(/|$) ]] \
+   || [[ "$FILE" =~ \.(test|spec)\.(ts|tsx|js|jsx|py|go|rs|rb|java|kt|swift|cs|php)$ ]] \
+   || [[ "$FILE" =~ (^|/)(test_|_test|.*_test)\.(py|go|rs)$ ]]; then
+  IS_TEST=1
+fi
+
 # High-risk path flag — match on path segments only, not substrings.
 HIGH_RISK=""
-if [[ "$FILE" =~ (/|^)(auth|authn|authz|authentication|authorization|billing|payment|payments|migration|migrations|credit|credits|permission|permissions|secret|secrets|crypto|cryptography|token|tokens|oauth|jwt|sso|saml|webhook|webhooks|stripe|paypal|charge|charges|invoice|invoices)(/|\.|$|_) ]]; then
+if [ "$IS_TEST" -eq 0 ] && [[ "$FILE" =~ (/|^)(auth|authn|authz|authentication|authorization|billing|payment|payments|migration|migrations|credit|credits|permission|permissions|secret|secrets|crypto|cryptography|token|tokens|oauth|jwt|sso|saml|webhook|webhooks|stripe|paypal|charge|charges|invoice|invoices)(/|\.|$|_) ]]; then
   HIGH_RISK="⚠️  HIGH-RISK path detected → mandatory: qa-tester + security-engineer review BEFORE commit. "
 fi
 

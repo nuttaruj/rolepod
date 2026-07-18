@@ -366,7 +366,7 @@ for e in errs:
 sys.exit(1 if errs else 0)
 PYEOF
 then
-  echo "  ✓ 18 generated Codex agent TOMLs parse valid"
+  echo "  ✓ 16 generated Codex agent TOMLs parse valid"
 else
   echo "  ✗ generated Codex agent TOML invalid (see above)"
   fail=$((fail+1))

@@ -66,8 +66,8 @@ test-static:
 #   - core skills include Full Rolepod enhancement note
 #   - write-spec includes approval gate + self-review
 #   - core skill fallback sections concise (≤ 25 lines)
-#   - no full 18-agent table leaked into entry docs
-#   - all 18 agents covered by model-tier policy
+#   - no full 16-agent table leaked into entry docs
+#   - all 16 agents covered by model-tier policy
 #   - no competitor brand refs in source / entry docs
 #   - skill-index.md render reproducible under LC_ALL=C
 # Wired into test-static so every release gate sees it.

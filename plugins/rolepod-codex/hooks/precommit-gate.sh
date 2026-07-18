@@ -165,7 +165,10 @@ print(json.dumps({
   }
 }))
 " 2>/dev/null || echo "{}"
-  exit 2
+  # exit 0 (not 2): Claude Code parses the stdout permissionDecision JSON only on
+  # exit 0 — on exit 2 it reads stderr (empty here), so the deny reason is lost.
+  # Matches gate-reminder.sh's proven deny path.
+  exit 0
 fi
 
 # SOFT warn path — emit reminder, exit 0

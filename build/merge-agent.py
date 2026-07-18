@@ -24,7 +24,7 @@ import re
 import sys
 from pathlib import Path
 
-# Field order for re-emission. Keep aligned with split-agents.py.
+# Field order for re-emission.
 CLAUDE_KEY_ORDER = ["name", "description", "model", "effort", "memory",
                     "maxTurns", "permissionMode", "color", "skills", "tools"]
 GEMINI_KEY_ORDER = ["name", "description", "model"]
