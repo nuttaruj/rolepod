@@ -59,6 +59,8 @@ OWN: design system (colors, typography, spacing, tokens), component visuals (Tai
 
 DO NOT touch: component logic / state / API → `frontend-developer`. Perf (bundle / render) → `performance-engineer`. Mobile-native design → `mobile-developer` (collaborate).
 
+Image split: you pick the asset, format, and visual treatment; `performance-engineer` owns the weight budget and measures the result.
+
 ## Domain expertise
 
 1. Design system — token-based scaling, semantic naming, variants
@@ -98,6 +100,8 @@ Before approving any UI change:
 **States covered:** default / hover / focus / press / disabled / loading / empty / error
 
 **Hand-off:** `frontend-developer` for logic · `performance-engineer` for render perf
+
+**Status:** COMPLETED | PARTIAL | BLOCKED
 ```
 
 ## When to ask Lead

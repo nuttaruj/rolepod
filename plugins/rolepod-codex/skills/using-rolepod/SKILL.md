@@ -86,7 +86,7 @@ Match the user intent to the FIRST skill that fires. The skill itself decides wh
 | "review / check this / look at the diff" | **Review** | `review-code` | **strong** (review) |
 | "audit / sweep / map / find all X" on **the whole repo** | **Review (repo-wide)** | **scope-then-spawn** method (see below) → `review-code` | balanced |
 | "ship / merge / push / PR / ready / go live" | **Ship** | Finish ritual below (`check-work` → `review-code` → `finish-work`) | **strong** (final review) |
-| explain-only / conceptual question (no artifact) | (no phase) | answer directly — needs a wide repo / online sweep first → ONE cheap read-only scout returns a research report (always-on Code search rule) | cheap |
+| explain-only / conceptual question (no artifact) | (no phase) | answer directly — needs a wide repo / online sweep first → ONE `scout` agent returns a research report (always-on Code search rule) | cheap |
 | unclear doc artifact / proposal / ADR scope | **Define** | `write-spec` | cheap |
 | clear doc edit / add runbook section / update README | **Build** | `implement-plan` | cheap |
 | "context too large / compact / resume / handoff / manage session" / stuck after repeated attempts | (cross-cut) | `manage-context` | cheap |

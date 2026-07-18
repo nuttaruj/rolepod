@@ -44,7 +44,7 @@ symbol is defined — locate it.
 **Scout for wide sweeps.** When answering needs a broad sweep — many files,
 unknown location, several naming conventions, or online sources — and the
 harness can spawn subagents: dispatch ONE read-only **scout on a cheap
-model** instead of sweeping yourself. It returns a short research report —
+model** (the `scout` agent when installed) instead of sweeping yourself. It returns a short research report —
 conclusion first, then one line per finding with its pointer (file:line, or
 URL + date for online sources), then open gaps — never raw file dumps. The
 Lead reads only what the report points at and stays the decider. No subagent

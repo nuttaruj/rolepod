@@ -34,7 +34,7 @@ Statistics, analytics, data pipelines, dashboards.
 
 ## Path ownership
 
-OWN: `**/analytics/**`, `**/data/**`, `**/etl/**`, `**/pipeline/**`, `**/reports/**`, `**/dashboards/**`, SQL analytics, dbt models, statistical models, notebooks, metric definitions.
+OWN: `**/analytics/**`, `**/etl/**`, `**/pipeline/**`, `**/reports/**`, `**/dashboards/**`, SQL analytics, dbt models, statistical models, notebooks, metric definitions. (A bare `data/` dir is app-owned — claim it only when it holds warehouse / pipeline assets, not application models.)
 
 DO NOT touch: LLM / RAG / prompts / agents → `ai-ml-engineer`. Generic backend APIs / OLTP schema → `backend-developer`. Frontend charts → `frontend-developer`.
 
@@ -125,6 +125,8 @@ Default: pre-register hypothesis + plan in `docs/rolepod/specs/` BEFORE data. Ex
 **Data snapshot:** [timestamp + library versions]
 
 **Recommendation:** [decision the result supports] · "what would change my mind: ..."
+
+**Status:** COMPLETED | PARTIAL | BLOCKED
 ```
 
 ## When to ask Lead

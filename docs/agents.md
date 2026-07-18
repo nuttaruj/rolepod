@@ -33,8 +33,9 @@ Source of truth: [`core/fragments/agent-roster-lean.md`](../core/fragments/agent
 | AI / LLM features, RAG, prompt engineering | `ai-ml-engineer` |
 | Analytics, dashboards, data pipelines | `data-scientist` |
 | API design, module boundaries, data flow | `system-architect` |
-| Feature prioritization, user stories | `product-manager` |
-| Pricing, ROI, financial modeling | `business-analyst` |
+| Feature prioritization, user stories | `product-manager` (`mode: feature`) |
+| Pricing, ROI, financial modeling | `product-manager` (`mode: commercial`) |
+| Wide read-only sweep — repo or online — before a plan or answer | `scout` |
 | Visual design, design system, a11y | `ui-ux-designer` |
 | CI/CD, deploy, monitoring, release | `devops-sre` |
 | Any human-readable written output — docs / FAQ / marketing copy (caller specifies `audience: dev \| user \| prospect`) | `content-strategist` |
@@ -53,6 +54,8 @@ Source of truth: [`core/fragments/agent-roster-lean.md`](../core/fragments/agent
 
 The 16-specialist count comes from cost-aware role separation, not workflow stages. A senior backend developer model is cheap; a strongest model doing security review is expensive. Mixing them inside one agent collapses the cost-control dimension and forces the workflow to pay strongest-model rates for every task. Keeping them separate lets each agent carry its own tier-mapped model.
 
-The one within-tier consolidation in the roster is `content-strategist`, which folds tech-writer + customer-success + growth-marketer (all cheap-tier writers) into a single agent that takes a mandatory `audience: dev | user | prospect` parameter. Each audience carries its own scope, voice, and framework set so specialist depth is preserved while collapsing 3 → 1 reduces selection overhead at the lead.
+Two within-tier consolidations exist in the roster. `content-strategist` folds tech-writer + customer-success + growth-marketer (all cheap-tier writers) into a single agent that takes a mandatory `audience: dev | user | prospect` parameter. `product-manager` folds in the former business-analyst via a derived `mode: feature | commercial` parameter — both were cheap-tier Define-phase doc producers whose hand-offs looped back to each other. Each mode/audience keeps its own scope, hard stops, and framework set, so specialist depth is preserved while selection overhead at the Lead shrinks.
+
+The one addition outside the specialist pattern is `scout` — a read-only, cheapest-tier researcher backing the always-on "Scout for wide sweeps" rule. It exists so every CLI has a dispatchable, tool-restricted scout with the research-report contract built in, instead of the Lead improvising a brief each time.
 
 Model tiering is implemented per agent on Claude / Codex / Gemini — see [model-tier-policy.md](model-tier-policy.md). Cursor agent files ship with `name` + `description` frontmatter only (Cursor users pick the model in-IDE), so per-agent tiering is not enforced there.

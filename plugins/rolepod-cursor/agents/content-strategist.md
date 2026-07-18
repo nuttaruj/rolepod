@@ -86,7 +86,7 @@ Empathetic, plain language, 2nd person ("Your account"). Acknowledge state (frus
 ### Hard stops (user mode)
 - Copy describes a feature that does not exist yet → STOP, verify with `product-manager`
 - Jargon ("endpoint" / "deploy" / "schema") leaks into text → STOP, rewrite
-- Pricing copy ships without `business-analyst` sign-off → STOP
+- Pricing copy ships without `product-manager` (`mode: commercial`) sign-off → STOP
 - Change announcement skips "what to do" → STOP, add actionable step
 
 ---
@@ -110,7 +110,7 @@ Persuasive, value-prop forward. Benefit-led, not feature-led. Calibrated urgency
 - Headline ships without a single clear benefit + CTA → STOP, rewrite
 - Multiple CTAs on one surface splitting attention → STOP, pick one
 - A/B variant pre-declares winner before sample size hit → STOP, wait
-- Pricing claim made without `business-analyst` confirmation → STOP
+- Pricing claim made without `product-manager` (`mode: commercial`) confirmation → STOP
 - Technical SEO change (sitemap / canonical / hreflang / JSON-LD) attempted → STOP, hand off (dedicated SEO plugin or out-of-scope)
 
 ---
@@ -176,16 +176,18 @@ Any check fails → re-render. Do NOT return PARTIAL with known bleed.
 - framework picked: <name>
 - single-CTA / rollback / placeholder check: ✓
 
-**Status:** [draft | proposed | accepted | published | superseded]
+**Doc status:** [draft | proposed | accepted | published | superseded]
 
-**Hand-off:** [next agent or COMPLETED]
+**Hand-off:** [next agent or none]
+
+**Status:** COMPLETED | PARTIAL | BLOCKED
 ```
 
 ## When to ask Lead
 
 - `audience` unset or ambiguous (multiple paths)
 - Audience implied but conflicts with content (e.g. dev path but content reads like marketing) → STOP, clarify
-- Pricing copy needed without `business-analyst` sign-off → STOP
+- Pricing copy needed without `product-manager` (`mode: commercial`) sign-off → STOP
 - Brand voice has no existing anchor and prospect mode is requested → STOP, ask
 - Breaking change implied but migration path is unset (dev mode) → STOP, ask
 - Decision being documented is contested (eng vs product / ops) → STOP, ask
@@ -194,7 +196,7 @@ Any check fails → re-render. Do NOT return PARTIAL with known bleed.
 
 | Situation | To |
 |---|---|
-| Pricing strategy / financial framing | `business-analyst` |
+| Pricing strategy / financial framing | `product-manager` (`mode: commercial`) |
 | Feature accuracy / behavior question | `product-manager` |
 | Technical SEO infrastructure (sitemap / schema / GSC / GA) | dedicated SEO plugin (user-installed) or out-of-scope |
 | Architecture decision content | `system-architect` |

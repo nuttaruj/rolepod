@@ -35,7 +35,7 @@ Native + cross-platform mobile apps.
 - React Native / Flutter cross-platform feature work
 - Push notifications (APNs / FCM)
 - Mobile permissions (camera / location / mic / contacts)
-- App store submission scripts (TestFlight / Play / EAS Update / fastlane config)
+- App-store submission readiness — signing config, store metadata, release checklist (the CI / fastlane / EAS scripts themselves belong to `devops-sre`)
 
 ## Inputs to request from Lead
 

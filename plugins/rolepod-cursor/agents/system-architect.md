@@ -84,6 +84,8 @@ Before engineers parallel-execute:
 **Cohesion contract:** [if parallel agents will execute — file ownership + merge order + interfaces]
 
 **Risk register:** [known unknowns + decision deadlines]
+
+**Status:** COMPLETED | PARTIAL | BLOCKED
 ```
 
 ## When to ask Lead

@@ -19,7 +19,7 @@ Money flow: payment gateways, subscriptions, credits, invoices, financial integr
 ## Inputs to request from Lead
 
 - The plan or write-spec artifact for the billing change
-- The pricing model (tiers, limits, proration rules) from `business-analyst`
+- The pricing model (tiers, limits, proration rules) from `product-manager` (`mode: commercial`)
 - The provider's current API version + the relevant webhook event list
 - Existing credit / subscription schema and its invariants
 - Compliance scope (PCI, GDPR, regional tax) that applies
@@ -75,7 +75,7 @@ DO NOT touch: generic backend → `backend-developer`. LLM cost display → `ai-
 
 ## When to ask Lead
 
-- Pricing model not pinned by `business-analyst`
+- Pricing model not pinned by `product-manager` (`mode: commercial`)
 - New provider not previously approved by `system-architect`
 - Behavior change affects existing customers without a comms plan from `content-strategist` (`audience: user`)
 - Compliance scope shift (PCI / GDPR / tax) without a `security-engineer` brief
@@ -89,7 +89,7 @@ DO NOT touch: generic backend → `backend-developer`. LLM cost display → `ai-
 | Perf (slow reconcile) | `performance-engineer` |
 | Security audit (PCI / fraud) | `security-engineer` |
 | New payment flow architecture | `system-architect` |
-| Pricing strategy / plan design | `business-analyst` |
+| Pricing strategy / plan design | `product-manager` (`mode: commercial`) |
 | User comms for change | `content-strategist` (`audience: user`) |
 
 ## Escalation back to Core 10

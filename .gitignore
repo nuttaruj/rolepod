@@ -28,3 +28,6 @@ build/rendered/
 # Python bytecode
 __pycache__/
 *.pyc
+
+# runtime session markers (session-lifecycle hook)
+.rolepod/

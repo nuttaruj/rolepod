@@ -6,7 +6,7 @@ Rolepod ships a cost-aware policy that maps **role + risk → model tier**. Lead
 
 | Tier | Claude | Codex | Gemini | Use for |
 |---|---|---|---|---|
-| **cheap** | `haiku` | `gpt-5.4-mini` | `gemini-3-flash-preview` | docs, PM, business analysis, customer-facing copy, marketing, FAQ, ADR drafting — repeatable structured output, no deep architectural reasoning |
+| **cheap** | `haiku` | `gpt-5.4-mini` | `gemini-3-flash-preview` | docs, PM (feature + commercial), customer-facing copy, marketing, FAQ, ADR drafting, read-only scout sweeps — repeatable structured output, no deep architectural reasoning |
 | **balanced** | `sonnet` | `gpt-5.4` | `gemini-3-pro-preview` | normal implementation (backend, frontend, mobile, AI/ML features, data pipelines, perf, UI/UX, devops), QA test writing — the default working tier |
 | **strong** | `opus` | `gpt-5.5` | `gemini-3-pro-preview` | architecture, billing/payments, security implementation, migrations, adversarial code review — wrong code costs real money or blocks recovery; reviewer must match implementer depth |
 
@@ -34,7 +34,7 @@ Rolepod ships a cost-aware policy that maps **role + risk → model tier**. Lead
 | `system-architect` | **strong** | Architecture decisions are load-bearing across the codebase |
 | `universal-reviewer` | **strong** | Adversarial code review; must match implementer's depth |
 | `product-manager` | cheap | Spec writing + prioritization |
-| `business-analyst` | cheap | Pricing models + ROI analysis |
+| `scout` | cheap | Read-only wide sweeps — research report only, never edits |
 | `content-strategist` | cheap | All human-readable written output — internal docs / ADRs / READMEs (`audience: dev`), FAQ / onboarding / user-facing copy (`audience: user`), SEO / conversion copy (`audience: prospect`) |
 
 ## Override path

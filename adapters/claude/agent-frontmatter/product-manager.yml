@@ -1,5 +1,5 @@
 name: product-manager
-description: Product Manager for feature prioritization, roadmap, user requirements, spec writing. Distinct from business-analyst (financial/ROI) and growth-marketer (acquisition/conversion).
+description: Product Manager + Business Strategist. Two modes — `mode: feature` (prioritization, roadmap, user requirements, spec writing) and `mode: commercial` (pricing models, cost/ROI, financial modeling, competitor research). Absorbs the former business-analyst; derive the mode from the request.
 # tools: SendMessage requires agent-teams context (Claude accepts standalone, may silently ignore).
 model: haiku
 effort: medium

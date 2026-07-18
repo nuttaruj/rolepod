@@ -49,7 +49,7 @@ except Exception:
 SUBAGENT_BARE="${SUBAGENT##*:}"
 
 case "$SUBAGENT_BARE" in
-  Explore|Plan|general-purpose|universal-reviewer|qa-tester|security-engineer|claude-code-guide|business-analyst|product-manager|customer-success|growth-marketer|tech-writer|ui-ux-designer)
+  Explore|Plan|general-purpose|universal-reviewer|qa-tester|security-engineer|claude-code-guide|scout|product-manager|ui-ux-designer)
     # These are either read-only / advisory / single-domain — no contract concern.
     exit 0
     ;;
