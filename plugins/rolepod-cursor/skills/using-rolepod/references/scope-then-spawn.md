@@ -13,6 +13,12 @@ structural query can narrow the list first.
 3. Spawn    →  parallel agents ONLY on the narrowed list (or self-do)
 ```
 
+When the harness can spawn subagents, the whole Scope + Narrow pass is itself
+a read-only sweep — hand it to ONE `scout` (always-on Code search rule). The
+scout returns a research report (conclusion → `file:line` pointers → gaps);
+the Lead then runs step 3 on the narrowed list. Do the Scope/Narrow yourself
+only when no subagent support exists.
+
 ## Tool order
 
 | Step | With code-intel index | Without |

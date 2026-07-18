@@ -100,6 +100,11 @@ persona), derive cases with these five techniques, in order:
 Output is a hand-off document, not code:
 
 | ID | Given | When | Then | Technique | Priority (P1/P2/P3) |
+|----|-------|------|------|-----------|------|
+| TC1 | a valid coupon and a $60 cart | apply the coupon | 20% comes off → total $48 | equivalence class | P1 |
+| TC2 | a cart at exactly the $50 minimum | apply the coupon | coupon is accepted | boundary value | P1 |
+| TC3 | a cart at $49.99 (min − $0.01) | apply the coupon | rejected: "minimum $50" | boundary value | P1 |
+| TC4 | a coupon already stacked with another | apply a second coupon | rejected: one coupon per order | error guessing | P2 |
 
 Automation comes AFTER the table: each P1 row becomes an automated test (write-mode), or hands to the owning dev / `/scaffold-e2e` when rolepod-uiproof is installed. A bug found while executing cases → debug-issue's report-only exit (document + severity, never fix).
 

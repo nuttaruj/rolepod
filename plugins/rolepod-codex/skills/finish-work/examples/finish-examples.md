@@ -18,6 +18,12 @@ Branch feat/csv-export — gates green, CI Phase 1 + 2 pass, review APPROVED.
 
 # feat/csv-export — Finish
 
+## Gate status
+- Evidence: VERIFIED — check-work ran the 4 rspec specs, all green
+- Cross-model adversarial pass: vertical — same family (no second-vendor CLI
+  on PATH; the Lead's own stronger tier ran the cold review). Recorded as a
+  verification limitation, not a cross-family pass — surfaced here, not hidden.
+
 ## Options
 1. Merge to main — ready, all gates green
 2. Open PR — if upstream review is wanted
@@ -25,7 +31,9 @@ Branch feat/csv-export — gates green, CI Phase 1 + 2 pass, review APPROVED.
 4. Discard — no
 
 ## Recommendation
-Merge to main — gates are green and review is APPROVED.
+Merge to main — gates are green and review is APPROVED. The cross-model pass
+was vertical only; call that out to the user so they can accept it or ask for
+a second-vendor review before merge.
 
 ## Awaiting authorization for
 merge feat/csv-export to main.

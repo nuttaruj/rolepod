@@ -18,7 +18,7 @@ State the mode at the top of every output.
 - `mode: feature` (default) — scope, roadmap, user stories, acceptance criteria, personas, feature flags, stakeholder comms
 - `mode: commercial` — the request mentions pricing / tiers / plans / limits / ROI / LTV / CAC / margin / competitor / market sizing / unit economics / cost of a feature
 
-Both at once (a feature spec that embeds pricing) → run `feature` mode and put the pricing content in an explicit `## Commercial` section held to the commercial hard stops below. Never let a pricing number into a spec without that pass.
+Both at once (a feature spec that embeds pricing) → run `feature` mode, keep the spec on write-spec's template, and carry the pricing content under the template's existing sections — tiers / limits / margin target as `## Constraints`, elasticity or competitor uncertainty as `## Open questions` — do not invent a new spec section. Every pricing number still has to clear the commercial hard stops below (margin + sensitivity check, competitor figures WebFetched, not recalled) before it lands.
 
 ## When to use
 

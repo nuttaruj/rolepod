@@ -54,18 +54,38 @@ Next step: check-work first — produce fresh evidence the feature works.
 
 ---
 
-## 5. Repo-wide audit → scope-then-spawn
+## 5. Repo-wide sweep → ONE scout, then act on its report
 
 User: "find every place we build a SQL query by string concatenation"
 
-Routing: Review (repo-wide) → scope-then-spawn
-Reason: a whole-repo sweep. Fanning agents over every file first burns
-tokens and misses cross-file patterns.
-Next step: SCOPE — `rg -l` to list candidate files;
-NARROW to the risky subset; SPAWN agents only on that list.
+Routing: wide sweep (unknown locations, several naming conventions) →
+dispatch ONE read-only `scout` (always-on Code search rule). Do not sweep
+yourself and do not fan one agent per file.
 
-✗ Anti-pattern: spawn one agent per file across 300 files, no scoping pass.
-✓ Correct: narrow to ~8 files first, then spawn.
+The brief the Lead sends (the four inputs from the scout agent):
+```
+Question: where do we build SQL by string concatenation (injection risk)?
+Scope: whole repo, focus on db / models / queries / repositories.
+Useful answer: a list of file:line sites + the concat pattern each uses.
+Budget: ~12 tool uses.
+```
+
+The report the scout returns (conclusion → pointers → gaps):
+```
+Conclusion: 3 concat sites, all in the legacy reporting module; the ORM is
+used everywhere else.
+Findings:
+- f-string SQL in the CSV export — `app/reports/export.py:88`
+- % -formatted WHERE clause — `app/reports/filters.py:41`
+- string-concat ORDER BY — `app/reports/sort.py:23`
+Gaps: raw SQL behind the `LEGACY_SQL` flag not exercised — flag was off.
+```
+Next step: the Lead reads only those three files and routes the fix to
+`security-engineer` — it never re-swept the repo itself.
+
+✗ Anti-pattern: spawn one agent per file across 300 files, or sweep all 300
+  yourself and dump the matches.
+✓ Correct: ONE scout returns a short report; the Lead acts on its pointers.
 
 ---
 

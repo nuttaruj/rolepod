@@ -60,6 +60,17 @@ docs/rolepod/specs/orders-csv-export-2026-05-20.md (approved)
 ## High-risk surfaces touched
 None — read-only export, no credential or billing change.
 
+## Spec coverage (both directions)
+Forward — every spec criterion has an owning task:
+- row set == filtered table → Task 2
+- column order + headers match → Task 1
+- loading state, no double-click → Task 3
+- zero-match → header-only CSV → Task 2
+Reverse — every task traces to a spec line; anything that does not is cut:
+- Task 1-3 each map to a criterion above.
+- "add an Excel (.xlsx) export too" — no spec line asked for it, and Non-goals
+  excludes it → cut to a follow-up, not built here.
+
 ## Parallel layout
 Sequential — single owner. Task 1 → 2 → 3; each depends on the prior.
 
@@ -102,6 +113,7 @@ Touch the reports stuff and the frontend. Should be quick.
 | Order | Unstated | Sequential, dependency named (1 → 2 → 3) |
 | Commands | None | Exact `rspec` command per task |
 | Loop | Not runnable — no checkboxes, no failure path | Checkbox state + Failure policy: the build loop executes, verifies, and recovers without re-asking |
+| Scope | "Touch the reports stuff and the frontend" — unbounded | Two-way spec trace: every criterion has a task, every task has a spec line, and the unasked Excel export is cut |
 | Risk | "Should be quick" | Timeout risk named with a fallback + a per-task On fail |
 
 ---

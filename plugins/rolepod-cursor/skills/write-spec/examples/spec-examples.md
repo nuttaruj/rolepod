@@ -38,11 +38,15 @@ User requests a reset on the login page, receives an email with a
 time-limited link, sets a new password, and is logged in.
 
 ## Success criteria
-- Reset link works once and expires 30 minutes after issue.
-- A used or expired link shows a clear error and a re-request option.
-- An unknown email returns the same neutral response as a known one
-  (no account enumeration).
-- A new password runs through the existing strength validator.
+- Reset link works once and expires 30 minutes after issue — proven by:
+  `rspec spec/requests/password_reset_spec.rb -e "single use" -e "expiry"`
+- A used or expired link shows a clear error and a re-request option —
+  proven by: request the reset flow twice, observe the second attempt's error
+- An unknown email returns the same neutral response as a known one (no
+  account enumeration) — proven by: `rspec -e "neutral response"`, diff the
+  two response bodies
+- A new password runs through the existing strength validator — proven by:
+  submit a weak password, observe the validator rejection
 
 ## Constraints
 - Stack: existing Rails app + Postgres + the current SMTP provider.
@@ -101,7 +105,7 @@ while we are in there.
 | Goal | Vague, two outcomes ("experience" + "auth better") | One checkable outcome — regain access |
 | Non-goals | `TBD` placeholder shipped | SMS / admin / strength-rules explicitly cut |
 | Behavior | Implementation order leaked in (write-plan's job) | Observable behavior only |
-| Success criteria | "works well and is secure" — not pass/fail | Single-use, 30-min TTL, neutral response — each pass/fail |
+| Success criteria | "works well and is secure" — not pass/fail | Single-use, 30-min TTL, neutral response — each pass/fail, each with a `proven by` command / observation |
 | Constraints | Hedged ("should", "probably", "if needed") | Binding: hashed tokens, feature flag |
 | Risk | No `High-risk surfaces` section at all | auth + security named with reasons |
 | Approach | Unaudited JWT + scope creep (SMS, meter) | Chosen token + rejected JWT/code with reasons |
@@ -136,13 +140,16 @@ An "Export CSV" button downloads a CSV of exactly the rows the current
 filters produce, with the same columns as the on-screen table.
 
 ## Success criteria
-- The CSV row set equals the filtered table row set — same filters,
-  same count.
-- Column order and headers match the on-screen table.
+- The CSV row set equals the filtered table row set — same filters, same
+  count — proven by: export under an active filter, diff the CSV row count
+  against the table's rendered count
+- Column order and headers match the on-screen table — proven by: open the
+  export, diff the header row against the rendered table header
 - While the file generates, the button shows a loading state and is not
-  double-clickable.
-- Exporting a filter range with zero orders downloads a header-only CSV,
-  not an error.
+  double-clickable — proven by: throttle the network, observe the disabled
+  loading state
+- Exporting a filter range with zero orders downloads a header-only CSV, not
+  an error — proven by: apply a zero-match filter, open the downloaded file
 
 ## Constraints
 - Stack: existing React frontend + the current reports API.
@@ -195,7 +202,7 @@ scheduled-email option.
 | Goal | "more useful" — two vague outcomes | One outcome — download filtered rows as CSV |
 | Non-goals | "None really" hides scope creep | Excel / PDF / scheduled explicitly cut |
 | Behavior | Implementation order leaked in | Observable behavior only |
-| Success criteria | "fast" / "what they need" — not pass/fail | Row set == filtered table, header-only on empty — each pass/fail |
+| Success criteria | "fast" / "what they need" — not pass/fail | Row set == filtered table, header-only on empty — each pass/fail, each with a `proven by` command / observation |
 | Risk | Section omitted entirely | `None` stated deliberately, with the reason |
 | Approach | Client-side, unaudited against pagination | Server-side + rejected client-side with the pagination reason |
 
