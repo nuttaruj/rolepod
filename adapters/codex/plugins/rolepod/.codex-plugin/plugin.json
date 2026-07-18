@@ -1,6 +1,6 @@
 {
   "name": "rolepod",
-  "version": "2.9.0",
+  "version": "2.9.1",
   "description": "16-agent dev team workflow with simplicity gates, test gates, and verify-first discipline. Codex plugin ships skills + hooks; the 16 agents install to ~/.codex/agents/ (Codex's plugin loader has no agents field).",
   "author": {
     "name": "nuttaruj",
