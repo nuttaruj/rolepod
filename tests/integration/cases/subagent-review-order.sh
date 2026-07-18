@@ -33,7 +33,7 @@ check "legacy subagent-task-execution skill absent" "[ ! -d core/skills/subagent
 
 # Universal reviewer agent backstop
 check "universal-reviewer agent exists" "[ -f core/agents/universal-reviewer.md ]"
-check "universal-reviewer at opus tier (adversarial review)" "grep -q '^model: opus' adapters/claude/agent-frontmatter/universal-reviewer.yml"
+check "universal-reviewer at strong tier (adversarial review)" "grep -q '^tier: strong' adapters/claude/agent-frontmatter/universal-reviewer.yml"
 
 # Sub-agent commit ban prevents implementer from shipping
 check "block-subagent-commit hook prevents sub-agent commits" "[ -x hooks/block-subagent-commit.sh ] && grep -q 'agent_id' hooks/block-subagent-commit.sh"

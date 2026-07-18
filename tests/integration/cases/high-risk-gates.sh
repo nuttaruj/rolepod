@@ -26,8 +26,8 @@ check "review-code skill exists" "[ -f core/skills/review-code/SKILL.md ]"
 check "legacy security-and-hardening skill absent" "[ ! -d core/skills/security-and-hardening ]"
 check "using-rolepod routes high-risk work through review-code" "grep -qE 'security.*review-code|auth.*review-code|billing.*review-code|payment.*review-code|migration.*review-code' core/skills/using-rolepod/SKILL.md"
 check "security-engineer agent exists" "[ -f core/agents/security-engineer.md ]"
-check "billing-engineer at opus tier" "grep -q '^model: opus' adapters/claude/agent-frontmatter/billing-engineer.yml"
-check "security-engineer at opus tier" "grep -q '^model: opus' adapters/claude/agent-frontmatter/security-engineer.yml"
+check "billing-engineer at strong tier" "grep -q '^tier: strong' adapters/claude/agent-frontmatter/billing-engineer.yml"
+check "security-engineer at strong tier" "grep -q '^tier: strong' adapters/claude/agent-frontmatter/security-engineer.yml"
 check "model-tier-policy doc present" "[ -f docs/model-tier-policy.md ]"
 
 if [ $fail -eq 0 ]; then echo "high-risk-gates: pass"; exit 0; fi

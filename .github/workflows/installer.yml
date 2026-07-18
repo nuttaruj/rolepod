@@ -135,6 +135,32 @@ jobs:
           sys.exit(fail)
           PY
 
+      - name: Static invariant suite (lean-surface + always-on + hook-matching)
+        shell: bash
+        run: |
+          set -eo pipefail
+          fail=0
+          for t in tests/static/lean-surface.sh \
+                   tests/static/always-on-hook.sh \
+                   tests/static/hook-agent-matching.sh; do
+            echo "▸ $t"
+            if ! bash "$t"; then
+              echo "::error file=$t::static invariant check failed"
+              fail=1
+            fi
+          done
+          exit "$fail"
+
+      - name: Integration suite (dep-gated cases skip cleanly on CI)
+        shell: bash
+        run: |
+          set -eo pipefail
+          # run.sh prints SKIP for cases needing an external CLI (codex/gemini/
+          # claude) that isn't on the runner, and exits non-zero only on a real
+          # FAIL. So the pure-bash cases (spec-lint, plan-lint, high-risk-gates,
+          # hook-behavior, ship-gate, …) actually run and gate the PR.
+          bash tests/integration/run.sh
+
       - name: Dry-run install — claude
         shell: bash
         run: |
