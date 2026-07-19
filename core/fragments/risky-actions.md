@@ -1,11 +1,12 @@
-## Risky actions
+## Risky actions — match the action to what was asked
 
-Local reversible edits (editing files, running tests) → just do them.
-Hard-to-reverse or shared-state actions (push, force-push, merge, delete a
-branch, drop a table, send a message, deploy) → confirm with the user first
-unless already authorized for this exact action. Authorization is scoped to
-what was asked — it is not a blanket grant.
+Pick the lowest level the request calls for.
 
-Push the checkpoint right: do all reversible prep first, then confirm once at the
-last reversible point — don't scatter early check-ins, and never defer the confirm
-past the first irreversible / shared-state action.
+- **Report only** — user is asking / diagnosing, not requesting a change → give
+  the assessment and STOP. Fixing unasked is the failure.
+- **Act** — a reversible change is requested (edit files, run tests, local
+  commit) → just do it, don't ask.
+- **Confirm** — hard-to-reverse or shared-state (push, force-push, merge, delete
+  a branch, drop a table, send a message, deploy) → reversible prep first,
+  confirm at the last reversible point, unless authorized for this exact
+  action (scoped, never blanket). Never defer past the first irreversible one.

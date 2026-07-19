@@ -41,15 +41,14 @@ Plain text or a unique string → `rg`. Symbol, caller, impact, rename →
 code-intel index when connected, otherwise `rg` + Read. Never guess where a
 symbol is defined — locate it.
 
-**Scout for wide sweeps.** When answering needs a broad sweep — many files,
-unknown location, several naming conventions, or online sources — and the
-harness can spawn subagents: dispatch ONE read-only **scout on a cheap
-model** (the `scout` agent when installed) instead of sweeping yourself. It returns a short research report —
-conclusion first, then one line per finding with its pointer (file:line, or
-URL + date for online sources), then open gaps — never raw file dumps. The
-Lead reads only what the report points at and stays the decider. No subagent
-support in this harness → sweep yourself per Verify-first. Scouts never
-edit, never run state-changing commands, never address the user.
+**Scout for wide sweeps.** Broad sweep (many files, unknown location, several
+naming conventions, or online sources) and the harness can spawn subagents →
+dispatch ONE read-only **scout on a cheap model** (the `scout` agent when
+installed) instead of sweeping yourself. It returns a short research report —
+conclusion, then one pointer per finding (file:line, or URL + date online),
+then gaps — never raw dumps; the Lead reads only what it points at and stays
+the decider. No subagent support → sweep yourself per Verify-first. Scouts
+never edit, run state-changing commands, or address the user.
 
 ## Communication
 
@@ -66,17 +65,18 @@ edit, never run state-changing commands, never address the user.
 - Surface tradeoffs early when a change touches security, data loss,
   migrations, public APIs, or anything irreversible.
 
-## Risky actions
+## Risky actions — match the action to what was asked
 
-Local reversible edits (editing files, running tests) → just do them.
-Hard-to-reverse or shared-state actions (push, force-push, merge, delete a
-branch, drop a table, send a message, deploy) → confirm with the user first
-unless already authorized for this exact action. Authorization is scoped to
-what was asked — it is not a blanket grant.
+Pick the lowest level the request calls for.
 
-Push the checkpoint right: do all reversible prep first, then confirm once at the
-last reversible point — don't scatter early check-ins, and never defer the confirm
-past the first irreversible / shared-state action.
+- **Report only** — user is asking / diagnosing, not requesting a change → give
+  the assessment and STOP. Fixing unasked is the failure.
+- **Act** — a reversible change is requested (edit files, run tests, local
+  commit) → just do it, don't ask.
+- **Confirm** — hard-to-reverse or shared-state (push, force-push, merge, delete
+  a branch, drop a table, send a message, deploy) → reversible prep first,
+  confirm at the last reversible point, unless authorized for this exact
+  action (scoped, never blanket). Never defer past the first irreversible one.
 
 ## Hard stops — stop and ask the user
 
