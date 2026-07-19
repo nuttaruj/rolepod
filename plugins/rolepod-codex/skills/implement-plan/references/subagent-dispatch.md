@@ -159,6 +159,15 @@ The subagent **never** commits. It returns a manifest; the Lead commits. Two rea
 
 This is the opposite of some external subagent-driven patterns where the implementer commits its own work. Stay with Lead-commits — it is load-bearing for the bounded-delegation Iron Rule.
 
+**Comprehension gate — the Lead reads before it commits.** Green gates
+(spec-compliance + code-quality + tests) are necessary, NOT sufficient. Before
+committing a delegated diff, the Lead reads it and can explain what changed and
+why — a diff you cannot explain is not ready to commit, even with every reviewer
+APPROVED. Delegation is bounded work you still own, not a diff you rubber-stamp
+because the agents said OK; that gap between what shipped and what you understand
+is how a delegated codebase rots. Cannot explain a hunk → send it back with the
+question, do not commit past it.
+
 ## Quick-reference flow
 
 ```
@@ -175,7 +184,7 @@ For each task:
   Stage 1 issues? → implementer fixes → Stage 1 again
   Stage 1 approved → Stage 2 (code quality)
   Stage 2 issues? → implementer fixes → Stage 2 again
-  Stage 2 approved → Lead commits
+  Stage 2 approved → Lead reads the diff + can explain it → commits
   Continue to next task — no check-in
 
 After all tasks:
