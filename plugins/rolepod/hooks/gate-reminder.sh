@@ -94,7 +94,7 @@ SOFT_MODE=0
 BLOCK_REASON=""
 if [ -n "$HIGH_RISK" ] && [ "$SOFT_MODE" -eq 0 ]; then
   if [ "$HIGH_RISK_EDITS" -ge 1 ] && [ "$TEST_EDITS" -eq 0 ]; then
-    BLOCK_REASON="HARD BLOCK: editing high-risk path '$FILE' but session has 0 test edits. Write a failing test FIRST (RED), then implement. Session: $HIGH_RISK_EDITS high-risk edits / $TEST_EDITS tests / $REVIEWERS reviewers. Bypass for one edit: ROLEPOD_GATES_PASSED=1 (clears once you commit)."
+    BLOCK_REASON="HARD BLOCK: editing high-risk path '$FILE' but session has 0 test edits. Write a failing test FIRST (RED), then implement — one test edit unblocks this gate for the session. Session: $HIGH_RISK_EDITS high-risk edits / $TEST_EDITS tests / $REVIEWERS reviewers. Bypass (human only): launch the CLI with ROLEPOD_GATES_PASSED=1."
   elif [ "$HIGH_RISK_EDITS" -ge 2 ] && [ "$REVIEWERS" -eq 0 ]; then
     BLOCK_REASON="HARD BLOCK: $HIGH_RISK_EDITS high-risk path edits this session, 0 reviewer agents dispatched. Spawn qa-tester (and security-engineer for auth/billing/crypto/secret paths) via the Agent tool BEFORE more edits. Bypass: ROLEPOD_GATES_SOFT=1."
   fi

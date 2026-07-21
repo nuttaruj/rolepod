@@ -9,6 +9,10 @@
 #   - flag-separated git forms (`git -C . commit`, `git -c k=v commit`)
 #   - Codex apply_patch tool name (was disjoint from the script's filter)
 #   - claim-based bypass ([gates: pass] with zero session evidence)
+# Plus the evidence auto-pass (2026-07-21 WalnutZite deadlock): a high-risk
+# commit with real session evidence passes with NO marker — prescribing
+# `ROLEPOD_GATES_PASSED=1 git commit` collided with the platform's own
+# permission layer, which reads that shape as gate circumvention.
 set -euo pipefail
 
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
@@ -113,6 +117,31 @@ echo "$out" | grep -q 'IGNORED' \
 
 out=$(pc 'git status')
 check "precommit non-commit command → allow" allow "$out"
+
+# ── precommit: evidence auto-pass — no marker, no env prefix needed ─────
+# HOME is pointed at $TMP so the auto-pass log lands in the sandbox.
+TRANSCRIPT="$TMP/transcript.jsonl"
+pce() { # $1 = command; hook input carries transcript_path
+  printf '{"tool_name":"Bash","transcript_path":%s,"tool_input":{"command":%s}}' \
+    "$(printf '%s' "$TRANSCRIPT" | python3 -c 'import json,sys; print(json.dumps(sys.stdin.read()))')" \
+    "$(printf '%s' "$1" | python3 -c 'import json,sys; print(json.dumps(sys.stdin.read()))')" \
+    | (cd "$TMP" && HOME="$TMP" bash "$HOOKS/precommit-gate.sh") || true
+}
+
+printf '%s\n' \
+  '{"type":"tool_use","name":"Task","input":{"subagent_type":"rolepod:qa-tester","prompt":"review"}}' \
+  > "$TRANSCRIPT"
+out=$(pce 'git commit -m "add billing"')
+check "precommit high-risk + reviewer-dispatch evidence → auto-pass" allow "$out"
+echo "$out" | grep -q 'auto-passed' \
+  && echo "  ✓ auto-pass surfaces an additionalContext note" \
+  || { echo "  ✗ auto-pass note missing from hook output"; fail=$((fail+1)); }
+
+printf '%s\n' \
+  '{"type":"tool_use","name":"Edit","input":{"file_path":"tests/test_billing.py"}}' \
+  > "$TRANSCRIPT"
+out=$(pce 'git commit -m "add billing"')
+check "precommit high-risk + test-edit evidence alone → auto-pass (OR, not AND)" allow "$out"
 
 # ─── result ───
 if [ "$fail" -eq 0 ]; then

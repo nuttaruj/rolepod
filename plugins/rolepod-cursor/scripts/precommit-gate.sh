@@ -15,8 +15,14 @@
 # Env overrides (parity with Claude):
 #   ROLEPOD_GATES_HARD=1   — escalate normal code from SOFT to HARD
 #   ROLEPOD_GATES_SOFT=1   — suppress ALL warnings (silent)
-#   ROLEPOD_GATES_PASSED=1 — inline bypass for one commit
-#   [gates: pass]          — bypass marker inside commit message body
+#   [gates: pass]          — bypass marker inside commit message body.
+#   ROLEPOD_GATES_PASSED=1 — legacy inline bypass; still honored but no longer
+#                            prescribed — an env-prefixed git commit is a
+#                            command shape permission layers read as gate
+#                            circumvention. (Cursor provides no session
+#                            transcript, so the Claude version's evidence
+#                            auto-pass has no equivalent here; the marker
+#                            stays the release valve.)
 set -euo pipefail
 
 INPUT=$(cat 2>/dev/null || echo '{}')
@@ -59,7 +65,7 @@ REASON="precommit-gate BLOCKED. "
 REASON+="Diff: $FILES_CHANGED files / $LINES_CHANGED lines / $LOGIC_COUNT logic lines. "
 [ -n "$HIGH_RISK" ] && REASON+="HIGH-RISK path: $HIGH_RISK → mandatory qa-tester + security-engineer review. "
 REASON+="Run gates explicitly: S1-S5 (simplicity) + T1-T6 (tests) + F1-F5 (failure-mode). "
-REASON+="After passing, bypass with: prefix \`ROLEPOD_GATES_PASSED=1 git commit ...\` OR include \`[gates: pass]\` in commit message. "
+REASON+="After passing, include \`[gates: pass]\` in the commit message body — do NOT env-prefix the git command. "
 REASON+="Soft mode for incremental rollout: ROLEPOD_GATES_SOFT=1 in env."
 
 HARD_BLOCK=0

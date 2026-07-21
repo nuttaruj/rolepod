@@ -84,7 +84,7 @@ Fires output ONLY when:
    - 2nd+ high-risk edit + 0 reviewer agents dispatched → block (reviewer floor).
 
 - **Self-guards**: docs / lockfiles / non-high-risk code → silent.
-- **Bypass**: `ROLEPOD_GATES_SOFT=1` (downgrade hard → warn), `ROLEPOD_GATES_PASSED=1` (single-edit override).
+- **Bypass**: `ROLEPOD_GATES_SOFT=1` (downgrade hard → warn), `ROLEPOD_GATES_PASSED=1` (human-only: set at CLI launch — the model cannot set hook env mid-session).
 
 ### `worktree-guard.sh` — PreToolUse Edit/Write/MultiEdit/NotebookEdit (core)
 
@@ -104,9 +104,9 @@ Enforcement layer for the concurrent-edit problem `session-lifecycle` only *warn
 
 Escalates to HARD block at `git commit` time when the session touched high-risk code but never produced a test edit.
 
-- **Effect**: `permissionDecision: deny` if high-risk path touched + 0 test edits in session.
+- **Effect**: session evidence (≥1 test edit or ≥1 reviewer dispatch) → auto-pass + `~/.rolepod/gate-bypass.log` entry + additionalContext note reminding that evidence is session-wide, not per-diff; no evidence → `permissionDecision: deny`.
 - **Self-guards**: non-commit Bash → silent; non-high-risk session → silent.
-- **Bypass**: `ROLEPOD_GATES_PASSED=1` (for legit test-less commits like docs).
+- **Bypass**: not needed — evidence auto-passes. `ROLEPOD_GATES_PASSED=1` / `[gates: pass]` are legacy markers (same evidence check; never honored without it). The env-prefix form is deliberately not prescribed anywhere: permission layers read `ENV=1 git commit` as gate circumvention and block it before the hook runs.
 
 ### `block-subagent-commit.sh` — PreToolUse Bash (core)
 
@@ -139,7 +139,7 @@ Removes own session lock so the next session in this worktree does not see a pha
 | Env | When |
 |---|---|
 | `ROLEPOD_GATES_SOFT=1` | Iterating on doctrine itself; want warnings instead of hard blocks for one session |
-| `ROLEPOD_GATES_PASSED=1` | Legitimate single-edit on high-risk path (e.g. fixing a typo in `auth/` comment) |
+| `ROLEPOD_GATES_PASSED=1` | Human-only, set at CLI launch. Legacy for commits: the precommit gate auto-passes on session evidence, and an env-prefixed `git commit` is never prescribed (permission layers read that shape as gate circumvention) |
 | `ROLEPOD_NO_CONTRACT=1` | Single-domain Agent spawn that doesn't need cohesion contract (e.g. read-only research agent) |
 | `ROLEPOD_ALLOW_SHARED_WORKTREE=1` | Intentional shared session (read-only review, paired exploration) |
 
@@ -193,7 +193,7 @@ The Cursor adapter ships **3 core hooks** in `adapters/cursor/scripts/`, paralle
 | `always-on-loader.sh` (SessionStart) | replaced by `rules/always-on-core.mdc` with `alwaysApply: true` — Cursor's native always-on mechanism |
 | `project-context-loader.sh` (SessionStart) | `scripts/project-context-loader.sh` on `sessionStart` — emits `{"additional_context": "..."}` |
 | `gate-reminder.sh` (PreToolUse:Edit\|Write\|MultiEdit) | `scripts/gate-reminder.sh` on `preToolUse` with matcher `Write\|Edit\|MultiEdit` — emits `{"permission": "allow", "agent_message": "..."}` for soft warns and `{"permission": "deny", ...}` + exit 2 for hard blocks |
-| `precommit-gate.sh` (PreToolUse:Bash) | `scripts/precommit-gate.sh` on `beforeShellExecution` with matcher `git[[:space:]]+commit` — same tiering (silent / soft / hard), same env overrides (`ROLEPOD_GATES_HARD`, `ROLEPOD_GATES_SOFT`, `ROLEPOD_GATES_PASSED`, `[gates: pass]` marker) |
+| `precommit-gate.sh` (PreToolUse:Bash) | `scripts/precommit-gate.sh` on `beforeShellExecution` with matcher `git[[:space:]]+commit` — same tiering (silent / soft / hard), same `ROLEPOD_GATES_HARD` / `ROLEPOD_GATES_SOFT`; **no evidence auto-pass** (Cursor exposes no session transcript), so `[gates: pass]` in the commit message body stays the release valve there |
 | `session-lifecycle.sh` (SessionStart/Stop lock) | not ported — Cursor's session model differs from Claude's; sibling-session lock has no clear Cursor equivalent yet |
 | `block-subagent-commit.sh` (PreToolUse:Bash) | not ported — Cursor's subagent identity differs; deferred until `subagentStart` payload is exercised |
 | `cohesion-contract-check.sh` (PreToolUse:Agent) | not ported — same reason |

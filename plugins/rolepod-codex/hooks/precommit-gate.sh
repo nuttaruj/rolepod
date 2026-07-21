@@ -10,16 +10,21 @@
 #                                    Commit proceeds.
 #   High-risk path matched (auth/billing/payment/migration/credit/permission/
 #                            secret/crypto/token)
-#                                  → HARD block (exit 2 + permissionDecision: deny)
-#                                    Lead must run gates, bypass explicitly.
+#                                  → session evidence (≥1 test edit or ≥1
+#                                    reviewer dispatch) → AUTO-PASS + log +
+#                                    additionalContext note. No evidence →
+#                                    HARD block (permissionDecision: deny).
 #
 # Env overrides:
 #   ROLEPOD_GATES_HARD=1   — escalate normal code from SOFT warn to HARD block
 #                            (recovers pre-change behavior across the board).
 #   ROLEPOD_GATES_SOFT=1   — suppress ALL warnings entirely (silent).
-#   ROLEPOD_GATES_PASSED=1 — inline bypass for one commit
-#                            (e.g. `ROLEPOD_GATES_PASSED=1 git commit ...`).
-#   [gates: pass]          — bypass marker inside commit message body.
+#   ROLEPOD_GATES_PASSED=1 / [gates: pass] — legacy bypass markers. Never
+#                            required: evidence auto-passes without them, and
+#                            without evidence they were always ignored. The
+#                            env-prefix form is also a command shape the
+#                            platform's own permission layer reads as gate
+#                            circumvention — nothing should prescribe it.
 set -euo pipefail
 
 INPUT=$(cat 2>/dev/null || echo '{}')
@@ -106,24 +111,17 @@ TEST_EDITS=${TEST_EDITS:-0}
 HIGH_RISK_EDITS=${HIGH_RISK_EDITS:-0}
 REVIEWERS=${REVIEWERS:-0}
 
-# Bypass markers are honored ONLY with observable session evidence — a
-# blocked model must not be able to self-release by echoing the marker in
-# its very next tool call ("claim-based bypass"). Evidence = the session
-# transcript shows ≥1 test edit or ≥1 reviewer dispatch. Every honored
-# bypass is logged.
+# Legacy bypass markers are detected only so the deny reason can explain they
+# no longer do anything on their own: evidence auto-passes without a marker
+# (below), and without evidence a marker was always ignored — a blocked model
+# must not self-release by echoing it in its very next tool call
+# ("claim-based bypass").
 BYPASS_REQUESTED=0
 echo "$CMD" | grep -qE 'ROLEPOD_GATES_PASSED=1' && BYPASS_REQUESTED=1
 echo "$CMD" | grep -qE '\[gates:[[:space:]]*pass\]' && BYPASS_REQUESTED=1
 BYPASS_IGNORED=""
-if [ "$BYPASS_REQUESTED" -eq 1 ]; then
-  if [ "$TEST_EDITS" -gt 0 ] || [ "$REVIEWERS" -gt 0 ]; then
-    mkdir -p "$HOME/.rolepod" 2>/dev/null || true
-    printf '%s bypass honored (tests=%s reviewers=%s): %.200s\n' \
-      "$(date '+%Y-%m-%dT%H:%M:%S')" "$TEST_EDITS" "$REVIEWERS" "$CMD" \
-      >> "$HOME/.rolepod/gate-bypass.log" 2>/dev/null || true
-    exit 0
-  fi
-  BYPASS_IGNORED="Bypass marker present but IGNORED — session shows 0 test edits and 0 reviewer dispatches; the marker is honored only with gate evidence. "
+if [ "$BYPASS_REQUESTED" -eq 1 ] && [ "$TEST_EDITS" -eq 0 ] && [ "$REVIEWERS" -eq 0 ]; then
+  BYPASS_IGNORED="Bypass marker present but IGNORED — session shows 0 test edits and 0 reviewer dispatches; markers are never honored without gate evidence. "
 fi
 
 # Build deny reason
@@ -138,7 +136,7 @@ if [ -n "$HIGH_RISK" ] && [ "$REVIEWERS" -eq 0 ]; then
   REASON+="NO REVIEWER AGENT dispatched (qa-tester / security-engineer / universal-reviewer) — high-risk path requires adversarial review. "
 fi
 REASON+="Run gates explicitly: S1-S5 (simplicity) + T1-T6 (tests) + F1-F5 (failure-mode). "
-REASON+="The fast path is running the gates for real — a bypass marker is honored only when the session already shows test or reviewer evidence."
+REASON+="This commit auto-passes once the session shows real evidence — write the failing test or dispatch a reviewer agent (qa-tester / security-engineer), then rerun the SAME git commit. No bypass marker, no env prefix."
 
 # Decide: HARD block vs SOFT warn
 HARD_BLOCK=0
@@ -151,6 +149,31 @@ elif [ "${ROLEPOD_GATES_HARD:-0}" = "1" ]; then
 # wrote a test" pattern even when the FINAL commit diff is small.
 elif [ "$HIGH_RISK_EDITS" -gt 0 ] && [ "$TEST_EDITS" -eq 0 ]; then
   HARD_BLOCK=1
+fi
+
+# Evidence auto-pass — a would-block commit passes directly when the session
+# already shows gate evidence (≥1 test edit or ≥1 reviewer dispatch). The
+# marker round-trip this replaces added no security: a blocked model could
+# echo the marker in its very next call, so the evidence check was always the
+# real guard — and prescribing `ROLEPOD_GATES_PASSED=1 git commit` deadlocked
+# against the platform's own permission layer, which reads that command shape
+# as gate circumvention. Evidence is OR, never AND: delegated sessions route
+# test-writing into subagents whose edits land in the child transcript, so a
+# qa-tester dispatch (REVIEWERS) is often the only evidence the Lead's own
+# transcript can show. Every auto-pass is logged and surfaced as context.
+if [ "$HARD_BLOCK" -eq 1 ] && { [ "$TEST_EDITS" -gt 0 ] || [ "$REVIEWERS" -gt 0 ]; }; then
+  mkdir -p "$HOME/.rolepod" 2>/dev/null || true
+  printf '%s auto-pass on evidence (tests=%s reviewers=%s): %.200s\n' \
+    "$(date '+%Y-%m-%dT%H:%M:%S')" "$TEST_EDITS" "$REVIEWERS" "$CMD" \
+    >> "$HOME/.rolepod/gate-bypass.log" 2>/dev/null || true
+  NOTE="precommit-gate auto-passed on session evidence: $TEST_EDITS test edits / $REVIEWERS reviewer dispatches"
+  [ -n "$HIGH_RISK" ] && NOTE+=" (HIGH-RISK path: $HIGH_RISK)"
+  NOTE+=". Evidence is session-wide, this diff is not — confirm S1-S5 / T1-T6 / F1-F5 cover THIS change."
+  ROLEPOD_HOOK_MSG="$NOTE" python3 -c "
+import json, os
+print(json.dumps({'hookSpecificOutput': {'hookEventName': 'PreToolUse', 'additionalContext': os.environ.get('ROLEPOD_HOOK_MSG', '')}}))
+" 2>/dev/null || true
+  exit 0
 fi
 
 if [ "$HARD_BLOCK" -eq 1 ]; then
