@@ -20,7 +20,7 @@ Before plan / edit / recommendation / answer → identify task type + required p
 
 User explicit instruction wins. If user says "skip spec", "answer only", "just write the code" → obey, state which gate was skipped, proceed.
 
-Default: route through the spine. Skipping is allowed only when (a) the task is trivial-answer-only, (b) user explicitly authorizes the skip, (c) the request is a question with no action attached, OR (d) the Skip rule below passes (diff ≤5 lines + 1 file + 0 logic-bearing lines + not high-risk).
+Default: route through the spine. Skipping is allowed only when (a) the task is trivial-answer-only, (b) user explicitly authorizes the skip, (c) the request is a question with no action attached, OR (d) the Skip rule below passes (diff ≤5 lines + 1 file + 0 logic-bearing lines + not high-risk + expected ≤3 tool calls).
 </EXTREMELY-IMPORTANT>
 
 ## Router modes
@@ -122,7 +122,7 @@ Router fires the **first** skill per phase. Phase exits only when its **exit evi
 Skip a phase WHEN ANY of these holds (state explicitly in response):
 
 - task is pure question / explanation / lookup (no file change)
-- OR diff ≤5 lines + 1 file + 0 logic-bearing lines + not on high-risk path
+- OR diff ≤5 lines + 1 file + 0 logic-bearing lines + not on high-risk path + expected ≤3 tool calls (a test loop or exploration ahead → dispatch instead, even for 1 file)
 - OR user explicit: "skip spec" / "just commit" / "answer only" / "no plan" / "ship as-is"
 
 **Verify never fully skips** — `verify-first` is always-on. Trivial fixes drop the heavyweight verify (full suite, browser drive), not the lightweight one (re-read file, confirm edit landed).

@@ -6,6 +6,18 @@
 
 The Lead is a **controller**. A subagent gets only the context the controller curates — never the Lead's session history, never the plan file path. Pass full task text inline; that is the contract.
 
+## Delegation economics
+
+The Lead is usually the priciest model in the session, and every token that
+enters its context is re-read on every later turn — a subagent's context dies
+with the task. So the pricier the Lead, the lower the break-even for dispatch.
+Lead-solo pays only when ALL three hold: expected ≤3 tool calls, the needed
+context already loaded, raw ingest ≤~2k tokens. Any test loop, retry risk, or
+exploration ahead → dispatch, even for a one-file fix. The Lead spends its own
+tokens on decisions — briefs, manifests, diffs, verdicts — never on mechanical
+loops (grep sweeps, test-fail-retry cycles, bulk file reads); those run in a
+disposable context at a cheaper tier.
+
 ## Why fresh context per task
 
 Context pollution = the #1 silent failure mode in multi-task execution. The subagent that just shipped Task 1 carries Task 1's mental model — its symbols, its trade-offs, its half-finished considerations. Reusing it on Task 2 leaks that state into the new diff. Symptoms: cross-task naming drift, refactors that touch Task 1 from Task 2, copied patterns that no longer fit.

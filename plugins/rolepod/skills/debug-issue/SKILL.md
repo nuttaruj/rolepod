@@ -129,9 +129,10 @@ Three failed fixes = proven hard-to-resolve. Get ONE outside opinion automatical
 
 ## If a matching Rolepod agent is available
 
-Delegate to the closest specialist:
+Delegate the loop — reproduce → failing test → fix iterates, and iteration
+is the costliest work to run in the Lead's context:
 
-- `qa-tester` for failing-test design and flake analysis
+- `qa-tester` — the default for any bug without a specialist match below
 - `security-engineer` if the symptom is auth / token / injection
 - `performance-engineer` for latency / memory regressions
 - `devops-sre` for infra / deploy / CI failures
