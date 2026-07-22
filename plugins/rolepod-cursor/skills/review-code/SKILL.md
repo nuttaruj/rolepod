@@ -75,6 +75,7 @@ Return / hand off:
 
 For every diff, scan:
 - **Intent** — state the goal in one sentence. Is there a simpler/smaller way, or should the change exist at all? Surface this before the line-by-line read.
+- **Trace** — the diff is the entry point, not the scope. For each behavior the change claims, walk the real path (entry → call sites → branches → state → exit) through the seams into unchanged code — bugs hide at the seams, and every surprise on the walk is findings signal. Bound the walk to the change's claims and seams (auditing untouched code is scope creep — file it as a Question, not a BLOCKER); use the code-intel index (callers / impact) when connected. The walk runs in the reviewer's context, never as Lead bulk reads.
 - **Correctness** — does the logic match the spec? Edge cases? Off-by-one? Null / undefined / empty?
 - **Security** — input validation, auth check, secret handling, SSRF, injection, token leak in logs
 - **Performance** — N+1, blocking calls, unbounded loops, big payloads, missing index
@@ -88,7 +89,7 @@ Fresh context. Reviewer reads only the artifact + acceptance criteria. Tries to 
 
 ### 4. Report findings, severity-ordered
 
-Fill `templates/review-report.md`. Each finding names file:line, the issue, why it matters, and a fix direction — never a silent rewrite (Iron Rule 4).
+Fill `templates/review-report.md`. Each finding names file:line, the issue, why it matters, and a fix direction — never a silent rewrite (Iron Rule 4). Label each finding's evidence: **TRACED** (path walked; holds or fails at a named step) or **SUSPECTED** (pattern-level; author must verify per §6) — "the change claims X" and "I traced X" are different statements. A clean review is never a bare APPROVED: the report's Claims-traced section states what was walked and which axes ran, so coverage is judgeable.
 
 ### 5. Fix-verify loop
 
@@ -113,7 +114,7 @@ Delegate the review to the closest specialist:
 - `system-architect` — architecture decisions
 - `universal-reviewer` — generic DRY / smell / structure
 
-Brief: diff + spec + acceptance criteria + the risk profile + which reviewer roles you already invoked.
+Brief: diff + spec + acceptance criteria + the risk profile + the claimed behaviors to trace end-to-end + which reviewer roles you already invoked.
 
 ## If no matching agent is available
 
@@ -121,12 +122,13 @@ Execute as Lead with this minimum viable checklist:
 
 1. Read the diff end-to-end with line numbers
 2. Read the touched files end-to-end, not just the diff regions
-3. Walk the correctness axis: logic, edges, null, off-by-one
-4. Walk the security axis: input validation, auth, secret, SSRF, injection
-5. Walk the performance axis: N+1, blocking, unbounded
-6. Walk the architecture axis: pattern match, source of truth
-7. Walk the test axis: assertion strength, mock boundary
-8. Report findings severity-ordered with file:line
+3. Trace each claimed behavior end-to-end (entry → branches → state → exit), including the seams into unchanged code
+4. Walk the correctness axis: logic, edges, null, off-by-one
+5. Walk the security axis: input validation, auth, secret, SSRF, injection
+6. Walk the performance axis: N+1, blocking, unbounded
+7. Walk the architecture axis: pattern match, source of truth
+8. Walk the test axis: assertion strength, mock boundary
+9. Report findings severity-ordered with file:line, TRACED vs SUSPECTED labeled
 
 ## Output
 

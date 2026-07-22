@@ -6,6 +6,12 @@
 ## Scope
 <What was reviewed — the diff, the files, the spec it implements.>
 
+## Claims traced
+<Each behavior the change claims → the path walked (entry → branches → exit)
+ and where it held or failed. Findings marked TRACED must anchor to a step
+ here. On a clean review this section IS the evidence — a bare APPROVED with
+ an empty trace list is not a review.>
+
 ## Risk surfaces touched
 <auth / billing / payments / credits / migration / data deletion / secrets /
  tokens / crypto / permissions / security — plus API contract / perf / UI.
