@@ -18,11 +18,17 @@ Rolepod ships a cost-aware policy that maps **role + risk → model tier**. Each
 - **strong on Codex pins its ceiling (`sol`)** — Codex exposes no `inherit`, so the top model is the safe default: an upgrade for a lower Lead, a match when the Lead is already `sol`.
 - **Gemini values are advisory.** Antigravity (`agy`) auto-selects the model per task and does not consume this field; it is recorded only to keep the frozen Gemini-CLI adapter internally consistent (see the Antigravity note below).
 
-**Effort** layers on top of the model. Claude uses `effort`, Codex uses `model_reasoning_effort` (`xhigh` / `high` / `medium`); Gemini has no effort field.
+**Effort** layers on top of the model. Claude uses `effort`, Codex uses `model_reasoning_effort` (`xhigh` / `high` / `medium` / `low`); Gemini has no effort field.
 
 - `xhigh` — security-engineer only (breach blast radius).
 - `high` — strong tier (system-architect, billing-engineer, universal-reviewer) + balanced-tier roles where reasoning depth pays off (ai-ml-engineer, performance-engineer, qa-tester).
-- `medium` — everything else.
+- `medium` — everything else, and deliberately the floor for every agent whose
+  artifact feeds downstream phases (specs, ADRs, implementations). Effort cuts
+  only thinking tokens — pennies at cheap/balanced output pricing — while a
+  shallower artifact taxes every later phase that consumes it. Do not trade
+  down for cost here; the lever is delegation, not effort.
+- `low` — scout only: mechanical sweeps whose deliverable is pointers, not
+  judgment. The one role where nothing downstream consumes its reasoning.
 
 **Codex** runs the GPT-5.6 line — `luna` (fast/cheap), `terra` (balanced workhorse), `sol` (deepest). All three verified against the local `codex exec -m`.
 
