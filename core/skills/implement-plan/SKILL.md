@@ -99,9 +99,11 @@ Pass the full task text + scene-setting context inline in the brief. Do not poin
 
 **Implementer return status.** Manifest declares one of: `COMPLETED` with no concerns → §6 pipeline; `COMPLETED` with Concerns listed → address scope/correctness first, then §6; `PARTIAL` → review the done slice, redispatch the remainder narrowed; `BLOCKED` → change a variable (context / model / scope / escalate), never retry blind. Deep handling in `references/subagent-dispatch.md`.
 
-### 5. Worktrees only for real parallel
+### 5. Parallel tracks — the plan's layout is the dispatch signal
 
-Use a git worktree when two sessions actually need the same files at the same time. A branch is enough for sequential work.
+Plan declares a parallel layout with a cohesion contract → dispatch every track whose dependencies are met in ONE message (concurrent subagents), each brief scoped to the contract's file ownership. Review each track as it returns (§6) — never barrier-wait on the other tracks. The integration owner merges per the contract's merge order, then the final whole-implementation review runs on the cumulative diff. Two tracks reach for the same file mid-flight → stop: drop to sequential or rewrite the contract. Full protocol: `references/subagent-dispatch.md`.
+
+Worktrees only when tracks truly collide on filesystem state (generated files, build artifacts, same-file edits a contract cannot split) — disjoint file ownership needs no isolation, and a branch is enough for sequential work.
 
 ### 6. Per-task review pipeline
 
@@ -164,7 +166,7 @@ Non-blocking — read only when unsure about scope or whether to trust a subagen
 
 Load only when the task needs it:
 - `references/tdd-by-risk.md` — task type → test discipline: test-first vs evidence-after
-- `references/subagent-dispatch.md` — implementer status taxonomy (COMPLETED ± concerns / PARTIAL / BLOCKED) and handling, two-stage review prompt scaffolds (spec compliance / code quality), model selection table, continuous-execution rationale
+- `references/subagent-dispatch.md` — implementer status taxonomy (COMPLETED ± concerns / PARTIAL / BLOCKED) and handling, parallel-track dispatch protocol, two-stage review prompt scaffolds (spec compliance / code quality), model selection table, continuous-execution rationale
 
 ## Hard stops
 
@@ -175,6 +177,7 @@ Load only when the task needs it:
 - Scope creep beyond the task list → stop, write a follow-up, finish current task
 - About to write "should I continue?" between tasks on a multi-task plan → don't; Iron Rule 5
 - About to verify a task with a self-invented check while the plan names a **Command** → run the plan's Command
+- A parallel-layout plan executed one track at a time with no stated reason → dispatch the ready tracks concurrently (§5)
 
 ## Full Rolepod enhancement
 

@@ -163,6 +163,23 @@ Stop **only** when:
 
 Anything else = continue.
 
+## Parallel-track dispatch
+
+Fires only when the plan's **Parallel layout** section names more than one owner AND the cohesion contract exists. No contract → no parallel dispatch, period — drop to sequential and say why.
+
+1. **Group tasks by track** (contract owner). A track's dependencies are the tasks in other tracks whose interfaces it consumes — the contract's merge order encodes this.
+2. **Dispatch every ready track in ONE message** — one Agent call per track, same message, so they run concurrently. Each brief carries the track's tasks, its file-ownership slice (allowed paths = own slice; forbidden = everything else including the do-not-touch list), the frozen shared interfaces verbatim, tests, and done criteria.
+3. **Pipeline, never barrier** — as each track returns its manifest, run its two-stage review immediately; do not wait for slower tracks. Answer implementer questions inline as they arrive.
+4. **Merge in contract order** — the integration owner (Lead) merges reviewed slices per the contract's merge order, running the interface provider's tests before merging its consumers. The comprehension gate applies per slice; subagents still never commit.
+5. **Final whole-implementation review** on the cumulative diff after all tracks land — cross-track drift (symbol / type / contract mismatch) is exactly what per-track review cannot see.
+
+Mid-flight conflicts:
+- A track needs a file outside its slice → it returns `BLOCKED` with the path; Lead either amends the contract (every owner re-briefed) or drops to sequential. Never silently widen a slice.
+- A frozen interface must change → stop every affected track, renegotiate the contract, redispatch. Cheaper than merging two halves built against different contracts.
+- One track `BLOCKED` while others run → let the running tracks finish; apply the standard variable changes to the blocked one. Its dependents wait; independent tracks do not.
+
+Cost note: parallel buys wall-clock, not tokens — N tracks cost the same tokens as N sequential tasks plus contract overhead. Dispatch parallel for speed, never to "use more agents".
+
 ## Subagent commit policy
 
 The subagent **never** commits. It returns a manifest; the Lead commits. Two reasons:
@@ -184,6 +201,11 @@ question, do not commit past it.
 
 ```
 Read plan → extract tasks inline → TodoWrite (or Task tool)
+
+Plan declares a parallel layout + contract?
+  → group tasks by track, dispatch ready tracks in ONE message
+    (see Parallel-track dispatch); the per-task loop below runs
+    per track, pipelined as each manifest returns
 
 For each task:
   Dispatch implementer (model = task complexity tier)
