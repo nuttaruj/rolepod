@@ -103,6 +103,20 @@ Commercial evidence (commercial mode or ## Commercial section):
 **Status:** COMPLETED | PARTIAL | BLOCKED
 ```
 
+Filled example (commercial) — the evidence lines carry numbers and sources, never adjectives:
+
+```
+**Mode:** commercial
+**Artifact:** recommendation — raise the Pro tier $29 → $35/seat at next renewal cycle
+Commercial evidence:
+- Unit economics: gross margin 71% → 76%; CAC payback 4.1 → 3.4 months (billing DB query, 2026-Q2 cohort)
+- Competitor benchmark: CompetitorA Pro @ $38/seat, CompetitorB Team @ $30/seat — each vendor's public pricing page, accessed 2026-07-20
+- Sensitivity: +10% monthly-cohort churn scenario still holds NRR ≥ 104%
+**Risks:** churn spike in the monthly cohort; mitigate by grandfathering annual plans 12 months
+**Hand-off:** `billing-engineer` for plan-change implementation cost · `content-strategist` (`audience: user`) for the price-change comms
+**Status:** COMPLETED
+```
+
 ## When to ask Lead
 
 - Multiple valid framings of the problem exist

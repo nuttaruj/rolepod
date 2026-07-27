@@ -4,7 +4,7 @@
 # <Branch> — Finish
 
 ## Gate status
-- Pre-merge gate (S/T/F — simplicity, test, failure-mode): <PASS / FAIL — name what failed>
+- Pre-merge gate (S/T/F/P — simplicity, test, failure-mode, PR scope): <PASS / FAIL — name what failed>
 - Evidence status (from check-work's evidence block): <VERIFIED / PARTIAL /
   UNVERIFIED — reason. PARTIAL / UNVERIFIED blocks merge unless waived.>
 - CI: Phase 1 <status> · Phase 2 <status, or n/a>

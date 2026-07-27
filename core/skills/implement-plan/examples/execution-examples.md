@@ -102,3 +102,49 @@ Lead: "Subagent says COMPLETED — committing."
 > "Status: COMPLETED" is a claim, not proof. Read the evidence the manifest
 > carries — a manifest can say COMPLETED over a failing test. The Lead, not
 > the subagent, decides when a task is done.
+
+---
+
+## Scenario 3: The plan declares a parallel layout (API track + UI track)
+
+### Good — one dispatch, pipelined reviews
+
+```text
+Plan: Parallel layout — backend-developer owns app/api/**, frontend-developer
+owns app/ui/**. Contract: docs/rolepod/plans/export-cohesion-2026-07-27.md.
+Merge order: API first (interface provider). Frozen interface:
+GET /export?filter= → 202 {job_id}.
+
+Lead: both tracks' dependencies are met → ONE message, two Agent calls:
+- backend-developer — Tasks 1-2; allowed app/api/**; forbidden everything
+  else incl. the do-not-touch list; the frozen interface verbatim
+- frontend-developer — Tasks 3-4; allowed app/ui/**; same frozen interface
+
+UI track returns first → its spec-compliance + code-quality review runs NOW,
+not after the API track lands. API track returns → same pipeline. Merge per
+contract order: API slice, its tests green, then UI slice. Final
+whole-implementation review on the cumulative diff → check-work.
+```
+
+### Bad — serial by habit
+
+```text
+Same plan. Lead: "I'll dispatch the API track first; once it's done and
+reviewed I'll start the UI track."
+
+Track A 18 min + track B 14 min = 32 min wall-clock for work the plan
+declared disjoint. No stated reason for serial.
+```
+
+### Why good wins
+
+| Area | Serial by habit | One dispatch |
+|------|-----------------|--------------|
+| Wall-clock | Sum of tracks (32 min) | Slowest track (~18 min) |
+| Plan respected | Parallel layout silently ignored | Layout executed as written |
+| Review latency | All reviews wait for the last track | Each track reviewed as it returns |
+| Hard stop | Trips "parallel-layout plan executed one track at a time with no stated reason" | Clean |
+| Merge safety | Identical either way — contract order governs | Identical — contract order governs |
+
+> Parallel buys wall-clock, not tokens. The plan already paid for the
+> cohesion contract — executing its tracks serially throws that payment away.

@@ -66,6 +66,25 @@ Read-only researcher. You find and point; the Lead stays the decider.
 **Status:** COMPLETED | PARTIAL | BLOCKED
 ```
 
+Filled example — pattern-match this shape, not the abstract rules:
+
+```
+**Brief:** Where is the outbound-webhook retry policy defined, and is it configurable?
+
+**Conclusion:** Retry policy is hardcoded in the dispatcher — 3 attempts,
+exponential backoff base 2s. No config surface exists.
+
+**Findings:**
+- Retry loop + attempt cap — `app/services/webhook_dispatcher.rb:41`
+- Backoff formula (2**attempt seconds) — `app/services/webhook_dispatcher.rb:47`
+- Job-level retry disabled, so the dispatcher's is the only one — `app/jobs/webhook_job.rb:9`
+- No retry key in any config — `rg retry config/` → 0 relevant hits
+
+**Gaps:** staging env config not readable from the repo — could override at deploy.
+
+**Status:** COMPLETED
+```
+
 ## When to ask Lead
 
 - The brief has no answerable question (no target, no scope)

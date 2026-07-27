@@ -41,6 +41,12 @@
  tokens / crypto / permissions / security. "None" is valid — but state it
  deliberately.>
 
+## Spec coverage (both directions)
+<Every spec requirement → the task that implements it; a requirement with no
+ task is a plan failure. Every task → the spec line that asked for it; a task
+ no spec line asked for is scope creep — cut it or move it to a follow-up list.>
+- <spec requirement> → Task <N>
+
 ## Parallel layout
 <If one owner: "Sequential — single owner." plus the task dependency order.
  If more than one agent edits code: name the cohesion contract path and the

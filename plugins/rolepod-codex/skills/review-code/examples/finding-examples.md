@@ -71,3 +71,30 @@ actionable one. Compare the pair — do not read one half alone.
 > A finding the author cannot act on is not a finding — it is a worry.
 > Every finding names a file:line, the concrete failure, why it matters, and
 > a fix direction. "Looks off" sends the author hunting; it does not review.
+
+---
+
+## The Cross-model adversarial pass line — three honest states
+
+The review-report line is a fact to record, not a box to satisfy. Write the
+state that is TRUE — `finish-work` reads this line verbatim at the merge gate:
+
+```
+Cross-model adversarial pass: ran on codex (cross-family)
+```
+A second-vendor CLI reviewed the diff cold. The only state that clears the
+high-risk gate outright.
+
+```
+Cross-model adversarial pass: vertical — same family (single-CLI machine;
+own CLI's strongest tier ran as cold reviewer; not a cross-family pass)
+```
+Stronger tier, same vendor. Upgrades the floor, does not satisfy Iron Rule 2 —
+recorded as a verification limitation the user must see before merge.
+
+```
+Cross-model adversarial pass: NOT RUN — 0 external CLIs on PATH; Lead floor
+covered every axis
+```
+Honest absence. Beats a fabricated pass — writing `cross-family` when the
+reviewer shared the Lead's family is the false-green of reviews.
