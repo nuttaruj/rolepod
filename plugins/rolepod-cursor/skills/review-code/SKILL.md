@@ -69,6 +69,8 @@ Return / hand off:
 | Architecture / cross-module | `system-architect` |
 | Generic quality / DRY / smell | `universal-reviewer` |
 
+**More than one reviewer fires → dispatch them in ONE message.** The qa-tester floor, the risk-matched specialist, and the external adversarial reviewer all read the same frozen diff with no shared state — they run concurrently, not in sequence. Serialize only the §5 fix-verify loop (fixes change the diff). Reviews land as each returns; the report merges them severity-ordered.
+
 **External adversarial review — route by model strength, never the Lead's own model.** Iron Rule 2: the adversarial pass runs on a model **different from the Lead's**. Detect the pool — the Lead is this session's CLI; externals are the others on PATH (`codex` / `gemini` / `claude`). High-risk OR multi-file diff with an external available → routing to it is mandatory. `qa-tester` + the Lead's own multi-axis read are the floor, and backstop any reviewer that is missing or fails. Per-CLI axis strengths, the Lead-exclusion rule, and degradation: `references/external-review-routing.md`.
 
 ### 2. Multi-axis read

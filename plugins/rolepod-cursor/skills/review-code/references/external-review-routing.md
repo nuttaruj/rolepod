@@ -40,6 +40,9 @@ never reviews the other's work as "external".
 2. For each axis, route to the external whose strength matches — if that
    external is in the pool (installed AND not the Lead).
 3. A diff spanning two axes uses two externals, one per axis.
+4. Launch every routed reviewer — externals and internal agents alike — in
+   ONE dispatch; they read the same frozen diff independently, so nothing
+   is gained by waiting for one before starting the next.
 
 **Lead-exclusion overrides strength — and it excludes the family, not just
 the binary.** If the strength-matched reviewer runs the Lead's model family

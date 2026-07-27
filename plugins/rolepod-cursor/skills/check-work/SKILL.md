@@ -142,6 +142,8 @@ Delegate verification depth:
 
 Brief: change manifest + acceptance criteria + available tools.
 
+More than one evidence type needed (e.g. test suite + perf benchmark + security repro) → dispatch the verifiers in ONE message; each proves an independent claim on the same frozen change, so they run concurrently and the evidence block merges their outputs.
+
 ## If no matching agent is available
 
 Execute as Lead with this minimum viable checklist:
