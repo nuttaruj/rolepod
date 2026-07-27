@@ -113,7 +113,7 @@ Router fires the **first** skill per phase. Phase exits only when its **exit evi
 | **Build** | `implement-plan` (+ `debug-issue` for bug intent) | changed files + tests added (or explicit no-test justification) + red→green evidence | Verify |
 | **Verify** | `check-work` | fresh command output / screenshot / curl / log evidence; OR explicit "verify impossible because X" risk note | Review (high-risk / multi-file) OR Ship (low-risk) |
 | **Review** | `review-code` | findings fixed OR rejected with line-anchored reason; no unresolved blocker | Ship |
-| **Ship** | `finish-work` | S+T+F+P gates green (P = PR scope, one concern per PR); required CI lanes pass; user approval when policy requires; 4-option finish menu presented (merge / open PR / keep open / discard) | **end** |
+| **Ship** | `finish-work` | pre-merge gates green: S+T+F + Evidence + Reviewer + PR scope (one concern per PR); required CI lanes pass; user approval when policy requires; 4-option finish menu presented (merge / open PR / keep open / discard) | **end** |
 
 **Router decides the first move only.** Each downstream skill owns its own gates; using-rolepod doesn't re-explain them.
 
@@ -135,7 +135,7 @@ Skip a phase WHEN ANY of these holds (state explicitly in response):
 - Sub-agent attempting `git commit` / `git push` / `gh pr merge` → not allowed; Lead commits after the reviewer pass.
 - High-risk path (auth / billing / payments / credits / migration / data deletion / secrets / tokens / crypto / permissions / security) with 0 reviewer agents dispatched → STOP, dispatch qa-tester + security-engineer, plus an external CLI reviewer on a model family different from the Lead's if one is installed (routing: review-code's `external-review-routing.md`).
 - 3rd agent on same issue OR 3rd PR on same surface in one session → STOP, ask user (hard-stop rule).
-- Diff mixes 2+ unrelated concerns at push/merge time → STOP, split into separate PRs (`finish-work` P1-P4 gate).
+- Diff mixes 2+ unrelated concerns at push/merge time → STOP, split into separate PRs (`finish-work` PR-scope gate).
 - Concurrent sessions: if SessionStart warns "concurrent session(s) detected in this worktree" → before editing a SHARED file, spawn an isolated worktree first (`git worktree add ../<repo>-task-<ts> <branch> && cd`) and continue there. rolepod guards against same-file stomp between concurrent sessions; disjoint and solo edits flow free. Override: `ROLEPOD_ALLOW_SHARED_WORKTREE=1` for intentional shared/read-only review sessions.
 
 ## Finish ritual (Ship phase exit)

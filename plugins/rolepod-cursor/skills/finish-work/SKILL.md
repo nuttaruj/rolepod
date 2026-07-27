@@ -94,6 +94,8 @@ not merge with an unresolved F-finding.
 
 **Reviewer** — risk-appropriate review completed (see `review-code`). On a high-risk diff, read the review report's **Cross-model adversarial pass** line: anything other than a cross-family pass — `NOT RUN` or `vertical — same family` — means the user must see that limitation before merge; state it in the finish summary, never clear the gate silently.
 
+**PR scope (P)** — one concern per PR / merge: the diff serves a single feature, fix, or refactor. Mixed concerns → split (`git add -p`, separate branches) before merge; a mixed diff is unreviewable and fails this gate.
+
 Any failure → fix or report; do not merge.
 
 ### 2. CI lane discipline
@@ -111,8 +113,7 @@ Red required lane → Lead fixes and re-pushes; do not ask user permission for e
 Before presenting the menu, detect the workspace state — it changes which options are valid:
 
 ```bash
-GIT_DIR=$(cd "$(git rev-parse --git-dir)" 2>/dev/null && pwd -P)
-GIT_COMMON=$(cd "$(git rev-parse --git-common-dir)" 2>/dev/null && pwd -P)
+GIT_DIR=$(cd "$(git rev-parse --git-dir)" 2>/dev/null && pwd -P); GIT_COMMON=$(cd "$(git rev-parse --git-common-dir)" 2>/dev/null && pwd -P)
 ```
 
 - `GIT_DIR == GIT_COMMON` → normal repo, 4-option menu, no worktree cleanup
@@ -142,9 +143,7 @@ Fill `templates/pr-body.md` — summary, test plan checklist, risks, linked arti
 
 ### 6. Launch + post-merge (if production)
 
-Launch ritual for production traffic: fill `templates/release-checklist.md` — rollback, monitoring, on-call, feature flag default, and migration safety all confirmed before traffic.
-
-Post-merge: update spec / plan if reality drifted, document non-obvious decisions.
+Launch ritual for production traffic: fill `templates/release-checklist.md` — rollback, monitoring, on-call, feature flag default, and migration safety all confirmed before traffic. Post-merge: update spec / plan if reality drifted, document non-obvious decisions.
 
 ## If a matching Rolepod agent is available
 
@@ -161,7 +160,7 @@ Brief: branch, diff summary, CI status, review verdict, launch plan if any.
 
 Execute as Lead with this minimum viable checklist:
 
-1. Run the pre-merge gate (S+T+F)
+1. Run the full pre-merge gate (S+T+F + Evidence + Reviewer + PR scope)
 2. Confirm Phase 1 + triggered Phase 2 CI lanes are green
 3. Present the 3- or 4-option finish menu per §3 detection
 4. Wait for the user to pick
