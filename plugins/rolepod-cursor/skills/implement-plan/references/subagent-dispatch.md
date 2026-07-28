@@ -157,7 +157,13 @@ On a multi-task plan, do not pause to check in with the user between tasks. The 
 
 Stop **only** when:
 1. `BLOCKED` and Lead cannot resolve via the four variable changes above
-2. Spec / plan gap that wasn't visible until implementation revealed it
+2. Spec / plan gap that wasn't visible until implementation revealed it —
+   and aggregate the signal: two different tasks (or a `SPEC CONFLICT`
+   report plus a reviewer rejection) tripping on the same spec section
+   means the spec is the suspect, not the workers. Pause the affected
+   tasks only, route the contradiction through `write-spec` (amend + user
+   approval gate), re-brief the affected slice; unaffected tracks keep
+   running.
 3. Scope ambiguity that genuinely prevents progress (not a stylistic preference)
 4. All tasks complete
 

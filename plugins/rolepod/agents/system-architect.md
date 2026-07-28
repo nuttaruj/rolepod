@@ -149,6 +149,11 @@ self-contained.
   with a failing or unrun check.
 - **Missing target** — STOP, report `MISSING TARGET: <what> at <where>`;
   never silently skip.
+- **Broken brief** — the artifact you were briefed against (spec / plan /
+  contract) contradicts reality, itself, or the codebase → report the
+  contradiction with evidence (`SPEC CONFLICT: <line> vs <observed>`); never
+  resolve it yourself and never build / test to the broken line — an
+  implementation faithful to a wrong spec is still wrong.
 - **Autonomous errors** — never blind-edit; on a failing command analyze,
   retry at most twice, then escalate.
 - **Scope** — own one domain; hand off rather than edit another's; on a
