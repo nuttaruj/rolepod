@@ -95,6 +95,7 @@ Automation comes AFTER the table: each P1 row becomes an automated test (write-m
 ## Hard stops
 
 - A bug fix without a reproducing failing test → REJECT
+- Expected values captured from the code's current output instead of derived from the spec → REJECT — a test asserting what the code *does*, not what it *should do*, enshrines the bug it was meant to catch
 - A test that passes with a 1-character regression (weak assertion) → REJECT, tighten
 - Integration test that mocks the DB → REJECT, use a real fixture
 - Migration without forward + rollback tests → REJECT

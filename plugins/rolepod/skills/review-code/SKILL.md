@@ -86,7 +86,7 @@ For every diff, scan:
 - **Performance** — N+1, blocking calls, unbounded loops, big payloads, missing index
 - **Architecture** — does it match existing patterns? Source of truth violations? New abstraction with one user?
 - **UI** — a11y, hierarchy, consistency, platform conventions if applicable
-- **Tests** — strong assertions? Mocks at the right boundary? Race coverage for concurrent code?
+- **Tests** — strong assertions? Mocks at the right boundary? Race coverage for concurrent code? A diff that *modifies an existing test* on the way to green is a finding until justified — loosened assertion, raised tolerance, deleted case, added skip / only, snapshot updated to absorb the failure. The old test was the contract; changing the test instead of the code needs its own stated why.
 
 ### 3. Adversarial mode for high risk
 
