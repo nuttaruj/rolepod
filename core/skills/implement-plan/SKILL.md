@@ -17,7 +17,7 @@ Build-phase entry skill. Execute the approved plan with discipline: TDD where it
 2. NEVER expand scope mid-implementation. New idea → write it down and finish the planned task first.
 3. ALWAYS write the failing test first for bug fixes and high-risk-surface work.
 4. NEVER delegate to a subagent without a written task scope and a clear done criterion.
-5. CONTINUOUS execution between tasks on a multi-task plan — no "should I continue?" check-ins, no progress summaries. Stop only on BLOCKED that the Lead cannot resolve, a spec/plan gap, or scope ambiguity.
+5. CONTINUOUS execution between tasks AND between plan phases — no "should I continue?" check-ins, no progress summaries, and never end the turn mid-plan: an ended turn is a stop no matter how it is worded. Stop only on BLOCKED that the Lead cannot resolve, a spec/plan gap, or scope ambiguity.
 </EXTREMELY-IMPORTANT>
 
 ## When to use
@@ -175,7 +175,7 @@ Load only when the task needs it:
 - Subagent returns `COMPLETED` with failing tests, or `BLOCKED` re-dispatched unchanged → reject / change a variable (context / model / scope); never accept unchanged retry
 - A subagent's diff accepted without spec-compliance + code-quality reviews → stop, run the §6 pipeline before building further
 - Scope creep beyond the task list → stop, write a follow-up, finish current task
-- About to write "should I continue?" between tasks on a multi-task plan → don't; Iron Rule 5
+- About to ask "should I continue?" — or end the turn — between tasks or phases of a plan → don't; Iron Rule 5
 - About to verify a task with a self-invented check while the plan names a **Command** → run the plan's Command
 - A parallel-layout plan executed one track at a time with no stated reason → dispatch the ready tracks concurrently (§5)
 

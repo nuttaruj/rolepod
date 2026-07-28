@@ -49,7 +49,8 @@ Does not own:
 Return / hand off:
 - Findings need fixes → `implement-plan` or `debug-issue`.
 - Fixes landed → `check-work`.
-- No blockers → `finish-work`.
+- No blockers but the driving plan still has unchecked tasks → back to `implement-plan` (next task); Ship asks once per plan, not once per phase.
+- No blockers, plan exhausted (or no plan) → `finish-work`.
 
 ## Inputs to gather
 
@@ -166,5 +167,5 @@ Full Rolepod improves this phase by adding the qa-tester floor, external adversa
 
 ## Next phase
 
-- If `finish-work` is available, continue there for the merge gate.
+- If `finish-work` is available, continue there for the merge gate — unless the driving plan still has unchecked tasks: loop back to `implement-plan` first.
 - If `finish-work` is not available, present the findings + recommendation to the user and ask which finish path they want.

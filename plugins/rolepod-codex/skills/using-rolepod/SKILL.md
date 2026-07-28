@@ -114,8 +114,8 @@ Router fires the **first** skill per phase. Phase exits only when its **exit evi
 | **Define** | `write-spec` | written spec OR approved one-line design (≤5-line task) OR explicit "skip spec" | Plan |
 | **Plan** | `write-plan` (+ agent routing + cohesion contract if multi-agent) | ordered task list with done-condition + verify command per task; dependencies marked | Build |
 | **Build** | `implement-plan` (+ `debug-issue` for bug intent) | changed files + tests added (or explicit no-test justification) + red→green evidence | Verify |
-| **Verify** | `check-work` | fresh command output / screenshot / curl / log evidence; OR explicit "verify impossible because X" risk note | Review (high-risk / multi-file) OR Ship (low-risk) |
-| **Review** | `review-code` | findings fixed OR rejected with line-anchored reason; no unresolved blocker | Ship |
+| **Verify** | `check-work` | fresh command output / screenshot / curl / log evidence; OR explicit "verify impossible because X" risk note | Review (high-risk / multi-file) OR Ship (low-risk, plan exhausted) OR Build (plan has unchecked tasks) |
+| **Review** | `review-code` | findings fixed OR rejected with line-anchored reason; no unresolved blocker | Ship (plan exhausted) OR Build (plan has unchecked tasks) |
 | **Ship** | `finish-work` | pre-merge gates green: S+T+F + Evidence + Reviewer + PR scope (one concern per PR); required CI lanes pass; user approval when policy requires; 4-option finish menu presented (merge / open PR / keep open / discard) | **end** |
 
 **Router decides the first move only.** Each downstream skill owns its own gates; using-rolepod doesn't re-explain them.

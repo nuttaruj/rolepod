@@ -46,7 +46,8 @@ Does not own:
 Return / hand off:
 - Evidence fails → `debug-issue` or `implement-plan`.
 - Evidence passes and risk exists (fails review-code's skip test: >5 lines, multi-file, logic-bearing, or a high-risk surface) → `review-code`.
-- Evidence passes and low risk (review-code's skip test passes) → `finish-work`.
+- Evidence passes, low risk, but the driving plan still has unchecked tasks → back to `implement-plan` for the next task; Ship asks once per plan, not once per phase.
+- Evidence passes, low risk, plan exhausted (or no plan) → `finish-work`.
 
 ## Inputs to gather
 
@@ -188,5 +189,5 @@ Full Rolepod improves this phase by adding hooks that nag for evidence on comple
 ## Next phase
 
 - If the work needs review, continue to `review-code`.
-- If the work is review-already-done or trivial-no-review, continue to `finish-work`.
+- If the work is review-already-done or trivial-no-review, continue to `finish-work` — unless the driving plan still has unchecked tasks: loop back to `implement-plan` first.
 - If neither is available, attach the evidence block directly and ask the user whether to ship.
