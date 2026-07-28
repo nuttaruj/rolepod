@@ -1,6 +1,6 @@
 ---
 name: manage-context
-description: Use when the session is long, the repo is unfamiliar, the work is multi-file, you are stuck, or you need to escalate to a stronger model. Context budget, session hygiene, zoom-out, deep triage, escalate, onboarding. Phase = Recovery / Re-context / Escalate.
+description: Use when the session is long, the repo is unfamiliar, the work is multi-file, you are stuck, or you need to escalate to a stronger model. Context budget, session hygiene, zoom-out, deep triage, escalate, onboarding, post-compact re-anchor. Phase = Recovery / Re-context / Escalate.
 when_to_use: when context feels heavy or stale, when you are mid-session and forgetting earlier constraints, when starting in an unfamiliar repo, when stuck after multiple attempts, or when the model class you are running on cannot make further progress
 tier: 1
 phase: recovery
@@ -8,7 +8,7 @@ phase: recovery
 
 # Manage Context
 
-Recovery-phase skill. Keep work stable when context grows long, the codebase is unfamiliar, attention drifts, or the model is stuck. Combines context budget, session hygiene, zoom-out, deep triage, escalate, and onboarding.
+Recovery-phase skill. Keep work stable when context grows long, the codebase is unfamiliar, attention drifts, or the model is stuck. Combines context budget, session hygiene, zoom-out, deep triage, escalate, onboarding, and post-compact re-anchor.
 
 ## Iron Rule
 
@@ -22,6 +22,7 @@ Recovery-phase skill. Keep work stable when context grows long, the codebase is 
 ## When to use
 
 - An observable context signal fires: the context bar turns yellow/red, the harness warns about compaction, or you notice degraded recall (re-reading files you already read, forgetting stated constraints). When a meter exists, ~70% used is the line — but act on the observable signal, not the estimate
+- You just resumed from a compaction summary (auto-compact or `/compact`)
 - The same bug keeps reappearing at a different surface
 - You forgot a constraint the user stated earlier
 - You are starting in an unfamiliar codebase
@@ -57,6 +58,7 @@ Return / hand off:
 | Symptom | Mode |
 |---------|------|
 | Context signal: bar yellow/red, compaction warning, or degraded recall | Context budget |
+| Just resumed from a compaction summary | Post-compact re-anchor |
 | Forgot a stated constraint | Session hygiene |
 | Same bug at 3 surfaces | Zoom-out |
 | 3+ failed fix attempts on the same target | Escalate |
@@ -93,7 +95,19 @@ If stuck after multiple attempts:
 
 Three failed attempts is the trigger. Past that, the only permitted attempt is the single advisor-informed one from debug-issue §9 — never another blind try.
 
-### 7. Onboarding (new repo)
+### 7. Post-compact re-anchor
+
+A compaction summary is a lossy narrator, not a state file. Before the first
+action after any compaction (auto or `/compact`):
+- Re-read the plan artifact — checkboxes mark the real position, not the
+  summary's claim of it
+- Run `git log --oneline -5` + `git status` — commits and staged files are
+  the ground truth of what actually landed
+- Re-open the spec / cohesion contract if the flow has one
+A summary can say a task is done that the plan file still shows `- [ ]`.
+Disk beats summary on every conflict.
+
+### 8. Onboarding (new repo)
 
 Before any edit:
 - Read `README.md`, `CLAUDE.md` if present
@@ -119,7 +133,7 @@ Execute as Lead with this minimum viable checklist:
 1. Re-read the original user request literally
 2. List the constraints still in force
 3. List the files you have actually touched vs the plan
-4. Identify which of the six modes above matches the current symptom
+4. Identify which of the seven modes above matches the current symptom
 5. Run the appropriate context command for your CLI (see `references/cli-fallbacks.md`)
 6. For unfamiliar repo: read README + config + 2-3 representative files before editing
 7. For stuck: capture exact failure and ask the user for direction
@@ -128,7 +142,7 @@ Execute as Lead with this minimum viable checklist:
 ## Output format
 
 ```
-Mode: <context budget | session hygiene | zoom-out | escalate | deep triage | onboarding>
+Mode: <context budget | session hygiene | zoom-out | escalate | deep triage | onboarding | post-compact re-anchor>
 Trigger: <what tipped this skill>
 Action taken: <command run / re-read / escalation>
 State after: <what is loaded, what is dropped>
@@ -156,7 +170,7 @@ Load only when the task needs it:
 
 ## Full Rolepod enhancement
 
-Full Rolepod improves this phase by surfacing context-budget reminders via SessionStart hooks (where the CLI supports them), the escalation pattern, the deep triage checklist, and onboarding on first session in a new repo.
+Full Rolepod improves this phase by surfacing context-budget reminders via SessionStart hooks (where the CLI supports them), re-injecting the always-on core after `/clear` and compaction (Claude `clear|compact` matchers), the escalation pattern, the deep triage checklist, and onboarding on first session in a new repo.
 
 ## Next phase
 

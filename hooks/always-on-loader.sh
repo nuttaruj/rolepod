@@ -12,8 +12,10 @@
 # same resolution works in-repo and in the installed plugin — no dependency
 # on ${CLAUDE_PLUGIN_ROOT}.
 #
-# Fires on SessionStart (startup | resume). Re-injection after compaction is
-# handled by the same event firing again on resume.
+# Fires on SessionStart (startup | resume | clear | compact). `/clear` wipes
+# the injected core and compaction compresses it into the summary — both
+# sources re-fire this loader so the full core returns verbatim, not as a
+# lossy paraphrase.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
