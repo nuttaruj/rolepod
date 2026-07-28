@@ -7,7 +7,8 @@
 <The user's request, literal quote.>
 
 ## Current branch / commit
-<Branch name + last commit SHA.>
+<Branch name + last commit SHA. Commit WIP first (`wip:` prefix) — the next
+ session resumes from disk, not from this session's memory.>
 
 ## Files touched
 <Paths edited so far + a word on each. Link artifacts by path — never paste
@@ -27,4 +28,6 @@
 <What is stuck, if anything, and what is needed to unblock.>
 
 ## Resume with
-<Which skill the next session starts in, and the next concrete command.>
+<Which skill the next session starts in, and the next concrete command.
+ Any rolepod-equipped CLI can be the next session — skill names match
+ across adapters.>

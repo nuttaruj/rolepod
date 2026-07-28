@@ -20,6 +20,7 @@ Recovery-phase skill. Keep work stable when context grows long, the codebase is 
 
 - An observable context signal fires: the context bar turns yellow/red, the harness warns about compaction, or you notice degraded recall (re-reading files you already read, forgetting stated constraints). When a meter exists, ~70% used is the line — but act on the observable signal, not the estimate
 - You just resumed from a compaction summary (auto-compact or `/compact`)
+- A usage / quota limit is near — the session dies regardless of context state; handoff, don't trim
 - The same bug keeps reappearing at a different surface
 - You forgot a constraint the user stated earlier
 - You are starting in an unfamiliar codebase
@@ -56,6 +57,7 @@ Return / hand off:
 |---------|------|
 | Context signal: bar yellow/red, compaction warning, or degraded recall | Context budget |
 | Just resumed from a compaction summary | Post-compact re-anchor |
+| Usage / quota limit near | Context budget — handoff path, not trim |
 | Forgot a stated constraint | Session hygiene |
 | Same bug at 3 surfaces | Zoom-out |
 | 3+ failed fix attempts on the same target | Escalate |
@@ -68,7 +70,7 @@ If context is heavy, run your CLI's trim command — the per-CLI table (Claude `
 
 Only load what the current task actually needs. Tier 1 skills + the touched files is usually enough.
 
-Starting fresh instead of trimming → fill `templates/handoff-brief.md` so the next session resumes without re-asking.
+Starting fresh instead of trimming → fill `templates/handoff-brief.md` so the next session resumes without re-asking — on ANY CLI: the brief + plan artifact are CLI-agnostic (`references/cli-fallbacks.md`, Cross-CLI resume). A quota limit, unlike heavy context, cannot be trimmed away: commit WIP, write the brief, switch.
 
 ### 3. Session hygiene
 
