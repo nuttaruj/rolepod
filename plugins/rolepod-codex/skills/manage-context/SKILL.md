@@ -90,7 +90,13 @@ Map the actual surface: list every file you have edited or planned to edit. Grou
 If stuck after multiple attempts:
 - Capture the exact problem (error, what was tried, what failed)
 - Change the model, not just the prompt: redispatch the task at a stronger tier, or in a debug flow run debug-issue §9's one cross-model consult — a fresh session on the same model is the weakest lever
-- Surface the blocker to the user with a concrete ask, or start a fresh session with the captured context
+- Ladder exhausted — stronger tier (fable-class where exposed) and/or
+  cross-family consulted and the blocker stands → STOP and hand the user a
+  decision menu: the attempt log (each rung tried + its result) and 2-3
+  concrete options with trade-offs (relax a constraint / split or defer the
+  scope / accept a documented limitation) — never a bare "stuck". This stop
+  is legitimate mid-plan: continuous execution (implement-plan Iron Rule 5)
+  yields to an exhausted ladder, never the other way around.
 - Resume with the user's direction, not another blind attempt
 
 Three failed attempts is the trigger. Past that, the only permitted attempt is the single advisor-informed one from debug-issue §9 — never another blind try.
