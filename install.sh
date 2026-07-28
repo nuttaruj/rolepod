@@ -23,13 +23,15 @@
 #   ./install.sh --target=gemini       # Gemini CLI      → ~/.gemini
 #   ./install.sh --target=cursor       # Cursor IDE      → ~/.cursor
 #   ./install.sh --target=antigravity  # Antigravity CLI (agy) → ~/.gemini
-#   ./install.sh --target=all          # install all five
+#   ./install.sh --target=opencode     # opencode CLI    → ~/.config/opencode
+#   ./install.sh --target=all          # install all six
 #   ./install.sh --scope=global        # default — install to home (~/.claude/, etc.)
 #   ./install.sh --scope=project       # install to $PWD (no global config touched)
 #                                      #   Claude → $PWD/.claude/  (full plugin)
 #                                      #   Codex  → $PWD/AGENTS.md (managed block only)
 #                                      #   Gemini → $PWD/GEMINI.md (managed block only)
 #                                      #   Antigravity → $PWD/AGENTS.md (managed block only)
+#                                      #   opencode → $PWD/.opencode/ (full) + $PWD/AGENTS.md block
 #   ./install.sh --uninstall           # remove rolepod from selected --target
 #                                      # add --yes/-y to skip confirmation prompt
 #                                      # respects --scope (project = only project files)
@@ -89,9 +91,9 @@ for arg in "$@"; do
 done
 
 case "$CLI_TARGET" in
-  claude|codex|gemini|cursor|antigravity|all) ;;
+  claude|codex|gemini|cursor|antigravity|opencode|all) ;;
   *)
-    echo "Unknown --target value: $CLI_TARGET (expected claude|codex|gemini|cursor|antigravity|all)" >&2
+    echo "Unknown --target value: $CLI_TARGET (expected claude|codex|gemini|cursor|antigravity|opencode|all)" >&2
     exit 1 ;;
 esac
 
@@ -117,6 +119,7 @@ default_target_path_for() {
       gemini) echo "$PWD" ;;
       cursor) echo "$PWD/.cursor" ;;
       antigravity) echo "$PWD" ;;
+      opencode) echo "$PWD/.opencode" ;;
       *)      echo "$PWD" ;;
     esac
     return
@@ -127,6 +130,7 @@ default_target_path_for() {
     gemini) echo "$HOME/.gemini" ;;
     cursor) echo "$HOME/.cursor" ;;
     antigravity) echo "$HOME/.gemini" ;;
+    opencode) echo "$HOME/.config/opencode" ;;
     *)      echo "$HOME/.$1" ;;
   esac
 }
@@ -148,6 +152,7 @@ resolve_target_for() {
     gemini) override="${ROLEPOD_GEMINI_TARGET:-}" ;;
     cursor) override="${ROLEPOD_CURSOR_TARGET:-}" ;;
     antigravity) override="${ROLEPOD_ANTIGRAVITY_TARGET:-}" ;;
+    opencode) override="${ROLEPOD_OPENCODE_TARGET:-}" ;;
     *)      override="" ;;
   esac
   if [ -n "$override" ]; then
@@ -499,18 +504,20 @@ if [ "$UNINSTALL" -eq 1 ]; then
   echo ""
 
   # Discover what we'd remove so the user can decide.
-  uninstall_claude=0; uninstall_codex=0; uninstall_gemini=0; uninstall_cursor=0; uninstall_antigravity=0
+  uninstall_claude=0; uninstall_codex=0; uninstall_gemini=0; uninstall_cursor=0; uninstall_antigravity=0; uninstall_opencode=0
   case "$CLI_TARGET" in claude|all) uninstall_claude=1 ;; esac
   case "$CLI_TARGET" in codex|all)  uninstall_codex=1 ;; esac
   case "$CLI_TARGET" in gemini|all) uninstall_gemini=1 ;; esac
   case "$CLI_TARGET" in cursor|all) uninstall_cursor=1 ;; esac
   case "$CLI_TARGET" in antigravity|all) uninstall_antigravity=1 ;; esac
+  case "$CLI_TARGET" in opencode|all) uninstall_opencode=1 ;; esac
 
   C_TARGET="$(resolve_target_for claude)"
   X_TARGET="$(resolve_target_for codex)"
   G_TARGET="$(resolve_target_for gemini)"
   R_TARGET="$(resolve_target_for cursor)"
   A_TARGET="$(resolve_target_for antigravity)"
+  O_TARGET="$(resolve_target_for opencode)"
 
   echo "About to remove rolepod from:"
   [ "$uninstall_claude" -eq 1 ] && echo "  Claude → $C_TARGET (agents, skills, rules, hooks, managed CLAUDE.md block)"
@@ -518,6 +525,7 @@ if [ "$UNINSTALL" -eq 1 ]; then
   [ "$uninstall_gemini" -eq 1 ] && echo "  Gemini → $G_TARGET/extensions/rolepod, managed GEMINI.md block"
   [ "$uninstall_cursor" -eq 1 ] && echo "  Cursor → $R_TARGET/plugins/local/rolepod"
   [ "$uninstall_antigravity" -eq 1 ] && echo "  Antigravity → agy plugin 'rolepod' + managed AGENTS.md block in $A_TARGET/antigravity-cli/"
+  [ "$uninstall_opencode" -eq 1 ] && echo "  opencode → $O_TARGET (skills, agents, plugins/rolepod.js, managed AGENTS.md block)"
   echo ""
 
   if [ "$ASSUME_YES" -ne 1 ] && [ "$DRY_RUN" -ne 1 ]; then
@@ -837,6 +845,28 @@ PY
     fi
   fi
 
+  if [ "$uninstall_opencode" -eq 1 ]; then
+    step "Removing opencode rolepod files in $O_TARGET"
+    # Component removal is name-scoped to what rolepod ships — user-authored
+    # skills/agents in the same dirs are untouched.
+    for n in "${SKILL_NAMES[@]}"; do do_or_dry "rm -rf $O_TARGET/skills/$n" rm -rf "$O_TARGET/skills/$n"; done
+    for n in "${AGENT_NAMES[@]}"; do do_or_dry "rm -f $O_TARGET/agents/$n" rm -f "$O_TARGET/agents/$n"; done
+    do_or_dry "rm -f $O_TARGET/plugins/rolepod.js" rm -f "$O_TARGET/plugins/rolepod.js"
+    do_or_dry "rm -f $O_TARGET/rolepod-version.json" rm -f "$O_TARGET/rolepod-version.json"
+    # Managed block: project scope wrote it at the repo root, global at target.
+    if [ "$SCOPE" = "project" ]; then
+      step "Stripping rolepod block from $PWD/AGENTS.md"
+      remove_managed_block "$PWD/AGENTS.md"
+    else
+      step "Stripping rolepod block from $O_TARGET/AGENTS.md"
+      remove_managed_block "$O_TARGET/AGENTS.md"
+    fi
+    if [ "$DRY_RUN" -eq 0 ]; then
+      rmdir "$O_TARGET/skills" "$O_TARGET/agents" "$O_TARGET/plugins" 2>/dev/null || true
+    fi
+    ok "opencode rolepod removed"
+  fi
+
   echo ""
   echo "${BOLD}Uninstall complete.${NC}"
   exit 0
@@ -869,6 +899,9 @@ cursor_selected() {
 }
 antigravity_selected() {
   case "$CLI_TARGET" in antigravity|all) return 0 ;; *) return 1 ;; esac
+}
+opencode_selected() {
+  case "$CLI_TARGET" in opencode|all) return 0 ;; *) return 1 ;; esac
 }
 
 if claude_selected; then
@@ -1619,6 +1652,67 @@ if antigravity_selected; then
   fi
 fi
 
+# ─── install_opencode — opencode CLI path (~/.config/opencode/) ─────────
+# opencode discovers everything from plain files — no marketplace, no plugin
+# registry CLI. Skills (native SKILL.md support) → skills/, agents → agents/
+# (the FILENAME is the agent id), plugin shim → plugins/rolepod.js, always-on
+# core → AGENTS.md managed block. Both scopes get the full component set;
+# only the AGENTS.md location differs (project rules live at the repo root,
+# not inside .opencode/). Verified against opencode.ai/docs 2026-07-28.
+if opencode_selected; then
+  OC_TARGET="$(resolve_target_for opencode)"
+  RENDERED_OC_DIR="$REPO_DIR/build/rendered/opencode"
+  echo ""
+  echo "${BOLD}─── Installing for opencode CLI ───${NC}"
+  echo "  target:           $OC_TARGET"
+
+  [ -f "$RENDERED_OC_DIR/AGENTS.md" ]         || fail "expected $RENDERED_OC_DIR/AGENTS.md after render"
+  [ -d "$RENDERED_OC_DIR/skills" ]            || fail "expected $RENDERED_OC_DIR/skills after render"
+  [ -f "$RENDERED_OC_DIR/plugin/rolepod.js" ] || fail "expected $RENDERED_OC_DIR/plugin/rolepod.js after render"
+
+  if [ "$SCOPE" = "project" ]; then
+    OC_AGENTS_MD="$PWD/AGENTS.md"
+  else
+    OC_AGENTS_MD="$OC_TARGET/AGENTS.md"
+  fi
+
+  step "Copying skills → $OC_TARGET/skills/"
+  do_or_dry "sync rolepod skills into $OC_TARGET/skills/" bash -c "
+    mkdir -p '$OC_TARGET/skills'
+    for d in '$RENDERED_OC_DIR/skills'/*/; do
+      n=\$(basename \"\$d\")
+      rm -rf \"$OC_TARGET/skills/\$n\"
+      cp -R \"\$d\" \"$OC_TARGET/skills/\$n\"
+    done"
+
+  step "Copying agents → $OC_TARGET/agents/"
+  do_or_dry "copy 16 agents into $OC_TARGET/agents/" bash -c "
+    mkdir -p '$OC_TARGET/agents' && cp '$RENDERED_OC_DIR/agents/'*.md '$OC_TARGET/agents/'"
+
+  step "Copying plugin shim → $OC_TARGET/plugins/rolepod.js"
+  do_or_dry "copy rolepod.js into $OC_TARGET/plugins/" bash -c "
+    mkdir -p '$OC_TARGET/plugins' && cp '$RENDERED_OC_DIR/plugin/rolepod.js' '$OC_TARGET/plugins/rolepod.js'"
+
+  step "Writing version stamp → $OC_TARGET/rolepod-version.json"
+  do_or_dry "copy opencode.json → $OC_TARGET/rolepod-version.json" \
+    cp "$RENDERED_OC_DIR/opencode.json" "$OC_TARGET/rolepod-version.json"
+
+  step "Updating AGENTS.md (managed block) → $OC_AGENTS_MD"
+  update_managed_block "$OC_AGENTS_MD" "$RENDERED_OC_DIR/AGENTS.md"
+
+  if [ "$DRY_RUN" -eq 0 ]; then
+    step "Verifying opencode install"
+    [ -f "$OC_TARGET/skills/using-rolepod/SKILL.md" ] || fail "opencode verification failed — skills missing"
+    oc_agents=$(ls "$OC_TARGET/agents/"*.md 2>/dev/null | wc -l | tr -d ' ')
+    [ "$oc_agents" -ge 16 ] || fail "opencode verification failed — expected ≥16 agents, found $oc_agents"
+    [ -f "$OC_TARGET/plugins/rolepod.js" ] || fail "opencode verification failed — plugins/rolepod.js missing"
+    [ -e "$OC_AGENTS_MD" ] || fail "opencode verification failed — $OC_AGENTS_MD missing"
+    ok "rolepod → opencode (skills + agents + plugin + AGENTS.md block)"
+  else
+    skip "opencode verification skipped (dry-run)"
+  fi
+fi
+
 # Ensure TARGET is set for the rest of the script. Fallback only when
 # claude wasn't selected at all.
 if [ -z "${TARGET:-}" ]; then
@@ -1667,7 +1761,8 @@ if [ "$SCOPE" = "project" ]; then
     gemini) echo "${BOLD}Final step${NC}: Gemini auto-loads $PWD/GEMINI.md when you run gemini in this project." ;;
     cursor) echo "${BOLD}Final step${NC}: restart Cursor in this project to load the rolepod plugin." ;;
     antigravity) echo "${BOLD}Final step${NC}: agy auto-loads $PWD/AGENTS.md when you run agy in this project." ;;
-    all)    echo "${BOLD}Final step${NC}: restart Claude Code + Cursor in this project; Codex/Gemini/Antigravity auto-load $PWD/AGENTS.md and $PWD/GEMINI.md." ;;
+    opencode) echo "${BOLD}Final step${NC}: opencode auto-loads $PWD/AGENTS.md + $PWD/.opencode/ when you run opencode in this project." ;;
+    all)    echo "${BOLD}Final step${NC}: restart Claude Code + Cursor in this project; Codex/Gemini/Antigravity/opencode auto-load $PWD/AGENTS.md and $PWD/GEMINI.md." ;;
   esac
 else
   case "$CLI_TARGET" in
@@ -1678,7 +1773,8 @@ else
     cursor) echo "${BOLD}Final step${NC}: restart Cursor (or reload window) so the plugin + rules register."
             echo "  Verify under Cursor → Settings → Features → Rules / Plugins." ;;
     antigravity) echo "${BOLD}Final step${NC}: launch agy to load the rolepod plugin + AGENTS.md (verify: ${BOLD}agy plugin list${NC})." ;;
-    all)    echo "${BOLD}Final step${NC}: restart Claude Code, Codex CLI, Gemini CLI, Cursor, and Antigravity (agy)."
+    opencode) echo "${BOLD}Final step${NC}: restart opencode to load skills, agents, the rolepod.js plugin, and AGENTS.md." ;;
+    all)    echo "${BOLD}Final step${NC}: restart Claude Code, Codex CLI, Gemini CLI, Cursor, Antigravity (agy), and opencode."
             echo "  Codex hooks require opt-in: ${BOLD}codex features enable plugin_hooks${NC}." ;;
   esac
 fi

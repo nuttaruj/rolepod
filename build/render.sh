@@ -7,7 +7,8 @@
 #   ./build/render.sh --target=gemini
 #   ./build/render.sh --target=cursor
 #   ./build/render.sh --target=antigravity       # Antigravity CLI (agy)
-#   ./build/render.sh --target=all               # render all five
+#   ./build/render.sh --target=opencode          # opencode CLI
+#   ./build/render.sh --target=all               # render all six
 #
 # Outputs:
 #   .claude-plugin/marketplace.json                    # committed — repo IS the Claude marketplace
@@ -50,9 +51,9 @@ for arg in "$@"; do
 done
 
 case "$TARGET" in
-  claude|codex|gemini|cursor|antigravity|all) ;;
+  claude|codex|gemini|cursor|antigravity|opencode|all) ;;
   *)
-    echo "Unknown target: $TARGET (expected claude|codex|gemini|cursor|antigravity|all)" >&2
+    echo "Unknown target: $TARGET (expected claude|codex|gemini|cursor|antigravity|opencode|all)" >&2
     exit 1 ;;
 esac
 
@@ -194,6 +195,37 @@ render_skills() {
     [ -f "$skill_dir/SKILL.md" ] && \
       render_template "$skill_dir/SKILL.md" "$skills_dst/$name/SKILL.md"
   done
+}
+
+# ─── Strip skill frontmatter to name + description ──────────────────────────
+# Shared by the cursor + opencode targets: both CLIs document only those two
+# SKILL.md fields, so rolepod's extra keys (tier / phase / when_to_use /
+# disable-model-invocation) are stripped rather than gambling on tolerance.
+
+strip_skill_frontmatter() {
+  python3 - "$1" <<'PY'
+import re
+import sys
+from pathlib import Path
+
+target_dir = Path(sys.argv[1])
+keep = {"name", "description"}
+for skill in target_dir.glob("*/SKILL.md"):
+    text = skill.read_text()
+    if not text.startswith("---\n"):
+        continue
+    end = text.find("\n---\n", 4)
+    if end == -1:
+        continue
+    fm = text[4:end]
+    body = text[end + 5:]
+    kept_lines = []
+    for line in fm.split("\n"):
+        m = re.match(r"^([A-Za-z][A-Za-z0-9_-]*):\s", line)
+        if m and m.group(1) in keep:
+            kept_lines.append(line)
+    skill.write_text("---\n" + "\n".join(kept_lines) + "\n---\n" + body)
+PY
 }
 
 # ─── Render Claude target ───────────────────────────────────────────────────
@@ -446,29 +478,7 @@ render_cursor() {
   # disable-model-invocation guard on Cursor — its description is phrased
   # ("explicit user invocation only") to keep auto-trigger rare even so.
   render_skills "$plugin_dst/skills"
-  python3 - "$plugin_dst/skills" <<'PY'
-import re
-import sys
-from pathlib import Path
-
-target_dir = Path(sys.argv[1])
-keep = {"name", "description"}
-for skill in target_dir.glob("*/SKILL.md"):
-    text = skill.read_text()
-    if not text.startswith("---\n"):
-        continue
-    end = text.find("\n---\n", 4)
-    if end == -1:
-        continue
-    fm = text[4:end]
-    body = text[end + 5:]
-    kept_lines = []
-    for line in fm.split("\n"):
-        m = re.match(r"^([A-Za-z][A-Za-z0-9_-]*):\s", line)
-        if m and m.group(1) in keep:
-            kept_lines.append(line)
-    skill.write_text("---\n" + "\n".join(kept_lines) + "\n---\n" + body)
-PY
+  strip_skill_frontmatter "$plugin_dst/skills"
 
   # Agents — minimal name+description frontmatter (see merge-agent.py cursor target).
   render_agents "cursor" "$plugin_dst/agents"
@@ -551,6 +561,55 @@ render_antigravity() {
   chmod +x "$plugin_dst/hooks/"*.sh 2>/dev/null || true
 }
 
+# ─── Render opencode target ─────────────────────────────────────────────────
+# opencode ships as plain files copied to ~/.config/opencode/ (no marketplace,
+# like gemini). opencode supports SKILL.md natively; agents/<name>.md where
+# the FILENAME is the agent id; AGENTS.md is the global rules file (written
+# as a managed block by install.sh); plugins/rolepod.js is the best-effort
+# session-hygiene shim (session locks + post-compact re-anchor).
+#
+# Gitignored (build/rendered/opencode/ — read by install.sh only):
+#   AGENTS.md                  (always-on core → managed block)
+#   agents/<name>.md           (16 agents, description + mode: subagent)
+#   skills/<name>/...          (frontmatter stripped to name + description)
+#   plugin/rolepod.js          (plugin shim)
+#   opencode.json              (version stamp for install verification)
+
+render_opencode() {
+  local template="$REPO_DIR/adapters/opencode/AGENTS.md.tmpl"
+  local out_dir="$REPO_DIR/build/rendered/opencode"
+  local adapter_dir="$REPO_DIR/adapters/opencode"
+
+  [ -f "$template" ] || { echo "render: missing $template" >&2; exit 1; }
+
+  rm -rf "$out_dir"
+  mkdir -p "$out_dir"
+  render_template "$template" "$out_dir/AGENTS.md"
+
+  # Version stamp (install verification + bump-script parity).
+  if [ -f "$adapter_dir/opencode.json" ]; then
+    cp "$adapter_dir/opencode.json" "$out_dir/"
+  else
+    echo "render: missing $adapter_dir/opencode.json" >&2; exit 1
+  fi
+
+  # Skills — same source as Claude; frontmatter stripped to the two fields
+  # opencode documents (shared helper with the cursor target).
+  render_skills "$out_dir/skills"
+  strip_skill_frontmatter "$out_dir/skills"
+
+  # Agents — description + mode: subagent (filename = agent id).
+  render_agents "opencode" "$out_dir/agents"
+
+  # Plugin shim.
+  if [ -f "$adapter_dir/plugin/rolepod.js" ]; then
+    mkdir -p "$out_dir/plugin"
+    cp "$adapter_dir/plugin/rolepod.js" "$out_dir/plugin/rolepod.js"
+  else
+    echo "render: missing $adapter_dir/plugin/rolepod.js" >&2; exit 1
+  fi
+}
+
 generate_skill_index_lean
 generate_agent_roster_lean
 
@@ -560,5 +619,6 @@ case "$TARGET" in
   gemini)      render_gemini ;;
   cursor)      render_cursor ;;
   antigravity) render_antigravity ;;
-  all)         render_claude; render_codex; render_gemini; render_cursor; render_antigravity ;;
+  opencode)    render_opencode ;;
+  all)         render_claude; render_codex; render_gemini; render_cursor; render_antigravity; render_opencode ;;
 esac

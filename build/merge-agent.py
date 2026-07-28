@@ -30,6 +30,7 @@ CLAUDE_KEY_ORDER = ["name", "description", "model", "effort", "memory",
                     "maxTurns", "permissionMode", "color", "skills", "tools"]
 GEMINI_KEY_ORDER = ["name", "description", "model"]
 CURSOR_KEY_ORDER = ["name", "description"]
+OPENCODE_KEY_ORDER = ["description", "mode"]
 # Codex agents are TOML, not frontmatter — see emit_codex_toml().
 
 # ── Tier → model: THE single source of model identity ────────────────────────
@@ -233,12 +234,22 @@ def merge(target: str, name: str) -> str:
         # No overlay needed: name + description already live in core/agents.
         return "---\n" + emit(CURSOR_KEY_ORDER, core_fields) + "---\n" + body
 
+    if target == "opencode":
+        # opencode agents ship agents/<name>.md where the FILENAME is the
+        # agent id — no `name:` field. Frontmatter: description +
+        # mode: subagent (auto-invoked by description or @-mention). Model is
+        # deliberately unpinned: opencode is multi-provider and the tier hint
+        # stays doctrine (docs/model-tier-policy). No overlay dir needed.
+        merged = {"description": core_fields["description"],
+                  "mode": ["mode: subagent"]}
+        return "---\n" + emit(OPENCODE_KEY_ORDER, merged) + "---\n" + body
+
     raise ValueError(f"unknown target: {target}")
 
 
 def main() -> int:
     p = argparse.ArgumentParser()
-    p.add_argument("--target", required=True, choices=["claude", "codex", "gemini", "cursor"])
+    p.add_argument("--target", required=True, choices=["claude", "codex", "gemini", "cursor", "opencode"])
     p.add_argument("--name", required=True)
     args = p.parse_args()
     sys.stdout.write(merge(args.target, args.name))
