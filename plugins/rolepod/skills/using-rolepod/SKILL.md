@@ -97,7 +97,7 @@ If no row matches: ask the user what phase the task is in. Don't pattern-match y
 
 - **cheap** = haiku-class. Docs, PM, business analysis, customer-facing copy.
 - **balanced** = sonnet-class (default). Normal implementation.
-- **strong** = opus-class. Architecture, billing, security, migration code, and final-pass / adversarial code review (a review context, not a separate tier).
+- **strong** = opus-class and up — the strongest tier the CLI exposes (fable-class where available; the class is "strongest available", not a fixed model). Architecture, billing, security, migration code, and final-pass / adversarial code review (a review context, not a separate tier).
 
 The Lead picks the tier at dispatch time from the row's hint (agent files carry no model pin — the hint column is the policy). Escalate a tier only when the task proves harder than routed (BLOCKED redispatch) or the user explicitly asks; never silently downgrade a **strong** row.
 
