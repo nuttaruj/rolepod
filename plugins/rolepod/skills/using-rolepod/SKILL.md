@@ -99,7 +99,7 @@ If no row matches: ask the user what phase the task is in. Don't pattern-match y
 - **balanced** = sonnet-class (default). Normal implementation.
 - **strong** = opus-class and up — the strongest tier the CLI exposes (fable-class where available; the class is "strongest available", not a fixed model). Architecture, billing, security, migration code, and final-pass / adversarial code review (a review context, not a separate tier).
 
-The Lead picks the tier at dispatch time from the row's hint (agent files carry no model pin — the hint column is the policy). Escalate a tier only when the task proves harder than routed (BLOCKED redispatch) or the user explicitly asks; never silently downgrade a **strong** row.
+The Lead picks the tier at dispatch time from the row's hint (agent files carry no model pin — the hint column is the policy). Escalate a tier only when the task proves harder than routed (BLOCKED redispatch) or the user explicitly asks; never silently downgrade a **strong** row. The same policy governs scripted multi-agent orchestration (workflow / ultracode): route each stage's model by tier — sweep/scan = cheap, build = balanced, verify/judge = strong — never inherit the Lead's model across the whole fleet without a stated reason; prefer rolepod agentTypes so the tier rides along.
 
 ## Scope-then-spawn — repo-wide audit / sweep
 
