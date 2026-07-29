@@ -101,7 +101,7 @@ If stuck after multiple attempts:
   yields to an exhausted ladder, never the other way around.
 - Resume with the user's direction, not another blind attempt
 
-Three failed attempts is the trigger. Past that, the only permitted attempt is the single advisor-informed one from debug-issue §9 — never another blind try.
+Three failed attempts is the trigger — or TWO with the same signature (same error, no new information between them): identical failure twice means the mental model is wrong; do not spend the third. Progressing failures (each fail exposes a new layer) get the full three. Past that, the only permitted attempt is the single advisor-informed one from debug-issue §9 — never another blind try.
 
 ### 7. Post-compact re-anchor
 

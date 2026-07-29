@@ -115,6 +115,8 @@ Smallest change that turns the failing test green without breaking the rest of t
 
 Run the full module suite (or full suite for high-risk surfaces). Confirm no new red.
 
+**The fix fails → the failure is new evidence, not a prompt to adjust the patch.** Feed it back into §5's trace before any second attempt — the root you identified may be wrong or partial; a re-fix without a re-trace is a blind retry (banned). Two failures with the SAME signature (same error, same failing assertion, no new information between them) → skip straight to §9: identical failure twice means the mental model of the bug is wrong, and a third guess from the same mind is waste.
+
 ### 9. Third failed attempt — one cross-model opinion, then the user
 
 Three failed fixes = proven hard-to-resolve. Get ONE outside opinion automatically (no opt-in needed) before escalating. Do these steps in order:
