@@ -83,7 +83,7 @@ While editing, hold these reflexes:
 - **One source of truth** — before adding a helper, constant, type, or validation, search for an existing one (`rg`) and extend it instead of duplicating.
 - **New dependency** — justify it: not already covered by stdlib or an existing dep, maintained, reasonable size, compatible license. Unsure → ask.
 - **Tests** — never mock the database in an integration test; prefer a real dependency over a fake / stub / mock.
-- **Code intel** — if code-intel index available, use it for blast radius before wide edits; otherwise `rg` + Read.
+- **Blast radius = caller count, not diff size** — changing the behavior, signature, or return shape of anything that already has callers → walk the callers FIRST (code-intel callers / impact when available, else `rg`) and decide per caller: absorb, adapt, or split. A 1-line change to a shared helper is a wide edit; an unvisited caller of a changed contract is the top write-time bug source.
 
 ### 4. Bounded delegation
 
