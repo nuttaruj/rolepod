@@ -20,7 +20,7 @@ Before plan / edit / recommendation / answer → identify task type + required p
 
 User explicit instruction wins. If user says "skip spec", "answer only", "just write the code" → obey, state which gate was skipped, proceed.
 
-Default: route through the spine. Skipping is allowed only when (a) the task is trivial-answer-only, (b) user explicitly authorizes the skip, (c) the request is a question with no action attached, OR (d) the Skip rule below passes (diff ≤5 lines + 1 file + 0 logic-bearing lines + not high-risk + expected ≤3 tool calls).
+Default: route through the spine. Skipping is allowed only when (a) the task is trivial-answer-only, (b) user explicitly authorizes the skip, (c) the request is a question with no action attached, OR (d) the Rigor ladder below assigns R1/R2 — reduced ceremony, never reduced verify.
 </EXTREMELY-IMPORTANT>
 
 ## Router modes
@@ -108,8 +108,8 @@ Router fires the **first** skill per phase. Phase exits only when its **exit evi
 
 | Phase | Required first skill | Exit evidence | Next allowed |
 |---|---|---|---|
-| **Define** | `write-spec` | written spec OR approved one-line design (≤5-line task) OR explicit "skip spec" | Plan |
-| **Plan** | `write-plan` (+ agent routing + cohesion contract if multi-agent) | ordered task list with done-condition + verify command per task; dependencies marked | Build |
+| **Define** | `write-spec` | written spec OR approved one-line design (≤5-line task) OR R2 inline checklist OR explicit "skip spec" | Plan |
+| **Plan** | `write-plan` (+ agent routing + cohesion contract if multi-agent) | ordered task list with done-condition + verify command per task; dependencies marked (R2: the 3-5 line inline checklist in chat IS the plan) | Build |
 | **Build** | `implement-plan` (+ `debug-issue` for bug intent) | changed files + tests added (or explicit no-test justification) + red→green evidence | Verify |
 | **Verify** | `check-work` | fresh command output / screenshot / curl / log evidence; OR explicit "verify impossible because X" risk note | Review (high-risk / multi-file) OR Ship (low-risk, plan exhausted) OR Build (plan has unchecked tasks) |
 | **Review** | `review-code` | findings fixed OR rejected with line-anchored reason; no unresolved blocker | Ship (plan exhausted) OR Build (plan has unchecked tasks) |
@@ -117,15 +117,19 @@ Router fires the **first** skill per phase. Phase exits only when its **exit evi
 
 **Router decides the first move only.** Each downstream skill owns its own gates; using-rolepod doesn't re-explain them.
 
-## Skip rule
+## Rigor ladder — R0-R4
 
-Skip a phase WHEN ANY of these holds (state explicitly in response):
+Match ceremony to the task; the ladder replaces a binary skip/full choice. Uncertain between two tiers → take the higher. A task that grows mid-flight (second file, hidden logic, risk path) → re-tier UP immediately, never down.
 
-- task is pure question / explanation / lookup (no file change)
-- OR diff ≤5 lines + 1 file + 0 logic-bearing lines + not on high-risk path + expected ≤3 tool calls (a test loop or exploration ahead → dispatch instead, even for 1 file)
-- OR user explicit: "skip spec" / "just commit" / "answer only" / "no plan" / "ship as-is"
+| Tier | Signature | Path |
+|---|---|---|
+| **R0** | pure question / explanation / lookup — no file change | answer directly; no spine, no routing block |
+| **R1** | diff ≤5 lines + 1 file + 0 logic-bearing lines + not high-risk + expected ≤3 tool calls (a test loop or exploration ahead → R2+, even for 1 file) | direct edit + lightweight verify; no block |
+| **R2** | 1 file, clear scope, logic-bearing, ≈≤30 changed lines, not high-risk | **inline plan** — 3-5 line checklist + verify command in chat, no spec/plan artifact → build → verify; one-line routing note |
+| **R3** | multi-file OR vague scope OR needs sequencing / delegation | full spine, full routing block |
+| **R4** | high-risk path (see Stop conditions) | full spine + adversarial review floor — NEVER downgrades, whatever the diff size |
 
-**Verify never fully skips** — `verify-first` is always-on. Trivial fixes drop the heavyweight verify (full suite, browser drive), not the lightweight one (re-read file, confirm edit landed).
+User explicit ("skip spec" / "just commit" / "answer only" / "no plan" / "ship as-is") overrides the tier. **Verify never fully skips** — `verify-first` is always-on: R1/R2 drop the heavyweight verify (full suite, browser drive), not the lightweight one (re-read file, run the checklist's verify command).
 
 ## Stop conditions
 
@@ -155,31 +159,13 @@ Skipping: <phases + why>, or "none"
 Next step: <concrete action>
 ```
 
-Use the full Routing / Reason / Skipping / Next-step block for non-trivial work, explicit `/rolepod-full`, and any case where the routing decision could surprise the user. For trivial answer-only tasks, skip the block — answer naturally and concisely.
+Routing output by tier — the block's size follows the rigor ladder:
 
-Example — vague feature:
-```
-Routing: Define → write-spec
-Reason: "build a React todo list" = vague target, no spec.
-Skipping: none.
-Next step: 4-question interview to pin acceptance criteria.
-```
+- **R0 / R1** — no block; answer or edit naturally.
+- **R2** — one line: `→ <skill> · R2 · <reason>`, then the inline checklist.
+- **R3 / R4**, `/rolepod-full`, or any routing that could surprise the user — full block.
 
-Example — typo fix:
-```
-Routing: Build → direct edit (gate-light)
-Reason: typo, ≤5 lines, 1 file, 0 logic, not high-risk.
-Skipping: Define + Plan + heavyweight Verify. Lightweight Verify runs.
-Next step: edit + re-read + commit.
-```
-
-Example — done claim:
-```
-Routing: Ship → finish ritual
-Reason: user said "is this done?"
-Skipping: none — runs check-work → review-code → finish-work.
-Next step: run tests, paste pass output, present 4-option menu.
-```
+Worked transcripts (vague feature, typo fix, done-claim, and five more) live in `examples/routing-transcripts.md` — read when a request does not obviously match a row.
 
 ## Optional plugin skills (backend awareness)
 
@@ -211,7 +197,7 @@ Non-blocking — read when a request does not obviously match a Quick-router row
 
 | Excuse | Reality |
 |---|---|
-| "Simple task, skip the spine" | Trivial-answer-only skips are explicit. Coding 5+ lines = run the spine. |
+| "Simple task, skip the spine" | Tier it (R0-R4). R1 skips ceremony by rule, R2 still gets an inline plan + verify; calling a task "simple" without tiering is how scope hides. |
 | "I already know what to build" | Even right answers without a spec drift mid-implementation. Write the 5-line spec; 30 seconds. |
 | "User just wants a fix" | They want a *correct* fix. `debug-issue` finds the root; symptom patches recur. |
 | "Tests are obvious, I'll add later" | Later never comes. TDD adds the test now or admits in writing it won't have one. |

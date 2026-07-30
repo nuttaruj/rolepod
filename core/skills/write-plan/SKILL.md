@@ -29,6 +29,7 @@ Plan-phase entry skill. Convert an approved spec or a clear small goal into a co
 Skip when:
 - The task is a one-line fix on a single file (just do it)
 - The user asks for a question / explanation only
+- The router tiered the task **R2** (1 file, clear scope, ≈≤30 logic lines) — the plan is a 3-5 line inline checklist in chat, each step with its verify command; no plan artifact. Scope grows past one file mid-flight → stop, write the real plan here.
 
 ## Boundary
 

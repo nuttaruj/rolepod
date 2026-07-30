@@ -6,18 +6,18 @@ Naming decision: rigor tiers use **R0-R4** — "T" prefix already taken by T1-T6
 
 ## Phase A — v2.10.4 (P0 hygiene)
 
-- [ ] A1. Quote `description` in `core/agents/product-manager.md` (YAML parse error, line 3 — breaks agent load on Claude validate + Gemini).
+- [x] A1. Quote `description` in `core/agents/product-manager.md` (YAML parse error, line 3 — breaks agent load on Claude validate + Gemini).
       Command: `python3 -c "import yaml,glob; [yaml.safe_load(open(f).read().split('---')[1]) for f in glob.glob('core/agents/*.md')]" && echo OK`
-- [ ] A2. CI Thai scan binary-safe: strict UTF-8 decode, skip `UnicodeDecodeError` files (`.github/workflows/installer.yml:70-92`).
+- [x] A2. CI Thai scan binary-safe: strict UTF-8 decode, skip `UnicodeDecodeError` files (`.github/workflows/installer.yml:70-92`).
       Command: run scan block locally → exit 0.
-- [ ] A3. Untrack `.rolepod-mcp/` artifacts (6 files, incl. 3 PNGs that break the scan) + add to `.gitignore`.
+- [x] A3. Untrack `.rolepod-mcp/` artifacts (6 files, incl. 3 PNGs that break the scan) + add to `.gitignore`.
       Command: `git ls-files .rolepod-mcp/ | wc -l` → 0.
-- [ ] A4. README: five → six CLIs, add opencode install section.
+- [x] A4. README: five → six CLIs, add opencode install section.
       Command: `grep -c opencode README.md` ≥ 3.
-- [ ] A5. docs/cli-support.md: opencode column (capability matrix + install destinations + runtime verification); codex `plugin_hooks` fix — flag now `removed`, hooks fire natively (verified `codex features list` 2026-07-30, Codex 0.144.1); refresh last-verified note.
+- [x] A5. docs/cli-support.md: opencode column (capability matrix + install destinations + runtime verification); codex `plugin_hooks` fix — flag now `removed`, hooks fire natively (verified `codex features list` 2026-07-30, Codex 0.144.1); refresh last-verified note.
       Command: `grep -c opencode docs/cli-support.md` ≥ 4; no instruction to enable `plugin_hooks` remains.
-- [ ] A6. GitHub About: 18 → 16 agents, Claude-only → six CLIs (`gh repo edit --description`).
-- [ ] A7. Bump 2.10.4 (8 manifests) → render → test → commit.
+- [x] A6. GitHub About: 18 → 16 agents, Claude-only → six CLIs (`gh repo edit --description`).
+- [x] A7. Bump 2.10.4 (8 manifests) → render → test → commit.
 
 ## Phase B — v2.11.0 (P1 — small/medium task token efficiency; the reports' central complaint)
 

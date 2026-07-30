@@ -59,7 +59,7 @@ Return / hand off:
 
 Read the touched files end-to-end (or the relevant region with line numbers). Don't pattern-match — verify the symbols and behavior exist where the plan expects.
 
-**The plan is the loop contract.** Verify each task by running its **Command** verbatim — never a re-derived guess. When it passes, flip EVERY `- [ ]` under that task to `- [x]` in the plan artifact (tasks carry one checkbox per step; all flip together — that is how progress survives compaction). On a failing Command, follow the task's **On fail**, or the plan's **Failure policy** when the task has none.
+**The plan is the loop contract.** An R2 inline checklist (no artifact) is the same contract — run each step's command, and scope growing past one file → stop, write the real plan. Verify each task by running its **Command** verbatim — never a re-derived guess. When it passes, flip EVERY `- [ ]` under that task to `- [x]` in the plan artifact (tasks carry one checkbox per step; all flip together — that is how progress survives compaction). On a failing Command, follow the task's **On fail**, or the plan's **Failure policy** when the task has none.
 
 ### 2. TDD-light for risky paths
 

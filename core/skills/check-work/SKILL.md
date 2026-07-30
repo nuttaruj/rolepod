@@ -14,7 +14,7 @@ Verify-phase entry skill. Prove the change behaves as intended with concrete evi
 
 <EXTREMELY-IMPORTANT>
 1. NEVER claim done without evidence. "Looks right" is not evidence.
-2. Verification must be FRESH in this turn. If you have not run the command in this message, you cannot claim it passes. Yesterday's green run does not count. "Should still work" does not count.
+2. Verification must be FRESH — run AFTER the last change to the tree. No run since the last edit → you cannot claim it passes. Yesterday's green run does not count; "should still work" does not count. **Evidence cache:** tree unchanged since a pass recorded THIS session (same `git status` + `git diff` — check, don't assume) → cite that run's command + output and state "tree unchanged since" instead of re-running the suite; ANY new edit invalidates the cache.
 3. UI changes require a browser observation (screenshot, MCP devtools, Playwright). A passing typecheck does not prove the UI works.
 4. If you cannot verify, STATE explicitly: what you cannot verify, why, and the risk if you are wrong.
 5. NEVER ask the user to take a screenshot for you when you have browser automation available.
@@ -172,7 +172,7 @@ Load only when the task needs it:
 - UI change with no browser observation → not verified
 - "It compiled" is offered as the only evidence for runtime behavior → not verified
 - Subagent claims COMPLETED but evidence is absent → reject
-- About to say "should pass" / "looks right" / "Great!" / "Done!" without running the command fresh in this turn → stop; Iron Rule 2
+- About to say "should pass" / "looks right" / "Great!" / "Done!" without a run that post-dates the last edit (or a verified unchanged-tree cache cite) → stop; Iron Rule 2
 - Acceptance criterion has no named evidence in the evidence block → not verified, even if other tests pass
 
 ## Full Rolepod enhancement
