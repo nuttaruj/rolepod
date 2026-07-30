@@ -59,6 +59,18 @@ export const RolepodPlugin = async ({ directory, client }) => {
   const registerLock = (id) => {
     const worktree = worktreeRoot(directory || process.cwd())
     if (!worktree) return // non-git dir = no stomp risk (same as bash hook)
+
+    // Combined-mode marker for child plugins (uiproof/wplab/dblab) — parent
+    // active in this worktree. opencode has no session-end hook; the marker
+    // persists, and stale is benign (children only read its presence).
+    try {
+      const rp = path.join(worktree, ".rolepod")
+      fs.mkdirSync(rp, { recursive: true })
+      fs.writeFileSync(path.join(rp, "parent-active"), "v1\n")
+    } catch {
+      /* fail open */
+    }
+
     const lockDir = lockDirFor(worktree)
     fs.mkdirSync(lockDir, { recursive: true })
 

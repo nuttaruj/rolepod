@@ -256,16 +256,18 @@ When in doubt, prefix.
 
 ## Per-CLI support
 
-The marker mechanism is written by the parent's SessionStart / Stop hooks. In v2.7 the marker is wired through **Claude Code only** (`hooks/session-lifecycle.sh`). The Codex / Gemini / Cursor adapters do not yet wire the marker because their plugin event models differ (no Stop event in Codex; Cursor and Gemini sessionStart hooks are reserved for context injection in v2.7).
+The marker is written at session start on **every CLI** (v2.14.1). Removal differs: only Claude Code has a Stop event to clean the marker up; on the other CLIs the marker persists between sessions. That is safe by design — children only read the marker's *presence* to pick with-rolepod mode, and a stale marker merely routes evidence into `.rolepod/evidence/` (where it still gets aggregated on the next rolepod session).
 
-| CLI | Protocol v1 active |
-|---|---|
-| Claude Code | ✓ marker written via `session-lifecycle.sh` |
-| Codex | ✗ — children fall back to standalone |
-| Gemini | ✗ — children fall back to standalone |
-| Cursor | ✗ — children fall back to standalone |
+| CLI | Protocol v1 active | Written by | Removed |
+|---|---|---|---|
+| Claude Code | ✓ | `session-lifecycle.sh` (SessionStart) | ✓ Stop event |
+| Codex | ✓ | `project-context-loader.sh` (SessionStart) | persists (no Stop event) |
+| Gemini | ✓ | `session-start.sh` | persists |
+| Cursor | ✓ | `project-context-loader.sh` (sessionStart) | persists |
+| Antigravity | ✓ | gemini `session-start.sh` (reused via PreInvocation) | persists |
+| opencode | ✓ | `plugin/rolepod.js` (session.created) | persists |
 
-Cross-CLI marker support will land in a future protocol revision once the adapter session-end APIs allow safe marker removal. Standalone behavior on the other CLIs is unaffected.
+A worktree that stops using rolepod keeps a stale marker until deleted (`rm -rf .rolepod/`); children treat it as with-rolepod mode, which degrades to writing evidence files nothing reads — harmless. Standalone behavior on machines without the parent installed is unaffected.
 
 ## Versioning
 

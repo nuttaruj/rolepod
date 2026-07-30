@@ -86,7 +86,7 @@ printf '%s' "$TOOL" | grep -qE '^(Edit|Write|MultiEdit|NotebookEdit)$' || exit 0
 WORKTREE=$(cd "$CWD" 2>/dev/null && git rev-parse --show-toplevel 2>/dev/null) || exit 0
 [ -z "$WORKTREE" ] && exit 0
 
-PATH_HASH=$(printf '%s' "$WORKTREE" | shasum -a 256 2>/dev/null | awk '{print $1}' | head -c 16)
+PATH_HASH=$(printf '%s' "$WORKTREE" | { shasum -a 256 2>/dev/null || sha256sum 2>/dev/null; } | awk '{print $1}' | head -c 16)
 [ -z "$PATH_HASH" ] && exit 0
 LOCK_DIR="$HOME/.rolepod/session-locks/$PATH_HASH"
 [ -z "$SESSION_ID" ] && SESSION_ID="unknown-$$"
@@ -102,7 +102,7 @@ for lock in "$LOCK_DIR"/*.lock; do
   sid=$(basename "$lock" .lock)
   [ "$sid" = "$SESSION_ID" ] && continue
 
-  mtime=$(stat -f %m "$lock" 2>/dev/null || stat -c %Y "$lock" 2>/dev/null || echo 0)
+  mtime=$(stat -c %Y "$lock" 2>/dev/null || stat -f %m "$lock" 2>/dev/null || echo 0)
   [ $((NOW - mtime)) -lt "$STALE_THRESHOLD" ] || continue   # idle sibling → ignore
 
   sib_files="$LOCK_DIR/$sid.files"

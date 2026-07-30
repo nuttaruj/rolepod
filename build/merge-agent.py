@@ -138,11 +138,27 @@ def resolve_includes(text: str) -> str:
     return "\n".join(out)
 
 
+def _sanitize_scalar(line: str) -> str:
+    """YAML-quote a `key: value` line whose value contains an unquoted `: ` —
+    a plain scalar with colon+space is a parse error on every runtime that
+    reads the frontmatter (Claude validate, Gemini loader). json.dumps emits
+    a valid YAML double-quoted scalar."""
+    m = re.match(r"^(\w+):\s+(.*)$", line)
+    if not m:
+        return line
+    val = m.group(2)
+    if val.startswith(('"', "'")) or ": " not in val:
+        return line
+    return f"{m.group(1)}: {json.dumps(val, ensure_ascii=False)}"
+
+
 def emit(keys_in_order: list[str], fields: dict[str, list[str]]) -> str:
     out: list[str] = []
     for key in keys_in_order:
         if key in fields:
-            out.extend(fields[key])
+            lines = fields[key]
+            out.append(_sanitize_scalar(lines[0]))
+            out.extend(lines[1:])
     return "\n".join(out) + "\n"
 
 

@@ -100,7 +100,7 @@ CURSOR_V=$(python3 -c "import json;print(json.load(open('$HOME/.cursor/plugins/l
 report "cursor"      "${CURSOR_V:-absent}"  "unverified — treat gates as skill-enforced"
 OC_V=$(python3 -c "import json;print(json.load(open('$HOME/.config/opencode/rolepod-version.json'))['version'])" 2>/dev/null)
 report "opencode"    "${OC_V:-absent}"      "doctrine-only (no hook API)"
-AGY_V=$(ls "$HOME/.gemini/antigravity/plugins/rolepod" 2>/dev/null >/dev/null && echo installed)
+AGY_V=$(command -v agy >/dev/null 2>&1 && agy plugin list 2>/dev/null | grep -q '"name": "rolepod"' && echo installed)
 report "antigravity" "${AGY_V:-absent}"     "unverified — treat gates as skill-enforced"
 
 echo ""

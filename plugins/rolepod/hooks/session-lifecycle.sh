@@ -50,7 +50,7 @@ except Exception: print('')" 2>/dev/null || echo "")
 
 # Only act inside a git worktree. Non-git dirs = no stomp risk.
 WORKTREE=$(cd "$CWD" 2>/dev/null && git rev-parse --show-toplevel 2>/dev/null) || exit 0
-PATH_HASH=$(printf '%s' "$WORKTREE" | shasum -a 256 2>/dev/null | awk '{print $1}' | head -c 16)
+PATH_HASH=$(printf '%s' "$WORKTREE" | { shasum -a 256 2>/dev/null || sha256sum 2>/dev/null; } | awk '{print $1}' | head -c 16)
 [ -z "$PATH_HASH" ] && exit 0
 LOCK_DIR="$HOME/.rolepod/session-locks/$PATH_HASH"
 
@@ -86,7 +86,7 @@ for lock in "$LOCK_DIR"/*.lock; do
   lock_basename=$(basename "$lock" .lock)
   [ "$lock_basename" = "$SESSION_ID" ] && continue
 
-  mtime=$(stat -f %m "$lock" 2>/dev/null || stat -c %Y "$lock" 2>/dev/null || echo 0)
+  mtime=$(stat -c %Y "$lock" 2>/dev/null || stat -f %m "$lock" 2>/dev/null || echo 0)
   age=$((NOW - mtime))
   if [ "$age" -lt "$STALE_THRESHOLD" ]; then
     ACTIVE_SIBLINGS=$((ACTIVE_SIBLINGS + 1))

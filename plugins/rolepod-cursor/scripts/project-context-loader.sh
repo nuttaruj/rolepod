@@ -19,6 +19,11 @@ except Exception:
 cd "$CWD" 2>/dev/null || exit 0
 
 REPO=$(git rev-parse --show-toplevel 2>/dev/null) || exit 0
+
+# Combined-mode marker for child plugins — parent active in this worktree.
+# Cursor has no session-end hook wired; the marker persists (stale is benign —
+# children only read its presence).
+{ mkdir -p "$REPO/.rolepod" 2>/dev/null && printf 'v1\n' > "$REPO/.rolepod/parent-active"; } 2>/dev/null || true
 NAME=$(basename "$REPO")
 BRANCH=$(git -C "$REPO" branch --show-current 2>/dev/null || echo "?")
 DIRTY=$(git -C "$REPO" status --porcelain 2>/dev/null | wc -l | tr -d ' ')
@@ -36,13 +41,13 @@ CTX="**$NAME** @ \`$BRANCH\` ($DIRTY uncommitted)\n\n**Recent:**\n\`\`\`\n$COMMI
 # Claude session-lifecycle / worktree-guard hooks). Cursor exposes no Stop
 # event, so cleanup relies on the 30-min stale-prune that runs here on scan.
 if [ "${ROLEPOD_ALLOW_SHARED_WORKTREE:-0}" != "1" ]; then
-  _h=$(printf '%s' "$REPO" | shasum -a 256 2>/dev/null | awk '{print $1}' | head -c 16)
+  _h=$(printf '%s' "$REPO" | { shasum -a 256 2>/dev/null || sha256sum 2>/dev/null; } | awk '{print $1}' | head -c 16)
   _ld="$HOME/.rolepod/session-locks/$_h"; _sid="auto-$PPID"
   mkdir -p "$_ld" 2>/dev/null || true
   _now=$(date +%s); _act=0
   for _lk in "$_ld"/*.lock; do
     [ -f "$_lk" ] || continue; _b=$(basename "$_lk" .lock); [ "$_b" = "$_sid" ] && continue
-    _m=$(stat -f %m "$_lk" 2>/dev/null || stat -c %Y "$_lk" 2>/dev/null || echo 0)
+    _m=$(stat -c %Y "$_lk" 2>/dev/null || stat -f %m "$_lk" 2>/dev/null || echo 0)
     if [ $((_now - _m)) -lt 1800 ]; then _act=$((_act + 1)); else rm -f "$_lk" "$_ld/$_b.files" 2>/dev/null || true; fi
   done
   touch "$_ld/$_sid.lock" 2>/dev/null || true

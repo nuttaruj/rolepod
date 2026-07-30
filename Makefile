@@ -47,6 +47,7 @@ test-static:
 	@python3 -m json.tool adapters/claude/.claude-plugin/plugin.json >/dev/null && echo "  ✓ claude plugin.json"
 	@python3 -m json.tool adapters/claude/.claude-plugin/marketplace.json >/dev/null && echo "  ✓ claude marketplace.json"
 	@python3 -m json.tool adapters/claude/hooks.json >/dev/null && echo "  ✓ claude hooks.json"
+	@! grep -rlE '^[a-z_]+: [^"'"'"'{[].*: ' plugins/rolepod/agents/ plugins/rolepod-cursor/agents/ adapters/*/agent-frontmatter/ | grep . && echo "  ✓ committed agent frontmatters carry no unquoted colon scalars (packaging validation)"
 	@python3 -m json.tool adapters/cursor/.cursor-plugin/plugin.json >/dev/null && echo "  ✓ cursor plugin.json"
 	@python3 -m json.tool adapters/cursor/.cursor-plugin/marketplace.json >/dev/null && echo "  ✓ cursor marketplace.json"
 	@python3 -m json.tool adapters/cursor/hooks/hooks.json >/dev/null && echo "  ✓ cursor hooks.json"
