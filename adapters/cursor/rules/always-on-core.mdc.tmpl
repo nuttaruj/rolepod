@@ -4,3 +4,5 @@ alwaysApply: true
 ---
 
 {{INCLUDE: hooks/always-on-core.md.tmpl}}
+
+**Enforcement tier: unverified** — 3 hooks ship (context loader, gate reminder, deny-capable precommit) but live firing is not yet verified on current Cursor, and there is no subagent-commit block, cohesion check, or worktree guard. Treat every blocking gate as skill-enforced; never report a hook gate as mechanically enforced here.

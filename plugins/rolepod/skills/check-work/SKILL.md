@@ -161,6 +161,8 @@ Execute as Lead with this minimum viable checklist:
 
 The evidence block is the canonical artifact: `templates/evidence-block.md`. It carries the change manifest, per-check evidence, limitations, and the status verdict. Do not restate the block shape here; the template is the single source.
 
+Also append one line to `<git-root>/.rolepod/evidence/phase-log.jsonl` — `{"ts":"<iso8601>","phase":"verify","verdict":"pass|fail","evidence":"<command run>"}` (fail-open: skip silently outside a git repo). The log is the dataset that answers whether the process pays for itself.
+
 ## Examples
 
 Non-blocking — read only when unsure whether your evidence is strong enough:

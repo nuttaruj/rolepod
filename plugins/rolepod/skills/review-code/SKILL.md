@@ -144,6 +144,8 @@ Execute as Lead with this minimum viable checklist:
 
 The review report is the canonical artifact: `templates/review-report.md`. It carries scope, risk surfaces, reviewers, severity-ordered findings, the test verdict, and the recommendation. Do not restate the report shape here; the template is the single source.
 
+Also append one line to `<git-root>/.rolepod/evidence/phase-log.jsonl` — `{"ts":"<iso8601>","phase":"review","verdict":"<APPROVED|APPROVED-WITH-NITS|REJECTED>","blockers":<n>}` (fail-open outside a git repo).
+
 ## Examples
 
 Non-blocking — read only when unsure whether a finding is actionable:

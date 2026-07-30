@@ -41,7 +41,7 @@ if [ "$ERROR" = "1" ]; then
   fi
 else
   MSG=$'rolepod verify-after: every change needs evidence — test output / curl / screenshot / log. '
-  MSG+=$'No evidence = state risk explicitly. Pre-commit gate: S1-S5 simplicity + T1-T6 tests + F1-F6 failure-mode.'
+  MSG+=$'No evidence = state risk explicitly. Pre-commit gate: S1-S5 simplicity + T1-T6 tests + F1-F5 failure-mode.'
   if [ -n "$FILE" ]; then
     MSG+=$'\n\nChanged: '"$FILE"
   fi

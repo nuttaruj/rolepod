@@ -145,6 +145,26 @@ Removes own session lock so the next session in this worktree does not see a pha
 
 Never set these globally — apply per-command only. Hard rules exist because real-world failures triggered them.
 
+**Bypass accountability.** Every used bypass is appended to `<git-root>/.rolepod/evidence/bypass.log` as one JSON line — `{"ts","hook","var","reason"}` — with the reason taken from `ROLEPOD_BYPASS_REASON` (defaults to `"unreasoned"`). Logging never blocks and fails open. A silent bypass normalizes itself; a recorded one stays visible in review.
+
+### Per-repo risk-path override — `.rolepod/risk-paths`
+
+The high-risk path list (auth/billing/payments/…) is built-in but repo-tunable. Create `<git-root>/.rolepod/risk-paths` with one extended regex per line:
+
+```
+# add repo-specific high-risk paths
++(^|/)pii(/|\.|_|$)
+(^|/)gdpr-export
+# exclude a false positive (this repo's "token" is a lexer, not a credential)
+-(^|/)compiler/token
+```
+
+Bare or `+`-prefixed lines ADD patterns; `-`-prefixed lines EXCLUDE paths the built-in list would match; `#` starts a comment. Read by `precommit-gate.sh`, `gate-reminder.sh`, and `session_state.py`; absent file = built-ins only; unreadable file fails open. The strongest seed: paths whose git history shows the highest bugfix-commit density — measure, don't guess.
+
+### Self-test — `make doctor`
+
+`scripts/doctor.sh` proves the enforcement layer mechanically: syntax-checks every hook, fires the SessionStart loader, and drives the three deny paths (subagent commit, high-risk commit without tests, cross-session same-file edit) with synthetic fixtures — plus verifies bypass logging and prints the installed version + enforcement tier per CLI. Run it after any CLI upgrade: a vendor hook API change that silently kills a deny path is exactly what this catches.
+
 ### Env namespace — `ROLEPOD_*` vs `CLAUDE_CODE_*`
 
 Rolepod uses the `ROLEPOD_*` prefix exclusively for its bypass envs. Framework-scoped, separate from Anthropic's `CLAUDE_CODE_*` namespace (which controls Claude Code's own runtime behavior).

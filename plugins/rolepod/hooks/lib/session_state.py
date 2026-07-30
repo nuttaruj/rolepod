@@ -130,10 +130,45 @@ def _iter_tool_uses(transcript_path: str) -> Iterable[tuple[str, dict]]:
             yield (block.get("name") or "", block.get("input") or {})
 
 
+def _load_risk_overrides():
+    """Per-repo override: <git-root>/.rolepod/risk-paths — one ERE per line.
+    Bare or `+`-prefixed lines ADD high-risk patterns; `-`-prefixed lines
+    EXCLUDE paths from the built-in match; `#` starts a comment. Absent or
+    unreadable file = built-ins only (fail-open)."""
+    add, excl = [], []
+    try:
+        import subprocess
+        root = subprocess.check_output(
+            ["git", "rev-parse", "--show-toplevel"],
+            text=True, stderr=subprocess.DEVNULL,
+        ).strip()
+        with open(os.path.join(root, ".rolepod", "risk-paths"), encoding="utf-8") as f:
+            for ln in f:
+                ln = ln.split("#", 1)[0].strip()
+                if not ln:
+                    continue
+                try:
+                    if ln.startswith("-"):
+                        excl.append(re.compile(ln[1:], re.IGNORECASE))
+                    else:
+                        add.append(re.compile(ln.lstrip("+"), re.IGNORECASE))
+                except re.error:
+                    continue
+    except Exception:
+        pass
+    return add, excl
+
+
+_RISK_ADD, _RISK_EXCL = _load_risk_overrides()
+
+
 def is_high_risk_path(path: str) -> bool:
     if not path:
         return False
-    return bool(HIGH_RISK_PATH.search(path))
+    hit = bool(HIGH_RISK_PATH.search(path)) or any(p.search(path) for p in _RISK_ADD)
+    if hit and any(p.search(path) for p in _RISK_EXCL):
+        return False
+    return hit
 
 
 def is_test_file(path: str) -> bool:

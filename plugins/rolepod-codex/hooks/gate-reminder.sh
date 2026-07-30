@@ -18,6 +18,43 @@
 #   ROLEPOD_GATES_PASSED=1 — single-session bypass (clear before commit)
 set -euo pipefail
 
+# Per-repo risk-path override: <git-root>/.rolepod/risk-paths — one ERE per
+# line; bare/+ lines ADD high-risk patterns, - lines EXCLUDE paths from the
+# built-in match, # comments. Absent file = built-ins only (fail-open).
+# stdin: candidate paths (one per line); $1: built-in ERE → stdout: hits.
+risk_filter() {
+  _rf_cfg="$(git rev-parse --show-toplevel 2>/dev/null)/.rolepod/risk-paths"
+  _rf_add=""; _rf_excl=""
+  if [ -f "$_rf_cfg" ]; then
+    _rf_add=$(sed -e 's/#.*//' -e '/^[[:space:]]*$/d' -e '/^-/d' -e 's/^+//' "$_rf_cfg" 2>/dev/null | paste -sd'|' - 2>/dev/null || true)
+    _rf_excl=$(sed -e 's/#.*//' -e '/^[[:space:]]*$/d' "$_rf_cfg" 2>/dev/null | grep '^-' 2>/dev/null | sed 's/^-//' | paste -sd'|' - 2>/dev/null || true)
+  fi
+  _rf_in=$(cat)
+  _rf_hits=$(printf '%s\n' "$_rf_in" | grep -iE "$1" 2>/dev/null || true)
+  if [ -n "$_rf_add" ]; then
+    _rf_hits="$_rf_hits
+$(printf '%s\n' "$_rf_in" | grep -iE "$_rf_add" 2>/dev/null || true)"
+  fi
+  _rf_hits=$(printf '%s\n' "$_rf_hits" | sed '/^$/d' | sort -u)
+  if [ -n "$_rf_excl" ]; then
+    _rf_hits=$(printf '%s\n' "$_rf_hits" | grep -ivE "$_rf_excl" 2>/dev/null || true)
+  fi
+  printf '%s\n' "$_rf_hits" | sed '/^$/d'
+}
+
+# Bypass accountability: a used bypass is recorded to .rolepod/evidence/bypass.log
+# (reason via ROLEPOD_BYPASS_REASON), never blocked. Fail-open on any error.
+rolepod_log_bypass() {
+  _rlb_root="$(git rev-parse --show-toplevel 2>/dev/null)" || return 0
+  [ -n "$_rlb_root" ] || return 0
+  mkdir -p "$_rlb_root/.rolepod/evidence" 2>/dev/null || return 0
+  _rlb_reason="${ROLEPOD_BYPASS_REASON:-unreasoned}"
+  _rlb_reason="${_rlb_reason//\"/ }"
+  printf '{"ts":"%s","hook":"%s","var":"%s","reason":"%s"}\n' \
+    "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$1" "$2" "$_rlb_reason" \
+    >> "$_rlb_root/.rolepod/evidence/bypass.log" 2>/dev/null || true
+}
+
 INPUT=$(cat 2>/dev/null || echo '{}')
 TOOL=$(echo "$INPUT" | python3 -c "import sys,json;print(json.load(sys.stdin).get('tool_name',''))" 2>/dev/null || echo "")
 
@@ -60,7 +97,8 @@ HIGH_RISK=""
 # Canonical high-risk regex — byte-for-byte the same segment/anchor set as
 # precommit-gate.sh:78 and session_state.py's HIGH_RISK_PATH, so a file cannot
 # pass at edit time and then block at commit time.
-if [ "$IS_TEST" -eq 0 ] && [[ "$FILE" =~ (^|/|_)(auth|authn|authz|authentication|authorization|billing|payment|payments|migration|migrations|credit|credits|permission|permissions|secret|secrets|crypto|cryptography|token|tokens|oauth|jwt|sso|saml|webhook|webhooks|stripe|paypal|charge|charges|invoice|invoices)(/|\.|_|$) ]]; then
+_RISK_HIT=$(printf '%s\n' "$FILE" | risk_filter '(^|/|_)(auth|authn|authz|authentication|authorization|billing|payment|payments|migration|migrations|credit|credits|permission|permissions|secret|secrets|crypto|cryptography|token|tokens|oauth|jwt|sso|saml|webhook|webhooks|stripe|paypal|charge|charges|invoice|invoices)(/|\.|_|$)' | head -1 || true)
+if [ "$IS_TEST" -eq 0 ] && [ -n "$_RISK_HIT" ]; then
   HIGH_RISK="⚠️  HIGH-RISK path detected → mandatory: qa-tester + security-engineer review BEFORE commit. "
 fi
 
@@ -87,7 +125,7 @@ HIGH_RISK_EDITS=${HIGH_RISK_EDITS:-0}
 REVIEWERS=${REVIEWERS:-0}
 
 SOFT_MODE=0
-[ "${ROLEPOD_GATES_SOFT:-0}" = "1" ] && SOFT_MODE=1
+[ "${ROLEPOD_GATES_SOFT:-0}" = "1" ] && { SOFT_MODE=1; rolepod_log_bypass "gate-reminder" "ROLEPOD_GATES_SOFT"; }
 [ "${ROLEPOD_GATES_PASSED:-0}" = "1" ] && SOFT_MODE=1
 
 # Decide whether to HARD block. Only fires on high-risk path + discipline drift.

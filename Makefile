@@ -13,7 +13,7 @@
 #
 # Each command exits 0 on pass/skip and non-zero only on hard fail.
 
-.PHONY: test test-static test-integration test-all render install help
+.PHONY: test test-static test-integration test-all render install doctor help
 
 help:
 	@echo "Rolepod test commands:"
@@ -21,6 +21,7 @@ help:
 	@echo "  make test-integration             — structural integration fixtures (slow, local)"
 	@echo "  make test                         — test-static (release gate)"
 	@echo "  make test-all                     — test-static + test-integration"
+	@echo "  make doctor                       — live self-test: hooks fire + deny paths prove out + per-CLI tier"
 	@echo ""
 	@echo "  make render                       — render adapters to build/rendered/"
 	@echo "  make install                      — install --target=claude --force into ~/.claude/"
@@ -132,6 +133,11 @@ test-all: test-static test-integration
 
 render:
 	@bash build/render.sh --target=all
+
+# Live enforcement self-test — proves the deny paths with synthetic fixtures
+# and reports installed version + enforcement tier per CLI.
+doctor:
+	@bash scripts/doctor.sh
 
 install:
 	@./install.sh --target=claude --force

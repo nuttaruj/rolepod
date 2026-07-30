@@ -21,16 +21,16 @@ Naming decision: rigor tiers use **R0-R4** — "T" prefix already taken by T1-T6
 
 ## Phase B — v2.11.0 (P1 — small/medium task token efficiency; the reports' central complaint)
 
-- [ ] B1. Router `using-rolepod` (234/240 → cut 3 inline examples, 23 lines, redundant with `examples/routing-transcripts.md`):
+- [x] B1. Router `using-rolepod` (234/240 → cut 3 inline examples, 23 lines, redundant with `examples/routing-transcripts.md`):
       replace binary Skip rule with **Rigor ladder R0-R4** (R0 answer-only / R1 trivial ≤5-line / R2 single-file clear-logic inline-plan lane / R3 full spine / R4 high-risk never-downgrade);
       Output pattern: R0/R1 no block, R2 one-liner, R3/R4 + surprise = full block;
       align state machine Define/Plan exit evidence + Common Rationalizations row.
-- [ ] B2. `write-plan`: R2 lane — 3-5 line inline checklist + verify command replaces plan artifact (175/190).
-- [ ] B3. `implement-plan`: same-line R2 mention (189/190 — 1 line free).
-- [ ] B4. `check-work` Iron Rule 2 — evidence cache: fresh = run after LAST tree change; unchanged tree + recorded pass this session → cite cached command+output+hash, no re-run; any edit invalidates (186/190).
-- [ ] B5. `review-code`: map R2 → existing risk-ladder level (single reviewer), 1 line (171/190).
-- [ ] B6. Grep fragments/adapters for duplicated "≤5 lines" skip rule; sync if found.
-- [ ] B7. Bump 2.11.0 → render → test → commit.
+- [x] B2. `write-plan`: R2 lane — 3-5 line inline checklist + verify command replaces plan artifact (175/190).
+- [x] B3. `implement-plan`: same-line R2 mention (189/190 — 1 line free).
+- [x] B4. `check-work` Iron Rule 2 — evidence cache: fresh = run after LAST tree change; unchanged tree + recorded pass this session → cite cached command+output+hash, no re-run; any edit invalidates (186/190).
+- [x] B5. `review-code`: map R2 → existing risk-ladder level (single reviewer), 1 line (171/190).
+- [x] B6. Grep fragments/adapters for duplicated "≤5 lines" skip rule; sync if found.
+- [x] B7. Bump 2.11.0 → render → test → commit.
 
 ## Phase C — v2.12.0 (P2 — trust / enforcement honesty)
 

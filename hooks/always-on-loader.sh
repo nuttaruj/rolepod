@@ -26,6 +26,11 @@ cat >/dev/null 2>&1 || true
 
 [ -f "$CORE_FILE" ] || exit 0
 
+# No enforcement-tier banner here: the SessionStart payload sits at the 5KB
+# docs-safe budget edge, and Claude is the one CLI where every deny gate IS
+# mechanical — the enforcement-illusion risk the banner guards against exists
+# only on CLIs that cannot deny (their always-on surfaces carry the tier
+# line). `make doctor` prints Claude's tier + proves the deny paths live.
 python3 -c '
 import json, sys
 content = open(sys.argv[1], encoding="utf-8").read()

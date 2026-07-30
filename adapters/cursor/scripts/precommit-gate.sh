@@ -25,6 +25,19 @@
 #                            stays the release valve.)
 set -euo pipefail
 
+# Bypass accountability: a used bypass is recorded to .rolepod/evidence/bypass.log
+# (reason via ROLEPOD_BYPASS_REASON), never blocked. Fail-open on any error.
+rolepod_log_bypass() {
+  _rlb_root="$(git rev-parse --show-toplevel 2>/dev/null)" || return 0
+  [ -n "$_rlb_root" ] || return 0
+  mkdir -p "$_rlb_root/.rolepod/evidence" 2>/dev/null || return 0
+  _rlb_reason="${ROLEPOD_BYPASS_REASON:-unreasoned}"
+  _rlb_reason="${_rlb_reason//\"/ }"
+  printf '{"ts":"%s","hook":"%s","var":"%s","reason":"%s"}\n' \
+    "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$1" "$2" "$_rlb_reason" \
+    >> "$_rlb_root/.rolepod/evidence/bypass.log" 2>/dev/null || true
+}
+
 INPUT=$(cat 2>/dev/null || echo '{}')
 CMD=$(echo "$INPUT" | python3 -c "import sys,json;print(json.load(sys.stdin).get('command',''))" 2>/dev/null || echo "")
 
@@ -33,6 +46,7 @@ echo "$CMD" | grep -qE '(^|[;&|]|[[:space:]])git[[:space:]]+commit\b' || exit 0
 if echo "$CMD" | grep -qE 'ROLEPOD_GATES_PASSED=1'; then exit 0; fi
 if echo "$CMD" | grep -qE '\[gates:[[:space:]]*pass\]'; then exit 0; fi
 if [ "${ROLEPOD_GATES_SOFT:-0}" = "1" ]; then
+  rolepod_log_bypass "precommit-gate" "ROLEPOD_GATES_SOFT"
   exit 0
 fi
 

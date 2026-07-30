@@ -43,9 +43,13 @@ A conflict that risks harm → ask before acting.
   Each agent file is self-contained — it carries its own agent protocol.
 - **Hooks** — the plugin's `hooks/hooks.json` registers 4 core hooks
   (SessionStart context loader, UserPromptSubmit claim-verify nudge,
-  pre-edit gate reminder, pre-commit test gate). They fire only after
-  `codex features enable plugin_hooks` (opt-in; default off). Until
-  enabled, the gates are skill-enforced, not hook-blocked.
+  pre-edit gate reminder, pre-commit test gate). They fire natively on
+  Codex ≥0.144 — no opt-in flag.
+- **Enforcement tier: hooks-live (partial)** — the precommit test gate can
+  deny and reminders fire mechanically, but Codex has NO subagent-commit
+  block, cohesion-contract check, or worktree guard (no Agent / Stop
+  events) — hold those gates as doctrine; never report them as
+  mechanically enforced here.
 - **Peer review** — high-risk work → ask Codex to spawn `qa-tester` (the
   floor) plus `security-engineer` / `universal-reviewer`. An external Claude
   review (`claude -p "review this diff"`) is a useful cross-model opinion.

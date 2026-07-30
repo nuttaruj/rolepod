@@ -30,6 +30,19 @@
 # <id>.files at Stop so a finished session releases the files it owned.
 set -euo pipefail
 
+# Bypass accountability: a used bypass is recorded to .rolepod/evidence/bypass.log
+# (reason via ROLEPOD_BYPASS_REASON), never blocked. Fail-open on any error.
+rolepod_log_bypass() {
+  _rlb_root="$(git rev-parse --show-toplevel 2>/dev/null)" || return 0
+  [ -n "$_rlb_root" ] || return 0
+  mkdir -p "$_rlb_root/.rolepod/evidence" 2>/dev/null || return 0
+  _rlb_reason="${ROLEPOD_BYPASS_REASON:-unreasoned}"
+  _rlb_reason="${_rlb_reason//\"/ }"
+  printf '{"ts":"%s","hook":"%s","var":"%s","reason":"%s"}\n' \
+    "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$1" "$2" "$_rlb_reason" \
+    >> "$_rlb_root/.rolepod/evidence/bypass.log" 2>/dev/null || true
+}
+
 INPUT=$(cat 2>/dev/null || echo '{}')
 
 # Parse + canonicalize in one python pass. tool_input carries file_path
@@ -109,6 +122,7 @@ touch "$LOCK_DIR/$SESSION_ID.lock" 2>/dev/null || true
 # pass path: a BLOCKED attempt must not claim ownership, or it would block the
 # rightful owner back (mutual deadlock).
 if [ -z "$COLLISION" ] || [ "${ROLEPOD_ALLOW_SHARED_WORKTREE:-0}" = "1" ]; then
+  [ -n "$COLLISION" ] && rolepod_log_bypass "worktree-guard" "ROLEPOD_ALLOW_SHARED_WORKTREE"
   MY_FILES="$LOCK_DIR/$SESSION_ID.files"
   grep -Fxq "$TARGET" "$MY_FILES" 2>/dev/null || printf '%s\n' "$TARGET" >> "$MY_FILES" 2>/dev/null || true
   exit 0

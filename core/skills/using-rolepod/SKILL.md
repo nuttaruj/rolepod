@@ -140,7 +140,7 @@ User explicit ("skip spec" / "just commit" / "answer only" / "no plan" / "ship a
 - Claiming done before Verify → STOP, run `check-work`.
 - 2nd parallel agent spawn without contract → STOP, run `write-plan` and write the cohesion contract first.
 - Sub-agent attempting `git commit` / `git push` / `gh pr merge` → not allowed; Lead commits after the reviewer pass.
-- High-risk path (auth / billing / payments / credits / migration / data deletion / secrets / tokens / crypto / permissions / security) with 0 reviewer agents dispatched → STOP, dispatch qa-tester + security-engineer, plus an external CLI reviewer on a model family different from the Lead's if one is installed (routing: review-code's `external-review-routing.md`).
+- High-risk path (auth / billing / payments / credits / migration / data deletion / secrets / tokens / crypto / permissions / security; project override: `.rolepod/risk-paths`) with 0 reviewer agents dispatched → STOP, dispatch qa-tester + security-engineer, plus an external CLI reviewer on a model family different from the Lead's if one is installed (routing: review-code's `external-review-routing.md`).
 - 3rd agent on same issue OR 3rd PR on same surface in one session → STOP, ask user (hard-stop rule).
 - Diff mixes 2+ unrelated concerns at push/merge time → STOP, split into separate PRs (`finish-work` PR-scope gate).
 - Concurrent sessions: if SessionStart warns "concurrent session(s) detected in this worktree" → before editing a SHARED file, spawn an isolated worktree first (`git worktree add ../<repo>-task-<ts> <branch> && cd`) and continue there. rolepod guards against same-file stomp between concurrent sessions; disjoint and solo edits flow free. Override: `ROLEPOD_ALLOW_SHARED_WORKTREE=1` for intentional shared/read-only review sessions.
@@ -167,6 +167,8 @@ Routing output by tier — the block's size follows the rigor ladder:
 - **R0 / R1** — no block; answer or edit naturally.
 - **R2** — one line: `→ <skill> · R2 · <reason>`, then the inline checklist.
 - **R3 / R4**, `/rolepod-full`, or any routing that could surprise the user — full block.
+
+Every tier decision (R0 excepted) appends one line to `<git-root>/.rolepod/evidence/phase-log.jsonl` — `{"ts":"<iso8601>","phase":"route","tier":"R1-R4","skill":"<first skill>"}`, fail-open outside a git repo. A skip that is not logged is a skip that cannot be audited.
 
 Worked transcripts (vague feature, typo fix, done-claim, and five more) live in `examples/routing-transcripts.md` — read when a request does not obviously match a row.
 
