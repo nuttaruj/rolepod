@@ -31,3 +31,5 @@ __pycache__/
 
 # runtime session markers (session-lifecycle hook)
 .rolepod/
+.rolepod-mcp/
+__pycache__/

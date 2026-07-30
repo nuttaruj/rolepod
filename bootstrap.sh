@@ -21,7 +21,7 @@
 # Args (forwarded to install.sh — skip interactive prompt if any are given):
 #   --force           overwrite existing files (selective backup created)
 #   --dry-run         preview every action; write nothing to disk
-#   --target=<cli>    claude|codex|gemini|cursor|antigravity|all (default claude)
+#   --target=<cli>    claude|codex|gemini|cursor|antigravity|opencode|all (default claude)
 #   --scope=global    install to home (default — affects all projects)
 #   --scope=project   install to current dir's .claude/ etc. (no global config touched)
 #
@@ -81,18 +81,20 @@ Choose CLI target:
   ${BOLD}3${NC}) ${CYAN}gemini${NC}      — Gemini CLI (~/.gemini/)
   ${BOLD}4${NC}) ${CYAN}cursor${NC}      — Cursor IDE (~/.cursor/)
   ${BOLD}5${NC}) ${CYAN}antigravity${NC} — Antigravity CLI / agy (~/.gemini/)
-  ${BOLD}6${NC}) ${GREEN}all${NC}         — install for all five CLIs
+  ${BOLD}6${NC}) ${CYAN}opencode${NC}    — opencode (~/.config/opencode/)
+  ${BOLD}7${NC}) ${GREEN}all${NC}         — install for all six CLIs
 
 EOF
     target_choice=""
-    read -r -p "Target [1/2/3/4/5/6] (default 1): " target_choice </dev/tty || target_choice=""
+    read -r -p "Target [1/2/3/4/5/6/7] (default 1): " target_choice </dev/tty || target_choice=""
     case "${target_choice:-1}" in
       1|claude|"")    INTERACTIVE_TARGET="claude" ;;
       2|codex)        INTERACTIVE_TARGET="codex" ;;
       3|gemini)       INTERACTIVE_TARGET="gemini" ;;
       4|cursor)       INTERACTIVE_TARGET="cursor" ;;
       5|antigravity)  INTERACTIVE_TARGET="antigravity" ;;
-      6|all)          INTERACTIVE_TARGET="all" ;;
+      6|opencode)     INTERACTIVE_TARGET="opencode" ;;
+      7|all)          INTERACTIVE_TARGET="all" ;;
       *) echo "Unknown choice '$target_choice' — defaulting to claude"; INTERACTIVE_TARGET="claude" ;;
     esac
 

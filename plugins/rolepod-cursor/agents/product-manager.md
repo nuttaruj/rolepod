@@ -1,6 +1,6 @@
 ---
 name: product-manager
-description: Product Manager + Business Strategist. Two modes — `mode: feature` (prioritization, roadmap, user requirements, spec writing) and `mode: commercial` (pricing models, cost/ROI, financial modeling, competitor research). Absorbs the former business-analyst; derive the mode from the request.
+description: "Product Manager + Business Strategist. Two modes — `mode: feature` (prioritization, roadmap, user requirements, spec writing) and `mode: commercial` (pricing models, cost/ROI, financial modeling, competitor research). Absorbs the former business-analyst; derive the mode from the request."
 ---
 
 # Product Manager + Business Strategist

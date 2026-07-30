@@ -1,8 +1,8 @@
 # Rolepod
 
-**Rolepod turns Claude Code, Codex CLI, Gemini CLI, Cursor IDE, and Antigravity CLI (agy) into a disciplined software-house team — a workflow router, 16 specialist agents, and gates that catch bugs before they reach a commit.**
+**Rolepod turns Claude Code, Codex CLI, Gemini CLI, Cursor IDE, Antigravity CLI (agy), and opencode into a disciplined software-house team — a workflow router, 16 specialist agents, and gates that catch bugs before they reach a commit.**
 
-It is one source of truth rendered into a native plugin for each CLI. No CLI is the "default" — all five are first-class. Rolepod carries zero project-specific configuration, so it works in any repository from the first session.
+It is one source of truth rendered into a native plugin for each CLI. No CLI is the "default" — all six are first-class. Rolepod carries zero project-specific configuration, so it works in any repository from the first session.
 
 ## What it helps with
 
@@ -108,6 +108,10 @@ curl -fsSL https://raw.githubusercontent.com/nuttaruj/rolepod/main/bootstrap.sh 
 
 Restart Cursor (or reload the window) so the plugin registers. Verify under **Cursor → Settings → Plugins**.
 
+The always-on judgment core ships as an `alwaysApply: true` rule (`rules/always-on-core.mdc`) — loaded automatically on every Cursor session. Disabling **Settings → Features → Rules** suppresses it.
+
+> **Teams / Enterprise plans** can alternatively add `https://github.com/nuttaruj/rolepod` as a team marketplace under Settings → Plugins for one-click install. Team Marketplaces are not available on Free / Pro plans.
+
 ### Antigravity CLI (agy) — Beta
 
 Google moved Gemini's consumer tiers (free / AI Pro / Ultra) to Antigravity CLI on 2026-06-18; this adapter installs rolepod as a native agy plugin (`agy plugin install`). Enterprise / API-key users can stay on the Gemini CLI adapter above.
@@ -123,17 +127,28 @@ curl -fsSL https://raw.githubusercontent.com/nuttaruj/rolepod/main/bootstrap.sh 
 curl -fsSL https://raw.githubusercontent.com/nuttaruj/rolepod/main/bootstrap.sh | bash -s -- --uninstall --target=antigravity
 ```
 
-The always-on judgment core ships as an `alwaysApply: true` rule (`rules/always-on-core.mdc`) — loaded automatically on every Cursor session. Disabling **Settings → Features → Rules** suppresses it.
+### opencode
 
-> **Teams / Enterprise plans** can alternatively add `https://github.com/nuttaruj/rolepod` as a team marketplace under Settings → Plugins for one-click install. Team Marketplaces are not available on Free / Pro plans.
+Installs skills + agents natively into `~/.config/opencode/`, a session-lock / post-compact re-anchor JS plugin, and an `AGENTS.md` managed block. opencode exposes no blocking hook API — gates are skill-enforced there (see [docs/cli-support.md](docs/cli-support.md)).
 
-**Install all five at once** with `--target=all`. **One repo only, no global config:** add `--scope=project`. Restart the CLI after installing. Full per-CLI matrix and install scopes: [docs/cli-support.md](docs/cli-support.md).
+```bash
+# Install
+curl -fsSL https://raw.githubusercontent.com/nuttaruj/rolepod/main/bootstrap.sh | bash -s -- --target=opencode
+
+# Update — re-run with --force
+curl -fsSL https://raw.githubusercontent.com/nuttaruj/rolepod/main/bootstrap.sh | bash -s -- --target=opencode --force
+
+# Uninstall
+curl -fsSL https://raw.githubusercontent.com/nuttaruj/rolepod/main/bootstrap.sh | bash -s -- --uninstall --target=opencode
+```
+
+**Install all six at once** with `--target=all`. **One repo only, no global config:** add `--scope=project`. Restart the CLI after installing. Full per-CLI matrix and install scopes: [docs/cli-support.md](docs/cli-support.md).
 
 ## What's inside
 
 - **16 specialist agents** — strategy, architecture, engineering, quality, ops, design, content, and review. Each owns a path or concern and runs on a cost-tiered model (~50-60% cheaper than all-strong). → [docs/agents.md](docs/agents.md), [docs/model-tier-policy.md](docs/model-tier-policy.md)
 - **Core 10 skills** — one router plus nine phase skills, the workflow spine. → [docs/skills.md](docs/skills.md)
-- **Per-CLI hooks** — deterministic enforcement: gate reminders, a pre-commit test gate, a sub-agent commit block, a concurrent-edit stomp guard, session safety. Counts vary by CLI capability (Claude 9 / Codex 4 / Gemini 5 / Cursor 3 / Antigravity 4 hook scripts). → [docs/hooks.md](docs/hooks.md)
+- **Per-CLI hooks** — deterministic enforcement: gate reminders, a pre-commit test gate, a sub-agent commit block, a concurrent-edit stomp guard, session safety. Counts vary by CLI capability (Claude 9 / Codex 4 / Gemini 5 / Cursor 3 / Antigravity 4 hook scripts / opencode 0 — JS plugin only, gates skill-enforced). → [docs/hooks.md](docs/hooks.md)
 - **Active gates** — Q1-Q4 delegation, S1-S5 simplicity, T1-T6 tests, F1-F5 failure-mode — checked before every commit.
 
 The source lives in `core/`; per-CLI adapters render it into a native plugin for each CLI.

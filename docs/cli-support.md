@@ -4,17 +4,17 @@ Phase 2.3: rolepod ships for each supported CLI as a **native plugin / extension
 
 ## Capability matrix
 
-| Capability | Claude Code | Codex CLI | Gemini CLI | Cursor IDE | Antigravity CLI (agy) |
-|---|---|---|---|---|---|
-| Always-on instructions | SessionStart hook → `hooks/always-on-core.md` (additionalContext) | `~/.codex/AGENTS.md` (native) | `~/.gemini/extensions/rolepod/GEMINI.md` (extension context file) | `rules/always-on-core.mdc` with `alwaysApply: true` (Cursor native) | `AGENTS.md` at the customization root (auto-loaded) |
-| Lazy-load rules (Read on trigger) | full | full | full | full (`.mdc` rules with explicit `alwaysApply: false` or glob match) | full |
-| Skills (`<plugin>/skills/<name>/SKILL.md`) | 11 — Core 10 + 1 alias (native) | 11 — Core 10 + 1 alias (native) | 11 — Core 10 + 1 alias (native) | 11 — Core 10 + 1 alias (native; frontmatter stripped to `name` + `description` per Cursor spec) | 11 — Core 10 + 1 alias (native) |
-| Subagents (parallel team) | full Task / SendMessage (16 agents) | 16 agents as Codex `agents/*.toml` (Lead-orchestrated) | 16 agents as extension `agents/*.md` (Lead-orchestrated) | 16 agents in `agents/*.md` (Lead-orchestrated) | 16 agents in `agents/*.md` (gemini format; Lead-orchestrated) |
-| Hooks (core only) | 9 core hook scripts (10 registrations) in the plugin's `hooks/hooks.json` · auto-registered on install | 4 core hooks across `SessionStart`/`UserPromptSubmit`/`PreToolUse` · hooks require `plugin_hooks` opt-in | 5 core hooks across `SessionStart`/`BeforeAgent`/`BeforeTool`/`AfterTool`/`PreCompress` | 3 core hooks across `sessionStart`/`preToolUse`/`beforeShellExecution` · auto-fires | 4 core hook scripts across `PreInvocation`/`PreToolUse`/`PostToolUse` (`hooks.json` at the plugin root) |
-| Slash commands | `/rolepod-full` (skill — force-full lifecycle) | `$rolepod-full` (skill via Codex skill UI) | `/rolepod-full` (skill; no native `.toml` commands) | `/rolepod-full` (skill) | `/rolepod-full` (skill) |
-| Plugin manifest | `plugins/rolepod/.claude-plugin/plugin.json` (spec-conformant) + `.claude-plugin/marketplace.json` catalog at the repo root | `.codex-plugin/plugin.json` (mirrors caveman schema, 1.6KB) | `gemini-extension.json` (extension schema, 551B) | `plugins/rolepod-cursor/.cursor-plugin/plugin.json` (spec-conformant) + `.cursor-plugin/marketplace.json` catalog at the repo root | `plugin.json` at plugin root (agy plugin schema, validated by `agy plugin validate`) |
-| Optional add-on integration | vendor-installed (own plugin / MCP); rolepod auto-detects, falls back to `rg` + `find` | vendor-installed (own plugin / MCP); rolepod auto-detects, falls back to `rg` + `find` | vendor-installed (own plugin / MCP); rolepod auto-detects, falls back to `rg` + `find` | vendor-installed (Cursor MCP / `mcp.json`); rolepod auto-detects, falls back to `rg` + `find` | vendor-installed; rolepod auto-detects, falls back to `rg` + `find` |
-| MCP server config | global + per-plugin | global (`codex mcp`) | global (`gemini mcp`) | global (`~/.cursor/mcp.json`) + per-plugin (`plugin/mcp.json`) | global (agy config tree; not yet live-verified) |
+| Capability | Claude Code | Codex CLI | Gemini CLI | Cursor IDE | Antigravity CLI (agy) | opencode |
+|---|---|---|---|---|---|---|
+| Always-on instructions | SessionStart hook → `hooks/always-on-core.md` (additionalContext) | `~/.codex/AGENTS.md` (native) | `~/.gemini/extensions/rolepod/GEMINI.md` (extension context file) | `rules/always-on-core.mdc` with `alwaysApply: true` (Cursor native) | `AGENTS.md` at the customization root (auto-loaded) | `~/.config/opencode/AGENTS.md` managed block (native rules chain) |
+| Lazy-load rules (Read on trigger) | full | full | full | full (`.mdc` rules with explicit `alwaysApply: false` or glob match) | full | full |
+| Skills (`<plugin>/skills/<name>/SKILL.md`) | 11 — Core 10 + 1 alias (native) | 11 — Core 10 + 1 alias (native) | 11 — Core 10 + 1 alias (native) | 11 — Core 10 + 1 alias (native; frontmatter stripped to `name` + `description` per Cursor spec) | 11 — Core 10 + 1 alias (native) | 11 — Core 10 + 1 alias (native `SKILL.md`) |
+| Subagents (parallel team) | full Task / SendMessage (16 agents) | 16 agents as Codex `agents/*.toml` (Lead-orchestrated) | 16 agents as extension `agents/*.md` (Lead-orchestrated) | 16 agents in `agents/*.md` (Lead-orchestrated) | 16 agents in `agents/*.md` (gemini format; Lead-orchestrated) | 16 agents in `agents/*.md` (filename = agent id, `mode: subagent`; Lead-orchestrated) |
+| Hooks (core only) | 9 core hook scripts (10 registrations) in the plugin's `hooks/hooks.json` · auto-registered on install | 4 core hooks across `SessionStart`/`UserPromptSubmit`/`PreToolUse` · hooks require `plugin_hooks` opt-in | 5 core hooks across `SessionStart`/`BeforeAgent`/`BeforeTool`/`AfterTool`/`PreCompress` | 3 core hooks across `sessionStart`/`preToolUse`/`beforeShellExecution` · auto-fires | 4 core hook scripts across `PreInvocation`/`PreToolUse`/`PostToolUse` (`hooks.json` at the plugin root) | 0 blocking hooks — JS plugin (`plugin/rolepod.js`): cross-CLI session locks + post-compact re-anchor; gates skill-enforced |
+| Slash commands | `/rolepod-full` (skill — force-full lifecycle) | `$rolepod-full` (skill via Codex skill UI) | `/rolepod-full` (skill; no native `.toml` commands) | `/rolepod-full` (skill) | `/rolepod-full` (skill) | `/rolepod-full` (skill) |
+| Plugin manifest | `plugins/rolepod/.claude-plugin/plugin.json` (spec-conformant) + `.claude-plugin/marketplace.json` catalog at the repo root | `.codex-plugin/plugin.json` (mirrors caveman schema, 1.6KB) | `gemini-extension.json` (extension schema, 551B) | `plugins/rolepod-cursor/.cursor-plugin/plugin.json` (spec-conformant) + `.cursor-plugin/marketplace.json` catalog at the repo root | `plugin.json` at plugin root (agy plugin schema, validated by `agy plugin validate`) | `opencode.json` (version metadata — opencode has no plugin manifest for this install style) |
+| Optional add-on integration | vendor-installed (own plugin / MCP); rolepod auto-detects, falls back to `rg` + `find` | vendor-installed (own plugin / MCP); rolepod auto-detects, falls back to `rg` + `find` | vendor-installed (own plugin / MCP); rolepod auto-detects, falls back to `rg` + `find` | vendor-installed (Cursor MCP / `mcp.json`); rolepod auto-detects, falls back to `rg` + `find` | vendor-installed; rolepod auto-detects, falls back to `rg` + `find` | vendor-installed; rolepod auto-detects, falls back to `rg` + `find` |
+| MCP server config | global + per-plugin | global (`codex mcp`) | global (`gemini mcp`) | global (`~/.cursor/mcp.json`) + per-plugin (`plugin/mcp.json`) | global (agy config tree; not yet live-verified) | global (opencode config) |
 
 ## Install destinations
 
@@ -25,6 +25,7 @@ Phase 2.3: rolepod ships for each supported CLI as a **native plugin / extension
 | Gemini CLI | `~/.gemini/extensions/rolepod/` (gemini-extension.json, GEMINI.md, hooks/, skills/) | `~/.gemini/extensions/rolepod/GEMINI.md` (extension context file) |
 | Cursor IDE | repo IS the marketplace — `.cursor-plugin/marketplace.json` + committed `plugins/rolepod-cursor/` (.cursor-plugin/, rules/, agents/, skills/, hooks/, scripts/) at the repo root; `install.sh --target=cursor` copies that tree to `~/.cursor/plugins/local/rolepod/` for local install | `plugins/rolepod-cursor/rules/always-on-core.mdc` (`alwaysApply: true`) |
 | Antigravity CLI (agy) | rendered to `build/rendered/antigravity/plugin/` (gitignored); `install.sh --target=antigravity` installs it via `agy plugin install` — plugin.json + hooks.json at plugin root, skills/, agents/ | `AGENTS.md` at the agy customization root (`install.sh` places it) |
+| opencode | rendered to `build/rendered/opencode/` (gitignored); `install.sh --target=opencode` syncs skills/ (name-scoped), agents/ (16), `plugin/rolepod.js`, and `rolepod-version.json` into `~/.config/opencode/` (project scope: `$PWD/.opencode/`; override: `ROLEPOD_OPENCODE_TARGET`) | `~/.config/opencode/AGENTS.md` managed block (`<!-- rolepod:start/end -->`); project scope writes `$PWD/AGENTS.md` |
 
 For Codex the entry doc is intentionally written **outside** the plugin dir (`~/.codex/AGENTS.md`) — Codex auto-loads the global `AGENTS.md` regardless of which plugins are installed, so keeping it at the root makes rolepod's gates active on every session, not just when the plugin is enabled.
 
@@ -90,7 +91,7 @@ adapters/
 | After tool run | `PostToolUse` (`Edit\|Write`, `Bash`) | `PostToolUse` (`apply_patch`, `Bash`) | `AfterTool` (`write_file\|replace\|edit`) | — (uses `beforeShellExecution` for commit gate; no observational hooks yet) |
 | Stop / compact | `Stop` (no matcher) | — | `PreCompress` | — (sessionEnd/stop reserved for future use) |
 
-Per-CLI hook counts (distinct scripts): Claude registers 9 core hook scripts via the plugin manifest (10 registrations — `session-lifecycle.sh` registers twice, `--lock`/`--unlock`). Codex registers 4 in `hooks/hooks.json` (requires `codex features enable plugin_hooks` opt-in; plugin-bundled hooks must be trusted by the user before they fire). Gemini registers 5 in `hooks/hooks.json`. Cursor registers 3 in `hooks/hooks.json` (always-on judgment uses an `alwaysApply` rule instead of a SessionStart hook, so the loader script is folded into the rule). Antigravity registers 4 in `hooks.json` at the plugin root (reusing the gemini scripts; no PreCompress equivalent). The `claim-verify-nudge` answer-path hook ships on Claude / Codex / Gemini / Antigravity but not Cursor — Cursor's `beforeSubmitPrompt` cannot inject pre-answer context. Rolepod ships no add-on hooks — claude-mem and GitNexus integrate via their own vendor plugins/CLI.
+Per-CLI hook counts (distinct scripts): Claude registers 9 core hook scripts via the plugin manifest (10 registrations — `session-lifecycle.sh` registers twice, `--lock`/`--unlock`). Codex registers 4 in `hooks/hooks.json` (fires natively on Codex ≥0.144; plugin-bundled hooks must be trusted by the user before they fire). Gemini registers 5 in `hooks/hooks.json`. Cursor registers 3 in `hooks/hooks.json` (always-on judgment uses an `alwaysApply` rule instead of a SessionStart hook, so the loader script is folded into the rule). Antigravity registers 4 in `hooks.json` at the plugin root (reusing the gemini scripts; no PreCompress equivalent). The `claim-verify-nudge` answer-path hook ships on Claude / Codex / Gemini / Antigravity but not Cursor — Cursor's `beforeSubmitPrompt` cannot inject pre-answer context. Rolepod ships no add-on hooks — claude-mem and GitNexus integrate via their own vendor plugins/CLI.
 
 ## Verification status — what's confirmed locally
 
@@ -109,14 +110,15 @@ Per-CLI hook counts (distinct scripts): Claude registers 9 core hook scripts via
 | Target | Static checks | Dry-run install | Live runtime hooks | Live subagent dispatch | Status |
 |--------|---------------|-----------------|--------------------|-----------------------|--------|
 | Claude Code | ✓ | ✓ | ✓ verified | ✓ verified | **Production** |
-| Codex CLI   | ✓ | ✓ | ⚠️ opt-in only — `features.plugin_hooks` is "under development, false" by default; rolepod registers `hooks/hooks.json` but Codex won't fire them until user runs `codex features enable plugin_hooks` | ✓ verified (16 agents + 10 skills via native loader) | **Production** (hooks opt-in) |
+| Codex CLI   | ✓ | ✓ | ✓ native — hooks fire without any opt-in on current Codex; `codex features list` (0.144.1, 2026-07-30) shows `hooks stable true` and the legacy `plugin_hooks` flag `removed` | ✓ verified (16 agents + 10 skills via native loader) | **Production** |
 | Gemini CLI  | ✓ | ✓ | ✓ verified (SessionStart hook fires) | ✓ verified (10 skills enumerated) | **Production** |
 | Cursor IDE  | ✓ | ✓ | ⚠️ live re-verification pending (always-on rule + 3 hooks ship; hook JSON I/O contract verified against [cursor.com/docs/hooks](https://cursor.com/docs/hooks) 2026-05-23 fetch but not exercised on a live Cursor session yet) | ⚠️ live re-verification pending (16 agents + 11 skills ship with minimal-frontmatter shape; subagent dispatch unverified) | **Beta** (static + install paths verified; live runtime confirmation pending) |
 | Antigravity CLI (agy) | ✓ (`agy plugin validate` [ok] on agy 1.0.13; integration test locks the schema) | ✓ (live `agy plugin install`/`uninstall` round-trip verified; temp-target guard proven) | ⚠️ hooks registered ("3 hook event types processed"); live firing unverified | ⚠️ runtime probe blocked on agy model quota (resets 2026-07-02) | **Beta** (install verified live; runtime session confirmation pending) |
+| opencode | ✓ (rendered tree locked by `tests/integration/cases/opencode-adapter.sh` — 11 skills / 16 agents / plugin JS `node --check` clean) | ✓ (temp-target install/uninstall round-trip in the same test) | n/a — no blocking hook API; the JS plugin (session locks + post-compact re-anchor) fires on session events, gates are skill-enforced | ⚠️ live subagent dispatch unverified | **Beta** (native skills/agents verified via install; doctrine-only enforcement by design) |
 
-**Static checks** = `bash -n` on shell scripts, `python3 -m json.tool` on JSON manifests, `tomllib.load()` on TOML, plus snapshot diffs (no leaked `{{INCLUDE: ...}}` placeholders). **Dry-run install** = `install.sh --target=<cli>` writes correct files into a temp dir and the layout matches each CLI's expected destination. **Live** = installed in the real CLI, hooks fire on real sessions (Claude + Gemini always; Codex only after `codex features enable plugin_hooks` opt-in; Cursor pending), subagents/skills dispatch correctly.
+**Static checks** = `bash -n` on shell scripts, `python3 -m json.tool` on JSON manifests, `tomllib.load()` on TOML, plus snapshot diffs (no leaked `{{INCLUDE: ...}}` placeholders). **Dry-run install** = `install.sh --target=<cli>` writes correct files into a temp dir and the layout matches each CLI's expected destination. **Live** = installed in the real CLI, hooks fire on real sessions (Claude + Gemini + Codex; Cursor pending; opencode has no hook layer by design), subagents/skills dispatch correctly.
 
-_Last live-verified: 2026-05-23 on macOS (Darwin 25.5.0), Codex 0.132.0, Gemini 0.42.0, running rolepod 2.6.0 / Gemini extension 0.6.0 (counts at that time: 18 agents, 11 skills, Claude 7 / Codex 3 / Gemini 4 / Cursor 3 hooks). **2.6.2:** content trio merged into single `content-strategist` agent — roster 18 → 16. **2.9.x (current tree):** hook scripts are Claude 9 (10 registrations — worktree-guard, always-on-loader, session-lifecycle ×2, claim-verify-nudge included) / Codex 4 / Gemini 5 / Cursor 3 / Antigravity 4; agents 16; skills 11. Antigravity adapter added 2026-06-30, install-path verified live on agy 1.0.13; Cursor + Antigravity live runtime confirmation are the open items._
+_Last live-verified: 2026-05-23 on macOS (Darwin 25.5.0), Codex 0.132.0, Gemini 0.42.0, running rolepod 2.6.0 / Gemini extension 0.6.0 (counts at that time: 18 agents, 11 skills, Claude 7 / Codex 3 / Gemini 4 / Cursor 3 hooks). **2.6.2:** content trio merged into single `content-strategist` agent — roster 18 → 16. **2.9.x (current tree):** hook scripts are Claude 9 (10 registrations — worktree-guard, always-on-loader, session-lifecycle ×2, claim-verify-nudge included) / Codex 4 / Gemini 5 / Cursor 3 / Antigravity 4; agents 16; skills 11. Antigravity adapter added 2026-06-30, install-path verified live on agy 1.0.13; Cursor + Antigravity live runtime confirmation are the open items. **2.10.x (2026-07-30):** opencode adapter added as sixth target (2.10.0, opencode 1.17.7 — native skills/agents, JS plugin, no hook layer); Codex 0.144.1 re-verified — hooks now fire natively, the `plugin_hooks` opt-in flag is `removed` upstream, enable instructions dropped._
 
 ### Per-target runtime evidence
 
@@ -132,13 +134,8 @@ _Last live-verified: 2026-05-23 on macOS (Darwin 25.5.0), Codex 0.132.0, Gemini 
 **Codex CLI 0.132.0** — Production:
 - The rolepod repo IS a Codex marketplace — `.agents/plugins/marketplace.json` + the committed `plugins/rolepod-codex/` tree at the repo root. `codex plugin marketplace add nuttaruj/rolepod` installs straight from GitHub; `install.sh` runs the same `codex plugin marketplace add <repo>` against the local clone. Codex's native plugin loader picks up skills + hooks via the same code path as bundled plugins (browser-use, computer-use, etc.).
 - After install, `~/.codex/config.toml` contains `[marketplaces.rolepod] source_type = "local"` and `[plugins."rolepod@rolepod"] enabled = true`.
-- Plugin hooks (`hooks/hooks.json`) require explicit opt-in. Default Codex install has `plugin_hooks` flagged `under development, false` — registered hooks won't fire until the user enables it:
-  ```bash
-  codex features list | grep plugin_hooks      # confirm current state
-  codex features enable plugin_hooks           # writes [features] plugin_hooks = true
-  ```
-  Without that flag, rolepod's `hooks/hooks.json` is registered but inert. Agents + skills still load via the plugin cache regardless of `plugin_hooks` state.
-- Live verification after enabling `plugin_hooks`: `codex exec --skip-git-repo-check "echo OK"` reports `hook: SessionStart Completed` from rolepod's `hooks/hooks.json`. Codex log (`~/.codex/log/codex-tui.log`) shows zero "configured non-curated plugin no longer exists" warnings for rolepod and zero manifest validation errors against `plugins/rolepod/.codex-plugin/plugin.json`.
+- Plugin hooks (`hooks/hooks.json`) fire natively on current Codex — no opt-in step. `codex features list` on 0.144.1 (2026-07-30) shows `hooks stable true`; the legacy `plugin_hooks` flag is `removed`. (Historical: Codex ≤0.13x required `codex features enable plugin_hooks`; that instruction no longer applies.)
+- Live verification: `codex exec --skip-git-repo-check "echo OK"` reports `hook: SessionStart Completed` from rolepod's `hooks/hooks.json`. Codex log (`~/.codex/log/codex-tui.log`) shows zero "configured non-curated plugin no longer exists" warnings for rolepod and zero manifest validation errors against `plugins/rolepod/.codex-plugin/plugin.json`.
 - `~/.codex/AGENTS.md` managed block still loads on every Codex session (Tier 1 always-on rules), independent of plugin enable state.
 - The CLI subcommands `plugin list` / `agent` / `skills list` / `hooks list` are not present in 0.132.0 — Codex doesn't expose enumeration commands today. The plugin still loads via the same code path as bundled plugins; verification is via session log + `config.toml` inspection.
 
@@ -215,7 +212,7 @@ cd /your/project
 
 **Rules-only project install.** Writes only `$PWD/AGENTS.md` (managed block). Codex auto-loads `AGENTS.md` from the working directory on session start. **Native plugin agents/skills/hooks are NOT installed per-project** — Codex CLI's marketplace + plugin cache are global-only by design. For full Codex activation (16 agents, 10 skills, hooks), run `--scope=global` separately.
 
-Codex hooks (`features.plugin_hooks = true`) require explicit opt-in in `~/.codex/config.toml` — not auto-enabled by rolepod install.
+Codex hooks fire natively on Codex ≥0.144 — the legacy `plugin_hooks` opt-in flag is `removed` upstream; no config step needed.
 
 ### Global core (one-time per machine)
 
@@ -265,26 +262,22 @@ When a repo needs stricter rules than the global rolepod set, create `AGENTS.md`
 ### Verify install
 
 ```bash
-# Plugin loaded (agents + skills work regardless of plugin_hooks state):
+# Plugin loaded (agents + skills):
 ls ~/.codex/plugins/cache/rolepod/rolepod/*/skills | wc -l   # 11
 
-# Hooks ONLY fire after opt-in. Confirm flag state first:
-codex features list | grep plugin_hooks
-# default: plugin_hooks  under development  false
+# Hooks fire natively on Codex >=0.144 — confirm:
+codex features list | grep -E '^hooks'
+# expected: hooks  stable  true   (legacy plugin_hooks flag shows "removed")
 
-# Enable hooks:
-codex features enable plugin_hooks
-
-# After opt-in, verify hooks fire:
+# Verify hooks fire:
 codex exec --skip-git-repo-check "echo OK"
 # stdout shows: hook: SessionStart Completed (rolepod hooks firing through native plugin loader)
-# Without plugin_hooks=true, this line is absent — rolepod's hooks/hooks.json is registered but inert.
 
-# AGENTS.md (Tier 1) always loads regardless of plugin_hooks:
+# AGENTS.md (Tier 1) always loads:
 grep -A2 'marketplaces.rolepod\|plugins."rolepod' ~/.codex/config.toml
 ```
 
-If hooks don't fire after the opt-in, check `plugins/rolepod/hooks/hooks.json` schema matches [developers.openai.com/codex/hooks](https://developers.openai.com/codex/hooks).
+If hooks don't fire, check `plugins/rolepod/hooks/hooks.json` schema matches [developers.openai.com/codex/hooks](https://developers.openai.com/codex/hooks).
 
 ## Recommended Gemini setup
 

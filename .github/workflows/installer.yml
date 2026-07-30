@@ -79,14 +79,15 @@ jobs:
           fail = 0
           for path in tracked:
               try:
-                  with open(path, "r", encoding="utf-8", errors="ignore") as f:
+                  # strict decode: binary files (PNG etc.) raise and are skipped
+                  with open(path, "r", encoding="utf-8") as f:
                       for lineno, line in enumerate(f, 1):
                           for ch in line:
                               if 0x0E00 <= ord(ch) <= 0x0E7F:
                                   print(f"::error file={path},line={lineno}::Thai char detected (U+{ord(ch):04X})")
                                   fail = 1
                                   break
-              except (IsADirectoryError, FileNotFoundError):
+              except (IsADirectoryError, FileNotFoundError, UnicodeDecodeError):
                   continue
           sys.exit(fail)
           PY
