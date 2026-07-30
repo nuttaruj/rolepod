@@ -34,19 +34,19 @@ Naming decision: rigor tiers use **R0-R4** — "T" prefix already taken by T1-T6
 
 ## Phase C — v2.12.0 (P2 — trust / enforcement honesty)
 
-- [ ] C1. Enforcement tier banner: hook-live CLIs (Claude/Gemini/Codex) print tier at SessionStart; doctrine-only CLIs (opencode/Cursor/Antigravity) carry explicit "Enforcement: doctrine-only" line + rule: never report a hook gate as mechanically enforced there.
-- [ ] C2. Bypass accountability: any `ROLEPOD_GATES_SOFT` / `ROLEPOD_NO_CONTRACT` / `ROLEPOD_ALLOW_SHARED_WORKTREE` bypass appends `{ts, hook, var, reason|unreasoned}` to `.rolepod/evidence/bypass.log` (reason via `ROLEPOD_BYPASS_REASON`); never blocks.
-- [ ] C3. Risk-path per-repo override: `.rolepod/risk-paths` (one pattern per line) read by precommit-gate + gate-reminder + session_state.py; fallback = built-in list; router/doctrine same-line mention.
-- [ ] C4. `scripts/doctor.sh` + `make doctor`: fire every Claude hook with synthetic payloads, assert deny/context actually emitted; report installed versions + enforcement tier per CLI. Integration test.
-- [ ] C5. Phase evidence log `.rolepod/evidence/phase-log.jsonl`: router tier decision, check-work verdict, review verdict, finish-work ship action (answers the "does it work" measurement gap all 3 reports name).
-- [ ] C6. Bump 2.12.0 → render → test → commit.
+- [x] C1. Enforcement tier banner: hook-live CLIs (Claude/Gemini/Codex) print tier at SessionStart; doctrine-only CLIs (opencode/Cursor/Antigravity) carry explicit "Enforcement: doctrine-only" line + rule: never report a hook gate as mechanically enforced there.
+- [x] C2. Bypass accountability: any `ROLEPOD_GATES_SOFT` / `ROLEPOD_NO_CONTRACT` / `ROLEPOD_ALLOW_SHARED_WORKTREE` bypass appends `{ts, hook, var, reason|unreasoned}` to `.rolepod/evidence/bypass.log` (reason via `ROLEPOD_BYPASS_REASON`); never blocks.
+- [x] C3. Risk-path per-repo override: `.rolepod/risk-paths` (one pattern per line) read by precommit-gate + gate-reminder + session_state.py; fallback = built-in list; router/doctrine same-line mention.
+- [x] C4. `scripts/doctor.sh` + `make doctor`: fire every Claude hook with synthetic payloads, assert deny/context actually emitted; report installed versions + enforcement tier per CLI. Integration test.
+- [x] C5. Phase evidence log `.rolepod/evidence/phase-log.jsonl`: router tier decision, check-work verdict, review verdict, finish-work ship action (answers the "does it work" measurement gap all 3 reports name).
+- [x] C6. Bump 2.12.0 → render → test → commit.
 
 ## Phase D — v2.13.0 (P3 — QA depth)
 
-- [ ] D1. `qa-tester.md`: stable `TC-###` ID column in test-case table; every P1 row maps to an automated test whose name carries the ID.
-- [ ] D2. `check-work`: when a QA test-case table exists in evidence, assert every P1 ID has a passing test.
-- [ ] D3. `hooks/test-diff-lint.sh` (warn-only, from precommit-gate): added `.only`/`.skip`, deleted test cases, snapshot bulk-update, DB mock in integration path; spec-derived-expected marked HUMAN-ONLY. Integration test.
-- [ ] D4. Bump 2.13.0 → render → test → commit.
+- [x] D1. `qa-tester.md`: stable `TC-###` ID column in test-case table; every P1 row maps to an automated test whose name carries the ID.
+- [x] D2. `check-work`: when a QA test-case table exists in evidence, assert every P1 ID has a passing test.
+- [x] D3. `hooks/test-diff-lint.sh` (warn-only, from precommit-gate): added `.only`/`.skip`, deleted test cases, snapshot bulk-update, DB mock in integration path; spec-derived-expected marked HUMAN-ONLY. Integration test.
+- [x] D4. Bump 2.13.0 → render → test → commit.
 
 ## Failure policy
 

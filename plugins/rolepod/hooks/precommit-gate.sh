@@ -199,6 +199,13 @@ fi
 # test-writing into subagents whose edits land in the child transcript, so a
 # qa-tester dispatch (REVIEWERS) is often the only evidence the Lead's own
 # transcript can show. Every auto-pass is logged and surfaced as context.
+# Test-tampering lint (warn-only) — grep-able half of qa-tester's REJECT list.
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+LINT_WARN=""
+if [ -f "$SCRIPT_DIR/test-diff-lint.sh" ]; then
+  LINT_WARN=$(bash "$SCRIPT_DIR/test-diff-lint.sh" 2>/dev/null || true)
+fi
+
 if [ "$HARD_BLOCK" -eq 1 ] && { [ "$TEST_EDITS" -gt 0 ] || [ "$REVIEWERS" -gt 0 ]; }; then
   mkdir -p "$HOME/.rolepod" 2>/dev/null || true
   printf '%s auto-pass on evidence (tests=%s reviewers=%s): %.200s\n' \
@@ -207,6 +214,7 @@ if [ "$HARD_BLOCK" -eq 1 ] && { [ "$TEST_EDITS" -gt 0 ] || [ "$REVIEWERS" -gt 0 
   NOTE="precommit-gate auto-passed on session evidence: $TEST_EDITS test edits / $REVIEWERS reviewer dispatches"
   [ -n "$HIGH_RISK" ] && NOTE+=" (HIGH-RISK path: $HIGH_RISK)"
   NOTE+=". Evidence is session-wide, this diff is not — confirm S1-S5 / T1-T6 / F1-F5 cover THIS change."
+  [ -n "$LINT_WARN" ] && NOTE+=" | $LINT_WARN"
   ROLEPOD_HOOK_MSG="$NOTE" python3 -c "
 import json, os
 print(json.dumps({'hookSpecificOutput': {'hookEventName': 'PreToolUse', 'additionalContext': os.environ.get('ROLEPOD_HOOK_MSG', '')}}))
@@ -216,6 +224,7 @@ fi
 
 if [ "$HARD_BLOCK" -eq 1 ]; then
   # Env-passed — quotes in the reason must not break the JSON emitter.
+  [ -n "$LINT_WARN" ] && REASON+=" | $LINT_WARN"
   ROLEPOD_HOOK_MSG="$REASON" python3 -c "
 import json, os
 print(json.dumps({
@@ -237,6 +246,7 @@ WARN="precommit-gate SOFT warn. "
 WARN+="Diff: $FILES_CHANGED files / $LINES_CHANGED lines / $LOGIC_COUNT logic lines (normal code, no high-risk path). "
 WARN+="Recommend running S1-S5 (simplicity) + T1-T6 (tests) + F1-F5 (failure-mode) before commit. "
 WARN+="Set ROLEPOD_GATES_HARD=1 to enforce blocking on normal diffs."
+[ -n "$LINT_WARN" ] && WARN+=" | $LINT_WARN"
 
 ROLEPOD_HOOK_MSG="$WARN" python3 -c "
 import json, os

@@ -161,6 +161,10 @@ The high-risk path list (auth/billing/payments/…) is built-in but repo-tunable
 
 Bare or `+`-prefixed lines ADD patterns; `-`-prefixed lines EXCLUDE paths the built-in list would match; `#` starts a comment. Read by `precommit-gate.sh`, `gate-reminder.sh`, and `session_state.py`; absent file = built-ins only; unreadable file fails open. The strongest seed: paths whose git history shows the highest bugfix-commit density — measure, don't guess.
 
+### Test-tampering lint — `hooks/test-diff-lint.sh`
+
+Warn-only helper invoked by `precommit-gate.sh` (not a registered event hook). It greps the staged diff for the machine-checkable half of qa-tester's REJECT list: focus/skip markers added on the way to green, deleted test cases, snapshot files refreshed with no test-logic change, DB mocks added under integration/e2e paths. Findings ride into the gate's warn/deny message; the lint itself never blocks — over-firing a hard block trains users to bypass gates. Every finding is accompanied by the HUMAN-ONLY caveat: whether expected values were derived from the spec or captured from current output is a judgment no grep can make, so a green lint must never be read as "tests are good".
+
 ### Self-test — `make doctor`
 
 `scripts/doctor.sh` proves the enforcement layer mechanically: syntax-checks every hook, fires the SessionStart loader, and drives the three deny paths (subagent commit, high-risk commit without tests, cross-session same-file edit) with synthetic fixtures — plus verifies bypass logging and prints the installed version + enforcement tier per CLI. Run it after any CLI upgrade: a vendor hook API change that silently kills a deny path is exactly what this catches.

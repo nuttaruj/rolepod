@@ -106,7 +106,7 @@ Output is a hand-off document, not code:
 | TC3 | a cart at $49.99 (min − $0.01) | apply the coupon | rejected: "minimum $50" | boundary value | P1 |
 | TC4 | a coupon already stacked with another | apply a second coupon | rejected: one coupon per order | error guessing | P2 |
 
-Automation comes AFTER the table: each P1 row becomes an automated test (write-mode), or hands to the owning dev / `/scaffold-e2e` when rolepod-uiproof is installed. A bug found while executing cases → debug-issue's report-only exit (document + severity, never fix).
+Automation comes AFTER the table: each P1 row becomes an automated test (write-mode) whose test name carries the row ID verbatim (`test_TC2_minimum_boundary` / `it('TC2: …')`) — the ID is the traceability key `check-work` greps for, and a P1 row with no test carrying its ID is an uncovered requirement, not a style choice. Or the table hands to the owning dev / `/scaffold-e2e` when rolepod-uiproof is installed, IDs intact. A bug found while executing cases → debug-issue's report-only exit (document + severity, never fix).
 
 ## Hard stops
 
