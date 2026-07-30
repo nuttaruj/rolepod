@@ -38,6 +38,17 @@ the SAME CLI.
   switch (the dead session's lock is not yet stale). It is a warning, not
   a block — `ROLEPOD_ALLOW_SHARED_WORKTREE=1` silences the intentional case.
 
+## Cross-CLI parallel tracks — sessions working CONCURRENTLY, not in relay
+
+Resume is serial (one session ends, another continues). The same disk
+artifacts also support CONCURRENT sessions: a parallel plan + cohesion
+contract with a **Session split** section assigns each track to a CLI by
+strength (e.g. API-heavy → codex, UI-heavy → claude), each session runs
+its own Lead on its own track branch, and the integration session merges
+in contract order. Protocol + kickoff prompts: the cohesion contract
+template (write-plan) and "Session-split tracks" in implement-plan's
+`references/subagent-dispatch.md`.
+
 ## Rule
 Never assume a `/command` exists on the CLI you are running on. If unsure,
 write the handoff brief and restart — that works everywhere.

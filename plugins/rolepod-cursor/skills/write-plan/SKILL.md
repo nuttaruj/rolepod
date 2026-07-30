@@ -83,6 +83,8 @@ For this — or any high-stakes multi-option plan decision (approach, architectu
 
 Fill `templates/cohesion-contract-template.md` — it pins file ownership, shared interfaces, merge order, the do-not-touch list, and the integration owner. Save to `contract.md` or `docs/rolepod/plans/<feature>-cohesion-YYYY-MM-DD.md`.
 
+Tracks can also run as SEPARATE CLI sessions (cross-CLI wall-clock parallelism — e.g. API track on codex, UI track on claude): fill the contract's optional **Session split** section — per-track CLI + branch + kickoff prompt, one integration session. Execution protocol: implement-plan's `references/subagent-dispatch.md`, "Session-split tracks".
+
 ### 6. Route to agents
 
 For each task, name the best specialist if one is available. Brief = task + files + tests + done criteria + handoff partner. Lead executes tasks for which no specialist fits.
@@ -94,9 +96,9 @@ Scan for:
 - **Spec-coverage trace, both directions** — for each spec requirement, name the task that implements it (a requirement with no task is a plan failure); and for each task, name the spec line that asked for it (a task no spec line asked for is scope creep — cut it or move it to a follow-up list)
 - **Symbol consistency cross-task** — function / method / property names must match across tasks. `clearLayers()` in Task 3 and `clearFullLayers()` in Task 7 is a bug — pick one and propagate
 - **Missing tests** on any task
-- **Loop-runnable** — every task carries an exact runnable Command, and the plan states a Failure policy, so the build loop can execute → verify → recover without re-asking the user. Deterministic check on the filled plan: `grep -q '^## Failure policy' <plan> && [ "$(grep -c 'Command:' <plan>)" -ge "$(grep -c '^### Task' <plan>)" ]` — plan-lint, the sibling of write-spec's spec-lint (`tests/integration/cases/plan-lint.sh`)
+- **Loop-runnable** — every task carries an exact runnable Command, and the plan states a Failure policy, so the build loop can execute → verify → recover without re-asking the user. Deterministic check: `scripts/plan-lint.sh <plan> [contract]` (rolepod source repo) — Failure policy + Command per task + parallel ownership completeness; inline fallback: `grep -q '^## Failure policy' <plan> && [ "$(grep -c 'Command:' <plan>)" -ge "$(grep -c '^### Task' <plan>)" ]`
 - **Untouched high-risk surfaces**
-- **Unowned files** in a parallel layout
+- **Unowned or dual-owned files** in a parallel layout — every Files-to-touch path sits under EXACTLY one owner in the contract (plan-lint check 3: unowned = unplannable work, dual-owned = a merge conflict on schedule)
 
 ## Anti-placeholder
 

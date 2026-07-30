@@ -176,7 +176,7 @@ Anything else = continue.
 Fires only when the plan's **Parallel layout** section names more than one owner AND the cohesion contract exists. No contract → no parallel dispatch, period — drop to sequential and say why.
 
 1. **Group tasks by track** (contract owner). A track's dependencies are the tasks in other tracks whose interfaces it consumes — the contract's merge order encodes this.
-2. **Dispatch every ready track in ONE message** — one Agent call per track, same message, so they run concurrently. Each brief carries the track's tasks, its file-ownership slice (allowed paths = own slice; forbidden = everything else including the do-not-touch list), the frozen shared interfaces verbatim, tests, and done criteria.
+2. **Dispatch every ready track in ONE message** — one Agent call per track, same message, so they run concurrently. Each brief carries the track's tasks, its file-ownership slice (allowed paths = own slice; forbidden = everything else including the do-not-touch list), the frozen shared interfaces verbatim, tests, and done criteria. Copy the allowed/forbidden paths and the interfaces VERBATIM from the contract — a retyped path list is how a brief silently drifts from the ownership the contract pinned (`scripts/plan-lint.sh` proves plan↔contract; the verbatim rule covers contract↔brief).
 3. **Pipeline, never barrier** — as each track returns its manifest, run its two-stage review immediately; do not wait for slower tracks. Answer implementer questions inline as they arrive.
 4. **Merge in contract order** — the integration owner (Lead) merges reviewed slices per the contract's merge order, running the interface provider's tests before merging its consumers. The comprehension gate applies per slice; subagents still never commit.
 5. **Final whole-implementation review** on the cumulative diff after all tracks land — cross-track drift (symbol / type / contract mismatch) is exactly what per-track review cannot see.
@@ -187,6 +187,16 @@ Mid-flight conflicts:
 - One track `BLOCKED` while others run → let the running tracks finish; apply the standard variable changes to the blocked one. Its dependents wait; independent tracks do not.
 
 Cost note: parallel buys wall-clock, not tokens — N tracks cost the same tokens as N sequential tasks plus contract overhead. Dispatch parallel for speed, never to "use more agents".
+
+## Session-split tracks — separate CLI sessions as track owners
+
+The same contract that governs parallel subagents can be executed by SEPARATE CLI sessions, one per track — e.g. an API-heavy track on codex, a UI-heavy track on claude — when the user wants wall-clock parallelism across CLIs. The contract's optional **Session split** section carries the assignment and the per-session kickoff prompt. Differences from subagent tracks:
+
+- **Each session runs its own Lead.** It executes its track's tasks, runs its own per-task reviews, and — unlike a subagent — COMMITS its own slice to a track branch (or worktree). The subagent commit ban binds subagents, not session Leads; the atomicity the ban protects is preserved by branch isolation + contract merge order instead.
+- **Disk is the only shared truth.** Plan + contract are CLI-agnostic files; each session flips only its OWN tasks' checkboxes, so the checkbox union merges cleanly at integration. A session that edits another track's tasks, files, or checkboxes has broken the contract.
+- **Isolation is mechanical only on some CLIs.** Same-worktree stomp is hook-denied on Claude, doctrine-held elsewhere — prefer a branch or worktree per track whenever slices share any filesystem state (generated files, build artifacts, lockfiles).
+- **The integration session** (named in the contract) merges track branches in contract order, runs the interface provider's tests before its consumers, and runs the final whole-implementation review on the cumulative diff. Per-track self-review never substitutes for that final pass — cross-track drift is exactly what no single track can see.
+- **A frozen interface change stops every affected session.** Renegotiate in the contract file, re-kickoff the affected tracks. Silent divergence between sessions is the failure mode this whole protocol exists to prevent.
 
 ## Subagent commit policy
 
