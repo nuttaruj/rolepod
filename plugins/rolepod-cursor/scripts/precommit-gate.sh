@@ -80,7 +80,7 @@ REASON+="Diff: $FILES_CHANGED files / $LINES_CHANGED lines / $LOGIC_COUNT logic 
 [ -n "$HIGH_RISK" ] && REASON+="HIGH-RISK path: $HIGH_RISK → mandatory qa-tester + security-engineer review. "
 REASON+="Run gates explicitly: S1-S5 (simplicity) + T1-T6 (tests) + F1-F5 (failure-mode). "
 REASON+="After passing, include \`[gates: pass]\` in the commit message body — do NOT env-prefix the git command. "
-REASON+="Soft mode for incremental rollout: ROLEPOD_GATES_SOFT=1 in env."
+REASON+="Block wrong for this diff? Surface it to the user — soft mode (ROLEPOD_GATES_SOFT=1) is user-set only, never model-set."
 
 HARD_BLOCK=0
 if [ -n "$HIGH_RISK" ]; then

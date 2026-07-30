@@ -134,7 +134,7 @@ if [ -n "$HIGH_RISK" ] && [ "$SOFT_MODE" -eq 0 ]; then
   if [ "$HIGH_RISK_EDITS" -ge 1 ] && [ "$TEST_EDITS" -eq 0 ]; then
     BLOCK_REASON="HARD BLOCK: editing high-risk path '$FILE' but session has 0 test edits. Write a failing test FIRST (RED), then implement — one test edit unblocks this gate for the session. Session: $HIGH_RISK_EDITS high-risk edits / $TEST_EDITS tests / $REVIEWERS reviewers. Bypass (human only): launch the CLI with ROLEPOD_GATES_PASSED=1."
   elif [ "$HIGH_RISK_EDITS" -ge 2 ] && [ "$REVIEWERS" -eq 0 ]; then
-    BLOCK_REASON="HARD BLOCK: $HIGH_RISK_EDITS high-risk path edits this session, 0 reviewer agents dispatched. Spawn qa-tester (and security-engineer for auth/billing/crypto/secret paths) via the Agent tool BEFORE more edits. Bypass: ROLEPOD_GATES_SOFT=1."
+    BLOCK_REASON="HARD BLOCK: $HIGH_RISK_EDITS high-risk path edits this session, 0 reviewer agents dispatched. Spawn qa-tester (and security-engineer for auth/billing/crypto/secret paths) via the Agent tool BEFORE more edits. Reviewer dispatch impossible (user forbade agents / no subagent support)? SURFACE that conflict to the user and offer the sanctioned fallback: Lead cold self-review recorded as a LIMITATION in the evidence block. Bypass envs are user-set only — never set one yourself."
   fi
 fi
 
@@ -177,7 +177,7 @@ if [ -n "$HIGH_RISK" ]; then
       REVIEWER_LIST="$REVIEWER_LIST + Antigravity (\`agy -p\`, breadth/cross-file — Gemini family)"
     fi
   fi
-  CAREFUL_BANNER="⚠️  AUTO-CAREFUL MODE (high-risk path, session: $HIGH_RISK_EDITS high-risk edits / $TEST_EDITS tests / $REVIEWERS reviewers). MANDATORY before more edits: (1) test file exists or is being written this session, (2) reviewers dispatched — use ≥2 when available (${REVIEWER_LIST}; security-engineer for auth/billing/crypto). Exclude this session's own CLI — the adversarial pass runs on a DIFFERENT model (gemini and agy are the same model family). (3) S1-S5 + T1-T6 checklist run before commit. Soft-mode opt-out: ROLEPOD_GATES_SOFT=1. "
+  CAREFUL_BANNER="⚠️  AUTO-CAREFUL MODE (high-risk path, session: $HIGH_RISK_EDITS high-risk edits / $TEST_EDITS tests / $REVIEWERS reviewers). MANDATORY before more edits: (1) test file exists or is being written this session, (2) reviewers dispatched — use ≥2 when available (${REVIEWER_LIST}; security-engineer for auth/billing/crypto). Exclude this session's own CLI — the adversarial pass runs on a DIFFERENT model (gemini and agy are the same model family). (3) S1-S5 + T1-T6 checklist run before commit. Reviewer path blocked by a user instruction? Surface it — fallback: Lead cold self-review + limitation note. Bypass envs are user-set only, never model-set. "
 fi
 
 # Emit reminder ONLY when schema-bound or high-risk — no generic Q1-Q4 nag.

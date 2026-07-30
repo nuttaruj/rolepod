@@ -146,7 +146,8 @@ reason = (
     "  • Prefer the EnterWorktree tool (native, auto-cleanup), OR\n"
     "  • git worktree add " + sug + " " + br + " && cd " + sug + "\n"
     "If this session is intentionally shared (read-only review, or you have "
-    "coordinated who owns this file), set ROLEPOD_ALLOW_SHARED_WORKTREE=1."
+    "coordinated who owns this file), ask the USER to set "
+    "ROLEPOD_ALLOW_SHARED_WORKTREE=1 — bypass envs are user-set, never model-set."
 )
 print(json.dumps({
     "hookSpecificOutput": {

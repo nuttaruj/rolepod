@@ -1,0 +1,44 @@
+rolepod installer
+  source:  /Users/nuttaruj/Project/rolepod
+  cli:     codex
+  scope:   global
+  force:   0
+  dry-run: 1
+
+▸ Rendering entry doc(s) (target: codex)
+rendered 16 agents → build/rendered/codex/agents
+
+─── Installing for Codex CLI ───
+  target:                /var/folders/9_/t6sqcy0s213g7qmdtdvq4g880000gn/T/tmp.KGMx21eYD3
+  marketplace source:    /Users/nuttaruj/Project/rolepod
+  mode:                  temp-target (filesystem only — global config NOT mutated)
+▸ Marking hook scripts executable
+[DRY-RUN] would: chmod +x /Users/nuttaruj/Project/rolepod/plugins/rolepod-codex/hooks/*.sh
+! ROLEPOD_TARGET set — skipping global marketplace registration.
+!   Codex CLI has no per-target config home. Marketplace add would mutate /Users/nuttaruj/.codex/config.toml.
+!   For real install, run without ROLEPOD_TARGET: ./install.sh --target=codex
+!   For isolated preview, use --dry-run: ROLEPOD_TARGET=/var/folders/9_/t6sqcy0s213g7qmdtdvq4g880000gn/T/tmp.KGMx21eYD3 ./install.sh --target=codex --dry-run
+▸ Copying rendered plugin tree → /var/folders/9_/t6sqcy0s213g7qmdtdvq4g880000gn/T/tmp.KGMx21eYD3/plugins/rolepod (filesystem only — Codex loader resolves from rendered dir)
+[DRY-RUN] would: rm -rf /var/folders/9_/t6sqcy0s213g7qmdtdvq4g880000gn/T/tmp.KGMx21eYD3/plugins/rolepod && mkdir -p /var/folders/9_/t6sqcy0s213g7qmdtdvq4g880000gn/T/tmp.KGMx21eYD3/plugins/rolepod && cp -R /Users/nuttaruj/Project/rolepod/plugins/rolepod-codex/. /var/folders/9_/t6sqcy0s213g7qmdtdvq4g880000gn/T/tmp.KGMx21eYD3/plugins/rolepod/
+▸ Installing 16 rolepod agents → /var/folders/9_/t6sqcy0s213g7qmdtdvq4g880000gn/T/tmp.KGMx21eYD3/agents/rolepod-*.toml
+[DRY-RUN] would: mkdir -p /var/folders/9_/t6sqcy0s213g7qmdtdvq4g880000gn/T/tmp.KGMx21eYD3/agents && rm -f rolepod-*.toml && copy *.toml from rendered agents/ with rolepod- prefix
+▸ Updating AGENTS.md (managed block) → /var/folders/9_/t6sqcy0s213g7qmdtdvq4g880000gn/T/tmp.KGMx21eYD3/AGENTS.md
+[DRY-RUN] would: create /var/folders/9_/t6sqcy0s213g7qmdtdvq4g880000gn/T/tmp.KGMx21eYD3/AGENTS.md with rolepod managed block from AGENTS.md
+~ Codex verification skipped (dry-run)
+
+─── Summary ───
+DRY-RUN: nothing was written to disk
+
+rolepod framework installed. (Pure framework — no 3rd-party add-ons bundled.)
+
+Recommended add-ons (install separately — framework auto-integrates each):
+  • Code intel    — CodeGraph, GitNexus
+  • Memory        — claude-mem
+  • Token cuts    — rtk, caveman
+  • Design        — ui-ux-pro-max
+
+See README → "Recommended add-ons" for install commands + integration notes.
+
+
+Final step: restart Codex CLI to load the new plugin.
+  Hooks require opt-in: codex features enable plugin_hooks (plugin_hooks is 'under development, false' by default; rolepod's hooks/hooks.json is inert without this flag).

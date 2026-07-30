@@ -143,7 +143,7 @@ Removes own session lock so the next session in this worktree does not see a pha
 | `ROLEPOD_NO_CONTRACT=1` | Single-domain Agent spawn that doesn't need cohesion contract (e.g. read-only research agent) |
 | `ROLEPOD_ALLOW_SHARED_WORKTREE=1` | Intentional shared session (read-only review, paired exploration) |
 
-Never set these globally — apply per-command only. Hard rules exist because real-world failures triggered them.
+Never set these globally — apply per-command only. Hard rules exist because real-world failures triggered them. **And they are the user's hand only:** a model that meets a gate conflicting with a standing instruction surfaces the conflict with options (e.g. Lead cold self-review recorded as a limitation) — it never sets a bypass env itself. Hook block messages, the always-on core, and review-code all state this; a self-set bypass in `bypass.log` is a finding, not a workaround.
 
 **Bypass accountability.** Every used bypass is appended to `<git-root>/.rolepod/evidence/bypass.log` as one JSON line — `{"ts","hook","var","reason"}` — with the reason taken from `ROLEPOD_BYPASS_REASON` (defaults to `"unreasoned"`). Logging never blocks and fails open. A silent bypass normalizes itself; a recorded one stays visible in review.
 
