@@ -22,6 +22,7 @@ help:
 	@echo "  make test                         — test-static (release gate)"
 	@echo "  make test-all                     — test-static + test-integration"
 	@echo "  make doctor                       — live self-test: hooks fire + deny paths prove out + per-CLI tier"
+	@echo "  make stats                        — read phase-log/bypass evidence: tier distribution, verdicts, bypasses"
 	@echo ""
 	@echo "  make render                       — render adapters to build/rendered/"
 	@echo "  make install                      — install --target=claude --force into ~/.claude/"
@@ -139,6 +140,11 @@ render:
 # and reports installed version + enforcement tier per CLI.
 doctor:
 	@bash scripts/doctor.sh
+
+# Usage evidence readout — the observational half of "does the ceremony pay
+# for itself" (the controlled half is an eval harness).
+stats:
+	@bash scripts/stats.sh
 
 install:
 	@./install.sh --target=claude --force

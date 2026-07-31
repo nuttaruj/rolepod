@@ -32,7 +32,7 @@ Skip when:
 ## Boundary
 
 Owns:
-- Fresh evidence that the change works: tests, build, curl, logs, screenshot / browser.
+- Fresh evidence that the change works: tests, build, curl, logs, screenshot / browser. Runner emits JUnit/XUnit XML (`pytest --junitxml` / `--reporter=junit` / surefire)? Prefer it — cite `scripts/junit-summary.sh` (rolepod source repo) totals + failed test names verbatim; counted results beat prose claims.
 - Verification limits and the risk statement when evidence is impossible.
 
 Does not own:
