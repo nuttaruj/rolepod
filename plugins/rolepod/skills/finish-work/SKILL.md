@@ -94,7 +94,7 @@ The PreCommit hook also enforces the T-gate.
 **Failure-mode (F1-F5)** — run the `check-work` failure-mode gate; do
 not merge with an unresolved F-finding.
 
-**Evidence** — read `check-work`'s evidence block: `Status: UNVERIFIED` or `PARTIAL` blocks merge unless the user explicitly waives it (quote the waiver in the finish menu); green tests alone do not satisfy this gate.
+**Evidence** — read `check-work`'s evidence block: `Status: UNVERIFIED` or `PARTIAL` blocks merge unless the user explicitly waives it (quote the waiver in the finish menu); green tests alone do not satisfy this gate. Tree unchanged since that block's recorded pass → cite it, do NOT re-run the local suite here — the CI lanes are the fresh signal at merge time.
 
 **Reviewer** — risk-appropriate review completed (see `review-code`). On a high-risk diff, read the review report's **Cross-model adversarial pass** line: anything other than a cross-family pass — `NOT RUN` or `vertical — same family` — means the user must see that limitation before merge; state it in the finish summary, never clear the gate silently.
 

@@ -145,7 +145,7 @@ More than one evidence type needed (e.g. test suite + perf benchmark + security 
 
 Execute as Lead with this minimum viable checklist:
 
-1. Run tests for the touched module + typecheck/lint if the stack has them
+1. Run tests for the touched module + typecheck/lint if the stack has them (scope ladder: task Command while building → module suite here → full suite only on high-risk or at merge via CI Phase 2; map changed paths → subset by import graph / naming before defaulting wider)
 2. UI → screenshot or DOM read via browser tools; API → curl + assert response shape
 3. Schema/migration → dry-run forward + rollback; docs → render + link-check + placeholder scan
 4. Compose evidence block; state any missing verification path with risk

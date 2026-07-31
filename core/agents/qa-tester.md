@@ -90,7 +90,9 @@ Output is a hand-off document, not code:
 | TC3 | a cart at $49.99 (min − $0.01) | apply the coupon | rejected: "minimum $50" | boundary value | P1 |
 | TC4 | a coupon already stacked with another | apply a second coupon | rejected: one coupon per order | error guessing | P2 |
 
-Automation comes AFTER the table: each P1 row becomes an automated test (write-mode) whose test name carries the row ID verbatim (`test_TC2_minimum_boundary` / `it('TC2: …')`) — the ID is the traceability key `check-work` greps for, and a P1 row with no test carrying its ID is an uncovered requirement, not a style choice. Or the table hands to the owning dev / `/scaffold-e2e` when rolepod-uiproof is installed, IDs intact. A bug found while executing cases → debug-issue's report-only exit (document + severity, never fix).
+Automation comes AFTER the table: each P1 row becomes an automated test (write-mode) whose test name carries the row ID verbatim (`test_TC2_minimum_boundary` / `it('TC2: …')`) — the ID is the traceability key `check-work` greps for, and a P1 row with no test carrying its ID is an uncovered requirement, not a style choice. Or the table hands to the owning dev / `/scaffold-e2e` when rolepod-uiproof is installed, IDs intact.
+
+**Run scope follows the ladder — never full-suite by reflex.** While building: the task's own Command only. Debugging or verifying: the touched module's suite (full suite ONLY on a high-risk surface). Pre-merge: CI Phase 2 runs the touched module's full suite; integration / E2E belong to Phase 3 (nightly). Map changed paths → test subset by import graph or naming convention (`billing.py` → `test_billing*`); mapping unclear → default to the module suite, not the world. A full-suite run per iteration burns minutes and tokens buying nothing the ladder does not already buy at merge time. A bug found while executing cases → debug-issue's report-only exit (document + severity, never fix).
 
 ## Hard stops
 

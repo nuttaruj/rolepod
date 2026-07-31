@@ -114,7 +114,7 @@ After a subagent returns `COMPLETED`, dispatch two reviewers in order on the dif
 
 Both stages mandatory for delegated work. Lead-executed tasks: §6 collapses to one self-review read cold — run `git diff`, then re-read each touched file from disk (not from memory) before judging (fresh-context simulation).
 
-After all tasks pass per-task review, dispatch a **final whole-implementation review** on the cumulative diff to catch cross-task drift (type/symbol/contract mismatch, unowned files in parallel layouts). Hand off to `check-work` only after the final review clears.
+After all tasks pass per-task review, dispatch a **final whole-implementation review** on the cumulative diff to catch cross-task drift (type/symbol/contract mismatch, unowned files in parallel layouts). Small clean plan (≤2 tasks, disjoint files, per-task reviews clean) → the Lead's own cold read of the cumulative diff stands in; dispatch the reviewer when cross-task seams exist. Hand off to `check-work` only after the final review clears.
 
 ### 7. Model selection by task complexity
 
