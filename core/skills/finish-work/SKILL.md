@@ -75,7 +75,7 @@ The PreCommit hook also enforces the T-gate.
 **Failure-mode (F1-F5)** — run the `check-work` failure-mode gate; do
 not merge with an unresolved F-finding.
 
-**Evidence** — read `check-work`'s evidence block: `Status: UNVERIFIED` or `PARTIAL` blocks merge unless the user explicitly waives it (quote the waiver in the finish menu); green tests alone do not satisfy this gate. Tree unchanged since that block's recorded pass → cite it, do NOT re-run the local suite here — the CI lanes are the fresh signal at merge time.
+**Evidence** — read `check-work`'s evidence block: `Status: UNVERIFIED` or `PARTIAL` blocks merge unless the user explicitly waives it (quote the waiver in the finish menu); green tests alone do not satisfy this gate. Tree unchanged since that block's recorded pass → cite it and skip the local re-run ONLY when a CI lane re-runs that scope on the merge path; no CI configured → run the Phase 1+2 equivalents locally before the irreversible act (§2).
 
 **Reviewer** — risk-appropriate review completed (see `review-code`). On a high-risk diff, read the review report's **Cross-model adversarial pass** line: anything other than a cross-family pass — `NOT RUN` or `vertical — same family` — means the user must see that limitation before merge; state it in the finish summary, never clear the gate silently.
 
@@ -91,6 +91,7 @@ Any failure → fix or report; do not merge.
 | Phase 2 (path-triggered) | the touched module's full test suite | YES when triggered |
 | Phase 3 (nightly / manual) | integration · E2E · chaos · security deep · perf benchmark | NO (post-merge notify only) |
 
+**No CI configured** (local-only repo, direct deploy — `wrangler deploy` / `flyctl` / rsync): CI is a runner, not the requirement — the phases collapse into a LOCAL pre-ship run the Lead executes: Phase 1 equivalent (lint · typecheck · smoke) + Phase 2 equivalent (touched module's full suite) BEFORE the merge / deploy, and a post-deploy smoke check (curl the live endpoint / health probe) as deploy evidence. The full-scope check runs before the irreversible act — where it runs is environment detail.
 Red required lane → Lead fixes and re-pushes; do not ask user permission for each iteration of fix-and-rerun once the merge intent is approved. Triage the cause before re-running — see `references/ci-triage.md`.
 
 ### 3. Detect environment

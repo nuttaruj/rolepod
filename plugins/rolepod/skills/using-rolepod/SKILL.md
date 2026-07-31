@@ -116,7 +116,7 @@ Router fires the **first** skill per phase. Phase exits only when its **exit evi
 | **Build** | `implement-plan` (+ `debug-issue` for bug intent) | changed files + tests added (or explicit no-test justification) + red→green evidence | Verify |
 | **Verify** | `check-work` | fresh command output / screenshot / curl / log evidence; OR explicit "verify impossible because X" risk note | Review (high-risk / multi-file) OR Ship (low-risk, plan exhausted) OR Build (plan has unchecked tasks) |
 | **Review** | `review-code` | findings fixed OR rejected with line-anchored reason; no unresolved blocker | Ship (plan exhausted) OR Build (plan has unchecked tasks) |
-| **Ship** | `finish-work` | pre-merge gates green: S+T+F + Evidence + Reviewer + PR scope (one concern per PR); required CI lanes pass; user approval when policy requires; 4-option finish menu presented (merge / open PR / keep open / discard) | **end** |
+| **Ship** | `finish-work` | pre-merge gates green: S+T+F + Evidence + Reviewer + PR scope (one concern per PR); required CI lanes pass (no CI configured → their local equivalents, finish-work §2); user approval when policy requires; 4-option finish menu presented (merge / open PR / keep open / discard) | **end** |
 
 **Router decides the first move only.** Each downstream skill owns its own gates; using-rolepod doesn't re-explain them.
 
