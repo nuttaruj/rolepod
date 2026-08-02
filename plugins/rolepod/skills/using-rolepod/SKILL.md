@@ -8,13 +8,7 @@ phase: router
 
 # Using Rolepod — workflow router
 
-Rolepod routes every task through one workflow spine:
-
-```
-Define → Plan → Build → Verify → Review → Ship
-```
-
-Lead reads this skill on the first turn of each request. Pick the phase, fire the required skill, then resume normal work inside that phase. Specialists (frontend / backend / billing / security / etc.) are chosen **after** the phase is clear, not before.
+Rolepod routes every task through one spine: `Define → Plan → Build → Verify → Review → Ship`. Lead reads this skill on the first turn of each request: pick the phase, fire the required skill, resume normal work inside it. Specialists are chosen **after** the phase is clear, not before.
 
 ## Iron Rule
 
@@ -28,11 +22,7 @@ Default: route through the spine. Skipping is allowed only when (a) the task is 
 
 ## Router modes
 
-This skill auto-fires on every request and runs in one of two modes.
-
-**Auto-router mode (default)** — fires on normal requests. Picks the FIRST needed phase only; does not run every phase. May skip Define / Plan / Review / Ship when task size and risk justify it (see Skip rule). The user invokes nothing — routing is automatic. The Quick router table below is the single routing source.
-
-**Force-full-lifecycle mode** — the user explicitly asks for the full workflow. Run Define → Plan → Build → Verify → Review → Ship with no phase skips unless the user later overrides.
+Auto-fires on every request. **Auto-router (default)**: picks the FIRST needed phase only — never runs every phase; skips per the Rigor ladder; the user invokes nothing; the Quick router table is the single routing source. **Force-full-lifecycle**: the user explicitly asks for the full workflow — all six phases, no skips unless the user later overrides.
 
 ## Commission vs conversation — detected HERE, never flagged by the user
 
@@ -44,32 +34,15 @@ Nobody types "answer only" in real use — classifying the message is this skill
 
 ## Force-full-lifecycle mode — `/rolepod-full`
 
-Switch from auto-router to force-full mode when the user's message opens with any of these:
+Triggers (message opens with): `/rolepod-full <task>` · `$rolepod-full <task>` (Codex) · `force full lifecycle` / `run full rolepod lifecycle` · `rolepod mode: full lifecycle` (exact). The `rolepod-full` skill is the explicit force-full entrypoint — it loads this skill in force-full mode.
 
-- `/rolepod-full <task>` — cross-CLI invocation of the `rolepod-full` skill
-- `$rolepod-full <task>` — Codex skill-picker style
-- Natural language: `force full lifecycle`, `run full rolepod lifecycle`
-- `rolepod mode: full lifecycle` — this exact phrasing only
+Bare `/rolepod`, bare `rolepod mode`, bare `run all phases`, and bare `no skip` are NOT force-full triggers — they fall through to auto-router; a normal prompt auto-routes.
 
-Bare `/rolepod`, bare `rolepod mode`, bare `run all phases`, and bare `no skip` are NOT force-full triggers — they fall through to auto-router. `/rolepod` is not needed for normal use; a normal prompt auto-routes.
-
-The `rolepod-full` skill is the explicit entrypoint — it loads this skill in force-full mode; the execution backend table lives in `references/force-full-lifecycle.md`. If the user invoked `rolepod-full`, you are already in force-full mode; run it here.
-
-### Force-full behavior
-
-Force-full runs all six phases in order with no skips — even a one-line fix — with external adversarial reviewers when configured. The full phase-by-phase detail, the execution backend table, the start banner, careful-mode rigor, and the force-full rationalizations live in `references/force-full-lifecycle.md`. Load it when entering force-full mode.
+Force-full runs all six phases in order with no skips — even a one-line fix — with external adversarial reviewers when configured. Phase-by-phase detail, execution backend table, start banner, careful-mode rigor: `references/force-full-lifecycle.md` — load it when entering this mode.
 
 ## Boundary
 
-Owns:
-- Phase selection, skip decision, force-full detection, next skill.
-
-Does not own:
-- Detailed spec content, task planning, implementation, verification, review findings, or branch fate.
-- Specialist / domain decisions before the phase is clear.
-
-Hand off:
-- Once the phase is chosen, the phase skill owns its own gates.
+Owns phase selection, skip decision, force-full detection, next skill — nothing downstream (spec content, planning, implementation, verification, review findings, branch fate). Once the phase is chosen, the phase skill owns its own gates.
 
 ## Quick router
 
@@ -103,15 +76,11 @@ If no row matches: ask the user what phase the task is in. Don't pattern-match y
 
 ### Model tier hint reading
 
-- **cheap** = haiku-class. Docs, PM, business analysis, customer-facing copy.
-- **balanced** = sonnet-class (default). Normal implementation.
-- **strong** = opus-class and up — the strongest tier the CLI exposes (fable-class where available; the class is "strongest available", not a fixed model). Architecture, billing, security, migration code, and final-pass / adversarial code review (a review context, not a separate tier).
-
-The Lead picks the tier at dispatch time from the row's hint (agent files carry no model pin — the hint column is the policy). Escalate a tier only when the task proves harder than routed (BLOCKED redispatch) or the user explicitly asks; never silently downgrade a **strong** row. The same policy governs scripted multi-agent orchestration (workflow / ultracode): route each stage's model by tier — sweep/scan = cheap, build = balanced, verify/judge = strong — never inherit the Lead's model across the whole fleet without a stated reason; prefer rolepod agentTypes so the tier rides along.
+**cheap** = haiku-class (docs, PM, copy) · **balanced** = sonnet-class (default implementation) · **strong** = opus-class and up — the strongest tier the CLI exposes (fable-class where available; "strongest available", not a fixed model) for architecture, high-risk code, and final-pass / adversarial review. The Lead picks the tier at dispatch (agent files carry no model pin); escalate only on BLOCKED redispatch or user ask; never silently downgrade a **strong** row. Same policy governs scripted orchestration (workflow / ultracode): tier per stage — sweep = cheap, build = balanced, verify/judge = strong — never inherit the Lead's model across the whole fleet without a stated reason; prefer rolepod agentTypes so the tier rides along.
 
 ## Scope-then-spawn — repo-wide audit / sweep
 
-For any task touching the whole repo (audit, refactor sweep, dead-code hunt, dependency map, "find every usage of X"): scope the file list first, narrow to the risky subset, then spawn agents only on that subset — never fan one agent per file across hundreds. The 3-step flow, tool order, and exceptions live in `references/scope-then-spawn.md`.
+Whole-repo task (audit, sweep, "find every usage of X"): scope the file list first, narrow to the risky subset, spawn agents only on that subset — never one agent per file across hundreds. Flow + tool order: `references/scope-then-spawn.md`.
 
 ## State machine — phase → exit evidence → next
 
@@ -155,11 +124,7 @@ User explicit ("skip spec" / "just commit" / "answer only" / "no plan" / "ship a
 
 ## Finish ritual (Ship phase exit)
 
-When the user says "done" / "finished" / "complete" / "ready" — or when the task obviously reached a natural stopping point — fire **in order**:
-
-1. `check-work` — produce concrete evidence the change works (test output / screenshot / curl).
-2. `review-code` — if multi-file or high-risk, pick adversarial reviewers per their domain match: an external CLI whose model differs from the Lead's, plus qa-tester.
-3. `finish-work` — owns the 4-option finish menu (merge / open PR / keep open / discard); never auto-pick — the branch decision is the user's.
+User says "done / finished / ready" or the task reaches its natural end → fire in order: `check-work` (concrete evidence) → `review-code` (adversarial reviewers per domain when multi-file / high-risk) → `finish-work` (4-option menu; never auto-pick — the branch decision is the user's).
 
 ## Output pattern
 
@@ -178,28 +143,9 @@ Routing output by tier — the block's size follows the rigor ladder:
 
 Every tier decision (R0 excepted) appends one line to `<git-root>/.rolepod/evidence/phase-log.jsonl` — `{"ts":"<iso8601>","phase":"route","tier":"R1-R4","skill":"<first skill>"}`, fail-open outside a git repo. A skip that is not logged is a skip that cannot be audited.
 
-Worked transcripts (vague feature, typo fix, done-claim, and five more) live in `examples/routing-transcripts.md` — read when a request does not obviously match a row.
-
 ## Optional plugin skills (backend awareness)
 
-If the user has installed a sibling plugin under **Extension Protocol v1** (spec: `docs/EXTENSION-PROTOCOL.md` in the rolepod source repo), prefer its skills over manual orchestration. The parent writes `<git-root>/.rolepod/parent-active` at SessionStart so children switch to with-rolepod mode and route evidence into `.rolepod/evidence/` for `check-work` to aggregate. Currently recognised:
-
-- **`rolepod-uiproof`** (v0.6+) — `/verify-ui`, `/audit-a11y`, `/visual-diff`, `/scaffold-e2e`, `/check-errors`. Used by `check-work` (verify + a11y + visual), `debug-issue` (browser repro / console errors), `review-code` (WCAG + visual regression).
-- **`rolepod-wplab`** (v1.9+) — 14 WP skills + 82 MCP tools. Used by `check-work` (`/wp-health-check`), `debug-issue` (`/wp-diagnose`), `implement-plan` (`/wp-edit-*`, `/wp-scaffold`), `review-code` (`/wp-changes`).
-- **`rolepod-dblab`** (v0.1+) — `/db-introspect`, `/db-query`, `/db-explain`, `/db-migrate-verify`, `/db-write`. Used by `check-work` (DB state as PASS/FAIL evidence), `debug-issue` (live data state as root cause), `review-code` / `finish-work` (`/db-migrate-verify` on migration / auth / billing paths). Seam with wplab: a WordPress DB → `wplab` (WP-semantic); any other database → `dblab` (raw engine).
-
-When a child is not installed, the phase skill falls back to: (a) [Playwright MCP](https://github.com/microsoft/playwright-mcp), (b) [Chrome DevTools MCP](https://github.com/ChromeDevTools/chrome-devtools-mcp) (sharper console / network / perf), or (c) manual instruction. Phase skills carry the explicit chain.
-
-### Domain detection — when to suggest a child
-
-| Signal | Suggest |
-|---|---|
-| `wp-config.php` at repo root | `rolepod-wplab` |
-| `package.json` lists `playwright`, `cypress`, `react`, `vue`, `svelte`, `next`, `nuxt`, `astro` | `rolepod-uiproof` |
-| `alembic.ini` at repo root, or `sqlalchemy` / `psycopg` / `psycopg2` / `asyncpg` in `requirements.txt` / `pyproject.toml` (non-WordPress DB) | `rolepod-dblab` |
-| `.rolepod-uiproof/`, `.rolepod-wplab/`, or `.rolepod-dblab/` exists | the matching child already in use |
-
-Detect availability by inspecting whether the slash command appears in the available skill list, or by treating tool-call absence as a fallback signal.
+Sibling plugins under **Extension Protocol v1** — `rolepod-uiproof` (browser / a11y / visual), `rolepod-wplab` (WordPress), `rolepod-dblab` (databases) — are preferred over manual orchestration when installed; evidence routes into `.rolepod/evidence/` for `check-work` to aggregate. Detect by their slash commands in the skill list, or by domain signals (`wp-config.php` → wplab; `playwright` / `react` / `vue` in `package.json` → uiproof; `alembic.ini` / `sqlalchemy` → dblab; a `.rolepod-<child>/` dir → already in use). The per-phase integration detail and the not-installed fallback chains live in the phase skills themselves (`check-work`, `debug-issue`, `implement-plan`, `review-code`); spec: `docs/EXTENSION-PROTOCOL.md` in the rolepod source repo.
 
 ## Examples
 
@@ -211,20 +157,11 @@ Non-blocking — read when a request does not obviously match a Quick-router row
 | Excuse | Reality |
 |---|---|
 | "Simple task, skip the spine" | Tier it (R0-R4). R1 skips ceremony by rule, R2 still gets an inline plan + verify; calling a task "simple" without tiering is how scope hides. |
-| "I already know what to build" | Even right answers without a spec drift mid-implementation. Write the 5-line spec; 30 seconds. |
 | "User just wants a fix" | They want a *correct* fix. `debug-issue` finds the root; symptom patches recur. |
 | "Tests are obvious, I'll add later" | Later never comes. TDD adds the test now or admits in writing it won't have one. |
-| "Solo work, no contract needed" | The moment a second agent (or future-you in a fresh session) touches the surface, contract pays off. |
 | "Reviewer takes too long" | Skip review = ship bugs. An external-CLI adversarial pass takes ~30s. |
 
 ## Don't
 
-- Spawn specialist agents (frontend / backend / billing / etc.) before the phase is clear.
-- Use `finish-work` as a placeholder ("I'll add it later"). It's the last skill, fires only at Ship.
-- Replace `check-work` with the agent's confidence ("looks right to me").
-- Skip Define just because the user typed in a hurry. Ask 1-2 questions.
+- Spawn specialists before the phase is clear · use `finish-work` as a placeholder (it fires only at Ship) · replace `check-work` with confidence ("looks right to me") · skip Define just because the user typed in a hurry — ask 1-2 questions.
 - Treat this skill as documentation. It's a router — pick a row, fire the skill.
-
-## Influence
-
-Sharpens the workflow spine that already exists in the per-CLI doctrine doc (CLAUDE.md / AGENTS.md / GEMINI.md / Cursor always-on rule) so that small models route the same way large ones do. Pairs with `write-plan` for specialist selection and `finish-work` for the final gate.
