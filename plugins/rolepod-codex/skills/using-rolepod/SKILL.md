@@ -28,8 +28,8 @@ Auto-fires on every request. **Auto-router (default)**: picks the FIRST needed p
 
 Nobody types "answer only" in real use — classifying the message is this skill's job (those phrases stay as overrides, not requirements):
 
-- **Conversation** — idea questions ("what do you think", "ถ้า…ดีไหม"), hypothetical framing, thinking-out-loud, comparisons, no imperative aimed at the repo → R0: discuss naturally — perspectives, trade-offs, honest pushback; NO spec, NO plan, NO artifact. The idea firms up mid-chat → offer ONCE in one line ("want this as a spec?"), never auto-convert.
-- **Commission** — an imperative aimed at the repo (fix / add / build / แก้ / ทำ / เพิ่ม), named files or features, acceptance-shaped wording → tier normally (R1-R4).
+- **Conversation** — idea questions in ANY language ("what do you think", "would X be better?", "wouldn't it be nice if…"), hypothetical framing, thinking-out-loud, comparisons, no imperative aimed at the repo → R0: discuss naturally — perspectives, trade-offs, honest pushback; NO spec, NO plan, NO artifact. The idea firms up mid-chat → offer ONCE in one line ("want this as a spec?"), never auto-convert.
+- **Commission** — an imperative aimed at the repo in any language (fix / add / build / change and their equivalents), named files or features, acceptance-shaped wording → tier normally (R1-R4).
 - Ambiguous → treat as conversation and ask in ONE line whether to build — a wrongly-formal answer costs more than one question. Pattern-matching musing into Define is the same disease as pattern-matching yourself into Build.
 
 ## Force-full-lifecycle mode — `/rolepod-full`

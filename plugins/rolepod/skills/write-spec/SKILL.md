@@ -20,7 +20,7 @@ Define-phase entry skill. Convert a vague request into a sharp spec the next pha
 5. WHEN the spec is saved as a file, require a second approval on the written file itself (Gate 2) — verbal agreement and written file drift apart.
 </EXTREMELY-IMPORTANT>
 
-Fires on a COMMISSION, never on musing — the user exploring an idea ("ถ้าทำ X ดีไหม", "what if we…") gets a discussion, not a spec interview; the router offers the spec once when the idea firms up (using-rolepod, Commission vs conversation).
+Fires on a COMMISSION, never on musing — the user exploring an idea ("what if we…", "would X be worth it?" in any language) gets a discussion, not a spec interview; the router offers the spec once when the idea firms up (using-rolepod, Commission vs conversation).
 
 ## When to use
 
