@@ -34,6 +34,14 @@ This skill auto-fires on every request and runs in one of two modes.
 
 **Force-full-lifecycle mode** — the user explicitly asks for the full workflow. Run Define → Plan → Build → Verify → Review → Ship with no phase skips unless the user later overrides.
 
+## Commission vs conversation — detected HERE, never flagged by the user
+
+Nobody types "answer only" in real use — classifying the message is this skill's job (those phrases stay as overrides, not requirements):
+
+- **Conversation** — idea questions ("what do you think", "ถ้า…ดีไหม"), hypothetical framing, thinking-out-loud, comparisons, no imperative aimed at the repo → R0: discuss naturally — perspectives, trade-offs, honest pushback; NO spec, NO plan, NO artifact. The idea firms up mid-chat → offer ONCE in one line ("want this as a spec?"), never auto-convert.
+- **Commission** — an imperative aimed at the repo (fix / add / build / แก้ / ทำ / เพิ่ม), named files or features, acceptance-shaped wording → tier normally (R1-R4).
+- Ambiguous → treat as conversation and ask in ONE line whether to build — a wrongly-formal answer costs more than one question. Pattern-matching musing into Define is the same disease as pattern-matching yourself into Build.
+
 ## Force-full-lifecycle mode — `/rolepod-full`
 
 Switch from auto-router to force-full mode when the user's message opens with any of these:
@@ -69,7 +77,7 @@ Match the user intent to the FIRST skill that fires. The skill itself decides wh
 
 | User intent (verbs / phrases) | Phase | First skill fires | Model tier |
 |---|---|---|---|
-| "build / add / create / make / design" + vague target | **Define** | `write-spec` | cheap (PM/spec) |
+| "build / add / create / make / design" + vague target (commission only — musing / hypothetical framing → Conversation mode above) | **Define** | `write-spec` | cheap (PM/spec) |
 | "build X to spec" + spec exists | **Plan** | `write-plan` | cheap–balanced |
 | "execute plan / work the plan / implement plan.md" | **Plan→Build** | `write-plan` → `implement-plan` | balanced |
 | "write test cases / test this feature / report a bug" — QA hand-off, no fix wanted | **Verify (QA)** | `qa-tester` agent (spec-first test-case design); a found bug → `debug-issue` report-only exit | cheap–balanced |
@@ -91,7 +99,7 @@ Match the user intent to the FIRST skill that fires. The skill itself decides wh
 | clear doc edit / add runbook section / update README | **Build** | `implement-plan` | cheap |
 | "context too large / compact / resume / handoff / manage session" / stuck after repeated attempts | (cross-cut) | `manage-context` | cheap |
 
-If no row matches: ask the user what phase the task is in. Don't pattern-match yourself into Build.
+If no row matches: ask the user what phase the task is in. Don't pattern-match yourself into Build — nor musing into Define.
 
 ### Model tier hint reading
 
@@ -126,7 +134,7 @@ Match ceremony to the task; the ladder replaces a binary skip/full choice. Uncer
 
 | Tier | Signature | Path |
 |---|---|---|
-| **R0** | pure question / explanation / lookup — no file change | answer directly; no spine, no routing block |
+| **R0** | pure question / explanation / lookup / conversation — no file change | answer directly IN THE USER'S REGISTER (conversational ask → conversational answer); no spine, no routing block — verify claims of fact, reason freely on opinions and ideas |
 | **R1** | diff ≤5 lines + 1 file + 0 logic-bearing lines + not high-risk + expected ≤3 tool calls (a test loop or exploration ahead → R2+, even for 1 file) | direct edit + lightweight verify; no block |
 | **R2** | 1 file, clear scope, logic-bearing, ≈≤30 changed lines, not high-risk | **inline plan** — 3-5 line checklist + verify command in chat, no spec/plan artifact → build → verify; one-line routing note |
 | **R3** | multi-file OR vague scope OR needs sequencing / delegation | full spine, full routing block |
