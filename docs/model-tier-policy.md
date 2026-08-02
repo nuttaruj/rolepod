@@ -73,3 +73,18 @@ Auto-escalate to the **strong** tier for adversarial review (regardless of agent
 - User explicit "use careful mode" or `/rolepod` invocation.
 
 The `gate-reminder.sh` and `precommit-gate.sh` hooks already block edits on high-risk paths without a reviewer agent dispatched. The tier policy makes the *which* reviewer explicit.
+
+## Lead tier choice — the session-level decision
+
+The tier table governs subagents; the Lead's own model is the user's session
+choice, and under rolepod the right default is a **balanced-class Lead**: with
+delegation active the Lead is mostly a controller (briefs, verdicts, commits),
+and the escalation valves — debug-issue's cross-model consult, strong-tier
+reviewers, BLOCKED redispatch — pull strong-class intelligence in per-turn,
+so a strong-class session pays flagship price for controller work. Open with
+a strong-class Lead only when the day's MAIN work is architecture, a
+multi-day debug, or a high-risk domain. The router's Lead-tier fit nudge
+states this once per session when it detects a mismatch — tier classes only,
+never model names, on every CLI including large multi-provider catalogs
+(OpenRouter): map classes onto the catalog once per session and stay
+consistent.

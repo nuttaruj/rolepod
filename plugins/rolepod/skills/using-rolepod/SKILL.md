@@ -78,6 +78,8 @@ If no row matches: ask the user what phase the task is in. Don't pattern-match y
 
 **cheap** = haiku-class (docs, PM, copy) · **balanced** = sonnet-class (default implementation) · **strong** = opus-class and up — the strongest tier the CLI exposes (fable-class where available; "strongest available", not a fixed model) for architecture, high-risk code, and final-pass / adversarial review. The Lead picks the tier at dispatch (agent files carry no model pin); escalate only on BLOCKED redispatch or user ask; never silently downgrade a **strong** row. Same policy governs scripted orchestration (workflow / ultracode): tier per stage — sweep = cheap, build = balanced, verify/judge = strong — never inherit the Lead's model across the whole fleet without a stated reason; prefer rolepod agentTypes so the tier rides along.
 
+**Lead-tier fit nudge — once per session, tier classes only, never a model name.** Classify your OWN model into a class (by family knowledge; cannot tell → skip the nudge). Strong-class Lead + three consecutive R1/R2 routes → note ONCE: routine session — a balanced-class Lead plus rolepod's escalation valves (cross-model consults, strong-tier reviewers, BLOCKED redispatch) covers this; switch via the CLI's model picker if saving matters. Balanced-class Lead + an R4 / architecture route → note ONCE that strong-tier consults and reviewers are pulled in automatically, and a strong-class Lead is worth it only when that is the day's main work.
+
 ## Scope-then-spawn — repo-wide audit / sweep
 
 Whole-repo task (audit, sweep, "find every usage of X"): scope the file list first, narrow to the risky subset, spawn agents only on that subset — never one agent per file across hundreds. Flow + tool order: `references/scope-then-spawn.md`.
