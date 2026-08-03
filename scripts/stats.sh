@@ -69,6 +69,17 @@ if routes:
         pct = 100 * n // total
         print(f"    {tier:<4} {n:>4}  {pct:>3}%   {'#' * max(1, pct // 4)}")
 
+dispatches = [r for r in rows if r.get("phase") == "dispatch"]
+if dispatches:
+    strong = [d for d in dispatches if d.get("tier") == "strong"]
+    if strong:
+        no_ov = sum(1 for d in strong if (d.get("override") or "none") == "none")
+        print(f"\n  Strong dispatches ({len(strong)}): "
+              f"{len(strong) - no_ov} with explicit override, {no_ov} inherit")
+        if no_ov:
+            print("    ⚠ inherit on a strong dispatch is the silent downgrade "
+                  "unless the Lead itself is strong-class")
+
 if verifies:
     v = Counter(r.get("verdict", "?") for r in verifies)
     total = sum(v.values())

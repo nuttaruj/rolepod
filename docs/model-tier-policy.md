@@ -88,3 +88,23 @@ states this once per session when it detects a mismatch — tier classes only,
 never model names, on every CLI including large multi-provider catalogs
 (OpenRouter): map classes onto the catalog once per session and stay
 consistent.
+
+## Per-CLI tier verification — what is mechanical where
+
+The install-half ("do the agent files on disk map tier→model as intended")
+and the runtime-half ("did this dispatch actually run the intended class")
+have different ceilings per CLI:
+
+| CLI | Install-half | Runtime-half |
+|---|---|---|
+| Claude | ✓ mechanical — `make doctor` asserts installed `model:` per tier | ✗ platform does not expose a subagent's model — dispatch-log audit only |
+| Codex | ✓ mechanical — doctor asserts TOML `model =` per tier; pinned ids rot with CLI updates (doctor prints them) | runtime metadata exists upstream but is not wired here yet — dispatch-log audit today |
+| Gemini | ✓ mechanical — doctor asserts `model:` per tier; `-preview` ids WILL rot | ✗ field is advisory — dispatch-log audit |
+| Cursor | n/a — the agent spec has no model field | doctrine + dispatch-log |
+| opencode | n/a by design — big catalogs map classes once per session (see AGENTS specifics) | doctrine + dispatch-log |
+| Antigravity | n/a — agy auto-selects the model per task | doctrine + dispatch-log |
+
+The dispatch-log (`{"phase":"dispatch","tier":"strong","override":...}` in
+`phase-log.jsonl`, read by `make stats`) is the CLI-agnostic audit: it cannot
+prove what ran, but it makes every silent-downgrade decision visible after
+the fact.

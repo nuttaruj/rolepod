@@ -27,6 +27,8 @@ cat > "$FIX/repo/.rolepod/evidence/phase-log.jsonl" <<'EOF'
 {"ts":"2026-07-31T01:20:00Z","phase":"verify","verdict":"fail","evidence":"pytest -q"}
 {"ts":"2026-07-31T01:30:00Z","phase":"review","verdict":"APPROVED","blockers":0}
 {"ts":"2026-07-31T01:40:00Z","phase":"ship","action":"pr"}
+{"ts":"2026-07-31T01:45:00Z","phase":"dispatch","tier":"strong","override":"opus"}
+{"ts":"2026-07-31T01:50:00Z","phase":"dispatch","tier":"strong","override":"none"}
 not json — must be skipped, not crash
 EOF
 printf '{"ts":"2026-07-31T01:15:00Z","hook":"precommit-gate","var":"ROLEPOD_GATES_SOFT","reason":"unreasoned"}\n' \
@@ -37,6 +39,8 @@ check "stats reports tier distribution"   "printf '%s' \"\$OUT\" | grep -q 'R2'"
 check "stats reports verify fail rate"    "printf '%s' \"\$OUT\" | grep -q 'fail=1'"
 check "stats reports review verdicts"     "printf '%s' \"\$OUT\" | grep -q 'APPROVED: 1'"
 check "stats flags unreasoned bypasses"   "printf '%s' \"\$OUT\" | grep -q 'unreasoned'"
+check "stats audits strong dispatches"    "printf '%s' \"\$OUT\" | grep -q 'Strong dispatches (2): 1 with explicit override, 1 inherit'"
+check "stats names the silent downgrade"  "printf '%s' \"\$OUT\" | grep -q 'silent downgrade'"
 check "stats survives malformed lines"    "bash '$REPO_DIR/scripts/stats.sh' '$FIX/repo'"
 OUT=$(bash "$REPO_DIR/scripts/stats.sh" "$FIX")
 check "stats handles empty repo (no data)" "printf '%s' \"\$OUT\" | grep -q 'no data yet'"

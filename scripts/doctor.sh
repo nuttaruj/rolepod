@@ -88,6 +88,74 @@ OUT=$(printf '%s' "$WG_PAYLOAD_B" | HOME="$FIX/home" ROLEPOD_ALLOW_SHARED_WORKTR
       bash "$REPO_DIR/hooks/worktree-guard.sh" 2>/dev/null || true)
 check "worktree-guard shared-worktree bypass is silent" "[ -z \"\$OUT\" ]"
 
+echo "── doctor: tier mapping — installed files match intent ──"
+# Install-half of "no silent model fallback": the agent files on disk must
+# map tier→model exactly as TIER_MODELS intends. Runtime-half (what model a
+# dispatch actually runs) is not exposed by these CLIs — the dispatch-log in
+# phase-log.jsonl is the audit for that (see make stats).
+if python3 - "$REPO_DIR" <<'PY'
+import glob, os, re, sys
+repo = sys.argv[1]
+TIER = {
+    "claude": {"cheap": "haiku", "balanced": "sonnet", "strong": "inherit"},
+    "codex": {"cheap": "gpt-5.6-luna", "balanced": "gpt-5.6-terra", "strong": "gpt-5.6-sol"},
+    "gemini": {"cheap": "gemini-3-flash-preview", "balanced": "gemini-3-pro-preview", "strong": "gemini-3-pro-preview"},
+}
+def overlay_tiers(cli):
+    out = {}
+    for p in glob.glob(f"{repo}/adapters/{cli}/agent-frontmatter/*.yml"):
+        m = re.search(r"^tier:\s*(\w+)", open(p).read(), re.M)
+        if m:
+            out[os.path.basename(p)[:-4]] = m.group(1)
+    return out
+home = os.environ["HOME"]
+fails = 0
+def check_cli(label, cli, agent_dir, fname, rx):
+    global fails
+    if not agent_dir or not os.path.isdir(agent_dir):
+        print(f"  - {label}: target absent — skipped")
+        return
+    bad = []
+    exp = overlay_tiers(cli)
+    for name, tier in sorted(exp.items()):
+        want = TIER[cli][tier]
+        path = os.path.join(agent_dir, fname.format(name=name))
+        if not os.path.isfile(path):
+            bad.append(f"{name}: file missing")
+            continue
+        m = re.search(rx, open(path).read(), re.M)
+        got = m.group(1).strip() if m else "(no model field)"
+        if got != want:
+            bad.append(f"{name}: {got} != {want}")
+    if bad:
+        print(f"  ✗ {label}: " + "; ".join(bad[:4]))
+        fails += 1
+    else:
+        print(f"  ✓ {label}: {len(exp)} agents map tier→model as intended")
+claude_agents = None
+base = f"{home}/.claude/plugins/cache/rolepod/rolepod"
+if os.path.isdir(base):
+    def vkey(v):
+        try:
+            return [int(x) for x in v.split(".")]
+        except ValueError:
+            return [0]
+    vs = sorted((d for d in os.listdir(base) if os.path.isdir(f"{base}/{d}")), key=vkey)
+    if vs:
+        claude_agents = f"{base}/{vs[-1]}/agents"
+check_cli("claude installed agents", "claude", claude_agents, "{name}.md", r"^model:\s*(.+)$")
+check_cli("codex installed agents", "codex", f"{home}/.codex/agents", "rolepod-{name}.toml", r'^model\s*=\s*"([^"]+)"')
+check_cli("gemini installed agents", "gemini", f"{home}/.gemini/extensions/rolepod/agents", "{name}.md", r"^model:\s*(.+)$")
+print("  - cursor / opencode / antigravity: no model field by design — doctrine ceiling (model-tier-policy)")
+print("  - pinned ids rot with CLI updates — re-verify after upgrading: codex gpt-5.6-{luna,terra,sol}, gemini gemini-3-{flash,pro}-preview")
+sys.exit(1 if fails else 0)
+PY
+then
+  printf '  ✓ tier mapping check clean\n'; PASS=$((PASS+1))
+else
+  printf '  ✗ tier mapping mismatch — installed files diverge from TIER_MODELS intent\n'; FAIL=$((FAIL+1))
+fi
+
 echo "── doctor: installed versions + enforcement tier ──"
 report() { printf '  %-12s %-10s %s\n' "$1" "$2" "$3"; }
 CLAUDE_V=$(ls "$HOME/.claude/plugins/cache/rolepod/rolepod/" 2>/dev/null | sort -V | tail -1)
