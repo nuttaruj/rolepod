@@ -151,7 +151,7 @@ Use the least powerful model that can handle the role. Cost compounds across N t
 
 `BLOCKED` after a fast-model dispatch → re-dispatch the same task at one tier up before escalating to the human.
 
-**Orchestration harnesses (workflow / ultracode).** A scripted fan-out defaults every agent to the Lead's own model — on a strong-tier Lead that silently runs the whole fleet at the top tier. Apply the table above there too: pass the tier-mapped model (or the rolepod agentType, which carries its tier) per stage — mechanical sweep / scan = cheap, implementation = balanced, adversarial verify / judge = strong; reserve effort upgrades for the hardest verify stages. Whole-fleet inherit needs a stated reason (e.g. every stage is judgment-heavy).
+**Orchestration harnesses (workflow / ultracode).** A scripted fan-out defaults every agent to the Lead's own model — on a strong-tier Lead that silently runs the whole fleet at the top tier, and on a balanced-class Lead the INVERSE trap: inherit silently DOWNGRADES the verify/judge stages below what a high-risk diff requires. Apply the table above there too: pass the tier-mapped model (or the rolepod agentType, which carries its tier) per stage — mechanical sweep / scan = cheap, implementation = balanced, adversarial verify / judge = strong (on a non-strong Lead that means an EXPLICIT `opts.model` / effort override — "high-risk review at the session's model" is exactly the silent downgrade the tier policy forbids); reserve effort upgrades for the hardest verify stages. Whole-fleet inherit needs a stated reason (e.g. every stage is judgment-heavy) — and never covers the verify/judge stages of an R4 diff.
 
 ## Continuous execution rule
 

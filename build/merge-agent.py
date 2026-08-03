@@ -52,6 +52,12 @@ OPENCODE_KEY_ORDER = ["description", "mode"]
 #   Gemini/agy        → advisory only: agy auto-selects the model per task and
 #                       does not consume this value (documented in model-tier-policy).
 TIER_MODELS = {
+    # Claude strong = "inherit" ON PURPOSE: a fixed pin (e.g. "opus") would
+    # DOWNGRADE fable-class sessions, and frontmatter cannot express
+    # "max(session, opus)". The cost: on a balanced-class Lead, inherit is a
+    # silent downgrade — doctrine (router tier hint, subagent-dispatch,
+    # review-code R4 line) requires the Lead to pass an explicit
+    # strongest-exposed override at dispatch in that case.
     "claude": {"cheap": "haiku", "balanced": "sonnet", "strong": "inherit"},
     "codex": {"cheap": "gpt-5.6-luna", "balanced": "gpt-5.6-terra", "strong": "gpt-5.6-sol"},
     "gemini": {"cheap": "gemini-3-flash-preview", "balanced": "gemini-3-pro-preview", "strong": "gemini-3-pro-preview"},

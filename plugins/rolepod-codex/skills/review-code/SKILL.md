@@ -73,7 +73,7 @@ Return / hand off:
 | Architecture / cross-module | `system-architect` |
 | Generic quality / DRY / smell | `universal-reviewer` |
 
-Rigor-tier mapping: R1 → Lead cold self-review only (`git diff` + re-read from disk); R2 → ONE concern-matched reviewer from the table at **balanced** tier (strong stays reserved for final-pass / adversarial contexts); R3 → row match as usual; R4 (high-risk) → full adversarial floor, never less.
+Rigor-tier mapping: R1 → Lead cold self-review only (`git diff` + re-read from disk); R2 → ONE concern-matched reviewer from the table at **balanced** tier (strong stays reserved for final-pass / adversarial contexts); R3 → row match as usual; R4 (high-risk) → full adversarial floor, never less — and its reviewers run at STRONG class even when the Lead is balanced-class: inherit-from-the-session is not strong, pass the explicit strongest-exposed override.
 
 **More than one reviewer fires → dispatch them in ONE message.** The qa-tester floor, the risk-matched specialist, and the external adversarial reviewer all read the same frozen diff with no shared state — they run concurrently, not in sequence. Serialize only the §5 fix-verify loop (fixes change the diff). Reviews land as each returns; the report merges them severity-ordered.
 
