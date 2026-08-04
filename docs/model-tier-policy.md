@@ -101,8 +101,14 @@ a strong-class Lead only when the day's MAIN work is architecture, a
 multi-day debug, or a high-risk domain. The router's Lead-tier fit nudge
 states this once per session when it detects a mismatch — tier classes only,
 never model names, on every CLI including large multi-provider catalogs
-(OpenRouter): map classes onto the catalog once per session and stay
-consistent.
+(OpenRouter): map classes once per session onto the user's OPTED-IN model
+set — configured providers / models they already pay for — and stay
+consistent. The full catalog is exposure, not authorization: a rung
+costlier than anything the user configured is dispatched only after
+surfacing the cost. The opted-in ceiling is that machine's apex; strong
+resolving below opus-class is a review-depth LIMITATION the report must
+record. Fixed-menu CLIs are unaffected — there the exposed set IS the
+opted-in set.
 
 ## Per-CLI tier verification — what is mechanical where
 
