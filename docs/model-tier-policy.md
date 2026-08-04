@@ -18,6 +18,21 @@ Rolepod ships a cost-aware policy that maps **role + risk → model tier**. Each
 - **strong on Codex pins its ceiling (`sol`)** — Codex exposes no `inherit`, so the top model is the safe default: an upgrade for a lower Lead, a match when the Lead is already `sol`.
 - **Gemini values are advisory.** Antigravity (`agy`) auto-selects the model per task and does not consume this field; it is recorded only to keep the frozen Gemini-CLI adapter internally consistent (see the Antigravity note below).
 
+**Apex — the second rung inside strong.** On a CLI that exposes more than one
+model above balanced (Claude: opus-class, then fable-class), `strong` resolves
+to the FIRST rung and the ceiling is reserved as **apex** — a dispatch-time
+escalation, not a tier label: agent overlays never carry it and `TIER_MODELS`
+does not encode it. Strong review asks "is this done right per the existing
+pattern?"; apex asks "is the pattern itself right?". Escalate a strong
+dispatch to apex only on a trigger: (1) irreversible with no rollback
+(destructive migration, key rotation, live money movement); (2) novel design
+with no existing pattern to diff against; (3) deep cross-system reasoning
+(races on financial invariants, distributed consistency); (4) the previous
+strong round missed blockers; (5) explicit user ask. No trigger → strong is
+the paid ceiling. A CLI whose strong pin already IS its ceiling (Codex `sol`;
+Gemini) collapses apex into strong. The dispatch-log `override` field records
+which rung was sent, so `make stats` audits apex use after the fact.
+
 **Effort** layers on top of the model. Claude uses `effort`, Codex uses `model_reasoning_effort` (`xhigh` / `high` / `medium` / `low`); Gemini has no effort field.
 
 - `xhigh` — security-engineer only (breach blast radius).
