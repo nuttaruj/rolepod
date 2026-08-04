@@ -84,7 +84,7 @@ For every diff, scan:
 - **Correctness** — does the logic match the spec? Edge cases? Off-by-one? Null / undefined / empty?
 - **Security** — input validation, auth check, secret handling, SSRF, injection, token leak in logs
 - **Performance** — N+1, blocking calls, unbounded loops, big payloads, missing index
-- **Architecture** — does it match existing patterns? Source of truth violations? New abstraction with one user?
+- **Architecture** — does it match existing patterns? Source of truth violations? New abstraction with one user? The project declares a module boundary map (CLAUDE.md / ADR) → check every NEW cross-module import against it; a dependency-direction reversal or undeclared crossing is a BLOCKER — spaghetti arrives one import at a time, and per-diff is the only place it is cheap to stop.
 - **UI** — a11y, hierarchy, consistency, platform conventions if applicable
 - **Tests** — strong assertions? Mocks at the right boundary? Race coverage for concurrent code? A diff that *modifies an existing test* on the way to green is a finding until justified — loosened assertion, raised tolerance, deleted case, added skip / only, snapshot updated to absorb the failure. The old test was the contract; changing the test instead of the code needs its own stated why.
 
@@ -133,7 +133,7 @@ Execute as Lead with this minimum viable checklist:
 4. Walk the correctness axis: logic, edges, null, off-by-one
 5. Walk the security axis: input validation, auth, secret, SSRF, injection
 6. Walk the performance axis: N+1, blocking, unbounded
-7. Walk the architecture axis: pattern match, source of truth
+7. Walk the architecture axis: pattern match, source of truth, new cross-module imports vs the declared boundary map
 8. Walk the test axis: assertion strength, mock boundary
 9. Report findings severity-ordered with file:line, TRACED vs SUSPECTED labeled
 

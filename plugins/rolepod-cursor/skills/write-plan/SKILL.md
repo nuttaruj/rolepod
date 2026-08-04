@@ -49,6 +49,11 @@ Return / hand off:
 - Repo layout for the touched module
 - Existing patterns to match (read 2-3 nearby files)
 - Known constraints: stack, style, no-touch zones
+- Module boundary map, if the project declares one (CLAUDE.md / ADR / docs).
+  Work spans 2+ modules and NO map exists → offer a ONE-TIME bootstrap: scout +
+  system-architect derive module list, dependency direction, and no-touch zones
+  from the code into the project's CLAUDE.md for user approval. Paid once —
+  every later session reads boundaries instead of re-inferring them.
 - Available specialist agents
 
 ## Workflow
@@ -97,6 +102,7 @@ Scan for:
 - **Symbol consistency cross-task** — function / method / property names must match across tasks. `clearLayers()` in Task 3 and `clearFullLayers()` in Task 7 is a bug — pick one and propagate
 - **Missing tests** on any task
 - **Loop-runnable** — every task carries an exact runnable Command, and the plan states a Failure policy, so the build loop can execute → verify → recover without re-asking the user. Deterministic check: `scripts/plan-lint.sh <plan> [contract]` (rolepod source repo) — Failure policy + Command per task + parallel ownership completeness; inline fallback: `grep -q '^## Failure policy' <plan> && [ "$(grep -c 'Command:' <plan>)" -ge "$(grep -c '^### Task' <plan>)" ]`
+- **Boundary violations** — a boundary map exists → every new cross-module import or dependency-direction reversal the plan introduces is called out and justified; undeclared crossing = fix the plan or update the map with the user, never cross silently
 - **Untouched high-risk surfaces**
 - **Unowned or dual-owned files** in a parallel layout — every Files-to-touch path sits under EXACTLY one owner in the contract (plan-lint check 3: unowned = unplannable work, dual-owned = a merge conflict on schedule)
 
