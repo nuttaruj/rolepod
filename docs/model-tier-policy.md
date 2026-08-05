@@ -118,7 +118,7 @@ have different ceilings per CLI:
 
 | CLI | Install-half | Runtime-half |
 |---|---|---|
-| Claude | ✓ mechanical — `make doctor` asserts installed `model:` per tier | ✗ platform does not expose a subagent's model — dispatch-log audit only |
+| Claude | ✓ mechanical — `make doctor` asserts installed `model:` per tier | ✓ via transcript scan — subagent transcripts (`~/.claude/projects/<project>/*.jsonl`) record `message.model` per turn; grep the agent's transcript to prove which model actually ran (verified 2026-08-05: four haiku-dispatched scouts all show `claude-haiku-4-5` on disk). The dispatch-log stays the intent record; the transcript is the execution proof. |
 | Codex | ✓ mechanical — doctor asserts TOML `model =` per tier; pinned ids rot with CLI updates (doctor prints them) | ✗ official subagent docs expose thread status/results only, no per-run model telemetry — dispatch-log audit is the ceiling |
 | Gemini | ✓ mechanical — doctor asserts `model:` per tier; `-preview` ids WILL rot | ✗ field is advisory — dispatch-log audit |
 | Cursor | n/a — the agent spec has no model field | doctrine + dispatch-log |
