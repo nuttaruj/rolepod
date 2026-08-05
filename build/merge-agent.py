@@ -30,7 +30,7 @@ CLAUDE_KEY_ORDER = ["name", "description", "model", "effort", "memory",
                     "maxTurns", "permissionMode", "color", "skills", "tools"]
 GEMINI_KEY_ORDER = ["name", "description", "model"]
 CURSOR_KEY_ORDER = ["name", "description"]
-OPENCODE_KEY_ORDER = ["description", "mode"]
+OPENCODE_KEY_ORDER = ["description", "mode", "permission"]
 # Codex agents are TOML, not frontmatter — see emit_codex_toml().
 
 # ── Tier → model: THE single source of model identity ────────────────────────
@@ -261,9 +261,38 @@ def merge(target: str, name: str) -> str:
         # agent id — no `name:` field. Frontmatter: description +
         # mode: subagent (auto-invoked by description or @-mention). Model is
         # deliberately unpinned: opencode is multi-provider and the tier hint
-        # stays doctrine (docs/model-tier-policy). No overlay dir needed.
+        # stays doctrine (docs/model-tier-policy). The permission block is
+        # derived from the Claude overlay's tools list — the CLI-neutral role
+        # contract: tools the role does not carry are denied outright, and
+        # every Bash-carrying subagent gets the commit-ban patterns — the
+        # mechanical form of "subagents NEVER commit" (block-subagent-commit
+        # parity; opencode enforces `permission:` natively per its agent docs).
+        overlay_path = REPO_DIR / "adapters" / "claude" / "agent-frontmatter" / f"{name}.yml"
+        tools: set[str] = set()
+        if overlay_path.exists():
+            ov = parse_yaml_block(overlay_path.read_text())
+            tools = {ln.strip().lstrip("- ").strip()
+                     for ln in ov.get("tools", [])[1:] if ln.strip().startswith("-")}
+        perm = ["permission:"]
+        if "Edit" not in tools:
+            perm.append("  edit: deny")
+        if "Write" not in tools:
+            perm.append("  write: deny")
+        if "Bash" not in tools:
+            perm.append("  bash: deny")
+        else:
+            perm += [
+                "  bash:",
+                '    "git commit*": deny',
+                '    "git push*": deny',
+                '    "gh pr create*": deny',
+                '    "gh pr merge*": deny',
+                '    "git reset --hard*": deny',
+                '    "*": allow',
+            ]
         merged = {"description": core_fields["description"],
-                  "mode": ["mode: subagent"]}
+                  "mode": ["mode: subagent"],
+                  "permission": perm}
         return "---\n" + emit(OPENCODE_KEY_ORDER, merged) + "---\n" + body
 
     raise ValueError(f"unknown target: {target}")

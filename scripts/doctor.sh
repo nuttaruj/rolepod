@@ -167,7 +167,7 @@ report "gemini"      "${GEMINI_V:-absent}"  "hooks-live (advisory — reminders 
 CURSOR_V=$(python3 -c "import json;print(json.load(open('$HOME/.cursor/plugins/local/rolepod/.cursor-plugin/plugin.json'))['version'])" 2>/dev/null)
 report "cursor"      "${CURSOR_V:-absent}"  "unverified — treat gates as skill-enforced"
 OC_V=$(python3 -c "import json;print(json.load(open('$HOME/.config/opencode/rolepod-version.json'))['version'])" 2>/dev/null)
-report "opencode"    "${OC_V:-absent}"      "doctrine-only (no hook API)"
+report "opencode"    "${OC_V:-absent}"      "hooks-live (partial — plugin precommit deny + agent permission blocks; rest doctrine-only, no hook API)"
 AGY_V=$(command -v agy >/dev/null 2>&1 && agy plugin list 2>/dev/null | grep -q '"name": "rolepod"' && echo installed)
 report "antigravity" "${AGY_V:-absent}"     "unverified — treat gates as skill-enforced"
 

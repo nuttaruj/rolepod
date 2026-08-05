@@ -23,7 +23,7 @@ check "doctor proves subagent-commit deny"   "printf '%s' \"\$OUT\" | grep -q '�
 check "doctor proves precommit deny"         "printf '%s' \"\$OUT\" | grep -q '✓ precommit-gate denies'"
 check "doctor proves worktree-guard deny"    "printf '%s' \"\$OUT\" | grep -q '✓ worktree-guard denies'"
 check "doctor proves bypass logging"         "printf '%s' \"\$OUT\" | grep -q '✓ precommit-gate bypass was logged'"
-check "doctor reports per-CLI tier table"    "printf '%s' \"\$OUT\" | grep -q 'doctrine-only (no hook API)'"
+check "doctor reports per-CLI tier table"    "printf '%s' \"\$OUT\" | grep -q 'plugin precommit deny + agent permission blocks'"
 check "doctor runs the tier-mapping check"   "printf '%s' \"\$OUT\" | grep -q 'tier mapping'"
 check "doctor lists rot-prone pinned ids"    "printf '%s' \"\$OUT\" | grep -q 'pinned ids rot'"
 

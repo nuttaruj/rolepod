@@ -43,7 +43,10 @@ check "skill drops phase field"         "! grep -q '^phase:' $P/skills/write-spe
 # AGENTS.md carries the always-on core fragments.
 check "AGENTS.md rendered"              "[ -f $P/AGENTS.md ]"
 check "AGENTS.md carries Risky actions core" "grep -q '^## Risky actions' $P/AGENTS.md"
-check "AGENTS.md notes gates are skill-enforced (no hook block)" "grep -q 'skill-enforced' $P/AGENTS.md"
+check "AGENTS.md states the enforcement tier (hooks-live partial: precommit deny + permission blocks)" "grep -q 'hooks-live (partial)' $P/AGENTS.md"
+check "AGENTS.md keeps the doctrine-only remainder honest (cohesion/worktree)" "grep -q 'doctrine-only' $P/AGENTS.md"
+check "rendered scout agent is mechanically read-only" "grep -q 'bash: deny' $REPO_DIR/build/rendered/opencode/agents/scout.md"
+check "rendered Bash agents carry the commit ban" "grep -q '\"git commit\\*\": deny' $REPO_DIR/build/rendered/opencode/agents/backend-developer.md"
 
 # Plugin shim is valid ESM (node syntax check) when node is available.
 if command -v node >/dev/null 2>&1; then

@@ -12,12 +12,21 @@
  *   2. session.compacted → post-compact re-anchor nudge (manage-context §7):
  *      trust disk over summary — plan checkboxes, git log, spec.
  *
- * NOT here (v1): pre-commit / subagent-commit gates. Detecting the agent
- * context inside tool.execute.before is undocumented; the gates stay
- * skill-enforced on opencode (see AGENTS.md "opencode specifics").
+ *   3. tool.execute.after → session evidence tracker: edit/write on a
+ *      high-risk path vs a test path (in-memory counters, this session).
+ *   4. tool.execute.before → precommit gate: `git commit` while high-risk
+ *      paths were edited and ZERO test evidence exists → throw (opencode's
+ *      documented deny mechanism). ROLEPOD_GATES_SOFT=1 logs the bypass to
+ *      .rolepod/evidence/bypass.log instead (same file `make stats` reads).
+ *
+ * Subagent-commit ban is NOT here — it ships as `permission:` blocks in
+ * every rendered agent file (platform-enforced; see build/merge-agent.py),
+ * because agent identity inside tool.execute.before is undocumented.
  *
  * Every handler is wrapped so a failure never breaks the user's session —
- * a hygiene shim must never cost more than the hygiene it buys.
+ * a hygiene shim must never cost more than the hygiene it buys. The gate
+ * only ever denies on POSITIVE evidence (risk edits seen, no test edits) —
+ * unknown payload shapes fall through to allow, never to block.
  */
 
 import { createHash } from "node:crypto"
@@ -53,8 +62,36 @@ function lockDirFor(worktree) {
   return path.join(os.homedir(), ".rolepod", "session-locks", hash)
 }
 
+const RISK_RE =
+  /(^|\/)(auth|billing|payments?|credits?|migrations?|secrets?|tokens?|crypto|permissions?|security|oauth|jwt|sso|saml|webhooks?|stripe|paypal|charges?|invoices?)([./_-]|\/|$)/i
+const TEST_RE =
+  /(^|\/)(tests?|__tests__|spec|e2e)\/|\.(test|spec)\.[jt]sx?$|_test\.(go|py|rb|exs?|rs)$|(^|\/)test_[^/]*\.py$/i
+const COMMIT_RE = /(^|&&|;|\|\|?)\s*git\s+(-[^\s]+\s+)*commit\b/
+
 export const RolepodPlugin = async ({ directory, client }) => {
   let sessionId = null
+  let riskEdits = 0
+  let testEvidence = 0
+
+  const logBypass = () => {
+    try {
+      const worktree = worktreeRoot(directory || process.cwd())
+      if (!worktree) return
+      const dir = path.join(worktree, ".rolepod", "evidence")
+      fs.mkdirSync(dir, { recursive: true })
+      fs.appendFileSync(
+        path.join(dir, "bypass.log"),
+        JSON.stringify({
+          ts: new Date().toISOString(),
+          hook: "opencode-precommit-gate",
+          var: "ROLEPOD_GATES_SOFT",
+          reason: "unreasoned",
+        }) + "\n",
+      )
+    } catch {
+      /* fail open */
+    }
+  }
 
   const registerLock = (id) => {
     const worktree = worktreeRoot(directory || process.cwd())
@@ -120,6 +157,44 @@ export const RolepodPlugin = async ({ directory, client }) => {
         }
       } catch {
         /* fail open — hygiene must never break the session */
+      }
+    },
+
+    "tool.execute.after": async (input, output) => {
+      try {
+        const tool = String(input?.tool ?? "")
+        if (tool !== "edit" && tool !== "write") return
+        const fp = String(output?.args?.filePath ?? output?.args?.file_path ?? "")
+        if (!fp) return
+        if (TEST_RE.test(fp)) testEvidence += 1
+        else if (RISK_RE.test(fp)) riskEdits += 1
+      } catch {
+        /* fail open — evidence tracking must never break an edit */
+      }
+    },
+
+    "tool.execute.before": async (input, output) => {
+      let block = false
+      try {
+        if (String(input?.tool ?? "") !== "bash") return
+        const cmd = String(output?.args?.command ?? "")
+        if (!COMMIT_RE.test(cmd)) return
+        if (riskEdits > 0 && testEvidence === 0) {
+          if (process.env.ROLEPOD_GATES_SOFT === "1") logBypass()
+          else block = true
+        }
+      } catch {
+        /* fail open — unknown payload shape must never block */
+      }
+      if (block) {
+        throw new Error(
+          "rolepod precommit gate: this session edited " +
+            `${riskEdits} high-risk path(s) (auth/billing/migration/security` +
+            "-class) with zero test evidence. Run the check-work skill (or " +
+            "add/run a test touching the changed surface) before `git " +
+            "commit`. Intentional override: ROLEPOD_GATES_SOFT=1 (logged to " +
+            ".rolepod/evidence/bypass.log, surfaced by `make stats`).",
+        )
       }
     },
   }
