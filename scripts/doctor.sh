@@ -161,7 +161,7 @@ report() { printf '  %-12s %-10s %s\n' "$1" "$2" "$3"; }
 CLAUDE_V=$(ls "$HOME/.claude/plugins/cache/rolepod/rolepod/" 2>/dev/null | sort -V | tail -1)
 report "claude"      "${CLAUDE_V:-absent}"  "hooks-live (full — deny gates mechanical)"
 CODEX_V=$(ls "$HOME/.codex/plugins/cache/rolepod/rolepod/" 2>/dev/null | sort -V | tail -1)
-report "codex"       "${CODEX_V:-absent}"   "hooks-live (partial — precommit denies; no agent/stop events)"
+report "codex"       "${CODEX_V:-absent}"   "hooks-live (expanded — precommit + subagent-commit deny; sibling locks)"
 GEMINI_V=$(python3 -c "import json;print(json.load(open('$HOME/.gemini/extensions/rolepod/gemini-extension.json'))['version'])" 2>/dev/null)
 report "gemini"      "${GEMINI_V:-absent}"  "hooks-live (advisory — reminders only, no deny)"
 CURSOR_V=$(python3 -c "import json;print(json.load(open('$HOME/.cursor/plugins/local/rolepod/.cursor-plugin/plugin.json'))['version'])" 2>/dev/null)

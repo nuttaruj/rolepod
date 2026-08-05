@@ -262,8 +262,8 @@ HC_CODEX=$(hook_script_count adapters/codex/plugins/rolepod/hooks/hooks.json)
 HC_GEMINI=$(hook_script_count adapters/gemini/hooks/hooks.json)
 HC_CURSOR=$(hook_script_count adapters/cursor/hooks/hooks.json)
 HC_AGY=$(hook_script_count adapters/antigravity/hooks/hooks.json)
-check "hook scripts per manifest = Claude 9 / Codex 4 / Gemini 5 / Cursor 3 / Antigravity 4 (actual: $HC_CLAUDE/$HC_CODEX/$HC_GEMINI/$HC_CURSOR/$HC_AGY)" \
-  "[ $HC_CLAUDE -eq 9 ] && [ $HC_CODEX -eq 4 ] && [ $HC_GEMINI -eq 5 ] && [ $HC_CURSOR -eq 3 ] && [ $HC_AGY -eq 4 ]"
+check "hook scripts per manifest = Claude 9 / Codex 6 / Gemini 5 / Cursor 3 / Antigravity 4 (actual: $HC_CLAUDE/$HC_CODEX/$HC_GEMINI/$HC_CURSOR/$HC_AGY)" \
+  "[ $HC_CLAUDE -eq 9 ] && [ $HC_CODEX -eq 6 ] && [ $HC_GEMINI -eq 5 ] && [ $HC_CURSOR -eq 3 ] && [ $HC_AGY -eq 4 ]"
 check "README hook counts match manifests" \
   "grep -q \"Claude $HC_CLAUDE / Codex $HC_CODEX / Gemini $HC_GEMINI / Cursor $HC_CURSOR / Antigravity $HC_AGY\" README.md"
 check "CHEATSHEET hook counts match manifests" \
@@ -676,11 +676,13 @@ fi
 
 # ── Root vs Codex adapter hook parity ─────────────────────────────────
 # Canonical = root `hooks/*.sh`. Codex adapter mirrors the subset of hooks
-# whose events Codex supports (SessionStart, PreToolUse Bash / apply_patch).
-# Claude-only hooks (block-subagent-commit, cohesion-contract-check,
-# session-lifecycle) stay root-only — Codex has no Agent / Stop event API.
-# Root hooks/: 9 *.sh + lib/. Codex adapter hooks/: 4 *.sh. No optional/.
-SHARED_CORE_HOOKS=(gate-reminder.sh precommit-gate.sh project-context-loader.sh claim-verify-nudge.sh)
+# whose events Codex supports (SessionStart, PreToolUse Bash / apply_patch,
+# Stop, SubagentStart/SubagentStop — per the official hooks reference).
+# Claude-only hooks: cohesion-contract-check (needs the pre-spawn Agent
+# TOOL event; Codex SubagentStart is post-spawn, cannot deny) and
+# worktree-guard (apply_patch input carries no file_path field).
+# Root hooks/: 9 *.sh + lib/. Codex adapter hooks/: 6 *.sh. No optional/.
+SHARED_CORE_HOOKS=(gate-reminder.sh precommit-gate.sh project-context-loader.sh claim-verify-nudge.sh block-subagent-commit.sh session-lifecycle.sh)
 HOOK_DRIFT=""
 for h in "${SHARED_CORE_HOOKS[@]}"; do
   root="hooks/$h"
@@ -694,7 +696,7 @@ for h in "${SHARED_CORE_HOOKS[@]}"; do
   fi
 done
 if [ -z "$HOOK_DRIFT" ]; then
-  echo "  ✓ root vs Codex adapter hook parity (4 shared hooks identical, no add-on hooks)"
+  echo "  ✓ root vs Codex adapter hook parity (6 shared hooks identical, no add-on hooks)"
 else
   echo "  ✗ root vs Codex adapter hook drift:"
   printf "%b" "$HOOK_DRIFT" | sed 's/^/      /'

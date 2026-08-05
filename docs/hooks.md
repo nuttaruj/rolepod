@@ -98,7 +98,7 @@ Enforcement layer for the concurrent-edit problem `session-lifecycle` only *warn
 - **Self-guards**: not in a git repo → silent; not an edit tool → silent; no file path → silent.
 - **Bypass**: `ROLEPOD_ALLOW_SHARED_WORKTREE=1` (intentional shared session — read-only review, or coordinated file ownership).
 - **Pair**: `session-lifecycle.sh --unlock` releases this session's `.files` at Stop so a sibling can pick them up.
-- **Scope (v1)**: Claude-only. Cross-CLI collisions (a Claude and a Codex session on the same checkout) are not yet detected — a shared lock dir is the next step.
+- **Scope**: the per-file guard is Claude-only, but the underlying lock dir (`~/.rolepod/session-locks/`) is shared — `session-lifecycle.sh` now runs on Codex too, and the opencode plugin reads the same dir, so cross-CLI sibling *detection* (a Claude and a Codex session on the same checkout) is live; only the per-file deny remains Claude-only.
 
 ### `precommit-gate.sh` — PreToolUse Bash (core)
 
@@ -199,14 +199,13 @@ Adding a `PreToolUse Bash` hook that checks for `docs/rolepod/specs/<feature>-YY
 
 ## Root vs Codex adapter parity
 
-Root `hooks/*.sh` is canonical. The Codex adapter mirrors only the hooks whose events Codex supports (`SessionStart`, `UserPromptSubmit`, `PreToolUse apply_patch|Bash`, `PostToolUse Bash`):
+Root `hooks/*.sh` is canonical. The Codex adapter mirrors the hooks whose events Codex supports (`SessionStart`, `UserPromptSubmit`, `PreToolUse apply_patch|Bash`, `PostToolUse Bash`, `Stop`, `SubagentStart`/`SubagentStop` — per the official hooks reference, verified 2026-08-05):
 
-- **3 core** byte-exact mirrors: `gate-reminder.sh`, `precommit-gate.sh`, `project-context-loader.sh`.
-- `claim-verify-nudge.sh` mirrors the root `UserPromptSubmit` hook 1:1 — Codex uses the same event name and camelCase `additionalContext` as Claude, so the script is shared verbatim (not part of the parity-enforced trio, but identical at ship).
+- **6 core** byte-exact mirrors: `gate-reminder.sh`, `precommit-gate.sh`, `project-context-loader.sh`, `claim-verify-nudge.sh`, `block-subagent-commit.sh`, `session-lifecycle.sh`. Codex uses the same event names, stdin JSON, and `hookSpecificOutput`/`permissionDecision` protocol as Claude, so the scripts are shared verbatim (all smoke-tested against Codex-shaped payloads).
 
-`always-on-loader`, `block-subagent-commit`, `cohesion-contract-check`, `session-lifecycle` stay Claude-only (`always-on-loader` is unnecessary on Codex/Gemini/Cursor — they load their always-on core natively from `AGENTS.md` / `GEMINI.md` / `rules/*.mdc`; Codex also has no `Agent` event API and no `Stop` event for unlock).
+`always-on-loader`, `cohesion-contract-check`, `worktree-guard` stay Claude-only (`always-on-loader` is unnecessary on Codex/Gemini/Cursor — they load their always-on core natively from `AGENTS.md` / `GEMINI.md` / `rules/*.mdc`; `cohesion-contract-check` needs the pre-spawn `Agent` TOOL event — Codex's `SubagentStart` fires post-spawn and cannot deny; `worktree-guard` extracts `file_path`, which `apply_patch` input does not carry).
 
-`tests/static/lean-surface.sh` enforces byte-exact parity between root and Codex adapter for the shared hooks (3 core) — any drift fails the release gate.
+`tests/static/lean-surface.sh` enforces byte-exact parity between root and Codex adapter for the shared hooks (6 core) — any drift fails the release gate.
 
 ## Cursor adapter mapping
 

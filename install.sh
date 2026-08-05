@@ -1768,14 +1768,14 @@ else
   case "$CLI_TARGET" in
     claude) echo "${BOLD}Final step${NC}: restart Claude Code so the hooks register." ;;
     codex)  echo "${BOLD}Final step${NC}: restart Codex CLI to load the new plugin."
-            echo "  Hooks require opt-in: ${BOLD}codex features enable plugin_hooks${NC} (plugin_hooks is 'under development, false' by default; rolepod's hooks/hooks.json is inert without this flag)." ;;
+            echo "  Hooks are default-enabled (${BOLD}[features] hooks = true${NC} in ~/.codex/config.toml); trust the plugin's bundled hooks when prompted." ;;
     gemini) echo "${BOLD}Final step${NC}: restart Gemini CLI to load the new extension and hooks." ;;
     cursor) echo "${BOLD}Final step${NC}: restart Cursor (or reload window) so the plugin + rules register."
             echo "  Verify under Cursor → Settings → Features → Rules / Plugins." ;;
     antigravity) echo "${BOLD}Final step${NC}: launch agy to load the rolepod plugin + AGENTS.md (verify: ${BOLD}agy plugin list${NC})." ;;
     opencode) echo "${BOLD}Final step${NC}: restart opencode to load skills, agents, the rolepod.js plugin, and AGENTS.md." ;;
     all)    echo "${BOLD}Final step${NC}: restart Claude Code, Codex CLI, Gemini CLI, Cursor, Antigravity (agy), and opencode."
-            echo "  Codex hooks require opt-in: ${BOLD}codex features enable plugin_hooks${NC}." ;;
+            echo "  Codex hooks are default-enabled; trust the plugin's bundled hooks when prompted." ;;
   esac
 fi
 

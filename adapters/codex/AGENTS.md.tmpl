@@ -46,15 +46,17 @@ A conflict that risks harm → ask before acting.
   switches between active threads, it is not the invoke command. Spawn
   precedence per docs: explicit spawn value → agent file → session config.
   Each agent file is self-contained — it carries its own agent protocol.
-- **Hooks** — the plugin's `hooks/hooks.json` registers 4 core hooks
-  (SessionStart context loader, UserPromptSubmit claim-verify nudge,
-  pre-edit gate reminder, pre-commit test gate). They fire natively on
-  Codex ≥0.144 — no opt-in flag.
-- **Enforcement tier: hooks-live (partial)** — the precommit test gate can
-  deny and reminders fire mechanically, but Codex has NO subagent-commit
-  block, cohesion-contract check, or worktree guard (no Agent / Stop
-  events) — hold those gates as doctrine; never report them as
-  mechanically enforced here.
+- **Hooks** — the plugin's `hooks/hooks.json` registers 6 core hooks
+  (SessionStart context loader + sibling-session lock, UserPromptSubmit
+  claim-verify nudge, pre-edit gate reminder, pre-commit test gate,
+  subagent-commit block, Stop unlock). They fire natively on Codex
+  ≥0.144, default-enabled (`[features] hooks = true`).
+- **Enforcement tier: hooks-live (expanded)** — precommit test gate AND
+  subagent-commit block can deny; cross-CLI sibling locks live via
+  session-lifecycle. Still doctrine-only: cohesion-contract check (Codex
+  SubagentStart fires post-spawn, cannot deny) and worktree guard
+  (apply_patch input carries no file_path) — hold those two as doctrine;
+  never report them as mechanically enforced here.
 - **Peer review** — high-risk work → ask Codex to spawn `qa-tester` (the
   floor) plus `security-engineer` / `universal-reviewer`. An external Claude
   review (`claude -p "review this diff"`) is a useful cross-model opinion.
