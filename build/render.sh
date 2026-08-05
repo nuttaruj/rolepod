@@ -558,6 +558,8 @@ render_antigravity() {
   for h in session-start before-tool after-tool claim-verify-nudge; do
     cp "$REPO_DIR/adapters/gemini/hooks/$h.sh" "$plugin_dst/hooks/$h.sh"
   done
+  # agy-only: Stop unlock (Gemini CLI never had a Stop event; agy does).
+  cp "$adapter_dir/hooks/stop-unlock.sh" "$plugin_dst/hooks/stop-unlock.sh"
   chmod +x "$plugin_dst/hooks/"*.sh 2>/dev/null || true
 }
 

@@ -29,14 +29,14 @@ check "plugin.json is valid JSON"           "python3 -m json.tool $P/plugin.json
 check "plugin name is rolepod"              "python3 -c \"import json;assert json.load(open('$P/plugin.json'))['name']=='rolepod'\""
 check "hooks.json at PLUGIN ROOT"           "[ -f $P/hooks.json ]"
 check "no stray hooks/hooks.json subpath"   "[ ! -f $P/hooks/hooks.json ]"
-check "hook scripts under hooks/ (4)"       "[ \"\$(ls $P/hooks/*.sh 2>/dev/null | wc -l | tr -d ' ')\" = 4 ]"
+check "hook scripts under hooks/ (5)"       "[ \"\$(ls $P/hooks/*.sh 2>/dev/null | wc -l | tr -d ' ')\" = 5 ]"
 check "exactly 11 skills (Core 10 + rolepod-full alias)" "[ \"\$(ls $P/skills | wc -l | tr -d ' ')\" = 11 ]"
 check "16 agents present"                   "[ \"\$(ls $P/agents/*.md | wc -l | tr -d ' ')\" = 16 ]"
 
 # hooks.json schema: agy-native events, top-level, no wrapper, no _comment.
 check "hooks.json valid JSON"               "python3 -m json.tool $P/hooks.json >/dev/null"
 check "hooks.json events are top-level (no plugin-name wrapper, no _comment)" \
-  "python3 -c \"import json;k=set(json.load(open('$P/hooks.json')));assert k=={'PreInvocation','PreToolUse','PostToolUse'}, k\""
+  "python3 -c \"import json;k=set(json.load(open('$P/hooks.json')));assert k=={'PreInvocation','PreToolUse','PostToolUse','Stop'}, k\""
 
 # AGENTS.md is the agy context file with the always-on core fragments.
 check "AGENTS.md rendered"                  "[ -f build/rendered/antigravity/AGENTS.md ]"

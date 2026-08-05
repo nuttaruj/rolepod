@@ -34,5 +34,12 @@
         }
       ]
     }
+  ],
+  "Stop": [
+    {
+      "type": "command",
+      "command": "${extensionPath}/hooks/stop-unlock.sh",
+      "timeout": 3
+    }
   ]
 }

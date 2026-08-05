@@ -262,8 +262,8 @@ HC_CODEX=$(hook_script_count adapters/codex/plugins/rolepod/hooks/hooks.json)
 HC_GEMINI=$(hook_script_count adapters/gemini/hooks/hooks.json)
 HC_CURSOR=$(hook_script_count adapters/cursor/hooks/hooks.json)
 HC_AGY=$(hook_script_count adapters/antigravity/hooks/hooks.json)
-check "hook scripts per manifest = Claude 9 / Codex 6 / Gemini 5 / Cursor 3 / Antigravity 4 (actual: $HC_CLAUDE/$HC_CODEX/$HC_GEMINI/$HC_CURSOR/$HC_AGY)" \
-  "[ $HC_CLAUDE -eq 9 ] && [ $HC_CODEX -eq 6 ] && [ $HC_GEMINI -eq 5 ] && [ $HC_CURSOR -eq 3 ] && [ $HC_AGY -eq 4 ]"
+check "hook scripts per manifest = Claude 9 / Codex 6 / Gemini 5 / Cursor 3 / Antigravity 5 (actual: $HC_CLAUDE/$HC_CODEX/$HC_GEMINI/$HC_CURSOR/$HC_AGY)" \
+  "[ $HC_CLAUDE -eq 9 ] && [ $HC_CODEX -eq 6 ] && [ $HC_GEMINI -eq 5 ] && [ $HC_CURSOR -eq 3 ] && [ $HC_AGY -eq 5 ]"
 check "README hook counts match manifests" \
   "grep -q \"Claude $HC_CLAUDE / Codex $HC_CODEX / Gemini $HC_GEMINI / Cursor $HC_CURSOR / Antigravity $HC_AGY\" README.md"
 check "CHEATSHEET hook counts match manifests" \
