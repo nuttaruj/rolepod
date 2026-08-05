@@ -33,9 +33,9 @@ the paid ceiling. A CLI whose strong pin already IS its ceiling (Codex `sol`;
 Gemini) collapses apex into strong. The dispatch-log `override` field records
 which rung was sent, so `make stats` audits apex use after the fact.
 
-**Effort** layers on top of the model. Claude uses `effort`, Codex uses `model_reasoning_effort` (`xhigh` / `high` / `medium` / `low`); Gemini has no effort field.
+**Effort** layers on top of the model. Claude uses `effort`, Codex uses `model_reasoning_effort` (documented levels `low` / `medium` / `high` / `xhigh` / `ultra`, per the official subagent docs, verified against codex 0.144.1); Gemini has no effort field.
 
-- `xhigh` — security-engineer only (breach blast radius).
+- CLI effort ceiling (`xhigh` on Claude, `ultra` on Codex) — security-engineer only (breach blast radius): the role rides each CLI's highest documented level, never an undocumented one.
 - `high` — strong tier (system-architect, billing-engineer, universal-reviewer) + balanced-tier roles where reasoning depth pays off (ai-ml-engineer, performance-engineer, qa-tester).
 - `medium` — everything else, and deliberately the floor for every agent whose
   artifact feeds downstream phases (specs, ADRs, implementations). Effort cuts
@@ -119,7 +119,7 @@ have different ceilings per CLI:
 | CLI | Install-half | Runtime-half |
 |---|---|---|
 | Claude | ✓ mechanical — `make doctor` asserts installed `model:` per tier | ✗ platform does not expose a subagent's model — dispatch-log audit only |
-| Codex | ✓ mechanical — doctor asserts TOML `model =` per tier; pinned ids rot with CLI updates (doctor prints them) | runtime metadata exists upstream but is not wired here yet — dispatch-log audit today |
+| Codex | ✓ mechanical — doctor asserts TOML `model =` per tier; pinned ids rot with CLI updates (doctor prints them) | ✗ official subagent docs expose thread status/results only, no per-run model telemetry — dispatch-log audit is the ceiling |
 | Gemini | ✓ mechanical — doctor asserts `model:` per tier; `-preview` ids WILL rot | ✗ field is advisory — dispatch-log audit |
 | Cursor | n/a — the agent spec has no model field | doctrine + dispatch-log |
 | opencode | n/a by design — big catalogs map classes once per session (see AGENTS specifics) | doctrine + dispatch-log |

@@ -38,8 +38,13 @@ A conflict that risks harm → ask before acting.
   policy live inside those phase skills — invoke the phase skill rather than
   reciting gates here.
 - **Agents** — 16 specialists install at `~/.codex/agents/rolepod-*.toml`.
-  Codex does NOT auto-dispatch by description; the user invokes one via
-  `/agent <name>` or a natural-language request ("spawn qa-tester to verify").
+  Codex does NOT auto-dispatch by description alone — but per the official
+  subagent docs, AGENTS.md and skill directives ARE a sanctioned spawn
+  channel: when a phase skill's routing section names a specialist, the
+  Lead delegates to it directly, without waiting for the user to ask.
+  Direct user requests ("spawn qa-tester to verify") work too; `/agent`
+  switches between active threads, it is not the invoke command. Spawn
+  precedence per docs: explicit spawn value → agent file → session config.
   Each agent file is self-contained — it carries its own agent protocol.
 - **Hooks** — the plugin's `hooks/hooks.json` registers 4 core hooks
   (SessionStart context loader, UserPromptSubmit claim-verify nudge,
