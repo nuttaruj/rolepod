@@ -68,4 +68,16 @@ EOF
 check "junit exits 0 on green"            "bash '$REPO_DIR/scripts/junit-summary.sh' '$FIX/green.xml'"
 check "check-work cites junit-summary"    "grep -q 'junit-summary.sh' '$REPO_DIR/core/skills/check-work/SKILL.md'"
 
+# ── shipped copies — installed users read evidence without the source repo ──
+check "claude plugin tree ships stats.sh (byte-exact)" \
+  "diff -q '$REPO_DIR/scripts/stats.sh' '$REPO_DIR/plugins/rolepod/scripts/stats.sh'"
+check "claude plugin tree ships junit-summary.sh (byte-exact)" \
+  "diff -q '$REPO_DIR/scripts/junit-summary.sh' '$REPO_DIR/plugins/rolepod/scripts/junit-summary.sh'"
+check "codex plugin tree ships stats.sh" \
+  "diff -q '$REPO_DIR/scripts/stats.sh' '$REPO_DIR/plugins/rolepod-codex/scripts/stats.sh'"
+check "installer wires rolepod-stats launcher" \
+  "grep -q 'rolepod-stats' '$REPO_DIR/install.sh'"
+check "installer wires launcher removal on uninstall" \
+  "grep -A3 'Removing rolepod-stats' '$REPO_DIR/install.sh' | grep -q 'rm -rf.*rolepod/bin'"
+
 exit $fail

@@ -104,6 +104,10 @@ Can't verify  → state "Assuming X. Risk Y. Verify by Z" — never proceed sile
 
 9 Claude / 6 Codex / 5 Gemini / 3 Cursor / 5 Antigravity core hook scripts — self-guarded, auto-fire, no add-on hooks. All CLIs fire hooks by default (Codex: `[features] hooks = true`, default-enabled). Full reference: [docs/hooks.md](docs/hooks.md).
 
+## Evidence stats
+
+`rolepod-stats` (on PATH after install.sh) — run inside any project: reads its `.rolepod/evidence/` and reports tier distribution, verify pass/fail, review verdicts, strong dispatches with/without explicit override (silent-downgrade audit), and unreasoned bypasses. `rolepod-junit <report.xml>` — counted JUnit totals + failed test names. In the source repo: `make stats`. Marketplace installs (no install.sh) carry the same scripts under the plugin's `scripts/` dir. Want a literal `make stats` in your own project? Add: `stats: ; @rolepod-stats`.
+
 ## Optional sibling plugins
 
 Children plug in via **Extension Protocol v1** — parent writes `<git-root>/.rolepod/parent-active` at SessionStart, children read it to route evidence into `.rolepod/evidence/` for `check-work` aggregation. Spec: [docs/EXTENSION-PROTOCOL.md](docs/EXTENSION-PROTOCOL.md).

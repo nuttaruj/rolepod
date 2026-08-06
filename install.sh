@@ -867,6 +867,12 @@ PY
     ok "opencode rolepod removed"
   fi
 
+  # Evidence-reader launchers + payload (installed for every target).
+  step "Removing rolepod-stats / rolepod-junit launchers"
+  do_or_dry "remove ~/.rolepod/bin + PATH launchers" bash -c "
+    rm -f '$HOME/.local/bin/rolepod-stats' '$HOME/.local/bin/rolepod-junit'
+    rm -rf '$HOME/.rolepod/bin'"
+
   echo ""
   echo "${BOLD}Uninstall complete.${NC}"
   exit 0
@@ -1718,6 +1724,26 @@ fi
 if [ -z "${TARGET:-}" ]; then
   TARGET="$(default_target_path_for claude)"
   PLUGINS_DIR="$TARGET/plugins"
+fi
+
+# ─── Evidence-reader launchers (any target) ────────────────────────────
+# `rolepod-stats` / `rolepod-junit` on PATH so installed users read their
+# project's .rolepod/evidence/ without cloning the source repo. Payload
+# lives in ~/.rolepod/bin (refreshed every install = version-synced);
+# launchers are 2-line shims in ~/.local/bin.
+step "Installing rolepod-stats / rolepod-junit launchers"
+do_or_dry "install evidence readers → ~/.rolepod/bin + ~/.local/bin" bash -c "
+  mkdir -p '$HOME/.rolepod/bin' '$HOME/.local/bin'
+  cp '$REPO_DIR/scripts/stats.sh' '$HOME/.rolepod/bin/stats.sh'
+  cp '$REPO_DIR/scripts/junit-summary.sh' '$HOME/.rolepod/bin/junit-summary.sh'
+  printf '#!/bin/sh\nexec bash \"\$HOME/.rolepod/bin/stats.sh\" \"\$@\"\n' > '$HOME/.local/bin/rolepod-stats'
+  printf '#!/bin/sh\nexec bash \"\$HOME/.rolepod/bin/junit-summary.sh\" \"\$@\"\n' > '$HOME/.local/bin/rolepod-junit'
+  chmod +x '$HOME/.rolepod/bin/'*.sh '$HOME/.local/bin/rolepod-stats' '$HOME/.local/bin/rolepod-junit'"
+if [ "$DRY_RUN" -eq 0 ]; then
+  case ":$PATH:" in
+    *:"$HOME/.local/bin":*) ok "rolepod-stats + rolepod-junit on PATH" ;;
+    *) warn "~/.local/bin is not on PATH — add: export PATH=\"\$HOME/.local/bin:\$PATH\"" ;;
+  esac
 fi
 
 # ─── Summary ────────────────────────────────────────────────────────────

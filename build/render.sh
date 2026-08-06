@@ -246,6 +246,17 @@ PY
 #   plugins/rolepod/hooks/*.sh + *.md + lib/
 # Sources: adapters/claude/.claude-plugin/{marketplace,plugin}.json.
 
+# Evidence readers shipped with every plugin tree — installed users get
+# `rolepod-stats` / `rolepod-junit` (install.sh drops launchers on PATH)
+# without cloning the source repo. Byte-exact copies of scripts/.
+render_evidence_scripts() {
+  local dst="$1"
+  mkdir -p "$dst/scripts"
+  cp "$REPO_DIR/scripts/stats.sh" "$dst/scripts/stats.sh"
+  cp "$REPO_DIR/scripts/junit-summary.sh" "$dst/scripts/junit-summary.sh"
+  chmod +x "$dst/scripts/"*.sh 2>/dev/null || true
+}
+
 render_claude() {
   local adapter_dir="$REPO_DIR/adapters/claude"
   local plugin_dst="$REPO_DIR/plugins/rolepod"
@@ -299,6 +310,8 @@ render_claude() {
     "$plugin_dst/hooks/always-on-core.md"
   [ -d "$REPO_DIR/hooks/lib" ] && cp -R "$REPO_DIR/hooks/lib" "$plugin_dst/hooks/"
   chmod +x "$plugin_dst/hooks/"*.sh 2>/dev/null || true
+
+  render_evidence_scripts "$plugin_dst"
 }
 
 # ─── Render Codex target ────────────────────────────────────────────────────
@@ -365,6 +378,8 @@ render_codex() {
 
   # Skills as a real directory tree (rendered from core/skills/).
   render_skills "$plugin_dst/skills"
+
+  render_evidence_scripts "$plugin_dst"
 }
 
 # ─── Render Gemini target ───────────────────────────────────────────────────
@@ -495,6 +510,8 @@ render_cursor() {
     cp "$adapter_dir/scripts"/*.sh "$plugin_dst/scripts/" 2>/dev/null || true
     chmod +x "$plugin_dst/scripts/"*.sh 2>/dev/null || true
   fi
+
+  render_evidence_scripts "$plugin_dst"
 }
 
 # ─── Render Antigravity (agy) target ────────────────────────────────────────
@@ -561,6 +578,8 @@ render_antigravity() {
   # agy-only: Stop unlock (Gemini CLI never had a Stop event; agy does).
   cp "$adapter_dir/hooks/stop-unlock.sh" "$plugin_dst/hooks/stop-unlock.sh"
   chmod +x "$plugin_dst/hooks/"*.sh 2>/dev/null || true
+
+  render_evidence_scripts "$plugin_dst"
 }
 
 # ─── Render opencode target ─────────────────────────────────────────────────
@@ -610,6 +629,8 @@ render_opencode() {
   else
     echo "render: missing $adapter_dir/plugin/rolepod.js" >&2; exit 1
   fi
+
+  render_evidence_scripts "$out_dir"
 }
 
 generate_skill_index_lean
