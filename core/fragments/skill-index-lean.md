@@ -26,4 +26,4 @@
 |-------|-------------|
 | `rolepod-full` | Force-full Rolepod lifecycle — Define → Plan → Build → Verify → Review → Ship with no phase skips... |
 
-**Legacy skill names are not shipped.** Migration map: [docs/legacy-skill-map.md](docs/legacy-skill-map.md).
+**Legacy skill names are not shipped.** Migration map: [docs/legacy-skill-map.md](https://github.com/nuttaruj/rolepod/blob/main/docs/legacy-skill-map.md) (rolepod source repo — not shipped with the plugin).

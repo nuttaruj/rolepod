@@ -1736,6 +1736,7 @@ do_or_dry "install evidence readers → ~/.rolepod/bin + ~/.local/bin" bash -c "
   mkdir -p '$HOME/.rolepod/bin' '$HOME/.local/bin'
   cp '$REPO_DIR/scripts/stats.sh' '$HOME/.rolepod/bin/stats.sh'
   cp '$REPO_DIR/scripts/junit-summary.sh' '$HOME/.rolepod/bin/junit-summary.sh'
+  cp '$REPO_DIR/scripts/plan-lint.sh' '$HOME/.rolepod/bin/plan-lint.sh'
   printf '#!/bin/sh\nexec bash \"\$HOME/.rolepod/bin/stats.sh\" \"\$@\"\n' > '$HOME/.local/bin/rolepod-stats'
   printf '#!/bin/sh\nexec bash \"\$HOME/.rolepod/bin/junit-summary.sh\" \"\$@\"\n' > '$HOME/.local/bin/rolepod-junit'
   chmod +x '$HOME/.rolepod/bin/'*.sh '$HOME/.local/bin/rolepod-stats' '$HOME/.local/bin/rolepod-junit'"
