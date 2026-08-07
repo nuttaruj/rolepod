@@ -232,7 +232,12 @@ suggests installing a child plugin when the domain matches:
 | `.rolepod-uiproof/baselines/` exists | `rolepod-uiproof` already in use |
 | `.rolepod-wplab/` exists | `rolepod-wplab` already in use |
 | `.rolepod-dblab/` exists | `rolepod-dblab` already in use |
-| iOS / Android native project (`*.xcworkspace`, `build.gradle`) | future: `rolepod-mobile` |
+| Mobile UI project — `*.xcworkspace` / `*.xcodeproj` (iOS), `build.gradle` / `build.gradle.kts` / `AndroidManifest.xml` (Android), `pubspec.yaml` (Flutter), `react-native` in `package.json` | `rolepod-uiproof` (mobile UI verify since 0.14: Appium 2 auto-provision + host preflight, iOS via XCUITest, Android via UiAutomator2 — same tool surface as web on the unified A11yNode tree) |
+
+Mobile limits the suggestion should carry (uiproof 0.14.x): `audit_a11y` is
+web-only (mobile a11y audit not shipped yet), and console/network
+expectations in `verify_ui_flow` are web-only — they fail loud on mobile
+rather than silently passing.
 
 This is **suggestion only** — the parent never auto-installs. The user
 decides which children to add.
