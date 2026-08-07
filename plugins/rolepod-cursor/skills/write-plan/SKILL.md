@@ -52,7 +52,9 @@ Return / hand off:
 - Module boundary map, if the project declares one (CLAUDE.md / ADR / docs).
   Work spans 2+ modules and NO map exists → offer a ONE-TIME bootstrap: scout +
   system-architect derive module list, dependency direction, and no-touch zones
-  from the code into the project's CLAUDE.md for user approval. Paid once —
+  from the code into the project's CLAUDE.md for user approval. Scope the
+  derivation to recently-active modules first (`git log` — where the work
+  actually happens); map the whole repo only when it is small. Paid once —
   every later session reads boundaries instead of re-inferring them.
 - Available specialist agents
 

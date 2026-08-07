@@ -81,9 +81,9 @@ Ask up to 5 targeted questions, one at a time. Each question must change the imp
 
 **Recommend a default per question.** State the simplest viable answer alongside the question — user confirms or overrides. Faster than open-ended and forces you to commit to a position you can defend.
 
-If a question can be answered by reading the codebase, explore the codebase instead — never spend a user question on what you can verify yourself. Walk the decision tree by dependency: resolve the question that gates the others first, since its answer changes which downstream questions still matter.
+If a question can be answered by reading the codebase, explore the codebase instead — never spend a user question on what you can verify yourself. Walk the decision tree by dependency: resolve the question that gates the others first, since its answer changes which downstream questions still matter. While a question is out to the user, that wait is free wall-clock: dispatch a scout on the remaining researchable unknowns in parallel — by the time the answer lands, evidence has often closed the later questions unasked.
 
-**Visual companion for UI-shape questions.** If a question is about UI layout, flow, or visual hierarchy and `rolepod-uiproof` is installed, offer a browser mockup or reference screenshot via `/verify-ui` or `/visual-diff` before asking the text question. Visual answers beat text for visual decisions.
+**Visual companion for UI-shape questions.** If a question is about UI layout, flow, or visual hierarchy and `rolepod-uiproof` is installed, offer a browser mockup or reference screenshot via `/verify-ui` or `/visual-diff` before asking the text question. Visual answers beat text for visual decisions. Interaction-FEEL questions go one step further: a disposable single-file HTML demo (inline CSS/JS, mock data, opens without a server) on a throwaway `spike/` branch — the user clicks the options before answering. The decision + branch pointer land in the spec; the branch is NEVER merged — demo code is an answer, not a head start.
 
 Unsure which questions actually change the implementation? See `references/question-bank.md` for question types and skip rules.
 
