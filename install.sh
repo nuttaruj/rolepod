@@ -868,10 +868,17 @@ PY
   fi
 
   # Evidence-reader launchers + payload (installed for every target).
-  step "Removing rolepod-stats / rolepod-junit launchers"
-  do_or_dry "remove ~/.rolepod/bin + PATH launchers" bash -c "
-    rm -f '$HOME/.local/bin/rolepod-stats' '$HOME/.local/bin/rolepod-junit'
-    rm -rf '$HOME/.rolepod/bin'"
+  # ROLEPOD_TARGET set = temp-target test run — never touch the real HOME
+  # launchers (the integration round-trip uninstalls against a temp dir;
+  # without this guard every `make test-all` silently wiped ~/.rolepod/bin).
+  if [ -z "${ROLEPOD_TARGET:-}${ROLEPOD_CLAUDE_TARGET:-}${ROLEPOD_CODEX_TARGET:-}${ROLEPOD_GEMINI_TARGET:-}${ROLEPOD_CURSOR_TARGET:-}${ROLEPOD_ANTIGRAVITY_TARGET:-}${ROLEPOD_OPENCODE_TARGET:-}" ]; then
+    step "Removing rolepod-stats / rolepod-junit launchers"
+    do_or_dry "remove ~/.rolepod/bin + PATH launchers" bash -c "
+      rm -f '$HOME/.local/bin/rolepod-stats' '$HOME/.local/bin/rolepod-junit'
+      rm -rf '$HOME/.rolepod/bin'"
+  else
+    warn "ROLEPOD_TARGET set — skipping global launcher removal (temp-target run)"
+  fi
 
   echo ""
   echo "${BOLD}Uninstall complete.${NC}"
@@ -1731,20 +1738,24 @@ fi
 # project's .rolepod/evidence/ without cloning the source repo. Payload
 # lives in ~/.rolepod/bin (refreshed every install = version-synced);
 # launchers are 2-line shims in ~/.local/bin.
-step "Installing rolepod-stats / rolepod-junit launchers"
-do_or_dry "install evidence readers → ~/.rolepod/bin + ~/.local/bin" bash -c "
-  mkdir -p '$HOME/.rolepod/bin' '$HOME/.local/bin'
-  cp '$REPO_DIR/scripts/stats.sh' '$HOME/.rolepod/bin/stats.sh'
-  cp '$REPO_DIR/scripts/junit-summary.sh' '$HOME/.rolepod/bin/junit-summary.sh'
-  cp '$REPO_DIR/scripts/plan-lint.sh' '$HOME/.rolepod/bin/plan-lint.sh'
-  printf '#!/bin/sh\nexec bash \"\$HOME/.rolepod/bin/stats.sh\" \"\$@\"\n' > '$HOME/.local/bin/rolepod-stats'
-  printf '#!/bin/sh\nexec bash \"\$HOME/.rolepod/bin/junit-summary.sh\" \"\$@\"\n' > '$HOME/.local/bin/rolepod-junit'
-  chmod +x '$HOME/.rolepod/bin/'*.sh '$HOME/.local/bin/rolepod-stats' '$HOME/.local/bin/rolepod-junit'"
-if [ "$DRY_RUN" -eq 0 ]; then
-  case ":$PATH:" in
-    *:"$HOME/.local/bin":*) ok "rolepod-stats + rolepod-junit on PATH" ;;
-    *) warn "~/.local/bin is not on PATH — add: export PATH=\"\$HOME/.local/bin:\$PATH\"" ;;
-  esac
+if [ -z "${ROLEPOD_TARGET:-}${ROLEPOD_CLAUDE_TARGET:-}${ROLEPOD_CODEX_TARGET:-}${ROLEPOD_GEMINI_TARGET:-}${ROLEPOD_CURSOR_TARGET:-}${ROLEPOD_ANTIGRAVITY_TARGET:-}${ROLEPOD_OPENCODE_TARGET:-}" ]; then
+  step "Installing rolepod-stats / rolepod-junit launchers"
+  do_or_dry "install evidence readers → ~/.rolepod/bin + ~/.local/bin" bash -c "
+    mkdir -p '$HOME/.rolepod/bin' '$HOME/.local/bin'
+    cp '$REPO_DIR/scripts/stats.sh' '$HOME/.rolepod/bin/stats.sh'
+    cp '$REPO_DIR/scripts/junit-summary.sh' '$HOME/.rolepod/bin/junit-summary.sh'
+    cp '$REPO_DIR/scripts/plan-lint.sh' '$HOME/.rolepod/bin/plan-lint.sh'
+    printf '#!/bin/sh\nexec bash \"\$HOME/.rolepod/bin/stats.sh\" \"\$@\"\n' > '$HOME/.local/bin/rolepod-stats'
+    printf '#!/bin/sh\nexec bash \"\$HOME/.rolepod/bin/junit-summary.sh\" \"\$@\"\n' > '$HOME/.local/bin/rolepod-junit'
+    chmod +x '$HOME/.rolepod/bin/'*.sh '$HOME/.local/bin/rolepod-stats' '$HOME/.local/bin/rolepod-junit'"
+  if [ "$DRY_RUN" -eq 0 ]; then
+    case ":$PATH:" in
+      *:"$HOME/.local/bin":*) ok "rolepod-stats + rolepod-junit on PATH" ;;
+      *) warn "~/.local/bin is not on PATH — add: export PATH=\"\$HOME/.local/bin:\$PATH\"" ;;
+    esac
+  fi
+else
+  warn "ROLEPOD_TARGET set — skipping global launcher install (temp-target run)"
 fi
 
 # ─── Summary ────────────────────────────────────────────────────────────

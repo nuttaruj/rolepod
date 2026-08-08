@@ -78,6 +78,8 @@ check "codex plugin tree ships stats.sh" \
 check "installer wires rolepod-stats launcher" \
   "grep -q 'rolepod-stats' '$REPO_DIR/install.sh'"
 check "installer wires launcher removal on uninstall" \
-  "grep -A3 'Removing rolepod-stats' '$REPO_DIR/install.sh' | grep -q 'rm -rf.*rolepod/bin'"
+  "grep -A6 'Removing rolepod-stats' '$REPO_DIR/install.sh' | grep -q 'rm -rf.*rolepod/bin'"
+check "launcher install+removal guarded against ALL temp-target vars (test runs must never touch real HOME)" \
+  "[ \"\$(grep -c 'ROLEPOD_TARGET:-}\${ROLEPOD_CLAUDE_TARGET:-}\${ROLEPOD_CODEX_TARGET:-}\${ROLEPOD_GEMINI_TARGET:-}\${ROLEPOD_CURSOR_TARGET:-}\${ROLEPOD_ANTIGRAVITY_TARGET:-}\${ROLEPOD_OPENCODE_TARGET' '$REPO_DIR/install.sh')\" = 2 ]"
 
 exit $fail
