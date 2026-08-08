@@ -80,6 +80,17 @@ if dispatches:
             print("    ⚠ inherit on a strong dispatch is the silent downgrade "
                   "unless the Lead itself is strong-class")
 
+proofs = [r for r in rows if r.get("phase") == "dispatch-proof"]
+if proofs:
+    combo = Counter(
+        (p.get("cli", "?"), p.get("model") or "?", p.get("agent_type") or "-")
+        for p in proofs
+    )
+    print(f"\n  Model proof — hook-reported ({len(proofs)}; provenance: hook stdin, "
+          "not independently verified):")
+    for (cli, model, agent), n in sorted(combo.items()):
+        print(f"    {cli:<12} {model:<28} {agent:<20} ×{n}")
+
 if verifies:
     v = Counter(r.get("verdict", "?") for r in verifies)
     total = sum(v.values())

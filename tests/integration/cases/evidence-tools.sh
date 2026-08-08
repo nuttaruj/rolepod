@@ -29,6 +29,8 @@ cat > "$FIX/repo/.rolepod/evidence/phase-log.jsonl" <<'EOF'
 {"ts":"2026-07-31T01:40:00Z","phase":"ship","action":"pr"}
 {"ts":"2026-07-31T01:45:00Z","phase":"dispatch","tier":"strong","override":"opus"}
 {"ts":"2026-07-31T01:50:00Z","phase":"dispatch","tier":"strong","override":"none"}
+{"ts":"2026-07-31T01:55:00Z","phase":"dispatch-proof","cli":"codex","agent_type":"qa-tester","model":"gpt-5.6-terra","provenance":"hook-stdin"}
+{"ts":"2026-07-31T01:56:00Z","phase":"dispatch-proof","cli":"antigravity","agent_type":"","model":"gemini-3-pro","provenance":"hook-stdin"}
 not json — must be skipped, not crash
 EOF
 printf '{"ts":"2026-07-31T01:15:00Z","hook":"precommit-gate","var":"ROLEPOD_GATES_SOFT","reason":"unreasoned"}\n' \
@@ -40,6 +42,11 @@ check "stats reports verify fail rate"    "printf '%s' \"\$OUT\" | grep -q 'fail
 check "stats reports review verdicts"     "printf '%s' \"\$OUT\" | grep -q 'APPROVED: 1'"
 check "stats flags unreasoned bypasses"   "printf '%s' \"\$OUT\" | grep -q 'unreasoned'"
 check "stats audits strong dispatches"    "printf '%s' \"\$OUT\" | grep -q 'Strong dispatches (2): 1 with explicit override, 1 inherit'"
+check "stats reports hook-reported model proof" "printf '%s' \"\$OUT\" | grep -q 'Model proof — hook-reported (2'"
+check "stats shows proof per cli+model"   "printf '%s' \"\$OUT\" | grep -q 'gpt-5.6-terra'"
+printf '{"agent_type":"qa","model":"m1"}' > "$FIX/subagent-stop.json"
+check "codex model-log hook is fail-open outside a repo" \
+  "cd /tmp && bash '$REPO_DIR/adapters/codex/plugins/rolepod/hooks/subagent-model-log.sh' < '$FIX/subagent-stop.json'"
 check "stats names the silent downgrade"  "printf '%s' \"\$OUT\" | grep -q 'silent downgrade'"
 check "stats survives malformed lines"    "bash '$REPO_DIR/scripts/stats.sh' '$FIX/repo'"
 OUT=$(bash "$REPO_DIR/scripts/stats.sh" "$FIX")

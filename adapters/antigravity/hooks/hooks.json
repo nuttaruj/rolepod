@@ -9,6 +9,11 @@
       "type": "command",
       "command": "${extensionPath}/hooks/claim-verify-nudge.sh",
       "timeout": 3
+    },
+    {
+      "type": "command",
+      "command": "${extensionPath}/hooks/model-log.sh",
+      "timeout": 3
     }
   ],
   "PreToolUse": [

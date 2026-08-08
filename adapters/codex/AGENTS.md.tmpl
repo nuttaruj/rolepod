@@ -46,11 +46,12 @@ A conflict that risks harm → ask before acting.
   switches between active threads, it is not the invoke command. Spawn
   precedence per docs: explicit spawn value → agent file → session config.
   Each agent file is self-contained — it carries its own agent protocol.
-- **Hooks** — the plugin's `hooks/hooks.json` registers 6 core hooks
+- **Hooks** — the plugin's `hooks/hooks.json` registers 7 core hook scripts
   (SessionStart context loader + sibling-session lock, UserPromptSubmit
   claim-verify nudge, pre-edit gate reminder, pre-commit test gate,
-  subagent-commit block, Stop unlock). They fire natively on Codex
-  ≥0.144, default-enabled (`[features] hooks = true`).
+  subagent-commit block, Stop unlock, SubagentStop model log → each
+  finished subagent appends a dispatch-proof evidence line). They fire
+  natively on Codex ≥0.144, default-enabled (`[features] hooks = true`).
 - **Enforcement tier: hooks-live (expanded)** — precommit test gate AND
   subagent-commit block can deny; cross-CLI sibling locks live via
   session-lifecycle. Still doctrine-only: cohesion-contract check (Codex

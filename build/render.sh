@@ -576,8 +576,11 @@ render_antigravity() {
   for h in session-start before-tool after-tool claim-verify-nudge; do
     cp "$REPO_DIR/adapters/gemini/hooks/$h.sh" "$plugin_dst/hooks/$h.sh"
   done
-  # agy-only: Stop unlock (Gemini CLI never had a Stop event; agy does).
+  # agy-only: Stop unlock (Gemini CLI never had a Stop event; agy does) +
+  # model-log (agy auto-selects models; the hook input's modelName is the
+  # only visibility into what it picked).
   cp "$adapter_dir/hooks/stop-unlock.sh" "$plugin_dst/hooks/stop-unlock.sh"
+  cp "$adapter_dir/hooks/model-log.sh" "$plugin_dst/hooks/model-log.sh"
   chmod +x "$plugin_dst/hooks/"*.sh 2>/dev/null || true
 
   render_evidence_scripts "$plugin_dst"

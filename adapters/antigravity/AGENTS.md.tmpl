@@ -49,11 +49,12 @@ A conflict that risks harm → ask before acting.
   self-contained — it carries its own agent protocol.
 - **Hooks** — the plugin's `hooks.json` (at the plugin root; scripts under
   `hooks/`) registers gate hooks on agy's
-  native events: `PreInvocation` (session context + claim-verify nudge),
-  `PreToolUse` (pre-edit verify-first reminder), `PostToolUse` (post-edit
-  evidence reminder), `Stop` (release this session's worktree lock so
-  siblings stop seeing a phantom session). Inspect loaded hooks with
-  `agy hooks`.
+  native events: `PreInvocation` (session context + claim-verify nudge +
+  model log — agy auto-selects models, the hook records each switch as a
+  dispatch-proof evidence line), `PreToolUse` (pre-edit verify-first
+  reminder), `PostToolUse` (post-edit evidence reminder), `Stop` (release
+  this session's worktree lock so siblings stop seeing a phantom
+  session). Inspect loaded hooks with `agy hooks`.
 - **Enforcement tier: unverified** — hooks are registered but live firing
   is unverified on current agy: treat every blocking gate as skill-enforced
   (doctrine-only) and never report a hook gate as mechanically enforced

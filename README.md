@@ -148,7 +148,7 @@ curl -fsSL https://raw.githubusercontent.com/nuttaruj/rolepod/main/bootstrap.sh 
 
 - **16 specialist agents** — strategy, architecture, engineering, quality, ops, design, content, and review. Each owns a path or concern and runs on a cost-tiered model (~50-60% cheaper than all-strong). → [docs/agents.md](docs/agents.md), [docs/model-tier-policy.md](docs/model-tier-policy.md)
 - **Core 10 skills** — one router plus nine phase skills, the workflow spine. → [docs/skills.md](docs/skills.md)
-- **Per-CLI hooks** — deterministic enforcement: gate reminders, a pre-commit test gate, a sub-agent commit block, a concurrent-edit stomp guard, session safety. Counts vary by CLI capability (Claude 9 / Codex 6 / Gemini 5 / Cursor 3 / Antigravity 5 hook scripts / opencode 0 scripts — JS plugin with a precommit deny + per-agent `permission:` blocks, remaining gates skill-enforced). → [docs/hooks.md](docs/hooks.md)
+- **Per-CLI hooks** — deterministic enforcement: gate reminders, a pre-commit test gate, a sub-agent commit block, a concurrent-edit stomp guard, session safety. Counts vary by CLI capability (Claude 9 / Codex 7 / Gemini 5 / Cursor 3 / Antigravity 6 hook scripts / opencode 0 scripts — JS plugin with a precommit deny + per-agent `permission:` blocks, remaining gates skill-enforced). → [docs/hooks.md](docs/hooks.md)
 - **Evidence stats** — `rolepod-stats` (installed on PATH) reads any project's `.rolepod/evidence/`: tier distribution, verify pass/fail, review verdicts, strong-dispatch overrides, bypasses. `rolepod-junit` counts JUnit XML. Every plugin tree also ships the scripts under `scripts/` for marketplace installs.
 - **Active gates** — Q1-Q4 delegation, S1-S5 simplicity, T1-T6 tests, F1-F5 failure-mode — checked before every commit.
 

@@ -119,11 +119,11 @@ have different ceilings per CLI:
 | CLI | Install-half | Runtime-half |
 |---|---|---|
 | Claude | ✓ mechanical — `make doctor` asserts installed `model:` per tier | ✓ via transcript scan — subagent transcripts (`~/.claude/projects/<project>/*.jsonl`) record `message.model` per turn; grep the agent's transcript to prove which model actually ran (verified 2026-08-05: four haiku-dispatched scouts all show `claude-haiku-4-5` on disk). The dispatch-log stays the intent record; the transcript is the execution proof. |
-| Codex | ✓ mechanical — doctor asserts TOML `model =` per tier; pinned ids rot with CLI updates (doctor prints them) | ✗ official subagent docs expose thread status/results only, no per-run model telemetry — dispatch-log audit is the ceiling |
+| Codex | ✓ mechanical — doctor asserts TOML `model =` per tier; pinned ids rot with CLI updates (doctor prints them) | ◐ hook-reported — SubagentStop stdin carries `model`; `subagent-model-log.sh` appends a dispatch-proof line per finished subagent (provenance hook-stdin, whether it is the subagent's own model or the parent's is not live-verified upstream; the logged `agent_transcript_path` allows manual deep audit) |
 | Gemini | ✓ mechanical — doctor asserts `model:` per tier; `-preview` ids WILL rot | ✗ field is advisory — dispatch-log audit |
 | Cursor | n/a — the agent spec has no model field | doctrine + dispatch-log |
 | opencode | n/a by design — big catalogs map classes once per session (see AGENTS specifics) | doctrine + dispatch-log |
-| Antigravity | n/a — agy auto-selects the model per task | doctrine + dispatch-log |
+| Antigravity | n/a — agy auto-selects the model per task | ◐ hook-reported — PreInvocation stdin carries `modelName`; `model-log.sh` appends a dispatch-proof line on every model CHANGE (deduped), the only visibility into what agy actually picked |
 
 The dispatch-log (`{"phase":"dispatch","tier":"strong","override":...}` in
 `phase-log.jsonl`, read by `make stats`) is the CLI-agnostic audit: it cannot
