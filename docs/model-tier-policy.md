@@ -108,12 +108,17 @@ rules keep it from fighting rolepod's own consult machinery:
    inside the author's own context and family — Iron Rule 2 still requires
    a fresh cross-family reviewer on high-risk diffs. "The advisor looked at
    it" is a limitation note, not a review.
-3. **Subagents inherit the configured advisor.** A haiku scout carrying an
-   opus/fable advisor can quietly consult expensive tokens from a cheap
-   dispatch — set `max_uses` to cap consult frequency on dispatch-heavy
-   sessions, and remember advisor input is billed on the full conversation
-   at advisor rates (long sessions pay more per consult; rolepod's
-   curated-brief subagent consults stay bounded by comparison).
+3. **Subagents inherit the configured advisor** (with the pairing check
+   re-run against each subagent's own model). A haiku scout carrying an
+   opus advisor can quietly consult expensive tokens from a cheap
+   dispatch. Claude Code exposes NO cap setting — control is
+   instruction-level only: cheap-tier task briefs state "do not consult
+   the advisor" (the sweep needs pointers, not judgment), and
+   session-level offs are `/advisor off` or
+   `CLAUDE_CODE_DISABLE_ADVISOR_TOOL=1`. Advisor input is billed on the
+   full conversation at advisor rates and is never cached between calls
+   — long sessions pay more per consult; rolepod's curated-brief
+   subagent consults stay bounded by comparison.
 
 ## Lead tier choice — the session-level decision
 
