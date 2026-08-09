@@ -89,6 +89,32 @@ Auto-escalate to the **strong** tier for adversarial review (regardless of agent
 
 The `gate-reminder.sh` and `precommit-gate.sh` hooks already block edits on high-risk paths without a reviewer agent dispatched. The tier policy makes the *which* reviewer explicit.
 
+## Advisor mode interplay (Claude Code)
+
+Claude Code's native Advisor mode (`/advisor <model>` / `advisorModel` in
+settings) lets the Lead consult a stronger model inline, server-side. It is
+the same philosophy as this policy — cheap executor, targeted escalation —
+and Anthropic's published numbers back the pairing (Sonnet + Opus advisor:
++2.7pp SWE-bench Multilingual at −11.9% cost per task). Three interplay
+rules keep it from fighting rolepod's own consult machinery:
+
+1. **Advisor IS the vertical-consult channel when configured.** debug-issue
+   §9's vertical fallback and review-code's fix-round circuit breaker use
+   the inline advisor instead of shelling out to the CLI's strongest model.
+   The discipline is unchanged: ONE consult, one advisor-informed round,
+   never a second parallel consult for the same event — advisor on does not
+   mean consult twice.
+2. **Advisor never satisfies the adversarial pass.** It advises the author
+   inside the author's own context and family — Iron Rule 2 still requires
+   a fresh cross-family reviewer on high-risk diffs. "The advisor looked at
+   it" is a limitation note, not a review.
+3. **Subagents inherit the configured advisor.** A haiku scout carrying an
+   opus/fable advisor can quietly consult expensive tokens from a cheap
+   dispatch — set `max_uses` to cap consult frequency on dispatch-heavy
+   sessions, and remember advisor input is billed on the full conversation
+   at advisor rates (long sessions pay more per consult; rolepod's
+   curated-brief subagent consults stay bounded by comparison).
+
 ## Lead tier choice — the session-level decision
 
 The tier table governs subagents; the Lead's own model is the user's session
@@ -96,7 +122,10 @@ choice, and under rolepod the right default is a **balanced-class Lead**: with
 delegation active the Lead is mostly a controller (briefs, verdicts, commits),
 and the escalation valves — debug-issue's cross-model consult, strong-tier
 reviewers, BLOCKED redispatch — pull strong-class intelligence in per-turn,
-so a strong-class session pays flagship price for controller work. Open with
+so a strong-class session pays flagship price for controller work. On Claude
+Code, balanced Lead + a stronger advisor (`/advisor opus`) is the
+numbers-backed sweet spot — better and cheaper than either model solo (see
+Advisor mode interplay above). Open with
 a strong-class Lead only when the day's MAIN work is architecture, a
 multi-day debug, or a high-risk domain. The router's Lead-tier fit nudge
 states this once per session when it detects a mismatch — tier classes only,
