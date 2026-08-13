@@ -89,6 +89,7 @@ All commands should succeed.
 
 ## 6. Git hygiene
 
+- Version bumped via `make version-bump VERSION=2.x.y` — seds the 7 source manifests (gemini/antigravity derive the 0.x lockstep automatically) and re-renders the 4 committed derived copies; lean-surface pins all 11 carriers.
 - `git status` clean — committed render trees (`plugins/rolepod/`, `plugins/rolepod-codex/`) match `make render` output.
 - Tag follows the 2.x track (`.claude-plugin/plugin.json`). The Gemini / Antigravity manifests track the same release on a 0.x line in lockstep (e.g. 2.9.0 ↔ 0.9.0) — they are not expected to literally match the tag.
 - Release recorded as a `chore(release): <version>` commit (rolepod keeps no separate CHANGELOG).

@@ -269,6 +269,48 @@ check "README hook counts match manifests" \
 check "CHEATSHEET hook counts match manifests" \
   "grep -q \"$HC_CLAUDE Claude / $HC_CODEX Codex / $HC_GEMINI Gemini / $HC_CURSOR Cursor / $HC_AGY Antigravity\" CHEATSHEET.md"
 
+# ── Version manifests — one 2.x/0.x lockstep pair across all carriers ──
+# 7 hand-edited sources (scripts/bump-version.sh) + 4 committed render
+# copies = 11 files / 13 version fields. Gemini + Antigravity track the
+# release on a 0.x line (2.38.0 ↔ 0.38.0). Drift here shipped before:
+# antigravity sat at 0.35.1 through two releases with nothing catching it.
+V_MAIN=$(python3 -c "import json;print(json.load(open('adapters/claude/.claude-plugin/plugin.json'))['version'])")
+V_LOCK="0.${V_MAIN#2.}"
+version_drift=$(python3 - "$V_MAIN" "$V_LOCK" <<'PYEOF'
+import re, sys
+v_main, v_lock = sys.argv[1], sys.argv[2]
+carriers = {
+    "adapters/claude/.claude-plugin/plugin.json": v_main,
+    "adapters/codex/plugins/rolepod/.codex-plugin/plugin.json": v_main,
+    "adapters/cursor/.cursor-plugin/plugin.json": v_main,
+    "adapters/cursor/.cursor-plugin/marketplace.json": v_main,
+    "adapters/opencode/opencode.json": v_main,
+    "adapters/gemini/gemini-extension.json": v_lock,
+    "adapters/antigravity/plugin.json": v_lock,
+    "plugins/rolepod/.claude-plugin/plugin.json": v_main,
+    "plugins/rolepod-codex/.codex-plugin/plugin.json": v_main,
+    "plugins/rolepod-cursor/.cursor-plugin/plugin.json": v_main,
+    ".cursor-plugin/marketplace.json": v_main,
+}
+bad = []
+for path, want in carriers.items():
+    try:
+        text = open(path).read()
+    except OSError:
+        bad.append(f"{path}: missing")
+        continue
+    vals = re.findall(r'"version"\s*:\s*"([0-9]+\.[0-9]+\.[0-9]+)"', text)
+    if not vals:
+        bad.append(f"{path}: no version field")
+    for got in vals:
+        if got != want:
+            bad.append(f"{path}: {got} != {want}")
+print("; ".join(bad))
+PYEOF
+)
+check "version manifests consistent — 11 carriers on $V_MAIN / $V_LOCK lockstep" "[ -z \"\$version_drift\" ]"
+if [ -n "$version_drift" ]; then echo "      drift: $version_drift"; fi
+
 # ── Full agent table must NOT appear in rendered entry docs ──────────
 # Heuristic: a full agent table has the agent-roster header pattern.
 # The lean fragment uses a single "**16 specialists**" line instead.
@@ -702,6 +744,45 @@ else
   printf "%b" "$HOOK_DRIFT" | sed 's/^/      /'
   fail=$((fail+1))
 fi
+
+# ── High-risk regex parity — every hand-maintained copy must match ────
+# The canonical high-risk path ERE is hand-carried in 7 shell sources plus
+# a Python twin in hooks/lib/session_state.py. It HAS drifted before —
+# gemini shipped without authentication|authorization for months, and the
+# cursor gate-reminder anchor narrowed to (/|^) — so the FULL string
+# (anchors + terms) is pinned here, not just the term list. One documented
+# exception: gemini's prefix adds `\.` (its input is a single file_path,
+# so the wider match is deliberate); terms + suffix still match the canon.
+RISK_TERMS='auth|authn|authz|authentication|authorization|billing|payment|payments|migration|migrations|credit|credits|permission|permissions|secret|secrets|crypto|cryptography|token|tokens|oauth|jwt|sso|saml|webhook|webhooks|stripe|paypal|charge|charges|invoice|invoices'
+RISK_CANON='(^|/|_)('"$RISK_TERMS"')(/|\.|_|$)'
+RISK_GEMINI='(^|/|_|\.)('"$RISK_TERMS"')(/|\.|_|$)'
+for f in hooks/gate-reminder.sh hooks/precommit-gate.sh \
+         adapters/codex/plugins/rolepod/hooks/gate-reminder.sh \
+         adapters/codex/plugins/rolepod/hooks/precommit-gate.sh \
+         adapters/cursor/scripts/gate-reminder.sh \
+         adapters/cursor/scripts/precommit-gate.sh; do
+  check "high-risk regex canonical in $f" "grep -qF -- \"\$RISK_CANON\" '$f'"
+done
+check "high-risk regex (wide-prefix gemini variant) in adapters/gemini/hooks/before-tool.sh" \
+  "grep -qF -- \"\$RISK_GEMINI\" adapters/gemini/hooks/before-tool.sh"
+PY_RISK=$(python3 -c "
+import re
+src = open('hooks/lib/session_state.py').read()
+m = re.search(r'HIGH_RISK_PATH = re\.compile\((.*?)re\.IGNORECASE', src, re.S)
+print(''.join(re.findall(r'r\"(.*?)\"', m.group(1))) if m else 'PARSE-FAIL')
+")
+check "session_state.py HIGH_RISK_PATH matches the canonical regex byte-for-byte" \
+  "[ \"\$PY_RISK\" = \"\$RISK_CANON\" ]"
+
+# rolepod_log_bypass() — the 4 copies OUTSIDE the codex byte-diff loop
+# above must stay byte-identical to the canonical body in precommit-gate.sh
+# (the hooks/ ↔ codex copies are already covered by SHARED_CORE_HOOKS).
+lb_body() { awk '/^rolepod_log_bypass\(\) \{/,/^\}/' "$1"; }
+LB_REF=$(lb_body hooks/precommit-gate.sh)
+for f in hooks/worktree-guard.sh hooks/cohesion-contract-check.sh \
+         adapters/cursor/scripts/gate-reminder.sh adapters/cursor/scripts/precommit-gate.sh; do
+  check "rolepod_log_bypass byte-identical in $f" "[ \"\$(lb_body '$f')\" = \"\$LB_REF\" ]"
+done
 
 # ── Render reproducibility under LC_ALL=C ─────────────────────────────
 cp core/fragments/skill-index-lean.md /tmp/.lean-surface-snap.md

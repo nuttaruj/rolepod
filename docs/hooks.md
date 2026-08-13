@@ -80,7 +80,7 @@ Schema-bound + high-risk edit guard. Silent on normal code edits (PR 5 slim — 
 
 Fires output ONLY when:
 1. **Schema-bound NEW file** (plugin.json, marketplace.json, hooks.json, extension manifests) → soft warn: WebFetch spec FIRST.
-2. **High-risk path** (auth / billing / migration / secret / crypto / token / oauth / jwt / sso / saml / webhook / stripe / paypal / charge / invoice) → soft warn + auto-Careful banner with reviewer list (qa-tester + Codex/Gemini when binaries present).
+2. **High-risk path** (auth / authentication / authorization / billing / migration / secret / crypto / token / oauth / jwt / sso / saml / webhook / stripe / paypal / charge / invoice — illustrative; canonical regex in the script, parity-pinned by lean-surface) → soft warn + auto-Careful banner with reviewer list (qa-tester + Codex/Gemini when binaries present).
 3. **High-risk path + discipline drift** → HARD BLOCK:
    - 1st+ high-risk edit + 0 test edits in session → block (RED-test discipline).
    - 2nd+ high-risk edit + 0 reviewer agents dispatched → block (reviewer floor).

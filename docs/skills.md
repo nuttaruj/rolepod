@@ -61,9 +61,10 @@ Skills can run inline (default — body becomes part of Lead's conversation) or 
 ## How a skill is added or moved
 
 1. Add `core/skills/<name>/SKILL.md` with `name:`, `description:`, `when_to_use:`, `tier: 1`, and `phase: <name>` when it is a public phase skill.
-2. Edit `build/render.sh` in both `generate_skill_index()` and `generate_skill_index_lean()` if it belongs in the public surface.
-3. `make render` — regenerates both skill-index fragments.
-4. `make test-static` — render-clean + lean-surface confirm the Core 10 + 1 alias caps and portability.
+2. Add the skill to the appropriate `emit_lean_section` call in `generate_skill_index_lean()` (`build/render.sh:70`) if it belongs in the public surface.
+3. `make render` — regenerates `core/fragments/skill-index-lean.md`.
+4. Add the row to the `## Core 10 skills` table above — it is the full catalog the lean index points at, and it does not regenerate.
+5. `make test-static` — render-clean + lean-surface confirm the Core 10 + 1 alias caps and portability.
 
 ## Skill design principles
 

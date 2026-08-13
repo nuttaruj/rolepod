@@ -13,7 +13,7 @@
 #
 # Each command exits 0 on pass/skip and non-zero only on hard fail.
 
-.PHONY: test test-static test-integration test-all render install doctor help
+.PHONY: test test-static test-integration test-all render install doctor help version-bump
 
 help:
 	@echo "Rolepod test commands:"
@@ -25,6 +25,7 @@ help:
 	@echo "  make stats                        — read phase-log/bypass evidence: tier distribution, verdicts, bypasses"
 	@echo ""
 	@echo "  make render                       — render adapters to build/rendered/"
+	@echo "  make version-bump VERSION=2.x.y   — bump 7 source manifests + re-render the 4 derived copies"
 	@echo "  make install                      — install --target=claude --force into ~/.claude/"
 
 test-static:
@@ -135,6 +136,11 @@ test-all: test-static test-integration
 
 render:
 	@bash build/render.sh --target=all
+
+# Version bump — seds the 7 source manifests, re-renders the 4 committed
+# derived copies. lean-surface pins all 11 carriers to one 2.x/0.x pair.
+version-bump:
+	@bash scripts/bump-version.sh $(VERSION)
 
 # Live enforcement self-test — proves the deny paths with synthetic fixtures
 # and reports installed version + enforcement tier per CLI.

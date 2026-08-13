@@ -82,7 +82,7 @@ Per-task override: explicit user instruction always wins. If the user says "use 
 
 Auto-escalate to the **strong** tier for adversarial review (regardless of agent default) when:
 
-- Touching auth / authn / authz / billing / payment / migration / credit / permission / secret / crypto / token / oauth / jwt / sso / saml / webhook / stripe / paypal / charge / invoice paths.
+- Touching auth / authn / authz / authentication / authorization / billing / payment / migration / credit / permission / secret / crypto / token / oauth / jwt / sso / saml / webhook / stripe / paypal / charge / invoice paths (illustrative — the canonical regex lives in `hooks/precommit-gate.sh` / `gate-reminder.sh`, parity-pinned by lean-surface).
 - About to ship to production (final `finish-work` review).
 - 3rd agent attempt on same surface (per CLAUDE.md hard stops).
 - User explicit "use careful mode" or `/rolepod` invocation.
