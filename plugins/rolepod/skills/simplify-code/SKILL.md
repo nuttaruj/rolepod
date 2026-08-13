@@ -28,6 +28,7 @@ Simplify-phase skill — cross-phase, usable during Build (refactor intent) or a
 - A defensive null-check / try-catch covers an "impossible" case
 - Same logic copy-pasted in 3+ files
 - User says "this is getting messy" or "refactor X"
+- `rolepod-debt:` markers present in the touched area — harvest them (§2)
 
 Skip when:
 - Tests don't exist for the touched code — write them first via `implement-plan` or `debug-issue`
@@ -79,6 +80,8 @@ Before removing anything, run **Chesterton's Fence** + the **deletion test** (Ir
 | Backwards-compat shim for code nobody calls | Delete the shim |
 | Comment that restates what the code does | Delete the comment |
 | Wrapper that only forwards calls (delete it → complexity vanishes) | Inline; a pure pass-through earns nothing |
+
+**Debt markers.** A deliberate simplification with a KNOWN ceiling (global lock, O(n²) scan, naive heuristic) leaves one greppable comment where the corner lives: `rolepod-debt: <what>. ceiling: <limit>. upgrade when: <trigger>`. Harvest: `rg 'rolepod-debt:'` lists the ledger — a marker naming no upgrade trigger is rot; fix the marker or do the upgrade. These markers are exempt from the "comment restates code" row above.
 
 ### 3. Prefer structural over runtime
 

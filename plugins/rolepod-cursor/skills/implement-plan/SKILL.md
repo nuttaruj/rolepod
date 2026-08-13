@@ -77,8 +77,7 @@ Touch only what the task requires. No "while I'm here" refactors. No reformattin
 
 While editing, hold these reflexes:
 - **Comments** — default to none. Add one only when the WHY is non-obvious (a hidden constraint, a workaround, a surprising invariant). Never comment WHAT the code does.
-- **One source of truth** — before adding a helper, constant, type, or validation, search for an existing one (`rg`) and extend it instead of duplicating.
-- **New dependency** — justify it: not already covered by stdlib or an existing dep, maintained, reasonable size, compatible license. Unsure → ask.
+- **Reuse ladder** — before adding a helper, constant, type, validation, or other new logic, stop at the first rung that holds: (1) already in this codebase — `rg` and extend, don't duplicate; (2) stdlib does it; (3) a native platform feature covers it — DB constraint over app code, CSS over JS, `<input type="date">` over a picker lib; (4) an already-installed dependency solves it; (5) only then write the minimum new code. A NEW dependency is the last rung and must be justified: maintained, reasonable size, compatible license. Unsure → ask.
 - **Tests** — never mock the database in an integration test; prefer a real dependency over a fake / stub / mock.
 - **Blast radius = caller count, not diff size** — changing the behavior, signature, or return shape of anything that already has callers → walk the callers FIRST (code-intel callers / impact when available, else `rg`) and decide per caller: absorb, adapt, or split. A 1-line change to a shared helper is a wide edit; an unvisited caller of a changed contract is the top write-time bug source.
 

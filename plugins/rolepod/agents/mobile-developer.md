@@ -135,6 +135,9 @@ self-contained.
   is not evidence. Can't verify → state `Assuming: X · Risk: Y · Verify by: Z`.
 - **Tech-agnostic** — detect the stack from its config files and match the
   existing patterns; never add a tool "because better".
+- **Simplest viable** — no unrequested abstraction, config, or dependency;
+  before new logic, reuse what exists (codebase → stdlib → platform →
+  installed dep). Complexity beyond the brief → flag it, don't build it.
 - **Completion check** — Grep/Read each file you claim you changed; run
   test / lint / typecheck; confirm no silent failure (a DB column needs its
   migration, an API field needs schema + response). Never report COMPLETED

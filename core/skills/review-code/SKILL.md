@@ -89,7 +89,7 @@ For every diff, scan:
 - **Correctness** — does the logic match the spec? Edge cases? Off-by-one? Null / undefined / empty?
 - **Security** — input validation, auth check, secret handling, SSRF, injection, token leak in logs
 - **Performance** — N+1, blocking calls, unbounded loops, big payloads, missing index
-- **Architecture** — does it match existing patterns? Source of truth violations? New abstraction with one user? The project declares a module boundary map (CLAUDE.md / ADR) → check every NEW cross-module import against it; a dependency-direction reversal or undeclared crossing is a BLOCKER — spaghetti arrives one import at a time, and per-diff is the only place it is cheap to stop.
+- **Architecture** — does it match existing patterns? Source of truth violations? New abstraction with one user? Hand-rolled logic the stdlib already ships, or a dep / custom code duplicating a platform feature (native input, CSS, DB constraint, `Intl.*`)? A simplification finding must name the concrete replacement. The project declares a module boundary map (CLAUDE.md / ADR) → check every NEW cross-module import against it; a dependency-direction reversal or undeclared crossing is a BLOCKER — spaghetti arrives one import at a time, and per-diff is the only place it is cheap to stop.
 - **UI** — a11y, hierarchy, consistency, platform conventions if applicable
 - **Tests** — strong assertions? Mocks at the right boundary? Race coverage for concurrent code? A diff that *modifies an existing test* on the way to green is a finding until justified — loosened assertion, raised tolerance, deleted case, added skip / only, snapshot updated to absorb the failure. The old test was the contract; changing the test instead of the code needs its own stated why.
 
