@@ -31,6 +31,7 @@ cat > "$FIX/repo/.rolepod/evidence/phase-log.jsonl" <<'EOF'
 {"ts":"2026-07-31T01:50:00Z","phase":"dispatch","tier":"strong","override":"none"}
 {"ts":"2026-07-31T01:55:00Z","phase":"dispatch-proof","cli":"codex","agent_type":"qa-tester","model":"gpt-5.6-terra","provenance":"hook-stdin"}
 {"ts":"2026-07-31T01:56:00Z","phase":"dispatch-proof","cli":"antigravity","agent_type":"","model":"gemini-3-pro","provenance":"hook-stdin"}
+{"ts":"2026-07-31T01:57:00Z","phase":"dispatch","cli":"claude","tool":"Agent","provenance":"hook-auto","agent_type":"rolepod:scout","model":"inherit","override":"none"}
 not json — must be skipped, not crash
 EOF
 printf '{"ts":"2026-07-31T01:15:00Z","hook":"precommit-gate","var":"ROLEPOD_GATES_SOFT","reason":"unreasoned"}\n' \
@@ -48,9 +49,28 @@ printf '{"agent_type":"qa","model":"m1"}' > "$FIX/subagent-stop.json"
 check "codex model-log hook is fail-open outside a repo" \
   "cd /tmp && bash '$REPO_DIR/adapters/codex/plugins/rolepod/hooks/subagent-model-log.sh' < '$FIX/subagent-stop.json'"
 check "stats names the silent downgrade"  "printf '%s' \"\$OUT\" | grep -q 'silent downgrade'"
+check "stats reports hook-auto dispatch intent" "printf '%s' \"\$OUT\" | grep -q 'Dispatch intent — hook-auto (1'"
+check "stats flags hook-auto inherit"     "printf '%s' \"\$OUT\" | grep -q 'inherited the Lead'"
 check "stats survives malformed lines"    "bash '$REPO_DIR/scripts/stats.sh' '$FIX/repo'"
 OUT=$(bash "$REPO_DIR/scripts/stats.sh" "$FIX")
 check "stats handles empty repo (no data)" "printf '%s' \"\$OUT\" | grep -q 'no data yet'"
+
+# ── claude dispatch hooks (tier nudge + auto-log) ───────────────────────
+printf '{"tool_name":"Workflow","tool_input":{"script":"await agent(1)"}}' > "$FIX/wf-inherit.json"
+printf '{"tool_name":"Workflow","tool_input":{"script":"await agent(1, {model: 1})"}}' > "$FIX/wf-tiered.json"
+printf '{"tool_name":"Agent","tool_input":{"subagent_type":"rolepod:scout"}}' > "$FIX/agent-scout.json"
+check "tier nudge fires on override-less Workflow fan-out" \
+  "bash '$REPO_DIR/hooks/workflow-tier-nudge.sh' < '$FIX/wf-inherit.json' | grep -q additionalContext"
+check "tier nudge silent when a per-stage override exists" \
+  "[ -z \"\$(bash '$REPO_DIR/hooks/workflow-tier-nudge.sh' < '$FIX/wf-tiered.json')\" ]"
+check "tier nudge fires on model-less sweep-type Agent" \
+  "bash '$REPO_DIR/hooks/workflow-tier-nudge.sh' < '$FIX/agent-scout.json' | grep -q additionalContext"
+check "tier nudge honors ROLEPOD_NUDGE_OFF" \
+  "[ -z \"\$(ROLEPOD_NUDGE_OFF=1 bash '$REPO_DIR/hooks/workflow-tier-nudge.sh' < '$FIX/wf-inherit.json')\" ]"
+check "dispatch auto-log appends a hook-auto line" \
+  "cd '$FIX/repo' && bash '$REPO_DIR/hooks/dispatch-auto-log.sh' < '$FIX/agent-scout.json' && grep -c 'hook-auto' .rolepod/evidence/phase-log.jsonl | grep -q 2"
+check "dispatch auto-log is fail-open outside a repo" \
+  "cd /tmp && bash '$REPO_DIR/hooks/dispatch-auto-log.sh' < '$FIX/agent-scout.json'"
 
 # ── junit-summary.sh ────────────────────────────────────────────────────
 cat > "$FIX/report.xml" <<'EOF'

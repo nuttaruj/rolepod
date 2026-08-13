@@ -79,6 +79,18 @@ if dispatches:
         if no_ov:
             print("    ⚠ inherit on a strong dispatch is the silent downgrade "
                   "unless the Lead itself is strong-class")
+    auto = [d for d in dispatches if d.get("provenance") == "hook-auto"]
+    if auto:
+        combo = Counter(
+            (d.get("tool") or "?", d.get("model") or "inherit") for d in auto
+        )
+        print(f"\n  Dispatch intent — hook-auto ({len(auto)}):")
+        for (tool, model), n in sorted(combo.items()):
+            print(f"    {tool:<10} {model:<28} ×{n}")
+        inh = sum(1 for d in auto if (d.get("model") or "inherit") == "inherit")
+        if inh:
+            print(f"    ⚠ {inh} inherited the Lead's model — tier-per-stage "
+                  "wants an explicit per-stage choice or a stated reason")
 
 proofs = [r for r in rows if r.get("phase") == "dispatch-proof"]
 if proofs:

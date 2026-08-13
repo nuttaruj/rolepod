@@ -209,12 +209,12 @@ check "rolepod-full Boundary disclaims the router table" "grep -q 'Router table'
 # Two groups: word-boundary patterns + non-word-end patterns. The second
 # group covers forms ending in `)` or `*` where trailing `\b` is dead
 # (qa-tester PR #10 caught this).
-STALE_WB='\b(42 bundled|42 skills|43 skills|53 skills|43-skill|53-skill|53 skill files|34 native|44 native|44 rolepod skills|44 skills|3 auto-trigger hooks|same 3 scripts|same 3 files|18 \+ 42|18 \+ 43|18 \+ 53|18 \+ 44|all 34 rolepod|all 43 rolepod|Total 4[23]|Total 53|three rolepod entries|3 codex hooks|3 gemini hooks|3 root hooks|10 root hook scripts|10 hook scripts|9 root hook scripts|own 3 scripts|3 \*\.sh|7 hooks|7 core hooks|8 core hooks|3 core gate hooks|10 executable skills|10 skills total|18 frontmatter overlays|18 overlays|6 gemini commands|all four are first-class|Claude 8 / Codex|Claude 7, Codex)\b'
+STALE_WB='\b(42 bundled|42 skills|43 skills|53 skills|43-skill|53-skill|53 skill files|34 native|44 native|44 rolepod skills|44 skills|3 auto-trigger hooks|same 3 scripts|same 3 files|18 \+ 42|18 \+ 43|18 \+ 53|18 \+ 44|all 34 rolepod|all 43 rolepod|Total 4[23]|Total 53|three rolepod entries|3 codex hooks|3 gemini hooks|3 root hooks|10 root hook scripts|10 hook scripts|9 root hook scripts|own 3 scripts|3 \*\.sh|7 hooks|7 core hooks|8 core hooks|3 core gate hooks|10 executable skills|10 skills total|18 frontmatter overlays|18 overlays|6 gemini commands|all four are first-class|Claude 8 / Codex|Claude 7, Codex|9 core hook scripts)\b'
 STALE_NONWORD='Skills \(4[23]\)|Skills \(53\)|Total skills on disk: \*\*(4[23]|53)\*\*|Hooks \(3\)|, 3 hooks\)'
 STALE_COMMENT='(^|[^0-9])(#|`) ?4[23]\b'
 STALE_HOOK_TRUTH='Context hooks \(cross-CLI\)|Codex / Gemini fire the context hooks|full hook coverage|Before tool run.*CLI handles native compact|SessionStart \+ 2x PostToolUse|10 bash hooks that auto-register|portable across Claude and Codex'
 # Add-on-hook drift — phrasings, not numbers. Each asserts a wrong current
-# state (rolepod ships 9 core hook scripts, 0 add-on hooks since PR 10).
+# state (rolepod ships 11 core hook scripts, 0 add-on hooks since PR 10).
 # Bare filenames like `gitnexus-wrap.sh` are NOT banned — they appear in
 # legit historical / changelog prose.
 STALE_ADDON='optional GitNexus|optional MemPalace|GitNexus add-on|MemPalace add-on|reindex hint|MemPalace bridge|post-ship reindex|6 core \+ [0-9]+ optional'
@@ -262,8 +262,8 @@ HC_CODEX=$(hook_script_count adapters/codex/plugins/rolepod/hooks/hooks.json)
 HC_GEMINI=$(hook_script_count adapters/gemini/hooks/hooks.json)
 HC_CURSOR=$(hook_script_count adapters/cursor/hooks/hooks.json)
 HC_AGY=$(hook_script_count adapters/antigravity/hooks/hooks.json)
-check "hook scripts per manifest = Claude 9 / Codex 7 / Gemini 5 / Cursor 3 / Antigravity 6 (actual: $HC_CLAUDE/$HC_CODEX/$HC_GEMINI/$HC_CURSOR/$HC_AGY)" \
-  "[ $HC_CLAUDE -eq 9 ] && [ $HC_CODEX -eq 7 ] && [ $HC_GEMINI -eq 5 ] && [ $HC_CURSOR -eq 3 ] && [ $HC_AGY -eq 6 ]"
+check "hook scripts per manifest = Claude 11 / Codex 7 / Gemini 5 / Cursor 3 / Antigravity 6 (actual: $HC_CLAUDE/$HC_CODEX/$HC_GEMINI/$HC_CURSOR/$HC_AGY)" \
+  "[ $HC_CLAUDE -eq 11 ] && [ $HC_CODEX -eq 7 ] && [ $HC_GEMINI -eq 5 ] && [ $HC_CURSOR -eq 3 ] && [ $HC_AGY -eq 6 ]"
 check "README hook counts match manifests" \
   "grep -q \"Claude $HC_CLAUDE / Codex $HC_CODEX / Gemini $HC_GEMINI / Cursor $HC_CURSOR / Antigravity $HC_AGY\" README.md"
 check "CHEATSHEET hook counts match manifests" \

@@ -32,6 +32,8 @@ A per-edit reminder hook duplicated all three without enforcement teeth — so i
 | `PreToolUse` | `Edit\|Write\|MultiEdit` | `worktree-guard.sh`, `gate-reminder.sh` |
 | `PreToolUse` | `Bash` | `precommit-gate.sh`, `block-subagent-commit.sh` |
 | `PreToolUse` | `Agent` | `cohesion-contract-check.sh` |
+| `PreToolUse` | `Workflow\|Agent` | `workflow-tier-nudge.sh` |
+| `PostToolUse` | `Workflow\|Agent` | `dispatch-auto-log.sh` |
 | `Stop` | (no matcher) | `session-lifecycle.sh --unlock` |
 
 ## Per-hook reference
@@ -125,6 +127,24 @@ When Lead is about to spawn the 2nd+ engineering agent within 10 events, require
 - **Self-guards**: 1st agent → silent; contract present → silent.
 - **Bypass**: `ROLEPOD_NO_CONTRACT=1` (single-domain Agent spawn legit).
 - **Pair**: skill `write-plan` (cohesion-contract step).
+
+### `workflow-tier-nudge.sh` — PreToolUse Workflow|Agent (core)
+
+Re-injects the tier-per-stage rule at the one moment it is needed — when a Workflow script or Agent call is about to dispatch. The rule lives in the `using-rolepod` router, which is not loaded while authoring a fleet; without this nudge an entire fan-out silently inherits the Lead's model.
+
+- **Effect**: `additionalContext` only — soft, never blocks. Workflow with `agent()` fan-out and zero `model:`/`effort:` overrides → fleet-inherit warning; sweep-type Agent (`scout`/`Explore`/`general-purpose`) with no `model` → cheap-class reminder. Class labels only, no model names (rename-proof).
+- **Self-guards**: any per-stage override present → silent; specialist agents → silent; no JSON / no input → silent.
+- **Bypass**: `ROLEPOD_NUDGE_OFF=1` (shared with `claim-verify-nudge.sh`).
+- **Pair**: skill `using-rolepod` (tier-per-stage paragraph).
+
+### `dispatch-auto-log.sh` — PostToolUse Workflow|Agent (core)
+
+Auto-appends the dispatch intent line to `<git-root>/.rolepod/evidence/phase-log.jsonl` — automation over doctrine, because the manual "log EVERY dispatch" rule was forgotten by the model that wrote it.
+
+- **Effect**: one JSONL line per dispatch — `phase: "dispatch"`, `provenance: "hook-auto"`, tool (Agent/Workflow), `agent_type` or workflow `name`, `model` (explicit value or `inherit`), `override`. Class-tier labels stay the Lead's job (a hook cannot classify model names without hardcoding them).
+- **Self-guards**: not in a git repo → silent; no JSON / non-dispatch tool → silent.
+- **Bypass**: none (append-only bookkeeping, fail-open).
+- **Pair**: `scripts/stats.sh` (Dispatch intent — hook-auto section), the `dispatch-proof` layer.
 
 ### `session-lifecycle.sh --unlock` — Stop (core)
 
@@ -237,4 +257,4 @@ claude plugin details rolepod@rolepod
 # Component inventory should list a Hooks line covering UserPromptSubmit, SessionStart, PreToolUse, Stop
 ```
 
-Expected: 9 core hook scripts / 10 registrations (UserPromptSubmit × 1, SessionStart × 3, PreToolUse × 5, Stop × 1 — `session-lifecycle.sh` registers twice, `--lock`/`--unlock`).
+Expected: 11 core hook scripts / 12 registrations (UserPromptSubmit × 1, SessionStart × 3, PreToolUse × 6, PostToolUse × 1, Stop × 1 — `session-lifecycle.sh` registers twice, `--lock`/`--unlock`).
