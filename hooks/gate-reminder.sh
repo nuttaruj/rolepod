@@ -56,25 +56,38 @@ rolepod_log_bypass() {
 }
 
 INPUT=$(cat 2>/dev/null || echo '{}')
-TOOL=$(echo "$INPUT" | python3 -c "import sys,json;print(json.load(sys.stdin).get('tool_name',''))" 2>/dev/null || echo "")
+
+# ONE python3 pass for tool_name + file path (was 2 spawns — ~16ms on
+# every edit). tool first via read -r; path LAST, slurped with $(cat) so
+# an empty trailing field cannot EOF-fail the read under set -e.
+# file_path (Claude tools) → notebook_path → path → apply_patch body markers
+# (Codex patches carry "*** Add/Update/Delete File: <path>" lines, no field).
+PARSED=$(printf '%s' "$INPUT" | python3 -c "
+import json, re, sys
+tool = ''
+p = ''
+try:
+    d = json.load(sys.stdin)
+    tool = d.get('tool_name', '') or ''
+    ti = d.get('tool_input', {}) or {}
+    p = ti.get('file_path', '') or ti.get('notebook_path', '') or ti.get('path', '') or ''
+    if not p:
+        body = ti.get('input', '') or ti.get('patch', '') or ''
+        m = re.search(r'\*\*\* (?:Add|Update|Delete) File: (.+)', body)
+        p = m.group(1).strip() if m else ''
+except Exception:
+    pass
+print(tool)
+print(p)
+" 2>/dev/null) || exit 0
+{ read -r TOOL; FILE=$(cat); } <<EOF
+$PARSED
+EOF
 
 # Claude edit tools + Codex's apply_patch (the Codex adapter registers this
 # same script on matcher "apply_patch" — without it here the hook is inert
 # on Codex: disjoint tool-name sets).
 echo "$TOOL" | grep -qE '^(Edit|Write|MultiEdit|NotebookEdit|apply_patch)$' || exit 0
-
-# file_path (Claude tools) → notebook_path → path → apply_patch body markers
-# (Codex patches carry "*** Add/Update/Delete File: <path>" lines, no field).
-FILE=$(echo "$INPUT" | python3 -c "
-import sys, json, re
-d = json.load(sys.stdin).get('tool_input', {})
-p = d.get('file_path', '') or d.get('notebook_path', '') or d.get('path', '')
-if not p:
-    body = d.get('input', '') or d.get('patch', '') or ''
-    m = re.search(r'\*\*\* (?:Add|Update|Delete) File: (.+)', body)
-    p = m.group(1).strip() if m else ''
-print(p)
-" 2>/dev/null || echo "")
 
 # Schema-bound NEW file → emit STRONG verify-doc reminder.
 SCHEMA_BOUND=""

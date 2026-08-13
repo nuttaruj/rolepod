@@ -65,37 +65,52 @@ rolepod_log_bypass() {
 }
 
 INPUT=$(cat 2>/dev/null || echo '{}')
-TOOL=$(echo "$INPUT" | python3 -c "import sys,json;print(json.load(sys.stdin).get('tool_name',''))" 2>/dev/null || echo "")
-[ "$TOOL" = "Bash" ] || exit 0
 
-CMD=$(echo "$INPUT" | python3 -c "import sys,json;print(json.load(sys.stdin).get('tool_input',{}).get('command',''))" 2>/dev/null || echo "")
-
-# Match git commit — token walk, not adjacency, so flag-separated forms
-# (`git -C . commit`, `git -c k=v commit`) are gated too.
-IS_COMMIT=$(printf '%s' "$CMD" | python3 -c "
-import sys, shlex, os
-cmd = sys.stdin.read()
-try:
-    toks = shlex.split(cmd)
-except ValueError:
-    toks = cmd.split()
-VALUE_OPTS = {'-C', '--git-dir', '--work-tree', '--namespace', '--exec-path'}
+# ONE python3 pass for tool_name + commit token-walk + command (was 3
+# spawns — ~30ms on EVERY Bash call, the hottest PreToolUse matcher).
+# Field order matters: tool + is_commit first via read -r; command LAST,
+# slurped with $(cat) so multi-line commit messages survive intact and an
+# empty trailing field cannot EOF-fail the read under set -e. The walk
+# matches flag-separated forms (`git -C . commit`, `git -c k=v commit`).
+PARSED=$(printf '%s' "$INPUT" | python3 -c "
+import json, os, shlex, sys
+tool = ''
+cmd = ''
 hit = 0
-for i, t in enumerate(toks):
-    if os.path.basename(t) == 'git':
-        j = i + 1
-        while j < len(toks) and toks[j].startswith('-'):
-            if toks[j] in VALUE_OPTS:
-                j += 2
-            elif toks[j] == '-c' and j + 1 < len(toks) and '=' in toks[j + 1]:
-                j += 2
-            else:
-                j += 1
-        if j < len(toks) and toks[j] == 'commit':
-            hit = 1
-            break
+try:
+    d = json.load(sys.stdin)
+    tool = d.get('tool_name', '') or ''
+    cmd = (d.get('tool_input', {}) or {}).get('command', '') or ''
+    try:
+        toks = shlex.split(cmd)
+    except ValueError:
+        toks = cmd.split()
+    VALUE_OPTS = {'-C', '--git-dir', '--work-tree', '--namespace', '--exec-path'}
+    for i, t in enumerate(toks):
+        if os.path.basename(t) == 'git':
+            j = i + 1
+            while j < len(toks) and toks[j].startswith('-'):
+                if toks[j] in VALUE_OPTS:
+                    j += 2
+                elif toks[j] == '-c' and j + 1 < len(toks) and '=' in toks[j + 1]:
+                    j += 2
+                else:
+                    j += 1
+            if j < len(toks) and toks[j] == 'commit':
+                hit = 1
+                break
+except Exception:
+    pass
+print(tool)
 print(hit)
-" 2>/dev/null || echo 0)
+print(cmd)
+" 2>/dev/null) || exit 0
+{ read -r TOOL; read -r IS_COMMIT; CMD=$(cat); } <<EOF
+$PARSED
+EOF
+
+# Belt-and-suspenders: hooks.json registers matcher "Bash" only.
+[ "$TOOL" = "Bash" ] || exit 0
 [ "$IS_COMMIT" = "1" ] || exit 0
 
 if [ "${ROLEPOD_GATES_SOFT:-0}" = "1" ]; then

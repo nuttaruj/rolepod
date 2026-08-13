@@ -60,6 +60,6 @@ check "clean diff stays silent"        "[ -z \"\$OUT\" ]"
 
 # 5. precommit-gate carries the lint (wired, both copies in sync).
 check "precommit-gate invokes the lint" "grep -q 'test-diff-lint.sh' '$REPO_DIR/hooks/precommit-gate.sh'"
-check "codex mirror carries lint + gate wiring" "cmp -s '$REPO_DIR/hooks/precommit-gate.sh' '$REPO_DIR/adapters/codex/plugins/rolepod/hooks/precommit-gate.sh' && cmp -s '$REPO_DIR/hooks/test-diff-lint.sh' '$REPO_DIR/adapters/codex/plugins/rolepod/hooks/test-diff-lint.sh'"
+check "codex rendered copy carries lint + gate wiring" "cmp -s '$REPO_DIR/hooks/precommit-gate.sh' '$REPO_DIR/plugins/rolepod-codex/hooks/precommit-gate.sh' && cmp -s '$REPO_DIR/hooks/test-diff-lint.sh' '$REPO_DIR/plugins/rolepod-codex/hooks/test-diff-lint.sh'"
 
 exit $fail

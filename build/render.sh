@@ -325,7 +325,9 @@ render_claude() {
 # Committed (repo root):
 #   .agents/plugins/marketplace.json                 (marketplace catalog)
 #   plugins/rolepod-codex/.codex-plugin/plugin.json  (plugin manifest)
-#   plugins/rolepod-codex/hooks/hooks.json + *.sh    (3 core hook scripts)
+#   plugins/rolepod-codex/hooks/hooks.json + *.sh    (hooks.json + subagent-model-log.sh
+#                                                     from the adapter; 7 shared scripts
+#                                                     render-copied from hooks/)
 #   plugins/rolepod-codex/skills/<name>/SKILL.md     (copied from core/skills)
 # Gitignored (build/rendered/codex/ — read by install.sh only):
 #   AGENTS.md                                        (~/.codex/AGENTS.md block)
@@ -371,11 +373,20 @@ render_codex() {
   # ~/.codex/agents/ directory. install.sh copies these there.
   render_agents "codex" "$out_dir/agents"
 
-  # Hooks (json + executable scripts).
-  if [ -d "$plugin_src/hooks" ]; then
-    cp -R "$plugin_src/hooks" "$plugin_dst/"
-    chmod +x "$plugin_dst/hooks/"*.sh 2>/dev/null || true
-  fi
+  # Hooks — the 7 shared scripts come straight from canonical hooks/ (same
+  # single-source rule as render_claude above and render_antigravity below);
+  # only hooks.json + subagent-model-log.sh are genuinely Codex-specific.
+  # NOTE: hooks/lib/session_state.py is deliberately NOT copied — the codex
+  # tree never shipped it and precommit-gate.sh degrades gracefully without.
+  mkdir -p "$plugin_dst/hooks"
+  cp "$plugin_src/hooks/hooks.json" "$plugin_dst/hooks/hooks.json"
+  cp "$plugin_src/hooks/subagent-model-log.sh" "$plugin_dst/hooks/subagent-model-log.sh"
+  local h
+  for h in gate-reminder precommit-gate project-context-loader claim-verify-nudge \
+           block-subagent-commit session-lifecycle test-diff-lint; do
+    cp "$REPO_DIR/hooks/$h.sh" "$plugin_dst/hooks/$h.sh"
+  done
+  chmod +x "$plugin_dst/hooks/"*.sh 2>/dev/null || true
 
   # Skills as a real directory tree (rendered from core/skills/).
   render_skills "$plugin_dst/skills"

@@ -19,7 +19,7 @@ check() {
 # Static: every session surface carries the marker write.
 check "claude lifecycle writes marker"  "grep -q 'parent-active' hooks/session-lifecycle.sh"
 check "root loader writes marker (codex parity)" "grep -q 'parent-active' hooks/project-context-loader.sh"
-check "codex mirror carries it byte-exact" "cmp -s hooks/project-context-loader.sh adapters/codex/plugins/rolepod/hooks/project-context-loader.sh"
+check "codex rendered copy carries it byte-exact" "cmp -s hooks/project-context-loader.sh plugins/rolepod-codex/hooks/project-context-loader.sh"
 check "gemini session-start writes marker" "grep -q 'parent-active' adapters/gemini/hooks/session-start.sh"
 check "cursor loader writes marker"     "grep -q 'parent-active' adapters/cursor/scripts/project-context-loader.sh"
 check "opencode plugin writes marker"   "grep -q 'parent-active' adapters/opencode/plugin/rolepod.js"

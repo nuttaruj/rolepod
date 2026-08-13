@@ -118,6 +118,30 @@ echo "$out" | grep -q 'IGNORED' \
 out=$(pc 'git status')
 check "precommit non-commit command → allow" allow "$out"
 
+# ── v2.39.0 single-parse regression guards ──────────────────────────────
+# (a) Multi-line heredoc commit message: the command must survive the
+#     $(cat) slurp INTACT — deny still fires and a bypass marker on a
+#     LATER line is still detected (a read -r would truncate at line 1).
+ML_CMD=$(printf 'git commit -m "$(cat <<MSGEOF\nadd billing\n\n[gates: pass]\nMSGEOF\n)"')
+out=$(pc "$ML_CMD")
+check "precommit multi-line heredoc commit → still deny" deny "$out"
+echo "$out" | grep -q 'IGNORED' \
+  && echo "  ✓ marker on line 3 of a heredoc command still detected (CMD not truncated)" \
+  || { echo "  ✗ multi-line command truncated — marker on line 3 missed"; fail=$((fail+1)); }
+
+# (b) Malformed stdin must fail-open: silent, exit 0 (the set -e +
+#     read-at-EOF class that bit worktree-guard).
+rc=0
+out=$(printf 'not json' | (cd "$TMP" && bash "$HOOKS/precommit-gate.sh")) || rc=$?
+[ "$rc" -eq 0 ] && [ -z "$out" ] \
+  && echo "  ✓ precommit malformed stdin → silent exit 0" \
+  || { echo "  ✗ precommit malformed stdin: rc=$rc out=${out:0:60}"; fail=$((fail+1)); }
+rc=0
+out=$(printf '{"tool_name":"Write","tool_input":{}}' | bash "$HOOKS/worktree-guard.sh") || rc=$?
+[ "$rc" -eq 0 ] \
+  && echo "  ✓ worktree-guard pathless payload → exit 0 (was rc=1)" \
+  || { echo "  ✗ worktree-guard pathless payload: rc=$rc"; fail=$((fail+1)); }
+
 # ── precommit: evidence auto-pass — no marker, no env prefix needed ─────
 # HOME is pointed at $TMP so the auto-pass log lands in the sandbox.
 TRANSCRIPT="$TMP/transcript.jsonl"

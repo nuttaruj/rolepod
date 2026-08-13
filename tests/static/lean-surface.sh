@@ -716,49 +716,30 @@ else
   fail=$((fail+1))
 fi
 
-# ── Root vs Codex adapter hook parity ─────────────────────────────────
-# Canonical = root `hooks/*.sh`. Codex adapter mirrors the subset of hooks
-# whose events Codex supports (SessionStart, PreToolUse Bash / apply_patch,
-# Stop, SubagentStart/SubagentStop — per the official hooks reference).
-# Claude-only hooks: cohesion-contract-check (needs the pre-spawn Agent
-# TOOL event; Codex SubagentStart is post-spawn, cannot deny) and
-# worktree-guard (apply_patch input carries no file_path field).
-# Root hooks/: 9 *.sh + lib/. Codex adapter hooks/: 6 *.sh. No optional/.
-SHARED_CORE_HOOKS=(gate-reminder.sh precommit-gate.sh project-context-loader.sh claim-verify-nudge.sh block-subagent-commit.sh session-lifecycle.sh)
-HOOK_DRIFT=""
-for h in "${SHARED_CORE_HOOKS[@]}"; do
-  root="hooks/$h"
-  codex="adapters/codex/plugins/rolepod/hooks/$h"
-  if [ ! -f "$root" ] || [ ! -f "$codex" ]; then
-    HOOK_DRIFT="${HOOK_DRIFT}${h}: missing on one side\n"
-    continue
-  fi
-  if ! diff -q "$root" "$codex" >/dev/null 2>&1; then
-    HOOK_DRIFT="${HOOK_DRIFT}${h}: root vs Codex adapter diverged\n"
-  fi
-done
-if [ -z "$HOOK_DRIFT" ]; then
-  echo "  ✓ root vs Codex adapter hook parity (6 shared hooks identical, no add-on hooks)"
-else
-  echo "  ✗ root vs Codex adapter hook drift:"
-  printf "%b" "$HOOK_DRIFT" | sed 's/^/      /'
-  fail=$((fail+1))
-fi
+# ── Codex adapter hooks dir stays lean ────────────────────────────────
+# Since v2.39.0 the 7 shared hook scripts are render-time copies from
+# canonical hooks/ (build/render.sh render_codex) — the old hand-maintained
+# byte-exact mirror tree is gone, so drift is structurally impossible and
+# `make test-render-clean` covers the committed output. The adapter dir
+# must hold ONLY the genuinely Codex-specific files.
+CODEX_HOOK_EXTRAS=$(ls adapters/codex/plugins/rolepod/hooks/ | grep -v -e '^hooks\.json$' -e '^subagent-model-log\.sh$' || true)
+check "codex adapter hooks/ holds only hooks.json + subagent-model-log.sh" \
+  "[ -z \"\$CODEX_HOOK_EXTRAS\" ]"
+if [ -n "$CODEX_HOOK_EXTRAS" ]; then echo "      extras: $CODEX_HOOK_EXTRAS"; fi
 
 # ── High-risk regex parity — every hand-maintained copy must match ────
-# The canonical high-risk path ERE is hand-carried in 7 shell sources plus
-# a Python twin in hooks/lib/session_state.py. It HAS drifted before —
-# gemini shipped without authentication|authorization for months, and the
-# cursor gate-reminder anchor narrowed to (/|^) — so the FULL string
-# (anchors + terms) is pinned here, not just the term list. One documented
-# exception: gemini's prefix adds `\.` (its input is a single file_path,
-# so the wider match is deliberate); terms + suffix still match the canon.
+# The canonical high-risk path ERE is hand-carried in 5 shell sources plus
+# a Python twin in hooks/lib/session_state.py (codex ships render-time
+# copies of the hooks/ pair, covered by test-render-clean). It HAS drifted
+# before — gemini shipped without authentication|authorization for months,
+# and the cursor gate-reminder anchor narrowed to (/|^) — so the FULL
+# string (anchors + terms) is pinned here, not just the term list. One
+# documented exception: gemini's prefix adds `\.` (its input is a single
+# file_path, so the wider match is deliberate); terms + suffix match canon.
 RISK_TERMS='auth|authn|authz|authentication|authorization|billing|payment|payments|migration|migrations|credit|credits|permission|permissions|secret|secrets|crypto|cryptography|token|tokens|oauth|jwt|sso|saml|webhook|webhooks|stripe|paypal|charge|charges|invoice|invoices'
 RISK_CANON='(^|/|_)('"$RISK_TERMS"')(/|\.|_|$)'
 RISK_GEMINI='(^|/|_|\.)('"$RISK_TERMS"')(/|\.|_|$)'
 for f in hooks/gate-reminder.sh hooks/precommit-gate.sh \
-         adapters/codex/plugins/rolepod/hooks/gate-reminder.sh \
-         adapters/codex/plugins/rolepod/hooks/precommit-gate.sh \
          adapters/cursor/scripts/gate-reminder.sh \
          adapters/cursor/scripts/precommit-gate.sh; do
   check "high-risk regex canonical in $f" "grep -qF -- \"\$RISK_CANON\" '$f'"

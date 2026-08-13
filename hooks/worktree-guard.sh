@@ -72,7 +72,12 @@ print(cwd)
 print(f)
 ' 2>/dev/null) || exit 0
 
-{ read -r TOOL; read -r SESSION_ID; read -r CWD; read -r TARGET; } <<EOF
+# $(...) strips ALL trailing newlines from FIELDS, so when the tail fields
+# are empty ANY of these reads can hit EOF, return 1, and set -e kills the
+# hook (observed: pathless Write payload → rc=1). The || true guard
+# disables set -e inside the compound; read still assigns "" on EOF, and
+# TARGET slurps whatever remains via $(cat).
+{ read -r TOOL; read -r SESSION_ID; read -r CWD; TARGET=$(cat); } <<EOF || true
 $FIELDS
 EOF
 
