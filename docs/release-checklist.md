@@ -32,13 +32,15 @@ Confirms:
 - `plugins/rolepod-cursor/` — committed Cursor plugin tree (`rules/always-on-core.mdc` + 16 agents + 11 skills + 3 hook scripts under `scripts/`)
 - No leaked `{{INCLUDE: ...}}` placeholders
 
-## 3. Integration (optional but recommended)
+## 3. Integration
 
 ```bash
 make test-integration
 ```
 
-Runs 8 structural integration cases (~3-5s total, no live `claude -p` invocations):
+Fail = release blocked — the install smoke lives here (`install-parity` runs the real `./install.sh` against temp targets; nothing else on this checklist executes it).
+
+Runs the structural integration cases (no live `claude -p` invocations):
 
 | Case | Asserts |
 |------|---------|
@@ -70,31 +72,14 @@ Manually verify that user-facing docs match runtime behavior:
 - No "auto-fire" claims for Codex hooks.
 - The inlined `## Agent protocol` commit-ban + discipline-gate scope statement matches actual hook coverage (Claude-only).
 
-## 5. Local install smoke
-
-```bash
-# Fresh install on a temp HOME:
-TMP="$(mktemp -d)"
-HOME="$TMP/home" ROLEPOD_TARGET="$TMP/.claude" ./install.sh --target=claude
-PLUGIN="$TMP/.claude/plugins/rolepod"
-ls "$PLUGIN/skills/using-rolepod"            # should exist (Tier 0 router)
-ls "$PLUGIN/skills/debug-issue"              # should exist (Core 10 — Build/Debug)
-test ! -e "$TMP/.claude/skills/systematic-debugging" # legacy shim removed by migration
-ls "$PLUGIN/hooks/lib/session_state.py"      # should exist
-ls "$PLUGIN/hooks/always-on-core.md"         # always-on judgment core ships with the plugin
-test ! -e "$TMP/.claude/CLAUDE.md"           # pure plugin — install writes no managed block
-```
-
-All commands should succeed.
-
-## 6. Git hygiene
+## 5. Git hygiene
 
 - Version bumped via `make version-bump VERSION=2.x.y` — seds the 7 source manifests (gemini/antigravity derive the 0.x lockstep automatically) and re-renders the 4 committed derived copies; lean-surface pins all 11 carriers.
 - `git status` clean — committed render trees (`plugins/rolepod/`, `plugins/rolepod-codex/`) match `make render` output.
 - Tag follows the 2.x track (`.claude-plugin/plugin.json`). The Gemini / Antigravity manifests track the same release on a 0.x line in lockstep (e.g. 2.9.0 ↔ 0.9.0) — they are not expected to literally match the tag.
 - Release recorded as a `chore(release): <version>` commit (rolepod keeps no separate CHANGELOG).
 
-## 7. Push
+## 6. Push
 
 ```bash
 git push origin main

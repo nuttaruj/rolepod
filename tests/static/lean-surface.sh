@@ -237,37 +237,57 @@ fi
 # check derives the per-CLI distinct-script count from each hooks.json and
 # pins the canonical doc strings to it — add/remove a hook and the docs
 # MUST follow in the same commit.
-hook_script_count() {  # $1 = hooks.json path
+hook_script_count() {  # $1 = hooks.json path → "distinct registrations"
   python3 - "$1" <<'PYEOF'
 import json, re, sys
 data = json.load(open(sys.argv[1]))
-cmds = set()
+cmds = []
 def walk(node):
     if isinstance(node, dict):
         for k, v in node.items():
             if k == "command" and isinstance(v, str):
                 m = re.search(r'([A-Za-z0-9_-]+\.(?:sh|py))', v)
-                cmds.add(m.group(1) if m else v)
+                cmds.append(m.group(1) if m else v)
             else:
                 walk(v)
     elif isinstance(node, list):
         for item in node:
             walk(item)
 walk(data)
-print(len(cmds))
+print(len(set(cmds)), len(cmds))
 PYEOF
 }
-HC_CLAUDE=$(hook_script_count adapters/claude/hooks.json)
-HC_CODEX=$(hook_script_count adapters/codex/plugins/rolepod/hooks/hooks.json)
-HC_GEMINI=$(hook_script_count adapters/gemini/hooks/hooks.json)
-HC_CURSOR=$(hook_script_count adapters/cursor/hooks/hooks.json)
-HC_AGY=$(hook_script_count adapters/antigravity/hooks/hooks.json)
+read -r HC_CLAUDE REG_CLAUDE <<< "$(hook_script_count adapters/claude/hooks.json)"
+read -r HC_CODEX  REG_CODEX  <<< "$(hook_script_count adapters/codex/plugins/rolepod/hooks/hooks.json)"
+read -r HC_GEMINI REG_GEMINI <<< "$(hook_script_count adapters/gemini/hooks/hooks.json)"
+read -r HC_CURSOR REG_CURSOR <<< "$(hook_script_count adapters/cursor/hooks/hooks.json)"
+read -r HC_AGY    REG_AGY    <<< "$(hook_script_count adapters/antigravity/hooks/hooks.json)"
 check "hook scripts per manifest = Claude 11 / Codex 7 / Gemini 5 / Cursor 3 / Antigravity 6 (actual: $HC_CLAUDE/$HC_CODEX/$HC_GEMINI/$HC_CURSOR/$HC_AGY)" \
   "[ $HC_CLAUDE -eq 11 ] && [ $HC_CODEX -eq 7 ] && [ $HC_GEMINI -eq 5 ] && [ $HC_CURSOR -eq 3 ] && [ $HC_AGY -eq 6 ]"
 check "README hook counts match manifests" \
   "grep -q \"Claude $HC_CLAUDE / Codex $HC_CODEX / Gemini $HC_GEMINI / Cursor $HC_CURSOR / Antigravity $HC_AGY\" README.md"
 check "CHEATSHEET hook counts match manifests" \
   "grep -q \"$HC_CLAUDE Claude / $HC_CODEX Codex / $HC_GEMINI Gemini / $HC_CURSOR Cursor / $HC_AGY Antigravity\" CHEATSHEET.md"
+
+# ── Doc hook-count pins — cli-support.md + hooks.md ───────────────────
+# README/CHEATSHEET are pinned above; these two docs were the unpinned
+# half, and the drift class is proven: cli-support's counts paragraph sat
+# wrong (Codex 4, Antigravity 4) for 8 days across two hook-adding
+# releases while the pinned docs stayed correct the whole time.
+# Presence-greps only, three separately-anchored lines for cli-support so
+# no single line can satisfy the others' pins. cli-support.md:121 is the
+# deliberately-historical "Last live-verified" changelog line — it keeps
+# old counts BY DESIGN; never turn these into only-current-counts asserts.
+check "cli-support matrix cell hook counts" \
+  "grep -q \"$HC_CLAUDE core hook scripts ($REG_CLAUDE registrations)\" docs/cli-support.md && grep -q \"$HC_CODEX core hook scripts across\" docs/cli-support.md && grep -q \"$HC_GEMINI core hooks across\" docs/cli-support.md && grep -q \"$HC_CURSOR core hooks across\" docs/cli-support.md && grep -q \"$HC_AGY core hook scripts across\" docs/cli-support.md"
+check "cli-support per-CLI counts paragraph" \
+  "grep -q \"Claude registers $HC_CLAUDE core hook scripts\" docs/cli-support.md && grep -q \"($REG_CLAUDE registrations\" docs/cli-support.md && grep -q \"Codex registers $HC_CODEX in\" docs/cli-support.md && grep -q \"Gemini registers $HC_GEMINI in\" docs/cli-support.md && grep -q \"Cursor registers $HC_CURSOR in\" docs/cli-support.md && grep -q \"Antigravity registers $HC_AGY in\" docs/cli-support.md"
+check "cli-support bash -n row names current script sets" \
+  "grep -q \"$HC_CLAUDE core hook scripts, the codex adapter's subagent-model-log.sh, $HC_GEMINI gemini hook scripts, $HC_CURSOR cursor scripts\" docs/cli-support.md"
+check "hooks.md Expected line pins Claude script + registration counts" \
+  "grep -q \"Expected: $HC_CLAUDE core hook scripts / $REG_CLAUDE registrations\" docs/hooks.md"
+check "hooks.md Cursor section pins cursor count" \
+  "grep -q \"ships [*][*]$HC_CURSOR core hooks[*][*]\" docs/hooks.md"
 
 # ── Version manifests — one 2.x/0.x lockstep pair across all carriers ──
 # 7 hand-edited sources (scripts/bump-version.sh) + 4 committed render

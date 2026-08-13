@@ -64,6 +64,7 @@ if ./install.sh --target=claude > "$TMP/claude.log" 2>&1; then
     "$PLUGIN_DIR/agents"
     "$PLUGIN_DIR/skills"
     "$PLUGIN_DIR/hooks/lib/session_state.py"
+    "$PLUGIN_DIR/hooks/always-on-core.md"
   )
   for p in "${required_paths[@]}"; do
     if [ ! -e "$p" ]; then
@@ -220,6 +221,36 @@ else
   FAIL=$((FAIL+1))
 fi
 unset ROLEPOD_CURSOR_TARGET
+
+# ─── Codex global into temp target ──────────────────────────────────────
+# CODEX_IS_TEMP_TARGET is derived by path comparison against $HOME/.codex
+# (install.sh), so a temp target reaches the offline/temp branch — plugin
+# tree copy + install_codex_agents() — without touching the real ~/.codex.
+# This was the audit-surfaced gap: no default-suite test executed the codex
+# agent-install block at all (codex --scope=project returns before it).
+echo ""
+echo "[codex global] install into $TMP/codex/.codex"
+export ROLEPOD_CODEX_TARGET="$TMP/codex/.codex"
+mkdir -p "$ROLEPOD_CODEX_TARGET"
+if ./install.sh --target=codex --force > "$TMP/codex-global.log" 2>&1; then
+  AGENT_TOML_COUNT=$(find "$ROLEPOD_CODEX_TARGET/agents" -name 'rolepod-*.toml' 2>/dev/null | wc -l | tr -d ' ')
+  if [ "$AGENT_TOML_COUNT" -eq 16 ]; then
+    echo "  ✓ codex temp-target install lands 16 rolepod-*.toml agents"
+  else
+    echo "  ✗ codex temp-target agents: expected 16, got $AGENT_TOML_COUNT"
+    FAIL=$((FAIL+1))
+  fi
+  if [ -e "$ROLEPOD_CODEX_TARGET/plugins/rolepod/hooks/precommit-gate.sh" ]; then
+    echo "  ✓ codex plugin tree copied (hooks present)"
+  else
+    echo "  ✗ codex plugin tree missing hooks/precommit-gate.sh"
+    FAIL=$((FAIL+1))
+  fi
+else
+  echo "  ✗ codex temp-target install failed (see $TMP/codex-global.log)"
+  FAIL=$((FAIL+1))
+fi
+unset ROLEPOD_CODEX_TARGET
 
 # ─── Gemini project (--scope=project, rules-only) ───────────────────────
 echo ""

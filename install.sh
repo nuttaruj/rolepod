@@ -258,6 +258,29 @@ do_or_dry() {
   "$@"
 }
 
+# install_codex_agents <dest_dir> — copy the 16 rendered agent TOMLs with a
+# "rolepod-" filename prefix. Codex reads agents from ~/.codex/agents/
+# (global, SHARED with user-authored agents) — the plugin.json `agents`
+# field is not in the Codex schema and is silently ignored. Prefix-scoped
+# wipe-before-copy so agents retired upstream (e.g. the 2.6.2 content trio)
+# don't persist forever; the prefix also gives uninstall a clean glob.
+install_codex_agents() {
+  local dest="$1"
+  step "Installing 16 rolepod agents → $dest/rolepod-*.toml"
+  if [ "$DRY_RUN" -eq 1 ]; then
+    dry "mkdir -p $dest && rm -f rolepod-*.toml && copy *.toml from rendered agents/ with rolepod- prefix"
+    return 0
+  fi
+  mkdir -p "$dest"
+  rm -f "$dest"/rolepod-*.toml 2>/dev/null || true
+  local copied=0 f
+  for f in "$RENDERED_CODEX_DIR/agents"/*.toml; do
+    [ -f "$f" ] || continue
+    cp "$f" "$dest/rolepod-$(basename "$f")" 2>/dev/null && copied=$((copied+1))
+  done
+  ok "rolepod agents installed → $dest/rolepod-*.toml (count: $copied)"
+}
+
 # selective_backup <src> <backup> <path1> [path2 ...]
 #
 # Back up ONLY rolepod-managed paths from <src> into <backup>, skipping bloat
@@ -1297,28 +1320,7 @@ if codex_selected; then
       fi
     fi
 
-    # Codex reads agent TOMLs from ~/.codex/agents/ (global) — NOT from plugin
-    # bundle. The plugin.json `agents` field is not in the Codex schema and is
-    # silently ignored. We copy rolepod's 16 agent TOMLs with a "rolepod-"
-    # filename prefix so they (a) don't collide with user-authored agents and
-    # (b) can be cleanly removed on uninstall via glob match.
-    AGENTS_DEST="$CODEX_TARGET/agents"
-    step "Installing 16 rolepod agents → $AGENTS_DEST/rolepod-*.toml"
-    if [ "$DRY_RUN" -eq 1 ]; then
-      dry "mkdir -p $AGENTS_DEST && rm -f rolepod-*.toml && copy *.toml from rendered agents/ with rolepod- prefix"
-    else
-      mkdir -p "$AGENTS_DEST"
-      # Prefix-scoped wipe-before-copy: ~/.codex/agents/ is a SHARED dir (user
-      # agents live here too), so wipe ONLY rolepod-*.toml — otherwise agents
-      # retired upstream (e.g. the 2.6.2 content trio) persist forever.
-      rm -f "$AGENTS_DEST"/rolepod-*.toml 2>/dev/null || true
-      copied=0
-      for f in "$RENDERED_CODEX_DIR/agents"/*.toml; do
-        [ -f "$f" ] || continue
-        cp "$f" "$AGENTS_DEST/rolepod-$(basename "$f")" 2>/dev/null && copied=$((copied+1))
-      done
-      ok "rolepod agents installed → $AGENTS_DEST/rolepod-*.toml (count: $copied)"
-    fi
+    install_codex_agents "$CODEX_TARGET/agents"
   else
     # Either temp-target mode OR codex binary missing. Both paths skip global
     # codex commands and write only filesystem artifacts so static checks pass.
@@ -1341,25 +1343,10 @@ if codex_selected; then
       cp -R "$CODEX_PLUGIN_SRC/." "$CODEX_TARGET/plugins/rolepod/" 2>/dev/null || true
     fi
 
-    # Mirror the agent copy in the temp-target / no-binary path so smoke tests
-    # and offline installs land 16 agent TOMLs at $CODEX_TARGET/agents/. Safe
-    # because $CODEX_TARGET is per definition NOT $HOME/.codex here.
-    AGENTS_DEST="$CODEX_TARGET/agents"
-    step "Installing 16 rolepod agents → $AGENTS_DEST/rolepod-*.toml"
-    if [ "$DRY_RUN" -eq 1 ]; then
-      dry "mkdir -p $AGENTS_DEST && rm -f rolepod-*.toml && copy *.toml from rendered agents/ with rolepod- prefix"
-    else
-      mkdir -p "$AGENTS_DEST"
-      # Same prefix-scoped wipe as the real-install path — retired agents
-      # must not persist across updates.
-      rm -f "$AGENTS_DEST"/rolepod-*.toml 2>/dev/null || true
-      copied=0
-      for f in "$RENDERED_CODEX_DIR/agents"/*.toml; do
-        [ -f "$f" ] || continue
-        cp "$f" "$AGENTS_DEST/rolepod-$(basename "$f")" 2>/dev/null && copied=$((copied+1))
-      done
-      ok "rolepod agents installed → $AGENTS_DEST/rolepod-*.toml (count: $copied)"
-    fi
+    # Same agent copy for the temp-target / no-binary path — smoke tests and
+    # offline installs land the TOMLs too ($CODEX_TARGET here is never
+    # $HOME/.codex).
+    install_codex_agents "$CODEX_TARGET/agents"
   fi
 
   step "Updating AGENTS.md (managed block) → $CODEX_TARGET/AGENTS.md"
