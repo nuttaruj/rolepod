@@ -1,10 +1,10 @@
 <!-- Deep playbook for dispatching implementer subagents from implement-plan. -->
-<!-- Loaded on demand from SKILL.md §4 + §6 + §7. -->
+<!-- Loaded on demand from SKILL.md §4 + §5 + §7. -->
 <!-- Lead-as-controller pattern: controller curates context; subagent stays focused. -->
 
 # Subagent dispatch
 
-The Lead is a **controller**. A subagent gets only the context the controller curates — never the Lead's session history, never the plan file path. Pass full task text inline; that is the contract.
+The Lead is a **controller**. A subagent gets only the context the controller curates — never the Lead's session history, never the plan file path. Pass full task text inline; that is the contract. Read the plan, extract each task's text inline into the session's task tracker (`TodoWrite` or the CLI's equivalent), and dispatch from there.
 
 ## Delegation economics
 
@@ -20,13 +20,11 @@ disposable context at a cheaper tier.
 
 ## Why fresh context per task
 
-Context pollution = the #1 silent failure mode in multi-task execution. The subagent that just shipped Task 1 carries Task 1's mental model — its symbols, its trade-offs, its half-finished considerations. Reusing it on Task 2 leaks that state into the new diff. Symptoms: cross-task naming drift, refactors that touch Task 1 from Task 2, copied patterns that no longer fit.
-
-Fresh subagent per task = no leakage. Cost: extra dispatch overhead. Buy: clean blast radius, faster review.
+Fresh subagent per task — reusing one across tasks leaks Task N's mental model (symbols, half-finished trade-offs) into Task N+1's diff as naming drift and stray refactors.
 
 ## Implementer status taxonomy
 
-The implementer manifest declares `COMPLETED | PARTIAL | BLOCKED` (the enum every agent brief and `agent-protocol.md` teach) plus a **Concerns** section. Handle each with a specific protocol.
+The implementer manifest declares `COMPLETED | PARTIAL | BLOCKED` (the enum every agent brief and `agent-protocol.md` teach) plus a **Concerns** section. Handle each with a specific protocol. A subagent that returns a QUESTION rather than a status is not `BLOCKED` — answer it inline and redispatch.
 
 ### `COMPLETED`, Concerns empty
 
@@ -216,32 +214,3 @@ APPROVED. Delegation is bounded work you still own, not a diff you rubber-stamp
 because the agents said OK; that gap between what shipped and what you understand
 is how a delegated codebase rots. Cannot explain a hunk → send it back with the
 question, do not commit past it.
-
-## Quick-reference flow
-
-```
-Read plan → extract tasks inline → TodoWrite (or Task tool)
-
-Plan declares a parallel layout + contract?
-  → group tasks by track, dispatch ready tracks in ONE message
-    (see Parallel-track dispatch); the per-task loop below runs
-    per track, pipelined as each manifest returns
-
-For each task:
-  Dispatch implementer (model = task complexity tier)
-  Implementer asks Q? → answer inline, redispatch
-  Implementer returns: COMPLETED | PARTIAL | BLOCKED (+ Concerns section)
-    COMPLETED, no concerns → §6 Stage 1 (spec compliance)
-    COMPLETED + concerns   → resolve correctness/scope first → §6 Stage 1
-    PARTIAL                → review done slice, redispatch remainder narrowed
-    BLOCKED                → change a variable, redispatch
-  Stage 1 issues? → implementer fixes → Stage 1 again
-  Stage 1 approved → Stage 2 (code quality)
-  Stage 2 issues? → implementer fixes → Stage 2 again
-  Stage 2 approved → Lead reads the diff + can explain it → commits
-  Continue to next task — no check-in
-
-After all tasks:
-  Final whole-impl review (most capable model)
-  Final approved → hand off to check-work
-```

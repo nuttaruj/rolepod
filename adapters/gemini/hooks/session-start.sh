@@ -30,7 +30,7 @@ escape_json() {
 GATES=$'rolepod gates: S1-S5 simplicity + T1-T6 tests + Q1-Q4 delegation + F1-F5 failure-mode · enforcement: advisory hooks — blocking gates are skill-enforced\n'
 GATES+=$'verify-first: confirm facts before claiming. Memory unreliable.\n'
 GATES+=$'evidence: every change ends with test / curl / screenshot / log.\n'
-GATES+=$'careful mode: /rolepod for high-risk surface (auth/billing/migrations/locks).\n'
+GATES+=$'careful mode: /rolepod-full for high-risk surface (auth/billing/migrations/locks).\n'
 
 PAYLOAD="${GATES}"$'\n'"--- git context ---"$'\n'"${CTX}"
 

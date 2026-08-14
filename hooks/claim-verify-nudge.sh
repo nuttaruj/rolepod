@@ -38,7 +38,7 @@ PROMPT=$(printf '%s' "$INPUT" | python3 -c "import sys,json;print(json.load(sys.
 CLAIM_RX='(gap|gaps|root cause|diagnos|analy[sz]|audit|how does|how do|how is|how are|why (is|does|do|are|did|isn|doesn|wasn|won|can|would)|what.?s the|where (is|are|does|do)|is (it|this|that) (safe|correct|right|true|broken|working|wrong)|what would break|impact of|explain (how|why|what)|why not|status of|does (it|this|that) (work|handle|support|cause|break))'
 
 if printf '%s' "$PROMPT" | grep -qiE "$CLAIM_RX"; then
-  MSG="🔍 rolepod claim-check: this asks for an analysis/diagnosis/explanation/status about real code or state. Before stating it: READ the primary source (Read / Grep / run the command) and cite file:line — do NOT answer from memory or pattern-match. Cannot verify? Label it 'Assuming: X. Risk: Y. Verify by: Z' — never present a guess as fact. (off: ROLEPOD_NUDGE_OFF=1)"
+  MSG="🔍 rolepod claim-check: this asks for an analysis/diagnosis/explanation/status about real code or state. Apply Verify-first: READ the primary source (Read / Grep / run the command) and cite file:line — never state it from memory. (off: ROLEPOD_NUDGE_OFF=1)"
   python3 -c "
 import json
 print(json.dumps({'hookSpecificOutput':{'hookEventName':'UserPromptSubmit','additionalContext':'''$MSG'''}}))

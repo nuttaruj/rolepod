@@ -4,7 +4,7 @@
 #
 # Gemini fires PreCompress before auto/manual `/compress`. Without a reminder,
 # Lead may lose track of: active task, gates still open (S/T/F), reviewer
-# dispatches still pending, /rolepod mode status. Injecting these as
+# dispatches still pending, /rolepod-full mode status. Injecting these as
 # additionalContext makes them survive the summary step.
 #
 # Contract: stdout = single JSON, stderr for debug, exit 0 on success.
@@ -16,7 +16,7 @@ MSG=$'rolepod pre-compress checkpoint. Carry these forward across summary:\n'
 MSG+=$'- Active task + acceptance criteria (don\'t lose scope).\n'
 MSG+=$'- Open gates: S1-S5 (simplicity), T1-T6 (tests), F1-F5 (failure-mode).\n'
 MSG+=$'- Reviewer dispatches still pending (qa-tester floor + Codex/Claude if available — a different model than this Lead).\n'
-MSG+=$'- /rolepod mode status (high-risk surface in flight?).\n'
+MSG+=$'- /rolepod-full mode status (high-risk surface in flight?).\n'
 MSG+=$'- Document any load-bearing architectural decisions made this session.\n'
 MSG+=$'After summary: state which gates remain open + next concrete action.'
 

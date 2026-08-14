@@ -43,48 +43,18 @@ Non-trivial work:
 1. **Explore** — read files.
 2. **Plan** — simplicity check: simplest? new abstraction? new dep? If "yes" without reason → revise.
 3. **Implement** — every line traces to user request.
-4. **Pre-commit gate** — S1-S5 + T1-T6 + F1-F5 below.
+4. **Pre-commit gate** — S/T/Q/F gates per the phase skills.
 5. **Commit** — descriptive message + PR.
 
 Skip plan if diff describable in 1 sentence (typo / log / rename).
 
 ## Lifecycle phases — Define → Plan → Build → Verify → Review → Ship
 
-The `using-rolepod` router skill auto-fires on every request and maps intent → phase → skill — skip rules, exit evidence, and specialist-agent routing all live there. The per-phase gates are the sections below.
+The `using-rolepod` router skill auto-fires on every request and maps intent → phase → skill — skip rules, exit evidence, and specialist-agent routing all live there. The S/T/Q/F gates and CI lane policy live inside those phase skills — invoke the phase skill rather than reciting gates here.
 
 {{INCLUDE: core/fragments/decision-protocol.md}}
 
-## Simplicity gate — before every commit
-
-{{INCLUDE: core/fragments/gates-s1-s5.md}}
-
-## CI lanes — 3-phase + auto-merge
-
-```
-Phase 1 — Fast critical (every PR, REQUIRED, <5 min)
-  lint / typecheck / smoke unit / auth guard / tenant isolation /
-  money core / migration apply / build
-
-Phase 2 — Path-triggered (REQUIRED when path matches)
-  Module's full test suite.
-
-Phase 3 — Nightly / manual (NOT required)
-  Broad / integration full / docker / chaos / security deep / E2E / perf
-```
-
 User OK + commit + PR → ALL Phase 1 + triggered Phase 2 green → merge auto, no re-ask.
-
-## Test gate — before every commit
-
-{{INCLUDE: core/fragments/gates-t1-t6.md}}
-
-## Before any code edit — 4 questions
-
-{{INCLUDE: core/fragments/gates-q1-q4.md}}
-
-## Failure-mode gate — before declaring done
-
-{{INCLUDE: core/fragments/gates-f1-f5.md}}
 
 ## Anti-bloat — keep it simple
 
@@ -97,7 +67,6 @@ Bloat → Gemini ignores rules. Move infrequent → skills.
 
 ## Code intelligence
 
-- Before edit symbol → file tools or code-intel index
 - Before commit → `git diff` + lint + typecheck
 - Before re-deciding → `git log --grep=...` or decision records
 - After major decision → ADR or decision record
@@ -112,7 +81,7 @@ Code-intel index via Gemini MCP config when available. Otherwise plain `git` + `
 
 ## Before ship — STOP
 
-- Run S1-S5 + T1-T6 + F1-F5 gates manually before commit (evidence required)
+- Run the S/T/Q/F gates (in the phase skills) manually before commit (evidence required)
 - High-risk (auth/billing/migrations) → `/rolepod-full` first, then external reviewer:
   - Codex installed: `codex exec --prompt "review this diff..."`
   - Claude installed: `claude -p "review this diff for correctness"`
@@ -128,7 +97,6 @@ External docs / pricing / news → Gemini web/grounding.
 
 ## Verification
 
-Every change → evidence (test output / curl / log). Can't verify → state why + risk.
 UI → drive browser yourself. NEVER ask user for screenshot.
 
 ## Code quality + anti-spaghetti
