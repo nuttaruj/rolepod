@@ -133,7 +133,7 @@ LINES_CHANGED=${LINES_CHANGED:-0}
 # High-risk path detection — anchored to path segments (avoids matching e.g.
 # `session_state.py` for the hooks helper, where "session" is part of the
 # identifier not a security surface).
-HIGH_RISK=$(echo "$DIFF_STAT" | awk '{print $3}' | risk_filter '(^|/|_)(auth|authn|authz|authentication|authorization|billing|payment|payments|migration|migrations|credit|credits|permission|permissions|secret|secrets|crypto|cryptography|token|tokens|oauth|jwt|sso|saml|webhook|webhooks|stripe|paypal|charge|charges|invoice|invoices)(/|\.|_|$)' | head -1 || true)
+HIGH_RISK=$(echo "$DIFF_STAT" | awk '{print $3}' | risk_filter '(^|/|_)(auth|authn|authz|authentication|authorization|billing|payment|payments|migration|migrations|credit|credits|permission|permissions|secret|secrets|crypto|cryptography|token|tokens|oauth|jwt|sso|saml|webhook|webhooks|stripe|paypal|charge|charges|invoice|invoices|deletion|deletions|erasure|gdpr|security)(/|\.|_|$)' | head -1 || true)
 
 # Logic-bearing line count — non-comment, non-blank, non-pure-rename lines
 LOGIC_LINES=$(git diff --cached -U0 2>/dev/null | grep -E '^[+-]' | grep -vE '^[+-]{3}' | grep -vE '^[+-][[:space:]]*$' | grep -vE '^[+-][[:space:]]*(#|//|/\*|\*/?|--|;)' || true)
@@ -188,7 +188,7 @@ fi
 if [ -n "$HIGH_RISK" ] && [ "$REVIEWERS" -eq 0 ]; then
   REASON+="NO REVIEWER AGENT dispatched (qa-tester / security-engineer / universal-reviewer) — high-risk path requires adversarial review. "
 fi
-REASON+="Run gates explicitly: S1-S5 (simplicity) + T1-T6 (tests) + F1-F5 (failure-mode). "
+REASON+="Run gates explicitly: S1-S5 (simplicity) + T1-T6 (tests) + F1-F5 (failure-mode) — checklists: finish-work §1, check-work §6. "
 REASON+="This commit auto-passes once the session shows real evidence — write the failing test or dispatch a reviewer agent (qa-tester / security-engineer), then rerun the SAME git commit. No bypass marker, no env prefix."
 
 # Decide: HARD block vs SOFT warn
@@ -228,7 +228,7 @@ if [ "$HARD_BLOCK" -eq 1 ] && { [ "$TEST_EDITS" -gt 0 ] || [ "$REVIEWERS" -gt 0 
     >> "$HOME/.rolepod/gate-bypass.log" 2>/dev/null || true
   NOTE="precommit-gate auto-passed on session evidence: $TEST_EDITS test edits / $REVIEWERS reviewer dispatches"
   [ -n "$HIGH_RISK" ] && NOTE+=" (HIGH-RISK path: $HIGH_RISK)"
-  NOTE+=". Evidence is session-wide, this diff is not — confirm S1-S5 / T1-T6 / F1-F5 cover THIS change."
+  NOTE+=". Evidence is session-wide, this diff is not — confirm S1-S5 / T1-T6 (finish-work §1) / F1-F5 (check-work §6) cover THIS change."
   [ -n "$LINT_WARN" ] && NOTE+=" | $LINT_WARN"
   ROLEPOD_HOOK_MSG="$NOTE" python3 -c "
 import json, os
@@ -259,7 +259,7 @@ fi
 # SOFT warn path — emit reminder, exit 0
 WARN="precommit-gate SOFT warn. "
 WARN+="Diff: $FILES_CHANGED files / $LINES_CHANGED lines / $LOGIC_COUNT logic lines (normal code, no high-risk path). "
-WARN+="Recommend running S1-S5 (simplicity) + T1-T6 (tests) + F1-F5 (failure-mode) before commit. "
+WARN+="Recommend running S1-S5 (simplicity) + T1-T6 (tests) + F1-F5 (failure-mode) before commit — checklists: finish-work §1, check-work §6. "
 WARN+="Set ROLEPOD_GATES_HARD=1 to enforce blocking on normal diffs."
 [ -n "$LINT_WARN" ] && WARN+=" | $LINT_WARN"
 

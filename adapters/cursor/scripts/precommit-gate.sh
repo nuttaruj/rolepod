@@ -62,7 +62,7 @@ FILES_CHANGED=$(echo "$DIFF_STAT" | wc -l | tr -d ' ')
 LINES_CHANGED=$(echo "$DIFF_STAT" | awk '{a+=$1; b+=$2} END {print a+b}')
 LINES_CHANGED=${LINES_CHANGED:-0}
 
-HIGH_RISK=$(echo "$DIFF_STAT" | awk '{print $3}' | grep -iE '(^|/|_)(auth|authn|authz|authentication|authorization|billing|payment|payments|migration|migrations|credit|credits|permission|permissions|secret|secrets|crypto|cryptography|token|tokens|oauth|jwt|sso|saml|webhook|webhooks|stripe|paypal|charge|charges|invoice|invoices)(/|\.|_|$)' | head -1 || true)
+HIGH_RISK=$(echo "$DIFF_STAT" | awk '{print $3}' | grep -iE '(^|/|_)(auth|authn|authz|authentication|authorization|billing|payment|payments|migration|migrations|credit|credits|permission|permissions|secret|secrets|crypto|cryptography|token|tokens|oauth|jwt|sso|saml|webhook|webhooks|stripe|paypal|charge|charges|invoice|invoices|deletion|deletions|erasure|gdpr|security)(/|\.|_|$)' | head -1 || true)
 
 LOGIC_LINES=$(git diff --cached -U0 2>/dev/null | grep -E '^[+-]' | grep -vE '^[+-]{3}' | grep -vE '^[+-][[:space:]]*$' | grep -vE '^[+-][[:space:]]*(#|//|/\*|\*/?|--|;)' || true)
 if [ -z "$LOGIC_LINES" ]; then
@@ -78,7 +78,7 @@ fi
 REASON="precommit-gate BLOCKED. "
 REASON+="Diff: $FILES_CHANGED files / $LINES_CHANGED lines / $LOGIC_COUNT logic lines. "
 [ -n "$HIGH_RISK" ] && REASON+="HIGH-RISK path: $HIGH_RISK → mandatory qa-tester + security-engineer review. "
-REASON+="Run gates explicitly: S1-S5 (simplicity) + T1-T6 (tests) + F1-F5 (failure-mode). "
+REASON+="Run gates explicitly: S1-S5 (simplicity) + T1-T6 (tests) + F1-F5 (failure-mode) — checklists: finish-work §1, check-work §6. "
 REASON+="After passing, include \`[gates: pass]\` in the commit message body — do NOT env-prefix the git command. "
 REASON+="Block wrong for this diff? Surface it to the user — soft mode (ROLEPOD_GATES_SOFT=1) is user-set only, never model-set."
 
@@ -99,7 +99,7 @@ fi
 
 WARN="precommit-gate SOFT warn. "
 WARN+="Diff: $FILES_CHANGED files / $LINES_CHANGED lines / $LOGIC_COUNT logic lines (normal code, no high-risk path). "
-WARN+="Recommend running S1-S5 (simplicity) + T1-T6 (tests) + F1-F5 (failure-mode) before commit. "
+WARN+="Recommend running S1-S5 (simplicity) + T1-T6 (tests) + F1-F5 (failure-mode) before commit — checklists: finish-work §1, check-work §6. "
 WARN+="Set ROLEPOD_GATES_HARD=1 to enforce blocking on normal diffs."
 
 ROLEPOD_HOOK_MSG="$WARN" python3 -c "

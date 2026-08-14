@@ -80,6 +80,13 @@ out=$(gr '{"tool_name":"Edit","tool_input":{"file_path":"docs/notes.md"}}')
   && echo "  ✓ gate-reminder normal-path edit → silent" \
   || { echo "  ✗ gate-reminder normal-path edit not silent"; fail=$((fail+1)); }
 
+# v2.44.0: data-deletion/GDPR tokens joined the canon — doctrine listed the
+# category for months while the regex silently ignored it.
+out=$(gr '{"tool_name":"Edit","tool_input":{"file_path":"src/account_deletion.py"}}')
+echo "$out" | grep -q 'HIGH-RISK' \
+  && echo "  ✓ gate-reminder deletion-path edit → high-risk banner" \
+  || { echo "  ✗ gate-reminder deletion path missed (canon narrowed?)"; fail=$((fail+1)); }
+
 # Lead-exclusion: the banner must never recommend the session's own CLI.
 out=$(ROLEPOD_LEAD_CLI=codex gr '{"tool_name":"apply_patch","tool_input":{"input":"*** Update File: src/auth/a.py"}}')
 echo "$out" | grep -q 'codex exec' \

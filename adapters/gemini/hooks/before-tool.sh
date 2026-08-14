@@ -34,7 +34,7 @@ esac
 # High-risk path detection — segment-anchored to avoid false positives
 # (e.g. `session_state.py` shouldn't match `session`).
 HIGH_RISK=0
-if printf '%s' "$FILE" | grep -qE '(^|/|_|\.)(auth|authn|authz|authentication|authorization|billing|payment|payments|migration|migrations|credit|credits|permission|permissions|secret|secrets|crypto|cryptography|token|tokens|oauth|jwt|sso|saml|webhook|webhooks|stripe|paypal|charge|charges|invoice|invoices)(/|\.|_|$)'; then
+if printf '%s' "$FILE" | grep -qE '(^|/|_|\.)(auth|authn|authz|authentication|authorization|billing|payment|payments|migration|migrations|credit|credits|permission|permissions|secret|secrets|crypto|cryptography|token|tokens|oauth|jwt|sso|saml|webhook|webhooks|stripe|paypal|charge|charges|invoice|invoices|deletion|deletions|erasure|gdpr|security)(/|\.|_|$)'; then
   HIGH_RISK=1
 fi
 

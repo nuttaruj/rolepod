@@ -789,7 +789,7 @@ if [ -n "$CODEX_HOOK_EXTRAS" ]; then echo "      extras: $CODEX_HOOK_EXTRAS"; fi
 # string (anchors + terms) is pinned here, not just the term list. One
 # documented exception: gemini's prefix adds `\.` (its input is a single
 # file_path, so the wider match is deliberate); terms + suffix match canon.
-RISK_TERMS='auth|authn|authz|authentication|authorization|billing|payment|payments|migration|migrations|credit|credits|permission|permissions|secret|secrets|crypto|cryptography|token|tokens|oauth|jwt|sso|saml|webhook|webhooks|stripe|paypal|charge|charges|invoice|invoices'
+RISK_TERMS='auth|authn|authz|authentication|authorization|billing|payment|payments|migration|migrations|credit|credits|permission|permissions|secret|secrets|crypto|cryptography|token|tokens|oauth|jwt|sso|saml|webhook|webhooks|stripe|paypal|charge|charges|invoice|invoices|deletion|deletions|erasure|gdpr|security'
 RISK_CANON='(^|/|_)('"$RISK_TERMS"')(/|\.|_|$)'
 RISK_GEMINI='(^|/|_|\.)('"$RISK_TERMS"')(/|\.|_|$)'
 for f in hooks/gate-reminder.sh hooks/precommit-gate.sh \

@@ -14,7 +14,7 @@ Build-phase entry skill. Execute the approved plan with discipline: TDD where it
 2. NEVER expand scope mid-implementation. New idea → write it down and finish the planned task first.
 3. ALWAYS write the failing test first for bug fixes and high-risk-surface work.
 4. NEVER delegate to a subagent without a written task scope and a clear done criterion.
-5. CONTINUOUS execution between tasks AND between plan phases — no "should I continue?" check-ins, no progress summaries, and never end the turn mid-plan: an ended turn is a stop no matter how it is worded. Stop only on BLOCKED that the Lead cannot resolve, a spec/plan gap, or scope ambiguity.
+5. CONTINUOUS execution between tasks AND between plan phases — no "should I continue?" check-ins, no progress summaries, and never end the turn mid-plan: an ended turn is a stop no matter how it is worded. Stop only on a BLOCKED, spec/plan gap, or scope ambiguity that SURVIVES a re-read of the plan and the touched files (BLOCKED: plus a variable change) — a wrinkle you can settle yourself is never grounds to stop.
 </EXTREMELY-IMPORTANT>
 
 ## When to use

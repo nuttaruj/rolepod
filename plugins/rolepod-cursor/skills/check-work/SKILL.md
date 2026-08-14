@@ -156,9 +156,9 @@ Execute as Lead with this minimum viable checklist:
 
 ## Output
 
-The evidence block is the canonical artifact: `templates/evidence-block.md`. It carries the change manifest, per-check evidence, limitations, and the status verdict. Do not restate the block shape here; the template is the single source.
+The evidence block is the canonical artifact: `templates/evidence-block.md`. It carries the change manifest, per-check evidence, limitations, and the status verdict — the `## Status` line is exactly one of `VERIFIED | PARTIAL | UNVERIFIED`, the literal word finish-work's merge gate reads (PARTIAL or UNVERIFIED blocks merge; no other word clears it). Do not restate the rest of the block shape here; the template is the single source.
 
-Also append one line to `<git-root>/.rolepod/evidence/phase-log.jsonl` — `{"ts":"<iso8601>","phase":"verify","verdict":"pass|fail","evidence":"<command run>"}` (fail-open: skip silently outside a git repo). The log is the dataset that answers whether the process pays for itself. A QA test-case table in play (this session or under `.rolepod/evidence/`) → traceability check: every P1 row's ID must appear in a passing test's name (`grep` the test files / runner output for `TC<n>`); a P1 ID with no passing test = verdict FAIL naming the missing IDs.
+Also append one line to `<git-root>/.rolepod/evidence/phase-log.jsonl` — `{"ts":"<iso8601>","phase":"verify","verdict":"pass|fail","evidence":"<command run>"}` (fail-open: skip silently outside a git repo). The log is the dataset that answers whether the process pays for itself. A QA test-case table in play (this session or under `.rolepod/evidence/`) → traceability check: every P1 row's ID must appear in a passing test's name (`grep` the test files / runner output for `TC<n>`); a P1 ID with no passing test = phase-log `verdict:"fail"` plus Status `PARTIAL` or `UNVERIFIED`, naming the missing IDs.
 
 ## Examples
 

@@ -40,7 +40,7 @@ HIGH_RISK_PATH = re.compile(
     r"credit|credits|permission|permissions|secret|secrets|"
     r"crypto|cryptography|token|tokens|oauth|jwt|sso|saml|"
     r"webhook|webhooks|stripe|paypal|charge|charges|"
-    r"invoice|invoices)"
+    r"invoice|invoices|deletion|deletions|erasure|gdpr|security)"
     r"(/|\.|_|$)",
     re.IGNORECASE,
 )

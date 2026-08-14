@@ -43,7 +43,7 @@ Non-trivial work:
 1. **Explore** — read files.
 2. **Plan** — simplicity check: simplest? new abstraction? new dep? If "yes" without reason → revise.
 3. **Implement** — every line traces to user request.
-4. **Pre-commit gate** — S/T/Q/F gates per the phase skills.
+4. **Pre-commit gate** — S/T/F gates per the phase skills.
 5. **Commit** — descriptive message + PR.
 
 Skip plan if diff describable in 1 sentence (typo / log / rename).
@@ -81,7 +81,7 @@ Code-intel index via Gemini MCP config when available. Otherwise plain `git` + `
 
 ## Before ship — STOP
 
-- Run the S/T/Q/F gates (in the phase skills) manually before commit (evidence required)
+- Run the S/T/F gates (in the phase skills) manually before commit (evidence required)
 - High-risk (auth/billing/migrations) → `/rolepod-full` first, then external reviewer:
   - Codex installed: `codex exec --prompt "review this diff..."`
   - Claude installed: `claude -p "review this diff for correctness"`

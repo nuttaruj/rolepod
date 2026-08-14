@@ -110,7 +110,7 @@ HIGH_RISK=""
 # Canonical high-risk regex — byte-for-byte the same segment/anchor set as
 # precommit-gate.sh:78 and session_state.py's HIGH_RISK_PATH, so a file cannot
 # pass at edit time and then block at commit time.
-_RISK_HIT=$(printf '%s\n' "$FILE" | risk_filter '(^|/|_)(auth|authn|authz|authentication|authorization|billing|payment|payments|migration|migrations|credit|credits|permission|permissions|secret|secrets|crypto|cryptography|token|tokens|oauth|jwt|sso|saml|webhook|webhooks|stripe|paypal|charge|charges|invoice|invoices)(/|\.|_|$)' | head -1 || true)
+_RISK_HIT=$(printf '%s\n' "$FILE" | risk_filter '(^|/|_)(auth|authn|authz|authentication|authorization|billing|payment|payments|migration|migrations|credit|credits|permission|permissions|secret|secrets|crypto|cryptography|token|tokens|oauth|jwt|sso|saml|webhook|webhooks|stripe|paypal|charge|charges|invoice|invoices|deletion|deletions|erasure|gdpr|security)(/|\.|_|$)' | head -1 || true)
 if [ "$IS_TEST" -eq 0 ] && [ -n "$_RISK_HIT" ]; then
   HIGH_RISK="⚠️  HIGH-RISK path detected → mandatory: qa-tester + security-engineer review BEFORE commit. "
 fi
@@ -190,7 +190,7 @@ if [ -n "$HIGH_RISK" ]; then
       REVIEWER_LIST="$REVIEWER_LIST + Antigravity (\`agy -p\`, breadth/cross-file — Gemini family)"
     fi
   fi
-  CAREFUL_BANNER="⚠️  AUTO-CAREFUL MODE (high-risk path, session: $HIGH_RISK_EDITS high-risk edits / $TEST_EDITS tests / $REVIEWERS reviewers). MANDATORY before more edits: (1) test file exists or is being written this session, (2) reviewers dispatched — use ≥2 when available (${REVIEWER_LIST}; security-engineer for auth/billing/crypto). Exclude this session's own CLI — the adversarial pass runs on a DIFFERENT model (gemini and agy are the same model family). (3) S1-S5 + T1-T6 checklist run before commit. Reviewer path blocked by a user instruction? Surface it — fallback: Lead cold self-review + limitation note. Bypass envs are user-set only, never model-set. "
+  CAREFUL_BANNER="⚠️  AUTO-CAREFUL MODE (high-risk path, session: $HIGH_RISK_EDITS high-risk edits / $TEST_EDITS tests / $REVIEWERS reviewers). MANDATORY before more edits: (1) test file exists or is being written this session, (2) reviewers dispatched — use ≥2 when available (${REVIEWER_LIST}; security-engineer for auth/billing/crypto). Exclude this session's own CLI — the adversarial pass runs on a DIFFERENT model (gemini and agy are the same model family). (3) S1-S5 + T1-T6 checklist (finish-work §1) run before commit. Reviewer path blocked by a user instruction? Surface it — fallback: Lead cold self-review + limitation note. Bypass envs are user-set only, never model-set. "
 fi
 
 # Emit reminder ONLY when schema-bound or high-risk — no generic Q1-Q4 nag.
