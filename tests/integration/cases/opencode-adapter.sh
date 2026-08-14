@@ -55,6 +55,46 @@ else
   echo "  ~ node not on PATH — skipping JS syntax check"
 fi
 
+# ── Behavioral: precommit gate deny/allow paths ─────────────────────────
+# v2.42.0 regression guard: the old COMMIT_RE adjacency regex let
+# `git -C /repo commit` / `git -c k=v commit` walk past the adapter's only
+# hard deny, and RISK_RE carried 19/32 canonical terms (authentication,
+# authorization, authn, authz, cryptography were unreachable).
+if command -v node >/dev/null 2>&1; then
+  OC_FIX="$(mktemp -d "${TMPDIR:-/tmp}/rolepod-ocgate.XXXXXX")"
+  git -C "$OC_FIX" init -q
+  DRIVER="$OC_FIX/drive.mjs"
+  cat > "$DRIVER" <<DRIVEREOF
+import { RolepodPlugin } from 'file://$REPO_DIR/adapters/opencode/plugin/rolepod.js'
+const [,, editPath, testPath, command] = process.argv
+const plugin = await RolepodPlugin({ directory: process.cwd(), client: null })
+if (editPath && editPath !== '-')
+  await plugin['tool.execute.after']({ tool: 'edit' }, { args: { filePath: editPath } })
+if (testPath && testPath !== '-')
+  await plugin['tool.execute.after']({ tool: 'edit' }, { args: { filePath: testPath } })
+let verdict = 'ALLOW'
+try {
+  await plugin['tool.execute.before']({ tool: 'bash' }, { args: { command } })
+} catch { verdict = 'DENY' }
+console.log(verdict)
+DRIVEREOF
+  ocg() { (cd "$OC_FIX" && node "$DRIVER" "$1" "$2" "$3" 2>/dev/null); }
+  check "oc-gate: risk edit + git commit → deny"           "[ \"\$(ocg auth/login.py - 'git commit -m x')\" = DENY ]"
+  check "oc-gate: flag-separated git -C commit → deny"     "[ \"\$(ocg auth/login.py - 'git -C /repo commit -m x')\" = DENY ]"
+  check "oc-gate: git -c k=v commit → deny"                "[ \"\$(ocg auth/login.py - 'git -c user.email=x@y commit -m x')\" = DENY ]"
+  check "oc-gate: /usr/bin/git commit → deny"              "[ \"\$(ocg auth/login.py - '/usr/bin/git commit -m x')\" = DENY ]"
+  for t in authentication authorization authn authz cryptography; do
+    check "oc-gate: $t path reaches the gate"              "[ \"\$(ocg src/$t/x.py - 'git commit -m x')\" = DENY ]"
+  done
+  check "oc-gate: git log → allow"                         "[ \"\$(ocg auth/login.py - 'git log --oneline')\" = ALLOW ]"
+  check "oc-gate: normal path commit → allow"              "[ \"\$(ocg docs/notes.md - 'git commit -m x')\" = ALLOW ]"
+  check "oc-gate: risk + test evidence → allow"            "[ \"\$(ocg auth/login.py tests/test_x.py 'git commit -m x')\" = ALLOW ]"
+  check "oc-gate: ROLEPOD_GATES_SOFT logs bypass, no deny" "[ \"\$(ROLEPOD_GATES_SOFT=1 ocg auth/login.py - 'git commit -m x')\" = ALLOW ] && grep -q opencode-precommit-gate '$OC_FIX/.rolepod/evidence/bypass.log'"
+  rm -rf "$OC_FIX"
+else
+  echo "  ~ node not on PATH — skipping opencode gate behavior checks"
+fi
+
 check "install.sh wires --target=opencode" "grep -q 'opencode_selected' install.sh"
 
 # Full install + uninstall round-trip against a temp target.

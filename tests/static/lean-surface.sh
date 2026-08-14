@@ -24,8 +24,12 @@ echo "── lean-surface ──"
 check "Claude ships no managed-block doc" "[ ! -f plugins/rolepod/CLAUDE.md ]"
 CODEX_LINES=$(wc -l < build/rendered/codex/AGENTS.md)
 GEMINI_LINES=$(wc -l < build/rendered/gemini/GEMINI.md)
+OPENCODE_LINES=$(wc -l < build/rendered/opencode/AGENTS.md)
+AGY_LINES=$(wc -l < build/rendered/antigravity/AGENTS.md)
 check "rendered Codex  AGENTS.md ≤ 280 lines (actual: $CODEX_LINES)"   "[ $CODEX_LINES  -le 280 ]"
 check "rendered Gemini GEMINI.md ≤ 280 lines (actual: $GEMINI_LINES)"  "[ $GEMINI_LINES -le 280 ]"
+check "rendered opencode AGENTS.md ≤ 280 lines (actual: $OPENCODE_LINES)" "[ $OPENCODE_LINES -le 280 ]"
+check "rendered antigravity AGENTS.md ≤ 280 lines (actual: $AGY_LINES)" "[ $AGY_LINES -le 280 ]"
 
 # ── Tier 0 + Tier 1 visible skill count ───────────────────────────────
 # Core 10 target: Tier 0 = 1 router (using-rolepod), Tier 1 = 9 core
@@ -330,6 +334,28 @@ PYEOF
 )
 check "version manifests consistent — 11 carriers on $V_MAIN / $V_LOCK lockstep" "[ -z \"\$version_drift\" ]"
 if [ -n "$version_drift" ]; then echo "      drift: $version_drift"; fi
+
+# ── Evidence JSONL doctrine examples must parse ───────────────────────
+# finish-work shipped `{"ts","phase":"ship",...}` — invalid JSON that
+# stats.sh's fail-open reader silently dropped, making the doctrine's own
+# ship rows unreachable in `make stats`. Substitute <placeholders> with 0
+# (valid in quoted AND unquoted positions) and json-parse every example.
+JSONL_BAD=$(python3 - <<'PYEOF'
+import glob, json, re
+bad = []
+for path in sorted(glob.glob("core/skills/**/SKILL.md", recursive=True)):
+    for i, line in enumerate(open(path, encoding="utf-8"), 1):
+        for m in re.finditer(r'\{"ts"[^`]*?\}', line):
+            lit = re.sub(r"<[^>]*>", "0", m.group(0))
+            try:
+                json.loads(lit)
+            except json.JSONDecodeError:
+                bad.append(f"{path}:{i}")
+print("; ".join(bad))
+PYEOF
+)
+check "evidence JSONL examples in skills parse as JSON" "[ -z \"\$JSONL_BAD\" ]"
+if [ -n "$JSONL_BAD" ]; then echo "      invalid: $JSONL_BAD"; fi
 
 # ── Full agent table must NOT appear in rendered entry docs ──────────
 # Heuristic: a full agent table has the agent-roster header pattern.
@@ -766,6 +792,25 @@ for f in hooks/gate-reminder.sh hooks/precommit-gate.sh \
 done
 check "high-risk regex (wide-prefix gemini variant) in adapters/gemini/hooks/before-tool.sh" \
   "grep -qF -- \"\$RISK_GEMINI\" adapters/gemini/hooks/before-tool.sh"
+# The opencode JS twin drifted silently for months (19/32 terms, narrow
+# anchors) — extract RISK_RE's source, normalize JS \/ escaping, and diff
+# against the canon; plus a positive fixture so canon narrowing fails loud.
+RISK_JS_DRIFT=$(RISK_CANON="$RISK_CANON" python3 - <<'PYEOF'
+import os, re
+canon = os.environ["RISK_CANON"]
+src = open("adapters/opencode/plugin/rolepod.js").read()
+m = re.search(r"RISK_RE\s*=\s*\n?\s*/(.+?)/i", src)
+js = m.group(1).replace("\\/", "/") if m else "EXTRACT-FAIL"
+errs = []
+if js != canon:
+    errs.append(f"rolepod.js RISK_RE != canon: {js[:80]}")
+if not re.search(canon, "app/user_auth.py", re.IGNORECASE):
+    errs.append("canon fails positive fixture app/user_auth.py")
+print("; ".join(errs))
+PYEOF
+)
+check "opencode rolepod.js RISK_RE matches canon + positive fixture" "[ -z \"\$RISK_JS_DRIFT\" ]"
+if [ -n "$RISK_JS_DRIFT" ]; then echo "      $RISK_JS_DRIFT"; fi
 PY_RISK=$(python3 -c "
 import re
 src = open('hooks/lib/session_state.py').read()

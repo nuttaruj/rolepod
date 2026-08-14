@@ -62,11 +62,33 @@ function lockDirFor(worktree) {
   return path.join(os.homedir(), ".rolepod", "session-locks", hash)
 }
 
+// Canonical high-risk regex — byte-equivalent (modulo JS `\/` escaping) to
+// the RISK_CANON pinned in tests/static/lean-surface.sh across all shells.
 const RISK_RE =
-  /(^|\/)(auth|billing|payments?|credits?|migrations?|secrets?|tokens?|crypto|permissions?|security|oauth|jwt|sso|saml|webhooks?|stripe|paypal|charges?|invoices?)([./_-]|\/|$)/i
+  /(^|\/|_)(auth|authn|authz|authentication|authorization|billing|payment|payments|migration|migrations|credit|credits|permission|permissions|secret|secrets|crypto|cryptography|token|tokens|oauth|jwt|sso|saml|webhook|webhooks|stripe|paypal|charge|charges|invoice|invoices)(\/|\.|_|$)/i
 const TEST_RE =
   /(^|\/)(tests?|__tests__|spec|e2e)\/|\.(test|spec)\.[jt]sx?$|_test\.(go|py|rb|exs?|rs)$|(^|\/)test_[^/]*\.py$/i
-const COMMIT_RE = /(^|&&|;|\|\|?)\s*git\s+(-[^\s]+\s+)*commit\b/
+
+// git-commit detection — token walk ported from hooks/precommit-gate.sh.
+// The old adjacency regex missed flag-separated forms entirely:
+// `git -C /repo commit` and `git -c k=v commit` walked straight past the
+// adapter's only hard-deny gate. Whitespace split matches the bash walk's
+// shlex fallback semantics (glued `;git` misses on both — same limitation).
+const VALUE_OPTS = new Set(["-C", "--git-dir", "--work-tree", "--namespace", "--exec-path"])
+function isGitCommit(cmd) {
+  const toks = cmd.split(/\s+/).filter(Boolean)
+  for (let i = 0; i < toks.length; i++) {
+    if (path.basename(toks[i]) !== "git") continue
+    let j = i + 1
+    while (j < toks.length && toks[j].startsWith("-")) {
+      if (VALUE_OPTS.has(toks[j])) j += 2
+      else if (toks[j] === "-c" && j + 1 < toks.length && toks[j + 1].includes("=")) j += 2
+      else j += 1
+    }
+    if (j < toks.length && toks[j] === "commit") return true
+  }
+  return false
+}
 
 export const RolepodPlugin = async ({ directory, client }) => {
   let sessionId = null
@@ -178,7 +200,7 @@ export const RolepodPlugin = async ({ directory, client }) => {
       try {
         if (String(input?.tool ?? "") !== "bash") return
         const cmd = String(output?.args?.command ?? "")
-        if (!COMMIT_RE.test(cmd)) return
+        if (!isGitCommit(cmd)) return
         if (riskEdits > 0 && testEvidence === 0) {
           if (process.env.ROLEPOD_GATES_SOFT === "1") logBypass()
           else block = true

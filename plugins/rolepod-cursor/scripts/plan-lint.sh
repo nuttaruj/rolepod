@@ -40,7 +40,9 @@ fi
 
 # ── 2. Command per task ──────────────────────────────────────────────────
 TASKS=$(grep -c '^### Task' "$PLAN" || true)
-CMDS=$(grep -c 'Command:' "$PLAN" || true)
+# Count Command: lines inside task blocks only — a whole-file grep let
+# 'Command:' in Failure-policy prose cover for a Command-less task.
+CMDS=$(awk '/^### Task/{f=1} /^## /{f=0} f' "$PLAN" | grep -c 'Command:' || true)
 if [ "${CMDS:-0}" -ge "${TASKS:-0}" ]; then
   echo "  ✓ every task carries a Command ($CMDS/$TASKS)"
 else
@@ -50,8 +52,10 @@ fi
 
 # ── 3. Parallel ownership completeness ───────────────────────────────────
 # Extract the Parallel layout section; "Sequential" → nothing to check.
+# Anchored to a line START (optional bullet) — a bare substring grep let
+# 'Not sequential — two tracks run concurrently' skip the ownership check.
 LAYOUT=$(awk '/^## Parallel layout/{f=1;next} /^## /{f=0} f' "$PLAN")
-if printf '%s' "$LAYOUT" | grep -qi 'sequential'; then
+if printf '%s' "$LAYOUT" | grep -qiE '^[[:space:]]*([-*][[:space:]]*)?sequential'; then
   echo "  ✓ sequential layout — ownership check not applicable"
   echo "plan-lint: $([ "$fail" -eq 0 ] && echo PASS || echo FAIL)"
   exit "$fail"

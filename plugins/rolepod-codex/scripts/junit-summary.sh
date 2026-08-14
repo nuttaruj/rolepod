@@ -28,19 +28,37 @@ for path in sys.argv[1:]:
         print(f"  ✗ unreadable JUnit XML: {path} ({e})")
         failures += 1
         continue
-    suites = [root] if root.tag == "testsuite" else root.iter("testsuite")
-    for s in suites:
-        total += int(s.get("tests", 0) or 0)
-        failures += int(s.get("failures", 0) or 0)
-        errors += int(s.get("errors", 0) or 0)
-        skipped += int(s.get("skipped", 0) or 0)
-    # ET.parse re-walk for failed case names (testcase children carrying
-    # <failure> or <error>).
-    for case in ET.parse(path).getroot().iter("testcase"):
-        if case.find("failure") is not None or case.find("error") is not None:
-            cls = case.get("classname", "")
-            name = case.get("name", "?")
-            failed_names.append(f"{cls}::{name}" if cls else name)
+    # Per-suite DIRECT children only — nested <testsuite> counts roll up
+    # into the parent's attributes, so summing every suite's attributes
+    # double-counted (outer tests=5 + inner tests=2 reported 7). A
+    # testcase belongs to exactly one suite; counting direct children
+    # makes double-count impossible. root.iter includes root itself when
+    # root is a <testsuite>.
+    for s in root.iter("testsuite"):
+        cases = s.findall("testcase")
+        if cases:
+            for case in cases:
+                total += 1
+                cls = case.get("classname", "")
+                name = case.get("name", "?")
+                label = f"{cls}::{name}" if cls else name
+                if case.find("failure") is not None:
+                    failures += 1
+                    failed_names.append(label)
+                elif case.find("error") is not None:
+                    errors += 1
+                    failed_names.append(label)
+                elif case.find("skipped") is not None:
+                    skipped += 1
+        elif s.find("testsuite") is None:
+            # Leaf suite with attribute-only counts (no <testcase>
+            # children) — trust its attributes. Container suites whose
+            # counts roll up from children are skipped, never added on
+            # top of the cases already counted.
+            total += int(s.get("tests", 0) or 0)
+            failures += int(s.get("failures", 0) or 0)
+            errors += int(s.get("errors", 0) or 0)
+            skipped += int(s.get("skipped", 0) or 0)
 
 passed = total - failures - errors - skipped
 print(f"junit: {total} tests — {passed} passed, {failures} failed, "

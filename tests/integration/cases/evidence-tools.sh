@@ -93,6 +93,37 @@ cat > "$FIX/green.xml" <<'EOF'
 </testsuite>
 EOF
 check "junit exits 0 on green"            "bash '$REPO_DIR/scripts/junit-summary.sh' '$FIX/green.xml'"
+
+# v2.42.0 regression guards: nested suites double-counted (outer attrs
+# already roll up inner); attr-only suites must still count (no false green).
+cat > "$FIX/nested.xml" <<'EOF'
+<testsuite name="outer" tests="5" failures="2" errors="0" skipped="0">
+  <testcase classname="pkg.A" name="t1"/>
+  <testcase classname="pkg.A" name="t2"><failure message="x"/></testcase>
+  <testcase classname="pkg.A" name="t3"/>
+  <testsuite name="inner" tests="2" failures="1" errors="0" skipped="0">
+    <testcase classname="pkg.B" name="t4"/>
+    <testcase classname="pkg.B" name="t5"><failure message="y"/></testcase>
+  </testsuite>
+</testsuite>
+EOF
+OUT=$(bash "$REPO_DIR/scripts/junit-summary.sh" "$FIX/nested.xml" || true)
+check "junit nested suites: no double-count"  "printf '%s' \"\$OUT\" | grep -q '5 tests — 3 passed, 2 failed, 0 errors, 0 skipped'"
+check "junit nested suites: both failed names listed" "printf '%s' \"\$OUT\" | grep -q 'pkg.A::t2' && printf '%s' \"\$OUT\" | grep -q 'pkg.B::t5'"
+check "junit nested exits 1"                  "! bash '$REPO_DIR/scripts/junit-summary.sh' '$FIX/nested.xml'"
+
+cat > "$FIX/mixed.xml" <<'EOF'
+<testsuites>
+  <testsuite name="withcases" tests="2" failures="0" errors="0" skipped="0">
+    <testcase classname="pkg.C" name="ok1"/>
+    <testcase classname="pkg.C" name="ok2"/>
+  </testsuite>
+  <testsuite name="attronly" tests="4" failures="2" errors="1" skipped="0"/>
+</testsuites>
+EOF
+OUT=$(bash "$REPO_DIR/scripts/junit-summary.sh" "$FIX/mixed.xml" || true)
+check "junit attr-only suite still counted (no false green)" "printf '%s' \"\$OUT\" | grep -q '6 tests — 3 passed, 2 failed, 1 errors, 0 skipped'"
+check "junit mixed exits 1"                   "! bash '$REPO_DIR/scripts/junit-summary.sh' '$FIX/mixed.xml'"
 check "check-work cites junit-summary"    "grep -q 'junit-summary.sh' '$REPO_DIR/core/skills/check-work/SKILL.md'"
 
 # ── shipped copies — installed users read evidence without the source repo ──

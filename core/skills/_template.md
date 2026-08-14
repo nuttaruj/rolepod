@@ -208,8 +208,9 @@ Name it `examples/<skill>-examples.md`. It must:
   approaches", `finish-work` § "4-option finish menu". Exception:
   mechanical/auto-detected choices (router backend, manage-context
   mode, Q1-Q4 delegate gate).
-- **Cite research** where it sharpens a claim (arXiv, DAPLab) — e.g. weak
-  LLM test assertions, ~62% (arXiv 2402.13521).
+- **Cite research** where it sharpens a claim (arXiv, DAPLab) — and cite
+  only a number you have read in the cited source — e.g. authority framing
+  lifts compliance (Meincke 2025, N=28k).
 - **Placeholders** belong only in `templates/` (`<hints>`) and in the bad
   half of an examples file (`TBD`). Never in a `SKILL.md` spine.
 - After any skill change: `make render`, then

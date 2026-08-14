@@ -1,8 +1,8 @@
 <!-- Load when a test passes but you are not sure the assertion is strong. -->
 
 A passing test with a weak assertion is a false green — it stays green even
-when the code is wrong. Roughly 62% of LLM-written tests carry assertions too
-weak to catch a real bug (arXiv 2402.13521).
+when the code is wrong. LLM-written tests carry this defect often enough that
+a green bar is not, by itself, proof.
 
 ## The flip test
 Mentally flip the assertion: `==` to `!=`, `true` to `false`, present to

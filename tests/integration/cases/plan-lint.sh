@@ -141,6 +141,55 @@ bash "$LINT" "$TMP/seq-plan.md" >/dev/null \
   && echo "  ✓ plan-lint.sh skips ownership on a sequential plan" \
   || { echo "  ✗ plan-lint.sh failed a clean sequential plan"; fail=$((fail+1)); }
 
+# ── v2.42.0 false-pass regression guards (run the SCRIPT, not plan_lint) ──
+# Bug 1: 'Command:' in Failure-policy prose covered for a Command-less task.
+cat > "$TMP/prose-cmd.md" <<'EOF'
+# Prose Plan
+### Task 1: api
+- [ ] Files: api/users.py
+## Parallel layout
+Sequential — single owner.
+## Failure policy
+On a failing Command: re-run once, then stop and report.
+EOF
+if bash "$LINT" "$TMP/prose-cmd.md" >/dev/null; then
+  echo "  ✗ plan-lint.sh passed a Command-less task covered by prose 'Command:'"; fail=$((fail+1))
+else
+  echo "  ✓ plan-lint.sh counts Command: inside task blocks only"
+fi
+
+# Bug 2: 'Not sequential — …' was classified sequential, skipping ownership.
+cat > "$TMP/notseq-plan.md" <<'EOF'
+# NotSeq Plan
+## Files to touch
+- `api/users.py` — endpoint
+### Task 1: api
+- [ ] Command: pytest api/
+## Parallel layout
+Not sequential — two tracks run concurrently. Contract: `missing-contract.md`
+## Failure policy
+Default: stop.
+EOF
+if bash "$LINT" "$TMP/notseq-plan.md" >/dev/null; then
+  echo "  ✗ plan-lint.sh treated 'Not sequential' as sequential (ownership check skipped)"; fail=$((fail+1))
+else
+  echo "  ✓ plan-lint.sh requires a contract when layout is not sequential"
+fi
+
+# Anchored regex must still accept a bullet-prefixed sequential declaration.
+cat > "$TMP/bullet-seq.md" <<'EOF'
+# Bullet Seq Plan
+### Task 1: api
+- [ ] Command: pytest api/
+## Parallel layout
+- Sequential — single owner.
+## Failure policy
+Default: stop.
+EOF
+bash "$LINT" "$TMP/bullet-seq.md" >/dev/null \
+  && echo "  ✓ plan-lint.sh accepts a bullet-prefixed Sequential declaration" \
+  || { echo "  ✗ plan-lint.sh rejected '- Sequential — single owner.'"; fail=$((fail+1)); }
+
 # ── Session-split protocol is documented where the contract points ──────
 grep -q '^## Session split' "$REPO_DIR/core/skills/write-plan/templates/cohesion-contract-template.md" \
   && echo "  ✓ contract template carries the Session split section" \
