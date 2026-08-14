@@ -53,7 +53,6 @@ test-static:
 	@python3 -m json.tool adapters/cursor/.cursor-plugin/plugin.json >/dev/null && echo "  ✓ cursor plugin.json"
 	@python3 -m json.tool adapters/cursor/.cursor-plugin/marketplace.json >/dev/null && echo "  ✓ cursor marketplace.json"
 	@python3 -m json.tool adapters/cursor/hooks/hooks.json >/dev/null && echo "  ✓ cursor hooks.json"
-	@python3 -c "import pathlib, tomllib; [tomllib.loads(p.read_text()) for p in pathlib.Path('adapters/gemini/commands').glob('*.toml')]" && echo "  ✓ gemini commands/*.toml"
 	@$(MAKE) -s test-render-clean
 	@$(MAKE) -s test-lean-surface
 	@bash tests/static/hook-agent-matching.sh

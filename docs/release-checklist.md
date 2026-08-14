@@ -86,8 +86,8 @@ git push origin main
 git push origin <tag>   # if tagging
 ```
 
-Required CI lanes (Phase 1) green before promotion. Auto-merge OK iff:
-- All Phase 1 + path-triggered Phase 2 lanes green
+Every required check on the PR green before promotion — today that is the single `installer` workflow (one job: lint, render, install round-trip; `on: push[main] + pull_request`, no path filters). rolepod's own CI has no Phase 2/3 lanes: `finish-work` §2's phase framework collapses to this one always-on lane here. Auto-merge OK iff:
+- Every required check on the PR green (today: the single `installer` workflow)
 - User explicit approval present for the PR
 - No high-risk surface unresolved-blocker
 

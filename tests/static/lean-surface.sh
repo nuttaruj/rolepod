@@ -292,6 +292,13 @@ check "hooks.md Expected line pins Claude script + registration counts" \
   "grep -q \"Expected: $HC_CLAUDE core hook scripts / $REG_CLAUDE registrations\" docs/hooks.md"
 check "hooks.md Cursor section pins cursor count" \
   "grep -q \"ships [*][*]$HC_CURSOR core hooks[*][*]\" docs/hooks.md"
+# Skill counts in cli-support drifted (three lines said 10 against the
+# locked Core 10 + 1 alias = 11). Derived pin, not denylist — fails in
+# BOTH directions when the roster moves. Distinctive tails on purpose:
+# a lazy '16 agents + N skills' grep would be satisfied by one line while
+# the other two stayed stale.
+check "cli-support skill counts derived from filesystem" \
+  "grep -q \"16 agents + $FS_SKILLS skills via native loader\" docs/cli-support.md && grep -q \"$FS_SKILLS skills enumerated\" docs/cli-support.md && grep -q \"16 agents, $FS_SKILLS skills, hooks\" docs/cli-support.md"
 
 # ── Version manifests — one 2.x/0.x lockstep pair across all carriers ──
 # 7 hand-edited sources (scripts/bump-version.sh) + 4 committed render

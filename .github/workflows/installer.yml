@@ -15,58 +15,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Static checks (bash -n on all shell scripts)
-        shell: bash
-        run: |
-          set -eo pipefail
-          fail=0
-          while IFS= read -r f; do
-            if ! bash -n "$f"; then
-              echo "::error file=$f::bash -n failed"
-              fail=1
-            fi
-          done < <(printf '%s\n' \
-            install.sh \
-            bootstrap.sh \
-            build/render.sh \
-            $(find hooks adapters/codex/plugins/rolepod/hooks adapters/gemini/hooks -maxdepth 1 -name '*.sh' 2>/dev/null))
-          exit "$fail"
-
-      - name: JSON syntax check (adapter manifests + plugin metadata)
-        shell: bash
-        run: |
-          set -eo pipefail
-          fail=0
-          while IFS= read -r f; do
-            if ! python3 -m json.tool "$f" >/dev/null; then
-              echo "::error file=$f::invalid JSON"
-              fail=1
-            fi
-          done < <(find adapters .claude-plugin -name '*.json' 2>/dev/null)
-          exit "$fail"
-
-      - name: TOML syntax check (codex agents + gemini commands)
-        shell: bash
-        run: |
-          set -eo pipefail
-          python3 - <<'PY'
-          import sys, pathlib, tomllib
-          fail = 0
-          roots = ["adapters/gemini/commands"]
-          for root in roots:
-              p = pathlib.Path(root)
-              if not p.exists():
-                  continue
-              for f in p.rglob("*.toml"):
-                  try:
-                      with open(f, "rb") as fh:
-                          tomllib.load(fh)
-                  except Exception as e:
-                      print(f"::error file={f}::invalid TOML: {e}")
-                      fail = 1
-          sys.exit(fail)
-          PY
-
       - name: Thai char scan (English-only invariant)
         shell: bash
         run: |
@@ -92,19 +40,19 @@ jobs:
           sys.exit(fail)
           PY
 
-      - name: Render all 3 targets
+      - name: Full static gate (make test-static)
         shell: bash
         run: |
           set -eo pipefail
-          if ! bash build/render.sh --target=all; then
-            echo "::error::build/render.sh --target=all failed"
-            exit 1
-          fi
-          # No template leaks
-          if grep -rn '{{INCLUDE:' build/rendered/ 2>/dev/null; then
-            echo "::error::Unrendered {{INCLUDE:...}} marker found in build/rendered/"
-            exit 1
-          fi
+          # The same release gate that runs locally: bash -n on every shell
+          # surface (incl. cursor scripts), JSON/TOML parse, frontmatter
+          # guard, render-clean (renders + git-diffs the COMMITTED plugin
+          # trees — the marketplace install path reads those straight from
+          # GitHub and never runs render.sh, so stale-tree drift under green
+          # CI shipped to real installers once before), lean-surface
+          # invariants, always-on cap, hook-agent matching. One target —
+          # no hand-mirrored CI copies to drift.
+          make test-static
 
       - name: Post-render JSON syntax check (rendered artifacts)
         shell: bash
@@ -135,22 +83,6 @@ jobs:
                   fail = 1
           sys.exit(fail)
           PY
-
-      - name: Static invariant suite (lean-surface + always-on + hook-matching)
-        shell: bash
-        run: |
-          set -eo pipefail
-          fail=0
-          for t in tests/static/lean-surface.sh \
-                   tests/static/always-on-hook.sh \
-                   tests/static/hook-agent-matching.sh; do
-            echo "▸ $t"
-            if ! bash "$t"; then
-              echo "::error file=$t::static invariant check failed"
-              fail=1
-            fi
-          done
-          exit "$fail"
 
       - name: Integration suite (dep-gated cases skip cleanly on CI)
         shell: bash

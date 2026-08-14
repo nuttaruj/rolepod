@@ -110,8 +110,8 @@ Per-CLI hook counts (distinct scripts): Claude registers 11 core hook scripts vi
 | Target | Static checks | Dry-run install | Live runtime hooks | Live subagent dispatch | Status |
 |--------|---------------|-----------------|--------------------|-----------------------|--------|
 | Claude Code | ✓ | ✓ | ✓ verified | ✓ verified | **Production** |
-| Codex CLI   | ✓ | ✓ | ✓ native — hooks fire without any opt-in on current Codex; `codex features list` (0.144.1, 2026-07-30) shows `hooks stable true` and the legacy `plugin_hooks` flag `removed` | ✓ verified (16 agents + 10 skills via native loader) | **Production** |
-| Gemini CLI  | ✓ | ✓ | ✓ verified (SessionStart hook fires) | ✓ verified (10 skills enumerated) | **Production** |
+| Codex CLI   | ✓ | ✓ | ✓ native — hooks fire without any opt-in on current Codex; `codex features list` (0.144.1, 2026-07-30) shows `hooks stable true` and the legacy `plugin_hooks` flag `removed` | ✓ verified (16 agents + 11 skills via native loader) | **Production** |
+| Gemini CLI  | ✓ | ✓ | ✓ verified (SessionStart hook fires) | ✓ verified (11 skills enumerated) | **Production** |
 | Cursor IDE  | ✓ | ✓ | ⚠️ live re-verification pending (always-on rule + 3 hooks ship; hook JSON I/O contract verified against [cursor.com/docs/hooks](https://cursor.com/docs/hooks) 2026-05-23 fetch but not exercised on a live Cursor session yet) | ⚠️ live re-verification pending (16 agents + 11 skills ship with minimal-frontmatter shape; subagent dispatch unverified) | **Beta** (static + install paths verified; live runtime confirmation pending) |
 | Antigravity CLI (agy) | ✓ (`agy plugin validate` [ok] on agy 1.0.13; integration test locks the schema) | ✓ (live `agy plugin install`/`uninstall` round-trip verified; temp-target guard proven) | ⚠️ hooks registered ("3 hook event types processed"); live firing unverified | ⚠️ runtime probe blocked on agy model quota (resets 2026-07-02) | **Beta** (install verified live; runtime session confirmation pending) |
 | opencode | ✓ (rendered tree locked by `tests/integration/cases/opencode-adapter.sh` — 11 skills / 16 agents / plugin JS `node --check` clean) | ✓ (temp-target install/uninstall round-trip in the same test) | partial — the JS plugin denies `git commit` via `tool.execute.before` (documented throw mechanism) and every agent carries a `permission:` block; no per-file deny event, so worktree/cohesion gates stay skill-enforced | ⚠️ live subagent dispatch unverified | **Beta** (native skills/agents verified via install; hooks-live partial enforcement) |
@@ -210,7 +210,7 @@ cd /your/project
 ./install.sh --target=codex --scope=project
 ```
 
-**Rules-only project install.** Writes only `$PWD/AGENTS.md` (managed block). Codex auto-loads `AGENTS.md` from the working directory on session start. **Native plugin agents/skills/hooks are NOT installed per-project** — Codex CLI's marketplace + plugin cache are global-only by design. For full Codex activation (16 agents, 10 skills, hooks), run `--scope=global` separately.
+**Rules-only project install.** Writes only `$PWD/AGENTS.md` (managed block). Codex auto-loads `AGENTS.md` from the working directory on session start. **Native plugin agents/skills/hooks are NOT installed per-project** — Codex CLI's marketplace + plugin cache are global-only by design. For full Codex activation (16 agents, 11 skills, hooks), run `--scope=global` separately.
 
 Codex hooks fire natively on Codex ≥0.144 — the legacy `plugin_hooks` opt-in flag is `removed` upstream; no config step needed.
 
