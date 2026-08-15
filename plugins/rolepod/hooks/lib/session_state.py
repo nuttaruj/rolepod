@@ -67,6 +67,16 @@ REVIEWER_AGENTS = {
     "code-reviewer",
 }
 
+# Strong-class adversarial reviewers — the subset whose dispatch clears a
+# HIGH-RISK commit gate. qa-tester is the balanced test floor by design
+# (tier: balanced, hard model pin): its dispatch counts as review activity
+# but NOT as the strong adversarial pass an R4 diff requires.
+STRONG_REVIEWER_AGENTS = {
+    "security-engineer",
+    "universal-reviewer",
+    "code-reviewer",
+}
+
 EDIT_TOOLS = {"Edit", "Write", "MultiEdit", "NotebookEdit"}
 
 # Subagent-spawn tools. Claude Code has used both names across versions;
@@ -255,12 +265,13 @@ def count_reviewers_dispatched(transcript_path: str) -> int:
     return n
 
 
-def count_all(transcript_path: str) -> tuple[int, int, int]:
-    """Single-pass tally of the three gate counts — one transcript scan instead
-    of three. Returns (test_edits, high_risk_edits, reviewers), each identical
-    to the standalone count_* it replaces (test/high-risk are mutually exclusive
-    per edit; test wins — same precedence as count_high_risk_edits' skip)."""
-    test_edits = high_risk_edits = reviewers = 0
+def count_all(transcript_path: str) -> tuple[int, int, int, int]:
+    """Single-pass tally of the four gate counts — one transcript scan instead
+    of four. Returns (test_edits, high_risk_edits, reviewers, strong_reviewers);
+    the first three identical to the standalone count_* they replace
+    (test/high-risk are mutually exclusive per edit; test wins — same
+    precedence as count_high_risk_edits' skip)."""
+    test_edits = high_risk_edits = reviewers = strong_reviewers = 0
     for tool, inp in _iter_tool_uses(transcript_path):
         if tool in EDIT_TOOLS:
             path = _file_from_input(inp)
@@ -269,9 +280,12 @@ def count_all(transcript_path: str) -> tuple[int, int, int]:
             elif is_high_risk_path(path) and is_code_file(path):
                 high_risk_edits += 1
         elif tool in AGENT_TOOLS:
-            if _bare_agent_name(inp.get("subagent_type")) in REVIEWER_AGENTS:
+            name = _bare_agent_name(inp.get("subagent_type"))
+            if name in REVIEWER_AGENTS:
                 reviewers += 1
-    return test_edits, high_risk_edits, reviewers
+            if name in STRONG_REVIEWER_AGENTS:
+                strong_reviewers += 1
+    return test_edits, high_risk_edits, reviewers, strong_reviewers
 
 
 def count_parallel_agent_spawns_on_path(
@@ -312,8 +326,9 @@ def main() -> int:
     transcript_path = hook_input.get("transcript_path") or ""
 
     if query == "count-all":
-        # test_edits high_risk_edits reviewers — one line, one transcript scan.
-        print("%d %d %d" % count_all(transcript_path))
+        # test_edits high_risk_edits reviewers strong_reviewers — one line,
+        # one transcript scan.
+        print("%d %d %d %d" % count_all(transcript_path))
     elif query == "count-test-edits":
         print(count_test_edits(transcript_path))
     elif query == "count-high-risk-edits":

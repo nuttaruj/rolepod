@@ -2,11 +2,14 @@
 # rolepod stats — read the phase evidence log and answer "is the ceremony
 # paying for itself" with numbers from real usage instead of feel.
 #
-# Data sources (both fail-open, written by the doctrine since v2.12):
+# Data sources (all fail-open, written by the doctrine since v2.12):
 #   <git-root>/.rolepod/evidence/phase-log.jsonl
 #     {"ts","phase":"route|verify|review|ship", ...}
 #   <git-root>/.rolepod/evidence/bypass.log
 #     {"ts","hook","var","reason"}
+#   $HOME/.rolepod/gate-bypass.log            (plain text, machine-global)
+#     precommit-gate evidence auto-passes — the single most likely path for
+#     a weakly-evidenced high-risk commit; invisible here until v2.46.0
 #
 # Usage: scripts/stats.sh [repo-root]   (default: current git root)
 # Run via `make stats`. Read-only; exit 0 even with no data.
@@ -46,10 +49,28 @@ def read_jsonl(path):
 rows = read_jsonl(phase_log)
 bypasses = read_jsonl(bypass_log)
 
+# precommit auto-passes (plain-text, machine-global — every rolepod repo on
+# this machine appends here; shown so weakly-evidenced high-risk commits are
+# observable at all).
+autopass_log = os.path.expanduser("~/.rolepod/gate-bypass.log")
+autopasses, autopass_risky = [], []
+try:
+    with open(autopass_log, encoding="utf-8") as f:
+        for ln in f:
+            if "auto-pass" not in ln:
+                continue
+            autopasses.append(ln.strip())
+            # v2.46.0+ lines carry "risk=<path|none>"; older lines lack the
+            # field — count those as risky=unknown, not as safe.
+            if "risk=none" not in ln:
+                autopass_risky.append(ln.strip())
+except OSError:
+    pass
+
 print("── rolepod stats ──")
 print(f"  evidence dir: {ev}")
 
-if not rows and not bypasses:
+if not rows and not bypasses and not autopasses:
     print("  no data yet — phase-log.jsonl / bypass.log start filling once")
     print("  v2.12+ sessions run in this repo. Nothing to measure is itself")
     print("  a finding: the loop has not closed here.")
@@ -120,6 +141,14 @@ if ships:
     a = Counter(r.get("action", "?") for r in ships)
     print(f"\n  Ship actions ({sum(a.values())}): "
           + ", ".join(f"{k}={a[k]}" for k in sorted(a)))
+
+if autopasses:
+    print(f"\n  Precommit auto-passes ({len(autopasses)}, machine-global"
+          " ~/.rolepod/gate-bypass.log):")
+    print(f"    on a HIGH-RISK diff (or pre-v2.46 unlabeled): {len(autopass_risky)}")
+    if autopass_risky:
+        print("    ⚠ each risky auto-pass = a high-risk commit cleared on session"
+              " evidence — audit the newest ones against actual review dispatches")
 
 if bypasses:
     by_var = Counter(b.get("var", "?") for b in bypasses)

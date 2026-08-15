@@ -52,8 +52,20 @@ check "stats names the silent downgrade"  "printf '%s' \"\$OUT\" | grep -q 'sile
 check "stats reports hook-auto dispatch intent" "printf '%s' \"\$OUT\" | grep -q 'Dispatch intent — hook-auto (1'"
 check "stats flags hook-auto inherit"     "printf '%s' \"\$OUT\" | grep -q 'inherited the Lead'"
 check "stats survives malformed lines"    "bash '$REPO_DIR/scripts/stats.sh' '$FIX/repo'"
-OUT=$(bash "$REPO_DIR/scripts/stats.sh" "$FIX")
+# HOME sandboxed: stats also reads the machine-global ~/.rolepod/gate-bypass.log
+# (v2.46.0) — the real machine's log must not leak into the empty-repo case.
+OUT=$(HOME="$FIX" bash "$REPO_DIR/scripts/stats.sh" "$FIX")
 check "stats handles empty repo (no data)" "printf '%s' \"\$OUT\" | grep -q 'no data yet'"
+
+# v2.46.0: precommit auto-passes surface in stats, risky ones flagged.
+mkdir -p "$FIX/.rolepod"
+printf '2026-08-15T10:00:00 auto-pass on evidence (tests=1 reviewers=0 strong=0 risk=none): git commit -m x\n' \
+  > "$FIX/.rolepod/gate-bypass.log"
+printf '2026-08-15T10:05:00 auto-pass on evidence (tests=0 reviewers=1 strong=1 risk=auth/login.py): git commit -m y\n' \
+  >> "$FIX/.rolepod/gate-bypass.log"
+OUT=$(HOME="$FIX" bash "$REPO_DIR/scripts/stats.sh" "$FIX")
+check "stats surfaces precommit auto-passes"      "printf '%s' \"\$OUT\" | grep -q 'Precommit auto-passes (2'"
+check "stats flags the risky auto-pass (not the risk=none one)" "printf '%s' \"\$OUT\" | grep -q 'HIGH-RISK diff (or pre-v2.46 unlabeled): 1'"
 
 # ── claude dispatch hooks (tier nudge + auto-log) ───────────────────────
 printf '{"tool_name":"Workflow","tool_input":{"script":"await agent(1)"}}' > "$FIX/wf-inherit.json"

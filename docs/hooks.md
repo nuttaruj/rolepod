@@ -106,7 +106,7 @@ Enforcement layer for the concurrent-edit problem `session-lifecycle` only *warn
 
 Escalates to HARD block at `git commit` time when the session touched high-risk code but never produced a test edit.
 
-- **Effect**: session evidence (≥1 test edit or ≥1 reviewer dispatch) → auto-pass + `~/.rolepod/gate-bypass.log` entry + additionalContext note reminding that evidence is session-wide, not per-diff; no evidence → `permissionDecision: deny`.
+- **Effect** (evidence split by risk since v2.46.0): HIGH-RISK diff (path regex OR money-movement terms in staged added lines) → auto-pass ONLY on ≥1 strong-class adversarial reviewer dispatch (security-engineer / universal-reviewer); other HARD blocks → ≥1 test edit or ≥1 reviewer dispatch. Every auto-pass logs to `~/.rolepod/gate-bypass.log` (read by `make stats`) + additionalContext note reminding that evidence is session-wide, not per-diff; insufficient evidence → `permissionDecision: deny`.
 - **Self-guards**: non-commit Bash → silent; non-high-risk session → silent.
 - **Bypass**: not needed — evidence auto-passes. `ROLEPOD_GATES_PASSED=1` / `[gates: pass]` are legacy markers (same evidence check; never honored without it). The env-prefix form is deliberately not prescribed anywhere: permission layers read `ENV=1 git commit` as gate circumvention and block it before the hook runs.
 

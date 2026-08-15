@@ -149,8 +149,12 @@ out=$(printf '{"tool_name":"Write","tool_input":{}}' | bash "$HOOKS/worktree-gua
   && echo "  ✓ worktree-guard pathless payload → exit 0 (was rc=1)" \
   || { echo "  ✗ worktree-guard pathless payload: rc=$rc"; fail=$((fail+1)); }
 
-# ── precommit: evidence auto-pass — no marker, no env prefix needed ─────
-# HOME is pointed at $TMP so the auto-pass log lands in the sandbox.
+# ── precommit: evidence auto-pass — split by risk (v2.46.0) ─────────────
+# A HIGH-RISK diff clears ONLY on a strong-class adversarial reviewer
+# dispatch (security-engineer / universal-reviewer). Test edits and qa-tester
+# are the balanced test floor, not the review — the CourtBook evidence:
+# 672 green tests + strong impl still shipped 4 money bugs that only the
+# adversarial pass caught. HOME points at $TMP so the log lands in sandbox.
 TRANSCRIPT="$TMP/transcript.jsonl"
 pce() { # $1 = command; hook input carries transcript_path
   printf '{"tool_name":"Bash","transcript_path":%s,"tool_input":{"command":%s}}' \
@@ -160,19 +164,73 @@ pce() { # $1 = command; hook input carries transcript_path
 }
 
 printf '%s\n' \
-  '{"type":"tool_use","name":"Task","input":{"subagent_type":"rolepod:qa-tester","prompt":"review"}}' \
+  '{"type":"tool_use","name":"Task","input":{"subagent_type":"rolepod:security-engineer","prompt":"review"}}' \
   > "$TRANSCRIPT"
 out=$(pce 'git commit -m "add billing"')
-check "precommit high-risk + reviewer-dispatch evidence → auto-pass" allow "$out"
+check "precommit high-risk + security-engineer dispatch → auto-pass" allow "$out"
 echo "$out" | grep -q 'auto-passed' \
   && echo "  ✓ auto-pass surfaces an additionalContext note" \
   || { echo "  ✗ auto-pass note missing from hook output"; fail=$((fail+1)); }
 
 printf '%s\n' \
+  '{"type":"tool_use","name":"Task","input":{"subagent_type":"rolepod:qa-tester","prompt":"review"}}' \
+  > "$TRANSCRIPT"
+out=$(pce 'git commit -m "add billing"')
+check "precommit high-risk + qa-tester ALONE → still deny (test floor ≠ review)" deny "$out"
+echo "$out" | grep -q 'STRONG ADVERSARIAL REVIEWER' \
+  && echo "  ✓ deny reason names the missing strong reviewer" \
+  || { echo "  ✗ deny reason missing strong-reviewer instruction"; fail=$((fail+1)); }
+
+printf '%s\n' \
   '{"type":"tool_use","name":"Edit","input":{"file_path":"tests/test_billing.py"}}' \
   > "$TRANSCRIPT"
 out=$(pce 'git commit -m "add billing"')
-check "precommit high-risk + test-edit evidence alone → auto-pass (OR, not AND)" allow "$out"
+check "precommit high-risk + test-edit alone → still deny (OR split by risk)" deny "$out"
+
+# OR path stays alive for NON-path HARD blocks (env-forced): test edit clears.
+TMP2=$(mktemp -d)
+(
+  cd "$TMP2"
+  git init -q .
+  git config user.email t@t && git config user.name t
+  printf 'x = 1\n' > util.py
+  git add util.py
+)
+out=$(printf '{"tool_name":"Bash","transcript_path":%s,"tool_input":{"command":"git commit -m x"}}' \
+  "$(printf '%s' "$TRANSCRIPT" | python3 -c 'import json,sys; print(json.dumps(sys.stdin.read()))')" \
+  | (cd "$TMP2" && HOME="$TMP" ROLEPOD_GATES_HARD=1 bash "$HOOKS/precommit-gate.sh") || true)
+check "precommit env-forced block on normal diff + test edit → auto-pass (OR preserved)" allow "$out"
+rm -rf "$TMP2"
+
+# ── precommit: content-based high-risk (v2.46.0) ────────────────────────
+# Money-movement term in an added line of a generically named file must
+# classify HIGH-RISK even though no path segment matches the risk regex.
+TMP3=$(mktemp -d)
+(
+  cd "$TMP3"
+  git init -q .
+  git config user.email t@t && git config user.name t
+  mkdir -p services tests
+  printf 'def close(b):\n    return refund_amount(b)\n' > services/closure.py
+  git add services/closure.py
+)
+: > "$TRANSCRIPT"
+out=$(printf '{"tool_name":"Bash","transcript_path":%s,"tool_input":{"command":"git commit -m x"}}' \
+  "$(printf '%s' "$TRANSCRIPT" | python3 -c 'import json,sys; print(json.dumps(sys.stdin.read()))')" \
+  | (cd "$TMP3" && HOME="$TMP" bash "$HOOKS/precommit-gate.sh") || true)
+check "precommit refund logic in generically named file → deny (content risk)" deny "$out"
+
+(
+  cd "$TMP3"
+  git reset -q
+  printf 'def test_close():\n    assert refund_amount(1) == 0\n' > tests/test_closure.py
+  git add tests/test_closure.py
+)
+out=$(printf '{"tool_name":"Bash","transcript_path":%s,"tool_input":{"command":"git commit -m x"}}' \
+  "$(printf '%s' "$TRANSCRIPT" | python3 -c 'import json,sys; print(json.dumps(sys.stdin.read()))')" \
+  | (cd "$TMP3" && HOME="$TMP" bash "$HOOKS/precommit-gate.sh") || true)
+check "precommit same term inside a test file → allow (test paths excluded)" allow "$out"
+rm -rf "$TMP3"
 
 # ─── result ───
 if [ "$fail" -eq 0 ]; then
