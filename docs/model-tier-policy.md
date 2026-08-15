@@ -7,8 +7,8 @@ Rolepod ships a cost-aware policy that maps **role + risk → model tier**. Each
 | Tier | Claude | Codex | Gemini | Use for |
 |---|---|---|---|---|
 | **cheap** | `haiku` | `gpt-5.6-luna` | `gemini-3-flash-preview` | docs, PM (feature + commercial), customer-facing copy, marketing, FAQ, ADR drafting, read-only scout sweeps — repeatable structured output, no deep architectural reasoning |
-| **balanced** | `sonnet` | `gpt-5.6-terra` | `gemini-3-pro-preview` | normal implementation (backend, frontend, mobile, AI/ML features, data pipelines, perf, UI/UX, devops), QA test writing — the default working tier |
-| **strong** | `inherit` | `gpt-5.6-sol` | `gemini-3-pro-preview` | architecture, billing/payments, security implementation, migrations, adversarial code review — wrong code costs real money or blocks recovery; reviewer must match implementer depth |
+| **balanced** | `sonnet` | `gpt-5.6-terra` | `gemini-3-pro-preview` | ALL implementation — high-risk paths included (billing / payments / migrations: the net is the strong Lead at dispatch + the strong adversarial review floor, never the dev's tier), QA test writing — the default working tier |
+| **strong** | `inherit` | `gpt-5.6-sol` | `gemini-3-pro-preview` | architecture, security audit, adversarial code review — wrong judgment costs real money or blocks recovery; reviewer must match implementer depth |
 
 **Why the tiers resolve the way they do**
 
@@ -36,7 +36,7 @@ which rung was sent, so `make stats` audits apex use after the fact.
 **Effort** layers on top of the model. Claude uses `effort`, Codex uses `model_reasoning_effort` (documented levels `low` / `medium` / `high` / `xhigh` / `ultra`, per the official subagent docs, verified against codex 0.144.1); Gemini has no effort field.
 
 - CLI effort ceiling (`xhigh` on Claude, `ultra` on Codex) — security-engineer only (breach blast radius): the role rides each CLI's highest documented level, never an undocumented one.
-- `high` — strong tier (system-architect, billing-engineer, universal-reviewer) + balanced-tier roles where reasoning depth pays off (ai-ml-engineer, performance-engineer, qa-tester).
+- `high` — strong tier (system-architect, universal-reviewer) + balanced-tier roles where reasoning depth pays off (billing-engineer, ai-ml-engineer, performance-engineer, qa-tester).
 - `medium` — everything else, and deliberately the floor for every agent whose
   artifact feeds downstream phases (specs, ADRs, implementations). Effort cuts
   only thinking tokens — pennies at cheap/balanced output pricing — while a
@@ -62,7 +62,7 @@ which rung was sent, so `make stats` audits apex use after the fact.
 | `performance-engineer` | balanced | Profiling + optimization with measured evidence |
 | `ui-ux-designer` | balanced | Visual polish + a11y |
 | `devops-sre` | balanced | Infra + CI/CD + release |
-| `billing-engineer` | **strong** | Money flows; wrong code = revenue/audit risk |
+| `billing-engineer` | balanced | Money code WRITER — depth is guaranteed by the strong Lead at dispatch + the mandatory strong adversarial review on billing paths, not the writer's tier (2026-08 decision: fan-out strong across implementers measured wasteful; `effort: high` stays) |
 | `security-engineer` | **strong** | Auth + secrets + crypto; wrong code = breach |
 | `system-architect` | **strong** | Architecture decisions are load-bearing across the codebase |
 | `universal-reviewer` | **strong** | Adversarial code review; must match implementer's depth |

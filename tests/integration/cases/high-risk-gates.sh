@@ -5,7 +5,7 @@
 #   - precommit-gate.sh escalates to HARD on high-risk + 0 tests in session
 #   - block-subagent-commit.sh denies sub-agent commits
 #   - security-engineer agent + Core 10 review-code skill exist
-#   - model-tier-policy.md marks security-engineer / billing-engineer as strong
+#   - model-tier-policy.md marks security-engineer strong; billing-engineer balanced (2026-08: writers = balanced, judges = strong)
 set -euo pipefail
 REPO_DIR="$(cd "$(dirname "$0")/../../.." && pwd)"
 cd "$REPO_DIR"
@@ -26,7 +26,7 @@ check "review-code skill exists" "[ -f core/skills/review-code/SKILL.md ]"
 check "legacy security-and-hardening skill absent" "[ ! -d core/skills/security-and-hardening ]"
 check "using-rolepod routes high-risk work through review-code" "grep -qE 'security.*review-code|auth.*review-code|billing.*review-code|payment.*review-code|migration.*review-code' core/skills/using-rolepod/SKILL.md"
 check "security-engineer agent exists" "[ -f core/agents/security-engineer.md ]"
-check "billing-engineer at strong tier" "grep -q '^tier: strong' adapters/claude/agent-frontmatter/billing-engineer.yml"
+check "billing-engineer at balanced tier, effort high kept" "grep -q '^tier: balanced' adapters/claude/agent-frontmatter/billing-engineer.yml && grep -q '^effort: high' adapters/claude/agent-frontmatter/billing-engineer.yml"
 check "security-engineer at strong tier" "grep -q '^tier: strong' adapters/claude/agent-frontmatter/security-engineer.yml"
 check "model-tier-policy doc present" "[ -f docs/model-tier-policy.md ]"
 
