@@ -1,7 +1,7 @@
 #!/bin/bash
 # high-risk-gates — structural check.
 # Asserts the high-risk path enforcement is wired:
-#   - gate-reminder.sh blocks on high-risk + no test edits
+#   - gate-reminder.sh names the RED-test requirement on high-risk (warn-only since v2.47.0 — the hard checkpoint is the commit gate)
 #   - precommit-gate.sh escalates to HARD on high-risk + 0 tests in session
 #   - block-subagent-commit.sh denies sub-agent commits
 #   - security-engineer agent + Core 10 review-code skill exist
@@ -16,7 +16,8 @@ check() {
 }
 
 check "gate-reminder hook exists" "[ -x hooks/gate-reminder.sh ]"
-check "gate-reminder enforces RED-test on high-risk" "grep -q 'HARD BLOCK\|RED-test' hooks/gate-reminder.sh"
+check "gate-reminder names RED-first on high-risk (warn-only, v2.47.0)" "grep -q 'COMMIT WILL BLOCK' hooks/gate-reminder.sh && grep -q 'FIRST (RED)' hooks/gate-reminder.sh && ! grep -q \"'permissionDecision': 'deny'\" hooks/gate-reminder.sh"
+check "tier-nudge carries the strong-role floor (updatedInput)" "grep -q 'updatedInput' hooks/workflow-tier-nudge.sh && grep -q 'STRONG_ROLE_AGENTS' hooks/lib/session_state.py"
 check "precommit-gate hook exists" "[ -x hooks/precommit-gate.sh ]"
 check "precommit-gate escalates on high-risk + 0 tests" "grep -q 'HIGH_RISK_EDITS.*TEST_EDITS\|NO TEST EDITS' hooks/precommit-gate.sh"
 check "block-subagent-commit hook exists" "[ -x hooks/block-subagent-commit.sh ]"
