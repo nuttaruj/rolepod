@@ -81,12 +81,10 @@ Schema-bound + high-risk edit guard. Silent on normal code edits (PR 5 slim — 
 Fires output ONLY when:
 1. **Schema-bound NEW file** (plugin.json, marketplace.json, hooks.json, extension manifests) → soft warn: WebFetch spec FIRST.
 2. **High-risk path** (auth / authentication / authorization / billing / migration / secret / crypto / token / oauth / jwt / sso / saml / webhook / stripe / paypal / charge / invoice — illustrative; canonical regex in the script, parity-pinned by lean-surface) → soft warn + auto-Careful banner with reviewer list (qa-tester + Codex/Gemini when binaries present).
-3. **High-risk path + discipline drift** → HARD BLOCK:
-   - 1st+ high-risk edit + 0 test edits in session → block (RED-test discipline).
-   - 2nd+ high-risk edit + 0 reviewer agents dispatched → block (reviewer floor).
+3. **High-risk path + evidence gap** → the banner is prefixed with what the commit gate WILL require (`⛔ COMMIT WILL BLOCK — …`): 0 test edits since the last commit → write the failing test first; high-risk edits with 0 strong reviewers since the last commit → dispatch `rolepod:universal-reviewer` / `rolepod:security-engineer` before committing. **Warn-only, never a deny (v2.47.0)** — edit-time HARD blocks were the measured reason a user set `ROLEPOD_GATES_SOFT` for good (CourtBook: 33 high-risk edits in one day → 116 unreasoned bypasses), which then silenced the commit gate too. One hard checkpoint, at commit; this hook informs. Evidence window = since the last commit, Lead + subagent transcripts (same reader as the commit gate).
 
 - **Self-guards**: docs / lockfiles / non-high-risk code → silent.
-- **Bypass**: `ROLEPOD_GATES_SOFT=1` (downgrade hard → warn), `ROLEPOD_GATES_PASSED=1` (human-only: set at CLI launch — the model cannot set hook env mid-session).
+- **Bypass**: `ROLEPOD_GATES_SOFT=1` silences the would-block wording (banner stays).
 
 ### `worktree-guard.sh` — PreToolUse Edit/Write/MultiEdit/NotebookEdit (core)
 
@@ -106,7 +104,8 @@ Enforcement layer for the concurrent-edit problem `session-lifecycle` only *warn
 
 Escalates to HARD block at `git commit` time when the session touched high-risk code but never produced a test edit.
 
-- **Effect** (evidence split by risk since v2.46.0): HIGH-RISK diff (path regex OR money-movement terms in staged added lines) → auto-pass ONLY on ≥1 strong-class adversarial reviewer dispatch (security-engineer / universal-reviewer); other HARD blocks → ≥1 test edit or ≥1 reviewer dispatch. Every auto-pass logs to `~/.rolepod/gate-bypass.log` (read by `make stats`) + additionalContext note reminding that evidence is session-wide, not per-diff; insufficient evidence → `permissionDecision: deny`.
+- **Effect** (evidence split by risk since v2.46.0): HIGH-RISK diff (path regex OR money-movement terms in staged added lines) → auto-pass ONLY on ≥1 strong-class adversarial reviewer dispatch (security-engineer / universal-reviewer, and NOT explicitly dispatched at a cheap/balanced model — `inherit` counts because `workflow-tier-nudge.sh` lifts it on a low Lead); other HARD blocks → ≥1 test edit or ≥1 reviewer dispatch. Every auto-pass logs to `~/.rolepod/gate-bypass.log` (read by `make stats`) + additionalContext note; insufficient evidence → `permissionDecision: deny`.
+- **Evidence window (v2.47.0)**: counted **since the last commit** (`git log -1 --format=%ct` — git's clock, unaffected by denied attempts, hook-less commits, or a 12-day session; no commit yet → whole session) across the Lead transcript **plus the session's subagent transcripts** (`<session>/subagents/**/agent-*.jsonl` — Agent tool and Workflow fleets, mtime inside the window, 60 newest). Measured need: a CourtBook session where session-cumulative evidence from day 1 (`tests=303 strong=2`) would have cleared every commit on day 12, while the tests the Workflow agents actually wrote (79–566 edits/day) were invisible to the Lead-only reader.
 - **Self-guards**: non-commit Bash → silent; non-high-risk session → silent.
 - **Bypass**: not needed — evidence auto-passes. `ROLEPOD_GATES_PASSED=1` / `[gates: pass]` are legacy markers (same evidence check; never honored without it). The env-prefix form is deliberately not prescribed anywhere: permission layers read `ENV=1 git commit` as gate circumvention and block it before the hook runs.
 
@@ -132,8 +131,9 @@ When Lead is about to spawn the 2nd+ engineering agent within 10 events, require
 
 Re-injects the tier-per-stage rule at the one moment it is needed — when a Workflow script or Agent call is about to dispatch. The rule lives in the `using-rolepod` router, which is not loaded while authoring a fleet; without this nudge an entire fan-out silently inherits the Lead's model.
 
-- **Effect**: `additionalContext` only — soft, never blocks. Workflow with `agent()` fan-out and zero `model:`/`effort:` overrides → fleet-inherit warning; sweep-type Agent (`scout`/`Explore`/`general-purpose`) with no `model` → cheap-class reminder. Class labels only, no model names (rename-proof).
-- **Self-guards**: any per-stage override present → silent; specialist agents → silent; no JSON / no input → silent.
+- **Effect**: Lead-aware since v2.47.0 — the hook reads the Lead's current model from `transcript_path` (last assistant turn) and classifies its FAMILY (haiku = cheap, sonnet = balanced, opus/fable/mythos = strong, else unknown). Workflow with `agent()` fan-out and zero `model:` overrides → fleet-inherit nudge whose wording depends on the Lead's class (strong Lead: "pin build stages to sonnet — the whole fleet runs at the Lead's cost"; low Lead: "fine for build; the strong pass comes from an Agent-tool reviewer dispatch before commit"). `effort:` alone is depth, not tier — still nudged (it used to silence the hook and log as "mixed"). Sweep-type Agent with no `model` → cheap-class reminder; `system-architect` under a low Lead → "pass model:'opus'".
+- **Strong-role floor (the one non-soft branch)**: `security-engineer` / `universal-reviewer` render `model: inherit` on Claude (a fixed pin would DOWNGRADE a fable-class Lead — see `build/merge-agent.py`). Dispatched with no `model` under a **known-low** Lead, the hook returns `permissionDecision: "allow"` + `updatedInput` with `model: "opus"` (the platform applies `updatedInput` only with `allow`; the Agent tool asks no permission of its own, so nothing is bypassed) and a `systemMessage` naming the lift. Unknown Lead family → untouched (failure = no lift, never a downgrade of a stronger session). Explicit `model:` on the call is the Lead's stated choice → never rewritten; an explicit low model on a strong role is named as a downgrade the commit gate won't count. Measured need: 0 explicit strong overrides across a whole project while the Lead ran sonnet 66 % of its turns.
+- **Self-guards**: any per-stage `model:` present → silent; specialist writer agents → silent; no JSON / no input / no `session_state.py` → silent.
 - **Bypass**: `ROLEPOD_NUDGE_OFF=1` (shared with `claim-verify-nudge.sh`).
 - **Pair**: skill `using-rolepod` (tier-per-stage paragraph).
 
@@ -141,7 +141,7 @@ Re-injects the tier-per-stage rule at the one moment it is needed — when a Wor
 
 Auto-appends the dispatch intent line to `<git-root>/.rolepod/evidence/phase-log.jsonl` — automation over doctrine, because the manual "log EVERY dispatch" rule was forgotten by the model that wrote it.
 
-- **Effect**: one JSONL line per dispatch — `phase: "dispatch"`, `provenance: "hook-auto"`, tool (Agent/Workflow), `agent_type` or workflow `name`, `model` (explicit value or `inherit`), `override`. Class-tier labels stay the Lead's job (a hook cannot classify model names without hardcoding them).
+- **Effect**: one JSONL line per dispatch — `phase: "dispatch"`, `provenance: "hook-auto"`, tool (Agent/Workflow), `agent_type` or workflow `name`, `model` (explicit value or `inherit`), `override`, and since v2.47.0 `lead_model` + `lead_class` (family word only — rename-proof within a family, `unknown` otherwise), `model_overrides` / `effort_overrides` counted separately (a Workflow is `mixed` only on `model:`), and `override: "auto-upgrade"` + `model: "opus"` mirrored from the tier-nudge floor so stats never shows `inherit` for a dispatch the hook lifted.
 - **Self-guards**: not in a git repo → silent; no JSON / non-dispatch tool → silent.
 - **Bypass**: none (append-only bookkeeping, fail-open).
 - **Pair**: `scripts/stats.sh` (Dispatch intent — hook-auto section), the `dispatch-proof` layer.
@@ -158,8 +158,8 @@ Removes own session lock so the next session in this worktree does not see a pha
 
 | Env | When |
 |---|---|
-| `ROLEPOD_GATES_SOFT=1` | Iterating on doctrine itself; want warnings instead of hard blocks for one session |
-| `ROLEPOD_GATES_PASSED=1` | Human-only, set at CLI launch. Legacy for commits: the precommit gate auto-passes on session evidence, and an env-prefixed `git commit` is never prescribed (permission layers read that shape as gate circumvention) |
+| `ROLEPOD_GATES_SOFT=1` | Iterating on doctrine itself; want warnings instead of hard blocks for one session. Set **permanently** (e.g. in a project's `settings.local.json` `env`) it silences the commit gate — the only hard checkpoint left — for good; `make stats` shows every use |
+| `ROLEPOD_GATES_PASSED=1` | Human-only, set at CLI launch. Legacy for commits: the precommit gate auto-passes on windowed evidence, and an env-prefixed `git commit` is never prescribed (permission layers read that shape as gate circumvention) |
 | `ROLEPOD_NO_CONTRACT=1` | Single-domain Agent spawn that doesn't need cohesion contract (e.g. read-only research agent) |
 | `ROLEPOD_ALLOW_SHARED_WORKTREE=1` | Intentional shared session (read-only review, paired exploration) |
 

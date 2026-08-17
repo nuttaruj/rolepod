@@ -53,7 +53,7 @@ bypasses = read_jsonl(bypass_log)
 # this machine appends here; shown so weakly-evidenced high-risk commits are
 # observable at all).
 autopass_log = os.path.expanduser("~/.rolepod/gate-bypass.log")
-autopasses, autopass_risky = [], []
+autopasses, autopass_risky, autopass_unlabeled = [], [], []
 try:
     with open(autopass_log, encoding="utf-8") as f:
         for ln in f:
@@ -61,8 +61,11 @@ try:
                 continue
             autopasses.append(ln.strip())
             # v2.46.0+ lines carry "risk=<path|none>"; older lines lack the
-            # field — count those as risky=unknown, not as safe.
-            if "risk=none" not in ln:
+            # field — reported SEPARATELY (a reader once summed both as
+            # "all high-risk"): labeled risky vs pre-v2.46 unlabeled.
+            if "risk=" not in ln:
+                autopass_unlabeled.append(ln.strip())
+            elif "risk=none" not in ln:
                 autopass_risky.append(ln.strip())
 except OSError:
     pass
@@ -108,10 +111,23 @@ if dispatches:
         print(f"\n  Dispatch intent — hook-auto ({len(auto)}):")
         for (tool, model), n in sorted(combo.items()):
             print(f"    {tool:<10} {model:<28} ×{n}")
-        inh = sum(1 for d in auto if (d.get("model") or "inherit") == "inherit")
+        inh = [d for d in auto if (d.get("model") or "inherit") == "inherit"]
         if inh:
-            print(f"    ⚠ {inh} inherited the Lead's model — tier-per-stage "
+            low = sum(1 for d in inh if d.get("lead_class") in ("cheap", "balanced"))
+            print(f"    ⚠ {len(inh)} inherited the Lead's model — tier-per-stage "
                   "wants an explicit per-stage choice or a stated reason")
+            if low:
+                print(f"      {low} of them under a cheap/balanced Lead — the fleet ran "
+                      "low-class; the strong pass must come from an Agent-tool "
+                      "reviewer dispatch (hook-lifted) before commit")
+        lifted = sum(1 for d in auto if d.get("override") == "auto-upgrade")
+        if lifted:
+            print(f"    ✓ strong-role floor applied ×{lifted} — reviewer lifted to the "
+                  "strong alias under a low-class Lead (v2.47.0)")
+        leads = Counter(d.get("lead_class") or "n/a" for d in auto if d.get("lead_class"))
+        if leads:
+            print("    Lead class at dispatch: " + ", ".join(
+                f"{k}={v}" for k, v in sorted(leads.items())))
 
 proofs = [r for r in rows if r.get("phase") == "dispatch-proof"]
 if proofs:
@@ -145,9 +161,12 @@ if ships:
 if autopasses:
     print(f"\n  Precommit auto-passes ({len(autopasses)}, machine-global"
           " ~/.rolepod/gate-bypass.log):")
-    print(f"    on a HIGH-RISK diff (or pre-v2.46 unlabeled): {len(autopass_risky)}")
+    print(f"    on a HIGH-RISK diff (labeled, v2.46+): {len(autopass_risky)}")
+    if autopass_unlabeled:
+        print(f"    pre-v2.46 unlabeled (risk unknown, other repos likely — this log"
+              f" is machine-global): {len(autopass_unlabeled)}")
     if autopass_risky:
-        print("    ⚠ each risky auto-pass = a high-risk commit cleared on session"
+        print("    ⚠ each risky auto-pass = a high-risk commit cleared on windowed"
               " evidence — audit the newest ones against actual review dispatches")
 
 if bypasses:

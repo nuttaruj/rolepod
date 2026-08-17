@@ -55,9 +55,10 @@ TIER_MODELS = {
     # Claude strong = "inherit" ON PURPOSE: a fixed pin (e.g. "opus") would
     # DOWNGRADE fable-class sessions, and frontmatter cannot express
     # "max(session, opus)". The cost: on a balanced-class Lead, inherit is a
-    # silent downgrade — doctrine (router tier hint, subagent-dispatch,
-    # review-code R4 line) requires the Lead to pass an explicit
-    # strongest-exposed override at dispatch in that case.
+    # silent downgrade. Since v2.47.0 that gap is closed mechanically for the
+    # review roles by hooks/workflow-tier-nudge.sh (security-engineer /
+    # universal-reviewer, no model, known-low Lead → updatedInput model=opus);
+    # doctrine still asks the Lead for the explicit override elsewhere.
     "claude": {"cheap": "haiku", "balanced": "sonnet", "strong": "inherit"},
     "codex": {"cheap": "gpt-5.6-luna", "balanced": "gpt-5.6-terra", "strong": "gpt-5.6-sol"},
     "gemini": {"cheap": "gemini-3-flash-preview", "balanced": "gemini-3-pro-preview", "strong": "gemini-3-pro-preview"},

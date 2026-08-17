@@ -163,14 +163,21 @@ fi
 # T-gate addition (Fix 2): inspect session transcript for test edits.
 # Logic: high-risk path diff + 0 test edits this session → strengthen block.
 #        Normal code diff + 0 test edits → escalate warn wording.
+# v2.47.0: evidence is WINDOWED to "since the last commit" (git's own clock —
+# unaffected by denied attempts, hook-less commits, or a 12-day session) and
+# includes the session's subagent transcripts (Workflow / Agent fleets write
+# the tests in delegated sessions). See session_state.count_all.
 SESSION_STATE="$(dirname "$0")/lib/session_state.py"
 TEST_EDITS=0
 HIGH_RISK_EDITS=0
 REVIEWERS=0
 STRONG_REVIEWERS=0
+SINCE_EPOCH=$(git log -1 --format=%ct 2>/dev/null || true)
+SINCE_HUMAN=$(git log -1 --format=%cd --date=format:'%Y-%m-%d %H:%M' 2>/dev/null || true)
+[ -n "$SINCE_HUMAN" ] && SINCE_HUMAN="since last commit $SINCE_HUMAN" || SINCE_HUMAN="whole session (no commit yet)"
 if [ -f "$SESSION_STATE" ] && command -v python3 >/dev/null 2>&1; then
   # ONE transcript scan for all four counts (see gate-reminder.sh).
-  COUNTS=$(printf '%s' "$INPUT" | python3 "$SESSION_STATE" count-all 2>/dev/null || echo "0 0 0 0")
+  COUNTS=$(printf '%s' "$INPUT" | python3 "$SESSION_STATE" count-all "$SINCE_EPOCH" 2>/dev/null || echo "0 0 0 0")
   read -r TEST_EDITS HIGH_RISK_EDITS REVIEWERS STRONG_REVIEWERS <<< "$COUNTS"
 fi
 TEST_EDITS=${TEST_EDITS:-0}
@@ -194,16 +201,16 @@ fi
 # Build deny reason
 REASON="precommit-gate BLOCKED. ${BYPASS_IGNORED}"
 REASON+="Diff: $FILES_CHANGED files / $LINES_CHANGED lines / $LOGIC_COUNT logic lines. "
-REASON+="Session: $TEST_EDITS test edits / $HIGH_RISK_EDITS high-risk edits / $REVIEWERS reviewer dispatches ($STRONG_REVIEWERS strong). "
+REASON+="Evidence ($SINCE_HUMAN, Lead + subagent transcripts): $TEST_EDITS test edits / $HIGH_RISK_EDITS high-risk edits / $REVIEWERS reviewer dispatches ($STRONG_REVIEWERS strong). "
 [ -n "$HIGH_RISK" ] && REASON+="HIGH-RISK path: $HIGH_RISK → mandatory qa-tester + security-engineer review. "
 if [ "$HIGH_RISK_EDITS" -gt 0 ] && [ "$TEST_EDITS" -eq 0 ]; then
   REASON+="NO TEST EDITS in this session despite touching high-risk code — T-gate violation (T1: bug/feature/migration/auth/billing → test required). "
 fi
 if [ -n "$HIGH_RISK" ] && [ "$STRONG_REVIEWERS" -eq 0 ]; then
-  REASON+="NO STRONG ADVERSARIAL REVIEWER dispatched — a high-risk diff clears ONLY on a security-engineer or universal-reviewer dispatch; test edits and qa-tester are the test floor, not the review (a green suite has already shipped money bugs). "
+  REASON+="NO STRONG ADVERSARIAL REVIEWER dispatched since the last commit — a high-risk diff clears ONLY on a security-engineer or universal-reviewer dispatch (Agent tool; the dispatch hook lifts them to strong class whatever the Lead runs — do not pass a balanced model on them); test edits and qa-tester are the test floor, not the review (a green suite has already shipped money bugs). "
 fi
 REASON+="Run gates explicitly: S1-S5 (simplicity) + T1-T6 (tests) + F1-F5 (failure-mode) — checklists: finish-work §1, check-work §6. "
-REASON+="This commit auto-passes once the session shows real evidence — HIGH-RISK diff: dispatch security-engineer or universal-reviewer; other blocks: write the failing test or dispatch a reviewer — then rerun the SAME git commit. No bypass marker, no env prefix."
+REASON+="This commit auto-passes once evidence exists SINCE THE LAST COMMIT — HIGH-RISK diff: dispatch security-engineer or universal-reviewer; other blocks: write the failing test or dispatch a reviewer — then rerun the SAME git commit. No bypass marker, no env prefix."
 
 # Decide: HARD block vs SOFT warn
 HARD_BLOCK=0
@@ -257,7 +264,7 @@ if [ "$AUTO_PASS" -eq 1 ]; then
     >> "$HOME/.rolepod/gate-bypass.log" 2>/dev/null || true
   NOTE="precommit-gate auto-passed on session evidence: $TEST_EDITS test edits / $REVIEWERS reviewer dispatches / $STRONG_REVIEWERS strong"
   [ -n "$HIGH_RISK" ] && NOTE+=" (HIGH-RISK path: $HIGH_RISK)"
-  NOTE+=". Evidence is session-wide, this diff is not — confirm S1-S5 / T1-T6 (finish-work §1) / F1-F5 (check-work §6) cover THIS change."
+  NOTE+=" ($SINCE_HUMAN). Evidence is per-window, not per-line — confirm S1-S5 / T1-T6 (finish-work §1) / F1-F5 (check-work §6) cover THIS change."
   [ -n "$LINT_WARN" ] && NOTE+=" | $LINT_WARN"
   ROLEPOD_HOOK_MSG="$NOTE" python3 -c "
 import json, os

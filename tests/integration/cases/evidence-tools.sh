@@ -65,7 +65,11 @@ printf '2026-08-15T10:05:00 auto-pass on evidence (tests=0 reviewers=1 strong=1 
   >> "$FIX/.rolepod/gate-bypass.log"
 OUT=$(HOME="$FIX" bash "$REPO_DIR/scripts/stats.sh" "$FIX")
 check "stats surfaces precommit auto-passes"      "printf '%s' \"\$OUT\" | grep -q 'Precommit auto-passes (2'"
-check "stats flags the risky auto-pass (not the risk=none one)" "printf '%s' \"\$OUT\" | grep -q 'HIGH-RISK diff (or pre-v2.46 unlabeled): 1'"
+check "stats flags the risky auto-pass (not the risk=none one)" "printf '%s' \"\$OUT\" | grep -q 'HIGH-RISK diff (labeled, v2.46+): 1'"
+printf '2026-08-10T10:00:00 auto-pass on evidence (tests=3 reviewers=2): git commit -m old\n' >> "$FIX/.rolepod/gate-bypass.log"
+OUT=$(HOME="$FIX" bash "$REPO_DIR/scripts/stats.sh" "$FIX")
+check "stats reports pre-v2.46 unlabeled auto-passes separately (not as high-risk)" \
+  "printf '%s' \"\$OUT\" | grep -q 'HIGH-RISK diff (labeled, v2.46+): 1' && printf '%s' \"\$OUT\" | grep -q 'pre-v2.46 unlabeled.*: 1'"
 
 # ── claude dispatch hooks (tier nudge + auto-log) ───────────────────────
 printf '{"tool_name":"Workflow","tool_input":{"script":"await agent(1)"}}' > "$FIX/wf-inherit.json"
@@ -83,6 +87,49 @@ check "dispatch auto-log appends a hook-auto line" \
   "cd '$FIX/repo' && bash '$REPO_DIR/hooks/dispatch-auto-log.sh' < '$FIX/agent-scout.json' && grep -c 'hook-auto' .rolepod/evidence/phase-log.jsonl | grep -q 2"
 check "dispatch auto-log is fail-open outside a repo" \
   "cd /tmp && bash '$REPO_DIR/hooks/dispatch-auto-log.sh' < '$FIX/agent-scout.json'"
+
+# ── v2.47.0: Lead-aware nudge + strong-role floor + honest "mixed" ────────
+printf '{"type":"assistant","timestamp":"2026-08-17T01:00:00.000Z","message":{"model":"claude-sonnet-5","content":[]}}\n' > "$FIX/lead-sonnet.jsonl"
+printf '{"type":"assistant","timestamp":"2026-08-17T01:00:00.000Z","message":{"model":"claude-fable-5","content":[]}}\n' > "$FIX/lead-fable.jsonl"
+printf '{"type":"assistant","timestamp":"2026-08-17T01:00:00.000Z","message":{"model":"claude-nova-9","content":[]}}\n' > "$FIX/lead-unknown.jsonl"
+mkj() { # $1 out, $2 tool, $3 transcript, $4 tool_input json
+  printf '{"tool_name":"%s","transcript_path":"%s","tool_input":%s}' "$2" "$3" "$4" > "$1"
+}
+mkj "$FIX/rev-sonnet.json"  Agent "$FIX/lead-sonnet.jsonl"  '{"subagent_type":"rolepod:universal-reviewer","prompt":"review"}'
+mkj "$FIX/sec-sonnet.json"  Agent "$FIX/lead-sonnet.jsonl"  '{"subagent_type":"security-engineer","prompt":"audit"}'
+mkj "$FIX/rev-fable.json"   Agent "$FIX/lead-fable.jsonl"   '{"subagent_type":"rolepod:universal-reviewer","prompt":"review"}'
+mkj "$FIX/rev-unknown.json" Agent "$FIX/lead-unknown.jsonl" '{"subagent_type":"rolepod:universal-reviewer","prompt":"review"}'
+mkj "$FIX/rev-explicit.json" Agent "$FIX/lead-fable.jsonl"  '{"subagent_type":"rolepod:universal-reviewer","model":"sonnet","prompt":"review"}'
+mkj "$FIX/arch-sonnet.json" Agent "$FIX/lead-sonnet.jsonl"  '{"subagent_type":"rolepod:system-architect","prompt":"design"}'
+mkj "$FIX/wf-effort.json"   Workflow "$FIX/lead-sonnet.jsonl" '{"script":"name: \"w\" await agent(1, {effort: \"high\"})"}'
+mkj "$FIX/wf-strong.json"   Workflow "$FIX/lead-fable.jsonl"  '{"script":"name: \"w\" await agent(1)"}'
+NUDGE="$REPO_DIR/hooks/workflow-tier-nudge.sh"
+check "floor: universal-reviewer + sonnet Lead → allow + updatedInput model=opus" \
+  "bash '$NUDGE' < '$FIX/rev-sonnet.json' | python3 -c 'import json,sys; o=json.load(sys.stdin)[\"hookSpecificOutput\"]; assert o[\"permissionDecision\"]==\"allow\" and o[\"updatedInput\"][\"model\"]==\"opus\" and o[\"updatedInput\"][\"prompt\"]==\"review\"'"
+check "floor: bare security-engineer name is lifted too" \
+  "bash '$NUDGE' < '$FIX/sec-sonnet.json' | grep -q '\"updatedInput\"'"
+check "floor: fable Lead → untouched (never pin a stronger session down)" \
+  "[ -z \"\$(bash '$NUDGE' < '$FIX/rev-fable.json')\" ]"
+check "floor: unknown Lead family → untouched (fail = no upgrade, never a downgrade)" \
+  "[ -z \"\$(bash '$NUDGE' < '$FIX/rev-unknown.json')\" ]"
+check "floor: explicit model=sonnet on a strong role → named, not rewritten" \
+  "bash '$NUDGE' < '$FIX/rev-explicit.json' | grep -q 'EXPLICIT downgrade' && ! bash '$NUDGE' < '$FIX/rev-explicit.json' | grep -q updatedInput"
+check "floor honors ROLEPOD_NUDGE_OFF" \
+  "[ -z \"\$(ROLEPOD_NUDGE_OFF=1 bash '$NUDGE' < '$FIX/rev-sonnet.json')\" ]"
+check "system-architect under sonnet Lead → nudge only (cohesion may deny it)" \
+  "bash '$NUDGE' < '$FIX/arch-sonnet.json' | grep -q 'system-architect' && ! bash '$NUDGE' < '$FIX/arch-sonnet.json' | grep -q updatedInput"
+check "nudge: effort-only Workflow is NOT a tier choice → still nudged, Lead-aware" \
+  "bash '$NUDGE' < '$FIX/wf-effort.json' | grep -q 'effort is depth' && bash '$NUDGE' < '$FIX/wf-effort.json' | grep -q 'claude-sonnet-5'"
+check "nudge: model-less Workflow under a strong Lead → cost wording (pin build to sonnet)" \
+  "bash '$NUDGE' < '$FIX/wf-strong.json' | grep -q \"model:'sonnet'\""
+LOG="$REPO_DIR/hooks/dispatch-auto-log.sh"
+check "auto-log: effort-only Workflow logs model=inherit + effort_overrides=1 (was a false 'mixed')" \
+  "cd '$FIX/repo' && bash '$LOG' < '$FIX/wf-effort.json' && tail -1 .rolepod/evidence/phase-log.jsonl | grep -q '\"model\": \"inherit\"' && tail -1 .rolepod/evidence/phase-log.jsonl | grep -q '\"effort_overrides\": 1'"
+check "auto-log: lifted reviewer logs model=opus override=auto-upgrade + lead_class" \
+  "cd '$FIX/repo' && bash '$LOG' < '$FIX/rev-sonnet.json' && tail -1 .rolepod/evidence/phase-log.jsonl | grep -q '\"override\": \"auto-upgrade\"' && tail -1 .rolepod/evidence/phase-log.jsonl | grep -q '\"lead_class\": \"balanced\"'"
+OUT=$(bash "$REPO_DIR/scripts/stats.sh" "$FIX/repo")
+check "stats reports the strong-role floor + Lead class at dispatch" \
+  "printf '%s' \"\$OUT\" | grep -q 'strong-role floor applied' && printf '%s' \"\$OUT\" | grep -q 'Lead class at dispatch'"
 
 # ── junit-summary.sh ────────────────────────────────────────────────────
 cat > "$FIX/report.xml" <<'EOF'

@@ -83,6 +83,73 @@ EDIT_TOOLS = {"Edit", "Write", "MultiEdit", "NotebookEdit"}
 # match either so reviewer counting does not depend on the CLI version.
 AGENT_TOOLS = {"Agent", "Task"}
 
+# ── Model class (v2.47.0) ───────────────────────────────────────────────
+# Family word → class. Only the FAMILY is matched (haiku / sonnet / opus…),
+# never a version, so "claude-sonnet-5" → "claude-sonnet-6" changes nothing.
+# Unknown family (a future tier, a gateway id, "<synthetic>") → "unknown".
+# Hooks that UPGRADE act only on the KNOWN-LOW classes, so an unknown Lead is
+# left untouched — the failure mode is "no upgrade" (today's behavior), never
+# a downgrade of a model stronger than the alias we would write.
+MODEL_CLASS = (
+    (re.compile(r"haiku", re.IGNORECASE), "cheap"),
+    (re.compile(r"sonnet", re.IGNORECASE), "balanced"),
+    (re.compile(r"opus|fable|mythos", re.IGNORECASE), "strong"),
+)
+LOW_CLASSES = {"cheap", "balanced"}
+
+# Strong-tier roles rendered `model: inherit` on Claude (merge-agent.py keeps
+# them inherit so a fable-class Lead is not pinned DOWN to opus). On a
+# known-low Lead that inherit is a silent downgrade of the adversarial pass —
+# the dispatch hook writes the strong alias into the Agent call instead.
+# system-architect is deliberately absent: cohesion-contract-check may deny a
+# parallel architect spawn, and hook-decision precedence is undocumented, so
+# it gets a nudge, not a rewrite.
+STRONG_ROLE_AGENTS = {"security-engineer", "universal-reviewer"}
+STRONG_ALIAS = "opus"
+
+
+def model_class(name: str | None) -> str:
+    for rx, cls in MODEL_CLASS:
+        if rx.search(name or ""):
+            return cls
+    return "unknown"
+
+
+def lead_model(transcript_path: str, tail_bytes: int = 262144) -> str:
+    """Model of the LAST assistant turn in the transcript — the Lead's current
+    model (or the dispatching subagent's, when a hook fires inside one).
+    Tail-scan: read the last `tail_bytes`, walk lines backwards, grow ×4
+    until found or the file is exhausted. '' when unknown / unreadable."""
+    if not transcript_path or not os.path.isfile(transcript_path):
+        return ""
+    try:
+        size = os.path.getsize(transcript_path)
+        with open(transcript_path, "rb") as f:
+            while True:
+                start = max(0, size - tail_bytes)
+                f.seek(start)
+                chunk = f.read(size - start)
+                lines = chunk.split(b"\n")
+                if start > 0:
+                    lines = lines[1:]  # first line may be a partial record
+                for raw in reversed(lines):
+                    if b'"assistant"' not in raw or b'"model"' not in raw:
+                        continue
+                    try:
+                        ev = json.loads(raw)
+                    except Exception:
+                        continue
+                    if ev.get("type") != "assistant":
+                        continue
+                    m = (ev.get("message") or {}).get("model") or ""
+                    if m and m != "<synthetic>":
+                        return m
+                if start == 0:
+                    return ""
+                tail_bytes *= 4
+    except Exception:
+        return ""
+
 
 def _load_hook_input() -> dict:
     raw = sys.stdin.read() or "{}"
@@ -110,7 +177,9 @@ def _iter_transcript_events(transcript_path: str) -> Iterable[dict]:
         return
 
 
-def _iter_tool_uses(transcript_path: str) -> Iterable[tuple[str, dict]]:
+def _iter_tool_uses(
+    transcript_path: str, since: str | None = None
+) -> Iterable[tuple[str, dict]]:
     """
     Yield (tool_name, tool_input) for every tool use in the transcript.
 
@@ -118,8 +187,16 @@ def _iter_tool_uses(transcript_path: str) -> Iterable[tuple[str, dict]]:
     both legacy `{"type":"tool_use","name":...,"input":...}` blocks inside
     message.content and newer top-level `{"type":"tool_use","name":...}`
     entries.
+
+    `since` — ISO-8601 UTC floor ("YYYY-MM-DDTHH:MM:SS"): events whose
+    `timestamp` sorts before it are skipped. Events WITHOUT a timestamp are
+    kept (fail-open — never make evidence vanish on a shape change).
     """
     for ev in _iter_transcript_events(transcript_path):
+        if since and isinstance(ev, dict):
+            ts = ev.get("timestamp")
+            if isinstance(ts, str) and ts[:19] < since:
+                continue
         # Top-level tool_use event.
         if isinstance(ev, dict) and ev.get("type") == "tool_use":
             yield (ev.get("name") or "", ev.get("input") or {})
@@ -265,26 +342,94 @@ def count_reviewers_dispatched(transcript_path: str) -> int:
     return n
 
 
-def count_all(transcript_path: str) -> tuple[int, int, int, int]:
+def _since_iso(since_epoch: float | None) -> str | None:
+    if not since_epoch:
+        return None
+    try:
+        import datetime
+        return datetime.datetime.fromtimestamp(
+            float(since_epoch), datetime.timezone.utc
+        ).strftime("%Y-%m-%dT%H:%M:%S")
+    except Exception:
+        return None
+
+
+# Newest-first cap on subagent transcripts scanned per gate call — a
+# never-committed repo has no window, and a long session can hold hundreds
+# of agent files (CourtBook: 293 / 127 MB). 60 newest covers any real fleet
+# (Workflow concurrency caps at 16 per run).
+AGENT_TRANSCRIPT_CAP = 60
+
+
+def agent_transcripts(transcript_path: str, since_epoch: float | None = None) -> list[str]:
+    """Subagent transcripts of the same session — Claude Code stores them
+    next to the main file: `<session-id>/subagents/agent-*.jsonl` (Agent
+    tool) and `<session-id>/subagents/workflows/<run>/agent-*.jsonl`
+    (Workflow tool fleets). Walked recursively; only files modified at/after
+    `since_epoch` (when given), newest first, capped. Delegated sessions put
+    test-writing INSIDE subagents: without this the Lead's own transcript
+    shows 0 test edits and the gate false-blocks — the documented reason
+    users reach for ROLEPOD_GATES_SOFT."""
+    if not transcript_path or not transcript_path.endswith(".jsonl"):
+        return []
+    sub = os.path.join(transcript_path[:-6], "subagents")
+    if not os.path.isdir(sub):
+        return []
+    try:
+        cands = []
+        for root, _dirs, files in os.walk(sub):
+            for fn in files:
+                if not (fn.startswith("agent-") and fn.endswith(".jsonl")):
+                    continue
+                fp = os.path.join(root, fn)
+                try:
+                    mt = os.path.getmtime(fp)
+                except OSError:
+                    continue
+                if since_epoch and mt < float(since_epoch):
+                    continue
+                cands.append((mt, fp))
+        cands.sort(reverse=True)
+        return [fp for _, fp in cands[:AGENT_TRANSCRIPT_CAP]]
+    except Exception:
+        return []
+
+
+def count_all(
+    transcript_path: str, since_epoch: float | None = None
+) -> tuple[int, int, int, int]:
     """Single-pass tally of the four gate counts — one transcript scan instead
     of four. Returns (test_edits, high_risk_edits, reviewers, strong_reviewers);
     the first three identical to the standalone count_* they replace
     (test/high-risk are mutually exclusive per edit; test wins — same
-    precedence as count_high_risk_edits' skip)."""
+    precedence as count_high_risk_edits' skip).
+
+    v2.47.0 — evidence is WINDOWED to `since_epoch` (the gate passes the last
+    commit's timestamp): a 12-day session must not clear today's commit with
+    a reviewer dispatched ten days ago. Subagent transcripts of the same
+    session (mtime inside the window) are tallied too — see agent_transcripts.
+    A strong reviewer counts only when it was NOT explicitly dispatched at a
+    known-low model (`model: sonnet` on universal-reviewer is a downgrade,
+    not the strong pass); `inherit` counts because the dispatch hook lifts
+    it to the strong alias on a low Lead."""
+    since = _since_iso(since_epoch)
     test_edits = high_risk_edits = reviewers = strong_reviewers = 0
-    for tool, inp in _iter_tool_uses(transcript_path):
-        if tool in EDIT_TOOLS:
-            path = _file_from_input(inp)
-            if is_test_file(path):
-                test_edits += 1
-            elif is_high_risk_path(path) and is_code_file(path):
-                high_risk_edits += 1
-        elif tool in AGENT_TOOLS:
-            name = _bare_agent_name(inp.get("subagent_type"))
-            if name in REVIEWER_AGENTS:
-                reviewers += 1
-            if name in STRONG_REVIEWER_AGENTS:
-                strong_reviewers += 1
+    paths = [transcript_path] + agent_transcripts(transcript_path, since_epoch)
+    for tp in paths:
+        for tool, inp in _iter_tool_uses(tp, since):
+            if tool in EDIT_TOOLS:
+                path = _file_from_input(inp)
+                if is_test_file(path):
+                    test_edits += 1
+                elif is_high_risk_path(path) and is_code_file(path):
+                    high_risk_edits += 1
+            elif tool in AGENT_TOOLS:
+                name = _bare_agent_name(inp.get("subagent_type"))
+                if name in REVIEWER_AGENTS:
+                    reviewers += 1
+                if (name in STRONG_REVIEWER_AGENTS
+                        and model_class(inp.get("model")) not in LOW_CLASSES):
+                    strong_reviewers += 1
     return test_edits, high_risk_edits, reviewers, strong_reviewers
 
 
@@ -327,8 +472,19 @@ def main() -> int:
 
     if query == "count-all":
         # test_edits high_risk_edits reviewers strong_reviewers — one line,
-        # one transcript scan.
-        print("%d %d %d %d" % count_all(transcript_path))
+        # one transcript scan. Optional argv[2] = epoch floor (last commit).
+        since_epoch = None
+        if len(sys.argv) > 2 and sys.argv[2].strip():
+            try:
+                since_epoch = float(sys.argv[2])
+            except ValueError:
+                since_epoch = None
+        print("%d %d %d %d" % count_all(transcript_path, since_epoch))
+    elif query == "lead-class":
+        # "<model> <class>" of the last assistant turn — "" unknown when
+        # the transcript is missing or has no model field.
+        m = lead_model(transcript_path)
+        print("%s %s" % (m or "-", model_class(m)))
     elif query == "count-test-edits":
         print(count_test_edits(transcript_path))
     elif query == "count-high-risk-edits":

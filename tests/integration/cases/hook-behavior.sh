@@ -93,6 +93,21 @@ echo "$out" | grep -q 'codex exec' \
   && { echo "  ✗ gate-reminder recommends codex exec to a Codex Lead (self-review)"; fail=$((fail+1)); } \
   || echo "  ✓ gate-reminder excludes the Lead's own CLI from the reviewer list"
 
+# v2.47.0: gate-reminder never denies — edit-time HARD blocks were the
+# measured reason a user set ROLEPOD_GATES_SOFT for good (which silenced the
+# commit gate too). It NAMES what the commit gate will require instead.
+out=$(gr '{"tool_name":"Edit","tool_input":{"file_path":"src/auth/login.py"}}')
+echo "$out" | grep -q '"deny"' \
+  && { echo "  ✗ gate-reminder still denies an edit (v2.47.0: warn-only, one hard checkpoint at commit)"; fail=$((fail+1)); } \
+  || echo "  ✓ gate-reminder high-risk edit with 0 evidence → NOT a deny"
+echo "$out" | grep -q 'COMMIT WILL BLOCK' \
+  && echo "  ✓ gate-reminder names the coming commit-gate requirement" \
+  || { echo "  ✗ gate-reminder missing would-block wording"; fail=$((fail+1)); }
+out=$(ROLEPOD_GATES_SOFT=1 gr '{"tool_name":"Edit","tool_input":{"file_path":"src/auth/login.py"}}')
+echo "$out" | grep -q 'COMMIT WILL BLOCK' \
+  && { echo "  ✗ gate-reminder SOFT should silence the would-block wording"; fail=$((fail+1)); } \
+  || echo "  ✓ gate-reminder SOFT silences the would-block wording (banner stays)"
+
 # ── precommit-gate: high-risk staged diff blocks; claim-bypass ignored ──
 TMP=$(mktemp -d)
 trap 'rm -rf "$TMP"' EXIT
@@ -231,6 +246,59 @@ out=$(printf '{"tool_name":"Bash","transcript_path":%s,"tool_input":{"command":"
   | (cd "$TMP3" && HOME="$TMP" bash "$HOOKS/precommit-gate.sh") || true)
 check "precommit same term inside a test file → allow (test paths excluded)" allow "$out"
 rm -rf "$TMP3"
+
+# ── precommit: evidence window = since the last commit (v2.47.0) ────────
+# A 12-day session must not clear today's high-risk commit with a reviewer
+# dispatched ten days ago. git's commit clock is the floor; events without a
+# timestamp stay counted (fail-open); subagent transcripts of the session
+# (<transcript-dir>/<session>/subagents/**/agent-*.jsonl) count too.
+TMP4=$(mktemp -d)
+(
+  cd "$TMP4"
+  git init -q .
+  git config user.email t@t && git config user.name t
+  printf 'x\n' > README && git add README && git commit -q -m init
+  mkdir -p auth
+  printf 'def charge(u):\n    return u.balance - 1\n' > auth/billing.py
+  git add auth/billing.py
+)
+T4="$TMP4/sess.jsonl"
+pcw() { # $1 = transcript, $2 = extra env prefix (optional)
+  printf '{"tool_name":"Bash","transcript_path":%s,"tool_input":{"command":"git commit -m x"}}' \
+    "$(printf '%s' "$1" | python3 -c 'import json,sys; print(json.dumps(sys.stdin.read()))')" \
+    | (cd "$TMP4" && HOME="$TMP" env $2 bash "$HOOKS/precommit-gate.sh") || true
+}
+printf '%s\n' \
+  '{"type":"assistant","timestamp":"2020-01-01T00:00:00.000Z","message":{"model":"claude-opus-5","content":[{"type":"tool_use","name":"Agent","input":{"subagent_type":"rolepod:security-engineer","prompt":"review"}}]}}' \
+  > "$T4"
+out=$(pcw "$T4" "")
+check "precommit window: strong reviewer BEFORE the last commit → deny (stale evidence)" deny "$out"
+echo "$out" | grep -q 'since last commit' \
+  && echo "  ✓ deny reason states the evidence window" \
+  || { echo "  ✗ deny reason missing the window"; fail=$((fail+1)); }
+printf '%s\n' \
+  '{"type":"assistant","timestamp":"2099-01-01T00:00:00.000Z","message":{"model":"claude-opus-5","content":[{"type":"tool_use","name":"Agent","input":{"subagent_type":"rolepod:security-engineer","prompt":"review"}}]}}' \
+  > "$T4"
+out=$(pcw "$T4" "")
+check "precommit window: strong reviewer AFTER the last commit → auto-pass" allow "$out"
+printf '%s\n' \
+  '{"type":"assistant","timestamp":"2099-01-01T00:00:00.000Z","message":{"model":"claude-sonnet-5","content":[{"type":"tool_use","name":"Agent","input":{"subagent_type":"rolepod:universal-reviewer","model":"sonnet","prompt":"review"}}]}}' \
+  > "$T4"
+out=$(pcw "$T4" "")
+check "precommit: universal-reviewer explicitly at sonnet → NOT the strong pass → deny" deny "$out"
+# Subagent transcript evidence: main transcript empty, a Workflow agent wrote
+# the test — counts for a NON-path HARD block (env-forced normal diff).
+(
+  cd "$TMP4" && git reset -q && printf 'y = 2\n' > util.py && git add util.py
+)
+: > "$T4"
+mkdir -p "$TMP4/sess/subagents/workflows/wf_1"
+printf '%s\n' \
+  '{"type":"assistant","timestamp":"2099-01-01T00:00:00.000Z","message":{"model":"claude-sonnet-5","content":[{"type":"tool_use","name":"Write","input":{"file_path":"tests/test_util.py","content":"x"}}]}}' \
+  > "$TMP4/sess/subagents/workflows/wf_1/agent-abc.jsonl"
+out=$(pcw "$T4" "ROLEPOD_GATES_HARD=1")
+check "precommit: test written by a Workflow subagent counts as evidence → auto-pass" allow "$out"
+rm -rf "$TMP4"
 
 # ─── result ───
 if [ "$fail" -eq 0 ]; then

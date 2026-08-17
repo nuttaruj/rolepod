@@ -9,13 +9,17 @@
 #   Trivial path (docs/configs/lockfiles)             → silent
 #   Schema-bound NEW file                             → soft warn (WebFetch spec FIRST)
 #   Normal code edit                                  → silent
-#   High-risk path, 1st edit                          → soft warn + auto-Careful banner
-#   High-risk path, 2nd+ edit, 0 test edits           → HARD block (RED-test discipline)
-#   High-risk path, ≥ 2 edits, 0 reviewers dispatched → HARD block (reviewer floor)
+#   High-risk path                                    → auto-Careful banner, and when
+#     the evidence window (since last commit, Lead + subagent transcripts)
+#     shows 0 test edits / 0 strong reviewers, the banner NAMES what the
+#     commit gate will require. Never a deny (v2.47.0): edit-time HARD
+#     blocks were the measured reason users set ROLEPOD_GATES_SOFT for
+#     good (CourtBook: 33 high-risk edits in one day, 116 unreasoned
+#     bypasses) — which then silenced the commit gate too. One hard
+#     checkpoint, at commit (precommit-gate.sh); this hook informs.
 #
-# Bypass for one-off legit cases:
-#   ROLEPOD_GATES_SOFT=1   — degrade ALL hard blocks back to warnings
-#   ROLEPOD_GATES_PASSED=1 — single-session bypass (clear before commit)
+# Bypass envs (user-set only):
+#   ROLEPOD_GATES_SOFT=1   — silence the would-block wording (banner stays)
 set -euo pipefail
 
 # Per-repo risk-path override: <git-root>/.rolepod/risk-paths — one ERE per
@@ -122,52 +126,41 @@ if [ -z "$SCHEMA_BOUND" ] && [ -z "$HIGH_RISK" ]; then
   exit 0
 fi
 
-# Session-state inspection (used by hard-block + Careful banner).
+# Session-state inspection (Careful banner + would-block wording). Same
+# window as precommit-gate: since the last commit, Lead + subagent transcripts.
 SESSION_STATE="$(dirname "$0")/lib/session_state.py"
 TEST_EDITS=0
 HIGH_RISK_EDITS=0
 REVIEWERS=0
+STRONG_REVIEWERS=0
+SINCE_EPOCH=$(git log -1 --format=%ct 2>/dev/null || true)
 if [ -f "$SESSION_STATE" ] && command -v python3 >/dev/null 2>&1; then
-  # ONE transcript scan for all three counts — three separate calls each
-  # re-read the whole transcript and blew the hook timeout on long sessions.
-  COUNTS=$(printf '%s' "$INPUT" | python3 "$SESSION_STATE" count-all 2>/dev/null || echo "0 0 0")
-  read -r TEST_EDITS HIGH_RISK_EDITS REVIEWERS <<< "$COUNTS"
+  # ONE transcript scan for all four counts — separate calls each re-read
+  # the whole transcript and blew the hook timeout on long sessions.
+  COUNTS=$(printf '%s' "$INPUT" | python3 "$SESSION_STATE" count-all "$SINCE_EPOCH" 2>/dev/null || echo "0 0 0 0")
+  read -r TEST_EDITS HIGH_RISK_EDITS REVIEWERS STRONG_REVIEWERS <<< "$COUNTS"
 fi
 TEST_EDITS=${TEST_EDITS:-0}
 HIGH_RISK_EDITS=${HIGH_RISK_EDITS:-0}
 REVIEWERS=${REVIEWERS:-0}
+STRONG_REVIEWERS=${STRONG_REVIEWERS:-0}
 
 SOFT_MODE=0
 [ "${ROLEPOD_GATES_SOFT:-0}" = "1" ] && { SOFT_MODE=1; rolepod_log_bypass "gate-reminder" "ROLEPOD_GATES_SOFT"; }
-[ "${ROLEPOD_GATES_PASSED:-0}" = "1" ] && SOFT_MODE=1
 
-# Decide whether to HARD block. Only fires on high-risk path + discipline drift.
-BLOCK_REASON=""
+# Would-block wording — what precommit-gate WILL require for this path. Warn
+# only, never deny (see header). SOFT silences the wording, not the banner.
+WOULD_BLOCK=""
 if [ -n "$HIGH_RISK" ] && [ "$SOFT_MODE" -eq 0 ]; then
-  if [ "$HIGH_RISK_EDITS" -ge 1 ] && [ "$TEST_EDITS" -eq 0 ]; then
-    BLOCK_REASON="HARD BLOCK: editing high-risk path '$FILE' but session has 0 test edits. Write a failing test FIRST (RED), then implement — one test edit unblocks this gate for the session. Session: $HIGH_RISK_EDITS high-risk edits / $TEST_EDITS tests / $REVIEWERS reviewers. Bypass (human only): launch the CLI with ROLEPOD_GATES_PASSED=1."
-  elif [ "$HIGH_RISK_EDITS" -ge 2 ] && [ "$REVIEWERS" -eq 0 ]; then
-    BLOCK_REASON="HARD BLOCK: $HIGH_RISK_EDITS high-risk path edits this session, 0 reviewer agents dispatched. Spawn qa-tester (and security-engineer for auth/billing/crypto/secret paths) via the Agent tool BEFORE more edits. Reviewer dispatch impossible (user forbade agents / no subagent support)? SURFACE that conflict to the user and offer the sanctioned fallback: Lead cold self-review recorded as a LIMITATION in the evidence block. Bypass envs are user-set only — never set one yourself."
+  if [ "$TEST_EDITS" -eq 0 ]; then
+    WOULD_BLOCK+="⛔ COMMIT WILL BLOCK — 0 test edits since the last commit while editing high-risk path '$FILE'. Write the failing test FIRST (RED), then implement. "
+  fi
+  if [ "$HIGH_RISK_EDITS" -ge 1 ] && [ "$STRONG_REVIEWERS" -eq 0 ]; then
+    WOULD_BLOCK+="⛔ COMMIT WILL BLOCK — high-risk edits since the last commit with no strong adversarial reviewer: dispatch rolepod:universal-reviewer or rolepod:security-engineer via the Agent tool before committing (the dispatch hook runs them at strong class whatever the Lead is; qa-tester is the test floor, not the review). Reviewer dispatch impossible (user forbade agents / no subagent support)? SURFACE that conflict to the user — fallback: Lead cold self-review recorded as a LIMITATION. Bypass envs are user-set only — never set one yourself. "
   fi
 fi
 
-if [ -n "$BLOCK_REASON" ]; then
-  # Pass via env, NOT string interpolation — a quote in the reason must not
-  # break the JSON emitter (silent-failure bug caught by hook-behavior.sh).
-  ROLEPOD_HOOK_MSG="$BLOCK_REASON" python3 -c "
-import json, os
-print(json.dumps({
-  'hookSpecificOutput': {
-    'hookEventName': 'PreToolUse',
-    'permissionDecision': 'deny',
-    'permissionDecisionReason': os.environ.get('ROLEPOD_HOOK_MSG', '')
-  }
-}))
-" 2>/dev/null || echo '{}'
-  exit 0
-fi
-
-# auto-Careful banner — high-risk path, no hard-block trigger. External
+# auto-Careful banner — every high-risk edit (would-block wording prepended). External
 # adversarial reviewers listed Lead-relative: every installed CLI EXCEPT
 # the one running this session (Iron Rule 2 — the adversarial pass runs on
 # a model different from the Lead's). This same script ships on all CLIs,
@@ -190,7 +183,7 @@ if [ -n "$HIGH_RISK" ]; then
       REVIEWER_LIST="$REVIEWER_LIST + Antigravity (\`agy -p\`, breadth/cross-file — Gemini family)"
     fi
   fi
-  CAREFUL_BANNER="⚠️  AUTO-CAREFUL MODE (high-risk path, session: $HIGH_RISK_EDITS high-risk edits / $TEST_EDITS tests / $REVIEWERS reviewers). MANDATORY before more edits: (1) test file exists or is being written this session, (2) reviewers dispatched — use ≥2 when available (${REVIEWER_LIST}; security-engineer for auth/billing/crypto). Exclude this session's own CLI — the adversarial pass runs on a DIFFERENT model (gemini and agy are the same model family). (3) S1-S5 + T1-T6 checklist (finish-work §1) run before commit. Reviewer path blocked by a user instruction? Surface it — fallback: Lead cold self-review + limitation note. Bypass envs are user-set only, never model-set. "
+  CAREFUL_BANNER="${WOULD_BLOCK}⚠️  AUTO-CAREFUL MODE (high-risk path; since last commit: $HIGH_RISK_EDITS high-risk edits / $TEST_EDITS tests / $REVIEWERS reviewers, $STRONG_REVIEWERS strong). MANDATORY before commit: (1) test file exists or is being written this session, (2) reviewers dispatched — use ≥2 when available (${REVIEWER_LIST}; security-engineer for auth/billing/crypto). Exclude this session's own CLI — the adversarial pass runs on a DIFFERENT model (gemini and agy are the same model family). (3) S1-S5 + T1-T6 checklist (finish-work §1) run before commit. Reviewer path blocked by a user instruction? Surface it — fallback: Lead cold self-review + limitation note. Bypass envs are user-set only, never model-set. "
 fi
 
 # Emit reminder ONLY when schema-bound or high-risk — no generic Q1-Q4 nag.
