@@ -125,11 +125,17 @@ check "nudge: model-less Workflow under a strong Lead → cost wording (pin buil
 LOG="$REPO_DIR/hooks/dispatch-auto-log.sh"
 check "auto-log: effort-only Workflow logs model=inherit + effort_overrides=1 (was a false 'mixed')" \
   "cd '$FIX/repo' && bash '$LOG' < '$FIX/wf-effort.json' && tail -1 .rolepod/evidence/phase-log.jsonl | grep -q '\"model\": \"inherit\"' && tail -1 .rolepod/evidence/phase-log.jsonl | grep -q '\"effort_overrides\": 1'"
-check "auto-log: lifted reviewer logs model=opus override=auto-upgrade + lead_class" \
-  "cd '$FIX/repo' && bash '$LOG' < '$FIX/rev-sonnet.json' && tail -1 .rolepod/evidence/phase-log.jsonl | grep -q '\"override\": \"auto-upgrade\"' && tail -1 .rolepod/evidence/phase-log.jsonl | grep -q '\"lead_class\": \"balanced\"'"
+# PostToolUse sees the lifted input (live-verified): model=opus → floor applied;
+# a model-less strong role under a low Lead at PostToolUse = the lift did not
+# happen → floor missed (observable, never inferred).
+mkj "$FIX/rev-lifted.json" Agent "$FIX/lead-sonnet.jsonl" '{"subagent_type":"rolepod:universal-reviewer","model":"opus","prompt":"review"}'
+check "auto-log: lifted reviewer (model=opus at PostToolUse) logs floor=applied + lead_class" \
+  "cd '$FIX/repo' && bash '$LOG' < '$FIX/rev-lifted.json' && tail -1 .rolepod/evidence/phase-log.jsonl | grep -q '\"floor\": \"applied\"' && tail -1 .rolepod/evidence/phase-log.jsonl | grep -q '\"lead_class\": \"balanced\"'"
+check "auto-log: model-less strong role under a low Lead logs floor=missed (not inferred as lifted)" \
+  "cd '$FIX/repo' && bash '$LOG' < '$FIX/rev-sonnet.json' && tail -1 .rolepod/evidence/phase-log.jsonl | grep -q '\"floor\": \"missed\"' && tail -1 .rolepod/evidence/phase-log.jsonl | grep -q '\"model\": \"inherit\"'"
 OUT=$(bash "$REPO_DIR/scripts/stats.sh" "$FIX/repo")
-check "stats reports the strong-role floor + Lead class at dispatch" \
-  "printf '%s' \"\$OUT\" | grep -q 'strong-role floor applied' && printf '%s' \"\$OUT\" | grep -q 'Lead class at dispatch'"
+check "stats reports floor applied/missed + Lead class at dispatch" \
+  "printf '%s' \"\$OUT\" | grep -q 'applied ×1, missed ×1' && printf '%s' \"\$OUT\" | grep -q 'Lead class at dispatch'"
 
 # ── junit-summary.sh ────────────────────────────────────────────────────
 cat > "$FIX/report.xml" <<'EOF'

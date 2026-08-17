@@ -12,10 +12,10 @@
 # depth, not tier, and is counted separately). v2.47.0 adds the Lead's model
 # + FAMILY class as read from the transcript (family word only — haiku /
 # sonnet / opus… — never a version, so renames within a family change
-# nothing; an unknown family logs as "unknown"), and mirrors the strong-role
-# floor applied by workflow-tier-nudge.sh (security-engineer /
-# universal-reviewer, no model, known-low Lead → ran at the strong alias) so
-# stats never shows "inherit" for a dispatch the hook actually lifted.
+# nothing; an unknown family logs as "unknown"), and records the OUTCOME of
+# the strong-role floor (workflow-tier-nudge.sh) — PostToolUse tool_input
+# already carries the lifted model, so `floor: applied|missed` is read, not
+# inferred.
 # Runtime companion: the "dispatch-proof" transcript/hook layer.
 #
 # Fail-open everywhere: no git root, no JSON, missing fields → exit 0.
@@ -80,12 +80,16 @@ else:
     model = ti.get("model") or ""
     line["model"] = model or "inherit"
     line["override"] = model or "none"
-    if (ss is not None and not model
-            and ss._bare_agent_name(atype) in ss.STRONG_ROLE_AGENTS
+    if (ss is not None and ss._bare_agent_name(atype) in ss.STRONG_ROLE_AGENTS
             and cls in ss.LOW_CLASSES):
-        # Mirror of the tier-floor branch in workflow-tier-nudge.sh.
-        line["model"] = ss.STRONG_ALIAS
-        line["override"] = "auto-upgrade"
+        # Strong-role floor outcome. PostToolUse tool_input carries the
+        # PreToolUse updatedInput (live-verified 2026-08-17: lifted call
+        # logs model=opus here and the subagent transcript shows opus), so
+        # what we see IS what ran: strong-class model → applied; anything
+        # else → missed (first assistant turn of a fresh session — no prior
+        # turn to read the Lead from — ROLEPOD_NUDGE_OFF, or an explicit
+        # low model). Observable in `make stats`, never inferred.
+        line["floor"] = "applied" if ss.model_class(model) == "strong" else "missed"
 print(json.dumps(line, ensure_ascii=False))
 ' >> "$EV_DIR/phase-log.jsonl" 2>/dev/null || true
 

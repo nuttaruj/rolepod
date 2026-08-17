@@ -120,10 +120,15 @@ if dispatches:
                 print(f"      {low} of them under a cheap/balanced Lead — the fleet ran "
                       "low-class; the strong pass must come from an Agent-tool "
                       "reviewer dispatch (hook-lifted) before commit")
-        lifted = sum(1 for d in auto if d.get("override") == "auto-upgrade")
-        if lifted:
-            print(f"    ✓ strong-role floor applied ×{lifted} — reviewer lifted to the "
-                  "strong alias under a low-class Lead (v2.47.0)")
+        applied = sum(1 for d in auto if d.get("floor") == "applied")
+        missed = sum(1 for d in auto if d.get("floor") == "missed")
+        if applied or missed:
+            print(f"    strong-role floor (low-class Lead dispatching a strong review role): "
+                  f"applied ×{applied}, missed ×{missed}")
+            if missed:
+                print("      ⚠ missed = the review ran at the Lead's class — first dispatch of a "
+                      "fresh session (no prior turn to read the Lead from), ROLEPOD_NUDGE_OFF, "
+                      "or an explicit low model")
         leads = Counter(d.get("lead_class") or "n/a" for d in auto if d.get("lead_class"))
         if leads:
             print("    Lead class at dispatch: " + ", ".join(
