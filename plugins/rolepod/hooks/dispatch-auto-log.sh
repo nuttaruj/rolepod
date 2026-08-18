@@ -74,6 +74,16 @@ if tool == "Workflow":
     line["effort_overrides"] = n_effort
     line["model"] = "mixed" if n_model else "inherit"
     line["override"] = "per-stage" if n_model else "none"
+    # Which tiers the script actually names (v2.48.1) — so stats can tell a
+    # real per-stage spread from "one model pasted on every stage".
+    models = sorted(set(re.findall("model\\s*:\\s*[\x27\"]([A-Za-z0-9._\\-\\[\\]]+)[\x27\"]", script)))
+    atypes = sorted(set(re.findall("agentType\\s*:\\s*[\x27\"]([^\x27\"]+)[\x27\"]", script)))
+    line["models"] = models
+    line["agent_types"] = atypes
+    mix = sorted(set((ss.model_class(m) if ss is not None else "?") for m in models))
+    if atypes:
+        mix.append("role-pin")
+    line["tier_mix"] = mix
 else:
     atype = ti.get("subagent_type") or "general-purpose"
     line["agent_type"] = atype

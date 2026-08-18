@@ -168,7 +168,7 @@ if tool == "Workflow":
                     "model:/agentType: overrides%s while the Lead is %s (%s) — every agent would run "
                     "at the Lead\x27s price (measured: one project burned 5,196 agent turns at "
                     "opus/fable in a day this way; a 50-agent fleet ≈ 5M tokens). Re-submit the SAME "
-                    "script with per-stage tiers: sweep/read → model:\x27haiku\x27, build/verify → "
+                    "script with a tier PER STAGE (not one model pasted on every stage): sweep/read → model:\x27haiku\x27, build/verify → "
                     "model:\x27sonnet\x27 (or agentType:\x27rolepod:<role>\x27 — writers are pinned "
                     "balanced), judge/adversarial → keep inherit or model:\x27opus\x27. Fleet-wide "
                     "inherit intended? Put a comment `// fleet-inherit: <reason>` in the script and it "

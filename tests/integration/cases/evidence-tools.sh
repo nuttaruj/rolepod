@@ -153,7 +153,14 @@ check "gate: ROLEPOD_GATES_SOFT degrades to nudge + logs the bypass" \
   "cd '$FIX/repo' && ! ROLEPOD_GATES_SOFT=1 bash '$NUDGE' < '$FIX/wf-opus-bare.json' | grep -q '\"deny\"' && grep -q '\"hook\":\"workflow-tier-nudge\",\"var\":\"ROLEPOD_GATES_SOFT\"' .rolepod/evidence/bypass.log"
 check "gate: each deny logs a dispatch-gate line (denied fleets never reach PostToolUse)" \
   "grep -c '\"phase\": \"dispatch-gate\"' '$FIX/repo/.rolepod/evidence/phase-log.jsonl' | grep -qE '^[3-9]'"
+mkj "$FIX/wf-mono.json"  Workflow "$FIX/lead-opus.jsonl" '{"script":"name: \"mono\" await agent(1,{model: \"sonnet\"}); await agent(2,{model: \"sonnet\"})"}'
+mkj "$FIX/wf-multi.json" Workflow "$FIX/lead-opus.jsonl" '{"script":"name: \"multi\" await agent(1,{model: \"haiku\"}); await agent(2,{agentType: \"rolepod:qa-tester\"}); await agent(3,{model: \"opus\"})"}'
+LOG="$REPO_DIR/hooks/dispatch-auto-log.sh"
+check "auto-log: Workflow records the model literals + tier_mix (v2.48.1)" \
+  "cd '$FIX/repo' && bash '$LOG' < '$FIX/wf-mono.json' && tail -1 .rolepod/evidence/phase-log.jsonl | grep -q '\"tier_mix\": \[\"balanced\"\]' && bash '$LOG' < '$FIX/wf-multi.json' && tail -1 .rolepod/evidence/phase-log.jsonl | grep -q 'role-pin'"
 OUT=$(bash "$REPO_DIR/scripts/stats.sh" "$FIX/repo")
+check "stats shows the fleet tier spread (single-tier vs multi-tier)" \
+  "printf '%s' \"\$OUT\" | grep -q 'single-tier balanced ×1' && printf '%s' \"\$OUT\" | grep -q 'multi-tier'"
 check "stats reports fleet-tier gate denials" \
   "printf '%s' \"\$OUT\" | grep -q 'Fleet-tier gate (v2.48.0): denied'"
 LOG="$REPO_DIR/hooks/dispatch-auto-log.sh"

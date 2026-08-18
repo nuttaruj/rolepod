@@ -133,6 +133,23 @@ if dispatches:
         if leads:
             print("    Lead class at dispatch: " + ", ".join(
                 f"{k}={v}" for k, v in sorted(leads.items())))
+        wfs = [d for d in auto if d.get("tool") == "Workflow" and "tier_mix" in d]
+        if wfs:
+            def _label(d):
+                mix = d.get("tier_mix") or []
+                if not mix:
+                    return "inherit"
+                if len(mix) == 1 and mix[0] in ("cheap", "balanced", "strong"):
+                    return f"single-tier {mix[0]}"
+                return "multi-tier " + "+".join(mix)
+            spread = Counter(_label(d) for d in wfs)
+            print("    Fleet tier spread (Workflow scripts): " + ", ".join(
+                f"{k} ×{v}" for k, v in sorted(spread.items())))
+            mono = sum(1 for d in wfs if _label(d) == "single-tier balanced")
+            if mono and mono == len(wfs):
+                print("      ⚠ every fleet pinned ONE tier for every stage — tier-per-stage means "
+                      "sweep=cheap, build=balanced, judge=strong; the Lead is passing the gate, "
+                      "not applying the policy")
         costly = sum(1 for d in inh if d.get("tool") == "Workflow"
                      and d.get("lead_class") in ("strong", "unknown"))
         if costly:
