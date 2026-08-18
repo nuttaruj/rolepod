@@ -137,6 +137,33 @@ check "gate: fable Lead → deny too (strong class)" \
   "cd '$FIX/repo' && bash '$NUDGE' < '$FIX/wf-fable-bare.json' | grep -q '\"deny\"'"
 check "gate: unknown non-empty family → deny (assumed strong for cost)" \
   "cd '$FIX/repo' && bash '$NUDGE' < '$FIX/wf-unknown-bare.json' | grep -q '\"deny\"' && bash '$NUDGE' < '$FIX/wf-unknown-bare.json' | grep -q 'unknown family'"
+# v2.50.0 — the escape hatch closes: sonnet pasted on every stage / judge below the Lead
+mkj "$FIX/wf-mono-stages.json" Workflow "$FIX/lead-opus.jsonl" '{"script":"phase(\"Audit\"); await agent(1,{model:\"sonnet\"}); phase(\"Verify findings\"); await agent(2,{model:\"sonnet\"}); phase(\"Fix\"); await agent(3,{model:\"sonnet\"})"}'
+mkj "$FIX/wf-mono-1stage.json" Workflow "$FIX/lead-opus.jsonl" '{"script":"await agent(1,{model:\"sonnet\"}); await agent(2,{model:\"sonnet\"})"}'
+mkj "$FIX/wf-judge-low.json"   Workflow "$FIX/lead-opus.jsonl" '{"script":"await agent(1,{model:\"haiku\", label:\"sweep:a\"}); await agent(2,{model:\"sonnet\", label:\"rank:all\"})"}'
+mkj "$FIX/wf-judge-ok.json"    Workflow "$FIX/lead-opus.jsonl" '{"script":"await agent(1,{model:\"haiku\", label:\"sweep:a\"}); await agent(2,{model:\"opus\", label:\"rank:all\"})"}'
+mkj "$FIX/wf-judge-role.json"  Workflow "$FIX/lead-opus.jsonl" '{"script":"phase(\"Build\"); await agent(1,{model:\"sonnet\"}); phase(\"Review\"); await agent(2,{agentType:\"rolepod:universal-reviewer\"})"}'
+mkj "$FIX/wf-mono-reason.json" Workflow "$FIX/lead-opus.jsonl" '{"script":"// tier-reason: boilerplate i18n edits in every stage\nphase(\"A\"); await agent(1,{model:\"sonnet\"}); phase(\"B\"); await agent(2,{model:\"sonnet\"})"}'
+mkj "$FIX/wf-mono-sonnetlead.json" Workflow "$FIX/lead-sonnet.jsonl" '{"script":"phase(\"A\"); await agent(1,{model:\"sonnet\"}); phase(\"B\"); await agent(2,{model:\"sonnet\"})"}'
+mkj "$FIX/wf-dynamic.json"     Workflow "$FIX/lead-opus.jsonl" '{"script":"const M=pick(); phase(\"A\"); await agent(1,{model: M}); phase(\"B\"); await agent(2,{model: M})"}'
+check "gate v2.50: 3 stages all sonnet under opus Lead → deny (single-tier) naming the stages" \
+  "cd '$FIX/repo' && bash '$NUDGE' < '$FIX/wf-mono-stages.json' | grep -q '\"deny\"' && bash '$NUDGE' < '$FIX/wf-mono-stages.json' | grep -q 'Verify findings'"
+check "gate v2.50: all sonnet but no discernible stages → silent (cannot judge spread)" \
+  "[ -z \"\$(cd '$FIX/repo' && bash '$NUDGE' < '$FIX/wf-mono-1stage.json')\" ]"
+check "gate v2.50: haiku sweep + sonnet rank under opus Lead → deny (no-strong-judge)" \
+  "cd '$FIX/repo' && bash '$NUDGE' < '$FIX/wf-judge-low.json' | grep -q 'judgment stage'"
+check "gate v2.50: haiku sweep + opus rank → silent (real spread)" \
+  "[ -z \"\$(cd '$FIX/repo' && bash '$NUDGE' < '$FIX/wf-judge-ok.json')\" ]"
+check "gate v2.50: sonnet build + agentType reviewer → silent (role-pin counts as the strong stage)" \
+  "[ -z \"\$(cd '$FIX/repo' && bash '$NUDGE' < '$FIX/wf-judge-role.json')\" ]"
+check "gate v2.50: // tier-reason: accepted for a deliberate single tier" \
+  "[ -z \"\$(cd '$FIX/repo' && bash '$NUDGE' < '$FIX/wf-mono-reason.json')\" ]"
+check "gate v2.50: sonnet Lead + sonnet everywhere → silent (no cost leak; nudge covers judge)" \
+  "[ -z \"\$(cd '$FIX/repo' && bash '$NUDGE' < '$FIX/wf-mono-sonnetlead.json')\" ]"
+check "gate v2.50: model from a variable (dynamic) → trusted, silent" \
+  "[ -z \"\$(cd '$FIX/repo' && bash '$NUDGE' < '$FIX/wf-dynamic.json')\" ]"
+check "gate v2.50: dispatch-gate lines carry reason + tiers + stages" \
+  "grep -q '\"reason\": \"single-tier\"' '$FIX/repo/.rolepod/evidence/phase-log.jsonl' && grep -q '\"reason\": \"no-strong-judge\"' '$FIX/repo/.rolepod/evidence/phase-log.jsonl'"
 check "gate: stated // fleet-inherit: reason → nudge, not deny" \
   "cd '$FIX/repo' && ! bash '$NUDGE' < '$FIX/wf-opus-reason.json' | grep -q '\"deny\"' && bash '$NUDGE' < '$FIX/wf-opus-reason.json' | grep -q 'Stated reason accepted'"
 check "gate: agentType per stage counts as a tier choice → silent" \
@@ -161,8 +188,8 @@ check "auto-log: Workflow records the model literals + tier_mix (v2.48.1)" \
 OUT=$(bash "$REPO_DIR/scripts/stats.sh" "$FIX/repo")
 check "stats shows the fleet tier spread (single-tier vs multi-tier)" \
   "printf '%s' \"\$OUT\" | grep -q 'single-tier balanced ×1' && printf '%s' \"\$OUT\" | grep -q 'multi-tier'"
-check "stats reports fleet-tier gate denials" \
-  "printf '%s' \"\$OUT\" | grep -q 'Fleet-tier gate (v2.48.0): denied'"
+check "stats reports fleet-tier gate denials by reason" \
+  "printf '%s' \"\$OUT\" | grep -q 'Fleet-tier gate: denied' && printf '%s' \"\$OUT\" | grep -q 'single-tier ×'"
 LOG="$REPO_DIR/hooks/dispatch-auto-log.sh"
 check "auto-log: effort-only Workflow logs model=inherit + effort_overrides=1 (was a false 'mixed')" \
   "cd '$FIX/repo' && bash '$LOG' < '$FIX/wf-effort.json' && tail -1 .rolepod/evidence/phase-log.jsonl | grep -q '\"model\": \"inherit\"' && tail -1 .rolepod/evidence/phase-log.jsonl | grep -q '\"effort_overrides\": 1'"

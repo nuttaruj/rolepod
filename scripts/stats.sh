@@ -160,8 +160,12 @@ gated = [r for r in rows if r.get("phase") == "dispatch-gate"]
 if gated:
     denies = [g for g in gated if g.get("action") == "deny"]
     calls = sum(int(g.get("agent_calls") or 0) for g in denies)
-    print(f"\n  Fleet-tier gate (v2.48.0): denied ×{len(denies)} — {calls} agent() call(s) "
-          "kept off a strong-class Lead's price until the script named a tier per stage")
+    why = Counter(g.get("reason") or "no-tier" for g in denies)
+    print(f"\n  Fleet-tier gate: denied ×{len(denies)} — {calls} agent() call(s) held until the "
+          "script named a tier per stage  (" + ", ".join(f"{k} ×{v}" for k, v in sorted(why.items())) + ")")
+    if why.get("single-tier") or why.get("no-strong-judge"):
+        print("    ⚠ single-tier / no-strong-judge = the Lead pasted one balanced model on every "
+              "stage (or ran its judge below itself) to pass the gate — the v2.50.0 rules catch it")
 
 proofs = [r for r in rows if r.get("phase") == "dispatch-proof"]
 if proofs:

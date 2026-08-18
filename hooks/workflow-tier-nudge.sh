@@ -26,12 +26,15 @@
 # the nudge, not the rewrite (cohesion-contract-check may deny a parallel
 # architect spawn; hook-decision precedence is undocumented).
 #
-#   Workflow, agent() fan-out, zero `model:`/`agentType:`, Lead STRONG (or
-#     unknown non-empty family) and no `fleet-inherit: <reason>` in the script
-#                                                              → DENY (fleet-tier gate, v2.48.0)
-#   Workflow, agent() fan-out, zero `model:`/`agentType:`, otherwise
-#                                                              → nudge (Lead-aware)
-#   Workflow with any per-stage `model:` / `agentType:`        → silent
+#   Workflow fan-out under a STRONG (or unknown non-empty) Lead, no
+#     `// tier-reason:` (or legacy `fleet-inherit:`) comment → DENY when:
+#       · zero `model:`/`agentType:` (whole fleet at the Lead's price)  v2.48.0
+#       · ≥2 stages (phase()/meta titles/label prefixes) all pinned to
+#         the ONE balanced tier — "sonnet pasted everywhere"            v2.50.0
+#       · a judgment-shaped stage (verify/judge/review/refute/rank/…)
+#         with no strong / role-pin / dynamic tier anywhere              v2.50.0
+#   Workflow with a per-stage spread (or a stated reason)      → silent
+#   Workflow, no `model:`/`agentType:`, low Lead               → nudge (Lead-aware)
 #     (`effort:` alone is not a tier choice — nudged, not silenced)
 #   Agent strong role, no model, Lead known-low                → allow + updatedInput model=opus
 #   Agent strong role, explicit low model                      → nudge (named downgrade)
@@ -112,7 +115,7 @@ def _log_bypass(hook, var):
     except Exception:
         pass
 
-def _log_gate(ti, script, lead, cls, n_calls):
+def _log_gate(ti, script, lead, cls, n_calls, verdict="no-tier", tiers=None, stages=None):
     # A denied fleet never reaches PostToolUse (dispatch-auto-log), so the
     # gate records itself: phase "dispatch-gate" — read by make stats.
     root = _git_root()
@@ -126,7 +129,8 @@ def _log_gate(ti, script, lead, cls, n_calls):
                 "phase": "dispatch-gate", "cli": "claude", "tool": "Workflow",
                 "provenance": "hook-gate", "action": "deny",
                 "name": m.group(1) if m else (ti.get("name") or "?"),
-                "agent_calls": n_calls, "lead_model": lead or "unknown", "lead_class": cls}
+                "agent_calls": n_calls, "lead_model": lead or "unknown", "lead_class": cls,
+                "reason": verdict, "tiers": tiers or [], "stages": stages or []}
         with open(os.path.join(root, ".rolepod", "evidence", "phase-log.jsonl"), "a") as f:
             f.write(json.dumps(line, ensure_ascii=False) + "\n")
     except Exception:
@@ -142,38 +146,78 @@ if tool == "Workflow":
             script = ""
     if "agent(" not in script:
         sys.exit(0)
+    n_effort = len(re.findall(r"[,{\s]effort\s*:", script))
+    n_calls = script.count("agent(")
+    models = re.findall(r"[,{\s]model\s*:\s*[\x27\"]([A-Za-z0-9._\-\[\]]+)[\x27\"]", script)
     n_model = len(re.findall(r"[,{\s]model\s*:", script))
     n_atype = len(re.findall(r"[,{\s]agentType\s*:", script))
-    n_effort = len(re.findall(r"[,{\s]effort\s*:", script))
-    if n_model or n_atype:
-        sys.exit(0)
-    n_calls = script.count("agent(")
-    m_reason = re.search(r"fleet-inherit\s*:\s*(\S[^\n]{0,160})", script)
+    tiers = set(ss.model_class(m) for m in models)
+    if n_atype:
+        tiers.add("role-pin")
+    if n_model and not models:
+        tiers.add("dynamic")   # model: <expr> — a variable, not a literal; trust it
+    # Stages: phase() calls / meta.phases titles, else distinct label prefixes.
+    stages = set(re.findall(r"phase\(\s*[\x27\"]([^\x27\"]+)", script))
+    stages |= set(re.findall(r"title\s*:\s*[\x27\"]([^\x27\"]+)", script))
+    if not stages:
+        stages = set(re.findall(r"label\s*:\s*[`\x27\"]([A-Za-z_][A-Za-z0-9_-]*)\s*[:\-]", script))
+    JUDGE_RX = re.compile(r"(verif|judg|review|refut|skeptic|rank|scor|adversar|critic|synthes)", re.I)
+    judge_stages = sorted(x for x in stages if JUDGE_RX.search(x))
+    m_reason = re.search(r"(?:fleet-inherit|tier-reason)\s*:\s*(\S[^\n]{0,160})", script)
     stated = m_reason.group(1).strip() if m_reason else ""
     eff = (" (%d effort: overrides — effort is depth, not tier)" % n_effort) if n_effort else ""
     soft = os.environ.get("ROLEPOD_GATES_SOFT", "0") == "1"
     costly = cls == "strong" or (bool(lead) and cls == "unknown")
+    why = ("strong class" if cls == "strong" else "unknown family — treated as strong-class for cost")
+    TAIL = (" Bypass envs are user-set only (ROLEPOD_GATES_SOFT=1 degrades this to a warning); an "
+            "intentional exception is stated IN the script: `// tier-reason: <why>`.")
+
+    verdict = ""   # "" = pass; else a deny reason key
+    reason_txt = ""
     if costly and not stated:
-        why = ("strong class" if cls == "strong"
-               else "unknown family — treated as strong-class for cost")
+        if not tiers:
+            verdict = "no-tier"
+            reason_txt = (
+                "⛔ rolepod fleet-tier gate: this Workflow fans out %d agent() call(s) with ZERO "
+                "model:/agentType: overrides%s while the Lead is %s (%s) — every agent would run "
+                "at the Lead\x27s price (measured: one project burned 5,196 agent turns at "
+                "opus/fable in a day this way; a 50-agent fleet ≈ 5M tokens). Re-submit the SAME "
+                "script with a tier PER STAGE (not one model pasted on every stage): sweep/read → "
+                "model:\x27haiku\x27, build/verify → model:\x27sonnet\x27 (or agentType:\x27rolepod:<role>\x27 "
+                "— writers are pinned balanced), judge/refute/rank/review → keep inherit or "
+                "model:\x27opus\x27." % (n_calls, eff, lead or "unknown model", why)) + TAIL
+        elif tiers == {"balanced"} and len(stages) >= 2:
+            verdict = "single-tier"
+            reason_txt = (
+                "⛔ rolepod fleet-tier gate: %d stage(s) — %s — all pinned to ONE balanced tier "
+                "under a %s Lead (%s). Tier PER STAGE means the tiers DIFFER by the work: "
+                "sweep/scan/read → model:\x27haiku\x27, build/verify → model:\x27sonnet\x27, "
+                "judge/refute/rank/review/synthesis → model:\x27opus\x27 (or inherit — the Lead is "
+                "already strong). Measured: this pattern (sonnet pasted on every stage) is how "
+                "the last fleets passed this gate without applying the policy. Re-submit with the "
+                "tiers spread; every stage genuinely balanced work? state it: "
+                "`// tier-reason: <why>`." % (len(stages), ", ".join(sorted(stages))[:200], why, lead or "unknown model")) + TAIL
+        elif judge_stages and not (tiers & {"strong", "role-pin", "dynamic"}):
+            verdict = "no-strong-judge"
+            reason_txt = (
+                "⛔ rolepod fleet-tier gate: judgment stage(s) %s run at %s under a %s Lead (%s) — "
+                "a strong-class Lead pinning its own judge/verify/rank stage BELOW itself is the "
+                "silent downgrade the tier policy forbids (the fleet is cheap where it should be, "
+                "and blunt where it must not be). Give the judgment stage model:\x27opus\x27 or "
+                "leave it inherit; keep sweep haiku / build sonnet. Not a judgment stage despite the "
+                "name? state it: `// tier-reason: <why>`." % (
+                    ", ".join(judge_stages)[:160], "+".join(sorted(tiers)), why, lead or "unknown model")) + TAIL
+    if verdict:
         if soft:
             _log_bypass("workflow-tier-nudge", "ROLEPOD_GATES_SOFT")
         else:
-            _log_gate(ti, script, lead, cls, n_calls)
+            _log_gate(ti, script, lead, cls, n_calls, verdict, sorted(tiers), sorted(stages))
             emit({"hookSpecificOutput": {
                 "hookEventName": "PreToolUse",
                 "permissionDecision": "deny",
-                "permissionDecisionReason":
-                    "⛔ rolepod fleet-tier gate: this Workflow fans out %d agent() call(s) with ZERO "
-                    "model:/agentType: overrides%s while the Lead is %s (%s) — every agent would run "
-                    "at the Lead\x27s price (measured: one project burned 5,196 agent turns at "
-                    "opus/fable in a day this way; a 50-agent fleet ≈ 5M tokens). Re-submit the SAME "
-                    "script with a tier PER STAGE (not one model pasted on every stage): sweep/read → model:\x27haiku\x27, build/verify → "
-                    "model:\x27sonnet\x27 (or agentType:\x27rolepod:<role>\x27 — writers are pinned "
-                    "balanced), judge/adversarial → keep inherit or model:\x27opus\x27. Fleet-wide "
-                    "inherit intended? Put a comment `// fleet-inherit: <reason>` in the script and it "
-                    "passes. Bypass envs are user-set only (ROLEPOD_GATES_SOFT=1 degrades this to a "
-                    "warning)." % (n_calls, eff, lead or "unknown model", why)}})
+                "permissionDecisionReason": reason_txt}})
+    if tiers:
+        sys.exit(0)   # per-stage choice made (or accepted with a reason) — silent
     if cls in ss.LOW_CLASSES:
         ctx("⚖ rolepod tier-check: this Workflow script sets NO per-agent model%s — every "
             "agent() inherits the Lead: %s. Fine for sweep/build stages. Do NOT rely on an "
