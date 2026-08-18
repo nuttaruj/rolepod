@@ -41,7 +41,8 @@
 #   Agent strong role, no model, Lead known-low                → allow + updatedInput model=opus
 #   Agent strong role, explicit low model                      → nudge (named downgrade)
 #   Agent system-architect, no model, Lead known-low           → nudge (pass model:'opus')
-#   Agent sweep-type (scout/Explore/general-purpose), no model → nudge
+#   Agent sweep-type (Explore/general-purpose), no model        → nudge
+#     (rolepod:scout is frontmatter-pinned cheap → silent)
 #   anything else                                              → silent
 #
 # Fleet-tier gate (v2.48.0): the ONE deny in this hook, scoped to where money
@@ -312,9 +313,12 @@ if tool in ("Agent", "Task"):
     if atype == "system-architect" and not model and cls in ss.LOW_CLASSES:
         ctx("⚖ rolepod tier-check: system-architect inherits the Lead: %s — a strong-tier "
             "judgment role. Pass model:\x27opus\x27 (or the strongest you have).%s" % (lead_txt, OFF))
-    if not model and re.search(r"(scout|explore|general-purpose)", atype, re.I):
+    # rolepod:scout is pinned cheap by its frontmatter (verified on disk) — no nudge.
+    # Only the platform sweep agents (Explore / general-purpose) truly inherit.
+    if not model and re.search(r"(explore|general-purpose)", atype, re.I):
         ctx("⚖ rolepod tier-check: sweep-type agent (%s) dispatched with no model override — it "
-            "inherits the Lead: %s. Sweep/read work fits the cheap class (model:\x27haiku\x27); "
-            "keep inherit only with a stated reason.%s" % (atype, lead_txt, OFF))
+            "inherits the Lead: %s. Sweep/read work fits the cheap class: pass model:\x27haiku\x27, "
+            "or use rolepod:scout (pinned cheap). Keep inherit only with a stated reason.%s"
+            % (atype, lead_txt, OFF))
 ' 2>/dev/null || true
 exit 0

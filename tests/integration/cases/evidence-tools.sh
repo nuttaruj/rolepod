@@ -79,8 +79,11 @@ check "tier nudge fires on override-less Workflow fan-out" \
   "bash '$REPO_DIR/hooks/workflow-tier-nudge.sh' < '$FIX/wf-inherit.json' | grep -q additionalContext"
 check "tier nudge silent when a per-stage override exists" \
   "[ -z \"\$(bash '$REPO_DIR/hooks/workflow-tier-nudge.sh' < '$FIX/wf-tiered.json')\" ]"
-check "tier nudge fires on model-less sweep-type Agent" \
-  "bash '$REPO_DIR/hooks/workflow-tier-nudge.sh' < '$FIX/agent-scout.json' | grep -q additionalContext"
+printf '{"tool_name":"Agent","tool_input":{"subagent_type":"Explore"}}' > "$FIX/agent-explore.json"
+check "tier nudge fires on model-less platform sweep Agent (Explore)" \
+  "bash '$REPO_DIR/hooks/workflow-tier-nudge.sh' < '$FIX/agent-explore.json' | grep -q additionalContext"
+check "tier nudge silent on rolepod:scout (frontmatter-pinned cheap — was a false nudge)" \
+  "[ -z \"\$(bash '$REPO_DIR/hooks/workflow-tier-nudge.sh' < '$FIX/agent-scout.json')\" ]"
 check "tier nudge honors ROLEPOD_NUDGE_OFF" \
   "[ -z \"\$(ROLEPOD_NUDGE_OFF=1 bash '$REPO_DIR/hooks/workflow-tier-nudge.sh' < '$FIX/wf-inherit.json')\" ]"
 check "dispatch auto-log appends a hook-auto line" \
