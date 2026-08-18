@@ -133,6 +133,18 @@ if dispatches:
         if leads:
             print("    Lead class at dispatch: " + ", ".join(
                 f"{k}={v}" for k, v in sorted(leads.items())))
+        costly = sum(1 for d in inh if d.get("tool") == "Workflow"
+                     and d.get("lead_class") in ("strong", "unknown"))
+        if costly:
+            print(f"    ⚠ {costly} Workflow fleet(s) inherited a strong/unknown-class Lead — the "
+                  "whole fleet ran at the Lead's price (pre-v2.48 or `fleet-inherit:` stated)")
+
+gated = [r for r in rows if r.get("phase") == "dispatch-gate"]
+if gated:
+    denies = [g for g in gated if g.get("action") == "deny"]
+    calls = sum(int(g.get("agent_calls") or 0) for g in denies)
+    print(f"\n  Fleet-tier gate (v2.48.0): denied ×{len(denies)} — {calls} agent() call(s) "
+          "kept off a strong-class Lead's price until the script named a tier per stage")
 
 proofs = [r for r in rows if r.get("phase") == "dispatch-proof"]
 if proofs:

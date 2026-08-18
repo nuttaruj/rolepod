@@ -1,6 +1,7 @@
 #!/bin/bash
 # Claude PreToolUse(Workflow|Agent) — tier-per-stage at dispatch time:
-# a soft nudge for fleets, and ONE mechanical floor for the strong review roles.
+# a soft nudge for fleets, a mechanical floor for the strong review roles, and
+# ONE deny where money measurably leaks (fleet-tier gate, v2.48.0).
 #
 # The tier rule ("sweep = cheap, build = balanced, verify/judge = strong —
 # never inherit the Lead's model across the whole fleet without a stated
@@ -25,8 +26,12 @@
 # the nudge, not the rewrite (cohesion-contract-check may deny a parallel
 # architect spawn; hook-decision precedence is undocumented).
 #
-#   Workflow, agent() fan-out, zero `model:` overrides         → nudge (Lead-aware)
-#   Workflow with any per-stage `model:`                       → silent
+#   Workflow, agent() fan-out, zero `model:`/`agentType:`, Lead STRONG (or
+#     unknown non-empty family) and no `fleet-inherit: <reason>` in the script
+#                                                              → DENY (fleet-tier gate, v2.48.0)
+#   Workflow, agent() fan-out, zero `model:`/`agentType:`, otherwise
+#                                                              → nudge (Lead-aware)
+#   Workflow with any per-stage `model:` / `agentType:`        → silent
 #     (`effort:` alone is not a tier choice — nudged, not silenced)
 #   Agent strong role, no model, Lead known-low                → allow + updatedInput model=opus
 #   Agent strong role, explicit low model                      → nudge (named downgrade)
@@ -34,8 +39,18 @@
 #   Agent sweep-type (scout/Explore/general-purpose), no model → nudge
 #   anything else                                              → silent
 #
-# Opt-out for a session: ROLEPOD_NUDGE_OFF=1 (silences nudges AND the floor —
-# user-set only; the commit gate still requires the strong pass on high-risk).
+# Fleet-tier gate (v2.48.0): the ONE deny in this hook, scoped to where money
+# actually leaks. Ultracode / workflow-heavy users run opus- or fable-class
+# Leads, and a Workflow script that sets no per-agent model runs the WHOLE
+# fleet at the Lead's price — measured on one project: 6 fleets in one day,
+# 5,196 agent turns at opus/fable, ≈ $180 over the sonnet price for the opus
+# share alone, with the soft nudge fired and ignored every time. Under a
+# low-class Lead the fleet is already cheap → nudge only. Any per-stage
+# `model:` or `agentType:` (rolepod writers are pinned balanced) → silent.
+# Intentional fleet-wide inherit → write `// fleet-inherit: <reason>` in the
+# script and it passes (the reason is the accountability). Bypass envs are
+# user-set only: ROLEPOD_GATES_SOFT=1 degrades the deny to the nudge (logged
+# to bypass.log), ROLEPOD_NUDGE_OFF=1 silences everything in this hook.
 set -uo pipefail
 [ "${ROLEPOD_NUDGE_OFF:-0}" = "1" ] && exit 0
 INPUT=$(cat 2>/dev/null || true)
@@ -72,6 +87,51 @@ def ctx(msg):
     emit({"hookSpecificOutput": {"hookEventName": "PreToolUse",
                                  "additionalContext": msg}})
 
+def _git_root():
+    try:
+        import subprocess
+        return subprocess.check_output(["git", "rev-parse", "--show-toplevel"],
+                                       text=True, stderr=subprocess.DEVNULL).strip()
+    except Exception:
+        return ""
+
+def _log_bypass(hook, var):
+    # Same line shape as rolepod_log_bypass() in the bash hooks — a used
+    # bypass is recorded, never blocked; fail-open on any error.
+    root = _git_root()
+    if not root:
+        return
+    try:
+        import datetime
+        os.makedirs(os.path.join(root, ".rolepod", "evidence"), exist_ok=True)
+        reason = (os.environ.get("ROLEPOD_BYPASS_REASON") or "unreasoned").replace(chr(34), " ")
+        with open(os.path.join(root, ".rolepod", "evidence", "bypass.log"), "a") as f:
+            f.write("{\"ts\":\"%s\",\"hook\":\"%s\",\"var\":\"%s\",\"reason\":\"%s\"}\n" % (
+                datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+                hook, var, reason))
+    except Exception:
+        pass
+
+def _log_gate(ti, script, lead, cls, n_calls):
+    # A denied fleet never reaches PostToolUse (dispatch-auto-log), so the
+    # gate records itself: phase "dispatch-gate" — read by make stats.
+    root = _git_root()
+    if not root:
+        return
+    try:
+        import datetime
+        os.makedirs(os.path.join(root, ".rolepod", "evidence"), exist_ok=True)
+        m = re.search(r"name:\s*[\x27\"]([^\x27\"]+)", script)
+        line = {"ts": datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds"),
+                "phase": "dispatch-gate", "cli": "claude", "tool": "Workflow",
+                "provenance": "hook-gate", "action": "deny",
+                "name": m.group(1) if m else (ti.get("name") or "?"),
+                "agent_calls": n_calls, "lead_model": lead or "unknown", "lead_class": cls}
+        with open(os.path.join(root, ".rolepod", "evidence", "phase-log.jsonl"), "a") as f:
+            f.write(json.dumps(line, ensure_ascii=False) + "\n")
+    except Exception:
+        pass
+
 if tool == "Workflow":
     script = ti.get("script") or ""
     if not script and ti.get("scriptPath"):
@@ -83,10 +143,37 @@ if tool == "Workflow":
     if "agent(" not in script:
         sys.exit(0)
     n_model = len(re.findall(r"[,{\s]model\s*:", script))
+    n_atype = len(re.findall(r"[,{\s]agentType\s*:", script))
     n_effort = len(re.findall(r"[,{\s]effort\s*:", script))
-    if n_model:
+    if n_model or n_atype:
         sys.exit(0)
+    n_calls = script.count("agent(")
+    m_reason = re.search(r"fleet-inherit\s*:\s*(\S[^\n]{0,160})", script)
+    stated = m_reason.group(1).strip() if m_reason else ""
     eff = (" (%d effort: overrides — effort is depth, not tier)" % n_effort) if n_effort else ""
+    soft = os.environ.get("ROLEPOD_GATES_SOFT", "0") == "1"
+    costly = cls == "strong" or (bool(lead) and cls == "unknown")
+    if costly and not stated:
+        why = ("strong class" if cls == "strong"
+               else "unknown family — treated as strong-class for cost")
+        if soft:
+            _log_bypass("workflow-tier-nudge", "ROLEPOD_GATES_SOFT")
+        else:
+            _log_gate(ti, script, lead, cls, n_calls)
+            emit({"hookSpecificOutput": {
+                "hookEventName": "PreToolUse",
+                "permissionDecision": "deny",
+                "permissionDecisionReason":
+                    "⛔ rolepod fleet-tier gate: this Workflow fans out %d agent() call(s) with ZERO "
+                    "model:/agentType: overrides%s while the Lead is %s (%s) — every agent would run "
+                    "at the Lead\x27s price (measured: one project burned 5,196 agent turns at "
+                    "opus/fable in a day this way; a 50-agent fleet ≈ 5M tokens). Re-submit the SAME "
+                    "script with per-stage tiers: sweep/read → model:\x27haiku\x27, build/verify → "
+                    "model:\x27sonnet\x27 (or agentType:\x27rolepod:<role>\x27 — writers are pinned "
+                    "balanced), judge/adversarial → keep inherit or model:\x27opus\x27. Fleet-wide "
+                    "inherit intended? Put a comment `// fleet-inherit: <reason>` in the script and it "
+                    "passes. Bypass envs are user-set only (ROLEPOD_GATES_SOFT=1 degrades this to a "
+                    "warning)." % (n_calls, eff, lead or "unknown model", why)}})
     if cls in ss.LOW_CLASSES:
         ctx("⚖ rolepod tier-check: this Workflow script sets NO per-agent model%s — every "
             "agent() inherits the Lead: %s. Fine for sweep/build stages. Do NOT rely on an "
@@ -95,11 +182,12 @@ if tool == "Workflow":
             "strong class; the commit gate requires it on high-risk). Or pin judge stages: "
             "model:\x27opus\x27.%s" % (eff, lead_txt, OFF))
     else:
+        note = (" Stated reason accepted: \x27%s\x27." % stated) if stated else ""
         ctx("⚖ rolepod tier-check: this Workflow script sets NO per-agent model%s — every "
-            "agent() inherits the Lead: %s — the WHOLE fleet runs at the Lead\x27s cost. Tier per "
-            "stage: sweep/read = model:\x27haiku\x27, build = model:\x27sonnet\x27 (or "
-            "agentType:\x27rolepod:<role>\x27 — writers are pinned balanced), verify/judge = "
-            "keep strong. Fleet-wide inherit needs a stated reason.%s" % (eff, lead_txt, OFF))
+            "agent() inherits the Lead: %s — the WHOLE fleet (%d agent() calls) runs at the "
+            "Lead\x27s cost.%s Tier per stage: sweep/read = model:\x27haiku\x27, build = "
+            "model:\x27sonnet\x27 (or agentType:\x27rolepod:<role>\x27 — writers are pinned "
+            "balanced), verify/judge = keep strong.%s" % (eff, lead_txt, n_calls, note, OFF))
 
 if tool in ("Agent", "Task"):
     atype_raw = (ti.get("subagent_type") or "general-purpose").split()[0]

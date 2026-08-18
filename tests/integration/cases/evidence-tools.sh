@@ -122,6 +122,40 @@ check "nudge: effort-only Workflow is NOT a tier choice → still nudged, Lead-a
   "bash '$NUDGE' < '$FIX/wf-effort.json' | grep -q 'effort is depth' && bash '$NUDGE' < '$FIX/wf-effort.json' | grep -q 'claude-sonnet-5'"
 check "nudge: model-less Workflow under a strong Lead → cost wording (pin build to sonnet)" \
   "bash '$NUDGE' < '$FIX/wf-strong.json' | grep -q \"model:'sonnet'\""
+# ── v2.48.0: fleet-tier gate — deny a model-less fan-out under a strong Lead ──
+printf '{"type":"assistant","timestamp":"2026-08-17T01:00:00.000Z","message":{"model":"claude-opus-5","content":[]}}\n' > "$FIX/lead-opus.jsonl"
+mkj "$FIX/wf-opus-bare.json"    Workflow "$FIX/lead-opus.jsonl"    '{"script":"name: \"fleet\" await agent(1); await agent(2); await agent(3)"}'
+mkj "$FIX/wf-fable-bare.json"   Workflow "$FIX/lead-fable.jsonl"   '{"script":"await agent(1)"}'
+mkj "$FIX/wf-unknown-bare.json" Workflow "$FIX/lead-unknown.jsonl" '{"script":"await agent(1)"}'
+mkj "$FIX/wf-opus-reason.json"  Workflow "$FIX/lead-opus.jsonl"    '{"script":"// fleet-inherit: every stage is adversarial judgment\nawait agent(1)"}'
+mkj "$FIX/wf-opus-atype.json"   Workflow "$FIX/lead-opus.jsonl"    '{"script":"await agent(1, {agentType: \"rolepod:frontend-developer\"})"}'
+mkj "$FIX/wf-opus-model.json"   Workflow "$FIX/lead-opus.jsonl"    '{"script":"await agent(1, {model: \"sonnet\"}); await agent(2)"}'
+mkj "$FIX/wf-opus-noagent.json" Workflow "$FIX/lead-opus.jsonl"    '{"script":"log(1)"}'
+check "gate: opus Lead + model-less fan-out → deny naming the per-stage fix" \
+  "cd '$FIX/repo' && bash '$NUDGE' < '$FIX/wf-opus-bare.json' | grep -q '\"permissionDecision\": \"deny\"' && bash '$NUDGE' < '$FIX/wf-opus-bare.json' | grep -q \"model:'sonnet'\" && bash '$NUDGE' < '$FIX/wf-opus-bare.json' | grep -q '3 agent() call'"
+check "gate: fable Lead → deny too (strong class)" \
+  "cd '$FIX/repo' && bash '$NUDGE' < '$FIX/wf-fable-bare.json' | grep -q '\"deny\"'"
+check "gate: unknown non-empty family → deny (assumed strong for cost)" \
+  "cd '$FIX/repo' && bash '$NUDGE' < '$FIX/wf-unknown-bare.json' | grep -q '\"deny\"' && bash '$NUDGE' < '$FIX/wf-unknown-bare.json' | grep -q 'unknown family'"
+check "gate: stated // fleet-inherit: reason → nudge, not deny" \
+  "cd '$FIX/repo' && ! bash '$NUDGE' < '$FIX/wf-opus-reason.json' | grep -q '\"deny\"' && bash '$NUDGE' < '$FIX/wf-opus-reason.json' | grep -q 'Stated reason accepted'"
+check "gate: agentType per stage counts as a tier choice → silent" \
+  "[ -z \"\$(cd '$FIX/repo' && bash '$NUDGE' < '$FIX/wf-opus-atype.json')\" ]"
+check "gate: any per-stage model: → silent" \
+  "[ -z \"\$(cd '$FIX/repo' && bash '$NUDGE' < '$FIX/wf-opus-model.json')\" ]"
+check "gate: no agent() fan-out → silent" \
+  "[ -z \"\$(cd '$FIX/repo' && bash '$NUDGE' < '$FIX/wf-opus-noagent.json')\" ]"
+check "gate: sonnet Lead → nudge only (fleet already cheap)" \
+  "! bash '$NUDGE' < '$FIX/wf-effort.json' | grep -q '\"deny\"'"
+check "gate: fresh session (no transcript) → nudge, never deny" \
+  "! bash '$NUDGE' < '$FIX/wf-inherit.json' | grep -q '\"deny\"'"
+check "gate: ROLEPOD_GATES_SOFT degrades to nudge + logs the bypass" \
+  "cd '$FIX/repo' && ! ROLEPOD_GATES_SOFT=1 bash '$NUDGE' < '$FIX/wf-opus-bare.json' | grep -q '\"deny\"' && grep -q '\"hook\":\"workflow-tier-nudge\",\"var\":\"ROLEPOD_GATES_SOFT\"' .rolepod/evidence/bypass.log"
+check "gate: each deny logs a dispatch-gate line (denied fleets never reach PostToolUse)" \
+  "grep -c '\"phase\": \"dispatch-gate\"' '$FIX/repo/.rolepod/evidence/phase-log.jsonl' | grep -qE '^[3-9]'"
+OUT=$(bash "$REPO_DIR/scripts/stats.sh" "$FIX/repo")
+check "stats reports fleet-tier gate denials" \
+  "printf '%s' \"\$OUT\" | grep -q 'Fleet-tier gate (v2.48.0): denied'"
 LOG="$REPO_DIR/hooks/dispatch-auto-log.sh"
 check "auto-log: effort-only Workflow logs model=inherit + effort_overrides=1 (was a false 'mixed')" \
   "cd '$FIX/repo' && bash '$LOG' < '$FIX/wf-effort.json' && tail -1 .rolepod/evidence/phase-log.jsonl | grep -q '\"model\": \"inherit\"' && tail -1 .rolepod/evidence/phase-log.jsonl | grep -q '\"effort_overrides\": 1'"
