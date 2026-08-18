@@ -33,6 +33,8 @@
 #         the ONE balanced tier — "sonnet pasted everywhere"            v2.50.0
 #       · a judgment-shaped stage (verify/judge/review/refute/rank/…)
 #         with no strong / role-pin / dynamic tier anywhere              v2.50.0
+#     Loop valve: the same fleet name denied twice in 30 min → the third
+#     submission passes with a nudge (logged action "yield") — bounded cost.
 #   Workflow with a per-stage spread (or a stated reason)      → silent
 #   Workflow, no `model:`/`agentType:`, low Lead               → nudge (Lead-aware)
 #     (`effort:` alone is not a tier choice — nudged, not silenced)
@@ -115,7 +117,51 @@ def _log_bypass(hook, var):
     except Exception:
         pass
 
-def _log_gate(ti, script, lead, cls, n_calls, verdict="no-tier", tiers=None, stages=None):
+def _fleet_key(ti, script):
+    # Named fleet → its name (a re-submitted, still-wrong script counts as the
+    # same fleet); nameless → a hash of the script text (only an unchanged
+    # re-submission counts — nothing else can be told apart).
+    m = re.search(r"name:\s*[\x27\"]([^\x27\"]+)", script)
+    if m:
+        return m.group(1)
+    if ti.get("name"):
+        return ti["name"]
+    import hashlib
+    return "sha:" + hashlib.sha1(script.encode("utf-8", "ignore")).hexdigest()[:12]
+
+def _recent_denies(ti, script, minutes=30):
+    # Loop valve: how many times THIS fleet (by name) was denied in the last
+    # `minutes`. Two strikes → the third submission passes with a nudge, so a
+    # Lead that cannot satisfy the gate never spins (bounded cost: 2 turns).
+    root = _git_root()
+    if not root:
+        return 0
+    try:
+        import datetime
+        name = _fleet_key(ti, script)
+        cutoff = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(minutes=minutes)
+        n = 0
+        with open(os.path.join(root, ".rolepod", "evidence", "phase-log.jsonl")) as f:
+            for line in f:
+                if "dispatch-gate" not in line or name not in line:
+                    continue
+                try:
+                    d = json.loads(line)
+                except Exception:
+                    continue
+                if d.get("phase") != "dispatch-gate" or d.get("name") != name or d.get("action") != "deny":
+                    continue
+                try:
+                    ts = datetime.datetime.fromisoformat(d.get("ts", ""))
+                except Exception:
+                    continue
+                if ts >= cutoff:
+                    n += 1
+        return n
+    except Exception:
+        return 0
+
+def _log_gate(ti, script, lead, cls, n_calls, verdict="no-tier", tiers=None, stages=None, action="deny"):
     # A denied fleet never reaches PostToolUse (dispatch-auto-log), so the
     # gate records itself: phase "dispatch-gate" — read by make stats.
     root = _git_root()
@@ -124,11 +170,10 @@ def _log_gate(ti, script, lead, cls, n_calls, verdict="no-tier", tiers=None, sta
     try:
         import datetime
         os.makedirs(os.path.join(root, ".rolepod", "evidence"), exist_ok=True)
-        m = re.search(r"name:\s*[\x27\"]([^\x27\"]+)", script)
         line = {"ts": datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds"),
                 "phase": "dispatch-gate", "cli": "claude", "tool": "Workflow",
-                "provenance": "hook-gate", "action": "deny",
-                "name": m.group(1) if m else (ti.get("name") or "?"),
+                "provenance": "hook-gate", "action": action,
+                "name": _fleet_key(ti, script),
                 "agent_calls": n_calls, "lead_model": lead or "unknown", "lead_class": cls,
                 "reason": verdict, "tiers": tiers or [], "stages": stages or []}
         with open(os.path.join(root, ".rolepod", "evidence", "phase-log.jsonl"), "a") as f:
@@ -210,6 +255,13 @@ if tool == "Workflow":
     if verdict:
         if soft:
             _log_bypass("workflow-tier-nudge", "ROLEPOD_GATES_SOFT")
+        elif _recent_denies(ti, script) >= 2:
+            # Loop valve: third strike passes, loudly, and is logged as yielded.
+            _log_gate(ti, script, lead, cls, n_calls, verdict, sorted(tiers), sorted(stages), action="yield")
+            ctx("⚖ rolepod fleet-tier gate YIELDED after 2 denies of this fleet in 30 min — "
+                "proceeding as submitted (%s). The tier spread is still expected: sweep haiku, "
+                "build/verify sonnet, judge/rank/review opus or inherit; or state "
+                "`// tier-reason: <why>`. This yield is logged for make stats." % verdict)
         else:
             _log_gate(ti, script, lead, cls, n_calls, verdict, sorted(tiers), sorted(stages))
             emit({"hookSpecificOutput": {

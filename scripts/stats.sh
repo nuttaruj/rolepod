@@ -163,6 +163,10 @@ if gated:
     why = Counter(g.get("reason") or "no-tier" for g in denies)
     print(f"\n  Fleet-tier gate: denied ×{len(denies)} — {calls} agent() call(s) held until the "
           "script named a tier per stage  (" + ", ".join(f"{k} ×{v}" for k, v in sorted(why.items())) + ")")
+    yields = [g for g in gated if g.get("action") == "yield"]
+    if yields:
+        print(f"    ↳ yielded ×{len(yields)} — the loop valve let a fleet through after 2 denies; "
+              "those fleets ran without the spread (audit them)")
     if why.get("single-tier") or why.get("no-strong-judge"):
         print("    ⚠ single-tier / no-strong-judge = the Lead pasted one balanced model on every "
               "stage (or ran its judge below itself) to pass the gate — the v2.50.0 rules catch it")

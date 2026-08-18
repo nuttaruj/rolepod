@@ -131,12 +131,14 @@ mkj "$FIX/wf-opus-reason.json"  Workflow "$FIX/lead-opus.jsonl"    '{"script":"/
 mkj "$FIX/wf-opus-atype.json"   Workflow "$FIX/lead-opus.jsonl"    '{"script":"await agent(1, {agentType: \"rolepod:frontend-developer\"})"}'
 mkj "$FIX/wf-opus-model.json"   Workflow "$FIX/lead-opus.jsonl"    '{"script":"await agent(1, {model: \"sonnet\"}); await agent(2)"}'
 mkj "$FIX/wf-opus-noagent.json" Workflow "$FIX/lead-opus.jsonl"    '{"script":"log(1)"}'
+GOUT=$(cd "$FIX/repo" && bash "$NUDGE" < "$FIX/wf-opus-bare.json")
 check "gate: opus Lead + model-less fan-out → deny naming the per-stage fix" \
-  "cd '$FIX/repo' && bash '$NUDGE' < '$FIX/wf-opus-bare.json' | grep -q '\"permissionDecision\": \"deny\"' && bash '$NUDGE' < '$FIX/wf-opus-bare.json' | grep -q \"model:'sonnet'\" && bash '$NUDGE' < '$FIX/wf-opus-bare.json' | grep -q '3 agent() call'"
+  "printf '%s' \"\$GOUT\" | grep -q '\"permissionDecision\": \"deny\"' && printf '%s' \"\$GOUT\" | grep -q \"model:'sonnet'\" && printf '%s' \"\$GOUT\" | grep -q '3 agent() call'"
 check "gate: fable Lead → deny too (strong class)" \
   "cd '$FIX/repo' && bash '$NUDGE' < '$FIX/wf-fable-bare.json' | grep -q '\"deny\"'"
+GOUT=$(cd "$FIX/repo" && bash "$NUDGE" < "$FIX/wf-unknown-bare.json")
 check "gate: unknown non-empty family → deny (assumed strong for cost)" \
-  "cd '$FIX/repo' && bash '$NUDGE' < '$FIX/wf-unknown-bare.json' | grep -q '\"deny\"' && bash '$NUDGE' < '$FIX/wf-unknown-bare.json' | grep -q 'unknown family'"
+  "printf '%s' \"\$GOUT\" | grep -q '\"deny\"' && printf '%s' \"\$GOUT\" | grep -q 'unknown family'"
 # v2.50.0 — the escape hatch closes: sonnet pasted on every stage / judge below the Lead
 mkj "$FIX/wf-mono-stages.json" Workflow "$FIX/lead-opus.jsonl" '{"script":"phase(\"Audit\"); await agent(1,{model:\"sonnet\"}); phase(\"Verify findings\"); await agent(2,{model:\"sonnet\"}); phase(\"Fix\"); await agent(3,{model:\"sonnet\"})"}'
 mkj "$FIX/wf-mono-1stage.json" Workflow "$FIX/lead-opus.jsonl" '{"script":"await agent(1,{model:\"sonnet\"}); await agent(2,{model:\"sonnet\"})"}'
@@ -146,8 +148,9 @@ mkj "$FIX/wf-judge-role.json"  Workflow "$FIX/lead-opus.jsonl" '{"script":"phase
 mkj "$FIX/wf-mono-reason.json" Workflow "$FIX/lead-opus.jsonl" '{"script":"// tier-reason: boilerplate i18n edits in every stage\nphase(\"A\"); await agent(1,{model:\"sonnet\"}); phase(\"B\"); await agent(2,{model:\"sonnet\"})"}'
 mkj "$FIX/wf-mono-sonnetlead.json" Workflow "$FIX/lead-sonnet.jsonl" '{"script":"phase(\"A\"); await agent(1,{model:\"sonnet\"}); phase(\"B\"); await agent(2,{model:\"sonnet\"})"}'
 mkj "$FIX/wf-dynamic.json"     Workflow "$FIX/lead-opus.jsonl" '{"script":"const M=pick(); phase(\"A\"); await agent(1,{model: M}); phase(\"B\"); await agent(2,{model: M})"}'
+GOUT=$(cd "$FIX/repo" && bash "$NUDGE" < "$FIX/wf-mono-stages.json")
 check "gate v2.50: 3 stages all sonnet under opus Lead → deny (single-tier) naming the stages" \
-  "cd '$FIX/repo' && bash '$NUDGE' < '$FIX/wf-mono-stages.json' | grep -q '\"deny\"' && bash '$NUDGE' < '$FIX/wf-mono-stages.json' | grep -q 'Verify findings'"
+  "printf '%s' \"\$GOUT\" | grep -q '\"deny\"' && printf '%s' \"\$GOUT\" | grep -q 'Verify findings'"
 check "gate v2.50: all sonnet but no discernible stages → silent (cannot judge spread)" \
   "[ -z \"\$(cd '$FIX/repo' && bash '$NUDGE' < '$FIX/wf-mono-1stage.json')\" ]"
 check "gate v2.50: haiku sweep + sonnet rank under opus Lead → deny (no-strong-judge)" \
@@ -162,6 +165,12 @@ check "gate v2.50: sonnet Lead + sonnet everywhere → silent (no cost leak; nud
   "[ -z \"\$(cd '$FIX/repo' && bash '$NUDGE' < '$FIX/wf-mono-sonnetlead.json')\" ]"
 check "gate v2.50: model from a variable (dynamic) → trusted, silent" \
   "[ -z \"\$(cd '$FIX/repo' && bash '$NUDGE' < '$FIX/wf-dynamic.json')\" ]"
+# loop valve: same fleet denied twice within 30 min → third submission passes with a nudge (logged yield)
+mkj "$FIX/wf-loop.json" Workflow "$FIX/lead-opus.jsonl" '{"script":"name: \"loopy\" phase(\"A\"); await agent(1,{model:\"sonnet\"}); phase(\"B\"); await agent(2,{model:\"sonnet\"})"}'
+check "gate valve: 1st and 2nd submission of the same fleet → deny, deny" \
+  "cd '$FIX/repo' && bash '$NUDGE' < '$FIX/wf-loop.json' | grep -q '\"deny\"' && bash '$NUDGE' < '$FIX/wf-loop.json' | grep -q '\"deny\"'"
+check "gate valve: 3rd submission within 30 min → passes with a YIELDED nudge, logged" \
+  "cd '$FIX/repo' && bash '$NUDGE' < '$FIX/wf-loop.json' | grep -q 'YIELDED' && ! bash '$NUDGE' < '$FIX/wf-loop.json' | grep -q '\"deny\"' && grep -q '\"action\": \"yield\"' .rolepod/evidence/phase-log.jsonl"
 check "gate v2.50: dispatch-gate lines carry reason + tiers + stages" \
   "grep -q '\"reason\": \"single-tier\"' '$FIX/repo/.rolepod/evidence/phase-log.jsonl' && grep -q '\"reason\": \"no-strong-judge\"' '$FIX/repo/.rolepod/evidence/phase-log.jsonl'"
 check "gate: stated // fleet-inherit: reason → nudge, not deny" \
@@ -179,7 +188,7 @@ check "gate: fresh session (no transcript) → nudge, never deny" \
 check "gate: ROLEPOD_GATES_SOFT degrades to nudge + logs the bypass" \
   "cd '$FIX/repo' && ! ROLEPOD_GATES_SOFT=1 bash '$NUDGE' < '$FIX/wf-opus-bare.json' | grep -q '\"deny\"' && grep -q '\"hook\":\"workflow-tier-nudge\",\"var\":\"ROLEPOD_GATES_SOFT\"' .rolepod/evidence/bypass.log"
 check "gate: each deny logs a dispatch-gate line (denied fleets never reach PostToolUse)" \
-  "grep -c '\"phase\": \"dispatch-gate\"' '$FIX/repo/.rolepod/evidence/phase-log.jsonl' | grep -qE '^[3-9]'"
+  "grep -c '\"action\": \"deny\"' '$FIX/repo/.rolepod/evidence/phase-log.jsonl' | grep -qE '^([3-9]|[1-9][0-9])'"
 mkj "$FIX/wf-mono.json"  Workflow "$FIX/lead-opus.jsonl" '{"script":"name: \"mono\" await agent(1,{model: \"sonnet\"}); await agent(2,{model: \"sonnet\"})"}'
 mkj "$FIX/wf-multi.json" Workflow "$FIX/lead-opus.jsonl" '{"script":"name: \"multi\" await agent(1,{model: \"haiku\"}); await agent(2,{agentType: \"rolepod:qa-tester\"}); await agent(3,{model: \"opus\"})"}'
 LOG="$REPO_DIR/hooks/dispatch-auto-log.sh"
