@@ -27,10 +27,12 @@
 # opus, and the Lead's own re-reads were ~90% of the project's spend. No
 # hook watched it because none looked at `usage`. This one reads the last
 # turn's context size from the transcript and, past 200k (the long-context
-# pricing knee), tells BOTH parties: additionalContext for the Lead
-# (delegate reads to a scout, offer /compact) and a top-level systemMessage
-# for the user (/compact or a fresh session — the user holds that lever).
-# Fires once per 200k bucket per session (state file), not every prompt.
+# pricing knee), tells the Lead via additionalContext: delegate reads to a
+# scout, and propose /compact or a fresh session to the user when the task
+# is done. Lead-facing only (v2.49.1): the user-facing systemMessage was
+# removed on request — a nag on every 200k bucket is friction, and the Lead
+# can raise it in its own words at a natural pause. Fires once per 200k
+# bucket per session (state file), not every prompt.
 #
 # Opt-out for a session: ROLEPOD_NUDGE_OFF=1
 set -euo pipefail
@@ -41,7 +43,6 @@ INPUT=$(cat 2>/dev/null || echo '{}')
 PROMPT=$(printf '%s' "$INPUT" | python3 -c "import sys,json;print(json.load(sys.stdin).get('prompt',''))" 2>/dev/null || echo "")
 
 CTX_MSG=""
-CTX_SYS=""
 SESSION_STATE="$(dirname "$0")/lib/session_state.py"
 if [ -f "$SESSION_STATE" ]; then
   CTX=$(printf '%s' "$INPUT" | python3 "$SESSION_STATE" context-tokens 2>/dev/null || echo 0)
@@ -58,8 +59,7 @@ if [ -f "$SESSION_STATE" ]; then
     if [ "$LAST" != "$BUCKET" ]; then
       [ -n "$SID" ] && { printf '%s' "$BUCKET" > "$STATE_DIR/$SID" 2>/dev/null || true; }
       CTX_K=$((CTX / 1000))
-      CTX_MSG="🧠 rolepod context-check: this session's last turn carried ${CTX_K}k tokens of context — every turn re-reads ALL of it before doing anything (cache read is not free; past 200k long-context pricing may apply). Before sweeping or reading many files yourself, dispatch a rolepod:scout (cheap class) and read only its report; if the current task is done, propose /compact or a fresh session to the user (skill: manage-context). "
-      CTX_SYS="rolepod: context is ${CTX_K}k tokens — each turn now re-reads all of it. /compact or start a fresh session for the next task to cut per-turn cost 3-5×."
+      CTX_MSG="🧠 rolepod context-check: this session's last turn carried ${CTX_K}k tokens of context — every turn re-reads ALL of it before doing anything (cache read is not free; past 200k long-context pricing may apply). Before sweeping or reading many files yourself, dispatch a rolepod:scout (cheap class) and read only its report; when the current task is done, mention ONCE to the user that /compact or a fresh session would cut per-turn cost 3-5× (skill: manage-context) — do not repeat it every turn. "
     fi
   fi
 fi
@@ -67,9 +67,9 @@ fi
 # Nothing more to gauge without a prompt.
 if [ -z "$PROMPT" ]; then
   if [ -n "$CTX_MSG" ]; then
-    ROLEPOD_HOOK_MSG="$CTX_MSG" ROLEPOD_HOOK_SYS="$CTX_SYS" python3 -c "
+    ROLEPOD_HOOK_MSG="$CTX_MSG" python3 -c "
 import json, os
-print(json.dumps({'hookSpecificOutput':{'hookEventName':'UserPromptSubmit','additionalContext':os.environ.get('ROLEPOD_HOOK_MSG','')},'systemMessage':os.environ.get('ROLEPOD_HOOK_SYS','')}))
+print(json.dumps({'hookSpecificOutput':{'hookEventName':'UserPromptSubmit','additionalContext':os.environ.get('ROLEPOD_HOOK_MSG','')}}))
 " 2>/dev/null || echo '{}'
   fi
   exit 0
@@ -88,12 +88,9 @@ fi
 
 if [ -n "$MSG$CTX_MSG" ]; then
   # Env-passed (never interpolated) so quotes in either message cannot break the JSON.
-  ROLEPOD_HOOK_MSG="${CTX_MSG}${MSG}" ROLEPOD_HOOK_SYS="$CTX_SYS" python3 -c "
+  ROLEPOD_HOOK_MSG="${CTX_MSG}${MSG}" python3 -c "
 import json, os
-out = {'hookSpecificOutput':{'hookEventName':'UserPromptSubmit','additionalContext':os.environ.get('ROLEPOD_HOOK_MSG','')}}
-if os.environ.get('ROLEPOD_HOOK_SYS'):
-    out['systemMessage'] = os.environ['ROLEPOD_HOOK_SYS']
-print(json.dumps(out))
+print(json.dumps({'hookSpecificOutput':{'hookEventName':'UserPromptSubmit','additionalContext':os.environ.get('ROLEPOD_HOOK_MSG','')}}))
 " 2>/dev/null || echo '{}'
 fi
 

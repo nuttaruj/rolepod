@@ -183,8 +183,8 @@ CVN="$REPO_DIR/hooks/claim-verify-nudge.sh"
 printf '{"type":"assistant","timestamp":"2026-08-18T01:00:00.000Z","message":{"model":"claude-opus-5","usage":{"input_tokens":2,"cache_read_input_tokens":574899,"cache_creation_input_tokens":1055,"output_tokens":10},"content":[]}}\n' > "$FIX/ctx-big.jsonl"
 printf '{"type":"assistant","timestamp":"2026-08-18T01:00:00.000Z","message":{"model":"claude-opus-5","usage":{"input_tokens":2,"cache_read_input_tokens":120000,"cache_creation_input_tokens":1000,"output_tokens":10},"content":[]}}\n' > "$FIX/ctx-small.jsonl"
 mkdir -p "$FIX/home"
-check "context-check: 575k context → additionalContext for the Lead + systemMessage for the user" \
-  "printf '{\"session_id\":\"c1\",\"transcript_path\":\"$FIX/ctx-big.jsonl\",\"prompt\":\"fix the button\"}' | HOME='$FIX/home' bash '$CVN' | python3 -c 'import json,sys; o=json.load(sys.stdin); a=o[\"hookSpecificOutput\"][\"additionalContext\"]; assert \"575k\" in a and \"scout\" in a and \"/compact\" in o[\"systemMessage\"]'"
+check "context-check: 575k context → additionalContext for the Lead only (no user-facing systemMessage, v2.49.1)" \
+  "printf '{\"session_id\":\"c1\",\"transcript_path\":\"$FIX/ctx-big.jsonl\",\"prompt\":\"fix the button\"}' | HOME='$FIX/home' bash '$CVN' | python3 -c 'import json,sys; o=json.load(sys.stdin); a=o[\"hookSpecificOutput\"][\"additionalContext\"]; assert \"575k\" in a and \"scout\" in a and \"/compact\" in a and \"systemMessage\" not in o'"
 check "context-check: same 200k bucket in the same session → silent (once per bucket)" \
   "[ -z \"\$(printf '{\"session_id\":\"c1\",\"transcript_path\":\"$FIX/ctx-big.jsonl\",\"prompt\":\"fix the button\"}' | HOME='$FIX/home' bash '$CVN')\" ]"
 check "context-check: 121k context → no context wording (claim-check still works)" \
