@@ -145,7 +145,8 @@ check "gate: unknown non-empty family → deny (assumed strong for cost)" \
 # v2.50.0 — the escape hatch closes: sonnet pasted on every stage / judge below the Lead
 mkj "$FIX/wf-mono-stages.json" Workflow "$FIX/lead-opus.jsonl" '{"script":"phase(\"Audit\"); await agent(1,{model:\"sonnet\"}); phase(\"Verify findings\"); await agent(2,{model:\"sonnet\"}); phase(\"Fix\"); await agent(3,{model:\"sonnet\"})"}'
 mkj "$FIX/wf-mono-1stage.json" Workflow "$FIX/lead-opus.jsonl" '{"script":"await agent(1,{model:\"sonnet\"}); await agent(2,{model:\"sonnet\"})"}'
-mkj "$FIX/wf-judge-low.json"   Workflow "$FIX/lead-opus.jsonl" '{"script":"await agent(1,{model:\"haiku\", label:\"sweep:a\"}); await agent(2,{model:\"sonnet\", label:\"rank:all\"})"}'
+mkj "$FIX/wf-judge-low.json"   Workflow "$FIX/lead-opus.jsonl" '{"script":"name: \"refund-audit\" await agent(1,{model:\"haiku\", label:\"sweep:a\", prompt:\"find refund paths\"}); await agent(2,{model:\"sonnet\", label:\"rank:all\"})"}'
+mkj "$FIX/wf-judge-routine.json" Workflow "$FIX/lead-opus.jsonl" '{"script":"name: \"i18n-audit\" await agent(1,{model:\"haiku\", label:\"sweep:a\", prompt:\"find hard-coded Thai strings\"}); await agent(2,{model:\"sonnet\", label:\"rank:all\"})"}'
 mkj "$FIX/wf-judge-ok.json"    Workflow "$FIX/lead-opus.jsonl" '{"script":"await agent(1,{model:\"haiku\", label:\"sweep:a\"}); await agent(2,{model:\"opus\", label:\"rank:all\"})"}'
 mkj "$FIX/wf-judge-role.json"  Workflow "$FIX/lead-opus.jsonl" '{"script":"phase(\"Build\"); await agent(1,{model:\"sonnet\"}); phase(\"Review\"); await agent(2,{agentType:\"rolepod:universal-reviewer\"})"}'
 mkj "$FIX/wf-mono-reason.json" Workflow "$FIX/lead-opus.jsonl" '{"script":"// tier-reason: boilerplate i18n edits in every stage\nphase(\"A\"); await agent(1,{model:\"sonnet\"}); phase(\"B\"); await agent(2,{model:\"sonnet\"})"}'
@@ -156,8 +157,10 @@ check "gate v2.50: 3 stages all sonnet under opus Lead → deny (single-tier) na
   "printf '%s' \"\$GOUT\" | grep -q '\"deny\"' && printf '%s' \"\$GOUT\" | grep -q 'Verify findings'"
 check "gate v2.50: all sonnet but no discernible stages → silent (cannot judge spread)" \
   "[ -z \"\$(cd '$FIX/repo' && bash '$NUDGE' < '$FIX/wf-mono-1stage.json')\" ]"
-check "gate v2.50: haiku sweep + sonnet rank under opus Lead → deny (no-strong-judge)" \
+check "gate v2.50: haiku sweep + sonnet rank on a MONEY fleet under opus Lead → deny (no-strong-judge)" \
   "cd '$FIX/repo' && bash '$NUDGE' < '$FIX/wf-judge-low.json' | grep -q 'judgment stage'"
+check "gate v2.51.1: haiku sweep + sonnet rank on a ROUTINE fleet (i18n) → silent (balanced judge is R2 policy)" \
+  "[ -z \"\$(cd '$FIX/repo' && bash '$NUDGE' < '$FIX/wf-judge-routine.json')\" ]"
 check "gate v2.50: haiku sweep + opus rank → silent (real spread)" \
   "[ -z \"\$(cd '$FIX/repo' && bash '$NUDGE' < '$FIX/wf-judge-ok.json')\" ]"
 check "gate v2.50: sonnet build + agentType reviewer → silent (role-pin counts as the strong stage)" \

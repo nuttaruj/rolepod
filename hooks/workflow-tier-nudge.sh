@@ -32,7 +32,9 @@
 #       · ≥2 stages (phase()/meta titles/label prefixes) all pinned to
 #         the ONE balanced tier — "sonnet pasted everywhere"            v2.50.0
 #       · a judgment-shaped stage (verify/judge/review/refute/rank/…)
-#         with no strong / role-pin / dynamic tier anywhere              v2.50.0
+#         with no strong / role-pin / dynamic tier anywhere — ONLY when
+#         the fleet is high-risk-shaped (money/auth/security/migration
+#         words in the script); routine work judges at balanced   v2.50.0/v2.51.1
 #     Loop valve: the same fleet name denied twice in 30 min → the third
 #     submission passes with a nudge (logged action "yield") — bounded cost.
 #   Workflow with a per-stage spread (or a stated reason)      → silent
@@ -211,6 +213,16 @@ if tool == "Workflow":
         stages = set(re.findall(r"label\s*:\s*[`\x27\"]([A-Za-z_][A-Za-z0-9_-]*)\s*[:\-]", script))
     JUDGE_RX = re.compile(r"(verif|judg|review|refut|skeptic|rank|scor|adversar|critic|synthes)", re.I)
     judge_stages = sorted(x for x in stages if JUDGE_RX.search(x))
+    # High-risk-shaped fleet: the script (name, prompts, paths) names a money /
+    # auth / security / migration surface. Only such a fleet needs its judge
+    # stage at strong class (R4 adversarial floor); routine work (i18n, UI
+    # copy, docs) is R2 — a balanced judge is the policy, not a downgrade.
+    RISK_RX = re.compile(r"\b(auth|authn|authz|authentication|authorization|billing|payment|payments|"
+                         r"refund|refunds|payout|payouts|chargeback|settlement|credit|credits|invoice|"
+                         r"invoices|charge|charges|stripe|paypal|wallet|ledger|migration|migrations|"
+                         r"secret|secrets|token|tokens|jwt|oauth|sso|saml|crypto|security|permission|"
+                         r"permissions|gdpr|pdpa|deletion|erasure|webhook|webhooks)\b", re.I)
+    risky = bool(RISK_RX.search(script)) or bool(RISK_RX.search(str(ti.get("name") or "")))
     m_reason = re.search(r"(?:fleet-inherit|tier-reason)\s*:\s*(\S[^\n]{0,160})", script)
     stated = m_reason.group(1).strip() if m_reason else ""
     eff = (" (%d effort: overrides — effort is depth, not tier)" % n_effort) if n_effort else ""
@@ -232,28 +244,30 @@ if tool == "Workflow":
                 "opus/fable in a day this way; a 50-agent fleet ≈ 5M tokens). Re-submit the SAME "
                 "script with a tier PER STAGE (not one model pasted on every stage): sweep/read → "
                 "model:\x27haiku\x27, build/verify → model:\x27sonnet\x27 (or agentType:\x27rolepod:<role>\x27 "
-                "— writers are pinned balanced), judge/refute/rank/review → keep inherit or "
-                "model:\x27opus\x27." % (n_calls, eff, lead or "unknown model", why)) + TAIL
+                "— writers are pinned balanced), judge/refute/rank/review → model:\x27sonnet\x27 for routine "
+                "work, opus/inherit only when the fleet touches money/auth/security/migrations."
+                % (n_calls, eff, lead or "unknown model", why)) + TAIL
         elif tiers == {"balanced"} and len(stages) >= 2:
             verdict = "single-tier"
             reason_txt = (
                 "⛔ rolepod fleet-tier gate: %d stage(s) — %s — all pinned to ONE balanced tier "
                 "under a %s Lead (%s). Tier PER STAGE means the tiers DIFFER by the work: "
                 "sweep/scan/read → model:\x27haiku\x27, build/verify → model:\x27sonnet\x27, "
-                "judge/refute/rank/review/synthesis → model:\x27opus\x27 (or inherit — the Lead is "
-                "already strong). Measured: this pattern (sonnet pasted on every stage) is how "
+                "judge/refute/rank/review/synthesis → model:\x27sonnet\x27 for routine work%s. "
+                "Measured: this pattern (sonnet pasted on every stage) is how "
                 "the last fleets passed this gate without applying the policy. Re-submit with the "
                 "tiers spread; every stage genuinely balanced work? state it: "
-                "`// tier-reason: <why>`." % (len(stages), ", ".join(sorted(stages))[:200], why, lead or "unknown model")) + TAIL
-        elif judge_stages and not (tiers & {"strong", "role-pin", "dynamic"}):
+                "`// tier-reason: <why>`." % (len(stages), ", ".join(sorted(stages))[:200], why, lead or "unknown model",
+                                              (", opus/inherit here because this fleet touches money/auth/security/migrations" if risky else ""))) + TAIL
+        elif risky and judge_stages and not (tiers & {"strong", "role-pin", "dynamic"}):
             verdict = "no-strong-judge"
             reason_txt = (
                 "⛔ rolepod fleet-tier gate: judgment stage(s) %s run at %s under a %s Lead (%s) — "
                 "a strong-class Lead pinning its own judge/verify/rank stage BELOW itself is the "
-                "silent downgrade the tier policy forbids (the fleet is cheap where it should be, "
-                "and blunt where it must not be). Give the judgment stage model:\x27opus\x27 or "
-                "leave it inherit; keep sweep haiku / build sonnet. Not a judgment stage despite the "
-                "name? state it: `// tier-reason: <why>`." % (
+                "silent downgrade the tier policy forbids on a fleet that touches money/auth/security/"
+                "migrations (R4 adversarial floor). Give the judgment stage model:\x27opus\x27 or "
+                "leave it inherit; keep sweep haiku / build sonnet. Not a judgment stage, or not "
+                "high-risk despite the words? state it: `// tier-reason: <why>`." % (
                     ", ".join(judge_stages)[:160], "+".join(sorted(tiers)), why, lead or "unknown model")) + TAIL
     if verdict:
         if soft:
@@ -278,15 +292,15 @@ if tool == "Workflow":
             "agent() inherits the Lead: %s. Fine for sweep/build stages. Do NOT rely on an "
             "in-script review/judge stage as the strong pass — dispatch rolepod:universal-reviewer "
             "/ rolepod:security-engineer via the Agent tool before commit (the hook runs them at "
-            "strong class; the commit gate requires it on high-risk). Or pin judge stages: "
-            "model:\x27opus\x27.%s" % (eff, lead_txt, OFF))
+            "strong class; the commit gate requires it on high-risk). In-script judge stages: "
+            "sonnet for routine work, model:\x27opus\x27 when the fleet touches money/auth/security.%s" % (eff, lead_txt, OFF))
     else:
         note = (" Stated reason accepted: \x27%s\x27." % stated) if stated else ""
         ctx("⚖ rolepod tier-check: this Workflow script sets NO per-agent model%s — every "
             "agent() inherits the Lead: %s — the WHOLE fleet (%d agent() calls) runs at the "
             "Lead\x27s cost.%s Tier per stage: sweep/read = model:\x27haiku\x27, build = "
             "model:\x27sonnet\x27 (or agentType:\x27rolepod:<role>\x27 — writers are pinned "
-            "balanced), verify/judge = keep strong.%s" % (eff, lead_txt, n_calls, note, OFF))
+            "balanced), verify/judge = sonnet for routine work, strong on money/auth/security.%s" % (eff, lead_txt, n_calls, note, OFF))
 
 if tool in ("Agent", "Task"):
     atype_raw = (ti.get("subagent_type") or "general-purpose").split()[0]
