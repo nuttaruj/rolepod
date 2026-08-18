@@ -151,7 +151,7 @@ The plan template is the canonical artifact: `templates/plan-template.md`. Fill 
 
 Tasks use `- [ ]` checkboxes so progress is visible in the artifact itself — survives session compaction.
 
-For one-session work, inline the filled template in chat. For multi-session work, save it to `docs/rolepod/plans/<feature>-YYYY-MM-DD.md`.
+For one-session work, inline the filled template in chat. For multi-session work, save it to `docs/rolepod/plans/<feature>-YYYY-MM-DD.md`. Re-planning after the spec moves never overwrites: keep the prior file and write `<feature>-YYYY-MM-DD-v2.md` (the diff between versions is the record of what changed and why).
 
 Harness plan mode active (a read-only planning state with its own approval gate — e.g. Claude Code plan mode, Codex `/plan`): present the filled plan through that gate rather than as a plain chat message, and defer every disk write — the plan file and any cohesion contract — until the gate approves. File writes are blocked until then; do not fight the block, it is the same boundary this skill's Iron Rule draws.
 

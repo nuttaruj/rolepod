@@ -214,6 +214,56 @@ def last_context_tokens(transcript_path: str, tail_bytes: int = 262144) -> int:
         return 0
 
 
+def dispatch_rounds_this_turn(transcript_path: str, tail_bytes: int = 262144) -> int:
+    """How many ASSISTANT MESSAGES since the last real user prompt carried an
+    Agent/Task tool_use — i.e. how many times the Lead has already been the
+    coordinator round-trip in this turn (dispatch → wait → re-read the whole
+    context → dispatch again). Parallel dispatches inside ONE message count
+    once (that is fan-out, no extra round-trip). Tail-scan backwards to the
+    last user event whose content is a prompt (string or text block) — tool
+    results and meta events do not end the turn. 0 when unknown."""
+    if not transcript_path or not os.path.isfile(transcript_path):
+        return 0
+    try:
+        size = os.path.getsize(transcript_path)
+        with open(transcript_path, "rb") as f:
+            while True:
+                start = max(0, size - tail_bytes)
+                f.seek(start)
+                lines = f.read(size - start).split(b"\n")
+                if start > 0:
+                    lines = lines[1:]
+                rounds = 0
+                for raw in reversed(lines):
+                    if b'"type"' not in raw:
+                        continue
+                    try:
+                        ev = json.loads(raw)
+                    except Exception:
+                        continue
+                    t = ev.get("type")
+                    if t == "user":
+                        c = (ev.get("message") or {}).get("content")
+                        if ev.get("isMeta"):
+                            continue
+                        if isinstance(c, str):
+                            return rounds
+                        if isinstance(c, list) and any(
+                                isinstance(b, dict) and b.get("type") == "text" for b in c):
+                            return rounds
+                        continue  # tool_result carrier — same turn
+                    if t == "assistant":
+                        content = (ev.get("message") or {}).get("content") or []
+                        if any(isinstance(b, dict) and b.get("type") == "tool_use"
+                               and b.get("name") in AGENT_TOOLS for b in content):
+                            rounds += 1
+                if start == 0:
+                    return rounds
+                tail_bytes *= 4
+    except Exception:
+        return 0
+
+
 def _iter_tool_uses(
     transcript_path: str, since: str | None = None
 ) -> Iterable[tuple[str, dict]]:
@@ -517,6 +567,9 @@ def main() -> int:
             except ValueError:
                 since_epoch = None
         print("%d %d %d %d" % count_all(transcript_path, since_epoch))
+    elif query == "dispatch-rounds":
+        # Assistant messages with an Agent/Task dispatch since the last user prompt.
+        print(dispatch_rounds_this_turn(transcript_path))
     elif query == "context-tokens":
         # Context size (tokens) the last assistant turn carried — 0 unknown.
         print(last_context_tokens(transcript_path))

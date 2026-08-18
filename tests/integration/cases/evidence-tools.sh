@@ -217,6 +217,34 @@ OUT=$(bash "$REPO_DIR/scripts/stats.sh" "$FIX/repo")
 check "stats reports floor applied/missed + Lead class at dispatch" \
   "printf '%s' \"\$OUT\" | grep -q 'applied ×1, missed ×1' && printf '%s' \"\$OUT\" | grep -q 'Lead class at dispatch'"
 
+# ── coordinator-loop check (v2.51.0) — 3rd sequential Agent round-trip in one turn ──
+mkturn() { # $1 out, $2 prior dispatch rounds (0..3) — one Agent tool_use per assistant msg + a tool_result
+  : > "$1"
+  printf '{"type":"user","timestamp":"2026-08-18T01:00:00.000Z","message":{"role":"user","content":"do the thing"}}\n' >> "$1"
+  local i=1
+  while [ "$i" -le "$2" ]; do
+    printf '{"type":"assistant","timestamp":"2026-08-18T01:0%s:00.000Z","message":{"model":"claude-opus-5","usage":{"input_tokens":1,"cache_read_input_tokens":300000,"cache_creation_input_tokens":100,"output_tokens":5},"content":[{"type":"tool_use","id":"t%s","name":"Agent","input":{"subagent_type":"general-purpose","prompt":"x","model":"sonnet"}}]}}\n' "$i" "$i" >> "$1"
+    printf '{"type":"user","timestamp":"2026-08-18T01:0%s:30.000Z","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"t%s","content":"ok"}]}}\n' "$i" "$i" >> "$1"
+    i=$((i+1))
+  done
+}
+mkturn "$FIX/turn0.jsonl" 0; mkturn "$FIX/turn2.jsonl" 2; mkturn "$FIX/turn3.jsonl" 3
+printf '{"type":"user","message":{"role":"user","content":"go"}}\n{"type":"assistant","message":{"model":"claude-opus-5","content":[{"type":"tool_use","name":"Agent","input":{}},{"type":"tool_use","name":"Agent","input":{}},{"type":"tool_use","name":"Agent","input":{}}]}}\n' > "$FIX/turn-par.jsonl"
+SS="$REPO_DIR/hooks/lib/session_state.py"
+check "dispatch-rounds: counts assistant messages with an Agent dispatch since the last user prompt (0 / 2 / 3)" \
+  "[ \"\$(printf '{\"transcript_path\":\"$FIX/turn0.jsonl\"}' | python3 '$SS' dispatch-rounds)\" = 0 ] && [ \"\$(printf '{\"transcript_path\":\"$FIX/turn2.jsonl\"}' | python3 '$SS' dispatch-rounds)\" = 2 ] && [ \"\$(printf '{\"transcript_path\":\"$FIX/turn3.jsonl\"}' | python3 '$SS' dispatch-rounds)\" = 3 ]"
+check "dispatch-rounds: parallel fan-out inside ONE message counts as one round" \
+  "[ \"\$(printf '{\"transcript_path\":\"$FIX/turn-par.jsonl\"}' | python3 '$SS' dispatch-rounds)\" = 1 ]"
+mkj "$FIX/agent-3rd.json" Agent "$FIX/turn2.jsonl" '{"subagent_type":"rolepod:backend-developer","prompt":"x"}'
+mkj "$FIX/agent-4th.json" Agent "$FIX/turn3.jsonl" '{"subagent_type":"rolepod:backend-developer","prompt":"x"}'
+mkj "$FIX/agent-3rd-explore.json" Agent "$FIX/turn2.jsonl" '{"subagent_type":"Explore","prompt":"x"}'
+check "coordinator-check: the 3rd sequential Agent round-trip in a turn → nudge to move to a Workflow pipeline (with context size)" \
+  "bash '$NUDGE' < '$FIX/agent-3rd.json' | grep -q 'coordinator-check' && bash '$NUDGE' < '$FIX/agent-3rd.json' | grep -q '300k tokens'"
+check "coordinator-check: 4th round-trip → silent again (fires once per turn)" \
+  "[ -z \"\$(bash '$NUDGE' < '$FIX/agent-4th.json')\" ]"
+check "coordinator-check: merges with a tier note when both apply (Explore on the 3rd round-trip)" \
+  "bash '$NUDGE' < '$FIX/agent-3rd-explore.json' | python3 -c 'import json,sys; a=json.load(sys.stdin)[\"hookSpecificOutput\"][\"additionalContext\"]; assert \"coordinator-check\" in a and \"tier-check\" in a'"
+
 # ── context-bloat check (v2.49.0) — rides the UserPromptSubmit hook ────────
 CVN="$REPO_DIR/hooks/claim-verify-nudge.sh"
 printf '{"type":"assistant","timestamp":"2026-08-18T01:00:00.000Z","message":{"model":"claude-opus-5","usage":{"input_tokens":2,"cache_read_input_tokens":574899,"cache_creation_input_tokens":1055,"output_tokens":10},"content":[]}}\n' > "$FIX/ctx-big.jsonl"

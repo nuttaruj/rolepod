@@ -43,6 +43,8 @@
 #   Agent system-architect, no model, Lead known-low           → nudge (pass model:'opus')
 #   Agent sweep-type (Explore/general-purpose), no model        → nudge
 #     (rolepod:scout is frontmatter-pinned cheap → silent)
+#   Agent = the Lead's 3rd sequential dispatch round-trip this turn
+#                                                              → coordinator-loop nudge (once)
 #   anything else                                              → silent
 #
 # Fleet-tier gate (v2.48.0): the ONE deny in this hook, scoped to where money
@@ -290,6 +292,22 @@ if tool in ("Agent", "Task"):
     atype_raw = (ti.get("subagent_type") or "general-purpose").split()[0]
     atype = ss._bare_agent_name(atype_raw)
     model = (ti.get("model") or "").split()[0] if ti.get("model") else ""
+    # Coordinator-loop check (v2.51.0, from the CCW "Beat Model" comparison):
+    # this dispatch would be the Lead\x27s 3rd sequential Agent round-trip in
+    # ONE turn — each round-trip re-reads the whole context at the Lead\x27s
+    # price. Fires once (exactly at the 3rd), never on parallel fan-out inside
+    # one message, never blocks. Merged into the branch output below when a
+    # tier note also applies.
+    rounds = ss.dispatch_rounds_this_turn(d.get("transcript_path") or "")
+    loop_note = ""
+    if rounds == 2:
+        ctxk = ss.last_context_tokens(d.get("transcript_path") or "") // 1000
+        loop_note = ("🔁 rolepod coordinator-check: this is the Lead\x27s 3rd sequential Agent "
+                     "round-trip this turn — every dispatch→wait→dispatch re-reads the whole "
+                     "context (%s) at the Lead\x27s price. Dependent multi-step fan-out belongs "
+                     "in a Workflow script (pipeline / parallel stages run OUTSIDE the Lead; the "
+                     "Lead reads one result). Keep the Agent tool for one-off or truly parallel "
+                     "single-message dispatches. " % (("~%dk tokens" % ctxk) if ctxk else "all of it"))
     if atype in ss.STRONG_ROLE_AGENTS:
         if not model and cls in ss.LOW_CLASSES:
             new_input = dict(ti)
@@ -305,20 +323,24 @@ if tool in ("Agent", "Task"):
                                  "the Lead\x27s class)" % (atype, ss.STRONG_ALIAS, lead_txt),
             })
         if model and ss.model_class(model) in ss.LOW_CLASSES:
-            ctx("⚖ rolepod tier-check: %s dispatched with model=%s — an EXPLICIT downgrade of a "
+            ctx(loop_note + "⚖ rolepod tier-check: %s dispatched with model=%s — an EXPLICIT downgrade of a "
                 "strong review role. The commit gate does not count it as the strong pass on a "
                 "high-risk diff. Drop the model field (the hook lifts it) or pass "
                 "model:\x27opus\x27.%s" % (atype, model, OFF))
+        if loop_note:
+            ctx(loop_note.rstrip() + OFF)
         sys.exit(0)
     if atype == "system-architect" and not model and cls in ss.LOW_CLASSES:
-        ctx("⚖ rolepod tier-check: system-architect inherits the Lead: %s — a strong-tier "
+        ctx(loop_note + "⚖ rolepod tier-check: system-architect inherits the Lead: %s — a strong-tier "
             "judgment role. Pass model:\x27opus\x27 (or the strongest you have).%s" % (lead_txt, OFF))
     # rolepod:scout is pinned cheap by its frontmatter (verified on disk) — no nudge.
     # Only the platform sweep agents (Explore / general-purpose) truly inherit.
     if not model and re.search(r"(explore|general-purpose)", atype, re.I):
-        ctx("⚖ rolepod tier-check: sweep-type agent (%s) dispatched with no model override — it "
+        ctx(loop_note + "⚖ rolepod tier-check: sweep-type agent (%s) dispatched with no model override — it "
             "inherits the Lead: %s. Sweep/read work fits the cheap class: pass model:\x27haiku\x27, "
             "or use rolepod:scout (pinned cheap). Keep inherit only with a stated reason.%s"
             % (atype, lead_txt, OFF))
+    if loop_note:
+        ctx(loop_note.rstrip() + OFF)
 ' 2>/dev/null || true
 exit 0
