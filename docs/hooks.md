@@ -12,7 +12,7 @@ Lead does not invoke these manually. They fire automatically.
 | **Enforcement** | `block-subagent-commit`, `cohesion-contract-check`, `gate-reminder`, `precommit-gate` | Hard / soft blocks on discipline violations (high-risk path, parallel-without-contract, sub-agent commit, schema-bound new file) |
 | **Context** | `project-context-loader` | Inject git state at SessionStart |
 | **Session safety** | `session-lifecycle`, `worktree-guard` | `session-lifecycle`: SessionStart lock + Stop unlock. `worktree-guard`: hard-blocks an edit only when a live sibling owns that exact file — disjoint/solo edits flow free |
-| **Answer-path** | `claim-verify-nudge` | Soft read-first nudge when a prompt asks for an analysis / diagnosis / "how does X work" / status — covers the claim/answer path that tool + lifecycle hooks miss. Claude/Codex `UserPromptSubmit`, Gemini `BeforeAgent`; soft (`additionalContext`), never blocks |
+| **Answer-path** | `claim-verify-nudge` | Soft read-first nudge when a prompt asks for an analysis / diagnosis / "how does X work" / status — covers the claim/answer path that tool + lifecycle hooks miss. Since v2.49.0 also the **context-bloat check**: reads the last turn's context size from the transcript and, past 200k tokens, adds one note per 200k bucket per session — `additionalContext` for the Lead (delegate reads to a scout, offer /compact) and a `systemMessage` for the user (/compact or a fresh session). Measured need: a 12-day session ran every turn at 350-900k tokens; each turn re-reads all of it — one grep sweep = 31 turns × 558k ≈ $9. Claude/Codex `UserPromptSubmit`, Gemini `BeforeAgent`; soft, never blocks |
 
 All core hooks register on every Claude install. claude-mem and GitNexus integrate via their own vendor plugins/CLI, not rolepod hooks.
 
@@ -37,6 +37,15 @@ A per-edit reminder hook duplicated all three without enforcement teeth — so i
 | `Stop` | (no matcher) | `session-lifecycle.sh --unlock` |
 
 ## Per-hook reference
+
+### `claim-verify-nudge.sh` — UserPromptSubmit (core)
+
+Two soft checks at the one moment before the Lead starts a turn; no new registration for the second.
+
+- **Claim-check**: prompt looks like an analysis / diagnosis / status question → `additionalContext`: read the primary source and cite file:line before claiming.
+- **Context-bloat check (v2.49.0)**: `session_state.py context-tokens` (input + cache_read + cache_creation of the last assistant turn) ≥ 200k → once per 200k bucket per session (state in `~/.rolepod/ctx-nudge/<session_id>`): `additionalContext` telling the Lead every turn re-reads all of it — dispatch `rolepod:scout` for sweeps, propose `/compact` when the task is done — plus a top-level `systemMessage` so the USER sees "context is Nk tokens — /compact or a fresh session cuts per-turn cost 3-5×". The user holds that lever; the note is aimed at both. Why here and not a hook of its own: the cost driver measured on a real project was the Lead's own re-reads (~90 % of spend), and no existing hook looked at `usage`.
+- **Self-guards**: no transcript / no usage → context branch silent; empty prompt with a bloated context still emits the context note.
+- **Bypass**: `ROLEPOD_NUDGE_OFF=1` (both checks).
 
 ### `always-on-loader.sh` — SessionStart (core)
 

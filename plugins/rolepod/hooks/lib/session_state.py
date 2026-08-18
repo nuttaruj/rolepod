@@ -177,6 +177,43 @@ def _iter_transcript_events(transcript_path: str) -> Iterable[dict]:
         return
 
 
+def last_context_tokens(transcript_path: str, tail_bytes: int = 262144) -> int:
+    """Context size of the Lead's LAST turn = input + cache_read + cache_creation
+    of the newest assistant message that carries `usage`. This is what EVERY
+    subsequent turn re-reads (and pays for) before doing anything. 0 when
+    unknown. Same tail-scan discipline as lead_model."""
+    if not transcript_path or not os.path.isfile(transcript_path):
+        return 0
+    try:
+        size = os.path.getsize(transcript_path)
+        with open(transcript_path, "rb") as f:
+            while True:
+                start = max(0, size - tail_bytes)
+                f.seek(start)
+                lines = f.read(size - start).split(b"\n")
+                if start > 0:
+                    lines = lines[1:]
+                for raw in reversed(lines):
+                    if b'"assistant"' not in raw or b'"usage"' not in raw:
+                        continue
+                    try:
+                        ev = json.loads(raw)
+                    except Exception:
+                        continue
+                    if ev.get("type") != "assistant":
+                        continue
+                    u = (ev.get("message") or {}).get("usage") or {}
+                    tot = int(u.get("input_tokens") or 0) + int(u.get("cache_read_input_tokens") or 0) \
+                        + int(u.get("cache_creation_input_tokens") or 0)
+                    if tot > 0:
+                        return tot
+                if start == 0:
+                    return 0
+                tail_bytes *= 4
+    except Exception:
+        return 0
+
+
 def _iter_tool_uses(
     transcript_path: str, since: str | None = None
 ) -> Iterable[tuple[str, dict]]:
@@ -480,6 +517,9 @@ def main() -> int:
             except ValueError:
                 since_epoch = None
         print("%d %d %d %d" % count_all(transcript_path, since_epoch))
+    elif query == "context-tokens":
+        # Context size (tokens) the last assistant turn carried — 0 unknown.
+        print(last_context_tokens(transcript_path))
     elif query == "lead-class":
         # "<model> <class>" of the last assistant turn — "" unknown when
         # the transcript is missing or has no model field.

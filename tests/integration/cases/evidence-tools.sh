@@ -178,6 +178,24 @@ OUT=$(bash "$REPO_DIR/scripts/stats.sh" "$FIX/repo")
 check "stats reports floor applied/missed + Lead class at dispatch" \
   "printf '%s' \"\$OUT\" | grep -q 'applied ×1, missed ×1' && printf '%s' \"\$OUT\" | grep -q 'Lead class at dispatch'"
 
+# ── context-bloat check (v2.49.0) — rides the UserPromptSubmit hook ────────
+CVN="$REPO_DIR/hooks/claim-verify-nudge.sh"
+printf '{"type":"assistant","timestamp":"2026-08-18T01:00:00.000Z","message":{"model":"claude-opus-5","usage":{"input_tokens":2,"cache_read_input_tokens":574899,"cache_creation_input_tokens":1055,"output_tokens":10},"content":[]}}\n' > "$FIX/ctx-big.jsonl"
+printf '{"type":"assistant","timestamp":"2026-08-18T01:00:00.000Z","message":{"model":"claude-opus-5","usage":{"input_tokens":2,"cache_read_input_tokens":120000,"cache_creation_input_tokens":1000,"output_tokens":10},"content":[]}}\n' > "$FIX/ctx-small.jsonl"
+mkdir -p "$FIX/home"
+check "context-check: 575k context → additionalContext for the Lead + systemMessage for the user" \
+  "printf '{\"session_id\":\"c1\",\"transcript_path\":\"$FIX/ctx-big.jsonl\",\"prompt\":\"fix the button\"}' | HOME='$FIX/home' bash '$CVN' | python3 -c 'import json,sys; o=json.load(sys.stdin); a=o[\"hookSpecificOutput\"][\"additionalContext\"]; assert \"575k\" in a and \"scout\" in a and \"/compact\" in o[\"systemMessage\"]'"
+check "context-check: same 200k bucket in the same session → silent (once per bucket)" \
+  "[ -z \"\$(printf '{\"session_id\":\"c1\",\"transcript_path\":\"$FIX/ctx-big.jsonl\",\"prompt\":\"fix the button\"}' | HOME='$FIX/home' bash '$CVN')\" ]"
+check "context-check: 121k context → no context wording (claim-check still works)" \
+  "printf '{\"session_id\":\"c2\",\"transcript_path\":\"$FIX/ctx-small.jsonl\",\"prompt\":\"why is this broken\"}' | HOME='$FIX/home' bash '$CVN' | python3 -c 'import json,sys; o=json.load(sys.stdin); a=o[\"hookSpecificOutput\"][\"additionalContext\"]; assert \"claim-check\" in a and \"context-check\" not in a and \"systemMessage\" not in o'"
+check "context-check: big context + claim prompt → both notes in one payload" \
+  "printf '{\"session_id\":\"c3\",\"transcript_path\":\"$FIX/ctx-big.jsonl\",\"prompt\":\"why is this broken\"}' | HOME='$FIX/home' bash '$CVN' | python3 -c 'import json,sys; o=json.load(sys.stdin); a=o[\"hookSpecificOutput\"][\"additionalContext\"]; assert \"context-check\" in a and \"claim-check\" in a'"
+check "context-check: no transcript → plain claim-nudge behaviour, no crash" \
+  "printf '{\"prompt\":\"why is this broken\"}' | HOME='$FIX/home' bash '$CVN' | grep -q claim-check"
+check "session_state context-tokens reads input+cache_read+cache_creation of the last turn" \
+  "[ \"\$(printf '{\"transcript_path\":\"$FIX/ctx-big.jsonl\"}' | python3 '$REPO_DIR/hooks/lib/session_state.py' context-tokens)\" = 575956 ]"
+
 # ── junit-summary.sh ────────────────────────────────────────────────────
 cat > "$FIX/report.xml" <<'EOF'
 <testsuite name="suite" tests="3" failures="1" errors="0" skipped="1">
