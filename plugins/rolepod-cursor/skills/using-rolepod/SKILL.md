@@ -84,6 +84,32 @@ If no row matches: ask the user what phase the task is in. Don't pattern-match y
 
 Whole-repo task (audit, sweep, "find every usage of X"): scope the file list first, narrow to the risky subset, spawn agents only on that subset — never one agent per file across hundreds. Flow + tool order: `references/scope-then-spawn.md`.
 
+## 2-strike convergence — emergent fix loops
+
+Scope-then-spawn covers sweeps known upfront. This covers the sweep that
+*emerges* mid-flight: plan-less fix → check → fix work where each check reveals
+the next fix. The first 2 same-shaped fixes are discovery — the Lead is
+learning the pattern, self-do is correct and needs the Lead's judgment. The
+3rd instance of the SAME shape (no new decision, just the learned fix applied
+again) is the convergence signal — **stop, don't fix it inline**:
+
+1. Enumerate the remainder (`rg` for the pattern / failing-test list).
+2. Brief writes itself: the 2 fixed instances ARE the examples — pattern,
+   before/after diff, verify command.
+3. Dispatch the remainder as ONE batch to an implementer at the mechanical
+   tier (subagent-dispatch role table); the Lead reviews the manifest, not
+   each file.
+
+Still emergent (fix #3 changed the approach, each fix reshapes the next) → not
+converged; keep self-doing and re-test at the next repeat. Either way, a long
+check loop (run suite, read verbose output) is delegable on its own — "run X,
+report failures compactly" is always mechanical-tier work even when the fixes
+are not.
+
+Rationalization table: "faster to just fix it myself" — true for THIS file,
+false for the sweep; by instance 3 the pattern is brief-ready and every
+further inline fix pays top-tier price for zero new judgment.
+
 ## State machine — phase → exit evidence → next
 
 Router fires the **first** skill per phase. Phase exits only when its **exit evidence** is on the table (or user explicitly authorizes skip). Next phase reads from the **Next allowed** column — no jumping.

@@ -111,6 +111,8 @@ The test you wish had existed. It must fail before your fix and pass after. Tigh
 
 Smallest change that turns the failing test green without breaking the rest of the suite. No "while I'm here" refactor.
 
+The fix repeats across files (same root cause, many call sites): fix the first 2 inline, then apply using-rolepod's **2-strike convergence** — enumerate the rest with `rg`, dispatch as one mechanical-tier batch with the 2 fixed instances as the brief's examples. Don't ride the fix→check loop across the whole repo at Lead tier.
+
 ### 8. Verify regression-clean
 
 Run the full module suite (or full suite for high-risk surfaces). Confirm no new red.
