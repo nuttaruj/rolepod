@@ -10,8 +10,10 @@ passing typecheck or build. Pick the strongest tool available.
    (web + iOS + Android). Pass target URL/app, step sequence, and expected
    assertions; the skill returns evidence paths under
    `./.rolepod-uiproof/artifacts/{run_id}/`. Related capabilities the same
-   plugin ships: `/audit-a11y` (WCAG audit) and `/visual-diff` (pixel
-   baseline comparison).
+   plugin ships: `/audit-a11y` (WCAG audit), `/visual-diff` (pixel
+   baseline comparison), and `/discover-flows` (≥ 0.16.0 — black-box flow
+   discovery: crawls a running app with no source access, returns a flow
+   map + proposed test-case table whose steps feed `/verify-ui` unchanged).
 2. **Playwright MCP** — if `browser_snapshot` is registered (Microsoft's
    Playwright MCP server installed), orchestrate atomic calls: open →
    snapshot → resolve refs from your step intent → click / type →
