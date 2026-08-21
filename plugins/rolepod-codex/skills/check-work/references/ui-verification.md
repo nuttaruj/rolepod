@@ -11,9 +11,12 @@ passing typecheck or build. Pick the strongest tool available.
    assertions; the skill returns evidence paths under
    `./.rolepod-uiproof/artifacts/{run_id}/`. Related capabilities the same
    plugin ships: `/audit-a11y` (WCAG audit), `/visual-diff` (pixel
-   baseline comparison), and `/discover-flows` (≥ 0.16.0 — black-box flow
+   baseline comparison), `/discover-flows` (≥ 0.16.0 — black-box flow
    discovery: crawls a running app with no source access, returns a flow
-   map + proposed test-case table whose steps feed `/verify-ui` unchanged).
+   map + proposed test-case table whose steps feed `/verify-ui` unchanged),
+   and `/scaffold-e2e` with `framework: "maestro"` (≥ 0.17.0 — mobile
+   targets scaffold to Maestro YAML flows; verification itself still runs
+   through this ladder — Maestro is scaffold-only, not a verify backend).
 2. **Playwright MCP** — if `browser_snapshot` is registered (Microsoft's
    Playwright MCP server installed), orchestrate atomic calls: open →
    snapshot → resolve refs from your step intent → click / type →
