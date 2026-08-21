@@ -157,6 +157,15 @@ Auto-appends the dispatch intent line to `<git-root>/.rolepod/evidence/phase-log
 - **Bypass**: none (append-only bookkeeping, fail-open).
 - **Pair**: `scripts/stats.sh` (Dispatch intent — hook-auto section), the `dispatch-proof` layer.
 
+### `fix-loop-breaker.sh` — PostToolUse Bash (core)
+
+Mechanical counter for fix→fail loops — sha1-fingerprints the whitespace-normalized command, counts consecutive non-zero exits per session, resets on a passing run. At the 3rd consecutive failure of the same command it injects the debug-issue Iron Rule #5 STOP text (stop fixing, write the hypothesis ledger, get ONE cross-model advisor opinion or escalate) as `additionalContext`. Exists because prose stops require the model to count its own attempts — a sub-sonnet-class Lead cannot (real case 2026-08-21: a Codex terra Lead looped a failing fix for many rounds with every hook enabled while the prose stops sat in context). Advisory, never blocks.
+
+- **Effect**: `additionalContext` STOP nudge on every consecutive failure ≥ 3 of the same normalized command; state per session in `$TMPDIR/rolepod-loopbreak-<session_id>.json`.
+- **Self-guards**: no JSON / non-Bash tool / empty command / no `session_id` → silent; `interrupted` (user cancel) → not counted; no detectable exit code → treated as success (never counts what it cannot prove failed); command mutated between rounds → not counted (identical-command loops only, stated in the header).
+- **Bypass**: none (advisory-only; a strong Lead that already obeys the prose rarely trips it).
+- **Pair**: `debug-issue` Iron Rule #5 + the AGENTS.md / hard-stops "third failed attempt" line — this is their mechanical backstop for Leads below the prose floor.
+
 ### `session-lifecycle.sh --unlock` — Stop (core)
 
 Removes own session lock so the next session in this worktree does not see a phantom sibling. Same script as the SessionStart `--lock` invocation, different mode flag.
@@ -232,7 +241,7 @@ Adding a `PreToolUse Bash` hook that checks for `docs/rolepod/specs/<feature>-YY
 
 Root `hooks/*.sh` is canonical. The Codex adapter mirrors the hooks whose events Codex supports (`SessionStart`, `UserPromptSubmit`, `PreToolUse apply_patch|Bash`, `PostToolUse Bash`, `Stop`, `SubagentStart`/`SubagentStop` — per the official hooks reference, verified 2026-08-05):
 
-- **7 shared scripts render-copied** from canonical `hooks/` into `plugins/rolepod-codex/hooks/` by `build/render.sh` (since v2.39.0 — the hand-maintained mirror tree is gone): `gate-reminder.sh`, `precommit-gate.sh`, `project-context-loader.sh`, `claim-verify-nudge.sh`, `block-subagent-commit.sh`, `session-lifecycle.sh`, `test-diff-lint.sh`. Codex uses the same event names, stdin JSON, and `hookSpecificOutput`/`permissionDecision` protocol as Claude, so the scripts are shared verbatim (all smoke-tested against Codex-shaped payloads). Only `hooks.json` + `subagent-model-log.sh` live in the adapter dir.
+- **8 shared scripts render-copied** from canonical `hooks/` into `plugins/rolepod-codex/hooks/` by `build/render.sh` (since v2.39.0 — the hand-maintained mirror tree is gone): `gate-reminder.sh`, `precommit-gate.sh`, `project-context-loader.sh`, `claim-verify-nudge.sh`, `block-subagent-commit.sh`, `session-lifecycle.sh`, `test-diff-lint.sh`, `fix-loop-breaker.sh`. Codex uses the same event names, stdin JSON, and `hookSpecificOutput`/`permissionDecision` protocol as Claude, so the scripts are shared verbatim (all smoke-tested against Codex-shaped payloads). Only `hooks.json` + `subagent-model-log.sh` live in the adapter dir.
 
 `always-on-loader`, `cohesion-contract-check`, `worktree-guard` stay Claude-only (`always-on-loader` is unnecessary on Codex/Gemini/Cursor — they load their always-on core natively from `AGENTS.md` / `GEMINI.md` / `rules/*.mdc`; `cohesion-contract-check` needs the pre-spawn `Agent` TOOL event — Codex's `SubagentStart` fires post-spawn and cannot deny; `worktree-guard` extracts `file_path`, which `apply_patch` input does not carry).
 
@@ -268,4 +277,4 @@ claude plugin details rolepod@rolepod
 # Component inventory should list a Hooks line covering UserPromptSubmit, SessionStart, PreToolUse, Stop
 ```
 
-Expected: 11 core hook scripts / 12 registrations (UserPromptSubmit × 1, SessionStart × 3, PreToolUse × 6, PostToolUse × 1, Stop × 1 — `session-lifecycle.sh` registers twice, `--lock`/`--unlock`).
+Expected: 12 core hook scripts / 13 registrations (UserPromptSubmit × 1, SessionStart × 3, PreToolUse × 6, PostToolUse × 2, Stop × 1 — `session-lifecycle.sh` registers twice, `--lock`/`--unlock`).
