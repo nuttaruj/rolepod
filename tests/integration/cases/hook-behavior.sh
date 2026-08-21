@@ -300,6 +300,48 @@ out=$(pcw "$T4" "ROLEPOD_GATES_HARD=1")
 check "precommit: test written by a Workflow subagent counts as evidence → auto-pass" allow "$out"
 rm -rf "$TMP4"
 
+# ─── fix-loop-breaker: count fails mechanically, reset on pass ────────
+# The counter must fire at the 3rd consecutive identical-command failure and
+# stay silent after a passing run resets it — the whole point is that the
+# model does NOT do the counting.
+LB_TMP=$(mktemp -d)
+lb() { # $1 = session id, $2 = exit code ("" = success shape, no exit signal)
+  local sid="$1" code="$2" resp
+  if [ -n "$code" ]; then
+    resp="{\"exitCode\":$code,\"stderr\":\"boom\"}"
+  else
+    resp='{"stdout":"ok"}'
+  fi
+  printf '{"session_id":"%s","tool_name":"Bash","tool_input":{"command":"pytest tests/test_x.py -v"},"tool_response":%s}' \
+    "$sid" "$resp" | TMPDIR="$LB_TMP" bash "$HOOKS/fix-loop-breaker.sh"
+}
+check_ctx() { # $1 desc, $2 expected (nudge|silent), $3 output
+  local desc="$1" expected="$2" out="$3" verdict="silent"
+  echo "$out" | grep -q 'LOOP BREAKER' && verdict="nudge"
+  if [ "$verdict" = "$expected" ]; then
+    echo "  ✓ $desc"
+  else
+    echo "  ✗ $desc (expected $expected, got $verdict)"
+    fail=$((fail+1))
+  fi
+}
+
+check_ctx "loop-breaker: 1st fail → silent" silent "$(lb s1 1)"
+check_ctx "loop-breaker: 2nd fail → silent" silent "$(lb s1 1)"
+check_ctx "loop-breaker: 3rd consecutive fail → LOOP BREAKER nudge" nudge "$(lb s1 1)"
+check_ctx "loop-breaker: 4th fail keeps nudging" nudge "$(lb s1 1)"
+lb s1 "" > /dev/null   # passing run resets the counter
+check_ctx "loop-breaker: fail after a pass → silent again (reset)" silent "$(lb s1 1)"
+# "Exit code N" text form (no structured exitCode field) must also count
+lbtext() {
+  printf '{"session_id":"s2","tool_name":"Bash","tool_input":{"command":"make build"},"tool_response":"Exit code 2 boom"}' \
+    | TMPDIR="$LB_TMP" bash "$HOOKS/fix-loop-breaker.sh"
+}
+lbtext > /dev/null; lbtext > /dev/null
+check_ctx "loop-breaker: 'Exit code N' text form counts → nudge at 3rd" nudge "$(lbtext)"
+check_ctx "loop-breaker: different session id isolated → silent" silent "$(lb s3 1)"
+rm -rf "$LB_TMP"
+
 # ─── result ───
 if [ "$fail" -eq 0 ]; then
   echo "  ✓ pass"

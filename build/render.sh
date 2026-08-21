@@ -373,7 +373,7 @@ render_codex() {
   # ~/.codex/agents/ directory. install.sh copies these there.
   render_agents "codex" "$out_dir/agents"
 
-  # Hooks — the 7 shared scripts come straight from canonical hooks/ (same
+  # Hooks — the 8 shared scripts come straight from canonical hooks/ (same
   # single-source rule as render_claude above and render_antigravity below);
   # only hooks.json + subagent-model-log.sh are genuinely Codex-specific.
   # NOTE: hooks/lib/session_state.py is deliberately NOT copied — the codex
@@ -383,7 +383,7 @@ render_codex() {
   cp "$plugin_src/hooks/subagent-model-log.sh" "$plugin_dst/hooks/subagent-model-log.sh"
   local h
   for h in gate-reminder precommit-gate project-context-loader claim-verify-nudge \
-           block-subagent-commit session-lifecycle test-diff-lint; do
+           block-subagent-commit session-lifecycle test-diff-lint fix-loop-breaker; do
     cp "$REPO_DIR/hooks/$h.sh" "$plugin_dst/hooks/$h.sh"
   done
   chmod +x "$plugin_dst/hooks/"*.sh 2>/dev/null || true
