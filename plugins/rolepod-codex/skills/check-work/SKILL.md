@@ -105,6 +105,8 @@ A passing test with weak assertions is a false green. Three trip wires:
 - **Flip-the-assertion check** — mentally flip `==` to `!=`. If the test still passes, assertion is too weak. Tighten before trusting.
 - **Wording trip wires** — about to say "should pass", "probably works", "seems right", "Great!", "Perfect!", "Done!" before running the command? Stop. Run it first. Pre-completion wording without fresh evidence is the same lie in two registers.
 - **Common false equivalences** — "linter clean ≠ build passes". "Build passes ≠ tests pass". "Tests pass ≠ requirements met". "Agent reports COMPLETED ≠ verified". Each layer proves only what it actually ran.
+- **Stale evidence** — a verification claim ("tests pass", "build green") must come from a run executed AFTER the last change in this unit of work. Evidence carried forward across any later edit is void — re-run it, never re-quote it.
+- **Attribution** — "the user approved / asked for X" must trace to a specific user message stating X. A general "go ahead" earlier does not authorize anything it did not name.
 
 Weak-vs-strong assertion patterns by type: `references/assertion-strength.md`. Common-failure table + rationalization-prevention table: `references/verification-discipline.md`.
 
