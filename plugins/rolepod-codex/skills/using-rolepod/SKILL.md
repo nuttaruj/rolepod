@@ -178,6 +178,26 @@ Every tier decision (R0 excepted) appends one line to `<git-root>/.rolepod/evide
 
 Sibling plugins under **Extension Protocol v1** — `rolepod-uiproof` (browser + mobile UI / a11y / visual), `rolepod-wplab` (WordPress), `rolepod-dblab` (databases) — are preferred over manual orchestration when installed; evidence routes into `.rolepod/evidence/` for `check-work` to aggregate. Detect by their slash commands in the skill list, or by domain signals (`wp-config.php` → wplab; `playwright` / `react` / `vue` in `package.json` → uiproof; mobile UI — `*.xcworkspace` / `*.xcodeproj` / `build.gradle`(`.kts`) / `AndroidManifest.xml` / `pubspec.yaml` / `react-native` → uiproof too, web-only caveats in the spec; `alembic.ini` / `sqlalchemy` → dblab; a `.rolepod-<child>/` dir → already in use). The per-phase integration detail and the not-installed fallback chains live in the phase skills themselves (`check-work`, `debug-issue`, `implement-plan`, `review-code`); spec: `docs/EXTENSION-PROTOCOL.md` in the rolepod source repo.
 
+## Vendor MCP awareness — recommend, never wrap
+
+When a framework or service is CENTRAL to the current task (the thing being
+tested, deployed, or driven — not a passing mention) and the vendor ships an
+official MCP server that is not connected in this session, tell the user ONCE:
+name + one line of what it adds + where to get it. Examples of the class:
+Playwright MCP, Chrome DevTools MCP, Maestro MCP (mobile flows), Sentry,
+Stripe, Postman. Rules:
+
+- **Verify live before recommending** — WebSearch/WebFetch the vendor's current
+  docs; MCP ecosystems move fast and a from-memory claim may name a server that
+  was renamed, deprecated, or never existed. No verify → no recommend.
+- **Once per session, at a natural pause** — never mid-task, never repeated.
+  User declines or ignores → drop it permanently.
+- **Recommend, never wrap** — vendor MCPs are installed and maintained by the
+  user directly (same policy as claude-mem / GitNexus); rolepod never builds
+  composite tools around them.
+- Not a blocker: proceed with the CLI/Bash path regardless — the suggestion is
+  an upgrade note, not a dependency.
+
 ## Examples
 
 Non-blocking — read when a request does not obviously match a Quick-router row:
