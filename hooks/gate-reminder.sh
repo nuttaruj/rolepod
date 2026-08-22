@@ -156,7 +156,7 @@ if [ -n "$HIGH_RISK" ] && [ "$SOFT_MODE" -eq 0 ]; then
     WOULD_BLOCK+="⛔ COMMIT WILL BLOCK — 0 test edits since the last commit while editing high-risk path '$FILE'. Write the failing test FIRST (RED), then implement. "
   fi
   if [ "$HIGH_RISK_EDITS" -ge 1 ] && [ "$STRONG_REVIEWERS" -eq 0 ]; then
-    WOULD_BLOCK+="⛔ COMMIT WILL BLOCK — high-risk edits since the last commit with no strong adversarial reviewer: dispatch rolepod:universal-reviewer or rolepod:security-engineer via the Agent tool before committing (the dispatch hook runs them at strong class whatever the Lead is; qa-tester is the test floor, not the review). Reviewer dispatch impossible (user forbade agents / no subagent support)? SURFACE that conflict to the user — fallback: Lead cold self-review recorded as a LIMITATION. Bypass envs are user-set only — never set one yourself. "
+    WOULD_BLOCK+="⛔ COMMIT WILL BLOCK — high-risk edits since the last commit with no strong adversarial reviewer. Satellite-first: run the cross-family external strong review and ANCHOR it (raw output under .rolepod/evidence/external/ + reviewer:external phase-log line — review-code §Output); no healthy external → dispatch rolepod:universal-reviewer or rolepod:security-engineer via the Agent tool (the dispatch hook runs them at strong class whatever the Lead is; qa-tester is the test floor, not the review). Reviewer dispatch impossible (user forbade agents / no subagent support)? SURFACE that conflict to the user — fallback: Lead cold self-review recorded as a LIMITATION. Bypass envs are user-set only — never set one yourself. "
   fi
 fi
 

@@ -237,6 +237,62 @@ HIGH_RISK_EDITS=${HIGH_RISK_EDITS:-0}
 REVIEWERS=${REVIEWERS:-0}
 STRONG_REVIEWERS=${STRONG_REVIEWERS:-0}
 
+# External strong pass (satellite-first, v2.61.0) — cross-family reviews are
+# plain Bash `codex exec` / `gemini -p` / `claude -p` calls, invisible to
+# transcript parsing on EVERY CLI. review-code's evidence anchor appends a
+# phase-log "review" line with reviewer:"external" pointing at the saved raw
+# output; count it as a strong reviewer only when that file really exists
+# inside .rolepod/evidence/ and is >= 500 bytes — a bare claim without the
+# artifact is ignored (claim-based evidence is what this gate exists to stop).
+EV_ROOT="$(git rev-parse --show-toplevel 2>/dev/null)/.rolepod/evidence"
+if [ -f "$EV_ROOT/phase-log.jsonl" ] && command -v python3 >/dev/null 2>&1; then
+  XREV=$(python3 -c '
+import json, os, sys, datetime
+since, ev = sys.argv[1], sys.argv[2]
+cut = None
+if since:
+    try:
+        cut = datetime.datetime.fromtimestamp(int(since), datetime.timezone.utc)
+    except Exception:
+        cut = None
+n = 0
+try:
+    with open(os.path.join(ev, "phase-log.jsonl")) as f:
+        for line in f:
+            try:
+                d = json.loads(line)
+            except Exception:
+                continue
+            if d.get("phase") != "review" or d.get("reviewer") != "external":
+                continue
+            if cut is not None:
+                try:
+                    ts = datetime.datetime.fromisoformat(
+                        (d.get("ts") or "").replace("Z", "+00:00"))
+                    if ts.tzinfo is None:
+                        ts = ts.replace(tzinfo=datetime.timezone.utc)
+                    if ts < cut:
+                        continue
+                except Exception:
+                    continue
+            raw = d.get("raw") or ""
+            if not raw or raw.startswith("/") or ".." in raw:
+                continue
+            try:
+                if os.path.getsize(os.path.join(ev, raw)) >= 500:
+                    n += 1
+            except OSError:
+                continue
+except OSError:
+    pass
+print(n)
+' "$SINCE_EPOCH" "$EV_ROOT" 2>/dev/null || echo 0)
+  if [ "${XREV:-0}" -gt 0 ] 2>/dev/null; then
+    REVIEWERS=$((REVIEWERS + XREV))
+    STRONG_REVIEWERS=$((STRONG_REVIEWERS + XREV))
+  fi
+fi
+
 # Legacy bypass markers are detected only so the deny reason can explain they
 # no longer do anything on their own: evidence auto-passes without a marker
 # (below), and without evidence a marker was always ignored — a blocked model
@@ -259,7 +315,7 @@ if [ "$HIGH_RISK_EDITS" -gt 0 ] && [ "$TEST_EDITS" -eq 0 ]; then
   REASON+="NO TEST EDITS in this session despite touching high-risk code — T-gate violation (T1: bug/feature/migration/auth/billing → test required). "
 fi
 if [ -n "$HIGH_RISK" ] && [ "$STRONG_REVIEWERS" -eq 0 ]; then
-  REASON+="NO STRONG ADVERSARIAL REVIEWER dispatched since the last commit — a high-risk diff clears ONLY on a security-engineer or universal-reviewer dispatch (Agent tool, a Workflow agent() call with that agentType, or on CLIs without transcript parsing a FINISHED reviewer subagent recorded by the SubagentStop dispatch log — wait for the reviewer to complete before retrying; the dispatch hook lifts Agent-tool ones to strong class whatever the Lead runs — do not pass a balanced model on them); test edits and qa-tester are the test floor, not the review (a green suite has already shipped money bugs). "
+  REASON+="NO STRONG ADVERSARIAL REVIEWER since the last commit — a high-risk diff clears ONLY on: a cross-family external strong review ANCHORED per review-code (raw output saved under .rolepod/evidence/external/ + the reviewer:external phase-log line — satellite-first, preferred); a security-engineer or universal-reviewer dispatch (Agent tool, a Workflow agent() call with that agentType, or on CLIs without transcript parsing a FINISHED reviewer subagent recorded by the SubagentStop dispatch log — wait for the reviewer to complete before retrying; the dispatch hook lifts Agent-tool ones to strong class whatever the Lead runs — do not pass a balanced model on them). Test edits and qa-tester are the test floor, not the review (a green suite has already shipped money bugs). "
 fi
 REASON+="Run gates explicitly: S1-S5 (simplicity) + T1-T6 (tests) + F1-F5 (failure-mode) — checklists: finish-work §1, check-work §6. "
 REASON+="This commit auto-passes once evidence exists SINCE THE LAST COMMIT — HIGH-RISK diff: dispatch security-engineer or universal-reviewer; other blocks: write the failing test or dispatch a reviewer — then rerun the SAME git commit. No bypass marker, no env prefix."

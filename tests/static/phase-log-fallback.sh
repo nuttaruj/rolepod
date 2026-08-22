@@ -82,6 +82,32 @@ run "namespaced (rolepod:) strong reviewer clears the block" pass
 printf '{"ts":"%s","phase":"dispatch-proof","cli":"codex","agent_type":"rolepod-qa-tester","model":"gpt-5.6-terra"}\n' "$TS_AFTER" > "$EV/phase-log.jsonl"
 run "qa-tester alone does not clear a high-risk diff" deny
 
+# ── External strong pass (satellite-first, v2.61.0) ──
+
+# 7. Anchored external review (real raw file >= 500B) → auto-pass.
+mkdir -p "$EV/external"
+head -c 900 /dev/zero | tr '\0' 'x' > "$EV/external/r1-codex.txt"
+printf '{"ts":"%s","phase":"review","verdict":"APPROVED","blockers":0,"reviewer":"external","family":"codex","model":"gpt-5.6-sol","raw":"external/r1-codex.txt"}\n' "$TS_AFTER" > "$EV/phase-log.jsonl"
+run "anchored external strong review clears the block" pass
+
+# 8. External review line with NO raw file → bare claim, denies.
+printf '{"ts":"%s","phase":"review","verdict":"APPROVED","blockers":0,"reviewer":"external","family":"codex","model":"gpt-5.6-sol","raw":"external/missing.txt"}\n' "$TS_AFTER" > "$EV/phase-log.jsonl"
+run "external review without the raw artifact is ignored" deny
+
+# 9. Raw file too small (< 500B) → not a real review output, denies.
+printf 'APPROVED' > "$EV/external/tiny.txt"
+printf '{"ts":"%s","phase":"review","verdict":"APPROVED","blockers":0,"reviewer":"external","family":"codex","model":"gpt-5.6-sol","raw":"external/tiny.txt"}\n' "$TS_AFTER" > "$EV/phase-log.jsonl"
+run "trivially small raw artifact is ignored" deny
+
+# 10. Path traversal in raw → ignored, denies.
+head -c 900 /dev/zero | tr '\0' 'x' > "$tmp/outside.txt"
+printf '{"ts":"%s","phase":"review","verdict":"APPROVED","blockers":0,"reviewer":"external","family":"codex","model":"gpt-5.6-sol","raw":"../../outside.txt"}\n' "$TS_AFTER" > "$EV/phase-log.jsonl"
+run "raw path traversal outside evidence dir is ignored" deny
+
+# 11. Anchored external review BEFORE last commit → outside window, denies.
+printf '{"ts":"%s","phase":"review","verdict":"APPROVED","blockers":0,"reviewer":"external","family":"codex","model":"gpt-5.6-sol","raw":"external/r1-codex.txt"}\n' "$TS_BEFORE" > "$EV/phase-log.jsonl"
+run "anchored external review before last commit is outside the window" deny
+
 echo ""
 if [ $fail -eq 0 ]; then
   echo "phase-log-fallback: pass"

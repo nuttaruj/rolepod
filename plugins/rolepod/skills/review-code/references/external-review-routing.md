@@ -87,3 +87,26 @@ report's **Cross-model adversarial pass** line must record NOT RUN (or
 "vertical — same family") and why, and `finish-work`'s Reviewer gate surfaces
 that limitation to the user before merge. It is a real verification
 limitation, not a pass.
+
+## Satellite-first — the external IS the strong pass
+
+Real installs run one main subscription (any family) plus cheaper satellite
+plans that would otherwise idle. Each plan is a separate flat-rate quota
+pool; the scarce resource is the MAIN plan's quota window, and the main
+always carries implementation — so one-shot cold-context work routes to a
+satellite first whenever a healthy non-Lead family is on PATH:
+
+- **R4 strong adversarial pass** — the routed cross-family external IS the
+  strong pass (better decorrelated than a same-family strong reviewing its
+  own family's work). Anchor it per review-code §Output — raw output saved
+  under `.rolepod/evidence/external/` + the extended review line — or the
+  commit gate ignores it. Internal strong (security-engineer /
+  universal-reviewer) fires only on the three carve-outs in review-code §1:
+  empty pool, apex trigger (then BOTH passes), fix-verify re-read.
+- **Outside opinion** (debug-issue §9), **judge / second opinion** on a
+  design — already cold one-shot by shape; same satellite-first order.
+
+This never widens WHO reviews (R1-R3 routing unchanged) — it only moves the
+strong-class tokens R4 already spends off the main plan. A satellite that
+fails at invoke follows the degradation table above; the internal strong
+reviewer is the fallback, never skipped silently.
