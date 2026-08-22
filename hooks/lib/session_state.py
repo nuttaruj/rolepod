@@ -412,20 +412,62 @@ def _bare_agent_name(subagent_type: str | None) -> str:
     return (subagent_type or "").strip().rsplit(":", 1)[-1]
 
 
+_WF_AGENTTYPE_RX = re.compile(r"agentType\s*:\s*['\"]([^'\"]+)['\"]")
+_WF_MODEL_RX = re.compile(r"model\s*:\s*['\"]([^'\"]+)['\"]")
+
+
+def _workflow_script(inp: dict) -> str:
+    """The script of a Workflow tool call — inline, or read from scriptPath
+    (re-invocations pass only the path). Missing/unreadable → ""."""
+    script = inp.get("script") or ""
+    if not script and inp.get("scriptPath"):
+        try:
+            with open(inp["scriptPath"]) as f:
+                script = f.read()
+        except OSError:
+            script = ""
+    return script
+
+
+def count_workflow_reviewers(script: str) -> tuple[int, int]:
+    """(reviewers, strong) among a Workflow script's agent() calls.
+
+    Workflow fleets run reviewers as agent(..., {agentType:
+    'rolepod:universal-reviewer'}) — that never appears as an Agent tool_use
+    in any transcript, so without this the gate demanded a DUPLICATE
+    Agent-tool reviewer after the workflow already reviewed. Strong mirrors
+    the Agent-dispatch rule: an explicit known-low `model:` inside the same
+    opts window is a downgrade, not the strong pass; no override (inherit)
+    counts."""
+    reviewers = strong = 0
+    for m in _WF_AGENTTYPE_RX.finditer(script):
+        name = _bare_agent_name(m.group(1))
+        if name in REVIEWER_AGENTS:
+            reviewers += 1
+        if name in STRONG_REVIEWER_AGENTS:
+            window = script[max(0, m.start() - 200):m.end() + 200]
+            mm = _WF_MODEL_RX.search(window)
+            if not (mm and model_class(mm.group(1)) in LOW_CLASSES):
+                strong += 1
+    return reviewers, strong
+
+
 def count_reviewers_dispatched(transcript_path: str) -> int:
     """Times Lead spawned qa-tester / security-engineer / universal-reviewer.
 
     Matches the bare agent name and the plugin-namespaced form alike
     ('rolepod:qa-tester'), and both the 'Agent' and 'Task' subagent tools.
     A plugin-namespaced reviewer used to count as 0 — which false-blocked
-    commits at the precommit gate even after review actually ran.
+    commits at the precommit gate even after review actually ran. Workflow
+    scripts count via their agent() agentType calls (count_workflow_reviewers).
     """
     n = 0
     for tool, inp in _iter_tool_uses(transcript_path):
-        if tool not in AGENT_TOOLS:
-            continue
-        if _bare_agent_name(inp.get("subagent_type")) in REVIEWER_AGENTS:
-            n += 1
+        if tool in AGENT_TOOLS:
+            if _bare_agent_name(inp.get("subagent_type")) in REVIEWER_AGENTS:
+                n += 1
+        elif tool == "Workflow":
+            n += count_workflow_reviewers(_workflow_script(inp))[0]
     return n
 
 
@@ -517,6 +559,13 @@ def count_all(
                 if (name in STRONG_REVIEWER_AGENTS
                         and model_class(inp.get("model")) not in LOW_CLASSES):
                     strong_reviewers += 1
+            elif tool == "Workflow":
+                # Workflow-run reviewers (agent() agentType calls) count too —
+                # a workflow that already reviewed must not force a duplicate
+                # Agent-tool dispatch to clear the gate.
+                r, s = count_workflow_reviewers(_workflow_script(inp))
+                reviewers += r
+                strong_reviewers += s
     return test_edits, high_risk_edits, reviewers, strong_reviewers
 
 

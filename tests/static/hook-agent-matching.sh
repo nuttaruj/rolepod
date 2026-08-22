@@ -47,6 +47,21 @@ run '{"type":"tool_use","name":"Agent","input":{"subagent_type":"qa-tester"}}' \
 run '{"type":"tool_use","name":"Agent","input":{"subagent_type":"rolepod:backend-developer"}}' \
   count-reviewers-dispatched 0 "rolepod:backend-developer is not a reviewer"
 
+# Workflow-run reviewers (agent() agentType calls) must count — a workflow
+# that already reviewed must not force a duplicate Agent-tool dispatch.
+run '{"type":"tool_use","name":"Workflow","input":{"script":"const r = await agent(prompt, {agentType: '\''rolepod:universal-reviewer'\''})"}}' \
+  count-reviewers-dispatched 1 "Workflow agentType universal-reviewer counts"
+
+run '{"type":"tool_use","name":"Workflow","input":{"script":"await agent(p, {agentType: '\''rolepod:backend-developer'\''})"}}' \
+  count-reviewers-dispatched 0 "Workflow agentType backend-developer does not count"
+
+# count-all strong split: inherit → strong; explicit low model → reviewer only.
+run '{"type":"tool_use","name":"Workflow","input":{"script":"await agent(p, {agentType: '\''security-engineer'\''})"}}' \
+  count-all "0 0 1 1" "Workflow reviewer (inherit) counts as strong in count-all"
+
+run '{"type":"tool_use","name":"Workflow","input":{"script":"await agent(p, {agentType: '\''security-engineer'\'', model: '\''haiku'\''})"}}' \
+  count-all "0 0 1 0" "Workflow reviewer pinned haiku is not strong"
+
 echo ""
 if [ $fail -eq 0 ]; then
   echo "hook-agent-matching: pass"

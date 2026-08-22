@@ -207,7 +207,7 @@ if [ "$HIGH_RISK_EDITS" -gt 0 ] && [ "$TEST_EDITS" -eq 0 ]; then
   REASON+="NO TEST EDITS in this session despite touching high-risk code — T-gate violation (T1: bug/feature/migration/auth/billing → test required). "
 fi
 if [ -n "$HIGH_RISK" ] && [ "$STRONG_REVIEWERS" -eq 0 ]; then
-  REASON+="NO STRONG ADVERSARIAL REVIEWER dispatched since the last commit — a high-risk diff clears ONLY on a security-engineer or universal-reviewer dispatch (Agent tool; the dispatch hook lifts them to strong class whatever the Lead runs — do not pass a balanced model on them); test edits and qa-tester are the test floor, not the review (a green suite has already shipped money bugs). "
+  REASON+="NO STRONG ADVERSARIAL REVIEWER dispatched since the last commit — a high-risk diff clears ONLY on a security-engineer or universal-reviewer dispatch (Agent tool, or a Workflow agent() call with that agentType; the dispatch hook lifts Agent-tool ones to strong class whatever the Lead runs — do not pass a balanced model on them); test edits and qa-tester are the test floor, not the review (a green suite has already shipped money bugs). "
 fi
 REASON+="Run gates explicitly: S1-S5 (simplicity) + T1-T6 (tests) + F1-F5 (failure-mode) — checklists: finish-work §1, check-work §6. "
 REASON+="This commit auto-passes once evidence exists SINCE THE LAST COMMIT — HIGH-RISK diff: dispatch security-engineer or universal-reviewer; other blocks: write the failing test or dispatch a reviewer — then rerun the SAME git commit. No bypass marker, no env prefix."
