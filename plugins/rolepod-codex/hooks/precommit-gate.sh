@@ -179,6 +179,58 @@ if [ -f "$SESSION_STATE" ] && command -v python3 >/dev/null 2>&1; then
   # ONE transcript scan for all four counts (see gate-reminder.sh).
   COUNTS=$(printf '%s' "$INPUT" | python3 "$SESSION_STATE" count-all "$SINCE_EPOCH" 2>/dev/null || echo "0 0 0 0")
   read -r TEST_EDITS HIGH_RISK_EDITS REVIEWERS STRONG_REVIEWERS <<< "$COUNTS"
+elif command -v python3 >/dev/null 2>&1; then
+  # Renders without lib/session_state.py (codex + the non-Claude adapters):
+  # their transcripts are not Claude-JSONL, so reviewer evidence comes from
+  # the SubagentStop dispatch-proof log written by subagent-model-log.sh.
+  # Only reviewer counts exist on this path — test/high-risk edit evidence
+  # needs transcript parsing, and the HARD paths that consume those counts
+  # cannot fire when both sides read as 0. Strong class is decided by
+  # agent_type alone: the logged model is hook-reported with unverified
+  # provenance (may be the parent's), and the agent TOMLs pin strong
+  # reviewers to the strong model anyway.
+  PHASE_LOG="$(git rev-parse --show-toplevel 2>/dev/null)/.rolepod/evidence/phase-log.jsonl"
+  if [ -f "$PHASE_LOG" ]; then
+    RCOUNTS=$(python3 -c '
+import json, sys, datetime
+since, path = sys.argv[1], sys.argv[2]
+cut = None
+if since:
+    try:
+        cut = datetime.datetime.fromtimestamp(int(since), datetime.timezone.utc)
+    except Exception:
+        cut = None
+REVIEWERS = {"qa-tester", "security-engineer", "universal-reviewer", "code-reviewer"}
+STRONG = {"security-engineer", "universal-reviewer", "code-reviewer"}
+r = s = 0
+try:
+    with open(path) as f:
+        for line in f:
+            try:
+                d = json.loads(line)
+            except Exception:
+                continue
+            if d.get("phase") != "dispatch-proof":
+                continue
+            if cut is not None:
+                try:
+                    if datetime.datetime.fromisoformat(d.get("ts", "")) < cut:
+                        continue
+                except Exception:
+                    continue
+            name = (d.get("agent_type") or "").strip().rsplit(":", 1)[-1]
+            if name.startswith("rolepod-"):
+                name = name[len("rolepod-"):]
+            if name in REVIEWERS:
+                r += 1
+            if name in STRONG:
+                s += 1
+except OSError:
+    pass
+print(r, s)
+' "$SINCE_EPOCH" "$PHASE_LOG" 2>/dev/null || echo "0 0")
+    read -r REVIEWERS STRONG_REVIEWERS <<< "$RCOUNTS"
+  fi
 fi
 TEST_EDITS=${TEST_EDITS:-0}
 HIGH_RISK_EDITS=${HIGH_RISK_EDITS:-0}
@@ -207,7 +259,7 @@ if [ "$HIGH_RISK_EDITS" -gt 0 ] && [ "$TEST_EDITS" -eq 0 ]; then
   REASON+="NO TEST EDITS in this session despite touching high-risk code — T-gate violation (T1: bug/feature/migration/auth/billing → test required). "
 fi
 if [ -n "$HIGH_RISK" ] && [ "$STRONG_REVIEWERS" -eq 0 ]; then
-  REASON+="NO STRONG ADVERSARIAL REVIEWER dispatched since the last commit — a high-risk diff clears ONLY on a security-engineer or universal-reviewer dispatch (Agent tool, or a Workflow agent() call with that agentType; the dispatch hook lifts Agent-tool ones to strong class whatever the Lead runs — do not pass a balanced model on them); test edits and qa-tester are the test floor, not the review (a green suite has already shipped money bugs). "
+  REASON+="NO STRONG ADVERSARIAL REVIEWER dispatched since the last commit — a high-risk diff clears ONLY on a security-engineer or universal-reviewer dispatch (Agent tool, a Workflow agent() call with that agentType, or on CLIs without transcript parsing a FINISHED reviewer subagent recorded by the SubagentStop dispatch log — wait for the reviewer to complete before retrying; the dispatch hook lifts Agent-tool ones to strong class whatever the Lead runs — do not pass a balanced model on them); test edits and qa-tester are the test floor, not the review (a green suite has already shipped money bugs). "
 fi
 REASON+="Run gates explicitly: S1-S5 (simplicity) + T1-T6 (tests) + F1-F5 (failure-mode) — checklists: finish-work §1, check-work §6. "
 REASON+="This commit auto-passes once evidence exists SINCE THE LAST COMMIT — HIGH-RISK diff: dispatch security-engineer or universal-reviewer; other blocks: write the failing test or dispatch a reviewer — then rerun the SAME git commit. No bypass marker, no env prefix."
