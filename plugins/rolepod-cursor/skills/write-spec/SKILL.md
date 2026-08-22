@@ -101,6 +101,12 @@ Scan for:
 - Scope creep beyond the user request
 - Over-engineering for hypothetical needs
 
+High-stakes spec (high-risk surface / novel design / unproven integration
+assumption) with a call this self-review cannot settle → the cross-CLI
+advisory panel applies here too: same 3-condition gate and machinery as
+write-plan's `advisory-routing` reference — one cold cross-family critique
+BEFORE Gate 1, satellite family first. Off by default; never for routine specs.
+
 ### 5. Gate 1 — direction approval
 
 Present the proposed direction (chosen approach + rationale). Wait for the user to accept, edit, or reject. Do not write the contract before Gate 1 passes.

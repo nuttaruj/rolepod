@@ -12,7 +12,7 @@ Recovery-phase skill. Keep work stable when context grows long, the codebase is 
 <EXTREMELY-IMPORTANT>
 1. NEVER continue editing when the same bug surfaces from 3+ angles — that is a context loss signal. Zoom out first.
 2. NEVER assume a fact from earlier in the session is still valid for files that have been edited since. Re-read before acting.
-3. ESCALATE to a stronger model (or a fresh session) at the third failed attempt at the same goal, not after the tenth. In a debug flow this is debug-issue §9: one cross-model consult, one advisor-informed attempt, then the user.
+3. ESCALATE to a stronger model (or a fresh session) at the second failed attempt at the same goal, not after the tenth. In a debug flow this is debug-issue §9: one cross-model consult (fires at the second fail), one advisor-informed attempt, then the user.
 4. ONBOARDING in an unfamiliar repo: detect stack and conventions from real files before writing a single line.
 </EXTREMELY-IMPORTANT>
 
@@ -98,7 +98,7 @@ If stuck after multiple attempts:
   yields to an exhausted ladder, never the other way around.
 - Resume with the user's direction, not another blind attempt
 
-Three failed attempts is the trigger — or TWO with the same signature (same error, no new information between them): identical failure twice means the mental model is wrong; do not spend the third. Progressing failures (each fail exposes a new layer) get the full three. Past that, the only permitted attempt is the single advisor-informed one from debug-issue §9 — never another blind try.
+Two failed attempts is the trigger — same signature or progressing alike: identical failure twice means the mental model is wrong, and even a progressing second fail is re-aimed cheaper by a cold advisor than by a third guess from the same mind. Past that, the only permitted attempt is the single advisor-informed one from debug-issue §9 — never another blind try.
 
 ### 7. Post-compact re-anchor
 

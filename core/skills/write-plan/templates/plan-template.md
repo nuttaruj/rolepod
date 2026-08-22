@@ -57,9 +57,9 @@
 
 ## Failure policy
 Default: a failing **Command** → debug-issue (reproduce → minimal fix →
-re-run the same Command). Stop and escalate to the user after 3 failed
+re-run the same Command). Stop and escalate to the user after 2 failed
 attempts on one task (debug-issue's one cross-model consult and its single
-advisor-informed attempt happen inside this stop — never a 5th attempt), or
+advisor-informed attempt happen inside this stop — never a 4th attempt), or
 on oscillation (a fix for one task reopens another). A task needing a
 different fallback states it in its **On fail:**.
 <This default is body text, NOT a hint — keep it in the filled plan (the

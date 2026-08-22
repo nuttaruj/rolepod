@@ -17,7 +17,7 @@ Canonical debug workflow. Replace guess-and-check with disciplined narrowing: re
 2. NEVER stop at the first symptom fix. Trace upstream to a legitimate stopping point (external input, system boundary, "designed this way"), then fix at root.
 3. ALWAYS roll back your last action first when the error appeared right after your change.
 4. ALWAYS write the failing test you wish had existed before shipping the fix.
-5. After 3 failed fix attempts on the same surface, STOP fixing — get one cross-model opinion (§9). Its correction is the outside review that permits exactly ONE more attempt; fix #4 without it = thrashing.
+5. After 2 failed fix attempts on the same surface, STOP fixing — get one cross-model opinion (§9). Its correction is the outside review that permits exactly ONE more attempt; fix #3 without it = thrashing.
 </EXTREMELY-IMPORTANT>
 
 ## When to use
@@ -46,7 +46,7 @@ Return / hand off:
 - Fix spans multiple files / needs sequencing → `write-plan`.
 - **Report-only (QA hand-off)** — the user wants the bug documented, not fixed → stop after §2 (repro); trace §5 only when cheap. Fill the debug report with repro + severity + evidence, leave Failing test / Fix empty, hand to the owning dev. §6-§8 belong to whoever fixes.
 - Minimal fix applied → `check-work`.
-- Stuck — 3 failed fix attempts on the same target → §9 cross-model consult first, then `manage-context` (escalate mode) with the opinion attached.
+- Stuck — 2 failed fix attempts on the same target → §9 cross-model consult first, then `manage-context` (escalate mode) with the opinion attached.
 
 ## Inputs to gather
 
@@ -120,14 +120,14 @@ The fix repeats across files (same root cause, many call sites): fix the first 2
 
 Run the full module suite (or full suite for high-risk surfaces). Confirm no new red.
 
-**The fix fails → the failure is new evidence, not a prompt to adjust the patch.** Feed it back into §5's trace before any second attempt — the root you identified may be wrong or partial; a re-fix without a re-trace is a blind retry (banned). Two failures with the SAME signature (same error, same failing assertion, no new information between them) → skip straight to §9: identical failure twice means the mental model of the bug is wrong, and a third guess from the same mind is waste.
+**The fix fails → the failure is new evidence, not a prompt to adjust the patch.** Feed it back into §5's trace before any second attempt — the root you identified may be wrong or partial; a re-fix without a re-trace is a blind retry (banned). A second failure — same signature or new — → §9: two misses from the same mind mean the mental model of the bug is wrong, and a cold advisor re-aims cheaper than a third guess from that same mind.
 
-### 9. Third failed attempt — one cross-model opinion, then the user
+### 9. Second failed attempt — one cross-model opinion, then the user
 
-Three failed fixes = proven hard-to-resolve. Get ONE outside opinion automatically (no opt-in needed) before escalating. Do these steps in order:
+Two failed fixes = proven hard-to-resolve. Get ONE outside opinion automatically (no opt-in needed) before escalating. Do these steps in order:
 
 1. List the installed externals NOT in the Lead's model family — detect with `command -v codex`, `command -v claude`, `command -v gemini`, `command -v agy` — in this order: `codex exec` / `claude -p` / `gemini -m pro -p` (or `agy -p` when only agy exists; gemini ≡ agy — same family as a Gemini/agy Lead). Take the first. Empty list (single-family machine) → **vertical fallback**: the advisor is the Lead's own CLI at its strongest model — Claude Code with native Advisor mode configured (`/advisor`) → consult it inline, that IS this channel (one consult, same rules); otherwise ask the CLI which models it exposes (`claude --help` / `codex --help`; pick the top tier by name), then invoke `claude -p --model <that name>` / `codex exec -m <that name>` / `gemini -m pro -p`. Only valid when that model differs from the one now running; already on it, or cannot tell which model is running → step 4.
-2. Write ONE self-contained prompt to a file — the advisor is cold; it sees only this: the symptom, the repro command, the 3 failed fix attempts with why each failed, and the suspect code inline. Invoke by substituting the file — never hand-type code into the argument: `codex exec "$(cat /tmp/consult.md)"` (same pattern for `claude -p` / `gemini -m pro -p`).
+2. Write ONE self-contained prompt to a file — the advisor is cold; it sees only this: the symptom, the repro command, the failed fix attempts with why each failed, and the suspect code inline. Invoke by substituting the file — never hand-type code into the argument: `codex exec "$(cat /tmp/consult.md)"` (same pattern for `claude -p` / `gemini -m pro -p`).
 3. Read the reply as one of: **correction** (new hypothesis → run exactly ONE advisor-informed fix attempt against the same repro — this consult is the outside review Iron Rule 5 requires), **confirmation** ("approach right, check X"), or **stop** ("wrong path"). Invoke failed (auth / quota / empty output)? Retry once; still failing → cross that CLI off and take the NEXT one from step 1's list; list exhausted → step 1's vertical fallback, reading its reply per this step (a vertical correction unlocks the same single attempt); vertical unavailable or failed too → step 4.
 4. Still failing, or no usable advisor → escalate via `manage-context` (escalate mode): hypothesis ledger + the advisor's opinion (or "no usable advisor — <reason>") attached. Start no further fix attempts.
 

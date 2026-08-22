@@ -79,9 +79,9 @@ All 3 specs green; the exported CSV row set equals the filtered table.
 
 ## Failure policy
 Default: a failing Command → debug-issue (reproduce → minimal fix → re-run
-the same Command). Stop and escalate after 3 failed attempts on one task
+the same Command). Stop and escalate after 2 failed attempts on one task
 (debug-issue's one cross-model consult and its single advisor-informed
-attempt happen inside this stop — never a 5th attempt), or if a fix reopens
+attempt happen inside this stop — never a 4th attempt), or if a fix reopens
 a previously green task.
 
 ## Risks
@@ -166,8 +166,8 @@ Both task sets green; the live bell updates against the real API.
 
 ## Failure policy
 Default: a failing Command → debug-issue → re-run the same Command; stop
-after 3 failed attempts on one task (the §9 cross-model consult + its one
-advisor-informed attempt run inside this stop — never a 5th attempt).
+after 2 failed attempts on one task (the §9 cross-model consult + its one
+advisor-informed attempt run inside this stop — never a 4th attempt).
 Contract drift found at integration → STOP both agents, fix the contract
 first (do not patch around it).
 

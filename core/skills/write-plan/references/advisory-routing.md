@@ -66,10 +66,10 @@ when ALL hold:
 ## Stuck-state consult (Build / Debug) — auto, NOT gated
 
 The plan panel above is opt-in because a plan decision is speculative. The
-debug variant is not: **three failed fix attempts** (debug-issue Iron Rule 5)
+debug variant is not: **two failed fix attempts** (debug-issue Iron Rule 5)
 are objective evidence the Lead cannot resolve it alone. So there:
 
-- the consult fires **automatically** — no `/rolepod-full`, no user ask;
+- the consult fires **automatically** at the second fail — no `/rolepod-full`, no user ask;
 - it uses **ONE advisor**, never a panel — debug-issue §9 fixes the pick
   deterministically (first installed non-family external in §9's listed
   order, or §9's vertical fallback on a single-family machine). No
