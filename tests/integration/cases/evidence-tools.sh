@@ -171,6 +171,15 @@ check "gate v2.50: sonnet Lead + sonnet everywhere → silent (no cost leak; nud
   "[ -z \"\$(cd '$FIX/repo' && bash '$NUDGE' < '$FIX/wf-mono-sonnetlead.json')\" ]"
 check "gate v2.50: model from a variable (dynamic) → trusted, silent" \
   "[ -z \"\$(cd '$FIX/repo' && bash '$NUDGE' < '$FIX/wf-dynamic.json')\" ]"
+# v2.62.1 — prose "model:" inside a prompt string must NOT count as an override
+# (observed: CourtBook queue-review fleet ran 940k tokens all-Opus because a
+# prompt sentence "...RESERVATION model: comments..." read as a dynamic override)
+mkj "$FIX/wf-prose-model.json" Workflow "$FIX/lead-opus.jsonl" '{"script":"await agent(`sweep the deleted RESERVATION model: comments asserting things`); await agent(2)"}'
+mkj "$FIX/wf-prose-real.json"  Workflow "$FIX/lead-opus.jsonl" '{"script":"phase(\"Build\"); await agent(`prose about a model: thing`, {model: \"sonnet\"}); phase(\"Verify\"); await agent(2, {model: \"opus\"})"}'
+check "gate v2.62.1: prose model: inside a prompt literal → still deny (no phantom dynamic)" \
+  "cd '$FIX/repo' && bash '$NUDGE' < '$FIX/wf-prose-model.json' | grep -q '\"deny\"'"
+check "gate v2.62.1: real overrides still counted when prose model: is present → silent" \
+  "[ -z \"\$(cd '$FIX/repo' && bash '$NUDGE' < '$FIX/wf-prose-real.json')\" ]"
 # loop valve: same fleet denied twice within 30 min → third submission passes with a nudge (logged yield)
 mkj "$FIX/wf-loop.json" Workflow "$FIX/lead-opus.jsonl" '{"script":"name: \"loopy\" phase(\"A\"); await agent(1,{model:\"sonnet\"}); phase(\"B\"); await agent(2,{model:\"sonnet\"})"}'
 check "gate valve: 1st and 2nd submission of the same fleet → deny, deny" \

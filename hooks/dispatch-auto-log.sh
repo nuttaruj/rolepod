@@ -68,8 +68,13 @@ if tool == "Workflow":
             script = ""
     m = re.search("name:\\s*[\x27\"]([^\x27\"]+)", script)
     line["name"] = m.group(1) if m else (ti.get("name") or "?")
-    n_model = len(re.findall("[,{\\s]model\\s*:", script))
-    n_effort = len(re.findall("[,{\\s]effort\\s*:", script))
+    # Count keys on the STRING-STRIPPED script — prose containing "model:"
+    # inside a prompt literal logged a phantom override (see the same strip
+    # in workflow-tier-nudge.sh; keep the two in lockstep).
+    _STR_RX = re.compile(r"`(?:\\.|[^`\\])*`|\x27(?:\\.|[^\x27\\])*\x27|\"(?:\\.|[^\"\\])*\"", re.S)
+    code = _STR_RX.sub(lambda mm: mm.group(0)[0] + mm.group(0)[-1], script)
+    n_model = len(re.findall("[,{\\s]model\\s*:", code))
+    n_effort = len(re.findall("[,{\\s]effort\\s*:", code))
     line["model_overrides"] = n_model
     line["effort_overrides"] = n_effort
     line["model"] = "mixed" if n_model else "inherit"

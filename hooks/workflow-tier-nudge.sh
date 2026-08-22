@@ -196,11 +196,21 @@ if tool == "Workflow":
             script = ""
     if "agent(" not in script:
         sys.exit(0)
-    n_effort = len(re.findall(r"[,{\s]effort\s*:", script))
+    # Key counts run on the script with STRING CONTENTS stripped: agent() opts
+    # are code, prompts are string literals — and prose like "the deleted
+    # RESERVATION model: comments ..." inside a prompt matched the bare
+    # `model:` regex, got classified "dynamic — trust it", and silenced the
+    # fleet-tier deny on an all-inherit Opus fleet (observed, CourtBook
+    # queue-review-remediation). Quoted VALUES are extracted from the
+    # original first (stripping empties them); quote marks survive the strip
+    # so a `model: <quoted>` key still counts in the stripped code.
+    _STR_RX = re.compile(r"`(?:\\.|[^`\\])*`|\x27(?:\\.|[^\x27\\])*\x27|\"(?:\\.|[^\"\\])*\"", re.S)
+    code = _STR_RX.sub(lambda m: m.group(0)[0] + m.group(0)[-1], script)
+    n_effort = len(re.findall(r"[,{\s]effort\s*:", code))
     n_calls = script.count("agent(")
     models = re.findall(r"[,{\s]model\s*:\s*[\x27\"]([A-Za-z0-9._\-\[\]]+)[\x27\"]", script)
-    n_model = len(re.findall(r"[,{\s]model\s*:", script))
-    n_atype = len(re.findall(r"[,{\s]agentType\s*:", script))
+    n_model = len(re.findall(r"[,{\s]model\s*:", code))
+    n_atype = len(re.findall(r"[,{\s]agentType\s*:", code))
     tiers = set(ss.model_class(m) for m in models)
     if n_atype:
         tiers.add("role-pin")
