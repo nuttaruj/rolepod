@@ -26,6 +26,19 @@ never reviews the other's work as "external".
   is running → vertical unavailable, record NOT RUN). Same family — it never
   counts as the cross-family adversarial pass; it upgrades the Lead floor.
 
+## Clean-room invocation — prefix every external reviewer call
+
+Prefix EVERY external reviewer / vertical-fallback invocation with
+`ROLEPOD_BRAIN_SILENT=1` (e.g. `ROLEPOD_BRAIN_SILENT=1 codex exec …`).
+Ambient memory systems (rolepod-brain, or anything hook-based) may inject the
+project's shared memory into headless runs — the reviewer then inherits the
+author's own narrative ("we fixed X correctly"), which destroys the
+decorrelation the adversarial pass exists for, and its review process gets
+captured back into shared memory. The flag is a public rolepod-brain contract
+(no injection, no capture); harmless when nothing honoring it is installed.
+The reviewer's input is the CURATED brief you write (artifact + acceptance
+criteria + settled decisions) — never ambient memory.
+
 ## Model strength — one axis each, no overlap
 
 | Model family | Reviews best | Invoke |

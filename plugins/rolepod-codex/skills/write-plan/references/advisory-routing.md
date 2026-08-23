@@ -37,7 +37,11 @@ Two deliberate divergences from the single-vendor version:
 - **Cold context.** The Anthropic advisor shares the executor's context. A
   cross-CLI advisor does not — it starts cold. The Lead must pack the decision,
   the options, and the constraints into the prompt; the advisor sees only what
-  the Lead frames.
+  the Lead frames. Enforce the cold start: prefix every advisor invocation with
+  `ROLEPOD_BRAIN_SILENT=1` — ambient memory systems (rolepod-brain and kin)
+  may otherwise inject the project's shared narrative into the headless run,
+  anchoring the advisor to the very framing it exists to challenge. Public
+  contract; harmless when nothing honoring it is installed.
 
 ## Advisory vs review — same pool, opposite ends of the phase
 
