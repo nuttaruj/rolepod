@@ -69,6 +69,10 @@ Per the `review-code` reviewer-routing rules:
 4. Flake elimination — deterministic ordering, isolated state, no time-dependence
 5. Repro tests — bug report → failing test → verify fix
 6. Mock strategy — never mock DB for integration; mock only external boundaries
+7. Mutation spot-check — on high-risk logic, break the CODE on purpose (flip one
+   operator / negate one conditional), run the module suite: nothing goes red →
+   the coverage is fake, revert the mutation and tighten the test. A test is
+   proven by the failure it catches, not by the pass it produces.
 
 ## Test-case design — spec-first, no code required
 
@@ -98,7 +102,7 @@ Automation comes AFTER the table: each P1 row becomes an automated test (write-m
 
 - A bug fix without a reproducing failing test → REJECT
 - Expected values captured from the code's current output instead of derived from the spec → REJECT — a test asserting what the code *does*, not what it *should do*, enshrines the bug it was meant to catch
-- A test that passes with a 1-character regression (weak assertion) → REJECT, tighten
+- A test that passes with a 1-character regression (weak assertion) → REJECT, tighten — prove it with a mutation spot-check (expertise #7)
 - Integration test that mocks the DB → REJECT, use a real fixture
 - Migration without forward + rollback tests → REJECT
 - Billing / credit code without a race-condition test → REJECT
