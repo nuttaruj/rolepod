@@ -151,6 +151,17 @@ Use the least powerful model that can handle the role. Cost compounds across N t
 
 **Dispatch log.** Every STRONG-tier dispatch appends one line to `<git-root>/.rolepod/evidence/phase-log.jsonl` — `{"ts":"<iso8601>","phase":"dispatch","tier":"strong","override":"<model / effort sent, or none>"}` (fail-open). `make stats` then shows what share of strong dispatches carried an explicit override — `none` recorded from a non-strong Lead is the silent downgrade made visible. This is the audit layer for what no CLI exposes mechanically: which model a dispatch actually ran.
 
+**Retry-at-higher-effort (checkable stages).** When a stage's outcome is
+mechanically checkable (tests, verifier, schema), dispatch it at LOW effort
+and re-run only the failures one effort step up — before any other recovery.
+Anthropic's own measurement (SWE-bench Pro): low-then-retry-at-default held
+the pass rate of all-default at about half the cost. Two conditions: a real
+failure signal (a checker that passes bad work forwards the failure instead
+of catching it), and it never applies to the verify/judge stages of a
+high-risk diff — those keep the tier floor below. The tier ladder above
+(re-dispatch one TIER up on `BLOCKED`) is for capability gaps; this effort
+ladder is for depth gaps — try the cheaper rung first.
+
 **Orchestration harnesses (workflow / ultracode).** A scripted fan-out defaults every agent to the Lead's own model — on a strong-tier Lead that silently runs the whole fleet at the top tier, and on a balanced-class Lead the INVERSE trap: inherit silently DOWNGRADES the verify/judge stages below what a high-risk diff requires. Apply the table above there too: pass the tier-mapped model (or the rolepod agentType, which carries its tier) per stage — mechanical sweep / scan = cheap, implementation = balanced, adversarial verify / judge = strong (on a non-strong Lead that means an EXPLICIT `opts.model` / effort override — "high-risk review at the session's model" is exactly the silent downgrade the tier policy forbids); reserve effort upgrades for the hardest verify stages. Whole-fleet inherit needs a stated reason (e.g. every stage is judgment-heavy) — and never covers the verify/judge stages of an R4 diff. On Claude Code the reason lives IN the script as `// tier-reason: <why>`; without it, a strong-class Lead's fan-out is denied at dispatch (workflow-tier-nudge fleet-tier gate) when it is model-less, pins one balanced tier on every stage, or runs its judge stage below itself — and re-submitted with the tiers spread.
 
 ## Continuous execution rule
