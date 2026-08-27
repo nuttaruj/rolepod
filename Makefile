@@ -58,6 +58,7 @@ test-static:
 	@bash tests/static/hook-agent-matching.sh
 	@bash tests/static/phase-log-fallback.sh
 	@bash tests/static/workflow-round-nudge.sh
+	@bash tests/static/backup-retention.sh
 	@bash tests/static/always-on-hook.sh
 	@echo "  → static checks passed"
 

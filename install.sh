@@ -18,6 +18,8 @@
 #                                      # Location: ~/.rolepod/backups/<cli>/rolepod-<stamp>/
 #                                      # (off the CLI scan paths — so Cursor doesn't surface
 #                                      # the backup as a duplicate plugin entry)
+#                                      # Retention: only the 3 newest backups per CLI are
+#                                      # kept — older ones are pruned on each install.
 #   ./install.sh --target=claude       # CLI target (default → ~/.claude)
 #   ./install.sh --target=codex        # Codex CLI       → ~/.codex
 #   ./install.sh --target=gemini       # Gemini CLI      → ~/.gemini
@@ -73,6 +75,10 @@ SCOPE="global"
 UNINSTALL=0
 ASSUME_YES=0
 DRY_RUN=0
+
+# How many timestamped backups to keep per CLI (and per config file). Every
+# --force install stamps a new one; without pruning they accumulate forever.
+BACKUP_KEEP=3
 
 # Args
 for arg in "$@"; do
@@ -281,6 +287,42 @@ install_codex_agents() {
   ok "rolepod agents installed → $dest/rolepod-*.toml (count: $copied)"
 }
 
+# prune_backups <prefix> [keep]
+#
+# Keep the <keep> newest entries matching "<prefix>*" in that prefix's parent
+# directory and delete the rest. Names are timestamp-stamped, so a reverse
+# lexical sort puts the newest first. Works for both backup dirs
+# (~/.rolepod/backups/<cli>/rolepod-<stamp>) and stamped config copies
+# (config.toml.rolepod-bak.<stamp>).
+#
+# Without this, every --force install left another copy behind forever.
+#
+# Honors $DRY_RUN.
+prune_backups() {
+  local prefix="$1"
+  local keep="${2:-$BACKUP_KEEP}"
+  local parent base victims count
+
+  parent="$(dirname "$prefix")"
+  base="$(basename "$prefix")"
+  [ -d "$parent" ] || return 0
+
+  victims=$(find "$parent" -maxdepth 1 -mindepth 1 -name "$base*" 2>/dev/null \
+    | sort -r | tail -n +$((keep + 1)))
+  [ -n "$victims" ] || return 0
+  count=$(printf '%s\n' "$victims" | wc -l | tr -d ' ')
+
+  if [ "$DRY_RUN" -eq 1 ]; then
+    dry "prune $count old backup(s) matching $prefix* (keeping $keep newest)"
+    return 0
+  fi
+
+  while IFS= read -r victim; do
+    [ -n "$victim" ] && rm -rf "$victim"
+  done <<< "$victims"
+  warn "Pruned $count old backup(s) matching $prefix* (kept $keep newest)"
+}
+
 # selective_backup <src> <backup> <path1> [path2 ...]
 #
 # Back up ONLY rolepod-managed paths from <src> into <backup>, skipping bloat
@@ -301,6 +343,7 @@ selective_backup() {
     for path in "$@"; do
       dry "  include: $path"
     done
+    prune_backups "$(dirname "$backup")/rolepod-"
     return 0
   fi
 
@@ -319,6 +362,7 @@ selective_backup() {
   local size
   size=$(du -sh "$backup" 2>/dev/null | awk '{print $1}')
   warn "Backup created: $backup (${size:-?} — rolepod-scoped, excludes session history / plugin cache)"
+  prune_backups "$(dirname "$backup")/rolepod-"
 }
 
 # ─── Managed-block helpers ──────────────────────────────────────────────
@@ -737,6 +781,7 @@ PY
         if [ -f "$X_CONFIG" ]; then
           STAMP=$(date +%Y%m%d-%H%M%S)
           cp "$X_CONFIG" "$X_CONFIG.rolepod-bak.$STAMP" 2>/dev/null || true
+          prune_backups "$X_CONFIG.rolepod-bak."
         fi
         codex plugin marketplace remove rolepod >/dev/null 2>&1 || true
       fi
@@ -1259,6 +1304,7 @@ if codex_selected; then
     if [ -f "$CODEX_CONFIG" ] && [ "$DRY_RUN" -eq 0 ]; then
       STAMP=$(date +%Y%m%d-%H%M%S)
       cp "$CODEX_CONFIG" "$CODEX_CONFIG.rolepod-bak.$STAMP" 2>/dev/null || true
+      prune_backups "$CODEX_CONFIG.rolepod-bak."
     fi
 
     # The rolepod repo is a Codex marketplace published on GitHub. install.sh
@@ -1532,6 +1578,7 @@ if cursor_selected; then
     warn "Backing up existing $CURSOR_PLUGIN_DEST → $BACKUP"
     do_or_dry "mkdir -p $(dirname "$BACKUP") && cp -R $CURSOR_PLUGIN_DEST $BACKUP" \
       bash -c "mkdir -p '$(dirname "$BACKUP")' && cp -R '$CURSOR_PLUGIN_DEST' '$BACKUP'"
+    prune_backups "$(dirname "$BACKUP")/rolepod-"
   fi
 
   step "Creating Cursor plugin directory"
