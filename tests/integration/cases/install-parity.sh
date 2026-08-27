@@ -33,6 +33,13 @@ cd "$REPO_DIR"
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
 
+# install.sh anchors its backup directory to ${HOME} even when the install
+# TARGET is a temp dir, so a --force run against a temp target still writes
+# into the real ~/.rolepod/backups. Point HOME at a throwaway dir for those
+# invocations so the suite leaves no trace in the developer's home.
+FAKE_HOME="$TMP/fakehome"
+mkdir -p "$FAKE_HOME"
+
 PASS=0
 FAIL=0
 
@@ -232,7 +239,9 @@ echo ""
 echo "[codex global] install into $TMP/codex/.codex"
 export ROLEPOD_CODEX_TARGET="$TMP/codex/.codex"
 mkdir -p "$ROLEPOD_CODEX_TARGET"
-if ./install.sh --target=codex --force > "$TMP/codex-global.log" 2>&1; then
+# HOME override: this is the only default-suite install that passes --force
+# into a pre-existing target, so it is the only one that stamps a backup.
+if HOME="$FAKE_HOME" ./install.sh --target=codex --force > "$TMP/codex-global.log" 2>&1; then
   AGENT_TOML_COUNT=$(find "$ROLEPOD_CODEX_TARGET/agents" -name 'rolepod-*.toml' 2>/dev/null | wc -l | tr -d ' ')
   if [ "$AGENT_TOML_COUNT" -eq 16 ]; then
     echo "  ✓ codex temp-target install lands 16 rolepod-*.toml agents"
