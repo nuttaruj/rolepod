@@ -18,6 +18,10 @@ FIX="$(mktemp -d "${TMPDIR:-/tmp}/rolepod-evtools.XXXXXX")"
 trap 'rm -rf "$FIX"' EXIT
 
 # ── stats.sh ────────────────────────────────────────────────────────────
+# Every stats.sh call here runs under HOME="$FIX". stats.sh also reads the
+# machine-global ~/.rolepod/gate-bypass.log, so without the sandbox this
+# case passes or fails on whatever the developer's own log happens to hold
+# — it once went red on a real corrupt byte that CI could never reproduce.
 mkdir -p "$FIX/repo/.rolepod/evidence"
 git -C "$FIX/repo" init -q
 cat > "$FIX/repo/.rolepod/evidence/phase-log.jsonl" <<'EOF'
@@ -37,7 +41,7 @@ EOF
 printf '{"ts":"2026-07-31T01:15:00Z","hook":"precommit-gate","var":"ROLEPOD_GATES_SOFT","reason":"unreasoned"}\n' \
   > "$FIX/repo/.rolepod/evidence/bypass.log"
 
-OUT=$(bash "$REPO_DIR/scripts/stats.sh" "$FIX/repo")
+OUT=$(HOME="$FIX" bash "$REPO_DIR/scripts/stats.sh" "$FIX/repo")
 check "stats reports tier distribution"   "printf '%s' \"\$OUT\" | grep -q 'R2'"
 check "stats reports verify fail rate"    "printf '%s' \"\$OUT\" | grep -q 'fail=1'"
 check "stats reports review verdicts"     "printf '%s' \"\$OUT\" | grep -q 'APPROVED: 1'"
@@ -51,7 +55,7 @@ check "codex model-log hook is fail-open outside a repo" \
 check "stats names the silent downgrade"  "printf '%s' \"\$OUT\" | grep -q 'silent downgrade'"
 check "stats reports hook-auto dispatch intent" "printf '%s' \"\$OUT\" | grep -q 'Dispatch intent — hook-auto (1'"
 check "stats flags hook-auto inherit"     "printf '%s' \"\$OUT\" | grep -q 'inherited the Lead'"
-check "stats survives malformed lines"    "bash '$REPO_DIR/scripts/stats.sh' '$FIX/repo'"
+check "stats survives malformed lines"    "HOME='$FIX' bash '$REPO_DIR/scripts/stats.sh' '$FIX/repo'"
 # HOME sandboxed: stats also reads the machine-global ~/.rolepod/gate-bypass.log
 # (v2.46.0) — the real machine's log must not leak into the empty-repo case.
 OUT=$(HOME="$FIX" bash "$REPO_DIR/scripts/stats.sh" "$FIX")
@@ -70,6 +74,18 @@ printf '2026-08-10T10:00:00 auto-pass on evidence (tests=3 reviewers=2): git com
 OUT=$(HOME="$FIX" bash "$REPO_DIR/scripts/stats.sh" "$FIX")
 check "stats reports pre-v2.46 unlabeled auto-passes separately (not as high-risk)" \
   "printf '%s' \"\$OUT\" | grep -q 'HIGH-RISK diff (labeled, v2.46+): 1' && printf '%s' \"\$OUT\" | grep -q 'pre-v2.46 unlabeled.*: 1'"
+
+# A machine-global log is append-only and shared by every rolepod version on
+# the box, so one bad byte must not take the reader down. Fixture: an
+# auto-pass line whose tail is a truncated multi-byte sequence — exactly what
+# a byte-precision printf produced before the writer sliced by character.
+printf 'auto-pass on evidence (tests=1 reviewers=0 strong=0 risk=none): git commit -m \xe0\xb8\n' \
+  >> "$FIX/.rolepod/gate-bypass.log"
+check "stats survives invalid UTF-8 in the machine-global log" \
+  "HOME='$FIX' bash '$REPO_DIR/scripts/stats.sh' '$FIX'"
+OUT=$(HOME="$FIX" bash "$REPO_DIR/scripts/stats.sh" "$FIX")
+check "stats still counts the entries around the corrupt line" \
+  "printf '%s' \"\$OUT\" | grep -q 'Precommit auto-passes (4'"
 
 # ── claude dispatch hooks (tier nudge + auto-log) ───────────────────────
 printf '{"tool_name":"Workflow","tool_input":{"script":"await agent(1)"}}' > "$FIX/wf-inherit.json"
@@ -209,7 +225,7 @@ mkj "$FIX/wf-multi.json" Workflow "$FIX/lead-opus.jsonl" '{"script":"name: \"mul
 LOG="$REPO_DIR/hooks/dispatch-auto-log.sh"
 check "auto-log: Workflow records the model literals + tier_mix (v2.48.1)" \
   "cd '$FIX/repo' && bash '$LOG' < '$FIX/wf-mono.json' && tail -1 .rolepod/evidence/phase-log.jsonl | grep -q '\"tier_mix\": \[\"balanced\"\]' && bash '$LOG' < '$FIX/wf-multi.json' && tail -1 .rolepod/evidence/phase-log.jsonl | grep -q 'role-pin'"
-OUT=$(bash "$REPO_DIR/scripts/stats.sh" "$FIX/repo")
+OUT=$(HOME="$FIX" bash "$REPO_DIR/scripts/stats.sh" "$FIX/repo")
 check "stats shows the fleet tier spread (single-tier vs multi-tier)" \
   "printf '%s' \"\$OUT\" | grep -q 'single-tier balanced ×1' && printf '%s' \"\$OUT\" | grep -q 'multi-tier'"
 check "stats reports fleet-tier gate denials by reason" \
@@ -225,7 +241,7 @@ check "auto-log: lifted reviewer (model=opus at PostToolUse) logs floor=applied 
   "cd '$FIX/repo' && bash '$LOG' < '$FIX/rev-lifted.json' && tail -1 .rolepod/evidence/phase-log.jsonl | grep -q '\"floor\": \"applied\"' && tail -1 .rolepod/evidence/phase-log.jsonl | grep -q '\"lead_class\": \"balanced\"'"
 check "auto-log: model-less strong role under a low Lead logs floor=missed (not inferred as lifted)" \
   "cd '$FIX/repo' && bash '$LOG' < '$FIX/rev-sonnet.json' && tail -1 .rolepod/evidence/phase-log.jsonl | grep -q '\"floor\": \"missed\"' && tail -1 .rolepod/evidence/phase-log.jsonl | grep -q '\"model\": \"inherit\"'"
-OUT=$(bash "$REPO_DIR/scripts/stats.sh" "$FIX/repo")
+OUT=$(HOME="$FIX" bash "$REPO_DIR/scripts/stats.sh" "$FIX/repo")
 check "stats reports floor applied/missed + Lead class at dispatch" \
   "printf '%s' \"\$OUT\" | grep -q 'applied ×1, missed ×1' && printf '%s' \"\$OUT\" | grep -q 'Lead class at dispatch'"
 

@@ -367,8 +367,18 @@ if [ "$HARD_BLOCK" -eq 1 ]; then
 fi
 if [ "$AUTO_PASS" -eq 1 ]; then
   mkdir -p "$HOME/.rolepod" 2>/dev/null || true
-  printf '%s auto-pass on evidence (tests=%s reviewers=%s strong=%s risk=%s): %.200s\n' \
-    "$(date '+%Y-%m-%dT%H:%M:%S')" "$TEST_EDITS" "$REVIEWERS" "$STRONG_REVIEWERS" "${HIGH_RISK:-none}" "$CMD" \
+  # %.200s truncates by BYTES in bash printf. A commit message with any
+  # multi-byte character got cut mid-codepoint and left invalid UTF-8 in the
+  # machine-global log, which then crashed every reader of it. Slice in
+  # python (characters) and flatten newlines so one commit can never corrupt
+  # the log or break its one-entry-per-line shape.
+  SAFE_CMD=$(ROLEPOD_BYPASS_CMD="$CMD" python3 -c "
+import os, sys
+sys.stdout.reconfigure(errors='replace')
+sys.stdout.write(' '.join(os.environ.get('ROLEPOD_BYPASS_CMD', '').split())[:200])
+" 2>/dev/null) || SAFE_CMD=""
+  printf '%s auto-pass on evidence (tests=%s reviewers=%s strong=%s risk=%s): %s\n' \
+    "$(date '+%Y-%m-%dT%H:%M:%S')" "$TEST_EDITS" "$REVIEWERS" "$STRONG_REVIEWERS" "${HIGH_RISK:-none}" "$SAFE_CMD" \
     >> "$HOME/.rolepod/gate-bypass.log" 2>/dev/null || true
   NOTE="precommit-gate auto-passed on session evidence: $TEST_EDITS test edits / $REVIEWERS reviewer dispatches / $STRONG_REVIEWERS strong"
   [ -n "$HIGH_RISK" ] && NOTE+=" (HIGH-RISK path: $HIGH_RISK)"

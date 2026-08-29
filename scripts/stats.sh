@@ -32,7 +32,7 @@ bypass_log = os.path.join(ev, "bypass.log")
 def read_jsonl(path):
     rows = []
     try:
-        with open(path, encoding="utf-8") as f:
+        with open(path, encoding="utf-8", errors="replace") as f:
             for ln in f:
                 ln = ln.strip()
                 if not ln:
@@ -52,10 +52,14 @@ bypasses = read_jsonl(bypass_log)
 # precommit auto-passes (plain-text, machine-global — every rolepod repo on
 # this machine appends here; shown so weakly-evidenced high-risk commits are
 # observable at all).
+# errors="replace": this log is machine-global and append-only, so one bad
+# byte from any rolepod version on this machine would otherwise crash every
+# reader. A reader that dies on its own evidence file is the opposite of the
+# fail-open rule the hooks follow.
 autopass_log = os.path.expanduser("~/.rolepod/gate-bypass.log")
 autopasses, autopass_risky, autopass_unlabeled = [], [], []
 try:
-    with open(autopass_log, encoding="utf-8") as f:
+    with open(autopass_log, encoding="utf-8", errors="replace") as f:
         for ln in f:
             if "auto-pass" not in ln:
                 continue
