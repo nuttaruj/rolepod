@@ -1,3 +1,5 @@
+![Rolepod — Define · Plan · Build · Verify · Review · Ship](assets/readme-hero.png)
+
 # Rolepod
 
 **Rolepod turns Claude Code, Codex CLI, Gemini CLI, Cursor IDE, Antigravity CLI (agy), and opencode into a disciplined software-house team — a workflow router, 16 specialist agents, and gates that catch bugs before they reach a commit.**
