@@ -186,7 +186,6 @@ See [docs/EXTENSION-PROTOCOL.md](docs/EXTENSION-PROTOCOL.md) for the full contra
 | Add-on | What it adds | Fallback without it |
 |--------|--------------|---------------------|
 | [CodeGraph](https://www.npmjs.com/package/codegraph) · [GitNexus](https://github.com/abhigyanpatwari/GitNexus) | Sub-millisecond symbol / caller / impact queries | `rg` + `find` text search |
-| [claude-mem](https://github.com/thedotmack/claude-mem) | Automatic cross-session memory — captures observations, injects project-scoped context, zero manual upkeep | Built-in per-project memory |
 | [rtk](https://github.com/rtk-ai/rtk) · [caveman](https://github.com/JuliusBrussee/caveman) | Token cuts on routine commands and replies | Normal output |
 | [ui-ux-pro-max](https://github.com/nextlevelbuilder/ui-ux-pro-max-skill) | Design recipes for the `ui-ux-designer` agent | Bundled design skills |
 

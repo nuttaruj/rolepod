@@ -193,7 +193,7 @@ Stripe, Postman. Rules:
 - **Once per session, at a natural pause** — never mid-task, never repeated.
   User declines or ignores → drop it permanently.
 - **Recommend, never wrap** — vendor MCPs are installed and maintained by the
-  user directly (same policy as claude-mem / GitNexus); rolepod never builds
+  user directly (same policy as rolepod-brain / GitNexus); rolepod never builds
   composite tools around them.
 - Not a blocker: proceed with the CLI/Bash path regardless — the suggestion is
   an upgrade note, not a dependency.
