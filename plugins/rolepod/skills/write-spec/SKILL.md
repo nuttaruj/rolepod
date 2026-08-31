@@ -76,7 +76,7 @@ flowchart LR
 
 ### 1. Frame the goal
 
-State the user goal in one sentence. State 2-3 likely constraints. Flag any high-risk surface up front. If the goal needs an "and" to be stated, the request may be several specs — see `references/scope-splitting.md` before continuing.
+State the user goal in one sentence. State 2-3 likely constraints. Flag any high-risk surface up front. If the goal needs an "and" to be stated, the request may be several specs — see `references/scope-splitting.md` before continuing. If the slices cannot even be listed yet because unresolved decisions block the view, escalate one level: `references/chart-work.md` — chart the decisions first, spec each slice after.
 
 ### 2. Discovery dialogue
 

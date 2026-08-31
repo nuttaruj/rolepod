@@ -4,6 +4,7 @@ A spec covers ONE shippable change. A request that hides several is split before
 
 ## Signals the request is too big
 - The goal needs the word "and" to be stated ("import users AND sync them AND notify").
+- Cannot list the outcomes at all — open decisions block the view. That is not a splitting problem: see `chart-work.md` (chart the decisions, then split).
 - It touches more than one high-risk surface for unrelated reasons.
 - Success criteria split into clusters that could ship on different days.
 - Any single slice could be released alone and still deliver value.

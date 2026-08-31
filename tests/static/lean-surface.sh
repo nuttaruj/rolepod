@@ -99,9 +99,11 @@ fi
 #     detail live in references/, not the spine)
 #   - supporting files per skill ≤ 5, except the using-rolepod router
 #     (≤ 3) and the rolepod-full alias (0)
-#   - total supporting files across all skills ≤ 41
-#     (41 since write-plan gained references/advisory-routing.md — the
-#     cross-CLI advisory panel; bump only for a deliberate new capability)
+#   - total supporting files across all skills ≤ 42
+#     (42 since write-spec gained references/chart-work.md — the decision-map
+#     layer for requests whose slices are not yet listable; before that 41
+#     for write-plan's advisory-routing.md. Bump only for a deliberate new
+#     capability)
 #   - every examples/*-examples.md carries a "Why good wins" contrast table
 URS="core/skills/using-rolepod/SKILL.md"
 URS_LINES=$(wc -l < "$URS" | tr -d ' ')
@@ -126,7 +128,7 @@ else
   echo "  ✗ supporting-file count over cap: $SUPPORT_OVER"
   fail=$((fail+1))
 fi
-check "total supporting files ≤ 41 (actual: $SUPPORT_TOTAL)" "[ $SUPPORT_TOTAL -le 41 ]"
+check "total supporting files ≤ 42 (actual: $SUPPORT_TOTAL)" "[ $SUPPORT_TOTAL -le 42 ]"
 
 EXAMPLES_NO_TABLE=""
 for f in core/skills/*/examples/*-examples.md; do
