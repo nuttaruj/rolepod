@@ -24,13 +24,14 @@ committed — the map is a shared record, not session scratch.
  or the change itself. 1-2 lines; every session re-reads this first.>
 
 ## Ground rules
-<standing constraints for the whole effort — the user's non-negotiables,
- doctrine that applies, evidence sources to prefer.>
+<standing constraints for the whole effort — the user's non-negotiables and
+ doctrine that applies. A soft preference carries its own softness in the
+ item's wording ("prefer X over Y"), so the binding section name stays honest.>
 
 ## Decided
 - [q-<slug>](./<effort>/q-<slug>.md) — <one-line gist of the resolution>
 
-## Not yet sharp
+## Still fuzzy
 <questions you can feel coming but cannot phrase precisely yet — prose,
  as loose as honesty requires. Never pre-sliced into tickets.>
 
@@ -56,9 +57,9 @@ Kind: discuss | investigate | probe | unblock
 <appended when resolved: the decision, the reason, pointers to evidence>
 ```
 
-**Sharp or not-yet?** A question earns a ticket when it can be **stated
+**Sharp or still fuzzy?** A question earns a ticket when it can be **stated
 precisely now** — answerable or not. If it cannot be phrased that sharply,
-it stays in *Not yet sharp*. Do not pre-slice the unknown into ticket-sized
+it stays in *Still fuzzy*. Do not pre-slice the unknown into ticket-sized
 pieces: one loose patch may become three tickets or zero once the decisions
 ahead of it fall. This is the anti-overengineering rule applied to planning
 — no tickets for hypothetical questions.
@@ -88,7 +89,7 @@ parallel via scouts). More than one `discuss` per session degrades both.
 2. Resolve per its kind. Zoom into related resolved tickets only as needed.
 3. Record: write `## Resolution` in the ticket, flip `Status: resolved`,
    add the one-line gist to **Decided**.
-4. Ripple: any *Not yet sharp* patch this resolution made phrasable becomes
+4. Ripple: any *Still fuzzy* patch this resolution made phrasable becomes
    a ticket now (and leaves the ledger). Any ticket it invalidated is
    edited or closed. Anything it revealed as beyond the Target moves to
    **Ruled out** — closed, not resolved.
@@ -103,7 +104,7 @@ to scope-splitting.md or a single spec. A map for a chartable-in-one-pass
 request is ceremony.
 
 **Exit — the map ends where specs begin.** The map is done when nothing is
-left to decide: *Not yet sharp* is empty and every ticket is resolved or
+left to decide: *Still fuzzy* is empty and every ticket is resolved or
 ruled out. Then list the slices (they are now visible), confirm the sequence
 with the user, and run write-spec per slice — each spec citing the map's
 **Decided** entries instead of re-litigating them. The urge to start
