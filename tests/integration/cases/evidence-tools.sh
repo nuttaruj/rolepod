@@ -187,6 +187,19 @@ check "gate v2.50: sonnet Lead + sonnet everywhere → silent (no cost leak; nud
   "[ -z \"\$(cd '$FIX/repo' && bash '$NUDGE' < '$FIX/wf-mono-sonnetlead.json')\" ]"
 check "gate v2.50: model from a variable (dynamic) → trusted, silent" \
   "[ -z \"\$(cd '$FIX/repo' && bash '$NUDGE' < '$FIX/wf-dynamic.json')\" ]"
+# v2.70.0 — uniform strong closes: explicit model:"opus" pasted on research/sweep
+# stages sailed through (observed: resellerclub-slice2-plan, 4 research agents
+# at opus, 575k tokens — models:["opus"] made tiers non-empty, no verdict fired)
+mkj "$FIX/wf-all-opus.json"      Workflow "$FIX/lead-opus.jsonl" '{"script":"phase(\"Research\"); await agent(1,{model:\"opus\", label:\"research:billing\"}); await agent(2,{model:\"opus\", label:\"research:jobs\"}); phase(\"Plan\"); await agent(3,{model:\"opus\"})"}'
+mkj "$FIX/wf-all-opus-judge.json" Workflow "$FIX/lead-opus.jsonl" '{"script":"name: \"refund-audit\" phase(\"Review\"); await agent(1,{model:\"opus\"}); phase(\"Verify\"); await agent(2,{model:\"opus\"})"}'
+mkj "$FIX/wf-all-opus-reason.json" Workflow "$FIX/lead-opus.jsonl" '{"script":"// tier-reason: cross-repo architecture calls in every stage\nphase(\"Research\"); await agent(1,{model:\"opus\"}); phase(\"Plan\"); await agent(2,{model:\"opus\"})"}'
+GOUT=$(cd "$FIX/repo" && bash "$NUDGE" < "$FIX/wf-all-opus.json")
+check "gate v2.70: research+plan ALL pinned opus under opus Lead → deny (all-strong) naming the non-judge stages" \
+  "printf '%s' \"\$GOUT\" | grep -q '\"deny\"' && printf '%s' \"\$GOUT\" | grep -q 'Research'"
+check "gate v2.70: all-opus but every stage is judgment (Review+Verify) → silent (legit strong floor)" \
+  "[ -z \"\$(cd '$FIX/repo' && bash '$NUDGE' < '$FIX/wf-all-opus-judge.json')\" ]"
+check "gate v2.70: all-opus with // tier-reason: → silent (stated exception)" \
+  "[ -z \"\$(cd '$FIX/repo' && bash '$NUDGE' < '$FIX/wf-all-opus-reason.json')\" ]"
 # v2.62.1 — prose "model:" inside a prompt string must NOT count as an override
 # (observed: CourtBook queue-review fleet ran 940k tokens all-Opus because a
 # prompt sentence "...RESERVATION model: comments..." read as a dynamic override)

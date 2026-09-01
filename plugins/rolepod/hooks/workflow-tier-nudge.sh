@@ -269,6 +269,19 @@ if tool == "Workflow":
                 "tiers spread; every stage genuinely balanced work? state it: "
                 "`// tier-reason: <why>`." % (len(stages), ", ".join(sorted(stages))[:200], why, lead or "unknown model",
                                               (", opus/inherit here because this fleet touches money/auth/security/migrations" if risky else ""))) + TAIL
+        elif tiers == {"strong"} and n_calls >= 2 and [x for x in stages if not JUDGE_RX.search(x)]:
+            verdict = "all-strong"
+            nonjudge = sorted(x for x in stages if not JUDGE_RX.search(x))
+            reason_txt = (
+                "\u26d4 rolepod fleet-tier gate: %d agent() call(s) ALL pinned strong-class under a %s "
+                "Lead (%s) while stage(s) %s are not judgment work \u2014 research/sweep/read and build "
+                "run at strong price for cheap-tier output (observed: one research phase alone burned "
+                "575k tokens at opus this way). Re-submit with the tiers spread by the work: "
+                "research/sweep/read \u2192 model:\x27haiku\x27, build \u2192 model:\x27sonnet\x27; keep "
+                "judge/refute/rank/review at strong%s. Every stage genuinely needs strong reasoning? "
+                "state it: `// tier-reason: <why>`." % (
+                    n_calls, why, lead or "unknown model", ", ".join(nonjudge)[:160],
+                    (" (this fleet touches money/auth/security \u2014 the judge floor stays)" if risky else " only when the fleet is high-risk"))) + TAIL
         elif risky and judge_stages and not (tiers & {"strong", "role-pin", "dynamic"}):
             verdict = "no-strong-judge"
             reason_txt = (
