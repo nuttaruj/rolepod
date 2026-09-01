@@ -8,14 +8,14 @@ phase: define
 
 # Write Spec
 
-Define-phase entry skill. Convert a vague request into a sharp spec the next phase can execute against. Discovery questions one at a time, design alternatives, user approval, compact contract.
+Define-phase entry skill. Convert a vague request into a sharp spec the next phase can execute against. Discovery questions in frontier rounds, design alternatives, user approval, compact contract.
 
 ## Iron Rule
 
 <EXTREMELY-IMPORTANT>
 1. NEVER skip the spec when the goal, scope, or success criteria are ambiguous, or when the request touches a high-risk surface (auth, billing, payments, credits, migration, data deletion, secrets, tokens, crypto, permissions, security).
 2. NEVER start implementation before the user approves the design direction (Gate 1).
-3. ASK one focused question at a time during discovery unless the user explicitly asks for a full questionnaire. RECOMMEND a default answer per question — user confirms or overrides.
+3. ASK discovery questions in FRONTIER ROUNDS: each round carries every question whose prerequisites are already settled — a question depending on an answer still open this round waits for the next. RECOMMEND a default answer per question — user confirms or overrides. Facts are never questions: anything the codebase or docs can answer is researched, not asked.
 4. NEVER ship a spec that contains placeholders, contradictions, or untested assumptions about the user's intent.
 5. WHEN the spec is saved as a file, require a second approval on the written file itself (Gate 2) — verbal agreement and written file drift apart.
 </EXTREMELY-IMPORTANT>
@@ -61,7 +61,7 @@ Hand off:
 
 ```mermaid
 flowchart LR
-  A[Frame goal] --> B[Discover Qs<br/>+ recommend default per Q]
+  A[Frame goal] --> B[Discover Qs in frontier rounds<br/>+ recommend default per Q]
   B --> C[2-3 approaches]
   C --> D{Gate 1<br/>direction OK?}
   D -- no --> C
@@ -80,11 +80,11 @@ State the user goal in one sentence. State 2-3 likely constraints. Flag any high
 
 ### 2. Discovery dialogue
 
-Ask up to 5 targeted questions, one at a time. Each question must change the implementation if the answer changes. Skip obvious questions. Use the native question UI when available; otherwise plain-text prompts.
+Model the open decisions as a tree — each answer unblocks the questions hanging off it. Ask in **rounds**: number every question on the current frontier (all questions whose prerequisites are settled) and present the round together; a question whose answer depends on one still open belongs to the next round, not this one. Each question must change the implementation if the answer changes — skip obvious ones; up to ~5 per round. Use the native question UI when available; otherwise plain-text prompts. Done when the frontier is empty — nothing left silently assumed.
 
 **Recommend a default per question.** State the simplest viable answer alongside the question — user confirms or overrides. Faster than open-ended and forces you to commit to a position you can defend.
 
-If a question can be answered by reading the codebase, explore the codebase instead — never spend a user question on what you can verify yourself. Walk the decision tree by dependency: resolve the question that gates the others first, since its answer changes which downstream questions still matter. While a question is out to the user, that wait is free wall-clock: dispatch a scout on the remaining researchable unknowns in parallel — by the time the answer lands, evidence has often closed the later questions unasked.
+If a question can be answered by reading the codebase, explore the codebase instead — never spend a user question on what you can verify yourself. While a round is out to the user, that wait is free wall-clock: dispatch a scout on the researchable unknowns in parallel — a running scout is itself an unsettled prerequisite, so only the questions downstream of it wait; by the time answers land, evidence has often closed the next round unasked.
 
 **Visual companion for UI-shape questions.** If a question is about UI layout, flow, or visual hierarchy and `rolepod-uiproof` is installed, offer a browser mockup or reference screenshot via `/verify-ui` or `/visual-diff` before asking the text question. Visual answers beat text for visual decisions. Interaction-FEEL questions go one step further: a disposable single-file HTML demo (inline CSS/JS, mock data, opens without a server) on a throwaway `spike/` branch — the user clicks the options before answering. The decision + branch pointer land in the spec; the branch is NEVER merged — demo code is an answer, not a head start.
 
@@ -93,6 +93,8 @@ Unsure which questions actually change the implementation? See `references/quest
 ### 3. Present 2-3 approaches
 
 When the design has meaningful options, lay out 2-3 viable approaches with tradeoffs (complexity, blast radius, reversibility, cost). Recommend one. The simplest viable approach wins by default.
+
+**Record the pick as an ADR only when all three hold**: (1) hard to reverse — changing course later costs real work; (2) surprising without context — a future reader would ask "why this way?"; (3) a real trade-off — genuine alternatives existed and one was chosen for stated reasons. Any one missing → no ADR; the spec itself is the record. Save to `docs/adr/NNNN-<slug>.md` (context, decision, consequences — one page).
 
 ### 4. Self-review the draft
 

@@ -165,6 +165,7 @@ Non-blocking — read only when unsure about scope or whether to trust a subagen
 
 Load only when the task needs it:
 - `references/tdd-by-risk.md` — task type → test discipline: test-first vs evidence-after
+- `references/wizard.md` — the task contains steps only the HUMAN can perform (credentials, vendor dashboards, CI secrets, a one-off cutover): generate an interactive bash wizard instead of a wall of chat instructions
 - `references/subagent-dispatch.md` — implementer status taxonomy (COMPLETED ± concerns / PARTIAL / BLOCKED) and handling, parallel-track dispatch protocol, two-stage review prompt scaffolds (spec compliance / code quality), model selection table, continuous-execution rationale
 
 ## Hard stops

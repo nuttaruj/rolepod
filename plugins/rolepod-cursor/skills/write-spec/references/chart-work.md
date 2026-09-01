@@ -71,7 +71,7 @@ tools:
 | `discuss` | with user | Discovery dialogue (this skill's Phase 1) on the one question. Default kind. |
 | `investigate` | agent alone | Dispatch a `scout` — docs, APIs, prior art; report → resolution. |
 | `probe` | with user | A cheap throwaway artifact to react to (stub, sketch, spike on a branch) — build just enough to make the discussion concrete. Link it; never merge it. |
-| `unblock` | either | Real work a decision is waiting on (provision access, move data so its shape is visible). The only kind that *does* instead of decides. |
+| `unblock` | either | Real work a decision is waiting on (provision access, move data so its shape is visible). The only kind that *does* instead of decides. Human-only steps → generate a wizard (implement-plan `references/wizard.md`). |
 
 `discuss` and `probe` resolve **only through the user's own answers** — the
 agent never fills in the user's side of the exchange. A self-answered
