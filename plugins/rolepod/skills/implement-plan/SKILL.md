@@ -62,9 +62,7 @@ Return / hand off:
 
 Read the touched files end-to-end (or the relevant region with line numbers). Don't pattern-match — verify the symbols and behavior exist where the plan expects.
 
-**Shared plan (issues backend on — the plan header lists issue numbers per task):** claim the task's issue first (`gh issue edit <n> --add-assignee @me`) before touching any file — someone else assigned means take the next unblocked, unassigned issue instead; close the issue with the commit / PR pointer when the task's review passes. Details: write-plan's `references/team-issues.md`.
-
-**The plan is the loop contract.** An R2 inline checklist (no artifact) is the same contract — run each step's command, and scope growing past one file → stop, write the real plan. Verify each task by running its **Command** verbatim — never a re-derived guess. When it passes, flip EVERY `- [ ]` under that task to `- [x]` in the plan artifact (tasks carry one checkbox per step; all flip together — that is how progress survives compaction). On a failing Command, follow the task's **On fail**, or the plan's **Failure policy** when the task has none.
+**The plan is the loop contract.** An R2 inline checklist (no artifact) is the same contract — run each step's command, and scope growing past one file → stop, write the real plan. Verify each task by running its **Command** verbatim — never a re-derived guess. When it passes, flip EVERY `- [ ]` under that task to `- [x]` in the plan artifact (tasks carry one checkbox per step; all flip together — that is how progress survives compaction). On a failing Command, follow the task's **On fail**, or the plan's **Failure policy** when the task has none. Shared plan (issues backend on — the plan header lists issue numbers per task): claim the task's issue first (assign yourself) before touching any file — already assigned means take the next unblocked, unassigned one; close it with the commit / PR pointer when the task's review passes (write-plan's `references/team-issues.md`).
 
 ### 2. TDD-light for risky paths
 
