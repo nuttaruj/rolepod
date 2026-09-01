@@ -77,7 +77,7 @@ State the user goal in one sentence. State 2-3 likely constraints. Flag any high
 
 ### 2. Discovery dialogue
 
-Model the open decisions as a tree — each answer unblocks the questions hanging off it. Ask in **rounds**: number every question on the current frontier (all questions whose prerequisites are settled) and present the round together; a question whose answer depends on one still open belongs to the next round, not this one. Each question must change the implementation if the answer changes — skip obvious ones; up to ~5 per round. Use the native question UI when available; otherwise plain-text prompts. Done when the frontier is empty — nothing left silently assumed.
+Model the open decisions as a tree — each answer unblocks the questions hanging off it. Ask in **rounds**: number every question on the current frontier (all questions whose prerequisites are settled) and present the round together; a question whose answer depends on one still open belongs to the next round, not this one. Each question must change the implementation if the answer changes — skip obvious ones; up to ~5 per round. Use the native question UI when available; without one, render the round as numbered questions with lettered options, the recommended default marked, and accept compact answers — `1a 3c`, or `defaults` to take every recommendation; never force the user to type prose for a choice. Done when the frontier is empty — nothing left silently assumed.
 
 **Recommend a default per question.** State the simplest viable answer alongside the question — user confirms or overrides. Faster than open-ended and forces you to commit to a position you can defend.
 
