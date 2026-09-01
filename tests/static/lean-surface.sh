@@ -99,11 +99,11 @@ fi
 #     detail live in references/, not the spine)
 #   - supporting files per skill ≤ 5, except the using-rolepod router
 #     (≤ 3) and the rolepod-full alias (0)
-#   - total supporting files across all skills ≤ 43
-#     (43 since implement-plan gained references/wizard.md — the human-only
-#     steps wizard; 42 for write-spec's chart-work.md decision maps; 41 for
-#     write-plan's advisory-routing.md. Bump only for a deliberate new
-#     capability)
+#   - total supporting files across all skills ≤ 44
+#     (44 since write-plan gained references/team-issues.md — the optional
+#     GitHub Issues backend for team-built plans; 43 for implement-plan's
+#     wizard.md; 42 for write-spec's chart-work.md; 41 for write-plan's
+#     advisory-routing.md. Bump only for a deliberate new capability)
 #   - every examples/*-examples.md carries a "Why good wins" contrast table
 URS="core/skills/using-rolepod/SKILL.md"
 URS_LINES=$(wc -l < "$URS" | tr -d ' ')
@@ -121,6 +121,9 @@ for d in core/skills/*/; do
     implement-plan) cap=6 ;;  # +1 for references/wizard.md (v2.69.0) — the
                               # human-only-steps wizard; template inlined in
                               # the one file to keep the exception minimal
+    write-plan)     cap=6 ;;  # +1 for references/team-issues.md (v2.71.0) —
+                              # optional GitHub Issues backend for team-built
+                              # plans; solo default stays the plan file
     *)              cap=5 ;;
   esac
   [ "$n" -le "$cap" ] || SUPPORT_OVER="${SUPPORT_OVER}${s} (${n}>${cap}) "
@@ -131,7 +134,7 @@ else
   echo "  ✗ supporting-file count over cap: $SUPPORT_OVER"
   fail=$((fail+1))
 fi
-check "total supporting files ≤ 43 (actual: $SUPPORT_TOTAL)" "[ $SUPPORT_TOTAL -le 43 ]"
+check "total supporting files ≤ 44 (actual: $SUPPORT_TOTAL)" "[ $SUPPORT_TOTAL -le 44 ]"
 
 EXAMPLES_NO_TABLE=""
 for f in core/skills/*/examples/*-examples.md; do

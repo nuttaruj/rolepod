@@ -153,6 +153,8 @@ Tasks use `- [ ]` checkboxes so progress is visible in the artifact itself — s
 
 For one-session work, inline the filled template in chat. For multi-session work, save it to `docs/rolepod/plans/<feature>-YYYY-MM-DD.md`. Re-planning after the spec moves never overwrites: keep the prior file and write `<feature>-YYYY-MM-DD-v2.md` (the diff between versions is the record of what changed and why).
 
+More than one person or machine will build this plan → the tasks can also publish to the repo's issue tracker as a coordination layer (claim by assignee, frontier visible in the tracker UI): `references/team-issues.md`. Solo work never needs it — the plan file alone is the contract.
+
 Harness plan mode active (a read-only planning state with its own approval gate — e.g. Claude Code plan mode, Codex `/plan`): present the filled plan through that gate rather than as a plain chat message, and defer every disk write — the plan file and any cohesion contract — until the gate approves. File writes are blocked until then; do not fight the block, it is the same boundary this skill's Iron Rule draws.
 
 ## Examples
@@ -165,6 +167,7 @@ Non-blocking — read only when the plan being drafted is unclear:
 Load only when the task needs it:
 - `references/plan-reviewer-prompt.md` — reusable subagent prompt for dispatching an independent plan reviewer when the plan is risky or large. Use via the Agent tool (subagent_type=universal-reviewer).
 - `references/advisory-routing.md` — cross-CLI advisory panel for high-stakes multi-option decisions: gating, per-model strengths, and the collect-then-Lead-decides protocol. The advisory mirror of `review-code`'s external adversarial review.
+- `references/team-issues.md` — optional GitHub Issues backend when more than one person or machine builds the plan: task→issue mapping, native blocking edges, claim-by-assignee, frontier query. Solo default stays the plan file.
 
 ## Hard stops
 
