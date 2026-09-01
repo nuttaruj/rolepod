@@ -1,6 +1,6 @@
 # Rolepod — Cheatsheet
 
-Quick reference for all 4 CLIs (Claude / Codex / Gemini / Cursor). Install, architecture, and full hook / model reference live in [README](README.md) and [docs/](docs/).
+Quick reference for all 6 CLIs (Claude / Codex / Gemini / Cursor / Antigravity / opencode). Install, architecture, and full hook / model reference live in [README](README.md) and [docs/](docs/).
 
 ## Workflow — phase → skill
 
@@ -67,7 +67,7 @@ Can't verify  → state "Assuming X. Risk Y. Verify by Z" — never proceed sile
 
 ## Reviewer routing
 
-`qa-tester` is the always-on internal floor. An external reviewer = an installed CLI on a different model from the Lead (Claude / Codex / Gemini / Cursor, minus itself).
+`qa-tester` is the always-on internal floor. An external reviewer = an installed CLI on a different model **family** from the Lead (Claude / Codex / Gemini — `gemini` and `agy` serve the same family and count once).
 
 | PR profile | Reviewers |
 |-----------|-----------|
@@ -89,20 +89,20 @@ Can't verify  → state "Assuming X. Risk Y. Verify by Z" — never proceed sile
 
 ## Key commands — per CLI
 
-| Action | Claude | Codex | Gemini | Cursor |
-|--------|--------|-------|--------|--------|
-| Start | `claude` | `codex` | `gemini` | open Cursor |
-| Force-full lifecycle | `/rolepod-full` | `$rolepod-full` | `/rolepod-full` | `/rolepod-full` |
-| Reset context | `/clear` | exit + restart | exit + restart | new chat |
-| Restore checkpoint | `/rewind` (`Esc Esc`) | git | git | git |
-| Manual compaction | `/compact <focus>` | auto | auto | auto |
-| Resume last session | `claude --continue` | `codex resume` | `gemini` | last chat (sidebar) |
-| Pick a session | `claude --resume` | `codex resume --list` | — | chat history (sidebar) |
-| One-shot prompt | `claude -p "…"` | `codex exec "…"` | `gemini -p "…"` | Cmd+K |
+| Action | Claude | Codex | Gemini | Cursor | Antigravity | opencode |
+|--------|--------|-------|--------|--------|-------------|----------|
+| Start | `claude` | `codex` | `gemini` | open Cursor | `agy` | `opencode` |
+| Force-full lifecycle | `/rolepod-full` | `$rolepod-full` | `/rolepod-full` | `/rolepod-full` | `/rolepod-full` | `/rolepod-full` |
+| Reset context | `/clear` | exit + restart | exit + restart | new chat | exit + restart | new session |
+| Restore checkpoint | `/rewind` (`Esc Esc`) | git | git | git | git | git |
+| Manual compaction | `/compact <focus>` | auto | auto | auto | auto | auto |
+| Resume last session | `claude --continue` | `codex resume` | `gemini` | last chat (sidebar) | `agy` | `opencode` (session list) |
+| Pick a session | `claude --resume` | `codex resume --list` | — | chat history (sidebar) | — | session list |
+| One-shot prompt | `claude -p "…"` | `codex exec "…"` | `gemini -p "…"` | Cmd+K | `agy -p "…"` | `opencode run "…"` |
 
 ## Hooks
 
-12 Claude / 8 Codex / 5 Gemini / 3 Cursor / 6 Antigravity core hook scripts — self-guarded, auto-fire, no add-on hooks. All CLIs fire hooks by default (Codex: `[features] hooks = true`, default-enabled). Full reference: [docs/hooks.md](docs/hooks.md).
+12 Claude / 8 Codex / 5 Gemini / 3 Cursor / 6 Antigravity core hook scripts (opencode: plugin-event bridge, best-effort) — self-guarded, auto-fire, no add-on hooks. All CLIs fire hooks by default (Codex: `[features] hooks = true`, default-enabled). Full reference: [docs/hooks.md](docs/hooks.md).
 
 ## Evidence stats
 
