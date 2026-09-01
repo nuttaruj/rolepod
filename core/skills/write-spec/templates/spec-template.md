@@ -16,7 +16,11 @@
 <What happens today. "Nothing — new surface" is a valid answer. Repeat feature: seed from the latest docs/rolepod/specs/<feature>-*.md Desired behavior, but verify it shipped before trusting it.>
 
 ## Desired behavior
-<What should happen after. Observable, not internal.>
+<What should happen after. Observable, not internal.
+ Repeat feature (a Current behavior exists): enumerate the delta explicitly —
+ **Added:** / **Changed:** (old → new) / **Removed:** (+ why) bullets against
+ the verified Current behavior. A reviewer then reads what MOVES, not two
+ prose blocks to diff by eye; anything unlisted is asserted unchanged.>
 
 ## Success criteria
 <Checkable conditions. Each must be pass/fail, not "works well", and each
