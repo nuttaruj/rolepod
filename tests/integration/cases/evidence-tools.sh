@@ -135,8 +135,8 @@ check "floor: explicit model=sonnet on a strong role → named, not rewritten" \
   "bash '$NUDGE' < '$FIX/rev-explicit.json' | grep -q 'EXPLICIT downgrade' && ! bash '$NUDGE' < '$FIX/rev-explicit.json' | grep -q updatedInput"
 check "floor honors ROLEPOD_NUDGE_OFF" \
   "[ -z \"\$(ROLEPOD_NUDGE_OFF=1 bash '$NUDGE' < '$FIX/rev-sonnet.json')\" ]"
-check "system-architect under sonnet Lead → nudge only (cohesion may deny it)" \
-  "bash '$NUDGE' < '$FIX/arch-sonnet.json' | grep -q 'system-architect' && ! bash '$NUDGE' < '$FIX/arch-sonnet.json' | grep -q updatedInput"
+check "floor v2.73: system-architect under sonnet Lead → lifted to opus via updatedInput (was nudge-only)" \
+  "bash '$NUDGE' < '$FIX/arch-sonnet.json' | grep -q '\"model\": \"opus\"' && bash '$NUDGE' < '$FIX/arch-sonnet.json' | grep -q 'tier-floor: system-architect'"
 check "nudge: effort-only Workflow is NOT a tier choice → still nudged, Lead-aware" \
   "bash '$NUDGE' < '$FIX/wf-effort.json' | grep -q 'effort is depth' && bash '$NUDGE' < '$FIX/wf-effort.json' | grep -q 'claude-sonnet-5'"
 check "nudge: model-less Workflow under a strong Lead → cost wording (pin build to sonnet)" \

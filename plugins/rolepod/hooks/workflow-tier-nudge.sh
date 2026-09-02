@@ -22,9 +22,8 @@
 # permissionDecision "allow" — the Agent tool asks no permission of its own,
 # so nothing is bypassed). Unknown Lead class → untouched (never a downgrade
 # of a model stronger than the alias). Explicit `model:` on the call is the
-# Lead's stated choice → never rewritten, only named. system-architect gets
-# the nudge, not the rewrite (cohesion-contract-check may deny a parallel
-# architect spawn; hook-decision precedence is undocumented).
+# Lead's stated choice → never rewritten, only named. security-engineer /
+# universal-reviewer / system-architect (v2.73.0) are the floored roles.
 #
 #   Workflow fan-out under a STRONG (or unknown non-empty) Lead, no
 #     `// tier-reason:` (or legacy `fleet-inherit:`) comment → DENY when:
@@ -47,7 +46,7 @@
 #     (`effort:` alone is not a tier choice — nudged, not silenced)
 #   Agent strong role, no model, Lead known-low                → allow + updatedInput model=opus
 #   Agent strong role, explicit low model                      → nudge (named downgrade)
-#   Agent system-architect, no model, Lead known-low           → nudge (pass model:'opus')
+#   (system-architect joined the strong-role floor in v2.73.0 — no nudge path)
 #   Agent sweep-type (Explore/general-purpose), no model        → nudge
 #     (rolepod:scout is frontmatter-pinned cheap → silent)
 #   Agent = the Lead's 3rd sequential dispatch round-trip this turn
@@ -386,9 +385,6 @@ if tool in ("Agent", "Task"):
         if loop_note:
             ctx(loop_note.rstrip() + OFF)
         sys.exit(0)
-    if atype == "system-architect" and not model and cls in ss.LOW_CLASSES:
-        ctx(loop_note + "⚖ rolepod tier-check: system-architect inherits the Lead: %s — a strong-tier "
-            "judgment role. Pass model:\x27opus\x27 (or the strongest you have).%s" % (lead_txt, OFF))
     # rolepod:scout is pinned cheap by its frontmatter (verified on disk) — no nudge.
     # Only the platform sweep agents (Explore / general-purpose) truly inherit.
     if not model and re.search(r"(explore|general-purpose)", atype, re.I):

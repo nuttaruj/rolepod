@@ -101,10 +101,14 @@ LOW_CLASSES = {"cheap", "balanced"}
 # them inherit so a fable-class Lead is not pinned DOWN to opus). On a
 # known-low Lead that inherit is a silent downgrade of the adversarial pass —
 # the dispatch hook writes the strong alias into the Agent call instead.
-# system-architect is deliberately absent: cohesion-contract-check may deny a
-# parallel architect spawn, and hook-decision precedence is undocumented, so
-# it gets a nudge, not a rewrite.
-STRONG_ROLE_AGENTS = {"security-engineer", "universal-reviewer"}
+# system-architect joined in v2.73.0: in teammate mode it writes the spec +
+# cohesion contract for the whole team — the judgment-heaviest role — and was
+# the one strong role left at nudge-only. The old worry (cohesion-contract-
+# check may deny a parallel architect spawn; hook-decision precedence is
+# undocumented upstream) applies equally to the two roles already floored
+# since v2.4x with no observed conflict, and the architect is normally the
+# FIRST spawn (it writes the contract), so the deny never co-fires.
+STRONG_ROLE_AGENTS = {"security-engineer", "universal-reviewer", "system-architect"}
 STRONG_ALIAS = "opus"
 
 

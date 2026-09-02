@@ -30,6 +30,22 @@ Also set `ROLEPOD_ALLOW_SHARED_WORKTREE=1` before spawning a team so rolepod's s
 
 Until the flag is set, the Task/subagent backend delivers the same outcome shape (parallel work, contract-coordinated) at single-process cost.
 
+## Teammate model — the tier follows the role, not the Lead
+
+Teammates spawn through the **Agent tool** (a named Agent call while the flag is on), so rolepod's PreToolUse hooks fire on every spawn exactly as for subagents — `cohesion-contract-check` and the `workflow-tier-nudge` Agent branch included. Upstream picks a teammate's model in this order (v2.1.251+):
+
+1. The model the spawn prompt names for that teammate.
+2. The agent definition's `model:` — rolepod's pins carry over: builders / qa = `sonnet`, `scout` / `product-manager` / `content-strategist` = `haiku`, `security-engineer` / `universal-reviewer` / `system-architect` = `inherit`.
+3. `CLAUDE_CODE_SUBAGENT_MODEL`, when set to anything but `inherit`.
+4. The Lead's current model.
+
+`inherit` under a balanced Lead is the silent downgrade the tier policy forbids for judgment roles, so the strong-role floor lifts those three roles to `opus` at spawn (`updatedInput`) whenever the Lead is a known low class — the architect that writes the team's spec + cohesion contract never runs at the Lead's discount. Effort is inherited from the Lead; a teammate's model is fixed at spawn (`/model` later only changes the Lead).
+
+Two upstream behaviours to know while the flag is on:
+
+- **Any named subagent becomes a teammate.** Claude names subagents on its own so it can message them later; with the flag on, that name launches a full teammate (own context window, no `/resume`). Ordinary delegation can therefore silently cost a full session per agent. Set the flag to `0` in user settings when a session is not team work — it is re-read at every spawn, no restart needed.
+- **No teammates in `-p` / SDK mode.** Non-interactive sessions run named agents as ordinary subagents; the force-full backend table falls through to Task / subagents there.
+
 ## How teammate mode differs from subagents
 
 | Aspect | Task / subagent backend | Teammate backend |
@@ -144,6 +160,8 @@ Per [official docs](https://code.claude.com/docs/en/agent-teams#limitations):
 - Lead is fixed (cannot transfer leadership)
 - Tmux or iTerm2 required for split-pane mode
 - Permissions set at spawn
+- No teammates in non-interactive (`-p`) sessions; named subagents run as plain subagents there
+- While the flag is on, any subagent the Lead names launches as a teammate — see the model section above
 
 These are upstream constraints — rolepod cannot work around them.
 
