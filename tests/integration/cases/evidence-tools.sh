@@ -200,6 +200,22 @@ check "gate v2.70: all-opus but every stage is judgment (Review+Verify) → sile
   "[ -z \"\$(cd '$FIX/repo' && bash '$NUDGE' < '$FIX/wf-all-opus-judge.json')\" ]"
 check "gate v2.70: all-opus with // tier-reason: → silent (stated exception)" \
   "[ -z \"\$(cd '$FIX/repo' && bash '$NUDGE' < '$FIX/wf-all-opus-reason.json')\" ]"
+# v2.72.0 — the inverse trap: under a balanced Lead the judge floor was doctrine-only
+# (gate lived under `costly`); a sonnet Lead's high-risk fleet with an inherit /
+# sonnet judge passed silently. Tier follows the work, not the Lead.
+mkj "$FIX/wf-sl-judge-low.json"     Workflow "$FIX/lead-sonnet.jsonl" '{"script":"name: \"sl-refund-rank\" await agent(1,{model:\"haiku\", label:\"sweep:a\", prompt:\"find refund paths\"}); await agent(2,{model:\"sonnet\", label:\"rank:all\"})"}'
+mkj "$FIX/wf-sl-judge-bare.json"    Workflow "$FIX/lead-sonnet.jsonl" '{"script":"name: \"sl-payout-review\" phase(\"Sweep\"); await agent(1); phase(\"Review\"); await agent(2)"}'
+mkj "$FIX/wf-sl-judge-routine.json" Workflow "$FIX/lead-sonnet.jsonl" '{"script":"name: \"i18n-audit\" await agent(1,{model:\"haiku\", label:\"sweep:a\", prompt:\"find hard-coded Thai strings\"}); await agent(2,{model:\"sonnet\", label:\"rank:all\"})"}'
+mkj "$FIX/wf-sl-judge-ok.json"      Workflow "$FIX/lead-sonnet.jsonl" '{"script":"name: \"refund-audit\" await agent(1,{model:\"haiku\", label:\"sweep:a\"}); await agent(2,{model:\"opus\", label:\"rank:all\"})"}'
+SLOUT=$(cd "$FIX/repo" && bash "$NUDGE" < "$FIX/wf-sl-judge-low.json")
+check "gate v2.72: sonnet Lead + haiku sweep + sonnet rank on a MONEY fleet → deny (no-strong-judge, Lead-independent)" \
+  "printf '%s' \"\$SLOUT\" | grep -q '\"deny\"' && printf '%s' \"\$SLOUT\" | grep -q 'follows the work'"
+check "gate v2.72: sonnet Lead + inherit Review stage on a MONEY fleet → deny (inherit is the inverse trap)" \
+  "cd '$FIX/repo' && bash '$NUDGE' < '$FIX/wf-sl-judge-bare.json' | grep -q 'inherits balanced'"
+check "gate v2.72: sonnet Lead + sonnet rank on a ROUTINE fleet → silent (R2 policy unchanged)" \
+  "[ -z \"\$(cd '$FIX/repo' && bash '$NUDGE' < '$FIX/wf-sl-judge-routine.json')\" ]"
+check "gate v2.72: sonnet Lead + opus rank on a MONEY fleet → silent (explicit strong judge above the Lead)" \
+  "[ -z \"\$(cd '$FIX/repo' && bash '$NUDGE' < '$FIX/wf-sl-judge-ok.json')\" ]"
 # v2.62.1 — prose "model:" inside a prompt string must NOT count as an override
 # (observed: CourtBook queue-review fleet ran 940k tokens all-Opus because a
 # prompt sentence "...RESERVATION model: comments..." read as a dynamic override)

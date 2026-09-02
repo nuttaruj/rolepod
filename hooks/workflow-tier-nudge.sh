@@ -35,6 +35,11 @@
 #         with no strong / role-pin / dynamic tier anywhere — ONLY when
 #         the fleet is high-risk-shaped (money/auth/security/migration
 #         words in the script); routine work judges at balanced   v2.50.0/v2.51.1
+#   Workflow fan-out under ANY Lead (balanced/cheap too), no reason → DENY when:
+#       · high-risk-shaped fleet + judgment stage with no strong / role-pin /
+#         dynamic tier — inherit under a non-strong Lead is the INVERSE trap:
+#         the R4 judge silently runs below the floor. Tier follows the
+#         work, not the Lead.                                            v2.72.0
 #     Loop valve: the same fleet name denied twice in 30 min → the third
 #     submission passes with a nudge (logged action "yield") — bounded cost.
 #   Workflow with a per-stage spread (or a stated reason)      → silent
@@ -292,6 +297,20 @@ if tool == "Workflow":
                 "leave it inherit; keep sweep haiku / build sonnet. Not a judgment stage, or not "
                 "high-risk despite the words? state it: `// tier-reason: <why>`." % (
                     ", ".join(judge_stages)[:160], "+".join(sorted(tiers)), why, lead or "unknown model")) + TAIL
+    elif lead and not stated and risky and judge_stages and not (tiers & {"strong", "role-pin", "dynamic"}):
+        # v2.72.0 — the inverse trap. Under a balanced/cheap Lead, inherit (or an
+        # explicit balanced pin) runs the R4 judge stage BELOW the floor with no
+        # one choosing it. Same verdict key as the strong-Lead branch: the tier
+        # follows the WORK, not the Lead.
+        verdict = "no-strong-judge"
+        reason_txt = (
+            "\u26d4 rolepod fleet-tier gate: judgment stage(s) %s carry no strong tier \u2014 fleet pins %s "
+            "\u2014 under a %s-class Lead (%s) on a fleet that touches money/auth/security/migrations \u2014 inherit under a "
+            "non-strong Lead silently DOWNGRADES the R4 judge below the floor. The tier follows the "
+            "work, not the Lead: give the judgment stage model:\x27opus\x27 explicitly (inherit is the "
+            "trap here); keep sweep haiku / build sonnet. Not a judgment stage, or not high-risk "
+            "despite the words? state it: `// tier-reason: <why>`." % (
+                ", ".join(judge_stages)[:160], "+".join(sorted(tiers)) or "nothing (every stage inherits %s)" % cls, cls, lead)) + TAIL
     if verdict:
         if soft:
             _log_bypass("workflow-tier-nudge", "ROLEPOD_GATES_SOFT")
