@@ -795,7 +795,7 @@ if [ -n "$CODEX_HOOK_EXTRAS" ]; then echo "      extras: $CODEX_HOOK_EXTRAS"; fi
 check "codex plugin bundles 16 rolepod-*.toml agents" \
   "[ \"\$(ls plugins/rolepod-codex/agents/rolepod-*.toml | wc -l | tr -d ' ')\" = 16 ]"
 check "codex bundled agents match rendered TOMLs byte-exact" \
-  "for f in build/rendered/codex/agents/*.toml; do cmp -s \"\$f\" \"plugins/rolepod-codex/agents/rolepod-\$(basename \"\$f\")\" || exit 1; done"
+  "(for f in build/rendered/codex/agents/*.toml; do cmp -s \"\$f\" \"plugins/rolepod-codex/agents/rolepod-\$(basename \"\$f\")\" || exit 1; done)"
 check "codex plugin bundles AGENTS.rolepod.md, never a file named AGENTS.md" \
   "cmp -s build/rendered/codex/AGENTS.md plugins/rolepod-codex/agents/AGENTS.rolepod.md && ! find plugins/rolepod-codex -name AGENTS.md | grep -q ."
 AS_EVENTS=$(python3 -c "import json;d=json.load(open('adapters/codex/plugins/rolepod/hooks/hooks.json'));print(','.join(ev for ev,gs in d['hooks'].items() if any('agent-sync.sh' in h['command'] for g in gs for h in g['hooks'])))")

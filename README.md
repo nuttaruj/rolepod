@@ -66,13 +66,15 @@ curl -fsSL https://raw.githubusercontent.com/nuttaruj/rolepod/main/bootstrap.sh 
 
 ```bash
 # Install — the plugin carries skills + hooks + the 16 agents; on first launch a SessionStart
-# hook syncs the agents + the AGENTS.md block into ~/.codex (trust the plugin hooks when asked).
+# hook syncs the agents + the AGENTS.md block into ~/.codex (run /hooks once in Codex to trust them).
 # The bootstrap line stays the full path: project-scope AGENTS.md, doctor, uninstall.
 codex plugin marketplace add nuttaruj/rolepod
 codex plugin add rolepod@rolepod
 curl -fsSL https://raw.githubusercontent.com/nuttaruj/rolepod/main/bootstrap.sh | bash -s -- --target=codex
 
-# Update — agents + the AGENTS.md block follow on the next Codex launch (v2.75.0)
+# Update — agents + the AGENTS.md block follow on the next Codex launch (v2.75.0).
+# Codex trusts hooks by hash: the first time a rolepod hook is new or changed, run /hooks
+# once inside Codex and trust it — until then Codex skips it (official hook-trust rule).
 codex plugin marketplace upgrade rolepod
 codex plugin remove rolepod@rolepod && codex plugin add rolepod@rolepod
 
