@@ -21,7 +21,7 @@ check() {
 run() {  # the way Codex invokes it: ${PLUGIN_ROOT} resolved, hook JSON on stdin
   echo '{"hook_event_name":"SessionStart"}' | HOME="$FIX" PLUGIN_ROOT="$PLUGIN" bash "$HOOK" 2>/dev/null
 }
-mtime() { stat -f %m "$1" 2>/dev/null || stat -c %Y "$1"; }
+mtime() { stat -c %Y "$1" 2>/dev/null || stat -f %m "$1"; }  # GNU first: on Linux `stat -f %m` prints the mount point (non-numeric) and succeeds
 
 check "hook is bash -n clean" "bash -n '$HOOK'"
 check "plugin bundles 16 agents + the AGENTS.md block" \
