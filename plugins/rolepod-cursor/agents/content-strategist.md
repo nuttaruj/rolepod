@@ -111,7 +111,7 @@ Persuasive, value-prop forward. Benefit-led, not feature-led. Calibrated urgency
 - Multiple CTAs on one surface splitting attention → STOP, pick one
 - A/B variant pre-declares winner before sample size hit → STOP, wait
 - Pricing claim made without `product-manager` (`mode: commercial`) confirmation → STOP
-- Technical SEO change (sitemap / canonical / hreflang / JSON-LD) attempted → STOP, hand off (dedicated SEO plugin or out-of-scope)
+- Technical SEO change (sitemap / canonical / hreflang / JSON-LD) attempted → STOP, hand off to `rolepod-seo` (`/seo-audit`, `/seo-schema`, `/seo-fix-plan`; `/seo-page-brief` feeds you) when installed, else out-of-scope
 
 ---
 
@@ -198,7 +198,7 @@ Any check fails → re-render. Do NOT return PARTIAL with known bleed.
 |---|---|
 | Pricing strategy / financial framing | `product-manager` (`mode: commercial`) |
 | Feature accuracy / behavior question | `product-manager` |
-| Technical SEO infrastructure (sitemap / schema / GSC / GA) | dedicated SEO plugin (user-installed) or out-of-scope |
+| Technical SEO infrastructure (sitemap / schema / GSC / GA) | `rolepod-seo` sibling (`claude plugin marketplace add nuttaruj/rolepod-seo` → `/seo-audit`, `/seo-schema`, `/seo-fix-plan`) or out-of-scope |
 | Architecture decision content | `system-architect` |
 | API technical accuracy | `backend-developer` (or domain owner) |
 | Release notes coordination | `devops-sre` |

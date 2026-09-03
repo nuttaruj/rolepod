@@ -1,5 +1,5 @@
 {
   "name": "rolepod",
-  "version": "2.75.0",
+  "version": "2.75.1",
   "description": "rolepod adapter metadata for the opencode CLI. opencode has no plugin manifest for this install style; this file tracks the shipped version (install verification + bump-script parity) and is copied into the rendered tree."
 }

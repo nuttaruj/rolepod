@@ -2,7 +2,7 @@
 
 The shared contract between **rolepod** (parent — workflow + agents + judgment)
 and **child plugins** (domain-specific tool suites: `rolepod-uiproof`,
-`rolepod-wplab`, `rolepod-dblab`, and future siblings).
+`rolepod-wplab`, `rolepod-dblab`, `rolepod-seo`, and future siblings).
 
 Goal: every plugin works **standalone**; combined installs unlock **end-to-end
 flows** without forcing the user to install all of them.
@@ -232,6 +232,8 @@ suggests installing a child plugin when the domain matches:
 | `.rolepod-uiproof/baselines/` exists | `rolepod-uiproof` already in use |
 | `.rolepod-wplab/` exists | `rolepod-wplab` already in use |
 | `.rolepod-dblab/` exists | `rolepod-dblab` already in use |
+| `robots.txt` + `sitemap.xml` (or `next-sitemap.config.*`, `seo/`, `public/robots.txt`) in a web project, or a request naming SEO / GEO / AEO / rich results / featured snippets | `rolepod-seo` |
+| `reports/seo-audit-*.json` exists | `rolepod-seo` already in use |
 | Mobile UI project — `*.xcworkspace` / `*.xcodeproj` (iOS), `build.gradle` / `build.gradle.kts` / `AndroidManifest.xml` (Android), `pubspec.yaml` (Flutter), `react-native` in `package.json` | `rolepod-uiproof` (mobile UI verify since 0.14: Appium 2 auto-provision + host preflight, iOS via XCUITest, Android via UiAutomator2 — same tool surface as web on the unified A11yNode tree) |
 
 Mobile limits the suggestion should carry (uiproof 0.14.x): `audit_a11y` is
@@ -282,6 +284,7 @@ A worktree that stops using rolepod keeps a stale marker until deleted (`rm -rf 
 | `rolepod-uiproof` | 0.6.0 |
 | `rolepod-wplab` | 1.9.0 |
 | `rolepod-dblab` | 0.1.0 |
+| `rolepod-seo` | 0.2.0 |
 
 Lower versions cannot participate in combined mode — they will fall back to
 their own pre-protocol behavior, which is functionally standalone. No
