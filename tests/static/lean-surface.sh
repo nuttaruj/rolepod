@@ -788,6 +788,13 @@ check "codex adapter hooks/ holds only hooks.json + subagent-model-log.sh" \
   "[ -z \"\$CODEX_HOOK_EXTRAS\" ]"
 if [ -n "$CODEX_HOOK_EXTRAS" ]; then echo "      extras: $CODEX_HOOK_EXTRAS"; fi
 
+# ── Codex effort pins (v2.74.0) — `ultra` is proactive delegation (a fan-out),
+# never a single-agent ceiling: a reviewer pinned ultra spawns ~4 children at sol.
+check "no Codex agent overlay pins model_reasoning_effort: ultra (fan-out, not a ceiling)" \
+  "! grep -l 'model_reasoning_effort: ultra' adapters/codex/agent-frontmatter/*.yml"
+check "Codex security-engineer effort ceiling is max" \
+  "grep -q 'model_reasoning_effort: max' adapters/codex/agent-frontmatter/security-engineer.yml"
+
 # ── High-risk regex parity — every hand-maintained copy must match ────
 # The canonical high-risk path ERE is hand-carried in 5 shell sources plus
 # a Python twin in hooks/lib/session_state.py (codex ships render-time

@@ -148,6 +148,30 @@ check_cli("codex installed agents", "codex", f"{home}/.codex/agents", "rolepod-{
 check_cli("gemini installed agents", "gemini", f"{home}/.gemini/extensions/rolepod/agents", "{name}.md", r"^model:\s*(.+)$")
 print("  - cursor / opencode / antigravity: no model field by design — doctrine ceiling (model-tier-policy)")
 print("  - pinned ids rot with CLI updates — re-verify after upgrading: codex gpt-5.6-{luna,terra,sol}, gemini gemini-3-{flash,pro}-preview")
+# Codex fan-out defaults (v2.74.0) — `ultra` = deepest effort + proactive
+# delegation (the agent spawns its own children; the count is the model's
+# call per task, never prescribed). An UN-pinned child resolves
+# explicit spawn → agents.default_subagent_* → the parent (official
+# precedence); role files pin, so these two keys decide what the fan-out
+# costs. The Codex analogue of the Claude fleet-tier gate — config, since
+# SubagentStart fires post-spawn and cannot deny.
+cfg = f"{home}/.codex/config.toml"
+if os.path.isfile(cfg):
+    txt = open(cfg).read()
+    m = re.search(r'^\s*default_subagent_model\s*=\s*"([^"]+)"', txt, re.M)
+    if not m:
+        print("  ⚠ codex [agents].default_subagent_model unset — un-pinned spawns (Ultra delegation included) inherit the parent; set gpt-5.6-terra so the fan-out lands balanced (the strong slot = one named reviewer role)")
+    elif "sol" in m.group(1):
+        print(f"  ⚠ codex [agents].default_subagent_model = {m.group(1)} (strong) — every un-pinned child runs at strong price; the tier policy wants the balanced id here")
+    else:
+        print(f"  ✓ codex [agents].default_subagent_model = {m.group(1)}")
+    ultra = [os.path.basename(p) for p in sorted(glob.glob(f"{home}/.codex/agents/rolepod-*.toml"))
+             if re.search(r'^model_reasoning_effort\s*=\s*"ultra"', open(p).read(), re.M)]
+    if ultra:
+        # Advisory, not a fail: the tier-mapping check above is the hard
+        # install-drift gate; a stale pre-2.74 install must not redden the
+        # whole doctor (make test-integration runs it against the real HOME).
+        print(f"  ⚠ codex role(s) pinned model_reasoning_effort = ultra (a fan-out, not a ceiling — strong × N per dispatch): {', '.join(ultra)} — reinstall; v2.74.0 pins max")
 sys.exit(1 if fails else 0)
 PY
 then
