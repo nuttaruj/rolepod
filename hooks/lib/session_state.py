@@ -433,7 +433,7 @@ def _workflow_script(inp: dict) -> str:
     return script
 
 
-def count_workflow_reviewers(script: str) -> tuple[int, int]:
+def count_workflow_reviewers(script: str, lead_class: str = "unknown") -> tuple[int, int]:
     """(reviewers, strong) among a Workflow script's agent() calls.
 
     Workflow fleets run reviewers as agent(..., {agentType:
@@ -441,8 +441,13 @@ def count_workflow_reviewers(script: str) -> tuple[int, int]:
     in any transcript, so without this the gate demanded a DUPLICATE
     Agent-tool reviewer after the workflow already reviewed. Strong mirrors
     the Agent-dispatch rule: an explicit known-low `model:` inside the same
-    opts window is a downgrade, not the strong pass; no override (inherit)
-    counts."""
+    opts window is a downgrade, not the strong pass. No override (inherit)
+    counts ONLY when the Lead is not known-low (v2.74.0): the dispatch hook
+    lifts a model-less strong role on the Agent path, but a Workflow
+    agentType gets no lift — under a sonnet Lead it ran the adversarial
+    pass at sonnet and still cleared this gate (observed: CourtBook
+    technician-payout-review). An explicit strong literal counts under any
+    Lead."""
     reviewers = strong = 0
     for m in _WF_AGENTTYPE_RX.finditer(script):
         name = _bare_agent_name(m.group(1))
@@ -451,7 +456,10 @@ def count_workflow_reviewers(script: str) -> tuple[int, int]:
         if name in STRONG_REVIEWER_AGENTS:
             window = script[max(0, m.start() - 200):m.end() + 200]
             mm = _WF_MODEL_RX.search(window)
-            if not (mm and model_class(mm.group(1)) in LOW_CLASSES):
+            explicit = model_class(mm.group(1)) if mm else None
+            if explicit == "strong":
+                strong += 1
+            elif explicit not in LOW_CLASSES and lead_class not in LOW_CLASSES:
                 strong += 1
     return reviewers, strong
 
@@ -543,10 +551,12 @@ def count_all(
     session (mtime inside the window) are tallied too — see agent_transcripts.
     A strong reviewer counts only when it was NOT explicitly dispatched at a
     known-low model (`model: sonnet` on universal-reviewer is a downgrade,
-    not the strong pass); `inherit` counts because the dispatch hook lifts
-    it to the strong alias on a low Lead."""
+    not the strong pass); an Agent-tool `inherit` counts because the dispatch
+    hook lifts it to the strong alias on a low Lead — a Workflow agentType
+    `inherit` counts only when the Lead is not known-low (no lift there)."""
     since = _since_iso(since_epoch)
     test_edits = high_risk_edits = reviewers = strong_reviewers = 0
+    lead_cls = model_class(lead_model(transcript_path))   # v2.74.0 — Workflow inherit ≠ strong under a low Lead
     paths = [transcript_path] + agent_transcripts(transcript_path, since_epoch)
     for tp in paths:
         for tool, inp in _iter_tool_uses(tp, since):
@@ -567,7 +577,7 @@ def count_all(
                 # Workflow-run reviewers (agent() agentType calls) count too —
                 # a workflow that already reviewed must not force a duplicate
                 # Agent-tool dispatch to clear the gate.
-                r, s = count_workflow_reviewers(_workflow_script(inp))
+                r, s = count_workflow_reviewers(_workflow_script(inp), lead_cls)
                 reviewers += r
                 strong_reviewers += s
     return test_edits, high_risk_edits, reviewers, strong_reviewers

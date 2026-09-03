@@ -18,9 +18,12 @@
 # (haiku/sonnet class) that inherit silently runs the adversarial pass at
 # the Lead's class — measured: 0 explicit strong overrides across a whole
 # project. This hook writes the strong alias into the Agent call itself
-# (`updatedInput`, which the platform applies only with
-# permissionDecision "allow" — the Agent tool asks no permission of its own,
-# so nothing is bypassed). Unknown Lead class → untouched (never a downgrade
+# (`updatedInput` + permissionDecision "allow" — the Agent tool asks no
+# permission of its own, so nothing is bypassed; upstream docs now apply
+# updatedInput regardless of the decision). Workflow scripts get NO such
+# rewrite: reviewer opts usually come from a data array spread into agent()
+# (`agentType: r.agentType`), so a text insert next to the literal would not
+# reach the call — false safety. The gate denies and names the one-slot fix. Unknown Lead class → untouched (never a downgrade
 # of a model stronger than the alias). Explicit `model:` on the call is the
 # Lead's stated choice → never rewritten, only named. security-engineer /
 # universal-reviewer / system-architect (v2.73.0) are the floored roles.
@@ -35,12 +38,19 @@
 #         the fleet is high-risk-shaped (money/auth/security/migration
 #         words in the script); routine work judges at balanced   v2.50.0/v2.51.1
 #   Workflow fan-out under ANY Lead (balanced/cheap too), no reason → DENY when:
-#       · high-risk-shaped fleet + judgment stage with no strong / role-pin /
-#         dynamic tier — inherit under a non-strong Lead is the INVERSE trap:
+#       · high-risk-shaped fleet + judgment stage with no strong / dynamic
+#         tier — inherit under a non-strong Lead is the INVERSE trap:
 #         the R4 judge silently runs below the floor. Tier follows the
 #         work, not the Lead.                                            v2.72.0
+#         `agentType:` of a strong role counts as strong ONLY under a
+#         strong Lead (it renders inherit); the fix is ONE strong slot   v2.74.0
+#       · (low Lead) a strong pin on a FAN-OUT call, on ≥2 stages, on a
+#         non-judgment stage, or on >2 calls — "opus pasted everywhere",
+#         the mirror trap; never yields                                  v2.74.0
 #     Loop valve: the same fleet name denied twice in 30 min → the third
 #     submission passes with a nudge (logged action "yield") — bounded cost.
+#     strong-spread is exempt: dropping a pin is always possible, and a
+#     yielded paste would be the very fleet the deny exists to stop.
 #   Workflow with a per-stage spread (or a stated reason)      → silent
 #   Workflow, no `model:`/`agentType:`, low Lead               → nudge (Lead-aware)
 #     (`effort:` alone is not a tier choice — nudged, not silenced)
@@ -209,7 +219,9 @@ if tool == "Workflow":
     # original first (stripping empties them); quote marks survive the strip
     # so a `model: <quoted>` key still counts in the stripped code.
     _STR_RX = re.compile(r"`(?:\\.|[^`\\])*`|\x27(?:\\.|[^\x27\\])*\x27|\"(?:\\.|[^\"\\])*\"", re.S)
-    code = _STR_RX.sub(lambda m: m.group(0)[0] + m.group(0)[-1], script)
+    # Same-LENGTH filler (v2.74.0): a key found in `code` reads its literal
+    # value from `script` at the same offset (per-call tier map below).
+    code = _STR_RX.sub(lambda m: m.group(0)[0] + " " * (len(m.group(0)) - 2) + m.group(0)[-1], script)
     n_effort = len(re.findall(r"[,{\s]effort\s*:", code))
     n_calls = script.count("agent(")
     models = re.findall(r"[,{\s]model\s*:\s*[\x27\"]([A-Za-z0-9._\-\[\]]+)[\x27\"]", script)
@@ -239,6 +251,53 @@ if tool == "Workflow":
     risky = bool(RISK_RX.search(script)) or bool(RISK_RX.search(str(ti.get("name") or "")))
     m_reason = re.search(r"(?:fleet-inherit|tier-reason)\s*:\s*(\S[^\n]{0,160})", script)
     stated = m_reason.group(1).strip() if m_reason else ""
+    # v2.74.0 — ONE strong SLOT, not a stage-wide paste. (a) `agentType:` of a
+    # strong role renders `model: inherit` — it equals strong ONLY under a
+    # strong Lead (observed: CourtBook technician-payout-review, sonnet Lead,
+    # agentType security-engineer + 26 bare verify agents = 30 × sonnet, gate
+    # silent because role-pin counted as the strong stage). (b) The mirror
+    # trap: told "give the judge stage opus", a low Lead pastes opus on the
+    # per-finding fan-out — strong × N. Per agent() call: strong literal? which
+    # stage? fan-out position (interpolated label, or lexically inside
+    # .map( / pipeline( / Array.from( / a loop)?
+    atype_names = set(ss._bare_agent_name(a) for a in
+                      re.findall(r"[,{\s]agentType\s*:\s*[\x27\"]([^\x27\"]+)[\x27\"]", script))
+    role_strong = bool(atype_names & ss.STRONG_ROLE_AGENTS) and cls == "strong"
+    strong_calls = []   # (stage, fanout) for every agent() call pinned strong
+    call_pos = [m.start() for m in re.finditer(r"\bagent\(", code)]
+    for i, pos in enumerate(call_pos):
+        end = call_pos[i + 1] if i + 1 < len(call_pos) else len(code)
+        win = code[pos:end]
+        mk = re.search(r"[,{\s]model\s*:\s*[\x27\"]", win)
+        if not mk:
+            continue
+        q = pos + mk.end() - 1
+        mv = re.match(r"[\x27\"]([A-Za-z0-9._\-\[\]]+)[\x27\"]", script[q:q + 80])
+        if not mv or ss.model_class(mv.group(1)) != "strong":
+            continue
+        pk = re.search(r"[,{\s]phase\s*:\s*[\x27\"]", win)
+        if pk:
+            pq = pos + pk.end() - 1
+            pv = re.match(r"[\x27\"]([^\x27\"]+)[\x27\"]", script[pq:pq + 80])
+            stage = pv.group(1) if pv else ""
+        else:
+            prev = re.findall(r"phase\(\s*[\x27\"]([^\x27\"]+)", script[:pos])
+            stage = prev[-1] if prev else ""
+        fanout = bool(re.search(r"label\s*:\s*`[^`]*\$\{", script[pos:end])) or bool(
+            re.search(r"(\.map\(|pipeline\(|Array\.from\(|\bfor\s*\(|\bwhile\s*\()", code[max(0, pos - 160):pos]))
+        strong_calls.append((stage, fanout))
+    strong_stages = set(st for st, _ in strong_calls)
+    spread = ""
+    if strong_calls and cls in ss.LOW_CLASSES:
+        nonjudge_strong = sorted(st for st in strong_stages if st and not JUDGE_RX.search(st))
+        if any(f for _, f in strong_calls):
+            spread = "a FAN-OUT call (per-item label / inside .map / pipeline / a loop)"
+        elif len(strong_stages) >= 2:
+            spread = "%d stages (%s)" % (len(strong_stages), ", ".join(sorted(strong_stages))[:120])
+        elif nonjudge_strong:
+            spread = "a non-judgment stage (%s)" % ", ".join(nonjudge_strong)[:120]
+        elif len(strong_calls) > 2:
+            spread = "%d calls" % len(strong_calls)
     eff = (" (%d effort: overrides — effort is depth, not tier)" % n_effort) if n_effort else ""
     soft = os.environ.get("ROLEPOD_GATES_SOFT", "0") == "1"
     costly = cls == "strong" or (bool(lead) and cls == "unknown")
@@ -286,7 +345,7 @@ if tool == "Workflow":
                 "state it: `// tier-reason: <why>`." % (
                     n_calls, why, lead or "unknown model", ", ".join(nonjudge)[:160],
                     (" (this fleet touches money/auth/security \u2014 the judge floor stays)" if risky else " only when the fleet is high-risk"))) + TAIL
-        elif risky and judge_stages and not (tiers & {"strong", "role-pin", "dynamic"}):
+        elif risky and judge_stages and not ((tiers & {"strong", "dynamic"}) or role_strong):
             verdict = "no-strong-judge"
             reason_txt = (
                 "⛔ rolepod fleet-tier gate: judgment stage(s) %s run at %s under a %s Lead (%s) — "
@@ -296,24 +355,44 @@ if tool == "Workflow":
                 "leave it inherit; keep sweep haiku / build sonnet. Not a judgment stage, or not "
                 "high-risk despite the words? state it: `// tier-reason: <why>`." % (
                     ", ".join(judge_stages)[:160], "+".join(sorted(tiers)), why, lead or "unknown model")) + TAIL
-    elif lead and not stated and risky and judge_stages and not (tiers & {"strong", "role-pin", "dynamic"}):
+    elif lead and cls in ss.LOW_CLASSES and not stated and spread:
+        # v2.74.0 — the mirror trap. Under a low Lead a strong pin belongs on
+        # ONE judgment slot; on a fan-out / every stage / a sweep it is the
+        # Lead price × N with nobody choosing it. Never yields (removing a
+        # pin is always possible).
+        verdict = "strong-spread"
+        reason_txt = (
+            "\u26d4 rolepod fleet-tier gate: strong-class model pinned on %s under a %s-class Lead (%s) "
+            "\u2014 strong belongs on ONE judgment slot, never on a fan-out or on every stage: a per-item "
+            "verify/sweep at opus multiplies the price by the item count (a 30-agent fleet \u2248 2.7M "
+            "tokens at strong). Keep the fan-out at model:\x27sonnet\x27 (sweep haiku); put model:\x27opus\x27 "
+            "on exactly one call \u2014 the security-engineer / universal-reviewer review, or one final "
+            "adjudicator that reads the verdicts. This deny never yields. Every stage genuinely needs "
+            "strong reasoning? state it: `// tier-reason: <why>`." % (spread, cls, lead)) + TAIL
+    elif lead and not stated and risky and judge_stages and not (tiers & {"strong", "dynamic"}):
         # v2.72.0 — the inverse trap. Under a balanced/cheap Lead, inherit (or an
         # explicit balanced pin) runs the R4 judge stage BELOW the floor with no
-        # one choosing it. Same verdict key as the strong-Lead branch: the tier
-        # follows the WORK, not the Lead.
+        # one choosing it. v2.74.0: `agentType:` of a strong role no longer
+        # counts here (it renders inherit = the low Lead), and the fix is ONE
+        # strong slot, not "opus on the judgment stage" (which produced the
+        # fan-out paste the strong-spread branch above now denies).
         verdict = "no-strong-judge"
         reason_txt = (
             "\u26d4 rolepod fleet-tier gate: judgment stage(s) %s carry no strong tier \u2014 fleet pins %s "
-            "\u2014 under a %s-class Lead (%s) on a fleet that touches money/auth/security/migrations \u2014 inherit under a "
-            "non-strong Lead silently DOWNGRADES the R4 judge below the floor. The tier follows the "
-            "work, not the Lead: give the judgment stage model:\x27opus\x27 explicitly (inherit is the "
-            "trap here); keep sweep haiku / build sonnet. Not a judgment stage, or not high-risk "
-            "despite the words? state it: `// tier-reason: <why>`." % (
+            "\u2014 under a %s-class Lead (%s) on a fleet that touches money/auth/security/migrations. Inherit "
+            "under a non-strong Lead silently DOWNGRADES the R4 judge below the floor, and agentType: alone "
+            "does not lift it (strong roles render inherit; only Agent-tool calls get the hook floor). The "
+            "tier follows the work, not the Lead \u2014 fix = ONE strong slot, not a stage-wide paste: "
+            "model:\x27opus\x27 on the single security-engineer / universal-reviewer call, or on one final "
+            "adjudicator that reads the verdicts (not the repo); reviewer opts built from a data array \u2192 "
+            "thread it (`agentType: r.agentType, model: r.model`). Keep every fan-out (per-finding verify, "
+            "per-file sweep) at sonnet/haiku \u2014 opus on a fan-out is denied (strong-spread). Not a "
+            "judgment stage, or not high-risk despite the words? state it: `// tier-reason: <why>`." % (
                 ", ".join(judge_stages)[:160], "+".join(sorted(tiers)) or "nothing (every stage inherits %s)" % cls, cls, lead)) + TAIL
     if verdict:
         if soft:
             _log_bypass("workflow-tier-nudge", "ROLEPOD_GATES_SOFT")
-        elif _recent_denies(ti, script) >= 2:
+        elif verdict != "strong-spread" and _recent_denies(ti, script) >= 2:
             # Loop valve: third strike passes, loudly, and is logged as yielded.
             _log_gate(ti, script, lead, cls, n_calls, verdict, sorted(tiers), sorted(stages), action="yield")
             ctx("⚖ rolepod fleet-tier gate YIELDED after 2 denies of this fleet in 30 min — "

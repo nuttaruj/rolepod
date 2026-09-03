@@ -62,6 +62,18 @@ run '{"type":"tool_use","name":"Workflow","input":{"script":"await agent(p, {age
 run '{"type":"tool_use","name":"Workflow","input":{"script":"await agent(p, {agentType: '\''security-engineer'\'', model: '\''haiku'\''})"}}' \
   count-all "0 0 1 0" "Workflow reviewer pinned haiku is not strong"
 
+# v2.74.0 — a Workflow agentType strong reviewer with no explicit model inherits
+# the Lead: strong under an opus Lead, NOT under a sonnet Lead (the Agent-tool
+# floor does not reach agent() calls; observed: CourtBook technician-payout-review
+# cleared the commit gate with a sonnet security-engineer). Explicit opus counts anywhere.
+wf_tu='{"type":"tool_use","name":"Workflow","input":{"script":"await agent(p, {agentType: '\''rolepod:security-engineer'\''})"}}'
+wf_tu_opus='{"type":"tool_use","name":"Workflow","input":{"script":"await agent(p, {agentType: '\''rolepod:security-engineer'\'', model: '\''opus'\''})"}}'
+lead_sonnet='{"type":"assistant","message":{"model":"claude-sonnet-5","content":[]}}'
+lead_opus='{"type":"assistant","message":{"model":"claude-opus-5","content":[]}}'
+run "$lead_sonnet"$'\n'"$wf_tu"      count-all "0 0 1 0" "v2.74: Workflow reviewer (inherit) under a sonnet Lead is NOT strong"
+run "$lead_opus"$'\n'"$wf_tu"        count-all "0 0 1 1" "v2.74: Workflow reviewer (inherit) under an opus Lead is strong"
+run "$lead_sonnet"$'\n'"$wf_tu_opus" count-all "0 0 1 1" "v2.74: Workflow reviewer pinned opus under a sonnet Lead is strong"
+
 echo ""
 if [ $fail -eq 0 ]; then
   echo "hook-agent-matching: pass"

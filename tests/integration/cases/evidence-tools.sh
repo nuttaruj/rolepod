@@ -216,6 +216,44 @@ check "gate v2.72: sonnet Lead + sonnet rank on a ROUTINE fleet → silent (R2 p
   "[ -z \"\$(cd '$FIX/repo' && bash '$NUDGE' < '$FIX/wf-sl-judge-routine.json')\" ]"
 check "gate v2.72: sonnet Lead + opus rank on a MONEY fleet → silent (explicit strong judge above the Lead)" \
   "[ -z \"\$(cd '$FIX/repo' && bash '$NUDGE' < '$FIX/wf-sl-judge-ok.json')\" ]"
+# v2.74.0 — one strong slot. Observed (CourtBook technician-payout-review, sonnet
+# Lead): agentType security-engineer on Review + 26 bare per-finding verify agents
+# = 30 × sonnet on a billing surface, gate silent (role-pin counted as the strong
+# stage; strong roles render inherit = the low Lead). The mirror trap — "opus on
+# the judgment stage" → opus pasted on the fan-out — is denied too and never yields.
+mkj "$FIX/wf-sl-rolepin.json"        Workflow "$FIX/lead-sonnet.jsonl" '{"script":"name: \"sl-payout-rolepin\" phase(\"Review\"); await agent(1,{agentType:\"rolepod:security-engineer\"}); phase(\"Verify\"); await agent(2)"}'
+mkj "$FIX/wf-sl-rolepin-ok.json"     Workflow "$FIX/lead-sonnet.jsonl" '{"script":"name: \"sl-payout-rolepin-ok\" phase(\"Review\"); await agent(1,{agentType:\"rolepod:security-engineer\", model:\"opus\"}); phase(\"Verify\"); await agent(2,{model:\"sonnet\"})"}'
+mkj "$FIX/wf-sl-array.json"          Workflow "$FIX/lead-sonnet.jsonl" '{"script":"name: \"sl-payout-array\" const R=[{key:\"security\", agentType:\"rolepod:security-engineer\", prompt:\"audit\"}]; phase(\"Review\"); await parallel(R.map((r) => () => agent(r.prompt, {label: `review:${r.key}`, agentType: r.agentType}))); phase(\"Verify\"); await parallel(fs.map((f) => () => agent(`verify ${f}`, {label: `verify:${f.file}`})))"}'
+mkj "$FIX/wf-sl-array-ok.json"       Workflow "$FIX/lead-sonnet.jsonl" '{"script":"name: \"sl-payout-array-ok\" const R=[{key:\"security\", agentType:\"rolepod:security-engineer\", model:\"opus\", prompt:\"audit\"}]; phase(\"Review\"); await parallel(R.map((r) => () => agent(r.prompt, {label: `review:${r.key}`, agentType: r.agentType, model: r.model}))); phase(\"Verify\"); await parallel(fs.map((f) => () => agent(`verify ${f}`, {label: `verify:${f.file}`, model: \"sonnet\"})))"}'
+mkj "$FIX/wf-sl-fanout.json"         Workflow "$FIX/lead-sonnet.jsonl" '{"script":"name: \"sl-payout-fanout\" phase(\"Review\"); await agent(1,{agentType:\"rolepod:security-engineer\", model:\"opus\"}); phase(\"Verify\"); await parallel(fs.map((f) => () => agent(`verify ${f}`, {model:\"opus\", label:`verify:${f.file}`})))"}'
+mkj "$FIX/wf-sl-2stage.json"         Workflow "$FIX/lead-sonnet.jsonl" '{"script":"name: \"sl-payout-2stage\" phase(\"Review\"); await agent(1,{model:\"opus\"}); phase(\"Verify\"); await agent(2,{model:\"opus\"})"}'
+mkj "$FIX/wf-sl-sweep.json"          Workflow "$FIX/lead-sonnet.jsonl" '{"script":"name: \"sl-payout-sweep\" phase(\"Sweep\"); await agent(1,{model:\"opus\"}); phase(\"Review\"); await agent(2,{model:\"sonnet\"})"}'
+mkj "$FIX/wf-sl-rolepin-reason.json" Workflow "$FIX/lead-sonnet.jsonl" '{"script":"// tier-reason: codex exec cross-family review anchors the strong pass\nname: \"sl-payout-rolepin-r\" phase(\"Review\"); await agent(1,{agentType:\"rolepod:security-engineer\"}); phase(\"Verify\"); await agent(2)"}'
+mkj "$FIX/wf-ol-weakrole.json"       Workflow "$FIX/lead-opus.jsonl"   '{"script":"name: \"refund-weakrole\" phase(\"Review\"); await agent(1,{agentType:\"rolepod:qa-tester\"})"}'
+SLOUT=$(cd "$FIX/repo" && bash "$NUDGE" < "$FIX/wf-sl-rolepin.json")
+check "gate v2.74: sonnet Lead + agentType security-engineer (inherit) + bare verify on a MONEY fleet → deny naming ONE strong slot" \
+  "printf '%s' \"\$SLOUT\" | grep -q '\"deny\"' && printf '%s' \"\$SLOUT\" | grep -q 'ONE strong slot' && printf '%s' \"\$SLOUT\" | grep -q 'agentType: alone'"
+check "gate v2.74: same fleet, model:opus on the one security-engineer call + sonnet verify → silent" \
+  "[ -z \"\$(cd '$FIX/repo' && bash '$NUDGE' < '$FIX/wf-sl-rolepin-ok.json')\" ]"
+check "gate v2.74: CourtBook shape (agentType from a data array, bare per-finding verify fan-out) → deny" \
+  "cd '$FIX/repo' && bash '$NUDGE' < '$FIX/wf-sl-array.json' | grep -q 'ONE strong slot'"
+check "gate v2.74: CourtBook shape fixed (opus in the array item, threaded model: r.model, sonnet fan-out) → silent" \
+  "[ -z \"\$(cd '$FIX/repo' && bash '$NUDGE' < '$FIX/wf-sl-array-ok.json')\" ]"
+SLOUT=$(cd "$FIX/repo" && bash "$NUDGE" < "$FIX/wf-sl-fanout.json")
+check "gate v2.74: opus pasted on the per-finding verify fan-out under a sonnet Lead → deny (strong-spread, names the fan-out)" \
+  "printf '%s' \"\$SLOUT\" | grep -q '\"deny\"' && printf '%s' \"\$SLOUT\" | grep -q 'FAN-OUT' && grep -q '\"reason\": \"strong-spread\"' '$FIX/repo/.rolepod/evidence/phase-log.jsonl'"
+check "gate v2.74: strong-spread never yields — 2nd, 3rd and 4th submission still deny" \
+  "cd '$FIX/repo' && bash '$NUDGE' < '$FIX/wf-sl-fanout.json' | grep -q '\"deny\"' && bash '$NUDGE' < '$FIX/wf-sl-fanout.json' | grep -q '\"deny\"' && bash '$NUDGE' < '$FIX/wf-sl-fanout.json' | grep -q '\"deny\"' && ! bash '$NUDGE' < '$FIX/wf-sl-fanout.json' | grep -q 'YIELDED'"
+check "gate v2.74: opus on both Review and Verify under a sonnet Lead → deny (2 stages)" \
+  "cd '$FIX/repo' && bash '$NUDGE' < '$FIX/wf-sl-2stage.json' | grep -q '2 stages'"
+check "gate v2.74: opus on a Sweep stage under a sonnet Lead → deny (non-judgment stage)" \
+  "cd '$FIX/repo' && bash '$NUDGE' < '$FIX/wf-sl-sweep.json' | grep -q 'non-judgment stage (Sweep)'"
+check "gate v2.74: role-pin fleet with // tier-reason: → not denied" \
+  "cd '$FIX/repo' && ! bash '$NUDGE' < '$FIX/wf-sl-rolepin-reason.json' | grep -q '\"deny\"'"
+check "gate v2.74: opus Lead + agentType qa-tester (pinned balanced) as the only judge on a MONEY fleet → deny (role-pin counts only for a strong role)" \
+  "cd '$FIX/repo' && bash '$NUDGE' < '$FIX/wf-ol-weakrole.json' | grep -q 'judgment stage'"
+check "gate v2.74: opus Lead + agentType universal-reviewer still counts (inherit = strong there) → silent" \
+  "[ -z \"\$(cd '$FIX/repo' && bash '$NUDGE' < '$FIX/wf-judge-role.json')\" ]"
 # v2.62.1 — prose "model:" inside a prompt string must NOT count as an override
 # (observed: CourtBook queue-review fleet ran 940k tokens all-Opus because a
 # prompt sentence "...RESERVATION model: comments..." read as a dynamic override)
