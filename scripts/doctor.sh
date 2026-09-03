@@ -148,7 +148,7 @@ check_cli("codex installed agents", "codex", f"{home}/.codex/agents", "rolepod-{
 check_cli("gemini installed agents", "gemini", f"{home}/.gemini/extensions/rolepod/agents", "{name}.md", r"^model:\s*(.+)$")
 print("  - cursor / opencode / antigravity: no model field by design — doctrine ceiling (model-tier-policy)")
 print("  - pinned ids rot with CLI updates — re-verify after upgrading: codex gpt-5.6-{luna,terra,sol}, gemini gemini-3-{flash,pro}-preview")
-# Codex fan-out defaults (v2.74.0) — `ultra` = deepest effort + proactive
+# Codex fan-out defaults (v2.74.0; xhigh ceiling v2.75.0) — `ultra` = deepest effort + proactive
 # delegation (the agent spawns its own children; the count is the model's
 # call per task, never prescribed). An UN-pinned child resolves
 # explicit spawn → agents.default_subagent_* → the parent (official
@@ -165,13 +165,13 @@ if os.path.isfile(cfg):
         print(f"  ⚠ codex [agents].default_subagent_model = {m.group(1)} (strong) — every un-pinned child runs at strong price; the tier policy wants the balanced id here")
     else:
         print(f"  ✓ codex [agents].default_subagent_model = {m.group(1)}")
-    ultra = [os.path.basename(p) for p in sorted(glob.glob(f"{home}/.codex/agents/rolepod-*.toml"))
-             if re.search(r'^model_reasoning_effort\s*=\s*"ultra"', open(p).read(), re.M)]
-    if ultra:
+    over = [os.path.basename(p) for p in sorted(glob.glob(f"{home}/.codex/agents/rolepod-*.toml"))
+            if re.search(r'^model_reasoning_effort\s*=\s*"(ultra|max)"', open(p).read(), re.M)]
+    if over:
         # Advisory, not a fail: the tier-mapping check above is the hard
-        # install-drift gate; a stale pre-2.74 install must not redden the
+        # install-drift gate; a stale pre-2.75 install must not redden the
         # whole doctor (make test-integration runs it against the real HOME).
-        print(f"  ⚠ codex role(s) pinned model_reasoning_effort = ultra (a fan-out, not a ceiling — strong × N per dispatch): {', '.join(ultra)} — reinstall; v2.74.0 pins max")
+        print(f"  ⚠ codex role(s) pinned model_reasoning_effort above the xhigh ceiling (ultra = a fan-out, strong × N per dispatch; max = beyond doctrine): {', '.join(over)} — the SessionStart agent-sync hook fixes this on the next Codex launch after `codex plugin marketplace upgrade rolepod`; v2.75.0 pins xhigh")
 sys.exit(1 if fails else 0)
 PY
 then

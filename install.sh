@@ -284,6 +284,13 @@ install_codex_agents() {
     [ -f "$f" ] || continue
     cp "$f" "$dest/rolepod-$(basename "$f")" 2>/dev/null && copied=$((copied+1))
   done
+  # Stamp the plugin version so the SessionStart agent-sync hook (v2.75.0,
+  # plugins/rolepod-codex/hooks/agent-sync.sh) sees this install as current
+  # and does not re-copy on the next launch; a later marketplace upgrade
+  # changes the plugin version → the hook re-syncs agents + AGENTS.md block.
+  local ver
+  ver=$(sed -n 's/^[[:space:]]*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$REPO_DIR/plugins/rolepod-codex/.codex-plugin/plugin.json" | head -1)
+  [ -n "$ver" ] && printf '%s\n' "$ver" > "$dest/.rolepod-agents-version"
   ok "rolepod agents installed → $dest/rolepod-*.toml (count: $copied)"
 }
 
@@ -841,6 +848,8 @@ PY
         step "Removing $ROLEPOD_AGENTS rolepod agents at $X_TARGET/agents/rolepod-*.toml"
         do_or_dry "rm -f $X_TARGET/agents/rolepod-*.toml" sh -c "rm -f \"$X_TARGET/agents\"/rolepod-*.toml"
       fi
+      # agent-sync hook stamp (v2.75.0) — drop it so a later reinstall syncs
+      do_or_dry "rm -f $X_TARGET/agents/.rolepod-agents-version" rm -f "$X_TARGET/agents/.rolepod-agents-version"
     fi
 
     if [ "$DRY_RUN" -eq 0 ]; then

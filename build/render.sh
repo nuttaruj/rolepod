@@ -368,19 +368,36 @@ render_codex() {
   fi
 
   # TOML agents — generated from core/agents/ + adapters/codex/agent-frontmatter/
-  # into the gitignored build dir, NOT the plugin tree. Codex's plugin loader
-  # has no agent-discovery path; agents load only from the global
-  # ~/.codex/agents/ directory. install.sh copies these there.
+  # into the gitignored build dir (install.sh copies from there). Codex's
+  # plugin loader has no agent-discovery path; agents load only from the
+  # global ~/.codex/agents/ directory.
   render_agents "codex" "$out_dir/agents"
+
+  # v2.75.0: bundle the same agents + the AGENTS.md block INTO the plugin tree
+  # too. hooks/agent-sync.sh (SessionStart) copies them into ~/.codex/agents/
+  # and replaces only the rolepod block of ~/.codex/AGENTS.md when the plugin
+  # version changes, so `codex plugin marketplace upgrade` alone is a complete
+  # update. Filenames carry the same rolepod- prefix install.sh uses; the block
+  # file is deliberately NOT named AGENTS.md (nothing may ever read it as
+  # instructions from the plugin cache).
+  mkdir -p "$plugin_dst/agents"
+  local t
+  for t in "$out_dir/agents"/*.toml; do
+    [ -f "$t" ] || continue
+    cp "$t" "$plugin_dst/agents/rolepod-$(basename "$t")"
+  done
+  cp "$output" "$plugin_dst/agents/AGENTS.rolepod.md"
 
   # Hooks — the 8 shared scripts come straight from canonical hooks/ (same
   # single-source rule as render_claude above and render_antigravity below);
-  # only hooks.json + subagent-model-log.sh are genuinely Codex-specific.
+  # only hooks.json + subagent-model-log.sh + agent-sync.sh are genuinely
+  # Codex-specific.
   # NOTE: hooks/lib/session_state.py is deliberately NOT copied — the codex
   # tree never shipped it and precommit-gate.sh degrades gracefully without.
   mkdir -p "$plugin_dst/hooks"
   cp "$plugin_src/hooks/hooks.json" "$plugin_dst/hooks/hooks.json"
   cp "$plugin_src/hooks/subagent-model-log.sh" "$plugin_dst/hooks/subagent-model-log.sh"
+  cp "$plugin_src/hooks/agent-sync.sh" "$plugin_dst/hooks/agent-sync.sh"
   local h
   for h in gate-reminder precommit-gate project-context-loader claim-verify-nudge \
            block-subagent-commit session-lifecycle test-diff-lint fix-loop-breaker; do

@@ -1,5 +1,5 @@
 {
-  "description": "Rolepod Codex hooks. Shared entries mirror root hooks/*.sh byte-exact (parity-enforced by tests/static/lean-surface.sh; Codex uses the same event names, stdin JSON, and hookSpecificOutput/permissionDecision protocol as Claude \u2014 verified against the official hooks reference, 2026-08-05). Codex-only: subagent-model-log.sh (SubagentStop \u2192 dispatch-proof evidence line; Claude proves models via transcripts instead). Codex now exposes SubagentStart/SubagentStop/Stop, so block-subagent-commit (deny) and session-lifecycle (cross-CLI sibling locks) are registered; still Claude-only: cohesion-contract-check (fires on the Agent TOOL call pre-spawn \u2014 Codex's SubagentStart is post-spawn and cannot deny) and worktree-guard (apply_patch input shape has no file_path field). Hooks fire natively on Codex >=0.144, default-enabled via [features] hooks = true (the legacy plugin_hooks opt-in flag was removed upstream); plugin-bundled hooks must be trusted by the user before they run.",
+  "description": "Rolepod Codex hooks. Shared entries mirror root hooks/*.sh byte-exact (parity-enforced by tests/static/lean-surface.sh; Codex uses the same event names, stdin JSON, and hookSpecificOutput/permissionDecision protocol as Claude \u2014 verified against the official hooks reference, 2026-08-05). Codex-only: subagent-model-log.sh (SubagentStop \u2192 dispatch-proof evidence line; Claude proves models via transcripts instead) and agent-sync.sh (SessionStart \u2192 the Codex manifest has no agents component, so the plugin bundles agents/rolepod-*.toml + agents/AGENTS.rolepod.md and this hook copies them into ~/.codex/agents/ and refreshes ONLY the rolepod block of ~/.codex/AGENTS.md when the plugin version changes \u2014 `codex plugin marketplace upgrade` alone is then a complete update; ROLEPOD_AGENT_SYNC_OFF=1 disables). Codex now exposes SubagentStart/SubagentStop/Stop, so block-subagent-commit (deny) and session-lifecycle (cross-CLI sibling locks) are registered; still Claude-only: cohesion-contract-check (fires on the Agent TOOL call pre-spawn \u2014 Codex's SubagentStart is post-spawn and cannot deny) and worktree-guard (apply_patch input shape has no file_path field). Hooks fire natively on Codex >=0.144, default-enabled via [features] hooks = true (the legacy plugin_hooks opt-in flag was removed upstream); plugin-bundled hooks must be trusted by the user before they run.",
   "hooks": {
     "UserPromptSubmit": [
       {
@@ -25,6 +25,12 @@
             "type": "command",
             "command": "bash ${PLUGIN_ROOT}/hooks/session-lifecycle.sh",
             "timeout": 5
+          },
+          {
+            "type": "command",
+            "command": "bash ${PLUGIN_ROOT}/hooks/agent-sync.sh",
+            "timeout": 10,
+            "statusMessage": "Syncing rolepod agents"
           }
         ]
       }

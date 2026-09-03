@@ -38,7 +38,7 @@ which rung was sent, so `make stats` audits apex use after the fact.
 
 **Effort** layers on top of the model. Claude uses `effort`, Codex uses `model_reasoning_effort` (documented levels `low` / `medium` / `high` / `xhigh` / `max` / `ultra`, per the official subagent docs, re-verified 2026-09-03 against codex 0.147.0 — `max` = "especially demanding reasoning", `ultra` = "deepest reasoning" AND "proactive delegation": the agent spawns its own sub-agents, how many is the model's call per task — rolepod never prescribes a count); Gemini has no effort field.
 
-- CLI effort ceiling (`xhigh` on Claude, `max` on Codex) — security-engineer only (breach blast radius): the role rides each CLI's highest documented single-agent level, never an undocumented one. **Never `ultra` on a role** (v2.74.0 — it was pinned there until then): Ultra is a fan-out, so the adversarial reviewer would spawn children inheriting `sol`, strong × N per dispatch.
+- `xhigh` — the effort ceiling on every CLI (Claude `effort`, Codex `model_reasoning_effort`) — security-engineer only (breach blast radius). **Never `max` or `ultra` on a role** (v2.75.0; `ultra` was pinned until v2.73, `max` in v2.74): Ultra is a fan-out, so the adversarial reviewer would spawn children inheriting `sol`, strong × N per dispatch; `max` sits above the doctrine ceiling — depth past `xhigh` buys little on a review and bills the strong slot's full price.
 - `high` — strong tier (system-architect, universal-reviewer) + balanced-tier roles where reasoning depth pays off (billing-engineer, ai-ml-engineer, performance-engineer, qa-tester).
 - `medium` — everything else, and deliberately the floor for every agent whose
   artifact feeds downstream phases (specs, ADRs, implementations). Effort cuts

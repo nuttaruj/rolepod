@@ -102,7 +102,7 @@ Can't verify  → state "Assuming X. Risk Y. Verify by Z" — never proceed sile
 
 ## Hooks
 
-12 Claude / 8 Codex / 5 Gemini / 3 Cursor / 6 Antigravity core hook scripts (opencode: plugin-event bridge, best-effort) — self-guarded, auto-fire, no add-on hooks. All CLIs fire hooks by default (Codex: `[features] hooks = true`, default-enabled). Full reference: [docs/hooks.md](docs/hooks.md).
+12 Claude / 9 Codex / 5 Gemini / 3 Cursor / 6 Antigravity core hook scripts (opencode: plugin-event bridge, best-effort) — self-guarded, auto-fire, no add-on hooks. All CLIs fire hooks by default (Codex: `[features] hooks = true`, default-enabled). Full reference: [docs/hooks.md](docs/hooks.md).
 
 ## Evidence stats
 

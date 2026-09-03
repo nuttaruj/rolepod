@@ -221,7 +221,7 @@ check "rolepod-full Boundary disclaims the router table" "grep -q 'Router table'
 # Two groups: word-boundary patterns + non-word-end patterns. The second
 # group covers forms ending in `)` or `*` where trailing `\b` is dead
 # (qa-tester PR #10 caught this).
-STALE_WB='\b(42 bundled|42 skills|43 skills|53 skills|43-skill|53-skill|53 skill files|34 native|44 native|44 rolepod skills|44 skills|3 auto-trigger hooks|same 3 scripts|same 3 files|18 \+ 42|18 \+ 43|18 \+ 53|18 \+ 44|all 34 rolepod|all 43 rolepod|Total 4[23]|Total 53|three rolepod entries|3 codex hooks|3 gemini hooks|3 root hooks|10 root hook scripts|10 hook scripts|9 root hook scripts|own 3 scripts|3 \*\.sh|7 hooks|7 core hooks|8 core hooks|3 core gate hooks|10 executable skills|10 skills total|18 frontmatter overlays|18 overlays|6 gemini commands|all four are first-class|Claude 8 / Codex|Claude 7, Codex|9 core hook scripts)\b'
+STALE_WB='\b(42 bundled|42 skills|43 skills|53 skills|43-skill|53-skill|53 skill files|34 native|44 native|44 rolepod skills|44 skills|3 auto-trigger hooks|same 3 scripts|same 3 files|18 \+ 42|18 \+ 43|18 \+ 53|18 \+ 44|all 34 rolepod|all 43 rolepod|Total 4[23]|Total 53|three rolepod entries|3 codex hooks|3 gemini hooks|3 root hooks|10 root hook scripts|10 hook scripts|9 root hook scripts|own 3 scripts|3 \*\.sh|7 hooks|7 core hooks|8 core hooks|3 core gate hooks|10 executable skills|10 skills total|18 frontmatter overlays|18 overlays|6 gemini commands|all four are first-class|Claude 8 / Codex|Claude 7, Codex)\b'
 STALE_NONWORD='Skills \(4[23]\)|Skills \(53\)|Total skills on disk: \*\*(4[23]|53)\*\*|Hooks \(3\)|, 3 hooks\)'
 STALE_COMMENT='(^|[^0-9])(#|`) ?4[23]\b'
 STALE_HOOK_TRUTH='Context hooks \(cross-CLI\)|Codex / Gemini fire the context hooks|full hook coverage|Before tool run.*CLI handles native compact|SessionStart \+ 2x PostToolUse|10 bash hooks that auto-register|portable across Claude and Codex'
@@ -274,8 +274,8 @@ read -r HC_CODEX  REG_CODEX  <<< "$(hook_script_count adapters/codex/plugins/rol
 read -r HC_GEMINI REG_GEMINI <<< "$(hook_script_count adapters/gemini/hooks/hooks.json)"
 read -r HC_CURSOR REG_CURSOR <<< "$(hook_script_count adapters/cursor/hooks/hooks.json)"
 read -r HC_AGY    REG_AGY    <<< "$(hook_script_count adapters/antigravity/hooks/hooks.json)"
-check "hook scripts per manifest = Claude 12 / Codex 8 / Gemini 5 / Cursor 3 / Antigravity 6 (actual: $HC_CLAUDE/$HC_CODEX/$HC_GEMINI/$HC_CURSOR/$HC_AGY)" \
-  "[ $HC_CLAUDE -eq 12 ] && [ $HC_CODEX -eq 8 ] && [ $HC_GEMINI -eq 5 ] && [ $HC_CURSOR -eq 3 ] && [ $HC_AGY -eq 6 ]"
+check "hook scripts per manifest = Claude 12 / Codex 9 / Gemini 5 / Cursor 3 / Antigravity 6 (actual: $HC_CLAUDE/$HC_CODEX/$HC_GEMINI/$HC_CURSOR/$HC_AGY)" \
+  "[ $HC_CLAUDE -eq 12 ] && [ $HC_CODEX -eq 9 ] && [ $HC_GEMINI -eq 5 ] && [ $HC_CURSOR -eq 3 ] && [ $HC_AGY -eq 6 ]"
 check "README hook counts match manifests" \
   "grep -q \"Claude $HC_CLAUDE / Codex $HC_CODEX / Gemini $HC_GEMINI / Cursor $HC_CURSOR / Antigravity $HC_AGY\" README.md"
 check "CHEATSHEET hook counts match manifests" \
@@ -295,7 +295,7 @@ check "cli-support matrix cell hook counts" \
 check "cli-support per-CLI counts paragraph" \
   "grep -q \"Claude registers $HC_CLAUDE core hook scripts\" docs/cli-support.md && grep -q \"($REG_CLAUDE registrations\" docs/cli-support.md && grep -q \"Codex registers $HC_CODEX in\" docs/cli-support.md && grep -q \"Gemini registers $HC_GEMINI in\" docs/cli-support.md && grep -q \"Cursor registers $HC_CURSOR in\" docs/cli-support.md && grep -q \"Antigravity registers $HC_AGY in\" docs/cli-support.md"
 check "cli-support bash -n row names current script sets" \
-  "grep -q \"$HC_CLAUDE core hook scripts, the codex adapter's subagent-model-log.sh, $HC_GEMINI gemini hook scripts, $HC_CURSOR cursor scripts\" docs/cli-support.md"
+  "grep -q \"$HC_CLAUDE core hook scripts, the codex adapter's subagent-model-log.sh + agent-sync.sh, $HC_GEMINI gemini hook scripts, $HC_CURSOR cursor scripts\" docs/cli-support.md"
 check "hooks.md Expected line pins Claude script + registration counts" \
   "grep -q \"Expected: $HC_CLAUDE core hook scripts / $REG_CLAUDE registrations\" docs/hooks.md"
 check "hooks.md Cursor section pins cursor count" \
@@ -783,17 +783,34 @@ fi
 # byte-exact mirror tree is gone, so drift is structurally impossible and
 # `make test-render-clean` covers the committed output. The adapter dir
 # must hold ONLY the genuinely Codex-specific files.
-CODEX_HOOK_EXTRAS=$(ls adapters/codex/plugins/rolepod/hooks/ | grep -v -e '^hooks\.json$' -e '^subagent-model-log\.sh$' || true)
-check "codex adapter hooks/ holds only hooks.json + subagent-model-log.sh" \
+CODEX_HOOK_EXTRAS=$(ls adapters/codex/plugins/rolepod/hooks/ | grep -v -e '^hooks\.json$' -e '^subagent-model-log\.sh$' -e '^agent-sync\.sh$' || true)
+check "codex adapter hooks/ holds only hooks.json + subagent-model-log.sh + agent-sync.sh" \
   "[ -z \"\$CODEX_HOOK_EXTRAS\" ]"
 if [ -n "$CODEX_HOOK_EXTRAS" ]; then echo "      extras: $CODEX_HOOK_EXTRAS"; fi
 
-# ── Codex effort pins (v2.74.0) — `ultra` is proactive delegation (a fan-out),
-# never a single-agent ceiling: a reviewer pinned ultra spawns ~4 children at sol.
-check "no Codex agent overlay pins model_reasoning_effort: ultra (fan-out, not a ceiling)" \
-  "! grep -l 'model_reasoning_effort: ultra' adapters/codex/agent-frontmatter/*.yml"
-check "Codex security-engineer effort ceiling is max" \
-  "grep -q 'model_reasoning_effort: max' adapters/codex/agent-frontmatter/security-engineer.yml"
+# ── Codex agent bundle (v2.75.0) — the manifest has no agents component, so
+# the plugin carries agents/rolepod-*.toml + agents/AGENTS.rolepod.md and
+# hooks/agent-sync.sh installs them on SessionStart. render-clean pins bytes;
+# these pin shape. The block file must never be named AGENTS.md.
+check "codex plugin bundles 16 rolepod-*.toml agents" \
+  "[ \"\$(ls plugins/rolepod-codex/agents/rolepod-*.toml | wc -l | tr -d ' ')\" = 16 ]"
+check "codex bundled agents match rendered TOMLs byte-exact" \
+  "for f in build/rendered/codex/agents/*.toml; do cmp -s \"\$f\" \"plugins/rolepod-codex/agents/rolepod-\$(basename \"\$f\")\" || exit 1; done"
+check "codex plugin bundles AGENTS.rolepod.md, never a file named AGENTS.md" \
+  "cmp -s build/rendered/codex/AGENTS.md plugins/rolepod-codex/agents/AGENTS.rolepod.md && ! find plugins/rolepod-codex -name AGENTS.md | grep -q ."
+AS_EVENTS=$(python3 -c "import json;d=json.load(open('adapters/codex/plugins/rolepod/hooks/hooks.json'));print(','.join(ev for ev,gs in d['hooks'].items() if any('agent-sync.sh' in h['command'] for g in gs for h in g['hooks'])))")
+check "codex hooks.json registers agent-sync.sh at SessionStart only" \
+  "[ \"\$AS_EVENTS\" = SessionStart ]"
+check "codex agent-sync.sh is render-copied into the plugin tree" \
+  "cmp -s adapters/codex/plugins/rolepod/hooks/agent-sync.sh plugins/rolepod-codex/hooks/agent-sync.sh"
+
+# ── Codex effort pins (v2.74.0 no ultra; v2.75.0 xhigh ceiling) — `ultra` is
+# proactive delegation (a fan-out: children at sol), `max` is above the
+# doctrine ceiling. xhigh is the highest effort any role rides on any CLI.
+check "no Codex agent overlay pins model_reasoning_effort above xhigh (ultra/max)" \
+  "! grep -lE 'model_reasoning_effort: (ultra|max)' adapters/codex/agent-frontmatter/*.yml"
+check "Codex security-engineer effort ceiling is xhigh" \
+  "grep -q 'model_reasoning_effort: xhigh' adapters/codex/agent-frontmatter/security-engineer.yml"
 
 # ── High-risk regex parity — every hand-maintained copy must match ────
 # The canonical high-risk path ERE is hand-carried in 5 shell sources plus
