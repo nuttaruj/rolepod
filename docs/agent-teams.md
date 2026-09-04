@@ -96,8 +96,9 @@ Coordination:
 - qa-tester runs after each teammate marks a task complete; blocks promotion
   to "done" if evidence is missing.
 - High-risk surface (auth/billing/migrations/crypto/payments): teammates
-  ALSO consult external reviewers when configured (Codex via `codex exec`,
-  Gemini via `gemini -m pro -p`) — review-code skill rule.
+  ALSO run the cross-family reviewer (`rolepod-cross-family --kind review
+  --brief <brief> --attach <diff>` — first usable different-family CLI from
+  `.rolepod/cross-family`, its default model, anchored) — review-code rule.
 
 Wait for all teammates to finish before synthesizing.
 ```

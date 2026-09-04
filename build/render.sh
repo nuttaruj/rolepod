@@ -246,15 +246,19 @@ PY
 #   plugins/rolepod/hooks/*.sh + *.md + lib/
 # Sources: adapters/claude/.claude-plugin/{marketplace,plugin}.json.
 
-# Evidence readers shipped with every plugin tree — installed users get
-# `rolepod-stats` / `rolepod-junit` (install.sh drops launchers on PATH)
-# without cloning the source repo. Byte-exact copies of scripts/.
+# Evidence readers + the cross-family runner shipped with every plugin tree —
+# installed users get `rolepod-stats` / `rolepod-junit` / `rolepod-cross-family`
+# (install.sh drops launchers on PATH) without cloning the source repo.
+# Byte-exact copies of scripts/.
 render_evidence_scripts() {
   local dst="$1"
   mkdir -p "$dst/scripts"
   cp "$REPO_DIR/scripts/stats.sh" "$dst/scripts/stats.sh"
   cp "$REPO_DIR/scripts/junit-summary.sh" "$dst/scripts/junit-summary.sh"
   cp "$REPO_DIR/scripts/plan-lint.sh" "$dst/scripts/plan-lint.sh"
+  # Cross-family runner (v2.76.0) — the hooks resolve it as ../scripts/ from
+  # their own dir, so it ships in every tree, marketplace installs included.
+  cp "$REPO_DIR/scripts/cross-family.sh" "$dst/scripts/cross-family.sh"
   chmod +x "$dst/scripts/"*.sh 2>/dev/null || true
 }
 

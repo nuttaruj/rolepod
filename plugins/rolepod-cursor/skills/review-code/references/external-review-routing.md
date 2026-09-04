@@ -3,68 +3,96 @@
 
 # External review routing
 
-Rolepod's CLIs span three model families — Claude, Codex (GPT), and
-Gemini (served by both `gemini` and `agy`/Antigravity). Any CLI can be the
-Lead. The adversarial review pass routes by model strength, never to the
-Lead's own model **family** — gemini and agy run the same family, so one
-never reviews the other's work as "external".
+Rolepod's CLIs span model families — Claude, Codex (GPT), Google (served
+by Antigravity `agy`; the standalone Gemini CLI is retired for individual
+accounts and is never in the pool), plus the multi-model harnesses Cursor
+and OpenCode (their family = whatever default model their owner configured).
+Any CLI can be the Lead. The adversarial review pass routes to a **different
+model family** than the Lead's, never to the Lead's own.
+
+## One command — the cross-family runner
+
+Every external pass goes through `rolepod-cross-family` (installed on PATH by
+`install.sh`; every plugin tree also ships it as `scripts/cross-family.sh` —
+the SessionStart context names the path on marketplace installs):
+
+```bash
+git diff <base>...HEAD > /tmp/diff.patch          # the frozen diff
+rolepod-cross-family --kind review --brief /tmp/brief.md --attach /tmp/diff.patch
+# outside a hook the Lead CLI is auto-detected on Claude; elsewhere add --lead codex|agy|cursor|opencode
+```
+
+The runner does what used to be five manual steps, so the pass is never
+skipped for friction: resolves the pool (below), invokes the first usable
+member **read-only on its own default model**, prefixes
+`ROLEPOD_BRAIN_SILENT=1` (clean room — no ambient memory leaks the author's
+narrative into the cold run), tees the raw output to
+`.rolepod/evidence/external/<utc>-<cli>.txt`, and appends the phase-log line
+the commit gate reads. Its last stdout line is the receipt:
+`ROLEPOD-XFAM ok kind=review cli=<cli> family=<family> raw=<path> secs=<n>`.
+Big diff → run it with the harness's background option and read the raw
+file when it lands; it can take minutes.
+
+The **brief** is the reviewer's whole world (cold context): the change's
+intent in one sentence, the acceptance criteria, the settled decisions, the
+risk profile, and the claimed behaviours to trace. Never a pointer to the
+session or the plan file. The runner prepends the adversarial-reviewer
+framing and the verdict-line contract itself.
+
+**Never a model or effort flag.** `TIER_MODELS` (model-tier-policy) governs
+the CLI that is the Lead. An external CLI runs whatever its owner set as its
+default — that is their cost decision, not the Lead's — and the phase-log
+records `model: default`.
 
 ## The pool
 
-- **Lead** — the CLI running this session. It reviews its own work only
-  through the Lead floor (below), never as the adversarial reviewer.
-- **External pool** — the other model families, when a binary is on PATH:
-  `command -v codex` / `command -v gemini` / `command -v claude` /
-  `command -v agy`. When both `gemini` and `agy` are installed they count
-  as ONE pool member (same family); prefer `gemini`.
-- **Vertical fallback — same family, stronger tier.** When the external pool
-  is empty (single-CLI machine) or every member failed at invoke: the Lead's
-  own CLI at its strongest model — ask the CLI which models it exposes
-  (`--help` / model list), then invoke `claude -p --model <that name>` /
-  `codex exec -m <that name>` / `gemini -m pro -p` — cold context, only valid
-  when that model differs from the one now running (cannot tell which model
-  is running → vertical unavailable, record NOT RUN). Same family — it never
-  counts as the cross-family adversarial pass; it upgrades the Lead floor.
-
-## Clean-room invocation — prefix every external reviewer call
-
-Prefix EVERY external reviewer / vertical-fallback invocation with
-`ROLEPOD_BRAIN_SILENT=1` (e.g. `ROLEPOD_BRAIN_SILENT=1 codex exec …`).
-Ambient memory systems (rolepod-brain, or anything hook-based) may inject the
-project's shared memory into headless runs — the reviewer then inherits the
-author's own narrative ("we fixed X correctly"), which destroys the
-decorrelation the adversarial pass exists for, and its review process gets
-captured back into shared memory. The flag is a public rolepod-brain contract
-(no injection, no capture); harmless when nothing honoring it is installed.
-The reviewer's input is the CURATED brief you write (artifact + acceptance
-criteria + settled decisions) — never ambient memory.
+- **Config** — `<git-root>/.rolepod/cross-family` (project) overrides
+  `~/.rolepod/cross-family` (machine): one CLI per line in preference order,
+  `#` comments, `none` = cross-family off. Absent → every installed CLI in
+  the default order `codex claude agy cursor opencode`. Four CLIs installed
+  but only three wanted → list three.
+- **Family exclusion** — the Lead's own family is removed: `codex` =
+  openai, `claude` = anthropic, `agy` = google (a Gemini-CLI Lead is the
+  same family), `cursor` / `opencode` = the family of their configured
+  default model (`~/.cursor/cli-config.json`, `opencode.json(c)`), else
+  `unknown` — still used, flagged "decorrelation unverified" in
+  `--pool`. Two members of one family: the second is a sequential
+  fallback only (a harness is not a second opinion).
+- **Installed ≠ usable** — the runner proves it at invoke: exit ≠ 0,
+  timeout, or < 200 bytes → an `external-fail` phase-log line and the next
+  member. Every member failed → exit 3; empty pool → exit 4. Both mean:
+  **fall back to the Lead's main path** — internal strong reviewer
+  (security-engineer / universal-reviewer) — and the review report's
+  Cross-model line records the reason. `rolepod-cross-family --pool` shows
+  the resolved pool with reasons; `--probe` sends each member a one-line
+  prompt (spends one call each) — `ROLEPOD_DOCTOR_PROBE=1 make doctor` does
+  the same.
+- **Vertical fallback — same family, stronger tier.** Empty pool or all
+  failed: the Lead's own CLI at its strongest model (`claude -p --model
+  <name>` / `codex exec -m <name>` — the Lead CLI, so a model flag IS
+  allowed here), cold context, only when that model differs from the one
+  running. Same family — it never counts as the cross-family pass; it
+  upgrades the Lead floor. Never pin model names in a skill or plan.
 
 ## Model strength — one axis each, no overlap
 
-| Model family | Reviews best | Invoke |
-|-------|--------------|--------|
-| Codex | depth · security · logic rigor | `codex exec` |
-| Gemini | breadth · cross-file · large-diff sweep | `gemini -m pro -p`, or `agy -p` when only agy is installed |
-| Claude | architecture · code quality · maintainability | `claude -p` |
+| Family (CLI) | Reviews best |
+|-------|--------------|
+| OpenAI (`codex`) | depth · security · logic rigor |
+| Google (`agy`) | breadth · cross-file · large-diff sweep |
+| Anthropic (`claude`) | architecture · code quality · maintainability |
+| Cursor / OpenCode | the family of their default model — the runner tells you |
 
 ## Routing
 
 1. Read the diff; name the axes it needs (a diff can need several).
-2. For each axis, route to the external whose strength matches — if that
-   external is in the pool (installed AND not the Lead).
-3. A diff spanning two axes uses two externals, one per axis.
-4. Launch every routed reviewer — externals and internal agents alike — in
+2. Order the pool so the member owning the dominant axis goes first —
+   `.rolepod/cross-family` is the order, so a project can pin it.
+3. A diff spanning two axes → `--all`: one member per family, concurrently,
+   each anchored.
+4. Launch every routed reviewer — the runner and internal agents alike — in
    ONE dispatch; they read the same frozen diff independently, so nothing
    is gained by waiting for one before starting the next.
-
-**Lead-exclusion overrides strength — and it excludes the family, not just
-the binary.** If the strength-matched reviewer runs the Lead's model family
-(a Gemini Lead vs `agy`, an agy Lead vs `gemini`), that axis cannot go to
-it — route the axis to the next available external, or to the Lead floor.
-
-> Example: a breadth-heavy diff, Lead = Gemini. Gemini owns breadth but is
-> the Lead — it cannot review its own work. The breadth axis falls to Claude
-> or Codex; if neither is on PATH, to the Lead floor.
 
 ## The Lead floor — covers every axis
 
@@ -75,51 +103,45 @@ UI — not one specialty.
 
 Strength routing is an optimisation on top of the floor: it assigns a
 specialist to an axis when one is available; it never removes an axis. A
-specialist that is missing, is the Lead, or has failed → that axis falls
-back to the floor.
+specialist that is missing, is the Lead's family, or has failed → that axis
+falls back to the floor.
 
 ## Degradation
 
-| External pool | Routing |
+| Pool | Routing |
 |---------------|---------|
-| 2 externals | Route axes to both by strength; the floor backstops correctness |
-| 1 external | It takes the diff's dominant axis; the Lead floor covers the rest |
-| 0 cross-family | Vertical fallback takes the dominant axis as a cold-context reviewer; the floor covers the rest. Record "vertical — same family" in the Cross-model line |
-| 0 + no vertical | Lead floor only — `qa-tester` + the full multi-axis read |
+| ≥2 families usable | dominant axis to the first member; `--all` when two axes matter |
+| 1 usable | it takes the dominant axis; the Lead floor covers the rest |
+| 0 usable (exit 3 / 4) | internal strong reviewer + vertical fallback when one exists; Cross-model line records "NOT RUN — <reason from the runner>" |
 
-**Installed ≠ usable.** A binary on PATH can still fail at invoke — auth
-error, quota exhausted, empty output. On failure: retry ONCE at most, then
-treat that external as not installed — route the axis to the next external
-or the Lead floor, and record the failure reason (e.g. "gemini: quota
-exhausted") in the review report's Cross-model line. Never loop on a dead
-external, never silently drop the axis.
+On a high-risk surface with no usable cross-family member, the floor (plus
+the vertical fallback) still reviews every axis — but the review report's
+**Cross-model adversarial pass** line must record NOT RUN and why, and
+`finish-work`'s Reviewer gate surfaces that limitation before merge. It is a
+real verification limitation, not a pass.
 
-On a high-risk surface with no cross-family external, the floor (plus the
-vertical fallback when one exists) still reviews every axis — but the review
-report's **Cross-model adversarial pass** line must record NOT RUN (or
-"vertical — same family") and why, and `finish-work`'s Reviewer gate surfaces
-that limitation to the user before merge. It is a real verification
-limitation, not a pass.
-
-## Satellite-first — the external IS the strong pass
+## Satellite-first — the external IS the strong pass, and the gate enforces it
 
 Real installs run one main subscription (any family) plus cheaper satellite
 plans that would otherwise idle. Each plan is a separate flat-rate quota
 pool; the scarce resource is the MAIN plan's quota window, and the main
 always carries implementation — so one-shot cold-context work routes to a
-satellite first whenever a healthy non-Lead family is on PATH:
+satellite first whenever a usable non-Lead family exists:
 
 - **R4 strong adversarial pass** — the routed cross-family external IS the
   strong pass (better decorrelated than a same-family strong reviewing its
-  own family's work). Anchor it per review-code §Output — raw output saved
-  under `.rolepod/evidence/external/` + the extended review line — or the
-  commit gate ignores it. Internal strong (security-engineer /
-  universal-reviewer) fires only on the three carve-outs in review-code §1:
-  empty pool, apex trigger (then BOTH passes), fix-verify re-read.
-- **Outside opinion** (debug-issue §9), **judge / second opinion** on a
-  design — already cold one-shot by shape; same satellite-first order.
+  own family's work). `precommit-gate` counts it from the runner's anchor
+  (raw file ≥ 500 bytes + the `reviewer:external` review line). While the
+  pool is usable, an internal strong reviewer does **not** clear a
+  high-risk commit — only after the runner reports exit 3 / 4 (logged as
+  `external-fail`) or on a machine with no pool. Internal strong then
+  fires on the three carve-outs in review-code §1: empty / failed pool,
+  apex trigger (then BOTH passes), fix-verify re-read.
+- **Outside opinion** (debug-issue §9, `--kind consult`), **advisory panel**
+  (write-plan, `--kind advise --all`) — already cold one-shot by shape; same
+  satellite-first order.
 
 This never widens WHO reviews (R1-R3 routing unchanged) — it only moves the
-strong-class tokens R4 already spends off the main plan. A satellite that
-fails at invoke follows the degradation table above; the internal strong
-reviewer is the fallback, never skipped silently.
+strong-class tokens R4 already spends off the main plan. `rolepod-stats`
+reports external passes vs internal strong dispatches so the split is
+visible.

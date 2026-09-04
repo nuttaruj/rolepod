@@ -159,6 +159,51 @@ Help close the gap — install on Codex / Gemini / Cursor and report at [issues/
 
 The path-based ownership rules from `write-plan` apply identically across all CLIs — same agent picks the same paths regardless of which CLI is in charge of orchestration.
 
+## Cross-family externals — one runner, any Lead
+
+Any installed CLI can be the Lead; the adversarial review, the stuck-state
+consult and the plan advisory go to a **different model family** through
+one command, `rolepod-cross-family` (`install.sh` launcher; every plugin
+tree ships `scripts/cross-family.sh`, and the SessionStart context names
+the path on marketplace installs):
+
+```bash
+rolepod-cross-family --pool                       # resolved pool with reasons, no network
+rolepod-cross-family --probe                      # one-line "reply OK" per member (spends a call each)
+rolepod-cross-family --kind review  --brief brief.md --attach diff.patch
+rolepod-cross-family --kind consult --brief ledger.md
+rolepod-cross-family --kind advise  --brief decision.md --all      # one member per family, concurrently
+# add --lead codex|agy|cursor|opencode when not running under Claude Code (ROLEPOD_LEAD_CLI also works)
+```
+
+| CLI | In the pool as | Invocation the runner uses (read-only, **its own default model**, `ROLEPOD_BRAIN_SILENT=1`) | Family |
+|---|---|---|---|
+| Codex | `codex` | `codex exec -s read-only --skip-git-repo-check --ephemeral -o <msg> -` (prompt on stdin) | openai |
+| Claude Code | `claude` | `claude -p --permission-mode plan --no-session-persistence` (prompt on stdin) | anthropic |
+| Antigravity | `agy` | `agy -p "<prompt>" --mode plan --print-timeout <n>s` | google |
+| Cursor | `cursor` | `cursor-agent -p --mode plan --output-format text --trust "<prompt>"` | family of the default model in `~/.cursor/cli-config.json`, else unknown |
+| OpenCode | `opencode` | `opencode run --agent plan "<prompt>"` | family of `model` in `opencode.json(c)`, else unknown |
+| Gemini CLI | — | retired for individual accounts (2026-06-18); a `gemini` config line is skipped, a Gemini Lead still excludes `agy` | google |
+
+Pool = `.rolepod/cross-family` (project) → `~/.rolepod/cross-family`
+(machine) → every installed CLI; `none` disables. The Lead's family is
+excluded. **Installed ≠ usable** is proven at invoke: exit ≠ 0, timeout
+(default 600 s — the Claude Bash cap; background the call for a big diff),
+or an answer under the floor (review < 500 bytes, consult / advise < 200)
+→ `external-fail` phase-log line, next member; every member failed → exit
+3; empty pool → exit 4 — then the Lead's own path (internal strong
+reviewer / vertical consult) runs and the review report records the
+limitation. Evidence: `.rolepod/evidence/external/<utc>-<cli>.txt` + one
+phase-log line (`phase: review|consult|advise`, `reviewer: external`,
+`model: default`). `rolepod-stats` shows external passes vs internal strong
+dispatches; `make doctor` prints the pool (`ROLEPOD_DOCTOR_PROBE=1` to
+probe live). Live-verified 2026-09-04 on this machine: agy 10 s, cursor
+28 s, opencode 8 s answered the probe; Gemini CLI failed auth
+(IneligibleTierError — retired); codex answered the probe but timed out a
+real review at 600 s under its owner's `model_reasoning_effort = "max"`
+default, and the runner fell through to agy, which returned a REJECTED
+verdict with traced findings in 24 s (that review shaped v2.76.0).
+
 ## Recommended Claude Code setup
 
 Claude Code supports both global and project-level configuration. Rolepod installs as a marketplace plugin.

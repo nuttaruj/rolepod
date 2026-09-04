@@ -92,6 +92,22 @@ Auto-escalate to the **strong** tier for adversarial review (regardless of agent
 
 `gate-reminder.sh` names, on every high-risk edit, what the commit gate will require, and `precommit-gate.sh` blocks the commit of a high-risk diff without a strong reviewer dispatched since the last commit (v2.47.0: one hard checkpoint, at commit). The tier policy makes the *which* reviewer explicit.
 
+## Cross-family externals run their own default model
+
+`TIER_MODELS` — and every effort pin — governs the CLI that is the **Lead**
+(its subagents, its role files, its fan-out). A cross-family external
+(`rolepod-cross-family --kind review|consult|advise`) is another owner's
+CLI: it runs whatever that CLI's config sets as default, and the runner
+never passes a model or effort flag (the phase-log records `model:
+default`). The only place a model flag is legitimate on an external call is
+the **vertical fallback** — the Lead consulting its own CLI at a stronger
+tier — because that CLI IS the Lead. Which CLIs are in the pool is the
+user's choice: `~/.rolepod/cross-family` (machine) / `.rolepod/cross-family`
+(project), one CLI per line, `none` to disable; the runner excludes the
+Lead's family and drops members that fail at invoke. Doctor prints the
+resolved pool; `ROLEPOD_DOCTOR_PROBE=1 make doctor` sends each member a
+one-line prompt to prove it answers.
+
 ## Advisor mode interplay (Claude Code)
 
 Claude Code's native Advisor mode (`/advisor <model>` / `advisorModel` in

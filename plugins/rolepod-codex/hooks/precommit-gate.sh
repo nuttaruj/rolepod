@@ -293,6 +293,64 @@ print(n)
   fi
 fi
 
+# Satellite-first, ENFORCED (v2.76.0). Measured before this: 210 dispatches,
+# 0 anchored cross-family passes — the internal strong reviewer was one
+# Agent call away and counted the same, so it always won. Now, on a
+# high-risk diff, an internal strong reviewer clears the gate only when the
+# cross-family pool was actually tried: an anchored external pass (XREV), OR
+# an `external-fail` phase-log line since the last commit (the runner tried
+# every usable member and they failed / the pool is empty). Machines with no
+# usable cross-family CLI (runner --pool-names prints nothing) keep the
+# internal path untouched. Lead CLI unknown → cannot exclude its family →
+# no tightening (fail-open).
+XFAM_HELD=""
+XFAM_RUNNER="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/../scripts/cross-family.sh"
+[ -f "$XFAM_RUNNER" ] || XFAM_RUNNER="$HOME/.rolepod/bin/cross-family.sh"
+XFAM_LEAD="${ROLEPOD_LEAD_CLI:-}"
+[ -z "$XFAM_LEAD" ] && [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && XFAM_LEAD="claude"
+if [ -n "$HIGH_RISK" ] && [ -n "$XFAM_LEAD" ] && [ -f "$XFAM_RUNNER" ] && [ "${XREV:-0}" -eq 0 ] && [ "$STRONG_REVIEWERS" -gt 0 ]; then
+  XFAM_POOL=$(bash "$XFAM_RUNNER" --lead "$XFAM_LEAD" --pool-names 2>/dev/null | tr '\n' ' ' | sed 's/ *$//')
+  XFAM_FAILS=0
+  if [ -n "$XFAM_POOL" ] && [ -f "$EV_ROOT/phase-log.jsonl" ]; then
+    XFAM_FAILS=$(python3 -c '
+import json, sys, datetime
+since, path = sys.argv[1], sys.argv[2]
+cut = None
+if since:
+    try:
+        cut = datetime.datetime.fromtimestamp(int(since), datetime.timezone.utc)
+    except Exception:
+        cut = None
+n = 0
+try:
+    for line in open(path):
+        try:
+            d = json.loads(line)
+        except Exception:
+            continue
+        if d.get("phase") != "external-fail":
+            continue
+        if cut is not None:
+            try:
+                ts = datetime.datetime.fromisoformat((d.get("ts") or "").replace("Z", "+00:00"))
+                if ts.tzinfo is None:
+                    ts = ts.replace(tzinfo=datetime.timezone.utc)
+                if ts < cut:
+                    continue
+            except Exception:
+                continue
+        n += 1
+except OSError:
+    pass
+print(n)
+' "$SINCE_EPOCH" "$EV_ROOT/phase-log.jsonl" 2>/dev/null || echo 0)
+  fi
+  if [ -n "$XFAM_POOL" ] && [ "${XFAM_FAILS:-0}" -eq 0 ] 2>/dev/null; then
+    XFAM_HELD="cross-family pool is usable ($XFAM_POOL) but no anchored external pass and no recorded external failure since the last commit — the $STRONG_REVIEWERS internal strong reviewer dispatch(es) do NOT clear a high-risk diff while a different model family is available. Run: rolepod-cross-family --kind review --brief <brief.md> --attach <diff> (or scripts/cross-family.sh in the plugin tree; add --lead $XFAM_LEAD outside a hook); it anchors the pass itself. Every member failing (exit 3) or an empty pool (exit 4) is logged and then the internal reviewer counts. "
+    STRONG_REVIEWERS=0
+  fi
+fi
+
 # Legacy bypass markers are detected only so the deny reason can explain they
 # no longer do anything on their own: evidence auto-passes without a marker
 # (below), and without evidence a marker was always ignored — a blocked model
@@ -314,7 +372,8 @@ REASON+="Evidence ($SINCE_HUMAN, Lead + subagent transcripts): $TEST_EDITS test 
 if [ "$HIGH_RISK_EDITS" -gt 0 ] && [ "$TEST_EDITS" -eq 0 ]; then
   REASON+="NO TEST EDITS in this session despite touching high-risk code — T-gate violation (T1: bug/feature/migration/auth/billing → test required). "
 fi
-if [ -n "$HIGH_RISK" ] && [ "$STRONG_REVIEWERS" -eq 0 ]; then
+[ -n "$XFAM_HELD" ] && REASON+="SATELLITE-FIRST: $XFAM_HELD"
+if [ -n "$HIGH_RISK" ] && [ "$STRONG_REVIEWERS" -eq 0 ] && [ -z "$XFAM_HELD" ]; then
   REASON+="NO STRONG ADVERSARIAL REVIEWER since the last commit — a high-risk diff clears ONLY on: a cross-family external strong review ANCHORED per review-code (raw output saved under .rolepod/evidence/external/ + the reviewer:external phase-log line — satellite-first, preferred); a security-engineer or universal-reviewer dispatch (Agent tool, a Workflow agent() call with that agentType, or on CLIs without transcript parsing a FINISHED reviewer subagent recorded by the SubagentStop dispatch log — wait for the reviewer to complete before retrying; the dispatch hook lifts Agent-tool ones to strong class whatever the Lead runs — do not pass a balanced model on them). Test edits and qa-tester are the test floor, not the review (a green suite has already shipped money bugs). "
 fi
 REASON+="Run gates explicitly: S1-S5 (simplicity) + T1-T6 (tests) + F1-F5 (failure-mode) — checklists: finish-work §1, check-work §6. "

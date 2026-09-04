@@ -210,7 +210,7 @@ Non-blocking — read when a request does not obviously match a Quick-router row
 | "Simple task, skip the spine" | Tier it (R0-R4). R1 skips ceremony by rule, R2 still gets an inline plan + verify; calling a task "simple" without tiering is how scope hides. |
 | "User just wants a fix" | They want a *correct* fix. `debug-issue` finds the root; symptom patches recur. |
 | "Tests are obvious, I'll add later" | Later never comes. TDD adds the test now or admits in writing it won't have one. |
-| "Reviewer takes too long" | Skip review = ship bugs. An external-CLI adversarial pass takes ~30s. |
+| "Reviewer takes too long" | Skip review = ship bugs. The cross-family pass is one command (`rolepod-cross-family --kind review …`) that runs in the background while you continue; it costs the satellite plan, not the main one. |
 
 ## Don't
 

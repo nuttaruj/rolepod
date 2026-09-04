@@ -35,7 +35,7 @@ check() { # <label> <command>
 echo "── doctor: syntax ──"
 for f in "$REPO_DIR"/hooks/*.sh "$REPO_DIR"/adapters/gemini/hooks/*.sh \
          "$REPO_DIR"/adapters/codex/plugins/rolepod/hooks/*.sh \
-         "$REPO_DIR"/adapters/cursor/scripts/*.sh; do
+         "$REPO_DIR"/adapters/cursor/scripts/*.sh "$REPO_DIR"/scripts/*.sh; do
   [ -f "$f" ] || continue
   check "bash -n $(basename "$(dirname "$f")")/$(basename "$f")" "bash -n '$f'"
 done
@@ -178,6 +178,17 @@ then
   printf '  ✓ tier mapping check clean\n'; PASS=$((PASS+1))
 else
   printf '  ✗ tier mapping mismatch — installed files diverge from TIER_MODELS intent\n'; FAIL=$((FAIL+1))
+fi
+
+echo "── doctor: cross-family pool (this machine, Lead = claude unless ROLEPOD_LEAD_CLI) ──"
+# Pool = config ∩ installed, Lead family excluded — no network. Add
+# ROLEPOD_DOCTOR_PROBE=1 for a live "reply OK" per member (spends a call each).
+XF_LEAD="${ROLEPOD_LEAD_CLI:-claude}"
+if [ "${ROLEPOD_DOCTOR_PROBE:-0}" = "1" ]; then
+  bash "$REPO_DIR/scripts/cross-family.sh" --probe --lead "$XF_LEAD" --timeout 120 2>&1 | sed 's/^/  /'
+else
+  bash "$REPO_DIR/scripts/cross-family.sh" --pool --lead "$XF_LEAD" 2>&1 | sed 's/^/  /'
+  echo "  (ROLEPOD_DOCTOR_PROBE=1 make doctor → live liveness per member)"
 fi
 
 echo "── doctor: installed versions + enforcement tier ──"

@@ -90,16 +90,19 @@ detection, the family rule, fail-at-invoke, cold-context framing.
 
 - **Lead (executor)** — this session's CLI. It frames the decision and owns the
   outcome; it is not a panelist (it is already the one deciding).
-- **Advisor pool** — the other model **families** on PATH: `command -v codex` /
-  `command -v gemini` / `command -v claude` / `command -v agy`. Same detection
-  and family rule as review: gemini and agy are one family (one pool member,
-  prefer `gemini`; invoke `agy -p` when only agy is installed), and a family
-  matching the Lead's is excluded.
-- **Vertical fallback — same family, stronger tier.** When the cross-family
-  pool is empty (single-CLI machine) or every member failed at invoke, the
-  advisor is the Lead's **own CLI at its strongest model** — ask the CLI
+- **Advisor pool** — the user's cross-family pool, resolved by the runner
+  (`rolepod-cross-family --pool`): `<git-root>/.rolepod/cross-family`, then
+  `~/.rolepod/cross-family`, else every installed CLI (`codex` / `claude` /
+  `agy` / `cursor` / `opencode`) — minus the Lead's own family (`agy` =
+  google; cursor / opencode = the family of their configured default model).
+  Same detection and family rule as review. Each advisor runs on its **own
+  default model** — no model or effort flag; `TIER_MODELS` governs only the
+  CLI that is the Lead.
+- **Vertical fallback — same family, stronger tier.** When the runner
+  reports an empty pool (exit 4) or every member failed at invoke (exit 3),
+  the advisor is the Lead's **own CLI at its strongest model** — ask the CLI
   which models it exposes (`--help` / model list), then invoke `claude -p
-  --model <that name>` / `codex exec -m <that name>` / `gemini -m pro -p`.
+  --model <that name>` / `codex exec -m <that name>` with the same brief.
   Valid only when that model differs from the one now running; never pin
   model names in a skill or plan, they go stale. Same-lineage advice trades
   cross-vendor diversity for a second frontier opinion — strictly better than
@@ -123,25 +126,31 @@ Its output is input to the Lead.
 Mirrors the review axes — same strengths, applied to *advising on an approach*
 instead of *reviewing a diff*.
 
-| Model family | Advises best on | Invoke |
-|-------|-----------------|--------|
-| Codex | correctness risk, security implications, logic depth of an approach | `codex exec` |
-| Gemini | breadth, cross-file / large-surface impact, alternatives sweep | `gemini -m pro -p`, or `agy -p` when only agy is installed |
-| Claude | architecture, maintainability, API / interface shape | `claude -p` |
+| Family (CLI) | Advises best on |
+|-------|-----------------|
+| OpenAI (`codex`) | correctness risk, security implications, logic depth of an approach |
+| Google (`agy`) | breadth, cross-file / large-surface impact, alternatives sweep |
+| Anthropic (`claude`) | architecture, maintainability, API / interface shape |
+| Cursor / OpenCode | the family of their default model — the runner's `--pool` tells you |
 
-Route the decision's dominant dimension to the model that owns it; a decision
-spanning two dimensions can go to two advisors.
+Route the decision's dominant dimension to the family that owns it (the
+config file's order is the routing order); a decision spanning two
+dimensions goes to the whole panel.
 
 ## Protocol — collect, then Lead decides
 
 The panel is **input, not a binding vote**. The failure mode is three
 conflicting plans and no decision — the protocol exists to prevent it.
 
-1. **Frame once (cold context).** Lead writes the decision as: the question, the
-   2-3 options, the constraints, the done-criteria — enough for a cold advisor
-   to reason without the session. Send the *same* framing to each advisor.
-2. **Poll in parallel.** Each advisor returns its option / correction / stop
-   plus reasoning. Run concurrently where the harness allows.
+1. **Frame once (cold context).** Lead writes the decision to a file as: the
+   question, the 2-3 options, the constraints, the done-criteria — enough
+   for a cold advisor to reason without the session. Every advisor gets the
+   same file.
+2. **Poll in parallel.** `rolepod-cross-family --kind advise --brief
+   <decision.md> --all` runs one member per family concurrently, read-only
+   on each CLI's default model, clean room, each reply anchored under
+   `.rolepod/evidence/external/` with a `phase: advise` line. Drop `--all`
+   for a single advisor on the dominant dimension.
 3. **Reconcile.** Lead collects, dedups overlapping points, and marks where the
    panel agrees vs conflicts.
 4. **Decide and own.** Lead picks the option and writes it into the plan —
@@ -152,16 +161,16 @@ conflicting plans and no decision — the protocol exists to prevent it.
 
 | Advisor pool | Routing |
 |---------------|---------|
-| 2 advisors | Full panel by strength; Lead reconciles and decides |
-| 1 advisor | Single advisor on the dominant dimension; Lead reasons through the rest |
-| 0 cross-family | **Vertical fallback**: the Lead's own CLI at its strongest model (≠ the running model) as the single advisor; record "vertical consult — same family" in the plan |
+| ≥2 families | Full panel (`--all`); Lead reconciles and decides |
+| 1 usable | Single advisor on the dominant dimension; Lead reasons through the rest |
+| 0 usable (runner exit 3 / 4) | **Vertical fallback**: the Lead's own CLI at its strongest model (≠ the running model) as the single advisor; record "vertical consult — same family" in the plan |
 | 0 + no vertical | Lead reasons through the options solo; record in the plan that no cross-model advice was gathered — a coverage note, not a failure |
 
-**Installed ≠ usable.** An advisor that fails at invoke (auth error, quota
-exhausted, empty output) → retry ONCE at most, then treat it as absent and
-drop to the matching degradation row, noting the reason in the plan (e.g.
-"agy: quota exhausted — advised by Codex only"). Never loop on a dead
-advisor.
+**Installed ≠ usable.** The runner proves it at invoke: an advisor that
+fails (auth error, quota exhausted, timeout, empty output) is logged as an
+`external-fail` line and skipped — with `--all` the panel simply shrinks
+(the receipt names who answered). Note the reason in the plan (e.g. "agy:
+quota exhausted — advised by Codex only"). Never loop on a dead advisor.
 
 ## Cost discipline
 

@@ -81,8 +81,8 @@ Pick the lowest level the request calls for.
 
 ## Hard stops — stop and ask the user
 
-- 3rd failed attempt, or fix-round defects not falling → ONE clean-room
-  cross-family opinion (`ROLEPOD_BRAIN_SILENT=1 codex exec`) first.
+- 3rd failed attempt, or fix-round defects not falling → ONE cold
+  cross-family opinion first (`rolepod-cross-family --kind consult`).
 - Destructive command ahead → confirm first.
 - Cannot state the ask in one sentence → re-read the request.
 - Context degrading with no convergence → summarize and ask.

@@ -21,7 +21,7 @@
 <Which reviewer roles ran. For a high-risk diff, name the adversarial
  fresh-context reviewer and confirm its model differs from the Lead's.>
 
-**Cross-model adversarial pass:** <ran on `model` (cross-family) |
+**Cross-model adversarial pass:** <ran on `<cli>` (cross-family, its default model — receipt: ROLEPOD-XFAM ok … raw=<path>) |
  vertical — same family, reason (own CLI's stronger tier as cold reviewer;
  not a cross-family pass) | NOT RUN — reason (e.g., 0 external CLIs on PATH;
  Lead floor covered every axis instead). Anything other than a cross-family

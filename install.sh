@@ -949,9 +949,9 @@ PY
   # launchers (the integration round-trip uninstalls against a temp dir;
   # without this guard every `make test-all` silently wiped ~/.rolepod/bin).
   if [ -z "${ROLEPOD_TARGET:-}${ROLEPOD_CLAUDE_TARGET:-}${ROLEPOD_CODEX_TARGET:-}${ROLEPOD_GEMINI_TARGET:-}${ROLEPOD_CURSOR_TARGET:-}${ROLEPOD_ANTIGRAVITY_TARGET:-}${ROLEPOD_OPENCODE_TARGET:-}" ]; then
-    step "Removing rolepod-stats / rolepod-junit launchers"
+    step "Removing rolepod-stats / rolepod-junit / rolepod-cross-family launchers"
     do_or_dry "remove ~/.rolepod/bin + PATH launchers" bash -c "
-      rm -f '$HOME/.local/bin/rolepod-stats' '$HOME/.local/bin/rolepod-junit'
+      rm -f '$HOME/.local/bin/rolepod-stats' '$HOME/.local/bin/rolepod-junit' '$HOME/.local/bin/rolepod-cross-family'
       rm -rf '$HOME/.rolepod/bin'"
   else
     warn "ROLEPOD_TARGET set — skipping global launcher removal (temp-target run)"
@@ -1777,23 +1777,26 @@ if [ -z "${TARGET:-}" ]; then
 fi
 
 # ─── Evidence-reader launchers (any target) ────────────────────────────
-# `rolepod-stats` / `rolepod-junit` on PATH so installed users read their
-# project's .rolepod/evidence/ without cloning the source repo. Payload
+# `rolepod-stats` / `rolepod-junit` / `rolepod-cross-family` on PATH so
+# installed users read their project's .rolepod/evidence/ (and run the
+# cross-family reviewer) without cloning the source repo. Payload
 # lives in ~/.rolepod/bin (refreshed every install = version-synced);
 # launchers are 2-line shims in ~/.local/bin.
 if [ -z "${ROLEPOD_TARGET:-}${ROLEPOD_CLAUDE_TARGET:-}${ROLEPOD_CODEX_TARGET:-}${ROLEPOD_GEMINI_TARGET:-}${ROLEPOD_CURSOR_TARGET:-}${ROLEPOD_ANTIGRAVITY_TARGET:-}${ROLEPOD_OPENCODE_TARGET:-}" ]; then
-  step "Installing rolepod-stats / rolepod-junit launchers"
+  step "Installing rolepod-stats / rolepod-junit / rolepod-cross-family launchers"
   do_or_dry "install evidence readers → ~/.rolepod/bin + ~/.local/bin" bash -c "
     mkdir -p '$HOME/.rolepod/bin' '$HOME/.local/bin'
     cp '$REPO_DIR/scripts/stats.sh' '$HOME/.rolepod/bin/stats.sh'
     cp '$REPO_DIR/scripts/junit-summary.sh' '$HOME/.rolepod/bin/junit-summary.sh'
     cp '$REPO_DIR/scripts/plan-lint.sh' '$HOME/.rolepod/bin/plan-lint.sh'
+    cp '$REPO_DIR/scripts/cross-family.sh' '$HOME/.rolepod/bin/cross-family.sh'
     printf '#!/bin/sh\nexec bash \"\$HOME/.rolepod/bin/stats.sh\" \"\$@\"\n' > '$HOME/.local/bin/rolepod-stats'
     printf '#!/bin/sh\nexec bash \"\$HOME/.rolepod/bin/junit-summary.sh\" \"\$@\"\n' > '$HOME/.local/bin/rolepod-junit'
-    chmod +x '$HOME/.rolepod/bin/'*.sh '$HOME/.local/bin/rolepod-stats' '$HOME/.local/bin/rolepod-junit'"
+    printf '#!/bin/sh\nexec bash \"\$HOME/.rolepod/bin/cross-family.sh\" \"\$@\"\n' > '$HOME/.local/bin/rolepod-cross-family'
+    chmod +x '$HOME/.rolepod/bin/'*.sh '$HOME/.local/bin/rolepod-stats' '$HOME/.local/bin/rolepod-junit' '$HOME/.local/bin/rolepod-cross-family'"
   if [ "$DRY_RUN" -eq 0 ]; then
     case ":$PATH:" in
-      *:"$HOME/.local/bin":*) ok "rolepod-stats + rolepod-junit on PATH" ;;
+      *:"$HOME/.local/bin":*) ok "rolepod-stats + rolepod-junit + rolepod-cross-family on PATH" ;;
       *) warn "~/.local/bin is not on PATH — add: export PATH=\"\$HOME/.local/bin:\$PATH\"" ;;
     esac
   fi

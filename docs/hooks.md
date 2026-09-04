@@ -187,6 +187,40 @@ Never set these globally — apply per-command only. Hard rules exist because re
 
 **Bypass accountability.** Every used bypass is appended to `<git-root>/.rolepod/evidence/bypass.log` as one JSON line — `{"ts","hook","var","reason"}` — with the reason taken from `ROLEPOD_BYPASS_REASON` (defaults to `"unreasoned"`). Logging never blocks and fails open. A silent bypass normalizes itself; a recorded one stays visible in review.
 
+### Cross-family pool — `.rolepod/cross-family` (v2.76.0)
+
+Which CLIs may serve as the cross-family reviewer / advisor is the user's
+choice, not PATH's. `<git-root>/.rolepod/cross-family` (project) overrides
+`~/.rolepod/cross-family` (machine); one CLI per line in preference order,
+`#` comments, `none` disables cross-family entirely:
+
+```
+# this machine has four CLIs; use three, agy first
+agy
+codex
+opencode
+```
+
+Absent file = every installed CLI in the default order `codex claude agy
+cursor opencode` (the standalone Gemini CLI is retired — a `gemini` line is
+skipped with a note). The Lead's own model family is always excluded (`agy`
+= google; `cursor` / `opencode` = the family of their configured default
+model, else `unknown` and flagged). Consumers: `scripts/cross-family.sh`
+(the runner — installed as `rolepod-cross-family`, shipped in every plugin
+tree), `precommit-gate.sh`, `gate-reminder.sh`, `make doctor`,
+`rolepod-stats`.
+
+**Satellite-first is enforced at commit (`precommit-gate.sh`).** On a
+high-risk diff, an internal strong reviewer (security-engineer /
+universal-reviewer) clears the gate only after the pool was tried: either
+the runner's anchored pass (raw file ≥ 500 bytes under
+`.rolepod/evidence/external/` + the `reviewer:external` review line) or an
+`external-fail` line since the last commit (every usable member failed, or
+the pool is empty). A machine with no usable pool, or a Lead the hook cannot
+identify, keeps the pre-v2.76 behaviour. Measured before: 210 dispatches
+across nine repos, zero cross-family passes — the internal reviewer was one
+Agent call away and counted the same.
+
 ### Per-repo risk-path override — `.rolepod/risk-paths`
 
 The high-risk path list (auth/billing/payments/…) is built-in but repo-tunable. Create `<git-root>/.rolepod/risk-paths` with one extended regex per line:
@@ -241,6 +275,7 @@ Adding a `PreToolUse Bash` hook that checks for `docs/rolepod/specs/<feature>-YY
 
 Root `hooks/*.sh` is canonical. The Codex adapter mirrors the hooks whose events Codex supports (`SessionStart`, `UserPromptSubmit`, `PreToolUse apply_patch|Bash`, `PostToolUse Bash`, `Stop`, `SubagentStart`/`SubagentStop` — per the official hooks reference, verified 2026-08-05):
 
+- **`scripts/cross-family.sh` (all CLIs, not a hook, v2.76.0)** — the cross-family runner the hooks and skills call; `render_evidence_scripts` copies it into every plugin tree's `scripts/` next to `stats.sh`, and the hooks resolve it as `../scripts/cross-family.sh` from their own directory (fallback `~/.rolepod/bin/`). One command = pool from config → first usable different-family CLI, read-only, its default model, clean room → raw output + phase-log line anchored. Behavioural test: `tests/integration/cases/cross-family-runner.sh` (stub CLIs, sandbox HOME).
 - **8 shared scripts render-copied** from canonical `hooks/` into `plugins/rolepod-codex/hooks/` by `build/render.sh` (since v2.39.0 — the hand-maintained mirror tree is gone): `gate-reminder.sh`, `precommit-gate.sh`, `project-context-loader.sh`, `claim-verify-nudge.sh`, `block-subagent-commit.sh`, `session-lifecycle.sh`, `test-diff-lint.sh`, `fix-loop-breaker.sh`. Codex uses the same event names, stdin JSON, and `hookSpecificOutput`/`permissionDecision` protocol as Claude, so the scripts are shared verbatim (all smoke-tested against Codex-shaped payloads). Only `hooks.json`, `subagent-model-log.sh`, and `agent-sync.sh` live in the adapter dir.
 - **`agent-sync.sh` (Codex-only, SessionStart, v2.75.0)** — the Codex plugin manifest has no `agents` component, so `codex plugin marketplace upgrade` alone never refreshed the 16 role agents or the `~/.codex/AGENTS.md` block. The plugin now bundles both (`plugins/rolepod-codex/agents/rolepod-*.toml` + `agents/AGENTS.rolepod.md`, rendered by `build/render.sh`); on session start the hook compares the plugin version with `~/.codex/agents/.rolepod-agents-version` and, when they differ, copies changed `rolepod-*.toml` files in, prunes retired ones (prefix-scoped — user agents are never touched), and replaces ONLY the `<!-- rolepod:start -->` … `<!-- rolepod:end -->` block of `~/.codex/AGENTS.md` (content outside the block is preserved byte-exact; no block → appended; file missing → created block-only). Fail-open and silent unless something changed (then one `additionalContext` line). `ROLEPOD_AGENT_SYNC_OFF=1` disables it; `install.sh` writes the same stamp so a fresh install is not re-synced on first launch; honors `CODEX_HOME`. Proven by `tests/integration/cases/codex-agent-sync.sh` against a sandboxed HOME. **Trust gate (Codex policy, verified 2026-09-03 against the official hooks reference):** Codex records hook trust against the hook definition's hash and *skips* new or changed plugin hooks until the user reviews them with `/hooks` — so the first session after this hook lands (or after its definition changes) needs that one-time trust; `codex exec` has `--dangerously-bypass-hook-trust` for vetted automation only.
 

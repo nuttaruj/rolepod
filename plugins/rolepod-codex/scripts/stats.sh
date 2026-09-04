@@ -4,7 +4,7 @@
 #
 # Data sources (all fail-open, written by the doctrine since v2.12):
 #   <git-root>/.rolepod/evidence/phase-log.jsonl
-#     {"ts","phase":"route|verify|review|ship", ...}
+#     {"ts","phase":"route|verify|review|ship|dispatch|consult|advise|external-fail", ...}
 #   <git-root>/.rolepod/evidence/bypass.log
 #     {"ts","hook","var","reason"}
 #   $HOME/.rolepod/gate-bypass.log            (plain text, machine-global)
@@ -196,11 +196,37 @@ if verifies:
     print(f"\n  Verify verdicts ({total}): pass={v.get('pass', 0)} fail={fails}", end="")
     print(f"  ({100 * fails // total}% fail rate)" if total else "")
 
+# External (cross-family) passes — written by scripts/cross-family.sh. The
+# review line with reviewer:external is what precommit-gate counts as the
+# strong pass; consult / advise lines are the debug + plan channels.
+externals = [r for r in rows if r.get("reviewer") == "external"]
+xfails = [r for r in rows if r.get("phase") == "external-fail"]
 if reviews:
-    v = Counter(r.get("verdict", "?") for r in reviews)
-    print(f"\n  Review verdicts ({sum(v.values())}):")
-    for k in sorted(v):
-        print(f"    {k}: {v[k]}")
+    own = [r for r in reviews if r.get("reviewer") != "external"]
+    v = Counter(r.get("verdict", "?") for r in own)
+    if own:
+        print(f"\n  Review verdicts ({sum(v.values())}):")
+        for k in sorted(v):
+            print(f"    {k}: {v[k]}")
+
+strong_internal = [d for d in dispatches if d.get("tier") == "strong"]
+if externals or xfails or strong_internal:
+    print(f"\n  Cross-family (different model family than the Lead):")
+    if externals:
+        by = Counter((r.get("kind") or r.get("phase") or "?", r.get("cli") or "?", r.get("family") or "?") for r in externals)
+        for (kind, cli, fam), n in sorted(by.items()):
+            print(f"    {kind:<8} {cli:<9} {fam:<10} ×{n}")
+    else:
+        print("    passes: 0")
+    if xfails:
+        why = Counter((r.get("cli") or "-", (r.get("reason") or "?").split(":")[0][:40]) for r in xfails)
+        print("    failures: " + ", ".join(f"{cli} {n}× ({reason})" for (cli, reason), n in sorted(why.items())))
+    ext_reviews = sum(1 for r in externals if r.get("phase") == "review")
+    if strong_internal or ext_reviews:
+        print(f"    strong pass source: external {ext_reviews} vs internal strong dispatch {len(strong_internal)}")
+        if strong_internal and not ext_reviews:
+            print("      ⚠ every strong pass ran on the Lead's own family — satellite-first wants the "
+                  "cross-family runner first (`rolepod-cross-family --pool` shows what is usable here)")
 
 if ships:
     a = Counter(r.get("action", "?") for r in ships)

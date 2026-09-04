@@ -98,8 +98,9 @@ msg = (
     "with no passing run in between. STOP editing-and-retrying — a blind "
     "next attempt is not allowed. Apply debug-issue Iron Rule #5: (1) stop "
     "fixing, (2) write the hypothesis ledger — what you believed, what each "
-    "attempt changed, why each failed, (3) get ONE cross-model advisor "
-    "opinion (`codex exec` / `claude -p` / `gemini -m pro -p`) or escalate "
+    "attempt changed, why each failed, (3) get ONE cross-family advisor "
+    "opinion (`rolepod-cross-family --kind consult --brief <ledger.md>` — "
+    "first usable different-family CLI, read-only, default model) or escalate "
     "to the user with the ledger. An identical failure twice means the "
     "mental model of the bug is wrong — more of the same fix cannot fix it."
     % n

@@ -187,6 +187,53 @@ echo "$out" | grep -q 'auto-passed' \
   && echo "  ✓ auto-pass surfaces an additionalContext note" \
   || { echo "  ✗ auto-pass note missing from hook output"; fail=$((fail+1)); }
 
+# ── precommit: satellite-first ENFORCED (v2.76.0) ───────────────────────
+# With a usable cross-family pool, an internal strong reviewer clears a
+# high-risk diff only after the pool was tried: an anchored external pass,
+# or an external-fail line since the last commit. Stub `codex` on PATH =
+# usable pool; CLAUDE_PLUGIN_ROOT = Lead is claude.
+XF_BIN="$TMP/xfbin"; mkdir -p "$XF_BIN"; printf '#!/bin/bash\nexit 1\n' > "$XF_BIN/codex"; chmod +x "$XF_BIN/codex"
+pcx() { # $1 = command, $2 = extra env assignments (string) — Lead = claude, stub codex on PATH
+  printf '{"tool_name":"Bash","transcript_path":%s,"tool_input":{"command":%s}}' \
+    "$(printf '%s' "$TRANSCRIPT" | python3 -c 'import json,sys; print(json.dumps(sys.stdin.read()))')" \
+    "$(printf '%s' "$1" | python3 -c 'import json,sys; print(json.dumps(sys.stdin.read()))')" \
+    | (cd "$TMP" && env HOME="$TMP" PATH="$XF_BIN:/usr/bin:/bin" CLAUDE_PLUGIN_ROOT="$TMP" ${2:-} bash "$HOOKS/precommit-gate.sh") || true
+}
+printf '%s\n' \
+  '{"type":"tool_use","name":"Task","input":{"subagent_type":"rolepod:security-engineer","prompt":"review"}}' \
+  > "$TRANSCRIPT"
+rm -f "$TMP/.rolepod/evidence/phase-log.jsonl" "$TMP/.rolepod/cross-family"
+out=$(pcx 'git commit -m "add billing"')
+check "precommit high-risk + internal strong reviewer + USABLE cross-family pool + nothing tried → deny (satellite-first)" deny "$out"
+echo "$out" | grep -q 'SATELLITE-FIRST' && echo "$out" | grep -q 'rolepod-cross-family' \
+  && echo "  ✓ deny reason names the runner + the usable pool" \
+  || { echo "  ✗ satellite-first deny reason missing runner instruction"; fail=$((fail+1)); }
+mkdir -p "$TMP/.rolepod/evidence"
+printf '{"ts":"%s","phase":"external-fail","kind":"review","cli":"codex","family":"openai","lead":"claude","reason":"exit 1"}\n' \
+  "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > "$TMP/.rolepod/evidence/phase-log.jsonl"
+out=$(pcx 'git commit -m "add billing"')
+check "…+ external-fail line since last commit (runner tried, pool failed) → internal strong reviewer clears" allow "$out"
+: > "$TMP/.rolepod/evidence/phase-log.jsonl"
+mkdir -p "$TMP/.rolepod/evidence/external"; head -c 700 /dev/zero | tr '\0' 'x' > "$TMP/.rolepod/evidence/external/t-codex.txt"
+printf '{"ts":"%s","phase":"review","reviewer":"external","kind":"review","cli":"codex","family":"openai","model":"default","raw":"external/t-codex.txt","lead":"claude","secs":9}\n' \
+  "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > "$TMP/.rolepod/evidence/phase-log.jsonl"
+: > "$TRANSCRIPT"
+out=$(pcx 'git commit -m "add billing"')
+check "anchored external review line + raw ≥500B, NO internal reviewer → auto-pass (the external IS the strong pass)" allow "$out"
+: > "$TMP/.rolepod/evidence/phase-log.jsonl"
+printf '%s\n' \
+  '{"type":"tool_use","name":"Task","input":{"subagent_type":"rolepod:security-engineer","prompt":"review"}}' \
+  > "$TRANSCRIPT"
+printf 'none\n' > "$TMP/.rolepod/cross-family"
+out=$(pcx 'git commit -m "add billing"')
+check "pool disabled (.rolepod/cross-family = none) + internal strong reviewer → allow (no tightening without a pool)" allow "$out"
+rm -f "$TMP/.rolepod/cross-family"
+out=$(printf '{"tool_name":"Bash","transcript_path":%s,"tool_input":{"command":"git commit -m x"}}' \
+    "$(printf '%s' "$TRANSCRIPT" | python3 -c 'import json,sys; print(json.dumps(sys.stdin.read()))')" \
+    | (cd "$TMP" && env -u CLAUDE_PLUGIN_ROOT -u ROLEPOD_LEAD_CLI HOME="$TMP" PATH="$XF_BIN:/usr/bin:/bin" bash "$HOOKS/precommit-gate.sh") || true)
+check "Lead CLI unknown (no ROLEPOD_LEAD_CLI / CLAUDE_PLUGIN_ROOT) → cannot exclude a family → old behavior, allow" allow "$out"
+rm -f "$TMP/.rolepod/evidence/phase-log.jsonl"
+
 printf '%s\n' \
   '{"type":"tool_use","name":"Task","input":{"subagent_type":"rolepod:qa-tester","prompt":"review"}}' \
   > "$TRANSCRIPT"

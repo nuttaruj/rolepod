@@ -22,6 +22,16 @@ HOT=$(git -C "$REPO" log --since="7 days ago" --name-only --pretty=format: 2>/de
 CTX="**$NAME** @ \`$BRANCH\` ($DIRTY uncommitted)\n\n**Recent:**\n\`\`\`\n$COMMITS\n\`\`\`"
 [ -n "$HOT" ] && CTX="$CTX\n\n**Hot (7d):**\n$HOT"
 
+# Cross-family runner locator (v2.76.0): marketplace installs have no
+# install.sh launcher on PATH, so name the shipped copy next to this hook
+# once per session — the skills say "rolepod-cross-family, or the path the
+# session context names".
+_xf="$(cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null && pwd)/../scripts/cross-family.sh"
+if [ -f "$_xf" ] && ! command -v rolepod-cross-family >/dev/null 2>&1; then
+  _xf=$(cd "$(dirname "$_xf")" && pwd)/cross-family.sh
+  CTX="$CTX\n\ncross-family runner: \`bash $_xf\` (reviews / consults on a different model family — pool: .rolepod/cross-family)"
+fi
+
 # Combined-mode marker for child plugins (uiproof / wplab / dblab): the
 # parent is active in this worktree. On Claude, session-lifecycle.sh owns
 # write + Stop-event cleanup; this branch covers CLIs with no lifecycle hook
