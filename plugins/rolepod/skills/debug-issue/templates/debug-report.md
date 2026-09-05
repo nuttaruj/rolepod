@@ -26,7 +26,7 @@
  GREEN after.>
 
 ## Fix
-<Files changed + the minimal change made. No "while I'm here" refactor.>
+<Files changed + the minimal change made. No "while I'm here" refactor. Remove the [DBG-] instrumentation before finalizing.>
 - `path` — <change>
 
 ## Verification

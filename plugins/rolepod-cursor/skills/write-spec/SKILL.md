@@ -77,7 +77,7 @@ State the user goal in one sentence. State 2-3 likely constraints. Flag any high
 
 ### 2. Discovery dialogue
 
-Model the open decisions as a tree — each answer unblocks the questions hanging off it. Ask in **rounds**: number every question on the current frontier (all questions whose prerequisites are settled) and present the round together; a question whose answer depends on one still open belongs to the next round, not this one. Each question must change the implementation if the answer changes — skip obvious ones; up to ~5 per round. Use the native question UI when available; without one, render the round as numbered questions with lettered options, the recommended default marked, and accept compact answers — `1a 3c`, or `defaults` to take every recommendation; never force the user to type prose for a choice. Done when the frontier is empty — nothing left silently assumed.
+Model the open decisions as a tree — each answer unblocks the questions hanging off it. Ask in **rounds**: number every question on the current frontier (all questions whose prerequisites are settled) and present the round together; a question whose answer depends on one still open belongs to the next round, not this one. Each question must change the implementation if the answer changes — skip obvious ones. A long frontier is grouped by topic and asked in full, never trimmed for brevity. Use the native question UI when available; without one, render the round as numbered questions with lettered options, the recommended default marked, and accept compact answers — `1a 3c`, or `defaults` to take every recommendation; never force the user to type prose for a choice. Done when the frontier is empty and no scout is still out — nothing left silently assumed.
 
 **Recommend a default per question.** State the simplest viable answer alongside the question — user confirms or overrides. Faster than open-ended and forces you to commit to a position you can defend.
 
@@ -168,7 +168,7 @@ Load only when the task needs it:
 
 ## Hard stops
 
-- Goal still ambiguous after 5 questions → ask the user to choose between two concrete framings
+- A round's answers did not close the ambiguity → name the one thing still unresolved and ask the user to choose between two concrete framings; still unresolved after that → stop and record what is needed to resume, never re-ask the same question in a new shape
 - User declines to approve any approach → stop, report what is blocking
 - A high-risk surface is touched without a security / migration / audit plan → stop; add that plan to the spec, or delegate to `security-engineer` / `system-architect`, before handing off to `write-plan`
 

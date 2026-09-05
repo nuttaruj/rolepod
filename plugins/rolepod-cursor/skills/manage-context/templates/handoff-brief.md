@@ -4,7 +4,8 @@
 # Handoff Brief — <task>
 
 ## Original request
-<The user's request, literal quote.>
+<The user's request, literal quote — plus every correction or scope change
+ stated since; the latest instruction is authoritative.>
 
 ## Current branch / commit
 <Branch name + last commit SHA. Commit first if you are the Lead and the gates
@@ -18,7 +19,8 @@
  them in full.>
 
 ## Tests run and status
-<What was run, green / red, the last known result.>
+<What was run, green / red, the last known result. Reusing an older run? It
+ must still meet check-work Iron Rule 2 before you cite it as current.>
 
 ## Constraints still active
 <Deadlines, no-touch zones, style rules, decisions the user pinned.>

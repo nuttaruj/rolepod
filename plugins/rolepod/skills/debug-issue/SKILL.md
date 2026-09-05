@@ -13,9 +13,9 @@ Canonical debug workflow. Replace guess-and-check with disciplined narrowing: re
 ## Iron Rule
 
 <EXTREMELY-IMPORTANT>
-1. NEVER fix before reproducing locally with a deterministic command. No repro = guess.
+1. NEVER fix before reproducing with a deterministic command. No repro = guess.
 2. NEVER stop at the first symptom fix. Trace upstream to a legitimate stopping point (external input, system boundary, "designed this way"), then fix at root.
-3. ALWAYS roll back your last action first when the error appeared right after your change.
+3. ALWAYS roll back your last action first (your own diff, reversible undos only) when the error appeared right after your change.
 4. ALWAYS write the failing test you wish had existed before shipping the fix.
 5. After 2 failed fix attempts on the same surface, STOP fixing — get one cross-model opinion (§9). Its correction is the outside review that permits exactly ONE more attempt; fix #3 without it = thrashing.
 </EXTREMELY-IMPORTANT>
@@ -89,7 +89,7 @@ If the bug predates your changes and the last-good commit is unknown, `git bisec
 
 ### 4. One hypothesis at a time
 
-When 2+ plausible causes exist, list 2-3 candidates with the cheapest falsifier per row, recommend which to test first, and let the user pick if the choice is non-obvious. Then state the chosen hypothesis: `<variable / state / condition> is <value> because <upstream cause>`. Test the cheapest falsifier first — log, breakpoint, read the called function, check the fixture. Don't spray fixes. Tag every debug log with a unique prefix (`[DBG-a4f2]`) so cleanup is one grep.
+When 2+ plausible causes exist, list 2-3 candidates with the cheapest falsifier per row, and run the top-ranked one's falsifier yourself — a falsifier is a reversible act, not a user call. Then state the chosen hypothesis: `<variable / state / condition> is <value> because <upstream cause>`. Test the cheapest falsifier first — log, breakpoint, read the called function, check the fixture. Don't spray fixes. Tag every debug log with a unique prefix (`[DBG-a4f2]`) so cleanup is one grep.
 
 **Find a working analog.** Before testing hypotheses, locate code in the same codebase that does the similar thing successfully — adjacent feature, sibling endpoint, parallel module. List every difference between the working analog and the broken surface, however small. Cheap signal for which difference matters; expensive to skip when "that can't possibly matter" turns out to matter.
 
@@ -118,7 +118,7 @@ The fix repeats across files (same root cause, many call sites): fix the first 2
 
 ### 8. Verify regression-clean
 
-Run the full module suite (or full suite for high-risk surfaces). Confirm no new red.
+Run the full module suite (or full suite for high-risk surfaces). Confirm no new red, then re-run the §2 repro itself.
 
 **The fix fails → the failure is new evidence, not a prompt to adjust the patch.** Feed it back into §5's trace before any second attempt — the root you identified may be wrong or partial; a re-fix without a re-trace is a blind retry (banned). A second failure — same signature or new — → §9: two misses from the same mind mean the mental model of the bug is wrong, and a cold advisor re-aims cheaper than a third guess from that same mind.
 
@@ -177,7 +177,7 @@ Load only when the task needs it:
 - Two upstream traces lead to contradictory causes → re-read; you missed an interaction
 - Fix passes the test but the symptom returns → root cause is wrong, trace further
 - Defensive null-check without a known cause → not a fix; remove and trace again
-- Fix attempt #4 about to start without a §9 cross-model correction in hand → stop; Iron Rule 5
+- Fix attempt #3 about to start without a §9 cross-model correction in hand → stop; Iron Rule 5
 - Multi-component failure being guessed at without boundary instrumentation → stop, instrument first (§5)
 
 ## Full Rolepod enhancement

@@ -105,7 +105,7 @@ Any failure → fix or report; do not merge.
 |------|---------|---------------------|
 | Phase 1 (always-on, < 5 min) | lint · typecheck · smoke unit · auth / tenant guard · money core · migration apply · build | YES |
 | Phase 2 (path-triggered) | the touched module's full test suite | YES when triggered |
-| Phase 3 (nightly / manual) | integration · E2E · chaos · security deep · perf benchmark | NO (post-merge notify only) |
+| Phase 3 (nightly / manual) | integration · E2E · chaos · security deep · perf benchmark | NO by default — YES if the repo's own required checks list it (read branch protection / the CI config first; never demote a repo-required lane to "nightly" on this table's say-so) |
 
 **No CI configured** (local-only repo, direct deploy — `wrangler deploy` / `flyctl` / rsync): CI is a runner, not the requirement — the phases collapse into a LOCAL pre-ship run the Lead executes: Phase 1 equivalent (lint · typecheck · smoke) + Phase 2 equivalent (touched module's full suite) BEFORE the merge / deploy, and a post-deploy smoke check (curl the live endpoint / health probe) as deploy evidence. The full-scope check runs before the irreversible act — where it runs is environment detail.
 Red required lane → Lead fixes and re-pushes; do not ask user permission for each iteration of fix-and-rerun once the merge intent is approved. Triage the cause before re-running — see `references/ci-triage.md`.
@@ -137,7 +137,7 @@ Present concrete options:
 
 **Typed confirmation for Discard.** Before destructive deletion, require the user to type the literal word `discard`. Generic yes / ok / sure is not enough — destructive ops need shape-matching confirmation to defeat reflex assent.
 
-Fill `templates/finish-menu.md` — gate status, the available options (3 or 4 per the detection above), the recommendation, and the one specific action awaiting authorization. State the recommendation, then wait for the user to pick before acting.
+Fill `templates/finish-menu.md` — gate status, the available options (3 or 4 per the detection above), the recommendation, and the one specific action awaiting authorization. State the recommendation, then wait for the user to pick before acting — unless the user's own message already named the action AND the target: that IS the pick, so state gate status plus the single action you are taking under that authorization and act. Authorization never widens (a PR is not a merge, one target is not another); Iron Rule 1 and the typed-`discard` rule are unchanged.
 
 ### 5. PR composition (if PR path)
 
@@ -145,7 +145,7 @@ Fill `templates/pr-body.md` — summary, test plan checklist, risks, linked arti
 
 ### 6. Launch + post-merge (if production)
 
-Launch ritual for production traffic: fill `templates/release-checklist.md` — rollback, monitoring, on-call, feature flag default, and migration safety all confirmed before traffic. Post-merge: update spec / plan if reality drifted, document non-obvious decisions.
+Launch ritual for a genuine launch event (first traffic to a new surface, a staged rollout, or a migration) — not a routine merge riding the repo's existing deploy pipeline, whose evidence is §2: fill `templates/release-checklist.md` — rollback, monitoring, on-call, feature flag default, and migration safety all confirmed before traffic. Post-merge: update spec / plan if reality drifted, document non-obvious decisions.
 
 ## If a matching Rolepod agent is available
 
@@ -165,7 +165,7 @@ Execute as Lead with this minimum viable checklist:
 1. Run the full pre-merge gate (S+T+F + Evidence + Reviewer + PR scope)
 2. Confirm Phase 1 + triggered Phase 2 CI lanes are green
 3. Present the 3- or 4-option finish menu per §3 detection
-4. Wait for the user to pick
+4. Wait for the user to pick — unless their message already named the action AND the target (§4)
 5. For PR: open with title + body + test plan
 6. For merge: run the merge command with the user's explicit authorization
 7. For launch: confirm rollback + monitoring + on-call before traffic

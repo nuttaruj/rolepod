@@ -62,7 +62,7 @@ Return / hand off:
 
 Read the touched files end-to-end (or the relevant region with line numbers). Don't pattern-match — verify the symbols and behavior exist where the plan expects.
 
-**The plan is the loop contract.** An R2 inline checklist (no artifact) is the same contract — run each step's command, and scope growing past one file → stop, write the real plan. Verify each task by running its **Command** verbatim — never a re-derived guess. When it passes, flip EVERY `- [ ]` under that task to `- [x]` in the plan artifact (tasks carry one checkbox per step; all flip together — that is how progress survives compaction). On a failing Command, follow the task's **On fail**, or the plan's **Failure policy** when the task has none. Shared plan (issues backend on — the plan header lists issue numbers per task): claim the task's issue first (assign yourself) before touching any file — already assigned means take the next unblocked, unassigned one; close it with the commit / PR pointer when the task's review passes (write-plan's `references/team-issues.md`).
+**The plan is the loop contract.** An R2 inline checklist (no artifact) is the same contract — run each step's command, and scope growing past one file → stop, write the real plan. Verify each task by running its **Command** verbatim — never a re-derived guess. When it passes, flip EVERY `- [ ]` under that task to `- [x]` in the plan artifact (tasks carry one checkbox per step; all flip together — that is how progress survives compaction) — a **Test / evidence** line naming proof this Command does not run (a browser or manual confirmation) is not covered by the flip: do that proof first. On a failing Command, follow the task's **On fail**, or the plan's **Failure policy** when the task has none. Shared plan (issues backend on — the plan header lists issue numbers per task): claim the task's issue first (assign yourself) before touching any file — already assigned means take the next unblocked, unassigned one; close it with the commit / PR pointer when the task's review passes (write-plan's `references/team-issues.md`).
 
 ### 2. TDD-light for risky paths
 
@@ -94,7 +94,7 @@ Q3: A real design-judgment call?     Q4: More than 3 tool calls total?
 ```
 All "no" → self-do. Any "yes" → delegate to the closest specialist by path / concern / strategy.
 
-When delegating, fill `templates/task-brief.md` — it scopes the task to 1-2 files, names allowed / forbidden paths, the test command, the done criteria, and the tool cap. Two rules are absolute: the subagent NEVER commits (it returns a manifest, the Lead commits), and it NEVER expands scope.
+When delegating, fill `templates/task-brief.md` — it scopes the task to 1-2 files or one module, names allowed / forbidden paths, the test command, the done criteria, and the tool cap. Two rules are absolute: the subagent NEVER commits (it returns a manifest, the Lead commits), and it NEVER expands scope.
 
 Pass the full task text + scene-setting context inline in the brief. Do not point the subagent at the plan file path — controller curates exactly the slice the subagent needs.
 

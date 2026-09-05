@@ -61,7 +61,7 @@ All green.
 
 ## Failure policy
 Default: a failing Command → debug-issue → re-run the same Command; stop
-after 3 failed attempts on one task, or on oscillation.
+after 2 failed attempts on one task (never a 4th), or on oscillation.
 EOF
 
 if plan_lint "$TMP/clean.md"; then
@@ -100,7 +100,7 @@ cat > "$TMP/par-plan.md" <<'EOF'
 ## Parallel layout
 Two tracks per `par-contract.md`; merge order: api → ui.
 ## Failure policy
-Default: debug-issue; stop after 3.
+Default: debug-issue; stop after 2 failed attempts (never a 4th).
 EOF
 cat > "$TMP/par-contract.md" <<'EOF'
 # Par Contract
@@ -135,7 +135,7 @@ cat > "$TMP/seq-plan.md" <<'EOF'
 ## Parallel layout
 Sequential — single owner.
 ## Failure policy
-Default: debug-issue; stop after 3.
+Default: debug-issue; stop after 2 failed attempts (never a 4th).
 EOF
 bash "$LINT" "$TMP/seq-plan.md" >/dev/null \
   && echo "  ✓ plan-lint.sh skips ownership on a sequential plan" \

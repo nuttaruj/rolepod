@@ -47,7 +47,7 @@ Return / hand off:
 
 ## Inputs to gather
 
-- The user's original request (literal quote if possible)
+- The user's original request and every correction since (the latest instruction wins)
 - The current state of the work (last commit, files staged, tests green / red)
 - The constraint set the user stated (deadline, no-touch zones, style)
 - Available context-trim commands for your CLI (see `references/cli-fallbacks.md`)
@@ -63,7 +63,7 @@ Return / hand off:
 | Usage / quota limit near | Context budget — handoff path, not trim |
 | Forgot a stated constraint | Session hygiene |
 | Same bug at 3 surfaces | Zoom-out |
-| 3+ failed fix attempts on the same target | Escalate |
+| 2+ failed fix attempts on the same target (informed 3rd still allowed) | Escalate |
 | Multi-file edits beyond the plan | Deep triage |
 | Unfamiliar repo, no clear entry point | Onboarding |
 
@@ -79,7 +79,7 @@ Starting fresh instead of trimming → fill `templates/handoff-brief.md` so the 
 
 ### 3. Session hygiene
 
-Re-read the original request literally. List the constraints still in force. Verify the touched files match what you remember; they may have changed since you last read them.
+Re-read the original request AND every correction stated since — the latest instruction is authoritative. List the constraints still in force. Verify the touched files match what you remember; they may have changed since you last read them.
 
 ### 4. Zoom-out
 
@@ -109,13 +109,13 @@ Two failed attempts is the trigger — same signature or progressing alike: iden
 
 A compaction summary is a lossy narrator, not a state file. Before the first
 action after any compaction (auto or `/compact`):
-- Re-read the plan artifact — checkboxes mark the real position, not the
+- Re-read the plan artifact if one exists — checkboxes mark the real position, not the
   summary's claim of it
 - Run `git log --oneline -5` + `git status` — commits and staged files are
   the ground truth of what actually landed
 - Re-open the spec / cohesion contract if the flow has one
 A summary can say a task is done that the plan file still shows `- [ ]`.
-Disk beats summary on every conflict.
+Disk beats summary on implementation state; a correction the user gave that never touched disk still stands.
 
 ### 8. Onboarding (new repo)
 
@@ -174,7 +174,7 @@ Load only when the task needs it:
 ## Hard stops
 
 - Context is too heavy to trim safely → start a fresh session with a written handoff brief
-- 3 failed attempts at the same target → stop, escalate, do not try a fourth blind
+- 2 failed attempts at the same target with no outside opinion → stop and get one (debug flow: §9); only the informed 3rd is permitted, never a blind 4th
 - You cannot name what the user asked for in one sentence → stop, re-read the request
 - An unfamiliar repo has no README and no obvious entry → ask the user before editing
 

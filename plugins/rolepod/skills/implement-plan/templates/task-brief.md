@@ -11,7 +11,7 @@
 - `path/to/file`
 
 ## Files forbidden
-<Paths the subagent must NOT touch — shared interfaces, other owners' code,
+<Paths the subagent must NOT EDIT (reading one to check a caller is fine) — shared interfaces, other owners' code,
  anything outside this task.>
 
 ## Inputs

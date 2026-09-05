@@ -130,7 +130,7 @@ Route specialist work upfront:
 - `qa-tester` for test plan depth
 - `security-engineer` on any touched high-risk surface (auth / billing / payments / credits / migration / data deletion / secrets / tokens / crypto / permissions / security)
 
-Brief each agent with the spec, the file list, the test plan, and the handoff partner.
+Brief each agent per §6's formula (task + files + tests + done criteria + handoff partner), plus the spec.
 
 ## If no matching agent is available
 

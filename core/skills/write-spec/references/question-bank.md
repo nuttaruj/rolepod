@@ -2,7 +2,7 @@
 <!-- Iron rule: ask ONLY questions whose answer changes the implementation. -->
 <!-- If the codebase can answer it, read the codebase — do not spend a question. -->
 
-Ask one question at a time. Resolve the question that gates the others first.
+Ask every ready question in the round together, per SKILL.md §2's frontier-round policy; within a round, resolve the question that gates the others first.
 
 ## Question types
 
@@ -50,6 +50,14 @@ Stop early: if an answer makes a later question irrelevant, skip it.
 - The codebase or repo docs already answer it.
 - The answer does not change a single line of the implementation.
 - It is a styling / naming detail the user already delegated.
+- The user already answered it this session or in a prior spec revision —
+  re-ask only when new evidence changes it, and say what changed.
+
+## Answering the round
+- A partial reply (`1a 3c`) closes only those questions; the rest stay open
+  next round, never defaulted.
+- `defaults` takes only the recommendations shown that round; silence or
+  elapsed time is not an answer.
 
 ## Cross-family critique — questions only, before Gate 1 (§4b)
 
@@ -85,8 +93,9 @@ Never for routine specs.
    already settle → answer them yourself (Read / `rg`, never guess) and
    fold the answer into the draft. Items that are genuinely the user's
    decision → ONE extra discovery round per §2: numbered, a recommended
-   default per question, cap 5. Never forward the critic's list raw, never
-   run a second critique on the same draft.
+   default per question. Never forward the critic's list raw, never run a
+   second critique on the same draft — new material questions the answers
+   reveal continue in normal discovery.
 4. **Record** one line under **Open questions** (the template carries the
    slot): `Cross-family critique: <cli> — N items, K settled from repo, M
    asked` · `Cross-family critique: <cli> — NO FURTHER QUESTIONS` ·

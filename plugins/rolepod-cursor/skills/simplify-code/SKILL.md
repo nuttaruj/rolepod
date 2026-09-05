@@ -13,7 +13,7 @@ Simplify-phase skill — cross-phase, usable during Build (refactor intent) or a
 1. NEVER simplify without a test suite that proves behavior before and after.
 2. NEVER remove an abstraction the codebase actually depends on — verify call sites first.
 3. NEVER add a new abstraction for "hypothetical future use". One concrete user is not enough.
-4. Same pattern in 3+ places → centralize. On the high-risk list — auth, billing, credits, URL validation, redirects, SSRF, cookies, logging, retries, external API — TWO occurrences already force it.
+4. Same pattern in 3+ places, enforcing the SAME rule (one invariant, one lifecycle) → centralize; text that only reads alike under a different contract stays separate. On the high-risk list — auth, billing, credits, URL validation, redirects, SSRF, cookies, logging, retries, external API — TWO occurrences already force it.
 5. Apply the deletion test before any cut. Imagine deleting the module: if complexity vanishes, it was a pass-through — delete safely. If complexity reappears scattered across N callers, the abstraction was earning its keep — keep it.
 </EXTREMELY-IMPORTANT>
 
@@ -30,7 +30,7 @@ Simplify-phase skill — cross-phase, usable during Build (refactor intent) or a
 Skip when:
 - Tests don't exist for the touched code — write them first via `implement-plan` or `debug-issue`
 - The "complexity" is load-bearing (security boundary, data invariant)
-- It is mid-feature; finish the feature first
+- It is mid-feature and the cut is not required to unblock the planned change — a required prefactor is not a skip (§4b)
 
 ## Boundary
 
@@ -82,7 +82,7 @@ Before removing anything, run **Chesterton's Fence** + the **deletion test** (Ir
 
 ### 3. Prefer structural over runtime
 
-A runtime `if (x === null) throw` becomes a non-nullable type. A "must be set" config becomes a required constructor argument. Make the bad state un-representable when the type system allows.
+A runtime `if (x === null) throw` becomes a non-nullable type. A "must be set" config becomes a required constructor argument. Make the bad state un-representable when the type system allows. A type proves what your own code produces, not what arrived — JSON / network / config / DB values still need a runtime check at the boundary where they enter.
 
 ### 4. Centralize at 3 occurrences
 
@@ -98,11 +98,11 @@ Skip this rule if the change is genuinely small and the shape is fine; do not in
 
 ### 5. One change at a time
 
-One cut per commit. Run the test suite between cuts. A failing test mid-simplification tells you the previous cut went too far — revert that one, not all of them.
+One cut per commit. Run the test suite between cuts. A delegated subagent stages instead and returns diff + proof — the Lead commits (`implement-plan`). A failing test mid-simplification tells you the previous cut went too far — revert that one, not all of them.
 
 ### 6. Stop when behavior is at risk
 
-If a cut requires changing a test assertion to keep it green, you are no longer behavior-preserving. Stop, ask the user, or move the cut to a separate `implement-plan` task with a real spec.
+If a cut requires changing what a test asserts, stop and check what that assertion proved. If the expected VALUE changes, you are no longer behavior-preserving — ask the user, or move the cut to a separate `implement-plan` task with a real spec. Only a retarget onto the same observable output (a private detail or a mock's call shape) is still behavior-preserving.
 
 ## If a matching Rolepod agent is available
 
@@ -139,7 +139,7 @@ Non-blocking — read only when unsure whether a cut is behavior-preserving:
 ## Hard stops
 
 - Tests were not green at the start → write tests first, do not simplify on a red baseline
-- A cut required a test assertion change → that is a behavior change, route to `implement-plan`
+- A cut changed a test's expected VALUE (not just which line/mock it asserts against) → that is a behavior change, route to `implement-plan`
 - An "unused" abstraction has callers you missed → restore it and verify before another attempt
 - About to invent a new abstraction for one caller → reject; that is complexity, not simplification
 - About to delete a module without running the deletion test → stop; Iron Rule 5
