@@ -327,7 +327,9 @@ XFAM_RUNNING=""
 if [ -d "$EV_ROOT/external/jobs" ]; then
   for _jd in "$EV_ROOT"/external/jobs/*/; do
     [ -d "$_jd" ] || continue; [ -f "$_jd/status" ] && continue
-    _jp=$(cat "$_jd/pid" 2>/dev/null); [ -n "$_jp" ] && kill -0 "$_jp" 2>/dev/null || continue
+    _jp=$(cat "$_jd/pid" 2>/dev/null); case "$_jp" in ''|*[!0-9]*) continue ;; esac
+    kill -0 "$_jp" 2>/dev/null || continue
+    ps -o command= -p "$_jp" 2>/dev/null | grep -q 'cross-family' || continue   # pid reused by something else = dead job
     _js=$(cat "$_jd/started" 2>/dev/null || echo 0); _jm=$(( ($(date +%s) - _js) / 60 ))
     XFAM_RUNNING="$(basename "$_jd") (running ${_jm} min)"
   done

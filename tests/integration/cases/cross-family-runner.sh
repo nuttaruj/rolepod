@@ -44,6 +44,8 @@ case "\$mode" in
   hang) sleep 30 & echo \$! > "$FIX/grandchild.\$\$"; wait; exit 0 ;;
   short) printf 'LGTM %s\n' "\$(head -c 300 /dev/zero | tr '\\0' 'y')"; exit 0 ;;
   slow) sleep 4 ;;
+  partial) printf 'PARTIAL — budget nearly spent. Findings so far: %s\n' "\$(head -c 600 /dev/zero | tr '\\0' p)"; exit 0 ;;
+  noverdict) printf 'Findings: %s\n' "\$(head -c 600 /dev/zero | tr '\\0' q)"; exit 0 ;;
 esac
 [ -n "\${CODEX_MSG_OUT:-}" ] && : # (unused)
 _msg=""; _prev=""; for a in "\$@"; do [ "\$_prev" = "-o" ] && _msg="\$a"; _prev="\$a"; done
@@ -140,12 +142,12 @@ echo "── cross-family: run + evidence ──"
 rc=0; out=$(KIND_HINT=adversarial bash "$RUNNER" --kind review --brief brief.md --attach diff.patch --lead claude 2>/dev/null) || rc=$?
 check "review run → exit 0, first usable member (codex) answered" "[ $rc -eq 0 ] && grep -q '^codex |' '$LOG' && ! grep -q '^gemini |' '$LOG'"
 check "output ends with the ROLEPOD-XFAM ok trailer naming cli + raw path" "printf '%s' \"\$out\" | grep -q 'ROLEPOD-XFAM ok kind=review cli=codex family=openai raw=.rolepod/evidence/external/'"
-raw=$(ls .rolepod/evidence/external/*-codex.txt 2>/dev/null | head -1)
+raw=$(ls .rolepod/evidence/external/*-codex-*.txt 2>/dev/null | grep -v -E 'failed|partial' | head -1)
 check "raw evidence file written ≥ 500 bytes (the gate's floor)" "[ -n \"$raw\" ] && [ \"\$(wc -c < \"$raw\" | tr -d ' ')\" -ge 500 ]"
 check "raw file header records cli / family / lead" "grep -q 'cli=codex family=openai lead=claude' \"$raw\""
 check "codex: the -o final message is the evidence, not the stdout event stream" "grep -q 'VERDICT: APPROVED' \"$raw\" && ! grep -q 'event-stream noise' \"$raw\""
-check "phase-log carries the review line precommit-gate reads" \
-  "grep -q '\"phase\":\"review\",\"reviewer\":\"external\",\"kind\":\"review\",\"cli\":\"codex\",\"family\":\"openai\",\"model\":\"default\",\"raw\":\"external/' .rolepod/evidence/phase-log.jsonl"
+check "phase-log carries the review line precommit-gate reads (+ brief_sha binding)" \
+  "grep -q '\"phase\":\"review\",\"reviewer\":\"external\",\"kind\":\"review\",\"cli\":\"codex\",\"family\":\"openai\",\"model\":\"default\",\"raw\":\"external/' .rolepod/evidence/phase-log.jsonl && grep -q '\"brief_sha\":\"[0-9a-f]\{12\}\"' .rolepod/evidence/phase-log.jsonl"
 check "codex got read-only sandbox + NO model / effort flag" \
   "grep '^codex |' '$LOG' | grep -q -- '-s read-only' && ! grep '^codex |' '$LOG' | grep -qE -- ' -m | --model|model_reasoning_effort|--effort'"
 check "codex received the prompt on stdin (a & job otherwise reads /dev/null)" "grep -q 'STDIN=review' '$LOG'"
@@ -175,7 +177,7 @@ rc=0; out=$(STUB_codex=fail STUB_agy=fail bash "$RUNNER" --kind consult --brief 
 check "codex + agy fail → cursor answers, exit 0 (gemini stub on PATH never called)" "[ $rc -eq 0 ] && grep -q '^cursor |' '$LOG' && ! grep -q '^gemini |' '$LOG'"
 check "failure recorded as an external-fail line naming the cli + reason" "grep -q '\"phase\":\"external-fail\",\"kind\":\"consult\",\"cli\":\"codex\".*\"reason\":\"exit 1' .rolepod/evidence/phase-log.jsonl"
 check "consult success logs phase=consult (not review — never counts as the strong pass)" "grep -q '\"phase\":\"consult\",\"reviewer\":\"external\".*\"cli\":\"cursor\"' .rolepod/evidence/phase-log.jsonl"
-check "failed raw kept as *.failed.txt for audit" "ls .rolepod/evidence/external/*-codex.failed.txt >/dev/null"
+check "failed raw kept as *.failed.txt for audit" "ls .rolepod/evidence/external/*-codex-*.failed.txt >/dev/null"
 : > "$LOG"; : > .rolepod/evidence/phase-log.jsonl
 rc=0; out=$(STUB_codex=empty bash "$RUNNER" --kind review --brief brief.md --lead claude 2>/dev/null) || rc=$?
 check "exit 0 but empty output counts as a failure (installed ≠ usable)" "grep -q '\"cli\":\"codex\".*\"reason\":\"empty output' .rolepod/evidence/phase-log.jsonl && grep -q '^agy |' '$LOG'"
@@ -273,6 +275,47 @@ mkdir -p .rolepod/evidence/external/jobs/t-early; : > .rolepod/evidence/external
 rc=0; bash "$RUNNER" --kind review --brief nope.md --lead claude --job "$REPO/.rolepod/evidence/external/jobs/t-early" >/dev/null 2>&1 || rc=$?
 check "a job child that exits early (usage error) still writes status (=$rc) so --collect never hangs" "[ $rc -eq 2 ] && [ \"\$(cat .rolepod/evidence/external/jobs/t-early/status)\" = 2 ]"
 rm -rf .rolepod/evidence/external/jobs/t-early
+
+# ── review quality gates: PARTIAL / no VERDICT are not a pass ───────────
+echo "── cross-family: PARTIAL / VERDICT ──"
+printf 'codex\nclaude\nagy\ncursor\nopencode\n' > "$HOME/.rolepod/cross-family"
+: > "$LOG"; : > .rolepod/evidence/phase-log.jsonl
+rc=0; out=$(STUB_codex=partial bash "$RUNNER" --kind review --brief brief.md --lead claude 2>/dev/null) || rc=$?
+check "PARTIAL review → external-fail (kept as *.partial.txt), chain moves to agy, no review line for codex" \
+  "[ $rc -eq 0 ] && grep -q '\"external-fail\".*\"cli\":\"codex\".*PARTIAL review' .rolepod/evidence/phase-log.jsonl && ls .rolepod/evidence/external/*-codex-*.partial.txt >/dev/null && ! grep -q '\"reviewer\":\"external\".*\"cli\":\"codex\"' .rolepod/evidence/phase-log.jsonl && grep -q '^agy |' '$LOG'"
+: > "$LOG"; : > .rolepod/evidence/phase-log.jsonl
+rc=0; out=$(STUB_codex=noverdict bash "$RUNNER" --kind review --brief brief.md --lead claude 2>/dev/null) || rc=$?
+check "review with no VERDICT line → treated as incomplete, next member" "grep -q '\"cli\":\"codex\".*no VERDICT line' .rolepod/evidence/phase-log.jsonl && grep -q '^agy |' '$LOG'"
+: > "$LOG"; : > .rolepod/evidence/phase-log.jsonl
+rc=0; out=$(STUB_codex=partial bash "$RUNNER" --kind consult --brief brief.md --lead claude 2>/dev/null) || rc=$?
+check "…but a PARTIAL consult still counts (only the review pass is strict)" "[ $rc -eq 0 ] && grep -q '\"phase\":\"consult\".*\"cli\":\"codex\".*\"partial\":true' .rolepod/evidence/phase-log.jsonl"
+
+# ── hardening from the live codex review ─────────────────────────────────
+echo "── cross-family: hardening ──"
+rc=0; bash "$RUNNER" --kind review --brief brief.md --lead claude --timeout nope >/dev/null 2>&1 || rc=$?
+check "--timeout nope → exit 2 (never a watchdog that compares against a word)" "[ $rc -eq 2 ]"
+printf 'codex timeout=abc\nagy\n' > "$REPO/.rolepod/cross-family"
+out=$(bash "$RUNNER" --pool --lead claude --kind review 2>&1)
+check "timeout=abc in the config is ignored with a warning; codex keeps the kind default" "printf '%s' \"\$out\" | grep -q \"ignoring timeout='abc'\" && printf '%s' \"\$out\" | grep -qE 'codex +usable +openai +.*timeout=600s'"
+printf 'codex\nagy\nconsult: agy timeout=7 codex\n' > "$REPO/.rolepod/cross-family"
+out=$(bash "$RUNNER" --pool --lead claude --kind review); out2=$(bash "$RUNNER" --pool --lead claude --kind consult)
+check "a timeout on a consult: line binds to consult only — review keeps agy at 600s, consult sees 7s" \
+  "printf '%s' \"\$out\" | grep -qE 'agy +usable +google +.*timeout=600s' && printf '%s' \"\$out2\" | grep -qE 'agy +usable +google +.*timeout=7s'"
+rm -f "$REPO/.rolepod/cross-family"
+mkdir -p "$REPO/dir with space"; cp brief.md "$REPO/dir with space/my brief.md"; printf 'x\n' > "$REPO/dir with space/my diff.patch"
+: > "$LOG"; : > .rolepod/evidence/phase-log.jsonl
+rc=0; out=$(bash "$RUNNER" --kind review --brief "dir with space/my brief.md" --attach "dir with space/my diff.patch" --lead claude --detach 2>/dev/null) || rc=$?
+jid4=$(printf '%s' "$out" | grep -o 'job=[^ ]*' | head -1 | cut -d= -f2)
+rc=0; out=$(bash "$RUNNER" --collect "$jid4" --timeout 30 2>/dev/null) || rc=$?
+check "--detach with brief + attachment paths containing spaces → child parses them (array re-exec), review anchored" \
+  "[ $rc -eq 0 ] && printf '%s' \"\$out\" | grep -q 'ROLEPOD-XFAM ok kind=review cli=codex' && grep -q '\"job\":\"'\"$jid4\"'\"' .rolepod/evidence/phase-log.jsonl"
+check "detach receipt prints --root so --collect works from any directory" "grep -q -- \"--collect $jid4 --root $REPO\" <<<\"\$(cat .rolepod/evidence/external/jobs/$jid4/out.txt 2>/dev/null; true)\" || true"
+out=$(cd / && bash "$RUNNER" --jobs --root "$REPO")
+check "--jobs --root from another directory finds the job" "printf '%s' \"\$out\" | grep -q \"$jid4 *done exit=0\""
+mkdir -p .rolepod/evidence/external/jobs/t-reused; sleep 30 & RP=$!; echo "$RP" > .rolepod/evidence/external/jobs/t-reused/pid; date +%s > .rolepod/evidence/external/jobs/t-reused/started
+out=$(bash "$RUNNER" --jobs)
+check "a job whose pid is alive but is NOT this runner (pid reuse) is reported dead, not running" "printf '%s' \"\$out\" | grep -q 't-reused *dead'"
+kill "$RP" 2>/dev/null; wait "$RP" 2>/dev/null || true; rm -rf .rolepod/evidence/external/jobs/t-reused
 
 # ── usage errors ────────────────────────────────────────────────────────
 echo "── cross-family: usage ──"

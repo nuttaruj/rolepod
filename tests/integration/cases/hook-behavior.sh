@@ -252,7 +252,7 @@ printf '%s\n' \
   '{"type":"tool_use","name":"Task","input":{"subagent_type":"rolepod:security-engineer","prompt":"review"}}' \
   > "$TRANSCRIPT"
 JOBD="$TMP/.rolepod/evidence/external/jobs/t-review-1"; mkdir -p "$JOBD"
-sleep 20 & JPID=$!; echo "$JPID" > "$JOBD/pid"; date +%s > "$JOBD/started"
+bash -c 'sleep 20; :' cross-family-fake-job & JPID=$!; echo "$JPID" > "$JOBD/pid"; date +%s > "$JOBD/started"   # argv carries cross-family so the pid-reuse check accepts it
 out=$(pcx 'git commit -m "add billing"')
 check "high-risk + internal strong + pool usable + a detached review job RUNNING → deny names the job (wait / --collect), not 'run the runner'" deny "$out"
 echo "$out" | grep -q 'ALREADY RUNNING: t-review-1' && ! echo "$out" | grep -q -- '--detach (or scripts' \

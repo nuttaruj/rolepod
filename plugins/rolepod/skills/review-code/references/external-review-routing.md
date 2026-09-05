@@ -20,7 +20,7 @@ the SessionStart context names the path on marketplace installs):
 git diff <base>...HEAD > /tmp/diff.patch          # the frozen diff
 rolepod-cross-family --kind review --brief /tmp/brief.md --attach /tmp/diff.patch --detach
 #   → ROLEPOD-XFAM job=<id> kind=review members=codex agy budgets=codex=1800s agy=1800s …
-rolepod-cross-family --collect <id>               # before the commit: waits, prints the review + receipt
+rolepod-cross-family --collect <id> --root <git-root>   # before the commit: waits, prints the review + receipt (any cwd)
 rolepod-cross-family --jobs                       # running / done
 # outside a hook the Lead CLI is auto-detected on Claude; elsewhere add --lead codex|agy|cursor|opencode
 ```
@@ -65,7 +65,9 @@ records `model: default`.
   preference order (`codex` / `claude` / `agy` / `cursor` / `opencode`),
   options after the name (`codex timeout=1800`), optional per-kind order
   lines (`consult: agy codex` — the debug loop wants the fast answer first,
-  review can wait for the deep one), `#` comments. **No file = off. `none`
+  review can wait for the deep one; a `timeout=` on a kind line binds to
+  that kind only), `#` comments. Timeouts are whole seconds — anything else
+  is ignored with a warning, never a watchdog that compares against a word. **No file = off. `none`
   = off.** Rolepod never enables it on
   its own: the SessionStart context asks you to put the question to the
   user ONCE (installed candidates listed — `rolepod-cross-family
@@ -80,6 +82,13 @@ records `model: default`.
   `unknown` — still used, flagged "decorrelation unverified" in
   `--pool`. Two members of one family: the second is a sequential
   fallback only (a harness is not a second opinion).
+- **A review pass must be complete.** A review that comes back `PARTIAL`
+  (budget nearly spent) or without its `VERDICT:` line is kept as
+  `*.partial.txt` for you to read, logged as `external-fail`, and the chain
+  moves to the next member — it never anchors the strong pass (consult /
+  advise / critique answers marked PARTIAL still count; only the pass the
+  gate trusts is strict). Every anchor carries `brief_sha` and, in a job,
+  the job id, so an evidence line is tied to what was reviewed.
 - **Installed ≠ usable** — the runner proves it at invoke: exit ≠ 0,
   timeout, or < 200 bytes → an `external-fail` phase-log line and the next
   member. Every member failed → exit 3; enabled but nothing usable → exit

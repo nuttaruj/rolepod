@@ -172,7 +172,7 @@ rolepod-cross-family --pool                       # resolved pool with reasons (
 rolepod-cross-family --candidates                 # installed other-family CLIs — the opt-in question
 rolepod-cross-family --probe                      # one-line "reply OK" per member (spends a call each)
 rolepod-cross-family --kind review  --brief brief.md --attach diff.patch --detach   # job; --collect <id> waits
-rolepod-cross-family --collect <job-id>            # prints the review + receipt when the job lands (exit 6 = still running)
+rolepod-cross-family --collect <job-id> --root <git-root>   # prints the review + receipt when the job lands (exit 6 = still running); PARTIAL / no-VERDICT reviews never anchor
 rolepod-cross-family --jobs                        # running / done
 rolepod-cross-family --kind consult --brief ledger.md
 rolepod-cross-family --kind advise  --brief decision.md --all      # one member per family, concurrently
@@ -209,7 +209,10 @@ probe live). Live-verified 2026-09-04 on this machine: agy 10 s, cursor
 (IneligibleTierError — retired); codex answered the probe but timed out a
 real review at 600 s under its owner's `model_reasoning_effort = "max"`
 default, and the runner fell through to agy, which returned a REJECTED
-verdict with traced findings in 24 s (that review shaped v2.76.0).
+verdict with traced findings in 24 s (that review shaped v2.76.0). With
+v2.79.0's budget line and a detached 1500 s job, the same codex default
+finished a real review of the runner diff in 1082 s with nine traced
+findings — eight of them fixed in v2.79.1.
 
 ## Recommended Claude Code setup
 

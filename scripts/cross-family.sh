@@ -88,6 +88,8 @@ while [ $# -gt 0 ]; do
   esac
 done
 
+is_num() { case "${1:-}" in ''|*[!0-9]*) return 1 ;; *) return 0 ;; esac; }
+if [ -n "$FLAG_TIMEOUT" ] && ! is_num "$FLAG_TIMEOUT"; then echo "cross-family: --timeout must be a whole number of seconds (got '$FLAG_TIMEOUT')" >&2; exit 2; fi
 if [ -n "$ROOT_FLAG" ]; then ROOT="$ROOT_FLAG"; else ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"; fi
 EV="$ROOT/.rolepod/evidence"
 JOBS="$EV/external/jobs"
@@ -98,19 +100,25 @@ TMPP=""
 # A detached child records its exit status whatever path it leaves by —
 # installed before the first `exit`, so --collect never waits on a job that
 # died early (config gone, usage error, pool off).
-finish() { _rc=$?; if [ -n "$JOB_DIR" ]; then { printf '%s\n' "$_rc" > "$JOB_DIR/status"; date +%s > "$JOB_DIR/finished"; } 2>/dev/null; fi; [ -n "$TMPP" ] && rm -rf "$TMPP"; }
+finish() { _rc=$?; if [ -n "$JOB_DIR" ]; then { date +%s > "$JOB_DIR/finished"; printf '%s\n' "$_rc" > "$JOB_DIR/status.tmp" && mv -f "$JOB_DIR/status.tmp" "$JOB_DIR/status"; } 2>/dev/null; fi; [ -n "$TMPP" ] && rm -rf "$TMPP"; }
 trap finish EXIT
 if [ -n "$JOB_DIR" ]; then mkdir -p "$JOB_DIR" 2>/dev/null; [ -f "$JOB_DIR/started" ] || date +%s > "$JOB_DIR/started"; fi
 
 # ── Jobs (no Lead needed) ──────────────────────────────────────────────
 job_elapsed() { _st=$(cat "$1/started" 2>/dev/null || echo 0); echo $(( ($(date +%s) - _st) / 60 )); }
+job_alive() { # $1 job dir → 0 when the recorded pid is alive AND is still this runner (SIGKILL skips the trap; pids get reused)
+  _p=$(cat "$1/pid" 2>/dev/null); is_num "$_p" || return 1
+  kill -0 "$_p" 2>/dev/null || return 1
+  ps -o command= -p "$_p" 2>/dev/null | grep -q 'cross-family' || return 1
+}
+job_status() { _v=$(cat "$1/status" 2>/dev/null); is_num "$_v" && echo "$_v" || echo 3; }
 if [ "$MODE" = "jobs" ]; then
   [ -d "$JOBS" ] || { echo "no cross-family jobs under $JOBS"; exit 0; }
   for d in "$JOBS"/*/; do
     [ -d "$d" ] || continue; id=$(basename "$d")
-    if [ -f "$d/status" ]; then st="done exit=$(cat "$d/status")"
-    elif kill -0 "$(cat "$d/pid" 2>/dev/null)" 2>/dev/null; then st="running $(job_elapsed "$d") min"
-    else st="dead (no status)"; fi
+    if [ -f "$d/status" ]; then st="done exit=$(job_status "$d")"
+    elif job_alive "$d"; then st="running $(job_elapsed "$d") min"
+    else st="dead (no status — killed?)"; fi
     printf '  %-32s %-18s %s\n' "$id" "$st" "$(grep -E '^ROLEPOD-XFAM' "$d/out.txt" 2>/dev/null | tail -1 | cut -c1-110)"
   done
   exit 0
@@ -119,14 +127,14 @@ if [ "$MODE" = "collect" ]; then
   d="$JOBS/$COLLECT_ID"; [ -d "$d" ] || { echo "cross-family: no job $COLLECT_ID under $JOBS" >&2; exit 2; }
   W="${FLAG_TIMEOUT:-1800}"; s=$SECONDS
   while [ ! -f "$d/status" ]; do
-    if ! kill -0 "$(cat "$d/pid" 2>/dev/null)" 2>/dev/null; then
+    if ! job_alive "$d"; then
       sleep 1; [ -f "$d/status" ] && break
-      echo "ROLEPOD-XFAM job=$COLLECT_ID died without a status — see $d/err.txt"; exit 3
+      echo "ROLEPOD-XFAM job=$COLLECT_ID died without a status (killed?) — see $d/err.txt; fall back to the internal path"; exit 3
     fi
     if [ $(( SECONDS - s )) -ge "$W" ]; then echo "ROLEPOD-XFAM job=$COLLECT_ID still running ($(job_elapsed "$d") min) — collect again later or fall back to the internal path"; exit 6; fi
     sleep 2
   done
-  cat "$d/out.txt" 2>/dev/null; exit "$(cat "$d/status" 2>/dev/null || echo 3)"
+  cat "$d/out.txt" 2>/dev/null; exit "$(job_status "$d")"
 fi
 
 # ── Lead detection ─────────────────────────────────────────────────────
@@ -232,7 +240,10 @@ if [ -n "$CFG" ]; then
     for _t in $_ln; do
       case "$_t" in
         *=*) _key="${_t%%=*}"; _val="${_t#*=}"
-             [ "$_key" = "timeout" ] && [ -n "$_last" ] && TO_LIST="$TO_LIST $_last=$_val" ;;
+             if [ "$_key" = "timeout" ] && [ -n "$_last" ]; then
+               if ! is_num "$_val"; then echo "cross-family: ignoring timeout='$_val' for $_last in $CFG (whole seconds only)" >&2
+               elif [ -z "$_k" ] || [ "$_k" = "$KIND" ]; then TO_LIST="$TO_LIST $_last=$_val"; fi   # a kind line's options bind to that kind only
+             fi ;;
         *) _last="$_t"; _acc="$_acc${_acc:+ }$_t" ;;
       esac
     done
@@ -402,22 +413,24 @@ abspath() { case "$1" in /*) printf '%s' "$1" ;; *) printf '%s/%s' "$(cd "$(dirn
 if [ "$DETACH" -eq 1 ]; then
   JOB_ID="$(date -u +%Y%m%dT%H%M%SZ)-$KIND-$$"; JD="$JOBS/$JOB_ID"
   mkdir -p "$JD" 2>/dev/null || { echo "cross-family: cannot create $JD" >&2; exit 2; }
-  cp "$CFG" "$JD/cross-family" 2>/dev/null && printf '%s\n' "$CFG" > "$JD/cross-family.src"   # the pool the user had when they started it
-  CHILD="--kind $KIND --brief $(abspath "$BRIEF") --lead $LEAD --root $ROOT --job $JD --config $JD/cross-family"
-  [ "$ALL" -eq 1 ] && CHILD="$CHILD --all"
-  [ -n "$FLAG_TIMEOUT" ] && CHILD="$CHILD --timeout $FLAG_TIMEOUT"
-  ATT_ARGS=""
+  # Snapshot the pool the user had when they started it — fail closed: a
+  # job must never silently run on a different config than the one shown.
+  if ! cp "$CFG" "$JD/cross-family" 2>/dev/null; then echo "cross-family: cannot snapshot $CFG into $JD — not detaching" >&2; rm -rf "$JD"; exit 2; fi
+  printf '%s\n' "$CFG" > "$JD/cross-family.src"
+  # Child argv as an ARRAY — paths with spaces / globs survive the re-exec.
+  CHILD_ARGS=(--kind "$KIND" --brief "$(abspath "$BRIEF")" --lead "$LEAD" --root "$ROOT" --job "$JD" --config "$JD/cross-family")
+  [ "$ALL" -eq 1 ] && CHILD_ARGS=("${CHILD_ARGS[@]}" --all)
+  [ -n "$FLAG_TIMEOUT" ] && CHILD_ARGS=("${CHILD_ARGS[@]}" --timeout "$FLAG_TIMEOUT")
   if [ -n "$ATTACH" ]; then
-    while IFS= read -r a; do [ -f "$a" ] && ATT_ARGS="$ATT_ARGS --attach $(abspath "$a")"; done <<EOF
+    while IFS= read -r a; do [ -f "$a" ] && CHILD_ARGS=("${CHILD_ARGS[@]}" --attach "$(abspath "$a")"); done <<EOF
 $ATTACH
 EOF
   fi
-  printf '%s %s\n' "$CHILD" "$ATT_ARGS" > "$JD/args"
+  printf '%q ' "${CHILD_ARGS[@]}" > "$JD/args"; echo >> "$JD/args"
   date +%s > "$JD/started"
-  # shellcheck disable=SC2086
-  set -m; nohup bash "$0" $CHILD $ATT_ARGS > "$JD/out.txt" 2> "$JD/err.txt" < /dev/null & echo $! > "$JD/pid"; set +m
+  set -m; nohup bash "$0" "${CHILD_ARGS[@]}" > "$JD/out.txt" 2> "$JD/err.txt" < /dev/null & echo $! > "$JD/pid"; set +m
   TOS=""; for c in $USABLE; do TOS="$TOS${TOS:+ }$c=$( JOB_DIR="$JD" timeout_for "$c" )s"; done
-  echo "ROLEPOD-XFAM job=$JOB_ID kind=$KIND members=$USABLE budgets=$TOS — keep working; collect with: rolepod-cross-family --collect $JOB_ID   (list: --jobs). The chain falls through on its own and anchors the receipt; the commit gate sees the job."
+  echo "ROLEPOD-XFAM job=$JOB_ID kind=$KIND members=$USABLE budgets=$TOS — keep working; collect with: rolepod-cross-family --collect $JOB_ID --root $ROOT   (list: --jobs --root $ROOT). The chain falls through on its own and anchors the receipt; the commit gate sees the job."
   exit 0
 fi
 TMPP=$(mktemp -d "${TMPDIR:-/tmp}/rolepod-xfam.XXXXXX")
@@ -454,6 +467,9 @@ BBYTES=$(wc -c < "$BODY" | tr -d ' ')
 [ "$BBYTES" -le 398000 ] || { echo "cross-family: brief + attachments are ${BBYTES} bytes (>398000) — trim them" >&2; exit 2; }
 ARGV_CAP=118000
 mkdir -p "$EV/external" 2>/dev/null || true
+BRIEF_SHA=$( { shasum -a 256 "$BODY" 2>/dev/null || sha256sum "$BODY" 2>/dev/null; } | awk '{print substr($1,1,12)}')
+JOB_ID_TAG=""; [ -n "$JOB_DIR" ] && JOB_ID_TAG=$(basename "$JOB_DIR")
+RUN_TAG="${JOB_ID_TAG:-fg-$$}"
 
 one() { # $1 cli → 0 ok / 1 fail; writes $TMPP/$1.{out,err,line,jsonl} — the PARENT appends .jsonl
   _c="$1"; _f=$(family_of "$_c"); _ts=$(date -u +%Y%m%dT%H%M%SZ)
@@ -472,23 +488,33 @@ one() { # $1 cli → 0 ok / 1 fail; writes $TMPP/$1.{out,err,line,jsonl} — the
   if [ "$_c" = "codex" ] && [ -s "$TMPP/$_c.out.msg" ]; then mv "$TMPP/$_c.out" "$TMPP/$_c.out.stream"; mv "$TMPP/$_c.out.msg" "$TMPP/$_c.out"; fi
   _bytes=$(wc -c < "$TMPP/$_c.out" | tr -d ' ')
   _floor=200; [ "$KIND" = "review" ] && _floor=500   # the commit gate's raw-file floor
+  _partial=""; head -c 400 "$TMPP/$_c.out" 2>/dev/null | grep -q 'PARTIAL' && _partial=" partial=1"
+  _verdict=1; if [ "$KIND" = "review" ]; then grep -qi 'VERDICT' "$TMPP/$_c.out" 2>/dev/null || _verdict=0; fi
+  # A review that ran out of budget (PARTIAL) or never reached its VERDICT line
+  # is information for the Lead, never the strong pass: it is kept as
+  # *.partial.txt, logged as external-fail, and the chain moves on.
+  if [ "$_rc" -eq 0 ] && [ "$_bytes" -ge "$_floor" ] && [ "$KIND" = "review" ] && { [ -n "$_partial" ] || [ "$_verdict" -eq 0 ]; }; then
+    _rc=125
+  fi
   if [ "$_rc" -eq 0 ] && [ "$_bytes" -ge "$_floor" ]; then
-    _raw="external/$_ts-$_c.txt"
-    _partial=""; head -c 400 "$TMPP/$_c.out" | grep -q 'PARTIAL' && _partial=" partial=1"
+    _raw="external/$_ts-$_c-$RUN_TAG.txt"
     { printf '# rolepod cross-family %s · cli=%s family=%s lead=%s (%s) · %s · exit=%s secs=%s bytes=%s budget=%ss%s\n# brief: %s\n\n' \
         "$KIND" "$_c" "$_f" "$LEAD" "$LEAD_FAMILY" "$(iso_now)" "$_rc" "$_secs" "$_bytes" "$TIMEOUT" "$_partial" "$BRIEF"
       cat "$TMPP/$_c.out"; } > "$EV/$_raw" 2>/dev/null || true
-    printf '%s\n' "{\"ts\":\"$(iso_now)\",\"phase\":\"$PHASE\",\"reviewer\":\"external\",\"kind\":\"$KIND\",\"cli\":\"$_c\",\"family\":\"$_f\",\"model\":\"default\",\"raw\":\"$_raw\",\"lead\":\"$LEAD\",\"secs\":$_secs,\"budget\":$TIMEOUT${_partial:+,\"partial\":true}}" > "$TMPP/$_c.jsonl"
+    printf '%s\n' "{\"ts\":\"$(iso_now)\",\"phase\":\"$PHASE\",\"reviewer\":\"external\",\"kind\":\"$KIND\",\"cli\":\"$_c\",\"family\":\"$_f\",\"model\":\"default\",\"raw\":\"$_raw\",\"lead\":\"$LEAD\",\"secs\":$_secs,\"budget\":$TIMEOUT,\"brief_sha\":\"$BRIEF_SHA\"${JOB_ID_TAG:+,\"job\":\"$JOB_ID_TAG\"}${_partial:+,\"partial\":true}}" > "$TMPP/$_c.jsonl"
     printf 'ROLEPOD-XFAM ok kind=%s cli=%s family=%s raw=.rolepod/evidence/%s secs=%s budget=%ss%s\n' "$KIND" "$_c" "$_f" "$_raw" "$_secs" "$TIMEOUT" "$_partial" > "$TMPP/$_c.line"
     return 0
   fi
   _why="exit $_rc"; [ "$_rc" -eq 124 ] && _why="timeout ${TIMEOUT}s"
   [ "$_rc" -eq 0 ] && _why="empty output ($_bytes bytes, floor $_floor)"
+  _suffix="failed"
+  if [ "$_rc" -eq 125 ]; then _suffix="partial"; if [ -n "$_partial" ]; then _why="PARTIAL review (budget nearly spent) — kept as evidence, not a pass"; else _why="review has no VERDICT line (incomplete) — kept as evidence, not a pass"; fi; fi
   _first=$(head -c 160 "$TMPP/$_c.out.err" 2>/dev/null | tr '\n' ' ')
-  { printf '# rolepod cross-family %s FAILED · cli=%s family=%s lead=%s · %s · %s · budget=%ss\n\n--- stdout ---\n' "$KIND" "$_c" "$_f" "$LEAD" "$(iso_now)" "$_why" "$TIMEOUT"
-    cat "$TMPP/$_c.out"; printf '\n--- stderr ---\n'; cat "$TMPP/$_c.out.err"; } > "$EV/external/$_ts-$_c.failed.txt" 2>/dev/null || true
-  printf '%s\n' "{\"ts\":\"$(iso_now)\",\"phase\":\"external-fail\",\"kind\":\"$KIND\",\"cli\":\"$_c\",\"family\":\"$_f\",\"lead\":\"$LEAD\",\"secs\":$_secs,\"reason\":\"$(jesc "$_why: $_first")\"}" > "$TMPP/$_c.jsonl"
+  { printf '# rolepod cross-family %s %s · cli=%s family=%s lead=%s · %s · %s · budget=%ss · run=%s\n\n--- stdout ---\n' "$KIND" "$(printf '%s' "$_suffix" | tr a-z A-Z)" "$_c" "$_f" "$LEAD" "$(iso_now)" "$_why" "$TIMEOUT" "$RUN_TAG"
+    cat "$TMPP/$_c.out"; printf '\n--- stderr ---\n'; cat "$TMPP/$_c.out.err"; } > "$EV/external/$_ts-$_c-$RUN_TAG.$_suffix.txt" 2>/dev/null || true
+  printf '%s\n' "{\"ts\":\"$(iso_now)\",\"phase\":\"external-fail\",\"kind\":\"$KIND\",\"cli\":\"$_c\",\"family\":\"$_f\",\"lead\":\"$LEAD\",\"secs\":$_secs,\"brief_sha\":\"$BRIEF_SHA\"${JOB_ID_TAG:+,\"job\":\"$JOB_ID_TAG\"},\"reason\":\"$(jesc "$_why: $_first")\"}" > "$TMPP/$_c.jsonl"
   printf '%s: %s%s\n' "$_c" "$_why" "${_first:+ — $_first}" > "$TMPP/$_c.line"
+  [ "$_rc" -eq 125 ] && printf '  (partial text kept: .rolepod/evidence/external/%s-%s-%s.partial.txt)\n' "$_ts" "$_c" "$RUN_TAG" >> "$TMPP/$_c.line"
   return 1
 }
 
