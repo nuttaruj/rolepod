@@ -97,4 +97,4 @@ Cross-model adversarial pass: NOT RUN — 0 external CLIs on PATH; Lead floor
 covered every axis
 ```
 Honest absence. Beats a fabricated pass — writing `cross-family` when the
-reviewer shared the Lead's family is the false-green of reviews.
+reviewer was the Lead's own CLI is the false-green of reviews.

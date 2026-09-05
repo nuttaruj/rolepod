@@ -205,8 +205,8 @@ limitation. Evidence: `.rolepod/evidence/external/<utc>-<cli>.txt` + one
 phase-log line (`phase: review|consult|advise`, `reviewer: external`,
 `model: default`, plus `ran: <id>` when the CLI names the model it ran —
 Codex's `model:` banner, OpenCode's `> agent · model` header; the family
-follows what ran, and a member that ran the Lead's own family is logged as
-`external-fail`, never the strong pass). `rolepod-stats` shows external passes vs internal strong
+follows what ran and is recorded for information — a member is never failed
+for its model family, cross-family means a different CLI). `rolepod-stats` shows external passes vs internal strong
 dispatches; `make doctor` prints the pool (`ROLEPOD_DOCTOR_PROBE=1` to
 probe live). Live-verified 2026-09-04 on this machine: agy 10 s, cursor
 28 s, opencode 8 s answered the probe; Gemini CLI failed auth

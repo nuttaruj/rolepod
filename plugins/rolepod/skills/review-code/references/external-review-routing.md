@@ -141,7 +141,7 @@ UI — not one specialty.
 
 Strength routing is an optimisation on top of the floor: it assigns a
 specialist to an axis when one is available; it never removes an axis. A
-specialist that is missing, is the Lead's family, or has failed → that axis
+specialist that is missing, is the Lead's own CLI, or has failed → that axis
 falls back to the floor.
 
 ## Degradation

@@ -31,9 +31,9 @@ Two deliberate divergences from the single-vendor version:
   the strongest model available* — a Lead on the top Claude model still
   consults the other two families, because cross-vendor frontier diversity
   beats one model on a hard call. You spend the extra tokens to decide better,
-  never to decide cheaper. (One exception: on a single-family machine the
+  never to decide cheaper. (One exception: on a single-CLI machine the
   **vertical fallback** below reverts to Anthropic's original vertical shape —
-  the Lead's own family at a stronger tier.)
+  the Lead's own CLI at a stronger tier.)
 - **Cold context.** The Anthropic advisor shares the executor's context. A
   cross-CLI advisor does not — it starts cold. The Lead must pack the decision,
   the options, and the constraints into the prompt; the advisor sees only what
@@ -94,9 +94,9 @@ detection, the family rule, fail-at-invoke, cold-context framing.
   the runner (`rolepod-cross-family --pool`): `<git-root>/.rolepod/cross-family`,
   then `~/.rolepod/cross-family`, one CLI per line (`codex` / `claude` /
   `agy` / `cursor` / `opencode`); no file or `none` = off (exit 5 → vertical
-  fallback; never enable unasked) — minus the Lead's own family (`agy` =
-  google; cursor / opencode = the family of their configured default model).
-  Same detection and family rule as review. Each advisor runs on its **own
+  fallback; never enable unasked) — minus the Lead's own CLI (the model
+  family is recorded for information, never a filter). Same detection rule
+  as review. Each advisor runs on its **own
   default model** — no model or effort flag; `TIER_MODELS` governs only the
   CLI that is the Lead.
 - **Vertical fallback — same CLI, stronger tier.** When the runner

@@ -105,7 +105,7 @@ tier — because that CLI IS the Lead. The pool is **opt-in** and the user's
 choice: `~/.rolepod/cross-family` (machine) / `.rolepod/cross-family`
 (project), one CLI per line; no file or `none` = off, and the SessionStart
 context asks once rather than enabling anything; the runner excludes the
-Lead's family and drops members that fail at invoke. Doctor prints the
+Lead's own CLI and drops members that fail at invoke. Doctor prints the
 resolved pool; `ROLEPOD_DOCTOR_PROBE=1 make doctor` sends each member a
 one-line prompt to prove it answers.
 
