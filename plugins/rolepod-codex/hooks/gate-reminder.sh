@@ -185,7 +185,7 @@ if [ -n "$HIGH_RISK" ]; then
     if [ -n "$XFAM_POOL" ]; then
       REVIEWER_LIST="$REVIEWER_LIST + cross-family runner → $XFAM_POOL (\`rolepod-cross-family --kind review --brief <file> --attach <diff>\` — one command: default model, read-only, anchored)"
     else
-      REVIEWER_LIST="$REVIEWER_LIST + (no usable cross-family CLI: config .rolepod/cross-family or ~/.rolepod/cross-family, or none installed → internal strong reviewer, recorded as a limitation)"
+      REVIEWER_LIST="$REVIEWER_LIST + rolepod:universal-reviewer / rolepod:security-engineer (cross-family is opt-in and not enabled here — \`rolepod-cross-family --pool\` shows candidates; ask the user before enabling)"
     fi
   else
     [ "$SELF_CLI" != "codex" ]  && command -v codex  >/dev/null 2>&1 && REVIEWER_LIST="$REVIEWER_LIST + Codex (\`codex exec\`, depth/security)"

@@ -101,9 +101,10 @@ CLI: it runs whatever that CLI's config sets as default, and the runner
 never passes a model or effort flag (the phase-log records `model:
 default`). The only place a model flag is legitimate on an external call is
 the **vertical fallback** — the Lead consulting its own CLI at a stronger
-tier — because that CLI IS the Lead. Which CLIs are in the pool is the
-user's choice: `~/.rolepod/cross-family` (machine) / `.rolepod/cross-family`
-(project), one CLI per line, `none` to disable; the runner excludes the
+tier — because that CLI IS the Lead. The pool is **opt-in** and the user's
+choice: `~/.rolepod/cross-family` (machine) / `.rolepod/cross-family`
+(project), one CLI per line; no file or `none` = off, and the SessionStart
+context asks once rather than enabling anything; the runner excludes the
 Lead's family and drops members that fail at invoke. Doctor prints the
 resolved pool; `ROLEPOD_DOCTOR_PROBE=1 make doctor` sends each member a
 one-line prompt to prove it answers.

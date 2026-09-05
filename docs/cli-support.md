@@ -168,7 +168,8 @@ tree ships `scripts/cross-family.sh`, and the SessionStart context names
 the path on marketplace installs):
 
 ```bash
-rolepod-cross-family --pool                       # resolved pool with reasons, no network
+rolepod-cross-family --pool                       # resolved pool with reasons (or OFF + candidates), no network
+rolepod-cross-family --candidates                 # installed other-family CLIs — the opt-in question
 rolepod-cross-family --probe                      # one-line "reply OK" per member (spends a call each)
 rolepod-cross-family --kind review  --brief brief.md --attach diff.patch
 rolepod-cross-family --kind consult --brief ledger.md
@@ -185,9 +186,12 @@ rolepod-cross-family --kind advise  --brief decision.md --all      # one member 
 | OpenCode | `opencode` | `opencode run --agent plan "<prompt>"` | family of `model` in `opencode.json(c)`, else unknown |
 | Gemini CLI | — | retired for individual accounts (2026-06-18); a `gemini` config line is skipped, a Gemini Lead still excludes `agy` | google |
 
-Pool = `.rolepod/cross-family` (project) → `~/.rolepod/cross-family`
-(machine) → every installed CLI; `none` disables. The Lead's family is
-excluded. **Installed ≠ usable** is proven at invoke: exit ≠ 0, timeout
+**Opt-in, off by default.** Pool = `.rolepod/cross-family` (project) →
+`~/.rolepod/cross-family` (machine), one CLI per line; **no file = off,
+`none` = off** (exit 5, nothing logged). The SessionStart context asks the
+user once (installed candidates: `rolepod-cross-family --candidates`) and
+the answer is written to the file; rolepod never enables it unasked. The
+Lead's family is excluded. **Installed ≠ usable** is proven at invoke: exit ≠ 0, timeout
 (default 600 s — the Claude Bash cap; background the call for a big diff),
 or an answer under the floor (review < 500 bytes, consult / advise < 200)
 → `external-fail` phase-log line, next member; every member failed → exit

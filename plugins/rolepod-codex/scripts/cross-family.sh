@@ -12,13 +12,15 @@
 # away, and nothing measured the gap. This script is the whole path.
 #
 # Rules it encodes:
-#   pool     <git-root>/.rolepod/cross-family, else ~/.rolepod/cross-family,
-#            else every installed CLI (codex claude agy cursor opencode).
+#   pool     OPT-IN. <git-root>/.rolepod/cross-family (project) overrides
+#            ~/.rolepod/cross-family (machine); one CLI per line in preference
+#            order (codex claude agy cursor opencode), `#` comments. NO file =
+#            OFF, `none` = OFF — rolepod never enables cross-family on its own:
+#            the SessionStart loader asks the user ONCE (installed candidates
+#            listed), the answer is written to the file (names, or `none`).
 #            `gemini` is retired: Google moved individual accounts to
-#            Antigravity (agy) — a `gemini` config line is skipped with a note;
-#            a Gemini-CLI Lead is still recognised for family exclusion.
-#            One CLI per line in preference order; `#` comments; `none` =
-#            cross-family off (Lead floor + internal strong reviewer only).
+#            Antigravity (agy) — a `gemini` line is skipped with a note; a
+#            Gemini-CLI Lead is still recognised for family exclusion.
 #   family   the Lead's own model FAMILY is excluded (gemini ≡ agy = google;
 #            cursor / opencode resolve to the family of their configured
 #            default model, else `unknown` — used, but flagged).
@@ -30,8 +32,9 @@
 #            out of the cold run (clean room).
 #   health   installed ≠ usable: exit≠0, timeout, or too little output (review
 #            < 500 bytes — the gate's floor; consult / advise < 200) → next member;
-#            every failure is a phase-log line; all fail → exit 3; empty
-#            pool → exit 4. The Lead then falls back to the internal path.
+#            every failure is a phase-log line; all fail → exit 3; configured
+#            but nothing usable → exit 4 (logged); OFF → exit 5 (not logged —
+#            the user's choice is not a failure). The Lead then runs its own path.
 #   evidence .rolepod/evidence/external/<utc>-<cli>.txt + one phase-log line
 #            ({"phase":"review","reviewer":"external",...} is what
 #            precommit-gate counts as the strong pass; consult / advise
@@ -44,7 +47,8 @@
 #   cross-family.sh --pool [--lead <cli>]          # usable pool, no network
 #   cross-family.sh --pool-names [--lead <cli>]    # names only (hooks use this)
 #   cross-family.sh --probe [--lead <cli>]         # live "reply OK" per member
-# Exit: 0 ok · 2 usage · 3 every member failed · 4 pool empty
+#   cross-family.sh --candidates                   # installed other-family CLIs (for the opt-in question)
+# Exit: 0 ok · 2 usage · 3 every member failed · 4 configured pool empty · 5 off (opt-in not given)
 set -uo pipefail
 
 KIND=""; BRIEF=""; LEAD="${ROLEPOD_LEAD_CLI:-}"; ALL=0; TIMEOUT="${ROLEPOD_XFAM_TIMEOUT:-600}"
@@ -61,6 +65,7 @@ while [ $# -gt 0 ]; do
     --pool) MODE="pool"; shift ;;
     --pool-names) MODE="pool-names"; shift ;;
     --probe) MODE="probe"; shift ;;
+    --candidates) MODE="candidates"; shift ;;
     -h|--help) sed -n '2,40p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
     *) echo "cross-family: unknown argument: $1" >&2; exit 2 ;;
   esac
@@ -151,20 +156,34 @@ bin_of() {
 }
 LEAD_FAMILY=$(family_of "$LEAD")
 
-# ── Pool from config ───────────────────────────────────────────────────
-CFG=""; CFG_SRC="default (every installed CLI)"
+# ── Candidates (installed, not the Lead's family) — the opt-in question ──
+CANDIDATES=""
+for cli in $ALL_CLIS; do
+  [ -n "$(bin_of "$cli")" ] || continue
+  [ "$cli" = "$LEAD" ] && continue
+  fam=$(family_of "$cli"); [ "$fam" != "unknown" ] && [ "$fam" = "$LEAD_FAMILY" ] && continue
+  CANDIDATES="$CANDIDATES${CANDIDATES:+ }$cli($fam)"
+done
+if [ "$MODE" = "candidates" ]; then printf '%s\n' $CANDIDATES; exit 0; fi
+
+# ── Pool from config (opt-in: no file = off) ───────────────────────────
+CFG=""; CFG_SRC=""; STATE="on"
 if [ -f "$ROOT/.rolepod/cross-family" ]; then CFG="$ROOT/.rolepod/cross-family"; CFG_SRC="$CFG"
 elif [ -f "$HOME/.rolepod/cross-family" ]; then CFG="$HOME/.rolepod/cross-family"; CFG_SRC="$CFG"; fi
 if [ -n "$CFG" ]; then
   CONFIGURED=$(sed -e 's/#.*//' "$CFG" 2>/dev/null | tr 'A-Z' 'a-z' | tr -s '[:space:]' ' ')
+  printf '%s' "$CONFIGURED" | grep -qw none && STATE="none"
+  [ -z "$(printf '%s' "$CONFIGURED" | tr -d ' ')" ] && STATE="none"
 else
-  CONFIGURED="$ALL_CLIS "
+  CONFIGURED=""; STATE="off"; CFG_SRC="no ~/.rolepod/cross-family (opt-in not given)"
 fi
+ENABLE_HINT="enable: printf 'agy\\ncodex\\n' > ~/.rolepod/cross-family  (one CLI per line, your order; project override: <git-root>/.rolepod/cross-family; 'none' = keep off)"
 
 # Rows: "<cli> <status> <family> <note>" — status ∈ usable|skipped|absent
 POOL_ROWS=""; USABLE=""; SEEN_FAMILIES=""
-if printf '%s' "$CONFIGURED" | grep -qw none; then
-  POOL_ROWS="-  off  -  cross-family disabled by $CFG_SRC (line: none)"
+if [ "$STATE" != "on" ]; then
+  if [ "$STATE" = "none" ]; then POOL_ROWS="-  off  -  cross-family disabled by $CFG_SRC (none)"
+  else POOL_ROWS="-  off  -  cross-family is OPT-IN and not enabled on this machine"; fi
 else
   for cli in $CONFIGURED; do
     if [ "$cli" = "gemini" ]; then POOL_ROWS="$POOL_ROWS
@@ -197,7 +216,12 @@ fi
 print_pool() {
   echo "cross-family pool — lead=$LEAD ($LEAD_FAMILY) · config: $CFG_SRC"
   printf '%s\n' "$POOL_ROWS" | sed '/^$/d' | awk '{printf "  %-9s %-8s %-10s", $1, $2, $3; $1=$2=$3=""; sub(/^ +/, ""); print $0}'
-  if [ -n "$USABLE" ]; then echo "  → usable, in order: $USABLE"; else echo "  → usable: none (internal strong reviewer is the fallback; recorded as a limitation)"; fi
+  if [ -n "$USABLE" ]; then echo "  → usable, in order: $USABLE"
+  elif [ "$STATE" = "off" ]; then
+    echo "  → OFF. Installed candidates: ${CANDIDATES:-none}"
+    echo "  → $ENABLE_HINT"
+  elif [ "$STATE" = "none" ]; then echo "  → OFF by choice (none). Installed candidates: ${CANDIDATES:-none}; edit $CFG to enable"
+  else echo "  → configured but nothing usable (see rows) — internal strong reviewer is the pass; recorded as a limitation"; fi
 }
 
 case "$MODE" in
@@ -255,6 +279,7 @@ jesc() { # JSON string body (no surrounding quotes) — control chars escaped to
 # ── Probe ──────────────────────────────────────────────────────────────
 if [ "$MODE" = "probe" ]; then
   print_pool
+  [ "$STATE" = "on" ] || exit 5
   [ -n "$USABLE" ] || exit 4
   TMPP=$(mktemp -d "${TMPDIR:-/tmp}/rolepod-xfam.XXXXXX"); trap 'rm -rf "$TMPP"' EXIT
   printf 'Reply with exactly the word OK and nothing else. Do not read files, do not run commands.\n' > "$TMPP/p.txt"
@@ -284,10 +309,15 @@ case "$KIND" in
   advise) PHASE=advise ;;
 esac
 
+if [ "$STATE" != "on" ]; then
+  print_pool >&2
+  echo "ROLEPOD-XFAM off — cross-family is opt-in and not enabled (lead=$LEAD; $CFG_SRC). Use the Lead's own path (internal strong reviewer / vertical consult). To enable, ASK the user which CLIs (candidates: ${CANDIDATES:-none}); $ENABLE_HINT"
+  exit 5
+fi
 if [ -z "$USABLE" ]; then
   print_pool >&2
   jlog "{\"ts\":\"$(iso_now)\",\"phase\":\"external-fail\",\"kind\":\"$KIND\",\"cli\":\"-\",\"family\":\"-\",\"lead\":\"$LEAD\",\"reason\":\"pool-empty: $(jesc "$CFG_SRC")\"}"
-  echo "ROLEPOD-XFAM empty — no usable cross-family CLI (lead=$LEAD, config: $CFG_SRC). Fall back to the internal strong reviewer and record the limitation."
+  echo "ROLEPOD-XFAM empty — cross-family is enabled ($CFG_SRC) but no listed CLI is usable for a $LEAD Lead. Fall back to the internal strong reviewer and record the limitation."
   exit 4
 fi
 

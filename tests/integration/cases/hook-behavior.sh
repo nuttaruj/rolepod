@@ -204,7 +204,10 @@ printf '%s\n' \
   > "$TRANSCRIPT"
 rm -f "$TMP/.rolepod/evidence/phase-log.jsonl" "$TMP/.rolepod/cross-family"
 out=$(pcx 'git commit -m "add billing"')
-check "precommit high-risk + internal strong reviewer + USABLE cross-family pool + nothing tried → deny (satellite-first)" deny "$out"
+check "precommit high-risk + internal strong reviewer, cross-family NOT enabled (opt-in default) → allow (never forced)" allow "$out"
+mkdir -p "$TMP/.rolepod"; printf 'codex\n' > "$TMP/.rolepod/cross-family"
+out=$(pcx 'git commit -m "add billing"')
+check "precommit high-risk + internal strong reviewer + ENABLED usable pool + nothing tried → deny (satellite-first)" deny "$out"
 echo "$out" | grep -q 'SATELLITE-FIRST' && echo "$out" | grep -q 'rolepod-cross-family' \
   && echo "  ✓ deny reason names the runner + the usable pool" \
   || { echo "  ✗ satellite-first deny reason missing runner instruction"; fail=$((fail+1)); }
@@ -227,12 +230,34 @@ printf '%s\n' \
 printf 'none\n' > "$TMP/.rolepod/cross-family"
 out=$(pcx 'git commit -m "add billing"')
 check "pool disabled (.rolepod/cross-family = none) + internal strong reviewer → allow (no tightening without a pool)" allow "$out"
-rm -f "$TMP/.rolepod/cross-family"
+printf 'codex\n' > "$TMP/.rolepod/cross-family"
 out=$(printf '{"tool_name":"Bash","transcript_path":%s,"tool_input":{"command":"git commit -m x"}}' \
     "$(printf '%s' "$TRANSCRIPT" | python3 -c 'import json,sys; print(json.dumps(sys.stdin.read()))')" \
     | (cd "$TMP" && env -u CLAUDE_PLUGIN_ROOT -u ROLEPOD_LEAD_CLI HOME="$TMP" PATH="$XF_BIN:/usr/bin:/bin" bash "$HOOKS/precommit-gate.sh") || true)
 check "Lead CLI unknown (no ROLEPOD_LEAD_CLI / CLAUDE_PLUGIN_ROOT) → cannot exclude a family → old behavior, allow" allow "$out"
-rm -f "$TMP/.rolepod/evidence/phase-log.jsonl"
+rm -f "$TMP/.rolepod/evidence/phase-log.jsonl" "$TMP/.rolepod/cross-family"
+
+# ── project-context-loader: opt-in question asked ONCE per machine ──────
+XF_HOME="$TMP/xfhome"; rm -rf "$XF_HOME"; mkdir -p "$XF_HOME"
+XF_REPO="$TMP/xfrepo"; mkdir -p "$XF_REPO"; git -C "$XF_REPO" init -q; git -C "$XF_REPO" -c user.email=t@t -c user.name=t commit -q --allow-empty -m init  # loader needs ≥1 commit
+pcl() { printf '{"cwd":%s}' "$(printf '%s' "$XF_REPO" | python3 -c 'import json,sys; print(json.dumps(sys.stdin.read()))')" \
+  | (cd "$XF_REPO" && env HOME="$XF_HOME" PATH="$XF_BIN:/usr/bin:/bin" CLAUDE_PLUGIN_ROOT="$TMP" bash "$HOOKS/project-context-loader.sh") || true; }
+out=$(pcl)
+echo "$out" | grep -q 'Cross-family reviewers are OFF (opt-in)' && echo "$out" | grep -q 'codex(openai)' && echo "$out" | grep -q 'ASK THE USER ONCE' \
+  && echo "  ✓ loader asks the opt-in question with the installed candidates when no config exists" \
+  || { echo "  ✗ loader did not ask the cross-family opt-in question"; fail=$((fail+1)); }
+[ -f "$XF_HOME/.rolepod/cross-family.asked" ] \
+  && echo "  ✓ loader drops the asked-marker" \
+  || { echo "  ✗ asked-marker missing"; fail=$((fail+1)); }
+out=$(pcl)
+echo "$out" | grep -q 'ASK THE USER ONCE' \
+  && { echo "  ✗ loader asked again in a later session (marker ignored)"; fail=$((fail+1)); } \
+  || echo "  ✓ loader does not ask twice"
+rm -f "$XF_HOME/.rolepod/cross-family.asked"; printf 'none\n' > "$XF_HOME/.rolepod/cross-family"
+out=$(pcl)
+echo "$out" | grep -q 'ASK THE USER ONCE' \
+  && { echo "  ✗ loader asked although the user already answered (none)"; fail=$((fail+1)); } \
+  || echo "  ✓ an answered config (none) silences the question"
 
 printf '%s\n' \
   '{"type":"tool_use","name":"Task","input":{"subagent_type":"rolepod:qa-tester","prompt":"review"}}' \

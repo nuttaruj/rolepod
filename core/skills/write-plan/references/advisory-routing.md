@@ -90,10 +90,11 @@ detection, the family rule, fail-at-invoke, cold-context framing.
 
 - **Lead (executor)** — this session's CLI. It frames the decision and owns the
   outcome; it is not a panelist (it is already the one deciding).
-- **Advisor pool** — the user's cross-family pool, resolved by the runner
-  (`rolepod-cross-family --pool`): `<git-root>/.rolepod/cross-family`, then
-  `~/.rolepod/cross-family`, else every installed CLI (`codex` / `claude` /
-  `agy` / `cursor` / `opencode`) — minus the Lead's own family (`agy` =
+- **Advisor pool** — the user's **opt-in** cross-family pool, resolved by
+  the runner (`rolepod-cross-family --pool`): `<git-root>/.rolepod/cross-family`,
+  then `~/.rolepod/cross-family`, one CLI per line (`codex` / `claude` /
+  `agy` / `cursor` / `opencode`); no file or `none` = off (exit 5 → vertical
+  fallback; never enable unasked) — minus the Lead's own family (`agy` =
   google; cursor / opencode = the family of their configured default model).
   Same detection and family rule as review. Each advisor runs on its **own
   default model** — no model or effort flag; `TIER_MODELS` governs only the
@@ -163,7 +164,7 @@ conflicting plans and no decision — the protocol exists to prevent it.
 |---------------|---------|
 | ≥2 families | Full panel (`--all`); Lead reconciles and decides |
 | 1 usable | Single advisor on the dominant dimension; Lead reasons through the rest |
-| 0 usable (runner exit 3 / 4) | **Vertical fallback**: the Lead's own CLI at its strongest model (≠ the running model) as the single advisor; record "vertical consult — same family" in the plan |
+| 0 usable (runner exit 3 / 4) or off (exit 5) | **Vertical fallback**: the Lead's own CLI at its strongest model (≠ the running model) as the single advisor; record "vertical consult — same family" (or "cross-family off — opt-in") in the plan |
 | 0 + no vertical | Lead reasons through the options solo; record in the plan that no cross-model advice was gathered — a coverage note, not a failure |
 
 **Installed ≠ usable.** The runner proves it at invoke: an advisor that

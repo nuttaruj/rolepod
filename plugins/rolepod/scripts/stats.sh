@@ -224,9 +224,26 @@ if externals or xfails or strong_internal:
     ext_reviews = sum(1 for r in externals if r.get("phase") == "review")
     if strong_internal or ext_reviews:
         print(f"    strong pass source: external {ext_reviews} vs internal strong dispatch {len(strong_internal)}")
+        cfg = None
+        for cand in (os.path.join(os.path.dirname(ev.rstrip("/")), "cross-family"),
+                     os.path.expanduser("~/.rolepod/cross-family")):
+            if os.path.isfile(cand):
+                cfg = cand
+                break
+        enabled = False
+        if cfg:
+            try:
+                names = [w for w in open(cfg).read().lower().split() if not w.startswith("#")]
+                enabled = bool(names) and "none" not in names
+            except OSError:
+                pass
         if strong_internal and not ext_reviews:
-            print("      ⚠ every strong pass ran on the Lead's own family — satellite-first wants the "
-                  "cross-family runner first (`rolepod-cross-family --pool` shows what is usable here)")
+            if enabled:
+                print("      ⚠ every strong pass ran on the Lead's own family although a cross-family pool is "
+                      "configured — satellite-first wants `rolepod-cross-family --kind review` first")
+            else:
+                print("      cross-family is opt-in and not enabled here (no ~/.rolepod/cross-family) — "
+                      "`rolepod-cross-family --pool` lists candidates")
 
 if ships:
     a = Counter(r.get("action", "?") for r in ships)

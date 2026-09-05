@@ -46,11 +46,16 @@ records `model: default`.
 
 ## The pool
 
-- **Config** — `<git-root>/.rolepod/cross-family` (project) overrides
-  `~/.rolepod/cross-family` (machine): one CLI per line in preference order,
-  `#` comments, `none` = cross-family off. Absent → every installed CLI in
-  the default order `codex claude agy cursor opencode`. Four CLIs installed
-  but only three wanted → list three.
+- **Opt-in, off by default.** `<git-root>/.rolepod/cross-family` (project)
+  overrides `~/.rolepod/cross-family` (machine): one CLI per line in
+  preference order (`codex` / `claude` / `agy` / `cursor` / `opencode`),
+  `#` comments. **No file = off. `none` = off.** Rolepod never enables it on
+  its own: the SessionStart context asks you to put the question to the
+  user ONCE (installed candidates listed — `rolepod-cross-family
+  --candidates`); yes → write their names in their order, no → write
+  `none`. Off is a choice, not a limitation to nag about — the review
+  report's Cross-model line says "NOT RUN — cross-family off (opt-in)" and
+  the internal strong reviewer is the pass.
 - **Family exclusion** — the Lead's own family is removed: `codex` =
   openai, `claude` = anthropic, `agy` = google (a Gemini-CLI Lead is the
   same family), `cursor` / `opencode` = the family of their configured
@@ -60,7 +65,8 @@ records `model: default`.
   fallback only (a harness is not a second opinion).
 - **Installed ≠ usable** — the runner proves it at invoke: exit ≠ 0,
   timeout, or < 200 bytes → an `external-fail` phase-log line and the next
-  member. Every member failed → exit 3; empty pool → exit 4. Both mean:
+  member. Every member failed → exit 3; enabled but nothing usable → exit
+  4; off → exit 5 (nothing logged). All mean:
   **fall back to the Lead's main path** — internal strong reviewer
   (security-engineer / universal-reviewer) — and the review report's
   Cross-model line records the reason. `rolepod-cross-family --pool` shows
@@ -113,6 +119,7 @@ falls back to the floor.
 | ≥2 families usable | dominant axis to the first member; `--all` when two axes matter |
 | 1 usable | it takes the dominant axis; the Lead floor covers the rest |
 | 0 usable (exit 3 / 4) | internal strong reviewer + vertical fallback when one exists; Cross-model line records "NOT RUN — <reason from the runner>" |
+| off (exit 5 — no config / `none`) | internal strong reviewer is the pass; Cross-model line records "NOT RUN — cross-family off (opt-in)"; ask the user once if the session context says so, never enable unasked |
 
 On a high-risk surface with no usable cross-family member, the floor (plus
 the vertical fallback) still reviews every axis — but the review report's
@@ -134,7 +141,8 @@ satellite first whenever a usable non-Lead family exists:
   (raw file ≥ 500 bytes + the `reviewer:external` review line). While the
   pool is usable, an internal strong reviewer does **not** clear a
   high-risk commit — only after the runner reports exit 3 / 4 (logged as
-  `external-fail`) or on a machine with no pool. Internal strong then
+  `external-fail`); a machine where cross-family is off (opt-in not given,
+  or `none`) is never held. Internal strong then
   fires on the three carve-outs in review-code §1: empty / failed pool,
   apex trigger (then BOTH passes), fix-verify re-read.
 - **Outside opinion** (debug-issue §9, `--kind consult`), **advisory panel**

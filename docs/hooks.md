@@ -189,10 +189,10 @@ Never set these globally — apply per-command only. Hard rules exist because re
 
 ### Cross-family pool — `.rolepod/cross-family` (v2.76.0)
 
-Which CLIs may serve as the cross-family reviewer / advisor is the user's
-choice, not PATH's. `<git-root>/.rolepod/cross-family` (project) overrides
-`~/.rolepod/cross-family` (machine); one CLI per line in preference order,
-`#` comments, `none` disables cross-family entirely:
+Cross-family is **opt-in and off by default**. Which CLIs may serve as the
+reviewer / advisor is the user's choice, not PATH's: `<git-root>/.rolepod/cross-family`
+(project) overrides `~/.rolepod/cross-family` (machine); one CLI per line in
+preference order, `#` comments; **no file = off, `none` = off**:
 
 ```
 # this machine has four CLIs; use three, agy first
@@ -201,9 +201,15 @@ codex
 opencode
 ```
 
-Absent file = every installed CLI in the default order `codex claude agy
-cursor opencode` (the standalone Gemini CLI is retired — a `gemini` line is
-skipped with a note). The Lead's own model family is always excluded (`agy`
+Names: `codex` `claude` `agy` `cursor` `opencode` (the standalone Gemini
+CLI is retired — a `gemini` line is skipped with a note). **Ask once:** the
+SessionStart loader (`project-context-loader.sh` on Claude + Codex, the
+gemini/agy `session-start.sh`) sees no file, no `~/.rolepod/cross-family.asked`
+marker and at least one other-family CLI installed → tells the Lead to ask
+the user this session (candidates from `rolepod-cross-family --candidates`)
+and record the answer — names, or `none` — then drops the marker so it never
+nags. Rolepod never enables it unasked. The Lead's own model family is
+always excluded (`agy`
 = google; `cursor` / `opencode` = the family of their configured default
 model, else `unknown` and flagged). Consumers: `scripts/cross-family.sh`
 (the runner — installed as `rolepod-cross-family`, shipped in every plugin
@@ -216,8 +222,9 @@ universal-reviewer) clears the gate only after the pool was tried: either
 the runner's anchored pass (raw file ≥ 500 bytes under
 `.rolepod/evidence/external/` + the `reviewer:external` review line) or an
 `external-fail` line since the last commit (every usable member failed, or
-the pool is empty). A machine with no usable pool, or a Lead the hook cannot
-identify, keeps the pre-v2.76 behaviour. Measured before: 210 dispatches
+the enabled pool is empty). Cross-family off (no file / `none`), or a Lead
+the hook cannot identify, keeps the pre-v2.76 behaviour — nothing is forced
+on a user who did not opt in. Measured before: 210 dispatches
 across nine repos, zero cross-family passes — the internal reviewer was one
 Agent call away and counted the same.
 

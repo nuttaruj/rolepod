@@ -4,10 +4,10 @@
 # ~/.rolepod). Asserts OUTCOMES: which CLI ran, what flags it got, what
 # evidence landed on disk, what the phase-log says.
 #
-#   - default pool = every installed CLI in order, Lead family excluded
-#     (agy = google; gemini retired → never in the pool), cursor/opencode
-#     family from their configured model
-#   - config file (global, then project override) filters + orders; `none` off
+#   - OPT-IN: no config file = OFF (exit 5, nothing logged, candidates listed);
+#     `none` = OFF; the config file (global, project override) lists + orders
+#     the pool; Lead family excluded (agy = google; gemini retired → never in
+#     the pool), cursor/opencode family from their configured model
 #   - NO model / effort flag ever reaches an external (TIER_MODELS is Lead-only)
 #   - read-only flags present per CLI; ROLEPOD_BRAIN_SILENT=1 in the child env
 #   - success → external/<ts>-<cli>.txt + phase-log review line the gate reads
@@ -59,16 +59,34 @@ printf 'Review this diff.\n' > brief.md
 printf -- '--- a/x.py\n+++ b/x.py\n+print(1)\n' > diff.patch
 
 # ── pool ────────────────────────────────────────────────────────────────
-echo "── cross-family: pool resolution ──"
+echo "── cross-family: opt-in default (no config = OFF) ──"
 names=$(bash "$RUNNER" --pool-names --lead claude | tr '\n' ' ')
-check "default pool, lead=claude → codex agy cursor opencode (claude excluded; gemini retired, never in the pool)" "[ \"$names\" = 'codex agy cursor opencode ' ]"
+check "no config file → pool EMPTY (cross-family is opt-in)" "[ -z \"$names\" ]"
+out=$(bash "$RUNNER" --pool --lead claude)
+check "--pool says OFF + lists installed candidates with families + the enable hint" \
+  "printf '%s' \"\$out\" | grep -q 'OPT-IN and not enabled' && printf '%s' \"\$out\" | grep -q 'candidates: codex(openai) agy(google) cursor(unknown) opencode(unknown)' && printf '%s' \"\$out\" | grep -q 'enable: printf'"
+cand=$(bash "$RUNNER" --candidates --lead claude | tr '\n' ' ')
+check "--candidates lists other-family installed CLIs (claude excluded, gemini never)" "[ \"$cand\" = 'codex(openai) agy(google) cursor(unknown) opencode(unknown) ' ]"
+cand=$(bash "$RUNNER" --candidates --lead codex | tr '\n' ' ')
+check "--candidates under a Codex Lead drops codex, keeps claude" "[ \"$cand\" = 'claude(anthropic) agy(google) cursor(unknown) opencode(unknown) ' ]"
+: > "$LOG"; mkdir -p .rolepod/evidence; : > .rolepod/evidence/phase-log.jsonl
+rc=0; out=$(bash "$RUNNER" --kind review --brief brief.md --lead claude 2>/dev/null) || rc=$?
+check "run while OFF → exit 5, ROLEPOD-XFAM off, no CLI called, NOTHING logged (a choice is not a failure)" \
+  "[ $rc -eq 5 ] && printf '%s' \"\$out\" | grep -q 'ROLEPOD-XFAM off' && [ ! -s '$LOG' ] && [ ! -s .rolepod/evidence/phase-log.jsonl ]"
+rc=0; bash "$RUNNER" --probe --lead claude >/dev/null 2>&1 || rc=$?
+check "--probe while OFF → exit 5 without calling anyone" "[ $rc -eq 5 ] && [ ! -s '$LOG' ]"
+
+echo "── cross-family: pool resolution (enabled with every CLI listed) ──"
+mkdir -p "$HOME/.rolepod"; printf 'codex\nclaude\nagy\ncursor\nopencode\n' > "$HOME/.rolepod/cross-family"
+names=$(bash "$RUNNER" --pool-names --lead claude | tr '\n' ' ')
+check "all five listed, lead=claude → codex agy cursor opencode (claude excluded; gemini retired, never in the pool)" "[ \"$names\" = 'codex agy cursor opencode ' ]"
 names=$(bash "$RUNNER" --pool-names --lead gemini | tr '\n' ' ')
 check "lead=gemini (frozen adapter) excludes agy (same family)" "[ \"$names\" = 'codex claude cursor opencode ' ]"
 names=$(bash "$RUNNER" --pool-names --lead agy | tr '\n' ' ')
 check "lead=agy → codex claude cursor opencode" "[ \"$names\" = 'codex claude cursor opencode ' ]"
 out=$(bash "$RUNNER" --pool --lead claude); printf 'gemini\ncodex\n' > "$FIX/gcfg"
 mkdir -p "$HOME/.rolepod"; cp "$FIX/gcfg" "$HOME/.rolepod/cross-family"
-out=$(bash "$RUNNER" --pool --lead claude); rm -f "$HOME/.rolepod/cross-family"
+out=$(bash "$RUNNER" --pool --lead claude); printf 'codex\nclaude\nagy\ncursor\nopencode\n' > "$HOME/.rolepod/cross-family"
 check "a 'gemini' config line is skipped as retired (points at agy), never invoked" "printf '%s' \"\$out\" | grep -qE 'gemini +skipped +google +retired'"
 out=$(bash "$RUNNER" --pool --lead claude)
 check "cursor / opencode flagged family unknown when no default model configured" "printf '%s' \"\$out\" | grep -q 'cursor .*unknown' && printf '%s' \"\$out\" | grep -q 'opencode .*unknown'"
@@ -98,13 +116,18 @@ check "project .rolepod/cross-family overrides the global file" "[ \"$names\" = 
 printf 'none\n' > "$REPO/.rolepod/cross-family"
 names=$(bash "$RUNNER" --pool-names --lead claude | tr '\n' ' ')
 check "'none' empties the pool" "[ -z \"$names\" ]"
+mkdir -p .rolepod/evidence; : > .rolepod/evidence/phase-log.jsonl
 rc=0; out=$(bash "$RUNNER" --kind review --brief brief.md --lead claude 2>/dev/null) || rc=$?
-check "run with an empty pool → exit 4 + ROLEPOD-XFAM empty + external-fail pool-empty line" \
+check "run with 'none' → exit 5 (off by choice), nothing logged" "[ $rc -eq 5 ] && printf '%s' \"\$out\" | grep -q 'ROLEPOD-XFAM off' && [ ! -s .rolepod/evidence/phase-log.jsonl ]"
+printf 'claude\n' > "$REPO/.rolepod/cross-family"
+rc=0; out=$(bash "$RUNNER" --kind review --brief brief.md --lead claude 2>/dev/null) || rc=$?
+check "enabled but only the Lead's own family listed → exit 4 + ROLEPOD-XFAM empty + external-fail pool-empty line (this IS logged)" \
   "[ $rc -eq 4 ] && printf '%s' \"\$out\" | grep -q 'ROLEPOD-XFAM empty' && grep -q '\"phase\":\"external-fail\".*pool-empty' .rolepod/evidence/phase-log.jsonl"
 printf 'bogus\ncodex\n' > "$REPO/.rolepod/cross-family"
 out=$(bash "$RUNNER" --pool --lead claude)
 check "unknown CLI name in config is reported, not fatal" "printf '%s' \"\$out\" | grep -q 'bogus .*unknown CLI name'"
-rm -f "$REPO/.rolepod/cross-family" "$HOME/.rolepod/cross-family"
+rm -f "$REPO/.rolepod/cross-family"
+printf 'codex\nclaude\nagy\ncursor\nopencode\n' > "$HOME/.rolepod/cross-family"   # enabled for the run tests
 rm -f "$HOME/.config/opencode/opencode.json" "$HOME/.cursor/cli-config.json"
 
 # ── run: success path anchors evidence ──────────────────────────────────

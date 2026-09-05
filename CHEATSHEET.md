@@ -67,7 +67,7 @@ Can't verify  → state "Assuming X. Risk Y. Verify by Z" — never proceed sile
 
 ## Reviewer routing
 
-`qa-tester` is the always-on internal floor. An external reviewer = a CLI from the user's cross-family pool on a different model **family** from the Lead — `rolepod-cross-family --kind review --brief <brief> --attach <diff>` picks the first usable one (`.rolepod/cross-family` → `~/.rolepod/cross-family` → every installed: `codex` / `claude` / `agy` / `cursor` / `opencode`), runs it read-only on **its own default model**, and anchors the pass; `--pool` shows the resolution, `--kind consult` / `--kind advise --all` are the debug and plan channels. Gemini CLI is retired (agy is the Google family).
+`qa-tester` is the always-on internal floor. An external reviewer = a CLI from the user's **opt-in** cross-family pool on a different model **family** from the Lead — off until `~/.rolepod/cross-family` (or the project's `.rolepod/cross-family`) lists CLIs (`codex` / `claude` / `agy` / `cursor` / `opencode`; `none` = off; rolepod asks once, never enables it for you). `rolepod-cross-family --kind review --brief <brief> --attach <diff>` picks the first usable one, runs it read-only on **its own default model**, and anchors the pass; `--pool` / `--candidates` show the resolution, `--kind consult` / `--kind advise --all` are the debug and plan channels. Gemini CLI is retired (agy is the Google family).
 
 | PR profile | Reviewers |
 |-----------|-----------|
