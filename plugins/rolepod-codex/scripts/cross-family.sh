@@ -63,7 +63,7 @@
 set -uo pipefail
 
 KIND=""; BRIEF=""; LEAD="${ROLEPOD_LEAD_CLI:-}"; ALL=0; FLAG_TIMEOUT="${ROLEPOD_XFAM_TIMEOUT:-}"
-MODE="run"; ATTACH=""; DETACH=0; JOB_DIR=""; COLLECT_ID=""; ROOT_FLAG=""
+MODE="run"; ATTACH=""; DETACH=0; JOB_DIR=""; COLLECT_ID=""; ROOT_FLAG=""; CFG_FLAG=""
 while [ $# -gt 0 ]; do
   case "$1" in
     --kind) KIND="${2:-}"; shift 2 ;;
@@ -76,6 +76,7 @@ while [ $# -gt 0 ]; do
     --timeout) FLAG_TIMEOUT="${2:-}"; shift 2 ;;
     --detach) DETACH=1; shift ;;
     --job) JOB_DIR="${2:-}"; shift 2 ;;          # internal: the detached child
+    --config) CFG_FLAG="${2:-}"; shift 2 ;;      # internal: the job's config snapshot
     --collect) MODE="collect"; COLLECT_ID="${2:-}"; shift 2 ;;
     --jobs) MODE="jobs"; shift ;;
     --pool) MODE="pool"; shift ;;
@@ -93,6 +94,13 @@ JOBS="$EV/external/jobs"
 ALL_CLIS="codex claude agy cursor opencode"
 LEAD_CLIS="$ALL_CLIS gemini"
 iso_now() { date -u +%Y-%m-%dT%H:%M:%SZ; }
+TMPP=""
+# A detached child records its exit status whatever path it leaves by —
+# installed before the first `exit`, so --collect never waits on a job that
+# died early (config gone, usage error, pool off).
+finish() { _rc=$?; if [ -n "$JOB_DIR" ]; then { printf '%s\n' "$_rc" > "$JOB_DIR/status"; date +%s > "$JOB_DIR/finished"; } 2>/dev/null; fi; [ -n "$TMPP" ] && rm -rf "$TMPP"; }
+trap finish EXIT
+if [ -n "$JOB_DIR" ]; then mkdir -p "$JOB_DIR" 2>/dev/null; [ -f "$JOB_DIR/started" ] || date +%s > "$JOB_DIR/started"; fi
 
 # ── Jobs (no Lead needed) ──────────────────────────────────────────────
 job_elapsed() { _st=$(cat "$1/started" 2>/dev/null || echo 0); echo $(( ($(date +%s) - _st) / 60 )); }
@@ -211,7 +219,8 @@ if [ "$MODE" = "candidates" ]; then printf '%s\n' $CANDIDATES; exit 0; fi
 # default list = bare lines; `<kind>:` lines = per-kind order; `key=value`
 # tokens attach to the CLI named just before them (timeout= today).
 CFG=""; CFG_SRC=""; STATE="on"
-if [ -f "$ROOT/.rolepod/cross-family" ]; then CFG="$ROOT/.rolepod/cross-family"; CFG_SRC="$CFG"
+if [ -n "$CFG_FLAG" ] && [ -f "$CFG_FLAG" ]; then CFG="$CFG_FLAG"; CFG_SRC="$(head -1 "$CFG_FLAG.src" 2>/dev/null || echo "$CFG_FLAG") (job snapshot)"
+elif [ -f "$ROOT/.rolepod/cross-family" ]; then CFG="$ROOT/.rolepod/cross-family"; CFG_SRC="$CFG"
 elif [ -f "$HOME/.rolepod/cross-family" ]; then CFG="$HOME/.rolepod/cross-family"; CFG_SRC="$CFG"; fi
 DEFAULT_LIST=""; KIND_LIST=""; TO_LIST=""
 if [ -n "$CFG" ]; then
@@ -348,7 +357,7 @@ if [ "$MODE" = "probe" ]; then
   print_pool
   [ "$STATE" = "on" ] || exit 5
   [ -n "$USABLE" ] || exit 4
-  TMPP=$(mktemp -d "${TMPDIR:-/tmp}/rolepod-xfam.XXXXXX"); trap 'rm -rf "$TMPP"' EXIT
+  TMPP=$(mktemp -d "${TMPDIR:-/tmp}/rolepod-xfam.XXXXXX")
   printf 'Reply with exactly the word OK and nothing else. Do not read files, do not run commands.\n' > "$TMPP/p.txt"
   echo "probe (≤180s each):"
   rc_all=3
@@ -393,7 +402,8 @@ abspath() { case "$1" in /*) printf '%s' "$1" ;; *) printf '%s/%s' "$(cd "$(dirn
 if [ "$DETACH" -eq 1 ]; then
   JOB_ID="$(date -u +%Y%m%dT%H%M%SZ)-$KIND-$$"; JD="$JOBS/$JOB_ID"
   mkdir -p "$JD" 2>/dev/null || { echo "cross-family: cannot create $JD" >&2; exit 2; }
-  CHILD="--kind $KIND --brief $(abspath "$BRIEF") --lead $LEAD --root $ROOT --job $JD"
+  cp "$CFG" "$JD/cross-family" 2>/dev/null && printf '%s\n' "$CFG" > "$JD/cross-family.src"   # the pool the user had when they started it
+  CHILD="--kind $KIND --brief $(abspath "$BRIEF") --lead $LEAD --root $ROOT --job $JD --config $JD/cross-family"
   [ "$ALL" -eq 1 ] && CHILD="$CHILD --all"
   [ -n "$FLAG_TIMEOUT" ] && CHILD="$CHILD --timeout $FLAG_TIMEOUT"
   ATT_ARGS=""
@@ -410,13 +420,7 @@ EOF
   echo "ROLEPOD-XFAM job=$JOB_ID kind=$KIND members=$USABLE budgets=$TOS — keep working; collect with: rolepod-cross-family --collect $JOB_ID   (list: --jobs). The chain falls through on its own and anchors the receipt; the commit gate sees the job."
   exit 0
 fi
-if [ -n "$JOB_DIR" ]; then
-  mkdir -p "$JOB_DIR" 2>/dev/null; [ -f "$JOB_DIR/started" ] || date +%s > "$JOB_DIR/started"
-fi
-
 TMPP=$(mktemp -d "${TMPDIR:-/tmp}/rolepod-xfam.XXXXXX")
-finish() { _rc=$?; if [ -n "$JOB_DIR" ]; then { printf '%s\n' "$_rc" > "$JOB_DIR/status"; date +%s > "$JOB_DIR/finished"; } 2>/dev/null; fi; rm -rf "$TMPP"; }
-trap finish EXIT
 
 # Body = brief + attachments (shared); each member gets its own preamble +
 # time budget so the model plans for its deadline instead of exploring.

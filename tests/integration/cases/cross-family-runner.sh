@@ -258,7 +258,21 @@ rc=0; out=$(STUB_codex=fail bash "$RUNNER" --kind review --brief brief.md --lead
 jid2=$(printf '%s' "$out" | grep -o 'job=[^ ]*' | head -1 | cut -d= -f2)
 rc=0; out=$(bash "$RUNNER" --collect "$jid2" --timeout 30 2>/dev/null) || rc=$?
 check "detached chain falls through on its own: codex fails → agy answers inside the job" "[ $rc -eq 0 ] && printf '%s' \"\$out\" | grep -q 'cli=agy' && grep -q '\"external-fail\".*\"cli\":\"codex\"' .rolepod/evidence/phase-log.jsonl"
-rm -f "$REPO/.rolepod/cross-family"
+# the job snapshots the pool it was started with — editing / deleting the
+# config afterwards must not change (or kill) a running job
+: > "$LOG"; : > .rolepod/evidence/phase-log.jsonl
+rc=0; out=$(STUB_codex=slow bash "$RUNNER" --kind review --brief brief.md --lead claude --detach 2>/dev/null) || rc=$?
+jid3=$(printf '%s' "$out" | grep -o 'job=[^ ]*' | head -1 | cut -d= -f2)
+rm -f "$REPO/.rolepod/cross-family"; rm -f "$HOME/.rolepod/cross-family"
+rc=0; out=$(bash "$RUNNER" --collect "$jid3" --timeout 30 2>/dev/null) || rc=$?
+check "config deleted right after --detach → the job still runs on its snapshot and anchors (no exit-5 surprise)" \
+  "[ $rc -eq 0 ] && printf '%s' \"\$out\" | grep -q 'ROLEPOD-XFAM ok kind=review cli=codex' && [ -f .rolepod/evidence/external/jobs/$jid3/cross-family ]"
+printf 'codex\nclaude\nagy\ncursor\nopencode\n' > "$HOME/.rolepod/cross-family"
+# a child that dies early still leaves a status (trap installed before any exit)
+mkdir -p .rolepod/evidence/external/jobs/t-early; : > .rolepod/evidence/external/jobs/t-early/cross-family
+rc=0; bash "$RUNNER" --kind review --brief nope.md --lead claude --job "$REPO/.rolepod/evidence/external/jobs/t-early" >/dev/null 2>&1 || rc=$?
+check "a job child that exits early (usage error) still writes status (=$rc) so --collect never hangs" "[ $rc -eq 2 ] && [ \"\$(cat .rolepod/evidence/external/jobs/t-early/status)\" = 2 ]"
+rm -rf .rolepod/evidence/external/jobs/t-early
 
 # ── usage errors ────────────────────────────────────────────────────────
 echo "── cross-family: usage ──"
