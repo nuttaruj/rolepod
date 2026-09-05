@@ -37,8 +37,15 @@ if [ -f "$_xf" ]; then
   # ask this session and record the answer (names, or `none`). The marker
   # keeps it from nagging; the user can always enable later by hand.
   if [ ! -f "$HOME/.rolepod/cross-family" ] && [ ! -f "$REPO/.rolepod/cross-family" ] && [ ! -f "$HOME/.rolepod/cross-family.asked" ]; then
-    _lead="${ROLEPOD_LEAD_CLI:-}"; [ -z "$_lead" ] && [ -n "${CLAUDE_PROJECT_DIR:-}${CLAUDE_PLUGIN_ROOT:-}" ] && _lead=claude
-    _cand=$(bash "$_xf" --candidates ${_lead:+--lead "$_lead"} 2>/dev/null | tr '\n' ' ' | sed 's/ *$//')
+    _lead="${ROLEPOD_LEAD_CLI:-}"
+    if [ -z "$_lead" ] && [ -n "${CLAUDE_PROJECT_DIR:-}${CLAUDE_PLUGIN_ROOT:-}" ]; then _lead=claude; fi
+    # Lead unknown → no candidates (cannot exclude a family) → no question this
+    # session. `|| true` + no pipefail exposure: this hook runs set -e and the
+    # parent-active marker below must still be written whatever the runner says.
+    _cand=""
+    if [ -n "$_lead" ]; then
+      _cand=$( { bash "$_xf" --candidates --lead "$_lead" 2>/dev/null || true; } | tr '\n' ' ' | sed 's/ *$//' || true)
+    fi
     if [ -n "$_cand" ]; then
       CTX="$CTX\n\n**Cross-family reviewers are OFF (opt-in).** Installed other-family CLIs: $_cand. ASK THE USER ONCE this session — do they want rolepod to send adversarial reviews / debug consults / plan advisories to a different model family, and which of those CLIs, in what order? Yes → write the names one per line to \`~/.rolepod/cross-family\` (project-only: \`<git-root>/.rolepod/cross-family\`). No → write \`none\` there. Never enable it without their answer; until then every review stays on this CLI."
       { mkdir -p "$HOME/.rolepod" 2>/dev/null && : > "$HOME/.rolepod/cross-family.asked"; } 2>/dev/null || true

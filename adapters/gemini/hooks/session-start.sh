@@ -38,7 +38,7 @@ PAYLOAD="${GATES}"$'\n'"--- git context ---"$'\n'"${CTX}"
 # hooks/project-context-loader.sh; the runner ships next to these hooks.
 _xf="$(cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null && pwd)/../scripts/cross-family.sh"
 if [ -f "$_xf" ] && [ ! -f "$HOME/.rolepod/cross-family" ] && [ ! -f "$HOME/.rolepod/cross-family.asked" ]; then
-  _cand=$(bash "$_xf" --candidates --lead agy 2>/dev/null | tr '\n' ' ' | sed 's/ *$//')
+  _cand=$( { bash "$_xf" --candidates --lead agy 2>/dev/null || true; } | tr '\n' ' ' | sed 's/ *$//' || true)
   if [ -n "$_cand" ]; then
     PAYLOAD+=$'\n\n'"Cross-family reviewers are OFF (opt-in). Installed other-family CLIs: $_cand. ASK THE USER ONCE this session whether rolepod may send adversarial reviews / consults to a different model family and which CLIs, in what order. Yes → one name per line in ~/.rolepod/cross-family; no → write 'none'. Never enable without their answer."
     { mkdir -p "$HOME/.rolepod" 2>/dev/null && : > "$HOME/.rolepod/cross-family.asked"; } 2>/dev/null || true
