@@ -108,7 +108,7 @@ Scan for:
 
 ### 4b. Cross-family critique — questions only, before Gate 1
 
-Pool enabled (opt-in; off → skip silently) and the spec is R3+ / high-risk (or the user asks) → hand the draft **plus the Q&A ledger** to a cold reader from another family: `rolepod-cross-family --kind critique --brief spec-draft.md` returns ≤5 items ranked by implementation risk (`QUESTION` / `AMBIGUITY` / `MISSING`, or `NO FURTHER QUESTIONS`). Triage first — settle from the repo what you can — then ONE extra §2 round with the rest; one line under **Open questions**. Never blocks a spec. Protocol: `references/cross-family-critique.md`.
+Pool enabled (opt-in; off → skip silently) and the spec is R3+ / high-risk (or the user asks) → hand the draft **plus the Q&A ledger** to a cold reader from another family: `rolepod-cross-family --kind critique --brief spec-draft.md` returns ≤5 items ranked by implementation risk (`QUESTION` / `AMBIGUITY` / `MISSING`, or `NO FURTHER QUESTIONS`). Triage first — settle from the repo what you can — then ONE extra §2 round with the rest; one line under **Open questions**. Never blocks a spec. Protocol: `references/question-bank.md` §Cross-family critique.
 
 ### 5. Gate 1 — direction approval
 
@@ -167,7 +167,6 @@ Non-blocking — read only when the spec being drafted is unclear:
 
 Load only when the task needs it:
 - `references/question-bank.md` — discovery question types + skip rules, when unsure what to ask
-- `references/cross-family-critique.md` — §4b protocol: what goes in the brief, triage rules, the Open-questions line, exit codes.
 - `references/scope-splitting.md` — when a request is too big for one spec
 
 ## Hard stops
