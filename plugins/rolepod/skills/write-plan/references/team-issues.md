@@ -3,7 +3,10 @@
 Optional backend for the approved plan when **more than one person or machine
 will build it**. Solo work skips this entirely: the plan file already carries
 order, tests, and checkboxes, and adding a tracker for one builder is pure
-overhead. Turn this on only when the user says the work is shared.
+overhead. Turn this on only when the user says the work is shared. The plan
+lives in `docs/rolepod/`, which is private by default (gitignored, gate-denied)
+— before publishing, either track it (`.rolepod/docs-tracked`) or accept that
+the issue bodies are the only artifact a teammate on another machine can read.
 
 The plan file stays the **canonical contract**. Issues are the coordination
 layer on top: an index of who-takes-what, never a second copy of the plan.

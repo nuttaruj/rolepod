@@ -9,6 +9,9 @@ Ask every ready question in the round together, per SKILL.md §2's frontier-roun
 ### Outcome
 What does success look like in one sentence? What breaks if this is not built?
 
+### Domain term
+A word the spec depends on ("account", "cancel", "member") with more than one live reading that changes behavior: read the repo's existing glossary / CONTEXT first, propose a definition with a boundary example, check it against the code, and ask only the part the user must decide. A term used by this feature alone gets one line in the spec — no new glossary file.
+
 ### User / actor
 Who triggers this? Who sees the result? Is it self-service or admin-only?
 

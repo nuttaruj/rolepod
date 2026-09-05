@@ -1,6 +1,6 @@
 ---
 name: manage-context
-description: Use when the session is long, the repo is unfamiliar, the work is multi-file, you are stuck, or you need to escalate to a stronger model. Context budget, session hygiene, zoom-out, deep triage, escalate, onboarding, post-compact re-anchor. Phase = Recovery / Re-context / Escalate.
+description: Use when the session is long, the repo is unfamiliar, a multi-file change is fanning out beyond the plan, you are stuck, or you need to escalate to a stronger model. Context budget, session hygiene, zoom-out, deep triage, escalate, onboarding, post-compact re-anchor. Phase = Recovery / Re-context / Escalate.
 when_to_use: when context feels heavy or stale, when you are mid-session and forgetting earlier constraints, when starting in an unfamiliar repo, when stuck after multiple attempts, or when the model class you are running on cannot make further progress
 tier: 1
 phase: recovery
@@ -120,7 +120,7 @@ Disk beats summary on implementation state; a correction the user gave that neve
 ### 8. Onboarding (new repo)
 
 Before any edit:
-- Read `README.md`, `CLAUDE.md` if present
+- Read whichever of `README.md` / `CLAUDE.md` / `AGENTS.md` applies and is not already auto-loaded by your harness
 - Detect stack from `package.json` / `pyproject.toml` / `Cargo.toml` / `Makefile`
 - Read 2-3 representative files to match style
 - Find the test runner and run a smoke test
@@ -144,7 +144,7 @@ Execute as Lead with this minimum viable checklist:
 2. List the constraints still in force
 3. List the files you have actually touched vs the plan
 4. Identify which of the seven modes above matches the current symptom
-5. Run the appropriate context command for your CLI (see `references/cli-fallbacks.md`)
+5. For heavy context or a quota limit: run the appropriate context command for your CLI (see `references/cli-fallbacks.md`)
 6. For unfamiliar repo: read README + config + 2-3 representative files before editing
 7. For stuck: capture exact failure and ask the user for direction
 8. For multi-file drift: stop, write the new plan, then continue
@@ -152,7 +152,7 @@ Execute as Lead with this minimum viable checklist:
 ## Output format
 
 ```
-Mode: <context budget | session hygiene | zoom-out | escalate | deep triage | onboarding | post-compact re-anchor>
+Mode: <context budget | session hygiene | zoom-out | escalate | deep triage | onboarding | post-compact re-anchor | none — continuing>
 Trigger: <what tipped this skill>
 Action taken: <command run / re-read / escalation>
 State after: <what is loaded, what is dropped>

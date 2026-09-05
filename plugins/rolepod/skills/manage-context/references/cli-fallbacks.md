@@ -7,7 +7,7 @@ context tools — use the row for the CLI you are running on.
 
 | Need | Claude | Codex | Gemini | Cursor |
 |------|--------|-------|--------|--------|
-| Trim heavy context | `/compact <focus>` | summarize the thread, then continue | summarize, then continue | summarize, then new chat |
+| Trim heavy context | `/compact <focus>` | summarize, then start a fresh session with the brief | summarize, then start a fresh session with the brief | summarize, then new chat |
 | Start fresh | `/clear` | new session, or `resume` a clean one | restart the context | new chat (chat menu) |
 | Undo a recent path | `/rewind` | `fork` from an earlier point if available | restart from a summary | no native — restart with brief |
 | Switch focus | `/rename` + `claude --continue` | resume the target session | new context with a brief | new chat with brief |

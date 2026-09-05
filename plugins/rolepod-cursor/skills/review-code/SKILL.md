@@ -51,7 +51,7 @@ Return / hand off:
 
 ## Inputs to gather
 
-- The diff (`git diff` or PR view)
+- The diff — pin base + target and name the form (`git diff` alone hides staged work; `--staged`, `HEAD`, or `<base>...HEAD` for a committed branch); include WIP when the user asked for WIP
 - The spec / plan / acceptance criteria
 - Touched files end-to-end
 - The risk profile (high-risk surface? new dep? schema change?)

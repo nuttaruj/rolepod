@@ -18,6 +18,7 @@ the SessionStart context names the path on marketplace installs):
 
 ```bash
 git diff <base>...HEAD > /tmp/diff.patch          # the frozen diff
+# three-dot = committed work only; add `git diff HEAD` output when the user asked to review WIP
 rolepod-cross-family --kind review --brief /tmp/brief.md --attach /tmp/diff.patch --detach
 #   → ROLEPOD-XFAM job=<id> kind=review members=codex agy budgets=codex=1800s agy=1800s …
 rolepod-cross-family --collect <id> --root <git-root>   # before the commit: waits, prints the review + receipt (any cwd)

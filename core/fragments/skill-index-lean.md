@@ -18,7 +18,7 @@
 | `review-code` | Use before merging or shipping — review code with risk-appropriate adversarial pressure across co... |
 | `finish-work` | Use at the end of a development branch — pre-merge gate, CI lane discipline, 4-option finish menu... |
 | `simplify-code` | Use when code feels over-engineered, rotted, or duplicated — cut unused abstraction, inline singl... |
-| `manage-context` | Use when the session is long, the repo is unfamiliar, the work is multi-file, you are stuck, or y... |
+| `manage-context` | Use when the session is long, the repo is unfamiliar, a multi-file change is fanning out beyond t... |
 
 ### Command alias (explicit invoke only)
 

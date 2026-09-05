@@ -69,7 +69,7 @@ Concrete paths, not categories. If code-intel index available, use it to widen b
 
 ### 2. Order the tasks
 
-Smallest reversible unit first. Tests-first for bugs, features, and high-risk surfaces. Migrations before code that depends on them. Public-API contract changes before consumers.
+Smallest reversible unit first. Tests-first for bugs, features, and high-risk surfaces. Migrations before code that depends on them. Public-API contract changes before consumers. A wide refactor with no safe single-commit path: expand (add the new path beside the old) → migrate consumers in reviewable green batches → contract (delete the old path once no caller remains).
 
 Prefer vertical slices — each task cuts through all layers and is demoable on its own — over horizontal layers (all schema, then all API). Many thin slices beat a few thick ones.
 
@@ -176,7 +176,7 @@ Load only when the task needs it:
 
 - A task names a file you have not read → stop, read it
 - A task touches a high-risk surface without a test plan → stop, add the test plan
-- Two parallel agents end up needing the same file → drop to sequential or rewrite the contract
+- Two parallel agents end up needing the same file → drop to sequential or rewrite the contract, then re-run `scripts/plan-lint.sh <plan> <contract>` before resuming
 - Plan references a symbol that does not exist → verify or remove
 
 ## Full Rolepod enhancement

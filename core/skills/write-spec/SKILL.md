@@ -102,7 +102,8 @@ Scan for:
 - Placeholders (`[[FILL: …]]`, `TODO`, `tbd`)
 - Contradictions between sections
 - Ambiguous wording ("maybe", "should", "if needed")
-- A Success criterion with no "proven by" — pair each with the command / observation that will prove it, or it is not checkable
+- A Success criterion with no "proven by", or one proven at a seam only the implementation can reach, or naming a command that does not exist yet without saying so — pair each with a real or explicitly-new command / observation a caller can reach, or it is not checkable
+- A technical claim behind the chosen approach with no verifiable pointer (file:line, commit, or URL + date) — an assertion, not a checked fact
 - Scope creep beyond the user request
 - Over-engineering for hypothetical needs
 

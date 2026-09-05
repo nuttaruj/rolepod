@@ -35,8 +35,9 @@ free rein. Every line written during resolution is NEW, UNREVIEWED code.
 3. **Semantic conflict** (both sides changed the same behavior) — abort
    (`git merge --abort` / `git rebase --abort`), read the other side's
    change end-to-end, return to `implement-plan` for a real reconciliation.
-4. **After ANY resolution, re-verify** — re-run `check-work` with the same
-   commands recorded in its evidence block. A gate that passed pre-conflict
-   has NOT passed on the resolved tree.
+4. **After ANY resolution, re-verify** — re-run `check-work` with the
+   commands recorded in its evidence block, plus the tests covering any
+   module the OTHER side of the conflict touched that those commands never
+   ran. A gate that passed pre-conflict has NOT passed on the resolved tree.
 5. High-risk surface in the conflict → the adversarial review re-runs on
    the resolved diff before merge.

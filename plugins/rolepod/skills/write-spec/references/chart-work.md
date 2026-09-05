@@ -85,10 +85,15 @@ Per session: **one decision** (`investigate` tickets exempt — fan them out in
 parallel via scouts). More than one `discuss` per session degrades both.
 
 1. Re-read the map (not every ticket). Pick the first open, unblocked
-   ticket — or the one the user names.
+   ticket — or the one the user names. An `investigate` ticket's Resolution
+   predates now — if the touched code or dependency has since changed,
+   re-run the scout before trusting it.
 2. Resolve per its kind. Zoom into related resolved tickets only as needed.
 3. Record: write `## Resolution` in the ticket, flip `Status: resolved`,
-   add the one-line gist to **Decided**.
+   add the one-line gist to **Decided**. The user reversing a resolved
+   decision appends a dated superseding `## Resolution` and edits the gist
+   in place — it never reopens tickets that did not depend on the changed
+   part.
 4. Ripple: any *Still fuzzy* patch this resolution made phrasable becomes
    a ticket now (and leaves the ledger). Any ticket it invalidated is
    edited or closed. Anything it revealed as beyond the Target moves to
