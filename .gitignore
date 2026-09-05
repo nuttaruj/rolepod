@@ -33,3 +33,8 @@ __pycache__/
 .rolepod/
 .rolepod-mcp/
 __pycache__/
+
+# rolepod working docs — specs / plans / cohesion contracts / maps / hand-offs are
+# private by default (v2.80.0): never committed. A repo that wants them tracked
+# creates .rolepod/docs-tracked and removes this line.
+docs/rolepod/

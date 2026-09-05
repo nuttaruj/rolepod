@@ -240,6 +240,18 @@ need only the external. External failed (logged) → internal alone clears. Meas
 across nine repos, zero cross-family passes — the internal reviewer was one
 Agent call away and counted the same.
 
+### Private working docs — `docs/rolepod/` never commits (v2.80.0)
+
+Everything rolepod writes under `docs/rolepod/` — specs, plans, cohesion
+contracts, decision maps, hand-off briefs — is confidential working material
+by default: it describes what you are building before it exists. The skills
+add `docs/rolepod/` to `.gitignore` on the first save, and `precommit-gate.sh`
+**denies** any commit whose staged paths start with `docs/rolepod/` (the
+classic leak is `git add -A`). A repository that deliberately tracks these
+files creates `<git-root>/.rolepod/docs-tracked` — an explicit, reviewable
+choice — and the gate steps aside. ADRs under `docs/adr/` are project
+records and are unaffected.
+
 ### Per-repo risk-path override — `.rolepod/risk-paths`
 
 The high-risk path list (auth/billing/payments/…) is built-in but repo-tunable. Create `<git-root>/.rolepod/risk-paths` with one extended regex per line:

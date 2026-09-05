@@ -284,6 +284,22 @@ check "migration path (other high-risk) + external anchor ONLY → allow (extern
 rm -rf "$TMPM"
 rm -f "$TMP/.rolepod/evidence/phase-log.jsonl" "$TMP/.rolepod/cross-family"
 
+# ── private working docs never commit (v2.80.0) ─────────────────────────
+TMPD=$(mktemp -d); ( cd "$TMPD" && git init -q . && git config user.email t@t && git config user.name t \
+  && mkdir -p docs/rolepod/specs src && printf 'secret spec\n' > docs/rolepod/specs/x.md && printf 'x=1\n' > src/a.py && git add -A )
+pcd() { printf '{"tool_name":"Bash","tool_input":{"command":"git commit -m x"}}' | (cd "$TMPD" && HOME="$TMP" bash "$HOOKS/precommit-gate.sh") || true; }
+out=$(pcd)
+check "staged docs/rolepod/specs/x.md → deny (private working docs never commit)" deny "$out"
+echo "$out" | grep -q 'docs-tracked' && echo "$out" | grep -q 'docs/rolepod/specs/x.md' \
+  && echo "  ✓ deny reason names the file and the opt-in marker" \
+  || { echo "  ✗ private-docs deny reason incomplete"; fail=$((fail+1)); }
+mkdir -p "$TMPD/.rolepod" && : > "$TMPD/.rolepod/docs-tracked"
+out=$(pcd)
+echo "$out" | grep -q 'private working docs' \
+  && { echo "  ✗ .rolepod/docs-tracked did not lift the private-docs deny"; fail=$((fail+1)); } \
+  || echo "  ✓ .rolepod/docs-tracked lets a repo track its working docs"
+rm -rf "$TMPD"
+
 # ── project-context-loader: opt-in question asked ONCE per machine ──────
 XF_HOME="$TMP/xfhome"; rm -rf "$XF_HOME"; mkdir -p "$XF_HOME"
 XF_REPO="$TMP/xfrepo"; mkdir -p "$XF_REPO"; git -C "$XF_REPO" init -q; git -C "$XF_REPO" -c user.email=t@t -c user.name=t commit -q --allow-empty -m init  # loader needs ≥1 commit

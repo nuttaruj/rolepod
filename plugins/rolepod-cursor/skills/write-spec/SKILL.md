@@ -116,7 +116,7 @@ Present the proposed direction (chosen approach + rationale). Wait for the user 
 Fill `templates/spec-template.md` — every section resolved, no placeholders, no contradictions. Then run the **spec-lint**: write the filled spec to a file first (in inline mode too — a scratch path like `/tmp/spec.md` is fine), then `grep -niE '<[^>]+>|TODO|TBD' <spec-file>` must return nothing (a deterministic backstop to the step-4 self-review; it catches leftover template hints and TODO/TBD markers, not vague wording).
 
 - One-session work → inline the filled template in chat. **No Gate 2** — Gate 1 is the only approval. Default when unsure: one-session/inline, unless the user names a multi-day scope or the high-risk / repeat test below applies.
-- Multi-session work, high-risk surface touched, or repeat feature → save to `docs/rolepod/specs/<feature>-YYYY-MM-DD.md` (optional `-vN` or `-draft` suffix). Proceed to Gate 2.
+- Multi-session work, high-risk surface touched, or repeat feature → save to `docs/rolepod/specs/<feature>-YYYY-MM-DD.md` — **private by default:** before the first save run `grep -qx 'docs/rolepod/' .gitignore || echo 'docs/rolepod/' >> .gitignore` (the commit gate denies any commit that stages `docs/rolepod/`; a repo that deliberately tracks its specs creates `.rolepod/docs-tracked`) — (optional `-vN` or `-draft` suffix). Proceed to Gate 2.
 
 ### 7. Gate 2 — file review (file-mode only)
 

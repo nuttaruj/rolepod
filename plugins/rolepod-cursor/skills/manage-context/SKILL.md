@@ -156,7 +156,7 @@ State after: <what is loaded, what is dropped>
 Next: <which skill resumes work>
 ```
 
-When starting a fresh session, the durable artifact is `templates/handoff-brief.md`.
+When starting a fresh session, the durable artifact is `templates/handoff-brief.md` — save it under `docs/rolepod/handoffs/<topic>-YYYY-MM-DD.md`, which is private by default (`grep -qx 'docs/rolepod/' .gitignore || echo 'docs/rolepod/' >> .gitignore`; the commit gate refuses to commit it unless the repo opted in with `.rolepod/docs-tracked`).
 
 ## Examples
 

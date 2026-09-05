@@ -126,6 +126,21 @@ if [ -z "$DIFF_STAT" ]; then
 fi
 
 FILES_CHANGED=$(echo "$DIFF_STAT" | wc -l | tr -d ' ')
+
+# Private working docs (v2.80.0): everything rolepod writes under
+# docs/rolepod/ — specs, plans, cohesion contracts, maps, hand-offs — is
+# confidential by default and never enters a commit. `git add -A` sweeps it
+# in silently; this is the mechanical stop. A repo that WANTS them tracked
+# creates <git-root>/.rolepod/docs-tracked (an explicit, reviewable choice).
+_pd_root="$(git rev-parse --show-toplevel 2>/dev/null)"
+PRIVATE_DOCS=$( { git diff --cached --name-only 2>/dev/null | grep -E '^docs/rolepod/' || true; } | head -5 | tr '\n' ' ' | sed 's/ *$//')
+if [ -n "$PRIVATE_DOCS" ] && [ ! -f "$_pd_root/.rolepod/docs-tracked" ]; then
+  ROLEPOD_HOOK_MSG="precommit-gate BLOCKED — private working docs are staged: $PRIVATE_DOCS. docs/rolepod/ (specs / plans / cohesion contracts / maps / hand-offs) is confidential by default and never committed. Unstage them (git restore --staged docs/rolepod) and make sure .gitignore lists docs/rolepod/ (the skills add it on first save). If this repository deliberately tracks them, create .rolepod/docs-tracked and commit again." python3 -c "
+import json, os
+print(json.dumps({'hookSpecificOutput': {'hookEventName': 'PreToolUse', 'permissionDecision': 'deny', 'permissionDecisionReason': os.environ.get('ROLEPOD_HOOK_MSG', '')}}))
+" 2>/dev/null || echo '{}'
+  exit 0
+fi
 LINES_CHANGED=$(echo "$DIFF_STAT" | awk '{a+=$1; b+=$2} END {print a+b}')
 LINES_CHANGED=${LINES_CHANGED:-0}
 

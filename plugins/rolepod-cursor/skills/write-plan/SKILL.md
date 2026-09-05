@@ -151,7 +151,7 @@ The plan template is the canonical artifact: `templates/plan-template.md`. Fill 
 
 Tasks use `- [ ]` checkboxes so progress is visible in the artifact itself — survives session compaction.
 
-For one-session work, inline the filled template in chat. For multi-session work, save it to `docs/rolepod/plans/<feature>-YYYY-MM-DD.md`. Re-planning after the spec moves never overwrites: keep the prior file and write `<feature>-YYYY-MM-DD-v2.md` (the diff between versions is the record of what changed and why).
+For one-session work, inline the filled template in chat. For multi-session work, save it to `docs/rolepod/plans/<feature>-YYYY-MM-DD.md`. Re-planning after the spec moves never overwrites: keep the prior file and write `<feature>-YYYY-MM-DD-v2.md` (the diff between versions is the record of what changed and why). `docs/rolepod/` is private by default — before the first save: `grep -qx 'docs/rolepod/' .gitignore || echo 'docs/rolepod/' >> .gitignore` (the commit gate denies staged `docs/rolepod/` files; `.rolepod/docs-tracked` opts a repo in).
 
 More than one person or machine will build this plan → the tasks can also publish to the repo's issue tracker as a coordination layer (claim by assignee, frontier visible in the tracker UI): `references/team-issues.md`. Solo work never needs it — the plan file alone is the contract.
 
