@@ -52,6 +52,25 @@ assert o["additionalContext"].strip(), "empty additionalContext"
   else
     bad "payload ${SIZE}B exceeds ${BUDGET}B budget"
   fi
+
+  # 3b. Round-trip: additionalContext is the core file byte-for-byte (UTF-8
+  #     emitted raw, not \uXXXX-escaped — v2.83.1 saved 153 B of budget), and
+  #     the emission does not depend on the hook shell's locale.
+  if printf '%s' "$OUT" | python3 -c '
+import sys, json
+d = json.load(sys.stdin)
+assert d["hookSpecificOutput"]["additionalContext"] == open(sys.argv[1], encoding="utf-8").read(), "context != core file"
+' "$CORE" 2>/dev/null && ! printf '%s' "$OUT" | grep -q '\\u20'; then
+    pass "additionalContext round-trips to the core file with raw UTF-8"
+  else
+    bad "additionalContext is mangled or \\u-escaped"
+  fi
+  OUT_C=$(echo '{}' | LC_ALL=C LANG=C bash "$HOOK" 2>/dev/null || echo "")
+  if [ "$OUT_C" = "$OUT" ]; then
+    pass "identical payload under LC_ALL=C"
+  else
+    bad "payload differs under LC_ALL=C (locale-dependent emission)"
+  fi
 fi
 
 # 4. hooks.json wires the loader into the SessionStart array.

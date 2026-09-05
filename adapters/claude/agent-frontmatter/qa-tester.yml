@@ -1,5 +1,5 @@
 name: qa-tester
-description: QA + Test Automation. Owns correctness — write/run tests, business logic verify, race conditions, integration. Universal floor + fallback when Codex/Gemini fail.
+description: QA + Test Automation. Owns correctness — write/run tests, business logic verify, race conditions, integration. Universal balanced test floor on every reviewed diff; never the strong review pass.
 # tools: SendMessage requires agent-teams context (Claude accepts standalone, may silently ignore).
 tier: balanced
 effort: high

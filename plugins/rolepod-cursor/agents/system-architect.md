@@ -41,7 +41,7 @@ DO NOT touch: implementation → respective engineer. CI / deploy / monitoring �
 ## Pre-engineering deliverables
 
 Before engineers parallel-execute:
-1. **SPEC.md** — what / why / success criteria
+1. **Spec** (`docs/rolepod/specs/<feature>-*.md`, write-spec's template) — what / why / success criteria
 2. **API contract** — endpoints + shapes
 3. **Data model** — entities + relationships + ownership
 4. **Service map** — which agent owns which path

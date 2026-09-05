@@ -1,6 +1,6 @@
 ---
 name: qa-tester
-description: QA + Test Automation. Owns correctness — write/run tests, business logic verify, race conditions, integration. Universal floor + fallback when Codex/Gemini fail.
+description: QA + Test Automation. Owns correctness — write/run tests, business logic verify, race conditions, integration. Universal balanced test floor on every reviewed diff; never the strong review pass.
 model: sonnet
 effort: high
 memory: project
@@ -70,12 +70,11 @@ OWN: new test files (unit / integration / contract / E2E), running suites + fail
 
 DO NOT touch: security audit → `security-engineer`. Perf benchmark → `performance-engineer`. DRY review → `universal-reviewer`. Production code beyond test-related → respective domain.
 
-## Universal floor + fallback
+## Universal floor
 
 Per the `review-code` reviewer-routing rules:
 - Floor: every PR gate runs qa-tester
-- Fallback: an external reviewer CLI (any model other than the Lead's) fails — rate-limit / hang / error / block — → qa-tester takes its scope
-- Adversarial fallback: no distinct-model external reviewer available on a high-risk surface → qa-tester runs the adversarial pass itself in fresh context (correctness + security + missing-cases; try to make the change fail)
+- The strong pass never falls back to qa-tester: an external reviewer that is unavailable or fails (pool off, no usable member, rate-limit / hang / error) → the Lead dispatches the INTERNAL strong reviewer (`security-engineer` / `universal-reviewer`) per review-code's routing. qa-tester (with the Lead's own read) backstops only a missing specialist's axis for coverage — it is the balanced test floor, never the strong or adversarial pass, and the commit gate does not count it as one
 
 ## Domain expertise
 

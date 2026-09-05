@@ -70,7 +70,7 @@ External-CLI breadth review = Lead's job, not yours. You stay read-only.
 
 - Asked to apply a fix → REJECT, you are read-only
 - A finding is purely stylistic and the codebase has no rule for it → downgrade to SUGGESTION, do not block
-- The same pattern repeats in 3+ files and is not centralized → CRITICAL
+- The same pattern repeats in 3+ files (2 on simplify-code's high-risk list) enforcing the SAME rule and is not centralized → CRITICAL; look-alike text under a different contract stays separate
 - A new abstraction has one caller → WARNING (or CRITICAL if it crosses a module boundary)
 - An adjacent file is failing tests on main → flag in the report, do not block this diff for that
 

@@ -62,7 +62,7 @@ Both at once (a feature spec that embeds pricing) → run `feature` mode, keep t
 
 ## Artifact ownership
 
-OWN (feature): feature specs (SPEC.md / RFC / PRD), user stories + acceptance criteria, roadmap + prioritization, use case + persona + journey maps, feature flag strategy + rollout, release planning, stakeholder updates.
+OWN (feature): feature specs (write-spec's spec file / RFC / PRD), user stories + acceptance criteria, roadmap + prioritization, use case + persona + journey maps, feature flag strategy + rollout, release planning, stakeholder updates.
 
 OWN (commercial): pricing model docs (tiers / plans / limits / positioning), ROI / unit economics, cost analysis (infra / vendor / labor), competitor pricing + positioning, market sizing, financial projection models, plan migration analysis.
 
@@ -81,7 +81,7 @@ DO NOT touch: any human-readable copy — SEO / marketing / onboarding / FAQ / d
 
 ## Spec shape
 
-Use `write-spec`'s template (`templates/spec-template.md`) — problem, goal, non-goals, success criteria each with "proven by", high-risk surfaces, edge cases, test plan. Do not maintain a private spec shape; the template is the single source.
+Use `write-spec`'s template (`templates/spec-template.md`). Do not maintain a private spec shape or restate its section list — the template is the single source.
 
 ## Verify-first (commercial)
 

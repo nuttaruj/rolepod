@@ -17,7 +17,7 @@ User: "build me a notifications system"
 Routing: Define → write-spec
 Reason: a feature with no spec — target, scope, and success are unstated.
 Skipping: none.
-Next step: discovery dialogue, one question at a time (start with outcome).
+Next step: discovery dialogue in frontier rounds — every ready question together (start with outcome).
 
 ---
 
@@ -122,7 +122,7 @@ User: "add rate limiting"
 ✓ Right: Define → write-spec.
   Reason: "rate limiting" hides several decisions that change the diff.
   Next step: ask scope (per-IP vs per-user), the limit, the over-limit
-  behavior — one question at a time.
+  behavior — together, in one frontier round.
 
 The verb is not the router. A vague target routes to Define even when the
 verb sounds like Build.

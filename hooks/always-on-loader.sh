@@ -31,11 +31,15 @@ cat >/dev/null 2>&1 || true
 # mechanical — the enforcement-illusion risk the banner guards against exists
 # only on CLIs that cannot deny (their always-on surfaces carry the tier
 # line). `make doctor` prints Claude's tier + proves the deny paths live.
+# ensure_ascii=False: the core carries ~50 non-ASCII glyphs (arrows, dashes);
+# escaping each as \uXXXX cost 153 B of the 5120 B budget for nothing.
+# Bytes are written explicitly so the locale of the hook shell cannot break it.
 python3 -c '
 import json, sys
 content = open(sys.argv[1], encoding="utf-8").read()
-print(json.dumps({"hookSpecificOutput": {
+payload = json.dumps({"hookSpecificOutput": {
     "hookEventName": "SessionStart",
     "additionalContext": content,
-}}))
+}}, ensure_ascii=False)
+sys.stdout.buffer.write(payload.encode("utf-8") + b"\n")
 ' "$CORE_FILE" 2>/dev/null || echo '{}'
