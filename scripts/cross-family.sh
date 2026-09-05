@@ -41,7 +41,8 @@
 #            lines feed `rolepod-stats`).
 #
 # Usage:
-#   cross-family.sh --kind review|consult|advise --brief <file> [--attach <file>]...
+#   cross-family.sh --kind review|consult|advise|critique --brief <file> [--attach <file>]...
+#                   (critique = spec critic: ≤5 ranked open questions / ambiguities / missing criteria)
 #                   [--lead <cli>] [--all] [--timeout <sec>]   (default 600s = the Claude Bash
 #                   cap; a big diff → run in the background and read the raw file)
 #   cross-family.sh --pool [--lead <cli>]          # usable pool, no network
@@ -301,12 +302,12 @@ if [ "$MODE" = "probe" ]; then
 fi
 
 # ── Run ────────────────────────────────────────────────────────────────
-case "$KIND" in review|consult|advise) ;; *) echo "cross-family: --kind review|consult|advise required" >&2; exit 2 ;; esac
+case "$KIND" in review|consult|advise|critique) ;; *) echo "cross-family: --kind review|consult|advise|critique required" >&2; exit 2 ;; esac
 [ -n "$BRIEF" ] && [ -f "$BRIEF" ] || { echo "cross-family: --brief <file> required (write the cold-context brief to a file first)" >&2; exit 2; }
 case "$KIND" in
   review) PHASE=review ;;
   consult) PHASE=consult ;;
-  advise) PHASE=advise ;;
+  advise|critique) PHASE=advise ;;
 esac
 
 if [ "$STATE" != "on" ]; then
@@ -328,6 +329,7 @@ PROMPT="$TMPP/prompt.md"
     review) printf '%s\n\n' "You are a cold-context ADVERSARIAL code reviewer from a different model family than the author. Read only — never edit files, never run write commands. Try to make the change fail. Report findings severity-ordered (BLOCKER / MAJOR / MINOR / NIT) with file:line, label each TRACED (path walked) or SUSPECTED (pattern-level), name what is missing as hard as what is present, then end with one line: VERDICT: APPROVED | APPROVED-WITH-NITS | REJECTED." ;;
     consult) printf '%s\n\n' "You are a cold-context debugging advisor from a different model family. The author has failed twice; do not repeat their fixes. Read only — never edit files. Return exactly one of: CORRECTION (new hypothesis + the smallest change to test it), CONFIRMATION (approach right — check X), or STOP (wrong path — why). Reason from the evidence given; say what you would verify first." ;;
     advise) printf '%s\n\n' "You are a cold-context planning advisor from a different model family. Advise, never execute: return a RECOMMENDED option with reasoning and the risks you see, or a CORRECTION if the framing or all options are flawed, or a STOP signal. Do not edit files or run the plan." ;;
+    critique) printf '%s\n\n' "You are a cold-context spec critic from a different model family. The author has finished their discovery dialogue with the user (the questions already asked and answered are attached — never re-ask those). Return AT MOST 5 items, ranked by implementation risk, each tagged QUESTION (a decision only the user can make — the answer would change the implementation), AMBIGUITY (wording two engineers would read differently — quote it), or MISSING (an acceptance criterion, failure mode, or edge case with no 'proven by'). No design proposals, no praise, no restating the spec. If nothing material remains, reply exactly: NO FURTHER QUESTIONS." ;;
   esac
   cat "$BRIEF"
   if [ -n "$ATTACH" ]; then

@@ -115,8 +115,12 @@ HIGH_RISK=""
 # precommit-gate.sh:78 and session_state.py's HIGH_RISK_PATH, so a file cannot
 # pass at edit time and then block at commit time.
 _RISK_HIT=$(printf '%s\n' "$FILE" | risk_filter '(^|/|_)(auth|authn|authz|authentication|authorization|billing|payment|payments|migration|migrations|credit|credits|permission|permissions|secret|secrets|crypto|cryptography|token|tokens|oauth|jwt|sso|saml|webhook|webhooks|stripe|paypal|charge|charges|invoice|invoices|deletion|deletions|erasure|gdpr|security)(/|\.|_|$)' | head -1 || true)
+MONEY_RISK=""
 if [ "$IS_TEST" -eq 0 ] && [ -n "$_RISK_HIT" ]; then
   HIGH_RISK="⚠️  HIGH-RISK path detected → mandatory: qa-tester + security-engineer review BEFORE commit. "
+  # money / auth subset (v2.78.0) — with an enabled cross-family pool this
+  # surface needs BOTH the external pass and the internal strong reviewer.
+  MONEY_RISK=$(printf '%s\n' "$FILE" | grep -iE '(^|/|_)(auth|authn|authz|authentication|authorization|billing|payment|payments|credit|credits|secret|secrets|crypto|cryptography|oauth|jwt|sso|saml|stripe|paypal|charge|charges|invoice|invoices|deletion|deletions|erasure|gdpr)(/|\.|_|$)' | head -1 || true)
 fi
 
 # Silent pass when nothing is risky. Normal code / docs / config edits
@@ -184,6 +188,7 @@ if [ -n "$HIGH_RISK" ]; then
     XFAM_POOL=$(bash "$XFAM_RUNNER" --lead "${SELF_CLI:-claude}" --pool-names 2>/dev/null | tr '\n' ' ' | sed 's/ *$//')
     if [ -n "$XFAM_POOL" ]; then
       REVIEWER_LIST="$REVIEWER_LIST + cross-family runner → $XFAM_POOL (\`rolepod-cross-family --kind review --brief <file> --attach <diff>\` — one command: default model, read-only, anchored)"
+      [ -n "$MONEY_RISK" ] && REVIEWER_LIST="$REVIEWER_LIST + rolepod:security-engineer — money / auth surface needs BOTH passes (external + internal strong, same dispatch)"
     else
       REVIEWER_LIST="$REVIEWER_LIST + rolepod:universal-reviewer / rolepod:security-engineer (cross-family is opt-in and not enabled here — \`rolepod-cross-family --pool\` shows candidates; ask the user before enabling)"
     fi

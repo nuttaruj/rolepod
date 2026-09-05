@@ -31,8 +31,8 @@ LOG="$FIX/calls.log"
 mk_stub() { # $1 binary name, $2 label
   cat > "$BIN/$1" <<EOF
 #!/bin/bash
-_in=\$(head -c 2000 2>/dev/null | grep -o 'ADVERSARIAL code reviewer\|debugging advisor\|planning advisor' | head -1)
-case "\$_in" in *ADVERSARIAL*) _in=review ;; *debugging*) _in=consult ;; *planning*) _in=advise ;; *) _in=none ;; esac
+_in=\$(head -c 2000 2>/dev/null | grep -o 'ADVERSARIAL code reviewer\|debugging advisor\|planning advisor\|spec critic' | head -1)
+case "\$_in" in *ADVERSARIAL*) _in=review ;; *debugging*) _in=consult ;; *planning*) _in=advise ;; *critic*) _in=critique ;; *) _in=none ;; esac
 printf '%s | %s | BRAIN=%s | STDIN=%s\n' "$2" "\$(printf '%s' "\$*" | tr '\n' ' ')" "\${ROLEPOD_BRAIN_SILENT:-unset}" "\$_in" >> "$LOG"
 mode=\$(eval "printf '%s' \"\\\${STUB_$2:-ok}\"")
 case "\$mode" in
@@ -204,6 +204,13 @@ check "--all output carries one ===== block + ok trailer per member" "[ \"\$(pri
 check "advise lines logged with phase=advise" "[ \"\$(grep -c '\"phase\":\"advise\",\"reviewer\":\"external\"' .rolepod/evidence/phase-log.jsonl)\" -eq 4 ]"
 check "cursor got plan mode + --trust, opencode got --agent plan; neither got a model flag" \
   "grep '^cursor |' '$LOG' | grep -q -- '--mode plan' && grep '^cursor |' '$LOG' | grep -q -- '--trust' && grep '^opencode |' '$LOG' | grep -q -- '--agent plan' && ! grep -E '^(cursor|opencode) \|' '$LOG' | grep -qE -- '--model| -m '"
+
+# ── critique kind (write-spec) ──────────────────────────────────────────
+echo "── cross-family: --kind critique ──"
+: > "$LOG"; : > .rolepod/evidence/phase-log.jsonl
+rc=0; out=$(bash "$RUNNER" --kind critique --brief brief.md --lead claude 2>/dev/null) || rc=$?
+check "critique → spec-critic framing on stdin, logged as phase=advise kind=critique (never a strong pass)" \
+  "[ $rc -eq 0 ] && grep -q 'STDIN=critique' '$LOG' && grep -q '\"phase\":\"advise\",\"reviewer\":\"external\",\"kind\":\"critique\"' .rolepod/evidence/phase-log.jsonl && ! grep -q '\"phase\":\"review\"' .rolepod/evidence/phase-log.jsonl"
 
 # ── usage errors ────────────────────────────────────────────────────────
 echo "── cross-family: usage ──"

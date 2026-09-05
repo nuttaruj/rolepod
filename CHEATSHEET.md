@@ -74,7 +74,8 @@ Can't verify  → state "Assuming X. Risk Y. Verify by Z" — never proceed sile
 | <5 files | qa-tester only |
 | 5-30 files | qa-tester + 1 external |
 | >30 files | qa-tester + 2 external |
-| High-risk (auth / billing / migration / locks) | qa-tester + external adversarial |
+| Money / auth (billing · payments · credits · auth · crypto · secrets · deletion) | qa-tester + external adversarial + internal strong — **both**, one dispatch |
+| Other high-risk (migration / permissions / tokens / locks) | qa-tester + external adversarial (internal strong on apex or a weak external) |
 | UI / frontend only | qa-tester + 1 external (breadth) |
 
 ## Stuck escalation

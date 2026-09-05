@@ -224,7 +224,11 @@ the runner's anchored pass (raw file ≥ 500 bytes under
 `external-fail` line since the last commit (every usable member failed, or
 the enabled pool is empty). Cross-family off (no file / `none`), or a Lead
 the hook cannot identify, keeps the pre-v2.76 behaviour — nothing is forced
-on a user who did not opt in. Measured before: 210 dispatches
+on a user who did not opt in. **Money / auth paths need BOTH (v2.78.0):**
+billing · payments · credits · auth · crypto · secrets · data deletion (and
+the money-term content hit) require the external anchor AND an internal
+strong reviewer dispatch; migration / permission / token / webhook paths
+need only the external. External failed (logged) → internal alone clears. Measured before: 210 dispatches
 across nine repos, zero cross-family passes — the internal reviewer was one
 Agent call away and counted the same.
 

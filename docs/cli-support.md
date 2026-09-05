@@ -174,6 +174,7 @@ rolepod-cross-family --probe                      # one-line "reply OK" per memb
 rolepod-cross-family --kind review  --brief brief.md --attach diff.patch
 rolepod-cross-family --kind consult --brief ledger.md
 rolepod-cross-family --kind advise  --brief decision.md --all      # one member per family, concurrently
+rolepod-cross-family --kind critique --brief spec-draft.md          # write-spec: ≤5 ranked open questions before Gate 1
 # add --lead codex|agy|cursor|opencode when not running under Claude Code (ROLEPOD_LEAD_CLI also works)
 ```
 

@@ -45,3 +45,4 @@
 
 ## Open questions
 <Anything unresolved. Empty is the goal. A non-empty list blocks write-plan.>
+Cross-family critique: <cli — N items, K settled from repo, M asked | NO FURTHER QUESTIONS | not run — off>

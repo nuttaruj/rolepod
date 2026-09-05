@@ -222,7 +222,16 @@ printf '{"ts":"%s","phase":"review","reviewer":"external","kind":"review","cli":
   "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > "$TMP/.rolepod/evidence/phase-log.jsonl"
 : > "$TRANSCRIPT"
 out=$(pcx 'git commit -m "add billing"')
-check "anchored external review line + raw ≥500B, NO internal reviewer → auto-pass (the external IS the strong pass)" allow "$out"
+check "money/auth fixture + enabled pool + external anchor ONLY, no internal reviewer → deny (this surface needs BOTH — v2.78.0)" deny "$out"
+echo "$out" | grep -q 'needs BOTH' \
+  && echo "  ✓ deny reason says the money/auth surface needs both passes" \
+  || { echo "  ✗ money/auth deny reason missing BOTH wording"; fail=$((fail+1)); }
+printf '%s\n' \
+  '{"type":"tool_use","name":"Task","input":{"subagent_type":"rolepod:security-engineer","prompt":"review"}}' \
+  > "$TRANSCRIPT"
+out=$(pcx 'git commit -m "add billing"')
+check "money/auth fixture + external anchor + internal strong reviewer → allow (both present)" allow "$out"
+: > "$TRANSCRIPT"
 : > "$TMP/.rolepod/evidence/phase-log.jsonl"
 printf '%s\n' \
   '{"type":"tool_use","name":"Task","input":{"subagent_type":"rolepod:security-engineer","prompt":"review"}}' \
@@ -235,6 +244,28 @@ out=$(printf '{"tool_name":"Bash","transcript_path":%s,"tool_input":{"command":"
     "$(printf '%s' "$TRANSCRIPT" | python3 -c 'import json,sys; print(json.dumps(sys.stdin.read()))')" \
     | (cd "$TMP" && env -u CLAUDE_PLUGIN_ROOT -u ROLEPOD_LEAD_CLI HOME="$TMP" PATH="$XF_BIN:/usr/bin:/bin" bash "$HOOKS/precommit-gate.sh") || true)
 check "Lead CLI unknown (no ROLEPOD_LEAD_CLI / CLAUDE_PLUGIN_ROOT) → cannot exclude a family → old behavior, allow" allow "$out"
+
+# ── money / auth vs other high-risk (v2.78.0) ──────────────────────────
+printf 'codex\n' > "$TMP/.rolepod/cross-family"
+printf '{"ts":"%s","phase":"external-fail","kind":"review","cli":"codex","family":"openai","lead":"claude","reason":"exit 1"}\n' \
+  "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > "$TMP/.rolepod/evidence/phase-log.jsonl"
+printf '%s\n' \
+  '{"type":"tool_use","name":"Task","input":{"subagent_type":"rolepod:security-engineer","prompt":"review"}}' \
+  > "$TRANSCRIPT"
+out=$(pcx 'git commit -m "add billing"')
+check "money/auth + external FAILED (logged) + internal strong → allow (internal alone clears after a failed pool)" allow "$out"
+TMPM=$(mktemp -d); ( cd "$TMPM" && git init -q . && git config user.email t@t && git config user.name t \
+  && mkdir -p db/migrations && printf 'ALTER TABLE users ADD COLUMN x int;\n' > db/migrations/001_x.sql && git add db/migrations/001_x.sql )
+mkdir -p "$TMPM/.rolepod/evidence/external"; printf 'codex\n' > "$TMPM/.rolepod/cross-family"
+head -c 700 /dev/zero | tr '\0' 'x' > "$TMPM/.rolepod/evidence/external/t-codex.txt"
+printf '{"ts":"%s","phase":"review","reviewer":"external","kind":"review","cli":"codex","family":"openai","model":"default","raw":"external/t-codex.txt","lead":"claude","secs":9}\n' \
+  "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > "$TMPM/.rolepod/evidence/phase-log.jsonl"
+: > "$TRANSCRIPT"
+out=$(printf '{"tool_name":"Bash","transcript_path":%s,"tool_input":{"command":"git commit -m x"}}' \
+    "$(printf '%s' "$TRANSCRIPT" | python3 -c 'import json,sys; print(json.dumps(sys.stdin.read()))')" \
+    | (cd "$TMPM" && env HOME="$TMP" PATH="$XF_BIN:/usr/bin:/bin" CLAUDE_PLUGIN_ROOT="$TMP" bash "$HOOKS/precommit-gate.sh") || true)
+check "migration path (other high-risk) + external anchor ONLY → allow (external is the pass)" allow "$out"
+rm -rf "$TMPM"
 rm -f "$TMP/.rolepod/evidence/phase-log.jsonl" "$TMP/.rolepod/cross-family"
 
 # ── project-context-loader: opt-in question asked ONCE per machine ──────
