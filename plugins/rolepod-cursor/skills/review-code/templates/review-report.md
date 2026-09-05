@@ -22,10 +22,11 @@
  fresh-context reviewer and confirm its model differs from the Lead's.>
 
 **Cross-model adversarial pass:** <ran on `<cli>` (cross-family, its default model — receipt: ROLEPOD-XFAM ok … raw=<path>) |
- vertical — same family, reason (own CLI's stronger tier as cold reviewer;
- not a cross-family pass) | NOT RUN — reason (e.g., 0 external CLIs on PATH;
- Lead floor covered every axis instead). Anything other than a cross-family
- pass on a high-risk diff is a recorded verification limitation, not a pass —
+ NOT RUN — cross-family off (opt-in; the user's choice — a note, not a
+ limitation) | vertical — same family, reason (own CLI's stronger tier as
+ cold reviewer; not a cross-family pass) | NOT RUN — reason (pool failed /
+ empty; Lead floor covered every axis instead). Vertical or a NOT RUN other
+ than opt-in-off on a high-risk diff is a recorded verification limitation —
  `finish-work`'s Reviewer gate surfaces it before merge.>
 
 ## Findings

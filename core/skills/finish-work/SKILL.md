@@ -77,7 +77,7 @@ not merge with an unresolved F-finding.
 
 **Evidence** — read `check-work`'s evidence block: `Status: UNVERIFIED` or `PARTIAL` blocks merge unless the user explicitly waives it (quote the waiver in the finish menu); green tests alone do not satisfy this gate. Tree unchanged since that block's recorded pass → cite it and skip the local re-run ONLY when a CI lane re-runs that scope on the merge path; no CI configured → run the Phase 1+2 equivalents locally before the irreversible act (§2).
 
-**Reviewer** — risk-appropriate review completed (see `review-code`). On a high-risk diff, read the review report's **Cross-model adversarial pass** line: anything other than a cross-family pass — `NOT RUN` or `vertical — same family` — means the user must see that limitation before merge; state it in the finish summary, never clear the gate silently.
+**Reviewer** — risk-appropriate review completed (see `review-code`). On a high-risk diff, read the review report's **Cross-model adversarial pass** line. `NOT RUN — cross-family off (opt-in)` is the user's own choice: one neutral line in the finish summary, not a limitation. `NOT RUN` for any other reason (pool failed / empty, family unknown) or `vertical — same family` is a verification limitation the user must see before merge; state it, never clear the gate silently.
 
 **PR scope (P)** — one concern per PR / merge: the diff serves a single feature, fix, or refactor. Mixed concerns → split (`git add -p`, separate branches) before merge; a mixed diff is unreviewable and fails this gate.
 
