@@ -99,7 +99,7 @@ detection, the family rule, fail-at-invoke, cold-context framing.
   Same detection and family rule as review. Each advisor runs on its **own
   default model** — no model or effort flag; `TIER_MODELS` governs only the
   CLI that is the Lead.
-- **Vertical fallback — same family, stronger tier.** When the runner
+- **Vertical fallback — same CLI, stronger tier.** When the runner
   reports an empty pool (exit 4) or every member failed at invoke (exit 3),
   the advisor is the Lead's **own CLI at its strongest model** — ask the CLI
   which models it exposes (`--help` / model list), then invoke `claude -p
@@ -166,7 +166,7 @@ conflicting plans and no decision — the protocol exists to prevent it.
 |---------------|---------|
 | ≥2 families | Full panel (`--all`); Lead reconciles and decides |
 | 1 usable | Single advisor on the dominant dimension; Lead reasons through the rest |
-| 0 usable (runner exit 3 / 4) or off (exit 5) | **Vertical fallback**: the Lead's own CLI at its strongest model (≠ the running model) as the single advisor; record "vertical consult — same family" (or "cross-family off — opt-in") in the plan |
+| 0 usable (runner exit 3 / 4) or off (exit 5) | **Vertical fallback**: the Lead's own CLI at its strongest model (≠ the running model) as the single advisor; record "vertical consult — same CLI" (or "cross-family off — opt-in") in the plan |
 | 0 + no vertical | Lead reasons through the options solo; record in the plan that no cross-model advice was gathered — a coverage note, not a failure |
 
 **Installed ≠ usable.** The runner proves it at invoke: an advisor that

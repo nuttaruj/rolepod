@@ -30,10 +30,10 @@ _xf="$(cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null && pwd)/../scripts/cross-
 if [ -f "$_xf" ]; then
   _xf=$(cd "$(dirname "$_xf")" && pwd)/cross-family.sh
   _xfcmd="rolepod-cross-family"; command -v rolepod-cross-family >/dev/null 2>&1 || _xfcmd="bash $_xf"
-  command -v rolepod-cross-family >/dev/null 2>&1 || CTX="$CTX\n\ncross-family runner: \`$_xfcmd\` (reviews / consults on a different model family — opt-in pool: .rolepod/cross-family)"
+  command -v rolepod-cross-family >/dev/null 2>&1 || CTX="$CTX\n\ncross-family runner: \`$_xfcmd\` (reviews / consults in a different CLI — opt-in pool: .rolepod/cross-family)"
   # Opt-in question, asked ONCE per machine (v2.77.0): cross-family is OFF
   # until the user lists CLIs in ~/.rolepod/cross-family. No file, never
-  # asked, and at least one other-family CLI installed → tell the Lead to
+  # asked, and at least one other CLI installed → tell the Lead to
   # ask this session and record the answer (names, or `none`). The marker
   # keeps it from nagging; the user can always enable later by hand.
   if [ ! -f "$HOME/.rolepod/cross-family" ] && [ ! -f "$REPO/.rolepod/cross-family" ] && [ ! -f "$HOME/.rolepod/cross-family.asked" ]; then
@@ -47,7 +47,7 @@ if [ -f "$_xf" ]; then
       _cand=$( { bash "$_xf" --candidates --lead "$_lead" 2>/dev/null || true; } | tr '\n' ' ' | sed 's/ *$//' || true)
     fi
     if [ -n "$_cand" ]; then
-      CTX="$CTX\n\n**Cross-family reviewers are OFF (opt-in).** Installed other-family CLIs: $_cand. ASK THE USER ONCE this session — do they want rolepod to send adversarial reviews / debug consults / plan advisories to a different model family, and which of those CLIs, in what order? Yes → write the names one per line to \`~/.rolepod/cross-family\` (project-only: \`<git-root>/.rolepod/cross-family\`). No → write \`none\` there. Never enable it without their answer; until then every review stays on this CLI."
+      CTX="$CTX\n\n**Cross-family reviewers are OFF (opt-in).** Installed other CLIs: $_cand. ASK THE USER ONCE this session — do they want rolepod to send adversarial reviews / debug consults / plan advisories to a different CLI, and which of those CLIs, in what order? Yes → write the names one per line to \`~/.rolepod/cross-family\` (project-only: \`<git-root>/.rolepod/cross-family\`). No → write \`none\` there. Never enable it without their answer; until then every review stays on this CLI."
       { mkdir -p "$HOME/.rolepod" 2>/dev/null && : > "$HOME/.rolepod/cross-family.asked"; } 2>/dev/null || true
     fi
   fi

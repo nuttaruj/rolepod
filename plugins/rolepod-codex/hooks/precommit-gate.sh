@@ -327,7 +327,7 @@ fi
 # an `external-fail` phase-log line since the last commit (the runner tried
 # every usable member and they failed / the pool is empty). Machines with no
 # usable cross-family CLI (runner --pool-names prints nothing) keep the
-# internal path untouched. Lead CLI unknown → cannot exclude its family →
+# internal path untouched. Lead CLI unknown → cannot exclude its own CLI →
 # no tightening (fail-open).
 XFAM_HELD=""
 INTERNAL_STRONG=$(( STRONG_REVIEWERS - ${XREV:-0} ))
@@ -397,7 +397,7 @@ print(n)
 ' "$SINCE_EPOCH" "$EV_ROOT/phase-log.jsonl" 2>/dev/null || echo 0)
   fi
   if [ -n "$XFAM_POOL" ] && [ "${XFAM_FAILS:-0}" -eq 0 ] 2>/dev/null; then
-    XFAM_HELD="cross-family pool is usable ($XFAM_POOL) but no anchored external pass and no recorded external failure since the last commit — the $STRONG_REVIEWERS internal strong reviewer dispatch(es) do NOT clear a high-risk diff while a different model family is available. ${XFAM_RUNNING:+A detached external job is ALREADY RUNNING: $XFAM_RUNNING — wait for it (rolepod-cross-family --collect <job-id>) then retry the commit; do not start another. }${XFAM_RUNNING:-Run: rolepod-cross-family --kind review --brief <brief.md> --attach <diff> --detach (or scripts/cross-family.sh in the plugin tree; add --lead $XFAM_LEAD outside a hook); it anchors the pass itself — --collect <job-id> waits for the receipt.} Every member failing (exit 3) or an empty pool (exit 4) is logged and then the internal reviewer counts.${MONEY_RISK:+ Money / auth surface: keep the internal strong reviewer too — this surface needs BOTH passes.} "
+    XFAM_HELD="cross-family pool is usable ($XFAM_POOL) but no anchored external pass and no recorded external failure since the last commit — the $STRONG_REVIEWERS internal strong reviewer dispatch(es) do NOT clear a high-risk diff while a different CLI is available. ${XFAM_RUNNING:+A detached external job is ALREADY RUNNING: $XFAM_RUNNING — wait for it (rolepod-cross-family --collect <job-id>) then retry the commit; do not start another. }${XFAM_RUNNING:-Run: rolepod-cross-family --kind review --brief <brief.md> --attach <diff> --detach (or scripts/cross-family.sh in the plugin tree; add --lead $XFAM_LEAD outside a hook); it anchors the pass itself — --collect <job-id> waits for the receipt.} Every member failing (exit 3) or an empty pool (exit 4) is logged and then the internal reviewer counts.${MONEY_RISK:+ Money / auth surface: keep the internal strong reviewer too — this surface needs BOTH passes.} "
     STRONG_REVIEWERS=0
   fi
 fi

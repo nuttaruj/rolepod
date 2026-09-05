@@ -12,7 +12,7 @@
 #   - read-only flags present per CLI; ROLEPOD_BRAIN_SILENT=1 in the child env
 #   - success → external/<ts>-<cli>.txt + phase-log review line the gate reads
 #   - failure → external-fail line, next member; all fail → exit 3; empty → 4
-#   - --all runs one member per family concurrently; timeout kills a hung CLI
+#   - --all runs every usable member concurrently; timeout kills a hung CLI
 set -uo pipefail
 REPO_DIR="$(cd "$(dirname "$0")/../../.." && pwd)"
 RUNNER="$REPO_DIR/scripts/cross-family.sh"
@@ -74,7 +74,7 @@ out=$(bash "$RUNNER" --pool --lead claude)
 check "--pool says OFF + lists installed candidates with families + the enable hint" \
   "printf '%s' \"\$out\" | grep -q 'OPT-IN and not enabled' && printf '%s' \"\$out\" | grep -q 'candidates: codex(openai) agy(google) cursor(unknown) opencode(unknown)' && printf '%s' \"\$out\" | grep -q 'enable: printf'"
 cand=$(bash "$RUNNER" --candidates --lead claude | tr '\n' ' ')
-check "--candidates lists other-family installed CLIs (claude excluded, gemini never)" "[ \"$cand\" = 'codex(openai) agy(google) cursor(unknown) opencode(unknown) ' ]"
+check "--candidates lists the other installed CLIs (claude excluded, gemini never)" "[ \"$cand\" = 'codex(openai) agy(google) cursor(unknown) opencode(unknown) ' ]"
 cand=$(bash "$RUNNER" --candidates --lead codex | tr '\n' ' ')
 check "--candidates under a Codex Lead drops codex, keeps claude" "[ \"$cand\" = 'claude(anthropic) agy(google) cursor(unknown) opencode(unknown) ' ]"
 : > "$LOG"; mkdir -p .rolepod/evidence; : > .rolepod/evidence/phase-log.jsonl
@@ -89,7 +89,7 @@ mkdir -p "$HOME/.rolepod"; printf 'codex\nclaude\nagy\ncursor\nopencode\n' > "$H
 names=$(bash "$RUNNER" --pool-names --lead claude | tr '\n' ' ')
 check "all five listed, lead=claude → codex agy cursor opencode (claude excluded; gemini retired, never in the pool)" "[ \"$names\" = 'codex agy cursor opencode ' ]"
 names=$(bash "$RUNNER" --pool-names --lead gemini | tr '\n' ' ')
-check "lead=gemini (frozen adapter) excludes agy (same family)" "[ \"$names\" = 'codex claude cursor opencode ' ]"
+check "lead=gemini (frozen adapter) still gets agy — a different CLI; family is not a filter" "[ \"$names\" = 'codex claude agy cursor opencode ' ]"
 names=$(bash "$RUNNER" --pool-names --lead agy | tr '\n' ' ')
 check "lead=agy → codex claude cursor opencode" "[ \"$names\" = 'codex claude cursor opencode ' ]"
 out=$(bash "$RUNNER" --pool --lead claude); printf 'gemini\ncodex\n' > "$FIX/gcfg"
@@ -102,16 +102,16 @@ check "cursor / opencode flagged family unknown when no default model configured
 # opencode default model → family resolves; same family as Lead → skipped
 mkdir -p "$HOME/.config/opencode"; printf '{ "model": "anthropic/claude-sonnet-5" }\n' > "$HOME/.config/opencode/opencode.json"
 out=$(bash "$RUNNER" --pool --lead claude)
-check "opencode with a Claude default model is skipped under a Claude Lead" "printf '%s' \"\$out\" | grep -q 'opencode  skipped  anthropic'"
+check "opencode with a Claude default model stays usable under a Claude Lead (different CLI; family shown as info)" "printf '%s' \"\$out\" | grep -q 'opencode  *usable  *anthropic'"
 names=$(bash "$RUNNER" --pool-names --lead codex | tr '\n' ' ')
 check "…but usable under a Codex Lead" "printf '%s' \"$names\" | grep -qw opencode"
 printf '{ "model": "openai/gpt-5.6" }\n' > "$HOME/.config/opencode/opencode.json"
 out=$(bash "$RUNNER" --pool --lead codex)
-check "opencode with an OpenAI default model is skipped under a Codex Lead" "printf '%s' \"\$out\" | grep -q 'opencode  skipped  openai'"
+check "opencode with an OpenAI default model stays usable under a Codex Lead" "printf '%s' \"\$out\" | grep -q 'opencode  *usable  *openai'"
 # cursor default model
 mkdir -p "$HOME/.cursor"; printf '{ "model": "gemini-3-pro" }\n' > "$HOME/.cursor/cli-config.json"
 out=$(bash "$RUNNER" --pool --lead gemini)
-check "cursor with a Gemini default model is skipped under a Gemini Lead" "printf '%s' \"\$out\" | grep -q 'cursor  *skipped  google'"
+check "cursor with a Gemini default model stays usable under a Gemini Lead" "printf '%s' \"\$out\" | grep -q 'cursor  *usable  *google'"
 # v2.83.2: Cursor stores "model" as an object; Auto = no fixed family; more vendors; opencode last-used fallback
 printf '{ "model": { "modelId": "composer-2.5", "displayName": "Composer 2.5" } }\n' > "$HOME/.cursor/cli-config.json"
 out=$(bash "$RUNNER" --pool --lead claude)
@@ -124,7 +124,7 @@ out=$(bash "$RUNNER" --pool --lead claude)
 check "cursor Auto → family unknown with the pin-one hint" "printf '%s' \"\$out\" | grep -q 'cursor  *usable  *unknown .*Cursor Auto routes across vendors'"
 printf '{ "model": { "modelId": "claude-sonnet-5-thinking-high" } }\n' > "$HOME/.cursor/cli-config.json"
 out=$(bash "$RUNNER" --pool --lead claude)
-check "cursor pinned to a Claude model is skipped under a Claude Lead" "printf '%s' \"\$out\" | grep -q 'cursor  *skipped  *anthropic'"
+check "cursor pinned to a Claude model stays usable under a Claude Lead (family = info)" "printf '%s' \"\$out\" | grep -q 'cursor  *usable  *anthropic'"
 rm -f "$HOME/.config/opencode/opencode.json"; mkdir -p "$HOME/.local/state/opencode"
 printf '{"recent":[{"providerID":"openrouter","modelID":"moonshotai/kimi-k3"}],"favorite":[]}\n' > "$HOME/.local/state/opencode/model.json"
 out=$(bash "$RUNNER" --pool --lead claude)
@@ -231,7 +231,7 @@ rm -f "$REPO/.rolepod/cross-family"
 echo "── cross-family: --all panel ──"
 : > "$LOG"; : > .rolepod/evidence/phase-log.jsonl
 rc=0; out=$(bash "$RUNNER" --kind advise --brief brief.md --lead claude --all 2>/dev/null) || rc=$?
-check "--all runs one member per family concurrently (codex + agy + cursor + opencode)" \
+check "--all runs every usable member concurrently (codex + agy + cursor + opencode)" \
   "[ $rc -eq 0 ] && grep -q '^codex |' '$LOG' && grep -q '^agy |' '$LOG' && ! grep -q '^gemini |' '$LOG' && grep -q '^cursor |' '$LOG' && grep -q '^opencode |' '$LOG'"
 check "--all output carries one ===== block + ok trailer per member" "[ \"\$(printf '%s' \"\$out\" | grep -c '^ROLEPOD-XFAM ok kind=advise')\" -eq 4 ]"
 check "advise lines logged with phase=advise" "[ \"\$(grep -c '\"phase\":\"advise\",\"reviewer\":\"external\"' .rolepod/evidence/phase-log.jsonl)\" -eq 4 ]"
@@ -330,12 +330,12 @@ check "opencode header '> plan · model' → family from the run itself (moonsho
   "[ $rc -eq 0 ] && grep -q '\"cli\":\"opencode\",\"family\":\"moonshot\",\"model\":\"default\".*\"ran\":\"moonshotai/kimi-k3\"' .rolepod/evidence/phase-log.jsonl"
 : > "$LOG"; : > .rolepod/evidence/phase-log.jsonl
 rc=0; out=$(OPENCODE_RAN=anthropic/claude-sonnet-5 bash "$RUNNER" --kind review --brief brief.md --lead claude 2>/dev/null) || rc=$?
-check "opencode that actually ran a Claude model under a Claude Lead → external-fail (Iron Rule 2), never the strong pass, exit 3" \
-  "[ $rc -eq 3 ] && grep -q '\"external-fail\".*\"cli\":\"opencode\",\"family\":\"anthropic\".*same family as the Lead.*\"ran\":\"anthropic/claude-sonnet-5\"' .rolepod/evidence/phase-log.jsonl && ! grep -q '\"reviewer\":\"external\"' .rolepod/evidence/phase-log.jsonl"
+check "opencode that actually ran a Claude model under a Claude Lead STILL counts (owner rule: a different CLI is the point) — family + ran recorded" \
+  "[ $rc -eq 0 ] && grep -q '\"reviewer\":\"external\".*\"cli\":\"opencode\",\"family\":\"anthropic\".*\"ran\":\"anthropic/claude-sonnet-5\"' .rolepod/evidence/phase-log.jsonl && ! grep -q '\"external-fail\"' .rolepod/evidence/phase-log.jsonl"
 out=$(bash "$RUNNER" --probe --lead claude 2>/dev/null)
 check "--probe prints ran=<model> (<family>) per member" "printf '%s' \"\$out\" | grep -q 'opencode .*ok .*ran=moonshotai/kimi-k3 (moonshot)'"
 out=$(OPENCODE_RAN=anthropic/claude-sonnet-5 bash "$RUNNER" --probe --lead claude 2>/dev/null)
-check "--probe warns when the member ran the Lead's own family" "printf '%s' \"\$out\" | grep -q 'ran=anthropic/claude-sonnet-5 (anthropic) ⚠ same family as the Lead'"
+check "--probe shows ran= for a Lead-vendor model without any warning or failure" "printf '%s' \"\$out\" | grep -q 'opencode .*ok .*ran=anthropic/claude-sonnet-5 (anthropic)' && ! printf '%s' \"\$out\" | grep -q '⚠'"
 printf 'codex\nclaude\nagy\ncursor\nopencode\n' > "$HOME/.rolepod/cross-family"
 printf '{ "model": "openai/gpt-5.6" }\n' > "$HOME/.config/opencode/opencode.json"
 

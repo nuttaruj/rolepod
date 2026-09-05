@@ -6,9 +6,10 @@
 Rolepod's CLIs span model families — Claude, Codex (GPT), Google (served
 by Antigravity `agy`; the standalone Gemini CLI is retired for individual
 accounts and is never in the pool), plus the multi-model harnesses Cursor
-and OpenCode (their family = whatever default model their owner configured).
-Any CLI can be the Lead. The adversarial review pass routes to a **different
-model family** than the Lead's, never to the Lead's own.
+and OpenCode (their model = whatever default their owner configured —
+recorded, never a criterion). Any CLI can be the Lead. The adversarial
+review pass routes to a **different CLI** than the Lead's, never to the
+Lead's own; the model family is information, not a filter.
 
 ## One command — the cross-family runner
 
@@ -76,18 +77,15 @@ records `model: default`.
   `none`. Off is a choice, not a limitation to nag about — the review
   report's Cross-model line says "NOT RUN — cross-family off (opt-in)" and
   the internal strong reviewer is the pass.
-- **Family exclusion** — the Lead's own family is removed: `codex` =
-  openai, `claude` = anthropic, `agy` = google (a Gemini-CLI Lead is the
-  same family), `cursor` / `opencode` = the family of their configured
-  default model (Cursor: `model` / `model.modelId` in `~/.cursor/cli-config.json`
-  — `auto` has no fixed family; OpenCode: `model` in `opencode.json(c)`, else
-  its last-used model from `~/.local/state/opencode/model.json`), else
-  `unknown` — still used, flagged "decorrelation unverified" in
-  `--pool`. After a run, the family follows the model the CLI *reports*
-  it ran (Codex banner, OpenCode header → `ran:` in the receipt and
-  phase-log) — a member that turns out to have run the Lead's own family is
-  an `external-fail`, never the strong pass. Two members of one family: the
-  second is a sequential fallback only (a harness is not a second opinion).
+- **Family is information, not a filter.** Only the Lead's own CLI is
+  excluded. The runner records each member's model family (`agy` = google;
+  `cursor` / `opencode` from their configured or last-used default — Cursor
+  `auto` has no fixed family; after a run, from the model the CLI *reports*
+  it ran: Codex banner, OpenCode header → `ran:` in the receipt and
+  phase-log). A member whose default happens to be the Lead's vendor still
+  counts — the other harness, context and defaults are the decorrelation
+  (owner rule: a different CLI is the point). `--all` runs every usable
+  member; each CLI is one opinion.
 - **A review pass must be complete.** A review that comes back `PARTIAL`
   (budget nearly spent) or without its `VERDICT:` line is kept as
   `*.partial.txt` for you to read, logged as `external-fail`, and the chain
@@ -105,11 +103,11 @@ records `model: default`.
   the resolved pool with reasons; `--probe` sends each member a one-line
   prompt (spends one call each) — `ROLEPOD_DOCTOR_PROBE=1 make doctor` does
   the same.
-- **Vertical fallback — same family, stronger tier.** Empty pool or all
+- **Vertical fallback — same CLI, stronger tier.** Empty pool or all
   failed: the Lead's own CLI at its strongest model (`claude -p --model
   <name>` / `codex exec -m <name>` — the Lead CLI, so a model flag IS
   allowed here), cold context, only when that model differs from the one
-  running. Same family — it never counts as the cross-family pass; it
+  running. Same CLI — it never counts as the cross-family pass; it
   upgrades the Lead floor. Never pin model names in a skill or plan.
 
 ## Model strength — one axis each, no overlap

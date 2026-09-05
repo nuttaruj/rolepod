@@ -22,10 +22,12 @@
 #                agy
 #                consult: agy codex      # debug consults want the fast answer first
 #            Names: codex claude agy cursor opencode (`gemini` is retired —
-#            skipped with a note; a Gemini-CLI Lead still excludes agy).
-#   family   the Lead's own model FAMILY is excluded (agy = google; cursor /
-#            opencode resolve to the family of their configured default
-#            model, else `unknown` — used, but flagged).
+#            skipped with a note; list agy instead).
+#   cli      only the Lead's OWN CLI is excluded. The model family is
+#            recorded for information (agy = google; cursor / opencode = the
+#            family of their default model, else `unknown`; what actually ran
+#            is captured when the CLI reports it) — a member is never skipped
+#            or failed for its model: a different CLI IS the point (owner rule).
 #   model    NEVER a model or effort flag. TIER_MODELS applies only to the CLI
 #            that is the Lead; an external runs whatever its owner set as
 #            default. The phase-log records model:"default".
@@ -58,7 +60,7 @@
 #   cross-family.sh --pool [--lead <cli>] [--kind <k>]    # usable pool, no network
 #   cross-family.sh --pool-names [--lead <cli>]           # names only (hooks use this)
 #   cross-family.sh --probe [--lead <cli>]                # live "reply OK" per member
-#   cross-family.sh --candidates                          # installed other-family CLIs (opt-in question)
+#   cross-family.sh --candidates                          # installed other CLIs (opt-in question)
 # Exit: 0 ok · 2 usage · 3 every member failed · 4 configured pool empty · 5 off · 6 job still running
 set -uo pipefail
 
@@ -266,12 +268,12 @@ bin_of() {
 }
 LEAD_FAMILY=$(family_of "$LEAD")
 
-# ── Candidates (installed, not the Lead's family) — the opt-in question ──
+# ── Candidates (installed, not the Lead's own CLI) — the opt-in question ──
 CANDIDATES=""
 for cli in $ALL_CLIS; do
   [ -n "$(bin_of "$cli")" ] || continue
   [ "$cli" = "$LEAD" ] && continue
-  fam=$(family_of "$cli"); [ "$fam" != "unknown" ] && [ "$fam" = "$LEAD_FAMILY" ] && continue
+  fam=$(family_of "$cli")   # information only — never a filter
   CANDIDATES="$CANDIDATES${CANDIDATES:+ }$cli($fam)"
 done
 if [ "$MODE" = "candidates" ]; then printf '%s\n' $CANDIDATES; exit 0; fi
@@ -341,19 +343,16 @@ $cli  absent  -  not on PATH"; continue; fi
     fam=$(family_of "$cli")
     if [ "$cli" = "$LEAD" ]; then POOL_ROWS="$POOL_ROWS
 $cli  skipped  $fam  is the Lead"; continue; fi
-    if [ "$fam" != "unknown" ] && [ "$fam" = "$LEAD_FAMILY" ]; then POOL_ROWS="$POOL_ROWS
-$cli  skipped  $fam  same family as the Lead ($LEAD)"; continue; fi
     note="bin=$bin · timeout=$(timeout_for "$cli")s"
-    case " $SEEN_FAMILIES " in *" $fam "*) [ "$fam" != "unknown" ] && note="$note · same family as an earlier member — sequential fallback only, not in --all" ;; esac
     case "$cli" in cursor|opencode) note="$note · $(describe_default_model "$cli")" ;; esac
     if [ "$fam" = "unknown" ]; then
       case "$cli" in
         cursor) case "$(cursor_default_model | tr 'A-Z' 'a-z')" in
-                  ""|auto|default) note="$note · family unknown: Cursor Auto routes across vendors — pin one (run \`cursor-agent\`, type /model) — decorrelation unverified" ;;
-                  *) note="$note · family unknown: model not recognized — decorrelation unverified" ;;
+                  ""|auto|default) note="$note · family unknown: Cursor Auto routes across vendors — pin one (run \`cursor-agent\`, type /model) — info only, still used" ;;
+                  *) note="$note · family unknown: model not recognized — info only, still used" ;;
                 esac ;;
-        opencode) if [ -z "$(opencode_default_model)" ]; then note="$note · family unknown: no \"model\" in opencode.json(c) and no last-used model — decorrelation unverified"
-                  else note="$note · family unknown: model not recognized — decorrelation unverified"; fi ;;
+        opencode) if [ -z "$(opencode_default_model)" ]; then note="$note · family unknown: no \"model\" in opencode.json(c) and no last-used model — info only, still used"
+                  else note="$note · family unknown: model not recognized — info only, still used"; fi ;;
       esac
     fi
     POOL_ROWS="$POOL_ROWS
@@ -446,7 +445,7 @@ if [ "$MODE" = "probe" ]; then
     [ "$cli" = "codex" ] && [ -s "$TMPP/$cli.out.msg" ] && mv "$TMPP/$cli.out.msg" "$TMPP/$cli.out"
     bytes=$(wc -c < "$TMPP/$cli.out" | tr -d ' ')
     if [ "$rc" -eq 0 ] && [ "$bytes" -gt 0 ]; then
-      printf '  %-9s ok    %3ss  %s%s\n' "$cli" "$secs" "$(head -c 60 "$TMPP/$cli.out" | tr '\n' ' ')" "${ran:+ · ran=$ran ($ranfam)$( [ "$ranfam" = "$LEAD_FAMILY" ] && printf ' ⚠ same family as the Lead — would NOT count' )}"; rc_all=0
+      printf '  %-9s ok    %3ss  %s%s\n' "$cli" "$secs" "$(head -c 60 "$TMPP/$cli.out" | tr '\n' ' ')" "${ran:+ · ran=$ran ($ranfam)}"; rc_all=0
     else
       why="exit $rc"; [ "$rc" -eq 124 ] && why="timeout ${TIMEOUT}s"
       printf '  %-9s FAIL  %3ss  %s — %s\n' "$cli" "$secs" "$why" "$(head -c 120 "$TMPP/$cli.out.err" | tr '\n' ' ')"
@@ -517,10 +516,10 @@ BODY="$TMPP/body.md"
 } > "$BODY"
 preamble() { # $1 kind
   case "$1" in
-    review) printf '%s' "You are a cold-context ADVERSARIAL code reviewer from a different model family than the author. Read only — never edit files, never run write commands. Try to make the change fail. Report findings severity-ordered (BLOCKER / MAJOR / MINOR / NIT) with file:line, label each TRACED (path walked) or SUSPECTED (pattern-level), name what is missing as hard as what is present, then end with one line: VERDICT: APPROVED | APPROVED-WITH-NITS | REJECTED." ;;
-    consult) printf '%s' "You are a cold-context debugging advisor from a different model family. The author has failed twice; do not repeat their fixes. Read only — never edit files. Return exactly one of: CORRECTION (new hypothesis + the smallest change to test it), CONFIRMATION (approach right — check X), or STOP (wrong path — why). Reason from the evidence given; say what you would verify first." ;;
-    advise) printf '%s' "You are a cold-context planning advisor from a different model family. Advise, never execute: return a RECOMMENDED option with reasoning and the risks you see, or a CORRECTION if the framing or all options are flawed, or a STOP signal. Do not edit files or run the plan." ;;
-    critique) printf '%s' "You are a cold-context spec critic from a different model family. The author has finished their discovery dialogue with the user (the questions already asked and answered are attached — never re-ask those). Return AT MOST 5 items, ranked by implementation risk, each tagged QUESTION (a decision only the user can make — the answer would change the implementation), AMBIGUITY (wording two engineers would read differently — quote it), or MISSING (an acceptance criterion, failure mode, or edge case with no 'proven by'). No design proposals, no praise, no restating the spec. If nothing material remains, reply exactly: NO FURTHER QUESTIONS." ;;
+    review) printf '%s' "You are a cold-context ADVERSARIAL code reviewer running in a different CLI than the author. Read only — never edit files, never run write commands. Try to make the change fail. Report findings severity-ordered (BLOCKER / MAJOR / MINOR / NIT) with file:line, label each TRACED (path walked) or SUSPECTED (pattern-level), name what is missing as hard as what is present, then end with one line: VERDICT: APPROVED | APPROVED-WITH-NITS | REJECTED." ;;
+    consult) printf '%s' "You are a cold-context debugging advisor running in a different CLI than the author. The author has failed twice; do not repeat their fixes. Read only — never edit files. Return exactly one of: CORRECTION (new hypothesis + the smallest change to test it), CONFIRMATION (approach right — check X), or STOP (wrong path — why). Reason from the evidence given; say what you would verify first." ;;
+    advise) printf '%s' "You are a cold-context planning advisor running in a different CLI than the author. Advise, never execute: return a RECOMMENDED option with reasoning and the risks you see, or a CORRECTION if the framing or all options are flawed, or a STOP signal. Do not edit files or run the plan." ;;
+    critique) printf '%s' "You are a cold-context spec critic running in a different CLI than the author. The author has finished their discovery dialogue with the user (the questions already asked and answered are attached — never re-ask those). Return AT MOST 5 items, ranked by implementation risk, each tagged QUESTION (a decision only the user can make — the answer would change the implementation), AMBIGUITY (wording two engineers would read differently — quote it), or MISSING (an acceptance criterion, failure mode, or edge case with no 'proven by'). No design proposals, no praise, no restating the spec. If nothing material remains, reply exactly: NO FURTHER QUESTIONS." ;;
   esac
 }
 budget_line() { # $1 seconds
@@ -555,11 +554,10 @@ one() { # $1 cli → 0 ok / 1 fail; writes $TMPP/$1.{out,err,line,jsonl} — the
   # codex streams its event log to stderr; the reviewer's answer is the -o message file
   if [ "$_c" = "codex" ] && [ -s "$TMPP/$_c.out.msg" ]; then mv "$TMPP/$_c.out" "$TMPP/$_c.out.stream"; mv "$TMPP/$_c.out.msg" "$TMPP/$_c.out"; fi
   _bytes=$(wc -c < "$TMPP/$_c.out" | tr -d ' ')
-  # What actually ran beats what the config said: family follows the reported model, and the
-  # Lead's own family is never a cross-family opinion (Iron Rule 2) — even if the config looked fine.
+  # Record what actually ran (the CLI's own banner / header): the family follows the reported model.
+  # Information only — a member is never failed for its model family; a different CLI is the point (owner rule).
   _ran=$(ran_model_of "$_c" "$TMPP/$_c.out"); _ranfam=""
   if [ -n "$_ran" ]; then _ranfam=$(classify_model "$_ran"); [ "$_ranfam" != "unknown" ] && _f="$_ranfam"; fi
-  if [ "$_rc" -eq 0 ] && [ -n "$_ranfam" ] && [ "$_ranfam" != "unknown" ] && [ "$_ranfam" = "$LEAD_FAMILY" ]; then _rc=126; fi
   _floor=200; [ "$KIND" = "review" ] && _floor=500   # the commit gate's raw-file floor
   _partial=""; head -c 400 "$TMPP/$_c.out" 2>/dev/null | grep -q 'PARTIAL' && _partial=" partial=1"
   _verdict=1; if [ "$KIND" = "review" ]; then grep -qi 'VERDICT' "$TMPP/$_c.out" 2>/dev/null || _verdict=0; fi
@@ -582,7 +580,6 @@ one() { # $1 cli → 0 ok / 1 fail; writes $TMPP/$1.{out,err,line,jsonl} — the
   [ "$_rc" -eq 0 ] && _why="empty output ($_bytes bytes, floor $_floor)"
   _suffix="failed"
   if [ "$_rc" -eq 125 ]; then _suffix="partial"; if [ -n "$_partial" ]; then _why="PARTIAL review (budget nearly spent) — kept as evidence, not a pass"; else _why="review has no VERDICT line (incomplete) — kept as evidence, not a pass"; fi; fi
-  [ "$_rc" -eq 126 ] && _why="ran $_ran — same family as the Lead ($LEAD_FAMILY): not a cross-family opinion (Iron Rule 2); pin a different default model" 
   _first=$(head -c 160 "$TMPP/$_c.out.err" 2>/dev/null | tr '\n' ' ')
   { printf '# rolepod cross-family %s %s · cli=%s family=%s lead=%s · %s · %s · budget=%ss · run=%s\n\n--- stdout ---\n' "$KIND" "$(printf '%s' "$_suffix" | tr a-z A-Z)" "$_c" "$_f" "$LEAD" "$(iso_now)" "$_why" "$TIMEOUT" "$RUN_TAG"
     cat "$TMPP/$_c.out"; printf '\n--- stderr ---\n'; cat "$TMPP/$_c.out.err"; } > "$EV/external/$_ts-$_c-$RUN_TAG.$_suffix.txt" 2>/dev/null || true
@@ -593,10 +590,9 @@ one() { # $1 cli → 0 ok / 1 fail; writes $TMPP/$1.{out,err,line,jsonl} — the
 }
 
 if [ "$ALL" -eq 1 ]; then
-  # Panel: one member per family, concurrently. Same-family duplicates stay
-  # sequential fallbacks (they only add a harness, not a second opinion).
-  PANEL=""; FAMS=""
-  for c in $USABLE; do f=$(family_of "$c"); case " $FAMS " in *" $f "*) [ "$f" != "unknown" ] && continue ;; esac; PANEL="$PANEL${PANEL:+ }$c"; FAMS="$FAMS $f"; done
+  # Panel: every usable member concurrently — each CLI is one opinion (owner rule:
+  # a different CLI is the point; the model family is recorded, never a filter).
+  PANEL="$USABLE"
   for c in $PANEL; do one "$c" & done; wait
   for c in $PANEL; do [ -f "$TMPP/$c.jsonl" ] && jlog "$(cat "$TMPP/$c.jsonl")"; done   # serial appends — no interleaving
   OK=0

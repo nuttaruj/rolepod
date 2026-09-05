@@ -66,7 +66,7 @@ Stop early: if an answer makes a later question irrelevant, skip it.
 
 
 The Lead's own discovery finds the questions the Lead's own model can see.
-A cold reader from a different family sees different gaps — cheapest at
+A cold reader in a different CLI (its own model, none of your context) sees different gaps — cheapest at
 Define, where an ambiguity costs a question instead of a rewrite.
 
 ## Gate

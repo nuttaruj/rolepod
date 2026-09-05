@@ -213,13 +213,13 @@ Names: `codex` `claude` `agy` `cursor` `opencode` (the standalone Gemini
 CLI is retired — a `gemini` line is skipped with a note). **Ask once:** the
 SessionStart loader (`project-context-loader.sh` on Claude + Codex, the
 gemini/agy `session-start.sh`) sees no file, no `~/.rolepod/cross-family.asked`
-marker and at least one other-family CLI installed → tells the Lead to ask
+marker and at least one other CLI installed → tells the Lead to ask
 the user this session (candidates from `rolepod-cross-family --candidates`)
 and record the answer — names, or `none` — then drops the marker so it never
-nags. Rolepod never enables it unasked. The Lead's own model family is
-always excluded (`agy`
-= google; `cursor` / `opencode` = the family of their configured default
-model, else `unknown` and flagged). Consumers: `scripts/cross-family.sh`
+nags. Rolepod never enables it unasked. Only the Lead's own CLI is
+excluded; the model family is recorded for information (`agy` = google;
+`cursor` / `opencode` = their default model, else `unknown`) and never
+filters a member. Consumers: `scripts/cross-family.sh`
 (the runner — installed as `rolepod-cross-family`, shipped in every plugin
 tree), `precommit-gate.sh`, `gate-reminder.sh`, `make doctor`,
 `rolepod-stats`.

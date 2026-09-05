@@ -162,14 +162,14 @@ The path-based ownership rules from `write-plan` apply identically across all CL
 ## Cross-family externals — one runner, any Lead
 
 Any installed CLI can be the Lead; the adversarial review, the stuck-state
-consult and the plan advisory go to a **different model family** through
+consult and the plan advisory go to a **different CLI** (its own default model; the vendor may coincide) through
 one command, `rolepod-cross-family` (`install.sh` launcher; every plugin
 tree ships `scripts/cross-family.sh`, and the SessionStart context names
 the path on marketplace installs):
 
 ```bash
 rolepod-cross-family --pool                       # resolved pool with reasons (or OFF + candidates), no network
-rolepod-cross-family --candidates                 # installed other-family CLIs — the opt-in question
+rolepod-cross-family --candidates                 # installed other CLIs — the opt-in question
 rolepod-cross-family --probe                      # one-line "reply OK" per member (spends a call each)
 rolepod-cross-family --kind review  --brief brief.md --attach diff.patch --detach   # job; --collect <id> waits
 rolepod-cross-family --collect <job-id> --root <git-root>   # prints the review + receipt when the job lands (exit 6 = still running); PARTIAL / no-VERDICT reviews never anchor

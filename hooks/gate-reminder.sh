@@ -179,7 +179,7 @@ if [ -n "$HIGH_RISK" ]; then
   [ -z "$SELF_CLI" ] && [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && SELF_CLI="claude"
   REVIEWER_LIST="qa-tester"
   # v2.76.0: the cross-family runner owns pool detection (config file +
-  # installed + Lead-family exclusion). Its --pool-names output IS the list;
+  # installed + Lead-CLI exclusion). Its --pool-names output IS the list;
   # the pre-runner detection below is the fallback when the runner is absent.
   XFAM_RUNNER="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/../scripts/cross-family.sh"
   [ -f "$XFAM_RUNNER" ] || XFAM_RUNNER="$HOME/.rolepod/bin/cross-family.sh"
@@ -196,10 +196,10 @@ if [ -n "$HIGH_RISK" ]; then
     [ "$SELF_CLI" != "codex" ]  && command -v codex  >/dev/null 2>&1 && REVIEWER_LIST="$REVIEWER_LIST + Codex (\`codex exec\`, depth/security)"
     [ "$SELF_CLI" != "claude" ] && command -v claude >/dev/null 2>&1 && REVIEWER_LIST="$REVIEWER_LIST + Claude (\`claude -p\`, architecture/quality)"
     if [ "$SELF_CLI" != "gemini" ] && [ "$SELF_CLI" != "antigravity" ] && command -v agy >/dev/null 2>&1; then
-      REVIEWER_LIST="$REVIEWER_LIST + Antigravity (\`agy -p\`, breadth/cross-file — Google family)"
+      REVIEWER_LIST="$REVIEWER_LIST + Antigravity (\`agy -p\`, breadth/cross-file)"
     fi
   fi
-  CAREFUL_BANNER="${WOULD_BLOCK}⚠️  AUTO-CAREFUL MODE (high-risk path; since last commit: $HIGH_RISK_EDITS high-risk edits / $TEST_EDITS tests / $REVIEWERS reviewers, $STRONG_REVIEWERS strong). MANDATORY before commit: (1) test file exists or is being written this session, (2) reviewers dispatched — use ≥2 when available (${REVIEWER_LIST}; security-engineer for auth/billing/crypto). Exclude this session's own CLI — the adversarial pass runs on a DIFFERENT model (gemini and agy are the same model family). (3) S1-S5 + T1-T6 checklist (finish-work §1) run before commit. Reviewer path blocked by a user instruction? Surface it — fallback: Lead cold self-review + limitation note. Bypass envs are user-set only, never model-set. "
+  CAREFUL_BANNER="${WOULD_BLOCK}⚠️  AUTO-CAREFUL MODE (high-risk path; since last commit: $HIGH_RISK_EDITS high-risk edits / $TEST_EDITS tests / $REVIEWERS reviewers, $STRONG_REVIEWERS strong). MANDATORY before commit: (1) test file exists or is being written this session, (2) reviewers dispatched — use ≥2 when available (${REVIEWER_LIST}; security-engineer for auth/billing/crypto). Exclude this session's own CLI — the adversarial pass runs in a DIFFERENT CLI on its own default model. (3) S1-S5 + T1-T6 checklist (finish-work §1) run before commit. Reviewer path blocked by a user instruction? Surface it — fallback: Lead cold self-review + limitation note. Bypass envs are user-set only, never model-set. "
 fi
 
 # Emit reminder ONLY when schema-bound or high-risk — no generic Q1-Q4 nag.

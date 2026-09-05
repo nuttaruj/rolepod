@@ -125,8 +125,8 @@ rules keep it from fighting rolepod's own consult machinery:
    never a second parallel consult for the same event — advisor on does not
    mean consult twice.
 2. **Advisor never satisfies the adversarial pass.** It advises the author
-   inside the author's own context and family — Iron Rule 2 still requires
-   a fresh cross-family reviewer on high-risk diffs. "The advisor looked at
+   inside the author's own context and CLI — Iron Rule 2 still requires
+   a fresh reviewer in a different CLI on high-risk diffs. "The advisor looked at
    it" is a limitation note, not a review.
 3. **Subagents inherit the configured advisor** (with the pairing check
    re-run against each subagent's own model). A haiku scout carrying an

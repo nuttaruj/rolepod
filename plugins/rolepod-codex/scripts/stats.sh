@@ -211,7 +211,7 @@ if reviews:
 
 strong_internal = [d for d in dispatches if d.get("tier") == "strong"]
 if externals or xfails or strong_internal:
-    print(f"\n  Cross-family (different model family than the Lead):")
+    print(f"\n  Cross-family (a different CLI than the Lead):")
     if externals:
         by = Counter((r.get("kind") or r.get("phase") or "?", r.get("cli") or "?", r.get("family") or "?") for r in externals)
         for (kind, cli, fam), n in sorted(by.items()):
@@ -245,7 +245,7 @@ if externals or xfails or strong_internal:
                 pass
         if strong_internal and not ext_reviews:
             if enabled:
-                print("      ⚠ every strong pass ran on the Lead's own family although a cross-family pool is "
+                print("      ⚠ every strong pass ran in the Lead's own CLI although a cross-family pool is "
                       "configured — satellite-first wants `rolepod-cross-family --kind review` first")
             else:
                 print("      cross-family is opt-in and not enabled here (no ~/.rolepod/cross-family) — "
