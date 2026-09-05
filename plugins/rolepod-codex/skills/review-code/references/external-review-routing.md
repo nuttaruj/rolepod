@@ -83,8 +83,11 @@ records `model: default`.
   — `auto` has no fixed family; OpenCode: `model` in `opencode.json(c)`, else
   its last-used model from `~/.local/state/opencode/model.json`), else
   `unknown` — still used, flagged "decorrelation unverified" in
-  `--pool`. Two members of one family: the second is a sequential
-  fallback only (a harness is not a second opinion).
+  `--pool`. After a run, the family follows the model the CLI *reports*
+  it ran (Codex banner, OpenCode header → `ran:` in the receipt and
+  phase-log) — a member that turns out to have run the Lead's own family is
+  an `external-fail`, never the strong pass. Two members of one family: the
+  second is a sequential fallback only (a harness is not a second opinion).
 - **A review pass must be complete.** A review that comes back `PARTIAL`
   (budget nearly spent) or without its `VERDICT:` line is kept as
   `*.partial.txt` for you to read, logged as `external-fail`, and the chain

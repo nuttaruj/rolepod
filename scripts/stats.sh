@@ -221,6 +221,9 @@ if externals or xfails or strong_internal:
     if xfails:
         why = Counter((r.get("cli") or "-", (r.get("reason") or "?").split(":")[0][:40]) for r in xfails)
         print("    failures: " + ", ".join(f"{cli} {n}× ({reason})" for (cli, reason), n in sorted(why.items())))
+    ran = Counter((r.get("cli") or "?", r.get("ran")) for r in externals if r.get("ran"))
+    if ran:
+        print("    ran (model the CLI reported): " + ", ".join(f"{cli}={m} ×{n}" for (cli, m), n in sorted(ran.items())))
     partial = sum(1 for r in externals if r.get("partial"))
     if partial:
         print(f"    partial answers (budget nearly spent): {partial} — raise `timeout=` for that CLI or --detach")

@@ -202,7 +202,10 @@ or an answer under the floor (review < 500 bytes, consult / advise < 200)
 reviewer / vertical consult) runs and the review report records the
 limitation. Evidence: `.rolepod/evidence/external/<utc>-<cli>.txt` + one
 phase-log line (`phase: review|consult|advise`, `reviewer: external`,
-`model: default`). `rolepod-stats` shows external passes vs internal strong
+`model: default`, plus `ran: <id>` when the CLI names the model it ran —
+Codex's `model:` banner, OpenCode's `> agent · model` header; the family
+follows what ran, and a member that ran the Lead's own family is logged as
+`external-fail`, never the strong pass). `rolepod-stats` shows external passes vs internal strong
 dispatches; `make doctor` prints the pool (`ROLEPOD_DOCTOR_PROBE=1` to
 probe live). Live-verified 2026-09-04 on this machine: agy 10 s, cursor
 28 s, opencode 8 s answered the probe; Gemini CLI failed auth

@@ -237,6 +237,17 @@ describe_default_model() {
       else _m=$(opencode_last_used_model); [ -n "$_m" ] && printf 'model=%s (last used — pin with "model" in opencode.json(c))' "$_m" || printf 'model=none'; fi ;;
   esac
 }
+# The model that ACTUALLY ran, from the CLI's own output — per run, per machine, no config guessing:
+# codex prints a banner line `model: <id>` (event stream); opencode prints `> <agent> · <model>`.
+# claude / agy / cursor do not name the model in -p output (cursor: `cursor-agent models` is the authority).
+ran_model_of() { # $1 cli, $2 outfile base → model id or ""
+  case "$1" in
+    codex) for _x in "$2.err" "$2.stream" "$2"; do [ -f "$_x" ] || continue
+             _r=$(grep -m1 '^model: ' "$_x" 2>/dev/null | sed -e 's/^model: *//' -e 's/[[:space:]]*$//'); [ -n "$_r" ] && { printf '%s' "$_r"; return; }; done ;;
+    opencode) for _x in "$2.err" "$2"; do [ -f "$_x" ] || continue   # the `> agent · model` header goes to stderr
+             _r=$(tr -d '\033' < "$_x" | sed 's/\[[0-9;]*m//g' | grep -m1 '^> .* · ' | sed -e 's/^> .* · //' -e 's/[[:space:]]*$//'); [ -n "$_r" ] && { printf '%s' "$_r"; return; }; done ;;
+  esac
+}
 family_of() {
   case "$1" in
     codex) echo openai ;;
@@ -431,10 +442,11 @@ if [ "$MODE" = "probe" ]; then
     [ "$cli" = "opencode" ] && printf '  %-9s %s\n' opencode "$(describe_default_model opencode)"
     TIMEOUT=$(timeout_for "$cli"); [ "$TIMEOUT" -gt 180 ] && TIMEOUT=180
     s=$SECONDS; invoke "$cli" "$TMPP/p.txt" "$TMPP/$cli.out"; rc=$?; secs=$(( SECONDS - s ))
+    ran=$(ran_model_of "$cli" "$TMPP/$cli.out"); ranfam=""; [ -n "$ran" ] && ranfam=$(classify_model "$ran")
     [ "$cli" = "codex" ] && [ -s "$TMPP/$cli.out.msg" ] && mv "$TMPP/$cli.out.msg" "$TMPP/$cli.out"
     bytes=$(wc -c < "$TMPP/$cli.out" | tr -d ' ')
     if [ "$rc" -eq 0 ] && [ "$bytes" -gt 0 ]; then
-      printf '  %-9s ok    %3ss  %s\n' "$cli" "$secs" "$(head -c 60 "$TMPP/$cli.out" | tr '\n' ' ')"; rc_all=0
+      printf '  %-9s ok    %3ss  %s%s\n' "$cli" "$secs" "$(head -c 60 "$TMPP/$cli.out" | tr '\n' ' ')" "${ran:+ · ran=$ran ($ranfam)$( [ "$ranfam" = "$LEAD_FAMILY" ] && printf ' ⚠ same family as the Lead — would NOT count' )}"; rc_all=0
     else
       why="exit $rc"; [ "$rc" -eq 124 ] && why="timeout ${TIMEOUT}s"
       printf '  %-9s FAIL  %3ss  %s — %s\n' "$cli" "$secs" "$why" "$(head -c 120 "$TMPP/$cli.out.err" | tr '\n' ' ')"
@@ -543,6 +555,11 @@ one() { # $1 cli → 0 ok / 1 fail; writes $TMPP/$1.{out,err,line,jsonl} — the
   # codex streams its event log to stderr; the reviewer's answer is the -o message file
   if [ "$_c" = "codex" ] && [ -s "$TMPP/$_c.out.msg" ]; then mv "$TMPP/$_c.out" "$TMPP/$_c.out.stream"; mv "$TMPP/$_c.out.msg" "$TMPP/$_c.out"; fi
   _bytes=$(wc -c < "$TMPP/$_c.out" | tr -d ' ')
+  # What actually ran beats what the config said: family follows the reported model, and the
+  # Lead's own family is never a cross-family opinion (Iron Rule 2) — even if the config looked fine.
+  _ran=$(ran_model_of "$_c" "$TMPP/$_c.out"); _ranfam=""
+  if [ -n "$_ran" ]; then _ranfam=$(classify_model "$_ran"); [ "$_ranfam" != "unknown" ] && _f="$_ranfam"; fi
+  if [ "$_rc" -eq 0 ] && [ -n "$_ranfam" ] && [ "$_ranfam" != "unknown" ] && [ "$_ranfam" = "$LEAD_FAMILY" ]; then _rc=126; fi
   _floor=200; [ "$KIND" = "review" ] && _floor=500   # the commit gate's raw-file floor
   _partial=""; head -c 400 "$TMPP/$_c.out" 2>/dev/null | grep -q 'PARTIAL' && _partial=" partial=1"
   _verdict=1; if [ "$KIND" = "review" ]; then grep -qi 'VERDICT' "$TMPP/$_c.out" 2>/dev/null || _verdict=0; fi
@@ -554,21 +571,22 @@ one() { # $1 cli → 0 ok / 1 fail; writes $TMPP/$1.{out,err,line,jsonl} — the
   fi
   if [ "$_rc" -eq 0 ] && [ "$_bytes" -ge "$_floor" ]; then
     _raw="external/$_ts-$_c-$RUN_TAG.txt"
-    { printf '# rolepod cross-family %s · cli=%s family=%s lead=%s (%s) · %s · exit=%s secs=%s bytes=%s budget=%ss%s\n# brief: %s\n\n' \
-        "$KIND" "$_c" "$_f" "$LEAD" "$LEAD_FAMILY" "$(iso_now)" "$_rc" "$_secs" "$_bytes" "$TIMEOUT" "$_partial" "$BRIEF"
+    { printf '# rolepod cross-family %s · cli=%s family=%s lead=%s (%s) · %s · exit=%s secs=%s bytes=%s budget=%ss%s%s\n# brief: %s\n\n' \
+        "$KIND" "$_c" "$_f" "$LEAD" "$LEAD_FAMILY" "$(iso_now)" "$_rc" "$_secs" "$_bytes" "$TIMEOUT" "$_partial" "${_ran:+ ran=$_ran}" "$BRIEF"
       cat "$TMPP/$_c.out"; } > "$EV/$_raw" 2>/dev/null || true
-    printf '%s\n' "{\"ts\":\"$(iso_now)\",\"phase\":\"$PHASE\",\"reviewer\":\"external\",\"kind\":\"$KIND\",\"cli\":\"$_c\",\"family\":\"$_f\",\"model\":\"default\",\"raw\":\"$_raw\",\"lead\":\"$LEAD\",\"secs\":$_secs,\"budget\":$TIMEOUT,\"brief_sha\":\"$BRIEF_SHA\"${JOB_ID_TAG:+,\"job\":\"$JOB_ID_TAG\"}${_partial:+,\"partial\":true}}" > "$TMPP/$_c.jsonl"
-    printf 'ROLEPOD-XFAM ok kind=%s cli=%s family=%s raw=.rolepod/evidence/%s secs=%s budget=%ss%s\n' "$KIND" "$_c" "$_f" "$_raw" "$_secs" "$TIMEOUT" "$_partial" > "$TMPP/$_c.line"
+    printf '%s\n' "{\"ts\":\"$(iso_now)\",\"phase\":\"$PHASE\",\"reviewer\":\"external\",\"kind\":\"$KIND\",\"cli\":\"$_c\",\"family\":\"$_f\",\"model\":\"default\",\"raw\":\"$_raw\",\"lead\":\"$LEAD\",\"secs\":$_secs,\"budget\":$TIMEOUT,\"brief_sha\":\"$BRIEF_SHA\"${JOB_ID_TAG:+,\"job\":\"$JOB_ID_TAG\"}${_partial:+,\"partial\":true}${_ran:+,\"ran\":\"$(jesc "$_ran")\"}}" > "$TMPP/$_c.jsonl"
+    printf 'ROLEPOD-XFAM ok kind=%s cli=%s family=%s raw=.rolepod/evidence/%s secs=%s budget=%ss%s%s\n' "$KIND" "$_c" "$_f" "$_raw" "$_secs" "$TIMEOUT" "$_partial" "${_ran:+ ran=$_ran}" > "$TMPP/$_c.line"
     return 0
   fi
   _why="exit $_rc"; [ "$_rc" -eq 124 ] && _why="timeout ${TIMEOUT}s"
   [ "$_rc" -eq 0 ] && _why="empty output ($_bytes bytes, floor $_floor)"
   _suffix="failed"
   if [ "$_rc" -eq 125 ]; then _suffix="partial"; if [ -n "$_partial" ]; then _why="PARTIAL review (budget nearly spent) — kept as evidence, not a pass"; else _why="review has no VERDICT line (incomplete) — kept as evidence, not a pass"; fi; fi
+  [ "$_rc" -eq 126 ] && _why="ran $_ran — same family as the Lead ($LEAD_FAMILY): not a cross-family opinion (Iron Rule 2); pin a different default model" 
   _first=$(head -c 160 "$TMPP/$_c.out.err" 2>/dev/null | tr '\n' ' ')
   { printf '# rolepod cross-family %s %s · cli=%s family=%s lead=%s · %s · %s · budget=%ss · run=%s\n\n--- stdout ---\n' "$KIND" "$(printf '%s' "$_suffix" | tr a-z A-Z)" "$_c" "$_f" "$LEAD" "$(iso_now)" "$_why" "$TIMEOUT" "$RUN_TAG"
     cat "$TMPP/$_c.out"; printf '\n--- stderr ---\n'; cat "$TMPP/$_c.out.err"; } > "$EV/external/$_ts-$_c-$RUN_TAG.$_suffix.txt" 2>/dev/null || true
-  printf '%s\n' "{\"ts\":\"$(iso_now)\",\"phase\":\"external-fail\",\"kind\":\"$KIND\",\"cli\":\"$_c\",\"family\":\"$_f\",\"lead\":\"$LEAD\",\"secs\":$_secs,\"brief_sha\":\"$BRIEF_SHA\"${JOB_ID_TAG:+,\"job\":\"$JOB_ID_TAG\"},\"reason\":\"$(jesc "$_why: $_first")\"}" > "$TMPP/$_c.jsonl"
+  printf '%s\n' "{\"ts\":\"$(iso_now)\",\"phase\":\"external-fail\",\"kind\":\"$KIND\",\"cli\":\"$_c\",\"family\":\"$_f\",\"lead\":\"$LEAD\",\"secs\":$_secs,\"brief_sha\":\"$BRIEF_SHA\"${JOB_ID_TAG:+,\"job\":\"$JOB_ID_TAG\"},\"reason\":\"$(jesc "$_why: $_first")\"${_ran:+,\"ran\":\"$(jesc "$_ran")\"}}" > "$TMPP/$_c.jsonl"
   printf '%s: %s%s\n' "$_c" "$_why" "${_first:+ — $_first}" > "$TMPP/$_c.line"
   [ "$_rc" -eq 125 ] && printf '  (partial text kept: .rolepod/evidence/external/%s-%s-%s.partial.txt)\n' "$_ts" "$_c" "$RUN_TAG" >> "$TMPP/$_c.line"
   return 1

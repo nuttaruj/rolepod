@@ -50,7 +50,8 @@ case "\$mode" in
 esac
 [ -n "\${CODEX_MSG_OUT:-}" ] && : # (unused)
 _msg=""; _prev=""; for a in "\$@"; do [ "\$_prev" = "-o" ] && _msg="\$a"; _prev="\$a"; done
-if [ -n "\$_msg" ]; then echo "event-stream noise" ; { printf '%s review by $2: ' "\${KIND_HINT:-}"; head -c 600 /dev/zero | tr '\0' 'x'; printf '\nVERDICT: APPROVED\n'; } > "\$_msg"; exit 0; fi
+if [ -n "\$_msg" ]; then echo "event-stream noise" ; printf 'model: %s\n' "\${CODEX_RAN:-gpt-5.6-luna}" >&2; { printf '%s review by $2: ' "\${KIND_HINT:-}"; head -c 600 /dev/zero | tr '\0' 'x'; printf '\nVERDICT: APPROVED\n'; } > "\$_msg"; exit 0; fi
+[ "$2" = opencode ] && printf '> plan · %s\n' "\${OPENCODE_RAN:-moonshotai/kimi-k3}" >&2   # real opencode prints this header on stderr
 printf '%s review by $2: ' "\${KIND_HINT:-}"; head -c 600 /dev/zero | tr '\0' 'x'; printf '\nVERDICT: APPROVED\n'
 EOF
   chmod +x "$BIN/$1"
@@ -315,6 +316,28 @@ check "review with no VERDICT line → treated as incomplete, next member" "grep
 : > "$LOG"; : > .rolepod/evidence/phase-log.jsonl
 rc=0; out=$(STUB_codex=partial bash "$RUNNER" --kind consult --brief brief.md --lead claude 2>/dev/null) || rc=$?
 check "…but a PARTIAL consult still counts (only the review pass is strict)" "[ $rc -eq 0 ] && grep -q '\"phase\":\"consult\".*\"cli\":\"codex\".*\"partial\":true' .rolepod/evidence/phase-log.jsonl"
+
+# ── v2.83.3: the model that ACTUALLY ran, read from the CLI's own output ──
+echo "── cross-family: ran-model detection ──"
+: > "$LOG"; : > .rolepod/evidence/phase-log.jsonl
+rc=0; out=$(bash "$RUNNER" --kind review --brief brief.md --lead claude 2>/dev/null) || rc=$?
+check "codex banner 'model: …' → phase-log + receipt carry ran=gpt-5.6-luna (family stays openai)" \
+  "[ $rc -eq 0 ] && grep -q '\"cli\":\"codex\",\"family\":\"openai\",\"model\":\"default\".*\"ran\":\"gpt-5.6-luna\"' .rolepod/evidence/phase-log.jsonl && printf '%s' \"\$out\" | grep -q 'ran=gpt-5.6-luna'"
+printf 'opencode\n' > "$HOME/.rolepod/cross-family"; rm -f "$HOME/.config/opencode/opencode.json"
+: > "$LOG"; : > .rolepod/evidence/phase-log.jsonl
+rc=0; out=$(bash "$RUNNER" --kind consult --brief brief.md --lead claude 2>/dev/null) || rc=$?
+check "opencode header '> plan · model' → family from the run itself (moonshot), no config needed" \
+  "[ $rc -eq 0 ] && grep -q '\"cli\":\"opencode\",\"family\":\"moonshot\",\"model\":\"default\".*\"ran\":\"moonshotai/kimi-k3\"' .rolepod/evidence/phase-log.jsonl"
+: > "$LOG"; : > .rolepod/evidence/phase-log.jsonl
+rc=0; out=$(OPENCODE_RAN=anthropic/claude-sonnet-5 bash "$RUNNER" --kind review --brief brief.md --lead claude 2>/dev/null) || rc=$?
+check "opencode that actually ran a Claude model under a Claude Lead → external-fail (Iron Rule 2), never the strong pass, exit 3" \
+  "[ $rc -eq 3 ] && grep -q '\"external-fail\".*\"cli\":\"opencode\",\"family\":\"anthropic\".*same family as the Lead.*\"ran\":\"anthropic/claude-sonnet-5\"' .rolepod/evidence/phase-log.jsonl && ! grep -q '\"reviewer\":\"external\"' .rolepod/evidence/phase-log.jsonl"
+out=$(bash "$RUNNER" --probe --lead claude 2>/dev/null)
+check "--probe prints ran=<model> (<family>) per member" "printf '%s' \"\$out\" | grep -q 'opencode .*ok .*ran=moonshotai/kimi-k3 (moonshot)'"
+out=$(OPENCODE_RAN=anthropic/claude-sonnet-5 bash "$RUNNER" --probe --lead claude 2>/dev/null)
+check "--probe warns when the member ran the Lead's own family" "printf '%s' \"\$out\" | grep -q 'ran=anthropic/claude-sonnet-5 (anthropic) ⚠ same family as the Lead'"
+printf 'codex\nclaude\nagy\ncursor\nopencode\n' > "$HOME/.rolepod/cross-family"
+printf '{ "model": "openai/gpt-5.6" }\n' > "$HOME/.config/opencode/opencode.json"
 
 # ── hardening from the live codex review ─────────────────────────────────
 echo "── cross-family: hardening ──"
