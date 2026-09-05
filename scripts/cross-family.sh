@@ -60,7 +60,7 @@
 #   cross-family.sh --pool [--lead <cli>] [--kind <k>]    # usable pool, no network
 #   cross-family.sh --pool-names [--lead <cli>]           # names only (hooks use this)
 #   cross-family.sh --probe [--lead <cli>]                # live "reply OK" per member
-#   cross-family.sh --candidates                          # installed other CLIs (opt-in question)
+#   cross-family.sh --candidates                          # every installed CLI, the Lead's own included (opt-in question)
 # Exit: 0 ok · 2 usage · 3 every member failed · 4 configured pool empty · 5 off · 6 job still running
 set -uo pipefail
 
@@ -268,11 +268,12 @@ bin_of() {
 }
 LEAD_FAMILY=$(family_of "$LEAD")
 
-# ── Candidates (installed, not the Lead's own CLI) — the opt-in question ──
+# ── Candidates (EVERY installed CLI, the Lead's own included) — the opt-in question.
+# The file is Lead-independent: list them all once; whichever CLI is the Lead is
+# skipped at run time, so switching Lead never means editing the pool.
 CANDIDATES=""
 for cli in $ALL_CLIS; do
   [ -n "$(bin_of "$cli")" ] || continue
-  [ "$cli" = "$LEAD" ] && continue
   fam=$(family_of "$cli")   # information only — never a filter
   CANDIDATES="$CANDIDATES${CANDIDATES:+ }$cli($fam)"
 done
@@ -311,7 +312,7 @@ else
   STATE="off"; CFG_SRC="no ~/.rolepod/cross-family (opt-in not given)"
 fi
 CONFIGURED="${KIND_LIST:-$DEFAULT_LIST}"
-ENABLE_HINT="enable: printf 'agy\\ncodex timeout=1800\\n' > ~/.rolepod/cross-family  (one CLI per line, your order; 'consult: agy codex' = per-kind order; project override: <git-root>/.rolepod/cross-family; 'none' = keep off)"
+ENABLE_HINT="enable: printf 'codex timeout=1800\\nclaude\\nagy\\ncursor\\nopencode\\n' > ~/.rolepod/cross-family  (list EVERY CLI you want, this one included — the Lead's own CLI is skipped at run time, so one file serves every Lead; your order = preference; 'consult: agy codex' = per-kind order; project override: <git-root>/.rolepod/cross-family; 'none' = keep off)"
 
 timeout_for() { # $1 cli → seconds (flag > config > kind default)
   [ -n "$FLAG_TIMEOUT" ] && { echo "$FLAG_TIMEOUT"; return; }

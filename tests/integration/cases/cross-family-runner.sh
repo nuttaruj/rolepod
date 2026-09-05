@@ -72,11 +72,11 @@ names=$(bash "$RUNNER" --pool-names --lead claude | tr '\n' ' ')
 check "no config file → pool EMPTY (cross-family is opt-in)" "[ -z \"$names\" ]"
 out=$(bash "$RUNNER" --pool --lead claude)
 check "--pool says OFF + lists installed candidates with families + the enable hint" \
-  "printf '%s' \"\$out\" | grep -q 'OPT-IN and not enabled' && printf '%s' \"\$out\" | grep -q 'candidates: codex(openai) agy(google) cursor(unknown) opencode(unknown)' && printf '%s' \"\$out\" | grep -q 'enable: printf'"
+  "printf '%s' \"\$out\" | grep -q 'OPT-IN and not enabled' && printf '%s' \"\$out\" | grep -q 'candidates: codex(openai) claude(anthropic) agy(google) cursor(unknown) opencode(unknown)' && printf '%s' \"\$out\" | grep -q 'enable: printf'"
 cand=$(bash "$RUNNER" --candidates --lead claude | tr '\n' ' ')
-check "--candidates lists the other installed CLIs (claude excluded, gemini never)" "[ \"$cand\" = 'codex(openai) agy(google) cursor(unknown) opencode(unknown) ' ]"
+check "--candidates lists EVERY installed CLI, the Lead's own included (gemini never) — one Lead-independent file" "[ \"$cand\" = 'codex(openai) claude(anthropic) agy(google) cursor(unknown) opencode(unknown) ' ]"
 cand=$(bash "$RUNNER" --candidates --lead codex | tr '\n' ' ')
-check "--candidates under a Codex Lead drops codex, keeps claude" "[ \"$cand\" = 'claude(anthropic) agy(google) cursor(unknown) opencode(unknown) ' ]"
+check "--candidates is the same list under a Codex Lead (the Lead is skipped at run time, not at config time)" "[ \"$cand\" = 'codex(openai) claude(anthropic) agy(google) cursor(unknown) opencode(unknown) ' ]"
 : > "$LOG"; mkdir -p .rolepod/evidence; : > .rolepod/evidence/phase-log.jsonl
 rc=0; out=$(bash "$RUNNER" --kind review --brief brief.md --lead claude 2>/dev/null) || rc=$?
 check "run while OFF → exit 5, ROLEPOD-XFAM off, no CLI called, NOTHING logged (a choice is not a failure)" \

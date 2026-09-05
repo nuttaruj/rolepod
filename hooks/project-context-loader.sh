@@ -39,7 +39,7 @@ if [ -f "$_xf" ]; then
   if [ ! -f "$HOME/.rolepod/cross-family" ] && [ ! -f "$REPO/.rolepod/cross-family" ] && [ ! -f "$HOME/.rolepod/cross-family.asked" ]; then
     _lead="${ROLEPOD_LEAD_CLI:-}"
     if [ -z "$_lead" ] && [ -n "${CLAUDE_PROJECT_DIR:-}${CLAUDE_PLUGIN_ROOT:-}" ]; then _lead=claude; fi
-    # Lead unknown → no candidates (cannot exclude a family) → no question this
+    # Lead unknown → no candidates → no question this
     # session. `|| true` + no pipefail exposure: this hook runs set -e and the
     # parent-active marker below must still be written whatever the runner says.
     _cand=""
@@ -47,7 +47,7 @@ if [ -f "$_xf" ]; then
       _cand=$( { bash "$_xf" --candidates --lead "$_lead" 2>/dev/null || true; } | tr '\n' ' ' | sed 's/ *$//' || true)
     fi
     if [ -n "$_cand" ]; then
-      CTX="$CTX\n\n**Cross-family reviewers are OFF (opt-in).** Installed other CLIs: $_cand. ASK THE USER ONCE this session — do they want rolepod to send adversarial reviews / debug consults / plan advisories to a different CLI, and which of those CLIs, in what order? Yes → write the names one per line to \`~/.rolepod/cross-family\` (project-only: \`<git-root>/.rolepod/cross-family\`). No → write \`none\` there. Never enable it without their answer; until then every review stays on this CLI."
+      CTX="$CTX\n\n**Cross-family reviewers are OFF (opt-in).** Installed CLIs: $_cand. ASK THE USER ONCE this session — do they want rolepod to send adversarial reviews / debug consults / plan advisories to a different CLI, and which CLIs, in what order? Yes → write ALL the names they want, one per line, THIS CLI included (the Lead's own CLI is skipped at run time, so one file serves every Lead) to \`~/.rolepod/cross-family\` (project-only: \`<git-root>/.rolepod/cross-family\`). No → write \`none\` there. Never enable it without their answer; until then every review stays on this CLI."
       { mkdir -p "$HOME/.rolepod" 2>/dev/null && : > "$HOME/.rolepod/cross-family.asked"; } 2>/dev/null || true
     fi
   fi

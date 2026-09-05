@@ -169,7 +169,7 @@ the path on marketplace installs):
 
 ```bash
 rolepod-cross-family --pool                       # resolved pool with reasons (or OFF + candidates), no network
-rolepod-cross-family --candidates                 # installed other CLIs — the opt-in question
+rolepod-cross-family --candidates                 # every installed CLI, the Lead's own included — the opt-in question
 rolepod-cross-family --probe                      # one-line "reply OK" per member (spends a call each)
 rolepod-cross-family --kind review  --brief brief.md --attach diff.patch --detach   # job; --collect <id> waits
 rolepod-cross-family --collect <job-id> --root <git-root>   # prints the review + receipt when the job lands (exit 6 = still running); PARTIAL / no-VERDICT reviews never anchor
@@ -193,8 +193,9 @@ rolepod-cross-family --kind critique --brief spec-draft.md          # write-spec
 `~/.rolepod/cross-family` (machine), one CLI per line; **no file = off,
 `none` = off** (exit 5, nothing logged). The SessionStart context asks the
 user once (installed candidates: `rolepod-cross-family --candidates`) and
-the answer is written to the file; rolepod never enables it unasked. The
-Lead's family is excluded. **Installed ≠ usable** is proven at invoke: exit ≠ 0, timeout
+the answer is written to the file; rolepod never enables it unasked. List
+every CLI you use, the Lead's own included — it is skipped at run time, so
+one file serves every Lead. **Installed ≠ usable** is proven at invoke: exit ≠ 0, timeout
 (per member: `--timeout` > `timeout=` in the config > kind default — review 1800 s detached / 600 s foreground, consult 300, advise 900, critique 600; the prompt carries the budget; `--detach` runs the chain as a job so the 600 s harness cap never kills a slow member),
 or an answer under the floor (review < 500 bytes, consult / advise < 200)
 → `external-fail` phase-log line, next member; every member failed → exit

@@ -215,8 +215,9 @@ SessionStart loader (`project-context-loader.sh` on Claude + Codex, the
 gemini/agy `session-start.sh`) sees no file, no `~/.rolepod/cross-family.asked`
 marker and at least one other CLI installed → tells the Lead to ask
 the user this session (candidates from `rolepod-cross-family --candidates`)
-and record the answer — names, or `none` — then drops the marker so it never
-nags. Rolepod never enables it unasked. Only the Lead's own CLI is
+and record the answer — ALL the names they want (the Lead's own CLI
+included: it is skipped at run time, so one file serves every Lead), or
+`none` — then drops the marker so it never nags. Rolepod never enables it unasked. Only the Lead's own CLI is
 excluded; the model family is recorded for information (`agy` = google;
 `cursor` / `opencode` = their default model, else `unknown`) and never
 filters a member. Consumers: `scripts/cross-family.sh`

@@ -73,7 +73,9 @@ records `model: default`.
   = off.** Rolepod never enables it on
   its own: the SessionStart context asks you to put the question to the
   user ONCE (installed candidates listed — `rolepod-cross-family
-  --candidates`); yes → write their names in their order, no → write
+  --candidates`); yes → write ALL of them in their order, the Lead's own
+  CLI included (it is skipped at run time, so one file serves every
+  Lead — switching Lead never means editing the pool), no → write
   `none`. Off is a choice, not a limitation to nag about — the review
   report's Cross-model line says "NOT RUN — cross-family off (opt-in)" and
   the internal strong reviewer is the pass.
