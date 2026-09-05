@@ -79,7 +79,9 @@ records `model: default`.
 - **Family exclusion** — the Lead's own family is removed: `codex` =
   openai, `claude` = anthropic, `agy` = google (a Gemini-CLI Lead is the
   same family), `cursor` / `opencode` = the family of their configured
-  default model (`~/.cursor/cli-config.json`, `opencode.json(c)`), else
+  default model (Cursor: `model` / `model.modelId` in `~/.cursor/cli-config.json`
+  — `auto` has no fixed family; OpenCode: `model` in `opencode.json(c)`, else
+  its last-used model from `~/.local/state/opencode/model.json`), else
   `unknown` — still used, flagged "decorrelation unverified" in
   `--pool`. Two members of one family: the second is a sequential
   fallback only (a harness is not a second opinion).

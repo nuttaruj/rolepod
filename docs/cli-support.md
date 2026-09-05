@@ -185,8 +185,8 @@ rolepod-cross-family --kind critique --brief spec-draft.md          # write-spec
 | Codex | `codex` | `codex exec -s read-only --skip-git-repo-check --ephemeral -o <msg> -` (prompt on stdin) | openai |
 | Claude Code | `claude` | `claude -p --permission-mode plan --no-session-persistence` (prompt on stdin) | anthropic |
 | Antigravity | `agy` | `agy -p "<prompt>" --mode plan --print-timeout <n>s` | google |
-| Cursor | `cursor` | `cursor-agent -p --mode plan --output-format text --trust "<prompt>"` | family of the default model in `~/.cursor/cli-config.json`, else unknown |
-| OpenCode | `opencode` | `opencode run --agent plan "<prompt>"` | family of `model` in `opencode.json(c)`, else unknown |
+| Cursor | `cursor` | `cursor-agent -p --mode plan --output-format text --trust "<prompt>"` | family of the default model in `~/.cursor/cli-config.json` (`model` string or `model.modelId`; `auto` = unknown — pin one via `/model`); `--probe` asks `cursor-agent models` for the live `(current, default)` |
+| OpenCode | `opencode` | `opencode run --agent plan "<prompt>"` | family of `model` in `opencode.json(c)`, else of the CLI's last-used model (`~/.local/state/opencode/model.json`), else unknown; aggregator ids (`openrouter/…`, `ollama-cloud/…`) classify by model name |
 | Gemini CLI | — | retired for individual accounts (2026-06-18); a `gemini` config line is skipped, a Gemini Lead still excludes `agy` | google |
 
 **Opt-in, off by default.** Pool = `.rolepod/cross-family` (project) →

@@ -37,6 +37,7 @@ _bud=\$(printf '%s' "\$_raw" | grep -o 'Time budget: about [0-9]* minute' | grep
 _argbud=\$(printf '%s' "\$*" | grep -o 'Time budget: about [0-9]* minute' | grep -o '[0-9]*')
 case "\$_in" in *ADVERSARIAL*) _in=review ;; *debugging*) _in=consult ;; *planning*) _in=advise ;; *critic*) _in=critique ;; *) _in=none ;; esac
 printf '%s | %s | BRAIN=%s | STDIN=%s | BUDGET=%s\n' "$2" "\$(printf '%s' "\$*" | tr '\n' ' ')" "\${ROLEPOD_BRAIN_SILENT:-unset}" "\$_in" "\${_bud:-\$_argbud}" >> "$LOG"
+if [ "\$1" = "models" ]; then printf '%s\n' "\${CURSOR_MODELS_OUT:-auto - Auto (current, default)}"; exit 0; fi
 mode=\$(eval "printf '%s' \"\\\${STUB_$2:-ok}\"")
 case "\$mode" in
   fail) echo "auth error" >&2; exit 1 ;;
@@ -110,6 +111,31 @@ check "opencode with an OpenAI default model is skipped under a Codex Lead" "pri
 mkdir -p "$HOME/.cursor"; printf '{ "model": "gemini-3-pro" }\n' > "$HOME/.cursor/cli-config.json"
 out=$(bash "$RUNNER" --pool --lead gemini)
 check "cursor with a Gemini default model is skipped under a Gemini Lead" "printf '%s' \"\$out\" | grep -q 'cursor  *skipped  google'"
+# v2.83.2: Cursor stores "model" as an object; Auto = no fixed family; more vendors; opencode last-used fallback
+printf '{ "model": { "modelId": "composer-2.5", "displayName": "Composer 2.5" } }\n' > "$HOME/.cursor/cli-config.json"
+out=$(bash "$RUNNER" --pool --lead claude)
+check "cursor object-form model.modelId=composer-2.5 → family cursor, model shown" "printf '%s' \"\$out\" | grep -q 'cursor  *usable  *cursor .*model=composer-2.5 (cli-config.json)'"
+printf '{ "model": { "modelId": "cursor-grok-4.6-high-fast" } }\n' > "$HOME/.cursor/cli-config.json"
+out=$(bash "$RUNNER" --pool --lead claude)
+check "cursor grok → family xai" "printf '%s' \"\$out\" | grep -q 'cursor  *usable  *xai '"
+printf '{ "model": { "modelId": "default", "displayModelId": "auto" } }\n' > "$HOME/.cursor/cli-config.json"
+out=$(bash "$RUNNER" --pool --lead claude)
+check "cursor Auto → family unknown with the pin-one hint" "printf '%s' \"\$out\" | grep -q 'cursor  *usable  *unknown .*Cursor Auto routes across vendors'"
+printf '{ "model": { "modelId": "claude-sonnet-5-thinking-high" } }\n' > "$HOME/.cursor/cli-config.json"
+out=$(bash "$RUNNER" --pool --lead claude)
+check "cursor pinned to a Claude model is skipped under a Claude Lead" "printf '%s' \"\$out\" | grep -q 'cursor  *skipped  *anthropic'"
+rm -f "$HOME/.config/opencode/opencode.json"; mkdir -p "$HOME/.local/state/opencode"
+printf '{"recent":[{"providerID":"openrouter","modelID":"moonshotai/kimi-k3"}],"favorite":[]}\n' > "$HOME/.local/state/opencode/model.json"
+out=$(bash "$RUNNER" --pool --lead claude)
+check "opencode with no config model falls back to its last-used model (state) → family moonshot" "printf '%s' \"\$out\" | grep -q 'opencode  *usable  *moonshot .*model=openrouter/moonshotai/kimi-k3 (last used'"
+printf '{ "model": "ollama-cloud/deepseek-v4-pro" }\n' > "$HOME/.config/opencode/opencode.json"
+out=$(bash "$RUNNER" --pool --lead claude)
+check "opencode aggregator id classifies by model name (deepseek) and config beats last-used" "printf '%s' \"\$out\" | grep -q 'opencode  *usable  *deepseek .*model=ollama-cloud/deepseek-v4-pro (config)'"
+out=$(CURSOR_MODELS_OUT='gpt-5.6-sol-high - GPT-5.6 Sol (current)' bash "$RUNNER" --probe --lead codex 2>/dev/null)  # cursor is pinned to a Claude model here → usable only under a non-Claude Lead
+check "--probe asks the CLI: cursor-agent models '(current' line wins over cli-config.json" "printf '%s' \"\$out\" | grep -q 'default per CLI: gpt-5.6-sol-high (openai) — cli-config.json says claude-sonnet-5-thinking-high; the CLI wins'"
+rm -f "$HOME/.local/state/opencode/model.json"
+printf '{ "model": "openai/gpt-5.6" }\n' > "$HOME/.config/opencode/opencode.json"
+printf '{ "model": "gemini-3-pro" }\n' > "$HOME/.cursor/cli-config.json"
 
 # ── config: global, project override, none ──────────────────────────────
 echo "── cross-family: config ──"

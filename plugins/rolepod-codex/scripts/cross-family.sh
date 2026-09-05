@@ -153,13 +153,23 @@ case " $LEAD_CLIS " in
 esac
 
 # ── Family resolution ──────────────────────────────────────────────────
-classify_model() {
+classify_model() { # model id or "provider/model" → family; aggregators (openrouter, opencode, ollama…) classify by the model name
   _m=$(printf '%s' "${1:-}" | tr 'A-Z' 'a-z')
   case "$_m" in
-    "") echo unknown ;;
-    *anthropic*|*claude*) echo anthropic ;;
+    ""|auto|default) echo unknown ;;                 # Cursor "Auto" routes across vendors — no fixed family
+    *anthropic*|*claude*|*sonnet*|*opus*|*fable*|*haiku*) echo anthropic ;;
+    *grok*|*xai*) echo xai ;;
+    composer*|cursor/*|*cursor-composer*) echo cursor ;;
+    *google*|*gemini*|*gemma*) echo google ;;
     *openai*|*gpt*|*codex*|o1*|o3*|o4*) echo openai ;;
-    *google*|*gemini*) echo google ;;
+    *kimi*|*moonshot*) echo moonshot ;;
+    *deepseek*) echo deepseek ;;
+    *glm*|*zhipu*|*z-ai*|*z.ai*) echo zhipu ;;
+    *qwen*|*alibaba*) echo alibaba ;;
+    *minimax*) echo minimax ;;
+    *mistral*|*devstral*|*codestral*|*magistral*) echo mistral ;;
+    *nemotron*|*nvidia*) echo nvidia ;;
+    *llama*|meta/*) echo meta ;;
     *) echo unknown ;;
   esac
 }
@@ -174,6 +184,8 @@ txt = re.sub(r",\s*([}\]])", r"\1", txt)
 try:
     d = json.loads(txt)
     m = d.get("model") if isinstance(d, dict) else None
+    if isinstance(m, dict):  # Cursor cli-config.json: {"model": {"modelId": "composer-2.5", …}}
+        m = m.get("modelId") or m.get("displayModelId") or m.get("id") or ""
     print(m if isinstance(m, str) else "")
 except Exception:
     print("__PARSE_FAIL__")
@@ -194,6 +206,36 @@ opencode_default_model() {
     [ -n "$_c" ] && [ "$_c" != "/opencode.jsonc" ] && [ "$_c" != "/opencode.json" ] || continue
     _f=$(json_model_field "$_c"); [ -n "$_f" ] && { printf '%s' "$_f"; return; }
   done
+  opencode_last_used_model
+}
+# `opencode models` lists but never marks the default; the CLI remembers the last-used model in its state file.
+opencode_last_used_model() {
+  _s="${XDG_STATE_HOME:-$HOME/.local/state}/opencode/model.json"
+  [ -f "$_s" ] || return 0
+  python3 - "$_s" 2>/dev/null <<'PYS'
+import json, sys
+try:
+    r = json.load(open(sys.argv[1], encoding="utf-8")).get("recent") or []
+    m = r[0] if r else {}
+    p, i = m.get("providerID", ""), m.get("modelID", "")
+    print(f"{p}/{i}" if p and i else "")
+except Exception:
+    print("")
+PYS
+}
+# Human note for --pool / --probe: which model the member will run and where that came from.
+describe_default_model() {
+  case "$1" in
+    cursor) _m=$(cursor_default_model); [ -n "$_m" ] && printf 'model=%s (cli-config.json)' "$_m" || printf 'model=none' ;;
+    opencode) _m=""; for _c in "$ROOT/opencode.jsonc" "$ROOT/opencode.json" \
+            "${OPENCODE_CONFIG_DIR:-}/opencode.jsonc" "${OPENCODE_CONFIG_DIR:-}/opencode.json" \
+            "$HOME/.config/opencode/opencode.jsonc" "$HOME/.config/opencode/opencode.json"; do
+        [ -n "$_c" ] && [ "$_c" != "/opencode.jsonc" ] && [ "$_c" != "/opencode.json" ] || continue
+        _m=$(json_model_field "$_c"); [ -n "$_m" ] && break
+      done
+      if [ -n "$_m" ]; then printf 'model=%s (config)' "$_m"
+      else _m=$(opencode_last_used_model); [ -n "$_m" ] && printf 'model=%s (last used — pin with "model" in opencode.json(c))' "$_m" || printf 'model=none'; fi ;;
+  esac
 }
 family_of() {
   case "$1" in
@@ -292,10 +334,15 @@ $cli  skipped  $fam  is the Lead"; continue; fi
 $cli  skipped  $fam  same family as the Lead ($LEAD)"; continue; fi
     note="bin=$bin · timeout=$(timeout_for "$cli")s"
     case " $SEEN_FAMILIES " in *" $fam "*) [ "$fam" != "unknown" ] && note="$note · same family as an earlier member — sequential fallback only, not in --all" ;; esac
+    case "$cli" in cursor|opencode) note="$note · $(describe_default_model "$cli")" ;; esac
     if [ "$fam" = "unknown" ]; then
       case "$cli" in
-        cursor) note="$note · family unknown: no \"model\" in ~/.cursor/cli-config.json — decorrelation unverified" ;;
-        opencode) note="$note · family unknown: no \"model\" in opencode.json(c) — decorrelation unverified" ;;
+        cursor) case "$(cursor_default_model | tr 'A-Z' 'a-z')" in
+                  ""|auto|default) note="$note · family unknown: Cursor Auto routes across vendors — pin one (run \`cursor-agent\`, type /model) — decorrelation unverified" ;;
+                  *) note="$note · family unknown: model not recognized — decorrelation unverified" ;;
+                esac ;;
+        opencode) if [ -z "$(opencode_default_model)" ]; then note="$note · family unknown: no \"model\" in opencode.json(c) and no last-used model — decorrelation unverified"
+                  else note="$note · family unknown: model not recognized — decorrelation unverified"; fi ;;
       esac
     fi
     POOL_ROWS="$POOL_ROWS
@@ -373,6 +420,15 @@ if [ "$MODE" = "probe" ]; then
   echo "probe (≤180s each):"
   rc_all=3
   for cli in $USABLE; do
+    if [ "$cli" = "cursor" ]; then # the CLI is the authority on its own default: `cursor-agent models` marks "(current, default)"
+      _live=$("$(bin_of cursor)" models </dev/null 2>/dev/null | grep -i '(current' | head -1 | sed -e 's/ - .*//' -e 's/^[[:space:]]*//')
+      _cfg=$(cursor_default_model); case "$(printf '%s' "$_cfg" | tr 'A-Z' 'a-z')" in ""|default|auto) _cfg=auto ;; esac
+      if [ -n "$_live" ]; then
+        _diff=""; [ "$_live" != "$_cfg" ] && _diff=" — cli-config.json says $_cfg; the CLI wins"
+        printf '  %-9s default per CLI: %s (%s)%s\n' cursor "$_live" "$(classify_model "$_live")" "$_diff"
+      fi
+    fi
+    [ "$cli" = "opencode" ] && printf '  %-9s %s\n' opencode "$(describe_default_model opencode)"
     TIMEOUT=$(timeout_for "$cli"); [ "$TIMEOUT" -gt 180 ] && TIMEOUT=180
     s=$SECONDS; invoke "$cli" "$TMPP/p.txt" "$TMPP/$cli.out"; rc=$?; secs=$(( SECONDS - s ))
     [ "$cli" = "codex" ] && [ -s "$TMPP/$cli.out.msg" ] && mv "$TMPP/$cli.out.msg" "$TMPP/$cli.out"
