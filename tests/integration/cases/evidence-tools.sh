@@ -28,6 +28,7 @@ cat > "$FIX/repo/.rolepod/evidence/phase-log.jsonl" <<'EOF'
 {"ts":"2026-07-31T01:00:00Z","phase":"route","tier":"R2","skill":"implement-plan"}
 {"ts":"2026-07-31T01:05:00Z","phase":"route","tier":"R3","skill":"write-spec"}
 {"ts":"2026-07-31T01:10:00Z","phase":"verify","verdict":"pass","evidence":"pytest -q"}
+{"ts":"2026-07-31T01:12:00Z","phase":"verify","verdict":"partial","evidence":"pytest -q"}
 {"ts":"2026-07-31T01:20:00Z","phase":"verify","verdict":"fail","evidence":"pytest -q"}
 {"ts":"2026-07-31T01:30:00Z","phase":"review","verdict":"APPROVED","blockers":0}
 {"ts":"2026-07-31T01:40:00Z","phase":"ship","action":"pr"}
@@ -44,6 +45,7 @@ printf '{"ts":"2026-07-31T01:15:00Z","hook":"precommit-gate","var":"ROLEPOD_GATE
 OUT=$(HOME="$FIX" bash "$REPO_DIR/scripts/stats.sh" "$FIX/repo")
 check "stats reports tier distribution"   "printf '%s' \"\$OUT\" | grep -q 'R2'"
 check "stats reports verify fail rate"    "printf '%s' \"\$OUT\" | grep -q 'fail=1'"
+check "stats reports partial verdicts (Status PARTIAL mirrored, v2.85.0)" "printf '%s' \"\$OUT\" | grep -q 'partial=1'"
 check "stats reports review verdicts"     "printf '%s' \"\$OUT\" | grep -q 'APPROVED: 1'"
 check "stats flags unreasoned bypasses"   "printf '%s' \"\$OUT\" | grep -q 'unreasoned'"
 check "stats audits strong dispatches"    "printf '%s' \"\$OUT\" | grep -q 'Strong dispatches (2): 1 with explicit override, 1 inherit'"

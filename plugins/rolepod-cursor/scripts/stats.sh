@@ -193,7 +193,7 @@ if verifies:
     v = Counter(r.get("verdict", "?") for r in verifies)
     total = sum(v.values())
     fails = v.get("fail", 0)
-    print(f"\n  Verify verdicts ({total}): pass={v.get('pass', 0)} fail={fails}", end="")
+    print(f"\n  Verify verdicts ({total}): pass={v.get('pass', 0)} partial={v.get('partial', 0)} fail={fails}", end="")
     print(f"  ({100 * fails // total}% fail rate)" if total else "")
 
 # External (cross-family) passes — written by scripts/cross-family.sh. The
