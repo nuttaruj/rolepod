@@ -71,11 +71,11 @@ Return / hand off:
 
 If context is heavy, run your CLI's trim command — the per-CLI table (Claude `/compact` · `/clear` · `/rewind` / Codex / Gemini equivalents) lives in `references/cli-fallbacks.md`.
 
-**Compact at seams, never mid-task.** The good moments: research done before implementation starts, a milestone landed before the next begins, a debug closed before feature work resumes, a failed approach abandoned before the new one. Mid-implementation compaction pays twice — the summary drops exactly the state you need next (variable names, file paths, half-applied edits), and §7's re-anchor cost lands on top. Heavy context mid-task → finish or park the task at a seam (commit WIP), then trim.
+**Compact at seams, never mid-task.** The good moments: research done before implementation starts, a milestone landed before the next begins, a debug closed before feature work resumes, a failed approach abandoned before the new one. Mid-implementation compaction pays twice — the summary drops exactly the state you need next (variable names, file paths, half-applied edits), and §7's re-anchor cost lands on top. Heavy context mid-task → finish or park the task at a seam (checkpoint — commit only as Lead with finish-work's gates passing; a subagent never commits, implement-plan Boundary), then trim.
 
 Only load what the current task actually needs. Tier 1 skills + the touched files is usually enough.
 
-Starting fresh instead of trimming → fill `templates/handoff-brief.md` so the next session resumes without re-asking — on ANY CLI: the brief + plan artifact are CLI-agnostic (`references/cli-fallbacks.md`, Cross-CLI resume). A quota limit, unlike heavy context, cannot be trimmed away: commit WIP, write the brief, switch.
+Starting fresh instead of trimming → fill `templates/handoff-brief.md` so the next session resumes without re-asking — on ANY CLI: the brief + plan artifact are CLI-agnostic (`references/cli-fallbacks.md`, Cross-CLI resume). A quota limit, unlike heavy context, cannot be trimmed away: checkpoint what the gates allow, write the uncommitted state into the brief, switch.
 
 ### 3. Session hygiene
 

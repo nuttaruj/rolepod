@@ -14,4 +14,4 @@
  valid if true.>
 
 ## Linked artifacts
-<Spec / plan path if one exists. High-risk surfaces touched.>
+<Spec / plan path the reviewer can open. `docs/rolepod/` is private by default — summarize its decision here instead of linking it. High-risk surfaces touched.>

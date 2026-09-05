@@ -39,14 +39,27 @@ else
 fi
 
 # ── 2. Command per task ──────────────────────────────────────────────────
+# Walk each `### Task` block on its own — an aggregate count let one task's
+# extra Commands cover for a sibling with none, and 0 tasks passed 0 >= 0.
+# 'Command:' still counts only inside task blocks (never Failure-policy prose).
 TASKS=$(grep -c '^### Task' "$PLAN" || true)
-# Count Command: lines inside task blocks only — a whole-file grep let
-# 'Command:' in Failure-policy prose cover for a Command-less task.
-CMDS=$(awk '/^### Task/{f=1} /^## /{f=0} f' "$PLAN" | grep -c 'Command:' || true)
-if [ "${CMDS:-0}" -ge "${TASKS:-0}" ]; then
-  echo "  ✓ every task carries a Command ($CMDS/$TASKS)"
+MISSING=$(awk '
+  /^### Task/ { if (t != "" && !c) print t; t = $0; c = 0; next }
+  /^## /      { if (t != "" && !c) print t; t = ""; next }
+  t != "" && /Command:/ { c = 1 }
+  END         { if (t != "" && !c) print t }
+' "$PLAN")
+if [ "${TASKS:-0}" -eq 0 ]; then
+  echo "  ✗ no '### Task' blocks found — nothing for the build loop to run"
+  fail=1
+elif [ -z "$MISSING" ]; then
+  echo "  ✓ every task carries a Command ($TASKS/$TASKS)"
 else
-  echo "  ✗ $TASKS tasks but only $CMDS Command lines — a Command-less task cannot be verified by the loop"
+  while IFS= read -r t; do
+    [ -n "$t" ] && echo "  ✗ missing Command: ${t#\#\#\# } — a Command-less task cannot be verified by the loop"
+  done <<EOF
+$MISSING
+EOF
   fail=1
 fi
 

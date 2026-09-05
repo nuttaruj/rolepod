@@ -79,7 +79,7 @@ Low — read-only export, no schema or auth change. Large exports verified
 against a 10k-order range within the 30s timeout.
 
 ## Linked artifacts
-Spec: docs/rolepod/specs/orders-csv-export-2026-05-20.md
+Decision: server-side CSV built from the filtered scope (spec is local-only — summarized in Risks above).
 ```
 
 ### Bad
@@ -98,7 +98,7 @@ added tests
 | Summary | "export stuff and some other things" | Concrete — what, where, how |
 | Test plan | "added tests" — a reviewer cannot run it | A runnable checklist |
 | Risks | Omitted | Blast radius + the 30s verification |
-| Artifacts | None | Spec linked |
+| Artifacts | None | Decision summarized inline — no dead link to a private doc |
 
 > Finishing a branch is the one phase where the agent must not act alone.
 > Gates green means ready to merge — not merged. Present the menu, recommend,

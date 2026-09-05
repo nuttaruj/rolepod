@@ -14,7 +14,7 @@ Verify-phase entry skill. Prove the change behaves as intended with concrete evi
 
 <EXTREMELY-IMPORTANT>
 1. NEVER claim done without evidence. "Looks right" is not evidence.
-2. Verification must be FRESH — run AFTER the last change to the tree. No run since the last edit → you cannot claim it passes. Yesterday's green run does not count; "should still work" does not count. **Evidence cache:** tree unchanged since a pass recorded THIS session (same `git status` + `git diff` — check, don't assume) → cite that run's command + output and state "tree unchanged since" instead of re-running the suite; ANY new edit invalidates the cache.
+2. Verification must be FRESH — run AFTER the last change to the tree. No run since the last edit → you cannot claim it passes. Yesterday's green run does not count; "should still work" does not count. **Evidence cache:** tree unchanged since a pass recorded THIS session (same `git status` + `git diff` — which do NOT see untracked/ignored content, so hash or diff any untracked input the check reads; check, don't assume) → cite that run's command + output and state "tree unchanged since" instead of re-running the suite; ANY new edit invalidates the cache.
 3. UI changes require a browser observation (screenshot, MCP devtools, Playwright). A passing typecheck does not prove the UI works.
 4. If you cannot verify, STATE explicitly: what you cannot verify, why, and the risk if you are wrong.
 5. NEVER ask the user to take a screenshot for you when you have browser automation available.
@@ -86,10 +86,10 @@ ROOT=$(git rev-parse --show-toplevel 2>/dev/null || echo .)
 find "$ROOT/.rolepod/evidence" -name manifest.json -type f 2>/dev/null
 ```
 
-Each `manifest.json` describes one child run with fields `plugin`, `skill`, `phase`, `status` (pass/fail/warn), `summary`, and `artifacts[]`. Aggregation rules:
+Each `manifest.json` describes one child run with fields `plugin`, `skill`, `phase`, `status` (pass/fail/warn), `summary`, and `artifacts[]` — no field ties a run to a task, so first keep only dirs whose `<ts>` postdates your last relevant edit and whose `skill`/`summary` names this task's target; older or unidentifiable runs are a named limitation, not evidence. Aggregation rules (kept set only):
 
-- Any child manifest with `status: fail` → verify fails as a whole. Surface the summary + path to the failing artifact.
-- All `pass` or `warn` → verify passes; list warnings inline so they don't get lost.
+- Any KEPT manifest with `status: fail` → verify fails as a whole. Surface the summary + path to the failing artifact.
+- All KEPT `pass` or `warn` → verify passes; list warnings inline so they don't get lost.
 - Child artifacts (screenshots, HARs, reports) are referenced by relative path from the manifest directory — include those paths in the evidence block.
 
 Schema details and the full protocol live in `docs/EXTENSION-PROTOCOL.md` (rolepod source repo; the aggregation rules above are self-sufficient). Children write manifests automatically when they detect the rolepod parent marker (`.rolepod/parent-active`); no manual wiring needed.
@@ -163,7 +163,7 @@ Execute as Lead with this minimum viable checklist:
 
 The evidence block is the canonical artifact: `templates/evidence-block.md`. It carries the change manifest, per-check evidence, limitations, and the status verdict — the `## Status` line is exactly one of `VERIFIED | PARTIAL | UNVERIFIED`, the literal word finish-work's merge gate reads (PARTIAL or UNVERIFIED blocks merge; no other word clears it). Do not restate the rest of the block shape here; the template is the single source.
 
-Also append one line to `<git-root>/.rolepod/evidence/phase-log.jsonl` — `{"ts":"<iso8601>","phase":"verify","verdict":"pass|fail","evidence":"<command run>"}` (fail-open: skip silently outside a git repo). The log is the dataset that answers whether the process pays for itself. A QA test-case table in play (this session or under `.rolepod/evidence/`) → traceability check: every P1 row's ID must appear in a passing test's name (`grep` the test files / runner output for `TC<n>`); a P1 ID with no passing test = phase-log `verdict:"fail"` plus Status `PARTIAL` or `UNVERIFIED`, naming the missing IDs.
+Also append one line to `<git-root>/.rolepod/evidence/phase-log.jsonl` — `{"ts":"<iso8601>","phase":"verify","verdict":"pass|fail","evidence":"<command run>"}` (fail-open: skip silently outside a git repo). The log is the dataset that answers whether the process pays for itself. A QA test-case table in play (this session or under `.rolepod/evidence/`) → traceability check: every P1 row's ID must appear in a passing test's name (`grep` the RUNNER output for `TC<n>` — source-file presence proves authorship, not a pass; skipped or not-collected counts as missing); a P1 ID with no passing test = phase-log `verdict:"fail"` plus Status `PARTIAL` or `UNVERIFIED`, naming the missing IDs.
 
 ## Examples
 

@@ -8,7 +8,7 @@ The hardest verification problem is not the test — it is honesty about whether
 
 ## Iron Law
 
-**No completion claims without fresh verification evidence run in THIS message.**
+**No completion claims without fresh verification evidence run in THIS message — sole exception: a cache cite valid under check-work Iron Rule 2 (every input content-verified unchanged).**
 
 If you didn't run the command in this turn, you cannot claim it passes. Yesterday's green run does not count. The agent reporting `DONE` does not count. The linter passing does not count. Only output you produced in this turn counts.
 

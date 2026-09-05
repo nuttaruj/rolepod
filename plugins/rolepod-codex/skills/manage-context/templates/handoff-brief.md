@@ -7,8 +7,11 @@
 <The user's request, literal quote.>
 
 ## Current branch / commit
-<Branch name + last commit SHA. Commit WIP first (`wip:` prefix) — the next
- session resumes from disk, not from this session's memory.>
+<Branch name + last commit SHA. Commit first if you are the Lead and the gates
+ pass; a subagent never commits — otherwise paste `git status --short` here:
+ an accurately described dirty tree is still resumable, and never green a
+ test or bypass a gate just to get a commit. The next session resumes from
+ disk, not from this session's memory.>
 
 ## Files touched
 <Paths edited so far + a word on each. Link artifacts by path — never paste

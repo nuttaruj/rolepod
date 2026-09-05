@@ -51,7 +51,7 @@
  concurrency covered?>
 
 ## Recommendation
-<APPROVED — no BLOCKER / MAJOR.
- APPROVED-WITH-NITS — only MINOR / Questions remain.
- REJECTED — at least one BLOCKER.>
+<APPROVED — nothing open above MINOR.
+ APPROVED-WITH-NITS — only MINOR / Questions remain, none of which would change a correctness or security verdict.
+ REJECTED — any open BLOCKER, or a MAJOR neither fixed nor explicitly documented per its heading above.>
 APPROVED | APPROVED-WITH-NITS | REJECTED — <one-line reason>

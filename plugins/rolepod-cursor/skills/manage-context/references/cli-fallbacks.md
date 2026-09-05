@@ -30,7 +30,8 @@ doctrine, same gates, and the same benefit applies to a fresh session on
 the SAME CLI.
 
 - Usage quota hit ≠ context full: quota kills the session regardless of
-  context state — skip trimming, commit WIP, write the brief, switch.
+  context state — skip trimming, checkpoint what the gates allow, write the
+  uncommitted state into the brief, switch.
 - A CLI without a rolepod adapter resumes degraded: it can read the brief +
   plan (plain markdown), but gates and doctrine do not travel — route its
   diff back through a rolepod-equipped CLI for review before merging.

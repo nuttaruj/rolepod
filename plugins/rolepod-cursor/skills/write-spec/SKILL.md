@@ -60,10 +60,10 @@ Hand off:
 flowchart LR
   A[Frame goal] --> B[Discover Qs in frontier rounds<br/>+ recommend default per Q]
   B --> C[2-3 approaches]
-  C --> D{Gate 1<br/>direction OK?}
+  C --> E[Self-review<br/>+ critique if on]
+  E --> D{Gate 1<br/>direction OK?}
   D -- no --> C
-  D -- yes --> E[Self-review]
-  E --> F[Produce contract]
+  D -- yes --> F[Produce contract]
   F --> G{Inline or file?}
   G -- inline --> Z[Hand off → write-plan]
   G -- file --> H{Gate 2<br/>file OK?}
@@ -96,7 +96,7 @@ When the design has meaningful options, lay out 2-3 viable approaches with trade
 ### 4. Self-review the draft
 
 Scan for:
-- Placeholders (`TODO`, `<...>`, `tbd`)
+- Placeholders (`[[FILL: …]]`, `TODO`, `tbd`)
 - Contradictions between sections
 - Ambiguous wording ("maybe", "should", "if needed")
 - A Success criterion with no "proven by" — pair each with the command / observation that will prove it, or it is not checkable
@@ -113,14 +113,14 @@ Present the proposed direction (chosen approach + rationale). Wait for the user 
 
 ### 6. Produce the contract
 
-Fill `templates/spec-template.md` — every section resolved, no placeholders, no contradictions. Then run the **spec-lint**: write the filled spec to a file first (in inline mode too — a scratch path like `/tmp/spec.md` is fine), then `grep -niE '<[^>]+>|TODO|TBD' <spec-file>` must return nothing (a deterministic backstop to the step-4 self-review; it catches leftover template hints and TODO/TBD markers, not vague wording).
+Fill `templates/spec-template.md` — every section resolved, no placeholders, no contradictions. Then run the **spec-lint** against the filled text — pipe it in directly in inline mode, or lint the saved file in file mode: `grep -niE '\[\[FILL:|TODO|TBD'` must print nothing; any printed line, or a grep error (unreadable path, bad pattern), is a lint failure, never a silent pass (a deterministic backstop to the step-4 self-review; it catches an unfilled `[[FILL: …]]` marker or a stray TODO/TBD, never legitimate angle brackets like `<h1>` or `List<T>`, and not vague wording).
 
 - One-session work → inline the filled template in chat. **No Gate 2** — Gate 1 is the only approval. Default when unsure: one-session/inline, unless the user names a multi-day scope or the high-risk / repeat test below applies.
 - Multi-session work, high-risk surface touched, or repeat feature → save to `docs/rolepod/specs/<feature>-YYYY-MM-DD.md` — **private by default:** before the first save run `grep -qx 'docs/rolepod/' .gitignore || echo 'docs/rolepod/' >> .gitignore` (the commit gate denies any commit that stages `docs/rolepod/`; a repo that deliberately tracks its specs creates `.rolepod/docs-tracked`) — (optional `-vN` or `-draft` suffix). Proceed to Gate 2.
 
 ### 7. Gate 2 — file review (file-mode only)
 
-After saving, run the spec-lint (`grep -niE '<[^>]+>|TODO|TBD'`) on the file — it must be clean — then ask the user to read the file and confirm, not the chat transcript. Catches three drifts:
+After saving, run the spec-lint (`grep -niE '\[\[FILL:|TODO|TBD'`) on the file — it must print nothing — then ask the user to read the file and confirm, not the chat transcript. Catches three drifts:
 - **Word drift** — chat said "soft delete", file wrote "delete"
 - **Implicit edge case** — user meant "except admin", file omits it
 - **Reconsideration** — user sees concrete shape, changes mind
@@ -174,7 +174,7 @@ Load only when the task needs it:
 
 ## Full Rolepod enhancement
 
-Full Rolepod improves this phase by adding router continuity into `write-plan`, specialist agents for deeper domain shaping, hooks that remind on high-risk surfaces, and a deterministic spec-lint backed by `tests/integration/cases/spec-lint.sh` — which proves the lint catches placeholder leaks (`<…>`/TODO/TBD) and passes a clean spec.
+Full Rolepod improves this phase by adding router continuity into `write-plan`, specialist agents for deeper domain shaping, hooks that remind on high-risk surfaces, and a deterministic spec-lint backed by `tests/integration/cases/spec-lint.sh` — which proves the lint catches an unfilled `[[FILL: …]]` marker or TODO/TBD, does not false-positive on ordinary angle brackets (`<h1>`, `List<T>`), and passes a clean spec.
 
 ## Next phase
 

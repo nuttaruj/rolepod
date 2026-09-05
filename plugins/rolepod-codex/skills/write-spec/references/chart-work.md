@@ -46,7 +46,7 @@ on the map is how two copies drift.
 ## Question tickets
 
 ```markdown
-Status: open | resolved
+Status: open | resolved | ruled-out
 Blocked-by: q-<slug>, q-<slug>   # omit when unblocked
 Kind: discuss | investigate | probe | unblock
 

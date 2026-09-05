@@ -58,9 +58,10 @@ Code:
   user = User.find(session[:user_id])   # raises if the row is absent
   name = user&.name || "Guest"
 
-Cut: User.find raises RecordNotFound — it never returns nil. The value is
-structurally non-nil here, so the &. and the "|| Guest" branch are dead.
-Removed both; verified User.find's behavior first.
+Cut: User.find raises RecordNotFound — it never returns nil, so the &. is
+dead — user.name is safe. It proves nothing about name, which can still be
+nil (nullable column); the fallback stays until that is separately proven.
+Removed the &. only: name = user.name || "Guest".
 
 Tests: green before + after. Behavior preserved: YES.
 ```

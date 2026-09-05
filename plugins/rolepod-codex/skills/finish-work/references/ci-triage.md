@@ -11,7 +11,7 @@ triage WHY it is red — the response differs by cause.
 | Is it flaky? | The lane passes on re-run with no code change | Do not paper over it — see debug-issue's `flake-triage.md`; fix the flake or quarantine with an issue |
 | Is it infra? | Runner timeout, network error, image-pull fail — unrelated to code | Re-run once; if it persists, escalate to devops-sre |
 | Is it a real regression? | A test unrelated to your diff now fails | Stop — your change has a wider blast radius than planned; trace it |
-| Is the lane itself broken? | Lane config / a dependency changed on main | Coordinate a main fix; do not merge on top of a broken lane |
+| Is the lane itself broken? | Lane config / a dependency changed on the target branch | Coordinate a fix on the target branch; do not merge on top of a broken lane |
 
 ## Rule
 Never merge with a required lane red, and never make a lane green by
@@ -27,7 +27,7 @@ required lanes are green, then proceed with the authorized merge.
 A conflicted merge or rebase is a STOP-and-decide, not a dead end — and not
 free rein. Every line written during resolution is NEW, UNREVIEWED code.
 
-1. **Rebase onto latest main BEFORE the pre-merge gate** — gates must never
+1. **Rebase onto the latest integration target (SKILL.md §4) BEFORE the pre-merge gate** — gates must never
    pass on a stale base and then meet the conflict after.
 2. **Trivial conflict** (imports, adjacent independent lines, lockfiles) —
    resolve by picking sides; regenerate lockfiles with their tool. Do not

@@ -176,7 +176,7 @@ Load only when the task needs it:
 - A subagent's diff accepted without spec-compliance + code-quality reviews → stop, run the §6 pipeline before building further
 - Scope creep beyond the task list → stop, write a follow-up, finish current task
 - About to ask "should I continue?" — or end the turn — between tasks or phases of a plan → don't; Iron Rule 5
-- About to verify a task with a self-invented check while the plan names a **Command** → run the plan's Command
+- About to verify a task with a self-invented check → run the plan's **Command** verbatim; the task names none → stop, return to `write-plan` for one
 - A parallel-layout plan executed one track at a time with no stated reason → dispatch the ready tracks concurrently (§5)
 
 ## Full Rolepod enhancement

@@ -4,8 +4,8 @@
 # passes a properly filled plan. Sibling of spec-lint.sh (write-spec).
 #
 # The lint (as documented in write-plan SKILL.md self-review):
-#   grep -q '^## Failure policy' <plan> &&
-#   [ "$(grep -c 'Command:' <plan>)" -ge "$(grep -c '^### Task' <plan>)" ]
+#   grep -q '^## Failure policy' <plan> && every `### Task` block carries its
+#   own Command: line (per block — scripts/plan-lint.sh and the inline awk).
 set -euo pipefail
 
 fail=0
@@ -14,7 +14,7 @@ trap 'rm -rf "$TMP"' EXIT
 
 plan_lint() { # $1 = plan file; returns 0 = lint pass
   grep -q '^## Failure policy' "$1" \
-    && [ "$(grep -c 'Command:' "$1")" -ge "$(grep -c '^### Task' "$1")" ]
+    && awk '/^### Task/{t++;c[t]=0;i=1;next} /^## /{i=0} i&&/Command:/{c[t]=1} END{if(!t)exit 1;for(k=1;k<=t;k++)if(!c[k])exit 1}' "$1"
 }
 
 # ── Dirty plan: 2 tasks, 1 Command, no Failure policy → must FAIL lint ──
@@ -189,6 +189,53 @@ EOF
 bash "$LINT" "$TMP/bullet-seq.md" >/dev/null \
   && echo "  ✓ plan-lint.sh accepts a bullet-prefixed Sequential declaration" \
   || { echo "  ✗ plan-lint.sh rejected '- Sequential — single owner.'"; fail=$((fail+1)); }
+
+# Bug 3 (v2.81.0, WP-01): the Command check was an aggregate — Task 1's extra
+# Commands covered for Task 2's none, and a plan with zero tasks passed (0>=0).
+cat > "$TMP/padded.md" <<'EOF'
+# Padded Plan
+### Task 1: api
+- [ ] Command: pytest api/
+- [ ] Command: pytest api/ -k smoke
+### Task 2: ui
+- [ ] Test / evidence: view the page
+## Parallel layout
+Sequential — single owner.
+## Failure policy
+Default: stop.
+EOF
+OUT=$(bash "$LINT" "$TMP/padded.md" || true)
+if printf '%s' "$OUT" | grep -q 'missing Command: Task 2'; then
+  echo "  ✓ plan-lint.sh names the Command-less task even when a sibling has extras"
+else
+  echo "  ✗ plan-lint.sh let Task 1's extra Commands cover for Task 2"; fail=$((fail+1))
+fi
+cat > "$TMP/one-each.md" <<'EOF'
+# One Each Plan
+### Task 1: api
+- [ ] Command: pytest api/
+### Task 2: ui
+- [ ] Command: npm test
+## Parallel layout
+Sequential — single owner.
+## Failure policy
+Default: stop.
+EOF
+bash "$LINT" "$TMP/one-each.md" >/dev/null \
+  && echo "  ✓ plan-lint.sh passes one Command per task" \
+  || { echo "  ✗ plan-lint.sh rejected a plan with one Command per task"; fail=$((fail+1)); }
+cat > "$TMP/no-tasks.md" <<'EOF'
+# Empty Plan
+## Parallel layout
+Sequential — single owner.
+## Failure policy
+Default: stop.
+EOF
+if bash "$LINT" "$TMP/no-tasks.md" >/dev/null; then
+  echo "  ✗ plan-lint.sh passed a plan with zero tasks"; fail=$((fail+1))
+else
+  echo "  ✓ plan-lint.sh rejects a plan with no ### Task blocks"
+fi
 
 # ── Session-split protocol is documented where the contract points ──────
 grep -q '^## Session split' "$REPO_DIR/core/skills/write-plan/templates/cohesion-contract-template.md" \

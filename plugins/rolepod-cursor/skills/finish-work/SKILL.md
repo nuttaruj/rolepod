@@ -133,7 +133,7 @@ Present concrete options:
 | **Keep open** | More work planned; checkpoint commit only | yes |
 | **Discard** | Branch is an experiment that did not pan out | yes |
 
-**Merge conflict / stale base.** Rebase onto latest main before the pre-merge gate. A conflicted merge or rebase is neither a dead end nor free rein — resolution rules (pick-sides vs abort-and-reconcile) and the mandatory `check-work` re-run live in `references/ci-triage.md` (Merge conflicts).
+**Merge conflict / stale base.** Rebase onto the latest integration target — explicit user request > the PR's base > the repo's configured default branch; conflicting signals → ask, never assume `main` (merge the target in instead when the branch is already published) — before the pre-merge gate. A conflicted merge or rebase is neither a dead end nor free rein — resolution rules (pick-sides vs abort-and-reconcile) and the mandatory `check-work` re-run live in `references/ci-triage.md` (Merge conflicts).
 
 **Typed confirmation for Discard.** Before destructive deletion, require the user to type the literal word `discard`. Generic yes / ok / sure is not enough — destructive ops need shape-matching confirmation to defeat reflex assent.
 
@@ -173,7 +173,7 @@ Execute as Lead with this minimum viable checklist:
 
 ## Output
 
-The finish menu is the canonical artifact: `templates/finish-menu.md`. It carries the gate status, the four options, the recommendation, and the specific action awaiting authorization. The PR path adds `templates/pr-body.md`; a production launch adds `templates/release-checklist.md`. Do not restate these shapes here; the templates are the single source. After the user picks, append `{"ts":"<iso8601>","phase":"ship","action":"<merge|pr|keep-open|discard>"}` to `<git-root>/.rolepod/evidence/phase-log.jsonl` (fail-open).
+The finish menu is the canonical artifact: `templates/finish-menu.md`. It carries the gate status, the four options, the recommendation, and the specific action awaiting authorization. The PR path adds `templates/pr-body.md`; a production launch adds `templates/release-checklist.md`. Do not restate these shapes here; the templates are the single source. After the authorized action actually completes (a command that failed or is still pending logs nothing; report that status instead), append `{"ts":"<iso8601>","phase":"ship","action":"<merge|pr|keep-open|discard>"}` to `<git-root>/.rolepod/evidence/phase-log.jsonl` (fail-open).
 
 ## Examples
 
