@@ -221,6 +221,9 @@ if externals or xfails or strong_internal:
     if xfails:
         why = Counter((r.get("cli") or "-", (r.get("reason") or "?").split(":")[0][:40]) for r in xfails)
         print("    failures: " + ", ".join(f"{cli} {n}× ({reason})" for (cli, reason), n in sorted(why.items())))
+    partial = sum(1 for r in externals if r.get("partial"))
+    if partial:
+        print(f"    partial answers (budget nearly spent): {partial} — raise `timeout=` for that CLI or --detach")
     ext_reviews = sum(1 for r in externals if r.get("phase") == "review")
     if strong_internal or ext_reviews:
         print(f"    strong pass source: external {ext_reviews} vs internal strong dispatch {len(strong_internal)}")

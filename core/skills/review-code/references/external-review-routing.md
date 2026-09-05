@@ -18,7 +18,10 @@ the SessionStart context names the path on marketplace installs):
 
 ```bash
 git diff <base>...HEAD > /tmp/diff.patch          # the frozen diff
-rolepod-cross-family --kind review --brief /tmp/brief.md --attach /tmp/diff.patch
+rolepod-cross-family --kind review --brief /tmp/brief.md --attach /tmp/diff.patch --detach
+#   → ROLEPOD-XFAM job=<id> kind=review members=codex agy budgets=codex=1800s agy=1800s …
+rolepod-cross-family --collect <id>               # before the commit: waits, prints the review + receipt
+rolepod-cross-family --jobs                       # running / done
 # outside a hook the Lead CLI is auto-detected on Claude; elsewhere add --lead codex|agy|cursor|opencode
 ```
 
@@ -30,8 +33,19 @@ narrative into the cold run), tees the raw output to
 `.rolepod/evidence/external/<utc>-<cli>.txt`, and appends the phase-log line
 the commit gate reads. Its last stdout line is the receipt:
 `ROLEPOD-XFAM ok kind=review cli=<cli> family=<family> raw=<path> secs=<n>`.
-Big diff → run it with the harness's background option and read the raw
-file when it lands; it can take minutes.
+**Time is per member, and the model is told its budget.** `--timeout` >
+`timeout=` in the config > kind default (review 1800 s detached / 600 s
+foreground · consult 300 · advise 900 · critique 600). The prompt carries
+"Time budget: about N minutes … do NOT run builds / tests / package
+managers … output PARTIAL if nearly spent", so a slow-but-deep member
+(Codex on its owner's `max` effort ran 10+ min exploring a repo before
+this) plans instead of wandering. `--detach` makes the chain a job in its
+own process group: the Lead keeps working, a member that overruns is
+killed with its grandchildren and the next member runs, the receipt is
+anchored when it lands, `--collect` waits for it, and the commit gate
+reports a running job instead of asking you to start one. Foreground is
+capped by the harness (Claude Bash: 600 s) — the runner warns when a
+member's budget exceeds it.
 
 The **brief** is the reviewer's whole world (cold context): the change's
 intent in one sentence, the acceptance criteria, the settled decisions, the
@@ -49,7 +63,10 @@ records `model: default`.
 - **Opt-in, off by default.** `<git-root>/.rolepod/cross-family` (project)
   overrides `~/.rolepod/cross-family` (machine): one CLI per line in
   preference order (`codex` / `claude` / `agy` / `cursor` / `opencode`),
-  `#` comments. **No file = off. `none` = off.** Rolepod never enables it on
+  options after the name (`codex timeout=1800`), optional per-kind order
+  lines (`consult: agy codex` — the debug loop wants the fast answer first,
+  review can wait for the deep one), `#` comments. **No file = off. `none`
+  = off.** Rolepod never enables it on
   its own: the SessionStart context asks you to put the question to the
   user ONCE (installed candidates listed — `rolepod-cross-family
   --candidates`); yes → write their names in their order, no → write

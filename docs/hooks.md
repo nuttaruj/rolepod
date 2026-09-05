@@ -195,11 +195,19 @@ reviewer / advisor is the user's choice, not PATH's: `<git-root>/.rolepod/cross-
 preference order, `#` comments; **no file = off, `none` = off**:
 
 ```
-# this machine has four CLIs; use three, agy first
+# this machine has four CLIs; use three
 agy
-codex
+codex timeout=1800        # slow-but-deep member gets 30 min (per-CLI option)
 opencode
+consult: agy codex        # per-kind order: the debug loop wants the fast answer first
 ```
+
+Per-member time: `--timeout` > `timeout=` > kind default (review 1800 s
+when detached / 600 s foreground · consult 300 · advise 900 · critique
+600); the prompt carries the budget. `--detach` runs the chain as a job
+under `.rolepod/evidence/external/jobs/<id>/` (`--collect <id>` waits,
+`--jobs` lists); `precommit-gate` names a running job in its hold reason
+instead of asking for a new run.
 
 Names: `codex` `claude` `agy` `cursor` `opencode` (the standalone Gemini
 CLI is retired — a `gemini` line is skipped with a note). **Ask once:** the

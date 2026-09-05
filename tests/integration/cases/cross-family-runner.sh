@@ -31,15 +31,19 @@ LOG="$FIX/calls.log"
 mk_stub() { # $1 binary name, $2 label
   cat > "$BIN/$1" <<EOF
 #!/bin/bash
-_in=\$(head -c 2000 2>/dev/null | grep -o 'ADVERSARIAL code reviewer\|debugging advisor\|planning advisor\|spec critic' | head -1)
+_raw=\$(head -c 3000 2>/dev/null)
+_in=\$(printf '%s' "\$_raw" | grep -o 'ADVERSARIAL code reviewer\|debugging advisor\|planning advisor\|spec critic' | head -1)
+_bud=\$(printf '%s' "\$_raw" | grep -o 'Time budget: about [0-9]* minute' | grep -o '[0-9]*')
+_argbud=\$(printf '%s' "\$*" | grep -o 'Time budget: about [0-9]* minute' | grep -o '[0-9]*')
 case "\$_in" in *ADVERSARIAL*) _in=review ;; *debugging*) _in=consult ;; *planning*) _in=advise ;; *critic*) _in=critique ;; *) _in=none ;; esac
-printf '%s | %s | BRAIN=%s | STDIN=%s\n' "$2" "\$(printf '%s' "\$*" | tr '\n' ' ')" "\${ROLEPOD_BRAIN_SILENT:-unset}" "\$_in" >> "$LOG"
+printf '%s | %s | BRAIN=%s | STDIN=%s | BUDGET=%s\n' "$2" "\$(printf '%s' "\$*" | tr '\n' ' ')" "\${ROLEPOD_BRAIN_SILENT:-unset}" "\$_in" "\${_bud:-\$_argbud}" >> "$LOG"
 mode=\$(eval "printf '%s' \"\\\${STUB_$2:-ok}\"")
 case "\$mode" in
   fail) echo "auth error" >&2; exit 1 ;;
   empty) exit 0 ;;
   hang) sleep 30 & echo \$! > "$FIX/grandchild.\$\$"; wait; exit 0 ;;
   short) printf 'LGTM %s\n' "\$(head -c 300 /dev/zero | tr '\\0' 'y')"; exit 0 ;;
+  slow) sleep 4 ;;
 esac
 [ -n "\${CODEX_MSG_OUT:-}" ] && : # (unused)
 _msg=""; _prev=""; for a in "\$@"; do [ "\$_prev" = "-o" ] && _msg="\$a"; _prev="\$a"; done
@@ -211,6 +215,50 @@ echo "── cross-family: --kind critique ──"
 rc=0; out=$(bash "$RUNNER" --kind critique --brief brief.md --lead claude 2>/dev/null) || rc=$?
 check "critique → spec-critic framing on stdin, logged as phase=advise kind=critique (never a strong pass)" \
   "[ $rc -eq 0 ] && grep -q 'STDIN=critique' '$LOG' && grep -q '\"phase\":\"advise\",\"reviewer\":\"external\",\"kind\":\"critique\"' .rolepod/evidence/phase-log.jsonl && ! grep -q '\"phase\":\"review\"' .rolepod/evidence/phase-log.jsonl"
+
+# ── per-CLI timeout, per-kind order, budget line ─────────────────────────
+echo "── cross-family: timeouts / per-kind order / budget ──"
+printf 'codex timeout=1800\nagy\nconsult: agy codex\n' > "$REPO/.rolepod/cross-family"
+out=$(bash "$RUNNER" --pool --lead claude --kind review)
+check "review order = default list; codex carries timeout=1800s from config, agy the review default 600s (foreground)" \
+  "printf '%s' \"\$out\" | grep -qE 'codex +usable +openai +.*timeout=1800s' && printf '%s' \"\$out\" | grep -qE 'agy +usable +google +.*timeout=600s' && printf '%s' \"\$out\" | grep -q 'usable, in order: codex agy'"
+out=$(bash "$RUNNER" --pool --lead claude --kind consult)
+check "consult uses the per-kind line: agy first, codex second; agy gets the consult default 300s" \
+  "printf '%s' \"\$out\" | grep -q 'per-kind order' && printf '%s' \"\$out\" | grep -q 'usable, in order: agy codex' && printf '%s' \"\$out\" | grep -qE 'agy +usable +google +.*timeout=300s'"
+: > "$LOG"; : > .rolepod/evidence/phase-log.jsonl
+rc=0; out=$(bash "$RUNNER" --kind consult --brief brief.md --lead claude 2>/dev/null) || rc=$?
+check "consult run → agy answers first (per-kind order) with a 5-minute budget line in its prompt" "[ $rc -eq 0 ] && grep -q '^agy |.*BUDGET=5' '$LOG' && ! grep -q '^codex |' '$LOG'"
+: > "$LOG"; : > .rolepod/evidence/phase-log.jsonl
+rc=0; out=$(bash "$RUNNER" --kind review --brief brief.md --lead claude 2>"$FIX/warn.txt") || rc=$?
+check "review run (foreground) → codex gets the configured 1800s budget (30 min in prompt) + a foreground-cap warning on stderr; receipt shows budget" \
+  "[ $rc -eq 0 ] && grep -q '^codex |.*BUDGET=30' '$LOG' && grep -q 'exceeds the 600 s foreground cap' '$FIX/warn.txt' && printf '%s' \"\$out\" | grep -q 'budget=1800s' && grep -q '\"budget\":1800' .rolepod/evidence/phase-log.jsonl"
+rc=0; out=$(bash "$RUNNER" --kind review --brief brief.md --lead claude --timeout 120 2>/dev/null) || rc=$?
+check "--timeout flag overrides the config timeout" "printf '%s' \"\$out\" | grep -q 'budget=120s'"
+
+# ── detach / collect / jobs ──────────────────────────────────────────────
+echo "── cross-family: --detach job ──"
+: > "$LOG"; : > .rolepod/evidence/phase-log.jsonl
+s=$(date +%s); rc=0; out=$(STUB_codex=slow bash "$RUNNER" --kind review --brief brief.md --attach diff.patch --lead claude --detach 2>/dev/null) || rc=$?; secs=$(( $(date +%s) - s ))
+jid=$(printf '%s' "$out" | grep -o 'job=[^ ]*' | head -1 | cut -d= -f2)
+check "--detach returns at once (${secs}s) with a job id + members + budgets (review detached default 1800s → codex 1800 from config, agy 1800)" \
+  "[ $rc -eq 0 ] && [ $secs -lt 3 ] && [ -n \"$jid\" ] && printf '%s' \"\$out\" | grep -q 'members=codex agy' && printf '%s' \"\$out\" | grep -q 'budgets=codex=1800s agy=1800s'"
+check "job dir has pid + started + args, no status yet (still running)" "[ -f .rolepod/evidence/external/jobs/$jid/pid ] && [ -f .rolepod/evidence/external/jobs/$jid/started ] && [ ! -f .rolepod/evidence/external/jobs/$jid/status ]"
+out=$(bash "$RUNNER" --jobs)
+check "--jobs lists the job as running" "printf '%s' \"\$out\" | grep -q \"$jid *running\""
+rc=0; out=$(bash "$RUNNER" --collect "$jid" --timeout 1 2>/dev/null) || rc=$?
+check "--collect with a short wait → exit 6 'still running'" "[ $rc -eq 6 ] && printf '%s' \"\$out\" | grep -q 'still running'"
+rc=0; out=$(bash "$RUNNER" --collect "$jid" --timeout 30 2>/dev/null) || rc=$?
+check "--collect waits for the job → prints the review + receipt, exit 0; the child anchored the review line + raw file" \
+  "[ $rc -eq 0 ] && printf '%s' \"\$out\" | grep -q 'ROLEPOD-XFAM ok kind=review cli=codex' && grep -q '\"phase\":\"review\",\"reviewer\":\"external\".*\"cli\":\"codex\"' .rolepod/evidence/phase-log.jsonl && [ -f .rolepod/evidence/external/jobs/$jid/status ] && [ \"\$(cat .rolepod/evidence/external/jobs/$jid/status)\" = 0 ]"
+check "detached child saw the attachment + stdin prompt (absolute paths survived the re-exec)" "grep -q '^codex |.*STDIN=review' '$LOG'"
+out=$(bash "$RUNNER" --jobs)
+check "--jobs now shows done exit=0 with the receipt" "printf '%s' \"\$out\" | grep -q \"$jid *done exit=0.*ROLEPOD-XFAM ok\""
+: > "$LOG"; : > .rolepod/evidence/phase-log.jsonl
+rc=0; out=$(STUB_codex=fail bash "$RUNNER" --kind review --brief brief.md --lead claude --detach 2>/dev/null) || rc=$?
+jid2=$(printf '%s' "$out" | grep -o 'job=[^ ]*' | head -1 | cut -d= -f2)
+rc=0; out=$(bash "$RUNNER" --collect "$jid2" --timeout 30 2>/dev/null) || rc=$?
+check "detached chain falls through on its own: codex fails → agy answers inside the job" "[ $rc -eq 0 ] && printf '%s' \"\$out\" | grep -q 'cli=agy' && grep -q '\"external-fail\".*\"cli\":\"codex\"' .rolepod/evidence/phase-log.jsonl"
+rm -f "$REPO/.rolepod/cross-family"
 
 # ── usage errors ────────────────────────────────────────────────────────
 echo "── cross-family: usage ──"

@@ -73,7 +73,7 @@ Never for routine specs.
    answer. The critic is told never to re-ask those; an incomplete ledger
    produces duplicate questions the user has already answered.
 2. **Run** `rolepod-cross-family --kind critique --brief spec-draft.md`
-   (add `--lead <cli>` outside Claude). The runner frames the critic: at
+   (add `--lead <cli>` outside Claude; 10-minute budget per member, foreground). The runner frames the critic: at
    most 5 items ranked by implementation risk, each `QUESTION` (only the
    user can decide — the answer changes the implementation), `AMBIGUITY`
    (wording two engineers would read differently, quoted), or `MISSING`

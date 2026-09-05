@@ -321,6 +321,17 @@ XFAM_RUNNER="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/../scripts/cross-fami
 XFAM_LEAD="${ROLEPOD_LEAD_CLI:-}"
 [ -z "$XFAM_LEAD" ] && [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && XFAM_LEAD="claude"
 XFAM_POOL=""; XFAM_FAILS=0
+# Detached runner job still running for this repo (v2.79.0): the hold reason
+# must say "wait / --collect", not "run the runner" (it is already running).
+XFAM_RUNNING=""
+if [ -d "$EV_ROOT/external/jobs" ]; then
+  for _jd in "$EV_ROOT"/external/jobs/*/; do
+    [ -d "$_jd" ] || continue; [ -f "$_jd/status" ] && continue
+    _jp=$(cat "$_jd/pid" 2>/dev/null); [ -n "$_jp" ] && kill -0 "$_jp" 2>/dev/null || continue
+    _js=$(cat "$_jd/started" 2>/dev/null || echo 0); _jm=$(( ($(date +%s) - _js) / 60 ))
+    XFAM_RUNNING="$(basename "$_jd") (running ${_jm} min)"
+  done
+fi
 # Money / auth + enabled pool + external anchored but NO internal strong →
 # hold: this surface needs BOTH passes (v2.78.0). External failed (logged) →
 # internal alone clears, as everywhere else.
@@ -369,7 +380,7 @@ print(n)
 ' "$SINCE_EPOCH" "$EV_ROOT/phase-log.jsonl" 2>/dev/null || echo 0)
   fi
   if [ -n "$XFAM_POOL" ] && [ "${XFAM_FAILS:-0}" -eq 0 ] 2>/dev/null; then
-    XFAM_HELD="cross-family pool is usable ($XFAM_POOL) but no anchored external pass and no recorded external failure since the last commit — the $STRONG_REVIEWERS internal strong reviewer dispatch(es) do NOT clear a high-risk diff while a different model family is available. Run: rolepod-cross-family --kind review --brief <brief.md> --attach <diff> (or scripts/cross-family.sh in the plugin tree; add --lead $XFAM_LEAD outside a hook); it anchors the pass itself. Every member failing (exit 3) or an empty pool (exit 4) is logged and then the internal reviewer counts.${MONEY_RISK:+ Money / auth surface: keep the internal strong reviewer too — this surface needs BOTH passes.} "
+    XFAM_HELD="cross-family pool is usable ($XFAM_POOL) but no anchored external pass and no recorded external failure since the last commit — the $STRONG_REVIEWERS internal strong reviewer dispatch(es) do NOT clear a high-risk diff while a different model family is available. ${XFAM_RUNNING:+A detached external job is ALREADY RUNNING: $XFAM_RUNNING — wait for it (rolepod-cross-family --collect <job-id>) then retry the commit; do not start another. }${XFAM_RUNNING:-Run: rolepod-cross-family --kind review --brief <brief.md> --attach <diff> --detach (or scripts/cross-family.sh in the plugin tree; add --lead $XFAM_LEAD outside a hook); it anchors the pass itself — --collect <job-id> waits for the receipt.} Every member failing (exit 3) or an empty pool (exit 4) is logged and then the internal reviewer counts.${MONEY_RISK:+ Money / auth surface: keep the internal strong reviewer too — this surface needs BOTH passes.} "
     STRONG_REVIEWERS=0
   fi
 fi
@@ -396,6 +407,7 @@ if [ "$HIGH_RISK_EDITS" -gt 0 ] && [ "$TEST_EDITS" -eq 0 ]; then
   REASON+="NO TEST EDITS in this session despite touching high-risk code — T-gate violation (T1: bug/feature/migration/auth/billing → test required). "
 fi
 [ -n "$XFAM_HELD" ] && REASON+="SATELLITE-FIRST: $XFAM_HELD"
+[ -z "$XFAM_HELD" ] && [ -n "$XFAM_RUNNING" ] && [ -n "$HIGH_RISK" ] && [ "$STRONG_REVIEWERS" -eq 0 ] && REASON+="A detached cross-family job is still running: $XFAM_RUNNING — rolepod-cross-family --collect <job-id>, then retry. "
 if [ -n "$HIGH_RISK" ] && [ "$STRONG_REVIEWERS" -eq 0 ] && [ -z "$XFAM_HELD" ]; then
   REASON+="NO STRONG ADVERSARIAL REVIEWER since the last commit — a high-risk diff clears ONLY on: a cross-family external strong review ANCHORED per review-code (raw output saved under .rolepod/evidence/external/ + the reviewer:external phase-log line — satellite-first, preferred); a security-engineer or universal-reviewer dispatch (Agent tool, a Workflow agent() call with that agentType, or on CLIs without transcript parsing a FINISHED reviewer subagent recorded by the SubagentStop dispatch log — wait for the reviewer to complete before retrying; the dispatch hook lifts Agent-tool ones to strong class whatever the Lead runs — do not pass a balanced model on them). Test edits and qa-tester are the test floor, not the review (a green suite has already shipped money bugs). "
 fi

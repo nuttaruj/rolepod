@@ -245,6 +245,22 @@ out=$(printf '{"tool_name":"Bash","transcript_path":%s,"tool_input":{"command":"
     | (cd "$TMP" && env -u CLAUDE_PLUGIN_ROOT -u ROLEPOD_LEAD_CLI HOME="$TMP" PATH="$XF_BIN:/usr/bin:/bin" bash "$HOOKS/precommit-gate.sh") || true)
 check "Lead CLI unknown (no ROLEPOD_LEAD_CLI / CLAUDE_PLUGIN_ROOT) → cannot exclude a family → old behavior, allow" allow "$out"
 
+# ── running detached job named in the hold (v2.79.0) ────────────────────
+printf 'codex\n' > "$TMP/.rolepod/cross-family"
+: > "$TMP/.rolepod/evidence/phase-log.jsonl"
+printf '%s\n' \
+  '{"type":"tool_use","name":"Task","input":{"subagent_type":"rolepod:security-engineer","prompt":"review"}}' \
+  > "$TRANSCRIPT"
+JOBD="$TMP/.rolepod/evidence/external/jobs/t-review-1"; mkdir -p "$JOBD"
+sleep 20 & JPID=$!; echo "$JPID" > "$JOBD/pid"; date +%s > "$JOBD/started"
+out=$(pcx 'git commit -m "add billing"')
+check "high-risk + internal strong + pool usable + a detached review job RUNNING → deny names the job (wait / --collect), not 'run the runner'" deny "$out"
+echo "$out" | grep -q 'ALREADY RUNNING: t-review-1' && ! echo "$out" | grep -q -- '--detach (or scripts' \
+  && echo "  ✓ hold reason points at the running job" \
+  || { echo "  ✗ hold reason did not name the running job"; fail=$((fail+1)); }
+kill "$JPID" 2>/dev/null; wait "$JPID" 2>/dev/null || true; rm -rf "$JOBD"
+rm -f "$TMP/.rolepod/cross-family"
+
 # ── money / auth vs other high-risk (v2.78.0) ──────────────────────────
 printf 'codex\n' > "$TMP/.rolepod/cross-family"
 printf '{"ts":"%s","phase":"external-fail","kind":"review","cli":"codex","family":"openai","lead":"claude","reason":"exit 1"}\n' \

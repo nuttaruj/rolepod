@@ -1,8 +1,8 @@
 #!/bin/bash
 # rolepod cross-family runner — ONE command for every cross-CLI opinion:
-# the adversarial review pass, the plan advisory panel, the stuck-state
-# consult. Installed as `rolepod-cross-family` (install.sh) and shipped in
-# every plugin tree as scripts/cross-family.sh.
+# the adversarial review pass, the spec critique, the plan advisory panel,
+# the stuck-state consult. Installed as `rolepod-cross-family` (install.sh)
+# and shipped in every plugin tree as scripts/cross-family.sh.
 #
 # Why this exists (measured 2026-09 across 9 repos on one machine): 210
 # subagent dispatches, 18 review lines, 0 anchored cross-family passes. The
@@ -13,47 +13,57 @@
 #
 # Rules it encodes:
 #   pool     OPT-IN. <git-root>/.rolepod/cross-family (project) overrides
-#            ~/.rolepod/cross-family (machine); one CLI per line in preference
-#            order (codex claude agy cursor opencode), `#` comments. NO file =
-#            OFF, `none` = OFF — rolepod never enables cross-family on its own:
-#            the SessionStart loader asks the user ONCE (installed candidates
-#            listed), the answer is written to the file (names, or `none`).
-#            `gemini` is retired: Google moved individual accounts to
-#            Antigravity (agy) — a `gemini` line is skipped with a note; a
-#            Gemini-CLI Lead is still recognised for family exclusion.
-#   family   the Lead's own model FAMILY is excluded (gemini ≡ agy = google;
-#            cursor / opencode resolve to the family of their configured
-#            default model, else `unknown` — used, but flagged).
+#            ~/.rolepod/cross-family (machine). NO file = OFF, `none` = OFF —
+#            rolepod never enables cross-family on its own: the SessionStart
+#            loader asks the user ONCE, the answer is written to the file.
+#            Format — one CLI per line in preference order, options after the
+#            name, optional per-kind order lines:
+#                codex timeout=1800      # slow-but-deep member gets 30 min
+#                agy
+#                consult: agy codex      # debug consults want the fast answer first
+#            Names: codex claude agy cursor opencode (`gemini` is retired —
+#            skipped with a note; a Gemini-CLI Lead still excludes agy).
+#   family   the Lead's own model FAMILY is excluded (agy = google; cursor /
+#            opencode resolve to the family of their configured default
+#            model, else `unknown` — used, but flagged).
 #   model    NEVER a model or effort flag. TIER_MODELS applies only to the CLI
 #            that is the Lead; an external runs whatever its owner set as
 #            default. The phase-log records model:"default".
+#   time     per member: --timeout > `timeout=` in the config > kind default
+#            (review 1800 s detached / 600 s foreground · consult 300 ·
+#            advise 900 · critique 600). The prompt carries the budget so the
+#            model plans for it. `--detach` runs the whole chain as a job in
+#            its own process group and returns at once — the Lead keeps
+#            working, `--collect <job>` waits for the receipt, the commit gate
+#            sees the job. Foreground calls are capped by the harness (Claude
+#            Bash: 600 s) — the runner warns when a member's budget exceeds it.
 #   read-only every invocation uses the CLI's read-only / plan mode; the
 #            prompt says so too. ROLEPOD_BRAIN_SILENT=1 keeps ambient memory
 #            out of the cold run (clean room).
 #   health   installed ≠ usable: exit≠0, timeout, or too little output (review
-#            < 500 bytes — the gate's floor; consult / advise < 200) → next member;
-#            every failure is a phase-log line; all fail → exit 3; configured
-#            but nothing usable → exit 4 (logged); OFF → exit 5 (not logged —
-#            the user's choice is not a failure). The Lead then runs its own path.
+#            < 500 bytes — the gate's floor; other kinds < 200) → next member;
+#            every failure is a phase-log line; all fail → exit 3; enabled but
+#            nothing usable → exit 4 (logged); OFF → exit 5 (not logged — the
+#            user's choice is not a failure). The Lead then runs its own path.
 #   evidence .rolepod/evidence/external/<utc>-<cli>.txt + one phase-log line
 #            ({"phase":"review","reviewer":"external",...} is what
-#            precommit-gate counts as the strong pass; consult / advise
-#            lines feed `rolepod-stats`).
+#            precommit-gate counts as the strong pass; consult / advise lines
+#            feed `rolepod-stats`). Jobs live under external/jobs/<id>/.
 #
 # Usage:
 #   cross-family.sh --kind review|consult|advise|critique --brief <file> [--attach <file>]...
-#                   (critique = spec critic: ≤5 ranked open questions / ambiguities / missing criteria)
-#                   [--lead <cli>] [--all] [--timeout <sec>]   (default 600s = the Claude Bash
-#                   cap; a big diff → run in the background and read the raw file)
-#   cross-family.sh --pool [--lead <cli>]          # usable pool, no network
-#   cross-family.sh --pool-names [--lead <cli>]    # names only (hooks use this)
-#   cross-family.sh --probe [--lead <cli>]         # live "reply OK" per member
-#   cross-family.sh --candidates                   # installed other-family CLIs (for the opt-in question)
-# Exit: 0 ok · 2 usage · 3 every member failed · 4 configured pool empty · 5 off (opt-in not given)
+#                   [--lead <cli>] [--all] [--timeout <sec>] [--detach]
+#   cross-family.sh --collect <job-id> [--timeout <sec>]   # wait for a detached job, print its output
+#   cross-family.sh --jobs                                # list detached jobs (running / done)
+#   cross-family.sh --pool [--lead <cli>] [--kind <k>]    # usable pool, no network
+#   cross-family.sh --pool-names [--lead <cli>]           # names only (hooks use this)
+#   cross-family.sh --probe [--lead <cli>]                # live "reply OK" per member
+#   cross-family.sh --candidates                          # installed other-family CLIs (opt-in question)
+# Exit: 0 ok · 2 usage · 3 every member failed · 4 configured pool empty · 5 off · 6 job still running
 set -uo pipefail
 
-KIND=""; BRIEF=""; LEAD="${ROLEPOD_LEAD_CLI:-}"; ALL=0; TIMEOUT="${ROLEPOD_XFAM_TIMEOUT:-600}"
-MODE="run"; ATTACH=""
+KIND=""; BRIEF=""; LEAD="${ROLEPOD_LEAD_CLI:-}"; ALL=0; FLAG_TIMEOUT="${ROLEPOD_XFAM_TIMEOUT:-}"
+MODE="run"; ATTACH=""; DETACH=0; JOB_DIR=""; COLLECT_ID=""; ROOT_FLAG=""
 while [ $# -gt 0 ]; do
   case "$1" in
     --kind) KIND="${2:-}"; shift 2 ;;
@@ -61,26 +71,57 @@ while [ $# -gt 0 ]; do
     --attach) ATTACH="$ATTACH${ATTACH:+
 }${2:-}"; shift 2 ;;
     --lead) LEAD="${2:-}"; shift 2 ;;
+    --root) ROOT_FLAG="${2:-}"; shift 2 ;;
     --all) ALL=1; shift ;;
-    --timeout) TIMEOUT="${2:-900}"; shift 2 ;;
+    --timeout) FLAG_TIMEOUT="${2:-}"; shift 2 ;;
+    --detach) DETACH=1; shift ;;
+    --job) JOB_DIR="${2:-}"; shift 2 ;;          # internal: the detached child
+    --collect) MODE="collect"; COLLECT_ID="${2:-}"; shift 2 ;;
+    --jobs) MODE="jobs"; shift ;;
     --pool) MODE="pool"; shift ;;
     --pool-names) MODE="pool-names"; shift ;;
     --probe) MODE="probe"; shift ;;
     --candidates) MODE="candidates"; shift ;;
-    -h|--help) sed -n '2,40p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    -h|--help) sed -n '2,60p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
     *) echo "cross-family: unknown argument: $1" >&2; exit 2 ;;
   esac
 done
 
-ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
+if [ -n "$ROOT_FLAG" ]; then ROOT="$ROOT_FLAG"; else ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"; fi
 EV="$ROOT/.rolepod/evidence"
+JOBS="$EV/external/jobs"
 ALL_CLIS="codex claude agy cursor opencode"
 LEAD_CLIS="$ALL_CLIS gemini"
+iso_now() { date -u +%Y-%m-%dT%H:%M:%SZ; }
+
+# ── Jobs (no Lead needed) ──────────────────────────────────────────────
+job_elapsed() { _st=$(cat "$1/started" 2>/dev/null || echo 0); echo $(( ($(date +%s) - _st) / 60 )); }
+if [ "$MODE" = "jobs" ]; then
+  [ -d "$JOBS" ] || { echo "no cross-family jobs under $JOBS"; exit 0; }
+  for d in "$JOBS"/*/; do
+    [ -d "$d" ] || continue; id=$(basename "$d")
+    if [ -f "$d/status" ]; then st="done exit=$(cat "$d/status")"
+    elif kill -0 "$(cat "$d/pid" 2>/dev/null)" 2>/dev/null; then st="running $(job_elapsed "$d") min"
+    else st="dead (no status)"; fi
+    printf '  %-32s %-18s %s\n' "$id" "$st" "$(grep -E '^ROLEPOD-XFAM' "$d/out.txt" 2>/dev/null | tail -1 | cut -c1-110)"
+  done
+  exit 0
+fi
+if [ "$MODE" = "collect" ]; then
+  d="$JOBS/$COLLECT_ID"; [ -d "$d" ] || { echo "cross-family: no job $COLLECT_ID under $JOBS" >&2; exit 2; }
+  W="${FLAG_TIMEOUT:-1800}"; s=$SECONDS
+  while [ ! -f "$d/status" ]; do
+    if ! kill -0 "$(cat "$d/pid" 2>/dev/null)" 2>/dev/null; then
+      sleep 1; [ -f "$d/status" ] && break
+      echo "ROLEPOD-XFAM job=$COLLECT_ID died without a status — see $d/err.txt"; exit 3
+    fi
+    if [ $(( SECONDS - s )) -ge "$W" ]; then echo "ROLEPOD-XFAM job=$COLLECT_ID still running ($(job_elapsed "$d") min) — collect again later or fall back to the internal path"; exit 6; fi
+    sleep 2
+  done
+  cat "$d/out.txt" 2>/dev/null; exit "$(cat "$d/status" 2>/dev/null || echo 3)"
+fi
 
 # ── Lead detection ─────────────────────────────────────────────────────
-# Explicit --lead / ROLEPOD_LEAD_CLI wins (the adapters' hooks.json sets it
-# on Codex). Otherwise the CLIs' own child-env markers. Unknown → refuse:
-# without the Lead's family the exclusion rule cannot run.
 if [ -z "$LEAD" ]; then
   if [ -n "${CLAUDECODE:-}" ] || [ -n "${CLAUDE_PLUGIN_ROOT:-}" ]; then LEAD=claude
   elif [ -n "${CODEX_SANDBOX:-}${CODEX_THREAD_ID:-}${CODEX_SANDBOX_NETWORK_DISABLED:-}" ]; then LEAD=codex
@@ -96,7 +137,7 @@ case " $LEAD_CLIS " in
 esac
 
 # ── Family resolution ──────────────────────────────────────────────────
-classify_model() { # model / provider string → family
+classify_model() {
   _m=$(printf '%s' "${1:-}" | tr 'A-Z' 'a-z')
   case "$_m" in
     "") echo unknown ;;
@@ -131,7 +172,6 @@ PYJ
 }
 cursor_default_model() { json_model_field "$HOME/.cursor/cli-config.json"; }
 opencode_default_model() {
-  _f=""
   for _c in "$ROOT/opencode.jsonc" "$ROOT/opencode.json" \
             "${OPENCODE_CONFIG_DIR:-}/opencode.jsonc" "${OPENCODE_CONFIG_DIR:-}/opencode.json" \
             "$HOME/.config/opencode/opencode.jsonc" "$HOME/.config/opencode/opencode.json"; do
@@ -167,18 +207,49 @@ for cli in $ALL_CLIS; do
 done
 if [ "$MODE" = "candidates" ]; then printf '%s\n' $CANDIDATES; exit 0; fi
 
-# ── Pool from config (opt-in: no file = off) ───────────────────────────
+# ── Config (opt-in: no file = off) ─────────────────────────────────────
+# default list = bare lines; `<kind>:` lines = per-kind order; `key=value`
+# tokens attach to the CLI named just before them (timeout= today).
 CFG=""; CFG_SRC=""; STATE="on"
 if [ -f "$ROOT/.rolepod/cross-family" ]; then CFG="$ROOT/.rolepod/cross-family"; CFG_SRC="$CFG"
 elif [ -f "$HOME/.rolepod/cross-family" ]; then CFG="$HOME/.rolepod/cross-family"; CFG_SRC="$CFG"; fi
+DEFAULT_LIST=""; KIND_LIST=""; TO_LIST=""
 if [ -n "$CFG" ]; then
-  CONFIGURED=$(sed -e 's/#.*//' "$CFG" 2>/dev/null | tr 'A-Z' 'a-z' | tr -s '[:space:]' ' ')
-  printf '%s' "$CONFIGURED" | grep -qw none && STATE="none"
-  [ -z "$(printf '%s' "$CONFIGURED" | tr -d ' ')" ] && STATE="none"
+  while IFS= read -r _ln || [ -n "$_ln" ]; do
+    _ln=$(printf '%s' "$_ln" | sed -e 's/#.*//' | tr 'A-Z' 'a-z' | tr -s '[:space:]' ' ' | sed -e 's/^ //' -e 's/ $//')
+    [ -n "$_ln" ] || continue
+    _k=""; case "$_ln" in review:*|consult:*|advise:*|critique:*) _k="${_ln%%:*}"; _ln="${_ln#*:}";; esac
+    _acc=""; _last=""
+    for _t in $_ln; do
+      case "$_t" in
+        *=*) _key="${_t%%=*}"; _val="${_t#*=}"
+             [ "$_key" = "timeout" ] && [ -n "$_last" ] && TO_LIST="$TO_LIST $_last=$_val" ;;
+        *) _last="$_t"; _acc="$_acc${_acc:+ }$_t" ;;
+      esac
+    done
+    if [ -z "$_k" ]; then DEFAULT_LIST="$DEFAULT_LIST${DEFAULT_LIST:+ }$_acc"
+    elif [ "$_k" = "$KIND" ]; then KIND_LIST="$_acc"; fi
+  done < "$CFG"
+  printf '%s' "$DEFAULT_LIST" | grep -qw none && STATE="none"
+  [ -z "$DEFAULT_LIST$KIND_LIST" ] && STATE="none"
 else
-  CONFIGURED=""; STATE="off"; CFG_SRC="no ~/.rolepod/cross-family (opt-in not given)"
+  STATE="off"; CFG_SRC="no ~/.rolepod/cross-family (opt-in not given)"
 fi
-ENABLE_HINT="enable: printf 'agy\\ncodex\\n' > ~/.rolepod/cross-family  (one CLI per line, your order; project override: <git-root>/.rolepod/cross-family; 'none' = keep off)"
+CONFIGURED="${KIND_LIST:-$DEFAULT_LIST}"
+ENABLE_HINT="enable: printf 'agy\\ncodex timeout=1800\\n' > ~/.rolepod/cross-family  (one CLI per line, your order; 'consult: agy codex' = per-kind order; project override: <git-root>/.rolepod/cross-family; 'none' = keep off)"
+
+timeout_for() { # $1 cli → seconds (flag > config > kind default)
+  [ -n "$FLAG_TIMEOUT" ] && { echo "$FLAG_TIMEOUT"; return; }
+  _c=$(printf '%s' "$TO_LIST" | tr ' ' '\n' | grep "^$1=" | tail -1 | cut -d= -f2)
+  [ -n "$_c" ] && { echo "$_c"; return; }
+  case "$KIND" in
+    review) if [ -n "$JOB_DIR" ]; then echo 1800; else echo 600; fi ;;
+    consult) echo 300 ;;
+    advise) echo 900 ;;
+    critique) echo 600 ;;
+    *) echo 600 ;;
+  esac
+}
 
 # Rows: "<cli> <status> <family> <note>" — status ∈ usable|skipped|absent
 POOL_ROWS=""; USABLE=""; SEEN_FAMILIES=""
@@ -199,7 +270,7 @@ $cli  absent  -  not on PATH"; continue; fi
 $cli  skipped  $fam  is the Lead"; continue; fi
     if [ "$fam" != "unknown" ] && [ "$fam" = "$LEAD_FAMILY" ]; then POOL_ROWS="$POOL_ROWS
 $cli  skipped  $fam  same family as the Lead ($LEAD)"; continue; fi
-    note="bin=$bin"
+    note="bin=$bin · timeout=$(timeout_for "$cli")s"
     case " $SEEN_FAMILIES " in *" $fam "*) [ "$fam" != "unknown" ] && note="$note · same family as an earlier member — sequential fallback only, not in --all" ;; esac
     if [ "$fam" = "unknown" ]; then
       case "$cli" in
@@ -215,7 +286,7 @@ $cli  usable  $fam  $note"
 fi
 
 print_pool() {
-  echo "cross-family pool — lead=$LEAD ($LEAD_FAMILY) · config: $CFG_SRC"
+  echo "cross-family pool — lead=$LEAD ($LEAD_FAMILY)${KIND:+ · kind=$KIND}${KIND_LIST:+ (per-kind order)} · config: $CFG_SRC"
   printf '%s\n' "$POOL_ROWS" | sed '/^$/d' | awk '{printf "  %-9s %-8s %-10s", $1, $2, $3; $1=$2=$3=""; sub(/^ +/, ""); print $0}'
   if [ -n "$USABLE" ]; then echo "  → usable, in order: $USABLE"
   elif [ "$STATE" = "off" ]; then
@@ -231,8 +302,7 @@ case "$MODE" in
 esac
 
 # ── Invocation (read-only, default model, clean room) ──────────────────
-# stdout → $2, stderr → $2.err; bash-3.2-safe timeout (macOS ships no `timeout`).
-RUN_STDIN=/dev/null
+RUN_STDIN=/dev/null; TIMEOUT=600
 run_to() { # $1 outfile, $2... command; stdin = $RUN_STDIN (a `&` job gets /dev/null otherwise)
   _out="$1"; shift
   # Job control ON for the launch → the job is its own process group, so a
@@ -253,7 +323,7 @@ run_to() { # $1 outfile, $2... command; stdin = $RUN_STDIN (a `&` job gets /dev/
   done
   wait "$_pid"
 }
-invoke() { # $1 cli, $2 promptfile, $3 outfile
+invoke() { # $1 cli, $2 promptfile, $3 outfile — TIMEOUT already set for this member
   _cli="$1"; _p="$2"; _o="$3"; _bin=$(bin_of "$_cli")
   RUN_STDIN=/dev/null
   case "$_cli" in
@@ -265,11 +335,7 @@ invoke() { # $1 cli, $2 promptfile, $3 outfile
     *) return 2 ;;
   esac
 }
-iso_now() { date -u +%Y-%m-%dT%H:%M:%SZ; }
-jlog() { # append one phase-log line, fail-open
-  mkdir -p "$EV" 2>/dev/null || return 0
-  printf '%s\n' "$1" >> "$EV/phase-log.jsonl" 2>/dev/null || true
-}
+jlog() { mkdir -p "$EV" 2>/dev/null || return 0; printf '%s\n' "$1" >> "$EV/phase-log.jsonl" 2>/dev/null || true; }
 jesc() { # JSON string body (no surrounding quotes) — control chars escaped too
   if command -v python3 >/dev/null 2>&1; then
     printf '%s' "$1" | python3 -c 'import json,sys; print(json.dumps(sys.stdin.read().replace("\n"," "))[1:-1], end="")' 2>/dev/null && return
@@ -284,10 +350,10 @@ if [ "$MODE" = "probe" ]; then
   [ -n "$USABLE" ] || exit 4
   TMPP=$(mktemp -d "${TMPDIR:-/tmp}/rolepod-xfam.XXXXXX"); trap 'rm -rf "$TMPP"' EXIT
   printf 'Reply with exactly the word OK and nothing else. Do not read files, do not run commands.\n' > "$TMPP/p.txt"
-  TIMEOUT="${TIMEOUT:-120}"; [ "$TIMEOUT" -gt 180 ] && TIMEOUT=180
-  echo "probe (timeout ${TIMEOUT}s each):"
+  echo "probe (≤180s each):"
   rc_all=3
   for cli in $USABLE; do
+    TIMEOUT=$(timeout_for "$cli"); [ "$TIMEOUT" -gt 180 ] && TIMEOUT=180
     s=$SECONDS; invoke "$cli" "$TMPP/p.txt" "$TMPP/$cli.out"; rc=$?; secs=$(( SECONDS - s ))
     [ "$cli" = "codex" ] && [ -s "$TMPP/$cli.out.msg" ] && mv "$TMPP/$cli.out.msg" "$TMPP/$cli.out"
     bytes=$(wc -c < "$TMPP/$cli.out" | tr -d ' ')
@@ -322,15 +388,40 @@ if [ -z "$USABLE" ]; then
   exit 4
 fi
 
-TMPP=$(mktemp -d "${TMPDIR:-/tmp}/rolepod-xfam.XXXXXX"); trap 'rm -rf "$TMPP"' EXIT
-PROMPT="$TMPP/prompt.md"
+# ── Detach: run the whole chain as a job in its own process group ──────
+abspath() { case "$1" in /*) printf '%s' "$1" ;; *) printf '%s/%s' "$(cd "$(dirname "$1")" && pwd)" "$(basename "$1")" ;; esac; }
+if [ "$DETACH" -eq 1 ]; then
+  JOB_ID="$(date -u +%Y%m%dT%H%M%SZ)-$KIND-$$"; JD="$JOBS/$JOB_ID"
+  mkdir -p "$JD" 2>/dev/null || { echo "cross-family: cannot create $JD" >&2; exit 2; }
+  CHILD="--kind $KIND --brief $(abspath "$BRIEF") --lead $LEAD --root $ROOT --job $JD"
+  [ "$ALL" -eq 1 ] && CHILD="$CHILD --all"
+  [ -n "$FLAG_TIMEOUT" ] && CHILD="$CHILD --timeout $FLAG_TIMEOUT"
+  ATT_ARGS=""
+  if [ -n "$ATTACH" ]; then
+    while IFS= read -r a; do [ -f "$a" ] && ATT_ARGS="$ATT_ARGS --attach $(abspath "$a")"; done <<EOF
+$ATTACH
+EOF
+  fi
+  printf '%s %s\n' "$CHILD" "$ATT_ARGS" > "$JD/args"
+  date +%s > "$JD/started"
+  # shellcheck disable=SC2086
+  set -m; nohup bash "$0" $CHILD $ATT_ARGS > "$JD/out.txt" 2> "$JD/err.txt" < /dev/null & echo $! > "$JD/pid"; set +m
+  TOS=""; for c in $USABLE; do TOS="$TOS${TOS:+ }$c=$( JOB_DIR="$JD" timeout_for "$c" )s"; done
+  echo "ROLEPOD-XFAM job=$JOB_ID kind=$KIND members=$USABLE budgets=$TOS — keep working; collect with: rolepod-cross-family --collect $JOB_ID   (list: --jobs). The chain falls through on its own and anchors the receipt; the commit gate sees the job."
+  exit 0
+fi
+if [ -n "$JOB_DIR" ]; then
+  mkdir -p "$JOB_DIR" 2>/dev/null; [ -f "$JOB_DIR/started" ] || date +%s > "$JOB_DIR/started"
+fi
+
+TMPP=$(mktemp -d "${TMPDIR:-/tmp}/rolepod-xfam.XXXXXX")
+finish() { _rc=$?; if [ -n "$JOB_DIR" ]; then { printf '%s\n' "$_rc" > "$JOB_DIR/status"; date +%s > "$JOB_DIR/finished"; } 2>/dev/null; fi; rm -rf "$TMPP"; }
+trap finish EXIT
+
+# Body = brief + attachments (shared); each member gets its own preamble +
+# time budget so the model plans for its deadline instead of exploring.
+BODY="$TMPP/body.md"
 {
-  case "$KIND" in
-    review) printf '%s\n\n' "You are a cold-context ADVERSARIAL code reviewer from a different model family than the author. Read only — never edit files, never run write commands. Try to make the change fail. Report findings severity-ordered (BLOCKER / MAJOR / MINOR / NIT) with file:line, label each TRACED (path walked) or SUSPECTED (pattern-level), name what is missing as hard as what is present, then end with one line: VERDICT: APPROVED | APPROVED-WITH-NITS | REJECTED." ;;
-    consult) printf '%s\n\n' "You are a cold-context debugging advisor from a different model family. The author has failed twice; do not repeat their fixes. Read only — never edit files. Return exactly one of: CORRECTION (new hypothesis + the smallest change to test it), CONFIRMATION (approach right — check X), or STOP (wrong path — why). Reason from the evidence given; say what you would verify first." ;;
-    advise) printf '%s\n\n' "You are a cold-context planning advisor from a different model family. Advise, never execute: return a RECOMMENDED option with reasoning and the risks you see, or a CORRECTION if the framing or all options are flawed, or a STOP signal. Do not edit files or run the plan." ;;
-    critique) printf '%s\n\n' "You are a cold-context spec critic from a different model family. The author has finished their discovery dialogue with the user (the questions already asked and answered are attached — never re-ask those). Return AT MOST 5 items, ranked by implementation risk, each tagged QUESTION (a decision only the user can make — the answer would change the implementation), AMBIGUITY (wording two engineers would read differently — quote it), or MISSING (an acceptance criterion, failure mode, or edge case with no 'proven by'). No design proposals, no praise, no restating the spec. If nothing material remains, reply exactly: NO FURTHER QUESTIONS." ;;
-  esac
   cat "$BRIEF"
   if [ -n "$ATTACH" ]; then
     printf '%s\n' "$ATTACH" | while IFS= read -r a; do
@@ -338,43 +429,61 @@ PROMPT="$TMPP/prompt.md"
       printf '\n\n--- attached: %s ---\n```\n' "$(basename "$a")"; cat "$a"; printf '\n```\n'
     done
   fi
-} > "$PROMPT"
-PBYTES=$(wc -c < "$PROMPT" | tr -d ' ')
+} > "$BODY"
+preamble() { # $1 kind
+  case "$1" in
+    review) printf '%s' "You are a cold-context ADVERSARIAL code reviewer from a different model family than the author. Read only — never edit files, never run write commands. Try to make the change fail. Report findings severity-ordered (BLOCKER / MAJOR / MINOR / NIT) with file:line, label each TRACED (path walked) or SUSPECTED (pattern-level), name what is missing as hard as what is present, then end with one line: VERDICT: APPROVED | APPROVED-WITH-NITS | REJECTED." ;;
+    consult) printf '%s' "You are a cold-context debugging advisor from a different model family. The author has failed twice; do not repeat their fixes. Read only — never edit files. Return exactly one of: CORRECTION (new hypothesis + the smallest change to test it), CONFIRMATION (approach right — check X), or STOP (wrong path — why). Reason from the evidence given; say what you would verify first." ;;
+    advise) printf '%s' "You are a cold-context planning advisor from a different model family. Advise, never execute: return a RECOMMENDED option with reasoning and the risks you see, or a CORRECTION if the framing or all options are flawed, or a STOP signal. Do not edit files or run the plan." ;;
+    critique) printf '%s' "You are a cold-context spec critic from a different model family. The author has finished their discovery dialogue with the user (the questions already asked and answered are attached — never re-ask those). Return AT MOST 5 items, ranked by implementation risk, each tagged QUESTION (a decision only the user can make — the answer would change the implementation), AMBIGUITY (wording two engineers would read differently — quote it), or MISSING (an acceptance criterion, failure mode, or edge case with no 'proven by'). No design proposals, no praise, no restating the spec. If nothing material remains, reply exactly: NO FURTHER QUESTIONS." ;;
+  esac
+}
+budget_line() { # $1 seconds
+  _m=$(( ($1 + 59) / 60 ))
+  printf 'Time budget: about %s minute(s) — a hard stop kills the run and loses everything. The brief and attachments are complete: do NOT run builds, test suites, linters, or package managers; read only the files the diff touches when you need surrounding context, and start writing your answer well before the budget ends. If the budget is nearly spent, stop and output what you have, prefixed PARTIAL.' "$_m"
+}
+BBYTES=$(wc -c < "$BODY" | tr -d ' ')
 # codex / claude take the prompt on stdin (400 KB cap); agy / cursor / opencode
 # take it as ONE argv string — Linux caps a single argument at 128 KiB
-# (MAX_ARG_STRLEN), so those get 120 000 bytes. Over the cap → that member is
+# (MAX_ARG_STRLEN), so those get 118 000 bytes. Over the cap → that member is
 # skipped with a logged reason rather than failing at exec with E2BIG.
-[ "$PBYTES" -le 400000 ] || { echo "cross-family: prompt is ${PBYTES} bytes (>400000) — trim the brief / attachments" >&2; exit 2; }
-ARGV_CAP=120000
+[ "$BBYTES" -le 398000 ] || { echo "cross-family: brief + attachments are ${BBYTES} bytes (>398000) — trim them" >&2; exit 2; }
+ARGV_CAP=118000
 mkdir -p "$EV/external" 2>/dev/null || true
 
 one() { # $1 cli → 0 ok / 1 fail; writes $TMPP/$1.{out,err,line,jsonl} — the PARENT appends .jsonl
   _c="$1"; _f=$(family_of "$_c"); _ts=$(date -u +%Y%m%dT%H%M%SZ)
-  case "$_c" in codex|claude) ;; *) if [ "$PBYTES" -gt "$ARGV_CAP" ]; then
+  TIMEOUT=$(timeout_for "$_c")
+  case "$_c" in codex|claude) ;; *) if [ "$BBYTES" -gt "$ARGV_CAP" ]; then
     printf '{"ts":"%s","phase":"external-fail","kind":"%s","cli":"%s","family":"%s","lead":"%s","reason":"prompt %s bytes exceeds the %s-byte argv cap for %s — trim attachments"}\n' \
-      "$(iso_now)" "$KIND" "$_c" "$_f" "$LEAD" "$PBYTES" "$ARGV_CAP" "$_c" > "$TMPP/$_c.jsonl"
-    printf '%s: prompt %s bytes > argv cap %s\n' "$_c" "$PBYTES" "$ARGV_CAP" > "$TMPP/$_c.line"; return 1; fi ;; esac
-  echo "→ $_c ($_f) · $KIND · timeout ${TIMEOUT}s" >&2
-  _s=$SECONDS; invoke "$_c" "$PROMPT" "$TMPP/$_c.out"; _rc=$?; _secs=$(( SECONDS - _s ))
-  # codex streams its event log to stdout; the reviewer's answer is the -o message file
+      "$(iso_now)" "$KIND" "$_c" "$_f" "$LEAD" "$BBYTES" "$ARGV_CAP" "$_c" > "$TMPP/$_c.jsonl"
+    printf '%s: prompt %s bytes > argv cap %s\n' "$_c" "$BBYTES" "$ARGV_CAP" > "$TMPP/$_c.line"; return 1; fi ;; esac
+  { preamble "$KIND"; printf '\n\n'; budget_line "$TIMEOUT"; printf '\n\n'; cat "$BODY"; } > "$TMPP/$_c.prompt"
+  if [ -z "$JOB_DIR" ] && [ "$TIMEOUT" -gt 600 ]; then
+    echo "⚠ $_c budget ${TIMEOUT}s exceeds the 600 s foreground cap of the Claude Bash tool — prefer --detach (job + --collect) so the harness cannot kill the chain mid-run" >&2
+  fi
+  echo "→ $_c ($_f) · $KIND · budget ${TIMEOUT}s" >&2
+  _s=$SECONDS; invoke "$_c" "$TMPP/$_c.prompt" "$TMPP/$_c.out"; _rc=$?; _secs=$(( SECONDS - _s ))
+  # codex streams its event log to stderr; the reviewer's answer is the -o message file
   if [ "$_c" = "codex" ] && [ -s "$TMPP/$_c.out.msg" ]; then mv "$TMPP/$_c.out" "$TMPP/$_c.out.stream"; mv "$TMPP/$_c.out.msg" "$TMPP/$_c.out"; fi
   _bytes=$(wc -c < "$TMPP/$_c.out" | tr -d ' ')
   _floor=200; [ "$KIND" = "review" ] && _floor=500   # the commit gate's raw-file floor
   if [ "$_rc" -eq 0 ] && [ "$_bytes" -ge "$_floor" ]; then
     _raw="external/$_ts-$_c.txt"
-    { printf '# rolepod cross-family %s · cli=%s family=%s lead=%s (%s) · %s · exit=%s secs=%s bytes=%s\n# brief: %s\n\n' \
-        "$KIND" "$_c" "$_f" "$LEAD" "$LEAD_FAMILY" "$(iso_now)" "$_rc" "$_secs" "$_bytes" "$BRIEF"
+    _partial=""; head -c 400 "$TMPP/$_c.out" | grep -q 'PARTIAL' && _partial=" partial=1"
+    { printf '# rolepod cross-family %s · cli=%s family=%s lead=%s (%s) · %s · exit=%s secs=%s bytes=%s budget=%ss%s\n# brief: %s\n\n' \
+        "$KIND" "$_c" "$_f" "$LEAD" "$LEAD_FAMILY" "$(iso_now)" "$_rc" "$_secs" "$_bytes" "$TIMEOUT" "$_partial" "$BRIEF"
       cat "$TMPP/$_c.out"; } > "$EV/$_raw" 2>/dev/null || true
-    printf '%s\n' "{\"ts\":\"$(iso_now)\",\"phase\":\"$PHASE\",\"reviewer\":\"external\",\"kind\":\"$KIND\",\"cli\":\"$_c\",\"family\":\"$_f\",\"model\":\"default\",\"raw\":\"$_raw\",\"lead\":\"$LEAD\",\"secs\":$_secs}" > "$TMPP/$_c.jsonl"
-    printf 'ROLEPOD-XFAM ok kind=%s cli=%s family=%s raw=.rolepod/evidence/%s secs=%s\n' "$KIND" "$_c" "$_f" "$_raw" "$_secs" > "$TMPP/$_c.line"
+    printf '%s\n' "{\"ts\":\"$(iso_now)\",\"phase\":\"$PHASE\",\"reviewer\":\"external\",\"kind\":\"$KIND\",\"cli\":\"$_c\",\"family\":\"$_f\",\"model\":\"default\",\"raw\":\"$_raw\",\"lead\":\"$LEAD\",\"secs\":$_secs,\"budget\":$TIMEOUT${_partial:+,\"partial\":true}}" > "$TMPP/$_c.jsonl"
+    printf 'ROLEPOD-XFAM ok kind=%s cli=%s family=%s raw=.rolepod/evidence/%s secs=%s budget=%ss%s\n' "$KIND" "$_c" "$_f" "$_raw" "$_secs" "$TIMEOUT" "$_partial" > "$TMPP/$_c.line"
     return 0
   fi
   _why="exit $_rc"; [ "$_rc" -eq 124 ] && _why="timeout ${TIMEOUT}s"
   [ "$_rc" -eq 0 ] && _why="empty output ($_bytes bytes, floor $_floor)"
   _first=$(head -c 160 "$TMPP/$_c.out.err" 2>/dev/null | tr '\n' ' ')
-  { printf '# rolepod cross-family %s FAILED · cli=%s family=%s lead=%s · %s · %s\n\n--- stdout ---\n' "$KIND" "$_c" "$_f" "$LEAD" "$(iso_now)" "$_why"
+  { printf '# rolepod cross-family %s FAILED · cli=%s family=%s lead=%s · %s · %s · budget=%ss\n\n--- stdout ---\n' "$KIND" "$_c" "$_f" "$LEAD" "$(iso_now)" "$_why" "$TIMEOUT"
     cat "$TMPP/$_c.out"; printf '\n--- stderr ---\n'; cat "$TMPP/$_c.out.err"; } > "$EV/external/$_ts-$_c.failed.txt" 2>/dev/null || true
-  printf '%s\n' "{\"ts\":\"$(iso_now)\",\"phase\":\"external-fail\",\"kind\":\"$KIND\",\"cli\":\"$_c\",\"family\":\"$_f\",\"lead\":\"$LEAD\",\"reason\":\"$(jesc "$_why: $_first")\"}" > "$TMPP/$_c.jsonl"
+  printf '%s\n' "{\"ts\":\"$(iso_now)\",\"phase\":\"external-fail\",\"kind\":\"$KIND\",\"cli\":\"$_c\",\"family\":\"$_f\",\"lead\":\"$LEAD\",\"secs\":$_secs,\"reason\":\"$(jesc "$_why: $_first")\"}" > "$TMPP/$_c.jsonl"
   printf '%s: %s%s\n' "$_c" "$_why" "${_first:+ — $_first}" > "$TMPP/$_c.line"
   return 1
 }

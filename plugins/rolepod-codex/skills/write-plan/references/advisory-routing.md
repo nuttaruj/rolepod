@@ -150,8 +150,10 @@ conflicting plans and no decision — the protocol exists to prevent it.
 2. **Poll in parallel.** `rolepod-cross-family --kind advise --brief
    <decision.md> --all` runs one member per family concurrently, read-only
    on each CLI's default model, clean room, each reply anchored under
-   `.rolepod/evidence/external/` with a `phase: advise` line. Drop `--all`
-   for a single advisor on the dominant dimension.
+   `.rolepod/evidence/external/` with a `phase: advise` line (15-minute
+   budget per member by default; add `--detach` and `--collect` when a slow
+   member is in the pool). Drop `--all` for a single advisor on the
+   dominant dimension.
 3. **Reconcile.** Lead collects, dedups overlapping points, and marks where the
    panel agrees vs conflicts.
 4. **Decide and own.** Lead picks the option and writes it into the plan —

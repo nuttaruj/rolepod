@@ -171,7 +171,9 @@ the path on marketplace installs):
 rolepod-cross-family --pool                       # resolved pool with reasons (or OFF + candidates), no network
 rolepod-cross-family --candidates                 # installed other-family CLIs — the opt-in question
 rolepod-cross-family --probe                      # one-line "reply OK" per member (spends a call each)
-rolepod-cross-family --kind review  --brief brief.md --attach diff.patch
+rolepod-cross-family --kind review  --brief brief.md --attach diff.patch --detach   # job; --collect <id> waits
+rolepod-cross-family --collect <job-id>            # prints the review + receipt when the job lands (exit 6 = still running)
+rolepod-cross-family --jobs                        # running / done
 rolepod-cross-family --kind consult --brief ledger.md
 rolepod-cross-family --kind advise  --brief decision.md --all      # one member per family, concurrently
 rolepod-cross-family --kind critique --brief spec-draft.md          # write-spec: ≤5 ranked open questions before Gate 1
@@ -193,7 +195,7 @@ rolepod-cross-family --kind critique --brief spec-draft.md          # write-spec
 user once (installed candidates: `rolepod-cross-family --candidates`) and
 the answer is written to the file; rolepod never enables it unasked. The
 Lead's family is excluded. **Installed ≠ usable** is proven at invoke: exit ≠ 0, timeout
-(default 600 s — the Claude Bash cap; background the call for a big diff),
+(per member: `--timeout` > `timeout=` in the config > kind default — review 1800 s detached / 600 s foreground, consult 300, advise 900, critique 600; the prompt carries the budget; `--detach` runs the chain as a job so the 600 s harness cap never kills a slow member),
 or an answer under the floor (review < 500 bytes, consult / advise < 200)
 → `external-fail` phase-log line, next member; every member failed → exit
 3; empty pool → exit 4 — then the Lead's own path (internal strong
