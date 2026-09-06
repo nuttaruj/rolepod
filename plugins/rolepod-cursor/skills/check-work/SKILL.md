@@ -59,7 +59,7 @@ Return / hand off:
 
 | Change type | Required evidence |
 |-------------|-------------------|
-| Logic / bug fix | Red-green-revert cycle: failing test → fix → green → revert fix → MUST fail → restore fix → green. A test that does not fail without the fix is not testing the fix. |
+| Logic / bug fix | Red-green-revert cycle: failing test → fix → green → prove RED without the fix → green. Run the red proof as ONE call (`references/verification-discipline.md` §Revert in one call: throwaway `git worktree`, reverse-apply the source-only patch, run the one named test — non-zero exit WITH the named assertion in the output; a collection / import error, a skip or a 0-test run is not red; remove the worktree); a worktree that cannot run the test → the three-step revert in place. A test that does not fail without the fix is not testing the fix. |
 | New feature | Happy + edge + error test pass |
 | Refactor | Existing suite green before and after |
 | Schema / migration | Forward + rollback dry run + row count delta |

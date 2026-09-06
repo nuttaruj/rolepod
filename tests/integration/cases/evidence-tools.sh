@@ -31,7 +31,7 @@ cat > "$FIX/repo/.rolepod/evidence/phase-log.jsonl" <<'EOF'
 {"ts":"2026-07-31T01:12:00Z","phase":"verify","verdict":"partial","evidence":"pytest -q"}
 {"ts":"2026-07-31T01:20:00Z","phase":"verify","verdict":"fail","evidence":"pytest -q"}
 {"ts":"2026-07-31T01:30:00Z","phase":"review","verdict":"APPROVED","blockers":0}
-{"ts":"2026-07-31T01:40:00Z","phase":"ship","action":"pr"}
+{"ts":"2026-07-31T01:40:00Z","phase":"ship","action":"pr","commit":"none"}
 {"ts":"2026-07-31T01:45:00Z","phase":"dispatch","tier":"strong","override":"opus"}
 {"ts":"2026-07-31T01:50:00Z","phase":"dispatch","tier":"strong","override":"none"}
 {"ts":"2026-07-31T01:55:00Z","phase":"dispatch-proof","cli":"codex","agent_type":"qa-tester","model":"gpt-5.6-terra","provenance":"hook-stdin"}

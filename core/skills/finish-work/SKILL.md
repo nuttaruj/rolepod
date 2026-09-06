@@ -157,7 +157,7 @@ Execute as Lead with this minimum viable checklist:
 
 ## Output
 
-The finish menu is the canonical artifact: `templates/finish-menu.md`. It carries the gate status, the four options, the recommendation, and the specific action awaiting authorization. The PR path adds `templates/pr-body.md`; a production launch adds `templates/release-checklist.md`. Do not restate these shapes here; the templates are the single source. After the authorized action actually completes (a command that failed or is still pending logs nothing; report that status instead), append `{"ts":"<iso8601>","phase":"ship","action":"<merge|pr|keep-open|discard>"}` to `<git-root>/.rolepod/evidence/phase-log.jsonl` (fail-open) — chained onto the ship command itself (`git merge … && printf '…' >> phase-log.jsonl`; `discard` logs unconditionally), never a standalone turn.
+The finish menu is the canonical artifact: `templates/finish-menu.md`. It carries the gate status, the four options, the recommendation, and the specific action awaiting authorization. The PR path adds `templates/pr-body.md`; a production launch adds `templates/release-checklist.md`. Do not restate these shapes here; the templates are the single source. After the authorized action actually completes (a command that failed or is still pending logs nothing; report that status instead), append `{"ts":"<iso8601>","phase":"ship","action":"<merge|pr|keep-open|discard>","commit":"<shipped head sha, or none>"}` to `<git-root>/.rolepod/evidence/phase-log.jsonl` (fail-open) — chained onto the ship command itself (`git merge … && printf '…' >> phase-log.jsonl`; `discard` logs unconditionally), never a standalone turn.
 
 ## Examples
 

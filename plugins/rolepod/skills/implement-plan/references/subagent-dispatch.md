@@ -63,7 +63,7 @@ Re-dispatching unchanged = Hard stop.
 
 ## Two-stage review per task
 
-Both stages mandatory for delegated work. Lead-executed tasks collapse to one self-review with a fresh-context pause.
+Both stages mandatory for a delegated task touching a seam (caller/callee or shared-contract pair), an exported symbol, or >1 production file (its own test file excluded); a seam-free single-file delegated task skips both and is covered by the final whole-implementation review (SKILL.md §6). Lead-executed tasks collapse to one self-review with a fresh-context pause.
 
 ### Stage 1 — spec compliance
 
@@ -123,7 +123,7 @@ Approve when nothing remains above MINOR.
 
 ### Final whole-implementation review
 
-After all per-task reviews pass, dispatch one reviewer on the cumulative diff. Per-task reviews catch local issues; the final pass catches cross-task drift the per-task reviewers cannot see (any one of them only saw their slice).
+After all per-task reviews pass, dispatch one reviewer on the cumulative diff — mandatory when a cross-task seam exists or any task skipped §6. Per-task reviews catch local issues; the final pass catches cross-task drift the per-task reviewers cannot see (any one of them only saw their slice).
 
 What it catches:
 - Type / symbol / method name drift between tasks (Task 3 named `clearLayers()`; Task 7 called `clearFullLayers()`)

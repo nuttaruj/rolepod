@@ -107,7 +107,7 @@ Two failed attempts is the trigger — same signature or progressing alike: iden
 A compaction summary is a lossy narrator, not a state file. Before the first
 action after any compaction (auto or `/compact`):
 - Re-read the plan artifact if one exists — checkboxes mark the real position, not the
-  summary's claim of it
+  summary's claim of it; an inline checklist (R2 / spec-as-plan R3) is re-stated in the hand-off with its ticks, or the artifact is written before compacting
 - Run `git log --oneline -5` + `git status` — commits and staged files are
   the ground truth of what actually landed
 - Re-open the spec / cohesion contract if the flow has one

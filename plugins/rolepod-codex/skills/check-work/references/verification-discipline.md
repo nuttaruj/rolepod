@@ -62,6 +62,33 @@ If step 6 passes — the test is not actually testing the bug. The assertion is 
 
 The "mentally flip `==` to `!=`" check is a cheap proxy for this; the revert cycle is the strong version. Use the revert cycle for any "Logic / bug fix" row (SKILL.md evidence table).
 
+### Revert in one call
+
+Steps 5-8 cost three Lead turns when run in place. Run the red proof as ONE
+command in a throwaway worktree — the fix in your tree is never touched:
+
+```bash
+lab=$(mktemp -d); git worktree add -q --detach "$lab/t" HEAD
+git diff --binary HEAD > "$lab/all.patch"; [ -s "$lab/all.patch" ] && git -C "$lab/t" apply "$lab/all.patch"   # uncommitted work, tracked test edits included
+git diff --binary HEAD -- . ':(exclude)<test paths>' > "$lab/fix.patch"   # the fix ONLY; fix already committed → diff against the commit before it, production paths only
+for p in <untracked test files>; do mkdir -p "$lab/t/$(dirname "$p")"; cp "$p" "$lab/t/$p"; done
+git -C "$lab/t" apply -R "$lab/fix.patch"                                  # remove the fix, keep the test
+( cd "$lab/t" && <runner> <one named test> ); red=$?                       # expect NON-ZERO exit + the named assertion
+git worktree remove -f "$lab/t"; rm -rf "$lab"; test "$red" -ne 0
+```
+
+Red means a NON-ZERO exit AND the named assertion in the output (pytest / jest /
+go = 1, cargo = 101) — the assertion string, not the code, is what rules out a
+collection / import / compile error, a skip, or a 0-test run; those are NOT red —
+fix the harness and rerun. Dependencies must resolve inside the worktree (symlink
+`node_modules`, point `PYTHONPATH` / Go workspace at the tree; a fresh worktree
+has EMPTY submodules and may hold LFS pointers); when they cannot, fall back to
+steps 5-8 in place. Review `fix.patch` before applying it in reverse: only the
+implementation, no test or fixture hunks — a file holding both the fix and its
+test (Rust `#[cfg(test)]`, a doctest, a same-module test) cannot be split by
+path: use the three-step revert in place. Proven 2026-09-06 on a fixture: red
+exit 1 `AssertionError: add(2,3) should be 5`, author tree untouched, green after.
+
 ## Anti-rationalization wording catalog
 
 These wordings are the symptom of skipping the gate function. Trip wires:

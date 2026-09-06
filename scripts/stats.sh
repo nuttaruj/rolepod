@@ -5,6 +5,8 @@
 # Data sources (all fail-open, written by the doctrine since v2.12):
 #   <git-root>/.rolepod/evidence/phase-log.jsonl
 #     {"ts","phase":"route|verify|review|ship|dispatch|consult|advise|external-fail", ...}
+#     ship rows carry "commit":"<shipped head sha, or none>" (v2.87.0) — the anchor for
+#     the 14-day corrective-commit rate read from git history
 #   <git-root>/.rolepod/evidence/bypass.log
 #     {"ts","hook","var","reason"}
 #   $HOME/.rolepod/gate-bypass.log            (plain text, machine-global)

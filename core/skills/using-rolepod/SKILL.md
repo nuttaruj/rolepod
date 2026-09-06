@@ -120,7 +120,7 @@ Router fires the **first** skill per phase. Phase exits only when its **exit evi
 | Phase | Required first skill | Exit evidence | Next allowed |
 |---|---|---|---|
 | **Define** | `write-spec` | written spec OR approved one-line design (≤5-line task) OR R2 inline checklist OR explicit "skip spec" | Plan |
-| **Plan** | `write-plan` (+ agent routing + cohesion contract if multi-agent) | ordered task list with done-condition + verify command per task; dependencies marked (R2: the 3-5 line inline checklist in chat IS the plan) | Build |
+| **Plan** | `write-plan` (+ agent routing + cohesion contract if multi-agent) | ordered task list with done-condition + verify command per task; dependencies marked (R2, or write-plan's spec-as-plan R3 lane: the inline checklist in chat IS the plan) | Build |
 | **Build** | `implement-plan` (+ `debug-issue` for bug intent) | changed files + tests added (or explicit no-test justification) + red→green evidence | Verify |
 | **Verify** | `check-work` | fresh command output / screenshot / curl / log evidence; OR explicit "verify impossible because X" risk note | Review (high-risk / multi-file) OR Ship (low-risk, plan exhausted) OR Build (plan has unchecked tasks) |
 | **Review** | `review-code` | findings fixed OR rejected with line-anchored reason; no unresolved blocker | Ship (plan exhausted) OR Build (plan has unchecked tasks) |
@@ -130,7 +130,7 @@ Router fires the **first** skill per phase. Phase exits only when its **exit evi
 
 ## Rigor ladder — R0-R4
 
-Match ceremony to the task; the ladder replaces a binary skip/full choice. Uncertain between two tiers → take the higher. A task that grows mid-flight (second source file, hidden logic, risk path) → re-tier UP immediately, never down.
+Match ceremony to the task; the ladder replaces a binary skip/full choice. Uncertain about RISK → take the higher tier. Uncertain about SIZE only → read the affected regions of every file in the observed list first (the files the request names + files already read; `git status` once work has started — never an estimate) and take the tier that observed scope supports; an unresolved dependency is scope, not size → higher. A task that grows mid-flight (second source file, hidden logic, risk path) → re-tier UP immediately, never down.
 
 | Tier | Signature | Path |
 |---|---|---|
