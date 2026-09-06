@@ -130,13 +130,13 @@ Router fires the **first** skill per phase. Phase exits only when its **exit evi
 
 ## Rigor ladder — R0-R4
 
-Match ceremony to the task; the ladder replaces a binary skip/full choice. Uncertain between two tiers → take the higher. A task that grows mid-flight (second file, hidden logic, risk path) → re-tier UP immediately, never down.
+Match ceremony to the task; the ladder replaces a binary skip/full choice. Uncertain between two tiers → take the higher. A task that grows mid-flight (second source file, hidden logic, risk path) → re-tier UP immediately, never down.
 
 | Tier | Signature | Path |
 |---|---|---|
 | **R0** | pure question / explanation / lookup / conversation — no file change | answer directly IN THE USER'S REGISTER (conversational ask → conversational answer); no spine, no routing block — verify claims of fact, reason freely on opinions and ideas |
 | **R1** | diff ≤5 lines + 1 file + 0 logic-bearing lines + not high-risk + expected ≤3 tool calls (a test loop or exploration ahead → R2+, even for 1 file) | direct edit + lightweight verify; no block |
-| **R2** | 1 file, clear scope, logic-bearing, ≈≤30 changed lines, not high-risk | **inline plan** — 3-5 line checklist + verify command in chat, no spec/plan artifact → build → verify; one-line routing note |
+| **R2** | 1 source file + its own test file, clear scope, logic-bearing, ≈≤30 changed lines, not high-risk | **inline plan** — 3-5 line checklist + verify command in chat, no spec/plan artifact → build → verify; one-line routing note |
 | **R3** | multi-file OR vague scope OR needs sequencing / delegation | full spine, full routing block |
 | **R4** | high-risk path (see Stop conditions) | full spine + adversarial review floor — NEVER downgrades, whatever the diff size |
 

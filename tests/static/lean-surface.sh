@@ -226,7 +226,7 @@ STALE_NONWORD='Skills \(4[23]\)|Skills \(53\)|Total skills on disk: \*\*(4[23]|5
 STALE_COMMENT='(^|[^0-9])(#|`) ?4[23]\b'
 STALE_HOOK_TRUTH='Context hooks \(cross-CLI\)|Codex / Gemini fire the context hooks|full hook coverage|Before tool run.*CLI handles native compact|SessionStart \+ 2x PostToolUse|10 bash hooks that auto-register|portable across Claude and Codex'
 # Add-on-hook drift — phrasings, not numbers. Each asserts a wrong current
-# state (rolepod ships 11 core hook scripts, 0 add-on hooks since PR 10).
+# state (rolepod ships 12 core hook scripts, 0 add-on hooks since PR 10).
 # Bare filenames like `gitnexus-wrap.sh` are NOT banned — they appear in
 # legit historical / changelog prose.
 STALE_ADDON='optional GitNexus|optional MemPalace|GitNexus add-on|MemPalace add-on|reindex hint|MemPalace bridge|post-ship reindex|6 core \+ [0-9]+ optional'

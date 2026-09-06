@@ -73,7 +73,7 @@ OUT=$(cd "$GITFIX" && printf '{"tool_name":"Bash","tool_input":{"command":"git c
       | bash "$REPO_DIR/hooks/precommit-gate.sh" 2>/dev/null || true)
 check "precommit-gate denies high-risk diff w/o tests" "printf '%s' \"\$OUT\" | grep -q '\"deny\"'"
 OUT=$(cd "$GITFIX" && printf '{"tool_name":"Bash","tool_input":{"command":"git commit -m x"}}' \
-      | ROLEPOD_GATES_SOFT=1 ROLEPOD_BYPASS_REASON=doctor bash "$REPO_DIR/hooks/precommit-gate.sh" 2>/dev/null || true)
+      | ROLEPOD_GATES_SOFT=1 ROLEPOD_BYPASS_REASON=rolepod-selftest bash "$REPO_DIR/hooks/precommit-gate.sh" 2>/dev/null || true)
 check "precommit-gate GATES_SOFT bypass is silent" "[ -z \"\$OUT\" ]"
 check "precommit-gate bypass was logged" "grep -q '\"var\":\"ROLEPOD_GATES_SOFT\"' '$GITFIX/.rolepod/evidence/bypass.log'"
 
@@ -84,7 +84,7 @@ WG_PAYLOAD_B="{\"session_id\":\"sess-B\",\"cwd\":\"$GITFIX\",\"tool_name\":\"Edi
 printf '%s' "$WG_PAYLOAD_A" | HOME="$FIX/home" bash "$REPO_DIR/hooks/worktree-guard.sh" >/dev/null 2>&1 || true
 OUT=$(printf '%s' "$WG_PAYLOAD_B" | HOME="$FIX/home" bash "$REPO_DIR/hooks/worktree-guard.sh" 2>/dev/null || true)
 check "worktree-guard denies cross-session same-file edit" "printf '%s' \"\$OUT\" | grep -q '\"deny\"'"
-OUT=$(printf '%s' "$WG_PAYLOAD_B" | HOME="$FIX/home" ROLEPOD_ALLOW_SHARED_WORKTREE=1 ROLEPOD_BYPASS_REASON=doctor \
+OUT=$(printf '%s' "$WG_PAYLOAD_B" | HOME="$FIX/home" ROLEPOD_ALLOW_SHARED_WORKTREE=1 ROLEPOD_BYPASS_REASON=rolepod-selftest \
       bash "$REPO_DIR/hooks/worktree-guard.sh" 2>/dev/null || true)
 check "worktree-guard shared-worktree bypass is silent" "[ -z \"\$OUT\" ]"
 

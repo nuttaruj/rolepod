@@ -103,7 +103,7 @@ echo "$out" | grep -q '"deny"' \
 echo "$out" | grep -q 'COMMIT WILL BLOCK' \
   && echo "  ✓ gate-reminder names the coming commit-gate requirement" \
   || { echo "  ✗ gate-reminder missing would-block wording"; fail=$((fail+1)); }
-out=$(ROLEPOD_GATES_SOFT=1 gr '{"tool_name":"Edit","tool_input":{"file_path":"src/auth/login.py"}}')
+out=$(ROLEPOD_GATES_SOFT=1 ROLEPOD_BYPASS_REASON=rolepod-selftest gr '{"tool_name":"Edit","tool_input":{"file_path":"src/auth/login.py"}}')
 echo "$out" | grep -q 'COMMIT WILL BLOCK' \
   && { echo "  ✗ gate-reminder SOFT should silence the would-block wording"; fail=$((fail+1)); } \
   || echo "  ✓ gate-reminder SOFT silences the would-block wording (banner stays)"

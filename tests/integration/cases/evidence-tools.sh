@@ -39,7 +39,7 @@ cat > "$FIX/repo/.rolepod/evidence/phase-log.jsonl" <<'EOF'
 {"ts":"2026-07-31T01:57:00Z","phase":"dispatch","cli":"claude","tool":"Agent","provenance":"hook-auto","agent_type":"rolepod:scout","model":"inherit","override":"none"}
 not json — must be skipped, not crash
 EOF
-printf '{"ts":"2026-07-31T01:15:00Z","hook":"precommit-gate","var":"ROLEPOD_GATES_SOFT","reason":"unreasoned"}\n' \
+printf '{"ts":"2026-07-31T01:15:00Z","hook":"precommit-gate","var":"ROLEPOD_GATES_SOFT","reason":"unreasoned"}\n{"ts":"2026-07-31T01:16:00Z","hook":"gate-reminder","var":"ROLEPOD_GATES_SOFT","reason":"rolepod-selftest"}\n{"ts":"2026-07-31T01:17:00Z","hook":"worktree-guard","var":"ROLEPOD_ALLOW_SHARED_WORKTREE","reason":"doctor"}\n' \
   > "$FIX/repo/.rolepod/evidence/bypass.log"
 
 OUT=$(HOME="$FIX" bash "$REPO_DIR/scripts/stats.sh" "$FIX/repo")
@@ -48,6 +48,7 @@ check "stats reports verify fail rate"    "printf '%s' \"\$OUT\" | grep -q 'fail
 check "stats reports partial verdicts (Status PARTIAL mirrored, v2.85.0)" "printf '%s' \"\$OUT\" | grep -q 'partial=1'"
 check "stats reports review verdicts"     "printf '%s' \"\$OUT\" | grep -q 'APPROVED: 1'"
 check "stats flags unreasoned bypasses"   "printf '%s' \"\$OUT\" | grep -q 'unreasoned'"
+check "stats counts self-test bypass rows apart (rolepod-selftest + legacy doctor, v2.85.1)" "printf '%s' \"\$OUT\" | grep -q 'Bypasses (1 ' && printf '%s' \"\$OUT\" | grep -q 'self-test rows excluded: 2'"
 check "stats audits strong dispatches"    "printf '%s' \"\$OUT\" | grep -q 'Strong dispatches (2): 1 with explicit override, 1 inherit'"
 check "stats reports hook-reported model proof" "printf '%s' \"\$OUT\" | grep -q 'Model proof — hook-reported (2'"
 check "stats shows proof per cli+model"   "printf '%s' \"\$OUT\" | grep -q 'gpt-5.6-terra'"

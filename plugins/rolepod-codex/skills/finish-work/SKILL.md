@@ -60,7 +60,7 @@ Return / hand off:
 
 ### 1. Pre-merge gate
 
-Run all five gates before any merge / push action.
+Run all six gates before any merge / push action.
 
 **Simplicity (S1-S5)** — revise on any "yes":
 

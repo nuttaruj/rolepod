@@ -267,6 +267,14 @@ if autopasses:
         print("    ⚠ each risky auto-pass = a high-risk commit cleared on windowed"
               " evidence — audit the newest ones against actual review dispatches")
 
+# Self-test rows: doctor.sh and the integration suite exercise the bypass
+# envs on purpose, tagged with the reserved reason `rolepod-selftest`
+# (`doctor` = the pre-v2.85.1 tag, kept so old logs read the same). They are
+# proof the logger works, not a human bypassing a gate — counted apart so
+# the finding line stays a finding.
+SELFTEST = ("rolepod-selftest", "doctor")
+selftest = [b for b in bypasses if b.get("reason") in SELFTEST]
+bypasses = [b for b in bypasses if b.get("reason") not in SELFTEST]
 if bypasses:
     by_var = Counter(b.get("var", "?") for b in bypasses)
     unreasoned = sum(1 for b in bypasses if b.get("reason") == "unreasoned")
@@ -275,6 +283,10 @@ if bypasses:
         print(f"    {k}: {by_var[k]}")
     if unreasoned:
         print(f"    ⚠ {unreasoned} unreasoned — set ROLEPOD_BYPASS_REASON when a bypass is truly needed")
+    if selftest:
+        print(f"    (self-test rows excluded: {len(selftest)} — reason rolepod-selftest/doctor)")
+elif selftest:
+    print(f"\n  Bypasses (0 findings; {len(selftest)} self-test rows excluded — reason rolepod-selftest/doctor)")
 
 print()
 PY
