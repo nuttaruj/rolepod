@@ -110,7 +110,8 @@ echo "$out" | grep -q 'COMMIT WILL BLOCK' \
 
 # ── precommit-gate: high-risk staged diff blocks; claim-bypass ignored ──
 TMP=$(mktemp -d)
-trap 'rm -rf "$TMP"' EXIT
+TMPT=""
+trap 'rm -rf "$TMP" ${TMPT:+"$TMPT"}' EXIT
 (
   cd "$TMP"
   git init -q .
@@ -136,6 +137,25 @@ check "precommit [gates: pass] with ZERO session evidence → still deny" deny "
 echo "$out" | grep -q 'IGNORED' \
   && echo "  ✓ precommit deny reason states the marker was ignored" \
   || { echo "  ✗ precommit deny reason missing marker-ignored note"; fail=$((fail+1)); }
+
+# ── precommit-gate: a test-ONLY diff on a risk-named path is not R4 code (v2.85.2) ──
+# Filename convention only — bare directory segments would downgrade
+# api/specs/auth.yaml and tests/fixtures/seed_auth_users.py (cases c, d).
+TMPT=$(mktemp -d)
+pct() { # $1 = space-separated files to stage (15 logic lines each), fresh repo per call
+  rm -rf "$TMPT"; mkdir -p "$TMPT"
+  ( cd "$TMPT" && git init -q . && git config user.email t@t && git config user.name t
+    for f in $1; do mkdir -p "$(dirname "$f")"; seq 15 | sed 's/^/x = /' > "$f"; done
+    git add -A )
+  printf '{"tool_name":"Bash","tool_input":{"command":"git commit -m x"}}' \
+    | (cd "$TMPT" && bash "$HOOKS/precommit-gate.sh") || true
+}
+check "precommit test-only tests/auth/login.spec.ts → allow (SOFT)" allow "$(pct tests/auth/login.spec.ts)"
+check "precommit test-only spec/models/payment_spec.rb → allow (SOFT)" allow "$(pct spec/models/payment_spec.rb)"
+check "precommit api/specs/auth.yaml (specs segment, not a test name) → deny" deny "$(pct api/specs/auth.yaml)"
+check "precommit tests/fixtures/seed_auth_users.py (fixture, not a test name) → deny" deny "$(pct tests/fixtures/seed_auth_users.py)"
+check "precommit spec/services/payment_processor.rb (spec dir, not a test name) → deny" deny "$(pct spec/services/payment_processor.rb)"
+check "precommit mixed test + src/auth/login.ts → deny" deny "$(pct 'tests/auth/login.spec.ts src/auth/login.ts')"
 
 out=$(pc 'git status')
 check "precommit non-commit command → allow" allow "$out"

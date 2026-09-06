@@ -112,7 +112,7 @@ fi
 # High-risk path flag — match on path segments only, not substrings.
 HIGH_RISK=""
 # Canonical high-risk regex — byte-for-byte the same segment/anchor set as
-# precommit-gate.sh:78 and session_state.py's HIGH_RISK_PATH, so a file cannot
+# precommit-gate.sh's HIGH_RISK= line and session_state.py's HIGH_RISK_PATH, so a file cannot
 # pass at edit time and then block at commit time.
 _RISK_HIT=$(printf '%s\n' "$FILE" | risk_filter '(^|/|_)(auth|authn|authz|authentication|authorization|billing|payment|payments|migration|migrations|credit|credits|permission|permissions|secret|secrets|crypto|cryptography|token|tokens|oauth|jwt|sso|saml|webhook|webhooks|stripe|paypal|charge|charges|invoice|invoices|deletion|deletions|erasure|gdpr|security)(/|\.|_|$)' | head -1 || true)
 MONEY_RISK=""

@@ -144,11 +144,20 @@ fi
 LINES_CHANGED=$(echo "$DIFF_STAT" | awk '{a+=$1; b+=$2} END {print a+b}')
 LINES_CHANGED=${LINES_CHANGED:-0}
 
-# High-risk path detection
 # High-risk path detection — anchored to path segments (avoids matching e.g.
 # `session_state.py` for the hooks helper, where "session" is part of the
 # identifier not a security surface).
-HIGH_RISK=$(echo "$DIFF_STAT" | awk '{print $3}' | risk_filter '(^|/|_)(auth|authn|authz|authentication|authorization|billing|payment|payments|migration|migrations|credit|credits|permission|permissions|secret|secrets|crypto|cryptography|token|tokens|oauth|jwt|sso|saml|webhook|webhooks|stripe|paypal|charge|charges|invoice|invoices|deletion|deletions|erasure|gdpr|security)(/|\.|_|$)' | head -1 || true)
+# Test-NAMED files are not the risk (v2.85.2): a test-only commit under
+# tests/auth/ or spec/models/payment_spec.rb is the QA-automation deliverable,
+# and gate-reminder.sh (IS_TEST) + session_state.py (TEST_FILE) already exempt
+# the same file at edit time. Filename convention ONLY — never bare directory
+# segments (tests/ spec/ e2e/ fixtures/): those would downgrade
+# api/specs/auth.yaml and tests/fixtures/seed_auth_users.py. A mixed diff
+# (test + production file) still matches on the production path. The
+# content-based money check below CANNOT see these files either (it excludes
+# test paths itself), so money primitives inside a test-named file are an
+# ACCEPTED blind spot: rspec/jest-only load, and the mixed diff still blocks.
+HIGH_RISK=$(echo "$DIFF_STAT" | awk '{print $3}' | grep -vE '\.(test|spec)\.(ts|tsx|js|jsx|mjs|cjs|py|go|rs|rb|java|kt|swift|cs|php)$|(^|/)(test_[^/]*|[^/]*_test|[^/]*_spec)\.(py|go|rs|rb|php)$|(^|/)[^/]*Tests?\.(java|kt|cs|swift|php|scala)$' | risk_filter '(^|/|_)(auth|authn|authz|authentication|authorization|billing|payment|payments|migration|migrations|credit|credits|permission|permissions|secret|secrets|crypto|cryptography|token|tokens|oauth|jwt|sso|saml|webhook|webhooks|stripe|paypal|charge|charges|invoice|invoices|deletion|deletions|erasure|gdpr|security)(/|\.|_|$)' | head -1 || true)
 
 # Content-based high-risk (v2.46.0) — money-movement primitives in ADDED
 # lines of non-test staged files. Catches refund/payout logic living in a
