@@ -111,6 +111,20 @@ LOW_CLASSES = {"cheap", "balanced"}
 STRONG_ROLE_AGENTS = {"security-engineer", "universal-reviewer", "system-architect"}
 STRONG_ALIAS = "opus"
 
+# Roles whose rendered Claude frontmatter carries a REAL `model:` pin
+# (merge-agent.py TIER_MODELS: cheap -> haiku, balanced -> sonnet). A Workflow
+# `agentType:` of one of these IS a tier choice; a platform agent
+# (general-purpose / Explore / claude / Plan) or another plugin's agent renders
+# no pin and silently inherits the Lead. tests/static/hook-agent-matching.sh
+# asserts this set against the tier overlays, so a new role cannot drift out.
+TIER_PINNED_AGENTS = {
+    "content-strategist", "product-manager", "scout",            # cheap
+    "ai-ml-engineer", "backend-developer", "billing-engineer",   # balanced
+    "data-scientist", "devops-sre", "frontend-developer",
+    "mobile-developer", "performance-engineer", "qa-tester",
+    "ui-ux-designer",
+}
+
 
 def model_class(name: str | None) -> str:
     for rx, cls in MODEL_CLASS:
@@ -414,6 +428,40 @@ def _bare_agent_name(subagent_type: str | None) -> str:
     with no colon is returned unchanged.
     """
     return (subagent_type or "").strip().rsplit(":", 1)[-1]
+
+
+# Workflow scripts: agent() OPTIONS are code, prompts are string literals. A key
+# read off the raw script also matches prose — a prompt saying "give each sweep
+# agentType: 'rolepod:scout'" registered as a real tier choice and silenced the
+# fleet-tier gate (the `model:` half of this was v2.62.1, the `agentType:` half
+# v2.88.0). strip_strings() blanks literal CONTENTS but keeps LENGTH and quotes,
+# so a key found in the stripped text reads its value from the original at the
+# same offset.
+_SCRIPT_STR_RX = re.compile(r"`(?:\\.|[^`\\])*`|'(?:\\.|[^'\\])*'|\"(?:\\.|[^\"\\])*\"", re.S)
+
+
+def strip_strings(script: str) -> str:
+    """Blank every string literal, preserving length and the quote marks."""
+    return _SCRIPT_STR_RX.sub(
+        lambda m: m.group(0)[0] + " " * (len(m.group(0)) - 2) + m.group(0)[-1], script or "")
+
+
+def script_option_values(script: str, key: str, code: str | None = None) -> list[str]:
+    """Literal values of `<key>:` written as CODE, in source order.
+
+    A value inside a prompt / template string is NOT a tier choice and is
+    skipped. Pass `code` when the caller already stripped the same script.
+    """
+    script = script or ""
+    if code is None:
+        code = strip_strings(script)
+    out = []
+    for m in re.finditer(r"[,{\s]" + re.escape(key) + r"\s*:\s*['\"]", code):
+        q = m.end() - 1
+        mv = re.match(r"['\"]([^'\"]+)['\"]", script[q:q + 200])
+        if mv:
+            out.append(mv.group(1))
+    return out
 
 
 _WF_AGENTTYPE_RX = re.compile(r"agentType\s*:\s*['\"]([^'\"]+)['\"]")

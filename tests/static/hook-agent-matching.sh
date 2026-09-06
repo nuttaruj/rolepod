@@ -74,6 +74,44 @@ run "$lead_sonnet"$'\n'"$wf_tu"      count-all "0 0 1 0" "v2.74: Workflow review
 run "$lead_opus"$'\n'"$wf_tu"        count-all "0 0 1 1" "v2.74: Workflow reviewer (inherit) under an opus Lead is strong"
 run "$lead_sonnet"$'\n'"$wf_tu_opus" count-all "0 0 1 1" "v2.74: Workflow reviewer pinned opus under a sonnet Lead is strong"
 
+# v2.88.0 — TIER_PINNED_AGENTS must mirror the tier overlays: every role whose
+# Claude tier renders a real model pin (cheap -> haiku, balanced -> sonnet) is
+# in the set, every `strong` role (renders inherit) is in STRONG_ROLE_AGENTS and
+# NOT in it. Drift here silently re-opens the gate hole a general-purpose
+# agentType used to punch (v2.88.0).
+drift=$(python3 - <<'PYEOF'
+import re, pathlib, sys
+sys.path.insert(0, "hooks/lib")
+import session_state as ss
+bad = []
+for y in sorted(pathlib.Path("adapters/claude/agent-frontmatter").glob("*.yml")):
+    m = re.search(r"^tier:\s*(\S+)", y.read_text(), re.M)
+    if not m:
+        bad.append("%s: no tier:" % y.name); continue
+    tier, name = m.group(1), y.stem
+    if tier in ("cheap", "balanced"):
+        if name not in ss.TIER_PINNED_AGENTS:
+            bad.append("%s (%s) missing from TIER_PINNED_AGENTS" % (name, tier))
+    elif tier == "strong":
+        if name not in ss.STRONG_ROLE_AGENTS:
+            bad.append("%s (strong) missing from STRONG_ROLE_AGENTS" % name)
+        if name in ss.TIER_PINNED_AGENTS:
+            bad.append("%s (strong, renders inherit) must NOT be in TIER_PINNED_AGENTS" % name)
+    else:
+        bad.append("%s: unknown tier %s" % (name, tier))
+known = {y.stem for y in pathlib.Path("adapters/claude/agent-frontmatter").glob("*.yml")}
+for extra in sorted(ss.TIER_PINNED_AGENTS - known):
+    bad.append("%s in TIER_PINNED_AGENTS but has no tier overlay" % extra)
+print("; ".join(bad))
+PYEOF
+)
+if [ -z "$drift" ]; then
+  echo "  ✓ TIER_PINNED_AGENTS matches the tier overlays (no drift)"
+else
+  echo "  ✗ tier-set drift — $drift"
+  fail=$((fail+1))
+fi
+
 echo ""
 if [ $fail -eq 0 ]; then
   echo "hook-agent-matching: pass"

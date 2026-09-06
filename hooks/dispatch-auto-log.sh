@@ -82,10 +82,10 @@ if tool == "Workflow":
     m = re.search("name:\\s*[\x27\"]([^\x27\"]+)", script)
     line["name"] = m.group(1) if m else (ti.get("name") or "?")
     # Count keys on the STRING-STRIPPED script — prose containing "model:"
-    # inside a prompt literal logged a phantom override (see the same strip
-    # in workflow-tier-nudge.sh; keep the two in lockstep).
-    _STR_RX = re.compile(r"`(?:\\.|[^`\\])*`|\x27(?:\\.|[^\x27\\])*\x27|\"(?:\\.|[^\"\\])*\"", re.S)
-    code = _STR_RX.sub(lambda mm: mm.group(0)[0] + mm.group(0)[-1], script)
+    # inside a prompt literal logged a phantom override. v2.88.0: the strip and
+    # the literal reader are ss helpers, so this file and the gate can no longer
+    # drift (they used different fillers and read different offsets).
+    code = ss.strip_strings(script) if ss is not None else script
     n_model = len(re.findall("[,{\\s]model\\s*:", code))
     n_effort = len(re.findall("[,{\\s]effort\\s*:", code))
     line["model_overrides"] = n_model
@@ -94,12 +94,21 @@ if tool == "Workflow":
     line["override"] = "per-stage" if n_model else "none"
     # Which tiers the script actually names (v2.48.1) — so stats can tell a
     # real per-stage spread from "one model pasted on every stage".
-    models = sorted(set(re.findall("model\\s*:\\s*[\x27\"]([A-Za-z0-9._\\-\\[\\]]+)[\x27\"]", script)))
-    atypes = sorted(set(re.findall("agentType\\s*:\\s*[\x27\"]([^\x27\"]+)[\x27\"]", script)))
+    if ss is not None:   # values written as CODE only - a prompt naming a model
+        models = sorted(set(ss.script_option_values(script, "model", code)))
+        atypes = sorted(set(ss.script_option_values(script, "agentType", code)))
+    else:
+        models, atypes = [], []
     line["models"] = models
     line["agent_types"] = atypes
     mix = sorted(set((ss.model_class(m) if ss is not None else "?") for m in models))
-    if atypes:
+    # role-pin only when the agentType RENDERS a pin (cheap/balanced roles);
+    # a strong role renders inherit -> a tier only under a strong Lead. Without
+    # this a bare fleet carrying one agentType general-purpose logged as
+    # tiered (v2.88.0 - same rule as the gate).
+    names = set(ss._bare_agent_name(a) for a in atypes) if ss is not None else set()
+    if ss is not None and ((names & ss.TIER_PINNED_AGENTS)
+                           or ((names & ss.STRONG_ROLE_AGENTS) and cls == "strong")):
         mix.append("role-pin")
     line["tier_mix"] = mix
 else:

@@ -258,6 +258,31 @@ check "gate v2.74: opus Lead + agentType qa-tester (pinned balanced) as the only
   "cd '$FIX/repo' && bash '$NUDGE' < '$FIX/wf-ol-weakrole.json' | grep -q 'judgment stage'"
 check "gate v2.74: opus Lead + agentType universal-reviewer still counts (inherit = strong there) → silent" \
   "[ -z \"\$(cd '$FIX/repo' && bash '$NUDGE' < '$FIX/wf-judge-role.json')\" ]"
+# v2.88.0 — an agentType that renders NO model pin is not a tier choice.
+# Observed 2026-09-06 (CourtBook stripe-surcharge-research, sonnet Lead;
+# technician-payout-review, 31 turns on a billing surface): ONE
+# agentType:"general-purpose" made tiers non-empty, so the gate went fully
+# silent — no deny under a strong Lead, not even the low-Lead nudge.
+mkj "$FIX/wf-gp-opus.json"    Workflow "$FIX/lead-opus.jsonl"   '{"name":"gp-fleet","script":"phase(\"Research\"); await agent(1); await agent(2, {agentType: \"general-purpose\"})"}'
+mkj "$FIX/wf-gp-sonnet.json"  Workflow "$FIX/lead-sonnet.jsonl" '{"name":"gp-fleet-low","script":"phase(\"Research\"); await agent(1); await agent(2, {agentType: \"general-purpose\"})"}'
+mkj "$FIX/wf-gp-scout.json"   Workflow "$FIX/lead-opus.jsonl"   '{"script":"await agent(1, {agentType: \"rolepod:scout\"})"}'
+mkj "$FIX/wf-gp-strong.json"  Workflow "$FIX/lead-sonnet.jsonl" '{"script":"await agent(1); await agent(2, {agentType: \"rolepod:universal-reviewer\"})"}'
+check "gate v2.88: opus Lead + bare fan-out carrying agentType general-purpose → deny (no-tier, was silent)" \
+  "cd '$FIX/repo' && bash '$NUDGE' < '$FIX/wf-gp-opus.json' | grep -q '\"deny\"' && tail -1 .rolepod/evidence/phase-log.jsonl | grep -q '\"reason\": \"no-tier\"'"
+check "gate v2.88: sonnet Lead + same fleet → nudge naming the cheap sweep (was silent)" \
+  "cd '$FIX/repo' && bash '$NUDGE' < '$FIX/wf-gp-sonnet.json' | grep -q additionalContext && bash '$NUDGE' < '$FIX/wf-gp-sonnet.json' | grep -q \"rolepod:scout\"" 
+check "gate v2.88: agentType rolepod:scout (renders model: haiku) still counts as a tier → silent" \
+  "[ -z \"\$(cd '$FIX/repo' && bash '$NUDGE' < '$FIX/wf-gp-scout.json')\" ]"
+check "gate v2.88: strong role under a LOW Lead renders inherit → not a tier, nudge fires" \
+  "cd '$FIX/repo' && bash '$NUDGE' < '$FIX/wf-gp-strong.json' | grep -q additionalContext"
+check "auto-log v2.88: tier_mix omits role-pin when the only agentType pins nothing" \
+  "cd '$FIX/repo' && bash '$REPO_DIR/hooks/dispatch-auto-log.sh' < '$FIX/wf-gp-sonnet.json' && tail -1 .rolepod/evidence/phase-log.jsonl | grep -q '\"tier_mix\": \[\]' && tail -1 .rolepod/evidence/phase-log.jsonl | grep -q 'general-purpose'"
+mkj "$FIX/wf-gp-prose.json"   Workflow "$FIX/lead-opus.jsonl"   '{"name":"gp-prose","script":"await agent(`rewrite each sweep call with agentType: \u0027rolepod:scout\u0027`); await agent(2); await agent(3)"}'
+mkj "$FIX/wf-gp-dynamic.json" Workflow "$FIX/lead-opus.jsonl"   '{"script":"await parallel(R.map(r => () => agent(r.prompt, {agentType: r.agentType})))"}'
+check "gate v2.88: agentType named inside a PROMPT literal is not a tier → still deny (v2.62.1 rule, agentType half)" \
+  "cd '$FIX/repo' && bash '$NUDGE' < '$FIX/wf-gp-prose.json' | grep -q '\"deny\"'"
+check "gate v2.88: agentType from a variable → trusted like a dynamic model: → silent" \
+  "[ -z \"\$(cd '$FIX/repo' && bash '$NUDGE' < '$FIX/wf-gp-dynamic.json')\" ]"
 # v2.62.1 — prose "model:" inside a prompt string must NOT count as an override
 # (observed: CourtBook queue-review fleet ran 940k tokens all-Opus because a
 # prompt sentence "...RESERVATION model: comments..." read as a dynamic override)

@@ -30,7 +30,8 @@
 #
 #   Workflow fan-out under a STRONG (or unknown non-empty) Lead, no
 #     `// tier-reason:` (or legacy `fleet-inherit:`) comment → DENY when:
-#       · zero `model:`/`agentType:` (whole fleet at the Lead's price)  v2.48.0
+#       · zero TIER-PINNING `model:`/`agentType:` — a platform agentType
+#         (general-purpose / Explore) pins nothing, so it inherits  v2.88.0
 #       · ≥2 stages (phase()/meta titles/label prefixes) all pinned to
 #         the ONE balanced tier — "sonnet pasted everywhere"            v2.50.0
 #       · a judgment-shaped stage (verify/judge/review/refute/rank/…)
@@ -70,7 +71,8 @@
 # 5,196 agent turns at opus/fable, ≈ $180 over the sonnet price for the opus
 # share alone, with the soft nudge fired and ignored every time. Under a
 # low-class Lead the fleet is already cheap → nudge only. Any per-stage
-# `model:` or `agentType:` (rolepod writers are pinned balanced) → silent.
+# `model:`, or an `agentType:` of a rolepod cheap/balanced role (writers are
+# pinned balanced) or of a strong role under a strong Lead → silent.
 # Intentional fleet-wide inherit → write `// fleet-inherit: <reason>` in the
 # script and it passes (the reason is the accountability). Bypass envs are
 # user-set only: ROLEPOD_GATES_SOFT=1 degrades the deny to the nudge (logged
@@ -218,20 +220,34 @@ if tool == "Workflow":
     # queue-review-remediation). Quoted VALUES are extracted from the
     # original first (stripping empties them); quote marks survive the strip
     # so a `model: <quoted>` key still counts in the stripped code.
-    _STR_RX = re.compile(r"`(?:\\.|[^`\\])*`|\x27(?:\\.|[^\x27\\])*\x27|\"(?:\\.|[^\"\\])*\"", re.S)
     # Same-LENGTH filler (v2.74.0): a key found in `code` reads its literal
     # value from `script` at the same offset (per-call tier map below).
-    code = _STR_RX.sub(lambda m: m.group(0)[0] + " " * (len(m.group(0)) - 2) + m.group(0)[-1], script)
+    # ONE stripper for every hook that reads a script (v2.88.0) - the logger
+    # used a shorter filler, so the two read different offsets.
+    code = ss.strip_strings(script)
     n_effort = len(re.findall(r"[,{\s]effort\s*:", code))
     n_calls = script.count("agent(")
-    models = re.findall(r"[,{\s]model\s*:\s*[\x27\"]([A-Za-z0-9._\-\[\]]+)[\x27\"]", script)
+    models = ss.script_option_values(script, "model", code)
     n_model = len(re.findall(r"[,{\s]model\s*:", code))
     n_atype = len(re.findall(r"[,{\s]agentType\s*:", code))
+    # agentType is a tier choice ONLY when that agent renders a model pin
+    # (rolepod cheap/balanced roles). A platform agent (general-purpose /
+    # Explore) or an agent from another plugin renders none and inherits the
+    # Lead - counting it silenced the WHOLE gate: ONE agentType general-purpose
+    # made tiers non-empty, so no-tier never fired and the fan-out ran at the
+    # Lead price (observed 2026-09-06, CourtBook stripe-surcharge-research;
+    # technician-payout-review = 31 turns on a billing surface). Strong roles
+    # render inherit -> a tier only under a strong Lead (v2.74.0).  v2.88.0
+    atype_names = set(ss._bare_agent_name(a)
+                      for a in ss.script_option_values(script, "agentType", code))
+    role_strong = bool(atype_names & ss.STRONG_ROLE_AGENTS) and cls == "strong"
     tiers = set(ss.model_class(m) for m in models)
-    if n_atype:
+    if (atype_names & ss.TIER_PINNED_AGENTS) or role_strong:
         tiers.add("role-pin")
-    if n_model and not models:
-        tiers.add("dynamic")   # model: <expr> — a variable, not a literal; trust it
+    if (n_model and not models) or (n_atype and not atype_names):
+        # model:/agentType: <expr> — a variable, not a literal; trust it (same
+        # rule for both keys since v2.88.0)
+        tiers.add("dynamic")
     # Stages: phase() calls / meta.phases titles, else distinct label prefixes.
     stages = set(re.findall(r"phase\(\s*[\x27\"]([^\x27\"]+)", script))
     stages |= set(re.findall(r"title\s*:\s*[\x27\"]([^\x27\"]+)", script))
@@ -260,9 +276,6 @@ if tool == "Workflow":
     # per-finding fan-out — strong × N. Per agent() call: strong literal? which
     # stage? fan-out position (interpolated label, or lexically inside
     # .map( / pipeline( / Array.from( / a loop)?
-    atype_names = set(ss._bare_agent_name(a) for a in
-                      re.findall(r"[,{\s]agentType\s*:\s*[\x27\"]([^\x27\"]+)[\x27\"]", script))
-    role_strong = bool(atype_names & ss.STRONG_ROLE_AGENTS) and cls == "strong"
     strong_calls = []   # (stage, fanout) for every agent() call pinned strong
     call_pos = [m.start() for m in re.finditer(r"\bagent\(", code)]
     for i, pos in enumerate(call_pos):
@@ -312,7 +325,9 @@ if tool == "Workflow":
             verdict = "no-tier"
             reason_txt = (
                 "⛔ rolepod fleet-tier gate: this Workflow fans out %d agent() call(s) with ZERO "
-                "model:/agentType: overrides%s while the Lead is %s (%s) — every agent would run "
+                "tier-pinning model:/agentType: overrides%s (a platform agentType such as "
+                "general-purpose or Explore pins nothing — it inherits the Lead) while the "
+                "Lead is %s (%s) — every agent would run "
                 "at the Lead\x27s price (measured: one project burned 5,196 agent turns at "
                 "opus/fable in a day this way; a 50-agent fleet ≈ 5M tokens). Re-submit the SAME "
                 "script with a tier PER STAGE (not one model pasted on every stage): sweep/read → "
@@ -409,7 +424,9 @@ if tool == "Workflow":
         sys.exit(0)   # per-stage choice made (or accepted with a reason) — silent
     if cls in ss.LOW_CLASSES:
         ctx("⚖ rolepod tier-check: this Workflow script sets NO per-agent model%s — every "
-            "agent() inherits the Lead: %s. Fine for sweep/build stages. Do NOT rely on an "
+            "agent() inherits the Lead: %s. Build stages are fine at that tier; sweep/research/"
+            "read/map stages are NOT \u2014 give those agentType:\x27rolepod:scout\x27 or "
+            "model:\x27haiku\x27 (cheap is cheaper than the Lead even here). Do NOT rely on an "
             "in-script review/judge stage as the strong pass — dispatch rolepod:universal-reviewer "
             "/ rolepod:security-engineer via the Agent tool before commit (the hook runs them at "
             "strong class; the commit gate requires it on high-risk). In-script judge stages: "
