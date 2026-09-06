@@ -2,9 +2,6 @@
 name: performance-engineer
 description: Performance Engineer focused on load testing, profiling, latency optimization, bundle size, DB query performance, and p95/p99 metrics. Owns speed concern — distinct from qa-tester (correctness) and security-engineer (security).
 color: orange
-skills:
-  - review-code
-  - check-work
 ---
 
 # Performance Engineer

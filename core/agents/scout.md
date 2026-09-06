@@ -2,7 +2,6 @@
 name: scout
 description: Read-only scout for wide sweeps — many files, unknown locations, several naming conventions, or online sources. Returns a compact research report (conclusion → per-finding pointers → gaps), never raw dumps, never edits. Cheapest tier; the Lead reads only what the report points at.
 color: teal
-skills: []
 ---
 
 # Scout

@@ -149,7 +149,7 @@ Use the least powerful model that can handle the role. Cost compounds across N t
 
 `BLOCKED` after a fast-model dispatch → re-dispatch the same task at one tier up before escalating to the human.
 
-**Dispatch log.** Every STRONG-tier dispatch appends one line to `<git-root>/.rolepod/evidence/phase-log.jsonl` — `{"ts":"<iso8601>","phase":"dispatch","tier":"strong","override":"<model / effort sent, or none>"}` (fail-open). `make stats` then shows what share of strong dispatches carried an explicit override — `none` recorded from a non-strong Lead is the silent downgrade made visible. This is the audit layer for what no CLI exposes mechanically: which model a dispatch actually ran.
+**Dispatch log.** On Claude Code the PostToolUse hook appends the row for strong-named roles; elsewhere — Workflow fleets, a strong dispatch to a non-strong-named role, hook-less CLIs — the Lead appends one line (inside the next outcome-bearing tool call, never a standalone turn) to `<git-root>/.rolepod/evidence/phase-log.jsonl` — `{"ts":"<iso8601>","phase":"dispatch","tier":"strong","override":"<model / effort sent, or none>"}` (fail-open). `make stats` then shows what share of strong dispatches carried an explicit override — `none` recorded from a non-strong Lead is the silent downgrade made visible. This is the audit layer for what no CLI exposes mechanically: which model a dispatch actually ran.
 
 **Retry-at-higher-effort (checkable stages).** When a stage's outcome is
 mechanically checkable (tests, verifier, schema), dispatch it at LOW effort

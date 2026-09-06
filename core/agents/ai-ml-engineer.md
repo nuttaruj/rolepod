@@ -2,9 +2,6 @@
 name: ai-ml-engineer
 description: AI/ML Engineer specializing in LLM integration, RAG systems, prompt engineering, agent design, embeddings, and Anthropic/OpenAI API usage. Distinct from data-scientist (statistics) — focus is applied AI features in production code.
 color: magenta
-skills:
-  - implement-plan
-  - write-plan
 ---
 
 # AI/ML Engineer

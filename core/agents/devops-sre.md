@@ -2,8 +2,6 @@
 name: devops-sre
 description: DevOps + SRE. Owns infra, CI/CD, deploy, monitoring, release process, versioning, runbooks. Includes release-management responsibilities.
 color: gray
-skills:
-  - finish-work
 ---
 
 # DevOps + SRE

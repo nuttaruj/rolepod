@@ -2,11 +2,6 @@
 name: qa-tester
 description: QA + Test Automation. Owns correctness — write/run tests, business logic verify, race conditions, integration. Universal balanced test floor on every reviewed diff; never the strong review pass.
 color: red
-skills:
-  - review-code
-  - check-work
-  - implement-plan
-  - debug-issue
 ---
 
 # QA + Test Automation

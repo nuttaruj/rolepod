@@ -2,9 +2,6 @@
 name: content-strategist
 description: Content Strategist — writes all human-readable output for the project across 3 audiences (dev / user / prospect). Caller MUST specify audience; each audience carries its own scope, voice, and framework set. Replaces the former tech-writer + customer-success + growth-marketer trio.
 color: white
-skills:
-  - write-spec
-  - implement-plan
 ---
 
 # Content Strategist

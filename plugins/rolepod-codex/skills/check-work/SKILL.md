@@ -135,7 +135,7 @@ Any "yes" → fix before declaring done. Skip only when ALL hold: ≤5 lines · 
 
 ### 7. Compose the evidence block
 
-Fill `templates/evidence-block.md` — exact commands, the specific proof line per check, the change manifest, and honest limitations.
+Fill `templates/evidence-block.md` — exact commands, the specific proof line per check, the change manifest, and honest limitations (R1/R2 single file with nothing to limit → the one-line form in §Output).
 
 ## If a matching Rolepod agent is available
 
@@ -161,9 +161,9 @@ Execute as Lead with this minimum viable checklist:
 
 ## Output
 
-The evidence block is the canonical artifact: `templates/evidence-block.md`. It carries the change manifest, per-check evidence, limitations, and the status verdict — the `## Status` line is exactly one of `VERIFIED | PARTIAL | UNVERIFIED`, the literal word finish-work's merge gate reads (PARTIAL or UNVERIFIED blocks merge; no other word clears it). Do not restate the rest of the block shape here; the template is the single source.
+The evidence block is the canonical artifact: `templates/evidence-block.md`. It carries the change manifest, per-check evidence, limitations, and the status verdict — the `## Status` line is exactly one of `VERIFIED | PARTIAL | UNVERIFIED`, the literal word finish-work's merge gate reads (PARTIAL or UNVERIFIED blocks merge; no other word clears it). Do not restate the rest of the block shape here; the template is the single source. R1/R2 on a single file, no QA test-case table in play, nothing for Limitations → the block collapses to one line: `<command> → PASS: <specific proof>. Status: VERIFIED` (the template says the same).
 
-Also append one line to `<git-root>/.rolepod/evidence/phase-log.jsonl` — `{"ts":"<iso8601>","phase":"verify","verdict":"pass|partial|fail","evidence":"<command run>"}` (fail-open: skip silently outside a git repo) — the verdict mirrors the `## Status` word above (VERIFIED → pass, PARTIAL → partial, UNVERIFIED → fail); a P1 traceability miss below stays `fail`. The log is the dataset that answers whether the process pays for itself. A QA test-case table in play (this session or under `.rolepod/evidence/`) → traceability check: every P1 row's ID must appear in a passing test's name (`grep` the RUNNER output for `TC<n>` — source-file presence proves authorship, not a pass; skipped or not-collected counts as missing); a P1 ID with no passing test = phase-log `verdict:"fail"` plus Status `PARTIAL` or `UNVERIFIED`, naming the missing IDs.
+Also append one line to `<git-root>/.rolepod/evidence/phase-log.jsonl` — `{"ts":"<iso8601>","phase":"verify","verdict":"pass|partial|fail","evidence":"<command run>"}` — inside the next Bash call you make anyway (the review's `git diff`, the commit); nothing follows (R1/R2 lightweight verify) → chain it onto the verify command's own call (`<verify cmd> && printf '…pass…' >> … || printf '…fail…' >> …`); a verify that is only a file re-read logs on that turn's last Bash call or not at all — never a standalone turn (fail-open: skip silently outside a git repo) — the verdict mirrors the `## Status` word above (VERIFIED → pass, PARTIAL → partial, UNVERIFIED → fail); a P1 traceability miss below stays `fail`. The log is the dataset that answers whether the process pays for itself. A QA test-case table in play (this session or under `.rolepod/evidence/`) → traceability check: every P1 row's ID must appear in a passing test's name (`grep` the RUNNER output for `TC<n>` — source-file presence proves authorship, not a pass; skipped or not-collected counts as missing); a P1 ID with no passing test = phase-log `verdict:"fail"` plus Status `PARTIAL` or `UNVERIFIED`, naming the missing IDs.
 
 ## Examples
 

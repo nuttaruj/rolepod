@@ -11,7 +11,6 @@ skills:
   - write-plan
   - implement-plan
   - simplify-code
-  - manage-context
 tools:
   - Read
   - Glob

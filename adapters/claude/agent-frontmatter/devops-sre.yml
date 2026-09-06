@@ -6,7 +6,6 @@ effort: medium
 memory: project
 maxTurns: 50
 skills:
-  - finish-work
   - implement-plan
   - debug-issue
   - simplify-code

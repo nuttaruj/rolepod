@@ -1,5 +1,7 @@
 <!-- Rolepod evidence block — the canonical Verify-phase artifact. -->
 <!-- Goes in the final response after any change. Delete the <hints>. -->
+<!-- R1/R2, single file, no QA test-case table, nothing for Limitations → one line instead:
+     `<command> → PASS: <specific proof>. Status: VERIFIED` -->
 
 ## Change manifest
 <Files touched + a one-line what-changed each. The reader sees the diff scope.>

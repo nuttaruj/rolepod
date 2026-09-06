@@ -7,7 +7,6 @@ memory: project
 maxTurns: 50
 color: gray
 skills:
-  - finish-work
   - implement-plan
   - debug-issue
   - simplify-code

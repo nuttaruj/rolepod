@@ -37,6 +37,7 @@ cat > "$FIX/repo/.rolepod/evidence/phase-log.jsonl" <<'EOF'
 {"ts":"2026-07-31T01:55:00Z","phase":"dispatch-proof","cli":"codex","agent_type":"qa-tester","model":"gpt-5.6-terra","provenance":"hook-stdin"}
 {"ts":"2026-07-31T01:56:00Z","phase":"dispatch-proof","cli":"antigravity","agent_type":"","model":"gemini-3-pro","provenance":"hook-stdin"}
 {"ts":"2026-07-31T01:57:00Z","phase":"dispatch","cli":"claude","tool":"Agent","provenance":"hook-auto","agent_type":"rolepod:scout","model":"inherit","override":"none"}
+{"ts":"2026-07-31T01:58:00Z","phase":"dispatch","cli":"claude","tool":"Agent","provenance":"hook-auto","agent_type":"rolepod:universal-reviewer","model":"inherit","override":"none","lead_class":"balanced"}
 not json — must be skipped, not crash
 EOF
 printf '{"ts":"2026-07-31T01:15:00Z","hook":"precommit-gate","var":"ROLEPOD_GATES_SOFT","reason":"unreasoned"}\n{"ts":"2026-07-31T01:16:00Z","hook":"gate-reminder","var":"ROLEPOD_GATES_SOFT","reason":"rolepod-selftest"}\n{"ts":"2026-07-31T01:17:00Z","hook":"worktree-guard","var":"ROLEPOD_ALLOW_SHARED_WORKTREE","reason":"doctor"}\n' \
@@ -49,14 +50,14 @@ check "stats reports partial verdicts (Status PARTIAL mirrored, v2.85.0)" "print
 check "stats reports review verdicts"     "printf '%s' \"\$OUT\" | grep -q 'APPROVED: 1'"
 check "stats flags unreasoned bypasses"   "printf '%s' \"\$OUT\" | grep -q 'unreasoned'"
 check "stats counts self-test bypass rows apart (rolepod-selftest + legacy doctor, v2.85.1)" "printf '%s' \"\$OUT\" | grep -q 'Bypasses (1 ' && printf '%s' \"\$OUT\" | grep -q 'self-test rows excluded: 2'"
-check "stats audits strong dispatches"    "printf '%s' \"\$OUT\" | grep -q 'Strong dispatches (2): 1 with explicit override, 1 inherit'"
+check "stats audits strong dispatches"    "printf '%s' \"\$OUT\" | grep -q 'Strong dispatches (3): 1 with explicit override, 2 inherit'"
 check "stats reports hook-reported model proof" "printf '%s' \"\$OUT\" | grep -q 'Model proof — hook-reported (2'"
 check "stats shows proof per cli+model"   "printf '%s' \"\$OUT\" | grep -q 'gpt-5.6-terra'"
 printf '{"agent_type":"qa","model":"m1"}' > "$FIX/subagent-stop.json"
 check "codex model-log hook is fail-open outside a repo" \
   "cd /tmp && bash '$REPO_DIR/adapters/codex/plugins/rolepod/hooks/subagent-model-log.sh' < '$FIX/subagent-stop.json'"
 check "stats names the silent downgrade"  "printf '%s' \"\$OUT\" | grep -q 'silent downgrade'"
-check "stats reports hook-auto dispatch intent" "printf '%s' \"\$OUT\" | grep -q 'Dispatch intent — hook-auto (1'"
+check "stats reports hook-auto dispatch intent" "printf '%s' \"\$OUT\" | grep -q 'Dispatch intent — hook-auto (2'"
 check "stats flags hook-auto inherit"     "printf '%s' \"\$OUT\" | grep -q 'inherited the Lead'"
 check "stats survives malformed lines"    "HOME='$FIX' bash '$REPO_DIR/scripts/stats.sh' '$FIX/repo'"
 # HOME sandboxed: stats also reads the machine-global ~/.rolepod/gate-bypass.log
@@ -106,7 +107,7 @@ check "tier nudge silent on rolepod:scout (frontmatter-pinned cheap — was a fa
 check "tier nudge honors ROLEPOD_NUDGE_OFF" \
   "[ -z \"\$(ROLEPOD_NUDGE_OFF=1 bash '$REPO_DIR/hooks/workflow-tier-nudge.sh' < '$FIX/wf-inherit.json')\" ]"
 check "dispatch auto-log appends a hook-auto line" \
-  "cd '$FIX/repo' && bash '$REPO_DIR/hooks/dispatch-auto-log.sh' < '$FIX/agent-scout.json' && grep -c 'hook-auto' .rolepod/evidence/phase-log.jsonl | grep -q 2"
+  "cd '$FIX/repo' && bash '$REPO_DIR/hooks/dispatch-auto-log.sh' < '$FIX/agent-scout.json' && grep -c 'hook-auto' .rolepod/evidence/phase-log.jsonl | grep -q 3"
 check "dispatch auto-log is fail-open outside a repo" \
   "cd /tmp && bash '$REPO_DIR/hooks/dispatch-auto-log.sh' < '$FIX/agent-scout.json'"
 

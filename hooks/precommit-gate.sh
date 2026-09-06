@@ -166,10 +166,19 @@ HIGH_RISK=$(echo "$DIFF_STAT" | awk -F'\t' '{print $3}' | grep -vE '\.(test|spec
 # generically named file (closure-service.ts, date-utils.ts) the path regex
 # cannot see — the shape of 2 of the 4 escaped CourtBook money bugs.
 if [ -z "$HIGH_RISK" ]; then
+  # Prose is excluded INSIDE awk, on the header path only (never on the
+  # added line's text — `b.refund.md + b.total` in a .py must still count):
+  # a doc that mentions a refund policy is not money logic (v2.86.0 — all
+  # 14 recorded content hits were executable files, 0 were docs). git
+  # appends a trailing tab to `+++ b/<path>` when the name has a space —
+  # stripped before the suffix test. The candidate paths then go through
+  # risk_filter so a `-` line in .rolepod/risk-paths excludes them exactly
+  # like the path regex.
   CONTENT_RISK=$(git diff --cached -U0 2>/dev/null \
-    | awk '/^\+\+\+ /{f=substr($0,5)} /^\+[^+]/{print f "\t" $0}' \
+    | awk '/^\+\+\+ /{f=substr($0,5); sub(/[ \t]+$/,"",f)} /^\+[^+]/{if (f !~ /\.(md|mdx|txt|rst|adoc)$/) print f "\t" $0}' \
     | grep -vE '(^|/)(test|tests|spec|specs|__tests__|fixtures)(/|\.|_)|_test\.|\.test\.|_spec\.|\.spec\.' \
-    | grep -m1 -iE '(refund|payout|chargeback|settlement)' || true)
+    | grep -iE '(refund|payout|chargeback|settlement)' \
+    | awk -F'\t' '{print $1}' | sed -E 's#^[abciow]/##' | risk_filter '.' | head -1 || true)
   [ -n "$CONTENT_RISK" ] && HIGH_RISK="staged content: money-movement term (refund/payout/chargeback/settlement)"
 fi
 # Money / auth subset of high-risk (v2.78.0): billing · payments · credits ·

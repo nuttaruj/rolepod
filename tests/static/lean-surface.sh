@@ -762,6 +762,26 @@ else
   printf "%b" "$ADAPTER_BAD_PRELOADS" | sed 's/^/      /'
   fail=$((fail+1))
 fi
+# Lead-only phase skills never preload into a subagent (v2.86.0): a subagent
+# is commit-banned (agent-protocol), so finish-work (phase: ship) is dead
+# weight there, and manage-context (phase: recovery) is session-scale Lead
+# work. 11-13 KB per affected spawn.
+LEAD_ONLY_PRELOADS=""
+for a in adapters/claude/agent-frontmatter/*.yml; do
+  name=$(basename "$a" .yml)
+  preloads=$(awk '/^skills:/{f=1;next} /^[a-zA-Z]/{f=0} f && /^  - /{sub(/^  - /, ""); print}' "$a")
+  for skill in $preloads; do
+    ph=$(awk -F': *' '/^phase:/{print $2; exit}' "core/skills/$skill/SKILL.md" 2>/dev/null || true)
+    case "$ph" in ship|recovery) LEAD_ONLY_PRELOADS="${LEAD_ONLY_PRELOADS}${name}: ${skill} (phase ${ph})\n" ;; esac
+  done
+done
+if [ -z "$LEAD_ONLY_PRELOADS" ]; then
+  echo "  ✓ no Claude overlay preloads a Lead-only phase skill (ship / recovery)"
+else
+  echo "  ✗ Claude overlay preloads a Lead-only phase skill (commit ban / session-scale):"
+  printf "%b" "$LEAD_ONLY_PRELOADS" | sed 's/^/      /'
+  fail=$((fail+1))
+fi
 if [ -z "$AGENT_MISSING_OUTPUT" ]; then
   echo "  ✓ all agents have a standalone output contract"
 else

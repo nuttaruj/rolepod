@@ -397,6 +397,29 @@ out=$(printf '{"tool_name":"Bash","transcript_path":%s,"tool_input":{"command":"
   | (cd "$TMP3" && HOME="$TMP" bash "$HOOKS/precommit-gate.sh") || true)
 check "precommit refund logic in generically named file → deny (content risk)" deny "$out"
 
+# v2.86.0: the content check skips prose and honours `-` lines in .rolepod/risk-paths.
+TMP4=$(mktemp -d)
+pcr() { # $1 = file, $2 = content, $3 = optional risk-paths body; fresh repo each call
+  rm -rf "$TMP4"; mkdir -p "$TMP4/$(dirname "$1")"
+  ( cd "$TMP4" && git init -q . && git config user.email t@t && git config user.name t \
+    && printf '%b' "$2" > "$1" && git add "$1" \
+    && { [ -z "${3:-}" ] || { mkdir -p .rolepod && printf '%b' "$3" > .rolepod/risk-paths; }; } )
+  printf '{"tool_name":"Bash","transcript_path":%s,"tool_input":{"command":"git commit -m x"}}' \
+    "$(printf '%s' "$TRANSCRIPT" | python3 -c 'import json,sys; print(json.dumps(sys.stdin.read()))')" \
+    | (cd "$TMP4" && HOME="$TMP" bash "$HOOKS/precommit-gate.sh") || true
+}
+check "precommit refund wording in docs/refunds.md alone → allow (prose is not money logic)" allow \
+  "$(pcr docs/refunds.md '# Refund policy\n\nA refund is issued within 14 days.\nPayout timing follows the settlement window.\n')"
+check "precommit refund logic in services/closure.py → still deny" deny \
+  "$(pcr services/closure.py 'def close(b):\n    return refund_amount(b)\n')"
+check "precommit refund logic excluded by a risk-paths - line → allow" allow \
+  "$(pcr services/closure.py 'def close(b):\n    return refund_amount(b)\n' '-(^|/)services/closure\\.py$\n')"
+check "precommit prose rule must not drop a CODE line containing '.md +' → deny" deny \
+  "$(pcr services/closure.py 'def close(b):\n    return b.refund.md + b.total\n')"
+check "precommit refund prose in a space-named doc ('d2/refund notes.md') → allow" allow \
+  "$(pcr 'd2/refund notes.md' '# Refund notes\n\nPayout after settlement.\n')"
+rm -rf "$TMP4"
+
 (
   cd "$TMP3"
   git reset -q

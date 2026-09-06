@@ -113,7 +113,7 @@ Enforcement layer for the concurrent-edit problem `session-lifecycle` only *warn
 
 Escalates to HARD block at `git commit` time when the session touched high-risk code but never produced a test edit.
 
-- **Effect** (evidence split by risk since v2.46.0): HIGH-RISK diff (path regex OR money-movement terms in staged added lines) → auto-pass ONLY on ≥1 strong-class adversarial reviewer dispatch (security-engineer / universal-reviewer, and NOT explicitly dispatched at a cheap/balanced model — `inherit` counts because `workflow-tier-nudge.sh` lifts it on a low Lead); other HARD blocks → ≥1 test edit or ≥1 reviewer dispatch. Every auto-pass logs to `~/.rolepod/gate-bypass.log` (read by `make stats`) + additionalContext note; insufficient evidence → `permissionDecision: deny`.
+- **Effect** (evidence split by risk since v2.46.0): HIGH-RISK diff (path regex OR money-movement terms in staged added lines of non-test, non-prose files — `.md/.mdx/.txt/.rst/.adoc` never count as money logic, and a `-` line in `.rolepod/risk-paths` excludes a path from the content check exactly as from the path regex) → auto-pass ONLY on ≥1 strong-class adversarial reviewer dispatch (security-engineer / universal-reviewer, and NOT explicitly dispatched at a cheap/balanced model — `inherit` counts because `workflow-tier-nudge.sh` lifts it on a low Lead); other HARD blocks → ≥1 test edit or ≥1 reviewer dispatch. Every auto-pass logs to `~/.rolepod/gate-bypass.log` (read by `make stats`) + additionalContext note; insufficient evidence → `permissionDecision: deny`.
 - **Evidence window (v2.47.0)**: counted **since the last commit** (`git log -1 --format=%ct` — git's clock, unaffected by denied attempts, hook-less commits, or a 12-day session; no commit yet → whole session) across the Lead transcript **plus the session's subagent transcripts** (`<session>/subagents/**/agent-*.jsonl` — Agent tool and Workflow fleets, mtime inside the window, 60 newest). Measured need: a CourtBook session where session-cumulative evidence from day 1 (`tests=303 strong=2`) would have cleared every commit on day 12, while the tests the Workflow agents actually wrote (79–566 edits/day) were invisible to the Lead-only reader.
 - **Self-guards**: non-commit Bash → silent; non-high-risk session → silent. Test-**named** staged files (`*.test.*` / `*.spec.*`, `test_*.py`, `*_test.go`, `*_spec.rb`, `*Test.java`) do not trigger the path regex (v2.85.2) — a test-only commit under `tests/auth/` is the QA-automation deliverable, and the same file is already exempt at edit time; a bare directory name (`tests/`, `spec/`, `e2e/`) is NOT an exemption, so `api/specs/auth.yaml` and `tests/fixtures/seed_auth_users.py` still block, and a mixed diff blocks on its production path. The money content-check also excludes these paths, so money logic living inside a test-named file is an accepted blind spot.
 - **Bypass**: not needed — evidence auto-passes. `ROLEPOD_GATES_PASSED=1` / `[gates: pass]` are legacy markers (same evidence check; never honored without it). The env-prefix form is deliberately not prescribed anywhere: permission layers read `ENV=1 git commit` as gate circumvention and block it before the hook runs.
@@ -263,6 +263,11 @@ The high-risk path list (auth/billing/payments/…) is built-in but repo-tunable
 (^|/)gdpr-export
 # exclude a false positive (this repo's "token" is a lexer, not a credential)
 -(^|/)compiler/token
+# collisions seen in real repos: a disclosure policy, a design system named
+# after a brand, an invoice UI template — prose and pixels, not money paths
+-(^|/)SECURITY\.md$
+-(^|/)design-systems/stripe(/|$)
+-(^|/)design-templates/invoice(/|$)
 ```
 
 Bare or `+`-prefixed lines ADD patterns; `-`-prefixed lines EXCLUDE paths the built-in list would match; `#` starts a comment. Read by `precommit-gate.sh`, `gate-reminder.sh`, and `session_state.py`; absent file = built-ins only; unreadable file fails open. The strongest seed: paths whose git history shows the highest bugfix-commit density — measure, don't guess.

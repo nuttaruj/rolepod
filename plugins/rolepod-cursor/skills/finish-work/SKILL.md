@@ -137,7 +137,7 @@ Present concrete options:
 
 **Typed confirmation for Discard.** Before destructive deletion, require the user to type the literal word `discard`. Generic yes / ok / sure is not enough — destructive ops need shape-matching confirmation to defeat reflex assent.
 
-Fill `templates/finish-menu.md` — gate status, the available options (3 or 4 per the detection above), the recommendation, and the one specific action awaiting authorization. State the recommendation, then wait for the user to pick before acting — unless the user's own message already named the action AND the target: that IS the pick, so state gate status plus the single action you are taking under that authorization and act. Authorization never widens (a PR is not a merge, one target is not another); Iron Rule 1 and the typed-`discard` rule are unchanged.
+Fill `templates/finish-menu.md` — gate status, the available options (3 or 4 per the detection above), the recommendation, and the one specific action awaiting authorization. State the recommendation, then wait for the user to pick before acting — unless the user's own message already named the action AND the target: that IS the pick, so state gate status plus the single action you are taking under that authorization and act. Authorization never widens (a PR is not a merge, one target is not another) — Keep open is the one option that proceeds on the named ACTION alone (a checkpoint commit: no push, no merge, no cleanup); Merge, Open PR and Discard need action AND target; Iron Rule 1 and the typed-`discard` rule are unchanged.
 
 ### 5. PR composition (if PR path)
 
@@ -165,7 +165,7 @@ Execute as Lead with this minimum viable checklist:
 1. Run the full pre-merge gate (S+T+F + Evidence + Reviewer + PR scope)
 2. Confirm Phase 1 + triggered Phase 2 CI lanes are green
 3. Present the 3- or 4-option finish menu per §3 detection
-4. Wait for the user to pick — unless their message already named the action AND the target (§4)
+4. Wait for the user to pick — unless their message already named the action AND the target, or named Keep open alone (§4)
 5. For PR: open with title + body + test plan
 6. For merge: run the merge command with the user's explicit authorization
 7. For launch: confirm rollback + monitoring + on-call before traffic
@@ -173,7 +173,7 @@ Execute as Lead with this minimum viable checklist:
 
 ## Output
 
-The finish menu is the canonical artifact: `templates/finish-menu.md`. It carries the gate status, the four options, the recommendation, and the specific action awaiting authorization. The PR path adds `templates/pr-body.md`; a production launch adds `templates/release-checklist.md`. Do not restate these shapes here; the templates are the single source. After the authorized action actually completes (a command that failed or is still pending logs nothing; report that status instead), append `{"ts":"<iso8601>","phase":"ship","action":"<merge|pr|keep-open|discard>"}` to `<git-root>/.rolepod/evidence/phase-log.jsonl` (fail-open).
+The finish menu is the canonical artifact: `templates/finish-menu.md`. It carries the gate status, the four options, the recommendation, and the specific action awaiting authorization. The PR path adds `templates/pr-body.md`; a production launch adds `templates/release-checklist.md`. Do not restate these shapes here; the templates are the single source. After the authorized action actually completes (a command that failed or is still pending logs nothing; report that status instead), append `{"ts":"<iso8601>","phase":"ship","action":"<merge|pr|keep-open|discard>"}` to `<git-root>/.rolepod/evidence/phase-log.jsonl` (fail-open) — chained onto the ship command itself (`git merge … && printf '…' >> phase-log.jsonl`; `discard` logs unconditionally), never a standalone turn.
 
 ## Examples
 

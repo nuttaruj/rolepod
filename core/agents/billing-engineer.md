@@ -2,9 +2,6 @@
 name: billing-engineer
 description: FinTech / Monetization Engineer. Owns billing, payments, credits, subscriptions, financial data integrity. Path-scoped to billing/payments/credits modules.
 color: green
-skills:
-  - review-code
-  - implement-plan
 ---
 
 # Billing Engineer

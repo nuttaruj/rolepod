@@ -587,9 +587,10 @@ def count_parallel_agent_spawns_on_path(
     transcript_path: str, recent_window: int = 10
 ) -> int:
     """
-    Count Agent spawns within the last `recent_window` tool uses that touch
-    overlapping paths (heuristic — looks for path hints in the prompt). Used
-    to detect parallel-agent fan-out that needs a cohesion contract.
+    Count Agent/Task spawns within the last `recent_window` tool uses.
+    Recency is the parallel-fan-out proxy; no path-overlap check is performed
+    (the caller's role whitelist at cohesion-contract-check.sh already exempts
+    read-only roles).
     """
     recent: list[tuple[str, dict]] = []
     for tool, inp in _iter_tool_uses(transcript_path):

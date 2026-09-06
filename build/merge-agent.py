@@ -25,7 +25,9 @@ import re
 import sys
 from pathlib import Path
 
-# Field order for re-emission.
+# Field order for re-emission. `skills` (Claude preload) lives ONLY in
+# adapters/claude/agent-frontmatter/*.yml — core/agents carries no skills key
+# (v2.86.0): the overlay always won the merge and cursor/opencode/codex drop it.
 CLAUDE_KEY_ORDER = ["name", "description", "model", "effort", "memory",
                     "maxTurns", "permissionMode", "color", "skills", "tools"]
 GEMINI_KEY_ORDER = ["name", "description", "model"]

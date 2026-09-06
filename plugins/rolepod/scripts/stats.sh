@@ -98,10 +98,25 @@ if routes:
         print(f"    {tier:<4} {n:>4}  {pct:>3}%   {'#' * max(1, pct // 4)}")
 
 dispatches = [r for r in rows if r.get("phase") == "dispatch"]
+# A strong dispatch is either the Lead's class-labeled line (tier=strong) or a
+# hook-auto row whose agent_type is a strong-named role (v2.86.0: the manual
+# line is written only where the hook cannot see the tier). Mirrors
+# session_state.STRONG_ROLE_AGENTS.
+STRONG_ROLES = {"security-engineer", "universal-reviewer", "code-reviewer"}
+def is_strong(d):
+    if d.get("tier") == "strong":
+        return True
+    at = (d.get("agent_type") or "").split(":")[-1]
+    return d.get("provenance") == "hook-auto" and at in STRONG_ROLES
 if dispatches:
-    strong = [d for d in dispatches if d.get("tier") == "strong"]
+    strong = [d for d in dispatches if is_strong(d)]
     if strong:
-        no_ov = sum(1 for d in strong if (d.get("override") or "none") == "none")
+        # inherit under a non-strong Lead OR an explicit cheap/balanced pin on
+        # a strong-role row: both are the silent downgrade.
+        LOW_MODELS = ("haiku", "sonnet")
+        no_ov = sum(1 for d in strong
+                    if ((d.get("override") or "none") == "none" and d.get("lead_class") != "strong")
+                    or any(m in (d.get("override") or "") for m in LOW_MODELS))
         print(f"\n  Strong dispatches ({len(strong)}): "
               f"{len(strong) - no_ov} with explicit override, {no_ov} inherit")
         if no_ov:

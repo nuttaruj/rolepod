@@ -5,7 +5,6 @@ model: haiku
 effort: low
 maxTurns: 15
 color: teal
-skills: []
 tools:
   - Read
   - Glob

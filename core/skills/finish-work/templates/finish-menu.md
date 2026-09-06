@@ -1,5 +1,5 @@
 <!-- Rolepod finish menu — the canonical Ship-phase output. -->
-<!-- Present this, recommend one option, then WAIT. Delete the <hints>. -->
+<!-- Present this, recommend one option, then WAIT (unless the user's own message already named the action + target, or Keep open alone). Delete the <hints>. -->
 
 # <Branch> — Finish
 

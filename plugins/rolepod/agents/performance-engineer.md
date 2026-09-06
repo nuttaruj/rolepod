@@ -10,7 +10,6 @@ skills:
   - review-code
   - check-work
   - debug-issue
-  - finish-work
 tools:
   - Read
   - Glob

@@ -2,9 +2,6 @@
 name: universal-reviewer
 description: Code reviewer focused on code quality (logic / DRY / structure / smell). Distinct from qa-tester (correctness/tests) and security-engineer (security). Final judge for code-quality gate.
 color: red
-skills:
-  - review-code
-  - simplify-code
 ---
 
 # Universal Reviewer

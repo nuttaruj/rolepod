@@ -73,7 +73,7 @@ Return / hand off:
 | Architecture / cross-module | `system-architect` |
 | Generic quality / DRY / smell | `universal-reviewer` |
 
-Rigor-tier mapping: R1 → Lead cold self-review only (`git diff` + re-read from disk); R2 → the qa-tester floor plus ONE concern-matched reviewer from the table at **balanced** tier (strong stays reserved for final-pass / adversarial contexts); R3 → row match as usual **plus** the cross-family external on the diff's dominant axis when the pool is usable (any logic-bearing diff; doc / rename / config-only exempt); R4 (high-risk) → full adversarial floor, never less.
+Rigor-tier mapping: R1 → Lead cold self-review only (`git diff` + re-read from disk); R2 → the qa-tester floor; when the matched row is not qa-tester, add ONE concern-matched reviewer at **balanced** tier — pass the balanced model explicitly on a balanced role, but leave a `universal-reviewer` call model-less (the dispatch hook sets its tier; a balanced pin voids the gate) and keep strong reserved for final-pass / adversarial contexts; R3 → row match as usual **plus** the cross-family external on the diff's dominant axis when the pool is usable (any logic-bearing diff; doc / rename / config-only exempt); R4 (high-risk) → full adversarial floor, never less (the router's comment/blank-only carve-out — 1 file, ≤5 lines, LOGIC_COUNT=0 — lands here as R2 + ONE strong reviewer, cross-family anchor still required while a pool is enabled).
 
 **Satellite-first strong pass:** a usable cross-family external (routing: `references/external-review-routing.md`; one command: `rolepod-cross-family --kind review --brief <brief> --attach <diff> --detach` — read-only, the external's own default model, anchored by the runner) IS the R4 strong adversarial pass; the commit gate counts only the runner's anchor.
 
@@ -152,7 +152,7 @@ Execute as Lead with this minimum viable checklist:
 
 The review report is the canonical artifact: `templates/review-report.md`. It carries scope, risk surfaces, reviewers, severity-ordered findings, the test verdict, and the recommendation. Do not restate the report shape here; the template is the single source.
 
-Also append one line to `<git-root>/.rolepod/evidence/phase-log.jsonl` — `{"ts":"<iso8601>","phase":"review","verdict":"<APPROVED|APPROVED-WITH-NITS|REJECTED>","blockers":<n>}` (fail-open outside a git repo).
+Also append one line to `<git-root>/.rolepod/evidence/phase-log.jsonl` — `{"ts":"<iso8601>","phase":"review","verdict":"<APPROVED|APPROVED-WITH-NITS|REJECTED>","blockers":<n>}` — inside the next Bash call you make anyway (the finish gates' `git diff`, the commit), never as a standalone turn (fail-open outside a git repo).
 
 **External strong pass — evidence anchor.** The runner anchors the pass itself: raw output under `<git-root>/.rolepod/evidence/external/<utc-ts>-<cli>.txt` (teed at invoke, never retyped) plus a phase-log line `{"phase":"review","reviewer":"external","cli":"<cli>","family":"<family>","model":"default","raw":"external/<file>.txt"}`. The gate counts it as the strong pass only if that raw file exists and is ≥ 500 bytes — a bare claim, a hand-typed line, or a hand-rolled `codex exec` without the anchor is ignored by design. The Lead's own merged verdict line (above) is still appended separately.
 
