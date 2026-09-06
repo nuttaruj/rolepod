@@ -154,10 +154,12 @@ LINES_CHANGED=${LINES_CHANGED:-0}
 # segments (tests/ spec/ e2e/ fixtures/): those would downgrade
 # api/specs/auth.yaml and tests/fixtures/seed_auth_users.py. A mixed diff
 # (test + production file) still matches on the production path. The
+# Paths come from numstat, tab-separated: split on TAB (a path with a space
+# is one field, never truncated at the space — v2.85.3).
 # content-based money check below CANNOT see these files either (it excludes
 # test paths itself), so money primitives inside a test-named file are an
 # ACCEPTED blind spot: rspec/jest-only load, and the mixed diff still blocks.
-HIGH_RISK=$(echo "$DIFF_STAT" | awk '{print $3}' | grep -vE '\.(test|spec)\.(ts|tsx|js|jsx|mjs|cjs|py|go|rs|rb|java|kt|swift|cs|php)$|(^|/)(test_[^/]*|[^/]*_test|[^/]*_spec)\.(py|go|rs|rb|php)$|(^|/)[^/]*Tests?\.(java|kt|cs|swift|php|scala)$' | risk_filter '(^|/|_)(auth|authn|authz|authentication|authorization|billing|payment|payments|migration|migrations|credit|credits|permission|permissions|secret|secrets|crypto|cryptography|token|tokens|oauth|jwt|sso|saml|webhook|webhooks|stripe|paypal|charge|charges|invoice|invoices|deletion|deletions|erasure|gdpr|security)(/|\.|_|$)' | head -1 || true)
+HIGH_RISK=$(echo "$DIFF_STAT" | awk -F'\t' '{print $3}' | grep -vE '\.(test|spec)\.(ts|tsx|js|jsx|mjs|cjs|py|go|rs|rb|java|kt|swift|cs|php)$|(^|/)(test_[^/]*|[^/]*_test|[^/]*_spec)\.(py|go|rs|rb|php)$|(^|/)[^/]*Tests?\.(java|kt|cs|swift|php|scala)$' | risk_filter '(^|/|_)(auth|authn|authz|authentication|authorization|billing|payment|payments|migration|migrations|credit|credits|permission|permissions|secret|secrets|crypto|cryptography|token|tokens|oauth|jwt|sso|saml|webhook|webhooks|stripe|paypal|charge|charges|invoice|invoices|deletion|deletions|erasure|gdpr|security)(/|\.|_|$)' | head -1 || true)
 
 # Content-based high-risk (v2.46.0) — money-movement primitives in ADDED
 # lines of non-test staged files. Catches refund/payout logic living in a
@@ -165,7 +167,7 @@ HIGH_RISK=$(echo "$DIFF_STAT" | awk '{print $3}' | grep -vE '\.(test|spec)\.(ts|
 # cannot see — the shape of 2 of the 4 escaped CourtBook money bugs.
 if [ -z "$HIGH_RISK" ]; then
   CONTENT_RISK=$(git diff --cached -U0 2>/dev/null \
-    | awk '/^\+\+\+ /{f=$2} /^\+[^+]/{print f "\t" $0}' \
+    | awk '/^\+\+\+ /{f=substr($0,5)} /^\+[^+]/{print f "\t" $0}' \
     | grep -vE '(^|/)(test|tests|spec|specs|__tests__|fixtures)(/|\.|_)|_test\.|\.test\.|_spec\.|\.spec\.' \
     | grep -m1 -iE '(refund|payout|chargeback|settlement)' || true)
   [ -n "$CONTENT_RISK" ] && HIGH_RISK="staged content: money-movement term (refund/payout/chargeback/settlement)"
@@ -178,7 +180,7 @@ fi
 # token / webhook / security-named paths stay external-is-the-pass.
 MONEY_RISK=""
 if [ -n "$HIGH_RISK" ]; then
-  MONEY_RISK=$(echo "$DIFF_STAT" | awk '{print $3}' | grep -iE '(^|/|_)(auth|authn|authz|authentication|authorization|billing|payment|payments|credit|credits|secret|secrets|crypto|cryptography|oauth|jwt|sso|saml|stripe|paypal|charge|charges|invoice|invoices|deletion|deletions|erasure|gdpr)(/|\.|_|$)' | head -1 || true)
+  MONEY_RISK=$(echo "$DIFF_STAT" | awk -F'\t' '{print $3}' | grep -iE '(^|/|_)(auth|authn|authz|authentication|authorization|billing|payment|payments|credit|credits|secret|secrets|crypto|cryptography|oauth|jwt|sso|saml|stripe|paypal|charge|charges|invoice|invoices|deletion|deletions|erasure|gdpr)(/|\.|_|$)' | head -1 || true)
   case "$HIGH_RISK" in "staged content: money-movement"*) MONEY_RISK="$HIGH_RISK" ;; esac
 fi
 

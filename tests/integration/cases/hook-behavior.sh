@@ -155,6 +155,13 @@ check "precommit test-only spec/models/payment_spec.rb → allow (SOFT)" allow "
 check "precommit api/specs/auth.yaml (specs segment, not a test name) → deny" deny "$(pct api/specs/auth.yaml)"
 check "precommit tests/fixtures/seed_auth_users.py (fixture, not a test name) → deny" deny "$(pct tests/fixtures/seed_auth_users.py)"
 check "precommit spec/services/payment_processor.rb (spec dir, not a test name) → deny" deny "$(pct spec/services/payment_processor.rb)"
+# Path with a space: numstat does not quote spaces, so a whitespace-split awk
+# read `src/my` and the risk regex never saw the `auth` segment (fail-open before v2.85.3).
+rm -rf "$TMPT"; mkdir -p "$TMPT/src/my app/auth"
+( cd "$TMPT" && git init -q . && git config user.email t@t && git config user.name t \
+  && seq 15 | sed 's/^/x = /' > "src/my app/auth/login.ts" && git add -A )
+out=$(printf '{"tool_name":"Bash","tool_input":{"command":"git commit -m x"}}' | (cd "$TMPT" && bash "$HOOKS/precommit-gate.sh") || true)
+check "precommit 'src/my app/auth/login.ts' (space in path, auth segment) → deny" deny "$out"
 check "precommit mixed test + src/auth/login.ts → deny" deny "$(pct 'tests/auth/login.spec.ts src/auth/login.ts')"
 
 out=$(pc 'git status')
