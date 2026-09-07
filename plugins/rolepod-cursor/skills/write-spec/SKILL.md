@@ -114,14 +114,14 @@ Present the proposed direction (chosen approach + rationale). Wait for the user 
 
 ### 6. Produce the contract
 
-Fill `templates/spec-template.md` — every section resolved, no placeholders, no contradictions. Then run the **spec-lint** against the filled text — pipe it in directly in inline mode, or lint the saved file in file mode: `grep -niE '\[\[FILL:|TODO|TBD'` must print nothing; any printed line, or a grep error (unreadable path, bad pattern), is a lint failure, never a silent pass (a deterministic backstop to the step-4 self-review; it catches an unfilled `[[FILL: …]]` marker or a stray TODO/TBD, never legitimate angle brackets like `<h1>` or `List<T>`, and not vague wording).
+Fill `templates/spec-template.md` — every section resolved, no placeholders, no contradictions. Repeat feature: a section that did not move reads `Unchanged — <prior spec> §<name>` (Goal, User / actor, Non-goals, Constraints, Chosen approach, Rejected approaches may inherit; Current behavior, Desired behavior — the delta — Success criteria, High-risk surfaces, Open questions are always written fresh). Then run the **spec-lint** against the filled text — pipe it in directly in inline mode, or lint the saved file in file mode: `grep -niE '\[\[FILL:|TODO|TBD'` must print nothing; any printed line, or a grep error (unreadable path, bad pattern), is a lint failure, never a silent pass (a deterministic backstop to the step-4 self-review; it catches an unfilled `[[FILL: …]]` marker or a stray TODO/TBD, never legitimate angle brackets like `<h1>` or `List<T>`, and not vague wording).
 
 - One-session work → inline the filled template in chat. **No Gate 2** — Gate 1 is the only approval. Default when unsure: one-session/inline, unless the user names a multi-day scope or the high-risk / repeat test below applies.
 - Multi-session work, high-risk surface touched, or repeat feature → save to `docs/rolepod/specs/<feature>-YYYY-MM-DD.md` — **private by default:** before the first save run `grep -qx 'docs/rolepod/' .gitignore || echo 'docs/rolepod/' >> .gitignore` (the commit gate denies any commit that stages `docs/rolepod/`; a repo that deliberately tracks its specs creates `.rolepod/docs-tracked`) — (optional `-vN` or `-draft` suffix). Proceed to Gate 2.
 
 ### 7. Gate 2 — file review (file-mode only)
 
-After saving, run the spec-lint (`grep -niE '\[\[FILL:|TODO|TBD'`) on the file — it must print nothing — then ask the user to read the file and confirm, not the chat transcript. Catches three drifts:
+After saving, run the spec-lint (`grep -niE '\[\[FILL:|TODO|TBD'`) on the file — it must print nothing — and the anchor check: `for h in 'Non-goals' 'Current behavior' 'Desired behavior' 'Success criteria'; do grep -q "^## $h" <spec> || echo "missing ## $h"; done` — must print nothing (these four headings are what the next repeat-feature spec seeds from; a numbered or renamed heading cannot be found, so the next spec re-derives prior state from a blank slate). Then ask the user to read the file and confirm, not the chat transcript. Catches three drifts:
 - **Word drift** — chat said "soft delete", file wrote "delete"
 - **Implicit edge case** — user meant "except admin", file omits it
 - **Reconsideration** — user sees concrete shape, changes mind

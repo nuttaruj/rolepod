@@ -51,7 +51,8 @@ Match the user intent to the FIRST skill that fires. The skill itself decides wh
 | User intent (verbs / phrases) | Phase | First skill fires | Model tier |
 |---|---|---|---|
 | "build / add / create / make / design" + vague target (commission only — musing / hypothetical framing → Conversation mode above) | **Define** | `write-spec` | cheap (PM/spec) |
-| "build X to spec" + spec exists | **Plan** | `write-plan` | cheap–balanced |
+| "build X to spec" + a spec exists whose Success criteria cover the ask | **Plan** | `write-plan` | cheap–balanced |
+| "add / change Y" on a feature that has a spec, but its Success criteria do not cover Y | **Define** | `write-spec` (repeat feature — a new dated spec, delta against the prior one; never edit the approved file) | cheap (PM/spec) |
 | "execute plan / work the plan / implement plan.md" | **Plan→Build** | `write-plan` → `implement-plan` | balanced |
 | "write test cases / test this feature / report a bug" — QA hand-off, no fix wanted | **Verify (QA)** | `qa-tester` agent (spec-first test-case design); a found bug → `debug-issue` report-only exit | cheap–balanced |
 | "fix bug / failing test / broken / regression / why does X fail" | **Build (bug)** | `debug-issue` | balanced |

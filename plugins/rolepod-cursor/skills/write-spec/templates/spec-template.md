@@ -1,5 +1,10 @@
 <!-- Rolepod spec template — the canonical Define-phase artifact. -->
 <!-- Fill every section. Replace every [[FILL: …]] marker. write-plan consumes this. -->
+<!-- Repeat feature (a prior docs/rolepod/specs/<feature>-*.md exists): a section
+     that did not move reads `Unchanged — <prior spec path> §<section>` instead of
+     a re-write. Only Goal, User / actor, Non-goals, Constraints, Chosen approach and
+     Rejected approaches may inherit. Current behavior, Desired behavior, Success
+     criteria, High-risk surfaces and Open questions are ALWAYS written fresh. -->
 
 # [[FILL: feature name]] Spec
 
@@ -10,7 +15,7 @@
 [[FILL: Who triggers this and who benefits. Name the role, not "the user" if avoidable.]]
 
 ## Non-goals
-[[FILL: What this explicitly does NOT do. Cut scope creep here.]]
+[[FILL: What this explicitly does NOT do. Cut scope creep here. Repeat feature: carry the prior list forward — `Unchanged — <prior> §Non-goals` plus any new line.]]
 
 ## Current behavior
 [[FILL: What happens today. "Nothing — new surface" is a valid answer. Repeat feature: seed from the latest docs/rolepod/specs/<feature>-*.md Desired behavior, but verify it shipped before trusting it.]]
@@ -29,7 +34,7 @@
 - [[FILL: criterion 2]] — proven by: [[FILL: command / observation]]
 
 ## Constraints
-[[FILL: Stack, deadline, no-touch zones, compatibility the user already stated.]]
+[[FILL: Stack, deadline, no-touch zones, compatibility the user already stated. Repeat feature: may inherit — `Unchanged — <prior> §Constraints`.]]
 
 ## High-risk surfaces
 [[FILL: auth / billing / payments / credits / migration / data deletion / secrets /
@@ -41,7 +46,7 @@
  that is write-plan's job.]]
 
 ## Rejected approaches
-[[FILL: Other viable options + why not chosen, or "None — no material alternative existed". Keeps the decision auditable.]]
+[[FILL: Other viable options + why not chosen, or "None — no material alternative existed". Keeps the decision auditable. Repeat feature: may inherit — `Unchanged — <prior> §Rejected approaches` — so a rejected path is never re-proposed from a blank slate.]]
 
 ## Open questions
 [[FILL: Anything unresolved. Empty is the goal. A non-empty list blocks write-plan.]]

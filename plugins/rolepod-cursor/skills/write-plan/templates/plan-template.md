@@ -84,3 +84,9 @@ different fallback states it in its **On fail:**.
 <Append-only, written while implementing — never edited into the task blocks
  above. One line per deviation: "Task N — what changed, why". Empty until
  the build starts.>
+
+## Follow-ups
+<Append-only. Ideas and scope that surfaced during planning or build and were
+ NOT built — one line each: what, why parked, the spec line it would need.
+ implement-plan writes here instead of expanding scope; finish-work carries
+ every line out with a destination (next spec / issue / dropped + why).>

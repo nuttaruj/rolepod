@@ -14,7 +14,7 @@ Build-phase entry skill. Execute the approved plan with discipline: TDD where it
 
 <EXTREMELY-IMPORTANT>
 1. NEVER edit code without reading the plan and the touched files first.
-2. NEVER expand scope mid-implementation. New idea → write it down and finish the planned task first.
+2. NEVER expand scope mid-implementation. New idea → one line under the plan's `## Follow-ups`, then finish the planned task.
 3. ALWAYS write the failing test first for bug fixes and high-risk-surface work.
 4. NEVER delegate to a subagent without a written task scope and a clear done criterion.
 5. CONTINUOUS execution between tasks AND between plan phases — no "should I continue?" check-ins, no progress summaries, and never end the turn mid-plan: an ended turn is a stop no matter how it is worded. Stop only on a BLOCKED, spec/plan gap, or scope ambiguity that SURVIVES a re-read of the plan and the touched files (BLOCKED: plus a variable change) — a wrinkle you can settle yourself is never grounds to stop.
@@ -174,7 +174,7 @@ Load only when the task needs it:
 - A test you wrote passes before you added the code → assertion is too weak; tighten
 - Subagent returns `COMPLETED` with failing tests, or `BLOCKED` re-dispatched unchanged → reject / change a variable (context / model / scope); never accept unchanged retry
 - A subagent's diff accepted without spec-compliance + code-quality reviews → stop, run the §6 pipeline before building further
-- Scope creep beyond the task list → stop, write a follow-up, finish current task
+- Scope creep beyond the task list → stop, one line under the plan's `## Follow-ups`, finish current task
 - About to ask "should I continue?" — or end the turn — between tasks or phases of a plan → don't; Iron Rule 5
 - About to verify a task with a self-invented check → run the plan's **Command** verbatim; the task names none → stop, return to `write-plan` for one
 - A parallel-layout plan executed one track at a time with no stated reason → dispatch the ready tracks concurrently (§5)

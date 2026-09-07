@@ -293,7 +293,7 @@ RC=0; OUT=$(bash "$LINT" "$TMP/g-none.md" 2>&1) || RC=$?
   || { echo "  ✗ legacy plan handling: rc=$RC $OUT"; fail=$((fail+1)); }
 
 # ── Template + examples carry the human line and the graph field ────────
-for needle in '\*\*Delivers:\*\*' '\*\*Blocked by:\*\*' '^## Changes during build'; do
+for needle in '\*\*Delivers:\*\*' '\*\*Blocked by:\*\*' '^## Changes during build' '^## Follow-ups'; do
   grep -qE "$needle" "$REPO_DIR/core/skills/write-plan/templates/plan-template.md" \
     && echo "  ✓ template carries $needle" \
     || { echo "  ✗ template missing $needle"; fail=$((fail+1)); }
@@ -307,6 +307,17 @@ N_DL=$(grep -c '^- Delivers:' "$REPO_DIR/core/skills/write-plan/examples/plan-ex
 grep -q 'Task 1 → 2 → 3' "$REPO_DIR/core/skills/write-plan/examples/plan-examples.md" \
   && { echo "  ✗ example still restates the order in prose"; fail=$((fail+1)); } \
   || echo "  ✓ examples no longer restate the order outside Blocked by"
+
+# ── Follow-ups have one home and leave with a destination (v2.91.0) ─────
+grep -q '## Follow-ups' "$REPO_DIR/core/skills/implement-plan/SKILL.md" \
+  && echo "  ✓ implement-plan parks new scope under the plan's ## Follow-ups" \
+  || { echo "  ✗ implement-plan still says 'write it down' with no home"; fail=$((fail+1)); }
+grep -q '^## Follow-ups carried' "$REPO_DIR/core/skills/finish-work/templates/finish-menu.md" \
+  && echo "  ✓ finish menu carries the plan's Follow-ups out with a destination" \
+  || { echo "  ✗ finish menu has no Follow-ups section"; fail=$((fail+1)); }
+grep -q -- '-v2.md' "$REPO_DIR/core/skills/write-plan/SKILL.md" \
+  && { echo "  ✗ write-plan still versions plans as -v2.md (spec uses a new date)"; fail=$((fail+1)); } \
+  || echo "  ✓ plan re-planning uses the spec's dated-file convention"
 
 # ── Session-split protocol is documented where the contract points ──────
 grep -q '^## Session split' "$REPO_DIR/core/skills/write-plan/templates/cohesion-contract-template.md" \

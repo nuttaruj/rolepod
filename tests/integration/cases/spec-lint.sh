@@ -68,6 +68,47 @@ EOF
 check "lint passes a clean filled spec (no false positive)" \
   "! grep -niE \"\$LINT_RX\" \"$TMP/clean.md\" >/dev/null"
 
+# 4a. Anchor headings (v2.91.0). A repeat-feature spec seeds Current
+#     behavior from the prior spec's `## Desired behavior` and carries
+#     Non-goals forward by reference — a numbered or renamed heading cannot
+#     be found, so the seed silently falls back to a blank slate (real case:
+#     a saved spec with `## 1. Goal … ## 8. Open items`, zero anchors).
+#     The loop below is the one documented in SKILL.md step 7.
+anchor_missing() { # $1 = spec → prints "missing ## X" per absent anchor
+  for h in 'Non-goals' 'Current behavior' 'Desired behavior' 'Success criteria'; do
+    grep -q "^## $h" "$1" || echo "missing ## $h"
+  done
+}
+check "template carries the four anchor headings" \
+  "[ -z \"\$(anchor_missing core/skills/write-spec/templates/spec-template.md)\" ]"
+python3 - "$TMP" <<'PYX' > "$TMP/goods.txt"
+import re, sys
+tmp = sys.argv[1]
+s = open('core/skills/write-spec/examples/spec-examples.md').read()
+for i, b in enumerate(re.findall(r'### Good\s*\n```text\n(.*?)\n```', s, re.S), 1):
+    open('%s/good%d.md' % (tmp, i), 'w').write(b); print(i)
+PYX
+for i in $(cat "$TMP/goods.txt"); do
+  check "Good example $i carries the four anchor headings" "[ -z \"\$(anchor_missing \"$TMP/good$i.md\")\" ]"
+done
+cat > "$TMP/numbered.md" <<'EOF'
+# Cart Spec
+## 1. Goal
+One checkout for several items.
+## 2. Non-goals (v1)
+No saved carts.
+## 5. Chosen design
+Server-side holds.
+## 6. Success criteria
+- Both items confirm — proven by: e2e.
+EOF
+check "anchor check flags a numbered-heading spec (every anchor missing)" \
+  "[ \"\$(anchor_missing \"$TMP/numbered.md\" | wc -l | tr -d ' ')\" -eq 4 ]"
+check "SKILL.md step 7 documents the anchor loop" \
+  "grep -q 'missing ## ' core/skills/write-spec/SKILL.md"
+check "SKILL.md §6 lets a repeat-feature spec inherit unchanged sections by reference" \
+  "grep -q 'Unchanged — <prior spec>' core/skills/write-spec/SKILL.md"
+
 # 4b. Legitimate angle brackets are NOT placeholders — HTML tags, generic
 #     types, a bare URL. The old '<[^>]+>' regex flagged all three (v2.81.0).
 cat > "$TMP/brackets.md" <<'EOF'
