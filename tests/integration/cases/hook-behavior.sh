@@ -576,6 +576,23 @@ if { echo "$out"; echo "$out2"; } | grep -q 'REVIEW IN FLIGHT'; then echo "  ✗
 else echo "  ✓ job finished (status written) → both hooks silent"; fi
 kill "$RF_PID" 2>/dev/null; wait "$RF_PID" 2>/dev/null || true; rm -rf "$RF_TMP"
 
+# ── precommit SOFT line names the reviewer count (v2.95.0) ────────────────
+SF_TMP=$(mktemp -d)
+sf() { # $1 file, $2 content-generator command
+  rm -rf "$SF_TMP"; mkdir -p "$SF_TMP/$(dirname "$1")"
+  ( cd "$SF_TMP" && git init -q . && git config user.email t@t && git config user.name t && eval "$2" > "$1" && git add -A )
+  printf '{"tool_name":"Bash","tool_input":{"command":"git commit -m x"}}' | (cd "$SF_TMP" && bash "$HOOKS/precommit-gate.sh") || true
+}
+out=$(sf src/util.ts "seq 15 | sed 's/^/const x = /'")
+if echo "$out" | grep -q 'reviewers since last commit: 0' && echo "$out" | grep -q 'rolepod:qa-tester' && ! echo "$out" | grep -q '"permissionDecision"'; then
+  echo "  ✓ precommit SOFT: logic diff, 0 reviewers → names the count + the qa-tester floor, still allow"
+else echo "  ✗ precommit SOFT reviewer line: ${out:0:200}"; fail=$((fail+1)); fi
+out=$(sf src/notes.ts "seq 10 | sed 's/^/\/\/ note /'")
+if echo "$out" | grep -q 'reviewers since last commit: 0' && ! echo "$out" | grep -q '0 reviewers on a logic diff'; then
+  echo "  ✓ precommit SOFT: comment-only diff → count shown, no qa-tester ask (nothing logic-bearing)"
+else echo "  ✗ precommit SOFT comment-only: ${out:0:200}"; fail=$((fail+1)); fi
+rm -rf "$SF_TMP"
+
 # ─── result ───
 if [ "$fail" -eq 0 ]; then
   echo "  ✓ pass"

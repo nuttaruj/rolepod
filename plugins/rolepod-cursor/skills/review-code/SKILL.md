@@ -70,7 +70,7 @@ Return / hand off:
 | Architecture / cross-module | `system-architect` |
 | Generic quality / DRY / smell | `universal-reviewer` |
 
-Rigor-tier mapping: R1 → Lead cold self-review only (`git diff` + re-read from disk); R2 → the qa-tester floor; when the matched row is not qa-tester, add ONE concern-matched reviewer at **balanced** tier — pass the balanced model explicitly on a balanced role, but leave a `universal-reviewer` call model-less (the dispatch hook sets its tier; a balanced pin voids the gate) and keep strong reserved for final-pass / adversarial contexts; R3 → row match as usual **plus** the cross-family external on the diff's dominant axis when the pool is usable (any logic-bearing diff; doc / rename / config-only exempt); R4 (high-risk) → full adversarial floor, never less (the router's comment/blank-only carve-out — 1 file, ≤5 lines, LOGIC_COUNT=0 — lands here as R2 + ONE strong reviewer, cross-family anchor still required while a pool is enabled).
+Rigor-tier mapping: R1 → no review (the cold re-read is verify, not review — §Skip); R2 → the qa-tester floor (balanced, the diff alone — the author never reviews own logic, a Lead-built R2 included); when the matched row is not qa-tester, add ONE concern-matched reviewer at **balanced** tier — pass the balanced model explicitly on a balanced role, but leave a `universal-reviewer` call model-less (the dispatch hook sets its tier; a balanced pin voids the gate) and keep strong reserved for final-pass / adversarial contexts; R3 → row match as usual **plus** the cross-family external on the diff's dominant axis when the pool is usable (any logic-bearing diff; doc / rename / config-only exempt); R4 (high-risk) → full adversarial floor, never less (the router's comment/blank-only carve-out — 1 file, ≤5 lines, LOGIC_COUNT=0 — lands here as R2 + ONE strong reviewer, cross-family anchor still required while a pool is enabled).
 
 **Satellite-first strong pass:** a usable cross-family external (routing: `references/external-review-routing.md`; one command: `rolepod-cross-family --kind review --brief <brief> --attach <diff> --detach` — read-only, the external's own default model, anchored by the runner) IS the R4 strong adversarial pass; the commit gate counts only the runner's anchor.
 
@@ -106,7 +106,7 @@ Fill `templates/review-report.md`. Each finding names file:line, the issue, why 
 
 ### 5. Fix-verify loop
 
-After the author fixes, re-read the diff — the round-2+ brief attaches the previous report, and every finding comes back tagged IN-FIX (inside the previous round's fixes) / NEW / REPEAT (still open); the phase-log line carries the counts. Confirm fixes don't introduce new BLOCKER / MAJOR issues. The reviewer who flagged the issue is not the final authority on whether it is fixed — Lead or qa-tester gives the final APPROVED.
+After the author fixes, re-read the diff — the round-2+ brief attaches the previous report, and every finding comes back tagged IN-FIX (inside the previous round's fixes) / NEW / REPEAT (still open); the phase-log line carries the counts. Confirm fixes don't introduce new BLOCKER / MAJOR issues. The reviewer who flagged the issue is not the final authority on whether it is fixed, and neither is whoever wrote the fix: a subagent-built fix → qa-tester or the Lead's cold read; a Lead-built fix → qa-tester at balanced (R4 → the internal strong reviewer), never the Lead — the author sides with the author. The external re-runs only when the fix diff itself tiers R3+.
 
 When author and reviewer disagree on the merits, resolve by precedence: technical data > documented style guide > engineering principle > codebase consistency.
 
@@ -167,7 +167,7 @@ Load only when the task needs it:
 ## Hard stops
 
 - High-risk surface diff with no adversarial review → stop, route to `security-engineer` first
-- Reviewer is the author of the change → stop, fresh reviewer required
+- Reviewer is the author of the change (a Lead-built fix in the §5 loop included) → stop, fresh reviewer required
 - "Tests pass" offered as the only review evidence → not a review; do the axis walk
 - Author about to implement findings without verifying any of them against the codebase → stop, run the §6 response pattern
 - Multi-finding fix in progress while a linked item is unclear → stop, clarify before any partial implementation

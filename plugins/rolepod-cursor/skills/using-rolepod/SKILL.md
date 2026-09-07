@@ -134,7 +134,7 @@ Match ceremony to the task; the ladder replaces a binary skip/full choice. Uncer
 |---|---|---|
 | **R0** | pure question / explanation / lookup / conversation — no file change | answer directly IN THE USER'S REGISTER (conversational ask → conversational answer); no spine, no routing block — verify claims of fact, reason freely on opinions and ideas |
 | **R1** | diff ≤5 lines + 1 file + 0 logic-bearing lines + not high-risk + expected ≤3 tool calls (a test loop or exploration ahead → R2+, even for 1 file) | direct edit + lightweight verify; no block |
-| **R2** | 1 source file + its own test file, clear scope, logic-bearing, ≈≤30 changed lines, not high-risk | **inline plan** — 3-5 line checklist + verify command in chat, no spec/plan artifact → build → verify; one-line routing note |
+| **R2** | 1 source file + its own test file, clear scope, logic-bearing, ≈≤30 changed lines, not high-risk | **inline plan** — 3-5 line checklist + verify command in chat, no spec/plan artifact → build → verify → **qa-tester review** (balanced, the diff alone — the author never reviews own logic) → ship; one-line routing note |
 | **R3** | multi-file OR vague scope OR needs sequencing / delegation | full spine, full routing block |
 | **R4** | high-risk path (see Stop conditions) | full spine + adversarial review floor — NEVER downgrades, whatever the diff size. One exception: 1 file, ≤5 lines, comment/blank-only (the commit gate's LOGIC_COUNT=0 — a changed string literal still counts) → R2 with ONE strong reviewer; the cross-family anchor still applies while a pool is enabled |
 
@@ -205,7 +205,7 @@ Non-blocking — read when a request does not obviously match a Quick-router row
 
 | Excuse | Reality |
 |---|---|
-| "Simple task, skip the spine" | Tier it (R0-R4). R1 skips ceremony by rule, R2 still gets an inline plan + verify; calling a task "simple" without tiering is how scope hides. |
+| "Simple task, skip the spine" | Tier it (R0-R4). R1 skips ceremony by rule, R2 still gets an inline plan + verify + a qa-tester read; calling a task "simple" without tiering is how scope hides. |
 | "User just wants a fix" | They want a *correct* fix. `debug-issue` finds the root; symptom patches recur. |
 | "Tests are obvious, I'll add later" | Later never comes. TDD adds the test now or admits in writing it won't have one. |
 | "Reviewer takes too long" | Skip review = ship bugs. The cross-family pass is one command (`rolepod-cross-family --kind review …`) that runs in the background while you continue; it costs the satellite plan, not the main one. |

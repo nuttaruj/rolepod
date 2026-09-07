@@ -13,7 +13,7 @@ Ship-phase entry skill. Close out a branch safely. Run the pre-merge gate, decid
 1. NEVER push to main, force-push, merge a PR, or stage a launch without explicit user authorization for THIS specific action. Prior approval for unrelated work does not transfer.
 2. NEVER auto-merge a PR with a failing required CI lane.
 3. NEVER skip the pre-merge gate (simplicity + tests + failure-mode + evidence + reviewer) because "the diff is small". A user waiver granted at an earlier phase carries forward — quote it in the finish menu's gate status (which gate, the user's words) instead of re-demanding the waived work or skipping silently.
-4. The reviewer who flagged a BLOCKER is not the final authority on whether it is fixed — the qa-tester / Lead floor confirms before merge.
+4. The reviewer who flagged a BLOCKER is not the final authority on whether it is fixed, and neither is its author — a reviewer who did not write the fix confirms before merge (Lead-built fix → qa-tester, R4 → internal strong; the Lead never approves its own fix).
 5. Worktree cleanup follows order: merge → verify → `cd` to main root → `git worktree remove` → `git worktree prune` → delete branch. Reversed order leaves stuck refs. Only remove worktrees we created (path under `.worktrees/` or `worktrees/`); never touch harness-owned workspaces.
 </EXTREMELY-IMPORTANT>
 
