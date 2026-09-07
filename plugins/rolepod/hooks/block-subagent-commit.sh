@@ -117,12 +117,9 @@ print(json.dumps({
     'hookEventName': 'PreToolUse',
     'permissionDecision': 'deny',
     'permissionDecisionReason': (
-      'BLOCKED: sub-agent %r attempted %r. '
-      'Sub-agents NEVER commit, push, or merge directly — that is the Lead '
-      'responsibility after qa-tester + universal-reviewer verify. '
-      'Return COMPLETED status with file list and verification evidence; '
-      'Lead will commit. '
-      'See the Agent protocol section in your agent file — sub-agent commit ban.'
+      'BLOCKED: sub-agent %r attempted %r. Sub-agents never commit, push, or '
+      'merge — the Lead does, after review. Return COMPLETED with the file list '
+      'and verification evidence; the Lead commits.'
     ) % (os.environ.get('RP_AGENT_TYPE', ''), os.environ.get('RP_BLOCKED', ''))
   }
 }))

@@ -171,19 +171,12 @@ if n < 3:
     sys.exit(0)
 
 msg = (
-    "WORKFLOW ROUNDS: workflow \x27%s\x27 has now been dispatched %d times "
-    "this session — the fix-loop signature at fleet scale. Before launching "
-    "another round, check convergence: is the defect/failure count strictly "
-    "falling round over round? If not, STOP iterating and get ONE clean-room "
-    "cross-family opinion FIRST (`rolepod-cross-family --kind consult --brief "
-    "<ledger.md>` — first usable different-family CLI, read-only, default "
-    "model, ROLEPOD_BRAIN_SILENT=1 clean room, anchored): hand it a short "
-    "ledger — what each "
-    "round changed, why it failed — and decide rebuild-vs-iterate with both "
-    "views before spending another fleet. A loop that plugs holes one round "
-    "at a time usually has the wrong mental model of the defect; an outside "
-    "family catches that in one call. If a consult already happened this "
-    "loop, note its verdict and continue. Advisory only — nothing is blocked."
+    "WORKFLOW ROUNDS: \x27%s\x27 dispatched %d times this session — a fix loop at "
+    "fleet scale. Before another round: is the defect count strictly falling? If "
+    "not, STOP and get ONE cross-family consult first (`rolepod-cross-family --kind "
+    "consult --brief <ledger.md>`): a short ledger — what each round changed, why it "
+    "failed — then decide rebuild vs iterate. Consult already done this loop → note "
+    "its verdict, continue. Advisory only."
     % (name, n)
 )
 print(json.dumps({"hookSpecificOutput": {

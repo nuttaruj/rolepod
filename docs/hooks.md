@@ -4,6 +4,8 @@ Rolepod ships a family of **core bash hook scripts** in `hooks/`. Each CLI adapt
 
 Lead does not invoke these manually. They fire automatically.
 
+**Message shape (v2.92.0).** Every deny or nudge a hook emits is three parts and nothing else: the **fact** of this call (with its numbers — agent count, Lead model, stage names, diff size), the **fix** (the exact change that makes the same call pass), and the **exception** (the escape hatch, always user-set or stated in the artifact). The *why* — measured history, doctrine, the incidents that motivated a rule — lives in this file and in the hook's source comments, never in the message: the model cannot bypass a deny, so it never needed convincing, and every clause of persuasion was paid for on every fire. `tests/static/hook-message-lean.sh` holds the line — no `measured:` / `observed:` vocabulary in message text, no message literal over 600 chars.
+
 ## Hook categories — All core (no add-on hooks)
 
 | Category | Hooks | Purpose |

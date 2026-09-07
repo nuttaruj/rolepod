@@ -96,7 +96,7 @@ echo "$TOOL" | grep -qE '^(Edit|Write|MultiEdit|NotebookEdit|apply_patch)$' || e
 # Schema-bound NEW file → emit STRONG verify-doc reminder.
 SCHEMA_BOUND=""
 if [ ! -e "$FILE" ] && [[ "$FILE" =~ (\.claude-plugin/|\.codex-plugin/|/extensions/|marketplace\.json$|plugin\.json$|manifest\.json$|hooks\.json$|-extension\.(json|yaml|yml)$|\.mcp\.json$|gemini-extension\.json$|claude-extension\.json$) ]]; then
-  SCHEMA_BOUND="⚠️  SCHEMA-BOUND new file. Before writing: WebFetch the official spec for this surface (not training-cached recall). State the source URL in your reasoning. Wrong schema = silent install failure later. "
+  SCHEMA_BOUND="⚠️  SCHEMA-BOUND new file: WebFetch the official spec first (not recall) and name the source URL. "
 fi
 
 # Test files are exempt: writing the RED test on a high-risk path is the very
@@ -117,7 +117,7 @@ HIGH_RISK=""
 _RISK_HIT=$(printf '%s\n' "$FILE" | risk_filter '(^|/|_)(auth|authn|authz|authentication|authorization|billing|payment|payments|migration|migrations|credit|credits|permission|permissions|secret|secrets|crypto|cryptography|token|tokens|oauth|jwt|sso|saml|webhook|webhooks|stripe|paypal|charge|charges|invoice|invoices|deletion|deletions|erasure|gdpr|security)(/|\.|_|$)' | head -1 || true)
 MONEY_RISK=""
 if [ "$IS_TEST" -eq 0 ] && [ -n "$_RISK_HIT" ]; then
-  HIGH_RISK="⚠️  HIGH-RISK path detected → mandatory: qa-tester + security-engineer review BEFORE commit. "
+  HIGH_RISK="⚠️  HIGH-RISK path → qa-tester + security-engineer review before commit. "
   # money / auth subset (v2.78.0) — with an enabled cross-family pool this
   # surface needs BOTH the external pass and the internal strong reviewer.
   MONEY_RISK=$(printf '%s\n' "$FILE" | grep -iE '(^|/|_)(auth|authn|authz|authentication|authorization|billing|payment|payments|credit|credits|secret|secrets|crypto|cryptography|oauth|jwt|sso|saml|stripe|paypal|charge|charges|invoice|invoices|deletion|deletions|erasure|gdpr)(/|\.|_|$)' | head -1 || true)
@@ -160,7 +160,7 @@ if [ -n "$HIGH_RISK" ] && [ "$SOFT_MODE" -eq 0 ]; then
     WOULD_BLOCK+="⛔ COMMIT WILL BLOCK — 0 test edits since the last commit while editing high-risk path '$FILE'. Write the failing test FIRST (RED), then implement. "
   fi
   if [ "$HIGH_RISK_EDITS" -ge 1 ] && [ "$STRONG_REVIEWERS" -eq 0 ]; then
-    WOULD_BLOCK+="⛔ COMMIT WILL BLOCK — high-risk edits since the last commit with no strong adversarial reviewer. Satellite-first: run the cross-family runner (\`rolepod-cross-family --kind review --brief <file> --attach <diff>\`; it invokes the first usable different-family CLI read-only on its default model and anchors the pass under .rolepod/evidence/external/ + the reviewer:external phase-log line); while a usable pool exists an internal strong reviewer does NOT clear the commit — only after the runner reports every member failed (exit 3) or the pool is empty (exit 4) → dispatch rolepod:universal-reviewer or rolepod:security-engineer via the Agent tool (the dispatch hook runs them at strong class whatever the Lead is; qa-tester is the test floor, not the review). Reviewer dispatch impossible (user forbade agents / no subagent support)? SURFACE that conflict to the user — fallback: Lead cold self-review recorded as a LIMITATION. Bypass envs are user-set only — never set one yourself. "
+    WOULD_BLOCK+="⛔ COMMIT WILL BLOCK — high-risk edits since the last commit, no strong adversarial reviewer. Fix: \`rolepod-cross-family --kind review --brief <file> --attach <diff>\` (different CLI, read-only, anchors the pass). An internal reviewer counts only after the runner reports the pool failed or empty → then dispatch rolepod:universal-reviewer or rolepod:security-engineer via the Agent tool (qa-tester is the test floor, not the review). Reviewer impossible (user forbade agents / no subagents) → SURFACE it; fallback = Lead cold self-review recorded as a LIMITATION. Env bypass is user-set only. "
   fi
 fi
 
@@ -188,7 +188,7 @@ if [ -n "$HIGH_RISK" ]; then
     XFAM_POOL=$(bash "$XFAM_RUNNER" --lead "${SELF_CLI:-claude}" --pool-names 2>/dev/null | tr '\n' ' ' | sed 's/ *$//')
     if [ -n "$XFAM_POOL" ]; then
       REVIEWER_LIST="$REVIEWER_LIST + cross-family runner → $XFAM_POOL (\`rolepod-cross-family --kind review --brief <file> --attach <diff>\` — one command: default model, read-only, anchored)"
-      [ -n "$MONEY_RISK" ] && REVIEWER_LIST="$REVIEWER_LIST + rolepod:security-engineer — money / auth surface needs BOTH passes (external + internal strong, same dispatch)"
+      [ -n "$MONEY_RISK" ] && REVIEWER_LIST="$REVIEWER_LIST + rolepod:security-engineer — money / auth surface needs BOTH passes (external + internal strong)"
     else
       REVIEWER_LIST="$REVIEWER_LIST + rolepod:universal-reviewer / rolepod:security-engineer (cross-family is opt-in and not enabled here — \`rolepod-cross-family --pool\` shows candidates; ask the user before enabling)"
     fi
@@ -199,7 +199,7 @@ if [ -n "$HIGH_RISK" ]; then
       REVIEWER_LIST="$REVIEWER_LIST + Antigravity (\`agy -p\`, breadth/cross-file)"
     fi
   fi
-  CAREFUL_BANNER="${WOULD_BLOCK}⚠️  AUTO-CAREFUL MODE (high-risk path; since last commit: $HIGH_RISK_EDITS high-risk edits / $TEST_EDITS tests / $REVIEWERS reviewers, $STRONG_REVIEWERS strong). MANDATORY before commit: (1) test file exists or is being written this session, (2) reviewers dispatched — use ≥2 when available (${REVIEWER_LIST}; security-engineer for auth/billing/crypto). Exclude this session's own CLI — the adversarial pass runs in a DIFFERENT CLI on its own default model. (3) S1-S5 + T1-T6 checklist (finish-work §1) run before commit. Reviewer path blocked by a user instruction? Surface it — fallback: Lead cold self-review + limitation note. Bypass envs are user-set only, never model-set. "
+  CAREFUL_BANNER="${WOULD_BLOCK}⚠️  AUTO-CAREFUL (high-risk path; since last commit: $HIGH_RISK_EDITS high-risk edits / $TEST_EDITS tests / $REVIEWERS reviewers, $STRONG_REVIEWERS strong). Before commit: (1) a test file exists or is written this session; (2) reviewers dispatched — ≥2 when available (${REVIEWER_LIST}; security-engineer for auth/billing/crypto), in a DIFFERENT CLI than this one; (3) S1-S5 + T1-T6 (finish-work §1). Reviewer path blocked by the user → say so; fallback = Lead cold self-review + limitation note. Env bypass is user-set only. "
 fi
 
 # Emit reminder ONLY when schema-bound or high-risk — no generic Q1-Q4 nag.

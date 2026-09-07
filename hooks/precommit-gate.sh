@@ -135,7 +135,7 @@ FILES_CHANGED=$(echo "$DIFF_STAT" | wc -l | tr -d ' ')
 _pd_root="$(git rev-parse --show-toplevel 2>/dev/null)"
 PRIVATE_DOCS=$( { git diff --cached --name-only 2>/dev/null | grep -E '^docs/rolepod/' || true; } | head -5 | tr '\n' ' ' | sed 's/ *$//')
 if [ -n "$PRIVATE_DOCS" ] && [ ! -f "$_pd_root/.rolepod/docs-tracked" ]; then
-  ROLEPOD_HOOK_MSG="precommit-gate BLOCKED — private working docs are staged: $PRIVATE_DOCS. docs/rolepod/ (specs / plans / cohesion contracts / maps / hand-offs) is confidential by default and never committed. Unstage them (git restore --staged docs/rolepod) and make sure .gitignore lists docs/rolepod/ (the skills add it on first save). If this repository deliberately tracks them, create .rolepod/docs-tracked and commit again." python3 -c "
+  ROLEPOD_HOOK_MSG="precommit-gate BLOCKED — private working docs staged: $PRIVATE_DOCS. docs/rolepod/ is never committed. Fix: git restore --staged docs/rolepod; make sure .gitignore lists docs/rolepod/. Repo tracks them on purpose → create .rolepod/docs-tracked, commit again." python3 -c "
 import json, os
 print(json.dumps({'hookSpecificOutput': {'hookEventName': 'PreToolUse', 'permissionDecision': 'deny', 'permissionDecisionReason': os.environ.get('ROLEPOD_HOOK_MSG', '')}}))
 " 2>/dev/null || echo '{}'
@@ -375,7 +375,7 @@ fi
 if [ -n "$MONEY_RISK" ] && [ -n "$XFAM_LEAD" ] && [ -f "$XFAM_RUNNER" ] && [ "${XREV:-0}" -gt 0 ] && [ "$INTERNAL_STRONG" -eq 0 ]; then
   XFAM_POOL=$(bash "$XFAM_RUNNER" --lead "$XFAM_LEAD" --pool-names 2>/dev/null | tr '\n' ' ' | sed 's/ *$//')
   if [ -n "$XFAM_POOL" ]; then
-    XFAM_HELD="money / auth surface ($MONEY_RISK): the cross-family pass is anchored but no INTERNAL strong reviewer ran since the last commit — this surface needs BOTH: dispatch rolepod:security-engineer (or rolepod:universal-reviewer) via the Agent tool on the same frozen diff (project-context depth; the external gave decorrelation). Migration / permission / token paths need only the external. "
+    XFAM_HELD="money / auth surface ($MONEY_RISK): external pass anchored, no INTERNAL strong reviewer since the last commit — this surface needs BOTH. Fix: dispatch rolepod:security-engineer (or rolepod:universal-reviewer) via the Agent tool on the same diff. Migration / permission / token paths need only the external. "
     STRONG_REVIEWERS=0
   fi
 fi
@@ -417,7 +417,13 @@ print(n)
 ' "$SINCE_EPOCH" "$EV_ROOT/phase-log.jsonl" 2>/dev/null || echo 0)
   fi
   if [ -n "$XFAM_POOL" ] && [ "${XFAM_FAILS:-0}" -eq 0 ] 2>/dev/null; then
-    XFAM_HELD="cross-family pool is usable ($XFAM_POOL) but no anchored external pass and no recorded external failure since the last commit — the $STRONG_REVIEWERS internal strong reviewer dispatch(es) do NOT clear a high-risk diff while a different CLI is available. ${XFAM_RUNNING:+A detached external job is ALREADY RUNNING: $XFAM_RUNNING — wait for it (rolepod-cross-family --collect <job-id>) then retry the commit; do not start another. }${XFAM_RUNNING:-Run: rolepod-cross-family --kind review --brief <brief.md> --attach <diff> --detach (or scripts/cross-family.sh in the plugin tree; add --lead $XFAM_LEAD outside a hook); it anchors the pass itself — --collect <job-id> waits for the receipt.} Every member failing (exit 3) or an empty pool (exit 4) is logged and then the internal reviewer counts.${MONEY_RISK:+ Money / auth surface: keep the internal strong reviewer too — this surface needs BOTH passes.} "
+    XFAM_HELD="cross-family pool usable ($XFAM_POOL), no anchored external pass since the last commit — $STRONG_REVIEWERS internal reviewer(s) do NOT clear a high-risk diff while a different CLI is available. "
+    if [ -n "$XFAM_RUNNING" ]; then
+      XFAM_HELD+="A detached job is ALREADY RUNNING: $XFAM_RUNNING — rolepod-cross-family --collect <job-id>, then retry; do not start another. "
+    else
+      XFAM_HELD+="Fix: rolepod-cross-family --kind review --brief <brief.md> --attach <diff> --detach (add --lead $XFAM_LEAD outside a hook); --collect <job-id> waits. "
+    fi
+    XFAM_HELD+="Pool failed or empty (logged) → the internal reviewer counts.${MONEY_RISK:+ Money / auth needs BOTH passes — keep the internal strong reviewer too.} "
     STRONG_REVIEWERS=0
   fi
 fi
@@ -446,10 +452,10 @@ fi
 [ -n "$XFAM_HELD" ] && REASON+="SATELLITE-FIRST: $XFAM_HELD"
 [ -z "$XFAM_HELD" ] && [ -n "$XFAM_RUNNING" ] && [ -n "$HIGH_RISK" ] && [ "$STRONG_REVIEWERS" -eq 0 ] && REASON+="A detached cross-family job is still running: $XFAM_RUNNING — rolepod-cross-family --collect <job-id>, then retry. "
 if [ -n "$HIGH_RISK" ] && [ "$STRONG_REVIEWERS" -eq 0 ] && [ -z "$XFAM_HELD" ]; then
-  REASON+="NO STRONG ADVERSARIAL REVIEWER since the last commit — a high-risk diff clears ONLY on: a cross-family external strong review ANCHORED per review-code (raw output saved under .rolepod/evidence/external/ + the reviewer:external phase-log line — satellite-first, preferred); a security-engineer or universal-reviewer dispatch (Agent tool, a Workflow agent() call with that agentType, or on CLIs without transcript parsing a FINISHED reviewer subagent recorded by the SubagentStop dispatch log — wait for the reviewer to complete before retrying; the dispatch hook lifts Agent-tool ones to strong class whatever the Lead runs — do not pass a balanced model on them). Test edits and qa-tester are the test floor, not the review (a green suite has already shipped money bugs). "
+  REASON+="NO STRONG ADVERSARIAL REVIEWER since the last commit. A high-risk diff clears on ONE of: (a) a cross-family external strong review, anchored per review-code (raw output under .rolepod/evidence/external/ + the reviewer:external log line) — preferred; (b) a security-engineer or universal-reviewer dispatch (Agent tool or Workflow agentType) that has FINISHED. The hook lifts Agent-tool ones to strong — do not pass a balanced model. Test edits / qa-tester are the test floor, not the review. "
 fi
-REASON+="Run gates explicitly: S1-S5 (simplicity) + T1-T6 (tests) + F1-F5 (failure-mode) — checklists: finish-work §1, check-work §6. "
-REASON+="This commit auto-passes once evidence exists SINCE THE LAST COMMIT — HIGH-RISK diff: dispatch security-engineer or universal-reviewer; other blocks: write the failing test or dispatch a reviewer — then rerun the SAME git commit. No bypass marker, no env prefix."
+REASON+="Run S1-S5 + T1-T6 + F1-F5 (finish-work §1, check-work §6). "
+REASON+="Auto-passes once evidence exists SINCE THE LAST COMMIT: high-risk → dispatch security-engineer or universal-reviewer; other blocks → write the failing test or dispatch a reviewer; then rerun the SAME git commit. No bypass marker, no env prefix."
 
 # Decide: HARD block vs SOFT warn
 HARD_BLOCK=0
@@ -513,7 +519,7 @@ sys.stdout.write(' '.join(os.environ.get('ROLEPOD_BYPASS_CMD', '').split())[:200
     >> "$HOME/.rolepod/gate-bypass.log" 2>/dev/null || true
   NOTE="precommit-gate auto-passed on session evidence: $TEST_EDITS test edits / $REVIEWERS reviewer dispatches / $STRONG_REVIEWERS strong"
   [ -n "$HIGH_RISK" ] && NOTE+=" (HIGH-RISK path: $HIGH_RISK)"
-  NOTE+=" ($SINCE_HUMAN). Evidence is per-window, not per-line — confirm S1-S5 / T1-T6 (finish-work §1) / F1-F5 (check-work §6) cover THIS change."
+  NOTE+=" ($SINCE_HUMAN). Evidence is per-window — confirm S1-S5 / T1-T6 / F1-F5 (finish-work §1, check-work §6) cover THIS change."
   [ -n "$LINT_WARN" ] && NOTE+=" | $LINT_WARN"
   ROLEPOD_HOOK_MSG="$NOTE" python3 -c "
 import json, os
@@ -542,10 +548,8 @@ print(json.dumps({
 fi
 
 # SOFT warn path — emit reminder, exit 0
-WARN="precommit-gate SOFT warn. "
-WARN+="Diff: $FILES_CHANGED files / $LINES_CHANGED lines / $LOGIC_COUNT logic lines (normal code, no high-risk path). "
-WARN+="Recommend running S1-S5 (simplicity) + T1-T6 (tests) + F1-F5 (failure-mode) before commit — checklists: finish-work §1, check-work §6. "
-WARN+="Set ROLEPOD_GATES_HARD=1 to enforce blocking on normal diffs."
+WARN="precommit-gate SOFT: $FILES_CHANGED files / $LINES_CHANGED lines / $LOGIC_COUNT logic, no high-risk path. "
+WARN+="Gates S1-S5 / T1-T6 / F1-F5 (finish-work §1, check-work §6) are advisory here; ROLEPOD_GATES_HARD=1 enforces."
 [ -n "$LINT_WARN" ] && WARN+=" | $LINT_WARN"
 
 ROLEPOD_HOOK_MSG="$WARN" python3 -c "

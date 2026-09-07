@@ -314,9 +314,9 @@ if tool == "Workflow":
     eff = (" (%d effort: overrides — effort is depth, not tier)" % n_effort) if n_effort else ""
     soft = os.environ.get("ROLEPOD_GATES_SOFT", "0") == "1"
     costly = cls == "strong" or (bool(lead) and cls == "unknown")
-    why = ("strong class" if cls == "strong" else "unknown family — treated as strong-class for cost")
-    TAIL = (" Bypass envs are user-set only (ROLEPOD_GATES_SOFT=1 degrades this to a warning); an "
-            "intentional exception is stated IN the script: `// tier-reason: <why>`.")
+    why = ("strong class" if cls == "strong" else "unknown family, priced as strong")
+    TAIL = (" Exception: `// tier-reason: <why>` in the script. Env bypass is user-set only "
+            "(ROLEPOD_GATES_SOFT=1 = warn).")
 
     verdict = ""   # "" = pass; else a deny reason key
     reason_txt = ""
@@ -324,51 +324,38 @@ if tool == "Workflow":
         if not tiers:
             verdict = "no-tier"
             reason_txt = (
-                "⛔ rolepod fleet-tier gate: this Workflow fans out %d agent() call(s) with ZERO "
-                "tier-pinning model:/agentType: overrides%s (a platform agentType such as "
-                "general-purpose or Explore pins nothing — it inherits the Lead) while the "
-                "Lead is %s (%s) — every agent would run "
-                "at the Lead\x27s price (measured: one project burned 5,196 agent turns at "
-                "opus/fable in a day this way; a 50-agent fleet ≈ 5M tokens). Re-submit the SAME "
-                "script with a tier PER STAGE (not one model pasted on every stage): sweep/read → "
-                "model:\x27haiku\x27, build/verify → model:\x27sonnet\x27 (or agentType:\x27rolepod:<role>\x27 "
-                "— writers are pinned balanced), judge/refute/rank/review → model:\x27sonnet\x27 for routine "
-                "work, opus/inherit only when the fleet touches money/auth/security/migrations."
+                "⛔ fleet-tier: %d agent() call(s), no model:/agentType: tier%s — general-purpose/Explore "
+                "pin nothing; every agent inherits the Lead %s (%s). Fix: re-submit with a tier PER STAGE — "
+                "sweep/read → model:\x27haiku\x27 · build/verify → model:\x27sonnet\x27 or "
+                "agentType:\x27rolepod:<role>\x27 · judge → model:\x27sonnet\x27, opus only for "
+                "money/auth/security/migrations."
                 % (n_calls, eff, lead or "unknown model", why)) + TAIL
         elif tiers == {"balanced"} and len(stages) >= 2:
             verdict = "single-tier"
             reason_txt = (
-                "⛔ rolepod fleet-tier gate: %d stage(s) — %s — all pinned to ONE balanced tier "
-                "under a %s Lead (%s). Tier PER STAGE means the tiers DIFFER by the work: "
-                "sweep/scan/read → model:\x27haiku\x27, build/verify → model:\x27sonnet\x27, "
-                "judge/refute/rank/review/synthesis → model:\x27sonnet\x27 for routine work%s. "
-                "Measured: this pattern (sonnet pasted on every stage) is how "
-                "the last fleets passed this gate without applying the policy. Re-submit with the "
-                "tiers spread; every stage genuinely balanced work? state it: "
-                "`// tier-reason: <why>`." % (len(stages), ", ".join(sorted(stages))[:200], why, lead or "unknown model",
-                                              (", opus/inherit here because this fleet touches money/auth/security/migrations" if risky else ""))) + TAIL
+                "⛔ fleet-tier: %d stage(s) — %s — every one pinned to the same balanced tier under a %s "
+                "Lead (%s). Tier PER STAGE means the tiers DIFFER: sweep/read → model:\x27haiku\x27 · "
+                "build/verify → model:\x27sonnet\x27 · judge → model:\x27sonnet\x27%s. Fix: re-submit with "
+                "the tiers spread; every stage truly balanced work → `// tier-reason: <why>`."
+                % (len(stages), ", ".join(sorted(stages))[:200], why, lead or "unknown model",
+                   (", opus here because this fleet touches money/auth/security/migrations" if risky else ""))) + TAIL
         elif tiers == {"strong"} and n_calls >= 2 and [x for x in stages if not JUDGE_RX.search(x)]:
             verdict = "all-strong"
             nonjudge = sorted(x for x in stages if not JUDGE_RX.search(x))
             reason_txt = (
-                "\u26d4 rolepod fleet-tier gate: %d agent() call(s) ALL pinned strong-class under a %s "
-                "Lead (%s) while stage(s) %s are not judgment work \u2014 research/sweep/read and build "
-                "run at strong price for cheap-tier output (observed: one research phase alone burned "
-                "575k tokens at opus this way). Re-submit with the tiers spread by the work: "
-                "research/sweep/read \u2192 model:\x27haiku\x27, build \u2192 model:\x27sonnet\x27; keep "
-                "judge/refute/rank/review at strong%s. Every stage genuinely needs strong reasoning? "
-                "state it: `// tier-reason: <why>`." % (
+                "\u26d4 fleet-tier: %d agent() call(s) all pinned strong under a %s Lead (%s) while "
+                "stage(s) %s are not judgment work. Fix: sweep/read \u2192 model:\x27haiku\x27 · build "
+                "\u2192 model:\x27sonnet\x27 · keep judge/refute/rank/review strong%s. Every stage truly "
+                "needs strong \u2192 `// tier-reason: <why>`." % (
                     n_calls, why, lead or "unknown model", ", ".join(nonjudge)[:160],
-                    (" (this fleet touches money/auth/security \u2014 the judge floor stays)" if risky else " only when the fleet is high-risk"))) + TAIL
+                    (" (high-risk fleet: the judge floor stays)" if risky else " only when the fleet is high-risk"))) + TAIL
         elif risky and judge_stages and not ((tiers & {"strong", "dynamic"}) or role_strong):
             verdict = "no-strong-judge"
             reason_txt = (
-                "⛔ rolepod fleet-tier gate: judgment stage(s) %s run at %s under a %s Lead (%s) — "
-                "a strong-class Lead pinning its own judge/verify/rank stage BELOW itself is the "
-                "silent downgrade the tier policy forbids on a fleet that touches money/auth/security/"
-                "migrations (R4 adversarial floor). Give the judgment stage model:\x27opus\x27 or "
-                "leave it inherit; keep sweep haiku / build sonnet. Not a judgment stage, or not "
-                "high-risk despite the words? state it: `// tier-reason: <why>`." % (
+                "⛔ fleet-tier: judgment stage(s) %s pinned %s under a %s Lead (%s) on a high-risk fleet "
+                "(money/auth/security/migrations) — a silent downgrade of the judge below the Lead. "
+                "Fix: judgment stage → model:\x27opus\x27 or leave it inherit; sweep haiku, build sonnet. "
+                "Not a judgment stage / not high-risk → `// tier-reason: <why>`." % (
                     ", ".join(judge_stages)[:160], "+".join(sorted(tiers)), why, lead or "unknown model")) + TAIL
     elif lead and cls in ss.LOW_CLASSES and not stated and spread:
         # v2.74.0 — the mirror trap. Under a low Lead a strong pin belongs on
@@ -377,13 +364,11 @@ if tool == "Workflow":
         # pin is always possible).
         verdict = "strong-spread"
         reason_txt = (
-            "\u26d4 rolepod fleet-tier gate: strong-class model pinned on %s under a %s-class Lead (%s) "
-            "\u2014 strong belongs on ONE judgment slot, never on a fan-out or on every stage: a per-item "
-            "verify/sweep at opus multiplies the price by the item count (a 30-agent fleet \u2248 2.7M "
-            "tokens at strong). Keep the fan-out at model:\x27sonnet\x27 (sweep haiku); put model:\x27opus\x27 "
-            "on exactly one call \u2014 the security-engineer / universal-reviewer review, or one final "
-            "adjudicator that reads the verdicts. This deny never yields. Every stage genuinely needs "
-            "strong reasoning? state it: `// tier-reason: <why>`." % (spread, cls, lead)) + TAIL
+            "\u26d4 fleet-tier: strong model pinned on %s under a %s-class Lead (%s) \u2014 strong belongs "
+            "on ONE judgment slot, never a fan-out or every stage. Fix: fan-out at model:\x27sonnet\x27 "
+            "(sweep haiku); model:\x27opus\x27 on exactly one call \u2014 the security-engineer / "
+            "universal-reviewer review, or one final adjudicator. This deny never yields. Every stage "
+            "truly needs strong \u2192 `// tier-reason: <why>`." % (spread, cls, lead)) + TAIL
     elif lead and not stated and risky and judge_stages and not (tiers & {"strong", "dynamic"}):
         # v2.72.0 — the inverse trap. Under a balanced/cheap Lead, inherit (or an
         # explicit balanced pin) runs the R4 judge stage BELOW the floor with no
@@ -393,16 +378,12 @@ if tool == "Workflow":
         # fan-out paste the strong-spread branch above now denies).
         verdict = "no-strong-judge"
         reason_txt = (
-            "\u26d4 rolepod fleet-tier gate: judgment stage(s) %s carry no strong tier \u2014 fleet pins %s "
-            "\u2014 under a %s-class Lead (%s) on a fleet that touches money/auth/security/migrations. Inherit "
-            "under a non-strong Lead silently DOWNGRADES the R4 judge below the floor, and agentType: alone "
-            "does not lift it (strong roles render inherit; only Agent-tool calls get the hook floor). The "
-            "tier follows the work, not the Lead \u2014 fix = ONE strong slot, not a stage-wide paste: "
-            "model:\x27opus\x27 on the single security-engineer / universal-reviewer call, or on one final "
-            "adjudicator that reads the verdicts (not the repo); reviewer opts built from a data array \u2192 "
-            "thread it (`agentType: r.agentType, model: r.model`). Keep every fan-out (per-finding verify, "
-            "per-file sweep) at sonnet/haiku \u2014 opus on a fan-out is denied (strong-spread). Not a "
-            "judgment stage, or not high-risk despite the words? state it: `// tier-reason: <why>`." % (
+            "\u26d4 fleet-tier: judgment stage(s) %s carry no strong tier \u2014 fleet pins %s \u2014 under a "
+            "%s-class Lead (%s), high-risk fleet (money/auth/security/migrations). Inherit here downgrades "
+            "the judge; agentType: alone does not lift it; the tier follows the work, not the Lead. Fix: ONE "
+            "strong slot \u2014 model:\x27opus\x27 on the single security-engineer / universal-reviewer call "
+            "or one final adjudicator (opts from a data array \u2192 thread `model: r.model`); every fan-out "
+            "stays sonnet/haiku. Not a judgment stage / not high-risk \u2192 `// tier-reason: <why>`." % (
                 ", ".join(judge_stages)[:160], "+".join(sorted(tiers)) or "nothing (every stage inherits %s)" % cls, cls, lead)) + TAIL
     if verdict:
         if soft:
@@ -410,10 +391,9 @@ if tool == "Workflow":
         elif verdict != "strong-spread" and _recent_denies(ti, script) >= 2:
             # Loop valve: third strike passes, loudly, and is logged as yielded.
             _log_gate(ti, script, lead, cls, n_calls, verdict, sorted(tiers), sorted(stages), action="yield")
-            ctx("⚖ rolepod fleet-tier gate YIELDED after 2 denies of this fleet in 30 min — "
-                "proceeding as submitted (%s). The tier spread is still expected: sweep haiku, "
-                "build/verify sonnet, judge/rank/review opus or inherit; or state "
-                "`// tier-reason: <why>`. This yield is logged for make stats." % verdict)
+            ctx("⚖ fleet-tier YIELDED after 2 denies of this fleet in 30 min — proceeding as submitted "
+                "(%s). Still expected: sweep haiku · build/verify sonnet · judge opus/inherit, or "
+                "`// tier-reason: <why>`. Logged for make stats." % verdict)
         else:
             _log_gate(ti, script, lead, cls, n_calls, verdict, sorted(tiers), sorted(stages))
             emit({"hookSpecificOutput": {
@@ -423,21 +403,18 @@ if tool == "Workflow":
     if tiers:
         sys.exit(0)   # per-stage choice made (or accepted with a reason) — silent
     if cls in ss.LOW_CLASSES:
-        ctx("⚖ rolepod tier-check: this Workflow script sets NO per-agent model%s — every "
-            "agent() inherits the Lead: %s. Build stages are fine at that tier; sweep/research/"
-            "read/map stages are NOT \u2014 give those agentType:\x27rolepod:scout\x27 or "
-            "model:\x27haiku\x27 (cheap is cheaper than the Lead even here). Do NOT rely on an "
-            "in-script review/judge stage as the strong pass — dispatch rolepod:universal-reviewer "
-            "/ rolepod:security-engineer via the Agent tool before commit (the hook runs them at "
-            "strong class; the commit gate requires it on high-risk). In-script judge stages: "
-            "sonnet for routine work, model:\x27opus\x27 when the fleet touches money/auth/security.%s" % (eff, lead_txt, OFF))
+        ctx("⚖ tier-check: no per-agent model%s — every agent() inherits the Lead: %s. Build stages "
+            "are fine at that tier; sweep/research/read/map are NOT \u2014 give those "
+            "agentType:\x27rolepod:scout\x27 or model:\x27haiku\x27. An in-script judge stage is NOT the "
+            "strong review pass \u2014 dispatch rolepod:universal-reviewer / rolepod:security-engineer via "
+            "the Agent tool before commit (the hook runs them strong). In-script judge: sonnet routine, "
+            "model:\x27opus\x27 on money/auth/security.%s" % (eff, lead_txt, OFF))
     else:
         note = (" Stated reason accepted: \x27%s\x27." % stated) if stated else ""
-        ctx("⚖ rolepod tier-check: this Workflow script sets NO per-agent model%s — every "
-            "agent() inherits the Lead: %s — the WHOLE fleet (%d agent() calls) runs at the "
-            "Lead\x27s cost.%s Tier per stage: sweep/read = model:\x27haiku\x27, build = "
-            "model:\x27sonnet\x27 (or agentType:\x27rolepod:<role>\x27 — writers are pinned "
-            "balanced), verify/judge = sonnet for routine work, strong on money/auth/security.%s" % (eff, lead_txt, n_calls, note, OFF))
+        ctx("⚖ tier-check: no per-agent model%s — every agent() inherits the Lead: %s — the WHOLE "
+            "fleet (%d agent() calls) at the Lead\x27s cost.%s Tier per stage: sweep/read → "
+            "model:\x27haiku\x27 · build → model:\x27sonnet\x27 or agentType:\x27rolepod:<role>\x27 · "
+            "verify/judge → sonnet, strong on money/auth/security.%s" % (eff, lead_txt, n_calls, note, OFF))
 
 if tool in ("Agent", "Task"):
     atype_raw = (ti.get("subagent_type") or "general-purpose").split()[0]
@@ -453,12 +430,11 @@ if tool in ("Agent", "Task"):
     loop_note = ""
     if rounds == 2:
         ctxk = ss.last_context_tokens(d.get("transcript_path") or "") // 1000
-        loop_note = ("🔁 rolepod coordinator-check: this is the Lead\x27s 3rd sequential Agent "
-                     "round-trip this turn — every dispatch→wait→dispatch re-reads the whole "
-                     "context (%s) at the Lead\x27s price. Dependent multi-step fan-out belongs "
-                     "in a Workflow script (pipeline / parallel stages run OUTSIDE the Lead; the "
-                     "Lead reads one result). Keep the Agent tool for one-off or truly parallel "
-                     "single-message dispatches. " % (("~%dk tokens" % ctxk) if ctxk else "all of it"))
+        loop_note = ("🔁 coordinator-check: 3rd sequential Agent round-trip this turn — each "
+                     "dispatch→wait→dispatch re-reads the whole context (%s) at the Lead\x27s price. "
+                     "Fix: dependent multi-step fan-out → a Workflow script (stages run outside the "
+                     "Lead); keep the Agent tool for one-off or parallel single-message dispatches. "
+                     % (("~%dk tokens" % ctxk) if ctxk else "all of it"))
     if atype in ss.STRONG_ROLE_AGENTS:
         if not model and cls in ss.LOW_CLASSES:
             new_input = dict(ti)
@@ -474,19 +450,17 @@ if tool in ("Agent", "Task"):
                                  "the Lead\x27s class)" % (atype, ss.STRONG_ALIAS, lead_txt),
             })
         if model and ss.model_class(model) in ss.LOW_CLASSES:
-            ctx(loop_note + "⚖ rolepod tier-check: %s dispatched with model=%s — an EXPLICIT downgrade of a "
-                "strong review role. The commit gate does not count it as the strong pass on a "
-                "high-risk diff. Drop the model field (the hook lifts it) or pass "
-                "model:\x27opus\x27.%s" % (atype, model, OFF))
+            ctx(loop_note + "⚖ tier-check: %s dispatched with model=%s — an EXPLICIT downgrade of a strong "
+                "review role; the commit gate will not count it as the strong pass. Fix: drop the model "
+                "field (the hook lifts it) or pass model:\x27opus\x27.%s" % (atype, model, OFF))
         if loop_note:
             ctx(loop_note.rstrip() + OFF)
         sys.exit(0)
     # rolepod:scout is pinned cheap by its frontmatter (verified on disk) — no nudge.
     # Only the platform sweep agents (Explore / general-purpose) truly inherit.
     if not model and re.search(r"(explore|general-purpose)", atype, re.I):
-        ctx(loop_note + "⚖ rolepod tier-check: sweep-type agent (%s) dispatched with no model override — it "
-            "inherits the Lead: %s. Sweep/read work fits the cheap class: pass model:\x27haiku\x27, "
-            "or use rolepod:scout (pinned cheap). Keep inherit only with a stated reason.%s"
+        ctx(loop_note + "⚖ tier-check: sweep agent (%s) with no model — inherits the Lead: %s. Fix: "
+            "model:\x27haiku\x27 or rolepod:scout (pinned cheap); keep inherit only with a stated reason.%s"
             % (atype, lead_txt, OFF))
     if loop_note:
         ctx(loop_note.rstrip() + OFF)

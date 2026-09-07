@@ -145,14 +145,12 @@ rel = os.environ.get("REL", "")
 sug = os.environ.get("SUGGEST_PATH", "")
 br = os.environ.get("BRANCH", "")
 reason = (
-    "BLOCKED: \"" + rel + "\" is being edited by a concurrent Claude session "
-    "in this shared worktree — writing it now would stomp their changes. "
-    "Isolate FIRST, then retry the edit:\n"
-    "  • Prefer the EnterWorktree tool (native, auto-cleanup), OR\n"
+    "BLOCKED: \"" + rel + "\" is being edited by a concurrent session in this "
+    "shared worktree — writing now would stomp their changes. Isolate first, then retry:\n"
+    "  • EnterWorktree tool (native), OR\n"
     "  • git worktree add " + sug + " " + br + " && cd " + sug + "\n"
-    "If this session is intentionally shared (read-only review, or you have "
-    "coordinated who owns this file), ask the USER to set "
-    "ROLEPOD_ALLOW_SHARED_WORKTREE=1 — bypass envs are user-set, never model-set."
+    "Intentionally shared (read-only review / coordinated owner) → ask the USER to set "
+    "ROLEPOD_ALLOW_SHARED_WORKTREE=1; env bypass is user-set only."
 )
 print(json.dumps({
     "hookSpecificOutput": {

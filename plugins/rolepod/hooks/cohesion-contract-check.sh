@@ -134,9 +134,9 @@ print('no')
 [ "$CONTRACT_PRESENT" = "yes" ] && exit 0
 
 # No contract + parallel Agent spawn detected → block (or warn in soft mode).
-REASON="cohesion-contract gate: about to spawn parallel Agent ('$SUBAGENT') with $RECENT_AGENTS recent Agent spawn(s) in session and NO contract artifact written. "
-REASON+="The Core 10 \`write-plan\` skill requires a cohesion contract BEFORE multi-agent fan-out — write contract.md (or SPEC.md / cohesion.md / specs/<name>.md / contracts/<name>.md) defining: shared interfaces, RED tests, integration points, who owns each path. Then re-spawn. "
-REASON+="Single-domain / read-only spawn that truly needs no contract? Ask the USER to set ROLEPOD_NO_CONTRACT=1 — bypass envs are user-set, never model-set. Otherwise write the contract first."
+REASON="cohesion-contract gate: parallel Agent ('$SUBAGENT') with $RECENT_AGENTS recent spawn(s) and NO cohesion contract. "
+REASON+="Fix: write contract.md (or SPEC.md / cohesion.md / specs/<name>.md / contracts/<name>.md) — shared interfaces, RED tests, integration points, who owns each path — then re-spawn. "
+REASON+="Read-only / single-domain spawn → ask the USER to set ROLEPOD_NO_CONTRACT=1; env bypass is user-set only."
 
 if [ "$SOFT_MODE" -eq 1 ]; then
   # Soft mode: emit additionalContext, don't block. Env-pass REASON so a crafted

@@ -59,7 +59,7 @@ if [ -f "$SESSION_STATE" ]; then
     if [ "$LAST" != "$BUCKET" ]; then
       [ -n "$SID" ] && { printf '%s' "$BUCKET" > "$STATE_DIR/$SID" 2>/dev/null || true; }
       CTX_K=$((CTX / 1000))
-      CTX_MSG="🧠 rolepod context-check: this session's last turn carried ${CTX_K}k tokens of context — every turn re-reads ALL of it before doing anything (cache read is not free; past 200k long-context pricing may apply). Before sweeping or reading many files yourself, dispatch a rolepod:scout (cheap class) and read only its report; when the current task is done, mention ONCE to the user that /compact or a fresh session would cut per-turn cost 3-5× (skill: manage-context) — do not repeat it every turn. "
+      CTX_MSG="🧠 context-check: last turn carried ${CTX_K}k tokens of context — every turn re-reads all of it. Sweeps / many-file reads → dispatch rolepod:scout and read its report. When the task is done, tell the user ONCE that /compact or a fresh session cuts per-turn cost 3-5× (manage-context); never repeat it. "
     fi
   fi
 fi
@@ -83,7 +83,7 @@ CLAIM_RX='(gap|gaps|root cause|diagnos|analy[sz]|audit|how does|how do|how is|ho
 
 MSG=""
 if printf '%s' "$PROMPT" | grep -qiE "$CLAIM_RX"; then
-  MSG="🔍 rolepod claim-check: this asks for an analysis/diagnosis/explanation/status about real code or state. Apply Verify-first: READ the primary source (Read / Grep / run the command) and cite file:line — never state it from memory. (off: ROLEPOD_NUDGE_OFF=1)"
+  MSG="🔍 claim-check: this asks for analysis/diagnosis/status of real code or state. Verify-first: READ the primary source (Read / Grep / run it) and cite file:line — never from memory. (off: ROLEPOD_NUDGE_OFF=1)"
 fi
 
 if [ -n "$MSG$CTX_MSG" ]; then

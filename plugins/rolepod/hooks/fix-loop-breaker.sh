@@ -94,15 +94,12 @@ if n < 3:
     sys.exit(0)
 
 msg = (
-    "LOOP BREAKER: this exact command has now failed %d consecutive times "
-    "with no passing run in between. STOP editing-and-retrying — a blind "
-    "next attempt is not allowed. Apply debug-issue Iron Rule #5: (1) stop "
-    "fixing, (2) write the hypothesis ledger — what you believed, what each "
-    "attempt changed, why each failed, (3) get ONE cross-family advisor "
-    "opinion (`rolepod-cross-family --kind consult --brief <ledger.md>` — "
-    "first usable different-family CLI, read-only, default model) or escalate "
-    "to the user with the ledger. An identical failure twice means the "
-    "mental model of the bug is wrong — more of the same fix cannot fix it."
+    "LOOP BREAKER: this exact command failed %d times in a row, no pass between. "
+    "STOP editing-and-retrying. Do: (1) stop fixing; (2) write the hypothesis "
+    "ledger — what you believed, what each attempt changed, why it failed; (3) ONE "
+    "cross-family consult (`rolepod-cross-family --kind consult --brief "
+    "<ledger.md>`) or escalate to the user with the ledger. Same failure twice = "
+    "wrong model of the bug."
     % n
 )
 print(json.dumps({"hookSpecificOutput": {

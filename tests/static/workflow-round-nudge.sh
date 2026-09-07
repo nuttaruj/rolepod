@@ -60,12 +60,14 @@ run "unnamed workflow script never nudges (repeat 3)" "$(mkinput '')" silent
 AGENT_IN=$(printf '{"session_id":"%s","tool_name":"Agent","tool_input":{"subagent_type":"general-purpose"}}' "$SID")
 run "Agent dispatch never nudges" "$AGENT_IN" silent
 
-# Nudge text must point at the clean-room cross-family consult.
+# Nudge text must point at the cross-family consult command. The runner sets
+# ROLEPOD_BRAIN_SILENT=1 itself (scripts/cross-family.sh) — the Lead never
+# has to, so the message names the command, not the env (v2.92.0 lean text).
 OUT=$(printf '%s' "$(mkinput coach-fix)" | bash "$HOOK" 2>/dev/null)
-if echo "$OUT" | grep -q ROLEPOD_BRAIN_SILENT; then
-  echo "  ✓ nudge names the clean-room consult invocation"
+if echo "$OUT" | grep -q 'rolepod-cross-family --kind consult'; then
+  echo "  ✓ nudge names the cross-family consult command"
 else
-  echo "  ✗ nudge is missing the ROLEPOD_BRAIN_SILENT consult pointer"
+  echo "  ✗ nudge is missing the rolepod-cross-family --kind consult pointer"
   fail=$((fail+1))
 fi
 
