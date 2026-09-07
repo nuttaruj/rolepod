@@ -604,12 +604,12 @@ out=$(rn 'fix the login button')
 echo "$out" | grep -q 'commission with no tier' && echo "  ✓ route nudge: commission + no route line ever → nudge" || { echo "  ✗ route nudge missing: ${out:0:120}"; fail=$((fail+1)); }
 out=$(rn 'why does login fail')
 echo "$out" | grep -q 'commission with no tier' && { echo "  ✗ route nudge fired on a claim-shaped question"; fail=$((fail+1)); } || echo "  ✓ route nudge: analysis question → no route line (claim-check owns it)"
-out=$(rn 'ทำไมปุ่ม login พังหลอ')
+out=$(rn "$(python3 -c 'print("\u0e17\u0e33\u0e44\u0e21\u0e1b\u0e38\u0e48\u0e21 login \u0e1e\u0e31\u0e07\u0e2b\u0e25\u0e2d")')")
 echo "$out" | grep -q 'commission with no tier' && { echo "  ✗ route nudge fired on a Thai question"; fail=$((fail+1)); } || echo "  ✓ route nudge: Thai question → silent"
-out=$(rn 'โอเค')
-[ -z "$out" ] && echo "  ✓ route nudge: bare ack → silent" || { echo "  ✗ route nudge on 'โอเค': ${out:0:80}"; fail=$((fail+1)); }
+out=$(rn "$(python3 -c 'print("\u0e42\u0e2d\u0e40\u0e04")')")
+[ -z "$out" ] && echo "  ✓ route nudge: bare ack → silent" || { echo "  ✗ route nudge on a bare ack: ${out:0:80}"; fail=$((fail+1)); }
 mkdir -p "$RN_TMP/.rolepod/evidence"; printf '{"ts":"%s","phase":"route","tier":"R2","skill":"implement-plan"}\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > "$RN_TMP/.rolepod/evidence/phase-log.jsonl"
-out=$(rn 'แก้ปุ่ม login ให้หน่อย')
+out=$(rn "$(python3 -c 'print("\u0e41\u0e01\u0e49\u0e1b\u0e38\u0e48\u0e21 login \u0e43\u0e2b\u0e49\u0e2b\u0e19\u0e48\u0e2d\u0e22")')")
 echo "$out" | grep -q 'commission with no tier' && { echo "  ✗ route nudge fired with a fresh route line"; fail=$((fail+1)); } || echo "  ✓ route nudge: fresh route line (no transcript, <30 min) → silent"
 printf '{"ts":"2026-01-01T00:00:00Z","phase":"route","tier":"R2","skill":"implement-plan"}\n' > "$RN_TMP/.rolepod/evidence/phase-log.jsonl"
 out=$(rn 'add a logout button')
