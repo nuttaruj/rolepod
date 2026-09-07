@@ -42,6 +42,8 @@ A per-edit reminder hook duplicated all three without enforcement teeth — so i
 
 ### `claim-verify-nudge.sh` — UserPromptSubmit (core)
 
+**Route nudge (v2.98.0)** — a commission-shaped prompt (fix / add / change / build … + Thai equivalents; claim-shaped analysis prompts and Thai questions excluded) while the repo's newest `phase:"route"` line is older than the previous user prompt (transcript tail; no transcript → 30 min) → one `⟂ route:` line asking for the R0-R4 tier before the first edit. Checker: `hooks/lib/route_check.py`. Not a git repo → silent. Measured need: 199 requests / 0 router invocations in one project.
+
 Two soft checks at the one moment before the Lead starts a turn; no new registration for the second.
 
 - **Claim-check**: prompt looks like an analysis / diagnosis / status question → `additionalContext`: read the primary source and cite file:line before claiming.
@@ -220,6 +222,13 @@ the tree moved on) — is refused at dispatch (exit 7, `external-refused`
 phase-log line, no member called): the reviewer reads the live tree, so the
 verdict would be an artifact. Attach `git diff HEAD` or commit first;
 `--partial-ok` only when the user asked for the staged part (v2.94.0).
+One live review job per repo: a second `--kind review` is refused (exit 8)
+until `--collect <id>` or `--kill <id>` (status 137, no anchor). Round 2+
+uses `--since <job-id>`: every detached dispatch records a working-tree
+snapshot (tree object; real index untouched), and `--since` attaches the
+fix delta (snapshot → now, new files included) plus the previous report,
+so the reviewer verifies the fixes and tags IN-FIX / NEW / REPEAT instead
+of re-reading the cumulative diff (v2.98.0).
 
 Names: `codex` `claude` `agy` `cursor` `opencode` (the standalone Gemini
 CLI is retired — a `gemini` line is skipped with a note). **Ask once:** the

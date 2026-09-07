@@ -331,6 +331,37 @@ check "non-diff attachment (spec) → no slice check" "[ $rc -eq 0 ]"
 check "review preamble asks round-2+ findings to carry IN-FIX / NEW / REPEAT" "grep -q 'prefix every finding with IN-FIX' '$RUNNER'"
 cd "$REPO"
 
+# ── one live review per repo + --kill + --since (v2.98.0) ────────────────
+echo "── cross-family: stacking / --kill / --since ──"
+SQ="$FIX/since"; mkdir -p "$SQ/.rolepod"; printf 'codex\n' > "$SQ/.rolepod/cross-family"; printf 'brief\n' > "$SQ/brief.md"
+( cd "$SQ" && git init -q . && git config user.email t@t && git config user.name t && printf 'a\nb\nc\n' > f.txt && git add f.txt && git commit -qm init && printf 'a\nB\nc\n' > f.txt && git diff HEAD > "$FIX/sq-r1.patch" )
+: > "$LOG"; rc=0; out=$(cd "$SQ" && STUB_codex=slow bash "$RUNNER" --kind review --brief brief.md --attach "$FIX/sq-r1.patch" --lead claude --detach 2>/dev/null) || rc=$?
+j1=$(printf '%s' "$out" | grep -o 'job=[^ ]*' | head -1 | cut -d= -f2)
+check "detached review job started + recorded a working-tree snapshot (tree sha)" "[ $rc -eq 0 ] && [ -n \"$j1\" ] && grep -qE '^[0-9a-f]{40}$' '$SQ/.rolepod/evidence/external/jobs/$j1/tree'"
+rc=0; out=$(cd "$SQ" && bash "$RUNNER" --kind review --brief brief.md --lead claude 2>/dev/null) || rc=$?
+check "second review while the first runs → refused exit 8, names the job + --since" "[ $rc -eq 8 ] && printf '%s' \"\$out\" | grep -q \"refused stacked — review job $j1\" && printf '%s' \"\$out\" | grep -q -- \"--since $j1\""
+rc=0; out=$(cd "$SQ" && bash "$RUNNER" --kind consult --brief brief.md --lead claude 2>/dev/null) || rc=$?
+check "a consult during a running review is not stacked → runs" "[ $rc -eq 0 ]"
+rc=0; out=$(cd "$SQ" && bash "$RUNNER" --kind review --brief brief.md --lead claude --since "$j1" 2>&1) || rc=$?
+check "--since a job that is still running → refused (the live-review rule fires first) and points at --collect" "[ $rc -eq 8 ] && printf '%s' \"\$out\" | grep -q -- '--collect'"
+rc=0; out=$(cd "$SQ" && bash "$RUNNER" --collect "$j1" --timeout 30 2>/dev/null) || rc=$?
+check "round 1 collected" "[ $rc -eq 0 ]"
+rc=0; out=$(cd "$SQ" && bash "$RUNNER" --kind review --brief brief.md --lead claude --since "$j1" 2>&1) || rc=$?
+check "--since with nothing changed since the snapshot → exit 2 'nothing to review'" "[ $rc -eq 2 ] && printf '%s' \"\$out\" | grep -qi 'nothing changed'"
+( cd "$SQ" && printf 'a\nB\nC\n' > f.txt && printf 'new\n' > n.txt )
+: > "$LOG"; rc=0; out=$(cd "$SQ" && bash "$RUNNER" --kind review --brief brief.md --lead claude --since "$j1" --detach 2>/dev/null) || rc=$?
+j2=$(printf '%s' "$out" | grep -o 'job=[^ ]*' | head -1 | cut -d= -f2)
+A2=$(eval "set -- $(cat "$SQ/.rolepod/evidence/external/jobs/$j2/args" 2>/dev/null)"; for a in "$@"; do [[ "$a" == */fix-delta-since-* ]] && echo "$a"; done; true)
+check "--since round 2 attaches the fix delta only (c→C + the new file, not round 1's hunk) plus the previous report" "[ $rc -eq 0 ] && [ -n \"$A2\" ] && grep -q '^+C' \"$A2\" && grep -q 'n.txt' \"$A2\" && ! grep -q '^+B' \"$A2\" && grep -q -- \"previous-round-report-$j1\" '$SQ/.rolepod/evidence/external/jobs/$j2/args'"
+rc=0; out=$(cd "$SQ" && bash "$RUNNER" --collect "$j2" --timeout 30 2>/dev/null) || rc=$?
+check "round 2 delta job completes and anchors" "[ $rc -eq 0 ] && printf '%s' \"\$out\" | grep -q 'ROLEPOD-XFAM ok kind=review'"
+: > "$LOG"; rc=0; out=$(cd "$SQ" && STUB_codex=hang bash "$RUNNER" --kind review --brief brief.md --lead claude --detach 2>/dev/null) || rc=$?
+j3=$(printf '%s' "$out" | grep -o 'job=[^ ]*' | head -1 | cut -d= -f2)
+sleep 1; rc=0; out=$(cd "$SQ" && bash "$RUNNER" --kill "$j3" 2>/dev/null) || rc=$?
+check "--kill stops a running job: status 137, and a new review is no longer stacked" "[ $rc -eq 0 ] && [ \"\$(cat '$SQ/.rolepod/evidence/external/jobs/$j3/status')\" = 137 ] && ! (cd '$SQ' && bash '$RUNNER' --kind review --brief brief.md --lead claude 2>&1 | grep -q 'refused stacked')"
+rm -f "$FIX"/grandchild.* 2>/dev/null
+cd "$REPO"
+
 # ── review quality gates: PARTIAL / no VERDICT are not a pass ───────────
 echo "── cross-family: PARTIAL / VERDICT ──"
 printf 'codex\nclaude\nagy\ncursor\nopencode\n' > "$HOME/.rolepod/cross-family"

@@ -597,6 +597,36 @@ if echo "$out" | grep -q 'reviewers since last commit: 0' && ! echo "$out" | gre
 else echo "  ✗ precommit SOFT comment-only: ${out:0:200}"; fail=$((fail+1)); fi
 rm -rf "$SF_TMP"
 
+# ── route nudge (v2.98.0): commission + no fresh tier → one line ──────────
+RN_TMP=$(mktemp -d); ( cd "$RN_TMP" && git init -q . && git config user.email t@t && git config user.name t && git commit -q --allow-empty -m init )
+rn() { printf '{"session_id":"rn1","prompt":%s%s}' "$(printf '%s' "$1" | python3 -c 'import json,sys; print(json.dumps(sys.stdin.read()))')" "${2:+,\"transcript_path\":\"$2\"}" | (cd "$RN_TMP" && HOME="$RN_TMP" bash "$HOOKS/claim-verify-nudge.sh") || true; }
+out=$(rn 'fix the login button')
+echo "$out" | grep -q 'commission with no tier' && echo "  ✓ route nudge: commission + no route line ever → nudge" || { echo "  ✗ route nudge missing: ${out:0:120}"; fail=$((fail+1)); }
+out=$(rn 'why does login fail')
+echo "$out" | grep -q 'commission with no tier' && { echo "  ✗ route nudge fired on a claim-shaped question"; fail=$((fail+1)); } || echo "  ✓ route nudge: analysis question → no route line (claim-check owns it)"
+out=$(rn 'ทำไมปุ่ม login พังหลอ')
+echo "$out" | grep -q 'commission with no tier' && { echo "  ✗ route nudge fired on a Thai question"; fail=$((fail+1)); } || echo "  ✓ route nudge: Thai question → silent"
+out=$(rn 'โอเค')
+[ -z "$out" ] && echo "  ✓ route nudge: bare ack → silent" || { echo "  ✗ route nudge on 'โอเค': ${out:0:80}"; fail=$((fail+1)); }
+mkdir -p "$RN_TMP/.rolepod/evidence"; printf '{"ts":"%s","phase":"route","tier":"R2","skill":"implement-plan"}\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > "$RN_TMP/.rolepod/evidence/phase-log.jsonl"
+out=$(rn 'แก้ปุ่ม login ให้หน่อย')
+echo "$out" | grep -q 'commission with no tier' && { echo "  ✗ route nudge fired with a fresh route line"; fail=$((fail+1)); } || echo "  ✓ route nudge: fresh route line (no transcript, <30 min) → silent"
+printf '{"ts":"2026-01-01T00:00:00Z","phase":"route","tier":"R2","skill":"implement-plan"}\n' > "$RN_TMP/.rolepod/evidence/phase-log.jsonl"
+out=$(rn 'add a logout button')
+echo "$out" | grep -q 'commission with no tier' && echo "  ✓ route nudge: stale route line (no transcript, >30 min) → nudge" || { echo "  ✗ route nudge missing on a stale route"; fail=$((fail+1)); }
+T1=$(python3 -c 'import datetime;print((datetime.datetime.now(datetime.timezone.utc)-datetime.timedelta(minutes=90)).strftime("%Y-%m-%dT%H:%M:%SZ"))')
+TR=$(python3 -c 'import datetime;print((datetime.datetime.now(datetime.timezone.utc)-datetime.timedelta(minutes=60)).strftime("%Y-%m-%dT%H:%M:%SZ"))')
+printf '{"type":"user","timestamp":"%s","message":{"content":"earlier request"}}\n' "$T1" > "$RN_TMP/t.jsonl"
+printf '{"ts":"%s","phase":"route","tier":"R3","skill":"write-spec"}\n' "$TR" > "$RN_TMP/.rolepod/evidence/phase-log.jsonl"
+out=$(rn 'continue with the plan' "$RN_TMP/t.jsonl")
+echo "$out" | grep -q 'commission with no tier' && { echo "  ✗ route nudge fired though the previous request was routed"; fail=$((fail+1)); } || echo "  ✓ route nudge: route line newer than the previous prompt → silent (age alone does not matter)"
+printf '{"ts":"2026-01-01T00:00:00Z","phase":"route","tier":"R3","skill":"write-spec"}\n' > "$RN_TMP/.rolepod/evidence/phase-log.jsonl"
+out=$(rn 'continue with the plan' "$RN_TMP/t.jsonl")
+echo "$out" | grep -q 'commission with no tier' && echo "  ✓ route nudge: route older than the previous prompt → nudge" || { echo "  ✗ route nudge missing when the route predates the last prompt"; fail=$((fail+1)); }
+out=$( (export ROLEPOD_NUDGE_OFF=1; rn 'fix the login button') )
+[ -z "$out" ] && echo "  ✓ route nudge: ROLEPOD_NUDGE_OFF=1 → silent" || { echo "  ✗ route nudge ignores ROLEPOD_NUDGE_OFF"; fail=$((fail+1)); }
+rm -rf "$RN_TMP"
+
 # ─── result ───
 if [ "$fail" -eq 0 ]; then
   echo "  ✓ pass"

@@ -377,7 +377,7 @@ mkdir -p "$FIX/home"
 check "context-check: 575k context → additionalContext for the Lead only (no user-facing systemMessage, v2.49.1)" \
   "printf '{\"session_id\":\"c1\",\"transcript_path\":\"$FIX/ctx-big.jsonl\",\"prompt\":\"fix the button\"}' | HOME='$FIX/home' bash '$CVN' | python3 -c 'import json,sys; o=json.load(sys.stdin); a=o[\"hookSpecificOutput\"][\"additionalContext\"]; assert \"575k\" in a and \"scout\" in a and \"/compact\" in a and \"systemMessage\" not in o'"
 check "context-check: same 200k bucket in the same session → silent (once per bucket)" \
-  "[ -z \"\$(printf '{\"session_id\":\"c1\",\"transcript_path\":\"$FIX/ctx-big.jsonl\",\"prompt\":\"fix the button\"}' | HOME='$FIX/home' bash '$CVN')\" ]"
+  "! printf '{\"session_id\":\"c1\",\"transcript_path\":\"$FIX/ctx-big.jsonl\",\"prompt\":\"fix the button\"}' | HOME='$FIX/home' bash '$CVN' | grep -q context-check"
 check "context-check: 121k context → no context wording (claim-check still works)" \
   "printf '{\"session_id\":\"c2\",\"transcript_path\":\"$FIX/ctx-small.jsonl\",\"prompt\":\"why is this broken\"}' | HOME='$FIX/home' bash '$CVN' | python3 -c 'import json,sys; o=json.load(sys.stdin); a=o[\"hookSpecificOutput\"][\"additionalContext\"]; assert \"claim-check\" in a and \"context-check\" not in a and \"systemMessage\" not in o'"
 check "context-check: big context + claim prompt → both notes in one payload" \

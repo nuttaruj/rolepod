@@ -86,9 +86,27 @@ if printf '%s' "$PROMPT" | grep -qiE "$CLAIM_RX"; then
   MSG="🔍 claim-check: this asks for analysis/diagnosis/status of real code or state. Verify-first: READ the primary source (Read / Grep / run it) and cite file:line — never from memory. (off: ROLEPOD_NUDGE_OFF=1)"
 fi
 
-if [ -n "$MSG$CTX_MSG" ]; then
+# Route nudge (v2.98.0): a commission-shaped prompt with no tier logged
+# since the previous request. Measured: one project, 199 requests over a
+# week, the router skill fired 0 times — a high-risk change to an existing
+# feature went straight to build and six review rounds drew its seam map.
+# Claim-shaped prompts (analysis) are R0 and skip this. Freshness = the
+# newest `route` line in the repo phase-log is newer than the previous user
+# prompt (transcript tail); no transcript → within 30 min. Not a git repo →
+# silent. The checker lives in lib/ (a heredoc inside $( ) is fragile).
+ROUTE_MSG=""
+COMMISSION_RX='(^|[^a-z])(fix|add|change|build|create|implement|refactor|remove|delete|update|migrate|rename|make|write|ship|deploy|wire|continue|go ahead|do it|proceed)([^a-z]|$)|แก้|เพิ่ม|สร้าง|ทำ|ลบ|เปลี่ยน|ปรับ|ย้าย|เขียน|จัดการ|ลุย|เอาเลย|ได้เลย|ต่อเลย'
+TH_QUESTION_RX='(ทำไม|ยังไง|อย่างไร|อะไร|ใช่ไหม|ไหม|หลอ|เหรอ|\?)'
+ROUTE_CHECK="$(dirname "$0")/lib/route_check.py"
+if [ -z "$MSG" ] && [ -f "$ROUTE_CHECK" ] && printf '%s' "$PROMPT" | grep -qiE "$COMMISSION_RX" && ! printf '%s' "$PROMPT" | grep -qE "$TH_QUESTION_RX"; then
+  if [ "$(printf '%s' "$INPUT" | python3 "$ROUTE_CHECK" 2>/dev/null || true)" = "stale" ]; then
+    ROUTE_MSG="⟂ route: a commission with no tier logged since your last request. Fix: state R0-R4 in one line before the first edit — R3/R4 → using-rolepod (Define → Plan first); blast radius sets the tier, not feature age. Exception: a literal follow-up inside an already-routed task → say 'same task' and continue. (off: ROLEPOD_NUDGE_OFF=1) "
+  fi
+fi
+
+if [ -n "$MSG$CTX_MSG$ROUTE_MSG" ]; then
   # Env-passed (never interpolated) so quotes in either message cannot break the JSON.
-  ROLEPOD_HOOK_MSG="${CTX_MSG}${MSG}" python3 -c "
+  ROLEPOD_HOOK_MSG="${CTX_MSG}${MSG}${ROUTE_MSG}" python3 -c "
 import json, os
 print(json.dumps({'hookSpecificOutput':{'hookEventName':'UserPromptSubmit','additionalContext':os.environ.get('ROLEPOD_HOOK_MSG','')}}))
 " 2>/dev/null || echo '{}'

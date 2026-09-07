@@ -47,6 +47,13 @@
 #            called (measured 2026-09-07: 3 of 4 rounds in one day). Attach
 #            `git diff HEAD` or commit first; `--partial-ok` only when the
 #            user asked for the staged part.
+#   round 2+ `--since <job-id>`: the runner snapshots the working tree at every
+#            detached dispatch (tree object, real index untouched) and, on
+#            --since, attaches the fix delta (that snapshot → now, new files
+#            included) plus the previous report — the reviewer verifies the
+#            fixes, tags IN-FIX / NEW / REPEAT, and the budget goes to the
+#            delta, not the cumulative diff. One live review job per repo: a
+#            second `--kind review` is refused (exit 8) until --collect / --kill.
 #   read-only every invocation uses the CLI's read-only / plan mode; the
 #            prompt says so too. ROLEPOD_BRAIN_SILENT=1 keeps ambient memory
 #            out of the cold run (clean room).
@@ -62,7 +69,8 @@
 #
 # Usage:
 #   cross-family.sh --kind review|consult|advise|critique --brief <file> [--attach <file>]...
-#                   [--lead <cli>] [--all] [--timeout <sec>] [--detach] [--partial-ok]
+#                   [--lead <cli>] [--all] [--timeout <sec>] [--detach] [--partial-ok] [--since <job-id>]
+#   cross-family.sh --kill <job-id>                        # abandon a running job (status 137, no anchor)
 #   cross-family.sh --collect <job-id> [--timeout <sec>]   # wait for a detached job, print its output
 #   cross-family.sh --jobs                                # list detached jobs (running / done)
 #   cross-family.sh --pool [--lead <cli>] [--kind <k>]    # usable pool, no network
@@ -73,7 +81,7 @@
 set -uo pipefail
 
 KIND=""; BRIEF=""; LEAD="${ROLEPOD_LEAD_CLI:-}"; ALL=0; FLAG_TIMEOUT="${ROLEPOD_XFAM_TIMEOUT:-}"
-MODE="run"; ATTACH=""; DETACH=0; JOB_DIR=""; COLLECT_ID=""; ROOT_FLAG=""; CFG_FLAG=""; PARTIAL_OK=0
+MODE="run"; ATTACH=""; DETACH=0; JOB_DIR=""; COLLECT_ID=""; ROOT_FLAG=""; CFG_FLAG=""; PARTIAL_OK=0; SINCE_ID=""; KILL_ID=""
 while [ $# -gt 0 ]; do
   case "$1" in
     --kind) KIND="${2:-}"; shift 2 ;;
@@ -86,6 +94,8 @@ while [ $# -gt 0 ]; do
     --timeout) FLAG_TIMEOUT="${2:-}"; shift 2 ;;
     --detach) DETACH=1; shift ;;
     --partial-ok) PARTIAL_OK=1; shift ;;         # the user asked for the staged part only
+    --since) SINCE_ID="${2:-}"; shift 2 ;;         # round 2+: attach the fix delta since that job + its report
+    --kill) MODE="kill"; KILL_ID="${2:-}"; shift 2 ;;
     --job) JOB_DIR="${2:-}"; shift 2 ;;          # internal: the detached child
     --config) CFG_FLAG="${2:-}"; shift 2 ;;      # internal: the job's config snapshot
     --collect) MODE="collect"; COLLECT_ID="${2:-}"; shift 2 ;;
@@ -132,6 +142,18 @@ if [ "$MODE" = "jobs" ]; then
     else st="dead (no status — killed?)"; fi
     printf '  %-32s %-18s %s\n' "$id" "$st" "$(grep -E '^ROLEPOD-XFAM' "$d/out.txt" 2>/dev/null | tail -1 | cut -c1-110)"
   done
+  exit 0
+fi
+if [ "$MODE" = "kill" ]; then
+  d="$JOBS/$KILL_ID"; [ -d "$d" ] || { echo "cross-family: no job $KILL_ID under $JOBS" >&2; exit 2; }
+  if [ -f "$d/status" ]; then echo "ROLEPOD-XFAM job=$KILL_ID already finished (exit $(job_status "$d"))"; exit 0; fi
+  _kp=$(cat "$d/pid" 2>/dev/null)
+  if job_alive "$d"; then   # the child is its own process group (set -m at spawn): the whole chain dies with it
+    kill -TERM -- "-$_kp" 2>/dev/null || kill -TERM "$_kp" 2>/dev/null || true; sleep 1
+    job_alive "$d" && { kill -KILL -- "-$_kp" 2>/dev/null || kill -KILL "$_kp" 2>/dev/null || true; }
+  fi
+  date +%s > "$d/finished"; printf '137\n' > "$d/status"
+  echo "ROLEPOD-XFAM job=$KILL_ID killed — status 137, no anchor written. Re-dispatch when the tree is final."
   exit 0
 fi
 if [ "$MODE" = "collect" ]; then
@@ -485,6 +507,31 @@ if [ -z "$USABLE" ]; then
   exit 4
 fi
 
+# ── One live review per repo (v2.98.0) ────────────────────────────────
+# Measured 2026-09-07: three review jobs launched 20 min apart on one tree,
+# each with a 30-min member budget — all three timed out, zero verdicts.
+# The parent (not the detached child, which carries --job) refuses a second
+# review while one is alive; consult / advise / critique are unaffected.
+if [ "$KIND" = "review" ] && [ -z "$JOB_DIR" ] && [ -d "$JOBS" ]; then
+  for _ld in "$JOBS"/*-review-*/; do
+    [ -d "$_ld" ] || continue; [ -f "$_ld/status" ] && continue
+    job_alive "$_ld" || continue
+    _lid=$(basename "$_ld")
+    echo "ROLEPOD-XFAM refused stacked — review job $_lid is still running ($(job_elapsed "$_ld") min) on this repo; a second review of the same tree doubles the budget for one verdict. Fix: rolepod-cross-family --collect $_lid (waits), then round 2 with --since $_lid. Abandon it instead: --kill $_lid."
+    exit 8
+  done
+fi
+
+# Working-tree snapshot as a tree object — tracked + untracked-not-ignored
+# minus .rolepod/ and docs/rolepod/ (evidence + private working docs move
+# during a round and are not the reviewed change), the real index untouched. Recorded per detached job (tree file); --since
+# diffs that snapshot against a fresh one (tree-to-tree: new files count).
+snapshot_tree() {
+  _ti=$(mktemp) || return 1; rm -f "$_ti"
+  ( export GIT_INDEX_FILE="$_ti"; { git -C "$ROOT" read-tree HEAD 2>/dev/null || git -C "$ROOT" read-tree --empty 2>/dev/null; } && git -C "$ROOT" add -A -- . ':(exclude).rolepod' ':(exclude)docs/rolepod' 2>/dev/null && git -C "$ROOT" write-tree 2>/dev/null ); _src=$?
+  rm -f "$_ti"; return $_src
+}
+
 # ── Partial-slice stop (v2.94.0) ───────────────────────────────────────
 # A diff attachment is a slice when, for a file it touches that differs
 # from HEAD in the working tree, its +/- lines are not that file's block of
@@ -510,7 +557,9 @@ partial_slice() { # stdin: attachment paths → stdout: files whose tree edits t
   fi
   rm -f "$_ps_a" "$_ps_w"
 }
-if [ -n "$ATTACH" ] && [ "$PARTIAL_OK" -ne 1 ] && git -C "$ROOT" rev-parse --verify HEAD >/dev/null 2>&1; then
+# Parent only: the detached child re-execs with --job and would re-check a
+# runner-built --since delta against git diff HEAD (a false refusal).
+if [ -n "$ATTACH" ] && [ -z "$JOB_DIR" ] && [ "$PARTIAL_OK" -ne 1 ] && git -C "$ROOT" rev-parse --verify HEAD >/dev/null 2>&1; then
   SLICE=$(printf '%s\n' "$ATTACH" | partial_slice 2>/dev/null || true)
   if [ -n "$SLICE" ]; then
     _sn=$(printf '%s\n' "$SLICE" | grep -c . || true)
@@ -518,6 +567,21 @@ if [ -n "$ATTACH" ] && [ "$PARTIAL_OK" -ne 1 ] && git -C "$ROOT" rev-parse --ver
     echo "ROLEPOD-XFAM refused partial-slice files=$_sn — the attachment does not contain this tree's edits to: $(printf '%s' "$SLICE" | tr '\n' ' '). The reviewer reads the live tree, so its verdict would be an artifact. Fix: git diff HEAD > <diff> (staged + unstaged together), or commit first, then re-run. Exception: the user asked for the staged part only → --partial-ok."
     exit 7
   fi
+fi
+
+# ── Round 2+: --since <job-id> (v2.98.0) ──────────────────────────────
+if [ -n "$SINCE_ID" ]; then
+  _sd="$JOBS/$SINCE_ID"; [ -d "$_sd" ] || { echo "cross-family: --since: no job $SINCE_ID under $JOBS" >&2; exit 2; }
+  [ -f "$_sd/status" ] || { echo "cross-family: --since $SINCE_ID is still running — --collect it first" >&2; exit 2; }
+  _old=$(cat "$_sd/tree" 2>/dev/null); [ -n "$_old" ] || { echo "cross-family: --since: job $SINCE_ID has no tree snapshot (pre-v2.98 job, or not a git repo) — attach the fix diff yourself" >&2; exit 2; }
+  _new=$(snapshot_tree) || { echo "cross-family: --since: cannot snapshot the working tree" >&2; exit 2; }
+  SINCE_DIR=$(mktemp -d "${TMPDIR:-/tmp}/rolepod-xfam-since.XXXXXX")
+  git -C "$ROOT" diff-tree -p "$_old" "$_new" > "$SINCE_DIR/fix-delta-since-$SINCE_ID.patch" 2>/dev/null || { echo "cross-family: --since: diff against the snapshot failed" >&2; exit 2; }
+  [ -s "$SINCE_DIR/fix-delta-since-$SINCE_ID.patch" ] || { echo "cross-family: --since $SINCE_ID: nothing changed since that round — nothing to review" >&2; rm -rf "$SINCE_DIR"; exit 2; }
+  cp "$_sd/out.txt" "$SINCE_DIR/previous-round-report-$SINCE_ID.txt" 2>/dev/null || : > "$SINCE_DIR/previous-round-report-$SINCE_ID.txt"
+  ATTACH="$SINCE_DIR/fix-delta-since-$SINCE_ID.patch
+$SINCE_DIR/previous-round-report-$SINCE_ID.txt${ATTACH:+
+$ATTACH}"
 fi
 
 # ── Detach: run the whole chain as a job in its own process group ──────
@@ -539,6 +603,7 @@ $ATTACH
 EOF
   fi
   printf '%q ' "${CHILD_ARGS[@]}" > "$JD/args"; echo >> "$JD/args"
+  snapshot_tree > "$JD/tree" 2>/dev/null || : > "$JD/tree"   # --since reference (fail-open)
   date +%s > "$JD/started"
   set -m; nohup bash "$0" "${CHILD_ARGS[@]}" > "$JD/out.txt" 2> "$JD/err.txt" < /dev/null & echo $! > "$JD/pid"; set +m
   TOS=""; for c in $USABLE; do TOS="$TOS${TOS:+ }$c=$( JOB_DIR="$JD" timeout_for "$c" )s"; done
@@ -561,7 +626,7 @@ BODY="$TMPP/body.md"
 } > "$BODY"
 preamble() { # $1 kind
   case "$1" in
-    review) printf '%s' "You are a cold-context ADVERSARIAL code reviewer running in a different CLI than the author. Read only — never edit files, never run write commands. Try to make the change fail. Report findings severity-ordered (BLOCKER / MAJOR / MINOR / NIT) with file:line, label each TRACED (path walked) or SUSPECTED (pattern-level), name what is missing as hard as what is present, then end with one line: VERDICT: APPROVED | APPROVED-WITH-NITS | REJECTED. If the brief carries a previous round's report, prefix every finding with IN-FIX (a defect inside the previous round's fixes), NEW (not flagged before) or REPEAT (flagged before, still open)." ;;
+    review) printf '%s' "You are a cold-context ADVERSARIAL code reviewer running in a different CLI than the author. Read only — never edit files, never run write commands. Try to make the change fail. Report findings severity-ordered (BLOCKER / MAJOR / MINOR / NIT) with file:line, label each TRACED (path walked) or SUSPECTED (pattern-level), name what is missing as hard as what is present, then end with one line: VERDICT: APPROVED | APPROVED-WITH-NITS | REJECTED. If a previous round's report is attached, prefix every finding with IN-FIX (a defect inside the previous round's fixes), NEW (not flagged before) or REPEAT (flagged before, still open)." ;;
     consult) printf '%s' "You are a cold-context debugging advisor running in a different CLI than the author. The author has failed twice; do not repeat their fixes. Read only — never edit files. Return exactly one of: CORRECTION (new hypothesis + the smallest change to test it), CONFIRMATION (approach right — check X), or STOP (wrong path — why). Reason from the evidence given; say what you would verify first." ;;
     advise) printf '%s' "You are a cold-context planning advisor running in a different CLI than the author. Advise, never execute: return a RECOMMENDED option with reasoning and the risks you see, or a CORRECTION if the framing or all options are flawed, or a STOP signal. Do not edit files or run the plan." ;;
     critique) printf '%s' "You are a cold-context spec critic running in a different CLI than the author. The author has finished their discovery dialogue with the user (the questions already asked and answered are attached — never re-ask those). Return AT MOST 5 items, ranked by implementation risk, each tagged QUESTION (a decision only the user can make — the answer would change the implementation), AMBIGUITY (wording two engineers would read differently — quote it), or MISSING (an acceptance criterion, failure mode, or edge case with no 'proven by'). No design proposals, no praise, no restating the spec. If nothing material remains, reply exactly: NO FURTHER QUESTIONS." ;;
