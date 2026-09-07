@@ -7,9 +7,14 @@ Thumbs.db
 .idea/
 *.swp
 
-# Backups
+# Backups + installer leftovers
 *.bak
 *.bak.*
+*.legacy-*
+*.rolepod-bak.*
+
+# Logs / run output
+*.log
 
 # Local-only
 .claude/
@@ -38,3 +43,9 @@ __pycache__/
 # private by default (v2.80.0): never committed. A repo that wants them tracked
 # creates .rolepod/docs-tracked and removes this line.
 docs/rolepod/
+
+# Planning docs of this repo's own past work (v2.89.0) — the repo ships product
+# files and the docs the shipped payload links to; design plans stay local.
+docs/plans/
+docs/adrs/
+docs/handoffs/

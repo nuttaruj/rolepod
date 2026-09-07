@@ -5,7 +5,9 @@
 # --force run and never pruned. A machine that reinstalled daily for three
 # weeks held 122 backup dirs + 31 stamped config copies = 457MB.
 #
-# prune_backups() must keep exactly the N newest entries matching a prefix,
+# Retention is BACKUP_KEEP=2 (owner-set, v2.89.0): the last good state plus
+# the one before it. prune_backups() must keep exactly the N newest entries
+# matching a prefix,
 # delete the rest, leave non-matching siblings alone, count both dirs and
 # files, and write nothing under --dry-run.
 #
@@ -30,27 +32,27 @@ trap 'rm -rf "$tmp"' EXIT
 
 grep -q '^prune_backups() {' "$tmp/lib.sh" || {
   echo "  ✗ prune_backups not found in install.sh"; exit 1; }
-grep -q '^BACKUP_KEEP=3$' "$tmp/lib.sh" || {
-  echo "  ✗ BACKUP_KEEP=3 constant missing from install.sh"; fail=$((fail+1)); }
+grep -q '^BACKUP_KEEP=2$' "$tmp/lib.sh" || {
+  echo "  ✗ BACKUP_KEEP=2 constant missing from install.sh"; fail=$((fail+1)); }
 
 # remaining <dir> <prefix> → matching entry names, newest first
 remaining() { find "$1" -maxdepth 1 -mindepth 1 -name "$2*" | sed "s|^$1/||" | sort -r | tr '\n' ' '; }
 
-echo "── dirs: keeps exactly 3 newest ──"
+echo "── dirs: keeps exactly 2 newest ──"
 D="$tmp/backups/claude"; mkdir -p "$D"
 for st in 20260801-090000 20260802-090000 20260803-090000 20260804-090000 20260805-090000; do
   mkdir -p "$D/rolepod-$st"; done
 mkdir -p "$D/keep-me-unrelated"
 OUT=$(bash -c "source '$tmp/lib.sh'; prune_backups '$D/rolepod-'" 2>&1)
 GOT=$(remaining "$D" "rolepod-")
-WANT="rolepod-20260805-090000 rolepod-20260804-090000 rolepod-20260803-090000 "
-if [ "$GOT" = "$WANT" ]; then echo "  ✓ 5 dirs → 3 newest kept"
+WANT="rolepod-20260805-090000 rolepod-20260804-090000 "
+if [ "$GOT" = "$WANT" ]; then echo "  ✓ 5 dirs → 2 newest kept"
 else echo "  ✗ expected [$WANT] got [$GOT]"; fail=$((fail+1)); fi
 
 if [ -d "$D/keep-me-unrelated" ]; then echo "  ✓ non-matching sibling untouched"
 else echo "  ✗ pruned a non-matching sibling"; fail=$((fail+1)); fi
 
-echo "$OUT" | grep -q "WARN: Pruned 2 " && echo "  ✓ reports the exact count pruned" || {
+echo "$OUT" | grep -q "WARN: Pruned 3 " && echo "  ✓ reports the exact count pruned" || {
   echo "  ✗ count not reported: $OUT"; fail=$((fail+1)); }
 
 echo ""
@@ -60,8 +62,8 @@ for st in 20260801-090000 20260802-090000 20260803-090000 20260804-090000 202608
   : > "$C/config.toml.rolepod-bak.$st"; done
 bash -c "source '$tmp/lib.sh'; prune_backups '$C/config.toml.rolepod-bak.'" >/dev/null 2>&1
 GOT=$(remaining "$C" "config.toml.rolepod-bak.")
-WANT="config.toml.rolepod-bak.20260805-090000 config.toml.rolepod-bak.20260804-090000 config.toml.rolepod-bak.20260803-090000 "
-if [ "$GOT" = "$WANT" ]; then echo "  ✓ 5 config copies → 3 newest kept"
+WANT="config.toml.rolepod-bak.20260805-090000 config.toml.rolepod-bak.20260804-090000 "
+if [ "$GOT" = "$WANT" ]; then echo "  ✓ 5 config copies → 2 newest kept"
 else echo "  ✗ expected [$WANT] got [$GOT]"; fail=$((fail+1)); fi
 
 if [ -f "$C/config.toml" ]; then echo "  ✓ live config.toml never matched by the prefix"
@@ -76,7 +78,7 @@ OUT=$(bash -c "DRY_RUN=1; source '$tmp/lib.sh'; prune_backups '$E/rolepod-'" 2>&
 N=$(find "$E" -maxdepth 1 -mindepth 1 -type d | wc -l | tr -d ' ')
 if [ "$N" -eq 5 ]; then echo "  ✓ dry-run deleted 0 of 5"
 else echo "  ✗ dry-run deleted $((5 - N))"; fail=$((fail+1)); fi
-echo "$OUT" | grep -q "^DRY: prune 2 " && echo "  ✓ dry-run previews the prune" || {
+echo "$OUT" | grep -q "^DRY: prune 3 " && echo "  ✓ dry-run previews the prune" || {
   echo "  ✗ dry-run silent about pruning: $OUT"; fail=$((fail+1)); }
 
 echo ""
@@ -85,7 +87,7 @@ F="$tmp/few"; mkdir -p "$F"
 mkdir -p "$F/rolepod-20260801-090000" "$F/rolepod-20260802-090000"
 OUT=$(bash -c "source '$tmp/lib.sh'; prune_backups '$F/rolepod-'" 2>&1)
 N=$(find "$F" -maxdepth 1 -mindepth 1 -type d | wc -l | tr -d ' ')
-if [ "$N" -eq 2 ] && [ -z "$OUT" ]; then echo "  ✓ 2 entries, keep 3 → silent no-op"
+if [ "$N" -eq 2 ] && [ -z "$OUT" ]; then echo "  ✓ 2 entries, keep 2 → silent no-op"
 else echo "  ✗ n=$N out=$OUT"; fail=$((fail+1)); fi
 
 echo ""
@@ -95,17 +97,34 @@ if [ "$RC" -eq 0 ] && [ -z "$OUT" ]; then echo "  ✓ absent directory → rc=0,
 else echo "  ✗ rc=$RC out=$OUT"; fail=$((fail+1)); fi
 
 echo ""
+echo "── legacy entry-doc copies are pruned ──"
+# update_managed_block stamps CLAUDE.md.legacy-<stamp> when it wipes
+# pre-markers content. Until v2.89.0 those copies were created and never
+# pruned — one per install, forever, next to the live entry doc.
+L="$tmp/legacy"; mkdir -p "$L"; : > "$L/CLAUDE.md"
+for st in 20260801-090000 20260802-090000 20260803-090000 20260804-090000; do
+  : > "$L/CLAUDE.md.legacy-$st"; done
+bash -c "source '$tmp/lib.sh'; prune_backups '$L/CLAUDE.md.legacy-'" >/dev/null 2>&1
+GOT=$(remaining "$L" "CLAUDE.md.legacy-")
+WANT="CLAUDE.md.legacy-20260804-090000 CLAUDE.md.legacy-20260803-090000 "
+if [ "$GOT" = "$WANT" ]; then echo "  ✓ 4 legacy copies → 2 newest kept"
+else echo "  ✗ expected [$WANT] got [$GOT]"; fail=$((fail+1)); fi
+if [ -f "$L/CLAUDE.md" ]; then echo "  ✓ live entry doc never matched by the prefix"
+else echo "  ✗ prune deleted the live entry doc"; fail=$((fail+1)); fi
+
+echo ""
 echo "── every backup site prunes ──"
 # claude/codex/gemini go through selective_backup; cursor has its own branch;
 # both codex config.toml copies are stamped separately. A site added later
 # without a prune call is the exact regression this guards.
 SITES=$(grep -c 'prune_backups "' "$REPO_DIR/install.sh")
-if [ "$SITES" -ge 5 ]; then echo "  ✓ $SITES prune call sites wired"
-else echo "  ✗ only $SITES prune call sites (expected >= 5)"; fail=$((fail+1)); fi
+if [ "$SITES" -ge 7 ]; then echo "  ✓ $SITES prune call sites wired"
+else echo "  ✗ only $SITES prune call sites (expected >= 7)"; fail=$((fail+1)); fi
 for anchor in 'prune_backups "$(dirname "$backup")/rolepod-"' \
               'prune_backups "$(dirname "$BACKUP")/rolepod-"' \
               'prune_backups "$CODEX_CONFIG.rolepod-bak."' \
-              'prune_backups "$X_CONFIG.rolepod-bak."'; do
+              'prune_backups "$X_CONFIG.rolepod-bak."' \
+              'prune_backups "${target_file}.legacy-"'; do
   grep -qF "$anchor" "$REPO_DIR/install.sh" && echo "  ✓ site: $anchor" || {
     echo "  ✗ missing site: $anchor"; fail=$((fail+1)); }
 done

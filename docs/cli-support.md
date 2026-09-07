@@ -305,7 +305,7 @@ Codex CLI has no `CODEX_HOME` env var or `--config-home` flag — `codex plugin 
 
 ### `--force` backup is rolepod-scoped
 
-When `--force` is used on an existing CLI home (`~/.claude/`, `~/.codex/`, `~/.gemini/`), the installer creates `~/.<cli>.backup-<timestamp>/` containing **only rolepod-managed paths**:
+When `--force` is used on an existing CLI home (`~/.claude/`, `~/.codex/`, `~/.gemini/`), the installer creates `~/.rolepod/backups/<cli>/rolepod-<timestamp>/` containing **only rolepod-managed paths** (off the CLI scan paths, so a backup never surfaces as a duplicate plugin entry):
 
 | CLI | Backed up | Excluded |
 |-----|-----------|----------|
@@ -313,7 +313,9 @@ When `--force` is used on an existing CLI home (`~/.claude/`, `~/.codex/`, `~/.g
 | Codex   | `AGENTS.md`, `config.toml`, `plugins/rolepod/`, `.agents/`                                                                          | `log/`, `.tmp/`, `history/`, `sessions/` |
 | Gemini  | `GEMINI.md`, `extensions/rolepod/`, `settings.json`                                                                                | `history/`, `log/`, `tmp/` |
 
-Rationale: a user's session transcripts (`~/.claude/projects/`) can exceed 1.8GB on active accounts. Duplicating them on every `--force` run wasted disk and time. Typical rolepod-scoped backup is <50MB. Restore is straightforward: `cp -R ~/.claude.backup-<stamp>/* ~/.claude/` (run from the backup directory).
+Rationale: a user's session transcripts (`~/.claude/projects/`) can exceed 1.8GB on active accounts. Duplicating them on every `--force` run wasted disk and time. Typical rolepod-scoped backup is <50MB. Restore is straightforward: `cp -R ~/.rolepod/backups/claude/rolepod-<stamp>/* ~/.claude/`.
+
+**Retention: the 2 newest, per prefix.** Every install prunes older copies — backup dirs (`~/.rolepod/backups/<cli>/rolepod-*`), stamped config copies (`config.toml.rolepod-bak.*`), and the `.legacy-*` entry-doc copies written during a pre-markers migration. One knob: `BACKUP_KEEP` at the top of `install.sh`. Nothing else on disk is stamped or copied — the agy and opencode paths only replace rolepod's own plugin tree, and entry docs are edited inside the `<!-- rolepod:start -->` managed block, so user content is never overwritten and needs no backup.
 
 ### Project-specific AGENTS.md override (optional)
 

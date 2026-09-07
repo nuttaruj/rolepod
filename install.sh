@@ -18,7 +18,7 @@
 #                                      # Location: ~/.rolepod/backups/<cli>/rolepod-<stamp>/
 #                                      # (off the CLI scan paths — so Cursor doesn't surface
 #                                      # the backup as a duplicate plugin entry)
-#                                      # Retention: only the 3 newest backups per CLI are
+#                                      # Retention: only the 2 newest backups per CLI are
 #                                      # kept — older ones are pruned on each install.
 #   ./install.sh --target=claude       # CLI target (default → ~/.claude)
 #   ./install.sh --target=codex        # Codex CLI       → ~/.codex
@@ -76,9 +76,11 @@ UNINSTALL=0
 ASSUME_YES=0
 DRY_RUN=0
 
-# How many timestamped backups to keep per CLI (and per config file). Every
-# --force install stamps a new one; without pruning they accumulate forever.
-BACKUP_KEEP=3
+# How many timestamped backups to keep per CLI (and per config file, and per
+# .legacy- entry-doc copy). Every --force install stamps a new one; without
+# pruning they accumulate forever. Two is the owner-set floor: the last good
+# state plus the one before it, which is all a rollback ever reaches for.
+BACKUP_KEEP=2
 
 # Args
 for arg in "$@"; do
@@ -424,8 +426,12 @@ update_managed_block() {
     # Migration: if surviving (non-block) content contains legacy rolepod
     # H1, it's stale content from a pre-markers install — wipe it.
     if grep -qE '^# (Claude Code|Codex|Gemini) — Core Rules' "$tmp"; then
-      warn "Detected legacy rolepod content outside managed block in $target_file. Wiping legacy — backup at ${target_file}.legacy-$(date +%Y%m%d-%H%M%S)"
-      cp "$target_file" "${target_file}.legacy-$(date +%Y%m%d-%H%M%S)"
+      # One stamp for both the message and the file — two date calls could
+      # straddle a second boundary and name a path that does not exist.
+      local legacy_bak="${target_file}.legacy-$(date +%Y%m%d-%H%M%S)"
+      warn "Detected legacy rolepod content outside managed block in $target_file. Wiping legacy — backup at $legacy_bak"
+      cp "$target_file" "$legacy_bak"
+      prune_backups "${target_file}.legacy-"
       : > "$tmp"
     fi
     # Trim trailing blank lines from the surviving user content
@@ -453,8 +459,10 @@ update_managed_block() {
   # If matched, wipe legacy content + write fresh marker-wrapped block.
   # Otherwise treat as user's own content → append marker-wrapped block after.
   if grep -qE '^# (Claude Code|Codex|Gemini) — Core Rules' "$target_file"; then
-    warn "Detected legacy rolepod content in $target_file (no markers). Migrating to managed block — backup at ${target_file}.legacy-$(date +%Y%m%d-%H%M%S)"
-    cp "$target_file" "${target_file}.legacy-$(date +%Y%m%d-%H%M%S)"
+    local legacy_bak="${target_file}.legacy-$(date +%Y%m%d-%H%M%S)"
+    warn "Detected legacy rolepod content in $target_file (no markers). Migrating to managed block — backup at $legacy_bak"
+    cp "$target_file" "$legacy_bak"
+    prune_backups "${target_file}.legacy-"
     {
       printf '%s\n' "$ROLEPOD_BLOCK_START"
       cat "$source_file"
