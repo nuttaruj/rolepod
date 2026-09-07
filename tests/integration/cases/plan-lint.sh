@@ -14,7 +14,7 @@ trap 'rm -rf "$TMP"' EXIT
 
 plan_lint() { # $1 = plan file; returns 0 = lint pass
   grep -q '^## Failure policy' "$1" \
-    && awk '/^### Task/{t++;c[t]=0;i=1;next} /^## /{i=0} i&&/Command:/{c[t]=1} END{if(!t)exit 1;for(k=1;k<=t;k++)if(!c[k])exit 1}' "$1"
+    && awk '/^### (Task ?|T)[0-9]/{t++;c[t]=0;i=1;next} /^## /{i=0} i&&/Command:/{c[t]=1} END{if(!t)exit 1;for(k=1;k<=t;k++)if(!c[k])exit 1}' "$1"
 }
 
 # ── Dirty plan: 2 tasks, 1 Command, no Failure policy → must FAIL lint ──
@@ -236,6 +236,77 @@ if bash "$LINT" "$TMP/no-tasks.md" >/dev/null; then
 else
   echo "  ✓ plan-lint.sh rejects a plan with no ### Task blocks"
 fi
+
+# ── Blocked-by graph (v2.90.0) ──────────────────────────────────────────
+# The graph IS the plan's order. Refs must resolve, no cycle, no task left
+# without the field once any task has it; a `### T1 —` heading (real
+# CourtBook plan) counts as a task — the lint rejected that plan wholesale.
+mk() { # $1 = file, $2.. = task blocks (heading + Blocked by), one arg each
+  local f="$1"; shift
+  { echo "# G"; for blk in "$@"; do printf '%s\n- [ ] Command: true\n' "$blk"; done
+    printf '## Parallel layout\nSequential — single owner.\n## Failure policy\nDefault: stop.\n'; } > "$f"
+}
+mk "$TMP/g-good.md" $'### Task 1: a\n- **Blocked by:** none' $'### Task 2: b\n- **Blocked by:** Task 1' \
+   $'### Task 3: c\n- **Blocked by:** none — builds against the mock (T2 does not gate it)' $'### Task 4: d\n- **Blocked by:** Task 2, Task 3'
+RC=0; OUT=$(bash "$LINT" "$TMP/g-good.md" 2>&1) || RC=$?
+[ "$RC" -eq 0 ] && echo "$OUT" | grep -q 'graph resolves, no cycle (4 tasks)' \
+  && echo "  ✓ plan-lint.sh resolves a Blocked-by graph" \
+  || { echo "  ✗ plan-lint.sh rejected a valid Blocked-by graph: $OUT"; fail=$((fail+1)); }
+echo "$OUT" | grep -q 'parallel candidates: Tasks 1, 3' \
+  && echo "  ✓ plan-lint.sh names the roots as parallel candidates (aside after none ignored)" \
+  || { echo "  ✗ plan-lint.sh missed the parallel-candidate advisory: $OUT"; fail=$((fail+1)); }
+
+mk "$TMP/g-ref.md" $'### Task 1: a\n- Blocked by: none' $'### Task 2: b\n- Blocked by: Task 7'
+RC=0; OUT=$(bash "$LINT" "$TMP/g-ref.md" 2>&1) || RC=$?
+[ "$RC" -ne 0 ] && echo "$OUT" | grep -q 'blocked by Task 7 — no such task' && ! echo "$OUT" | grep -q 'cycle' \
+  && echo "  ✓ plan-lint.sh catches an unresolved Blocked-by ref (and does not call it a cycle)" \
+  || { echo "  ✗ unresolved ref handling: rc=$RC $OUT"; fail=$((fail+1)); }
+
+mk "$TMP/g-cycle.md" $'### Task 1: a\n- Blocked by: Task 3' $'### Task 2: b\n- Blocked by: Task 1' $'### Task 3: c\n- Blocked by: Task 2'
+RC=0; OUT=$(bash "$LINT" "$TMP/g-cycle.md" 2>&1) || RC=$?
+if echo "$OUT" | grep -q 'cycle among Tasks 1, 2, 3'; then
+  echo "  ✓ plan-lint.sh catches a Blocked-by cycle"
+else echo "  ✗ plan-lint.sh missed a 3-task cycle"; fail=$((fail+1)); fi
+
+mk "$TMP/g-mixed.md" $'### T1 — a\n- Blocked by: none' $'### T2 — b'
+RC=0; OUT=$(bash "$LINT" "$TMP/g-mixed.md" 2>&1) || RC=$?
+if echo "$OUT" | grep -q 'Task 2 has no Blocked by (other tasks do)'; then
+  echo "  ✓ plan-lint.sh flags a task missing Blocked by once any task has it"
+else echo "  ✗ plan-lint.sh passed a half-graphed plan"; fail=$((fail+1)); fi
+
+mk "$TMP/g-theads.md" $'### T1 — a\n- Blocked by: none' $'### T2 — b\n- Blocked by: T1'
+RC=0; OUT=$(bash "$LINT" "$TMP/g-theads.md" 2>&1) || RC=$?
+[ "$RC" -eq 0 ] && echo "$OUT" | grep -q 'Command (2/2)' \
+  && echo "  ✓ plan-lint.sh accepts ### TN — headings as tasks" \
+  || { echo "  ✗ plan-lint.sh still rejects ### TN — headings: $OUT"; fail=$((fail+1)); }
+
+mk "$TMP/g-dup.md" $'### Task 1: a\n- Blocked by: none' $'### Task 1: a again\n- Blocked by: none'
+RC=0; OUT=$(bash "$LINT" "$TMP/g-dup.md" 2>&1) || RC=$?
+if echo "$OUT" | grep -q 'duplicate task id 1'; then
+  echo "  ✓ plan-lint.sh catches a duplicate task id"
+else echo "  ✗ plan-lint.sh passed two tasks numbered 1"; fail=$((fail+1)); fi
+
+mk "$TMP/g-none.md" $'### Task 1: a' $'### Task 2: b'
+RC=0; OUT=$(bash "$LINT" "$TMP/g-none.md" 2>&1) || RC=$?
+[ "$RC" -eq 0 ] && echo "$OUT" | grep -q 'no Blocked by fields' \
+  && echo "  ✓ plan-lint.sh advises (not fails) a pre-v2.90.0 plan with no Blocked by at all" \
+  || { echo "  ✗ legacy plan handling: rc=$RC $OUT"; fail=$((fail+1)); }
+
+# ── Template + examples carry the human line and the graph field ────────
+for needle in '\*\*Delivers:\*\*' '\*\*Blocked by:\*\*' '^## Changes during build'; do
+  grep -qE "$needle" "$REPO_DIR/core/skills/write-plan/templates/plan-template.md" \
+    && echo "  ✓ template carries $needle" \
+    || { echo "  ✗ template missing $needle"; fail=$((fail+1)); }
+done
+N_TASK=$(grep -cE '^### Task [0-9]' "$REPO_DIR/core/skills/write-plan/examples/plan-examples.md" || true)
+N_BB=$(grep -c '^- Blocked by:' "$REPO_DIR/core/skills/write-plan/examples/plan-examples.md" || true)
+N_DL=$(grep -c '^- Delivers:' "$REPO_DIR/core/skills/write-plan/examples/plan-examples.md" || true)
+[ "$N_BB" -eq "$N_TASK" ] && [ "$N_DL" -eq "$N_TASK" ] \
+  && echo "  ✓ every example task carries Delivers + Blocked by ($N_TASK)" \
+  || { echo "  ✗ example tasks=$N_TASK Delivers=$N_DL Blocked-by=$N_BB"; fail=$((fail+1)); }
+grep -q 'Task 1 → 2 → 3' "$REPO_DIR/core/skills/write-plan/examples/plan-examples.md" \
+  && { echo "  ✗ example still restates the order in prose"; fail=$((fail+1)); } \
+  || echo "  ✓ examples no longer restate the order outside Blocked by"
 
 # ── Session-split protocol is documented where the contract points ──────
 grep -q '^## Session split' "$REPO_DIR/core/skills/write-plan/templates/cohesion-contract-template.md" \

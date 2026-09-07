@@ -72,7 +72,7 @@ Prefer vertical slices — each task cuts through all layers and is demoable on 
 
 When one slice carries a major unknown (a new integration, an unproven assumption), sequence it first — fail fast before investing in dependent slices.
 
-Break a task down further if any holds: >2hr of work, acceptance needs more than 3 bullets, it touches 2+ independent subsystems, or its title contains "and".
+Break a task down further if any holds: >2hr of work, acceptance needs more than 3 bullets, it touches 2+ independent subsystems, or its title contains "and". Every task states **Delivers** (one user-visible sentence — what a human reads) and **Blocked by** (the tasks that gate it, or none) — the Blocked-by graph is the plan's only statement of order; nothing restates it in prose.
 
 ### 3. Test plan per task
 
@@ -82,7 +82,7 @@ Repo has no test infrastructure at all → the FIRST task bootstraps the minimal
 
 ### 4. Decide if parallelism helps
 
-Parallel agents only help when file ownership is genuinely disjoint and the work does not need handoff between agents. Otherwise sequential is faster and cheaper. When the call is borderline (e.g. two slices that might overlap on a shared interface), present both shapes — sequential single-owner vs parallel + contract — with one-line trade-offs and let the user pick before drafting tasks.
+Before writing the artifact, quiz the user on the numbered task list — per task: title, Delivers, Blocked by. Three questions: granularity right (too coarse / too fine)? edges right (each task blocked only by what genuinely gates it)? merge or split any? Iterate until approved; the approved list is what the file records. Parallel agents only help when file ownership is genuinely disjoint and the work does not need handoff between agents — otherwise sequential is faster and cheaper. Two tasks with no edge between them are parallel *candidates*, never a mandate; choosing sequential anyway is fine, say why in the Parallel layout line. Borderline (two slices that might overlap on a shared interface) → present both shapes with one-line trade-offs and let the user pick.
 
 For this — or any high-stakes multi-option plan decision (approach, architecture, sequencing) — gather a **cross-CLI advisory panel** before deciding, but only when opted in (`/rolepod-full` or an explicit ask) and the decision is genuinely high-stakes. The other CLIs advise on the approach; the Lead reconciles and owns the choice. Gating, per-model strengths, and the collect-then-decide protocol: `references/advisory-routing.md`. Default is Lead-only — a panel costs ~3× tokens, so it is off unless the decision earns it. A single-family machine still gets an advisor when the panel fires — the vertical fallback (the Lead's own CLI at its strongest model) in the same reference.
 
@@ -103,7 +103,7 @@ Scan for:
 - **Spec-coverage trace, both directions** — for each spec requirement, name the task that implements it (a requirement with no task is a plan failure); and for each task, name the spec line that asked for it (a task no spec line asked for is scope creep — cut it or move it to a follow-up list)
 - **Symbol consistency cross-task** — function / method / property names must match across tasks. `clearLayers()` in Task 3 and `clearFullLayers()` in Task 7 is a bug — pick one and propagate
 - **Missing tests** on any task
-- **Loop-runnable** — every task carries an exact runnable Command, and the plan states a Failure policy, so the build loop can execute → verify → recover without re-asking the user. Deterministic check: `plan-lint.sh <plan> [contract]` — at `~/.rolepod/bin/` (installed), the plugin's `scripts/`, or `scripts/` (source repo) — Failure policy + Command per task + parallel ownership completeness; inline fallback: `grep -q '^## Failure policy' <plan> && awk '/^### Task/{t++;c[t]=0;i=1;next} /^## /{i=0} i&&/Command:/{c[t]=1} END{if(!t)exit 1;for(k=1;k<=t;k++)if(!c[k])exit 1}' <plan>`
+- **Loop-runnable** — every task carries an exact runnable Command, and the plan states a Failure policy, so the build loop can execute → verify → recover without re-asking the user. Deterministic check: `plan-lint.sh <plan> [contract]` — at `~/.rolepod/bin/` (installed), the plugin's `scripts/`, or `scripts/` (source repo) — Failure policy + Command per task + Blocked-by edges resolve without a cycle + parallel ownership completeness; inline fallback: `grep -q '^## Failure policy' <plan> && awk '/^### (Task ?|T)[0-9]/{t++;c[t]=0;i=1;next} /^## /{i=0} i&&/Command:/{c[t]=1} END{if(!t)exit 1;for(k=1;k<=t;k++)if(!c[k])exit 1}' <plan>`
 - **Boundary violations** — a boundary map exists → every new cross-module import or dependency-direction reversal the plan introduces is called out and justified; undeclared crossing = fix the plan or update the map with the user, never cross silently
 - **Untouched high-risk surfaces**
 - **Unowned or dual-owned files** in a parallel layout — every Files-to-touch path sits under EXACTLY one owner in the contract (plan-lint check 3: unowned = unplannable work, dual-owned = a merge conflict on schedule)
@@ -149,7 +149,7 @@ Execute as Lead with this minimum viable checklist:
 
 The plan template is the canonical artifact: `templates/plan-template.md`. Fill every section — it is the contract `implement-plan` executes. A multi-agent plan adds a cohesion contract (`templates/cohesion-contract-template.md`). Do not restate the section list here; the templates are the single source of plan shape.
 
-Tasks use `- [ ]` checkboxes so progress is visible in the artifact itself — survives session compaction.
+Tasks use `- [ ]` checkboxes so progress is visible in the artifact itself — survives session compaction. The file never absorbs build-time narrative: status is the checkbox, a deviation is one line under `## Changes during build`; a task block stays what was planned.
 
 For one-session work, inline the filled template in chat. For multi-session work, save it to `docs/rolepod/plans/<feature>-YYYY-MM-DD.md`. Re-planning after the spec moves never overwrites: keep the prior file and write `<feature>-YYYY-MM-DD-v2.md` (the diff between versions is the record of what changed and why). `docs/rolepod/` is private by default — before the first save: `grep -qx 'docs/rolepod/' .gitignore || echo 'docs/rolepod/' >> .gitignore` (the commit gate denies staged `docs/rolepod/` files; `.rolepod/docs-tracked` opts a repo in).
 

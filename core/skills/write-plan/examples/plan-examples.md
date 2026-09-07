@@ -28,6 +28,8 @@ docs/rolepod/specs/orders-csv-export-2026-05-20.md (approved)
 ## Tasks
 
 ### Task 1: OrdersCsv service
+- Delivers: the report's rows can be produced as a CSV with the on-screen columns
+- Blocked by: none
 - [ ] Files: app/services/orders_csv.rb, spec/services/orders_csv_spec.rb
 - [ ] Change: build CSV rows from the same scope ReportsController#index uses
 - [ ] Test / evidence: unit — a 3-order scope yields 1 header + 3 rows, columns
@@ -38,6 +40,8 @@ docs/rolepod/specs/orders-csv-export-2026-05-20.md (approved)
 - Done when: spec green, columns match the report table
 
 ### Task 2: export action
+- Delivers: a filtered report can be downloaded as CSV from the API
+- Blocked by: Task 1
 - [ ] Files: app/controllers/reports_controller.rb
 - [ ] Change: add #export, reuse the index filter scope, stream as attachment
 - [ ] Test / evidence: request spec — filtered export row count == table count;
@@ -49,6 +53,8 @@ docs/rolepod/specs/orders-csv-export-2026-05-20.md (approved)
   response (Risks) instead of debugging the buffered path.
 
 ### Task 3: Export CSV button
+- Delivers: a user clicks Export CSV and gets the filtered table as a file
+- Blocked by: Task 2
 - [ ] Files: app/views/reports/_toolbar.html.erb
 - [ ] Change: add the button wired to #export; disable + spinner while generating
 - [ ] Test / evidence: system spec — click exports the current filter; button
@@ -72,7 +78,7 @@ Reverse — every task traces to a spec line; anything that does not is cut:
   excludes it → cut to a follow-up, not built here.
 
 ## Parallel layout
-Sequential — single owner. Task 1 → 2 → 3; each depends on the prior.
+Sequential — single owner.
 
 ## Done criteria
 All 3 specs green; the exported CSV row set equals the filtered table.
@@ -110,7 +116,7 @@ Touch the reports stuff and the frontend. Should be quick.
 | Files | "the reports stuff" — no paths | Exact paths, one per line, with the change |
 | Tasks | "Build the export feature" — one giant vague task | Ordered, each independently verifiable |
 | Tests | "Add tests" — no assertion | Per task: test type + the assertion that proves done |
-| Order | Unstated | Sequential, dependency named (1 → 2 → 3) |
+| Order | Unstated | Blocked by on every task — the graph IS the order; Delivers gives a human the one-line why |
 | Commands | None | Exact `rspec` command per task |
 | Loop | Not runnable — no checkboxes, no failure path | Checkbox state + Failure policy: the build loop executes, verifies, and recovers without re-asking |
 | Scope | "Touch the reports stuff and the frontend" — unbounded | Two-way spec trace: every criterion has a task, every task has a spec line, and the unasked Excel export is cut |
@@ -138,6 +144,8 @@ docs/rolepod/specs/notifications-center-2026-05-20.md (approved)
 ## Tasks
 
 ### Task 1: Notification model + API (backend)
+- Delivers: the API lists a user's notifications, unread first, and marks one read
+- Blocked by: none
 - [ ] Files: app/models/notification.rb, app/controllers/api/notifications_controller.rb
 - [ ] Change: model + GET /api/notifications + POST /api/notifications/:id/read
 - [ ] Test / evidence: request spec — list returns unread first; read marks read
@@ -146,6 +154,8 @@ docs/rolepod/specs/notifications-center-2026-05-20.md (approved)
 - Done when: request spec green; API matches the frozen contract
 
 ### Task 2: API client + bell + dropdown (frontend)
+- Delivers: a user sees an unread count on the bell and clears items from the dropdown
+- Blocked by: none — builds against the contract's mock; the live wiring is Done criteria
 - [ ] Files: app/javascript/api/notifications.ts, NotificationBell.tsx, NotificationDropdown.tsx
 - [ ] Change: typed client, bell with unread count, dropdown with read-on-click
 - [ ] Test / evidence: component test — bell shows the count; click marks read
@@ -157,9 +167,7 @@ docs/rolepod/specs/notifications-center-2026-05-20.md (approved)
 None.
 
 ## Parallel layout
-Parallel — 2 agents, disjoint files.
-Cohesion contract: docs/rolepod/plans/notifications-cohesion-2026-05-20.md
-Merge order: Task 1 (backend) first — it provides the API contract.
+Parallel — contract: `docs/rolepod/plans/notifications-cohesion-2026-05-20.md` (merge order there: backend first, it provides the API contract).
 
 ## Done criteria
 Both task sets green; the live bell updates against the real API.
@@ -196,7 +204,7 @@ Run them in parallel to go faster.
 | Files | None listed | Exact paths, tagged by owner |
 | Ownership | Both agents on "wire it together" — shared, no owner | Disjoint files, one owner each |
 | Cohesion contract | None — parallel with no contract | Contract path named, interface frozen |
-| Merge order | Unstated | Backend first — it provides the contract |
+| Merge order | Unstated | In the contract, backend first — the plan's Blocked by stays "none" on both because each builds against the frozen mock |
 | API contract | Unstated — drift guaranteed | Frozen in the contract; integration owner re-verifies |
 | Tests | None | Per task: request spec / component test with an assertion + a runnable Command |
 | Loop | Not runnable | Checkboxes + Failure policy incl. the contract-drift stop rule |

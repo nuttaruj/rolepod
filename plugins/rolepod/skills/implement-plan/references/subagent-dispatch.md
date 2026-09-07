@@ -184,7 +184,7 @@ Anything else = continue.
 
 ## Parallel-track dispatch
 
-Fires only when the plan's **Parallel layout** section names more than one owner AND the cohesion contract exists. No contract → no parallel dispatch, period — drop to sequential and say why.
+Fires only when the plan's **Parallel layout** line declares Parallel with a contract path AND that cohesion contract exists. Track order comes from the plan's per-task **Blocked by** plus the contract's merge order — never from the prose. No contract → no parallel dispatch, period — drop to sequential and say why.
 
 1. **Group tasks by track** (contract owner). A track's dependencies are the tasks in other tracks whose interfaces it consumes — the contract's merge order encodes this.
 2. **Dispatch every ready track in ONE message** — one Agent call per track, same message, so they run concurrently. Each brief carries the track's tasks, its file-ownership slice (allowed paths = own slice; forbidden = everything else including the do-not-touch list), the frozen shared interfaces verbatim, tests, and done criteria. Copy the allowed/forbidden paths and the interfaces VERBATIM from the contract — a retyped path list is how a brief silently drifts from the ownership the contract pinned (`scripts/plan-lint.sh` proves plan↔contract; the verbatim rule covers contract↔brief).

@@ -19,11 +19,19 @@
 
 ## Tasks
 <Ordered, smallest reversible unit first. Each task is independently
- verifiable. A task whose title needs "and" is two tasks.>
+ verifiable. A task whose title needs "and" is two tasks. A task block is
+ what was PLANNED — it never absorbs build-time narrative: status is the
+ checkbox, a deviation is one line under ## Changes during build.>
 
 ### Task 1: <title>
+- **Delivers:** <one sentence — what a user can do or see once this lands.
+      Behaviour, not layers. The line a human reads.>
+- **Blocked by:** <Task numbers that must land first, or "none". This field
+      IS the plan's order — nothing restates it in prose.>
 - [ ] **Files:** <paths this task touches>
-- [ ] **Change:** <what to do, concretely>
+- [ ] **Change:** <what to do, concretely — at most 3 bullets. An exact-string
+      edit spec (old → new) goes in a fenced block under this task, never
+      inline in the bullet.>
 - [ ] **Test / evidence:** <test type + the assertion that proves it works>
 - [ ] **Expected failing signal:** <for test-first tasks — the error the test
       shows before the fix. Omit if not test-first.>
@@ -48,9 +56,11 @@
 - <spec requirement> → Task <N>
 
 ## Parallel layout
-<If one owner: "Sequential — single owner." plus the task dependency order.
- If more than one agent edits code: name the cohesion contract path and the
- merge order — see templates/cohesion-contract-template.md.>
+<ONE line — the decision, not the order (order lives in each Blocked by).
+ "Sequential — single owner." — valid even when the graph would allow
+ parallel; say why in a clause. Or "Parallel — contract: <path>" when more
+ than one agent edits code (templates/cohesion-contract-template.md pins
+ ownership and merge order).>
 
 ## Done criteria
 <The whole-plan finish line. Every task done AND this is true.>
@@ -69,3 +79,8 @@ different fallback states it in its **On fail:**.
 
 ## Risks
 <What could go wrong, and the fallback.>
+
+## Changes during build
+<Append-only, written while implementing — never edited into the task blocks
+ above. One line per deviation: "Task N — what changed, why". Empty until
+ the build starts.>

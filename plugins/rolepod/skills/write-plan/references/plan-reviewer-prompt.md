@@ -49,8 +49,12 @@ Check, in order:
 5. High-risk surfaces — any auth / billing / payments / credits /
    migration / data-deletion / secrets / tokens / crypto / permissions /
    security surface touched has a test plan and an owner.
-6. Parallel layout — if more than one owner, a cohesion contract is
-   referenced with file ownership and merge order.
+6. Parallel layout — if Parallel, a cohesion contract is referenced with
+   file ownership and merge order; Sequential says why when the Blocked-by
+   graph would have allowed parallel.
+7. Blocked-by graph — every task carries Delivers (one user-visible
+   sentence) and Blocked by; every reference resolves to a task in the
+   plan; no cycle; no prose restating the order elsewhere.
 
 Only flag issues that would cause real implementation problems.
 Stylistic preferences and nice-to-haves are advisory, not blocking.
