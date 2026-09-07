@@ -94,9 +94,9 @@ Bad: long apology / over-explanation / defending why you pushed back. State the 
 
 ## Implementation order for multi-finding
 
-When ≥3 findings land at once:
+When the round's findings land (every dispatched reviewer returned — merged, deduped by file:line + root cause; never the first report alone):
 
-1. **Read all** — do not start implementing while still reading
+1. **Read all** — do not start implementing while still reading, and never while a reviewer is still running on this tree
 2. **Clarify all unclear** — never partial-implement when items may be linked
 3. **Order by class:**
    - Blocking (security / data loss / breaks build) → fix first

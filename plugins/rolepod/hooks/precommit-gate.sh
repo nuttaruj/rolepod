@@ -64,6 +64,26 @@ rolepod_log_bypass() {
     >> "$_rlb_root/.rolepod/evidence/bypass.log" 2>/dev/null || true
 }
 
+# Detached cross-family job still running for this repo (v2.79.0): prints
+# "<job-id> (running N min)" for a live one, else nothing. Liveness = pid
+# alive AND still a cross-family process (a reused pid is a dead job).
+# Shared by the commit hold and the tree-rewrite warning below;
+# gate-reminder.sh carries the same walk (keep in parity).
+xfam_running_job() {
+  _xr_jobs="$(git rev-parse --show-toplevel 2>/dev/null)/.rolepod/evidence/external/jobs"
+  [ -d "$_xr_jobs" ] || return 0
+  _xr_out=""
+  for _jd in "$_xr_jobs"/*/; do
+    [ -d "$_jd" ] || continue; [ -f "$_jd/status" ] && continue
+    _jp=$(cat "$_jd/pid" 2>/dev/null); case "$_jp" in ''|*[!0-9]*) continue ;; esac
+    kill -0 "$_jp" 2>/dev/null || continue
+    ps -o command= -p "$_jp" 2>/dev/null | grep -q 'cross-family' || continue
+    _js=$(cat "$_jd/started" 2>/dev/null || echo 0); _jm=$(( ($(date +%s) - _js) / 60 ))
+    _xr_out="$(basename "$_jd") (running ${_jm} min)"
+  done
+  printf '%s' "$_xr_out"
+}
+
 INPUT=$(cat 2>/dev/null || echo '{}')
 
 # ONE python3 pass for tool_name + commit token-walk + command (was 3
@@ -77,6 +97,11 @@ import json, os, shlex, sys
 tool = ''
 cmd = ''
 hit = 0
+mut = ''
+# Tree-rewriting subcommands (v2.93.0): warned about while a detached
+# cross-family review is running. stash list/show and a mixed/soft reset
+# touch nothing the reviewer reads.
+MUT = {'stash', 'reset', 'checkout', 'switch', 'restore', 'rebase', 'merge', 'cherry-pick', 'clean', 'pull'}
 try:
     d = json.load(sys.stdin)
     tool = d.get('tool_name', '') or ''
@@ -99,19 +124,41 @@ try:
             if j < len(toks) and toks[j] == 'commit':
                 hit = 1
                 break
+            if j < len(toks) and toks[j] in MUT and not mut:
+                sub = toks[j]
+                nxt = toks[j + 1] if j + 1 < len(toks) else ''
+                if sub == 'stash' and nxt in ('list', 'show'):
+                    pass
+                elif sub == 'reset' and not any(t in ('--hard', '--merge', '--keep') for t in toks[j:]):
+                    pass
+                else:
+                    mut = sub
 except Exception:
     pass
 print(tool)
+print(mut)
 print(hit)
 print(cmd)
 " 2>/dev/null) || exit 0
-{ read -r TOOL; read -r IS_COMMIT; CMD=$(cat); } <<EOF
+{ read -r TOOL; read -r MUTATES; read -r IS_COMMIT; CMD=$(cat); } <<EOF
 $PARSED
 EOF
 
 # Belt-and-suspenders: hooks.json registers matcher "Bash" only.
 [ "$TOOL" = "Bash" ] || exit 0
-[ "$IS_COMMIT" = "1" ] || exit 0
+if [ "$IS_COMMIT" != "1" ]; then
+  # Tree rewrite while a review is in flight (v2.93.0): stash / reset --hard /
+  # checkout / … empties or moves the tree a running cross-family job reads
+  # live → its verdict is an artifact and the job re-runs. Advisory only.
+  [ -n "$MUTATES" ] || exit 0
+  [ "${ROLEPOD_GATES_SOFT:-0}" = "1" ] && exit 0
+  _mj="$(xfam_running_job)"; [ -n "$_mj" ] || exit 0
+  ROLEPOD_HOOK_MSG="⏸ REVIEW IN FLIGHT: cross-family job $_mj reads this tree live — \`git $MUTATES\` rewrites it, so that verdict becomes an artifact and the job re-runs. Fix: \`rolepod-cross-family --collect ${_mj%% *}\` first, then \`git $MUTATES\`. Exception: a red-proof revert goes in a throwaway git worktree, not a stash here; a dead job → --collect says so and this line stops." python3 -c "
+import json, os
+print(json.dumps({'hookSpecificOutput': {'hookEventName': 'PreToolUse', 'additionalContext': os.environ.get('ROLEPOD_HOOK_MSG', '')}}))
+" 2>/dev/null || echo '{}'
+  exit 0
+fi
 
 if [ "${ROLEPOD_GATES_SOFT:-0}" = "1" ]; then
   rolepod_log_bypass "precommit-gate" "ROLEPOD_GATES_SOFT"
@@ -358,17 +405,7 @@ XFAM_LEAD="${ROLEPOD_LEAD_CLI:-}"
 XFAM_POOL=""; XFAM_FAILS=0
 # Detached runner job still running for this repo (v2.79.0): the hold reason
 # must say "wait / --collect", not "run the runner" (it is already running).
-XFAM_RUNNING=""
-if [ -d "$EV_ROOT/external/jobs" ]; then
-  for _jd in "$EV_ROOT"/external/jobs/*/; do
-    [ -d "$_jd" ] || continue; [ -f "$_jd/status" ] && continue
-    _jp=$(cat "$_jd/pid" 2>/dev/null); case "$_jp" in ''|*[!0-9]*) continue ;; esac
-    kill -0 "$_jp" 2>/dev/null || continue
-    ps -o command= -p "$_jp" 2>/dev/null | grep -q 'cross-family' || continue   # pid reused by something else = dead job
-    _js=$(cat "$_jd/started" 2>/dev/null || echo 0); _jm=$(( ($(date +%s) - _js) / 60 ))
-    XFAM_RUNNING="$(basename "$_jd") (running ${_jm} min)"
-  done
-fi
+XFAM_RUNNING="$(xfam_running_job)"
 # Money / auth + enabled pool + external anchored but NO internal strong →
 # hold: this surface needs BOTH passes (v2.78.0). External failed (logged) →
 # internal alone clears, as everywhere else.

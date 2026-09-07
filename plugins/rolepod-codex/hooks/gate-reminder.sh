@@ -9,6 +9,9 @@
 #   Trivial path (docs/configs/lockfiles)             → silent
 #   Schema-bound NEW file                             → soft warn (WebFetch spec FIRST)
 #   Normal code edit                                  → silent
+#   Review in flight: live detached cross-family    → one advisory line, never a deny —
+#     job + edit to a file its diff touches (v2.93.0)   the job reads the tree live; an
+#                                                       early edit voids its verdict
 #   High-risk path                                    → auto-Careful banner, and when
 #     the evidence window (since last commit, Lead + subagent transcripts)
 #     shows 0 test edits / 0 strong reviewers, the banner NAMES what the
@@ -123,10 +126,51 @@ if [ "$IS_TEST" -eq 0 ] && [ -n "$_RISK_HIT" ]; then
   MONEY_RISK=$(printf '%s\n' "$FILE" | grep -iE '(^|/|_)(auth|authn|authz|authentication|authorization|billing|payment|payments|credit|credits|secret|secrets|crypto|cryptography|oauth|jwt|sso|saml|stripe|paypal|charge|charges|invoice|invoices|deletion|deletions|erasure|gdpr)(/|\.|_|$)' | head -1 || true)
 fi
 
+# Review in flight (v2.93.0): a detached cross-family job is still running
+# on this repo and reads the live tree for context. An edit to a file its
+# attached diff touches turns that verdict into an artifact and re-runs the
+# job — one advisory line, never a deny (v2.47.0). Files under review =
+# `+++ b/<path>` of every --attach in the job's args (written with %q, so
+# eval is the decoder); attachments gone (tmp cleaned) → the current WIP
+# (git diff HEAD) stands in. Liveness walk = precommit-gate.sh's
+# xfam_running_job (keep in parity).
+XFAM_INFLIGHT=""
+_gr_root="$(git rev-parse --show-toplevel 2>/dev/null || true)"
+if [ -n "$_gr_root" ] && [ -d "$_gr_root/.rolepod/evidence/external/jobs" ] && [ "${ROLEPOD_GATES_SOFT:-0}" != "1" ]; then
+  # Repo-relative target. Both sides go through pwd -P: git resolves symlinks
+  # (/private/var vs /var on macOS) while the tool passes the path as typed,
+  # and a mismatched prefix would silently skip the match.
+  _gr_rel="$FILE"
+  if [ "${_gr_rel#/}" != "$_gr_rel" ]; then
+    _gr_dir=$(cd "$(dirname "$_gr_rel")" 2>/dev/null && pwd -P || true)
+    [ -n "$_gr_dir" ] && _gr_rel="$_gr_dir/$(basename "$_gr_rel")"
+  fi
+  _gr_rootp=$(cd "$_gr_root" 2>/dev/null && pwd -P || printf '%s' "$_gr_root")
+  case "$_gr_rel" in "$_gr_rootp"/*) _gr_rel="${_gr_rel#"$_gr_rootp"/}" ;; "$_gr_root"/*) _gr_rel="${_gr_rel#"$_gr_root"/}" ;; esac
+  for _jd in "$_gr_root"/.rolepod/evidence/external/jobs/*/; do
+    [ -d "$_jd" ] || continue; [ -f "$_jd/status" ] && continue
+    _jp=$(cat "$_jd/pid" 2>/dev/null); case "$_jp" in ''|*[!0-9]*) continue ;; esac
+    kill -0 "$_jp" 2>/dev/null || continue
+    ps -o command= -p "$_jp" 2>/dev/null | grep -q 'cross-family' || continue
+    _under=$( ( eval "set -- $(cat "$_jd/args" 2>/dev/null)" 2>/dev/null; while [ $# -gt 0 ]; do if [ "$1" = "--attach" ] && [ -f "${2:-}" ]; then grep -E '^\+\+\+ b/' "$2" 2>/dev/null | sed -E 's#^\+\+\+ b/##; s/[[:space:]]+$//'; shift; fi; shift; done ) 2>/dev/null || true )
+    [ -n "$_under" ] || _under=$(git -C "$_gr_root" diff HEAD --name-only 2>/dev/null || true)
+    if printf '%s\n' "$_under" | grep -qxF -- "$_gr_rel"; then
+      _jid=$(basename "$_jd"); _js=$(cat "$_jd/started" 2>/dev/null || echo 0); _jm=$(( ($(date +%s) - _js) / 60 ))
+      XFAM_INFLIGHT="⏸ REVIEW IN FLIGHT: cross-family job $_jid (running ${_jm} min) reads '$_gr_rel' live — this edit turns its verdict into an artifact and re-runs the job. Fix: park the edit until \`rolepod-cross-family --collect $_jid\` returns; work outside the diff meanwhile. Exception: a dead job → --collect says so and this line stops. "
+      break
+    fi
+  done
+fi
+
 # Silent pass when nothing is risky. Normal code / docs / config edits
 # never see a reminder from this hook — the Q1-Q4 doctrine lives in
 # CLAUDE.md / AGENTS.md and using-rolepod skill, read once per session.
 if [ -z "$SCHEMA_BOUND" ] && [ -z "$HIGH_RISK" ]; then
+  [ -n "$XFAM_INFLIGHT" ] || exit 0
+  ROLEPOD_HOOK_MSG="$XFAM_INFLIGHT" python3 -c "
+import json, os
+print(json.dumps({'hookSpecificOutput': {'hookEventName': 'PreToolUse', 'additionalContext': os.environ.get('ROLEPOD_HOOK_MSG', '')}}))
+" 2>/dev/null || echo '{}'
   exit 0
 fi
 
@@ -204,7 +248,7 @@ fi
 
 # Emit reminder ONLY when schema-bound or high-risk — no generic Q1-Q4 nag.
 # Env-passed (see deny path) so apostrophes in the banner cannot break it.
-ROLEPOD_HOOK_MSG="${SCHEMA_BOUND}${CAREFUL_BANNER}${HIGH_RISK}" python3 -c "
+ROLEPOD_HOOK_MSG="${XFAM_INFLIGHT}${SCHEMA_BOUND}${CAREFUL_BANNER}${HIGH_RISK}" python3 -c "
 import json, os
 print(json.dumps({
   'hookSpecificOutput': {

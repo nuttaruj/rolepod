@@ -130,7 +130,10 @@ records `model: default`.
    each anchored.
 4. Launch every routed reviewer — the runner and internal agents alike — in
    ONE dispatch; they read the same frozen diff independently, so nothing
-   is gained by waiting for one before starting the next.
+   is gained by waiting for one before starting the next. Frozen holds for
+   the whole round: no edit to the diff's files, no `git stash` / `reset` /
+   `checkout`, until the last member returns — each reads the live tree for
+   context, and an early fix makes its verdict an artifact.
 
 ## The Lead floor — covers every axis
 

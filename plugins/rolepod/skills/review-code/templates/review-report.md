@@ -18,8 +18,11 @@
  "None" is valid — state it deliberately.>
 
 ## Reviewers
-<Which reviewer roles ran. For a high-risk diff, name the adversarial
- fresh-context reviewer and confirm its model differs from the Lead's.>
+<Which reviewer roles ran, and that the round is complete — every
+ dispatched reviewer returned before any fix; N reports merged → U unique
+ findings (dedup key: file:line + root cause). For a high-risk diff, name
+ the adversarial fresh-context reviewer and confirm its model differs from
+ the Lead's.>
 
 **Cross-model adversarial pass:** <ran on `<cli>` (cross-family, its default model — receipt: ROLEPOD-XFAM ok … raw=<path>) |
  NOT RUN — cross-family off (opt-in; the user's choice — a note, not a

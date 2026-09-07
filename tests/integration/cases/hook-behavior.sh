@@ -527,6 +527,55 @@ check_ctx "loop-breaker: 'Exit code N' text form counts → nudge at 3rd" nudge 
 check_ctx "loop-breaker: different session id isolated → silent" silent "$(lb s3 1)"
 rm -rf "$LB_TMP"
 
+# ── review in flight (v2.93.0): a live detached cross-family job freezes the diff ──
+# gate-reminder warns (never denies) on an edit to a file the job's attached
+# diff touches; precommit-gate warns on a tree rewrite (stash / reset --hard /
+# checkout); both stay silent for other files, read-only git, or a finished job.
+RF_TMP=$(mktemp -d)
+( cd "$RF_TMP" && git init -q . && git config user.email t@t && git config user.name t \
+  && mkdir -p src && echo 'a' > src/pay.ts && echo 'b' > src/other.ts && git add -A && git commit -qm init )
+RF_JOB="$RF_TMP/.rolepod/evidence/external/jobs/20260907T000000Z-review-1"
+mkdir -p "$RF_JOB"
+printf 'diff --git a/src/pay.ts b/src/pay.ts\n--- a/src/pay.ts\n+++ b/src/pay.ts\n@@ -1 +1 @@\n-a\n+b\n' > "$RF_TMP/diff.patch"
+printf -- '--kind review --brief %q --attach %q --lead claude\n' "$RF_TMP/brief.md" "$RF_TMP/diff.patch" > "$RF_JOB/args"
+date +%s > "$RF_JOB/started"
+bash -c 'exec -a cross-family-fake sleep 120' & RF_PID=$!
+echo "$RF_PID" > "$RF_JOB/pid"
+rf_edit() { printf '{"tool_name":"Edit","tool_input":{"file_path":"%s"}}' "$1" | (cd "$RF_TMP" && bash "$HOOKS/gate-reminder.sh") || true; }
+rf_bash() { printf '{"tool_name":"Bash","tool_input":{"command":"%s"}}' "$1" | (cd "$RF_TMP" && bash "$HOOKS/precommit-gate.sh") || true; }
+out=$(rf_edit "$RF_TMP/src/pay.ts")
+if echo "$out" | grep -q 'REVIEW IN FLIGHT' && ! echo "$out" | grep -q '"permissionDecision"'; then
+  echo "  ✓ gate-reminder: edit to a file under review while the job runs → advisory line, not a deny"
+else echo "  ✗ gate-reminder in-flight edit: ${out:0:160}"; fail=$((fail+1)); fi
+out=$(rf_edit "$RF_TMP/src/other.ts")
+if echo "$out" | grep -q 'REVIEW IN FLIGHT'; then echo "  ✗ gate-reminder warned on a file outside the attached diff"; fail=$((fail+1))
+else echo "  ✓ gate-reminder: file outside the diff → silent"; fi
+out=$(rf_bash 'git stash')
+if echo "$out" | grep -q 'REVIEW IN FLIGHT' && ! echo "$out" | grep -q '"permissionDecision"'; then
+  echo "  ✓ precommit-gate: git stash while the job runs → advisory line, not a deny"
+else echo "  ✗ precommit-gate in-flight stash: ${out:0:160}"; fail=$((fail+1)); fi
+out=$(rf_bash 'git reset --hard HEAD')
+if echo "$out" | grep -q 'REVIEW IN FLIGHT'; then echo "  ✓ precommit-gate: git reset --hard while the job runs → advisory line"
+else echo "  ✗ precommit-gate in-flight reset --hard silent"; fail=$((fail+1)); fi
+for ro in 'git stash list' 'git reset src/pay.ts' 'git status' 'git diff HEAD'; do
+  out=$(rf_bash "$ro")
+  if echo "$out" | grep -q 'REVIEW IN FLIGHT'; then echo "  ✗ precommit-gate warned on read-only/index-only '$ro'"; fail=$((fail+1))
+  else echo "  ✓ precommit-gate: '$ro' → silent"; fi
+done
+out=$( (export ROLEPOD_GATES_SOFT=1; rf_edit "$RF_TMP/src/pay.ts") )
+if echo "$out" | grep -q 'REVIEW IN FLIGHT'; then echo "  ✗ gate-reminder in-flight line ignores ROLEPOD_GATES_SOFT"; fail=$((fail+1))
+else echo "  ✓ gate-reminder: ROLEPOD_GATES_SOFT=1 silences the in-flight line"; fi
+# attachments gone (tmp cleaned) → the current WIP stands in for the file list
+rm -f "$RF_TMP/diff.patch"; echo 'c' > "$RF_TMP/src/other.ts"
+out=$(rf_edit "$RF_TMP/src/other.ts")
+if echo "$out" | grep -q 'REVIEW IN FLIGHT'; then echo "  ✓ gate-reminder: attachment gone → WIP file (git diff HEAD) still warns"
+else echo "  ✗ gate-reminder: attachment-gone fallback missed a WIP file"; fail=$((fail+1)); fi
+echo 0 > "$RF_JOB/status"
+out=$(rf_edit "$RF_TMP/src/pay.ts"); out2=$(rf_bash 'git stash')
+if { echo "$out"; echo "$out2"; } | grep -q 'REVIEW IN FLIGHT'; then echo "  ✗ finished job (status file) still warns"; fail=$((fail+1))
+else echo "  ✓ job finished (status written) → both hooks silent"; fi
+kill "$RF_PID" 2>/dev/null; wait "$RF_PID" 2>/dev/null || true; rm -rf "$RF_TMP"
+
 # ─── result ───
 if [ "$fail" -eq 0 ]; then
   echo "  ✓ pass"

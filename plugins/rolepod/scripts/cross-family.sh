@@ -498,7 +498,7 @@ EOF
   date +%s > "$JD/started"
   set -m; nohup bash "$0" "${CHILD_ARGS[@]}" > "$JD/out.txt" 2> "$JD/err.txt" < /dev/null & echo $! > "$JD/pid"; set +m
   TOS=""; for c in $USABLE; do TOS="$TOS${TOS:+ }$c=$( JOB_DIR="$JD" timeout_for "$c" )s"; done
-  echo "ROLEPOD-XFAM job=$JOB_ID kind=$KIND members=$USABLE budgets=$TOS — keep working; collect with: rolepod-cross-family --collect $JOB_ID --root $ROOT   (list: --jobs --root $ROOT). The chain falls through on its own and anchors the receipt; the commit gate sees the job."
+  echo "ROLEPOD-XFAM job=$JOB_ID kind=$KIND members=$USABLE budgets=$TOS — the tree under review is FROZEN until collected (work outside the diff; no stash / reset / checkout); collect with: rolepod-cross-family --collect $JOB_ID --root $ROOT   (list: --jobs --root $ROOT). The chain falls through on its own and anchors the receipt; the commit gate sees the job."
   exit 0
 fi
 TMPP=$(mktemp -d "${TMPDIR:-/tmp}/rolepod-xfam.XXXXXX")
