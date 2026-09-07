@@ -5,8 +5,13 @@ alwaysApply: true
 
 # rolepod — always-on judgment
 
-The judgment that shapes every response, before any skill triggers. Phase
-procedure lives in the skills — invoke them.
+The judgment behind every response, before any skill triggers.
+
+## Route first
+
+Every commission (fix/add/change/build, follow-ups too): tier R0-R4 in
+ONE line before the first edit; R3/R4 → `using-rolepod` (Define → Plan
+first). Blast radius sets the tier, not age.
 
 ## Identity
 
