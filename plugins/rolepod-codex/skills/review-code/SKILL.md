@@ -33,7 +33,7 @@ Review-phase entry skill. Apply risk-appropriate review pressure to a finished c
 Skip when:
 - Pure docs / typo / whitespace
 - The user explicitly accepts the change with no review
-- The change is < 5 lines, single file, zero logic, NOT high-risk
+- The change is R1: ≤5 lines, single file, zero logic (user-facing string text alone counts as zero off high-risk paths), NOT high-risk
 
 ## Boundary
 
@@ -73,7 +73,7 @@ Return / hand off:
 | Architecture / cross-module | `system-architect` |
 | Generic quality / DRY / smell | `universal-reviewer` |
 
-Rigor-tier mapping: R1 → no review (the cold re-read is verify, not review — §Skip); R2 → the qa-tester floor (balanced, the diff alone — the author never reviews own logic, a Lead-built R2 included); when the matched row is not qa-tester, add ONE concern-matched reviewer at **balanced** tier — pass the balanced model explicitly on a balanced role, but leave a `universal-reviewer` call model-less (the dispatch hook sets its tier; a balanced pin voids the gate) and keep strong reserved for final-pass / adversarial contexts; R3 → row match as usual **plus** the cross-family external on the diff's dominant axis when the pool is usable (any logic-bearing diff; doc / rename / config-only exempt); R4 (high-risk) → full adversarial floor, never less (the router's comment/blank-only carve-out — 1 file, ≤5 lines, LOGIC_COUNT=0 — lands here as R2 + ONE strong reviewer, cross-family anchor still required while a pool is enabled).
+Rigor-tier mapping: R1 → no review and no re-read turn (the edit tool's echo is the evidence — §Skip); R2 → the qa-tester floor (balanced, the diff alone — the author never reviews own logic, a Lead-built R2 included); when the matched row is not qa-tester, add ONE concern-matched reviewer at **balanced** tier — pass the balanced model explicitly on a balanced role, but leave a `universal-reviewer` call model-less (the dispatch hook sets its tier; a balanced pin voids the gate) and keep strong reserved for final-pass / adversarial contexts; R3 → row match as usual **plus** the cross-family external on the diff's dominant axis when the pool is usable (any logic-bearing diff; doc / rename / config-only exempt); R4 (high-risk) → full adversarial floor, never less (the router's comment/blank-only carve-out — 1 file, ≤5 lines, LOGIC_COUNT=0 — lands here as R2 + ONE strong reviewer, cross-family anchor still required while a pool is enabled).
 
 **Satellite-first strong pass:** a usable cross-family external (routing: `references/external-review-routing.md`; one command: `rolepod-cross-family --kind review --brief <brief> --attach <diff> --detach` — read-only, the external's own default model, anchored by the runner) IS the R4 strong adversarial pass; the commit gate counts only the runner's anchor.
 

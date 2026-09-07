@@ -587,6 +587,10 @@ out=$(sf src/util.ts "seq 15 | sed 's/^/const x = /'")
 if echo "$out" | grep -q 'reviewers since last commit: 0' && echo "$out" | grep -q 'rolepod:qa-tester' && ! echo "$out" | grep -q '"permissionDecision"'; then
   echo "  ✓ precommit SOFT: logic diff, 0 reviewers → names the count + the qa-tester floor, still allow"
 else echo "  ✗ precommit SOFT reviewer line: ${out:0:200}"; fail=$((fail+1)); fi
+out=$(sf src/label.ts "printf 'export const L = \"Save\";\nexport const M = \"Cancel\";\n'")
+if echo "$out" | grep -q 'reviewers since last commit: 0' && ! echo "$out" | grep -q '0 reviewers on a logic diff'; then
+  echo "  ✓ precommit SOFT: R1-shaped diff (1 file, ≤5 lines) → count only, no qa-tester ask (string text is R1 in the router)"
+else echo "  ✗ precommit SOFT R1-shaped: ${out:0:200}"; fail=$((fail+1)); fi
 out=$(sf src/notes.ts "seq 10 | sed 's/^/\/\/ note /'")
 if echo "$out" | grep -q 'reviewers since last commit: 0' && ! echo "$out" | grep -q '0 reviewers on a logic diff'; then
   echo "  ✓ precommit SOFT: comment-only diff → count shown, no qa-tester ask (nothing logic-bearing)"

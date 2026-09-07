@@ -131,7 +131,7 @@ F3: Cascading error — the fix introduced a new bug?      → run the full suit
 F4: Context loss — forgot an earlier constraint?         → re-read the request
 F5: Tool misuse — ran something destructive unannounced? → review + announce
 ```
-Any "yes" → fix before declaring done. Skip only when ALL hold: ≤5 lines · single file · zero logic-bearing · NOT a high-risk path (= rigor tier R1).
+Any "yes" → fix before declaring done. Skip only when ALL hold: ≤5 lines · single file · zero logic-bearing (user-facing string text alone counts as zero) · NOT a high-risk path (= rigor tier R1).
 
 ### 7. Compose the evidence block
 

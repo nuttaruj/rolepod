@@ -587,8 +587,11 @@ fi
 # SOFT warn path — emit reminder, exit 0
 WARN="precommit-gate SOFT: $FILES_CHANGED files / $LINES_CHANGED lines / $LOGIC_COUNT logic, no high-risk path; reviewers since last commit: $REVIEWERS. "
 # A logic diff nobody but its author read (v2.95.0): the R2 floor is a
-# qa-tester read of the diff — named here, still advisory.
-if [ "$LOGIC_COUNT" -gt 0 ] && [ "$REVIEWERS" -eq 0 ]; then WARN+="0 reviewers on a logic diff = the author reviewed it. Fix: dispatch rolepod:qa-tester (balanced) on the diff, then commit (review-code §1 R2). "; fi
+# qa-tester read of the diff — named here, still advisory. An R1-shaped
+# diff (1 file, ≤5 lines) gets the count only: a user-facing string edit
+# counts as logic here but as zero in the router (v2.96.0), and the
+# hook cannot tell a label from a branch — the doctrine can.
+if [ "$LOGIC_COUNT" -gt 0 ] && [ "$REVIEWERS" -eq 0 ] && { [ "$FILES_CHANGED" -gt 1 ] || [ "$LINES_CHANGED" -gt 5 ]; }; then WARN+="0 reviewers on a logic diff = the author reviewed it. Fix: dispatch rolepod:qa-tester (balanced) on the diff, then commit (review-code §1 R2). "; fi
 WARN+="Gates S1-S5 / T1-T6 / F1-F5 (finish-work §1, check-work §6) are advisory here; ROLEPOD_GATES_HARD=1 enforces."
 [ -n "$LINT_WARN" ] && WARN+=" | $LINT_WARN"
 
