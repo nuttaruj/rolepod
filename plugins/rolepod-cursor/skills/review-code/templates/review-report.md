@@ -34,7 +34,10 @@
 
 ## Findings
 <Severity-ordered. Each finding: file:line — issue — why it matters — fix
- direction (a direction, not a rewrite; the author fixes).>
+ direction (a direction, not a rewrite; the author fixes). Round 2+ (the
+ previous report is in the brief): prefix each finding IN-FIX (a defect
+ inside the previous round's fixes) / NEW (not flagged before) / REPEAT
+ (flagged before, still open) — the Lead's phase-log line counts them.>
 
 ### BLOCKER — must fix before merge
 - `file:line` — <issue> — <why it matters> — <fix direction>

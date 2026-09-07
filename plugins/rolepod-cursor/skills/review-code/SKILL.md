@@ -51,7 +51,7 @@ Return / hand off:
 
 ## Inputs to gather
 
-- The diff — pin base + target and name the form (`git diff` alone hides staged work; `--staged`, `HEAD`, or `<base>...HEAD` for a committed branch); include WIP when the user asked for WIP
+- The diff — pin base + target and name the form: committed branch → `<base>...HEAD`; uncommitted work → `git diff HEAD` (staged + unstaged together — `--cached` alone is a slice, and the runner refuses a slice whose files carry tree edits it does not contain, exit 7; `--partial-ok` only when the user asked for the staged part)
 - The spec / plan / acceptance criteria
 - Touched files end-to-end
 - The risk profile (high-risk surface? new dep? schema change?)
@@ -106,11 +106,11 @@ Fill `templates/review-report.md`. Each finding names file:line, the issue, why 
 
 ### 5. Fix-verify loop
 
-After the author fixes, re-read the diff. Confirm fixes don't introduce new BLOCKER / MAJOR issues. The reviewer who flagged the issue is not the final authority on whether it is fixed — Lead or qa-tester gives the final APPROVED.
+After the author fixes, re-read the diff — the round-2+ brief attaches the previous report, and every finding comes back tagged IN-FIX (inside the previous round's fixes) / NEW / REPEAT (still open); the phase-log line carries the counts. Confirm fixes don't introduce new BLOCKER / MAJOR issues. The reviewer who flagged the issue is not the final authority on whether it is fixed — Lead or qa-tester gives the final APPROVED.
 
 When author and reviewer disagree on the merits, resolve by precedence: technical data > documented style guide > engineering principle > codebase consistency.
 
-**Fix-round circuit breaker.** A round whose reviewer finds blockers *in the previous round's fixes* is a churn signal — the per-bug escalation rule never trips here because each round's blockers are new targets, so count at round level: two consecutive churn rounds → stop point-patching and climb the ladder in order: (1) zoom out — can the blocker class be closed wholesale (design-level fix) instead of per-site? (2) escalate the fix design vertically — one consult at the tier above the Lead (opus → fable-class) when the CLI exposes one, and Claude Code with native Advisor mode on uses it as THIS channel (inline, one consult — never a second parallel one); same shape as debug-issue §9: one advisor, one advisor-informed round, never another blind fix; (3) vertical exhausted or the misses smell family-shaped → one cross-family consult (advisor, not another reviewer); (4) still churning → surface to the user with the split option: merge the stable slices, isolate the churning surface into its own PR. A vertical or cross-family *advisor* here never substitutes for the §3 adversarial pass — advising on the fix and reviewing the diff stay separate roles.
+**Fix-round circuit breaker.** A round whose blockers carry the IN-FIX tag is a churn signal — the per-bug escalation rule never trips here because each round's blockers are new targets, so count at round level: two consecutive churn rounds → stop point-patching and climb the ladder in order: (1) zoom out — can the blocker class be closed wholesale (design-level fix) instead of per-site? (2) escalate the fix design vertically — one consult at the tier above the Lead (opus → fable-class) when the CLI exposes one, and Claude Code with native Advisor mode on uses it as THIS channel (inline, one consult — never a second parallel one); same shape as debug-issue §9: one advisor, one advisor-informed round, never another blind fix; (3) vertical exhausted or the misses smell family-shaped → one cross-family consult (advisor, not another reviewer); (4) still churning → surface to the user with the split option: merge the stable slices, isolate the churning surface into its own PR. A vertical or cross-family *advisor* here never substitutes for the §3 adversarial pass — advising on the fix and reviewing the diff stay separate roles.
 
 ### 6. Author-side response
 
@@ -149,7 +149,7 @@ Execute as Lead with this minimum viable checklist:
 
 The review report is the canonical artifact: `templates/review-report.md`. It carries scope, risk surfaces, reviewers, severity-ordered findings, the test verdict, and the recommendation. Do not restate the report shape here; the template is the single source.
 
-Also append one line to `<git-root>/.rolepod/evidence/phase-log.jsonl` — `{"ts":"<iso8601>","phase":"review","verdict":"<APPROVED|APPROVED-WITH-NITS|REJECTED>","blockers":<n>}` — inside the next Bash call you make anyway (the finish gates' `git diff`, the commit), never as a standalone turn (fail-open outside a git repo).
+Also append one line to `<git-root>/.rolepod/evidence/phase-log.jsonl` — `{"ts":"<iso8601>","phase":"review","verdict":"<APPROVED|APPROVED-WITH-NITS|REJECTED>","blockers":<n>}` (round 2+: add `"round":<n>,"infix":<n>,"repeat":<n>` — the tag counts) — inside the next Bash call you make anyway (the finish gates' `git diff`, the commit), never as a standalone turn (fail-open outside a git repo).
 
 **External strong pass — evidence anchor.** The runner anchors the pass itself: raw output under `<git-root>/.rolepod/evidence/external/<utc-ts>-<cli>.txt` (teed at invoke, never retyped) plus a phase-log line `{"phase":"review","reviewer":"external","cli":"<cli>","family":"<family>","model":"default","raw":"external/<file>.txt"}`. The gate counts it as the strong pass only if that raw file exists and is ≥ 500 bytes — a bare claim, a hand-typed line, or a hand-rolled `codex exec` without the anchor is ignored by design. The Lead's own merged verdict line (above) is still appended separately.
 

@@ -39,6 +39,14 @@
 #            working, `--collect <job>` waits for the receipt, the commit gate
 #            sees the job. Foreground calls are capped by the harness (Claude
 #            Bash: 600 s) — the runner warns when a member's budget exceeds it.
+#   slice    a diff attachment whose files carry working-tree edits it does
+#            not contain is a partial slice (`git diff --cached` while the same
+#            file has unstaged edits; a committed range while the tree moved
+#            on). The reviewer reads the live tree, so the verdict is an
+#            artifact before the run starts → refused, exit 7, no member
+#            called (measured 2026-09-07: 3 of 4 rounds in one day). Attach
+#            `git diff HEAD` or commit first; `--partial-ok` only when the
+#            user asked for the staged part.
 #   read-only every invocation uses the CLI's read-only / plan mode; the
 #            prompt says so too. ROLEPOD_BRAIN_SILENT=1 keeps ambient memory
 #            out of the cold run (clean room).
@@ -54,7 +62,7 @@
 #
 # Usage:
 #   cross-family.sh --kind review|consult|advise|critique --brief <file> [--attach <file>]...
-#                   [--lead <cli>] [--all] [--timeout <sec>] [--detach]
+#                   [--lead <cli>] [--all] [--timeout <sec>] [--detach] [--partial-ok]
 #   cross-family.sh --collect <job-id> [--timeout <sec>]   # wait for a detached job, print its output
 #   cross-family.sh --jobs                                # list detached jobs (running / done)
 #   cross-family.sh --pool [--lead <cli>] [--kind <k>]    # usable pool, no network
@@ -65,7 +73,7 @@
 set -uo pipefail
 
 KIND=""; BRIEF=""; LEAD="${ROLEPOD_LEAD_CLI:-}"; ALL=0; FLAG_TIMEOUT="${ROLEPOD_XFAM_TIMEOUT:-}"
-MODE="run"; ATTACH=""; DETACH=0; JOB_DIR=""; COLLECT_ID=""; ROOT_FLAG=""; CFG_FLAG=""
+MODE="run"; ATTACH=""; DETACH=0; JOB_DIR=""; COLLECT_ID=""; ROOT_FLAG=""; CFG_FLAG=""; PARTIAL_OK=0
 while [ $# -gt 0 ]; do
   case "$1" in
     --kind) KIND="${2:-}"; shift 2 ;;
@@ -77,6 +85,7 @@ while [ $# -gt 0 ]; do
     --all) ALL=1; shift ;;
     --timeout) FLAG_TIMEOUT="${2:-}"; shift 2 ;;
     --detach) DETACH=1; shift ;;
+    --partial-ok) PARTIAL_OK=1; shift ;;         # the user asked for the staged part only
     --job) JOB_DIR="${2:-}"; shift 2 ;;          # internal: the detached child
     --config) CFG_FLAG="${2:-}"; shift 2 ;;      # internal: the job's config snapshot
     --collect) MODE="collect"; COLLECT_ID="${2:-}"; shift 2 ;;
@@ -476,6 +485,41 @@ if [ -z "$USABLE" ]; then
   exit 4
 fi
 
+# ── Partial-slice stop (v2.94.0) ───────────────────────────────────────
+# A diff attachment is a slice when, for a file it touches that differs
+# from HEAD in the working tree, its +/- lines are not that file's block of
+# `git diff HEAD`. Both sides go through the same awk (renames, binaries
+# and prefixes cancel out); a file clean vs HEAD is never a slice, so a
+# committed range on a clean tree passes. No git repo → no check.
+partial_slice() { # stdin: attachment paths → stdout: files whose tree edits the attachment does not cover
+  _ps_a=$(mktemp) || return 0; _ps_w=$(mktemp) || { rm -f "$_ps_a"; return 0; }
+  _ps_awk='/^\+\+\+ b\//{f=substr($0,7); sub(/[ \t]+$/,"",f); next} /^(--- |\+\+\+ )/{next} /^[+-]/{if (f != "") print f "\t" $0}'
+  git -C "$ROOT" diff HEAD 2>/dev/null | awk "$_ps_awk" > "$_ps_w" 2>/dev/null || :
+  if [ -s "$_ps_w" ]; then
+    while IFS= read -r a; do
+      [ -f "$a" ] && grep -q '^+++ b/' "$a" 2>/dev/null || continue
+      awk "$_ps_awk" "$a" > "$_ps_a" 2>/dev/null || continue
+      cut -f1 "$_ps_a" | sort -u | while IFS= read -r f; do
+        [ -n "$f" ] || continue
+        wip=$(awk -F'\t' -v f="$f" '$1 == f {sub(/^[^\t]*\t/, ""); print}' "$_ps_w" | sort)
+        [ -n "$wip" ] || continue
+        att=$(awk -F'\t' -v f="$f" '$1 == f {sub(/^[^\t]*\t/, ""); print}' "$_ps_a" | sort)
+        [ "$wip" = "$att" ] || printf '%s\n' "$f"
+      done
+    done | sort -u
+  fi
+  rm -f "$_ps_a" "$_ps_w"
+}
+if [ -n "$ATTACH" ] && [ "$PARTIAL_OK" -ne 1 ] && git -C "$ROOT" rev-parse --verify HEAD >/dev/null 2>&1; then
+  SLICE=$(printf '%s\n' "$ATTACH" | partial_slice 2>/dev/null || true)
+  if [ -n "$SLICE" ]; then
+    _sn=$(printf '%s\n' "$SLICE" | grep -c . || true)
+    jlog "{\"ts\":\"$(iso_now)\",\"phase\":\"external-refused\",\"kind\":\"$KIND\",\"lead\":\"$LEAD\",\"reason\":\"partial-slice\",\"files\":$_sn}"
+    echo "ROLEPOD-XFAM refused partial-slice files=$_sn — the attachment does not contain this tree's edits to: $(printf '%s' "$SLICE" | tr '\n' ' '). The reviewer reads the live tree, so its verdict would be an artifact. Fix: git diff HEAD > <diff> (staged + unstaged together), or commit first, then re-run. Exception: the user asked for the staged part only → --partial-ok."
+    exit 7
+  fi
+fi
+
 # ── Detach: run the whole chain as a job in its own process group ──────
 abspath() { case "$1" in /*) printf '%s' "$1" ;; *) printf '%s/%s' "$(cd "$(dirname "$1")" && pwd)" "$(basename "$1")" ;; esac; }
 if [ "$DETACH" -eq 1 ]; then
@@ -517,7 +561,7 @@ BODY="$TMPP/body.md"
 } > "$BODY"
 preamble() { # $1 kind
   case "$1" in
-    review) printf '%s' "You are a cold-context ADVERSARIAL code reviewer running in a different CLI than the author. Read only — never edit files, never run write commands. Try to make the change fail. Report findings severity-ordered (BLOCKER / MAJOR / MINOR / NIT) with file:line, label each TRACED (path walked) or SUSPECTED (pattern-level), name what is missing as hard as what is present, then end with one line: VERDICT: APPROVED | APPROVED-WITH-NITS | REJECTED." ;;
+    review) printf '%s' "You are a cold-context ADVERSARIAL code reviewer running in a different CLI than the author. Read only — never edit files, never run write commands. Try to make the change fail. Report findings severity-ordered (BLOCKER / MAJOR / MINOR / NIT) with file:line, label each TRACED (path walked) or SUSPECTED (pattern-level), name what is missing as hard as what is present, then end with one line: VERDICT: APPROVED | APPROVED-WITH-NITS | REJECTED. If the brief carries a previous round's report, prefix every finding with IN-FIX (a defect inside the previous round's fixes), NEW (not flagged before) or REPEAT (flagged before, still open)." ;;
     consult) printf '%s' "You are a cold-context debugging advisor running in a different CLI than the author. The author has failed twice; do not repeat their fixes. Read only — never edit files. Return exactly one of: CORRECTION (new hypothesis + the smallest change to test it), CONFIRMATION (approach right — check X), or STOP (wrong path — why). Reason from the evidence given; say what you would verify first." ;;
     advise) printf '%s' "You are a cold-context planning advisor running in a different CLI than the author. Advise, never execute: return a RECOMMENDED option with reasoning and the risks you see, or a CORRECTION if the framing or all options are flawed, or a STOP signal. Do not edit files or run the plan." ;;
     critique) printf '%s' "You are a cold-context spec critic running in a different CLI than the author. The author has finished their discovery dialogue with the user (the questions already asked and answered are attached — never re-ask those). Return AT MOST 5 items, ranked by implementation risk, each tagged QUESTION (a decision only the user can make — the answer would change the implementation), AMBIGUITY (wording two engineers would read differently — quote it), or MISSING (an acceptance criterion, failure mode, or edge case with no 'proven by'). No design proposals, no praise, no restating the spec. If nothing material remains, reply exactly: NO FURTHER QUESTIONS." ;;

@@ -303,6 +303,34 @@ rc=0; bash "$RUNNER" --kind review --brief nope.md --lead claude --job "$REPO/.r
 check "a job child that exits early (usage error) still writes status (=$rc) so --collect never hangs" "[ $rc -eq 2 ] && [ \"\$(cat .rolepod/evidence/external/jobs/t-early/status)\" = 2 ]"
 rm -rf .rolepod/evidence/external/jobs/t-early
 
+# ── partial-slice stop (v2.94.0) ─────────────────────────────────────────
+echo "── cross-family: partial-slice stop ──"
+SL="$FIX/slice"; mkdir -p "$SL/.rolepod"; printf 'codex\n' > "$SL/.rolepod/cross-family"; printf 'brief\n' > "$SL/brief.md"
+( cd "$SL" && git init -q . && git config user.email t@t && git config user.name t && printf 'a\nb\nc\n' > f.txt && git add f.txt && git commit -qm init \
+  && printf 'a\nB\nc\n' > f.txt && git add f.txt && printf 'a\nB\nC\n' > f.txt \
+  && git diff --cached > "$FIX/slice-cached.patch" && git diff HEAD > "$FIX/slice-full.patch" )   # staged b→B, unstaged on top c→C
+: > "$LOG"; rc=0; out=$(cd "$SL" && bash "$RUNNER" --kind review --brief brief.md --attach "$FIX/slice-cached.patch" --lead claude 2>/dev/null) || rc=$?
+check "--cached slice while the same file has unstaged edits → refused exit 7, names the file, no member called, external-refused logged" \
+  "[ $rc -eq 7 ] && printf '%s' \"\$out\" | grep -q 'refused partial-slice files=1' && printf '%s' \"\$out\" | grep -q 'f.txt' && ! grep -q '^codex |' '$LOG' && grep -q '\"phase\":\"external-refused\".*\"reason\":\"partial-slice\"' '$SL/.rolepod/evidence/phase-log.jsonl'"
+: > "$LOG"; rc=0; out=$(cd "$SL" && bash "$RUNNER" --kind review --brief brief.md --attach "$FIX/slice-full.patch" --lead claude 2>/dev/null) || rc=$?
+check "git diff HEAD attachment (staged + unstaged together) → runs" "[ $rc -eq 0 ] && grep -q '^codex |' '$LOG'"
+: > "$LOG"; rc=0; out=$(cd "$SL" && bash "$RUNNER" --kind review --brief brief.md --attach "$FIX/slice-cached.patch" --lead claude --partial-ok 2>/dev/null) || rc=$?
+check "--partial-ok lets a deliberate staged-only review run" "[ $rc -eq 0 ] && grep -q '^codex |' '$LOG'"
+( cd "$SL" && git add f.txt && git commit -qm wip && git diff HEAD~1...HEAD > "$FIX/slice-range.patch" )
+: > "$LOG"; rc=0; out=$(cd "$SL" && bash "$RUNNER" --kind review --brief brief.md --attach "$FIX/slice-range.patch" --lead claude 2>/dev/null) || rc=$?
+check "committed range on a clean tree → runs (a clean file is never a slice)" "[ $rc -eq 0 ] && grep -q '^codex |' '$LOG'"
+( cd "$SL" && printf 'a\nB\nC\nD\n' > f.txt )
+: > "$LOG"; rc=0; out=$(cd "$SL" && bash "$RUNNER" --kind review --brief brief.md --attach "$FIX/slice-range.patch" --lead claude 2>/dev/null) || rc=$?
+check "committed range while the tree already moved on in the same file → refused" "[ $rc -eq 7 ] && ! grep -q '^codex |' '$LOG'"
+( cd "$SL" && git checkout -q -- f.txt && printf 'z\n' > g.txt )   # tree edit in a file the attachment never touches
+: > "$LOG"; rc=0; out=$(cd "$SL" && bash "$RUNNER" --kind review --brief brief.md --attach "$FIX/slice-range.patch" --lead claude 2>/dev/null) || rc=$?
+check "edits in a file outside the attachment → not a slice, runs" "[ $rc -eq 0 ]"
+printf 'spec text, no hunks\n' > "$FIX/spec.md"
+: > "$LOG"; rc=0; out=$(cd "$SL" && bash "$RUNNER" --kind critique --brief brief.md --attach "$FIX/spec.md" --lead claude 2>/dev/null) || rc=$?
+check "non-diff attachment (spec) → no slice check" "[ $rc -eq 0 ]"
+check "review preamble asks round-2+ findings to carry IN-FIX / NEW / REPEAT" "grep -q 'prefix every finding with IN-FIX' '$RUNNER'"
+cd "$REPO"
+
 # ── review quality gates: PARTIAL / no VERDICT are not a pass ───────────
 echo "── cross-family: PARTIAL / VERDICT ──"
 printf 'codex\nclaude\nagy\ncursor\nopencode\n' > "$HOME/.rolepod/cross-family"

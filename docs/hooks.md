@@ -212,7 +212,13 @@ when detached / 600 s foreground · consult 300 · advise 900 · critique
 600); the prompt carries the budget. `--detach` runs the chain as a job
 under `.rolepod/evidence/external/jobs/<id>/` (`--collect <id>` waits,
 `--jobs` lists); `precommit-gate` names a running job in its hold reason
-instead of asking for a new run.
+instead of asking for a new run. A diff attachment that is a **partial
+slice** — its files carry working-tree edits it does not contain (`git diff
+--cached` while the same file has unstaged edits; a committed range after
+the tree moved on) — is refused at dispatch (exit 7, `external-refused`
+phase-log line, no member called): the reviewer reads the live tree, so the
+verdict would be an artifact. Attach `git diff HEAD` or commit first;
+`--partial-ok` only when the user asked for the staged part (v2.94.0).
 
 Names: `codex` `claude` `agy` `cursor` `opencode` (the standalone Gemini
 CLI is retired — a `gemini` line is skipped with a note). **Ask once:** the
