@@ -43,7 +43,7 @@ Owns phase selection, skip decision, force-full detection, next skill — nothin
 
 ## Quick router
 
-Match the user intent to the FIRST skill that fires. The skill itself decides what comes next. The **Model tier** column hints which agent tier is appropriate when the work delegates — the tier legend below is the operating rule; the full policy is `docs/model-tier-policy.md` in the rolepod source repo (not shipped with the plugin).
+Match the user intent to the FIRST skill that fires. The skill itself decides what comes next. The **Model tier** column hints which agent tier is appropriate when the work delegates — the tier legend below is the operating rule, and each agent's own frontmatter carries its tier.
 
 | User intent (verbs / phrases) | Phase | First skill fires | Model tier |
 |---|---|---|---|
@@ -173,7 +173,7 @@ Every tier decision (R0 excepted) appends one line to `<git-root>/.rolepod/evide
 
 ## Optional plugin skills (backend awareness)
 
-Sibling plugins under **Extension Protocol v1** — `rolepod-uiproof` (browser + mobile UI / a11y / visual), `rolepod-wplab` (WordPress), `rolepod-dblab` (databases) — are preferred over manual orchestration when installed; evidence routes into `.rolepod/evidence/` for `check-work` to aggregate. Detect by their slash commands in the skill list, or by domain signals (`wp-config.php` → wplab; `playwright` / `react` / `vue` in `package.json` → uiproof; mobile UI — `*.xcworkspace` / `*.xcodeproj` / `build.gradle`(`.kts`) / `AndroidManifest.xml` / `pubspec.yaml` / `react-native` → uiproof too, web-only caveats in the spec; `alembic.ini` / `sqlalchemy` → dblab; a `.rolepod-<child>/` dir → already in use). The per-phase integration detail and the not-installed fallback chains live in the phase skills themselves (`check-work`, `debug-issue`, `implement-plan`, `review-code`); spec: `docs/EXTENSION-PROTOCOL.md` in the rolepod source repo.
+Sibling plugins under **Extension Protocol v1** — `rolepod-uiproof` (browser + mobile UI / a11y / visual), `rolepod-wplab` (WordPress), `rolepod-dblab` (databases) — are preferred over manual orchestration when installed; evidence routes into `.rolepod/evidence/` for `check-work` to aggregate. Detect by their slash commands in the skill list, or by domain signals (`wp-config.php` → wplab; `playwright` / `react` / `vue` in `package.json` → uiproof; mobile UI — `*.xcworkspace` / `*.xcodeproj` / `build.gradle`(`.kts`) / `AndroidManifest.xml` / `pubspec.yaml` / `react-native` → uiproof too, web-only caveats in the spec; `alembic.ini` / `sqlalchemy` → dblab; a `.rolepod-<child>/` dir → already in use). The per-phase integration detail and the not-installed fallback chains live in the phase skills themselves (`check-work`, `debug-issue`, `implement-plan`, `review-code`).
 
 ## Vendor MCP awareness — recommend, never wrap
 

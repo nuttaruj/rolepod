@@ -25,7 +25,9 @@
 #
 # v2.7: also writes/removes .rolepod/parent-active in the worktree as the
 # Extension Protocol v1 marker for sibling plugins (rolepod-uiproof,
-# rolepod-wplab). See docs/EXTENSION-PROTOCOL.md.
+# rolepod-wplab). The marker IS the contract: present = a rolepod parent
+# session owns this worktree, so a child writes its manifest into
+# .rolepod/evidence/ for check-work to aggregate.
 set -euo pipefail
 
 MODE="${1:---lock}"

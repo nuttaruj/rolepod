@@ -89,7 +89,7 @@ Each `manifest.json` describes one child run with fields `plugin`, `skill`, `pha
 - All KEPT `pass` or `warn` → verify passes; list warnings inline so they don't get lost.
 - Child artifacts (screenshots, HARs, reports) are referenced by relative path from the manifest directory — include those paths in the evidence block.
 
-Schema details and the full protocol live in `docs/EXTENSION-PROTOCOL.md` (rolepod source repo; the aggregation rules above are self-sufficient). Children write manifests automatically when they detect the rolepod parent marker (`.rolepod/parent-active`); no manual wiring needed.
+The aggregation rules above are the whole contract — nothing else to read. Children write manifests automatically when they detect the rolepod parent marker (`.rolepod/parent-active`); no manual wiring needed.
 
 ### 3. UI verification when relevant
 

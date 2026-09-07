@@ -37,7 +37,7 @@ available and announce it.
 
 | Environment | Backend |
 |---|---|
-| Claude + agent-teams enabled (`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`, v2.1.32+) | teammate mode — multi-process team (docs/agent-teams.md, rolepod source repo) |
+| Claude + agent-teams enabled (`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`, v2.1.32+) | teammate mode — multi-process team |
 | Claude without agent-teams, or user asked for single-process | Task / subagent dispatch + cohesion contract |
 | Codex | Codex subagents |
 | Gemini | Gemini subagents; inline fallback when unsupported |
