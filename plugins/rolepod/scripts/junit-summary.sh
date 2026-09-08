@@ -14,7 +14,7 @@ if [ $# -eq 0 ]; then
   exit 2
 fi
 
-python3 - "$@" <<'PY'
+python3 -I - "$@" <<'PY'
 import sys
 import xml.etree.ElementTree as ET
 

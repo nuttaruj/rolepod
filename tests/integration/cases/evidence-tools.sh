@@ -38,6 +38,7 @@ cat > "$FIX/repo/.rolepod/evidence/phase-log.jsonl" <<'EOF'
 {"ts":"2026-07-31T01:56:00Z","phase":"dispatch-proof","cli":"antigravity","agent_type":"","model":"gemini-3-pro","provenance":"hook-stdin"}
 {"ts":"2026-07-31T01:57:00Z","phase":"dispatch","cli":"claude","tool":"Agent","provenance":"hook-auto","agent_type":"rolepod:scout","model":"inherit","override":"none"}
 {"ts":"2026-07-31T01:58:00Z","phase":"dispatch","cli":"claude","tool":"Agent","provenance":"hook-auto","agent_type":"rolepod:universal-reviewer","model":"inherit","override":"none","lead_class":"balanced"}
+{"ts":"2026-07-31T01:59:00Z","phase":"dispatch","cli":"claude","tool":"Agent","provenance":"hook-auto","agent_type":"rolepod:security-engineer","model":"sonnet","override":"sonnet","lead_class":"balanced"}
 not json — must be skipped, not crash
 EOF
 printf '{"ts":"2026-07-31T01:15:00Z","hook":"precommit-gate","var":"ROLEPOD_GATES_SOFT","reason":"unreasoned"}\n{"ts":"2026-07-31T01:16:00Z","hook":"gate-reminder","var":"ROLEPOD_GATES_SOFT","reason":"rolepod-selftest"}\n{"ts":"2026-07-31T01:17:00Z","hook":"worktree-guard","var":"ROLEPOD_ALLOW_SHARED_WORKTREE","reason":"doctor"}\n' \
@@ -50,14 +51,14 @@ check "stats reports partial verdicts (Status PARTIAL mirrored, v2.85.0)" "print
 check "stats reports review verdicts"     "printf '%s' \"\$OUT\" | grep -q 'APPROVED: 1'"
 check "stats flags unreasoned bypasses"   "printf '%s' \"\$OUT\" | grep -q 'unreasoned'"
 check "stats counts self-test bypass rows apart (rolepod-selftest + legacy doctor, v2.85.1)" "printf '%s' \"\$OUT\" | grep -q 'Bypasses (1 ' && printf '%s' \"\$OUT\" | grep -q 'self-test rows excluded: 2'"
-check "stats audits strong dispatches"    "printf '%s' \"\$OUT\" | grep -q 'Strong dispatches (3): 1 with explicit override, 2 inherit'"
+check "stats audits strong dispatches"    "printf '%s' \"\$OUT\" | grep -q 'Strong dispatches (4): 2 with explicit override, 1 frontmatter opus, 1 inherit (pre-2.104), 1 pinned low'"
 check "stats reports hook-reported model proof" "printf '%s' \"\$OUT\" | grep -q 'Model proof — hook-reported (2'"
 check "stats shows proof per cli+model"   "printf '%s' \"\$OUT\" | grep -q 'gpt-5.6-terra'"
 printf '{"agent_type":"qa","model":"m1"}' > "$FIX/subagent-stop.json"
 check "codex model-log hook is fail-open outside a repo" \
   "cd /tmp && bash '$REPO_DIR/adapters/codex/plugins/rolepod/hooks/subagent-model-log.sh' < '$FIX/subagent-stop.json'"
-check "stats names the silent downgrade"  "printf '%s' \"\$OUT\" | grep -q 'silent downgrade'"
-check "stats reports hook-auto dispatch intent" "printf '%s' \"\$OUT\" | grep -q 'Dispatch intent — hook-auto (2'"
+check "stats names an explicit low pin on a strong role as the silent downgrade (v2.104)"  "printf '%s' \"\$OUT\" | grep -q 'explicit cheap/balanced pin on a strong dispatch is the silent downgrade'"
+check "stats reports hook-auto dispatch intent" "printf '%s' \"\$OUT\" | grep -q 'Dispatch intent — hook-auto (3'"
 check "stats flags hook-auto inherit"     "printf '%s' \"\$OUT\" | grep -q 'inherited the Lead'"
 check "stats survives malformed lines"    "HOME='$FIX' bash '$REPO_DIR/scripts/stats.sh' '$FIX/repo'"
 # HOME sandboxed: stats also reads the machine-global ~/.rolepod/gate-bypass.log
@@ -107,7 +108,7 @@ check "tier nudge silent on rolepod:scout (frontmatter-pinned cheap — was a fa
 check "tier nudge honors ROLEPOD_NUDGE_OFF" \
   "[ -z \"\$(ROLEPOD_NUDGE_OFF=1 bash '$REPO_DIR/hooks/workflow-tier-nudge.sh' < '$FIX/wf-inherit.json')\" ]"
 check "dispatch auto-log appends a hook-auto line" \
-  "cd '$FIX/repo' && bash '$REPO_DIR/hooks/dispatch-auto-log.sh' < '$FIX/agent-scout.json' && grep -c 'hook-auto' .rolepod/evidence/phase-log.jsonl | grep -q 3"
+  "cd '$FIX/repo' && bash '$REPO_DIR/hooks/dispatch-auto-log.sh' < '$FIX/agent-scout.json' && grep -c 'hook-auto' .rolepod/evidence/phase-log.jsonl | grep -q 4"
 check "dispatch auto-log is fail-open outside a repo" \
   "cd /tmp && bash '$REPO_DIR/hooks/dispatch-auto-log.sh' < '$FIX/agent-scout.json'"
 
@@ -131,8 +132,15 @@ check "floor: universal-reviewer + sonnet Lead → allow + updatedInput model=op
   "bash '$NUDGE' < '$FIX/rev-sonnet.json' | python3 -c 'import json,sys; o=json.load(sys.stdin)[\"hookSpecificOutput\"]; assert o[\"permissionDecision\"]==\"allow\" and o[\"updatedInput\"][\"model\"]==\"opus\" and o[\"updatedInput\"][\"prompt\"]==\"review\"'"
 check "floor: bare security-engineer name is lifted too" \
   "bash '$NUDGE' < '$FIX/sec-sonnet.json' | grep -q '\"updatedInput\"'"
-check "floor: fable Lead → untouched (never pin a stronger session down)" \
+check "floor v2.104: fable Lead → untouched (opus is the paid ceiling of strong; no lift, owner decision)" \
   "[ -z \"\$(bash '$NUDGE' < '$FIX/rev-fable.json')\" ]"
+printf '{"type":"assistant","timestamp":"2026-08-17T01:00:00.000Z","message":{"model":"claude-opus-5","content":[]}}\n' > "$FIX/lead-opus-floor.jsonl"
+mkj "$FIX/rev-opus.json" Agent "$FIX/lead-opus-floor.jsonl" '{"subagent_type":"rolepod:universal-reviewer","prompt":"review"}'
+check "floor v2.104: opus Lead → untouched (the frontmatter pin already is opus)" \
+  "[ -z \"\$(bash '$NUDGE' < '$FIX/rev-opus.json')\" ]"
+mkdir -p "$FIX/shadow"; printf 'raise SystemExit(3)\n' > "$FIX/shadow/nt.py"; printf 'raise SystemExit(3)\n' > "$FIX/shadow/json.py"
+check "floor v2.104: a stdlib-shadowing file in cwd (nt.py / json.py) no longer mutes the hook (python3 -I)" \
+  "cd '$FIX/shadow' && bash '$NUDGE' < '$FIX/rev-sonnet.json' | grep -q '\"updatedInput\"'"
 check "floor: unknown Lead family → untouched (fail = no upgrade, never a downgrade)" \
   "[ -z \"\$(bash '$NUDGE' < '$FIX/rev-unknown.json')\" ]"
 check "floor: explicit model=sonnet on a strong role → named, not rewritten" \
@@ -235,12 +243,12 @@ mkj "$FIX/wf-sl-sweep.json"          Workflow "$FIX/lead-sonnet.jsonl" '{"script
 mkj "$FIX/wf-sl-rolepin-reason.json" Workflow "$FIX/lead-sonnet.jsonl" '{"script":"// tier-reason: codex exec cross-family review anchors the strong pass\nname: \"sl-payout-rolepin-r\" phase(\"Review\"); await agent(1,{agentType:\"rolepod:security-engineer\"}); phase(\"Verify\"); await agent(2)"}'
 mkj "$FIX/wf-ol-weakrole.json"       Workflow "$FIX/lead-opus.jsonl"   '{"script":"name: \"refund-weakrole\" phase(\"Review\"); await agent(1,{agentType:\"rolepod:qa-tester\"})"}'
 SLOUT=$(cd "$FIX/repo" && bash "$NUDGE" < "$FIX/wf-sl-rolepin.json")
-check "gate v2.74: sonnet Lead + agentType security-engineer (inherit) + bare verify on a MONEY fleet → deny naming ONE strong slot" \
-  "printf '%s' \"\$SLOUT\" | grep -q '\"deny\"' && printf '%s' \"\$SLOUT\" | grep -q 'ONE strong slot' && printf '%s' \"\$SLOUT\" | grep -q 'agentType: alone'"
+check "gate v2.104: sonnet Lead + agentType security-engineer (renders opus = the strong slot) + bare verify on a MONEY fleet → not denied (v2.74 denied it as inherit)" \
+  "! printf '%s' \"\$SLOUT\" | grep -q '\"deny\"' && ! printf '%s' \"\$SLOUT\" | grep -q 'ONE strong slot'"
 check "gate v2.74: same fleet, model:opus on the one security-engineer call + sonnet verify → silent" \
   "[ -z \"\$(cd '$FIX/repo' && bash '$NUDGE' < '$FIX/wf-sl-rolepin-ok.json')\" ]"
-check "gate v2.74: CourtBook shape (agentType from a data array, bare per-finding verify fan-out) → deny" \
-  "cd '$FIX/repo' && bash '$NUDGE' < '$FIX/wf-sl-array.json' | grep -q 'ONE strong slot'"
+check "gate v2.104: CourtBook shape (agentType security-engineer from a data array = renders opus, bare per-finding verify fan-out at the Lead) → not denied (v2.74 denied it as inherit)" \
+  "! (cd '$FIX/repo' && bash '$NUDGE' < '$FIX/wf-sl-array.json') | grep -q '\"deny\"'"
 check "gate v2.74: CourtBook shape fixed (opus in the array item, threaded model: r.model, sonnet fan-out) → silent" \
   "[ -z \"\$(cd '$FIX/repo' && bash '$NUDGE' < '$FIX/wf-sl-array-ok.json')\" ]"
 SLOUT=$(cd "$FIX/repo" && bash "$NUDGE" < "$FIX/wf-sl-fanout.json")
@@ -252,11 +260,14 @@ check "gate v2.74: opus on both Review and Verify under a sonnet Lead → deny (
   "cd '$FIX/repo' && bash '$NUDGE' < '$FIX/wf-sl-2stage.json' | grep -q '2 stages'"
 check "gate v2.74: opus on a Sweep stage under a sonnet Lead → deny (non-judgment stage)" \
   "cd '$FIX/repo' && bash '$NUDGE' < '$FIX/wf-sl-sweep.json' | grep -q 'non-judgment stage (Sweep)'"
+mkj "$FIX/wf-sl-atype-fanout.json" Workflow "$FIX/lead-sonnet.jsonl" '{"script":"name: \"atype-verify\" phase(\"Verify\"); await parallel(fs.map((f) => () => agent(`v ${f}`, {label:`verify:${f.file}`, agentType:\"rolepod:security-engineer\"})))"}'
+check "gate v2.104: sonnet Lead + strong-role agentType on a FAN-OUT call → deny strong-spread (the role renders opus, so it spreads like a model pin)" \
+  "cd '$FIX/repo' && bash '$NUDGE' < '$FIX/wf-sl-atype-fanout.json' | grep -q 'strong model pinned on a FAN-OUT'"
 check "gate v2.74: role-pin fleet with // tier-reason: → not denied" \
   "cd '$FIX/repo' && ! bash '$NUDGE' < '$FIX/wf-sl-rolepin-reason.json' | grep -q '\"deny\"'"
 check "gate v2.74: opus Lead + agentType qa-tester (pinned balanced) as the only judge on a MONEY fleet → deny (role-pin counts only for a strong role)" \
   "cd '$FIX/repo' && bash '$NUDGE' < '$FIX/wf-ol-weakrole.json' | grep -q 'judgment stage'"
-check "gate v2.74: opus Lead + agentType universal-reviewer still counts (inherit = strong there) → silent" \
+check "gate v2.74: opus Lead + agentType universal-reviewer counts (renders opus) → silent" \
   "[ -z \"\$(cd '$FIX/repo' && bash '$NUDGE' < '$FIX/wf-judge-role.json')\" ]"
 # v2.88.0 — an agentType that renders NO model pin is not a tier choice.
 # Observed 2026-09-06 (CourtBook stripe-surcharge-research, sonnet Lead;
@@ -273,8 +284,8 @@ check "gate v2.88: sonnet Lead + same fleet → nudge naming the cheap sweep (wa
   "cd '$FIX/repo' && bash '$NUDGE' < '$FIX/wf-gp-sonnet.json' | grep -q additionalContext && bash '$NUDGE' < '$FIX/wf-gp-sonnet.json' | grep -q \"rolepod:scout\"" 
 check "gate v2.88: agentType rolepod:scout (renders model: haiku) still counts as a tier → silent" \
   "[ -z \"\$(cd '$FIX/repo' && bash '$NUDGE' < '$FIX/wf-gp-scout.json')\" ]"
-check "gate v2.88: strong role under a LOW Lead renders inherit → not a tier, nudge fires" \
-  "cd '$FIX/repo' && bash '$NUDGE' < '$FIX/wf-gp-strong.json' | grep -q additionalContext"
+check "gate v2.104: strong role under a LOW Lead renders opus → a tier, silent (v2.88 nudged it as inherit)" \
+  "[ -z \"\$(cd '$FIX/repo' && bash '$NUDGE' < '$FIX/wf-gp-strong.json')\" ]"
 check "auto-log v2.88: tier_mix omits role-pin when the only agentType pins nothing" \
   "cd '$FIX/repo' && bash '$REPO_DIR/hooks/dispatch-auto-log.sh' < '$FIX/wf-gp-sonnet.json' && tail -1 .rolepod/evidence/phase-log.jsonl | grep -q '\"tier_mix\": \[\]' && tail -1 .rolepod/evidence/phase-log.jsonl | grep -q 'general-purpose'"
 mkj "$FIX/wf-gp-prose.json"   Workflow "$FIX/lead-opus.jsonl"   '{"name":"gp-prose","script":"await agent(`rewrite each sweep call with agentType: \u0027rolepod:scout\u0027`); await agent(2); await agent(3)"}'
@@ -335,11 +346,11 @@ check "auto-log: effort-only Workflow logs model=inherit + effort_overrides=1 (w
 mkj "$FIX/rev-lifted.json" Agent "$FIX/lead-sonnet.jsonl" '{"subagent_type":"rolepod:universal-reviewer","model":"opus","prompt":"review"}'
 check "auto-log: lifted reviewer (model=opus at PostToolUse) logs floor=applied + lead_class" \
   "cd '$FIX/repo' && bash '$LOG' < '$FIX/rev-lifted.json' && tail -1 .rolepod/evidence/phase-log.jsonl | grep -q '\"floor\": \"applied\"' && tail -1 .rolepod/evidence/phase-log.jsonl | grep -q '\"lead_class\": \"balanced\"'"
-check "auto-log: model-less strong role under a low Lead logs floor=missed (not inferred as lifted)" \
-  "cd '$FIX/repo' && bash '$LOG' < '$FIX/rev-sonnet.json' && tail -1 .rolepod/evidence/phase-log.jsonl | grep -q '\"floor\": \"missed\"' && tail -1 .rolepod/evidence/phase-log.jsonl | grep -q '\"model\": \"inherit\"'"
+check "auto-log v2.104: model-less strong role logs floor=frontmatter + model=opus (the pin ran; nothing inferred about the hook)" \
+  "cd '$FIX/repo' && bash '$LOG' < '$FIX/rev-sonnet.json' && tail -1 .rolepod/evidence/phase-log.jsonl | grep -q '\"floor\": \"frontmatter\"' && tail -1 .rolepod/evidence/phase-log.jsonl | grep -q '\"model\": \"opus\"'"
 OUT=$(HOME="$FIX" bash "$REPO_DIR/scripts/stats.sh" "$FIX/repo")
-check "stats reports floor applied/missed + Lead class at dispatch" \
-  "printf '%s' \"\$OUT\" | grep -q 'applied ×1, missed ×1' && printf '%s' \"\$OUT\" | grep -q 'Lead class at dispatch'"
+check "stats reports floor applied/frontmatter/missed + Lead class at dispatch (v2.104)" \
+  "printf '%s' \"\$OUT\" | grep -q 'applied ×1, frontmatter ×1, missed ×0' && printf '%s' \"\$OUT\" | grep -q 'Lead class at dispatch'"
 
 # ── coordinator-loop check (v2.51.0) — 3rd sequential Agent round-trip in one turn ──
 mkturn() { # $1 out, $2 prior dispatch rounds (0..3) — one Agent tool_use per assistant msg + a tool_result

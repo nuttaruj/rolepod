@@ -5,7 +5,7 @@
 set -euo pipefail
 
 INPUT=$(cat 2>/dev/null || echo '{}')
-CWD=$(echo "$INPUT" | python3 -c "import sys,json;print(json.load(sys.stdin).get('cwd','') or '')" 2>/dev/null || echo "$PWD")
+CWD=$(echo "$INPUT" | python3 -I -c "import sys,json;print(json.load(sys.stdin).get('cwd','') or '')" 2>/dev/null || echo "$PWD")
 cd "$CWD" 2>/dev/null || exit 0
 
 REPO=$(git rev-parse --show-toplevel 2>/dev/null) || exit 0
@@ -26,7 +26,7 @@ CTX="**$NAME** @ \`$BRANCH\` ($DIRTY uncommitted)\n\n**Recent:**\n\`\`\`\n$COMMI
 # steps, an open breaker ledger, the last phase-log line — "read the progress
 # file first" made automatic for continuation sessions (measured: 21
 # compactions in one project lineage and the plan was never re-read).
-STATE=$(ROLEPOD_PCL_REPO="$REPO" python3 - <<'PY' 2>/dev/null || true
+STATE=$(ROLEPOD_PCL_REPO="$REPO" python3 -I - <<'PY' 2>/dev/null || true
 import glob, json, os, re
 repo = os.environ["ROLEPOD_PCL_REPO"]; out = []
 plans = sorted(glob.glob(os.path.join(repo, "docs", "rolepod", "plans", "*.md")), key=os.path.getmtime, reverse=True)
@@ -132,7 +132,7 @@ fi
 # Env-pass the context so a crafted commit message / branch name cannot escape
 # the Python string literal (RCE). CTX is built with literal `\n`; convert to
 # real newlines here since the old inline literal relied on Python to do it.
-ROLEPOD_HOOK_CTX="${CTX//\\n/$'\n'}" python3 -c "
+ROLEPOD_HOOK_CTX="${CTX//\\n/$'\n'}" python3 -I -c "
 import json, os
 print(json.dumps({'hookSpecificOutput':{'hookEventName':'SessionStart','additionalContext':os.environ.get('ROLEPOD_HOOK_CTX','')}}))
 " 2>/dev/null || echo '{}'

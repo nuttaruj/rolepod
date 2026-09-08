@@ -54,14 +54,14 @@ OPENCODE_KEY_ORDER = ["description", "mode", "permission"]
 #   Gemini/agy        → advisory only: agy auto-selects the model per task and
 #                       does not consume this value (documented in model-tier-policy).
 TIER_MODELS = {
-    # Claude strong = "inherit" ON PURPOSE: a fixed pin (e.g. "opus") would
-    # DOWNGRADE fable-class sessions, and frontmatter cannot express
-    # "max(session, opus)". The cost: on a balanced-class Lead, inherit is a
-    # silent downgrade. Since v2.47.0 that gap is closed mechanically for the
-    # review roles by hooks/workflow-tier-nudge.sh (security-engineer /
-    # universal-reviewer, no model, known-low Lead → updatedInput model=opus);
-    # doctrine still asks the Lead for the explicit override elsewhere.
-    "claude": {"cheap": "haiku", "balanced": "sonnet", "strong": "inherit"},
+    # Claude strong = "opus" (v2.104.0; was "inherit" + a hook-side lift).
+    # A frontmatter pin is the only floor that holds everywhere the hook does
+    # not run: hooks off or broken, the first action of a session (no Lead
+    # turn to read), a Workflow agentType call, another harness. opus is the
+    # paid CEILING of the tier (owner decision, cost): a fable-class Lead
+    # keeps its own model, its strong reviewers run opus, no lift. The hook
+    # only re-writes opus under a low Lead for a stale user-level agent file.
+    "claude": {"cheap": "haiku", "balanced": "sonnet", "strong": "opus"},
     "codex": {"cheap": "gpt-5.6-luna", "balanced": "gpt-5.6-terra", "strong": "gpt-5.6-sol"},
     "gemini": {"cheap": "gemini-3-flash-preview", "balanced": "gemini-3-pro-preview", "strong": "gemini-3-pro-preview"},
 }

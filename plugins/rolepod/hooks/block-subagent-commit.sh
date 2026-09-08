@@ -19,7 +19,7 @@ set -euo pipefail
 INPUT=$(cat 2>/dev/null || echo '{}')
 
 # Extract fields. agent_id absent → Lead conversation → allow.
-AGENT_ID=$(echo "$INPUT" | python3 -c "
+AGENT_ID=$(echo "$INPUT" | python3 -I -c "
 import sys, json
 try:
     d = json.load(sys.stdin)
@@ -30,7 +30,7 @@ except Exception:
 
 [ -z "$AGENT_ID" ] && exit 0
 
-AGENT_TYPE=$(echo "$INPUT" | python3 -c "
+AGENT_TYPE=$(echo "$INPUT" | python3 -I -c "
 import sys, json
 try:
     d = json.load(sys.stdin)
@@ -39,7 +39,7 @@ except Exception:
     print('')
 " 2>/dev/null || echo "")
 
-CMD=$(echo "$INPUT" | python3 -c "
+CMD=$(echo "$INPUT" | python3 -I -c "
 import sys, json
 try:
     d = json.load(sys.stdin)
@@ -53,7 +53,7 @@ except Exception:
 # `git -c k=v commit`), which a blocked agent can trivially discover.
 # Token walk skips git's pre-subcommand options (and their values) so the
 # real subcommand is what gets matched.
-BLOCKED=$(printf '%s' "$CMD" | python3 -c "
+BLOCKED=$(printf '%s' "$CMD" | python3 -I -c "
 import sys, shlex, os
 cmd = sys.stdin.read()
 
@@ -110,7 +110,7 @@ print(scan(toks_of(cmd)))
 # agent so it knows WHY the call failed and what to do next. Fields are
 # env-passed — a quote inside agent_type/command must not break (or inject
 # into) the JSON emitter.
-RP_AGENT_TYPE="$AGENT_TYPE" RP_BLOCKED="$BLOCKED" python3 -c "
+RP_AGENT_TYPE="$AGENT_TYPE" RP_BLOCKED="$BLOCKED" python3 -I -c "
 import json, os
 print(json.dumps({
   'hookSpecificOutput': {

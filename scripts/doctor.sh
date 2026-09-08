@@ -39,7 +39,7 @@ for f in "$REPO_DIR"/hooks/*.sh "$REPO_DIR"/adapters/gemini/hooks/*.sh \
   [ -f "$f" ] || continue
   check "bash -n $(basename "$(dirname "$f")")/$(basename "$f")" "bash -n '$f'"
 done
-check "session_state.py imports" "python3 -c \"import sys; sys.path.insert(0,'$REPO_DIR/hooks/lib'); import session_state\""
+check "session_state.py imports" "python3 -I -c \"import sys; sys.path.insert(0,'$REPO_DIR/hooks/lib'); import session_state\""
 
 echo "── doctor: loader emits enforcement banner ──"
 # The loader reads the RENDERED core (hooks/always-on-core.md) sitting next to
@@ -93,11 +93,11 @@ echo "── doctor: tier mapping — installed files match intent ──"
 # map tier→model exactly as TIER_MODELS intends. Runtime-half (what model a
 # dispatch actually runs) is not exposed by these CLIs — the dispatch-log in
 # phase-log.jsonl is the audit for that (see make stats).
-if python3 - "$REPO_DIR" <<'PY'
+if python3 -I - "$REPO_DIR" <<'PY'
 import glob, os, re, sys
 repo = sys.argv[1]
 TIER = {
-    "claude": {"cheap": "haiku", "balanced": "sonnet", "strong": "inherit"},
+    "claude": {"cheap": "haiku", "balanced": "sonnet", "strong": "opus"},
     "codex": {"cheap": "gpt-5.6-luna", "balanced": "gpt-5.6-terra", "strong": "gpt-5.6-sol"},
     "gemini": {"cheap": "gemini-3-flash-preview", "balanced": "gemini-3-pro-preview", "strong": "gemini-3-pro-preview"},
 }
@@ -197,11 +197,11 @@ CLAUDE_V=$(ls "$HOME/.claude/plugins/cache/rolepod/rolepod/" 2>/dev/null | sort 
 report "claude"      "${CLAUDE_V:-absent}"  "hooks-live (full — deny gates mechanical)"
 CODEX_V=$(ls "$HOME/.codex/plugins/cache/rolepod/rolepod/" 2>/dev/null | sort -V | tail -1)
 report "codex"       "${CODEX_V:-absent}"   "hooks-live (expanded — precommit + subagent-commit deny; sibling locks)"
-GEMINI_V=$(python3 -c "import json;print(json.load(open('$HOME/.gemini/extensions/rolepod/gemini-extension.json'))['version'])" 2>/dev/null)
+GEMINI_V=$(python3 -I -c "import json;print(json.load(open('$HOME/.gemini/extensions/rolepod/gemini-extension.json'))['version'])" 2>/dev/null)
 report "gemini"      "${GEMINI_V:-absent}"  "hooks-live (advisory — reminders only, no deny)"
-CURSOR_V=$(python3 -c "import json;print(json.load(open('$HOME/.cursor/plugins/local/rolepod/.cursor-plugin/plugin.json'))['version'])" 2>/dev/null)
+CURSOR_V=$(python3 -I -c "import json;print(json.load(open('$HOME/.cursor/plugins/local/rolepod/.cursor-plugin/plugin.json'))['version'])" 2>/dev/null)
 report "cursor"      "${CURSOR_V:-absent}"  "unverified — treat gates as skill-enforced"
-OC_V=$(python3 -c "import json;print(json.load(open('$HOME/.config/opencode/rolepod-version.json'))['version'])" 2>/dev/null)
+OC_V=$(python3 -I -c "import json;print(json.load(open('$HOME/.config/opencode/rolepod-version.json'))['version'])" 2>/dev/null)
 report "opencode"    "${OC_V:-absent}"      "hooks-live (partial — plugin precommit deny + agent permission blocks; rest doctrine-only, no hook API)"
 AGY_V=$(command -v agy >/dev/null 2>&1 && agy plugin list 2>/dev/null | grep -q '"name": "rolepod"' && echo installed)
 report "antigravity" "${AGY_V:-absent}"     "unverified — treat gates as skill-enforced"

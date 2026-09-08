@@ -43,7 +43,7 @@ EV_DIR="$GIT_ROOT/.rolepod/evidence"
 mkdir -p "$EV_DIR" 2>/dev/null || exit 0
 
 SESSION_STATE="$(dirname "$0")/lib/session_state.py"
-printf '%s' "$INPUT" | ROLEPOD_SESSION_STATE="$SESSION_STATE" ROLEPOD_EV_DIR="$EV_DIR" python3 -c '
+printf '%s' "$INPUT" | ROLEPOD_SESSION_STATE="$SESSION_STATE" ROLEPOD_EV_DIR="$EV_DIR" python3 -I -c '
 import json, os, re, sys, datetime, tempfile
 try:
     d = json.load(sys.stdin)
@@ -102,31 +102,31 @@ if tool == "Workflow":
     line["models"] = models
     line["agent_types"] = atypes
     mix = sorted(set((ss.model_class(m) if ss is not None else "?") for m in models))
-    # role-pin only when the agentType RENDERS a pin (cheap/balanced roles);
-    # a strong role renders inherit -> a tier only under a strong Lead. Without
+    # role-pin only when the agentType RENDERS a pin (cheap/balanced roles,
+    # and strong roles since v2.104.0 — they render opus). Without
     # this a bare fleet carrying one agentType general-purpose logged as
     # tiered (v2.88.0 - same rule as the gate).
     names = set(ss._bare_agent_name(a) for a in atypes) if ss is not None else set()
-    if ss is not None and ((names & ss.TIER_PINNED_AGENTS)
-                           or ((names & ss.STRONG_ROLE_AGENTS) and cls == "strong")):
+    if ss is not None and (names & (ss.TIER_PINNED_AGENTS | ss.STRONG_ROLE_AGENTS)):
         mix.append("role-pin")
     line["tier_mix"] = mix
 else:
     atype = ti.get("subagent_type") or "general-purpose"
     line["agent_type"] = atype
     model = ti.get("model") or ""
-    line["model"] = model or "inherit"
+    is_strong_role = ss is not None and ss._bare_agent_name(atype) in ss.STRONG_ROLE_AGENTS
+    # A model-less strong role runs its frontmatter pin (opus, v2.104.0).
+    line["model"] = model or ("opus" if is_strong_role else "inherit")
     line["override"] = model or "none"
-    if (ss is not None and ss._bare_agent_name(atype) in ss.STRONG_ROLE_AGENTS
-            and cls in ss.LOW_CLASSES):
+    if is_strong_role:
         # Strong-role floor outcome. PostToolUse tool_input carries the
         # PreToolUse updatedInput (live-verified 2026-08-17: lifted call
         # logs model=opus here and the subagent transcript shows opus), so
-        # what we see IS what ran: strong-class model → applied; anything
-        # else → missed (first assistant turn of a fresh session — no prior
-        # turn to read the Lead from — ROLEPOD_NUDGE_OFF, or an explicit
-        # low model). Observable in `make stats`, never inferred.
-        line["floor"] = "applied" if ss.model_class(model) == "strong" else "missed"
+        # what we see IS what ran: strong-class model → applied (hook lift);
+        # no model → frontmatter (the opus pin, hook silent or not needed);
+        # an explicit low model → missed. Observable in `make stats`.
+        line["floor"] = ("applied" if ss.model_class(model) == "strong"
+                         else ("frontmatter" if not model else "missed"))
 
 # The log line goes to the file directly (stdout is reserved for the hook
 # JSON below). Same shape as before — consumers (stats, precommit-gate

@@ -42,10 +42,10 @@ SILENT=0
 [ "${ROLEPOD_ALLOW_SHARED_WORKTREE:-0}" = "1" ] && SILENT=1
 
 INPUT=$(cat 2>/dev/null || echo '{}')
-SESSION_ID=$(printf '%s' "$INPUT" | python3 -c "import sys,json
+SESSION_ID=$(printf '%s' "$INPUT" | python3 -I -c "import sys,json
 try: print(json.load(sys.stdin).get('session_id','') or '')
 except Exception: print('')" 2>/dev/null || echo "")
-CWD=$(printf '%s' "$INPUT" | python3 -c "import sys,json
+CWD=$(printf '%s' "$INPUT" | python3 -I -c "import sys,json
 try: print(json.load(sys.stdin).get('cwd','') or '')
 except Exception: print('')" 2>/dev/null || echo "")
 [ -z "$CWD" ] && CWD="$PWD"
@@ -127,7 +127,7 @@ SUGGEST_PATH="${WORKTREE}-task-$(date +%s)"
 # Emit additionalContext so Lead reads it on turn 1 and self-acts. Env-pass the
 # branch / path / count so a quote in a branch name cannot break the emitter
 # (which would fail open on the exact concurrency risk this hook flags).
-ROLEPOD_HOOK_SIBLINGS="$ACTIVE_SIBLINGS" ROLEPOD_HOOK_PATH="$SUGGEST_PATH" ROLEPOD_HOOK_BRANCH="$BRANCH" python3 -c "
+ROLEPOD_HOOK_SIBLINGS="$ACTIVE_SIBLINGS" ROLEPOD_HOOK_PATH="$SUGGEST_PATH" ROLEPOD_HOOK_BRANCH="$BRANCH" python3 -I -c "
 import json, os
 n = os.environ.get('ROLEPOD_HOOK_SIBLINGS', '?')
 path = os.environ.get('ROLEPOD_HOOK_PATH', '')

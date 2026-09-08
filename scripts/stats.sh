@@ -20,7 +20,7 @@ set -uo pipefail
 ROOT="${1:-$(git rev-parse --show-toplevel 2>/dev/null || pwd)}"
 EV="$ROOT/.rolepod/evidence"
 
-python3 - "$EV" <<'PY'
+python3 -I - "$EV" <<'PY'
 import json
 import os
 import sys
@@ -103,7 +103,7 @@ dispatches = [r for r in rows if r.get("phase") == "dispatch"]
 # A strong dispatch is either the Lead's class-labeled line (tier=strong) or a
 # hook-auto row whose agent_type is a strong-named role (v2.86.0: the manual
 # line is written only where the hook cannot see the tier). Mirrors
-# session_state.STRONG_ROLE_AGENTS.
+# session_state.STRONG_REVIEWER_AGENTS.
 STRONG_ROLES = {"security-engineer", "universal-reviewer", "code-reviewer"}
 def is_strong(d):
     if d.get("tier") == "strong":
@@ -113,17 +113,20 @@ def is_strong(d):
 if dispatches:
     strong = [d for d in dispatches if is_strong(d)]
     if strong:
-        # inherit under a non-strong Lead OR an explicit cheap/balanced pin on
-        # a strong-role row: both are the silent downgrade.
+        # Since v2.104.0 a strong role renders `model: opus`; only an EXPLICIT
+        # cheap/balanced pin on a strong-role row is the silent downgrade.
         LOW_MODELS = ("haiku", "sonnet")
-        no_ov = sum(1 for d in strong
-                    if ((d.get("override") or "none") == "none" and d.get("lead_class") != "strong")
-                    or any(m in (d.get("override") or "") for m in LOW_MODELS))
+        low_pin = sum(1 for d in strong
+                      if any(m in (d.get("override") or "") for m in LOW_MODELS))
+        none_ov = [d for d in strong if (d.get("override") or "none") == "none"]
+        # a pre-2.104 row logged model=inherit: it ran at the Lead, not opus
+        inh_rows = sum(1 for d in none_ov if (d.get("model") or "") == "inherit")
+        no_ov = len(none_ov) - inh_rows
         print(f"\n  Strong dispatches ({len(strong)}): "
-              f"{len(strong) - no_ov} with explicit override, {no_ov} inherit")
-        if no_ov:
-            print("    ⚠ inherit on a strong dispatch is the silent downgrade "
-                  "unless the Lead itself is strong-class")
+              f"{len(strong) - len(none_ov)} with explicit override, {no_ov} frontmatter opus, "
+              f"{inh_rows} inherit (pre-2.104), {low_pin} pinned low")
+        if low_pin:
+            print("    ⚠ an explicit cheap/balanced pin on a strong dispatch is the silent downgrade")
     auto = [d for d in dispatches if d.get("provenance") == "hook-auto"]
     if auto:
         combo = Counter(
@@ -142,14 +145,13 @@ if dispatches:
                       "low-class; the strong pass must come from an Agent-tool "
                       "reviewer dispatch (hook-lifted) before commit")
         applied = sum(1 for d in auto if d.get("floor") == "applied")
+        frontmatter = sum(1 for d in auto if d.get("floor") == "frontmatter")
         missed = sum(1 for d in auto if d.get("floor") == "missed")
-        if applied or missed:
-            print(f"    strong-role floor (low-class Lead dispatching a strong review role): "
-                  f"applied ×{applied}, missed ×{missed}")
-            if missed:
-                print("      ⚠ missed = the review ran at the Lead's class — first dispatch of a "
-                      "fresh session (no prior turn to read the Lead from), ROLEPOD_NUDGE_OFF, "
-                      "or an explicit low model")
+        if applied or frontmatter or missed:
+            print(f"    strong-role floor (strong review roles): "
+                  f"applied ×{applied}, frontmatter ×{frontmatter}, missed ×{missed}")
+            print("      applied = the hook wrote opus (low Lead); frontmatter = the role's own "
+                  "opus pin ran (v2.104.0); missed = an explicit low model on a strong role")
         leads = Counter(d.get("lead_class") or "n/a" for d in auto if d.get("lead_class"))
         if leads:
             print("    Lead class at dispatch: " + ", ".join(

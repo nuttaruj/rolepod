@@ -92,7 +92,7 @@ INPUT=$(cat 2>/dev/null || echo '{}')
 # slurped with $(cat) so multi-line commit messages survive intact and an
 # empty trailing field cannot EOF-fail the read under set -e. The walk
 # matches flag-separated forms (`git -C . commit`, `git -c k=v commit`).
-PARSED=$(printf '%s' "$INPUT" | python3 -c "
+PARSED=$(printf '%s' "$INPUT" | python3 -I -c "
 import json, os, shlex, sys
 tool = ''
 cmd = ''
@@ -153,7 +153,7 @@ if [ "$IS_COMMIT" != "1" ]; then
   [ -n "$MUTATES" ] || exit 0
   [ "${ROLEPOD_GATES_SOFT:-0}" = "1" ] && exit 0
   _mj="$(xfam_running_job)"; [ -n "$_mj" ] || exit 0
-  ROLEPOD_HOOK_MSG="⏸ REVIEW IN FLIGHT: cross-family job $_mj reads this tree live — \`git $MUTATES\` rewrites it, so that verdict becomes an artifact and the job re-runs. Fix: \`rolepod-cross-family --collect ${_mj%% *}\` first, then \`git $MUTATES\`. Exception: a red-proof revert goes in a throwaway git worktree, not a stash here; a dead job → --collect says so and this line stops." python3 -c "
+  ROLEPOD_HOOK_MSG="⏸ REVIEW IN FLIGHT: cross-family job $_mj reads this tree live — \`git $MUTATES\` rewrites it, so that verdict becomes an artifact and the job re-runs. Fix: \`rolepod-cross-family --collect ${_mj%% *}\` first, then \`git $MUTATES\`. Exception: a red-proof revert goes in a throwaway git worktree, not a stash here; a dead job → --collect says so and this line stops." python3 -I -c "
 import json, os
 print(json.dumps({'hookSpecificOutput': {'hookEventName': 'PreToolUse', 'additionalContext': os.environ.get('ROLEPOD_HOOK_MSG', '')}}))
 " 2>/dev/null || echo '{}'
@@ -182,7 +182,7 @@ FILES_CHANGED=$(echo "$DIFF_STAT" | wc -l | tr -d ' ')
 _pd_root="$(git rev-parse --show-toplevel 2>/dev/null)"
 PRIVATE_DOCS=$( { git diff --cached --name-only 2>/dev/null | grep -E '^docs/rolepod/' || true; } | head -5 | tr '\n' ' ' | sed 's/ *$//')
 if [ -n "$PRIVATE_DOCS" ] && [ ! -f "$_pd_root/.rolepod/docs-tracked" ]; then
-  ROLEPOD_HOOK_MSG="precommit-gate BLOCKED — private working docs staged: $PRIVATE_DOCS. docs/rolepod/ is never committed. Fix: git restore --staged docs/rolepod; make sure .gitignore lists docs/rolepod/. Repo tracks them on purpose → create .rolepod/docs-tracked, commit again." python3 -c "
+  ROLEPOD_HOOK_MSG="precommit-gate BLOCKED — private working docs staged: $PRIVATE_DOCS. docs/rolepod/ is never committed. Fix: git restore --staged docs/rolepod; make sure .gitignore lists docs/rolepod/. Repo tracks them on purpose → create .rolepod/docs-tracked, commit again." python3 -I -c "
 import json, os
 print(json.dumps({'hookSpecificOutput': {'hookEventName': 'PreToolUse', 'permissionDecision': 'deny', 'permissionDecisionReason': os.environ.get('ROLEPOD_HOOK_MSG', '')}}))
 " 2>/dev/null || echo '{}'
@@ -284,7 +284,7 @@ elif command -v python3 >/dev/null 2>&1; then
   # reviewers to the strong model anyway.
   PHASE_LOG="$(git rev-parse --show-toplevel 2>/dev/null)/.rolepod/evidence/phase-log.jsonl"
   if [ -f "$PHASE_LOG" ]; then
-    RCOUNTS=$(python3 -c '
+    RCOUNTS=$(python3 -I -c '
 import json, sys, datetime
 since, path = sys.argv[1], sys.argv[2]
 cut = None
@@ -339,7 +339,7 @@ STRONG_REVIEWERS=${STRONG_REVIEWERS:-0}
 # artifact is ignored (claim-based evidence is what this gate exists to stop).
 EV_ROOT="$(git rev-parse --show-toplevel 2>/dev/null)/.rolepod/evidence"
 if [ -f "$EV_ROOT/phase-log.jsonl" ] && command -v python3 >/dev/null 2>&1; then
-  XREV=$(python3 -c '
+  XREV=$(python3 -I -c '
 import json, os, sys, datetime
 since, ev = sys.argv[1], sys.argv[2]
 cut = None
@@ -420,7 +420,7 @@ if [ -z "$XFAM_HELD" ] && [ -n "$HIGH_RISK" ] && [ -n "$XFAM_LEAD" ] && [ -f "$X
   XFAM_POOL=$(bash "$XFAM_RUNNER" --lead "$XFAM_LEAD" --pool-names 2>/dev/null | tr '\n' ' ' | sed 's/ *$//')
   XFAM_FAILS=0
   if [ -n "$XFAM_POOL" ] && [ -f "$EV_ROOT/phase-log.jsonl" ]; then
-    XFAM_FAILS=$(python3 -c '
+    XFAM_FAILS=$(python3 -I -c '
 import json, sys, datetime
 since, path = sys.argv[1], sys.argv[2]
 cut = None
@@ -546,7 +546,7 @@ if [ "$AUTO_PASS" -eq 1 ]; then
   # machine-global log, which then crashed every reader of it. Slice in
   # python (characters) and flatten newlines so one commit can never corrupt
   # the log or break its one-entry-per-line shape.
-  SAFE_CMD=$(ROLEPOD_BYPASS_CMD="$CMD" python3 -c "
+  SAFE_CMD=$(ROLEPOD_BYPASS_CMD="$CMD" python3 -I -c "
 import os, sys
 sys.stdout.reconfigure(errors='replace')
 sys.stdout.write(' '.join(os.environ.get('ROLEPOD_BYPASS_CMD', '').split())[:200])
@@ -558,7 +558,7 @@ sys.stdout.write(' '.join(os.environ.get('ROLEPOD_BYPASS_CMD', '').split())[:200
   [ -n "$HIGH_RISK" ] && NOTE+=" (HIGH-RISK path: $HIGH_RISK)"
   NOTE+=" ($SINCE_HUMAN). Evidence is per-window — confirm S1-S5 / T1-T6 / F1-F5 (finish-work §1, check-work §6) cover THIS change."
   [ -n "$LINT_WARN" ] && NOTE+=" | $LINT_WARN"
-  ROLEPOD_HOOK_MSG="$NOTE" python3 -c "
+  ROLEPOD_HOOK_MSG="$NOTE" python3 -I -c "
 import json, os
 print(json.dumps({'hookSpecificOutput': {'hookEventName': 'PreToolUse', 'additionalContext': os.environ.get('ROLEPOD_HOOK_MSG', '')}}))
 " 2>/dev/null || true
@@ -568,7 +568,7 @@ fi
 if [ "$HARD_BLOCK" -eq 1 ]; then
   # Env-passed — quotes in the reason must not break the JSON emitter.
   [ -n "$LINT_WARN" ] && REASON+=" | $LINT_WARN"
-  ROLEPOD_HOOK_MSG="$REASON" python3 -c "
+  ROLEPOD_HOOK_MSG="$REASON" python3 -I -c "
 import json, os
 print(json.dumps({
   'hookSpecificOutput': {
@@ -595,7 +595,7 @@ if [ "$LOGIC_COUNT" -gt 0 ] && [ "$REVIEWERS" -eq 0 ] && { [ "$FILES_CHANGED" -g
 WARN+="Gates S1-S5 / T1-T6 / F1-F5 (finish-work §1, check-work §6) are advisory here; ROLEPOD_GATES_HARD=1 enforces."
 [ -n "$LINT_WARN" ] && WARN+=" | $LINT_WARN"
 
-ROLEPOD_HOOK_MSG="$WARN" python3 -c "
+ROLEPOD_HOOK_MSG="$WARN" python3 -I -c "
 import json, os
 print(json.dumps({'hookSpecificOutput': {'hookEventName': 'PreToolUse', 'additionalContext': os.environ.get('ROLEPOD_HOOK_MSG', '')}}))
 " 2>/dev/null || true

@@ -34,7 +34,7 @@ cat >/dev/null 2>&1 || true
 # ensure_ascii=False: the core carries ~50 non-ASCII glyphs (arrows, dashes);
 # escaping each as \uXXXX cost 153 B of the 5120 B budget for nothing.
 # Bytes are written explicitly so the locale of the hook shell cannot break it.
-python3 -c '
+python3 -I -c '
 import json, sys
 content = open(sys.argv[1], encoding="utf-8").read()
 payload = json.dumps({"hookSpecificOutput": {

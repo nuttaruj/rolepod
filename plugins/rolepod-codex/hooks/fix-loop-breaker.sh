@@ -30,7 +30,7 @@ set -uo pipefail
 INPUT=$(cat 2>/dev/null || true)
 [ -n "$INPUT" ] || exit 0
 
-printf '%s' "$INPUT" | python3 -c '
+printf '%s' "$INPUT" | python3 -I -c '
 import hashlib, json, os, re, sys, tempfile
 
 try:

@@ -40,7 +40,7 @@ set -euo pipefail
 [ "${ROLEPOD_NUDGE_OFF:-0}" = "1" ] && exit 0
 
 INPUT=$(cat 2>/dev/null || echo '{}')
-PROMPT=$(printf '%s' "$INPUT" | python3 -c "import sys,json;print(json.load(sys.stdin).get('prompt',''))" 2>/dev/null || echo "")
+PROMPT=$(printf '%s' "$INPUT" | python3 -I -c "import sys,json;print(json.load(sys.stdin).get('prompt',''))" 2>/dev/null || echo "")
 
 CTX_MSG=""
 SESSION_STATE="$(dirname "$0")/lib/session_state.py"
@@ -48,7 +48,7 @@ if [ -f "$SESSION_STATE" ]; then
   CTX=$(printf '%s' "$INPUT" | python3 "$SESSION_STATE" context-tokens 2>/dev/null || echo 0)
   CTX=${CTX:-0}
   if [ "$CTX" -ge 200000 ] 2>/dev/null; then
-    SID=$(printf '%s' "$INPUT" | python3 -c "import sys,json;print(json.load(sys.stdin).get('session_id',''))" 2>/dev/null || echo "")
+    SID=$(printf '%s' "$INPUT" | python3 -I -c "import sys,json;print(json.load(sys.stdin).get('session_id',''))" 2>/dev/null || echo "")
     BUCKET=$((CTX / 200000))
     STATE_DIR="$HOME/.rolepod/ctx-nudge"
     LAST=""
@@ -67,7 +67,7 @@ fi
 # Nothing more to gauge without a prompt.
 if [ -z "$PROMPT" ]; then
   if [ -n "$CTX_MSG" ]; then
-    ROLEPOD_HOOK_MSG="$CTX_MSG" python3 -c "
+    ROLEPOD_HOOK_MSG="$CTX_MSG" python3 -I -c "
 import json, os
 print(json.dumps({'hookSpecificOutput':{'hookEventName':'UserPromptSubmit','additionalContext':os.environ.get('ROLEPOD_HOOK_MSG','')}}))
 " 2>/dev/null || echo '{}'
@@ -127,7 +127,7 @@ fi
 
 if [ -n "$MSG$CTX_MSG$ROUTE_MSG$AUTO_MSG$BREAKER_MSG" ]; then
   # Env-passed (never interpolated) so quotes in either message cannot break the JSON.
-  ROLEPOD_HOOK_MSG="${CTX_MSG}${MSG}${ROUTE_MSG}${AUTO_MSG}${BREAKER_MSG}" python3 -c "
+  ROLEPOD_HOOK_MSG="${CTX_MSG}${MSG}${ROUTE_MSG}${AUTO_MSG}${BREAKER_MSG}" python3 -I -c "
 import json, os
 print(json.dumps({'hookSpecificOutput':{'hookEventName':'UserPromptSubmit','additionalContext':os.environ.get('ROLEPOD_HOOK_MSG','')}}))
 " 2>/dev/null || echo '{}'

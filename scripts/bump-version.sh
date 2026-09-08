@@ -23,7 +23,7 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
 setver() {  # $1 = file, $2 = version — rewrite every "version" leaf field
-  python3 - "$1" "$2" <<'PY'
+  python3 -I - "$1" "$2" <<'PY'
 import re, sys
 path, ver = sys.argv[1], sys.argv[2]
 text = open(path).read()

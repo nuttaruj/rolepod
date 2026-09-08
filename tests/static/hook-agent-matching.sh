@@ -57,26 +57,26 @@ run '{"type":"tool_use","name":"Workflow","input":{"script":"await agent(p, {age
 
 # count-all strong split: inherit → strong; explicit low model → reviewer only.
 run '{"type":"tool_use","name":"Workflow","input":{"script":"await agent(p, {agentType: '\''security-engineer'\''})"}}' \
-  count-all "0 0 1 1" "Workflow reviewer (inherit) counts as strong in count-all"
+  count-all "0 0 1 1" "Workflow reviewer (no model = frontmatter opus) counts as strong in count-all"
 
 run '{"type":"tool_use","name":"Workflow","input":{"script":"await agent(p, {agentType: '\''security-engineer'\'', model: '\''haiku'\''})"}}' \
   count-all "0 0 1 0" "Workflow reviewer pinned haiku is not strong"
 
-# v2.74.0 — a Workflow agentType strong reviewer with no explicit model inherits
-# the Lead: strong under an opus Lead, NOT under a sonnet Lead (the Agent-tool
-# floor does not reach agent() calls; observed: CourtBook technician-payout-review
-# cleared the commit gate with a sonnet security-engineer). Explicit opus counts anywhere.
+# v2.104.0 — a Workflow agentType strong reviewer with no explicit model runs its
+# frontmatter pin (opus): strong under ANY Lead. From v2.74.0 to v2.103 it rendered
+# inherit and counted only under a strong Lead (CourtBook technician review fleet
+# had cleared the commit gate with a sonnet security-engineer). Explicit opus counts anywhere.
 wf_tu='{"type":"tool_use","name":"Workflow","input":{"script":"await agent(p, {agentType: '\''rolepod:security-engineer'\''})"}}'
 wf_tu_opus='{"type":"tool_use","name":"Workflow","input":{"script":"await agent(p, {agentType: '\''rolepod:security-engineer'\'', model: '\''opus'\''})"}}'
 lead_sonnet='{"type":"assistant","message":{"model":"claude-sonnet-5","content":[]}}'
 lead_opus='{"type":"assistant","message":{"model":"claude-opus-5","content":[]}}'
-run "$lead_sonnet"$'\n'"$wf_tu"      count-all "0 0 1 0" "v2.74: Workflow reviewer (inherit) under a sonnet Lead is NOT strong"
-run "$lead_opus"$'\n'"$wf_tu"        count-all "0 0 1 1" "v2.74: Workflow reviewer (inherit) under an opus Lead is strong"
+run "$lead_sonnet"$'\n'"$wf_tu"      count-all "0 0 1 1" "v2.104: Workflow reviewer (frontmatter opus) under a sonnet Lead IS strong"
+run "$lead_opus"$'\n'"$wf_tu"        count-all "0 0 1 1" "v2.104: Workflow reviewer (frontmatter opus) under an opus Lead is strong"
 run "$lead_sonnet"$'\n'"$wf_tu_opus" count-all "0 0 1 1" "v2.74: Workflow reviewer pinned opus under a sonnet Lead is strong"
 
 # v2.88.0 — TIER_PINNED_AGENTS must mirror the tier overlays: every role whose
 # Claude tier renders a real model pin (cheap -> haiku, balanced -> sonnet) is
-# in the set, every `strong` role (renders inherit) is in STRONG_ROLE_AGENTS and
+# in the set, every `strong` role (renders opus; the hook floors it) is in STRONG_ROLE_AGENTS and
 # NOT in it. Drift here silently re-opens the gate hole a general-purpose
 # agentType used to punch (v2.88.0).
 drift=$(python3 - <<'PYEOF'
@@ -96,7 +96,7 @@ for y in sorted(pathlib.Path("adapters/claude/agent-frontmatter").glob("*.yml"))
         if name not in ss.STRONG_ROLE_AGENTS:
             bad.append("%s (strong) missing from STRONG_ROLE_AGENTS" % name)
         if name in ss.TIER_PINNED_AGENTS:
-            bad.append("%s (strong, renders inherit) must NOT be in TIER_PINNED_AGENTS" % name)
+            bad.append("%s (strong, floored via STRONG_ROLE_AGENTS) must NOT be in TIER_PINNED_AGENTS" % name)
     else:
         bad.append("%s: unknown tier %s" % (name, tier))
 known = {y.stem for y in pathlib.Path("adapters/claude/agent-frontmatter").glob("*.yml")}

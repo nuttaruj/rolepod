@@ -161,7 +161,7 @@ fi
 # since the last commit; a gap > 5 min opens a new round. The breaker ledger
 # = newest docs/rolepod/handoffs/*breaker*.md newer than the last commit.
 review_rounds() {
-  ROLEPOD_XFAM_ROOT="$ROOT" ROLEPOD_XFAM_JOBS="$JOBS" python3 - <<'PY' 2>/dev/null || echo "rounds=0 current=1 ledger=- class=0"
+  ROLEPOD_XFAM_ROOT="$ROOT" ROLEPOD_XFAM_JOBS="$JOBS" python3 -I - <<'PY' 2>/dev/null || echo "rounds=0 current=1 ledger=- class=0"
 import glob, json, os, re, subprocess, time, datetime
 root = os.environ["ROLEPOD_XFAM_ROOT"]; jobs = os.environ["ROLEPOD_XFAM_JOBS"]
 try:
@@ -284,7 +284,7 @@ classify_model() { # model id or "provider/model" → family; aggregators (openr
 }
 json_model_field() { # $1 file (json or jsonc) → TOP-LEVEL "model" (never an agent's nested one)
   [ -f "$1" ] || return 0
-  _v=$(python3 - "$1" 2>/dev/null <<'PYJ'
+  _v=$(python3 -I - "$1" 2>/dev/null <<'PYJ'
 import json, re, sys
 raw = open(sys.argv[1], encoding="utf-8", errors="replace").read()
 txt = re.sub(r"/\*.*?\*/", "", raw, flags=re.S)
@@ -300,7 +300,7 @@ except Exception:
     print("__PARSE_FAIL__")
 PYJ
 )
-  if [ "$_v" = "__PARSE_FAIL__" ] || [ -z "$_v" ] && ! python3 -c 1 2>/dev/null; then
+  if [ "$_v" = "__PARSE_FAIL__" ] || [ -z "$_v" ] && ! python3 -I -c 1 2>/dev/null; then
     sed -e 's#^[[:space:]]*//.*##' "$1" 2>/dev/null | grep -o '"model"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | sed 's/.*:[[:space:]]*"\([^"]*\)"/\1/'
   else
     [ "$_v" = "__PARSE_FAIL__" ] && _v=""
@@ -321,7 +321,7 @@ opencode_default_model() {
 opencode_last_used_model() {
   _s="${XDG_STATE_HOME:-$HOME/.local/state}/opencode/model.json"
   [ -f "$_s" ] || return 0
-  python3 - "$_s" 2>/dev/null <<'PYS'
+  python3 -I - "$_s" 2>/dev/null <<'PYS'
 import json, sys
 try:
     r = json.load(open(sys.argv[1], encoding="utf-8")).get("recent") or []
@@ -523,7 +523,7 @@ invoke() { # $1 cli, $2 promptfile, $3 outfile — TIMEOUT already set for this 
 jlog() { mkdir -p "$EV" 2>/dev/null || return 0; printf '%s\n' "$1" >> "$EV/phase-log.jsonl" 2>/dev/null || true; }
 jesc() { # JSON string body (no surrounding quotes) — control chars escaped too
   if command -v python3 >/dev/null 2>&1; then
-    printf '%s' "$1" | python3 -c 'import json,sys; print(json.dumps(sys.stdin.read().replace("\n"," "))[1:-1], end="")' 2>/dev/null && return
+    printf '%s' "$1" | python3 -I -c 'import json,sys; print(json.dumps(sys.stdin.read().replace("\n"," "))[1:-1], end="")' 2>/dev/null && return
   fi
   printf '%s' "$1" | tr -d '\000-\037' | sed -e 's/\\/\\\\/g' -e 's/"/\\"/g'
 }

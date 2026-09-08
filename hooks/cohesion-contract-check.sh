@@ -32,7 +32,7 @@ rolepod_log_bypass() {
 }
 
 INPUT=$(cat 2>/dev/null || echo '{}')
-TOOL=$(echo "$INPUT" | python3 -c "import sys,json;print(json.load(sys.stdin).get('tool_name',''))" 2>/dev/null || echo "")
+TOOL=$(echo "$INPUT" | python3 -I -c "import sys,json;print(json.load(sys.stdin).get('tool_name',''))" 2>/dev/null || echo "")
 
 # Match only the Agent / Task tool. (Both names are valid across CC versions.)
 case "$TOOL" in
@@ -48,7 +48,7 @@ SOFT_MODE=0
 
 # Read-only / strategy agents don't need a contract — they investigate, they
 # don't write code. Skip these specific subagent types.
-SUBAGENT=$(printf '%s' "$INPUT" | python3 -c "
+SUBAGENT=$(printf '%s' "$INPUT" | python3 -I -c "
 import sys, json
 try:
     d = json.load(sys.stdin)
@@ -84,7 +84,7 @@ RECENT_AGENTS=${RECENT_AGENTS:-0}
 
 # Look for a cohesion contract artifact in the session — contract.md /
 # cohesion.md / SPEC.md / specs/*.md edited or written this session.
-CONTRACT_PRESENT=$(printf '%s' "$INPUT" | python3 -c "
+CONTRACT_PRESENT=$(printf '%s' "$INPUT" | python3 -I -c "
 import sys, json, os, re
 try:
     d = json.load(sys.stdin)
@@ -141,7 +141,7 @@ REASON+="Read-only / single-domain spawn → ask the USER to set ROLEPOD_NO_CONT
 if [ "$SOFT_MODE" -eq 1 ]; then
   # Soft mode: emit additionalContext, don't block. Env-pass REASON so a crafted
   # subagent_type cannot escape the Python string literal (RCE).
-  ROLEPOD_HOOK_MSG="$REASON" python3 -c "
+  ROLEPOD_HOOK_MSG="$REASON" python3 -I -c "
 import json, os
 print(json.dumps({'hookSpecificOutput': {'hookEventName': 'PreToolUse', 'additionalContext': '⚠️  ' + os.environ.get('ROLEPOD_HOOK_MSG', '')}}))
 " 2>/dev/null || true
@@ -150,7 +150,7 @@ fi
 
 # Hard block: deny JSON. Env-pass REASON so a crafted subagent_type cannot
 # escape the Python string literal (RCE).
-ROLEPOD_HOOK_MSG="$REASON" python3 -c "
+ROLEPOD_HOOK_MSG="$REASON" python3 -I -c "
 import json, os
 print(json.dumps({
   'hookSpecificOutput': {

@@ -69,7 +69,7 @@ INPUT=$(cat 2>/dev/null || echo '{}')
 # an empty trailing field cannot EOF-fail the read under set -e.
 # file_path (Claude tools) → notebook_path → path → apply_patch body markers
 # (Codex patches carry "*** Add/Update/Delete File: <path>" lines, no field).
-PARSED=$(printf '%s' "$INPUT" | python3 -c "
+PARSED=$(printf '%s' "$INPUT" | python3 -I -c "
 import json, re, sys
 tool = ''
 p = ''
@@ -167,7 +167,7 @@ fi
 # CLAUDE.md / AGENTS.md and using-rolepod skill, read once per session.
 if [ -z "$SCHEMA_BOUND" ] && [ -z "$HIGH_RISK" ]; then
   [ -n "$XFAM_INFLIGHT" ] || exit 0
-  ROLEPOD_HOOK_MSG="$XFAM_INFLIGHT" python3 -c "
+  ROLEPOD_HOOK_MSG="$XFAM_INFLIGHT" python3 -I -c "
 import json, os
 print(json.dumps({'hookSpecificOutput': {'hookEventName': 'PreToolUse', 'additionalContext': os.environ.get('ROLEPOD_HOOK_MSG', '')}}))
 " 2>/dev/null || echo '{}'
@@ -248,7 +248,7 @@ fi
 
 # Emit reminder ONLY when schema-bound or high-risk — no generic Q1-Q4 nag.
 # Env-passed (see deny path) so apostrophes in the banner cannot break it.
-ROLEPOD_HOOK_MSG="${XFAM_INFLIGHT}${SCHEMA_BOUND}${CAREFUL_BANNER}${HIGH_RISK}" python3 -c "
+ROLEPOD_HOOK_MSG="${XFAM_INFLIGHT}${SCHEMA_BOUND}${CAREFUL_BANNER}${HIGH_RISK}" python3 -I -c "
 import json, os
 print(json.dumps({
   'hookSpecificOutput': {

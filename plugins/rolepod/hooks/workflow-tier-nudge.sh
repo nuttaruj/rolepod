@@ -12,21 +12,20 @@
 # exactly that moment — now Lead-aware (v2.47.0): the message says what to
 # do given the class the Lead is actually running (read from the transcript).
 #
-# Strong-role floor (v2.47.0, the one non-soft branch): security-engineer and
-# universal-reviewer render `model: inherit` on Claude (merge-agent.py — a
-# fixed pin would DOWNGRADE a fable-class Lead). On a known-low Lead
-# (haiku/sonnet class) that inherit silently runs the adversarial pass at
-# the Lead's class — measured: 0 explicit strong overrides across a whole
-# project. This hook writes the strong alias into the Agent call itself
-# (`updatedInput` + permissionDecision "allow" — the Agent tool asks no
-# permission of its own, so nothing is bypassed; upstream docs now apply
-# updatedInput regardless of the decision). Workflow scripts get NO such
-# rewrite: reviewer opts usually come from a data array spread into agent()
-# (`agentType: r.agentType`), so a text insert next to the literal would not
-# reach the call — false safety. The gate denies and names the one-slot fix. Unknown Lead class → untouched (never a downgrade
-# of a model stronger than the alias). Explicit `model:` on the call is the
-# Lead's stated choice → never rewritten, only named. security-engineer /
-# universal-reviewer / system-architect (v2.73.0) are the floored roles.
+# Strong-role floor + lift (v2.47.0, reshaped v2.104.0, the one non-soft
+# branch): security-engineer / universal-reviewer / system-architect render
+# `model: opus` on Claude since v2.104.0 (merge-agent.py), so the floor holds
+# wherever this hook does not run. One rewrite remains, via `updatedInput` +
+# permissionDecision "allow" (the Agent tool asks no question either way and
+# honors updatedInput regardless of the decision): low Lead (haiku/sonnet
+# class), no `model` → write `opus` (a user-level agent file from before
+# v2.104.0 may still say inherit). opus is the paid CEILING of the tier by
+# owner decision — a fable-class Lead is never lifted (cost); a strong or
+# unknown Lead is left alone.
+# Explicit `model:` on the call is never rewritten — an explicit low pin on
+# a strong role is NAMED (nudge) and the commit gate does not count it as
+# the strong pass. Workflow scripts get NO rewrite (a hook cannot safely
+# edit a script); their strong-role agentType now renders opus by itself.
 #
 #   Workflow fan-out under a STRONG (or unknown non-empty) Lead, no
 #     `// tier-reason:` (or legacy `fleet-inherit:`) comment → DENY when:
@@ -43,8 +42,8 @@
 #         tier — inherit under a non-strong Lead is the INVERSE trap:
 #         the R4 judge silently runs below the floor. Tier follows the
 #         work, not the Lead.                                            v2.72.0
-#         `agentType:` of a strong role counts as strong ONLY under a
-#         strong Lead (it renders inherit); the fix is ONE strong slot   v2.74.0
+#         `agentType:` of a strong role renders opus (v2.104.0) = the
+#         strong slot under any Lead; the fix is ONE strong slot        v2.74.0
 #       · (low Lead) a strong pin on a FAN-OUT call, on ≥2 stages, on a
 #         non-judgment stage, or on >2 calls — "opus pasted everywhere",
 #         the mirror trap; never yields                                  v2.74.0
@@ -72,7 +71,7 @@
 # share alone, with the soft nudge fired and ignored every time. Under a
 # low-class Lead the fleet is already cheap → nudge only. Any per-stage
 # `model:`, or an `agentType:` of a rolepod cheap/balanced role (writers are
-# pinned balanced) or of a strong role under a strong Lead → silent.
+# pinned balanced) or of a strong role (renders opus) → silent.
 # Intentional fleet-wide inherit → write `// fleet-inherit: <reason>` in the
 # script and it passes (the reason is the accountability). Bypass envs are
 # user-set only: ROLEPOD_GATES_SOFT=1 degrades the deny to the nudge (logged
@@ -86,7 +85,7 @@ SESSION_STATE="$(dirname "$0")/lib/session_state.py"
 [ -f "$SESSION_STATE" ] || exit 0
 command -v python3 >/dev/null 2>&1 || exit 0
 
-printf '%s' "$INPUT" | ROLEPOD_SESSION_STATE="$SESSION_STATE" python3 -c '
+printf '%s' "$INPUT" | ROLEPOD_SESSION_STATE="$SESSION_STATE" python3 -I -c '
 import json, os, re, sys
 try:
     d = json.load(sys.stdin)
@@ -293,10 +292,11 @@ if tool == "Workflow":
     # made tiers non-empty, so no-tier never fired and the fan-out ran at the
     # Lead price (observed 2026-09-06, CourtBook stripe-surcharge-research;
     # technician-payout-review = 31 turns on a billing surface). Strong roles
-    # render inherit -> a tier only under a strong Lead (v2.74.0).  v2.88.0
+    # render `model: opus` since v2.104.0 -> a tier, and the strong slot,
+    # under any Lead (v2.74.0-v2.103 they rendered inherit).  v2.88.0
     atype_names = set(ss._bare_agent_name(a)
                       for a in ss.script_option_values(script, "agentType", code))
-    role_strong = bool(atype_names & ss.STRONG_ROLE_AGENTS) and cls == "strong"
+    role_strong = bool(atype_names & ss.STRONG_ROLE_AGENTS)
     tiers = set(ss.model_class(m) for m in models)
     if (atype_names & ss.TIER_PINNED_AGENTS) or role_strong:
         tiers.add("role-pin")
@@ -324,10 +324,11 @@ if tool == "Workflow":
     m_reason = re.search(r"(?:fleet-inherit|tier-reason)\s*:\s*(\S[^\n]{0,160})", script)
     stated = m_reason.group(1).strip() if m_reason else ""
     # v2.74.0 — ONE strong SLOT, not a stage-wide paste. (a) `agentType:` of a
-    # strong role renders `model: inherit` — it equals strong ONLY under a
-    # strong Lead (observed: CourtBook technician-payout-review, sonnet Lead,
-    # agentType security-engineer + 26 bare verify agents = 30 × sonnet, gate
-    # silent because role-pin counted as the strong stage). (b) The mirror
+    # strong role renders `model: opus` since v2.104.0, so it IS the strong
+    # slot under any Lead (until then it rendered inherit and equalled strong
+    # only under a strong Lead — CourtBook technician review fleet, sonnet
+    # Lead, agentType security-engineer + 26 bare verify agents = 30 × sonnet,
+    # gate silent because role-pin counted as the strong stage). (b) The mirror
     # trap: told "give the judge stage opus", a low Lead pastes opus on the
     # per-finding fan-out — strong × N. Per agent() call: strong literal? which
     # stage? fan-out position (interpolated label, or lexically inside
@@ -338,11 +339,20 @@ if tool == "Workflow":
         end = call_pos[i + 1] if i + 1 < len(call_pos) else len(code)
         win = code[pos:end]
         mk = re.search(r"[,{\s]model\s*:\s*[\x27\"]", win)
-        if not mk:
-            continue
-        q = pos + mk.end() - 1
-        mv = re.match(r"[\x27\"]([A-Za-z0-9._\-\[\]]+)[\x27\"]", script[q:q + 80])
-        if not mv or ss.model_class(mv.group(1)) != "strong":
+        strong_here = False
+        if mk:
+            q = pos + mk.end() - 1
+            mv = re.match(r"[\x27\"]([A-Za-z0-9._\-\[\]]+)[\x27\"]", script[q:q + 80])
+            strong_here = bool(mv) and ss.model_class(mv.group(1)) == "strong"
+        if not strong_here:
+            # v2.104.0: the agentType of a strong role renders opus — the same
+            # strong pin, so it spreads the same way (a fan-out = opus × N).
+            ak = re.search(r"[,{\s]agentType\s*:\s*[\x27\"]", win)
+            if ak:
+                aq = pos + ak.end() - 1
+                av = re.match(r"[\x27\"]([A-Za-z0-9:._\-]+)[\x27\"]", script[aq:aq + 80])
+                strong_here = bool(av) and ss._bare_agent_name(av.group(1)) in ss.STRONG_ROLE_AGENTS
+        if not strong_here:
             continue
         pk = re.search(r"[,{\s]phase\s*:\s*[\x27\"]", win)
         if pk:
@@ -425,19 +435,19 @@ if tool == "Workflow":
             "(sweep haiku); model:\x27opus\x27 on exactly one call \u2014 the security-engineer / "
             "universal-reviewer review, or one final adjudicator. This deny never yields. Every stage "
             "truly needs strong \u2192 `// tier-reason: <why>`." % (spread, cls, lead)) + TAIL
-    elif lead and not stated and risky and judge_stages and not (tiers & {"strong", "dynamic"}):
+    elif lead and not stated and risky and judge_stages and not ((tiers & {"strong", "dynamic"}) or role_strong):
         # v2.72.0 — the inverse trap. Under a balanced/cheap Lead, inherit (or an
         # explicit balanced pin) runs the R4 judge stage BELOW the floor with no
-        # one choosing it. v2.74.0: `agentType:` of a strong role no longer
-        # counts here (it renders inherit = the low Lead), and the fix is ONE
-        # strong slot, not "opus on the judgment stage" (which produced the
+        # one choosing it. The agentType: of a strong role counts here since
+        # v2.104.0 (it renders opus); the fix is ONE strong slot, not "opus on
+        # the judgment stage" (which produced the
         # fan-out paste the strong-spread branch above now denies).
         verdict = "no-strong-judge"
         reason_txt = (
             "\u26d4 fleet-tier: judgment stage(s) %s carry no strong tier \u2014 fleet pins %s \u2014 under a "
             "%s-class Lead (%s), high-risk fleet (money/auth/security/migrations). Inherit here downgrades "
-            "the judge; agentType: alone does not lift it; the tier follows the work, not the Lead. Fix: ONE "
-            "strong slot \u2014 model:\x27opus\x27 on the single security-engineer / universal-reviewer call "
+            "the judge; the tier follows the work, not the Lead. Fix: ONE "
+            "strong slot \u2014 agentType:\x27rolepod:security-engineer\x27 (renders opus) or model:\x27opus\x27 on the single review call "
             "or one final adjudicator (opts from a data array \u2192 thread `model: r.model`); every fan-out "
             "stays sonnet/haiku. Not a judgment stage / not high-risk \u2192 `// tier-reason: <why>`." % (
                 ", ".join(judge_stages)[:160], "+".join(sorted(tiers)) or "nothing (every stage inherits %s)" % cls, cls, lead)) + TAIL
@@ -500,6 +510,10 @@ if tool in ("Agent", "Task"):
                      "Lead); keep the Agent tool for one-off or parallel single-message dispatches. "
                      % (("~%dk tokens" % ctxk) if ctxk else "all of it"))
     if atype in ss.STRONG_ROLE_AGENTS:
+        # v2.104.0: the frontmatter of the role pins opus, so the floor holds
+        # without this hook; under a low Lead write opus anyway (a pre-2.104
+        # user-level agent file may still say inherit). opus is the ceiling:
+        # a fable-class Lead is never lifted (owner decision, cost).
         if not model and cls in ss.LOW_CLASSES:
             new_input = dict(ti)
             new_input["model"] = ss.STRONG_ALIAS
@@ -509,9 +523,9 @@ if tool in ("Agent", "Task"):
                     "permissionDecision": "allow",
                     "updatedInput": new_input,
                 },
-                "systemMessage": "rolepod tier-floor: %s → model=%s (Lead is %s; "
-                                 "frontmatter inherit would have run the adversarial pass at "
-                                 "the Lead\x27s class)" % (atype, ss.STRONG_ALIAS, lead_txt),
+                "systemMessage": "rolepod tier-floor: %s → model=%s (Lead is %s; the strong "
+                                 "floor — a pre-2.104 user-level agent file may still say inherit)"
+                                 % (atype, ss.STRONG_ALIAS, lead_txt),
             })
         if model and ss.model_class(model) in ss.LOW_CLASSES:
             ctx(loop_note + "⚖ tier-check: %s dispatched with model=%s — an EXPLICIT downgrade of a strong "

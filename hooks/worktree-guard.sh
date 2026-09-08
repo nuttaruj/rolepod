@@ -48,7 +48,7 @@ INPUT=$(cat 2>/dev/null || echo '{}')
 # Parse + canonicalize in one python pass. tool_input carries file_path
 # (Edit/Write/MultiEdit) or notebook_path (NotebookEdit). Relative paths are
 # resolved against cwd so both sessions key the same file identically.
-FIELDS=$(printf '%s' "$INPUT" | python3 -c '
+FIELDS=$(printf '%s' "$INPUT" | python3 -I -c '
 import sys, json, os
 try:
     d = json.load(sys.stdin)
@@ -139,7 +139,7 @@ REL="${TARGET#"$WORKTREE"/}"
 
 # HARD deny — a live sibling owns this exact file. Point at native isolation
 # first (EnterWorktree), git worktree fallback second, override last.
-REL="$REL" SUGGEST_PATH="$SUGGEST_PATH" BRANCH="$BRANCH" python3 -c '
+REL="$REL" SUGGEST_PATH="$SUGGEST_PATH" BRANCH="$BRANCH" python3 -I -c '
 import json, os
 rel = os.environ.get("REL", "")
 sug = os.environ.get("SUGGEST_PATH", "")
