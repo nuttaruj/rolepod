@@ -121,6 +121,52 @@ def _git_root():
     except Exception:
         return ""
 
+# v2.99.0 — review rounds on one uncommitted tree. ONE implementation: the
+# runner\x27s `--rounds` (shipped in every plugin tree next to hooks/). Round 3
+# = notice, round 4 without a breaker ledger (`## Class`) = deny, round 5+ =
+# deny (terminal: split & stop). Measured: 11+ rounds overnight, no consult,
+# no hand-back, while the breaker was doctrine only.
+REVIEW_ROLES = ("security-engineer", "universal-reviewer", "code-reviewer", "qa-tester")
+
+def _review_rounds():
+    import subprocess
+    here = os.path.dirname(os.environ["ROLEPOD_SESSION_STATE"])
+    for rp in (os.path.join(here, "..", "..", "scripts", "cross-family.sh"),
+               os.path.expanduser("~/.rolepod/bin/cross-family.sh")):
+        if not os.path.isfile(rp):
+            continue
+        try:
+            out = subprocess.run(["bash", rp, "--rounds"], capture_output=True, text=True, timeout=15).stdout
+        except Exception:
+            return None
+        m = re.search(r"current=(\d+).*?ledger=(\S+).*?class=([01])", out)
+        return (int(m.group(1)), m.group(2), m.group(3) == "1") if m else None
+    return None
+
+def _round_policy(label):
+    rr = _review_rounds()
+    if not rr:
+        return None, ""
+    cur, ledger, klass = rr
+    soft = os.environ.get("ROLEPOD_GATES_SOFT") == "1"
+    if cur >= 5 and not soft:
+        return "deny", ("\u26d4 review-rounds: %s would be round %d on one uncommitted tree — past the breaker "
+                        "budget (ledger, class fix once, ONE round). Fix: split & stop (review-code \u00a75 step 5): "
+                        "commit the slices with no open finding, park the churning surface as a delta spec / "
+                        "Follow-ups, end the turn with the decision brief; the user decides. Exception: "
+                        "ROLEPOD_GATES_SOFT=1 (user-set)." % (label, cur))
+    if cur >= 4 and not klass and not soft:
+        return "deny", ("\u26d4 review-rounds: %s would be round %d on one uncommitted tree with no breaker ledger. "
+                        "Fix: write docs/rolepod/handoffs/<feature>-breaker-<date>.md (## Rounds \u00b7 ## Class: the one "
+                        "root cause, its single point, every consumer \u00b7 ## Decision), make the class-level fix ONCE "
+                        "with a class test, then dispatch this round (internal + rolepod-cross-family --since <job> "
+                        "--ledger <file>). Exception: ROLEPOD_GATES_SOFT=1 (user-set)." % (label, cur))
+    if cur >= 3:
+        return "ctx", ("\U0001f501 review-rounds: %s is round %d on one uncommitted tree — the breaker is armed: after "
+                       "this verdict no more point fixes; ledger \u2192 class fix once (class test + consumer list) "
+                       "\u2192 ONE round \u2192 else split & stop (review-code \u00a75). " % (label, cur))
+    return None, ""
+
 def _log_bypass(hook, var):
     # Same line shape as rolepod_log_bypass() in the bash hooks — a used
     # bypass is recorded, never blocked; fail-open on any error.
@@ -204,6 +250,16 @@ def _log_gate(ti, script, lead, cls, n_calls, verdict="no-tier", tiers=None, sta
 
 if tool == "Workflow":
     script = ti.get("script") or ""
+    # Review-shaped fleet (a reviewer role or a review/verify name) counts as a
+    # review round too — deny levels only; the round-3 notice comes from the
+    # Agent / runner channels.
+    _wf_blob = script + " " + str(ti.get("name") or "")
+    if re.search(r"(security-engineer|universal-reviewer|code-reviewer|qa-tester)", _wf_blob) or re.search(r"review|verif", str(ti.get("name") or ""), re.I):
+        _k, _m = _round_policy("this Workflow")
+        if _k == "deny":
+            emit({"hookSpecificOutput": {"hookEventName": "PreToolUse",
+                                         "permissionDecision": "deny",
+                                         "permissionDecisionReason": _m}})
     if not script and ti.get("scriptPath"):
         try:
             with open(ti["scriptPath"]) as f:
@@ -428,6 +484,14 @@ if tool in ("Agent", "Task"):
     # tier note also applies.
     rounds = ss.dispatch_rounds_this_turn(d.get("transcript_path") or "")
     loop_note = ""
+    if atype in REVIEW_ROLES:
+        kind, rmsg = _round_policy("rolepod:" + atype)
+        if kind == "deny":
+            emit({"hookSpecificOutput": {"hookEventName": "PreToolUse",
+                                         "permissionDecision": "deny",
+                                         "permissionDecisionReason": rmsg}})
+        if kind == "ctx":
+            loop_note = rmsg
     if rounds == 2:
         ctxk = ss.last_context_tokens(d.get("transcript_path") or "") // 1000
         loop_note = ("🔁 coordinator-check: 3rd sequential Agent round-trip this turn — each "

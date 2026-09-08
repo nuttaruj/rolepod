@@ -102,9 +102,25 @@ if [ -z "$MSG" ] && [ -f "$ROUTE_CHECK" ]; then   # commission / question shape 
   fi
 fi
 
-if [ -n "$MSG$CTX_MSG$ROUTE_MSG" ]; then
+# Breaker state (v2.99.0): a breaker ledger newer than the last commit means
+# the review→fix loop on this tree is closed until the user decides — an
+# auto-resume prompt ("Please continue") must not reopen it; 3+ rounds with
+# no ledger asks for the ledger first. Reader = the runner\x27s --rounds.
+BREAKER_MSG=""
+XFAM_RUNNER="$(dirname "$0")/../scripts/cross-family.sh"; [ -f "$XFAM_RUNNER" ] || XFAM_RUNNER="$HOME/.rolepod/bin/cross-family.sh"
+if [ -f "$XFAM_RUNNER" ] && git rev-parse --show-toplevel >/dev/null 2>&1; then
+  RR=$(bash "$XFAM_RUNNER" --rounds 2>/dev/null || true)
+  LP=$(printf '%s' "$RR" | sed -n 's/.*ledger=\([^ ]*\).*/\1/p'); RN=$(printf '%s' "$RR" | sed -n 's/.*rounds=\([0-9]*\).*/\1/p')
+  if [ -n "$LP" ] && [ "$LP" != "-" ]; then
+    BREAKER_MSG="⏹ breaker open: $LP — the review→fix loop on this tree is closed until the user decides. Fix: restate the decision brief (rounds · class · options) and stop; act only on the user\x27s pick. Exception: this message IS the pick → do it. "
+  elif [ "${RN:-0}" -ge 3 ]; then
+    BREAKER_MSG="⏹ review-rounds: $RN rounds on one uncommitted tree, no breaker ledger. Fix: before any fix or review — docs/rolepod/handoffs/<feature>-breaker-<date>.md (## Rounds · ## Class · ## Decision), then the class fix once (review-code §5). "
+  fi
+fi
+
+if [ -n "$MSG$CTX_MSG$ROUTE_MSG$BREAKER_MSG" ]; then
   # Env-passed (never interpolated) so quotes in either message cannot break the JSON.
-  ROLEPOD_HOOK_MSG="${CTX_MSG}${MSG}${ROUTE_MSG}" python3 -c "
+  ROLEPOD_HOOK_MSG="${CTX_MSG}${MSG}${ROUTE_MSG}${BREAKER_MSG}" python3 -c "
 import json, os
 print(json.dumps({'hookSpecificOutput':{'hookEventName':'UserPromptSubmit','additionalContext':os.environ.get('ROLEPOD_HOOK_MSG','')}}))
 " 2>/dev/null || echo '{}'

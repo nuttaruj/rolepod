@@ -54,6 +54,13 @@
 #            fixes, tags IN-FIX / NEW / REPEAT, and the budget goes to the
 #            delta, not the cumulative diff. One live review job per repo: a
 #            second `--kind review` is refused (exit 8) until --collect / --kill.
+#   breaker  review rounds on ONE uncommitted tree are counted (reviewer
+#            dispatches closer than 5 min = one round; internal roles from the
+#            phase-log, external jobs from their start times). Round 3 gets a
+#            notice; round 4 needs `--ledger <breaker file>` (a `## Class`
+#            heading = the root cause was named); round 5 is refused, exit 9:
+#            split & stop (review-code §5). Measured: 11+ rounds overnight,
+#            no consult, no hand-back, when this was doctrine only.
 #   read-only every invocation uses the CLI's read-only / plan mode; the
 #            prompt says so too. ROLEPOD_BRAIN_SILENT=1 keeps ambient memory
 #            out of the cold run (clean room).
@@ -69,7 +76,8 @@
 #
 # Usage:
 #   cross-family.sh --kind review|consult|advise|critique --brief <file> [--attach <file>]...
-#                   [--lead <cli>] [--all] [--timeout <sec>] [--detach] [--partial-ok] [--since <job-id>]
+#                   [--lead <cli>] [--all] [--timeout <sec>] [--detach] [--partial-ok] [--since <job-id>] [--ledger <file>]
+#   cross-family.sh --rounds                               # review rounds since the last commit (breaker state)
 #   cross-family.sh --kill <job-id>                        # abandon a running job (status 137, no anchor)
 #   cross-family.sh --collect <job-id> [--timeout <sec>]   # wait for a detached job, print its output
 #   cross-family.sh --jobs                                # list detached jobs (running / done)
@@ -81,7 +89,7 @@
 set -uo pipefail
 
 KIND=""; BRIEF=""; LEAD="${ROLEPOD_LEAD_CLI:-}"; ALL=0; FLAG_TIMEOUT="${ROLEPOD_XFAM_TIMEOUT:-}"
-MODE="run"; ATTACH=""; DETACH=0; JOB_DIR=""; COLLECT_ID=""; ROOT_FLAG=""; CFG_FLAG=""; PARTIAL_OK=0; SINCE_ID=""; KILL_ID=""
+MODE="run"; ATTACH=""; DETACH=0; JOB_DIR=""; COLLECT_ID=""; ROOT_FLAG=""; CFG_FLAG=""; PARTIAL_OK=0; SINCE_ID=""; KILL_ID=""; LEDGER=""; ROUND_NOTE=""
 while [ $# -gt 0 ]; do
   case "$1" in
     --kind) KIND="${2:-}"; shift 2 ;;
@@ -96,6 +104,8 @@ while [ $# -gt 0 ]; do
     --partial-ok) PARTIAL_OK=1; shift ;;         # the user asked for the staged part only
     --since) SINCE_ID="${2:-}"; shift 2 ;;         # round 2+: attach the fix delta since that job + its report
     --kill) MODE="kill"; KILL_ID="${2:-}"; shift 2 ;;
+    --ledger) LEDGER="${2:-}"; shift 2 ;;            # breaker ledger — round 4 needs it (review-code §5)
+    --rounds) MODE="rounds"; shift ;;               # print review rounds on this uncommitted tree
     --job) JOB_DIR="${2:-}"; shift 2 ;;          # internal: the detached child
     --config) CFG_FLAG="${2:-}"; shift 2 ;;      # internal: the job's config snapshot
     --collect) MODE="collect"; COLLECT_ID="${2:-}"; shift 2 ;;
@@ -144,6 +154,72 @@ if [ "$MODE" = "jobs" ]; then
   done
   exit 0
 fi
+# ── Review rounds on one uncommitted tree (v2.99.0) ─────────────────────
+# Prints `rounds=<past clusters> current=<round a dispatch now would be>
+# ledger=<path|-> class=<0|1>`. Events = external review jobs (`started`) +
+# phase-log reviewer dispatches (internal roles, review-shaped Workflows),
+# since the last commit; a gap > 5 min opens a new round. The breaker ledger
+# = newest docs/rolepod/handoffs/*breaker*.md newer than the last commit.
+review_rounds() {
+  ROLEPOD_XFAM_ROOT="$ROOT" ROLEPOD_XFAM_JOBS="$JOBS" python3 - <<'PY' 2>/dev/null || echo "rounds=0 current=1 ledger=- class=0"
+import glob, json, os, re, subprocess, time, datetime
+root = os.environ["ROLEPOD_XFAM_ROOT"]; jobs = os.environ["ROLEPOD_XFAM_JOBS"]
+try:
+    last = int(subprocess.run(["git", "-C", root, "log", "-1", "--format=%ct"], capture_output=True, text=True).stdout.strip() or 0)
+except Exception:
+    last = 0
+ev = []
+for d in glob.glob(os.path.join(jobs, "*-review-*")):
+    try:
+        t = int(open(os.path.join(d, "started")).read().strip())
+    except Exception:
+        continue
+    if t > last:
+        ev.append(t)
+log = os.path.join(root, ".rolepod", "evidence", "phase-log.jsonl")
+ROLES = re.compile(r"(security-engineer|universal-reviewer|code-reviewer|qa-tester)")
+if os.path.isfile(log):
+    with open(log, "rb") as f:
+        size = os.path.getsize(log); f.seek(max(0, size - 262144)); data = f.read().decode("utf-8", "ignore")
+    for line in data.splitlines():
+        if "dispatch" not in line:
+            continue
+        try:
+            e = json.loads(line)
+        except Exception:
+            continue
+        if e.get("phase") not in ("dispatch", "dispatch-proof"):
+            continue
+        blob = " ".join([str(e.get("agent_type") or ""), " ".join(str(x) for x in (e.get("agent_types") or []))])
+        name = str(e.get("name") or "")
+        if not ROLES.search(blob) and not re.search(r"review|verif|audit", name, re.I):
+            continue
+        try:
+            t = int(datetime.datetime.fromisoformat(str(e.get("ts", "")).replace("Z", "+00:00")).timestamp())
+        except Exception:
+            continue
+        if t > last:
+            ev.append(t)
+ev.sort()
+rounds = 0; prev = None
+for t in ev:
+    if prev is None or t - prev > 300:
+        rounds += 1
+    prev = t
+now = int(time.time())
+current = rounds if (prev is not None and now - prev <= 300) else rounds + 1
+ledger = "-"; klass = 0
+cands = [p for p in glob.glob(os.path.join(root, "docs", "rolepod", "handoffs", "*breaker*.md")) if os.path.getmtime(p) > last]
+if cands:
+    ledger = max(cands, key=os.path.getmtime)
+    try:
+        klass = 1 if re.search(r"^## Class", open(ledger, encoding="utf-8", errors="ignore").read(), re.M) else 0
+    except Exception:
+        klass = 0
+print("rounds=%d current=%d ledger=%s class=%d" % (rounds, current, ledger, klass))
+PY
+}
+if [ "$MODE" = "rounds" ]; then review_rounds; exit 0; fi
 if [ "$MODE" = "kill" ]; then
   d="$JOBS/$KILL_ID"; [ -d "$d" ] || { echo "cross-family: no job $KILL_ID under $JOBS" >&2; exit 2; }
   if [ -f "$d/status" ]; then echo "ROLEPOD-XFAM job=$KILL_ID already finished (exit $(job_status "$d"))"; exit 0; fi
@@ -520,6 +596,32 @@ if [ "$KIND" = "review" ] && [ -z "$JOB_DIR" ] && [ -d "$JOBS" ]; then
     echo "ROLEPOD-XFAM refused stacked — review job $_lid is still running ($(job_elapsed "$_ld") min) on this repo; a second review of the same tree doubles the budget for one verdict. Fix: rolepod-cross-family --collect $_lid (waits), then round 2 with --since $_lid. Abandon it instead: --kill $_lid."
     exit 8
   done
+fi
+
+# ── Round breaker (v2.99.0) ─────────────────────────────────────────────
+# Round 3 = notice; round 4 needs the breaker ledger (--ledger, `## Class`);
+# round 5+ is terminal — split & stop, the user decides. Parent only.
+if [ "$KIND" = "review" ] && [ -z "$JOB_DIR" ]; then
+  RR=$(review_rounds)
+  CUR=$(printf '%s' "$RR" | sed -n 's/.*current=\([0-9]*\).*/\1/p'); CUR=${CUR:-1}
+  LCLASS=$(printf '%s' "$RR" | sed -n 's/.*class=\([01]\).*/\1/p'); LCLASS=${LCLASS:-0}
+  if [ -n "$LEDGER" ]; then
+    { [ -f "$LEDGER" ] && grep -q '^## Class' "$LEDGER"; } || { echo "cross-family: --ledger $LEDGER must exist and carry a '## Class' heading (review-code §5 step 2)" >&2; exit 2; }
+    LCLASS=1; ATTACH="$LEDGER${ATTACH:+
+$ATTACH}"
+  fi
+  if [ "$CUR" -ge 5 ] && [ "${ROLEPOD_GATES_SOFT:-0}" != "1" ]; then
+    echo "ROLEPOD-XFAM refused round=$CUR — review round $CUR on one uncommitted tree is past the breaker budget (ledger, class fix once, ONE round). Fix: split & stop (review-code §5 step 5) — commit the slices with no open finding, park the churning surface as a delta spec / Follow-ups, end the turn with the decision brief; the user decides. Exception: ROLEPOD_GATES_SOFT=1 (user-set)."
+    exit 9
+  fi
+  if [ "$CUR" -ge 4 ] && [ "$LCLASS" != "1" ] && [ "${ROLEPOD_GATES_SOFT:-0}" != "1" ]; then
+    echo "ROLEPOD-XFAM refused round=$CUR — round 4 on one uncommitted tree without a breaker ledger. Fix: write docs/rolepod/handoffs/<feature>-breaker-<date>.md (## Rounds: one line per round · ## Class: the one root cause, its single point, every consumer · ## Decision), make the class-level fix ONCE with a class test, then re-run with --ledger <file> --since <job>. Exception: ROLEPOD_GATES_SOFT=1 (user-set)."
+    exit 9
+  fi
+  if [ "$CUR" -ge 3 ]; then
+    ROUND_NOTE="ROLEPOD-XFAM round=$CUR on one uncommitted tree — the breaker is armed: after this verdict no more point fixes; ledger (## Rounds · ## Class · ## Decision) → class fix once (class test + consumer list) → ONE round with --ledger --since → else split & stop (review-code §5)."
+    echo "$ROUND_NOTE"
+  fi
 fi
 
 # Working-tree snapshot as a tree object — tracked + untracked-not-ignored

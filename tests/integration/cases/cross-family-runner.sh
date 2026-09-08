@@ -362,6 +362,45 @@ check "--kill stops a running job: status 137, and a new review is no longer sta
 rm -f "$FIX"/grandchild.* 2>/dev/null
 cd "$REPO"
 
+# ── round breaker: --rounds / --ledger / exit 9 (v2.99.0) ─────────────────
+echo "── cross-family: round breaker ──"
+RB="$FIX/rounds"; mkdir -p "$RB/.rolepod/evidence"; printf 'codex\n' > "$RB/.rolepod/cross-family"; printf 'brief\n' > "$RB/brief.md"
+rb_ts() { python3 -c "import datetime,sys;print((datetime.datetime.now(datetime.timezone.utc)-datetime.timedelta(minutes=int(sys.argv[1]))).strftime('%Y-%m-%dT%H:%M:%SZ'))" "$1"; }
+rb_ep() { python3 -c "import time,sys;print(int(time.time())-60*int(sys.argv[1]))" "$1"; }
+rb_log() { printf '{"ts": "%s", "phase": "dispatch", "cli": "claude", "tool": "Agent", "agent_type": "%s"}\n' "$(rb_ts "$1")" "$2" >> "$RB/.rolepod/evidence/phase-log.jsonl"; }
+( cd "$RB" && git init -q . && git config user.email t@t && git config user.name t && printf 'a\n' > f.txt && git add f.txt && GIT_COMMITTER_DATE="$(rb_ts 90)" git commit -q -m init --date="$(rb_ts 90)" && printf 'b\n' > f.txt )
+: > "$RB/.rolepod/evidence/phase-log.jsonl"; rb_log 40 rolepod:security-engineer; rb_log 39 rolepod:qa-tester
+mkdir -p "$RB/.rolepod/evidence/external/jobs/20260908T000000Z-review-1"; rb_ep 20 > "$RB/.rolepod/evidence/external/jobs/20260908T000000Z-review-1/started"; echo 0 > "$RB/.rolepod/evidence/external/jobs/20260908T000000Z-review-1/status"
+rb_log 1 rolepod:qa-tester
+out=$(cd "$RB" && bash "$RUNNER" --rounds)
+check "--rounds: clusters at 40m / 20m (job) / 1m → rounds=3, current=3 (an event within 5 min joins)" "printf '%s' \"\$out\" | grep -q 'rounds=3 current=3 ledger=- class=0'"
+: > "$LOG"; rc=0; out=$(cd "$RB" && bash "$RUNNER" --kind review --brief brief.md --lead claude 2>/dev/null) || rc=$?
+check "review dispatch at round 3 → runs, prints the breaker notice" "[ $rc -eq 0 ] && printf '%s' \"\$out\" | grep -q 'round=3 on one uncommitted tree' && grep -q '^codex |' '$LOG'"
+: > "$RB/.rolepod/evidence/phase-log.jsonl"; rb_log 40 rolepod:security-engineer; rb_log 39 rolepod:qa-tester; rb_log 12 rolepod:security-engineer
+out=$(cd "$RB" && bash "$RUNNER" --rounds)
+check "--rounds: last event 12 min ago → a dispatch now would be round 4" "printf '%s' \"\$out\" | grep -q 'rounds=3 current=4'"
+: > "$LOG"; rc=0; out=$(cd "$RB" && bash "$RUNNER" --kind review --brief brief.md --lead claude 2>/dev/null) || rc=$?
+check "round 4 without a breaker ledger → refused exit 9, no member called" "[ $rc -eq 9 ] && printf '%s' \"\$out\" | grep -q 'without a breaker ledger' && ! grep -q '^codex |' '$LOG'"
+mkdir -p "$RB/docs/rolepod/handoffs"; printf '# x\n\n## Rounds\n- r1\n\n## Decision\n- a\n' > "$RB/docs/rolepod/handoffs/x-breaker-2026-09-08.md"
+rc=0; out=$(cd "$RB" && bash "$RUNNER" --kind review --brief brief.md --lead claude --ledger docs/rolepod/handoffs/x-breaker-2026-09-08.md 2>&1) || rc=$?
+check "--ledger without a '## Class' heading → usage error exit 2" "[ $rc -eq 2 ] && printf '%s' \"\$out\" | grep -q '## Class'"
+printf '\n## Class\n- one predicate, five sites\n' >> "$RB/docs/rolepod/handoffs/x-breaker-2026-09-08.md"
+out=$(cd "$RB" && bash "$RUNNER" --rounds)
+check "--rounds sees the ledger (class=1)" "printf '%s' \"\$out\" | grep -q 'x-breaker-2026-09-08.md class=1'"
+: > "$LOG"; rc=0; out=$(cd "$RB" && bash "$RUNNER" --kind review --brief brief.md --lead claude --ledger docs/rolepod/handoffs/x-breaker-2026-09-08.md --detach 2>/dev/null) || rc=$?
+jr=$(printf '%s' "$out" | grep -o 'job=[^ ]*' | head -1 | cut -d= -f2)
+check "round 4 with the ledger → runs and attaches it" "[ $rc -eq 0 ] && grep -q -- 'x-breaker-2026-09-08.md' '$RB/.rolepod/evidence/external/jobs/$jr/args'"
+rc=0; bash "$RUNNER" --collect "$jr" --root "$RB" --timeout 30 >/dev/null 2>&1 || rc=$?
+rb_log 6 rolepod:security-engineer
+: > "$LOG"; rc=0; out=$(cd "$RB" && bash "$RUNNER" --kind review --brief brief.md --lead claude --ledger docs/rolepod/handoffs/x-breaker-2026-09-08.md 2>/dev/null) || rc=$?
+check "round 5 even with the ledger → refused exit 9 (terminal: split & stop)" "[ $rc -eq 9 ] && printf '%s' \"\$out\" | grep -q 'past the breaker budget' && ! grep -q '^codex |' '$LOG'"
+rc=0; out=$(cd "$RB" && ROLEPOD_GATES_SOFT=1 bash "$RUNNER" --kind review --brief brief.md --lead claude 2>/dev/null) || rc=$?
+check "ROLEPOD_GATES_SOFT=1 (user-set) lifts the terminal refusal" "[ $rc -eq 0 ]"
+sleep 1; ( cd "$RB" && git add -A && git commit -qm checkpoint )
+out=$(cd "$RB" && bash "$RUNNER" --rounds)
+check "a commit resets the count and closes the ledger (rounds=0, ledger=-)" "printf '%s' \"\$out\" | grep -q 'rounds=0 current=1 ledger=- class=0'"
+cd "$REPO"
+
 # ── review quality gates: PARTIAL / no VERDICT are not a pass ───────────
 echo "── cross-family: PARTIAL / VERDICT ──"
 printf 'codex\nclaude\nagy\ncursor\nopencode\n' > "$HOME/.rolepod/cross-family"

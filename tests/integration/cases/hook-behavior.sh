@@ -627,6 +627,35 @@ out=$( (export ROLEPOD_NUDGE_OFF=1; rn 'fix the login button') )
 [ -z "$out" ] && echo "  ✓ route nudge: ROLEPOD_NUDGE_OFF=1 → silent" || { echo "  ✗ route nudge ignores ROLEPOD_NUDGE_OFF"; fail=$((fail+1)); }
 rm -rf "$RN_TMP"
 
+# ── review-rounds policy on internal reviewer dispatch + breaker reminder (v2.99.0) ──
+RH=$(mktemp -d); mkdir -p "$RH/.rolepod/evidence"
+rh_ts() { python3 -c "import datetime,sys;print((datetime.datetime.now(datetime.timezone.utc)-datetime.timedelta(minutes=int(sys.argv[1]))).strftime('%Y-%m-%dT%H:%M:%SZ'))" "$1"; }
+rh_log() { printf '{"ts": "%s", "phase": "dispatch", "cli": "claude", "tool": "Agent", "agent_type": "%s"}\n' "$(rh_ts "$1")" "$2" >> "$RH/.rolepod/evidence/phase-log.jsonl"; }
+( cd "$RH" && git init -q . && git config user.email t@t && git config user.name t && printf 'a\n' > f.txt && git add f.txt && GIT_COMMITTER_DATE="$(rh_ts 90)" git commit -q -m init --date="$(rh_ts 90)" && printf 'b\n' > f.txt )
+rh_agent() { printf '{"tool_name":"Agent","tool_input":{"subagent_type":"%s","prompt":"review the diff"},"session_id":"rh1","transcript_path":"/nonexistent"}' "$1" | (cd "$RH" && HOME="$RH" bash "$HOOKS/workflow-tier-nudge.sh") || true; }
+rh_prompt() { printf '{"session_id":"rh1","prompt":%s}' "$(printf '%s' "$1" | python3 -c 'import json,sys; print(json.dumps(sys.stdin.read()))')" | (cd "$RH" && HOME="$RH" bash "$HOOKS/claim-verify-nudge.sh") || true; }
+: > "$RH/.rolepod/evidence/phase-log.jsonl"; rh_log 40 rolepod:security-engineer; rh_log 20 rolepod:qa-tester; rh_log 1 rolepod:security-engineer
+out=$(rh_agent rolepod:security-engineer)
+if echo "$out" | grep -q 'review-rounds' && ! echo "$out" | grep -q '"permissionDecision": *"deny"'; then echo "  ✓ tier-nudge: reviewer dispatch at round 3 → breaker notice, not a deny"; else echo "  ✗ tier-nudge round 3: ${out:0:160}"; fail=$((fail+1)); fi
+out=$(rh_agent rolepod:backend-developer)
+if echo "$out" | grep -q 'review-rounds'; then echo "  ✗ tier-nudge: non-reviewer dispatch got the round note"; fail=$((fail+1)); else echo "  ✓ tier-nudge: non-reviewer dispatch → no round note"; fi
+: > "$RH/.rolepod/evidence/phase-log.jsonl"; rh_log 40 rolepod:security-engineer; rh_log 20 rolepod:qa-tester; rh_log 12 rolepod:security-engineer
+out=$(rh_agent rolepod:security-engineer)
+check "tier-nudge: round 4 with no breaker ledger → deny" deny "$out"
+out=$(rh_prompt 'I hit my usage limit while you were working, but it has reset now. Please continue from where you left off.')
+if echo "$out" | grep -q 'review-rounds: 3 rounds'; then echo "  ✓ claim-verify: 3 rounds + no ledger → asks for the ledger before anything else"; else echo "  ✗ claim-verify rounds reminder: ${out:0:160}"; fail=$((fail+1)); fi
+mkdir -p "$RH/docs/rolepod/handoffs"; printf '# y\n\n## Rounds\n- r1\n\n## Class\n- one predicate\n\n## Decision\n- a\n' > "$RH/docs/rolepod/handoffs/y-breaker-2026-09-08.md"
+out=$(rh_agent rolepod:security-engineer)
+check "tier-nudge: round 4 with a class ledger → allow" allow "$out"
+out=$(rh_prompt 'Please continue from where you left off.')
+if echo "$out" | grep -q 'breaker open'; then echo "  ✓ claim-verify: breaker ledger open → auto-resume prompt gets the stop reminder"; else echo "  ✗ claim-verify breaker-open reminder: ${out:0:160}"; fail=$((fail+1)); fi
+rh_log 6 rolepod:qa-tester; rh_log 0 rolepod:security-engineer
+out=$(rh_agent rolepod:security-engineer)
+check "tier-nudge: round 5 even with the ledger → deny (terminal)" deny "$out"
+out=$( (export ROLEPOD_GATES_SOFT=1; rh_agent rolepod:security-engineer) )
+check "tier-nudge: ROLEPOD_GATES_SOFT=1 lifts the round deny" allow "$out"
+rm -rf "$RH"
+
 # ─── result ───
 if [ "$fail" -eq 0 ]; then
   echo "  ✓ pass"

@@ -228,7 +228,18 @@ uses `--since <job-id>`: every detached dispatch records a working-tree
 snapshot (tree object; real index untouched), and `--since` attaches the
 fix delta (snapshot → now, new files included) plus the previous report,
 so the reviewer verifies the fixes and tags IN-FIX / NEW / REPEAT instead
-of re-reading the cumulative diff (v2.98.0).
+of re-reading the cumulative diff (v2.98.0). **Breaker (v2.99.0):** `--rounds`
+prints the review rounds on the current uncommitted tree (reviewer dispatches
+closer than 5 min = one round; internal roles from the phase-log, external
+jobs from their start times) plus the breaker ledger state. A review
+dispatch at round 3 gets a notice; round 4 needs `--ledger <file>` (a
+`docs/rolepod/handoffs/*breaker*.md` with a `## Class` heading — the root
+cause was named); round 5 is refused (exit 9): split & stop, the user
+decides. `workflow-tier-nudge.sh` applies the same policy to internal
+reviewer dispatches (notice / deny / deny) and `claim-verify-nudge.sh`
+reminds every prompt while a breaker ledger is open, so an auto-resume
+prompt cannot reopen the loop. Measured need: 11+ rounds overnight on one
+tree, no consult, no hand-back, while the breaker was doctrine only.
 
 Names: `codex` `claude` `agy` `cursor` `opencode` (the standalone Gemini
 CLI is retired — a `gemini` line is skipped with a note). **Ask once:** the
