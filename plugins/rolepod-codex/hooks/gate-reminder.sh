@@ -243,7 +243,7 @@ if [ -n "$HIGH_RISK" ]; then
       REVIEWER_LIST="$REVIEWER_LIST + Antigravity (\`agy -p\`, breadth/cross-file)"
     fi
   fi
-  CAREFUL_BANNER="${WOULD_BLOCK}⚠️  AUTO-CAREFUL (high-risk path; since last commit: $HIGH_RISK_EDITS high-risk edits / $TEST_EDITS tests / $REVIEWERS reviewers, $STRONG_REVIEWERS strong). Before commit: (1) a test file exists or is written this session; (2) reviewers dispatched — ≥2 when available (${REVIEWER_LIST}; security-engineer for auth/billing/crypto), in a DIFFERENT CLI than this one; (3) S1-S5 + T1-T6 (finish-work §1). Reviewer path blocked by the user → say so; fallback = Lead cold self-review + limitation note. Env bypass is user-set only. "
+  CAREFUL_BANNER="${WOULD_BLOCK}⚠️  AUTO-CAREFUL (high-risk path; since last commit: $HIGH_RISK_EDITS high-risk edits / $TEST_EDITS tests / $REVIEWERS reviewers, $STRONG_REVIEWERS strong). Before commit: (1) a test file exists or is written this session; (2) reviewers dispatched — ≥2 when available (${REVIEWER_LIST}; security-engineer for auth/billing/crypto), in a DIFFERENT CLI than this one; (3) S1-S5 (simplicity) + T1-T6 (tests) — finish-work §1. Reviewer path blocked by the user → say so; fallback = Lead cold self-review + limitation note. Env bypass is user-set only. "
 fi
 
 # Emit reminder ONLY when schema-bound or high-risk — no generic Q1-Q4 nag.

@@ -135,7 +135,7 @@ Any "yes" → fix before declaring done. Skip only when ALL hold: ≤5 lines · 
 
 ### 7. Compose the evidence block
 
-Fill `templates/evidence-block.md` — exact commands, the specific proof line per check, the change manifest, and honest limitations (R1/R2 single file with nothing to limit → the one-line form in §Output).
+Fill `templates/evidence-block.md` — exact commands, the specific proof line per check, the change manifest, and honest limitations (R1/R2 — trivial edit / one file + test — single file with nothing to limit → the one-line form in §Output).
 
 ## If a matching Rolepod agent is available
 

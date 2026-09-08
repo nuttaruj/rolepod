@@ -101,7 +101,7 @@ ROUTE_MSG=""
 ROUTE_CHECK="$(dirname "$0")/lib/route_check.py"
 if [ -z "$MSG" ] && [ -f "$ROUTE_CHECK" ]; then   # commission / question shape is decided inside the checker (Thai words live there as \u escapes)
   if [ "$(printf '%s' "$INPUT" | python3 "$ROUTE_CHECK" 2>/dev/null || true)" = "stale" ]; then
-    ROUTE_MSG="⟂ route: a commission with no tier stated since your last request. Fix: state R0-R4 in one line before the first edit (one line: Route: R2 → <skill> · <reason>; R3/R4 → using-rolepod, Define → Plan first) — the hook records it; blast radius sets the tier, not feature age. Exception: a literal follow-up inside an already-routed task → say 'same task' and continue. (off: ROLEPOD_NUDGE_OFF=1) "
+    ROUTE_MSG="⟂ route: a commission with no tier stated since your last request. Fix: one line before the first edit — Route: R2 (one file + test) → <skill> · <reason> — where R0 answer only · R1 trivial edit · R2 one file + test · R3 multi-file · R4 high-risk; R3/R4 → using-rolepod (Define → Plan first). The hook records it; blast radius sets the tier, not feature age. Exception: a literal follow-up inside an already-routed task → say 'same task' and continue. (off: ROLEPOD_NUDGE_OFF=1) "
   fi
 fi
 

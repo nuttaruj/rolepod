@@ -681,6 +681,16 @@ mk_transcript "$RN_TMP/t10.jsonl" "$(printf 'Route: R2 \xe2\x86\x92 <skill> \xc2
 out=$(rn 'add a logout button' "$RN_TMP/t10.jsonl")
 [ ! -s "$RLOG" ] && echo "  ✓ route record: the template with <skill> / <reason> placeholders → nothing" || { echo "  ✗ route record placeholder: $(cat "$RLOG")"; fail=$((fail+1)); }
 : > "$RLOG"
+mk_transcript "$RN_TMP/t11.jsonl" "$(printf 'Route: R2 (one file + test) \xe2\x86\x92 implement-plan \xc2\xb7 one handler')"
+out=$(rn 'add a logout button' "$RN_TMP/t11.jsonl")
+grep -q '"tier":"R2","skill":"implement-plan","provenance":"hook-auto"' "$RLOG" && echo "  ✓ route record: the glossed form Route: R2 (one file + test) → skill · reason → R2 / implement-plan" || { echo "  ✗ route record glossed form: $(cat "$RLOG")"; fail=$((fail+1)); }
+: > "$RLOG"
+mk_transcript "$RN_TMP/t12.jsonl" 'Fill the block:
+Tier: R3 (multi-file) | R4 (high-risk)
+Routing: <phase> -> <skill>'
+out=$(rn 'add a logout button' "$RN_TMP/t12.jsonl")
+[ ! -s "$RLOG" ] && echo "  ✓ route record: the glossed block template Tier: R3 (multi-file) | R4 (high-risk) echoed verbatim → nothing" || { echo "  ✗ route record glossed template: $(cat "$RLOG")"; fail=$((fail+1)); }
+: > "$RLOG"
 printf '{"session_id":"rn1","transcript_path":"%s","cwd":"%s"}' "$RN_TMP/t2.jsonl" "$RN_TMP" | (cd "$RN_TMP" && HOME="$RN_TMP" bash "$HOOKS/session-lifecycle.sh" --unlock) >/dev/null 2>&1 || true
 grep -q '"tier":"R2"' "$RLOG" && echo "  ✓ route record: Stop hook (session-lifecycle --unlock) records the finished turn" || { echo "  ✗ route record at Stop: $(cat "$RLOG" 2>/dev/null)"; fail=$((fail+1)); }
 rm -rf "$RN_TMP"

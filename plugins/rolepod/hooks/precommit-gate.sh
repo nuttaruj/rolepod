@@ -491,7 +491,7 @@ fi
 if [ -n "$HIGH_RISK" ] && [ "$STRONG_REVIEWERS" -eq 0 ] && [ -z "$XFAM_HELD" ]; then
   REASON+="NO STRONG ADVERSARIAL REVIEWER since the last commit. A high-risk diff clears on ONE of: (a) a cross-family external strong review, anchored per review-code (raw output under .rolepod/evidence/external/ + the reviewer:external log line) — preferred; (b) a security-engineer or universal-reviewer dispatch (Agent tool or Workflow agentType) that has FINISHED. The hook lifts Agent-tool ones to strong — do not pass a balanced model. Test edits / qa-tester are the test floor, not the review. "
 fi
-REASON+="Run S1-S5 + T1-T6 + F1-F5 (finish-work §1, check-work §6). "
+REASON+="Run S1-S5 (simplicity) + T1-T6 (tests) + F1-F5 (finish) — finish-work §1, check-work §6. "
 REASON+="Auto-passes once evidence exists SINCE THE LAST COMMIT: high-risk → dispatch security-engineer or universal-reviewer; other blocks → write the failing test or dispatch a reviewer; then rerun the SAME git commit. No bypass marker, no env prefix."
 
 # Decide: HARD block vs SOFT warn
@@ -556,7 +556,7 @@ sys.stdout.write(' '.join(os.environ.get('ROLEPOD_BYPASS_CMD', '').split())[:200
     >> "$HOME/.rolepod/gate-bypass.log" 2>/dev/null || true
   NOTE="precommit-gate auto-passed on session evidence: $TEST_EDITS test edits / $REVIEWERS reviewer dispatches / $STRONG_REVIEWERS strong"
   [ -n "$HIGH_RISK" ] && NOTE+=" (HIGH-RISK path: $HIGH_RISK)"
-  NOTE+=" ($SINCE_HUMAN). Evidence is per-window — confirm S1-S5 / T1-T6 / F1-F5 (finish-work §1, check-work §6) cover THIS change."
+  NOTE+=" ($SINCE_HUMAN). Evidence is per-window — confirm S1-S5 (simplicity) / T1-T6 (tests) / F1-F5 (finish) — finish-work §1, check-work §6 — cover THIS change."
   [ -n "$LINT_WARN" ] && NOTE+=" | $LINT_WARN"
   ROLEPOD_HOOK_MSG="$NOTE" python3 -I -c "
 import json, os
@@ -591,8 +591,8 @@ WARN="precommit-gate SOFT: $FILES_CHANGED files / $LINES_CHANGED lines / $LOGIC_
 # diff (1 file, ≤5 lines) gets the count only: a user-facing string edit
 # counts as logic here but as zero in the router (v2.96.0), and the
 # hook cannot tell a label from a branch — the doctrine can.
-if [ "$LOGIC_COUNT" -gt 0 ] && [ "$REVIEWERS" -eq 0 ] && { [ "$FILES_CHANGED" -gt 1 ] || [ "$LINES_CHANGED" -gt 5 ]; }; then WARN+="0 reviewers on a logic diff = the author reviewed it. Fix: dispatch rolepod:qa-tester (balanced) on the diff, then commit (review-code §1 R2). "; fi
-WARN+="Gates S1-S5 / T1-T6 / F1-F5 (finish-work §1, check-work §6) are advisory here; ROLEPOD_GATES_HARD=1 enforces."
+if [ "$LOGIC_COUNT" -gt 0 ] && [ "$REVIEWERS" -eq 0 ] && { [ "$FILES_CHANGED" -gt 1 ] || [ "$LINES_CHANGED" -gt 5 ]; }; then WARN+="0 reviewers on a logic diff = the author reviewed it. Fix: dispatch rolepod:qa-tester (balanced) on the diff, then commit (review-code §1; R2 = one file + test). "; fi
+WARN+="Gates S1-S5 (simplicity) / T1-T6 (tests) / F1-F5 (finish) — finish-work §1, check-work §6 — are advisory here; ROLEPOD_GATES_HARD=1 enforces."
 [ -n "$LINT_WARN" ] && WARN+=" | $LINT_WARN"
 
 ROLEPOD_HOOK_MSG="$WARN" python3 -I -c "

@@ -26,7 +26,7 @@ route line, manual or auto, is left alone. A line counts only in two
 shapes, both at line start: a `Route:` / `Tier:` field (`**Route: R2 --
 reason**`, `Tier: R3`) or the arrow form (`-> <skill> . R2 . reason`).
 Ignored: fenced code, `<skill>` / `<reason>` placeholders, `R0-R4` /
-`R3/R4` / `R3 | R4` ranges, `R3-B`-style labels, anything mid-line
+`R3/R4` / `R3 (multi-file) | R4 (high-risk)` ranges, `R3-B`-style labels, anything mid-line
 (Cloudflare `D1 . R2 . cron` rows, review-finding numbers). A user prompt
 with no timestamp is still the turn boundary; the dedupe then keys on the
 routing message's own timestamp.
@@ -80,7 +80,7 @@ TH_QUESTION = [
 # phase labels and review-finding numbers. So: no bare shape, nothing
 # mid-line, nothing inside a code fence, no template placeholder.
 TIER_END = "(?![A-Za-z0-9_]|-[A-Za-z0-9])"                  # R2 yes, R2x / R3-B no
-RANGE_RX = re.compile(r"R[0-4]\s*[-/|]\s*R[0-4]")           # R0-R4, R3/R4, R3 | R4 = quoted doctrine
+RANGE_RX = re.compile(r"R[0-4](?:\s*\([^()]{0,40}\))?\s*[-/|]\s*R[0-4]")   # R0-R4, R3/R4, R3 (multi-file) | R4 = quoted doctrine
 FIELD_RX = re.compile("^[\\s*_`#>\\-]*(?:tier|route|routing|rigor)[\\s*_`]*[:=][\\s*_`]*R([1-4])" + TIER_END, re.I)
 ARROW_RX = re.compile("^[\\s*_`#>\\-]*\u2192\\s*`?[a-z][a-z0-9-]{2,}`?\\s*\u00b7\\s*R([1-4])" + TIER_END)
 PLACEHOLDER = ("<skill>", "<reason>", "<phase>")

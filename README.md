@@ -39,6 +39,16 @@ You invoke nothing for this; it just happens. For a deliberate run through every
 
 Two skills run across phases: **`simplify-code`** (behavior-preserving cleanup) and **`manage-context`** (recovery when a session is long, stuck, or in an unfamiliar repo).
 
+Every request is tiered before the first edit, and the tier sets how much of the workflow runs. The routing line always carries the tier with its meaning — `Route: R2 (one file + test) → implement-plan · reason` — so nobody has to look the code up:
+
+| Tier | Meaning | What runs |
+|---|---|---|
+| **R0** | answer only — no file changes | reply directly |
+| **R1** | trivial edit — ≤5 lines, one file, no logic | edit; the tool's echo is the proof |
+| **R2** | one file + its test, a small logic change | inline checklist → build → verify → one qa-tester read |
+| **R3** | multi-file, vague scope, or needs sequencing | the full six-phase spine |
+| **R4** | high-risk path (auth, billing, migrations, secrets…) | full spine + adversarial review floor, never downgraded |
+
 ## Works with Claude Code Ultracode
 
 Rolepod composes with Claude Code's **Ultracode** mode out of the box — no setup. Ultracode is the harness orchestration layer (parallel multi-agent workflows, adversarial verification); Rolepod is the structure it runs — phases, specialist agents, cohesion contracts, and gates. Ultracode supplies the horsepower; Rolepod keeps it targeted and safe. The two principles are orthogonal, not opposed: Rolepod's *simplest-viable* governs the solution, Ultracode's *exhaustiveness* governs the process — so an exhaustive run still converges on a simple result. Effort governs how hard each stage thinks; the rigor tier governs how many stages there are — an R1/R2 change stays one review pass even under Ultracode, because an effort setting never lifts the tier. For a deliberate max-rigor pass, invoke **`/rolepod-full`**.

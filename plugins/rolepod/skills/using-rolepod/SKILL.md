@@ -162,7 +162,7 @@ User says "done / finished / ready" or the task reaches its natural end → fire
 ## Output pattern
 
 ```
-Tier: R3 | R4
+Tier: R3 (multi-file) | R4 (high-risk)
 Routing: <phase> → <skill>
 Reason: <one sentence>
 Skipping: <phases + why>, or "none"
@@ -172,10 +172,11 @@ Next step: <concrete action>
 Routing output by tier — the block's size follows the rigor ladder:
 
 - **R0 / R1** — no block; answer or edit naturally.
-- **R2** — one line: `Route: R2 → <skill> · <reason>`, then the inline checklist.
+- **R2** — one line: `Route: R2 (one file + test) → <skill> · <reason>`, then the inline checklist.
 - **R3 / R4**, `/rolepod-full`, or any routing that could surprise the user — full block.
+- **Code + gloss, always** — the reader never opened this file: R0 answer only · R1 trivial edit · R2 one file + test · R3 multi-file · R4 high-risk.
 
-Every tier decision (R0 excepted) is STATED in that routing line — `Route: R2 → …` inline, `Tier: R3` in the block, at line start — and lands in `<git-root>/.rolepod/evidence/phase-log.jsonl` as `{"ts":"<iso8601>","phase":"route","tier":"R1-R4","skill":"<first skill>","provenance":"hook-auto"}`: on Claude Code the route hook records it from the transcript (at turn end, and on the next commission prompt as a fallback) — no manual append (measured: the manual line was written 0 times across every product repo); on a CLI without hooks append that line yourself, fail-open outside a git repo. A tier that is not stated cannot be audited.
+Every tier decision (R0 excepted) is STATED in that routing line — `Route: R2 (one file + test) → …` inline, `Tier: R3 (multi-file)` in the block, at line start — and lands in `<git-root>/.rolepod/evidence/phase-log.jsonl` as `{"ts":"<iso8601>","phase":"route","tier":"R1-R4","skill":"<first skill>","provenance":"hook-auto"}`: on Claude Code the route hook records it from the transcript (at turn end, and on the next commission prompt as a fallback) — no manual append (measured: the manual line was written 0 times across every product repo); on a CLI without hooks append that line yourself, fail-open outside a git repo. A tier that is not stated cannot be audited.
 
 ## Optional plugin skills (backend awareness)
 
