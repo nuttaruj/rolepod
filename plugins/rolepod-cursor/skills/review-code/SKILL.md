@@ -51,7 +51,7 @@ Return / hand off:
 
 ## Inputs to gather
 
-- The diff — pin base + target and name the form: committed branch → `<base>...HEAD`; uncommitted work → `git diff HEAD` (staged + unstaged together — `--cached` alone is a slice, and the runner refuses a slice whose files carry tree edits it does not contain, exit 7; `--partial-ok` only when the user asked for the staged part)
+- The diff — pin base + target and name the form: committed branch → `<base>...HEAD`; uncommitted work → `git diff HEAD` (staged + unstaged together — `--cached` alone is a slice, and the runner refuses a slice whose files carry tree edits it does not contain, exit 7; `--partial-ok` only when the user asked for the staged part; past ~15 files / ~800 lines the diff is two concerns — split before dispatch, reviewers read what fits)
 - The spec / plan / acceptance criteria
 - Touched files end-to-end
 - The risk profile (high-risk surface? new dep? schema change?)
@@ -102,7 +102,7 @@ Fresh context. Reviewer reads only the artifact + acceptance criteria. Tries to 
 
 ### 4. Report findings, severity-ordered
 
-Fill `templates/review-report.md`. Each finding names file:line, the issue, why it matters, and a fix direction — never a silent rewrite (Iron Rule 4). Label each finding's evidence: **TRACED** (path walked; holds or fails at a named step) or **SUSPECTED** (pattern-level; author must verify per §6) — "the change claims X" and "I traced X" are different statements. A clean review is never a bare APPROVED: the report's Claims-traced section states what was walked and which axes ran, so coverage is judgeable.
+Fill `templates/review-report.md`. Each finding names file:line, the issue, why it matters, and a fix direction — never a silent rewrite (Iron Rule 4). Label each finding's evidence: **TRACED** (path walked; holds or fails at a named step) or **SUSPECTED** (pattern-level; author must verify per §6) — "the change claims X" and "I traced X" are different statements — and its provenance: **INTRODUCED** (this diff caused it), **EXPOSED** (pre-existing, on a path this diff changes) or **ADJACENT** (pre-existing, path untouched; listed once, never drives the verdict — the diff is the scope). A clean review is never a bare APPROVED: the report's Claims-traced section states what was walked and which axes ran, so coverage is judgeable.
 
 ### 5. Fix-verify loop
 
@@ -114,7 +114,7 @@ When author and reviewer disagree on the merits, resolve by precedence: technica
 
 ### 6. Author-side response
 
-When the author is Lead receiving findings from a reviewer subagent or external CLI reviewer: READ the round's merged findings (every reviewer returned, deduped) without reacting → VERIFY each against the codebase (does it hold for THIS code?) → RESPOND with a technical ack or reasoned pushback → IMPLEMENT. Clarify unclear findings before touching any finding LINKED to them — a proven finding independent of every open question proceeds now; order: blocking → simple → complex, testing each individually. No gratitude phrases ("You're absolutely right!" / "Thanks for catching that!") — the diff shows you heard; "Fixed in <file:line>." is the whole reply.
+When the author is Lead receiving findings from a reviewer subagent or external CLI reviewer: READ the round's merged findings (every reviewer returned, deduped) without reacting → VERIFY each against the codebase (does it hold for THIS code?) → RESPOND with a technical ack or reasoned pushback → IMPLEMENT by provenance: INTRODUCED → fix now; EXPOSED → fix now only when it makes THIS change wrong, otherwise it goes to the user as a decision (money / auth) or to `## Follow-ups`; ADJACENT → `## Follow-ups`, never fixed in this round — fixing every finding a reviewer can see is how one change becomes 40 files. Clarify unclear findings before touching any finding LINKED to them — a proven finding independent of every open question proceeds now; order: blocking → simple → complex, testing each individually. No gratitude phrases ("You're absolutely right!" / "Thanks for catching that!") — the diff shows you heard; "Fixed in <file:line>." is the whole reply.
 
 The full playbook — forbidden-phrase list, pushback discipline, GitHub thread replies (`gh api .../replies`), YAGNI grep, source-specific handling — lives in `references/receiving-findings.md`.
 

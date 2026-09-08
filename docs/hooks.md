@@ -44,6 +44,8 @@ A per-edit reminder hook duplicated all three without enforcement teeth — so i
 
 **Route nudge (v2.98.0)** — a commission-shaped prompt (fix / add / change / build … + Thai equivalents; claim-shaped analysis prompts and Thai questions excluded) while the repo's newest `phase:"route"` line is older than the previous user prompt (transcript tail; no transcript → 30 min) → one `⟂ route:` line asking for the R0-R4 tier before the first edit. Checker: `hooks/lib/route_check.py`. Not a git repo → silent. Measured need: 199 requests / 0 router invocations in one project.
 
+**Auto-resume (v2.100.0)** — the harness prompt after a usage-limit pause ("Please continue from where you left off") gets one line: it is a resume, not a user decision — a turn that ended at a question / breaker / decision brief is restated, never continued into new scope or a new review round; the route nudge skips it.
+
 Two soft checks at the one moment before the Lead starts a turn; no new registration for the second.
 
 - **Claim-check**: prompt looks like an analysis / diagnosis / status question → `additionalContext`: read the primary source and cite file:line before claiming.
@@ -240,6 +242,12 @@ reviewer dispatches (notice / deny / deny) and `claim-verify-nudge.sh`
 reminds every prompt while a breaker ledger is open, so an auto-resume
 prompt cannot reopen the loop. Measured need: 11+ rounds overnight on one
 tree, no consult, no hand-back, while the breaker was doctrine only.
+**Provenance (v2.100.0):** every external finding carries INTRODUCED /
+EXPOSED / ADJACENT (the review-report template and review-code §4/§6 say
+the same for internal reviewers); ADJACENT findings never drive a
+verdict and the author parks them in Follow-ups — one change stops growing
+into 40 files. A diff attachment past ~15 files / ~800 changed lines gets
+a capacity notice: split by concern before the pass.
 
 Names: `codex` `claude` `agy` `cursor` `opencode` (the standalone Gemini
 CLI is retired — a `gemini` line is skipped with a note). **Ask once:** the

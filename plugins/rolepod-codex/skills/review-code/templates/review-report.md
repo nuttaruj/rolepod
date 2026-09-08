@@ -37,7 +37,11 @@
  direction (a direction, not a rewrite; the author fixes). Round 2+ (the
  previous report is in the brief): prefix each finding IN-FIX (a defect
  inside the previous round's fixes) / NEW (not flagged before) / REPEAT
- (flagged before, still open) — the Lead's phase-log line counts them.>
+ (flagged before, still open) — the Lead's phase-log line counts them.
+ Every finding also carries its provenance: INTRODUCED (this diff caused
+ it) / EXPOSED (pre-existing, on a path this diff changes) / ADJACENT
+ (pre-existing, untouched path — list once under "Adjacent", never a
+ verdict driver; the author parks it in Follow-ups).>
 
 ### BLOCKER — must fix before merge
 - `file:line` — <issue> — <why it matters> — <fix direction>
@@ -59,5 +63,5 @@
 ## Recommendation
 <APPROVED — nothing open above MINOR.
  APPROVED-WITH-NITS — only MINOR / Questions remain, none of which would change a correctness or security verdict.
- REJECTED — any open BLOCKER, or a MAJOR neither fixed nor explicitly documented per its heading above.>
+ REJECTED — any open INTRODUCED or EXPOSED BLOCKER, or such a MAJOR neither fixed nor explicitly documented per its heading above. ADJACENT findings never make a REJECTED.>
 APPROVED | APPROVED-WITH-NITS | REJECTED — <one-line reason>

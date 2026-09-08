@@ -671,6 +671,24 @@ if [ -n "$ATTACH" ] && [ -z "$JOB_DIR" ] && [ "$PARTIAL_OK" -ne 1 ] && git -C "$
   fi
 fi
 
+# ── Oversized diff notice (v2.100.0) ───────────────────────────────────
+# Measured: one 40-file / 2.6k-line uncommitted tree went through 11 rounds;
+# every round found what the previous one had no capacity to read. Notice
+# only — the split belongs to the Lead (finish-work P gate: one concern).
+if [ "$KIND" = "review" ] && [ -z "$JOB_DIR" ] && [ -n "$ATTACH" ]; then
+  _df=0; _dl=0
+  while IFS= read -r a; do
+    [ -f "$a" ] && grep -q '^+++ b/' "$a" 2>/dev/null || continue
+    _df=$(( _df + $(grep -c '^diff --git ' "$a" 2>/dev/null || echo 0) ))
+    _dl=$(( _dl + $(grep -c -E '^[+-][^+-]' "$a" 2>/dev/null || echo 0) ))
+  done <<EOF
+$ATTACH
+EOF
+  if [ "$_df" -gt 15 ] || [ "$_dl" -gt 800 ]; then
+    echo "ROLEPOD-XFAM notice: diff = $_df files / $_dl changed lines — past reviewer capacity (~15 files / ~800 lines); each round reads what the last one could not. Fix: split by concern (finish-work P gate) and review each slice, or accept a partial read. Continuing."
+  fi
+fi
+
 # ── Round 2+: --since <job-id> (v2.98.0) ──────────────────────────────
 if [ -n "$SINCE_ID" ]; then
   _sd="$JOBS/$SINCE_ID"; [ -d "$_sd" ] || { echo "cross-family: --since: no job $SINCE_ID under $JOBS" >&2; exit 2; }
@@ -728,7 +746,7 @@ BODY="$TMPP/body.md"
 } > "$BODY"
 preamble() { # $1 kind
   case "$1" in
-    review) printf '%s' "You are a cold-context ADVERSARIAL code reviewer running in a different CLI than the author. Read only — never edit files, never run write commands. Try to make the change fail. Report findings severity-ordered (BLOCKER / MAJOR / MINOR / NIT) with file:line, label each TRACED (path walked) or SUSPECTED (pattern-level), name what is missing as hard as what is present, then end with one line: VERDICT: APPROVED | APPROVED-WITH-NITS | REJECTED. If a previous round's report is attached, prefix every finding with IN-FIX (a defect inside the previous round's fixes), NEW (not flagged before) or REPEAT (flagged before, still open)." ;;
+    review) printf '%s' "You are a cold-context ADVERSARIAL code reviewer running in a different CLI than the author. Read only — never edit files, never run write commands. Try to make the change fail. Report findings severity-ordered (BLOCKER / MAJOR / MINOR / NIT) with file:line, label each TRACED (path walked) or SUSPECTED (pattern-level), name what is missing as hard as what is present, then end with one line: VERDICT: APPROVED | APPROVED-WITH-NITS | REJECTED. Label every finding's provenance: INTRODUCED (this diff caused it), EXPOSED (pre-existing, on a path this diff changes) or ADJACENT (pre-existing, path untouched) — the diff is the scope, ADJACENT findings are reported once under their own heading and never drive the verdict. If a previous round's report is attached, also prefix every finding with IN-FIX (a defect inside the previous round's fixes), NEW (not flagged before) or REPEAT (flagged before, still open); an ADJACENT item already listed there is not repeated." ;;
     consult) printf '%s' "You are a cold-context debugging advisor running in a different CLI than the author. The author has failed twice; do not repeat their fixes. Read only — never edit files. Return exactly one of: CORRECTION (new hypothesis + the smallest change to test it), CONFIRMATION (approach right — check X), or STOP (wrong path — why). Reason from the evidence given; say what you would verify first." ;;
     advise) printf '%s' "You are a cold-context planning advisor running in a different CLI than the author. Advise, never execute: return a RECOMMENDED option with reasoning and the risks you see, or a CORRECTION if the framing or all options are flawed, or a STOP signal. Do not edit files or run the plan." ;;
     critique) printf '%s' "You are a cold-context spec critic running in a different CLI than the author. The author has finished their discovery dialogue with the user (the questions already asked and answered are attached — never re-ask those). Return AT MOST 5 items, ranked by implementation risk, each tagged QUESTION (a decision only the user can make — the answer would change the implementation), AMBIGUITY (wording two engineers would read differently — quote it), or MISSING (an acceptance criterion, failure mode, or edge case with no 'proven by'). No design proposals, no praise, no restating the spec. If nothing material remains, reply exactly: NO FURTHER QUESTIONS." ;;

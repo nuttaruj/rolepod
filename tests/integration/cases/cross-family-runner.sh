@@ -401,6 +401,20 @@ out=$(cd "$RB" && bash "$RUNNER" --rounds)
 check "a commit resets the count and closes the ledger (rounds=0, ledger=-)" "printf '%s' \"\$out\" | grep -q 'rounds=0 current=1 ledger=- class=0'"
 cd "$REPO"
 
+# ── provenance labels + oversized-diff notice (v2.100.0) ──────────────────
+echo "── cross-family: provenance / oversized diff ──"
+check "review preamble asks for INTRODUCED / EXPOSED / ADJACENT provenance and keeps ADJACENT out of the verdict" "grep -q 'INTRODUCED (this diff caused it), EXPOSED' '$RUNNER' && grep -q 'never drive the verdict' '$RUNNER'"
+check "review-report template + review-code §4/§6 + receiving-findings carry the provenance rule" "grep -q 'ADJACENT findings never make a REJECTED' '$REPO_DIR/core/skills/review-code/templates/review-report.md' && grep -q 'IMPLEMENT by provenance' '$REPO_DIR/core/skills/review-code/SKILL.md' && grep -q 'Provenance first, then class' '$REPO_DIR/core/skills/review-code/references/receiving-findings.md'"
+SZ="$FIX/size"; mkdir -p "$SZ/.rolepod"; printf 'codex\n' > "$SZ/.rolepod/cross-family"; printf 'brief\n' > "$SZ/brief.md"
+( cd "$SZ" && git init -q . && git config user.email t@t && git config user.name t && printf 'a\n' > f.txt && git add f.txt && git commit -qm init )
+: > "$FIX/big.patch"; for i in $(seq 1 16); do { printf 'diff --git a/n%s.ts b/n%s.ts\nnew file mode 100644\n--- /dev/null\n+++ b/n%s.ts\n@@ -0,0 +1,60 @@\n' "$i" "$i" "$i"; seq 60 | sed 's/^/+x/'; } >> "$FIX/big.patch"; done
+: > "$LOG"; rc=0; out=$(cd "$SZ" && bash "$RUNNER" --kind review --brief brief.md --attach "$FIX/big.patch" --lead claude 2>/dev/null) || rc=$?
+check "16-file / 960-line attachment → capacity notice, still runs" "[ $rc -eq 0 ] && printf '%s' \"\$out\" | grep -q 'diff = 16 files / 960 changed lines' && grep -q '^codex |' '$LOG'"
+printf 'diff --git a/n1.ts b/n1.ts\nnew file mode 100644\n--- /dev/null\n+++ b/n1.ts\n@@ -0,0 +1,2 @@\n+x\n+y\n' > "$FIX/small.patch"
+: > "$LOG"; rc=0; out=$(cd "$SZ" && bash "$RUNNER" --kind review --brief brief.md --attach "$FIX/small.patch" --lead claude 2>/dev/null) || rc=$?
+check "small attachment → no capacity notice" "[ $rc -eq 0 ] && ! printf '%s' \"\$out\" | grep -q 'past reviewer capacity'"
+cd "$REPO"
+
 # ── review quality gates: PARTIAL / no VERDICT are not a pass ───────────
 echo "── cross-family: PARTIAL / VERDICT ──"
 printf 'codex\nclaude\nagy\ncursor\nopencode\n' > "$HOME/.rolepod/cross-family"

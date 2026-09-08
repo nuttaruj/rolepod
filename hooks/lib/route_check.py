@@ -67,6 +67,8 @@ def tail(path, n):
 
 
 def commission_shaped(prompt):
+    if "please continue from where you left off" in prompt.lower():
+        return False   # harness auto-resume, handled by the hook itself
     if any(q in prompt for q in TH_QUESTION):
         return False
     if EN_COMMISSION.search(prompt):

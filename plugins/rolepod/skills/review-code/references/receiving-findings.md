@@ -98,7 +98,10 @@ When the round's findings land (every dispatched reviewer returned — merged, d
 
 1. **Read all** — do not start implementing while still reading, and never while a reviewer is still running on this tree
 2. **Clarify all unclear** — never partial-implement when items may be linked
-3. **Order by class:**
+3. **Provenance first, then class:**
+   - ADJACENT (pre-existing, untouched path) → `## Follow-ups`, no fix this round
+   - EXPOSED (pre-existing, on a path this diff changes) → fix only when it makes THIS change wrong; otherwise the user decides (money / auth) or `## Follow-ups`
+   - INTRODUCED → the rest of this list
    - Blocking (security / data loss / breaks build) → fix first
    - Simple (typo / import / rename / dead code) → batch second
    - Complex (refactor / logic / new abstraction) → last, one at a time

@@ -106,6 +106,13 @@ fi
 # the review→fix loop on this tree is closed until the user decides — an
 # auto-resume prompt ("Please continue") must not reopen it; 3+ rounds with
 # no ledger asks for the ledger first. Reader = the runner\x27s --rounds.
+# Auto-resume (v2.100.0): after a usage-limit pause the harness sends
+# "Please continue from where you left off" — a resume, not a user decision.
+# Measured: two such prompts carried an 11-round review loop through the night.
+AUTO_MSG=""
+if printf '%s' "$PROMPT" | grep -qi 'please continue from where you left off'; then
+  AUTO_MSG="↩ auto-resume: this prompt is the harness after a usage limit, not a user decision. Fix: the last turn ended at a question / breaker / decision brief → restate it and stop; otherwise continue the same task at the same tier — no new scope, no new review round. "
+fi
 BREAKER_MSG=""
 XFAM_RUNNER="$(dirname "$0")/../scripts/cross-family.sh"; [ -f "$XFAM_RUNNER" ] || XFAM_RUNNER="$HOME/.rolepod/bin/cross-family.sh"
 if [ -f "$XFAM_RUNNER" ] && git rev-parse --show-toplevel >/dev/null 2>&1; then
@@ -118,9 +125,9 @@ if [ -f "$XFAM_RUNNER" ] && git rev-parse --show-toplevel >/dev/null 2>&1; then
   fi
 fi
 
-if [ -n "$MSG$CTX_MSG$ROUTE_MSG$BREAKER_MSG" ]; then
+if [ -n "$MSG$CTX_MSG$ROUTE_MSG$AUTO_MSG$BREAKER_MSG" ]; then
   # Env-passed (never interpolated) so quotes in either message cannot break the JSON.
-  ROLEPOD_HOOK_MSG="${CTX_MSG}${MSG}${ROUTE_MSG}${BREAKER_MSG}" python3 -c "
+  ROLEPOD_HOOK_MSG="${CTX_MSG}${MSG}${ROUTE_MSG}${AUTO_MSG}${BREAKER_MSG}" python3 -c "
 import json, os
 print(json.dumps({'hookSpecificOutput':{'hookEventName':'UserPromptSubmit','additionalContext':os.environ.get('ROLEPOD_HOOK_MSG','')}}))
 " 2>/dev/null || echo '{}'

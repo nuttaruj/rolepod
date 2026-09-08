@@ -656,6 +656,14 @@ out=$( (export ROLEPOD_GATES_SOFT=1; rh_agent rolepod:security-engineer) )
 check "tier-nudge: ROLEPOD_GATES_SOFT=1 lifts the round deny" allow "$out"
 rm -rf "$RH"
 
+# ── auto-resume prompt (v2.100.0): a resume, not a decision; no route nudge ──
+AR_TMP=$(mktemp -d); ( cd "$AR_TMP" && git init -q . && git config user.email t@t && git config user.name t && git commit -q --allow-empty -m init )
+out=$(printf '{"session_id":"ar1","prompt":"I hit my usage limit while you were working, but it has reset now. Please continue from where you left off."}' | (cd "$AR_TMP" && HOME="$AR_TMP" bash "$HOOKS/claim-verify-nudge.sh") || true)
+if echo "$out" | grep -q 'auto-resume' && ! echo "$out" | grep -q 'commission with no tier'; then echo "  ✓ claim-verify: auto-resume prompt → resume line, no route nudge"; else echo "  ✗ claim-verify auto-resume: ${out:0:200}"; fail=$((fail+1)); fi
+out=$(printf '{"session_id":"ar1","prompt":"continue with the plan"}' | (cd "$AR_TMP" && HOME="$AR_TMP" bash "$HOOKS/claim-verify-nudge.sh") || true)
+if echo "$out" | grep -q 'auto-resume'; then echo "  ✗ claim-verify: a normal continue got the auto-resume line"; fail=$((fail+1)); else echo "  ✓ claim-verify: a user's own 'continue' → no auto-resume line"; fi
+rm -rf "$AR_TMP"
+
 # ─── result ───
 if [ "$fail" -eq 0 ]; then
   echo "  ✓ pass"
