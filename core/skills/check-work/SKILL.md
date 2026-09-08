@@ -75,7 +75,7 @@ Return / hand off:
 
 ### 2. Run the evidence
 
-Run the test, build, curl, browser observation. Capture the exact command and the relevant output (not all of it — the lines that prove the claim).
+Run the test, build, curl, browser observation. Capture the exact command and the relevant output (not all of it — the lines that prove the claim). A failure already in the baseline (recorded before the first edit) is a limitation, not a regression — cite the baseline line; a failure absent from it is this change's.
 
 ### 2b. Aggregate child plugin evidence
 
