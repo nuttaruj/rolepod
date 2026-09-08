@@ -352,6 +352,27 @@ OUT=$(HOME="$FIX" bash "$REPO_DIR/scripts/stats.sh" "$FIX/repo")
 check "stats reports floor applied/frontmatter/missed + Lead class at dispatch (v2.104)" \
   "printf '%s' \"\$OUT\" | grep -q 'applied ×1, frontmatter ×1, missed ×0' && printf '%s' \"\$OUT\" | grep -q 'Lead class at dispatch'"
 
+# ── v2.107.0: per-call fan-out rules — a tier-reason covers single calls, never a fan-out ──
+mkdir -p "$FIX/repo2" && (cd "$FIX/repo2" && git init -q . 2>/dev/null)
+BARE_FAN='// tier-reason: Verify is judgment on a money surface\nname: \"readiness-audit\" phase(\"Browse\"); const browse = await parallel(BROWSE.map((b) => () => agent(b.prompt, {label: `browse:${b.key}`, phase: \"Browse\"}))); phase(\"Verdict\"); await agent(\"verdict\", {model: \"opus\", phase: \"Verdict\"})'
+mkj "$FIX/wf-bare-fanout-fable.json"  Workflow "$FIX/lead-fable.jsonl"  "{\"script\":\"$BARE_FAN\"}"
+mkj "$FIX/wf-bare-fanout-sonnet.json" Workflow "$FIX/lead-sonnet.jsonl" "{\"script\":\"$BARE_FAN\"}"
+mkj "$FIX/wf-strong-fanout-opus.json" Workflow "$FIX/lead-opus.jsonl"   '{"script":"// tier-reason: Verify is judgment on a money surface\nname: \"receipt-review\" phase(\"Verify\"); const v = await parallel(raised.map((f) => () => agent(f.title, {model: \"opus\", label: `verify:${f.key}`, phase: \"Verify\"}))); await agent(\"verdict\", {model: \"opus\", phase: \"Verdict\"})"}'
+mkj "$FIX/wf-fanout-fixed-fable.json" Workflow "$FIX/lead-fable.jsonl"  '{"script":"name: \"readiness-audit\" phase(\"Browse\"); const browse = await parallel(BROWSE.map((b) => () => agent(b.prompt, {model: \"haiku\", label: `browse:${b.key}`, phase: \"Browse\"}))); phase(\"Verify\"); const v = await parallel(raised.map((f) => () => agent(f.title, {model: \"sonnet\", effort: \"high\", label: `verify:${f.key}`, phase: \"Verify\"}))); await agent(\"verdict\", {model: \"opus\", phase: \"Verdict\"})"}'
+GOUT=$(cd "$FIX/repo2" && bash "$NUDGE" < "$FIX/wf-bare-fanout-fable.json")
+check "gate v2.107: fable Lead + bare Browse fan-out + opus verdict + tier-reason → deny bare-fanout naming Browse (reason covers single calls only)" \
+  "printf '%s' \"\$GOUT\" | grep -q '\"deny\"' && printf '%s' \"\$GOUT\" | grep -q 'bare fan-out' && printf '%s' \"\$GOUT\" | grep -q 'Browse' && grep -q '\"reason\": \"bare-fanout\"' '$FIX/repo2/.rolepod/evidence/phase-log.jsonl'"
+GOUT=$(cd "$FIX/repo2" && bash "$NUDGE" < "$FIX/wf-strong-fanout-opus.json")
+check "gate v2.107: opus Lead + opus on the Verify FAN-OUT + tier-reason → deny strong-spread (one strong slot holds under every Lead)" \
+  "printf '%s' \"\$GOUT\" | grep -q '\"deny\"' && printf '%s' \"\$GOUT\" | grep -q 'FAN-OUT' && grep -q '\"reason\": \"strong-spread\"' '$FIX/repo2/.rolepod/evidence/phase-log.jsonl'"
+check "gate v2.107: sonnet Lead + the same bare fan-out → no deny (inherit is already the cheap tier)" \
+  "! (cd '$FIX/repo2' && bash '$NUDGE' < '$FIX/wf-bare-fanout-sonnet.json' | grep -q '\"deny\"')"
+check "gate v2.107: the prescribed fix (haiku browse · sonnet/high verify · one opus verdict) under a fable Lead → silent" \
+  "[ -z \"\$(cd '$FIX/repo2' && bash '$NUDGE' < '$FIX/wf-fanout-fixed-fable.json')\" ]"
+GOUT=$(cd "$FIX/repo2" && bash "$NUDGE" < "$FIX/wf-bare-fanout-fable.json"; cd "$FIX/repo2" && bash "$NUDGE" < "$FIX/wf-bare-fanout-fable.json")
+check "gate v2.107: bare-fanout never yields to the loop valve (3rd submission still denied)" \
+  "printf '%s' \"\$GOUT\" | grep -c '\"deny\"' | grep -q 2 && ! grep -q '\"action\": \"yield\"' '$FIX/repo2/.rolepod/evidence/phase-log.jsonl'"
+
 # ── coordinator-loop check (v2.51.0) — 3rd sequential Agent round-trip in one turn ──
 mkturn() { # $1 out, $2 prior dispatch rounds (0..3) — one Agent tool_use per assistant msg + a tool_result
   : > "$1"

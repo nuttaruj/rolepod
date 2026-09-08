@@ -193,9 +193,11 @@ if gated:
     if why.get("single-tier") or why.get("no-strong-judge"):
         print("    ⚠ single-tier / no-strong-judge = the Lead pasted one balanced model on every "
               "stage (or ran its judge below itself) to pass the gate — the v2.50.0 rules catch it")
+    if why.get("bare-fanout"):
+        print("    ⚠ bare-fanout = a fan-out call with no pin under a strong Lead — every item inherited the Lead price; pin the fan-out sonnet/haiku (v2.107.0)")
     if why.get("strong-spread"):
-        print("    ⚠ strong-spread = a low Lead pinned strong on a fan-out / every stage — the mirror "
-              "trap; the fix is ONE strong slot (v2.74.0), this deny never yields")
+        print("    ⚠ strong-spread = a strong pin on a FAN-OUT under any Lead (v2.107.0), or on every stage / a non-judge stage under a low Lead — the mirror "
+          "trap; the fix is ONE strong slot (v2.74.0), this deny never yields")
 
 proofs = [r for r in rows if r.get("phase") == "dispatch-proof"]
 if proofs:

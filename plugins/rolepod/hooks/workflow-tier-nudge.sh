@@ -3,9 +3,10 @@
 # a soft nudge for fleets, a mechanical floor for the strong review roles, and
 # ONE deny where money measurably leaks (fleet-tier gate, v2.48.0).
 #
-# The tier rule ("sweep = cheap, build = balanced, verify/judge = strong —
-# never inherit the Lead's model across the whole fleet without a stated
-# reason") lives in the using-rolepod router skill, which is NOT loaded at
+# The tier rule ("sweep = cheap, build = balanced, per-item verify fan-out =
+# balanced at high effort, the ONE judge = strong — never inherit the Lead's
+# model across the whole fleet without a stated reason") lives in the
+# using-rolepod router skill, which is NOT loaded at
 # the moment a Workflow script is authored or an Agent call fires. Observed
 # failure: a 10-agent research fleet ran entirely on the Lead's model because
 # nothing surfaced the rule at authoring time. This hook re-injects it at
@@ -333,7 +334,44 @@ if tool == "Workflow":
     # per-finding fan-out — strong × N. Per agent() call: strong literal? which
     # stage? fan-out position (interpolated label, or lexically inside
     # .map( / pipeline( / Array.from( / a loop)?
+    # v2.107.0 — per-CALL, not per-script. Observed (CourtBook readiness audit,
+    # fable Lead): one model:opus on the Verify fan-out plus a tier-reason
+    # comment passed the whole script; Browse / Flows fan-outs stayed bare and
+    # inherited fable, Verify ran opus x N — 58 subagents, 44 opus + 13 fable,
+    # 0 sonnet. A reason can justify ONE strong slot; it cannot justify the
+    # Lead price x N. So a fan-out call is judged on its own opts: bare under a
+    # strong Lead → bare-fanout; pinned strong under ANY Lead → strong-spread;
+    # neither yields to tier-reason (pinning the fan-out is always possible).
+    def _in_fanout(code, pos):
+        # Inside an UNCLOSED .map( / .flatMap( / .forEach( / pipeline( / Array.from(
+        # call, or an unclosed for/while body, at the point of the agent() call.
+        # A bracket scan over the string-blanked code, not a 160-char window: a
+        # single call that merely FOLLOWS a fan-out (the verdict after the browse
+        # parallel) is not a fan-out (v2.107.0).
+        dp = db = 0
+        i = pos - 1
+        while i >= 0:
+            ch = code[i]
+            if ch == ")":
+                dp += 1
+            elif ch == "(":
+                if dp == 0:
+                    if re.search(r"(\.map|\.flatMap|\.forEach|\bpipeline|Array\.from)\s*$", code[max(0, i - 40):i]):
+                        return True
+                else:
+                    dp -= 1
+            elif ch == "}":
+                db += 1
+            elif ch == "{":
+                if db == 0:
+                    if re.search(r"\b(for|while)\s*\([^{}]*\)\s*$", code[max(0, i - 200):i]):
+                        return True
+                else:
+                    db -= 1
+            i -= 1
+        return False
     strong_calls = []   # (stage, fanout) for every agent() call pinned strong
+    bare_fanout = []    # stage of every fan-out agent() call with no pin at all
     call_pos = [m.start() for m in re.finditer(r"\bagent\(", code)]
     for i, pos in enumerate(call_pos):
         end = call_pos[i + 1] if i + 1 < len(call_pos) else len(code)
@@ -344,16 +382,19 @@ if tool == "Workflow":
             q = pos + mk.end() - 1
             mv = re.match(r"[\x27\"]([A-Za-z0-9._\-\[\]]+)[\x27\"]", script[q:q + 80])
             strong_here = bool(mv) and ss.model_class(mv.group(1)) == "strong"
-        if not strong_here:
-            # v2.104.0: the agentType of a strong role renders opus — the same
-            # strong pin, so it spreads the same way (a fan-out = opus × N).
-            ak = re.search(r"[,{\s]agentType\s*:\s*[\x27\"]", win)
-            if ak:
-                aq = pos + ak.end() - 1
-                av = re.match(r"[\x27\"]([A-Za-z0-9:._\-]+)[\x27\"]", script[aq:aq + 80])
-                strong_here = bool(av) and ss._bare_agent_name(av.group(1)) in ss.STRONG_ROLE_AGENTS
-        if not strong_here:
-            continue
+        pinned = bool(re.search(r"[,{\s]model\s*:", win))   # literal or variable model
+        # v2.104.0: the agentType of a strong role renders opus — the same
+        # strong pin, so it spreads the same way (a fan-out = opus × N).
+        # v2.88.0: only an agentType that RENDERS a pin counts as a pin.
+        ak = re.search(r"[,{\s]agentType\s*:\s*[\x27\"]", win)
+        if ak:
+            aq = pos + ak.end() - 1
+            av = re.match(r"[\x27\"]([A-Za-z0-9:._\-]+)[\x27\"]", script[aq:aq + 80])
+            aname = ss._bare_agent_name(av.group(1)) if av else ""
+            strong_here = strong_here or aname in ss.STRONG_ROLE_AGENTS
+            pinned = pinned or aname in (ss.TIER_PINNED_AGENTS | ss.STRONG_ROLE_AGENTS)
+        elif re.search(r"[,{\s]agentType\s*:", win):
+            pinned = True   # agentType from a variable — trusted like a variable model
         pk = re.search(r"[,{\s]phase\s*:\s*[\x27\"]", win)
         if pk:
             pq = pos + pk.end() - 1
@@ -362,16 +403,17 @@ if tool == "Workflow":
         else:
             prev = re.findall(r"phase\(\s*[\x27\"]([^\x27\"]+)", script[:pos])
             stage = prev[-1] if prev else ""
-        fanout = bool(re.search(r"label\s*:\s*`[^`]*\$\{", script[pos:end])) or bool(
-            re.search(r"(\.map\(|pipeline\(|Array\.from\(|\bfor\s*\(|\bwhile\s*\()", code[max(0, pos - 160):pos]))
-        strong_calls.append((stage, fanout))
+        fanout = bool(re.search(r"label\s*:\s*`[^`]*\$\{", script[pos:end])) or _in_fanout(code, pos)
+        if strong_here:
+            strong_calls.append((stage, fanout))
+        elif fanout and not pinned:
+            bare_fanout.append(stage or "(no phase)")
     strong_stages = set(st for st, _ in strong_calls)
+    fan_strong = sorted(set(st or "(no phase)" for st, f in strong_calls if f))
     spread = ""
     if strong_calls and cls in ss.LOW_CLASSES:
         nonjudge_strong = sorted(st for st in strong_stages if st and not JUDGE_RX.search(st))
-        if any(f for _, f in strong_calls):
-            spread = "a FAN-OUT call (per-item label / inside .map / pipeline / a loop)"
-        elif len(strong_stages) >= 2:
+        if len(strong_stages) >= 2:
             spread = "%d stages (%s)" % (len(strong_stages), ", ".join(sorted(strong_stages))[:120])
         elif nonjudge_strong:
             spread = "a non-judgment stage (%s)" % ", ".join(nonjudge_strong)[:120]
@@ -386,7 +428,26 @@ if tool == "Workflow":
 
     verdict = ""   # "" = pass; else a deny reason key
     reason_txt = ""
-    if costly and not stated:
+    if lead and fan_strong:
+        verdict = "strong-spread"
+        reason_txt = (
+            "\u26d4 fleet-tier: strong model pinned on a FAN-OUT call \u2014 stage(s) %s \u2014 under a %s-class "
+            "Lead (%s): strong \u00d7 N with nobody choosing it. Fix: fan-out at model:\x27sonnet\x27 "
+            "(effort:\x27high\x27 for refuters; sweep haiku); model:\x27opus\x27 on exactly ONE call \u2014 the "
+            "security-engineer / universal-reviewer review, or one final adjudicator. Exception: none for a "
+            "fan-out \u2014 a `// tier-reason:` covers single calls only; ROLEPOD_GATES_SOFT=1 (user-set) warns.%s"
+            % (", ".join(fan_strong)[:120], cls, lead,
+               (" Also bare fan-out stage(s) %s inherit the Lead \u2014 pin them in the same re-submit." % ", ".join(sorted(set(bare_fanout)))[:80]) if (costly and bare_fanout) else ""))
+    elif costly and bare_fanout:
+        verdict = "bare-fanout"
+        reason_txt = (
+            "\u26d4 fleet-tier: bare fan-out call(s) \u2014 stage(s) %s \u2014 inherit the Lead %s (%s) \u00d7 N. "
+            "Fix: pin the fan-out \u2014 read/browse/sweep \u2192 model:\x27haiku\x27 or agentType:\x27rolepod:scout\x27; "
+            "per-item verify \u2192 model:\x27sonnet\x27, effort:\x27high\x27; ONE strong slot (model:\x27opus\x27) on the "
+            "single verdict / review call. Exception: none for a fan-out \u2014 a `// tier-reason:` covers single "
+            "calls only; ROLEPOD_GATES_SOFT=1 (user-set) warns."
+            % (", ".join(sorted(set(bare_fanout)))[:120], lead or "unknown model", why))
+    elif costly and not stated:
         if not tiers:
             verdict = "no-tier"
             reason_txt = (
@@ -454,7 +515,7 @@ if tool == "Workflow":
     if verdict:
         if soft:
             _log_bypass("workflow-tier-nudge", "ROLEPOD_GATES_SOFT")
-        elif verdict != "strong-spread" and _recent_denies(ti, script) >= 2:
+        elif verdict not in ("strong-spread", "bare-fanout") and _recent_denies(ti, script) >= 2:
             # Loop valve: third strike passes, loudly, and is logged as yielded.
             _log_gate(ti, script, lead, cls, n_calls, verdict, sorted(tiers), sorted(stages), action="yield")
             ctx("⚖ fleet-tier YIELDED after 2 denies of this fleet in 30 min — proceeding as submitted "
