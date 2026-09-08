@@ -22,6 +22,52 @@ HOT=$(git -C "$REPO" log --since="7 days ago" --name-only --pretty=format: 2>/de
 CTX="**$NAME** @ \`$BRANCH\` ($DIRTY uncommitted)\n\n**Recent:**\n\`\`\`\n$COMMITS\n\`\`\`"
 [ -n "$HOT" ] && CTX="$CTX\n\n**Hot (7d):**\n$HOT"
 
+# Session-start state pointers (v2.102.0): the newest plan with unchecked
+# steps, an open breaker ledger, the last phase-log line — "read the progress
+# file first" made automatic for continuation sessions (measured: 21
+# compactions in one project lineage and the plan was never re-read).
+STATE=$(ROLEPOD_PCL_REPO="$REPO" python3 - <<'PY' 2>/dev/null || true
+import glob, json, os, re
+repo = os.environ["ROLEPOD_PCL_REPO"]; out = []
+plans = sorted(glob.glob(os.path.join(repo, "docs", "rolepod", "plans", "*.md")), key=os.path.getmtime, reverse=True)
+for p in plans:
+    try:
+        text = open(p, encoding="utf-8", errors="ignore").read()
+    except Exception:
+        continue
+    open_n = len(re.findall(r"^\s*- \[ \]", text, re.M)); done_n = len(re.findall(r"^\s*- \[x\]", text, re.M | re.I))
+    if open_n == 0:
+        continue
+    nxt = ""; head = ""
+    for line in text.splitlines():
+        m = re.match(r"^### ((Task ?|T)\d+.*)", line)
+        if m:
+            head = m.group(1).strip()
+        if re.match(r"^\s*- \[ \]", line):
+            nxt = head; break
+    out.append("**Open plan:** `%s` — %d done / %d open · next: %s" % (os.path.relpath(p, repo), done_n, open_n, (nxt or "first unchecked step")[:80]))
+    break
+log = os.path.join(repo, ".rolepod", "evidence", "phase-log.jsonl")
+if os.path.isfile(log):
+    try:
+        with open(log, "rb") as f:
+            f.seek(max(0, os.path.getsize(log) - 4096)); last = [l for l in f.read().decode("utf-8", "ignore").splitlines() if l.strip()][-1]
+        d = json.loads(last)
+        out.append("**Last phase:** %s %s %s" % (d.get("phase", ""), str(d.get("ts", ""))[:16], d.get("verdict") or d.get("tier") or d.get("action") or ""))
+    except Exception:
+        pass
+print("\\n".join(out))
+PY
+)
+_xr="$(cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null && pwd)/../scripts/cross-family.sh"; [ -f "$_xr" ] || _xr="$HOME/.rolepod/bin/cross-family.sh"
+if [ -f "$_xr" ]; then
+  _rr=$(cd "$REPO" && bash "$_xr" --rounds 2>/dev/null || true)
+  _lp=$(printf '%s' "$_rr" | sed -n 's/.*ledger=\([^ ]*\).*/\1/p'); _rn=$(printf '%s' "$_rr" | sed -n 's/.*rounds=\([0-9]*\).*/\1/p')
+  if [ -n "$_lp" ] && [ "$_lp" != "-" ]; then STATE="$STATE\n**Breaker ledger open:** \`${_lp#$REPO/}\` — restate the decision brief; no new fix or review round until the user decides"
+  elif [ "${_rn:-0}" -ge 3 ]; then STATE="$STATE\n**Review rounds on this tree:** $_rn, no ledger — write docs/rolepod/handoffs/<feature>-breaker-<date>.md before any fix (review-code §5)"; fi
+fi
+[ -n "$STATE" ] && CTX="$CTX\n\n$STATE"
+
 # Cross-family runner locator (v2.76.0): marketplace installs have no
 # install.sh launcher on PATH, so name the shipped copy next to this hook
 # once per session — the skills say "rolepod-cross-family, or the path the

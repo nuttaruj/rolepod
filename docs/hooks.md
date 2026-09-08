@@ -76,6 +76,7 @@ writes nothing into `~/.claude/CLAUDE.md`.
 Inject git context at session start.
 
 - **Effect**: `additionalContext` with repo name, branch, dirty count, recent commits (last 5), hot files (last 7 days).
+- **State pointers (v2.102.0)**: the newest `docs/rolepod/plans/*.md` with unchecked steps (`done / open · next: Task N`), an open breaker ledger (or `N rounds, no ledger`) via the runner's `--rounds`, and the last phase-log line — the "read the progress file first" step of a long-running-agent harness, done for the Lead at startup / resume / compact.
 - **Self-guards**: not in a git repo → silent; non-JSON failure → emits `{}`.
 - **Concurrent-session soft-warn (Codex / Gemini / Cursor)**: on the CLIs that have no `session-lifecycle` hook, this loader also registers a lock in the neutral `~/.rolepod/session-locks/<sha256(worktree)>/` dir and appends a soft warning when a live sibling (any CLI, <30 min) is present. On Claude it skips this (detected via `CLAUDE_PROJECT_DIR`) because `session-lifecycle` already owns the warning — no double-fire. This is the soft-warn-everywhere floor; the hard `worktree-guard` gate remains Claude-only.
 - **What this hook does not do**: no add-on detection, no vendor-tool recovery, no first-session nag, no external-reviewer banner. Add-on availability is documented in README + skills, never nagged per SessionStart.

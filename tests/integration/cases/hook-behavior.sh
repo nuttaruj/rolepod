@@ -664,6 +664,21 @@ out=$(printf '{"session_id":"ar1","prompt":"continue with the plan"}' | (cd "$AR
 if echo "$out" | grep -q 'auto-resume'; then echo "  ✗ claim-verify: a normal continue got the auto-resume line"; fail=$((fail+1)); else echo "  ✓ claim-verify: a user's own 'continue' → no auto-resume line"; fi
 rm -rf "$AR_TMP"
 
+# ── project-context-loader: session-start state pointers (v2.102.0) ────────
+PC_TMP=$(mktemp -d); ( cd "$PC_TMP" && git init -q . && git config user.email t@t && git config user.name t && printf 'a\n' > f.txt && git add f.txt && git commit -qm init )
+mkdir -p "$PC_TMP/docs/rolepod/plans" "$PC_TMP/.rolepod/evidence"
+printf '# Plan\n\n### Task 1: seed\n- [x] **Change:** done\n\n### Task 2: wire the gate\n- [ ] **Change:** todo\n- [ ] **Test / evidence:** todo\n' > "$PC_TMP/docs/rolepod/plans/x-2026-09-08.md"
+printf '{"ts":"2026-09-08T01:00:00Z","phase":"route","tier":"R3","skill":"write-plan"}\n' > "$PC_TMP/.rolepod/evidence/phase-log.jsonl"
+pcl() { printf '{"cwd":"%s","session_id":"pc1"}' "$PC_TMP" | (cd "$PC_TMP" && HOME="$PC_TMP" bash "$HOOKS/project-context-loader.sh") || true; }
+out=$(pcl)
+if echo "$out" | grep -q 'Open plan:' && echo "$out" | grep -q 'next: Task 2: wire the gate' && echo "$out" | grep -q '1 done / 2 open' && echo "$out" | grep -q 'Last phase' && echo "$out" | grep -q 'route 2026-09-08T01:00'; then
+  echo "  ✓ context-loader: open plan + next task + last phase at session start"
+else echo "  ✗ context-loader state pointers: ${out:0:300}"; fail=$((fail+1)); fi
+mkdir -p "$PC_TMP/docs/rolepod/handoffs"; printf '# b\n\n## Rounds\n- r\n\n## Class\n- c\n\n## Decision\n- d\n' > "$PC_TMP/docs/rolepod/handoffs/x-breaker-2026-09-08.md"
+out=$(pcl)
+if echo "$out" | grep -q 'Breaker ledger open'; then echo "  ✓ context-loader: open breaker ledger named at session start"; else echo "  ✗ context-loader breaker pointer: ${out:0:200}"; fail=$((fail+1)); fi
+rm -rf "$PC_TMP"
+
 # ─── result ───
 if [ "$fail" -eq 0 ]; then
   echo "  ✓ pass"
