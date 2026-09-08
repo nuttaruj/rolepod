@@ -76,7 +76,7 @@ Break a task down further if any holds: >2hr of work, acceptance needs more than
 
 ### 3. Test plan per task
 
-For each task, name the test type (unit / integration / contract / E2E / smoke / benchmark / repro), the assertion that would prove it works, and the exact command to run it — copy-paste runnable, not "run the tests". The runnable command is what lets the build loop verify each task autonomously. "Adds tests" is not a test plan.
+For each task, name the test type (unit / integration / contract / E2E / smoke / benchmark / repro), the assertion that would prove it works, and the exact command to run it — copy-paste runnable, not "run the tests". The runnable command is what lets the build loop verify each task autonomously. "Adds tests" is not a test plan. Size by rules: one test per rule at its owner, one smoke per call-site — never a test per copy of the rule.
 
 Repo has no test infrastructure at all → the FIRST task bootstraps the minimal harness (runner config + one passing smoke test) so every later Command is runnable. Never plan Commands against a runner that does not exist.
 

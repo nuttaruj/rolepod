@@ -52,6 +52,19 @@ OUT=$(run_lint)
 check "detects snapshot-only absorb"   "printf '%s' \"\$OUT\" | grep -q 'snapshot'"
 reset_stage
 
+# 3b. Literal calendar date added in a test file → finding; in prod code → silent.
+mkdir -p "$FIX/tests"
+printf 'const DAY = "2026-09-01";\nconst END = `2026-12-15`;\nit("books", () => {});\n' > "$FIX/tests/c.test.js"
+git -C "$FIX" add -A
+OUT=$(run_lint)
+check "detects both literal dates in a test (quote + backtick, month 09 + 12)" "printf '%s' \"\$OUT\" | grep -q '2 literal calendar date'"
+reset_stage
+printf 'const RELEASED = "2026-09-01";\n' > "$FIX/release.js"
+git -C "$FIX" add -A
+OUT=$(run_lint)
+check "literal date in prod code stays silent" "[ -z \"\$OUT\" ]"
+reset_stage
+
 # 4. Clean non-test diff → silent.
 printf 'const x = 1;\n' > "$FIX/app.js"
 git -C "$FIX" add -A

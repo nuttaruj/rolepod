@@ -72,7 +72,7 @@ Bug / new logic / billing / migration / auth / race / security:
 - Write the smallest code change that makes it pass
 - Run all tests (must stay green)
 
-Pure rename / typo / comment fix: tests-after or skip per the test gate. For the full task-type → discipline matrix, see `references/tdd-by-risk.md`.
+Pure rename / typo / comment fix: tests-after or skip per the test gate. For the task-type → discipline matrix and test hygiene (one frozen now, no literal dates, expectations from the spec, one test per rule), see `references/tdd-by-risk.md`.
 
 ### 3. Surgical edit + quality reflexes
 

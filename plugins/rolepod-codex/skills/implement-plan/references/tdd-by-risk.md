@@ -27,5 +27,19 @@ Lower-risk work where a test-first cycle adds ceremony without catching more.
 | Pure rename / typecheck-safe refactor | Existing suite green before and after |
 
 ## Rule
-When in doubt, treat the task as test-first. The cost of an unneeded test is
-minutes; the cost of a missed regression on a risk surface is unbounded.
+When in doubt on a risk surface, test-first. Then size the suite by rules,
+not call-sites: one test per rule, at the rule's owner; each call-site gets
+one smoke; a test whose failure an existing test already catches is not
+written; collapsing N copies of a rule into one function collapses their
+tests the same way. A suite that only ever grows is read less each round.
+
+## Hygiene — what keeps a green suite green
+- Dates and times derive from ONE frozen `now` (fake timers / injected
+  clock). A literal calendar date expires; the real clock drifts across
+  midnight, weekday and DST; both come back as a red that is not a
+  regression and cost a review round to prove it.
+- Expected values come from the spec, never read off the shared seed — a
+  seed edit is not a behavior change, and a test that assumes seed prices
+  or rows breaks on the next fixture change.
+- The test's own file is part of the change; the shared fixture is not.
+  Touching `helpers/` or a seed to make one test pass is a finding.

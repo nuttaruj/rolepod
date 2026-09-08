@@ -13,6 +13,7 @@
 #   - test cases deleted (removed it(/test(/def test_ lines)
 #   - snapshot files updated with no test logic change (absorbing a failure)
 #   - DB/repository mocking added under an integration/e2e path
+#   - a literal calendar date added under a test path (expires → false red)
 #
 # What it can NEVER catch (HUMAN-ONLY, stated so a green lint is not read as
 # test quality): whether expected values were derived from the spec or
@@ -50,6 +51,19 @@ DB_MOCKS=$(printf '%s\n' "$DIFF" | grep -cE '^\+.*(mock|stub|fake)\w*\s*[(<].*(d
 INTEG_TOUCHED=$(printf '%s\n' "$STAGED" | grep -cE '(^|/)(integration|e2e)(/|\.)' || true)
 if [ "${DB_MOCKS:-0}" -gt 0 ] && [ "${INTEG_TOUCHED:-0}" -gt 0 ]; then
   FINDINGS+="test-diff-lint: DB mock/stub added under an integration/e2e path — integration tests run against a real dependency (qa-tester REJECT rule).
+"
+fi
+
+# 5. Literal calendar dates ADDED under a test path. A date written as a
+#    future day expires; the test then fails on HEAD for clock reasons and
+#    burns a review round proving it is not a regression (qa-tester #4).
+TEST_FILES=()
+while IFS= read -r f; do
+  [ -n "$f" ] && TEST_FILES+=("$f")
+done < <(printf '%s\n' "$STAGED" | grep -E '(^|/)(test|tests|__tests__|spec|specs|e2e)(/|\.|_)|\.(test|spec)\.' || true)
+if [ "${#TEST_FILES[@]}" -gt 0 ]; then
+  LITERAL_DATES=$(git diff --cached --unified=0 -- "${TEST_FILES[@]}" 2>/dev/null | grep -cE "^\+.*[\"'\`]20[2-9][0-9]-[01][0-9]-[0-3][0-9]" || true)
+  [ "${LITERAL_DATES:-0}" -gt 0 ] && FINDINGS+="test-diff-lint: $LITERAL_DATES literal calendar date(s) ADDED under a test path — a written date expires and comes back as a red that is not a regression. Fix: derive every date from one frozen now (fake timers / injected clock). Exception: a test of date parsing names its date on purpose.
 "
 fi
 

@@ -60,8 +60,8 @@ Per the `review-code` reviewer-routing rules:
 
 1. Test design — happy + edge + error + race
 2. Types — unit / integration / contract / E2E / property / fuzz / smoke / benchmark
-3. Coverage — critical paths first, depth where it matters, NOT % goal
-4. Flake elimination — deterministic ordering, isolated state, no time-dependence
+3. Coverage — critical paths first, depth where it matters, NOT % goal; sized by rules: one test per rule at the rule's owner, one smoke per call-site, no test whose failure an existing test already catches
+4. Flake elimination — deterministic ordering, isolated state, no time-dependence: dates and times derive from ONE frozen now (fake timers / injected clock), never a literal calendar date or the real clock; expected values from the spec, never read off the shared seed
 5. Repro tests — bug report → failing test → verify fix
 6. Mock strategy — never mock DB for integration; mock only external boundaries
 7. Mutation spot-check — on high-risk logic, break the CODE on purpose (flip one
@@ -98,6 +98,7 @@ Automation comes AFTER the table: each P1 row becomes an automated test (write-m
 - A bug fix without a reproducing failing test → REJECT
 - Expected values captured from the code's current output instead of derived from the spec → REJECT — a test asserting what the code *does*, not what it *should do*, enshrines the bug it was meant to catch
 - A test that passes with a 1-character regression (weak assertion) → REJECT, tighten — prove it with a mutation spot-check (expertise #7)
+- A new test that names a calendar date or reads the real clock → REJECT, derive it from one frozen now — a date expires and a clock drifts, and both come back as a red that is not a regression
 - Integration test that mocks the DB → REJECT, use a real fixture
 - Migration without forward + rollback tests → REJECT
 - Billing / credit code without a race-condition test → REJECT
