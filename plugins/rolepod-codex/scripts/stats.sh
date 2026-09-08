@@ -12,6 +12,9 @@
 #   $HOME/.rolepod/gate-bypass.log            (plain text, machine-global)
 #     precommit-gate evidence auto-passes — the single most likely path for
 #     a weakly-evidenced high-risk commit; invisible here until v2.46.0
+#   $HOME/.claude/projects/<root with / as ->/*/subagents/**/agent-*.jsonl
+#     Claude Code subagent transcripts (v2.108.0): the model each fleet agent
+#     actually ran on + its usage — the only place the fan-out price is visible
 #
 # Usage: scripts/stats.sh [repo-root]   (default: current git root)
 # Run via `make stats`. Read-only; exit 0 even with no data.
@@ -20,13 +23,14 @@ set -uo pipefail
 ROOT="${1:-$(git rev-parse --show-toplevel 2>/dev/null || pwd)}"
 EV="$ROOT/.rolepod/evidence"
 
-python3 -I - "$EV" <<'PY'
+python3 -I - "$EV" "$ROOT" <<'PY'
 import json
 import os
 import sys
 from collections import Counter
 
 ev = sys.argv[1]
+root = sys.argv[2] if len(sys.argv) > 2 else ""
 phase_log = os.path.join(ev, "phase-log.jsonl")
 bypass_log = os.path.join(ev, "bypass.log")
 
@@ -322,6 +326,85 @@ if bypasses:
         print(f"    (self-test rows excluded: {len(selftest)} — reason rolepod-selftest/doctor)")
 elif selftest:
     print(f"\n  Bypasses (0 findings; {len(selftest)} self-test rows excluded — reason rolepod-selftest/doctor)")
+
+# Fleet cost (v2.108.0) — what each Workflow / Agent fleet actually ran on.
+# Source: Claude Code subagent transcripts under ~/.claude/projects/<key>/
+# <session>/subagents/{workflows/<wf>/,}agent-*.jsonl; <key> = repo root with
+# "/" replaced by "-". Read-only. Measured need (CourtBook readiness audit):
+# 57 subagents with a model = 44 opus + 13 fable + 0 sonnet — visible nowhere in the
+# phase-log, which only records the script's declared tiers.
+import glob, time
+def _cls(m):
+    m = (m or "").lower()
+    if "haiku" in m: return "cheap"
+    if "sonnet" in m: return "balanced"
+    if any(k in m for k in ("opus", "fable", "mythos")): return "strong"
+    return "unknown"
+def _short(m):
+    m = (m or "?")
+    for k in ("haiku", "sonnet", "opus", "fable", "mythos"):
+        if k in m.lower(): return k
+    return m[:12]
+fleets = {}
+if root:
+    # the harness keys the project dir by the cwd it saw — try the literal and the resolved path
+    keys = {os.path.abspath(root).replace("/", "-"), os.path.realpath(root).replace("/", "-")}
+    cutoff = time.time() - 14 * 86400
+    files = []
+    for key in keys:
+        base = os.path.join(os.environ.get("HOME", ""), ".claude", "projects", key)
+        files += glob.glob(os.path.join(base, "*", "subagents", "**", "agent-*.jsonl"), recursive=True)
+    for f in sorted(set(files)):
+        try:
+            if os.path.getmtime(f) < cutoff: continue
+        except OSError:
+            continue
+        parts = f.split(os.sep)
+        # workflows/<wf>/... at any depth (a workflow agent may spawn its own subagents/)
+        grp = parts[parts.index("workflows") + 1] if "workflows" in parts[:-1] and parts.index("workflows") + 1 < len(parts) - 1 else "agent-tool"
+        per, first = {}, None     # per model: [out, cache] — a file may switch model mid-way (retry / fallback)
+        try:
+            with open(f, encoding="utf-8", errors="ignore") as fh:
+                for line in fh:
+                    if '"type":"assistant"' not in line and '"type": "assistant"' not in line: continue
+                    try: e = json.loads(line)
+                    except Exception: continue
+                    msg = e.get("message") or {}
+                    m = msg.get("model")
+                    if not m or m.startswith("<"):   # "<synthetic>" = harness placeholder, not a model
+                        continue
+                    u = msg.get("usage") or {}
+                    p = per.setdefault(m, [0, 0])
+                    p[0] += u.get("output_tokens", 0) or 0
+                    p[1] += u.get("cache_read_input_tokens", 0) or 0
+                    first = first or e.get("timestamp")
+        except OSError:
+            continue
+        if not per: continue
+        g = fleets.setdefault(grp, {"first": first or "", "models": {}, "files": 0})
+        g["files"] += 1
+        if first and (not g["first"] or first < g["first"]): g["first"] = first
+        for m, (out, cache) in per.items():   # an agent counts under every model it ran on
+            mm = g["models"].setdefault(m, [0, 0, 0]); mm[0] += 1; mm[1] += out; mm[2] += cache
+if fleets:
+    n_agents = sum(g["files"] for g in fleets.values())
+    print(f"\n  Fleet cost — subagent transcripts (last 14d, {len(fleets)} fleet(s), {n_agents} agents):")
+    def _k(x):
+        if x <= 0: return "0"
+        k = int(x / 1e3 + 0.5)                       # half-up, and 999,999 rolls to 1M
+        return f"{int(x / 1e6 + 0.5)}M" if k >= 1000 else f"{k}k"
+    for grp, g in sorted(fleets.items(), key=lambda kv: kv[1]["first"], reverse=True)[:8]:
+        cells = " · ".join(f"{_short(m)} {v[0]} (out {_k(v[1])}, cache-read {_k(v[2])})" for m, v in sorted(g["models"].items(), key=lambda kv: -kv[1][0]))
+        print(f"    {grp[:16]:16} {(g['first'] or '')[5:16].replace('T', ' '):11}  {cells}")
+    tot = Counter()
+    for g in fleets.values():
+        for m, v in g["models"].items(): tot[_short(m)] += v[0]
+    print("    total: " + " · ".join(f"{m} {n}" for m, n in tot.most_common()))
+    strong = sum(v[0] for g in fleets.values() for m, v in g["models"].items() if _cls(m) == "strong")
+    low = sum(v[0] for g in fleets.values() for m, v in g["models"].items() if _cls(m) in ("cheap", "balanced"))
+    if n_agents >= 5 and strong > low:
+        print("    ⚠ strong-class agents outnumber cheap/balanced ones — fan-outs ran at the Lead price; the tier follows the work: "
+              "read/browse haiku or scout, per-item verify sonnet, ONE opus judge (fleet-tier v2.107 denies new ones)")
 
 print()
 PY
