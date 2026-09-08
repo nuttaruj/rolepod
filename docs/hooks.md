@@ -36,13 +36,15 @@ A per-edit reminder hook duplicated all three without enforcement teeth — so i
 | `PreToolUse` | `Agent` | `cohesion-contract-check.sh` |
 | `PreToolUse` | `Workflow\|Agent` | `workflow-tier-nudge.sh` |
 | `PostToolUse` | `Workflow\|Agent` | `dispatch-auto-log.sh` |
-| `Stop` | (no matcher) | `session-lifecycle.sh --unlock` |
+| `Stop` | (no matcher) | `session-lifecycle.sh --unlock` (+ route record, v2.105.0) |
 
 ## Per-hook reference
 
 ### `claim-verify-nudge.sh` — UserPromptSubmit (core)
 
 **Route nudge (v2.98.0)** — a commission-shaped prompt (fix / add / change / build … + Thai equivalents; claim-shaped analysis prompts and Thai questions excluded) while the repo's newest `phase:"route"` line is older than the previous user prompt (transcript tail; no transcript → 30 min) → one `⟂ route:` line asking for the R0-R4 tier before the first edit. Checker: `hooks/lib/route_check.py`. Not a git repo → silent. Measured need: 199 requests / 0 router invocations in one project.
+
+**Route record (v2.105.0)** — the same checker writes the route line itself. At Stop (`session-lifecycle.sh --unlock` → `lib/route_check.py --record`) and again on the next commission prompt as a fallback (an interrupted turn has no Stop), it reads the finished turn's assistant text from the transcript tail, finds the routing line the router prescribes — two shapes, both at line start: a `Route:` / `Tier:` field (`**Route: R2 — reason**`, `Route: R2 → <skill> · <reason>`, `Tier: R3` inside the block) or the pre-2.105 arrow form (`→ <skill> · R2 · …`) — and appends `{"ts","phase":"route","tier","skill","provenance":"hook-auto"}` once per turn — a turn that already has a route line, manual or auto, is left alone. Ignored on purpose: fenced code, `<skill>` / `<reason>` placeholders, `R0-R4` / `R3/R4` / `R3 | R4` ranges (quoted doctrine, not a decision), `R3-B`-style labels, and anything mid-line. Why no bare `R2 (…)` shape and nothing mid-line — measured on 164,410 assistant lines across every local session: real routes are the field form (14, all `**Route: R2 — …**`), the `Routing:` block appeared 0 times, the arrow one-liner 0, the 4 mid-line `· R2 ·` hits were Cloudflare R2 table rows, and the 34 bare line-start `R2` / `R3-B` lines were phase labels and review-finding numbers. A user prompt with no timestamp is still the turn boundary (the dedupe then keys on the routing message's own timestamp). Known residual (constructed, 0 in the corpus; qa-tester round 3): a single-backtick inline quote `` `Tier: R3` `` or a blockquote `> Tier: R3` at line start still records — the markdown prefix is allowed on purpose because the real form is `**Route: R2 — …**`; not worth a fourth regex round. Measured 2026-09-08: the manual append the router asked for since v2.98.0 was written 0 times across every product repo on this machine (7 lines in rolepod itself), so the nudge fired on every commission and `make stats` had no tier distribution; the same day a 1-file CSS change under ultracode ran a design panel, a 14-agent review and the full e2e suite twice with its R2 stated only in chat.
 
 **Auto-resume (v2.100.0)** — the harness prompt after a usage-limit pause ("Please continue from where you left off") gets one line: it is a resume, not a user decision — a turn that ended at a question / breaker / decision brief is restated, never continued into new scope or a new review round; the route nudge skips it.
 
@@ -88,7 +90,7 @@ Detect sibling Claude session(s) in the same worktree to prevent concurrent-edit
 - **Effect**: write own lock to `~/.rolepod/session-locks/<sha256(worktree)>/<session_id>.lock`. If sibling locks (<30 min old) detected → warn + suggest `git worktree add` path. Auto-prune stale locks (>30 min) and their `.files` registry. The lock dir is CLI-neutral so Codex/Gemini/Cursor sessions (which warn via their SessionStart context-loader) are detected too.
 - **Self-guards**: not in a git repo → silent; no sibling → silent.
 - **Bypass**: `ROLEPOD_ALLOW_SHARED_WORKTREE=1` (for intentional read-only review sessions).
-- **Pair**: same script `--unlock` on Stop; `worktree-guard.sh` enforces per-file at edit time (this hook only warns once at start).
+- **Pair**: same script `--unlock` on Stop (since v2.105.0 it also runs `lib/route_check.py --record`: the tier stated in the finished turn → one `phase:"route"` line in the phase-log); `worktree-guard.sh` enforces per-file at edit time (this hook only warns once at start).
 
 ### `gate-reminder.sh` — PreToolUse Edit/Write/MultiEdit (core)
 

@@ -625,6 +625,64 @@ out=$(rn 'continue with the plan' "$RN_TMP/t.jsonl")
 echo "$out" | grep -q 'commission with no tier' && echo "  ✓ route nudge: route older than the previous prompt → nudge" || { echo "  ✗ route nudge missing when the route predates the last prompt"; fail=$((fail+1)); }
 out=$( (export ROLEPOD_NUDGE_OFF=1; rn 'fix the login button') )
 [ -z "$out" ] && echo "  ✓ route nudge: ROLEPOD_NUDGE_OFF=1 → silent" || { echo "  ✗ route nudge ignores ROLEPOD_NUDGE_OFF"; fail=$((fail+1)); }
+# ── route record (v2.105.0): the hook writes the route line from the routing text ──
+RLOG="$RN_TMP/.rolepod/evidence/phase-log.jsonl"; : > "$RLOG"
+TU=$(python3 -c 'import datetime;print((datetime.datetime.now(datetime.timezone.utc)-datetime.timedelta(minutes=10)).strftime("%Y-%m-%dT%H:%M:%S.000Z"))')
+TA=$(python3 -c 'import datetime;print((datetime.datetime.now(datetime.timezone.utc)-datetime.timedelta(minutes=9)).strftime("%Y-%m-%dT%H:%M:%S.000Z"))')
+mk_transcript() { python3 - "$1" "$TU" "$TA" "$2" <<'PY'
+import json, sys
+p, tu, ta, txt = sys.argv[1:5]
+rows = [{"type":"user","timestamp":tu,"message":{"role":"user","content":[{"type":"text","text":"fix the login button"}]}},
+        {"type":"assistant","timestamp":ta,"message":{"role":"assistant","content":[{"type":"thinking","thinking":"x"},{"type":"text","text":txt}]}}]
+open(p, "w").write("".join(json.dumps(r) + "\n" for r in rows))
+PY
+}
+mk_transcript "$RN_TMP/t2.jsonl" "$(printf '\xe2\x86\x92 implement-plan \xc2\xb7 R2 \xc2\xb7 one handler, own test\n- [ ] baseline: npm test')"
+out=$(rn 'add a logout button' "$RN_TMP/t2.jsonl")
+if [ "$(grep -c '"phase":"route"' "$RLOG")" -eq 1 ] && grep -q '"tier":"R2","skill":"implement-plan","provenance":"hook-auto"' "$RLOG" && ! echo "$out" | grep -q 'commission with no tier'; then echo "  ✓ route record: R2 one-liner in the previous turn → one hook-auto route line, no nudge"; else echo "  ✗ route record R2: out=${out:0:80} log=$(cat "$RLOG")"; fail=$((fail+1)); fi
+out=$(rn 'add a logout button' "$RN_TMP/t2.jsonl")
+[ "$(grep -c '"phase":"route"' "$RLOG")" -eq 1 ] && echo "  ✓ route record: a second prompt on the same turn → no duplicate" || { echo "  ✗ route record duplicated: $(cat "$RLOG")"; fail=$((fail+1)); }
+: > "$RLOG"
+mk_transcript "$RN_TMP/t3.jsonl" 'Uploads go to the Cloudflare R2 bucket. The router tiers R0-R4; R3/R4 need a spec first.'
+out=$(rn 'add a logout button' "$RN_TMP/t3.jsonl")
+if [ ! -s "$RLOG" ] && echo "$out" | grep -q 'commission with no tier'; then echo "  ✓ route record: prose R2 + quoted R0-R4 / R3/R4 ranges → nothing recorded, nudge fires"; else echo "  ✗ route record false positive: log=$(cat "$RLOG") out=${out:0:60}"; fail=$((fail+1)); fi
+: > "$RLOG"
+mk_transcript "$RN_TMP/t4.jsonl" "$(printf 'Routing: Build \xe2\x86\x92 implement-plan\nTier: R3\nReason: three files\nNext step: plan')"
+out=$(rn 'add a logout button' "$RN_TMP/t4.jsonl")
+grep -q '"tier":"R3","skill":"implement-plan","provenance":"hook-auto"' "$RLOG" && echo "  ✓ route record: routing block (Tier: R3 + Routing: → skill) → R3 / implement-plan" || { echo "  ✗ route record block: $(cat "$RLOG")"; fail=$((fail+1)); }
+: > "$RLOG"
+mk_transcript "$RN_TMP/t5.jsonl" 'The router doc says to quote `Tier: R3` in the block when routing at that level.'
+out=$(rn 'add a logout button' "$RN_TMP/t5.jsonl")
+[ ! -s "$RLOG" ] && echo "  ✓ route record: Tier: quoted mid-sentence → nothing (only a line-start field or the marks count)" || { echo "  ✗ route record mid-sentence quote: $(cat "$RLOG")"; fail=$((fail+1)); }
+: > "$RLOG"
+mk_transcript "$RN_TMP/t6.jsonl" "$(printf '| D1 | 52 tables (APAC) \xc2\xb7 R2 \xc2\xb7 cron every 5 min |')"
+out=$(rn 'add a logout button' "$RN_TMP/t6.jsonl")
+[ ! -s "$RLOG" ] && echo "  ✓ route record: marked R2 mid-line (a table row, not a line-start arrow) → nothing" || { echo "  ✗ route record table row: $(cat "$RLOG")"; fail=$((fail+1)); }
+: > "$RLOG"
+python3 - "$RN_TMP/t7.jsonl" "$TA" <<'PY'
+import json, sys
+p, ta = sys.argv[1:3]
+rows = [{"type":"user","message":{"role":"user","content":[{"type":"text","text":"fix the login button"}]}},
+        {"type":"assistant","timestamp":ta,"message":{"role":"assistant","content":[{"type":"text","text":"\u2192 implement-plan \u00b7 R2 \u00b7 one handler"}]}}]
+open(p, "w").write("".join(json.dumps(r) + "\n" for r in rows))
+PY
+out=$(rn 'add a logout button' "$RN_TMP/t7.jsonl")
+grep -q '"tier":"R2"' "$RLOG" && echo "  ✓ route record: user prompt with no timestamp → still the turn boundary, R2 recorded" || { echo "  ✗ route record missing-timestamp boundary: $(cat "$RLOG")"; fail=$((fail+1)); }
+: > "$RLOG"
+mk_transcript "$RN_TMP/t8.jsonl" "$(printf '**Route: R2 \xe2\x80\x94 same task** (docs only, no code)')"
+out=$(rn 'add a logout button' "$RN_TMP/t8.jsonl")
+grep -q '"tier":"R2","skill":"","provenance":"hook-auto"' "$RLOG" && echo "  ✓ route record: the measured real form **Route: R2 — reason** → R2 recorded" || { echo "  ✗ route record field form: $(cat "$RLOG")"; fail=$((fail+1)); }
+: > "$RLOG"
+mk_transcript "$RN_TMP/t9.jsonl" "$(printf 'The block looks like this:\n```\nTier: R3\nRouting: Build \xe2\x86\x92 implement-plan\n```\nfill it in.')"
+out=$(rn 'add a logout button' "$RN_TMP/t9.jsonl")
+[ ! -s "$RLOG" ] && echo "  ✓ route record: a routing block quoted inside a code fence → nothing" || { echo "  ✗ route record fenced quote: $(cat "$RLOG")"; fail=$((fail+1)); }
+: > "$RLOG"
+mk_transcript "$RN_TMP/t10.jsonl" "$(printf 'Route: R2 \xe2\x86\x92 <skill> \xc2\xb7 <reason>')"
+out=$(rn 'add a logout button' "$RN_TMP/t10.jsonl")
+[ ! -s "$RLOG" ] && echo "  ✓ route record: the template with <skill> / <reason> placeholders → nothing" || { echo "  ✗ route record placeholder: $(cat "$RLOG")"; fail=$((fail+1)); }
+: > "$RLOG"
+printf '{"session_id":"rn1","transcript_path":"%s","cwd":"%s"}' "$RN_TMP/t2.jsonl" "$RN_TMP" | (cd "$RN_TMP" && HOME="$RN_TMP" bash "$HOOKS/session-lifecycle.sh" --unlock) >/dev/null 2>&1 || true
+grep -q '"tier":"R2"' "$RLOG" && echo "  ✓ route record: Stop hook (session-lifecycle --unlock) records the finished turn" || { echo "  ✗ route record at Stop: $(cat "$RLOG" 2>/dev/null)"; fail=$((fail+1)); }
 rm -rf "$RN_TMP"
 
 # ── review-rounds policy on internal reviewer dispatch + breaker reminder (v2.99.0) ──

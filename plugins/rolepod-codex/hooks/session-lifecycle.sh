@@ -57,6 +57,12 @@ PATH_HASH=$(printf '%s' "$WORKTREE" | { shasum -a 256 2>/dev/null || sha256sum 2
 LOCK_DIR="$HOME/.rolepod/session-locks/$PATH_HASH"
 
 if [ "$MODE" = "--unlock" ]; then
+  # Route record (v2.105.0): the turn is complete -> the tier the Lead stated
+  # in it lands in the phase-log (lib/route_check.py --record; once per turn,
+  # fail-open). The manual append the router asked for was measured at 0 lines
+  # in every product repo, so this is where the tier distribution comes from.
+  LIB_DIR="$(cd "$(dirname "$0")" && pwd)/lib"
+  ( cd "$CWD" 2>/dev/null && printf '%s' "$INPUT" | python3 "$LIB_DIR/route_check.py" --record ) 2>/dev/null || true
   [ -z "$SESSION_ID" ] && exit 0
   rm -f "$LOCK_DIR/$SESSION_ID.lock" 2>/dev/null || true
   # Release the files this session claimed (worktree-guard.sh registry) so a

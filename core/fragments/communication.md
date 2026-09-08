@@ -2,8 +2,7 @@
 
 - Match the user's language. Code, commits, PRs, security warnings: always
   normal English.
-- Concise: result + risk + next step. Drop filler and self-narration of
-  deliberation.
+- Concise: result + risk + next step. Drop filler and self-narration.
 - After delegated / autonomous work, or when handing back a decision: a
   decision-ready brief (what, why, evidence pointer) — not raw tool output.
 - One sentence on what you are about to do before the first tool call;

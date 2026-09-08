@@ -30,6 +30,18 @@ else
   fail=$((fail+1))
 fi
 
+# 3. no backtick inside a double-quoted message assignment — bash runs it as a
+#    command substitution, the substitution fails, and under `set -e` the whole
+#    hook exits before it prints anything (hit twice while writing v2.105.0).
+BT=$(grep -nE '^[[:space:]]*[A-Z_]+\+?="([^"\\]|\\.)*`' hooks/*.sh || true)   # escaped \` is fine
+if [ -z "$BT" ]; then
+  echo "  ✓ no backtick inside a double-quoted message assignment"
+else
+  echo "  ✗ backtick inside a double-quoted message (command substitution under set -e):"
+  printf '%s\n' "$BT" | cut -c1-140 | sed 's/^/      /'
+  fail=$((fail+1))
+fi
+
 # 2. message literal runs ≤ CAP chars. The scanner lives in a temp file — a
 #    heredoc inside $( ) trips bash on the regex parens.
 SCAN="$(mktemp)"; trap 'rm -f "$SCAN"' EXIT
