@@ -93,7 +93,7 @@ Never for routine specs.
    the external's own default model, anchored under
    `.rolepod/evidence/external/`, logged `phase: advise`, `kind: critique`.
 3. **Triage before the user sees anything.** Items the repo or the spec
-   already settle → answer them yourself (Read / `rg`, never guess) and
+   already settle → answer them yourself (Read / grep, never guess) and
    fold the answer into the draft. Items that are genuinely the user's
    decision → ONE extra discovery round per §2: numbered, a recommended
    default per question. Never forward the critic's list raw, never run a

@@ -50,7 +50,7 @@ Match the user intent to the FIRST skill that fires. The skill itself decides wh
 | "build / add / create / make / design" + vague target (commission only — musing / hypothetical framing → Conversation mode above) | **Define** | `write-spec` | cheap (PM/spec) |
 | "build X to spec" + a spec exists whose Success criteria cover the ask | **Plan** | `write-plan` | cheap–balanced |
 | "add / change Y" on a feature that has a spec, but its Success criteria do not cover Y | **Define** | `write-spec` (repeat feature — a new dated spec, delta against the prior one; never edit the approved file) | cheap (PM/spec) |
-| "add / change Y" on a feature with NO spec (legacy code) | **Define** | `write-spec` — first spec of a legacy feature: Current behavior = every consumer of the behavior that moves (`rg` / code-intel callers), each one a plan task or a Non-goal — the seams reviewers would otherwise find one round at a time; R2-sized → inline checklist | cheap (PM/spec) |
+| "add / change Y" on a feature with NO spec (legacy code) | **Define** | `write-spec` — first spec of a legacy feature: Current behavior = every consumer of the behavior that moves (grep the call sites, code-intel callers when connected), each one a plan task or a Non-goal — the seams reviewers would otherwise find one round at a time; R2-sized → inline checklist | cheap (PM/spec) |
 | "execute plan / work the plan / implement plan.md" | **Plan→Build** | `write-plan` → `implement-plan` | balanced |
 | "write test cases / test this feature / report a bug" — QA hand-off, no fix wanted | **Verify (QA)** | `qa-tester` agent (spec-first test-case design); a found bug → `debug-issue` report-only exit | cheap–balanced |
 | "fix bug / failing test / broken / regression / why does X fail" | **Build (bug)** | `debug-issue` | balanced |
@@ -95,7 +95,7 @@ learning the pattern, self-do is correct and needs the Lead's judgment. The
 3rd instance of the SAME shape (no new decision, just the learned fix applied
 again) is the convergence signal — **stop, don't fix it inline**:
 
-1. Enumerate the remainder (`rg` for the pattern / failing-test list).
+1. Enumerate the remainder (grep for the pattern / failing-test list).
 2. Brief writes itself: the 2 fixed instances ARE the examples — pattern,
    before/after diff, verify command.
 3. Dispatch the remainder as ONE batch to an implementer at the mechanical

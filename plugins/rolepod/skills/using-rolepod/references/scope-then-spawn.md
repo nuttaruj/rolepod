@@ -23,13 +23,13 @@ only when no subagent support exists.
 
 | Step | With code-intel index | Without |
 |---|---|---|
-| Scope | query index for target concept → file / symbol list | `rg -l <pattern>` + `find` |
-| Narrow | impact / callers query → blast radius | `rg` cross-reference + Read on hotspots |
-| Spawn | Parallel agents on narrowed list | Parallel agents on rg-filtered list |
+| Scope | query index for target concept → file / symbol list | `grep -rl <pattern>` + `find` |
+| Narrow | impact / callers query → blast radius | grep cross-reference + Read on hotspots |
+| Spawn | Parallel agents on narrowed list | Parallel agents on the grep-filtered list |
 
 Code-intel path: sub-second graph query, no per-file LLM read. Cuts token cost
 ~90% on structural audits.
-Fallback path: `rg` + `find` are universal. No index = no block. Lead does
+Fallback path: `grep` + `find` are universal (`rg` only if installed). No index = no block. Lead does
 not nag the user to install anything.
 
 ## When scope-then-spawn does NOT apply

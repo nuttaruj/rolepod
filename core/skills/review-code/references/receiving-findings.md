@@ -53,7 +53,7 @@ The reviewer outranks neither documented decisions nor user direction.
 When the reviewer says "implement properly", "add complete X handling", or "this should support Y too":
 
 ```bash
-rg "<the-thing-the-reviewer-wants-added>" <project-paths>
+grep -rn "<the-thing-the-reviewer-wants-added>" <project-paths>
 ```
 
 - **Unused** → propose removing the surface (YAGNI) instead of building more

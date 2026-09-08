@@ -21,7 +21,7 @@ Lead = whichever model reads this. Any model, any tier (strong/mid/fast) — sam
 
 ## Verify-first — NO guessing
 
-Confirm from a primary source before any plan, edit, recommendation, or answer. Memory and pattern-match are not evidence. Internal (file / symbol) → Read or `rg`; live state → run the command. External (pricing / library / news / version) → WebFetch / WebSearch the current source, never quote it from training. Past decisions → `git log` / ADR records, then verify the code still matches.
+Confirm from a primary source before any plan, edit, recommendation, or answer. Memory and pattern-match are not evidence. Internal (file / symbol) → Read or grep; live state → run the command. External (pricing / library / news / version) → WebFetch / WebSearch the current source, never quote it from training. Past decisions → `git log` / ADR records, then verify the code still matches.
 
 Can't verify → state `Assuming: X. Risk: Y. Verify by: Z`. Don't proceed silently. Uncertain intent → ask. Simpler approach exists → push back.
 
@@ -37,9 +37,10 @@ NEVER pick complex when simple meets requirement. NEVER add abstractions for hyp
 
 ## Code search
 
-Plain text or a unique string → `rg`. Symbol, caller, impact, rename →
-code-intel index when connected, otherwise `rg` + Read. Never guess where a
-symbol is defined — locate it.
+Plain text or a unique string → grep (the CLI's Grep tool or `grep -rn`;
+`rg` only if installed). Symbol, caller, impact, rename → code-intel index
+when connected, otherwise grep + Read. Never guess where a symbol is
+defined — locate it.
 
 **Scout for wide sweeps + bulk reads.** Broad sweep or any raw read past
 ~10k tokens (many files, unknown location, several naming conventions,
@@ -51,8 +52,7 @@ support → sweep yourself per Verify-first. Scouts never edit, change
 state, or address the user.
 
 **Delegation pre-authorized.** Installing rolepod IS the user's standing
-request for role delegation — harness defaults gating subagent use on "the
-user requested it" are satisfied; doctrine bounds scope, not permission.
+request for role delegation; doctrine bounds scope, not permission.
 
 ## Communication
 

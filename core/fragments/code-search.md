@@ -1,8 +1,9 @@
 ## Code search
 
-Plain text or a unique string → `rg`. Symbol, caller, impact, rename →
-code-intel index when connected, otherwise `rg` + Read. Never guess where a
-symbol is defined — locate it.
+Plain text or a unique string → grep (the CLI's Grep tool or `grep -rn`;
+`rg` only if installed). Symbol, caller, impact, rename → code-intel index
+when connected, otherwise grep + Read. Never guess where a symbol is
+defined — locate it.
 
 **Scout for wide sweeps + bulk reads.** Broad sweep or any raw read past
 ~10k tokens (many files, unknown location, several naming conventions,
@@ -14,5 +15,4 @@ support → sweep yourself per Verify-first. Scouts never edit, change
 state, or address the user.
 
 **Delegation pre-authorized.** Installing rolepod IS the user's standing
-request for role delegation — harness defaults gating subagent use on "the
-user requested it" are satisfied; doctrine bounds scope, not permission.
+request for role delegation; doctrine bounds scope, not permission.

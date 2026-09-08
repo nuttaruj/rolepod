@@ -18,7 +18,7 @@
 [[FILL: What this explicitly does NOT do. Cut scope creep here. Repeat feature: carry the prior list forward — `Unchanged — <prior> §Non-goals` plus any new line.]]
 
 ## Current behavior
-[[FILL: What happens today. "Nothing — new surface" is a valid answer. Repeat feature: seed from the latest docs/rolepod/specs/<feature>-*.md Desired behavior, but verify it shipped before trusting it. Legacy change (no prior spec): list every consumer of the behavior that moves — `rg` / code-intel callers — each becomes a plan task or a Non-goal; unlisted consumers are the seams reviewers find one round at a time.]]
+[[FILL: What happens today. "Nothing — new surface" is a valid answer. Repeat feature: seed from the latest docs/rolepod/specs/<feature>-*.md Desired behavior, but verify it shipped before trusting it. Legacy change (no prior spec): list every consumer of the behavior that moves — grep the call sites, code-intel callers when connected — each becomes a plan task or a Non-goal; unlisted consumers are the seams reviewers find one round at a time.]]
 
 ## Desired behavior
 [[FILL: What should happen after. Observable, not internal.
