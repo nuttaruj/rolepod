@@ -1,9 +1,9 @@
 #!/bin/bash
 # PreToolUse(Edit|Write|MultiEdit) — HARD-block edits that violate
 # discipline rules + soft-warn on schema-bound new files + high-risk path
-# edits. Normal code edits are silent (Q1-Q4 reminder moved out — it
-# lives in CLAUDE.md / AGENTS.md / using-rolepod skill where Lead reads
-# it once per session, not per-edit).
+# edits. Normal code edits are silent here (the per-edit Q1-Q4 reminder
+# was cut for cost); since v2.109.0 worktree-guard.sh injects the reuse
+# ladder ONCE per file per session at first touch / new file / manifest.
 #
 # Default tiering:
 #   Trivial path (docs/configs/lockfiles)             → silent

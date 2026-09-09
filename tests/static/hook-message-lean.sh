@@ -57,7 +57,7 @@ for f in sys.argv[2:]:
             if len(j) > longest[0]: longest[0], longest[1] = len(j), f
             if len(j) > cap: bad.append((f, len(j), j[:60]))
         del buf[:]
-    lit = re.compile(r'^(?:[A-Za-z_]+ = \(|ctx\([^"]*|print\(|\'[A-Za-z]+\': \()?\s*"((?:[^"\\]|\\.)*)"\s*[\\,)%]?.*$')
+    lit = re.compile(r'^(?:[A-Za-z_]+ = \(|[A-Za-z_]+ = |ctx\([^"]*|print\(|\'[A-Za-z]+\': \()?\s*"((?:[^"\\]|\\.)*)"\s*[\\,)%]?.*$')
     for line in src.splitlines():
         s = line.strip()
         if s.startswith("#"):

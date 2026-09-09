@@ -191,6 +191,29 @@ out=$(printf '{"tool_name":"Write","tool_input":{}}' | bash "$HOOKS/worktree-gua
   && echo "  ✓ worktree-guard pathless payload → exit 0 (was rc=1)" \
   || { echo "  ✗ worktree-guard pathless payload: rc=$rc"; fail=$((fail+1)); }
 
+# ── reuse-ladder nudge at first touch / new file / manifest (v2.109.0) ──
+WG_TMP=$(mktemp -d); ( cd "$WG_TMP" && git init -q . && mkdir -p src docs && printf 'x\n' > src/a.ts && printf '{}\n' > package.json && printf '# r\n' > docs/r.md )
+wg() { printf '{"session_id":"wg1","cwd":"%s","tool_name":"%s","tool_input":{"file_path":"%s"}}' "$WG_TMP" "$1" "$WG_TMP/$2" | (cd "$WG_TMP" && HOME="$WG_TMP" bash "$HOOKS/worktree-guard.sh") || true; }
+out=$(wg Edit src/a.ts)
+echo "$out" | grep -q 'first touch of a.ts' && echo "  ✓ reuse nudge: first edit of a code file this session → one ladder line" || { echo "  ✗ reuse nudge first touch: ${out:0:100}"; fail=$((fail+1)); }
+out=$(wg Edit src/a.ts)
+[ -z "$out" ] && echo "  ✓ reuse nudge: second edit of the same file → silent" || { echo "  ✗ reuse nudge repeated: ${out:0:80}"; fail=$((fail+1)); }
+out=$(wg Write src/b.ts)
+echo "$out" | grep -q 'new file b.ts' && echo "  ✓ reuse nudge: Write of a file that does not exist → new-file wording" || { echo "  ✗ reuse nudge new file: ${out:0:100}"; fail=$((fail+1)); }
+out=$(wg Edit package.json); out2=$(wg Edit package.json)
+echo "$out" | grep -q 'dependency manifest package.json' && echo "$out2" | grep -q 'dependency manifest' && echo "  ✓ reuse nudge: dependency manifest → last-rung wording on every edit" || { echo "  ✗ reuse nudge manifest: ${out:0:80} / ${out2:0:40}"; fail=$((fail+1)); }
+out=$(wg Edit docs/r.md)
+[ -z "$out" ] && echo "  ✓ reuse nudge: docs path → silent" || { echo "  ✗ reuse nudge on docs: ${out:0:80}"; fail=$((fail+1)); }
+out=$( (export ROLEPOD_NUDGE_OFF=1; wg Edit src/c.ts) )
+[ -z "$out" ] && echo "  ✓ reuse nudge: ROLEPOD_NUDGE_OFF=1 → silent" || { echo "  ✗ reuse nudge ignores NUDGE_OFF: ${out:0:80}"; fail=$((fail+1)); }
+printf 'y\n' > "$WG_TMP/src/d.ts"; out=$(wg Write src/d.ts)
+echo "$out" | grep -q 'first touch of d.ts' && ! echo "$out" | grep -q 'new file' && echo "  ✓ reuse nudge: Write to an EXISTING file → first-touch wording, not new-file" || { echo "  ✗ reuse nudge Write existing: ${out:0:100}"; fail=$((fail+1)); }
+out=$(wg MultiEdit src/e.ts)
+echo "$out" | grep -q 'first touch of e.ts' && echo "  ✓ reuse nudge: MultiEdit payload → fires like Edit" || { echo "  ✗ reuse nudge MultiEdit: ${out:0:100}"; fail=$((fail+1)); }
+printf '{}\n' > "$WG_TMP/package-lock.json"; out=$(wg Edit package-lock.json)
+[ -z "$out" ] && echo "  ✓ reuse nudge: package-lock.json is a lockfile, not a manifest → silent" || { echo "  ✗ reuse nudge lockfile: ${out:0:80}"; fail=$((fail+1)); }
+rm -rf "$WG_TMP"
+
 # ── precommit: evidence auto-pass — split by risk (v2.46.0) ─────────────
 # A HIGH-RISK diff clears ONLY on a strong-class adversarial reviewer
 # dispatch (security-engineer / universal-reviewer). Test edits and qa-tester
