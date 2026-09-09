@@ -514,6 +514,19 @@ def count_workflow_reviewers(script: str) -> tuple[int, int]:
     return reviewers, strong
 
 
+_WRITE_MODE_RE = re.compile(r"\bwrite[- ]mode\b", re.IGNORECASE)
+_REVIEW_MODE_RE = re.compile(r"\breview[- ]mode\b", re.IGNORECASE)
+
+
+def is_write_mode_brief(prompt) -> bool:
+    """True when a dispatch brief declares write-mode (the qa-tester mode
+    contract). Such a dispatch authors tests; it is never the review.
+    A brief that also says review-mode ("review-mode, not write-mode" — the
+    agent file's own vocabulary) is a review: fail-open toward counting."""
+    return bool(isinstance(prompt, str) and _WRITE_MODE_RE.search(prompt)
+                and not _REVIEW_MODE_RE.search(prompt))
+
+
 def count_reviewers_dispatched(transcript_path: str) -> int:
     """Times Lead spawned qa-tester / security-engineer / universal-reviewer.
 
@@ -522,11 +535,17 @@ def count_reviewers_dispatched(transcript_path: str) -> int:
     A plugin-namespaced reviewer used to count as 0 — which false-blocked
     commits at the precommit gate even after review actually ran. Workflow
     scripts count via their agent() agentType calls (count_workflow_reviewers).
+
+    A brief that declares `write-mode` is a writer, not a reviewer (v2.113.0):
+    qa-tester / security-engineer dispatched to author tests used to count
+    as the review — on a high-risk diff a test-writing security-engineer
+    cleared the STRONG-review gate with no review having happened.
     """
     n = 0
     for tool, inp in _iter_tool_uses(transcript_path):
         if tool in AGENT_TOOLS:
-            if _bare_agent_name(inp.get("subagent_type")) in REVIEWER_AGENTS:
+            if _bare_agent_name(inp.get("subagent_type")) in REVIEWER_AGENTS \
+                    and not is_write_mode_brief(inp.get("prompt")):
                 n += 1
         elif tool == "Workflow":
             n += count_workflow_reviewers(_workflow_script(inp))[0]

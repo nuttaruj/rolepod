@@ -39,6 +39,16 @@ run '{"type":"tool_use","name":"Agent","input":{"subagent_type":"rolepod:qa-test
 run '{"type":"tool_use","name":"Task","input":{"subagent_type":"rolepod:security-engineer"}}' \
   count-reviewers-dispatched 1 "Task tool + rolepod:security-engineer counts"
 
+# A brief that declares write-mode is a writer, not a reviewer (v2.113.0).
+run '{"type":"tool_use","name":"Agent","input":{"subagent_type":"rolepod:security-engineer","prompt":"## Mode\nwrite-mode: add a failing authz test for TC3"}}' \
+  count-reviewers-dispatched 0 "write-mode security-engineer is not a review"
+run '{"type":"tool_use","name":"Agent","input":{"subagent_type":"rolepod:qa-tester","prompt":"review-mode ONLY. Do NOT edit any file."}}' \
+  count-reviewers-dispatched 1 "review-mode qa-tester counts"
+run '{"type":"tool_use","name":"Agent","input":{"subagent_type":"rolepod:qa-tester","prompt":"Read the diff and judge correctness"}}' \
+  count-reviewers-dispatched 1 "a brief with no mode word still counts (fail-open)"
+run '{"type":"tool_use","name":"Agent","input":{"subagent_type":"rolepod:qa-tester","prompt":"review-mode ONLY - do NOT edit, you are not in write-mode"}}' \
+  count-reviewers-dispatched 1 "review-mode that merely mentions write-mode still counts"
+
 # A bare (un-namespaced) name must still count — no regression.
 run '{"type":"tool_use","name":"Agent","input":{"subagent_type":"qa-tester"}}' \
   count-reviewers-dispatched 1 "bare qa-tester still counts"

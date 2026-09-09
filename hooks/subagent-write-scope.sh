@@ -17,7 +17,8 @@
 # `agent_type` only for a sub-agent call (live-verified 2026-09-09: a spawn
 # with subagent_type omitted OR 'general-purpose' arrives as
 # agent_type='general-purpose'). Classes, namespace stripped:
-#   generic   general-purpose / default / claude  → no product write at all
+#   generic   general-purpose / default / claude / workflow-subagent (a bare
+#             Workflow agent(); live-verified 2026-09-09) → no product write at all
 #   test-only qa-tester / security-engineer       → test paths + markdown only
 #             (test path = test dir segment or test-named file; `specs/` is a
 #             contract dir in rolepod's own convention and Python has no
@@ -56,7 +57,7 @@ if not (d.get("agent_id") or ""):
     sys.exit(0)                                   # Lead conversation
 atype = (d.get("agent_type") or "").strip()
 bare = atype.split(":")[-1].lower()
-GENERIC   = ("general-purpose", "default", "claude")
+GENERIC   = ("general-purpose", "default", "claude", "workflow-subagent")
 TEST_ONLY = ("qa-tester", "security-engineer")
 READ_ONLY = ("universal-reviewer", "scout")
 if bare in GENERIC:     cls = "generic"
@@ -98,7 +99,13 @@ except Exception:
     pass
 short = path if len(path) <= 80 else "…" + path[-79:]
 verb = tool or "a write"
-if cls == "generic":
+if bare == "workflow-subagent":
+    reason = ("BLOCKED: bare Workflow agent() attempted %s on %s. A writing stage needs a role: "
+              "set agentType: \x27rolepod:<role>\x27 (backend-developer / frontend-developer / ...) on "
+              "this agent() call and resume the workflow (finished stages replay from cache). "
+              "Fix now: return BLOCKED naming this path. Exception: "
+              "ROLEPOD_ALLOW_OUT_OF_SCOPE_WRITE=1 (user-set).") % (verb, short)
+elif cls == "generic":
     reason = ("BLOCKED: generic sub-agent %r attempted %s on %s. A platform agent "
               "(general-purpose / default) never writes product files. Fix: stop and return "
               "BLOCKED naming this path — the Lead re-dispatches the write to a rolepod role "

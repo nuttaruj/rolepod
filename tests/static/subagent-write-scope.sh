@@ -39,6 +39,10 @@ run '{"agent_id":"a1","agent_type":"general-purpose","tool_name":"Edit","tool_in
 
 run '{"agent_id":"a1","agent_type":"default","tool_name":"Write","tool_input":{"file_path":"'"$P"'"}}' \
   deny "default agent Write on a product path is denied"
+run '{"agent_id":"a1","agent_type":"workflow-subagent","tool_name":"Edit","tool_input":{"file_path":"'"$P"'"}}' \
+  deny "bare Workflow agent() Edit on a product path is denied"
+run '{"agent_id":"a1","agent_type":"workflow-subagent","tool_name":"Write","tool_input":{"file_path":"/Users/x/proj/notes/plan.md"}}' \
+  deny "bare Workflow agent() may not write even markdown in the product tree"
 
 run '{"agent_id":"a1","agent_type":"rolepod:backend-developer","tool_name":"Edit","tool_input":{"file_path":"'"$P"'"}}' \
   allow "a rolepod role writes"
@@ -118,10 +122,13 @@ if printf '%s' "$REASON" | grep -q "re-dispatches the write to a rolepod role" &
 else
   echo "  ✗ deny reason shape/length (${#REASON} chars)"; fail=$((fail+1))
 fi
-for who in rolepod:qa-tester rolepod:universal-reviewer; do
+for who in rolepod:qa-tester rolepod:universal-reviewer workflow-subagent; do
   R=$(cd "$WORK" && printf '%s' '{"agent_id":"a1","agent_type":"'"$who"'","tool_name":"Edit","tool_input":{"file_path":"'"$P"'"}}' \
     | bash "$REPO_DIR/$HOOK" 2>/dev/null | python3 -c 'import sys,json;print(json.load(sys.stdin)["hookSpecificOutput"]["permissionDecisionReason"])')
-  if printf '%s' "$R" | grep -q "Fix:" && printf '%s' "$R" | grep -q "ROLEPOD_ALLOW_OUT_OF_SCOPE_WRITE=1" && [ "${#R}" -le 600 ]; then
+  if [ "$who" = workflow-subagent ] && ! printf '%s' "$R" | grep -q "agentType: 'rolepod:<role>'"; then
+    echo "  ✗ workflow-subagent deny reason must name agentType"; fail=$((fail+1))
+  fi
+  if printf '%s' "$R" | grep -qE "Fix:|Fix now:" && printf '%s' "$R" | grep -q "ROLEPOD_ALLOW_OUT_OF_SCOPE_WRITE=1" && [ "${#R}" -le 600 ]; then
     echo "  ✓ $who deny reason = fact → Fix → Exception, ${#R} chars"
   else
     echo "  ✗ $who deny reason shape/length (${#R} chars)"; fail=$((fail+1))

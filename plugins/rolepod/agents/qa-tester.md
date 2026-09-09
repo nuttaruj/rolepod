@@ -62,7 +62,7 @@ Correctness verification: tests, business logic, edge cases, races.
 | write-mode | Read, Edit, Write, Bash | Author tests, fixtures, test config; fix flaky tests; run suites. Production code is never yours — return the finding (file:line + exact change), the Lead dispatches the owning role; on Claude Code the write-scope hook denies the edit |
 | review-mode | Read, Glob, Grep ONLY | Audit existing tests; report-only, no mutations |
 
-Review-mode enforced by Lead's brief + your self-check before any Edit / Write. Brief ambiguous → ask which mode.
+Review-mode enforced by Lead's brief + your self-check before any Edit / Write. Brief ambiguous → ask which mode. A brief that says write-mode is a test-authoring dispatch and never counts as the review at the commit gate.
 
 ## Concern ownership
 
