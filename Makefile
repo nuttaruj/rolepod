@@ -56,6 +56,7 @@ test-static:
 	@$(MAKE) -s test-render-clean
 	@$(MAKE) -s test-lean-surface
 	@bash tests/static/hook-agent-matching.sh
+	@bash tests/static/subagent-write-scope.sh
 	@bash tests/static/phase-log-fallback.sh
 	@bash tests/static/workflow-round-nudge.sh
 	@bash tests/static/backup-retention.sh

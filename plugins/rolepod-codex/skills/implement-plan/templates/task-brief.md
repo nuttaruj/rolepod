@@ -24,6 +24,11 @@
 ## Done criteria
 <All true: test passes · lint clean · no scope creep beyond Files allowed.>
 
+## Reviewer
+<Who reads the diff when this returns — a rolepod role (`qa-tester` / `universal-reviewer` /
+ `security-engineer`), or `N/A` + why. No name → do not dispatch.>
+- Reviewer: `<role>`
+
 ## Bounds
 - Max tool calls: <e.g. 12>
 - Do NOT commit — return a manifest; the Lead commits.

@@ -90,7 +90,7 @@ First decide *whether* to delegate. The plan's **Owner:** line wins when set —
 
 {{INCLUDE: core/fragments/gates-q1-q4.md}}
 
-When delegating, fill `templates/task-brief.md` — it scopes the task to 1-2 files or one module, names allowed / forbidden paths, the test command, the done criteria, and the tool cap. Two rules are absolute: the subagent NEVER commits (it returns a manifest, the Lead commits), and it NEVER expands scope.
+When delegating, fill `templates/task-brief.md` — it scopes the task to 1-2 files or one module, names allowed / forbidden paths, the test command, the done criteria, and the tool cap. Two rules are absolute: the subagent NEVER commits (it returns a manifest, the Lead commits), and it NEVER expands scope. Two more are structural: the brief names its **Reviewer** (a role that reads the diff when it returns, or `N/A` + why) — no reviewer named, no dispatch; and a generic platform agent (`general-purpose` / `default` / `claude`) never receives a write mandate — a write goes to a rolepod role, and on Claude Code the write-scope hook denies a generic agent's product edit outright.
 
 Pass the full task text + scene-setting context inline in the brief. Do not point the subagent at the plan file path — controller curates exactly the slice the subagent needs.
 

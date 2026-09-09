@@ -11,7 +11,7 @@ Lead does not invoke these manually. They fire automatically.
 | Category | Hooks | Purpose |
 |---|---|---|
 | **Always-on** | `always-on-loader` | Inject the rolepod always-on judgment core as SessionStart context |
-| **Enforcement** | `block-subagent-commit`, `cohesion-contract-check`, `gate-reminder`, `precommit-gate` | Hard / soft blocks on discipline violations (high-risk path, parallel-without-contract, sub-agent commit, schema-bound new file) |
+| **Enforcement** | `block-subagent-commit`, `subagent-write-scope`, `cohesion-contract-check`, `gate-reminder`, `precommit-gate` | Hard / soft blocks on discipline violations (high-risk path, parallel-without-contract, sub-agent commit, schema-bound new file) |
 | **Context** | `project-context-loader` | Inject git state at SessionStart |
 | **Session safety** | `session-lifecycle`, `worktree-guard` | `session-lifecycle`: SessionStart lock + Stop unlock. `worktree-guard`: hard-blocks an edit only when a live sibling owns that exact file — disjoint/solo edits flow free |
 | **Answer-path** | `claim-verify-nudge` | Soft read-first nudge when a prompt asks for an analysis / diagnosis / "how does X work" / status — covers the claim/answer path that tool + lifecycle hooks miss. Since v2.49.0 also the **context-bloat check**: reads the last turn's context size from the transcript and, past 200k tokens, adds one note per 200k bucket per session — `additionalContext` for the Lead only (delegate reads to a scout; mention /compact or a fresh session to the user once, at a natural pause — the user-facing `systemMessage` was removed in v2.49.1 as friction). Measured need: a 12-day session ran every turn at 350-900k tokens; each turn re-reads all of it — one grep sweep = 31 turns × 558k ≈ $9. Claude/Codex `UserPromptSubmit`, Gemini `BeforeAgent`; soft, never blocks |
@@ -31,7 +31,8 @@ A per-edit reminder hook duplicated all three without enforcement teeth — so i
 |---|---|---|
 | `SessionStart` | `startup\|resume` | `always-on-loader.sh`, `project-context-loader.sh`, `session-lifecycle.sh --lock` |
 | `UserPromptSubmit` | (no matcher) | `claim-verify-nudge.sh` |
-| `PreToolUse` | `Edit\|Write\|MultiEdit` | `worktree-guard.sh`, `gate-reminder.sh` |
+| `PreToolUse` | `Edit\|Write\|MultiEdit` | `worktree-guard.sh`, `gate-reminder.sh`, `subagent-write-scope.sh` |
+| `PreToolUse` | `NotebookEdit` | `subagent-write-scope.sh` |
 | `PreToolUse` | `Bash` | `precommit-gate.sh`, `block-subagent-commit.sh` |
 | `PreToolUse` | `Agent` | `cohesion-contract-check.sh` |
 | `PreToolUse` | `Workflow\|Agent` | `workflow-tier-nudge.sh` |
@@ -142,6 +143,15 @@ Sub-agents cannot run `git commit` / `git push` / `gh pr merge` / `gh pr create`
 - **Effect**: `permissionDecision: deny` with agent_type in reason.
 - **Self-guards**: Lead Bash (no `agent_id`) → silent.
 - **Bypass**: none — hard rule. Real-world failure (backend-developer committed bypassing qa-tester floor) motivated this.
+
+### `subagent-write-scope.sh` — PreToolUse Edit/Write/MultiEdit/NotebookEdit (core, v2.111.0)
+
+A generic platform sub-agent (`general-purpose` / `default` / `claude`) never writes a product file. Measured before the hook: 16 of 31 `general-purpose` dispatches in 30 days edited product code with no role doctrine, no tool cap, and no cohesion contract (`cohesion-contract-check` whitelists general-purpose as read-only). The leak is always the Lead judging a write "shallow enough" for the catch-all agent — so the write itself is the line, not the dispatch prompt.
+
+- **Trigger**: `agent_id` populated AND `agent_type` (namespace stripped) is a generic type. Live-verified 2026-09-09: an Agent spawn with `subagent_type` omitted arrives as `general-purpose`.
+- **Effect**: `permissionDecision: deny`; the sub-agent returns BLOCKED naming the path and the Lead re-dispatches the write to a rolepod role. A row `{"phase":"write-scope","decision":"deny",…}` lands in `phase-log.jsonl`.
+- **Self-guards**: Lead edits, every rolepod role, an unknown `agent_type`, OS temp roots (prefix-anchored: `/tmp/`, `/private/tmp/`, `/var/folders/`, the Python tempdir — a repo-internal `tmp/` stays product) and scratch / evidence paths (substring: `scratchpad/`, `.rolepod/`, `.claude/agent-memory/`, `docs/rolepod/`) pass silently.
+- **Bypass**: `ROLEPOD_ALLOW_GENERIC_WRITE=1` (user-set; logged to `bypass.log`).
 
 ### `cohesion-contract-check.sh` — PreToolUse Agent (core)
 
@@ -397,4 +407,4 @@ claude plugin details rolepod@rolepod
 # Component inventory should list a Hooks line covering UserPromptSubmit, SessionStart, PreToolUse, Stop
 ```
 
-Expected: 12 core hook scripts / 13 registrations (UserPromptSubmit × 1, SessionStart × 3, PreToolUse × 6, PostToolUse × 2, Stop × 1 — `session-lifecycle.sh` registers twice, `--lock`/`--unlock`).
+Expected: 13 core hook scripts / 15 registrations (UserPromptSubmit × 1, SessionStart × 3, PreToolUse × 8, PostToolUse × 2, Stop × 1 — `session-lifecycle.sh` registers twice, `--lock`/`--unlock`).

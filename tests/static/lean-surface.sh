@@ -274,8 +274,8 @@ read -r HC_CODEX  REG_CODEX  <<< "$(hook_script_count adapters/codex/plugins/rol
 read -r HC_GEMINI REG_GEMINI <<< "$(hook_script_count adapters/gemini/hooks/hooks.json)"
 read -r HC_CURSOR REG_CURSOR <<< "$(hook_script_count adapters/cursor/hooks/hooks.json)"
 read -r HC_AGY    REG_AGY    <<< "$(hook_script_count adapters/antigravity/hooks/hooks.json)"
-check "hook scripts per manifest = Claude 12 / Codex 9 / Gemini 5 / Cursor 3 / Antigravity 6 (actual: $HC_CLAUDE/$HC_CODEX/$HC_GEMINI/$HC_CURSOR/$HC_AGY)" \
-  "[ $HC_CLAUDE -eq 12 ] && [ $HC_CODEX -eq 9 ] && [ $HC_GEMINI -eq 5 ] && [ $HC_CURSOR -eq 3 ] && [ $HC_AGY -eq 6 ]"
+check "hook scripts per manifest = Claude 13 / Codex 9 / Gemini 5 / Cursor 3 / Antigravity 6 (actual: $HC_CLAUDE/$HC_CODEX/$HC_GEMINI/$HC_CURSOR/$HC_AGY)" \
+  "[ $HC_CLAUDE -eq 13 ] && [ $HC_CODEX -eq 9 ] && [ $HC_GEMINI -eq 5 ] && [ $HC_CURSOR -eq 3 ] && [ $HC_AGY -eq 6 ]"
 check "README hook counts match manifests" \
   "grep -q \"Claude $HC_CLAUDE / Codex $HC_CODEX / Gemini $HC_GEMINI / Cursor $HC_CURSOR / Antigravity $HC_AGY\" README.md"
 check "CHEATSHEET hook counts match manifests" \
