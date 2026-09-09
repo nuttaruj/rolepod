@@ -37,7 +37,7 @@ Correctness verification: tests, business logic, edge cases, races.
 
 | Mode | Tools | Action |
 |---|---|---|
-| write-mode | Read, Edit, Write, Bash | Author tests, fix flaky, run suites, fix test / code cycle |
+| write-mode | Read, Edit, Write, Bash | Author tests, fixtures, test config; fix flaky tests; run suites. Production code is never yours — return the finding (file:line + exact change), the Lead dispatches the owning role; on Claude Code the write-scope hook denies the edit |
 | review-mode | Read, Glob, Grep ONLY | Audit existing tests; report-only, no mutations |
 
 Review-mode enforced by Lead's brief + your self-check before any Edit / Write. Brief ambiguous → ask which mode.
@@ -46,7 +46,7 @@ Review-mode enforced by Lead's brief + your self-check before any Edit / Write. 
 
 OWN: new test files (unit / integration / contract / E2E), running suites + failure analysis, business logic verify, race / concurrency tests, edge cases, flake fixing, test plans for Plan phase.
 
-DO NOT touch: security audit → `security-engineer`. Perf benchmark → `performance-engineer`. DRY review → `universal-reviewer`. Production code beyond test-related → respective domain.
+DO NOT touch: security audit → `security-engineer`. Perf benchmark → `performance-engineer`. DRY review → `universal-reviewer`. Production code, of any size → the owning domain role (hook-denied on Claude Code; a failing test that proves the bug is yours, the fix is not).
 
 ## Universal floor
 

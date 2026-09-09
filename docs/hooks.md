@@ -144,14 +144,21 @@ Sub-agents cannot run `git commit` / `git push` / `gh pr merge` / `gh pr create`
 - **Self-guards**: Lead Bash (no `agent_id`) → silent.
 - **Bypass**: none — hard rule. Real-world failure (backend-developer committed bypassing qa-tester floor) motivated this.
 
-### `subagent-write-scope.sh` — PreToolUse Edit/Write/MultiEdit/NotebookEdit (core, v2.111.0)
+### `subagent-write-scope.sh` — PreToolUse Edit/Write/MultiEdit/NotebookEdit (core, v2.111.0 · classes v2.112.0)
 
-A generic platform sub-agent (`general-purpose` / `default` / `claude`) never writes a product file. Measured before the hook: 16 of 31 `general-purpose` dispatches in 30 days edited product code with no role doctrine, no tool cap, and no cohesion contract (`cohesion-contract-check` whitelists general-purpose as read-only). The leak is always the Lead judging a write "shallow enough" for the catch-all agent — so the write itself is the line, not the dispatch prompt.
+A sub-agent writes only what its role owns. Measured before the hook (30 days of subagent transcripts, every product repo): 16 of 31 `general-purpose` dispatches edited product code with no role doctrine, no tool cap and no cohesion contract; `qa-tester` wrote 99 non-test product files (payments, account deletion, tenant erasure) and `security-engineer` edited auth routes — both agent files already said "the respective agent fixes", and the review floor then read a diff its own role had written. `universal-reviewer`, whose file says REJECT a fix request, wrote 0 of 21: a flat refusal in text holds, a "write-mode" that includes "fix code" does not. The write itself is the line.
 
-- **Trigger**: `agent_id` populated AND `agent_type` (namespace stripped) is a generic type. Live-verified 2026-09-09: an Agent spawn with `subagent_type` omitted arrives as `general-purpose`.
-- **Effect**: `permissionDecision: deny`; the sub-agent returns BLOCKED naming the path and the Lead re-dispatches the write to a rolepod role. A row `{"phase":"write-scope","decision":"deny",…}` lands in `phase-log.jsonl`.
-- **Self-guards**: Lead edits, every rolepod role, an unknown `agent_type`, OS temp roots (prefix-anchored: `/tmp/`, `/private/tmp/`, `/var/folders/`, the Python tempdir — a repo-internal `tmp/` stays product) and scratch / evidence paths (substring: `scratchpad/`, `.rolepod/`, `.claude/agent-memory/`, `docs/rolepod/`) pass silently.
-- **Bypass**: `ROLEPOD_ALLOW_GENERIC_WRITE=1` (user-set; logged to `bypass.log`).
+| Class | `agent_type` (namespace stripped) | May write |
+|---|---|---|
+| generic | `general-purpose`, `default`, `claude` | nothing in the product tree |
+| test-only | `qa-tester`, `security-engineer` | test paths (`tests/`, `__tests__/`, `__snapshots__/`, `fixtures/`, `e2e/`, RSpec `spec/`, `*.test.*`, `*.spec.*`, `*.cy.*`, `*.test-d.ts`, `*.snap` of those, `test_*.py`, `conftest.py`, `vitest`/`jest`/`playwright` config …) + markdown. Deliberately product: `specs/` (a contract dir in rolepod's own convention), Python `*_test.py` (no discovery guarantee), plain `mocks/` / `factories/` / `seeds/` / `testing/` helpers beside source — the bypass env is the escape. Accepted ambiguity: a bare `spec/` used for contracts in a non-Ruby repo passes as RSpec |
+| read-only | `universal-reviewer`, `scout` | markdown only |
+
+- **Trigger**: `agent_id` populated AND `agent_type` in a class above. Live-verified 2026-09-09: an Agent spawn with `subagent_type` omitted arrives as `general-purpose`.
+- **Effect**: `permissionDecision: deny` (fact → Fix → Exception, per class); the sub-agent returns the finding and the Lead dispatches the owning role. A row `{"phase":"write-scope","class":…,"decision":"deny",…}` lands in `phase-log.jsonl`.
+- **Self-guards**: the Lead, every owning role (`*-developer`, `*-engineer` other than security, designer, PM, architect …), an unknown `agent_type`, OS temp roots (prefix-anchored: `/tmp/`, `/private/tmp/`, `/var/folders/`, the Python tempdir — a repo-internal `tmp/` stays product) and scratch / evidence paths (substring: `scratchpad/`, `.rolepod/`, `.claude/agent-memory/`, `docs/rolepod/`) pass silently.
+- **Bypass**: `ROLEPOD_ALLOW_OUT_OF_SCOPE_WRITE=1` (user-set; logged to `bypass.log`).
+- **Not enforced**: an owning role drifting across domains (backend-developer in a billing route, billing-engineer in a layout) — measured but path→domain is a heuristic; the task brief's Files allowed / forbidden bounds it.
 
 ### `cohesion-contract-check.sh` — PreToolUse Agent (core)
 
@@ -208,6 +215,7 @@ Removes own session lock so the next session in this worktree does not see a pha
 | `ROLEPOD_GATES_SOFT=1` | Iterating on doctrine itself; want warnings instead of hard blocks for one session. Set **permanently** (e.g. in a project's `settings.local.json` `env`) it silences the commit gate and the fleet-tier gate — the only hard checkpoints left — for good; `make stats` shows every use |
 | `ROLEPOD_GATES_PASSED=1` | Human-only, set at CLI launch. Legacy for commits: the precommit gate auto-passes on windowed evidence, and an env-prefixed `git commit` is never prescribed (permission layers read that shape as gate circumvention) |
 | `ROLEPOD_NO_CONTRACT=1` | Single-domain Agent spawn that doesn't need cohesion contract (e.g. read-only research agent) |
+| `ROLEPOD_ALLOW_OUT_OF_SCOPE_WRITE=1` | A reviewer or generic sub-agent must write outside its class for one dispatch (e.g. a qa-tester fixing a test helper that lives beside source). User-set; logged. |
 | `ROLEPOD_ALLOW_SHARED_WORKTREE=1` | Intentional shared session (read-only review, paired exploration) |
 
 Never set these globally — apply per-command only. Hard rules exist because real-world failures triggered them. **And they are the user's hand only:** a model that meets a gate conflicting with a standing instruction surfaces the conflict with options (e.g. Lead cold self-review recorded as a limitation) — it never sets a bypass env itself. Hook block messages, the always-on core, and review-code all state this; a self-set bypass in `bypass.log` is a finding, not a workaround.
