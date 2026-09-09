@@ -138,7 +138,7 @@ import json, os
 n = os.environ.get('ROLEPOD_HOOK_SIBLINGS', '?')
 path = os.environ.get('ROLEPOD_HOOK_PATH', '')
 branch = os.environ.get('ROLEPOD_HOOK_BRANCH', 'HEAD')
-msg = ('⚠️ Sibling Claude session(s) detected in this worktree (%s active). '
+msg = ('Sibling Claude session(s) detected in this worktree (%s active). '
        'Concurrent edits will stomp each other. '
        'Before any Edit/Write: spawn an isolated worktree FIRST:\n\n'
        '  git worktree add %s %s\n'

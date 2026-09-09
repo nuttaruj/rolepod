@@ -99,7 +99,7 @@ echo "$TOOL" | grep -qE '^(Edit|Write|MultiEdit|NotebookEdit|apply_patch)$' || e
 # Schema-bound NEW file → emit STRONG verify-doc reminder.
 SCHEMA_BOUND=""
 if [ ! -e "$FILE" ] && [[ "$FILE" =~ (\.claude-plugin/|\.codex-plugin/|/extensions/|marketplace\.json$|plugin\.json$|manifest\.json$|hooks\.json$|-extension\.(json|yaml|yml)$|\.mcp\.json$|gemini-extension\.json$|claude-extension\.json$) ]]; then
-  SCHEMA_BOUND="⚠️  SCHEMA-BOUND new file: WebFetch the official spec first (not recall) and name the source URL. "
+  SCHEMA_BOUND="SCHEMA-BOUND new file: WebFetch the official spec first (not recall) and name the source URL. "
 fi
 
 # Test files are exempt: writing the RED test on a high-risk path is the very
@@ -120,7 +120,7 @@ HIGH_RISK=""
 _RISK_HIT=$(printf '%s\n' "$FILE" | risk_filter '(^|/|_)(auth|authn|authz|authentication|authorization|billing|payment|payments|migration|migrations|credit|credits|permission|permissions|secret|secrets|crypto|cryptography|token|tokens|oauth|jwt|sso|saml|webhook|webhooks|stripe|paypal|charge|charges|invoice|invoices|deletion|deletions|erasure|gdpr|security)(/|\.|_|$)' | head -1 || true)
 MONEY_RISK=""
 if [ "$IS_TEST" -eq 0 ] && [ -n "$_RISK_HIT" ]; then
-  HIGH_RISK="⚠️  HIGH-RISK path → qa-tester + security-engineer review before commit. "
+  HIGH_RISK="HIGH-RISK path → qa-tester + security-engineer review before commit. "
   # money / auth subset (v2.78.0) — with an enabled cross-family pool this
   # surface needs BOTH the external pass and the internal strong reviewer.
   MONEY_RISK=$(printf '%s\n' "$FILE" | grep -iE '(^|/|_)(auth|authn|authz|authentication|authorization|billing|payment|payments|credit|credits|secret|secrets|crypto|cryptography|oauth|jwt|sso|saml|stripe|paypal|charge|charges|invoice|invoices|deletion|deletions|erasure|gdpr)(/|\.|_|$)' | head -1 || true)
@@ -201,10 +201,10 @@ SOFT_MODE=0
 WOULD_BLOCK=""
 if [ -n "$HIGH_RISK" ] && [ "$SOFT_MODE" -eq 0 ]; then
   if [ "$TEST_EDITS" -eq 0 ]; then
-    WOULD_BLOCK+="⛔ COMMIT WILL BLOCK — 0 test edits since the last commit while editing high-risk path '$FILE'. Write the failing test FIRST (RED), then implement. "
+    WOULD_BLOCK+="COMMIT WILL BLOCK — 0 test edits since the last commit while editing high-risk path '$FILE'. Write the failing test FIRST (RED), then implement. "
   fi
   if [ "$HIGH_RISK_EDITS" -ge 1 ] && [ "$STRONG_REVIEWERS" -eq 0 ]; then
-    WOULD_BLOCK+="⛔ COMMIT WILL BLOCK — high-risk edits since the last commit, no strong adversarial reviewer. Fix: \`rolepod-cross-family --kind review --brief <file> --attach <diff>\` (different CLI, read-only, anchors the pass). An internal reviewer counts only after the runner reports the pool failed or empty → then dispatch rolepod:universal-reviewer or rolepod:security-engineer via the Agent tool (qa-tester is the test floor, not the review). Reviewer impossible (user forbade agents / no subagents) → SURFACE it; fallback = Lead cold self-review recorded as a LIMITATION. Env bypass is user-set only. "
+    WOULD_BLOCK+="COMMIT WILL BLOCK — high-risk edits since the last commit, no strong adversarial reviewer. Fix: \`rolepod-cross-family --kind review --brief <file> --attach <diff>\` (different CLI, read-only, anchors the pass). An internal reviewer counts only after the runner reports the pool failed or empty → then dispatch rolepod:universal-reviewer or rolepod:security-engineer via the Agent tool (qa-tester is the test floor, not the review). Reviewer impossible (user forbade agents / no subagents) → SURFACE it; fallback = Lead cold self-review recorded as a LIMITATION. Env bypass is user-set only. "
   fi
 fi
 
@@ -243,7 +243,7 @@ if [ -n "$HIGH_RISK" ]; then
       REVIEWER_LIST="$REVIEWER_LIST + Antigravity (\`agy -p\`, breadth/cross-file)"
     fi
   fi
-  CAREFUL_BANNER="${WOULD_BLOCK}⚠️  AUTO-CAREFUL (high-risk path; since last commit: $HIGH_RISK_EDITS high-risk edits / $TEST_EDITS tests / $REVIEWERS reviewers, $STRONG_REVIEWERS strong). Before commit: (1) a test file exists or is written this session; (2) reviewers dispatched — ≥2 when available (${REVIEWER_LIST}; security-engineer for auth/billing/crypto), in a DIFFERENT CLI than this one; (3) S1-S5 (simplicity) + T1-T6 (tests) — finish-work §1. Reviewer path blocked by the user → say so; fallback = Lead cold self-review + limitation note. Env bypass is user-set only. "
+  CAREFUL_BANNER="${WOULD_BLOCK}AUTO-CAREFUL (high-risk path; since last commit: $HIGH_RISK_EDITS high-risk edits / $TEST_EDITS tests / $REVIEWERS reviewers, $STRONG_REVIEWERS strong). Before commit: (1) a test file exists or is written this session; (2) reviewers dispatched — ≥2 when available (${REVIEWER_LIST}; security-engineer for auth/billing/crypto), in a DIFFERENT CLI than this one; (3) S1-S5 (simplicity) + T1-T6 (tests) — finish-work §1. Reviewer path blocked by the user → say so; fallback = Lead cold self-review + limitation note. Env bypass is user-set only. "
 fi
 
 # Emit reminder ONLY when schema-bound or high-risk — no generic Q1-Q4 nag.

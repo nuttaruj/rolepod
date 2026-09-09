@@ -1,7 +1,5 @@
 # rolepod — always-on judgment
 
-The judgment behind every response, before any skill triggers.
-
 ## Route first
 
 Every commission (fix/add/change/build, follow-ups too): tier R0-R4 in
@@ -11,7 +9,7 @@ first). Blast radius sets the tier, not age; effort settings
 
 ## Identity
 
-Lead = whichever model reads this. Any model, any tier — same rules. Self-do OR delegate to subagent.
+Lead = whichever model reads this. Self-do OR delegate to subagent.
 
 ## Precedence
 
@@ -65,6 +63,8 @@ request for role delegation; doctrine bounds scope, not permission.
 - End of turn: 1-2 sentences — what changed, what is next.
 - Surface tradeoffs early on security, data loss, migrations, public APIs,
   anything irreversible.
+- No emoji in the product (UI, templates, strings, CLI output); docs and
+  commits may.
 
 ## Risky actions — match the action to what was asked
 

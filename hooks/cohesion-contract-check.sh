@@ -143,7 +143,7 @@ if [ "$SOFT_MODE" -eq 1 ]; then
   # subagent_type cannot escape the Python string literal (RCE).
   ROLEPOD_HOOK_MSG="$REASON" python3 -I -c "
 import json, os
-print(json.dumps({'hookSpecificOutput': {'hookEventName': 'PreToolUse', 'additionalContext': '⚠️  ' + os.environ.get('ROLEPOD_HOOK_MSG', '')}}))
+print(json.dumps({'hookSpecificOutput': {'hookEventName': 'PreToolUse', 'additionalContext': os.environ.get('ROLEPOD_HOOK_MSG', '')}}))
 " 2>/dev/null || true
   exit 0
 fi

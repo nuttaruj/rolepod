@@ -451,7 +451,7 @@ if tool == "Workflow":
         if not tiers:
             verdict = "no-tier"
             reason_txt = (
-                "⛔ fleet-tier: %d agent() call(s), no model:/agentType: tier%s — general-purpose/Explore "
+                "fleet-tier: %d agent() call(s), no model:/agentType: tier%s — general-purpose/Explore "
                 "pin nothing; every agent inherits the Lead %s (%s). Fix: re-submit with a tier PER STAGE — "
                 "sweep/read → model:\x27haiku\x27 · build/verify → model:\x27sonnet\x27 or "
                 "agentType:\x27rolepod:<role>\x27 · judge → model:\x27sonnet\x27, opus only for "
@@ -460,7 +460,7 @@ if tool == "Workflow":
         elif tiers == {"balanced"} and len(stages) >= 2:
             verdict = "single-tier"
             reason_txt = (
-                "⛔ fleet-tier: %d stage(s) — %s — every one pinned to the same balanced tier under a %s "
+                "fleet-tier: %d stage(s) — %s — every one pinned to the same balanced tier under a %s "
                 "Lead (%s). Tier PER STAGE means the tiers DIFFER: sweep/read → model:\x27haiku\x27 · "
                 "build/verify → model:\x27sonnet\x27 · judge → model:\x27sonnet\x27%s. Fix: re-submit with "
                 "the tiers spread; every stage truly balanced work → `// tier-reason: <why>`."
@@ -479,7 +479,7 @@ if tool == "Workflow":
         elif risky and judge_stages and not ((tiers & {"strong", "dynamic"}) or role_strong):
             verdict = "no-strong-judge"
             reason_txt = (
-                "⛔ fleet-tier: judgment stage(s) %s pinned %s under a %s Lead (%s) on a high-risk fleet "
+                "fleet-tier: judgment stage(s) %s pinned %s under a %s Lead (%s) on a high-risk fleet "
                 "(money/auth/security/migrations) — a silent downgrade of the judge below the Lead. "
                 "Fix: judgment stage → model:\x27opus\x27 or leave it inherit; sweep haiku, build sonnet. "
                 "Not a judgment stage / not high-risk → `// tier-reason: <why>`." % (
@@ -565,7 +565,7 @@ if tool in ("Agent", "Task"):
             loop_note = rmsg
     if rounds == 2:
         ctxk = ss.last_context_tokens(d.get("transcript_path") or "") // 1000
-        loop_note = ("🔁 coordinator-check: 3rd sequential Agent round-trip this turn — each "
+        loop_note = ("coordinator-check: 3rd sequential Agent round-trip this turn — each "
                      "dispatch→wait→dispatch re-reads the whole context (%s) at the Lead\x27s price. "
                      "Fix: dependent multi-step fan-out → a Workflow script (stages run outside the "
                      "Lead); keep the Agent tool for one-off or parallel single-message dispatches. "

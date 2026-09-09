@@ -164,6 +164,43 @@ out=$(printf '{"tool_name":"Bash","tool_input":{"command":"git commit -m x"}}' |
 check "precommit 'src/my app/auth/login.ts' (space in path, auth segment) → deny" deny "$out"
 check "precommit mixed test + src/auth/login.ts → deny" deny "$(pct 'tests/auth/login.spec.ts src/auth/login.ts')"
 
+# ── precommit-gate: emoji in product code → advisory line, never a deny; docs / comments / text marks silent (v2.110.0) ──
+# Fresh repo per call: 14 logic lines + ONE payload line at $1; $3 = shell run
+# inside the repo before staging (e.g. the allow-emoji marker).
+pcm() { # $1 = path, $2 = payload line, $3 = pre-stage shell (optional)
+  rm -rf "$TMPT"; mkdir -p "$TMPT"
+  ( cd "$TMPT" && git init -q . && git config user.email t@t && git config user.name t
+    mkdir -p "$(dirname "$1")"; seq 14 | sed 's/^/x = /' > "$1"; printf '%s\n' "$2" >> "$1"
+    eval "${3:-:}"; git add -A )
+  printf '{"tool_name":"Bash","tool_input":{"command":"git commit -m x"}}' \
+    | (cd "$TMPT" && bash "$HOOKS/precommit-gate.sh") || true
+}
+# json.dumps escapes the emoji (🚀) — decode additionalContext before matching.
+ctx() { printf '%s' "$1" | python3 -c 'import json,sys; print(json.load(sys.stdin)["hookSpecificOutput"].get("additionalContext",""))' 2>/dev/null; }
+checkwarn() { # $1 desc, $2 yes|no (emoji line expected), $3 hook output
+  local got="no"; ctx "$3" | grep -q 'emoji in product code' && got="yes"
+  check "$1 → allow" allow "$3"
+  if [ "$got" = "$2" ]; then echo "  ✓ $1 → emoji line: $2"; else echo "  ✗ $1 → emoji line expected $2, got $got"; fail=$((fail+1)); fi
+}
+out=$(pcm src/ui/Button.tsx 'const label = "🚀 Launch";')
+checkwarn "precommit emoji 🚀 in src/ui/Button.tsx" yes "$out"
+ctx "$out" | grep -q 'src/ui/Button.tsx:15 🚀' \
+  && echo "  ✓ precommit emoji line names path:line and the character" \
+  || { echo "  ✗ precommit emoji line missing path:line + char"; fail=$((fail+1)); }
+checkwarn "precommit BMP colour emoji ✅ in src/status.py" yes "$(pcm src/status.py 'ok = "✅ done"')"
+checkwarn "precommit VS16-forced ⚠️ in src/alert.ts" yes "$(pcm src/alert.ts 'const w = "⚠️ careful";')"
+checkwarn "precommit text marks ✓ ✗ ⚠ → · in src/marks.ts" no "$(pcm src/marks.ts 'const m = "✓ ✗ ⚠ → ·";')"
+checkwarn "precommit emoji in README.md" no "$(pcm README.md '## 🚀 Quick start')"
+checkwarn "precommit emoji in a code comment line" no "$(pcm src/note.ts '// 🚀 launch helper')"
+checkwarn "precommit emoji in tests/ui/Button.test.tsx" no "$(pcm tests/ui/Button.test.tsx 'expect(t).toBe("🚀");')"
+checkwarn "precommit emoji with .rolepod/allow-emoji marker" no "$(pcm src/ui/Button.tsx 'const label = "🚀 Launch";' 'mkdir -p .rolepod && touch .rolepod/allow-emoji')"
+# R1-shaped diff (1 file, ≤5 lines, 0 logic) normally exits silent — the emoji line still speaks.
+rm -rf "$TMPT"; mkdir -p "$TMPT/src"
+( cd "$TMPT" && git init -q . && git config user.email t@t && git config user.name t \
+  && printf '# title\n\n🚀 hero\n' > src/hero.html && git add -A )
+out=$(printf '{"tool_name":"Bash","tool_input":{"command":"git commit -m x"}}' | (cd "$TMPT" && bash "$HOOKS/precommit-gate.sh") || true)
+checkwarn "precommit R1-shaped 3-line src/hero.html with 🚀" yes "$out"
+
 out=$(pc 'git status')
 check "precommit non-commit command → allow" allow "$out"
 

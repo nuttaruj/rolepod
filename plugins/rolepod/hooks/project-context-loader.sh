@@ -126,7 +126,7 @@ if [ -z "${CLAUDE_PROJECT_DIR:-}" ] && [ "${ROLEPOD_ALLOW_SHARED_WORKTREE:-0}" !
     if [ $((_now - _m)) -lt 1800 ]; then _act=$((_act + 1)); else rm -f "$_lk" "$_ld/$_b.files" 2>/dev/null || true; fi
   done
   touch "$_ld/$_sid.lock" 2>/dev/null || true
-  [ "$_act" -gt 0 ] && CTX="$CTX\n\n⚠️ **$_act concurrent session(s)** in this worktree. Edits to the SAME file stomp each other — isolate with a git worktree before editing a shared file. Override: \`ROLEPOD_ALLOW_SHARED_WORKTREE=1\`."
+  [ "$_act" -gt 0 ] && CTX="$CTX\n\n**$_act concurrent session(s)** in this worktree. Edits to the SAME file stomp each other — isolate with a git worktree before editing a shared file. Override: \`ROLEPOD_ALLOW_SHARED_WORKTREE=1\`."
 fi
 
 # Env-pass the context so a crafted commit message / branch name cannot escape

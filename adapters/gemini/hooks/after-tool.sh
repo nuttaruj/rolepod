@@ -33,7 +33,7 @@ case "$TOOL" in
 esac
 
 if [ "$ERROR" = "1" ]; then
-  MSG=$'⚠️ Tool errored. Investigate root cause BEFORE next step. '
+  MSG=$'Tool errored. Investigate root cause BEFORE next step. '
   MSG+=$'debug-issue: reproduce → trace upstream → fix root, not symptom. '
   MSG+=$'Don\'t paper over with workaround. State error + risk explicitly.'
   if [ -n "$FILE" ]; then
