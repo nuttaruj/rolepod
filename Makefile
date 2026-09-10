@@ -59,6 +59,7 @@ test-static:
 	@bash tests/static/subagent-write-scope.sh
 	@bash tests/static/phase-log-fallback.sh
 	@bash tests/static/workflow-round-nudge.sh
+	@bash tests/static/selfdo-nudge.sh
 	@bash tests/static/backup-retention.sh
 	@bash tests/static/hook-message-lean.sh
 	@bash tests/static/english-only.sh

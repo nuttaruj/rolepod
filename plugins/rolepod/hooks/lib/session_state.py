@@ -126,6 +126,35 @@ TIER_PINNED_AGENTS = {
     "ui-ux-designer",
 }
 
+# Roles that OWN product code in the plan-template domain map (write-plan
+# "Owner per task", v2.115.0). Reviewer / test-only / read-only roles are not
+# owners; scout and system-architect are read-only at the moment of dispatch.
+WRITER_ROLE_AGENTS = {
+    "ai-ml-engineer", "backend-developer", "billing-engineer",
+    "content-strategist", "data-scientist", "devops-sre",
+    "frontend-developer", "mobile-developer", "performance-engineer",
+    "ui-ux-designer",
+}
+
+# Product code for the self-do nudge: a CODE_FILE that is not a test by
+# TEST_FILE and not under a test / mock / fixture / docs / build tree, and
+# not a pytest module or config. One regex, used both to decide whether the
+# edited target starts the scan AND to count earlier edits — the two must
+# agree or historical test edits inflate the count.
+_SELFDO_SKIP = re.compile(
+    r"(^|/)(docs?|\.github|\.rolepod|node_modules|dist|build|"
+    r"tests?|__tests__|__mocks__|__snapshots__|spec|specs|e2e|fixtures?|"
+    r"cypress|playwright|testdata)/|"
+    r"\.(test|spec|test-d|cy)\.[A-Za-z0-9]+$|"
+    r"(^|/)(test_[^/]+\.py|conftest\.py)$",
+    re.IGNORECASE,
+)
+
+
+def is_product_code(path: str) -> bool:
+    return bool(path) and is_code_file(path) and not is_test_file(path) \
+        and not _SELFDO_SKIP.search(path)
+
 
 def model_class(name: str | None) -> str:
     for rx, cls in MODEL_CLASS:
@@ -648,6 +677,86 @@ def count_all(
     return test_edits, high_risk_edits, reviewers, strong_reviewers
 
 
+def selfdo_state(transcript_path: str, target: str | None = None) -> str:
+    """'<tier> <lead product edits since route> <writer dispatches since route> <route ts>'
+    — "" when the Lead never wrote a routing line. One pass over the
+    transcript (worktree-guard.sh calls this on every product-code edit):
+    the newest routing line in the Lead's own assistant text (the shapes
+    route_check.find_route accepts), then every Edit-tool call on a
+    non-test code file and every WRITER_ROLE_AGENTS dispatch (Agent/Task
+    subagent_type, Workflow agentType) whose timestamp is at or after it.
+    Sidechain (subagent) events are skipped. `target` — the file about to be
+    edited: "" unless it is product code by the same classifier that counts
+    (is_product_code), so the scan runs only on a product-code edit."""
+    if target is not None and not is_product_code(target):
+        return ""
+    try:
+        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+        from route_check import find_route  # type: ignore
+    except Exception:
+        return ""
+    if not transcript_path or not os.path.isfile(transcript_path):
+        return ""
+    route = None                      # (tier, ts)
+    edits: list[str] = []             # timestamps
+    writers: list[str] = []
+    try:
+        with open(transcript_path, "r", encoding="utf-8", errors="replace") as f:
+            for line in f:
+                if '"assistant"' not in line and '"tool_use"' not in line:
+                    continue
+                try:
+                    ev = json.loads(line)
+                except Exception:
+                    continue
+                if not isinstance(ev, dict) or ev.get("isSidechain"):
+                    continue
+                if ev.get("type") not in ("assistant", "tool_use"):
+                    continue
+                ts = str(ev.get("timestamp") or "")[:19]
+                msg = ev.get("message") if isinstance(ev.get("message"), dict) else {}
+                content = msg.get("content")
+                blocks = content if isinstance(content, list) else []
+                if ev.get("type") == "tool_use":
+                    blocks = blocks + [ev]
+                texts = []
+                for b in blocks:
+                    if not isinstance(b, dict):
+                        continue
+                    if b.get("type") == "text":
+                        texts.append(str(b.get("text") or ""))
+                    elif b.get("type") == "tool_use":
+                        tool = b.get("name") or ""
+                        inp = b.get("input") or {}
+                        if tool in EDIT_TOOLS:
+                            if is_product_code(_file_from_input(inp)):
+                                edits.append(ts)
+                        elif tool in AGENT_TOOLS:
+                            if _bare_agent_name(inp.get("subagent_type")) in WRITER_ROLE_AGENTS:
+                                writers.append(ts)
+                        elif tool == "Workflow":
+                            script = _workflow_script(inp)
+                            for a in script_option_values(script, "agentType"):
+                                if _bare_agent_name(a) in WRITER_ROLE_AGENTS:
+                                    writers.append(ts)
+                if isinstance(content, str):
+                    texts.append(content)
+                if ev.get("type") == "assistant" and texts:
+                    r = find_route("\n".join(texts))
+                    if r:
+                        route = (r[0], ts)
+    except Exception:
+        return ""
+    if not route:
+        return ""
+    tier, rts = route
+    # A timestamp-less event is kept (fail-open); otherwise only events at
+    # or after the routing line count.
+    n_e = sum(1 for t in edits if not t or not rts or t >= rts)
+    n_w = sum(1 for t in writers if not t or not rts or t >= rts)
+    return "%s %d %d %s" % (tier, n_e, n_w, rts or "-")
+
+
 def count_parallel_agent_spawns_on_path(
     transcript_path: str, recent_window: int = 10
 ) -> int:
@@ -715,6 +824,12 @@ def main() -> int:
         print(count_code_edits(transcript_path))
     elif query == "count-reviewers-dispatched":
         print(count_reviewers_dispatched(transcript_path))
+    elif query == "selfdo-state":
+        # "<tier> <lead product edits> <writer dispatches> <route ts>" since
+        # the newest routing line — "" when no route was stated, or when
+        # argv[2] (the target about to be edited) is not product code.
+        target = sys.argv[2] if len(sys.argv) > 2 else None
+        print(selfdo_state(transcript_path, target))
     elif query == "count-recent-agent-spawns":
         window = int(sys.argv[2]) if len(sys.argv) > 2 else 10
         print(count_parallel_agent_spawns_on_path(transcript_path, window))
