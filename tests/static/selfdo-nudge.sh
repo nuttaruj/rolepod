@@ -106,6 +106,30 @@ run "6 __mocks__/ edits → silent" "$F" silent
 mark; reset; route R3 2026-01-01T10:00:00Z; n_edits 3 "$tmp/repo/src/test_foo.py" 2026-01-01T10:01:; n_edits 3 "$F" 2026-01-01T10:02:
 run "3 test_*.py + 3 product edits → silent (tests never inflate the count)" "$F" silent
 
+mark; reset; route R3 2026-01-01T10:00:00Z; n_edits 6 "$tmp/repo/.github/workflows/ci.yml" 2026-01-01T10:01:
+run "6 CI workflow edits → nudge (infra paths are devops-sre product code)" "$tmp/repo/.github/workflows/ci.yml" nudge
+
+mark; reset; route R3 2026-01-01T10:00:00Z; n_edits 3 "$tmp/repo/Dockerfile" 2026-01-01T10:01:; n_edits 3 "$tmp/repo/deploy/up.sh" 2026-01-01T10:02:
+run "3 Dockerfile + 3 deploy/ edits → nudge" "$tmp/repo/Dockerfile" nudge
+
+mark; reset; route R3 2026-01-01T10:00:00Z; n_edits 6 "$tmp/repo/package.json" 2026-01-01T10:01:
+run "6 package.json edits → silent (config is not infra)" "$tmp/repo/package.json" silent
+
+mark; reset; route R3 2026-01-01T10:00:00Z; n_edits 6 "$tmp/repo/terraform/modules/vpc/main.tf" 2026-01-01T10:01:
+run "6 nested terraform/modules/… edits → nudge (infra dirs match at any depth)" "$tmp/repo/terraform/modules/vpc/main.tf" nudge
+
+mark; reset; route R3 2026-01-01T10:00:00Z; n_edits 6 "$tmp/repo/docs/deploy/guide.md" 2026-01-01T10:01:
+run "6 docs/deploy/*.md edits → silent (infra dirs are root-anchored)" "$tmp/repo/docs/deploy/guide.md" silent
+
+mark; reset; route R3 2026-01-01T10:00:00Z; n_edits 6 "$tmp/repo/helm/README.md" 2026-01-01T10:01:
+run "6 helm/README.md edits → silent (a .md inside an infra dir is a doc)" "$tmp/repo/helm/README.md" silent
+
+mark; reset; route R3 2026-01-01T10:00:00Z; n_edits 6 "$tmp/repo/services/api/Dockerfile" 2026-01-01T10:01:
+run "6 services/api/Dockerfile edits → nudge (Dockerfile at any depth)" "$tmp/repo/services/api/Dockerfile" nudge
+
+mark; reset; route R3 2026-01-01T10:00:00Z; n_edits 6 "/tmp/elsewhere/src/a.ts" 2026-01-01T10:01:
+run "6 edits outside the worktree → silent (not this repo's product code)" "$F" silent
+
 mark; reset; route R3 2026-01-01T10:00:00Z; n_edits 6 "$F" 2026-01-01T10:01: sidechain
 run "sidechain edits do not count → silent" "$F" silent
 

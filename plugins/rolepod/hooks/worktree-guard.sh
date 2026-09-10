@@ -168,7 +168,7 @@ if [ -z "$COLLISION" ] || [ "${ROLEPOD_ALLOW_SHARED_WORKTREE:-0}" = "1" ]; then
     # lib/session_state.py is the one classifier: it returns "" unless the
     # TARGET is product code by the same rule it counts earlier edits with.
     SS="$(dirname "$0")/lib/session_state.py"
-    STATE=$(printf '%s' "$INPUT" | python3 -I "$SS" selfdo-state "$TARGET" 2>/dev/null || true)
+    STATE=$(printf '%s' "$INPUT" | python3 -I "$SS" selfdo-state "$TARGET" "$WORKTREE" 2>/dev/null || true)
     S_TIER=""; S_EDITS=0; S_WRITERS=0; S_TS=""
     { read -r S_TIER S_EDITS S_WRITERS S_TS; } <<EOF2 || true
 $STATE

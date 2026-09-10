@@ -55,6 +55,7 @@ Match the user intent to the FIRST skill that fires. The skill itself decides wh
 | "write test cases / test this feature / report a bug" — QA hand-off, no fix wanted | **Verify (QA)** | `qa-tester` agent (spec-first test-case design); a found bug → `debug-issue` report-only exit | cheap–balanced |
 | "fix bug / failing test / broken / regression / why does X fail" | **Build (bug)** | `debug-issue` | balanced |
 | "refactor / simplify / clean up" | **Build (refactor)** | `simplify-code` → `check-work` | balanced |
+| "slow / optimize / latency / bundle size / N+1 / p95" — a speed complaint or budget | **Verify→Build (perf)** | `check-work` measures the baseline number first → `implement-plan` — Owner `performance-engineer`; no number, no change | balanced |
 | "use agents / multi-agent / in parallel / parallel-safe" | **Plan** | `write-plan` (agent routing + cohesion contract) | balanced |
 | vague UI / dashboard / product-design request | **Define** | `write-spec` | cheap (PM/spec) |
 | clear UI edit (existing design / screenshot / exact acceptance criteria) | **Build (UI)** | `implement-plan` — Owner `frontend-developer` (design-system / CSS / a11y-only → `ui-ux-designer`) → `check-work` | balanced |
@@ -69,6 +70,7 @@ Match the user intent to the FIRST skill that fires. The skill itself decides wh
 | explain-only / conceptual question (no artifact) | (no phase) | answer directly — needs a wide repo / online sweep first → ONE `scout` agent returns a research report (always-on Code search rule) | cheap |
 | unclear doc artifact / proposal / ADR scope | **Define** | `write-spec` | cheap |
 | clear doc edit / add runbook section / update README | **Build** | `implement-plan` — Owner `content-strategist` (`audience:` set); an R1-sized edit stays with the Lead | cheap |
+| CI workflow / Dockerfile / compose / deploy config (vercel · wrangler · fly · railway) / `deploy/` `infra/` `terraform/` / release script change | **Build (infra)** | `implement-plan` — Owner `devops-sre`; an R1/R2-sized edit stays with the Lead | balanced |
 | "context too large / compact / resume / handoff / manage session" / stuck after repeated attempts | (cross-cut) | `manage-context` | cheap |
 
 If no row matches: ask the user what phase the task is in. Don't pattern-match yourself into Build — nor musing into Define.

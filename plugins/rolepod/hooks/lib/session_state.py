@@ -151,8 +151,44 @@ _SELFDO_SKIP = re.compile(
 )
 
 
-def is_product_code(path: str) -> bool:
-    return bool(path) and is_code_file(path) and not is_test_file(path) \
+# Infra files are product code for the nudge too — the same paths the
+# plan-template Owner map assigns to devops-sre (no CODE_FILE extension, and
+# .github/ sits in the skip list, so they need their own positive rule).
+# Applied to the path RELATIVE to the repo root (is_product_code relativizes
+# with `root`): the directory rule is root-anchored so docs/deploy/guide.md
+# or src/deploy/handler.ts never read as infra, and nested layouts
+# (terraform/modules/vpc/main.tf, k8s/overlays/prod/x.yaml) do; a .md inside
+# an infra dir stays a doc. Dockerfile / compose match at any depth
+# (monorepo services carry their own).
+_INFRA_PATH = re.compile(
+    r"^(\.github/workflows/[^/]+\.ya?ml|\.gitlab-ci\.yml|\.circleci/.+|"
+    r"vercel\.json|wrangler\.(toml|jsonc?)|fly\.toml|railway\.(json|toml)|"
+    r"netlify\.toml|render\.yaml|Procfile|scripts/(deploy|release)[^/]*|"
+    r"(deploy|infra|terraform|k8s|helm)/(?!.*\.md$).+)$"
+    r"|(^|/)(Dockerfile[^/]*|docker-compose[^/]*\.ya?ml|compose\.ya?ml)$",
+    re.IGNORECASE,
+)
+
+
+def is_product_code(path: str, root: str | None = None) -> bool:
+    """Product code for the self-do nudge. With `root` (the git worktree),
+    a path outside it is never product code and the infra rule sees the
+    root-relative path; without it the absolute path is judged as-is."""
+    if not path:
+        return False
+    if root:
+        # realpath both sides: the hook hands the git root as a realpath
+        # (/private/var/...), the transcript holds the path as the model
+        # typed it (/var/... on macOS) — a symlinked prefix must still match.
+        r = os.path.realpath(root).rstrip("/") + "/"
+        ap = os.path.realpath(path) if os.path.isabs(path) else path
+        if ap.startswith(r):
+            path = ap[len(r):]
+        elif os.path.isabs(path):
+            return False
+    if _INFRA_PATH.search(path):
+        return True
+    return is_code_file(path) and not is_test_file(path) \
         and not _SELFDO_SKIP.search(path)
 
 
@@ -677,7 +713,7 @@ def count_all(
     return test_edits, high_risk_edits, reviewers, strong_reviewers
 
 
-def selfdo_state(transcript_path: str, target: str | None = None) -> str:
+def selfdo_state(transcript_path: str, target: str | None = None, root: str | None = None) -> str:
     """'<tier> <lead product edits since route> <writer dispatches since route> <route ts>'
     — "" when the Lead never wrote a routing line. One pass over the
     transcript (worktree-guard.sh calls this on every product-code edit):
@@ -688,7 +724,7 @@ def selfdo_state(transcript_path: str, target: str | None = None) -> str:
     Sidechain (subagent) events are skipped. `target` — the file about to be
     edited: "" unless it is product code by the same classifier that counts
     (is_product_code), so the scan runs only on a product-code edit."""
-    if target is not None and not is_product_code(target):
+    if target is not None and not is_product_code(target, root):
         return ""
     try:
         sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -729,7 +765,7 @@ def selfdo_state(transcript_path: str, target: str | None = None) -> str:
                         tool = b.get("name") or ""
                         inp = b.get("input") or {}
                         if tool in EDIT_TOOLS:
-                            if is_product_code(_file_from_input(inp)):
+                            if is_product_code(_file_from_input(inp), root):
                                 edits.append(ts)
                         elif tool in AGENT_TOOLS:
                             if _bare_agent_name(inp.get("subagent_type")) in WRITER_ROLE_AGENTS:
@@ -829,7 +865,8 @@ def main() -> int:
         # the newest routing line — "" when no route was stated, or when
         # argv[2] (the target about to be edited) is not product code.
         target = sys.argv[2] if len(sys.argv) > 2 else None
-        print(selfdo_state(transcript_path, target))
+        root = sys.argv[3] if len(sys.argv) > 3 else None
+        print(selfdo_state(transcript_path, target, root))
     elif query == "count-recent-agent-spawns":
         window = int(sys.argv[2]) if len(sys.argv) > 2 else 10
         print(count_parallel_agent_spawns_on_path(transcript_path, window))

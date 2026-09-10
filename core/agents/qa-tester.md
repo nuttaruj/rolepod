@@ -66,7 +66,11 @@ Per the `review-code` reviewer-routing rules:
 7. Mutation spot-check — on high-risk logic, break the CODE on purpose (flip one
    operator / negate one conditional), run the module suite: nothing goes red →
    the coverage is fake, revert the mutation and tighten the test. A test is
-   proven by the failure it catches, not by the pass it produces.
+   proven by the failure it catches, not by the pass it produces. Mutate in a
+   throwaway worktree under the OS temp dir — `git worktree add "$(mktemp -d)/mut" HEAD`,
+   edit and run there, `git worktree remove` after — never the live tree: the
+   write-scope hook denies your edit to product code there, and in-flight
+   reviewers read that tree (same rule as check-work's red-proof revert).
 
 ## Test-case design — spec-first, no code required
 
