@@ -51,7 +51,7 @@ A per-edit reminder hook duplicated all three without enforcement teeth — so i
 
 Two soft checks at the one moment before the Lead starts a turn; no new registration for the second.
 
-- **Claim-check**: prompt looks like an analysis / diagnosis / status question → `additionalContext`: read the primary source and cite file:line before claiming.
+- **Claim-check**: prompt looks like an analysis / diagnosis / status question → `additionalContext`: verify from the primary source, never memory, and cite it (file:line, command output, or URL). Since v2.118.1 the line names no tool — the old "Read / Grep / run it, cite file:line" sent the Lead grepping the repo for a question about a vendor or the world; the Lead picks the source (Verify-first in the always-on names them).
 - **Context-bloat check (v2.49.0)**: `session_state.py context-tokens` (input + cache_read + cache_creation of the last assistant turn) ≥ 200k → once per 200k bucket per session (state in `~/.rolepod/ctx-nudge/<session_id>`): `additionalContext` telling the Lead every turn re-reads all of it — dispatch `rolepod:scout` for sweeps, and mention `/compact` / a fresh session to the user ONCE when the task is done (Lead-facing only since v2.49.1: the user-facing `systemMessage` nag was removed on request; the Lead raises it in its own words at a natural pause). Why here and not a hook of its own: the cost driver measured on a real project was the Lead's own re-reads (~90 % of spend), and no existing hook looked at `usage`.
 - **Self-guards**: no transcript / no usage → context branch silent; empty prompt with a bloated context still emits the context note.
 - **Bypass**: `ROLEPOD_NUDGE_OFF=1` (both checks).

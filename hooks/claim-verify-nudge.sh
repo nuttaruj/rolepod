@@ -83,7 +83,11 @@ CLAIM_RX='(gap|gaps|root cause|diagnos|analy[sz]|audit|how does|how do|how is|ho
 
 MSG=""
 if printf '%s' "$PROMPT" | grep -qiE "$CLAIM_RX"; then
-  MSG="claim-check: this asks for analysis/diagnosis/status of real code or state. Verify-first: READ the primary source (Read / Grep / run it) and cite file:line — never from memory. (off: ROLEPOD_NUDGE_OFF=1)"
+  # v2.118.1: no tool named — the old text prescribed Read / Grep / file:line
+  # for every question shape, so a question about a vendor, a library or the
+  # world sent the Lead grepping the repo for a fact that does not live there.
+  # The Lead picks the source (Verify-first in the always-on names them).
+  MSG="claim-check: verify before you answer — primary source, never memory; cite it (file:line, command output, or URL). (off: ROLEPOD_NUDGE_OFF=1)"
 fi
 
 # Route nudge (v2.98.0): a commission-shaped prompt with no tier logged
