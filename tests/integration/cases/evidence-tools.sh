@@ -283,6 +283,33 @@ check "gate v2.74: opus Lead + agentType qa-tester (pinned balanced) as the only
   "cd '$FIX/repo' && bash '$NUDGE' < '$FIX/wf-ol-weakrole.json' | grep -q 'judgment stage'"
 check "gate v2.74: opus Lead + agentType universal-reviewer counts (renders opus) → silent" \
   "[ -z \"\$(cd '$FIX/repo' && bash '$NUDGE' < '$FIX/wf-judge-role.json')\" ]"
+# v2.118.0 — a strong-role agentType with an explicit LOW model literal is a
+# named downgrade, not the strong slot. Observed 2026-09-10 (WalnutZite):
+# `{agentType:"rolepod:security-engineer", model:"sonnet"}` on the Review
+# stage passed this gate silently and the commit gate refused the same call
+# three hours later — the Lead read that as two gates contradicting each
+# other. One rule now: risky fleet → deny (named-downgrade); routine fleet →
+# nudge; `// tier-reason:` or a strong / absent model → silent.
+mkj "$FIX/wf-ol-downgrade-risky.json"  Workflow "$FIX/lead-opus-floor.jsonl" '{"script":"export const meta = { name: \"sec-review\" }; phase(\"Review\"); await agent(\"security review of the billing gate\", {agentType:\"rolepod:security-engineer\", model:\"sonnet\", effort:\"high\"})"}'
+mkj "$FIX/wf-ol-downgrade-plain.json"  Workflow "$FIX/lead-opus-floor.jsonl" '{"script":"export const meta = { name: \"copy-review\" }; phase(\"Review\"); await agent(\"review the i18n copy\", {agentType:\"rolepod:universal-reviewer\", model:\"sonnet\"})"}'
+mkj "$FIX/wf-ol-downgrade-reason.json" Workflow "$FIX/lead-opus-floor.jsonl" '{"script":"// tier-reason: R2 diff, balanced review is policy\nexport const meta = { name: \"sec-review\" }; phase(\"Review\"); await agent(\"security review of the billing gate\", {agentType:\"rolepod:security-engineer\", model:\"sonnet\"})"}'
+mkj "$FIX/wf-ol-role-opus.json"        Workflow "$FIX/lead-opus-floor.jsonl" '{"script":"export const meta = { name: \"sec-review\" }; phase(\"Review\"); await agent(\"security review of the billing gate\", {agentType:\"rolepod:security-engineer\", model:\"opus\"})"}'
+check "gate v2.118: strong-role agentType + model sonnet on a MONEY fleet → deny (named-downgrade) naming the stage, role and model" \
+  "cd '$FIX/repo' && bash '$NUDGE' < '$FIX/wf-ol-downgrade-risky.json' | grep -q 'pinned model:.sonnet. on a high-risk fleet' && grep -q '\"reason\": \"named-downgrade\"' '$FIX/repo/.rolepod/evidence/phase-log.jsonl'"
+check "gate v2.118: strong-role agentType + model sonnet on a routine fleet → nudge (tier-check), not a deny" \
+  "cd '$FIX/repo' && OUT=\$(bash '$NUDGE' < '$FIX/wf-ol-downgrade-plain.json') && printf '%s' \"\$OUT\" | grep -q 'will not count it as the strong pass' && ! printf '%s' \"\$OUT\" | grep -q '\"deny\"'"
+check "gate v2.118: the same downgrade with // tier-reason: → silent" \
+  "[ -z \"\$(cd '$FIX/repo' && bash '$NUDGE' < '$FIX/wf-ol-downgrade-reason.json')\" ]"
+check "gate v2.118: strong-role agentType + model opus → silent (the slot holds)" \
+  "[ -z \"\$(cd '$FIX/repo' && bash '$NUDGE' < '$FIX/wf-ol-role-opus.json')\" ]"
+mkj "$FIX/wf-ol-downgrade-plus-clean.json" Workflow "$FIX/lead-opus-floor.jsonl" '{"script":"export const meta = { name: \"sec-two\" }; phase(\"Review\"); await agent(\"security review of the billing gate\", {agentType:\"rolepod:security-engineer\", model:\"sonnet\"}); await agent(\"final security verdict\", {agentType:\"rolepod:security-engineer\"})"}'
+mkj "$FIX/wf-ol-downgrade-fanout.json"     Workflow "$FIX/lead-opus-floor.jsonl" '{"script":"export const meta = { name: \"sec-fan\" }; phase(\"Read\"); await parallel(fs.map((f) => () => agent(`read ${f}`, {label:`read:${f}`}))); phase(\"Review\"); await agent(\"security review of the billing gate\", {agentType:\"rolepod:security-engineer\", model:\"sonnet\"})"}'
+check "gate v2.118: one downgraded + one clean strong-role call → silent (the clean call is the slot; matches count_workflow_reviewers)" \
+  "[ -z \"\$(cd '$FIX/repo' && bash '$NUDGE' < '$FIX/wf-ol-downgrade-plus-clean.json')\" ]"
+check "gate v2.118: bare fan-out + downgraded review → bare-fanout deny first (never yields), the downgrade is not lost on resubmit" \
+  "cd '$FIX/repo' && bash '$NUDGE' < '$FIX/wf-ol-downgrade-fanout.json' | grep -q 'bare fan-out call'"
+check "gate v2.118: named-downgrade never yields — 3rd submission of the same risky downgrade still denies" \
+  "cd '$FIX/repo' && bash '$NUDGE' < '$FIX/wf-ol-downgrade-risky.json' >/dev/null; bash '$NUDGE' < '$FIX/wf-ol-downgrade-risky.json' >/dev/null; bash '$NUDGE' < '$FIX/wf-ol-downgrade-risky.json' | grep -q '\"deny\"'"
 # v2.88.0 — an agentType that renders NO model pin is not a tier choice.
 # Observed 2026-09-06 (CourtBook stripe-surcharge-research, sonnet Lead;
 # technician-payout-review, 31 turns on a billing surface): ONE

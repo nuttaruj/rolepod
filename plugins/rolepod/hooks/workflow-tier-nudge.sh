@@ -372,16 +372,28 @@ if tool == "Workflow":
         return False
     strong_calls = []   # (stage, fanout) for every agent() call pinned strong
     bare_fanout = []    # stage of every fan-out agent() call with no pin at all
+    downgraded = []     # (stage, role, model) — strong-role agentType + explicit low model literal
+    strong_role_eff = False   # a strong-role agentType call that keeps its opus
     call_pos = [m.start() for m in re.finditer(r"\bagent\(", code)]
+    def stage_of(pos, win):
+        pk = re.search(r"[,{\s]phase\s*:\s*[\x27\"]", win)
+        if pk:
+            pv = re.match(r"[\x27\"]([^\x27\"]+)[\x27\"]", script[pos + pk.end() - 1:pos + pk.end() + 79])
+            return pv.group(1) if pv else ""
+        prev = re.findall(r"phase\(\s*[\x27\"]([^\x27\"]+)", script[:pos])
+        return prev[-1] if prev else ""
     for i, pos in enumerate(call_pos):
         end = call_pos[i + 1] if i + 1 < len(call_pos) else len(code)
         win = code[pos:end]
         mk = re.search(r"[,{\s]model\s*:\s*[\x27\"]", win)
         strong_here = False
+        low_literal = ""   # an explicit cheap/balanced model literal on this call
         if mk:
             q = pos + mk.end() - 1
             mv = re.match(r"[\x27\"]([A-Za-z0-9._\-\[\]]+)[\x27\"]", script[q:q + 80])
             strong_here = bool(mv) and ss.model_class(mv.group(1)) == "strong"
+            if mv and ss.model_class(mv.group(1)) in ss.LOW_CLASSES:
+                low_literal = mv.group(1)
         pinned = bool(re.search(r"[,{\s]model\s*:", win))   # literal or variable model
         # v2.104.0: the agentType of a strong role renders opus — the same
         # strong pin, so it spreads the same way (a fan-out = opus × N).
@@ -391,7 +403,15 @@ if tool == "Workflow":
             aq = pos + ak.end() - 1
             av = re.match(r"[\x27\"]([A-Za-z0-9:._\-]+)[\x27\"]", script[aq:aq + 80])
             aname = ss._bare_agent_name(av.group(1)) if av else ""
-            strong_here = strong_here or aname in ss.STRONG_ROLE_AGENTS
+            # v2.118.0: an explicit low model literal on a strong-role
+            # agentType overrides the opus the role renders — the commit
+            # gate does not count that call as the strong pass
+            # (count_workflow_reviewers), so neither does this gate.
+            if aname in ss.STRONG_ROLE_AGENTS and low_literal:
+                downgraded.append((stage_of(pos, win), aname, low_literal))
+            elif aname in ss.STRONG_ROLE_AGENTS:
+                strong_here = True
+                strong_role_eff = True
             pinned = pinned or aname in (ss.TIER_PINNED_AGENTS | ss.STRONG_ROLE_AGENTS)
         elif re.search(r"[,{\s]agentType\s*:", win):
             pinned = True   # agentType from a variable — trusted like a variable model
@@ -408,6 +428,8 @@ if tool == "Workflow":
             strong_calls.append((stage, fanout))
         elif fanout and not pinned:
             bare_fanout.append(stage or "(no phase)")
+    if downgraded and not strong_role_eff:
+        role_strong = False   # every strong-role literal was pinned low — no slot (a variable agentType keeps role_strong)
     strong_stages = set(st for st, _ in strong_calls)
     fan_strong = sorted(set(st or "(no phase)" for st, f in strong_calls if f))
     spread = ""
@@ -447,6 +469,19 @@ if tool == "Workflow":
             "single verdict / review call. Exception: none for a fan-out \u2014 a `// tier-reason:` covers single "
             "calls only; ROLEPOD_GATES_SOFT=1 (user-set) warns."
             % (", ".join(sorted(set(bare_fanout)))[:120], lead or "unknown model", why))
+    elif downgraded and not strong_role_eff and not stated and risky:
+        # v2.118.0 — observed 2026-09-10 (WalnutZite): the review stage carried
+        # agentType security-engineer + model sonnet; this gate stayed silent
+        # (the role counted as the strong slot) and the commit gate refused the
+        # same call three hours later. One rule, both gates.
+        verdict = "named-downgrade"
+        dst, drole, dmodel = downgraded[0]
+        reason_txt = (
+            "\u26d4 fleet-tier: stage %s \u2014 agentType:\x27rolepod:%s\x27 pinned model:\x27%s\x27 on a high-risk fleet "
+            "(money/auth/security/migrations): the commit gate does not count a balanced pin on a strong role as the "
+            "strong pass. Fix: drop model: on that ONE call (the role renders opus) or model:\x27opus\x27; every fan-out "
+            "stays sonnet/haiku. Exception: `// tier-reason: <why>` in the script; ROLEPOD_GATES_SOFT=1 (user-set) warns."
+            % (dst or "(no phase)", drole, dmodel))
     elif costly and not stated:
         if not tiers:
             verdict = "no-tier"
@@ -515,7 +550,7 @@ if tool == "Workflow":
     if verdict:
         if soft:
             _log_bypass("workflow-tier-nudge", "ROLEPOD_GATES_SOFT")
-        elif verdict not in ("strong-spread", "bare-fanout") and _recent_denies(ti, script) >= 2:
+        elif verdict not in ("strong-spread", "bare-fanout", "named-downgrade") and _recent_denies(ti, script) >= 2:
             # Loop valve: third strike passes, loudly, and is logged as yielded.
             _log_gate(ti, script, lead, cls, n_calls, verdict, sorted(tiers), sorted(stages), action="yield")
             ctx("⚖ fleet-tier YIELDED after 2 denies of this fleet in 30 min — proceeding as submitted "
@@ -527,6 +562,13 @@ if tool == "Workflow":
                 "hookEventName": "PreToolUse",
                 "permissionDecision": "deny",
                 "permissionDecisionReason": reason_txt}})
+    if downgraded and not strong_role_eff and not stated and not verdict:
+        dst, drole, dmodel = downgraded[0]
+        ctx("\u2696 tier-check: stage %s \u2014 agentType:\x27rolepod:%s\x27 pinned model:\x27%s\x27 \u2014 the commit gate "
+            "will not count it as the strong pass. Fix: drop model: on that ONE call (the role renders opus) or "
+            "model:\x27opus\x27. Exception: a balanced review on purpose (R2 diff) \u2192 `// tier-reason: <why>`.%s"
+            % (dst or "(no phase)", drole, dmodel, OFF))
+        sys.exit(0)
     if tiers:
         sys.exit(0)   # per-stage choice made (or accepted with a reason) — silent
     if cls in ss.LOW_CLASSES:
