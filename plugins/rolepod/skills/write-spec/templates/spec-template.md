@@ -46,7 +46,7 @@
  that is write-plan's job.]]
 
 ## Rejected approaches
-[[FILL: Other viable options + why not chosen, or "None — no material alternative existed". Keeps the decision auditable. Repeat feature: may inherit — `Unchanged — <prior> §Rejected approaches` — so a rejected path is never re-proposed from a blank slate.]]
+[[FILL: The other lenses (minimal / clean / pragmatic — write-spec §3) + why not chosen, or "None — no material alternative existed". Keeps the decision auditable. Repeat feature: may inherit — `Unchanged — <prior> §Rejected approaches` — so a rejected path is never re-proposed from a blank slate.]]
 
 ## Open questions
 [[FILL: Anything unresolved. Empty is the goal. A non-empty list blocks write-plan.]]

@@ -89,7 +89,7 @@ Unsure which questions actually change the implementation? See `references/quest
 
 ### 3. Present 2-3 approaches
 
-When the design has meaningful options, lay out 2-3 viable approaches with tradeoffs (complexity, blast radius, reversibility, cost). Recommend one. The simplest viable approach wins by default.
+When the design has meaningful options, lay out 2-3 viable approaches with tradeoffs (complexity, blast radius, reversibility, cost) — one per **lens**, so they differ for real instead of one pick plus two strawmen: **minimal** (smallest diff, maximum reuse) · **clean** (the boundary a maintainer would want, more files) · **pragmatic** (the seam between the two). Recommend one. The simplest viable approach wins by default; the clean lens earns its place by naming what minimal costs later, so `## Rejected approaches` records a real trade-off, not a reflexive `None`.
 
 **Record the pick as an ADR only when all three hold**: (1) hard to reverse — changing course later costs real work; (2) surprising without context — a future reader would ask "why this way?"; (3) a real trade-off — genuine alternatives existed and one was chosen for stated reasons. Any one missing → no ADR; the spec itself is the record. Save to `docs/adr/NNNN-<slug>.md` (context, decision, consequences — one page).
 
