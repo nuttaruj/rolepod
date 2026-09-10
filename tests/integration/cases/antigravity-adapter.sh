@@ -31,7 +31,7 @@ check "hooks.json at PLUGIN ROOT"           "[ -f $P/hooks.json ]"
 check "no stray hooks/hooks.json subpath"   "[ ! -f $P/hooks/hooks.json ]"
 check "hook scripts under hooks/ (6)"       "[ \"\$(ls $P/hooks/*.sh 2>/dev/null | wc -l | tr -d ' ')\" = 6 ]"
 check "exactly 11 skills (Core 10 + rolepod-full alias)" "[ \"\$(ls $P/skills | wc -l | tr -d ' ')\" = 11 ]"
-check "16 agents present"                   "[ \"\$(ls $P/agents/*.md | wc -l | tr -d ' ')\" = 16 ]"
+check "15 agents present"                   "[ \"\$(ls $P/agents/*.md | wc -l | tr -d ' ')\" = 15 ]"
 
 # hooks.json schema: agy-native events, top-level, no wrapper, no _comment.
 check "hooks.json valid JSON"               "python3 -m json.tool $P/hooks.json >/dev/null"

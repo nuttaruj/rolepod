@@ -303,10 +303,10 @@ check "hooks.md Cursor section pins cursor count" \
 # Skill counts in cli-support drifted (three lines said 10 against the
 # locked Core 10 + 1 alias = 11). Derived pin, not denylist — fails in
 # BOTH directions when the roster moves. Distinctive tails on purpose:
-# a lazy '16 agents + N skills' grep would be satisfied by one line while
+# a lazy '15 agents + N skills' grep would be satisfied by one line while
 # the other two stayed stale.
 check "cli-support skill counts derived from filesystem" \
-  "grep -q \"16 agents + $FS_SKILLS skills via native loader\" docs/cli-support.md && grep -q \"$FS_SKILLS skills enumerated\" docs/cli-support.md && grep -q \"16 agents, $FS_SKILLS skills, hooks\" docs/cli-support.md"
+  "grep -q \"15 agents + $FS_SKILLS skills via native loader\" docs/cli-support.md && grep -q \"$FS_SKILLS skills enumerated\" docs/cli-support.md && grep -q \"15 agents, $FS_SKILLS skills, hooks\" docs/cli-support.md"
 
 # ── Version manifests — one 2.x/0.x lockstep pair across all carriers ──
 # 7 hand-edited sources (scripts/bump-version.sh) + 4 committed render
@@ -374,7 +374,7 @@ if [ -n "$JSONL_BAD" ]; then echo "      invalid: $JSONL_BAD"; fi
 
 # ── Full agent table must NOT appear in rendered entry docs ──────────
 # Heuristic: a full agent table has the agent-roster header pattern.
-# The lean fragment uses a single "**16 specialists**" line instead.
+# The lean fragment uses a single "**15 specialists**" line instead.
 for f in build/rendered/codex/AGENTS.md build/rendered/gemini/GEMINI.md; do
   rows=$(grep -c "^| \`[a-z-]*-engineer\`\|^| \`backend-developer\`\|^| \`frontend-developer\`" "$f" 2>/dev/null || true)
   check "no full agent table leaked into $(basename $(dirname $f))/$(basename $f) (rows: $rows)" "[ $rows -le 1 ]"
@@ -456,7 +456,7 @@ for e in errs: print("      " + e)
 sys.exit(1 if errs else 0)
 PYEOF
 then
-  echo "  ✓ model tier: 16 agents carry policy tier; TIER_MODELS matches policy"
+  echo "  ✓ model tier: 15 agents carry policy tier; TIER_MODELS matches policy"
 else
   echo "  ✗ model tier drift from docs/model-tier-policy.md (see above)"
   fail=$((fail+1))
@@ -470,8 +470,8 @@ if python3 - <<'PYEOF' 2>&1
 import pathlib, tomllib, sys
 errs = []
 toml = sorted(pathlib.Path("build/rendered/codex/agents").glob("*.toml"))
-if len(toml) != 16:
-    errs.append(f"expected 16 rendered codex agent TOMLs, found {len(toml)}")
+if len(toml) != 15:
+    errs.append(f"expected 15 rendered codex agent TOMLs, found {len(toml)}")
 for f in toml:
     try:
         tomllib.load(open(f, "rb"))
@@ -482,7 +482,7 @@ for e in errs:
 sys.exit(1 if errs else 0)
 PYEOF
 then
-  echo "  ✓ 16 generated Codex agent TOMLs parse valid"
+  echo "  ✓ 15 generated Codex agent TOMLs parse valid"
 else
   echo "  ✗ generated Codex agent TOML invalid (see above)"
   fail=$((fail+1))
@@ -812,8 +812,8 @@ if [ -n "$CODEX_HOOK_EXTRAS" ]; then echo "      extras: $CODEX_HOOK_EXTRAS"; fi
 # the plugin carries agents/rolepod-*.toml + agents/AGENTS.rolepod.md and
 # hooks/agent-sync.sh installs them on SessionStart. render-clean pins bytes;
 # these pin shape. The block file must never be named AGENTS.md.
-check "codex plugin bundles 16 rolepod-*.toml agents" \
-  "[ \"\$(ls plugins/rolepod-codex/agents/rolepod-*.toml | wc -l | tr -d ' ')\" = 16 ]"
+check "codex plugin bundles 15 rolepod-*.toml agents" \
+  "[ \"\$(ls plugins/rolepod-codex/agents/rolepod-*.toml | wc -l | tr -d ' ')\" = 15 ]"
 check "codex bundled agents match rendered TOMLs byte-exact" \
   "(for f in build/rendered/codex/agents/*.toml; do cmp -s \"\$f\" \"plugins/rolepod-codex/agents/rolepod-\$(basename \"\$f\")\" || exit 1; done)"
 check "codex plugin bundles AGENTS.rolepod.md, never a file named AGENTS.md" \

@@ -138,7 +138,6 @@ Delegate ship work to the closest specialist:
 - `devops-sre` for CI / deploy / rollback / monitoring
 - `qa-tester` for the final pre-merge correctness floor
 - `security-engineer` for the security gate on high-risk diffs
-- `product-manager` for launch sequencing and stakeholder comms
 
 Brief: branch, diff summary, CI status, review verdict, launch plan if any.
 

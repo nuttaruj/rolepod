@@ -57,18 +57,18 @@ Match the user intent to the FIRST skill that fires. The skill itself decides wh
 | "refactor / simplify / clean up" | **Build (refactor)** | `simplify-code` → `check-work` | balanced |
 | "use agents / multi-agent / in parallel / parallel-safe" | **Plan** | `write-plan` (agent routing + cohesion contract) | balanced |
 | vague UI / dashboard / product-design request | **Define** | `write-spec` | cheap (PM/spec) |
-| clear UI edit (existing design / screenshot / exact acceptance criteria) | **Build (UI)** | `implement-plan` → `check-work` | balanced |
+| clear UI edit (existing design / screenshot / exact acceptance criteria) | **Build (UI)** | `implement-plan` — Owner `frontend-developer` (design-system / CSS / a11y-only → `ui-ux-designer`) → `check-work` | balanced |
 | browser verification / "does the UI work?" | **Verify** | `check-work` | balanced |
 | "audit UX / UI / a11y" of a page or flow (single surface) | **Verify→Review (UI audit)** | `check-work` §3 ladder observes → `review-code` UI axis (`ui-ux-designer` when available; `/audit-a11y` when uiproof installed) | balanced |
 | edit / implement / fix on **auth / billing / payments / credits / migration / data deletion / secrets / tokens / crypto / permissions / security** (a "plan / design" ask on these → Plan row below) | **Define (high-risk)** | `write-spec` → `write-plan` → `implement-plan` → `review-code` | balanced build · **strong** review |
-| architecture decision (DB schema / API contract / module split) | **Plan** | `write-plan` → `system-architect` agent when available | **strong** |
+| architecture decision (DB schema / API contract / module split) | **Define** | `write-spec` — §3 dispatches ONE `system-architect` for the approach (when available, else the Lead drafts the lenses) → `write-plan` | **strong** |
 | "is this done / fixed / does it work / verify" | **Verify** | `check-work` | balanced |
 | "review / check this / look at the diff" | **Review** | `review-code` | **strong** (review) |
 | "audit / sweep / map / find all X" on **the whole repo** | **Review (repo-wide)** | **scope-then-spawn** method (see below) → `review-code` | balanced |
 | "ship / merge / push / PR / ready / go live" | **Ship** | Finish ritual below (`check-work` → `review-code` → `finish-work`) | **strong** (final review) |
 | explain-only / conceptual question (no artifact) | (no phase) | answer directly — needs a wide repo / online sweep first → ONE `scout` agent returns a research report (always-on Code search rule) | cheap |
 | unclear doc artifact / proposal / ADR scope | **Define** | `write-spec` | cheap |
-| clear doc edit / add runbook section / update README | **Build** | `implement-plan` | cheap |
+| clear doc edit / add runbook section / update README | **Build** | `implement-plan` — Owner `content-strategist` (`audience:` set); an R1-sized edit stays with the Lead | cheap |
 | "context too large / compact / resume / handoff / manage session" / stuck after repeated attempts | (cross-cut) | `manage-context` | cheap |
 
 If no row matches: ask the user what phase the task is in. Don't pattern-match yourself into Build — nor musing into Define.

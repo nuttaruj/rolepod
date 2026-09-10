@@ -121,16 +121,11 @@ Plan-failure patterns. Never ship a plan that contains:
 
 If self-review finds any pattern, fix it inline. Do not hand off to `implement-plan` with these unresolved.
 
-## If a matching Rolepod agent is available
+## Owner per task — the domain map decides, not habit
 
-Route specialist work upfront:
+Every task carries **Owner:** — the role the domain map in `templates/plan-template.md` assigns to the task's Files (path first, then concern). `Owner: Lead` for R1/R2-sized work (≤2 files) or when the user said self-do; from R3 up the map decides — measured over 90 days the Lead wrote ~5,500 product-file edits against 70 writer-role dispatches, and every role the map names was idle for that reason, not for lack of work. Reviewer roles are not owners: `qa-tester` = test plan depth, `security-engineer` on every touched high-risk surface (auth / billing / payments / credits / migration / data deletion / secrets / tokens / crypto / permissions / security), both named in the task's Reviewer line.
 
-- `system-architect` for API / interface / data-model decisions
-- `backend-developer` / `frontend-developer` / `mobile-developer` for stack-specific implementation
-- `qa-tester` for test plan depth
-- `security-engineer` on any touched high-risk surface (auth / billing / payments / credits / migration / data deletion / secrets / tokens / crypto / permissions / security)
-
-Brief each agent per §6's formula (task + files + tests + done criteria + handoff partner), plus the spec.
+Brief each owner per §6's formula (task + files + tests + done criteria + handoff partner), plus the spec.
 
 ## If no matching agent is available
 
@@ -178,7 +173,7 @@ Load only when the task needs it:
 
 ## Full Rolepod enhancement
 
-Full Rolepod improves this phase by adding agent-routing heuristics, cohesion contracts as a first-class artifact, model-tier / cost-aware routing across the 16 agents, and tests that prove every shipped plan named a test per task.
+Full Rolepod improves this phase by adding agent-routing heuristics, cohesion contracts as a first-class artifact, model-tier / cost-aware routing across the 15 agents, and tests that prove every shipped plan named a test per task.
 
 ## Next phase
 

@@ -266,7 +266,7 @@ do_or_dry() {
   "$@"
 }
 
-# install_codex_agents <dest_dir> — copy the 16 rendered agent TOMLs with a
+# install_codex_agents <dest_dir> — copy the 15 rendered agent TOMLs with a
 # "rolepod-" filename prefix. Codex reads agents from ~/.codex/agents/
 # (global, SHARED with user-authored agents) — the plugin.json `agents`
 # field is not in the Codex schema and is silently ignored. Prefix-scoped
@@ -274,7 +274,7 @@ do_or_dry() {
 # don't persist forever; the prefix also gives uninstall a clean glob.
 install_codex_agents() {
   local dest="$1"
-  step "Installing 16 rolepod agents → $dest/rolepod-*.toml"
+  step "Installing 15 rolepod agents → $dest/rolepod-*.toml"
   if [ "$DRY_RUN" -eq 1 ]; then
     dry "mkdir -p $dest && rm -f rolepod-*.toml && copy *.toml from rendered agents/ with rolepod- prefix"
     return 0
@@ -1346,7 +1346,7 @@ if codex_selected; then
         # The rolepod marketplace is already registered (e.g. a prior
         # `codex plugin marketplace add nuttaruj/rolepod`). Keep it untouched —
         # do not re-point or re-fetch it — and install only the pieces the
-        # marketplace cannot carry: the 16 agents + the AGENTS.md block.
+        # marketplace cannot carry: the 15 agents + the AGENTS.md block.
         # `--force` re-registers the marketplace from GitHub instead.
         step "rolepod marketplace already registered — keeping it; installing agents + AGENTS.md only"
         warn "  Marketplace left as-is. To re-register from GitHub: ./install.sh --target=codex --force"
@@ -1429,7 +1429,7 @@ if codex_selected; then
       # check is intentionally omitted: the list can lag right after
       # `plugin add` and produce a false negative.
       # No agents/ check here — Codex's plugin loader has no agents field; the
-      # 16 agent TOMLs install to ~/.codex/agents/ (verified separately).
+      # 15 agent TOMLs install to ~/.codex/agents/ (verified separately).
       ok "rolepod codex marketplace registered (GitHub) → $CODEX_CONFIG"
     else
       # Temp-target OR codex binary missing — verify filesystem artifacts only.
@@ -1750,7 +1750,7 @@ if opencode_selected; then
     done"
 
   step "Copying agents → $OC_TARGET/agents/"
-  do_or_dry "copy 16 agents into $OC_TARGET/agents/" bash -c "
+  do_or_dry "copy 15 agents into $OC_TARGET/agents/" bash -c "
     mkdir -p '$OC_TARGET/agents' && cp '$RENDERED_OC_DIR/agents/'*.md '$OC_TARGET/agents/'"
 
   step "Copying plugin shim → $OC_TARGET/plugins/rolepod.js"
@@ -1768,7 +1768,7 @@ if opencode_selected; then
     step "Verifying opencode install"
     [ -f "$OC_TARGET/skills/using-rolepod/SKILL.md" ] || fail "opencode verification failed — skills missing"
     oc_agents=$(ls "$OC_TARGET/agents/"*.md 2>/dev/null | wc -l | tr -d ' ')
-    [ "$oc_agents" -ge 16 ] || fail "opencode verification failed — expected ≥16 agents, found $oc_agents"
+    [ "$oc_agents" -ge 15 ] || fail "opencode verification failed — expected ≥15 agents, found $oc_agents"
     [ -f "$OC_TARGET/plugins/rolepod.js" ] || fail "opencode verification failed — plugins/rolepod.js missing"
     [ -e "$OC_AGENTS_MD" ] || fail "opencode verification failed — $OC_AGENTS_MD missing"
     ok "rolepod → opencode (skills + agents + plugin + AGENTS.md block)"

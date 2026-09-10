@@ -206,10 +206,10 @@ if ./install.sh --target=cursor > "$TMP/cursor.log" 2>&1; then
     echo "  ✗ expected 11 cursor skills (Core 10 + rolepod-full alias), got $skill_count"
     cursor_fail=1
   fi
-  # Exactly 16 agents.
+  # Exactly 15 agents.
   agent_count=$(find "$PLUGIN_DEST/agents" -maxdepth 1 -name '*.md' 2>/dev/null | wc -l | tr -d ' ')
-  if [ "$agent_count" -ne 16 ]; then
-    echo "  ✗ expected 16 cursor agents, got $agent_count"
+  if [ "$agent_count" -ne 15 ]; then
+    echo "  ✗ expected 15 cursor agents, got $agent_count"
     cursor_fail=1
   fi
   # Always-on rule must carry alwaysApply: true.
@@ -243,10 +243,10 @@ mkdir -p "$ROLEPOD_CODEX_TARGET"
 # into a pre-existing target, so it is the only one that stamps a backup.
 if HOME="$FAKE_HOME" ./install.sh --target=codex --force > "$TMP/codex-global.log" 2>&1; then
   AGENT_TOML_COUNT=$(find "$ROLEPOD_CODEX_TARGET/agents" -name 'rolepod-*.toml' 2>/dev/null | wc -l | tr -d ' ')
-  if [ "$AGENT_TOML_COUNT" -eq 16 ]; then
-    echo "  ✓ codex temp-target install lands 16 rolepod-*.toml agents"
+  if [ "$AGENT_TOML_COUNT" -eq 15 ]; then
+    echo "  ✓ codex temp-target install lands 15 rolepod-*.toml agents"
   else
-    echo "  ✗ codex temp-target agents: expected 16, got $AGENT_TOML_COUNT"
+    echo "  ✗ codex temp-target agents: expected 15, got $AGENT_TOML_COUNT"
     FAIL=$((FAIL+1))
   fi
   if [ -e "$ROLEPOD_CODEX_TARGET/plugins/rolepod/hooks/precommit-gate.sh" ]; then

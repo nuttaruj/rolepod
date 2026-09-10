@@ -2,7 +2,7 @@
 
 # Rolepod
 
-**Rolepod turns Claude Code, Codex CLI, Gemini CLI, Cursor IDE, Antigravity CLI (agy), and opencode into a disciplined software-house team — a workflow router, 16 specialist agents, and gates that catch bugs before they reach a commit.**
+**Rolepod turns Claude Code, Codex CLI, Gemini CLI, Cursor IDE, Antigravity CLI (agy), and opencode into a disciplined software-house team — a workflow router, 15 specialist agents, and gates that catch bugs before they reach a commit.**
 
 It is one source of truth rendered into a native plugin for each CLI. No CLI is the "default" — all six are first-class. Rolepod carries zero project-specific configuration, so it works in any repository from the first session.
 
@@ -75,7 +75,7 @@ curl -fsSL https://raw.githubusercontent.com/nuttaruj/rolepod/main/bootstrap.sh 
 ### Codex CLI
 
 ```bash
-# Install — the plugin carries skills + hooks + the 16 agents; on first launch a SessionStart
+# Install — the plugin carries skills + hooks + the 15 agents; on first launch a SessionStart
 # hook syncs the agents + the AGENTS.md block into ~/.codex (run /hooks once in Codex to trust them).
 # The bootstrap line stays the full path: project-scope AGENTS.md, doctor, uninstall.
 codex plugin marketplace add nuttaruj/rolepod
@@ -162,7 +162,7 @@ curl -fsSL https://raw.githubusercontent.com/nuttaruj/rolepod/main/bootstrap.sh 
 
 ## What's inside
 
-- **16 specialist agents** — strategy, architecture, engineering, quality, ops, design, content, and review. Each owns a path or concern and runs on a cost-tiered model (~50-60% cheaper than all-strong). → [docs/agents.md](docs/agents.md), [docs/model-tier-policy.md](docs/model-tier-policy.md)
+- **15 specialist agents** — architecture, engineering, quality, ops, design, content, and review. Each owns a path or concern and runs on a cost-tiered model (~50-60% cheaper than all-strong). → [docs/agents.md](docs/agents.md), [docs/model-tier-policy.md](docs/model-tier-policy.md)
 - **Core 10 skills** — one router plus nine phase skills, the workflow spine. → [docs/skills.md](docs/skills.md)
 - **Per-CLI hooks** — deterministic enforcement: gate reminders, a pre-commit test gate, a sub-agent commit block, a per-role write-scope block, a concurrent-edit stomp guard, session safety. Counts vary by CLI capability (Claude 13 / Codex 9 / Gemini 5 / Cursor 3 / Antigravity 6 hook scripts / opencode 0 scripts — JS plugin with a precommit deny + per-agent `permission:` blocks, remaining gates skill-enforced). → [docs/hooks.md](docs/hooks.md)
 - **Evidence stats** — `rolepod-stats` (installed on PATH) reads any project's `.rolepod/evidence/`: tier distribution, verify pass/fail, review verdicts, strong-dispatch overrides, bypasses. `rolepod-junit` counts JUnit XML. Every plugin tree also ships the scripts under `scripts/` for marketplace installs.
@@ -179,7 +179,7 @@ See [docs/EXTENSION-PROTOCOL.md](docs/EXTENSION-PROTOCOL.md) for the full contra
 
 | Install | Standalone value | What it adds when combined |
 |---|---|---|
-| **rolepod** (this repo) | Workflow + 16 agents + judgment for any project | Routes by phase, aggregates evidence, suggests siblings by domain signal |
+| **rolepod** (this repo) | Workflow + 15 agents + judgment for any project | Routes by phase, aggregates evidence, suggests siblings by domain signal |
 | [**rolepod-uiproof**](https://github.com/nuttaruj/rolepod-uiproof) (v0.6+) | 5 browser skills — `/verify-ui`, `/audit-a11y`, `/visual-diff`, `/scaffold-e2e`, `/check-errors` + 26 MCP tools | Verify-phase provider for UI artifacts; evidence auto-routes to `check-work` |
 | [**rolepod-wplab**](https://github.com/nuttaruj/rolepod-wplab) (v1.9+) | 14 WordPress skills + 82 MCP tools — wp-cli + REST + scoped fs | Build/Verify/Review primitives for WP; phase-flavored skills narrow under parent |
 | [**rolepod-seo**](https://github.com/nuttaruj/rolepod-seo) (v0.3+) | 4 search skills — `/seo-audit` (SEO + GEO + AEO, Quick/Full, scored with evidence; chat summary + markdown + JSON sidecar + self-contained HTML report with score cards, published as an Artifact on Claude Code, Save-as-PDF via browser print), `/seo-fix-plan`, `/seo-schema`, `/seo-page-brief`; skills-only, stdlib collector + renderer, no MCP, no hooks | Audit → fix plan hands to uiproof (rendered DOM / CWV), wplab (WordPress meta), `content-strategist` (copy); `content-strategist` stops on technical SEO and routes here |

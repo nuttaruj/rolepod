@@ -35,7 +35,7 @@ Until the flag is set, the Task/subagent backend delivers the same outcome shape
 Teammates spawn through the **Agent tool** (a named Agent call while the flag is on), so rolepod's PreToolUse hooks fire on every spawn exactly as for subagents — `cohesion-contract-check` and the `workflow-tier-nudge` Agent branch included. Upstream picks a teammate's model in this order (v2.1.251+):
 
 1. The model the spawn prompt names for that teammate.
-2. The agent definition's `model:` — rolepod's pins carry over: builders / qa = `sonnet`, `scout` / `product-manager` / `content-strategist` = `haiku`, `security-engineer` / `universal-reviewer` / `system-architect` = `opus` (v2.104.0; `inherit` before).
+2. The agent definition's `model:` — rolepod's pins carry over: builders / qa = `sonnet`, `scout` / `content-strategist` = `haiku`, `security-engineer` / `universal-reviewer` / `system-architect` = `opus` (v2.104.0; `inherit` before).
 3. `CLAUDE_CODE_SUBAGENT_MODEL`, when set to anything but `inherit`.
 4. The Lead's current model.
 

@@ -122,7 +122,7 @@ Before engineers parallel-execute:
 | Implementation detail | respective engineer |
 | Security / compliance | `security-engineer` |
 | Performance budget | `performance-engineer` |
-| Product priority conflict | `product-manager` |
+| Product priority conflict | the user (product owner) |
 | Stuck on cross-system trade-off | Escalate via `manage-context` |
 
 ## Escalation back to Core 10

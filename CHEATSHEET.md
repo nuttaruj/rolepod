@@ -48,8 +48,6 @@ Can't verify  → state "Assuming X. Risk Y. Verify by Z" — never proceed sile
 
 | Need | Agent |
 |------|-------|
-| Spec / roadmap / requirements | `product-manager` |
-| Pricing / ROI / competitor research | `product-manager` (`mode: commercial`) |
 | Architecture / API contract / data model | `system-architect` |
 | Visual / Tailwind / a11y / interaction | `ui-ux-designer` |
 | Backend (general) | `backend-developer` |

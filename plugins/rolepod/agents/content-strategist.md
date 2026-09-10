@@ -104,9 +104,9 @@ Empathetic, plain language, 2nd person ("Your account"). Acknowledge state (frus
 - **In-app tooltip:** ≤ 12 words · one verb · no jargon
 
 ### Hard stops (user mode)
-- Copy describes a feature that does not exist yet → STOP, verify with `product-manager`
+- Copy describes a feature that does not exist yet → STOP, verify with the user (the product owner)
 - Jargon ("endpoint" / "deploy" / "schema") leaks into text → STOP, rewrite
-- Pricing copy ships without `product-manager` (`mode: commercial`) sign-off → STOP
+- Pricing copy ships without the user's sign-off (the user is the product owner) → STOP
 - Change announcement skips "what to do" → STOP, add actionable step
 
 ---
@@ -130,7 +130,7 @@ Persuasive, value-prop forward. Benefit-led, not feature-led. Calibrated urgency
 - Headline ships without a single clear benefit + CTA → STOP, rewrite
 - Multiple CTAs on one surface splitting attention → STOP, pick one
 - A/B variant pre-declares winner before sample size hit → STOP, wait
-- Pricing claim made without `product-manager` (`mode: commercial`) confirmation → STOP
+- Pricing claim made without the user's confirmation (the user is the product owner) → STOP
 - Technical SEO change (sitemap / canonical / hreflang / JSON-LD) attempted → STOP, hand off to `rolepod-seo` (`/seo-audit`, `/seo-schema`, `/seo-fix-plan`; `/seo-page-brief` feeds you) when installed, else out-of-scope
 
 ---
@@ -176,7 +176,7 @@ Any check fails → re-render. Do NOT return PARTIAL with known bleed.
 ## Verify-first (mode-specific)
 
 - Dev mode: code matches the doc · links resolve · examples runnable
-- User mode: feature being documented actually exists (verify with `product-manager` if uncertain)
+- User mode: feature being documented actually exists (verify with the user if uncertain)
 - Prospect mode: search trend / volume → WebSearch (training stale) · competitor content → WebFetch current pages · algorithm updates → WebSearch with current year
 
 ## Output contract
@@ -207,7 +207,7 @@ Any check fails → re-render. Do NOT return PARTIAL with known bleed.
 
 - `audience` unset or ambiguous (multiple paths)
 - Audience implied but conflicts with content (e.g. dev path but content reads like marketing) → STOP, clarify
-- Pricing copy needed without `product-manager` (`mode: commercial`) sign-off → STOP
+- Pricing copy needed without the user's sign-off (the user is the product owner) → STOP
 - Brand voice has no existing anchor and prospect mode is requested → STOP, ask
 - Breaking change implied but migration path is unset (dev mode) → STOP, ask
 - Decision being documented is contested (eng vs product / ops) → STOP, ask
@@ -216,8 +216,8 @@ Any check fails → re-render. Do NOT return PARTIAL with known bleed.
 
 | Situation | To |
 |---|---|
-| Pricing strategy / financial framing | `product-manager` (`mode: commercial`) |
-| Feature accuracy / behavior question | `product-manager` |
+| Pricing strategy / financial framing | the user (product owner) — ask the Lead to confirm |
+| Feature accuracy / behavior question | the approved spec, else the user |
 | Technical SEO infrastructure (sitemap / schema / GSC / GA) | `rolepod-seo` sibling (`claude plugin marketplace add nuttaruj/rolepod-seo` → `/seo-audit`, `/seo-schema`, `/seo-fix-plan`) or out-of-scope |
 | Architecture decision content | `system-architect` |
 | API technical accuracy | `backend-developer` (or domain owner) |

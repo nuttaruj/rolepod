@@ -27,7 +27,7 @@ P="build/rendered/opencode"
 # Rendered structure.
 check "opencode.json valid JSON"        "python3 -m json.tool $P/opencode.json >/dev/null"
 check "exactly 11 skills (Core 10 + rolepod-full alias)" "[ \"\$(ls $P/skills | wc -l | tr -d ' ')\" = 11 ]"
-check "16 agents present"               "[ \"\$(ls $P/agents/*.md | wc -l | tr -d ' ')\" = 16 ]"
+check "15 agents present"               "[ \"\$(ls $P/agents/*.md | wc -l | tr -d ' ')\" = 15 ]"
 check "plugin shim rendered"            "[ -f $P/plugin/rolepod.js ]"
 
 # Agent frontmatter: no name: field (filename = id), mode: subagent present.
@@ -102,7 +102,7 @@ TMP_OC="$(mktemp -d)"
 trap 'rm -rf "$TMP_OC"' EXIT
 if ROLEPOD_OPENCODE_TARGET="$TMP_OC" ./install.sh --target=opencode --force --yes >/dev/null 2>&1; then
   check "installed skills/using-rolepod"  "[ -f $TMP_OC/skills/using-rolepod/SKILL.md ]"
-  check "installed 16 agents"             "[ \"\$(ls $TMP_OC/agents/*.md | wc -l | tr -d ' ')\" = 16 ]"
+  check "installed 15 agents"             "[ \"\$(ls $TMP_OC/agents/*.md | wc -l | tr -d ' ')\" = 15 ]"
   check "installed plugins/rolepod.js"    "[ -f $TMP_OC/plugins/rolepod.js ]"
   check "installed AGENTS.md managed block" "grep -q 'rolepod:start' $TMP_OC/AGENTS.md"
   check "installed version stamp"         "[ -f $TMP_OC/rolepod-version.json ]"

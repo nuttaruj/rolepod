@@ -37,7 +37,24 @@
       shows before the fix. Omit if not test-first.>
 - [ ] **Command:** <exact command to run the check — runnable copy-paste as-is,
       so the build loop can verify this task without guessing>
-- **Owner:** <Lead, or the specialist agent if delegated>
+- **Owner:** <The role the domain map assigns to this task's Files — path first,
+      then concern. `Lead` for R1/R2-sized work (≤2 files) or when the user said
+      self-do; from R3 up the map decides. Map:
+      backend / API routes / services / models / migrations → backend-developer
+      components / pages / hooks / state / *.tsx *.vue *.svelte → frontend-developer
+      visual polish / design system / a11y / CSS → ui-ux-designer
+      billing / payments / credits / subscriptions / invoices → billing-engineer
+      auth / permissions / tokens / secrets / crypto (the WRITE) → backend-developer,
+        Reviewer security-engineer (security-engineer writes tests only)
+      .github/workflows, Dockerfile, compose, vercel/wrangler/fly/railway config,
+        deploy/ infra/ terraform/, release scripts, monitoring → devops-sre
+      docs, README, runbooks, i18n / locales, emails, marketing copy,
+        blog → content-strategist (`audience: dev | user | prospect`)
+      ios / android / expo / react-native → mobile-developer
+      LLM / RAG / embeddings / prompts → ai-ml-engineer
+      analytics / dashboards / pipelines / ETL → data-scientist
+      profiling, p95/p99, bundle size, query plans → performance-engineer
+      tests only (a test-authoring task) → qa-tester>
 - **Done when:** <pass/fail condition>
 - **On fail:** <non-default recovery, if any. Omit to use the Failure policy below.>
 

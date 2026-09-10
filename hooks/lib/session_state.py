@@ -106,11 +106,9 @@ LOW_CLASSES = {"cheap", "balanced"}
 # own model but its strong reviewers run opus — never lifted (cost).
 # system-architect joined in v2.73.0: in teammate mode it writes the spec +
 # cohesion contract for the whole team — the judgment-heaviest role — and was
-# the one strong role left at nudge-only. The old worry (cohesion-contract-
-# check may deny a parallel architect spawn; hook-decision precedence is
-# undocumented upstream) applies equally to the two roles already floored
-# since v2.4x with no observed conflict, and the architect is normally the
-# FIRST spawn (it writes the contract), so the deny never co-fires.
+# the one strong role left at nudge-only. cohesion-contract-check whitelists
+# it since v2.115.0: write-spec §3 dispatches it AFTER a §2 scout, so the
+# "first spawn" assumption no longer holds and the deny would have co-fired.
 STRONG_ROLE_AGENTS = {"security-engineer", "universal-reviewer", "system-architect"}
 STRONG_ALIAS = "opus"
 
@@ -121,7 +119,7 @@ STRONG_ALIAS = "opus"
 # no pin and silently inherits the Lead. tests/static/hook-agent-matching.sh
 # asserts this set against the tier overlays, so a new role cannot drift out.
 TIER_PINNED_AGENTS = {
-    "content-strategist", "product-manager", "scout",            # cheap
+    "content-strategist", "scout",                               # cheap
     "ai-ml-engineer", "backend-developer", "billing-engineer",   # balanced
     "data-scientist", "devops-sre", "frontend-developer",
     "mobile-developer", "performance-engineer", "qa-tester",

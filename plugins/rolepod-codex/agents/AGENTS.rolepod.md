@@ -102,7 +102,7 @@ Pick the lowest level the request calls for.
   auto-trigger from their `description:`. The S/T/Q/F gates and the CI lane
   policy live inside those phase skills — invoke the phase skill rather than
   reciting gates here.
-- **Agents** — 16 specialists install at `~/.codex/agents/rolepod-*.toml`.
+- **Agents** — 15 specialists install at `~/.codex/agents/rolepod-*.toml`.
   Codex does NOT auto-dispatch by description alone — but per the official
   subagent docs, AGENTS.md and skill directives ARE a sanctioned spawn
   channel: when a phase skill's routing section names a specialist, the

@@ -1,6 +1,6 @@
 # Rolepod Agent Catalog
 
-Full 16-agent specialist roster. Lead never picks from this list directly — the `write-plan` skill maps path + concern + risk to the right agent when delegation helps.
+Full 15-agent specialist roster. Lead never picks from this list directly — the `write-plan` skill maps path + concern + risk to the right agent when delegation helps.
 
 This doc is the **reference**. Entry docs (`CLAUDE.md` / `AGENTS.md` / `GEMINI.md`) embed only a 1-line pointer so per-turn context stays small.
 
@@ -33,11 +33,10 @@ Source of truth: [`core/fragments/agent-roster-lean.md`](../core/fragments/agent
 | AI / LLM features, RAG, prompt engineering | `ai-ml-engineer` |
 | Analytics, dashboards, data pipelines | `data-scientist` |
 | API design, module boundaries, data flow | `system-architect` |
-| Feature prioritization, user stories | `product-manager` (`mode: feature`) |
-| Pricing, ROI, financial modeling | `product-manager` (`mode: commercial`) |
+| Feature scope, priorities, pricing, ROI | the user — the product owner; `write-spec` §2 gathers it, no agent stands in |
 | Wide read-only sweep — repo or online — before a plan or answer | `scout` |
 | Visual design, design system, a11y | `ui-ux-designer` |
-| CI/CD, deploy, monitoring, release | `devops-sre` |
+| `.github/workflows/**`, `Dockerfile` / `docker-compose*`, `vercel.json` / `wrangler.*` / `fly.toml` / `railway.*`, `deploy/**`, `infra/**`, `terraform/**`, release scripts, monitoring | `devops-sre` |
 | Any human-readable written output — docs / FAQ / marketing copy (caller specifies `audience: dev \| user \| prospect`) | `content-strategist` |
 | Final code-quality review (logic / DRY / structure) | `universal-reviewer` |
 
@@ -52,9 +51,11 @@ Source of truth: [`core/fragments/agent-roster-lean.md`](../core/fragments/agent
 
 ## Why not fewer agents?
 
-The 16-specialist count comes from cost-aware role separation, not workflow stages. A senior backend developer model is cheap; a strongest model doing security review is expensive. Mixing them inside one agent collapses the cost-control dimension and forces the workflow to pay strongest-model rates for every task. Keeping them separate lets each agent carry its own tier-mapped model.
+`product-manager` was retired in v2.115.0: over 90 days it was dispatched 0 times because the user IS the product owner — `write-spec` §2 gathers scope, priorities and commercial framing from them directly, so an agent standing in between was a role with no work.
 
-Two within-tier consolidations exist in the roster. `content-strategist` folds tech-writer + customer-success + growth-marketer (all cheap-tier writers) into a single agent that takes a mandatory `audience: dev | user | prospect` parameter. `product-manager` folds in the former business-analyst via a derived `mode: feature | commercial` parameter — both were cheap-tier Define-phase doc producers whose hand-offs looped back to each other. Each mode/audience keeps its own scope, hard stops, and framework set, so specialist depth is preserved while selection overhead at the Lead shrinks.
+The 15-specialist count comes from cost-aware role separation, not workflow stages. A senior backend developer model is cheap; a strongest model doing security review is expensive. Mixing them inside one agent collapses the cost-control dimension and forces the workflow to pay strongest-model rates for every task. Keeping them separate lets each agent carry its own tier-mapped model.
+
+One within-tier consolidation exists in the roster. `content-strategist` folds tech-writer + customer-success + growth-marketer (all cheap-tier writers) into a single agent that takes a mandatory `audience: dev | user | prospect` parameter. (A second consolidation, `product-manager` absorbing the former business-analyst, was retired whole in v2.115.0 — see above.) Each audience keeps its own scope, hard stops, and framework set, so specialist depth is preserved while selection overhead at the Lead shrinks.
 
 The one addition outside the specialist pattern is `scout` — a read-only, cheapest-tier researcher backing the always-on "Scout for wide sweeps" rule. It exists so every CLI has a dispatchable, tool-restricted scout with the research-report contract built in, instead of the Lead improvising a brief each time.
 

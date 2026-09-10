@@ -24,13 +24,13 @@ run() {  # the way Codex invokes it: ${PLUGIN_ROOT} resolved, hook JSON on stdin
 mtime() { stat -c %Y "$1" 2>/dev/null || stat -f %m "$1"; }  # GNU first: on Linux `stat -f %m` prints the mount point (non-numeric) and succeeds
 
 check "hook is bash -n clean" "bash -n '$HOOK'"
-check "plugin bundles 16 agents + the AGENTS.md block" \
-  "[ \$(ls '$PLUGIN'/agents/rolepod-*.toml | wc -l) -eq 16 ] && [ -s '$PLUGIN/agents/AGENTS.rolepod.md' ]"
+check "plugin bundles 15 agents + the AGENTS.md block" \
+  "[ \$(ls '$PLUGIN'/agents/rolepod-*.toml | wc -l) -eq 15 ] && [ -s '$PLUGIN/agents/AGENTS.rolepod.md' ]"
 check "plugin version resolved" "[ -n '$VER' ]"
 
 # 1. Fresh HOME (plugin added, never installed)
 OUT=$(run)
-check "fresh: 16 agents land in ~/.codex/agents/" "[ \$(ls '$A'/rolepod-*.toml | wc -l) -eq 16 ]"
+check "fresh: 15 agents land in ~/.codex/agents/" "[ \$(ls '$A'/rolepod-*.toml | wc -l) -eq 15 ]"
 check "fresh: agents byte-exact vs bundle" \
   "for f in '$PLUGIN'/agents/rolepod-*.toml; do cmp -s \"\$f\" '$A'/\$(basename \"\$f\") || exit 1; done"
 check "fresh: AGENTS.md created block-only" \
@@ -87,7 +87,7 @@ check "ROLEPOD_AGENT_SYNC_OFF=1: nothing touched, silent" \
 mkdir -p "$FIX/alt"
 OUT=$(echo '{}' | HOME="$FIX" CODEX_HOME="$FIX/alt" bash "$HOOK" 2>/dev/null)
 check "CODEX_HOME + PLUGIN_ROOT fallback: syncs there" \
-  "[ \$(ls '$FIX/alt/agents'/rolepod-*.toml | wc -l) -eq 16 ] && [ -s '$FIX/alt/AGENTS.md' ]"
+  "[ \$(ls '$FIX/alt/agents'/rolepod-*.toml | wc -l) -eq 15 ] && [ -s '$FIX/alt/AGENTS.md' ]"
 
 # 7. Locks: a stale (crash) lock is taken over; a live one yields silently
 printf '%s\n' "0.0.1" > "$A/.rolepod-agents-version"

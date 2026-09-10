@@ -25,11 +25,11 @@ make render
 ```
 
 Confirms:
-- `plugins/rolepod/` — committed Claude plugin tree (16 agents, skills, hooks, manifest)
+- `plugins/rolepod/` — committed Claude plugin tree (15 agents, skills, hooks, manifest)
 - `plugins/rolepod-codex/` — committed Codex plugin tree, plus `build/rendered/codex/AGENTS.md`
 - `build/rendered/gemini/` — Gemini extension tree (`GEMINI.md`, skills, hooks)
 - `build/rendered/antigravity/` — Antigravity plugin tree (`AGENTS.md`, `plugin/` with plugin.json + hooks.json at plugin root)
-- `plugins/rolepod-cursor/` — committed Cursor plugin tree (`rules/always-on-core.mdc` + 16 agents + 11 skills + 3 hook scripts under `scripts/`)
+- `plugins/rolepod-cursor/` — committed Cursor plugin tree (`rules/always-on-core.mdc` + 15 agents + 11 skills + 3 hook scripts under `scripts/`)
 - No leaked `{{INCLUDE: ...}}` placeholders
 
 ## 3. Integration

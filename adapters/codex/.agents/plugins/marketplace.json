@@ -2,7 +2,7 @@
   "name": "rolepod",
   "interface": {
     "displayName": "Rolepod",
-    "shortDescription": "16-agent dev team workflow with simplicity gates, test gates, and verify-first discipline.",
+    "shortDescription": "15-agent dev team workflow with simplicity gates, test gates, and verify-first discipline.",
     "developerName": "nuttaruj",
     "websiteURL": "https://github.com/nuttaruj/rolepod"
   },

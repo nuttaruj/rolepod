@@ -98,7 +98,7 @@ Before approving any UI change:
 | State / API logic | `frontend-developer` |
 | Render / bundle perf | `performance-engineer` |
 | Mobile-native | `mobile-developer` |
-| User research / journey | `product-manager` |
+| User research / journey | the user (product owner), via write-spec §2 |
 | Marketing / SEO / landing copy | `content-strategist` (`audience: prospect`) |
 | In-app strings / error msgs / onboarding copy | `content-strategist` (`audience: user`) |
 

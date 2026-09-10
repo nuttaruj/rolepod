@@ -82,7 +82,7 @@ Configure + maintain the 3-phase CI lanes:
 - Production launch without on-call notified → stop
 - Required CI lane is red and the merge intent is "ship anyway" → stop, fix
 - A monitoring dashboard for the changed surface does not exist → stop, add it
-- Feature flag default state unconfirmed → stop, confirm with `product-manager`
+- Feature flag default state unconfirmed → stop, confirm with the user
 
 ## Output contract
 

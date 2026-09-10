@@ -2,7 +2,7 @@
 
 Rolepod ships **11 skills total**: Core 10 (1 router + 9 workflow phase skills) plus the `rolepod-full` command alias. There are no legacy compatibility shim skill files in the install tree. Old skill names are preserved only as documentation in [legacy-skill-map.md](legacy-skill-map.md).
 
-Entry docs (`CLAUDE.md` / `AGENTS.md` / `GEMINI.md`) embed this same lean surface so the Lead does not spend context choosing among dozens of tiny workflow fragments. Deep domain expertise lives in the 16 specialist agents.
+Entry docs (`CLAUDE.md` / `AGENTS.md` / `GEMINI.md`) embed this same lean surface so the Lead does not spend context choosing among dozens of tiny workflow fragments. Deep domain expertise lives in the 15 specialist agents.
 
 ## Tier model
 
@@ -31,7 +31,7 @@ Entry docs (`CLAUDE.md` / `AGENTS.md` / `GEMINI.md`) embed this same lean surfac
 
 ## Domain expertise → specialist agents
 
-Domain depth that used to live in standalone skills now lives in the 16 specialist agents (see [agents.md](agents.md)) and is routed from inside the Core 10 phase skills:
+Domain depth that used to live in standalone skills now lives in the 15 specialist agents (see [agents.md](agents.md)) and is routed from inside the Core 10 phase skills:
 
 | Domain | Phase skill that routes here | Specialist agent |
 |--------|------------------------------|------------------|

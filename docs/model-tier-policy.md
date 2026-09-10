@@ -69,7 +69,6 @@ which rung was sent, so `make stats` audits apex use after the fact.
 | `security-engineer` | **strong** | Auth + secrets + crypto; wrong code = breach |
 | `system-architect` | **strong** | Architecture decisions are load-bearing across the codebase |
 | `universal-reviewer` | **strong** | Adversarial code review; must match implementer's depth |
-| `product-manager` | cheap | Spec writing + prioritization |
 | `scout` | cheap | Read-only wide sweeps — research report only, never edits |
 | `content-strategist` | cheap | All human-readable written output — internal docs / ADRs / READMEs (`audience: dev`), FAQ / onboarding / user-facing copy (`audience: user`), SEO / conversion copy (`audience: prospect`) |
 

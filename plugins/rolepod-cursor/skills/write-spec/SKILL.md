@@ -89,7 +89,7 @@ Unsure which questions actually change the implementation? See `references/quest
 
 ### 3. Present 2-3 approaches
 
-When the design has meaningful options, lay out 2-3 viable approaches with tradeoffs (complexity, blast radius, reversibility, cost) — one per **lens**, so they differ for real instead of one pick plus two strawmen: **minimal** (smallest diff, maximum reuse) · **clean** (the boundary a maintainer would want, more files) · **pragmatic** (the seam between the two). Recommend one. The simplest viable approach wins by default; the clean lens earns its place by naming what minimal costs later, so `## Rejected approaches` records a real trade-off, not a reflexive `None`.
+When the design has meaningful options, lay out 2-3 viable approaches with tradeoffs (complexity, blast radius, reversibility, cost) — one per **lens**, so they differ for real instead of one pick plus two strawmen: **minimal** (smallest diff, maximum reuse) · **clean** (the boundary a maintainer would want, more files) · **pragmatic** (the seam between the two). The approach adds or changes a DB table / migration, a public API contract, or a module boundary → ONE `system-architect` dispatch drafts the three lenses (returned in its reply, no file written; the cohesion gate whitelists it) and the Lead judges; anything else stays Lead-authored. Recommend one. The simplest viable approach wins by default; the clean lens earns its place by naming what minimal costs later, so `## Rejected approaches` records a real trade-off, not a reflexive `None`.
 
 **Record the pick as an ADR only when all three hold**: (1) hard to reverse — changing course later costs real work; (2) surprising without context — a future reader would ask "why this way?"; (3) a real trade-off — genuine alternatives existed and one was chosen for stated reasons. Any one missing → no ADR; the spec itself is the record. Save to `docs/adr/NNNN-<slug>.md` (context, decision, consequences — one page).
 
@@ -132,10 +132,9 @@ Patch the file and re-confirm if requested. Hand off to `write-plan` only after 
 
 Delegate discovery / drafting to the most appropriate specialist:
 
-- `product-manager` for feature scope, user stories, success criteria
+- scope, user stories, priorities, cost / ROI framing: the USER, through §2 — there is no product-manager role; the user is the product owner
 - `system-architect` for API / data-model / integration design
 - `content-strategist` (`audience: dev`) for ADRs and durable spec artifacts
-- `product-manager` (`mode: commercial`) for cost / ROI / commercial framing
 
 Brief the agent with the user request, the discovery questions answered so far, and the approval gate the user expects.
 
