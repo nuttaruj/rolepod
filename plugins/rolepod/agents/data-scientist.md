@@ -4,7 +4,6 @@ description: Data Scientist focused on statistical analysis, analytics queries, 
 model: sonnet
 effort: medium
 memory: project
-maxTurns: 50
 color: yellow
 skills:
   - write-spec

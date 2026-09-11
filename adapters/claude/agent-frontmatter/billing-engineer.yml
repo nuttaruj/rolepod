@@ -4,7 +4,6 @@ description: FinTech / Monetization Engineer. Owns billing, payments, credits, s
 tier: balanced
 effort: high
 memory: project
-maxTurns: 50
 skills:
   - write-plan
   - implement-plan

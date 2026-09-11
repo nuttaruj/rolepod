@@ -4,7 +4,6 @@ description: Mobile Engineer for native iOS/Android + cross-platform (React Nati
 model: sonnet
 effort: medium
 memory: project
-maxTurns: 50
 color: purple
 skills:
   - implement-plan

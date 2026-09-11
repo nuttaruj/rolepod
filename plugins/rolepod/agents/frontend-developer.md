@@ -4,7 +4,6 @@ description: Frontend Specialist. Builds UI components with focus on state manag
 model: sonnet
 effort: medium
 memory: project
-maxTurns: 50
 color: cyan
 skills:
   - implement-plan

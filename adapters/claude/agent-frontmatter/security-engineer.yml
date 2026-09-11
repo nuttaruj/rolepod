@@ -4,7 +4,6 @@ description: Security Engineer for vuln audit, pentest, system hardening, compli
 tier: strong
 effort: xhigh
 memory: project
-maxTurns: 50
 permissionMode: acceptEdits
 skills:
   - review-code

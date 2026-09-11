@@ -63,6 +63,7 @@ test-static:
 	@bash tests/static/backup-retention.sh
 	@bash tests/static/hook-message-lean.sh
 	@bash tests/static/english-only.sh
+	@bash tests/static/agent-turn-cap.sh
 	@bash tests/static/always-on-hook.sh
 	@echo "  → static checks passed"
 

@@ -4,7 +4,6 @@ description: Code reviewer focused on code quality (logic / DRY / structure / sm
 model: opus
 effort: high
 memory: project
-maxTurns: 30
 permissionMode: acceptEdits
 color: red
 skills:

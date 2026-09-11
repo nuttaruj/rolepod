@@ -4,7 +4,6 @@ description: Performance Engineer focused on load testing, profiling, latency op
 model: sonnet
 effort: high
 memory: project
-maxTurns: 50
 color: orange
 skills:
   - review-code

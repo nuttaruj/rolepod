@@ -4,7 +4,6 @@ description: UI/UX Designer + Frontend Polisher. Owns design system, components,
 tier: balanced
 effort: medium
 memory: project
-maxTurns: 50
 skills:
   - ui-ux-pro-max
   - implement-plan

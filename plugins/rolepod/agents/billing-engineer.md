@@ -4,7 +4,6 @@ description: FinTech / Monetization Engineer. Owns billing, payments, credits, s
 model: sonnet
 effort: high
 memory: project
-maxTurns: 50
 color: green
 skills:
   - write-plan

@@ -4,7 +4,6 @@ description: Backend Specialist. Builds APIs, business logic, database models, i
 model: sonnet
 effort: medium
 memory: project
-maxTurns: 50
 color: blue
 skills:
   - write-plan

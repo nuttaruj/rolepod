@@ -4,7 +4,6 @@ description: Code reviewer focused on code quality (logic / DRY / structure / sm
 tier: strong
 effort: high
 memory: project
-maxTurns: 30
 permissionMode: acceptEdits
 skills:
   - review-code

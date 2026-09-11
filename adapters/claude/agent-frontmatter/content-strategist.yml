@@ -4,7 +4,6 @@ description: Content Strategist — writes all human-readable output for the pro
 tier: cheap
 effort: medium
 memory: project
-maxTurns: 30
 skills:
   - write-spec
   - implement-plan

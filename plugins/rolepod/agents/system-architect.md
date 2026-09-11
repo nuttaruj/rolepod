@@ -4,7 +4,6 @@ description: Architect for system design, API contracts, data flow, technical de
 model: opus
 effort: high
 memory: project
-maxTurns: 30
 color: gold
 skills:
   - write-spec

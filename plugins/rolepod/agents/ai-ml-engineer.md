@@ -4,7 +4,6 @@ description: AI/ML Engineer specializing in LLM integration, RAG systems, prompt
 model: sonnet
 effort: high
 memory: user
-maxTurns: 50
 color: magenta
 skills:
   - write-plan

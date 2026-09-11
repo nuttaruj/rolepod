@@ -4,7 +4,6 @@ description: Backend Specialist. Builds APIs, business logic, database models, i
 tier: balanced
 effort: medium
 memory: project
-maxTurns: 50
 skills:
   - write-plan
   - implement-plan

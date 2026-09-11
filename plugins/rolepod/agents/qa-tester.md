@@ -4,7 +4,6 @@ description: QA + Test Automation. Owns correctness — write/run tests, busines
 model: sonnet
 effort: high
 memory: project
-maxTurns: 50
 permissionMode: acceptEdits
 color: red
 skills:

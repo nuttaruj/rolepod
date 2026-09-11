@@ -4,7 +4,6 @@ description: UI/UX Designer + Frontend Polisher. Owns design system, components,
 model: sonnet
 effort: medium
 memory: project
-maxTurns: 50
 color: pink
 skills:
   - ui-ux-pro-max

@@ -4,7 +4,6 @@ description: Content Strategist — writes all human-readable output for the pro
 model: haiku
 effort: medium
 memory: project
-maxTurns: 30
 color: white
 skills:
   - write-spec

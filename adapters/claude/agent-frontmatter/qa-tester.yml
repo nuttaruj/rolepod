@@ -4,7 +4,6 @@ description: QA + Test Automation. Owns correctness — write/run tests, busines
 tier: balanced
 effort: high
 memory: project
-maxTurns: 50
 permissionMode: acceptEdits
 skills:
   - implement-plan

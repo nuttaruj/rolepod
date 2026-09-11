@@ -3,7 +3,6 @@ description: Read-only scout for wide sweeps — many files, unknown locations, 
 # tools: READ-ONLY ROLE — Read/Glob/Grep/WebFetch/WebSearch only (no Edit/Write/Bash/Agent). The report contract, not tool access, is the deliverable; restriction enforces "point, never touch" physically.
 tier: cheap
 effort: low
-maxTurns: 15
 tools:
   - Read
   - Glob

@@ -4,7 +4,6 @@ description: Mobile Engineer for native iOS/Android + cross-platform (React Nati
 tier: balanced
 effort: medium
 memory: project
-maxTurns: 50
 skills:
   - implement-plan
   - check-work

@@ -4,7 +4,6 @@ description: Performance Engineer focused on load testing, profiling, latency op
 tier: balanced
 effort: high
 memory: project
-maxTurns: 50
 skills:
   - review-code
   - check-work

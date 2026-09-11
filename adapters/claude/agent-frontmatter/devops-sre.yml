@@ -4,7 +4,6 @@ description: DevOps + SRE. Owns infra, CI/CD, deploy, monitoring, release proces
 tier: balanced
 effort: medium
 memory: project
-maxTurns: 50
 skills:
   - implement-plan
   - debug-issue

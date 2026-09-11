@@ -4,7 +4,6 @@ description: DevOps + SRE. Owns infra, CI/CD, deploy, monitoring, release proces
 model: sonnet
 effort: medium
 memory: project
-maxTurns: 50
 color: gray
 skills:
   - implement-plan

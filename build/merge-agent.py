@@ -29,7 +29,7 @@ from pathlib import Path
 # adapters/claude/agent-frontmatter/*.yml — core/agents carries no skills key
 # (v2.86.0): the overlay always won the merge and cursor/opencode/codex drop it.
 CLAUDE_KEY_ORDER = ["name", "description", "model", "effort", "memory",
-                    "maxTurns", "permissionMode", "color", "skills", "tools"]
+                    "permissionMode", "color", "skills", "tools"]
 GEMINI_KEY_ORDER = ["name", "description", "model"]
 CURSOR_KEY_ORDER = ["name", "description"]
 OPENCODE_KEY_ORDER = ["description", "mode", "permission"]

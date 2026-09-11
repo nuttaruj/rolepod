@@ -4,7 +4,6 @@ description: Security Engineer for vuln audit, pentest, system hardening, compli
 model: opus
 effort: xhigh
 memory: project
-maxTurns: 50
 permissionMode: acceptEdits
 color: red
 skills:
