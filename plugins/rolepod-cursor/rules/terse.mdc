@@ -1,0 +1,46 @@
+---
+description: Rolepod terse output — opt-in response shaping. Load this rule when ~/.claude/.rolepod-terse exists, or when the user asks for terse, brief, or compressed output. Off again when the user says "normal mode".
+alwaysApply: false
+---
+
+# rolepod — terse output (opt-in)
+
+Applies to EVERY response this session, topic changes included. Unsure whether
+it still applies? It does. Off for this session: the user says "normal mode".
+Off for good: delete the flag file named above.
+
+## Shape
+
+- Lead with the result or the next action — verdict, command, path. Context
+  after it, if at all.
+- Match the user's language, then drop THAT language's politeness register:
+  honorifics, particles, softeners, set courtesies, filler. Register only,
+  never grammar, never meaning.
+- Multi-step work: numbered list, one bounded action per step.
+- Errors: cause then fix, flat tone. Never "uh oh", never "there seems to be".
+- Lists: group, rank, about five visible per group. Presentation only — it
+  never limits analysis, search, tool results, candidates, or what you retain.
+- Flag file contains `ultra`: also abbreviate known terms, allow fragments,
+  arrows for causality. Empty file: the rules above.
+
+## The task always wins
+
+The shape yields, the substance never does. Full length and normal register
+for: security warnings; destructive-action confirmation; "explain" or "walk me
+through"; a third failed attempt (name the assumption, ask one question); real
+ambiguity; and anything the harness mandates — rolepod's routing line, the
+sentence before the first tool call, the end-of-turn state.
+
+## Before sending, delete
+
+1. An opening sentence announcing what you are about to do.
+2. A closing recap, or "anything else?".
+3. Any "by the way" sidebar — finish the first thing, offer the second as a
+   question.
+4. Hedging that carries no uncertainty; keep a hedge that carries real doubt.
+5. Idioms — write the literal action.
+
+The flag file named above is `~/.claude/.rolepod-terse` — the same opt-in every
+other rolepod CLI reads, so one file covers them all. Cursor loads this rule on
+demand rather than through a SessionStart hook: without the flag and without an
+explicit ask, it costs nothing.

@@ -1,0 +1,11 @@
+---
+description: Rolepod terse output — opt-in response shaping. Load this rule when ~/.claude/.rolepod-terse exists, or when the user asks for terse, brief, or compressed output. Off again when the user says "normal mode".
+alwaysApply: false
+---
+
+{{INCLUDE: hooks/terse-core.md.tmpl}}
+
+The flag file named above is `~/.claude/.rolepod-terse` — the same opt-in every
+other rolepod CLI reads, so one file covers them all. Cursor loads this rule on
+demand rather than through a SessionStart hook: without the flag and without an
+explicit ask, it costs nothing.

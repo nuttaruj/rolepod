@@ -69,6 +69,24 @@ if [ "${ROLEPOD_ALLOW_SHARED_WORKTREE:-0}" != "1" ] && command -v git >/dev/null
   fi
 fi
 
+# Opt-in terse-output layer. Same flag as the Claude loader
+# (~/.claude/.rolepod-terse) so one opt-in covers every rolepod CLI; the file
+# ships next to this script. Absent flag costs nothing.
+_terse_flag="${CLAUDE_CONFIG_DIR:-$HOME/.claude}/.rolepod-terse"
+_terse_core="$(dirname -- "${BASH_SOURCE[0]}")/terse-core.md"
+if [ -f "$_terse_flag" ] && [ -f "$_terse_core" ]; then
+  _terse_level="$(head -c 32 "$_terse_flag" 2>/dev/null | tr -d '[:space:]' || true)"
+  [ "$_terse_level" = "ultra" ] || _terse_level="default"
+  # Read in an `if` condition, never inside the assignment: `-f` passes on a
+  # regular file the process cannot read, and a failed $(cat) inside
+  # PAYLOAD=... aborts this whole script under errexit — which would drop the
+  # git context, the gates reminder and the concurrent-session warning along
+  # with it. An unreadable payload degrades to "no terse layer", nothing more.
+  if _terse_body="$(cat "$_terse_core" 2>/dev/null)" && [ -n "$_terse_body" ]; then
+    PAYLOAD="${PAYLOAD}"$'\n\n'"TERSE OUTPUT ACTIVE (level: ${_terse_level}) — flag file: ${_terse_flag}"$'\n\n'"$_terse_body"
+  fi
+fi
+
 # Output strict JSON. SessionStart should use hookSpecificOutput.additionalContext
 # (injected as first turn in history / prepended to non-interactive prompt) so
 # Lead actually sees the gates + git context. systemMessage is operator-facing

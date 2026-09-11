@@ -1,5 +1,5 @@
 {
-  "_comment": "Rolepod Claude plugin hooks \u2014 12 core hook scripts / 13 registrations (session-lifecycle.sh registers twice: --lock/--unlock). Canonical `hooks/hooks.json` form (plugin root); rendered into plugins/rolepod/hooks/ alongside the *.sh scripts. ${CLAUDE_PLUGIN_ROOT} resolves to the installed plugin dir.",
+  "_comment": "Rolepod Claude plugin hooks \u2014 14 core hook scripts / 16 registrations (session-lifecycle.sh registers twice: --lock/--unlock). Canonical `hooks/hooks.json` form (plugin root); rendered into plugins/rolepod/hooks/ alongside the *.sh scripts. ${CLAUDE_PLUGIN_ROOT} resolves to the installed plugin dir.",
   "hooks": {
     "UserPromptSubmit": [
       {
@@ -19,6 +19,11 @@
           {
             "type": "command",
             "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/always-on-loader.sh\"",
+            "timeout": 3
+          },
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/terse-loader.sh\"",
             "timeout": 3
           },
           {

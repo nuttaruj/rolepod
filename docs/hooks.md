@@ -11,6 +11,7 @@ Lead does not invoke these manually. They fire automatically.
 | Category | Hooks | Purpose |
 |---|---|---|
 | **Always-on** | `always-on-loader` | Inject the rolepod always-on judgment core as SessionStart context |
+| **Output shape** | `terse-loader` | Inject the opt-in terse-output layer as SessionStart context, only when the user's flag file exists |
 | **Enforcement** | `block-subagent-commit`, `subagent-write-scope`, `cohesion-contract-check`, `gate-reminder`, `precommit-gate` | Hard / soft blocks on discipline violations (high-risk path, parallel-without-contract, sub-agent commit, schema-bound new file) |
 | **Context** | `project-context-loader` | Inject git state at SessionStart |
 | **Session safety** | `session-lifecycle`, `worktree-guard` | `session-lifecycle`: SessionStart lock + Stop unlock. `worktree-guard`: hard-blocks an edit only when a live sibling owns that exact file — disjoint/solo edits flow free |
@@ -29,7 +30,7 @@ A per-edit reminder hook duplicated all three without enforcement teeth — so i
 
 | Event | Matcher | Hooks |
 |---|---|---|
-| `SessionStart` | `startup\|resume` | `always-on-loader.sh`, `project-context-loader.sh`, `session-lifecycle.sh --lock` |
+| `SessionStart` | `startup\|resume` | `always-on-loader.sh`, `terse-loader.sh`, `project-context-loader.sh`, `session-lifecycle.sh --lock` |
 | `UserPromptSubmit` | (no matcher) | `claim-verify-nudge.sh` |
 | `PreToolUse` | `Edit\|Write\|MultiEdit` | `worktree-guard.sh`, `gate-reminder.sh`, `subagent-write-scope.sh` |
 | `PreToolUse` | `NotebookEdit` | `subagent-write-scope.sh` |
@@ -73,6 +74,33 @@ writes nothing into `~/.claude/CLAUDE.md`.
 - **Claude-only**: Codex loads its always-on core natively from
   `~/.codex/AGENTS.md`; Gemini from its extension `GEMINI.md`. Neither
   registers this hook.
+
+### `terse-loader.sh` — SessionStart (core, opt-in)
+
+Deliver the opt-in terse-output layer. Kept separate from
+`always-on-loader.sh` on purpose: a user who has not opted in pays zero
+bytes, and a failure in one loader can never take the other down.
+
+- **Opt in**: `touch ~/.claude/.rolepod-terse` — the file's content selects
+  the level (`ultra` for heavier abbreviation, empty for the default shape;
+  anything unrecognised reads as default). Opt out: delete the file. The flag
+  lives in `CLAUDE_CONFIG_DIR`, not the git root, because output shape is a
+  property of the person reading, not of the project being read.
+- **Effect**: reads `hooks/terse-core.md` beside the script (~1.7KB — lead
+  with the result, drop the reading language's politeness register, numbered
+  steps, flat error tone, a five-item display cap that explicitly never
+  limits analysis or tool results) and emits it as SessionStart
+  `additionalContext` behind a banner naming the flag and level.
+- **The task always wins**: the layer yields to security warnings,
+  destructive-action confirmation, "explain" requests, a third failed
+  attempt, real ambiguity, and anything the harness mandates. Shape yields,
+  substance never does.
+- **Self-guards**: no flag → exits 0 with no output at all; core file missing
+  or python failure → silent exit, never a partial payload.
+- **Other CLIs, same flag**: Gemini folds the same check into its
+  `session-start.sh`; Cursor ships `rules/terse.mdc` with
+  `alwaysApply: false`; Codex, Antigravity and opencode carry a pointer in
+  their entry doc that names the shipped `terse-core.md`.
 
 ### `project-context-loader.sh` — SessionStart (core)
 
@@ -418,4 +446,4 @@ claude plugin details rolepod@rolepod
 # Component inventory should list a Hooks line covering UserPromptSubmit, SessionStart, PreToolUse, Stop
 ```
 
-Expected: 13 core hook scripts / 15 registrations (UserPromptSubmit × 1, SessionStart × 3, PreToolUse × 8, PostToolUse × 2, Stop × 1 — `session-lifecycle.sh` registers twice, `--lock`/`--unlock`).
+Expected: 14 core hook scripts / 16 registrations (UserPromptSubmit × 1, SessionStart × 4, PreToolUse × 8, PostToolUse × 2, Stop × 1 — `session-lifecycle.sh` registers twice, `--lock`/`--unlock`).

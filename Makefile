@@ -65,6 +65,7 @@ test-static:
 	@bash tests/static/english-only.sh
 	@bash tests/static/agent-turn-cap.sh
 	@bash tests/static/always-on-hook.sh
+	@bash tests/static/terse-layer.sh
 	@echo "  → static checks passed"
 
 # lean-surface — anti-drift guards that lock in the Core 10 invariants:
