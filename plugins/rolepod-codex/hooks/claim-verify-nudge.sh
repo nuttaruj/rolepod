@@ -26,13 +26,22 @@
 # a 14-command grep sweep cost 31 turns × 558k = 17.3M tokens ≈ $9 at
 # opus, and the Lead's own re-reads were ~90% of the project's spend. No
 # hook watched it because none looked at `usage`. This one reads the last
-# turn's context size from the transcript and, past 200k (the long-context
-# pricing knee), tells the Lead via additionalContext: delegate reads to a
+# turn's context size from the transcript and, on crossing 500k, tells the
+# Lead via additionalContext (v2.119.1 — 200k per 200k bucket until then,
+# picked as the long-context pricing knee; Claude 4.6+ bill the full 1M
+# window at one rate, so the knee is gone, and the owner asked for one note
+# at half the window, repeated only after a /compact brings the context back
+# under the line and it crosses again): delegate reads to a
 # scout, and propose /compact or a fresh session to the user when the task
 # is done. Lead-facing only (v2.49.1): the user-facing systemMessage was
-# removed on request — a nag on every 200k bucket is friction, and the Lead
-# can raise it in its own words at a natural pause. Fires once per 200k
-# bucket per session (state file), not every prompt.
+# removed on request — a nag on every bucket is friction, and the Lead
+# can raise it in its own words at a natural pause. Edge-triggered: the
+# state file says "fired" while the context sits above the line and is
+# removed on the first reading below it, so one crossing = one note.
+# Measured 2026-09-11 over 7 days: the hook fired 2x in one session and the
+# Lead relayed "/compact" 43x, because "when the task is done" read as every
+# turn's end — the line now binds the relay to THIS turn's close and forbids
+# a repeat until a new context-check line arrives.
 #
 # Opt-out for a session: ROLEPOD_NUDGE_OFF=1
 set -euo pipefail
@@ -47,20 +56,23 @@ SESSION_STATE="$(dirname "$0")/lib/session_state.py"
 if [ -f "$SESSION_STATE" ]; then
   CTX=$(printf '%s' "$INPUT" | python3 "$SESSION_STATE" context-tokens 2>/dev/null || echo 0)
   CTX=${CTX:-0}
-  if [ "$CTX" -ge 200000 ] 2>/dev/null; then
-    SID=$(printf '%s' "$INPUT" | python3 -I -c "import sys,json;print(json.load(sys.stdin).get('session_id',''))" 2>/dev/null || echo "")
-    BUCKET=$((CTX / 200000))
-    STATE_DIR="$HOME/.rolepod/ctx-nudge"
-    LAST=""
-    if [ -n "$SID" ]; then
-      mkdir -p "$STATE_DIR" 2>/dev/null || true
-      LAST=$(cat "$STATE_DIR/$SID" 2>/dev/null || echo "")
-    fi
-    if [ "$LAST" != "$BUCKET" ]; then
-      [ -n "$SID" ] && { printf '%s' "$BUCKET" > "$STATE_DIR/$SID" 2>/dev/null || true; }
+  CTX_LINE=500000
+  SID=$(printf '%s' "$INPUT" | python3 -I -c "import sys,json;print(json.load(sys.stdin).get('session_id',''))" 2>/dev/null || echo "")
+  SID=$(printf '%s' "$SID" | tr -cd 'A-Za-z0-9._-')   # the id names a file under ~/.rolepod — nothing else may
+  case "$SID" in .|..) SID="" ;; esac
+  STATE_DIR="$HOME/.rolepod/ctx-nudge"
+  if [ -n "$SID" ] && [ "$CTX" -ge "$CTX_LINE" ] 2>/dev/null; then   # no session id = no throttle = no note
+    mkdir -p "$STATE_DIR" 2>/dev/null || true
+    LAST=$(cat "$STATE_DIR/$SID" 2>/dev/null || echo "")
+    if [ "$LAST" != "fired" ]; then   # a pre-v2.119.1 bucket number reads as "armed" — one note, then "fired"
+      printf 'fired' > "$STATE_DIR/$SID" 2>/dev/null || true
       CTX_K=$((CTX / 1000))
-      CTX_MSG="context-check: last turn carried ${CTX_K}k tokens of context — every turn re-reads all of it. Sweeps / many-file reads → dispatch rolepod:scout and read its report. When the task is done, tell the user ONCE that /compact or a fresh session cuts per-turn cost 3-5× (manage-context); never repeat it. "
+      CTX_MSG="context-check: last turn carried ${CTX_K}k tokens of context — every turn re-reads all of it. Fix: sweeps / many-file reads → dispatch rolepod:scout and read its report; in THIS turn's closing line tell the user once that /compact or a fresh session cuts per-turn cost (manage-context) — then never mention context again until a new context-check line arrives. "
     fi
+  elif [ "$CTX" -gt 0 ] 2>/dev/null && [ -n "$SID" ]; then
+    # Below the line with a real reading → re-arm, so the next crossing (after
+    # /compact or a fresh start) gets its one note again. 0 = unknown, not small.
+    rm -f "$STATE_DIR/$SID" 2>/dev/null || true
   fi
 fi
 

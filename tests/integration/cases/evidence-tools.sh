@@ -449,10 +449,17 @@ printf '{"type":"assistant","timestamp":"2026-08-18T01:00:00.000Z","message":{"m
 mkdir -p "$FIX/home"
 check "context-check: 575k context → additionalContext for the Lead only (no user-facing systemMessage, v2.49.1)" \
   "printf '{\"session_id\":\"c1\",\"transcript_path\":\"$FIX/ctx-big.jsonl\",\"prompt\":\"fix the button\"}' | HOME='$FIX/home' bash '$CVN' | python3 -c 'import json,sys; o=json.load(sys.stdin); a=o[\"hookSpecificOutput\"][\"additionalContext\"]; assert \"575k\" in a and \"scout\" in a and \"/compact\" in a and \"systemMessage\" not in o'"
-check "context-check: same 200k bucket in the same session → silent (once per bucket)" \
+check "context-check: still above the line in the same session → silent (one crossing = one note)" \
   "! printf '{\"session_id\":\"c1\",\"transcript_path\":\"$FIX/ctx-big.jsonl\",\"prompt\":\"fix the button\"}' | HOME='$FIX/home' bash '$CVN' | grep -q context-check"
 check "context-check: 121k context → no context wording (claim-check still works)" \
   "printf '{\"session_id\":\"c2\",\"transcript_path\":\"$FIX/ctx-small.jsonl\",\"prompt\":\"why is this broken\"}' | HOME='$FIX/home' bash '$CVN' | python3 -c 'import json,sys; o=json.load(sys.stdin); a=o[\"hookSpecificOutput\"][\"additionalContext\"]; assert \"claim-check\" in a and \"context-check\" not in a and \"systemMessage\" not in o'"
+printf '{"type":"assistant","timestamp":"2026-08-18T01:00:00.000Z","message":{"model":"claude-opus-5","usage":{"input_tokens":2,"cache_read_input_tokens":250000,"cache_creation_input_tokens":1000,"output_tokens":10},"content":[]}}\n' > "$FIX/ctx-mid.jsonl"
+check "context-check: 251k context → silent — the line is 500k, not the old 200k pricing knee (v2.119.1)" \
+  "! printf '{\"session_id\":\"c4\",\"transcript_path\":\"$FIX/ctx-mid.jsonl\",\"prompt\":\"fix the button\"}' | HOME='$FIX/home' bash '$CVN' | grep -q context-check"
+check "context-check: 121k in session c1 after the note → silent, and the line re-arms (a /compact brought it under)" \
+  "! printf '{\"session_id\":\"c1\",\"transcript_path\":\"$FIX/ctx-small.jsonl\",\"prompt\":\"fix the button\"}' | HOME='$FIX/home' bash '$CVN' | grep -q context-check && [ ! -f '$FIX/home/.rolepod/ctx-nudge/c1' ]"
+check "context-check: 575k in session c1 again → one more note (crossed the line a second time)" \
+  "printf '{\"session_id\":\"c1\",\"transcript_path\":\"$FIX/ctx-big.jsonl\",\"prompt\":\"fix the button\"}' | HOME='$FIX/home' bash '$CVN' | python3 -c 'import json,sys; a=json.load(sys.stdin)[\"hookSpecificOutput\"][\"additionalContext\"]; assert \"context-check\" in a and \"575k\" in a and \"THIS turn\" in a'"
 check "context-check: big context + claim prompt → both notes in one payload" \
   "printf '{\"session_id\":\"c3\",\"transcript_path\":\"$FIX/ctx-big.jsonl\",\"prompt\":\"why is this broken\"}' | HOME='$FIX/home' bash '$CVN' | python3 -c 'import json,sys; o=json.load(sys.stdin); a=o[\"hookSpecificOutput\"][\"additionalContext\"]; assert \"context-check\" in a and \"claim-check\" in a'"
 check "context-check: no transcript → plain claim-nudge behaviour, no crash" \
