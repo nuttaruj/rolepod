@@ -1,7 +1,7 @@
 #!/bin/bash
 # spec-lint — proves the write-spec placeholder lint actually works.
-# Backs the SKILL.md "Full Rolepod enhancement" claim that a saved spec is
-# checked for placeholder leaks before Gate 2 / handoff. The lint is the
+# Backs write-spec §6-§7: a saved spec is checked for placeholder leaks
+# before Gate 2 / handoff. The lint is the
 # deterministic backstop to write-spec's prose self-review: it catches an
 # unfilled [[FILL: ...]] marker and TODO/TBD markers a model might miss — and
 # must NOT false-positive on ordinary angle brackets (<h1>, List<T>).

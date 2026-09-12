@@ -75,7 +75,8 @@ test-static:
 #   - no tier: 3 / redirect_to shim fields remain
 #   - deleted legacy skill directories stay absent
 #   - core skills include agent-available + no-agent fallback paths
-#   - core skills include Full Rolepod enhancement note
+#   - SKILL.md byte caps (includes expanded) + no prose line past 600 chars
+#   - the retired Full Rolepod enhancement section stays out of every skill
 #   - write-spec includes approval gate + self-review
 #   - core skill fallback sections concise (≤ 25 lines)
 #   - no full 15-agent table leaked into entry docs
