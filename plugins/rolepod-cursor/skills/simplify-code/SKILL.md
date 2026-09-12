@@ -5,66 +5,48 @@ description: Use when code feels over-engineered, rotted, or duplicated — cut 
 
 # Simplify Code
 
-Simplify-phase skill — cross-phase, usable during Build (refactor intent) or as standalone cleanup. Cut complexity that does not earn its keep. Behavior-preserving — every change is provable by the existing tests.
+Cut complexity that does not earn its keep. Behavior-preserving: every cut is provable by the existing tests. Usable mid-Build (refactor intent) or standalone.
 
 ## Iron Rule
 
 <EXTREMELY-IMPORTANT>
 1. NEVER simplify without a test suite that proves behavior before and after.
-2. NEVER remove an abstraction the codebase actually depends on — verify call sites first.
-3. NEVER add a new abstraction for "hypothetical future use". One concrete user is not enough.
-4. Same pattern in 3+ places, enforcing the SAME rule (one invariant, one lifecycle) → centralize; text that only reads alike under a different contract stays separate. On the high-risk list — auth, billing, credits, URL validation, redirects, SSRF, cookies, logging, retries, external API — TWO occurrences already force it.
-5. Apply the deletion test before any cut. Imagine deleting the module: if complexity vanishes, it was a pass-through — delete safely. If complexity reappears scattered across N callers, the abstraction was earning its keep — keep it.
+2. NEVER remove an abstraction the codebase depends on — verify call sites first.
+3. NEVER add an abstraction for "hypothetical future use". One concrete user is not enough.
+4. Same pattern in 3+ places enforcing the SAME rule (one invariant, one lifecycle) → centralize; text that only reads alike under a different contract stays separate. On the high-risk list — auth, billing, credits, URL validation, redirects, SSRF, cookies, logging, retries, external API — TWO occurrences already force it.
+5. Deletion test before any cut: imagine deleting the module. Complexity vanishes → it was a pass-through, delete it. Complexity reappears scattered across N callers → it earned its keep, keep it.
 </EXTREMELY-IMPORTANT>
 
 ## When to use
 
-- Code reviewer flagged over-engineering or duplication
-- A file is > 500 lines and looks like it grew by accretion
-- An abstraction has exactly one caller
-- A defensive null-check / try-catch covers an "impossible" case
-- Same logic copy-pasted in 3+ files
-- User says "this is getting messy" or "refactor X"
-- `rolepod-debt:` markers present in the touched area — harvest them (§2)
+- A reviewer flagged over-engineering or duplication · a file >500 lines grew by accretion · an abstraction has one caller · a defensive check covers an "impossible" case · the same logic sits in 3+ files · the user says "messy" / "refactor X" · `rolepod-debt:` markers in the touched area (§2).
 
 Skip when:
-- Tests don't exist for the touched code — write them first via `implement-plan` or `debug-issue`
-- The "complexity" is load-bearing (security boundary, data invariant)
-- It is mid-feature and the cut is not required to unblock the planned change — a required prefactor is not a skip (§4b)
+- No tests cover the touched code → write them first via `implement-plan` or `debug-issue`.
+- The complexity is load-bearing (security boundary, data invariant).
+- Mid-feature and the cut is not needed to unblock the change — a required prefactor is not a skip (§4b).
 
 ## Boundary
 
-Owns:
-- Behavior-preserving complexity cuts: inline single-use helpers, delete unused config, centralize repeated patterns, structural simplification.
+Owns: behavior-preserving cuts — inline single-use helpers, delete unused config, centralize repeated patterns, structural simplification.
 
-Does not own:
-- Feature changes.
-- Bug fixes with unknown root cause.
-- Refactors without a test baseline.
-- Product / API behavior changes.
+Does not own: feature changes · bug fixes with unknown root cause · refactors without a test baseline · product / API behavior changes.
 
-Return / hand off:
+Hand off:
 - Behavior must change → `write-spec` or `write-plan`.
-- Tests missing for a risky area → `implement-plan` to add baseline tests.
+- Tests missing for a risky area → `implement-plan` (baseline tests first).
 - Bug found while simplifying → `debug-issue`.
-- Simplification complete → `check-work`.
-
-## Inputs to gather
-
-- The code region or file(s) flagged as complex
-- The existing tests for that region (must be green before starting)
-- Call sites for any abstraction you plan to inline or remove
-- The user's intent (cleanup only, or cleanup + behavior change)
+- Cuts complete → `check-work`.
 
 ## Workflow
 
-### 1. Confirm tests are green
+### 1. Green baseline
 
-Run the touched module's test suite. If red, fix or write tests first. You cannot prove behavior-preserving without a baseline.
+Run the touched module's suite. Red → fix or write tests first; without a baseline nothing is provably behavior-preserving. Gather: the flagged region, its tests, call sites of anything you plan to inline or remove, the user's intent (cleanup only, or cleanup + behavior change).
 
 ### 2. Scan for these patterns
 
-Before removing anything, run **Chesterton's Fence** + the **deletion test** (Iron Rule 5) together. Chesterton: `git blame` the origin commit — code with no callers may still encode a reason. Verify the why, not just the call sites. Both tests pass = safe to delete; either fails = stop.
+Before removing anything run Chesterton's Fence + the deletion test (Iron Rule 5) together: `git blame` the origin commit — code with no callers may still encode a reason. Verify the WHY, not just the call sites. Both pass → safe to delete; either fails → stop.
 
 | Pattern | Action |
 |---------|--------|
@@ -78,79 +60,61 @@ Before removing anything, run **Chesterton's Fence** + the **deletion test** (Ir
 | Comment that restates what the code does | Delete the comment |
 | Wrapper that only forwards calls (delete it → complexity vanishes) | Inline; a pure pass-through earns nothing |
 
-**Debt markers.** A deliberate simplification with a KNOWN ceiling (global lock, O(n²) scan, naive heuristic) leaves one greppable comment where the corner lives: `rolepod-debt: <what>. ceiling: <limit>. upgrade when: <trigger>`. Harvest: `grep 'rolepod-debt:'` lists the ledger — a marker naming no upgrade trigger is rot; fix the marker or do the upgrade. These markers are exempt from the "comment restates code" row above.
+**Debt markers.** A deliberate simplification with a KNOWN ceiling (global lock, O(n²) scan, naive heuristic) leaves one greppable comment: `rolepod-debt: <what>. ceiling: <limit>. upgrade when: <trigger>`. `grep 'rolepod-debt:'` lists the ledger; a marker naming no upgrade trigger is rot — fix the marker or do the upgrade. Exempt from the "comment restates code" row.
 
-### 3. Prefer structural over runtime
+### 3. Structural over runtime
 
-A runtime `if (x === null) throw` becomes a non-nullable type. A "must be set" config becomes a required constructor argument. Make the bad state un-representable when the type system allows. A type proves what your own code produces, not what arrived — JSON / network / config / DB values still need a runtime check at the boundary where they enter.
+A runtime `if (x === null) throw` becomes a non-nullable type; a "must be set" config becomes a required constructor argument. Make the bad state un-representable where the type system allows. A type proves what your own code produces, not what arrived — JSON / network / config / DB values still need a check at the boundary where they enter.
 
 ### 4. Centralize at 3 occurrences
 
-Two is a coincidence. Three is a pattern — centralize. On Iron Rule 4's high-risk list (auth / billing / credits / URL validation / redirects / SSRF / cookies / logging / retries / external API), two occurrences already force it.
+Two is a coincidence, three is a pattern. On Iron Rule 4's high-risk list, two already force it.
 
-**Inverse rule for keeping abstractions.** One adapter behind an interface = hypothetical seam, candidate for inline. Two real adapters = real seam, keep the interface. The rule mirrors centralization: counts decide structure. An interface with one implementation is the same shape as a five-line pattern in one file — it does not yet earn the abstraction.
+Inverse rule: one adapter behind an interface = hypothetical seam, inline it; two real adapters = real seam, keep the interface. Counts decide structure.
 
 ### 4b. Refactor before fix
 
-When a planned change is hard because the surrounding shape is wrong, first cut the shape until the change is easy, then make the easy change. Two commits, not one. Cut commits are behavior-preserving (this skill); the change commit is the feature (`implement-plan`). Mixing them in one commit makes the diff unreviewable and hides which line caused which regression.
+A planned change is hard because the surrounding shape is wrong → first cut the shape until the change is easy, then make the easy change. Two commits: cut commits are behavior-preserving (this skill); the change commit is the feature (`implement-plan`). Mixing them hides which line caused which regression. Skip when the change is small and the shape is fine — never invent friction.
 
-Skip this rule if the change is genuinely small and the shape is fine; do not invent friction to justify a refactor.
+### 5. One cut per commit
 
-### 5. One change at a time
-
-One cut per commit. Run the test suite between cuts. A delegated subagent stages instead and returns diff + proof — the Lead commits (`implement-plan`). A failing test mid-simplification tells you the previous cut went too far — revert that one, not all of them.
+Run the suite between cuts. A delegated subagent stages and returns diff + proof; the Lead commits (`implement-plan`). A failing test mid-simplification means the previous cut went too far — revert that one, not all.
 
 ### 6. Stop when behavior is at risk
 
-If a cut requires changing what a test asserts, stop and check what that assertion proved. If the expected VALUE changes, you are no longer behavior-preserving — ask the user, or move the cut to a separate `implement-plan` task with a real spec. Only a retarget onto the same observable output (a private detail or a mock's call shape) is still behavior-preserving.
+A cut that changes what a test ASSERTS → check what the assertion proved. The expected VALUE changes → no longer behavior-preserving: ask the user, or move it to an `implement-plan` task with a spec. A retarget onto the same observable output (a private detail, a mock's call shape) is still behavior-preserving.
 
 ## If a matching Rolepod agent is available
 
-Delegate to the closest specialist:
-
-- `universal-reviewer` for DRY / smell / structure cleanup
-- `system-architect` when the cut touches module boundaries or APIs
-- `security-engineer` when the cut touches auth / secret / token / crypto code paths
+- `universal-reviewer` — DRY / smell / structure cleanup
+- `system-architect` — cuts touching module boundaries or APIs
+- `security-engineer` — cuts touching auth / secret / token / crypto paths
 
 Brief: the file region, the existing tests, the user intent (cleanup vs cleanup + behavior).
 
 ## If no matching agent is available
 
-Execute as Lead with this minimum viable checklist:
-
-1. Run the module's test suite — must be green
-2. List the over-engineering patterns present in the file
-3. Pick the smallest single cut
-4. Apply it
-5. Run the test suite — must stay green
-6. Commit (or stage); repeat with the next smallest cut
-7. Stop when further cuts would change behavior or break tests
-8. Centralize anything that appears in 3+ files into one source of truth
+Execute as Lead: §1 green baseline → §2 smallest single cut → suite green → commit or stage → repeat. Stop when a cut would change behavior; centralize anything in 3+ files.
 
 ## Output
 
-The simplification report is the canonical artifact: `templates/simplification-report.md`. It carries the green baseline, each cut, anything centralized, the post-cut tests, and the behavior-preserved verdict. Do not restate the report shape here; the template is the single source.
+The simplification report is the canonical artifact: `templates/simplification-report.md` — green baseline, each cut, anything centralized, post-cut tests, the behavior-preserved verdict.
 
-## Examples
+## References
 
-Non-blocking — read only when unsure whether a cut is behavior-preserving:
-- `examples/simplify-examples.md` — a single-use-helper inline and a defensive-check cut, each a good/bad pair with a "why good wins" table. Read the whole file; the contrast is the lesson.
+Load only when needed:
+- `examples/simplify-examples.md` — a single-use-helper inline and a defensive-check cut, good/bad pairs; read when unsure whether a cut is behavior-preserving.
 
 ## Hard stops
 
-- Tests were not green at the start → write tests first, do not simplify on a red baseline
-- A cut changed a test's expected VALUE (not just which line/mock it asserts against) → that is a behavior change, route to `implement-plan`
-- An "unused" abstraction has callers you missed → restore it and verify before another attempt
-- About to invent a new abstraction for one caller → reject; that is complexity, not simplification
-- About to delete a module without running the deletion test → stop; Iron Rule 5
-- Refactor-before-fix commits mixed with the feature change in one commit → stop, split; cut commits stay behavior-preserving
-
-## Full Rolepod enhancement
-
-Full Rolepod improves this phase by adding the simplicity gate S1-S5 in pre-commit hooks, `universal-reviewer` adversarial pressure on DRY violations, and the centralization rule enforced for auth / billing / credit / URL validation paths.
+- Tests not green at the start → write tests first.
+- A cut changed a test's expected VALUE → behavior change, route to `implement-plan`.
+- An "unused" abstraction has callers you missed → restore, verify, then retry.
+- About to add an abstraction for one caller → reject.
+- About to delete a module without the deletion test → stop; Iron Rule 5.
+- Refactor-before-fix commits mixed with the feature change → split.
 
 ## Next phase
 
-- If the cleanup is part of a larger plan, return to `implement-plan` for the next planned task.
-- If the cleanup uncovered a real bug, route to `debug-issue`.
-- If the cleanup is complete, route to `check-work` for the verification block, then `finish-work`.
+- Part of a larger plan → `implement-plan`, next task. Uncovered a real bug → `debug-issue`.
+- Cleanup complete → `check-work`, then `finish-work`; if neither is available, attach the report and ask the user whether to ship.

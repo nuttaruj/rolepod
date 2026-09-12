@@ -21,7 +21,11 @@ A skill must hold three properties at once:
 
 ## Part 1 — The SKILL.md skeleton
 
-Copy this, delete the `<hints>`. Keep a phase skill ≤ 190 lines.
+Copy this, delete the `<hints>`. Budget is BYTES, not lines, counted with
+every `{{INCLUDE:}}` expanded: a phase skill ≤ 13 KB (`using-rolepod`
+≤ 21.5 KB, `review-code` ≤ 19 KB, `rolepod-full` ≤ 3 KB and ≤ 80 lines, all
+SKILL.md ≤ 131 KB), no prose line past 600 chars — `lean-surface.sh`
+enforces each.
 
 ```markdown
 ---
@@ -60,14 +64,12 @@ Owns:
 Does not own:
 - <what a neighbouring phase owns>
 
-Return / hand off:
+Hand off:
 - <condition> → `<skill>`.
 
-## Inputs to gather
-
-- <what the skill reads before acting>
-
 ## Workflow
+
+Inputs: <what the skill reads before acting, one line>.
 
 ### 1. <step>
 
@@ -80,44 +82,38 @@ Delegate to the closest specialist:
 
 ## If no matching agent is available
 
-Execute as Lead with this minimum viable checklist:
-1. <step>
+Execute as Lead: <only the steps the Workflow above does not already state,
+as one arrow chain — never a restatement of the Workflow>.
 
 ## Output
 
 The <artifact> is the canonical artifact: `templates/<artifact>.md`. Do not
 restate its shape here; the template is the single source.
-
-## Examples
-
-Non-blocking — read only when <the work is unclear>:
-- `examples/<skill>-examples.md` — <what it contrasts>.
+<If the phase writes an evidence line: `{{INCLUDE: core/fragments/phase-log.md}}`
+ followed by the one JSON shape this phase appends.>
 
 ## References
 
-Load only when the task needs it:
+Load only when needed:
 - `references/<technique>.md` — <when to reach for it>.
+- `examples/<skill>-examples.md` — <what it contrasts>, good/bad pairs.
 
 ## Hard stops
 
-- <condition> → stop, <recovery>.
-
-## Full Rolepod enhancement
-
-Full Rolepod improves this phase by adding <router continuity / agents /
-hooks / tests>.
+- <condition> → <recovery>.
 
 ## Next phase
 
-- If `<next-skill>` is available, continue there.
-- If not, <terminal handoff / fallback>.
+- `<next-skill>` <with what>.
+- If `<next-skill>` is not available, <terminal handoff / fallback>.
 ```
 
 `lean-surface.sh` fails a phase skill that omits any of: `## Boundary`, a
-no-agent fallback section, that fallback ≤ 25 lines, `## Full Rolepod
-enhancement`, a `## Next phase` carrying a fallback or terminal handoff. It
-also fails hard-dependency language ("Always delegate to", "Requires Rolepod
-agents") and any phase skill over 190 lines.
+no-agent fallback section (≤ 25 lines), a `## Next phase` carrying a
+fallback or terminal handoff. It also fails hard-dependency language
+("Always delegate to", "Requires Rolepod agents"), any SKILL.md over its
+byte cap, any prose line past 600 chars, and the retired `## Full Rolepod
+enhancement` section (marketing prose a Lead never acts on — cut 2026-09).
 
 ---
 
@@ -135,10 +131,11 @@ Three optional folders sit beside `SKILL.md`:
 Add a file ONLY when it has a distinct job. The count is per-skill judgment,
 not a quota. Lean caps (`lean-surface.sh` enforces):
 
-- ≤ 4 supporting files per skill
-- ≤ 5 for `debug-issue` and `finish-work` (the deepest skills)
+- ≤ 5 supporting files per skill (`implement-plan`, `write-plan` 6)
 - ≤ 3 for the `using-rolepod` router · 0 for the `rolepod-full` alias
-- ≤ 36 supporting files total across all skills
+- ≤ 44 supporting files total across all skills
+- ≤ 34 KB of supporting bytes per skill, ≤ 176 KB total — the escape
+  hatch is capped too, so a SKILL.md cut cannot migrate into references/
 
 Decide each folder on its own merit:
 
@@ -148,8 +145,9 @@ Decide each folder on its own merit:
 | `examples/` | a good/bad contrast changes behaviour | the skill body already makes the bar obvious |
 | `references/` | a sub-technique is real depth, distinct from the spine | the spine already covers it — a reference restating an inline table is bloat |
 
-Variance is correct: `review-code` ships 2 files, `debug-issue` ships 5. If a
-skill needs nothing, it ships nothing — the `rolepod-full` alias has zero.
+Variance is correct: `simplify-code` ships 2 files, `implement-plan` ships 6.
+If a skill needs nothing, it ships nothing — the `rolepod-full` alias has zero
+supporting files and its own ≤3 KB / ≤80-line caps.
 
 ---
 
@@ -189,8 +187,8 @@ Name it `examples/<skill>-examples.md`. It must:
   samples.
 - Carry a **"Why good wins"** table per scenario — `lean-surface.sh` greps
   for that literal heading in every `*-examples.md`.
-- Open with a one-line "read the whole file — the contrast is the lesson"
-  note so the model does not read one half alone. One line; do not expand it.
+- The pointer in `SKILL.md` states the contrast in its own clause, so the
+  file itself needs no "read the whole file" preamble (Part 7: no ritual).
 
 ---
 
@@ -215,3 +213,35 @@ Name it `examples/<skill>-examples.md`. It must:
   half of an examples file (`TBD`). Never in a `SKILL.md` spine.
 - After any skill change: `make render`, then
   `bash tests/static/lean-surface.sh`. Both must be clean before commit.
+
+---
+
+## Part 7 — Lean rules (the 2026-09 cut, 164 → 126 KB raw / 166 → 129 KB expanded)
+
+Every skill must hold three properties at once: **lean**, **works with the
+others** (one vocabulary, clean hand-offs, no contradictions), **works
+standalone** (loaded alone, on a CLI with no hooks). The rules that keep
+all three:
+
+- **Rule over mechanism.** State the rule and the command that does it.
+  Never narrate which hook denies under which sub-condition, exit codes,
+  harness timeouts, version history ("since v2.x"), or measurements — hooks
+  print their own ≤600-char message when they bite. Where a hook carries a
+  rule on Claude Code, one sentence makes the text the gate elsewhere: "On a
+  CLI without hooks this section is the gate."
+- **One definition per concept.** The R0-R4 ladder lives in `using-rolepod`;
+  every other skill uses the 4-word gloss (R1 trivial edit · R2 one file +
+  test · R3 multi-file · R4 high-risk) — enough to act on standalone. Shared
+  mechanics live in `core/fragments/` (`phase-log.md`, the gate lists) and
+  are `{{INCLUDE}}`d, never retyped.
+- **No ritual.** No intro paragraph beyond one line; no section that
+  restates another (`If no matching agent` is an arrow chain of what the
+  Workflow does NOT already say); no "read the whole file" boilerplate; no
+  diagram that duplicates the numbered steps under it.
+- **One directive per line.** A paragraph that chains "— and …; a … (never
+  …)" clauses is split into bullets. A model drops or mis-orders clauses in
+  a 2,000-char line; three cross-CLI reviewers confirmed the risk.
+- **When the byte cap bites**, in order: dedupe (grep whether the rule is
+  stated elsewhere; point, don't restate) → move load-on-demand detail into
+  `references/` (capped too) → name in the PR what the new doctrine
+  replaces. Caps rise only with a measured incident.

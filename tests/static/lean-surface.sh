@@ -72,31 +72,73 @@ if [ -f "$RF" ]; then
   check "rolepod-full is manual-invoke only (disable-model-invocation)" "grep -q '^disable-model-invocation: true' $RF"
 fi
 
-# ── Phase SKILL.md line cap (spec: ≤ 190 lines) ───────────────────────
-# Gate prose folded into the 9 phase skills must stay lean — a skill past
-# 190 lines is drifting into a domain manual. Progressive disclosure (a
-# sibling templates/ examples/ references/ file) is the escape hatch, not
-# an ever-growing SKILL.md. Scope: the 9 phase skills. The using-rolepod
-# router has its own ≤240 cap below; rolepod-full has its own ≤80 cap above.
-OVER_CAP=""
-for s in write-spec write-plan implement-plan debug-issue check-work review-code finish-work simplify-code manage-context; do
-  f="core/skills/$s/SKILL.md"
-  [ -f "$f" ] || continue
-  n=$(wc -l < "$f" | tr -d ' ')
-  [ "$n" -le 190 ] || OVER_CAP="${OVER_CAP}${s} (${n}) "
-done
-if [ -z "$OVER_CAP" ]; then
-  echo "  ✓ all phase skills ≤ 190 lines"
+# ── SKILL.md byte caps (bytes, not lines) ─────────────────────────────
+# A ≤190-line cap held from v2.6 to v2.119 while the 10 phase skills grew
+# 98 → 161 KB: growth went INTO existing lines as appended clauses
+# (using-rolepod fell 239 → 224 lines while gaining 74% bytes). Bytes are
+# what the model reads, so bytes are the budget. Caps sit ~10% above the
+# post-cut sizes. A breach means: dedupe (grep whether the rule is stated
+# elsewhere and point instead of restate) → move load-on-demand detail into
+# references/ (capped below) → name in the PR what the new doctrine
+# replaces. Raise a cap only with a measured incident — the same bar as
+# every other rule. rolepod-full keeps its ≤80-line cap above.
+# Measured INCLUDE-AWARE: a `{{INCLUDE: core/fragments/x.md}}` line is ~40 B
+# on disk and its expansion at render time is what the model reads (the gate
+# lists are ~600-750 B each), so each include counts as the fragment's bytes.
+SKILL_BYTES_REPORT=$(python3 -I - <<'PYEOF'
+import pathlib, re
+ROOT = pathlib.Path(".")
+CAPS = {"using-rolepod": 21500, "review-code": 19000, "rolepod-full": 3000}
+DEFAULT, TOTAL_CAP = 13000, 131000  # total = backstop; the per-skill caps do the work
+inc = re.compile(r"^\{\{INCLUDE: (.+?)\}\}$")
+over, total = [], 0
+for d in sorted((ROOT / "core/skills").iterdir()):
+    f = d / "SKILL.md"
+    if not f.is_file():
+        continue
+    n = 0
+    for line in f.read_text(encoding="utf-8").splitlines(keepends=True):
+        m = inc.match(line.strip())
+        n += len((ROOT / m.group(1)).read_bytes()) if m else len(line.encode())
+    total += n
+    cap = CAPS.get(d.name, DEFAULT)
+    if n > cap:
+        over.append(f"{d.name} ({n}>{cap})")
+print("OVER " + " ".join(over))
+print(f"TOTAL {total} {TOTAL_CAP}")
+PYEOF
+)
+SKILL_BYTES_OVER=$(printf '%s\n' "$SKILL_BYTES_REPORT" | sed -n 's/^OVER //p')
+SKILL_BYTES_TOTAL=$(printf '%s\n' "$SKILL_BYTES_REPORT" | awk '/^TOTAL /{print $2}')
+if [ -z "$SKILL_BYTES_OVER" ]; then
+  echo "  ✓ every SKILL.md within its byte cap, includes expanded (phase ≤13000; router ≤21500; review-code ≤19000; alias ≤3000)"
 else
-  echo "  ✗ phase skill(s) over the 190-line cap: $OVER_CAP"
+  echo "  ✗ SKILL.md over byte cap (includes expanded): $SKILL_BYTES_OVER"
+  fail=$((fail+1))
+fi
+check "all SKILL.md total ≤ 131000 B, includes expanded (actual: $SKILL_BYTES_TOTAL)" "[ $SKILL_BYTES_TOTAL -le 131000 ]"
+
+# Clause-chain guard: no prose line past 600 chars. The accretion shape
+# was a 2,528-char line carrying eight directives with nested exceptions —
+# a model drops or mis-orders clauses in such a line (three cross-CLI
+# reviewers agreed, 2026-09-12). Table rows are one logical item each and
+# are exempt; a table cell that runs long is still a smell, not a failure.
+LONG_LINES=""
+for d in core/skills/*/; do
+  f="${d}SKILL.md"; [ -f "$f" ] || continue
+  n=$(awk 'length > 600 && !/^\|/' "$f" | wc -l | tr -d ' ')
+  [ "$n" -eq 0 ] || LONG_LINES="${LONG_LINES}$(basename "$d") ($n) "
+done
+if [ -z "$LONG_LINES" ]; then
+  echo "  ✓ no SKILL.md prose line past 600 chars"
+else
+  echo "  ✗ SKILL.md prose line(s) past 600 chars: $LONG_LINES"
   fail=$((fail+1))
 fi
 
 # ── Supporting-file lean caps (skill power-up invariants) ─────────────
 # Each skill is SKILL.md + optional templates/ examples/ references/ files.
 # These caps lock the surface so the power-up does not regress into bloat:
-#   - using-rolepod SKILL.md ≤ 240 (router; scope-then-spawn + force-full
-#     detail live in references/, not the spine)
 #   - supporting files per skill ≤ 5, except the using-rolepod router
 #     (≤ 3) and the rolepod-full alias (0)
 #   - total supporting files across all skills ≤ 44
@@ -105,10 +147,6 @@ fi
 #     wizard.md; 42 for write-spec's chart-work.md; 41 for write-plan's
 #     advisory-routing.md. Bump only for a deliberate new capability)
 #   - every examples/*-examples.md carries a "Why good wins" contrast table
-URS="core/skills/using-rolepod/SKILL.md"
-URS_LINES=$(wc -l < "$URS" | tr -d ' ')
-check "using-rolepod SKILL.md ≤ 240 lines (actual: $URS_LINES)" "[ $URS_LINES -le 240 ]"
-
 SUPPORT_TOTAL=0
 SUPPORT_OVER=""
 for d in core/skills/*/; do
@@ -135,6 +173,26 @@ else
   fail=$((fail+1))
 fi
 check "total supporting files ≤ 44 (actual: $SUPPORT_TOTAL)" "[ $SUPPORT_TOTAL -le 44 ]"
+
+# Supporting-file BYTE caps — the escape hatch is capped too, so a SKILL.md
+# cut cannot migrate into references/ / templates/ / examples/. Frozen at
+# the 2026-09-12 sizes (largest skill dir 33,060 B; total 174,534 B); a
+# skill dir that needs more is cutting elsewhere first.
+SUPPORT_BYTES_TOTAL=0
+SUPPORT_BYTES_OVER=""
+for d in core/skills/*/; do
+  s=$(basename "$d")
+  n=$(find "$d" -type f ! -name SKILL.md -exec cat {} + 2>/dev/null | wc -c | tr -d ' ')
+  SUPPORT_BYTES_TOTAL=$((SUPPORT_BYTES_TOTAL + n))
+  [ "$n" -le 34000 ] || SUPPORT_BYTES_OVER="${SUPPORT_BYTES_OVER}${s} (${n}) "
+done
+if [ -z "$SUPPORT_BYTES_OVER" ]; then
+  echo "  ✓ supporting files per skill ≤ 34000 B"
+else
+  echo "  ✗ supporting files over the per-skill byte cap: $SUPPORT_BYTES_OVER"
+  fail=$((fail+1))
+fi
+check "total supporting bytes ≤ 176000 (actual: $SUPPORT_BYTES_TOTAL)" "[ $SUPPORT_BYTES_TOTAL -le 176000 ]"
 
 EXAMPLES_NO_TABLE=""
 for f in core/skills/*/examples/*-examples.md; do
@@ -513,6 +571,7 @@ Shared rules for every subagent run
 result + risk + next step. Drop filler
 Plain text or a unique string
 escalate, do not retry blind
+chained onto the next command you run anyway
 SIGS
 if [ -z "$ssv_leak" ]; then
   echo "  ✓ gate/doctrine single-sourced — no fragment re-inlined in a consumer"
@@ -608,15 +667,18 @@ for s in "${CORE_SKILLS[@]}"; do
 done
 echo "  ✓ no core skill contains hard-dependency language"
 
-# Every core skill must include the "Full Rolepod enhancement" note.
+# The "Full Rolepod enhancement" section was retired in the 2026-09 skill
+# cut: 2.5 KB across 10 skills of marketing prose a Lead never acts on
+# (three cross-CLI reviewers named it the only fully inert block). Keep it
+# out; the no-agent fallback + Next phase fallback carry standalone-ness.
 for s in "${CORE_SKILLS[@]}"; do
   f="core/skills/$s/SKILL.md"
   [ -f "$f" ] || continue
-  if ! grep -q "^## Full Rolepod enhancement" "$f"; then
-    echo "  ✗ core skill missing 'Full Rolepod enhancement' section: $s"; fail=$((fail+1))
+  if grep -q "^## Full Rolepod enhancement" "$f"; then
+    echo "  ✗ retired 'Full Rolepod enhancement' section is back in: $s"; fail=$((fail+1))
   fi
 done
-echo "  ✓ every core skill has Full Rolepod enhancement note"
+echo "  ✓ no core skill carries the retired Full Rolepod enhancement section"
 
 # write-spec must include an approval gate + self-review (Acceptance #7-#9).
 if grep -Eiq "(approval|approve)" core/skills/write-spec/SKILL.md && \

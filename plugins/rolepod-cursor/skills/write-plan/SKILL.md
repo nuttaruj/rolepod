@@ -5,177 +5,127 @@ description: Use when turning an approved spec or a small clear goal into an exe
 
 # Write Plan
 
-Plan-phase entry skill. Convert an approved spec or a clear small goal into a concrete plan that another engineer (or specialist agent) can execute without re-asking the user.
+Convert an approved spec or a clear small goal into a plan another engineer (or specialist agent) can execute without re-asking the user.
 
 ## Iron Rule
 
 <EXTREMELY-IMPORTANT>
-1. NEVER start editing code before the plan names the files, the order, and the verification per task.
+1. NEVER start editing before the plan names the files, the order, and the verification per task.
 2. NEVER spawn more than one parallel agent on the same feature without a written cohesion contract that pins file ownership and merge order.
-3. NEVER write a vague task like "add tests" — every task must name a test or evidence that proves it is done, AND the exact runnable command that checks it, so the build loop can verify the task without guessing.
+3. NEVER write a vague task like "add tests" — every task names a test or evidence that proves it done AND the exact runnable command that checks it, so the build loop verifies without guessing.
 4. Pick the simplest viable approach. Complexity needs an explicit reason and user awareness.
 </EXTREMELY-IMPORTANT>
 
 ## When to use
 
-- A spec exists and you are about to start implementation
-- A goal is small but touches more than one file
-- Multiple specialists may need to edit the same module
-- The work could be parallelized across worktrees or sessions
+- A spec exists and implementation is next · a small goal touches more than one file · several specialists may edit the same module · work could parallelize across worktrees or sessions.
 
 Skip when:
-- The task is a one-line fix on a single file (just do it)
-- The user asks for a question / explanation only
-- The router tiered the task **R2** (1 file, clear scope, ≈≤30 logic lines) — the plan is a 3-5 line inline checklist in chat, each step with its verify command; no plan artifact. Scope grows past one file mid-flight (the task's own test file does not count) → stop, write the real plan here. **Spec-as-plan R3 lane:** ≤3 tasks that the approved spec already lists 1:1 — files, order, verify command and dependencies per task — single-agent, no high-risk surface → the same inline checklist; a parallel layout, a risk path, a 4th task, or a compaction mid-plan → write the artifact then.
+- A one-line fix on a single file · a question / explanation only.
+- The router tiered the task **R2** (1 file + its own test, clear scope, ≈≤30 logic lines) → the plan is a 3-5 line inline checklist in chat, each step with its verify command; no artifact. Scope grows past one file mid-flight (the task's own test file does not count) → stop, write the real plan here. **Spec-as-plan R3 lane:** ≤3 tasks the approved spec already lists 1:1 (files, order, verify command, dependencies), single-agent, no high-risk surface → the same inline checklist; a parallel layout, a risk path, a 4th task, or a compaction mid-plan → write the artifact.
 
 ## Boundary
 
-Owns:
-- HOW / WHO / WHERE / ORDER.
-- File list, task order, test plan per task, agent routing, cohesion contract.
+Owns: HOW / WHO / WHERE / ORDER — file list, task order, test plan per task, agent routing, cohesion contract.
 
-Does not own:
-- Re-opening product scope or acceptance criteria unless the spec is incomplete.
-- Editing files.
-- Final verification evidence.
+Does not own: re-opening product scope or acceptance criteria unless the spec is incomplete · editing files · final verification evidence.
 
-Return / hand off:
-- Spec unclear → return to `write-spec`.
-- Plan approved → `implement-plan`.
-
-## Inputs to gather
-
-- Approved spec or clear goal statement
-- Repo layout for the touched module
-- Existing patterns to match (read 2-3 nearby files)
-- Known constraints: stack, style, no-touch zones
-- Module boundary map, if the project declares one (CLAUDE.md / ADR / docs).
-  Work spans 2+ modules and NO map exists → offer a ONE-TIME bootstrap: scout +
-  system-architect derive module list, dependency direction, and no-touch zones
-  from the code into the project's CLAUDE.md for user approval. Scope the
-  derivation to recently-active modules first (`git log` — where the work
-  actually happens); map the whole repo only when it is small. Paid once —
-  every later session reads boundaries instead of re-inferring them.
-- Available specialist agents
+Hand off:
+- Spec unclear → `write-spec`. Plan approved → `implement-plan`.
 
 ## Workflow
 
-### 1. List files likely to touch
+Inputs: the approved spec or goal · repo layout for the touched module · 2-3 nearby files for patterns · constraints (stack, style, no-touch zones) · available specialist agents · the module boundary map if the project declares one (CLAUDE.md / ADR / docs).
 
-Concrete paths, not categories. If code-intel index available, use it to widen blast radius. Otherwise grep + Read adjacent code.
+Work spans 2+ modules and NO map exists → offer a ONE-TIME bootstrap: scout + `system-architect` derive module list, dependency direction, and no-touch zones from the code into the project's CLAUDE.md for approval — recently-active modules first (`git log`), the whole repo only when small. Paid once; every later session reads boundaries instead of re-inferring them.
+
+### 1. List files to touch
+
+Concrete paths, not categories. Code-intel index when connected widens the blast radius; otherwise grep + Read adjacent code.
 
 ### 2. Order the tasks
 
-Smallest reversible unit first. Tests-first for bugs, features, and high-risk surfaces. Migrations before code that depends on them. Public-API contract changes before consumers. A wide refactor with no safe single-commit path: expand (add the new path beside the old) → migrate consumers in reviewable green batches → contract (delete the old path once no caller remains).
+Smallest reversible unit first. Tests-first for bugs, features, high-risk surfaces. Migrations before code that depends on them; public-API contract changes before consumers. A wide refactor with no safe single-commit path: expand (new path beside the old) → migrate consumers in reviewable green batches → contract (delete the old path once no caller remains).
 
-Prefer vertical slices — each task cuts through all layers and is demoable on its own — over horizontal layers (all schema, then all API). Many thin slices beat a few thick ones.
+Prefer vertical slices — each cuts through all layers and is demoable alone — over horizontal layers. Many thin slices beat a few thick ones. A slice carrying a major unknown (new integration, unproven assumption) goes first — fail fast.
 
-When one slice carries a major unknown (a new integration, an unproven assumption), sequence it first — fail fast before investing in dependent slices.
-
-Break a task down further if any holds: >2hr of work, acceptance needs more than 3 bullets, it touches 2+ independent subsystems, or its title contains "and". Every task states **Delivers** (one user-visible sentence — what a human reads) and **Blocked by** (the tasks that gate it, or none) — the Blocked-by graph is the plan's only statement of order; nothing restates it in prose.
+Break a task down further if any holds: >2 h of work · acceptance needs >3 bullets · touches 2+ independent subsystems · its title contains "and". Every task states **Delivers** (one user-visible sentence) and **Blocked by** (the tasks that gate it, or none) — the Blocked-by graph is the plan's only statement of order.
 
 ### 3. Test plan per task
 
-For each task, name the test type (unit / integration / contract / E2E / smoke / benchmark / repro), the assertion that would prove it works, and the exact command to run it — copy-paste runnable, not "run the tests". The runnable command is what lets the build loop verify each task autonomously. "Adds tests" is not a test plan. Size by rules: one test per rule at its owner, one smoke per call-site — never a test per copy of the rule.
+Name the test type (unit / integration / contract / E2E / smoke / benchmark / repro), the assertion that proves it, and the exact command — copy-paste runnable, not "run the tests". "Adds tests" is not a test plan. Size by rules: one test per rule at its owner, one smoke per call site — never a test per copy of the rule.
 
-Repo has no test infrastructure at all → the FIRST task bootstraps the minimal harness (runner config + one passing smoke test) so every later Command is runnable. Never plan Commands against a runner that does not exist.
+No test infrastructure at all → the FIRST task bootstraps the minimal harness (runner config + one passing smoke test) so every later Command is runnable. Never plan Commands against a runner that does not exist.
 
 ### 4. Decide if parallelism helps
 
-Before writing the artifact, quiz the user on the numbered task list — per task: title, Delivers, Blocked by. Three questions: granularity right (too coarse / too fine)? edges right (each task blocked only by what genuinely gates it)? merge or split any? Iterate until approved; the approved list is what the file records. Parallel agents only help when file ownership is genuinely disjoint and the work does not need handoff between agents — otherwise sequential is faster and cheaper. Two tasks with no edge between them are parallel *candidates*, never a mandate; choosing sequential anyway is fine, say why in the Parallel layout line. Borderline (two slices that might overlap on a shared interface) → present both shapes with one-line trade-offs and let the user pick.
+Before writing the artifact, quiz the user on the numbered task list — per task: title, Delivers, Blocked by. Three questions: granularity right? edges right (each task blocked only by what genuinely gates it)? merge or split any? Iterate until approved; the approved list is what the file records.
 
-For this — or any high-stakes multi-option plan decision (approach, architecture, sequencing) — gather a **cross-CLI advisory panel** before deciding, but only when opted in (`/rolepod-full` or an explicit ask) and the decision is genuinely high-stakes. The other CLIs advise on the approach; the Lead reconciles and owns the choice. Gating, per-model strengths, and the collect-then-decide protocol: `references/advisory-routing.md`. Default is Lead-only — a panel costs ~3× tokens, so it is off unless the decision earns it. A single-family machine still gets an advisor when the panel fires — the vertical fallback (the Lead's own CLI at its strongest model) in the same reference.
+Parallel agents help only when file ownership is genuinely disjoint and the work needs no handoff between agents — otherwise sequential is faster and cheaper. Two tasks with no edge are parallel *candidates*, never a mandate; sequential anyway is fine — say why in the Parallel layout line. Borderline (a shared interface) → present both shapes with one-line trade-offs; the user picks.
+
+High-stakes multi-option decisions (approach, architecture, sequencing) → a **cross-CLI advisory panel** only when opted in (`/rolepod-full` or an explicit ask) and the decision earns ~3× tokens; the Lead reconciles and owns the choice. Gating, strengths, collect-then-decide protocol, single-CLI vertical fallback: `references/advisory-routing.md`.
 
 ### 5. If parallel, write a cohesion contract
 
-Fill `templates/cohesion-contract-template.md` — it pins file ownership, shared interfaces, merge order, the do-not-touch list, and the integration owner. Save to `contract.md` or `docs/rolepod/plans/<feature>-cohesion-YYYY-MM-DD.md`.
+Fill `templates/cohesion-contract-template.md` — file ownership, shared interfaces, merge order, do-not-touch list, integration owner. Save to `contract.md` or `docs/rolepod/plans/<feature>-cohesion-YYYY-MM-DD.md`.
 
-Tracks can also run as SEPARATE CLI sessions (cross-CLI wall-clock parallelism — e.g. API track on codex, UI track on claude): fill the contract's optional **Session split** section — per-track CLI + branch + kickoff prompt, one integration session. Execution protocol: implement-plan's `references/subagent-dispatch.md`, "Session-split tracks".
+Tracks can also run as SEPARATE CLI sessions (cross-CLI wall-clock parallelism) → fill the contract's optional **Session split** section (per-track CLI + branch + kickoff prompt, one integration session). Execution: implement-plan's `references/subagent-dispatch.md`, "Session-split tracks".
 
 ### 6. Route to agents
 
-For each task, name the best specialist if one is available. Brief = task + files + tests + done criteria + handoff partner. Lead executes tasks for which no specialist fits.
+Per task, the best specialist when one fits; the Lead executes the rest. Brief = task + files + tests + done criteria + handoff partner.
 
 ### 7. Self-review the plan
 
-Scan for:
-- **Placeholders** — see Anti-placeholder section below for the six failure patterns
-- **Spec-coverage trace, both directions** — for each spec requirement, name the task that implements it (a requirement with no task is a plan failure); and for each task, name the spec line that asked for it (a task no spec line asked for is scope creep — cut it or move it to a follow-up list)
-- **Symbol consistency cross-task** — function / method / property names must match across tasks. `clearLayers()` in Task 3 and `clearFullLayers()` in Task 7 is a bug — pick one and propagate
-- **Missing tests** on any task
-- **Loop-runnable** — every task carries an exact runnable Command, and the plan states a Failure policy, so the build loop can execute → verify → recover without re-asking the user. Deterministic check: `plan-lint.sh <plan> [contract]` — at `~/.rolepod/bin/` (installed), the plugin's `scripts/`, or `scripts/` (source repo) — Failure policy + Command per task + Blocked-by edges resolve without a cycle + parallel ownership completeness; inline fallback: `grep -q '^## Failure policy' <plan> && awk '/^### (Task ?|T)[0-9]/{t++;c[t]=0;i=1;next} /^## /{i=0} i&&/Command:/{c[t]=1} END{if(!t)exit 1;for(k=1;k<=t;k++)if(!c[k])exit 1}' <plan>`
-- **Boundary violations** — a boundary map exists → every new cross-module import or dependency-direction reversal the plan introduces is called out and justified; undeclared crossing = fix the plan or update the map with the user, never cross silently
-- **Untouched high-risk surfaces**
-- **Unowned or dual-owned files** in a parallel layout — every Files-to-touch path sits under EXACTLY one owner in the contract (plan-lint check 3: unowned = unplannable work, dual-owned = a merge conflict on schedule)
+- **Placeholders** — the six patterns below.
+- **Spec-coverage trace, both directions** — each requirement names the task that implements it; each task names the spec line that asked for it (no spec line = scope creep: cut or follow-up).
+- **Symbol consistency** — names match across tasks (`clearLayers()` in Task 3 vs `clearFullLayers()` in Task 7 is a bug).
+- **Missing tests** on any task.
+- **Loop-runnable** — every task carries an exact Command and the plan states a Failure policy. Deterministic check: `plan-lint.sh <plan> [contract]` (`~/.rolepod/bin/` installed, the plugin's `scripts/`, or `scripts/` in the source repo) — Failure policy + Command per task + Blocked-by edges acyclic + parallel ownership completeness. Inline fallback: `grep -q '^## Failure policy' <plan> && awk '/^### (Task ?|T)[0-9]/{t++;c[t]=0;i=1;next} /^## /{i=0} i&&/Command:/{c[t]=1} END{if(!t)exit 1;for(k=1;k<=t;k++)if(!c[k])exit 1}' <plan>`
+- **Boundary violations** — a map exists → every new cross-module import or dependency-direction reversal is called out and justified; undeclared crossing = fix the plan or update the map with the user.
+- **Untouched high-risk surfaces.**
+- **Unowned or dual-owned files** in a parallel layout — every path sits under EXACTLY one owner (unowned = unplannable, dual-owned = a scheduled merge conflict).
 
 ## Anti-placeholder
 
-Plan-failure patterns. Never ship a plan that contains:
+Never ship a plan containing: `TBD` / `TODO` / "implement later" · "add appropriate error handling / validation / edge cases" without naming them · "write tests" without type, assertion, and command · "similar to Task N" (repeat the shape — tasks are read out of order) · steps with no file path · symbols defined in no task and absent from the codebase. Fix inline before `implement-plan`.
 
-- `TBD`, `TODO`, "implement later", "fill in details"
-- "Add appropriate error handling" / "add validation" / "handle edge cases" — name the cases, name the handling
-- "Write tests for the above" without the test type, the assertion, and the exact runnable command
-- "Similar to Task N" — repeat the shape; the engineer may read tasks out of order
-- Steps that describe what to do without showing where (file path + the change)
-- References to types, functions, or symbols not defined in any task or in the existing codebase
+## Owner per task
 
-If self-review finds any pattern, fix it inline. Do not hand off to `implement-plan` with these unresolved.
-
-## Owner per task — the domain map decides, not habit
-
-Every task carries **Owner:** — the role the domain map in `templates/plan-template.md` assigns to the task's Files (path first, then concern). `Owner: Lead` for R1/R2-sized work (≤2 files) or when the user said self-do; from R3 up the map decides — measured over 90 days the Lead wrote ~5,500 product-file edits against 70 writer-role dispatches, and every role the map names was idle for that reason, not for lack of work. Reviewer roles are not owners: `qa-tester` = test plan depth, `security-engineer` on every touched high-risk surface (auth / billing / payments / credits / migration / data deletion / secrets / tokens / crypto / permissions / security), both named in the task's Reviewer line.
-
-Brief each owner per §6's formula (task + files + tests + done criteria + handoff partner), plus the spec.
+Every task carries **Owner:** — the role the domain map in `templates/plan-template.md` assigns to the task's files (path first, then concern). `Owner: Lead` for R1/R2-sized work (≤2 files) or when the user said self-do; from R3 up the map decides. Reviewer roles are never owners: `qa-tester` = test plan depth; `security-engineer` on every touched high-risk surface (auth / billing / payments / credits / migration / data deletion / secrets / tokens / crypto / permissions / security) — both named in the task's Reviewer line. Brief each owner per §6, plus the spec.
 
 ## If no matching agent is available
 
-Execute as Lead with this minimum viable checklist:
-
-1. Read 2-3 nearby files to match style
-2. List files to touch (paths, not categories)
-3. Order tasks smallest-reversible first
-4. Name a test or evidence per task
-5. Pick the simplest viable approach
-6. Flag every high-risk surface explicitly
-7. Note where the API or schema contract changes
-8. Decide sequential vs parallel honestly — sequential is the default
+Execute as Lead: read 2-3 nearby files → list paths → order smallest-reversible first → a test or evidence + command per task → simplest viable approach → flag every high-risk surface and contract change → sequential unless parallel is genuinely disjoint.
 
 ## Output
 
-The plan template is the canonical artifact: `templates/plan-template.md`. Fill every section — it is the contract `implement-plan` executes. A multi-agent plan adds a cohesion contract (`templates/cohesion-contract-template.md`). Do not restate the section list here; the templates are the single source of plan shape.
+The plan template is the canonical artifact: `templates/plan-template.md` — fill every section; it is the contract `implement-plan` executes. A multi-agent plan adds `templates/cohesion-contract-template.md`.
 
-Tasks use `- [ ]` checkboxes so progress is visible in the artifact itself — survives session compaction. The file never absorbs build-time narrative: status is the checkbox, a deviation is one line under `## Changes during build`; a task block stays what was planned.
+Tasks use `- [ ]` checkboxes so progress survives compaction. The file never absorbs build-time narrative: status is the checkbox; a deviation is one line under `## Changes during build`.
 
-For one-session work, inline the filled template in chat. For multi-session work, save it to `docs/rolepod/plans/<feature>-YYYY-MM-DD.md`. Re-planning after the spec moves never overwrites: keep the prior file and write a new dated `<feature>-YYYY-MM-DD.md` — the same convention as the spec it follows; `-v2` only when the date is the same (the diff between versions is the record of what changed and why). `docs/rolepod/` is private by default — before the first save: `grep -qx 'docs/rolepod/' .gitignore || echo 'docs/rolepod/' >> .gitignore` (the commit gate denies staged `docs/rolepod/` files; `.rolepod/docs-tracked` opts a repo in).
+One-session work → inline in chat. Multi-session → `docs/rolepod/plans/<feature>-YYYY-MM-DD.md`; re-planning never overwrites — a new dated file, `-v2` only when the date is the same (the diff between versions is the record). **`docs/rolepod/` is private by default:** before the first save run `grep -qx 'docs/rolepod/' .gitignore || echo 'docs/rolepod/' >> .gitignore` — a repo that deliberately tracks its working docs creates `.rolepod/docs-tracked`.
 
-More than one person or machine will build this plan → the tasks can also publish to the repo's issue tracker as a coordination layer (claim by assignee, frontier visible in the tracker UI): `references/team-issues.md`. Solo work never needs it — the plan file alone is the contract.
+More than one person or machine builds the plan → tasks can also publish to the repo's issue tracker (claim by assignee, frontier visible): `references/team-issues.md`. Solo work never needs it.
 
-Harness plan mode active (a read-only planning state with its own approval gate — e.g. Claude Code plan mode, Codex `/plan`): present the filled plan through that gate rather than as a plain chat message, and defer every disk write — the plan file and any cohesion contract — until the gate approves. File writes are blocked until then; do not fight the block, it is the same boundary this skill's Iron Rule draws.
-
-## Examples
-
-Non-blocking — read only when the plan being drafted is unclear:
-- `examples/plan-examples.md` — a sequential single-owner plan and a parallel multi-agent plan, each good/bad with a "why good wins" table. Read the whole file; the contrast is the lesson.
+Harness plan mode active (a read-only planning state with its own approval gate) → present the plan through that gate and defer every disk write until it approves; do not fight the block — it is the same boundary as Iron Rule 1.
 
 ## References
 
-Load only when the task needs it:
-- `references/plan-reviewer-prompt.md` — reusable subagent prompt for dispatching an independent plan reviewer when the plan is risky or large. Use via the Agent tool (subagent_type=universal-reviewer).
-- `references/advisory-routing.md` — cross-CLI advisory panel for high-stakes multi-option decisions: gating, per-model strengths, and the collect-then-Lead-decides protocol. The advisory mirror of `review-code`'s external adversarial review.
-- `references/team-issues.md` — optional GitHub Issues backend when more than one person or machine builds the plan: task→issue mapping, native blocking edges, claim-by-assignee, frontier query. Solo default stays the plan file.
+Load only when needed:
+- `references/plan-reviewer-prompt.md` — independent plan reviewer prompt for a risky or large plan (Agent tool, subagent_type=universal-reviewer).
+- `references/advisory-routing.md` — cross-CLI advisory panel for high-stakes decisions; the advisory mirror of review-code's external review.
+- `references/team-issues.md` — optional GitHub Issues backend for team-built plans.
+- `examples/plan-examples.md` — a sequential single-owner plan and a parallel multi-agent plan, good/bad pairs.
 
 ## Hard stops
 
-- A task names a file you have not read → stop, read it
-- A task touches a high-risk surface without a test plan → stop, add the test plan
-- Two parallel agents end up needing the same file → drop to sequential or rewrite the contract, then re-run `scripts/plan-lint.sh <plan> <contract>` before resuming
-- Plan references a symbol that does not exist → verify or remove
-
-## Full Rolepod enhancement
-
-Full Rolepod improves this phase by adding agent-routing heuristics, cohesion contracts as a first-class artifact, model-tier / cost-aware routing across the 15 agents, and tests that prove every shipped plan named a test per task.
+- A task names a file you have not read → read it.
+- A task touches a high-risk surface without a test plan → add it.
+- Two parallel agents need the same file → sequential or rewrite the contract, then re-run `plan-lint.sh <plan> <contract>`.
+- The plan references a symbol that does not exist → verify or remove.
 
 ## Next phase
 
-- If `implement-plan` is available, continue there with the plan artifact.
-- If `implement-plan` is not available, hand off this plan directly to whoever will edit — the file list, the ordered tasks, the per-task tests, and the done criteria are enough.
+- `implement-plan` with the plan artifact.
+- If `implement-plan` is not available, hand the plan to whoever will edit — file list, ordered tasks, per-task tests, done criteria are enough.

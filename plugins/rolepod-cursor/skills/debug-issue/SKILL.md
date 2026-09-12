@@ -5,7 +5,7 @@ description: Use when something is broken — error appears, test fails, build b
 
 # Debug Issue
 
-Canonical debug workflow. Replace guess-and-check with disciplined narrowing: reproduce → trace upstream to root → write failing test → minimal fix → verify regression-clean.
+Replace guess-and-check with disciplined narrowing: reproduce → trace upstream to root → failing test → minimal fix → verify regression-clean.
 
 ## Iron Rule
 
@@ -19,169 +19,118 @@ Canonical debug workflow. Replace guess-and-check with disciplined narrowing: re
 
 ## When to use
 
-- Test was green, now red
-- Unrecognized error / unfamiliar stack
-- Wrong output, no exception thrown
-- Build broke after a change
-- Works locally, fails in CI (or the reverse)
-- Two fix attempts did not stick
-- Symptom keeps returning at a different surface
-- About to add defensive `?.` / null-check / try-catch without knowing why
+- Green → red · unrecognized error · wrong output with no exception · build broke after a change · works locally, fails in CI (or the reverse) · two fixes did not stick · the symptom returns at a different surface · about to add a defensive `?.` / null-check / try-catch without knowing why.
 
 ## Boundary
 
-Owns:
-- Unknown failure triage: reproduce, trace upstream, identify root cause, write a failing regression test, minimal fix.
+Owns: unknown-failure triage — reproduce, trace upstream, root cause, failing regression test, minimal fix.
 
-Does not own:
-- Planned feature work with known requirements.
-- Broad refactor / simplification.
-- Shipping decision.
+Does not own: planned feature work · broad refactor · the shipping decision.
 
-Return / hand off:
-- Requirements unclear → `write-spec`.
-- Fix spans multiple files / needs sequencing → `write-plan`.
-- **Report-only (QA hand-off)** — the user wants the bug documented, not fixed → stop after §2 (repro); trace §5 only when cheap. Fill the debug report with repro + severity + evidence, leave Failing test / Fix empty, hand to the owning dev. §6-§8 belong to whoever fixes.
+Hand off:
+- Requirements unclear → `write-spec`. Fix spans files / needs sequencing → `write-plan`.
+- **Report-only (QA hand-off)** — the user wants the bug documented, not fixed → stop after §2; trace §5 only when cheap. Fill the debug report with repro + severity + evidence, leave Failing test / Fix empty, hand to the owning dev.
 - Minimal fix applied → `check-work`.
-- Stuck — 2 failed fix attempts on the same target → §9 cross-model consult first, then `manage-context` (escalate mode) with the opinion attached.
-
-## Inputs to gather
-
-- Exact error message (literal quote)
-- Throw site (file:line) and stack trace
-- When it started failing (last green commit, deploy, data event)
-- Steps to reproduce or the failing test command
-- The diff since last green
+- 2 failed attempts → §9 consult first, then `manage-context` (escalate) with the opinion attached.
 
 ## Workflow
 
+Inputs: the exact error (literal quote) · throw site (file:line) + stack · when it started failing (last green commit, deploy, data event) · repro steps or the failing test command · the diff since last green.
+
 ### 1. Stop and read
 
-Capture the exact error, the throw site, and the stack trace before editing. The real cause is often mid-stack, not at the top.
+Capture the exact error, the throw site, and the stack before editing. The real cause is often mid-stack, not at the top.
 
 ### 2. Reproduce reliably
 
-One command, same failure every time. Pytest: `pytest path/test_x.py::name -v`. API: exact failing `curl`. UI: steps + browser + console. Intermittent: raise the rate first — loop the trigger, add stress, inject sleeps — until you have a 50%+ signal. A 1% flake is not yet debuggable. For the flake cause decision tree, see `references/flake-triage.md`.
+One command, same failure every time — `pytest path/test_x.py::name -v`, the exact failing `curl`, or UI steps + browser + console. Intermittent → raise the rate first (loop the trigger, add stress, inject sleeps) until you have a 50%+ signal; a 1% flake is not yet debuggable (`references/flake-triage.md`). Cannot repro locally → reproduce in CI / staging. Do not fix what you cannot see fail.
 
-If you cannot repro locally, reproduce in CI / staging. Do not fix what you cannot see fail.
+**UI / browser bugs — backend order:** (1) `rolepod-uiproof` when installed: `/check-errors` returns console + network failures during the flow, `/verify-ui` returns minimized repro steps + artifacts — reuse those steps in §6; (2) Playwright MCP when connected — atomic `browser_*` calls, minimize the sequence yourself; (3) Chrome DevTools MCP when connected (Chromium only) for bugs whose cause sits below the rendered DOM; (4) manual — describe the candidate repro and ask the user to confirm it.
 
-**For UI / browser bugs, pick a backend (preferred → fallback):**
+**WordPress runtime / plugin / theme bugs:** `rolepod-wplab` `/wp-diagnose` when installed (error log, hook trace, query log — WP findings only; the debug flow stays here); otherwise `wp-cli` or `wp-content/debug.log`.
 
-1. **rolepod-uiproof** — if the `/verify-ui` or `/check-errors` skill is available, invoke it with the candidate steps and the bug-surface assertions. `/check-errors` returns console + network failures during the flow; `/verify-ui` returns minimized repro steps + artifacts (screenshots, HAR, console). Use those steps in your failing test (step 6).
-2. **Playwright MCP** — orchestrate atomic `browser_*` calls to reproduce; minimize the step sequence yourself.
-3. **Chrome DevTools MCP** — if the `chrome-devtools-mcp` server is registered, orchestrate atomic calls (Chromium only); CDP-level access gives sharper console / network / perf signal for UI bugs whose cause sits below the rendered DOM. https://github.com/ChromeDevTools/chrome-devtools-mcp
-4. **Manual** — describe the candidate repro to the user and ask them to confirm. Capture the steps they confirm.
-
-**For WordPress runtime / plugin / theme bugs:**
-
-- **rolepod-wplab** — if the `/wp-diagnose` skill is available, invoke it for WP-specific tracing (error log, hook trace, query log). It returns WP-runtime findings only; the surrounding debug flow (reproduce → root cause → failing test → fix) stays in this skill. Without `rolepod-wplab`, fall back to `wp-cli` directly or read `wp-content/debug.log`.
-
-When children write evidence under `<git-root>/.rolepod/evidence/` (Extension Protocol v1), reference those artifacts in your hypothesis-ledger and final fix. The marker `<git-root>/.rolepod/parent-active` confirms the protocol is active.
+The marker `<git-root>/.rolepod/parent-active` confirms the protocol is live; with it, children write evidence under `<git-root>/.rolepod/evidence/` → reference those artifacts in the hypothesis ledger and the fix. No marker → evidence in that directory is stale or from another task; verify before trusting it.
 
 ### 3. Rollback reflex
 
-If the bug appeared right after your change, undo first. Confirm green. Re-apply piece by piece.
-
-If the bug predates your changes and the last-good commit is unknown, `git bisect run <test>` finds the breaking commit automatically.
+Bug appeared right after your change → undo first, confirm green, re-apply piece by piece. Bug predates your changes and the last-good commit is unknown → `git bisect run <test>`.
 
 ### 4. One hypothesis at a time
 
-When 2+ plausible causes exist, list 2-3 candidates with the cheapest falsifier per row, and run the top-ranked one's falsifier yourself — a falsifier is a reversible act, not a user call. Then state the chosen hypothesis: `<variable / state / condition> is <value> because <upstream cause>`. Test the cheapest falsifier first — log, breakpoint, read the called function, check the fixture. Don't spray fixes. Tag every debug log with a unique prefix (`[DBG-a4f2]`) so cleanup is one grep.
+2+ plausible causes → list 2-3 candidates with the cheapest falsifier per row and run the top one yourself — a falsifier is a reversible act, not a user call. State the chosen hypothesis as `<variable / state / condition> is <value> because <upstream cause>`. Cheapest falsifier first: log, breakpoint, read the called function, check the fixture. Don't spray fixes. Tag debug logs with a unique prefix (`[DBG-a4f2]`) so cleanup is one grep.
 
-**Find a working analog.** Before testing hypotheses, locate code in the same codebase that does the similar thing successfully — adjacent feature, sibling endpoint, parallel module. List every difference between the working analog and the broken surface, however small. Cheap signal for which difference matters; expensive to skip when "that can't possibly matter" turns out to matter.
+**Find a working analog.** Locate code in the same codebase that does the similar thing successfully (adjacent feature, sibling endpoint, parallel module) and list every difference from the broken surface, however small. Cheap signal for which difference matters.
 
-Track experiments in `templates/hypothesis-ledger.md` — one row each. A new hypothesis must hold against every prior row, not just the last run.
+Track experiments in `templates/hypothesis-ledger.md` — one row each; a new hypothesis must hold against every prior row.
 
 ### 5. Trace upstream
 
-Symptom → caller → caller's caller, until one of:
-- External input (user, API, env, file, DB row)
-- System boundary (network, OS, third-party lib)
-- "Designed this way" (intentional invariant)
+Symptom → caller → caller's caller, until: external input (user, API, env, file, DB row) · system boundary (network, OS, third-party lib) · "designed this way" (intentional invariant). Stop there, not at the first place the value looks wrong (`references/root-cause-tracing.md`).
 
-Stop at one of those, not at the first place the value looks wrong. For the upstream-walk technique and the symptom-vs-root distinction, see `references/root-cause-tracing.md`.
-
-**Multi-component? Instrument boundaries first.** When the failure crosses layers (CI → build → signing, or API → service → DB, or worker → queue → store), add boundary logging at every layer in one pass — what data enters, what exits, what env / config / state is visible. Run once. The log reveals **which layer fails**. Pick the failing layer; investigate inside it. Guessing which layer without boundary evidence wastes hypotheses.
+**Multi-component → instrument boundaries first.** Failure crosses layers (CI → build → signing; API → service → DB; worker → queue → store) → add boundary logging at every layer in one pass (what enters, what exits, what env / config / state is visible), run once, read which layer fails, investigate inside it. Guessing the layer without boundary evidence wastes hypotheses.
 
 ### 6. Write the failing test
 
-The test you wish had existed. It must fail before your fix and pass after. Tighten until a one-character regression would break it.
+The test you wish had existed. Fails before the fix, passes after. Tighten until a one-character regression would break it.
 
 ### 7. Minimal fix
 
-Smallest change that turns the failing test green without breaking the rest of the suite. No "while I'm here" refactor.
+Smallest change that turns the failing test green without breaking the suite. No "while I'm here" refactor.
 
-The fix repeats across files (same root cause, many call sites): fix the first 2 inline, then apply using-rolepod's **2-strike convergence** — enumerate the rest with grep, dispatch as one mechanical-tier batch with the 2 fixed instances as the brief's examples. Don't ride the fix→check loop across the whole repo at Lead tier.
+Same root cause across many call sites → fix the first 2 inline, then using-rolepod's **2-strike convergence**: enumerate the rest with grep, dispatch ONE batch at the mechanical tier (cheap-class — the learned fix applied N times) with the 2 fixed instances as the brief's examples. Don't ride the fix → check loop across the repo at Lead tier.
 
 ### 8. Verify regression-clean
 
-Run the full module suite (or full suite for high-risk surfaces). Confirm no new red, then re-run the §2 repro itself.
+Run the module suite (full suite on high-risk surfaces). No new red → re-run the §2 repro itself.
 
-**The fix fails → the failure is new evidence, not a prompt to adjust the patch.** Feed it back into §5's trace before any second attempt — the root you identified may be wrong or partial; a re-fix without a re-trace is a blind retry (banned). A second failure — same signature or new — → §9: two misses from the same mind mean the mental model of the bug is wrong, and a cold advisor re-aims cheaper than a third guess from that same mind.
+**The fix fails → new evidence, not a prompt to adjust the patch.** Feed it back into §5 before any second attempt — the root may be wrong or partial; a re-fix without a re-trace is a blind retry. A second failure, same signature or new → §9: two misses from the same mind mean the mental model is wrong.
 
 ### 9. Second failed attempt — one cross-model opinion, then the user
 
-Two failed fixes = proven hard-to-resolve. Get ONE outside opinion automatically (no opt-in needed) before escalating. Do these steps in order:
-
-1. Write ONE self-contained ledger to a file — the advisor is cold; it sees only this: the symptom, the repro command, the failed fix attempts with why each failed, and the suspect code inline (never a pointer to the session).
-2. Run the cross-family runner: `rolepod-cross-family --kind consult --brief /tmp/consult.md` (plugin tree: `scripts/cross-family.sh`; add `--lead <cli>` outside Claude). Consult is a foreground call with a 5-minute budget per member — a stuck loop needs the answer now, so a `consult: agy codex` line in the config puts the fast member first and leaves the slow deep one as fallback. It takes the first usable member of the user's **opt-in** pool (`.rolepod/cross-family` → `~/.rolepod/cross-family`; no file or `none` = off → exit 5, go straight to the vertical fallback below — never enable it unasked), minus the Lead's own CLI, read-only on that CLI's **default model** (no model / effort flag — TIER_MODELS is Lead-only), clean room (`ROLEPOD_BRAIN_SILENT=1`), and anchors the reply under `.rolepod/evidence/external/`; a member that fails (auth / quota / timeout / empty) is logged and the next one runs. Exit 3 (every member failed) or 4 (empty pool) → **vertical fallback**: the Lead's own CLI at its strongest model — Claude Code with native Advisor mode configured (`/advisor`) → consult it inline, that IS this channel (one consult, same rules); otherwise ask the CLI which models it exposes (`claude --help` / `codex --help`; pick the top tier by name), then `claude -p --model <that name>` / `codex exec -m <that name>` with the same ledger file. Only valid when that model differs from the one now running; already on it, or cannot tell which model is running → step 4.
-3. Read the reply as one of: **correction** (new hypothesis → run exactly ONE advisor-informed fix attempt against the same repro — this consult is the outside review Iron Rule 5 requires), **confirmation** ("approach right, check X"), or **stop** ("wrong path"). Vertical fallback unavailable or failed too → step 4.
-4. Still failing, or no usable advisor → escalate via `manage-context` (escalate mode): hypothesis ledger + the advisor's opinion (or "no usable advisor — <reason>") attached. Start no further fix attempts.
+1. Write ONE self-contained ledger file — the advisor is cold and sees only this: symptom, repro command, each failed fix and why it failed, the suspect code inline (never a pointer to the session).
+2. `rolepod-cross-family --kind consult --brief <ledger>` (plugin tree: `scripts/cross-family.sh`; add `--lead <cli>` outside Claude).
+   - The pool is the user's opt-in (`.rolepod/cross-family` → `~/.rolepod/cross-family`; no file or `none` = off — never enable it unasked).
+   - Consult is a FOREGROUND call with a short per-member budget — a stuck loop needs the answer now, so a `consult: <fast cli> <deep cli>` order line in the config puts the fast member first and leaves the slow deep one as fallback.
+   - The runner takes the first usable member that is not the Lead's own CLI, read-only, on that CLI's default model, clean room (`ROLEPOD_BRAIN_SILENT=1`), and anchors the reply under `.rolepod/evidence/external/`; a failed member is logged and the next runs.
+   - Pool off (`none`, or no file) or no usable member → **vertical fallback**: the Lead's own CLI at its strongest model. A native advisor mode, when the CLI has one, IS this channel. Otherwise ask the CLI which models it exposes (its own `--help`), pick the top tier by name, and run that CLI headless on the same ledger file (`<cli> -p --model <name>` / `<cli> exec -m <name>`). Valid only when that model differs from the one now running; already on it, or cannot tell → step 4.
+3. Read the reply as **correction** (new hypothesis → exactly ONE advisor-informed attempt against the same repro — the outside review Iron Rule 5 requires), **confirmation** ("approach right, check X"), or **stop** ("wrong path").
+4. Still failing, or no usable advisor → `manage-context` (escalate): ledger + the opinion (or "no usable advisor — <reason>") attached. No further fix attempts.
 
 ## If a matching Rolepod agent is available
 
-Delegate the loop — reproduce → failing test → fix iterates, and iteration
-is the costliest work to run in the Lead's context:
-
-- `qa-tester` — the default for any bug without a specialist match below
-- `security-engineer` if the symptom is auth / token / injection
-- `performance-engineer` for latency / memory regressions
-- `devops-sre` for infra / deploy / CI failures
+Delegate the loop — iteration is the costliest work to run in the Lead's context:
+- `qa-tester` — default for any bug without a specialist match
+- `security-engineer` — auth / token / injection symptoms
+- `performance-engineer` — latency / memory regressions
+- `devops-sre` — infra / deploy / CI failures
 
 Brief: exact error, stack, repro command, hypothesis, files touched since last green.
 
 ## If no matching agent is available
 
-Execute as Lead with this minimum viable checklist:
-
-1. Capture the exact error and stack
-2. Reproduce with one deterministic command
-3. Roll back the last change if the timing matches
-4. State one hypothesis at a time
-5. Trace upstream until a legitimate stopping point
-6. Write a failing test that captures the bug
-7. Make the smallest fix that turns it green
-8. Run the full touched suite to confirm no regression
+Execute as Lead: capture error + stack → one deterministic repro → roll back if the timing matches → one hypothesis at a time → trace upstream to a stopping point → failing test → smallest fix → full touched suite green.
 
 ## Output
 
-The debug report is the canonical artifact: `templates/debug-report.md`. It carries the error, repro, root cause, the failing test, the fix, and verification. Do not restate the report shape here; the template is the single source.
-
-## Examples
-
-Non-blocking — read only when unsure whether a fix reaches the root:
-- `examples/debug-examples.md` — a symptom-vs-root fix and a retry-hack-vs-triaged flake fix, each a good/bad pair with a "why good wins" table. Read the whole file; the contrast is the lesson.
+The debug report is the canonical artifact: `templates/debug-report.md` — error, repro, root cause, failing test, fix, verification.
 
 ## References
 
-Load only when the task needs it:
-- `references/root-cause-tracing.md` — the upstream walk: trace a bad value to where it is born
-- `references/flake-triage.md` — diagnose an intermittent test instead of retrying it
+Load only when needed:
+- `references/root-cause-tracing.md` — the upstream walk: trace a bad value to where it is born.
+- `references/flake-triage.md` — diagnose an intermittent test instead of retrying it.
+- `examples/debug-examples.md` — symptom-vs-root fix and retry-hack-vs-triaged flake, good/bad pairs.
 
 ## Hard stops
 
-- Cannot reproduce after 30 minutes → escalate or expand repro environment
-- Two upstream traces lead to contradictory causes → re-read; you missed an interaction
-- Fix passes the test but the symptom returns → root cause is wrong, trace further
-- Defensive null-check without a known cause → not a fix; remove and trace again
-- Fix attempt #3 about to start without a §9 cross-model correction in hand → stop; Iron Rule 5
-- Multi-component failure being guessed at without boundary instrumentation → stop, instrument first (§5)
-
-## Full Rolepod enhancement
-
-Full Rolepod improves this phase by adding the qa-tester floor for test depth, hooks that flag silenced exceptions, and the adversarial reviewer pattern for fixes on high-risk surfaces.
+- Cannot reproduce after 30 minutes → escalate or expand the repro environment.
+- Two upstream traces lead to contradictory causes → re-read; you missed an interaction.
+- Fix passes the test but the symptom returns → root cause is wrong, trace further.
+- Defensive null-check without a known cause → not a fix; remove and trace again.
+- Fix attempt #3 about to start without a §9 correction in hand → stop; Iron Rule 5.
+- Multi-component failure being guessed at without boundary instrumentation → instrument first (§5).
 
 ## Next phase
 
-- If `check-work` is available, continue there to verify the fix with evidence.
-- If `check-work` is not available, attach the test command output, the diff, and any UI / log evidence directly to the user response.
+- `check-work` verifies the fix with evidence.
+- If `check-work` is not available, attach the test output, the diff, and any UI / log evidence to the user response.

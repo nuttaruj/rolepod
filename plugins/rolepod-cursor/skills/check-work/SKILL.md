@@ -5,64 +5,49 @@ description: Use after a change is made and before claiming the work is done —
 
 # Check Work
 
-Verify-phase entry skill. Prove the change behaves as intended with concrete evidence before claiming done.
+Prove the change behaves as intended with concrete evidence before claiming done.
 
 ## Iron Rule
 
 <EXTREMELY-IMPORTANT>
 1. NEVER claim done without evidence. "Looks right" is not evidence.
-2. Verification must be FRESH — run AFTER the last change to the tree. No run since the last edit → you cannot claim it passes. Yesterday's green run does not count; "should still work" does not count. **Evidence cache:** tree unchanged since a pass recorded THIS session (same `git status` + `git diff` — which do NOT see untracked/ignored content, so hash or diff any untracked input the check reads; check, don't assume) → cite that run's command + output and state "tree unchanged since" instead of re-running the suite; ANY new edit invalidates the cache.
-3. UI changes require a browser observation (screenshot, MCP devtools, Playwright). A passing typecheck does not prove the UI works.
-4. If you cannot verify, STATE explicitly: what you cannot verify, why, and the risk if you are wrong.
-5. NEVER ask the user to take a screenshot for you when you have browser automation available.
+2. Verification must be FRESH — run AFTER the last change to the tree. No run since the last edit → you cannot claim it passes; yesterday's green and "should still work" do not count. **Evidence cache:** tree unchanged since a pass recorded THIS session (same `git status` + `git diff` — neither sees untracked / ignored content, so hash or diff any untracked input the check reads) → cite that run's command + output and state "tree unchanged since" instead of re-running; ANY new edit invalidates the cache.
+3. UI changes require a browser observation (screenshot, devtools, Playwright). A passing typecheck does not prove the UI works.
+4. Cannot verify → STATE what you cannot verify, why, and the risk if you are wrong.
+5. NEVER ask the user for a screenshot when you have browser automation available.
 </EXTREMELY-IMPORTANT>
 
 ## When to use
 
-- A code, config, or content change is complete
-- A subagent returned COMPLETED — verify before trusting
-- A bug fix needs regression-clean confirmation
-- A UI change needs visual / interactive proof
-- A spec / plan / docs change needs link and reference proof
+- A code / config / content change is complete · a subagent returned COMPLETED · a bug fix needs regression-clean confirmation · a UI change needs visual proof · a spec / plan / docs change needs link and reference proof.
 
 Skip when:
-- The change is a no-op (comment, whitespace, docstring) with no behavior risk
-- The user explicitly said "just commit, I'll verify"
+- A no-op (comment, whitespace, docstring) with no behavior risk · the user said "just commit, I'll verify".
 
 ## Boundary
 
-Owns:
-- Fresh evidence that the change works: tests, build, curl, logs, screenshot / browser. Runner emits JUnit/XUnit XML (`pytest --junitxml` / `--reporter=junit` / surefire)? Prefer it — cite its counted totals + failed test names verbatim via `rolepod-junit <xml>` (installed launcher), `scripts/junit-summary.sh` (rolepod source repo), or the copy under the installed plugin's `scripts/`; counted results beat prose claims.
-- Verification limits and the risk statement when evidence is impossible.
+Owns: fresh evidence that the change works — tests, build, curl, logs, screenshot / browser — and the risk statement when evidence is impossible. Runner emits JUnit/XUnit XML (`pytest --junitxml` / `--reporter=junit` / surefire)? Prefer it: cite counted totals + failed test names via `rolepod-junit <xml>` (installed launcher) or `scripts/junit-summary.sh` (source repo / plugin `scripts/`); counted results beat prose claims.
 
-Does not own:
-- Finding new design / code issues beyond verification failures.
-- Merge / PR / branch fate.
-- Rewriting implementation unless evidence fails.
+Does not own: new design / code issues beyond verification failures · merge / branch fate · rewriting the implementation unless evidence fails.
 
-Return / hand off:
+Hand off:
 - Evidence fails → `debug-issue` or `implement-plan`.
-- Evidence passes and risk exists (fails review-code's skip test: >5 lines, multi-file, logic-bearing, or a high-risk surface) → `review-code`.
-- Evidence passes, low risk, but the driving plan still has unchecked tasks → back to `implement-plan` for the next task; Ship asks once per plan, not once per phase.
-- Evidence passes, low risk, plan exhausted (or no plan) → `finish-work`.
-
-## Inputs to gather
-
-- The diff (file list + changed regions)
-- The acceptance criteria from the spec / plan / task
-- Available verification tools (test runner, build, browser MCP, Playwright, curl)
-- The CI lane this change must pass
+- Passes with risk (fails review-code's skip test: >5 lines, multi-file, logic-bearing, or high-risk) → `review-code`.
+- Passes, low risk, plan has unchecked tasks → `implement-plan` next task (Ship asks once per plan).
+- Passes, low risk, plan exhausted → `finish-work`.
 
 ## Workflow
 
-### 1. Pick the right evidence type
+Inputs: the diff · acceptance criteria from spec / plan / task · available tools (runner, build, browser, curl) · the CI lane this change must pass.
+
+### 1. Pick the evidence type
 
 | Change type | Required evidence |
 |-------------|-------------------|
-| Logic / bug fix | Red-green-revert cycle: failing test → fix → green → prove RED without the fix → green. Run the red proof as ONE call (`references/verification-discipline.md` §Revert in one call: throwaway `git worktree`, reverse-apply the source-only patch, run the one named test — non-zero exit WITH the named assertion in the output; a collection / import error, a skip or a 0-test run is not red; remove the worktree); a worktree that cannot run the test → the three-step revert in place. A test that does not fail without the fix is not testing the fix. |
-| New feature | Happy + edge + error test pass |
+| Logic / bug fix | Red-green-revert: failing test → fix → green → prove RED without the fix → green. Run the red proof as ONE call (`references/verification-discipline.md` §Revert in one call): throwaway `git worktree`, reverse-apply the source-only patch, run the one named test — non-zero exit WITH the named assertion in the output (a collection / import error, a skip, or a 0-test run is not red); remove the worktree. Worktree cannot run the test → three-step revert in place. A test that does not fail without the fix is not testing the fix. |
+| New feature | Happy + edge + error tests pass |
 | Refactor | Existing suite green before and after |
-| Schema / migration | Forward + rollback dry run + row count delta |
+| Schema / migration | Forward + rollback dry run + row-count delta |
 | API contract | Contract test + downstream consumer smoke |
 | UI change | Browser observation (screenshot or DOM read) |
 | Performance | Before / after benchmark |
@@ -72,54 +57,42 @@ Return / hand off:
 
 ### 2. Run the evidence
 
-Run the test, build, curl, browser observation. Capture the exact command and the relevant output (not all of it — the lines that prove the claim). A failure already in the baseline (recorded before the first edit) is a limitation, not a regression — cite the baseline line; a failure absent from it is this change's.
+Capture the exact command and the lines that prove the claim, not all output. A failure already in the baseline (recorded before the first edit) is a limitation, not a regression — cite the baseline line; a failure absent from it is this change's.
 
-### 2b. Aggregate child plugin evidence
+### 2b. Aggregate child-plugin evidence
 
-If sibling plugins ran during this work (`rolepod-uiproof`, `rolepod-wplab`, or any future Extension Protocol v1 plugin), check for their output under `<git-root>/.rolepod/evidence/`:
+Sibling plugins (`rolepod-uiproof`, `rolepod-wplab`, any Extension Protocol v1 plugin) write manifests automatically when the parent marker `.rolepod/parent-active` exists:
 
 ```bash
 ROOT=$(git rev-parse --show-toplevel 2>/dev/null || echo .)
 find "$ROOT/.rolepod/evidence" -name manifest.json -type f 2>/dev/null
 ```
 
-Each `manifest.json` describes one child run with fields `plugin`, `skill`, `phase`, `status` (pass/fail/warn), `summary`, and `artifacts[]` — no field ties a run to a task, so first keep only dirs whose `<ts>` postdates your last relevant edit and whose `skill`/`summary` names this task's target; older or unidentifiable runs are a named limitation, not evidence. Aggregation rules (kept set only):
+Each `manifest.json` carries `plugin`, `skill`, `phase`, `status` (pass/fail/warn), `summary`, `artifacts[]`. Keep only dirs whose `<ts>` postdates your last relevant edit and whose `skill` / `summary` names this task's target; older or unidentifiable runs are a named limitation. Any KEPT `fail` → verify fails as a whole (surface the summary + failing artifact path). All KEPT `pass` / `warn` → verify passes; list warnings inline. Reference child artifacts by relative path from the manifest directory.
 
-- Any KEPT manifest with `status: fail` → verify fails as a whole. Surface the summary + path to the failing artifact.
-- All KEPT `pass` or `warn` → verify passes; list warnings inline so they don't get lost.
-- Child artifacts (screenshots, HARs, reports) are referenced by relative path from the manifest directory — include those paths in the evidence block.
+### 3. UI verification
 
-The aggregation rules above are the whole contract — nothing else to read. Children write manifests automatically when they detect the rolepod parent marker (`.rolepod/parent-active`); no manual wiring needed.
-
-### 3. UI verification when relevant
-
-Open the page, render the component, interact with the affected flow. Use MCP browser tools, Playwright, or local devtools — never ask the user to do it for you when tools are available. For the tool order and what to observe, see `references/ui-verification.md`.
+Open the page, render the component, interact with the affected flow — browser tools, Playwright, or local devtools; never ask the user when tools are available. Tool order + what to observe: `references/ui-verification.md`.
 
 ### 4. Anti-false-green discipline
 
-A passing test with weak assertions is a false green. Three trip wires:
+- **Flip the assertion** — mentally flip `==` to `!=`; still passes → too weak, tighten.
+- **Wording trip wires** — "should pass", "probably works", "seems right", "Great!", "Perfect!", "Done!" before running the command → stop, run it first.
+- **False equivalences** — linter clean ≠ build passes ≠ tests pass ≠ requirements met ≠ agent COMPLETED. Each layer proves only what it ran.
+- **Stale evidence** — a claim must come from a run AFTER the last change in this unit of work; re-run, never re-quote.
+- **Attribution** — "the user approved X" must trace to a specific message stating X; a general "go ahead" authorizes nothing it did not name.
 
-- **Flip-the-assertion check** — mentally flip `==` to `!=`. If the test still passes, assertion is too weak. Tighten before trusting.
-- **Wording trip wires** — about to say "should pass", "probably works", "seems right", "Great!", "Perfect!", "Done!" before running the command? Stop. Run it first. Pre-completion wording without fresh evidence is the same lie in two registers.
-- **Common false equivalences** — "linter clean ≠ build passes". "Build passes ≠ tests pass". "Tests pass ≠ requirements met". "Agent reports COMPLETED ≠ verified". Each layer proves only what it actually ran.
-- **Stale evidence** — a verification claim ("tests pass", "build green") must come from a run executed AFTER the last change in this unit of work. Evidence carried forward across any later edit is void — re-run it, never re-quote it.
-- **Attribution** — "the user approved / asked for X" must trace to a specific user message stating X. A general "go ahead" earlier does not authorize anything it did not name.
+Weak-vs-strong assertions by type: `references/assertion-strength.md`. Common-failure + rationalization tables: `references/verification-discipline.md`.
 
-Weak-vs-strong assertion patterns by type: `references/assertion-strength.md`. Common-failure table + rationalization-prevention table: `references/verification-discipline.md`.
+### 4b. Spec back-reference
 
-### 4b. Spec-back-reference
-
-For every acceptance criterion in the spec / plan / task, name the evidence that verifies it. A criterion with no named evidence = unverified, regardless of how many other tests pass. Mirror of plan's spec-coverage trace, applied to evidence instead of tasks.
-
-Format inline in the evidence block: `<criterion> → <evidence command + result line>`.
+For every acceptance criterion, name the evidence that verifies it — `<criterion> → <evidence command + result line>` in the evidence block. A criterion with no named evidence = unverified, however many other tests pass.
 
 ### 5. State limitations honestly
 
-If you cannot verify (no test infra, no network, no browser), fill the four-field limitation block — Cannot verify / Reason / Risk if wrong / Suggested check — shaped in `templates/evidence-block.md`; never claim done over an unstated limitation.
+No test infra, no network, no browser → the four-field block (Cannot verify / Reason / Risk if wrong / Suggested check) from `templates/evidence-block.md`; never claim done over an unstated limitation.
 
 ### 6. Failure-mode gate (F1-F5)
-
-Before declaring done, clear all five:
 
 ```
 F1: Hallucinated a fn / file / API that does not exist?  → Read / Grep to verify
@@ -132,63 +105,48 @@ Any "yes" → fix before declaring done. Skip only when ALL hold: ≤5 lines · 
 
 ### 7. Compose the evidence block
 
-Fill `templates/evidence-block.md` — exact commands, the specific proof line per check, the change manifest, and honest limitations (R1/R2 — trivial edit / one file + test — single file with nothing to limit → the one-line form in §Output).
+Fill `templates/evidence-block.md` — exact commands, the proof line per check, the change manifest, honest limitations. R1/R2 (trivial edit / one file + test) single file with nothing to limit → the one-line form in Output.
 
 ## If a matching Rolepod agent is available
 
-Delegate verification depth:
-
 - `qa-tester` — test suite design / failure analysis
-- `performance-engineer` — p95/p99/bundle/benchmark proof
+- `performance-engineer` — p95/p99 / bundle / benchmark proof
 - `security-engineer` — exploit-blocked proof
 - `devops-sre` — CI lane behavior / deploy smoke
 
-Brief: change manifest + acceptance criteria + available tools.
-
-More than one evidence type needed (e.g. test suite + perf benchmark + security repro) → dispatch the verifiers in ONE message; each proves an independent claim on the same frozen change, so they run concurrently and the evidence block merges their outputs.
+Brief: change manifest + acceptance criteria + available tools. More than one evidence type → dispatch the verifiers in ONE message; each proves an independent claim on the same frozen change.
 
 ## If no matching agent is available
 
-Execute as Lead with this minimum viable checklist:
-
-1. Run tests for the touched module + typecheck/lint if the stack has them (scope ladder: task Command while building → module suite here → full suite only on high-risk or at merge via CI Phase 2 — no CI configured → that scope runs locally at Ship; map changed paths → subset by import graph / naming before defaulting wider)
-2. UI → screenshot or DOM read via browser tools; API → curl + assert response shape
-3. Schema/migration → dry-run forward + rollback; docs → render + link-check + placeholder scan
-4. Compose evidence block; state any missing verification path with risk
+Execute as Lead: tests for the touched module + typecheck / lint (scope ladder: task Command while building → module suite here → full suite only on high-risk or at merge via CI; no CI → that scope runs locally at Ship; map changed paths → subset by import graph / naming before defaulting wider) → UI: screenshot or DOM read; API: curl + assert response shape → schema: dry-run forward + rollback; docs: render + link-check + placeholder scan → compose the block with any missing path + risk.
 
 ## Output
 
-The evidence block is the canonical artifact: `templates/evidence-block.md`. It carries the change manifest, per-check evidence, limitations, and the status verdict — the `## Status` line is exactly one of `VERIFIED | PARTIAL | UNVERIFIED`, the literal word finish-work's merge gate reads (PARTIAL or UNVERIFIED blocks merge; no other word clears it). Do not restate the rest of the block shape here; the template is the single source. R1/R2 on a single file, no QA test-case table in play, nothing for Limitations → the block collapses to one line: `<command> → PASS: <specific proof>. Status: VERIFIED` (the template says the same).
+The evidence block is the canonical artifact: `templates/evidence-block.md` — change manifest, per-check evidence, limitations, and `## Status` = exactly one of `VERIFIED | PARTIAL | UNVERIFIED`, the literal word finish-work's merge gate reads (PARTIAL / UNVERIFIED block merge). R1/R2 single file, no QA test-case table, nothing to limit → one line: `<command> → PASS: <specific proof>. Status: VERIFIED`.
 
-Also append one line to `<git-root>/.rolepod/evidence/phase-log.jsonl` — `{"ts":"<iso8601>","phase":"verify","verdict":"pass|partial|fail","evidence":"<command run>"}` — inside the next Bash call you make anyway (the review's `git diff`, the commit); nothing follows (R1/R2 lightweight verify) → chain it onto the verify command's own call (`<verify cmd> && printf '…pass…' >> … || printf '…fail…' >> …`); a verify that is only a file re-read logs on that turn's last Bash call or not at all — never a standalone turn (fail-open: skip silently outside a git repo) — the verdict mirrors the `## Status` word above (VERIFIED → pass, PARTIAL → partial, UNVERIFIED → fail); a P1 traceability miss below stays `fail`. The log is the dataset that answers whether the process pays for itself. A QA test-case table in play (this session or under `.rolepod/evidence/`) → traceability check: every P1 row's ID must appear in a passing test's name (`grep` the RUNNER output for `TC<n>` — source-file presence proves authorship, not a pass; skipped or not-collected counts as missing); a P1 ID with no passing test = phase-log `verdict:"fail"` plus Status `PARTIAL` or `UNVERIFIED`, naming the missing IDs.
+Evidence log: append the line to `<git-root>/.rolepod/evidence/phase-log.jsonl` chained onto the next command you run anyway (`<cmd> && printf '…' >> phase-log.jsonl`), never as a standalone turn; skip silently outside a git repo. On a CLI without hooks the Lead writes every line itself.
+Verify line: `{"ts":"<iso8601>","phase":"verify","verdict":"pass|partial|fail","evidence":"<command run>"}` — the verdict is the lowercase mapping of the Status word: VERIFIED → `pass`, PARTIAL → `partial`, UNVERIFIED → `fail`, and no other value is valid. Nothing follows an R1/R2 verify → chain it onto the verify command's own call (`<verify cmd> && printf '…pass…' >> … || printf '…fail…' >> …`).
 
-## Examples
-
-Non-blocking — read only when unsure whether your evidence is strong enough:
-- `examples/evidence-examples.md` — a bug-fix and a UI verification, each a strong/false-green pair with a "why good wins" table. Read the whole file; the contrast is the lesson.
+**P1 traceability.** A QA test-case table in play (this session or under `.rolepod/evidence/`) → every P1 row's ID must appear in a passing test's name: `grep` the RUNNER output for `TC<n>` (source presence proves authorship, not a pass; skipped / not-collected = missing). A P1 with no passing test = `verdict:"fail"` plus Status `PARTIAL` or `UNVERIFIED`, naming the missing IDs.
 
 ## References
 
-Load only when the task needs it:
-- `references/ui-verification.md` — how to verify a UI change: tool order, what to observe
-- `references/assertion-strength.md` — spot a weak assertion that passes with the bug present
-- `references/verification-discipline.md` — common-failures table (Claim / Requires / Not Sufficient), rationalization-prevention table, red-green-revert protocol, anti-rationalization wording catalog
+Load only when needed:
+- `references/ui-verification.md` — tool order, what to observe.
+- `references/assertion-strength.md` — a weak assertion that passes with the bug present.
+- `references/verification-discipline.md` — common failures, rationalization prevention, red-green-revert protocol.
+- `examples/evidence-examples.md` — a bug-fix and a UI verification, strong vs false-green.
 
 ## Hard stops
 
-- Tests fail → fix or report; do not claim done
-- UI change with no browser observation → not verified
-- "It compiled" is offered as the only evidence for runtime behavior → not verified
-- Subagent claims COMPLETED but evidence is absent → reject
-- About to say "should pass" / "looks right" / "Great!" / "Done!" without a run that post-dates the last edit (or a verified unchanged-tree cache cite) → stop; Iron Rule 2
-- Acceptance criterion has no named evidence in the evidence block → not verified, even if other tests pass
-
-## Full Rolepod enhancement
-
-Full Rolepod improves this phase by adding hooks that nag for evidence on completion claims, the qa-tester floor, browser-MCP integration for UI verification, and CI lane configuration that catches missing evidence in PR review.
+- Tests fail → fix or report; not done.
+- UI change with no browser observation → not verified.
+- "It compiled" as the only runtime evidence → not verified.
+- Subagent claims COMPLETED with no evidence → reject.
+- About to say "should pass" / "looks right" / "Done!" without a run that post-dates the last edit (or a verified unchanged-tree cache cite) → stop; Iron Rule 2.
+- An acceptance criterion with no named evidence → not verified.
 
 ## Next phase
 
-- If the work needs review, continue to `review-code`.
-- If the work is review-already-done or trivial-no-review, continue to `finish-work` — unless the driving plan still has unchecked tasks: loop back to `implement-plan` first.
-- If neither is available, attach the evidence block directly and ask the user whether to ship.
+- Needs review → `review-code`. Review done or trivial → `finish-work`, unless the plan has unchecked tasks → `implement-plan` first.
+- If neither is available, attach the evidence block and ask the user whether to ship.
