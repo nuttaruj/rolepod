@@ -30,6 +30,11 @@ HANDOFF.md
 # Build output
 build/rendered/
 
+# Isolated worktrees. using-rolepod's concurrent-session rule tells a Lead to
+# spawn `.worktrees/<task>` before editing a shared file, so the path the
+# doctrine recommends must not dirty `git status` for everyone who follows it.
+.worktrees/
+
 # Python bytecode
 __pycache__/
 *.pyc
