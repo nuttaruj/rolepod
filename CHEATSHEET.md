@@ -101,7 +101,7 @@ Can't verify  → state "Assuming X. Risk Y. Verify by Z" — never proceed sile
 
 ## Hooks
 
-14 Claude / 9 Codex / 5 Gemini / 3 Cursor / 6 Antigravity core hook scripts (opencode: plugin-event bridge, best-effort) — self-guarded, auto-fire, no add-on hooks. All CLIs fire hooks by default (Codex: `[features] hooks = true`, default-enabled). Full reference: [docs/hooks.md](docs/hooks.md).
+15 Claude / 9 Codex / 5 Gemini / 3 Cursor / 6 Antigravity core hook scripts (opencode: plugin-event bridge, best-effort) — self-guarded, auto-fire, no add-on hooks. All CLIs fire hooks by default (Codex: `[features] hooks = true`, default-enabled). Full reference: [docs/hooks.md](docs/hooks.md).
 
 Terse output (opt-in, every CLI): `touch ~/.claude/.rolepod-terse` shapes replies to cut output tokens; write `ultra` inside for heavier abbreviation, delete the file to stop. Security warnings, destructive confirmations and "explain" requests keep their full shape.
 

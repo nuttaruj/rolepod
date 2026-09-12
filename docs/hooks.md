@@ -13,6 +13,7 @@ Lead does not invoke these manually. They fire automatically.
 | **Always-on** | `always-on-loader` | Inject the rolepod always-on judgment core as SessionStart context |
 | **Output shape** | `terse-loader` | Inject the opt-in terse-output layer as SessionStart context, only when the user's flag file exists |
 | **Enforcement** | `block-subagent-commit`, `subagent-write-scope`, `cohesion-contract-check`, `gate-reminder`, `precommit-gate` | Hard / soft blocks on discipline violations (high-risk path, parallel-without-contract, sub-agent commit, schema-bound new file) |
+| **Publication** | `push-ref-check` | Show every commit a `git push` would publish when the ref carries more than one |
 | **Context** | `project-context-loader` | Inject git state at SessionStart |
 | **Session safety** | `session-lifecycle`, `worktree-guard` | `session-lifecycle`: SessionStart lock + Stop unlock. `worktree-guard`: hard-blocks an edit only when a live sibling owns that exact file — disjoint/solo edits flow free |
 | **Answer-path** | `claim-verify-nudge` | Soft read-first nudge when a prompt asks for an analysis / diagnosis / "how does X work" / status — covers the claim/answer path that tool + lifecycle hooks miss. Since v2.49.0 also the **context-bloat check**: reads the last turn's context size from the transcript and, on crossing 500k tokens adds one note, and again only after a /compact brings the context under the line and it crosses once more (v2.119.1; 200k per 200k bucket before) per session — `additionalContext` for the Lead only (delegate reads to a scout; in THIS turn's closing line mention /compact or a fresh session to the user once, then never again until a new line arrives — the user-facing `systemMessage` was removed in v2.49.1 as friction). Measured need: a 12-day session ran every turn at 350-900k tokens; each turn re-reads all of it — one grep sweep = 31 turns × 558k ≈ $9. Claude/Codex `UserPromptSubmit`, Gemini `BeforeAgent`; soft, never blocks |
@@ -34,7 +35,7 @@ A per-edit reminder hook duplicated all three without enforcement teeth — so i
 | `UserPromptSubmit` | (no matcher) | `claim-verify-nudge.sh` |
 | `PreToolUse` | `Edit\|Write\|MultiEdit` | `worktree-guard.sh`, `gate-reminder.sh`, `subagent-write-scope.sh` |
 | `PreToolUse` | `NotebookEdit` | `subagent-write-scope.sh` |
-| `PreToolUse` | `Bash` | `precommit-gate.sh`, `block-subagent-commit.sh` |
+| `PreToolUse` | `Bash` | `precommit-gate.sh`, `push-ref-check.sh`, `block-subagent-commit.sh` |
 | `PreToolUse` | `Agent` | `cohesion-contract-check.sh` |
 | `PreToolUse` | `Workflow\|Agent` | `workflow-tier-nudge.sh` |
 | `PostToolUse` | `Workflow\|Agent` | `dispatch-auto-log.sh` |
@@ -101,6 +102,28 @@ bytes, and a failure in one loader can never take the other down.
   `session-start.sh`; Cursor ships `rules/terse.mdc` with
   `alwaysApply: false`; Codex, Antigravity and opencode carry a pointer in
   their entry doc that names the shipped `terse-core.md`.
+
+### `push-ref-check.sh` — PreToolUse(Bash), informational
+
+Show what a `git push` would actually publish. A push publishes the REF, not
+the commit you just made: in a shared worktree another session's local merge
+rides out on your push, which is a measured incident rather than a
+hypothetical.
+
+- **Fires**: a real `git push` in command position — `cd x && git push` counts,
+  `echo git push` does not — and only when the push would publish **2 or more**
+  commits. Pushing your own single commit is the common case and gets no line.
+- **Effect**: names each commit on the range (`@{push}..HEAD`, or the remote's
+  default branch when the branch has no upstream yet) and asks you to confirm
+  each is yours or cleared for publication by its author.
+- **Never denies.** The incident happened because nobody looked, not because
+  someone looked and judged wrong, so the hook shows and stops there. Deciding
+  whose commit is whose would need a sha-to-session ledger, and a rebase
+  rewrites every sha — exactly the branch-per-worktree flow rolepod now
+  recommends. A denying version waits for a measured "looked and still missed
+  it" case.
+- **Self-guards**: not a git repo, no `@{push}` that resolves, unparsable
+  command → silent exit 0.
 
 ### `project-context-loader.sh` — SessionStart (core)
 
@@ -446,4 +469,4 @@ claude plugin details rolepod@rolepod
 # Component inventory should list a Hooks line covering UserPromptSubmit, SessionStart, PreToolUse, Stop
 ```
 
-Expected: 14 core hook scripts / 16 registrations (UserPromptSubmit × 1, SessionStart × 4, PreToolUse × 8, PostToolUse × 2, Stop × 1 — `session-lifecycle.sh` registers twice, `--lock`/`--unlock`).
+Expected: 15 core hook scripts / 17 registrations (UserPromptSubmit × 1, SessionStart × 4, PreToolUse × 9, PostToolUse × 2, Stop × 1 — `session-lifecycle.sh` registers twice, `--lock`/`--unlock`).
