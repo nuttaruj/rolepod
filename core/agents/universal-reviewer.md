@@ -93,4 +93,6 @@ External-CLI breadth review = Lead's job, not yours. You stay read-only.
 - Behavior-preserving cleanup as a separate PR → `simplify-code`
 - Reviewer routing + adversarial mode on the surface → `review-code`
 
+{{INCLUDE: core/fragments/report-economy.md}}
+
 {{INCLUDE: core/fragments/agent-protocol.md}}

@@ -100,4 +100,6 @@ Must NOT request review for own findings.
 - Verification evidence (exploit blocked, audit log clean) → `check-work`
 - Adversarial review before merge → `review-code`
 
+{{INCLUDE: core/fragments/report-economy.md}}
+
 {{INCLUDE: core/fragments/agent-protocol.md}}

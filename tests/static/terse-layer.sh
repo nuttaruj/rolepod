@@ -7,6 +7,16 @@
 # stays inside its own budget — separate from the always-on 5120 B budget,
 # which this layer must never touch.
 #
+# What §9-§11 can and cannot prove. They guard PRESENCE of the doctrine, not
+# its meaning: review mutation-proved that a bullet keeping every anchor while
+# appending "Superseded: none of the above is required", a fragment body
+# keeping the checked phrases while dropping its deferral targets, and a
+# fragment renaming its shape headings all still pass. A grep cannot verify
+# that prose means what it says, so these checks catch deletion and render
+# breakage — the regressions that actually happen — and not an author who
+# rewrites the rule against itself. Read the diff for that; do not add a
+# fourth keyword to the list and call it covered.
+#
 # Run directly: bash tests/static/terse-layer.sh
 set -uo pipefail
 
@@ -16,7 +26,7 @@ REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 HOOK="$REPO_DIR/plugins/rolepod/hooks/terse-loader.sh"
 CORE="$REPO_DIR/plugins/rolepod/hooks/terse-core.md"
 HOOKS_JSON="$REPO_DIR/adapters/claude/hooks.json"
-BUDGET=2048
+BUDGET=2560
 
 fail=0
 pass() { echo "  ✓ $1"; }
@@ -174,6 +184,71 @@ assert "TERSE OUTPUT ACTIVE" not in ctx, "terse banner must not appear with a fa
   fi
 
   rm -rf "$GTMP" "$GFLAGDIR"
+fi
+
+# 9. The output-fidelity floor: what must survive when the agent compresses
+#    tool output in its reply. Terse pressure is exactly where a file:line or
+#    a failure count gets dropped, so the rule lives in the payload that
+#    creates the pressure.
+#    The anchors are checked INSIDE the rule's own bullet, not anywhere in the
+#    file: a review mutation proved that a file-wide grep still passes when the
+#    rule is negated and the phrases survive as a dead historical note.
+if [ -s "$CORE" ]; then
+  BULLET=$(python3 -I -c '
+import sys, re
+text = open(sys.argv[1], encoding="utf-8").read()
+# The bullet runs from its "- Compressing tool output" marker to the next
+# bullet or blank-line-delimited block, whichever comes first.
+m = re.search(r"^- Compressing tool output.*?(?=\n- |\n\n)", text, re.S | re.M)
+sys.stdout.write(m.group(0) if m else "")
+' "$CORE" 2>/dev/null)
+  if [ -z "$BULLET" ]; then
+    bad "terse-core has no output-fidelity bullet"
+  else
+    miss=""
+    for phrase in "byte-for-byte" "non-zero exit code" "not only on the lines carrying an error" "keeps its own line" "Quote the output"; do
+      printf '%s' "$BULLET" | grep -qF "$phrase" || miss="$miss [$phrase]"
+    done
+    [ -z "$miss" ] \
+      && pass "terse-core fidelity bullet carries every anchor" \
+      || bad "fidelity bullet is missing:$miss"
+  fi
+fi
+
+# 10. Every reporting role carries the report-economy budget. A subagent's
+#     report lands in the Lead's context verbatim, so its length is a per-
+#     dispatch cost — scout has always had a contract; these three did not.
+#     The rendered check asserts a distinctive BODY sentence, not the heading:
+#     a review mutation proved a heading-only resolution passes a heading grep.
+for role in qa-tester universal-reviewer security-engineer; do
+  src="$REPO_DIR/core/agents/$role.md"
+  rendered="$REPO_DIR/plugins/rolepod/agents/$role.md"
+  grep -qF "{{INCLUDE: core/fragments/report-economy.md}}" "$src" 2>/dev/null \
+    && pass "$role sources the shared report-economy fragment" \
+    || bad "$role does not include core/fragments/report-economy.md"
+  body_miss=""
+  for phrase in "cost paid on every dispatch" "The SHAPE is whatever the dispatch" "it is an opinion"; do
+    grep -qF "$phrase" "$rendered" 2>/dev/null || body_miss="$body_miss [$phrase]"
+  done
+  [ -z "$body_miss" ] \
+    && pass "$role ships the fragment body resolved" \
+    || bad "$role rendered copy lost fragment body:$body_miss"
+done
+
+# 11. The fragment defers shape, never defines a second one. review-code's
+#     templates/review-report.md is the canonical review artifact
+#     (review-code/SKILL.md) and a competing 4-part shape in a fragment the
+#     same roles include was the round-3 blocker.
+FRAG="$REPO_DIR/core/fragments/report-economy.md"
+if [ -s "$FRAG" ]; then
+  grep -qF "review-report.md" "$FRAG" \
+    && pass "report-economy defers shape to the dispatch's own artifact" \
+    || bad "report-economy must name review-report.md as the shape it defers to"
+  if grep -qE "^[0-9]+\. \*\*(Verdict|Findings|Gaps)\*\*" "$FRAG"; then
+    bad "report-economy defines a numbered report shape — that is review-report.md's job"
+  else
+    pass "report-economy defines no competing numbered shape"
+  fi
 fi
 
 if [ $fail -eq 0 ]; then echo "  all terse-layer checks passed"; else exit 1; fi

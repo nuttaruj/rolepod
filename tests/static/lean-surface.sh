@@ -572,6 +572,7 @@ result + risk + next step. Drop filler
 Plain text or a unique string
 escalate, do not retry blind
 chained onto the next command you run anyway
+cost paid on every dispatch
 SIGS
 if [ -z "$ssv_leak" ]; then
   echo "  ✓ gate/doctrine single-sourced — no fragment re-inlined in a consumer"

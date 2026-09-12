@@ -137,4 +137,6 @@ Final judge for correctness. Must NOT request review for own findings.
 - Reviewer routing + adversarial mode → `review-code`
 - Debug a flake or regression → `debug-issue`
 
+{{INCLUDE: core/fragments/report-economy.md}}
+
 {{INCLUDE: core/fragments/agent-protocol.md}}

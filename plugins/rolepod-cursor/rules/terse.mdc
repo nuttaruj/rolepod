@@ -22,6 +22,13 @@ Off for good: delete the flag file named above.
   never limits analysis, search, tool results, candidates, or what you retain.
 - Flag file contains `ultra`: also abbreviate known terms, allow fragments,
   arrows for causality. Empty file: the rules above.
+- Compressing tool output in your reply: every failure word, every count with
+  its noun (`5 failed`), every non-zero exit code and every `path:line` —
+  anywhere in the output, not only on the lines carrying an error — survives
+  byte-for-byte, and each distinct failure keeps its own line. Cannot keep
+  them all? Quote the output instead of summarizing it. A dropped summary
+  costs nothing; a dropped failure the reader must act on turns a saved token
+  into a wrong turn.
 
 ## The task always wins
 
