@@ -11,6 +11,9 @@ Close out a branch safely: pre-merge gate, four finish options, launch ritual wh
 
 <EXTREMELY-IMPORTANT>
 1. NEVER push to main, force-push, merge a PR, or stage a launch without explicit user authorization for THIS specific action. Prior approval for unrelated work does not transfer.
+   - **A push publishes the REF, not your commit.** Read `git log --oneline @{push}..HEAD` first; a branch you have not pushed has no `@{push}` (`fatal: no upstream configured`), so read `git log --oneline origin/<base>..HEAD` instead.
+   - Every commit on that list must be yours, or one whose author has cleared it for PUBLICATION — approved work is not a cleared push: another session may be holding an approved commit unpushed on purpose, and your push ends that hold. Cannot tell → ask that session, then the user.
+   - Never force-push to unpublish one; that is a second unauthorized act on a shared ref.
 2. NEVER auto-merge a PR with a failing required CI lane.
 3. NEVER skip the pre-merge gate (simplicity + tests + failure-mode + evidence + reviewer + PR scope) because "the diff is small". A user waiver granted at an earlier phase carries forward — quote it in the finish menu's gate status (which gate, the user's words) instead of re-demanding the waived work or skipping silently.
 4. The reviewer who flagged a BLOCKER is not the final authority on whether it is fixed, and neither is its author — a reviewer who did not write the fix confirms before merge (Lead-built fix → qa-tester; R4 → the internal strong reviewer; the Lead never approves its own fix).

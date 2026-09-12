@@ -62,7 +62,7 @@ Match the intent to the FIRST skill that fires; that skill decides what comes ne
 | architecture decision (DB schema / API contract / module split) | **Define** | `write-spec` — §3 dispatches ONE `system-architect` for the approach (when available) → `write-plan` | **strong** |
 | "is this done / fixed / does it work / verify" | **Verify** | `check-work` | balanced |
 | "review / check this / look at the diff" | **Review** | `review-code` | **strong** |
-| "audit / sweep / map / find all X" on **the whole repo** | **Review (repo-wide)** | scope-then-spawn (below) → `review-code` | balanced |
+| "audit / sweep / map / find all X" on **the whole repo** | **Review (repo-wide)** | Sweeps (below) → `review-code` | balanced |
 | "ship / merge / push / PR / ready / go live" — and any "done / finished / ready" or natural end of the work | **Ship** | `check-work` (evidence) → `review-code` (adversarial reviewers per domain when multi-file / high-risk) → `finish-work` (the finish menu; never auto-pick — the branch decision is the user's) | **strong** (final review) |
 | explain-only / conceptual question | (no phase) | answer directly — a wide repo / online sweep first → ONE `scout` returns a research report (the always-on Code search rule) | cheap |
 | unclear doc artifact / proposal / ADR scope | **Define** | `write-spec` | cheap |
@@ -84,18 +84,9 @@ No row matches → ask the user what phase the task is in. Don't pattern-match y
 
 **Lead-tier fit nudge — once per session, tier classes only, never a model name.** Classify your OWN model into a class (cannot tell → skip). Strong-class Lead + three consecutive R1/R2 routes → note ONCE that a balanced Lead plus rolepod's escalation valves (cross-model consults, strong reviewers, BLOCKED redispatch) covers routine sessions. Balanced-class Lead + an R4 / architecture route → note ONCE that strong-tier consults and reviewers are pulled in automatically; a strong Lead is worth it only when that is the day's main work.
 
-## Scope-then-spawn — repo-wide audit / sweep
+## Sweeps — never one agent per file
 
-Scope the file list first, narrow to the risky subset, spawn agents only on that subset — never one agent per file across hundreds. Flow + tool order: `references/scope-then-spawn.md`.
-
-## 2-strike convergence — emergent fix loops
-
-A plan-less fix → check → fix loop: the first 2 same-shaped fixes are discovery (self-do). The 3rd instance of the SAME shape — no new decision, the learned fix applied again — is the convergence signal: **stop, don't fix it inline**.
-1. Enumerate the remainder (grep the pattern / failing-test list).
-2. The 2 fixed instances ARE the brief: pattern, before/after diff, verify command.
-3. Dispatch the remainder as ONE batch to an implementer at the mechanical tier — cheap-class, the learned fix applied N times (implement-plan's `references/subagent-dispatch.md` carries the task-type → tier table); review the manifest, not each file.
-
-Fix #3 changed the approach → still emergent, keep self-doing. A long check loop ("run X, report failures compactly") is always delegable. "Faster to fix it myself" is true for THIS file, false for the sweep.
+**Seen coming** (repo-wide audit, refactor sweep, "find all X"): scope the file list first, narrow to the risky subset, spawn agents only on that subset. **Emerges mid-flight** (a fix → check → fix loop) — **2-strike convergence**: the first 2 same-shaped fixes are discovery, self-do; the 3rd instance of the SAME shape is the convergence signal — stop, enumerate the remainder, and dispatch it as ONE mechanical-tier batch with the 2 fixed instances as the brief. Both flows, with tool order and the step detail: `references/scope-then-spawn.md`.
 
 ## State machine — phase → exit evidence → next
 
@@ -133,7 +124,8 @@ User explicit ("skip spec" / "just commit" / "answer only" / "no plan" / "ship a
 - High-risk path (the list in the router table; project override: `.rolepod/risk-paths`) with 0 reviewer agents dispatched → STOP. Dispatch (1) `qa-tester` + `security-engineer` — always, except the R4 comment/blank-only carve-out (ONE strong reviewer); (2) an external CLI reviewer — a different CLI than the Lead's, on its own default model — when one is installed (review-code's `external-review-routing.md`).
 - 3rd agent on the same issue OR 3rd PR on the same surface in one session → STOP, ask the user.
 - Diff mixes 2+ unrelated concerns at push / merge time → split into separate PRs (`finish-work` PR-scope gate).
-- Concurrent sessions: SessionStart warns "concurrent session(s) detected in this worktree" → before editing a SHARED file spawn an isolated worktree (`git worktree add ../<repo>-task-<ts> <branch> && cd`) and continue there; disjoint and solo edits flow free. Override: `ROLEPOD_ALLOW_SHARED_WORKTREE=1` for intentional shared / read-only sessions.
+- Concurrent sessions share the REF as well as the files. SessionStart warns "concurrent session(s) detected in this worktree" → before editing a SHARED file STOP: spawn an isolated worktree (`git worktree add .worktrees/<task> -b <branch>`) and work on your own branch there; disjoint and solo edits flow free. Override: `ROLEPOD_ALLOW_SHARED_WORKTREE=1` for intentional shared / read-only sessions.
+- Holding work for authorization → STOP: keep it on its own branch; never merge it into a SHARED branch before the answer comes. Merged there unpushed, it is staged for whoever pushes next (finish-work Iron Rule 1).
 
 ## Output pattern
 

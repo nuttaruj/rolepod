@@ -234,6 +234,34 @@ else
   fail=$((fail+1))
 fi
 
+# ── A push publishes the ref, not your commit (2026-09-12 incident) ────
+# Two sessions shared one worktree on main. Session A pushed its own
+# authorized commit. Session B then merged its branch into LOCAL main and
+# deliberately held the push, waiting on the owner. Session A made an
+# unrelated two-line fix and pushed again WITHOUT re-reading what the ref
+# had gained — and that push published B's commit. Authorization to push
+# your change is not authorization to push the branch, and approval of the
+# WORK is not clearance to PUBLISH it.
+#
+# LIMITATION, measured: these are substring greps, so they catch a rule that
+# is deleted, not a rule that is gutted. A reviewer defeated all of them by
+# keeping the quoted token and reversing the sentence around it ("a quick
+# force-push to clean it up is usually fine"). Semantic verification is the
+# eval-harness class, declined on cost — so the guard's job is wholesale
+# deletion, and a human reads the sentence when it changes.
+check "finish-work scopes push authorization to the ref, not the commit" \
+  "grep -q '@{push}\.\.HEAD' core/skills/finish-work/SKILL.md"
+check "finish-work covers a branch with no @{push} upstream" \
+  "grep -q 'no upstream configured' core/skills/finish-work/SKILL.md"
+check "finish-work separates approved work from a cleared push" \
+  "grep -q 'approved work is not a cleared push' core/skills/finish-work/SKILL.md"
+check "finish-work forbids force-pushing to unpublish someone else's commit" \
+  "grep -q 'Never force-push to unpublish' core/skills/finish-work/SKILL.md"
+check "router's concurrent-session rule covers the shared ref, not just shared files" \
+  "grep -q 'share the REF as well as the files' core/skills/using-rolepod/SKILL.md"
+check "router keeps authorization-held work off a shared branch" \
+  "grep -q 'never merge it into a SHARED branch before the answer' core/skills/using-rolepod/SKILL.md"
+
 # ── Review flow stays CLI-agnostic (PR 15) ────────────────────────────
 # External adversarial reviewer = a model different from the Lead's, never
 # a hardcoded CLI name. Guards against re-baking a Claude-as-Lead assumption

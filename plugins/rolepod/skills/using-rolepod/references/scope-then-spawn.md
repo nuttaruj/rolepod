@@ -45,3 +45,32 @@ not nag the user to install anything.
 Spawning 1 agent per file across 100+ files for "audit the whole repo"
 without a scoping pass. Burns tokens, drowns Lead in summaries, misses
 cross-file patterns a code-intel index would surface in one query.
+
+---
+
+# 2-strike convergence — the sweep that emerges mid-flight
+
+Scope-then-spawn above covers a sweep you can see coming. This covers the
+other shape: a fix → check → fix loop where each check reveals the next fix,
+and the sweep only becomes visible once you are inside it.
+
+The first 2 same-shaped fixes are discovery — the Lead is learning the
+pattern, self-do is correct. The 3rd instance of the SAME shape (no new
+decision, just the learned fix applied again) is the convergence signal:
+**stop, don't fix it inline.**
+
+1. **Enumerate the remainder** — grep the pattern, or take the failing-test
+   list. You cannot batch what you have not counted.
+2. **The brief writes itself** — the 2 fixed instances ARE the examples:
+   pattern, before/after diff, verify command.
+3. **Dispatch the remainder as ONE batch** at the mechanical tier (cheap-class;
+   task-type → tier table in implement-plan's `references/subagent-dispatch.md`).
+   Review the manifest, not each file.
+
+Fix #3 changed the approach → not converged; keep self-doing and re-test at
+the next repeat. Either way the check loop itself is delegable: "run X, report
+failures compactly" is mechanical-tier work even when the fixes are not.
+
+"Faster to just fix it myself" is true for THIS file, false for the sweep — by
+instance 3 the pattern is brief-ready, and every further inline fix pays
+top-tier price for zero new judgment.
