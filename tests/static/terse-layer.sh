@@ -227,7 +227,7 @@ for role in qa-tester universal-reviewer security-engineer; do
     && pass "$role sources the shared report-economy fragment" \
     || bad "$role does not include core/fragments/report-economy.md"
   body_miss=""
-  for phrase in "cost paid on every dispatch" "The SHAPE is whatever the dispatch" "it is an opinion"; do
+  for phrase in "cost paid on every dispatch" "The SHAPE is whatever the dispatch" "nothing locates is an opinion"; do
     grep -qF "$phrase" "$rendered" 2>/dev/null || body_miss="$body_miss [$phrase]"
   done
   [ -z "$body_miss" ] \
