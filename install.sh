@@ -3,8 +3,8 @@
 #
 # Rolepod ships PURE FRAMEWORK ONLY — no 3rd-party tools or plugins are
 # auto-installed. Recommended add-ons (CodeGraph, GitNexus, rtk,
-# caveman, ui-ux-pro-max) live in README → "Recommended add-ons". The
-# framework auto-integrates with each one when the user installs it themselves
+# ui-ux-pro-max) live in README → "Recommended add-ons". The framework
+# auto-integrates with each one when the user installs it themselves
 # (graceful degradation everywhere).
 #
 # Usage:
@@ -1838,7 +1838,7 @@ ${BOLD}rolepod framework installed.${NC} (Pure framework — no 3rd-party add-on
 Recommended add-ons (install separately — framework auto-integrates each):
   • Code intel    — CodeGraph, GitNexus
   • Memory        — rolepod-brain (sibling: github.com/nuttaruj/rolepod-brain)
-  • Token cuts    — rtk, caveman
+  • Token cuts    — rtk (replies: built in — touch ~/.claude/.rolepod-terse)
   • Design        — ui-ux-pro-max
 
 See README → "Plugin family" (siblings) and "Recommended add-ons" (3rd-party)

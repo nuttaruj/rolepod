@@ -204,7 +204,7 @@ See [docs/EXTENSION-PROTOCOL.md](docs/EXTENSION-PROTOCOL.md) for the full contra
 | Add-on | What it adds | Fallback without it |
 |--------|--------------|---------------------|
 | [CodeGraph](https://www.npmjs.com/package/codegraph) · [GitNexus](https://github.com/abhigyanpatwari/GitNexus) | Sub-millisecond symbol / caller / impact queries | `rg` + `find` text search |
-| [rtk](https://github.com/rtk-ai/rtk) · [caveman](https://github.com/JuliusBrussee/caveman) | Token cuts on routine commands and replies | Normal output |
+| [rtk](https://github.com/rtk-ai/rtk) | Token cuts on routine command output (reply-side cuts ship built in — see Terse output above) | Normal output |
 | [ui-ux-pro-max](https://github.com/nextlevelbuilder/ui-ux-pro-max-skill) | Design recipes for the `ui-ux-designer` agent | Bundled design skills |
 
 **Tip:** add `.rolepod/` to your repo's `.gitignore`. The parent writes session markers and child plugins write evidence under that path — both are ephemeral and shouldn't be committed.
