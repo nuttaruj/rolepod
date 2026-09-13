@@ -36,9 +36,9 @@ Owns: risk-appropriate second-pass review — finding discovery, severity orderi
 Does not own: silent implementation fixes · the merge / PR decision · re-running the full suite unless a finding needs it.
 
 Hand off:
-- The user asked only for a review — no fix, no ship requested → the report is the deliverable; stop here.
-- Findings need fixes → `implement-plan` or `debug-issue`. Fixes landed → `check-work`.
-- No blockers, plan has unchecked tasks → `implement-plan` (Ship asks once per plan). Plan exhausted → `finish-work`.
+- The user asked only for a review — no fix, no ship requested → the report is the deliverable; stop here. Otherwise:
+  - Findings need fixes → `implement-plan` or `debug-issue`. Fixes landed → `check-work`.
+  - No blockers, plan has unchecked tasks → `implement-plan` (Ship asks once per plan). Plan exhausted → `finish-work`.
 
 ## Workflow
 
@@ -197,6 +197,6 @@ Load only when needed:
 
 ## Next phase
 
-- Review-only ask → none; stop after the report (Boundary).
-- `finish-work` for the merge gate — unless the plan has unchecked tasks: `implement-plan` first.
-- If `finish-work` is not available, present findings + recommendation and ask the user which finish path they want.
+- Review-only ask → none; stop after the report (Boundary). Otherwise:
+  - `finish-work` for the merge gate — unless the plan has unchecked tasks: `implement-plan` first.
+  - If `finish-work` is not available, present findings + recommendation and ask the user which finish path they want.

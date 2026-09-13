@@ -32,11 +32,11 @@ Owns: fresh evidence that the change works — tests, build, curl, logs, screens
 Does not own: new design / code issues beyond verification failures · merge / branch fate · rewriting the implementation unless evidence fails.
 
 Hand off:
-- The user asked only to verify — no fix, no ship requested → the evidence block is the deliverable; stop here.
-- Evidence fails → `debug-issue` or `implement-plan`.
-- Passes with risk (fails review-code's skip test: >5 lines, multi-file, logic-bearing, or high-risk) → `review-code`.
-- Passes, low risk, plan has unchecked tasks → `implement-plan` next task (Ship asks once per plan).
-- Passes, low risk, plan exhausted → `finish-work`.
+- The user asked only to verify — no fix, no ship requested → the evidence block is the deliverable; stop here. Otherwise:
+  - Evidence fails → `debug-issue` or `implement-plan`.
+  - Passes with risk (fails review-code's skip test: >5 lines, multi-file, logic-bearing, or high-risk) → `review-code`.
+  - Passes, low risk, plan has unchecked tasks → `implement-plan` next task (Ship asks once per plan).
+  - Passes, low risk, plan exhausted → `finish-work`.
 
 ## Workflow
 
@@ -158,6 +158,6 @@ Load only when needed:
 
 ## Next phase
 
-- Verify-only ask → none; stop after the evidence block (Boundary).
-- Needs review → `review-code`. Review done or trivial → `finish-work`, unless the plan has unchecked tasks → `implement-plan` first.
-- If neither is available, attach the evidence block and ask the user whether to ship.
+- Verify-only ask → none; stop after the evidence block (Boundary). Otherwise:
+  - Needs review → `review-code`. Review done or trivial → `finish-work`, unless the plan has unchecked tasks → `implement-plan` first.
+  - If neither is available, attach the evidence block and ask the user whether to ship.
