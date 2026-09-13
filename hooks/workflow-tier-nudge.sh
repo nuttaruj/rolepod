@@ -284,6 +284,14 @@ if tool == "Workflow":
     n_effort = len(re.findall(r"[,{\s]effort\s*:", code))
     n_calls = script.count("agent(")
     models = ss.script_option_values(script, "model", code)
+    # v2.124.0 — `const MODEL = 'opus'` + `model: MODEL` on every call: the
+    # per-call pass saw a variable (trusted) while meta.phases carried the
+    # literal, so the whole-script all-strong deny fired, a tier-reason then
+    # cleared it, and the review fan-out ran opus x 4 (CourtBook
+    # coach-daily-wage). A string-literal const resolves everywhere; a
+    # computed one (`const M = pick()`) stays dynamic.
+    consts = dict(re.findall(r"\b(?:const|let|var)\s+([A-Za-z_]\w*)\s*=\s*[\x27\"]([A-Za-z0-9._\-\[\]]+)[\x27\"]", script))
+    models += [consts[n] for n in re.findall(r"[,{\s]model\s*:\s*([A-Za-z_]\w*)\b", code) if n in consts]
     n_model = len(re.findall(r"[,{\s]model\s*:", code))
     n_atype = len(re.findall(r"[,{\s]agentType\s*:", code))
     # agentType is a tier choice ONLY when that agent renders a model pin
@@ -394,6 +402,13 @@ if tool == "Workflow":
             strong_here = bool(mv) and ss.model_class(mv.group(1)) == "strong"
             if mv and ss.model_class(mv.group(1)) in ss.LOW_CLASSES:
                 low_literal = mv.group(1)
+        else:
+            mi = re.search(r"[,{\s]model\s*:\s*([A-Za-z_]\w*)\b", win)
+            if mi and mi.group(1) in consts:   # v2.124.0 — const-bound literal
+                lit = consts[mi.group(1)]
+                strong_here = ss.model_class(lit) == "strong"
+                if ss.model_class(lit) in ss.LOW_CLASSES:
+                    low_literal = lit
         pinned = bool(re.search(r"[,{\s]model\s*:", win))   # literal or variable model
         # v2.104.0: the agentType of a strong role renders opus — the same
         # strong pin, so it spreads the same way (a fan-out = opus × N).
@@ -431,6 +446,8 @@ if tool == "Workflow":
     if downgraded and not strong_role_eff:
         role_strong = False   # every strong-role literal was pinned low — no slot (a variable agentType keeps role_strong)
     strong_stages = set(st for st, _ in strong_calls)
+    nonjudge_single = sorted(set((st or "(no phase)") for st, f in strong_calls if not f and not JUDGE_RX.search(st or "")))
+    n_nonjudge_single = sum(1 for st, f in strong_calls if not f and not JUDGE_RX.search(st or ""))
     fan_strong = sorted(set(st or "(no phase)" for st, f in strong_calls if f))
     spread = ""
     if strong_calls and cls in ss.LOW_CLASSES:
@@ -482,6 +499,18 @@ if tool == "Workflow":
             "strong pass. Fix: drop model: on that ONE call (the role renders opus) or model:\x27opus\x27; every fan-out "
             "stays sonnet/haiku. Exception: `// tier-reason: <why>` in the script; ROLEPOD_GATES_SOFT=1 (user-set) warns."
             % (dst or "(no phase)", drole, dmodel))
+    elif stated and n_nonjudge_single >= 2:
+        # v2.124.0 — a reason covers ONE strong slot (v2.107.0). Pasted on
+        # every build / test / fix call it is the Lead price x N behind a
+        # comment (CourtBook coach-daily-wage: 8 x opus, reason "ultracode").
+        verdict = "reason-spread"
+        reason_txt = (
+            "⛔ fleet-tier: `// tier-reason:` covers ONE strong slot — %d strong call(s) sit on non-judgment "
+            "stage(s) %s under a %s Lead (%s). Fix: build / test / fix → model:\x27sonnet\x27 or "
+            "agentType:\x27rolepod:<role>\x27; keep ONE model:\x27opus\x27 on the judge (security-engineer on "
+            "money / auth). Effort, ultracode and \x27cost is no constraint\x27 are depth, not tier. Exception: none "
+            "for ≥2 non-judgment strong calls; ROLEPOD_GATES_SOFT=1 (user-set) warns."
+            % (n_nonjudge_single, ", ".join(nonjudge_single)[:120], cls, lead or "unknown model"))
     elif costly and not stated:
         if not tiers:
             verdict = "no-tier"
@@ -507,8 +536,8 @@ if tool == "Workflow":
             reason_txt = (
                 "\u26d4 fleet-tier: %d agent() call(s) all pinned strong under a %s Lead (%s) while "
                 "stage(s) %s are not judgment work. Fix: sweep/read \u2192 model:\x27haiku\x27 · build "
-                "\u2192 model:\x27sonnet\x27 · keep judge/refute/rank/review strong%s. Every stage truly "
-                "needs strong \u2192 `// tier-reason: <why>`." % (
+                "\u2192 model:\x27sonnet\x27 · keep judge/refute/rank/review strong%s. ONE build call truly "
+                "needs strong \u2192 `// tier-reason: <why>`; effort / ultracode is not a reason." % (
                     n_calls, why, lead or "unknown model", ", ".join(nonjudge)[:160],
                     (" (high-risk fleet: the judge floor stays)" if risky else " only when the fleet is high-risk"))) + TAIL
         elif risky and judge_stages and not ((tiers & {"strong", "dynamic"}) or role_strong):

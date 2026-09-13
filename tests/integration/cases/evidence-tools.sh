@@ -213,6 +213,22 @@ check "gate v2.50: sonnet Lead + sonnet everywhere → silent (no cost leak; nud
   "[ -z \"\$(cd '$FIX/repo' && bash '$NUDGE' < '$FIX/wf-mono-sonnetlead.json')\" ]"
 check "gate v2.50: model from a variable (dynamic) → trusted, silent" \
   "[ -z \"\$(cd '$FIX/repo' && bash '$NUDGE' < '$FIX/wf-dynamic.json')\" ]"
+# ── v2.124.0: a const-bound strong model and a pasted tier-reason (CourtBook coach-daily-wage) ──
+mkj "$FIX/wf-const-fanout.json" Workflow "$FIX/lead-opus.jsonl" '{"script":"// tier-reason: high-risk fleet, cost is no constraint\nconst MODEL = \"opus\"\nphase(\"Implement\"); await agent(1,{model: MODEL, label:\"impl:a\"}); phase(\"Review\"); await parallel(R.map(r => () => agent(r.p,{label:`review:${r.k}`, phase:\"Review\", model: MODEL})))"}'
+mkj "$FIX/wf-const-spread.json" Workflow "$FIX/lead-opus.jsonl" '{"script":"// tier-reason: ultracode session, cost is no constraint\nconst MODEL = \"opus\"\nphase(\"Implement\"); await agent(1,{model: MODEL}); await agent(2,{model: MODEL}); phase(\"Test\"); await agent(3,{model: MODEL}); phase(\"Review\"); await agent(4,{model: MODEL})"}'
+mkj "$FIX/wf-reason-one.json"   Workflow "$FIX/lead-opus.jsonl" '{"script":"// tier-reason: the migration author needs the strong tier\nphase(\"Implement\"); await agent(1,{model:\"opus\"}); await agent(2,{model:\"sonnet\"}); phase(\"Review\"); await agent(3,{model:\"opus\"})"}'
+mkj "$FIX/wf-allstrong.json"    Workflow "$FIX/lead-opus.jsonl" '{"script":"phase(\"Implement\"); await agent(1,{model:\"opus\"}); phase(\"Test\"); await agent(2,{model:\"opus\"})"}'
+GOUT=$(cd "$FIX/repo" && bash "$NUDGE" < "$FIX/wf-const-fanout.json")
+check "gate v2.124: const MODEL='opus' on a .map fan-out + tier-reason → deny strong-spread (the const resolves per call)" \
+  "printf '%s' \"\$GOUT\" | grep -q '\"deny\"' && printf '%s' \"\$GOUT\" | grep -q 'FAN-OUT'"
+GOUT=$(cd "$FIX/repo" && bash "$NUDGE" < "$FIX/wf-const-spread.json")
+check "gate v2.124: tier-reason + 3 strong single calls on build/test stages → deny reason-spread (a reason covers ONE slot)" \
+  "printf '%s' \"\$GOUT\" | grep -q '\"deny\"' && printf '%s' \"\$GOUT\" | grep -q 'ONE strong slot' && printf '%s' \"\$GOUT\" | grep -q 'Implement, Test'"
+check "gate v2.124: tier-reason + ONE strong build call + sonnet elsewhere → silent (the hatch still covers one slot)" \
+  "[ -z \"\$(cd '$FIX/repo' && bash '$NUDGE' < '$FIX/wf-reason-one.json')\" ]"
+GOUT=$(cd "$FIX/repo" && bash "$NUDGE" < "$FIX/wf-allstrong.json")
+check "gate v2.124: all-strong deny names the hatch as ONE call and effort / ultracode as no reason" \
+  "printf '%s' \"\$GOUT\" | grep -q '\"deny\"' && printf '%s' \"\$GOUT\" | grep -q 'ultracode is not a reason'"
 # v2.70.0 — uniform strong closes: explicit model:"opus" pasted on research/sweep
 # stages sailed through (observed: resellerclub-slice2-plan, 4 research agents
 # at opus, 575k tokens — models:["opus"] made tiers non-empty, no verdict fired)
@@ -224,8 +240,11 @@ check "gate v2.70: research+plan ALL pinned opus under opus Lead → deny (all-s
   "printf '%s' \"\$GOUT\" | grep -q '\"deny\"' && printf '%s' \"\$GOUT\" | grep -q 'Research'"
 check "gate v2.70: all-opus but every stage is judgment (Review+Verify) → silent (legit strong floor)" \
   "[ -z \"\$(cd '$FIX/repo' && bash '$NUDGE' < '$FIX/wf-all-opus-judge.json')\" ]"
-check "gate v2.70: all-opus with // tier-reason: → silent (stated exception)" \
-  "[ -z \"\$(cd '$FIX/repo' && bash '$NUDGE' < '$FIX/wf-all-opus-reason.json')\" ]"
+# v2.124.0 resolves the v2.70↔v2.107 contradiction: a `// tier-reason:` covers
+# ONE strong slot (v2.107.0), so two non-judgment strong single calls behind a
+# reason is reason-spread, not a cleared exception. (Research+Plan both opus.)
+check "gate v2.124: all-opus + // tier-reason: on 2 non-judgment stages → deny (reason-spread, a reason covers ONE slot)" \
+  "cd '$FIX/repo' && bash '$NUDGE' < '$FIX/wf-all-opus-reason.json' | grep -q 'ONE strong slot'"
 # v2.72.0 — the inverse trap: under a balanced Lead the judge floor was doctrine-only
 # (gate lived under `costly`); a sonnet Lead's high-risk fleet with an inherit /
 # sonnet judge passed silently. Tier follows the work, not the Lead.

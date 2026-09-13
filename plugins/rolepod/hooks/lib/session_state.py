@@ -503,13 +503,39 @@ def _bare_agent_name(subagent_type: str | None) -> str:
 # v2.88.0). strip_strings() blanks literal CONTENTS but keeps LENGTH and quotes,
 # so a key found in the stripped text reads its value from the original at the
 # same offset.
-_SCRIPT_STR_RX = re.compile(r"`(?:\\.|[^`\\])*`|'(?:\\.|[^'\\])*'|\"(?:\\.|[^\"\\])*\"", re.S)
+# v2.124.0: line + block comments are neutralized in the SAME pass, and BEFORE
+# the string rules. A `//` comment written in English prose carries apostrophes
+# ("the Lead's tier", "don't", "it's") — with no comment rule the stripper read
+# that `'` as opening a string literal, flipped quote parity for the rest of the
+# script, and blanked every agent() call after it. The per-call loop then found
+# zero calls, so strong-spread / reason-spread / bare-fanout never fired
+# (observed: CourtBook coach-daily-wage, a `// tier-reason:` mentioning "Lead's
+# tier" silenced an 8×opus fleet). A `//` inside a string is still consumed as
+# string content, because the opening quote matches first at its own position.
+_SCRIPT_STR_RX = re.compile(
+    r"//[^\n]*"                 # line comment
+    r"|/\*.*?\*/"               # block comment
+    r"|`(?:\\.|[^`\\])*`"       # template literal
+    r"|'(?:\\.|[^'\\])*'"       # single-quoted
+    r'|"(?:\\.|[^"\\])*"',      # double-quoted
+    re.S)
+
+
+def _blank_token(m: "re.Match") -> str:
+    s = m.group(0)
+    if s[:2] in ("//", "/*"):
+        # a comment carries no tier choice — blank it whole (newlines kept so
+        # every later offset and line count is unchanged)
+        return "".join("\n" if c == "\n" else " " for c in s)
+    # string literal: keep the quote marks, blank the contents (newline-safe)
+    return s[0] + "".join("\n" if c == "\n" else " " for c in s[1:-1]) + s[-1]
 
 
 def strip_strings(script: str) -> str:
-    """Blank every string literal, preserving length and the quote marks."""
-    return _SCRIPT_STR_RX.sub(
-        lambda m: m.group(0)[0] + " " * (len(m.group(0)) - 2) + m.group(0)[-1], script or "")
+    """Blank string literals and comments, preserving length, newlines, and
+    the string quote marks — so a `key:` found in the result reads its value
+    from the original script at the same offset."""
+    return _SCRIPT_STR_RX.sub(_blank_token, script or "")
 
 
 def script_option_values(script: str, key: str, code: str | None = None) -> list[str]:
