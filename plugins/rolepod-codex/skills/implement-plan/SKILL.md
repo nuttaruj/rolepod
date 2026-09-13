@@ -60,7 +60,13 @@ Bug / new logic / billing / migration / auth / race / security: failing test →
 
 Touch only what the task requires — no "while I'm here" refactors, no reformatting, no single-use abstraction.
 - **Comments** — default none; only when the WHY is non-obvious (hidden constraint, workaround, surprising invariant). Never WHAT.
-- **Reuse ladder** — before a new helper / constant / type / validation, stop at the first rung that holds: (1) already in this codebase — extend, don't duplicate; (2) stdlib; (3) a native platform feature — DB constraint over app code, CSS over JS, `<input type="date">` over a picker lib; (4) an installed dependency; (5) only then the minimum new code — one line inline before a helper, a helper before a module. A NEW dependency is the last rung: maintained, reasonable size, compatible license; unsure → ask.
+- **Reuse ladder** — before a new helper / constant / type / validation, stop at the first rung that holds:
+  1. already in this codebase — extend, don't duplicate;
+  2. stdlib;
+  3. a native platform feature — DB constraint over app code, CSS over JS, `<input type="date">` over a picker lib;
+  4. an installed dependency;
+  5. only then the minimum new code — one line inline before a helper, a helper before a module.
+  A NEW dependency is the last rung: maintained, reasonable size, compatible license; unsure → ask.
 - **Tests** — never mock the database in an integration test; a real dependency over a fake / stub / mock.
 - **Blast radius = caller count, not diff size** — changing the behavior, signature, or return shape of anything with callers → walk the callers FIRST (code-intel callers / impact when connected, else grep) and decide per caller: absorb, adapt, or split. An unvisited caller of a changed contract is the top write-time bug source.
 
@@ -87,7 +93,11 @@ Pass the full task text + scene-setting context inline; never point the subagent
 
 ### 5. Parallel tracks — the plan's layout is the dispatch signal
 
-Plan declares a parallel layout with a cohesion contract → dispatch every track whose dependencies are met in ONE message, each brief scoped to the contract's file ownership. Review each track as it returns (§6) — never barrier-wait. The integration owner merges per the contract's order; the final whole-implementation review runs on the cumulative diff. Two tracks reach for the same file → stop: sequential, or rewrite the contract. Protocol: `references/subagent-dispatch.md`.
+Plan declares a parallel layout with a cohesion contract → dispatch every track whose dependencies are met in ONE message, each brief scoped to the contract's file ownership.
+- Review each track as it returns (§6) — never barrier-wait.
+- The integration owner merges per the contract's order; the final whole-implementation review runs on the cumulative diff.
+- Two tracks reach for the same file → stop: sequential, or rewrite the contract.
+- Protocol: `references/subagent-dispatch.md`.
 
 Worktrees only when tracks truly collide on filesystem state (generated files, build artifacts, same-file edits a contract cannot split); disjoint ownership needs no isolation, a branch is enough for sequential work.
 

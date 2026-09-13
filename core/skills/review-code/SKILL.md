@@ -14,7 +14,9 @@ Risk-appropriate review pressure on a finished change: multi-axis read, adversar
 
 <EXTREMELY-IMPORTANT>
 1. NEVER merge code on a high-risk surface (auth, billing, payments, credits, migration, data deletion, secrets, tokens, crypto, permissions, security) without an adversarial fresh-context review.
-2. NEVER let the author — or, for the adversarial pass, the author's own model — be the final reviewer of their own change. The external adversarial review runs in a **CLI** different from the Lead's, on that CLI's own default model (same vendor is acceptable — the other harness, context and defaults are the decorrelation). The vertical fallback (same CLI, stronger tier) and an inline advisor (it advises the author inside the author's context) never satisfy it; both only upgrade the Lead floor and are recorded as a limitation.
+2. NEVER let the author — or, for the adversarial pass, the author's own model — be the final reviewer of their own change.
+   - The external adversarial review runs in a **CLI** different from the Lead's, on that CLI's own default model (same vendor is acceptable — the other harness, context and defaults are the decorrelation).
+   - The vertical fallback (same CLI, stronger tier) and an inline advisor (it advises the author inside the author's context) never satisfy it; both only upgrade the Lead floor and are recorded as a limitation.
 3. NEVER skip review because "tests pass". Tests prove the assertion, not the design.
 4. Findings before fixes — the whole round's findings, never the first report's. Severity-ordered list; no silent rewrite.
 5. The author MUST verify findings against the codebase before implementing. No performative agreement, no blind implementation; clarify unclear items before partial implementation — findings may be linked.
@@ -66,7 +68,10 @@ Brief every reviewer with: diff + spec + acceptance criteria + risk profile + th
 
 **Satellite-first strong pass.** A usable cross-family external IS the R4 strong adversarial pass: `rolepod-cross-family --kind review --brief <brief> --attach <diff> --detach` — read-only, the external's own default model, anchored by the runner (routing and degradation: `references/external-review-routing.md`). The commit gate counts only the runner's anchor.
 
-**Detach by default.** The runner returns a job id and runs the chain (first member → fallbacks) with each member's budget. Dispatch the `qa-tester` floor and, on money / auth, the internal strong reviewer in the same breath; then keep working OUTSIDE the diff (a plan task on disjoint files) or end the turn. `rolepod-cross-family --collect <job-id>` waits up to the budget — run it in a background call where the harness has one: one wake-up, no polling turns. Foreground (no `--detach`) is for small diffs only — the harness caps a foreground call and kills a slow member mid-run.
+**Detach by default.** The runner returns a job id and runs the chain (first member → fallbacks) with each member's budget.
+- Dispatch the `qa-tester` floor and, on money / auth, the internal strong reviewer in the same breath; then keep working OUTSIDE the diff (a plan task on disjoint files) or end the turn.
+- `rolepod-cross-family --collect <job-id>` waits up to the budget — run it in a background call where the harness has one: one wake-up, no polling turns.
+- Foreground (no `--detach`) is for small diffs only — the harness caps a foreground call and kills a slow member mid-run.
 
 **Internal strong reviewer** (`security-engineer` / `universal-reviewer`) runs when any holds:
 - (a) cross-family is off, or the runner reports no usable member (every member failed / pool empty — logged; the internal pass then satisfies the gate);
@@ -77,11 +82,17 @@ Brief every reviewer with: diff + spec + acceptance criteria + risk profile + th
 
 It runs at STRONG class even under a balanced Lead: never pass a balanced model on it (a hooked CLI lifts a model-less call; elsewhere pass an explicit strong-class override). `qa-tester` is the balanced test floor by design — it writes and runs tests; it is never the strong pass and the gate never counts it as one.
 
-**Apex escalation.** Strong is the R4 default ("done right per the existing pattern?"); apex — the strongest model the CLI exposes — asks "is the pattern itself right?". Escalate only on: (1) irreversible with no rollback — destructive migration, key rotation, live money movement; (2) novel design with no pattern to diff against; (3) deep cross-system reasoning — races on financial invariants, distributed consistency; (4) the previous strong round missed blockers; (5) the user asks.
+**Apex escalation.** Strong is the R4 default ("done right per the existing pattern?"); apex — the strongest model the CLI exposes — asks "is the pattern itself right?". Escalate only on:
+1. irreversible with no rollback — destructive migration, key rotation, live money movement;
+2. novel design with no pattern to diff against;
+3. deep cross-system reasoning — races on financial invariants, distributed consistency;
+4. the previous strong round missed blockers;
+5. the user asks.
 
 No trigger → strong stands; a CLI whose strong pin IS its ceiling collapses apex into strong. The ladder spans the user's opted-in model set — a costlier rung is a cost decision to surface first; a ceiling below opus-class still gets the full review with the depth cap recorded as a LIMITATION. The dispatch line's `override` records the rung sent.
 
-**One review round.** Every reviewer that fires is dispatched in ONE message on the same frozen diff; that dispatch plus the Lead's own read is one round, and it ends when the LAST member returns (`--collect` for a detached job). Until then the diff is frozen: no edit to a file it touches, no `git stash / reset / checkout / add / commit` (a red-proof revert runs in a throwaway worktree) — reviewers read the live tree, so one early fix voids every in-flight verdict.
+**One review round.** Every reviewer that fires is dispatched in ONE message on the same frozen diff; that dispatch plus the Lead's own read is one round, and it ends when the LAST member returns (`--collect` for a detached job).
+- Until then the diff is frozen: no edit to a file it touches, no `git stash / reset / checkout / add / commit` (a red-proof revert runs in a throwaway worktree) — reviewers read the live tree, so one early fix voids every in-flight verdict.
 
 Reviews merge severity-ordered, deduped by file:line + root cause (the Lead's findings included); §6 starts on the merged list; only the §5 loop is serial. Vocabulary map: CRITICAL/HIGH → BLOCKER, WARNING/MEDIUM → MAJOR, SUGGESTION/LOW → MINOR.
 
@@ -111,15 +122,29 @@ Fresh context. The reviewer reads only the artifact + acceptance criteria, tries
 
 ### 4. Report findings, severity-ordered
 
-Fill `templates/review-report.md`. Each finding: file:line, the issue, why it matters, a fix direction — never a silent rewrite. Label evidence **TRACED** (path walked; holds or fails at a named step) or **SUSPECTED** (pattern-level; the author verifies per §6), and provenance **INTRODUCED** (this diff caused it), **EXPOSED** (pre-existing, on a path this diff changes) or **ADJACENT** (pre-existing, path untouched; listed once, never drives the verdict). A clean review is never a bare APPROVED: the Claims-traced section states what was walked and which axes ran.
+Fill `templates/review-report.md`. Each finding: file:line, the issue, why it matters, a fix direction — never a silent rewrite.
+- Label evidence **TRACED** (path walked; holds or fails at a named step) or **SUSPECTED** (pattern-level; the author verifies per §6).
+- Label provenance **INTRODUCED** (this diff caused it), **EXPOSED** (pre-existing, on a path this diff changes) or **ADJACENT** (pre-existing, path untouched; listed once, never drives the verdict).
+- A clean review is never a bare APPROVED: the Claims-traced section states what was walked and which axes ran.
 
 ### 5. Fix-verify loop
 
 Round 2+: `rolepod-cross-family --kind review --brief <brief> --since <previous job> --detach` — the runner attaches the fix delta plus the previous report, so the budget goes to the fixes; findings come back tagged IN-FIX / NEW / REPEAT; the internal round-2 reviewer gets the same two files. Confirm fixes add no new BLOCKER / MAJOR.
 
-The reviewer who flagged the issue is not the final authority on whether it is fixed, and neither is whoever wrote the fix: a subagent-built fix → `qa-tester` or the Lead's cold read; a Lead-built fix → `qa-tester` at balanced (R4 → the internal strong reviewer), never the Lead. The external re-runs only when the fix diff itself tiers R3+. Author and reviewer disagree on merits → technical data > documented style guide > engineering principle > codebase consistency.
+The reviewer who flagged the issue is not the final authority on whether it is fixed, and neither is whoever wrote the fix:
+- a subagent-built fix → `qa-tester` or the Lead's cold read;
+- a Lead-built fix → `qa-tester` at balanced (R4 → the internal strong reviewer), never the Lead.
+- The external re-runs only when the fix diff itself tiers R3+.
+- Author and reviewer disagree on merits → technical data > documented style guide > engineering principle > codebase consistency.
 
-**Breaker.** Two rounds is the budget — review, then confirm the fixes; a third is a reassessment point. Triggers, any one: round 3 on one uncommitted tree (dispatches closer than 5 min are one round; `rolepod-cross-family --rounds` shows the state) · blockers tagged IN-FIX two rounds running · BLOCKER / MAJOR tagged NEW in files the previous round never touched, two rounds running · the same defect class at a new site · any REPEAT. Then, in order:
+**Breaker.** Two rounds is the budget — review, then confirm the fixes; a third is a reassessment point. Triggers, any one:
+- round 3 on one uncommitted tree (dispatches closer than 5 min are one round; `rolepod-cross-family --rounds` shows the state)
+- blockers tagged IN-FIX two rounds running
+- BLOCKER / MAJOR tagged NEW in files the previous round never touched, two rounds running
+- the same defect class at a new site
+- any REPEAT.
+
+Then, in order:
 0. **Stop** — no fix, no reviewer; `--collect` or `--kill` what runs.
 1. **Ledger** — `docs/rolepod/handoffs/<feature>-breaker-<date>.md`: `## Rounds` (per round: found → hypothesis → changed → test result → came back), `## Class` (one root cause, its single point, every consumer — grep the call sites now), `## Decision` (options for the user).
 2. **Class** — cannot name the class or its single point → ONE consult (the CLI's native advisor, else `rolepod-cross-family --kind consult --brief <ledger>`) asking exactly that; never a second blind fix.
@@ -150,7 +175,9 @@ The review report is the canonical artifact: `templates/review-report.md` — sc
 {{INCLUDE: core/fragments/phase-log.md}}
 Review line: `{"ts":"<iso8601>","phase":"review","verdict":"<APPROVED|APPROVED-WITH-NITS|REJECTED>","blockers":<n>}` (round 2+: add `"round":<n>,"infix":<n>,"repeat":<n>`).
 
-**External evidence anchor.** The runner anchors the pass itself: raw output under `<git-root>/.rolepod/evidence/external/<utc-ts>-<cli>.txt` (teed at invoke) plus its own phase-log line (`"reviewer":"external"`, cli, family, `model:"default"`, raw path). The gate counts it as the strong pass only if that raw file exists and is ≥ 500 bytes — a bare claim, a hand-typed line, or a hand-rolled external call without the anchor is ignored by design. The Lead's merged verdict line above is still appended separately.
+**External evidence anchor.** The runner anchors the pass itself: raw output under `<git-root>/.rolepod/evidence/external/<utc-ts>-<cli>.txt` (teed at invoke) plus its own phase-log line (`"reviewer":"external"`, cli, family, `model:"default"`, raw path).
+- The gate counts it as the strong pass only if that raw file exists and is ≥ 500 bytes — a bare claim, a hand-typed line, or a hand-rolled external call without the anchor is ignored by design.
+- The Lead's merged verdict line above is still appended separately.
 
 ## References
 

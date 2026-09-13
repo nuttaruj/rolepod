@@ -71,19 +71,32 @@ No row matches → ask the user what phase the task is in. Don't pattern-match y
 
 ### Model tier
 
-- **Legend.** **cheap** = haiku-class (docs, PM, copy) · **balanced** = sonnet-class — ALL implementation, high-risk paths included (the net is the strong review floor, never the dev's tier) · **strong** = opus-class — architecture, final-pass / adversarial review · **apex** = the strongest tier the CLI exposes, only on review-code's apex triggers. The ladder spans the user's opted-in model set, never a full aggregator catalog. The Lead picks the tier at dispatch; escalate only on BLOCKED redispatch or user ask.
+- **Legend.**
+  - **cheap** = haiku-class (docs, PM, copy)
+  - **balanced** = sonnet-class — ALL implementation, high-risk paths included (the net is the strong review floor, never the dev's tier)
+  - **strong** = opus-class — architecture, final-pass / adversarial review
+  - **apex** = the strongest tier the CLI exposes, only on review-code's apex triggers.
+  - The ladder spans the user's opted-in model set, never a full aggregator catalog. The Lead picks the tier at dispatch; escalate only on BLOCKED redispatch or user ask.
 - **Never silently downgrade a strong row.** A strong row dispatches with a strong pin (rolepod role files carry it). A spawn with no pin (plain-prompt subagent, bare Workflow `agent()`) under a balanced / cheap Lead inherits the Lead — inherited-from-balanced IS the silent downgrade — so pass an explicit strong-class override on that ONE call, never on a fan-out.
 - **Fleets (Workflow / ultracode / native fan-out): one strong slot.** Sweep = cheap · build = balanced · per-item verify = balanced at high effort · the ONE judge or security reviewer = strong. Never inherit the Lead's model across a fleet; never pin strong on a fan-out (price × N); a downgraded strong role is not the strong slot. A stage that WRITES carries `agentType: 'rolepod:<role>'` — a bare `agent()` may not edit product files.
 - **The coordinator lives outside the Lead:** ≥3 dependent dispatches = a Workflow pipeline, not a Lead loop of dispatch → wait → dispatch — every Lead round-trip re-reads the whole context at the Lead's price.
-- A hooked CLI enforces the fleet shape at dispatch and names the fix (a single exception is a script comment `// tier-reason: <why>`). Codex / Gemini / Cursor / opencode have no fleet hook — doctrine carries it: a native subagent spawned from a plain prompt inherits the Lead, so the one judgment slot gets the strong id (a named role), never the whole fan-out. A CLI that resolves a default subagent model before the parent (Codex, proactive delegation included) → set that default to the balanced id and keep the strong slot a named role.
+- A hooked CLI enforces the fleet shape at dispatch and names the fix (a single exception is a script comment `// tier-reason: <why>`).
+- Codex / Gemini / Cursor / opencode have no fleet hook — doctrine carries it: a native subagent spawned from a plain prompt inherits the Lead, so the one judgment slot gets the strong id (a named role), never the whole fan-out.
+- A CLI that resolves a default subagent model before the parent (Codex, proactive delegation included) → set that default to the balanced id and keep the strong slot a named role.
 - **Effort never lifts the tier.** `/effort`, ultracode, xhigh raise reasoning, not ceremony: R1/R2 get at most ONE Workflow and it is the review (one `qa-tester` read of the diff); design / judge panels and adversarial fan-out are R3+ work; R2 verify stays the checklist command (+ a browser observation for UI), never the full suite.
-- **Log every dispatch** — ad-hoc research fan-outs included: `{"ts":"<iso8601>","phase":"dispatch","tier":"<class>","override":"<model / effort sent, or none>"}` to the phase-log (Output pattern below). A hooked CLI writes it for role-pinned Agent calls; the Lead writes it where the hook cannot see the tier — Workflow fleets, a strong dispatch to a non-strong role, and every dispatch on a CLI without hooks. `make stats` audits the trail and names silent downgrades.
+- **Log every dispatch** — ad-hoc research fan-outs included: `{"ts":"<iso8601>","phase":"dispatch","tier":"<class>","override":"<model / effort sent, or none>"}` to the phase-log (Output pattern below).
+  - A hooked CLI writes it for role-pinned Agent calls; the Lead writes it where the hook cannot see the tier — Workflow fleets, a strong dispatch to a non-strong role, and every dispatch on a CLI without hooks.
+  - `make stats` audits the trail and names silent downgrades.
 
-**Lead-tier fit nudge — once per session, tier classes only, never a model name.** Classify your OWN model into a class (cannot tell → skip). Strong-class Lead + three consecutive R1/R2 routes → note ONCE that a balanced Lead plus rolepod's escalation valves (cross-model consults, strong reviewers, BLOCKED redispatch) covers routine sessions. Balanced-class Lead + an R4 / architecture route → note ONCE that strong-tier consults and reviewers are pulled in automatically; a strong Lead is worth it only when that is the day's main work.
+**Lead-tier fit nudge — once per session, tier classes only, never a model name.** Classify your OWN model into a class (cannot tell → skip).
+- Strong-class Lead + three consecutive R1/R2 routes → note ONCE that a balanced Lead plus rolepod's escalation valves (cross-model consults, strong reviewers, BLOCKED redispatch) covers routine sessions.
+- Balanced-class Lead + an R4 / architecture route → note ONCE that strong-tier consults and reviewers are pulled in automatically; a strong Lead is worth it only when that is the day's main work.
 
 ## Sweeps — never one agent per file
 
-**Seen coming** (repo-wide audit, refactor sweep, "find all X"): scope the file list first, narrow to the risky subset, spawn agents only on that subset. **Emerges mid-flight** (a fix → check → fix loop) — **2-strike convergence**: the first 2 same-shaped fixes are discovery, self-do; the 3rd instance of the SAME shape is the convergence signal — stop, enumerate the remainder, and dispatch it as ONE mechanical-tier batch with the 2 fixed instances as the brief. Both flows, with tool order and the step detail: `references/scope-then-spawn.md`.
+- **Seen coming** (repo-wide audit, refactor sweep, "find all X"): scope the file list first, narrow to the risky subset, spawn agents only on that subset.
+- **Emerges mid-flight** (a fix → check → fix loop) — **2-strike convergence**: the first 2 same-shaped fixes are discovery, self-do; the 3rd instance of the SAME shape is the convergence signal — stop, enumerate the remainder, and dispatch it as ONE mechanical-tier batch with the 2 fixed instances as the brief.
+- Both flows, with tool order and the step detail: `references/scope-then-spawn.md`.
 
 ## State machine — phase → exit evidence → next
 
@@ -100,7 +113,10 @@ The router fires the **first** skill per phase; a phase exits only on its exit e
 
 ## Rigor ladder — R0-R4
 
-Match ceremony to the task. Uncertain about RISK → the higher tier. Uncertain about SIZE only → read the affected regions of every file in the observed list first (the files the request names + files already read; `git status` once work has started — never an estimate) and take the tier that observed scope supports; an unresolved dependency is scope, not size → higher. A task that grows mid-flight (second source file, hidden logic, risk path) → re-tier UP immediately, never down.
+Match ceremony to the task.
+- Uncertain about RISK → the higher tier.
+- Uncertain about SIZE only → read the affected regions of every file in the observed list first (the files the request names + files already read; `git status` once work has started — never an estimate) and take the tier that observed scope supports; an unresolved dependency is scope, not size → higher.
+- A task that grows mid-flight (second source file, hidden logic, risk path) → re-tier UP immediately, never down.
 
 | Tier | Signature | Path |
 |---|---|---|

@@ -11,7 +11,8 @@ Prove the change behaves as intended with concrete evidence before claiming done
 
 <EXTREMELY-IMPORTANT>
 1. NEVER claim done without evidence. "Looks right" is not evidence.
-2. Verification must be FRESH — run AFTER the last change to the tree. No run since the last edit → you cannot claim it passes; yesterday's green and "should still work" do not count. **Evidence cache:** tree unchanged since a pass recorded THIS session (same `git status` + `git diff` — neither sees untracked / ignored content, so hash or diff any untracked input the check reads) → cite that run's command + output and state "tree unchanged since" instead of re-running; ANY new edit invalidates the cache.
+2. Verification must be FRESH — run AFTER the last change to the tree. No run since the last edit → you cannot claim it passes; yesterday's green and "should still work" do not count.
+   **Evidence cache:** tree unchanged since a pass recorded THIS session (same `git status` + `git diff` — neither sees untracked / ignored content, so hash or diff any untracked input the check reads) → cite that run's command + output and state "tree unchanged since" instead of re-running; ANY new edit invalidates the cache.
 3. UI changes require a browser observation (screenshot, devtools, Playwright). A passing typecheck does not prove the UI works.
 4. Cannot verify → STATE what you cannot verify, why, and the risk if you are wrong.
 5. NEVER ask the user for a screenshot when you have browser automation available.
@@ -69,7 +70,11 @@ ROOT=$(git rev-parse --show-toplevel 2>/dev/null || echo .)
 find "$ROOT/.rolepod/evidence" -name manifest.json -type f 2>/dev/null
 ```
 
-Each `manifest.json` carries `plugin`, `skill`, `phase`, `status` (pass/fail/warn), `summary`, `artifacts[]`. Keep only dirs whose `<ts>` postdates your last relevant edit and whose `skill` / `summary` names this task's target; older or unidentifiable runs are a named limitation. Any KEPT `fail` → verify fails as a whole (surface the summary + failing artifact path). All KEPT `pass` / `warn` → verify passes; list warnings inline. Reference child artifacts by relative path from the manifest directory.
+Each `manifest.json` carries `plugin`, `skill`, `phase`, `status` (pass/fail/warn), `summary`, `artifacts[]`.
+- Keep only dirs whose `<ts>` postdates your last relevant edit and whose `skill` / `summary` names this task's target; older or unidentifiable runs are a named limitation.
+- Any KEPT `fail` → verify fails as a whole (surface the summary + failing artifact path).
+- All KEPT `pass` / `warn` → verify passes; list warnings inline.
+- Reference child artifacts by relative path from the manifest directory.
 
 ### 3. UI verification
 
@@ -119,7 +124,11 @@ Brief: change manifest + acceptance criteria + available tools. More than one ev
 
 ## If no matching agent is available
 
-Execute as Lead: tests for the touched module + typecheck / lint (scope ladder: task Command while building → module suite here → full suite only on high-risk or at merge via CI; no CI → that scope runs locally at Ship; map changed paths → subset by import graph / naming before defaulting wider) → UI: screenshot or DOM read; API: curl + assert response shape → schema: dry-run forward + rollback; docs: render + link-check + placeholder scan → compose the block with any missing path + risk.
+Execute as Lead:
+- tests for the touched module + typecheck / lint (scope ladder: task Command while building → module suite here → full suite only on high-risk or at merge via CI; no CI → that scope runs locally at Ship; map changed paths → subset by import graph / naming before defaulting wider)
+- UI: screenshot or DOM read; API: curl + assert response shape
+- schema: dry-run forward + rollback; docs: render + link-check + placeholder scan
+- compose the block with any missing path + risk.
 
 ## Output
 

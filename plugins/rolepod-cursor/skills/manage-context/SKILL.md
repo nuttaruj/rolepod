@@ -54,7 +54,9 @@ Inputs: the original request and every correction since (latest wins) · current
 
 Heavy context → run your CLI's trim command (Claude `/compact` · `/clear` · `/rewind`; Codex / Gemini equivalents in `references/cli-fallbacks.md`).
 
-**Compact at seams, never mid-task.** Good moments: research done before implementation starts · a milestone landed · a debug closed · a failed approach abandoned. Mid-implementation compaction pays twice — the summary drops exactly the state you need next (variable names, paths, half-applied edits), then §7's re-anchor cost lands on top. Heavy mid-task → finish or park the task at a seam (checkpoint commit only as Lead with finish-work's gates passing; a subagent never commits), then trim.
+**Compact at seams, never mid-task.** Good moments: research done before implementation starts · a milestone landed · a debug closed · a failed approach abandoned.
+- Mid-implementation compaction pays twice — the summary drops exactly the state you need next (variable names, paths, half-applied edits), then §7's re-anchor cost lands on top.
+- Heavy mid-task → finish or park the task at a seam (checkpoint commit only as Lead with finish-work's gates passing; a subagent never commits), then trim.
 
 Load only what the task needs: Tier 1 skills + the touched files is usually enough.
 
@@ -78,7 +80,8 @@ Two failed attempts is the trigger — identical failure twice means the mental 
 
 - Capture the exact problem: error, what was tried, what failed.
 - Change the model, not just the prompt: redispatch at a stronger tier, or in a debug flow run debug-issue §9's one cross-model consult. A fresh session on the same model is the weakest lever.
-- Ladder exhausted (strongest exposed tier and/or cross-family consulted, blocker stands) → STOP and hand the user a decision menu: the attempt log (each rung + result) and 2-3 concrete options with trade-offs (relax a constraint / split or defer scope / accept a documented limitation) — never a bare "stuck". This stop is legitimate mid-plan: continuous execution (implement-plan Iron Rule 5) yields to an exhausted ladder, never the other way around.
+- Ladder exhausted (strongest exposed tier and/or cross-family consulted, blocker stands) → STOP and hand the user a decision menu: the attempt log (each rung + result) and 2-3 concrete options with trade-offs (relax a constraint / split or defer scope / accept a documented limitation) — never a bare "stuck".
+  - This stop is legitimate mid-plan: continuous execution (implement-plan Iron Rule 5) yields to an exhausted ladder, never the other way around.
 - Resume with the user's direction, not another blind attempt.
 
 ### 7. Post-compact re-anchor

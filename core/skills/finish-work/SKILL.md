@@ -101,7 +101,10 @@ GIT_DIR=$(cd "$(git rev-parse --git-dir)" 2>/dev/null && pwd -P); GIT_COMMON=$(c
 
 **Typed confirmation for Discard.** The user types the literal word `discard`. Generic yes / ok / sure is not enough — destructive ops need shape-matching confirmation.
 
-Fill `templates/finish-menu.md` — gate status, the 3 or 4 options, the recommendation, the one action awaiting authorization. State the recommendation and wait for the pick — unless the user's own message already named the action AND the target: that IS the pick; state gate status plus the single action and act. Authorization never widens (a PR is not a merge, one target is not another). Keep open proceeds on the named ACTION alone (a checkpoint commit: no push, no merge, no cleanup); Merge, Open PR and Discard need action AND target; Iron Rule 1 and the typed-`discard` rule stand.
+Fill `templates/finish-menu.md` — gate status, the 3 or 4 options, the recommendation, the one action awaiting authorization.
+- State the recommendation and wait for the pick — unless the user's own message already named the action AND the target: that IS the pick; state gate status plus the single action and act.
+- Authorization never widens (a PR is not a merge, one target is not another).
+- Keep open proceeds on the named ACTION alone (a checkpoint commit: no push, no merge, no cleanup); Merge, Open PR and Discard need action AND target; Iron Rule 1 and the typed-`discard` rule stand.
 
 ### 5. PR composition
 

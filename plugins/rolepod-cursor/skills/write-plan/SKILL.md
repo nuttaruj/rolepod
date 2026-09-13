@@ -22,7 +22,9 @@ Convert an approved spec or a clear small goal into a plan another engineer (or 
 
 Skip when:
 - A one-line fix on a single file · a question / explanation only.
-- The router tiered the task **R2** (1 file + its own test, clear scope, ≈≤30 logic lines) → the plan is a 3-5 line inline checklist in chat, each step with its verify command; no artifact. Scope grows past one file mid-flight (the task's own test file does not count) → stop, write the real plan here. **Spec-as-plan R3 lane:** ≤3 tasks the approved spec already lists 1:1 (files, order, verify command, dependencies), single-agent, no high-risk surface → the same inline checklist; a parallel layout, a risk path, a 4th task, or a compaction mid-plan → write the artifact.
+- The router tiered the task **R2** (1 file + its own test, clear scope, ≈≤30 logic lines) → the plan is a 3-5 line inline checklist in chat, each step with its verify command; no artifact.
+  - Scope grows past one file mid-flight (the task's own test file does not count) → stop, write the real plan here.
+  - **Spec-as-plan R3 lane:** ≤3 tasks the approved spec already lists 1:1 (files, order, verify command, dependencies), single-agent, no high-risk surface → the same inline checklist; a parallel layout, a risk path, a 4th task, or a compaction mid-plan → write the artifact.
 
 ## Boundary
 
@@ -81,7 +83,9 @@ Per task, the best specialist when one fits; the Lead executes the rest. Brief =
 - **Spec-coverage trace, both directions** — each requirement names the task that implements it; each task names the spec line that asked for it (no spec line = scope creep: cut or follow-up).
 - **Symbol consistency** — names match across tasks (`clearLayers()` in Task 3 vs `clearFullLayers()` in Task 7 is a bug).
 - **Missing tests** on any task.
-- **Loop-runnable** — every task carries an exact Command and the plan states a Failure policy. Deterministic check: `plan-lint.sh <plan> [contract]` (`~/.rolepod/bin/` installed, the plugin's `scripts/`, or `scripts/` in the source repo) — Failure policy + Command per task + Blocked-by edges acyclic + parallel ownership completeness. Inline fallback: `grep -q '^## Failure policy' <plan> && awk '/^### (Task ?|T)[0-9]/{t++;c[t]=0;i=1;next} /^## /{i=0} i&&/Command:/{c[t]=1} END{if(!t)exit 1;for(k=1;k<=t;k++)if(!c[k])exit 1}' <plan>`
+- **Loop-runnable** — every task carries an exact Command and the plan states a Failure policy.
+  - Deterministic check: `plan-lint.sh <plan> [contract]` (`~/.rolepod/bin/` installed, the plugin's `scripts/`, or `scripts/` in the source repo) — Failure policy + Command per task + Blocked-by edges acyclic + parallel ownership completeness.
+  - Inline fallback: `grep -q '^## Failure policy' <plan> && awk '/^### (Task ?|T)[0-9]/{t++;c[t]=0;i=1;next} /^## /{i=0} i&&/Command:/{c[t]=1} END{if(!t)exit 1;for(k=1;k<=t;k++)if(!c[k])exit 1}' <plan>`
 - **Boundary violations** — a map exists → every new cross-module import or dependency-direction reversal is called out and justified; undeclared crossing = fix the plan or update the map with the user.
 - **Untouched high-risk surfaces.**
 - **Unowned or dual-owned files** in a parallel layout — every path sits under EXACTLY one owner (unowned = unplannable, dual-owned = a scheduled merge conflict).
@@ -92,7 +96,10 @@ Never ship a plan containing: `TBD` / `TODO` / "implement later" · "add appropr
 
 ## Owner per task
 
-Every task carries **Owner:** — the role the domain map in `templates/plan-template.md` assigns to the task's files (path first, then concern). `Owner: Lead` for R1/R2-sized work (≤2 files) or when the user said self-do; from R3 up the map decides. Reviewer roles are never owners: `qa-tester` = test plan depth; `security-engineer` on every touched high-risk surface (auth / billing / payments / credits / migration / data deletion / secrets / tokens / crypto / permissions / security) — both named in the task's Reviewer line. Brief each owner per §6, plus the spec.
+Every task carries **Owner:** — the role the domain map in `templates/plan-template.md` assigns to the task's files (path first, then concern).
+- `Owner: Lead` for R1/R2-sized work (≤2 files) or when the user said self-do; from R3 up the map decides.
+- Reviewer roles are never owners: `qa-tester` = test plan depth; `security-engineer` on every touched high-risk surface (auth / billing / payments / credits / migration / data deletion / secrets / tokens / crypto / permissions / security) — both named in the task's Reviewer line.
+- Brief each owner per §6, plus the spec.
 
 ## If no matching agent is available
 
@@ -104,7 +111,8 @@ The plan template is the canonical artifact: `templates/plan-template.md` — fi
 
 Tasks use `- [ ]` checkboxes so progress survives compaction. The file never absorbs build-time narrative: status is the checkbox; a deviation is one line under `## Changes during build`.
 
-One-session work → inline in chat. Multi-session → `docs/rolepod/plans/<feature>-YYYY-MM-DD.md`; re-planning never overwrites — a new dated file, `-v2` only when the date is the same (the diff between versions is the record). **`docs/rolepod/` is private by default:** before the first save run `grep -qx 'docs/rolepod/' .gitignore || echo 'docs/rolepod/' >> .gitignore` — a repo that deliberately tracks its working docs creates `.rolepod/docs-tracked`.
+One-session work → inline in chat. Multi-session → `docs/rolepod/plans/<feature>-YYYY-MM-DD.md`; re-planning never overwrites — a new dated file, `-v2` only when the date is the same (the diff between versions is the record).
+- **`docs/rolepod/` is private by default:** before the first save run `grep -qx 'docs/rolepod/' .gitignore || echo 'docs/rolepod/' >> .gitignore` — a repo that deliberately tracks its working docs creates `.rolepod/docs-tracked`.
 
 More than one person or machine builds the plan → tasks can also publish to the repo's issue tracker (claim by assignee, frontier visible): `references/team-issues.md`. Solo work never needs it.
 

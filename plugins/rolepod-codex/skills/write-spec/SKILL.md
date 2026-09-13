@@ -56,7 +56,10 @@ Use the native question UI when the CLI has one; otherwise numbered questions wi
 
 A question the codebase can answer → explore instead. While a round is out, that wait is free wall-clock: dispatch a scout on the researchable unknowns in parallel — a running scout is itself an unsettled prerequisite, so only its downstream questions wait.
 
-**Visual companion for UI-shape questions.** Layout, flow, or visual hierarchy with `rolepod-uiproof` installed → offer a browser mockup or reference screenshot (`/verify-ui`, `/visual-diff`) before the text question. Interaction FEEL → a disposable single-file HTML demo (inline CSS/JS, mock data, no server) on a throwaway `spike/` branch; the user clicks the options before answering. Decision + branch pointer land in the spec; the branch is NEVER merged.
+**Visual companion for UI-shape questions.**
+- Layout, flow, or visual hierarchy with `rolepod-uiproof` installed → offer a browser mockup or reference screenshot (`/verify-ui`, `/visual-diff`) before the text question.
+- Interaction FEEL → a disposable single-file HTML demo (inline CSS/JS, mock data, no server) on a throwaway `spike/` branch; the user clicks the options before answering.
+- Decision + branch pointer land in the spec; the branch is NEVER merged.
 
 Unsure which questions change the implementation → `references/question-bank.md`.
 
@@ -70,11 +73,19 @@ The approach adds or changes a DB table / migration, a public API contract, or a
 
 ### 4. Self-review the draft
 
-Scan for: placeholders (`[[FILL: …]]`, `TODO`, `tbd`) · contradictions between sections · ambiguous wording ("maybe", "should", "if needed") · a Success criterion with no "proven by", or proven at a seam only the implementation can reach, or naming a command that does not exist yet without saying so — pair each with a real or explicitly-new command / observation a caller can reach · a technical claim behind the chosen approach with no verifiable pointer (file:line, commit, or URL + date) · scope creep · over-engineering for hypothetical needs.
+Scan for:
+- placeholders (`[[FILL: …]]`, `TODO`, `tbd`)
+- contradictions between sections
+- ambiguous wording ("maybe", "should", "if needed")
+- a Success criterion with no "proven by", or proven at a seam only the implementation can reach, or naming a command that does not exist yet without saying so — pair each with a real or explicitly-new command / observation a caller can reach
+- a technical claim behind the chosen approach with no verifiable pointer (file:line, commit, or URL + date)
+- scope creep · over-engineering for hypothetical needs.
 
 ### 4b. Cross-family critique — questions only, before Gate 1
 
-Pool enabled (opt-in; off → skip silently) and the spec is R3+ / high-risk (or the user asks) → hand the draft plus the Q&A ledger to a cold reader from another CLI: `rolepod-cross-family --kind critique --brief spec-draft.md` returns ≤5 items ranked by implementation risk (`QUESTION` / `AMBIGUITY` / `MISSING`, or `NO FURTHER QUESTIONS`). Settle from the repo what you can, then ONE extra §2 round with the rest; one line under **Open questions**. Never blocks a spec. Protocol: `references/question-bank.md` §Cross-family critique.
+Pool enabled (opt-in; off → skip silently) and the spec is R3+ / high-risk (or the user asks) → hand the draft plus the Q&A ledger to a cold reader from another CLI: `rolepod-cross-family --kind critique --brief spec-draft.md` returns ≤5 items ranked by implementation risk (`QUESTION` / `AMBIGUITY` / `MISSING`, or `NO FURTHER QUESTIONS`).
+- Settle from the repo what you can, then ONE extra §2 round with the rest; one line under **Open questions**. Never blocks a spec.
+- Protocol: `references/question-bank.md` §Cross-family critique.
 
 ### 5. Gate 1 — direction approval
 

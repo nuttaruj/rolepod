@@ -45,7 +45,11 @@ Capture the exact error, the throw site, and the stack before editing. The real 
 
 One command, same failure every time — `pytest path/test_x.py::name -v`, the exact failing `curl`, or UI steps + browser + console. Intermittent → raise the rate first (loop the trigger, add stress, inject sleeps) until you have a 50%+ signal; a 1% flake is not yet debuggable (`references/flake-triage.md`). Cannot repro locally → reproduce in CI / staging. Do not fix what you cannot see fail.
 
-**UI / browser bugs — backend order:** (1) `rolepod-uiproof` when installed: `/check-errors` returns console + network failures during the flow, `/verify-ui` returns minimized repro steps + artifacts — reuse those steps in §6; (2) Playwright MCP when connected — atomic `browser_*` calls, minimize the sequence yourself; (3) Chrome DevTools MCP when connected (Chromium only) for bugs whose cause sits below the rendered DOM; (4) manual — describe the candidate repro and ask the user to confirm it.
+**UI / browser bugs — backend order:**
+1. `rolepod-uiproof` when installed: `/check-errors` returns console + network failures during the flow, `/verify-ui` returns minimized repro steps + artifacts — reuse those steps in §6;
+2. Playwright MCP when connected — atomic `browser_*` calls, minimize the sequence yourself;
+3. Chrome DevTools MCP when connected (Chromium only) for bugs whose cause sits below the rendered DOM;
+4. manual — describe the candidate repro and ask the user to confirm it.
 
 **WordPress runtime / plugin / theme bugs:** `rolepod-wplab` `/wp-diagnose` when installed (error log, hook trace, query log — WP findings only; the debug flow stays here); otherwise `wp-cli` or `wp-content/debug.log`.
 
@@ -92,7 +96,9 @@ Run the module suite (full suite on high-risk surfaces). No new red → re-run t
    - The pool is the user's opt-in (`.rolepod/cross-family` → `~/.rolepod/cross-family`; no file or `none` = off — never enable it unasked).
    - Consult is a FOREGROUND call with a short per-member budget — a stuck loop needs the answer now, so a `consult: <fast cli> <deep cli>` order line in the config puts the fast member first and leaves the slow deep one as fallback.
    - The runner takes the first usable member that is not the Lead's own CLI, read-only, on that CLI's default model, clean room (`ROLEPOD_BRAIN_SILENT=1`), and anchors the reply under `.rolepod/evidence/external/`; a failed member is logged and the next runs.
-   - Pool off (`none`, or no file) or no usable member → **vertical fallback**: the Lead's own CLI at its strongest model. A native advisor mode, when the CLI has one, IS this channel. Otherwise ask the CLI which models it exposes (its own `--help`), pick the top tier by name, and run that CLI headless on the same ledger file (`<cli> -p --model <name>` / `<cli> exec -m <name>`). Valid only when that model differs from the one now running; already on it, or cannot tell → step 4.
+   - Pool off (`none`, or no file) or no usable member → **vertical fallback**: the Lead's own CLI at its strongest model. A native advisor mode, when the CLI has one, IS this channel.
+     Otherwise ask the CLI which models it exposes (its own `--help`), pick the top tier by name, and run that CLI headless on the same ledger file (`<cli> -p --model <name>` / `<cli> exec -m <name>`).
+     Valid only when that model differs from the one now running; already on it, or cannot tell → step 4.
 3. Read the reply as **correction** (new hypothesis → exactly ONE advisor-informed attempt against the same repro — the outside review Iron Rule 5 requires), **confirmation** ("approach right, check X"), or **stop** ("wrong path").
 4. Still failing, or no usable advisor → `manage-context` (escalate): ledger + the opinion (or "no usable advisor — <reason>") attached. No further fix attempts.
 
