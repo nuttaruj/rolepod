@@ -16,11 +16,8 @@ Convert an approved spec or a clear small goal into a plan another engineer (or 
 4. Pick the simplest viable approach. Complexity needs an explicit reason and user awareness.
 </EXTREMELY-IMPORTANT>
 
-## When to use
+## Skip when
 
-- A spec exists and implementation is next · a small goal touches more than one file · several specialists may edit the same module · work could parallelize across worktrees or sessions.
-
-Skip when:
 - A one-line fix on a single file · a question / explanation only.
 - The router tiered the task **R2** (1 file + its own test, clear scope, ≈≤30 logic lines) → the plan is a 3-5 line inline checklist in chat, each step with its verify command; no artifact.
   - Scope grows past one file mid-flight (the task's own test file does not count) → stop, write the real plan here.

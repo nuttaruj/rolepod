@@ -21,11 +21,8 @@ Prove the change behaves as intended with concrete evidence before claiming done
 5. NEVER ask the user for a screenshot when you have browser automation available.
 </EXTREMELY-IMPORTANT>
 
-## When to use
+## Skip when
 
-- A code / config / content change is complete · a subagent returned COMPLETED · a bug fix needs regression-clean confirmation · a UI change needs visual proof · a spec / plan / docs change needs link and reference proof.
-
-Skip when:
 - A no-op (comment, whitespace, docstring) with no behavior risk · the user said "just commit, I'll verify".
 
 ## Boundary
@@ -55,7 +52,7 @@ Inputs: the diff · acceptance criteria from spec / plan / task · available too
 | Schema / migration | Forward + rollback dry run + row-count delta |
 | API contract | Contract test + downstream consumer smoke |
 | UI change | Browser observation (screenshot or DOM read) |
-| Performance | Before / after benchmark |
+| Performance | Before / after benchmark — no baseline number, no change |
 | Security | Exploit repro blocked, audit log clean |
 | Config / infra | Smoke + restart confirmation |
 | Docs / spec | Link check, render output, no placeholder leak |

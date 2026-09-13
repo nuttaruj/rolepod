@@ -49,11 +49,8 @@ phase: <define|plan|build|verify|review|ship|simplify|recovery>
 3. If <signal> → STOP and <recovery>.
 </EXTREMELY-IMPORTANT>
 
-## When to use
+## Skip when
 
-- <concrete trigger>
-
-Skip when:
 - <explicit skip case>
 
 ## Boundary

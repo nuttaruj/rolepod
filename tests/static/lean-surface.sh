@@ -192,7 +192,10 @@ else
   echo "  ✗ supporting files over the per-skill byte cap: $SUPPORT_BYTES_OVER"
   fail=$((fail+1))
 fi
-check "total supporting bytes ≤ 176000 (actual: $SUPPORT_BYTES_TOTAL)" "[ $SUPPORT_BYTES_TOTAL -le 176000 ]"
+# v2.125.0: +2000 — the router's dispatch-time detail (dispatch line, hook note,
+# Lead-tier fit) moved from the 20.8 KB always-loaded payload into
+# references/scope-then-spawn.md; the payload lost ~3 KB, the total went down.
+check "total supporting bytes ≤ 178000 (actual: $SUPPORT_BYTES_TOTAL)" "[ $SUPPORT_BYTES_TOTAL -le 178000 ]"
 
 EXAMPLES_NO_TABLE=""
 for f in core/skills/*/examples/*-examples.md; do

@@ -20,11 +20,8 @@ Close out a branch safely: pre-merge gate, four finish options, launch ritual wh
 5. Worktree cleanup order: merge → verify → `cd` to the main root → `git worktree remove` → `git worktree prune` → delete branch. Reversed order leaves stuck refs. Only remove worktrees we created (under `.worktrees/` or `worktrees/`); never touch harness-owned workspaces.
 </EXTREMELY-IMPORTANT>
 
-## When to use
+## Skip when
 
-- Implementation done, verified, reviewed · branch ready to merge or PR · a long-running branch needs a keep / discard decision · a production launch needs a rollback plan · CI is red and needs triage before merge.
-
-Skip when:
 - The branch is not implementation-complete.
 - The user said "don't ship, just experiment".
 

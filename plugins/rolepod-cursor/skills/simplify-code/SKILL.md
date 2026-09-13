@@ -17,11 +17,8 @@ Cut complexity that does not earn its keep. Behavior-preserving: every cut is pr
 5. Deletion test before any cut: imagine deleting the module. Complexity vanishes → it was a pass-through, delete it. Complexity reappears scattered across N callers → it earned its keep, keep it.
 </EXTREMELY-IMPORTANT>
 
-## When to use
+## Skip when
 
-- A reviewer flagged over-engineering or duplication · a file >500 lines grew by accretion · an abstraction has one caller · a defensive check covers an "impossible" case · the same logic sits in 3+ files · the user says "messy" / "refactor X" · `rolepod-debt:` markers in the touched area (§2).
-
-Skip when:
 - No tests cover the touched code → write them first via `implement-plan` or `debug-issue`.
 - The complexity is load-bearing (security boundary, data invariant).
 - Mid-feature and the cut is not needed to unblock the change — a required prefactor is not a skip (§4b).

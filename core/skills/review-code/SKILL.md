@@ -22,11 +22,8 @@ Risk-appropriate review pressure on a finished change: multi-axis read, adversar
 5. The author MUST verify findings against the codebase before implementing. No performative agreement, no blind implementation; clarify unclear items before partial implementation — findings may be linked.
 </EXTREMELY-IMPORTANT>
 
-## When to use
+## Skip when
 
-- Implementation complete and verified · high-risk surface · public API or schema change · performance-sensitive path · UI shipped to users · a subagent returned COMPLETED · a recurring bug in a similar surface.
-
-Skip when:
 - Pure docs / typo / whitespace · the user explicitly accepts the change unreviewed · R1: ≤5 lines, single file, zero logic (user-facing string text alone counts as zero off high-risk paths), NOT high-risk.
 
 ## Boundary
@@ -89,7 +86,7 @@ It runs at STRONG class even under a balanced Lead: never pass a balanced model 
 4. the previous strong round missed blockers;
 5. the user asks.
 
-No trigger → strong stands; a CLI whose strong pin IS its ceiling collapses apex into strong. The ladder spans the user's opted-in model set — a costlier rung is a cost decision to surface first; a ceiling below opus-class still gets the full review with the depth cap recorded as a LIMITATION. The dispatch line's `override` records the rung sent.
+No trigger → strong stands; a CLI whose strong pin IS its ceiling collapses apex into strong. The ladder spans the user's opted-in model set — a costlier rung is a cost decision to surface first; a ceiling below frontier-class still gets the full review with the depth cap recorded as a LIMITATION. The dispatch line's `override` records the rung sent.
 
 **One review round.** Every reviewer that fires is dispatched in ONE message on the same frozen diff; that dispatch plus the Lead's own read is one round, and it ends when the LAST member returns (`--collect` for a detached job).
 - Until then the diff is frozen: no edit to a file it touches, no `git stash / reset / checkout / add / commit` (a red-proof revert runs in a throwaway worktree) — reviewers read the live tree, so one early fix voids every in-flight verdict.

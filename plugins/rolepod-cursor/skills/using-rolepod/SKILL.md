@@ -44,12 +44,12 @@ Match the intent to the FIRST skill that fires; that skill decides what comes ne
 | "build / add / create / make / design" + vague target (commission only — musing → Conversation above) | **Define** | `write-spec` | cheap |
 | "build X to spec" + a spec exists whose Success criteria cover the ask | **Plan** | `write-plan` | cheap–balanced |
 | "add / change Y" on a feature with a spec whose Success criteria do not cover Y | **Define** | `write-spec` (repeat feature — new dated spec, delta against the prior; never edit the approved file) | cheap |
-| "add / change Y" on a feature with NO spec (legacy code) | **Define** | `write-spec` — Current behavior = every consumer of the behavior that moves (grep call sites; code-intel callers when connected), each a plan task or a Non-goal; R2-sized → inline checklist | cheap |
+| "add / change Y" on a feature with NO spec (legacy code) | **Define** | `write-spec` (legacy: Current behavior = every consumer that moves; R2-sized → inline checklist) | cheap |
 | "execute plan / work the plan / implement plan.md" | **Plan→Build** | `write-plan` → `implement-plan` | balanced |
 | "write test cases / test this feature / report a bug" — QA hand-off, no fix wanted | **Verify (QA)** | `qa-tester` agent (spec-first test-case design); a found bug → `debug-issue` report-only exit | cheap–balanced |
 | "fix bug / failing test / broken / regression / why does X fail" | **Build (bug)** | `debug-issue` | balanced |
 | "refactor / simplify / clean up" | **Build (refactor)** | `simplify-code` → `check-work` | balanced |
-| "slow / optimize / latency / bundle size / N+1 / p95" | **Verify→Build (perf)** | `check-work` measures the baseline number first → `implement-plan`, Owner `performance-engineer`; no number, no change | balanced |
+| "slow / optimize / latency / bundle size / N+1 / p95" | **Verify→Build (perf)** | `check-work` measures the baseline first → `implement-plan`, Owner `performance-engineer` | balanced |
 | "use agents / multi-agent / in parallel / parallel-safe" | **Plan** | `write-plan` (agent routing + cohesion contract) | balanced |
 | vague UI / dashboard / product-design request | **Define** | `write-spec` | cheap |
 | clear UI edit (existing design / screenshot / exact acceptance criteria) | **Build (UI)** | `implement-plan`, Owner `frontend-developer` (design-system / CSS / a11y-only → `ui-ux-designer`) → `check-work` | balanced |
@@ -60,7 +60,7 @@ Match the intent to the FIRST skill that fires; that skill decides what comes ne
 | "is this done / fixed / does it work / verify" | **Verify** | `check-work` | balanced |
 | "review / check this / look at the diff" | **Review** | `review-code` | **strong** |
 | "audit / sweep / map / find all X" on **the whole repo** | **Review (repo-wide)** | Sweeps (below) → `review-code` | balanced |
-| "ship / merge / push / PR / ready / go live" — and any "done / finished / ready" or natural end of the work | **Ship** | `check-work` (evidence) → `review-code` (adversarial reviewers per domain when multi-file / high-risk) → `finish-work` (the finish menu; never auto-pick — the branch decision is the user's) | **strong** (final review) |
+| "ship / merge / push / PR / ready / go live" — and any "done / finished / ready" or natural end of the work | **Ship** | `check-work` (evidence) → `review-code` (adversarial reviewers per domain when multi-file / high-risk) → `finish-work` (the finish menu) | **strong** (final review) |
 | explain-only / conceptual question | (no phase) | answer directly — a wide repo / online sweep first → ONE `scout` returns a research report (the always-on Code search rule) | cheap |
 | unclear doc artifact / proposal / ADR scope | **Define** | `write-spec` | cheap |
 | clear doc edit / runbook section / README | **Build** | `implement-plan`, Owner `content-strategist` (`audience:` set); R1-sized stays with the Lead | cheap |
@@ -71,26 +71,18 @@ No row matches → ask the user what phase the task is in. Don't pattern-match y
 
 ### Model tier
 
-- **Legend.**
-  - **cheap** = haiku-class (docs, PM, copy)
-  - **balanced** = sonnet-class — ALL implementation, high-risk paths included (the net is the strong review floor, never the dev's tier)
-  - **strong** = opus-class — architecture, final-pass / adversarial review
+- **Legend — classes, never model names.** Map them once onto the models the user has opted into (this CLI's always-on names them; never a full aggregator catalog); cannot classify a model → balanced, and say so.
+  - **cheap** = the set's small / fast model — docs, PM, copy, read-only sweeps
+  - **balanced** = the set's mid flagship — ALL implementation, high-risk paths included (the net is the strong review floor, never the dev's tier)
+  - **strong** = the set's top reasoning model — architecture, final-pass / adversarial review (a set whose top is below frontier-class still gets the full review; the depth cap is a recorded LIMITATION)
   - **apex** = the strongest tier the CLI exposes, only on review-code's apex triggers.
-  - The ladder spans the user's opted-in model set, never a full aggregator catalog. The Lead picks the tier at dispatch; escalate only on BLOCKED redispatch or user ask.
+  - The Lead picks the tier at dispatch; escalate only on BLOCKED redispatch or user ask.
 - **Never silently downgrade a strong row.** A strong row dispatches with a strong pin (rolepod role files carry it). A spawn with no pin (plain-prompt subagent, bare Workflow `agent()`) under a balanced / cheap Lead inherits the Lead — inherited-from-balanced IS the silent downgrade — so pass an explicit strong-class override on that ONE call, never on a fan-out.
 - **Fleets (Workflow / ultracode / native fan-out): one strong slot.** Sweep = cheap · build = balanced · per-item verify = balanced at high effort · the ONE judge or security reviewer = strong. Never inherit the Lead's model across a fleet; never pin strong on a fan-out (price × N); a downgraded strong role is not the strong slot. A stage that WRITES carries `agentType: 'rolepod:<role>'` — a bare `agent()` may not edit product files.
 - **The coordinator lives outside the Lead:** ≥3 dependent dispatches = a Workflow pipeline, not a Lead loop of dispatch → wait → dispatch — every Lead round-trip re-reads the whole context at the Lead's price.
-- A hooked CLI enforces the fleet shape at dispatch and names the fix (a single exception is a script comment `// tier-reason: <why>`).
-- Codex / Gemini / Cursor / opencode have no fleet hook — doctrine carries it: a native subagent spawned from a plain prompt inherits the Lead, so the one judgment slot gets the strong id (a named role), never the whole fan-out.
-- A CLI that resolves a default subagent model before the parent (Codex, proactive delegation included) → set that default to the balanced id and keep the strong slot a named role.
+- No fleet hook on this CLI → this section is the gate: a plain-prompt native subagent inherits the Lead, so the ONE judgment slot gets a named strong role, never the whole fan-out. A hooked CLI enforces the shape at dispatch and names the fix.
 - **Effort never lifts the tier.** `/effort`, ultracode, xhigh raise reasoning, not ceremony: R1/R2 get at most ONE Workflow and it is the review (one `qa-tester` read of the diff); design / judge panels and adversarial fan-out are R3+ work; R2 verify stays the checklist command (+ a browser observation for UI), never the full suite.
-- **Log every dispatch** — ad-hoc research fan-outs included: `{"ts":"<iso8601>","phase":"dispatch","tier":"<class>","override":"<model / effort sent, or none>"}` to the phase-log (Output pattern below).
-  - A hooked CLI writes it for role-pinned Agent calls; the Lead writes it where the hook cannot see the tier — Workflow fleets, a strong dispatch to a non-strong role, and every dispatch on a CLI without hooks.
-  - `make stats` audits the trail and names silent downgrades.
-
-**Lead-tier fit nudge — once per session, tier classes only, never a model name.** Classify your OWN model into a class (cannot tell → skip).
-- Strong-class Lead + three consecutive R1/R2 routes → note ONCE that a balanced Lead plus rolepod's escalation valves (cross-model consults, strong reviewers, BLOCKED redispatch) covers routine sessions.
-- Balanced-class Lead + an R4 / architecture route → note ONCE that strong-tier consults and reviewers are pulled in automatically; a strong Lead is worth it only when that is the day's main work.
+- **Log every dispatch** — ad-hoc research fan-outs included — to the phase-log: a hooked CLI writes role-pinned calls; the Lead writes the rest (fleets, a strong dispatch to a non-strong role, every dispatch on a CLI without hooks). Line shape, the audit, and the Lead-tier fit note: `references/scope-then-spawn.md` §Fleet notes.
 
 ## Sweeps — never one agent per file
 
@@ -162,27 +154,13 @@ Route line: `{"ts":"<iso8601>","phase":"route","tier":"R1-R4","skill":"<first sk
 
 ## Optional plugin skills
 
-Sibling plugins (`rolepod-uiproof` — browser + mobile UI / a11y / visual; `rolepod-wplab` — WordPress; `rolepod-dblab` — databases) are preferred over manual orchestration when installed; their evidence lands in `.rolepod/evidence/` for `check-work`.
-
-Detect by their slash commands, or by domain signals: `wp-config.php` → wplab; `playwright` / `react` / `vue` in `package.json` or a mobile project (`*.xcworkspace`, `build.gradle`, `AndroidManifest.xml`, `pubspec.yaml`, `react-native`) → uiproof; `alembic.ini` / `sqlalchemy` → dblab; a `.rolepod-<child>/` dir → that child is already in use. The phase skills carry the integration and the not-installed fallbacks.
+Sibling plugins (`rolepod-uiproof` — browser + mobile UI / a11y / visual; `rolepod-wplab` — WordPress; `rolepod-dblab` — databases) are preferred over manual orchestration when installed — their slash commands are the signal; evidence lands in `.rolepod/evidence/` for `check-work`; the phase skills carry the integration and the not-installed fallbacks.
 
 ## Vendor MCP awareness — recommend, never wrap
 
-A framework or service CENTRAL to the task ships an official MCP server not connected in this session → tell the user ONCE at a natural pause: name + one line of what it adds + where to get it. Verify live first (the vendor's current docs; no verify → no recommend); declined or ignored → drop it. The user installs vendor MCPs; rolepod never wraps them. Never a blocker — proceed on the CLI / Bash path regardless.
+A framework or service central to the task ships an official MCP server not connected in this session → tell the user ONCE at a natural pause (name · one line of what it adds · where; verify live first — no verify, no recommend; declined → drop it). The user installs vendor MCPs; rolepod never wraps them and never blocks on them.
 
 ## References
 
 Load only when a request does not obviously match a router row:
 - `examples/routing-transcripts.md` — eight worked routing transcripts (vague feature, clear edit, bug, done-claim, repo-wide audit, `/rolepod-full`, refactor, a pattern-matched-into-Build correction).
-
-## Common rationalizations
-
-- "Simple task, skip the spine" → tier it (R0-R4); calling a task "simple" without tiering is how scope hides.
-- "User just wants a fix" → they want a *correct* fix; `debug-issue` finds the root, symptom patches recur.
-- "Tests are obvious, I'll add later" → later never comes; add the test now or admit in writing it won't have one.
-- "Reviewer takes too long" → skip review = ship bugs; the external pass runs in the background while you continue.
-
-## Don't
-
-- Spawn specialists before the phase is clear · use `finish-work` as a placeholder (it fires only at Ship) · replace `check-work` with confidence ("looks right to me") · skip Define because the user typed in a hurry — ask 1-2 questions.
-- Treat this skill as documentation. It's a router — pick a row, fire the skill.

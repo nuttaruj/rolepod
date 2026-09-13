@@ -19,11 +19,8 @@ Convert a vague request into a sharp spec the next phase executes against: disco
 
 Fires on a COMMISSION, never on musing: the user exploring an idea ("what if we…", "would X be worth it?" in any language) gets a discussion, not a spec interview; the router offers the spec once when the idea firms up.
 
-## When to use
+## Skip when
 
-- A feature with vague boundaries · multiple valid implementations whose choice changes the diff · a high-risk surface · no existing pattern in the codebase · "build me X" without details.
-
-Skip when:
 - A one-line fix with an obvious diff · the user supplied a written spec · the user said "skip spec" / "just write the code".
 
 ## Boundary
@@ -89,6 +86,8 @@ Pool enabled (opt-in; off → skip silently) and the spec is R3+ / high-risk (or
 Present the chosen approach + rationale. Wait for accept / edit / reject. No contract before Gate 1 passes.
 
 ### 6. Produce the contract
+
+Legacy code (no prior spec) → Current behavior = every consumer of the behavior that moves (grep call sites; code-intel callers when connected), each one a plan task or a Non-goal.
 
 Fill `templates/spec-template.md` — every section resolved. Repeat feature: a section that did not move reads `Unchanged — <prior spec> §<name>` (Goal, User / actor, Non-goals, Constraints, Chosen approach, Rejected approaches may inherit; Current behavior, Desired behavior — the delta — Success criteria, High-risk surfaces, Open questions are always fresh).
 

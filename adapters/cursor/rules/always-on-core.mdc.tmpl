@@ -5,4 +5,6 @@ alwaysApply: true
 
 {{INCLUDE: hooks/always-on-core.md.tmpl}}
 
+**Tier classes** — rolepod's cheap / balanced / strong are CLASSES, never model names. Map them once onto the models the user has opted into in Cursor's picker (cheap = small / fast, balanced = mid flagship, strong = top reasoning model of that set); the ONE judgment slot runs strong, never the whole fan-out; cannot classify → balanced, and say so.
+
 **Enforcement tier: unverified** — 3 hooks ship (context loader, gate reminder, deny-capable precommit) but live firing is not yet verified on current Cursor, and there is no subagent-commit block, cohesion check, or worktree guard. Treat every blocking gate as skill-enforced; never report a hook gate as mechanically enforced here.

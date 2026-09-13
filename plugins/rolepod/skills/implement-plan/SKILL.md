@@ -21,11 +21,8 @@ Execute the approved plan with discipline: TDD where it matters, surgical edits,
 6. Forced to end anyway (usage limit / context / user stop) → the last act is one line under the plan's `## Changes during build`: stopped after Task N · next Task M · how to start the env — the next session reads it before anything else.
 </EXTREMELY-IMPORTANT>
 
-## When to use
+## Skip when
 
-- A plan (formal or inline) exists and editing is next · a small one-file edit is clear · bounded delegation to a specialist · two engineers / sessions need filesystem isolation.
-
-Skip when:
 - A question only · the plan is still vague → `write-plan` first.
 
 ## Boundary
