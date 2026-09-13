@@ -980,6 +980,21 @@ for f in hooks/worktree-guard.sh hooks/cohesion-contract-check.sh \
   check "rolepod_log_bypass byte-identical in $f" "[ \"\$(lb_body '$f')\" = \"\$LB_REF\" ]"
 done
 
+# ── Text invariants from the 2026-09-13 skills audit ──────────────────
+# One check per rule: the router fires the external reviewer only on an
+# enabled pool (opt-in), and check-work's verify verdict stays 1:1 with the
+# Status word (a missing P1 is PARTIAL/partial, never PARTIAL+fail).
+if grep -q 'external CLI reviewer.*when one is installed' "$ROUTER"; then
+  echo "  ✗ router ties the external reviewer to an installed CLI — the pool is opt-in (review-code §External)"; fail=$((fail+1))
+else
+  echo "  ✓ router fires the external reviewer only on an enabled pool"
+fi
+if grep -Eq 'verdict:"fail".*PARTIAL' core/skills/check-work/SKILL.md; then
+  echo "  ✗ check-work pairs verdict fail with Status PARTIAL — the verdict is the mapped Status word"; fail=$((fail+1))
+else
+  echo "  ✓ check-work verify verdict stays 1:1 with Status"
+fi
+
 # ── Render reproducibility under LC_ALL=C ─────────────────────────────
 cp core/fragments/skill-index-lean.md /tmp/.lean-surface-snap.md
 LC_ALL=C bash build/render.sh --target=all >/dev/null 2>&1

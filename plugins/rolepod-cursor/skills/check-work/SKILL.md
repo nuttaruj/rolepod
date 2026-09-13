@@ -127,7 +127,7 @@ The evidence block is the canonical artifact: `templates/evidence-block.md` — 
 Evidence log: append the line to `<git-root>/.rolepod/evidence/phase-log.jsonl` chained onto the next command you run anyway (`<cmd> && printf '…' >> phase-log.jsonl`), never as a standalone turn; skip silently outside a git repo. On a CLI without hooks the Lead writes every line itself.
 Verify line: `{"ts":"<iso8601>","phase":"verify","verdict":"pass|partial|fail","evidence":"<command run>"}` — the verdict is the lowercase mapping of the Status word: VERIFIED → `pass`, PARTIAL → `partial`, UNVERIFIED → `fail`, and no other value is valid. Nothing follows an R1/R2 verify → chain it onto the verify command's own call (`<verify cmd> && printf '…pass…' >> … || printf '…fail…' >> …`).
 
-**P1 traceability.** A QA test-case table in play (this session or under `.rolepod/evidence/`) → every P1 row's ID must appear in a passing test's name: `grep` the RUNNER output for `TC<n>` (source presence proves authorship, not a pass; skipped / not-collected = missing). A P1 with no passing test = `verdict:"fail"` plus Status `PARTIAL` or `UNVERIFIED`, naming the missing IDs.
+**P1 traceability.** A QA test-case table in play (this session or under `.rolepod/evidence/`) → every P1 row's ID must appear in a passing test's name: `grep` the RUNNER output for `TC<n>` (source presence proves authorship, not a pass; skipped / not-collected = missing). A P1 with no passing test → Status `PARTIAL` or `UNVERIFIED` (never `VERIFIED`), naming the missing IDs; the verdict is that Status mapped, not a separate `fail`.
 
 ## References
 
