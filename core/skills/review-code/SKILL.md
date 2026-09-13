@@ -8,7 +8,7 @@ phase: review
 
 # Review Code
 
-Apply risk-appropriate review pressure to a finished change: multi-axis read across correctness, security, performance, UI, architecture; adversarial review for high-risk diffs.
+Risk-appropriate review pressure on a finished change: multi-axis read, adversarial review for high-risk diffs.
 
 ## Iron Rule
 
@@ -34,6 +34,7 @@ Owns: risk-appropriate second-pass review — finding discovery, severity orderi
 Does not own: silent implementation fixes · the merge / PR decision · re-running the full suite unless a finding needs it.
 
 Hand off:
+- The user asked only for a review — no fix, no ship requested → the report is the deliverable; stop here.
 - Findings need fixes → `implement-plan` or `debug-issue`. Fixes landed → `check-work`.
 - No blockers, plan has unchecked tasks → `implement-plan` (Ship asks once per plan). Plan exhausted → `finish-work`.
 
@@ -154,9 +155,9 @@ Review line: `{"ts":"<iso8601>","phase":"review","verdict":"<APPROVED|APPROVED-W
 ## References
 
 Load only when needed:
-- `references/external-review-routing.md` — cross-CLI adversarial review: model strengths, Lead exclusion, degradation.
-- `references/receiving-findings.md` — author-side playbook: forbidden phrases, source-specific handling, YAGNI grep, pushback.
-- `examples/finding-examples.md` — a security BLOCKER and a performance MAJOR, actionable vs vague.
+- `references/external-review-routing.md` — cross-CLI review routing and degradation.
+- `references/receiving-findings.md` — author-side playbook.
+- `examples/finding-examples.md` — actionable vs vague findings.
 
 ## Hard stops
 
@@ -169,5 +170,6 @@ Load only when needed:
 
 ## Next phase
 
+- Review-only ask → none; stop after the report (Boundary).
 - `finish-work` for the merge gate — unless the plan has unchecked tasks: `implement-plan` first.
 - If `finish-work` is not available, present findings + recommendation and ask the user which finish path they want.

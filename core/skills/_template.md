@@ -65,6 +65,7 @@ Does not own:
 - <what a neighbouring phase owns>
 
 Hand off:
+- <this phase was the whole ask — nothing further requested> → the output is the deliverable; stop here.
 - <condition> → `<skill>`.
 
 ## Workflow

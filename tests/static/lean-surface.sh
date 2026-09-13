@@ -984,6 +984,13 @@ done
 # One check per rule: the router fires the external reviewer only on an
 # enabled pool (opt-in), and check-work's verify verdict stays 1:1 with the
 # Status word (a missing P1 is PARTIAL/partial, never PARTIAL+fail).
+for s in check-work review-code; do
+  if grep -q 'the deliverable; stop here' "core/skills/$s/SKILL.md"; then
+    echo "  ✓ $s hand-off carries the report-only exit"
+  else
+    echo "  ✗ $s hand-off lacks the report-only exit (a verify / review-only ask ends at the deliverable)"; fail=$((fail+1))
+  fi
+done
 if grep -q 'external CLI reviewer.*when one is installed' "$ROUTER"; then
   echo "  ✗ router ties the external reviewer to an installed CLI — the pool is opt-in (review-code §External)"; fail=$((fail+1))
 else
