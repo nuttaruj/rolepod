@@ -65,8 +65,8 @@ Does not own:
 - <what a neighbouring phase owns>
 
 Hand off:
-- <this phase was the whole ask — nothing further requested> → the output is the deliverable; stop here.
-- <condition> → `<skill>`.
+- <this phase was the whole ask — nothing further requested> → the output is the deliverable; stop here. Otherwise:
+  - <condition> → `<skill>`.
 
 ## Workflow
 
@@ -242,6 +242,10 @@ all three:
 - **One directive per line.** A paragraph that chains "— and …; a … (never
   …)" clauses is split into bullets. A model drops or mis-orders clauses in
   a 2,000-char line; three cross-CLI reviewers confirmed the risk.
+- **Probe an exit / branch line you changed.** `tests/probes/run.sh <case>`
+  puts the rendered skill alone in front of a cheap model and asks what it
+  does next (~25k tokens, by hand, never in `make test`). A wrong answer is
+  a text defect: fix the line, not the model.
 - **When the byte cap bites**, in order: dedupe (grep whether the rule is
   stated elsewhere; point, don't restate) → move load-on-demand detail into
   `references/` (capped too) → name in the PR what the new doctrine
