@@ -172,6 +172,19 @@ curl -fsSL https://raw.githubusercontent.com/nuttaruj/rolepod/main/bootstrap.sh 
 
 The source lives in `core/`; per-CLI adapters render it into a native plugin for each CLI.
 
+## What rolepod observes
+
+Hooks are the product, so this is stated plainly. Everything stays on your disk; no hook opens a network connection and no endpoint is compiled in.
+
+| What | Where | Off |
+|---|---|---|
+| Phase evidence — route tier, dispatch tier, verify / review verdicts, gate denies and bypasses | `<repo>/.rolepod/evidence/phase-log.jsonl`, `bypass.log` (per project, plain JSONL) | delete the dir; `make stats` reads it |
+| Session liveness + the files each session edits (the stomp guard) | `~/.rolepod/session-locks/<sha256(worktree)>/<session>.lock` / `.files`, removed at Stop | `ROLEPOD_ALLOW_SHARED_WORKTREE=1` (user-set) |
+| Per-session counters — fix-loop fails, raw-read bytes, context-nudge state | `$TMPDIR/rolepod-*.json`, `~/.rolepod/ctx-nudge/` | `ROLEPOD_NUDGE_OFF=1` |
+| Cross-family reviewer output (opt-in) | `<repo>/.rolepod/evidence/external/` | no pool file = off |
+
+Hooks read the prompt, the tool input and the transcript tail to decide, then discard them: prompt text and file contents are never written anywhere. Nothing reads keychains, `~/.aws`, SSH keys, browser stores or the clipboard. `make bench-hooks` prints what each hook costs per call; `make contract-check` says whether the installed CLI still matches the contract the hooks were written against.
+
 ## Plugin family — standalone × combined
 
 Rolepod is the **parent** of a plugin family. Each sibling works standalone; together they unlock end-to-end flows across domains. Domain providers plug into the parent via **Extension Protocol v1** — they detect `<git-root>/.rolepod/parent-active` and switch from standalone mode to with-rolepod mode, routing evidence into `.rolepod/evidence/` for `check-work` to aggregate. `rolepod-brain` sits beside them rather than under that protocol: it is a memory layer, not a phase provider, so it carries no evidence contract.

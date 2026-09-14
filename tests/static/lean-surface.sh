@@ -333,6 +333,26 @@ else
   fail=$((fail+1))
 fi
 
+# ── Packaging leak — what ships under plugins/ is only what is meant to ──
+# `git ls-files plugins/` is exactly what a marketplace install copies. An
+# extension outside the allow-list, a secret-shaped file or an OS artifact
+# there is a leak, whatever wrote it (render, a stray git add, an editor).
+LEAK=$(git ls-files plugins/ | python3 -c '
+import re, sys
+ok_ext = {"md", "sh", "py", "toml", "json", "mdc", "txt", "yml", "yaml"}
+bad = []
+for p in sys.stdin.read().split():
+    name = p.rsplit("/", 1)[-1]
+    low = name.lower()
+    if low in (".ds_store", "thumbs.db") or re.search(r"(^|\.)(env|pem|key|p12|secrets|credentials)(\..*)?$", low) or low.endswith((".map", ".log", ".orig", ".rej", ".swp", ".bak")):
+        bad.append(p); continue
+    ext = name.rsplit(".", 1)[-1].lower() if "." in name else ""
+    if ext not in ok_ext and not name.startswith("."):
+        bad.append(p)
+print("\n".join(bad))
+' 2>/dev/null || true)
+check "plugins/ ships only allow-listed extensions, no secret-shaped or OS-artifact files (leak: ${LEAK:-none})" "[ -z \"$LEAK\" ]"
+
 # ── Hook counts derived from manifests, not hand-maintained ────────────
 # The denylist above can only ban counts we already know went stale. This
 # check derives the per-CLI distinct-script count from each hooks.json and

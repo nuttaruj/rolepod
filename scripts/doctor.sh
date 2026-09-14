@@ -191,6 +191,22 @@ else
   echo "  (ROLEPOD_DOCTOR_PROBE=1 make doctor → live liveness per member)"
 fi
 
+echo "── doctor: CLI contract — installed binaries vs tests/contract/*.snapshot ──"
+# The facts the hooks write to (hook events, output keys, tool names, model
+# ids, Codex effort enum / spawn params), derived from the binary that is
+# installed right now. A binary that cannot be observed is a fail, never a
+# pass. On DRIFT: review the line, then `make contract-update`.
+CONTRACT_OUT=$(bash "$REPO_DIR/scripts/contract-snapshot.sh" --check 2>&1 || true)
+while IFS= read -r line; do
+  [ -n "$line" ] || continue
+  case "$line" in
+    OK\ *)   printf '  ✓ %s\n' "$line"; PASS=$((PASS+1)) ;;
+    *)       printf '  ✗ %s\n' "$line"; FAIL=$((FAIL+1)) ;;
+  esac
+done <<EOF
+$CONTRACT_OUT
+EOF
+
 echo "── doctor: installed versions + enforcement tier ──"
 report() { printf '  %-12s %-10s %s\n' "$1" "$2" "$3"; }
 CLAUDE_V=$(ls "$HOME/.claude/plugins/cache/rolepod/rolepod/" 2>/dev/null | sort -V | tail -1)

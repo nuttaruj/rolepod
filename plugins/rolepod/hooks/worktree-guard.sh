@@ -28,6 +28,12 @@
 #
 # Paired with session-lifecycle.sh --unlock, which removes <id>.lock AND
 # <id>.files at Stop so a finished session releases the files it owned.
+#
+# v2.128.0 — one python spawn per edit (lib/session_state.py edit-fields:
+# the parse, the git root and the self-do state together; was three) and the
+# nudge JSON is built in bash. Measured before: 283 ms per edit on an 8 MB
+# transcript, growing with the transcript because the self-do scan read it
+# front to back; the scan is now tail-first and stops at the routing line.
 set -euo pipefail
 
 # Bypass accountability: a used bypass is recorded to .rolepod/evidence/bypass.log
@@ -44,42 +50,23 @@ rolepod_log_bypass() {
 }
 
 INPUT=$(cat 2>/dev/null || echo '{}')
+SS="$(dirname "$0")/lib/session_state.py"
+[ -f "$SS" ] || exit 0
 
-# Parse + canonicalize in one python pass. tool_input carries file_path
-# (Edit/Write/MultiEdit) or notebook_path (NotebookEdit). Relative paths are
-# resolved against cwd so both sessions key the same file identically.
-FIELDS=$(printf '%s' "$INPUT" | python3 -I -c '
-import sys, json, os
-try:
-    d = json.load(sys.stdin)
-except Exception:
-    d = {}
-tool = d.get("tool_name", "") or ""
-sid = d.get("session_id", "") or ""
-cwd = d.get("cwd", "") or ""
-ti = d.get("tool_input", {}) or {}
-f = ti.get("file_path") or ti.get("notebook_path") or ""
-if f:
-    base = cwd or os.getcwd()
-    f = f if os.path.isabs(f) else os.path.join(base, f)
-    # realpath (not abspath) so a symlinked cwd resolves the same way
-    # `git rev-parse --show-toplevel` does — keeps the registry key and the
-    # relative path in the deny message consistent across sessions.
-    f = os.path.realpath(f)
-print(tool)
-print(sid)
-print(cwd)
-print("1" if d.get("agent_id") else "")
-print(d.get("transcript_path", "") or "")
-print(f)
-' 2>/dev/null) || exit 0
+# Parse + canonicalize + git root + self-do state in one python pass.
+# tool_input carries file_path (Edit/Write/MultiEdit) or notebook_path
+# (NotebookEdit). Relative paths are resolved against cwd so both sessions
+# key the same file identically (realpath — the same resolution `git
+# rev-parse --show-toplevel` applies).
+FIELDS=$(printf '%s' "$INPUT" | python3 -I "$SS" edit-fields 2>/dev/null) || exit 0
 
 # $(...) strips ALL trailing newlines from FIELDS, so when the tail fields
 # are empty ANY of these reads can hit EOF, return 1, and set -e kills the
 # hook (observed: pathless Write payload → rc=1). The || true guard
 # disables set -e inside the compound; read still assigns "" on EOF, and
 # TARGET slurps whatever remains via $(cat).
-{ read -r TOOL; read -r SESSION_ID; read -r CWD; read -r AGENT_ID; read -r TRANSCRIPT; TARGET=$(cat); } <<EOF || true
+TOOL=""; SESSION_ID=""; CWD=""; AGENT_ID=""; TRANSCRIPT=""; WORKTREE=""; SELFDO_STATE=""; TARGET=""
+{ read -r TOOL; read -r SESSION_ID; read -r CWD; read -r AGENT_ID; read -r TRANSCRIPT; read -r WORKTREE; read -r SELFDO_STATE; TARGET=$(cat); } <<EOF || true
 $FIELDS
 EOF
 
@@ -90,7 +77,6 @@ printf '%s' "$TOOL" | grep -qE '^(Edit|Write|MultiEdit|NotebookEdit)$' || exit 0
 [ -z "$CWD" ] && CWD="$PWD"
 
 # Only act inside a git worktree. Non-git dirs have no worktree to isolate.
-WORKTREE=$(cd "$CWD" 2>/dev/null && git rev-parse --show-toplevel 2>/dev/null) || exit 0
 [ -z "$WORKTREE" ] && exit 0
 
 PATH_HASH=$(printf '%s' "$WORKTREE" | { shasum -a 256 2>/dev/null || sha256sum 2>/dev/null; } | awk '{print $1}' | head -c 16)
@@ -162,16 +148,15 @@ if [ -z "$COLLISION" ] || [ "${ROLEPOD_ALLOW_SHARED_WORKTREE:-0}" = "1" ]; then
   # a subagent's edit (agent_id set), never on R1/R2, never on test / doc
   # files, silent when no routing line exists. Additive context, never a
   # block — the exception (user said self-do) is the user's to state.
+  # lib/session_state.py is the one classifier: edit-fields returns the
+  # state only for a Lead edit of a product-code target with a transcript
+  # (the same rule it counts earlier edits with) and "" otherwise.
   SELFDO=""
   SELFDO_EDITS=6
-  if [ -z "$AGENT_ID" ] && [ -n "$TRANSCRIPT" ] && [ -f "$TRANSCRIPT" ]; then
-    # lib/session_state.py is the one classifier: it returns "" unless the
-    # TARGET is product code by the same rule it counts earlier edits with.
-    SS="$(dirname "$0")/lib/session_state.py"
-    STATE=$(printf '%s' "$INPUT" | python3 -I "$SS" selfdo-state "$TARGET" "$WORKTREE" 2>/dev/null || true)
+  if [ -z "$AGENT_ID" ] && [ -n "$TRANSCRIPT" ] && [ -f "$TRANSCRIPT" ] && [ -n "$SELFDO_STATE" ]; then
     S_TIER=""; S_EDITS=0; S_WRITERS=0; S_TS=""
     { read -r S_TIER S_EDITS S_WRITERS S_TS; } <<EOF2 || true
-$STATE
+$SELFDO_STATE
 EOF2
     case "$S_TIER" in
       R3|R4)
@@ -185,25 +170,27 @@ EOF2
     esac
   fi
   [ -z "$KIND" ] && [ -z "$SELFDO" ] && exit 0
-  ROLEPOD_HOOK_BASE="$BASE" ROLEPOD_HOOK_KIND="$KIND" ROLEPOD_HOOK_SELFDO="$SELFDO" python3 -I -c '
-import json, os
-b = os.environ.get("ROLEPOD_HOOK_BASE", "?"); k = os.environ.get("ROLEPOD_HOOK_KIND", "")
-sd = os.environ.get("ROLEPOD_HOOK_SELFDO", "")
-ladder = "reuse before new logic (codebase \u2192 stdlib \u2192 platform \u2192 installed dep \u2192 one line before a helper). (off: ROLEPOD_NUDGE_OFF=1)"
-parts = []
-if sd:
-    k = ""   # the self-do line replaces the ladder this once (joined they pass 600 chars)
-if k == "manifest":
-    parts.append("\u2702 dependency manifest %s: a NEW dependency is the last rung \u2014 codebase \u2192 stdlib \u2192 platform \u2192 installed dep first; if it stays, justify it in the plan (maintained \u00b7 size \u00b7 license). (off: ROLEPOD_NUDGE_OFF=1)" % b)
-elif k == "new":
-    parts.append("\u2702 new file %s: does it need to exist \u2014 extend an existing module first? Then %s" % (b, ladder))
-elif k == "code":
-    parts.append("\u2702 first touch of %s this session: %s" % (b, ladder))
-if sd:
-    tier, n = (sd.split() + ["", ""])[:2]
-    parts.append("\u27c2 self-do: route %s, %s Lead edits on product code, 0 writer-role dispatch since the route. Fix: the rest goes out as a task brief to the Owner the domain map names (plan-template Owner hint: frontend-developer / backend-developer / devops-sre / content-strategist \u2026); the Lead reviews the manifest. Exception: the user said self-do, or what remains is R1/R2-sized. (off: ROLEPOD_NUDGE_OFF=1)" % (tier, n))
-print(json.dumps({"hookSpecificOutput": {"hookEventName": "PreToolUse", "additionalContext": " ".join(parts)}}))
-' 2>/dev/null || true
+
+  # JSON built here (no python spawn): the only variable text is the file's
+  # basename, escaped for a JSON string; the symbols are JSON \u escapes.
+  B=$(printf '%s' "$BASE" | tr -d '\000-\037'); B=${B//\\/\\\\}; B=${B//\"/\\\"}
+  LADDER="reuse before new logic (codebase \\u2192 stdlib \\u2192 platform \\u2192 installed dep \\u2192 one line before a helper). (off: ROLEPOD_NUDGE_OFF=1)"
+  MSG_MANIFEST="\\u2702 dependency manifest $B: a NEW dependency is the last rung \\u2014 codebase \\u2192 stdlib \\u2192 platform \\u2192 installed dep first; if it stays, justify it in the plan (maintained \\u00b7 size \\u00b7 license). (off: ROLEPOD_NUDGE_OFF=1)"
+  MSG_NEW="\\u2702 new file $B: does it need to exist \\u2014 extend an existing module first? Then $LADDER"
+  MSG_CODE="\\u2702 first touch of $B this session: $LADDER"
+  [ -n "$SELFDO" ] && KIND=""   # the self-do line replaces the ladder this once (joined they pass 600 chars)
+  PARTS=""
+  case "$KIND" in
+    manifest) PARTS="$MSG_MANIFEST" ;;
+    new)      PARTS="$MSG_NEW" ;;
+    code)     PARTS="$MSG_CODE" ;;
+  esac
+  if [ -n "$SELFDO" ]; then
+    S_T="${SELFDO%% *}"; S_N="${SELFDO#* }"
+    MSG_SELFDO="\\u27c2 self-do: route $S_T, $S_N Lead edits on product code, 0 writer-role dispatch since the route. Fix: the rest goes out as a task brief to the Owner the domain map names (plan-template Owner hint: frontend-developer / backend-developer / devops-sre / content-strategist \\u2026); the Lead reviews the manifest. Exception: the user said self-do, or what remains is R1/R2-sized. (off: ROLEPOD_NUDGE_OFF=1)"
+    PARTS="${PARTS:+$PARTS }$MSG_SELFDO"
+  fi
+  printf '{"hookSpecificOutput": {"hookEventName": "PreToolUse", "additionalContext": "%s"}}\n' "$PARTS"
   exit 0
 fi
 

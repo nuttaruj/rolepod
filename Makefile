@@ -23,6 +23,9 @@ help:
 	@echo "  make test-all                     — test-static + test-integration"
 	@echo "  make doctor                       — live self-test: hooks fire + deny paths prove out + per-CLI tier"
 	@echo "  make stats                        — read phase-log/bypass evidence: tier distribution, verdicts, bypasses"
+	@echo "  make bench-hooks                  — wall-time of every Claude hook on a synthetic transcript (advisory; RUNS=5 SIZE_MB=8)"
+	@echo "  make contract-check               — installed CLI binaries vs tests/contract/*.snapshot (hook events, tool names, model ids, effort enum)"
+	@echo "  make contract-update              — rewrite the snapshots from the installed binaries after reviewing a DRIFT"
 	@echo ""
 	@echo "  make render                       — render adapters to build/rendered/"
 	@echo "  make version-bump VERSION=2.x.y   — bump 7 source manifests + re-render the 4 derived copies"
@@ -161,6 +164,19 @@ doctor:
 # for itself" (the controlled half is an eval harness).
 stats:
 	@bash scripts/stats.sh
+
+# Hook wall-time — the advisory bench (never a gate): median / max per hook
+# on a synthetic transcript + throwaway repo, and the sum per tool-call shape.
+bench-hooks:
+	@bash scripts/bench-hooks.sh
+
+# CLI contract — the facts the hooks and tier pins depend on, read from the
+# installed binaries and diffed against the committed snapshot. Exit 1 on
+# drift, 2 when a binary or snapshot cannot be observed (never green then).
+contract-check:
+	@bash scripts/contract-snapshot.sh --check
+contract-update:
+	@bash scripts/contract-snapshot.sh --update
 
 install:
 	@./install.sh --target=claude --force

@@ -419,6 +419,11 @@ Rolepod uses the `ROLEPOD_*` prefix exclusively for its bypass envs. Framework-s
 
 If rolepod ever needs to override a Claude Code core behavior, use the `CLAUDE_CODE_*` env directly per Anthropic docs — don't shadow it with a `ROLEPOD_*` wrapper.
 
+## Cost and contract — two advisory commands (v2.128.0)
+
+- **`make bench-hooks`** — wall-time of every Claude hook on a synthetic transcript and a throwaway repo (`RUNS=5 SIZE_MB=8`; `--json` for rows), plus the sum per tool-call shape. Measured before it existed: an Edit paid 523 ms of hooks, a prompt 527 ms, and two scans grew with the transcript (596 / 732 ms per edit at 261 MB). Never a gate — the signal is the catastrophic class (a full-file scan per call, a backtracking regex), which shows as seconds; a median above 250 ms is flagged SLOW.
+- **`make contract-check`** — the facts the hooks and tier pins depend on (hook events, `hookSpecificOutput` keys, tool names, model ids; Codex effort enum, `spawn_agent` params, `[agents]` keys) derived from the installed binaries and diffed against `tests/contract/<cli>.snapshot`. Exit 1 DRIFT, exit 2 CANNOT-OBSERVE (a gate that cannot look is never green); `make doctor` runs it. After reviewing a drift: `make contract-update`.
+
 ## Why hooks, not just doctrine
 
 Doctrine (CLAUDE.md text) tells the model what to do. Hooks **enforce** it. Models drift, especially under flow-state success cues — soft reminders get ignored. Hard blocks via `permissionDecision: deny` are the only mechanism that survives drift.

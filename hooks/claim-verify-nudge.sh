@@ -17,8 +17,9 @@
 # read-first habit — not to make a wrong claim impossible.
 #
 # Heuristic trigger: keyword-shaped, deliberately broad. A false positive costs
-# one extra context line; a miss just restores today's behaviour. Tune the regex
-# below, not the consumers.
+# one extra context line; a miss just restores today's behaviour. The claim
+# regex lives in lib/session_state.py (CLAIM_RX) since v2.128.0 — tune it
+# there, not the consumers.
 #
 # Context-bloat check (v2.49.0) — same event, no new registration. Measured on
 # a real project: a 12-day session ran every turn at 350-900k tokens of
@@ -43,41 +44,47 @@
 # turn's end — the line now binds the relay to THIS turn's close and forbids
 # a repeat until a new context-check line arrives.
 #
+# v2.128.0 — one python spawn for the prompt, the context size, the session
+# id, the route freshness and the auto-resume shape (lib/session_state.py
+# prompt-state; was five spawns ≈ 200 ms of the hook's 471 ms). The review-
+# rounds runner and the final emit stay as they were.
+#
 # Opt-out for a session: ROLEPOD_NUDGE_OFF=1
 set -euo pipefail
 
 [ "${ROLEPOD_NUDGE_OFF:-0}" = "1" ] && exit 0
 
 INPUT=$(cat 2>/dev/null || echo '{}')
-PROMPT=$(printf '%s' "$INPUT" | python3 -I -c "import sys,json;print(json.load(sys.stdin).get('prompt',''))" 2>/dev/null || echo "")
+SESSION_STATE="$(dirname "$0")/lib/session_state.py"
+[ -f "$SESSION_STATE" ] || exit 0
+
+# "<ctx tokens> <sid|-> <has_prompt> <claim> <route stale|-> <auto>" — one line.
+STATE=$(printf '%s' "$INPUT" | python3 -I "$SESSION_STATE" prompt-state 2>/dev/null || echo "0 - 0 0 - 0")
+CTX=0; SID="-"; HAS_PROMPT=0; CLAIM=0; ROUTE="-"; AUTO=0
+{ read -r CTX SID HAS_PROMPT CLAIM ROUTE AUTO; } <<EOF || true
+$STATE
+EOF
+CTX=${CTX:-0}; [ "$SID" = "-" ] && SID=""
 
 CTX_MSG=""
-SESSION_STATE="$(dirname "$0")/lib/session_state.py"
-if [ -f "$SESSION_STATE" ]; then
-  CTX=$(printf '%s' "$INPUT" | python3 "$SESSION_STATE" context-tokens 2>/dev/null || echo 0)
-  CTX=${CTX:-0}
-  CTX_LINE=500000
-  SID=$(printf '%s' "$INPUT" | python3 -I -c "import sys,json;print(json.load(sys.stdin).get('session_id',''))" 2>/dev/null || echo "")
-  SID=$(printf '%s' "$SID" | tr -cd 'A-Za-z0-9._-')   # the id names a file under ~/.rolepod — nothing else may
-  case "$SID" in .|..) SID="" ;; esac
-  STATE_DIR="$HOME/.rolepod/ctx-nudge"
-  if [ -n "$SID" ] && [ "$CTX" -ge "$CTX_LINE" ] 2>/dev/null; then   # no session id = no throttle = no note
-    mkdir -p "$STATE_DIR" 2>/dev/null || true
-    LAST=$(cat "$STATE_DIR/$SID" 2>/dev/null || echo "")
-    if [ "$LAST" != "fired" ]; then   # a pre-v2.119.1 bucket number reads as "armed" — one note, then "fired"
-      printf 'fired' > "$STATE_DIR/$SID" 2>/dev/null || true
-      CTX_K=$((CTX / 1000))
-      CTX_MSG="context-check: last turn carried ${CTX_K}k tokens of context — every turn re-reads all of it. Fix: sweeps / many-file reads → dispatch rolepod:scout and read its report; in THIS turn's closing line tell the user once that /compact or a fresh session cuts per-turn cost (manage-context) — then never mention context again until a new context-check line arrives. "
-    fi
-  elif [ "$CTX" -gt 0 ] 2>/dev/null && [ -n "$SID" ]; then
-    # Below the line with a real reading → re-arm, so the next crossing (after
-    # /compact or a fresh start) gets its one note again. 0 = unknown, not small.
-    rm -f "$STATE_DIR/$SID" 2>/dev/null || true
+CTX_LINE=500000
+STATE_DIR="$HOME/.rolepod/ctx-nudge"
+if [ -n "$SID" ] && [ "$CTX" -ge "$CTX_LINE" ] 2>/dev/null; then   # no session id = no throttle = no note
+  mkdir -p "$STATE_DIR" 2>/dev/null || true
+  LAST=$(cat "$STATE_DIR/$SID" 2>/dev/null || echo "")
+  if [ "$LAST" != "fired" ]; then   # a pre-v2.119.1 bucket number reads as "armed" — one note, then "fired"
+    printf 'fired' > "$STATE_DIR/$SID" 2>/dev/null || true
+    CTX_K=$((CTX / 1000))
+    CTX_MSG="context-check: last turn carried ${CTX_K}k tokens of context — every turn re-reads all of it. Fix: sweeps / many-file reads → dispatch rolepod:scout and read its report; in THIS turn's closing line tell the user once that /compact or a fresh session cuts per-turn cost (manage-context) — then never mention context again until a new context-check line arrives. "
   fi
+elif [ "$CTX" -gt 0 ] 2>/dev/null && [ -n "$SID" ]; then
+  # Below the line with a real reading → re-arm, so the next crossing (after
+  # /compact or a fresh start) gets its one note again. 0 = unknown, not small.
+  rm -f "$STATE_DIR/$SID" 2>/dev/null || true
 fi
 
 # Nothing more to gauge without a prompt.
-if [ -z "$PROMPT" ]; then
+if [ "$HAS_PROMPT" != "1" ]; then
   if [ -n "$CTX_MSG" ]; then
     ROLEPOD_HOOK_MSG="$CTX_MSG" python3 -I -c "
 import json, os
@@ -88,13 +95,11 @@ print(json.dumps({'hookSpecificOutput':{'hookEventName':'UserPromptSubmit','addi
 fi
 
 # Claim-shaped verbs: analysis / diagnosis / explanation / audit / status about
-# real code or state. Case-insensitive, BSD-grep-safe (no \b — explicit spacing
-# matches the convention in gate-reminder.sh). Leans claim-specific rather than
-# matching every "what/how" so the nudge does not become per-turn wallpaper.
-CLAIM_RX='(gap|gaps|root cause|diagnos|analy[sz]|audit|how does|how do|how is|how are|why (is|does|do|are|did|isn|doesn|wasn|won|can|would)|what.?s the|where (is|are|does|do)|is (it|this|that) (safe|correct|right|true|broken|working|wrong)|what would break|impact of|explain (how|why|what)|why not|status of|does (it|this|that) (work|handle|support|cause|break))'
-
+# real code or state (CLAIM_RX in lib/session_state.py — case-insensitive,
+# leans claim-specific rather than matching every "what/how" so the nudge
+# does not become per-turn wallpaper).
 MSG=""
-if printf '%s' "$PROMPT" | grep -qiE "$CLAIM_RX"; then
+if [ "$CLAIM" = "1" ]; then
   # v2.118.1: no tool named — the old text prescribed Read / Grep / file:line
   # for every question shape, so a question about a vendor, a library or the
   # world sent the Lead grepping the repo for a fact that does not live there.
@@ -109,16 +114,14 @@ fi
 # Claim-shaped prompts (analysis) are R0 and skip this. Freshness = the
 # newest `route` line in the repo phase-log is newer than the previous user
 # prompt (transcript tail); no transcript → within 30 min. Not a git repo →
-# silent. Prompt shape + freshness live in lib/route_check.py (ASCII-only source).
+# silent. Prompt shape + freshness live in lib/route_check.py (ASCII-only
+# source), called in-process by prompt-state for a non-claim prompt.
 # v2.105.0: the same checker RECORDS the tier from the previous turn's assistant
 # text (fallback to the Stop hook in session-lifecycle.sh), so the log fills
 # itself — the manual append was measured at 0 lines in every product repo.
 ROUTE_MSG=""
-ROUTE_CHECK="$(dirname "$0")/lib/route_check.py"
-if [ -z "$MSG" ] && [ -f "$ROUTE_CHECK" ]; then   # commission / question shape is decided inside the checker (Thai words live there as \u escapes)
-  if [ "$(printf '%s' "$INPUT" | python3 "$ROUTE_CHECK" 2>/dev/null || true)" = "stale" ]; then
-    ROUTE_MSG="⟂ route: a commission with no tier stated since your last request. Fix: one line before the first edit — Route: R2 (one file + test) → <skill> · <reason> — where R0 answer only · R1 trivial edit · R2 one file + test · R3 multi-file · R4 high-risk; R3/R4 → using-rolepod (Define → Plan first). The hook records it; blast radius sets the tier, not feature age. Exception: a literal follow-up inside an already-routed task → say 'same task' and continue. (off: ROLEPOD_NUDGE_OFF=1) "
-  fi
+if [ -z "$MSG" ] && [ "$ROUTE" = "stale" ]; then
+  ROUTE_MSG="⟂ route: a commission with no tier stated since your last request. Fix: one line before the first edit — Route: R2 (one file + test) → <skill> · <reason> — where R0 answer only · R1 trivial edit · R2 one file + test · R3 multi-file · R4 high-risk; R3/R4 → using-rolepod (Define → Plan first). The hook records it; blast radius sets the tier, not feature age. Exception: a literal follow-up inside an already-routed task → say 'same task' and continue. (off: ROLEPOD_NUDGE_OFF=1) "
 fi
 
 # Breaker state (v2.99.0): a breaker ledger newer than the last commit means
@@ -129,7 +132,7 @@ fi
 # "Please continue from where you left off" — a resume, not a user decision.
 # Measured: two such prompts carried an 11-round review loop through the night.
 AUTO_MSG=""
-if printf '%s' "$PROMPT" | grep -qi 'please continue from where you left off'; then
+if [ "$AUTO" = "1" ]; then
   AUTO_MSG="↩ auto-resume: this prompt is the harness after a usage limit, not a user decision. Fix: the last turn ended at a question / breaker / decision brief → restate it and stop; otherwise continue the same task at the same tier — no new scope, no new review round. "
 fi
 BREAKER_MSG=""

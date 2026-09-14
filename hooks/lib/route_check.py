@@ -228,29 +228,19 @@ def record_route(d, log, now, settle):
                             "provenance": "hook-auto"}, separators=(",", ":")) + "\n")
 
 
-def main():
-    record_only = "--record" in sys.argv[1:]
-    try:
-        d = json.load(sys.stdin)
-    except Exception:
-        d = {}
-    now = datetime.datetime.now(datetime.timezone.utc).timestamp()
-    if record_only:
-        root = git_root()
-        if root:
-            try:
-                record_route(d, log_path(root), now, 0)
-            except Exception:
-                pass
-        return
+def check(d, now=None):
+    """'stale' when the prompt is commission-shaped AND the repo's newest
+    route line is older than the previous user prompt; '' otherwise. Also
+    the fallback recorder for a turn that never reached Stop. Importable
+    (session_state.prompt_state calls it in-process, v2.128.0)."""
+    if now is None:
+        now = datetime.datetime.now(datetime.timezone.utc).timestamp()
     prompt = str(d.get("prompt") or "")
     if not commission_shaped(prompt):
-        print("")
-        return
+        return ""
     root = git_root()
     if not root:
-        print("")
-        return
+        return ""
     log = log_path(root)
     try:
         record_route(d, log, now, 5)   # fallback for a turn that never reached Stop
@@ -258,8 +248,7 @@ def main():
         pass
     route_ts = newest_route_ts(log)
     if route_ts is None:
-        print("stale")
-        return
+        return "stale"
     last_user = None
     tp = d.get("transcript_path") or ""
     if tp and os.path.isfile(tp):
@@ -276,9 +265,26 @@ def main():
             if t and now - t > 5:   # the prompt being submitted may already be in the transcript
                 last_user = t
     if last_user is not None:
-        print("" if route_ts > last_user else "stale")
-    else:
-        print("" if now - route_ts < 1800 else "stale")
+        return "" if route_ts > last_user else "stale"
+    return "" if now - route_ts < 1800 else "stale"
+
+
+def main():
+    record_only = "--record" in sys.argv[1:]
+    try:
+        d = json.load(sys.stdin)
+    except Exception:
+        d = {}
+    now = datetime.datetime.now(datetime.timezone.utc).timestamp()
+    if record_only:
+        root = git_root()
+        if root:
+            try:
+                record_route(d, log_path(root), now, 0)
+            except Exception:
+                pass
+        return
+    print(check(d, now))
 
 
 if __name__ == "__main__":

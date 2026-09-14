@@ -261,6 +261,44 @@ def _iter_transcript_events(transcript_path: str) -> Iterable[dict]:
         return
 
 
+def _iter_events_reversed(transcript_path: str, chunk_bytes: int = 1 << 20) -> Iterable[dict]:
+    """Newest-first JSONL events, read from the END in chunks. A scan that
+    stops at a recent boundary (the newest routing line, the last commit's
+    timestamp) then pays for the span it needs, not the whole file —
+    measured 2026-09-14: selfdo_state 596 ms and count_all 732 ms per edit
+    on a 261 MB transcript when both read front to back. Unparsable lines
+    are skipped; a missing file yields nothing."""
+    if not transcript_path or not os.path.isfile(transcript_path):
+        return
+    try:
+        with open(transcript_path, "rb") as f:
+            f.seek(0, os.SEEK_END)
+            pos = f.tell()
+            carry = b""
+            while pos > 0:
+                step = min(chunk_bytes, pos)
+                pos -= step
+                f.seek(pos)
+                lines = (f.read(step) + carry).split(b"\n")
+                carry = lines[0]   # a partial first line belongs to the chunk before it
+                for raw in reversed(lines[1:]):
+                    raw = raw.strip()
+                    if not raw:
+                        continue
+                    try:
+                        yield json.loads(raw)
+                    except Exception:
+                        continue
+            raw = carry.strip()
+            if raw:
+                try:
+                    yield json.loads(raw)
+                except Exception:
+                    pass
+    except Exception:
+        return
+
+
 def last_context_tokens(transcript_path: str, tail_bytes: int = 262144) -> int:
     """Context size of the Lead's LAST turn = input + cache_read + cache_creation
     of the newest assistant message that carries `usage`. This is what EVERY
@@ -363,29 +401,46 @@ def _iter_tool_uses(
     `timestamp` sorts before it are skipped. Events WITHOUT a timestamp are
     kept (fail-open — never make evidence vanish on a shape change).
     """
-    for ev in _iter_transcript_events(transcript_path):
-        if since and isinstance(ev, dict):
+    if since:
+        # Windowed → newest-first from the file's end; the transcript is
+        # append-only and chronological, so 50 consecutive events older than
+        # the floor mean the floor is behind us and the scan stops there.
+        # Timestamp-less events are still yielded and never count as stale.
+        stale = 0
+        for ev in _iter_events_reversed(transcript_path):
+            if not isinstance(ev, dict):
+                continue
             ts = ev.get("timestamp")
             if isinstance(ts, str) and ts[:19] < since:
+                stale += 1
+                if stale >= 50:
+                    break
                 continue
-        # Top-level tool_use event.
-        if isinstance(ev, dict) and ev.get("type") == "tool_use":
-            yield (ev.get("name") or "", ev.get("input") or {})
-            continue
+            stale = 0
+            yield from _tool_uses_of(ev)
+        return
+    for ev in _iter_transcript_events(transcript_path):
+        yield from _tool_uses_of(ev)
 
-        # Tool uses nested inside message.content blocks.
-        msg = ev.get("message") if isinstance(ev, dict) else None
-        if not isinstance(msg, dict):
+
+def _tool_uses_of(ev) -> Iterable[tuple[str, dict]]:
+    # Top-level tool_use event.
+    if isinstance(ev, dict) and ev.get("type") == "tool_use":
+        yield (ev.get("name") or "", ev.get("input") or {})
+        return
+    # Tool uses nested inside message.content blocks.
+    msg = ev.get("message") if isinstance(ev, dict) else None
+    if not isinstance(msg, dict):
+        return
+    content = msg.get("content")
+    if not isinstance(content, list):
+        return
+    for block in content:
+        if not isinstance(block, dict):
             continue
-        content = msg.get("content")
-        if not isinstance(content, list):
+        if block.get("type") != "tool_use":
             continue
-        for block in content:
-            if not isinstance(block, dict):
-                continue
-            if block.get("type") != "tool_use":
-                continue
-            yield (block.get("name") or "", block.get("input") or {})
+        yield (block.get("name") or "", block.get("input") or {})
 
 
 def _load_risk_overrides():
@@ -759,64 +814,122 @@ def selfdo_state(transcript_path: str, target: str | None = None, root: str | No
         return ""
     if not transcript_path or not os.path.isfile(transcript_path):
         return ""
-    route = None                      # (tier, ts)
-    edits: list[str] = []             # timestamps
-    writers: list[str] = []
+    # Newest-first: everything met before the routing line is at or after it
+    # (the file is chronological), the message carrying the line counts its
+    # own tool_use blocks, and the scan ends there instead of at byte 0.
+    n_e = n_w = 0
     try:
-        with open(transcript_path, "r", encoding="utf-8", errors="replace") as f:
-            for line in f:
-                if '"assistant"' not in line and '"tool_use"' not in line:
+        for ev in _iter_events_reversed(transcript_path):
+            if not isinstance(ev, dict) or ev.get("isSidechain"):
+                continue
+            if ev.get("type") not in ("assistant", "tool_use"):
+                continue
+            ts = str(ev.get("timestamp") or "")[:19]
+            msg = ev.get("message") if isinstance(ev.get("message"), dict) else {}
+            content = msg.get("content")
+            blocks = content if isinstance(content, list) else []
+            if ev.get("type") == "tool_use":
+                blocks = blocks + [ev]
+            texts = []
+            for b in blocks:
+                if not isinstance(b, dict):
                     continue
-                try:
-                    ev = json.loads(line)
-                except Exception:
-                    continue
-                if not isinstance(ev, dict) or ev.get("isSidechain"):
-                    continue
-                if ev.get("type") not in ("assistant", "tool_use"):
-                    continue
-                ts = str(ev.get("timestamp") or "")[:19]
-                msg = ev.get("message") if isinstance(ev.get("message"), dict) else {}
-                content = msg.get("content")
-                blocks = content if isinstance(content, list) else []
-                if ev.get("type") == "tool_use":
-                    blocks = blocks + [ev]
-                texts = []
-                for b in blocks:
-                    if not isinstance(b, dict):
-                        continue
-                    if b.get("type") == "text":
-                        texts.append(str(b.get("text") or ""))
-                    elif b.get("type") == "tool_use":
-                        tool = b.get("name") or ""
-                        inp = b.get("input") or {}
-                        if tool in EDIT_TOOLS:
-                            if is_product_code(_file_from_input(inp), root):
-                                edits.append(ts)
-                        elif tool in AGENT_TOOLS:
-                            if _bare_agent_name(inp.get("subagent_type")) in WRITER_ROLE_AGENTS:
-                                writers.append(ts)
-                        elif tool == "Workflow":
-                            script = _workflow_script(inp)
-                            for a in script_option_values(script, "agentType"):
-                                if _bare_agent_name(a) in WRITER_ROLE_AGENTS:
-                                    writers.append(ts)
-                if isinstance(content, str):
-                    texts.append(content)
-                if ev.get("type") == "assistant" and texts:
-                    r = find_route("\n".join(texts))
-                    if r:
-                        route = (r[0], ts)
+                if b.get("type") == "text":
+                    texts.append(str(b.get("text") or ""))
+                elif b.get("type") == "tool_use":
+                    tool = b.get("name") or ""
+                    inp = b.get("input") or {}
+                    if tool in EDIT_TOOLS:
+                        if is_product_code(_file_from_input(inp), root):
+                            n_e += 1
+                    elif tool in AGENT_TOOLS:
+                        if _bare_agent_name(inp.get("subagent_type")) in WRITER_ROLE_AGENTS:
+                            n_w += 1
+                    elif tool == "Workflow":
+                        script = _workflow_script(inp)
+                        for a in script_option_values(script, "agentType"):
+                            if _bare_agent_name(a) in WRITER_ROLE_AGENTS:
+                                n_w += 1
+            if isinstance(content, str):
+                texts.append(content)
+            if ev.get("type") == "assistant" and texts:
+                r = find_route("\n".join(texts))
+                if r:
+                    return "%s %d %d %s" % (r[0], n_e, n_w, ts or "-")
     except Exception:
         return ""
-    if not route:
-        return ""
-    tier, rts = route
-    # A timestamp-less event is kept (fail-open); otherwise only events at
-    # or after the routing line count.
-    n_e = sum(1 for t in edits if not t or not rts or t >= rts)
-    n_w = sum(1 for t in writers if not t or not rts or t >= rts)
-    return "%s %d %d %s" % (tier, n_e, n_w, rts or "-")
+    return ""
+
+
+# claim-verify-nudge.sh's prompt shapes (v2.128.0 — moved here so the hook
+# reads prompt / context / session id / route freshness / auto-resume in ONE
+# python spawn instead of five; the message text stays in the hook).
+CLAIM_RX = re.compile(
+    r"(gap|gaps|root cause|diagnos|analy[sz]|audit|how does|how do|how is|how are|"
+    r"why (is|does|do|are|did|isn|doesn|wasn|won|can|would)|what.?s the|"
+    r"where (is|are|does|do)|is (it|this|that) (safe|correct|right|true|broken|working|wrong)|"
+    r"what would break|impact of|explain (how|why|what)|why not|status of|"
+    r"does (it|this|that) (work|handle|support|cause|break))", re.I)
+AUTO_RESUME_RX = re.compile(r"please continue from where you left off", re.I)
+
+
+def prompt_state(d: dict) -> str:
+    """'<ctx tokens> <sid|-> <has_prompt 0/1> <claim 0/1> <route stale|-> <auto 0/1>'
+    for claim-verify-nudge.sh. The route check (route_check.check — the
+    commission shape, the phase-log freshness and the fallback recorder)
+    runs only for a non-claim prompt, exactly as the hook ordered it."""
+    prompt = str(d.get("prompt") or "")
+    ctx = last_context_tokens(str(d.get("transcript_path") or ""))
+    sid = re.sub(r"[^A-Za-z0-9._-]", "", str(d.get("session_id") or ""))
+    if sid in (".", ".."):
+        sid = ""
+    claim = bool(prompt) and CLAIM_RX.search(prompt) is not None
+    route = "-"
+    if prompt and not claim:
+        try:
+            sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+            import route_check  # type: ignore
+            route = route_check.check(d) or "-"
+        except Exception:
+            route = "-"
+    auto = bool(prompt) and AUTO_RESUME_RX.search(prompt) is not None
+    return "%d %s %d %d %s %d" % (ctx, sid or "-", 1 if prompt else 0, 1 if claim else 0, route, 1 if auto else 0)
+
+
+_GUARD_TOOLS = ("Edit", "Write", "MultiEdit", "NotebookEdit")
+
+
+def edit_fields(d: dict) -> list[str]:
+    """worktree-guard.sh's parse + git root + self-do state in ONE spawn
+    (v2.128.0; was three): tool, session id, cwd, agent flag, transcript,
+    worktree root, self-do line, resolved target (last — read with cat).
+    The self-do line is computed only where the hook would have asked for
+    it: a Lead edit (no agent_id) of a product-code target with a transcript."""
+    tool = str(d.get("tool_name") or "")
+    sid = str(d.get("session_id") or "")
+    cwd = str(d.get("cwd") or "")
+    ti = d.get("tool_input") if isinstance(d.get("tool_input"), dict) else {}
+    f = str(ti.get("file_path") or ti.get("notebook_path") or "")
+    if f:
+        base = cwd or os.getcwd()
+        f = f if os.path.isabs(f) else os.path.join(base, f)
+        # realpath (not abspath) so a symlinked cwd resolves the same way
+        # `git rev-parse --show-toplevel` does.
+        f = os.path.realpath(f)
+    agent = "1" if d.get("agent_id") else ""
+    tp = str(d.get("transcript_path") or "")
+    root = ""
+    if f and tool in _GUARD_TOOLS:
+        try:
+            import subprocess
+            root = subprocess.run(["git", "rev-parse", "--show-toplevel"], cwd=cwd or None,
+                                  capture_output=True, text=True, timeout=10).stdout.strip()
+        except Exception:
+            root = ""
+    selfdo = ""
+    if f and root and not agent and tp and os.path.isfile(tp):
+        selfdo = selfdo_state(tp, f, root)
+    return [tool, sid, cwd, agent, tp, root, selfdo, f]
 
 
 def count_parallel_agent_spawns_on_path(
@@ -893,6 +1006,14 @@ def main() -> int:
         target = sys.argv[2] if len(sys.argv) > 2 else None
         root = sys.argv[3] if len(sys.argv) > 3 else None
         print(selfdo_state(transcript_path, target, root))
+    elif query == "prompt-state":
+        # claim-verify-nudge.sh: ctx sid has_prompt claim route auto — one spawn.
+        print(prompt_state(hook_input))
+    elif query == "edit-fields":
+        # worktree-guard.sh: tool / sid / cwd / agent / transcript / root /
+        # self-do / target — one spawn (target last, may not be empty-safe
+        # with read; the hook slurps it with cat).
+        print("\n".join(edit_fields(hook_input)))
     elif query == "count-recent-agent-spawns":
         window = int(sys.argv[2]) if len(sys.argv) > 2 else 10
         print(count_parallel_agent_spawns_on_path(transcript_path, window))
