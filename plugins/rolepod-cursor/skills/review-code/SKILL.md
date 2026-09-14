@@ -52,7 +52,8 @@ Inputs to gather:
 | Architecture / cross-module | `system-architect` |
 | Generic quality / DRY / smell | `universal-reviewer` |
 
-Brief every reviewer with: diff + spec + acceptance criteria + risk profile + the claimed behaviors to trace end-to-end + which roles already ran. Add its memory seed when rolepod-brain is installed: `brain_seed(task: <what is under review>, agent: <the reviewer's plugin-scoped id, e.g. rolepod:universal-reviewer>)`, pasted verbatim. The seed leads with the lessons earlier rounds recorded for that reviewer in this project (§6); a reviewer has no session of its own, so the seed is the only memory it sees. No `brain_seed` tool → skip, never substitute a hand-written recap.
+Brief every reviewer with: diff + spec + acceptance criteria + risk profile + the claimed behaviors to trace end-to-end + which roles already ran.
+rolepod-brain: add `brain_seed(task, agent: <reviewer id>)` verbatim; no tool → skip.
 
 **By rigor tier** (R1 trivial edit · R2 one file + test · R3 multi-file · R4 high-risk):
 - **R1** → no review, no re-read turn; the edit tool's echo is the evidence.
@@ -154,7 +155,7 @@ READ the round's merged findings without reacting → VERIFY each against the co
 
 Clarify unclear findings before touching anything LINKED to them; order blocking → simple → complex, testing each. No gratitude phrases — "Fixed in <file:line>." is the whole reply.
 
-**Record the verdict per finding** when rolepod-brain is installed — this is what makes the next round of the same reviewer start from this project's conventions instead of a generic prompt. One `brain_note(agent: <the reviewer's plugin-scoped id>, text: …)` per finding you did not apply as written: `avoid: <the class of finding> — <why it does not apply here>` for a rejection, `refine: <the rule in the wording that is right here>` for one you reworded, `keep: <the class>` only for a finding the user confirmed mattered. The user overruling you is the strongest signal and always gets a note; findings applied as-is get none. One sentence each, the class not the instance, no file paths that will rot. Never a lesson from a finding you merely disagreed with on taste. A test the author adds to close a finding is part of the fix delta — the next round's `qa-tester` judges it; the author's own green run closes nothing. Forbidden phrases, GitHub thread replies, YAGNI grep, source-specific handling: `references/receiving-findings.md`.
+**rolepod-brain:** `brain_note(agent: <reviewer id>, text: "avoid:|refine:|keep: <class>…")` per finding not applied as written; always on a user overrule. A test the author adds to close a finding is part of the fix delta — the next round's `qa-tester` judges it; the author's own green run closes nothing. Forbidden phrases, GitHub thread replies, YAGNI grep, source-specific handling: `references/receiving-findings.md`.
 
 ## If a matching Rolepod agent is available
 
