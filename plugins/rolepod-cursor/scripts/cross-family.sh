@@ -56,7 +56,9 @@
 #            second `--kind review` is refused (exit 8) until --collect / --kill.
 #   breaker  review rounds on ONE uncommitted tree are counted (reviewer
 #            dispatches closer than 5 min = one round; internal roles from the
-#            phase-log, external jobs from their start times). Round 3 gets a
+#            phase-log, external jobs from their start times; the window starts
+#            at the later of the last commit and the last prompt the user typed,
+#            a clean tree is 0 rounds — v2.128.0). Round 3 gets a
 #            notice; round 4 needs `--ledger <breaker file>` (a `## Class`
 #            heading = the root cause was named); round 5 is refused, exit 9:
 #            split & stop (review-code §5). Measured: 11+ rounds overnight,
@@ -158,8 +160,16 @@ fi
 # Prints `rounds=<past clusters> current=<round a dispatch now would be>
 # ledger=<path|-> class=<0|1>`. Events = external review jobs (`started`) +
 # phase-log reviewer dispatches (internal roles, review-shaped Workflows),
-# since the last commit; a gap > 5 min opens a new round. The breaker ledger
+# since the WINDOW START; a gap > 5 min opens a new round. The breaker ledger
 # = newest docs/rolepod/handoffs/*breaker*.md newer than the last commit.
+# Window start (v2.128.0) = the later of the last commit and the last REAL
+# user prompt — claim-verify-nudge stamps .rolepod/evidence/last-prompt on
+# every prompt the user typed (auto-resume "Please continue" and compaction
+# summaries never stamp, so an overnight loop still accumulates). A clean
+# tree (`git status --porcelain` empty) reads as 0 rounds: no uncommitted
+# tree, no loop. Measured 2026-09-14: five separate commissions in one day,
+# on a tree whose commits lived in another worktree, read as round 5 and
+# blocked the next task.
 review_rounds() {
   ROLEPOD_XFAM_ROOT="$ROOT" ROLEPOD_XFAM_JOBS="$JOBS" python3 -I - <<'PY' 2>/dev/null || echo "rounds=0 current=1 ledger=- class=0"
 import glob, json, os, re, subprocess, time, datetime
@@ -168,6 +178,18 @@ try:
     last = int(subprocess.run(["git", "-C", root, "log", "-1", "--format=%ct"], capture_output=True, text=True).stdout.strip() or 0)
 except Exception:
     last = 0
+try:
+    with open(os.path.join(root, ".rolepod", "evidence", "last-prompt")) as f:
+        last = max(last, int(f.read().strip() or 0))
+except Exception:
+    pass
+try:
+    # rolepod's own state (.rolepod/ evidence, docs/rolepod/ working docs)
+    # is never "uncommitted work" — only product changes keep the loop open.
+    porcelain = subprocess.run(["git", "-C", root, "status", "--porcelain"], capture_output=True, text=True).stdout
+    clean = all(l[3:].startswith((".rolepod/", "docs/rolepod/")) for l in porcelain.splitlines() if l.strip())
+except Exception:
+    clean = False
 ev = []
 for d in glob.glob(os.path.join(jobs, "*-review-*")):
     try:
@@ -208,6 +230,8 @@ for t in ev:
     prev = t
 now = int(time.time())
 current = rounds if (prev is not None and now - prev <= 300) else rounds + 1
+if clean:
+    rounds, current = 0, 1
 ledger = "-"; klass = 0
 cands = [p for p in glob.glob(os.path.join(root, "docs", "rolepod", "handoffs", "*breaker*.md")) if os.path.getmtime(p) > last]
 if cands:

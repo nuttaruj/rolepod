@@ -848,6 +848,21 @@ out=$(printf '{"session_id":"ar1","prompt":"continue with the plan"}' | (cd "$AR
 if echo "$out" | grep -q 'auto-resume'; then echo "  ✗ claim-verify: a normal continue got the auto-resume line"; fail=$((fail+1)); else echo "  ✓ claim-verify: a user's own 'continue' → no auto-resume line"; fi
 rm -rf "$AR_TMP"
 
+# ── last-prompt stamp (v2.128.0): only a prompt the user typed moves the review-rounds window ──
+ST_TMP=$(mktemp -d); ( cd "$ST_TMP" && git init -q . && git config user.email t@t && git config user.name t && git commit -q --allow-empty -m init )
+st() { printf '{"session_id":"st1","prompt":%s}' "$(printf '%s' "$1" | python3 -c 'import json,sys; print(json.dumps(sys.stdin.read()))')" | (cd "$ST_TMP" && HOME="$ST_TMP" bash "$HOOKS/claim-verify-nudge.sh" >/dev/null 2>&1 || true); }
+STAMP="$ST_TMP/.rolepod/evidence/last-prompt"
+st "fix the login bug"
+if [ -f "$STAMP" ] && [ $(( $(date +%s) - $(cat "$STAMP") )) -le 5 ]; then echo "  ✓ claim-verify: a typed prompt stamps .rolepod/evidence/last-prompt (now)"; else echo "  ✗ claim-verify: typed prompt did not stamp last-prompt"; fail=$((fail+1)); fi
+printf '1000\n' > "$STAMP"
+st "I hit my usage limit while you were working, but it has reset now. Please continue from where you left off."
+[ "$(cat "$STAMP")" = "1000" ] && echo "  ✓ claim-verify: auto-resume prompt does NOT move the stamp" || { echo "  ✗ claim-verify: auto-resume moved the stamp"; fail=$((fail+1)); }
+st "This session is being continued from a previous conversation that ran out of context. The summary below covers the earlier portion."
+[ "$(cat "$STAMP")" = "1000" ] && echo "  ✓ claim-verify: compaction summary does NOT move the stamp" || { echo "  ✗ claim-verify: compaction summary moved the stamp"; fail=$((fail+1)); }
+st "<task-notification><task-id>x</task-id></task-notification>"
+[ "$(cat "$STAMP")" = "1000" ] && echo "  ✓ claim-verify: a system block does NOT move the stamp" || { echo "  ✗ claim-verify: system block moved the stamp"; fail=$((fail+1)); }
+rm -rf "$ST_TMP"
+
 # ── project-context-loader: session-start state pointers (v2.102.0) ────────
 PC_TMP=$(mktemp -d); ( cd "$PC_TMP" && git init -q . && git config user.email t@t && git config user.name t && printf 'a\n' > f.txt && git add f.txt && git commit -qm init )
 mkdir -p "$PC_TMP/docs/rolepod/plans" "$PC_TMP/.rolepod/evidence"

@@ -47,7 +47,11 @@
 # v2.128.0 — one python spawn for the prompt, the context size, the session
 # id, the route freshness and the auto-resume shape (lib/session_state.py
 # prompt-state; was five spawns ≈ 200 ms of the hook's 471 ms). The review-
-# rounds runner and the final emit stay as they were.
+# rounds runner and the final emit stay as they were. The same spawn stamps
+# .rolepod/evidence/last-prompt for every prompt the USER typed (never for
+# an auto-resume or a compaction summary): the review-rounds window starts
+# there, so rounds from one commission never block the next — measured
+# 2026-09-14, five tasks in a day read as round 5 and stopped new work.
 #
 # Opt-out for a session: ROLEPOD_NUDGE_OFF=1
 set -euo pipefail

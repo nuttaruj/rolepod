@@ -399,6 +399,24 @@ check "ROLEPOD_GATES_SOFT=1 (user-set) lifts the terminal refusal" "[ $rc -eq 0 
 sleep 1; ( cd "$RB" && git add -A && git commit -qm checkpoint )
 out=$(cd "$RB" && bash "$RUNNER" --rounds)
 check "a commit resets the count and closes the ledger (rounds=0, ledger=-)" "printf '%s' \"\$out\" | grep -q 'rounds=0 current=1 ledger=- class=0'"
+# v2.128.0 — the window also starts at the last REAL user prompt, and a
+# clean tree is 0 rounds: separate commissions never add up to a loop.
+( cd "$RB" && GIT_COMMITTER_DATE="$(rb_ts 90)" git commit -q --allow-empty -m older --date="$(rb_ts 90)" )
+rm -rf "$RB/.rolepod/evidence/external/jobs"   # the earlier job's start time would be a round of its own
+: > "$RB/.rolepod/evidence/phase-log.jsonl"; rb_log 1 rolepod:qa-tester
+out=$(cd "$RB" && bash "$RUNNER" --rounds)
+check "--rounds: a reviewer dispatch after the commit on a CLEAN tree → rounds=0 (no uncommitted tree, no loop)" "printf '%s' \"\$out\" | grep -q 'rounds=0 current=1'"
+printf 'c\n' > "$RB/f.txt"
+out=$(cd "$RB" && bash "$RUNNER" --rounds)
+check "--rounds: the same dispatch once the tree is dirty → rounds=1 current=1" "printf '%s' \"\$out\" | grep -q 'rounds=1 current=1'"
+: > "$RB/.rolepod/evidence/phase-log.jsonl"; rb_log 40 rolepod:security-engineer; rb_log 39 rolepod:qa-tester; rb_log 12 rolepod:security-engineer
+rb_ep 5 > "$RB/.rolepod/evidence/last-prompt"
+out=$(cd "$RB" && bash "$RUNNER" --rounds)
+check "--rounds: a typed prompt 5 min ago → the 40/39/12-min rounds belong to the previous commission → rounds=0 current=1" "printf '%s' \"\$out\" | grep -q 'rounds=0 current=1'"
+rb_ep 60 > "$RB/.rolepod/evidence/last-prompt"
+out=$(cd "$RB" && bash "$RUNNER" --rounds)
+check "--rounds: a prompt stamp OLDER than the events changes nothing → rounds=2 current=3" "printf '%s' \"\$out\" | grep -q 'rounds=2 current=3'"
+rm -f "$RB/.rolepod/evidence/last-prompt"
 cd "$REPO"
 
 # ── provenance labels + oversized-diff notice (v2.100.0) ──────────────────

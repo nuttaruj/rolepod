@@ -871,6 +871,29 @@ CLAIM_RX = re.compile(
     r"what would break|impact of|explain (how|why|what)|why not|status of|"
     r"does (it|this|that) (work|handle|support|cause|break))", re.I)
 AUTO_RESUME_RX = re.compile(r"please continue from where you left off", re.I)
+# Not a user decision: harness resumes, compaction summaries, system blocks.
+NOT_A_PROMPT_RX = re.compile(r"^\s*(<|This session is being continued from a previous conversation)")
+
+
+def _stamp_prompt() -> None:
+    """Write this real prompt's epoch to <git root>/.rolepod/evidence/last-prompt.
+    The review-rounds window (cross-family.sh --rounds, v2.128.0) starts at
+    the later of the last commit and this stamp, so rounds never carry over
+    from one commission to the next; auto-resume and compaction prompts do
+    not stamp, so an autonomous loop still accumulates. Fail-open."""
+    try:
+        import subprocess
+        import time
+        root = subprocess.run(["git", "rev-parse", "--show-toplevel"], capture_output=True,
+                              text=True, timeout=10).stdout.strip()
+        if not root:
+            return
+        d = os.path.join(root, ".rolepod", "evidence")
+        os.makedirs(d, exist_ok=True)
+        with open(os.path.join(d, "last-prompt"), "w") as f:
+            f.write("%d\n" % int(time.time()))
+    except Exception:
+        pass
 
 
 def prompt_state(d: dict) -> str:
@@ -893,6 +916,8 @@ def prompt_state(d: dict) -> str:
         except Exception:
             route = "-"
     auto = bool(prompt) and AUTO_RESUME_RX.search(prompt) is not None
+    if prompt and not auto and not NOT_A_PROMPT_RX.search(prompt):
+        _stamp_prompt()
     return "%d %s %d %d %s %d" % (ctx, sid or "-", 1 if prompt else 0, 1 if claim else 0, route, 1 if auto else 0)
 
 

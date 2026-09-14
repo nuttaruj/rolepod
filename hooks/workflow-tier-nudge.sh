@@ -125,7 +125,10 @@ def _git_root():
 # runner\x27s `--rounds` (shipped in every plugin tree next to hooks/). Round 3
 # = notice, round 4 without a breaker ledger (`## Class`) = deny, round 5+ =
 # deny (terminal: split & stop). Measured: 11+ rounds overnight, no consult,
-# no hand-back, while the breaker was doctrine only.
+# no hand-back, while the breaker was doctrine only. The window starts at
+# the later of the last commit and the last real user prompt (v2.128.0 —
+# claim-verify-nudge stamps it; a clean tree is 0 rounds), so separate
+# commissions on one tree never add up to a phantom loop.
 REVIEW_ROLES = ("security-engineer", "universal-reviewer", "code-reviewer", "qa-tester")
 
 def _review_rounds():

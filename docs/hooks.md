@@ -321,7 +321,13 @@ so the reviewer verifies the fixes and tags IN-FIX / NEW / REPEAT instead
 of re-reading the cumulative diff (v2.98.0). **Breaker (v2.99.0):** `--rounds`
 prints the review rounds on the current uncommitted tree (reviewer dispatches
 closer than 5 min = one round; internal roles from the phase-log, external
-jobs from their start times) plus the breaker ledger state. A review
+jobs from their start times) plus the breaker ledger state. The window
+starts at the later of the last commit and the last prompt the user typed
+(v2.128.0 — `claim-verify-nudge` stamps `.rolepod/evidence/last-prompt`;
+auto-resume and compaction prompts never stamp, so an overnight loop still
+accumulates), and a clean tree reads as 0 rounds. Measured 2026-09-14: five
+separate commissions in one day, on a tree whose commits lived in another
+worktree, read as round 5 and blocked the next task. A review
 dispatch at round 3 gets a notice; round 4 needs `--ledger <file>` (a
 `docs/rolepod/handoffs/*breaker*.md` with a `## Class` heading — the root
 cause was named); round 5 is refused (exit 9): split & stop, the user
