@@ -190,7 +190,7 @@ mkj "$FIX/wf-mono-1stage.json" Workflow "$FIX/lead-opus.jsonl" '{"script":"await
 mkj "$FIX/wf-judge-low.json"   Workflow "$FIX/lead-opus.jsonl" '{"script":"name: \"refund-audit\" await agent(1,{model:\"haiku\", label:\"sweep:a\", prompt:\"find refund paths\"}); await agent(2,{model:\"sonnet\", label:\"rank:all\"})"}'
 mkj "$FIX/wf-judge-routine.json" Workflow "$FIX/lead-opus.jsonl" '{"script":"name: \"i18n-audit\" await agent(1,{model:\"haiku\", label:\"sweep:a\", prompt:\"find hard-coded Thai strings\"}); await agent(2,{model:\"sonnet\", label:\"rank:all\"})"}'
 mkj "$FIX/wf-judge-ok.json"    Workflow "$FIX/lead-opus.jsonl" '{"script":"await agent(1,{model:\"haiku\", label:\"sweep:a\"}); await agent(2,{model:\"opus\", label:\"rank:all\"})"}'
-mkj "$FIX/wf-judge-role.json"  Workflow "$FIX/lead-opus.jsonl" '{"script":"phase(\"Build\"); await agent(1,{model:\"sonnet\"}); phase(\"Review\"); await agent(2,{agentType:\"rolepod:universal-reviewer\"})"}'
+mkj "$FIX/wf-judge-role.json"  Workflow "$FIX/lead-opus.jsonl" '{"script":"phase(\"Build\"); await agent(1,{agentType:\"rolepod:backend-developer\", model:\"sonnet\"}); phase(\"Review\"); await agent(2,{agentType:\"rolepod:universal-reviewer\"})"}'
 mkj "$FIX/wf-mono-reason.json" Workflow "$FIX/lead-opus.jsonl" '{"script":"// tier-reason: boilerplate i18n edits in every stage\nphase(\"A\"); await agent(1,{model:\"sonnet\"}); phase(\"B\"); await agent(2,{model:\"sonnet\"})"}'
 mkj "$FIX/wf-mono-sonnetlead.json" Workflow "$FIX/lead-sonnet.jsonl" '{"script":"phase(\"A\"); await agent(1,{model:\"sonnet\"}); phase(\"B\"); await agent(2,{model:\"sonnet\"})"}'
 mkj "$FIX/wf-dynamic.json"     Workflow "$FIX/lead-opus.jsonl" '{"script":"const M=pick(); phase(\"A\"); await agent(1,{model: M}); phase(\"B\"); await agent(2,{model: M})"}'
@@ -216,7 +216,7 @@ check "gate v2.50: model from a variable (dynamic) → trusted, silent" \
 # ── v2.124.0: a const-bound strong model and a pasted tier-reason (CourtBook coach-daily-wage) ──
 mkj "$FIX/wf-const-fanout.json" Workflow "$FIX/lead-opus.jsonl" '{"script":"// tier-reason: high-risk fleet, cost is no constraint\nconst MODEL = \"opus\"\nphase(\"Implement\"); await agent(1,{model: MODEL, label:\"impl:a\"}); phase(\"Review\"); await parallel(R.map(r => () => agent(r.p,{label:`review:${r.k}`, phase:\"Review\", model: MODEL})))"}'
 mkj "$FIX/wf-const-spread.json" Workflow "$FIX/lead-opus.jsonl" '{"script":"// tier-reason: ultracode session, cost is no constraint\nconst MODEL = \"opus\"\nphase(\"Implement\"); await agent(1,{model: MODEL}); await agent(2,{model: MODEL}); phase(\"Test\"); await agent(3,{model: MODEL}); phase(\"Review\"); await agent(4,{model: MODEL})"}'
-mkj "$FIX/wf-reason-one.json"   Workflow "$FIX/lead-opus.jsonl" '{"script":"// tier-reason: the migration author needs the strong tier\nphase(\"Implement\"); await agent(1,{model:\"opus\"}); await agent(2,{model:\"sonnet\"}); phase(\"Review\"); await agent(3,{model:\"opus\"})"}'
+mkj "$FIX/wf-reason-one.json"   Workflow "$FIX/lead-opus.jsonl" '{"script":"// tier-reason: the migration author needs the strong tier\nphase(\"Implement\"); await agent(1,{agentType:\"rolepod:backend-developer\", model:\"opus\"}); await agent(2,{agentType:\"rolepod:backend-developer\", model:\"sonnet\"}); phase(\"Review\"); await agent(3,{model:\"opus\"})"}'
 mkj "$FIX/wf-allstrong.json"    Workflow "$FIX/lead-opus.jsonl" '{"script":"phase(\"Implement\"); await agent(1,{model:\"opus\"}); phase(\"Test\"); await agent(2,{model:\"opus\"})"}'
 GOUT=$(cd "$FIX/repo" && bash "$NUDGE" < "$FIX/wf-const-fanout.json")
 check "gate v2.124: const MODEL='opus' on a .map fan-out + tier-reason → deny strong-spread (the const resolves per call)" \
@@ -229,6 +229,20 @@ check "gate v2.124: tier-reason + ONE strong build call + sonnet elsewhere → s
 GOUT=$(cd "$FIX/repo" && bash "$NUDGE" < "$FIX/wf-allstrong.json")
 check "gate v2.124: all-strong deny names the hatch as ONE call and effort / ultracode as no reason" \
   "printf '%s' \"\$GOUT\" | grep -q '\"deny\"' && printf '%s' \"\$GOUT\" | grep -q 'ultracode is not a reason'"
+# v2.128.2 — a bare agent() on a writing stage is denied at submit, not at its first Write
+mkj "$FIX/wf-bare-writer.json"     Workflow "$FIX/lead-opus.jsonl" '{"script":"phase(\"Implement\"); await agent(1,{model:\"sonnet\", effort:\"high\", label:\"impl:a\"}); phase(\"Review\"); await agent(2,{agentType:\"rolepod:security-engineer\"})"}'
+mkj "$FIX/wf-bare-writer-ok.json"  Workflow "$FIX/lead-opus.jsonl" '{"script":"phase(\"Implement\"); await agent(1,{agentType:\"rolepod:backend-developer\", label:\"impl:a\"}); phase(\"Review\"); await agent(2,{agentType:\"rolepod:security-engineer\"})"}'
+mkj "$FIX/wf-bare-reader.json"     Workflow "$FIX/lead-opus.jsonl" '{"script":"phase(\"Research\"); await agent(1,{model:\"haiku\", label:\"scan:a\"}); phase(\"Review\"); await agent(2,{agentType:\"rolepod:security-engineer\"})"}'
+GOUT=$(cd "$FIX/repo" && bash "$NUDGE" < "$FIX/wf-bare-writer.json")
+check "gate v2.128.2: model:sonnet but no agentType on an Implement call → deny bare-writer at submit" \
+  "printf '%s' \"\$GOUT\" | grep -q '\"deny\"' && printf '%s' \"\$GOUT\" | grep -q 'write-scope: bare agent() on writing stage(s) Implement'"
+check "gate v2.128.2: the same fleet with agentType on the Implement call → silent" \
+  "[ -z \"\$(cd '$FIX/repo' && bash '$NUDGE' < '$FIX/wf-bare-writer-ok.json')\" ]"
+check "gate v2.128.2: a bare haiku call on a Research stage → silent (read-only stays bare)" \
+  "[ -z \"\$(cd '$FIX/repo' && bash '$NUDGE' < '$FIX/wf-bare-reader.json')\" ]"
+GOUT=$(cd "$FIX/repo" && bash "$NUDGE" < "$FIX/wf-bare-writer.json"); GOUT=$(cd "$FIX/repo" && bash "$NUDGE" < "$FIX/wf-bare-writer.json")
+check "gate v2.128.2: bare-writer never yields to the loop valve (3rd submit still denied)" \
+  "printf '%s' \"\$GOUT\" | grep -q '\"deny\"'"
 # v2.70.0 — uniform strong closes: explicit model:"opus" pasted on research/sweep
 # stages sailed through (observed: resellerclub-slice2-plan, 4 research agents
 # at opus, 575k tokens — models:["opus"] made tiers non-empty, no verdict fired)
@@ -358,7 +372,7 @@ check "gate v2.88: agentType from a variable → trusted like a dynamic model: �
 # (observed: CourtBook queue-review fleet ran 940k tokens all-Opus because a
 # prompt sentence "...RESERVATION model: comments..." read as a dynamic override)
 mkj "$FIX/wf-prose-model.json" Workflow "$FIX/lead-opus.jsonl" '{"script":"await agent(`sweep the deleted RESERVATION model: comments asserting things`); await agent(2)"}'
-mkj "$FIX/wf-prose-real.json"  Workflow "$FIX/lead-opus.jsonl" '{"script":"phase(\"Build\"); await agent(`prose about a model: thing`, {model: \"sonnet\"}); phase(\"Verify\"); await agent(2, {model: \"opus\"})"}'
+mkj "$FIX/wf-prose-real.json"  Workflow "$FIX/lead-opus.jsonl" '{"script":"phase(\"Build\"); await agent(`prose about a model: thing`, {agentType: \"rolepod:backend-developer\", model: \"sonnet\"}); phase(\"Verify\"); await agent(2, {model: \"opus\"})"}'
 check "gate v2.62.1: prose model: inside a prompt literal → still deny (no phantom dynamic)" \
   "cd '$FIX/repo' && bash '$NUDGE' < '$FIX/wf-prose-model.json' | grep -q '\"deny\"'"
 check "gate v2.62.1: real overrides still counted when prose model: is present → silent" \

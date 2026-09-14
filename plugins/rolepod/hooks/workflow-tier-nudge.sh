@@ -383,6 +383,14 @@ if tool == "Workflow":
         return False
     strong_calls = []   # (stage, fanout) for every agent() call pinned strong
     bare_fanout = []    # stage of every fan-out agent() call with no pin at all
+    # v2.128.2 — a bare agent() on a WRITING stage. subagent-write-scope denies
+    # its edits, but only at the first Write, minutes into the run (observed
+    # 2026-09-14, CourtBook cf-free-p1-p2: the tier deny steered the Lead to
+    # model: pins, the Implement calls stayed role-less, P1-1 worked 96 turns
+    # and was blocked on its first Write; one agent and 7 minutes wasted, the
+    # whole run failed). The stage name says it at submit time.
+    WRITE_RX = re.compile(r"(implement|build|fix|integrat|migrat|refactor|patch|scaffold|write)", re.I)
+    bare_writer = []    # stage of every agent() call with no agentType on a writing stage
     downgraded = []     # (stage, role, model) — strong-role agentType + explicit low model literal
     strong_role_eff = False   # a strong-role agentType call that keeps its opus
     call_pos = [m.start() for m in re.finditer(r"\bagent\(", code)]
@@ -442,6 +450,8 @@ if tool == "Workflow":
             prev = re.findall(r"phase\(\s*[\x27\"]([^\x27\"]+)", script[:pos])
             stage = prev[-1] if prev else ""
         fanout = bool(re.search(r"label\s*:\s*`[^`]*\$\{", script[pos:end])) or _in_fanout(code, pos)
+        if not re.search(r"[,{\s]agentType\s*:", win) and WRITE_RX.search(stage or ""):
+            bare_writer.append(stage)   # a model: pin is a tier, not a write permission
         if strong_here:
             strong_calls.append((stage, fanout))
         elif fanout and not pinned:
@@ -484,10 +494,11 @@ if tool == "Workflow":
         verdict = "bare-fanout"
         reason_txt = (
             "\u26d4 fleet-tier: bare fan-out call(s) \u2014 stage(s) %s \u2014 inherit the Lead %s (%s) \u00d7 N. "
-            "Fix: pin the fan-out \u2014 read/browse/sweep \u2192 model:\x27haiku\x27 or agentType:\x27rolepod:scout\x27; "
-            "per-item verify \u2192 model:\x27sonnet\x27, effort:\x27high\x27; ONE strong slot (model:\x27opus\x27) on the "
-            "single verdict / review call. Exception: none for a fan-out \u2014 a `// tier-reason:` covers single "
-            "calls only; ROLEPOD_GATES_SOFT=1 (user-set) warns."
+            "Fix: pin the fan-out \u2014 a stage that WRITES \u2192 agentType:\x27rolepod:<role>\x27 (the role pins "
+            "its tier); read/browse/sweep \u2192 model:\x27haiku\x27 or agentType:\x27rolepod:scout\x27; per-item "
+            "verify \u2192 model:\x27sonnet\x27, effort:\x27high\x27; ONE strong slot on the single review call. "
+            "Exception: none for a fan-out \u2014 a `// tier-reason:` covers single calls only; "
+            "ROLEPOD_GATES_SOFT=1 (user-set) warns."
             % (", ".join(sorted(set(bare_fanout)))[:120], lead or "unknown model", why))
     elif downgraded and not strong_role_eff and not stated and risky:
         # v2.118.0 — observed 2026-09-10 (WalnutZite): the review stage carried
@@ -579,10 +590,22 @@ if tool == "Workflow":
             "or one final adjudicator (opts from a data array \u2192 thread `model: r.model`); every fan-out "
             "stays sonnet/haiku. Not a judgment stage / not high-risk \u2192 `// tier-reason: <why>`." % (
                 ", ".join(judge_stages)[:160], "+".join(sorted(tiers)) or "nothing (every stage inherits %s)" % cls, cls, lead)) + TAIL
+    if not verdict and bare_writer:
+        # v2.128.2 — after the tier verdicts (cost first, one message per submit);
+        # a fleet whose tiers pass but whose writers carry no role is denied here
+        # at submit instead of at its first Write minutes later.
+        verdict = "bare-writer"
+        reason_txt = (
+            "\u26d4 write-scope: bare agent() on writing stage(s) %s \u2014 a call that edits product files needs "
+            "agentType:\x27rolepod:<role>\x27 (backend-developer / frontend-developer / devops-sre; tests \u2192 "
+            "qa-tester). model: alone pins the tier, not the write permission \u2014 its edits are blocked at the "
+            "first Write. Fix: add agentType to every call that edits files; read-only calls may stay bare. "
+            "Exception: a stage that only reads \u2192 name it so (Research / Verify); ROLEPOD_GATES_SOFT=1 "
+            "(user-set) warns." % ", ".join(sorted(set(bare_writer)))[:120])
     if verdict:
         if soft:
             _log_bypass("workflow-tier-nudge", "ROLEPOD_GATES_SOFT")
-        elif verdict not in ("strong-spread", "bare-fanout", "named-downgrade") and _recent_denies(ti, script) >= 2:
+        elif verdict not in ("strong-spread", "bare-fanout", "named-downgrade", "bare-writer") and _recent_denies(ti, script) >= 2:
             # Loop valve: third strike passes, loudly, and is logged as yielded.
             _log_gate(ti, script, lead, cls, n_calls, verdict, sorted(tiers), sorted(stages), action="yield")
             ctx("⚖ fleet-tier YIELDED after 2 denies of this fleet in 30 min — proceeding as submitted "
