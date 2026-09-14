@@ -397,7 +397,7 @@ render_codex() {
   done
   cp "$output" "$plugin_dst/agents/AGENTS.rolepod.md"
 
-  # Hooks — the 8 shared scripts come straight from canonical hooks/ (same
+  # Hooks — the 9 shared scripts come straight from canonical hooks/ (same
   # single-source rule as render_claude above and render_antigravity below);
   # only hooks.json + subagent-model-log.sh + agent-sync.sh are genuinely
   # Codex-specific.
@@ -412,7 +412,7 @@ render_codex() {
     "$plugin_dst/hooks/terse-core.md"
   local h
   for h in gate-reminder precommit-gate project-context-loader claim-verify-nudge \
-           block-subagent-commit session-lifecycle test-diff-lint fix-loop-breaker; do
+           block-subagent-commit session-lifecycle test-diff-lint fix-loop-breaker sweep-nudge; do
     cp "$REPO_DIR/hooks/$h.sh" "$plugin_dst/hooks/$h.sh"
   done
   chmod +x "$plugin_dst/hooks/"*.sh 2>/dev/null || true

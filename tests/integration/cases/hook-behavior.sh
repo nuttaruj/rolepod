@@ -587,6 +587,62 @@ check_ctx "loop-breaker: 'Exit code N' text form counts → nudge at 3rd" nudge 
 check_ctx "loop-breaker: different session id isolated → silent" silent "$(lb s3 1)"
 rm -rf "$LB_TMP"
 
+# ─── sweep-nudge: raw reads past 120 KB in one turn, no scout, no edit → ONE nudge ──
+# The scout rule at the point of action. The hook must stay silent below the
+# line, on a build turn (edit seen), after a dispatch, and after it fired once.
+SW_TMP=$(mktemp -d)
+sw() { # $1 = event, $2 = tool_name, $3 = tool_response JSON (PostToolUse only)
+  local ev="$1" tool="${2:-}" resp="${3:-}"
+  if [ "$ev" = "UserPromptSubmit" ]; then
+    printf '{"session_id":"s-sweep","hook_event_name":"UserPromptSubmit","prompt":"hi"}'
+  elif [ "$ev" = "PostToolUse" ]; then
+    printf '{"session_id":"s-sweep","hook_event_name":"PostToolUse","tool_name":"%s","tool_input":{},"tool_response":%s}' "$tool" "$resp"
+  else
+    printf '{"session_id":"s-sweep","hook_event_name":"%s","tool_name":"%s","tool_input":{}}' "$ev" "$tool"
+  fi | TMPDIR="$SW_TMP" bash "$HOOKS/sweep-nudge.sh"
+}
+BIG=$(python3 -c 'import json; print(json.dumps("x" * 50000))')   # one 50 KB read
+check_sw() { # $1 desc, $2 expected (nudge|silent), $3 output
+  local desc="$1" expected="$2" out="$3" verdict="silent"
+  echo "$out" | grep -q 'sweep:' && verdict="nudge"
+  if [ "$verdict" = "$expected" ]; then
+    echo "  ✓ $desc"
+  else
+    echo "  ✗ $desc (expected $expected, got $verdict)"
+    fail=$((fail+1))
+  fi
+}
+sw UserPromptSubmit > /dev/null
+check_sw "sweep: 1st 50 KB read → silent" silent "$(sw PostToolUse Read "$BIG")"
+check_sw "sweep: 2nd read (100 KB) → silent" silent "$(sw PostToolUse Grep "$BIG")"
+check_sw "sweep: 3rd read (150 KB ≥ 120 KB) → nudge" nudge "$(sw PostToolUse Bash "$BIG")"
+check_sw "sweep: 4th read → silent (once per turn)" silent "$(sw PostToolUse Read "$BIG")"
+sw UserPromptSubmit > /dev/null
+check_sw "sweep: new prompt resets → 1 read silent" silent "$(sw PostToolUse Read "$BIG")"
+sw PreToolUse Edit > /dev/null
+sw PostToolUse Read "$BIG" > /dev/null; sw PostToolUse Read "$BIG" > /dev/null
+check_sw "sweep: edit earlier in the turn → silent at 200 KB (build turn)" silent "$(sw PostToolUse Read "$BIG")"
+sw UserPromptSubmit > /dev/null
+sw PostToolUse Agent '{"result":"ok"}' > /dev/null
+sw PostToolUse Read "$BIG" > /dev/null; sw PostToolUse Read "$BIG" > /dev/null
+check_sw "sweep: scout dispatched earlier → silent at 150 KB" silent "$(sw PostToolUse Read "$BIG")"
+sw UserPromptSubmit > /dev/null
+sw PostToolUse read_file "$BIG" > /dev/null; sw PostToolUse grep_files "$BIG" > /dev/null
+check_sw "sweep: Codex tool names (read_file / grep_files / Bash) count → nudge" nudge "$(sw PostToolUse Bash "$BIG")"
+sw UserPromptSubmit > /dev/null
+sw SubagentStart > /dev/null   # Codex marks the dispatch post-spawn
+sw PostToolUse read_file "$BIG" > /dev/null; sw PostToolUse read_file "$BIG" > /dev/null
+check_sw "sweep: Codex SubagentStart earlier → silent" silent "$(sw PostToolUse read_file "$BIG")"
+sw UserPromptSubmit > /dev/null
+sw PostToolUse Read "$BIG" > /dev/null; sw PostToolUse Read "$BIG" > /dev/null
+out=$(printf '{"session_id":"s-sweep","hook_event_name":"PostToolUse","tool_name":"Read","tool_input":{},"tool_response":%s}' "$BIG" \
+  | ROLEPOD_NUDGE_OFF=1 TMPDIR="$SW_TMP" bash "$HOOKS/sweep-nudge.sh")
+check_sw "sweep: ROLEPOD_NUDGE_OFF=1 → silent" silent "$out"
+out=$(printf '{"hook_event_name":"PostToolUse","tool_name":"Read","tool_input":{},"tool_response":%s}' "$BIG" \
+  | TMPDIR="$SW_TMP" bash "$HOOKS/sweep-nudge.sh")
+check_sw "sweep: no session_id → silent (fail-open)" silent "$out"
+rm -rf "$SW_TMP"
+
 # ── review in flight (v2.93.0): a live detached cross-family job freezes the diff ──
 # gate-reminder warns (never denies) on an edit to a file the job's attached
 # diff touches; precommit-gate warns on a tree rewrite (stash / reset --hard /
