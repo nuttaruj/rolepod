@@ -415,6 +415,15 @@ render_codex() {
            block-subagent-commit session-lifecycle test-diff-lint fix-loop-breaker sweep-nudge; do
     cp "$REPO_DIR/hooks/$h.sh" "$plugin_dst/hooks/$h.sh"
   done
+  # hooks/lib/ (session_state.py, route_check.py) ships here too (v2.128.1):
+  # claim-verify-nudge, gate-reminder, session-lifecycle and precommit-gate
+  # resolve `$(dirname "$0")/lib/...` — without it the Codex copies ran their
+  # fallbacks (no route nudge / recorder, no context check) and, since the
+  # v2.128.0 one-spawn rewrite, claim-verify-nudge exited before its claim,
+  # auto-resume and breaker lines. Measured on the 2.128.0 Codex cache.
+  rm -rf "$plugin_dst/hooks/lib"
+  [ -d "$REPO_DIR/hooks/lib" ] && cp -R "$REPO_DIR/hooks/lib" "$plugin_dst/hooks/"
+  find "$plugin_dst/hooks/lib" -name '__pycache__' -type d -prune -exec rm -rf {} + 2>/dev/null || true
   chmod +x "$plugin_dst/hooks/"*.sh 2>/dev/null || true
 
   # Skills as a real directory tree (rendered from core/skills/).
