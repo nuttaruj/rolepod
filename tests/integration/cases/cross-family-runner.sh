@@ -45,6 +45,7 @@ case "\$mode" in
   hang) sleep 30 & echo \$! > "$FIX/grandchild.\$\$"; wait; exit 0 ;;
   short) printf 'LGTM %s\n' "\$(head -c 300 /dev/zero | tr '\\0' 'y')"; exit 0 ;;
   slow) sleep 4 ;;
+  trickle) for _i in 1 2 3 4 5 6; do echo "working \$_i"; sleep 1; done ;;   # keeps printing: alive under --stall 3
   partial) printf 'PARTIAL — budget nearly spent. Findings so far: %s\n' "\$(head -c 600 /dev/zero | tr '\\0' p)"; exit 0 ;;
   noverdict) printf 'Findings: %s\n' "\$(head -c 600 /dev/zero | tr '\\0' q)"; exit 0 ;;
 esac
@@ -52,6 +53,11 @@ esac
 _msg=""; _prev=""; for a in "\$@"; do [ "\$_prev" = "-o" ] && _msg="\$a"; _prev="\$a"; done
 if [ -n "\$_msg" ]; then echo "event-stream noise" ; printf 'model: %s\n' "\${CODEX_RAN:-gpt-5.6-luna}" >&2; { printf '%s review by $2: ' "\${KIND_HINT:-}"; head -c 600 /dev/zero | tr '\0' 'x'; printf '\nVERDICT: APPROVED\n'; } > "\$_msg"; exit 0; fi
 [ "$2" = opencode ] && printf '> plan · %s\n' "\${OPENCODE_RAN:-moonshotai/kimi-k3}" >&2   # real opencode prints this header on stderr
+if printf '%s' "\$*" | grep -q -- '--output-format stream-json'; then   # cursor: the runner unwraps the result event
+  printf '{"type":"system","subtype":"init","model":"%s"}\n' "\${CURSOR_RAN:-gpt-5.6-sol}"
+  printf '{"type":"result","subtype":"success","result":"%s review by $2: %s\\\\nVERDICT: APPROVED"}\n' "\${KIND_HINT:-}" "\$(head -c 600 /dev/zero | tr '\\0' 'x')"
+  exit 0
+fi
 printf '%s review by $2: ' "\${KIND_HINT:-}"; head -c 600 /dev/zero | tr '\0' 'x'; printf '\nVERDICT: APPROVED\n'
 EOF
   chmod +x "$BIN/$1"
@@ -236,7 +242,7 @@ check "--all runs every usable member concurrently (codex + agy + cursor + openc
 check "--all output carries one ===== block + ok trailer per member" "[ \"\$(printf '%s' \"\$out\" | grep -c '^ROLEPOD-XFAM ok kind=advise')\" -eq 4 ]"
 check "advise lines logged with phase=advise" "[ \"\$(grep -c '\"phase\":\"advise\",\"reviewer\":\"external\"' .rolepod/evidence/phase-log.jsonl)\" -eq 4 ]"
 check "cursor got plan mode + --trust, opencode got --agent plan; neither got a model flag" \
-  "grep '^cursor |' '$LOG' | grep -q -- '--mode ask' && ! grep '^cursor |' '$LOG' | grep -q -- '--mode plan' && grep '^cursor |' '$LOG' | grep -q -- '--trust' && grep '^opencode |' '$LOG' | grep -q -- '--agent plan' && ! grep -E '^(cursor|opencode) \|' '$LOG' | grep -qE -- '--model| -m '"
+  "grep '^cursor |' '$LOG' | grep -q -- '--mode ask' && ! grep '^cursor |' '$LOG' | grep -q -- '--mode plan' && grep '^cursor |' '$LOG' | grep -q -- '--output-format stream-json' && grep '^cursor |' '$LOG' | grep -q -- '--trust' && grep '^opencode |' '$LOG' | grep -q -- '--agent plan' && ! grep -E '^(cursor|opencode) \|' '$LOG' | grep -qE -- '--model| -m '"
 
 # ── critique kind (write-spec) ──────────────────────────────────────────
 echo "── cross-family: --kind critique ──"
@@ -244,6 +250,24 @@ echo "── cross-family: --kind critique ──"
 rc=0; out=$(bash "$RUNNER" --kind critique --brief brief.md --lead claude 2>/dev/null) || rc=$?
 check "critique → spec-critic framing on stdin, logged as phase=advise kind=critique (never a strong pass)" \
   "[ $rc -eq 0 ] && grep -q 'STDIN=critique' '$LOG' && grep -q '\"phase\":\"advise\",\"reviewer\":\"external\",\"kind\":\"critique\"' .rolepod/evidence/phase-log.jsonl && ! grep -q '\"phase\":\"review\"' .rolepod/evidence/phase-log.jsonl"
+
+# ── stall detector (v2.129.0): silence kills, output keeps a member alive ──
+echo "── cross-family: stall detector ──"
+: > "$REPO/.rolepod/evidence/phase-log.jsonl"
+s=$(date +%s); rc=0; out=$(STUB_codex=hang bash "$RUNNER" --kind review --brief brief.md --lead claude --timeout 60 --stall 3 2>/dev/null) || rc=$?; secs=$(( $(date +%s) - s ))
+check "silent CLI is killed by --stall 3 long before --timeout 60; the next member answers (took ${secs}s)" \
+  "[ $rc -eq 0 ] && [ $secs -lt 25 ] && grep -q 'stalled: no output for 3s' '$REPO/.rolepod/evidence/phase-log.jsonl'"
+rc=0; out=$(STUB_codex=trickle bash "$RUNNER" --kind review --brief brief.md --lead claude --timeout 60 --stall 3 2>/dev/null) || rc=$?
+check "a CLI that keeps printing (trickle 6 s) is NOT killed by --stall 3 → codex itself answers" \
+  "[ $rc -eq 0 ] && printf '%s' \"\$out\" | grep -q 'cli=codex'"
+printf 'codex stall=5\nagy\n' > "$REPO/.rolepod/cross-family"
+out=$(cd "$REPO" && bash "$RUNNER" --pool --lead claude)
+check "--pool shows stall= from config (codex 5 s) and the 600 s default (agy)" \
+  "printf '%s' \"\$out\" | grep -qE 'codex .*stall=5s' && printf '%s' \"\$out\" | grep -qE 'agy .*stall=600s'"
+printf 'cursor\n' > "$REPO/.rolepod/cross-family"; : > "$LOG"
+rc=0; out=$(cd "$REPO" && CURSOR_RAN=gpt-5.6-sol bash "$RUNNER" --kind review --brief brief.md --lead claude 2>/dev/null) || rc=$?
+check "cursor stream-json is unwrapped: plain report in the raw file (no JSON), VERDICT seen, ran= from the init event" \
+  "[ $rc -eq 0 ] && printf '%s' \"\$out\" | grep -q 'cli=cursor' && printf '%s' \"\$out\" | grep -q 'ran=gpt-5.6-sol' && grep -l 'VERDICT: APPROVED' \"$REPO\"/.rolepod/evidence/external/*cursor*.txt >/dev/null && ! grep -q '\"type\":\"result\"' \"$REPO\"/.rolepod/evidence/external/*cursor*.txt"
 
 # ── per-CLI timeout, per-kind order, budget line ─────────────────────────
 echo "── cross-family: timeouts / per-kind order / budget ──"
@@ -269,8 +293,8 @@ echo "── cross-family: --detach job ──"
 : > "$LOG"; : > .rolepod/evidence/phase-log.jsonl
 s=$(date +%s); rc=0; out=$(STUB_codex=slow bash "$RUNNER" --kind review --brief brief.md --attach diff.patch --lead claude --detach 2>/dev/null) || rc=$?; secs=$(( $(date +%s) - s ))
 jid=$(printf '%s' "$out" | grep -o 'job=[^ ]*' | head -1 | cut -d= -f2)
-check "--detach returns at once (${secs}s) with a job id + members + budgets (review detached default 1800s → codex 1800 from config, agy 1800)" \
-  "[ $rc -eq 0 ] && [ $secs -lt 3 ] && [ -n \"$jid\" ] && printf '%s' \"\$out\" | grep -q 'members=codex agy' && printf '%s' \"\$out\" | grep -q 'budgets=codex=1800s agy=1800s'"
+check "--detach returns at once (${secs}s) with a job id + members + budgets (codex 1800 from config; agy the detached review cap 7200 — the stall detector, not the cap, ends a dead member)" \
+  "[ $rc -eq 0 ] && [ $secs -lt 3 ] && [ -n \"$jid\" ] && printf '%s' \"\$out\" | grep -q 'members=codex agy' && printf '%s' \"\$out\" | grep -q 'budgets=codex=1800s agy=7200s'"
 check "job dir has pid + started + args, no status yet (still running)" "[ -f .rolepod/evidence/external/jobs/$jid/pid ] && [ -f .rolepod/evidence/external/jobs/$jid/started ] && [ ! -f .rolepod/evidence/external/jobs/$jid/status ]"
 out=$(bash "$RUNNER" --jobs)
 check "--jobs lists the job as running" "printf '%s' \"\$out\" | grep -q \"$jid *running\""

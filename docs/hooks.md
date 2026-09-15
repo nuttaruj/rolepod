@@ -296,14 +296,20 @@ preference order, `#` comments; **no file = off, `none` = off**:
 ```
 # this machine has four CLIs; use three
 agy
-codex timeout=1800        # slow-but-deep member gets 30 min (per-CLI option)
+codex stall=900           # per-CLI option: silence tolerated before it counts as dead (default 600 s)
 opencode
 consult: agy codex        # per-kind order: the debug loop wants the fast answer first
 ```
 
-Per-member time: `--timeout` > `timeout=` > kind default (review 1800 s
-when detached / 600 s foreground · consult 300 · advise 900 · critique
-600); the prompt carries the budget. `--detach` runs the chain as a job
+Per-member time (v2.129.0): a member is killed when it goes SILENT — no new
+stdout / stderr for `stall` seconds (`--stall` > `stall=` > 600) — not when
+it is slow; the wall-clock cap is runaway insurance only (`--timeout` >
+`timeout=` > kind default: review 7200 s when detached / 600 s foreground ·
+consult 300 · advise 900 · critique 600). Measured 2026-09-15: codex reviews
+run 15-29 min streaming the whole way (p90 28 min sat on the old 1800 s
+cap), cursor stream-json and opencode stream, agy is silent ~150 s then
+answers; a killed reviewer is money already spent, so the cut is for the
+dead. The prompt carries a planning budget (≤30 min). `--detach` runs the chain as a job
 under `.rolepod/evidence/external/jobs/<id>/` (`--collect <id>` waits,
 `--jobs` lists); `precommit-gate` names a running job in its hold reason
 instead of asking for a new run. A diff attachment that is a **partial

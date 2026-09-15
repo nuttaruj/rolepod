@@ -18,7 +18,7 @@
 #            loader asks the user ONCE, the answer is written to the file.
 #            Format — one CLI per line in preference order, options after the
 #            name, optional per-kind order lines:
-#                codex timeout=1800      # slow-but-deep member gets 30 min
+#                codex stall=900        # silence tolerated before it counts as dead (default 600 s)
 #                agy
 #                consult: agy codex      # debug consults want the fast answer first
 #            Names: codex claude agy cursor opencode (`gemini` is retired —
@@ -31,9 +31,17 @@
 #   model    NEVER a model or effort flag. TIER_MODELS applies only to the CLI
 #            that is the Lead; an external runs whatever its owner set as
 #            default. The phase-log records model:"default".
-#   time     per member: --timeout > `timeout=` in the config > kind default
-#            (review 1800 s detached / 600 s foreground · consult 300 ·
-#            advise 900 · critique 600). The prompt carries the budget so the
+#   time     a member is killed when it goes SILENT, not when it is slow
+#            (v2.129.0): no new stdout / stderr bytes for `stall` seconds
+#            (--stall > `stall=` in the config > 600) = dead, rc 118. The
+#            wall-clock cap is runaway insurance only (--timeout > `timeout=`
+#            > kind default: review 7200 s detached / 600 s foreground ·
+#            consult 300 · advise 900 · critique 600). Measured 2026-09-15:
+#            codex reviews run 15-29 min and stream the whole way (p90 28 min
+#            sat on the old 1800 s cap); cursor stream-json and opencode
+#            stream too; agy is silent ~150 s then answers. A killed
+#            reviewer is money already spent, so the cut is for the dead.
+#            The prompt carries a planning budget (≤30 min) so the
 #            model plans for it. `--detach` runs the whole chain as a job in
 #            its own process group and returns at once — the Lead keeps
 #            working, `--collect <job>` waits for the receipt, the commit gate
@@ -90,7 +98,7 @@
 # Exit: 0 ok · 2 usage · 3 every member failed · 4 configured pool empty · 5 off · 6 job still running
 set -uo pipefail
 
-KIND=""; BRIEF=""; LEAD="${ROLEPOD_LEAD_CLI:-}"; ALL=0; FLAG_TIMEOUT="${ROLEPOD_XFAM_TIMEOUT:-}"
+KIND=""; BRIEF=""; LEAD="${ROLEPOD_LEAD_CLI:-}"; ALL=0; FLAG_TIMEOUT="${ROLEPOD_XFAM_TIMEOUT:-}"; FLAG_STALL="${ROLEPOD_XFAM_STALL:-}"
 MODE="run"; ATTACH=""; DETACH=0; JOB_DIR=""; COLLECT_ID=""; ROOT_FLAG=""; CFG_FLAG=""; PARTIAL_OK=0; SINCE_ID=""; KILL_ID=""; LEDGER=""; ROUND_NOTE=""
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -102,6 +110,7 @@ while [ $# -gt 0 ]; do
     --root) ROOT_FLAG="${2:-}"; shift 2 ;;
     --all) ALL=1; shift ;;
     --timeout) FLAG_TIMEOUT="${2:-}"; shift 2 ;;
+    --stall) FLAG_STALL="${2:-}"; shift 2 ;;        # seconds of silence (no new output) before a member counts as dead
     --detach) DETACH=1; shift ;;
     --partial-ok) PARTIAL_OK=1; shift ;;         # the user asked for the staged part only
     --since) SINCE_ID="${2:-}"; shift 2 ;;         # round 2+: attach the fix delta since that job + its report
@@ -377,6 +386,8 @@ ran_model_of() { # $1 cli, $2 outfile base → model id or ""
   case "$1" in
     codex) for _x in "$2.err" "$2.stream" "$2"; do [ -f "$_x" ] || continue
              _r=$(grep -m1 '^model: ' "$_x" 2>/dev/null | sed -e 's/^model: *//' -e 's/[[:space:]]*$//'); [ -n "$_r" ] && { printf '%s' "$_r"; return; }; done ;;
+    cursor) [ -f "$2.stream" ] || return   # the stream-json init event names the model
+             _r=$(grep -m1 -o '"model":"[^"]*"' "$2.stream" 2>/dev/null | head -1 | cut -d'"' -f4); [ -n "$_r" ] && printf '%s' "$_r" ;;
     opencode) for _x in "$2.err" "$2"; do [ -f "$_x" ] || continue   # the `> agent · model` header goes to stderr
              _r=$(tr -d '\033' < "$_x" | sed 's/\[[0-9;]*m//g' | grep -m1 '^> .* · ' | sed -e 's/^> .* · //' -e 's/[[:space:]]*$//'); [ -n "$_r" ] && { printf '%s' "$_r"; return; }; done ;;
   esac
@@ -412,12 +423,12 @@ if [ "$MODE" = "candidates" ]; then printf '%s\n' $CANDIDATES; exit 0; fi
 
 # ── Config (opt-in: no file = off) ─────────────────────────────────────
 # default list = bare lines; `<kind>:` lines = per-kind order; `key=value`
-# tokens attach to the CLI named just before them (timeout= today).
+# tokens attach to the CLI named just before them (timeout= and stall=).
 CFG=""; CFG_SRC=""; STATE="on"
 if [ -n "$CFG_FLAG" ] && [ -f "$CFG_FLAG" ]; then CFG="$CFG_FLAG"; CFG_SRC="$(head -1 "$CFG_FLAG.src" 2>/dev/null || echo "$CFG_FLAG") (job snapshot)"
 elif [ -f "$ROOT/.rolepod/cross-family" ]; then CFG="$ROOT/.rolepod/cross-family"; CFG_SRC="$CFG"
 elif [ -f "$HOME/.rolepod/cross-family" ]; then CFG="$HOME/.rolepod/cross-family"; CFG_SRC="$CFG"; fi
-DEFAULT_LIST=""; KIND_LIST=""; TO_LIST=""
+DEFAULT_LIST=""; KIND_LIST=""; TO_LIST=""; ST_LIST=""
 if [ -n "$CFG" ]; then
   while IFS= read -r _ln || [ -n "$_ln" ]; do
     _ln=$(printf '%s' "$_ln" | sed -e 's/#.*//' | tr 'A-Z' 'a-z' | tr -s '[:space:]' ' ' | sed -e 's/^ //' -e 's/ $//')
@@ -430,6 +441,9 @@ if [ -n "$CFG" ]; then
              if [ "$_key" = "timeout" ] && [ -n "$_last" ]; then
                if ! is_num "$_val"; then echo "cross-family: ignoring timeout='$_val' for $_last in $CFG (whole seconds only)" >&2
                elif [ -z "$_k" ] || [ "$_k" = "$KIND" ]; then TO_LIST="$TO_LIST $_last=$_val"; fi   # a kind line's options bind to that kind only
+             elif [ "$_key" = "stall" ] && [ -n "$_last" ]; then
+               if ! is_num "$_val"; then echo "cross-family: ignoring stall='$_val' for $_last in $CFG (whole seconds only)" >&2
+               elif [ -z "$_k" ] || [ "$_k" = "$KIND" ]; then ST_LIST="$ST_LIST $_last=$_val"; fi
              fi ;;
         *) _last="$_t"; _acc="$_acc${_acc:+ }$_t" ;;
       esac
@@ -443,14 +457,20 @@ else
   STATE="off"; CFG_SRC="no ~/.rolepod/cross-family (opt-in not given)"
 fi
 CONFIGURED="${KIND_LIST:-$DEFAULT_LIST}"
-ENABLE_HINT="enable: printf 'codex timeout=1800\\nclaude\\nagy\\ncursor\\nopencode\\n' > ~/.rolepod/cross-family  (list EVERY CLI you want, this one included — the Lead's own CLI is skipped at run time, so one file serves every Lead; your order = preference; 'consult: agy codex' = per-kind order; project override: <git-root>/.rolepod/cross-family; 'none' = keep off)"
+ENABLE_HINT="enable: printf 'codex\\nclaude\\nagy\\ncursor\\nopencode\\n' > ~/.rolepod/cross-family  (list EVERY CLI you want, this one included — the Lead's own CLI is skipped at run time, so one file serves every Lead; your order = preference; 'consult: agy codex' = per-kind order; project override: <git-root>/.rolepod/cross-family; 'none' = keep off)"
 
-timeout_for() { # $1 cli → seconds (flag > config > kind default)
+stall_for() { # $1 cli → seconds of silence that count as dead (flag > config > 600)
+  [ -n "$FLAG_STALL" ] && { echo "$FLAG_STALL"; return; }
+  _c=$(printf '%s' "$ST_LIST" | tr ' ' '\n' | grep "^$1=" | tail -1 | cut -d= -f2)
+  [ -n "$_c" ] && { echo "$_c"; return; }
+  echo 600
+}
+timeout_for() { # $1 cli → seconds (flag > config > kind default) — the runaway cap, not the working budget
   [ -n "$FLAG_TIMEOUT" ] && { echo "$FLAG_TIMEOUT"; return; }
   _c=$(printf '%s' "$TO_LIST" | tr ' ' '\n' | grep "^$1=" | tail -1 | cut -d= -f2)
   [ -n "$_c" ] && { echo "$_c"; return; }
   case "$KIND" in
-    review) if [ -n "$JOB_DIR" ]; then echo 1800; else echo 600; fi ;;
+    review) if [ -n "$JOB_DIR" ]; then echo 7200; else echo 600; fi ;;
     consult) echo 300 ;;
     advise) echo 900 ;;
     critique) echo 600 ;;
@@ -475,7 +495,7 @@ $cli  absent  -  not on PATH"; continue; fi
     fam=$(family_of "$cli")
     if [ "$cli" = "$LEAD" ]; then POOL_ROWS="$POOL_ROWS
 $cli  skipped  $fam  is the Lead"; continue; fi
-    note="bin=$bin · timeout=$(timeout_for "$cli")s"
+    note="bin=$bin · timeout=$(timeout_for "$cli")s · stall=$(stall_for "$cli")s"
     case "$cli" in cursor|opencode) note="$note · $(describe_default_model "$cli")" ;; esac
     if [ "$fam" = "unknown" ]; then
       case "$cli" in
@@ -521,16 +541,46 @@ run_to() { # $1 outfile, $2... command; stdin = $RUN_STDIN (a `&` job gets /dev/
   ( cd "$ROOT" && ROLEPOD_BRAIN_SILENT=1 exec "$@" ) < "$RUN_STDIN" > "$_out" 2> "$_out.err" &
   _pid=$!
   set +m
-  _start=$SECONDS
+  _start=$SECONDS; _quiet=$SECONDS; _seen=0
   while kill -0 "$_pid" 2>/dev/null; do
-    if [ $(( SECONDS - _start )) -ge "$TIMEOUT" ]; then
+    # Progress = bytes landing on stdout / stderr / the codex -o file. A member
+    # that keeps writing is working (codex, cursor stream-json and opencode
+    # stream continuously; agy is silent ~150 s, under any sane stall); one
+    # that writes nothing for STALL seconds is dead — kill it, rc 118. The
+    # wall-clock cap (rc 124) stays as runaway insurance only.
+    _now=$(( $(_sz "$_out") + $(_sz "$_out.err") + $(_sz "$_out.msg") ))
+    if [ "$_now" -ne "$_seen" ]; then _seen=$_now; _quiet=$SECONDS; fi
+    _kill=""
+    [ $(( SECONDS - _quiet )) -ge "${STALL:-600}" ] && _kill=118
+    [ $(( SECONDS - _start )) -ge "$TIMEOUT" ] && _kill=124
+    if [ -n "$_kill" ]; then
       kill -TERM -- "-$_pid" 2>/dev/null; kill -TERM "$_pid" 2>/dev/null; sleep 2
       kill -KILL -- "-$_pid" 2>/dev/null; kill -KILL "$_pid" 2>/dev/null
-      wait "$_pid" 2>/dev/null; return 124
+      wait "$_pid" 2>/dev/null; return "$_kill"
     fi
     sleep 1
   done
   wait "$_pid"
+}
+_sz() { if [ -f "$1" ]; then wc -c < "$1" | tr -d ' '; else echo 0; fi; }
+cursor_unwrap() { # $1 outfile — stream-json → the final result text; the stream stays as $1.stream
+  [ -s "$1" ] || return 0
+  mv "$1" "$1.stream" 2>/dev/null || return 0
+  python3 -I - "$1.stream" > "$1" 2>/dev/null <<'PY' || : > "$1"
+import json, sys
+res = ""
+for line in open(sys.argv[1], errors="replace"):
+    line = line.strip()
+    if not line.startswith("{"):
+        continue
+    try:
+        ev = json.loads(line)
+    except Exception:
+        continue
+    if ev.get("type") == "result" and isinstance(ev.get("result"), str):
+        res = ev["result"]
+sys.stdout.write(res)
+PY
 }
 invoke() { # $1 cli, $2 promptfile, $3 outfile — TIMEOUT already set for this member
   _cli="$1"; _p="$2"; _o="$3"; _bin=$(bin_of "$_cli")
@@ -544,7 +594,10 @@ invoke() { # $1 cli, $2 promptfile, $3 outfile — TIMEOUT already set for this 
     # WalnutZite round-3 review: plan → 1 byte after 244 s; ask → the full
     # 8.9 KB report in 229 s; a one-word prompt answers in both, which is why
     # --probe never caught it).
-    cursor)   run_to "$_o" "$_bin" -p --mode ask --output-format text --trust "$(cat "$_p")" ;;
+    # stream-json (v2.129.0): text mode is silent until the end, so the stall
+    # detector could not see it working; the stream also names the model.
+    cursor)   run_to "$_o" "$_bin" -p --mode ask --output-format stream-json --trust "$(cat "$_p")"; _rc=$?
+              cursor_unwrap "$_o"; return $_rc ;;
     opencode) run_to "$_o" "$_bin" run --agent plan "$(cat "$_p")" ;;
     *) return 2 ;;
   esac
@@ -576,7 +629,7 @@ if [ "$MODE" = "probe" ]; then
       fi
     fi
     [ "$cli" = "opencode" ] && printf '  %-9s %s\n' opencode "$(describe_default_model opencode)"
-    TIMEOUT=$(timeout_for "$cli"); [ "$TIMEOUT" -gt 180 ] && TIMEOUT=180
+    TIMEOUT=$(timeout_for "$cli"); STALL=$(stall_for "$cli"); [ "$TIMEOUT" -gt 180 ] && TIMEOUT=180
     s=$SECONDS; invoke "$cli" "$TMPP/p.txt" "$TMPP/$cli.out"; rc=$?; secs=$(( SECONDS - s ))
     ran=$(ran_model_of "$cli" "$TMPP/$cli.out"); ranfam=""; [ -n "$ran" ] && ranfam=$(classify_model "$ran")
     [ "$cli" = "codex" ] && [ -s "$TMPP/$cli.out.msg" ] && mv "$TMPP/$cli.out.msg" "$TMPP/$cli.out"
@@ -584,7 +637,7 @@ if [ "$MODE" = "probe" ]; then
     if [ "$rc" -eq 0 ] && [ "$bytes" -gt 0 ]; then
       printf '  %-9s ok    %3ss  %s%s\n' "$cli" "$secs" "$(head -c 60 "$TMPP/$cli.out" | tr '\n' ' ')" "${ran:+ · ran=$ran ($ranfam)}"; rc_all=0
     else
-      why="exit $rc"; [ "$rc" -eq 124 ] && why="timeout ${TIMEOUT}s"
+      why="exit $rc"; [ "$rc" -eq 124 ] && why="timeout ${TIMEOUT}s"; [ "$rc" -eq 118 ] && why="stalled ${STALL}s silent"
       printf '  %-9s FAIL  %3ss  %s — %s\n' "$cli" "$secs" "$why" "$(head -c 120 "$TMPP/$cli.out.err" | tr '\n' ' ')"
     fi
   done
@@ -782,7 +835,7 @@ preamble() { # $1 kind
   esac
 }
 budget_line() { # $1 seconds
-  _m=$(( ($1 + 59) / 60 ))
+  _m=$(( ( ($1 < 1800 ? $1 : 1800) + 59) / 60 ))   # planning horizon ≤ 30 min; the cap itself is runaway insurance (v2.129.0)
   printf 'Time budget: about %s minute(s) — a hard stop kills the run and loses everything. The brief and attachments are complete: do NOT run builds, test suites, linters, or package managers; read only the files the diff touches when you need surrounding context, and start writing your answer well before the budget ends. If the budget is nearly spent, stop and output what you have, prefixed PARTIAL.' "$_m"
 }
 BBYTES=$(wc -c < "$BODY" | tr -d ' ')
@@ -799,7 +852,7 @@ RUN_TAG="${JOB_ID_TAG:-fg-$$}"
 
 one() { # $1 cli → 0 ok / 1 fail; writes $TMPP/$1.{out,err,line,jsonl} — the PARENT appends .jsonl
   _c="$1"; _f=$(family_of "$_c"); _ts=$(date -u +%Y%m%dT%H%M%SZ)
-  TIMEOUT=$(timeout_for "$_c")
+  TIMEOUT=$(timeout_for "$_c"); STALL=$(stall_for "$_c")
   case "$_c" in codex|claude) ;; *) if [ "$BBYTES" -gt "$ARGV_CAP" ]; then
     printf '{"ts":"%s","phase":"external-fail","kind":"%s","cli":"%s","family":"%s","lead":"%s","reason":"prompt %s bytes exceeds the %s-byte argv cap for %s — trim attachments"}\n' \
       "$(iso_now)" "$KIND" "$_c" "$_f" "$LEAD" "$BBYTES" "$ARGV_CAP" "$_c" > "$TMPP/$_c.jsonl"
@@ -835,7 +888,9 @@ one() { # $1 cli → 0 ok / 1 fail; writes $TMPP/$1.{out,err,line,jsonl} — the
     printf 'ROLEPOD-XFAM ok kind=%s cli=%s family=%s raw=.rolepod/evidence/%s secs=%s budget=%ss%s%s\n' "$KIND" "$_c" "$_f" "$_raw" "$_secs" "$TIMEOUT" "$_partial" "${_ran:+ ran=$_ran}" > "$TMPP/$_c.line"
     return 0
   fi
-  _why="exit $_rc"; [ "$_rc" -eq 124 ] && _why="timeout ${TIMEOUT}s"
+  _why="exit $_rc"
+  [ "$_rc" -eq 118 ] && _why="stalled: no output for ${STALL}s (ran ${_secs}s, ${_bytes} bytes so far)"
+  if [ "$_rc" -eq 124 ]; then if [ "${_bytes:-0}" -gt 0 ]; then _why="timeout ${TIMEOUT}s (still producing output — runaway cap)"; else _why="timeout ${TIMEOUT}s (no output at all)"; fi; fi
   [ "$_rc" -eq 0 ] && _why="empty output ($_bytes bytes, floor $_floor)"
   _suffix="failed"
   if [ "$_rc" -eq 125 ]; then _suffix="partial"; if [ -n "$_partial" ]; then _why="PARTIAL review (budget nearly spent) — kept as evidence, not a pass"; else _why="review has no VERDICT line (incomplete) — kept as evidence, not a pass"; fi; fi

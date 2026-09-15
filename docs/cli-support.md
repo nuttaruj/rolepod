@@ -196,7 +196,7 @@ user once (installed candidates: `rolepod-cross-family --candidates`) and
 the answer is written to the file; rolepod never enables it unasked. List
 every CLI you use, the Lead's own included — it is skipped at run time, so
 one file serves every Lead. **Installed ≠ usable** is proven at invoke: exit ≠ 0, timeout
-(per member: `--timeout` > `timeout=` in the config > kind default — review 1800 s detached / 600 s foreground, consult 300, advise 900, critique 600; the prompt carries the budget; `--detach` runs the chain as a job so the 600 s harness cap never kills a slow member),
+(a member is killed when it goes SILENT — no new output for `stall` seconds: `--stall` > `stall=` in the config > 600 — not when it is slow; the wall-clock cap is runaway insurance only: `--timeout` > `timeout=` > kind default, review 7200 s detached / 600 s foreground, consult 300, advise 900, critique 600 (v2.129.0; measured: codex reviews run 15-29 min and stream the whole way); the prompt carries a ≤30-min planning budget; `--detach` runs the chain as a job so the 600 s harness cap never kills a slow member),
 or an answer under the floor (review < 500 bytes, consult / advise < 200)
 → `external-fail` phase-log line, next member; every member failed → exit
 3; empty pool → exit 4 — then the Lead's own path (internal strong
