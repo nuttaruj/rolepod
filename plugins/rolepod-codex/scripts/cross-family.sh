@@ -267,7 +267,7 @@ if [ "$MODE" = "kill" ]; then
 fi
 if [ "$MODE" = "collect" ]; then
   d="$JOBS/$COLLECT_ID"; [ -d "$d" ] || { echo "cross-family: no job $COLLECT_ID under $JOBS" >&2; exit 2; }
-  W="${FLAG_TIMEOUT:-1800}"; s=$SECONDS
+  W="${FLAG_TIMEOUT:-7200}"; s=$SECONDS   # one wake-up: the wait matches the detached review cap (v2.129.1), so a long codex run needs no second --collect
   while [ ! -f "$d/status" ]; do
     if ! job_alive "$d"; then
       sleep 1; [ -f "$d/status" ] && break
