@@ -539,7 +539,12 @@ invoke() { # $1 cli, $2 promptfile, $3 outfile — TIMEOUT already set for this 
     codex)    RUN_STDIN="$_p"; run_to "$_o" "$_bin" exec -s read-only --skip-git-repo-check --ephemeral --color never -C "$ROOT" -o "$_o.msg" - ;;
     claude)   RUN_STDIN="$_p"; run_to "$_o" "$_bin" -p --permission-mode plan --no-session-persistence ;;
     agy)      run_to "$_o" "$_bin" -p "$(cat "$_p")" --mode plan --print-timeout "${TIMEOUT}s" ;;
-    cursor)   run_to "$_o" "$_bin" -p --mode plan --output-format text --trust "$(cat "$_p")" ;;
+    # cursor: `ask` (read-only Q&A), never `plan` — plan mode emits its plan as an
+    # artifact and leaves stdout empty for a real brief (measured 2026-09-15,
+    # WalnutZite round-3 review: plan → 1 byte after 244 s; ask → the full
+    # 8.9 KB report in 229 s; a one-word prompt answers in both, which is why
+    # --probe never caught it).
+    cursor)   run_to "$_o" "$_bin" -p --mode ask --output-format text --trust "$(cat "$_p")" ;;
     opencode) run_to "$_o" "$_bin" run --agent plan "$(cat "$_p")" ;;
     *) return 2 ;;
   esac
