@@ -31,8 +31,13 @@ _fa=\$(printf '%s' "\$_raw" | grep -c 'runner reverts every edit outside this li
 printf 'codex | %s | ROLE=%s | BUDGET=%s | FILES_ALLOWED=%s\n' "\$(printf '%s' "\$*" | tr '\n' ' ')" "\$_role" "\${_bud:-none}" "\$_fa" >> "$LOG"
 _root=""; _msg=""; _prev=""; for a in "\$@"; do [ "\$_prev" = "-C" ] && _root="\$a"; [ "\$_prev" = "-o" ] && _msg="\$a"; _prev="\$a"; done
 case "\${STUB_codex:-ok}" in
-  hang) sleep 30 & wait; exit 0 ;;
+  hang) [ "\$_role" = implementer ] && [ -n "\$_root" ] && { mkdir -p "\$_root/src" "\$_root/stray"; printf 'half\n' > "\$_root/src/half.ts"; for _i in \$(seq 1 400); do printf 's\n' > "\$_root/stray/f\$_i.txt"; done; }; sleep 30 & wait; exit 0 ;;
   fail) echo "boom" >&2; exit 1 ;;
+  failafter) mkdir -p "\$_root/src"; printf 'broken\n' > "\$_root/src/broken.ts"; printf 'partial\n' >> "\$_root/README.md"; echo "crashed" >&2; exit 1 ;;
+  commit) mkdir -p "\$_root/src"; printf 'c\n' > "\$_root/src/c.ts"; git -C "\$_root" add -A; git -C "\$_root" -c user.email=m@m -c user.name=m commit -qm "member commit"; _role=none ;;
+  branch) git -C "\$_root" checkout -q -b evil; mkdir -p "\$_root/src"; printf 'b\n' > "\$_root/src/b.ts"; _role=none ;;
+  stash) printf 's\n' >> "\$_root/README.md"; git -C "\$_root" stash -q; _role=none ;;
+  nuke) git -C "\$_root" -c user.email=m@m -c user.name=m commit -q --allow-empty -m nuke; rm -rf "\$_root/.git"; _role=none ;;
   short) [ -n "\$_msg" ] && printf 'ok\n' > "\$_msg"; echo noise; exit 0 ;;
 esac
 case "\${STUB_codex:-ok}" in noop|leadrow|dirswap|libfile|forge|forgeonly|spacey) _role=none ;; esac   # these modes write only what they say
@@ -81,7 +86,9 @@ STUB
 chmod +x "$BIN/opencode"; export LOG_FILE="$LOG"
 cat > "$BIN/agy" <<'STUB'
 #!/bin/bash
-echo "agy | $*" >> "${LOG_FILE:?}"; printf 'agy review: %s\nVERDICT: APPROVED\n' "$(head -c 600 /dev/zero | tr '\0' a)"; exit 0
+echo "agy | $*" >> "${LOG_FILE:?}"
+if printf '%s' "$*" | grep -q -- '--mode accept-edits'; then _r=""; _p=""; for a in "$@"; do [ "$_p" = "--add-dir" ] && _r="$a"; _p="$a"; done; mkdir -p "$_r/src"; printf 'agy\n' > "$_r/src/from-agy.ts"; printf 'Implemented by agy.\nFiles touched: src/from-agy.ts\n%s\n' "$(head -c 300 /dev/zero | tr '\0' g)"; exit 0; fi
+printf 'agy review: %s\nVERDICT: APPROVED\n' "$(head -c 600 /dev/zero | tr '\0' a)"; exit 0
 STUB
 chmod +x "$BIN/agy"
 
@@ -222,6 +229,43 @@ out=$(STUB_codex=libfile bash "$RUNNER" --kind implement --brief "$BRIEF" --allo
 check "an existing directory named without a slash is a prefix (lib → lib/new.ts allowed, exit 0)" "[ $rc -eq 0 ] && printf '%s' \"$out\" | grep -q 'files=1' && [ -f '$REPO/lib/new.ts' ]"
 rm -f "$REPO/lib/new.ts"
 
+echo "── implement: restore on failure, fall-through, git-state violations (Task 4) ──"
+git -C "$REPO" checkout -q -- .; rm -rf "$REPO/src" "$REPO/my dir"; H0=$(git -C "$REPO" rev-parse HEAD)
+printf 'codex\nagy\n' > "$HOME/.rolepod/cross-family"; : > "$LOG"
+out=$(STUB_codex=failafter bash "$RUNNER" --kind implement --brief "$BRIEF" --allow README.md --allow src/ --lead claude --root "$REPO" 2>&1); rc=$?
+check "member exits 1 after half-writing → its edits reverted, next member (agy) implements from a clean tree, exit 0" "[ $rc -eq 0 ] && printf '%s' \"$out\" | grep -q 'cli=agy' && [ ! -e '$REPO/src/broken.ts' ] && ! grep -q partial '$REPO/README.md' && [ -f '$REPO/src/from-agy.ts' ]"
+check "external-fail line for codex says the tree was restored; a copy of the half-written file is kept" "grep -q '\"phase\":\"external-fail\",\"kind\":\"implement\",\"cli\":\"codex\".*tree restored' '$REPO/.rolepod/evidence/phase-log.jsonl' && grep -q broken '$REPO'/.rolepod/evidence/external/*codex*.reverted/src/broken.ts"
+rm -rf "$REPO/src"; printf 'codex\n' > "$HOME/.rolepod/cross-family"
+out=$(STUB_codex=hang ROLEPOD_XFAM_STALL=3 bash "$RUNNER" --kind implement --brief "$BRIEF" --allow README.md --allow src/ --lead claude --root "$REPO" 2>&1); rc=$?
+check "stalled member (rc 118) → tree restored (half.ts gone), exit 3 when no member is left" "[ $rc -eq 3 ] && [ ! -e '$REPO/src/half.ts' ] && printf '%s' \"$out\" | grep -q 'stalled'"
+printf 'codex\nagy\n' > "$HOME/.rolepod/cross-family"; : > "$LOG"
+out=$(STUB_codex=commit bash "$RUNNER" --kind implement --brief "$BRIEF" --allow README.md --allow src/ --lead claude --root "$REPO" 2>&1); rc=$?
+printf '%s\n' "$out" > "$FIX/out4.txt"
+check "member commits → exit 22 with git-state=1 exit= and a report= pointer" "[ $rc -eq 22 ] && printf '%s' \"$out\" | grep -q 'git-state=1 exit=0 reverted=1 report=.rolepod/evidence/external/'"
+check "member commits → HEAD back to the pre-run commit" "[ \"\$(git -C '$REPO' rev-parse HEAD)\" = '$H0' ]"
+check "member commits → tree back (src/c.ts gone)" "[ ! -e '$REPO/src/c.ts' ]"
+check "member commits → its commit stays in the reflog" "[ \"\$(git -C '$REPO' reflog | grep -c 'member commit')\" -ge 1 ]"   # grep -c, not -q: pipefail + an early-closing grep would fail the pipeline on git's SIGPIPE
+check "member commits → no fall-through (agy not run)" "! grep -q '^agy' '$LOG'"
+check "git-state violation is logged as external-fail with reason git-state" "grep -q '\"phase\":\"external-fail\",\"kind\":\"implement\",\"cli\":\"codex\".*\"reason\":\"git-state: HEAD' '$REPO/.rolepod/evidence/phase-log.jsonl'"
+B0=$(git -C "$REPO" symbolic-ref HEAD)
+out=$(STUB_codex=branch bash "$RUNNER" --kind implement --brief "$BRIEF" --allow README.md --allow src/ --lead claude --root "$REPO" 2>&1); rc=$?
+check "member switches branch → exit 22, HEAD symbolic ref restored, tree back" "[ $rc -eq 22 ] && [ \"\$(git -C '$REPO' symbolic-ref HEAD)\" = '$B0' ] && [ ! -e '$REPO/src/b.ts' ] && printf '%s' \"$out\" | grep -q 'branch refs/heads/'"
+git -C "$REPO" branch -q -D evil 2>/dev/null
+out=$(STUB_codex=stash bash "$RUNNER" --kind implement --brief "$BRIEF" --allow README.md --allow src/ --lead claude --root "$REPO" 2>&1); rc=$?
+check "member stashes → exit 22, the stash is reported and left in place, tree back" "[ $rc -eq 22 ] && printf '%s' \"$out\" | grep -q 'the stash ref changed' && git -C '$REPO' stash list | grep -q . && ! grep -q '^s$' '$REPO/README.md'"
+git -C "$REPO" stash drop -q 2>/dev/null; git -C "$REPO" checkout -q -- .; rm -rf "$REPO/src"; printf 'codex\n' > "$HOME/.rolepod/cross-family"
+git -C "$REPO" checkout -q --detach "$H0"
+out=$(STUB_codex=branch bash "$RUNNER" --kind implement --brief "$BRIEF" --allow README.md --allow src/ --lead claude --root "$REPO" 2>&1); rc=$?
+check "detached start + member checks out a branch and writes → HEAD detached at H0 again, the member's branch NOT rewound to H0" "[ $rc -eq 22 ] && ! git -C '$REPO' symbolic-ref -q HEAD >/dev/null && [ \"\$(git -C '$REPO' rev-parse HEAD)\" = '$H0' ] && [ ! -e '$REPO/src/b.ts' ]"
+git -C "$REPO" checkout -q "$(printf '%s' "$B0" | sed 's#refs/heads/##')"; git -C "$REPO" branch -q -D evil 2>/dev/null
+UNB="$FIX/unborn"; mkdir -p "$UNB/.rolepod/evidence"; git -C "$UNB" init -q; printf 'r\n' > "$UNB/README.md"
+out=$(STUB_codex=commit bash "$RUNNER" --kind implement --brief "$BRIEF" --allow README.md --allow src/ --lead claude --root "$UNB" 2>&1); rc=$?
+check "unborn HEAD + member makes the first commit → exit 22, the branch is unborn again, the tree back to the untracked README only" "[ $rc -eq 22 ] && ! git -C '$UNB' rev-parse -q --verify HEAD >/dev/null && [ ! -e '$UNB/src/c.ts' ] && [ -f '$UNB/README.md' ]"
+check "unborn case: nothing of the member's stays staged" "[ -z \"\$(git -C '$UNB' diff --cached --name-only 2>/dev/null)\" ]"
+NUKE="$FIX/nuke"; mkdir -p "$NUKE/.rolepod/evidence"; git -C "$NUKE" init -q; printf 'r\n' > "$NUKE/README.md"; git -C "$NUKE" add -A; git -C "$NUKE" -c user.email=t@t -c user.name=t commit -qm init
+out=$(STUB_codex=nuke bash "$RUNNER" --kind implement --brief "$BRIEF" --allow README.md --allow src/ --lead claude --root "$NUKE" 2>&1); rc=$?
+check "member commits then deletes .git → exit 22, no shell error, the line says the tree could NOT be restored" "[ $rc -eq 22 ] && ! printf '%s' \"$out\" | grep -q 'integer expression' && printf '%s' \"$out\" | grep -q 'could NOT be restored'"
+
 echo "── implement: a live job blocks a second one (either kind) ──"
 : > "$LOG"
 out=$(STUB_codex=hang bash "$RUNNER" --kind implement --brief "$BRIEF" --allow README.md --allow src/ --lead claude --root "$REPO" --detach 2>&1); rc=$?
@@ -237,6 +281,7 @@ bash "$RUNNER" --kill "$JOB" --root "$REPO" >/dev/null 2>&1
 check "--kill ends the job (status 137)" "[ \"\$(cat '$REPO/.rolepod/evidence/external/jobs/$JOB/status' 2>/dev/null)\" = 137 ]"
 sleep 2
 check "--kill took the member itself down (no stub process left in the fixture)" "! pgrep -f '$BIN/codex' >/dev/null"
+check "--kill restored the tree (src/half.ts and 400 stray files gone, git status clean)" "[ ! -e '$REPO/src/half.ts' ] && [ ! -d '$REPO/stray' ] && [ -z \"\$(git -C '$REPO' status --porcelain -- . ':(exclude).rolepod')\" ]"
 
 echo "── implement: opencode without project permissions is skipped, next member runs ──"
 : > "$LOG"; rm -f "$REPO/opencode.json"
@@ -261,4 +306,4 @@ git -C "$REPO" checkout -q -- README.md; rm -rf "$REPO/src"   # the ticket is cl
 out=$(bash "$RUNNER" --kind review --brief "$BRIEF" --lead claude --root "$REPO" 2>&1); rc=$?
 check "review still runs codex with -s read-only" "grep -q -- '-s read-only' '$LOG' && ! grep -q -- 'workspace-write' '$LOG'"
 
-if [ "$fail" -eq 0 ]; then echo "  all cross-family-implement checks passed"; else echo "  $fail cross-family-implement check(s) failed"; echo "--- out1:"; tail -5 "$FIX/out1.txt" 2>/dev/null; echo "--- out2:"; tail -5 "$FIX/out2.txt" 2>/dev/null; exit 1; fi
+if [ "$fail" -eq 0 ]; then echo "  all cross-family-implement checks passed"; else echo "  $fail cross-family-implement check(s) failed"; echo "--- out1:"; tail -5 "$FIX/out1.txt" 2>/dev/null; echo "--- out2:"; tail -5 "$FIX/out2.txt" 2>/dev/null; echo "--- out4:"; tail -3 "$FIX/out4.txt" 2>/dev/null; git -C "$REPO" reflog | head -3; exit 1; fi

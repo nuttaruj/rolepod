@@ -96,7 +96,7 @@
 #   cross-family.sh --pool-names [--lead <cli>]           # names only (hooks use this)
 #   cross-family.sh --probe [--lead <cli>]                # live "reply OK" per member
 #   cross-family.sh --candidates                          # every installed CLI, the Lead's own included (opt-in question)
-# Exit: 0 ok · 2 usage · 3 every member failed · 4 configured pool empty · 5 off · 6 job still running · 7 partial slice refused · 8 a job is live · 9 round breaker · 21 implement done, edits outside --allow reverted
+# Exit: 0 ok · 2 usage · 3 every member failed · 4 configured pool empty · 5 off · 6 job still running · 7 partial slice refused · 8 a job is live · 9 round breaker · 21 implement done, edits outside --allow reverted (in-scope work kept) · 22 implement member moved git state (refs + tree restored, nothing kept)
 set -uo pipefail
 
 KIND=""; BRIEF=""; LEAD="${ROLEPOD_LEAD_CLI:-}"; ALL=0; FLAG_TIMEOUT="${ROLEPOD_XFAM_TIMEOUT:-}"; FLAG_STALL="${ROLEPOD_XFAM_STALL:-}"
@@ -262,7 +262,8 @@ if [ "$MODE" = "kill" ]; then
   if [ -f "$d/status" ]; then echo "ROLEPOD-XFAM job=$KILL_ID already finished (exit $(job_status "$d"))"; exit 0; fi
   _kp=$(cat "$d/pid" 2>/dev/null)
   if job_alive "$d"; then   # the child is its own process group (set -m at spawn): the whole chain dies with it
-    kill -TERM -- "-$_kp" 2>/dev/null || kill -TERM "$_kp" 2>/dev/null || true; sleep 1
+    kill -TERM -- "-$_kp" 2>/dev/null || kill -TERM "$_kp" 2>/dev/null || true
+    _kw=0; while job_alive "$d" && [ "$_kw" -lt 120 ]; do sleep 0.5; _kw=$((_kw+1)); done   # the wrapper's TERM trap kills the member and, for implement, restores the tree (batched git calls; ~1500 stray paths in seconds) — up to 60 s, exits early
     job_alive "$d" && { kill -KILL -- "-$_kp" 2>/dev/null || kill -KILL "$_kp" 2>/dev/null || true; }
   fi
   date +%s > "$d/finished"; printf '137\n' > "$d/status"
@@ -571,7 +572,7 @@ run_to() { # $1 outfile, $2... command; stdin = $RUN_STDIN (a `&` job gets /dev/
   ( cd "$ROOT" && ROLEPOD_BRAIN_SILENT=1 exec "$@" ) < "$RUN_STDIN" > "$_out" 2> "$_out.err" &
   _pid=$!
   set +m
-  trap 'kill -TERM -- "-$_pid" 2>/dev/null; kill -TERM "$_pid" 2>/dev/null; sleep 1; kill -KILL -- "-$_pid" 2>/dev/null; kill -KILL "$_pid" 2>/dev/null; exit 143' TERM INT   # --kill / Ctrl-C reach the member too (it is its own group — set -m)
+  trap 'kill -TERM -- "-$_pid" 2>/dev/null; kill -TERM "$_pid" 2>/dev/null; sleep 1; kill -KILL -- "-$_pid" 2>/dev/null; kill -KILL "$_pid" 2>/dev/null; wait "$_pid" 2>/dev/null; [ "$KIND" = implement ] && [ -n "${_pre:-}" ] && implement_restore_all "$_pre" "${_save:-$EV/external/killed.reverted}" >/dev/null 2>&1; exit 143' TERM INT   # --kill / Ctrl-C reach the member too (it is its own group — set -m)
   _start=$SECONDS; _quiet=$SECONDS; _seen=0
   while kill -0 "$_pid" 2>/dev/null; do
     # Progress = bytes landing on stdout / stderr / the codex -o file. A member
@@ -641,28 +642,46 @@ implement_guard() { # $1 tree before, $2 tree after, $3 save dir → stdout "rev
   done > "$_gl"
   [ -s "$_gl" ] || { rm -f "$_gl"; return 0; }
   : > "$_gl.ci"; : > "$_gl.rs"; mkdir -p "$3" 2>/dev/null
+  git -C "$ROOT" ls-tree -r -z --name-only "$1" 2>/dev/null > "$_gl.pre"   # one git call: which outside paths existed before (restore) vs not (delete)
   while IFS= read -r _pa; do
     [ -n "$_pa" ] || continue
-    _d=$(dirname "$_pa"); _unsafe=0
-    while [ "$_d" != "." ] && [ "$_d" != "/" ]; do [ -L "$ROOT/$_d" ] && { _unsafe=1; break; }; _d=$(dirname "$_d"); done
+    _d="$_pa"; _unsafe=0
+    while :; do case "$_d" in */*) _d=${_d%/*} ;; *) break ;; esac; [ -L "$ROOT/$_d" ] && { _unsafe=1; break; }; done   # every leading directory, builtins only
     [ "$_unsafe" -eq 1 ] && { printf 'unsafe\t%s\n' "$_pa"; continue; }
+    case "$_pa" in */*) _pd=${_pa%/*} ;; *) _pd=. ;; esac
     if [ -L "$ROOT/$_pa" ]; then printf '%s -> %s (symlink, removed)\n' "$_pa" "$(readlink "$ROOT/$_pa" 2>/dev/null)" >> "$3/MANIFEST"
     elif [ -d "$ROOT/$_pa" ]; then printf '%s (directory, removed)\n' "$_pa" >> "$3/MANIFEST"
-    elif [ -f "$ROOT/$_pa" ]; then mkdir -p "$3/$(dirname "$_pa")" 2>/dev/null; cp -p "$ROOT/$_pa" "$3/$_pa" 2>/dev/null || :; fi
+    elif [ -f "$ROOT/$_pa" ]; then mkdir -p "$3/$_pd" 2>/dev/null; cp -p "$ROOT/$_pa" "$3/$_pa" 2>/dev/null || :; fi
     rm -rf "$ROOT/$_pa" 2>/dev/null || :   # a symlink or a directory the member put there is removed, never followed
-    git -C "$ROOT" cat-file -e "$1:$_pa" 2>/dev/null && printf '%s\0' "$_pa" >> "$_gl.ci"
     printf '%s\0' "$_pa" >> "$_gl.rs"
     printf 'reverted\t%s\n' "$_pa"
   done < "$_gl"
+  if [ -s "$_gl.rs" ]; then   # which removed paths existed before → restore list. Bytes in, bytes out (non-UTF-8 names survive); python failing falls back to the per-path probe — the files are already gone, so this step may never silently do nothing
+    if ! python3 -I - "$_gl.pre" "$_gl.rs" > "$_gl.ci" 2>/dev/null <<'PYC'
+import sys
+pre = set(p for p in open(sys.argv[1], "rb").read().split(b"\0") if p)
+sys.stdout.buffer.write(b"".join(p + b"\0" for p in open(sys.argv[2], "rb").read().split(b"\0") if p and p in pre))
+PYC
+    then : > "$_gl.ci"; tr '\0' '\n' < "$_gl.rs" | while IFS= read -r _pa; do git -C "$ROOT" cat-file -e "$1:$_pa" 2>/dev/null && printf '%s\0' "$_pa" >> "$_gl.ci"; done; fi
+  fi
   if [ -s "$_gl.ci" ]; then
     _ti=$(mktemp) && rm -f "$_ti" && ( export GIT_INDEX_FILE="$_ti"; git -C "$ROOT" read-tree "$1" 2>/dev/null && git -C "$ROOT" checkout-index -f -z --stdin < "$_gl.ci" 2>/dev/null ) || :
     rm -f "$_ti"
   fi
-  if [ -s "$_gl.rs" ]; then   # index back to HEAD on those paths (a Lead-staged version there is unstaged, never lost from the tree)
-    git -C "$ROOT" rev-parse --verify HEAD >/dev/null 2>&1 && tr '\0' '\n' < "$_gl.rs" | while IFS= read -r _pa; do git -C "$ROOT" reset -q -- "$_pa" 2>/dev/null || :; done
-    tr '\0' '\n' < "$_gl.rs" | while IFS= read -r _pa; do [ -e "$ROOT/$_pa" ] || rmdir -p "$ROOT/$(dirname "$_pa")" 2>/dev/null || :; done
+  if [ -s "$_gl.rs" ]; then   # index back to HEAD on those paths (a Lead-staged version there is unstaged, never lost from the tree) — batched, one git call per ~thousand paths
+    if git -C "$ROOT" rev-parse --verify HEAD >/dev/null 2>&1; then xargs -0 -n 1000 git -C "$ROOT" reset -q -- < "$_gl.rs" 2>/dev/null || :   # [ -s ] above is load-bearing: a bare `git reset --` would reset the whole index
+    else xargs -0 -n 1000 git -C "$ROOT" rm -q --cached --ignore-unmatch -- < "$_gl.rs" 2>/dev/null || :; fi   # unborn HEAD: nothing to reset to — unstage instead
+    tr '\0' '\n' < "$_gl.rs" | while IFS= read -r _pa; do case "$_pa" in */*) [ -e "$ROOT/$_pa" ] || rmdir -p "$ROOT/${_pa%/*}" 2>/dev/null || : ;; esac; done
   fi
-  rm -f "$_gl" "$_gl.ci" "$_gl.rs"
+  rm -f "$_gl" "$_gl.ci" "$_gl.rs" "$_gl.pre"
+}
+implement_restore_all() { # $1 tree before, $2 save dir → every change since $1 is reverted (copies kept); prints "<reverted> <left>" (left = symlink-shadowed paths the guard never writes through). A half-built ticket is not a deliverable.
+  _ra_post=$(snapshot_tree 2>/dev/null || true); [ -n "$1" ] && [ -n "$_ra_post" ] || { echo "0 0 nobase"; return 0; }   # third word: the snapshot failed — nothing could be reverted
+  _ra=$( ALLOW_LIST=""; implement_guard "$1" "$_ra_post" "$2" )
+  printf '%s %s' "$(printf '%s\n' "$_ra" | grep -c '^reverted' || true)" "$(printf '%s\n' "$_ra" | grep -c '^unsafe' || true)"
+}
+git_state() { # HEAD commit, HEAD symbolic ref, stash ref — what a member must never move
+  printf '%s %s %s' "$(git -C "$ROOT" rev-parse -q --verify HEAD 2>/dev/null || echo none)" "$(git -C "$ROOT" symbolic-ref -q HEAD 2>/dev/null || echo detached)" "$(git -C "$ROOT" rev-parse -q --verify refs/stash 2>/dev/null || echo none)"
 }
 phaselog_scrub() { # $1 byte offset of phase-log before the member ran, $2 member log file → prints "<forged> <moved>"
   # Lines appended while the member ran come from ITS hooks (route, dispatch, write-scope…) or from the member itself.
@@ -835,10 +854,6 @@ if [ "$KIND" = "implement" ]; then
 $ALLOW
 EOF
   [ -n "$ALLOW_LIST" ] || { echo "cross-family: --kind implement needs --allow <path> (repeatable: \`dir/\` = that directory and everything below, a bare name = that one file) — the runner reverts every edit outside the list" >&2; exit 2; }
-  if [ -z "$JOB_DIR" ] && git -C "$ROOT" rev-parse --verify HEAD >/dev/null 2>&1; then
-    _dirty=$(printf '%s\n' "$ALLOW_LIST" | while IFS= read -r _a; do git -C "$ROOT" status --porcelain -- "${_a%/}" 2>/dev/null; done | head -5)
-    [ -z "$_dirty" ] || { echo "cross-family: the allowed paths must start clean (a ticket begins from a committed slate on its own files): $(printf '%s' "$_dirty" | tr '\n' ' ')" >&2; exit 2; }
-  fi
 fi
 [ -n "$BRIEF" ] && [ -f "$BRIEF" ] || { echo "cross-family: --brief <file> required (write the cold-context brief to a file first)" >&2; exit 2; }
 case "$KIND" in
@@ -848,6 +863,17 @@ case "$KIND" in
   implement) PHASE=implement ;;
 esac
 
+# A live job on this tree is refused BEFORE the pool is judged: "the only member built this ticket" (exit 4) must not mask "a job is still running" (exit 8)
+if { [ "$KIND" = "review" ] || [ "$KIND" = "implement" ]; } && [ -z "$JOB_DIR" ] && [ -d "$JOBS" ]; then
+  for _ld in "$JOBS"/*-review-*/ "$JOBS"/*-implement-*/; do
+    [ -d "$_ld" ] || continue; [ -f "$_ld/status" ] && continue
+    job_alive "$_ld" || continue
+    _lid=$(basename "$_ld")
+    _lkind=$(printf '%s' "$_lid" | sed -n 's/^[^-]*-\([a-z]*\)-.*/\1/p'); _lkind=${_lkind:-external}; _lfix="rolepod-cross-family --collect $_lid (waits), then round 2 with --since $_lid"; [ "$_lkind" = implement ] && _lfix="rolepod-cross-family --collect $_lid (waits) or --kill $_lid"
+    echo "ROLEPOD-XFAM refused stacked — $_lkind job $_lid is still running ($(job_elapsed "$_ld") min) on this repo; a second review or implement on the same tree would race it. Fix: $_lfix. Abandon it instead: --kill $_lid."
+    exit 8
+  done
+fi
 if [ "$STATE" != "on" ]; then
   print_pool >&2
   echo "ROLEPOD-XFAM off — cross-family is opt-in and not enabled (lead=$LEAD; $CFG_SRC). Use the Lead's own path (internal strong reviewer / vertical consult). To enable, ASK the user which CLIs (candidates: ${CANDIDATES:-none}); $ENABLE_HINT"
@@ -868,15 +894,9 @@ fi
 # each with a 30-min member budget — all three timed out, zero verdicts.
 # The parent (not the detached child, which carries --job) refuses a second
 # review while one is alive; consult / advise / critique are unaffected.
-if { [ "$KIND" = "review" ] || [ "$KIND" = "implement" ]; } && [ -z "$JOB_DIR" ] && [ -d "$JOBS" ]; then
-  for _ld in "$JOBS"/*-review-*/ "$JOBS"/*-implement-*/; do
-    [ -d "$_ld" ] || continue; [ -f "$_ld/status" ] && continue
-    job_alive "$_ld" || continue
-    _lid=$(basename "$_ld")
-    _lkind=$(printf '%s' "$_lid" | sed -n 's/^[^-]*-\([a-z]*\)-.*/\1/p'); _lkind=${_lkind:-external}; _lfix="rolepod-cross-family --collect $_lid (waits), then round 2 with --since $_lid"; [ "$_lkind" = implement ] && _lfix="rolepod-cross-family --collect $_lid (waits) or --kill $_lid"
-    echo "ROLEPOD-XFAM refused stacked — $_lkind job $_lid is still running ($(job_elapsed "$_ld") min) on this repo; a second review or implement on the same tree would race it. Fix: $_lfix. Abandon it instead: --kill $_lid."
-    exit 8
-  done
+if [ "$KIND" = "implement" ] && [ -z "$JOB_DIR" ] && git -C "$ROOT" rev-parse --verify HEAD >/dev/null 2>&1; then   # after the live-job refusal: a ticket begins from a committed slate on its own files
+  _dirty=$(printf '%s\n' "$ALLOW_LIST" | while IFS= read -r _a; do git -C "$ROOT" status --porcelain -- "${_a%/}" 2>/dev/null; done | head -5)
+  [ -z "$_dirty" ] || { echo "cross-family: the allowed paths must start clean (a ticket begins from a committed slate on its own files): $(printf '%s' "$_dirty" | tr '\n' ' ')" >&2; exit 2; }
 fi
 
 # ── Round breaker (v2.99.0) ─────────────────────────────────────────────
@@ -1067,7 +1087,7 @@ BRIEF_SHA=$( { shasum -a 256 "$BODY" 2>/dev/null || sha256sum "$BODY" 2>/dev/nul
 JOB_ID_TAG=""; [ -n "$JOB_DIR" ] && JOB_ID_TAG=$(basename "$JOB_DIR")
 RUN_TAG="${JOB_ID_TAG:-fg-$$}"
 
-one() { # $1 cli → 0 ok / 1 fail / 21 implement done with outside edits reverted; writes $TMPP/$1.{out,err,line,jsonl} — the PARENT appends .jsonl
+one() { # $1 cli → 0 ok / 1 fail / 21 implement done with outside edits reverted / 22 implement git-state violation; writes $TMPP/$1.{out,err,line,jsonl} — the PARENT appends .jsonl
   _c="$1"; _f=$(family_of "$_c"); _ts=$(date -u +%Y%m%dT%H%M%SZ)
   TIMEOUT=$(timeout_for "$_c"); STALL=$(stall_for "$_c")
   case "$_c" in codex|claude) ;; *) if [ "$BBYTES" -gt "$ARGV_CAP" ]; then
@@ -1089,6 +1109,7 @@ one() { # $1 cli → 0 ok / 1 fail / 21 implement done with outside edits revert
     _pre=$(snapshot_tree 2>/dev/null || true)
     [ -f "$EV/phase-log.jsonl" ] && _pl0=$(wc -c < "$EV/phase-log.jsonl" | tr -d ' ')
     [ -f "$EV/edits.jsonl" ] && _el0=$(wc -c < "$EV/edits.jsonl" | tr -d ' ')
+    _gs0=$(git_state); _idx0=$(git -C "$ROOT" write-tree 2>/dev/null || true); _save="$EV/external/$_ts-$_c-$RUN_TAG.reverted"   # the index as it was, for a git-state violation
   fi   # the member's delta = tree after − tree before; the Lead's own WIP never travels
   _s=$SECONDS; invoke "$_c" "$TMPP/$_c.prompt" "$TMPP/$_c.out"; _rc=$?; _secs=$(( SECONDS - _s ))
   # codex streams its event log to stderr; the reviewer's answer is the -o message file
@@ -1098,6 +1119,38 @@ one() { # $1 cli → 0 ok / 1 fail / 21 implement done with outside edits revert
   # Information only — a member is never failed for its model family; a different CLI is the point (owner rule).
   _ran=$(ran_model_of "$_c" "$TMPP/$_c.out"); _ranfam=""
   if [ -n "$_ran" ]; then _ranfam=$(classify_model "$_ran"); [ "$_ranfam" != "unknown" ] && _f="$_ranfam"; fi
+  if [ "$KIND" = "implement" ] && [ -n "$_pre" ]; then
+    _gs1=$(git_state)
+    if [ "$_gs1" != "$_gs0" ]; then   # the member moved HEAD / switched branch / stashed: refs back (its commit stays in the reflog), tree back, no fall-through
+      read -r _h0 _sy0 _st0 <<EOF
+$_gs0
+EOF
+      read -r _h1 _sy1 _st1 <<EOF
+$_gs1
+EOF
+      if [ "$_sy0" = detached ]; then git -C "$ROOT" update-ref --no-deref HEAD "$_h0" 2>/dev/null   # detached start: move HEAD itself, never the branch the member may have checked out
+      else
+        git -C "$ROOT" symbolic-ref HEAD "$_sy0" 2>/dev/null
+        if [ "$_h0" = none ]; then git -C "$ROOT" update-ref -d "$_sy0" 2>/dev/null   # unborn start: the member's first commit made the branch exist — unmake it
+        else git -C "$ROOT" update-ref HEAD "$_h0" 2>/dev/null; fi
+      fi
+      read -r _nr _nl _nb <<EOF
+$(implement_restore_all "$_pre" "$_save")
+EOF
+      [ -n "$_idx0" ] && git -C "$ROOT" read-tree "$_idx0" 2>/dev/null   # AFTER the tree restore (the guard resets its paths): the index goes back exactly to its pre-run state — nothing of a violating run stays staged
+      _gnote="HEAD $_h0 → $_h1"; [ "$_sy0" != "$_sy1" ] && _gnote="$_gnote; branch $_sy0 → $_sy1"; [ "$_st0" != "$_st1" ] && _gnote="$_gnote; the stash ref changed ($_st0 → $_st1, left as is)"
+      _reflog="its commit stays in the reflog"; [ "$_h0" = none ] && _reflog="its commit is unreachable now (unborn branch unmade)"
+      _left=""; [ "${_nl:-0}" -gt 0 ] && _left=", $_nl path(s) left in place (a symlink in their leading path — inspect by hand)"
+      _saverel="${_save#$ROOT/}"
+      _treeback="the tree is back to the pre-run snapshot"; [ "${_nb:-}" = nobase ] && _treeback="the tree could NOT be restored (no snapshot possible after the member's changes — inspect by hand)"
+      _frep="external/$_ts-$_c-$RUN_TAG.failed.txt"
+      { printf '# rolepod cross-family implement GIT-STATE VIOLATION · cli=%s family=%s lead=%s · %s · exit=%s · %s · refs restored, %s path(s) reverted%s (copies under %s)\n\n--- stdout ---\n' "$_c" "$_f" "$LEAD" "$(iso_now)" "$_rc" "$_gnote" "$_nr" "$_left" "$_save"
+        cat "$TMPP/$_c.out"; printf '\n--- stderr ---\n'; cat "$TMPP/$_c.out.err"; } > "$EV/$_frep" 2>/dev/null || :
+      printf '%s\n' "{\"ts\":\"$(iso_now)\",\"phase\":\"external-fail\",\"kind\":\"implement\",\"cli\":\"$_c\",\"family\":\"$_f\",\"lead\":\"$LEAD\",\"secs\":$_secs,\"exit\":$_rc,\"reason\":\"git-state: $(jesc "$_gnote")\",\"reverted\":$_nr,\"left\":${_nl:-0},\"raw\":\"$_frep\"${JOB_ID_TAG:+,\"job\":\"$JOB_ID_TAG\"}}" > "$TMPP/$_c.jsonl"
+      printf 'ROLEPOD-XFAM violations kind=implement cli=%s family=%s git-state=1 exit=%s reverted=%s report=.rolepod/evidence/%s secs=%s — the member moved git state (%s); refs restored, %s, %s%s (copies under %s); this member is dropped, no fall-through\n' "$_c" "$_f" "$_rc" "$_nr" "$_frep" "$_secs" "$_gnote" "$_reflog" "$_treeback" "$_left" "$_saverel" > "$TMPP/$_c.line"
+      return 22
+    fi
+  fi
   _floor=200; [ "$KIND" = "review" ] && _floor=500   # the commit gate's raw-file floor
   _partial=""; head -c 400 "$TMPP/$_c.out" 2>/dev/null | grep -q 'PARTIAL' && _partial=" partial=1"
   _verdict=1; if [ "$KIND" = "review" ]; then grep -qi 'VERDICT' "$TMPP/$_c.out" 2>/dev/null || _verdict=0; fi
@@ -1113,7 +1166,7 @@ one() { # $1 cli → 0 ok / 1 fail / 21 implement done with outside edits revert
 $(phaselog_scrub "$_pl0" "$EV/external/$_ts-$_c-$RUN_TAG.member-phase-log.jsonl")
 EOF
     if [ -n "$_pre" ] && [ -n "$_post" ]; then
-      _guard=$(implement_guard "$_pre" "$_post" "$EV/external/$_ts-$_c-$RUN_TAG.reverted")
+      _guard=$(implement_guard "$_pre" "$_post" "$_save")
       _nout=$(printf '%s\n' "$_guard" | grep -c '^reverted' || true); _nunsafe=$(printf '%s\n' "$_guard" | grep -c '^unsafe' || true)
       if [ "$_nout" -gt 0 ]; then _post=$(snapshot_tree 2>/dev/null || true); [ -n "$_post" ] || { _resnap=failed; _post="$_pre"; }; fi   # the tree after the revert is what the patch describes
     fi
@@ -1161,6 +1214,15 @@ EOF
   _suffix="failed"
   if [ "$_rc" -eq 125 ]; then _suffix="partial"; if [ -n "$_partial" ]; then _why="PARTIAL review (budget nearly spent) — kept as evidence, not a pass"; else _why="review has no VERDICT line (incomplete) — kept as evidence, not a pass"; fi; fi
   _first=$(head -c 160 "$TMPP/$_c.out.err" 2>/dev/null | tr '\n' ' ')
+  if [ "$KIND" = "implement" ] && [ -n "$_pre" ]; then
+    read -r _nr _nl _nb <<EOF
+$(implement_restore_all "$_pre" "$_save")
+EOF
+    _saverel="${_save#$ROOT/}"
+    if [ "${_nb:-}" = nobase ]; then _why="$_why — tree NOT restored (no snapshot possible — inspect by hand before the next member runs)"
+    elif [ "${_nl:-0}" -gt 0 ]; then _why="$_why — tree restored ($_nr path(s) reverted, copies under $_saverel) EXCEPT $_nl path(s) under a symlinked directory (left in place — inspect before the next member runs)"
+    else _why="$_why — tree restored ($_nr path(s) reverted, copies under $_saverel); next member starts clean"; fi
+  fi
   { printf '# rolepod cross-family %s %s · cli=%s family=%s lead=%s · %s · %s · budget=%ss · run=%s\n\n--- stdout ---\n' "$KIND" "$(printf '%s' "$_suffix" | tr a-z A-Z)" "$_c" "$_f" "$LEAD" "$(iso_now)" "$_why" "$TIMEOUT" "$RUN_TAG"
     cat "$TMPP/$_c.out"; printf '\n--- stderr ---\n'; cat "$TMPP/$_c.out.err"; } > "$EV/external/$_ts-$_c-$RUN_TAG.$_suffix.txt" 2>/dev/null || true
   printf '%s\n' "{\"ts\":\"$(iso_now)\",\"phase\":\"external-fail\",\"kind\":\"$KIND\",\"cli\":\"$_c\",\"family\":\"$_f\",\"lead\":\"$LEAD\",\"secs\":$_secs,\"brief_sha\":\"$BRIEF_SHA\"${JOB_ID_TAG:+,\"job\":\"$JOB_ID_TAG\"},\"reason\":\"$(jesc "$_why: $_first")\"${_ran:+,\"ran\":\"$(jesc "$_ran")\"}}" > "$TMPP/$_c.jsonl"
@@ -1192,7 +1254,7 @@ FAILS=""
 for c in $USABLE; do
   one "$c"; _ok=$?
   [ -f "$TMPP/$c.jsonl" ] && jlog "$(cat "$TMPP/$c.jsonl")"
-  if [ "$_ok" -eq 0 ] || [ "$_ok" -eq 21 ]; then cat "$TMPP/$c.out"; echo; cat "$TMPP/$c.line"; exit "$_ok"; fi   # 21 = implement finished, edits outside --allow were reverted
+  if [ "$_ok" -eq 0 ] || [ "$_ok" -eq 21 ] || [ "$_ok" -eq 22 ]; then cat "$TMPP/$c.out"; echo; cat "$TMPP/$c.line"; exit "$_ok"; fi   # 21 = implement finished, edits outside --allow reverted (in-scope work kept) · 22 = git-state violation, everything reverted, member dropped
   FAILS="$FAILS${FAILS:+; }$(cat "$TMPP/$c.line")"
 done
 echo "ROLEPOD-XFAM none — $FAILS. Fall back to the internal strong reviewer / vertical consult and record the limitation."
