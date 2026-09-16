@@ -1016,6 +1016,8 @@ check "review-code: the diff is the task, never the whole plan" "grep -q 'never 
 check "write-plan: a task fits ONE fresh context window (measurable split rule)" "grep -q 'Size every task to ONE fresh context window' core/skills/write-plan/SKILL.md && grep -q '~400 changed lines' core/skills/write-plan/SKILL.md"
 check "implement-plan §6: both review axes dispatched in ONE message" "grep -q 'dispatched in ONE message and read together' core/skills/implement-plan/SKILL.md"
 check "review-code: R3 external = one anchored pass per ship group" "grep -q 'ONE anchored pass per ship group' core/skills/review-code/SKILL.md"
+check "review-code: R3 external skipped off money/auth/data after a clean internal round" "grep -q 'Skip it when the group is off money / auth / data AND the internal' core/skills/review-code/SKILL.md"
+check "review-code: round 2+ external only after a BLOCKER" "grep -q 're-runs only when its previous report carried a BLOCKER' core/skills/review-code/SKILL.md"
 for s in check-work review-code; do
   if grep -q 'the deliverable; stop here' "core/skills/$s/SKILL.md"; then
     echo "  ✓ $s hand-off carries the report-only exit"

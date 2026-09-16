@@ -57,11 +57,11 @@ rolepod-brain: add `brain_seed(task, agent: <reviewer id>)` verbatim; no tool �
 
 **By rigor tier** (R1 trivial edit · R2 one file + test · R3 multi-file · R4 high-risk):
 - **R1** → no review, no re-read turn; the edit tool's echo is the evidence.
-- **R2** → the `qa-tester` floor (balanced, the diff alone — the author never reviews own logic, a Lead-built R2 included). Matched row not qa-tester → add ONE concern-matched reviewer at balanced; pass the balanced model explicitly on a balanced role, but leave `universal-reviewer` model-less (a balanced pin voids its strong lift); strong stays reserved for final-pass / adversarial contexts.
-- **R3** → the row match, plus the cross-family external on the dominant axis when the pool is usable (logic-bearing diffs; doc / rename / config exempt) — ONE anchored pass per ship group, not per task.
+- **R2** → the `qa-tester` floor (balanced, the diff alone — the author never reviews own logic, a Lead-built R2 included). Matched row not qa-tester → add ONE concern-matched reviewer at balanced; pass the balanced model explicitly, but leave `universal-reviewer` model-less (a balanced pin voids its strong lift); strong is for final-pass / adversarial only.
+- **R3** → the row match, plus the cross-family external on the dominant axis when the pool is usable (logic-bearing diffs; doc / rename / config exempt) — ONE anchored pass per ship group, not per task. Skip it when the group is off money / auth / data AND the internal §6 round came back APPROVED / NITS.
 - **R4** → the full adversarial floor, never less. The router's comment/blank-only carve-out (1 file, ≤5 lines, zero logic) lands here as R2 + ONE strong reviewer; the cross-family anchor still applies while a pool is enabled.
 
-**Satellite-first strong pass.** A usable cross-family external IS the R4 strong adversarial pass: `rolepod-cross-family --kind review --brief <brief> --attach <diff> --detach` — read-only, the external's own default model, anchored by the runner (routing and degradation: `references/external-review-routing.md`). The commit gate counts only the runner's anchor.
+**Satellite-first strong pass.** A usable cross-family external IS the R4 strong adversarial pass: `rolepod-cross-family --kind review --brief <brief> --attach <diff> --detach` — read-only, the external's own default model, anchored by the runner. The commit gate counts only the runner's anchor.
 
 **Detach by default.** The runner returns a job id and runs the chain (first member → fallbacks) with each member's budget.
 - Dispatch the `qa-tester` floor and, on money / auth, the internal strong reviewer in the same breath; then keep working OUTSIDE the diff (a plan task on disjoint files) or end the turn.
@@ -124,12 +124,12 @@ Fill `templates/review-report.md`. Each finding: file:line, the issue, why it ma
 
 ### 5. Fix-verify loop
 
-Round 2+: `rolepod-cross-family --kind review --brief <brief> --since <previous job> --detach` — the runner attaches the fix delta plus the previous report, so the budget goes to the fixes; findings come back tagged IN-FIX / NEW / REPEAT; the internal round-2 reviewer gets the same two files. Confirm fixes add no new BLOCKER / MAJOR.
+Round 2+: `rolepod-cross-family --kind review --brief <brief> --since <previous job> --detach` — the runner attaches the fix delta plus the previous report, findings come back tagged IN-FIX / NEW / REPEAT; the internal round-2 reviewer gets the same two files.
 
 The reviewer who flagged the issue is not the final authority on whether it is fixed, and neither is whoever wrote the fix:
 - a subagent-built fix → `qa-tester` or the Lead's cold read;
 - a Lead-built fix → `qa-tester` at balanced (R4 → the internal strong reviewer), never the Lead.
-- The external re-runs only when the fix diff itself tiers R3+.
+- The external re-runs only when its previous report carried a BLOCKER and the fix diff tiers R3+; MAJOR-only or clean → the internal reviewer verifies the fix delta alone.
 - Author and reviewer disagree on merits → technical data > documented style guide > engineering principle > codebase consistency.
 
 **Breaker.** Two rounds is the budget — review, then confirm the fixes; a third is a reassessment point. Triggers, any one:
@@ -155,7 +155,7 @@ READ the round's merged findings without reacting → VERIFY each against the co
 
 Clarify unclear findings before touching anything LINKED to them; order blocking → simple → complex, testing each. No gratitude phrases — "Fixed in <file:line>." is the whole reply.
 
-**rolepod-brain:** `brain_note(agent: <reviewer id>, text: "avoid:|refine:|keep: <class>…")` per finding not applied as written; always on a user overrule. A test the author adds to close a finding is part of the fix delta — the next round's `qa-tester` judges it; the author's own green run closes nothing. Forbidden phrases, GitHub thread replies, YAGNI grep, source-specific handling: `references/receiving-findings.md`.
+**rolepod-brain:** `brain_note(agent: <reviewer id>, text: "avoid:|refine:|keep: <class>…")` per finding not applied as written; always on a user overrule. A test the author adds to close a finding is part of the fix delta — the next round's `qa-tester` judges it; the author's own green run closes nothing.
 
 ## If a matching Rolepod agent is available
 
