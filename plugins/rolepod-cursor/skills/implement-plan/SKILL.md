@@ -97,7 +97,7 @@ Worktrees only when tracks truly collide on filesystem state (generated files, b
 
 ### 6. Per-task review pipeline — two-stage, fresh-context
 
-A subagent returns `COMPLETED` → two reviewers in order on the diff alone (no implementer context). Each stage closes the same way — issue → implementer fixes → re-review — and stage 1 must approve before stage 2 starts: (1) **Spec compliance** — matches the task spec exactly, nothing missing, nothing extra; (2) **Code quality** — patterns, DRY, smell, test strength.
+A subagent returns `COMPLETED` → two reviewers on the diff alone (no implementer context), dispatched in ONE message and read together: (1) **Spec compliance** — matches the task spec exactly, nothing missing, nothing extra; (2) **Code quality** — patterns, DRY, smell, test strength. Each closes issue → fix → re-review; a BLOCKER on (1) goes back first.
 
 - Both stages mandatory for a delegated task touching a seam (caller / callee or shared-contract pair), an exported symbol, or >1 production file (its own test file does not count).
 - A delegated single-file seam-free task skips §6 and is covered by the final review — which then must be a dispatched reviewer (`universal-reviewer` or review-code's concern-matched row) holding the cumulative diff + the acceptance criteria.

@@ -12,8 +12,8 @@ Risk-appropriate review pressure on a finished change: multi-axis read, adversar
 <EXTREMELY-IMPORTANT>
 1. NEVER merge code on a high-risk surface (auth, billing, payments, credits, migration, data deletion, secrets, tokens, crypto, permissions, security) without an adversarial fresh-context review.
 2. NEVER let the author — or, for the adversarial pass, the author's own model — be the final reviewer of their own change.
-   - The external adversarial review runs in a **CLI** different from the Lead's, on that CLI's own default model (same vendor is acceptable — the other harness, context and defaults are the decorrelation).
-   - The vertical fallback (same CLI, stronger tier) and an inline advisor (it advises the author inside the author's context) never satisfy it; both only upgrade the Lead floor and are recorded as a limitation.
+   - The external adversarial review runs in a **CLI** different from the Lead's, on that CLI's own default model (same vendor is fine — harness, context and defaults decorrelate).
+   - The vertical fallback (same CLI, stronger tier) and an inline advisor (it advises the author inside the author's context) never satisfy it; both only raise the Lead floor and are recorded as a limitation.
 3. NEVER skip review because "tests pass". Tests prove the assertion, not the design.
 4. Findings before fixes — the whole round's findings, never the first report's. Severity-ordered list; no silent rewrite.
 5. The author MUST verify findings against the codebase before implementing. No performative agreement, no blind implementation; clarify unclear items before partial implementation — findings may be linked.
@@ -58,15 +58,15 @@ rolepod-brain: add `brain_seed(task, agent: <reviewer id>)` verbatim; no tool �
 **By rigor tier** (R1 trivial edit · R2 one file + test · R3 multi-file · R4 high-risk):
 - **R1** → no review, no re-read turn; the edit tool's echo is the evidence.
 - **R2** → the `qa-tester` floor (balanced, the diff alone — the author never reviews own logic, a Lead-built R2 included). Matched row not qa-tester → add ONE concern-matched reviewer at balanced; pass the balanced model explicitly on a balanced role, but leave `universal-reviewer` model-less (a balanced pin voids its strong lift); strong stays reserved for final-pass / adversarial contexts.
-- **R3** → the row match, plus the cross-family external on the diff's dominant axis when the pool is usable (any logic-bearing diff; doc / rename / config-only exempt).
+- **R3** → the row match, plus the cross-family external on the dominant axis when the pool is usable (logic-bearing diffs; doc / rename / config exempt) — ONE anchored pass per ship group, not per task.
 - **R4** → the full adversarial floor, never less. The router's comment/blank-only carve-out (1 file, ≤5 lines, zero logic) lands here as R2 + ONE strong reviewer; the cross-family anchor still applies while a pool is enabled.
 
 **Satellite-first strong pass.** A usable cross-family external IS the R4 strong adversarial pass: `rolepod-cross-family --kind review --brief <brief> --attach <diff> --detach` — read-only, the external's own default model, anchored by the runner (routing and degradation: `references/external-review-routing.md`). The commit gate counts only the runner's anchor.
 
 **Detach by default.** The runner returns a job id and runs the chain (first member → fallbacks) with each member's budget.
 - Dispatch the `qa-tester` floor and, on money / auth, the internal strong reviewer in the same breath; then keep working OUTSIDE the diff (a plan task on disjoint files) or end the turn.
-- `rolepod-cross-family --collect <job-id>` waits up to the budget — run it in a background call where the harness has one: one wake-up, no polling turns.
-- Foreground (no `--detach`) is for small diffs only — the harness caps a foreground call and kills a slow member mid-run.
+- `rolepod-cross-family --collect <job-id>` waits up to the budget — run it in a background call where the harness has one — one wake-up, no polling.
+- Foreground (no `--detach`) is for small diffs only — the harness caps a foreground call and kills a slow member.
 
 **Internal strong reviewer** (`security-engineer` / `universal-reviewer`) runs when any holds:
 - (a) cross-family is off, or the runner reports no usable member (every member failed / pool empty — logged; the internal pass then satisfies the gate);
