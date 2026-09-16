@@ -161,6 +161,8 @@ if [ -n "$_gr_root" ] && [ -d "$_gr_root/.rolepod/evidence/external/jobs" ] && [
     [ -n "$_under" ] || _under=$(git -C "$_gr_root" diff HEAD --name-only 2>/dev/null || true)
     if printf '%s\n' "$_under" | grep -qxF -- "$_gr_rel"; then
       _jid=$(basename "$_jd"); _js=$(cat "$_jd/started" 2>/dev/null || echo 0); _jm=$(( ($(date +%s) - _js) / 60 ))
+      _jk=$(printf '%s' "$_jid" | sed -n 's/^[^-]*-\([a-z]*\)-.*/\1/p'); _jk=${_jk:-review}
+      if [ "$_jk" = "implement" ]; then XFAM_INFLIGHT="⏸ EXTERNAL IMPLEMENT IN FLIGHT: cross-family job $_jid (running ${_jm} min) is EDITING '$_gr_rel' — this edit races the member's write and one of the two is lost. Fix: park the edit until \`rolepod-cross-family --collect $_jid\` returns; work outside the ticket's Files allowed meanwhile. Exception: a dead job → --collect says so and this line stops. "; break; fi
       XFAM_INFLIGHT="⏸ REVIEW IN FLIGHT: cross-family job $_jid (running ${_jm} min) reads '$_gr_rel' live — this edit turns its verdict into an artifact and re-runs the job. Fix: park the edit until \`rolepod-cross-family --collect $_jid\` returns; work outside the diff meanwhile. Exception: a dead job → --collect says so and this line stops. "
       break
     fi

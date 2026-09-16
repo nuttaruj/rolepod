@@ -85,7 +85,7 @@
 #            feed `rolepod-stats`). Jobs live under external/jobs/<id>/.
 #
 # Usage:
-#   cross-family.sh --kind review|consult|advise|critique --brief <file> [--attach <file>]...
+#   cross-family.sh --kind review|consult|advise|critique|implement --brief <file> [--attach <file>]...
 #                   [--lead <cli>] [--all] [--timeout <sec>] [--detach] [--partial-ok] [--since <job-id>] [--ledger <file>]
 #   cross-family.sh --rounds                               # review rounds since the last commit (breaker state)
 #   cross-family.sh --kill <job-id>                        # abandon a running job (status 137, no anchor)
@@ -474,6 +474,7 @@ timeout_for() { # $1 cli → seconds (flag > config > kind default) — the runa
     consult) echo 300 ;;
     advise) echo 900 ;;
     critique) echo 600 ;;
+    implement) if [ -n "$JOB_DIR" ]; then echo 3600; else echo 600; fi ;;
     *) echo 600 ;;
   esac
 }
@@ -541,6 +542,7 @@ run_to() { # $1 outfile, $2... command; stdin = $RUN_STDIN (a `&` job gets /dev/
   ( cd "$ROOT" && ROLEPOD_BRAIN_SILENT=1 exec "$@" ) < "$RUN_STDIN" > "$_out" 2> "$_out.err" &
   _pid=$!
   set +m
+  trap 'kill -TERM -- "-$_pid" 2>/dev/null; kill -TERM "$_pid" 2>/dev/null; sleep 1; kill -KILL -- "-$_pid" 2>/dev/null; kill -KILL "$_pid" 2>/dev/null; exit 143' TERM INT   # --kill / Ctrl-C reach the member too (it is its own group — set -m)
   _start=$SECONDS; _quiet=$SECONDS; _seen=0
   while kill -0 "$_pid" 2>/dev/null; do
     # Progress = bytes landing on stdout / stderr / the codex -o file. A member
@@ -556,11 +558,11 @@ run_to() { # $1 outfile, $2... command; stdin = $RUN_STDIN (a `&` job gets /dev/
     if [ -n "$_kill" ]; then
       kill -TERM -- "-$_pid" 2>/dev/null; kill -TERM "$_pid" 2>/dev/null; sleep 2
       kill -KILL -- "-$_pid" 2>/dev/null; kill -KILL "$_pid" 2>/dev/null
-      wait "$_pid" 2>/dev/null; return "$_kill"
+      wait "$_pid" 2>/dev/null; trap - TERM INT; return "$_kill"
     fi
     sleep 1
   done
-  wait "$_pid"
+  wait "$_pid"; _wrc=$?; trap - TERM INT; return $_wrc
 }
 _sz() { if [ -f "$1" ]; then wc -c < "$1" | tr -d ' '; else echo 0; fi; }
 cursor_unwrap() { # $1 outfile — stream-json → the final result text; the stream stays as $1.stream
@@ -582,13 +584,43 @@ for line in open(sys.argv[1], errors="replace"):
 sys.stdout.write(res)
 PY
 }
+opencode_write_ok() { # implement: headless `opencode run` blocks on tool approvals unless a config grants edit + bash — same lookup order as opencode_default_model, json or jsonc; the first config that states permissions decides
+  for _ocf in "$ROOT/opencode.jsonc" "$ROOT/opencode.json" \
+            "${OPENCODE_CONFIG_DIR:-}/opencode.jsonc" "${OPENCODE_CONFIG_DIR:-}/opencode.json" \
+            "$HOME/.config/opencode/opencode.jsonc" "$HOME/.config/opencode/opencode.json"; do
+    [ -n "$_ocf" ] && [ "$_ocf" != "/opencode.jsonc" ] && [ "$_ocf" != "/opencode.json" ] && [ -f "$_ocf" ] || continue
+    _r=$(python3 -I - "$_ocf" 2>/dev/null <<'PYP'
+import json, re, sys
+raw = open(sys.argv[1], encoding="utf-8", errors="replace").read()
+txt = re.sub(r"/\*.*?\*/", "", raw, flags=re.S)
+txt = re.sub(r"^\s*//.*$", "", txt, flags=re.M)
+txt = re.sub(r",\s*([}\]])", r"\1", txt)
+try:
+    p = (json.loads(txt) or {}).get("permission")
+except Exception:
+    p = None
+if not isinstance(p, dict):
+    print("none"); sys.exit(0)
+def ok(v): return v == "allow" or (isinstance(v, dict) and v.get("*") == "allow")
+print("yes" if ok(p.get("edit")) and ok(p.get("bash")) else "no")
+PYP
+)
+    case "$_r" in yes) return 0 ;; no) return 1 ;; esac
+  done
+  return 1
+}
 invoke() { # $1 cli, $2 promptfile, $3 outfile — TIMEOUT already set for this member
   _cli="$1"; _p="$2"; _o="$3"; _bin=$(bin_of "$_cli")
+  _w=0; [ "$KIND" = "implement" ] && [ "$MODE" != "probe" ] && _w=1   # WRITE mode only for --kind implement; --probe and every other kind stay read-only
   RUN_STDIN=/dev/null
   case "$_cli" in
-    codex)    RUN_STDIN="$_p"; run_to "$_o" "$_bin" exec -s read-only --skip-git-repo-check --ephemeral --color never -C "$ROOT" -o "$_o.msg" - ;;
-    claude)   RUN_STDIN="$_p"; run_to "$_o" "$_bin" -p --permission-mode plan --no-session-persistence ;;
-    agy)      run_to "$_o" "$_bin" -p "$(cat "$_p")" --add-dir "$ROOT" --mode plan --print-timeout "${TIMEOUT}s" ;;   # --add-dir: agy -p otherwise works in ~/.gemini/antigravity-cli/scratch, never the repo (measured 2026-09-16)
+    codex)    _sb=read-only; [ "$_w" -eq 1 ] && _sb=workspace-write
+              RUN_STDIN="$_p"; run_to "$_o" "$_bin" exec -s "$_sb" --skip-git-repo-check --ephemeral --color never -C "$ROOT" -o "$_o.msg" - ;;
+    claude)   RUN_STDIN="$_p"   # write: acceptEdits covers edits only — Bash (the ticket's test command) needs its own allow
+              if [ "$_w" -eq 1 ]; then run_to "$_o" "$_bin" -p --permission-mode acceptEdits --allowedTools Bash --no-session-persistence
+              else run_to "$_o" "$_bin" -p --permission-mode plan --no-session-persistence; fi ;;
+    agy)      _md=plan; [ "$_w" -eq 1 ] && _md=accept-edits
+              run_to "$_o" "$_bin" -p "$(cat "$_p")" --add-dir "$ROOT" --mode "$_md" --print-timeout "${TIMEOUT}s" ;;   # --add-dir: agy -p otherwise works in ~/.gemini/antigravity-cli/scratch, never the repo (measured 2026-09-16)
     # cursor: `ask` (read-only Q&A), never `plan` — plan mode emits its plan as an
     # artifact and leaves stdout empty for a real brief (measured 2026-09-15,
     # WalnutZite round-3 review: plan → 1 byte after 244 s; ask → the full
@@ -596,9 +628,10 @@ invoke() { # $1 cli, $2 promptfile, $3 outfile — TIMEOUT already set for this 
     # --probe never caught it).
     # stream-json (v2.129.0): text mode is silent until the end, so the stall
     # detector could not see it working; the stream also names the model.
-    cursor)   run_to "$_o" "$_bin" -p --mode ask --output-format stream-json --trust "$(cat "$_p")"; _rc=$?
+    cursor)   if [ "$_w" -eq 1 ]; then run_to "$_o" "$_bin" -p --force --trust --output-format stream-json "$(cat "$_p")"; _rc=$?
+              else run_to "$_o" "$_bin" -p --mode ask --output-format stream-json --trust "$(cat "$_p")"; _rc=$?; fi
               cursor_unwrap "$_o"; return $_rc ;;
-    opencode) run_to "$_o" "$_bin" run --agent plan "$(cat "$_p")" ;;
+    opencode) if [ "$_w" -eq 1 ]; then run_to "$_o" "$_bin" run "$(cat "$_p")"; else run_to "$_o" "$_bin" run --agent plan "$(cat "$_p")"; fi ;;
     *) return 2 ;;
   esac
 }
@@ -645,12 +678,14 @@ if [ "$MODE" = "probe" ]; then
 fi
 
 # ── Run ────────────────────────────────────────────────────────────────
-case "$KIND" in review|consult|advise|critique) ;; *) echo "cross-family: --kind review|consult|advise|critique required" >&2; exit 2 ;; esac
+case "$KIND" in review|consult|advise|critique|implement) ;; *) echo "cross-family: --kind review|consult|advise|critique|implement required" >&2; exit 2 ;; esac
+if [ "$KIND" = "implement" ] && [ "$ALL" -eq 1 ]; then echo "cross-family: --all is a read-only panel — implement runs ONE member at a time in one working tree (drop --all)" >&2; exit 2; fi
 [ -n "$BRIEF" ] && [ -f "$BRIEF" ] || { echo "cross-family: --brief <file> required (write the cold-context brief to a file first)" >&2; exit 2; }
 case "$KIND" in
   review) PHASE=review ;;
   consult) PHASE=consult ;;
   advise|critique) PHASE=advise ;;
+  implement) PHASE=implement ;;
 esac
 
 if [ "$STATE" != "on" ]; then
@@ -670,12 +705,13 @@ fi
 # each with a 30-min member budget — all three timed out, zero verdicts.
 # The parent (not the detached child, which carries --job) refuses a second
 # review while one is alive; consult / advise / critique are unaffected.
-if [ "$KIND" = "review" ] && [ -z "$JOB_DIR" ] && [ -d "$JOBS" ]; then
-  for _ld in "$JOBS"/*-review-*/; do
+if { [ "$KIND" = "review" ] || [ "$KIND" = "implement" ]; } && [ -z "$JOB_DIR" ] && [ -d "$JOBS" ]; then
+  for _ld in "$JOBS"/*-review-*/ "$JOBS"/*-implement-*/; do
     [ -d "$_ld" ] || continue; [ -f "$_ld/status" ] && continue
     job_alive "$_ld" || continue
     _lid=$(basename "$_ld")
-    echo "ROLEPOD-XFAM refused stacked — review job $_lid is still running ($(job_elapsed "$_ld") min) on this repo; a second review of the same tree doubles the budget for one verdict. Fix: rolepod-cross-family --collect $_lid (waits), then round 2 with --since $_lid. Abandon it instead: --kill $_lid."
+    _lkind=$(printf '%s' "$_lid" | sed -n 's/^[^-]*-\([a-z]*\)-.*/\1/p'); _lkind=${_lkind:-external}; _lfix="rolepod-cross-family --collect $_lid (waits), then round 2 with --since $_lid"; [ "$_lkind" = implement ] && _lfix="rolepod-cross-family --collect $_lid (waits) or --kill $_lid"
+    echo "ROLEPOD-XFAM refused stacked — $_lkind job $_lid is still running ($(job_elapsed "$_ld") min) on this repo; a second review or implement on the same tree would race it. Fix: $_lfix. Abandon it instead: --kill $_lid."
     exit 8
   done
 fi
@@ -809,7 +845,9 @@ EOF
   date +%s > "$JD/started"
   set -m; nohup bash "$0" "${CHILD_ARGS[@]}" > "$JD/out.txt" 2> "$JD/err.txt" < /dev/null & echo $! > "$JD/pid"; set +m
   TOS=""; for c in $USABLE; do TOS="$TOS${TOS:+ }$c=$( JOB_DIR="$JD" timeout_for "$c" )s"; done
-  echo "ROLEPOD-XFAM job=$JOB_ID kind=$KIND members=$USABLE budgets=$TOS — the tree under review is FROZEN until collected (work outside the diff; no stash / reset / checkout); collect with: rolepod-cross-family --collect $JOB_ID --root $ROOT   (list: --jobs --root $ROOT). The chain falls through on its own and anchors the receipt; the commit gate sees the job."
+  FROZEN_MSG="the tree under review is FROZEN until collected (work outside the diff; no stash / reset / checkout)"
+  [ "$KIND" = "implement" ] && FROZEN_MSG="the member is EDITING this tree until collected — touch only files outside its Files allowed (no stash / reset / checkout)"
+  echo "ROLEPOD-XFAM job=$JOB_ID kind=$KIND members=$USABLE budgets=$TOS — ${FROZEN_MSG}; collect with: rolepod-cross-family --collect $JOB_ID --root $ROOT   (list: --jobs --root $ROOT). The chain falls through on its own and anchors the receipt; the commit gate sees the job."
   exit 0
 fi
 TMPP=$(mktemp -d "${TMPDIR:-/tmp}/rolepod-xfam.XXXXXX")
@@ -831,11 +869,13 @@ preamble() { # $1 kind
     review) printf '%s' "You are a cold-context ADVERSARIAL code reviewer running in a different CLI than the author. Read only — never edit files, never run write commands. Try to make the change fail. Report findings severity-ordered (BLOCKER / MAJOR / MINOR / NIT) with file:line, label each TRACED (path walked) or SUSPECTED (pattern-level), name what is missing as hard as what is present, then end with one line: VERDICT: APPROVED | APPROVED-WITH-NITS | REJECTED. Label every finding's provenance: INTRODUCED (this diff caused it), EXPOSED (pre-existing, on a path this diff changes) or ADJACENT (pre-existing, path untouched) — the diff is the scope, ADJACENT findings are reported once under their own heading and never drive the verdict. If a previous round's report is attached, also prefix every finding with IN-FIX (a defect inside the previous round's fixes), NEW (not flagged before) or REPEAT (flagged before, still open); an ADJACENT item already listed there is not repeated." ;;
     consult) printf '%s' "You are a cold-context debugging advisor running in a different CLI than the author. The author has failed twice; do not repeat their fixes. Read only — never edit files. Return exactly one of: CORRECTION (new hypothesis + the smallest change to test it), CONFIRMATION (approach right — check X), or STOP (wrong path — why). Reason from the evidence given; say what you would verify first." ;;
     advise) printf '%s' "You are a cold-context planning advisor running in a different CLI than the author. Advise, never execute: return a RECOMMENDED option with reasoning and the risks you see, or a CORRECTION if the framing or all options are flawed, or a STOP signal. Do not edit files or run the plan." ;;
+    implement) printf '%s' "You are an external IMPLEMENTER running in a different CLI than the Lead. Build exactly the ticket below inside this repository's working tree — nothing more. Hard lines: never run git commit, push, stash, checkout, reset or rebase (the Lead reviews and commits); never edit a path outside the ticket's Files allowed; never expand scope — a new idea goes into the report. Run the ticket's test command. End with a report: files touched, tests run and their result, what is NOT done." ;;
     critique) printf '%s' "You are a cold-context spec critic running in a different CLI than the author. The author has finished their discovery dialogue with the user (the questions already asked and answered are attached — never re-ask those). Return AT MOST 5 items, ranked by implementation risk, each tagged QUESTION (a decision only the user can make — the answer would change the implementation), AMBIGUITY (wording two engineers would read differently — quote it), or MISSING (an acceptance criterion, failure mode, or edge case with no 'proven by'). No design proposals, no praise, no restating the spec. If nothing material remains, reply exactly: NO FURTHER QUESTIONS." ;;
   esac
 }
 budget_line() { # $1 seconds
   _m=$(( ( ($1 < 1800 ? $1 : 1800) + 59) / 60 ))   # planning horizon ≤ 30 min; the cap itself is runaway insurance (v2.129.0)
+  if [ "$KIND" = "implement" ]; then printf 'Time budget: about %s minute(s) — a hard stop kills the run mid-edit and nothing half-written counts as delivered. Build the ticket, run only its test command, then report.' "$_m"; return; fi
   printf 'Time budget: about %s minute(s) — a hard stop kills the run and loses everything. The brief and attachments are complete: do NOT run builds, test suites, linters, or package managers; read only the files the diff touches when you need surrounding context, and start writing your answer well before the budget ends. If the budget is nearly spent, stop and output what you have, prefixed PARTIAL.' "$_m"
 }
 BBYTES=$(wc -c < "$BODY" | tr -d ' ')
@@ -858,10 +898,16 @@ one() { # $1 cli → 0 ok / 1 fail; writes $TMPP/$1.{out,err,line,jsonl} — the
       "$(iso_now)" "$KIND" "$_c" "$_f" "$LEAD" "$BBYTES" "$ARGV_CAP" "$_c" > "$TMPP/$_c.jsonl"
     printf '%s: prompt %s bytes > argv cap %s\n' "$_c" "$BBYTES" "$ARGV_CAP" > "$TMPP/$_c.line"; return 1; fi ;; esac
   { preamble "$KIND"; printf '\n\n'; budget_line "$TIMEOUT"; printf '\n\n'; cat "$BODY"; } > "$TMPP/$_c.prompt"
+  if [ -z "$JOB_DIR" ] && [ "$KIND" = "implement" ]; then echo "⚠ implement in the foreground: the Claude Bash tool's 600 s cap can kill the member mid-edit — prefer --detach (job + --collect)" >&2; fi
   if [ -z "$JOB_DIR" ] && [ "$TIMEOUT" -gt 600 ]; then
     echo "⚠ $_c budget ${TIMEOUT}s exceeds the 600 s foreground cap of the Claude Bash tool — prefer --detach (job + --collect) so the harness cannot kill the chain mid-run" >&2
   fi
   echo "→ $_c ($_f) · $KIND · budget ${TIMEOUT}s" >&2
+  if [ "$KIND" = "implement" ] && [ "$_c" = "opencode" ] && ! opencode_write_ok; then
+    printf '{"ts":"%s","phase":"external-fail","kind":"implement","cli":"opencode","family":"%s","lead":"%s","reason":"no opencode config grants edit+bash (checked the project, OPENCODE_CONFIG_DIR and ~/.config/opencode) — headless opencode would block on approvals"}\n' "$(iso_now)" "$_f" "$LEAD" > "$TMPP/$_c.jsonl"
+    printf 'opencode: no opencode config grants edit+bash (checked the project, OPENCODE_CONFIG_DIR and ~/.config/opencode; headless run would block on approvals) — skipped\n' > "$TMPP/$_c.line"; return 1
+  fi
+  _pre=""; [ "$KIND" = "implement" ] && _pre=$(snapshot_tree 2>/dev/null || true)   # the member's delta = tree after − tree before; the Lead's own WIP never travels
   _s=$SECONDS; invoke "$_c" "$TMPP/$_c.prompt" "$TMPP/$_c.out"; _rc=$?; _secs=$(( SECONDS - _s ))
   # codex streams its event log to stderr; the reviewer's answer is the -o message file
   if [ "$_c" = "codex" ] && [ -s "$TMPP/$_c.out.msg" ]; then mv "$TMPP/$_c.out" "$TMPP/$_c.out.stream"; mv "$TMPP/$_c.out.msg" "$TMPP/$_c.out"; fi
@@ -878,6 +924,20 @@ one() { # $1 cli → 0 ok / 1 fail; writes $TMPP/$1.{out,err,line,jsonl} — the
   # *.partial.txt, logged as external-fail, and the chain moves on.
   if [ "$_rc" -eq 0 ] && [ "$_bytes" -ge "$_floor" ] && [ "$KIND" = "review" ] && { [ -n "$_partial" ] || [ "$_verdict" -eq 0 ]; }; then
     _rc=125
+  fi
+  if [ "$_rc" -eq 0 ] && [ "$_bytes" -ge "$_floor" ] && [ "$KIND" = "implement" ]; then
+    _patch="external/$_ts-$_c-$RUN_TAG.patch"; _post=$(snapshot_tree 2>/dev/null || true)
+    _base=git; if [ -n "$_pre" ] && [ -n "$_post" ]; then git -C "$ROOT" diff-tree -p "$_pre" "$_post" > "$EV/$_patch" 2>/dev/null || :; else _base=none; : > "$EV/$_patch"; fi   # no baseline (not a git repo) is said out loud, never read as files=0
+    _files=$(grep -c '^diff --git ' "$EV/$_patch" 2>/dev/null); _files=${_files:-0}
+    _patch_line="patch=.rolepod/evidence/$_patch"; [ "$_base" = none ] && _patch_line="patch=none (no tree baseline: not a git repo — the member's edits are in the tree, uncounted)"
+    _rep="external/$_ts-$_c-$RUN_TAG.txt"
+    { printf '# rolepod cross-family implement · cli=%s family=%s lead=%s (%s) · %s · exit=%s secs=%s bytes=%s budget=%ss files=%s%s\n# brief: %s\n\n' \
+        "$_c" "$_f" "$LEAD" "$LEAD_FAMILY" "$(iso_now)" "$_rc" "$_secs" "$_bytes" "$TIMEOUT" "$_files" "${_ran:+ ran=$_ran}" "$BRIEF"
+      cat "$TMPP/$_c.out"; } > "$EV/$_rep" 2>/dev/null || :
+    if [ -n "$JOB_DIR" ]; then cp "$TMPP/$_c.out" "$JOB_DIR/report.txt" 2>/dev/null || :; cp "$EV/$_patch" "$JOB_DIR/patch.diff" 2>/dev/null || :; fi
+    printf '%s\n' "{\"ts\":\"$(iso_now)\",\"phase\":\"$PHASE\",\"kind\":\"$KIND\",\"cli\":\"$_c\",\"family\":\"$_f\",\"model\":\"default\",\"report\":\"$_rep\",\"patch\":\"$_patch\",\"baseline\":\"$_base\",\"files\":$_files,\"lead\":\"$LEAD\",\"secs\":$_secs,\"budget\":$TIMEOUT,\"brief_sha\":\"$BRIEF_SHA\"${JOB_ID_TAG:+,\"job\":\"$JOB_ID_TAG\"}${_ran:+,\"ran\":\"$(jesc "$_ran")\"}}" > "$TMPP/$_c.jsonl"
+    printf 'ROLEPOD-XFAM ok kind=implement cli=%s family=%s files=%s %s report=.rolepod/evidence/%s secs=%s budget=%ss%s\n' "$_c" "$_f" "$_files" "$_patch_line" "$_rep" "$_secs" "$TIMEOUT" "${_ran:+ ran=$_ran}" > "$TMPP/$_c.line"
+    return 0
   fi
   if [ "$_rc" -eq 0 ] && [ "$_bytes" -ge "$_floor" ]; then
     _raw="external/$_ts-$_c-$RUN_TAG.txt"
