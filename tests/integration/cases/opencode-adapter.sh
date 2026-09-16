@@ -133,6 +133,8 @@ const fakeClient = { session: { messages: async () => ({ data: [
 const plugin2 = await RolepodPlugin({ directory: process.cwd(), client: fakeClient })
 await plugin2.event({ event: { type: 'session.created', properties: { info: { id: 'ses-route-test' } } } })
 await plugin2['chat.message']({ sessionID: 'ses-route-test' }, { message: {}, parts: [{ type: 'text', text: 'fix the login bug' }] })
+await plugin2.event({ event: { type: 'session.created', properties: { info: { id: 'ses-child-task' } } } })   // a task subagent's session must not shadow the Lead's
+await plugin2.event({ event: { type: 'session.idle', properties: { sessionID: 'ses-child-task' } } })
 await plugin2.event({ event: { type: 'session.idle', properties: { sessionID: 'ses-route-test' } } })
 res.routeLine = fs.readFileSync(log, 'utf8').includes('"phase":"route","tier":"R2","skill":"implement-plan"')
 await plugin2.event({ event: { type: 'session.idle', properties: { sessionID: 'ses-route-test' } } })

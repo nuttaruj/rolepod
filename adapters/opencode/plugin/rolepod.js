@@ -253,9 +253,15 @@ export const RolepodPlugin = async ({ directory, client }) => {
     event: async ({ event }) => {
       try {
         if (event?.type === "session.created") {
-          sessionId =
-            event?.properties?.info?.id ?? `opencode-${process.pid}-${Date.now()}`
-          registerLock(sessionId)
+          // The first session this process sees is the Lead's; a task subagent
+          // creates a child session later and must not become "the session"
+          // (measured live 2026-09-16: the child's id shadowed the parent's and
+          // the parent's session.idle never matched, so no route was recorded).
+          if (!sessionId) {
+            sessionId =
+              event?.properties?.info?.id ?? `opencode-${process.pid}-${Date.now()}`
+            registerLock(sessionId)
+          }
         } else if (event?.type === "session.compacted") {
           toast(REANCHOR_MSG)
         } else if (event?.type === "session.idle") {
