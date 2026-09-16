@@ -620,13 +620,14 @@ render_antigravity() {
   # Agents — md + YAML frontmatter (agy subagents reuse the gemini shape).
   render_agents "gemini" "$plugin_dst/agents"
 
-  # Hooks — agy-native event wiring (hooks.json) + the gemini hook scripts
-  # reused verbatim (CLI-agnostic context emitters). agy has no PreCompress
-  # event, so the gemini pre-compress checkpoint script is not copied.
-  # agy plugin hooks.json lives at the PLUGIN ROOT (verified via `agy plugin
-  # validate` on agy 1.0.13 — a hooks/hooks.json subpath is "not found", and
-  # events must be top-level, not wrapped in a plugin-name key). Hook scripts
-  # stay under hooks/ and are referenced as ${extensionPath}/hooks/*.sh.
+  # Hooks — agy-native event wiring (hooks.json at the PLUGIN ROOT) + four
+  # agy-native scripts. Contract measured live on agy 1.2.3 (2026-09-16):
+  # events sit under ONE name key ({"rolepod": {...}} — a flat top-level
+  # manifest fails to parse and no hook ever fires), commands are relative
+  # to the hooks.json directory (`hooks/x.sh`; ${extensionPath} is passed
+  # through literally), stdin is camelCase (toolCall / workspacePaths /
+  # conversationId), and only a PreToolUse {decision, reason} is an accepted
+  # result — every other output, `{}` included, blocks the tool.
   mkdir -p "$plugin_dst/hooks"
   if [ -f "$adapter_dir/hooks/hooks.json" ]; then
     cp "$adapter_dir/hooks/hooks.json" "$plugin_dst/hooks.json"
@@ -634,14 +635,17 @@ render_antigravity() {
     echo "render: missing $adapter_dir/hooks/hooks.json" >&2; exit 1
   fi
   local h
-  for h in session-start before-tool after-tool claim-verify-nudge; do
-    cp "$REPO_DIR/adapters/gemini/hooks/$h.sh" "$plugin_dst/hooks/$h.sh"
+  for h in session-start model-log pre-tool stop-unlock; do
+    cp "$adapter_dir/hooks/$h.sh" "$plugin_dst/hooks/$h.sh"
   done
-  # agy-only: Stop unlock (Gemini CLI never had a Stop event; agy does) +
-  # model-log (agy auto-selects models; the hook input's modelName is the
-  # only visibility into what it picked).
-  cp "$adapter_dir/hooks/stop-unlock.sh" "$plugin_dst/hooks/stop-unlock.sh"
-  cp "$adapter_dir/hooks/model-log.sh" "$plugin_dst/hooks/model-log.sh"
+  # Shared commit gate reused verbatim: pre-tool.sh translates agy's
+  # run_command call into the Claude-shape stdin precommit-gate.sh expects
+  # and its deny back into agy's {decision, reason}; test-diff-lint.sh rides
+  # along (the gate calls it by dirname). No lib/ — agy has no Claude
+  # transcript, so the gate takes its non-Claude evidence path (phase-log).
+  for h in precommit-gate test-diff-lint; do
+    cp "$REPO_DIR/hooks/$h.sh" "$plugin_dst/hooks/$h.sh"
+  done
   chmod +x "$plugin_dst/hooks/"*.sh 2>/dev/null || true
 
   render_evidence_scripts "$plugin_dst"

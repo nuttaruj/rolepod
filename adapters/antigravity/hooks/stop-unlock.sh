@@ -1,28 +1,29 @@
 #!/usr/bin/env bash
 # rolepod / Antigravity Stop hook — release this session's worktree lock.
 #
-# agy exposes a Stop event (execution loop terminated) that Gemini CLI never
-# had, so the lock registered by session-start.sh at PreInvocation can now be
-# released instead of waiting out the 30-min stale prune. Lock id mirrors
-# session-start.sh exactly (auto-$PPID under sha256(worktree)[:16]) — both
-# hooks are spawned by the same agy session process. A PPID mismatch removes
-# nothing and the stale prune still covers it: strictly fail-open.
-#
-# Contract (agy hooks, gemini-compatible): stdout = single JSON object or
-# empty, exit 0. Stop needs no output — observe-only here (we never set
-# decision: continue).
+# Mirrors session-start.sh exactly: lock id agy-<conversationId> under
+# sha256(worktree)[:16], worktree from workspacePaths[0]. A miss removes
+# nothing and the 30-min stale prune in the other CLIs' guards still covers
+# it — strictly fail-open. Prints nothing: agy's Stop result accepts no
+# field we would want to send (measured 2026-09-16).
+set -uo pipefail
 
-set -euo pipefail
+IN=$(cat 2>/dev/null || true)
+[ -n "$IN" ] || exit 0
 
-PROJECT_DIR="${GEMINI_PROJECT_DIR:-${CLAUDE_PROJECT_DIR:-$PWD}}"
+IFS=$'\t' read -r WS SID <<< "$(printf '%s' "$IN" | python3 -I -c '
+import json, sys
+try:
+    d = json.load(sys.stdin)
+except Exception:
+    sys.exit(0)
+ws = (d.get("workspacePaths") or [""])[0] or ""
+print(ws + "\t" + (d.get("conversationId") or ""))
+' 2>/dev/null || true)"
+[ -n "${WS:-}" ] && [ -n "${SID:-}" ] || exit 0
 
-if command -v git >/dev/null 2>&1; then
-  _wt=$(git -C "$PROJECT_DIR" rev-parse --show-toplevel 2>/dev/null || echo "")
-  if [ -n "$_wt" ]; then
-    _h=$(printf '%s' "$_wt" | { shasum -a 256 2>/dev/null || sha256sum 2>/dev/null; } | awk '{print $1}' | head -c 16)
-    _ld="$HOME/.rolepod/session-locks/$_h"
-    rm -f "$_ld/auto-$PPID.lock" "$_ld/auto-$PPID.files" 2>/dev/null || true
-  fi
-fi
-
+WT=$(git -C "$WS" rev-parse --show-toplevel 2>/dev/null) || exit 0
+H=$(printf '%s' "$WT" | { shasum -a 256 2>/dev/null || sha256sum 2>/dev/null; } | awk '{print $1}' | head -c 16)
+LD="$HOME/.rolepod/session-locks/$H"
+rm -f "$LD/agy-$SID.lock" "$LD/agy-$SID.files" 2>/dev/null || true
 exit 0

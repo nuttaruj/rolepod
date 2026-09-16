@@ -489,6 +489,20 @@ The Cursor adapter ships **3 core hooks** in `adapters/cursor/scripts/`, paralle
 
 Cursor uses camelCase event names (`sessionStart`, `preToolUse`, `beforeShellExecution`) vs Claude's PascalCase. The `matcher` field accepts regex patterns matched against tool name (`preToolUse`) or full shell command (`beforeShellExecution`).
 
+## Antigravity adapter mapping (v2.131.0)
+
+Contract measured live on agy 1.2.3 (2026-09-16); the previous flat `hooks.json` never parsed on agy ≥1.1, so no rolepod hook had ever fired there. The plugin ships **4 core hook scripts** at `hooks/` plus the shared gate pair (`precommit-gate.sh`, `test-diff-lint.sh`) it delegates to:
+
+| Claude hook | agy mapping |
+|---|---|
+| `session-lifecycle.sh --lock` + `project-context-loader.sh` | `hooks/session-start.sh` on `PreInvocation` — writes `.rolepod/parent-active` and the `agy-<conversationId>` session lock (same lock dir as every CLI); prints nothing |
+| `dispatch-auto-log.sh` | `hooks/model-log.sh` on `PreInvocation` — one `dispatch-proof` phase-log line per model change (agy auto-selects models) |
+| `precommit-gate.sh` (PreToolUse:Bash) | `hooks/pre-tool.sh` on `PreToolUse` matcher `run_command` — translates agy's `toolCall.args.CommandLine/Cwd` into the Claude-shape stdin, runs the shared `precommit-gate.sh` in the tool's cwd, and returns its deny as `{"decision": "deny", "reason": "..."}`; every other verdict is silence |
+| `session-lifecycle.sh --unlock` | `hooks/stop-unlock.sh` on `Stop` |
+| `always-on-loader.sh`, `terse-loader.sh`, `claim-verify-nudge.sh`, `gate-reminder.sh`, `worktree-guard.sh`, `sweep-nudge.sh`, … | **not portable** — agy accepts no context field on any hook result (`systemMessage`, `additionalContext`, `hookSpecificOutput` are all "unknown field" errors), so nothing can be said to the model except a deny reason; the always-on core lives in `AGENTS.md` only |
+
+Rules that follow from the contract: `hooks.json` must wrap the events in one name key (`{"rolepod": {...}}`); commands are relative to the `hooks.json` directory (`hooks/x.sh` — `${extensionPath}` is passed through literally); a PreToolUse hook prints exactly one deny object or nothing — `{}` denies, and any unknown field or non-zero exit blocks the tool. Without a Claude transcript the gate takes its non-Claude evidence path, so on agy the deny paths are the transcript-free ones (private docs staged, review-round breaker, `ROLEPOD_GATES_HARD=1`) until the evidence store is CLI-neutral. `agy -p` without `--add-dir` works in `~/.gemini/antigravity-cli/scratch`, never the repo — `cross-family` passes `--add-dir` since v2.131.0.
+
 ## Installation
 
 Hooks are shipped in the rolepod plugin tree (`~/.claude/plugins/rolepod/hooks/`) and declared in the plugin's `hooks/hooks.json` (the canonical plugin-root form). Re-running install is idempotent. Migration steps (pre-2.0 installs) strip any legacy hook entries from `~/.claude/settings.json`.

@@ -1,50 +1,35 @@
 {
-  "PreInvocation": [
-    {
-      "type": "command",
-      "command": "${extensionPath}/hooks/session-start.sh",
-      "timeout": 5
-    },
-    {
-      "type": "command",
-      "command": "${extensionPath}/hooks/claim-verify-nudge.sh",
-      "timeout": 3
-    },
-    {
-      "type": "command",
-      "command": "${extensionPath}/hooks/model-log.sh",
-      "timeout": 3
-    }
-  ],
-  "PreToolUse": [
-    {
-      "matcher": "write_file|replace|edit",
-      "hooks": [
-        {
-          "type": "command",
-          "command": "${extensionPath}/hooks/before-tool.sh",
-          "timeout": 3
-        }
-      ]
-    }
-  ],
-  "PostToolUse": [
-    {
-      "matcher": "write_file|replace|edit",
-      "hooks": [
-        {
-          "type": "command",
-          "command": "${extensionPath}/hooks/after-tool.sh",
-          "timeout": 3
-        }
-      ]
-    }
-  ],
-  "Stop": [
-    {
-      "type": "command",
-      "command": "${extensionPath}/hooks/stop-unlock.sh",
-      "timeout": 3
-    }
-  ]
+  "rolepod": {
+    "PreInvocation": [
+      {
+        "type": "command",
+        "command": "hooks/session-start.sh",
+        "timeout": 5
+      },
+      {
+        "type": "command",
+        "command": "hooks/model-log.sh",
+        "timeout": 3
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "run_command",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "hooks/pre-tool.sh",
+            "timeout": 8
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "type": "command",
+        "command": "hooks/stop-unlock.sh",
+        "timeout": 3
+      }
+    ]
+  }
 }

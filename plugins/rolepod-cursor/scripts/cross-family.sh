@@ -588,7 +588,7 @@ invoke() { # $1 cli, $2 promptfile, $3 outfile — TIMEOUT already set for this 
   case "$_cli" in
     codex)    RUN_STDIN="$_p"; run_to "$_o" "$_bin" exec -s read-only --skip-git-repo-check --ephemeral --color never -C "$ROOT" -o "$_o.msg" - ;;
     claude)   RUN_STDIN="$_p"; run_to "$_o" "$_bin" -p --permission-mode plan --no-session-persistence ;;
-    agy)      run_to "$_o" "$_bin" -p "$(cat "$_p")" --mode plan --print-timeout "${TIMEOUT}s" ;;
+    agy)      run_to "$_o" "$_bin" -p "$(cat "$_p")" --add-dir "$ROOT" --mode plan --print-timeout "${TIMEOUT}s" ;;   # --add-dir: agy -p otherwise works in ~/.gemini/antigravity-cli/scratch, never the repo (measured 2026-09-16)
     # cursor: `ask` (read-only Q&A), never `plan` — plan mode emits its plan as an
     # artifact and leaves stdout empty for a real brief (measured 2026-09-15,
     # WalnutZite round-3 review: plan → 1 byte after 244 s; ask → the full
