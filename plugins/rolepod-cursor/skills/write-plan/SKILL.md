@@ -48,7 +48,7 @@ Smallest reversible unit first. Tests-first for bugs, features, high-risk surfac
 
 Prefer vertical slices — each cuts through all layers and is demoable alone — over horizontal layers. Many thin slices beat a few thick ones. A slice carrying a major unknown (new integration, unproven assumption) goes first — fail fast.
 
-Break a task down further if any holds: >2 h of work · acceptance needs >3 bullets · touches 2+ independent subsystems · its title contains "and". Every task states **Delivers** (one user-visible sentence) and **Blocked by** (the tasks that gate it, or none) — the Blocked-by graph is the plan's only statement of order.
+Break a task down further if any holds: >2 h of work · acceptance needs >3 bullets · touches 2+ independent subsystems · its title contains "and". Every task states **Delivers** (one user-visible sentence) and **Blocked by** (the tasks that gate it, or none) — the Blocked-by graph is the plan's only statement of order. A task is a ticket: it ships alone (own build → review → commit) and never assumes a batch; only tasks that share a seam (a contract or interface) form one ship group, named in the plan.
 
 ### 3. Test plan per task
 

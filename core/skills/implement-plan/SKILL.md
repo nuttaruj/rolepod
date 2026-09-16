@@ -88,7 +88,7 @@ Pass the full task text + scene-setting context inline; never point the subagent
 
 Plan declares a parallel layout with a cohesion contract → dispatch every track whose dependencies are met in ONE message, each brief scoped to the contract's file ownership.
 - Review each track as it returns (§6) — never barrier-wait.
-- The integration owner merges per the contract's order; the final whole-implementation review runs on the cumulative diff.
+- The integration owner merges per the contract's order; the whole-implementation review runs on the group's cumulative diff.
 - Two tracks reach for the same file → stop: sequential, or rewrite the contract.
 - Protocol: `references/subagent-dispatch.md`.
 
@@ -102,7 +102,8 @@ A subagent returns `COMPLETED` → two reviewers in order on the diff alone (no 
 - A delegated single-file seam-free task skips §6 and is covered by the final review — which then must be a dispatched reviewer (`universal-reviewer` or review-code's concern-matched row) holding the cumulative diff + the acceptance criteria.
 - Lead-executed tasks enter the same pipeline — the author never reviews own logic: seam / exported symbol / >1 production file → stage 2 (code-quality reviewer, balanced) on the diff alone; otherwise the task counts as one that skipped §6.
 
-After all tasks: a **final whole-implementation review** on the cumulative diff for cross-task drift (type / symbol / contract mismatch, unowned files). Small clean plan (≤2 tasks, disjoint files, per-task reviews clean, no cross-task seam, every task subagent-built) → the Lead's cold read stands in. Dispatch the reviewer when a cross-task seam exists, ANY task skipped §6, or the Lead built any task. Hand off to `check-work` only after it clears.
+**One task per pass, then ship it.** §6 → the task's Command → the Lead commits → its own final review on that diff (a dispatched reviewer holding diff + acceptance when the task has a seam, an exported symbol, >1 production file, skipped §6 or was Lead-built; else the Lead's cold read) → `check-work` → next unblocked task.
+Never batch tasks into one diff; the rhythm is a fresh context per task. A **whole-implementation review** on a cumulative diff runs only over a ship group (tasks sharing a seam, named in the plan) for cross-task drift — type / symbol / contract mismatch, unowned files — never over the whole plan.
 
 ## If a matching child plugin skill is available
 

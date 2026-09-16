@@ -40,8 +40,8 @@ Hand off:
 ## Workflow
 
 Inputs to gather:
-- **The diff**, base + target pinned and the form named: committed branch → `<base>...HEAD`; uncommitted → `git diff HEAD` (staged + unstaged together). `--cached` alone is a slice, and the runner refuses a slice whose files carry tree edits it does not contain — `--partial-ok` only when the user asked for the staged part.
-- Past ~15 files / ~800 lines the diff is two concerns — split before dispatch; reviewers read what fits.
+- **The diff** = the shipped task or its ship group, never the whole plan: committed branch → `<base>...HEAD`; uncommitted → `git diff HEAD` (staged + unstaged). `--cached` alone is a slice, and the runner refuses a slice whose files carry tree edits it does not contain — `--partial-ok` only when the user asked for the staged part.
+- Past ~15 files / ~800 lines it is two concerns — split before dispatch; reviewers read what fits.
 - The spec / plan / acceptance criteria · the touched files end-to-end · the risk profile (high-risk surface? new dep? schema change?) · which reviewers are available.
 
 ### 1. Pick reviewer by risk
