@@ -85,7 +85,7 @@
 #            feed `rolepod-stats`). Jobs live under external/jobs/<id>/.
 #
 # Usage:
-#   cross-family.sh --kind review|consult|advise|critique|implement --brief <file> [--attach <file>]...
+#   cross-family.sh --kind review|consult|advise|critique|implement --brief <file> [--attach <file>]... [--allow <path>]...
 #                   [--lead <cli>] [--all] [--timeout <sec>] [--detach] [--partial-ok] [--since <job-id>] [--ledger <file>]
 #   cross-family.sh --rounds                               # review rounds since the last commit (breaker state)
 #   cross-family.sh --kill <job-id>                        # abandon a running job (status 137, no anchor)
@@ -95,11 +95,11 @@
 #   cross-family.sh --pool-names [--lead <cli>]           # names only (hooks use this)
 #   cross-family.sh --probe [--lead <cli>]                # live "reply OK" per member
 #   cross-family.sh --candidates                          # every installed CLI, the Lead's own included (opt-in question)
-# Exit: 0 ok · 2 usage · 3 every member failed · 4 configured pool empty · 5 off · 6 job still running
+# Exit: 0 ok · 2 usage · 3 every member failed · 4 configured pool empty · 5 off · 6 job still running · 7 partial slice refused · 8 a job is live · 9 round breaker · 21 implement done, edits outside --allow reverted
 set -uo pipefail
 
 KIND=""; BRIEF=""; LEAD="${ROLEPOD_LEAD_CLI:-}"; ALL=0; FLAG_TIMEOUT="${ROLEPOD_XFAM_TIMEOUT:-}"; FLAG_STALL="${ROLEPOD_XFAM_STALL:-}"
-MODE="run"; ATTACH=""; DETACH=0; JOB_DIR=""; COLLECT_ID=""; ROOT_FLAG=""; CFG_FLAG=""; PARTIAL_OK=0; SINCE_ID=""; KILL_ID=""; LEDGER=""; ROUND_NOTE=""
+MODE="run"; ATTACH=""; ALLOW=""; DETACH=0; JOB_DIR=""; COLLECT_ID=""; ROOT_FLAG=""; CFG_FLAG=""; PARTIAL_OK=0; SINCE_ID=""; KILL_ID=""; LEDGER=""; ROUND_NOTE=""
 while [ $# -gt 0 ]; do
   case "$1" in
     --kind) KIND="${2:-}"; shift 2 ;;
@@ -113,6 +113,8 @@ while [ $# -gt 0 ]; do
     --stall) FLAG_STALL="${2:-}"; shift 2 ;;        # seconds of silence (no new output) before a member counts as dead
     --detach) DETACH=1; shift ;;
     --partial-ok) PARTIAL_OK=1; shift ;;         # the user asked for the staged part only
+    --allow) ALLOW="$ALLOW${ALLOW:+
+}${2:-}"; shift 2 ;;   # implement: a path the member may edit (exact file or directory prefix); repeatable
     --since) SINCE_ID="${2:-}"; shift 2 ;;         # round 2+: attach the fix delta since that job + its report
     --kill) MODE="kill"; KILL_ID="${2:-}"; shift 2 ;;
     --ledger) LEDGER="${2:-}"; shift 2 ;;            # breaker ledger — round 4 needs it (review-code §5)
@@ -162,6 +164,7 @@ if [ "$MODE" = "jobs" ]; then
     elif job_alive "$d"; then st="running $(job_elapsed "$d") min"
     else st="dead (no status — killed?)"; fi
     printf '  %-32s %-18s %s\n' "$id" "$st" "$(grep -E '^ROLEPOD-XFAM' "$d/out.txt" 2>/dev/null | tail -1 | cut -c1-110)"
+    [ -f "$d/allow" ] && printf '  %-32s allow=%s\n' "" "$(tr '\n' ' ' < "$d/allow")"
   done
   exit 0
 fi
@@ -584,6 +587,65 @@ for line in open(sys.argv[1], errors="replace"):
 sys.stdout.write(res)
 PY
 }
+path_forbidden() { # $1 repo-relative path → 0 when the member may NEVER touch it, even when listed (basename compared case-insensitively: APFS/NTFS)
+  case "$1" in .git|.git/*|.rolepod|.rolepod/*|docs/rolepod|docs/rolepod/*) return 0 ;; esac
+  case "$(printf '%s' "${1##*/}" | tr 'A-Z' 'a-z')" in .env|.env.*|package-lock.json|yarn.lock|pnpm-lock.yaml|bun.lockb|bun.lock|cargo.lock|poetry.lock|pipfile.lock|gemfile.lock|composer.lock|go.sum) return 0 ;; esac
+  return 1
+}
+path_allowed() { # $1 repo-relative path → 0 when inside the --allow list and not forbidden; "dir/" = prefix, "file" = that exact path only
+  path_forbidden "$1" && return 1
+  while IFS= read -r _e; do
+    [ -n "$_e" ] || continue
+    case "$_e" in */) case "$1" in "${_e%/}"/*) return 0 ;; esac ;; *) [ "$1" = "$_e" ] && return 0 ;; esac
+  done <<EOF
+$ALLOW_LIST
+EOF
+  return 1
+}
+implement_guard() { # $1 tree before, $2 tree after, $3 save dir → stdout "reverted|unsafe<TAB><path>" per path edited outside the allowed list
+  # Threat model: this guards against a member that STRAYS, not one that forges evidence — every process with repo write access
+  # (the member included) can write anything under .rolepod/evidence, so nothing there is trusted for this decision: EVERY outside
+  # edit is reverted, whoever made it (the Lead's own edits during the job included — nothing is destroyed: a copy of each
+  # regular file lands under $3, links and directories are listed in $3/MANIFEST). Restore goes through a temp index
+  # (mode + symlink aware, the real index untouched, then `git reset` on those paths so nothing the member staged survives).
+  # unsafe = a symlink sits in the path's leading directories — never written through; reported for the Lead.
+  _gl=$(mktemp) || return 0
+  git -C "$ROOT" diff-tree -r -z --name-status --no-renames "$1" "$2" 2>/dev/null | while IFS= read -r -d '' _st && IFS= read -r -d '' _pa; do
+    path_allowed "$_pa" && continue; printf '%s\n' "$_pa"
+  done > "$_gl"
+  [ -s "$_gl" ] || { rm -f "$_gl"; return 0; }
+  : > "$_gl.ci"; : > "$_gl.rs"; mkdir -p "$3" 2>/dev/null
+  while IFS= read -r _pa; do
+    [ -n "$_pa" ] || continue
+    _d=$(dirname "$_pa"); _unsafe=0
+    while [ "$_d" != "." ] && [ "$_d" != "/" ]; do [ -L "$ROOT/$_d" ] && { _unsafe=1; break; }; _d=$(dirname "$_d"); done
+    [ "$_unsafe" -eq 1 ] && { printf 'unsafe\t%s\n' "$_pa"; continue; }
+    if [ -L "$ROOT/$_pa" ]; then printf '%s -> %s (symlink, removed)\n' "$_pa" "$(readlink "$ROOT/$_pa" 2>/dev/null)" >> "$3/MANIFEST"
+    elif [ -d "$ROOT/$_pa" ]; then printf '%s (directory, removed)\n' "$_pa" >> "$3/MANIFEST"
+    elif [ -f "$ROOT/$_pa" ]; then mkdir -p "$3/$(dirname "$_pa")" 2>/dev/null; cp -p "$ROOT/$_pa" "$3/$_pa" 2>/dev/null || :; fi
+    rm -rf "$ROOT/$_pa" 2>/dev/null || :   # a symlink or a directory the member put there is removed, never followed
+    git -C "$ROOT" cat-file -e "$1:$_pa" 2>/dev/null && printf '%s\0' "$_pa" >> "$_gl.ci"
+    printf '%s\0' "$_pa" >> "$_gl.rs"
+    printf 'reverted\t%s\n' "$_pa"
+  done < "$_gl"
+  if [ -s "$_gl.ci" ]; then
+    _ti=$(mktemp) && rm -f "$_ti" && ( export GIT_INDEX_FILE="$_ti"; git -C "$ROOT" read-tree "$1" 2>/dev/null && git -C "$ROOT" checkout-index -f -z --stdin < "$_gl.ci" 2>/dev/null ) || :
+    rm -f "$_ti"
+  fi
+  if [ -s "$_gl.rs" ]; then   # index back to HEAD on those paths (a Lead-staged version there is unstaged, never lost from the tree)
+    git -C "$ROOT" rev-parse --verify HEAD >/dev/null 2>&1 && tr '\0' '\n' < "$_gl.rs" | while IFS= read -r _pa; do git -C "$ROOT" reset -q -- "$_pa" 2>/dev/null || :; done
+    tr '\0' '\n' < "$_gl.rs" | while IFS= read -r _pa; do [ -e "$ROOT/$_pa" ] || rmdir -p "$ROOT/$(dirname "$_pa")" 2>/dev/null || :; done
+  fi
+  rm -f "$_gl" "$_gl.ci" "$_gl.rs"
+}
+phaselog_forged() { # $1 byte offset of phase-log before the member ran → strips runner-only lines appended since (a member cannot mint an external pass), prints how many
+  _pl="$EV/phase-log.jsonl"; [ -f "$_pl" ] || { echo 0; return 0; }
+  _n=$(tail -c +"$(( $1 + 1 ))" "$_pl" 2>/dev/null | grep -c -E '"reviewer":"external"|"phase":"implement"|"phase":"external-fail"' || true)
+  if [ "${_n:-0}" -gt 0 ]; then
+    _pt=$(mktemp) && { head -c "$1" "$_pl"; tail -c +"$(( $1 + 1 ))" "$_pl" | { grep -v -E '"reviewer":"external"|"phase":"implement"|"phase":"external-fail"' || :; }; } > "$_pt" 2>/dev/null && mv -f "$_pt" "$_pl"   # grep -v exits 1 when nothing survives — the common case, all appended lines forged
+  fi
+  echo "${_n:-0}"
+}
 opencode_write_ok() { # implement: headless `opencode run` blocks on tool approvals unless a config grants edit + bash — same lookup order as opencode_default_model, json or jsonc; the first config that states permissions decides
   for _ocf in "$ROOT/opencode.jsonc" "$ROOT/opencode.json" \
             "${OPENCODE_CONFIG_DIR:-}/opencode.jsonc" "${OPENCODE_CONFIG_DIR:-}/opencode.json" \
@@ -680,6 +742,29 @@ fi
 # ── Run ────────────────────────────────────────────────────────────────
 case "$KIND" in review|consult|advise|critique|implement) ;; *) echo "cross-family: --kind review|consult|advise|critique|implement required" >&2; exit 2 ;; esac
 if [ "$KIND" = "implement" ] && [ "$ALL" -eq 1 ]; then echo "cross-family: --all is a read-only panel — implement runs ONE member at a time in one working tree (drop --all)" >&2; exit 2; fi
+# ── implement: the allowed-path list — the member's write scope, enforced after the run (edits outside are reverted) ──
+[ -n "$ALLOW" ] && [ "$KIND" != "implement" ] && { echo "cross-family: --allow only applies to --kind implement (every other kind is read-only)" >&2; exit 2; }
+ALLOW_LIST=""
+if [ "$KIND" = "implement" ]; then
+  while IFS= read -r _a; do
+    _a="${_a#./}"; _slash=0; case "$_a" in */) _slash=1 ;; esac; _a="${_a%/}"; [ -n "$_a" ] || continue
+    case "$_a" in /*|../*|*/../*|*/..|..) echo "cross-family: --allow $_a must be a path relative to the repo root, without .." >&2; exit 2 ;; esac
+    [ "$_a" = "." ] && { echo "cross-family: --allow . is not a scope — name the paths the ticket touches" >&2; exit 2; }
+    path_forbidden "$_a" && { echo "cross-family: --allow $_a is off-limits for an external member (.env*, lockfiles, .git/, .rolepod/, docs/rolepod/)" >&2; exit 2; }
+    { git -C "$ROOT" check-ignore -q -- "$_a" || git -C "$ROOT" check-ignore -q -- "$_a/"; } 2>/dev/null && { echo "cross-family: --allow $_a is gitignored — the guard cannot see edits there (snapshots follow .gitignore); un-ignore it or pick another path" >&2; exit 2; }
+    if [ "$_slash" -eq 1 ] || [ -d "$ROOT/$_a" ]; then _a="$_a/"
+    elif [ ! -e "$ROOT/$_a" ]; then echo "cross-family: notice — --allow $_a does not exist yet and has no trailing slash, so it is read as ONE file; a new directory needs \`$_a/\`" >&2; fi
+    ALLOW_LIST="$ALLOW_LIST${ALLOW_LIST:+
+}$_a"
+  done <<EOF
+$ALLOW
+EOF
+  [ -n "$ALLOW_LIST" ] || { echo "cross-family: --kind implement needs --allow <path> (repeatable: \`dir/\` = that directory and everything below, a bare name = that one file) — the runner reverts every edit outside the list" >&2; exit 2; }
+  if [ -z "$JOB_DIR" ] && git -C "$ROOT" rev-parse --verify HEAD >/dev/null 2>&1; then
+    _dirty=$(printf '%s\n' "$ALLOW_LIST" | while IFS= read -r _a; do git -C "$ROOT" status --porcelain -- "${_a%/}" 2>/dev/null; done | head -5)
+    [ -z "$_dirty" ] || { echo "cross-family: the allowed paths must start clean (a ticket begins from a committed slate on its own files): $(printf '%s' "$_dirty" | tr '\n' ' ')" >&2; exit 2; }
+  fi
+fi
 [ -n "$BRIEF" ] && [ -f "$BRIEF" ] || { echo "cross-family: --brief <file> required (write the cold-context brief to a file first)" >&2; exit 2; }
 case "$KIND" in
   review) PHASE=review ;;
@@ -746,9 +831,13 @@ fi
 # minus .rolepod/ and docs/rolepod/ (evidence + private working docs move
 # during a round and are not the reviewed change), the real index untouched. Recorded per detached job (tree file); --since
 # diffs that snapshot against a fresh one (tree-to-tree: new files count).
+# Tree snapshots exclude ONLY what hooks and the runner write while a member runs (append-only evidence, session state);
+# config under .rolepod/ (cross-family, risk-paths, docs-tracked, allow-emoji) and docs/rolepod/ stay visible to the implement guard.
+TREE_EXCLUDE=":(exclude).rolepod/evidence :(exclude).rolepod/session-locks :(exclude).rolepod/parent-active :(exclude).rolepod/gate-bypass.log :(exclude).rolepod/cross-family.asked :(exclude).rolepod/ctx-nudge :(exclude).rolepod/bin"
+PATCH_EXCLUDE=":(exclude).rolepod :(exclude)docs/rolepod"   # what leaves the repo (patches, --since deltas) never carries rolepod state or private docs
 snapshot_tree() {
   _ti=$(mktemp) || return 1; rm -f "$_ti"
-  ( export GIT_INDEX_FILE="$_ti"; { git -C "$ROOT" read-tree HEAD 2>/dev/null || git -C "$ROOT" read-tree --empty 2>/dev/null; } && git -C "$ROOT" add -A -- . ':(exclude).rolepod' ':(exclude)docs/rolepod' 2>/dev/null && git -C "$ROOT" write-tree 2>/dev/null ); _src=$?
+  ( export GIT_INDEX_FILE="$_ti"; { git -C "$ROOT" read-tree HEAD 2>/dev/null || git -C "$ROOT" read-tree --empty 2>/dev/null; } && git -C "$ROOT" add -A -- . $TREE_EXCLUDE 2>/dev/null && git -C "$ROOT" write-tree 2>/dev/null ); _src=$?
   rm -f "$_ti"; return $_src
 }
 
@@ -814,7 +903,7 @@ if [ -n "$SINCE_ID" ]; then
   _old=$(cat "$_sd/tree" 2>/dev/null); [ -n "$_old" ] || { echo "cross-family: --since: job $SINCE_ID has no tree snapshot (pre-v2.98 job, or not a git repo) — attach the fix diff yourself" >&2; exit 2; }
   _new=$(snapshot_tree) || { echo "cross-family: --since: cannot snapshot the working tree" >&2; exit 2; }
   SINCE_DIR=$(mktemp -d "${TMPDIR:-/tmp}/rolepod-xfam-since.XXXXXX")
-  git -C "$ROOT" diff-tree -p "$_old" "$_new" > "$SINCE_DIR/fix-delta-since-$SINCE_ID.patch" 2>/dev/null || { echo "cross-family: --since: diff against the snapshot failed" >&2; exit 2; }
+  git -C "$ROOT" diff-tree -p "$_old" "$_new" -- . $PATCH_EXCLUDE > "$SINCE_DIR/fix-delta-since-$SINCE_ID.patch" 2>/dev/null || { echo "cross-family: --since: diff against the snapshot failed" >&2; exit 2; }
   [ -s "$SINCE_DIR/fix-delta-since-$SINCE_ID.patch" ] || { echo "cross-family: --since $SINCE_ID: nothing changed since that round — nothing to review" >&2; rm -rf "$SINCE_DIR"; exit 2; }
   cp "$_sd/out.txt" "$SINCE_DIR/previous-round-report-$SINCE_ID.txt" 2>/dev/null || : > "$SINCE_DIR/previous-round-report-$SINCE_ID.txt"
   ATTACH="$SINCE_DIR/fix-delta-since-$SINCE_ID.patch
@@ -834,6 +923,12 @@ if [ "$DETACH" -eq 1 ]; then
   # Child argv as an ARRAY — paths with spaces / globs survive the re-exec.
   CHILD_ARGS=(--kind "$KIND" --brief "$(abspath "$BRIEF")" --lead "$LEAD" --root "$ROOT" --job "$JD" --config "$JD/cross-family")
   [ "$ALL" -eq 1 ] && CHILD_ARGS=("${CHILD_ARGS[@]}" --all)
+  if [ -n "$ALLOW_LIST" ]; then
+    while IFS= read -r _a; do [ -n "$_a" ] && CHILD_ARGS=("${CHILD_ARGS[@]}" --allow "$_a"); done <<EOF
+$ALLOW_LIST
+EOF
+    printf '%s\n' "$ALLOW_LIST" > "$JD/allow"   # the ticket's write scope on record — --jobs prints it
+  fi
   [ -n "$FLAG_TIMEOUT" ] && CHILD_ARGS=("${CHILD_ARGS[@]}" --timeout "$FLAG_TIMEOUT")
   if [ -n "$ATTACH" ]; then
     while IFS= read -r a; do [ -f "$a" ] && CHILD_ARGS=("${CHILD_ARGS[@]}" --attach "$(abspath "$a")"); done <<EOF
@@ -846,7 +941,7 @@ EOF
   set -m; nohup bash "$0" "${CHILD_ARGS[@]}" > "$JD/out.txt" 2> "$JD/err.txt" < /dev/null & echo $! > "$JD/pid"; set +m
   TOS=""; for c in $USABLE; do TOS="$TOS${TOS:+ }$c=$( JOB_DIR="$JD" timeout_for "$c" )s"; done
   FROZEN_MSG="the tree under review is FROZEN until collected (work outside the diff; no stash / reset / checkout)"
-  [ "$KIND" = "implement" ] && FROZEN_MSG="the member is EDITING this tree until collected — touch only files outside its Files allowed (no stash / reset / checkout)"
+  [ "$KIND" = "implement" ] && FROZEN_MSG="the member is EDITING this tree until collected — every edit outside its Files allowed made meanwhile (yours included) is reverted with a copy kept under the job's .reverted/, so work in another worktree or wait (no stash / reset / checkout)"
   echo "ROLEPOD-XFAM job=$JOB_ID kind=$KIND members=$USABLE budgets=$TOS — ${FROZEN_MSG}; collect with: rolepod-cross-family --collect $JOB_ID --root $ROOT   (list: --jobs --root $ROOT). The chain falls through on its own and anchors the receipt; the commit gate sees the job."
   exit 0
 fi
@@ -857,6 +952,10 @@ TMPP=$(mktemp -d "${TMPDIR:-/tmp}/rolepod-xfam.XXXXXX")
 BODY="$TMPP/body.md"
 {
   cat "$BRIEF"
+  if [ "$KIND" = "implement" ]; then
+    printf '\n\nFiles allowed — the runner reverts every edit outside this list (an entry ending in / covers everything below it; any other entry is that one file); .env*, lockfiles, .git/ and .rolepod/ are always off-limits:\n'
+    printf '%s\n' "$ALLOW_LIST" | sed 's/^/- /'
+  fi
   if [ -n "$ATTACH" ]; then
     printf '%s\n' "$ATTACH" | while IFS= read -r a; do
       [ -f "$a" ] || continue
@@ -869,7 +968,7 @@ preamble() { # $1 kind
     review) printf '%s' "You are a cold-context ADVERSARIAL code reviewer running in a different CLI than the author. Read only — never edit files, never run write commands. Try to make the change fail. Report findings severity-ordered (BLOCKER / MAJOR / MINOR / NIT) with file:line, label each TRACED (path walked) or SUSPECTED (pattern-level), name what is missing as hard as what is present, then end with one line: VERDICT: APPROVED | APPROVED-WITH-NITS | REJECTED. Label every finding's provenance: INTRODUCED (this diff caused it), EXPOSED (pre-existing, on a path this diff changes) or ADJACENT (pre-existing, path untouched) — the diff is the scope, ADJACENT findings are reported once under their own heading and never drive the verdict. If a previous round's report is attached, also prefix every finding with IN-FIX (a defect inside the previous round's fixes), NEW (not flagged before) or REPEAT (flagged before, still open); an ADJACENT item already listed there is not repeated." ;;
     consult) printf '%s' "You are a cold-context debugging advisor running in a different CLI than the author. The author has failed twice; do not repeat their fixes. Read only — never edit files. Return exactly one of: CORRECTION (new hypothesis + the smallest change to test it), CONFIRMATION (approach right — check X), or STOP (wrong path — why). Reason from the evidence given; say what you would verify first." ;;
     advise) printf '%s' "You are a cold-context planning advisor running in a different CLI than the author. Advise, never execute: return a RECOMMENDED option with reasoning and the risks you see, or a CORRECTION if the framing or all options are flawed, or a STOP signal. Do not edit files or run the plan." ;;
-    implement) printf '%s' "You are an external IMPLEMENTER running in a different CLI than the Lead. Build exactly the ticket below inside this repository's working tree — nothing more. Hard lines: never run git commit, push, stash, checkout, reset or rebase (the Lead reviews and commits); never edit a path outside the ticket's Files allowed; never expand scope — a new idea goes into the report. Run the ticket's test command. End with a report: files touched, tests run and their result, what is NOT done." ;;
+    implement) printf '%s' "You are an external IMPLEMENTER running in a different CLI than the Lead. Build exactly the ticket below inside this repository's working tree — nothing more. Hard lines: never run git add, commit, push, stash, checkout, reset or rebase (the Lead stages, reviews and commits); never edit a path outside the ticket's Files allowed; never expand scope — a new idea goes into the report. Run the ticket's test command. End with a report: files touched, tests run and their result, what is NOT done." ;;
     critique) printf '%s' "You are a cold-context spec critic running in a different CLI than the author. The author has finished their discovery dialogue with the user (the questions already asked and answered are attached — never re-ask those). Return AT MOST 5 items, ranked by implementation risk, each tagged QUESTION (a decision only the user can make — the answer would change the implementation), AMBIGUITY (wording two engineers would read differently — quote it), or MISSING (an acceptance criterion, failure mode, or edge case with no 'proven by'). No design proposals, no praise, no restating the spec. If nothing material remains, reply exactly: NO FURTHER QUESTIONS." ;;
   esac
 }
@@ -890,7 +989,7 @@ BRIEF_SHA=$( { shasum -a 256 "$BODY" 2>/dev/null || sha256sum "$BODY" 2>/dev/nul
 JOB_ID_TAG=""; [ -n "$JOB_DIR" ] && JOB_ID_TAG=$(basename "$JOB_DIR")
 RUN_TAG="${JOB_ID_TAG:-fg-$$}"
 
-one() { # $1 cli → 0 ok / 1 fail; writes $TMPP/$1.{out,err,line,jsonl} — the PARENT appends .jsonl
+one() { # $1 cli → 0 ok / 1 fail / 21 implement done with outside edits reverted; writes $TMPP/$1.{out,err,line,jsonl} — the PARENT appends .jsonl
   _c="$1"; _f=$(family_of "$_c"); _ts=$(date -u +%Y%m%dT%H%M%SZ)
   TIMEOUT=$(timeout_for "$_c"); STALL=$(stall_for "$_c")
   case "$_c" in codex|claude) ;; *) if [ "$BBYTES" -gt "$ARGV_CAP" ]; then
@@ -907,7 +1006,7 @@ one() { # $1 cli → 0 ok / 1 fail; writes $TMPP/$1.{out,err,line,jsonl} — the
     printf '{"ts":"%s","phase":"external-fail","kind":"implement","cli":"opencode","family":"%s","lead":"%s","reason":"no opencode config grants edit+bash (checked the project, OPENCODE_CONFIG_DIR and ~/.config/opencode) — headless opencode would block on approvals"}\n' "$(iso_now)" "$_f" "$LEAD" > "$TMPP/$_c.jsonl"
     printf 'opencode: no opencode config grants edit+bash (checked the project, OPENCODE_CONFIG_DIR and ~/.config/opencode; headless run would block on approvals) — skipped\n' > "$TMPP/$_c.line"; return 1
   fi
-  _pre=""; [ "$KIND" = "implement" ] && _pre=$(snapshot_tree 2>/dev/null || true)   # the member's delta = tree after − tree before; the Lead's own WIP never travels
+  _pre=""; _pl0=0; if [ "$KIND" = "implement" ]; then _pre=$(snapshot_tree 2>/dev/null || true); [ -f "$EV/phase-log.jsonl" ] && _pl0=$(wc -c < "$EV/phase-log.jsonl" | tr -d ' '); fi   # the member's delta = tree after − tree before; the Lead's own WIP never travels
   _s=$SECONDS; invoke "$_c" "$TMPP/$_c.prompt" "$TMPP/$_c.out"; _rc=$?; _secs=$(( SECONDS - _s ))
   # codex streams its event log to stderr; the reviewer's answer is the -o message file
   if [ "$_c" = "codex" ] && [ -s "$TMPP/$_c.out.msg" ]; then mv "$TMPP/$_c.out" "$TMPP/$_c.out.stream"; mv "$TMPP/$_c.out.msg" "$TMPP/$_c.out"; fi
@@ -927,15 +1026,31 @@ one() { # $1 cli → 0 ok / 1 fail; writes $TMPP/$1.{out,err,line,jsonl} — the
   fi
   if [ "$_rc" -eq 0 ] && [ "$_bytes" -ge "$_floor" ] && [ "$KIND" = "implement" ]; then
     _patch="external/$_ts-$_c-$RUN_TAG.patch"; _post=$(snapshot_tree 2>/dev/null || true)
-    _base=git; if [ -n "$_pre" ] && [ -n "$_post" ]; then git -C "$ROOT" diff-tree -p "$_pre" "$_post" > "$EV/$_patch" 2>/dev/null || :; else _base=none; : > "$EV/$_patch"; fi   # no baseline (not a git repo) is said out loud, never read as files=0
+    _guard=""; _nout=0; _nunsafe=0; _resnap=ok; _nforged=$(phaselog_forged "$_pl0")
+    if [ -n "$_pre" ] && [ -n "$_post" ]; then
+      _guard=$(implement_guard "$_pre" "$_post" "$EV/external/$_ts-$_c-$RUN_TAG.reverted")
+      _nout=$(printf '%s\n' "$_guard" | grep -c '^reverted' || true); _nunsafe=$(printf '%s\n' "$_guard" | grep -c '^unsafe' || true)
+      if [ "$_nout" -gt 0 ]; then _post=$(snapshot_tree 2>/dev/null || true); [ -n "$_post" ] || { _resnap=failed; _post="$_pre"; }; fi   # the tree after the revert is what the patch describes
+    fi
+    _base=git; if [ -n "$_pre" ] && [ -n "$_post" ]; then git -C "$ROOT" diff-tree -p "$_pre" "$_post" -- . $PATCH_EXCLUDE > "$EV/$_patch" 2>/dev/null || :; else _base=none; : > "$EV/$_patch"; fi   # no baseline (not a git repo) is said out loud, never read as files=0
+    _op=$(printf '%s\n' "$_guard" | grep '^reverted' | cut -f2 | head -20 | tr '\n' ' '); _up=$(printf '%s\n' "$_guard" | grep '^unsafe' | cut -f2 | head -20 | tr '\n' ' ')
     _files=$(grep -c '^diff --git ' "$EV/$_patch" 2>/dev/null); _files=${_files:-0}
     _patch_line="patch=.rolepod/evidence/$_patch"; [ "$_base" = none ] && _patch_line="patch=none (no tree baseline: not a git repo — the member's edits are in the tree, uncounted)"
+    [ "$_resnap" = failed ] && _patch_line="patch=stale (re-snapshot after the revert failed — read the tree, not the patch)"
     _rep="external/$_ts-$_c-$RUN_TAG.txt"
-    { printf '# rolepod cross-family implement · cli=%s family=%s lead=%s (%s) · %s · exit=%s secs=%s bytes=%s budget=%ss files=%s%s\n# brief: %s\n\n' \
-        "$_c" "$_f" "$LEAD" "$LEAD_FAMILY" "$(iso_now)" "$_rc" "$_secs" "$_bytes" "$TIMEOUT" "$_files" "${_ran:+ ran=$_ran}" "$BRIEF"
+    { printf '# rolepod cross-family implement · cli=%s family=%s lead=%s (%s) · %s · exit=%s secs=%s bytes=%s budget=%ss files=%s outside=%s forged=%s%s\n# brief: %s\n\n' \
+        "$_c" "$_f" "$LEAD" "$LEAD_FAMILY" "$(iso_now)" "$_rc" "$_secs" "$_bytes" "$TIMEOUT" "$_files" "$(( _nout + _nunsafe ))" "$_nforged" "${_ran:+ ran=$_ran}" "$BRIEF"
       cat "$TMPP/$_c.out"; } > "$EV/$_rep" 2>/dev/null || :
     if [ -n "$JOB_DIR" ]; then cp "$TMPP/$_c.out" "$JOB_DIR/report.txt" 2>/dev/null || :; cp "$EV/$_patch" "$JOB_DIR/patch.diff" 2>/dev/null || :; fi
-    printf '%s\n' "{\"ts\":\"$(iso_now)\",\"phase\":\"$PHASE\",\"kind\":\"$KIND\",\"cli\":\"$_c\",\"family\":\"$_f\",\"model\":\"default\",\"report\":\"$_rep\",\"patch\":\"$_patch\",\"baseline\":\"$_base\",\"files\":$_files,\"lead\":\"$LEAD\",\"secs\":$_secs,\"budget\":$TIMEOUT,\"brief_sha\":\"$BRIEF_SHA\"${JOB_ID_TAG:+,\"job\":\"$JOB_ID_TAG\"}${_ran:+,\"ran\":\"$(jesc "$_ran")\"}}" > "$TMPP/$_c.jsonl"
+    printf '%s\n' "{\"ts\":\"$(iso_now)\",\"phase\":\"$PHASE\",\"kind\":\"$KIND\",\"cli\":\"$_c\",\"family\":\"$_f\",\"model\":\"default\",\"report\":\"$_rep\",\"patch\":\"$_patch\",\"baseline\":\"$_base\",\"files\":$_files,\"outside\":$(( _nout + _nunsafe )),\"forged\":$_nforged,\"outside_paths\":\"$(jesc "$_op")\",\"unsafe_paths\":\"$(jesc "$_up")\",\"lead\":\"$LEAD\",\"secs\":$_secs,\"budget\":$TIMEOUT,\"brief_sha\":\"$BRIEF_SHA\"${JOB_ID_TAG:+,\"job\":\"$JOB_ID_TAG\"}${_ran:+,\"ran\":\"$(jesc "$_ran")\"}}" > "$TMPP/$_c.jsonl"
+    _notes=""
+    [ "$_nout" -gt 0 ] && _notes="$_notes — reverted (edits outside --allow, whoever made them; copies under .rolepod/evidence/external/$_ts-$_c-$RUN_TAG.reverted/): $_op"
+    [ "$_nunsafe" -gt 0 ] && _notes="$_notes — NOT touched (a symlink in the leading path; inspect by hand): $_up"
+    [ "$_nforged" -gt 0 ] && _notes="$_notes — forged evidence stripped: $_nforged phase-log line(s) claiming an external pass appended during the run"
+    if [ "$(( _nout + _nunsafe + _nforged ))" -gt 0 ]; then
+      printf 'ROLEPOD-XFAM violations kind=implement cli=%s family=%s files=%s outside=%s forged=%s %s report=.rolepod/evidence/%s secs=%s budget=%ss%s%s\n' "$_c" "$_f" "$_files" "$(( _nout + _nunsafe ))" "$_nforged" "$_patch_line" "$_rep" "$_secs" "$TIMEOUT" "${_ran:+ ran=$_ran}" "$_notes" > "$TMPP/$_c.line"
+      return 21
+    fi
     printf 'ROLEPOD-XFAM ok kind=implement cli=%s family=%s files=%s %s report=.rolepod/evidence/%s secs=%s budget=%ss%s\n' "$_c" "$_f" "$_files" "$_patch_line" "$_rep" "$_secs" "$TIMEOUT" "${_ran:+ ran=$_ran}" > "$TMPP/$_c.line"
     return 0
   fi
@@ -986,7 +1101,7 @@ FAILS=""
 for c in $USABLE; do
   one "$c"; _ok=$?
   [ -f "$TMPP/$c.jsonl" ] && jlog "$(cat "$TMPP/$c.jsonl")"
-  if [ "$_ok" -eq 0 ]; then cat "$TMPP/$c.out"; echo; cat "$TMPP/$c.line"; exit 0; fi
+  if [ "$_ok" -eq 0 ] || [ "$_ok" -eq 21 ]; then cat "$TMPP/$c.out"; echo; cat "$TMPP/$c.line"; exit "$_ok"; fi   # 21 = implement finished, edits outside --allow were reverted
   FAILS="$FAILS${FAILS:+; }$(cat "$TMPP/$c.line")"
 done
 echo "ROLEPOD-XFAM none — $FAILS. Fall back to the internal strong reviewer / vertical consult and record the limitation."
