@@ -96,6 +96,11 @@ EOF
 # on Codex: disjoint tool-name sets).
 echo "$TOOL" | grep -qE '^(Edit|Write|MultiEdit|NotebookEdit|apply_patch)$' || exit 0
 
+# Edit ledger (v2.134.0): the same edit lands in .rolepod/evidence/edits.jsonl so the
+# commit gate can count test / high-risk edits on every CLI without a transcript.
+LEDGER="$(dirname "$0")/edit-ledger.py"
+[ -f "$LEDGER" ] && { printf '%s' "$INPUT" | python3 -I "$LEDGER" append-stdin "${ROLEPOD_CLI:-claude}" >/dev/null 2>&1 || true; }
+
 # Schema-bound NEW file → emit STRONG verify-doc reminder.
 SCHEMA_BOUND=""
 if [ ! -e "$FILE" ] && [[ "$FILE" =~ (\.claude-plugin/|\.codex-plugin/|/extensions/|marketplace\.json$|plugin\.json$|manifest\.json$|hooks\.json$|-extension\.(json|yaml|yml)$|\.mcp\.json$|gemini-extension\.json$|claude-extension\.json$) ]]; then
@@ -187,6 +192,14 @@ if [ -f "$SESSION_STATE" ] && command -v python3 >/dev/null 2>&1; then
   # the whole transcript and blew the hook timeout on long sessions.
   COUNTS=$(printf '%s' "$INPUT" | python3 "$SESSION_STATE" count-all "$SINCE_EPOCH" 2>/dev/null || echo "0 0 0 0")
   read -r TEST_EDITS HIGH_RISK_EDITS REVIEWERS STRONG_REVIEWERS <<< "$COUNTS"
+fi
+# Edit ledger (v2.134.0): CLI-neutral edit evidence written at edit time by every
+# CLI's edit hook (hooks/edit-ledger.py). Max with the transcript scan, never summed.
+LEDGER="$(dirname "$0")/edit-ledger.py"
+if [ -f "$LEDGER" ] && command -v python3 >/dev/null 2>&1; then
+  read -r L_TEST L_RISK <<< "$(python3 -I "$LEDGER" count "$SINCE_EPOCH" 2>/dev/null || echo "0 0")"
+  [ "${L_TEST:-0}" -gt "${TEST_EDITS:-0}" ] 2>/dev/null && TEST_EDITS=$L_TEST
+  [ "${L_RISK:-0}" -gt "${HIGH_RISK_EDITS:-0}" ] 2>/dev/null && HIGH_RISK_EDITS=$L_RISK
 fi
 TEST_EDITS=${TEST_EDITS:-0}
 HIGH_RISK_EDITS=${HIGH_RISK_EDITS:-0}

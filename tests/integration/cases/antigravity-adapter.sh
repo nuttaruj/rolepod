@@ -61,8 +61,9 @@ def walk(n):
 walk(d)
 assert cmds and all(re.fullmatch(r'hooks/[a-z-]+\\.sh', c) for c in cmds), cmds
 assert len(cmds)==4, cmds\""
-check "PreToolUse is scoped to run_command (the only agy tool the gate can act on)" \
-  "python3 -I -c \"import json;g=json.load(open('$P/hooks.json'))['rolepod']['PreToolUse'];assert [x['matcher'] for x in g]==['run_command'],g\""
+check "PreToolUse covers run_command (gate) + the edit tools (ledger) in one registration" \
+  "python3 -I -c \"import json;g=json.load(open('$P/hooks.json'))['rolepod']['PreToolUse'];assert [x['matcher'] for x in g]==['run_command|write_to_file|replace|edit|edit_file|multi_replace_file_content'],g\""
+check "hooks/ ships edit-ledger.py byte-identical" "cmp -s hooks/edit-ledger.py $P/hooks/edit-ledger.py"
 
 # Behaviour against agy-shaped stdin (the rendered scripts, a throwaway repo).
 R="$(mktemp -d "${TMPDIR:-/tmp}/rolepod-agy-adapter.XXXXXX")"
@@ -101,6 +102,17 @@ tool_in run_command "{\"CommandLine\":\"git commit -m x\"}" | bash "$H/pre-tool.
 check "pre-tool: no Cwd arg → falls back to workspacePaths[0] (still denies)" "[ $rc -eq 0 ] && grep -q '\"decision\": \"deny\"' '$R/../deny2.json'"
 rm -f "$R/../deny1.json" "$R/../deny2.json"
 git -C "$R" reset -q; rm -rf "$R/docs"
+
+# Edit ledger (v2.134.0): an agy edit tool call is recorded, silently; the gate then
+# reads it — a risky edit with no test edit hard-blocks the next commit.
+out=$(tool_in write_to_file "{\"TargetFile\":\"$R/src/auth/login.py\",\"CodeContent\":\"x\"}" | bash "$H/pre-tool.sh" 2>/dev/null); rc=$?
+check "pre-tool: write_to_file → silent + ledger row (kind risk, cli antigravity)" \
+  "[ $rc -eq 0 ] && [ -z \"$out\" ] && grep -q '\"path\": \"src/auth/login.py\", \"kind\": \"risk\", \"agent\": \"\"' '$R/.rolepod/evidence/edits.jsonl' && grep -q '\"cli\": \"antigravity\"' '$R/.rolepod/evidence/edits.jsonl'"
+mkdir -p "$R/src"; printf 'x = 1\n' > "$R/src/util.py"; git -C "$R" add -A
+tool_in run_command "{\"CommandLine\":\"git commit -m x\",\"Cwd\":\"$R\"}" | bash "$H/pre-tool.sh" > "$R/../deny3.json" 2>/dev/null; rc=$?
+check "pre-tool: git commit after a ledgered risk edit with 0 tests → deny (the HARD path that needed a transcript before)" \
+  "[ $rc -eq 0 ] && python3 -I -c 'import json,sys; d=json.load(open(sys.argv[1])); assert d[\"decision\"]==\"deny\" and \"1 high-risk edits\" in d[\"reason\"], d' '$R/../deny3.json'"
+rm -f "$R/../deny3.json"; git -C "$R" reset -q
 
 out=$(agy_in | bash "$H/stop-unlock.sh" 2>/dev/null); rc=$?
 check "stop-unlock: silent, removes exactly this session's lock" "[ $rc -eq 0 ] && [ -z \"$out\" ] && [ ! -f '$LOCK_DIR/agy-$SID.lock' ]"

@@ -126,8 +126,20 @@ function isGitCommit(cmd) {
 
 export const RolepodPlugin = async ({ directory, client }) => {
   let sessionId = null
-  let riskEdits = 0
-  let testEvidence = 0
+  // v2.134.0: edit evidence lives in the CLI-neutral ledger
+  // (<worktree>/.rolepod/evidence/edits.jsonl via rolepod-shared/edit-ledger.py),
+  // windowed since the last commit — the same evidence every other CLI's gate reads.
+  const ledger = (args) => {
+    try {
+      const script = path.join(SHARED, "edit-ledger.py")
+      if (!fs.existsSync(script)) return ""
+      const r = spawnSync("python3", ["-I", script, ...args], { encoding: "utf8", timeout: 3000, stdio: ["ignore", "pipe", "ignore"] })
+      return r.status === 0 ? String(r.stdout || "").trim() : ""
+    } catch { return "" }
+  }
+  const lastCommitEpoch = (dir) => {
+    try { return execSync("git log -1 --format=%ct", { cwd: dir, stdio: ["ignore", "pipe", "ignore"] }).toString().trim() } catch { return "" }
+  }
 
   const logBypass = () => {
     try {
@@ -236,10 +248,7 @@ export const RolepodPlugin = async ({ directory, client }) => {
       try {
         if (tool === "edit" || tool === "write") {
           const fp = String(args?.filePath ?? args?.file_path ?? "")
-          if (fp) {
-            if (TEST_RE.test(fp)) testEvidence += 1
-            else if (RISK_RE.test(fp)) riskEdits += 1
-          }
+          if (fp) ledger(["append", "opencode", fp, "--cwd", directory || process.cwd()])
         }
       } catch {
         /* fail open — evidence tracking must never break an edit */
@@ -278,6 +287,10 @@ export const RolepodPlugin = async ({ directory, client }) => {
         if (String(input?.tool ?? "") !== "bash") return
         const cmd = String(output?.args?.command ?? "")
         if (!isGitCommit(cmd)) return
+        const dir = directory || process.cwd()
+        const counts = ledger(["count", lastCommitEpoch(dir), "--cwd", dir]).split(/\s+/)
+        const testEvidence = parseInt(counts[0] || "0", 10) || 0
+        const riskEdits = parseInt(counts[1] || "0", 10) || 0
         if (riskEdits > 0 && testEvidence === 0) {
           if (process.env.ROLEPOD_GATES_SOFT === "1") logBypass()
           else block = true
@@ -289,7 +302,7 @@ export const RolepodPlugin = async ({ directory, client }) => {
         throw new Error(
           "rolepod precommit gate: this session edited " +
             `${riskEdits} high-risk path(s) (auth/billing/migration/security` +
-            "-class) with zero test evidence. Run the check-work skill (or " +
+            "-class) since the last commit with zero test evidence (edit ledger). Run the check-work skill (or " +
             "add/run a test touching the changed surface) before `git " +
             "commit`. Intentional override: ROLEPOD_GATES_SOFT=1 (logged to " +
             ".rolepod/evidence/bypass.log, surfaced by `make stats`).",

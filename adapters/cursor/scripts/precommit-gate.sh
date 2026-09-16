@@ -1,110 +1,70 @@
 #!/bin/bash
-# Cursor beforeShellExecution — path-aware gate on `git commit`.
+# Cursor beforeShellExecution(git commit) — the SHARED commit gate, translated.
 #
-# Cursor stdin for beforeShellExecution provides `command` directly (not nested
-# under tool_input), plus `cwd` and a `sandbox` flag. Output keys:
-#   permission: "allow" | "deny" | "ask"
-#   user_message: str           — shown to user (reason for deny/ask)
-#   agent_message: str          — visible to agent
+# v2.134.0: this used to be a Cursor-only gate (any staged high-risk path →
+# HARD, no session evidence). It is now a translator around the shared
+# scripts/shared/precommit-gate.sh (byte-identical to hooks/precommit-gate.sh),
+# so Cursor runs the same tiering, the same evidence window (since the last
+# commit: edit ledger + phase-log reviewer lines + anchored cross-family
+# passes) and the same auto-pass as every other CLI.
 #
-# Same tiering as the Claude version:
-#   Trivial diff (≤5 lines, 1 file, 0 logic lines, no risky path) → silent pass
-#   Normal code (logic but no high-risk path)                     → SOFT warn
-#   High-risk path matched                                         → HARD block
-#
-# Env overrides (parity with Claude):
-#   ROLEPOD_GATES_HARD=1   — escalate normal code from SOFT to HARD
-#   ROLEPOD_GATES_SOFT=1   — suppress ALL warnings (silent)
-#   [gates: pass]          — bypass marker inside commit message body.
-#   ROLEPOD_GATES_PASSED=1 — legacy inline bypass; still honored but no longer
-#                            prescribed — an env-prefixed git commit is a
-#                            command shape permission layers read as gate
-#                            circumvention. (Cursor provides no session
-#                            transcript, so the Claude version's evidence
-#                            auto-pass has no equivalent here; the marker
-#                            stays the release valve.)
-set -euo pipefail
-
-# Bypass accountability: a used bypass is recorded to .rolepod/evidence/bypass.log
-# (reason via ROLEPOD_BYPASS_REASON), never blocked. Fail-open on any error.
-rolepod_log_bypass() {
-  _rlb_root="$(git rev-parse --show-toplevel 2>/dev/null)" || return 0
-  [ -n "$_rlb_root" ] || return 0
-  mkdir -p "$_rlb_root/.rolepod/evidence" 2>/dev/null || return 0
-  _rlb_reason="${ROLEPOD_BYPASS_REASON:-unreasoned}"
-  _rlb_reason="${_rlb_reason//\"/ }"
-  printf '{"ts":"%s","hook":"%s","var":"%s","reason":"%s"}\n' \
-    "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$1" "$2" "$_rlb_reason" \
-    >> "$_rlb_root/.rolepod/evidence/bypass.log" 2>/dev/null || true
-}
+# Cursor stdin: {"command", "cwd", "conversation_id", ...}. Cursor output:
+#   {"permission": "deny", "user_message", "agent_message"} + exit 2 → blocked,
+#   the reason reaches the model through agent_message (fed back only on deny).
+#   Anything the gate says on an ALLOW (soft warn, auto-pass note) has no
+#   channel here — agent_message is dropped on allow — so the translator
+#   prints nothing in that case.
+set -uo pipefail
 
 INPUT=$(cat 2>/dev/null || echo '{}')
-CMD=$(echo "$INPUT" | python3 -c "import sys,json;print(json.load(sys.stdin).get('command',''))" 2>/dev/null || echo "")
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+GATE="$HERE/shared/precommit-gate.sh"
+[ -f "$GATE" ] || exit 0
 
-echo "$CMD" | grep -qE '(^|[;&|]|[[:space:]])git[[:space:]]+commit\b' || exit 0
+TRANS=$(printf '%s' "$INPUT" | python3 -I -c '
+import json, sys
+try:
+    d = json.load(sys.stdin)
+except Exception:
+    sys.exit(0)
+cmd = d.get("command") or ""
+if not cmd:
+    sys.exit(0)
+roots = d.get("workspace_roots") or []
+cwd = d.get("cwd") or (roots[0] if roots else "")
+if not cwd:
+    sys.exit(0)
+claude = {"hook_event_name": "PreToolUse", "tool_name": "Bash",
+          "tool_input": {"command": cmd}, "cwd": cwd,
+          "session_id": d.get("conversation_id") or d.get("session_id") or ""}
+sys.stdout.write(cwd + "\t" + json.dumps(claude))
+' 2>/dev/null || true)
+[ -n "$TRANS" ] || exit 0
+CWD="${TRANS%%$'\t'*}"
+CLAUDE_IN="${TRANS#*$'\t'}"
 
-if echo "$CMD" | grep -qE 'ROLEPOD_GATES_PASSED=1'; then exit 0; fi
-if echo "$CMD" | grep -qE '\[gates:[[:space:]]*pass\]'; then exit 0; fi
-if [ "${ROLEPOD_GATES_SOFT:-0}" = "1" ]; then
-  rolepod_log_bypass "precommit-gate" "ROLEPOD_GATES_SOFT"
-  exit 0
+ERR=$(mktemp "${TMPDIR:-/tmp}/rolepod-cursor-gate.XXXXXX" 2>/dev/null || echo /dev/null)
+OUT=$(cd "$CWD" 2>/dev/null && printf '%s' "$CLAUDE_IN" | CLAUDE_PLUGIN_ROOT="$HERE/.." ROLEPOD_LEAD_CLI="${ROLEPOD_LEAD_CLI:-cursor}" bash "$GATE" 2>"$ERR"); RC=$?
+STDERR=$(cat "$ERR" 2>/dev/null || true); [ "$ERR" = /dev/null ] || rm -f "$ERR"
+
+REASON=$(printf '%s' "$OUT" | python3 -I -c '
+import json, sys
+try:
+    d = json.load(sys.stdin)
+except Exception:
+    sys.exit(0)
+h = d.get("hookSpecificOutput") or {}
+if h.get("permissionDecision") == "deny":
+    print(h.get("permissionDecisionReason") or "blocked by rolepod precommit-gate")
+' 2>/dev/null || true)
+if [ -z "$REASON" ] && [ "$RC" -eq 2 ]; then
+  REASON="${STDERR:-blocked by rolepod precommit-gate}"
 fi
+[ -n "$REASON" ] || exit 0
 
-CWD=$(echo "$INPUT" | python3 -c "import sys,json;print(json.load(sys.stdin).get('cwd',''))" 2>/dev/null || echo "")
-[ -n "$CWD" ] && cd "$CWD" 2>/dev/null || true
-
-DIFF_STAT=$(git diff --cached --numstat 2>/dev/null || echo "")
-if [ -z "$DIFF_STAT" ]; then
-  exit 0
-fi
-
-FILES_CHANGED=$(echo "$DIFF_STAT" | wc -l | tr -d ' ')
-LINES_CHANGED=$(echo "$DIFF_STAT" | awk '{a+=$1; b+=$2} END {print a+b}')
-LINES_CHANGED=${LINES_CHANGED:-0}
-
-HIGH_RISK=$(echo "$DIFF_STAT" | awk '{print $3}' | grep -iE '(^|/|_)(auth|authn|authz|authentication|authorization|billing|payment|payments|migration|migrations|credit|credits|permission|permissions|secret|secrets|crypto|cryptography|token|tokens|oauth|jwt|sso|saml|webhook|webhooks|stripe|paypal|charge|charges|invoice|invoices|deletion|deletions|erasure|gdpr|security)(/|\.|_|$)' | head -1 || true)
-
-LOGIC_LINES=$(git diff --cached -U0 2>/dev/null | grep -E '^[+-]' | grep -vE '^[+-]{3}' | grep -vE '^[+-][[:space:]]*$' | grep -vE '^[+-][[:space:]]*(#|//|/\*|\*/?|--|;)' || true)
-if [ -z "$LOGIC_LINES" ]; then
-  LOGIC_COUNT=0
-else
-  LOGIC_COUNT=$(printf '%s\n' "$LOGIC_LINES" | wc -l | tr -d ' ')
-fi
-
-if [ "$FILES_CHANGED" -eq 1 ] && [ "$LINES_CHANGED" -le 5 ] && [ "$LOGIC_COUNT" -eq 0 ] && [ -z "$HIGH_RISK" ]; then
-  exit 0
-fi
-
-REASON="precommit-gate BLOCKED. "
-REASON+="Diff: $FILES_CHANGED files / $LINES_CHANGED lines / $LOGIC_COUNT logic lines. "
-[ -n "$HIGH_RISK" ] && REASON+="HIGH-RISK path: $HIGH_RISK → mandatory qa-tester + security-engineer review. "
-REASON+="Run gates explicitly: S1-S5 (simplicity) + T1-T6 (tests) + F1-F5 (failure-mode) — checklists: finish-work §1, check-work §6. "
-REASON+="After passing, include \`[gates: pass]\` in the commit message body — do NOT env-prefix the git command. "
-REASON+="Block wrong for this diff? Surface it to the user — soft mode (ROLEPOD_GATES_SOFT=1) is user-set only, never model-set."
-
-HARD_BLOCK=0
-if [ -n "$HIGH_RISK" ]; then
-  HARD_BLOCK=1
-elif [ "${ROLEPOD_GATES_HARD:-0}" = "1" ]; then
-  HARD_BLOCK=1
-fi
-
-if [ "$HARD_BLOCK" -eq 1 ]; then
-  ROLEPOD_HOOK_MSG="$REASON" python3 -c "
+ROLEPOD_HOOK_MSG="$REASON" python3 -I -c '
 import json, os
-print(json.dumps({'permission':'deny','user_message':os.environ.get('ROLEPOD_HOOK_MSG','')}))
-" 2>/dev/null || echo "{}"
-  exit 2
-fi
-
-WARN="precommit-gate SOFT warn. "
-WARN+="Diff: $FILES_CHANGED files / $LINES_CHANGED lines / $LOGIC_COUNT logic lines (normal code, no high-risk path). "
-WARN+="Recommend running S1-S5 (simplicity) + T1-T6 (tests) + F1-F5 (failure-mode) before commit — checklists: finish-work §1, check-work §6. "
-WARN+="Set ROLEPOD_GATES_HARD=1 to enforce blocking on normal diffs."
-
-ROLEPOD_HOOK_MSG="$WARN" python3 -c "
-import json, os
-print(json.dumps({'permission':'allow','agent_message':os.environ.get('ROLEPOD_HOOK_MSG','')}))
-" 2>/dev/null || true
-
-exit 0
+m = os.environ.get("ROLEPOD_HOOK_MSG", "")[:1500]
+print(json.dumps({"permission": "deny", "user_message": m, "agent_message": m}))
+' 2>/dev/null
+exit 2

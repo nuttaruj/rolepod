@@ -71,6 +71,7 @@ test-static:
 	@bash tests/static/terse-layer.sh
 	@bash tests/static/push-ref-check.sh
 	@bash tests/static/cursor-host-guard.sh
+	@bash tests/static/edit-ledger.sh
 	@echo "  → static checks passed"
 
 # lean-surface — anti-drift guards that lock in the Core 10 invariants:

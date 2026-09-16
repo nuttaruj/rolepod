@@ -94,6 +94,23 @@ check "sessionStart: answers additional_context and registers cursor-<conversati
 out=$(printf '{"hook_event_name":"stop","conversation_id":"%s","session_id":"%s","workspace_roots":["%s"]}' "$CONV" "$CONV" "$R" | bash "$S/stop-unlock.sh" 2>/dev/null); rc=$?
 check "stop: silent, lock released" "[ $rc -eq 0 ] && [ -z \"$out\" ] && [ ! -f '$LOCK_DIR/cursor-$CONV.lock' ]"
 
+# Behaviour: edit ledger + the shared commit gate behind the translator (v2.134.0).
+check "scripts/shared carries the gate pair + edit-ledger.py, byte-identical" \
+  "cmp -s hooks/precommit-gate.sh $P/scripts/shared/precommit-gate.sh && cmp -s hooks/test-diff-lint.sh $P/scripts/shared/test-diff-lint.sh && cmp -s hooks/edit-ledger.py $P/scripts/shared/edit-ledger.py"
+mkdir -p "$R/src/auth"; printf 'def check(u):\n    return u.role == "admin"\n' > "$R/src/auth/login.py"
+out=$(printf '{"hook_event_name":"postToolUse","conversation_id":"%s","session_id":"%s","workspace_roots":["%s"],"tool_name":"Write","tool_input":{"file_path":"%s/src/auth/login.py","content":""},"tool_output":"{}"}' "$CONV" "$CONV" "$R" "$R" | bash "$S/gate-reminder.sh" 2>/dev/null); rc=$?
+check "postToolUse Write on a high-risk path → ledger row (kind risk, cli cursor) + the HIGH-RISK reminder" \
+  "[ $rc -eq 0 ] && grep -q '\"path\": \"src/auth/login.py\", \"kind\": \"risk\"' '$R/.rolepod/evidence/edits.jsonl' && printf '%s' \"\$out\" | grep -q 'HIGH-RISK path edited'"
+printf 'x = 1\n' > "$R/src/util.py"; git -C "$R" add -A
+set +e
+printf '{"hook_event_name":"beforeShellExecution","conversation_id":"%s","session_id":"%s","command":"git commit -m x","cwd":"%s","workspace_roots":["%s"]}' "$CONV" "$CONV" "$R" "$R" | bash "$S/precommit-gate.sh" > "$R/../gate.json" 2>/dev/null; rc=$?
+set -e
+check "beforeShellExecution git commit: staged diff + ledger risk edit + 0 tests → the SHARED gate denies (permission deny, exit 2, reason names the evidence)" \
+  "[ $rc -eq 2 ] && python3 -I -c 'import json,sys; d=json.load(open(sys.argv[1])); assert d[\"permission\"]==\"deny\" and d[\"agent_message\"]==d[\"user_message\"] and \"precommit-gate BLOCKED\" in d[\"agent_message\"] and \"1 high-risk edits\" in d[\"agent_message\"], d' '$R/../gate.json'"
+out=$(printf '{"hook_event_name":"beforeShellExecution","conversation_id":"%s","command":"git status --short","cwd":"%s","workspace_roots":["%s"]}' "$CONV" "$R" "$R" | bash "$S/precommit-gate.sh" 2>/dev/null); rc=$?
+check "beforeShellExecution non-commit → silent, rc 0" "[ $rc -eq 0 ] && [ -z \"$out\" ]"
+rm -f "$R/../gate.json"
+
 if [ $fail -eq 0 ]; then echo "cursor-adapter: pass"; exit 0; fi
 echo "cursor-adapter: $fail failure(s)"
 exit 1

@@ -959,10 +959,12 @@ RISK_TERMS='auth|authn|authz|authentication|authorization|billing|payment|paymen
 RISK_CANON='(^|/|_)('"$RISK_TERMS"')(/|\.|_|$)'
 RISK_GEMINI='(^|/|_|\.)('"$RISK_TERMS"')(/|\.|_|$)'
 for f in hooks/gate-reminder.sh hooks/precommit-gate.sh \
-         adapters/cursor/scripts/gate-reminder.sh \
-         adapters/cursor/scripts/precommit-gate.sh; do
+         adapters/cursor/scripts/gate-reminder.sh; do
   check "high-risk regex canonical in $f" "grep -qF -- \"\$RISK_CANON\" '$f'"
 done
+# adapters/cursor/scripts/precommit-gate.sh is a translator around the shared gate
+# since v2.134.0 (no regex of its own); hooks/edit-ledger.py carries the python twin,
+# pinned byte-for-byte against session_state.py by tests/static/edit-ledger.sh.
 check "high-risk regex (wide-prefix gemini variant) in adapters/gemini/hooks/before-tool.sh" \
   "grep -qF -- \"\$RISK_GEMINI\" adapters/gemini/hooks/before-tool.sh"
 # The opencode JS twin drifted silently for months (19/32 terms, narrow
@@ -999,7 +1001,7 @@ check "session_state.py HIGH_RISK_PATH matches the canonical regex byte-for-byte
 lb_body() { awk '/^rolepod_log_bypass\(\) \{/,/^\}/' "$1"; }
 LB_REF=$(lb_body hooks/precommit-gate.sh)
 for f in hooks/worktree-guard.sh hooks/cohesion-contract-check.sh \
-         adapters/cursor/scripts/gate-reminder.sh adapters/cursor/scripts/precommit-gate.sh; do
+         adapters/cursor/scripts/gate-reminder.sh; do
   check "rolepod_log_bypass byte-identical in $f" "[ \"\$(lb_body '$f')\" = \"\$LB_REF\" ]"
 done
 

@@ -308,6 +308,7 @@ render_claude() {
     echo "render: missing $adapter_dir/hooks.json" >&2; exit 1
   fi
   cp "$REPO_DIR/hooks"/*.sh "$plugin_dst/hooks/" 2>/dev/null || true
+  cp "$REPO_DIR/hooks"/*.py "$plugin_dst/hooks/" 2>/dev/null || true   # edit-ledger.py (v2.134.0)
   # always-on-core — the judgment core emitted at runtime by
   # always-on-loader.sh. The .md.tmpl source resolves {{INCLUDE}} of shared
   # fragments into the shipped .md, so doctrine is single-sourced from
@@ -415,6 +416,8 @@ render_codex() {
            block-subagent-commit session-lifecycle test-diff-lint fix-loop-breaker sweep-nudge; do
     cp "$REPO_DIR/hooks/$h.sh" "$plugin_dst/hooks/$h.sh"
   done
+  # edit-ledger.py (v2.134.0): gate-reminder writes it on apply_patch, precommit-gate reads it.
+  cp "$REPO_DIR/hooks/edit-ledger.py" "$plugin_dst/hooks/edit-ledger.py"
   # hooks/lib/ (session_state.py, route_check.py) ships here too (v2.128.1):
   # claim-verify-nudge, gate-reminder, session-lifecycle and precommit-gate
   # resolve `$(dirname "$0")/lib/...` — without it the Codex copies ran their
@@ -576,7 +579,11 @@ render_cursor() {
   # Cursor's additional_context). Byte-identical to hooks/, pinned by
   # tests/integration/cases/cursor-adapter.sh.
   mkdir -p "$plugin_dst/scripts/shared"
-  cp "$REPO_DIR/hooks/sweep-nudge.sh" "$plugin_dst/scripts/shared/sweep-nudge.sh"
+  local h
+  for h in sweep-nudge precommit-gate test-diff-lint; do
+    cp "$REPO_DIR/hooks/$h.sh" "$plugin_dst/scripts/shared/$h.sh"
+  done
+  cp "$REPO_DIR/hooks/edit-ledger.py" "$plugin_dst/scripts/shared/edit-ledger.py"
   chmod +x "$plugin_dst/scripts/shared/"*.sh 2>/dev/null || true
 
   render_evidence_scripts "$plugin_dst"
@@ -653,6 +660,7 @@ render_antigravity() {
   for h in precommit-gate test-diff-lint; do
     cp "$REPO_DIR/hooks/$h.sh" "$plugin_dst/hooks/$h.sh"
   done
+  cp "$REPO_DIR/hooks/edit-ledger.py" "$plugin_dst/hooks/edit-ledger.py"
   chmod +x "$plugin_dst/hooks/"*.sh 2>/dev/null || true
 
   render_evidence_scripts "$plugin_dst"
@@ -708,6 +716,7 @@ render_opencode() {
     for h in sweep-nudge fix-loop-breaker; do
       cp "$REPO_DIR/hooks/$h.sh" "$out_dir/plugin/rolepod-shared/$h.sh"
     done
+    cp "$REPO_DIR/hooks/edit-ledger.py" "$out_dir/plugin/rolepod-shared/edit-ledger.py"
     chmod +x "$out_dir/plugin/rolepod-shared/"*.sh 2>/dev/null || true
   else
     echo "render: missing $adapter_dir/plugin/rolepod.js" >&2; exit 1

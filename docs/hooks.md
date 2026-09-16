@@ -278,6 +278,31 @@ Removes own session lock so the next session in this worktree does not see a pha
 - **Self-guards**: not in a git repo → silent; no `session_id` → silent.
 - **Bypass**: none (idempotent cleanup).
 
+## Edit ledger — CLI-neutral edit evidence (v2.134.0)
+
+The commit gate's "test edits / high-risk edits since the last commit" used to come from
+the Claude transcript only (`hooks/lib/session_state.py`), so on Codex, Cursor, Antigravity
+and opencode both counts read 0: the "high-risk edits without a test" HARD path never fired
+and the test-edit auto-pass never cleared a block. Now every CLI's edit hook appends one
+line per edited file to `<git root>/.rolepod/evidence/edits.jsonl`
+(`{"t","ts","cli","path","kind":"test|risk|other","agent"}`) through the standalone
+`hooks/edit-ledger.py`, and `precommit-gate.sh` / `gate-reminder.sh` take
+max(transcript, ledger) per counter — never the sum. Classification is the transcript
+scan's, byte-for-byte (test wins; risk = high-risk path AND code file; pinned by
+`tests/static/edit-ledger.sh`). The ledger rotates at 512 KB (newest 2000 lines) and
+fails open everywhere (no git root, bad stdin → silence).
+
+| CLI | writer | reader |
+|---|---|---|
+| Claude | `gate-reminder.sh` on PreToolUse Edit/Write/MultiEdit/NotebookEdit (`append-stdin`) | shared gates, max with the transcript scan |
+| Codex | the same `gate-reminder.sh` on `apply_patch` (every `*** Add/Update/Delete File:` in the patch, tagged `codex`) | shared gates (no transcript → the ledger is the count) |
+| Cursor | `scripts/gate-reminder.sh` on postToolUse | `scripts/precommit-gate.sh` is now a translator around the shared gate (`scripts/shared/precommit-gate.sh`) — same tiering, window and auto-pass as Claude; a deny reaches the model as `agent_message` |
+| Antigravity | `hooks/pre-tool.sh` on the edit tools (`write_to_file|replace|edit|edit_file|multi_replace_file_content`), silent | `hooks/pre-tool.sh` → shared gate on `run_command` |
+| opencode | `plugins/rolepod.js` on `tool.execute.after` edit/write (`rolepod-shared/edit-ledger.py`) | the plugin's `git commit` deny counts the ledger since the last commit (was in-memory per session) |
+
+Still transcript-only (slice B): the route record, claim-verify's prompt state, and
+reviewer dispatch evidence beyond the phase-log `dispatch-proof` / `review` lines.
+
 ## Bypass envs — when to use
 
 | Env | When |

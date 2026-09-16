@@ -372,6 +372,14 @@ print(r, s)
     read -r REVIEWERS STRONG_REVIEWERS <<< "$RCOUNTS"
   fi
 fi
+# Edit ledger (v2.134.0): CLI-neutral edit evidence written at edit time by every
+# CLI's edit hook (hooks/edit-ledger.py). Max with the transcript scan, never summed.
+LEDGER="$(dirname "$0")/edit-ledger.py"
+if [ -f "$LEDGER" ] && command -v python3 >/dev/null 2>&1; then
+  read -r L_TEST L_RISK <<< "$(python3 -I "$LEDGER" count "$SINCE_EPOCH" 2>/dev/null || echo "0 0")"
+  [ "${L_TEST:-0}" -gt "${TEST_EDITS:-0}" ] 2>/dev/null && TEST_EDITS=$L_TEST
+  [ "${L_RISK:-0}" -gt "${HIGH_RISK_EDITS:-0}" ] 2>/dev/null && HIGH_RISK_EDITS=$L_RISK
+fi
 TEST_EDITS=${TEST_EDITS:-0}
 HIGH_RISK_EDITS=${HIGH_RISK_EDITS:-0}
 REVIEWERS=${REVIEWERS:-0}
@@ -528,7 +536,7 @@ fi
 # Build deny reason
 REASON="precommit-gate BLOCKED. ${BYPASS_IGNORED}"
 REASON+="Diff: $FILES_CHANGED files / $LINES_CHANGED lines / $LOGIC_COUNT logic lines. "
-REASON+="Evidence ($SINCE_HUMAN, Lead + subagent transcripts): $TEST_EDITS test edits / $HIGH_RISK_EDITS high-risk edits / $REVIEWERS reviewer dispatches ($STRONG_REVIEWERS strong). "
+REASON+="Evidence ($SINCE_HUMAN, Lead + subagent transcripts + edit ledger): $TEST_EDITS test edits / $HIGH_RISK_EDITS high-risk edits / $REVIEWERS reviewer dispatches ($STRONG_REVIEWERS strong). "
 [ -n "$HIGH_RISK" ] && REASON+="HIGH-RISK path: $HIGH_RISK → mandatory qa-tester + security-engineer review. "
 if [ "$HIGH_RISK_EDITS" -gt 0 ] && [ "$TEST_EDITS" -eq 0 ]; then
   REASON+="NO TEST EDITS in this session despite touching high-risk code — T-gate violation (T1: bug/feature/migration/auth/billing → test required). "

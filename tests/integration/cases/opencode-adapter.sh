@@ -78,7 +78,9 @@ try {
 } catch { verdict = 'DENY' }
 console.log(verdict)
 DRIVEREOF
-  ocg() { (cd "$OC_FIX" && node "$DRIVER" "$1" "$2" "$3" 2>/dev/null); }
+  # v2.134.0: the gate counts the edit ledger (<repo>/.rolepod/evidence/edits.jsonl,
+  # written by rolepod-shared/edit-ledger.py) — fresh ledger per driver call.
+  ocg() { rm -rf "$OC_FIX/.rolepod"; (cd "$OC_FIX" && ROLEPOD_OC_SHARED="$REPO_DIR/hooks" node "$DRIVER" "$1" "$2" "$3" 2>/dev/null); }
   check "oc-gate: risk edit + git commit → deny"           "[ \"\$(ocg auth/login.py - 'git commit -m x')\" = DENY ]"
   check "oc-gate: flag-separated git -C commit → deny"     "[ \"\$(ocg auth/login.py - 'git -C /repo commit -m x')\" = DENY ]"
   check "oc-gate: git -c k=v commit → deny"                "[ \"\$(ocg auth/login.py - 'git -c user.email=x@y commit -m x')\" = DENY ]"
@@ -89,6 +91,7 @@ DRIVEREOF
   check "oc-gate: git log → allow"                         "[ \"\$(ocg auth/login.py - 'git log --oneline')\" = ALLOW ]"
   check "oc-gate: normal path commit → allow"              "[ \"\$(ocg docs/notes.md - 'git commit -m x')\" = ALLOW ]"
   check "oc-gate: risk + test evidence → allow"            "[ \"\$(ocg auth/login.py tests/test_x.py 'git commit -m x')\" = ALLOW ]"
+  check "oc-gate: the edits landed in the ledger (risk + test rows, cli opencode)" "grep -q '\"path\": \"auth/login.py\", \"kind\": \"risk\"' $OC_FIX/.rolepod/evidence/edits.jsonl && grep -q '\"kind\": \"test\"' $OC_FIX/.rolepod/evidence/edits.jsonl && grep -q '\"cli\": \"opencode\"' $OC_FIX/.rolepod/evidence/edits.jsonl"
   check "oc-gate: ROLEPOD_GATES_SOFT logs bypass, no deny" "[ \"\$(ROLEPOD_GATES_SOFT=1 ocg auth/login.py - 'git commit -m x')\" = ALLOW ] && grep -q opencode-precommit-gate '$OC_FIX/.rolepod/evidence/bypass.log'"
   # ── Behavioral: shared cores behind the translator (v2.133.0) ─────────
   # sweep-nudge / fix-loop-breaker are the Claude scripts in hooks/, run via

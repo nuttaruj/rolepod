@@ -35,10 +35,17 @@ try:
 except Exception:
     sys.exit(0)
 tc = d.get("toolCall") or {}
-if (tc.get("name") or "") != "run_command":
-    sys.exit(0)
 a = tc.get("args") or {}
 ws = (d.get("workspacePaths") or [""])[0] or ""
+name = tc.get("name") or ""
+if name in ("write_to_file", "replace", "edit", "edit_file", "multi_replace_file_content"):
+    # Edit tools → the edit ledger (v2.134.0), never a verdict.
+    p = a.get("TargetFile") or a.get("AbsolutePath") or a.get("file_path") or a.get("path") or ""
+    if p and ws:
+        sys.stdout.write("EDIT\t" + ws + "\t" + p)
+    sys.exit(0)
+if name != "run_command":
+    sys.exit(0)
 cmd = a.get("CommandLine") or ""
 cwd = a.get("Cwd") or ws
 if not cmd or not cwd:
@@ -49,6 +56,12 @@ claude = {"hook_event_name": "PreToolUse", "tool_name": "Bash",
 sys.stdout.write(cwd + "\t" + json.dumps(claude))
 ' 2>/dev/null || true)
 [ -n "$TRANS" ] || exit 0
+case "$TRANS" in
+  EDIT$'\t'*)
+    _rest="${TRANS#EDIT$'\t'}"; _ws="${_rest%%$'\t'*}"; _path="${_rest#*$'\t'}"
+    [ -f "$HERE/edit-ledger.py" ] && python3 -I "$HERE/edit-ledger.py" append antigravity "$_path" --cwd "$_ws" >/dev/null 2>&1
+    exit 0;;
+esac
 CWD="${TRANS%%$'\t'*}"
 CLAUDE_IN="${TRANS#*$'\t'}"
 

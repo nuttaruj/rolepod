@@ -17,6 +17,7 @@
 #   ROLEPOD_GATES_SOFT=1   — degrade the hard block back to a reminder (logged)
 #   ROLEPOD_GATES_PASSED=1 — single-session bypass
 set -euo pipefail
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # Bypass accountability: a used bypass is recorded to .rolepod/evidence/bypass.log
 # (reason via ROLEPOD_BYPASS_REASON), never blocked. Fail-open on any error.
@@ -32,14 +33,15 @@ rolepod_log_bypass() {
 }
 
 INPUT=$(cat 2>/dev/null || echo '{}')
-read -r EVENT TOOL <<< "$(echo "$INPUT" | python3 -c "
+IFS=$'\t' read -r EVENT TOOL WS CONV <<< "$(echo "$INPUT" | python3 -c "
 import sys, json
 try:
     d = json.load(sys.stdin)
 except Exception:
     d = {}
-print(d.get('hook_event_name', 'preToolUse') or 'preToolUse', d.get('tool_name', '') or '-')
-" 2>/dev/null || echo "preToolUse -")"
+roots = d.get('workspace_roots') or []
+print('\t'.join([d.get('hook_event_name', 'preToolUse') or 'preToolUse', d.get('tool_name', '') or '-', roots[0] if roots else '', d.get('conversation_id') or d.get('session_id') or '']))
+" 2>/dev/null || printf 'preToolUse\t-\t\t')"
 
 echo "$TOOL" | grep -qE '^(Write|Edit|MultiEdit)$' || exit 0
 
@@ -53,6 +55,11 @@ except Exception:
 " 2>/dev/null || echo "")
 [ -n "$FILE" ] || exit 0
 BASE="${FILE##*/}"
+
+# Edit ledger (v2.134.0): after the edit landed, record it for the commit gate.
+if [ "$EVENT" = "postToolUse" ] && [ -f "$HERE/shared/edit-ledger.py" ]; then
+  python3 -I "$HERE/shared/edit-ledger.py" append cursor "$FILE" --cwd "${WS:-$PWD}" --agent "" >/dev/null 2>&1 || true
+fi
 
 SCHEMA_RX='(\.claude-plugin/|\.codex-plugin/|\.cursor-plugin/|/extensions/|marketplace\.json$|plugin\.json$|manifest\.json$|hooks\.json$|-extension\.(json|yaml|yml)$|\.mcp\.json$|gemini-extension\.json$|claude-extension\.json$)'
 RISK_RX='(^|/|_)(auth|authn|authz|authentication|authorization|billing|payment|payments|migration|migrations|credit|credits|permission|permissions|secret|secrets|crypto|cryptography|token|tokens|oauth|jwt|sso|saml|webhook|webhooks|stripe|paypal|charge|charges|invoice|invoices|deletion|deletions|erasure|gdpr|security)(/|\.|_|$)'
