@@ -47,12 +47,13 @@ Concrete paths, not categories. Code-intel index when connected widens the blast
 
 ### 2. Order the tasks
 
-Smallest reversible unit first. Tests-first for bugs, features, high-risk surfaces. Migrations before code that depends on them; public-API contract changes before consumers. A wide refactor with no safe single-commit path: expand (new path beside the old) → migrate consumers in reviewable green batches → contract (delete the old path once no caller remains).
+Smallest reversible unit first. Tests-first for bugs, features, high-risk surfaces. Inside a slice the migration and the public-API contract change land first; either becomes its own task only when several slices depend on it. A wide refactor with no safe single-commit path: expand (new path beside the old) → migrate consumers in reviewable green batches → contract (delete the old path once no caller remains).
 
 Prefer vertical slices — each cuts through all layers and is demoable alone — over horizontal layers. Many thin slices beat a few thick ones. A slice carrying a major unknown (new integration, unproven assumption) goes first — fail fast.
 
 Size every task to ONE fresh context window — the subagent (or teammate) that builds it starts with no memory beyond the ticket.
-Split when any holds: > ~8 files touched · > ~400 changed lines (half the reviewer capacity) · acceptance >3 bullets · 2+ subsystems · "and" in the title. Every task states **Delivers** (one user-visible sentence) and **Blocked by** (the tasks that gate it, or none) — the Blocked-by graph is the plan's only statement of order. A task is a ticket: it ships alone (own build → review → commit) and never assumes a batch; only tasks that share a seam (a contract or interface) form one ship group, named in the plan.
+A task is one vertical slice — narrow but complete through every layer it touches, demoable or verifiable on its own; no file or line count sizes it. Split when Delivers needs "and", or when a slice cannot be verified without the next task.
+Every task states **Delivers** (one user-visible sentence) and **Blocked by** (the tasks that gate it, or none) — the Blocked-by graph is the plan's only statement of order. A task is a ticket: it ships alone (own build → review → commit) and never assumes a batch; only tasks that share a seam (a contract or interface) form one ship group, named in the plan.
 
 ### 3. Test plan per task
 

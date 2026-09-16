@@ -1013,7 +1013,7 @@ done
 check "write-plan: a task is a ticket that ships alone" "grep -q 'A task is a ticket: it ships alone' core/skills/write-plan/SKILL.md"
 check "implement-plan: one task per pass, never batch" "grep -q 'One task per pass, then ship it' core/skills/implement-plan/SKILL.md && grep -q 'Never batch tasks into one diff' core/skills/implement-plan/SKILL.md"
 check "review-code: the diff is the task, never the whole plan" "grep -q 'never the whole plan' core/skills/review-code/SKILL.md"
-check "write-plan: a task fits ONE fresh context window (measurable split rule)" "grep -q 'Size every task to ONE fresh context window' core/skills/write-plan/SKILL.md && grep -q '~400 changed lines' core/skills/write-plan/SKILL.md"
+check "write-plan: a task fits ONE fresh context window = one vertical slice, no count rule" "grep -q 'Size every task to ONE fresh context window' core/skills/write-plan/SKILL.md && grep -q 'A task is one vertical slice' core/skills/write-plan/SKILL.md && grep -q 'no file or line count sizes it' core/skills/write-plan/SKILL.md && ! grep -q '400 changed lines' core/skills/write-plan/SKILL.md"
 check "implement-plan §6: both review axes dispatched in ONE message" "grep -q 'dispatched in ONE message and read together' core/skills/implement-plan/SKILL.md"
 check "review-code: R3 external = one anchored pass per ship group" "grep -q 'ONE anchored pass per ship group' core/skills/review-code/SKILL.md"
 check "review-code: R3 external skipped off money/auth/data after a clean internal round" "grep -q 'Skip it when the group is off money / auth / data AND the internal' core/skills/review-code/SKILL.md"

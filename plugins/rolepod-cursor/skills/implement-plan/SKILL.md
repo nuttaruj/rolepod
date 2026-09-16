@@ -74,7 +74,7 @@ Q3: A real design-judgment call?     Q4: More than 3 tool calls total?
 ```
 All "no" → self-do. Any "yes" → delegate to the closest specialist by path / concern / strategy.
 
-Delegating → fill `templates/task-brief.md`: 1-2 files or one module, allowed / forbidden paths, test command, done criteria, tool cap.
+Delegating → fill `templates/task-brief.md`: the task's slice (its Files, every layer it touches), allowed / forbidden paths, test command, done criteria, tool cap.
 - Absolute: the subagent NEVER commits (returns a manifest; the Lead commits) and NEVER expands scope.
 - The brief names its **Reviewer** (a role that reads the diff on return, or `N/A` + why) — no reviewer, no dispatch.
 - A write mandate goes only to the role that owns the path — never a generic platform agent (`general-purpose` / `default` / `claude`, or a bare Workflow `agent()`; a writing stage carries `agentType: 'rolepod:<role>'`), never a reviewer (`qa-tester` / `security-engineer` write tests and markdown only; `universal-reviewer` / `scout` markdown only). A CLI with hooks denies the out-of-scope edit; elsewhere this rule is the gate.

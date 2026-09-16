@@ -7,7 +7,7 @@
 <What this task delivers — the outcome, in one or two sentences.>
 
 ## Files allowed
-<Exact paths the subagent may edit. Keep to 1-2 files or one module.>
+<Exact paths the subagent may edit: the task's slice — every layer it touches, nothing beyond.>
 - `path/to/file`
 
 ## Files forbidden

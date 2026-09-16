@@ -39,7 +39,10 @@
       so the build loop can verify this task without guessing>
 - **Owner:** <The role the domain map assigns to this task's Files — path first,
       then concern. `Lead` for R1/R2-sized work (≤2 files) or when the user said
-      self-do; from R3 up the map decides. Map:
+      self-do; from R3 up the map decides. A vertical slice has ONE owner: the role
+      of its dominant layer (the risk, else most files) builds the whole slice,
+      thin ends in other layers included; two full-depth layers → two slices
+      joined by Blocked by. Map:
       backend / API routes / services / models / migrations → backend-developer
       components / pages / hooks / state / *.tsx *.vue *.svelte → frontend-developer
       visual polish / design system / a11y / CSS → ui-ux-designer
