@@ -44,6 +44,13 @@ h=json.load(open('$HJ'))['hooks']
 def has(ev,m): return any(r['command'].endswith('sweep-nudge.sh') and r.get('matcher','')==m for r in h[ev])
 assert has('beforeSubmitPrompt','') and has('preToolUse','Write|Edit|MultiEdit') and has('postToolUse','Read|Grep|Glob|WebFetch|WebSearch') and has('afterShellExecution','')\""
 check "stop-unlock sits on stop" "python3 -I -c \"import json;h=json.load(open('$HJ'))['hooks'];assert [r['command'] for r in h['stop']]==['./scripts/stop-unlock.sh']\""
+check "precommit-gate matcher fires on ANY git command (git -c k=v commit / add && commit shapes), the gate decides" \
+  "python3 -I -c \"
+import json,re
+m=[r['matcher'] for r in json.load(open('$HJ'))['hooks']['beforeShellExecution'] if r['command'].endswith('precommit-gate.sh')][0]
+rx=re.compile(m)
+for c in ['git commit -m x','git -c user.email=p@p commit -m x','git add -A && git -c a=b commit -m x','cd x; git status']: assert rx.search(c), c
+assert not rx.search('gitk') and not rx.search('echo digit'), m\""
 check "no fix-loop-breaker / push-ref-check wrapper on Cursor (no exit code, no pre-shell channel)" \
   "[ ! -f $P/scripts/fix-loop-breaker.sh ] && [ ! -f $P/scripts/push-ref-check.sh ]"
 
