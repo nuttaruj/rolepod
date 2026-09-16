@@ -218,7 +218,7 @@ report "gemini"      "${GEMINI_V:-absent}"  "hooks-live (advisory — reminders 
 CURSOR_V=$(python3 -I -c "import json;print(json.load(open('$HOME/.cursor/plugins/local/rolepod/.cursor-plugin/plugin.json'))['version'])" 2>/dev/null)
 report "cursor"      "${CURSOR_V:-absent}"  "hooks-live (deny + post-edit reminders; live-verified 2026-09-16)"
 OC_V=$(python3 -I -c "import json;print(json.load(open('$HOME/.config/opencode/rolepod-version.json'))['version'])" 2>/dev/null)
-report "opencode"    "${OC_V:-absent}"      "hooks-live (partial — plugin precommit deny + agent permission blocks; rest doctrine-only, no hook API)"
+report "opencode"    "${OC_V:-absent}"      "hooks-live (partial — plugin precommit deny + sweep/loop-breaker on tool results + agent permission blocks; rest doctrine-only)"
 AGY_V=$(command -v agy >/dev/null 2>&1 && agy plugin list 2>/dev/null | grep -q '"name": "rolepod"' && echo installed)
 report "antigravity" "${AGY_V:-absent}"     "hooks-live (deny-only — precommit gate on run_command; agy has no reminder channel)"
 

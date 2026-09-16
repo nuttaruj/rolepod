@@ -90,6 +90,43 @@ DRIVEREOF
   check "oc-gate: normal path commit → allow"              "[ \"\$(ocg docs/notes.md - 'git commit -m x')\" = ALLOW ]"
   check "oc-gate: risk + test evidence → allow"            "[ \"\$(ocg auth/login.py tests/test_x.py 'git commit -m x')\" = ALLOW ]"
   check "oc-gate: ROLEPOD_GATES_SOFT logs bypass, no deny" "[ \"\$(ROLEPOD_GATES_SOFT=1 ocg auth/login.py - 'git commit -m x')\" = ALLOW ] && grep -q opencode-precommit-gate '$OC_FIX/.rolepod/evidence/bypass.log'"
+  # ── Behavioral: shared cores behind the translator (v2.133.0) ─────────
+  # sweep-nudge / fix-loop-breaker are the Claude scripts in hooks/, run via
+  # ROLEPOD_OC_SHARED; the nudge must land INSIDE output.output (the string the
+  # model reads) — once per turn — and never break a tool call.
+  DRIVER2="$OC_FIX/cores.mjs"
+  cat > "$DRIVER2" <<DRIVEREOF
+import { RolepodPlugin } from 'file://$REPO_DIR/adapters/opencode/plugin/rolepod.js'
+const sid = 'oc-cores-test-' + process.pid
+const plugin = await RolepodPlugin({ directory: process.cwd(), client: null })
+const after = (tool, args, output, metadata) => { const o = { title: tool, output, metadata: metadata || {} }; return plugin['tool.execute.after']({ tool, sessionID: sid, callID: 'c', args }, o).then(() => o.output) }
+const res = {}
+await plugin['chat.message']({ sessionID: sid }, { message: {}, parts: [{ type: 'text', text: 'go' }] })
+let o1 = await after('read', { filePath: '/tmp/a' }, 'x'.repeat(70000))
+let o2 = await after('read', { filePath: '/tmp/b' }, 'y'.repeat(70000))
+let o3 = await after('grep', { pattern: 'q' }, 'z'.repeat(1000))
+res.sweep1 = o1.includes('⟂ sweep'); res.sweep2 = o2.includes('⟂ sweep: ~136 KB'); res.sweep3 = o3.includes('⟂ sweep')
+await plugin['chat.message']({ sessionID: sid }, { message: {}, parts: [{ type: 'text', text: 'again' }] })
+await after('write', { filePath: '/tmp/c' }, 'ok')
+let o4 = await after('read', { filePath: '/tmp/a' }, 'x'.repeat(200000))
+res.sweepAfterEdit = o4.includes('⟂ sweep')
+let l1 = await after('bash', { command: 'npm test' }, 'FAIL', { exit: 1 })
+let l2 = await after('bash', { command: 'npm test' }, 'FAIL', { exit: 1 })
+let l3 = await after('bash', { command: 'npm test' }, 'FAIL', { exit: 1 })
+res.loop2 = l2.includes('LOOP BREAKER'); res.loop3 = l3.includes('LOOP BREAKER')
+let l4 = await after('bash', { command: 'npm test' }, 'PASS', { exit: 0 })
+res.loopReset = l4.includes('LOOP BREAKER')
+let plain = await after('bash', { command: 'echo hi' }, 'hi', { exit: 0 })
+res.plainUntouched = plain === 'hi'
+console.log(JSON.stringify(res))
+DRIVEREOF
+  CORES=$(cd "$OC_FIX" && ROLEPOD_OC_SHARED="$REPO_DIR/hooks" node "$DRIVER2" 2>/dev/null); rm -f "${TMPDIR:-/tmp}"/rolepod-sweep-oc-cores-test-*.json "${TMPDIR:-/tmp}"/rolepod-loopbreak-oc-cores-test-*.json
+  ocv() { printf '%s' "$CORES" | python3 -I -c "import json,sys; d=json.load(sys.stdin); sys.exit(0 if d.get('$1') is $2 else 1)"; }
+  check "oc-cores: first 70 KB read → no nudge; second (136 KB) → '⟂ sweep' appended to the tool result; third → silent" "ocv sweep1 False && ocv sweep2 True && ocv sweep3 False"
+  check "oc-cores: chat.message resets, an edit suppresses the sweep for the turn" "ocv sweepAfterEdit False"
+  check "oc-cores: same bash command failing 3× (metadata.exit) → LOOP BREAKER on the third result only" "ocv loop2 False && ocv loop3 True"
+  check "oc-cores: a passing run resets the loop counter; plain output untouched" "ocv loopReset False && ocv plainUntouched True"
+  check "oc-cores: missing shared dir → tool results untouched (fail open)" "[ \"\$(cd $OC_FIX && ROLEPOD_OC_SHARED=/nonexistent node $DRIVER2 2>/dev/null | python3 -I -c 'import json,sys; d=json.load(sys.stdin); print(all(v is False for k,v in d.items() if k!=\"plainUntouched\") and d[\"plainUntouched\"])')\" = True ]"
   rm -rf "$OC_FIX"
 else
   echo "  ~ node not on PATH — skipping opencode gate behavior checks"
@@ -104,11 +141,13 @@ if ROLEPOD_OPENCODE_TARGET="$TMP_OC" ./install.sh --target=opencode --force --ye
   check "installed skills/using-rolepod"  "[ -f $TMP_OC/skills/using-rolepod/SKILL.md ]"
   check "installed 15 agents"             "[ \"\$(ls $TMP_OC/agents/*.md | wc -l | tr -d ' ')\" = 15 ]"
   check "installed plugins/rolepod.js"    "[ -f $TMP_OC/plugins/rolepod.js ]"
+  check "installed plugins/rolepod-shared/ = the two hook cores, byte-identical" "cmp -s hooks/sweep-nudge.sh $TMP_OC/plugins/rolepod-shared/sweep-nudge.sh && cmp -s hooks/fix-loop-breaker.sh $TMP_OC/plugins/rolepod-shared/fix-loop-breaker.sh"
   check "installed AGENTS.md managed block" "grep -q 'rolepod:start' $TMP_OC/AGENTS.md"
   check "installed version stamp"         "[ -f $TMP_OC/rolepod-version.json ]"
   if ROLEPOD_OPENCODE_TARGET="$TMP_OC" ./install.sh --target=opencode --uninstall --yes >/dev/null 2>&1; then
     check "uninstall removed skills"      "[ ! -d $TMP_OC/skills/using-rolepod ]"
     check "uninstall removed plugin shim" "[ ! -f $TMP_OC/plugins/rolepod.js ]"
+    check "uninstall removed plugins/rolepod-shared/" "[ ! -d $TMP_OC/plugins/rolepod-shared ]"
     check "uninstall stripped managed block" "! grep -q 'rolepod:start' $TMP_OC/AGENTS.md 2>/dev/null || [ ! -f $TMP_OC/AGENTS.md ]"
   else
     echo "  ✗ uninstall --target=opencode failed"; fail=$((fail+1))

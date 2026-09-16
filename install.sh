@@ -937,6 +937,7 @@ PY
     for n in "${SKILL_NAMES[@]}"; do do_or_dry "rm -rf $O_TARGET/skills/$n" rm -rf "$O_TARGET/skills/$n"; done
     for n in "${AGENT_NAMES[@]}"; do do_or_dry "rm -f $O_TARGET/agents/$n" rm -f "$O_TARGET/agents/$n"; done
     do_or_dry "rm -f $O_TARGET/plugins/rolepod.js" rm -f "$O_TARGET/plugins/rolepod.js"
+    do_or_dry "rm -rf $O_TARGET/plugins/rolepod-shared" rm -rf "$O_TARGET/plugins/rolepod-shared"
     do_or_dry "rm -f $O_TARGET/rolepod-version.json" rm -f "$O_TARGET/rolepod-version.json"
     # Managed block: project scope wrote it at the repo root, global at target.
     if [ "$SCOPE" = "project" ]; then
@@ -1756,6 +1757,9 @@ if opencode_selected; then
   step "Copying plugin shim → $OC_TARGET/plugins/rolepod.js"
   do_or_dry "copy rolepod.js into $OC_TARGET/plugins/" bash -c "
     mkdir -p '$OC_TARGET/plugins' && cp '$RENDERED_OC_DIR/plugin/rolepod.js' '$OC_TARGET/plugins/rolepod.js'"
+  step "Copying shared hook cores → $OC_TARGET/plugins/rolepod-shared/"
+  do_or_dry "copy rolepod-shared/ into $OC_TARGET/plugins/" bash -c "
+    rm -rf '$OC_TARGET/plugins/rolepod-shared' && cp -R '$RENDERED_OC_DIR/plugin/rolepod-shared' '$OC_TARGET/plugins/rolepod-shared'"
 
   step "Writing version stamp → $OC_TARGET/rolepod-version.json"
   do_or_dry "copy opencode.json → $OC_TARGET/rolepod-version.json" \
@@ -1770,6 +1774,7 @@ if opencode_selected; then
     oc_agents=$(ls "$OC_TARGET/agents/"*.md 2>/dev/null | wc -l | tr -d ' ')
     [ "$oc_agents" -ge 15 ] || fail "opencode verification failed — expected ≥15 agents, found $oc_agents"
     [ -f "$OC_TARGET/plugins/rolepod.js" ] || fail "opencode verification failed — plugins/rolepod.js missing"
+    [ -f "$OC_TARGET/plugins/rolepod-shared/sweep-nudge.sh" ] || fail "opencode verification failed — plugins/rolepod-shared/ missing"
     [ -e "$OC_AGENTS_MD" ] || fail "opencode verification failed — $OC_AGENTS_MD missing"
     ok "rolepod → opencode (skills + agents + plugin + AGENTS.md block)"
   else

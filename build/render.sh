@@ -699,10 +699,16 @@ render_opencode() {
   # Agents — description + mode: subagent (filename = agent id).
   render_agents "opencode" "$out_dir/agents"
 
-  # Plugin shim.
+  # Plugin shim + the shared hook cores it runs behind a translator
+  # (plugins/rolepod-shared/ next to rolepod.js; byte-identical to hooks/).
   if [ -f "$adapter_dir/plugin/rolepod.js" ]; then
-    mkdir -p "$out_dir/plugin"
+    mkdir -p "$out_dir/plugin/rolepod-shared"
     cp "$adapter_dir/plugin/rolepod.js" "$out_dir/plugin/rolepod.js"
+    local h
+    for h in sweep-nudge fix-loop-breaker; do
+      cp "$REPO_DIR/hooks/$h.sh" "$out_dir/plugin/rolepod-shared/$h.sh"
+    done
+    chmod +x "$out_dir/plugin/rolepod-shared/"*.sh 2>/dev/null || true
   else
     echo "render: missing $adapter_dir/plugin/rolepod.js" >&2; exit 1
   fi

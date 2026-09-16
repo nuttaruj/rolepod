@@ -14,6 +14,13 @@
  *
  *   3. tool.execute.after → session evidence tracker: edit/write on a
  *      high-risk path vs a test path (in-memory counters, this session).
+ *   5. sweep-nudge + fix-loop-breaker (v2.133.0) → the SHARED Claude hook
+ *      scripts (plugins/rolepod-shared/*.sh, byte-identical to hooks/) run
+ *      behind an opencode→Claude translator: chat.message resets the sweep
+ *      state, edit/write set the edit flag, read/grep/glob/list/webfetch/bash
+ *      output sizes accumulate, bash exit codes feed the loop breaker. The
+ *      one nudge each emits is APPENDED to the tool result the model reads
+ *      (output.output) — opencode's documented context channel after a tool.
  *   4. tool.execute.before → precommit gate: `git commit` while high-risk
  *      paths were edited and ZERO test evidence exists → throw (opencode's
  *      documented deny mechanism). ROLEPOD_GATES_SOFT=1 logs the bypass to
@@ -30,12 +37,39 @@
  */
 
 import { createHash } from "node:crypto"
-import { execSync } from "node:child_process"
+import { execSync, spawnSync } from "node:child_process"
 import * as fs from "node:fs"
 import * as os from "node:os"
 import * as path from "node:path"
+import { fileURLToPath } from "node:url"
 
 const STALE_MS = 30 * 60 * 1000 // matches session-lifecycle.sh STALE_THRESHOLD
+
+// Shared hook cores (hooks/sweep-nudge.sh, hooks/fix-loop-breaker.sh) ship next
+// to this file as plugins/rolepod-shared/; ROLEPOD_OC_SHARED overrides (tests).
+const HERE = path.dirname(fileURLToPath(import.meta.url))
+const SHARED = process.env.ROLEPOD_OC_SHARED || path.join(HERE, "rolepod-shared")
+// opencode tool id → the Claude tool name the shared cores classify on.
+const TOOL_MAP = {
+  read: "Read", grep: "Grep", glob: "Glob", list: "Glob", webfetch: "WebFetch",
+  websearch: "WebSearch", bash: "Bash", task: "Agent", edit: "Edit", write: "Write",
+}
+// Run one shared core with a Claude-shape stdin; return its additionalContext or "".
+function runCore(name, input) {
+  try {
+    const script = path.join(SHARED, `${name}.sh`)
+    if (!fs.existsSync(script)) return ""
+    const r = spawnSync("bash", [script], {
+      input: JSON.stringify(input), encoding: "utf8", timeout: 3000,
+      stdio: ["pipe", "pipe", "ignore"], env: process.env,
+    })
+    if (r.status !== 0 || !r.stdout) return ""
+    const o = JSON.parse(r.stdout)
+    return String(o?.hookSpecificOutput?.additionalContext || "")
+  } catch {
+    return "" // fail open — a nudge must never break a tool call
+  }
+}
 
 const REANCHOR_MSG =
   "rolepod post-compact re-anchor: the summary is a lossy narrator, not a " +
@@ -182,16 +216,59 @@ export const RolepodPlugin = async ({ directory, client }) => {
       }
     },
 
-    "tool.execute.after": async (input, output) => {
+    "chat.message": async (input, output) => {
       try {
-        const tool = String(input?.tool ?? "")
-        if (tool !== "edit" && tool !== "write") return
-        const fp = String(output?.args?.filePath ?? output?.args?.file_path ?? "")
-        if (!fp) return
-        if (TEST_RE.test(fp)) testEvidence += 1
-        else if (RISK_RE.test(fp)) riskEdits += 1
+        // New user prompt = new turn: the sweep counter starts over.
+        const text = (output?.parts || []).filter((p) => p?.type === "text").map((p) => p.text).join("\n")
+        runCore("sweep-nudge", {
+          hook_event_name: "UserPromptSubmit",
+          session_id: String(input?.sessionID ?? sessionId ?? ""),
+          prompt: text,
+        })
+      } catch {
+        /* fail open */
+      }
+    },
+
+    "tool.execute.after": async (input, output) => {
+      const tool = String(input?.tool ?? "")
+      const args = input?.args ?? output?.args ?? {}
+      try {
+        if (tool === "edit" || tool === "write") {
+          const fp = String(args?.filePath ?? args?.file_path ?? "")
+          if (fp) {
+            if (TEST_RE.test(fp)) testEvidence += 1
+            else if (RISK_RE.test(fp)) riskEdits += 1
+          }
+        }
       } catch {
         /* fail open — evidence tracking must never break an edit */
+      }
+      // Shared cores: the nudge rides on the tool result the model reads.
+      try {
+        const sid = String(input?.sessionID ?? sessionId ?? "")
+        const claudeTool = TOOL_MAP[tool]
+        if (sid && claudeTool && typeof output?.output === "string") {
+          const notes = []
+          if (tool === "edit" || tool === "write") {
+            runCore("sweep-nudge", { hook_event_name: "PreToolUse", session_id: sid, tool_name: claudeTool, tool_input: args })
+          } else {
+            const m = runCore("sweep-nudge", { hook_event_name: "PostToolUse", session_id: sid, tool_name: claudeTool, tool_response: output.output })
+            if (m) notes.push(m)
+          }
+          if (tool === "bash") {
+            const exit = output?.metadata?.exit
+            const m = runCore("fix-loop-breaker", {
+              hook_event_name: "PostToolUse", session_id: sid, tool_name: "Bash",
+              tool_input: { command: String(args?.command ?? "") },
+              tool_response: { stdout: output.output, exit_code: typeof exit === "number" ? exit : undefined },
+            })
+            if (m) notes.push(m)
+          }
+          if (notes.length) output.output += "\n\n" + notes.join("\n\n")
+        }
+      } catch {
+        /* fail open */
       }
     },
 
