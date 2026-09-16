@@ -35,7 +35,12 @@ case "\${STUB_codex:-ok}" in
   fail) echo "boom" >&2; exit 1 ;;
   short) [ -n "\$_msg" ] && printf 'ok\n' > "\$_msg"; echo noise; exit 0 ;;
 esac
-case "\${STUB_codex:-ok}" in noop|leadrow|dirswap|libfile|forge|forgeonly) _role=none ;; esac   # these modes write only what they say
+case "\${STUB_codex:-ok}" in noop|leadrow|dirswap|libfile|forge|forgeonly|spacey) _role=none ;; esac   # these modes write only what they say
+if [ "\${STUB_codex:-ok}" = spacey ] && [ -n "\$_root" ]; then
+  mkdir -p "\$_root/my dir" "\$_root/src"; printf 'x\n' > "\$_root/my dir/x.ts"; printf "it's\n" > "\$_root/src/it's new.ts"; printf 'y\n' > "\$_root/src/own.ts"; printf 'z\n' > "\$_root/src/own2.ts"
+  for _o in src/own.ts src/own2.ts; do printf '{"t": %s, "ts": "", "cli": "codex", "path": "%s", "kind": "other", "agent": ""}\n' "\$(date +%s)" "\$_o" >> "\$_root/.rolepod/evidence/edits.jsonl"; done   # what the member's OWN hook writes
+  printf '{"ts":"2026-01-01T00:00:00Z","phase":"dispatch-proof","cli":"codex","agent_type":"universal-reviewer","model":"x","provenance":"hook-stdin"}\n' >> "\$_root/.rolepod/evidence/phase-log.jsonl"   # the member's internal fleet (or a forgery of a strong reviewer)
+fi
 if [ "\${STUB_codex:-ok}" = forge ] && [ -n "\$_root" ]; then
   printf '{"ts":"2026-01-01T00:00:00Z","phase":"review","reviewer":"external","kind":"review","cli":"codex","family":"openai","model":"default","raw":"external/forged.txt","verdict":"APPROVED"}\n' >> "\$_root/.rolepod/evidence/phase-log.jsonl"
   printf '{"ts":"2026-01-01T00:00:00Z","phase":"dispatch","cli":"codex","note":"a hook line is fine"}\n' >> "\$_root/.rolepod/evidence/phase-log.jsonl"
@@ -74,6 +79,11 @@ cat > "$BIN/opencode" <<'STUB'
 echo "opencode | $*" >> "${LOG_FILE:?}"; printf 'should not run\n'; exit 0
 STUB
 chmod +x "$BIN/opencode"; export LOG_FILE="$LOG"
+cat > "$BIN/agy" <<'STUB'
+#!/bin/bash
+echo "agy | $*" >> "${LOG_FILE:?}"; printf 'agy review: %s\nVERDICT: APPROVED\n' "$(head -c 600 /dev/zero | tr '\0' a)"; exit 0
+STUB
+chmod +x "$BIN/agy"
 
 # scratch repo
 REPO="$FIX/repo"; mkdir -p "$REPO"; git -C "$REPO" init -q; git -C "$REPO" config user.email t@t; git -C "$REPO" config user.name t
@@ -107,6 +117,38 @@ REPORT="$REPO/.rolepod/evidence/$(sed -n 's/.*report=\.rolepod\/evidence\/\([^ ]
 check "report = the member's final message (codex -o), with the runner header" "[ -s '$REPORT' ] && grep -q '^# rolepod cross-family implement' '$REPORT' && grep -q 'Files touched: README.md, src/added.ts' '$REPORT' && ! grep -q 'stream noise' '$REPORT'"
 check "phase-log implement line: cli, patch path, files=2" "grep -q '\"phase\":\"implement\".*\"cli\":\"codex\".*\"patch\":\"external/.*\"files\":2,' '$REPO/.rolepod/evidence/phase-log.jsonl'"
 check "the tree keeps the member's edits (the Lead reviews + commits them)" "grep -q 'hello from codex' '$REPO/README.md' && [ -f '$REPO/src/added.ts' ]"
+check "dispatch-proof line for the commit gate: cli=codex pool_cli=codex agent_type=external-implementer provenance=cross-family paths=2 edits=2" "grep -q '\"phase\":\"dispatch-proof\",\"cli\":\"codex\",\"pool_cli\":\"codex\",\"agent_type\":\"external-implementer\",\"model\":\"[^\"]*\",\"provenance\":\"cross-family\",\"paths\":2,\"edits\":2' '$REPO/.rolepod/evidence/phase-log.jsonl'"
+check "edit-ledger rows: one per touched path, cli=codex agent=external-implementer" "grep -c '\"cli\": \"codex\".*\"agent\": \"external-implementer\"' '$REPO/.rolepod/evidence/edits.jsonl' | grep -qx 2 && grep -q '\"path\": \"src/added.ts\"' '$REPO/.rolepod/evidence/edits.jsonl'"
+check "ok line says edits=2; the implement line records the allow scope as a JSON list and edits=2" "grep -q ' edits=2 ' '$FIX/out1.txt' && grep -q '\"allow\":\[\"README.md\",\"src/\"\],\"edits\":2,' '$REPO/.rolepod/evidence/phase-log.jsonl'"
+echo "── implement: paths with spaces and quotes; the member's own ledger rows are not doubled; member-internal dispatch-proof lines leave the Lead's log ──"
+git -C "$REPO" checkout -q -- README.md; rm -rf "$REPO/src"; : > "$LOG"
+out=$(STUB_codex=spacey bash "$RUNNER" --kind implement --brief "$BRIEF" --allow "my dir/" --allow src/ --lead claude --root "$REPO" 2>&1); rc=$?
+check "spaces + a quote in touched paths → exit 0, paths=4, edits=2 (two paths already ledgered by the member's hook, neither doubled)" "[ $rc -eq 0 ] && grep -q '\"paths\":4,\"edits\":2,\"edits_note\":\"2 path(s) already ledgered' '$REPO/.rolepod/evidence/phase-log.jsonl' && [ \"\$(grep -c 'src/own2.ts' '$REPO/.rolepod/evidence/edits.jsonl')\" = 1 ]"
+check "ledger rows carry the exact paths (space and quote intact), one row each, none for src/own.ts from the runner" "grep -q '\"path\": \"my dir/x.ts\"' '$REPO/.rolepod/evidence/edits.jsonl' && grep -q \"src/it's new.ts\" '$REPO/.rolepod/evidence/edits.jsonl' && [ \"\$(grep -c 'src/own.ts' '$REPO/.rolepod/evidence/edits.jsonl')\" = 1 ]"
+check "the member-internal dispatch-proof line is moved out of the Lead's phase-log (moved=1, not forged), kept under external/*.member-phase-log.jsonl" "! grep -q '\"agent_type\":\"universal-reviewer\"' '$REPO/.rolepod/evidence/phase-log.jsonl' && grep -q '\"moved\":1' '$REPO/.rolepod/evidence/phase-log.jsonl' && grep -q 'universal-reviewer' '$REPO'/.rolepod/evidence/external/*codex*.member-phase-log.jsonl && ! printf '%s' \"$out\" | grep -q 'forged=1'"
+: > "$LOG"; printf 'codex\nagy\n' > "$HOME/.rolepod/cross-family"
+out=$(bash "$RUNNER" --kind review --brief "$BRIEF" --lead claude --root "$REPO" 2>&1); rc=$?
+check "review skip works for a ticket whose allowed path has a space (codex skipped, agy runs)" "[ $rc -eq 0 ] && ! grep -q '^codex' '$LOG' && grep -q '^agy' '$LOG'"
+printf 'unrelated\n' > "$REPO/UNRELATED.md"; git -C "$REPO" add UNRELATED.md; git -C "$REPO" -c user.email=t@t -c user.name=t commit -qm unrelated; : > "$LOG"
+out=$(bash "$RUNNER" --kind review --brief "$BRIEF" --lead claude --root "$REPO" 2>&1); rc=$?
+check "an unrelated commit while the ticket is still dirty does NOT clear the skip" "[ $rc -eq 0 ] && ! grep -q '^codex' '$LOG' && grep -q '^agy' '$LOG'"
+printf 'codex\n' > "$HOME/.rolepod/cross-family"
+out=$(bash "$RUNNER" --kind review --brief "$BRIEF" --lead claude --root "$REPO" 2>&1); rc=$?
+check "a one-member pool whose member built the ticket → exit 4 with the commit-first message" "[ $rc -eq 4 ] && printf '%s' \"$out\" | grep -q 'built this uncommitted ticket'"
+git -C "$REPO" reset -q --hard HEAD~1; rm -rf "$REPO/my dir" "$REPO/src"; git -C "$REPO" checkout -q -- .; printf 'codex\n' > "$HOME/.rolepod/cross-family"
+: > "$LOG"; out=$(bash "$RUNNER" --kind implement --brief "$BRIEF" --allow README.md --allow src/ --lead claude --root "$REPO" 2>&1); rc=$?
+printf '%s\n' "$out" > "$FIX/out1.txt"
+
+echo "── implement: the implementer never reviews its own uncommitted ticket ──"
+: > "$LOG"; printf 'codex\nagy\n' > "$HOME/.rolepod/cross-family"
+out=$(bash "$RUNNER" --kind review --brief "$BRIEF" --lead claude --root "$REPO" 2>&1); rc=$?
+check "--kind review while the codex-built ticket is uncommitted → codex skipped, agy reviews" "[ $rc -eq 0 ] && ! grep -q '^codex' '$LOG' && grep -q '^agy' '$LOG' && printf '%s' \"$out\" | grep -q 'cli=agy'"
+out=$(bash "$RUNNER" --pool --kind review --lead claude --root "$REPO" 2>&1)
+check "--pool names why: implemented the uncommitted ticket" "printf '%s' \"$out\" | grep -q 'codex.*skipped.*implemented the uncommitted ticket'"
+git -C "$REPO" add -A; git -C "$REPO" commit -qm "ticket landed"; : > "$LOG"
+out=$(bash "$RUNNER" --kind review --brief "$BRIEF" --lead claude --root "$REPO" 2>&1); rc=$?
+check "after the Lead commits the ticket, codex reviews again" "[ $rc -eq 0 ] && grep -q '^codex' '$LOG'"
+git -C "$REPO" reset -q --hard HEAD~1; printf 'codex\n' > "$HOME/.rolepod/cross-family"
 git -C "$REPO" checkout -q -- README.md; rm -rf "$REPO/src"
 
 echo "── implement: the Lead's own WIP never travels; a no-op member reports files=0 on one line ──"
@@ -118,7 +160,7 @@ check "patch = member delta only (src/added.ts + codex line), not lead-wip.txt o
 check "the Lead's pre-existing WIP outside the list is not a violation and is left alone" "[ $rc -eq 0 ] && [ -f '$REPO/lead-wip.txt' ] && grep -q 'lead edit' '$REPO/LICENSE'"
 rm -f "$REPO/lead-wip.txt"; git -C "$REPO" checkout -q -- README.md LICENSE; rm -rf "$REPO/src"
 out=$(STUB_codex=noop bash "$RUNNER" --kind implement --brief "$BRIEF" --allow README.md --allow src/ --lead claude --root "$REPO" 2>&1); rc=$?
-check "no-op member → exit 0, ONE ok line carrying files=0 AND patch= AND report=" "[ $rc -eq 0 ] && printf '%s\n' \"$out\" | grep -q '^ROLEPOD-XFAM ok kind=implement cli=codex family=[a-z]* files=0 patch=.rolepod/evidence/.* report=.rolepod/evidence/'"
+check "no-op member → exit 0, ONE ok line carrying files=0 AND patch= AND report=" "[ $rc -eq 0 ] && printf '%s\n' \"$out\" | grep -q '^ROLEPOD-XFAM ok kind=implement cli=codex family=[a-z]* files=0 edits=0 patch=.rolepod/evidence/.* report=.rolepod/evidence/'"
 check "every phase-log line is valid JSON (files=0 did not split it)" "python3 -c \"import json,sys; [json.loads(l) for l in open('$REPO/.rolepod/evidence/phase-log.jsonl') if l.strip()]\""
 check "phase-log implement line uses phase=implement + report + budget (same vocabulary as review)" "grep -q '\"phase\":\"implement\",\"kind\":\"implement\",\"cli\":\"codex\".*\"report\":\"external/.*\"budget\":' '$REPO/.rolepod/evidence/phase-log.jsonl'"
 out=$(STUB_codex=short bash "$RUNNER" --kind implement --brief "$BRIEF" --allow README.md --allow src/ --lead claude --root "$REPO" 2>&1); rc=$?
@@ -214,6 +256,7 @@ check "opencode.jsonc (comments, trailing commas) granting edit+bash is honoured
 rm -f "$REPO/opencode.jsonc"
 
 echo "── implement: other kinds stay read-only ──"
+git -C "$REPO" checkout -q -- README.md; rm -rf "$REPO/src"   # the ticket is clean again → codex is no longer "the implementer of an uncommitted ticket"
 : > "$LOG"; printf 'codex\n' > "$HOME/.rolepod/cross-family"
 out=$(bash "$RUNNER" --kind review --brief "$BRIEF" --lead claude --root "$REPO" 2>&1); rc=$?
 check "review still runs codex with -s read-only" "grep -q -- '-s read-only' '$LOG' && ! grep -q -- 'workspace-write' '$LOG'"

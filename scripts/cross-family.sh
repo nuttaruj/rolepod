@@ -92,6 +92,7 @@
 #   cross-family.sh --collect <job-id> [--timeout <sec>]   # wait for a detached job, print its output
 #   cross-family.sh --jobs                                # list detached jobs (running / done)
 #   cross-family.sh --pool [--lead <cli>] [--kind <k>]    # usable pool, no network
+#   env ROLEPOD_EDIT_LEDGER=<path>   # implement: override where hooks/edit-ledger.py is found (default: next to this runner, then ~/.rolepod/bin)
 #   cross-family.sh --pool-names [--lead <cli>]           # names only (hooks use this)
 #   cross-family.sh --probe [--lead <cli>]                # live "reply OK" per member
 #   cross-family.sh --candidates                          # every installed CLI, the Lead's own included (opt-in question)
@@ -482,8 +483,31 @@ timeout_for() { # $1 cli → seconds (flag > config > kind default) — the runa
   esac
 }
 
+implement_skips() { # --kind review: every pool cli that built a ticket whose allowed paths are still uncommitted (author never reviews own work)
+  # An implement line counts when it is newer than the last commit touching ITS OWN allowed paths (an unrelated commit elsewhere
+  # does not clear it) and at least one of those paths still shows in git status. One python pass; entries are NUL-joined.
+  _ipl="$EV/phase-log.jsonl"; [ -f "$_ipl" ] || return 0
+  python3 -I - "$_ipl" 2>/dev/null <<'PYI' | while IFS= read -r -d '' _ic && IFS= read -r -d '' _ial; do
+import json, sys, datetime
+for l in open(sys.argv[1], encoding="utf-8", errors="replace"):
+    try: d = json.loads(l)
+    except Exception: continue
+    if d.get("phase") != "implement" or not d.get("cli") or not isinstance(d.get("allow"), list) or not d["allow"]: continue
+    try: t = datetime.datetime.fromisoformat(d["ts"].replace("Z", "+00:00")).timestamp()
+    except Exception: continue
+    sys.stdout.write("%s\0%d\n%s\0" % (d["cli"], int(t), "\n".join(d["allow"])))
+PYI
+    _it="${_ial%%
+*}"; _ipaths="${_ial#*
+}"
+    _ilast=$(printf '%s\n' "$_ipaths" | sed 's#/$##' | tr '\n' '\0' | xargs -0 git -C "$ROOT" log -1 --format=%ct -- 2>/dev/null | sort -n | tail -1); _ilast=${_ilast:-0}   # xargs may batch → one value per batch → the newest
+    [ "$_it" -ge "$_ilast" ] || continue
+    printf '%s\n' "$_ipaths" | while IFS= read -r _a; do [ -n "$_a" ] && [ -n "$(git -C "$ROOT" status --porcelain -- "${_a%/}" 2>/dev/null)" ] && { printf '%s\n' "$_ic"; break; }; done
+  done | sort -u | tr '\n' ' '
+}
 # Rows: "<cli> <status> <family> <note>" — status ∈ usable|skipped|absent
-POOL_ROWS=""; USABLE=""; SEEN_FAMILIES=""
+POOL_ROWS=""; USABLE=""; SEEN_FAMILIES=""; IMPL_SKIPS=""
+[ "$STATE" = "on" ] && [ "$KIND" = "review" ] && IMPL_SKIPS=$(implement_skips)   # only a live pool pays the phase-log pass
 if [ "$STATE" != "on" ]; then
   if [ "$STATE" = "none" ]; then POOL_ROWS="-  off  -  cross-family disabled by $CFG_SRC (none)"
   else POOL_ROWS="-  off  -  cross-family is OPT-IN and not enabled on this machine"; fi
@@ -499,6 +523,8 @@ $cli  absent  -  not on PATH"; continue; fi
     fam=$(family_of "$cli")
     if [ "$cli" = "$LEAD" ]; then POOL_ROWS="$POOL_ROWS
 $cli  skipped  $fam  is the Lead"; continue; fi
+    case " $IMPL_SKIPS " in *" $cli "*) POOL_ROWS="$POOL_ROWS
+$cli  skipped  $fam  implemented the uncommitted ticket (author never reviews own work)"; continue ;; esac
     note="bin=$bin · timeout=$(timeout_for "$cli")s · stall=$(stall_for "$cli")s"
     case "$cli" in cursor|opencode) note="$note · $(describe_default_model "$cli")" ;; esac
     if [ "$fam" = "unknown" ]; then
@@ -638,13 +664,62 @@ implement_guard() { # $1 tree before, $2 tree after, $3 save dir → stdout "rev
   fi
   rm -f "$_gl" "$_gl.ci" "$_gl.rs"
 }
-phaselog_forged() { # $1 byte offset of phase-log before the member ran → strips runner-only lines appended since (a member cannot mint an external pass), prints how many
-  _pl="$EV/phase-log.jsonl"; [ -f "$_pl" ] || { echo 0; return 0; }
-  _n=$(tail -c +"$(( $1 + 1 ))" "$_pl" 2>/dev/null | grep -c -E '"reviewer":"external"|"phase":"implement"|"phase":"external-fail"' || true)
-  if [ "${_n:-0}" -gt 0 ]; then
-    _pt=$(mktemp) && { head -c "$1" "$_pl"; tail -c +"$(( $1 + 1 ))" "$_pl" | { grep -v -E '"reviewer":"external"|"phase":"implement"|"phase":"external-fail"' || :; }; } > "$_pt" 2>/dev/null && mv -f "$_pt" "$_pl"   # grep -v exits 1 when nothing survives — the common case, all appended lines forged
+phaselog_scrub() { # $1 byte offset of phase-log before the member ran, $2 member log file → prints "<forged> <moved>"
+  # Lines appended while the member ran come from ITS hooks (route, dispatch, write-scope…) or from the member itself.
+  # Runner-only shapes (an external pass, an implement line, an external-fail) can only be forgeries → deleted + counted.
+  # dispatch-proof lines are the member's internal fleet, not the Lead's reviewers → moved to $2 (kept as evidence, not counted as a violation).
+  _spl="$EV/phase-log.jsonl"; [ -f "$_spl" ] || { echo "0 0"; return 0; }
+  _sf='"reviewer":"external"|"phase":"implement"|"phase":"external-fail"'; _sm='"phase":"dispatch-proof"'
+  _tail=$(mktemp) || { echo "0 0"; return 0; }; tail -c +"$(( $1 + 1 ))" "$_spl" > "$_tail" 2>/dev/null
+  _nf=$(grep -c -E "$_sf" "$_tail" || true); _nm=$(grep -v -E "$_sf" "$_tail" | grep -c -E "$_sm" || true)
+  if [ "$(( ${_nf:-0} + ${_nm:-0} ))" -gt 0 ]; then
+    { grep -v -E "$_sf" "$_tail" | grep -E "$_sm" || :; } >> "$2" 2>/dev/null
+    _pt=$(mktemp) && { head -c "$1" "$_spl"; { grep -v -E "$_sf" "$_tail" | grep -v -E "$_sm" || :; }; } > "$_pt" 2>/dev/null && mv -f "$_pt" "$_spl"   # grep -v exits 1 when nothing survives — the common case
   fi
-  echo "${_n:-0}"
+  rm -f "$_tail"; echo "${_nf:-0} ${_nm:-0}"
+}
+edit_ledger_script() { # hooks/edit-ledger.py as shipped next to this runner in every tree; ~/.rolepod/bin (install.sh) covers the installed launcher AND a repo-tree runner on a machine without a plugin ledger
+  [ -n "${ROLEPOD_EDIT_LEDGER:-}" ] && [ -f "$ROLEPOD_EDIT_LEDGER" ] && { printf '%s' "$ROLEPOD_EDIT_LEDGER"; return; }
+  _h=$(cd "$(dirname "$0")" 2>/dev/null && pwd)
+  for _l in "$_h/edit-ledger.py" "$_h/../hooks/edit-ledger.py" "$_h/shared/edit-ledger.py" "$_h/../plugin/rolepod-shared/edit-ledger.py" "$HOME/.rolepod/bin/edit-ledger.py"; do
+    [ -f "$_l" ] && { printf '%s' "$_l"; return; }
+  done
+}
+implement_evidence() { # $1 pool cli, $2 tree before, $3 tree after, $4 model-or-empty, $5 edits.jsonl byte offset before the run → prints "<rows>|<note>"
+  # The Lead's commit gate counts edit-ledger rows by kind (test / risk) and reads dispatch-proof lines by agent_type; the
+  # `agent` tag on the rows is forward-looking metadata, nothing reads it yet. Rows the member's OWN hooks appended during
+  # the run (same cli name, after $5) already cover their paths — the runner adds rows only for the rest, never doubles.
+  # jlog from inside one() is safe only because implement refuses --all (members never run concurrently on this kind).
+  _lc="$1"; [ "$_lc" = "agy" ] && _lc=antigravity   # the ledger's / adapters' name for the Antigravity CLI
+  _epf=$(mktemp) || { printf '0|no temp file'; return 0; }
+  git -C "$ROOT" diff-tree -r -z --name-only "$2" "$3" -- . $PATCH_EXCLUDE 2>/dev/null > "$_epf"   # `paths` here equals `files` on the implement line only because BOTH plumbing calls run with rename detection off — never add -M to one side
+  _en=$(tr -dc '\0' < "$_epf" | wc -c | tr -d ' '); _en=${_en:-0}
+  _els=$(edit_ledger_script); _note=""; _rows=0
+  if [ "$_en" -gt 0 ] && [ -n "$_els" ] && command -v python3 >/dev/null 2>&1; then
+    _own=$(mktemp) && tail -c +"$(( ${5:-0} + 1 ))" "$EV/edits.jsonl" 2>/dev/null > "$_own"   # the ledger segment appended during the run (jsonl)
+    _todo=$(mktemp) && python3 -I - "$_own" "$_lc" "$_epf" > "$_todo" 2>/dev/null <<'PYD'   # NUL-separated sets ($_epf in, $_todo out) travel as FILES by path: $(…) and argv both strip NUL
+import json, sys
+own = set()
+try:
+    for l in open(sys.argv[1], encoding="utf-8", errors="replace"):
+        try: d = json.loads(l)
+        except Exception: continue
+        if d.get("cli") == sys.argv[2] and d.get("path"): own.add(d["path"])
+except Exception: pass
+for p in open(sys.argv[3], encoding="utf-8", errors="replace").read().split("\0"):
+    if p and p not in own: sys.stdout.write(p + "\0")
+PYD
+    rm -f "$_own"
+    _rows=$(tr -dc '\0' < "$_todo" | wc -c | tr -d ' '); _rows=${_rows:-0}
+    if [ "$_rows" -gt 0 ]; then
+      if ( cd "$ROOT" && xargs -0 python3 -I "$_els" append "$_lc" --cwd "$ROOT" --agent external-implementer < "$_todo" ) 2> "$TMPP/$1.edits.err"; then :; else _rows=0; _note="edit-ledger append failed: $(head -c 160 "$TMPP/$1.edits.err" | tr '\n' ' ')"; fi
+    fi
+    [ "$_rows" -lt "$_en" ] && [ -z "$_note" ] && _note="$(( _en - _rows )) path(s) already ledgered by the member's own hooks"
+    rm -f "$_todo"
+  elif [ "$_en" -gt 0 ]; then _note="no edit-ledger.py next to this runner (install.sh copies it to ~/.rolepod/bin) — the commit gate cannot count these edits"; fi
+  rm -f "$_epf"
+  jlog "{\"ts\":\"$(iso_now)\",\"phase\":\"dispatch-proof\",\"cli\":\"$_lc\",\"pool_cli\":\"$1\",\"agent_type\":\"external-implementer\",\"model\":\"$(jesc "${4:-default}")\",\"provenance\":\"cross-family\",\"paths\":$_en,\"edits\":$_rows${_note:+,\"edits_note\":\"$(jesc "$_note")\"}${JOB_ID_TAG:+,\"job\":\"$JOB_ID_TAG\"}}"
+  printf '%s|%s' "$_rows" "$_note"
 }
 opencode_write_ok() { # implement: headless `opencode run` blocks on tool approvals unless a config grants edit + bash — same lookup order as opencode_default_model, json or jsonc; the first config that states permissions decides
   for _ocf in "$ROOT/opencode.jsonc" "$ROOT/opencode.json" \
@@ -781,6 +856,9 @@ fi
 if [ -z "$USABLE" ]; then
   print_pool >&2
   jlog "{\"ts\":\"$(iso_now)\",\"phase\":\"external-fail\",\"kind\":\"$KIND\",\"cli\":\"-\",\"family\":\"-\",\"lead\":\"$LEAD\",\"reason\":\"pool-empty: $(jesc "$CFG_SRC")\"}"
+  if [ -n "$IMPL_SKIPS" ] && ! printf '%s' "$POOL_ROWS" | grep -q '  absent  '; then
+    echo "ROLEPOD-XFAM empty — every usable external CLI ($(printf '%s' "$IMPL_SKIPS" | sed 's/ *$//')) built this uncommitted ticket and never reviews its own work. Fix: commit the ticket first, then review; or use the internal strong reviewer and record the limitation."; exit 4
+  fi
   echo "ROLEPOD-XFAM empty — cross-family is enabled ($CFG_SRC) but no listed CLI is usable for a $LEAD Lead. Fall back to the internal strong reviewer and record the limitation."
   exit 4
 fi
@@ -1006,7 +1084,12 @@ one() { # $1 cli → 0 ok / 1 fail / 21 implement done with outside edits revert
     printf '{"ts":"%s","phase":"external-fail","kind":"implement","cli":"opencode","family":"%s","lead":"%s","reason":"no opencode config grants edit+bash (checked the project, OPENCODE_CONFIG_DIR and ~/.config/opencode) — headless opencode would block on approvals"}\n' "$(iso_now)" "$_f" "$LEAD" > "$TMPP/$_c.jsonl"
     printf 'opencode: no opencode config grants edit+bash (checked the project, OPENCODE_CONFIG_DIR and ~/.config/opencode; headless run would block on approvals) — skipped\n' > "$TMPP/$_c.line"; return 1
   fi
-  _pre=""; _pl0=0; if [ "$KIND" = "implement" ]; then _pre=$(snapshot_tree 2>/dev/null || true); [ -f "$EV/phase-log.jsonl" ] && _pl0=$(wc -c < "$EV/phase-log.jsonl" | tr -d ' '); fi   # the member's delta = tree after − tree before; the Lead's own WIP never travels
+  _pre=""; _pl0=0; _el0=0
+  if [ "$KIND" = "implement" ]; then
+    _pre=$(snapshot_tree 2>/dev/null || true)
+    [ -f "$EV/phase-log.jsonl" ] && _pl0=$(wc -c < "$EV/phase-log.jsonl" | tr -d ' ')
+    [ -f "$EV/edits.jsonl" ] && _el0=$(wc -c < "$EV/edits.jsonl" | tr -d ' ')
+  fi   # the member's delta = tree after − tree before; the Lead's own WIP never travels
   _s=$SECONDS; invoke "$_c" "$TMPP/$_c.prompt" "$TMPP/$_c.out"; _rc=$?; _secs=$(( SECONDS - _s ))
   # codex streams its event log to stderr; the reviewer's answer is the -o message file
   if [ "$_c" = "codex" ] && [ -s "$TMPP/$_c.out.msg" ]; then mv "$TMPP/$_c.out" "$TMPP/$_c.out.stream"; mv "$TMPP/$_c.out.msg" "$TMPP/$_c.out"; fi
@@ -1026,7 +1109,9 @@ one() { # $1 cli → 0 ok / 1 fail / 21 implement done with outside edits revert
   fi
   if [ "$_rc" -eq 0 ] && [ "$_bytes" -ge "$_floor" ] && [ "$KIND" = "implement" ]; then
     _patch="external/$_ts-$_c-$RUN_TAG.patch"; _post=$(snapshot_tree 2>/dev/null || true)
-    _guard=""; _nout=0; _nunsafe=0; _resnap=ok; _nforged=$(phaselog_forged "$_pl0")
+    _guard=""; _nout=0; _nunsafe=0; _resnap=ok; read -r _nforged _nmoved <<EOF
+$(phaselog_scrub "$_pl0" "$EV/external/$_ts-$_c-$RUN_TAG.member-phase-log.jsonl")
+EOF
     if [ -n "$_pre" ] && [ -n "$_post" ]; then
       _guard=$(implement_guard "$_pre" "$_post" "$EV/external/$_ts-$_c-$RUN_TAG.reverted")
       _nout=$(printf '%s\n' "$_guard" | grep -c '^reverted' || true); _nunsafe=$(printf '%s\n' "$_guard" | grep -c '^unsafe' || true)
@@ -1034,6 +1119,10 @@ one() { # $1 cli → 0 ok / 1 fail / 21 implement done with outside edits revert
     fi
     _base=git; if [ -n "$_pre" ] && [ -n "$_post" ]; then git -C "$ROOT" diff-tree -p "$_pre" "$_post" -- . $PATCH_EXCLUDE > "$EV/$_patch" 2>/dev/null || :; else _base=none; : > "$EV/$_patch"; fi   # no baseline (not a git repo) is said out loud, never read as files=0
     _op=$(printf '%s\n' "$_guard" | grep '^reverted' | cut -f2 | head -20 | tr '\n' ' '); _up=$(printf '%s\n' "$_guard" | grep '^unsafe' | cut -f2 | head -20 | tr '\n' ' ')
+    _edits=0; _enote="no tree baseline — nothing ledgered"
+    if [ -n "$_pre" ] && [ -n "$_post" ]; then _ev=$(implement_evidence "$_c" "$_pre" "$_post" "$_ran" "$_el0"); _edits="${_ev%%|*}"; _enote="${_ev#*|}"; fi
+    [ -n "$JOB_DIR" ] && printf '%s\n' "$_c" > "$JOB_DIR/implementer" 2>/dev/null
+    _allow_json=$(printf '%s\n' "$ALLOW_LIST" | python3 -I -c 'import json,sys; print(json.dumps([l for l in sys.stdin.read().split("\n") if l], separators=(",", ":")))' 2>/dev/null || echo '[]')
     _files=$(grep -c '^diff --git ' "$EV/$_patch" 2>/dev/null); _files=${_files:-0}
     _patch_line="patch=.rolepod/evidence/$_patch"; [ "$_base" = none ] && _patch_line="patch=none (no tree baseline: not a git repo — the member's edits are in the tree, uncounted)"
     [ "$_resnap" = failed ] && _patch_line="patch=stale (re-snapshot after the revert failed — read the tree, not the patch)"
@@ -1042,16 +1131,18 @@ one() { # $1 cli → 0 ok / 1 fail / 21 implement done with outside edits revert
         "$_c" "$_f" "$LEAD" "$LEAD_FAMILY" "$(iso_now)" "$_rc" "$_secs" "$_bytes" "$TIMEOUT" "$_files" "$(( _nout + _nunsafe ))" "$_nforged" "${_ran:+ ran=$_ran}" "$BRIEF"
       cat "$TMPP/$_c.out"; } > "$EV/$_rep" 2>/dev/null || :
     if [ -n "$JOB_DIR" ]; then cp "$TMPP/$_c.out" "$JOB_DIR/report.txt" 2>/dev/null || :; cp "$EV/$_patch" "$JOB_DIR/patch.diff" 2>/dev/null || :; fi
-    printf '%s\n' "{\"ts\":\"$(iso_now)\",\"phase\":\"$PHASE\",\"kind\":\"$KIND\",\"cli\":\"$_c\",\"family\":\"$_f\",\"model\":\"default\",\"report\":\"$_rep\",\"patch\":\"$_patch\",\"baseline\":\"$_base\",\"files\":$_files,\"outside\":$(( _nout + _nunsafe )),\"forged\":$_nforged,\"outside_paths\":\"$(jesc "$_op")\",\"unsafe_paths\":\"$(jesc "$_up")\",\"lead\":\"$LEAD\",\"secs\":$_secs,\"budget\":$TIMEOUT,\"brief_sha\":\"$BRIEF_SHA\"${JOB_ID_TAG:+,\"job\":\"$JOB_ID_TAG\"}${_ran:+,\"ran\":\"$(jesc "$_ran")\"}}" > "$TMPP/$_c.jsonl"
+    printf '%s\n' "{\"ts\":\"$(iso_now)\",\"phase\":\"$PHASE\",\"kind\":\"$KIND\",\"cli\":\"$_c\",\"family\":\"$_f\",\"model\":\"default\",\"report\":\"$_rep\",\"patch\":\"$_patch\",\"baseline\":\"$_base\",\"files\":$_files,\"outside\":$(( _nout + _nunsafe )),\"forged\":$_nforged,\"outside_paths\":\"$(jesc "$_op")\",\"unsafe_paths\":\"$(jesc "$_up")\",\"allow\":$_allow_json,\"edits\":$_edits,\"moved\":${_nmoved:-0}${_enote:+,\"edits_note\":\"$(jesc "$_enote")\"},\"lead\":\"$LEAD\",\"secs\":$_secs,\"budget\":$TIMEOUT,\"brief_sha\":\"$BRIEF_SHA\"${JOB_ID_TAG:+,\"job\":\"$JOB_ID_TAG\"}${_ran:+,\"ran\":\"$(jesc "$_ran")\"}}" > "$TMPP/$_c.jsonl"
     _notes=""
     [ "$_nout" -gt 0 ] && _notes="$_notes — reverted (edits outside --allow, whoever made them; copies under .rolepod/evidence/external/$_ts-$_c-$RUN_TAG.reverted/): $_op"
     [ "$_nunsafe" -gt 0 ] && _notes="$_notes — NOT touched (a symlink in the leading path; inspect by hand): $_up"
     [ "$_nforged" -gt 0 ] && _notes="$_notes — forged evidence stripped: $_nforged phase-log line(s) claiming an external pass appended during the run"
+    [ "${_nmoved:-0}" -gt 0 ] && _notes="$_notes — $_nmoved member-internal dispatch-proof line(s) moved to .rolepod/evidence/external/$_ts-$_c-$RUN_TAG.member-phase-log.jsonl"
+    [ -n "$_enote" ] && _notes="$_notes — edits: $_enote"
     if [ "$(( _nout + _nunsafe + _nforged ))" -gt 0 ]; then
       printf 'ROLEPOD-XFAM violations kind=implement cli=%s family=%s files=%s outside=%s forged=%s %s report=.rolepod/evidence/%s secs=%s budget=%ss%s%s\n' "$_c" "$_f" "$_files" "$(( _nout + _nunsafe ))" "$_nforged" "$_patch_line" "$_rep" "$_secs" "$TIMEOUT" "${_ran:+ ran=$_ran}" "$_notes" > "$TMPP/$_c.line"
       return 21
     fi
-    printf 'ROLEPOD-XFAM ok kind=implement cli=%s family=%s files=%s %s report=.rolepod/evidence/%s secs=%s budget=%ss%s\n' "$_c" "$_f" "$_files" "$_patch_line" "$_rep" "$_secs" "$TIMEOUT" "${_ran:+ ran=$_ran}" > "$TMPP/$_c.line"
+    printf 'ROLEPOD-XFAM ok kind=implement cli=%s family=%s files=%s edits=%s %s report=.rolepod/evidence/%s secs=%s budget=%ss%s%s\n' "$_c" "$_f" "$_files" "$_edits" "$_patch_line" "$_rep" "$_secs" "$TIMEOUT" "${_ran:+ ran=$_ran}" "$_notes" > "$TMPP/$_c.line"
     return 0
   fi
   if [ "$_rc" -eq 0 ] && [ "$_bytes" -ge "$_floor" ]; then

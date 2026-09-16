@@ -1803,6 +1803,7 @@ if [ -z "${ROLEPOD_TARGET:-}${ROLEPOD_CLAUDE_TARGET:-}${ROLEPOD_CODEX_TARGET:-}$
     cp '$REPO_DIR/scripts/junit-summary.sh' '$HOME/.rolepod/bin/junit-summary.sh'
     cp '$REPO_DIR/scripts/plan-lint.sh' '$HOME/.rolepod/bin/plan-lint.sh'
     cp '$REPO_DIR/scripts/cross-family.sh' '$HOME/.rolepod/bin/cross-family.sh'
+cp '$REPO_DIR/hooks/edit-ledger.py' '$HOME/.rolepod/bin/edit-ledger.py'   # the runner's --kind implement writes ledger rows for the member's edits
     printf '#!/bin/sh\nexec bash \"\$HOME/.rolepod/bin/stats.sh\" \"\$@\"\n' > '$HOME/.local/bin/rolepod-stats'
     printf '#!/bin/sh\nexec bash \"\$HOME/.rolepod/bin/junit-summary.sh\" \"\$@\"\n' > '$HOME/.local/bin/rolepod-junit'
     printf '#!/bin/sh\nexec bash \"\$HOME/.rolepod/bin/cross-family.sh\" \"\$@\"\n' > '$HOME/.local/bin/rolepod-cross-family'
