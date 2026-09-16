@@ -5,12 +5,12 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/claim-verify-nudge.sh\"",
+            "command": "[ -z \"$CURSOR_PROJECT_DIR\" ] && exec bash \"${CLAUDE_PLUGIN_ROOT}/hooks/claim-verify-nudge.sh\"; cat >/dev/null",
             "timeout": 3
           },
           {
             "type": "command",
-            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/sweep-nudge.sh\"",
+            "command": "[ -z \"$CURSOR_PROJECT_DIR\" ] && exec bash \"${CLAUDE_PLUGIN_ROOT}/hooks/sweep-nudge.sh\"; cat >/dev/null",
             "timeout": 3
           }
         ]
@@ -22,22 +22,22 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/always-on-loader.sh\"",
+            "command": "[ -z \"$CURSOR_PROJECT_DIR\" ] && exec bash \"${CLAUDE_PLUGIN_ROOT}/hooks/always-on-loader.sh\"; cat >/dev/null",
             "timeout": 3
           },
           {
             "type": "command",
-            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/terse-loader.sh\"",
+            "command": "[ -z \"$CURSOR_PROJECT_DIR\" ] && exec bash \"${CLAUDE_PLUGIN_ROOT}/hooks/terse-loader.sh\"; cat >/dev/null",
             "timeout": 3
           },
           {
             "type": "command",
-            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/project-context-loader.sh\"",
+            "command": "[ -z \"$CURSOR_PROJECT_DIR\" ] && exec bash \"${CLAUDE_PLUGIN_ROOT}/hooks/project-context-loader.sh\"; cat >/dev/null",
             "timeout": 5
           },
           {
             "type": "command",
-            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/session-lifecycle.sh\" --lock",
+            "command": "[ -z \"$CURSOR_PROJECT_DIR\" ] && exec bash \"${CLAUDE_PLUGIN_ROOT}/hooks/session-lifecycle.sh\" --lock; cat >/dev/null",
             "timeout": 3
           }
         ]
@@ -49,22 +49,22 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/worktree-guard.sh\"",
+            "command": "[ -z \"$CURSOR_PROJECT_DIR\" ] && exec bash \"${CLAUDE_PLUGIN_ROOT}/hooks/worktree-guard.sh\"; cat >/dev/null",
             "timeout": 3
           },
           {
             "type": "command",
-            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/gate-reminder.sh\"",
+            "command": "[ -z \"$CURSOR_PROJECT_DIR\" ] && exec bash \"${CLAUDE_PLUGIN_ROOT}/hooks/gate-reminder.sh\"; cat >/dev/null",
             "timeout": 3
           },
           {
             "type": "command",
-            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/subagent-write-scope.sh\"",
+            "command": "[ -z \"$CURSOR_PROJECT_DIR\" ] && exec bash \"${CLAUDE_PLUGIN_ROOT}/hooks/subagent-write-scope.sh\"; cat >/dev/null",
             "timeout": 3
           },
           {
             "type": "command",
-            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/sweep-nudge.sh\"",
+            "command": "[ -z \"$CURSOR_PROJECT_DIR\" ] && exec bash \"${CLAUDE_PLUGIN_ROOT}/hooks/sweep-nudge.sh\"; cat >/dev/null",
             "timeout": 3
           }
         ]
@@ -74,12 +74,12 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/subagent-write-scope.sh\"",
+            "command": "[ -z \"$CURSOR_PROJECT_DIR\" ] && exec bash \"${CLAUDE_PLUGIN_ROOT}/hooks/subagent-write-scope.sh\"; cat >/dev/null",
             "timeout": 3
           },
           {
             "type": "command",
-            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/sweep-nudge.sh\"",
+            "command": "[ -z \"$CURSOR_PROJECT_DIR\" ] && exec bash \"${CLAUDE_PLUGIN_ROOT}/hooks/sweep-nudge.sh\"; cat >/dev/null",
             "timeout": 3
           }
         ]
@@ -89,17 +89,17 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/precommit-gate.sh\"",
+            "command": "[ -z \"$CURSOR_PROJECT_DIR\" ] && exec bash \"${CLAUDE_PLUGIN_ROOT}/hooks/precommit-gate.sh\"; cat >/dev/null",
             "timeout": 5
           },
           {
             "type": "command",
-            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/push-ref-check.sh\"",
+            "command": "[ -z \"$CURSOR_PROJECT_DIR\" ] && exec bash \"${CLAUDE_PLUGIN_ROOT}/hooks/push-ref-check.sh\"; cat >/dev/null",
             "timeout": 3
           },
           {
             "type": "command",
-            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/block-subagent-commit.sh\"",
+            "command": "[ -z \"$CURSOR_PROJECT_DIR\" ] && exec bash \"${CLAUDE_PLUGIN_ROOT}/hooks/block-subagent-commit.sh\"; cat >/dev/null",
             "timeout": 3
           }
         ]
@@ -109,7 +109,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/cohesion-contract-check.sh\"",
+            "command": "[ -z \"$CURSOR_PROJECT_DIR\" ] && exec bash \"${CLAUDE_PLUGIN_ROOT}/hooks/cohesion-contract-check.sh\"; cat >/dev/null",
             "timeout": 5
           }
         ]
@@ -119,7 +119,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/workflow-tier-nudge.sh\"",
+            "command": "[ -z \"$CURSOR_PROJECT_DIR\" ] && exec bash \"${CLAUDE_PLUGIN_ROOT}/hooks/workflow-tier-nudge.sh\"; cat >/dev/null",
             "timeout": 3
           }
         ]
@@ -131,12 +131,12 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/dispatch-auto-log.sh\"",
+            "command": "[ -z \"$CURSOR_PROJECT_DIR\" ] && exec bash \"${CLAUDE_PLUGIN_ROOT}/hooks/dispatch-auto-log.sh\"; cat >/dev/null",
             "timeout": 3
           },
           {
             "type": "command",
-            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/sweep-nudge.sh\"",
+            "command": "[ -z \"$CURSOR_PROJECT_DIR\" ] && exec bash \"${CLAUDE_PLUGIN_ROOT}/hooks/sweep-nudge.sh\"; cat >/dev/null",
             "timeout": 3
           }
         ]
@@ -146,7 +146,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/fix-loop-breaker.sh\"",
+            "command": "[ -z \"$CURSOR_PROJECT_DIR\" ] && exec bash \"${CLAUDE_PLUGIN_ROOT}/hooks/fix-loop-breaker.sh\"; cat >/dev/null",
             "timeout": 5
           }
         ]
@@ -156,7 +156,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/sweep-nudge.sh\"",
+            "command": "[ -z \"$CURSOR_PROJECT_DIR\" ] && exec bash \"${CLAUDE_PLUGIN_ROOT}/hooks/sweep-nudge.sh\"; cat >/dev/null",
             "timeout": 3
           }
         ]
@@ -167,7 +167,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/session-lifecycle.sh\" --unlock",
+            "command": "[ -z \"$CURSOR_PROJECT_DIR\" ] && exec bash \"${CLAUDE_PLUGIN_ROOT}/hooks/session-lifecycle.sh\" --unlock; cat >/dev/null",
             "timeout": 3
           }
         ]

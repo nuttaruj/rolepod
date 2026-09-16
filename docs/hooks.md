@@ -41,6 +41,10 @@ A per-edit reminder hook duplicated all three without enforcement teeth — so i
 | `PostToolUse` | `Workflow\|Agent` | `dispatch-auto-log.sh` |
 | `Stop` | (no matcher) | `session-lifecycle.sh --unlock` (+ route record, v2.105.0) |
 
+### Cursor host guard (v2.130.1)
+
+Cursor auto-imports every Claude Code plugin from `~/.claude/plugins/installed_plugins.json` and runs its `hooks/hooks.json` with the Claude event names mapped (`PreToolUse` → `preToolUse`, …). On a machine that also carries the Cursor-native rolepod plugin (`install.sh --target=cursor`) that ran two hook sets per tool call. Every command in the Claude manifest is therefore `[ -z "$CURSOR_PROJECT_DIR" ] && exec bash "${CLAUDE_PLUGIN_ROOT}/hooks/<x>.sh"; cat >/dev/null` — Cursor sets `CURSOR_PROJECT_DIR` for hook processes only (IDE 3.20 / agent CLI 2026.09, verified 2026-09-16), so under Cursor the imported copy drains stdin and exits 0 while the Cursor-native rule + 3 hooks own the host. On Claude Code and every other CLI the guard is a shell builtin and `exec` hands the process to the script: no extra process, exit status intact. The imported copy's agents and skills still load a second time — disable it on Cursor's Plugins page if that matters. Guard: `tests/static/cursor-host-guard.sh`.
+
 ## Per-hook reference
 
 ### `claim-verify-nudge.sh` — UserPromptSubmit (core)
