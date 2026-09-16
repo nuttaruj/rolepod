@@ -474,7 +474,7 @@ Drift is structurally impossible: the shared scripts have exactly one source (`h
 
 ## Cursor adapter mapping
 
-The Cursor adapter ships **3 core hooks** in `adapters/cursor/scripts/`, parallel to Codex but with Cursor's I/O contract (stdin JSON / stdout JSON / exit-code 2 to deny):
+The Cursor adapter ships **5 core hooks** in `adapters/cursor/scripts/`, parallel to Codex but with Cursor's I/O contract (stdin JSON / stdout JSON / exit-code 2 to deny):
 
 | Claude hook | Cursor mapping |
 |---|---|
@@ -482,7 +482,10 @@ The Cursor adapter ships **3 core hooks** in `adapters/cursor/scripts/`, paralle
 | `project-context-loader.sh` (SessionStart) | `scripts/project-context-loader.sh` on `sessionStart` — emits `{"additional_context": "..."}` |
 | `gate-reminder.sh` (PreToolUse:Edit\|Write\|MultiEdit) | `scripts/gate-reminder.sh` registered twice with matcher `Write\|Edit\|MultiEdit`: on `preToolUse` for the deny path only (`{"permission": "deny", "user_message", "agent_message"}` + exit 2 when a high-risk NEW file is written without prior verification; otherwise no output) and on `postToolUse` for the soft reminders (`{"additional_context": "..."}` — schema-bound file written / high-risk path edited). Split because Cursor feeds `agent_message` to the model only on deny and `additional_context` is not a `preToolUse` field (live-verified 2026-09-16, v2.130.2) |
 | `precommit-gate.sh` (PreToolUse:Bash) | `scripts/precommit-gate.sh` on `beforeShellExecution` with matcher `git[[:space:]]+commit` — same tiering (silent / soft / hard), same `ROLEPOD_GATES_HARD` / `ROLEPOD_GATES_SOFT`; **no evidence auto-pass** (Cursor exposes no session transcript), so `[gates: pass]` in the commit message body stays the release valve there |
-| `session-lifecycle.sh` (SessionStart/Stop lock) | not ported — Cursor's session model differs from Claude's; sibling-session lock has no clear Cursor equivalent yet |
+| `session-lifecycle.sh` (SessionStart/Stop lock) | `scripts/project-context-loader.sh` registers `cursor-<conversation_id>.lock` on `sessionStart`; `scripts/stop-unlock.sh` releases it on `stop` (v2.132.0) |
+| `sweep-nudge.sh` (UserPromptSubmit / PreToolUse / PostToolUse) | `scripts/sweep-nudge.sh` — a translator around the shared `scripts/shared/sweep-nudge.sh` (byte-identical to `hooks/sweep-nudge.sh`): `beforeSubmitPrompt` resets (answers `{continue: true}`), `preToolUse` edit tools set the edit flag, `postToolUse` read tools count bytes (Read from Cursor's `content_length`) and deliver the one nudge as `additional_context`, `afterShellExecution` counts shell output silently and un-fires so the next read delivers (v2.132.0) |
+| `fix-loop-breaker.sh` (PostToolUse:Bash) | not portable — `afterShellExecution` carries command + output but no exit code, and no field reaches the model there |
+| `push-ref-check.sh` (PreToolUse:Bash) | not portable — `beforeShellExecution` has no informational channel (only deny) |
 | `block-subagent-commit.sh` (PreToolUse:Bash) | not ported — Cursor's subagent identity differs; deferred until `subagentStart` payload is exercised |
 | `cohesion-contract-check.sh` (PreToolUse:Agent) | not ported — same reason |
 | `claim-verify-nudge.sh` (UserPromptSubmit) | not ported — Cursor's `beforeSubmitPrompt` is block-only (`{continue, user_message}`) and cannot inject pre-answer context; deferred until Cursor adds `additional_context` to that event ([feature request](https://forum.cursor.com/t/add-additional-context-to-beforesubmitprompt-hook-output/157231)) |

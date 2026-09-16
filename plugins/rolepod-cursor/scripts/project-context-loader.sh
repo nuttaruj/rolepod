@@ -6,16 +6,16 @@
 set -euo pipefail
 
 INPUT=$(cat 2>/dev/null || echo '{}')
-CWD=$(echo "$INPUT" | python3 -c "
+IFS=$'\t' read -r CWD CONV <<< "$(echo "$INPUT" | python3 -c "
 import sys, json
 try:
     d = json.load(sys.stdin)
     roots = d.get('workspace_roots') or []
-    print(roots[0] if roots else '')
+    print((roots[0] if roots else '') + '\t' + (d.get('conversation_id') or d.get('session_id') or ''))
 except Exception:
-    print('')
-" 2>/dev/null || echo "")
-[ -z "$CWD" ] && CWD="$PWD"
+    print('\t')
+" 2>/dev/null || printf '\t')"
+[ -z "${CWD:-}" ] && CWD="$PWD"
 cd "$CWD" 2>/dev/null || exit 0
 
 REPO=$(git rev-parse --show-toplevel 2>/dev/null) || exit 0
@@ -38,11 +38,12 @@ CTX="**$NAME** @ \`$BRANCH\` ($DIRTY uncommitted)\n\n**Recent:**\n\`\`\`\n$COMMI
 [ -n "$HOT" ] && CTX="$CTX\n\n**Hot (7d):**\n$HOT"
 
 # Concurrent-session soft-warn (cross-CLI, neutral lock dir shared with the
-# Claude session-lifecycle / worktree-guard hooks). Cursor exposes no Stop
-# event, so cleanup relies on the 30-min stale-prune that runs here on scan.
+# Claude session-lifecycle / worktree-guard hooks). The lock is keyed on
+# Cursor's conversation_id and released by scripts/stop-unlock.sh on `stop`
+# (v2.132.0); the 30-min stale prune here still covers a killed session.
 if [ "${ROLEPOD_ALLOW_SHARED_WORKTREE:-0}" != "1" ]; then
   _h=$(printf '%s' "$REPO" | { shasum -a 256 2>/dev/null || sha256sum 2>/dev/null; } | awk '{print $1}' | head -c 16)
-  _ld="$HOME/.rolepod/session-locks/$_h"; _sid="auto-$PPID"
+  _ld="$HOME/.rolepod/session-locks/$_h"; _sid="cursor-${CONV:-auto-$PPID}"
   mkdir -p "$_ld" 2>/dev/null || true
   _now=$(date +%s); _act=0
   for _lk in "$_ld"/*.lock; do

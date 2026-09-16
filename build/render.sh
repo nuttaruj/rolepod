@@ -504,7 +504,7 @@ render_gemini() {
 #   plugins/rolepod-cursor/skills/<name>/SKILL.md    (stripped to name+description)
 #   plugins/rolepod-cursor/agents/<name>.md          (15 files, minimal frontmatter)
 #   plugins/rolepod-cursor/hooks/hooks.json
-#   plugins/rolepod-cursor/scripts/*.sh              (3 hook scripts)
+#   plugins/rolepod-cursor/scripts/*.sh              (5 hook scripts + scripts/shared/ cores)
 
 render_cursor() {
   local adapter_dir="$REPO_DIR/adapters/cursor"
@@ -571,6 +571,13 @@ render_cursor() {
     cp "$adapter_dir/scripts"/*.sh "$plugin_dst/scripts/" 2>/dev/null || true
     chmod +x "$plugin_dst/scripts/"*.sh 2>/dev/null || true
   fi
+  # Shared cores behind Cursor translators (scripts/sweep-nudge.sh maps Cursor's
+  # stdin/events onto the Claude script and its additionalContext back onto
+  # Cursor's additional_context). Byte-identical to hooks/, pinned by
+  # tests/integration/cases/cursor-adapter.sh.
+  mkdir -p "$plugin_dst/scripts/shared"
+  cp "$REPO_DIR/hooks/sweep-nudge.sh" "$plugin_dst/scripts/shared/sweep-nudge.sh"
+  chmod +x "$plugin_dst/scripts/shared/"*.sh 2>/dev/null || true
 
   render_evidence_scripts "$plugin_dst"
 }
