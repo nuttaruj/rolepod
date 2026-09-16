@@ -28,7 +28,8 @@ _role=none; printf '%s' "\$_raw" | grep -q 'external IMPLEMENTER' && _role=imple
 printf '%s' "\$_raw" | grep -q 'ADVERSARIAL code reviewer' && _role=reviewer
 _bud=\$(printf '%s' "\$_raw" | grep -o 'nothing half-written' | head -1)
 _fa=\$(printf '%s' "\$_raw" | grep -c 'runner reverts every edit outside this list' | head -1)
-printf 'codex | %s | ROLE=%s | BUDGET=%s | FILES_ALLOWED=%s\n' "\$(printf '%s' "\$*" | tr '\n' ' ')" "\$_role" "\${_bud:-none}" "\$_fa" >> "$LOG"
+_rs=\$(printf '%s' "\$_raw" | grep -c 'the user lifted the refusal' | head -1)
+printf 'codex | %s | ROLE=%s | BUDGET=%s | FILES_ALLOWED=%s | RISKY_SCOPE=%s\n' "\$(printf '%s' "\$*" | tr '\n' ' ')" "\$_role" "\${_bud:-none}" "\$_fa" "\$_rs" >> "$LOG"
 _root=""; _msg=""; _prev=""; for a in "\$@"; do [ "\$_prev" = "-C" ] && _root="\$a"; [ "\$_prev" = "-o" ] && _msg="\$a"; _prev="\$a"; done
 case "\${STUB_codex:-ok}" in
   hang) [ "\$_role" = implementer ] && [ -n "\$_root" ] && { mkdir -p "\$_root/src" "\$_root/stray"; printf 'half\n' > "\$_root/src/half.ts"; for _i in \$(seq 1 400); do printf 's\n' > "\$_root/stray/f\$_i.txt"; done; }; sleep 30 & wait; exit 0 ;;
@@ -126,7 +127,7 @@ check "phase-log implement line: cli, patch path, files=2" "grep -q '\"phase\":\
 check "the tree keeps the member's edits (the Lead reviews + commits them)" "grep -q 'hello from codex' '$REPO/README.md' && [ -f '$REPO/src/added.ts' ]"
 check "dispatch-proof line for the commit gate: cli=codex pool_cli=codex agent_type=external-implementer provenance=cross-family paths=2 edits=2" "grep -q '\"phase\":\"dispatch-proof\",\"cli\":\"codex\",\"pool_cli\":\"codex\",\"agent_type\":\"external-implementer\",\"model\":\"[^\"]*\",\"provenance\":\"cross-family\",\"paths\":2,\"edits\":2' '$REPO/.rolepod/evidence/phase-log.jsonl'"
 check "edit-ledger rows: one per touched path, cli=codex agent=external-implementer" "grep -c '\"cli\": \"codex\".*\"agent\": \"external-implementer\"' '$REPO/.rolepod/evidence/edits.jsonl' | grep -qx 2 && grep -q '\"path\": \"src/added.ts\"' '$REPO/.rolepod/evidence/edits.jsonl'"
-check "ok line says edits=2; the implement line records the allow scope as a JSON list and edits=2" "grep -q ' edits=2 ' '$FIX/out1.txt' && grep -q '\"allow\":\[\"README.md\",\"src/\"\],\"edits\":2,' '$REPO/.rolepod/evidence/phase-log.jsonl'"
+check "ok line says edits=2; the implement line records the allow scope as a JSON list and edits=2" "grep -q ' edits=2 ' '$FIX/out1.txt' && grep -q '\"allow\":\[\"README.md\",\"src/\"\],\"risky\":\"no\",\"edits\":2,' '$REPO/.rolepod/evidence/phase-log.jsonl'"
 echo "── implement: paths with spaces and quotes; the member's own ledger rows are not doubled; member-internal dispatch-proof lines leave the Lead's log ──"
 git -C "$REPO" checkout -q -- README.md; rm -rf "$REPO/src"; : > "$LOG"
 out=$(STUB_codex=spacey bash "$RUNNER" --kind implement --brief "$BRIEF" --allow "my dir/" --allow src/ --lead claude --root "$REPO" 2>&1); rc=$?
@@ -228,6 +229,28 @@ rm -rf "$REPO/README.md"; git -C "$REPO" checkout -q -- README.md
 out=$(STUB_codex=libfile bash "$RUNNER" --kind implement --brief "$BRIEF" --allow lib --lead claude --root "$REPO" 2>&1); rc=$?
 check "an existing directory named without a slash is a prefix (lib → lib/new.ts allowed, exit 0)" "[ $rc -eq 0 ] && printf '%s' \"$out\" | grep -q 'files=1' && [ -f '$REPO/lib/new.ts' ]"
 rm -f "$REPO/lib/new.ts"
+
+echo "── implement: money / auth / data paths refused unless --allow-risky (Task 5) ──"
+git -C "$REPO" checkout -q -- .; rm -rf "$REPO/src"; printf 'codex\n' > "$HOME/.rolepod/cross-family"
+out=$(bash "$RUNNER" --kind implement --brief "$BRIEF" --allow src/billing/ --lead claude --root "$REPO" 2>&1); rc=$?
+check "--allow src/billing/ → exit 2: fact (money/auth/data path) → fix (the Lead builds it) → exception (the USER lifts it)" "[ $rc -eq 2 ] && printf '%s' \"$out\" | grep -q 'src/billing is a money / auth / data path' && printf '%s' \"$out\" | grep -q 'only the USER lifts it'"
+out=$(bash "$RUNNER" --kind implement --brief "$BRIEF" --allow src/Auth.ts --lead claude --root "$REPO" 2>&1); rc=$?
+check "--allow src/Auth.ts (case-insensitive, like the gate) → exit 2" "[ $rc -eq 2 ] && printf '%s' \"$out\" | grep -q 'money / auth / data path'"
+: > "$LOG"
+out=$(STUB_codex=noop bash "$RUNNER" --kind implement --brief "$BRIEF" --allow src/author/ --allow README.md --lead claude --root "$REPO" 2>&1); rc=$?
+check "--allow src/author/ is not a risk word (auth followed by a letter) → runs" "[ $rc -eq 0 ] && grep -q '^codex' '$LOG'"
+: > "$LOG"
+out=$(STUB_codex=noop bash "$RUNNER" --kind implement --brief "$BRIEF" --allow src/billing/ --allow-risky --lead claude --root "$REPO" 2>&1); rc=$?
+check "--allow-risky lifts the refusal → runs; the implement line records risky=lifted; the member is told" "[ $rc -eq 0 ] && grep -q '^codex' '$LOG' && grep -q '\"risky\":\"lifted\"' '$REPO/.rolepod/evidence/phase-log.jsonl' && grep -q 'RISKY_SCOPE=1' '$LOG'"
+out=$(bash "$RUNNER" --kind review --brief "$BRIEF" --allow-risky --lead claude --root "$REPO" 2>&1); rc=$?
+check "--allow-risky on a read-only kind → exit 2" "[ $rc -eq 2 ] && printf '%s' \"$out\" | grep -q 'only applies to --kind implement'"
+printf '+(^|/)wallet(/|\\.|_|$)\n-(^|/)security/docs\n' > "$REPO/.rolepod/risk-paths"
+out=$(bash "$RUNNER" --kind implement --brief "$BRIEF" --allow src/wallet/ --lead claude --root "$REPO" 2>&1); rc=$?
+check "the repo's .rolepod/risk-paths ADD line makes src/wallet/ risky → exit 2 (same as the commit gate)" "[ $rc -eq 2 ] && printf '%s' \"$out\" | grep -q 'money / auth / data path'"
+: > "$LOG"
+out=$(STUB_codex=noop bash "$RUNNER" --kind implement --brief "$BRIEF" --allow src/security/docs/ --allow README.md --lead claude --root "$REPO" 2>&1); rc=$?
+check "the EXCLUDE line un-risks src/security/docs/ → runs (risky=no on THIS run's line)" "[ $rc -eq 0 ] && grep -q '^codex' '$LOG' && grep '\"phase\":\"implement\"' '$REPO/.rolepod/evidence/phase-log.jsonl' | tail -1 | grep -q '\"risky\":\"no\"'"
+printf 'src/billing/\n' > "$REPO/.rolepod/risk-paths"; git -C "$REPO" checkout -q -- .rolepod/risk-paths
 
 echo "── implement: restore on failure, fall-through, git-state violations (Task 4) ──"
 git -C "$REPO" checkout -q -- .; rm -rf "$REPO/src" "$REPO/my dir"; H0=$(git -C "$REPO" rev-parse HEAD)

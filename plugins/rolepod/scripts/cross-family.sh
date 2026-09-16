@@ -85,7 +85,7 @@
 #            feed `rolepod-stats`). Jobs live under external/jobs/<id>/.
 #
 # Usage:
-#   cross-family.sh --kind review|consult|advise|critique|implement --brief <file> [--attach <file>]... [--allow <path>]...
+#   cross-family.sh --kind review|consult|advise|critique|implement --brief <file> [--attach <file>]... [--allow <path>]... [--allow-risky]
 #                   [--lead <cli>] [--all] [--timeout <sec>] [--detach] [--partial-ok] [--since <job-id>] [--ledger <file>]
 #   cross-family.sh --rounds                               # review rounds since the last commit (breaker state)
 #   cross-family.sh --kill <job-id>                        # abandon a running job (status 137, no anchor)
@@ -100,7 +100,7 @@
 set -uo pipefail
 
 KIND=""; BRIEF=""; LEAD="${ROLEPOD_LEAD_CLI:-}"; ALL=0; FLAG_TIMEOUT="${ROLEPOD_XFAM_TIMEOUT:-}"; FLAG_STALL="${ROLEPOD_XFAM_STALL:-}"
-MODE="run"; ATTACH=""; ALLOW=""; DETACH=0; JOB_DIR=""; COLLECT_ID=""; ROOT_FLAG=""; CFG_FLAG=""; PARTIAL_OK=0; SINCE_ID=""; KILL_ID=""; LEDGER=""; ROUND_NOTE=""
+MODE="run"; ATTACH=""; ALLOW=""; ALLOW_RISKY=0; DETACH=0; JOB_DIR=""; COLLECT_ID=""; ROOT_FLAG=""; CFG_FLAG=""; PARTIAL_OK=0; SINCE_ID=""; KILL_ID=""; LEDGER=""; ROUND_NOTE=""
 while [ $# -gt 0 ]; do
   case "$1" in
     --kind) KIND="${2:-}"; shift 2 ;;
@@ -116,6 +116,7 @@ while [ $# -gt 0 ]; do
     --partial-ok) PARTIAL_OK=1; shift ;;         # the user asked for the staged part only
     --allow) ALLOW="$ALLOW${ALLOW:+
 }${2:-}"; shift 2 ;;   # implement: a path the member may edit (exact file or directory prefix); repeatable
+    --allow-risky) ALLOW_RISKY=1; shift ;;        # implement: the USER lifts the money / auth / data refusal for this ticket (review-code then runs BOTH passes on it)
     --since) SINCE_ID="${2:-}"; shift 2 ;;         # round 2+: attach the fix delta since that job + its report
     --kill) MODE="kill"; KILL_ID="${2:-}"; shift 2 ;;
     --ledger) LEDGER="${2:-}"; shift 2 ;;            # breaker ledger — round 4 needs it (review-code §5)
@@ -837,7 +838,25 @@ fi
 case "$KIND" in review|consult|advise|critique|implement) ;; *) echo "cross-family: --kind review|consult|advise|critique|implement required" >&2; exit 2 ;; esac
 if [ "$KIND" = "implement" ] && [ "$ALL" -eq 1 ]; then echo "cross-family: --all is a read-only panel — implement runs ONE member at a time in one working tree (drop --all)" >&2; exit 2; fi
 # ── implement: the allowed-path list — the member's write scope, enforced after the run (edits outside are reverted) ──
+# Money / auth / data paths (the commit gate's HIGH_RISK_PATH, byte-identical to hooks/lib/session_state.py — tests/static/edit-ledger.sh pins it,
+# plus the repo's own .rolepod/risk-paths add/exclude lines exactly as hooks/precommit-gate.sh risk_filter reads them) are refused for an external
+# implementer unless the user lifts them with --allow-risky: review-code runs BOTH passes there, and the guard has no track record yet.
+RISKY_HITS=""
+risky_path() { # $1 repo-relative entry → 0 when the commit gate would call it high-risk (built-in ERE + .rolepod/risk-paths: bare/+ lines add, - lines exclude, # comments)
+  _rp_cfg="$ROOT/.rolepod/risk-paths"; _rp_add=""; _rp_excl=""
+  if [ -f "$_rp_cfg" ]; then
+    _rp_add=$(sed -e 's/#.*//' -e '/^[[:space:]]*$/d' -e '/^-/d' -e 's/^+//' "$_rp_cfg" 2>/dev/null | paste -sd'|' - 2>/dev/null || true)
+    _rp_excl=$(sed -e 's/#.*//' -e '/^[[:space:]]*$/d' "$_rp_cfg" 2>/dev/null | grep '^-' 2>/dev/null | sed 's/^-//' | paste -sd'|' - 2>/dev/null || true)
+  fi
+  _rp_hit=0
+  printf '%s\n' "$1" | grep -iE -q "$RISKY_PATH_RX" 2>/dev/null && _rp_hit=1
+  [ -n "$_rp_add" ] && printf '%s\n' "$1" | grep -iE -q "$_rp_add" 2>/dev/null && _rp_hit=1      # a broken override ERE fails open, quietly — as risk_filter does
+  [ "$_rp_hit" -eq 1 ] && [ -n "$_rp_excl" ] && printf '%s\n' "$1" | grep -iE -q "$_rp_excl" 2>/dev/null && _rp_hit=0
+  [ "$_rp_hit" -eq 1 ]
+}
+RISKY_PATH_RX='(^|/|_)(auth|authn|authz|authentication|authorization|billing|payment|payments|migration|migrations|credit|credits|permission|permissions|secret|secrets|crypto|cryptography|token|tokens|oauth|jwt|sso|saml|webhook|webhooks|stripe|paypal|charge|charges|invoice|invoices|deletion|deletions|erasure|gdpr|security)(/|\.|_|$)'
 [ -n "$ALLOW" ] && [ "$KIND" != "implement" ] && { echo "cross-family: --allow only applies to --kind implement (every other kind is read-only)" >&2; exit 2; }
+[ "$ALLOW_RISKY" -eq 1 ] && [ "$KIND" != "implement" ] && { echo "cross-family: --allow-risky only applies to --kind implement" >&2; exit 2; }
 ALLOW_LIST=""
 if [ "$KIND" = "implement" ]; then
   while IFS= read -r _a; do
@@ -846,6 +865,10 @@ if [ "$KIND" = "implement" ]; then
     [ "$_a" = "." ] && { echo "cross-family: --allow . is not a scope — name the paths the ticket touches" >&2; exit 2; }
     path_forbidden "$_a" && { echo "cross-family: --allow $_a is off-limits for an external member (.env*, lockfiles, .git/, .rolepod/, docs/rolepod/)" >&2; exit 2; }
     { git -C "$ROOT" check-ignore -q -- "$_a" || git -C "$ROOT" check-ignore -q -- "$_a/"; } 2>/dev/null && { echo "cross-family: --allow $_a is gitignored — the guard cannot see edits there (snapshots follow .gitignore); un-ignore it or pick another path" >&2; exit 2; }
+    if risky_path "$_a"; then
+      RISKY_HITS="$RISKY_HITS${RISKY_HITS:+ }$_a"
+      [ "$ALLOW_RISKY" -eq 1 ] || { echo "cross-family: --allow $_a is a money / auth / data path — an external implementer is refused there. Fix: the Lead builds this ticket in-house (the normal path for money / auth). Exception: only the USER lifts it (--allow-risky); review-code then runs BOTH passes on it" >&2; exit 2; }
+    fi
     if [ "$_slash" -eq 1 ] || [ -d "$ROOT/$_a" ]; then _a="$_a/"
     elif [ ! -e "$ROOT/$_a" ]; then echo "cross-family: notice — --allow $_a does not exist yet and has no trailing slash, so it is read as ONE file; a new directory needs \`$_a/\`" >&2; fi
     ALLOW_LIST="$ALLOW_LIST${ALLOW_LIST:+
@@ -1053,6 +1076,7 @@ BODY="$TMPP/body.md"
   if [ "$KIND" = "implement" ]; then
     printf '\n\nFiles allowed — the runner reverts every edit outside this list (an entry ending in / covers everything below it; any other entry is that one file); .env*, lockfiles, .git/ and .rolepod/ are always off-limits:\n'
     printf '%s\n' "$ALLOW_LIST" | sed 's/^/- /'
+    [ -n "$RISKY_HITS" ] && printf '\nThis scope touches money / auth / data paths (%s) — the user lifted the refusal. Every change there gets two adversarial reviews before it ships; keep the change minimal, keep the tests next to it, and name every assumption in the report.\n' "$RISKY_HITS"
   fi
   if [ -n "$ATTACH" ]; then
     printf '%s\n' "$ATTACH" | while IFS= read -r a; do
@@ -1184,7 +1208,7 @@ EOF
         "$_c" "$_f" "$LEAD" "$LEAD_FAMILY" "$(iso_now)" "$_rc" "$_secs" "$_bytes" "$TIMEOUT" "$_files" "$(( _nout + _nunsafe ))" "$_nforged" "${_ran:+ ran=$_ran}" "$BRIEF"
       cat "$TMPP/$_c.out"; } > "$EV/$_rep" 2>/dev/null || :
     if [ -n "$JOB_DIR" ]; then cp "$TMPP/$_c.out" "$JOB_DIR/report.txt" 2>/dev/null || :; cp "$EV/$_patch" "$JOB_DIR/patch.diff" 2>/dev/null || :; fi
-    printf '%s\n' "{\"ts\":\"$(iso_now)\",\"phase\":\"$PHASE\",\"kind\":\"$KIND\",\"cli\":\"$_c\",\"family\":\"$_f\",\"model\":\"default\",\"report\":\"$_rep\",\"patch\":\"$_patch\",\"baseline\":\"$_base\",\"files\":$_files,\"outside\":$(( _nout + _nunsafe )),\"forged\":$_nforged,\"outside_paths\":\"$(jesc "$_op")\",\"unsafe_paths\":\"$(jesc "$_up")\",\"allow\":$_allow_json,\"edits\":$_edits,\"moved\":${_nmoved:-0}${_enote:+,\"edits_note\":\"$(jesc "$_enote")\"},\"lead\":\"$LEAD\",\"secs\":$_secs,\"budget\":$TIMEOUT,\"brief_sha\":\"$BRIEF_SHA\"${JOB_ID_TAG:+,\"job\":\"$JOB_ID_TAG\"}${_ran:+,\"ran\":\"$(jesc "$_ran")\"}}" > "$TMPP/$_c.jsonl"
+    printf '%s\n' "{\"ts\":\"$(iso_now)\",\"phase\":\"$PHASE\",\"kind\":\"$KIND\",\"cli\":\"$_c\",\"family\":\"$_f\",\"model\":\"default\",\"report\":\"$_rep\",\"patch\":\"$_patch\",\"baseline\":\"$_base\",\"files\":$_files,\"outside\":$(( _nout + _nunsafe )),\"forged\":$_nforged,\"outside_paths\":\"$(jesc "$_op")\",\"unsafe_paths\":\"$(jesc "$_up")\",\"allow\":$_allow_json,\"risky\":\"$( [ -n "$RISKY_HITS" ] && printf 'lifted' || printf 'no' )\",\"edits\":$_edits,\"moved\":${_nmoved:-0}${_enote:+,\"edits_note\":\"$(jesc "$_enote")\"},\"lead\":\"$LEAD\",\"secs\":$_secs,\"budget\":$TIMEOUT,\"brief_sha\":\"$BRIEF_SHA\"${JOB_ID_TAG:+,\"job\":\"$JOB_ID_TAG\"}${_ran:+,\"ran\":\"$(jesc "$_ran")\"}}" > "$TMPP/$_c.jsonl"
     _notes=""
     [ "$_nout" -gt 0 ] && _notes="$_notes — reverted (edits outside --allow, whoever made them; copies under .rolepod/evidence/external/$_ts-$_c-$RUN_TAG.reverted/): $_op"
     [ "$_nunsafe" -gt 0 ] && _notes="$_notes — NOT touched (a symlink in the leading path; inspect by hand): $_up"

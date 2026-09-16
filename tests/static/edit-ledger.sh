@@ -23,6 +23,32 @@ PY
 then pass "HIGH_RISK_PATH / TEST_FILE / CODE_FILE identical to session_state.py"
 else bad "edit-ledger.py classification drifted from session_state.py"; fi
 
+# 1b. The cross-family runner's money/auth refusal (--kind implement) uses the same regex, byte-for-byte (single-quoted ERE).
+if python3 -I - <<'PY'
+import re, sys
+src = open("hooks/lib/session_state.py").read()
+m = re.search(r'HIGH_RISK_PATH = re\.compile\((.*?)re\.IGNORECASE', src, re.S)
+want = ''.join(re.findall(r'r"(.*?)"', m.group(1)))
+r = open("scripts/cross-family.sh").read()
+m2 = re.search(r"^RISKY_PATH_RX='(.*)'$", r, re.M)
+got = m2.group(1).replace("'\\''", "'") if m2 else "PARSE-FAIL"
+assert got == want, (got[:80], want[:80])
+PY
+then pass "cross-family.sh RISKY_PATH_RX identical to session_state.py HIGH_RISK_PATH"
+else bad "cross-family.sh RISKY_PATH_RX drifted from session_state.py"; fi
+
+# 1c. …and reads .rolepod/risk-paths with the commit gate's own two sed pipelines (risk_filter), variable names aside.
+if python3 -I - <<'PY'
+import re
+def pipes(path, var):
+    src = open(path).read()
+    return [re.sub(r'_r[fp]_', '_x_', l.strip()) for l in src.splitlines() if re.match(r'\s*_' + var + r'_(add|excl)=\$\(sed ', l)]
+a = pipes("hooks/precommit-gate.sh", "rf"); b = pipes("scripts/cross-family.sh", "rp")
+assert len(a) == 2 and a == b, (a, b)
+PY
+then pass "cross-family.sh risky_path() parses .rolepod/risk-paths exactly like precommit-gate.sh risk_filter"
+else bad "cross-family.sh risky_path() risk-paths parsing drifted from precommit-gate.sh"; fi
+
 R="$(mktemp -d "${TMPDIR:-/tmp}/rolepod-ledger.XXXXXX")"
 trap 'rm -rf "$R"' EXIT
 git -C "$R" init -q; git -C "$R" -c user.email=t@t -c user.name=t commit -q --allow-empty -m init
