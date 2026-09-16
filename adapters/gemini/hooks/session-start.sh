@@ -76,7 +76,7 @@ _terse_flag="${CLAUDE_CONFIG_DIR:-$HOME/.claude}/.rolepod-terse"
 _terse_core="$(dirname -- "${BASH_SOURCE[0]}")/terse-core.md"
 if [ -f "$_terse_flag" ] && [ -f "$_terse_core" ]; then
   _terse_level="$(head -c 32 "$_terse_flag" 2>/dev/null | tr -d '[:space:]' || true)"
-  [ "$_terse_level" = "ultra" ] || _terse_level="default"
+  [ "$_terse_level" = "lite" ] || _terse_level="ultra"   # empty / unknown = ultra, the default (v2.130.0)
   # Read in an `if` condition, never inside the assignment: `-f` passes on a
   # regular file the process cannot read, and a failed $(cat) inside
   # PAYLOAD=... aborts this whole script under errexit — which would drop the

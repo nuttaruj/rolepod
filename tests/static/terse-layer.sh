@@ -26,7 +26,7 @@ REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 HOOK="$REPO_DIR/plugins/rolepod/hooks/terse-loader.sh"
 CORE="$REPO_DIR/plugins/rolepod/hooks/terse-core.md"
 HOOKS_JSON="$REPO_DIR/adapters/claude/hooks.json"
-BUDGET=2560
+BUDGET=3000   # v2.130.0: +~500 B — the ultra rung became the default shape and carries its rules inline (measured equal to caveman-ultra)
 
 fail=0
 pass() { echo "  ✓ $1"; }
@@ -64,7 +64,7 @@ d = json.load(sys.stdin)
 o = d["hookSpecificOutput"]
 assert o["hookEventName"] == "SessionStart", "wrong hookEventName"
 ctx = o["additionalContext"]
-assert ctx.startswith("TERSE OUTPUT ACTIVE (level: default)"), "banner missing or wrong level"
+assert ctx.startswith("TERSE OUTPUT ACTIVE (level: ultra)"), "banner missing or wrong level (empty flag = ultra, the default)"
 assert sys.argv[2] in ctx, "banner does not name the flag file"
 assert core in ctx, "core content not carried verbatim"
 ' "$CORE" "$FLAG" 2>/dev/null; then
@@ -91,11 +91,17 @@ sys.stdout.write(str(len(json.load(sys.stdin)["hookSpecificOutput"]["additionalC
     && pass "flag containing 'ultra' selects the ultra level" \
     || bad "flag containing 'ultra' did not select the ultra level"
 
+  echo "lite" > "$FLAG"
+  OUT=$(echo '{}' | CLAUDE_CONFIG_DIR="$TMP_HOME" bash "$HOOK" 2>/dev/null || echo "")
+  printf '%s' "$OUT" | grep -q 'TERSE OUTPUT ACTIVE (level: lite)' \
+    && pass "flag containing 'lite' selects the lighter level" \
+    || bad "flag containing 'lite' did not select the lite level"
+
   echo "wharrgarbl" > "$FLAG"
   OUT=$(echo '{}' | CLAUDE_CONFIG_DIR="$TMP_HOME" bash "$HOOK" 2>/dev/null || echo "")
-  printf '%s' "$OUT" | grep -q 'TERSE OUTPUT ACTIVE (level: default)' \
-    && pass "unrecognised flag content falls back to default" \
-    || bad "unrecognised flag content did not fall back to default"
+  printf '%s' "$OUT" | grep -q 'TERSE OUTPUT ACTIVE (level: ultra)' \
+    && pass "unrecognised flag content falls back to ultra (the default)" \
+    || bad "unrecognised flag content did not fall back to ultra"
 fi
 
 # 6. Always-on stays independent — the terse loader is its own registration,

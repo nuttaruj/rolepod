@@ -82,9 +82,11 @@ Deliver the opt-in terse-output layer. Kept separate from
 `always-on-loader.sh` on purpose: a user who has not opted in pays zero
 bytes, and a failure in one loader can never take the other down.
 
-- **Opt in**: `touch ~/.claude/.rolepod-terse` — the file's content selects
-  the level (`ultra` for heavier abbreviation, empty for the default shape;
-  anything unrecognised reads as default). Opt out: delete the file. The flag
+- **Opt in**: `touch ~/.claude/.rolepod-terse` — empty means `ultra`, the
+  default since v2.130.0 (articles / filler / conjunctions dropped, each fact
+  once, no decorative tables; identifiers, paths, counts and error text never
+  abbreviated); write `lite` for full sentences with only filler and register
+  dropped; anything unrecognised reads as ultra. Opt out: delete the file. The flag
   lives in `CLAUDE_CONFIG_DIR`, not the git root, because output shape is a
   property of the person reading, not of the project being read.
 - **Effect**: reads `hooks/terse-core.md` beside the script (~1.7KB — lead

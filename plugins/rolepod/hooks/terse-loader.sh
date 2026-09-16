@@ -5,8 +5,8 @@
 # not created the flag pays zero bytes, and a failure here can never take the
 # always-on judgment core down with it — the two payloads are independent.
 #
-# Opt in:  touch ~/.claude/.rolepod-terse          (default shape)
-#          echo ultra > ~/.claude/.rolepod-terse   (heavier abbreviation)
+# Opt in:  touch ~/.claude/.rolepod-terse          (ultra — the default since v2.130.0)
+#          echo lite > ~/.claude/.rolepod-terse    (full sentences, filler dropped)
 # Opt out: rm ~/.claude/.rolepod-terse
 #
 # The flag lives in CLAUDE_CONFIG_DIR, not the git root: output shape is a
@@ -29,10 +29,12 @@ cat >/dev/null 2>&1 || true
 [ -f "$FLAG_FILE" ] || exit 0
 [ -f "$CORE_FILE" ] || exit 0
 
-# First word of the flag file selects the level; anything unrecognised reads
-# as the default shape, so a stray byte never changes behaviour silently.
+# First word of the flag file selects the level. `lite` is the only opt-down;
+# empty, `ultra` or anything unrecognised is ultra — the default, so a stray
+# byte never changes behaviour silently (v2.130.0: ultra measured equal to
+# caveman-ultra on the fidelity probe, so it became the default shape).
 LEVEL="$(head -c 32 "$FLAG_FILE" 2>/dev/null | tr -d '[:space:]' || true)"
-[ "$LEVEL" = "ultra" ] || LEVEL="default"
+[ "$LEVEL" = "lite" ] || LEVEL="ultra"
 
 python3 -I -c '
 import json, sys
