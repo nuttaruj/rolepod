@@ -1,5 +1,6 @@
 #!/bin/bash
-# cursor-host-guard — the Claude hook manifest self-disables under Cursor.
+# cursor-host-guard — (1) the Claude hook manifest self-disables under Cursor;
+# (2) the Cursor-native gate-reminder delivers on the events Cursor honours.
 #
 # Cursor auto-imports every Claude Code plugin from
 # ~/.claude/plugins/installed_plugins.json and runs its hooks/hooks.json with
@@ -92,6 +93,50 @@ esac
 FAKE_CMD='[ -z "$CURSOR_PROJECT_DIR" ] && exec bash -c "exit 7"; cat >/dev/null'
 env -u CURSOR_PROJECT_DIR sh -c "$FAKE_CMD" </dev/null >/dev/null 2>&1; rc=$?
 [ "$rc" -eq 7 ] && pass "no Cursor env: the script's exit status passes through (7)" || bad "no Cursor env: exit status lost (got $rc, want 7)"
+
+# ── Cursor-native gate-reminder delivery (v2.130.2) ──────────────────────
+# Cursor feeds agent_message to the model only on deny and has no
+# additional_context on preToolUse, so the script is registered twice:
+# preToolUse = deny path only, postToolUse = soft reminders as additional_context.
+CUR_HOOKS=adapters/cursor/hooks/hooks.json
+CUR_GATE=adapters/cursor/scripts/gate-reminder.sh
+if python3 -I - "$CUR_HOOKS" <<'PY'
+import json, sys
+d = json.load(open(sys.argv[1]))["hooks"]
+for ev in ("preToolUse", "postToolUse"):
+    regs = [h for h in d[ev] if h["command"] == "./scripts/gate-reminder.sh"]
+    assert len(regs) == 1 and regs[0].get("matcher") == "Write|Edit|MultiEdit", ev
+PY
+then pass "cursor hooks.json registers gate-reminder on preToolUse AND postToolUse (matcher Write|Edit|MultiEdit)"
+else bad "cursor hooks.json gate-reminder registrations wrong"; fi
+if cmp -s adapters/cursor/scripts/gate-reminder.sh plugins/rolepod-cursor/scripts/gate-reminder.sh && cmp -s "$CUR_HOOKS" plugins/rolepod-cursor/hooks/hooks.json; then
+  pass "rendered Cursor plugin carries the same gate-reminder + hooks.json"
+else bad "plugins/rolepod-cursor drifted from adapters/cursor — run make render"; fi
+
+CUR_TMP="$(mktemp -d "${TMPDIR:-/tmp}/rolepod-cursor-gate.XXXXXX")"
+mkdir -p "$CUR_TMP/src/auth" "$CUR_TMP/.cursor-plugin"; printf '{}' > "$CUR_TMP/.cursor-plugin/plugin.json"; printf 'x' > "$CUR_TMP/src/auth/login.ts"; printf 'y' > "$CUR_TMP/src/util.ts"
+cur_in() { printf '{"hook_event_name":"%s","tool_name":"Write","tool_input":{"file_path":"%s","content":""},"workspace_roots":["%s"],"session_id":"g"}' "$1" "$2" "$CUR_TMP"; }
+# preToolUse: schema-bound new file → no output (allow); high-risk NEW file → deny JSON + exit 2 with both messages
+out=$(cur_in preToolUse "$CUR_TMP/.cursor-plugin/marketplace.json" | env -u ROLEPOD_GATES_SOFT -u ROLEPOD_GATES_PASSED bash "$CUR_GATE" 2>/dev/null); rc=$?
+[ "$rc" -eq 0 ] && [ -z "$out" ] && pass "preToolUse: schema-bound new file is silent (soft reminder no longer wasted on allow)" || bad "preToolUse schema-bound: rc $rc out=${out:0:80}"
+out=$(cur_in preToolUse "$CUR_TMP/src/auth/new-token.ts" | env -u ROLEPOD_GATES_SOFT -u ROLEPOD_GATES_PASSED bash "$CUR_GATE" 2>/dev/null); rc=$?
+if [ "$rc" -eq 2 ] && printf '%s' "$out" | python3 -I -c 'import json,sys; d=json.load(sys.stdin); assert d["permission"]=="deny" and "HARD BLOCK" in d["agent_message"] and d["user_message"]==d["agent_message"] and len(d["agent_message"])<=600'; then
+  pass "preToolUse: high-risk NEW file → deny + agent_message (the field Cursor feeds back on deny)"
+else bad "preToolUse high-risk new file: rc $rc out=${out:0:100}"; fi
+out=$(cur_in preToolUse "$CUR_TMP/src/auth/login.ts" | env -u ROLEPOD_GATES_SOFT -u ROLEPOD_GATES_PASSED bash "$CUR_GATE" 2>/dev/null); rc=$?
+[ "$rc" -eq 0 ] && [ -z "$out" ] && pass "preToolUse: existing high-risk file passes silently" || bad "preToolUse existing high-risk: rc $rc out=${out:0:80}"
+# postToolUse: schema-bound / high-risk → additional_context; plain path → silent
+out=$(cur_in postToolUse "$CUR_TMP/.cursor-plugin/plugin.json" | bash "$CUR_GATE" 2>/dev/null); rc=$?
+printf '%s' "$out" | python3 -I -c 'import json,sys; d=json.load(sys.stdin); m=d["additional_context"]; assert m.startswith("SCHEMA-BOUND file written: plugin.json") and len(m)<=600' 2>/dev/null && [ "$rc" -eq 0 ] \
+  && pass "postToolUse: schema-bound file → additional_context reminder (≤600 chars)" || bad "postToolUse schema-bound: rc $rc out=${out:0:100}"
+out=$(cur_in postToolUse "$CUR_TMP/src/auth/login.ts" | bash "$CUR_GATE" 2>/dev/null); rc=$?
+printf '%s' "$out" | python3 -I -c 'import json,sys; d=json.load(sys.stdin); m=d["additional_context"]; assert m.startswith("HIGH-RISK path edited: login.ts") and "qa-tester" in m and len(m)<=600' 2>/dev/null && [ "$rc" -eq 0 ] \
+  && pass "postToolUse: high-risk path → additional_context reminder" || bad "postToolUse high-risk: rc $rc out=${out:0:100}"
+out=$(cur_in postToolUse "$CUR_TMP/src/util.ts" | bash "$CUR_GATE" 2>/dev/null); rc=$?
+[ "$rc" -eq 0 ] && [ -z "$out" ] && pass "postToolUse: plain path stays silent" || bad "postToolUse plain: rc $rc out=${out:0:80}"
+out=$(printf '{"hook_event_name":"postToolUse","tool_name":"Read","tool_input":{"file_path":"%s"}}' "$CUR_TMP/src/auth/login.ts" | bash "$CUR_GATE" 2>/dev/null); rc=$?
+[ "$rc" -eq 0 ] && [ -z "$out" ] && pass "non-edit tool never answers" || bad "Read tool produced output: ${out:0:80}"
+rm -rf "$CUR_TMP"
 
 echo
 if [ "$fail" -eq 0 ]; then echo "cursor-host-guard: pass"; exit 0

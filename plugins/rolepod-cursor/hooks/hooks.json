@@ -14,6 +14,13 @@
         "timeout": 3
       }
     ],
+    "postToolUse": [
+      {
+        "command": "./scripts/gate-reminder.sh",
+        "matcher": "Write|Edit|MultiEdit",
+        "timeout": 3
+      }
+    ],
     "beforeShellExecution": [
       {
         "command": "./scripts/precommit-gate.sh",
