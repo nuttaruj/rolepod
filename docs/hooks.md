@@ -302,8 +302,17 @@ fails open everywhere (no git root, bad stdin → silence).
 | Antigravity | `hooks/pre-tool.sh` on the edit tools (`write_to_file|replace|edit|edit_file|multi_replace_file_content`), silent | `hooks/pre-tool.sh` → shared gate on `run_command` |
 | opencode | `plugins/rolepod.js` on `tool.execute.after` edit/write (`rolepod-shared/edit-ledger.py`) | the plugin's `git commit` deny counts the ledger since the last commit (was in-memory per session) |
 
-Still transcript-only (slice B): the route record, claim-verify's prompt state, and
-reviewer dispatch evidence beyond the phase-log `dispatch-proof` / `review` lines.
+Route record + reviewer evidence on every CLI (v2.135.0, slice B): `hooks/lib/route_check.py`
+now reads the turn's assistant text from whichever transcript the Lead's CLI keeps —
+Claude JSONL, Cursor `agent-transcripts`, Codex rollouts, Antigravity `transcript_full.jsonl` —
+so the Stop hooks of Codex (`session-lifecycle.sh --unlock`), Cursor (`scripts/stop-unlock.sh`)
+and Antigravity (`hooks/stop-unlock.sh`) all record the `phase:"route"` line; opencode keeps no
+transcript file, so its plugin hands the turn's text to `route_check.py --record-text` at
+`session.idle` (the prompt time is the once-per-turn guard). Reviewer dispatches land as
+`dispatch-proof` lines from Cursor's `scripts/dispatch-log.sh` (preToolUse Task, `subagent_type`)
+and opencode's `task` tool, next to Codex's SubagentStop line — the shared gate counts them
+without a transcript. Still transcript-only: claim-verify's prompt state (context size and
+auto-resume shape) on non-Claude CLIs.
 
 ## Bypass envs — when to use
 
@@ -501,7 +510,7 @@ Drift is structurally impossible: the shared scripts have exactly one source (`h
 
 ## Cursor adapter mapping
 
-The Cursor adapter ships **5 core hooks** in `adapters/cursor/scripts/`, parallel to Codex but with Cursor's I/O contract (stdin JSON / stdout JSON / exit-code 2 to deny):
+The Cursor adapter ships **6 core hooks** in `adapters/cursor/scripts/`, parallel to Codex but with Cursor's I/O contract (stdin JSON / stdout JSON / exit-code 2 to deny):
 
 | Claude hook | Cursor mapping |
 |---|---|

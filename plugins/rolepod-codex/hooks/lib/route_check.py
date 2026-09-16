@@ -167,6 +167,75 @@ def find_route(text):
             found = (found[0], blk.group(1))
     return found
 
+CURSOR_WRAP = re.compile(r"^\s*<timestamp>[^<]*</timestamp>\s*(?:<user_query>\s*)?", re.S)
+AGY_WRAP = re.compile(r"^\s*<USER_REQUEST>\s*", re.S)
+
+
+def iter_turns(tp, nbytes=2097152):
+    """Yield (kind, text, ts) — kind 'user' (a prompt the person typed; text None)
+    or 'assistant' (its text) — from the transcript TAIL, whatever CLI wrote it
+    (v2.135.0). Formats, detected per line:
+      Claude   {"type":"user|assistant","timestamp","message":{"content":[...]}} (sidechains skipped)
+      Cursor   {"role":"user|assistant","message":{"content":[{"type":"text","text"}]}}  (no timestamps;
+               user text wrapped in <timestamp>..</timestamp><user_query>)
+      Codex    {"timestamp","type":"response_item","payload":{"type":"message","role","content":[{"type":"input_text|output_text","text"}]}}
+      agy      {"type":"USER_INPUT|PLANNER_RESPONSE","content","created_at"} (user wrapped in <USER_REQUEST>)
+    Harness blocks (text starting with "<", "# AGENTS.md") are not prompts."""
+    for line in tail(tp, nbytes).splitlines():
+        if '"isSidechain":true' in line or '"isSidechain": true' in line:
+            continue
+        try:
+            e = json.loads(line)
+        except Exception:
+            continue
+        if not isinstance(e, dict):
+            continue
+        typ = e.get("type")
+        role = e.get("role")
+        if typ in ("user", "assistant") and isinstance(e.get("message"), dict):      # Claude
+            if typ == "user":
+                if real_user_prompt(e):
+                    yield ("user", None, e.get("timestamp") or None)
+            else:
+                txt = _parts_text(e["message"].get("content"))
+                if txt:
+                    yield ("assistant", txt, e.get("timestamp") or None)
+        elif role in ("user", "assistant") and isinstance(e.get("message"), dict):   # Cursor
+            txt = _parts_text(e["message"].get("content"))
+            if role == "user":
+                bare = CURSOR_WRAP.sub("", txt or "", count=1).strip()
+                if bare and not bare.startswith("<"):
+                    yield ("user", None, None)
+            elif txt:
+                yield ("assistant", txt.replace("[REDACTED]", "").strip(), None)
+        elif typ == "response_item":                                                  # Codex
+            pl = e.get("payload") or {}
+            if pl.get("type") != "message":
+                continue
+            txt = _parts_text(pl.get("content"))
+            if pl.get("role") == "user":
+                bare = (txt or "").strip()
+                if bare and not bare.startswith("<") and not bare.startswith("# AGENTS.md"):
+                    yield ("user", None, e.get("timestamp") or None)
+            elif pl.get("role") == "assistant" and txt:
+                yield ("assistant", txt, e.get("timestamp") or None)
+        elif typ == "USER_INPUT":                                                     # agy
+            bare = AGY_WRAP.sub("", str(e.get("content") or ""), count=1).strip()
+            if bare and not bare.startswith("<"):
+                yield ("user", None, e.get("created_at") or None)
+        elif typ == "PLANNER_RESPONSE" and isinstance(e.get("content"), str) and e["content"].strip():
+            yield ("assistant", e["content"], e.get("created_at") or None)
+
+
+def _parts_text(c):
+    if isinstance(c, list):
+        return "\n".join(str(b.get("text") or "") for b in c
+                         if isinstance(b, dict) and b.get("type") in ("text", "input_text", "output_text") and b.get("text"))
+    if isinstance(c, str):
+        return c
+    return ""
+
+
 def record_route(d, log, now, settle):
     """Append the tier the Lead stated this turn to the phase-log, once per turn.
 
@@ -179,33 +248,16 @@ def record_route(d, log, now, settle):
     turn = []           # (text, ts) assistant entries since the last real user prompt
     last_user = None
     saw_user = False
-    for line in tail(tp, 2097152).splitlines():
-        if '"isSidechain":true' in line or '"isSidechain": true' in line:
-            continue
-        try:
-            e = json.loads(line)
-        except Exception:
-            continue
-        typ = e.get("type")
-        if typ == "user":
-            if not real_user_prompt(e):
-                continue
-            t = iso(e.get("timestamp") or "")
+    for kind, txt, ts in iter_turns(tp):
+        if kind == "user":
+            t = iso(ts or "")
             if t is not None and now - t <= settle:
                 break       # the prompt being submitted: nothing after it is this turn
             turn = []
             last_user = t
             saw_user = True   # a prompt with no timestamp is still the boundary
-        elif typ == "assistant":
-            c = (e.get("message") or {}).get("content")
-            parts = []
-            if isinstance(c, list):
-                parts = [str(b.get("text") or "") for b in c if isinstance(b, dict) and b.get("type") == "text"]
-            elif isinstance(c, str):
-                parts = [c]
-            txt = "\n".join(p for p in parts if p)
-            if txt:
-                turn.append((txt, str(e.get("timestamp") or "")))
+        elif txt:
+            turn.append((txt, str(ts or "")))
     if not saw_user or not turn:
         return
     found = None
@@ -252,16 +304,10 @@ def check(d, now=None):
     last_user = None
     tp = d.get("transcript_path") or ""
     if tp and os.path.isfile(tp):
-        for line in tail(tp, 2097152).splitlines():
-            if '"type":"user"' not in line and '"type": "user"' not in line:
+        for kind, _txt, ts in iter_turns(tp):
+            if kind != "user":
                 continue
-            try:
-                e = json.loads(line)
-            except Exception:
-                continue
-            if not real_user_prompt(e):
-                continue
-            t = iso(e.get("timestamp", "") or "")
+            t = iso(ts or "")
             if t and now - t > 5:   # the prompt being submitted may already be in the transcript
                 last_user = t
     if last_user is not None:
@@ -269,13 +315,45 @@ def check(d, now=None):
     return "" if now - route_ts < 1800 else "stale"
 
 
+def record_text(d, log, now):
+    """`--record-text` (v2.135.0): a CLI with no transcript file on disk hands over
+    the turn's assistant text itself. stdin {"assistant_text", "prompt_ts"} —
+    prompt_ts (epoch or ISO) is the user prompt that opened the turn and is the
+    once-per-turn guard: a route line newer than it means this turn is recorded."""
+    txt = str(d.get("assistant_text") or "")
+    ref = d.get("prompt_ts")
+    ref = float(ref) if isinstance(ref, (int, float)) else iso(ref or "")
+    if not txt or ref is None:
+        return
+    r = find_route(txt)
+    if not r:
+        return
+    newest = newest_route_ts(log)
+    if newest is not None and newest >= ref:
+        return
+    ts = datetime.datetime.fromtimestamp(now, datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    os.makedirs(os.path.dirname(log), exist_ok=True)
+    with open(log, "a") as f:
+        f.write(json.dumps({"ts": ts, "phase": "route", "tier": r[0], "skill": r[1],
+                            "provenance": "hook-auto"}, separators=(",", ":")) + "\n")
+
+
 def main():
     record_only = "--record" in sys.argv[1:]
+    record_txt = "--record-text" in sys.argv[1:]
     try:
         d = json.load(sys.stdin)
     except Exception:
         d = {}
     now = datetime.datetime.now(datetime.timezone.utc).timestamp()
+    if record_txt:
+        root = git_root()
+        if root:
+            try:
+                record_text(d, log_path(root), now)
+            except Exception:
+                pass
+        return
     if record_only:
         root = git_root()
         if root:

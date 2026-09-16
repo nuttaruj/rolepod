@@ -27,14 +27,14 @@ HJ="$P/hooks/hooks.json"
 
 # Structure.
 check "rendered cursor plugin present"     "[ -f $P/.cursor-plugin/plugin.json ] && [ -f $HJ ]"
-check "5 core scripts present + shared/sweep-nudge.sh is the Claude script, byte-identical" \
-  "for f in project-context-loader gate-reminder precommit-gate sweep-nudge stop-unlock; do [ -f $P/scripts/\$f.sh ] || exit 1; done && cmp -s hooks/sweep-nudge.sh $P/scripts/shared/sweep-nudge.sh"
-check "hooks.json: 9 registrations over 5 distinct scripts, every command ./scripts/<x>.sh" \
+check "6 core scripts present + shared/sweep-nudge.sh is the Claude script, byte-identical" \
+  "for f in project-context-loader gate-reminder precommit-gate sweep-nudge stop-unlock dispatch-log; do [ -f $P/scripts/\$f.sh ] || exit 1; done && cmp -s hooks/sweep-nudge.sh $P/scripts/shared/sweep-nudge.sh"
+check "hooks.json: 10 registrations over 6 distinct scripts, every command ./scripts/<x>.sh" \
   "python3 -I -c \"
 import json,re
 h=json.load(open('$HJ'))['hooks']; cmds=[(ev,r['command'],r.get('matcher','')) for ev,regs in h.items() for r in regs]
-assert len(cmds)==9, cmds
-assert len({c for _,c,_ in cmds})==5, cmds
+assert len(cmds)==10, cmds
+assert len({c for _,c,_ in cmds})==6, cmds
 assert all(re.fullmatch(r'\\./scripts/[a-z-]+\\.sh', c) for _,c,_ in cmds), cmds
 assert set(h)=={'sessionStart','beforeSubmitPrompt','preToolUse','postToolUse','afterShellExecution','beforeShellExecution','stop'}, set(h)\""
 check "sweep-nudge sits on beforeSubmitPrompt / preToolUse(edit) / postToolUse(read tools) / afterShellExecution" \
@@ -43,6 +43,7 @@ import json
 h=json.load(open('$HJ'))['hooks']
 def has(ev,m): return any(r['command'].endswith('sweep-nudge.sh') and r.get('matcher','')==m for r in h[ev])
 assert has('beforeSubmitPrompt','') and has('preToolUse','Write|Edit|MultiEdit') and has('postToolUse','Read|Grep|Glob|WebFetch|WebSearch') and has('afterShellExecution','')\""
+check "dispatch-log sits on preToolUse Task" "python3 -I -c \"import json;h=json.load(open('$HJ'))['hooks'];assert any(r['command'].endswith('dispatch-log.sh') and r.get('matcher')=='Task' for r in h['preToolUse'])\""
 check "stop-unlock sits on stop" "python3 -I -c \"import json;h=json.load(open('$HJ'))['hooks'];assert [r['command'] for r in h['stop']]==['./scripts/stop-unlock.sh']\""
 check "precommit-gate matcher fires on ANY git command (git -c k=v commit / add && commit shapes), the gate decides" \
   "python3 -I -c \"
@@ -98,8 +99,17 @@ CONV="conv-cursor-$$"
 out=$(printf '{"hook_event_name":"sessionStart","conversation_id":"%s","session_id":"%s","workspace_roots":["%s"]}' "$CONV" "$CONV" "$R" | bash "$S/project-context-loader.sh" 2>/dev/null); rc=$?
 check "sessionStart: answers additional_context and registers cursor-<conversation_id>.lock" \
   "[ $rc -eq 0 ] && printf '%s' \"\$out\" | grep -q additional_context && [ -f '$LOCK_DIR/cursor-$CONV.lock' ] && [ -f '$R/.rolepod/parent-active' ]"
-out=$(printf '{"hook_event_name":"stop","conversation_id":"%s","session_id":"%s","workspace_roots":["%s"]}' "$CONV" "$CONV" "$R" | bash "$S/stop-unlock.sh" 2>/dev/null); rc=$?
-check "stop: silent, lock released" "[ $rc -eq 0 ] && [ -z \"$out\" ] && [ ! -f '$LOCK_DIR/cursor-$CONV.lock' ]"
+# dispatch-proof (v2.135.0): a Task call with subagent_type → the phase-log line the gate counts.
+out=$(printf '{"hook_event_name":"preToolUse","conversation_id":"%s","workspace_roots":["%s"],"tool_name":"Task","tool_input":{"description":"review","prompt":"review the diff","subagent_type":"qa-tester"}}' "$CONV" "$R" | bash "$S/dispatch-log.sh" 2>/dev/null); rc=$?
+check "preToolUse Task → silent + dispatch-proof line (cli cursor, agent_type qa-tester)" \
+  "[ $rc -eq 0 ] && [ -z \"$out\" ] && grep -q '\"phase\": \"dispatch-proof\", \"cli\": \"cursor\", \"agent_type\": \"qa-tester\"' '$R/.rolepod/evidence/phase-log.jsonl'"
+# stop → route record from a Cursor-format transcript (v2.135.0).
+TR="$R/../cursor-transcript.jsonl"
+printf '{"role":"user","message":{"content":[{"type":"text","text":"<timestamp>Wednesday, Sep 16, 2026, 2:17 PM (UTC+7)</timestamp>\\n<user_query>\\nfix the login bug\\n</user_query>"}]}}\n{"role":"assistant","message":{"content":[{"type":"text","text":"Route: R2 (one file + test) → implement-plan · one handler\\n\\n[REDACTED]"}]}}\n' > "$TR"
+out=$(printf '{"hook_event_name":"stop","conversation_id":"%s","session_id":"%s","workspace_roots":["%s"],"transcript_path":"%s"}' "$CONV" "$CONV" "$R" "$TR" | bash "$S/stop-unlock.sh" 2>/dev/null); rc=$?
+check "stop: silent, lock released, and the turn's route line recorded from the Cursor transcript" \
+  "[ $rc -eq 0 ] && [ -z \"$out\" ] && [ ! -f '$LOCK_DIR/cursor-$CONV.lock' ] && grep -q '\"phase\":\"route\",\"tier\":\"R2\",\"skill\":\"implement-plan\"' '$R/.rolepod/evidence/phase-log.jsonl'"
+rm -f "$TR"
 
 # Behaviour: edit ledger + the shared commit gate behind the translator (v2.134.0).
 check "scripts/shared carries the gate pair + edit-ledger.py, byte-identical" \

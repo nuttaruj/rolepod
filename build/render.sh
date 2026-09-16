@@ -507,7 +507,7 @@ render_gemini() {
 #   plugins/rolepod-cursor/skills/<name>/SKILL.md    (stripped to name+description)
 #   plugins/rolepod-cursor/agents/<name>.md          (15 files, minimal frontmatter)
 #   plugins/rolepod-cursor/hooks/hooks.json
-#   plugins/rolepod-cursor/scripts/*.sh              (5 hook scripts + scripts/shared/ cores)
+#   plugins/rolepod-cursor/scripts/*.sh              (6 hook scripts + scripts/shared/ cores)
 
 render_cursor() {
   local adapter_dir="$REPO_DIR/adapters/cursor"
@@ -584,6 +584,7 @@ render_cursor() {
     cp "$REPO_DIR/hooks/$h.sh" "$plugin_dst/scripts/shared/$h.sh"
   done
   cp "$REPO_DIR/hooks/edit-ledger.py" "$plugin_dst/scripts/shared/edit-ledger.py"
+  cp "$REPO_DIR/hooks/lib/route_check.py" "$plugin_dst/scripts/shared/route_check.py"   # stop → route record (v2.135.0)
   chmod +x "$plugin_dst/scripts/shared/"*.sh 2>/dev/null || true
 
   render_evidence_scripts "$plugin_dst"
@@ -661,6 +662,7 @@ render_antigravity() {
     cp "$REPO_DIR/hooks/$h.sh" "$plugin_dst/hooks/$h.sh"
   done
   cp "$REPO_DIR/hooks/edit-ledger.py" "$plugin_dst/hooks/edit-ledger.py"
+  cp "$REPO_DIR/hooks/lib/route_check.py" "$plugin_dst/hooks/route_check.py"   # Stop → route record (v2.135.0)
   chmod +x "$plugin_dst/hooks/"*.sh 2>/dev/null || true
 
   render_evidence_scripts "$plugin_dst"
@@ -717,6 +719,7 @@ render_opencode() {
       cp "$REPO_DIR/hooks/$h.sh" "$out_dir/plugin/rolepod-shared/$h.sh"
     done
     cp "$REPO_DIR/hooks/edit-ledger.py" "$out_dir/plugin/rolepod-shared/edit-ledger.py"
+    cp "$REPO_DIR/hooks/lib/route_check.py" "$out_dir/plugin/rolepod-shared/route_check.py"   # session.idle → route record (v2.135.0)
     chmod +x "$out_dir/plugin/rolepod-shared/"*.sh 2>/dev/null || true
   else
     echo "render: missing $adapter_dir/plugin/rolepod.js" >&2; exit 1

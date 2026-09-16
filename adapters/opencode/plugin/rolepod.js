@@ -140,6 +140,42 @@ export const RolepodPlugin = async ({ directory, client }) => {
   const lastCommitEpoch = (dir) => {
     try { return execSync("git log -1 --format=%ct", { cwd: dir, stdio: ["ignore", "pipe", "ignore"] }).toString().trim() } catch { return "" }
   }
+  // v2.135.0: phase-log writers the shared gate reads on every CLI.
+  const phaseLogAppend = (line) => {
+    try {
+      const worktree = worktreeRoot(directory || process.cwd())
+      if (!worktree) return
+      const dir = path.join(worktree, ".rolepod", "evidence")
+      fs.mkdirSync(dir, { recursive: true })
+      fs.appendFileSync(path.join(dir, "phase-log.jsonl"), JSON.stringify(line) + "\n")
+    } catch { /* fail open */ }
+  }
+  let lastPromptAt = 0   // epoch seconds of the newest user prompt (chat.message)
+  // Route record: opencode keeps no transcript file, so at session.idle the plugin
+  // hands the turn's assistant text to route_check.py --record-text (prompt_ts =
+  // the once-per-turn guard). Messages come from the SDK client; no client → skip.
+  const recordRoute = async (sessionID) => {
+    try {
+      if (!client?.session?.messages || !lastPromptAt) return
+      const script = path.join(SHARED, "route_check.py")
+      if (!fs.existsSync(script)) return
+      const res = await client.session.messages({ path: { id: sessionID } })
+      const msgs = Array.isArray(res) ? res : (res?.data ?? [])
+      let lastUser = -1
+      msgs.forEach((m, i) => { if (m?.info?.role === "user") lastUser = i })
+      if (lastUser < 0) return
+      const text = msgs.slice(lastUser + 1)
+        .filter((m) => m?.info?.role === "assistant")
+        .flatMap((m) => (m.parts || []).filter((p) => p?.type === "text").map((p) => String(p.text || "")))
+        .join("\n")
+      if (!text) return
+      spawnSync("python3", ["-I", script, "--record-text"], {
+        input: JSON.stringify({ assistant_text: text, prompt_ts: lastPromptAt }),
+        cwd: worktreeRoot(directory || process.cwd()) || (directory || process.cwd()),
+        encoding: "utf8", timeout: 3000, stdio: ["pipe", "ignore", "ignore"],
+      })
+    } catch { /* fail open */ }
+  }
 
   const logBypass = () => {
     try {
@@ -222,6 +258,9 @@ export const RolepodPlugin = async ({ directory, client }) => {
           registerLock(sessionId)
         } else if (event?.type === "session.compacted") {
           toast(REANCHOR_MSG)
+        } else if (event?.type === "session.idle") {
+          const sid = event?.properties?.sessionID
+          if (sid && sid === sessionId) await recordRoute(sid)
         }
       } catch {
         /* fail open — hygiene must never break the session */
@@ -231,6 +270,7 @@ export const RolepodPlugin = async ({ directory, client }) => {
     "chat.message": async (input, output) => {
       try {
         // New user prompt = new turn: the sweep counter starts over.
+        lastPromptAt = Math.floor(Date.now() / 1000)
         const text = (output?.parts || []).filter((p) => p?.type === "text").map((p) => p.text).join("\n")
         runCore("sweep-nudge", {
           hook_event_name: "UserPromptSubmit",
@@ -264,6 +304,11 @@ export const RolepodPlugin = async ({ directory, client }) => {
           } else {
             const m = runCore("sweep-nudge", { hook_event_name: "PostToolUse", session_id: sid, tool_name: claudeTool, tool_response: output.output })
             if (m) notes.push(m)
+          }
+          if (tool === "task") {
+            // Reviewer dispatch evidence for the commit gate (same line Codex / Cursor write).
+            const agent = String(args?.subagent_type ?? "")
+            if (agent) phaseLogAppend({ ts: new Date().toISOString().replace(/\.\d{3}Z$/, "Z"), phase: "dispatch-proof", cli: "opencode", agent_type: agent, model: "", provenance: "hook-stdin" })
           }
           if (tool === "bash") {
             const exit = output?.metadata?.exit

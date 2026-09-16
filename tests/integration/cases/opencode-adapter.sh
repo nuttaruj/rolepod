@@ -80,7 +80,7 @@ console.log(verdict)
 DRIVEREOF
   # v2.134.0: the gate counts the edit ledger (<repo>/.rolepod/evidence/edits.jsonl,
   # written by rolepod-shared/edit-ledger.py) — fresh ledger per driver call.
-  ocg() { rm -rf "$OC_FIX/.rolepod"; (cd "$OC_FIX" && ROLEPOD_OC_SHARED="$REPO_DIR/hooks" node "$DRIVER" "$1" "$2" "$3" 2>/dev/null); }
+  ocg() { rm -rf "$OC_FIX/.rolepod"; (cd "$OC_FIX" && ROLEPOD_OC_SHARED="$REPO_DIR/build/rendered/opencode/plugin/rolepod-shared" node "$DRIVER" "$1" "$2" "$3" 2>/dev/null); }
   check "oc-gate: risk edit + git commit → deny"           "[ \"\$(ocg auth/login.py - 'git commit -m x')\" = DENY ]"
   check "oc-gate: flag-separated git -C commit → deny"     "[ \"\$(ocg auth/login.py - 'git -C /repo commit -m x')\" = DENY ]"
   check "oc-gate: git -c k=v commit → deny"                "[ \"\$(ocg auth/login.py - 'git -c user.email=x@y commit -m x')\" = DENY ]"
@@ -121,15 +121,33 @@ let l4 = await after('bash', { command: 'npm test' }, 'PASS', { exit: 0 })
 res.loopReset = l4.includes('LOOP BREAKER')
 let plain = await after('bash', { command: 'echo hi' }, 'hi', { exit: 0 })
 res.plainUntouched = plain === 'hi'
+// v2.135.0: task → dispatch-proof line; session.idle → route line via the SDK client (faked here).
+await after('task', { subagent_type: 'qa-tester', description: 'review', prompt: 'review it' }, '<task_result>ok</task_result>')
+const fs = await import('node:fs')
+const log = process.cwd() + '/.rolepod/evidence/phase-log.jsonl'
+res.dispatchProof = fs.existsSync(log) && fs.readFileSync(log, 'utf8').includes('"phase":"dispatch-proof","cli":"opencode","agent_type":"qa-tester"')
+const fakeClient = { session: { messages: async () => ({ data: [
+  { info: { role: 'user' }, parts: [{ type: 'text', text: 'fix the login bug' }] },
+  { info: { role: 'assistant' }, parts: [{ type: 'text', text: 'Route: R2 (one file + test) → implement-plan · one handler' }] },
+] }) } }
+const plugin2 = await RolepodPlugin({ directory: process.cwd(), client: fakeClient })
+await plugin2.event({ event: { type: 'session.created', properties: { info: { id: 'ses-route-test' } } } })
+await plugin2['chat.message']({ sessionID: 'ses-route-test' }, { message: {}, parts: [{ type: 'text', text: 'fix the login bug' }] })
+await plugin2.event({ event: { type: 'session.idle', properties: { sessionID: 'ses-route-test' } } })
+res.routeLine = fs.readFileSync(log, 'utf8').includes('"phase":"route","tier":"R2","skill":"implement-plan"')
+await plugin2.event({ event: { type: 'session.idle', properties: { sessionID: 'ses-route-test' } } })
+res.routeOnce = (fs.readFileSync(log, 'utf8').match(/"phase":"route"/g) || []).length === 1
 console.log(JSON.stringify(res))
 DRIVEREOF
-  CORES=$(cd "$OC_FIX" && ROLEPOD_OC_SHARED="$REPO_DIR/hooks" node "$DRIVER2" 2>/dev/null); rm -f "${TMPDIR:-/tmp}"/rolepod-sweep-oc-cores-test-*.json "${TMPDIR:-/tmp}"/rolepod-loopbreak-oc-cores-test-*.json
+  CORES=$(cd "$OC_FIX" && ROLEPOD_OC_SHARED="$REPO_DIR/build/rendered/opencode/plugin/rolepod-shared" node "$DRIVER2" 2>/dev/null); rm -f "${TMPDIR:-/tmp}"/rolepod-sweep-oc-cores-test-*.json "${TMPDIR:-/tmp}"/rolepod-loopbreak-oc-cores-test-*.json
   ocv() { printf '%s' "$CORES" | python3 -I -c "import json,sys; d=json.load(sys.stdin); sys.exit(0 if d.get('$1') is $2 else 1)"; }
   check "oc-cores: first 70 KB read → no nudge; second (136 KB) → '⟂ sweep' appended to the tool result; third → silent" "ocv sweep1 False && ocv sweep2 True && ocv sweep3 False"
   check "oc-cores: chat.message resets, an edit suppresses the sweep for the turn" "ocv sweepAfterEdit False"
   check "oc-cores: same bash command failing 3× (metadata.exit) → LOOP BREAKER on the third result only" "ocv loop2 False && ocv loop3 True"
   check "oc-cores: a passing run resets the loop counter; plain output untouched" "ocv loopReset False && ocv plainUntouched True"
-  check "oc-cores: missing shared dir → tool results untouched (fail open)" "[ \"\$(cd $OC_FIX && ROLEPOD_OC_SHARED=/nonexistent node $DRIVER2 2>/dev/null | python3 -I -c 'import json,sys; d=json.load(sys.stdin); print(all(v is False for k,v in d.items() if k!=\"plainUntouched\") and d[\"plainUntouched\"])')\" = True ]"
+  check "oc-cores: task → dispatch-proof phase-log line (cli opencode, agent_type qa-tester)" "ocv dispatchProof True"
+  check "oc-cores: session.idle → the turn's route line via the SDK messages (once per prompt)" "ocv routeLine True && ocv routeOnce True"
+  check "oc-cores: missing shared dir → tool results untouched (fail open)" "[ \"\$(cd $OC_FIX && rm -rf .rolepod && ROLEPOD_OC_SHARED=/nonexistent node $DRIVER2 2>/dev/null | python3 -I -c 'import json,sys; d=json.load(sys.stdin); print(all(v is False for k,v in d.items() if k not in (\"plainUntouched\",\"dispatchProof\")) and d[\"plainUntouched\"] and d[\"dispatchProof\"])')\" = True ]"
   rm -rf "$OC_FIX"
 else
   echo "  ~ node not on PATH — skipping opencode gate behavior checks"

@@ -23,6 +23,11 @@
         "command": "./scripts/sweep-nudge.sh",
         "matcher": "Write|Edit|MultiEdit",
         "timeout": 3
+      },
+      {
+        "command": "./scripts/dispatch-log.sh",
+        "matcher": "Task",
+        "timeout": 3
       }
     ],
     "postToolUse": [
