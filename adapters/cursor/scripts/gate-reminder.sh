@@ -1,11 +1,14 @@
 #!/bin/bash
 # Cursor gate-reminder — registered twice on the same tools (Write|Edit|MultiEdit):
 #
-#   preToolUse  → the deny path only: a high-risk NEW file without prior
-#                 verification is blocked ({"permission":"deny", user_message,
-#                 agent_message} + exit 2). Everything else: no output (allow).
+#   preToolUse  → the edit ledger only (v2.134.1) — no output, never a deny.
+#                 The v2.130.2 write-time HARD block on a high-risk NEW file was
+#                 measured live 2026-09-16: the model answered it by creating the
+#                 file through the shell, which skips every edit hook. Claude's
+#                 gate-reminder is advisory at write time too; the commit gate is
+#                 the mechanical stop.
 #   postToolUse → the soft reminders (schema-bound file written / high-risk
-#                 path edited) as {"additional_context": "..."}.
+#                 path edited) as {"additional_context": "..."} + the ledger row.
 #
 # Why split: Cursor feeds `agent_message` to the model only when the action is
 # denied — on `permission: allow` it is dropped, and `additional_context` is not
@@ -13,9 +16,6 @@
 # agent CLI 2026.09.10 / IDE 3.20.21 (2026-09-16). Mirrors the Claude version's
 # tiering, adapted to Cursor's I/O contract (stdin JSON, stdout JSON, exit code).
 #
-# Env overrides match the Claude script for cross-CLI parity:
-#   ROLEPOD_GATES_SOFT=1   — degrade the hard block back to a reminder (logged)
-#   ROLEPOD_GATES_PASSED=1 — single-session bypass
 set -euo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
@@ -56,10 +56,12 @@ except Exception:
 [ -n "$FILE" ] || exit 0
 BASE="${FILE##*/}"
 
-# Edit ledger (v2.134.0): after the edit landed, record it for the commit gate.
+# Edit ledger (v2.134.0): record the edit for the commit gate. postToolUse is the
+# authoritative row (the edit landed); preToolUse stays silent.
 if [ "$EVENT" = "postToolUse" ] && [ -f "$HERE/shared/edit-ledger.py" ]; then
   python3 -I "$HERE/shared/edit-ledger.py" append cursor "$FILE" --cwd "${WS:-$PWD}" --agent "" >/dev/null 2>&1 || true
 fi
+[ "$EVENT" = "postToolUse" ] || exit 0
 
 SCHEMA_RX='(\.claude-plugin/|\.codex-plugin/|\.cursor-plugin/|/extensions/|marketplace\.json$|plugin\.json$|manifest\.json$|hooks\.json$|-extension\.(json|yaml|yml)$|\.mcp\.json$|gemini-extension\.json$|claude-extension\.json$)'
 RISK_RX='(^|/|_)(auth|authn|authz|authentication|authorization|billing|payment|payments|migration|migrations|credit|credits|permission|permissions|secret|secrets|crypto|cryptography|token|tokens|oauth|jwt|sso|saml|webhook|webhooks|stripe|paypal|charge|charges|invoice|invoices|deletion|deletions|erasure|gdpr|security)(/|\.|_|$)'
@@ -72,22 +74,6 @@ SCHEMA_BOUND=0; HIGH_RISK=0
 emit() {  # $1 = JSON object built from env ROLEPOD_HOOK_MSG by the python line in $2
   ROLEPOD_HOOK_MSG="$1" python3 -c "$2" 2>/dev/null || echo '{}'
 }
-
-if [ "$EVENT" = "preToolUse" ]; then
-  # Deny path only: a high-risk NEW file without prior verification.
-  [ "$HIGH_RISK" -eq 1 ] && [ ! -e "$FILE" ] || exit 0
-  SOFT_MODE=0
-  [ "${ROLEPOD_GATES_SOFT:-0}" = "1" ] && { SOFT_MODE=1; rolepod_log_bypass "gate-reminder" "ROLEPOD_GATES_SOFT"; }
-  [ "${ROLEPOD_GATES_PASSED:-0}" = "1" ] && SOFT_MODE=1
-  [ "$SOFT_MODE" -eq 0 ] || exit 0
-  REASON="HARD BLOCK: high-risk new file $BASE without prior verification. Fix: spawn qa-tester (and security-engineer for auth/billing/crypto/secret paths) BEFORE writing. Exception: ROLEPOD_GATES_PASSED=1."
-  emit "$REASON" "
-import json, os
-m = os.environ.get('ROLEPOD_HOOK_MSG', '')
-print(json.dumps({'permission': 'deny', 'user_message': m, 'agent_message': m}))
-"
-  exit 2
-fi
 
 # postToolUse: the soft reminders, delivered where Cursor lets them reach the model.
 MSG=""

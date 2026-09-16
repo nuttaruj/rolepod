@@ -116,13 +116,12 @@ else bad "plugins/rolepod-cursor drifted from adapters/cursor — run make rende
 CUR_TMP="$(mktemp -d "${TMPDIR:-/tmp}/rolepod-cursor-gate.XXXXXX")"
 mkdir -p "$CUR_TMP/src/auth" "$CUR_TMP/.cursor-plugin"; printf '{}' > "$CUR_TMP/.cursor-plugin/plugin.json"; printf 'x' > "$CUR_TMP/src/auth/login.ts"; printf 'y' > "$CUR_TMP/src/util.ts"
 cur_in() { printf '{"hook_event_name":"%s","tool_name":"Write","tool_input":{"file_path":"%s","content":""},"workspace_roots":["%s"],"session_id":"g"}' "$1" "$2" "$CUR_TMP"; }
-# preToolUse: schema-bound new file → no output (allow); high-risk NEW file → deny JSON + exit 2 with both messages
+# preToolUse: always silent (v2.134.1 — the write-time deny was measured to push the model
+# into writing the file through the shell, which skips every edit hook).
 out=$(cur_in preToolUse "$CUR_TMP/.cursor-plugin/marketplace.json" | env -u ROLEPOD_GATES_SOFT -u ROLEPOD_GATES_PASSED bash "$CUR_GATE" 2>/dev/null); rc=$?
 [ "$rc" -eq 0 ] && [ -z "$out" ] && pass "preToolUse: schema-bound new file is silent (soft reminder no longer wasted on allow)" || bad "preToolUse schema-bound: rc $rc out=${out:0:80}"
 out=$(cur_in preToolUse "$CUR_TMP/src/auth/new-token.ts" | env -u ROLEPOD_GATES_SOFT -u ROLEPOD_GATES_PASSED bash "$CUR_GATE" 2>/dev/null); rc=$?
-if [ "$rc" -eq 2 ] && printf '%s' "$out" | python3 -I -c 'import json,sys; d=json.load(sys.stdin); assert d["permission"]=="deny" and "HARD BLOCK" in d["agent_message"] and d["user_message"]==d["agent_message"] and len(d["agent_message"])<=600'; then
-  pass "preToolUse: high-risk NEW file → deny + agent_message (the field Cursor feeds back on deny)"
-else bad "preToolUse high-risk new file: rc $rc out=${out:0:100}"; fi
+[ "$rc" -eq 0 ] && [ -z "$out" ] && pass "preToolUse: high-risk NEW file is silent too — no write-time deny (the commit gate is the stop)" || bad "preToolUse high-risk new file: rc $rc out=${out:0:100}"
 out=$(cur_in preToolUse "$CUR_TMP/src/auth/login.ts" | env -u ROLEPOD_GATES_SOFT -u ROLEPOD_GATES_PASSED bash "$CUR_GATE" 2>/dev/null); rc=$?
 [ "$rc" -eq 0 ] && [ -z "$out" ] && pass "preToolUse: existing high-risk file passes silently" || bad "preToolUse existing high-risk: rc $rc out=${out:0:80}"
 # postToolUse: schema-bound / high-risk → additional_context; plain path → silent

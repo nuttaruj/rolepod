@@ -75,7 +75,7 @@ if (testPath && testPath !== '-')
 let verdict = 'ALLOW'
 try {
   await plugin['tool.execute.before']({ tool: 'bash' }, { args: { command } })
-} catch { verdict = 'DENY' }
+} catch (e) { verdict = String(e?.message || '').includes('rolepod precommit gate') ? 'DENY' : 'DENY-BADMSG:' + String(e?.message || '').slice(0, 60) }
 console.log(verdict)
 DRIVEREOF
   # v2.134.0: the gate counts the edit ledger (<repo>/.rolepod/evidence/edits.jsonl,

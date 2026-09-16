@@ -138,6 +138,25 @@ echo "$out" | grep -q 'IGNORED' \
   && echo "  ✓ precommit deny reason states the marker was ignored" \
   || { echo "  ✗ precommit deny reason missing marker-ignored note"; fail=$((fail+1)); }
 
+# ── precommit-gate: add+commit / commit -a one-liners are gated on the working tree (v2.134.1) ──
+# At hook time nothing is staged yet; the old index-only read let every CLI's Lead
+# ship `git add -A && git commit` past the gate (measured live 2026-09-16).
+TMP2=$(mktemp -d)   # own repo: the shared $TMP fixture must keep its staged diff for the cases below
+( cd "$TMP2" && git init -q . && git config user.email t@t && git config user.name t && git commit -q --allow-empty -m base
+  mkdir -p src/auth && printf 'def check(u):\n    return u.role == "admin"\n' > src/auth/login.py )
+pc2() { printf '{"tool_name":"Bash","tool_input":{"command":%s}}' \
+    "$(printf '%s' "$1" | python3 -c 'import json,sys; print(json.dumps(sys.stdin.read()))')" \
+    | (cd "$TMP2" && bash "$HOOKS/precommit-gate.sh") || true; }
+out=$(pc2 'git add -A && git commit -m "add login"')
+check "precommit 'git add -A && git commit' with an unstaged high-risk file → deny" deny "$out"
+out=$(pc2 'git commit -am "add login"')
+check "precommit 'git commit -am' → deny" deny "$out"
+out=$(pc2 'git -C . add src && git commit -m "add login"')
+check "precommit 'git -C . add src && git commit' (value option before add) → deny" deny "$out"
+out=$(pc2 'git commit -m "fix: add thing"')
+check "precommit plain commit with nothing staged (message says add) → silent" allow "$out"
+rm -rf "$TMP2"
+
 # ── precommit-gate: a test-ONLY diff on a risk-named path is not R4 code (v2.85.2) ──
 # Filename convention only — bare directory segments would downgrade
 # api/specs/auth.yaml and tests/fixtures/seed_auth_users.py (cases c, d).

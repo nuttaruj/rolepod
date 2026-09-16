@@ -283,14 +283,16 @@ export const RolepodPlugin = async ({ directory, client }) => {
 
     "tool.execute.before": async (input, output) => {
       let block = false
+      let riskEdits = 0
+      let testEvidence = 0
       try {
         if (String(input?.tool ?? "") !== "bash") return
         const cmd = String(output?.args?.command ?? "")
         if (!isGitCommit(cmd)) return
         const dir = directory || process.cwd()
         const counts = ledger(["count", lastCommitEpoch(dir), "--cwd", dir]).split(/\s+/)
-        const testEvidence = parseInt(counts[0] || "0", 10) || 0
-        const riskEdits = parseInt(counts[1] || "0", 10) || 0
+        testEvidence = parseInt(counts[0] || "0", 10) || 0
+        riskEdits = parseInt(counts[1] || "0", 10) || 0
         if (riskEdits > 0 && testEvidence === 0) {
           if (process.env.ROLEPOD_GATES_SOFT === "1") logBypass()
           else block = true

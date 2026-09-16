@@ -165,8 +165,52 @@ if [ "${ROLEPOD_GATES_SOFT:-0}" = "1" ]; then
   exit 0
 fi
 
+# `git add … && git commit` or `git commit -a` in ONE command (v2.134.1): at hook
+# time nothing is staged yet, so the index is empty and the gate used to exit 0
+# — measured live on every CLI. In that shape the gate reads the working tree
+# (tracked changes vs HEAD + untracked files) instead of the index.
+GIT_DIFF_BASE=$(ROLEPOD_GATE_CMD="$CMD" python3 -I -c '
+import os, shlex
+cmd = os.environ.get("ROLEPOD_GATE_CMD", "")
+try:
+    toks = shlex.split(cmd)
+except ValueError:
+    toks = cmd.split()
+VALUE_OPTS = {"-C", "--git-dir", "--work-tree", "--namespace", "--exec-path", "-c"}
+base = "--cached"
+i = 0
+while i < len(toks):
+    if os.path.basename(toks[i]) != "git":
+        i += 1; continue
+    j = i + 1
+    while j < len(toks) and toks[j].startswith("-"):
+        j += 2 if toks[j] in VALUE_OPTS else 1
+    if j >= len(toks):
+        break
+    sub = toks[j]
+    if sub == "add":
+        base = "HEAD"; break
+    if sub == "commit":
+        k = j + 1
+        while k < len(toks) and toks[k].startswith("-"):
+            f = toks[k]
+            if f in ("-a", "--all") or (f.startswith("-") and not f.startswith("--") and "a" in f[1:]):
+                base = "HEAD"
+            if f in ("-m", "-F", "-C", "-c", "--author", "--date", "-t"):
+                k += 1
+            k += 1
+        break
+    i = j + 1
+print(base)
+' 2>/dev/null || echo "--cached")
+[ "$GIT_DIFF_BASE" = "HEAD" ] || GIT_DIFF_BASE="--cached"
+
 # Compute diff stats — skip gate if trivial
-DIFF_STAT=$(git diff --cached --numstat 2>/dev/null || echo "")
+DIFF_STAT=$(git diff $GIT_DIFF_BASE --numstat 2>/dev/null || echo "")
+if [ "$GIT_DIFF_BASE" = "HEAD" ]; then
+  UNTRACKED=$(git ls-files --others --exclude-standard 2>/dev/null | awk -F'\t' '{print "1\t0\t" $0}' || true)
+  [ -n "$UNTRACKED" ] && DIFF_STAT="$(printf '%s\n%s' "$DIFF_STAT" "$UNTRACKED" | sed '/^$/d')"
+fi
 if [ -z "$DIFF_STAT" ]; then
   # No staged changes — let git's own error fire
   exit 0
@@ -180,7 +224,7 @@ FILES_CHANGED=$(echo "$DIFF_STAT" | wc -l | tr -d ' ')
 # in silently; this is the mechanical stop. A repo that WANTS them tracked
 # creates <git-root>/.rolepod/docs-tracked (an explicit, reviewable choice).
 _pd_root="$(git rev-parse --show-toplevel 2>/dev/null)"
-PRIVATE_DOCS=$( { git diff --cached --name-only 2>/dev/null | grep -E '^docs/rolepod/' || true; } | head -5 | tr '\n' ' ' | sed 's/ *$//')
+PRIVATE_DOCS=$( { git diff $GIT_DIFF_BASE --name-only 2>/dev/null | grep -E '^docs/rolepod/' || true; } | head -5 | tr '\n' ' ' | sed 's/ *$//')
 if [ -n "$PRIVATE_DOCS" ] && [ ! -f "$_pd_root/.rolepod/docs-tracked" ]; then
   ROLEPOD_HOOK_MSG="precommit-gate BLOCKED — private working docs staged: $PRIVATE_DOCS. docs/rolepod/ is never committed. Fix: git restore --staged docs/rolepod; make sure .gitignore lists docs/rolepod/. Repo tracks them on purpose → create .rolepod/docs-tracked, commit again." python3 -I -c "
 import json, os
@@ -202,7 +246,7 @@ fi
 # the line goes silent.
 EMOJI_WARN=""
 if [ ! -f "$_pd_root/.rolepod/allow-emoji" ] && command -v python3 >/dev/null 2>&1; then
-  EMOJI_HIT=$(git diff --cached -U0 2>/dev/null | python3 -I -c '
+  EMOJI_HIT=$(git diff $GIT_DIFF_BASE -U0 2>/dev/null | python3 -I -c '
 import re, sys
 rx = re.compile("[\U0001F000-\U0001FAFF\u231A\u231B\u23E9-\u23EC\u23F0\u23F3\u25FD\u25FE\u2614\u2615\u2648-\u2653\u267F\u2693\u26A1\u26AA\u26AB\u26BD\u26BE\u26C4\u26C5\u26CE\u26D4\u26EA\u26F2\u26F3\u26F5\u26FA\u26FD\u2705\u270A\u270B\u2728\u274C\u274E\u2753-\u2755\u2757\u2795-\u2797\u27B0\u27BF\u2B1B\u2B1C\u2B50\u2B55]|.\uFE0F")
 skip_path = re.compile(r"\.(md|mdx|txt|rst|adoc)$|(^|/)(test|tests|spec|specs|__tests__|fixtures)(/|\.|_)|_test\.|\.test\.|_spec\.|\.spec\.")
@@ -264,7 +308,7 @@ if [ -z "$HIGH_RISK" ]; then
   # stripped before the suffix test. The candidate paths then go through
   # risk_filter so a `-` line in .rolepod/risk-paths excludes them exactly
   # like the path regex.
-  CONTENT_RISK=$(git diff --cached -U0 2>/dev/null \
+  CONTENT_RISK=$(git diff $GIT_DIFF_BASE -U0 2>/dev/null \
     | awk '/^\+\+\+ /{f=substr($0,5); sub(/[ \t]+$/,"",f)} /^\+[^+]/{if (f !~ /\.(md|mdx|txt|rst|adoc)$/) print f "\t" $0}' \
     | grep -vE '(^|/)(test|tests|spec|specs|__tests__|fixtures)(/|\.|_)|_test\.|\.test\.|_spec\.|\.spec\.' \
     | grep -iE '(refund|payout|chargeback|settlement)' \
@@ -284,7 +328,7 @@ if [ -n "$HIGH_RISK" ]; then
 fi
 
 # Logic-bearing line count — non-comment, non-blank, non-pure-rename lines
-LOGIC_LINES=$(git diff --cached -U0 2>/dev/null | grep -E '^[+-]' | grep -vE '^[+-]{3}' | grep -vE '^[+-][[:space:]]*$' | grep -vE '^[+-][[:space:]]*(#|//|/\*|\*/?|--|;)' || true)
+LOGIC_LINES=$(git diff $GIT_DIFF_BASE -U0 2>/dev/null | grep -E '^[+-]' | grep -vE '^[+-]{3}' | grep -vE '^[+-][[:space:]]*$' | grep -vE '^[+-][[:space:]]*(#|//|/\*|\*/?|--|;)' || true)
 if [ -z "$LOGIC_LINES" ]; then
   LOGIC_COUNT=0
 else

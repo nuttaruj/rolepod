@@ -152,7 +152,7 @@ Detect sibling Claude session(s) in the same worktree to prevent concurrent-edit
 
 ### `gate-reminder.sh` — PreToolUse Edit/Write/MultiEdit (core)
 
-Schema-bound + high-risk edit guard. Silent on normal code edits (PR 5 slim — the generic Q1-Q4 reminder lives in the always-on core / AGENTS.md / the using-rolepod skill, read once per session, not per edit).
+Schema-bound + high-risk edit guard (and, since v2.134.0, the edit-ledger writer — every edit tool call lands in `.rolepod/evidence/edits.jsonl`). Silent on normal code edits (PR 5 slim — the generic Q1-Q4 reminder lives in the always-on core / AGENTS.md / the using-rolepod skill, read once per session, not per edit).
 
 Fires output ONLY when:
 1. **Schema-bound NEW file** (plugin.json, marketplace.json, hooks.json, extension manifests) → soft warn: WebFetch spec FIRST.
@@ -182,6 +182,8 @@ Enforcement layer for the concurrent-edit problem `session-lifecycle` only *warn
 - **Scope**: the per-file guard is Claude-only, but the underlying lock dir (`~/.rolepod/session-locks/`) is shared — `session-lifecycle.sh` now runs on Codex too, and the opencode plugin reads the same dir, so cross-CLI sibling *detection* (a Claude and a Codex session on the same checkout) is live; only the per-file deny remains Claude-only.
 
 ### `precommit-gate.sh` — PreToolUse Bash (core)
+
+v2.134.1: `git add … && git commit` and `git commit -a` in ONE command are gated on the working tree (tracked changes vs HEAD + untracked files) — at hook time nothing is staged yet, and that shape used to pass on every CLI (measured live).
 
 Escalates to HARD block at `git commit` time when the session touched high-risk code but never produced a test edit.
 
@@ -505,7 +507,7 @@ The Cursor adapter ships **5 core hooks** in `adapters/cursor/scripts/`, paralle
 |---|---|
 | `always-on-loader.sh` (SessionStart) | replaced by `rules/always-on-core.mdc` with `alwaysApply: true` — Cursor's native always-on mechanism |
 | `project-context-loader.sh` (SessionStart) | `scripts/project-context-loader.sh` on `sessionStart` — emits `{"additional_context": "..."}` |
-| `gate-reminder.sh` (PreToolUse:Edit\|Write\|MultiEdit) | `scripts/gate-reminder.sh` registered twice with matcher `Write\|Edit\|MultiEdit`: on `preToolUse` for the deny path only (`{"permission": "deny", "user_message", "agent_message"}` + exit 2 when a high-risk NEW file is written without prior verification; otherwise no output) and on `postToolUse` for the soft reminders (`{"additional_context": "..."}` — schema-bound file written / high-risk path edited). Split because Cursor feeds `agent_message` to the model only on deny and `additional_context` is not a `preToolUse` field (live-verified 2026-09-16, v2.130.2) |
+| `gate-reminder.sh` (PreToolUse:Edit\|Write\|MultiEdit) | `scripts/gate-reminder.sh` on `postToolUse` (matcher `Write\|Edit\|MultiEdit`): the soft reminders as `{"additional_context": "..."}` (schema-bound file written / high-risk path edited) plus the edit-ledger row. `additional_context` is not a `preToolUse` field and `agent_message` reaches the model only on deny (live-verified 2026-09-16); the v2.130.2 write-time deny was removed in v2.134.1 after a live run showed the model answering it by creating the file through the shell — advisory at write time, as on Claude; the commit gate is the stop |
 | `precommit-gate.sh` (PreToolUse:Bash) | `scripts/precommit-gate.sh` on `beforeShellExecution` with matcher `git[[:space:]]+commit` — same tiering (silent / soft / hard), same `ROLEPOD_GATES_HARD` / `ROLEPOD_GATES_SOFT`; **no evidence auto-pass** (Cursor exposes no session transcript), so `[gates: pass]` in the commit message body stays the release valve there |
 | `session-lifecycle.sh` (SessionStart/Stop lock) | `scripts/project-context-loader.sh` registers `cursor-<conversation_id>.lock` on `sessionStart`; `scripts/stop-unlock.sh` releases it on `stop` (v2.132.0) |
 | `sweep-nudge.sh` (UserPromptSubmit / PreToolUse / PostToolUse) | `scripts/sweep-nudge.sh` — a translator around the shared `scripts/shared/sweep-nudge.sh` (byte-identical to `hooks/sweep-nudge.sh`): `beforeSubmitPrompt` resets (answers `{continue: true}`), `preToolUse` edit tools set the edit flag, `postToolUse` read tools count bytes (Read from Cursor's `content_length`) and deliver the one nudge as `additional_context`, `afterShellExecution` counts shell output silently and un-fires so the next read delivers (v2.132.0) |
