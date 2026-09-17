@@ -27,7 +27,7 @@ Execute the approved plan with discipline: TDD where it matters, surgical edits,
 
 ## Boundary
 
-Owns: executing the approved plan — reading touched files, surgical edits, task-level tests, bounded delegation.
+Owns: executing the approved plan.
 
 Does not own: changing product scope · Redesigning the plan silently · declaring final done · merging or branch fate.
 
@@ -42,11 +42,12 @@ Inputs: the plan or task list · the touched files (read before editing) · styl
 
 ### 1. Read first — the plan is the loop contract
 
-Read the touched files end-to-end (or the region with line numbers); verify the symbols the plan expects exist.
+- **Lint the plan first:** `plan-lint.sh <plan>` (`~/.rolepod/bin/`) before the first task — FAIL (no **Command**, no checkboxes, a broken Blocked-by graph) → back to `write-plan`; never build on it.
+Read the touched files end-to-end; verify the symbols the plan expects exist.
 
-- **Baseline first:** before the first edit run the task's verify command once on the untouched tree (a throwaway worktree, never a stash) and record what already fails as limitations — never re-prove a baseline failure per round.
-- An R2 (one file + test) or spec-as-plan R3 inline checklist is the same contract: run each step's command; scope grows past one file (its own test file is the same change) → stop, write the real plan.
-- Verify each task by running its **Command** verbatim — never a re-derived guess. Pass → flip EVERY `- [ ]` under that task to `- [x]`. A **Test / evidence** line naming proof the Command does not run (browser, manual) is not covered by the flip — do that proof first. Fail → the task's **On fail**, else the plan's **Failure policy**.
+- **Baseline first:** before the first edit run the task's verify command once on the untouched tree (a throwaway worktree) and record what already fails as limitations.
+- An R2 (one file + test) or spec-as-plan R3 inline checklist is the same contract: run each step's command; scope grows past one file (its test file included) → stop, write the real plan.
+- Verify each task by running its **Command** verbatim — never a re-derived guess. Pass → flip EVERY `- [ ]` under that task to `- [x]`. A **Test / evidence** proof the Command does not run (browser, manual) is not covered by the flip — do it first. Fail → the task's **On fail**, else the plan's **Failure policy**.
 - Shared plan (issues backend on — issue numbers in the plan header) → claim the task's issue (assign yourself) before touching a file; already assigned → take the next unblocked one; close it with the commit / PR pointer when review passes (write-plan's `references/team-issues.md`).
 
 ### 2. TDD-light for risky paths
