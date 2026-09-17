@@ -40,13 +40,13 @@ Work spans 2+ modules and NO map exists → offer a ONE-TIME bootstrap: scout + 
 
 ### 1. List files to touch
 
-Concrete paths — a directory or module when the slice's shape is still open (`hooks/lib/`; ownership then pins that directory), never a category. Code-intel index when connected widens the blast radius; otherwise grep + Read adjacent code.
+Concrete paths — a directory or module when the slice's shape is still open (`hooks/lib/`; ownership then pins that directory), never a category. Code-intel when connected, else grep + Read adjacent code.
 
 ### 2. Order the tasks
 
 Smallest reversible unit first. Tests-first for bugs, features, high-risk surfaces. Inside a slice the migration and the public-API contract change land first; either becomes its own task only when several slices depend on it. A wide refactor with no safe single-commit path: expand (new path beside the old) → migrate consumers in reviewable green batches → contract (delete the old path once no caller remains).
 
-Prefer vertical slices — each cuts through all layers and is demoable alone — over horizontal layers. Many thin slices beat a few thick ones. A slice carrying a major unknown (new integration, unproven assumption) goes first — fail fast.
+Many thin slices beat a few thick ones. A slice carrying a major unknown (new integration, unproven assumption) goes first — fail fast.
 A task that guards, gates or restores (a security surface) gets a **threat-model** task first: the written attack list its reviewers verify against (symlinks, case-folded names, forged evidence, moved refs, ignore rules, the kill path…) — reviewers never discover it round by round.
 
 Size every task to ONE fresh context window — the subagent (or teammate) that builds it starts with no memory beyond the ticket.
@@ -57,7 +57,8 @@ Each **Blocked-by** edge names what it consumes (e.g., `Blocked by: Task 2 (its 
 
 ### 3. Test plan per task
 
-Name the test type (unit / integration / contract / E2E / smoke / benchmark / repro), the assertion that proves it, and the exact command — copy-paste runnable, not "run the tests". Behaviour no test can express yet → **Test / evidence** carries 1-3 acceptance criteria the reviewer walks, and **Command** is the nearest mechanical check (lint / typecheck / smoke) — never skipped. "Adds tests" is not a test plan. Size by rules: one test per rule at its owner, one smoke per call site — never a test per copy of the rule.
+Name the test type (unit / integration / contract / E2E / smoke / repro), the assertion that proves it, and the exact command — copy-paste runnable, not "run the tests". Behaviour no test can express yet → **Test / evidence** carries 1-3 acceptance criteria the reviewer walks, and **Command** is the nearest mechanical check (lint / typecheck / smoke) — never skipped. "Adds tests" is not a test plan.
+Tests cover the work — logic, UI, behaviour; a doc, comment, config-text or string-literal change gets NO test (render / lint is its check). Size by rules: one test per rule at its owner, one smoke per call site — never a test per copy of the rule.
 
 No test infrastructure at all → the FIRST task bootstraps the minimal harness (runner config + one passing smoke test) so every later Command is runnable. Never plan Commands against a runner that does not exist.
 

@@ -72,7 +72,7 @@ T4: Tier-appropriate speed?    T5: Isolated — no order, clock or seed
     dependency (no literal date · one frozen now · expectations from spec)?
 T6: Assertion tight — a 1-char bug still passes? → tighten (`is not None` → `== expected`)
 ```
-Skip only when ALL hold: ≤5 lines · single file · zero logic-bearing (user-facing string text alone counts as zero) · NOT a high-risk path (= rigor tier R1). Any fail → write the test.
+Skip when the diff is docs-only (prose / comments / config text / string literals — any size: tests cover the work, not the words), or when ALL hold: ≤5 lines · single file · zero logic-bearing · NOT a high-risk path (= rigor tier R1). Otherwise → write the test.
 
 **Failure-mode (F1-F5)** — check-work's gate; do not merge with an unresolved F-finding.
 
