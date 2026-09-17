@@ -770,7 +770,8 @@ EOF
 # Files allowed = task Files ∪ contract slice, Files forbidden = the rest.
 OUT=$(bash "$LINT" --brief 2 "$TMP/brief-plan.md" "$TMP/brief-contract.md")
 RC=$?
-EXPECTED_HEADINGS='## Goal
+EXPECTED_HEADINGS='## Worktree
+## Goal
 ## Blocked by
 ## Read first
 ## Files allowed
@@ -956,6 +957,12 @@ fi
 printf '%s\n' "$OUT" | grep -q '^- Budget: build <= 40 tool calls' \
   && echo "  ✓ --brief Bounds carry the tool budget" \
   || { echo "  ✗ --brief Bounds missing the Budget line"; fail=$((fail+1)); }
+
+# Worktree line: the brief names the worktree after the task (mechanism).
+printf '%s\n' "$OUT" | grep -q '^## Worktree' \
+  && printf '%s\n' "$OUT" | grep -qE '^`git worktree add -b [a-z0-9-]+/t[0-9]+-[a-z0-9-]+ \.\./[A-Za-z0-9._-]+-wt-[a-z0-9-]+-t[0-9]+-[a-z0-9-]+`' \
+  && echo "  ✓ --brief prints a task-named worktree command" \
+  || { echo "  ✗ --brief Worktree line missing or malformed"; fail=$((fail+1)); }
 
 if [ "$fail" -eq 0 ]; then
   echo "  ✓ pass"

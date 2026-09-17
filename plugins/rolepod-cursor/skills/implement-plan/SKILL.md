@@ -81,13 +81,13 @@ The brief comes from the plan, never hand-written: `plan-lint.sh --brief <N> <pl
 - Absolute: the task owner NEVER commits and NEVER expands scope. A path nobody in the wave owns → touch it, one `Also touched:` line in the brief; a path another owner holds → stop, `NEEDS: <path> — <one-line change>` in the brief; the Lead applies it at integration (R1/R2) or reassigns.
 - A write mandate goes only to the role that owns the path — never a generic platform agent (`general-purpose` / `default` / `claude`, or a bare Workflow `agent()`; a writing stage carries `agentType: 'rolepod:<role>'`), never a reviewer (`qa-tester` / `security-engineer` write tests and markdown only; `universal-reviewer` / `scout` markdown only). A CLI with hooks denies the out-of-scope edit; elsewhere this rule is the gate.
 
-Never point the subagent at the plan file — the Lead curates the slice it needs. Use the least powerful model that can handle the role.
+Never point the owner at the plan file — the brief is its slice. Use the least powerful model that can handle the role.
 
 **Return status:** a decision brief carries `COMPLETED` / `PARTIAL` / `BLOCKED` as its first word. `COMPLETED` with no concerns → §6; with Concerns → address scope / correctness first, then §6; `PARTIAL` → review the done slice, redispatch the remainder narrowed; `BLOCKED` → change a variable, never blind.
 
 ### 5. Parallel tracks — the plan's layout is the dispatch signal
 
-Every unblocked task goes out in ONE message, each task owner in its OWN worktree, under the plan's cohesion contract; the Lead keeps working while task owners build. Integrate each as it returns (§6) — never barrier-wait; merge in the contract's order. Two tracks reach for the same file → stop: sequential, or rewrite the contract.
+Every unblocked task goes out in ONE message, each task owner in its OWN worktree named for the task (the brief prints the command), under the plan's cohesion contract; the Lead keeps working while task owners build. Integrate each as it returns (§6); merge in the contract's order. Two tracks reach for the same file → stop: sequential, or rewrite the contract.
 
 ### 6. Per-task review pipeline — the task owner's decision brief replaces Lead review
 

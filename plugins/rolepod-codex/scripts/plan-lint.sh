@@ -61,6 +61,15 @@ if [ "${1:-}" = "--brief" ]; then
   # shellcheck disable=SC2016
   BRIEF_AWK='
   function trim(x) { sub(/^[[:space:]]+/, "", x); sub(/[[:space:]]+$/, "", x); return x }
+  function slug(x,   t, n, a, k, o, w) {
+    t = tolower(x); gsub(/[^a-z0-9]+/, "-", t); gsub(/^-+|-+$/, "", t)
+    n = split(t, a, "-"); o = ""
+    for (k = 1; k <= n && split(o, w, "-") < 3; k++) {
+      if (a[k] == "" || a[k] ~ /^(the|a|an|of|to|in|for|and|on|is|with)$/) continue
+      o = (o == "") ? a[k] : o "-" a[k]
+    }
+    return (o == "") ? "task" : o
+  }
   function addallowed(p) {
     if (p == "") return
     if (!(p in allowedset)) { allowedset[p] = 1; allowedord[++acnt] = p }
@@ -113,6 +122,7 @@ if [ "${1:-}" = "--brief" ]; then
       field = ""
       next
     }
+    if (h1 == "" && $0 ~ /^# /) { h1 = $0; sub(/^# +/, "", h1) }
     if (specsec) { if (spec == "" && trim($0) != "") spec = trim($0); next }
     if (filessec) {
       m = $0
@@ -275,6 +285,10 @@ if [ "${1:-}" = "--brief" ]; then
     printf "# Task %s: %s\n", want, trim(title)
     specout = (spec == "") ? "(not in plan)" : spec
     printf "Plan: %s · Spec: %s\n", planpath, specout
+    feat = h1; sub(/[[:space:]]+[Pp]lan[[:space:]]*$/, "", feat); feat = slug(feat)
+    tslug = slug(title)
+    print "## Worktree"
+    printf "`git worktree add -b %s/t%s-%s ../%s-wt-%s-t%s-%s` — cd there for every command; the name says which task it holds\n", feat, want, tslug, repo, feat, want, tslug
     print "## Goal"
     print (D == "" ? "(not in plan)" : D)
     print "## Blocked by"
@@ -320,10 +334,11 @@ if [ "${1:-}" = "--brief" ]; then
     print "- Return a decision brief: verdict, `git diff --cached --stat | tail -3`, Command last 3 lines verbatim, reviewer verdicts + report paths, residuals."
   }
   '
+  BRIEF_REPO="$(basename "$(git -C "$(dirname "$PLAN")" rev-parse --show-toplevel 2>/dev/null || pwd)")"
   if [ -n "$CONTRACT" ]; then
-    awk -v rx="$TASK_RX" -v want="$BRIEF_N" -v planpath="$PLAN" -v hascontract=1 "$BRIEF_AWK" "$PLAN" "$CONTRACT"
+    awk -v rx="$TASK_RX" -v want="$BRIEF_N" -v planpath="$PLAN" -v repo="$BRIEF_REPO" -v hascontract=1 "$BRIEF_AWK" "$PLAN" "$CONTRACT"
   else
-    awk -v rx="$TASK_RX" -v want="$BRIEF_N" -v planpath="$PLAN" -v hascontract=0 "$BRIEF_AWK" "$PLAN"
+    awk -v rx="$TASK_RX" -v want="$BRIEF_N" -v planpath="$PLAN" -v repo="$BRIEF_REPO" -v hascontract=0 "$BRIEF_AWK" "$PLAN"
   fi
   exit $?
 fi
