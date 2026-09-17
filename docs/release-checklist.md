@@ -91,6 +91,10 @@ Every required check on the PR green before promotion — today that is the sing
 - User explicit approval present for the PR
 - No high-risk surface unresolved-blocker
 
+## Cadence — when the chain runs
+
+One release per completed request that changed shipped payload (`core/`, `hooks/`, `scripts/`, `adapters/`, `plugins/`), never per commit: measured 2026-09-17, 13 releases in two days cost ~1.6 h of sync + doctor alone. Between releases a ticket ends with `make test-static` + commit (+ push); docs-only work never releases. Release now only when the next ticket in the same session needs the hook or script just shipped. While editing run the one check that covers the file (`make test-lean-surface`, `bash tests/static/<x>.sh`), the full gate once at commit, `make test-all` once at release.
+
 ## Fast-loop (working from a hardening branch)
 
 ```bash
