@@ -182,7 +182,7 @@ rolepod-cross-family --collect <job-id> --root <git-root>   # prints the review 
 rolepod-cross-family --jobs                        # running / done
 rolepod-cross-family --kind consult --brief ledger.md
 rolepod-cross-family --kind advise  --brief decision.md --all      # one member per family, concurrently
-rolepod-cross-family --kind critique --brief spec-draft.md          # write-spec: ≤5 ranked open questions before Gate 1
+rolepod-cross-family --kind critique --brief spec-draft.md          # write-spec: ranked open questions before Gate 1 (no cap)
 # add --lead codex|agy|cursor|opencode when not running under Claude Code (ROLEPOD_LEAD_CLI also works)
 ```
 
