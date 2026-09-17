@@ -1018,6 +1018,8 @@ check "implement-plan §6: both review axes dispatched in ONE message" "grep -q 
 check "review-code: R3 external = one anchored pass per ship group" "grep -q 'ONE anchored pass per ship group' core/skills/review-code/SKILL.md"
 check "review-code: R3 external skipped off money/auth/data after a clean internal round" "grep -q 'Skip it when the group is off money / auth / data AND the internal' core/skills/review-code/SKILL.md"
 check "review-code: round 2+ external only after a BLOCKER" "grep -q 're-runs only when its previous report carried a BLOCKER' core/skills/review-code/SKILL.md"
+check "implement-plan: external implementer via rolepod-cross-family --kind implement, --allow, the user's --allow-risky, another worktree" "grep -q 'rolepod-cross-family --kind implement' core/skills/implement-plan/SKILL.md && grep -q -- '--allow-risky' core/skills/implement-plan/SKILL.md && grep -q 'the Lead meanwhile in ANOTHER worktree' core/skills/implement-plan/SKILL.md"
+check "review-code: the external implementer never reviews its own ship group" "grep -q 'the runner skips the implementer while its ticket is uncommitted' core/skills/review-code/SKILL.md"
 for s in check-work review-code; do
   if grep -q 'the deliverable; stop here' "core/skills/$s/SKILL.md"; then
     echo "  ✓ $s hand-off carries the report-only exit"
