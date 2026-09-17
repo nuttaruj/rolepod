@@ -146,9 +146,11 @@ if [ -n "$_gr_root" ] && [ -d "$_gr_root/.rolepod/evidence/external/jobs" ] && [
   # (/private/var vs /var on macOS) while the tool passes the path as typed,
   # and a mismatched prefix would silently skip the match.
   _gr_rel="$FILE"
-  if [ "${_gr_rel#/}" != "$_gr_rel" ]; then
-    _gr_dir=$(cd "$(dirname "$_gr_rel")" 2>/dev/null && pwd -P || true)
-    [ -n "$_gr_dir" ] && _gr_rel="$_gr_dir/$(basename "$_gr_rel")"
+  if [ "${_gr_rel#/}" != "$_gr_rel" ]; then   # a NEW file in a not-yet-existing directory: resolve the nearest existing ancestor, re-append the rest
+    _gr_walk=$(dirname "$_gr_rel"); _gr_tail=$(basename "$_gr_rel")
+    while [ ! -d "$_gr_walk" ] && [ "$_gr_walk" != "/" ] && [ "$_gr_walk" != "." ]; do _gr_tail="$(basename "$_gr_walk")/$_gr_tail"; _gr_walk=$(dirname "$_gr_walk"); done
+    _gr_dir=$(cd "$_gr_walk" 2>/dev/null && pwd -P || true)
+    [ -n "$_gr_dir" ] && _gr_rel="$_gr_dir/$_gr_tail"
   fi
   _gr_rootp=$(cd "$_gr_root" 2>/dev/null && pwd -P || printf '%s' "$_gr_root")
   case "$_gr_rel" in "$_gr_rootp"/*) _gr_rel="${_gr_rel#"$_gr_rootp"/}" ;; "$_gr_root"/*) _gr_rel="${_gr_rel#"$_gr_root"/}" ;; esac
@@ -157,12 +159,18 @@ if [ -n "$_gr_root" ] && [ -d "$_gr_root/.rolepod/evidence/external/jobs" ] && [
     _jp=$(cat "$_jd/pid" 2>/dev/null); case "$_jp" in ''|*[!0-9]*) continue ;; esac
     kill -0 "$_jp" 2>/dev/null || continue
     ps -o command= -p "$_jp" 2>/dev/null | grep -q 'cross-family' || continue
+    _jid=$(basename "$_jd"); _jk=$(printf '%s' "$_jid" | sed -n 's/^[^-]*-\([a-z]*\)-.*/\1/p'); _jk=${_jk:-review}
+    if [ "$_jk" = "implement" ] && [ -f "$_jd/allow" ]; then   # an implement job: every edit OUTSIDE the ticket's Files allowed is reverted when it returns — warn on those, stay silent inside the scope
+      _in=0; while IFS= read -r _ae; do [ -n "$_ae" ] || continue; case "$_ae" in */) case "$_gr_rel" in "${_ae%/}"/*) _in=1 ;; esac ;; *) [ "$_gr_rel" = "$_ae" ] && _in=1 ;; esac; done < "$_jd/allow"
+      [ "$_in" -eq 1 ] && continue
+      _js=$(cat "$_jd/started" 2>/dev/null || echo 0); _jm=$(( ($(date +%s) - _js) / 60 ))
+      XFAM_INFLIGHT="⏸ EXTERNAL IMPLEMENT IN FLIGHT: cross-family job $_jid (running ${_jm} min) is EDITING this tree — an edit outside the ticket's Files allowed made now (this one included) is reverted when the job returns (a copy is kept under the job's .reverted/). Fix: park the edit until \`rolepod-cross-family --collect $_jid\` returns, or work in another worktree. "
+      break
+    fi
     _under=$( ( eval "set -- $(cat "$_jd/args" 2>/dev/null)" 2>/dev/null; while [ $# -gt 0 ]; do if [ "$1" = "--attach" ] && [ -f "${2:-}" ]; then grep -E '^\+\+\+ b/' "$2" 2>/dev/null | sed -E 's#^\+\+\+ b/##; s/[[:space:]]+$//'; shift; fi; shift; done ) 2>/dev/null || true )
     [ -n "$_under" ] || _under=$(git -C "$_gr_root" diff HEAD --name-only 2>/dev/null || true)
     if printf '%s\n' "$_under" | grep -qxF -- "$_gr_rel"; then
-      _jid=$(basename "$_jd"); _js=$(cat "$_jd/started" 2>/dev/null || echo 0); _jm=$(( ($(date +%s) - _js) / 60 ))
-      _jk=$(printf '%s' "$_jid" | sed -n 's/^[^-]*-\([a-z]*\)-.*/\1/p'); _jk=${_jk:-review}
-      if [ "$_jk" = "implement" ]; then XFAM_INFLIGHT="⏸ EXTERNAL IMPLEMENT IN FLIGHT: cross-family job $_jid (running ${_jm} min) is EDITING this tree — an edit outside the ticket's Files allowed made now (this one included) is reverted when the job returns (a copy is kept under the job's .reverted/). Fix: park the edit until \`rolepod-cross-family --collect $_jid\` returns, or work in another worktree. Exception: a dead job → --collect says so and this line stops. "; break; fi
+      _js=$(cat "$_jd/started" 2>/dev/null || echo 0); _jm=$(( ($(date +%s) - _js) / 60 ))
       XFAM_INFLIGHT="⏸ REVIEW IN FLIGHT: cross-family job $_jid (running ${_jm} min) reads '$_gr_rel' live — this edit turns its verdict into an artifact and re-runs the job. Fix: park the edit until \`rolepod-cross-family --collect $_jid\` returns; work outside the diff meanwhile. Exception: a dead job → --collect says so and this line stops. "
       break
     fi

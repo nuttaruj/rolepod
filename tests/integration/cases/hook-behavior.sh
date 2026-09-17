@@ -685,6 +685,24 @@ else echo "  ✗ gate-reminder in-flight edit: ${out:0:160}"; fail=$((fail+1)); 
 out=$(rf_edit "$RF_TMP/src/other.ts")
 if echo "$out" | grep -q 'REVIEW IN FLIGHT'; then echo "  ✗ gate-reminder warned on a file outside the attached diff"; fail=$((fail+1))
 else echo "  ✓ gate-reminder: file outside the diff → silent"; fi
+# an implement job: the trigger is the ticket's allow list, not the diff — inside = silent, outside = EXTERNAL IMPLEMENT warning
+RF_IJOB="$RF_TMP/.rolepod/evidence/external/jobs/20260907T000001Z-implement-1"; mkdir -p "$RF_IJOB"
+printf 'src/pay.ts\n' > "$RF_IJOB/allow"; date +%s > "$RF_IJOB/started"; echo "$RF_PID" > "$RF_IJOB/pid"; printf -- '--kind implement --brief x --allow src/pay.ts\n' > "$RF_IJOB/args"
+out=$(rf_edit "$RF_TMP/src/other.ts")
+if echo "$out" | grep -q 'EXTERNAL IMPLEMENT IN FLIGHT' && ! echo "$out" | grep -q '"permissionDecision"'; then
+  echo "  ✓ gate-reminder: edit OUTSIDE an implement job's allow list → EXTERNAL IMPLEMENT advisory"
+else echo "  ✗ gate-reminder implement outside-allow: ${out:0:160}"; fail=$((fail+1)); fi
+out=$(rf_edit "$RF_TMP/src/pay.ts")
+if echo "$out" | grep -q 'EXTERNAL IMPLEMENT IN FLIGHT'; then echo "  ✗ gate-reminder warned INSIDE the implement job's allow list"; fail=$((fail+1))
+else echo "  ✓ gate-reminder: edit inside the implement job's allow list → silent"; fi
+printf 'src/pay.ts\nsrc/new/\n' > "$RF_IJOB/allow"
+out=$(rf_edit "$RF_TMP/src/new/deep/file.ts")
+if echo "$out" | grep -q 'EXTERNAL IMPLEMENT IN FLIGHT'; then echo "  ✗ gate-reminder warned on a NEW file in a not-yet-existing dir inside the allow list (symlinked tmp root)"; fail=$((fail+1))
+else echo "  ✓ gate-reminder: new file in a not-yet-existing directory inside the allow list → silent (path resolved through the nearest existing ancestor)"; fi
+out=$(rf_edit "$RF_TMP/src/elsewhere/file.ts")
+if echo "$out" | grep -q 'EXTERNAL IMPLEMENT IN FLIGHT'; then echo "  ✓ gate-reminder: new file in a not-yet-existing dir OUTSIDE the allow list → warned"
+else echo "  ✗ gate-reminder stayed silent on a new file outside the allow list"; fail=$((fail+1)); fi
+rm -rf "$RF_IJOB"
 out=$(rf_bash 'git stash')
 if echo "$out" | grep -q 'REVIEW IN FLIGHT' && ! echo "$out" | grep -q '"permissionDecision"'; then
   echo "  ✓ precommit-gate: git stash while the job runs → advisory line, not a deny"

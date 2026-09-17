@@ -1,7 +1,10 @@
 #!/bin/bash
 # rolepod cross-family runner — ONE command for every cross-CLI opinion:
 # the adversarial review pass, the spec critique, the plan advisory panel,
-# the stuck-state consult. Installed as `rolepod-cross-family` (install.sh)
+# the stuck-state consult — and, since v2.139.0, ONE cross-CLI build: `--kind
+# implement` runs a member in its own write mode on one ticket (--allow scope
+# enforced after the run, git state guarded, the Lead reviews and commits).
+# Installed as `rolepod-cross-family` (install.sh)
 # and shipped in every plugin tree as scripts/cross-family.sh.
 #
 # Why this exists (measured 2026-09 across 9 repos on one machine): 210
@@ -573,7 +576,7 @@ run_to() { # $1 outfile, $2... command; stdin = $RUN_STDIN (a `&` job gets /dev/
   ( cd "$ROOT" && ROLEPOD_BRAIN_SILENT=1 exec "$@" ) < "$RUN_STDIN" > "$_out" 2> "$_out.err" &
   _pid=$!
   set +m
-  trap 'kill -TERM -- "-$_pid" 2>/dev/null; kill -TERM "$_pid" 2>/dev/null; sleep 1; kill -KILL -- "-$_pid" 2>/dev/null; kill -KILL "$_pid" 2>/dev/null; wait "$_pid" 2>/dev/null; [ "$KIND" = implement ] && [ -n "${_pre:-}" ] && implement_restore_all "$_pre" "${_save:-$EV/external/killed.reverted}" >/dev/null 2>&1; exit 143' TERM INT   # --kill / Ctrl-C reach the member too (it is its own group — set -m)
+  trap 'kill -TERM -- "-$_pid" 2>/dev/null; kill -TERM "$_pid" 2>/dev/null; sleep 1; kill -KILL -- "-$_pid" 2>/dev/null; kill -KILL "$_pid" 2>/dev/null; wait "$_pid" 2>/dev/null; if [ "$KIND" = implement ] && [ -n "${_pre:-}" ]; then [ -n "${_meta0:-}" ] && gitmeta_restore "$_meta0" >/dev/null 2>&1; phaselog_scrub "${_pl0:-0}" "$EV/external/${_ts:-kill}-${_c:-member}-$RUN_TAG.member-phase-log.jsonl" >/dev/null 2>&1; ledger_window_drop "${_el0:-0}" "${_c:-}" >/dev/null 2>&1; implement_restore_all "$_pre" "${_save:-$EV/external/killed.reverted}" >/dev/null 2>&1; fi; exit 143' TERM INT   # --kill: the same four steps as every return path (metadata, phase-log, ledger, tree) — SIGKILL after the wait skips all of them (documented residual)   # --kill / Ctrl-C reach the member too (it is its own group — set -m)
   _start=$SECONDS; _quiet=$SECONDS; _seen=0
   while kill -0 "$_pid" 2>/dev/null; do
     # Progress = bytes landing on stdout / stderr / the codex -o file. A member
@@ -615,9 +618,10 @@ for line in open(sys.argv[1], errors="replace"):
 sys.stdout.write(res)
 PY
 }
-path_forbidden() { # $1 repo-relative path → 0 when the member may NEVER touch it, even when listed (basename compared case-insensitively: APFS/NTFS)
-  case "$1" in .git|.git/*|.rolepod|.rolepod/*|docs/rolepod|docs/rolepod/*) return 0 ;; esac
-  case "$(printf '%s' "${1##*/}" | tr 'A-Z' 'a-z')" in .env|.env.*|package-lock.json|yarn.lock|pnpm-lock.yaml|bun.lockb|bun.lock|cargo.lock|poetry.lock|pipfile.lock|gemfile.lock|composer.lock|go.sum) return 0 ;; esac
+path_forbidden() { # $1 repo-relative path → 0 when the member may NEVER touch it, even when listed (whole path case-folded: on APFS/NTFS `.GIT/` IS `.git/`)
+  _pf=$(printf '%s' "$1" | tr 'A-Z' 'a-z')
+  case "$_pf" in .git|.git/*|.rolepod|.rolepod/*|docs/rolepod|docs/rolepod/*) return 0 ;; esac
+  case "${_pf##*/}" in .env|.env.*|.gitignore|.gitattributes|.gitmodules|package-lock.json|yarn.lock|pnpm-lock.yaml|bun.lockb|bun.lock|cargo.lock|poetry.lock|pipfile.lock|gemfile.lock|composer.lock|go.sum) return 0 ;; esac   # ignore rules would hide edits from the snapshot; submodule config can point outside
   return 1
 }
 path_allowed() { # $1 repo-relative path → 0 when inside the --allow list and not forbidden; "dir/" = prefix, "file" = that exact path only
@@ -637,7 +641,9 @@ implement_guard() { # $1 tree before, $2 tree after, $3 save dir → stdout "rev
   # regular file lands under $3, links and directories are listed in $3/MANIFEST). Restore goes through a temp index
   # (mode + symlink aware, the real index untouched, then `git reset` on those paths so nothing the member staged survives).
   # unsafe = a symlink sits in the path's leading directories — never written through; reported for the Lead.
-  _gl=$(mktemp) || return 0
+  # Writes OUTSIDE the repo (through a symlink the member planted, or anywhere its CLI lets it) are bounded only by the
+  # member CLI's own sandbox (codex workspace-write, cursor --force…): the guard restores the repo, it never touches outside.
+  _gl=$(mktemp) || { printf 'unsafe\tGUARD-FAILED: no temp file — nothing checked, inspect the tree by hand\n'; return 0; }   # fail CLOSED: reported as a violation, never as clean
   git -C "$ROOT" diff-tree -r -z --name-status --no-renames "$1" "$2" 2>/dev/null | while IFS= read -r -d '' _st && IFS= read -r -d '' _pa; do
     path_allowed "$_pa" && continue; printf '%s\n' "$_pa"
   done > "$_gl"
@@ -681,22 +687,65 @@ implement_restore_all() { # $1 tree before, $2 save dir → every change since $
   _ra=$( ALLOW_LIST=""; implement_guard "$1" "$_ra_post" "$2" )
   printf '%s %s' "$(printf '%s\n' "$_ra" | grep -c '^reverted' || true)" "$(printf '%s\n' "$_ra" | grep -c '^unsafe' || true)"
 }
-git_state() { # HEAD commit, HEAD symbolic ref, stash ref — what a member must never move
-  printf '%s %s %s' "$(git -C "$ROOT" rev-parse -q --verify HEAD 2>/dev/null || echo none)" "$(git -C "$ROOT" symbolic-ref -q HEAD 2>/dev/null || echo detached)" "$(git -C "$ROOT" rev-parse -q --verify refs/stash 2>/dev/null || echo none)"
+git_dir() { _gd=$(git -C "$ROOT" rev-parse --git-dir 2>/dev/null); case "$_gd" in /*) ;; *) _gd="$ROOT/$_gd" ;; esac; printf '%s' "$_gd"; }
+git_state() { # HEAD commit · HEAD symbolic ref · stash ref · digest of ALL refs · CONTENT digest of config + info/exclude + every hook — what a member must never move
+  _gd=$(git_dir)
+  printf '%s %s %s %s %s' "$(git -C "$ROOT" rev-parse -q --verify HEAD 2>/dev/null || echo none)" "$(git -C "$ROOT" symbolic-ref -q HEAD 2>/dev/null || echo detached)" "$(git -C "$ROOT" rev-parse -q --verify refs/stash 2>/dev/null || echo none)" \
+    "$(git -C "$ROOT" for-each-ref 2>/dev/null | cksum | cut -d' ' -f1)" "$( { cat "$_gd/config" "$_gd/info/exclude" 2>/dev/null; for _hf in "$_gd"/hooks/*; do [ -f "$_hf" ] && { printf '%s\n' "${_hf##*/}"; cat "$_hf"; }; done; } 2>/dev/null | cksum | cut -d' ' -f1)"
+}
+gitmeta_save() { # $1 dir → copies config, info/exclude and every hook file, each copy verified with cmp (a hollow save is no save → the member is not run); restore is byte-for-byte
+  _gd=$(git_dir); mkdir -p "$1/hooks" 2>/dev/null || return 1
+  if [ -f "$_gd/config" ]; then cp -p "$_gd/config" "$1/config" 2>/dev/null && cmp -s "$_gd/config" "$1/config" 2>/dev/null || return 1; fi
+  if [ -f "$_gd/info/exclude" ]; then cp -p "$_gd/info/exclude" "$1/exclude" 2>/dev/null && cmp -s "$_gd/info/exclude" "$1/exclude" 2>/dev/null || return 1; fi
+  for _hf in "$_gd"/hooks/*; do [ -f "$_hf" ] || continue; cp -p "$_hf" "$1/hooks/" 2>/dev/null && cmp -s "$_hf" "$1/hooks/${_hf##*/}" 2>/dev/null || return 1; done
+  return 0
+}
+gitmeta_restore() { # $1 dir (from gitmeta_save) → prints what changed; config / exclude / hooks are put back exactly, hook files the member added are removed
+  _gd=$(git_dir); _out=""
+  if [ -f "$1/config" ]; then cmp -s "$1/config" "$_gd/config" 2>/dev/null || { cp -p "$1/config" "$_gd/config" 2>/dev/null; cmp -s "$1/config" "$_gd/config" 2>/dev/null && _out="$_out config" || _out="$_out config(RESTORE FAILED — fix by hand)"; }; fi
+  if [ -f "$1/exclude" ]; then cmp -s "$1/exclude" "$_gd/info/exclude" 2>/dev/null || { mkdir -p "$_gd/info" 2>/dev/null; cp -p "$1/exclude" "$_gd/info/exclude" 2>/dev/null; _out="$_out info/exclude"; }
+  elif [ -s "$_gd/info/exclude" ]; then : > "$_gd/info/exclude"; _out="$_out info/exclude(added)"; fi
+  for _hf in "$_gd"/hooks/*; do [ -f "$_hf" ] || continue; _hn=${_hf##*/}
+    if [ -f "$1/hooks/$_hn" ]; then cmp -s "$1/hooks/$_hn" "$_hf" 2>/dev/null || { cp -p "$1/hooks/$_hn" "$_hf" 2>/dev/null; cmp -s "$1/hooks/$_hn" "$_hf" 2>/dev/null && _out="$_out hooks/$_hn(restored)" || _out="$_out hooks/$_hn(RESTORE FAILED — fix by hand)"; }
+    else rm -f "$_hf" 2>/dev/null; _out="$_out hooks/$_hn(removed)"; fi
+  done
+  for _hf in "$1"/hooks/*; do [ -f "$_hf" ] || continue; _hn=${_hf##*/}; [ -f "$_gd/hooks/$_hn" ] || { cp -p "$_hf" "$_gd/hooks/$_hn" 2>/dev/null; _out="$_out hooks/$_hn(put back)"; }; done
+  printf '%s' "${_out# }"
 }
 phaselog_scrub() { # $1 byte offset of phase-log before the member ran, $2 member log file → prints "<forged> <moved>"
-  # Lines appended while the member ran come from ITS hooks (route, dispatch, write-scope…) or from the member itself.
-  # Runner-only shapes (an external pass, an implement line, an external-fail) can only be forgeries → deleted + counted.
-  # dispatch-proof lines are the member's internal fleet, not the Lead's reviewers → moved to $2 (kept as evidence, not counted as a violation).
+  # Lines appended while the member ran come from ITS hooks (route, dispatch, write-scope…) or from the member itself. Judged the way the
+  # commit gate reads them — parsed as JSON, never by byte shape: an external pass / implement / external-fail line can only be a forgery
+  # (deleted + counted), a dispatch-proof line is the member's internal fleet (moved to $2, kept as evidence), anything unparseable is
+  # dropped (hooks write valid JSON). A log shorter than before = the member truncated it: counted as forged, nothing recoverable.
   _spl="$EV/phase-log.jsonl"; [ -f "$_spl" ] || { echo "0 0"; return 0; }
-  _sf='"reviewer":"external"|"phase":"implement"|"phase":"external-fail"'; _sm='"phase":"dispatch-proof"'
-  _tail=$(mktemp) || { echo "0 0"; return 0; }; tail -c +"$(( $1 + 1 ))" "$_spl" > "$_tail" 2>/dev/null
-  _nf=$(grep -c -E "$_sf" "$_tail" || true); _nm=$(grep -v -E "$_sf" "$_tail" | grep -c -E "$_sm" || true)
+  _now=$(wc -c < "$_spl" | tr -d ' ')
+  if [ "${_now:-0}" -lt "$1" ]; then echo "1 0"; return 0; fi   # the member truncated the log: nothing appended survives to scrub; the prefix is unverifiable — counted, reported, kept
+  _tail=$(mktemp) || { python3 -I -c 'import sys; open(sys.argv[1],"r+b").truncate(int(sys.argv[2]))' "$_spl" "$1" 2>/dev/null; echo "1 0"; return 0; }; tail -c +"$(( $1 + 1 ))" "$_spl" > "$_tail" 2>/dev/null
+  [ -s "$_tail" ] || { rm -f "$_tail"; echo "0 0"; return 0; }
+  _keep=$(mktemp) || { rm -f "$_tail"; python3 -I -c 'import sys; open(sys.argv[1],"r+b").truncate(int(sys.argv[2]))' "$_spl" "$1" 2>/dev/null; echo "1 0"; return 0; }
+  _cnt=$(python3 -I - "$_tail" "$_keep" "$2" 2>/dev/null <<'PYS' || echo "1 0"
+import json, sys
+forged = moved = 0
+keep = open(sys.argv[2], "w", encoding="utf-8"); mv = open(sys.argv[3], "a", encoding="utf-8")
+for l in open(sys.argv[1], encoding="utf-8", errors="replace"):
+    if not l.strip(): continue
+    try: d = json.loads(l)
+    except Exception: forged += 1; continue
+    if not isinstance(d, dict): forged += 1; continue
+    if d.get("reviewer") == "external" or d.get("phase") in ("implement", "external-fail"): forged += 1; continue
+    if d.get("phase") == "dispatch-proof": moved += 1; mv.write(l if l.endswith("\n") else l + "\n"); continue
+    keep.write(l if l.endswith("\n") else l + "\n")
+keep.close(); mv.close(); print(forged, moved)
+PYS
+)
+  read -r _nf _nm <<EOF
+$_cnt
+EOF
   if [ "$(( ${_nf:-0} + ${_nm:-0} ))" -gt 0 ]; then
-    { grep -v -E "$_sf" "$_tail" | grep -E "$_sm" || :; } >> "$2" 2>/dev/null
-    _pt=$(mktemp) && { head -c "$1" "$_spl"; { grep -v -E "$_sf" "$_tail" | grep -v -E "$_sm" || :; }; } > "$_pt" 2>/dev/null && mv -f "$_pt" "$_spl"   # grep -v exits 1 when nothing survives — the common case
+    if _pt=$(mktemp); then { head -c "$1" "$_spl"; cat "$_keep"; } > "$_pt" 2>/dev/null && mv -f "$_pt" "$_spl"
+    else python3 -I -c 'import sys; open(sys.argv[1],"r+b").truncate(int(sys.argv[2]))' "$_spl" "$1" 2>/dev/null; fi   # no temp file: the whole window goes (fail closed)
   fi
-  rm -f "$_tail"; echo "${_nf:-0} ${_nm:-0}"
+  rm -f "$_tail" "$_keep"; echo "${_nf:-0} ${_nm:-0}"
 }
 edit_ledger_script() { # hooks/edit-ledger.py as shipped next to this runner in every tree; ~/.rolepod/bin (install.sh) covers the installed launcher AND a repo-tree runner on a machine without a plugin ledger
   [ -n "${ROLEPOD_EDIT_LEDGER:-}" ] && [ -f "$ROLEPOD_EDIT_LEDGER" ] && { printf '%s' "$ROLEPOD_EDIT_LEDGER"; return; }
@@ -705,40 +754,56 @@ edit_ledger_script() { # hooks/edit-ledger.py as shipped next to this runner in 
     [ -f "$_l" ] && { printf '%s' "$_l"; return; }
   done
 }
-implement_evidence() { # $1 pool cli, $2 tree before, $3 tree after, $4 model-or-empty, $5 edits.jsonl byte offset before the run → prints "<rows>|<note>"
-  # The Lead's commit gate counts edit-ledger rows by kind (test / risk) and reads dispatch-proof lines by agent_type; the
-  # `agent` tag on the rows is forward-looking metadata, nothing reads it yet. Rows the member's OWN hooks appended during
-  # the run (same cli name, after $5) already cover their paths — the runner adds rows only for the rest, never doubles.
+ledger_window_drop() { # $1 edits.jsonl byte offset before the run, $2 pool cli → prints "<forged> <dropped>"; runs on EVERY exit path
+  # Every ledger row appended during the run is dropped (the runner re-appends one classified row per touched path only on a kept run —
+  # a member cannot mint `kind:test`, nor a row for a path it never touched, nor one claiming another CLI). A row that was not
+  # (member cli + a path the tree shows changed since the snapshot) is counted as forged; a shrunken ledger = the member truncated it:
+  # counted, and the trusted head is [0, min(now, offset)) — never less. Any temp-file failure fails CLOSED (window dropped, counted).
+  _lc="$2"; [ "$_lc" = "agy" ] && _lc=antigravity
+  _led="$EV/edits.jsonl"; [ -f "$_led" ] || { echo "0 0"; return 0; }
+  _off="$1"; _lnow=$(wc -c < "$_led" | tr -d ' '); _lnow=${_lnow:-0}; _shr=0
+  if [ "$_lnow" -lt "$_off" ]; then _shr=1; _off="$_lnow"; fi
+  _post_now=$(snapshot_tree 2>/dev/null || true); _tp=$(mktemp) || { python3 -I -c 'import sys; open(sys.argv[1],"r+b").truncate(int(sys.argv[2]))' "$_led" "$_off" 2>/dev/null; echo "$(( _shr + 1 )) 0"; return 0; }
+  if [ -n "${_pre:-}" ] && [ -n "$_post_now" ]; then git -C "$ROOT" diff-tree -r -z --name-only "$_pre" "$_post_now" -- . $PATCH_EXCLUDE 2>/dev/null > "$_tp"; else : > "$_tp"; fi
+  _cnt=$(python3 -I - "$_led" "$_off" "$_lc" "$_tp" 2>/dev/null <<'PYW' || echo "FAIL"
+import json, sys
+led, off, cli, tp = sys.argv[1], int(sys.argv[2]), sys.argv[3], sys.argv[4]
+touched = set(p for p in open(tp, "rb").read().split(b"\0") if p)
+raw = open(led, "rb").read(); head, tail = raw[:off], raw[off:]
+rows = [l for l in tail.split(b"\n") if l.strip()]; forged = 0
+for l in rows:
+    try: d = json.loads(l.decode("utf-8", "surrogateescape"))
+    except Exception: forged += 1; continue
+    p = (d.get("path") or "").encode("utf-8", "surrogateescape")
+    if not (d.get("cli") == cli and p in touched): forged += 1
+if rows: open(led, "wb").write(head)
+print(forged, len(rows))
+PYW
+)
+  rm -f "$_tp"
+  if [ "$_cnt" = FAIL ]; then python3 -I -c 'import sys; open(sys.argv[1],"r+b").truncate(int(sys.argv[2]))' "$_led" "$_off" 2>/dev/null; echo "$(( _shr + 1 )) 0"; return 0; fi
+  read -r _wf _wd <<EOF
+$_cnt
+EOF
+  echo "$(( ${_wf:-0} + _shr )) ${_wd:-0}"
+}
+implement_evidence() { # $1 pool cli, $2 tree before, $3 tree after, $4 model-or-empty, $5 ledger rows dropped, $6 ledger forged → prints "<rows>|<note>" (kept run only)
+  # The Lead's commit gate counts edit-ledger rows by kind (test / risk) and reads dispatch-proof lines by agent_type; the `agent` tag on
+  # the rows is forward-looking metadata, nothing reads it yet. One classified row per touched path, appended through edit-ledger.py.
   # jlog from inside one() is safe only because implement refuses --all (members never run concurrently on this kind).
   _lc="$1"; [ "$_lc" = "agy" ] && _lc=antigravity   # the ledger's / adapters' name for the Antigravity CLI
-  _epf=$(mktemp) || { printf '0|no temp file'; return 0; }
+  _note=""; _rows=0
+  _epf=$(mktemp) || { printf '0|no temp file — nothing ledgered (the commit gate cannot count these edits)'; return 0; }
   git -C "$ROOT" diff-tree -r -z --name-only "$2" "$3" -- . $PATCH_EXCLUDE 2>/dev/null > "$_epf"   # `paths` here equals `files` on the implement line only because BOTH plumbing calls run with rename detection off — never add -M to one side
   _en=$(tr -dc '\0' < "$_epf" | wc -c | tr -d ' '); _en=${_en:-0}
-  _els=$(edit_ledger_script); _note=""; _rows=0
+  _els=$(edit_ledger_script)
   if [ "$_en" -gt 0 ] && [ -n "$_els" ] && command -v python3 >/dev/null 2>&1; then
-    _own=$(mktemp) && tail -c +"$(( ${5:-0} + 1 ))" "$EV/edits.jsonl" 2>/dev/null > "$_own"   # the ledger segment appended during the run (jsonl)
-    _todo=$(mktemp) && python3 -I - "$_own" "$_lc" "$_epf" > "$_todo" 2>/dev/null <<'PYD'   # NUL-separated sets ($_epf in, $_todo out) travel as FILES by path: $(…) and argv both strip NUL
-import json, sys
-own = set()
-try:
-    for l in open(sys.argv[1], encoding="utf-8", errors="replace"):
-        try: d = json.loads(l)
-        except Exception: continue
-        if d.get("cli") == sys.argv[2] and d.get("path"): own.add(d["path"])
-except Exception: pass
-for p in open(sys.argv[3], encoding="utf-8", errors="replace").read().split("\0"):
-    if p and p not in own: sys.stdout.write(p + "\0")
-PYD
-    rm -f "$_own"
-    _rows=$(tr -dc '\0' < "$_todo" | wc -c | tr -d ' '); _rows=${_rows:-0}
-    if [ "$_rows" -gt 0 ]; then
-      if ( cd "$ROOT" && xargs -0 python3 -I "$_els" append "$_lc" --cwd "$ROOT" --agent external-implementer < "$_todo" ) 2> "$TMPP/$1.edits.err"; then :; else _rows=0; _note="edit-ledger append failed: $(head -c 160 "$TMPP/$1.edits.err" | tr '\n' ' ')"; fi
-    fi
-    [ "$_rows" -lt "$_en" ] && [ -z "$_note" ] && _note="$(( _en - _rows )) path(s) already ledgered by the member's own hooks"
-    rm -f "$_todo"
-  elif [ "$_en" -gt 0 ]; then _note="no edit-ledger.py next to this runner (install.sh copies it to ~/.rolepod/bin) — the commit gate cannot count these edits"; fi
+    if ( cd "$ROOT" && xargs -0 python3 -I "$_els" append "$_lc" --cwd "$ROOT" --agent external-implementer < "$_epf" ) 2> "$TMPP/$1.edits.err"; then _rows=$_en; else _note="edit-ledger append failed: $(head -c 160 "$TMPP/$1.edits.err" | tr '\n' ' ')"; fi
+  elif [ "$_en" -gt 0 ]; then _note="no edit-ledger.py next to this runner (install.sh copies it to ~/.rolepod/bin) or no python3 — the commit gate cannot count these edits"; fi
+  [ "${5:-0}" -gt 0 ] && _note="${_note:+$_note; }${5} member-window ledger row(s) replaced"
+  [ "${6:-0}" -gt 0 ] && _note="${_note:+$_note; }${6} forged ledger row(s) removed"
   rm -f "$_epf"
-  jlog "{\"ts\":\"$(iso_now)\",\"phase\":\"dispatch-proof\",\"cli\":\"$_lc\",\"pool_cli\":\"$1\",\"agent_type\":\"external-implementer\",\"model\":\"$(jesc "${4:-default}")\",\"provenance\":\"cross-family\",\"paths\":$_en,\"edits\":$_rows${_note:+,\"edits_note\":\"$(jesc "$_note")\"}${JOB_ID_TAG:+,\"job\":\"$JOB_ID_TAG\"}}"
+  jlog "{\"ts\":\"$(iso_now)\",\"phase\":\"dispatch-proof\",\"cli\":\"$_lc\",\"pool_cli\":\"$1\",\"agent_type\":\"external-implementer\",\"model\":\"$(jesc "${4:-default}")\",\"provenance\":\"cross-family\",\"paths\":$_en,\"edits\":$_rows,\"ledger_forged\":${6:-0}${_note:+,\"edits_note\":\"$(jesc "$_note")\"}${JOB_ID_TAG:+,\"job\":\"$JOB_ID_TAG\"}}"
   printf '%s|%s' "$_rows" "$_note"
 }
 opencode_write_ok() { # implement: headless `opencode run` blocks on tool approvals unless a config grants edit + bash — same lookup order as opencode_default_model, json or jsonc; the first config that states permissions decides
@@ -906,7 +971,7 @@ if [ -z "$USABLE" ]; then
   print_pool >&2
   jlog "{\"ts\":\"$(iso_now)\",\"phase\":\"external-fail\",\"kind\":\"$KIND\",\"cli\":\"-\",\"family\":\"-\",\"lead\":\"$LEAD\",\"reason\":\"pool-empty: $(jesc "$CFG_SRC")\"}"
   if [ -n "$IMPL_SKIPS" ] && ! printf '%s' "$POOL_ROWS" | grep -q '  absent  '; then
-    echo "ROLEPOD-XFAM empty — every usable external CLI ($(printf '%s' "$IMPL_SKIPS" | sed 's/ *$//')) built this uncommitted ticket and never reviews its own work. Fix: commit the ticket first, then review; or use the internal strong reviewer and record the limitation."; exit 4
+    echo "ROLEPOD-XFAM empty — every usable external CLI ($(printf '%s' "$IMPL_SKIPS" | sed 's/ *$//')) built this uncommitted ticket and never reviews its own work. Fix: add another member to the pool, or use the internal strong reviewer and record the limitation (review comes before the commit, always)."; exit 4
   fi
   echo "ROLEPOD-XFAM empty — cross-family is enabled ($CFG_SRC) but no listed CLI is usable for a $LEAD Lead. Fall back to the internal strong reviewer and record the limitation."
   exit 4
@@ -1048,8 +1113,9 @@ if [ "$DETACH" -eq 1 ]; then
     while IFS= read -r _a; do [ -n "$_a" ] && CHILD_ARGS=("${CHILD_ARGS[@]}" --allow "$_a"); done <<EOF
 $ALLOW_LIST
 EOF
-    printf '%s\n' "$ALLOW_LIST" > "$JD/allow"   # the ticket's write scope on record — --jobs prints it
+    printf '%s\n' "$ALLOW_LIST" > "$JD/allow"   # the ticket's write scope on record — --jobs prints it; gate-reminder warns the Lead off it
   fi
+  [ "$ALLOW_RISKY" -eq 1 ] && CHILD_ARGS=("${CHILD_ARGS[@]}" --allow-risky)
   [ -n "$FLAG_TIMEOUT" ] && CHILD_ARGS=("${CHILD_ARGS[@]}" --timeout "$FLAG_TIMEOUT")
   if [ -n "$ATTACH" ]; then
     while IFS= read -r a; do [ -f "$a" ] && CHILD_ARGS=("${CHILD_ARGS[@]}" --attach "$(abspath "$a")"); done <<EOF
@@ -1134,8 +1200,23 @@ one() { # $1 cli → 0 ok / 1 fail / 21 implement done with outside edits revert
     [ -f "$EV/phase-log.jsonl" ] && _pl0=$(wc -c < "$EV/phase-log.jsonl" | tr -d ' ')
     [ -f "$EV/edits.jsonl" ] && _el0=$(wc -c < "$EV/edits.jsonl" | tr -d ' ')
     _gs0=$(git_state); _idx0=$(git -C "$ROOT" write-tree 2>/dev/null || true); _save="$EV/external/$_ts-$_c-$RUN_TAG.reverted"   # the index as it was, for a git-state violation
+    _meta0=$(mktemp -d 2>/dev/null) && gitmeta_save "$_meta0" || _meta0=""   # config / exclude / hooks as they were
   fi   # the member's delta = tree after − tree before; the Lead's own WIP never travels
+  if [ "$KIND" = "implement" ] && { [ -z "$_pre" ] || [ -z "${_meta0:-}" ]; }; then   # no tree baseline or no .git metadata copy = no guard: the member is not run at all (fail closed)
+    _nb0="the tree"; [ -n "$_pre" ] && _nb0=".git metadata (config / exclude / hooks)"
+    printf '{"ts":"%s","phase":"external-fail","kind":"implement","cli":"%s","family":"%s","lead":"%s","reason":"cannot snapshot %s (not a git repo, git failed, or no temp dir) — member not run"}\n' "$(iso_now)" "$_c" "$_f" "$LEAD" "$_nb0" > "$TMPP/$_c.jsonl"
+    printf '%s: cannot snapshot %s (not a git repo, git failed, or no temp dir) — the guard needs a baseline, member not run\n' "$_c" "$_nb0" > "$TMPP/$_c.line"; return 1
+  fi
   _s=$SECONDS; invoke "$_c" "$TMPP/$_c.prompt" "$TMPP/$_c.out"; _rc=$?; _secs=$(( SECONDS - _s ))
+  _nforged=0; _nmoved=0; _lforged=0; _lwin=0
+  if [ "$KIND" = "implement" ]; then   # evidence integrity first, before any exit path is chosen: the phase-log window is scrubbed, the ledger window dropped (the runner re-appends classified rows only on a kept run)
+    read -r _nforged _nmoved <<EOF
+$(phaselog_scrub "$_pl0" "$EV/external/$_ts-$_c-$RUN_TAG.member-phase-log.jsonl")
+EOF
+    read -r _lforged _lwin <<EOF
+$(ledger_window_drop "$_el0" "$_c")
+EOF
+  fi
   # codex streams its event log to stderr; the reviewer's answer is the -o message file
   if [ "$_c" = "codex" ] && [ -s "$TMPP/$_c.out.msg" ]; then mv "$TMPP/$_c.out" "$TMPP/$_c.out.stream"; mv "$TMPP/$_c.out.msg" "$TMPP/$_c.out"; fi
   _bytes=$(wc -c < "$TMPP/$_c.out" | tr -d ' ')
@@ -1146,12 +1227,15 @@ one() { # $1 cli → 0 ok / 1 fail / 21 implement done with outside edits revert
   if [ "$KIND" = "implement" ] && [ -n "$_pre" ]; then
     _gs1=$(git_state)
     if [ "$_gs1" != "$_gs0" ]; then   # the member moved HEAD / switched branch / stashed: refs back (its commit stays in the reflog), tree back, no fall-through
-      read -r _h0 _sy0 _st0 <<EOF
+      read -r _h0 _sy0 _st0 _rf0 _mt0 <<EOF
 $_gs0
 EOF
-      read -r _h1 _sy1 _st1 <<EOF
+      read -r _h1 _sy1 _st1 _rf1 _mt1 <<EOF
 $_gs1
 EOF
+      _metanote=""; if [ "$_mt0" != "$_mt1" ]; then   # config / info/exclude / hooks: put back byte-for-byte BEFORE the tree restore (an exclude rule the member added would hide its files from the snapshot)
+        if [ -n "$_meta0" ]; then _metanote=$(gitmeta_restore "$_meta0"); else _metanote="UNRESTORED (no metadata copy — inspect .git/config, .git/info/exclude, .git/hooks by hand)"; fi
+      fi
       if [ "$_sy0" = detached ]; then git -C "$ROOT" update-ref --no-deref HEAD "$_h0" 2>/dev/null   # detached start: move HEAD itself, never the branch the member may have checked out
       else
         git -C "$ROOT" symbolic-ref HEAD "$_sy0" 2>/dev/null
@@ -1163,6 +1247,8 @@ $(implement_restore_all "$_pre" "$_save")
 EOF
       [ -n "$_idx0" ] && git -C "$ROOT" read-tree "$_idx0" 2>/dev/null   # AFTER the tree restore (the guard resets its paths): the index goes back exactly to its pre-run state — nothing of a violating run stays staged
       _gnote="HEAD $_h0 → $_h1"; [ "$_sy0" != "$_sy1" ] && _gnote="$_gnote; branch $_sy0 → $_sy1"; [ "$_st0" != "$_st1" ] && _gnote="$_gnote; the stash ref changed ($_st0 → $_st1, left as is)"
+      [ "$_rf0" != "$_rf1" ] && _gnote="$_gnote; the ref set changed (a branch or tag added or moved — left as is, inspect with git for-each-ref)"
+      [ "$_mt0" != "$_mt1" ] && _gnote="$_gnote; .git metadata changed and was restored: ${_metanote:-nothing to do}"
       _reflog="its commit stays in the reflog"; [ "$_h0" = none ] && _reflog="its commit is unreachable now (unborn branch unmade)"
       _left=""; [ "${_nl:-0}" -gt 0 ] && _left=", $_nl path(s) left in place (a symlink in their leading path — inspect by hand)"
       _saverel="${_save#$ROOT/}"
@@ -1171,7 +1257,9 @@ EOF
       { printf '# rolepod cross-family implement GIT-STATE VIOLATION · cli=%s family=%s lead=%s · %s · exit=%s · %s · refs restored, %s path(s) reverted%s (copies under %s)\n\n--- stdout ---\n' "$_c" "$_f" "$LEAD" "$(iso_now)" "$_rc" "$_gnote" "$_nr" "$_left" "$_save"
         cat "$TMPP/$_c.out"; printf '\n--- stderr ---\n'; cat "$TMPP/$_c.out.err"; } > "$EV/$_frep" 2>/dev/null || :
       printf '%s\n' "{\"ts\":\"$(iso_now)\",\"phase\":\"external-fail\",\"kind\":\"implement\",\"cli\":\"$_c\",\"family\":\"$_f\",\"lead\":\"$LEAD\",\"secs\":$_secs,\"exit\":$_rc,\"reason\":\"git-state: $(jesc "$_gnote")\",\"reverted\":$_nr,\"left\":${_nl:-0},\"raw\":\"$_frep\"${JOB_ID_TAG:+,\"job\":\"$JOB_ID_TAG\"}}" > "$TMPP/$_c.jsonl"
-      printf 'ROLEPOD-XFAM violations kind=implement cli=%s family=%s git-state=1 exit=%s reverted=%s report=.rolepod/evidence/%s secs=%s — the member moved git state (%s); refs restored, %s, %s%s (copies under %s); this member is dropped, no fall-through\n' "$_c" "$_f" "$_rc" "$_nr" "$_frep" "$_secs" "$_gnote" "$_reflog" "$_treeback" "$_left" "$_saverel" > "$TMPP/$_c.line"
+      [ -n "${_meta0:-}" ] && rm -rf "$_meta0" 2>/dev/null
+      _ev22=""; [ "$(( ${_nforged:-0} + ${_lforged:-0} ))" -gt 0 ] && _ev22="; forged evidence stripped: $(( ${_nforged:-0} + ${_lforged:-0} )) line(s)"; [ "${_lwin:-0}" -gt 0 ] && _ev22="$_ev22; $_lwin member ledger row(s) dropped"
+      printf 'ROLEPOD-XFAM violations kind=implement cli=%s family=%s git-state=1 exit=%s reverted=%s forged=%s report=.rolepod/evidence/%s secs=%s — the member moved git state (%s); refs restored, %s, %s%s (copies under %s)%s; this member is dropped, no fall-through\n' "$_c" "$_f" "$_rc" "$_nr" "$(( ${_nforged:-0} + ${_lforged:-0} ))" "$_frep" "$_secs" "$_gnote" "$_reflog" "$_treeback" "$_left" "$_saverel" "$_ev22" > "$TMPP/$_c.line"
       return 22
     fi
   fi
@@ -1186,9 +1274,7 @@ EOF
   fi
   if [ "$_rc" -eq 0 ] && [ "$_bytes" -ge "$_floor" ] && [ "$KIND" = "implement" ]; then
     _patch="external/$_ts-$_c-$RUN_TAG.patch"; _post=$(snapshot_tree 2>/dev/null || true)
-    _guard=""; _nout=0; _nunsafe=0; _resnap=ok; read -r _nforged _nmoved <<EOF
-$(phaselog_scrub "$_pl0" "$EV/external/$_ts-$_c-$RUN_TAG.member-phase-log.jsonl")
-EOF
+    _guard=""; _nout=0; _nunsafe=0; _resnap=ok
     if [ -n "$_pre" ] && [ -n "$_post" ]; then
       _guard=$(implement_guard "$_pre" "$_post" "$_save")
       _nout=$(printf '%s\n' "$_guard" | grep -c '^reverted' || true); _nunsafe=$(printf '%s\n' "$_guard" | grep -c '^unsafe' || true)
@@ -1197,7 +1283,9 @@ EOF
     _base=git; if [ -n "$_pre" ] && [ -n "$_post" ]; then git -C "$ROOT" diff-tree -p "$_pre" "$_post" -- . $PATCH_EXCLUDE > "$EV/$_patch" 2>/dev/null || :; else _base=none; : > "$EV/$_patch"; fi   # no baseline (not a git repo) is said out loud, never read as files=0
     _op=$(printf '%s\n' "$_guard" | grep '^reverted' | cut -f2 | head -20 | tr '\n' ' '); _up=$(printf '%s\n' "$_guard" | grep '^unsafe' | cut -f2 | head -20 | tr '\n' ' ')
     _edits=0; _enote="no tree baseline — nothing ledgered"
-    if [ -n "$_pre" ] && [ -n "$_post" ]; then _ev=$(implement_evidence "$_c" "$_pre" "$_post" "$_ran" "$_el0"); _edits="${_ev%%|*}"; _enote="${_ev#*|}"; fi
+    [ -n "${_meta0:-}" ] && rm -rf "$_meta0" 2>/dev/null
+    if [ -n "$_pre" ] && [ -n "$_post" ]; then _ev=$(implement_evidence "$_c" "$_pre" "$_post" "$_ran" "$_lwin" "$_lforged"); _edits="${_ev%%|*}"; _enote="${_ev#*|}"; fi
+    _nforged=$(( ${_nforged:-0} + ${_lforged:-0} ))
     [ -n "$JOB_DIR" ] && printf '%s\n' "$_c" > "$JOB_DIR/implementer" 2>/dev/null
     _allow_json=$(printf '%s\n' "$ALLOW_LIST" | python3 -I -c 'import json,sys; print(json.dumps([l for l in sys.stdin.read().split("\n") if l], separators=(",", ":")))' 2>/dev/null || echo '[]')
     _files=$(grep -c '^diff --git ' "$EV/$_patch" 2>/dev/null); _files=${_files:-0}
@@ -1212,7 +1300,7 @@ EOF
     _notes=""
     [ "$_nout" -gt 0 ] && _notes="$_notes — reverted (edits outside --allow, whoever made them; copies under .rolepod/evidence/external/$_ts-$_c-$RUN_TAG.reverted/): $_op"
     [ "$_nunsafe" -gt 0 ] && _notes="$_notes — NOT touched (a symlink in the leading path; inspect by hand): $_up"
-    [ "$_nforged" -gt 0 ] && _notes="$_notes — forged evidence stripped: $_nforged phase-log line(s) claiming an external pass appended during the run"
+    [ "$_nforged" -gt 0 ] && _notes="$_notes — forged evidence stripped: $_nforged line(s) (phase-log shapes only the runner writes, ledger rows the tree does not back, or a truncated log)"
     [ "${_nmoved:-0}" -gt 0 ] && _notes="$_notes — $_nmoved member-internal dispatch-proof line(s) moved to .rolepod/evidence/external/$_ts-$_c-$RUN_TAG.member-phase-log.jsonl"
     [ -n "$_enote" ] && _notes="$_notes — edits: $_enote"
     if [ "$(( _nout + _nunsafe + _nforged ))" -gt 0 ]; then
@@ -1243,6 +1331,8 @@ EOF
 $(implement_restore_all "$_pre" "$_save")
 EOF
     _saverel="${_save#$ROOT/}"
+    [ -n "${_meta0:-}" ] && rm -rf "$_meta0" 2>/dev/null
+    [ "$(( ${_nforged:-0} + ${_lforged:-0} + ${_lwin:-0} ))" -gt 0 ] && _why="$_why — evidence window scrubbed ($(( ${_nforged:-0} + ${_lforged:-0} )) forged, $_lwin ledger row(s) dropped)"
     if [ "${_nb:-}" = nobase ]; then _why="$_why — tree NOT restored (no snapshot possible — inspect by hand before the next member runs)"
     elif [ "${_nl:-0}" -gt 0 ]; then _why="$_why — tree restored ($_nr path(s) reverted, copies under $_saverel) EXCEPT $_nl path(s) under a symlinked directory (left in place — inspect before the next member runs)"
     else _why="$_why — tree restored ($_nr path(s) reverted, copies under $_saverel); next member starts clean"; fi
