@@ -56,6 +56,8 @@ Size every task to ONE fresh context window — the subagent (or teammate) that 
 A task is one vertical slice — narrow but complete through every layer it touches, demoable or verifiable on its own; no file or line count sizes it. Split when Delivers needs "and", or when a slice cannot be verified without the next task.
 Every task states **Delivers** (one user-visible sentence) and **Blocked by** (the tasks that gate it, or none) — the Blocked-by graph is the plan's only statement of order. A task is a ticket: it ships alone (own build → review → commit) and never assumes a batch; only tasks that share a seam (a contract or interface) form one ship group, named in the plan.
 
+Each **Blocked-by** edge names what it consumes (e.g., `Blocked by: Task 2 (its snapshot)`) — an edge naming nothing is a convenience edge: drop it. Two edge-free tasks on one file → **prefactor first** (an extract task giving them disjoint files: "make the change easy, then make the easy change"), or declare Sequential and say why.
+
 ### 3. Test plan per task
 
 Name the test type (unit / integration / contract / E2E / smoke / benchmark / repro), the assertion that proves it, and the exact command — copy-paste runnable, not "run the tests". "Adds tests" is not a test plan. Size by rules: one test per rule at its owner, one smoke per call site — never a test per copy of the rule.

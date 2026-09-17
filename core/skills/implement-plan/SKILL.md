@@ -70,42 +70,28 @@ Touch only what the task requires — no "while I'm here" refactors, no reformat
 
 ### 4. Bounded delegation
 
-Decide *whether* first. The plan's **Owner:** line wins — `Owner: Lead` → self-do; a named agent → delegate. A task with no Owner runs Q1-Q4:
+Decide *whether* first. The plan's **Owner:** line wins — `Owner: Lead` → self-do (R1/R2 only); a named role → dispatch the task brief to that role as a **runner** — it builds, runs the Command, dispatches its own §6 reviewers, fixes, and returns a **decision brief** (agent-protocol **Ticket loop**). A task with no Owner runs Q1-Q4:
 
 {{INCLUDE: core/fragments/gates-q1-q4.md}}
 
-Delegating → fill `templates/task-brief.md`: the task's slice (its Files, every layer it touches), allowed / forbidden paths, test command, done criteria, tool cap.
+Fill `templates/task-brief.md` with the task's slice (Files, every layer, allowed / forbidden paths, test command, done criteria) and the reviewer roles the runner dispatches (`none` only for a docs-only diff). Key rules:
 - External implementer (pool opt-in) for a self-contained slice, the Lead meanwhile in ANOTHER worktree: `rolepod-cross-family --kind implement --brief <task-brief> --allow <path>... --detach` — another CLI builds it in its write mode; every edit outside `--allow` is reverted (copies kept), money / auth / data needs the user's `--allow-risky`; then §6 + commit as for any writer.
 - Absolute: the subagent NEVER commits (returns a manifest; the Lead commits) and NEVER expands scope.
-- The brief names its **Reviewer** (a role that reads the diff on return, or `N/A` + why) — no reviewer, no dispatch.
 - A write mandate goes only to the role that owns the path — never a generic platform agent (`general-purpose` / `default` / `claude`, or a bare Workflow `agent()`; a writing stage carries `agentType: 'rolepod:<role>'`), never a reviewer (`qa-tester` / `security-engineer` write tests and markdown only; `universal-reviewer` / `scout` markdown only). A CLI with hooks denies the out-of-scope edit; elsewhere this rule is the gate.
 
-Pass the full task text + scene-setting context inline; never point the subagent at the plan file — the Lead curates the slice it needs. Use the least powerful model that can handle the role — cost compounds across N tasks × M reviews; the task-type → tier table is in `references/subagent-dispatch.md`.
+Never point the subagent at the plan file — the Lead curates the slice it needs. Use the least powerful model that can handle the role.
 
-**Self-review before manifest:** the subagent scans its own diff for placeholders, missing tests, plan coverage — not a substitute for §6.
-
-**Return status:** `COMPLETED` with no concerns → §6; `COMPLETED` with Concerns → address scope / correctness first, then §6; `PARTIAL` → review the done slice, redispatch the remainder narrowed; `BLOCKED` → change a variable (context / model / scope / escalate), never blind. Detail: `references/subagent-dispatch.md`.
+**Return status:** a decision brief carries `COMPLETED` / `PARTIAL` / `BLOCKED` as its first word. `COMPLETED` with no concerns → §6; with Concerns → address scope / correctness first, then §6; `PARTIAL` → review the done slice, redispatch the remainder narrowed; `BLOCKED` → change a variable, never blind.
 
 ### 5. Parallel tracks — the plan's layout is the dispatch signal
 
-Plan declares a parallel layout with a cohesion contract → dispatch every track whose dependencies are met in ONE message, each brief scoped to the contract's file ownership.
-- Review each track as it returns (§6) — never barrier-wait.
-- The integration owner merges per the contract's order; the whole-implementation review runs on the group's cumulative diff.
-- Two tracks reach for the same file → stop: sequential, or rewrite the contract.
-- Protocol: `references/subagent-dispatch.md`.
+Every unblocked task goes out in ONE message, each runner in its OWN worktree (`git worktree add …` from the current base), under the plan's cohesion contract; the Lead keeps working (next spec / plan / integration) while runners run. Review each track as it returns (§6) — never barrier-wait. The integration owner merges per the contract's order; the whole-implementation review runs on the group's cumulative diff. Two tracks reach for the same file → stop: sequential, or rewrite the contract.
 
-Worktrees only when tracks truly collide on filesystem state (generated files, build artifacts, same-file edits a contract cannot split); disjoint ownership needs no isolation, a branch is enough for sequential work.
+### 6. Per-task review pipeline — runner decision brief replaces Lead review
 
-### 6. Per-task review pipeline — two-stage, fresh-context
+A runner's **decision brief** replaces the Lead-run review — the Lead reads the brief + the report files, spot-checks ONE finding, runs the task's Command in the runner's worktree, then commits (ff-merge the runner branch). The runner's reviewers — `qa-tester` + `universal-reviewer` (or the concern-matched row) — are dispatched in ONE message and read together: spec compliance + code quality; a single-file, seam-free slice → `qa-tester` alone. A Lead-built task (R1/R2) → the Lead runs §6 itself.
 
-A subagent returns `COMPLETED` → two reviewers on the diff alone, dispatched in ONE message and read together: (1) **Spec compliance** — matches the spec exactly, nothing missing or extra; (2) **Code quality** — patterns, DRY, smell, test strength. Each closes issue → fix → re-review; a BLOCKER on (1) goes back first.
-
-- Both stages mandatory for a delegated task touching a seam (caller / callee or shared-contract pair), an exported symbol, or >1 production file (its own test file does not count).
-- A delegated single-file seam-free task skips §6 and is covered by the final review — then a dispatched reviewer (`universal-reviewer` or the concern-matched row) holds the cumulative diff + acceptance.
-- Lead-executed tasks enter the same pipeline: seam / exported symbol / >1 production file → stage 2 (code-quality reviewer, balanced) on the diff alone; otherwise the task counts as one that skipped §6.
-
-**One task per pass, then ship it.** §6 → the task's Command → the Lead commits → its own final review on that diff (a dispatched reviewer holding diff + acceptance when the task has a seam, an exported symbol, >1 production file, skipped §6 or was Lead-built; else the Lead's cold read) → `check-work` → next unblocked task.
-Never batch tasks into one diff; the rhythm is a fresh context per task. A **whole-implementation review** on a cumulative diff runs only over a ship group (tasks sharing a seam, named in the plan) for cross-task drift — type / symbol / contract mismatch, unowned files. Build the next unblocked task in its OWN worktree while this one is under review — a tree under review never moves.
+**One task per pass, then ship it.** Each runner's Command → decision brief → Lead spot-check + commit → next unblocked task. Never batch tasks into one diff; the rhythm is a fresh context per task. A **whole-implementation review** on a cumulative diff runs only over a ship group (tasks sharing a seam, named in the plan) for cross-task drift — type / symbol / contract mismatch, unowned files. Build the next unblocked task in its OWN worktree while this one is under review — a tree under review never moves.
 
 ## If a matching child plugin skill is available
 

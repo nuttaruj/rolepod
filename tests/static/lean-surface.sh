@@ -1024,6 +1024,8 @@ check "implement-plan: external implementer via rolepod-cross-family --kind impl
 check "review-code: the external implementer never reviews its own ship group" "grep -q 'the runner skips the implementer while its ticket is uncommitted' core/skills/review-code/SKILL.md"
 check "write-plan: a guard / gate / restore task gets a threat-model task first" "grep -q 'gets a \*\*threat-model\*\* task first' core/skills/write-plan/SKILL.md"
 check "review-code: R4 cadence — round 2 = only the flagging reviewer re-runs its own repro, no suite re-runs" "grep -q 'only the reviewer who flagged re-runs its own repro on the delta' core/skills/review-code/SKILL.md"
+check "implement-plan: runner returns decision brief; Lead commits (Command → decision brief → Lead spot-check + commit); dispatched in ONE message and read together" "grep -q 'Each runner.*Command → decision brief → Lead spot-check + commit' core/skills/implement-plan/SKILL.md && grep -q 'dispatched in ONE message and read together' core/skills/implement-plan/SKILL.md"
+check "write-plan: Blocked-by edges name what they consume; prefactor first when two tasks share a file" "grep -q 'names what it consumes' core/skills/write-plan/SKILL.md && grep -q 'prefactor first' core/skills/write-plan/SKILL.md"
 check "review-code: full report to a file, ≤12-line return" "grep -q 'evidence/review/<task>-<role>.md' core/skills/review-code/SKILL.md"
 TICKET_LOOP_FRAGMENT=$(grep -c '^- \*\*Ticket loop\*\*' core/fragments/agent-protocol.md)
 TICKET_LOOP_AGENTS=$(find plugins/rolepod/agents build/rendered/*/agents plugins/rolepod-cursor/agents build/rendered/antigravity/plugin/agents build/rendered/opencode/agents -maxdepth 1 -name '*.md' -type f -exec grep -l 'Ticket loop' {} \; 2>/dev/null | wc -l)
