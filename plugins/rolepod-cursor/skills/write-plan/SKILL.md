@@ -47,6 +47,7 @@ Concrete paths, not categories. Code-intel index when connected widens the blast
 Smallest reversible unit first. Tests-first for bugs, features, high-risk surfaces. Inside a slice the migration and the public-API contract change land first; either becomes its own task only when several slices depend on it. A wide refactor with no safe single-commit path: expand (new path beside the old) → migrate consumers in reviewable green batches → contract (delete the old path once no caller remains).
 
 Prefer vertical slices — each cuts through all layers and is demoable alone — over horizontal layers. Many thin slices beat a few thick ones. A slice carrying a major unknown (new integration, unproven assumption) goes first — fail fast.
+A task that guards, gates or restores (a security surface) gets a **threat-model** task first: the written attack list its reviewers verify against (symlinks, case-folded names, forged evidence, moved refs, ignore rules, the kill path…) — reviewers never discover it round by round.
 
 Size every task to ONE fresh context window — the subagent (or teammate) that builds it starts with no memory beyond the ticket.
 A task is one vertical slice — narrow but complete through every layer it touches, demoable or verifiable on its own; no file or line count sizes it. Split when Delivers needs "and", or when a slice cannot be verified without the next task.

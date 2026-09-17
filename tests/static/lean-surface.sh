@@ -1020,6 +1020,10 @@ check "review-code: R3 external skipped off money/auth/data after a clean intern
 check "review-code: round 2+ external only after a BLOCKER" "grep -q 're-runs only when its previous report carried a BLOCKER' core/skills/review-code/SKILL.md"
 check "implement-plan: external implementer via rolepod-cross-family --kind implement, --allow, the user's --allow-risky, another worktree" "grep -q 'rolepod-cross-family --kind implement' core/skills/implement-plan/SKILL.md && grep -q -- '--allow-risky' core/skills/implement-plan/SKILL.md && grep -q 'the Lead meanwhile in ANOTHER worktree' core/skills/implement-plan/SKILL.md"
 check "review-code: the external implementer never reviews its own ship group" "grep -q 'the runner skips the implementer while its ticket is uncommitted' core/skills/review-code/SKILL.md"
+check "write-plan: a guard / gate / restore task gets a threat-model task first" "grep -q 'gets a \*\*threat-model\*\* task first' core/skills/write-plan/SKILL.md"
+check "review-code: R4 cadence — round 2 = only the flagging reviewer re-runs its own repro, no suite re-runs" "grep -q 'only the reviewer who flagged re-runs its own repro on the delta' core/skills/review-code/SKILL.md"
+check "review-code: full report to a file, ≤12-line return" "grep -q 'evidence/review/<task>-<role>.md' core/skills/review-code/SKILL.md"
+check "implement-plan: the next task builds in its own worktree while this one is under review" "grep -q 'in its OWN worktree while this one is under review' core/skills/implement-plan/SKILL.md"
 for s in check-work review-code; do
   if grep -q 'the deliverable; stop here' "core/skills/$s/SKILL.md"; then
     echo "  ✓ $s hand-off carries the report-only exit"

@@ -97,14 +97,14 @@ Worktrees only when tracks truly collide on filesystem state (generated files, b
 
 ### 6. Per-task review pipeline — two-stage, fresh-context
 
-A subagent returns `COMPLETED` → two reviewers on the diff alone, dispatched in ONE message and read together: (1) **Spec compliance** — matches the task spec exactly, nothing missing, nothing extra; (2) **Code quality** — patterns, DRY, smell, test strength. Each closes issue → fix → re-review; a BLOCKER on (1) goes back first.
+A subagent returns `COMPLETED` → two reviewers on the diff alone, dispatched in ONE message and read together: (1) **Spec compliance** — matches the spec exactly, nothing missing or extra; (2) **Code quality** — patterns, DRY, smell, test strength. Each closes issue → fix → re-review; a BLOCKER on (1) goes back first.
 
 - Both stages mandatory for a delegated task touching a seam (caller / callee or shared-contract pair), an exported symbol, or >1 production file (its own test file does not count).
-- A delegated single-file seam-free task skips §6 and is covered by the final review — which then must be a dispatched reviewer (`universal-reviewer` or review-code's concern-matched row) holding the cumulative diff + the acceptance criteria.
-- Lead-executed tasks enter the same pipeline — the author never reviews own logic: seam / exported symbol / >1 production file → stage 2 (code-quality reviewer, balanced) on the diff alone; otherwise the task counts as one that skipped §6.
+- A delegated single-file seam-free task skips §6 and is covered by the final review — then a dispatched reviewer (`universal-reviewer` or the concern-matched row) holds the cumulative diff + acceptance.
+- Lead-executed tasks enter the same pipeline: seam / exported symbol / >1 production file → stage 2 (code-quality reviewer, balanced) on the diff alone; otherwise the task counts as one that skipped §6.
 
 **One task per pass, then ship it.** §6 → the task's Command → the Lead commits → its own final review on that diff (a dispatched reviewer holding diff + acceptance when the task has a seam, an exported symbol, >1 production file, skipped §6 or was Lead-built; else the Lead's cold read) → `check-work` → next unblocked task.
-Never batch tasks into one diff; the rhythm is a fresh context per task. A **whole-implementation review** on a cumulative diff runs only over a ship group (tasks sharing a seam, named in the plan) for cross-task drift — type / symbol / contract mismatch, unowned files — never over the whole plan.
+Never batch tasks into one diff; the rhythm is a fresh context per task. A **whole-implementation review** on a cumulative diff runs only over a ship group (tasks sharing a seam, named in the plan) for cross-task drift — type / symbol / contract mismatch, unowned files. Build the next unblocked task in its OWN worktree while this one is under review — a tree under review never moves.
 
 ## If a matching child plugin skill is available
 
