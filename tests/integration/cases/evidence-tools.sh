@@ -62,7 +62,7 @@ check "stats reports review verdicts"     "printf '%s' \"\$OUT\" | grep -q 'APPR
 check "stats flags unreasoned bypasses"   "printf '%s' \"\$OUT\" | grep -q 'unreasoned'"
 check "stats counts self-test bypass rows apart (rolepod-selftest + legacy doctor, v2.85.1)" "printf '%s' \"\$OUT\" | grep -q 'Bypasses (1 ' && printf '%s' \"\$OUT\" | grep -q 'self-test rows excluded: 2'"
 check "stats audits strong dispatches"    "printf '%s' \"\$OUT\" | grep -q 'Strong dispatches (4): 2 with explicit override, 1 frontmatter opus, 1 inherit (pre-2.104), 1 pinned low'"
-check "stats reports hook-reported model proof" "printf '%s' \"\$OUT\" | grep -q 'Model proof — hook-reported (2'"
+check "stats reports hook-reported model proof" "printf '%s' \"\$OUT\" | grep -q 'Model proof — as recorded (2'"
 check "stats shows proof per cli+model"   "printf '%s' \"\$OUT\" | grep -q 'gpt-5.6-terra'"
 printf '{"agent_type":"qa","model":"m1"}' > "$FIX/subagent-stop.json"
 check "codex model-log hook is fail-open outside a repo" \

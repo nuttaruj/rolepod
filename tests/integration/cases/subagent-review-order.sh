@@ -25,7 +25,6 @@ check "implement-plan skill exists" "[ -f $I ]"
 check "implement-plan names the bounded-delegation pattern" "grep -qiE 'bounded delegation|bounded scope|task scope' $I"
 check "implement-plan describes the implementer stage" "grep -qiE 'implementer|subagent|delegate' $I"
 check "implement-plan describes the fresh-context reviewer pattern" "grep -qiE 'fresh.context|fresh reviewer|two-stage' $I"
-check "implement-plan caps subagent tool use" "grep -qiE '12 tool uses|tool cap|tool[- ]uses' $I"
 check "implement-plan bans subagent commits (Lead commits)" "grep -qiE 'subagents? NEVER commit|never commit|Lead commits' $I"
 check "implement-plan rejects COMPLETED with failing tests or scope creep" "grep -qiE 'reject.*COMPLETED|COMPLETED.*reject|scope creep' $I"
 

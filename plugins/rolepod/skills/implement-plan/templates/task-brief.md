@@ -39,5 +39,6 @@ Plan: <path> · Spec: <path>
 
 ## Bounds
 - Edit Files allowed; an unowned path → touch + `Also touched:`; another owner's path → `NEEDS:` line. Never commit or push — leave the tree staged.
-- Ticket loop per agent-protocol: Command → Reviewers in ONE message → fix → round 2 = the flagging reviewer only (max 2) → decision brief.
-- Read the brief, not the plan; open a source only for a named residual. A new idea → Follow-ups, never scope.
+- Ticket loop per agent-protocol (Command → Reviewers → fix → round 2 = flagging reviewer → brief).
+- Budget: build ≤40 tool calls, loop ≤120; past it → PARTIAL, never grind.
+- Read the brief, not the plan; open a source only for a named residual. New idea → Follow-ups.

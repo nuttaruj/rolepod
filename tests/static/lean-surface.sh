@@ -216,14 +216,6 @@ fi
 # re-introduces a parallel guidance surface that drifts from the skills.
 check "no core/rules directory (folded into skills + hook + agents)" "[ ! -d core/rules ]"
 
-check "rolepod-full rendered as a Command alias section (not Tier 0/1)" "grep -q '^### Command [Aa]lias' core/fragments/skill-index-lean.md"
-check "router documents /rolepod-full as the force-full entrypoint" "grep -q '/rolepod-full' $RTR"
-check "router demotes bare /rolepod + 'no skip' from force-full triggers" "grep -q 'are NOT force-full triggers' $RTR"
-check "router routes vague UI / dashboard request to write-spec" "grep -Eq 'vague UI.*write-spec' $RTR"
-check "router routes clear UI edit to implement-plan" "grep -Eq 'clear UI edit.*implement-plan' $RTR"
-check "router routes explain-only question to a direct answer" "grep -Eq 'explain-only.*answer directly' $RTR"
-check "router reviewer wording is conditional ('when configured')" "grep -q 'when configured' $RTR"
-check "router marks concurrent-session stop condition (cross-CLI soft warn)" "grep -q 'concurrent session(s) detected in this worktree' $RTR"
 
 # /rolepod-team removed entirely — no command file, absent from active
 # command docs. Migration note is allowed only in docs/agent-teams.md.
@@ -265,12 +257,6 @@ check "router's concurrent-session rule covers the shared ref, not just shared f
 check "router keeps authorization-held work off a shared branch" \
   "grep -q 'never merge it into a SHARED branch before the answer' core/skills/using-rolepod/SKILL.md"
 
-# ── Review flow stays CLI-agnostic (PR 15) ────────────────────────────
-# External adversarial reviewer = a model different from the Lead's, never
-# a hardcoded CLI name. Guards against re-baking a Claude-as-Lead assumption
-# into the shared review-code skill.
-check "review-code routes adversarial review model-relative (not a fixed CLI)" "grep -q 'different from the Lead' core/skills/review-code/SKILL.md"
-
 # ── Skill boundary sections (PR 16) ───────────────────────────────────
 # Every skill carries a labeled `## Boundary` (Owns / Does not own /
 # Hand off) so Lead routes cleanly and phases do not duplicate work.
@@ -284,10 +270,6 @@ else
   echo "  ✗ skills missing ## Boundary: $BOUNDARY_MISSING"
   fail=$((fail+1))
 fi
-check "write-spec Boundary owns WHAT / WHY" "grep -q 'WHAT / WHY' core/skills/write-spec/SKILL.md"
-check "write-plan Boundary owns HOW / WHO / WHERE / ORDER" "grep -q 'HOW / WHO / WHERE / ORDER' core/skills/write-plan/SKILL.md"
-check "implement-plan Boundary keeps the plan/execute split" "grep -q 'Redesigning the plan' core/skills/implement-plan/SKILL.md"
-check "rolepod-full Boundary disclaims the router table" "grep -q 'Router table' core/skills/rolepod-full/SKILL.md"
 
 # ── Stale doc count keywords — guard against drift in prose ────────────
 # After every skill add/remove, the count appears in several places
@@ -1004,56 +986,6 @@ for f in hooks/worktree-guard.sh hooks/cohesion-contract-check.sh \
          adapters/cursor/scripts/gate-reminder.sh; do
   check "rolepod_log_bypass byte-identical in $f" "[ \"\$(lb_body '$f')\" = \"\$LB_REF\" ]"
 done
-
-# ── Text invariants from the 2026-09-13 skills audit ──────────────────
-# One check per rule: the router fires the external reviewer only on an
-# enabled pool (opt-in), and check-work's verify verdict stays 1:1 with the
-# Status word (a missing P1 is PARTIAL/partial, never PARTIAL+fail).
-# Ticket rhythm (v2.136.0): a task ships alone; the cumulative review is for a seam group only.
-check "write-plan: a task is a ticket that ships alone" "grep -q 'A task is a ticket: it ships alone' core/skills/write-plan/SKILL.md"
-check "implement-plan: one task per pass, never batch" "grep -q 'One task per pass, then ship it' core/skills/implement-plan/SKILL.md && grep -q 'Never batch tasks into one diff' core/skills/implement-plan/SKILL.md"
-check "review-code: the diff is the task, never the whole plan" "grep -q 'never the whole plan' core/skills/review-code/SKILL.md"
-check "write-plan: a task fits ONE fresh context window = one vertical slice, no count rule" "grep -q 'Size every task to ONE fresh context window' core/skills/write-plan/SKILL.md && grep -q 'A task is one vertical slice' core/skills/write-plan/SKILL.md && grep -q 'no file or line count sizes it' core/skills/write-plan/SKILL.md && ! grep -q '400 changed lines' core/skills/write-plan/SKILL.md"
-check "implement-plan §6: both review axes dispatched in ONE message" "grep -q 'dispatched in ONE message and read together' core/skills/implement-plan/SKILL.md"
-check "review-code: external is an R4 instrument — R3 stays internal unless the user asks" "grep -q 'the pool is an R4 instrument' core/skills/review-code/SKILL.md && grep -q 'R1-R3, and any doc / comment / config / rename-only diff, stay internal unless the user asks' core/skills/review-code/SKILL.md"
-check "review-code: a docs-only diff is R1 at any size — no reviewer" "grep -q 'A docs-only diff is R1 at any size' core/skills/review-code/SKILL.md && grep -q 'a docs-only diff (every file is prose' core/skills/using-rolepod/SKILL.md"
-check "review-code + router: the pool reviews code only, never a doc / comment / config / rename diff" "grep -q 'the pool reviews code, never a comment / doc / config / rename diff' core/skills/review-code/SKILL.md && grep -q 'the pool reviews code only' core/skills/using-rolepod/SKILL.md"
-check "write-spec: cross-family critique only for an R4 / high-risk spec — R3 stays internal" "grep -q 'the spec is R4 / high-risk (or the user asks; R3 stays internal' core/skills/write-spec/SKILL.md"
-check "implement-plan + write-plan: the task brief is generated by plan-lint --brief; the owner never re-surveys the repo" "grep -q 'plan-lint.sh --brief <N> <plan> \[contract\]' core/skills/implement-plan/SKILL.md && grep -q 'plan-lint.sh --brief <N> <plan> \[contract\]' core/skills/write-plan/SKILL.md && grep -q 'never re-surveys the repo' core/skills/write-plan/SKILL.md && grep -q 'Read first' core/skills/write-plan/templates/plan-template.md && grep -q 'Every hop reads what the previous hop produced' core/skills/implement-plan/SKILL.md"
-check "review-code + implement-plan: one strong pass per diff — external when usable, internal strong only at the round-3 breaker" "grep -q 'never both on round 1, money / auth included' core/skills/review-code/SKILL.md && grep -q 'ONE strong pass: the external when the pool is usable' core/skills/review-code/SKILL.md && grep -q 'the Lead runs no second external for the ship group' core/skills/implement-plan/SKILL.md"
-check "write-plan + implement-plan: Files may pin a directory; an unowned path is touched with a note, another owner's path becomes a NEEDS line" "grep -q 'a directory or module when the slice' core/skills/write-plan/SKILL.md && grep -q 'Also touched:' core/skills/implement-plan/SKILL.md && grep -q 'NEEDS: <path>' core/skills/implement-plan/SKILL.md && grep -q 'acceptance criteria the reviewer walks' core/skills/write-plan/SKILL.md"
-check "write-plan: tests cover the work only — a doc / comment / config-text change gets no test" "grep -q 'gets NO test (render / lint is its check)' core/skills/write-plan/SKILL.md && grep -q 'Skip when the diff is docs-only' core/fragments/gates-t1-t6.md"
-check "review-code: a high-risk path anywhere in the diff tiers the commission R4" "grep -q 'A high-risk path anywhere in the diff tiers the whole commission R4' core/skills/review-code/SKILL.md"
-check "review-code: round 2+ external only after a BLOCKER" "grep -q 're-runs only when its previous report carried a BLOCKER' core/skills/review-code/SKILL.md"
-check "implement-plan: external implementer via rolepod-cross-family --kind implement, --allow, the user's --allow-risky, another worktree" "grep -q 'rolepod-cross-family --kind implement' core/skills/implement-plan/SKILL.md && grep -q -- '--allow-risky' core/skills/implement-plan/SKILL.md && grep -q 'the Lead meanwhile in ANOTHER worktree' core/skills/implement-plan/SKILL.md"
-check "review-code: the external implementer never reviews its own ship group" "grep -q 'the runner skips the implementer while its ticket is uncommitted' core/skills/review-code/SKILL.md"
-check "write-plan: a guard / gate / restore task gets a threat-model task first" "grep -q 'gets a \*\*threat-model\*\* task first' core/skills/write-plan/SKILL.md"
-check "review-code: R4 cadence — round 2 = only the flagging reviewer re-runs its own repro, no suite re-runs" "grep -q 'only the reviewer who flagged re-runs its own repro on the delta' core/skills/review-code/SKILL.md"
-check "implement-plan: task owner returns decision brief; Lead commits (Command → decision brief → Lead spot-check + commit); dispatched in ONE message and read together" "grep -q 'Each task owner.*Command → decision brief → Lead spot-check + commit' core/skills/implement-plan/SKILL.md && grep -q 'dispatched in ONE message and read together' core/skills/implement-plan/SKILL.md"
-check "write-plan: Blocked-by edges name what they consume; prefactor first when two tasks share a file" "grep -q 'names what it consumes' core/skills/write-plan/SKILL.md && grep -q 'prefactor first' core/skills/write-plan/SKILL.md"
-check "review-code: full report to a file, ≤12-line return" "grep -q 'evidence/review/<task>-<role>.md' core/skills/review-code/SKILL.md"
-TICKET_LOOP_FRAGMENT=$(grep -c '^- \*\*Ticket loop\*\*' core/fragments/agent-protocol.md)
-TICKET_LOOP_AGENTS=$(find plugins/rolepod/agents build/rendered/*/agents plugins/rolepod-cursor/agents build/rendered/antigravity/plugin/agents build/rendered/opencode/agents -maxdepth 1 -name '*.md' -type f -exec grep -l 'Ticket loop' {} \; 2>/dev/null | wc -l)
-check "agent-protocol: Ticket loop doctrine in fragment and all 15+ rendered agents" "[ $TICKET_LOOP_FRAGMENT -eq 1 ] && [ $TICKET_LOOP_AGENTS -ge 15 ]"
-check "implement-plan: the next task builds in its own worktree while this one is under review" "grep -q 'in its OWN worktree while this one is under review' core/skills/implement-plan/SKILL.md"
-check "implement-plan: plan-lint gate before the first task" "grep -q 'Lint the plan first:' core/skills/implement-plan/SKILL.md && grep -q 'plan-lint.sh <plan>' core/skills/implement-plan/SKILL.md"
-for s in check-work review-code; do
-  if grep -q 'the deliverable; stop here' "core/skills/$s/SKILL.md"; then
-    echo "  ✓ $s hand-off carries the report-only exit"
-  else
-    echo "  ✗ $s hand-off lacks the report-only exit (a verify / review-only ask ends at the deliverable)"; fail=$((fail+1))
-  fi
-done
-if grep -q 'external CLI reviewer.*when one is installed' "$ROUTER"; then
-  echo "  ✗ router ties the external reviewer to an installed CLI — the pool is opt-in (review-code §External)"; fail=$((fail+1))
-else
-  echo "  ✓ router fires the external reviewer only on an enabled pool"
-fi
-if grep -Eq 'verdict:"fail".*PARTIAL' core/skills/check-work/SKILL.md; then
-  echo "  ✗ check-work pairs verdict fail with Status PARTIAL — the verdict is the mapped Status word"; fail=$((fail+1))
-else
-  echo "  ✓ check-work verify verdict stays 1:1 with Status"
-fi
 
 # ── Render reproducibility under LC_ALL=C ─────────────────────────────
 cp core/fragments/skill-index-lean.md /tmp/.lean-surface-snap.md

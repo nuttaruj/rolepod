@@ -952,6 +952,11 @@ else
   echo "  ✗ --brief T1/T4 same-role split leaked files: $ALLOWEDT1"; fail=$((fail+1))
 fi
 
+# Budget line: the generated brief carries the tool budget (mechanism, not prose).
+printf '%s\n' "$OUT" | grep -q '^- Budget: build <= 40 tool calls' \
+  && echo "  ✓ --brief Bounds carry the tool budget" \
+  || { echo "  ✗ --brief Bounds missing the Budget line"; fail=$((fail+1)); }
+
 if [ "$fail" -eq 0 ]; then
   echo "  ✓ pass"
   exit 0

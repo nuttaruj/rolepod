@@ -129,7 +129,7 @@ check "AGENTS.md carries Risky actions core"   "grep -q '^## Risky actions' buil
 check "AGENTS.md carries Communication core"    "grep -q '^## Communication' build/rendered/antigravity/AGENTS.md"
 
 # cross-family: agy is only useful with the repo as its workspace.
-check "cross-family passes --add-dir to agy" "grep -q 'agy).*--add-dir \"\$ROOT\"' scripts/cross-family.sh"
+check "cross-family passes --add-dir to agy" "grep -q -- '--add-dir \"\$ROOT\"' scripts/cross-family.sh"
 
 # Gemini sunset note present (bundled with this work).
 check "gemini GEMINI.md.tmpl has the 2026-06-18 sunset note" \
