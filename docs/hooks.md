@@ -339,11 +339,15 @@ preference order, `#` comments; **no file = off, `none` = off**:
 
 ```
 # this machine has four CLIs; use three
-agy
-codex stall=900           # per-CLI option: silence tolerated before it counts as dead (default 600 s)
-opencode
-consult: agy codex        # per-kind order: the debug loop wants the fast answer first
+[reviewer]
+review = agy codex opencode stall=900   # the default order for every kind; stall= is codex's silence budget (default 600 s)
+consult = agy codex                     # per-kind order: the debug loop wants the fast answer first
+
+[implement]
+cli = codex claude                      # which members may WRITE a ticket (--kind implement, v2.139.0)
 ```
+
+(The older shape — bare lines plus `consult: agy codex` per-kind lines — still reads.)
 
 Per-member time (v2.129.0): a member is killed when it goes SILENT — no new
 stdout / stderr for `stall` seconds (`--stall` > `stall=` > 600) — not when

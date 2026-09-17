@@ -271,7 +271,7 @@ check "cursor stream-json is unwrapped: plain report in the raw file (no JSON), 
 
 # ── per-CLI timeout, per-kind order, budget line ─────────────────────────
 echo "── cross-family: timeouts / per-kind order / budget ──"
-printf 'codex timeout=1800\nagy\nconsult: agy codex\n' > "$REPO/.rolepod/cross-family"
+printf '[reviewer]\nreview = codex timeout=1800 agy\nconsult = agy codex\n\n[implement]\ncli = codex\n' > "$REPO/.rolepod/cross-family"   # v2.141.0 shape; the per-kind `consult:` line shape is covered below
 out=$(bash "$RUNNER" --pool --lead claude --kind review)
 check "review order = default list; codex carries timeout=1800s from config, agy the review default 600s (foreground)" \
   "printf '%s' \"\$out\" | grep -qE 'codex +usable +openai +.*timeout=1800s' && printf '%s' \"\$out\" | grep -qE 'agy +usable +google +.*timeout=600s' && printf '%s' \"\$out\" | grep -q 'usable, in order: codex agy'"

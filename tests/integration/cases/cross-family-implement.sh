@@ -162,9 +162,19 @@ git -C "$REPO" reset -q --hard HEAD~1; rm -rf "$REPO/my dir" "$REPO/src"; git -C
 printf '%s\n' "$out" > "$FIX/out1.txt"
 
 echo "── implement: the implement: pool line parses and binds to this kind only ──"
+printf '[reviewer]\nreview = codex agy\n\n[implement]\ncli = agy codex\n' > "$HOME/.rolepod/cross-family"
+out=$(bash "$RUNNER" --pool --kind implement --lead claude --root "$REPO" 2>&1)
+check "[implement] cli = agy codex → implement order agy codex" "printf '%s' \"$out\" | grep -q 'usable, in order: agy codex$'"
 printf 'codex\nagy\nimplement: agy codex\n' > "$HOME/.rolepod/cross-family"
 out=$(bash "$RUNNER" --pool --kind implement --lead claude --root "$REPO" 2>&1)
-check "implement: line → implement order agy codex" "printf '%s' \"$out\" | grep -q 'usable, in order: agy codex$'"
+check "the older implement: line still reads (agy codex)" "printf '%s' \"$out\" | grep -q 'usable, in order: agy codex$'"
+printf '[reviewer]\nreview = none\n' > "$HOME/.rolepod/cross-family"
+out=$(bash "$RUNNER" --kind implement --brief "$BRIEF" --allow README.md --lead claude --root "$REPO" 2>&1); rc=$?
+check "[reviewer] review = none → off (exit 5)" "[ $rc -eq 5 ]"
+printf '[reviewer]\nreview = codex agy\n' > "$HOME/.rolepod/cross-family"
+out=$(bash "$RUNNER" --pool --kind implement --lead claude --root "$REPO" 2>&1)
+check "no [implement] section → implement falls back to the review order (codex agy)" "printf '%s' \"$out\" | grep -q 'usable, in order: codex agy$'"
+printf 'codex\nagy\nimplement: agy codex\n' > "$HOME/.rolepod/cross-family"
 out=$(bash "$RUNNER" --pool --kind consult --lead claude --root "$REPO" 2>&1)
 check "the default order for other kinds is untouched (codex agy) — no fake member, no pollution" "printf '%s' \"$out\" | grep -q 'usable, in order: codex agy$' && ! printf '%s' \"$out\" | grep -q 'implement:'"
 printf 'codex\nagy\n' > "$HOME/.rolepod/cross-family"

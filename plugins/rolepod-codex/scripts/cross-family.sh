@@ -19,12 +19,15 @@
 #            ~/.rolepod/cross-family (machine). NO file = OFF, `none` = OFF —
 #            rolepod never enables cross-family on its own: the SessionStart
 #            loader asks the user ONCE, the answer is written to the file.
-#            Format — one CLI per line in preference order, options after the
-#            name, optional per-kind order lines:
-#                codex stall=900        # silence tolerated before it counts as dead (default 600 s)
-#                agy
-#                consult: agy codex      # debug consults want the fast answer first
-#                implement: codex claude # which members may WRITE (--kind implement); absent = the default order
+#            Format (v2.141.0) — two sections, members in preference order,
+#            options after a name; a missing key falls back to `review`:
+#                [reviewer]
+#                review = cursor agy codex stall=900   # the default order for every kind; stall= binds to codex
+#                consult = agy codex                   # debug consults want the fast answer first
+#                critique = cursor agy codex
+#                [implement]
+#                cli = codex claude                    # which members may WRITE (--kind implement)
+#            The older shape (bare lines + `consult: agy codex` per-kind lines) still reads.
 #            Names: codex claude agy cursor opencode (`gemini` is retired —
 #            skipped with a note; list agy instead).
 #   cli      only the Lead's OWN CLI is excluded. The model family is
@@ -438,12 +441,19 @@ CFG=""; CFG_SRC=""; STATE="on"
 if [ -n "$CFG_FLAG" ] && [ -f "$CFG_FLAG" ]; then CFG="$CFG_FLAG"; CFG_SRC="$(head -1 "$CFG_FLAG.src" 2>/dev/null || echo "$CFG_FLAG") (job snapshot)"
 elif [ -f "$ROOT/.rolepod/cross-family" ]; then CFG="$ROOT/.rolepod/cross-family"; CFG_SRC="$CFG"
 elif [ -f "$HOME/.rolepod/cross-family" ]; then CFG="$HOME/.rolepod/cross-family"; CFG_SRC="$CFG"; fi
-DEFAULT_LIST=""; KIND_LIST=""; TO_LIST=""; ST_LIST=""
+DEFAULT_LIST=""; KIND_LIST=""; TO_LIST=""; ST_LIST=""; _sec=""
 if [ -n "$CFG" ]; then
   while IFS= read -r _ln || [ -n "$_ln" ]; do
     _ln=$(printf '%s' "$_ln" | sed -e 's/#.*//' | tr 'A-Z' 'a-z' | tr -s '[:space:]' ' ' | sed -e 's/^ //' -e 's/ $//')
     [ -n "$_ln" ] || continue
-    _k=""; case "$_ln" in review:*|consult:*|advise:*|critique:*|implement:*) _k="${_ln%%:*}"; _ln="${_ln#*:}";; esac
+    case "$_ln" in "["*"]") _sec="${_ln#[}"; _sec="${_sec%]}"; continue ;; esac   # [reviewer] / [implement] section headers (v2.141.0 shape)
+    _k=""
+    case "$_ln" in   # `key = members` lines: review = the default order every kind falls back to; consult / advise / critique / cli(implement) = that kind only
+      review\ =*|review=*|default\ =*|default=*) _ln="${_ln#*=}"; _ln="${_ln# }" ;;
+      consult\ =*|consult=*|advise\ =*|advise=*|critique\ =*|critique=*) _k="${_ln%%=*}"; _k="${_k% }"; _ln="${_ln#*=}"; _ln="${_ln# }" ;;
+      cli\ =*|cli=*) _k=implement; _ln="${_ln#*=}"; _ln="${_ln# }" ;;
+      review:*|consult:*|advise:*|critique:*|implement:*) _k="${_ln%%:*}"; _ln="${_ln#*:}" ;;   # the pre-v2.141 `kind:` shape still reads
+    esac
     _acc=""; _last=""
     for _t in $_ln; do
       case "$_t" in
@@ -467,7 +477,7 @@ else
   STATE="off"; CFG_SRC="no ~/.rolepod/cross-family (opt-in not given)"
 fi
 CONFIGURED="${KIND_LIST:-$DEFAULT_LIST}"
-ENABLE_HINT="enable: printf 'codex\\nclaude\\nagy\\ncursor\\nopencode\\n' > ~/.rolepod/cross-family  (list EVERY CLI you want, this one included — the Lead's own CLI is skipped at run time, so one file serves every Lead; your order = preference; 'consult: agy codex' = per-kind order; project override: <git-root>/.rolepod/cross-family; 'none' = keep off)"
+ENABLE_HINT="enable: printf '[reviewer]\\nreview = codex claude agy cursor opencode\\n\\n[implement]\\ncli = codex claude\\n' > ~/.rolepod/cross-family  (list EVERY CLI you want, this one included — the Lead's own CLI is skipped at run time, so one file serves every Lead; your order = preference; 'consult: agy codex' = per-kind order; project override: <git-root>/.rolepod/cross-family; 'none' = keep off)"
 
 stall_for() { # $1 cli → seconds of silence that count as dead (flag > config > 600)
   [ -n "$FLAG_STALL" ] && { echo "$FLAG_STALL"; return; }

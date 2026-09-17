@@ -190,7 +190,7 @@ else
   bash "$REPO_DIR/scripts/cross-family.sh" --pool --lead "$XF_LEAD" 2>&1 | sed 's/^/  /'
   XF_IMPL=$(bash "$REPO_DIR/scripts/cross-family.sh" --pool --lead "$XF_LEAD" --kind implement 2>/dev/null | sed -n 's/.*usable, in order: //p')
   XF_N=$(printf '%s' "$XF_IMPL" | wc -w | tr -d ' '); XF_NOTE=""; [ "${XF_N:-0}" -eq 1 ] && XF_NOTE=" — ONE member: after it implements, no external is left to review that ticket (the internal strong reviewer covers it)"
-  echo "  implement order (an implement: pool line overrides; opencode writes only where an opencode.json(c) — project, OPENCODE_CONFIG_DIR or ~/.config/opencode — grants edit+bash; cursor --force runs shell): ${XF_IMPL:-off — pool disabled or empty}$XF_NOTE"
+  echo "  implement order ([implement] cli = … in the pool file; absent → the review order; opencode writes only where an opencode.json(c) — project, OPENCODE_CONFIG_DIR or ~/.config/opencode — grants edit+bash; cursor --force runs shell): ${XF_IMPL:-off — pool disabled or empty}$XF_NOTE"
   echo "  (ROLEPOD_DOCTOR_PROBE=1 make doctor → live liveness per member)"
 fi
 
