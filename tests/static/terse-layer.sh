@@ -148,7 +148,8 @@ if [ -f "$GEMINI_HOOK" ] && [ -f "$CORE" ]; then
 
   # 8a. Baseline — flag set, core readable: still emits valid JSON carrying
   #     the git-context payload, with the terse core folded in.
-  OUT=$(CLAUDE_CONFIG_DIR="$GFLAGDIR" bash "$GTMP/hooks/session-start.sh" 2>/dev/null)
+  touch "$GTMP/lock-stamp"
+  OUT=$(HOME="$GFLAGDIR" CLAUDE_CONFIG_DIR="$GFLAGDIR" bash "$GTMP/hooks/session-start.sh" 2>/dev/null)
   RC=$?
   if [ "$RC" -eq 0 ] && printf '%s' "$OUT" | python3 -I -c '
 import sys, json
@@ -173,9 +174,19 @@ assert "TERSE OUTPUT ACTIVE" in ctx, "terse banner missing from gemini payload"
   #     rest of the hook (git context + gates) survives the failed read,
   #     and that no terse banner leaks through with an empty body.
   chmod 000 "$GTMP/hooks/terse-core.md"
-  CLAUDE_CONFIG_DIR="$GFLAGDIR" bash "$GTMP/hooks/session-start.sh" >"$GTMP/out.json" 2>/dev/null
+  HOME="$GFLAGDIR" CLAUDE_CONFIG_DIR="$GFLAGDIR" bash "$GTMP/hooks/session-start.sh" >"$GTMP/out.json" 2>/dev/null
   RC=$?
   chmod 644 "$GTMP/hooks/terse-core.md"
+  # 8c. The hook writes a session lock under $HOME/.rolepod/session-locks/<repo hash>.
+  #     HOME points at the fixture, so the lock lands there — one under the user's
+  #     real HOME would count as a live sibling for 30 min on the next SessionStart.
+  _rh=$(printf '%s' "$(git -C "$REPO_DIR" rev-parse --show-toplevel)" | { shasum -a 256 2>/dev/null || sha256sum 2>/dev/null; } | awk '{print $1}' | head -c 16)
+  if ls "$GFLAGDIR/.rolepod/session-locks/$_rh/"auto-*.lock >/dev/null 2>&1 \
+     && [ -z "$(find "$HOME/.rolepod/session-locks/$_rh" -name 'auto-*.lock' -newer "$GTMP/lock-stamp" 2>/dev/null)" ]; then
+    pass "gemini session-start writes its session lock under the test HOME, never the user's"
+  else
+    bad "gemini session-start lock landed outside the test HOME"
+  fi
   if [ "$RC" -eq 0 ] && python3 -I -c '
 import sys, json
 d = json.load(open(sys.argv[1]))
