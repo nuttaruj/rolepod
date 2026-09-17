@@ -328,15 +328,21 @@ printf '{"ts":"%s","phase":"review","reviewer":"external","kind":"review","cli":
   "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > "$TMP/.rolepod/evidence/phase-log.jsonl"
 : > "$TRANSCRIPT"
 out=$(pcx 'git commit -m "add billing"')
-check "money/auth fixture + enabled pool + external anchor ONLY, no internal reviewer → deny (this surface needs BOTH — v2.78.0)" deny "$out"
-echo "$out" | grep -q 'needs BOTH' \
-  && echo "  ✓ deny reason says the money/auth surface needs both passes" \
-  || { echo "  ✗ money/auth deny reason missing BOTH wording"; fail=$((fail+1)); }
+check "money/auth fixture + enabled pool + external anchor ONLY, no internal reviewer → allow (external alone clears — v2.145.0)" allow "$out"
+echo "$out" | grep -q '1 reviewer dispatches / 1 strong' \
+  && echo "  ✓ allow is credited to the external anchor alone (1 strong, 0 internal)" \
+  || { echo "  ✗ external-alone allow did not credit exactly 1 strong reviewer"; fail=$((fail+1)); }
 printf '%s\n' \
   '{"type":"tool_use","name":"Task","input":{"subagent_type":"rolepod:security-engineer","prompt":"review"}}' \
   > "$TRANSCRIPT"
 out=$(pcx 'git commit -m "add billing"')
 check "money/auth fixture + external anchor + internal strong reviewer → allow (both present)" allow "$out"
+: > "$TMP/.rolepod/evidence/phase-log.jsonl"
+printf '%s\n' \
+  '{"type":"tool_use","name":"Task","input":{"subagent_type":"rolepod:security-engineer","prompt":"review"}}' \
+  > "$TRANSCRIPT"
+out=$(pcx 'git commit -m "add billing"')
+check "money/auth fixture + enabled pool + internal strong ONLY, nothing tried → deny (satellite-first unchanged)" deny "$out"
 : > "$TRANSCRIPT"
 : > "$TMP/.rolepod/evidence/phase-log.jsonl"
 printf '%s\n' \

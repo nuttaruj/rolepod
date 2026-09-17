@@ -422,17 +422,6 @@ if [ -z "$HIGH_RISK" ]; then
     | awk -F'\t' '{print $1}' | sed -E 's#^[abciow]/##' | risk_filter '.' | head -1 || true)
   [ -n "$CONTENT_RISK" ] && HIGH_RISK="staged content: money-movement term (refund/payout/chargeback/settlement)"
 fi
-# Money / auth subset of high-risk (v2.78.0): billing · payments · credits ·
-# auth · crypto · secrets · data deletion — plus the content-based money hit.
-# A missed bug here costs real money or a breach, so when a cross-family pool
-# is enabled these need BOTH passes: the external (decorrelated) AND the
-# internal strong reviewer (project-context depth). migration / permission /
-# token / webhook / security-named paths stay external-is-the-pass.
-MONEY_RISK=""
-if [ -n "$HIGH_RISK" ]; then
-  MONEY_RISK=$(echo "$DIFF_STAT" | awk -F'\t' '{print $3}' | grep -iE '(^|/|_)(auth|authn|authz|authentication|authorization|billing|payment|payments|credit|credits|secret|secrets|crypto|cryptography|oauth|jwt|sso|saml|stripe|paypal|charge|charges|invoice|invoices|deletion|deletions|erasure|gdpr)(/|\.|_|$)' | head -1 || true)
-  case "$HIGH_RISK" in "staged content: money-movement"*) MONEY_RISK="$HIGH_RISK" ;; esac
-fi
 
 # Logic-bearing line count — non-comment, non-blank, non-pure-rename lines
 LOGIC_LINES=$(git diff $GIT_DIFF_BASE -U0 2>/dev/null | grep -E '^[+-]' | grep -vE '^[+-]{3}' | grep -vE '^[+-][[:space:]]*$' | grep -vE '^[+-][[:space:]]*(#|//|/\*|\*/?|--|;)' || true)
@@ -599,7 +588,6 @@ fi
 # internal path untouched. Lead CLI unknown → cannot exclude its own CLI →
 # no tightening (fail-open).
 XFAM_HELD=""
-INTERNAL_STRONG=$(( STRONG_REVIEWERS - ${XREV:-0} ))
 XFAM_RUNNER="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/../scripts/cross-family.sh"
 [ -f "$XFAM_RUNNER" ] || XFAM_RUNNER="$HOME/.rolepod/bin/cross-family.sh"
 XFAM_LEAD="${ROLEPOD_LEAD_CLI:-}"
@@ -608,18 +596,16 @@ XFAM_POOL=""; XFAM_FAILS=0
 # Detached runner job still running for this repo (v2.79.0): the hold reason
 # must say "wait / --collect", not "run the runner" (it is already running).
 XFAM_RUNNING="$(xfam_running_job)"
-# Money / auth + enabled pool + external anchored but NO internal strong →
-# hold: this surface needs BOTH passes (v2.78.0). External failed (logged) →
-# internal alone clears, as everywhere else.
-if [ -n "$MONEY_RISK" ] && [ -n "$XFAM_LEAD" ] && [ -f "$XFAM_RUNNER" ] && [ "${XREV:-0}" -gt 0 ] && [ "$INTERNAL_STRONG" -eq 0 ]; then
-  XFAM_POOL=$(bash "$XFAM_RUNNER" --lead "$XFAM_LEAD" --pool-names 2>/dev/null | tr '\n' ' ' | sed 's/ *$//')
-  if [ -n "$XFAM_POOL" ]; then
-    XFAM_HELD="money / auth surface ($MONEY_RISK): external pass anchored, no INTERNAL strong reviewer since the last commit — this surface needs BOTH. Fix: dispatch rolepod:security-engineer (or rolepod:universal-reviewer) via the Agent tool on the same diff. Migration / permission / token paths need only the external. "
-    STRONG_REVIEWERS=0
-  fi
-fi
+# Money / auth no longer needs BOTH passes (v2.78.0 hold REMOVED, v2.145.0):
+# the pool exists to move strong-class tokens OFF the main plan, so an
+# anchored external pass (XREV, already credited to STRONG_REVIEWERS above)
+# clears a money/auth diff alone, same as any other high-risk surface.
+# Satellite-first below is unchanged: an internal reviewer with NOTHING
+# tried against the pool still does not clear.
 # The pool reviews CODE only (v2.143.0): a comment / blank-only diff on a
 # risky path (LOGIC_COUNT 0) clears with the internal strong reviewer.
+# `-z "$XFAM_HELD"` is defensive (no earlier block sets it now) — keeps this
+# `if` correct unchanged if a hold is ever added above it again.
 if [ -z "$XFAM_HELD" ] && [ -n "$HIGH_RISK" ] && [ "${LOGIC_COUNT:-0}" -gt 0 ] && [ -n "$XFAM_LEAD" ] && [ -f "$XFAM_RUNNER" ] && [ "${XREV:-0}" -eq 0 ] && [ "$STRONG_REVIEWERS" -gt 0 ]; then
   XFAM_POOL=$(bash "$XFAM_RUNNER" --lead "$XFAM_LEAD" --pool-names 2>/dev/null | tr '\n' ' ' | sed 's/ *$//')
   XFAM_FAILS=0
@@ -664,7 +650,7 @@ print(n)
     else
       XFAM_HELD+="Fix: rolepod-cross-family --kind review --brief <brief.md> --attach <diff> --detach (add --lead $XFAM_LEAD outside a hook); --collect <job-id> waits. "
     fi
-    XFAM_HELD+="Pool failed or empty (logged) → the internal reviewer counts.${MONEY_RISK:+ Money / auth needs BOTH passes — keep the internal strong reviewer too.} "
+    XFAM_HELD+="Pool failed or empty (logged) → the internal reviewer counts. "
     STRONG_REVIEWERS=0
   fi
 fi
