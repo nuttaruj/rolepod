@@ -29,7 +29,7 @@ Source of truth: [`core/fragments/agent-roster-lean.md`](../core/fragments/agent
 | `**/billing/**`, `**/payments/**`, `**/credits/**` | `billing-engineer` |
 | `**/auth/**`, `**/security/**`, tokens, secrets | `security-engineer` |
 | Performance budgets, p95/p99, perf-sensitive code | `performance-engineer` |
-| Tests, race conditions, business-logic verify | `qa-tester` |
+| User-visible tests (E2E / UI / browser / contract); a slice's unit tests belong to its writer | `qa-tester` |
 | AI / LLM features, RAG, prompt engineering | `ai-ml-engineer` |
 | Analytics, dashboards, data pipelines | `data-scientist` |
 | API design, module boundaries, data flow | `system-architect` |

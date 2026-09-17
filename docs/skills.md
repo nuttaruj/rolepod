@@ -45,7 +45,8 @@ Domain depth that used to live in standalone skills now lives in the 15 speciali
 | User-facing content / FAQ / onboarding / error msgs | `write-spec` + `implement-plan` | `content-strategist` (`audience: user`) |
 | Marketing / conversion copy / SEO | `write-spec` + `implement-plan` + `review-code` | `content-strategist` (`audience: prospect`) |
 | CI/CD / deploy / monitoring / release | `finish-work` | `devops-sre` |
-| Tests / business logic verify / race | `write-plan` + `check-work` + `review-code` | `qa-tester` |
+| User-visible tests (E2E / UI / contract) | `write-plan` + `check-work` | `qa-tester` |
+| Unit tests for a slice (failing test first at the plan's seam) | `implement-plan` + `check-work` | the slice's owning role |
 | LLM / RAG / Anthropic SDK / prompt cache | `implement-plan` | `ai-ml-engineer` |
 
 ## Skill table

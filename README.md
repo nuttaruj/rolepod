@@ -34,7 +34,7 @@ You invoke nothing for this; it just happens. For a deliberate run through every
 2. **Plan — `write-plan`.** Breaks the spec into tasks, assigns agent ownership, writes a cohesion contract before any parallel work.
 3. **Build — `implement-plan`.** Executes the plan test-first with bounded delegation. Bug fixes take the `debug-issue` path: reproduce → failing test → minimal fix.
 4. **Verify — `check-work`.** Proves the change with evidence — tests, build, curl, a screenshot — never just a "done".
-5. **Review — `review-code`.** Multi-axis review, with adversarial pressure on high-risk diffs.
+5. **Review — `review-code`.** One read-only reviewer pass (spec compliance + standards) on every logic diff; adversarial strong pass on high-risk diffs.
 6. **Ship — `finish-work`.** Pre-merge gate, CI lanes, and a 4-option finish menu.
 
 Two skills run across phases: **`simplify-code`** (behavior-preserving cleanup) and **`manage-context`** (recovery when a session is long, stuck, or in an unfamiliar repo).

@@ -88,13 +88,14 @@ Spawn these teammates:
 2. backend-developer (or path-appropriate engineer per write-plan agent routing)
    — owns server-side implementation.
 3. frontend-developer (if UI in scope) — owns client-side implementation.
-4. qa-tester — owns evidence collection, integration tests, reviewer floor.
+4. qa-tester (if the feature has a user-visible surface) — owns E2E / UI / contract tests; each engineer owns the unit tests of its own slice (failing test first at the contract's seam).
 
 Coordination:
 - system-architect writes the cohesion contract FIRST; other teammates read it
   before implementing (no fan-out without a contract — write-plan skill).
-- qa-tester runs after each teammate marks a task complete; blocks promotion
-  to "done" if evidence is missing.
+- After each teammate marks a task complete, one read-only `universal-reviewer`
+  pass (spec + standards) reviews its diff; qa-tester verifies the user-visible
+  flows once they exist. Missing evidence blocks promotion to "done".
 - High-risk surface (auth/billing/migrations/crypto/payments): teammates
   ALSO run the cross-family reviewer (`rolepod-cross-family --kind review
   --brief <brief> --attach <diff>` — first usable different-family CLI from

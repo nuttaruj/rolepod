@@ -201,7 +201,7 @@ Escalates to HARD block at `git commit` time when the session touched high-risk 
 
 ### `block-subagent-commit.sh` — PreToolUse Bash (core)
 
-Sub-agents cannot run `git commit` / `git push` / `gh pr merge` / `gh pr create` / `git reset --hard` / `git push --force`. Lead owns version-control state after qa-tester + universal-reviewer pass.
+Sub-agents cannot run `git commit` / `git push` / `gh pr merge` / `gh pr create` / `git reset --hard` / `git push --force`. Lead owns version-control state after the reviewer pass.
 
 - **Trigger**: `agent_id` field populated (sub-agent call).
 - **Effect**: `permissionDecision: deny` with agent_type in reason.

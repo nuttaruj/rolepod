@@ -61,7 +61,7 @@ which rung was sent, so `make stats` audits apex use after the fact.
 | `mobile-developer` | balanced | Native + cross-platform |
 | `ai-ml-engineer` | balanced | LLM/RAG features in production code |
 | `data-scientist` | balanced | Analytics + pipelines |
-| `qa-tester` | balanced | Test authoring, business-logic verify |
+| `qa-tester` | balanced | E2E / UI / contract test authoring, flake, spec-first test-case design |
 | `performance-engineer` | balanced | Profiling + optimization with measured evidence |
 | `ui-ux-designer` | balanced | Visual polish + a11y |
 | `devops-sre` | balanced | Infra + CI/CD + release |
