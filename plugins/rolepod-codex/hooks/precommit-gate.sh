@@ -84,6 +84,113 @@ xfam_running_job() {
   printf '%s' "$_xr_out"
 }
 
+# Reviewer-dispatch count from phase-log.jsonl rows of one phase value
+# (v2.144.0) — shared by two callers below: the non-Claude Lead path
+# (dispatch-proof rows from Cursor Task / opencode task, v2.134/2.135) and
+# the Claude nested-Agent backstop (below). Same base classification both
+# times: qa-tester is a reviewer but never STRONG (balanced test floor by
+# design); security-engineer / universal-reviewer / code-reviewer are
+# STRONG; a scout or writer-role row never counts (name in neither set).
+#
+# Claude nested-Agent case, precisely (round-1 review corrected the first
+# cut of this comment, which overclaimed): session_state.count_all already
+# discovers ONE level of nesting — a runner subagent's own Agent-tool call
+# to a reviewer is a tool_use recorded in the RUNNER's own transcript file,
+# and that file sits directly under the Lead's <session>/subagents/, which
+# agent_transcripts() walks. Measured gap instead: agent_transcripts() caps
+# at the 60 NEWEST subagent-transcript files in the window
+# (session_state.py AGENT_TRANSCRIPT_CAP) — a session running a large fleet
+# (many tickets, many named dispatches) since the last commit can push a
+# real reviewer dispatch out of that cap, and the transcript scan silently
+# reads 0. phase-log.jsonl is append-only with no such cap, so it backstops
+# exactly that drop (plus any dispatch shape whose transcript never lands
+# under the walked tree). MAX with the transcript scan, never summed.
+#
+# Hardening added after the same review: $4 REQUIRED provenance value
+# ("" = no requirement, preserving the non-Claude path's existing,
+# unchanged behavior) raises a bare `printf >> phase-log.jsonl` forgery to
+# parity with the real writer's own field — not authentication, a
+# determined agent can still add the key, but it closes the casual path
+# the shipped test used to demonstrate. $5 "1" additionally requires a
+# STRONG row's model to NOT be low-class (mirrors session_state.count_all's
+# own LOW_CLASSES refusal — a named sonnet/haiku downgrade of a strong
+# reviewer must not count as the adversarial pass); "" skips the check,
+# preserving the non-Claude path's pre-existing, documented leniency
+# (those rows are hook-reported with unverified provenance and the agent
+# TOMLs pin the strong model anyway). $6 session_state.py path for the
+# model-class lookup (only read when $5 is "1"). Fails CLOSED, not open:
+# when $5 is "1" but the import fails (session_state.py present but
+# broken — the call site already gates on the file existing), no row
+# counts as strong rather than falling back to a permissive default.
+#
+# Accepted, NOT fixed here (out of this file's owned scope — flagged to
+# the caller): phase-log.jsonl is repo-scoped, not session-scoped, same as
+# every other phase-log-based evidence in this file (XREV, external-fail,
+# the pre-existing dispatch-proof path) — a second Claude session sharing
+# this worktree gets the same repo-wide credit. Narrowing this needs a
+# session_id field on the "dispatch" row, written by dispatch-auto-log.sh
+# (not owned by this change).
+#
+# $1 phase value, $2 since-epoch (unix seconds; "" = no window), $3 path.
+# stdout: "<reviewers> <strong>".
+phase_log_reviewer_count() {
+  _pr_phase="$1"; _pr_since="$2"; _pr_path="$3"; _pr_prov="${4:-}"; _pr_strict="${5:-}"; _pr_ss="${6:-}"
+  [ -f "$_pr_path" ] || { printf '0 0\n'; return; }
+  python3 -I -c '
+import json, os, sys, datetime
+phase, since, path, prov, strict, ss_path = (sys.argv + [""] * 6)[1:7]
+cut = None
+if since:
+    try:
+        cut = datetime.datetime.fromtimestamp(int(since), datetime.timezone.utc)
+    except Exception:
+        cut = None
+REVIEWERS = {"qa-tester", "security-engineer", "universal-reviewer", "code-reviewer"}
+STRONG = {"security-engineer", "universal-reviewer", "code-reviewer"}
+model_class = lambda m: "unknown"
+LOW_CLASSES = set()
+ss_ok = False
+if strict == "1" and ss_path:
+    try:
+        sys.path.insert(0, os.path.dirname(ss_path))
+        import session_state as ss
+        model_class = ss.model_class
+        LOW_CLASSES = ss.LOW_CLASSES
+        ss_ok = True
+    except Exception:
+        pass
+r = s = 0
+try:
+    with open(path) as f:
+        for line in f:
+            try:
+                d = json.loads(line)
+                if not isinstance(d, dict):
+                    continue
+                if d.get("phase") != phase:
+                    continue
+                if prov and d.get("provenance") != prov:
+                    continue
+                if cut is not None:
+                    ts = datetime.datetime.fromisoformat((d.get("ts") or "").replace("Z", "+00:00"))
+                    if ts.tzinfo is None or ts < cut:
+                        continue
+                at = d.get("agent_type")
+                name = (at.strip() if isinstance(at, str) else "").rsplit(":", 1)[-1]
+                if name.startswith("rolepod-"):
+                    name = name[len("rolepod-"):]
+                if name in REVIEWERS:
+                    r += 1
+                if name in STRONG and (strict != "1" or (ss_ok and model_class(d.get("model")) not in LOW_CLASSES)):
+                    s += 1
+            except Exception:
+                continue
+except OSError:
+    pass
+print(r, s)
+' "$_pr_phase" "$_pr_since" "$_pr_path" "$_pr_prov" "$_pr_strict" "$_pr_ss" 2>/dev/null || echo "0 0"
+}
+
 INPUT=$(cat 2>/dev/null || echo '{}')
 
 # ONE python3 pass for tool_name + commit token-walk + command (was 3
@@ -375,6 +482,30 @@ if [ -f "$SESSION_STATE" ] && command -v python3 >/dev/null 2>&1; then
   # ONE transcript scan for all four counts (see gate-reminder.sh).
   COUNTS=$(printf '%s' "$INPUT" | python3 "$SESSION_STATE" count-all "$SINCE_EPOCH" 2>/dev/null || echo "0 0 0 0")
   read -r TEST_EDITS HIGH_RISK_EDITS REVIEWERS STRONG_REVIEWERS <<< "$COUNTS"
+  # Nested reviewer dispatch backstop (v2.144.0): count_all's
+  # agent_transcripts() already discovers ONE level of nesting (a runner
+  # subagent's own Agent-tool call to a reviewer is a tool_use IN THE
+  # RUNNER'S OWN transcript file, which sits directly under the Lead's
+  # <session>/subagents/ and gets walked) — but that walk caps at the 60
+  # NEWEST subagent-transcript files in the window
+  # (session_state.AGENT_TRANSCRIPT_CAP), so a session running a large
+  # fleet since the last commit can push a real dispatch out of the cap and
+  # read 0. dispatch-auto-log.sh writes a "dispatch" row to the SAME
+  # phase-log for every Agent/Task/Workflow call in ANY session — an
+  # append-only log with no such cap — so it backstops exactly that drop.
+  # MAX with the transcript scan, never summed — the Lead's own direct
+  # dispatch is visible to both and must not double-count (case: 1 dispatch,
+  # both paths report it → reported count stays 1). Hardened above real
+  # session evidence: only "hook-auto"-provenance rows count (raises a bare
+  # forged line to parity with the real writer's field), and a STRONG row
+  # is dropped to a plain reviewer when its model is a named low-class
+  # downgrade (mirrors count_all's own LOW_CLASSES refusal) — see
+  # phase_log_reviewer_count's header for the full rationale + the
+  # accepted repo-scope (not session-scope) residual.
+  NESTED_PHASE_LOG="$(git rev-parse --show-toplevel 2>/dev/null)/.rolepod/evidence/phase-log.jsonl"
+  read -r NEST_R NEST_S <<< "$(phase_log_reviewer_count dispatch "$SINCE_EPOCH" "$NESTED_PHASE_LOG" "hook-auto" "1" "$SESSION_STATE")"
+  [ "${NEST_R:-0}" -gt "${REVIEWERS:-0}" ] 2>/dev/null && REVIEWERS=$NEST_R
+  [ "${NEST_S:-0}" -gt "${STRONG_REVIEWERS:-0}" ] 2>/dev/null && STRONG_REVIEWERS=$NEST_S
 elif command -v python3 >/dev/null 2>&1; then
   # Renders without lib/session_state.py (codex + the non-Claude adapters):
   # their transcripts are not Claude-JSONL, so reviewer evidence comes from
@@ -386,47 +517,7 @@ elif command -v python3 >/dev/null 2>&1; then
   # provenance (may be the parent's), and the agent TOMLs pin strong
   # reviewers to the strong model anyway.
   PHASE_LOG="$(git rev-parse --show-toplevel 2>/dev/null)/.rolepod/evidence/phase-log.jsonl"
-  if [ -f "$PHASE_LOG" ]; then
-    RCOUNTS=$(python3 -I -c '
-import json, sys, datetime
-since, path = sys.argv[1], sys.argv[2]
-cut = None
-if since:
-    try:
-        cut = datetime.datetime.fromtimestamp(int(since), datetime.timezone.utc)
-    except Exception:
-        cut = None
-REVIEWERS = {"qa-tester", "security-engineer", "universal-reviewer", "code-reviewer"}
-STRONG = {"security-engineer", "universal-reviewer", "code-reviewer"}
-r = s = 0
-try:
-    with open(path) as f:
-        for line in f:
-            try:
-                d = json.loads(line)
-            except Exception:
-                continue
-            if d.get("phase") != "dispatch-proof":
-                continue
-            if cut is not None:
-                try:
-                    if datetime.datetime.fromisoformat(d.get("ts", "")) < cut:
-                        continue
-                except Exception:
-                    continue
-            name = (d.get("agent_type") or "").strip().rsplit(":", 1)[-1]
-            if name.startswith("rolepod-"):
-                name = name[len("rolepod-"):]
-            if name in REVIEWERS:
-                r += 1
-            if name in STRONG:
-                s += 1
-except OSError:
-    pass
-print(r, s)
-' "$SINCE_EPOCH" "$PHASE_LOG" 2>/dev/null || echo "0 0")
-    read -r REVIEWERS STRONG_REVIEWERS <<< "$RCOUNTS"
-  fi
+  read -r REVIEWERS STRONG_REVIEWERS <<< "$(phase_log_reviewer_count dispatch-proof "$SINCE_EPOCH" "$PHASE_LOG")"
 fi
 # Edit ledger (v2.134.0): CLI-neutral edit evidence written at edit time by every
 # CLI's edit hook (hooks/edit-ledger.py). Max with the transcript scan, never summed.

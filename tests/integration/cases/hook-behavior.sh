@@ -946,6 +946,73 @@ out=$(pcl)
 if echo "$out" | grep -q 'Breaker ledger open'; then echo "  ✓ context-loader: open breaker ledger named at session start"; else echo "  ✗ context-loader breaker pointer: ${out:0:200}"; fail=$((fail+1)); fi
 rm -rf "$PC_TMP"
 
+# ── precommit: nested reviewer dispatch counts (v2.144.0) ──────────────────
+# session_state.count_all already discovers ONE level of nesting (a runner
+# subagent's own Agent-tool call to a reviewer is a tool_use in the
+# RUNNER's own transcript, which sits directly under the Lead's
+# subagents/ dir and gets walked) — the real gap is that walk's cap at the
+# 60 newest subagent-transcript files in the window, which a big fleet can
+# exceed. dispatch-auto-log.sh writes a "dispatch" row to the SAME
+# phase-log for every Agent/Task/Workflow call in ANY session, uncapped, so
+# the commit gate reads it as a backstop too — MAX with the transcript
+# scan, never a sum. Hardened: only "hook-auto"-provenance rows count, and
+# a STRONG row with a named low-class model (an explicit downgrade) drops
+# to a plain reviewer, not a strong one.
+NR_TMP=$(mktemp -d)
+nr_ts() { python3 -c "import datetime,sys;print((datetime.datetime.now(datetime.timezone.utc)-datetime.timedelta(minutes=int(sys.argv[1]))).strftime('%Y-%m-%dT%H:%M:%SZ'))" "$1"; }
+( cd "$NR_TMP" && git init -q . && git config user.email t@t && git config user.name t \
+  && mkdir -p auth && printf 'def charge(u):\n    return u.balance - 1\n' > auth/billing.py \
+  && git add auth/billing.py \
+  && GIT_COMMITTER_DATE="$(nr_ts 60)" git commit -q -m init --date="$(nr_ts 60)" \
+  && printf 'def charge(u):\n    return u.balance - 2\n' > auth/billing.py && git add auth/billing.py )
+mkdir -p "$NR_TMP/.rolepod/evidence"
+NR_EMPTY_T="$NR_TMP/empty.jsonl"; : > "$NR_EMPTY_T"
+nr_log() { printf '{"ts":"%s","phase":"dispatch","cli":"claude","tool":"Agent","agent_type":"%s","model":"%s","provenance":"hook-auto"}\n' "$(nr_ts "$1")" "$2" "${3:-opus}" > "$NR_TMP/.rolepod/evidence/phase-log.jsonl"; }
+nr() { # $1 = transcript path
+  printf '{"tool_name":"Bash","transcript_path":%s,"tool_input":{"command":"git commit -m x"}}' \
+    "$(printf '%s' "$1" | python3 -c 'import json,sys; print(json.dumps(sys.stdin.read()))')" \
+    | (cd "$NR_TMP" && HOME="$NR_TMP" bash "$HOOKS/precommit-gate.sh") || true
+}
+nr_log 5 rolepod:security-engineer
+out=$(nr "$NR_EMPTY_T")
+check "precommit: nested phase-log dispatch row for security-engineer, no transcript reviewer → allow" allow "$out"
+echo "$out" | grep -q '1 reviewer dispatches / 1 strong' \
+  && echo "  ✓ nested dispatch row counted (1 reviewer / 1 strong)" \
+  || { echo "  ✗ nested dispatch row not reflected in auto-pass note: ${out:0:200}"; fail=$((fail+1)); }
+
+nr_log 5 rolepod:scout haiku
+out=$(nr "$NR_EMPTY_T")
+check "precommit: nested phase-log row is a scout, not a reviewer → deny" deny "$out"
+
+nr_log 90 rolepod:security-engineer
+out=$(nr "$NR_EMPTY_T")
+check "precommit: nested phase-log row timestamped BEFORE the last commit → deny (windowed)" deny "$out"
+
+nr_log 5 rolepod:security-engineer
+NR_T2="$NR_TMP/t2.jsonl"
+printf '%s\n' '{"type":"tool_use","name":"Task","input":{"subagent_type":"rolepod:security-engineer","prompt":"review"}}' > "$NR_T2"
+out=$(nr "$NR_T2")
+check "precommit: transcript reviewer + phase-log row for the SAME role → allow" allow "$out"
+echo "$out" | grep -q '1 reviewer dispatches / 1 strong' \
+  && echo "  ✓ max, not sum: 1 transcript reviewer + 1 phase-log row → count stays 1" \
+  || { echo "  ✗ transcript + phase-log row double-counted: ${out:0:200}"; fail=$((fail+1)); }
+
+# A named low-model downgrade of a strong reviewer must not clear a
+# high-risk commit through the nested-dispatch backstop (round-1 security
+# finding: the phase-log path re-admitted exactly the downgrade
+# session_state.count_all already refuses).
+printf '{"ts":"%s","phase":"dispatch","cli":"claude","tool":"Agent","agent_type":"rolepod:security-engineer","model":"haiku","provenance":"hook-auto","floor":"missed"}\n' "$(nr_ts 5)" > "$NR_TMP/.rolepod/evidence/phase-log.jsonl"
+out=$(nr "$NR_EMPTY_T")
+check "precommit: nested row is security-engineer but explicit model:haiku (named downgrade) → deny (not strong)" deny "$out"
+
+# A forged row with no provenance field (a bare printf, not the real hook)
+# must not count — the shipped test above used exactly this shape before
+# the provenance requirement was added.
+printf '{"ts":"%s","phase":"dispatch","cli":"claude","tool":"Agent","agent_type":"rolepod:security-engineer","model":"opus"}\n' "$(nr_ts 5)" > "$NR_TMP/.rolepod/evidence/phase-log.jsonl"
+out=$(nr "$NR_EMPTY_T")
+check "precommit: nested row with NO provenance field (bare forgery) → deny" deny "$out"
+rm -rf "$NR_TMP"
+
 # ─── result ───
 if [ "$fail" -eq 0 ]; then
   echo "  ✓ pass"
