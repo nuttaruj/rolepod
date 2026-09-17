@@ -1,40 +1,43 @@
-<!-- Rolepod subagent task brief — fill before delegating. Delete the <hints>. -->
-<!-- The task owner executes ONLY this brief, runs its own ticket loop, and does not commit. -->
+<!-- Rolepod task brief — GENERATED from the plan: `plan-lint.sh --brief <N> <plan> [contract]`. -->
+<!-- Lead adds Read first; the owner executes ONLY this brief, never commits. -->
 
-# Task: <one-line goal>
+# Task <N>: <title>
+Plan: <path> · Spec: <path>
 
 ## Goal
-<What this task delivers — the outcome, in one or two sentences.>
+<the task's Delivers line>
+
+## Blocked by
+<what this task consumes from each blocker>
+
+## Read first
+<2-3 files + the pattern to copy, named by the Lead — start here, never re-survey the repo>
 
 ## Files allowed
-<Exact paths the subagent may edit: the task's slice — every layer it touches, nothing beyond.>
-- `path/to/file`
+- <the task's Files ∪ the contract's ownership slice for this owner>
 
 ## Files forbidden
-<Paths the subagent must NOT EDIT (reading one to check a caller is fine) — shared interfaces, other owners' code,
- anything outside this task.>
+- <other Files-to-touch paths · do-not-touch list · everything else>
 
-## Inputs
-<Spec / plan reference, the relevant constraints, the existing pattern to match.>
+## Change
+<the task's Change bullets, verbatim>
 
 ## Test / evidence
-<The command to run and the assertion that proves the task done.>
-- Command: `<command>`
+<test type + the assertion that proves it>
 
-## Done criteria
-<All true: test passes · lint clean · no scope creep beyond Files allowed.>
+## Command
+`<exact command — copy-paste runnable>`
+
+## Done when
+<pass/fail condition>
 
 ## Write
-<`self`, or `external` — another CLI drafts it (`rolepod-cross-family --kind implement`, pool
- opt-in); the owner still runs the loop.>
-- Write: `self`
+`self` | `external` (another CLI drafts via `rolepod-cross-family --kind implement`; the owner still runs the loop)
 
 ## Reviewers
-<Roles the task owner dispatches on its diff in ONE message — `qa-tester` + `universal-reviewer`,
- or the concern-matched row; `none` only for a docs-only diff.>
-- Reviewers: `qa-tester`, `universal-reviewer`
+`qa-tester`, `universal-reviewer` (+ `security-engineer` on a high-risk path) — `none` only for a docs-only diff
 
 ## Bounds
-- Max tool calls: <e.g. 12>
-- Do NOT commit — return a decision brief (diff stat, Command tail, reviewer verdicts + report paths, residuals); the Lead commits.
-- New idea mid-task → write it down, finish this task, do not expand scope.
+- Edit only Files allowed; never commit or push — leave the tree staged.
+- Ticket loop per agent-protocol: Command → Reviewers in ONE message → fix → round 2 = the flagging reviewer only (max 2) → decision brief.
+- Read the brief, not the plan; open a source only for a named residual. A new idea → Follow-ups, never scope.

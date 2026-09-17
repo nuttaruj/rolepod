@@ -31,6 +31,7 @@
       plan's order — nothing restates it in prose; an edge naming nothing is a
       convenience edge: drop it.>
 - [ ] **Files:** <paths this task touches>
+- **Read first:** <2-3 files + the pattern to copy; the owner starts here, never re-surveys>
 - [ ] **Change:** <what to do, concretely — at most 3 bullets. An exact-string
       edit spec (old → new) goes in a fenced block under this task, never
       inline in the bullet.>

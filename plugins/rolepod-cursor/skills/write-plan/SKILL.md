@@ -77,7 +77,7 @@ Tracks can also run as SEPARATE CLI sessions (cross-CLI wall-clock parallelism) 
 
 ### 6. Route to agents
 
-Per task, the best specialist when one fits; the Lead executes the rest. Brief = task + files + tests + done criteria + handoff partner.
+Per task, the Owner-map role; the Lead only for R1/R2. The brief is generated from the task block (`plan-lint.sh --brief <N> <plan> [contract]`), so the block must carry everything the owner needs — plus **Read first:** the 2-3 files and the pattern to copy, named by the Lead who read them while planning; the owner starts there and never re-surveys the repo.
 
 ### 7. Self-review the plan
 
