@@ -113,7 +113,7 @@ Pick the lowest level the request calls for.
   subagent docs, AGENTS.md and skill directives ARE a sanctioned spawn
   channel: when a phase skill's routing section names a specialist, the
   Lead delegates to it directly, without waiting for the user to ask.
-  Direct user requests ("spawn qa-tester to verify") work too; `/agent`
+  Direct user requests ("spawn universal-reviewer on this diff") work too; `/agent`
   switches between active threads, it is not the invoke command. Spawn
   precedence per docs: explicit spawn value → agent file → session config.
   Each agent file is self-contained — it carries its own agent protocol.

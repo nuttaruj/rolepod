@@ -82,12 +82,8 @@ Code-intel index via Gemini MCP config when available. Otherwise plain `git` + `
 ## Before ship — STOP
 
 - Run the S/T/F gates (in the phase skills) manually before commit (evidence required)
-- High-risk (auth/billing/migrations) → `/rolepod-full` first, then external reviewer:
-  - Codex installed: `codex exec --prompt "review this diff..."`
-  - Claude installed: `claude -p "review this diff for correctness"`
-  - Otherwise: Lead self-reviews adversarially
-
-Reviewer gap: Gemini's native peer-review channel limited. Self-review carries more weight than on Claude / Codex.
+- Every logic diff → one read-only review on two axes (spec compliance, standards); high-risk (auth/billing/migrations) → `/rolepod-full` first, then an external reviewer: `rolepod-cross-family --kind review` (pool enabled), else `claude -p` / `codex exec` with the same two axes.
+- Gemini spawns no reviewer: no other CLI → self-review on the two axes and say so in the evidence.
 
 {{INCLUDE: core/fragments/hard-stops.md}}
 
