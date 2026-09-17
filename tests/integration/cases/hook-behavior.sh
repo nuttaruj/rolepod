@@ -86,6 +86,19 @@ out=$(payload_subagent 'cat <<EOF | bash
 git commit -m x
 EOF' | bash "$HOOKS/block-subagent-commit.sh")
 check "subagent heredoc piped into bash with a commit → deny" deny "$out"
+out=$(payload_subagent 'cat <<EOF | xargs -0 bash -c
+git commit -m x
+EOF' | bash "$HOOKS/block-subagent-commit.sh")
+check "subagent heredoc piped through xargs into bash → deny (any shell on the line owns it)" deny "$out"
+SL_TMP=$(mktemp -d); mkdir -p "$SL_TMP/repo" && git -C "$SL_TMP/repo" init -q && mkdir -p "$SL_TMP/.rolepod/session-locks/deadbeefdeadbeef" "$SL_TMP/.rolepod/session-locks/cafebabecafebabe"
+touch -t 202601010000 "$SL_TMP/.rolepod/session-locks/deadbeefdeadbeef/auto-1.lock" "$SL_TMP/.rolepod/session-locks/deadbeefdeadbeef/auto-1.files"
+touch "$SL_TMP/.rolepod/session-locks/cafebabecafebabe/fresh.lock"; touch -t 202601010000 "$SL_TMP/.rolepod/session-locks/cafebabecafebabe/fresh.files"
+printf '{"session_id":"sl1","cwd":"%s"}' "$SL_TMP/repo" | (cd "$SL_TMP/repo" && HOME="$SL_TMP" bash "$HOOKS/session-lifecycle.sh") >/dev/null 2>&1 || true
+[ ! -d "$SL_TMP/.rolepod/session-locks/deadbeefdeadbeef" ] && [ -f "$SL_TMP/.rolepod/session-locks/cafebabecafebabe/fresh.lock" ] && [ -f "$SL_TMP/.rolepod/session-locks/cafebabecafebabe/fresh.files" ] \
+  && echo "  ✓ session-lifecycle sweeps a stale lock dir (lock + registry) and keeps a fresh lock with its old registry" \
+  || { echo "  ✗ session-lifecycle sweep: stale=$(ls "$SL_TMP/.rolepod/session-locks/deadbeefdeadbeef" 2>&1 | head -1) fresh=$(ls "$SL_TMP/.rolepod/session-locks/cafebabecafebabe" 2>&1 | head -1)"; fail=$((fail+1)); }
+rm -rf "$SL_TMP"
+
 # Lead (no agent_id) is never blocked
 out=$(printf '{"tool_name":"Bash","tool_input":{"command":"git commit -m x"}}' | bash "$HOOKS/block-subagent-commit.sh")
 check "Lead git commit → allow (hook targets subagents only)" allow "$out"
@@ -141,6 +154,18 @@ out=$(payload_subagent 'cat > note.md <<EOF
 the git commit step is the Lead
 EOF' | bash "$HOOKS/block-subagent-commit.sh")
 check "subagent heredoc mentioning git commit mid-line → allow (head is cat)" allow "$out"
+for c in 'sudo -n git commit -m x' 'sudo -k git commit -m x' 'sudo -S git commit -m x' 'sudo -s bash -c "git commit -m x"' 'nice -n 10 git commit -m x' 'timeout -k 5 -s KILL 300 git push'; do
+  out=$(payload_subagent "$c" | bash "$HOOKS/block-subagent-commit.sh")
+  check "subagent wrapper boolean/value flags before a commit: $c → deny" deny "$out"
+done
+out=$(bsc_ti Bash '{"command":"sudo -n make test-static"}')
+check "subagent sudo -n (boolean) make test → deny (no token swallowed)" deny "$out"
+out=$(bsc_ti Bash '{"command":"timeout -k 5 300 make test-static"}')
+check "subagent timeout -k <dur> <dur> make test → deny" deny "$out"
+out=$(bsc_ti Bash '{"command":"sudo -u deploy make test-static"}')
+check "subagent sudo -u <user> make test → deny (value-taking wrapper flag skipped)" deny "$out"
+out=$(bsc_ti Bash '{"command":"timeout 5m make test-integration"}')
+check "subagent timeout 5m make test → deny (duration skipped)" deny "$out"
 out=$(bsc_ti shell '{"command":"make test-static"}')
 check "Codex tool name (no timeout field exists) → allow" allow "$out"
 out=$(printf '{"tool_name":"Bash","tool_input":{"command":"make test-static","run_in_background":true}}' | bash "$HOOKS/block-subagent-commit.sh")

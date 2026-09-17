@@ -128,7 +128,10 @@ if [ "${1:-}" = "--brief" ]; then
       m = $0
       while (match(m, /`[^`]+`/)) {
         p = substr(m, RSTART + 1, RLENGTH - 2)
-        if (!(p in touchseen)) { touchseen[p] = 1; touchorder[++tn] = p }
+        # a path has a slash, an extension, or is a capitalised bare file
+        # (Makefile, README); a backticked flag / symbol on the same line
+        # (`--all`, `PHASE=x`) is commentary, never a forbidden path
+        if ((p ~ /\// || p ~ /\.[A-Za-z][A-Za-z0-9]*$/ || p ~ /^[A-Z][A-Za-z0-9_-]*$/) && !(p in touchseen)) { touchseen[p] = 1; touchorder[++tn] = p }
         m = substr(m, RSTART + RLENGTH)
       }
       next
@@ -175,17 +178,19 @@ if [ "${1:-}" = "--brief" ]; then
       # itself a new bullet — otherwise an unrecognized bullet (a field this
       # script does not track, or a typo) silently glues onto the last known
       # field instead of being dropped.
-      if (!isf && field != "" && trim(line) != "" && trim(line) !~ /^[-*][[:space:]]/) {
-        cont = line
-        if (field == "D") D = D "\n" cont
-        else if (field == "B") B = B "\n" cont
-        else if (field == "R") R = R "\n" cont
-        else if (field == "F") Fr = Fr "\n" cont
-        else if (field == "C") Ch = Ch "\n" cont
-        else if (field == "T") Te = Te "\n" cont
-        else if (field == "Cmd") Cmd = Cmd "\n" cont
-        else if (field == "O") Ow = Ow "\n" cont
-        else if (field == "DW") DW = DW "\n" cont
+      # An INDENTED bullet is a sub-item of the current field (the template
+      # allows a Change block of up to 3 bullets); only an unindented one is new.
+      if (!isf && field != "" && trim(line) != "" && line !~ /^[-*][[:space:]]/) {
+        cont = trim(line)
+        if (field == "D") D = (D == "" ? cont : D "\n" cont)
+        else if (field == "B") B = (B == "" ? cont : B "\n" cont)
+        else if (field == "R") R = (R == "" ? cont : R "\n" cont)
+        else if (field == "F") Fr = (Fr == "" ? cont : Fr "\n" cont)
+        else if (field == "C") Ch = (Ch == "" ? cont : Ch "\n" cont)
+        else if (field == "T") Te = (Te == "" ? cont : Te "\n" cont)
+        else if (field == "Cmd") Cmd = (Cmd == "" ? cont : Cmd "\n" cont)
+        else if (field == "O") Ow = (Ow == "" ? cont : Ow "\n" cont)
+        else if (field == "DW") DW = (DW == "" ? cont : DW "\n" cont)
       }
       next
     }

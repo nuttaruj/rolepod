@@ -964,6 +964,65 @@ printf '%s\n' "$OUT" | grep -q '^## Worktree' \
   && echo "  ✓ --brief prints a task-named worktree command" \
   || { echo "  ✗ --brief Worktree line missing or malformed"; fail=$((fail+1)); }
 
+# ── --brief: an indented Change sub-bullet is the Change; a backticked flag on a Files-to-touch line is not a path ──
+BF=$(mktemp -d)
+cat > "$BF/plan.md" <<'PLAN'
+# Brief Fields Plan
+
+**Goal:** g
+**Architecture:** a
+**Stack:** s
+
+## Source spec
+`docs/spec.md`
+
+## Files to touch
+- `src/a.sh` — flips `FLAG=1` and drops `--all`
+- `src/b.sh` — the other owner
+- `Makefile` — a bare capitalised file is a path too; bumps `v2.147.0`
+
+## Tasks
+
+### Task 1: first
+- **Delivers:** d
+- **Blocked by:** none
+- [ ] **Files:** `src/a.sh`
+- **Read first:** `src/a.sh`
+- [ ] **Change:**
+  - first sub-bullet of the change
+  - second sub-bullet
+- [ ] **Test / evidence:** t
+- [ ] **Command:** `make test`
+- **Owner:** Lead
+- **Done when:** done
+
+### Task 2: second
+- **Delivers:** d
+- **Blocked by:** none
+- [ ] **Files:** `src/b.sh`
+- [ ] **Change:** c
+- [ ] **Test / evidence:** t
+- [ ] **Command:** `make test`
+- **Owner:** Lead
+- **Done when:** done
+
+## Parallel layout
+Sequential — single owner.
+
+## Failure policy
+Default: a failing **Command** → debug-issue.
+PLAN
+OUT=$(cd "$BF" && bash "$LINT" --brief 1 plan.md 2>/dev/null)
+CH=$(printf '%s\n' "$OUT" | awk '/^## Change/{f=1;next} /^## /{f=0} f')
+printf '%s' "$CH" | grep -q 'first sub-bullet' && printf '%s' "$CH" | grep -q 'second sub-bullet' && ! printf '%s' "$CH" | grep -q 'not in plan' \
+  && echo "  ✓ --brief Change carries the indented sub-bullets (was: not in plan)" \
+  || { echo "  ✗ --brief Change from sub-bullets: $CH"; fail=$((fail+1)); }
+FB=$(printf '%s\n' "$OUT" | awk '/^## Files forbidden/{f=1;next} /^## /{f=0} f')
+printf '%s' "$FB" | grep -q 'src/b.sh' && printf '%s' "$FB" | grep -q '^- Makefile$' && ! printf '%s' "$FB" | grep -q 'v2.147.0' && ! printf '%s' "$FB" | grep -q 'FLAG=1' && ! printf '%s' "$FB" | grep -q -- '--all' \
+  && echo "  ✓ --brief Files forbidden lists paths only (a backticked flag on the line is commentary)" \
+  || { echo "  ✗ --brief Files forbidden: $FB"; fail=$((fail+1)); }
+rm -rf "$BF"
+
 if [ "$fail" -eq 0 ]; then
   echo "  ✓ pass"
   exit 0

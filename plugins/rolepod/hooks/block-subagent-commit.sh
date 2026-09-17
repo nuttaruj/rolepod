@@ -46,7 +46,11 @@ def toks_of(s):
     except ValueError:
         return s.split()
 
-PREFIX = {'time', 'env', 'nice', 'sudo', 'rtk', 'proxy', 'caffeinate', 'command', 'exec', 'nohup'}
+PREFIX = {'time', 'env', 'nice', 'sudo', 'rtk', 'proxy', 'caffeinate', 'command', 'exec', 'nohup', 'timeout'}
+# per wrapper: the flags that take the NEXT token as their value (sudo -n / -k / -s are booleans)
+WRAPPER_VALUE = {'sudo': {'-u', '-g', '-C', '-p', '-h', '-r', '-t', '-U', '-D'}, 'nice': {'-n'},
+                 'env': {'-u', '-C', '-S'}, 'timeout': {'-k', '-s'}, 'nohup': set(), 'caffeinate': {'-t', '-w'}}
+DURATION = re.compile(r'^[0-9]+(\.[0-9]+)?[smhd]?$')          # 300 / 5m / 1.5h after timeout / nice -n
 SHELLS = {'bash', 'sh', 'zsh', 'dash', 'ksh'}
 GIT_VALUE_OPTS = {'-C', '--git-dir', '--work-tree', '--namespace', '--exec-path'}
 RUNNER = {'rolepod-cross-family', 'cross-family.sh'}
@@ -63,8 +67,7 @@ def owner_is_shell(text, start):
     line = text[ls:(le if le >= 0 else len(text))]
     line = re.sub(r'<<-?\s*[^\s\w]?\w+[^\s\w]?', ' ', line, count=1)
     for part in re.split(r'\s*(?:\||&&|;)\s*', line):
-        t = head(toks_of(part))
-        if t and os.path.basename(t[0]) in SHELLS:
+        if any(os.path.basename(x) in SHELLS for x in head(toks_of(part))):
             return True
     return False
 
@@ -78,8 +81,16 @@ def segments(text):
     return re.split(r'\s*(?:&&|\|\||;|\||\n)\s*', text)
 
 def head(t):
-    while t and (t[0] in PREFIX or t[0].startswith('-') or t[0].isdigit() or ASSIGN.match(t[0])):
-        t = t[1:]
+    w = ''
+    while t:
+        if t[0] in PREFIX:
+            w = t[0]; t = t[1:]
+        elif t[0].startswith('-'):
+            t = t[2:] if (t[0] in WRAPPER_VALUE.get(w, set()) and len(t) > 1) else t[1:]
+        elif DURATION.match(t[0]) or ASSIGN.match(t[0]):
+            t = t[1:]
+        else:
+            break
     return t
 
 def walk(text, rule, every, depth=0):

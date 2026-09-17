@@ -140,9 +140,22 @@ if dispatches:
         for (tool, model), n in sorted(combo.items()):
             print(f"    {tool:<10} {model:<28} ×{n}")
         inh = [d for d in auto if (d.get("model") or "inherit") == "inherit"]
+        # no model on the call: a rolepod role still runs its frontmatter model
+        # (measured 2026-09-17: 0 fable subagents under a fable Lead); only a
+        # generic agent type truly inherits the Lead's model
+        ROLEPOD_ROLES = {"ai-ml-engineer", "backend-developer", "billing-engineer", "content-strategist",
+                         "data-scientist", "devops-sre", "frontend-developer", "mobile-developer",
+                         "performance-engineer", "qa-tester", "scout", "security-engineer",
+                         "system-architect", "ui-ux-designer", "universal-reviewer"}
+        def generic(d):   # anything that is not a shipped role has no frontmatter model
+            return (d.get("agent_type") or "").rsplit(":", 1)[-1] not in ROLEPOD_ROLES
+        role_pinned = sum(1 for d in inh if not generic(d))
+        if role_pinned:
+            print(f"    · {role_pinned} with no model on the call ran the role's frontmatter model (see Model proof)")
+        inh = [d for d in inh if generic(d)]
         if inh:
             low = sum(1 for d in inh if d.get("lead_class") in ("cheap", "balanced"))
-            print(f"    ⚠ {len(inh)} inherited the Lead's model — tier-per-stage "
+            print(f"    ⚠ {len(inh)} generic dispatch(es) inherited the Lead's model — tier-per-stage "
                   "wants an explicit per-stage choice or a stated reason")
             if low:
                 print(f"      {low} of them under a cheap/balanced Lead — the fleet ran "

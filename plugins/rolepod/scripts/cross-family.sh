@@ -1009,12 +1009,7 @@ EOF
   [ -n "$ALLOW_LIST" ] || { echo "cross-family: --kind implement needs --allow <path> (repeatable: \`dir/\` = that directory and everything below, a bare name = that one file) — the runner reverts every edit outside the list" >&2; exit 2; }
 fi
 [ -n "$BRIEF" ] && [ -f "$BRIEF" ] || { echo "cross-family: --brief <file> required (write the cold-context brief to a file first)" >&2; exit 2; }
-case "$KIND" in
-  review) PHASE=review ;;
-  consult) PHASE=consult ;;
-  critique) PHASE=critique ;;
-  implement) PHASE=implement ;;
-esac
+PHASE="$KIND"   # validated above; the phase-log row carries the kind as its phase
 
 # A live job on this tree is refused BEFORE the pool is judged: "the only member built this ticket" (exit 4) must not mask "a job is still running" (exit 8)
 if { [ "$KIND" = "review" ] || [ "$KIND" = "implement" ]; } && [ -z "$JOB_DIR" ] && [ -d "$JOBS" ]; then

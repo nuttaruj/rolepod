@@ -103,6 +103,15 @@ for lock in "$LOCK_DIR"/*.lock; do
   fi
 done
 
+# Sweep the other worktrees' dirs too: their locks are only pruned on
+# contact, so a test fixture or a deleted worktree leaves them forever
+# (measured: 109 dirs / 412 files). Stale = the same 30 min, locks only.
+find "$(dirname "$LOCK_DIR")" -mindepth 2 -maxdepth 2 -name '*.lock' -mmin +30 -delete 2>/dev/null || true
+# a .files registry ages differently (worktree-guard appends only on a first touch):
+# delete it only once its own .lock is gone, never on its own mtime
+for _f in "$(dirname "$LOCK_DIR")"/*/*.files; do [ -f "$_f" ] && [ ! -f "${_f%.files}.lock" ] && rm -f "$_f" 2>/dev/null; done; true
+find "$(dirname "$LOCK_DIR")" -mindepth 1 -maxdepth 1 -type d -empty ! -path "$LOCK_DIR" -delete 2>/dev/null || true
+
 # Write our lock (touch updates mtime on each SessionStart resume).
 touch "$LOCK_DIR/$SESSION_ID.lock" 2>/dev/null || true
 

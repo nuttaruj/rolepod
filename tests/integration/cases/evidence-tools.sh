@@ -42,6 +42,7 @@ cat > "$FIX/repo/.rolepod/evidence/phase-log.jsonl" <<'EOF'
 {"ts":"2026-07-31T02:10:20Z","phase":"dispatch","cli":"claude","tool":"Agent","provenance":"hook-auto","agent_type":"rolepod:devops-sre","model":"inherit","override":"none"}
 {"ts":"2026-07-31T02:10:40Z","phase":"dispatch","cli":"claude","tool":"Agent","provenance":"hook-auto","agent_type":"rolepod:content-strategist","model":"inherit","override":"none"}
 {"ts":"2026-07-31T02:30:00Z","phase":"dispatch","cli":"claude","tool":"Agent","provenance":"hook-auto","agent_type":"rolepod:backend-developer","model":"inherit","override":"none"}
+{"ts":"2026-07-31T02:31:00Z","phase":"dispatch","cli":"claude","tool":"Agent","provenance":"hook-auto","agent_type":"general-purpose","model":"inherit","override":"none"}
 {"ts":"2026-07-31T01:59:00Z","phase":"dispatch","cli":"claude","tool":"Agent","provenance":"hook-auto","agent_type":"rolepod:security-engineer","model":"sonnet","override":"sonnet","lead_class":"balanced"}
 not json — must be skipped, not crash
 EOF
@@ -72,9 +73,10 @@ printf '{"agent_type":"qa","model":"m1"}' > "$FIX/subagent-stop.json"
 check "codex model-log hook is fail-open outside a repo" \
   "cd /tmp && bash '$REPO_DIR/adapters/codex/plugins/rolepod/hooks/subagent-model-log.sh' < '$FIX/subagent-stop.json'"
 check "stats names an explicit low pin on a strong role as the silent downgrade (v2.104)"  "printf '%s' \"\$OUT\" | grep -q 'explicit cheap/balanced pin on a strong dispatch is the silent downgrade'"
-check "stats reports hook-auto dispatch intent" "printf '%s' \"\$OUT\" | grep -q 'Dispatch intent — hook-auto (7'"
+check "stats reports hook-auto dispatch intent" "printf '%s' \"\$OUT\" | grep -q 'Dispatch intent — hook-auto (8'"
 check "stats reports task-owner waves (widths + partnered share)" "printf '%s' \"\$OUT\" | grep -q 'Task-owner waves (4 task dispatches, 2 waves' && printf '%s' \"\$OUT\" | grep -q 'widths: 3, 1 · with a parallel partner: 3/4 (75%)'"
-check "stats flags hook-auto inherit"     "printf '%s' \"\$OUT\" | grep -q 'inherited the Lead'"
+check "stats: a rolepod role with no model on the call ran its frontmatter model (not the Lead's)" "printf '%s' \"\$OUT\" | grep -q 'with no model on the call ran the role'"
+check "stats flags ONLY a generic agent type as inheriting the Lead's model" "printf '%s' \"\$OUT\" | grep -q '1 generic dispatch(es) inherited the Lead'"
 check "stats survives malformed lines"    "HOME='$FIX' bash '$REPO_DIR/scripts/stats.sh' '$FIX/repo'"
 check "stats fleet cost (v2.108): per fleet per model from subagent transcripts — tokens per model per line (mid-file model switch), nested sub-spawn stays in its workflow, Agent-tool bucket, totals" \
   "printf '%s' \"\$OUT\" | grep -q 'Fleet cost — subagent transcripts (last 14d, 2 fleet(s), 5 agents)' && printf '%s' \"\$OUT\" | grep -q 'wf_fixture1 .* opus 3 (out 3k, cache-read 4M) · haiku 2 (out 1k, cache-read 300k)' && printf '%s' \"\$OUT\" | grep -q 'agent-tool .* sonnet 1 (out 0k, cache-read 400k)' && printf '%s' \"\$OUT\" | grep -q 'total: opus 3 · haiku 2 · sonnet 1'"
@@ -127,7 +129,7 @@ check "tier nudge silent on rolepod:scout (frontmatter-pinned cheap — was a fa
 check "tier nudge honors ROLEPOD_NUDGE_OFF" \
   "[ -z \"\$(ROLEPOD_NUDGE_OFF=1 bash '$REPO_DIR/hooks/workflow-tier-nudge.sh' < '$FIX/wf-inherit.json')\" ]"
 check "dispatch auto-log appends a hook-auto line" \
-  "cd '$FIX/repo' && bash '$REPO_DIR/hooks/dispatch-auto-log.sh' < '$FIX/agent-scout.json' && grep -c 'hook-auto' .rolepod/evidence/phase-log.jsonl | grep -q 8"
+  "cd '$FIX/repo' && bash '$REPO_DIR/hooks/dispatch-auto-log.sh' < '$FIX/agent-scout.json' && grep -c 'hook-auto' .rolepod/evidence/phase-log.jsonl | grep -q 9"
 check "dispatch auto-log is fail-open outside a repo" \
   "cd /tmp && bash '$REPO_DIR/hooks/dispatch-auto-log.sh' < '$FIX/agent-scout.json'"
 
