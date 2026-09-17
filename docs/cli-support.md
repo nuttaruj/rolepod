@@ -196,9 +196,10 @@ rolepod-cross-family --kind critique --brief spec-draft.md          # write-spec
 
 **Opt-in, off by default.** Pool = `.rolepod/cross-family` (project) →
 `~/.rolepod/cross-family` (machine): `[reviewer]` with `review = …` (the default order) and optional `consult = / advise = / critique = …`, `[implement]` with `cli = …`; **no file = off,
-`none` = off** (exit 5, nothing logged). The SessionStart context asks the
-user once (installed candidates: `rolepod-cross-family --candidates`) and
-the answer is written to the file; rolepod never enables it unasked. List
+`none` = off** (exit 5, nothing logged). Nothing asks unprompted: when the
+user asks to set it up, `rolepod-cross-family --setup` prints the installed
+candidates and the two questions (review order; implement `same` / `none` /
+an order) and `--setup review="…" implement=…` writes the file. List
 every CLI you use, the Lead's own included — it is skipped at run time, so
 one file serves every Lead. **Installed ≠ usable** is proven at invoke: exit ≠ 0, timeout
 (a member is killed when it goes SILENT — no new output for `stall` seconds: `--stall` > `stall=` in the config > 600 — not when it is slow; the wall-clock cap is runaway insurance only: `--timeout` > `timeout=` > kind default, review 7200 s detached / 600 s foreground, consult 300, advise 900, critique 600 (v2.129.0; measured: codex reviews run 15-29 min and stream the whole way); the prompt carries a ≤30-min planning budget; `--detach` runs the chain as a job so the 600 s harness cap never kills a slow member),

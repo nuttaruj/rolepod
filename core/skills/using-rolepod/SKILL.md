@@ -32,7 +32,10 @@ Default: route through the spine. Skip only when (a) trivial-answer-only, (b) th
 
 **Force-full** — triggers, message opens with: `/rolepod-full <task>` · `$rolepod-full <task>` (Codex) · `force full lifecycle` / `run full rolepod lifecycle` · `rolepod mode: full lifecycle` (exact). The `rolepod-full` skill is the explicit entrypoint. Bare `/rolepod`, `rolepod mode`, `run all phases`, `no skip` are NOT force-full triggers — they auto-route.
 
-Force-full runs all six phases in order, even for a one-line fix, with external adversarial reviewers when configured, and skips nothing unless the user later overrides. Phase detail, backend table, start banner, careful-mode rigor: `references/force-full-lifecycle.md` — load on entering this mode.
+Force-full runs all six phases in order, even for a one-line fix, with external adversarial reviewers when configured, and skips nothing unless the user later overrides.
+
+**Cross-family setup — on request only.** The user asks to set up / enable / change cross-family (any wording, any language) → run `rolepod-cross-family --setup` (it prints the installed CLIs and the two questions), ask ONE question per turn — (1) which CLIs review, in order; (2) implement: `same`, `none`, or its own order.
+Then write it with `rolepod-cross-family --setup review="…" implement=…` and show `--pool`. Never raise it unprompted; one installed CLI = nothing to set, say so. Phase detail, backend table, start banner, careful-mode rigor: `references/force-full-lifecycle.md` — load on entering this mode.
 
 ## Boundary
 

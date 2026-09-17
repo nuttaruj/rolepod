@@ -399,12 +399,13 @@ into 40 files. A diff attachment past ~15 files / ~800 changed lines gets
 a capacity notice: split by concern before the pass.
 
 Names: `codex` `claude` `agy` `cursor` `opencode` (the standalone Gemini
-CLI is retired — a `gemini` line is skipped with a note). **Ask once:** the
+CLI is retired — a `gemini` line is skipped with a note). **Never asked unprompted (v2.142.0):** the
 SessionStart loader (`project-context-loader.sh` on Claude + Codex, the
-gemini/agy `session-start.sh`) sees no file, no `~/.rolepod/cross-family.asked`
-marker and at least one other CLI installed → tells the Lead to ask
-the user this session (candidates from `rolepod-cross-family --candidates`)
-and record the answer — ALL the names they want (the Lead's own CLI
+gemini/agy `session-start.sh`) sees no file and a second CLI installed →
+ONE silent context line naming `rolepod-cross-family --setup`. When the user
+asks to set it up, the Lead runs `--setup` (candidates + the two questions),
+asks review order then implement (`same` / `none` / an order), and writes the
+file with `--setup review="…" implement=…` — ALL the names they want (the Lead's own CLI
 included: it is skipped at run time, so one file serves every Lead), or
 `none` — then drops the marker so it never nags. Rolepod never enables it unasked. Only the Lead's own CLI is
 excluded; the model family is recorded for information (`agy` = google;

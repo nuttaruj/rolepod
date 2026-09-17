@@ -17,8 +17,8 @@
 # Rules it encodes:
 #   pool     OPT-IN. <git-root>/.rolepod/cross-family (project) overrides
 #            ~/.rolepod/cross-family (machine). NO file = OFF, `none` = OFF —
-#            rolepod never enables cross-family on its own: the SessionStart
-#            loader asks the user ONCE, the answer is written to the file.
+#            rolepod never enables cross-family on its own and never asks
+#            unprompted: the user asks for it → `--setup` (guided, two questions).
 #            Format (v2.141.0) — two sections, members in preference order,
 #            options after a name; a missing key falls back to `review`:
 #                [reviewer]
@@ -101,13 +101,14 @@
 #   cross-family.sh --pool [--lead <cli>] [--kind <k>]    # usable pool, no network
 #   env ROLEPOD_EDIT_LEDGER=<path>   # implement: override where hooks/edit-ledger.py is found (default: next to this runner, then ~/.rolepod/bin)
 #   cross-family.sh --pool-names [--lead <cli>]           # names only (hooks use this)
+#   cross-family.sh --setup [review="<order>" implement=<same|none|"<order>">]   # guided pool setup on request; no values = the questions + candidates
 #   cross-family.sh --probe [--lead <cli>]                # live "reply OK" per member
 #   cross-family.sh --candidates                          # every installed CLI, the Lead's own included (opt-in question)
 # Exit: 0 ok · 2 usage · 3 every member failed · 4 configured pool empty · 5 off · 6 job still running · 7 partial slice refused · 8 a job is live · 9 round breaker · 21 implement done, edits outside --allow reverted (in-scope work kept) · 22 implement member moved git state (refs + tree restored, nothing kept)
 set -uo pipefail
 
 KIND=""; BRIEF=""; LEAD="${ROLEPOD_LEAD_CLI:-}"; ALL=0; FLAG_TIMEOUT="${ROLEPOD_XFAM_TIMEOUT:-}"; FLAG_STALL="${ROLEPOD_XFAM_STALL:-}"
-MODE="run"; ATTACH=""; ALLOW=""; ALLOW_RISKY=0; DETACH=0; JOB_DIR=""; COLLECT_ID=""; ROOT_FLAG=""; CFG_FLAG=""; PARTIAL_OK=0; SINCE_ID=""; KILL_ID=""; LEDGER=""; ROUND_NOTE=""
+MODE="run"; ATTACH=""; ALLOW=""; ALLOW_RISKY=0; SETUP_REVIEW=""; SETUP_IMPL=""; DETACH=0; JOB_DIR=""; COLLECT_ID=""; ROOT_FLAG=""; CFG_FLAG=""; PARTIAL_OK=0; SINCE_ID=""; KILL_ID=""; LEDGER=""; ROUND_NOTE=""
 while [ $# -gt 0 ]; do
   case "$1" in
     --kind) KIND="${2:-}"; shift 2 ;;
@@ -136,6 +137,8 @@ while [ $# -gt 0 ]; do
     --pool-names) MODE="pool-names"; shift ;;
     --probe) MODE="probe"; shift ;;
     --candidates) MODE="candidates"; shift ;;
+    --setup) MODE="setup"; shift ;;                  # guided pool setup: no values = print the questions + candidates; review=… [implement=same|none|…] = write the file
+    review=*|implement=*) [ "$MODE" = "setup" ] || { echo "cross-family: $1 belongs to --setup" >&2; exit 2; }; case "$1" in review=*) SETUP_REVIEW="${1#review=}" ;; *) SETUP_IMPL="${1#implement=}" ;; esac; shift ;;
     -h|--help) sed -n '2,60p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
     *) echo "cross-family: unknown argument: $1" >&2; exit 2 ;;
   esac
@@ -433,6 +436,36 @@ for cli in $ALL_CLIS; do
   CANDIDATES="$CANDIDATES${CANDIDATES:+ }$cli($fam)"
 done
 if [ "$MODE" = "candidates" ]; then printf '%s\n' $CANDIDATES; exit 0; fi
+if [ "$MODE" = "setup" ]; then   # ── guided setup, ON REQUEST only (nothing ever asks unprompted; a one-CLI machine has nothing to set) ──
+  _inst=""; for _cn in $CANDIDATES; do _inst="$_inst${_inst:+ }${_cn%%(*}"; done
+  _n=$(printf '%s' "$_inst" | wc -w | tr -d ' ')
+  if [ -z "$SETUP_REVIEW" ]; then
+    echo "cross-family setup — installed CLIs (the Lead's own is skipped at run time, so list every one you want): $CANDIDATES"
+    if [ "${_n:-0}" -le 1 ]; then echo "only one CLI installed — nothing to set up (cross-family needs a second CLI); install another and run --setup again"; exit 0; fi
+    echo "Ask the user ONE question at a time, then write:"
+    echo "  1. review — which CLIs review (adversarial review / consult / critique), in preference order? e.g. cursor agy codex"
+    echo "  2. implement — let a different CLI BUILD a ticket (--kind implement)? same (= the review order) · none · or its own order"
+    echo "  then: rolepod-cross-family --setup review=\"<order>\" implement=<same|none|\"<order>\">   (writes ~/.rolepod/cross-family, keeps a backup)"
+    echo "  current file: $( [ -f "$HOME/.rolepod/cross-family" ] && echo "$HOME/.rolepod/cross-family" || echo none )"; exit 0
+  fi
+  _rv=$(printf '%s' "$SETUP_REVIEW" | tr 'A-Z' 'a-z' | tr -s ',[:space:]' ' ' | sed -e 's/^ //' -e 's/ $//')
+  _im=$(printf '%s' "${SETUP_IMPL:-same}" | tr 'A-Z' 'a-z' | tr -s ',[:space:]' ' ' | sed -e 's/^ //' -e 's/ $//')
+  [ "$_im" = "same" ] && _im="$_rv"
+  for _w in $_rv $_im; do   # every name must be an installed CLI (or none)
+    [ "$_w" = "none" ] && continue
+    case " $_inst " in *" $_w "*) ;; *) echo "cross-family: --setup: '$_w' is not an installed CLI (installed: ${_inst:-none}); names: codex claude agy cursor opencode" >&2; exit 2 ;; esac
+  done
+  _f="$HOME/.rolepod/cross-family"; mkdir -p "$HOME/.rolepod" 2>/dev/null
+  [ -f "$_f" ] && cp -p "$_f" "$_f.bak-$(date +%Y%m%dT%H%M%S)" 2>/dev/null
+  { echo "# rolepod cross-family pool — machine-wide (a repo's .rolepod/cross-family overrides this)."
+    echo "# Members in preference order; the Lead's own CLI is skipped at run time."
+    echo "# \`review = none\` = off. Options after a name (stall=900); a missing key falls back to review."
+    echo "# Written by: rolepod-cross-family --setup review=\"$_rv\" implement=\"$_im\"   ($(date -u +%Y-%m-%dT%H:%M:%SZ))"
+    echo; echo "[reviewer]"; echo "review = $_rv"; echo; echo "[implement]"; echo "cli = $_im"; } > "$_f"
+  echo "written: $_f"; echo "  [reviewer] review = $_rv"; echo "  [implement] cli = $_im"
+  [ "$_im" = "none" ] && echo "  (implement off — reviews still run; enable later with --setup or by editing the file)"
+  exit 0
+fi
 
 # ── Config (opt-in: no file = off) ─────────────────────────────────────
 # default list = bare lines; `<kind>:` lines = per-kind order; `key=value`
@@ -477,6 +510,7 @@ else
   STATE="off"; CFG_SRC="no ~/.rolepod/cross-family (opt-in not given)"
 fi
 CONFIGURED="${KIND_LIST:-$DEFAULT_LIST}"
+[ "$KIND_LIST" = "none" ] && STATE="none"   # `cli = none` / `consult = none`: that kind is off while the others keep their lists
 ENABLE_HINT="enable: printf '[reviewer]\\nreview = codex claude agy cursor opencode\\n\\n[implement]\\ncli = codex claude\\n' > ~/.rolepod/cross-family  (list EVERY CLI you want, this one included — the Lead's own CLI is skipped at run time, so one file serves every Lead; your order = preference; 'consult: agy codex' = per-kind order; project override: <git-root>/.rolepod/cross-family; 'none' = keep off)"
 
 stall_for() { # $1 cli → seconds of silence that count as dead (flag > config > 600)

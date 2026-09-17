@@ -406,27 +406,26 @@ echo "$out" | grep -q 'private working docs' \
   || echo "  ✓ .rolepod/docs-tracked lets a repo track its working docs"
 rm -rf "$TMPD"
 
-# ── project-context-loader: opt-in question asked ONCE per machine ──────
+# ── project-context-loader: cross-family is never asked unprompted (v2.142.0) ──
 XF_HOME="$TMP/xfhome"; rm -rf "$XF_HOME"; mkdir -p "$XF_HOME"
 XF_REPO="$TMP/xfrepo"; mkdir -p "$XF_REPO"; git -C "$XF_REPO" init -q; git -C "$XF_REPO" -c user.email=t@t -c user.name=t commit -q --allow-empty -m init  # loader needs ≥1 commit
 pcl() { printf '{"cwd":%s}' "$(printf '%s' "$XF_REPO" | python3 -c 'import json,sys; print(json.dumps(sys.stdin.read()))')" \
   | (cd "$XF_REPO" && env HOME="$XF_HOME" PATH="$XF_BIN:/usr/bin:/bin" CLAUDE_PLUGIN_ROOT="$TMP" bash "$HOOKS/project-context-loader.sh") || true; }
 out=$(pcl)
-echo "$out" | grep -q 'Cross-family reviewers are OFF (opt-in)' && echo "$out" | grep -q 'codex(openai)' && echo "$out" | grep -q 'ASK THE USER ONCE' \
-  && echo "  ✓ loader asks the opt-in question with the installed candidates when no config exists" \
-  || { echo "  ✗ loader did not ask the cross-family opt-in question"; fail=$((fail+1)); }
+echo "$out" | grep -q 'ASK THE USER' \
+  && { echo "  ✗ loader still asks the cross-family question"; fail=$((fail+1)); } \
+  || echo "  ✓ loader never asks the cross-family question"
+echo "$out" | grep -q 'cross-family pool: not set' && echo "$out" | grep -q 'rolepod-cross-family --setup' \
+  && echo "  ✓ no pool file + a second CLI → one silent line naming --setup" \
+  || { echo "  ✗ silent setup line missing"; fail=$((fail+1)); }
 [ -f "$XF_HOME/.rolepod/cross-family.asked" ] \
-  && echo "  ✓ loader drops the asked-marker" \
-  || { echo "  ✗ asked-marker missing"; fail=$((fail+1)); }
+  && { echo "  ✗ loader still writes the asked-marker"; fail=$((fail+1)); } \
+  || echo "  ✓ no asked-marker written"
+mkdir -p "$XF_HOME/.rolepod"; printf 'none\n' > "$XF_HOME/.rolepod/cross-family"
 out=$(pcl)
-echo "$out" | grep -q 'ASK THE USER ONCE' \
-  && { echo "  ✗ loader asked again in a later session (marker ignored)"; fail=$((fail+1)); } \
-  || echo "  ✓ loader does not ask twice"
-rm -f "$XF_HOME/.rolepod/cross-family.asked"; printf 'none\n' > "$XF_HOME/.rolepod/cross-family"
-out=$(pcl)
-echo "$out" | grep -q 'ASK THE USER ONCE' \
-  && { echo "  ✗ loader asked although the user already answered (none)"; fail=$((fail+1)); } \
-  || echo "  ✓ an answered config (none) silences the question"
+echo "$out" | grep -q 'cross-family pool: not set' \
+  && { echo "  ✗ loader mentions setup although a config exists"; fail=$((fail+1)); } \
+  || echo "  ✓ an existing config (none) silences the setup line"
 
 printf '%s\n' \
   '{"type":"tool_use","name":"Task","input":{"subagent_type":"rolepod:qa-tester","prompt":"review"}}' \

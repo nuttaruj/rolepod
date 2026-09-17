@@ -145,6 +145,23 @@ printf '{ "model": "openai/gpt-5.6" }\n' > "$HOME/.config/opencode/opencode.json
 printf '{ "model": "gemini-3-pro" }\n' > "$HOME/.cursor/cli-config.json"
 
 # ── config: global, project override, none ──────────────────────────────
+echo "── cross-family: --setup (guided, on request) ──"
+rm -f "$HOME/.rolepod/cross-family"
+bash "$RUNNER" --setup --lead claude > "$FIX/setup.txt" 2>&1; rc=$?   # output holds | and < — never interpolate it into an eval
+check "--setup with no values prints the candidates and the two questions" "[ $rc -eq 0 ] && grep -q 'installed CLIs' '$FIX/setup.txt' && grep -q '1. review' '$FIX/setup.txt' && grep -q '2. implement' '$FIX/setup.txt'"
+out=$(bash "$RUNNER" --setup review="agy, codex" implement=same --lead claude 2>&1); rc=$?
+check "--setup review=… implement=same writes the sectioned file" "[ $rc -eq 0 ] && grep -qx 'review = agy codex' '$HOME/.rolepod/cross-family' && grep -qx 'cli = agy codex' '$HOME/.rolepod/cross-family'"
+out=$(bash "$RUNNER" --pool --kind implement --lead claude 2>&1)
+check "the written file resolves: implement order agy codex" "printf '%s' \"$out\" | grep -q 'usable, in order: agy codex$'"
+out=$(bash "$RUNNER" --setup review="codex agy" implement=none --lead claude 2>&1); rc=$?
+check "implement=none keeps a backup of the previous file and turns only implement off" "[ $rc -eq 0 ] && ls '$HOME/.rolepod/'cross-family.bak-* >/dev/null 2>&1 && grep -qx 'cli = none' '$HOME/.rolepod/cross-family'"
+rc=0; out=$(cd "$REPO" && bash "$RUNNER" --kind implement --brief brief.md --allow README.md --lead claude 2>&1) || rc=$?
+check "cli = none → implement is off (exit 5) while review still resolves codex agy" "[ $rc -eq 5 ] && bash '$RUNNER' --pool --kind review --lead claude | grep -q 'usable, in order: codex agy$'"
+out=$(bash "$RUNNER" --setup review="gemini2 codex" --lead claude 2>&1); rc=$?
+printf '%s' "$out" > "$FIX/setup-err.txt"
+check "an unknown CLI name is refused (exit 2) and the file is left as it was" "[ $rc -eq 2 ] && grep -q 'not an installed CLI' '$FIX/setup-err.txt' && grep -qx 'review = codex agy' '$HOME/.rolepod/cross-family'"
+rm -f "$HOME/.rolepod/cross-family" "$HOME/.rolepod/"cross-family.bak-*
+
 echo "── cross-family: config ──"
 mkdir -p "$HOME/.rolepod"; printf '# my pool\nagy\ncodex\n' > "$HOME/.rolepod/cross-family"
 names=$(bash "$RUNNER" --pool-names --lead claude | tr '\n' ' ')

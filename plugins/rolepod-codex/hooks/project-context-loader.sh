@@ -77,25 +77,16 @@ if [ -f "$_xf" ]; then
   _xf=$(cd "$(dirname "$_xf")" && pwd)/cross-family.sh
   _xfcmd="rolepod-cross-family"; command -v rolepod-cross-family >/dev/null 2>&1 || _xfcmd="bash $_xf"
   command -v rolepod-cross-family >/dev/null 2>&1 || CTX="$CTX\n\ncross-family runner: \`$_xfcmd\` (reviews / consults in a different CLI — opt-in pool: .rolepod/cross-family)"
-  # Opt-in question, asked ONCE per machine (v2.77.0): cross-family is OFF
-  # until the user lists CLIs in ~/.rolepod/cross-family. No file, never
-  # asked, and at least one other CLI installed → tell the Lead to
-  # ask this session and record the answer (names, or `none`). The marker
-  # keeps it from nagging; the user can always enable later by hand.
-  if [ ! -f "$HOME/.rolepod/cross-family" ] && [ ! -f "$REPO/.rolepod/cross-family" ] && [ ! -f "$HOME/.rolepod/cross-family.asked" ]; then
+  # No opt-in question (v2.142.0): rolepod never asks unprompted. With no pool file and a
+  # second CLI installed, ONE silent context line says how to set it up when the user asks.
+  if [ ! -f "$HOME/.rolepod/cross-family" ] && [ ! -f "$REPO/.rolepod/cross-family" ]; then
     _lead="${ROLEPOD_LEAD_CLI:-}"
     if [ -z "$_lead" ] && [ -n "${CLAUDE_PROJECT_DIR:-}${CLAUDE_PLUGIN_ROOT:-}" ]; then _lead=claude; fi
-    # Lead unknown → no candidates → no question this
-    # session. `|| true` + no pipefail exposure: this hook runs set -e and the
-    # parent-active marker below must still be written whatever the runner says.
     _cand=""
     if [ -n "$_lead" ]; then
       _cand=$( { bash "$_xf" --candidates --lead "$_lead" 2>/dev/null || true; } | tr '\n' ' ' | sed 's/ *$//' || true)
     fi
-    if [ -n "$_cand" ]; then
-      CTX="$CTX\n\n**Cross-family reviewers are OFF (opt-in).** Installed CLIs: $_cand. ASK THE USER ONCE this session — do they want rolepod to send adversarial reviews / debug consults / plan advisories to a different CLI, and which CLIs, in what order? Yes → write ALL the names they want, one per line, THIS CLI included (the Lead's own CLI is skipped at run time, so one file serves every Lead) to \`~/.rolepod/cross-family\` (project-only: \`<git-root>/.rolepod/cross-family\`). No → write \`none\` there. Never enable it without their answer; until then every review stays on this CLI."
-      { mkdir -p "$HOME/.rolepod" 2>/dev/null && : > "$HOME/.rolepod/cross-family.asked"; } 2>/dev/null || true
-    fi
+    [ -n "$_cand" ] && CTX="$CTX\n\ncross-family pool: not set (opt-in, never asked for you). When the user asks to set it up: \`rolepod-cross-family --setup\` (installed: $_cand)."
   fi
 fi
 

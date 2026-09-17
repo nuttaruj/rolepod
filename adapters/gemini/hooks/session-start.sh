@@ -34,15 +34,11 @@ GATES+=$'careful mode: /rolepod-full for high-risk surface (auth/billing/migrati
 
 PAYLOAD="${GATES}"$'\n'"--- git context ---"$'\n'"${CTX}"
 
-# Cross-family opt-in question, once per machine (v2.77.0) — mirrors
-# hooks/project-context-loader.sh; the runner ships next to these hooks.
+# Cross-family: never asked unprompted (v2.142.0) — one silent line when no pool file exists.
 _xf="$(cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null && pwd)/../scripts/cross-family.sh"
-if [ -f "$_xf" ] && [ ! -f "$HOME/.rolepod/cross-family" ] && [ ! -f "$HOME/.rolepod/cross-family.asked" ]; then
+if [ -f "$_xf" ] && [ ! -f "$HOME/.rolepod/cross-family" ]; then
   _cand=$( { bash "$_xf" --candidates --lead agy 2>/dev/null || true; } | tr '\n' ' ' | sed 's/ *$//' || true)
-  if [ -n "$_cand" ]; then
-    PAYLOAD+=$'\n\n'"Cross-family reviewers are OFF (opt-in). Installed CLIs: $_cand. ASK THE USER ONCE this session whether rolepod may send adversarial reviews / consults to a different CLI and which CLIs, in what order. Yes → ALL the names they want, one per line, this CLI included (the Lead's own CLI is skipped at run time, so one file serves every Lead) in ~/.rolepod/cross-family; no → write 'none'. Never enable without their answer."
-    { mkdir -p "$HOME/.rolepod" 2>/dev/null && : > "$HOME/.rolepod/cross-family.asked"; } 2>/dev/null || true
-  fi
+  [ -n "$_cand" ] && PAYLOAD+=$'\n\n'"cross-family pool: not set (opt-in, never asked for you). When the user asks to set it up: \`rolepod-cross-family --setup\` (installed: $_cand)."
 fi
 
 # Concurrent-session soft-warn (cross-CLI, neutral lock dir shared with the
