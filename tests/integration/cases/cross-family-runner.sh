@@ -32,10 +32,10 @@ mk_stub() { # $1 binary name, $2 label
   cat > "$BIN/$1" <<EOF
 #!/bin/bash
 _raw=\$(head -c 3000 2>/dev/null)
-_in=\$(printf '%s' "\$_raw" | grep -o 'ADVERSARIAL code reviewer\|debugging advisor\|planning advisor\|spec critic' | head -1)
+_in=\$(printf '%s' "\$_raw" | grep -o 'ADVERSARIAL code reviewer\|debugging advisor\|spec critic' | head -1)
 _bud=\$(printf '%s' "\$_raw" | grep -o 'Time budget: about [0-9]* minute' | grep -o '[0-9]*')
 _argbud=\$(printf '%s' "\$*" | grep -o 'Time budget: about [0-9]* minute' | grep -o '[0-9]*')
-case "\$_in" in *ADVERSARIAL*) _in=review ;; *debugging*) _in=consult ;; *planning*) _in=advise ;; *critic*) _in=critique ;; *) _in=none ;; esac
+case "\$_in" in *ADVERSARIAL*) _in=review ;; *debugging*) _in=consult ;; *critic*) _in=critique ;; *) _in=none ;; esac
 printf '%s | %s | BRAIN=%s | STDIN=%s | BUDGET=%s\n' "$2" "\$(printf '%s' "\$*" | tr '\n' ' ')" "\${ROLEPOD_BRAIN_SILENT:-unset}" "\$_in" "\${_bud:-\$_argbud}" >> "$LOG"
 if [ "\$1" = "models" ]; then printf '%s\n' "\${CURSOR_MODELS_OUT:-auto - Auto (current, default)}"; exit 0; fi
 mode=\$(eval "printf '%s' \"\\\${STUB_$2:-ok}\"")
@@ -253,11 +253,11 @@ rm -f "$REPO/.rolepod/cross-family"
 # ── --all panel ─────────────────────────────────────────────────────────
 echo "── cross-family: --all panel ──"
 : > "$LOG"; : > .rolepod/evidence/phase-log.jsonl
-rc=0; out=$(bash "$RUNNER" --kind advise --brief brief.md --lead claude --all 2>/dev/null) || rc=$?
+rc=0; out=$(bash "$RUNNER" --kind critique --brief brief.md --lead claude --all 2>/dev/null) || rc=$?
 check "--all runs every usable member concurrently (codex + agy + cursor + opencode)" \
   "[ $rc -eq 0 ] && grep -q '^codex |' '$LOG' && grep -q '^agy |' '$LOG' && ! grep -q '^gemini |' '$LOG' && grep -q '^cursor |' '$LOG' && grep -q '^opencode |' '$LOG'"
-check "--all output carries one ===== block + ok trailer per member" "[ \"\$(printf '%s' \"\$out\" | grep -c '^ROLEPOD-XFAM ok kind=advise')\" -eq 4 ]"
-check "advise lines logged with phase=advise" "[ \"\$(grep -c '\"phase\":\"advise\",\"reviewer\":\"external\"' .rolepod/evidence/phase-log.jsonl)\" -eq 4 ]"
+check "--all output carries one ===== block + ok trailer per member" "[ \"\$(printf '%s' \"\$out\" | grep -c '^ROLEPOD-XFAM ok kind=critique')\" -eq 4 ]"
+check "critique lines logged with phase=critique" "[ \"\$(grep -c '\"phase\":\"critique\",\"reviewer\":\"external\"' .rolepod/evidence/phase-log.jsonl)\" -eq 4 ]"
 check "cursor got plan mode + --trust, opencode got --agent plan; neither got a model flag" \
   "grep '^cursor |' '$LOG' | grep -q -- '--mode ask' && ! grep '^cursor |' '$LOG' | grep -q -- '--mode plan' && grep '^cursor |' '$LOG' | grep -q -- '--output-format stream-json' && grep '^cursor |' '$LOG' | grep -q -- '--trust' && grep '^opencode |' '$LOG' | grep -q -- '--agent plan' && ! grep -E '^(cursor|opencode) \|' '$LOG' | grep -qE -- '--model| -m '"
 
@@ -265,8 +265,14 @@ check "cursor got plan mode + --trust, opencode got --agent plan; neither got a 
 echo "── cross-family: --kind critique ──"
 : > "$LOG"; : > .rolepod/evidence/phase-log.jsonl
 rc=0; out=$(bash "$RUNNER" --kind critique --brief brief.md --lead claude 2>/dev/null) || rc=$?
-check "critique → spec-critic framing on stdin, logged as phase=advise kind=critique (never a strong pass)" \
-  "[ $rc -eq 0 ] && grep -q 'STDIN=critique' '$LOG' && grep -q '\"phase\":\"advise\",\"reviewer\":\"external\",\"kind\":\"critique\"' .rolepod/evidence/phase-log.jsonl && ! grep -q '\"phase\":\"review\"' .rolepod/evidence/phase-log.jsonl"
+check "critique → spec-critic framing on stdin, logged as phase=critique kind=critique (never a strong pass)" \
+  "[ $rc -eq 0 ] && grep -q 'STDIN=critique' '$LOG' && grep -q '\"phase\":\"critique\",\"reviewer\":\"external\",\"kind\":\"critique\"' .rolepod/evidence/phase-log.jsonl && ! grep -q '\"phase\":\"review\"' .rolepod/evidence/phase-log.jsonl"
+
+# ── advise is retired ────────────────────────────────────────────────────
+echo "── cross-family: advise kind retired ──"
+_lc=$(wc -l < "$LOG")
+rc=0; out=$(bash "$RUNNER" --kind advise --brief brief.md --lead claude 2>&1) || rc=$?
+check "advise kind refused (exit 2), no member called" "[ $rc -eq 2 ] && [ \"\$(wc -l < '$LOG')\" -eq \"$_lc\" ]"
 
 # ── stall detector (v2.129.0): silence kills, output keeps a member alive ──
 echo "── cross-family: stall detector ──"

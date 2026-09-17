@@ -4,7 +4,7 @@
 #
 # Data sources (all fail-open, written by the doctrine since v2.12):
 #   <git-root>/.rolepod/evidence/phase-log.jsonl
-#     {"ts","phase":"route|verify|review|ship|dispatch|dispatch-proof|consult|advise|implement|external-fail|external-refused", ...}
+#     {"ts","phase":"route|verify|review|ship|dispatch|dispatch-proof|consult|critique|implement|external-fail|external-refused", ...}
 #     ship rows carry "commit":"<shipped head sha, or none>" (v2.87.0) — the anchor for
 #     the 14-day corrective-commit rate read from git history
 #   <git-root>/.rolepod/evidence/bypass.log
@@ -259,7 +259,7 @@ if verifies:
 
 # External (cross-family) passes — written by scripts/cross-family.sh. The
 # review line with reviewer:external is what precommit-gate counts as the
-# strong pass; consult / advise lines are the debug + plan channels.
+# strong pass; consult lines are the debug channel.
 externals = [r for r in rows if r.get("reviewer") == "external" or r.get("phase") == "implement"]   # implement lines carry no reviewer key: the runner built, the Lead reviews
 xfails = [r for r in rows if r.get("phase") == "external-fail"]
 if reviews:

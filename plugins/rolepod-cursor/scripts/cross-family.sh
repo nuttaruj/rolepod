@@ -1,7 +1,7 @@
 #!/bin/bash
 # rolepod cross-family runner — ONE command for every cross-CLI opinion:
-# the adversarial review pass, the spec critique, the plan advisory panel,
-# the stuck-state consult — and, since v2.139.0, ONE cross-CLI build: `--kind
+# the adversarial review pass, the spec critique, the stuck-state
+# consult — and, since v2.139.0, ONE cross-CLI build: `--kind
 # implement` runs a member in its own write mode on one ticket (--allow scope
 # enforced after the run, git state guarded, the Lead reviews and commits).
 # Installed as `rolepod-cross-family` (install.sh)
@@ -43,7 +43,7 @@
 #            (--stall > `stall=` in the config > 600) = dead, rc 118. The
 #            wall-clock cap is runaway insurance only (--timeout > `timeout=`
 #            > kind default: review 7200 s detached / 600 s foreground ·
-#            consult 300 · advise 900 · critique 600). Measured 2026-09-15:
+#            consult 300 · critique 600). Measured 2026-09-15:
 #            codex reviews run 15-29 min and stream the whole way (p90 28 min
 #            sat on the old 1800 s cap); cursor stream-json and opencode
 #            stream too; agy is silent ~150 s then answers. A killed
@@ -88,11 +88,11 @@
 #            user's choice is not a failure). The Lead then runs its own path.
 #   evidence .rolepod/evidence/external/<utc>-<cli>.txt + one phase-log line
 #            ({"phase":"review","reviewer":"external",...} is what
-#            precommit-gate counts as the strong pass; consult / advise lines
+#            precommit-gate counts as the strong pass; consult lines
 #            feed `rolepod-stats`). Jobs live under external/jobs/<id>/.
 #
 # Usage:
-#   cross-family.sh --kind review|consult|advise|critique|implement --brief <file> [--attach <file>]... [--allow <path>]... [--allow-risky]
+#   cross-family.sh --kind review|consult|critique|implement --brief <file> [--attach <file>]... [--allow <path>]... [--allow-risky]
 #                   [--lead <cli>] [--all] [--timeout <sec>] [--detach] [--partial-ok] [--since <job-id>] [--ledger <file>]
 #   cross-family.sh --rounds                               # review rounds since the last commit (breaker state)
 #   cross-family.sh --kill <job-id>                        # abandon a running job (status 137, no anchor)
@@ -481,11 +481,11 @@ if [ -n "$CFG" ]; then
     [ -n "$_ln" ] || continue
     case "$_ln" in "["*"]") _sec="${_ln#[}"; _sec="${_sec%]}"; continue ;; esac   # [reviewer] / [implement] section headers (v2.141.0 shape)
     _k=""
-    case "$_ln" in   # `key = members` lines: review = the default order every kind falls back to; consult / advise / critique / cli(implement) = that kind only
+    case "$_ln" in   # `key = members` lines: review = the default order every kind falls back to; consult / critique / cli(implement) = that kind only
       review\ =*|review=*|default\ =*|default=*) _ln="${_ln#*=}"; _ln="${_ln# }" ;;
-      consult\ =*|consult=*|advise\ =*|advise=*|critique\ =*|critique=*) _k="${_ln%%=*}"; _k="${_k% }"; _ln="${_ln#*=}"; _ln="${_ln# }" ;;
+      consult\ =*|consult=*|critique\ =*|critique=*) _k="${_ln%%=*}"; _k="${_k% }"; _ln="${_ln#*=}"; _ln="${_ln# }" ;;
       cli\ =*|cli=*) _k=implement; _ln="${_ln#*=}"; _ln="${_ln# }" ;;
-      review:*|consult:*|advise:*|critique:*|implement:*) _k="${_ln%%:*}"; _ln="${_ln#*:}" ;;   # the pre-v2.141 `kind:` shape still reads
+      review:*|consult:*|critique:*|implement:*) _k="${_ln%%:*}"; _ln="${_ln#*:}" ;;   # the pre-v2.141 `kind:` shape still reads
     esac
     _acc=""; _last=""
     for _t in $_ln; do
@@ -526,7 +526,6 @@ timeout_for() { # $1 cli → seconds (flag > config > kind default) — the runa
   case "$KIND" in
     review) if [ -n "$JOB_DIR" ]; then echo 7200; else echo 600; fi ;;
     consult) echo 300 ;;
-    advise) echo 900 ;;
     critique) echo 600 ;;
     implement) if [ -n "$JOB_DIR" ]; then echo 3600; else echo 600; fi ;;
     *) echo 600 ;;
@@ -966,7 +965,7 @@ if [ "$MODE" = "probe" ]; then
 fi
 
 # ── Run ────────────────────────────────────────────────────────────────
-case "$KIND" in review|consult|advise|critique|implement) ;; *) echo "cross-family: --kind review|consult|advise|critique|implement required" >&2; exit 2 ;; esac
+case "$KIND" in review|consult|critique|implement) ;; *) echo "cross-family: --kind review|consult|critique|implement required" >&2; exit 2 ;; esac
 if [ "$KIND" = "implement" ] && [ "$ALL" -eq 1 ]; then echo "cross-family: --all is a read-only panel — implement runs ONE member at a time in one working tree (drop --all)" >&2; exit 2; fi
 # ── implement: the allowed-path list — the member's write scope, enforced after the run (edits outside are reverted) ──
 # Money / auth / data paths (the commit gate's HIGH_RISK_PATH, byte-identical to hooks/lib/session_state.py — tests/static/edit-ledger.sh pins it,
@@ -1013,7 +1012,7 @@ fi
 case "$KIND" in
   review) PHASE=review ;;
   consult) PHASE=consult ;;
-  advise|critique) PHASE=advise ;;
+  critique) PHASE=critique ;;
   implement) PHASE=implement ;;
 esac
 
@@ -1047,7 +1046,7 @@ fi
 # Measured 2026-09-07: three review jobs launched 20 min apart on one tree,
 # each with a 30-min member budget — all three timed out, zero verdicts.
 # The parent (not the detached child, which carries --job) refuses a second
-# review while one is alive; consult / advise / critique are unaffected.
+# review while one is alive; consult / critique are unaffected.
 if [ "$KIND" = "implement" ] && [ -z "$JOB_DIR" ] && git -C "$ROOT" rev-parse --verify HEAD >/dev/null 2>&1; then   # after the live-job refusal: a ticket begins from a committed slate on its own files
   _dirty=$(printf '%s\n' "$ALLOW_LIST" | while IFS= read -r _a; do git -C "$ROOT" status --porcelain -- "${_a%/}" 2>/dev/null; done | head -5)
   [ -z "$_dirty" ] || { echo "cross-family: the allowed paths must start clean (a ticket begins from a committed slate on its own files): $(printf '%s' "$_dirty" | tr '\n' ' ')" >&2; exit 2; }
@@ -1224,7 +1223,6 @@ preamble() { # $1 kind
   case "$1" in
     review) printf '%s' "You are a cold-context ADVERSARIAL code reviewer running in a different CLI than the author. Read only — never edit files, never run write commands. Try to make the change fail. Report findings severity-ordered (BLOCKER / MAJOR / MINOR / NIT) with file:line, label each TRACED (path walked) or SUSPECTED (pattern-level), name what is missing as hard as what is present, then end with one line: VERDICT: APPROVED | APPROVED-WITH-NITS | REJECTED. Label every finding's provenance: INTRODUCED (this diff caused it), EXPOSED (pre-existing, on a path this diff changes) or ADJACENT (pre-existing, path untouched) — the diff is the scope, ADJACENT findings are reported once under their own heading and never drive the verdict. If a previous round's report is attached, also prefix every finding with IN-FIX (a defect inside the previous round's fixes), NEW (not flagged before) or REPEAT (flagged before, still open); an ADJACENT item already listed there is not repeated." ;;
     consult) printf '%s' "You are a cold-context debugging advisor running in a different CLI than the author. The author has failed twice; do not repeat their fixes. Read only — never edit files. Return exactly one of: CORRECTION (new hypothesis + the smallest change to test it), CONFIRMATION (approach right — check X), or STOP (wrong path — why). Reason from the evidence given; say what you would verify first." ;;
-    advise) printf '%s' "You are a cold-context planning advisor running in a different CLI than the author. Advise, never execute: return a RECOMMENDED option with reasoning and the risks you see, or a CORRECTION if the framing or all options are flawed, or a STOP signal. Do not edit files or run the plan." ;;
     implement) printf '%s' "You are an external IMPLEMENTER running in a different CLI than the Lead. Build exactly the ticket below inside this repository's working tree — nothing more. Hard lines: never run git add, commit, push, stash, checkout, reset or rebase (the Lead stages, reviews and commits); never edit a path outside the ticket's Files allowed; never expand scope — a new idea goes into the report. Run the ticket's test command. End with a report: files touched, tests run and their result, what is NOT done." ;;
     critique) printf '%s' "You are a cold-context spec critic running in a different CLI than the author. The author has finished their discovery dialogue with the user (the questions already asked and answered are attached — never re-ask those). Return every material item, ranked by implementation risk (no cap: the spec is where detail is gathered, so never hold back a doubt), each tagged QUESTION (a decision only the user can make — the answer would change the implementation), AMBIGUITY (wording two engineers would read differently — quote it), or MISSING (an acceptance criterion, failure mode, or edge case with no 'proven by'). No design proposals, no praise, no restating the spec. If nothing material remains, reply exactly: NO FURTHER QUESTIONS." ;;
   esac

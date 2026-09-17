@@ -144,8 +144,8 @@ fi
 #   - total supporting files across all skills ≤ 44
 #     (44 since write-plan gained references/team-issues.md — the optional
 #     GitHub Issues backend for team-built plans; 43 for implement-plan's
-#     wizard.md; 42 for write-spec's chart-work.md; 41 for write-plan's
-#     advisory-routing.md. Bump only for a deliberate new capability)
+#     wizard.md; 42 for write-spec's chart-work.md. Bump only for a
+#     deliberate new capability)
 #   - every examples/*-examples.md carries a "Why good wins" contrast table
 SUPPORT_TOTAL=0
 SUPPORT_OVER=""
