@@ -61,7 +61,7 @@
       LLM / RAG / embeddings / prompts → ai-ml-engineer
       analytics / dashboards / pipelines / ETL → data-scientist
       profiling, p95/p99, bundle size, query plans → performance-engineer
-      tests only (a test-authoring task) → qa-tester
+      E2E / UI test task → qa-tester (a slice's unit tests belong to its owner)
       another CLI drafts (pool opt-in) → `Owner: <role> · write: external`>
 - **Done when:** <pass/fail condition>
 - **On fail:** <non-default recovery, if any. Omit to use the Failure policy below.>

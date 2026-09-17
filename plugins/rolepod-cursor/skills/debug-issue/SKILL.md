@@ -105,7 +105,7 @@ Run the module suite (full suite on high-risk surfaces). No new red → re-run t
 ## If a matching Rolepod agent is available
 
 Delegate the loop — iteration is the costliest work to run in the Lead's context:
-- `qa-tester` — default for any bug without a specialist match
+- the role that owns the path (backend-developer / frontend-developer / …) — it writes the reproducing failing test, then the fix; `qa-tester` only for a user-visible (E2E / UI) repro
 - `security-engineer` — auth / token / injection symptoms
 - `performance-engineer` — latency / memory regressions
 - `devops-sre` — infra / deploy / CI failures

@@ -22,8 +22,8 @@ mid-flow ("skip review", "just ship").
    evidence in this message.
 5. **Review — `review-code`** — one read-only reviewer + risk-appropriate reviewers.
    External adversarial reviewers (any installed CLI on a model different
-   from the Lead's) when configured; otherwise qa-tester / security-engineer /
-   universal-reviewer.
+   from the Lead's) when configured; otherwise universal-reviewer / security-engineer;
+   qa-tester for user-visible (E2E / UI) behaviour.
 6. **Ship — `finish-work`** — S+T+F+P gates, required CI lane checks, then
    the 4-option branch finish menu (merge / open PR / keep open / discard).
 

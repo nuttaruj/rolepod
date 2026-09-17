@@ -108,7 +108,7 @@ Fill `templates/evidence-block.md` — exact commands, the proof line per check,
 
 ## If a matching Rolepod agent is available
 
-- `qa-tester` — test suite design / failure analysis
+- `qa-tester` — user-visible (E2E / UI) verification; unit-suite failure analysis is the writer's
 - `performance-engineer` — p95/p99 / bundle / benchmark proof
 - `security-engineer` — exploit-blocked proof
 - `devops-sre` — CI lane behavior / deploy smoke

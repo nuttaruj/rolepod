@@ -42,7 +42,7 @@ Code quality review: logic, DRY, structure, smell, language-agnostic.
 - The whole diff with line numbers (not just changed regions)
 - The touched files end-to-end — context matters
 - Neighbor modules for the existing pattern
-- Test changes — assertion strength + mock boundary
+- Test changes — assertion strength + mock boundary, against the writer's self-check (implement-plan `references/tdd-by-risk.md`)
 - Recent commits for similar work — match style
 
 ## Concern ownership

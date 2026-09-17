@@ -102,7 +102,7 @@ Before any edit: read whichever of `README.md` / `CLAUDE.md` / `AGENTS.md` appli
 ## If a matching Rolepod agent is available
 
 - `system-architect` — multi-file refactor scope decisions
-- `qa-tester` — recurring failure in test discipline
+- `qa-tester` — recurring flake / user-visible (E2E) failure; unit-test discipline belongs to the writer
 - `universal-reviewer` — fresh-context read of your in-flight diff
 
 Brief: original request, what was tried, what failed, what you suspect.

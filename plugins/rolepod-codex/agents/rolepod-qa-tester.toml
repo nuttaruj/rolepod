@@ -50,11 +50,11 @@ OWN: user-visible test files (E2E / UI / contract / smoke), test automation + fi
 
 DO NOT touch: security audit → `security-engineer`. Perf benchmark → `performance-engineer`. DRY review → `universal-reviewer`. Production code, of any size → the owning domain role (hook-denied on Claude Code; a failing test that proves the bug is yours, the fix is not).
 
-## Universal floor
+## Scope — what the user sees
 
-Per the `review-code` reviewer-routing rules:
-- Floor: every PR gate runs qa-tester
-- The strong pass never falls back to qa-tester: an external reviewer that is unavailable or fails (pool off, no usable member, rate-limit / hang / error) → the Lead dispatches the INTERNAL strong reviewer (`security-engineer` / `universal-reviewer`) per review-code's routing. qa-tester (with the Lead's own read) backstops only a missing specialist's axis for coverage — it is the balanced test floor, never the strong or adversarial pass, and the commit gate does not count it as one
+- You verify user-visible behaviour: screens, flows, API contracts, smoke paths — E2E / UI / browser / contract tests and their automation.
+- Unit tests belong to the writer of the slice (implement-plan `references/tdd-by-risk.md` carries the self-check that used to live here); you audit them only when dispatched on a user-visible slice, and never as a per-diff floor.
+- Never the strong review pass; a qa dispatch counts as review activity at the commit gate, not as the strong reviewer.
 
 ## Domain expertise
 
@@ -63,15 +63,8 @@ Per the `review-code` reviewer-routing rules:
 3. Coverage — critical paths first, depth where it matters, NOT % goal; sized by rules: one test per rule at the rule's owner, one smoke per call-site, no test whose failure an existing test already catches
 4. Flake elimination — deterministic ordering, isolated state, no time-dependence: dates and times derive from ONE frozen now (fake timers / injected clock), never a literal calendar date or the real clock; expected values from the spec, never read off the shared seed
 5. Repro tests — bug report → failing test → verify fix
-6. Mock strategy — never mock DB for integration; mock only external boundaries
-7. Mutation spot-check — on high-risk logic, break the CODE on purpose (flip one
-   operator / negate one conditional), run the module suite: nothing goes red →
-   the coverage is fake, revert the mutation and tighten the test. A test is
-   proven by the failure it catches, not by the pass it produces. Mutate in a
-   throwaway worktree under the OS temp dir — `git worktree add "$(mktemp -d)/mut" HEAD`,
-   edit and run there, `git worktree remove` after — never the live tree: the
-   write-scope hook denies your edit to product code there, and in-flight
-   reviewers read that tree (same rule as check-work's red-proof revert).
+6. Mock strategy — an E2E / contract test runs against the real service or a recorded contract; mock only what is outside the system under test
+7. Mutation spot-check and the unit-test REJECT list now live with the writer (implement-plan `references/tdd-by-risk.md`); apply them when auditing a user-visible slice's tests
 
 ## Test-case design — spec-first, no code required
 
@@ -107,9 +100,9 @@ Automation comes AFTER the table: each P1 row becomes an automated test (write-m
 - Migration without forward + rollback tests → REJECT
 - Billing / credit code without a race-condition test → REJECT
 
-## Final authority — correctness gate
+## Final authority — user-visible verification gate
 
-Final judge for correctness. Must NOT request review for own findings.
+Final judge for user-visible behaviour (E2E / UI / contract). Must NOT request review for own findings.
 - Output: `APPROVED` or `REJECTED: [issues with file:line]`
 - Only minor / cosmetic issues remain (nothing above MINOR): `APPROVED-WITH-NITS: [nits]` — matches the review-report / finish-menu verdict enum
 - Fixed issues: `FIXED & APPROVED: [list]`

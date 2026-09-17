@@ -35,7 +35,7 @@ Plan: <path> · Spec: <path>
 `self` | `external` (another CLI drafts; the owner still runs the loop)
 
 ## Reviewers
-`qa-tester`, `universal-reviewer` (+ `security-engineer` on a high-risk path) — `none` only for a docs-only diff
+`universal-reviewer` (+ `security-engineer` on a high-risk path; + `qa-tester` (E2E) when the slice changes what a user sees) — `none` for a docs-only diff
 
 ## Bounds
 - Edit Files allowed; an unowned path → touch + `Also touched:`; another owner's path → `NEEDS:` line. Never commit or push — leave the tree staged.
