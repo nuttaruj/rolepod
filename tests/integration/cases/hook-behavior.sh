@@ -58,9 +58,96 @@ check "subagent git log → allow" allow "$out"
 out=$(payload_subagent 'grep -r "git commit docs" .' | bash "$HOOKS/block-subagent-commit.sh")
 check "subagent command merely MENTIONING git commit → allow" allow "$out"
 
+out=$(payload_subagent 'timeout 300 git commit -m x' | bash "$HOOKS/block-subagent-commit.sh")
+check "subagent wrapped commit (timeout N git commit) → deny" deny "$out"
+out=$(payload_subagent 'find . -name "*.md" | xargs git commit -m x' | bash "$HOOKS/block-subagent-commit.sh")
+check "subagent xargs git commit → deny" deny "$out"
+out=$(payload_subagent 'echo please git commit later' | bash "$HOOKS/block-subagent-commit.sh")
+check "subagent echo mentioning git commit → allow (pure-output head)" allow "$out"
+out=$(payload_subagent 'cat > note.md <<EOF
+run make test-static && git commit -m x
+EOF
+ls' | bash "$HOOKS/block-subagent-commit.sh")
+check "subagent heredoc body with a chained commit example → allow (body dropped)" allow "$out"
+out=$(payload_subagent "bash <<'EOF'
+git commit -m x
+EOF" | bash "$HOOKS/block-subagent-commit.sh")
+check "subagent heredoc feeding bash with a commit in the body → deny (a shell owns it)" deny "$out"
+out=$(payload_subagent 'sh <<EOF
+cd x
+git push origin main
+EOF' | bash "$HOOKS/block-subagent-commit.sh")
+check "subagent heredoc feeding sh with a push in the body → deny" deny "$out"
+out=$(payload_subagent 'bash <<EOF
+make test-static
+EOF' | bash "$HOOKS/block-subagent-commit.sh")
+check "subagent heredoc feeding bash with a gate, no timeout → deny" deny "$out"
+out=$(payload_subagent 'cat <<EOF | bash
+git commit -m x
+EOF' | bash "$HOOKS/block-subagent-commit.sh")
+check "subagent heredoc piped into bash with a commit → deny" deny "$out"
 # Lead (no agent_id) is never blocked
 out=$(printf '{"tool_name":"Bash","tool_input":{"command":"git commit -m x"}}' | bash "$HOOKS/block-subagent-commit.sh")
 check "Lead git commit → allow (hook targets subagents only)" allow "$out"
+
+# ── block-subagent-commit: a sub-agent cannot wait on a backgrounded call ──
+bsc_ti() { printf '{"agent_id":"a1","agent_type":"devops-sre","tool_name":"%s","tool_input":%s}' "$1" "$2" | bash "$HOOKS/block-subagent-commit.sh"; }
+out=$(bsc_ti Bash '{"command":"make test-static","run_in_background":true}')
+check "subagent Bash run_in_background → deny (no completion notice reaches a sub-agent)" deny "$out"
+out=$(bsc_ti Bash '{"command":"make test-static"}')
+check "subagent make test-* with no timeout → deny (120 s default backgrounds it)" deny "$out"
+out=$(bsc_ti Bash '{"command":"make test-static","timeout":600000}')
+check "subagent make test-* with an explicit timeout → allow" allow "$out"
+out=$(bsc_ti Bash '{"command":"make test-static","timeout":120000}')
+check "subagent explicit short timeout → allow (a stated choice)" allow "$out"
+out=$(bsc_ti Bash '{"command":"cd /tmp/wt && bash tests/integration/cases/cross-family-runner.sh && make test-static"}')
+check "subagent compound integration case + gate, no timeout → deny" deny "$out"
+out=$(bsc_ti Bash '{"command":"rolepod-cross-family --collect j1"}')
+check "subagent cross-family --collect with no timeout → deny" deny "$out"
+out=$(bsc_ti Bash '{"command":"rolepod-cross-family --kind review --brief b.md --detach"}')
+check "subagent cross-family --detach → allow (returns at once)" allow "$out"
+out=$(bsc_ti Bash '{"command":"grep -rn \"make test\" docs/ && bash tests/unit/fast.sh"}')
+check "subagent command merely mentioning a gate → allow" allow "$out"
+out=$(bsc_ti Bash '{"command":"npm test -- --watch=false"}')
+check "subagent plain project test runner without timeout → allow (only make test-* / integration / cross-family are gates)" allow "$out"
+out=$(bsc_ti Bash '{"command":"bash -c \"make test-static\""}')
+check "subagent bash -c wrapping a gate → deny (recursed)" deny "$out"
+out=$(bsc_ti Bash '{"command":"sh -c \"rolepod-cross-family --collect j1\""}')
+check "subagent sh -c wrapping cross-family --collect → deny" deny "$out"
+out=$(bsc_ti Bash '{"command":"make -j4 test-static"}')
+check "subagent make with a flag before the test target → deny" deny "$out"
+out=$(bsc_ti Bash '{"command":"command rolepod-cross-family --collect j1"}')
+check "subagent command/exec/nohup prefix → deny" deny "$out"
+out=$(bsc_ti Bash '{"command":"bash scripts/quick.sh"}')
+check "subagent bash <script> that is not a gate → allow" allow "$out"
+out=$(bsc_ti Bash '{"command":"make -C dir test-static"}')
+check "subagent make -C dir <target> → deny (value token before the target)" deny "$out"
+out=$(bsc_ti Bash '{"command":"env -i nice -n 10 make test-static"}')
+check "subagent wrapper flags + numeric value before make → deny" deny "$out"
+out=$(bsc_ti Bash '{"command":"echo make test-static > note.txt"}')
+check "subagent echo of a gate name → allow (head is echo)" allow "$out"
+for m in --rounds --pool --pool-names --candidates --probe --setup --jobs --kill; do
+  out=$(bsc_ti Bash "{\"command\":\"rolepod-cross-family $m\"}")
+  check "subagent cross-family $m (instant read) → allow" allow "$out"
+done
+out=$(bsc_ti Bash '{"command":"rolepod-cross-family --kind review --brief b.md"}')
+check "subagent cross-family --kind without --detach, no timeout → deny" deny "$out"
+out=$(bsc_ti Bash '{"command":"make test-static","timeout":0}')
+check "subagent timeout: 0 counts as absent → deny" deny "$out"
+out=$(bsc_ti Bash '{"command":"make test-static && git commit -m x"}')
+check "subagent gate chained with a commit → the commit deny wins" deny "$out"
+echo "$out" | grep -q "never commit" && echo "  ✓ …and the reason is the version-control one" || { echo "  ✗ gate+commit reason is not the commit one"; fail=$((fail+1)); }
+out=$(payload_subagent 'cat > note.md <<EOF
+the git commit step is the Lead
+EOF' | bash "$HOOKS/block-subagent-commit.sh")
+check "subagent heredoc mentioning git commit mid-line → allow (head is cat)" allow "$out"
+out=$(bsc_ti shell '{"command":"make test-static"}')
+check "Codex tool name (no timeout field exists) → allow" allow "$out"
+out=$(printf '{"tool_name":"Bash","tool_input":{"command":"make test-static","run_in_background":true}}' | bash "$HOOKS/block-subagent-commit.sh")
+check "Lead run_in_background → allow (the Lead is notified)" allow "$out"
+grep -q 'timeout: 600000' <<<"$(bsc_ti Bash '{"command":"make test-static"}')" \
+  && echo "  ✓ deny reason names the fix (timeout: 600000)" \
+  || { echo "  ✗ deny reason lacks the timeout fix"; fail=$((fail+1)); }
 
 # ── gate-reminder: Claude AND Codex tool names must both fire ──────────
 gr() { printf '%s' "$1" | bash "$HOOKS/gate-reminder.sh"; }

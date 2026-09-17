@@ -329,7 +329,7 @@ if [ "${1:-}" = "--brief" ]; then
     }
     print "## Bounds"
     print "- Edit only Files allowed. Never commit or push; leave the tree staged."
-    print "- Run the Command; a code diff → dispatch the Reviewers in ONE message (reports to .rolepod/evidence/review/<task>-<role>.md); fix; round 2 = only the flagging reviewer re-checks its delta; max 2 rounds."
+    print "- Run the Command in the foreground (Bash timeout 600000; never run_in_background - nothing wakes a sub-agent); a code diff → dispatch the Reviewers in ONE message (reports to .rolepod/evidence/review/<task>-<role>.md); fix; round 2 = only the flagging reviewer re-checks its delta; max 2 rounds."
     print "- Budget: build <= 40 tool calls, whole loop <= 120; past it return PARTIAL with what is done, never grind."
     print "- Return a decision brief: verdict, `git diff --cached --stat | tail -3`, Command last 3 lines verbatim, reviewer verdicts + report paths, residuals."
   }

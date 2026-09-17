@@ -1,61 +1,44 @@
 #!/bin/bash
-# PreToolUse Bash hook — block sub-agents from running destructive git ops.
+# PreToolUse Bash hook — block sub-agents from the calls they cannot recover from.
 #
-# Rationale: real-world failure observed. A backend-developer sub-agent ran
-# `git commit` after marking tasks COMPLETED, bypassing the qa-tester floor
-# and Lead's verify step. Soft reminder hooks already in place were ignored
-# because agent saw success signals (tsc=0, imports OK) and committed.
+# 1. Version control (original rule). A backend-developer sub-agent ran
+#    `git commit` after marking tasks COMPLETED, bypassing the qa-tester floor
+#    and the Lead's verify step; soft reminders were ignored because the agent
+#    saw success signals (tsc=0, imports OK). Blocks git commit / push /
+#    reset --hard, gh pr merge / create.
+# 2. Cannot-wait (v2.147.0, Claude only). A sub-agent receives no completion
+#    notice for a backgrounded call, so a Bash run_in_background - or a long
+#    gate left on the 120 s default timeout, which the harness moves to the
+#    background - ends in an idle turn nobody wakes. Blocks run_in_background;
+#    blocks a gate (make test*, a tests/integration/ script, a cross-family
+#    run or collect) with no timeout. An explicit timeout of any size passes.
+#    Codex payloads carry neither field, so the rule stays silent there.
 #
-# Mechanism: Claude Code PreToolUse hook input includes `agent_id` +
-# `agent_type` ONLY when the call originates from a sub-agent. Main Lead
-# conversation has neither field. We check command + agent context, block
-# with exit 2 + JSON deny message so the agent sees a hard stop instead of
-# soft advisory text.
-#
-# Blocks: git commit, git push, gh pr merge, gh pr create
-# Allows: every other Bash use (tests, build, lint, grep, etc.)
+# Mechanism: Claude Code PreToolUse input carries `agent_id` + `agent_type`
+# ONLY when the call originates from a sub-agent; the Lead has neither. One
+# python pass tokenises the command once and answers both rules: every
+# segment (split on && || ; | and newlines; heredoc bodies dropped first) is
+# read past the wrapper-ish tokens (a prefix word, its flags and numeric
+# values, VAR=x) and a shell's -c string is recursed into. The gate rule reads
+# the head only (a false positive costs one resend); the version-control rule
+# tries every token (a wrapped commit must still be caught) and skips only a
+# pure-output head (echo / printf / :).
 set -euo pipefail
 
 INPUT=$(cat 2>/dev/null || echo '{}')
 
-# Extract fields. agent_id absent → Lead conversation → allow.
-AGENT_ID=$(echo "$INPUT" | python3 -I -c "
-import sys, json
+# The payload travels by env: the program itself is python's stdin (heredoc).
+VERDICT=$(RP_INPUT="$INPUT" python3 -I - <<'PY' 2>/dev/null || printf '\n\n\n'
+import sys, json, shlex, os, re
 try:
-    d = json.load(sys.stdin)
-    print(d.get('agent_id', '') or '')
+    d = json.loads(os.environ.get('RP_INPUT') or '{}')
 except Exception:
-    print('')
-" 2>/dev/null || echo "")
-
-[ -z "$AGENT_ID" ] && exit 0
-
-AGENT_TYPE=$(echo "$INPUT" | python3 -I -c "
-import sys, json
-try:
-    d = json.load(sys.stdin)
-    print(d.get('agent_type', '') or '')
-except Exception:
-    print('')
-" 2>/dev/null || echo "")
-
-CMD=$(echo "$INPUT" | python3 -I -c "
-import sys, json
-try:
-    d = json.load(sys.stdin)
-    print(d.get('tool_input', {}).get('command', '') or '')
-except Exception:
-    print('')
-" 2>/dev/null || echo "")
-
-# Detect destructive git ops by walking the argv tokens — NOT substring
-# match. Substring missed flag-separated forms (`git -C . commit`,
-# `git -c k=v commit`), which a blocked agent can trivially discover.
-# Token walk skips git's pre-subcommand options (and their values) so the
-# real subcommand is what gets matched.
-BLOCKED=$(printf '%s' "$CMD" | python3 -I -c "
-import sys, shlex, os
-cmd = sys.stdin.read()
+    d = {}
+if not (d.get('agent_id') or ''):
+    print(''); print(''); print(''); sys.exit(0)
+atype = d.get('agent_type') or ''
+ti = d.get('tool_input') or {}
+cmd = ti.get('command') or ''
 
 def toks_of(s):
     try:
@@ -63,66 +46,155 @@ def toks_of(s):
     except ValueError:
         return s.split()
 
-VALUE_OPTS = {'-C', '--git-dir', '--work-tree', '--namespace', '--exec-path'}
+PREFIX = {'time', 'env', 'nice', 'sudo', 'rtk', 'proxy', 'caffeinate', 'command', 'exec', 'nohup'}
 SHELLS = {'bash', 'sh', 'zsh', 'dash', 'ksh'}
+GIT_VALUE_OPTS = {'-C', '--git-dir', '--work-tree', '--namespace', '--exec-path'}
+RUNNER = {'rolepod-cross-family', 'cross-family.sh'}
+ASSIGN = re.compile(r'^[A-Za-z_][A-Za-z0-9_]*=')
+OUTPUT_ONLY = {'echo', 'printf', ':'}
+# no quote characters on this line: bash 3.2 counts quotes inside $( <<heredoc ) while looking for the closing paren
+HEREDOC = re.compile(r'<<-?\s*([^\s\w]?)(\w+)\1[^\n]*\n(.*?)\n\s*\2(?=\n|$)', re.S)
 
-# basename() catches absolute paths (/usr/bin/git); shell recursion catches
-# 'bash -c \"git commit\"' where the real command hides inside a quoted arg.
-def scan(toks, depth=0):
+def owner_is_shell(text, start):
+    # the line that opens a heredoc, marker removed: the body is a program when
+    # any command on that line (bash <<EOF, cat <<EOF | sh) is a shell
+    ls = text.rfind('\n', 0, start) + 1
+    le = text.find('\n', start)
+    line = text[ls:(le if le >= 0 else len(text))]
+    line = re.sub(r'<<-?\s*[^\s\w]?\w+[^\s\w]?', ' ', line, count=1)
+    for part in re.split(r'\s*(?:\||&&|;)\s*', line):
+        t = head(toks_of(part))
+        if t and os.path.basename(t[0]) in SHELLS:
+            return True
+    return False
+
+def segments(text):
+    # a heredoc body is data (cat / tee / a redirect) and is dropped before
+    # splitting - unless a shell owns it: then the body IS the program, the
+    # same way a -c string is, and its lines stay in as segments
+    def sub(m):
+        return '\n' + m.group(3) + '\n' if owner_is_shell(text, m.start()) else '<<HEREDOC'
+    text = HEREDOC.sub(sub, text)
+    return re.split(r'\s*(?:&&|\|\||;|\||\n)\s*', text)
+
+def head(t):
+    while t and (t[0] in PREFIX or t[0].startswith('-') or t[0].isdigit() or ASSIGN.match(t[0])):
+        t = t[1:]
+    return t
+
+def walk(text, rule, every, depth=0):
+    # rule(t, base) -> label or ''. every=False: t starts at the segment head
+    # (a gate false positive costs one resend, so head-only is right there).
+    # every=True: every token position is tried (a wrapped commit - timeout,
+    # xargs, watch - must still be caught); only a pure-output head is skipped.
     if depth > 4:
         return ''
-    for i, t in enumerate(toks):
-        base = os.path.basename(t)
-        if base == 'git':
-            j = i + 1
-            while j < len(toks) and toks[j].startswith('-'):
-                if toks[j] in VALUE_OPTS:
-                    j += 2
-                elif toks[j] == '-c' and j + 1 < len(toks) and '=' in toks[j + 1]:
-                    j += 2
-                else:
-                    j += 1
-            if j < len(toks):
-                sub = toks[j]
-                rest = toks[j:]
-                if sub == 'commit':
-                    return 'git commit'
-                elif sub == 'push':
-                    return 'git push --force' if ('--force' in rest or '-f' in rest) else 'git push'
-                elif sub == 'reset' and '--hard' in rest:
-                    return 'git reset --hard'
-        elif base == 'gh' and i + 2 < len(toks) and toks[i + 1] == 'pr' and toks[i + 2] in ('merge', 'create'):
-            return 'gh pr ' + toks[i + 2]
-        elif base in SHELLS:
-            for k in range(i + 1, len(toks)):
-                if toks[k] == '-c' and k + 1 < len(toks):
-                    r = scan(toks_of(toks[k + 1]), depth + 1)
+    for seg in segments(text):
+        t = head(toks_of(seg))
+        if not t:
+            continue
+        base = os.path.basename(t[0])
+        if base in SHELLS:
+            for k in range(1, len(t)):
+                if t[k] == '-c' and k + 1 < len(t):
+                    r = walk(t[k + 1], rule, every, depth + 1)
                     if r:
                         return r
+                    break
+            if len(t) > 1 and not t[1].startswith('-'):
+                t = t[1:]; base = os.path.basename(t[0])
+        if every:
+            if base in OUTPUT_ONLY:
+                continue
+            for i in range(len(t)):
+                r = rule(t[i:], os.path.basename(t[i]))
+                if r:
+                    return r
+        else:
+            r = rule(t, base)
+            if r:
+                return r
     return ''
 
-print(scan(toks_of(cmd)))
-" 2>/dev/null || echo "")
+def git_rule(t, base):
+    if base == 'git':
+        j = 1
+        while j < len(t) and t[j].startswith('-'):
+            if t[j] in GIT_VALUE_OPTS or (t[j] == '-c' and j + 1 < len(t) and '=' in t[j + 1]):
+                j += 2
+            else:
+                j += 1
+        if j < len(t):
+            sub, rest = t[j], t[j:]
+            if sub == 'commit':
+                return 'git commit'
+            if sub == 'push':
+                return 'git push --force' if ('--force' in rest or '-f' in rest) else 'git push'
+            if sub == 'reset' and '--hard' in rest:
+                return 'git reset --hard'
+    elif base == 'gh' and len(t) > 2 and t[1] == 'pr' and t[2] in ('merge', 'create'):
+        return 'gh pr ' + t[2]
+    return ''
 
-[ -z "$BLOCKED" ] && exit 0
+def gate_rule(t, base):
+    if base == 'make':
+        for a in t[1:]:
+            if not a.startswith('-') and a.startswith('test'):
+                return 'make ' + a
+    if 'tests/integration/' in t[0] and t[0].endswith('.sh'):
+        return t[0]
+    if base in RUNNER and ('--collect' in t or ('--kind' in t and '--detach' not in t)):
+        return base
+    return ''
 
-# Block via PreToolUse deny JSON. Claude Code surfaces `reason` back to the
-# agent so it knows WHY the call failed and what to do next. Fields are
-# env-passed — a quote inside agent_type/command must not break (or inject
-# into) the JSON emitter.
-RP_AGENT_TYPE="$AGENT_TYPE" RP_BLOCKED="$BLOCKED" python3 -I -c "
+blocked = walk(cmd, git_rule, True)
+wait = ''
+if not blocked and d.get('tool_name') == 'Bash':
+    if ti.get('run_in_background') in (True, 'true', 'True'):
+        wait = 'run_in_background'
+    else:
+        try:
+            to = float(ti.get('timeout') or 0)
+        except (TypeError, ValueError):
+            to = 0
+        if to <= 0:
+            wait = walk(cmd, gate_rule, False)
+print(atype); print(blocked); print(wait)
+PY
+)
+
+AGENT_TYPE=$(printf '%s\n' "$VERDICT" | sed -n 1p)
+BLOCKED=$(printf '%s\n' "$VERDICT" | sed -n 2p)
+WAIT=$(printf '%s\n' "$VERDICT" | sed -n 3p)
+[ -z "$BLOCKED" ] && [ -z "$WAIT" ] && exit 0
+
+# Deny via PreToolUse JSON; Claude Code surfaces the reason to the agent.
+# Fields are env-passed so a quote in agent_type / command cannot break the emitter.
+RP_AGENT_TYPE="$AGENT_TYPE" RP_BLOCKED="$BLOCKED" RP_WAIT="$WAIT" python3 -I -c "
 import json, os
-print(json.dumps({
-  'hookSpecificOutput': {
-    'hookEventName': 'PreToolUse',
-    'permissionDecision': 'deny',
-    'permissionDecisionReason': (
+a = os.environ.get('RP_AGENT_TYPE', ''); b = os.environ.get('RP_BLOCKED', ''); w = os.environ.get('RP_WAIT', '')
+if b:
+    reason = (
       'BLOCKED: sub-agent %r attempted %r. Sub-agents never commit, push, or '
-      'merge — the Lead does, after review. Return COMPLETED with the file list '
+      'merge - the Lead does, after review. Return COMPLETED with the file list '
       'and verification evidence; the Lead commits.'
-    ) % (os.environ.get('RP_AGENT_TYPE', ''), os.environ.get('RP_BLOCKED', ''))
-  }
-}))
+    ) % (a, b)
+elif w == 'run_in_background':
+    reason = (
+      'BLOCKED: sub-agent %r set run_in_background. A sub-agent receives no completion '
+      'notice, so waiting for one never ends the task. Fix: run the command in the '
+      'foreground with timeout: 600000 (10 min), write its output to a file and read the '
+      'tail. Exception: none - background runs belong to the Lead.'
+    ) % a
+else:
+    reason = (
+      'BLOCKED: sub-agent %r ran a gate (%s) with no timeout. A gate that outruns the '
+      '120 s default is moved to the background and no completion notice reaches a '
+      'sub-agent. Fix: resend with timeout: 600000 (10 min) on the Bash call. Exception: '
+      'a gate you know finishes under 2 min - state it with timeout: 120000.'
+    ) % (a, w)
+print(json.dumps({'hookSpecificOutput': {'hookEventName': 'PreToolUse',
+  'permissionDecision': 'deny', 'permissionDecisionReason': reason}}))
 " 2>/dev/null
 
 exit 0
