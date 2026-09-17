@@ -1013,6 +1013,104 @@ out=$(nr "$NR_EMPTY_T")
 check "precommit: nested row with NO provenance field (bare forgery) → deny" deny "$out"
 rm -rf "$NR_TMP"
 
+# ── cohesion-contract-check: prescribed names + Bash heredoc ─────────────
+# Gate arms when the transcript already has ≥1 recent Agent spawn and the
+# next spawn is a writer role (backend-developer). Contract evidence is a
+# Write/Edit of a known name OR a Bash command that WRITES one (redirect /
+# cp / mv / install / tee) — a command that only mentions the name does not
+# count.
+CC_TMP=$(mktemp -d)
+CC_AGENT='{"type":"tool_use","name":"Agent","input":{"subagent_type":"rolepod:frontend-developer","prompt":"build ui"}}'
+cc() { # $1 = transcript path
+  printf '{"tool_name":"Agent","tool_input":{"subagent_type":"rolepod:backend-developer","prompt":"build api"},"transcript_path":%s}' \
+    "$(printf '%s' "$1" | python3 -c 'import json,sys; print(json.dumps(sys.stdin.read()))')" \
+    | bash "$HOOKS/cohesion-contract-check.sh" || true
+}
+cc_write_line() { # $1 = file_path → one JSONL tool_use line
+  printf '{"type":"tool_use","name":"Write","input":{"file_path":%s,"content":"# c"}}\n' \
+    "$(printf '%s' "$1" | python3 -c 'import json,sys; print(json.dumps(sys.stdin.read()))')"
+}
+cc_bash_line() { # $1 = command → one JSONL Bash tool_use line
+  printf '{"type":"tool_use","name":"Bash","input":{"command":%s}}\n' \
+    "$(printf '%s' "$1" | python3 -c 'import json,sys; print(json.dumps(sys.stdin.read()))')"
+}
+
+printf '%s\n' "$CC_AGENT" > "$CC_TMP/t1.jsonl"
+cc_write_line 'docs/rolepod/plans/foo-cohesion-2026-09-17.md' >> "$CC_TMP/t1.jsonl"
+out=$(cc "$CC_TMP/t1.jsonl")
+check "cohesion: Write to <feature>-cohesion-<date>.md → allow" allow "$out"
+
+printf '%s\n' "$CC_AGENT" > "$CC_TMP/t2.jsonl"
+cc_bash_line "cat > docs/rolepod/plans/foo-cohesion-2026-09-17.md <<'EOF'
+# c
+EOF" >> "$CC_TMP/t2.jsonl"
+out=$(cc "$CC_TMP/t2.jsonl")
+check "cohesion: Bash heredoc to <feature>-cohesion-<date>.md → allow" allow "$out"
+
+printf '%s\n' "$CC_AGENT" > "$CC_TMP/t3.jsonl"
+cc_bash_line 'cat README.md | head' >> "$CC_TMP/t3.jsonl"
+out=$(cc "$CC_TMP/t3.jsonl")
+check "cohesion: Bash mentioning README.md only → deny" deny "$out"
+
+printf '%s\n' "$CC_AGENT" > "$CC_TMP/t4.jsonl"
+cc_write_line 'contract.md' >> "$CC_TMP/t4.jsonl"
+out=$(cc "$CC_TMP/t4.jsonl")
+check "cohesion: Write to contract.md → allow" allow "$out"
+
+printf '%s\n' "$CC_AGENT" > "$CC_TMP/t5.jsonl"
+out=$(cc "$CC_TMP/t5.jsonl")
+check "cohesion: parallel Agent, no contract artifact → deny" deny "$out"
+
+# TC6 — the ticket's own motivating incident: a BARE filename (no
+# directory prefix), which is the common shape once the Lead has already
+# cd'd into the target directory. Covers both a redirect and cp/mv/tee.
+printf '%s\n' "$CC_AGENT" > "$CC_TMP/t6.jsonl"
+cc_bash_line "cat > foo-contract.md <<'EOF'
+# c
+EOF" >> "$CC_TMP/t6.jsonl"
+out=$(cc "$CC_TMP/t6.jsonl")
+check "cohesion: Bash heredoc to a BARE contract.md (no dir prefix) → allow" allow "$out"
+
+printf '%s\n' "$CC_AGENT" > "$CC_TMP/t6b.jsonl"
+cc_bash_line 'cp draft.md contract.md' >> "$CC_TMP/t6b.jsonl"
+out=$(cc "$CC_TMP/t6b.jsonl")
+check "cohesion: Bash 'cp draft.md contract.md' (bare, cp) → allow" allow "$out"
+
+# TC7 — a command that only MENTIONS a contract name (read/inspect/delete)
+# must not satisfy the gate; only a write does.
+printf '%s\n' "$CC_AGENT" > "$CC_TMP/t7.jsonl"
+cc_bash_line 'cat contract.md' >> "$CC_TMP/t7.jsonl"
+out=$(cc "$CC_TMP/t7.jsonl")
+check "cohesion: Bash 'cat contract.md' (read, not write) → deny" deny "$out"
+
+# TC8 — near-miss suffix: the trailing boundary must reject a match that is
+# only a PREFIX of the actual filename.
+printf '%s\n' "$CC_AGENT" > "$CC_TMP/t8.jsonl"
+cc_write_line 'spec.mdx' >> "$CC_TMP/t8.jsonl"
+out=$(cc "$CC_TMP/t8.jsonl")
+check "cohesion: Write to spec.mdx (near-miss suffix) → deny" deny "$out"
+
+# TC9 — round-2 finding: cp/mv/install must not cross into a DIFFERENT
+# command via && to pick up an unrelated mention later in the line.
+printf '%s\n' "$CC_AGENT" > "$CC_TMP/t9.jsonl"
+cc_bash_line 'cp draft.md output.txt && cat contract.md' >> "$CC_TMP/t9.jsonl"
+out=$(cc "$CC_TMP/t9.jsonl")
+check "cohesion: 'cp a b && cat contract.md' (crosses &&) → deny" deny "$out"
+
+# TC10 — round-2 finding: mv naming a contract as its SOURCE (moved away,
+# not written) must not satisfy the gate — only the LAST arg counts.
+printf '%s\n' "$CC_AGENT" > "$CC_TMP/t10.jsonl"
+cc_bash_line 'mv contract.md /tmp/elsewhere' >> "$CC_TMP/t10.jsonl"
+out=$(cc "$CC_TMP/t10.jsonl")
+check "cohesion: 'mv contract.md /tmp/elsewhere' (source, not written) → deny" deny "$out"
+
+# TC11 — round-2 finding: a quoted bare target must still be recognized.
+printf '%s\n' "$CC_AGENT" > "$CC_TMP/t11.jsonl"
+cc_bash_line 'echo "# c" > "contract.md"' >> "$CC_TMP/t11.jsonl"
+out=$(cc "$CC_TMP/t11.jsonl")
+check "cohesion: echo redirect to a quoted bare \"contract.md\" → allow" allow "$out"
+rm -rf "$CC_TMP"
+
 # ─── result ───
 if [ "$fail" -eq 0 ]; then
   echo "  ✓ pass"

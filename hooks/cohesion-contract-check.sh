@@ -8,8 +8,12 @@
 #
 # Logic:
 #   - Single Agent spawn → silent pass (no parallel concern)
-#   - 2nd+ Agent spawn within last 10 tool uses AND no contract.md / spec.md
-#     edit in session → HARD block with reason pointing to the skill
+#   - 2nd+ Agent spawn within last 10 tool uses AND no cohesion-contract
+#     artifact in session (Write/Edit of contract.md / SPEC.md / cohesion.md /
+#     specs/* / contracts/* / <feature>-cohesion-YYYY-MM-DD.md /
+#     <feature>-contract[-…].md, OR a Bash command whose target is one of
+#     those names — a redirect / cp / mv / install / tee, not a mere
+#     mention) → HARD block
 #
 # Bypass:
 #   ROLEPOD_GATES_SOFT=1   — soft warn instead of block
@@ -86,7 +90,11 @@ RECENT_AGENTS=${RECENT_AGENTS:-0}
 [ "$RECENT_AGENTS" -lt 1 ] && exit 0
 
 # Look for a cohesion contract artifact in the session — contract.md /
-# cohesion.md / SPEC.md / specs/*.md edited or written this session.
+# cohesion.md / SPEC.md / specs/*.md / contracts/*.md, plus the write-plan
+# prescribed names (<feature>-cohesion-YYYY-MM-DD.md / <feature>-contract[-…].md)
+# via Edit/Write OR a Bash command that WRITES one (redirect / cp / mv /
+# install / tee — a command that only mentions the name, e.g. `cat`/`grep`/
+# `rm`, does not count).
 CONTRACT_PRESENT=$(printf '%s' "$INPUT" | python3 -I -c "
 import sys, json, os, re
 try:
@@ -98,7 +106,48 @@ tp = d.get('transcript_path') or ''
 if not tp or not os.path.isfile(tp):
     print('no'); sys.exit(0)
 
-pat = re.compile(r'(^|/)(contract|cohesion|SPEC|spec)\.(md|markdown)$|(^|/)specs/.+\.md$|(^|/)contracts/.+\.md$', re.IGNORECASE)
+# Name alternation shared by both branches below. Single backslash
+# throughout (bash's double-quote layer leaves \. and \d as-is, so this
+# reaches python unchanged) — do NOT double these if this block ever moves
+# into a real .py file, \\. there means backslash-then-any-char.
+NAME = (
+    r'(?:contract|cohesion|SPEC|spec)\.(?:md|markdown)'
+    r'|specs/[^\s]+\.md'
+    r'|contracts/[^\s]+\.md'
+    r'|[^\s/]+-cohesion-\d{4}-\d{2}-\d{2}\.(?:md|markdown)'
+    r'|[^\s/]+-contract(?:-[^\s/]+)?\.(?:md|markdown)'
+)
+# Trailing boundary: rejects near-miss suffixes the alternation's own .md
+# would otherwise half-match (spec.mdx, foo-contract.md.bak); the
+# alternation itself is what rejects an unrelated name (README.md).
+TAIL = r'(?=$|[\s' + chr(39) + r'\"<>|;&#])'
+# Destination-only tail for cp/mv/install: the name must be that command's
+# LAST argument (the write target), not an earlier one — 'mv contract.md
+# /tmp/x' names contract.md as the SOURCE being moved away, not written.
+DEST_TAIL = r'(?=\s*$|\s*[;&|])'
+# Optional quoting / directory prefix ahead of the name itself.
+LEAD = r'(?:[\"\x27])?(?:[^\s]*/)?'
+
+# Edit/Write file_path: a plain filesystem path, so start-of-string or
+# after the last '/' is the only shape it takes.
+PATH_PAT = re.compile(r'(?:^|/)(?:' + NAME + r')' + TAIL, re.IGNORECASE)
+
+# Bash command text: the name can sit anywhere in the string, so a bare
+# 'mention' (cat/grep/rm) must NOT satisfy the gate — only require the
+# match to be the target of a write. Two shapes, each with its own tail:
+#   - redirect / tee: loose TAIL (a heredoc marker or '2>&1' may follow).
+#   - cp/mv/install: DEST_TAIL — must be the LAST argument, and the scan
+#     never crosses into a DIFFERENT command via && / ; / | (otherwise
+#     'cp a.md b.md && cat contract.md' would falsely clear the gate on an
+#     unrelated later mention).
+BASH_WRITE_PAT = re.compile(
+    r'(?:' +
+    r'(?:>>?\s*|\btee\b\s+(?:-a\s+)?)' + LEAD + r'(?:' + NAME + r')' + TAIL +
+    r'|' +
+    r'\b(?:cp|mv|install)\b[^\n;&|]*?\s' + LEAD + r'(?:' + NAME + r')' + DEST_TAIL +
+    r')',
+    re.IGNORECASE,
+)
 EDIT_TOOLS = {'Edit', 'Write', 'MultiEdit', 'NotebookEdit'}
 
 try:
@@ -122,13 +171,18 @@ try:
                     if isinstance(c, list):
                         blocks = [b for b in c if isinstance(b, dict) and b.get('type') == 'tool_use']
             for b in blocks:
-                if b.get('name') not in EDIT_TOOLS:
-                    continue
+                name = b.get('name')
                 inp = b.get('input') or {}
-                path = inp.get('file_path') or inp.get('notebook_path') or ''
-                if pat.search(path):
-                    print('yes')
-                    sys.exit(0)
+                if name in EDIT_TOOLS:
+                    path = inp.get('file_path') or inp.get('notebook_path') or ''
+                    if PATH_PAT.search(path):
+                        print('yes')
+                        sys.exit(0)
+                elif name == 'Bash':
+                    cmd = inp.get('command') or ''
+                    if BASH_WRITE_PAT.search(cmd):
+                        print('yes')
+                        sys.exit(0)
 except Exception:
     pass
 print('no')
@@ -138,7 +192,7 @@ print('no')
 
 # No contract + parallel Agent spawn detected → block (or warn in soft mode).
 REASON="cohesion-contract gate: parallel Agent ('$SUBAGENT') with $RECENT_AGENTS recent spawn(s) and NO cohesion contract. "
-REASON+="Fix: write contract.md (or SPEC.md / cohesion.md / specs/<name>.md / contracts/<name>.md) — shared interfaces, RED tests, integration points, who owns each path — then re-spawn. "
+REASON+="Fix: write contract.md (or SPEC.md / cohesion.md / specs/<name>.md / contracts/<name>.md / <feature>-cohesion-YYYY-MM-DD.md / <feature>-contract.md) — shared interfaces, RED tests, integration points, who owns each path — then re-spawn. "
 REASON+="Read-only / single-domain spawn → ask the USER to set ROLEPOD_NO_CONTRACT=1; env bypass is user-set only."
 
 if [ "$SOFT_MODE" -eq 1 ]; then
