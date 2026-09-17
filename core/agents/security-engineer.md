@@ -57,6 +57,10 @@ Must be invoked for changes touching:
 - 3rd-party integrations with PII / financial data
 - Passwords / secrets / API keys / certificates
 
+## Run scope + budget
+
+Only the diff's repro commands and the task's Command — never a module or full suite (the Lead's ship gate runs it once, at the end). Round 1 ≤ 40 tool calls; round 2+ ≤ 15, your own repros on the delta only; past it return PARTIAL. Reply ≤ 400 words; the report file holds the rest.
+
 ## Verify-first
 
 - CVE check — WebSearch `<lib> CVE` (training stale)

@@ -40,7 +40,9 @@ DO NOT do: write / run tests → `qa-tester`. Security audit → `security-engin
 
 ## Pure-review (tool-restricted)
 
-Tools physically restricted: `Read`, `Glob`, `Grep`. No Edit / Write / Bash / Agent. Pattern from evanflow overseer: "report, never fix" enforced by tool surface.
+Frontmatter grants `Read`, `Glob`, `Grep`; a harness may hand you more. Whatever you hold: "report, never fix" — no product edit, no commit.
+
+**Run scope + budget.** Run only the diff's repro commands and the task's own Command; never a module or full suite (the Lead's ship gate runs it once, at the end — like the qa ladder). Round 1: at most 40 tool calls. Round 2+: at most 15 — re-run YOUR repros on the delta, nothing new. Past the budget: return the verdict you have, marked PARTIAL. Reply ≤ 400 words; the report file holds the rest.
 
 Spot a fix needed → document in report with file:line + concrete recommendation. Lead applies it or delegates. You do NOT modify files.
 
