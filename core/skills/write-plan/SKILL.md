@@ -39,11 +39,11 @@ Hand off:
 
 Inputs: the approved spec or goal · repo layout for the touched module · 2-3 nearby files for patterns · constraints (stack, style, no-touch zones) · available specialist agents · the module boundary map if the project declares one (CLAUDE.md / ADR / docs).
 
-Work spans 2+ modules and NO map exists → offer a ONE-TIME bootstrap: scout + `system-architect` derive module list, dependency direction, and no-touch zones from the code into the project's CLAUDE.md for approval — recently-active modules first (`git log`), the whole repo only when small. Paid once; every later session reads boundaries instead of re-inferring them.
+Work spans 2+ modules and NO map exists → offer a ONE-TIME bootstrap: scout + `system-architect` derive module list, dependency direction, and no-touch zones from the code into the project's CLAUDE.md for approval — recently-active modules first (`git log`), the whole repo only when small.
 
 ### 1. List files to touch
 
-Concrete paths, not categories. Code-intel index when connected widens the blast radius; otherwise grep + Read adjacent code.
+Concrete paths — a directory or module when the slice's shape is still open (`hooks/lib/`; ownership then pins that directory), never a category. Code-intel index when connected widens the blast radius; otherwise grep + Read adjacent code.
 
 ### 2. Order the tasks
 
@@ -60,7 +60,7 @@ Each **Blocked-by** edge names what it consumes (e.g., `Blocked by: Task 2 (its 
 
 ### 3. Test plan per task
 
-Name the test type (unit / integration / contract / E2E / smoke / benchmark / repro), the assertion that proves it, and the exact command — copy-paste runnable, not "run the tests". "Adds tests" is not a test plan. Size by rules: one test per rule at its owner, one smoke per call site — never a test per copy of the rule.
+Name the test type (unit / integration / contract / E2E / smoke / benchmark / repro), the assertion that proves it, and the exact command — copy-paste runnable, not "run the tests". Behaviour no test can express yet → **Test / evidence** carries 1-3 acceptance criteria the reviewer walks, and **Command** is the nearest mechanical check (lint / typecheck / smoke) — never skipped. "Adds tests" is not a test plan. Size by rules: one test per rule at its owner, one smoke per call site — never a test per copy of the rule.
 
 No test infrastructure at all → the FIRST task bootstraps the minimal harness (runner config + one passing smoke test) so every later Command is runnable. Never plan Commands against a runner that does not exist.
 
@@ -70,7 +70,7 @@ Before writing the artifact, quiz the user on the numbered task list — per tas
 
 Parallel agents help only when file ownership is genuinely disjoint and the work needs no handoff between agents — otherwise sequential is faster and cheaper. Two tasks with no edge are parallel *candidates*, never a mandate; sequential anyway is fine — say why in the Parallel layout line. Borderline (a shared interface) → present both shapes with one-line trade-offs; the user picks.
 
-High-stakes multi-option decisions (approach, architecture, sequencing) → a **cross-CLI advisory panel** only when opted in (`/rolepod-full` or an explicit ask) and the decision earns ~3× tokens; the Lead reconciles and owns the choice. Gating, strengths, collect-then-decide protocol, single-CLI vertical fallback: `references/advisory-routing.md`.
+High-stakes multi-option decisions (approach, architecture, sequencing) → a **cross-CLI advisory panel** only when opted in (`/rolepod-full` or an explicit ask) and the decision earns ~3× tokens; the Lead reconciles and owns the choice. Protocol: `references/advisory-routing.md`.
 
 ### 5. If parallel, write a cohesion contract
 

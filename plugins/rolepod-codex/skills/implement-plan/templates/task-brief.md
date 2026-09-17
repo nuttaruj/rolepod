@@ -32,12 +32,12 @@ Plan: <path> · Spec: <path>
 <pass/fail condition>
 
 ## Write
-`self` | `external` (another CLI drafts via `rolepod-cross-family --kind implement`; the owner still runs the loop)
+`self` | `external` (another CLI drafts; the owner still runs the loop)
 
 ## Reviewers
 `qa-tester`, `universal-reviewer` (+ `security-engineer` on a high-risk path) — `none` only for a docs-only diff
 
 ## Bounds
-- Edit only Files allowed; never commit or push — leave the tree staged.
+- Edit Files allowed; an unowned path → touch + `Also touched:`; another owner's path → `NEEDS:` line. Never commit or push — leave the tree staged.
 - Ticket loop per agent-protocol: Command → Reviewers in ONE message → fix → round 2 = the flagging reviewer only (max 2) → decision brief.
 - Read the brief, not the plan; open a source only for a named residual. A new idea → Follow-ups, never scope.

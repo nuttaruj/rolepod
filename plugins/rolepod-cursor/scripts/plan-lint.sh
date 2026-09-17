@@ -292,7 +292,7 @@ if [ "${1:-}" = "--brief" ]; then
     # a path already printed by the touch-list loop above must not print a
     # second time just because it is ALSO on the do-not-touch list.
     if (hascontract) for (i = 1; i <= dn; i++) { p = dntord[i]; if (!(p in allowedset) && !(p in touchseen)) print "- " p }
-    print "- everything else"
+    print "- everything else (an unowned path: touch it and add an Also touched line; a path another owner holds: a NEEDS line, never an edit)"
     print "## Change"
     print (Ch == "" ? "(not in plan)" : Ch)
     print "## Test / evidence"

@@ -35,11 +35,12 @@
 - [ ] **Change:** <what to do, concretely — at most 3 bullets. An exact-string
       edit spec (old → new) goes in a fenced block under this task, never
       inline in the bullet.>
-- [ ] **Test / evidence:** <test type + the assertion that proves it works>
+- [ ] **Test / evidence:** <test type + the assertion that proves it — or, when no
+      test can express the behaviour yet, 1-3 acceptance criteria the reviewer walks>
 - [ ] **Expected failing signal:** <for test-first tasks — the error the test
       shows before the fix. Omit if not test-first.>
-- [ ] **Command:** <exact command to run the check — runnable copy-paste as-is,
-      so the build loop can verify this task without guessing>
+- [ ] **Command:** <exact command, runnable copy-paste as-is; when the behaviour
+      has no test, the nearest mechanical check (lint / typecheck / smoke)>
 - **Owner:** <The role the domain map assigns to this task's Files — path first,
       then concern. `Lead` for R1/R2-sized work (≤2 files) or when the user said
       self-do; from R3 up the map decides. A vertical slice has ONE owner: the role
@@ -61,7 +62,7 @@
       analytics / dashboards / pipelines / ETL → data-scientist
       profiling, p95/p99, bundle size, query plans → performance-engineer
       tests only (a test-authoring task) → qa-tester
-      first draft by another CLI (pool opt-in, the user's call) → `Owner: <role> · write: external`>
+      another CLI drafts (pool opt-in) → `Owner: <role> · write: external`>
 - **Done when:** <pass/fail condition>
 - **On fail:** <non-default recovery, if any. Omit to use the Failure policy below.>
 
