@@ -424,11 +424,11 @@ the runner's anchored pass (raw file ≥ 500 bytes under
 `external-fail` line since the last commit (every usable member failed, or
 the enabled pool is empty). Cross-family off (no file / `none`), or a Lead
 the hook cannot identify, keeps the pre-v2.76 behaviour — nothing is forced
-on a user who did not opt in. **Money / auth paths need BOTH (v2.78.0):**
-billing · payments · credits · auth · crypto · secrets · data deletion (and
-the money-term content hit) require the external anchor AND an internal
-strong reviewer dispatch; migration / permission / token / webhook paths
-need only the external. External failed (logged) → internal alone clears. **Code only (v2.143.0):** the hold needs a logic-bearing diff — a comment / blank-only change on a risky path clears with the internal strong reviewer; a prose file (`.md` / `.mdx` / `.txt` / `.rst` / `.adoc`, or an extension-less README / LICENSE / CHANGELOG) is never a risk path (a `+pattern` in `.rolepod/risk-paths` cannot re-flag one — accepted), and a docs-only diff passes the gate silently at any size (docs are written, not reviewed — owner rule; the private-docs deny still runs first). Doctrine side: the external reviewer is an R4 instrument — R3 stays internal unless the user asks. Measured before: 210 dispatches
+on a user who did not opt in. **One strong reviewer (v2.145.0):** money / auth paths clear on the anchored
+external pass alone like every other high-risk path (the v2.78.0 BOTH hold is
+gone — the pool exists to move strong-class tokens off the main plan); the
+internal strong joins only at review-code's round-3 breaker, by doctrine, not
+by the gate. External failed (logged) → internal alone clears. **Code only (v2.143.0):** the hold needs a logic-bearing diff — a comment / blank-only change on a risky path clears with the internal strong reviewer; a prose file (`.md` / `.mdx` / `.txt` / `.rst` / `.adoc`, or an extension-less README / LICENSE / CHANGELOG) is never a risk path (a `+pattern` in `.rolepod/risk-paths` cannot re-flag one — accepted), and a docs-only diff passes the gate silently at any size (docs are written, not reviewed — owner rule; the private-docs deny still runs first). Doctrine side: the external reviewer is an R4 instrument — R3 stays internal unless the user asks. Measured before: 210 dispatches
 across nine repos, zero cross-family passes — the internal reviewer was one
 Agent call away and counted the same.
 

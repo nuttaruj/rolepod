@@ -180,20 +180,18 @@ satellite first whenever a usable non-Lead family exists:
   high-risk commit — only after the runner reports exit 3 / 4 (logged as
   `external-fail`); a machine where cross-family is off (opt-in not given,
   or `none`) is never held.
-- **Money / auth = BOTH.** billing · payments · credits · auth · crypto ·
-  secrets · data deletion (and the gate's money-term content hit): the
-  external pass AND the internal strong reviewer, launched in the same
-  dispatch on the same frozen diff — the external buys decorrelation, the
-  internal buys project-context depth (conventions, risk-paths, the
-  cohesion contract). The gate requires both anchors on these paths while
-  the pool is usable; external failed (logged) → internal alone clears.
-  migration / permission / token / webhook paths stay external-is-the-pass.
+- **Money / auth = the external alone (v2.145.0).** billing · payments ·
+  credits · auth · crypto · secrets · data deletion clear on the anchored
+  external pass like every other high-risk path — the pool exists to move
+  strong-class tokens off the main plan. The internal strong joins only at
+  the round-3 breaker (review-code §5, one round on the class) or on the
+  user's ask. External failed (logged) → internal alone clears.
 - **Weak external → add internal.** Receipt family `unknown` (cursor /
   opencode with no declared default model), no TRACED finding, or a bare
   verdict → dispatch the internal strong reviewer too; record why.
   Internal strong otherwise
   fires on the three carve-outs in review-code §1: empty / failed pool,
-  apex trigger (then BOTH passes), fix-verify re-read.
+  apex trigger (external first), fix-verify re-read.
 - **Outside opinion** (debug-issue §9, `--kind consult`), **advisory panel**
   (write-plan, `--kind advise --all`) — already cold one-shot by shape; same
   satellite-first order.

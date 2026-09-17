@@ -12,7 +12,7 @@ Risk-appropriate review pressure on a finished change: multi-axis read, adversar
 <EXTREMELY-IMPORTANT>
 1. NEVER merge code on a high-risk surface (auth, billing, payments, credits, migration, data deletion, secrets, tokens, crypto, permissions, security) without an adversarial fresh-context review.
 2. NEVER let the author — or, for the adversarial pass, the author's own model — be the final reviewer of their own change.
-   - The external adversarial review runs in a **CLI** different from the Lead's, on that CLI's own default model (same vendor is fine — harness, context and defaults decorrelate).
+   - The external adversarial review runs in a **CLI** different from the Lead's, on that CLI's own default model (same vendor is fine).
    - The vertical fallback (same CLI, stronger tier) and an inline advisor (inside the author's context) never satisfy it; both only raise the Lead floor, recorded as a limitation.
 3. NEVER skip review because "tests pass". Tests prove the assertion, not the design.
 4. Findings before fixes — the whole round's findings, never the first report's. Severity-ordered list; no silent rewrite.
@@ -59,20 +59,20 @@ rolepod-brain: add `brain_seed(task, agent: <reviewer id>)` verbatim; no tool �
 - **R1** → no review, no re-read turn; the edit tool's echo is the evidence. A docs-only diff is R1 at any size — no reviewer, internal or external; its own check (link check / static lint) is the verify.
 - **R2** → the `qa-tester` floor (balanced, the diff alone — the author never reviews own logic, a Lead-built R2 included). Matched row not qa-tester → add ONE concern-matched reviewer at balanced; pass the balanced model explicitly, but leave `universal-reviewer` model-less (a balanced pin voids its strong lift).
 - **R3** → the row match, internal only — the pool is an R4 instrument (the user asks → one pass). A high-risk path anywhere in the diff tiers the whole commission R4.
-- **R4** → the full adversarial floor, never less. The router's comment/blank-only carve-out (1 file, ≤5 lines, zero logic) lands here as R2 + ONE internal strong reviewer, no external — the pool reviews code, never a comment / doc / config / rename diff.
+- **R4** → the full adversarial floor, never less — ONE strong pass: the external when the pool is usable (dispatched by the task owner; `qa-tester` stays), else the internal strong. The router's comment/blank-only carve-out (1 file, ≤5 lines, zero logic) lands here as R2 + ONE internal strong reviewer, no external — the pool reviews code, never a comment / doc / config / rename diff.
 
 **Satellite-first strong pass.** A usable cross-family external IS the R4 strong adversarial pass: `rolepod-cross-family --kind review --brief <brief> --attach <diff> --detach` — read-only, anchored by the runner.
 
 **Detach by default.** The runner returns a job id and runs the chain (first member → fallbacks) with each member's budget.
 - Dispatch the `qa-tester` floor and, on money / auth, the internal strong reviewer in the same breath; then keep working OUTSIDE the diff (a plan task on disjoint files; an implement job owns its tree — another worktree) or end the turn.
-- `rolepod-cross-family --collect <job-id>` waits up to the budget — run it in a background call where the harness has one — one wake-up, no polling.
+- `rolepod-cross-family --collect <job-id>` waits up to the budget — in the foreground (a background wait leaves the caller idle).
 - Foreground (no `--detach`) is for small diffs only — the harness caps a foreground call and kills a slow member.
 
 **Internal strong reviewer** (`security-engineer` / `universal-reviewer`) runs when any holds:
-- (a) cross-family is off, or the runner reports no usable member (every member failed / pool empty — logged; the internal pass then satisfies the gate);
-- (b) **money / auth surface** — billing / payments / credits / auth / crypto / secrets / data deletion: run BOTH passes in ONE dispatch, external for decorrelation + internal strong for project-context depth (migration / permission / token paths: external alone);
+- (a) cross-family is off, or the runner reports no usable member (every member failed / pool empty — logged);
+- (b) **the round-3 breaker** (§5) — a BLOCKER still open after 3 rounds on ONE tree (never counted across tickets) → the internal strong reviews the class, ONE round beside the external; never both on round 1, money / auth included;
 - (c) **the external came back weak** — family `unknown`, no TRACED finding, or a verdict with no claims walked;
-- (d) an apex trigger holds — BOTH passes at the apex rung;
+- (d) an apex trigger holds — the apex rung, external first, internal only when (c);
 - (e) re-reading fixes in the §5 loop.
 
 It runs at STRONG class even under a balanced Lead: never pass a balanced model on it (a hooked CLI lifts a model-less call; elsewhere pass an explicit strong-class override). `qa-tester` is the balanced test floor by design — never the strong pass, never counted as one.
@@ -93,8 +93,8 @@ Reviews merge severity-ordered, deduped by file:line + root cause (the Lead's fi
 
 **External adversarial review — a different CLI, never the Lead's own.**
 - The pool is the user's choice and **opt-in**: `<git-root>/.rolepod/cross-family`, then `~/.rolepod/cross-family` (`rolepod-cross-family --setup`), minus the Lead's own CLI; no file or `none` = off, never turned on unasked.
-- An externally implemented ship group (`--kind implement`) is reviewed by a DIFFERENT member — the runner skips the implementer while its ticket is uncommitted; a user-lifted risky scope (`risky:lifted`) → BOTH passes.
-- Enabled + R4 (a high-risk path anywhere in the diff) + logic-bearing code diff + usable member → routing to it is mandatory; R1-R3, and any doc / comment / config / rename-only diff, stay internal unless the user asks.
+- An externally implemented ship group (`--kind implement`) is reviewed by a DIFFERENT member — the runner skips the implementer while its ticket is uncommitted; a user-lifted risky scope (`risky:lifted`) → the external pass by a different member.
+- Enabled + R4 + logic-bearing code diff + usable member → routing to it is mandatory; R1-R3, and any doc / comment / config / rename-only diff, stay internal unless the user asks.
 - `qa-tester` + the Lead's own read are the floor and backstop any reviewer that is missing or fails.
 - **An empty or partial return is a failed reviewer, never a clean pass** — a lens answering `""`, a one-sentence result, a turn-limit notice: resume it or re-dispatch on a narrower brief; until it reports the round is open and the report records a LIMITATION.
 - No dispatch possible at all (user forbade agents / no subagent support) → the Lead's cold self-review stands in as a recorded LIMITATION — surface the conflict, never self-set a bypass.
@@ -129,8 +129,8 @@ Fill `templates/review-report.md`. Each finding: file:line, the issue, why it ma
 Round 2+: `rolepod-cross-family --kind review --brief <brief> --since <previous job> --detach` — the runner attaches the fix delta plus the previous report, findings tagged IN-FIX / NEW / REPEAT.
 R4 cadence: round 1 = every axis in ONE message; round 2 = only the reviewer who flagged re-runs its own repro on the delta — the Lead's green suites are the evidence, no suite re-runs, no new axis.
 
-Whoever wrote the fix never verifies it: a subagent-built fix → `qa-tester` or the Lead's cold read; a Lead-built fix → `qa-tester` at balanced (R4 → the internal strong reviewer).
-- The external re-runs only when its previous report carried a BLOCKER and the fix delta is logic-bearing code; MAJOR-only, clean, or a text-only delta → the internal reviewer verifies the fix delta alone.
+Whoever wrote the fix never verifies it: a subagent-built fix → `qa-tester` or the Lead's cold read; a Lead-built fix → `qa-tester` at balanced (R4 → the strong pass).
+- The external re-runs only when its previous report carried a BLOCKER and the fix delta is logic-bearing code; otherwise the internal reviewer verifies the fix delta alone.
 - Author and reviewer disagree on merits → technical data > documented style guide > engineering principle > codebase consistency.
 
 **Breaker.** Two rounds is the budget — review, then confirm the fixes; a third is a reassessment point. Triggers, any one:
@@ -145,7 +145,7 @@ Then, in order:
 1. **Ledger** — `docs/rolepod/handoffs/<feature>-breaker-<date>.md`: `## Rounds` (per round: found → hypothesis → changed → test result → came back), `## Class` (one root cause, its single point, every consumer — grep the call sites now), `## Decision` (options for the user).
 2. **Class** — cannot name the class or its single point → ONE consult (the CLI's native advisor, else `rolepod-cross-family --kind consult --brief <ledger>`) asking exactly that; never a second blind fix.
 3. **Class fix once** — one source of truth, every consumer calls it, per-site copies deleted; proof = a class test failing on ≥2 old sites + the consumer list checked off; NEW findings outside the class → `## Follow-ups`.
-4. **One round** — `--since <job> --ledger <ledger> --detach` plus the internal reviewer with the same two files. Round 4 is refused without the ledger; round 5 is refused outright. APPROVED / NITS → ship path.
+4. **One round** — `--since <job> --ledger <ledger> --detach` plus the internal strong reviewer on the class with the same two files. Round 4 is refused without the ledger; round 5 is refused outright. APPROVED / NITS → ship path.
 5. **Split & stop** — REJECTED with any IN-FIX / REPEAT, or the user absent: commit the slices with no open finding, park the churning surface as a delta spec / Follow-ups, end the turn with the decision brief (rounds · class · options); a resume prompt restates the brief, never opens a round.
 
 An advisor never substitutes for the §3 adversarial pass.
