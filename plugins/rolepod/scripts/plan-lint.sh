@@ -9,6 +9,14 @@
 #   (resolved against the plan's directory, then the repo root). A plan
 #   whose Parallel layout says "Sequential" skips the ownership check.
 #
+# Usage: scripts/plan-lint.sh --brief <N> <plan.md> [contract.md]
+#   Prints Task N's brief (Goal/Blocked by/Read first/Files allowed/Files
+#   forbidden/Change/Test/Command/Done when/Write/Reviewers/Bounds) to
+#   stdout, assembled from the plan (and the contract's File-ownership +
+#   Do-not-touch-list when one is given). Exit 0 on success; exit 2 with
+#   one stderr line and empty stdout when Task N does not exist. Field
+#   labels match with or without `**bold**` (real plans use both dialects).
+#
 # Checks:
 #   1. `## Failure policy` section present (the loop's circuit breaker).
 #   2. Every task block carries a `Command:` (loop-runnable). A task heading
@@ -34,6 +42,291 @@
 # Exit 0 = pass. Exit 1 = fail, every violation named on stdout.
 set -uo pipefail
 
+# Task heading regex — shared by the graph/Command checks below AND by
+# --brief (reused, not re-parsed, so both read the same task shape).
+TASK_RX='^### (Task ?|T)[0-9]+'
+
+if [ "${1:-}" = "--brief" ]; then
+  BRIEF_N="${2:-}"
+  PLAN="${3:-}"
+  CONTRACT="${4:-}"
+  if [ -z "$BRIEF_N" ] || [ -z "$PLAN" ] || [ ! -f "$PLAN" ]; then
+    echo "usage: plan-lint.sh --brief <N> <plan.md> [contract.md]" >&2
+    exit 2
+  fi
+  if [ -n "$CONTRACT" ] && [ ! -f "$CONTRACT" ]; then
+    echo "usage: plan-lint.sh --brief <N> <plan.md> [contract.md] — contract not found: $CONTRACT" >&2
+    exit 2
+  fi
+  # shellcheck disable=SC2016
+  BRIEF_AWK='
+  function trim(x) { sub(/^[[:space:]]+/, "", x); sub(/[[:space:]]+$/, "", x); return x }
+  function addallowed(p) {
+    if (p == "") return
+    if (!(p in allowedset)) { allowedset[p] = 1; allowedord[++acnt] = p }
+  }
+  function rxesc(s,    out, i, c) {
+    out = ""
+    for (i = 1; i <= length(s); i++) {
+      c = substr(s, i, 1)
+      if (index("\\^$.[]|()*+?{}", c) > 0) out = out "\\" c
+      else out = out c
+    }
+    return out
+  }
+  function is_prose(p,    n, parts, base, lp) {
+    lp = tolower(p)
+    if (lp ~ /\.(md|mdx|txt|rst|adoc)$/) return 1
+    n = split(lp, parts, "/")
+    base = parts[n]
+    if (base ~ /^(readme|license|changelog)$/) return 1
+    return 0
+  }
+  function is_security(p,    lp, n, w, i) {
+    lp = tolower(p)
+    gsub(/[^a-z0-9]/, " ", lp)
+    n = split(lp, w, " ")
+    for (i = 1; i <= n; i++)
+      if (w[i] ~ /^(auth|authn|authz|billing|payment|payments|credit|credits|secret|secrets|token|tokens|crypto|migration|migrations|permission|permissions|webhook|webhooks|security|deletion)$/) return 1
+    return 0
+  }
+  FNR == NR {
+    if ($0 ~ /^## /) {
+      intask = 0; field = ""
+      specsec = ($0 ~ /^## Source spec/) ? 1 : 0
+      filessec = ($0 ~ /^## Files to touch/) ? 1 : 0
+      next
+    }
+    # A task heading also closes Source spec / Files to touch — some real
+    # plans (e.g. the par-plan.md test fixture in this repo) go straight
+    # from "## Files to touch" into "### Task 1" with no "## Tasks" line
+    # between, so filessec must not still be open when the heading arrives.
+    if ($0 ~ rx) {
+      specsec = 0; filessec = 0
+      id = $0; sub(/^### (Task ?|T)/, "", id); sub(/[^0-9].*$/, "", id)
+      if (id == want) {
+        intask = 1; found = 1
+        title = $0
+        sub(/^### (Task ?|T)[0-9]+/, "", title)
+        sub(/^[^[:alnum:]]+/, "", title)
+      } else intask = 0
+      field = ""
+      next
+    }
+    if (specsec) { if (spec == "" && trim($0) != "") spec = trim($0); next }
+    if (filessec) {
+      m = $0
+      while (match(m, /`[^`]+`/)) {
+        p = substr(m, RSTART + 1, RLENGTH - 2)
+        if (!(p in touchseen)) { touchseen[p] = 1; touchorder[++tn] = p }
+        m = substr(m, RSTART + RLENGTH)
+      }
+      next
+    }
+    if (intask) {
+      line = $0
+      isf = 1
+      # Field labels match with or without **bold** — real plans write both
+      # dialects (core/skills/write-plan/examples/plan-examples.md "Good"
+      # scenario 1 is unbolded end to end). Grab the label substring first,
+      # slice the value off after it, then strip any leftover asterisks —
+      # the same technique the Blocked-by/Owner/Files graph scan above uses.
+      if (index(line, "Delivers:") > 0)             { field = "D";   v = line; sub(/.*Delivers:[[:space:]]*/, "", v) }
+      else if (index(line, "Blocked by:") > 0)      { field = "B";   v = line; sub(/.*Blocked by:[[:space:]]*/, "", v) }
+      else if (index(line, "Read first:") > 0)      { field = "R";   v = line; sub(/.*Read first:[[:space:]]*/, "", v) }
+      else if (index(line, "Files:") > 0)           { field = "F";   v = line; sub(/.*Files:[[:space:]]*/, "", v) }
+      else if (index(line, "Change:") > 0)          { field = "C";   v = line; sub(/.*Change:[[:space:]]*/, "", v) }
+      else if (index(line, "Test / evidence:") > 0) { field = "T";   v = line; sub(/.*Test \/ evidence:[[:space:]]*/, "", v) }
+      else if (index(line, "Command:") > 0)         { field = "Cmd"; v = line; sub(/.*Command:[[:space:]]*/, "", v) }
+      else if (index(line, "Owner:") > 0)           { field = "O";   v = line; sub(/.*Owner:[[:space:]]*/, "", v) }
+      else if (index(line, "Done when:") > 0)       { field = "DW";  v = line; sub(/.*Done when:[[:space:]]*/, "", v) }
+      # Recognized-but-not-in-the-brief fields still end whatever field came
+      # before them — otherwise their text glues onto Test/Command/Done when.
+      else if (index(line, "Expected failing signal:") > 0) { field = "" }
+      else if (index(line, "On fail:") > 0)                 { field = "" }
+      else isf = 0
+      if (isf && field != "") {
+        # Only the LEADING run of bold asterisks (the closing ** of a bold
+        # label, e.g. "**Command:**") is stripped — a bare gsub also ate a
+        # literal * inside the value itself, corrupting Command/Files text
+        # like `pytest -k "test_brief*"` or `src/**/*.ts`.
+        sub(/^\*+[[:space:]]*/, "", v); v = trim(v)
+        if (field == "D") D = v
+        else if (field == "B") B = v
+        else if (field == "R") R = v
+        else if (field == "F") Fr = v
+        else if (field == "C") Ch = v
+        else if (field == "T") Te = v
+        else if (field == "Cmd") Cmd = v
+        else if (field == "O") Ow = v
+        else if (field == "DW") DW = v
+      }
+      # A continuation line extends the CURRENT field only when it is not
+      # itself a new bullet — otherwise an unrecognized bullet (a field this
+      # script does not track, or a typo) silently glues onto the last known
+      # field instead of being dropped.
+      if (!isf && field != "" && trim(line) != "" && trim(line) !~ /^[-*][[:space:]]/) {
+        cont = line
+        if (field == "D") D = D "\n" cont
+        else if (field == "B") B = B "\n" cont
+        else if (field == "R") R = R "\n" cont
+        else if (field == "F") Fr = Fr "\n" cont
+        else if (field == "C") Ch = Ch "\n" cont
+        else if (field == "T") Te = Te "\n" cont
+        else if (field == "Cmd") Cmd = Cmd "\n" cont
+        else if (field == "O") Ow = Ow "\n" cont
+        else if (field == "DW") DW = DW "\n" cont
+      }
+      next
+    }
+    next
+  }
+  FNR != NR {
+    if ($0 ~ /^## /) {
+      ownsec = ($0 ~ /^## File ownership/) ? 1 : 0
+      dnsec = ($0 ~ /^## Do-not-touch list/) ? 1 : 0
+      next
+    }
+    if (ownsec) {
+      if (match($0, /`[^`]+`/)) {
+        label = substr($0, RSTART + 1, RLENGTH - 2)
+        rest = substr($0, RSTART + RLENGTH)
+        onum++
+        ownlabel[onum] = label
+        cnt = 0
+        m = rest
+        while (match(m, /`[^`]+`/)) {
+          cnt++
+          ownpath[onum, cnt] = substr(m, RSTART + 1, RLENGTH - 2)
+          m = substr(m, RSTART + RLENGTH)
+        }
+        owncount[onum] = cnt
+      }
+      next
+    }
+    if (dnsec) {
+      m = $0
+      while (match(m, /`[^`]+`/)) {
+        p = substr(m, RSTART + 1, RLENGTH - 2)
+        if (!(p in dntset)) { dntset[p] = 1; dntord[++dn] = p }
+        m = substr(m, RSTART + RLENGTH)
+      }
+      next
+    }
+    next
+  }
+  END {
+    if (!found) {
+      print "plan-lint --brief: Task " want " not found in " planpath > "/dev/stderr"
+      exit 2
+    }
+    role = Ow
+    sub(/\n.*/, "", role)
+    sub(/[[:space:]]*\(.*/, "", role)
+    sub(/[[:space:]]*·.*/, "", role)
+    role = trim(role)
+    low = tolower(Ow)
+    write = "self"
+    if (index(low, "write:") > 0 && index(low, "external") > 0) write = "external"
+    m = Fr
+    while (match(m, /`[^`]+`/)) {
+      p = substr(m, RSTART + 1, RLENGTH - 2)
+      addallowed(p)
+      m = substr(m, RSTART + RLENGTH)
+    }
+    restv = Fr
+    gsub(/`[^`]+`/, " ", restv)
+    ntok = split(restv, toks, /[,[:space:]]+/)
+    for (ti = 1; ti <= ntok; ti++) {
+      tok = toks[ti]
+      gsub(/[,;)]+$/, "", tok)
+      if (tok == "" || tok ~ /^</) continue
+      if (tok ~ /^([Aa]nd|[Oo]r)$/) continue
+      if (tok ~ /\// || tok ~ /\.[[:alnum:]]+$/) addallowed(tok)
+    }
+    if (hascontract) {
+      # Pass 1: a `T<N>` / `Task N` tag on a label names THIS task
+      # unambiguously — when any label carries one, that is the whole
+      # answer and the (weaker) role-name match is not consulted at all.
+      # Otherwise two labels for the same role but different tasks, e.g.
+      # `backend-developer (T1)` and `backend-developer (T4)`, would both
+      # match Task 1 by role name and leak the T4 files into the T1 brief.
+      tagfound = 0
+      tpat = "(^|[^0-9A-Za-z])T" want "([^0-9A-Za-z]|$)"
+      tpat2 = "(^|[^0-9A-Za-z])Task[[:space:]]+" want "([^0-9A-Za-z]|$)"
+      for (k = 1; k <= onum; k++) {
+        tagmatch[k] = (ownlabel[k] ~ tpat) || (ownlabel[k] ~ tpat2)
+        if (tagmatch[k]) tagfound = 1
+      }
+      for (k = 1; k <= onum; k++) {
+        ml = 0
+        if (tagfound) {
+          ml = tagmatch[k]
+        } else if (role != "") {
+          # Role match is boundary-anchored — a plain substring let
+          # "backend-developer" match a label naming a DIFFERENT task.
+          # The boundary excludes hyphen (part of a kebab-case role token).
+          rolepat = "(^|[^A-Za-z0-9-])" rxesc(role) "([^A-Za-z0-9-]|$)"
+          if (ownlabel[k] ~ rolepat) ml = 1
+        }
+        if (ml) for (pi = 1; pi <= owncount[k]; pi++) addallowed(ownpath[k, pi])
+      }
+    }
+    printf "# Task %s: %s\n", want, trim(title)
+    specout = (spec == "") ? "(not in plan)" : spec
+    printf "Plan: %s · Spec: %s\n", planpath, specout
+    print "## Goal"
+    print (D == "" ? "(not in plan)" : D)
+    print "## Blocked by"
+    print (B == "" ? "(not in plan)" : B)
+    print "## Read first"
+    print (R == "" ? "(Lead: 2-3 files + the pattern to copy — the owner never re-surveys the repo)" : R)
+    print "## Files allowed"
+    if (acnt == 0) print "(not in plan)"
+    else for (i = 1; i <= acnt; i++) print "- " allowedord[i]
+    print "## Files forbidden"
+    for (i = 1; i <= tn; i++) { p = touchorder[i]; if (!(p in allowedset)) print "- " p }
+    # Guarded against Files allowed the same way the touch-list loop above
+    # is (a do-not-touch path that also landed in Files allowed must not
+    # print twice or contradict the allowed list), AND against touchseen —
+    # a path already printed by the touch-list loop above must not print a
+    # second time just because it is ALSO on the do-not-touch list.
+    if (hascontract) for (i = 1; i <= dn; i++) { p = dntord[i]; if (!(p in allowedset) && !(p in touchseen)) print "- " p }
+    print "- everything else"
+    print "## Change"
+    print (Ch == "" ? "(not in plan)" : Ch)
+    print "## Test / evidence"
+    print (Te == "" ? "(not in plan)" : Te)
+    print "## Command"
+    print (Cmd == "" ? "(not in plan)" : Cmd)
+    print "## Done when"
+    print (DW == "" ? "(not in plan)" : DW)
+    print "## Write"
+    printf "`%s`\n", write
+    print "## Reviewers"
+    allprose = 1
+    for (i = 1; i <= acnt; i++) if (!is_prose(allowedord[i])) allprose = 0
+    if (acnt > 0 && allprose) print "`none`"
+    else {
+      sec = 0
+      for (i = 1; i <= acnt; i++) if (is_security(allowedord[i])) sec = 1
+      if (sec) print "`qa-tester`, `universal-reviewer`, `security-engineer`"
+      else print "`qa-tester`, `universal-reviewer`"
+    }
+    print "## Bounds"
+    print "- Edit only Files allowed. Never commit or push; leave the tree staged."
+    print "- Run the Command; a code diff → dispatch the Reviewers in ONE message (reports to .rolepod/evidence/review/<task>-<role>.md); fix; round 2 = only the flagging reviewer re-checks its delta; max 2 rounds."
+    print "- Return a decision brief: verdict, `git diff --cached --stat | tail -3`, Command last 3 lines verbatim, reviewer verdicts + report paths, residuals."
+  }
+  '
+  if [ -n "$CONTRACT" ]; then
+    awk -v rx="$TASK_RX" -v want="$BRIEF_N" -v planpath="$PLAN" -v hascontract=1 "$BRIEF_AWK" "$PLAN" "$CONTRACT"
+  else
+    awk -v rx="$TASK_RX" -v want="$BRIEF_N" -v planpath="$PLAN" -v hascontract=0 "$BRIEF_AWK" "$PLAN"
+  fi
+  exit $?
+fi
+
 PLAN="${1:-}"
 CONTRACT="${2:-}"
 
@@ -57,8 +350,8 @@ fi
 # extra Commands cover for a sibling with none, and 0 tasks passed 0 >= 0.
 # 'Command:' still counts only inside task blocks (never Failure-policy prose).
 # Heading shapes: `### Task 1:` (template) and `### T1 —` (a real CourtBook
-# plan, which this lint rejected wholesale before v2.90.0).
-TASK_RX='^### (Task ?|T)[0-9]+'
+# plan, which this lint rejected wholesale before v2.90.0). TASK_RX is set
+# at the top of the file — shared with --brief, not re-declared here.
 TASKS=$(grep -Ec "$TASK_RX" "$PLAN" || true)
 MISSING=$(awk -v rx="$TASK_RX" '
   $0 ~ rx     { if (t != "" && !c) print t; t = $0; c = 0; next }

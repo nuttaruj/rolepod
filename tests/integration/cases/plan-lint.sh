@@ -690,6 +690,268 @@ else
   echo "  ✗ a slashless extension-only bare path was not caught: rc=$RC $OUT"; fail=$((fail+1))
 fi
 
+# ── --brief <N> (v2.145.0) — assembles a task brief from a filled plan ──
+# Regression guard: the plain lint output on an existing fixture must stay
+# byte-identical to before --brief existed (one-each.md, already built above).
+EXPECTED_PLAIN='  ✓ Failure policy present
+  ✓ every task carries a Command (2/2)
+  · no Blocked by fields — order is prose only; add one per task
+  ✓ sequential layout — ownership check not applicable
+plan-lint: PASS'
+OUT=$(bash "$LINT" "$TMP/one-each.md")
+if [ "$OUT" = "$EXPECTED_PLAIN" ]; then
+  echo "  ✓ plain plan-lint.sh output is unchanged by --brief (byte-identical)"
+else
+  echo "  ✗ plain plan-lint.sh output changed:"; diff <(printf '%s' "$EXPECTED_PLAIN") <(printf '%s' "$OUT"); fail=$((fail+1))
+fi
+
+cat > "$TMP/brief-plan.md" <<'EOF'
+# Brief Plan
+
+## Source spec
+docs/specs/brief-2026-09-17.md
+
+## Files to touch
+- `api/users.py` — endpoint
+- `ui/form.tsx` — form
+- `docs/readme.md` — docs
+
+## Tasks
+
+### Task 1: api endpoint
+- **Delivers:** users can list via API.
+- **Blocked by:** none
+- [ ] **Files:** `api/users.py`
+- [ ] **Change:** add GET /users
+- [ ] **Test / evidence:** pytest api/
+- [ ] **Command:** pytest api/
+- **Owner:** backend-developer
+- **Done when:** pytest passes
+
+### Task 2: form UI
+- **Delivers:** users can submit the form.
+- **Blocked by:** Task 1
+- [ ] **Read first:** ui/existing-form.tsx for the pattern
+- [ ] **Files:** `ui/form.tsx`
+- [ ] **Change:** wire form to API
+- [ ] **Test / evidence:** vitest ui/
+- [ ] **Command:** npm test
+- **Owner:** frontend-developer
+- **Done when:** npm test passes
+
+### Task 3: docs
+- **Delivers:** docs describe the endpoint.
+- **Blocked by:** Task 1
+- [ ] **Files:** `docs/readme.md`
+- [ ] **Change:** write docs
+- [ ] **Command:** true
+- **Owner:** content-strategist (dev)
+- **Done when:** docs read fine
+
+## Parallel layout
+Parallel — contract: `brief-contract.md`
+
+## Failure policy
+Default: stop.
+EOF
+cat > "$TMP/brief-contract.md" <<'EOF'
+# Brief Contract
+
+## File ownership
+- `backend-developer (T1)`: `api/users.py`
+- `frontend-developer (T2)`: `ui/form.tsx`, `ui/existing-form.tsx`
+- `content-strategist (T3)`: `docs/readme.md`
+
+## Do-not-touch list
+`scripts/release.sh`, `core/secrets.env`
+EOF
+
+# (1) --brief 2 with a contract: headings in order, Goal/Command verbatim,
+# Files allowed = task Files ∪ contract slice, Files forbidden = the rest.
+OUT=$(bash "$LINT" --brief 2 "$TMP/brief-plan.md" "$TMP/brief-contract.md")
+RC=$?
+EXPECTED_HEADINGS='## Goal
+## Blocked by
+## Read first
+## Files allowed
+## Files forbidden
+## Change
+## Test / evidence
+## Command
+## Done when
+## Write
+## Reviewers
+## Bounds'
+GOT_HEADINGS=$(printf '%s\n' "$OUT" | grep '^## ')
+if [ "$RC" -eq 0 ] && [ "$GOT_HEADINGS" = "$EXPECTED_HEADINGS" ]; then
+  echo "  ✓ plan-lint.sh --brief prints every heading in order"
+else
+  echo "  ✗ --brief heading order wrong: rc=$RC"; diff <(printf '%s' "$EXPECTED_HEADINGS") <(printf '%s' "$GOT_HEADINGS"); fail=$((fail+1))
+fi
+if printf '%s\n' "$OUT" | grep -q '^# Task 2: form UI$' \
+  && printf '%s\n' "$OUT" | grep -A1 '^## Goal' | grep -q 'users can submit the form\.' \
+  && printf '%s\n' "$OUT" | grep -A1 '^## Command' | grep -q '^npm test$'; then
+  echo "  ✓ plan-lint.sh --brief prints the title and Goal/Command verbatim"
+else
+  echo "  ✗ --brief title/Goal/Command wrong: $OUT"; fail=$((fail+1))
+fi
+if printf '%s\n' "$OUT" | grep -A1 '^## Read first' | grep -q 'ui/existing-form.tsx for the pattern'; then
+  echo "  ✓ plan-lint.sh --brief prints a Read first field when the task has one"
+else
+  echo "  ✗ --brief missed the Read first field: $OUT"; fail=$((fail+1))
+fi
+ALLOWED=$(printf '%s\n' "$OUT" | awk '/^## Files allowed/{f=1;next} /^## /{f=0} f')
+if printf '%s\n' "$ALLOWED" | grep -qF -- '- ui/form.tsx' && printf '%s\n' "$ALLOWED" | grep -qF -- '- ui/existing-form.tsx'; then
+  echo "  ✓ plan-lint.sh --brief unions the task Files with the contract owner slice"
+else
+  echo "  ✗ --brief Files allowed missing the contract slice: $ALLOWED"; fail=$((fail+1))
+fi
+FORBIDDEN=$(printf '%s\n' "$OUT" | awk '/^## Files forbidden/{f=1;next} /^## /{f=0} f')
+if printf '%s\n' "$FORBIDDEN" | grep -qF -- '- api/users.py' \
+  && printf '%s\n' "$FORBIDDEN" | grep -qF -- '- docs/readme.md' \
+  && printf '%s\n' "$FORBIDDEN" | grep -qF -- '- scripts/release.sh' \
+  && printf '%s\n' "$FORBIDDEN" | grep -qF -- '- core/secrets.env' \
+  && printf '%s\n' "$FORBIDDEN" | grep -qF -- '- everything else'; then
+  echo "  ✓ plan-lint.sh --brief lists the other tasks' paths + do-not-touch as forbidden"
+else
+  echo "  ✗ --brief Files forbidden wrong: $FORBIDDEN"; fail=$((fail+1))
+fi
+
+# (2) prose-only task (Task 3, docs/readme.md only) → Reviewers = none.
+OUT3=$(bash "$LINT" --brief 3 "$TMP/brief-plan.md" "$TMP/brief-contract.md")
+if printf '%s\n' "$OUT3" | grep -A1 '^## Reviewers' | grep -qF '`none`'; then
+  echo "  ✓ plan-lint.sh --brief sets Reviewers to none on a prose-only task"
+else
+  echo "  ✗ --brief prose-only Reviewers wrong: $OUT3"; fail=$((fail+1))
+fi
+
+# (3) a task whose Files include src/auth/login.ts → security-engineer appended.
+cat > "$TMP/brief-auth.md" <<'EOF'
+### Task 1: auth
+- **Delivers:** users can log in.
+- **Blocked by:** none
+- [ ] **Files:** `src/auth/login.ts`
+- [ ] **Command:** true
+- **Owner:** backend-developer
+- **Done when:** true
+## Parallel layout
+Sequential — single owner.
+## Failure policy
+Default: stop.
+EOF
+OUTA=$(bash "$LINT" --brief 1 "$TMP/brief-auth.md")
+if printf '%s\n' "$OUTA" | grep -A1 '^## Reviewers' | grep -qF '`security-engineer`'; then
+  echo "  ✓ plan-lint.sh --brief appends security-engineer for an auth path"
+else
+  echo "  ✗ --brief security-engineer match missed: $OUTA"; fail=$((fail+1))
+fi
+
+# (4) Owner line with write: external → Write external.
+cat > "$TMP/brief-ext.md" <<'EOF'
+### Task 1: external draft
+- **Delivers:** x
+- **Blocked by:** none
+- [ ] **Files:** `scripts/foo.sh`
+- [ ] **Command:** true
+- **Owner:** backend-developer · write: external
+- **Done when:** true
+## Parallel layout
+Sequential — single owner.
+## Failure policy
+Default: stop.
+EOF
+OUTE=$(bash "$LINT" --brief 1 "$TMP/brief-ext.md")
+if printf '%s\n' "$OUTE" | grep -A1 '^## Write' | grep -qF '`external`'; then
+  echo "  ✓ plan-lint.sh --brief reads write: external off the Owner line"
+else
+  echo "  ✗ --brief Write field wrong: $OUTE"; fail=$((fail+1))
+fi
+
+# (5) --brief 9 on a 3-task plan → exit 2, one stderr line, empty stdout.
+RC9=0
+OUT9=$(bash "$LINT" --brief 9 "$TMP/brief-plan.md" 2>"$TMP/brief9.err") || RC9=$?
+ERRLINES=$(wc -l < "$TMP/brief9.err" | tr -d ' ')
+if [ "$RC9" -eq 2 ] && [ -z "$OUT9" ] && [ "$ERRLINES" -eq 1 ]; then
+  echo "  ✓ plan-lint.sh --brief on a missing task exits 2 with empty stdout + one stderr line"
+else
+  echo "  ✗ --brief missing-task handling wrong: rc=$RC9 stdout=[$OUT9] errlines=$ERRLINES"; fail=$((fail+1))
+fi
+
+# (6) round-2 fixes: a Command/Files value containing literal asterisks must
+# reproduce byte-exact (a bare gsub on the value, not just the leading bold
+# marker, corrupted `pytest -k "test_brief*"` / `grep -E 'foo.*bar'` /
+# `src/**/*.ts`), and a same-role contract split across two tasks (T1/T4)
+# must use only the T-tagged slice, never the role-name match.
+cat > "$TMP/brief-glob.md" <<'EOF'
+### Task 1: glob test
+- **Delivers:** x
+- **Blocked by:** none
+- [ ] **Files:** `src/**/*.ts`
+- [ ] **Command:** pytest -k "test_brief*"
+- **Owner:** backend-developer
+- **Done when:** true
+## Parallel layout
+Sequential — single owner.
+## Failure policy
+Default: stop.
+EOF
+OUTG=$(bash "$LINT" --brief 1 "$TMP/brief-glob.md")
+if printf '%s\n' "$OUTG" | grep -qF -- '- src/**/*.ts' \
+  && printf '%s\n' "$OUTG" | grep -A1 '^## Command' | grep -qF 'pytest -k "test_brief*"'; then
+  echo "  ✓ plan-lint.sh --brief reproduces asterisk-bearing Files/Command byte-exact"
+else
+  echo "  ✗ --brief corrupted an asterisk-bearing value: $OUTG"; fail=$((fail+1))
+fi
+
+cat > "$TMP/brief-grepcmd.md" <<'EOF'
+### Task 1: grep test
+- **Delivers:** x
+- **Blocked by:** none
+- [ ] **Files:** `a.txt`
+- [ ] **Command:** grep -E 'foo.*bar' a.txt
+- **Owner:** backend-developer
+- **Done when:** true
+## Parallel layout
+Sequential — single owner.
+## Failure policy
+Default: stop.
+EOF
+OUTGR=$(bash "$LINT" --brief 1 "$TMP/brief-grepcmd.md")
+if printf '%s\n' "$OUTGR" | grep -A1 '^## Command' | grep -qF "grep -E 'foo.*bar' a.txt"; then
+  echo "  ✓ plan-lint.sh --brief reproduces a regex Command byte-exact"
+else
+  echo "  ✗ --brief corrupted a regex Command: $OUTGR"; fail=$((fail+1))
+fi
+
+cat > "$TMP/brief-t1t4-plan.md" <<'EOF'
+## Files to touch
+- `a/one.py`
+- `b/two.py`
+### Task 1: t1
+- **Delivers:** x
+- **Blocked by:** none
+- [ ] **Files:** `a/one.py`
+- [ ] **Command:** true
+- **Owner:** backend-developer
+- **Done when:** true
+## Parallel layout
+Parallel — contract: `brief-t1t4-contract.md`
+## Failure policy
+Default: stop.
+EOF
+cat > "$TMP/brief-t1t4-contract.md" <<'EOF'
+## File ownership
+- `backend-developer (T1)`: `a/one.py`
+- `backend-developer (T4)`: `b/two.py`
+EOF
+OUTT1=$(bash "$LINT" --brief 1 "$TMP/brief-t1t4-plan.md" "$TMP/brief-t1t4-contract.md")
+ALLOWEDT1=$(printf '%s\n' "$OUTT1" | awk '/^## Files allowed/{f=1;next} /^## /{f=0} f')
+if [ "$ALLOWEDT1" = "- a/one.py" ]; then
+  echo "  ✓ plan-lint.sh --brief uses only the T-tagged slice on a same-role contract split"
+else
+  echo "  ✗ --brief T1/T4 same-role split leaked files: $ALLOWEDT1"; fail=$((fail+1))
+fi
+
 if [ "$fail" -eq 0 ]; then
   echo "  ✓ pass"
   exit 0
