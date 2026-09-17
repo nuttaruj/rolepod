@@ -24,6 +24,13 @@
 #      — an unowned file is unplannable work; a dual-owned file is a merge
 #      conflict on schedule.
 #
+# Advisories (v2.144.0, never a FAIL — a Sequential plan may be legitimate):
+#   a. Prefactor smell: a backticked path on the `Files:` line of >= 2 tasks
+#      with no dependency path between them (neither blocks the other,
+#      directly or transitively) in the Blocked-by graph.
+#   b. Nothing to dispatch: a plan of >= 3 tasks whose every `Owner:` line
+#      names Lead (plain, with an aside, or a role tagged "Lead self-do").
+#
 # Exit 0 = pass. Exit 1 = fail, every violation named on stdout.
 set -uo pipefail
 
@@ -89,6 +96,13 @@ printf '%s' "$LAYOUT" | grep -qiE '^[[:space:]]*([-*][[:space:]]*)?sequential' &
 # are prefixed so the shell can route them: E = fail, A = advisory.
 GRAPH=$(awk -v rx="$TASK_RX" -v seq="$SEQUENTIAL" '
   function trim(x) { sub(/^[[:space:]]+/, "", x); sub(/[[:space:]]+$/, "", x); return x }
+  function addpath(p, c) {
+    if (!((p, c) in pathseen)) {
+      if (!(p in pathtasks)) pathorder[++pn] = p
+      pathtasks[p] = pathtasks[p] " " c
+      pathseen[p, c] = 1
+    }
+  }
   $0 ~ rx {
     id = $0; sub(/^### (Task ?|T)/, "", id); sub(/[^0-9].*$/, "", id)
     if (id in seen) dup[id] = 1
@@ -108,11 +122,53 @@ GRAPH=$(awk -v rx="$TASK_RX" -v seq="$SEQUENTIAL" '
     }
     next
   }
+  # Advisory (v2.144.0) inputs, gathered off the SAME task blocks: every
+  # path on a task first "Files:" line (bold or not — a prefactor-smell
+  # candidate needs no more than the path and the task ids), backticked OR
+  # bare (real plans, incl. the template + examples, write Files as a plain
+  # comma-separated list — a backtick-only parse was a no-op on them), and
+  # each task first "Owner:" value (for the nothing-to-dispatch check).
+  cur != "" && /Files:/ && !(cur in filesdone) {
+    filesdone[cur] = 1
+    v = $0; sub(/^.*Files:[[:space:]]*/, "", v); gsub(/\*/, "", v)
+    m = v
+    while (match(m, /`[^`]+`/)) {
+      addpath(substr(m, RSTART + 1, RLENGTH - 2), cur)
+      m = substr(m, RSTART + RLENGTH)
+    }
+    # Bare tokens: strip out what was already claimed as backticked, split
+    # the rest on commas/whitespace, then keep only path-shaped tokens —
+    # contains a slash, or ends in a dot + an alnum extension.
+    # Placeholders ("<paths...>") and filler words ("and"/"or") are dropped.
+    rest = v
+    gsub(/`[^`]+`/, " ", rest)
+    ntok = split(rest, toks, /[,[:space:]]+/)
+    for (ti = 1; ti <= ntok; ti++) {
+      tok = toks[ti]
+      gsub(/[,;)]+$/, "", tok)
+      if (tok == "" || tok ~ /^</) continue
+      if (tok ~ /^([Aa]nd|[Oo]r)$/) continue
+      if (tok ~ /\// || tok ~ /\.[[:alnum:]]+$/) addpath(tok, cur)
+    }
+    next
+  }
+  cur != "" && /Owner:/ && !(cur in ownerdone) {
+    ownerdone[cur] = 1; v = $0
+    sub(/^.*Owner:[[:space:]]*/, "", v); gsub(/\*/, "", v); v = trim(v)
+    owner[cur] = v
+    next
+  }
   END {
     if (n == 0) exit 0
     for (d in dup) print "E duplicate task id " d " — two blocks carry the same number; Blocked by cannot name either"
     withf = 0; for (k = 1; k <= n; k++) if (order[k] in has) withf++
-    if (withf == 0) { print "A no Blocked by fields — order is prose only; add one per task"; exit 0 }
+    if (withf == 0) print "A no Blocked by fields — order is prose only; add one per task"
+    # The graph-resolution block below (missing-field / unresolved-ref /
+    # cycle checks) needs at least one Blocked by field to mean anything —
+    # skipped (not exited) when withf == 0, so the two advisories further
+    # down (neither depends on this graph resolving) still run on a legacy
+    # plan that never uses Blocked by at all.
+    if (withf > 0) {
     for (k = 1; k <= n; k++) if (!(order[k] in has)) print "E Task " order[k] " has no Blocked by (other tasks do) — state its blockers or none"
     # Resolve refs only now — a blocker may be declared later in the file.
     # An unresolved or self ref is reported and dropped from the graph, so
@@ -122,7 +178,7 @@ GRAPH=$(awk -v rx="$TASK_RX" -v seq="$SEQUENTIAL" '
       for (j in rs) { r = rs[j]; if (r == "") continue
         if (!(r in seen)) { print "E Task " t " is blocked by Task " r " — no such task in this plan"; edge[t, r] = 0 }
         else if (r == t)  { print "E Task " t " blocks itself"; edge[t, r] = 0 }
-        else indeg[t]++
+        else { indeg[t]++; nxt[r] = nxt[r] " " t }
       }
     }
     # Kahn: indeg = number of RESOLVED blockers; peel roots
@@ -133,6 +189,47 @@ GRAPH=$(awk -v rx="$TASK_RX" -v seq="$SEQUENTIAL" '
     if (done < n) { c = ""; for (k = 1; k <= n; k++) if (indeg[order[k]] > 0) c = c (c == "" ? "" : ", ") order[k]
       if (c != "") print "E Blocked-by cycle among Tasks " c " — nothing can start" }
     else if (seq && qt > 0 && index(roots, ",")) print "A parallel candidates: Tasks " roots " have no blockers — Sequential chosen, fine if the layout line says why"
+    }
+    # ── Advisory (v2.144.0a): prefactor smell ─────────────────────────────
+    # Two tasks sharing a Files path with no dependency path between them,
+    # either way, in the (already-resolved) Blocked-by graph. Reuses nxt[]
+    # (built above alongside indeg[]) for a per-task BFS reachability set —
+    # vis[t, w] means w is reachable from t, i.e. t blocks w transitively.
+    for (k = 1; k <= n; k++) {
+      t = order[k]; qh2 = 0; qt2 = 0
+      qt2++; q2[qt2] = t; vis[t, t] = 1
+      while (qh2 < qt2) {
+        qh2++; u = q2[qh2]
+        split(nxt[u], kids, " ")
+        for (ki in kids) {
+          w = kids[ki]; if (w == "") continue
+          if (!((t, w) in vis)) { vis[t, w] = 1; qt2++; q2[qt2] = w }
+        }
+      }
+    }
+    for (pi = 1; pi <= pn; pi++) {
+      p = pathorder[pi]; np = split(pathtasks[p], ids, " ")
+      for (i = 1; i <= np; i++) for (j = i + 1; j <= np; j++) {
+        a = ids[i]; b = ids[j]
+        if (a + 0 > b + 0) { tmp = a; a = b; b = tmp }
+        if (!((a, b) in vis) && !((b, a) in vis))
+          print "F ⚠ prefactor smell: `" p "` in Task " a " and Task " b " with no edge — extract a module first, or make one block the other"
+      }
+    }
+    # ── Advisory (v2.144.0b): nothing to dispatch ─────────────────────────
+    # Every task Owner: line names Lead (plain "Lead", "Lead (…)", or a
+    # role annotated "(Lead self-do)") on a plan big enough to route.
+    if (n >= 3) {
+      all_lead = 1
+      for (k = 1; k <= n; k++) {
+        t = order[k]
+        if (!(t in ownerdone)) { all_lead = 0; continue }
+        ov = owner[t]
+        lead = (ov ~ /^Lead$/) || (ov ~ /^Lead[[:space:](]/) || (ov ~ /\(Lead self-do\)/)
+        if (!lead) all_lead = 0
+      }
+      if (all_lead) print "O ⚠ every Owner is Lead (" n " tasks) — nothing to dispatch; from R3 up the Owner map decides"
+    }
   }
 ' "$PLAN")
 GRAPH_E=$(printf '%s\n' "$GRAPH" | grep '^E ' || true)
@@ -146,6 +243,12 @@ elif [ -n "$GRAPH_A" ] && ! printf '%s' "$GRAPH_A" | grep -q 'no Blocked by fiel
   echo "  ✓ Blocked-by graph resolves, no cycle ($TASKS tasks)"
 fi
 [ -n "$GRAPH_A" ] && printf '%s\n' "$GRAPH_A" | sed 's/^A /  · /'
+
+# ── Advisories (v2.144.0) — never fail; a Sequential plan may be legitimate.
+GRAPH_F=$(printf '%s\n' "$GRAPH" | grep '^F ' || true)
+GRAPH_O=$(printf '%s\n' "$GRAPH" | grep '^O ' || true)
+[ -n "$GRAPH_F" ] && printf '%s\n' "$GRAPH_F" | sed 's/^F /  /'
+[ -n "$GRAPH_O" ] && printf '%s\n' "$GRAPH_O" | sed 's/^O /  /'
 
 # ── 4. Parallel ownership completeness ───────────────────────────────────
 if [ "$SEQUENTIAL" -eq 1 ]; then

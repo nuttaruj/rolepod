@@ -333,6 +333,363 @@ awk '/^## Failure policy/{f=1;next} /^## /{f=0} f' "$TEMPLATE" | grep -q '^Defau
   && echo "  ✓ template Failure policy default survives hint deletion" \
   || { echo "  ✗ template Failure policy default is hint-only (vanishes when filled)"; fail=$((fail+1)); }
 
+# ── Advisories (v2.144.0) — prefactor smell + nothing to dispatch ────────
+# Both are ADVISORY: never fail, exit code unchanged either way.
+mkf() { # $1 = file, $2.. = task blocks (heading, Blocked by, Files, Owner)
+  local f="$1"; shift
+  { echo "# G"; for blk in "$@"; do printf '%s\n- [ ] Command: true\n' "$blk"; done
+    printf '## Parallel layout\nSequential — single owner.\n## Failure policy\nDefault: stop.\n'; } > "$f"
+}
+
+# (a) 3 tasks, same file, no edges between any pair → advisory, still PASS/rc0.
+mkf "$TMP/pf-no-edge.md" \
+  $'### Task 1: a\n- Blocked by: none\n- [ ] Files: `scripts/x.sh`' \
+  $'### Task 2: b\n- Blocked by: none\n- [ ] Files: `scripts/x.sh`' \
+  $'### Task 3: c\n- Blocked by: none\n- [ ] Files: `scripts/x.sh`'
+RC=0; OUT=$(bash "$LINT" "$TMP/pf-no-edge.md" 2>&1) || RC=$?
+if [ "$RC" -eq 0 ] && echo "$OUT" | grep -q 'prefactor smell: `scripts/x.sh` in Task 1 and Task 2 with no edge' \
+  && echo "$OUT" | grep -q 'plan-lint: PASS'; then
+  echo "  ✓ plan-lint.sh advises a prefactor smell for a shared file with no edge (exit 0)"
+else
+  echo "  ✗ prefactor-smell advisory missing or wrong exit: rc=$RC $OUT"; fail=$((fail+1))
+fi
+
+# Same file, same tasks, now chained 1→2→3 → every pair connected, silent.
+mkf "$TMP/pf-chained.md" \
+  $'### Task 1: a\n- Blocked by: none\n- [ ] Files: `scripts/x.sh`' \
+  $'### Task 2: b\n- Blocked by: Task 1\n- [ ] Files: `scripts/x.sh`' \
+  $'### Task 3: c\n- Blocked by: Task 2\n- [ ] Files: `scripts/x.sh`'
+RC=0; OUT=$(bash "$LINT" "$TMP/pf-chained.md" 2>&1) || RC=$?
+if [ "$RC" -eq 0 ] && ! echo "$OUT" | grep -q 'prefactor smell'; then
+  echo "  ✓ plan-lint.sh stays silent once the shared-file tasks are chained"
+else
+  echo "  ✗ plan-lint.sh still flagged a prefactor smell once tasks were chained: rc=$RC $OUT"; fail=$((fail+1))
+fi
+
+# (b) 3 tasks, every Owner: names Lead (plain / aside / role-tagged) → advisory.
+cat > "$TMP/lead-3.md" <<'EOF'
+# G
+### Task 1: a
+- Blocked by: none
+- [ ] Command: true
+- Owner: Lead
+### Task 2: b
+- Blocked by: Task 1
+- [ ] Command: true
+- Owner: Lead (self-do)
+### Task 3: c
+- Blocked by: Task 2
+- [ ] Command: true
+- Owner: devops-sre (Lead self-do)
+## Parallel layout
+Sequential — single owner.
+## Failure policy
+Default: stop.
+EOF
+RC=0; OUT=$(bash "$LINT" "$TMP/lead-3.md" 2>&1) || RC=$?
+if [ "$RC" -eq 0 ] && echo "$OUT" | grep -q 'every Owner is Lead (3 tasks) — nothing to dispatch' \
+  && echo "$OUT" | grep -q 'plan-lint: PASS'; then
+  echo "  ✓ plan-lint.sh advises nothing-to-dispatch when every Owner is Lead (exit 0)"
+else
+  echo "  ✗ nothing-to-dispatch advisory missing or wrong exit: rc=$RC $OUT"; fail=$((fail+1))
+fi
+
+# 2 tasks, both Lead → below the ≥3-task floor, silent.
+cat > "$TMP/lead-2.md" <<'EOF'
+# G
+### Task 1: a
+- Blocked by: none
+- [ ] Command: true
+- Owner: Lead
+### Task 2: b
+- Blocked by: Task 1
+- [ ] Command: true
+- Owner: Lead
+## Parallel layout
+Sequential — single owner.
+## Failure policy
+Default: stop.
+EOF
+RC=0; OUT=$(bash "$LINT" "$TMP/lead-2.md" 2>&1) || RC=$?
+if [ "$RC" -eq 0 ] && ! echo "$OUT" | grep -q 'nothing to dispatch'; then
+  echo "  ✓ plan-lint.sh stays silent on a 2-task all-Lead plan (below the floor)"
+else
+  echo "  ✗ plan-lint.sh flagged nothing-to-dispatch below the 3-task floor: rc=$RC $OUT"; fail=$((fail+1))
+fi
+
+# ── Shaped like the shipped ticket-runner-cohesion plan: 8 tasks, 5 of them
+# sharing `scripts/cross-family.sh`, edges 1→2,2→3,2→4,2→5,3→6,5→7,{6,7}→8,
+# every Owner devops-sre (Lead self-do) or Lead → BOTH advisories fire.
+cat > "$TMP/shipped-shape.md" <<'EOF'
+# G
+### Task 1: setup
+- Blocked by: none
+- [ ] Command: true
+- [ ] Files: `scripts/setup.sh`
+- Owner: devops-sre (Lead self-do)
+### Task 2: core
+- Blocked by: Task 1
+- [ ] Command: true
+- [ ] Files: `scripts/cross-family.sh`
+- Owner: devops-sre (Lead self-do)
+### Task 3: track-a
+- Blocked by: Task 2
+- [ ] Command: true
+- [ ] Files: `scripts/cross-family.sh`
+- Owner: devops-sre (Lead self-do)
+### Task 4: track-b
+- Blocked by: Task 2
+- [ ] Command: true
+- [ ] Files: `docs/foo.md`
+- Owner: Lead
+### Task 5: track-c
+- Blocked by: Task 2
+- [ ] Command: true
+- [ ] Files: `scripts/cross-family.sh`
+- Owner: devops-sre (Lead self-do)
+### Task 6: from-a
+- Blocked by: Task 3
+- [ ] Command: true
+- [ ] Files: `scripts/cross-family.sh`
+- Owner: devops-sre (Lead self-do)
+### Task 7: from-c
+- Blocked by: Task 5
+- [ ] Command: true
+- [ ] Files: `scripts/cross-family.sh`
+- Owner: devops-sre (Lead self-do)
+### Task 8: join
+- Blocked by: Task 6, Task 7
+- [ ] Command: true
+- [ ] Files: `scripts/join.sh`
+- Owner: Lead
+## Parallel layout
+Sequential — single owner.
+## Failure policy
+Default: stop.
+EOF
+RC=0; OUT=$(bash "$LINT" "$TMP/shipped-shape.md" 2>&1) || RC=$?
+if [ "$RC" -eq 0 ] \
+  && echo "$OUT" | grep -q 'prefactor smell: `scripts/cross-family.sh` in Task 3 and Task 5' \
+  && echo "$OUT" | grep -q 'every Owner is Lead (8 tasks) — nothing to dispatch' \
+  && echo "$OUT" | grep -q 'plan-lint: PASS'; then
+  echo "  ✓ plan-lint.sh fires both advisories on a shipped-shaped 8-task plan (exit 0)"
+else
+  echo "  ✗ shipped-shaped plan missed an advisory or changed exit code: rc=$RC $OUT"; fail=$((fail+1))
+fi
+# The same fixture must NOT flag a connected pair (Task 2 reaches everything).
+if echo "$OUT" | grep -qE 'prefactor smell: `scripts/cross-family\.sh` in Task 2 and'; then
+  echo "  ✗ plan-lint.sh flagged Task 2, which blocks every other file-sharing task"; fail=$((fail+1))
+else
+  echo "  ✓ plan-lint.sh does not flag a task pair the graph already connects"
+fi
+
+# Review round 1 regression: a legacy plan with NO Blocked-by field anywhere
+# used to `exit 0` before either advisory ran. Both must still fire — the
+# graph being empty means no dependency path exists, so the file-sharing
+# pair below is correctly a prefactor-smell candidate too.
+cat > "$TMP/legacy-no-graph.md" <<'EOF'
+# G
+### Task 1: a
+- [ ] Command: true
+- [ ] Files: `scripts/x.sh`
+- Owner: Lead
+### Task 2: b
+- [ ] Command: true
+- [ ] Files: `scripts/x.sh`
+- Owner: Lead
+### Task 3: c
+- [ ] Command: true
+- Owner: Lead
+## Parallel layout
+Sequential — single owner.
+## Failure policy
+Default: stop.
+EOF
+RC=0; OUT=$(bash "$LINT" "$TMP/legacy-no-graph.md" 2>&1) || RC=$?
+if [ "$RC" -eq 0 ] \
+  && echo "$OUT" | grep -q 'no Blocked by fields' \
+  && echo "$OUT" | grep -q 'prefactor smell: `scripts/x.sh` in Task 1 and Task 2' \
+  && echo "$OUT" | grep -q 'every Owner is Lead (3 tasks)' \
+  && echo "$OUT" | grep -q 'plan-lint: PASS'; then
+  echo "  ✓ plan-lint.sh fires both advisories on a plan with no Blocked-by graph at all"
+else
+  echo "  ✗ a legacy plan with no Blocked-by field lost one or both advisories: rc=$RC $OUT"; fail=$((fail+1))
+fi
+
+# A missing Owner: line (not just a non-Lead one) must also suppress (b) —
+# a mutated "always call it Lead" implementation would pass without this.
+cat > "$TMP/missing-owner-line.md" <<'EOF'
+# G
+### Task 1: a
+- Blocked by: none
+- [ ] Command: true
+- Owner: Lead
+### Task 2: b
+- Blocked by: Task 1
+- [ ] Command: true
+### Task 3: c
+- Blocked by: Task 2
+- [ ] Command: true
+- Owner: Lead
+## Parallel layout
+Sequential — single owner.
+## Failure policy
+Default: stop.
+EOF
+RC=0; OUT=$(bash "$LINT" "$TMP/missing-owner-line.md" 2>&1) || RC=$?
+if [ "$RC" -eq 0 ] && ! echo "$OUT" | grep -q 'nothing to dispatch'; then
+  echo "  ✓ plan-lint.sh stays silent when one task carries no Owner: line at all"
+else
+  echo "  ✗ plan-lint.sh advised nothing-to-dispatch despite a Owner-less task: rc=$RC $OUT"; fail=$((fail+1))
+fi
+
+# A path repeated twice on the SAME Files: line must not double the advisory.
+cat > "$TMP/dup-path-one-line.md" <<'EOF'
+# G
+### Task 1: a
+- Blocked by: none
+- [ ] Command: true
+- [ ] Files: `scripts/x.sh`, `scripts/x.sh`
+### Task 2: b
+- Blocked by: none
+- [ ] Command: true
+- [ ] Files: `scripts/x.sh`
+## Parallel layout
+Sequential — single owner.
+## Failure policy
+Default: stop.
+EOF
+RC=0; OUT=$(bash "$LINT" "$TMP/dup-path-one-line.md" 2>&1) || RC=$?
+N_LINES=$(printf '%s\n' "$OUT" | grep -c 'prefactor smell: `scripts/x.sh` in Task 1 and Task 2')
+if [ "$RC" -eq 0 ] && [ "$N_LINES" -eq 1 ]; then
+  echo "  ✓ plan-lint.sh de-dupes a path repeated twice on one Files: line"
+else
+  echo "  ✗ a repeated Files: path produced $N_LINES advisory lines (want 1): rc=$RC $OUT"; fail=$((fail+1))
+fi
+
+# Bare (non-backticked) Files: paths — the shape real plans actually write
+# (template + examples list Files as a plain comma-separated line; the
+# external-implement plan that motivated this check, 2026-09-16, does too).
+# A backtick-only parse was a no-op on them — this is the exact shipped
+# shape: 8 tasks, 5 sharing scripts/cross-family.sh, edges
+# 1→2,2→3,2→4,2→5,3→6,5→7,{6,7}→8, every Owner devops-sre (Lead self-do).
+cat > "$TMP/bare-shipped-shape.md" <<'EOF'
+# G
+### Task 1: setup
+- Blocked by: none
+- [ ] Command: true
+- [x] **Files:** scripts/setup.sh
+- Owner: devops-sre (Lead self-do)
+### Task 2: core
+- Blocked by: Task 1
+- [ ] Command: true
+- [x] **Files:** scripts/cross-family.sh, tests/integration/cases/cross-family-implement.sh
+- Owner: devops-sre (Lead self-do)
+### Task 3: track-a
+- Blocked by: Task 2
+- [ ] Command: true
+- [x] **Files:** scripts/cross-family.sh
+- Owner: devops-sre (Lead self-do)
+### Task 4: track-b
+- Blocked by: Task 2
+- [ ] Command: true
+- [x] **Files:** docs/foo.md
+- Owner: Lead
+### Task 5: track-c
+- Blocked by: Task 2
+- [ ] Command: true
+- [x] **Files:** scripts/cross-family.sh
+- Owner: devops-sre (Lead self-do)
+### Task 6: from-a
+- Blocked by: Task 3
+- [ ] Command: true
+- [x] **Files:** scripts/cross-family.sh
+- Owner: devops-sre (Lead self-do)
+### Task 7: from-c
+- Blocked by: Task 5
+- [ ] Command: true
+- [x] **Files:** scripts/cross-family.sh
+- Owner: devops-sre (Lead self-do)
+### Task 8: join
+- Blocked by: Task 6, Task 7
+- [ ] Command: true
+- [x] **Files:** scripts/join.sh
+- Owner: Lead
+## Parallel layout
+Sequential — single owner.
+## Failure policy
+Default: stop.
+EOF
+RC=0; OUT=$(bash "$LINT" "$TMP/bare-shipped-shape.md" 2>&1) || RC=$?
+if [ "$RC" -eq 0 ] \
+  && echo "$OUT" | grep -q 'prefactor smell: `scripts/cross-family.sh` in Task 3 and Task 5' \
+  && echo "$OUT" | grep -q 'every Owner is Lead (8 tasks) — nothing to dispatch' \
+  && echo "$OUT" | grep -q 'plan-lint: PASS'; then
+  echo "  ✓ plan-lint.sh reads bare (non-backticked) Files: paths — both advisories fire"
+else
+  echo "  ✗ bare-path shipped-shaped plan missed an advisory: rc=$RC $OUT"; fail=$((fail+1))
+fi
+
+# The same bare-path shape, but fully chained → every pair connected, silent.
+# Also exercises the filler-word / narrative-Files ignore rule ("and its
+# spec") and the placeholder-token ignore rule alongside real bare paths.
+cat > "$TMP/bare-chained.md" <<'EOF'
+# G
+### Task 1: a
+- Blocked by: none
+- [ ] Command: true
+- [ ] Files: scripts/x.sh, app/service.rb and its spec
+- Owner: backend-developer
+### Task 2: b
+- Blocked by: Task 1
+- [ ] Command: true
+- [ ] Files: scripts/x.sh
+- Owner: backend-developer
+### Task 3: c
+- Blocked by: Task 2
+- [ ] Command: true
+- [ ] Files: scripts/x.sh
+- Owner: backend-developer
+## Parallel layout
+Sequential — single owner.
+## Failure policy
+Default: stop.
+EOF
+RC=0; OUT=$(bash "$LINT" "$TMP/bare-chained.md" 2>&1) || RC=$?
+if [ "$RC" -eq 0 ] && ! echo "$OUT" | grep -q 'prefactor smell'; then
+  echo "  ✓ plan-lint.sh stays silent on chained bare-path tasks (filler words ignored)"
+else
+  echo "  ✗ plan-lint.sh flagged a prefactor smell on chained bare-path tasks: rc=$RC $OUT"; fail=$((fail+1))
+fi
+
+# A slashless bare token (extension only, e.g. a root-level script) must
+# still be caught by the dot+extension branch on its own — coverage for the
+# mawk-safe `/\.[[:alnum:]]+$/` (an interval like `{1,5}` is unreliable
+# across awk implementations; this repo targets the one-true-awk dialect).
+cat > "$TMP/bare-slashless.md" <<'EOF'
+# G
+### Task 1: a
+- Blocked by: none
+- [ ] Command: true
+- [ ] Files: foo.sh
+- Owner: backend-developer
+### Task 2: b
+- Blocked by: none
+- [ ] Command: true
+- [ ] Files: foo.sh
+- Owner: backend-developer
+## Parallel layout
+Sequential — single owner.
+## Failure policy
+Default: stop.
+EOF
+RC=0; OUT=$(bash "$LINT" "$TMP/bare-slashless.md" 2>&1) || RC=$?
+if [ "$RC" -eq 0 ] && echo "$OUT" | grep -q 'prefactor smell: `foo.sh` in Task 1 and Task 2'; then
+  echo "  ✓ plan-lint.sh catches a slashless bare path via the extension branch alone"
+else
+  echo "  ✗ a slashless extension-only bare path was not caught: rc=$RC $OUT"; fail=$((fail+1))
+fi
+
 if [ "$fail" -eq 0 ]; then
   echo "  ✓ pass"
   exit 0
