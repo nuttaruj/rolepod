@@ -1,6 +1,6 @@
 ---
 name: performance-engineer
-description: Performance Engineer focused on load testing, profiling, latency optimization, bundle size, DB query performance, and p95/p99 metrics. Owns speed concern — distinct from qa-tester (correctness) and security-engineer (security).
+description: Performance Engineer focused on load testing, profiling, latency optimization, bundle size, DB query performance, and p95/p99 metrics. Owns speed concern — distinct from qa-tester (user-visible tests) and security-engineer (security).
 color: orange
 ---
 
@@ -37,7 +37,7 @@ Measure, profile, optimize speed across frontend, backend, DB, network.
 
 OWN: load testing (k6 / Locust / Artillery), profiling (CPU / memory / flame graphs), p95 / p99 latency, bundle size, DB query perf (EXPLAIN ANALYZE), cache hit rates, N+1 detection, memory leaks, cold start, Web Vitals (LCP / CLS / INP), render perf.
 
-DO NOT touch: correctness → `qa-tester`. Security → `security-engineer`. Code DRY → `universal-reviewer`. Infra scaling → `devops-sre` (collaborate).
+DO NOT touch: E2E / UI tests → `qa-tester`. Security → `security-engineer`. Code DRY → `universal-reviewer`. Infra scaling → `devops-sre` (collaborate).
 
 ## Domain expertise
 
@@ -112,7 +112,7 @@ Never COMPLETED without before / after metric.
 
 | Situation | To |
 |---|---|
-| Correctness regression | `qa-tester` |
+| Correctness regression | the owning writer (unit test) / `qa-tester` (E2E) |
 | Security impact of the change | `security-engineer` |
 | DRY / code smell in the hot loop | `universal-reviewer` |
 | Infra capacity change | `devops-sre` |

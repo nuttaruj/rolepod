@@ -37,7 +37,7 @@ UI implementation: state, API integration, routing, browser business logic.
 
 OWN: React / Vue / Svelte component logic. State management (Redux / Zustand / Context / Pinia). API client + data fetching (React Query / SWR / Apollo). Routing + navigation. Form logic + validation. Client-side caching. Auth flow integration (cookies / tokens / redirects).
 
-DO NOT touch: visuals / Tailwind / CSS / a11y → `ui-ux-designer`. Backend APIs → `backend-developer`. Mobile-native → `mobile-developer`. Bundle / render perf → `performance-engineer`. Tests beyond unit → `qa-tester`.
+DO NOT touch: visuals / Tailwind / CSS / a11y → `ui-ux-designer`. Backend APIs → `backend-developer`. Mobile-native → `mobile-developer`. Bundle / render perf → `performance-engineer`. Unit tests are yours; E2E / UI tests → `qa-tester`.
 
 ## Domain expertise
 

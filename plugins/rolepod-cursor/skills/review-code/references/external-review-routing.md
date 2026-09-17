@@ -139,7 +139,7 @@ records `model: default`.
 
 ## The Lead floor — covers every axis
 
-The Lead floor is `qa-tester` (a fresh-context subagent) plus the Lead's own
+The Lead floor is `universal-reviewer` (a read-only fresh-context subagent) plus the Lead's own
 multi-axis read (the step-2 axis walk). It is the universal generalist: it
 reviews **every** axis — correctness, security, breadth, architecture, perf,
 UI — not one specialty.

@@ -68,7 +68,7 @@ REVIEWER_AGENTS = {
 }
 
 # Strong-class adversarial reviewers — the subset whose dispatch clears a
-# HIGH-RISK commit gate. qa-tester is the balanced test floor by design
+# HIGH-RISK commit gate. qa-tester verifies user-visible behaviour (E2E)
 # (tier: balanced, hard model pin): its dispatch counts as review activity
 # but NOT as the strong adversarial pass an R4 diff requires.
 STRONG_REVIEWER_AGENTS = {

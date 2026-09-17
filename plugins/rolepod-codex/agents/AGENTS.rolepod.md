@@ -145,6 +145,6 @@ Pick the lowest level the request calls for.
   SubagentStart fires post-spawn, cannot deny) and worktree guard
   (apply_patch input carries no file_path) — hold those two as doctrine;
   never report them as mechanically enforced here.
-- **Peer review** — high-risk work → ask Codex to spawn `qa-tester` (the
-  floor) plus `security-engineer` / `universal-reviewer`. An external Claude
+- **Peer review** — every logic diff → ask Codex to spawn `universal-reviewer`
+  (read-only, spec + standards); high-risk → plus `security-engineer`. An external Claude
   review (`claude -p "review this diff"`) is a useful cross-model opinion.

@@ -46,7 +46,8 @@ Inputs to gather:
 | Risk profile | Reviewer |
 |--------------|----------|
 | High-risk surface (the Iron Rule 1 list) | `security-engineer` + adversarial fresh-context |
-| Correctness / business logic | `qa-tester` |
+| Correctness / spec compliance | `universal-reviewer` (spec axis) |
+| User-visible behaviour (UI / E2E / API contract) | `qa-tester` (E2E) |
 | Performance regression risk | `performance-engineer` |
 | UI / interaction / a11y | `ui-ux-designer` |
 | Architecture / cross-module | `system-architect` |
@@ -57,14 +58,14 @@ rolepod-brain: add `brain_seed(task, agent: <reviewer id>)` verbatim; no tool �
 
 **By rigor tier** (R1 trivial edit · R2 one file + test · R3 multi-file · R4 high-risk):
 - **R1** → no review, no re-read turn; the edit tool's echo is the evidence. A docs-only diff is R1 at any size — no reviewer, internal or external; its own check (link check / static lint) is the verify.
-- **R2** → the `qa-tester` floor (balanced, the diff alone — the author never reviews own logic, a Lead-built R2 included). Matched row not qa-tester → add ONE concern-matched reviewer at balanced; pass the balanced model explicitly, but leave `universal-reviewer` model-less (a balanced pin voids its strong lift).
+- **R2** → ONE read-only `universal-reviewer` pass on the diff (two axes: spec + standards; the author never reviews own logic); a matched row (perf / UI / arch) → that role instead. The writer's unit tests are the floor.
 - **R3** → the row match, internal only — the pool is an R4 instrument (the user asks → one pass). A high-risk path anywhere in the diff tiers the whole commission R4.
-- **R4** → the full adversarial floor, never less — ONE strong pass: the external when the pool is usable (dispatched by the task owner; `qa-tester` stays), else the internal strong. The router's comment/blank-only carve-out (1 file, ≤5 lines, zero logic) lands here as R2 + ONE internal strong reviewer, no external — the pool reviews code, never a comment / doc / config / rename diff.
+- **R4** → the full adversarial floor, never less — ONE strong pass: the external when the pool is usable (dispatched by the task owner), else the internal strong. The router's comment/blank-only carve-out (1 file, ≤5 lines, zero logic) lands here as R2 + ONE internal strong reviewer, no external — the pool reviews code, never a comment / doc / config / rename diff.
 
 **Satellite-first strong pass.** A usable cross-family external IS the R4 strong adversarial pass: `rolepod-cross-family --kind review --brief <brief> --attach <diff> --detach` — read-only, anchored by the runner.
 
 **Detach by default.** The runner returns a job id and runs the chain (first member → fallbacks) with each member's budget.
-- Dispatch the `qa-tester` floor and, on money / auth, the internal strong reviewer in the same breath; then keep working OUTSIDE the diff (a plan task on disjoint files; an implement job owns its tree — another worktree) or end the turn.
+- Dispatch the internal reviewer and, on money / auth, the internal strong reviewer in the same breath; then keep working OUTSIDE the diff (a plan task on disjoint files; an implement job owns its tree — another worktree) or end the turn.
 - `rolepod-cross-family --collect <job-id>` waits up to the budget — in the foreground (a background wait leaves the caller idle).
 - Foreground (no `--detach`) is for small diffs only — the harness caps a foreground call and kills a slow member.
 
@@ -75,7 +76,7 @@ rolepod-brain: add `brain_seed(task, agent: <reviewer id>)` verbatim; no tool �
 - (d) an apex trigger holds — the apex rung, external first, internal only when (c);
 - (e) re-reading fixes in the §5 loop.
 
-It runs at STRONG class even under a balanced Lead: never pass a balanced model on it (a hooked CLI lifts a model-less call; elsewhere pass an explicit strong-class override). `qa-tester` is the balanced test floor by design — never the strong pass, never counted as one.
+It runs at STRONG class even under a balanced Lead: never pass a balanced model on it (a hooked CLI lifts a model-less call; elsewhere pass an explicit strong-class override). `qa-tester` (E2E / UI) is never the strong pass, never counted as one.
 
 **Apex escalation.** Strong is the R4 default ("done right per the existing pattern?"); apex — the strongest model the CLI exposes — asks "is the pattern itself right?". Escalate only on:
 1. irreversible with no rollback — destructive migration, key rotation, live money movement;
@@ -95,7 +96,7 @@ Reviews merge severity-ordered, deduped by file:line + root cause (the Lead's fi
 - The pool is the user's choice and **opt-in**: `<git-root>/.rolepod/cross-family`, then `~/.rolepod/cross-family` (`rolepod-cross-family --setup`), minus the Lead's own CLI; no file or `none` = off, never turned on unasked.
 - An externally implemented ship group (`--kind implement`) is reviewed by a DIFFERENT member — the runner skips the implementer while its ticket is uncommitted; a user-lifted risky scope (`risky:lifted`) → the external pass by a different member.
 - Enabled + R4 + logic-bearing code diff + usable member → routing to it is mandatory; R1-R3, and any doc / comment / config / rename-only diff, stay internal unless the user asks.
-- `qa-tester` + the Lead's own read are the floor and backstop any reviewer that is missing or fails.
+- The writer's unit tests + the Lead's own read are the floor and backstop any reviewer that is missing or fails.
 - **An empty or partial return is a failed reviewer, never a clean pass** — a lens answering `""`, a one-sentence result, a turn-limit notice: resume it or re-dispatch on a narrower brief; until it reports the round is open and the report records a LIMITATION.
 - No dispatch possible at all (user forbade agents / no subagent support) → the Lead's cold self-review stands in as a recorded LIMITATION — surface the conflict, never self-set a bypass.
 - On a CLI without hooks this section is the gate.
@@ -129,7 +130,7 @@ Fill `templates/review-report.md`. Each finding: file:line, the issue, why it ma
 Round 2+: `rolepod-cross-family --kind review --brief <brief> --since <previous job> --detach` — the runner attaches the fix delta plus the previous report, findings tagged IN-FIX / NEW / REPEAT.
 Cadence, every tier: round 1 = every axis in ONE message, ≤ 40 tool calls each; round 2 = only the flagging reviewer re-runs its repro on the delta, ≤ 15 calls — no suite re-runs, no new axis.
 
-Whoever wrote the fix never verifies it: a subagent-built fix → `qa-tester` or the Lead's cold read; a Lead-built fix → `qa-tester` at balanced (R4 → the strong pass).
+Whoever wrote the fix never verifies it: a subagent-built fix → the Lead's cold read; a Lead-built fix → one read-only `universal-reviewer` pass (R4 → the strong pass).
 - The external re-runs only when its previous report carried a BLOCKER and the fix delta is logic-bearing code; otherwise the internal reviewer verifies the fix delta alone.
 - Author and reviewer disagree on merits → technical data > documented style guide > engineering principle > codebase consistency.
 
@@ -156,11 +157,11 @@ READ the round's merged findings without reacting → VERIFY each against the co
 
 Clarify unclear findings before touching anything LINKED to them; order blocking → simple → complex, testing each. No gratitude phrases — "Fixed in <file:line>." is the whole reply.
 
-**rolepod-brain:** `brain_note(agent: <reviewer id>, text: "avoid:|refine:|keep: <class>…")` per finding not applied as written; always on a user overrule. A test the author adds to close a finding is part of the fix delta — the next round's `qa-tester` judges it; the author's own green run closes nothing.
+**rolepod-brain:** `brain_note(agent: <reviewer id>, text: "avoid:|refine:|keep: <class>…")` per finding not applied as written; always on a user overrule. A test the author adds to close a finding is part of the fix delta — the next round's reviewer judges it; the author's own green run closes nothing.
 
 ## If a matching Rolepod agent is available
 
-The §1 table names the reviewer per risk profile; `qa-tester` is the universal floor, never skipped.
+The §1 table names the reviewer per risk profile; the writer's unit tests are the floor; `qa-tester` joins only for user-visible behaviour.
 
 ## If no matching agent is available
 

@@ -56,7 +56,7 @@ Can't verify  → state "Assuming X. Risk Y. Verify by Z" — never proceed sile
 | Billing / payments / credits | `billing-engineer` |
 | LLM / RAG / prompts / agents | `ai-ml-engineer` |
 | Analytics / statistics / dashboards | `data-scientist` |
-| Tests / business logic / race conditions | `qa-tester` |
+| User-visible tests (E2E / UI / browser / contract) — a slice's unit tests belong to its writer | `qa-tester` |
 | Security / vulnerabilities / compliance | `security-engineer` |
 | Load / profiling / p95-p99 | `performance-engineer` |
 | Infra / CI-CD / deploy / release | `devops-sre` |
@@ -65,16 +65,14 @@ Can't verify  → state "Assuming X. Risk Y. Verify by Z" — never proceed sile
 
 ## Reviewer routing
 
-`qa-tester` is the always-on internal floor. An external reviewer = a CLI from the user's **opt-in** cross-family pool — a **different CLI** than the Lead, on its own default model (the vendor may coincide) — off until `~/.rolepod/cross-family` (or the project's `.rolepod/cross-family`) lists CLIs (`codex` / `claude` / `agy` / `cursor` / `opencode` — list them ALL, the Lead's own included: it is skipped at run time, so one file serves every Lead; `none` = off; rolepod asks once, never enables it for you). `rolepod-cross-family --kind review --brief <brief> --attach <diff> --detach` picks the first usable one, runs it read-only on **its own default model** with a stated time budget (`codex timeout=1800` / `consult: agy codex` in the config), and anchors the pass (`--collect <job>` waits for it); `--pool` / `--candidates` show the resolution, `--kind consult` / `--kind advise --all` are the debug and plan channels. Gemini CLI is retired (agy is the Google family).
+The writer's unit tests are the floor. One read-only `universal-reviewer` pass (spec + standards, ≤400 words, no execution) reviews every diff from R2 up; `qa-tester` joins when a slice changes what a user sees (E2E / UI). An external reviewer = a CLI from the user's **opt-in** cross-family pool — a **different CLI** than the Lead, on its own default model — and reviews R4 code only.
 
-| PR profile | Reviewers |
+| Tier / profile | Reviewers |
 |-----------|-----------|
-| <5 files | qa-tester only |
-| 5-30 files | qa-tester + 1 external |
-| >30 files | qa-tester + 2 external |
-| Money / auth (billing · payments · credits · auth · crypto · secrets · deletion) | qa-tester + external adversarial + internal strong — **both**, one dispatch |
-| Other high-risk (migration / permissions / tokens / locks) | qa-tester + external adversarial (internal strong on apex or a weak external) |
-| UI / frontend only | qa-tester + 1 external (breadth) |
+| R2 / R3 | `universal-reviewer` (read-only) |
+| R4 code | ONE strong pass: external when the pool is usable, else internal strong |
+| High-risk path (auth · billing · payments · credits · migration · deletion · secrets · tokens · crypto · permissions) | + `security-engineer` |
+| User-visible change (screen / flow / API contract) | + `qa-tester` (E2E / UI) |
 
 ## Stuck escalation
 

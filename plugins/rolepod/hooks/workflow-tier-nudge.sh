@@ -597,7 +597,7 @@ if tool == "Workflow":
         verdict = "bare-writer"
         reason_txt = (
             "\u26d4 write-scope: bare agent() on writing stage(s) %s \u2014 a call that edits product files needs "
-            "agentType:\x27rolepod:<role>\x27 (backend-developer / frontend-developer / devops-sre; tests \u2192 "
+            "agentType:\x27rolepod:<role>\x27 (backend-developer / frontend-developer / devops-sre; E2E tests \u2192 "
             "qa-tester). model: alone pins the tier, not the write permission \u2014 its edits are blocked at the "
             "first Write. Fix: add agentType to every call that edits files; read-only calls may stay bare. "
             "Exception: a stage that only reads \u2192 name it so (Research / Verify); ROLEPOD_GATES_SOFT=1 "

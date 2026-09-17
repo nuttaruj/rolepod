@@ -128,10 +128,11 @@ if [ "${1:-}" = "--brief" ]; then
       m = $0
       while (match(m, /`[^`]+`/)) {
         p = substr(m, RSTART + 1, RLENGTH - 2)
-        # a path has a slash, an extension, or is a capitalised bare file
-        # (Makefile, README); a backticked flag / symbol on the same line
-        # (`--all`, `PHASE=x`) is commentary, never a forbidden path
-        if ((p ~ /\// || p ~ /\.[A-Za-z][A-Za-z0-9]*$/ || p ~ /^[A-Z][A-Za-z0-9_-]*$/) && !(p in touchseen)) { touchseen[p] = 1; touchorder[++tn] = p }
+        # a path has a slash, an extension, a Capitalised-then-lowercase bare
+        # name (Makefile, Dockerfile) or is a well-known all-caps root file;
+        # a backticked flag / symbol / identifier on the same line (`--all`,
+        # `PHASE=x`, `KIND`) is commentary, never a forbidden path
+        if ((p ~ /\// || p ~ /\.[A-Za-z][A-Za-z0-9]*$/ || p ~ /^[A-Z][a-z][A-Za-z0-9_-]*$/ || p ~ /^(README|LICENSE|CHANGELOG|CONTRIBUTING|AUTHORS|NOTICE|COPYING)$/) && !(p in touchseen)) { touchseen[p] = 1; touchorder[++tn] = p }
         m = substr(m, RSTART + RLENGTH)
       }
       next
@@ -329,8 +330,10 @@ if [ "${1:-}" = "--brief" ]; then
     else {
       sec = 0
       for (i = 1; i <= acnt; i++) if (is_security(allowedord[i])) sec = 1
-      if (sec) print "`qa-tester`, `universal-reviewer`, `security-engineer`"
-      else print "`qa-tester`, `universal-reviewer`"
+      r = "`universal-reviewer`"
+      if (sec) r = r ", `security-engineer`"
+      if (Te ~ /(E2E|e2e|[Ee]nd-to-end|browser|screenshot|uiproof|UI test|UI flow|user-visible|Playwright|Cypress|visual diff)/) r = r ", `qa-tester` (E2E)"
+      print r
     }
     print "## Bounds"
     print "- Edit only Files allowed. Never commit or push; leave the tree staged."

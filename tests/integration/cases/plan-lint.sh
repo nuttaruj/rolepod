@@ -979,7 +979,8 @@ cat > "$BF/plan.md" <<'PLAN'
 ## Files to touch
 - `src/a.sh` — flips `FLAG=1` and drops `--all`
 - `src/b.sh` — the other owner
-- `Makefile` — a bare capitalised file is a path too; bumps `v2.147.0`
+- `Makefile` — a bare capitalised file is a path too; bumps `v2.147.0`, reads `KIND`
+- `README` — a known all-caps root file is a path
 
 ## Tasks
 
@@ -1001,7 +1002,7 @@ cat > "$BF/plan.md" <<'PLAN'
 - **Blocked by:** none
 - [ ] **Files:** `src/b.sh`
 - [ ] **Change:** c
-- [ ] **Test / evidence:** t
+- [ ] **Test / evidence:** end-to-end browser flow through the login page
 - [ ] **Command:** `make test`
 - **Owner:** Lead
 - **Done when:** done
@@ -1018,9 +1019,17 @@ printf '%s' "$CH" | grep -q 'first sub-bullet' && printf '%s' "$CH" | grep -q 's
   && echo "  ✓ --brief Change carries the indented sub-bullets (was: not in plan)" \
   || { echo "  ✗ --brief Change from sub-bullets: $CH"; fail=$((fail+1)); }
 FB=$(printf '%s\n' "$OUT" | awk '/^## Files forbidden/{f=1;next} /^## /{f=0} f')
-printf '%s' "$FB" | grep -q 'src/b.sh' && printf '%s' "$FB" | grep -q '^- Makefile$' && ! printf '%s' "$FB" | grep -q 'v2.147.0' && ! printf '%s' "$FB" | grep -q 'FLAG=1' && ! printf '%s' "$FB" | grep -q -- '--all' \
+printf '%s' "$FB" | grep -q 'src/b.sh' && printf '%s' "$FB" | grep -q '^- Makefile$' && printf '%s' "$FB" | grep -q '^- README$' && ! printf '%s' "$FB" | grep -q '^- KIND$' && ! printf '%s' "$FB" | grep -q 'v2.147.0' && ! printf '%s' "$FB" | grep -q 'FLAG=1' && ! printf '%s' "$FB" | grep -q -- '--all' \
   && echo "  ✓ --brief Files forbidden lists paths only (a backticked flag on the line is commentary)" \
   || { echo "  ✗ --brief Files forbidden: $FB"; fail=$((fail+1)); }
+RV1=$(printf '%s\n' "$OUT" | grep -A1 '^## Reviewers' | tail -1)
+[ "$RV1" = '`universal-reviewer`' ] && echo "  ✓ --brief Reviewers default = universal-reviewer alone (the writer's unit tests are the floor)" \
+  || { echo "  ✗ --brief Reviewers default: $RV1"; fail=$((fail+1)); }
+OUT2=$(cd "$BF" && bash "$LINT" --brief 2 plan.md 2>/dev/null)
+RV2=$(printf '%s\n' "$OUT2" | grep -A1 '^## Reviewers' | tail -1)
+printf '%s' "$RV2" | grep -qF '`qa-tester` (E2E)' && printf '%s' "$RV2" | grep -qF '`universal-reviewer`' \
+  && echo "  ✓ --brief Reviewers adds qa-tester (E2E) when the Test line names a user-visible flow" \
+  || { echo "  ✗ --brief Reviewers E2E append: $RV2"; fail=$((fail+1)); }
 rm -rf "$BF"
 
 if [ "$fail" -eq 0 ]; then

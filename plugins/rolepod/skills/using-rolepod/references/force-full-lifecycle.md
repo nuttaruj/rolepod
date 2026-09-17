@@ -20,7 +20,7 @@ mid-flow ("skip review", "just ship").
    Apply S1-S5 / T1-T6 / F1-F5 per commit.
 4. **Verify — `check-work`** — no completion claim without fresh verification
    evidence in this message.
-5. **Review — `review-code`** — qa-tester floor + risk-appropriate reviewers.
+5. **Review — `review-code`** — one read-only reviewer + risk-appropriate reviewers.
    External adversarial reviewers (any installed CLI on a model different
    from the Lead's) when configured; otherwise qa-tester / security-engineer /
    universal-reviewer.

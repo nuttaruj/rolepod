@@ -91,9 +91,18 @@ git commit -m x
 EOF' | bash "$HOOKS/block-subagent-commit.sh")
 check "subagent heredoc piped through xargs into bash → deny (any shell on the line owns it)" deny "$out"
 SL_TMP=$(mktemp -d); mkdir -p "$SL_TMP/repo" && git -C "$SL_TMP/repo" init -q && mkdir -p "$SL_TMP/.rolepod/session-locks/deadbeefdeadbeef" "$SL_TMP/.rolepod/session-locks/cafebabecafebabe"
-touch -t 202601010000 "$SL_TMP/.rolepod/session-locks/deadbeefdeadbeef/auto-1.lock" "$SL_TMP/.rolepod/session-locks/deadbeefdeadbeef/auto-1.files"
-touch "$SL_TMP/.rolepod/session-locks/cafebabecafebabe/fresh.lock"; touch -t 202601010000 "$SL_TMP/.rolepod/session-locks/cafebabecafebabe/fresh.files"
+OLD=$(python3 -I -c 'import time; print(time.strftime("%Y%m%d%H%M", time.localtime(time.time() - 3600)))')   # one hour ago, derived, never a literal date
+touch -t "$OLD" "$SL_TMP/.rolepod/session-locks/deadbeefdeadbeef/auto-1.lock" "$SL_TMP/.rolepod/session-locks/deadbeefdeadbeef/auto-1.files"
+touch "$SL_TMP/.rolepod/session-locks/cafebabecafebabe/fresh.lock"; touch -t "$OLD" "$SL_TMP/.rolepod/session-locks/cafebabecafebabe/fresh.files"
 printf '{"session_id":"sl1","cwd":"%s"}' "$SL_TMP/repo" | (cd "$SL_TMP/repo" && HOME="$SL_TMP" bash "$HOOKS/session-lifecycle.sh") >/dev/null 2>&1 || true
+# an orphan registry the sweep cannot delete must not end SessionStart before its own lock is written
+mkdir -p "$SL_TMP/.rolepod/session-locks/0000000000000000" && touch "$SL_TMP/.rolepod/session-locks/0000000000000000/orphan.files" && chmod 555 "$SL_TMP/.rolepod/session-locks/0000000000000000"
+SL_RC=0; printf '{"session_id":"sl2","cwd":"%s"}' "$SL_TMP/repo" | (cd "$SL_TMP/repo" && HOME="$SL_TMP" bash "$HOOKS/session-lifecycle.sh") >/dev/null 2>&1 || SL_RC=$?
+_h=$(printf '%s' "$(cd "$SL_TMP/repo" && git rev-parse --show-toplevel)" | { shasum -a 256 2>/dev/null || sha256sum 2>/dev/null; } | awk '{print $1}' | head -c 16)
+[ "$SL_RC" -eq 0 ] && [ -f "$SL_TMP/.rolepod/session-locks/$_h/sl2.lock" ] \
+  && echo "  ✓ session-lifecycle survives an undeletable orphan registry and still writes its own lock" \
+  || { echo "  ✗ session-lifecycle fail-closed on an undeletable orphan (rc=$SL_RC, lock=$(ls "$SL_TMP/.rolepod/session-locks/$_h" 2>/dev/null | tr '\n' ' '))"; fail=$((fail+1)); }
+chmod 755 "$SL_TMP/.rolepod/session-locks/0000000000000000"
 [ ! -d "$SL_TMP/.rolepod/session-locks/deadbeefdeadbeef" ] && [ -f "$SL_TMP/.rolepod/session-locks/cafebabecafebabe/fresh.lock" ] && [ -f "$SL_TMP/.rolepod/session-locks/cafebabecafebabe/fresh.files" ] \
   && echo "  ✓ session-lifecycle sweeps a stale lock dir (lock + registry) and keeps a fresh lock with its old registry" \
   || { echo "  ✗ session-lifecycle sweep: stale=$(ls "$SL_TMP/.rolepod/session-locks/deadbeefdeadbeef" 2>&1 | head -1) fresh=$(ls "$SL_TMP/.rolepod/session-locks/cafebabecafebabe" 2>&1 | head -1)"; fail=$((fail+1)); }
@@ -886,16 +895,16 @@ sf() { # $1 file, $2 content-generator command
   printf '{"tool_name":"Bash","tool_input":{"command":"git commit -m x"}}' | (cd "$SF_TMP" && bash "$HOOKS/precommit-gate.sh") || true
 }
 out=$(sf src/util.ts "seq 15 | sed 's/^/const x = /'")
-if echo "$out" | grep -q 'reviewers since last commit: 0' && echo "$out" | grep -q 'rolepod:qa-tester' && ! echo "$out" | grep -q '"permissionDecision"'; then
-  echo "  ✓ precommit SOFT: logic diff, 0 reviewers → names the count + the qa-tester floor, still allow"
+if echo "$out" | grep -q 'reviewers since last commit: 0' && echo "$out" | grep -q 'rolepod:universal-reviewer' && ! echo "$out" | grep -q '"permissionDecision"'; then
+  echo "  ✓ precommit SOFT: logic diff, 0 reviewers → names the count + the read-only reviewer, still allow"
 else echo "  ✗ precommit SOFT reviewer line: ${out:0:200}"; fail=$((fail+1)); fi
 out=$(sf src/label.ts "printf 'export const L = \"Save\";\nexport const M = \"Cancel\";\n'")
 if echo "$out" | grep -q 'reviewers since last commit: 0' && ! echo "$out" | grep -q '0 reviewers on a logic diff'; then
-  echo "  ✓ precommit SOFT: R1-shaped diff (1 file, ≤5 lines) → count only, no qa-tester ask (string text is R1 in the router)"
+  echo "  ✓ precommit SOFT: R1-shaped diff (1 file, ≤5 lines) → count only, no reviewer ask (string text is R1 in the router)"
 else echo "  ✗ precommit SOFT R1-shaped: ${out:0:200}"; fail=$((fail+1)); fi
 out=$(sf src/notes.ts "seq 10 | sed 's/^/\/\/ note /'")
 if echo "$out" | grep -q 'reviewers since last commit: 0' && ! echo "$out" | grep -q '0 reviewers on a logic diff'; then
-  echo "  ✓ precommit SOFT: comment-only diff → count shown, no qa-tester ask (nothing logic-bearing)"
+  echo "  ✓ precommit SOFT: comment-only diff → count shown, no reviewer ask (nothing logic-bearing)"
 else echo "  ✗ precommit SOFT comment-only: ${out:0:200}"; fail=$((fail+1)); fi
 rm -rf "$SF_TMP"
 

@@ -45,7 +45,7 @@ Every request is tiered before the first edit, and the tier sets how much of the
 |---|---|---|
 | **R0** | answer only — no file changes | reply directly |
 | **R1** | trivial edit — ≤5 lines, one file, no logic | edit; the tool's echo is the proof |
-| **R2** | one file + its test, a small logic change | inline checklist → build → verify → one qa-tester read |
+| **R2** | one file + its test, a small logic change | inline checklist → build → verify → one read-only reviewer pass |
 | **R3** | multi-file, vague scope, or needs sequencing | the full six-phase spine |
 | **R4** | high-risk path (auth, billing, migrations, secrets…) | full spine + adversarial review floor, never downgraded |
 

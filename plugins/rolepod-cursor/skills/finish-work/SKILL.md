@@ -130,7 +130,7 @@ A genuine launch event (first traffic to a new surface, a staged rollout, a migr
 ## If a matching Rolepod agent is available
 
 - `devops-sre` — CI / deploy / rollback / monitoring
-- `qa-tester` — final pre-merge correctness floor
+- `qa-tester` — user-visible (E2E / UI) verification before merge
 - `security-engineer` — security gate on high-risk diffs
 
 Brief: branch, diff summary, CI status, review verdict, launch plan if any.

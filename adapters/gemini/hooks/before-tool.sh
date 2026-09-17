@@ -41,14 +41,14 @@ fi
 MSG=$'rolepod verify-first: Read or git-diff the file before claiming what it contains. '
 MSG+=$'Memory + pattern-match are unreliable. '
 MSG+=$'GATE CHECK: Q1(>1 file?) Q2(run tests?) Q3(design judgment?) Q4(>3 tool calls?) — any yes → delegate. '
-MSG+=$'Reviewer (qa-tester floor) planned? Skipping any → state reason. flow-state ≠ gate skip.'
+MSG+=$'Reviewer (read-only universal-reviewer) planned? Skipping any → state reason. flow-state ≠ gate skip.'
 
 if [ -n "$FILE" ]; then
   MSG+=$'\n\nTarget: '"$FILE"
 fi
 
 if [ "$HIGH_RISK" -eq 1 ]; then
-  MSG+=$'\n\nHIGH-RISK PATH DETECTED. Run /rolepod-full BEFORE the edit. Dispatch ≥2 reviewers before commit: qa-tester + security-engineer, plus an external CLI on a DIFFERENT model than this Lead (Codex/Claude — not Gemini/agy reviewing itself).'
+  MSG+=$'\n\nHIGH-RISK PATH DETECTED. Run /rolepod-full BEFORE the edit. Dispatch ≥2 reviewers before commit: universal-reviewer + security-engineer, plus an external CLI on a DIFFERENT model than this Lead (Codex/Claude — not Gemini/agy reviewing itself).'
 fi
 
 python3 -c 'import json,sys; print(json.dumps({"systemMessage": sys.stdin.read()}))' <<EOF

@@ -129,7 +129,7 @@ out=$(cur_in postToolUse "$CUR_TMP/.cursor-plugin/plugin.json" | bash "$CUR_GATE
 printf '%s' "$out" | python3 -I -c 'import json,sys; d=json.load(sys.stdin); m=d["additional_context"]; assert m.startswith("SCHEMA-BOUND file written: plugin.json") and len(m)<=600' 2>/dev/null && [ "$rc" -eq 0 ] \
   && pass "postToolUse: schema-bound file → additional_context reminder (≤600 chars)" || bad "postToolUse schema-bound: rc $rc out=${out:0:100}"
 out=$(cur_in postToolUse "$CUR_TMP/src/auth/login.ts" | bash "$CUR_GATE" 2>/dev/null); rc=$?
-printf '%s' "$out" | python3 -I -c 'import json,sys; d=json.load(sys.stdin); m=d["additional_context"]; assert m.startswith("HIGH-RISK path edited: login.ts") and "qa-tester" in m and len(m)<=600' 2>/dev/null && [ "$rc" -eq 0 ] \
+printf '%s' "$out" | python3 -I -c 'import json,sys; d=json.load(sys.stdin); m=d["additional_context"]; assert m.startswith("HIGH-RISK path edited: login.ts") and "security-engineer" in m and "qa-tester" not in m and len(m)<=600' 2>/dev/null && [ "$rc" -eq 0 ] \
   && pass "postToolUse: high-risk path → additional_context reminder" || bad "postToolUse high-risk: rc $rc out=${out:0:100}"
 out=$(cur_in postToolUse "$CUR_TMP/src/util.ts" | bash "$CUR_GATE" 2>/dev/null); rc=$?
 [ "$rc" -eq 0 ] && [ -z "$out" ] && pass "postToolUse: plain path stays silent" || bad "postToolUse plain: rc $rc out=${out:0:80}"

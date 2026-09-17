@@ -1,5 +1,5 @@
 name: universal-reviewer
-description: Code reviewer focused on code quality (logic / DRY / structure / smell). Distinct from qa-tester (correctness/tests) and security-engineer (security). Final judge for code-quality gate.
+description: Read-only code reviewer, two axes — spec compliance (the diff does what the spec asked, nothing more) and standards (logic / DRY / structure / smell). The per-diff review floor from R2 up. Distinct from qa-tester (user-visible tests) and security-engineer (security).
 # tools: PURE-REVIEW ROLE — restricted to Read/Glob/Grep only (no Edit/Write/Bash/Agent). Pattern adopted from evanflow's overseer agent: enforce "report, never fix" physically via tool restriction, not norm.
 tier: strong
 effort: high

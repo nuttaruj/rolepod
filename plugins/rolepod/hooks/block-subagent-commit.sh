@@ -2,7 +2,7 @@
 # PreToolUse Bash hook — block sub-agents from the calls they cannot recover from.
 #
 # 1. Version control (original rule). A backend-developer sub-agent ran
-#    `git commit` after marking tasks COMPLETED, bypassing the qa-tester floor
+#    `git commit` after marking tasks COMPLETED, bypassing the review floor
 #    and the Lead's verify step; soft reminders were ignored because the agent
 #    saw success signals (tsc=0, imports OK). Blocks git commit / push /
 #    reset --hard, gh pr merge / create.

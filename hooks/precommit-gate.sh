@@ -672,14 +672,14 @@ fi
 REASON="precommit-gate BLOCKED. ${BYPASS_IGNORED}"
 REASON+="Diff: $FILES_CHANGED files / $LINES_CHANGED lines / $LOGIC_COUNT logic lines. "
 REASON+="Evidence ($SINCE_HUMAN, Lead + subagent transcripts + edit ledger): $TEST_EDITS test edits / $HIGH_RISK_EDITS high-risk edits / $REVIEWERS reviewer dispatches ($STRONG_REVIEWERS strong). "
-[ -n "$HIGH_RISK" ] && REASON+="HIGH-RISK path: $HIGH_RISK → mandatory qa-tester + security-engineer review. "
+[ -n "$HIGH_RISK" ] && REASON+="HIGH-RISK path: $HIGH_RISK → mandatory universal-reviewer + security-engineer review. "
 if [ "$HIGH_RISK_EDITS" -gt 0 ] && [ "$TEST_EDITS" -eq 0 ]; then
   REASON+="NO TEST EDITS in this session despite touching high-risk code — T-gate violation (T1: bug/feature/migration/auth/billing → test required). "
 fi
 [ -n "$XFAM_HELD" ] && REASON+="SATELLITE-FIRST: $XFAM_HELD"
 [ -z "$XFAM_HELD" ] && [ -n "$XFAM_RUNNING" ] && [ -n "$HIGH_RISK" ] && [ "$STRONG_REVIEWERS" -eq 0 ] && REASON+="A detached cross-family job is still running: $XFAM_RUNNING — rolepod-cross-family --collect <job-id>, then retry. "
 if [ -n "$HIGH_RISK" ] && [ "$STRONG_REVIEWERS" -eq 0 ] && [ -z "$XFAM_HELD" ]; then
-  REASON+="NO STRONG ADVERSARIAL REVIEWER since the last commit. A high-risk diff clears on ONE of: (a) a cross-family external strong review, anchored per review-code (raw output under .rolepod/evidence/external/ + the reviewer:external log line) — preferred; (b) a security-engineer or universal-reviewer dispatch (Agent tool or Workflow agentType) that has FINISHED. The hook lifts Agent-tool ones to strong — do not pass a balanced model. Test edits / qa-tester are the test floor, not the review. "
+  REASON+="NO STRONG ADVERSARIAL REVIEWER since the last commit. A high-risk diff clears on ONE of: (a) a cross-family external strong review, anchored per review-code (raw output under .rolepod/evidence/external/ + the reviewer:external log line) — preferred; (b) a security-engineer or universal-reviewer dispatch (Agent tool or Workflow agentType) that has FINISHED. The hook lifts Agent-tool ones to strong — do not pass a balanced model. Test edits are the test floor, not the review. "
 fi
 REASON+="Run S1-S5 (simplicity) + T1-T6 (tests) + F1-F5 (finish) — finish-work §1, check-work §6. "
 REASON+="Auto-passes once evidence exists SINCE THE LAST COMMIT: high-risk → dispatch security-engineer or universal-reviewer; other blocks → write the failing test or dispatch a reviewer; then rerun the SAME git commit. No bypass marker, no env prefix."
@@ -706,7 +706,7 @@ fi
 # Evidence is split by risk (v2.46.0):
 #   HIGH-RISK diff  → only a STRONG-class adversarial reviewer dispatch
 #     (security-engineer / universal-reviewer) clears it. Test edits and
-#     qa-tester are the balanced test floor, not the review — CourtBook
+#     test edits are the floor, not the review — CourtBook
 #     proof: 672 green tests + opus impl still shipped 4 money bugs that
 #     only the adversarial pass caught.
 #   other HARD blocks (session risk edits w/o tests, env) → original OR
@@ -778,12 +778,12 @@ fi
 
 # SOFT warn path — emit reminder, exit 0
 WARN="precommit-gate SOFT: $FILES_CHANGED files / $LINES_CHANGED lines / $LOGIC_COUNT logic, no high-risk path; reviewers since last commit: $REVIEWERS. "
-# A logic diff nobody but its author read (v2.95.0): the R2 floor is a
-# qa-tester read of the diff — named here, still advisory. An R1-shaped
+# A logic diff nobody but its author read (v2.95.0): the R2 floor is one
+# read-only universal-reviewer pass (v2.148.0) — named here, still advisory. An R1-shaped
 # diff (1 file, ≤5 lines) gets the count only: a user-facing string edit
 # counts as logic here but as zero in the router (v2.96.0), and the
 # hook cannot tell a label from a branch — the doctrine can.
-if [ "$LOGIC_COUNT" -gt 0 ] && [ "$REVIEWERS" -eq 0 ] && { [ "$FILES_CHANGED" -gt 1 ] || [ "$LINES_CHANGED" -gt 5 ]; }; then WARN+="0 reviewers on a logic diff = the author reviewed it. Fix: dispatch rolepod:qa-tester (balanced) on the diff, then commit (review-code §1; R2 = one file + test). "; fi
+if [ "$LOGIC_COUNT" -gt 0 ] && [ "$REVIEWERS" -eq 0 ] && { [ "$FILES_CHANGED" -gt 1 ] || [ "$LINES_CHANGED" -gt 5 ]; }; then WARN+="0 reviewers on a logic diff = the author reviewed it. Fix: dispatch rolepod:universal-reviewer (read-only, two axes) on the diff, then commit (review-code §1; R2 = one file + test). "; fi
 WARN+="Gates S1-S5 (simplicity) / T1-T6 (tests) / F1-F5 (finish) — finish-work §1, check-work §6 — are advisory here; ROLEPOD_GATES_HARD=1 enforces."
 [ -n "$LINT_WARN" ] && WARN+=" | $LINT_WARN"
 [ -n "$EMOJI_WARN" ] && WARN+=" | $EMOJI_WARN"

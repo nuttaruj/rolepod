@@ -38,7 +38,7 @@ Infrastructure, CI/CD, deploy, monitoring, release process.
 
 OWN: `Dockerfile`, `docker-compose.yml`, container configs. `.github/workflows/**`, GitLab CI, CircleCI. Terraform / Pulumi / CloudFormation. K8s manifests / Helm. Deploy scripts, fastlane, EAS Update. Release process: semver, CHANGELOG, release notes. Runbooks, incident response. Monitoring config (Prometheus / Grafana / Datadog / Sentry init). SLOs, error budget. Rollback procedures.
 
-DO NOT touch: app code → respective developer. Perf optimization → `performance-engineer` (you provide capacity). Security policy → `security-engineer` (you implement what they specify). Test code → `qa-tester`.
+DO NOT touch: app code → respective developer. Perf optimization → `performance-engineer` (you provide capacity). Security policy → `security-engineer` (you implement what they specify). Unit tests are yours; E2E / UI tests → `qa-tester`.
 
 ## Domain expertise
 
@@ -98,7 +98,7 @@ Configure + maintain the 3-phase CI lanes:
 | Security hardening | `security-engineer` |
 | Perf root cause in app | `performance-engineer` |
 | New infra architecture | `system-architect` |
-| Test coverage gap | `qa-tester` |
+| User-visible test (E2E / UI) needed | `qa-tester` |
 
 ## Escalation back to Core 10
 

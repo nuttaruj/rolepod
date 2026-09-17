@@ -125,7 +125,7 @@ HIGH_RISK=""
 _RISK_HIT=$(printf '%s\n' "$FILE" | risk_filter '(^|/|_)(auth|authn|authz|authentication|authorization|billing|payment|payments|migration|migrations|credit|credits|permission|permissions|secret|secrets|crypto|cryptography|token|tokens|oauth|jwt|sso|saml|webhook|webhooks|stripe|paypal|charge|charges|invoice|invoices|deletion|deletions|erasure|gdpr|security)(/|\.|_|$)' | head -1 || true)
 MONEY_RISK=""
 if [ "$IS_TEST" -eq 0 ] && [ -n "$_RISK_HIT" ]; then
-  HIGH_RISK="HIGH-RISK path → qa-tester + security-engineer review before commit. "
+  HIGH_RISK="HIGH-RISK path → universal-reviewer + security-engineer review before commit. "
   # money / auth subset (v2.78.0) — with an enabled cross-family pool this
   # surface clears on the external pass alone (v2.145.0); the internal strong
   # joins only at the round-3 breaker, by doctrine.
@@ -228,7 +228,7 @@ if [ -n "$HIGH_RISK" ] && [ "$SOFT_MODE" -eq 0 ]; then
     WOULD_BLOCK+="COMMIT WILL BLOCK — 0 test edits since the last commit while editing high-risk path '$FILE'. Write the failing test FIRST (RED), then implement. "
   fi
   if [ "$HIGH_RISK_EDITS" -ge 1 ] && [ "$STRONG_REVIEWERS" -eq 0 ]; then
-    WOULD_BLOCK+="COMMIT WILL BLOCK — high-risk edits since the last commit, no strong adversarial reviewer. Fix: \`rolepod-cross-family --kind review --brief <file> --attach <diff>\` (different CLI, read-only, anchors the pass). An internal reviewer counts only after the runner reports the pool failed or empty → then dispatch rolepod:universal-reviewer or rolepod:security-engineer via the Agent tool (qa-tester is the test floor, not the review). Reviewer impossible (user forbade agents / no subagents) → SURFACE it; fallback = Lead cold self-review recorded as a LIMITATION. Env bypass is user-set only. "
+    WOULD_BLOCK+="COMMIT WILL BLOCK — high-risk edits since the last commit, no strong adversarial reviewer. Fix: \`rolepod-cross-family --kind review --brief <file> --attach <diff>\` (different CLI, read-only, anchors the pass). An internal reviewer counts only after the runner reports the pool failed or empty → then dispatch rolepod:universal-reviewer or rolepod:security-engineer via the Agent tool (test edits are the floor, not the review). Reviewer impossible (user forbade agents / no subagents) → SURFACE it; fallback = Lead cold self-review recorded as a LIMITATION. Env bypass is user-set only. "
   fi
 fi
 
@@ -245,7 +245,7 @@ if [ -n "$HIGH_RISK" ]; then
   # env like CODEX_HOME — it leaks from the user's rc files.
   SELF_CLI="${ROLEPOD_LEAD_CLI:-}"
   [ -z "$SELF_CLI" ] && [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && SELF_CLI="claude"
-  REVIEWER_LIST="qa-tester"
+  REVIEWER_LIST="universal-reviewer"
   # v2.76.0: the cross-family runner owns pool detection (config file +
   # installed + Lead-CLI exclusion). Its --pool-names output IS the list;
   # the pre-runner detection below is the fallback when the runner is absent.
@@ -258,7 +258,7 @@ if [ -n "$HIGH_RISK" ]; then
       REVIEWER_LIST="$REVIEWER_LIST + cross-family runner → $XFAM_POOL (\`rolepod-cross-family --kind review --brief <file> --attach <diff>\` — one command: default model, read-only, anchored)"
       [ -n "$MONEY_RISK" ] && REVIEWER_LIST="$REVIEWER_LIST (money / auth surface: the external pass alone clears; internal strong only at the round-3 breaker)"
     else
-      REVIEWER_LIST="$REVIEWER_LIST + rolepod:universal-reviewer / rolepod:security-engineer (cross-family is opt-in and not enabled here — \`rolepod-cross-family --pool\` shows candidates; ask the user before enabling)"
+      REVIEWER_LIST="$REVIEWER_LIST + rolepod:security-engineer on this high-risk path (cross-family is opt-in and not enabled here — \`rolepod-cross-family --pool\` shows candidates; ask the user before enabling)"
     fi
   else
     [ "$SELF_CLI" != "codex" ]  && command -v codex  >/dev/null 2>&1 && REVIEWER_LIST="$REVIEWER_LIST + Codex (\`codex exec\`, depth/security)"

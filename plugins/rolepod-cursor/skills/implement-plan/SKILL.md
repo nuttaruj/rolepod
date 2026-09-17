@@ -1,18 +1,18 @@
 ---
 name: implement-plan
-description: Use when executing an approved plan or a clear single-file edit — TDD for risky paths, surgical edits, bounded delegation, worktrees only when real filesystem isolation is needed. Phase = Build.
+description: Use when executing an approved plan or a clear single-file edit — TDD at the plan's seams, surgical edits, bounded delegation, worktrees only when real filesystem isolation is needed. Phase = Build.
 ---
 
 # Implement Plan
 
-Execute the approved plan with discipline: TDD where it matters, surgical edits, fresh-context review of delegated work, worktrees only when filesystem isolation is real.
+Execute the approved plan with discipline: TDD at the seams the plan names, surgical edits, fresh-context review of delegated work, worktrees only when filesystem isolation is real.
 
 ## Iron Rule
 
 <EXTREMELY-IMPORTANT>
 1. NEVER edit code without reading the plan and the touched files first.
 2. NEVER expand scope mid-implementation. New idea → one line under the plan's `## Follow-ups`, then finish the planned task.
-3. ALWAYS write the failing test first for bug fixes and high-risk-surface work.
+3. ALWAYS write the failing test first for every logic slice, at the plan's seam.
 4. NEVER delegate without a written task scope and a clear done criterion.
 5. CONTINUOUS execution between tasks AND between plan phases — no "should I continue?" check-ins, never end the turn mid-plan: an ended turn is a stop however it is worded. Stop only on a BLOCKED, spec / plan gap, or scope ambiguity that SURVIVES a re-read of the plan and the touched files (BLOCKED: plus a variable change) — a wrinkle you can settle yourself never stops you.
 6. Forced to end anyway (usage limit / context / user stop) → the last act is one line under the plan's `## Changes during build`: stopped after Task N · next Task M · how to start the env — the next session reads it before anything else.
@@ -47,9 +47,9 @@ Read the touched files end-to-end; verify the symbols the plan expects exist.
 - Verify each task by running its **Command** verbatim — never a re-derived guess. Pass → flip EVERY `- [ ]` under that task to `- [x]`. A **Test / evidence** proof the Command does not run (browser, manual) is not covered by the flip — do it first. Fail → the task's **On fail**, else the plan's **Failure policy**.
 - Shared plan (issues backend on — issue numbers in the plan header) → claim the task's issue (assign yourself) before touching a file; already assigned → take the next unblocked one; close it with the commit / PR pointer when review passes (write-plan's `references/team-issues.md`).
 
-### 2. TDD-light for risky paths
+### 2. TDD at the plan's seams
 
-Bug / new logic / billing / migration / auth / race / security: failing test → run (must fail) → smallest change → all tests green. Pure rename / typo / comment: tests-after or skip per the test gate. Task-type → discipline matrix + test hygiene: `references/tdd-by-risk.md`.
+Every logic slice: a failing unit test at the plan's seam (public interface, never internals) → must fail → smallest change → green → next; refactor at review, not in the loop. Prose / rename / config: no test. Matrix: `references/tdd-by-risk.md`.
 
 ### 3. Surgical edit + quality reflexes
 
@@ -92,8 +92,8 @@ Every unblocked task goes out in ONE message, each task owner in its OWN worktre
 ### 6. Per-task review pipeline — the task owner's decision brief replaces Lead review
 
 A task owner's **decision brief** replaces the Lead-run review — the Lead reads the brief, spot-checks ONE finding in its report file, runs the task's Command in the owner's worktree, then commits (ff-merge the owner's branch).
-Every hop reads what the previous hop produced — brief, diff, report, decision brief — and opens the source only for that spot-check or a named residual, never by default. The task owner's reviewers — `qa-tester` + `universal-reviewer` (or the concern-matched row) — are dispatched in ONE message and read together: spec compliance + code quality; a single-file, seam-free slice → `qa-tester` alone.
-An R4 slice with a usable pool: `qa-tester` + the external pass (`--kind review`, collected in the foreground) replaces `universal-reviewer` — the Lead runs no second external for the ship group. A Lead-built task (R1/R2) → the Lead runs §6 itself.
+Every hop reads what the previous hop produced — brief, diff, report, decision brief — and opens the source only for that spot-check or a named residual, never by default. The task owner's reviewer — `universal-reviewer`, read-only, two axes (spec compliance + standards; or the concern-matched row) — plus `security-engineer` on a high-risk path and `qa-tester` (E2E / UI) when the slice changes what a user sees, in ONE message; the owner's own unit tests are the test floor.
+An R4 slice with a usable pool: the external pass (`--kind review`, collected in the foreground) replaces `universal-reviewer` — the Lead runs no second external for the ship group. A Lead-built task (R1/R2) → the Lead runs §6 itself.
 
 **One task per pass, then ship it.** Each task owner's Command → decision brief → Lead spot-check + commit → next unblocked task. Never batch tasks into one diff; the rhythm is a fresh context per task. A **whole-implementation review** on a cumulative diff runs only over a ship group (tasks sharing a seam, named in the plan) for cross-task drift — type / symbol / contract mismatch, unowned files. Build the next unblocked task in its OWN worktree while this one is under review — a tree under review never moves.
 
@@ -115,7 +115,7 @@ Brief: spec + plan + files + tests + done criterion + handoff partner.
 
 ## If no matching agent is available
 
-Execute as Lead: read plan + touched files → failing test first on risky paths → smallest change → module or full suite green → match local style, invent no patterns → flag adjacent dead code, delete nothing unasked → `check-work` before claiming done.
+Execute as Lead: read plan + touched files → failing test first at the plan's seam → smallest change → module or full suite green → match local style, invent no patterns → flag adjacent dead code, delete nothing unasked → `check-work` before claiming done.
 
 ## Output
 

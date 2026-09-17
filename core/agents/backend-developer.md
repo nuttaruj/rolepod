@@ -91,7 +91,7 @@ DO NOT touch:
 | Performance bottleneck | `performance-engineer` |
 | Security concern | `security-engineer` |
 | Architecture decision | `system-architect` |
-| Test plan unclear | `qa-tester` |
+| User-visible test (E2E / UI) needed | `qa-tester` |
 | Cannot resolve after 2 retries | hand-off to Lead |
 
 ## Escalation back to Core 10

@@ -58,7 +58,7 @@ Each **Blocked-by** edge names what it consumes (e.g., `Blocked by: Task 2 (its 
 ### 3. Test plan per task
 
 Name the test type (unit / integration / contract / E2E / smoke / repro), the assertion that proves it, and the exact command — copy-paste runnable, not "run the tests". Behaviour no test can express yet → **Test / evidence** carries 1-3 acceptance criteria the reviewer walks, and **Command** is the nearest mechanical check (lint / typecheck / smoke) — never skipped. "Adds tests" is not a test plan.
-Tests cover the work — logic, UI, behaviour; a doc, comment, config-text or string-literal change gets NO test (render / lint is its check). Size by rules: one test per rule at its owner, one smoke per call site — never a test per copy of the rule.
+Tests cover the work — logic, UI, behaviour; a doc, comment, config-text or string-literal change gets NO test (render / lint is its check). Size by rules: one test per rule at its owner, one smoke per call site — never a test per copy of the rule. Each logic task names its **seam** in Test / evidence — the public interface the test exercises — and the owner writes the failing test there first (TDD), never against internals.
 
 No test infrastructure at all → the FIRST task bootstraps the minimal harness (runner config + one passing smoke test) so every later Command is runnable. Never plan Commands against a runner that does not exist.
 
@@ -99,7 +99,7 @@ Never ship a plan containing: `TBD` / `TODO` / "implement later" · "add appropr
 
 Every task carries **Owner:** — the role the domain map in `templates/plan-template.md` assigns to the task's files (path first, then concern).
 - `Owner: Lead` for R1/R2-sized work (≤2 files) or when the user said self-do; from R3 up the map decides.
-- Reviewer roles are never owners: `qa-tester` = test plan depth; `security-engineer` on every touched high-risk surface (auth / billing / payments / credits / migration / data deletion / secrets / tokens / crypto / permissions / security) — both named in the task's Reviewer line.
+- Reviewer roles are never owners: `qa-tester` = user-visible verification (E2E / UI test tasks); `security-engineer` on every touched high-risk surface (auth / billing / payments / credits / migration / data deletion / secrets / tokens / crypto / permissions / security) — both named in the task's Reviewer line.
 - Brief each owner per §6, plus the spec.
 
 ## If no matching agent is available

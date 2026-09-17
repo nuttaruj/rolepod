@@ -78,7 +78,7 @@ emit() {  # $1 = JSON object built from env ROLEPOD_HOOK_MSG by the python line 
 # postToolUse: the soft reminders, delivered where Cursor lets them reach the model.
 MSG=""
 [ "$SCHEMA_BOUND" -eq 1 ] && MSG="SCHEMA-BOUND file written: $BASE. Fix: verify it against the official spec (WebFetch, not recall) and name the source URL before moving on; a wrong schema fails silently at install. "
-[ "$HIGH_RISK" -eq 1 ] && MSG="${MSG}HIGH-RISK path edited: $BASE. Fix: qa-tester + security-engineer review before commit."
+[ "$HIGH_RISK" -eq 1 ] && MSG="${MSG}HIGH-RISK path edited: $BASE. Fix: universal-reviewer + security-engineer review before commit."
 emit "${MSG% }" "
 import json, os
 print(json.dumps({'additional_context': os.environ.get('ROLEPOD_HOOK_MSG', '')}))
