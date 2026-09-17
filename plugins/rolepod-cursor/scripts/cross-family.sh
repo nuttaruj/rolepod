@@ -24,6 +24,7 @@
 #                codex stall=900        # silence tolerated before it counts as dead (default 600 s)
 #                agy
 #                consult: agy codex      # debug consults want the fast answer first
+#                implement: codex claude # which members may WRITE (--kind implement); absent = the default order
 #            Names: codex claude agy cursor opencode (`gemini` is retired —
 #            skipped with a note; list agy instead).
 #   cli      only the Lead's OWN CLI is excluded. The model family is
@@ -442,7 +443,7 @@ if [ -n "$CFG" ]; then
   while IFS= read -r _ln || [ -n "$_ln" ]; do
     _ln=$(printf '%s' "$_ln" | sed -e 's/#.*//' | tr 'A-Z' 'a-z' | tr -s '[:space:]' ' ' | sed -e 's/^ //' -e 's/ $//')
     [ -n "$_ln" ] || continue
-    _k=""; case "$_ln" in review:*|consult:*|advise:*|critique:*) _k="${_ln%%:*}"; _ln="${_ln#*:}";; esac
+    _k=""; case "$_ln" in review:*|consult:*|advise:*|critique:*|implement:*) _k="${_ln%%:*}"; _ln="${_ln#*:}";; esac
     _acc=""; _last=""
     for _t in $_ln; do
       case "$_t" in
@@ -647,6 +648,9 @@ implement_guard() { # $1 tree before, $2 tree after, $3 save dir → stdout "rev
   git -C "$ROOT" diff-tree -r -z --name-status --no-renames "$1" "$2" 2>/dev/null | while IFS= read -r -d '' _st && IFS= read -r -d '' _pa; do
     path_allowed "$_pa" && continue; printf '%s\n' "$_pa"
   done > "$_gl"
+  # housekeeping = a file the member CLI's own runtime rewrites on start (opencode normalises the project opencode.json(c)): restored like
+  # any outside path, but reported as `housekept`, never a violation — the member did not stray, its runtime did
+  _hk=""; case "${_c:-}" in opencode) _hk="opencode.json opencode.jsonc" ;; esac
   [ -s "$_gl" ] || { rm -f "$_gl"; return 0; }
   : > "$_gl.ci"; : > "$_gl.rs"; mkdir -p "$3" 2>/dev/null
   git -C "$ROOT" ls-tree -r -z --name-only "$1" 2>/dev/null > "$_gl.pre"   # one git call: which outside paths existed before (restore) vs not (delete)
@@ -661,7 +665,8 @@ implement_guard() { # $1 tree before, $2 tree after, $3 save dir → stdout "rev
     elif [ -f "$ROOT/$_pa" ]; then mkdir -p "$3/$_pd" 2>/dev/null; cp -p "$ROOT/$_pa" "$3/$_pa" 2>/dev/null || :; fi
     rm -rf "$ROOT/$_pa" 2>/dev/null || :   # a symlink or a directory the member put there is removed, never followed
     printf '%s\0' "$_pa" >> "$_gl.rs"
-    printf 'reverted\t%s\n' "$_pa"
+    _cls=reverted; for _h in $_hk; do [ "$_pa" = "$_h" ] && _cls=housekept; done
+    printf '%s\t%s\n' "$_cls" "$_pa"
   done < "$_gl"
   if [ -s "$_gl.rs" ]; then   # which removed paths existed before → restore list. Bytes in, bytes out (non-UTF-8 names survive); python failing falls back to the per-path probe — the files are already gone, so this step may never silently do nothing
     if ! python3 -I - "$_gl.pre" "$_gl.rs" > "$_gl.ci" 2>/dev/null <<'PYC'
@@ -688,16 +693,27 @@ implement_restore_all() { # $1 tree before, $2 save dir → every change since $
   printf '%s %s' "$(printf '%s\n' "$_ra" | grep -c '^reverted' || true)" "$(printf '%s\n' "$_ra" | grep -c '^unsafe' || true)"
 }
 git_dir() { _gd=$(git -C "$ROOT" rev-parse --git-dir 2>/dev/null); case "$_gd" in /*) ;; *) _gd="$ROOT/$_gd" ;; esac; printf '%s' "$_gd"; }
-git_state() { # HEAD commit · HEAD symbolic ref · stash ref · digest of ALL refs · CONTENT digest of config + info/exclude + every hook — what a member must never move
+ROLEPOD_CFG="cross-family risk-paths docs-tracked allow-emoji"   # rolepod config under .rolepod/ — ignored by every rolepod-using repo's info/exclude, so guarded as metadata, never via the tree
+prime_rolepod_exclude() { # what every rolepod session-start hook does: `.rolepod/` in .git/info/exclude — done BEFORE the metadata copy so the member's own hook changes nothing
+  _pe=$(git -C "$ROOT" rev-parse --git-path info/exclude 2>/dev/null); [ -n "$_pe" ] || return 0
+  case "$_pe" in /*) ;; *) _pe="$ROOT/$_pe" ;; esac
+  [ -f "$_pe" ] || { mkdir -p "${_pe%/*}" 2>/dev/null; : > "$_pe" 2>/dev/null || return 0; }
+  grep -qxF '.rolepod/' "$_pe" 2>/dev/null && return 0
+  if [ -s "$_pe" ] && [ -n "$(tail -c 1 "$_pe")" ]; then printf '\n' >> "$_pe" 2>/dev/null || :; fi   # a file with no final newline would glue `.rolepod/` onto the user's last rule
+  printf '.rolepod/\n' >> "$_pe" 2>/dev/null || :
+}
+git_state() { # HEAD commit · HEAD symbolic ref · stash ref · digest of ALL refs · CONTENT digest of config + info/exclude + every hook + the rolepod config files — what a member must never move
   _gd=$(git_dir)
   printf '%s %s %s %s %s' "$(git -C "$ROOT" rev-parse -q --verify HEAD 2>/dev/null || echo none)" "$(git -C "$ROOT" symbolic-ref -q HEAD 2>/dev/null || echo detached)" "$(git -C "$ROOT" rev-parse -q --verify refs/stash 2>/dev/null || echo none)" \
-    "$(git -C "$ROOT" for-each-ref 2>/dev/null | cksum | cut -d' ' -f1)" "$( { cat "$_gd/config" "$_gd/info/exclude" 2>/dev/null; for _hf in "$_gd"/hooks/*; do [ -f "$_hf" ] && { printf '%s\n' "${_hf##*/}"; cat "$_hf"; }; done; } 2>/dev/null | cksum | cut -d' ' -f1)"
+    "$(git -C "$ROOT" for-each-ref 2>/dev/null | cksum | cut -d' ' -f1)" "$( { cat "$_gd/config" "$_gd/info/exclude" 2>/dev/null; for _hf in "$_gd"/hooks/*; do [ -f "$_hf" ] && { printf '%s\n' "${_hf##*/}"; cat "$_hf"; }; done; for _cf in $ROLEPOD_CFG; do [ -f "$ROOT/.rolepod/$_cf" ] && { printf '%s\n' "$_cf"; cat "$ROOT/.rolepod/$_cf"; }; done; } 2>/dev/null | cksum | cut -d' ' -f1)"
 }
 gitmeta_save() { # $1 dir → copies config, info/exclude and every hook file, each copy verified with cmp (a hollow save is no save → the member is not run); restore is byte-for-byte
   _gd=$(git_dir); mkdir -p "$1/hooks" 2>/dev/null || return 1
   if [ -f "$_gd/config" ]; then cp -p "$_gd/config" "$1/config" 2>/dev/null && cmp -s "$_gd/config" "$1/config" 2>/dev/null || return 1; fi
   if [ -f "$_gd/info/exclude" ]; then cp -p "$_gd/info/exclude" "$1/exclude" 2>/dev/null && cmp -s "$_gd/info/exclude" "$1/exclude" 2>/dev/null || return 1; fi
   for _hf in "$_gd"/hooks/*; do [ -f "$_hf" ] || continue; cp -p "$_hf" "$1/hooks/" 2>/dev/null && cmp -s "$_hf" "$1/hooks/${_hf##*/}" 2>/dev/null || return 1; done
+  mkdir -p "$1/rolepod" 2>/dev/null || return 1
+  for _cf in $ROLEPOD_CFG; do [ -f "$ROOT/.rolepod/$_cf" ] || continue; cp -p "$ROOT/.rolepod/$_cf" "$1/rolepod/$_cf" 2>/dev/null && cmp -s "$ROOT/.rolepod/$_cf" "$1/rolepod/$_cf" 2>/dev/null || return 1; done
   return 0
 }
 gitmeta_restore() { # $1 dir (from gitmeta_save) → prints what changed; config / exclude / hooks are put back exactly, hook files the member added are removed
@@ -710,6 +726,12 @@ gitmeta_restore() { # $1 dir (from gitmeta_save) → prints what changed; config
     else rm -f "$_hf" 2>/dev/null; _out="$_out hooks/$_hn(removed)"; fi
   done
   for _hf in "$1"/hooks/*; do [ -f "$_hf" ] || continue; _hn=${_hf##*/}; [ -f "$_gd/hooks/$_hn" ] || { cp -p "$_hf" "$_gd/hooks/$_hn" 2>/dev/null; _out="$_out hooks/$_hn(put back)"; }; done
+  for _cf in $ROLEPOD_CFG; do   # rolepod config: restored, removed when the member created it, put back when it deleted it
+    if [ -f "$1/rolepod/$_cf" ]; then
+      if [ -f "$ROOT/.rolepod/$_cf" ]; then cmp -s "$1/rolepod/$_cf" "$ROOT/.rolepod/$_cf" 2>/dev/null || { cp -p "$1/rolepod/$_cf" "$ROOT/.rolepod/$_cf" 2>/dev/null; cmp -s "$1/rolepod/$_cf" "$ROOT/.rolepod/$_cf" 2>/dev/null && _out="$_out .rolepod/$_cf(restored)" || _out="$_out .rolepod/$_cf(RESTORE FAILED — fix by hand)"; }
+      else mkdir -p "$ROOT/.rolepod" 2>/dev/null; cp -p "$1/rolepod/$_cf" "$ROOT/.rolepod/$_cf" 2>/dev/null; _out="$_out .rolepod/$_cf(put back)"; fi
+    elif [ -f "$ROOT/.rolepod/$_cf" ]; then rm -f "$ROOT/.rolepod/$_cf" 2>/dev/null; _out="$_out .rolepod/$_cf(removed — the member created it)"; fi
+  done
   printf '%s' "${_out# }"
 }
 phaselog_scrub() { # $1 byte offset of phase-log before the member ran, $2 member log file → prints "<forged> <moved>"
@@ -1022,8 +1044,11 @@ fi
 TREE_EXCLUDE=":(exclude).rolepod/evidence :(exclude).rolepod/session-locks :(exclude).rolepod/parent-active :(exclude).rolepod/gate-bypass.log :(exclude).rolepod/cross-family.asked :(exclude).rolepod/ctx-nudge :(exclude).rolepod/bin"
 PATCH_EXCLUDE=":(exclude).rolepod :(exclude)docs/rolepod"   # what leaves the repo (patches, --since deltas) never carries rolepod state or private docs
 snapshot_tree() {
+  # An exclude pathspec that names an IGNORED path makes `git add -A` fail outright ("paths are ignored"), and every rolepod-using
+  # repo ignores .rolepod/ through .git/info/exclude — so only the exclusions that are not already ignored are passed.
   _ti=$(mktemp) || return 1; rm -f "$_ti"
-  ( export GIT_INDEX_FILE="$_ti"; { git -C "$ROOT" read-tree HEAD 2>/dev/null || git -C "$ROOT" read-tree --empty 2>/dev/null; } && git -C "$ROOT" add -A -- . $TREE_EXCLUDE 2>/dev/null && git -C "$ROOT" write-tree 2>/dev/null ); _src=$?
+  _ex=""; for _e in $TREE_EXCLUDE; do _p="${_e#:(exclude)}"; git -C "$ROOT" check-ignore -q -- "$_p" 2>/dev/null || _ex="$_ex $_e"; done
+  ( export GIT_INDEX_FILE="$_ti"; { git -C "$ROOT" read-tree HEAD 2>/dev/null || git -C "$ROOT" read-tree --empty 2>/dev/null; } && git -C "$ROOT" add -A -- . $_ex 2>/dev/null && git -C "$ROOT" write-tree 2>/dev/null ); _src=$?
   rm -f "$_ti"; return $_src
 }
 
@@ -1196,6 +1221,7 @@ one() { # $1 cli → 0 ok / 1 fail / 21 implement done with outside edits revert
   fi
   _pre=""; _pl0=0; _el0=0
   if [ "$KIND" = "implement" ]; then
+    prime_rolepod_exclude   # BEFORE the tree snapshot: an untracked .rolepod/ file must not flip from "in the tree" to "ignored" mid-run (that read as a deletion)
     _pre=$(snapshot_tree 2>/dev/null || true)
     [ -f "$EV/phase-log.jsonl" ] && _pl0=$(wc -c < "$EV/phase-log.jsonl" | tr -d ' ')
     [ -f "$EV/edits.jsonl" ] && _el0=$(wc -c < "$EV/edits.jsonl" | tr -d ' ')
@@ -1277,8 +1303,8 @@ EOF
     _guard=""; _nout=0; _nunsafe=0; _resnap=ok
     if [ -n "$_pre" ] && [ -n "$_post" ]; then
       _guard=$(implement_guard "$_pre" "$_post" "$_save")
-      _nout=$(printf '%s\n' "$_guard" | grep -c '^reverted' || true); _nunsafe=$(printf '%s\n' "$_guard" | grep -c '^unsafe' || true)
-      if [ "$_nout" -gt 0 ]; then _post=$(snapshot_tree 2>/dev/null || true); [ -n "$_post" ] || { _resnap=failed; _post="$_pre"; }; fi   # the tree after the revert is what the patch describes
+      _nout=$(printf '%s\n' "$_guard" | grep -c '^reverted' || true); _nunsafe=$(printf '%s\n' "$_guard" | grep -c '^unsafe' || true); _nhk=$(printf '%s\n' "$_guard" | grep -c '^housekept' || true)
+      if [ "$(( _nout + ${_nhk:-0} ))" -gt 0 ]; then _post=$(snapshot_tree 2>/dev/null || true); [ -n "$_post" ] || { _resnap=failed; _post="$_pre"; }; fi   # the tree after the revert is what the patch describes
     fi
     _base=git; if [ -n "$_pre" ] && [ -n "$_post" ]; then git -C "$ROOT" diff-tree -p "$_pre" "$_post" -- . $PATCH_EXCLUDE > "$EV/$_patch" 2>/dev/null || :; else _base=none; : > "$EV/$_patch"; fi   # no baseline (not a git repo) is said out loud, never read as files=0
     _op=$(printf '%s\n' "$_guard" | grep '^reverted' | cut -f2 | head -20 | tr '\n' ' '); _up=$(printf '%s\n' "$_guard" | grep '^unsafe' | cut -f2 | head -20 | tr '\n' ' ')
@@ -1300,6 +1326,7 @@ EOF
     _notes=""
     [ "$_nout" -gt 0 ] && _notes="$_notes — reverted (edits outside --allow, whoever made them; copies under .rolepod/evidence/external/$_ts-$_c-$RUN_TAG.reverted/): $_op"
     [ "$_nunsafe" -gt 0 ] && _notes="$_notes — NOT touched (a symlink in the leading path; inspect by hand): $_up"
+    [ "${_nhk:-0}" -gt 0 ] && _notes="$_notes — housekeeping restored, not a violation (the member's runtime rewrites it on start): $(printf '%s\n' "$_guard" | grep '^housekept' | cut -f2 | tr '\n' ' ')"
     [ "$_nforged" -gt 0 ] && _notes="$_notes — forged evidence stripped: $_nforged line(s) (phase-log shapes only the runner writes, ledger rows the tree does not back, or a truncated log)"
     [ "${_nmoved:-0}" -gt 0 ] && _notes="$_notes — $_nmoved member-internal dispatch-proof line(s) moved to .rolepod/evidence/external/$_ts-$_c-$RUN_TAG.member-phase-log.jsonl"
     [ -n "$_enote" ] && _notes="$_notes — edits: $_enote"

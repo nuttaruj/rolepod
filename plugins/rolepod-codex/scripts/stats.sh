@@ -4,7 +4,7 @@
 #
 # Data sources (all fail-open, written by the doctrine since v2.12):
 #   <git-root>/.rolepod/evidence/phase-log.jsonl
-#     {"ts","phase":"route|verify|review|ship|dispatch|consult|advise|external-fail", ...}
+#     {"ts","phase":"route|verify|review|ship|dispatch|dispatch-proof|consult|advise|implement|external-fail|external-refused", ...}
 #     ship rows carry "commit":"<shipped head sha, or none>" (v2.87.0) — the anchor for
 #     the 14-day corrective-commit rate read from git history
 #   <git-root>/.rolepod/evidence/bypass.log
@@ -209,8 +209,12 @@ if proofs:
         (p.get("cli", "?"), p.get("model") or "?", p.get("agent_type") or "-")
         for p in proofs
     )
-    print(f"\n  Model proof — hook-reported ({len(proofs)}; provenance: hook stdin, "
-          "not independently verified):")
+    prov = Counter(p.get("provenance") or "hook-stdin" for p in proofs)
+    prov_s = ", ".join(f"{k} ×{n}" for k, n in sorted(prov.items()))
+    gloss = "hook-stdin = the CLI's own report, not independently verified"
+    if prov.get("cross-family"):
+        gloss += "; cross-family = the runner's line for an external implementer, model = the member CLI's own banner ('default' when it prints none)"
+    print(f"\n  Model proof — as recorded ({len(proofs)}; provenance: {prov_s} — {gloss}):")
     for (cli, model, agent), n in sorted(combo.items()):
         print(f"    {cli:<12} {model:<28} {agent:<20} ×{n}")
 
@@ -224,7 +228,7 @@ if verifies:
 # External (cross-family) passes — written by scripts/cross-family.sh. The
 # review line with reviewer:external is what precommit-gate counts as the
 # strong pass; consult / advise lines are the debug + plan channels.
-externals = [r for r in rows if r.get("reviewer") == "external"]
+externals = [r for r in rows if r.get("reviewer") == "external" or r.get("phase") == "implement"]   # implement lines carry no reviewer key: the runner built, the Lead reviews
 xfails = [r for r in rows if r.get("phase") == "external-fail"]
 if reviews:
     own = [r for r in reviews if r.get("reviewer") != "external"]

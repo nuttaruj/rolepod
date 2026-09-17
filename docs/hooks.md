@@ -161,6 +161,8 @@ Fires output ONLY when:
 
 4. **Review in flight (v2.93.0)** — a detached cross-family job is still running (live pid under `.rolepod/evidence/external/jobs/`) and the edited file is in its attached diff (`+++ b/` paths from the job's `args`; attachments gone → the current `git diff HEAD` file list) → one advisory line (`⏸ REVIEW IN FLIGHT …`): the job reads the tree live, an early edit turns its verdict into an artifact and re-runs it. Never a deny; doctrine side = review-code §1 (the round ends when the last member returns; §6 starts on the merged list).
 
+5. **External implement in flight (v2.139.0)** — the live job is `--kind implement` (its dir holds `allow`): an edit OUTSIDE the ticket's allowed paths gets `⏸ EXTERNAL IMPLEMENT IN FLIGHT: … is EDITING this tree — an edit outside the ticket's Files allowed made now (this one included) is reverted when the job returns (a copy is kept under the job's .reverted/)`; edits inside the scope stay silent. A new file in a not-yet-existing directory resolves through its nearest existing ancestor (symlinked roots included).
+
 - **Self-guards**: docs / lockfiles / non-high-risk code → silent.
 - **Bypass**: `ROLEPOD_GATES_SOFT=1` silences the would-block wording (banner stays) and the in-flight line.
 

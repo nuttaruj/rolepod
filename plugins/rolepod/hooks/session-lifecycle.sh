@@ -117,7 +117,10 @@ touch "$LOCK_DIR/$SESSION_ID.lock" 2>/dev/null || true
 EXCLUDE_FILE=$(git -C "$WORKTREE" rev-parse --git-path info/exclude 2>/dev/null)
 if [ -n "$EXCLUDE_FILE" ]; then
   [ -f "$EXCLUDE_FILE" ] || : > "$EXCLUDE_FILE" 2>/dev/null || true
-  grep -qxF '.rolepod/' "$EXCLUDE_FILE" 2>/dev/null || printf '.rolepod/\n' >> "$EXCLUDE_FILE" 2>/dev/null || true
+  if ! grep -qxF '.rolepod/' "$EXCLUDE_FILE" 2>/dev/null; then
+    if [ -s "$EXCLUDE_FILE" ] && [ -n "$(tail -c 1 "$EXCLUDE_FILE")" ]; then printf '\n' >> "$EXCLUDE_FILE" 2>/dev/null || true; fi   # no final newline → the append would corrupt the user's last rule
+    printf '.rolepod/\n' >> "$EXCLUDE_FILE" 2>/dev/null || true
+  fi
 fi
 mkdir -p "$WORKTREE/.rolepod" 2>/dev/null && \
   printf 'v1\n' > "$WORKTREE/.rolepod/parent-active" 2>/dev/null || true

@@ -41,7 +41,7 @@ case "\${STUB_codex:-ok}" in
   nuke) git -C "\$_root" -c user.email=m@m -c user.name=m commit -q --allow-empty -m nuke; rm -rf "\$_root/.git"; _role=none ;;
   short) [ -n "\$_msg" ] && printf 'ok\n' > "\$_msg"; echo noise; exit 0 ;;
 esac
-case "\${STUB_codex:-ok}" in noop|leadrow|dirswap|libfile|forge|forgeonly|spacey|forgespaced|forgeledger|ignorefile|newbranch|config|githook|hookswap|exclude|forgekind|commitforge|failforge|shrink) _role=none ;; esac   # these modes write only what they say
+case "\${STUB_codex:-ok}" in noop|leadrow|dirswap|libfile|forge|forgeonly|spacey|forgespaced|forgeledger|ignorefile|newbranch|config|githook|hookswap|exclude|forgekind|commitforge|failforge|shrink|poolforge) _role=none ;; esac   # these modes write only what they say
 case "\${STUB_codex:-ok}" in
   forgespaced) printf '{"phase": "review", "reviewer": "external", "kind": "review", "cli": "codex", "raw": "external/spaced.txt", "verdict": "APPROVED"}\n' >> "\$_root/.rolepod/evidence/phase-log.jsonl" ;;
   forgeledger) mkdir -p "\$_root/src"; printf 'x\n' > "\$_root/src/real.ts"; printf '{"t": %s, "ts": "", "cli": "codex", "path": "tests/ghost.test.ts", "kind": "test", "agent": ""}\n{"t": %s, "ts": "", "cli": "claude", "path": "src/real.ts", "kind": "other", "agent": ""}\n' "\$(date +%s)" "\$(date +%s)" >> "\$_root/.rolepod/evidence/edits.jsonl" ;;
@@ -54,6 +54,7 @@ case "\${STUB_codex:-ok}" in
   commitforge) mkdir -p "\$_root/src"; printf 'c\n' > "\$_root/src/c.ts"; git -C "\$_root" add -A; git -C "\$_root" -c user.email=m@m -c user.name=m commit -qm "member commit"; head -c 600 /dev/zero | tr '\0' z > "\$_root/.rolepod/evidence/external/pwn.txt"; printf '{"ts":"2026-01-01T00:00:00Z","phase":"review","reviewer":"external","kind":"review","cli":"codex","raw":"external/pwn.txt","verdict":"APPROVED"}\n' >> "\$_root/.rolepod/evidence/phase-log.jsonl" ;;
   failforge) printf '{"ts":"2026-01-01T00:00:00Z","phase":"review","reviewer":"external","kind":"review","cli":"codex","raw":"external/pwn2.txt","verdict":"APPROVED"}\n' >> "\$_root/.rolepod/evidence/phase-log.jsonl"; echo crashed >&2; exit 1 ;;
   shrink) python3 -c 'import sys; f=open(sys.argv[1],"r+b"); f.truncate(int(sys.argv[2]))' "\$_root/.rolepod/evidence/edits.jsonl" "\$LEDGER_KEEP" ;;
+  poolforge) printf 'agy\n' > "\$_root/.rolepod/cross-family"; printf 'nothing\n' > "\$_root/.rolepod/risk-paths" ;;
   forgekind) mkdir -p "\$_root/src"; printf 'x\n' > "\$_root/src/real.ts"; printf '{"t": %s, "ts": "", "cli": "codex", "path": "src/real.ts", "kind": "test", "agent": ""}\n' "\$(date +%s)" >> "\$_root/.rolepod/evidence/edits.jsonl" ;;
 esac
 if [ "\${STUB_codex:-ok}" = spacey ] && [ -n "\$_root" ]; then
@@ -77,7 +78,6 @@ if [ "\${STUB_codex:-ok}" = outside ] && [ -n "\$_root" ]; then
   mkdir -p "\$_root/notes"; printf 'stray\n' > "\$_root/notes/other.txt"
   printf 'SECRET=1\n' > "\$_root/.env"; printf 'lock\n' > "\$_root/package-lock.json"; rm -f "\$_root/CHANGELOG.md"
   printf 'SECRET=2\n' > "\$_root/src/.ENV"                                 # forbidden name under an allowed prefix, case-swapped
-  printf 'nothing\n' > "\$_root/.rolepod/risk-paths"                       # rolepod config — the guard must see it
   mkdir -p "\$_root/docs/rolepod"; printf 'leak\n' > "\$_root/docs/rolepod/secret.md"
   rm -f "\$_root/bin/run.sh"; ln -s "$FIX/target.txt" "\$_root/bin/run.sh"  # symlink swap of a tracked executable → restore must not follow it
   printf '{"t": %s, "ts": "", "cli": "codex", "path": "README.md", "kind": "other", "agent": ""}\n' "\$(date +%s)" >> "\$_root/.rolepod/evidence/edits.jsonl"   # the member's own hook row for a touched path: kept
@@ -161,6 +161,14 @@ git -C "$REPO" reset -q --hard HEAD~1; rm -rf "$REPO/my dir" "$REPO/src"; git -C
 : > "$LOG"; out=$(bash "$RUNNER" --kind implement --brief "$BRIEF" --allow README.md --allow src/ --lead claude --root "$REPO" 2>&1); rc=$?
 printf '%s\n' "$out" > "$FIX/out1.txt"
 
+echo "── implement: the implement: pool line parses and binds to this kind only ──"
+printf 'codex\nagy\nimplement: agy codex\n' > "$HOME/.rolepod/cross-family"
+out=$(bash "$RUNNER" --pool --kind implement --lead claude --root "$REPO" 2>&1)
+check "implement: line → implement order agy codex" "printf '%s' \"$out\" | grep -q 'usable, in order: agy codex$'"
+out=$(bash "$RUNNER" --pool --kind consult --lead claude --root "$REPO" 2>&1)
+check "the default order for other kinds is untouched (codex agy) — no fake member, no pollution" "printf '%s' \"$out\" | grep -q 'usable, in order: codex agy$' && ! printf '%s' \"$out\" | grep -q 'implement:'"
+printf 'codex\nagy\n' > "$HOME/.rolepod/cross-family"
+
 echo "── implement: the implementer never reviews its own uncommitted ticket ──"
 : > "$LOG"; printf 'codex\nagy\n' > "$HOME/.rolepod/cross-family"
 out=$(bash "$RUNNER" --kind review --brief "$BRIEF" --lead claude --root "$REPO" 2>&1); rc=$?
@@ -209,17 +217,17 @@ git -C "$REPO" checkout -q -- README.md
 : > "$LOG"
 out=$(STUB_codex=outside bash "$RUNNER" --kind implement --brief "$BRIEF" --allow README.md --allow src/ --lead claude --root "$REPO" 2>&1); rc=$?
 printf '%s\n' "$out" > "$FIX/out2.txt"
-check "member wrote outside the list → exit 21 + violations line (files=2 kept, outside=9 reverted, copies dir named)" "[ $rc -eq 21 ] && grep -q '^ROLEPOD-XFAM violations kind=implement cli=codex family=[a-z]* files=2 outside=9 forged=0 patch=' '$FIX/out2.txt' && grep -q 'copies under .rolepod/evidence/external/.*reverted/' '$FIX/out2.txt'"
+check "member wrote outside the list → exit 21 + violations line (files=2 kept, outside=8 reverted, copies dir named)" "[ $rc -eq 21 ] && grep -q '^ROLEPOD-XFAM violations kind=implement cli=codex family=[a-z]* files=2 outside=8 forged=0 patch=' '$FIX/out2.txt' && grep -q 'copies under .rolepod/evidence/external/.*reverted/' '$FIX/out2.txt'"
 check "LICENSE restored AND unstaged (member had git-added it), CHANGELOG.md is back" "[ \"\$(cat '$REPO/LICENSE')\" = MIT ] && [ -z \"\$(git -C '$REPO' diff --cached --name-only)\" ] && [ \"\$(cat '$REPO/CHANGELOG.md')\" = log ]"
 check "stray file, .env, package-lock.json, src/.ENV (case-swapped) are gone; notes/ dir pruned" "[ ! -e '$REPO/notes/other.txt' ] && [ ! -e '$REPO/.env' ] && [ ! -e '$REPO/package-lock.json' ] && [ ! -e '$REPO/src/.ENV' ] && [ ! -d '$REPO/notes' ]"
-check "rolepod config and the private docs dir are guarded: .rolepod/risk-paths restored, docs/rolepod/secret.md gone" "[ \"\$(cat '$REPO/.rolepod/risk-paths')\" = src/billing/ ] && [ ! -e '$REPO/docs/rolepod/secret.md' ]"
+check "the private docs dir is guarded: docs/rolepod/secret.md gone" "[ ! -e '$REPO/docs/rolepod/secret.md' ]"
 check "a member row for a touched path is replaced by the runner's classified row (one row, agent external-implementer)" "[ \"\$(grep -c '\"path\": \"README.md\"' '$REPO/.rolepod/evidence/edits.jsonl')\" -ge 1 ] && ! grep -q '\"cli\": \"codex\", \"path\": \"README.md\", \"kind\": \"other\", \"agent\": \"\"' '$REPO/.rolepod/evidence/edits.jsonl'"
 check "symlink swap: bin/run.sh is a regular executable again with its content, the outside target untouched" "[ ! -L '$REPO/bin/run.sh' ] && [ -x '$REPO/bin/run.sh' ] && grep -q 'echo run' '$REPO/bin/run.sh' && [ \"\$(cat '$FIX/target.txt')\" = keep ]"
 check "allowed edits kept (README.md line + src/added.ts)" "grep -q 'hello from codex' '$REPO/README.md' && [ -f '$REPO/src/added.ts' ]"
 check "what the member wrote is saved under the .reverted/ copy dir (LICENSE = tampered); the removed symlink is in MANIFEST" "grep -q tampered '$REPO'/.rolepod/evidence/external/*codex*.reverted/LICENSE && grep -q 'bin/run.sh -> ' '$REPO'/.rolepod/evidence/external/*codex*.reverted/MANIFEST"
 PATCH2="$REPO/.rolepod/evidence/$(sed -n 's/.*patch=\.rolepod\/evidence\/\([^ ]*\).*/\1/p' "$FIX/out2.txt" | head -1)"
 check "patch after the revert = allowed paths only" "grep -q 'b/src/added.ts' '$PATCH2' && grep -q 'b/README.md' '$PATCH2' && ! grep -q 'LICENSE\|notes/other\|\.env\|package-lock\|risk-paths\|secret.md\|run.sh' '$PATCH2'"
-check "phase-log implement line carries outside=9, forged=0 and the reverted paths" "grep -q '\"phase\":\"implement\".*\"outside\":9,\"forged\":0,\"outside_paths\":\"[^\"]*LICENSE' '$REPO/.rolepod/evidence/phase-log.jsonl'"
+check "phase-log implement line carries outside=8, forged=0 and the reverted paths" "grep -q '\"phase\":\"implement\".*\"outside\":8,\"forged\":0,\"outside_paths\":\"[^\"]*LICENSE' '$REPO/.rolepod/evidence/phase-log.jsonl'"
 check "the member's prompt listed its Files allowed" "grep -q 'FILES_ALLOWED=1' '$LOG'"
 git -C "$REPO" checkout -q -- README.md; rm -rf "$REPO/src"
 out=$(STUB_codex=leadrow bash "$RUNNER" --kind implement --brief "$BRIEF" --allow README.md --allow src/ --lead claude --root "$REPO" 2>&1); rc=$?
@@ -287,6 +295,16 @@ check "a pre-existing hook whose CONTENT the member swapped is restored byte-for
 rm -f "$REPO/.git/hooks/pre-commit"
 out=$(STUB_codex=exclude bash "$RUNNER" --kind implement --brief "$BRIEF" --allow README.md --allow src/ --lead claude --root "$REPO" 2>&1); rc=$?
 check "an ignore rule added to .git/info/exclude is restored and the file it hid is reverted (exit 22)" "[ $rc -eq 22 ] && ! grep -q hidden '$REPO/.git/info/exclude' 2>/dev/null && [ ! -e '$REPO/hidden/x.ts' ]"
+out=$(STUB_codex=poolforge bash "$RUNNER" --kind implement --brief "$BRIEF" --allow README.md --allow src/ --lead claude --root "$REPO" 2>&1); rc=$?
+check "rolepod config is metadata: a member-created .rolepod/cross-family (pool override) is removed and a tracked-and-ignored .rolepod/risk-paths restored (exit 22)" "[ $rc -eq 22 ] && [ ! -e '$REPO/.rolepod/cross-family' ] && [ \"\$(cat '$REPO/.rolepod/risk-paths')\" = src/billing/ ] && printf '%s' \"$out\" | grep -q 'cross-family(removed'"
+check "the runner primed .rolepod/ into .git/info/exclude (what the member's own session hook would add) — no false git-state violation from it" "grep -qxF '.rolepod/' '$REPO/.git/info/exclude'"
+NL="$FIX/nonl"; mkdir -p "$NL/.rolepod/evidence"; git -C "$NL" init -q; printf 'r\n' > "$NL/README.md"; git -C "$NL" add -A; git -C "$NL" -c user.email=t@t -c user.name=t commit -qm init; printf 'node_modules' > "$NL/.git/info/exclude"
+out=$(STUB_codex=noop bash "$RUNNER" --kind implement --brief "$BRIEF" --allow README.md --lead claude --root "$NL" 2>&1); rc=$?
+check "priming an exclude file that lacks a final newline keeps the user's last rule intact and adds .rolepod/ on its own line" "[ $rc -eq 0 ] && grep -qxF 'node_modules' '$NL/.git/info/exclude' && grep -qxF '.rolepod/' '$NL/.git/info/exclude'"
+printf 'agy\n' > "$REPO/.rolepod/untracked-note"; : > "$LOG"
+out=$(STUB_codex=noop bash "$RUNNER" --kind implement --brief "$BRIEF" --allow README.md --allow src/ --lead claude --root "$REPO" 2>&1); rc=$?
+check "an untracked .rolepod/ file that exists before the run is never read as a deletion (exit 0, outside=0)" "[ $rc -eq 0 ] && [ -f '$REPO/.rolepod/untracked-note' ] && printf '%s' \"$out\" | grep -q 'ROLEPOD-XFAM ok'"
+rm -f "$REPO/.rolepod/untracked-note"
 out=$(STUB_codex=forgekind bash "$RUNNER" --kind implement --brief "$BRIEF" --allow README.md --allow src/ --lead claude --root "$REPO" 2>&1); rc=$?
 check "a member row claiming kind:test for a touched non-test path is replaced by the runner's classified row (kind other)" "[ $rc -eq 0 ] && ! grep -q '\"path\": \"src/real.ts\", \"kind\": \"test\"' '$REPO/.rolepod/evidence/edits.jsonl' && grep -q '\"path\": \"src/real.ts\", \"kind\": \"other\", \"agent\": \"external-implementer\"' '$REPO/.rolepod/evidence/edits.jsonl'"
 rm -rf "$REPO/src"
@@ -386,6 +404,20 @@ rm -f "$REPO/opencode.json"; printf '{\n  // project config with comments\n  "pe
 : > "$LOG"; git -C "$REPO" checkout -q -- README.md; rm -rf "$REPO/src"
 out=$(bash "$RUNNER" --kind implement --brief "$BRIEF" --allow README.md --allow src/ --lead claude --root "$REPO" 2>&1); rc=$?
 check "opencode.jsonc (comments, trailing commas) granting edit+bash is honoured" "grep -q '^opencode | run ' '$LOG'"
+rm -f "$REPO/opencode.jsonc"; printf '{"permission":{"edit":"allow","bash":{"*":"allow"}}}\n' > "$REPO/opencode.json"; git -C "$REPO" add opencode.json; git -C "$REPO" -c user.email=t@t -c user.name=t commit -qm "opencode config"
+cat > "$BIN/opencode" <<'STUB'
+#!/bin/bash
+echo "opencode | $*" >> "${LOG_FILE:?}"; _r=$(git rev-parse --show-toplevel 2>/dev/null); printf '{"$schema":"x","permission":{"edit":"allow","bash":{"*":"allow"}}}\n' > "$_r/opencode.json"; mkdir -p "$_r/src"; printf 'o\n' > "$_r/src/oc.ts"; printf 'Implemented by opencode.\n%s\n' "$(head -c 300 /dev/zero | tr '\0' o)"; exit 0
+STUB
+chmod +x "$BIN/opencode"; git -C "$REPO" checkout -q -- README.md; rm -rf "$REPO/src"; : > "$LOG"
+out=$(bash "$RUNNER" --kind implement --brief "$BRIEF" --allow README.md --allow src/ --lead claude --root "$REPO" 2>&1); rc=$?
+check "opencode rewriting the project opencode.json on start is housekeeping: restored, noted, exit 0 (its real edit kept)" "[ $rc -eq 0 ] && printf '%s' \"$out\" | grep -q 'housekeeping restored, not a violation.*opencode.json' && ! grep -q 'schema' '$REPO/opencode.json' && [ -f '$REPO/src/oc.ts' ]"
+rm -rf "$REPO/src"; git -C "$REPO" rm -q --cached opencode.json; rm -f "$REPO/opencode.json"; git -C "$REPO" -c user.email=t@t -c user.name=t commit -qm "drop opencode config"
+cat > "$BIN/opencode" <<'STUB'
+#!/bin/bash
+echo "opencode | $*" >> "${LOG_FILE:?}"; printf 'should not run\n'; exit 0
+STUB
+chmod +x "$BIN/opencode"
 rm -f "$REPO/opencode.jsonc"
 
 echo "── implement: other kinds stay read-only ──"

@@ -12,6 +12,7 @@ Phase 2.3: rolepod ships for each supported CLI as a **native plugin / extension
 | Subagents (parallel team) | full Task / SendMessage (15 agents) | 15 agents as Codex `agents/*.toml` (Lead-orchestrated) | 15 agents as extension `agents/*.md` (Lead-orchestrated) | 15 agents in `agents/*.md` (Lead-orchestrated) | 15 agents in `agents/*.md` (gemini format; Lead-orchestrated) | 15 agents in `agents/*.md` (filename = agent id, `mode: subagent`; Lead-orchestrated) |
 | Hooks (core only) | 16 core hook scripts (22 registrations) in the plugin's `hooks/hooks.json` · auto-registered on install | 10 core hook scripts across `SessionStart`/`UserPromptSubmit`/`PreToolUse`/`PostToolUse`/`Stop`/`SubagentStart`/`SubagentStop` · fire natively on Codex ≥0.144, default-enabled | 5 core hooks across `SessionStart`/`BeforeAgent`/`BeforeTool`/`AfterTool`/`PreCompress` | 6 core hooks across `sessionStart`/`beforeSubmitPrompt`/`preToolUse`/`postToolUse`/`afterShellExecution`/`beforeShellExecution`/`stop` (10 registrations) · auto-fires | 4 core hook scripts across `PreInvocation`/`PreToolUse`/`Stop` under a `rolepod` name wrapper · deny-only (agy honours no context field on any hook) | JS plugin (`plugin/rolepod.js`): cross-CLI session locks, post-compact re-anchor, `tool.execute.before` precommit DENY, sweep-nudge + fix-loop-breaker (the shared `hooks/*.sh` cores in `plugins/rolepod-shared/`, their nudge appended to the tool result via `tool.execute.after`); per-agent `permission:` blocks (commit ban, scout read-only); rest skill-enforced |
 | Commit-gate evidence (v2.134.0) | transcript scan + edit ledger (max) | edit ledger (apply_patch rows) + phase-log reviewer lines | ledger not wired (frozen adapter) | edit ledger (postToolUse) + the shared gate behind `scripts/precommit-gate.sh` | edit ledger (edit tools on PreToolUse) + the shared gate behind `hooks/pre-tool.sh` | edit ledger (tool.execute.after) read by the plugin's commit deny |
+| External implement (v2.139.0, live-verified 2026-09-17: all five members built the same 2-file ticket) | `-p --permission-mode acceptEdits --allowedTools Bash` (its rolepod hooks fire; 32 s) | `exec -s workspace-write` (plugin hooks fire once trusted; ~8 min) | retired — never a member | `-p --force --trust` (runs shell; keep off the `implement:` line unless wanted; 36 s) | `-p --mode accept-edits --add-dir <repo>` (37 s) | `run` only when an `opencode.json(c)` (project, `OPENCODE_CONFIG_DIR` or `~/.config/opencode`) grants edit + bash; its start-up rewrite of the project file is restored as housekeeping (37 s) |
 | Slash commands | `/rolepod-full` (skill — force-full lifecycle) | `$rolepod-full` (skill via Codex skill UI) | `/rolepod-full` (skill; no native `.toml` commands) | `/rolepod-full` (skill) | `/rolepod-full` (skill) | `/rolepod-full` (skill) |
 | Plugin manifest | `plugins/rolepod/.claude-plugin/plugin.json` (spec-conformant) + `.claude-plugin/marketplace.json` catalog at the repo root | `.codex-plugin/plugin.json` (Codex plugin schema, 1.6KB) | `gemini-extension.json` (extension schema, 551B) | `plugins/rolepod-cursor/.cursor-plugin/plugin.json` (spec-conformant) + `.cursor-plugin/marketplace.json` catalog at the repo root | `plugin.json` at plugin root (agy plugin schema, validated by `agy plugin validate`) | `opencode.json` (version metadata — opencode has no plugin manifest for this install style) |
 | Optional add-on integration | vendor-installed (own plugin / MCP); rolepod auto-detects, falls back to `rg` + `find` | vendor-installed (own plugin / MCP); rolepod auto-detects, falls back to `rg` + `find` | vendor-installed (own plugin / MCP); rolepod auto-detects, falls back to `rg` + `find` | vendor-installed (Cursor MCP / `mcp.json`); rolepod auto-detects, falls back to `rg` + `find` | vendor-installed; rolepod auto-detects, falls back to `rg` + `find` | vendor-installed; rolepod auto-detects, falls back to `rg` + `find` |
@@ -171,6 +172,8 @@ the path on marketplace installs):
 
 ```bash
 rolepod-cross-family --pool                       # resolved pool with reasons (or OFF + candidates), no network
+rolepod-cross-family --kind implement --brief <task-brief> --allow <path>... [--allow-risky] --detach   # ONE member BUILDS one ticket in its write mode (v2.139.0). --allow is mandatory: `dir/` (or an existing dir) = everything below, a bare name = that one file; the allowed paths must start clean; money / auth / data paths (the commit gate's regex + .rolepod/risk-paths) are refused unless the USER passes --allow-risky. Exit 0 = kept; 21 = kept, edits outside --allow reverted (copies under <report>.reverted/); 22 = the member moved git state — refs, .git metadata, index and tree restored, nothing kept. The Lead reviews (§6) and commits.
+rolepod-cross-family --pool --kind implement      # which members may write here (`implement:` line in the pool file overrides the order)
 rolepod-cross-family --candidates                 # every installed CLI, the Lead's own included — the opt-in question
 rolepod-cross-family --probe                      # one-line "reply OK" per member (spends a call each)
 rolepod-cross-family --kind review  --brief brief.md --attach diff.patch --detach   # job; --collect <id> waits
@@ -182,7 +185,7 @@ rolepod-cross-family --kind critique --brief spec-draft.md          # write-spec
 # add --lead codex|agy|cursor|opencode when not running under Claude Code (ROLEPOD_LEAD_CLI also works)
 ```
 
-| CLI | In the pool as | Invocation the runner uses (read-only, **its own default model**, `ROLEPOD_BRAIN_SILENT=1`) | Family |
+| CLI | In the pool as | Invocation the runner uses (read-only for review / consult / advise / critique — the write-mode form for `--kind implement` is in the capability matrix above; always **its own default model**, `ROLEPOD_BRAIN_SILENT=1`) | Family |
 |---|---|---|---|
 | Codex | `codex` | `codex exec -s read-only --skip-git-repo-check --ephemeral -o <msg> -` (prompt on stdin) | openai |
 | Claude Code | `claude` | `claude -p --permission-mode plan --no-session-persistence` (prompt on stdin) | anthropic |
@@ -199,12 +202,12 @@ the answer is written to the file; rolepod never enables it unasked. List
 every CLI you use, the Lead's own included — it is skipped at run time, so
 one file serves every Lead. **Installed ≠ usable** is proven at invoke: exit ≠ 0, timeout
 (a member is killed when it goes SILENT — no new output for `stall` seconds: `--stall` > `stall=` in the config > 600 — not when it is slow; the wall-clock cap is runaway insurance only: `--timeout` > `timeout=` > kind default, review 7200 s detached / 600 s foreground, consult 300, advise 900, critique 600 (v2.129.0; measured: codex reviews run 15-29 min and stream the whole way); the prompt carries a ≤30-min planning budget; `--detach` runs the chain as a job so the 600 s harness cap never kills a slow member),
-or an answer under the floor (review < 500 bytes, consult / advise < 200)
+or an answer under the floor (review < 500 bytes, consult / advise / implement < 200; implement budget 3600 s detached / 600 s foreground)
 → `external-fail` phase-log line, next member; every member failed → exit
 3; empty pool → exit 4 — then the Lead's own path (internal strong
 reviewer / vertical consult) runs and the review report records the
 limitation. Evidence: `.rolepod/evidence/external/<utc>-<cli>.txt` + one
-phase-log line (`phase: review|consult|advise`, `reviewer: external`,
+phase-log line (`phase: review|consult|advise`, `reviewer: external` — an implement run writes `phase: implement` plus a `dispatch-proof` line instead,
 `model: default`, plus `ran: <id>` when the CLI names the model it ran —
 Codex's `model:` banner, OpenCode's `> agent · model` header; the family
 follows what ran and is recorded for information — a member is never failed
