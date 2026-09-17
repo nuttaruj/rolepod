@@ -198,7 +198,7 @@ satellite first whenever a usable non-Lead family exists:
   (write-plan, `--kind advise --all`) — already cold one-shot by shape; same
   satellite-first order.
 
-This never widens WHO reviews (R1-R3 routing unchanged) — it only moves the
+This never widens WHO reviews (R1-R3 stay internal; the pool reviews R4 code only) — it only moves the
 strong-class tokens R4 already spends off the main plan. `rolepod-stats`
 reports external passes vs internal strong dispatches so the split is
 visible.

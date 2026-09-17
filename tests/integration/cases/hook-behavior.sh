@@ -367,6 +367,38 @@ echo "$out" | grep -q 'ALREADY RUNNING: t-review-1' && ! echo "$out" | grep -q -
 kill "$JPID" 2>/dev/null; wait "$JPID" 2>/dev/null || true; rm -rf "$JOBD"
 rm -f "$TMP/.rolepod/cross-family"
 
+# ── the pool reviews CODE only; docs are written, not reviewed (v2.143.0) ──
+# Fresh repo per call, enabled pool (stub codex), Lead = claude. $1 = "path=kind …"
+# (kind: logic | comment | prose, 15 lines each); $2 = transcript path.
+EMPTY_T="$TMP/empty-transcript.jsonl"; : > "$EMPTY_T"
+pcd() {
+  rm -rf "$TMPT"; mkdir -p "$TMPT/.rolepod"
+  ( cd "$TMPT" && git init -q . && git config user.email t@t && git config user.name t
+    for spec in $1; do f="${spec%%=*}"; kind="${spec##*=}"; mkdir -p "$(dirname "$f")"
+      case "$kind" in logic) seq 15 | sed 's/^/x = /' > "$f" ;; comment) seq 15 | sed 's/^/# note /' > "$f" ;; prose) seq 15 | sed 's/^/Line /' > "$f" ;; esac
+    done
+    git add -A; printf 'codex\n' > .rolepod/cross-family )   # pool file written AFTER staging — never part of the diff
+  printf '{"tool_name":"Bash","transcript_path":%s,"tool_input":{"command":"git commit -m x"}}' \
+    "$(printf '%s' "$2" | python3 -c 'import json,sys; print(json.dumps(sys.stdin.read()))')" \
+    | (cd "$TMPT" && env HOME="$TMPT" PATH="$XF_BIN:/usr/bin:/bin" CLAUDE_PLUGIN_ROOT="$TMPT" bash "$HOOKS/precommit-gate.sh") || true
+}
+out=$(pcd docs/auth.md=prose "$EMPTY_T")
+check "docs-only diff on a risk-named prose path, NO reviewer, pool enabled → allow (docs are written, not reviewed)" allow "$out"
+[ -z "$out" ] && echo "  ✓ docs-only diff passes silently (no nudge)" || { echo "  ✗ docs-only diff produced hook output: ${out:0:120}"; fail=$((fail+1)); }
+out=$(pcd auth/billing.py=comment "$TRANSCRIPT")
+check "comment-only diff on a risky path + internal strong reviewer + pool usable → allow (the pool reviews code only)" allow "$out"
+out=$(pcd auth/billing.py=logic "$TRANSCRIPT")
+check "logic diff on a risky path + internal strong reviewer + pool usable, nothing tried → deny (control: satellite-first still holds for code)" deny "$out"
+out=$(pcd 'README=prose docs/guide.md=prose' "$EMPTY_T")
+check "extension-less README + docs → allow silently (prose)" allow "$out"
+out=$(pcd 'docs/rolepod/plan.md=prose docs/auth.md=prose' "$EMPTY_T")
+check "docs-only diff that also stages docs/rolepod/ → deny (private-docs gate runs before the prose exit)" deny "$out"
+out=$(pcd 'docs/auth.md=prose src/util.py=logic' "$EMPTY_T")
+echo "$out" | grep -q 'HIGH-RISK path' \
+  && { echo "  ✗ a prose file made a mixed diff high-risk (docs/auth.md is never a risk path)"; fail=$((fail+1)); } \
+  || echo "  ✓ prose file in a mixed diff is not a risk path"
+rm -rf "$TMPT"
+
 # ── money / auth vs other high-risk (v2.78.0) ──────────────────────────
 printf 'codex\n' > "$TMP/.rolepod/cross-family"
 printf '{"ts":"%s","phase":"external-fail","kind":"review","cli":"codex","family":"openai","lead":"claude","reason":"exit 1"}\n' \
