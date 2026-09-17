@@ -73,7 +73,8 @@ Define, where an ambiguity costs a question instead of a rewrite.
 
 All three: the user's cross-family pool is enabled (`rolepod-cross-family
 --pool`; opt-in — off is a choice, skip silently, no limitation note), the
-spec is R3+ or touches a high-risk surface (or the user asks), and the
+spec is R4 / touches a high-risk surface (or the user asks; R3 stays
+internal), and the
 discovery dialogue has converged (the Lead has no open questions of its own).
 Never for routine specs.
 

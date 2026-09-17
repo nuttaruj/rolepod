@@ -80,7 +80,7 @@ Scan for:
 
 ### 4b. Cross-family critique — questions only, before Gate 1
 
-Pool enabled (opt-in; off → skip silently) and the spec is R3+ / high-risk (or the user asks) → hand the draft plus the Q&A ledger to a cold reader from another CLI: `rolepod-cross-family --kind critique --brief spec-draft.md` returns ≤5 items ranked by implementation risk (`QUESTION` / `AMBIGUITY` / `MISSING`, or `NO FURTHER QUESTIONS`).
+Pool enabled (opt-in; off → skip silently) and the spec is R4 / high-risk (or the user asks; R3 stays internal — the pool is an R4 instrument) → hand the draft plus the Q&A ledger to a cold reader from another CLI: `rolepod-cross-family --kind critique --brief spec-draft.md` returns ≤5 items ranked by implementation risk (`QUESTION` / `AMBIGUITY` / `MISSING`, or `NO FURTHER QUESTIONS`).
 - Settle from the repo what you can, then ONE extra §2 round with the rest; one line under **Open questions**. Never blocks a spec.
 - Protocol: `references/question-bank.md` §Cross-family critique.
 
