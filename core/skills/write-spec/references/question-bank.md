@@ -92,7 +92,7 @@ Never for routine specs.
    (an acceptance criterion / failure mode / edge case with no "proven
    by"); `NO FURTHER QUESTIONS` when nothing material remains. Read-only,
    the external's own default model, anchored under
-   `.rolepod/evidence/external/`, logged `phase: advise`, `kind: critique`.
+   `.rolepod/evidence/external/`, logged `phase: critique`, `kind: critique`.
 3. **Triage before the user sees anything.** Items the repo or the spec
    already settle → answer them yourself (Read / grep, never guess) and
    fold the answer into the draft. Items that are genuinely the user's
@@ -110,5 +110,5 @@ Never for routine specs.
 Runner exit 3 (every member failed) / 4 (enabled, nothing usable) / 5 (off)
 → proceed to Gate 1 with the matching line. A spec never waits on an
 external. A hard **approach** decision the critique surfaces (a fork, not a
-question) is not this channel — it is write-plan's advisory panel
-(`--kind advise --all`, same gate as its `advisory-routing` reference).
+question) goes to Gate 1 as an option pair with a recommendation — the
+user decides; never a second external.

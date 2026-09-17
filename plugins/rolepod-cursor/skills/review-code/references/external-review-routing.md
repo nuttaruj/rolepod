@@ -39,7 +39,7 @@ the commit gate reads. Its last stdout line is the receipt:
 `ROLEPOD-XFAM ok kind=review cli=<cli> family=<family> raw=<path> secs=<n>`.
 **Time is per member, and the model is told its budget.** `--timeout` >
 `timeout=` in the config > kind default (review 1800 s detached / 600 s
-foreground · consult 300 · advise 900 · critique 600). The prompt carries
+foreground · consult 300 · critique 600). The prompt carries
 "Time budget: about N minutes … do NOT run builds / tests / package
 managers … output PARTIAL if nearly spent", so a slow-but-deep member
 (Codex on its owner's `max` effort ran 10+ min exploring a repo before
@@ -94,7 +94,7 @@ records `model: default`.
   (budget nearly spent) or without its `VERDICT:` line is kept as
   `*.partial.txt` for you to read, logged as `external-fail`, and the chain
   moves to the next member — it never anchors the strong pass (consult /
-  advise / critique answers marked PARTIAL still count; only the pass the
+  critique answers marked PARTIAL still count; only the pass the
   gate trusts is strict). Every anchor carries `brief_sha` and, in a job,
   the job id, so an evidence line is tied to what was reviewed.
 - **Installed ≠ usable** — the runner proves it at invoke: exit ≠ 0,
@@ -192,9 +192,9 @@ satellite first whenever a usable non-Lead family exists:
   Internal strong otherwise
   fires on the three carve-outs in review-code §1: empty / failed pool,
   apex trigger (external first), fix-verify re-read.
-- **Outside opinion** (debug-issue §9, `--kind consult`), **advisory panel**
-  (write-plan, `--kind advise --all`) — already cold one-shot by shape; same
-  satellite-first order.
+- **Outside opinion** (debug-issue §9, `--kind consult`) and the spec
+  **critique** (write-spec §4b, `--kind critique`) — already cold one-shot by
+  shape; same satellite-first order.
 
 This never widens WHO reviews (R1-R3 stay internal; the pool reviews R4 code only) — it only moves the
 strong-class tokens R4 already spends off the main plan. `rolepod-stats`

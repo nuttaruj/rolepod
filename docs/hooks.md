@@ -354,7 +354,7 @@ Per-member time (v2.129.0): a member is killed when it goes SILENT — no new
 stdout / stderr for `stall` seconds (`--stall` > `stall=` > 600) — not when
 it is slow; the wall-clock cap is runaway insurance only (`--timeout` >
 `timeout=` > kind default: review 7200 s when detached / 600 s foreground ·
-consult 300 · advise 900 · critique 600). Measured 2026-09-15: codex reviews
+consult 300 · critique 600). Measured 2026-09-15: codex reviews
 run 15-29 min streaming the whole way (p90 28 min sat on the old 1800 s
 cap), cursor stream-json and opencode stream, agy is silent ~150 s then
 answers; a killed reviewer is money already spent, so the cut is for the

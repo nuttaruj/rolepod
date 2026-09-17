@@ -166,7 +166,7 @@ The path-based ownership rules from `write-plan` apply identically across all CL
 ## Cross-family externals — one runner, any Lead
 
 Any installed CLI can be the Lead; the adversarial review, the stuck-state
-consult and the plan advisory go to a **different CLI** (its own default model; the vendor may coincide) through
+consult and the spec critique go to a **different CLI** (its own default model; the vendor may coincide) through
 one command, `rolepod-cross-family` (`install.sh` launcher; every plugin
 tree ships `scripts/cross-family.sh`, and the SessionStart context names
 the path on marketplace installs):
@@ -181,12 +181,11 @@ rolepod-cross-family --kind review  --brief brief.md --attach diff.patch --detac
 rolepod-cross-family --collect <job-id> --root <git-root>   # prints the review + receipt when the job lands (exit 6 = still running); PARTIAL / no-VERDICT reviews never anchor
 rolepod-cross-family --jobs                        # running / done
 rolepod-cross-family --kind consult --brief ledger.md
-rolepod-cross-family --kind advise  --brief decision.md --all      # one member per family, concurrently
 rolepod-cross-family --kind critique --brief spec-draft.md          # write-spec: ranked open questions before Gate 1 (no cap)
 # add --lead codex|agy|cursor|opencode when not running under Claude Code (ROLEPOD_LEAD_CLI also works)
 ```
 
-| CLI | In the pool as | Invocation the runner uses (read-only for review / consult / advise / critique — the write-mode form for `--kind implement` is in the capability matrix above; always **its own default model**, `ROLEPOD_BRAIN_SILENT=1`) | Family |
+| CLI | In the pool as | Invocation the runner uses (read-only for review / consult / critique — the write-mode form for `--kind implement` is in the capability matrix above; always **its own default model**, `ROLEPOD_BRAIN_SILENT=1`) | Family |
 |---|---|---|---|
 | Codex | `codex` | `codex exec -s read-only --skip-git-repo-check --ephemeral -o <msg> -` (prompt on stdin) | openai |
 | Claude Code | `claude` | `claude -p --permission-mode plan --no-session-persistence` (prompt on stdin) | anthropic |
@@ -196,20 +195,20 @@ rolepod-cross-family --kind critique --brief spec-draft.md          # write-spec
 | Gemini CLI | — | retired for individual accounts (2026-06-18); a `gemini` config line is skipped, a Gemini Lead still excludes `agy` | google |
 
 **Opt-in, off by default.** Pool = `.rolepod/cross-family` (project) →
-`~/.rolepod/cross-family` (machine): `[reviewer]` with `review = …` (the default order) and optional `consult = / advise = / critique = …`, `[implement]` with `cli = …`; **no file = off,
+`~/.rolepod/cross-family` (machine): `[reviewer]` with `review = …` (the default order) and optional `consult = / critique = …`, `[implement]` with `cli = …`; **no file = off,
 `none` = off** (exit 5, nothing logged). Nothing asks unprompted: when the
 user asks to set it up, `rolepod-cross-family --setup` prints the installed
 candidates and the two questions (review order; implement `same` / `none` /
 an order) and `--setup review="…" implement=…` writes the file. List
 every CLI you use, the Lead's own included — it is skipped at run time, so
 one file serves every Lead. **Installed ≠ usable** is proven at invoke: exit ≠ 0, timeout
-(a member is killed when it goes SILENT — no new output for `stall` seconds: `--stall` > `stall=` in the config > 600 — not when it is slow; the wall-clock cap is runaway insurance only: `--timeout` > `timeout=` > kind default, review 7200 s detached / 600 s foreground, consult 300, advise 900, critique 600 (v2.129.0; measured: codex reviews run 15-29 min and stream the whole way); the prompt carries a ≤30-min planning budget; `--detach` runs the chain as a job so the 600 s harness cap never kills a slow member),
-or an answer under the floor (review < 500 bytes, consult / advise / implement < 200; implement budget 3600 s detached / 600 s foreground)
+(a member is killed when it goes SILENT — no new output for `stall` seconds: `--stall` > `stall=` in the config > 600 — not when it is slow; the wall-clock cap is runaway insurance only: `--timeout` > `timeout=` > kind default, review 7200 s detached / 600 s foreground, consult 300, critique 600 (v2.129.0; measured: codex reviews run 15-29 min and stream the whole way); the prompt carries a ≤30-min planning budget; `--detach` runs the chain as a job so the 600 s harness cap never kills a slow member),
+or an answer under the floor (review < 500 bytes, consult / critique / implement < 200; implement budget 3600 s detached / 600 s foreground)
 → `external-fail` phase-log line, next member; every member failed → exit
 3; empty pool → exit 4 — then the Lead's own path (internal strong
 reviewer / vertical consult) runs and the review report records the
 limitation. Evidence: `.rolepod/evidence/external/<utc>-<cli>.txt` + one
-phase-log line (`phase: review|consult|advise`, `reviewer: external` — an implement run writes `phase: implement` plus a `dispatch-proof` line instead,
+phase-log line (`phase: review|consult|critique`, `reviewer: external`) — an implement run writes `phase: implement` plus a `dispatch-proof` line instead,
 `model: default`, plus `ran: <id>` when the CLI names the model it ran —
 Codex's `model:` banner, OpenCode's `> agent · model` header; the family
 follows what ran and is recorded for information — a member is never failed

@@ -68,8 +68,6 @@ Before writing the artifact, quiz the user on the numbered task list — per tas
 
 Parallel agents help only when file ownership is genuinely disjoint and the work needs no handoff between agents — otherwise sequential is faster and cheaper. Two tasks with no edge are parallel *candidates*, never a mandate; sequential anyway is fine — say why in the Parallel layout line. Borderline (a shared interface) → present both shapes with one-line trade-offs; the user picks.
 
-High-stakes multi-option decisions (approach, architecture, sequencing) → a **cross-CLI advisory panel** only when opted in (`/rolepod-full` or an explicit ask) and the decision earns ~3× tokens; the Lead reconciles and owns the choice. Protocol: `references/advisory-routing.md`.
-
 ### 5. If parallel, write a cohesion contract
 
 Fill `templates/cohesion-contract-template.md` — file ownership, shared interfaces, merge order, do-not-touch list, integration owner. Save to `contract.md` or `docs/rolepod/plans/<feature>-cohesion-YYYY-MM-DD.md`.
@@ -125,7 +123,6 @@ Harness plan mode active (a read-only planning state with its own approval gate)
 
 Load only when needed:
 - `references/plan-reviewer-prompt.md` — independent plan reviewer prompt for a risky or large plan (Agent tool, subagent_type=universal-reviewer).
-- `references/advisory-routing.md` — cross-CLI advisory panel for high-stakes decisions; the advisory mirror of review-code's external review.
 - `references/team-issues.md` — optional GitHub Issues backend for team-built plans.
 - `examples/plan-examples.md` — a sequential single-owner plan and a parallel multi-agent plan, good/bad pairs.
 
