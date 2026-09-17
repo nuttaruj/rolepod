@@ -1025,6 +1025,9 @@ check "review-code: the external implementer never reviews its own ship group" "
 check "write-plan: a guard / gate / restore task gets a threat-model task first" "grep -q 'gets a \*\*threat-model\*\* task first' core/skills/write-plan/SKILL.md"
 check "review-code: R4 cadence — round 2 = only the flagging reviewer re-runs its own repro, no suite re-runs" "grep -q 'only the reviewer who flagged re-runs its own repro on the delta' core/skills/review-code/SKILL.md"
 check "review-code: full report to a file, ≤12-line return" "grep -q 'evidence/review/<task>-<role>.md' core/skills/review-code/SKILL.md"
+TICKET_LOOP_FRAGMENT=$(grep -c '^- \*\*Ticket loop\*\*' core/fragments/agent-protocol.md)
+TICKET_LOOP_AGENTS=$(find plugins/rolepod/agents build/rendered/*/agents plugins/rolepod-cursor/agents build/rendered/antigravity/plugin/agents build/rendered/opencode/agents -maxdepth 1 -name '*.md' -type f -exec grep -l 'Ticket loop' {} \; 2>/dev/null | wc -l)
+check "agent-protocol: Ticket loop doctrine in fragment and all 15+ rendered agents" "[ $TICKET_LOOP_FRAGMENT -eq 1 ] && [ $TICKET_LOOP_AGENTS -ge 15 ]"
 check "implement-plan: the next task builds in its own worktree while this one is under review" "grep -q 'in its OWN worktree while this one is under review' core/skills/implement-plan/SKILL.md"
 check "implement-plan: plan-lint gate before the first task" "grep -q 'Lint the plan first:\*\* `plan-lint.sh <plan>`' core/skills/implement-plan/SKILL.md"
 for s in check-work review-code; do

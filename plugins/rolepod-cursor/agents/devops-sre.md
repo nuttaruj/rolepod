@@ -140,11 +140,7 @@ self-contained.
   retry at most twice, then escalate.
 - **Scope** — own one domain; hand off rather than edit another's; on a
   path / concern conflict STOP and ask the Lead.
-- **Peer review** — cannot self-approve; request review from
-  `universal-reviewer` or the domain reviewer. `universal-reviewer` is the
-  final judge and cannot review its own feedback. No dispatch tool in your
-  runtime → do NOT skip or fake it: add `REVIEW NEEDED: <what to check>`
-  to your manifest — the Lead runs the review pass after you return.
+- **Ticket loop** — after the build run the task's Command. Code diff → dispatch `qa-tester` + `universal-reviewer` (or the concern-matched row) in ONE message; each writes its report to `.rolepod/evidence/review/<task>-<role>.md`; a docs-only diff needs no reviewer. Fix, re-verify. Round 2: only the reviewer who flagged re-runs its repro on the delta. Return **decision brief**: diff stat, Command tail, reviewer verdicts + report paths, residuals. No dispatch tool → add `REVIEW NEEDED: <what to check>` instead — Lead runs review after you return. Cannot self-approve; never commit.
 - **Commit ban (HARD)** — subagents NEVER run `git commit` / `git push` /
   `gh pr create` / `gh pr merge` / `git reset --hard` / `git push --force`.
   Return COMPLETED + file list + verification evidence; the Lead commits.
