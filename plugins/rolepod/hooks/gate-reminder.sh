@@ -127,7 +127,8 @@ MONEY_RISK=""
 if [ "$IS_TEST" -eq 0 ] && [ -n "$_RISK_HIT" ]; then
   HIGH_RISK="HIGH-RISK path → qa-tester + security-engineer review before commit. "
   # money / auth subset (v2.78.0) — with an enabled cross-family pool this
-  # surface needs BOTH the external pass and the internal strong reviewer.
+  # surface clears on the external pass alone (v2.145.0); the internal strong
+  # joins only at the round-3 breaker, by doctrine.
   MONEY_RISK=$(printf '%s\n' "$FILE" | grep -iE '(^|/|_)(auth|authn|authz|authentication|authorization|billing|payment|payments|credit|credits|secret|secrets|crypto|cryptography|oauth|jwt|sso|saml|stripe|paypal|charge|charges|invoice|invoices|deletion|deletions|erasure|gdpr)(/|\.|_|$)' | head -1 || true)
 fi
 
@@ -255,7 +256,7 @@ if [ -n "$HIGH_RISK" ]; then
     XFAM_POOL=$(bash "$XFAM_RUNNER" --lead "${SELF_CLI:-claude}" --pool-names 2>/dev/null | tr '\n' ' ' | sed 's/ *$//')
     if [ -n "$XFAM_POOL" ]; then
       REVIEWER_LIST="$REVIEWER_LIST + cross-family runner → $XFAM_POOL (\`rolepod-cross-family --kind review --brief <file> --attach <diff>\` — one command: default model, read-only, anchored)"
-      [ -n "$MONEY_RISK" ] && REVIEWER_LIST="$REVIEWER_LIST + rolepod:security-engineer — money / auth surface needs BOTH passes (external + internal strong)"
+      [ -n "$MONEY_RISK" ] && REVIEWER_LIST="$REVIEWER_LIST (money / auth surface: the external pass alone clears; internal strong only at the round-3 breaker)"
     else
       REVIEWER_LIST="$REVIEWER_LIST + rolepod:universal-reviewer / rolepod:security-engineer (cross-family is opt-in and not enabled here — \`rolepod-cross-family --pool\` shows candidates; ask the user before enabling)"
     fi
