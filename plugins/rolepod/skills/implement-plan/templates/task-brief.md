@@ -1,5 +1,5 @@
 <!-- Rolepod subagent task brief — fill before delegating. Delete the <hints>. -->
-<!-- The subagent executes ONLY this brief, and it does not commit. -->
+<!-- The task owner executes ONLY this brief, runs its own ticket loop, and does not commit. -->
 
 # Task: <one-line goal>
 
@@ -24,12 +24,17 @@
 ## Done criteria
 <All true: test passes · lint clean · no scope creep beyond Files allowed.>
 
-## Reviewer
-<Who reads the diff when this returns — a rolepod role (`qa-tester` / `universal-reviewer` /
- `security-engineer`), or `N/A` + why. No name → do not dispatch.>
-- Reviewer: `<role>`
+## Write
+<`self`, or `external` — another CLI drafts it (`rolepod-cross-family --kind implement`, pool
+ opt-in); the owner still runs the loop.>
+- Write: `self`
+
+## Reviewers
+<Roles the task owner dispatches on its diff in ONE message — `qa-tester` + `universal-reviewer`,
+ or the concern-matched row; `none` only for a docs-only diff.>
+- Reviewers: `qa-tester`, `universal-reviewer`
 
 ## Bounds
 - Max tool calls: <e.g. 12>
-- Do NOT commit — return a manifest; the Lead commits.
+- Do NOT commit — return a decision brief (diff stat, Command tail, reviewer verdicts + report paths, residuals); the Lead commits.
 - New idea mid-task → write it down, finish this task, do not expand scope.

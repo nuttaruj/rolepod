@@ -26,8 +26,10 @@
 ### Task 1: <title>
 - **Delivers:** <one sentence — what a user can do or see once this lands.
       Behaviour, not layers. The line a human reads.>
-- **Blocked by:** <Task numbers that must land first, or "none". This field
-      IS the plan's order — nothing restates it in prose.>
+- **Blocked by:** <Task numbers that must land first, each with what this task
+      consumes from it — `Task 2 (its snapshot)` — or "none". This field IS the
+      plan's order — nothing restates it in prose; an edge naming nothing is a
+      convenience edge: drop it.>
 - [ ] **Files:** <paths this task touches>
 - [ ] **Change:** <what to do, concretely — at most 3 bullets. An exact-string
       edit spec (old → new) goes in a fenced block under this task, never
@@ -57,7 +59,8 @@
       LLM / RAG / embeddings / prompts → ai-ml-engineer
       analytics / dashboards / pipelines / ETL → data-scientist
       profiling, p95/p99, bundle size, query plans → performance-engineer
-      tests only (a test-authoring task) → qa-tester>
+      tests only (a test-authoring task) → qa-tester
+      first draft by another CLI (pool opt-in, the user's call) → `Owner: <role> · write: external`>
 - **Done when:** <pass/fail condition>
 - **On fail:** <non-default recovery, if any. Omit to use the Failure policy below.>
 

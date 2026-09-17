@@ -79,7 +79,8 @@ Q3: A real design-judgment call?     Q4: More than 3 tool calls total?
 All "no" → self-do. Any "yes" → delegate to the closest specialist by path / concern / strategy.
 
 Fill `templates/task-brief.md` with the task's slice (Files, every layer, allowed / forbidden paths, test command, done criteria) and the reviewer roles the task owner dispatches (`none` only for a docs-only diff). Key rules:
-- External implementer (pool opt-in) for a self-contained slice, the Lead meanwhile in ANOTHER worktree: `rolepod-cross-family --kind implement --brief <task-brief> --allow <path>... --detach` — another CLI builds it in its write mode; every edit outside `--allow` is reverted (copies kept), money / auth / data needs the user's `--allow-risky`; then §6 + commit as for any writer.
+- `Owner: <role> · write: external` (pool opt-in, the user's choice per task) — the task owner, in its own worktree, hands the first draft to another CLI: `rolepod-cross-family --kind implement --brief <task-brief> --allow <path>... --detach` (edits outside `--allow` reverted, copies kept; money / auth / data needs the user's `--allow-risky`), `--collect`s the patch, then runs its own loop — the writing member never reviews it; the Lead never runs §6 for it, the Lead meanwhile in ANOTHER worktree.
+  Not a token saver (the owner still reads and fixes the patch): for quota, or a different vendor's draft on a self-contained slice.
 - Absolute: the subagent NEVER commits (returns a manifest; the Lead commits) and NEVER expands scope.
 - A write mandate goes only to the role that owns the path — never a generic platform agent (`general-purpose` / `default` / `claude`, or a bare Workflow `agent()`; a writing stage carries `agentType: 'rolepod:<role>'`), never a reviewer (`qa-tester` / `security-engineer` write tests and markdown only; `universal-reviewer` / `scout` markdown only). A CLI with hooks denies the out-of-scope edit; elsewhere this rule is the gate.
 
