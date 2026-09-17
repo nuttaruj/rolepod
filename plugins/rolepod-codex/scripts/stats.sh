@@ -183,6 +183,38 @@ if dispatches:
             print(f"    ⚠ {costly} Workflow fleet(s) inherited a strong/unknown-class Lead — the "
                   "whole fleet ran at the Lead's price (pre-v2.48 or `fleet-inherit:` stated)")
 
+# Task-owner waves (v2.146.0) — writer-role hook-auto dispatches grouped by
+# time gap (≤ 90 s apart = one wave). Reviewer / scout / generic rows are not
+# tasks. Answers "did the plan let tasks run in parallel?": widths per wave
+# and the share of task dispatches that had a partner (1,1,1… = serial plan).
+NON_TASK_ROLES = {"qa-tester", "security-engineer", "universal-reviewer", "code-reviewer",
+                  "scout", "general-purpose", "default", "claude", "workflow-subagent", ""}
+def _task_role(d):
+    at = (d.get("agent_type") or "").strip().rsplit(":", 1)[-1]
+    return at[len("rolepod-"):] if at.startswith("rolepod-") else at
+def _epoch(d):
+    import datetime as _dt
+    try:
+        return _dt.datetime.fromisoformat((d.get("ts") or "").replace("Z", "+00:00")).timestamp()
+    except Exception:
+        return None
+task_rows = [(_epoch(d), _task_role(d)) for d in dispatches
+             if d.get("provenance") == "hook-auto" and _task_role(d) not in NON_TASK_ROLES]
+task_rows = sorted(t for t in task_rows if t[0] is not None)
+if task_rows:
+    waves = []
+    for t, r in task_rows:
+        if waves and t - waves[-1][-1][0] <= 90:
+            waves[-1].append((t, r))
+        else:
+            waves.append([(t, r)])
+    widths = [len(w) for w in waves]
+    partnered = sum(w for w in widths if w >= 2)
+    pct = partnered * 100 // len(task_rows)
+    print(f"\n  Task-owner waves ({len(task_rows)} task dispatches, {len(waves)} waves; ≤ 90 s apart = one wave):")
+    print(f"    widths: {', '.join(str(w) for w in widths)} · with a parallel partner: {partnered}/{len(task_rows)} ({pct}%)"
+          + ("  — every wave width 1: the plan ran serial" if max(widths) == 1 else ""))
+
 gated = [r for r in rows if r.get("phase") == "dispatch-gate"]
 if gated:
     denies = [g for g in gated if g.get("action") == "deny"]
