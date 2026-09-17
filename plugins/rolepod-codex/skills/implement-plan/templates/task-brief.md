@@ -1,4 +1,4 @@
-<!-- Rolepod task brief — GENERATED from the plan: `plan-lint.sh --brief <N> <plan> [contract]`. -->
+<!-- Task brief — GENERATED: `plan-lint.sh --brief <N> <plan> [contract]`. -->
 <!-- Lead adds Read first; the owner executes ONLY this brief, never commits. -->
 
 # Task <N>: <title>
