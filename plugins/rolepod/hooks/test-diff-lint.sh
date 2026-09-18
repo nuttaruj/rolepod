@@ -1,7 +1,7 @@
 #!/bin/bash
 # test-diff-lint — warn-only lint of the STAGED diff for test tampering.
 #
-# The machine-checkable half of qa-tester's REJECT list, as grep-able diff
+# The machine-checkable half of the writer's test self-check, as grep-able diff
 # signals. Called by precommit-gate.sh (not registered as an event hook);
 # prints findings to stdout, one per line, and ALWAYS exits 0 — the lint
 # informs, the reviewer judges. Over-firing a hard block here would train
@@ -50,13 +50,13 @@ fi
 DB_MOCKS=$(printf '%s\n' "$DIFF" | grep -cE '^\+.*(mock|stub|fake)\w*\s*[(<].*(db|database|repository|prisma|sequelize|knex|pool|connection)' || true)
 INTEG_TOUCHED=$(printf '%s\n' "$STAGED" | grep -cE '(^|/)(integration|e2e)(/|\.)' || true)
 if [ "${DB_MOCKS:-0}" -gt 0 ] && [ "${INTEG_TOUCHED:-0}" -gt 0 ]; then
-  FINDINGS+="test-diff-lint: DB mock/stub added under an integration/e2e path — integration tests run against a real dependency (qa-tester REJECT rule).
+  FINDINGS+="test-diff-lint: DB mock/stub added under an integration/e2e path — integration tests run against a real dependency (the writer's test self-check).
 "
 fi
 
 # 5. Literal calendar dates ADDED under a test path. A date written as a
 #    future day expires; the test then fails on HEAD for clock reasons and
-#    burns a review round proving it is not a regression (qa-tester #4).
+#    burns a review round proving it is not a regression (self-check #4).
 TEST_FILES=()
 while IFS= read -r f; do
   [ -n "$f" ] && TEST_FILES+=("$f")

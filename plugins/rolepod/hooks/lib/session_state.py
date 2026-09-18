@@ -8,7 +8,7 @@ This script parses it to answer questions hooks need to enforce gates:
 
   - How many test files has Lead edited this session?
   - How many high-risk code files (auth/billing/etc.) has Lead edited?
-  - Has Lead dispatched qa-tester / security-engineer / universal-reviewer?
+  - Has Lead dispatched security-engineer / universal-reviewer (the review floor)?
   - How many parallel Agent spawns share the same path?
 
 CLI: pass a hook-input JSON on stdin, request a query as argv[1]. Output is
@@ -61,16 +61,16 @@ CODE_FILE = re.compile(
 )
 
 REVIEWER_AGENTS = {
-    "qa-tester",
     "security-engineer",
     "universal-reviewer",
     "code-reviewer",
 }
 
 # Strong-class adversarial reviewers — the subset whose dispatch clears a
-# HIGH-RISK commit gate. qa-tester verifies user-visible behaviour (E2E)
-# (tier: balanced, hard model pin): its dispatch counts as review activity
-# but NOT as the strong adversarial pass an R4 diff requires.
+# HIGH-RISK commit gate. qa-tester is user-visible verification (E2E) and
+# never the per-diff review floor (v2.148.4): its dispatch counts at neither
+# gate. The round breaker (workflow-tier-nudge REVIEW_ROLES) still treats it
+# as review-shaped activity — round 2 is the flagging reviewer's own repro.
 STRONG_REVIEWER_AGENTS = {
     "security-engineer",
     "universal-reviewer",
@@ -672,10 +672,11 @@ def is_write_mode_brief(prompt) -> bool:
 
 
 def count_reviewers_dispatched(transcript_path: str) -> int:
-    """Times Lead spawned qa-tester / security-engineer / universal-reviewer.
+    """Times Lead spawned security-engineer / universal-reviewer (qa-tester
+    is E2E verification, never the review floor — v2.148.4).
 
     Matches the bare agent name and the plugin-namespaced form alike
-    ('rolepod:qa-tester'), and both the 'Agent' and 'Task' subagent tools.
+    ('rolepod:universal-reviewer'), and both the 'Agent' and 'Task' subagent tools.
     A plugin-namespaced reviewer used to count as 0 — which false-blocked
     commits at the precommit gate even after review actually ran. Workflow
     scripts count via their agent() agentType calls (count_workflow_reviewers).

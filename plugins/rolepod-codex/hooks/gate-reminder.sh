@@ -261,11 +261,7 @@ if [ -n "$HIGH_RISK" ]; then
       REVIEWER_LIST="$REVIEWER_LIST + rolepod:security-engineer on this high-risk path (cross-family is opt-in and not enabled here — \`rolepod-cross-family --pool\` shows candidates; ask the user before enabling)"
     fi
   else
-    [ "$SELF_CLI" != "codex" ]  && command -v codex  >/dev/null 2>&1 && REVIEWER_LIST="$REVIEWER_LIST + Codex (\`codex exec\`, depth/security)"
-    [ "$SELF_CLI" != "claude" ] && command -v claude >/dev/null 2>&1 && REVIEWER_LIST="$REVIEWER_LIST + Claude (\`claude -p\`, architecture/quality)"
-    if [ "$SELF_CLI" != "gemini" ] && [ "$SELF_CLI" != "antigravity" ] && command -v agy >/dev/null 2>&1; then
-      REVIEWER_LIST="$REVIEWER_LIST + Antigravity (\`agy -p\`, breadth/cross-file)"
-    fi
+    REVIEWER_LIST="$REVIEWER_LIST + rolepod:security-engineer on this high-risk path (no cross-family runner installed: the external pass needs rolepod-cross-family)"
   fi
   CAREFUL_BANNER="${WOULD_BLOCK}AUTO-CAREFUL (high-risk path; since last commit: $HIGH_RISK_EDITS high-risk edits / $TEST_EDITS tests / $REVIEWERS reviewers, $STRONG_REVIEWERS strong). Before commit: (1) a test file exists or is written this session; (2) reviewers dispatched — ≥2 when available (${REVIEWER_LIST}; security-engineer for auth/billing/crypto), in a DIFFERENT CLI than this one; (3) S1-S5 (simplicity) + T1-T6 (tests) — finish-work §1. Reviewer path blocked by the user → say so; fallback = Lead cold self-review + limitation note. Env bypass is user-set only. "
 fi

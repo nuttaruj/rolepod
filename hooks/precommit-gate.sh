@@ -88,8 +88,8 @@ xfam_running_job() {
 # (v2.144.0) — shared by two callers below: the non-Claude Lead path
 # (dispatch-proof rows from Cursor Task / opencode task, v2.134/2.135) and
 # the Claude nested-Agent backstop (below). Same base classification both
-# times: qa-tester is a reviewer but never STRONG (balanced test floor by
-# design); security-engineer / universal-reviewer / code-reviewer are
+# times: qa-tester never counts (E2E verification, not the review floor —
+# v2.148.4); security-engineer / universal-reviewer / code-reviewer are
 # STRONG; a scout or writer-role row never counts (name in neither set).
 #
 # Claude nested-Agent case, precisely (round-1 review corrected the first
@@ -145,7 +145,7 @@ if since:
         cut = datetime.datetime.fromtimestamp(int(since), datetime.timezone.utc)
     except Exception:
         cut = None
-REVIEWERS = {"qa-tester", "security-engineer", "universal-reviewer", "code-reviewer"}
+REVIEWERS = {"security-engineer", "universal-reviewer", "code-reviewer"}   # qa-tester = E2E verification, never the review floor (v2.148.4)
 STRONG = {"security-engineer", "universal-reviewer", "code-reviewer"}
 model_class = lambda m: "unknown"
 LOW_CLASSES = set()
@@ -356,7 +356,7 @@ if [ ! -f "$_pd_root/.rolepod/allow-emoji" ] && command -v python3 >/dev/null 2>
   EMOJI_HIT=$(git diff $GIT_DIFF_BASE -U0 2>/dev/null | python3 -I -c '
 import re, sys
 rx = re.compile("[\U0001F000-\U0001FAFF\u231A\u231B\u23E9-\u23EC\u23F0\u23F3\u25FD\u25FE\u2614\u2615\u2648-\u2653\u267F\u2693\u26A1\u26AA\u26AB\u26BD\u26BE\u26C4\u26C5\u26CE\u26D4\u26EA\u26F2\u26F3\u26F5\u26FA\u26FD\u2705\u270A\u270B\u2728\u274C\u274E\u2753-\u2755\u2757\u2795-\u2797\u27B0\u27BF\u2B1B\u2B1C\u2B50\u2B55]|.\uFE0F")
-skip_path = re.compile(r"\.(md|mdx|txt|rst|adoc)$|(^|/)(test|tests|spec|specs|__tests__|fixtures)(/|\.|_)|_test\.|\.test\.|_spec\.|\.spec\.")
+skip_path = re.compile(r"\.(md|mdx|mdc|txt|rst|adoc)(\.tmpl)?$|(^|/)(test|tests|spec|specs|__tests__|fixtures)(/|\.|_)|_test\.|\.test\.|_spec\.|\.spec\.")
 comment = re.compile(r"^\s*(#|//|/\*|\*|--|;|<!--)")
 path = None; n = 0; hits = []
 for raw in sys.stdin.buffer:
@@ -400,7 +400,7 @@ LINES_CHANGED=${LINES_CHANGED:-0}
 # content-based money check below CANNOT see these files either (it excludes
 # test paths itself), so money primitives inside a test-named file are an
 # ACCEPTED blind spot: rspec/jest-only load, and the mixed diff still blocks.
-HIGH_RISK=$(echo "$DIFF_STAT" | awk -F'\t' '{print $3}' | grep -vE '\.(test|spec)\.(ts|tsx|js|jsx|mjs|cjs|py|go|rs|rb|java|kt|swift|cs|php)$|(^|/)(test_[^/]*|[^/]*_test|[^/]*_spec)\.(py|go|rs|rb|php)$|(^|/)[^/]*Tests?\.(java|kt|cs|swift|php|scala)$' | grep -vE '\.(md|mdx|txt|rst|adoc)$|(^|/)(README|LICENSE|CHANGELOG)$' | risk_filter '(^|/|_)(auth|authn|authz|authentication|authorization|billing|payment|payments|migration|migrations|credit|credits|permission|permissions|secret|secrets|crypto|cryptography|token|tokens|oauth|jwt|sso|saml|webhook|webhooks|stripe|paypal|charge|charges|invoice|invoices|deletion|deletions|erasure|gdpr|security)(/|\.|_|$)' | head -1 || true)
+HIGH_RISK=$(echo "$DIFF_STAT" | awk -F'\t' '{print $3}' | grep -vE '\.(test|spec)\.(ts|tsx|js|jsx|mjs|cjs|py|go|rs|rb|java|kt|swift|cs|php)$|(^|/)(test_[^/]*|[^/]*_test|[^/]*_spec)\.(py|go|rs|rb|php)$|(^|/)[^/]*Tests?\.(java|kt|cs|swift|php|scala)$' | grep -vE '\.(md|mdx|mdc|txt|rst|adoc)(\.tmpl)?$|(^|/)(README|LICENSE|CHANGELOG)$' | risk_filter '(^|/|_)(auth|authn|authz|authentication|authorization|billing|payment|payments|migration|migrations|credit|credits|permission|permissions|secret|secrets|crypto|cryptography|token|tokens|oauth|jwt|sso|saml|webhook|webhooks|stripe|paypal|charge|charges|invoice|invoices|deletion|deletions|erasure|gdpr|security)(/|\.|_|$)' | head -1 || true)
 
 # Content-based high-risk (v2.46.0) — money-movement primitives in ADDED
 # lines of non-test staged files. Catches refund/payout logic living in a
@@ -416,7 +416,7 @@ if [ -z "$HIGH_RISK" ]; then
   # risk_filter so a `-` line in .rolepod/risk-paths excludes them exactly
   # like the path regex.
   CONTENT_RISK=$(git diff $GIT_DIFF_BASE -U0 2>/dev/null \
-    | awk '/^\+\+\+ /{f=substr($0,5); sub(/[ \t]+$/,"",f)} /^\+[^+]/{if (f !~ /\.(md|mdx|txt|rst|adoc)$/) print f "\t" $0}' \
+    | awk '/^\+\+\+ /{f=substr($0,5); sub(/[ \t]+$/,"",f)} /^\+[^+]/{if (f !~ /\.(md|mdx|mdc|txt|rst|adoc)(\.tmpl)?$/) print f "\t" $0}' \
     | grep -vE '(^|/)(test|tests|spec|specs|__tests__|fixtures)(/|\.|_)|_test\.|\.test\.|_spec\.|\.spec\.' \
     | grep -iE '(refund|payout|chargeback|settlement)' \
     | awk -F'\t' '{print $1}' | sed -E 's#^[abciow]/##' | risk_filter '.' | head -1 || true)
@@ -432,13 +432,13 @@ else
 fi
 
 # Docs are written, not reviewed (v2.143.0): every staged path is prose
-# (.md/.mdx/.txt/.rst/.adoc, or an extension-less README/LICENSE/CHANGELOG)
+# (.md/.mdx/.mdc/.txt/.rst/.adoc, their .tmpl templates, or an extension-less README/LICENSE/CHANGELOG)
 # → allow silently, whatever the size. The private-docs deny and the emoji
 # advisory (docs exempt) already ran. A prose file is never a risk path
 # either (filtered before risk_filter above) — so a `+pattern` in
 # .rolepod/risk-paths cannot re-flag a prose file; accepted limitation.
-PROSE_N=$(printf '%s\n' "$DIFF_STAT" | awk -F'\t' 'NF>=3 && $3 ~ /\.(md|mdx|txt|rst|adoc)$|(^|\/)(README|LICENSE|CHANGELOG)$/' | wc -l | tr -d ' ')
-NONPROSE_N=$(printf '%s\n' "$DIFF_STAT" | awk -F'\t' 'NF>=3 && $3 !~ /\.(md|mdx|txt|rst|adoc)$|(^|\/)(README|LICENSE|CHANGELOG)$/' | wc -l | tr -d ' ')
+PROSE_N=$(printf '%s\n' "$DIFF_STAT" | awk -F'\t' 'NF>=3 && $3 ~ /\.(md|mdx|mdc|txt|rst|adoc)(\.tmpl)?$|(^|\/)(README|LICENSE|CHANGELOG)$/' | wc -l | tr -d ' ')
+NONPROSE_N=$(printf '%s\n' "$DIFF_STAT" | awk -F'\t' 'NF>=3 && $3 !~ /\.(md|mdx|mdc|txt|rst|adoc)(\.tmpl)?$|(^|\/)(README|LICENSE|CHANGELOG)$/' | wc -l | tr -d ' ')
 if [ "${PROSE_N:-0}" -gt 0 ] && [ "${NONPROSE_N:-1}" -eq 0 ]; then
   exit 0
 fi
@@ -712,9 +712,10 @@ fi
 #   other HARD blocks (session risk edits w/o tests, env) → original OR
 #     (≥1 test edit or ≥1 reviewer dispatch): delegated sessions route
 #     test-writing into subagents whose edits land in the child transcript,
-#     so a qa-tester dispatch is often the only evidence the Lead's own
-#     transcript can show. Every auto-pass is logged and surfaced as context.
-# Test-tampering lint (warn-only) — grep-able half of qa-tester's REJECT list.
+#     so a universal-reviewer dispatch is often the only evidence the Lead's
+#     own transcript can show (qa-tester counts 0 since v2.148.4). Every
+#     auto-pass is logged and surfaced as context.
+# Test-tampering lint (warn-only) — grep-able half of the writer's test self-check.
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 LINT_WARN=""
 if [ -f "$SCRIPT_DIR/test-diff-lint.sh" ]; then

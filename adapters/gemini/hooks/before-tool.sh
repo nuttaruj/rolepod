@@ -48,7 +48,7 @@ if [ -n "$FILE" ]; then
 fi
 
 if [ "$HIGH_RISK" -eq 1 ]; then
-  MSG+=$'\n\nHIGH-RISK PATH DETECTED. Run /rolepod-full BEFORE the edit. Dispatch ≥2 reviewers before commit: universal-reviewer + security-engineer, plus an external CLI on a DIFFERENT model than this Lead (Codex/Claude — not Gemini/agy reviewing itself).'
+  MSG+=$'\n\nHIGH-RISK PATH DETECTED. Run /rolepod-full BEFORE the edit. Before commit: security-engineer + ONE strong pass — external via rolepod-cross-family --kind review when the pool is usable (a different CLI than this Lead), else universal-reviewer.'
 fi
 
 python3 -c 'import json,sys; print(json.dumps({"systemMessage": sys.stdin.read()}))' <<EOF

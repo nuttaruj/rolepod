@@ -518,6 +518,23 @@ out=$(pcd auth/billing.py=logic "$TRANSCRIPT")
 check "logic diff on a risky path + internal strong reviewer + pool usable, nothing tried → deny (control: satellite-first still holds for code)" deny "$out"
 out=$(pcd 'README=prose docs/guide.md=prose' "$EMPTY_T")
 check "extension-less README + docs → allow silently (prose)" allow "$out"
+
+# ── qa-tester is never the per-diff review floor (v2.148.4) ──
+T_QA="$TMP/t_qa.jsonl"; printf '%s\n' '{"type":"tool_use","name":"Agent","input":{"subagent_type":"rolepod:qa-tester","prompt":"run the E2E flow"}}' > "$T_QA"
+T_UR="$TMP/t_ur.jsonl"; printf '%s\n' '{"type":"tool_use","name":"Agent","input":{"subagent_type":"rolepod:universal-reviewer","prompt":"review the diff"}}' > "$T_UR"
+export ROLEPOD_GATES_HARD=1
+out=$(pcd 'src/util.py=logic' "$T_QA")
+check "HARD gate: logic diff, no tests, qa-tester ALONE → deny (E2E is not the review floor)" deny "$out"
+out=$(pcd 'src/util.py=logic' "$T_UR")
+check "HARD gate: logic diff, no tests, universal-reviewer → allow (the per-diff floor)" allow "$out"
+unset ROLEPOD_GATES_HARD
+out=$(pcd 'src/util.py=logic' "$T_QA")
+echo "$out" | grep -q 'reviewers since last commit: 0' \
+  && echo "  ✓ SOFT line counts a qa-tester dispatch as 0 reviewers" \
+  || { echo "  ✗ SOFT line counted qa-tester as a reviewer: ${out:0:160}"; fail=$((fail+1)); }
+out=$(pcd 'adapters/codex/AGENTS.md.tmpl=prose' "$EMPTY_T")
+check "prose template (.md.tmpl) only → allow silently (prose)" allow "$out"
+[ -z "$out" ] && echo "  ✓ .md.tmpl diff passes silently" || { echo "  ✗ .md.tmpl diff produced hook output: ${out:0:120}"; fail=$((fail+1)); }
 out=$(pcd 'docs/rolepod/plan.md=prose docs/auth.md=prose' "$EMPTY_T")
 check "docs-only diff that also stages docs/rolepod/ → deny (private-docs gate runs before the prose exit)" deny "$out"
 out=$(pcd 'docs/auth.md=prose src/util.py=logic' "$EMPTY_T")

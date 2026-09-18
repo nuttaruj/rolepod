@@ -1,5 +1,5 @@
 #!/bin/bash
-# test-diff-lint — the machine-checkable half of qa-tester's REJECT list.
+# test-diff-lint — the machine-checkable half of the writer's test self-check (tdd-by-risk).
 # Proves each detector on a synthetic staged diff, proves silence on a clean
 # diff, and proves the HUMAN-ONLY caveat always accompanies findings (a green
 # lint must never be readable as "tests are good").
