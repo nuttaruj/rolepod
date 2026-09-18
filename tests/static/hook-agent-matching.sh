@@ -128,6 +128,58 @@ else
   fail=$((fail+1))
 fi
 
+# bash-writes-are-edits (spec R1/R6) — bash_write_paths() detector cases.
+# One import, one small command each; expected paths are absolute (resolved
+# against the repo root this script cd'd into at the top).
+bwp=$(python3 - <<'PYEOF'
+import os, sys
+sys.path.insert(0, "hooks/lib")
+import session_state as ss
+
+root = os.getcwd()
+p = lambda name: os.path.join(root, name)
+cases = [
+    ("printf x > out.txt", [p("out.txt")], "redirect target"),
+    ("printf x >> out.txt", [p("out.txt")], "append target"),
+    ("tee -a out.txt", [p("out.txt")], "tee target"),
+    ("sed -i s/a/b/ out.txt", [p("out.txt")], "sed -i target"),
+    ("cp a.txt out.txt", [p("out.txt")], "cp destination (last arg)"),
+    ("rm out.txt", [p("out.txt")], "rm target"),
+    ("cat > out.txt <<EOF\nrm -rf /\nEOF", [p("out.txt")], "heredoc body ignored"),
+    ("printf x 2>&1", [], "2>&1 ignored (fd form)"),
+    ("printf x > /dev/null", [], "/dev/null ignored"),
+    ('bash -c "cat > inner.txt"', [p("inner.txt")], "bash -c inner write parsed"),
+    ("printf x > /etc/passwd", [], "path outside the repo dropped"),
+    ("cp a.py b.py 2>/dev/null", [p("b.py")], "cp dest not confused by a trailing stderr redirect"),
+    ("tee out.txt 2>/dev/null", [p("out.txt")], "tee target not confused by a trailing stderr redirect"),
+    ("perl -Ilib -e 'print 1' file.pl", [], "perl -Ilib is not in-place editing"),
+    ("bash run.sh > out.txt", [p("out.txt")], "shell running a script FILE (no -c) still reports its own redirect"),
+    ("sed -ri s/a/b/ src/app.ts", [p("src/app.ts")], "sed -ri clustered flag"),
+    ("sed -Ei s/a/b/ src/app.ts", [p("src/app.ts")], "sed -Ei clustered flag"),
+    ("sed -ni s/a/b/ src/app.ts", [p("src/app.ts")], "sed -ni clustered flag"),
+    ("sed -i '' s/a/b/ src/y.py", [p("src/y.py")], "BSD sed -i '' empty-suffix arg is not a path, script is not a path"),
+    ("tee out.txt <<EOF\nhello\nEOF", [p("out.txt")], "heredoc operand (<<HEREDOC placeholder) is not a second write target"),
+]
+bad = []
+for cmd, expect, label in cases:
+    got = ss.bash_write_paths(cmd, root)
+    if got != expect:
+        bad.append("%s: expected %r got %r" % (label, expect, got))
+print("; ".join(bad))
+PYEOF
+)
+if [ -z "$bwp" ]; then
+  echo "  ✓ bash_write_paths detector cases (redirect/append/tee/sed-i/cp/rm/heredoc/2>&1//dev/null/bash-c/outside-repo/stderr-redirect/perl-Ilib/script-file/sed-cluster/bsd-sed-i/heredoc-operand)"
+else
+  echo "  ✗ bash_write_paths — $bwp"
+  fail=$((fail+1))
+fi
+
+# A Bash-written test file counts as a test edit (R2) — same as an Edit tool
+# targeting the file directly.
+run '{"type":"tool_use","name":"Bash","input":{"command":"cat > tests/test_x.py <<EOF\nassert True\nEOF"}}' \
+  count-test-edits 1 "Bash-written test file counts as a test edit"
+
 echo ""
 if [ $fail -eq 0 ]; then
   echo "hook-agent-matching: pass"

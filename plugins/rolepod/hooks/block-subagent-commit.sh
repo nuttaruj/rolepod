@@ -26,72 +26,31 @@
 set -euo pipefail
 
 INPUT=$(cat 2>/dev/null || echo '{}')
+RP_LIB="$(cd "$(dirname "$0")/lib" && pwd)"
 
 # The payload travels by env: the program itself is python's stdin (heredoc).
-VERDICT=$(RP_INPUT="$INPUT" python3 -I - <<'PY' 2>/dev/null || printf '\n\n\n'
-import sys, json, shlex, os, re
+VERDICT=$(RP_INPUT="$INPUT" RP_LIB="$RP_LIB" python3 -I - <<'PY' 2>/dev/null || printf '\n\n\n'
+import sys, json, os
 try:
     d = json.loads(os.environ.get('RP_INPUT') or '{}')
 except Exception:
     d = {}
 if not (d.get('agent_id') or ''):
     print(''); print(''); print(''); sys.exit(0)
+# Tokenizer (toks_of / PREFIX / WRAPPER_VALUE / DURATION / SHELLS / ASSIGN /
+# OUTPUT_ONLY / HEREDOC / segments / head) lives in session_state.py — the
+# only copy (bash-writes-are-edits spec, 2026-09-18); bash_write_paths()
+# there needs to walk a command the same way these rules do, and a second
+# hand-written copy would drift. Imported AFTER the early exit above: a
+# Lead's Bash call (the common case) never pays for the module load.
+sys.path.insert(0, os.environ.get('RP_LIB', ''))
+from session_state import toks_of, SHELLS, OUTPUT_ONLY, segments, head  # noqa: F401
 atype = d.get('agent_type') or ''
 ti = d.get('tool_input') or {}
 cmd = ti.get('command') or ''
 
-def toks_of(s):
-    try:
-        return shlex.split(s)
-    except ValueError:
-        return s.split()
-
-PREFIX = {'time', 'env', 'nice', 'sudo', 'rtk', 'proxy', 'caffeinate', 'command', 'exec', 'nohup', 'timeout'}
-# per wrapper: the flags that take the NEXT token as their value (sudo -n / -k / -s are booleans)
-WRAPPER_VALUE = {'sudo': {'-u', '-g', '-C', '-p', '-h', '-r', '-t', '-U', '-D'}, 'nice': {'-n'},
-                 'env': {'-u', '-C', '-S'}, 'timeout': {'-k', '-s'}, 'nohup': set(), 'caffeinate': {'-t', '-w'}}
-DURATION = re.compile(r'^[0-9]+(\.[0-9]+)?[smhd]?$')          # 300 / 5m / 1.5h after timeout / nice -n
-SHELLS = {'bash', 'sh', 'zsh', 'dash', 'ksh'}
 GIT_VALUE_OPTS = {'-C', '--git-dir', '--work-tree', '--namespace', '--exec-path'}
 RUNNER = {'rolepod-cross-family', 'cross-family.sh'}
-ASSIGN = re.compile(r'^[A-Za-z_][A-Za-z0-9_]*=')
-OUTPUT_ONLY = {'echo', 'printf', ':'}
-# no quote characters on this line: bash 3.2 counts quotes inside $( <<heredoc ) while looking for the closing paren
-HEREDOC = re.compile(r'<<-?\s*([^\s\w]?)(\w+)\1[^\n]*\n(.*?)\n\s*\2(?=\n|$)', re.S)
-
-def owner_is_shell(text, start):
-    # the line that opens a heredoc, marker removed: the body is a program when
-    # any command on that line (bash <<EOF, cat <<EOF | sh) is a shell
-    ls = text.rfind('\n', 0, start) + 1
-    le = text.find('\n', start)
-    line = text[ls:(le if le >= 0 else len(text))]
-    line = re.sub(r'<<-?\s*[^\s\w]?\w+[^\s\w]?', ' ', line, count=1)
-    for part in re.split(r'\s*(?:\||&&|;)\s*', line):
-        if any(os.path.basename(x) in SHELLS for x in head(toks_of(part))):
-            return True
-    return False
-
-def segments(text):
-    # a heredoc body is data (cat / tee / a redirect) and is dropped before
-    # splitting - unless a shell owns it: then the body IS the program, the
-    # same way a -c string is, and its lines stay in as segments
-    def sub(m):
-        return '\n' + m.group(3) + '\n' if owner_is_shell(text, m.start()) else '<<HEREDOC'
-    text = HEREDOC.sub(sub, text)
-    return re.split(r'\s*(?:&&|\|\||;|\||\n)\s*', text)
-
-def head(t):
-    w = ''
-    while t:
-        if t[0] in PREFIX:
-            w = t[0]; t = t[1:]
-        elif t[0].startswith('-'):
-            t = t[2:] if (t[0] in WRAPPER_VALUE.get(w, set()) and len(t) > 1) else t[1:]
-        elif DURATION.match(t[0]) or ASSIGN.match(t[0]):
-            t = t[1:]
-        else:
-            break
-    return t
 
 def walk(text, rule, every, depth=0):
     # rule(t, base) -> label or ''. every=False: t starts at the segment head

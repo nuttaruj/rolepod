@@ -23,8 +23,8 @@ from __future__ import annotations
 import json
 import os
 import re
+import shlex
 import sys
-from pathlib import Path
 from typing import Iterable
 
 # Path patterns. These compile once at module load.
@@ -82,6 +82,293 @@ EDIT_TOOLS = {"Edit", "Write", "MultiEdit", "NotebookEdit"}
 # Subagent-spawn tools. Claude Code has used both names across versions;
 # match either so reviewer counting does not depend on the CLI version.
 AGENT_TOOLS = {"Agent", "Task"}
+
+# ── Bash write-path tokenizer (bash-writes-are-edits spec, 2026-09-18) ────
+# Moved here from block-subagent-commit.sh's inline python: that hook's
+# git/gate rules and bash_write_paths() below both need to walk a shell
+# command the same way (split into segments, drop heredoc bodies, skip past
+# a wrapper word's flags/values, recurse into a shell's -c string) — a
+# second hand-written copy of the wrapper/value-flag tables would drift (a
+# wrapper this detector doesn't know is a wrapper reports a real write as
+# unparsed, or vice-versa). This is the ONLY copy; block-subagent-commit.sh
+# imports these names instead of defining them locally.
+PREFIX = {'time', 'env', 'nice', 'sudo', 'rtk', 'proxy', 'caffeinate', 'command', 'exec', 'nohup', 'timeout'}
+# per wrapper: the flags that take the NEXT token as their value (sudo -n / -k / -s are booleans)
+WRAPPER_VALUE = {'sudo': {'-u', '-g', '-C', '-p', '-h', '-r', '-t', '-U', '-D'}, 'nice': {'-n'},
+                 'env': {'-u', '-C', '-S'}, 'timeout': {'-k', '-s'}, 'nohup': set(), 'caffeinate': {'-t', '-w'}}
+DURATION = re.compile(r'^[0-9]+(\.[0-9]+)?[smhd]?$')          # 300 / 5m / 1.5h after timeout / nice -n
+SHELLS = {'bash', 'sh', 'zsh', 'dash', 'ksh'}
+ASSIGN = re.compile(r'^[A-Za-z_][A-Za-z0-9_]*=')
+OUTPUT_ONLY = {'echo', 'printf', ':'}
+# no quote characters on this line: bash 3.2 counts quotes inside $( <<heredoc ) while looking for the closing paren
+HEREDOC = re.compile(r'<<-?\s*([^\s\w]?)(\w+)\1[^\n]*\n(.*?)\n\s*\2(?=\n|$)', re.S)
+
+
+def toks_of(s):
+    try:
+        return shlex.split(s)
+    except ValueError:
+        return s.split()
+
+
+def owner_is_shell(text, start):
+    # the line that opens a heredoc, marker removed: the body is a program when
+    # any command on that line (bash <<EOF, cat <<EOF | sh) is a shell
+    ls = text.rfind('\n', 0, start) + 1
+    le = text.find('\n', start)
+    line = text[ls:(le if le >= 0 else len(text))]
+    line = re.sub(r'<<-?\s*[^\s\w]?\w+[^\s\w]?', ' ', line, count=1)
+    for part in re.split(r'\s*(?:\||&&|;)\s*', line):
+        if any(os.path.basename(x) in SHELLS for x in head(toks_of(part))):
+            return True
+    return False
+
+
+def segments(text):
+    # a heredoc body is data (cat / tee / a redirect) and is dropped before
+    # splitting - unless a shell owns it: then the body IS the program, the
+    # same way a -c string is, and its lines stay in as segments
+    def sub(m):
+        return '\n' + m.group(3) + '\n' if owner_is_shell(text, m.start()) else '<<HEREDOC'
+    text = HEREDOC.sub(sub, text)
+    return re.split(r'\s*(?:&&|\|\||;|\||\n)\s*', text)
+
+
+def head(t):
+    w = ''
+    while t:
+        if t[0] in PREFIX:
+            w = t[0]; t = t[1:]
+        elif t[0].startswith('-'):
+            t = t[2:] if (t[0] in WRAPPER_VALUE.get(w, set()) and len(t) > 1) else t[1:]
+        elif DURATION.match(t[0]) or ASSIGN.match(t[0]):
+            t = t[1:]
+        else:
+            break
+    return t
+
+
+_REDIRECT_OPS = ('>', '>>', '>|', '&>')
+_ROOT_CACHE: dict = {}
+
+
+def _git_root(cwd):
+    """git rev-parse --show-toplevel from `cwd`, cached per cwd (a counting
+    pass calls this once per Bash tool_use — the cache keeps it to one
+    shell-out per distinct cwd). "" when not a repo / git missing (fail-open:
+    the "outside the git root" filter below is then skipped, never a false
+    drop)."""
+    key = cwd or ''
+    if key in _ROOT_CACHE:
+        return _ROOT_CACHE[key]
+    root = ''
+    try:
+        import subprocess
+        root = subprocess.run(
+            ['git', 'rev-parse', '--show-toplevel'], cwd=cwd or None,
+            capture_output=True, text=True, timeout=10,
+        ).stdout.strip()
+    except Exception:
+        root = ''
+    _ROOT_CACHE[key] = root
+    return root
+
+
+def _resolve_write_path(raw, cwd, root):
+    if not raw or raw.startswith('/dev/') or raw.startswith('&'):
+        return None
+    p = raw if os.path.isabs(raw) else os.path.join(cwd, raw)
+    p = os.path.normpath(p)
+    if root:
+        rp = os.path.realpath(root).rstrip('/')
+        ap = os.path.realpath(p)
+        if ap != rp and not ap.startswith(rp + '/'):
+            return None
+        return ap
+    return p
+
+
+_INPUT_REDIRECT_OPS = ('<', '<<', '<<<')
+
+
+def _tokenize_segment(seg):
+    """Punctuation-aware tokens for one already-heredoc-stripped, single-
+    command segment (no &&, ||, ;, |, or newline inside it — segments()
+    already split those out), split into (command_tokens, redirect_targets).
+    An OUTPUT redirect operator, its target, and a bare fd number immediately
+    before the operator are removed from command_tokens — otherwise `cp a b
+    2>/dev/null` reads its own stderr redirect as the copy destination. A
+    fd-duplication target (`2>&1`'s `&1`) is dropped, never resolved as a
+    path; `2>&1` itself never matches (its operator token is `>&`, not `>`).
+    An INPUT redirect operator (`<`, `<<`, `<<<` — the last one also being
+    the literal `<<HEREDOC` placeholder segments() leaves behind for a
+    dropped heredoc body) and its operand are consumed too, but never
+    recorded as a write target — otherwise `tee out.txt <<EOF` reads its own
+    heredoc marker/placeholder as a second file to write. Needs the shell's
+    compound-operator tokenizing (punctuation_chars), unlike toks_of above —
+    that plain shlex.split is for wrapper/flag walking, not for telling `>`
+    apart from `2>&1`. Parse failure -> ([], [])."""
+    try:
+        lex = shlex.shlex(seg, posix=True, punctuation_chars=True)
+        lex.whitespace_split = True
+        toks = list(lex)
+    except ValueError:
+        return [], []
+    cmd_toks, redirects = [], []
+    i = 0
+    while i < len(toks):
+        tok = toks[i]
+        if tok in _REDIRECT_OPS or tok in _INPUT_REDIRECT_OPS:
+            if cmd_toks and cmd_toks[-1].isdigit():
+                cmd_toks.pop()  # the fd number belongs to the redirect, not the command
+            if tok in _REDIRECT_OPS and i + 1 < len(toks):
+                tgt = toks[i + 1]
+                if not tgt.startswith('&'):
+                    redirects.append(tgt)
+            i += 2 if i + 1 < len(toks) else 1
+            continue
+        cmd_toks.append(tok)
+        i += 1
+    return cmd_toks, redirects
+
+
+def _resolve_all(raws, cwd, root):
+    out = []
+    for r in raws:
+        p = _resolve_write_path(r, cwd, root)
+        if p:
+            out.append(p)
+    return out
+
+
+def _positional_args(args, value_flags):
+    """Non-flag arguments, skipping a value-taking flag's own value too."""
+    pos = []
+    i = 0
+    while i < len(args):
+        a = args[i]
+        if a.startswith('-') and a != '-':
+            i += 2 if a in value_flags else 1
+            continue
+        pos.append(a)
+        i += 1
+    return pos
+
+
+def _strip_bsd_sed_i_suffix(args):
+    """BSD/macOS sed's `-i` REQUIRES a backup-suffix argument, even an empty
+    one (`sed -i '' ...`) — bash's idiom for "no backup, portable to both
+    sed dialects". Written as a separate word (no space would glue it, e.g.
+    `-i.bak`), that empty string is a flag VALUE, never the sed script or a
+    file: without this it lands in `_positional_args`' positional list and
+    the drop-first-as-script heuristic then drops the WRONG token (the
+    genuinely empty one), leaving the real script parsed as a second file."""
+    out = []
+    i = 0
+    while i < len(args):
+        out.append(args[i])
+        if args[i] == '-i' and i + 1 < len(args) and args[i + 1] == '':
+            i += 2
+            continue
+        i += 1
+    return out
+
+
+def _command_targets(t):
+    """Write targets from tee / sed -i / perl -pi / cp|mv|install (dest =
+    last arg) / truncate / dd of= / rm|unlink. `t` is the token list AFTER
+    the shared wrapper-skip (head) — the real command past sudo / env /
+    timeout N / VAR=x."""
+    if not t:
+        return []
+    base = os.path.basename(t[0])
+    args = t[1:]
+    out = []
+    if base == 'tee':
+        out.extend(_positional_args(args, set()))
+    elif base in ('sed', 'perl'):
+        if base == 'sed':
+            args = _strip_bsd_sed_i_suffix(args)
+        # sed -i[SUFFIX], flags clustered in any order (-ri, -Ei, -ni); perl
+        # bundles -i with other single-letter one-liner flags (-pi, -npi,
+        # -pi.bak — the in-place flag is always LAST in the cluster, anything
+        # after it is an optional backup suffix). Case-sensitive and
+        # cluster-anchored so `perl -Ilib` (an include-path flag, unrelated
+        # to in-place editing) never false-positives.
+        i_rx = re.compile(r'^-[nrEszu]*i') if base == 'sed' else re.compile(r'^-[nple0-9]*i')
+        has_i = any((a.startswith('-') and a != '-' and not a.startswith('--') and i_rx.match(a))
+                    or a == '--in-place' or a.startswith('--in-place=') for a in args)
+        if has_i:
+            has_script_flag = any(a in ('-e', '-f') for a in args)
+            pos = _positional_args(args, {'-e', '-f'})
+            if not has_script_flag and pos:
+                pos = pos[1:]
+            out.extend(pos)
+    elif base in ('cp', 'mv', 'install'):
+        value_flags = {'-m', '-o', '-g'} if base == 'install' else set()
+        pos = _positional_args(args, value_flags)
+        if pos:
+            out.append(pos[-1])
+    elif base == 'truncate':
+        out.extend(_positional_args(args, {'-s'}))
+    elif base == 'dd':
+        out.extend(a[3:] for a in args if a.startswith('of='))
+    elif base in ('rm', 'unlink'):
+        out.extend(_positional_args(args, set()))
+    return out
+
+
+def _segment_write_targets(seg, cwd, root, depth):
+    if depth > 4:
+        return []
+    cmd_toks, redirect_raw = _tokenize_segment(seg)
+    t = head(cmd_toks)
+    if t and os.path.basename(t[0]) in SHELLS:
+        for k in range(1, len(t)):
+            if t[k] == '-c' and k + 1 < len(t):
+                return _bash_write_targets(t[k + 1], cwd, root, depth + 1)
+        # no -c: a shell running a SCRIPT FILE (`bash run.sh > out.txt`) —
+        # its own redirect is still a write, just not one we can see inside
+        # the script itself.
+        return _resolve_all(redirect_raw, cwd, root)
+    return _resolve_all(redirect_raw + _command_targets(t), cwd, root)
+
+
+def _bash_write_targets(cmd, cwd, root, depth=0):
+    out = []
+    for seg in segments(cmd):
+        seg = seg.strip()
+        if not seg or seg == '<<HEREDOC':
+            continue
+        out.extend(_segment_write_targets(seg, cwd, root, depth))
+    return out
+
+
+def bash_write_paths(cmd, cwd=None):
+    """The file paths a Bash command writes or removes (bash-writes-are-edits
+    spec R1). Detects redirect targets, tee / sed -i / perl -pi / cp|mv|
+    install destination / truncate / dd of= / rm|unlink; a nested shell's -c
+    string is parsed (like any other segment, its own quoting protects an
+    inner `>` from the outer scan — an operator INSIDE that quoted string
+    that is itself unquoted, e.g. a `-c` string built by string
+    concatenation, is not something this walks); heredoc bodies are data
+    (dropped, unless a shell owns the heredoc — then its body is segments,
+    same as a -c string). Relative paths resolve against `cwd`; paths
+    outside the git root (resolved from `cwd`) are dropped. Cannot parse ->
+    [] (fail-open)."""
+    try:
+        cwd = cwd or os.getcwd()
+        root = _git_root(cwd)
+        seen = set()
+        out = []
+        for p in _bash_write_targets(cmd or '', cwd, root):
+            if p not in seen:
+                seen.add(p)
+                out.append(p)
+        return out
+    except Exception:
+        return []
+
 
 # ── Model class (v2.47.0) ───────────────────────────────────────────────
 # Family word → class. Only the FAMILY is matched (haiku / sonnet / opus…),
@@ -504,17 +791,20 @@ def _file_from_input(tool_input: dict) -> str:
     )
 
 
-def count_test_edits(transcript_path: str) -> int:
+def count_test_edits(transcript_path: str, cwd: str | None = None) -> int:
     n = 0
     for tool, inp in _iter_tool_uses(transcript_path):
-        if tool not in EDIT_TOOLS:
-            continue
-        if is_test_file(_file_from_input(inp)):
-            n += 1
+        if tool in EDIT_TOOLS:
+            if is_test_file(_file_from_input(inp)):
+                n += 1
+        elif tool == "Bash":
+            for p in bash_write_paths(inp.get("command") or "", inp.get("cwd") or cwd):
+                if is_test_file(p):
+                    n += 1
     return n
 
 
-def count_high_risk_edits(transcript_path: str) -> int:
+def count_high_risk_edits(transcript_path: str, cwd: str | None = None) -> int:
     """
     Count PRODUCTION code edits on high-risk paths. Test files are excluded
     so writing `auth/login.test.ts` doesn't paradoxically trigger the same
@@ -522,23 +812,31 @@ def count_high_risk_edits(transcript_path: str) -> int:
     """
     n = 0
     for tool, inp in _iter_tool_uses(transcript_path):
-        if tool not in EDIT_TOOLS:
-            continue
-        path = _file_from_input(inp)
-        if is_test_file(path):
-            continue
-        if is_high_risk_path(path) and is_code_file(path):
-            n += 1
+        if tool in EDIT_TOOLS:
+            path = _file_from_input(inp)
+            if is_test_file(path):
+                continue
+            if is_high_risk_path(path) and is_code_file(path):
+                n += 1
+        elif tool == "Bash":
+            for p in bash_write_paths(inp.get("command") or "", inp.get("cwd") or cwd):
+                if is_test_file(p):
+                    continue
+                if is_high_risk_path(p) and is_code_file(p):
+                    n += 1
     return n
 
 
-def count_code_edits(transcript_path: str) -> int:
+def count_code_edits(transcript_path: str, cwd: str | None = None) -> int:
     n = 0
     for tool, inp in _iter_tool_uses(transcript_path):
-        if tool not in EDIT_TOOLS:
-            continue
-        if is_code_file(_file_from_input(inp)):
-            n += 1
+        if tool in EDIT_TOOLS:
+            if is_code_file(_file_from_input(inp)):
+                n += 1
+        elif tool == "Bash":
+            for p in bash_write_paths(inp.get("command") or "", inp.get("cwd") or cwd):
+                if is_code_file(p):
+                    n += 1
     return n
 
 
@@ -751,7 +1049,7 @@ def agent_transcripts(transcript_path: str, since_epoch: float | None = None) ->
 
 
 def count_all(
-    transcript_path: str, since_epoch: float | None = None
+    transcript_path: str, since_epoch: float | None = None, cwd: str | None = None
 ) -> tuple[int, int, int, int]:
     """Single-pass tally of the four gate counts — one transcript scan instead
     of four. Returns (test_edits, high_risk_edits, reviewers, strong_reviewers);
@@ -778,6 +1076,12 @@ def count_all(
                     test_edits += 1
                 elif is_high_risk_path(path) and is_code_file(path):
                     high_risk_edits += 1
+            elif tool == "Bash":
+                for p in bash_write_paths(inp.get("command") or "", inp.get("cwd") or cwd):
+                    if is_test_file(p):
+                        test_edits += 1
+                    elif is_high_risk_path(p) and is_code_file(p):
+                        high_risk_edits += 1
             elif tool in AGENT_TOOLS:
                 name = _bare_agent_name(inp.get("subagent_type"))
                 if name in REVIEWER_AGENTS:
@@ -843,6 +1147,10 @@ def selfdo_state(transcript_path: str, target: str | None = None, root: str | No
                     if tool in EDIT_TOOLS:
                         if is_product_code(_file_from_input(inp), root):
                             n_e += 1
+                    elif tool == "Bash":
+                        for p in bash_write_paths(inp.get("command") or "", root):
+                            if is_product_code(p, root):
+                                n_e += 1
                     elif tool in AGENT_TOOLS:
                         if _bare_agent_name(inp.get("subagent_type")) in WRITER_ROLE_AGENTS:
                             n_w += 1
@@ -1005,7 +1313,7 @@ def main() -> int:
                 since_epoch = float(sys.argv[2])
             except ValueError:
                 since_epoch = None
-        print("%d %d %d %d" % count_all(transcript_path, since_epoch))
+        print("%d %d %d %d" % count_all(transcript_path, since_epoch, hook_input.get("cwd")))
     elif query == "dispatch-rounds":
         # Assistant messages with an Agent/Task dispatch since the last user prompt.
         print(dispatch_rounds_this_turn(transcript_path))
@@ -1018,11 +1326,11 @@ def main() -> int:
         m = lead_model(transcript_path)
         print("%s %s" % (m or "-", model_class(m)))
     elif query == "count-test-edits":
-        print(count_test_edits(transcript_path))
+        print(count_test_edits(transcript_path, hook_input.get("cwd")))
     elif query == "count-high-risk-edits":
-        print(count_high_risk_edits(transcript_path))
+        print(count_high_risk_edits(transcript_path, hook_input.get("cwd")))
     elif query == "count-code-edits":
-        print(count_code_edits(transcript_path))
+        print(count_code_edits(transcript_path, hook_input.get("cwd")))
     elif query == "count-reviewers-dispatched":
         print(count_reviewers_dispatched(transcript_path))
     elif query == "selfdo-state":

@@ -45,6 +45,12 @@ workflow() {   # workflow <agentType> <ts>
 n_edits() {   # n_edits <count> <file> <ts-prefix> [sidechain]  → N edits at increasing seconds
   local i; for i in $(seq 1 "$1"); do edit "$2" "$3$(printf '%02d' "$i")Z" "${4:-}"; done
 }
+bash_write() {   # bash_write <file> <ts> — a Bash tool_use that writes <file> via redirect
+  printf '{"type":"assistant","timestamp":"%s","message":{"content":[{"type":"tool_use","name":"Bash","input":{"command":"printf x > %s"}}]}}\n' "$2" "$1" >> "$T"
+}
+n_bash_writes() {   # n_bash_writes <count> <file> <ts-prefix> → N Bash writes at increasing seconds
+  local i; for i in $(seq 1 "$1"); do bash_write "$2" "$3$(printf '%02d' "$i")Z"; done
+}
 
 # run <label> <target> <expect: nudge|silent> [agent_id]
 run() {
@@ -63,6 +69,9 @@ F="$tmp/repo/src/a.ts"
 reset; route R3 2026-01-01T10:00:00Z; n_edits 6 "$F" 2026-01-01T10:01:
 run "R3 + 6 product edits + 0 writer dispatch → nudge" "$F" nudge
 run "same route again → silent (once per route)" "$F" silent
+
+mark; reset; route R3 2026-01-01T10:00:00Z; n_bash_writes 6 "$F" 2026-01-01T10:01:
+run "R3 + 6 Bash product writes (printf > file) + 0 writer dispatch → nudge" "$F" nudge
 
 mark; reset; route R3 2026-01-01T10:00:00Z; n_edits 5 "$F" 2026-01-01T10:01:
 run "R3 + 5 edits → silent (below 6)" "$F" silent
