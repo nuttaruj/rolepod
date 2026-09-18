@@ -8,4 +8,6 @@
 - One release per completed request that changed `core/ hooks/ scripts/ adapters/ plugins/`; docs-only = commit + push. Earlier only when the next ticket needs the hook or script just shipped.
 - External member: `--detach`, next task, one `--collect` (it waits).
 - After a dispatch: next unblocked task, never idle on a reviewer.
-- Worktree only for a parallel task owner; Lead self-do stays on main.
+- Worktree only for a parallel task owner; Lead self-do (R1/R2) stays on main.
+- R3 (multi-file) dispatches the task owner the plan names (hooks/scripts → devops-sre, python lib → backend-developer, docs → content-strategist); the Lead plans, spot-checks, commits.
+- Edits go through the CLI's edit tools, never a shell heredoc or sed: the edit-time hooks (self-do nudge, write scope, edit ledger, test-edit count) see tool edits only.
