@@ -78,7 +78,7 @@ Skip when the diff is docs-only (prose / comments / config text / string literal
 
 **Evidence** — check-work's `Status: UNVERIFIED` or `PARTIAL` blocks merge unless the user explicitly waives it (quote the waiver in the menu); green tests alone do not satisfy this gate. Tree unchanged since that block's recorded pass → cite it and skip the local re-run ONLY when a CI lane re-runs that scope on the merge path; no CI → run the Phase 1+2 equivalents locally before the irreversible act (§2).
 
-**Reviewer** — risk-appropriate review completed (`review-code`). On a high-risk diff read the report's **Cross-model adversarial pass** line: `NOT RUN — cross-family off (opt-in)` is the user's own choice — one neutral line in the summary. `NOT RUN` for any other reason (pool failed / empty, family unknown) or `vertical — same family` is a verification limitation the user must see before merge; state it, never clear the gate silently.
+**Reviewer** — risk-appropriate review completed (`review-code`). On a high-risk diff read the report's **Cross-model adversarial pass** line: `ran on <cli>` (a ROLEPOD-XFAM ok receipt) clears the gate whatever the family field says — a CLI preset that reports no model family is stated neutrally, never as a limitation. `NOT RUN — cross-family off (opt-in)` is the user's choice, one neutral line. `NOT RUN` for any other reason (pool failed / empty) or `vertical — same CLI` is a verification limitation the user must see before merge; state it, never clear the gate silently.
 
 **PR scope (P)** — one concern per PR / merge. Mixed concerns → split (`git add -p`, separate branches) first; a mixed diff is unreviewable.
 

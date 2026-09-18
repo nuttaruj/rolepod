@@ -86,7 +86,7 @@ A second-vendor CLI reviewed the diff cold. The only state that clears the
 high-risk gate outright.
 
 ```
-Cross-model adversarial pass: vertical — same family (single-CLI machine;
+Cross-model adversarial pass: vertical — same CLI (single-CLI machine;
 own CLI's strongest tier ran as cold reviewer; not a cross-family pass)
 ```
 Stronger tier, same vendor. Upgrades the floor, does not satisfy Iron Rule 2 —

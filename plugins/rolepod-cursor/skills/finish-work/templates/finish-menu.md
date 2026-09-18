@@ -10,9 +10,10 @@
 - CI: Phase 1 <status> · Phase 2 <status, or n/a>
 - Review verdict: <APPROVED / APPROVED-WITH-NITS / REJECTED>
 - Cross-model adversarial pass (high-risk diff only): <ran on `<cli>`
-  (cross-family) / cross-family off (opt-in — the user's choice, no
-  limitation) / vertical — same family / NOT RUN — reason. Vertical or a
-  NOT RUN other than opt-in-off is a limitation the user must see.>
+  (cross-family) / ran on `<cli>`, model family not reported (still clears
+  the gate) / cross-family off (opt-in — the user's choice, no limitation)
+  / vertical — same CLI / NOT RUN — reason. Vertical or a NOT RUN other
+  than opt-in-off is a limitation the user must see.>
 - User waivers this session: <none, or per waiver: which gate — the user's
   words, quoted. A waiver is recorded here, never silently applied.>
 

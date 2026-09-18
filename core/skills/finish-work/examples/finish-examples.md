@@ -20,7 +20,7 @@ Branch feat/csv-export — gates green, CI Phase 1 + 2 pass, review APPROVED.
 
 ## Gate status
 - Evidence: VERIFIED — check-work ran the 4 rspec specs, all green
-- Cross-model adversarial pass: vertical — same family (no second-vendor CLI
+- Cross-model adversarial pass: vertical — same CLI (no second-vendor CLI
   on PATH; the Lead's own stronger tier ran the cold review). Recorded as a
   verification limitation, not a cross-family pass — surfaced here, not hidden.
 

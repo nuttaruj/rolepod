@@ -25,12 +25,14 @@
  the Lead's.>
 
 **Cross-model adversarial pass:** <ran on `<cli>` (cross-family, its default model — receipt: ROLEPOD-XFAM ok … raw=<path>) |
- NOT RUN — cross-family off (opt-in; the user's choice — a note, not a
- limitation) | vertical — same family, reason (own CLI's stronger tier as
- cold reviewer; not a cross-family pass) | NOT RUN — reason (pool failed /
- empty; Lead floor covered every axis instead). Vertical or a NOT RUN other
- than opt-in-off on a high-risk diff is a recorded verification limitation —
- `finish-work`'s Reviewer gate surfaces it before merge.>
+ ran on `<cli>`, model family not reported (a CLI preset with no family
+ field — the receipt still clears the gate) | NOT RUN — cross-family off
+ (opt-in; the user's choice — a note, not a limitation) | vertical — same
+ CLI, reason (own CLI's stronger tier as cold reviewer; not a cross-family
+ pass) | NOT RUN — reason (pool failed / empty; Lead floor covered every
+ axis instead). Vertical or a NOT RUN other than opt-in-off on a high-risk
+ diff is a recorded verification limitation — `finish-work`'s Reviewer gate
+ surfaces it before merge.>
 
 ## Findings
 <Severity-ordered. Each finding: file:line — issue — why it matters — fix
