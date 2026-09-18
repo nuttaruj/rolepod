@@ -793,6 +793,8 @@ WT_TMP=$(mktemp -d); WT_HOME="$WT_TMP/home"; mkdir -p "$WT_HOME"
   && git worktree add -q .worktrees/t2 -b t2 2>/dev/null \
   && git worktree add -q "$WT_TMP/outside" -b t3 2>/dev/null \
   && git worktree add -q "$WT_TMP/r-wt-t4" -b t4 2>/dev/null ) >/dev/null 2>&1
+# age every fixture worktree past the 30 min "just created" window
+for _w in "$WT_TMP/r/.worktrees/t1" "$WT_TMP/r/.worktrees/t2" "$WT_TMP/outside" "$WT_TMP/r-wt-t4"; do touch -t 202601010000 "$_w/.git"; done
 wtc() { # $1 = command, $2 = cwd
   printf '{"session_id":"w1","tool_name":"Bash","tool_input":{"command":"%s"},"tool_response":{"exit_code":0}}' "$1" \
     | (cd "${2:-$WT_TMP/r}" && HOME="$WT_HOME" TMPDIR="$WT_TMP" bash "$HOOKS/fix-loop-breaker.sh")
@@ -839,6 +841,15 @@ out=$(wtc 'git commit -m x')
 echo "$out" | grep -q '1 prunable entry (directory gone)' \
   && echo "  ✓ a deleted worktree directory is reported as prunable" \
   || { echo "  ✗ prunable count missing: ${out:0:220}"; fail=$((fail+1)); }
+( cd "$WT_TMP/r" && git worktree prune && git worktree add -q .worktrees/t5 -b t5 ) >/dev/null 2>&1   # fresh: no lock, no edits yet
+out=$(wtc 'git commit -m x')
+echo "$out" | grep -q '.worktrees/t5 (in use)' \
+  && echo "  ✓ a worktree created in the last 30 min is in use (task owner not yet editing)" \
+  || { echo "  ✗ fresh worktree not tagged in use: ${out:0:220}"; fail=$((fail+1)); }
+echo "$out" | grep -q '../r-wt-t4 (merged), .worktrees/t2 (in use), .worktrees/t5 (in use)' \
+  && echo "  ✓ list order: merged first, in use last" \
+  || { echo "  ✗ list order wrong: ${out:0:220}"; fail=$((fail+1)); }
+( cd "$WT_TMP/r" && git worktree remove --force .worktrees/t5 ) >/dev/null 2>&1
 ( cd "$WT_TMP/r" && git worktree prune && git worktree remove --force .worktrees/t2 && git worktree remove --force "$WT_TMP/outside" && git worktree remove --force "$WT_TMP/r-wt-t4" ) >/dev/null 2>&1
 out=$(wtc 'git commit -m x')
 [ -z "$out" ] && echo "  ✓ no leftover worktree → silent" || { echo "  ✗ reminder with no leftovers: ${out:0:160}"; fail=$((fail+1)); }

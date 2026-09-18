@@ -172,6 +172,10 @@ if mcommit and not failed and not interrupted:
                         in_use = in_use or any(x.endswith(".lock") and now - os.path.getmtime(os.path.join(ld, x)) < 1800 for x in os.listdir(ld))
                     except Exception:
                         pass
+                try:   # created in the last 30 min = a task owner that has not edited yet
+                    in_use = in_use or time.time() - os.path.getmtime(os.path.join(p, ".git")) < 1800
+                except Exception:
+                    pass
                 try:
                     if in_use:
                         tag = "in use"
@@ -186,6 +190,8 @@ if mcommit and not failed and not interrupted:
                     break
                 items.append((os.path.relpath(p, root), tag))
             if items or prunable:
+                # actionable first: merged (remove now) > unmerged (decide) > in use (leave)
+                items.sort(key=lambda it: 0 if it[1] == "merged" else (2 if it[1] == "in use" else 1))
                 shown = ", ".join("%s (%s)" % it for it in items[:3])
                 more = " +%d more" % (len(items) - 3) if len(items) > 3 else ""
                 if cut:
@@ -193,7 +199,7 @@ if mcommit and not failed and not interrupted:
                 pr = " %d prunable entr%s (directory gone)." % (prunable, "y" if prunable == 1 else "ies") if prunable else ""
                 wt = ("WORKTREES LEFT: %d rolepod worktree(s) after this commit: %s%s.%s "
                       "Fix: merged -> git worktree remove <path>, then git branch -d <branch>; unmerged -> finish or discard first; "
-                      "then git worktree prune. Exception: in use = a live sibling session builds there, leave it."
+                      "then git worktree prune. Exception: in use = a live sibling session builds there or it is under 30 min old, leave it."
                       % (len(items), shown, more, pr))
                 notes.append(wt)
                 sysmsg = wt
