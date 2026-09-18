@@ -183,6 +183,98 @@ grep -q 'timeout: 600000' <<<"$(bsc_ti Bash '{"command":"make test-static"}')" \
   && echo "  ✓ deny reason names the fix (timeout: 600000)" \
   || { echo "  ✗ deny reason lacks the timeout fix"; fail=$((fail+1)); }
 
+# ── block-subagent-commit: write rule — a Bash write is an edit (bash-writes-are-edits Task 2) ──
+# NOT mktemp -d: subagent-write-scope.sh treats /tmp, /private/tmp and (on
+# macOS) /var/folders/... as OS scratch and always allows a write there — a
+# fixture repo living under the system temp root would silently pass every
+# deny case below. A sibling of REPO_DIR sits outside all of those.
+BW_TMP="$(dirname "$REPO_DIR")/rp-bw-selftest.$$"
+rm -rf "$BW_TMP"; mkdir -p "$BW_TMP"
+( cd "$BW_TMP" && git init -q . && git config user.email t@t && git config user.name t \
+  && mkdir -p src tests && git commit -q --allow-empty -m base )
+BW_LEDGER="$BW_TMP/.rolepod/evidence/edits.jsonl"
+bw_sub() { # $1 = agent_type, $2 = command
+  printf '{"agent_id":"a1","agent_type":"%s","cwd":"%s","tool_name":"Bash","tool_input":{"command":%s}}' \
+    "$1" "$BW_TMP" "$(printf '%s' "$2" | python3 -c 'import json,sys; print(json.dumps(sys.stdin.read()))')" \
+    | (cd "$BW_TMP" && bash "$HOOKS/block-subagent-commit.sh")
+}
+bw_lead() { # $1 = command
+  printf '{"cwd":"%s","tool_name":"Bash","tool_input":{"command":%s}}' \
+    "$BW_TMP" "$(printf '%s' "$1" | python3 -c 'import json,sys; print(json.dumps(sys.stdin.read()))')" \
+    | (cd "$BW_TMP" && bash "$HOOKS/block-subagent-commit.sh")
+}
+
+rm -f "$BW_LEDGER"
+out=$(bw_sub 'rolepod:universal-reviewer' 'cat > src/x.ts <<EOF
+x
+EOF')
+check "read-only sub-agent Bash heredoc write to src/x.ts → deny" deny "$out"
+echo "$out" | grep -q 'shell write:' \
+  && echo "  ✓ deny reason carries the shell write: prefix" \
+  || { echo "  ✗ deny reason missing the shell write: prefix"; fail=$((fail+1)); }
+[ -f "$BW_LEDGER" ] \
+  && { echo "  ✗ a denied shell write still added a ledger row"; fail=$((fail+1)); } \
+  || echo "  ✓ a denied shell write adds no ledger row"
+
+rm -f "$BW_LEDGER"
+out=$(bw_sub 'rolepod:qa-tester' 'cat > tests/x.test.ts <<EOF
+x
+EOF')
+check "test-only sub-agent Bash heredoc write to tests/x.test.ts → allow" allow "$out"
+
+rm -f "$BW_LEDGER"
+out=$(bw_sub 'general-purpose' 'sed -i "s/a/b/" src/y.py')
+check "generic sub-agent Bash sed -i on src/y.py → deny" deny "$out"
+echo "$out" | grep -q 'shell write:' \
+  && echo "  ✓ generic sub-agent sed -i deny reason carries the shell write: prefix" \
+  || { echo "  ✗ generic sub-agent sed -i deny reason missing the shell write: prefix"; fail=$((fail+1)); }
+
+rm -f "$BW_LEDGER"
+out=$(bw_lead 'printf x > src/z.py')
+check "Lead Bash write to src/z.py → allow" allow "$out"
+[ -f "$BW_LEDGER" ] && grep -q '"path": *"src/z.py"' "$BW_LEDGER" \
+  && echo "  ✓ Lead Bash write lands a ledger row for src/z.py" \
+  || { echo "  ✗ Lead Bash write did not add a ledger row for src/z.py"; fail=$((fail+1)); }
+
+rm -f "$BW_LEDGER"
+out=$(bw_sub 'backend-developer' 'printf x > src/z.py && git commit -m x')
+check "sub-agent Bash write chained with git commit → the commit deny wins" deny "$out"
+echo "$out" | grep -q "never commit" \
+  && echo "  ✓ …and the reason is the version-control one, not the write one" \
+  || { echo "  ✗ write+commit reason is not the commit one"; fail=$((fail+1)); }
+[ -f "$BW_LEDGER" ] \
+  && { echo "  ✗ a command whose commit was denied still added a ledger row"; fail=$((fail+1)); } \
+  || echo "  ✓ a denied write+commit command adds no ledger row"
+
+rm -f "$BW_LEDGER"
+out=$(bw_lead 'ls -la')
+check "Lead Bash non-write (ls -la) → allow" allow "$out"
+[ ! -f "$BW_LEDGER" ] \
+  && echo "  ✓ Lead non-write Bash call adds no ledger row" \
+  || { echo "  ✗ Lead non-write Bash call unexpectedly added a ledger row"; fail=$((fail+1)); }
+
+# Cost (R4): the Lead's no-write allow path and a sub-agent's allow path stay
+# cheap — informational timing (machine-dependent; never fails the suite).
+# The hook itself is timed directly here (plain printf, no python json.dumps
+# escaping step in the measured region — bw_lead/bw_sub above build that
+# payload through an extra python interpreter start, which would double-count
+# against the hook's own cost). Two commands with no shell metacharacters, so
+# a hand-built JSON literal is safe.
+LEAD_IN=$(printf '{"cwd":"%s","tool_name":"Bash","tool_input":{"command":"ls -la"}}' "$BW_TMP")
+SUB_IN=$(printf '{"agent_id":"a1","agent_type":"backend-developer","cwd":"%s","tool_name":"Bash","tool_input":{"command":"git log --oneline"}}' "$BW_TMP")
+T0=$(python3 -I -c 'import time; print(time.time())')
+printf '%s' "$LEAD_IN" | bash "$HOOKS/block-subagent-commit.sh" >/dev/null
+T1=$(python3 -I -c 'import time; print(time.time())')
+LEAD_MS=$(python3 -I -c "print(int(($T1-$T0)*1000))")
+echo "  · Lead no-write Bash allow path: ${LEAD_MS} ms (task budget ≤ 40 ms, informational)"
+T0=$(python3 -I -c 'import time; print(time.time())')
+printf '%s' "$SUB_IN" | bash "$HOOKS/block-subagent-commit.sh" >/dev/null
+T1=$(python3 -I -c 'import time; print(time.time())')
+SUB_MS=$(python3 -I -c "print(int(($T1-$T0)*1000))")
+echo "  · sub-agent Bash allow path: ${SUB_MS} ms (task budget ≤ 60 ms, informational)"
+
+rm -rf "$BW_TMP"
+
 # ── gate-reminder: Claude AND Codex tool names must both fire ──────────
 gr() { printf '%s' "$1" | bash "$HOOKS/gate-reminder.sh"; }
 

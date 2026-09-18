@@ -2,6 +2,18 @@
 # PreToolUse Edit/Write/MultiEdit/NotebookEdit — a sub-agent writes only what
 # its role owns.
 #
+# Also invoked directly (bash-writes-are-edits, 2026-09-18): a Bash write is
+# an edit too, so `block-subagent-commit.sh`'s write rule calls this same
+# script for each path it detects, feeding it a SYNTHESIZED input
+# (`tool_name: "Bash"`, `tool_input.file_path: <detected path>`, a placeholder
+# `agent_id`) standing in for a real Edit/Write/MultiEdit/NotebookEdit call.
+# The class rule below applies identically; the caller prepends
+# `shell write: <path> — ` to a deny's reason and leaves this script's own
+# message text and 600-char budget untouched. On Codex this path is inert
+# today: the Codex plugin does not bundle this script, so `[ -f "$SCOPE" ]`
+# at the caller is false and a Bash write there only reaches the ledger, with
+# no class deny (see docs/hooks.md / docs/cli-support.md).
+#
 # Rationale: measured across every product repo (30 days of subagent
 # transcripts). Generic agents: 16 of 31 `general-purpose` dispatches edited
 # product code with no role doctrine, no tool cap and no cohesion contract.
