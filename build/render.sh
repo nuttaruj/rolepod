@@ -413,7 +413,8 @@ render_codex() {
     "$plugin_dst/hooks/terse-core.md"
   local h
   for h in gate-reminder precommit-gate project-context-loader claim-verify-nudge \
-           block-subagent-commit session-lifecycle test-diff-lint fix-loop-breaker sweep-nudge; do
+           block-subagent-commit session-lifecycle test-diff-lint fix-loop-breaker sweep-nudge \
+           subagent-write-scope; do
     cp "$REPO_DIR/hooks/$h.sh" "$plugin_dst/hooks/$h.sh"
   done
   # edit-ledger.py (v2.134.0): gate-reminder writes it on apply_patch, precommit-gate reads it.

@@ -919,6 +919,8 @@ check "codex hooks.json registers agent-sync.sh at SessionStart only" \
   "[ \"\$AS_EVENTS\" = SessionStart ]"
 check "codex agent-sync.sh is render-copied into the plugin tree" \
   "cmp -s adapters/codex/plugins/rolepod/hooks/agent-sync.sh plugins/rolepod-codex/hooks/agent-sync.sh"
+check "codex plugin bundles subagent-write-scope.sh byte-exact (Bash write rule class deny)" \
+  "cmp -s hooks/subagent-write-scope.sh plugins/rolepod-codex/hooks/subagent-write-scope.sh"
 
 # ── Codex effort pins (v2.74.0 no ultra; v2.75.0 xhigh ceiling) — `ultra` is
 # proactive delegation (a fan-out: children at sol), `max` is above the

@@ -9,10 +9,11 @@
 # `agent_id`) standing in for a real Edit/Write/MultiEdit/NotebookEdit call.
 # The class rule below applies identically; the caller prepends
 # `shell write: <path> — ` to a deny's reason and leaves this script's own
-# message text and 600-char budget untouched. On Codex this path is inert
-# today: the Codex plugin does not bundle this script, so `[ -f "$SCOPE" ]`
-# at the caller is false and a Bash write there only reaches the ledger, with
-# no class deny (see docs/hooks.md / docs/cli-support.md).
+# message text and 600-char budget untouched. The Codex plugin bundles this
+# script too (2026-09-18) — even though Codex has no Edit/Write/MultiEdit/
+# NotebookEdit tools of its own to gate, `[ -f "$SCOPE" ]` at the caller is
+# true and a Bash write there gets the same class deny (see docs/hooks.md /
+# docs/cli-support.md).
 #
 # Rationale: measured across every product repo (30 days of subagent
 # transcripts). Generic agents: 16 of 31 `general-purpose` dispatches edited
