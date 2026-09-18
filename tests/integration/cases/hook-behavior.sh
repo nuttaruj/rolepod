@@ -781,6 +781,69 @@ check_ctx "loop-breaker: 'Exit code N' text form counts → nudge at 3rd" nudge 
 check_ctx "loop-breaker: different session id isolated → silent" silent "$(lb s3 1)"
 rm -rf "$LB_TMP"
 
+# ─── post-commit worktree reminder (v2.149.0): leftovers under .worktrees/ ──
+# After a git commit the shared core lists the worktrees left under the
+# repo's .worktrees/, tagged merged / unmerged (+N) / in use, and says the
+# cleanup order — as additionalContext AND systemMessage. Never lists the
+# current checkout, a worktree outside .worktrees/, or fires on other commands.
+WT_TMP=$(mktemp -d); WT_HOME="$WT_TMP/home"; mkdir -p "$WT_HOME"
+( cd "$WT_TMP" && git init -q r && cd r && git config user.email t@t && git config user.name t \
+  && echo a > a && git add a && git commit -qm a \
+  && git worktree add -q .worktrees/t1 -b t1 2>/dev/null && ( cd .worktrees/t1 && echo b > b && git add b && git commit -qm b ) \
+  && git worktree add -q .worktrees/t2 -b t2 2>/dev/null \
+  && git worktree add -q "$WT_TMP/outside" -b t3 2>/dev/null \
+  && git worktree add -q "$WT_TMP/r-wt-t4" -b t4 2>/dev/null ) >/dev/null 2>&1
+wtc() { # $1 = command, $2 = cwd
+  printf '{"session_id":"w1","tool_name":"Bash","tool_input":{"command":"%s"},"tool_response":{"exit_code":0}}' "$1" \
+    | (cd "${2:-$WT_TMP/r}" && HOME="$WT_HOME" TMPDIR="$WT_TMP" bash "$HOOKS/fix-loop-breaker.sh")
+}
+out=$(wtc 'git commit -m x')
+echo "$out" | grep -q 'WORKTREES LEFT: 3 rolepod worktree' \
+  && echo "$out" | grep -q '.worktrees/t1 (unmerged, +1)' && echo "$out" | grep -q '.worktrees/t2 (merged)' \
+  && echo "$out" | grep -q '\.\./r-wt-t4 (merged)' \
+  && echo "  ✓ post-commit: three leftovers listed (two under .worktrees/, one brief-shaped sibling), tagged unmerged +1 / merged" \
+  || { echo "  ✗ post-commit leftover list wrong: ${out:0:260}"; fail=$((fail+1)); }
+echo "$out" | grep -q 'outside' \
+  && { echo "  ✗ post-commit listed a worktree outside .worktrees/"; fail=$((fail+1)); } \
+  || echo "  ✓ post-commit ignores a worktree outside .worktrees/"
+echo "$out" | grep -q '"systemMessage"' && echo "$out" | grep -q 'git worktree remove' \
+  && echo "  ✓ post-commit: systemMessage for the user + the cleanup command" \
+  || { echo "  ✗ post-commit systemMessage / Fix missing: ${out:0:160}"; fail=$((fail+1)); }
+out=$(wtc 'pytest -q')
+echo "$out" | grep -q 'WORKTREES LEFT' \
+  && { echo "  ✗ post-commit reminder fired on a non-commit command"; fail=$((fail+1)); } \
+  || echo "  ✓ non-commit command → no worktree reminder"
+out=$(printf '{"session_id":"w1","tool_name":"Bash","tool_input":{"command":"git commit -m x"},"tool_response":{"exit_code":1,"stderr":"nothing to commit"}}' \
+  | (cd "$WT_TMP/r" && HOME="$WT_HOME" TMPDIR="$WT_TMP" bash "$HOOKS/fix-loop-breaker.sh"))
+echo "$out" | grep -q 'WORKTREES LEFT' \
+  && { echo "  ✗ post-commit reminder fired on a FAILED commit"; fail=$((fail+1)); } \
+  || echo "  ✓ failed commit → no worktree reminder"
+out=$(wtc "git -C $WT_TMP/r commit -m x" "$WT_TMP")
+echo "$out" | grep -q 'WORKTREES LEFT: 3 rolepod' \
+  && echo "  ✓ git -C <repo> commit from outside lists THAT repo's worktrees" \
+  || { echo "  ✗ git -C form missed: ${out:0:200}"; fail=$((fail+1)); }
+out=$(wtc 'git commit -m y' "$WT_TMP/r/.worktrees/t1")
+echo "$out" | grep -q 'WORKTREES LEFT: 2 rolepod' && echo "$out" | grep -q '.worktrees/t2 (merged)' \
+  && ! echo "$out" | grep -q '.worktrees/t1 (' \
+  && echo "  ✓ committing inside a worktree never lists the current checkout" \
+  || { echo "  ✗ current worktree listed or count wrong: ${out:0:200}"; fail=$((fail+1)); }
+_t2=$(cd "$WT_TMP/r/.worktrees/t2" && git rev-parse --show-toplevel)
+_h=$(printf '%s' "$_t2" | { shasum -a 256 2>/dev/null || sha256sum; } | awk '{print $1}' | head -c 16)
+mkdir -p "$WT_HOME/.rolepod/session-locks/$_h" && : > "$WT_HOME/.rolepod/session-locks/$_h/sib.lock"
+out=$(wtc 'git commit -m x')
+echo "$out" | grep -q '.worktrees/t2 (in use)' \
+  && echo "  ✓ a live sibling lock tags the worktree in use" \
+  || { echo "  ✗ in-use tag missing: ${out:0:200}"; fail=$((fail+1)); }
+rm -rf "$WT_TMP/r/.worktrees/t1"
+out=$(wtc 'git commit -m x')
+echo "$out" | grep -q '1 prunable entry (directory gone)' \
+  && echo "  ✓ a deleted worktree directory is reported as prunable" \
+  || { echo "  ✗ prunable count missing: ${out:0:220}"; fail=$((fail+1)); }
+( cd "$WT_TMP/r" && git worktree prune && git worktree remove --force .worktrees/t2 && git worktree remove --force "$WT_TMP/outside" && git worktree remove --force "$WT_TMP/r-wt-t4" ) >/dev/null 2>&1
+out=$(wtc 'git commit -m x')
+[ -z "$out" ] && echo "  ✓ no leftover worktree → silent" || { echo "  ✗ reminder with no leftovers: ${out:0:160}"; fail=$((fail+1)); }
+rm -rf "$WT_TMP"
+
 # ─── sweep-nudge: raw reads past 120 KB in one turn, no scout, no edit → ONE nudge ──
 # The scout rule at the point of action. The hook must stay silent below the
 # line, on a build turn (edit seen), after a dispatch, and after it fired once.

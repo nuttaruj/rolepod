@@ -189,6 +189,9 @@ self-contained.
 - **Commit ban (HARD)** — subagents NEVER run `git commit` / `git push` /
   `gh pr create` / `gh pr merge` / `git reset --hard` / `git push --force`.
   Return COMPLETED + file list + verification evidence; the Lead commits.
+- **Edit tools only** — change files with the CLI's edit tool, never a shell
+  heredoc / `sed -i` / `tee`: the write-scope gate and the evidence ledger see
+  tool edits only, so a shell write is an ungated, unlogged edit.
 - **Hand-off** — return exact file paths, what is done and what is next, and
   old-vs-new for any API / schema change; prefix breaking changes with
   `BREAKING:`.

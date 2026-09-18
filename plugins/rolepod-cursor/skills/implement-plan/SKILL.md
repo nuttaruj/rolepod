@@ -14,8 +14,9 @@ Execute the approved plan with discipline: TDD at the seams the plan names, surg
 2. NEVER expand scope mid-implementation. New idea → one line under the plan's `## Follow-ups`, then finish the planned task.
 3. ALWAYS write the failing test first for every logic slice, at the plan's seam.
 4. NEVER delegate without a written task scope and a clear done criterion.
-5. CONTINUOUS execution between tasks AND between plan phases — no "should I continue?" check-ins, never end the turn mid-plan: an ended turn is a stop however it is worded. Stop only on a BLOCKED, spec / plan gap, or scope ambiguity that SURVIVES a re-read of the plan and the touched files (BLOCKED: plus a variable change) — a wrinkle you can settle yourself never stops you.
-6. Forced to end anyway (usage limit / context / user stop) → the last act is one line under the plan's `## Changes during build`: stopped after Task N · next Task M · how to start the env — the next session reads it before anything else.
+5. CONTINUOUS execution between tasks AND between plan phases — no "should I continue?" check-ins, never end the turn mid-plan: an ended turn is a stop however it is worded. Stop only on a BLOCKED, spec / plan gap, or scope ambiguity that SURVIVES a re-read of the plan and the touched files (BLOCKED: plus a variable change).
+6. Forced to end anyway (usage limit / context / user stop) → the last act is one line under the plan's `## Changes during build`: stopped after Task N · next Task M · how to start the env.
+7. File changes go through the edit tool, never a shell heredoc / `sed -i` / `tee` — the self-do nudge, edit ledger and test-edit count see tool edits only.
 </EXTREMELY-IMPORTANT>
 
 ## Skip when
