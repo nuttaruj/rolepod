@@ -577,14 +577,7 @@ $cli  skipped  $fam  implemented the uncommitted ticket (author never reviews ow
     note="bin=$bin · timeout=$(timeout_for "$cli")s · stall=$(stall_for "$cli")s"
     case "$cli" in cursor|opencode) note="$note · $(describe_default_model "$cli")" ;; esac
     if [ "$fam" = "unknown" ]; then
-      case "$cli" in
-        cursor) case "$(cursor_default_model | tr 'A-Z' 'a-z')" in
-                  ""|auto|default) note="$note · family unknown: Cursor Auto routes across vendors — pin one (run \`cursor-agent\`, type /model) — info only, still used" ;;
-                  *) note="$note · family unknown: model not recognized — info only, still used" ;;
-                esac ;;
-        opencode) if [ -z "$(opencode_default_model)" ]; then note="$note · family unknown: no \"model\" in opencode.json(c) and no last-used model — info only, still used"
-                  else note="$note · family unknown: model not recognized — info only, still used"; fi ;;
-      esac
+      note="$note · family not reported (CLI preset) — used as-is"
     fi
     POOL_ROWS="$POOL_ROWS
 $cli  usable  $fam  $note"

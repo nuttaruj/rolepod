@@ -127,7 +127,7 @@ out=$(bash "$RUNNER" --pool --lead claude)
 check "cursor grok → family xai" "printf '%s' \"\$out\" | grep -q 'cursor  *usable  *xai '"
 printf '{ "model": { "modelId": "default", "displayModelId": "auto" } }\n' > "$HOME/.cursor/cli-config.json"
 out=$(bash "$RUNNER" --pool --lead claude)
-check "cursor Auto → family unknown with the pin-one hint" "printf '%s' \"\$out\" | grep -q 'cursor  *usable  *unknown .*Cursor Auto routes across vendors'"
+check "cursor Auto → family not reported, no advice" "printf '%s' \"\$out\" | grep -q 'cursor  *usable  *unknown .*family not reported' && ! printf '%s' \"\$out\" | grep -q 'pin one'"
 printf '{ "model": { "modelId": "claude-sonnet-5-thinking-high" } }\n' > "$HOME/.cursor/cli-config.json"
 out=$(bash "$RUNNER" --pool --lead claude)
 check "cursor pinned to a Claude model stays usable under a Claude Lead (family = info)" "printf '%s' \"\$out\" | grep -q 'cursor  *usable  *anthropic'"
