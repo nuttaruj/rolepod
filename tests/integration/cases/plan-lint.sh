@@ -772,6 +772,7 @@ OUT=$(bash "$LINT" --brief 2 "$TMP/brief-plan.md" "$TMP/brief-contract.md")
 RC=$?
 EXPECTED_HEADINGS='## Worktree
 ## Goal
+## Tier
 ## Blocked by
 ## Read first
 ## Files allowed
@@ -825,6 +826,11 @@ if printf '%s\n' "$OUT3" | grep -A1 '^## Reviewers' | grep -qF '`none`'; then
 else
   echo "  ✗ --brief prose-only Reviewers wrong: $OUT3"; fail=$((fail+1))
 fi
+if printf '%s\n' "$OUT3" | grep -A1 '^## Tier' | grep -qF 'R1 (docs-only)'; then
+  echo "  ✓ plan-lint.sh --brief sets Tier to R1 (docs-only) on a prose-only task"
+else
+  echo "  ✗ --brief prose-only Tier wrong: $OUT3"; fail=$((fail+1))
+fi
 
 # (3) a task whose Files include src/auth/login.ts → security-engineer appended.
 cat > "$TMP/brief-auth.md" <<'EOF'
@@ -845,6 +851,59 @@ if printf '%s\n' "$OUTA" | grep -A1 '^## Reviewers' | grep -qF '`security-engine
   echo "  ✓ plan-lint.sh --brief appends security-engineer for an auth path"
 else
   echo "  ✗ --brief security-engineer match missed: $OUTA"; fail=$((fail+1))
+fi
+if printf '%s\n' "$OUTA" | grep -A1 '^## Tier' | grep -qF 'R4 (high-risk)'; then
+  echo "  ✓ plan-lint.sh --brief sets Tier to R4 (high-risk) on a risk path"
+else
+  echo "  ✗ --brief risk-path Tier wrong: $OUTA"; fail=$((fail+1))
+fi
+if printf '%s\n' "$OUTA" | grep -A1 '^## Reviewers' | grep -qF 'rolepod-cross-family --kind review'; then
+  echo "  ✓ plan-lint.sh --brief names the external review command on an R4 task"
+else
+  echo "  ✗ --brief R4 Reviewers missing the external instruction: $OUTA"; fail=$((fail+1))
+fi
+
+# (3b) two non-test source files, no risk path → R3 (multi-file), universal-reviewer only.
+cat > "$TMP/brief-tier-r3.md" <<'EOF'
+### Task 1: two files
+- **Delivers:** x
+- **Blocked by:** none
+- [ ] **Files:** `src/a.py`, `src/b.py`
+- [ ] **Command:** true
+- **Owner:** backend-developer
+- **Done when:** true
+## Parallel layout
+Sequential — single owner.
+## Failure policy
+Default: stop.
+EOF
+OUTR3=$(bash "$LINT" --brief 1 "$TMP/brief-tier-r3.md")
+if printf '%s\n' "$OUTR3" | grep -A1 '^## Tier' | grep -qF 'R3 (multi-file)' \
+  && [ "$(printf '%s\n' "$OUTR3" | grep -A1 '^## Reviewers' | tail -1)" = '`universal-reviewer`' ]; then
+  echo "  ✓ plan-lint.sh --brief sets Tier to R3 (multi-file) with universal-reviewer only"
+else
+  echo "  ✗ --brief two-file Tier wrong: $OUTR3"; fail=$((fail+1))
+fi
+
+# (3c) one source file plus its own test file → R2 (one file + test).
+cat > "$TMP/brief-tier-r2.md" <<'EOF'
+### Task 1: file plus test
+- **Delivers:** x
+- **Blocked by:** none
+- [ ] **Files:** `src/x.py`, `tests/test_x.py`
+- [ ] **Command:** true
+- **Owner:** backend-developer
+- **Done when:** true
+## Parallel layout
+Sequential — single owner.
+## Failure policy
+Default: stop.
+EOF
+OUTR2=$(bash "$LINT" --brief 1 "$TMP/brief-tier-r2.md")
+if printf '%s\n' "$OUTR2" | grep -A1 '^## Tier' | grep -qF 'R2 (one file + test)'; then
+  echo "  ✓ plan-lint.sh --brief sets Tier to R2 (one file + test) on a file + its own test"
+else
+  echo "  ✗ --brief file+test Tier wrong: $OUTR2"; fail=$((fail+1))
 fi
 
 # (4) Owner line with write: external → Write external.

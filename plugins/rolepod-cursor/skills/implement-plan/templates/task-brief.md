@@ -1,5 +1,4 @@
-<!-- Task brief — GENERATED: `plan-lint.sh --brief <N> <plan> [contract]`. -->
-<!-- Lead adds Read first; the owner executes ONLY this brief, never commits. -->
+<!-- GENERATED: `plan-lint.sh --brief <N> <plan> [contract]`; the Lead adds Read first; the owner executes ONLY this brief, never commits. -->
 
 # Task <N>: <title>
 Plan: <path> · Spec: <path>
@@ -7,17 +6,20 @@ Plan: <path> · Spec: <path>
 ## Goal
 <the task's Delivers line>
 
+## Tier
+<R1 (docs-only) | R2 (one file + test) | R3 (multi-file) | R4 (high-risk) — from Files allowed>
+
 ## Blocked by
-<what this task consumes from each blocker>
+<what it consumes from each blocker>
 
 ## Read first
-<2-3 files + the pattern to copy, named by the Lead — start here, never re-survey the repo>
+<2-3 files + the pattern to copy, named by the Lead; start here, never re-survey>
 
 ## Files allowed
-- <the task's Files ∪ the contract's ownership slice for this owner>
+- <the task's Files ∪ the contract's slice for this owner>
 
 ## Files forbidden
-- <other Files-to-touch paths · do-not-touch list · everything else>
+- <other Files-to-touch paths · do-not-touch list · all else>
 
 ## Change
 <the task's Change bullets, verbatim>
@@ -32,13 +34,13 @@ Plan: <path> · Spec: <path>
 <pass/fail condition>
 
 ## Write
-`self` | `external` (another CLI drafts; the owner still runs the loop)
+`self` | `external` (another CLI drafts; the owner runs the loop)
 
 ## Reviewers
-`universal-reviewer` (+ `security-engineer` on a high-risk path; + `qa-tester` (E2E) when the slice changes what a user sees) — `none` for a docs-only diff
+`universal-reviewer` (R4: the strong pass + `security-engineer`; + `qa-tester` (E2E) when the slice changes what a user sees; `none` for docs-only)
 
 ## Bounds
-- Edit Files allowed; an unowned path → touch + `Also touched:`; another owner's path → `NEEDS:` line. Never commit or push — leave the tree staged.
+- Edit Files allowed only; unowned path → `Also touched:`; another owner's path → `NEEDS:`. Never commit or push; leave the tree staged.
 - Ticket loop per agent-protocol (Command → Reviewers → fix → round 2 = flagging reviewer → brief).
 - Budget: build ≤40 tool calls, loop ≤120; past it → PARTIAL, never grind.
-- Read the brief, not the plan; open a source only for a named residual. New idea → Follow-ups.
+- Read the brief, not the plan; a source only for a named residual; new idea → Follow-ups.

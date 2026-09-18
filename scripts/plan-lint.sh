@@ -10,9 +10,9 @@
 #   whose Parallel layout says "Sequential" skips the ownership check.
 #
 # Usage: scripts/plan-lint.sh --brief <N> <plan.md> [contract.md]
-#   Prints Task N's brief (Goal/Blocked by/Read first/Files allowed/Files
-#   forbidden/Change/Test/Command/Done when/Write/Reviewers/Bounds) to
-#   stdout, assembled from the plan (and the contract's File-ownership +
+#   Prints Task N's brief (Goal/Tier/Blocked by/Read first/Files allowed/
+#   Files forbidden/Change/Test/Command/Done when/Write/Reviewers/Bounds)
+#   to stdout, assembled from the plan (and the contract's File-ownership +
 #   Do-not-touch-list when one is given). Exit 0 on success; exit 2 with
 #   one stderr line and empty stdout when Task N does not exist. Field
 #   labels match with or without `**bold**` (real plans use both dialects).
@@ -97,6 +97,19 @@ if [ "${1:-}" = "--brief" ]; then
     n = split(lp, w, " ")
     for (i = 1; i <= n; i++)
       if (w[i] ~ /^(auth|authn|authz|billing|payment|payments|credit|credits|secret|secrets|token|tokens|crypto|migration|migrations|permission|permissions|webhook|webhooks|security|deletion)$/) return 1
+    return 0
+  }
+  # A test file is named as a companion of the source it tests (Pythons
+  # test_x.py, JS/TS x.test.ts / x.spec.ts, Go/Rust/Ruby/Elixir x_test.*) —
+  # never a bare directory segment. A dir-based match would count a whole
+  # integration/e2e suite (many concerns, one shared file) as "its own
+  # test", masking a real multi-file change as R2.
+  function is_test(p,    lp) {
+    lp = tolower(p)
+    if (lp ~ /\.(test|spec)\.[a-z0-9]+$/) return 1
+    if (lp ~ /(^|\/)test_[^\/]+\.py$/) return 1
+    if (lp ~ /(^|\/)conftest\.py$/) return 1
+    if (lp ~ /_(test|spec)\.(go|rs|rb|ex|exs)$/) return 1
     return 0
   }
   FNR == NR {
@@ -297,6 +310,23 @@ if [ "${1:-}" = "--brief" ]; then
     printf "`git worktree add -b %s/t%s-%s ../%s-wt-%s-t%s-%s` — cd there for every command; the name says which task it holds\n", feat, want, tslug, repo, feat, want, tslug
     print "## Goal"
     print (D == "" ? "(not in plan)" : D)
+    print "## Tier"
+    # Computed ONCE here and reused by ## Reviewers below — Reviewers
+    # follows the tier (spec R2), it never re-derives it from the raw
+    # helpers, so the two can never print a mismatched pair on a reorder.
+    tprose = 1
+    for (i = 1; i <= acnt; i++) if (!is_prose(allowedord[i])) tprose = 0
+    trisk = 0
+    for (i = 1; i <= acnt; i++) if (is_security(allowedord[i])) trisk = 1
+    tnontest = 0
+    for (i = 1; i <= acnt; i++) if (!is_test(allowedord[i])) tnontest++
+    if (acnt > 0 && tprose) tier = "R1"
+    else if (trisk) tier = "R4"
+    else if (tnontest == 1 && (acnt - tnontest) <= 1) tier = "R2"
+    else tier = "R3"
+    tiergloss["R1"] = "R1 (docs-only)"; tiergloss["R2"] = "R2 (one file + test)"
+    tiergloss["R3"] = "R3 (multi-file)"; tiergloss["R4"] = "R4 (high-risk)"
+    print tiergloss[tier]
     print "## Blocked by"
     print (B == "" ? "(not in plan)" : B)
     print "## Read first"
@@ -324,14 +354,10 @@ if [ "${1:-}" = "--brief" ]; then
     print "## Write"
     printf "`%s`\n", write
     print "## Reviewers"
-    allprose = 1
-    for (i = 1; i <= acnt; i++) if (!is_prose(allowedord[i])) allprose = 0
-    if (acnt > 0 && allprose) print "`none`"
+    if (tier == "R1") print "`none`"
     else {
-      sec = 0
-      for (i = 1; i <= acnt; i++) if (is_security(allowedord[i])) sec = 1
-      r = "`universal-reviewer`"
-      if (sec) r = r ", `security-engineer`"
+      if (tier == "R4") r = "`universal-reviewer` (internal strong) or, with a usable pool, `rolepod-cross-family --kind review --brief <this brief> --attach <diff> --detach` instead, plus `security-engineer`"
+      else r = "`universal-reviewer`"
       if (Te ~ /(E2E|e2e|[Ee]nd-to-end|browser|screenshot|uiproof|UI test|UI flow|user-visible|Playwright|Cypress|visual diff)/) r = r ", `qa-tester` (E2E)"
       print r
     }
