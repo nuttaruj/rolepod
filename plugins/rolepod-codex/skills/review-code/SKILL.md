@@ -62,15 +62,14 @@ rolepod-brain: add `brain_seed(task, agent: <reviewer id>)` verbatim; no tool �
 **By rigor tier** (R1 trivial edit · R2 one file + test · R3 multi-file · R4 high-risk):
 - **R1** → no review, no re-read turn; the edit tool's echo is the evidence. A docs-only diff is R1 at any size — no reviewer, internal or external; its own check (link check / static lint) is the verify.
 - **R2** → ONE read-only `universal-reviewer` pass on the diff (two axes: spec + standards; the author never reviews own logic); a matched row (perf / UI / arch) → that role instead. The writer's unit tests are the floor.
-- **R3** → the row match, internal only — the pool is an R4 instrument (the user asks → one pass). A high-risk path anywhere in the diff tiers the whole commission R4.
+- **R3** → the row match, internal only — the pool is an R4 instrument (the user asks → one pass). A high-risk path anywhere in the diff under review (the task or its ship group) tiers that diff R4; the commission's tier is the max over its tasks and governs Define / Plan only — a diff reviewed at its tier is never reviewed again at ship.
 - **R4** → the full adversarial floor, never less — ONE strong pass: the external when the pool is usable (dispatched by the task owner), else the internal strong. The router's comment/blank-only carve-out (1 file, ≤5 lines, zero logic) lands here as R2 + ONE internal strong reviewer, no external — the pool reviews code, never a comment / doc / config / rename diff.
 
 **Satellite-first strong pass.** A usable cross-family external IS the R4 strong adversarial pass: `rolepod-cross-family --kind review --brief <brief> --attach <diff> --detach` — read-only, anchored by the runner.
 
-**Detach by default.** The runner returns a job id and runs the chain (first member → fallbacks) with each member's budget.
-- Dispatch the internal reviewer and, on money / auth, the internal strong reviewer in the same breath; then keep working OUTSIDE the diff (a plan task on disjoint files; an implement job owns its tree — another worktree) or end the turn.
-- `rolepod-cross-family --collect <job-id>` waits up to the budget — in the foreground (a background wait leaves the caller idle).
-- Foreground (no `--detach`) is for small diffs only — the harness caps a foreground call and kills a slow member.
+**Detach by default.** The runner returns a job id and runs the chain (first member → fallbacks) with each member's budget (mechanics: `references/external-review-routing.md`).
+- Dispatch the internal reviewer and, on money / auth, the internal strong reviewer in the same breath; then keep working OUTSIDE the diff or end the turn.
+- `rolepod-cross-family --collect <job-id>` waits up to the budget, in the foreground.
 
 **Internal strong reviewer** (`security-engineer` / `universal-reviewer`) runs when any holds:
 - (a) cross-family is off, or the runner reports no usable member (every member failed / pool empty — logged);

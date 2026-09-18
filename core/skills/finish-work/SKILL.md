@@ -60,6 +60,7 @@ Run all six before any merge / push action. Any failure → fix or report; do no
 **Evidence** — check-work's `Status: UNVERIFIED` or `PARTIAL` blocks merge unless the user explicitly waives it (quote the waiver in the menu); green tests alone do not satisfy this gate. Tree unchanged since that block's recorded pass → cite it and skip the local re-run ONLY when a CI lane re-runs that scope on the merge path; no CI → run the Phase 1+2 equivalents locally before the irreversible act (§2).
 
 **Reviewer** — risk-appropriate review completed (`review-code`). On a high-risk diff read the report's **Cross-model adversarial pass** line: `ran on <cli>` (a ROLEPOD-XFAM ok receipt) clears the gate whatever the family field says — a CLI preset that reports no model family is stated neutrally, never as a limitation. `NOT RUN — cross-family off (opt-in)` is the user's choice, one neutral line. `NOT RUN` for any other reason (pool failed / empty) or `vertical — same CLI` is a verification limitation the user must see before merge; state it, never clear the gate silently.
+  Per task: an R4 task's strong-pass + `security-engineer` reports under `.rolepod/evidence/review/`, plus the group's drift read when named; missing → `review-code` for that task, never the branch.
 
 **PR scope (P)** — one concern per PR / merge. Mixed concerns → split (`git add -p`, separate branches) first; a mixed diff is unreviewable.
 
@@ -140,7 +141,7 @@ Load only when needed:
 
 - User has not authorized THIS specific ship action → stop, ask.
 - Required CI lane red → fix or report; do not merge.
-- High-risk diff without adversarial review → back to `review-code`.
+- An R4 task without its adversarial report → back to `review-code` (that task's diff).
 - About to push --force or reset --hard published history → stop, confirm.
 - 3rd PR on the same surface, or 3rd agent on the same issue → stop, ask.
 - Launch with no rollback plan, monitoring, or on-call confirmed → do not send traffic.

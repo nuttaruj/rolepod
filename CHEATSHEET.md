@@ -74,6 +74,8 @@ The writer's unit tests are the floor. One read-only `universal-reviewer` pass (
 | High-risk path (auth · billing · payments · credits · migration · deletion · secrets · tokens · crypto · permissions) | + `security-engineer` |
 | User-visible change (screen / flow / API contract) | + `qa-tester` (E2E / UI) |
 
+Tier and reviewers are per task; the plan's max tier only decides spec / plan ceremony.
+
 ## Stuck escalation
 
 ```

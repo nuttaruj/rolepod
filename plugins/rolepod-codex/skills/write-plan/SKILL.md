@@ -102,7 +102,7 @@ Never ship a plan containing: `TBD` / `TODO` / "implement later" · "add appropr
 
 Every task carries **Owner:** — the role the domain map in `templates/plan-template.md` assigns to the task's files (path first, then concern).
 - `Owner: Lead` for R1/R2-sized work (≤2 files) or when the user said self-do; from R3 up the map decides.
-- Reviewer roles are never owners: `qa-tester` = user-visible verification (E2E / UI test tasks); `security-engineer` on every touched high-risk surface (auth / billing / payments / credits / migration / data deletion / secrets / tokens / crypto / permissions / security) — both named in the task's Reviewer line.
+- Reviewer roles are never owners: `qa-tester` = user-visible verification (E2E / UI test tasks); `security-engineer` on every touched high-risk surface (per task — the brief's Tier line) (auth / billing / payments / credits / migration / data deletion / secrets / tokens / crypto / permissions / security) — both named in the task's Reviewer line.
 - Brief each owner per §6, plus the spec.
 
 ## If no matching agent is available
