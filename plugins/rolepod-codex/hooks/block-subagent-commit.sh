@@ -38,6 +38,19 @@
 set -euo pipefail
 
 INPUT=$(cat 2>/dev/null || echo '{}')
+
+# Fast path (v2.150.1): a Lead call (no agent_id) whose command carries no
+# write-shaped token can trip no rule — skip the python spawn, which cost
+# every Lead Bash call ~20 ms once the write rule made the program long.
+# Checked on the raw JSON, so a marker anywhere in the payload (cwd, the
+# description field) forces the full pass — fail-safe. The second
+# alternative is the six-character JSON escape of ">" (backslash u003e) some
+# harnesses emit; keep it. A word must stand alone ("git add" is not dd). A
+# missed case costs one ledger row (fail-open); every sub-agent call and
+# every token-carrying command still takes the full pass.
+FAST_RX='(>|\\u003e|(^|[^[:alnum:]_-])(tee|sed|perl|cp|mv|rm|install|unlink|truncate|dd)([^[:alnum:]_-]|$))'
+if [[ "$INPUT" != *'"agent_id"'* ]] && ! [[ "$INPUT" =~ $FAST_RX ]]; then exit 0; fi
+
 RP_LIB="$(cd "$(dirname "$0")/lib" && pwd)"
 
 # The payload travels by env: the program itself is python's stdin (heredoc).

@@ -253,6 +253,36 @@ check "Lead Bash non-write (ls -la) → allow" allow "$out"
   && echo "  ✓ Lead non-write Bash call adds no ledger row" \
   || { echo "  ✗ Lead non-write Bash call unexpectedly added a ledger row"; fail=$((fail+1)); }
 
+# fast path (v2.150.1): a Lead command with no write-shaped token never spawns python;
+# a redirect, a bare write verb, or any sub-agent call still takes the full pass.
+REAL_PY=$(command -v python3); mkdir -p "$BW_TMP/shim"
+printf '#!/bin/bash\n: > "%s/python-ran"\nexec "%s" "$@"\n' "$BW_TMP" "$REAL_PY" > "$BW_TMP/shim/python3"; chmod +x "$BW_TMP/shim/python3"
+rm -f "$BW_TMP/python-ran"
+printf '{"cwd":"%s","tool_name":"Bash","tool_input":{"command":"git add . && make test"}}' "$BW_TMP" \
+  | PATH="$BW_TMP/shim:$PATH" bash "$HOOKS/block-subagent-commit.sh" >/dev/null 2>&1 || true   # hand-built JSON: bw_lead itself calls python3
+[ ! -f "$BW_TMP/python-ran" ] \
+  && echo "  ✓ fast path: Lead 'git add . && make test' never spawns python" \
+  || { echo "  ✗ fast path: python spawned on a no-write Lead command"; fail=$((fail+1)); }
+rm -f "$BW_TMP/python-ran"
+printf '{"cwd":"%s","tool_name":"Bash","tool_input":{"command":"printf x > src/z.py"}}' "$BW_TMP" \
+  | PATH="$BW_TMP/shim:$PATH" bash "$HOOKS/block-subagent-commit.sh" >/dev/null 2>&1 || true
+[ -f "$BW_TMP/python-ran" ] \
+  && echo "  ✓ fast path: a redirect still takes the full pass" \
+  || { echo "  ✗ fast path skipped a redirect"; fail=$((fail+1)); }
+rm -f "$BW_TMP/python-ran"
+printf '{"cwd":"%s","tool_name":"Bash","tool_input":{"command":"npm rm lodash"}}' "$BW_TMP" \
+  | PATH="$BW_TMP/shim:$PATH" bash "$HOOKS/block-subagent-commit.sh" >/dev/null 2>&1 || true
+[ -f "$BW_TMP/python-ran" ] \
+  && echo "  ✓ fast path: a bare write verb (rm) still takes the full pass" \
+  || { echo "  ✗ fast path skipped a bare write verb"; fail=$((fail+1)); }
+rm -f "$BW_TMP/python-ran"
+printf '{"agent_id":"a1","agent_type":"backend-developer","cwd":"%s","tool_name":"Bash","tool_input":{"command":"git log --oneline"}}' "$BW_TMP" \
+  | PATH="$BW_TMP/shim:$PATH" bash "$HOOKS/block-subagent-commit.sh" >/dev/null 2>&1 || true
+[ -f "$BW_TMP/python-ran" ] \
+  && echo "  ✓ fast path: a sub-agent call always takes the full pass" \
+  || { echo "  ✗ fast path skipped a sub-agent call"; fail=$((fail+1)); }
+rm -f "$BW_TMP/python-ran"
+
 # Cost (R4): the Lead's no-write allow path and a sub-agent's allow path stay
 # cheap — informational timing (machine-dependent; never fails the suite).
 # The hook itself is timed directly here (plain printf, no python json.dumps
