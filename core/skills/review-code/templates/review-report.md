@@ -21,8 +21,8 @@
 <Which reviewer roles ran, and that the round is complete — every
  dispatched reviewer returned before any fix; N reports merged → U unique
  findings (dedup key: file:line + root cause). For a high-risk diff, name
- the adversarial fresh-context reviewer and confirm its model differs from
- the Lead's.>
+ the adversarial fresh-context reviewer and confirm it ran on a different
+ CLI than the Lead's, or is the internal strong pass.>
 
 **Cross-model adversarial pass:** <ran on `<cli>` (cross-family, its default model — receipt: ROLEPOD-XFAM ok … raw=<path>) |
  ran on `<cli>`, model family not reported (a CLI preset with no family

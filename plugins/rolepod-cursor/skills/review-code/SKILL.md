@@ -60,19 +60,19 @@ rolepod-brain: add `brain_seed(task, agent: <reviewer id>)` verbatim; no tool �
 - **R1** → no review, no re-read turn; the edit tool's echo is the evidence. A docs-only diff is R1 at any size — no reviewer, internal or external; its own check (link check / static lint) is the verify.
 - **R2** → ONE read-only `universal-reviewer` pass on the diff (two axes: spec + standards; the author never reviews own logic); a matched row (perf / UI / arch) → that role instead. The writer's unit tests are the floor.
 - **R3** → the row match, internal only — the pool is an R4 instrument (the user asks → one pass). A high-risk path anywhere in the diff under review (the task or its ship group) tiers that diff R4; the commission's tier is the max over its tasks and governs Define / Plan only — a diff reviewed at its tier is never reviewed again at ship.
-- **R4** → the full adversarial floor, never less — ONE strong pass: the external when the pool is usable (dispatched by the task owner), else the internal strong. The router's comment/blank-only carve-out (1 file, ≤5 lines, zero logic) lands here as R2 + ONE internal strong reviewer, no external — the pool reviews code, never a comment / doc / config / rename diff.
+- **R4** → the full adversarial floor, never less. An R4 diff gets `security-engineer` + ONE general strong pass: the external when the pool is usable, else `universal-reviewer`. Never external + `universal-reviewer` on round 1 (money / auth included). Comment/blank-only carve-out: ONE internal strong reviewer, no external.
 
 **Satellite-first strong pass.** A usable cross-family external IS the R4 strong adversarial pass: `rolepod-cross-family --kind review --brief <brief> --attach <diff> --detach` — read-only, anchored by the runner.
 
 **Detach by default.** The runner returns a job id and runs the chain (first member → fallbacks) with each member's budget (mechanics: `references/external-review-routing.md`).
-- Dispatch the internal reviewer and, on money / auth, the internal strong reviewer in the same breath; then keep working OUTSIDE the diff or end the turn.
+- Dispatch `security-engineer` in the same breath; then keep working OUTSIDE the diff or end the turn.
 - `rolepod-cross-family --collect <job-id>` waits up to the budget, in the foreground.
 
-**Internal strong reviewer** (`security-engineer` / `universal-reviewer`) runs when any holds:
+**Internal general pass** (`universal-reviewer`) runs when any holds:
 - (a) cross-family is off, or the runner reports no usable member (every member failed / pool empty — logged);
-- (b) **the round-3 breaker** (§5) — a BLOCKER still open after 3 rounds on ONE tree (never counted across tickets) → the internal strong reviews the class, ONE round beside the external; never both on round 1, money / auth included;
-- (c) **the external came back weak** — family `unknown`, no TRACED finding, or a verdict with no claims walked;
-- (d) an apex trigger holds — the apex rung, external first, internal only when (c);
+- (b) **the round-3 breaker** (§5) — a BLOCKER still open after 3 rounds on ONE tree (never counted across tickets) → the internal pass joins the external, ONE round;
+- (c) **the external came back weak** — empty / partial return, bare verdict, or no claims walked;
+- (d) an apex trigger holds — external first, internal when (c);
 - (e) re-reading fixes in the §5 loop.
 
 It runs at STRONG class even under a balanced Lead: never pass a balanced model on it (a hooked CLI lifts a model-less call; elsewhere pass an explicit strong-class override). `qa-tester` (E2E / UI) is never the strong pass, never counted as one.
@@ -86,7 +86,7 @@ It runs at STRONG class even under a balanced Lead: never pass a balanced model 
 
 No trigger → strong stands; a CLI whose strong pin IS its ceiling collapses apex into strong. A costlier rung is a cost decision to surface first; a ceiling below frontier-class still gets the full review, depth cap recorded as a LIMITATION. The dispatch line's `override` records the rung sent.
 
-**One review round.** Every reviewer that fires is dispatched in ONE message on the same frozen diff; that dispatch plus the Lead's own read is one round, and it ends when the LAST member returns (`--collect` for a detached job).
+**One review round.** Every reviewer that fires is dispatched in ONE message on the same frozen diff, and it ends when the LAST member returns (`--collect` for a detached job). A reviewer's traced report is not re-walked by the Lead — merge findings, spot-check ONE.
 - Until then the diff is frozen: no edit to a file it touches, no `git stash / reset / checkout / add / commit` (a red-proof revert runs in a throwaway worktree) — reviewers read the live tree, so one early fix voids every in-flight verdict.
 
 Reviews merge severity-ordered, deduped by file:line + root cause (the Lead's findings included); §6 starts on the merged list; only the §5 loop is serial. Vocabulary map: CRITICAL/HIGH → BLOCKER, WARNING/MEDIUM → MAJOR, SUGGESTION/LOW → MINOR.
@@ -95,7 +95,7 @@ Reviews merge severity-ordered, deduped by file:line + root cause (the Lead's fi
 - The pool is the user's choice and **opt-in**: `<git-root>/.rolepod/cross-family`, then `~/.rolepod/cross-family` (`rolepod-cross-family --setup`), minus the Lead's own CLI; no file or `none` = off, never turned on unasked.
 - An externally implemented ship group (`--kind implement`) is reviewed by a DIFFERENT member — the runner skips the implementer while its ticket is uncommitted; a user-lifted risky scope (`risky:lifted`) → the external pass by a different member.
 - Enabled + R4 + logic-bearing code diff + usable member → routing to it is mandatory; R1-R3, and any doc / comment / config / rename-only diff, stay internal unless the user asks.
-- The writer's unit tests + the Lead's own read are the floor and backstop any reviewer that is missing or fails.
+- The writer's unit tests are the floor. The Lead's §2 walk runs only when no reviewer report exists (missing / failed / empty) — a recorded LIMITATION.
 - **An empty or partial return is a failed reviewer, never a clean pass** — a lens answering `""`, a one-sentence result, a turn-limit notice: resume it or re-dispatch on a narrower brief; until it reports the round is open and the report records a LIMITATION.
 - No dispatch possible at all (user forbade agents / no subagent support) → the Lead's cold self-review stands in as a recorded LIMITATION — surface the conflict, never self-set a bypass.
 - On a CLI without hooks this section is the gate.
@@ -129,8 +129,9 @@ Fill `templates/review-report.md`. Each finding: file:line, the issue, why it ma
 Round 2+: `rolepod-cross-family --kind review --brief <brief> --since <previous job> --detach` — the runner attaches the fix delta plus the previous report, findings tagged IN-FIX / NEW / REPEAT.
 Cadence, every tier: round 1 = every axis in ONE message, ≤ 40 tool calls each; round 2 = only the flagging reviewer re-runs its repro on the delta, ≤ 15 calls — no suite re-runs, no new axis.
 
-Whoever wrote the fix never verifies it: a subagent-built fix → the Lead's cold read; a Lead-built fix → one read-only `universal-reviewer` pass (R4 → the strong pass).
+Whoever wrote the fix never verifies it: the reviewer who flagged it verifies by default; the Lead's cold read only when that reviewer cannot run. A Lead-built fix → one read-only `universal-reviewer` pass (R4 → the strong pass).
 - The external re-runs only when its previous report carried a BLOCKER and the fix delta is logic-bearing code; otherwise the internal reviewer verifies the fix delta alone.
+- Round 2 only for a BLOCKER / MAJOR fix; a MINOR fix is noted in the brief.
 - Author and reviewer disagree on merits → technical data > documented style guide > engineering principle > codebase consistency.
 
 **Breaker.** Two rounds is the budget — review, then confirm the fixes; a third is a reassessment point. Triggers, any one:

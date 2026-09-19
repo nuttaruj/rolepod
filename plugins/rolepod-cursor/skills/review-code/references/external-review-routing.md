@@ -128,8 +128,7 @@ records `model: default`.
 1. Read the diff; name the axes it needs (a diff can need several).
 2. Order the pool so the member owning the dominant axis goes first —
    `.rolepod/cross-family` is the order, so a project can pin it.
-3. A diff spanning two axes → `--all`: one member per family, concurrently,
-   each anchored.
+3. ONE member — the first usable in pool order — reviews every axis the diff needs; `--all` (every usable member, concurrently, each anchored) only on the user's ask.
 4. Launch every routed reviewer — the runner and internal agents alike — in
    ONE dispatch; they read the same frozen diff independently, so nothing
    is gained by waiting for one before starting the next. Frozen holds for
@@ -139,10 +138,7 @@ records `model: default`.
 
 ## The Lead floor — covers every axis
 
-The Lead floor is `universal-reviewer` (a read-only fresh-context subagent) plus the Lead's own
-multi-axis read (the step-2 axis walk). It is the universal generalist: it
-reviews **every** axis — correctness, security, breadth, architecture, perf,
-UI — not one specialty.
+The Lead floor is `universal-reviewer` (a read-only fresh-context subagent). When no reviewer can run (missing / failed / empty), the Lead's multi-axis read covers every axis — correctness, security, breadth, architecture, perf, UI — recorded as a LIMITATION.
 
 Strength routing is an optimisation on top of the floor: it assigns a
 specialist to an axis when one is available; it never removes an axis. A
@@ -153,8 +149,8 @@ falls back to the floor.
 
 | Pool | Routing |
 |---------------|---------|
-| ≥2 families usable | dominant axis to the first member; `--all` when two axes matter |
-| 1 usable | it takes the dominant axis; the Lead floor covers the rest |
+| ≥2 families usable | the first member by dominant axis reviews the whole diff; `--all` only on the user's ask |
+| 1 usable | it reviews the whole diff |
 | 0 usable (exit 3 / 4) | internal strong reviewer + vertical fallback when one exists; Cross-model line records "NOT RUN — <reason from the runner>" |
 | off (exit 5 — no config / `none`) | internal strong reviewer is the pass; Cross-model line records "NOT RUN — cross-family off (opt-in)"; ask the user once if the session context says so, never enable unasked |
 
@@ -180,18 +176,18 @@ satellite first whenever a usable non-Lead family exists:
   high-risk commit — only after the runner reports exit 3 / 4 (logged as
   `external-fail`); a machine where cross-family is off (opt-in not given,
   or `none`) is never held.
-- **Money / auth = the external alone (v2.145.0).** billing · payments ·
-  credits · auth · crypto · secrets · data deletion clear on the anchored
-  external pass like every other high-risk path — the pool exists to move
-  strong-class tokens off the main plan. The internal strong joins only at
-  the round-3 breaker (review-code §5, one round on the class) or on the
-  user's ask. External failed (logged) → internal alone clears.
-- **Weak external → add internal.** Receipt family `unknown` (cursor /
-  opencode with no declared default model), no TRACED finding, or a bare
-  verdict → dispatch the internal strong reviewer too; record why.
-  Internal strong otherwise
-  fires on the three carve-outs in review-code §1: empty / failed pool,
-  apex trigger (external first), fix-verify re-read.
+- **Money / auth — R4 rule applies.** billing · payments · credits · auth ·
+  crypto · secrets · data deletion: `security-engineer` + ONE general strong
+  pass (external when the pool is usable, else `universal-reviewer`). Never
+  external + `universal-reviewer` on round 1. The internal general pass joins
+  an external only at the round-3 breaker or when the external came back weak.
+  Pool off / failed → `universal-reviewer` + `security-engineer`. The commit
+  gate opens when one strong reviewer has finished (the anchored external, or an internal strong pass).
+- **Weak external → add internal.** Empty / partial return, a bare verdict, or
+  no claims walked → dispatch the internal general pass too; record why.
+  Internal otherwise
+  fires on the carve-outs in review-code §1: empty / failed pool,
+  apex trigger (external first), fix-verify re-read, round-3 breaker.
 - **Outside opinion** (debug-issue §9, `--kind consult`) and the spec
   **critique** (write-spec §4b, `--kind critique`) — already cold one-shot by
   shape; same satellite-first order.
