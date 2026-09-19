@@ -7,7 +7,6 @@ memory: project
 permissionMode: acceptEdits
 skills:
   - review-code
-  - simplify-code
 tools:
   - Read
   - Glob

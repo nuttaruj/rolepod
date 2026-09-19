@@ -9,7 +9,6 @@ skills:
   - write-plan
   - implement-plan
   - debug-issue
-  - review-code
   - simplify-code
 tools:
   - Read

@@ -8,7 +8,6 @@ color: white
 skills:
   - write-spec
   - implement-plan
-  - review-code
 tools:
   - Read
   - Glob

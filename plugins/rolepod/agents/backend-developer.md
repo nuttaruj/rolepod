@@ -10,7 +10,6 @@ skills:
   - implement-plan
   - debug-issue
   - simplify-code
-  - review-code
 tools:
   - Read
   - Glob

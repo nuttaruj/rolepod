@@ -7,7 +7,6 @@ memory: project
 skills:
   - write-spec
   - implement-plan
-  - review-code
 tools:
   - Read
   - Glob

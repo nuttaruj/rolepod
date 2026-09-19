@@ -6,10 +6,8 @@ effort: high
 memory: project
 permissionMode: acceptEdits
 skills:
-  - implement-plan
   - debug-issue
   - check-work
-  - review-code
 tools:
   - Read
   - Glob

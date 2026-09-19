@@ -8,7 +8,6 @@ permissionMode: acceptEdits
 color: red
 skills:
   - review-code
-  - simplify-code
 tools:
   - Read
   - Glob

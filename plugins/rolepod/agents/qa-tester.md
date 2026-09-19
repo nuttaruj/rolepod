@@ -7,10 +7,8 @@ memory: project
 permissionMode: acceptEdits
 color: red
 skills:
-  - implement-plan
   - debug-issue
   - check-work
-  - review-code
 tools:
   - Read
   - Glob

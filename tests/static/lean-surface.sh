@@ -878,6 +878,33 @@ else
   printf "%b" "$LEAD_ONLY_PRELOADS" | sed 's/^/      /'
   fail=$((fail+1))
 fi
+# review-code is a reviewing-role preload only (v2.151.0): a writer dispatches
+# its reviewers from the agent-protocol Ticket loop and never runs review-code
+# itself, so preloading it there is 18.7 KB of dead weight per spawn.
+REVIEW_CODE_ROLES="universal-reviewer security-engineer performance-engineer ui-ux-designer"
+REVIEW_CODE_BAD=""
+for a in adapters/claude/agent-frontmatter/*.yml; do
+  name=$(basename "$a" .yml)
+  preloads=$(awk '/^skills:/{f=1;next} /^[a-zA-Z]/{f=0} f && /^  - /{sub(/^  - /, ""); print}' "$a")
+  for skill in $preloads; do
+    if [ "$skill" = "review-code" ]; then
+      allowed=0
+      for r in $REVIEW_CODE_ROLES; do
+        [ "$name" = "$r" ] && { allowed=1; break; }
+      done
+      if [ $allowed -eq 0 ]; then
+        REVIEW_CODE_BAD="${REVIEW_CODE_BAD}${name}: review-code\n"
+      fi
+    fi
+  done
+done
+if [ -z "$REVIEW_CODE_BAD" ]; then
+  echo "  ✓ review-code preloads only into a reviewing role"
+else
+  echo "  ✗ review-code preloads into a non-reviewing role:"
+  printf "%b" "$REVIEW_CODE_BAD" | sed 's/^/      /'
+  fail=$((fail+1))
+fi
 if [ -z "$AGENT_MISSING_OUTPUT" ]; then
   echo "  ✓ all agents have a standalone output contract"
 else
