@@ -688,6 +688,41 @@ check "migration path (other high-risk) + external anchor ONLY → allow (extern
 rm -rf "$TMPM"
 rm -f "$TMP/.rolepod/evidence/phase-log.jsonl" "$TMP/.rolepod/cross-family"
 
+# ── hook message state: R4 floor wording, C1 (lean-workflow-dedupe 2026-09-19) ──
+# A Lead must never read "mandatory universal-reviewer + security-engineer" in
+# one sentence and "clears on ONE of" in the next — the deny states the R4
+# floor once, then the gate's actual (unchanged) mechanical bar.
+out=$(pc 'git commit -m "add billing"')
+check "HARD-gate deny on a high-risk diff, no reviewer → still deny" deny "$out"
+echo "$out" | grep -q 'R4 floor: security-engineer + ONE general strong pass' \
+  && echo "  ✓ deny reason states the R4 floor (security-engineer + ONE general strong pass)" \
+  || { echo "  ✗ deny reason missing the R4 floor wording"; fail=$((fail+1)); }
+echo "$out" | grep -q 'mandatory universal-reviewer' \
+  && { echo "  ✗ deny reason still names the superseded 'mandatory universal-reviewer' wording"; fail=$((fail+1)); } \
+  || echo "  ✓ deny reason drops the old 'mandatory universal-reviewer' wording"
+echo "$out" | grep -q 'The gate opens when one of them has FINISHED' \
+  && echo "  ✓ deny reason states the gate opens when one of them has FINISHED (not 'clears on ONE of')" \
+  || { echo "  ✗ deny reason missing 'the gate opens when one of them has FINISHED' wording"; fail=$((fail+1)); }
+
+# gate-reminder AUTO-CAREFUL banner: a usable pool names the external in
+# place of universal-reviewer + security-engineer — never the money/auth
+# "alone clears" carve-out (C1: money/auth follow the same rule).
+mkdir -p "$TMP/.rolepod"; printf 'codex\n' > "$TMP/.rolepod/cross-family"
+grx() { # $1 = json body — gate-reminder with a usable cross-family pool stub (codex on PATH, Lead=claude)
+  printf '%s' "$1" | (cd "$TMP" && env HOME="$TMP" PATH="$XF_BIN:/usr/bin:/bin" CLAUDE_PLUGIN_ROOT="$TMP" bash "$HOOKS/gate-reminder.sh")
+}
+out=$(grx '{"tool_name":"Edit","tool_input":{"file_path":"src/auth/login.py"}}')
+echo "$out" | grep -q 'in place of universal-reviewer' \
+  && echo "  ✓ AUTO-CAREFUL reminder with a usable pool: the external runs in place of universal-reviewer" \
+  || { echo "  ✗ AUTO-CAREFUL reminder with a usable pool missing the 'in place of universal-reviewer' wording"; fail=$((fail+1)); }
+echo "$out" | grep -q 'rolepod:security-engineer' \
+  && echo "  ✓ AUTO-CAREFUL reminder with a usable pool names rolepod:security-engineer" \
+  || { echo "  ✗ AUTO-CAREFUL reminder with a usable pool missing rolepod:security-engineer"; fail=$((fail+1)); }
+echo "$out" | grep -q 'alone clears' \
+  && { echo "  ✗ AUTO-CAREFUL reminder still carries the 'alone clears' money/auth sentence"; fail=$((fail+1)); } \
+  || echo "  ✓ AUTO-CAREFUL reminder drops the 'alone clears' money/auth sentence"
+rm -f "$TMP/.rolepod/cross-family"
+
 # ── private working docs never commit (v2.80.0) ─────────────────────────
 TMPD=$(mktemp -d); ( cd "$TMPD" && git init -q . && git config user.email t@t && git config user.name t \
   && mkdir -p docs/rolepod/specs src && printf 'secret spec\n' > docs/rolepod/specs/x.md && printf 'x=1\n' > src/a.py && git add -A )

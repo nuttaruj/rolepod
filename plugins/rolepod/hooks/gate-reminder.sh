@@ -125,10 +125,10 @@ HIGH_RISK=""
 _RISK_HIT=$(printf '%s\n' "$FILE" | risk_filter '(^|/|_)(auth|authn|authz|authentication|authorization|billing|payment|payments|migration|migrations|credit|credits|permission|permissions|secret|secrets|crypto|cryptography|token|tokens|oauth|jwt|sso|saml|webhook|webhooks|stripe|paypal|charge|charges|invoice|invoices|deletion|deletions|erasure|gdpr|security)(/|\.|_|$)' | head -1 || true)
 MONEY_RISK=""
 if [ "$IS_TEST" -eq 0 ] && [ -n "$_RISK_HIT" ]; then
-  HIGH_RISK="HIGH-RISK path → universal-reviewer + security-engineer review before commit. "
-  # money / auth subset (v2.78.0) — with an enabled cross-family pool this
-  # surface clears on the external pass alone (v2.145.0); the internal strong
-  # joins only at the round-3 breaker, by doctrine.
+  HIGH_RISK="HIGH-RISK path → R4 floor: security-engineer + ONE general strong pass before commit. "
+  # money / auth subset — retained unused: C1 (2026-09-19) gives money / auth
+  # the same R4 floor as every high-risk path; the whole computation is a
+  # separate, out-of-scope cut.
   MONEY_RISK=$(printf '%s\n' "$FILE" | grep -iE '(^|/|_)(auth|authn|authz|authentication|authorization|billing|payment|payments|credit|credits|secret|secrets|crypto|cryptography|oauth|jwt|sso|saml|stripe|paypal|charge|charges|invoice|invoices|deletion|deletions|erasure|gdpr)(/|\.|_|$)' | head -1 || true)
 fi
 
@@ -255,8 +255,7 @@ if [ -n "$HIGH_RISK" ]; then
   if [ -f "$XFAM_RUNNER" ]; then
     XFAM_POOL=$(bash "$XFAM_RUNNER" --lead "${SELF_CLI:-claude}" --pool-names 2>/dev/null | tr '\n' ' ' | sed 's/ *$//')
     if [ -n "$XFAM_POOL" ]; then
-      REVIEWER_LIST="$REVIEWER_LIST + cross-family runner → $XFAM_POOL (\`rolepod-cross-family --kind review --brief <file> --attach <diff>\` — one command: default model, read-only, anchored)"
-      [ -n "$MONEY_RISK" ] && REVIEWER_LIST="$REVIEWER_LIST (money / auth surface: the external pass alone clears; internal strong only at the round-3 breaker)"
+      REVIEWER_LIST="cross-family runner → $XFAM_POOL in place of universal-reviewer (\`rolepod-cross-family --kind review --brief <file> --attach <diff>\` — one command: default model, read-only, anchored) + rolepod:security-engineer"
     else
       REVIEWER_LIST="$REVIEWER_LIST + rolepod:security-engineer on this high-risk path (cross-family is opt-in and not enabled here — \`rolepod-cross-family --pool\` shows candidates; ask the user before enabling)"
     fi

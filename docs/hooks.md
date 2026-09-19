@@ -156,7 +156,7 @@ Schema-bound + high-risk edit guard (and, since v2.134.0, the edit-ledger writer
 
 Fires output ONLY when:
 1. **Schema-bound NEW file** (plugin.json, marketplace.json, hooks.json, extension manifests) → soft warn: WebFetch spec FIRST.
-2. **High-risk path** (auth / authentication / authorization / billing / migration / secret / crypto / token / oauth / jwt / sso / saml / webhook / stripe / paypal / charge / invoice — illustrative; canonical regex in the script, parity-pinned by lean-surface) → soft warn + auto-Careful banner with reviewer list (universal-reviewer + the pool's CLIs when present).
+2. **High-risk path** (auth / authentication / authorization / billing / migration / secret / crypto / token / oauth / jwt / sso / saml / webhook / stripe / paypal / charge / invoice — illustrative; canonical regex in the script, parity-pinned by lean-surface) → soft warn + auto-Careful banner naming the R4 floor: `security-engineer` + ONE general strong pass (the pool's CLI in place of `universal-reviewer` when usable, else `universal-reviewer`).
 3. **High-risk path + evidence gap** → the banner is prefixed with what the commit gate WILL require (`⛔ COMMIT WILL BLOCK — …`): 0 test edits since the last commit → write the failing test first; high-risk edits with 0 strong reviewers since the last commit → dispatch `rolepod:universal-reviewer` / `rolepod:security-engineer` before committing. **Warn-only, never a deny (v2.47.0)** — edit-time HARD blocks were the measured reason a user set `ROLEPOD_GATES_SOFT` for good (CourtBook: 33 high-risk edits in one day → 116 unreasoned bypasses), which then silenced the commit gate too. One hard checkpoint, at commit; this hook informs. Evidence window = since the last commit, Lead + subagent transcripts (same reader as the commit gate).
 
 4. **Review in flight (v2.93.0)** — a detached cross-family job is still running (live pid under `.rolepod/evidence/external/jobs/`) and the edited file is in its attached diff (`+++ b/` paths from the job's `args`; attachments gone → the current `git diff HEAD` file list) → one advisory line (`⏸ REVIEW IN FLIGHT …`): the job reads the tree live, an early edit turns its verdict into an artifact and re-runs it. Never a deny; doctrine side = review-code §1 (the round ends when the last member returns; §6 starts on the merged list).
@@ -429,11 +429,14 @@ the runner's anchored pass (raw file ≥ 500 bytes under
 `external-fail` line since the last commit (every usable member failed, or
 the enabled pool is empty). Cross-family off (no file / `none`), or a Lead
 the hook cannot identify, keeps the pre-v2.76 behaviour — nothing is forced
-on a user who did not opt in. **One strong reviewer (v2.145.0):** money / auth paths clear on the anchored
-external pass alone like every other high-risk path (the v2.78.0 BOTH hold is
-gone — the pool exists to move strong-class tokens off the main plan); the
-internal strong joins only at review-code's round-3 breaker, by doctrine, not
-by the gate. External failed (logged) → internal alone clears. **Code only (v2.143.0):** the hold needs a logic-bearing diff — a comment / blank-only change on a risky path clears with the internal strong reviewer; a prose file (`.md` / `.mdx` / `.txt` / `.rst` / `.adoc`, or an extension-less README / LICENSE / CHANGELOG) is never a risk path (a `+pattern` in `.rolepod/risk-paths` cannot re-flag one — accepted), and a docs-only diff passes the gate silently at any size (docs are written, not reviewed — owner rule; the private-docs deny still runs first). Doctrine side: the external reviewer is an R4 instrument — R3 stays internal unless the user asks. Measured before: 210 dispatches
+on a user who did not opt in. **R4 floor (D1, 2026-09-19):** the doctrinal
+floor is `security-engineer` + ONE general strong pass; the gate's mechanical
+bar is unchanged — it opens on ONE strong-class dispatch that has FINISHED —
+so money / auth paths clear on the anchored external pass alone like every
+other high-risk path (the v2.78.0 BOTH hold is gone — the pool exists to move
+strong-class tokens off the main plan); the internal strong joins only at
+review-code's round-3 breaker, by doctrine, not by the gate.
+External failed (logged) → internal alone clears. **Code only (v2.143.0):** the hold needs a logic-bearing diff — a comment / blank-only change on a risky path clears with the internal strong reviewer; a prose file (`.md` / `.mdx` / `.txt` / `.rst` / `.adoc`, or an extension-less README / LICENSE / CHANGELOG) is never a risk path (a `+pattern` in `.rolepod/risk-paths` cannot re-flag one — accepted), and a docs-only diff passes the gate silently at any size (docs are written, not reviewed — owner rule; the private-docs deny still runs first). Doctrine side: the external reviewer is an R4 instrument — R3 stays internal unless the user asks. Measured before: 210 dispatches
 across nine repos, zero cross-family passes — the internal reviewer was one
 Agent call away and counted the same.
 
