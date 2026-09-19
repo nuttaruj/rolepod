@@ -48,7 +48,7 @@ Runs the structural integration cases (no live `claude -p` invocations):
 | `install-idempotency` | Re-running `install.sh` over an existing install is idempotent — no duplicated hooks, managed blocks, or registry entries |
 | `bug-fix-workflow` | `debug-issue` → failing test → minimal fix → `check-work` wiring (skill bodies, router row, no legacy shim dependency) |
 | `feature-from-spec` | Define → Plan → Build path: `write-spec` → `write-plan` → `implement-plan` → `check-work` wiring |
-| `subagent-review-order` | Two-stage review order (implementer → spec-compliance → code-quality) baked into `implement-plan` body + prompt templates |
+| `subagent-review-order` | One universal-reviewer pass, two axes (implement-plan §6) baked into `implement-plan` body + prompt templates |
 | `high-risk-gates` | Auth/billing/migration paths route through `security-engineer` agent + `review-code` adversarial mode |
 | `multi-agent-contract` | Cohesion-contract requirement (inside `write-plan`) before 2nd parallel agent spawn |
 | `ship-gate` | `finish-work` fires as final ship phase, S+T+F+P gates documented |

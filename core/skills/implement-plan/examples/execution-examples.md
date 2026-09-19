@@ -120,10 +120,9 @@ Lead: both tracks' dependencies are met → ONE message, two Agent calls:
   else incl. the do-not-touch list; the frozen interface verbatim
 - frontend-developer — Tasks 3-4; allowed app/ui/**; same frozen interface
 
-UI track returns first → its spec-compliance + code-quality review runs NOW,
+UI track returns first → its §6 review runs NOW,
 not after the API track lands. API track returns → same pipeline. Merge per
-contract order: API slice, its tests green, then UI slice. Final
-whole-implementation review on the cumulative diff → check-work.
+contract order: API slice, its tests green, then UI slice. Ship-group drift pass on the cumulative diff → check-work.
 ```
 
 ### Bad — serial by habit

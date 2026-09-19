@@ -14,7 +14,7 @@ tests/integration/
     install-parity.sh         ← Claude/Codex/Gemini/Cursor × global/project install behavior
     bug-fix-workflow.sh       ← debug-issue → check-work wiring
     feature-from-spec.sh      ← write-spec → write-plan → implement-plan → check-work wiring
-    subagent-review-order.sh  ← implementer → spec-compliance → code-quality review order
+    subagent-review-order.sh  ← one universal-reviewer pass, two axes (implement-plan §6)
     high-risk-gates.sh        ← auth/billing/migration → review-code + security-engineer
     multi-agent-contract.sh   ← cohesion-contract gate before 2nd parallel agent spawn
     ship-gate.sh              ← finish-work as final Ship phase + S+T+F+P gates
@@ -41,7 +41,7 @@ Exit codes:
 | `install-parity` | none (uses local `./install.sh`) | `codex` + `gemini` only needed for adapter coverage; otherwise self-skips that segment |
 | `bug-fix-workflow` | none | Structural grep over skill bodies — no CLI |
 | `feature-from-spec` | none | Structural grep over skill bodies — no CLI |
-| `subagent-review-order` | none | Structural grep — skill body + template prompts |
+| `subagent-review-order` | none | One universal-reviewer pass, two axes (implement-plan §6) — skill body + prompt templates |
 | `high-risk-gates` | none | Structural grep over `review-code` + high-risk hooks |
 | `multi-agent-contract` | none | Structural grep + hook script presence check |
 | `ship-gate` | none | Structural grep over `finish-work` skill body |

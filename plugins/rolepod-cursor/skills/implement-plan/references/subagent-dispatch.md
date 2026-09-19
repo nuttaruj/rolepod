@@ -10,13 +10,12 @@ The Lead is a **controller**. A subagent gets only the context the controller cu
 
 The Lead is usually the priciest model in the session, and every token that
 enters its context is re-read on every later turn — a subagent's context dies
-with the task. So the pricier the Lead, the lower the break-even for dispatch.
-Lead-solo pays only when ALL three hold: expected ≤3 tool calls, the needed
-context already loaded, raw ingest ≤~2k tokens. Any test loop, retry risk, or
-exploration ahead → dispatch, even for a one-file fix. The Lead spends its own
-tokens on decisions — briefs, manifests, diffs, verdicts — never on mechanical
-loops (grep sweeps, test-fail-retry cycles, bulk file reads); those run in a
-disposable context at a cheaper tier.
+with the task. The route and the plan's **Owner:** line decide who builds —
+R1/R2 stays with the Lead through its red→green loop; R3+ dispatches to the
+named owner; a task with no Owner runs Q1-Q4 (SKILL.md §4). The Lead spends
+its own tokens on decisions — briefs, manifests, diffs, verdicts — never on
+wide mechanical loops (grep sweeps, bulk file reads, a long fail-retry
+cycle); those run in a disposable context at a cheaper tier.
 
 ## Why fresh context per task
 
@@ -30,7 +29,7 @@ The implementer manifest declares `COMPLETED | PARTIAL | BLOCKED` (the enum ever
 
 Implementation complete, tests green, self-review clean, no doubts flagged.
 
-**Action:** proceed to §6 spec-compliance review.
+**Action:** proceed to §6 review.
 
 ### `COMPLETED`, Concerns listed
 
@@ -47,7 +46,7 @@ Never proceed to review with unresolved correctness or scope concerns.
 
 Some of the task is done; the manifest states what remains.
 
-**Action:** review the completed slice (§6 Stage 1 on the diff so far), then redispatch the stated remainder as its own narrowed brief — fresh context, same model. Do not merge an unreviewed partial into the next task's diff.
+**Action:** review the completed slice (§6 review on the diff so far), then redispatch the stated remainder as its own narrowed brief — fresh context, same model. Do not merge an unreviewed partial into the next task's diff.
 
 ### `BLOCKED`
 
@@ -61,77 +60,19 @@ The implementer cannot complete the task; the manifest states what blocks and wh
 
 Re-dispatching unchanged = Hard stop.
 
-## Two-stage review per task
+## Fresh-context review per task
 
-Both stages mandatory for a delegated task touching a seam (caller/callee or shared-contract pair), an exported symbol, or >1 production file (its own test file excluded); a seam-free single-file delegated task skips both and is covered by the final whole-implementation review (SKILL.md §6). Lead-executed tasks collapse to one self-review with a fresh-context pause.
+A delegated task gets one read-only pass in ONE message: `universal-reviewer` (spec + standards, or the concern-matched row) + `security-engineer` on a high-risk path (when a usable pool exists, the external replaces `universal-reviewer`) + `qa-tester` when the slice changes what a user sees. A seam-free single-file delegated task still gets this pass; a Lead-built R2 dispatches it, never a self-review.
 
-### Stage 1 — spec compliance
+### Ship-group drift pass
 
-The reviewer reads the diff alone and answers: does this match the task spec exactly?
+After all per-task passes clear, a ship-group drift pass runs only over a named group (the plan's **Ship group** line names which tasks run under one final review). When a group exists:
+- Dispatch one reviewer on the cumulative diff across the group's tasks
+- Role: `security-engineer` if the group holds an R4 task; else `universal-reviewer`
+- Scope: cross-task symbol / type / method name drift, API contract mismatch between producer and consumer, unowned files touched by group members, architecture consistency across tasks
+- Never a re-review of a task's own diff (that reviewer already passed it)
 
-- ✅ approved → proceed to Stage 2
-- ❌ issues → list missing requirements and unrequested extras; implementer fixes; re-dispatch Stage 1 (not Stage 2 yet)
-
-Spec compliance is binary. "Close enough" = not done.
-
-**Prompt scaffold:**
-
-```
-You are reviewing whether a diff matches a task spec exactly. You did not write
-the code. Read both, and answer one question:
-
-Does the diff implement exactly what the spec asks — no missing requirements,
-no extras?
-
-Spec: <TASK_SPEC_INLINE>
-Diff: <git diff --base=... --head=...>
-
-Output:
-- Status: APPROVED | ISSUES_FOUND
-- Missing (if any): bullet list, each citing spec line + missing diff
-- Extra (if any): bullet list, each citing diff line + why it is out of spec
-```
-
-### Stage 2 — code quality
-
-After Stage 1 approves, dispatch a separate code-quality reviewer on the same diff.
-
-- Patterns match existing code?
-- DRY / single source of truth?
-- Test strength (negative + positive)?
-- Smell (dead code / commented blocks / magic constants)?
-
-Stage 2 is **not** a place to surface missed-spec issues — that's Stage 1's job. Reviewer scope: how well-built, not what was built.
-
-**Prompt scaffold:**
-
-```
-You are reviewing code quality. You did not write the code. Spec compliance is
-already confirmed in a prior pass — focus on how well-built the change is, not
-what it does.
-
-Diff: <git diff>
-Touched files end-to-end: <paths>
-
-Check: patterns match local style; DRY violations; test assertions strong;
-no dead code / magic numbers / commented blocks; symbol names consistent
-across diff hunks.
-
-Output severity-ordered findings: BLOCKER / MAJOR / MINOR / NIT.
-Approve when nothing remains above MINOR.
-```
-
-### Final whole-implementation review
-
-After all per-task reviews pass, dispatch one reviewer on the cumulative diff — mandatory when a cross-task seam exists or any task skipped §6. Per-task reviews catch local issues; the final pass catches cross-task drift the per-task reviewers cannot see (any one of them only saw their slice).
-
-What it catches:
-- Type / symbol / method name drift between tasks (Task 3 named `clearLayers()`; Task 7 called `clearFullLayers()`)
-- API contract mismatch between producer and consumer tasks
-- Unowned files in a parallel layout (no task claimed them; an implementer touched anyway)
-- Architecture creep — pattern X used in Tasks 1-2, pattern Y in Tasks 3-4
-
-Hand off to `check-work` only after the final review clears.
+Tracks sharing a frozen interface are one group. No group named → no drift pass. Hand off to `check-work` only after the group clears.
 
 ## Model selection
 
@@ -143,9 +84,8 @@ Use the least powerful model that can handle the role. Cost compounds across N t
 | **Implementer — mechanical** | 1-2 files, complete spec, isolated logic, no API contract change | Fast / cheap |
 | **Implementer — integration** | Multi-file, pattern matching, debugging touch | Standard |
 | **Implementer — architecture / judgment** | Broad codebase, design tradeoffs, new abstraction | Most capable |
-| **Spec-compliance reviewer** | Comparing diff to spec, binary check | Standard |
-| **Code-quality reviewer** | Smell / DRY / pattern match | Standard |
-| **Final whole-impl reviewer** | Cross-task drift, contract consistency | Most capable |
+| **Reviewer — fresh-context pass** | One read-only pass (spec + standards); role's pinned tier: `universal-reviewer` / `security-engineer` = strong | Role's tier |
+| **Ship-group drift pass** | Cross-task drift (symbol / type / contract), when plan names the group; role per group (R4 task → `security-engineer`, else `universal-reviewer`) | Most capable |
 
 `BLOCKED` after a fast-model dispatch → re-dispatch the same task at one tier up before escalating to the human.
 
@@ -188,9 +128,9 @@ Fires only when the plan's **Parallel layout** line declares Parallel with a con
 
 1. **Group tasks by track** (contract owner). A track's dependencies are the tasks in other tracks whose interfaces it consumes — the contract's merge order encodes this.
 2. **Dispatch every ready track in ONE message** — one Agent call per track, same message, so they run concurrently. Each brief carries the track's tasks, its file-ownership slice (allowed paths = own slice; forbidden = everything else including the do-not-touch list), the frozen shared interfaces verbatim, tests, and done criteria. Copy the allowed/forbidden paths and the interfaces VERBATIM from the contract — a retyped path list is how a brief silently drifts from the ownership the contract pinned (`scripts/plan-lint.sh` proves plan↔contract; the verbatim rule covers contract↔brief).
-3. **Pipeline, never barrier** — as each track returns its manifest, run its two-stage review immediately; do not wait for slower tracks. Answer implementer questions inline as they arrive.
-4. **Merge in contract order** — the integration owner (Lead) merges reviewed slices per the contract's merge order, running the interface provider's tests before merging its consumers. The comprehension gate applies per slice; subagents still never commit.
-5. **Final whole-implementation review** on the cumulative diff after all tracks land — cross-track drift (symbol / type / contract mismatch) is exactly what per-track review cannot see.
+3. **Pipeline, never barrier** — as each track returns its manifest, run its §6 review immediately; do not wait for slower tracks. The Lead hop applies per slice. Answer implementer questions inline as they arrive.
+4. **Merge in contract order** — the integration owner (Lead) merges reviewed slices per the contract's merge order, running the interface provider's tests before merging its consumers. Subagents still never commit.
+5. **Ship-group drift pass** when the plan names one (tracks sharing a frozen interface are one group).
 
 Mid-flight conflicts:
 - A track needs a file outside its slice → it returns `BLOCKED` with the path; Lead either amends the contract (every owner re-briefed) or drops to sequential. Never silently widen a slice.
@@ -206,7 +146,7 @@ The same contract that governs parallel subagents can be executed by SEPARATE CL
 - **Each session runs its own Lead.** It executes its track's tasks, runs its own per-task reviews, and — unlike a subagent — COMMITS its own slice to a track branch (or worktree). The subagent commit ban binds subagents, not session Leads; the atomicity the ban protects is preserved by branch isolation + contract merge order instead.
 - **Disk is the only shared truth.** Plan + contract are CLI-agnostic files; each session flips only its OWN tasks' checkboxes, so the checkbox union merges cleanly at integration. A session that edits another track's tasks, files, or checkboxes has broken the contract.
 - **Isolation is mechanical only on some CLIs.** Same-worktree stomp is hook-denied on Claude, doctrine-held elsewhere — prefer a branch or worktree per track whenever slices share any filesystem state (generated files, build artifacts, lockfiles).
-- **The integration session** (named in the contract) merges track branches in contract order, runs the interface provider's tests before its consumers, and runs the final whole-implementation review on the cumulative diff. Per-track self-review never substitutes for that final pass — cross-track drift is exactly what no single track can see.
+- **The integration session** (named in the contract) merges track branches in contract order, runs the interface provider's tests before its consumers, and runs the ship-group drift pass when the plan names one. Per-track self-review never substitutes for that pass — cross-task drift is exactly what no single track can see.
 - **A frozen interface change stops every affected session.** Renegotiate in the contract file, re-kickoff the affected tracks. Silent divergence between sessions is the failure mode this whole protocol exists to prevent.
 
 ## Subagent commit policy
@@ -217,11 +157,4 @@ The subagent **never** commits. It returns a manifest; the Lead commits. Two rea
 
 This is the opposite of some external subagent-driven patterns where the implementer commits its own work. Stay with Lead-commits — it is load-bearing for the bounded-delegation Iron Rule.
 
-**Comprehension gate — the Lead reads before it commits.** Green gates
-(spec-compliance + code-quality + tests) are necessary, NOT sufficient. Before
-committing a delegated diff, the Lead reads it and can explain what changed and
-why — a diff you cannot explain is not ready to commit, even with every reviewer
-APPROVED. Delegation is bounded work you still own, not a diff you rubber-stamp
-because the agents said OK; that gap between what shipped and what you understand
-is how a delegated codebase rots. Cannot explain a hunk → send it back with the
-question, do not commit past it.
+**Lead hop — one, not three.** With a reviewer report for the diff, the Lead reads the decision brief, spot-checks ONE finding in the report file (a clean report → one traced claim), and runs the task's Command only when the Lead changed the tree after the owner's run (rebase onto a moved main, a NEEDS edit, render). Opens the source only for that spot-check, never for an axis walk or second review. No report (missing / failed / empty) → the Lead runs `review-code` §2 walk, recorded as a LIMITATION. A brief you cannot summarise in one sentence is a brief defect — send it back.

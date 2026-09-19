@@ -141,7 +141,7 @@ Each teammate is a full Claude Code session — rolepod's CLAUDE.md + skills + h
 - **S1-S5 / T1-T6 / F1-F5** — every teammate's pre-commit / pre-edit checks.
 - **`block-subagent-commit.sh`** — teammates cannot `git commit` directly. Lead commits after teammates report COMPLETED + evidence.
 - **`gate-reminder.sh`** — high-risk path detection fires per teammate edit.
-- **`review-code` skill** — adversarial review (external reviewers when configured) still applies inside teammates.
+- **Review reports** — the Lead consumes a teammate's review report; it dispatches `review-code` only when a report is missing.
 - **`session-lifecycle.sh --lock`** — does NOT fire across teammates (same worktree shared by design).
 
 Lead's job is coordination + cleanup. Gate enforcement is per-teammate.

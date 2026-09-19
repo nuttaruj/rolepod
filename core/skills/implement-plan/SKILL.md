@@ -90,9 +90,11 @@ Every unblocked task goes out in ONE message, each task owner in its OWN worktre
 
 ### 6. Per-task review pipeline — the task owner's decision brief replaces Lead review
 
-A task owner's **decision brief** replaces the Lead-run review — the Lead reads the brief, spot-checks ONE finding in its report file, runs the task's Command in the owner's worktree, then commits (ff-merge the owner's branch).
-Every hop reads what the previous hop produced — brief, diff, report, decision brief — and opens the source only for that spot-check or a named residual, never by default. The task owner's reviewer — `universal-reviewer`, read-only, two axes (spec compliance + standards; or the concern-matched row) — plus `security-engineer` on a high-risk path and `qa-tester` (E2E / UI) when the slice changes what a user sees, in ONE message; the owner's own unit tests are the test floor.
-An R4 slice with a usable pool: the external pass (`--kind review`, collected in the foreground) replaces `universal-reviewer` — the Lead runs no second external for the ship group. A Lead-built task (R1/R2) → the Lead runs §6 itself.
+A task owner's **decision brief** replaces the Lead-run review — the Lead reads the brief, spot-checks ONE finding in its report file (a clean report → one traced claim), runs the task's Command only when it changed the tree after the owner's run (rebase onto moved main, a NEEDS edit, render), then commits.
+
+The Lead opens the source only for the spot-check or a named residual; a reviewer reads the source its claims need. The task owner's reviewer — `universal-reviewer` (spec + standards; or concern-matched row) — plus `security-engineer` on high-risk paths and `qa-tester` (E2E / UI) when the user sees a change, in ONE message; the owner's unit tests are the test floor. R4 with a usable pool: external replaces `universal-reviewer`. Lead-built (R1/R2) → Lead runs §6.
+
+**Lead hop — one, not three.** Spot-check ONE traced claim, never axis walk. No report → Lead runs `review-code` §2, recorded as a LIMITATION.
 
 **One task per pass, then ship it.** Each task owner's Command → decision brief → Lead spot-check + commit → next unblocked task. Never batch tasks into one diff; the rhythm is a fresh context per task. A **whole-implementation review** runs only over a ship group (tasks sharing a seam, named in the plan) for cross-task drift: `security-engineer` when the group holds an R4 task, else `universal-reviewer`; never a re-review of a task's own diff; no group named → none. Build the next unblocked task in its OWN worktree while under review.
 
@@ -125,7 +127,7 @@ The implementation manifest is the canonical artifact: `templates/implementation
 Load only when needed:
 - `references/tdd-by-risk.md` — task type → test discipline.
 - `references/wizard.md` — steps only the HUMAN can perform (credentials, vendor dashboards, CI secrets, a cutover) → an interactive bash wizard instead of a wall of instructions.
-- `references/subagent-dispatch.md` — status taxonomy, parallel-track protocol, two-stage review prompts, model table, continuous-execution rationale.
+- `references/subagent-dispatch.md` — status taxonomy, parallel-track protocol, review pass, model table, continuous-execution rationale.
 - `examples/execution-examples.md` — surgical-vs-scope-creep and accept-vs-reject manifest, good/bad pairs.
 
 ## Hard stops
