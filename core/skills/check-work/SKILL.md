@@ -34,7 +34,7 @@ Does not own: new design / code issues beyond verification failures · merge / b
 Hand off:
 - The user asked only to verify — no fix, no ship requested → the evidence block is the deliverable; stop here. Otherwise:
   - Evidence fails → `debug-issue` or `implement-plan`.
-  - Passes with risk (fails review-code's skip test: >5 lines, multi-file, logic-bearing, or high-risk) → `review-code`.
+  - Passes with risk (fails review-code's skip test: >5 lines, multi-file, logic-bearing, or high-risk) → `review-code`, unless the diff already has a report under `.rolepod/evidence/review/` → next task or `finish-work`.
   - Passes, low risk, plan has unchecked tasks → `implement-plan` next task (Ship asks once per plan).
   - Passes, low risk, plan exhausted → `finish-work`.
 

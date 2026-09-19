@@ -61,12 +61,12 @@ Match the intent to the FIRST skill that fires; that skill decides what comes ne
 | clear UI edit (existing design / screenshot / exact acceptance criteria) | **Build (UI)** | `implement-plan`, Owner `frontend-developer` (design-system / CSS / a11y-only → `ui-ux-designer`) → `check-work` | balanced |
 | browser verification / "does the UI work?" | **Verify** | `check-work` | balanced |
 | "audit UX / UI / a11y" of one page or flow | **Verify→Review** | `check-work` §3 observes → `review-code` UI axis (`ui-ux-designer` when available; `/audit-a11y` when uiproof installed) | balanced |
-| edit / implement / fix on **auth / billing / payments / credits / migration / data deletion / secrets / tokens / crypto / permissions / security** (a "plan / design" ask → the architecture row) | **Define (high-risk)** | `write-spec` → `write-plan` → `implement-plan` → `review-code` | balanced build · **strong** review |
+| edit / implement / fix on **auth / billing / payments / credits / migration / data deletion / secrets / tokens / crypto / permissions / security** (a "plan / design" ask → the architecture row) | **Define (high-risk)** | `write-spec` → `write-plan` → `implement-plan` (review = its §6, per task) | balanced build · **strong** review |
 | architecture decision (DB schema / API contract / module split) | **Define** | `write-spec` — §3 dispatches ONE `system-architect` for the approach (when available) → `write-plan` | **strong** |
 | "is this done / fixed / does it work / verify" | **Verify** | `check-work` | balanced |
 | "review / check this / look at the diff" | **Review** | `review-code` | **strong** |
 | "audit / sweep / map / find all X" on **the whole repo** | **Review (repo-wide)** | Sweeps (below) → `review-code` | balanced |
-| "ship / merge / push / PR / ready / go live" — and any "done / finished / ready" or natural end of the work | **Ship** | `check-work` (evidence) → `review-code` (adversarial reviewers per domain when multi-file / high-risk) → `finish-work` (the finish menu) | **strong** (final review) |
+| "ship / merge / push / PR / ready / go live" — and any "done / finished / ready" or natural end of the work | **Ship** | `finish-work` (cite per-task review reports + check-work Status; `review-code` only for a task with no report, a named ship-group drift pass, or a missing R4 pass) | **strong** (only if review-code fires) |
 | explain-only / conceptual question | (no phase) | answer directly — a wide repo / online sweep first → ONE `scout` returns a research report (the always-on Code search rule) | cheap |
 | unclear doc artifact / proposal / ADR scope | **Define** | `write-spec` | cheap |
 | clear doc edit / runbook section / README | **Build** | `implement-plan`, Owner `content-strategist` (`audience:` set); R1-sized stays with the Lead | cheap |
@@ -105,7 +105,7 @@ The router fires the **first** skill per phase; a phase exits only on its exit e
 | **Define** | `write-spec` | written spec OR approved one-line design (≤5-line task) OR R2 inline checklist OR explicit "skip spec" | Plan |
 | **Plan** | `write-plan` (+ agent routing + cohesion contract if multi-agent) | ordered task list with done-condition + verify command per task; dependencies marked (R2, or the spec-as-plan R3 lane: the inline checklist IS the plan) | Build |
 | **Build** | `implement-plan` (+ `debug-issue` for bug intent) | changed files + tests added (or explicit no-test justification) + red→green evidence | Verify |
-| **Verify** | `check-work` | fresh command output / screenshot / curl / log evidence; OR explicit "verify impossible because X" risk note | Review (high-risk / multi-file) OR Ship (low-risk, plan exhausted) OR Build (unchecked tasks) |
+| **Verify** | `check-work` | fresh command output / screenshot / curl / log evidence; OR explicit "verify impossible because X" risk note | Review (high-risk / multi-file, no review report yet) OR Ship (low-risk, plan exhausted) OR Build (unchecked tasks) |
 | **Review** | `review-code` | findings fixed OR rejected with line-anchored reason; no unresolved blocker | Ship (plan exhausted) OR Build (unchecked tasks) |
 | **Ship** | `finish-work` | the six pre-merge gates green (finish-work owns the list); required CI lanes pass; user approval when policy requires; the finish menu presented | **end** |
 
@@ -132,7 +132,7 @@ User explicit ("skip spec" / "just commit" / "answer only" / "no plan" / "ship a
 - Claiming done before Verify → `check-work`.
 - 2nd parallel agent spawn without a contract → `write-plan`, cohesion contract first.
 - A subagent attempting `git commit` / `git push` / `gh pr merge` → not allowed; the Lead commits after the reviewer pass.
-- High-risk path (the list in the router table; project override: `.rolepod/risk-paths`) with 0 reviewer agents dispatched → STOP. Dispatch (1) `security-engineer` + `universal-reviewer` — always, except the R4 comment/blank-only carve-out (ONE strong reviewer); (2) an external CLI reviewer — a different CLI than the Lead's, on its own default model — when the pool is enabled and a member is usable (opt-in — review-code's `external-review-routing.md`).
+- High-risk path (the list in the router table; project override: `.rolepod/risk-paths`) with 0 reviewer reports at commit / ship → STOP. R4 floor: `security-engineer` + ONE general strong pass — an external CLI reviewer (a different CLI, its own default model) when the pool is enabled and a member is usable (opt-in — review-code's `external-review-routing.md`), else `universal-reviewer`; never both. The task owner dispatches them (implement-plan §6); a Lead-built diff → the Lead does. Comment/blank-only carve-out: ONE internal strong reviewer, no external.
 - 3rd agent on the same issue OR 3rd PR on the same surface in one session → STOP, ask the user.
 - Diff mixes 2+ unrelated concerns at push / merge time → split into separate PRs (`finish-work` PR-scope gate).
 - Concurrent sessions share the REF as well as the files. SessionStart warns "concurrent session(s) detected in this worktree" → before editing a SHARED file STOP: spawn an isolated worktree (`git worktree add .worktrees/<task> -b <branch>`) and work on your own branch there; disjoint and solo edits flow free. Override: `ROLEPOD_ALLOW_SHARED_WORKTREE=1` for intentional shared / read-only sessions.

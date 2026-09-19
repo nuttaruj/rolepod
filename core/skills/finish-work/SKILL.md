@@ -19,7 +19,7 @@ Close out a branch safely: pre-merge gate, four finish options, launch ritual wh
    - Never force-push to unpublish one; that is a second unauthorized act on a shared ref.
 2. NEVER auto-merge a PR with a failing required CI lane.
 3. NEVER skip the pre-merge gate (simplicity + tests + failure-mode + evidence + reviewer + PR scope) because "the diff is small". A user waiver granted at an earlier phase carries forward — quote it in the finish menu's gate status (which gate, the user's words) instead of re-demanding the waived work or skipping silently.
-4. The reviewer who flagged a BLOCKER is not the final authority on whether it is fixed, and neither is its author — a reviewer who did not write the fix confirms before merge (Lead-built fix → qa-tester; R4 → the internal strong reviewer; the Lead never approves its own fix).
+4. The reviewer who flagged a BLOCKER is not the final authority on whether it is fixed, and neither is its author — a reviewer who did not write the fix confirms before merge (Lead-built fix → universal-reviewer; R4 → the internal strong reviewer; the Lead never approves its own fix).
 5. Worktree cleanup order: merge → verify → `cd` to the main root → `git worktree remove` → `git worktree prune` → delete branch. Reversed order leaves stuck refs. Only remove worktrees we created (under `.worktrees/` or `worktrees/`); never touch harness-owned workspaces.
 </EXTREMELY-IMPORTANT>
 
@@ -55,11 +55,11 @@ Run all six before any merge / push action. Any failure → fix or report; do no
 
 {{INCLUDE: core/fragments/gates-t1-t6.md}}
 
-**Failure-mode (F1-F5)** — check-work's gate; do not merge with an unresolved F-finding.
+**Failure-mode (F1-F5)** — check-work's gate; an unresolved F-finding blocks merge. Tree unchanged since its block → cite its Status for T + F.
 
-**Evidence** — check-work's `Status: UNVERIFIED` or `PARTIAL` blocks merge unless the user explicitly waives it (quote the waiver in the menu); green tests alone do not satisfy this gate. Tree unchanged since that block's recorded pass → cite it and skip the local re-run ONLY when a CI lane re-runs that scope on the merge path; no CI → run the Phase 1+2 equivalents locally before the irreversible act (§2).
+**Evidence** — check-work's `Status: UNVERIFIED` or `PARTIAL` blocks merge unless the user explicitly waives it; green tests alone do not satisfy this gate. Tree unchanged since that block's recorded pass → cite it and skip the local re-run ONLY when a CI lane re-runs that scope on the merge path; no CI → run the Phase 1+2 equivalents locally before the irreversible act (§2).
 
-**Reviewer** — risk-appropriate review completed (`review-code`). On a high-risk diff read the report's **Cross-model adversarial pass** line: `ran on <cli>` (a ROLEPOD-XFAM ok receipt) clears the gate whatever the family field says — a CLI preset that reports no model family is stated neutrally, never as a limitation. `NOT RUN — cross-family off (opt-in)` is the user's choice, one neutral line. `NOT RUN` for any other reason (pool failed / empty) or `vertical — same CLI` is a verification limitation the user must see before merge; state it, never clear the gate silently.
+**Reviewer** — risk-appropriate review completed (`review-code`). On a high-risk diff read the report's **Cross-model adversarial pass** line: `ran on <cli>` (a ROLEPOD-XFAM ok receipt) clears the gate whatever the family field says — a CLI preset that reports no model family is stated neutrally, never as a limitation. `NOT RUN — cross-family off (opt-in)` is the user's choice, one neutral line. `NOT RUN` for any other reason (pool failed / empty) or `vertical — same CLI` is a limitation the user must see before merge — never clear the gate silently.
   Per task: an R4 task's strong-pass + `security-engineer` reports under `.rolepod/evidence/review/`, plus the group's drift read when named; missing → `review-code` for that task, never the branch.
 
 **PR scope (P)** — one concern per PR / merge. Mixed concerns → split (`git add -p`, separate branches) first; a mixed diff is unreviewable.
@@ -115,8 +115,8 @@ A genuine launch event (first traffic to a new surface, a staged rollout, a migr
 ## If a matching Rolepod agent is available
 
 - `devops-sre` — CI / deploy / rollback / monitoring
-- `qa-tester` — user-visible (E2E / UI) verification before merge
-- `security-engineer` — security gate on high-risk diffs
+- `qa-tester` — E2E / UI proof check-work's block lacks
+- `security-engineer` — an R4 task with no report
 
 Brief: branch, diff summary, CI status, review verdict, launch plan if any.
 
