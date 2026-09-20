@@ -863,6 +863,57 @@ else
   echo "  ✗ --brief R4 Reviewers missing the external instruction: $OUTA"; fail=$((fail+1))
 fi
 
+# (3a) the repo's .rolepod/risk-paths override tiers the brief the way the commit
+# gate tiers the commit: a `-` line excludes a path the built-in words would flag
+# (an agent definition named billing-engineer.yml is no billing code), a bare / `+`
+# line adds one.
+RPR="$TMP/risk-repo"; mkdir -p "$RPR/.rolepod" "$RPR/plans"
+( cd "$RPR" && git init -q . )
+cat > "$RPR/plans/p.md" <<'EOF'
+### Task 1: preloads
+- **Delivers:** slimmer preloads.
+- **Blocked by:** none
+- [ ] **Files:** `adapters/claude/agent-frontmatter/billing-engineer.yml`, `tests/static/pin.sh`
+- [ ] **Command:** true
+- **Owner:** devops-sre
+- **Done when:** true
+### Task 2: ledger
+- **Delivers:** a ledger.
+- **Blocked by:** none
+- [ ] **Files:** `src/ledger/post.ts`, `src/ledger/sum.ts`
+- [ ] **Command:** true
+- **Owner:** backend-developer
+- **Done when:** true
+## Parallel layout
+Sequential — single owner.
+## Failure policy
+Default: stop.
+EOF
+OUTRP0=$(bash "$LINT" --brief 1 "$RPR/plans/p.md")
+printf -- '-agent-frontmatter/\n+src/ledger/\n' > "$RPR/.rolepod/risk-paths"
+OUTRP1=$(bash "$LINT" --brief 1 "$RPR/plans/p.md")
+OUTRP2=$(bash "$LINT" --brief 2 "$RPR/plans/p.md")
+if printf '%s\n' "$OUTRP0" | grep -A1 '^## Tier' | grep -qF 'R4 (high-risk)' \
+   && printf '%s\n' "$OUTRP1" | grep -A1 '^## Tier' | grep -qF 'R3 (multi-file)'; then
+  echo "  ✓ plan-lint.sh --brief honours a '-' line in .rolepod/risk-paths (R4 by file name → R3)"
+else
+  echo "  ✗ --brief ignores the risk-paths exclusion: $(printf '%s\n' "$OUTRP1" | grep -A1 '^## Tier' | tail -1)"; fail=$((fail+1))
+fi
+if printf '%s\n' "$OUTRP2" | grep -A1 '^## Tier' | grep -qF 'R4 (high-risk)'; then
+  echo "  ✓ plan-lint.sh --brief honours a '+' line in .rolepod/risk-paths (project risk path → R4)"
+else
+  echo "  ✗ --brief ignores the risk-paths addition: $(printf '%s\n' "$OUTRP2" | grep -A1 '^## Tier' | tail -1)"; fail=$((fail+1))
+fi
+# A malformed ERE in the override fails open (built-ins only), like the gate — never a truncated brief.
+printf -- '+src/[a\n' > "$RPR/.rolepod/risk-paths"
+OUTRP3=$(bash "$LINT" --brief 1 "$RPR/plans/p.md" 2>/dev/null) && RC3=0 || RC3=$?
+if [ "$RC3" -eq 0 ] && printf '%s\n' "$OUTRP3" | grep -q '^## Bounds' \
+   && printf '%s\n' "$OUTRP3" | grep -A1 '^## Tier' | grep -qF 'R4 (high-risk)'; then
+  echo "  ✓ plan-lint.sh --brief survives a malformed risk-paths pattern (built-ins only, whole brief printed)"
+else
+  echo "  ✗ --brief broke on a malformed risk-paths pattern (rc=$RC3)"; fail=$((fail+1))
+fi
+
 # (3b) two non-test source files, no risk path → R3 (multi-file), universal-reviewer only.
 cat > "$TMP/brief-tier-r3.md" <<'EOF'
 ### Task 1: two files
@@ -1016,6 +1067,17 @@ fi
 printf '%s\n' "$OUT" | grep -q '^- Budget: build <= 40 tool calls' \
   && echo "  ✓ --brief Bounds carry the tool budget" \
   || { echo "  ✗ --brief Bounds missing the Budget line"; fail=$((fail+1)); }
+
+# Worktree fence: the Bounds name the task's worktree as the only place to edit
+# (2026-09-19: two task owners edited the main checkout's copy before their worktree).
+printf '%s\n' "$OUT" | grep -qE '^- Edit only Files allowed, and only under \.\./[A-Za-z0-9._-]+-wt-[a-z0-9-]+-t[0-9]+-[a-z0-9-]+ ' \
+  && echo "  ✓ --brief Bounds fence every edit inside the task's worktree" \
+  || { echo "  ✗ --brief Bounds do not name the worktree as the only place to edit"; fail=$((fail+1)); }
+
+# Round 2 shape: a new foreground dispatch (a message to a finished reviewer never answers the owner).
+printf '%s\n' "$OUT" | grep -q 'round 2 = ONE new foreground dispatch of the flagging reviewer' \
+  && echo "  ✓ --brief Bounds state round 2 as a new foreground dispatch" \
+  || { echo "  ✗ --brief Bounds leave the round-2 shape open"; fail=$((fail+1)); }
 
 # Worktree line: the brief names the worktree after the task (mechanism).
 printf '%s\n' "$OUT" | grep -q '^## Worktree' \

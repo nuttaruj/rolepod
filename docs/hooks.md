@@ -469,7 +469,7 @@ The high-risk path list (auth/billing/payments/…) is built-in but repo-tunable
 -(^|/)design-templates/invoice(/|$)
 ```
 
-Bare or `+`-prefixed lines ADD patterns; `-`-prefixed lines EXCLUDE paths the built-in list would match; `#` starts a comment. Read by `precommit-gate.sh`, `gate-reminder.sh`, and `session_state.py`; absent file = built-ins only; unreadable file fails open. The strongest seed: paths whose git history shows the highest bugfix-commit density — measure, don't guess.
+Bare or `+`-prefixed lines ADD patterns; `-`-prefixed lines EXCLUDE paths the built-in list would match; `#` starts a comment. Read by `precommit-gate.sh`, `gate-reminder.sh`, `session_state.py`, and `plan-lint.sh --brief` (the brief's `## Tier` follows the same list the gate will apply at commit — it matches with awk, so keep patterns to POSIX ERE: a GNU-only `\b` / `\<` / `\S` tiers the brief differently, and the gate stays the floor); absent file = built-ins only; unreadable file fails open. The strongest seed: paths whose git history shows the highest bugfix-commit density — measure, don't guess.
 
 ### Test-tampering lint — `hooks/test-diff-lint.sh`
 

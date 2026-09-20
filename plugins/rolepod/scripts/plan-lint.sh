@@ -316,8 +316,17 @@ if [ "${1:-}" = "--brief" ]; then
     # helpers, so the two can never print a mismatched pair on a reorder.
     tprose = 1
     for (i = 1; i <= acnt; i++) if (!is_prose(allowedord[i])) tprose = 0
+    # The repo risk-paths override (same file the commit gate reads): a bare / +
+    # line adds a path pattern, a - line excludes one. Case-insensitive, like the gate.
+    radd = tolower(ENVIRON["RP_RISK_ADD"]); rexcl = tolower(ENVIRON["RP_RISK_EXCL"])
     trisk = 0
-    for (i = 1; i <= acnt; i++) if (is_security(allowedord[i])) trisk = 1
+    for (i = 1; i <= acnt; i++) {
+      lp = tolower(allowedord[i])
+      hit = is_security(allowedord[i])
+      if (radd != "" && lp ~ radd) hit = 1
+      if (hit && rexcl != "" && lp ~ rexcl) hit = 0
+      if (hit) trisk = 1
+    }
     tnontest = 0
     for (i = 1; i <= acnt; i++) if (!is_test(allowedord[i])) tnontest++
     if (acnt > 0 && tprose) tier = "R1"
@@ -362,13 +371,26 @@ if [ "${1:-}" = "--brief" ]; then
       print r
     }
     print "## Bounds"
-    print "- Edit only Files allowed. Never commit or push; leave the tree staged."
-    print "- Run the Command in the foreground (Bash timeout 600000; never run_in_background - nothing wakes a sub-agent); a code diff → dispatch the Reviewers in ONE message (reports to .rolepod/evidence/review/<task>-<role>.md); fix; round 2 = only the flagging reviewer re-checks its delta; max 2 rounds."
+    printf "- Edit only Files allowed, and only under ../%s-wt-%s-t%s-%s — the same path in the main checkout belongs to the Lead; no backup copies (.bak / .orig). Never commit or push; leave the tree staged.\n", repo, feat, want, tslug
+    print "- Run the Command in the foreground (Bash timeout 600000; never run_in_background - nothing wakes a sub-agent); a code diff → dispatch the Reviewers in ONE message (reports to .rolepod/evidence/review/<task>-<role>.md); fix; round 2 = ONE new foreground dispatch of the flagging reviewer on its delta (a message to a finished reviewer never answers you); max 2 rounds."
     print "- Budget: build <= 40 tool calls, whole loop <= 120; past it return PARTIAL with what is done, never grind."
     print "- Return a decision brief: verdict, `git diff --cached --stat | tail -3`, Command last 3 lines verbatim, reviewer verdicts + report paths, residuals."
   }
   '
-  BRIEF_REPO="$(basename "$(git -C "$(dirname "$PLAN")" rev-parse --show-toplevel 2>/dev/null || pwd)")"
+  BRIEF_ROOT="$(git -C "$(dirname "$PLAN")" rev-parse --show-toplevel 2>/dev/null || pwd)"
+  BRIEF_REPO="$(basename "$BRIEF_ROOT")"
+  # <git-root>/.rolepod/risk-paths — parsed exactly like precommit-gate.sh risk_filter.
+  RP_RISK_ADD=""; RP_RISK_EXCL=""
+  if [ -f "$BRIEF_ROOT/.rolepod/risk-paths" ]; then
+    RP_RISK_ADD=$(sed -e 's/#.*//' -e '/^[[:space:]]*$/d' -e '/^-/d' -e 's/^+//' "$BRIEF_ROOT/.rolepod/risk-paths" 2>/dev/null | paste -sd'|' - 2>/dev/null || true)
+    RP_RISK_EXCL=$(sed -e 's/#.*//' -e '/^[[:space:]]*$/d' "$BRIEF_ROOT/.rolepod/risk-paths" 2>/dev/null | grep '^-' 2>/dev/null | sed 's/^-//' | paste -sd'|' - 2>/dev/null || true)
+  fi
+  # Fail open like the gate: a pattern awk cannot compile is dropped (built-ins only),
+  # never a brief cut off mid-way. Probed with awk itself — grep -E accepts a different set.
+  rp_ere_ok() { printf 'x\n' | RP_P="$1" awk '{ if ($0 ~ tolower(ENVIRON["RP_P"])) n = 1 }' >/dev/null 2>&1; }
+  [ -z "$RP_RISK_ADD" ] || rp_ere_ok "$RP_RISK_ADD" || RP_RISK_ADD=""
+  [ -z "$RP_RISK_EXCL" ] || rp_ere_ok "$RP_RISK_EXCL" || RP_RISK_EXCL=""
+  export RP_RISK_ADD RP_RISK_EXCL
   if [ -n "$CONTRACT" ]; then
     awk -v rx="$TASK_RX" -v want="$BRIEF_N" -v planpath="$PLAN" -v repo="$BRIEF_REPO" -v hascontract=1 "$BRIEF_AWK" "$PLAN" "$CONTRACT"
   else
