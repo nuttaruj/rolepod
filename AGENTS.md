@@ -10,4 +10,5 @@
 - After a dispatch: next unblocked task, never idle on a reviewer.
 - Worktree only for a parallel task owner; Lead self-do (R1/R2) stays on main.
 - R3 (multi-file) dispatches the task owner the plan names (hooks/scripts → devops-sre, python lib → backend-developer, docs → content-strategist); the Lead plans, spot-checks, commits.
+- Docs task (R1 at any size): ≤ ~5 edit sites with the exact strings already in the plan → `Owner: Lead`; more sites, free prose or repo-wide docs → content-strategist (cheap tier), tracks in parallel, Lead spot-check. Payload doctrine (`core/skills`, `core/fragments`, hook messages) → the contract carries the canonical sentences; expect one fix round.
 - Edits go through the CLI's edit tools, never a shell heredoc or sed: the edit-time hooks (self-do nudge, write scope, edit ledger, test-edit count) see tool edits only.
