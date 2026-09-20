@@ -134,7 +134,6 @@ Cadence, every tier: round 1 = every axis in ONE message, ≤ 40 tool calls each
 
 Whoever wrote the fix never verifies it: the reviewer who flagged it verifies by default; the Lead's cold read only when that reviewer cannot run. A Lead-built fix → one read-only `universal-reviewer` pass (R4 → the strong pass).
 - The external re-runs only when its previous report carried a BLOCKER and the fix delta is logic-bearing code; otherwise the internal reviewer verifies the fix delta alone.
-- Round 2 only for a BLOCKER / MAJOR fix; a MINOR fix is noted in the brief.
 - Author and reviewer disagree on merits → technical data > documented style guide > engineering principle > codebase consistency.
 
 **Breaker.** Two rounds is the budget — review, then confirm the fixes; a third is a reassessment point. Triggers, any one:
