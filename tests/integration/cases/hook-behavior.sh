@@ -19,6 +19,23 @@ REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
 HOOKS="$REPO_DIR/hooks"
 fail=0
 
+# The real repo's edit ledger must not grow while this file runs: fixture paths
+# (src/auth/login.py ...) once landed there and read as high-risk edits at the
+# next commit gate (2026-09-19: a release commit was denied on 6 leaked rows).
+REAL_LEDGER="$REPO_DIR/.rolepod/evidence/edits.jsonl"
+ledger_rows() { [ -f "$REAL_LEDGER" ] && wc -l < "$REAL_LEDGER" | tr -d ' ' || echo 0; }
+LEDGER_ROWS_BEFORE=$(ledger_rows)
+# A hook called below without its own (cd ...) inherits this cwd: a fixture git
+# repo, so its ledger rows land there and the write-scope rule still evaluates.
+# NOT mktemp -d: subagent-write-scope.sh allows every write under the OS temp
+# roots, which would turn the write-shaped allow cases vacuous.
+SANDBOX_CWD="$(dirname "$REPO_DIR")/rp-hb-sandbox.$$"
+rm -rf "$SANDBOX_CWD"; mkdir -p "$SANDBOX_CWD"
+trap 'rm -rf "$SANDBOX_CWD"' EXIT
+( cd "$SANDBOX_CWD" && git init -q . && git config user.email t@t && git config user.name t \
+  && git commit -q --allow-empty -m base )
+cd "$SANDBOX_CWD"
+
 check() { # $1 desc, $2 expected (deny|allow), $3 output
   local desc="$1" expected="$2" out="$3"
   local verdict="allow"
@@ -354,7 +371,7 @@ echo "$out" | grep -q 'COMMIT WILL BLOCK' \
 # ── precommit-gate: high-risk staged diff blocks; claim-bypass ignored ──
 TMP=$(mktemp -d)
 TMPT=""
-trap 'rm -rf "$TMP" ${TMPT:+"$TMPT"}' EXIT
+trap 'rm -rf "$TMP" "$SANDBOX_CWD" ${TMPT:+"$TMPT"}' EXIT
 (
   cd "$TMP"
   git init -q .
@@ -1485,6 +1502,24 @@ cc_bash_line 'echo "# c" > "contract.md"' >> "$CC_TMP/t11.jsonl"
 out=$(cc "$CC_TMP/t11.jsonl")
 check "cohesion: echo redirect to a quoted bare \"contract.md\" → allow" allow "$out"
 rm -rf "$CC_TMP"
+
+# ─── the real edit ledger stayed untouched ───
+SANDBOX_LEDGER="$SANDBOX_CWD/.rolepod/evidence/edits.jsonl"
+SANDBOX_ROWS=$([ -f "$SANDBOX_LEDGER" ] && wc -l < "$SANDBOX_LEDGER" | tr -d ' ' || echo 0)
+if [ "$SANDBOX_ROWS" -gt 0 ]; then
+  echo "  ✓ hooks called without a cwd wrote their ledger rows to the fixture repo ($SANDBOX_ROWS) — still evaluated, not skipped"
+else
+  echo "  ✗ the fixture repo's ledger is empty — hooks called without a cwd no longer evaluate edits"
+  fail=$((fail+1))
+fi
+cd "$REPO_DIR" && rm -rf "$SANDBOX_CWD"
+LEDGER_ROWS_AFTER=$(ledger_rows)
+if [ "$LEDGER_ROWS_AFTER" = "$LEDGER_ROWS_BEFORE" ]; then
+  echo "  ✓ no fixture row leaked into the real repo's edit ledger"
+else
+  echo "  ✗ the real repo's edit ledger grew $LEDGER_ROWS_BEFORE → $LEDGER_ROWS_AFTER rows during this run (a hook ran with the real repo as cwd)"
+  fail=$((fail+1))
+fi
 
 # ─── result ───
 if [ "$fail" -eq 0 ]; then
