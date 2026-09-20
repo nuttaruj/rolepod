@@ -1017,15 +1017,23 @@ for f in hooks/worktree-guard.sh hooks/cohesion-contract-check.sh \
 done
 
 # ── Render reproducibility under LC_ALL=C ─────────────────────────────
-cp core/fragments/skill-index-lean.md /tmp/.lean-surface-snap.md
-LC_ALL=C bash build/render.sh --target=all >/dev/null 2>&1
-if diff -q /tmp/.lean-surface-snap.md core/fragments/skill-index-lean.md >/dev/null 2>&1; then
+# The snapshot is per run: a fixed /tmp path was shared by every concurrent run
+# (sibling worktrees, parallel sessions) — the first to finish deleted it and
+# the other read the missing file as drift.
+# The generator runs for every target; opencode is the lightest one and leaves
+# plugins/ alone (--target=all rewrote 280 plugin files under a concurrent
+# run's byte-exact pins).
+LEAN_SNAP=$(mktemp)
+trap 'rm -f "$LEAN_SNAP"' EXIT
+cp core/fragments/skill-index-lean.md "$LEAN_SNAP"
+LC_ALL=C bash build/render.sh --target=opencode >/dev/null 2>&1
+if diff -q "$LEAN_SNAP" core/fragments/skill-index-lean.md >/dev/null 2>&1; then
   echo "  ✓ skill-index-lean.md render stable under LC_ALL=C"
 else
   echo "  ✗ skill-index-lean.md drifts under LC_ALL=C (locale-dependent generator)"
   fail=$((fail+1))
 fi
-rm -f /tmp/.lean-surface-snap.md
+rm -f "$LEAN_SNAP"
 
 echo ""
 if [ $fail -eq 0 ]; then
