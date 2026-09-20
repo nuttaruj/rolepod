@@ -93,7 +93,7 @@ Every unblocked task goes out in ONE message, each task owner in its OWN worktre
 
 A task owner's **decision brief** replaces the Lead-run review — the Lead reads the brief, spot-checks ONE finding in its report file (a clean report → one traced claim), runs the task's Command only when it changed the tree after the owner's run (rebase onto moved main, a NEEDS edit, render), then commits.
 
-The Lead opens the source only for the spot-check or a named residual; a reviewer reads the source its claims need. The task owner's reviewer — `universal-reviewer` (spec + standards; or concern-matched row) — plus `security-engineer` on high-risk paths and `qa-tester` (E2E / UI) when the user sees a change, in ONE message; the owner's unit tests are the test floor. R4 with a usable pool: external replaces `universal-reviewer`. Lead-built (R1/R2) → Lead runs §6.
+The Lead opens the source only for the spot-check or a named residual; a reviewer reads the source its claims need. The task owner's reviewer — `universal-reviewer` (spec + standards; or concern-matched row) — plus `security-engineer` on high-risk paths and `qa-tester` (E2E / UI) when the user sees a change, in ONE message; the owner's unit tests are the test floor. A usable pool at the diff's tier (R4; lower by the pool file's `tier =`): external replaces `universal-reviewer`. Lead-built (R1/R2) → Lead runs §6.
 
 **Lead hop — one, not three.** Spot-check ONE traced claim, never axis walk. No report → Lead runs `review-code` §2, recorded as a LIMITATION.
 

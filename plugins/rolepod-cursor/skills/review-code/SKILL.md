@@ -59,7 +59,7 @@ rolepod-brain: add `brain_seed(task, agent: <reviewer id>)` verbatim; no tool �
 **By rigor tier** (R1 trivial edit · R2 one file + test · R3 multi-file · R4 high-risk):
 - **R1** → no review, no re-read turn; the edit tool's echo is the evidence. A docs-only diff is R1 at any size — no reviewer, internal or external; its own check (link check / static lint) is the verify.
 - **R2** → ONE read-only `universal-reviewer` pass on the diff (two axes: spec + standards; the author never reviews own logic); a matched row (perf / UI / arch) → that role instead. The writer's unit tests are the floor.
-- **R3** → the row match, internal only — the pool is an R4 instrument (the user asks → one pass). A high-risk path anywhere in the diff under review (the task or its ship group) tiers that diff R4; the commission's tier is the max over its tasks and governs Define / Plan only — a diff reviewed at its tier is never reviewed again at ship.
+- **R3** → the row match, internal — the pool's tier is R4 unless the pool file sets `tier = R2|R3`: from that tier up a usable external replaces `universal-reviewer`, never both (the user asks → one pass). A high-risk path anywhere in the diff under review (the task or its ship group) tiers that diff R4; the commission's tier is the max over its tasks and governs Define / Plan only — a diff reviewed at its tier is never reviewed again at ship.
 - **R4** → the full adversarial floor, never less. An R4 diff gets `security-engineer` + ONE general strong pass: the external when the pool is usable, else `universal-reviewer`. Never external + `universal-reviewer` on round 1 (money / auth included). Comment/blank-only carve-out: ONE internal strong reviewer, no external.
 
 **Satellite-first strong pass.** A usable cross-family external IS the R4 strong adversarial pass: `rolepod-cross-family --kind review --brief <brief> --attach <diff> --detach` — read-only, anchored by the runner.
@@ -94,7 +94,7 @@ Reviews merge severity-ordered, deduped by file:line + root cause (the Lead's fi
 **External adversarial review — a different CLI, never the Lead's own.**
 - The pool is the user's choice and **opt-in**: `<git-root>/.rolepod/cross-family`, then `~/.rolepod/cross-family` (`rolepod-cross-family --setup`), minus the Lead's own CLI; no file or `none` = off, never turned on unasked.
 - An externally implemented ship group (`--kind implement`) is reviewed by a DIFFERENT member — the runner skips the implementer while its ticket is uncommitted; a user-lifted risky scope (`risky:lifted`) → the external pass by a different member.
-- Enabled + R4 + logic-bearing code diff + usable member → routing to it is mandatory; R1-R3, and any doc / comment / config / rename-only diff, stay internal unless the user asks.
+- Enabled + logic-bearing code diff at the pool's tier + usable member → routing to it is mandatory; below it, and any doc / comment / config / rename-only diff, stay internal unless the user asks.
 - The writer's unit tests are the floor. The Lead's §2 walk runs only when no reviewer report exists (missing / failed / empty) — a recorded LIMITATION.
 - **An empty or partial return is a failed reviewer, never a clean pass** — a lens answering `""`, a one-sentence result, a turn-limit notice: resume it or re-dispatch on a narrower brief; until it reports the round is open and the report records a LIMITATION.
 - No dispatch possible at all (user forbade agents / no subagent support) → the Lead's cold self-review stands in as a recorded LIMITATION — surface the conflict, never self-set a bypass.

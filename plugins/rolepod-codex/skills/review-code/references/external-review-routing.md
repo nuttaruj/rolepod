@@ -192,7 +192,8 @@ satellite first whenever a usable non-Lead family exists:
   **critique** (write-spec §4b, `--kind critique`) — already cold one-shot by
   shape; same satellite-first order.
 
-This never widens WHO reviews (R1-R3 stay internal; the pool reviews R4 code only) — it only moves the
-strong-class tokens R4 already spends off the main plan. `rolepod-stats`
+This never widens WHO reviews (the pool reviews code at its tier — R4, or lower only when the pool
+file sets `tier = R2|R3`; below it stays internal) — it only moves the
+strong-class tokens that review already spends off the main plan. `rolepod-stats`
 reports external passes vs internal strong dispatches so the split is
 visible.
