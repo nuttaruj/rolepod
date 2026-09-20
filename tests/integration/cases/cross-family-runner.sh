@@ -311,6 +311,38 @@ check "review run (foreground) → codex gets the configured 1800s budget (30 mi
 rc=0; out=$(bash "$RUNNER" --kind review --brief brief.md --lead claude --timeout 120 2>/dev/null) || rc=$?
 check "--timeout flag overrides the config timeout" "printf '%s' \"\$out\" | grep -q 'budget=120s'"
 
+# ── tier key: pool review tier (spec D1 — plan-lint --brief reads this) ──
+echo "── cross-family: tier key ──"
+printf 'codex\n' > "$REPO/.rolepod/cross-family"
+out=$(bash "$RUNNER" --review-tier --lead claude)
+check "pool file with no tier line → --review-tier prints R4" "[ \"$out\" = R4 ]"
+printf '[reviewer]\nreview = codex\ntier = R2\n' > "$REPO/.rolepod/cross-family"
+out=$(bash "$RUNNER" --review-tier --lead claude)
+check "pool file with tier = R2 → --review-tier prints R2" "[ \"$out\" = R2 ]"
+names=$(bash "$RUNNER" --pool-names --lead claude | tr '\n' ' ')
+check "the tier line adds no member (--pool-names unchanged: codex only)" "[ \"$names\" = 'codex ' ]"
+poolout=$(bash "$RUNNER" --pool --lead claude)
+check "--pool gains one 'review tier: R2' line when the tier is not R4" "printf '%s' \"\$poolout\" | grep -qx '  review tier: R2'"
+printf '[reviewer]\nreview = codex\ntier = r3\n' > "$REPO/.rolepod/cross-family"
+out=$(bash "$RUNNER" --review-tier --lead claude)
+check "tier = r3 (lower-cased before parsing) → --review-tier prints R3" "[ \"$out\" = R3 ]"
+printf '[reviewer]\nreview = codex\ntier = fast\n' > "$REPO/.rolepod/cross-family"
+rc=0; out=$(bash "$RUNNER" --review-tier --lead claude 2>"$FIX/tier-warn.txt") || rc=$?
+check "an unrecognized tier value → R4 + one stderr note naming it" \
+  "[ $rc -eq 0 ] && [ \"$out\" = R4 ] && grep -q \"ignoring tier='fast' in .*(R2, R3 or R4)\" '$FIX/tier-warn.txt'"
+poolout=$(bash "$RUNNER" --pool --lead claude)
+check "--pool omits the review tier line when it falls back to R4 (byte-identical to today)" "! printf '%s' \"\$poolout\" | grep -q 'review tier:'"
+printf '[reviewer]\nreview = none\ntier = R2\n' > "$REPO/.rolepod/cross-family"
+out=$(bash "$RUNNER" --review-tier --lead claude)
+check "a tier line under 'review = none' → R4 (a pool off by choice never claims an external that cannot run)" "[ \"$out\" = R4 ]"
+poolout=$(bash "$RUNNER" --pool --lead claude)
+check "--pool under 'review = none' + tier = R2 still says OFF by choice, no review tier line" \
+  "printf '%s' \"\$poolout\" | grep -q 'OFF by choice' && ! printf '%s' \"\$poolout\" | grep -q 'review tier:'"
+printf '[reviewer]\ntier = R2\n' > "$REPO/.rolepod/cross-family"
+out=$(bash "$RUNNER" --review-tier --lead claude)
+check "a tier line with an empty pool (no review = line) → R4 (STATE=none, nothing usable either way)" "[ \"$out\" = R4 ]"
+printf '[reviewer]\nreview = codex timeout=1800 agy\nconsult = agy codex\n\n[implement]\ncli = codex\n' > "$REPO/.rolepod/cross-family"   # restore for the sections below
+
 # ── detach / collect / jobs ──────────────────────────────────────────────
 echo "── cross-family: --detach job ──"
 : > "$LOG"; : > .rolepod/evidence/phase-log.jsonl

@@ -25,6 +25,7 @@
 #                review = cursor agy codex stall=900   # the default order for every kind; stall= binds to codex
 #                consult = agy codex                   # debug consults want the fast answer first
 #                critique = cursor agy codex
+#                tier = R2   # the external replaces universal-reviewer from this tier up (default R4)
 #                [implement]
 #                cli = codex claude                    # which members may WRITE (--kind implement)
 #            The older shape (bare lines + `consult: agy codex` per-kind lines) still reads.
@@ -101,6 +102,7 @@
 #   cross-family.sh --pool [--lead <cli>] [--kind <k>]    # usable pool, no network
 #   env ROLEPOD_EDIT_LEDGER=<path>   # implement: override where hooks/edit-ledger.py is found (default: next to this runner, then ~/.rolepod/bin)
 #   cross-family.sh --pool-names [--lead <cli>]           # names only (hooks use this)
+#   cross-family.sh --review-tier [--root <dir>]           # effective `tier =` value (R2/R3/R4; plan-lint --brief uses this)
 #   cross-family.sh --setup [review="<order>" implement=<same|none|"<order>">]   # guided pool setup on request; no values = the questions + candidates
 #   cross-family.sh --probe [--lead <cli>]                # live "reply OK" per member
 #   cross-family.sh --candidates                          # every installed CLI, the Lead's own included (opt-in question)
@@ -135,6 +137,7 @@ while [ $# -gt 0 ]; do
     --jobs) MODE="jobs"; shift ;;
     --pool) MODE="pool"; shift ;;
     --pool-names) MODE="pool-names"; shift ;;
+    --review-tier) MODE="review-tier"; shift ;;   # effective `tier =` value (R2/R3/R4; R4 when off / none / no line)
     --probe) MODE="probe"; shift ;;
     --candidates) MODE="candidates"; shift ;;
     --setup) MODE="setup"; shift ;;                  # guided pool setup: no values = print the questions + candidates; review=… [implement=same|none|…] = write the file
@@ -474,12 +477,22 @@ CFG=""; CFG_SRC=""; STATE="on"
 if [ -n "$CFG_FLAG" ] && [ -f "$CFG_FLAG" ]; then CFG="$CFG_FLAG"; CFG_SRC="$(head -1 "$CFG_FLAG.src" 2>/dev/null || echo "$CFG_FLAG") (job snapshot)"
 elif [ -f "$ROOT/.rolepod/cross-family" ]; then CFG="$ROOT/.rolepod/cross-family"; CFG_SRC="$CFG"
 elif [ -f "$HOME/.rolepod/cross-family" ]; then CFG="$HOME/.rolepod/cross-family"; CFG_SRC="$CFG"; fi
-DEFAULT_LIST=""; KIND_LIST=""; TO_LIST=""; ST_LIST=""; _sec=""
+DEFAULT_LIST=""; KIND_LIST=""; TO_LIST=""; ST_LIST=""; _sec=""; REVIEW_TIER="R4"
 if [ -n "$CFG" ]; then
   while IFS= read -r _ln || [ -n "$_ln" ]; do
     _ln=$(printf '%s' "$_ln" | sed -e 's/#.*//' | tr 'A-Z' 'a-z' | tr -s '[:space:]' ' ' | sed -e 's/^ //' -e 's/ $//')
     [ -n "$_ln" ] || continue
     case "$_ln" in "["*"]") _sec="${_ln#[}"; _sec="${_sec%]}"; continue ;; esac   # [reviewer] / [implement] section headers (v2.141.0 shape)
+    case "$_ln" in   # tier = R2|R3|R4 (any section; spec D1) — never adds a member, so it is peeled off before the member-list cases
+      tier\ =*|tier=*) _tv="${_ln#*=}"; _tv="${_tv# }"
+        case "$_tv" in
+          r2) REVIEW_TIER=R2 ;;
+          r3) REVIEW_TIER=R3 ;;
+          r4) REVIEW_TIER=R4 ;;
+          *) echo "cross-family: ignoring tier='$_tv' in $CFG (R2, R3 or R4)" >&2; REVIEW_TIER=R4 ;;
+        esac
+        continue ;;
+    esac
     _k=""
     case "$_ln" in   # `key = members` lines: review = the default order every kind falls back to; consult / critique / cli(implement) = that kind only
       review\ =*|review=*|default\ =*|default=*) _ln="${_ln#*=}"; _ln="${_ln# }" ;;
@@ -509,6 +522,7 @@ if [ -n "$CFG" ]; then
 else
   STATE="off"; CFG_SRC="no ~/.rolepod/cross-family (opt-in not given)"
 fi
+[ "$STATE" = "on" ] || REVIEW_TIER="R4"   # a `tier =` line under `review = none` (or an empty/off pool) never claims an external that cannot run
 CONFIGURED="${KIND_LIST:-$DEFAULT_LIST}"
 [ "$KIND_LIST" = "none" ] && STATE="none"   # `cli = none` / `consult = none`: that kind is off while the others keep their lists
 ENABLE_HINT="enable: printf '[reviewer]\\nreview = codex claude agy cursor opencode\\n\\n[implement]\\ncli = codex claude\\n' > ~/.rolepod/cross-family  (list EVERY CLI you want, this one included — the Lead's own CLI is skipped at run time, so one file serves every Lead; your order = preference; 'consult: agy codex' = per-kind order; project override: <git-root>/.rolepod/cross-family; 'none' = keep off)"
@@ -588,6 +602,7 @@ fi
 
 print_pool() {
   echo "cross-family pool — lead=$LEAD ($LEAD_FAMILY)${KIND:+ · kind=$KIND}${KIND_LIST:+ (per-kind order)} · config: $CFG_SRC"
+  [ "$REVIEW_TIER" = "R4" ] || echo "  review tier: $REVIEW_TIER"
   printf '%s\n' "$POOL_ROWS" | sed '/^$/d' | awk '{printf "  %-9s %-8s %-10s", $1, $2, $3; $1=$2=$3=""; sub(/^ +/, ""); print $0}'
   if [ -n "$USABLE" ]; then echo "  → usable, in order: $USABLE"
   elif [ "$STATE" = "off" ]; then
@@ -600,6 +615,7 @@ print_pool() {
 case "$MODE" in
   pool) print_pool; exit 0 ;;
   pool-names) [ -n "$USABLE" ] && printf '%s\n' $USABLE; exit 0 ;;
+  review-tier) echo "$REVIEW_TIER"; exit 0 ;;
 esac
 
 # ── Invocation (read-only, default model, clean room) ──────────────────

@@ -112,6 +112,12 @@ if [ "${1:-}" = "--brief" ]; then
     if (lp ~ /_(test|spec)\.(go|rs|rb|ex|exs)$/) return 1
     return 0
   }
+  # R2 < R3 < R4 — used to compare a task tier against the pool `tier =` line (spec R2).
+  function tiernum(t) {
+    if (t == "R2") return 2
+    if (t == "R3") return 3
+    return 4
+  }
   FNR == NR {
     if ($0 ~ /^## /) {
       intask = 0; field = ""
@@ -366,7 +372,14 @@ if [ "${1:-}" = "--brief" ]; then
     if (tier == "R1") print "`none`"
     else {
       if (tier == "R4") r = "`universal-reviewer` (internal strong) or, with a usable pool, `rolepod-cross-family --kind review --brief <this brief> --attach <diff> --detach` instead, plus `security-engineer`"
-      else r = "`universal-reviewer`"
+      else {
+        poolt = ENVIRON["RP_REVIEW_TIER"]
+        if (poolt == "") poolt = "R4"
+        # spec D1/D2: an R2/R3 task at or above the pool tier gets the same
+        # external-alternative clause the R4 line carries above.
+        if ((poolt == "R2" || poolt == "R3") && tiernum(tier) >= tiernum(poolt)) r = "`universal-reviewer` or, with a usable pool, `rolepod-cross-family --kind review --brief <this brief> --attach <diff> --detach` instead"
+        else r = "`universal-reviewer`"
+      }
       if (Te ~ /(E2E|e2e|[Ee]nd-to-end|browser|screenshot|uiproof|UI test|UI flow|user-visible|Playwright|Cypress|visual diff)/) r = r ", `qa-tester` (E2E)"
       print r
     }
@@ -391,6 +404,19 @@ if [ "${1:-}" = "--brief" ]; then
   [ -z "$RP_RISK_ADD" ] || rp_ere_ok "$RP_RISK_ADD" || RP_RISK_ADD=""
   [ -z "$RP_RISK_EXCL" ] || rp_ere_ok "$RP_RISK_EXCL" || RP_RISK_EXCL=""
   export RP_RISK_ADD RP_RISK_EXCL
+  # Effective cross-family review tier (spec D1/D2) — resolved ONCE here and
+  # reused by ## Reviewers above, so the two can never print a mismatched
+  # pair. The runner beside this script wins (the shipped one), else the
+  # installed launcher; anything else (no runner, no pool, no line) → R4,
+  # which is today's behaviour untouched.
+  XFAM_RUNNER="$(dirname "$0")/cross-family.sh"
+  [ -f "$XFAM_RUNNER" ] || XFAM_RUNNER="$HOME/.rolepod/bin/cross-family.sh"
+  RP_REVIEW_TIER="R4"
+  if [ -f "$XFAM_RUNNER" ]; then
+    _rt="$(bash "$XFAM_RUNNER" --review-tier --root "$BRIEF_ROOT" 2>/dev/null)"
+    case "$_rt" in R2|R3|R4) RP_REVIEW_TIER="$_rt" ;; esac
+  fi
+  export RP_REVIEW_TIER
   if [ -n "$CONTRACT" ]; then
     awk -v rx="$TASK_RX" -v want="$BRIEF_N" -v planpath="$PLAN" -v repo="$BRIEF_REPO" -v hascontract=1 "$BRIEF_AWK" "$PLAN" "$CONTRACT"
   else

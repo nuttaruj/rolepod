@@ -196,7 +196,7 @@ rolepod-cross-family --kind critique --brief spec-draft.md          # write-spec
 | Gemini CLI | — | retired for individual accounts (2026-06-18); a `gemini` config line is skipped, a Gemini Lead still excludes `agy` | google |
 
 **Opt-in, off by default.** Pool = `.rolepod/cross-family` (project) →
-`~/.rolepod/cross-family` (machine): `[reviewer]` with `review = …` (the default order) and optional `consult = / critique = …`, `[implement]` with `cli = …`; **no file = off,
+`~/.rolepod/cross-family` (machine): `[reviewer]` with `review = …` (the default order) and optional `consult = / critique = …`, `tier = R2|R3` (from that tier up, the external replaces `universal-reviewer` on a code diff — a `write-plan` brief names it as the alternative; default `R4` = today's behaviour, no external below R4), `[implement]` with `cli = …`; **no file = off,
 `none` = off** (exit 5, nothing logged). Nothing asks unprompted: when the
 user asks to set it up, `rolepod-cross-family --setup` prints the installed
 candidates and the two questions (review order; implement `same` / `none` /

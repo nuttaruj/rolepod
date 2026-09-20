@@ -11,6 +11,12 @@ set -euo pipefail
 fail=0
 TMP=$(mktemp -d)
 trap 'rm -rf "$TMP"' EXIT
+# --brief now resolves the cross-family pool's review tier (spec D1) through
+# the runner beside scripts/plan-lint.sh — HOME is pointed at an empty
+# fixture for the whole file so the machine's own ~/.rolepod/cross-family
+# (if any) never leaks into a --brief assertion below; the runner itself
+# still comes from beside the script (dirname "$0"), never from here.
+export HOME="$TMP/home"; mkdir -p "$HOME"
 
 plan_lint() { # $1 = plan file; returns 0 = lint pass
   grep -q '^## Failure policy' "$1" \
@@ -955,6 +961,40 @@ if printf '%s\n' "$OUTR2" | grep -A1 '^## Tier' | grep -qF 'R2 (one file + test)
   echo "  ✓ plan-lint.sh --brief sets Tier to R2 (one file + test) on a file + its own test"
 else
   echo "  ✗ --brief file+test Tier wrong: $OUTR2"; fail=$((fail+1))
+fi
+
+# (3d) a usable cross-family pool naming a review tier (spec D1/D2): an R2
+# task at or above that tier gets the external named as the alternative to
+# universal-reviewer; the same plan with no tier line in the pool file keeps
+# today's line. Its own repo + its own .rolepod/cross-family, like the
+# risk-repo fixture above (3a) — HOME already points at the empty fixture
+# home for this whole file, so this project override is the only pool file
+# either --brief call below can see.
+TRR="$TMP/tier-repo"; mkdir -p "$TRR/.rolepod" "$TRR/plans"
+( cd "$TRR" && git init -q . )
+cp "$TMP/brief-tier-r2.md" "$TRR/plans/p.md"
+OUTNT=$(bash "$LINT" --brief 1 "$TRR/plans/p.md")
+if [ "$(printf '%s\n' "$OUTNT" | grep -A1 '^## Reviewers' | tail -1)" = '`universal-reviewer`' ]; then
+  echo "  ✓ plan-lint.sh --brief with no pool tier line keeps today's Reviewers line on an R2 task"
+else
+  echo "  ✗ --brief Reviewers changed with no tier line: $(printf '%s\n' "$OUTNT" | grep -A1 '^## Reviewers' | tail -1)"; fail=$((fail+1))
+fi
+printf '[reviewer]\nreview = codex\ntier = R2\n' > "$TRR/.rolepod/cross-family"
+OUTT2=$(bash "$LINT" --brief 1 "$TRR/plans/p.md")
+if printf '%s\n' "$OUTT2" | grep -A1 '^## Reviewers' | grep -qF 'rolepod-cross-family --kind review'; then
+  echo "  ✓ plan-lint.sh --brief with pool tier = R2 names the external as the universal-reviewer alternative on an R2 task"
+else
+  echo "  ✗ --brief pool tier = R2 missing the external alternative: $(printf '%s\n' "$OUTT2" | grep -A1 '^## Reviewers' | tail -1)"; fail=$((fail+1))
+fi
+# A pool tier ABOVE the task's own tier must not fire (R2 task, tier = R3 pool) — this
+# is the discriminating half of the >= comparison; a stray `1` in its place stays green
+# on every other case above but would wrongly fire here.
+printf '[reviewer]\nreview = codex\ntier = R3\n' > "$TRR/.rolepod/cross-family"
+OUTT3=$(bash "$LINT" --brief 1 "$TRR/plans/p.md")
+if [ "$(printf '%s\n' "$OUTT3" | grep -A1 '^## Reviewers' | tail -1)" = '`universal-reviewer`' ]; then
+  echo "  ✓ plan-lint.sh --brief with pool tier = R3 leaves an R2 task's Reviewers line untouched (below the pool's own tier)"
+else
+  echo "  ✗ --brief pool tier = R3 wrongly fired on an R2 task: $(printf '%s\n' "$OUTT3" | grep -A1 '^## Reviewers' | tail -1)"; fail=$((fail+1))
 fi
 
 # (4) Owner line with write: external → Write external.
