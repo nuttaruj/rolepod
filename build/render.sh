@@ -249,8 +249,8 @@ PY
 
 # Evidence readers + the cross-family runner shipped with every plugin tree —
 # installed users get `rolepod-stats` / `rolepod-junit` / `rolepod-cross-family`
-# (install.sh drops launchers on PATH) without cloning the source repo.
-# Byte-exact copies of scripts/.
+# / `rolepod-ticket` (install.sh drops launchers on PATH) without cloning the
+# source repo. Byte-exact copies of scripts/.
 render_evidence_scripts() {
   local dst="$1"
   mkdir -p "$dst/scripts"
@@ -260,6 +260,9 @@ render_evidence_scripts() {
   # Cross-family runner (v2.76.0) — the hooks resolve it as ../scripts/ from
   # their own dir, so it ships in every tree, marketplace installs included.
   cp "$REPO_DIR/scripts/cross-family.sh" "$dst/scripts/cross-family.sh"
+  # Ticket-loop helper (rolepod-ticket) — resolves plan-lint.sh beside itself
+  # the same way, so it ships next to it here too.
+  cp "$REPO_DIR/scripts/ticket.sh" "$dst/scripts/ticket.sh"
   chmod +x "$dst/scripts/"*.sh 2>/dev/null || true
 }
 
