@@ -78,7 +78,9 @@
 #            notice; round 4 needs `--ledger <breaker file>` (a `## Class`
 #            heading = the root cause was named); round 5 is refused, exit 9:
 #            split & stop (review-code §5). Measured: 11+ rounds overnight,
-#            no consult, no hand-back, when this was doctrine only.
+#            no consult, no hand-back, when this was doctrine only. The first
+#            anchored external pass in the window is the commit gate's floor,
+#            not a round: never refused, never counted (v2.154.0).
 #   read-only every invocation uses the CLI's read-only / plan mode; the
 #            prompt says so too. ROLEPOD_BRAIN_SILENT=1 keeps ambient memory
 #            out of the cold run (clean room).
@@ -185,9 +187,12 @@ if [ "$MODE" = "jobs" ]; then
 fi
 # ── Review rounds on one uncommitted tree (v2.99.0) ─────────────────────
 # Prints `rounds=<past clusters> current=<round a dispatch now would be>
-# ledger=<path|-> class=<0|1>`. Events = external review jobs (`started`) +
-# phase-log reviewer dispatches (internal roles, review-shaped Workflows),
-# since the WINDOW START; a gap > 5 min opens a new round. The breaker ledger
+# ledger=<path|-> class=<0|1> gatepass=<0|1>`. Events = external review jobs
+# (`started`) + phase-log reviewer dispatches (internal roles, review-shaped
+# Workflows), since the WINDOW START; a gap > 5 min opens a new round.
+# gatepass=1 (v2.154.0) = no anchored external pass in the window yet — the
+# next external review is the commit gate's floor: never refused, and external
+# jobs up to that first anchored pass never count as rounds. The breaker ledger
 # = newest docs/rolepod/handoffs/*breaker*.md newer than the last commit.
 # Window start (v2.128.0) = the later of the last commit and the last REAL
 # user prompt — claim-verify-nudge stamps .rolepod/evidence/last-prompt on
@@ -217,25 +222,36 @@ try:
     clean = all(l[3:].startswith((".rolepod/", "docs/rolepod/")) for l in porcelain.splitlines() if l.strip())
 except Exception:
     clean = False
-ev = []
+ev = []; xjobs = []; anchors = []
 for d in glob.glob(os.path.join(jobs, "*-review-*")):
     try:
         t = int(open(os.path.join(d, "started")).read().strip())
     except Exception:
         continue
     if t > last:
-        ev.append(t)
+        xjobs.append(t)
 log = os.path.join(root, ".rolepod", "evidence", "phase-log.jsonl")
 ROLES = re.compile(r"(security-engineer|universal-reviewer|code-reviewer|qa-tester)")
 if os.path.isfile(log):
     with open(log, "rb") as f:
         size = os.path.getsize(log); f.seek(max(0, size - 262144)); data = f.read().decode("utf-8", "ignore")
     for line in data.splitlines():
-        if "dispatch" not in line:
+        if "dispatch" not in line and '"external"' not in line:
             continue
         try:
             e = json.loads(line)
         except Exception:
+            continue
+        if e.get("phase") == "review" and e.get("reviewer") == "external":
+            # An anchored external pass — the commit gate's own predicate
+            # (precommit-gate XREV): the raw file exists under evidence/, 500+ bytes.
+            raw = str(e.get("raw") or "")
+            try:
+                t = int(datetime.datetime.fromisoformat(str(e.get("ts", "")).replace("Z", "+00:00")).timestamp())
+                if raw and not raw.startswith("/") and ".." not in raw and t > last and os.path.getsize(os.path.join(root, ".rolepod", "evidence", raw)) >= 500:
+                    anchors.append(t)
+            except Exception:
+                pass
             continue
         if e.get("phase") not in ("dispatch", "dispatch-proof"):
             continue
@@ -249,14 +265,23 @@ if os.path.isfile(log):
             continue
         if t > last:
             ev.append(t)
-ev.sort()
-rounds = 0; prev = None
-for t in ev:
+# The gate's pass is not a round: external jobs up to the first anchored pass
+# in the window (the pass itself + failed attempts before it) never count.
+# They stay in the timeline — an uncounted job still joins and bridges events
+# exactly as before — and a cluster is a round only when it holds a counted
+# event, so nothing ever reads a round stricter than the every-job-counts rule.
+gatepass = 0 if anchors else 1
+first = min(anchors) if anchors else None
+timeline = sorted([(t, 1) for t in ev] + [(t, 1 if (first is not None and t > first) else 0) for t in xjobs])
+rounds = 0; prev = None; open_counted = 0
+for t, counted in timeline:
     if prev is None or t - prev > 300:
-        rounds += 1
+        open_counted = 0
+    if counted and not open_counted:
+        rounds += 1; open_counted = 1
     prev = t
 now = int(time.time())
-current = rounds if (prev is not None and now - prev <= 300) else rounds + 1
+current = rounds if (prev is not None and now - prev <= 300 and open_counted) else rounds + 1
 if clean:
     rounds, current = 0, 1
 ledger = "-"; klass = 0
@@ -267,7 +292,7 @@ if cands:
         klass = 1 if re.search(r"^## Class", open(ledger, encoding="utf-8", errors="ignore").read(), re.M) else 0
     except Exception:
         klass = 0
-print("rounds=%d current=%d ledger=%s class=%d" % (rounds, current, ledger, klass))
+print("rounds=%d current=%d ledger=%s class=%d gatepass=%d" % (rounds, current, ledger, klass, gatepass))
 PY
 }
 if [ "$MODE" = "rounds" ]; then review_rounds; exit 0; fi
@@ -1063,20 +1088,26 @@ if [ "$KIND" = "review" ] && [ -z "$JOB_DIR" ]; then
   RR=$(review_rounds)
   CUR=$(printf '%s' "$RR" | sed -n 's/.*current=\([0-9]*\).*/\1/p'); CUR=${CUR:-1}
   LCLASS=$(printf '%s' "$RR" | sed -n 's/.*class=\([01]\).*/\1/p'); LCLASS=${LCLASS:-0}
+  GATEPASS=$(printf '%s' "$RR" | sed -n 's/.*gatepass=\([01]\).*/\1/p'); GATEPASS=${GATEPASS:-0}
   if [ -n "$LEDGER" ]; then
     { [ -f "$LEDGER" ] && grep -q '^## Class' "$LEDGER"; } || { echo "cross-family: --ledger $LEDGER must exist and carry a '## Class' heading (review-code §5 step 2)" >&2; exit 2; }
     LCLASS=1; ATTACH="$LEDGER${ATTACH:+
 $ATTACH}"
   fi
-  if [ "$CUR" -ge 5 ] && [ "${ROLEPOD_GATES_SOFT:-0}" != "1" ]; then
+  # v2.154.0 — no anchored external pass in the window yet: this run is the
+  # pass the commit gate asks for on a high-risk diff, not review churn. It is
+  # never refused and never counted (measured 2026-09-21: internal rounds put a
+  # tree at round 5, the gate demanded this pass, the refusal's Fix said
+  # "commit" — a circle only the user's next prompt could leave).
+  if [ "$GATEPASS" = "1" ]; then
+    if [ "$CUR" -ge 3 ]; then echo "ROLEPOD-XFAM gate pass — no anchored external review in this window yet: this run is the commit gate's floor, not a breaker round. A re-review after it is round $CUR."; fi
+  elif [ "$CUR" -ge 5 ] && [ "${ROLEPOD_GATES_SOFT:-0}" != "1" ]; then
     echo "ROLEPOD-XFAM refused round=$CUR — review round $CUR on one uncommitted tree is past the breaker budget (ledger, class fix once, ONE round). Fix: split & stop (review-code §5 step 5) — commit the slices with no open finding, park the churning surface as a delta spec / Follow-ups, end the turn with the decision brief; the user decides. Exception: ROLEPOD_GATES_SOFT=1 (user-set)."
     exit 9
-  fi
-  if [ "$CUR" -ge 4 ] && [ "$LCLASS" != "1" ] && [ "${ROLEPOD_GATES_SOFT:-0}" != "1" ]; then
+  elif [ "$CUR" -ge 4 ] && [ "$LCLASS" != "1" ] && [ "${ROLEPOD_GATES_SOFT:-0}" != "1" ]; then
     echo "ROLEPOD-XFAM refused round=$CUR — round 4 on one uncommitted tree without a breaker ledger. Fix: write docs/rolepod/handoffs/<feature>-breaker-<date>.md (## Rounds: one line per round · ## Class: the one root cause, its single point, every consumer · ## Decision), make the class-level fix ONCE with a class test, then re-run with --ledger <file> --since <job>. Exception: ROLEPOD_GATES_SOFT=1 (user-set)."
     exit 9
-  fi
-  if [ "$CUR" -ge 3 ]; then
+  elif [ "$CUR" -ge 3 ]; then
     ROUND_NOTE="ROLEPOD-XFAM round=$CUR on one uncommitted tree — the breaker is armed: after this verdict no more point fixes; ledger (## Rounds · ## Class · ## Decision) → class fix once (class test + consumer list) → ONE round with --ledger --since → else split & stop (review-code §5)."
     echo "$ROUND_NOTE"
   fi

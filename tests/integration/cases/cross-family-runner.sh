@@ -447,15 +447,20 @@ RB="$FIX/rounds"; mkdir -p "$RB/.rolepod/evidence"; printf 'codex\n' > "$RB/.rol
 rb_ts() { python3 -c "import datetime,sys;print((datetime.datetime.now(datetime.timezone.utc)-datetime.timedelta(minutes=int(sys.argv[1]))).strftime('%Y-%m-%dT%H:%M:%SZ'))" "$1"; }
 rb_ep() { python3 -c "import time,sys;print(int(time.time())-60*int(sys.argv[1]))" "$1"; }
 rb_log() { printf '{"ts": "%s", "phase": "dispatch", "cli": "claude", "tool": "Agent", "agent_type": "%s"}\n' "$(rb_ts "$1")" "$2" >> "$RB/.rolepod/evidence/phase-log.jsonl"; }
+# An anchored external pass $1 minutes ago — the phase-log review line + a raw
+# file of 500+ bytes, exactly what the commit gate counts (v2.154.0: external
+# jobs count as rounds only after the first one of these in the window).
+rb_anchor() { mkdir -p "$RB/.rolepod/evidence/external"; [ -f "$RB/.rolepod/evidence/external/a.txt" ] || head -c 600 /dev/zero | tr '\0' x > "$RB/.rolepod/evidence/external/a.txt"
+  printf '{"ts": "%s", "phase": "review", "reviewer": "external", "raw": "external/a.txt"}\n' "$(rb_ts "$1")" >> "$RB/.rolepod/evidence/phase-log.jsonl"; }
 ( cd "$RB" && git init -q . && git config user.email t@t && git config user.name t && printf 'a\n' > f.txt && git add f.txt && GIT_COMMITTER_DATE="$(rb_ts 90)" git commit -q -m init --date="$(rb_ts 90)" && printf 'b\n' > f.txt )
-: > "$RB/.rolepod/evidence/phase-log.jsonl"; rb_log 40 rolepod:security-engineer; rb_log 39 rolepod:qa-tester
+: > "$RB/.rolepod/evidence/phase-log.jsonl"; rb_anchor 50; rb_log 40 rolepod:security-engineer; rb_log 39 rolepod:qa-tester
 mkdir -p "$RB/.rolepod/evidence/external/jobs/20260908T000000Z-review-1"; rb_ep 20 > "$RB/.rolepod/evidence/external/jobs/20260908T000000Z-review-1/started"; echo 0 > "$RB/.rolepod/evidence/external/jobs/20260908T000000Z-review-1/status"
 rb_log 1 rolepod:qa-tester
 out=$(cd "$RB" && bash "$RUNNER" --rounds)
 check "--rounds: clusters at 40m / 20m (job) / 1m → rounds=3, current=3 (an event within 5 min joins)" "printf '%s' \"\$out\" | grep -q 'rounds=3 current=3 ledger=- class=0'"
 : > "$LOG"; rc=0; out=$(cd "$RB" && bash "$RUNNER" --kind review --brief brief.md --lead claude 2>/dev/null) || rc=$?
 check "review dispatch at round 3 → runs, prints the breaker notice" "[ $rc -eq 0 ] && printf '%s' \"\$out\" | grep -q 'round=3 on one uncommitted tree' && grep -q '^codex |' '$LOG'"
-: > "$RB/.rolepod/evidence/phase-log.jsonl"; rb_log 40 rolepod:security-engineer; rb_log 39 rolepod:qa-tester; rb_log 12 rolepod:security-engineer
+: > "$RB/.rolepod/evidence/phase-log.jsonl"; rb_anchor 50; rb_log 40 rolepod:security-engineer; rb_log 39 rolepod:qa-tester; rb_log 12 rolepod:security-engineer
 out=$(cd "$RB" && bash "$RUNNER" --rounds)
 check "--rounds: last event 12 min ago → a dispatch now would be round 4" "printf '%s' \"\$out\" | grep -q 'rounds=3 current=4'"
 : > "$LOG"; rc=0; out=$(cd "$RB" && bash "$RUNNER" --kind review --brief brief.md --lead claude 2>/dev/null) || rc=$?
@@ -496,6 +501,76 @@ rb_ep 60 > "$RB/.rolepod/evidence/last-prompt"
 out=$(cd "$RB" && bash "$RUNNER" --rounds)
 check "--rounds: a prompt stamp OLDER than the events changes nothing → rounds=2 current=3" "printf '%s' \"\$out\" | grep -q 'rounds=2 current=3'"
 rm -f "$RB/.rolepod/evidence/last-prompt"
+# v2.154.0 — the commit gate's own external pass is not a breaker round.
+# Measured 2026-09-21: a high-risk diff sat at round 5 from internal reviews
+# alone; the gate demanded the external pass, the runner refused it, and the
+# refusal's Fix said "commit". With no anchored external pass in the window
+# the run is never refused and its job never counts; the re-review does.
+: > "$RB/.rolepod/evidence/phase-log.jsonl"; rb_log 50 rolepod:universal-reviewer; rb_log 40 rolepod:security-engineer; rb_log 25 rolepod:security-engineer; rb_log 12 rolepod:universal-reviewer
+mkdir -p "$RB/.rolepod/evidence/external/jobs/20260921T000000Z-review-9"; rb_ep 8 > "$RB/.rolepod/evidence/external/jobs/20260921T000000Z-review-9/started"; echo 3 > "$RB/.rolepod/evidence/external/jobs/20260921T000000Z-review-9/status"
+out=$(cd "$RB" && bash "$RUNNER" --rounds)
+check "--rounds: four internal rounds + a failed external attempt, nothing anchored → rounds=4 current=5 gatepass=1" "printf '%s' \"\$out\" | grep -q 'rounds=4 current=5 .*gatepass=1'"
+: > "$LOG"; rc=0; out=$(cd "$RB" && bash "$RUNNER" --kind review --brief brief.md --lead claude --detach 2>/dev/null) || rc=$?
+jg=$(printf '%s' "$out" | grep -o 'job=[^ ]*' | head -1 | cut -d= -f2)
+check "round 5 by count, no anchored external pass yet → the run is the gate's pass: not refused, says so" "[ $rc -eq 0 ] && [ -n \"\$jg\" ] && printf '%s' \"\$out\" | grep -q 'gate pass'"
+bash "$RUNNER" --collect "$jg" --root "$RB" --timeout 30 >/dev/null 2>&1 || true
+rb_ep 10 > "$RB/.rolepod/evidence/external/jobs/$jg/started"   # age the pass's job past the 5-min join window (a fresh one holds round 4 open — asserted below)
+out=$(cd "$RB" && bash "$RUNNER" --rounds)
+check "--rounds after the pass is anchored: its job is not a round and the pass is spent → rounds=4 current=5 gatepass=0" "printf '%s' \"\$out\" | grep -q 'rounds=4 current=5 .*gatepass=0'"
+: > "$LOG"; rc=0; out=$(cd "$RB" && bash "$RUNNER" --kind review --brief brief.md --lead claude 2>/dev/null) || rc=$?
+check "the re-review after the gate's pass is a round again → round 5 refused exit 9, no member called" "[ $rc -eq 9 ] && printf '%s' \"\$out\" | grep -q 'past the breaker budget' && ! grep -q '^codex |' '$LOG'"
+# Never one round stricter than before: the pass's own job is not counted, but
+# it still holds the round open — a re-review inside 5 min of it joins the
+# round it would have joined when the job was an event.
+rm -rf "$RB/.rolepod/evidence/external/jobs"; : > "$RB/.rolepod/evidence/phase-log.jsonl"
+rb_log 40 rolepod:universal-reviewer; rb_log 30 rolepod:security-engineer; rb_log 20 rolepod:security-engineer; rb_log 7 rolepod:universal-reviewer
+mkdir -p "$RB/.rolepod/evidence/external/jobs/20260921T000001Z-review-7"; rb_ep 3 > "$RB/.rolepod/evidence/external/jobs/20260921T000001Z-review-7/started"; echo 0 > "$RB/.rolepod/evidence/external/jobs/20260921T000001Z-review-7/status"; rb_anchor 1
+out=$(cd "$RB" && bash "$RUNNER" --rounds)
+check "--rounds: internal round 4 at 7 min, the pass's job at 3 min, anchored → still round 4 (rounds=4 current=4), not 5" "printf '%s' \"\$out\" | grep -q 'rounds=4 current=4 .*gatepass=0'"
+: > "$RB/.rolepod/evidence/phase-log.jsonl"; rb_anchor 1
+out=$(cd "$RB" && bash "$RUNNER" --rounds)
+check "--rounds: only the pass's job, 3 min ago → rounds=0 current=1 (never round 0)" "printf '%s' \"\$out\" | grep -q 'rounds=0 current=1 .*gatepass=0'"
+# Class test — the invariant, not one input: for any mix of internal
+# dispatches, failed / successful external jobs and anchors, the new rounds /
+# current are never HIGHER than the pre-change formula (every job an event).
+# Slots are multiples of 3 min: gaps are 3 min (join) or 6+ (split), never the
+# 5-min edge, so wall-clock drift cannot flip a case. Fixed seed.
+rm -rf "$RB/.rolepod/evidence/external/jobs"; : > "$RB/.rolepod/evidence/phase-log.jsonl"
+inv=$(RB="$RB" RUNNER="$RUNNER" python3 - <<'PY'
+import json, os, random, re, shutil, subprocess, time, datetime
+rb, runner = os.environ["RB"], os.environ["RUNNER"]
+ev_dir = os.path.join(rb, ".rolepod", "evidence"); jobs = os.path.join(ev_dir, "external", "jobs")
+os.makedirs(os.path.join(ev_dir, "external"), exist_ok=True)
+open(os.path.join(ev_dir, "external", "a.txt"), "w").write("x" * 600)
+iso = lambda t: datetime.datetime.fromtimestamp(t, datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+rnd = random.Random(20260921); bad = []
+for case in range(24):
+    shutil.rmtree(jobs, ignore_errors=True); now = int(time.time()); lines = []; old = []
+    for slot in range(1, 15):                      # 3 .. 42 min ago
+        kind = rnd.choice(["none", "none", "internal", "internal", "jobfail", "jobok"])
+        t = now - slot * 180
+        if kind == "internal":
+            lines.append(json.dumps({"ts": iso(t), "phase": "dispatch", "cli": "claude", "tool": "Agent", "agent_type": "rolepod:universal-reviewer"})); old.append(t)
+        elif kind in ("jobfail", "jobok"):
+            d = os.path.join(jobs, "20260921T%06dZ-review-%d" % (slot, slot)); os.makedirs(d)
+            open(os.path.join(d, "started"), "w").write("%d\n" % t); open(os.path.join(d, "status"), "w").write("0\n" if kind == "jobok" else "3\n"); old.append(t)
+            if kind == "jobok":
+                lines.append(json.dumps({"ts": iso(t + 60), "phase": "review", "reviewer": "external", "raw": "external/a.txt"}))
+    open(os.path.join(ev_dir, "phase-log.jsonl"), "w").write("\n".join(lines) + ("\n" if lines else ""))
+    out = subprocess.run(["bash", runner, "--rounds"], cwd=rb, capture_output=True, text=True).stdout
+    m = re.search(r"rounds=(\d+) current=(\d+)", out)
+    old.sort(); r = 0; prev = None
+    for t in old:
+        if prev is None or t - prev > 300: r += 1
+        prev = t
+    c = r if (prev is not None and now - prev <= 300) else r + 1
+    if not m or int(m.group(1)) > r or int(m.group(2)) > c:
+        bad.append("case %d: new=%s old=rounds=%d current=%d" % (case, out.strip(), r, c))
+print("ok" if not bad else " | ".join(bad[:3]))
+PY
+)
+check "class invariant: 24 seeded mixes of internal / failed / anchored external events → never a round stricter than the pre-change formula ($inv)" "[ \"$inv\" = ok ]"
+rm -rf "$RB/.rolepod/evidence/external/jobs"
 cd "$REPO"
 
 # ── provenance labels + oversized-diff notice (v2.100.0) ──────────────────

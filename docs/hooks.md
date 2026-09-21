@@ -394,7 +394,17 @@ worktree, read as round 5 and blocked the next task. A review
 dispatch at round 3 gets a notice; round 4 needs `--ledger <file>` (a
 `docs/rolepod/handoffs/*breaker*.md` with a `## Class` heading — the root
 cause was named); round 5 is refused (exit 9): split & stop, the user
-decides. `workflow-tier-nudge.sh` applies the same policy to internal
+decides. **The gate's pass is not a round (v2.154.0):** while the window
+holds no anchored external review (the phase-log line + raw file the commit
+gate counts), an external review run is never refused and its job never
+counts — `--rounds` prints `gatepass=1`; the re-review after it is a round
+again. Uncounted jobs stay in the timeline — they still join and bridge
+events inside the 5-min window, and a cluster is a round only when it holds a
+counted event — so nothing reads a round stricter than before (a seeded
+invariant test compares against the every-job-counts rule). Measured 2026-09-21: four internal
+reviewer dispatches put a high-risk tree at round 5, the commit gate demanded
+the external pass, the runner refused it, and the refusal's Fix said
+"commit" — a circle only the user's next prompt could leave. `workflow-tier-nudge.sh` applies the same policy to internal
 reviewer dispatches (notice / deny / deny) and `claim-verify-nudge.sh`
 reminds every prompt while a breaker ledger is open, so an auto-resume
 prompt cannot reopen the loop. Measured need: 11+ rounds overnight on one
