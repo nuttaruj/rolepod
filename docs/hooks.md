@@ -524,6 +524,17 @@ If rolepod ever needs to override a Claude Code core behavior, use the `CLAUDE_C
 - **`make bench-hooks`** — wall-time of every Claude hook on a synthetic transcript and a throwaway repo (`RUNS=5 SIZE_MB=8`; `--json` for rows), plus the sum per tool-call shape. Measured before it existed: an Edit paid 523 ms of hooks, a prompt 527 ms, and two scans grew with the transcript (596 / 732 ms per edit at 261 MB). Never a gate — the signal is the catastrophic class (a full-file scan per call, a backtracking regex), which shows as seconds; a median above 250 ms is flagged SLOW.
 - **`make contract-check`** — the facts the hooks and tier pins depend on (hook events, `hookSpecificOutput` keys, tool names, model ids; Codex effort enum, `spawn_agent` params, `[agents]` keys) derived from the installed binaries and diffed against `tests/contract/<cli>.snapshot`. Exit 1 DRIFT, exit 2 CANNOT-OBSERVE (a gate that cannot look is never green); `make doctor` runs it. After reviewing a drift: `make contract-update`.
 
+## Ticket helper — one call per step (v2.155.0)
+
+Measured 2026-09-21 on a ten-task day: the Lead made ~35 calls per task at an average context of 576k — about 20M tokens of orchestration per task against ~6M of build and ~5.5M of review; ~11 of those calls were product-code reads for the spot-check, ~9 were plan bookkeeping edits. `rolepod-ticket` (`scripts/ticket.sh`, on PATH after install, shipped in every plugin tree) turns the mechanics into four calls:
+
+- **`start <plan> <N> [--base <branch>]`** — runs `plan-lint`, writes the owner brief, creates the worktree + branch the brief names, prints ONE dispatch line (the brief's path + the worktree's path). Idempotent.
+- **`integrate <worktree> --brief <file> [--pre '<cmd>'] [--gate '<cmd>']`** — fast-forwards to the base, stages everything except `docs/rolepod/`, runs the brief's **Command**, then its **Proof** (the plan's optional `- **Proof:** <claim> :: \`<command>\`` line — the spot-check as a command), then the gate; prints `ok` or the failing tail per step, the diff stat, the reviewer verdict lines and the exact commit command. It never commits — the commit stays the Lead's, judged by the commit gate. Refuses the main checkout and an ambiguous worktree.
+- **`finish <worktree>`** — refuses a dirty or unmerged worktree; fast-forward merge, `worktree remove`, `prune`, `branch -d`, and names the agent to close.
+- **`log <plan> <N> --sha <sha> --note '<text>'`** — flips the task's checkboxes and appends one bullet under `## Changes during build`; idempotent.
+
+No new deny and no new stop: the helper only removes calls.
+
 ## Why hooks, not just doctrine
 
 Doctrine (CLAUDE.md text) tells the model what to do. Hooks **enforce** it. Models drift, especially under flow-state success cues — soft reminders get ignored. Hard blocks via `permissionDecision: deny` are the only mechanism that survives drift.
