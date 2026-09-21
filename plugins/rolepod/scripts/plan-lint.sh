@@ -173,6 +173,10 @@ if [ "${1:-}" = "--brief" ]; then
       else if (index(line, "Command:") > 0)         { field = "Cmd"; v = line; sub(/.*Command:[[:space:]]*/, "", v) }
       else if (index(line, "Owner:") > 0)           { field = "O";   v = line; sub(/.*Owner:[[:space:]]*/, "", v) }
       else if (index(line, "Done when:") > 0)       { field = "DW";  v = line; sub(/.*Done when:[[:space:]]*/, "", v) }
+      # Optional — the one claim + command a reviewer would check by hand
+      # (spec R3). A bullet of its own right after Test / evidence, never
+      # indented under it (an indented line is a continuation, handled below).
+      else if (index(line, "Proof:") > 0)           { field = "P";   v = line; sub(/.*Proof:[[:space:]]*/, "", v) }
       # Recognized-but-not-in-the-brief fields still end whatever field came
       # before them — otherwise their text glues onto Test/Command/Done when.
       else if (index(line, "Expected failing signal:") > 0) { field = "" }
@@ -193,6 +197,7 @@ if [ "${1:-}" = "--brief" ]; then
         else if (field == "Cmd") Cmd = v
         else if (field == "O") Ow = v
         else if (field == "DW") DW = v
+        else if (field == "P") Pr = v
       }
       # A continuation line extends the CURRENT field only when it is not
       # itself a new bullet — otherwise an unrecognized bullet (a field this
@@ -211,6 +216,7 @@ if [ "${1:-}" = "--brief" ]; then
         else if (field == "Cmd") Cmd = (Cmd == "" ? cont : Cmd "\n" cont)
         else if (field == "O") Ow = (Ow == "" ? cont : Ow "\n" cont)
         else if (field == "DW") DW = (DW == "" ? cont : DW "\n" cont)
+        else if (field == "P") Pr = (Pr == "" ? cont : Pr "\n" cont)
       }
       next
     }
@@ -364,6 +370,26 @@ if [ "${1:-}" = "--brief" ]; then
     print (Te == "" ? "(not in plan)" : Te)
     print "## Command"
     print (Cmd == "" ? "(not in plan)" : Cmd)
+    print "## Proof"
+    # An undeleted template placeholder ("<the one claim...> :: `<the command
+    # that proves it>`") is not a real Proof — same convention as the bare-path
+    # token skip above (a value opening with "<" is a hint, never printed).
+    if (Pr == "" || Pr ~ /^</) print "none"
+    else {
+      # Split on the FIRST " :: " only — a claim never contains that token,
+      # and the command (kept exactly as written, backticks included) may
+      # itself hold a pipe or a quoted string that must survive byte-for-byte.
+      psep = index(Pr, " :: ")
+      if (psep > 0) {
+        pclaim = trim(substr(Pr, 1, psep - 1))
+        pcmd = trim(substr(Pr, psep + 4))
+      } else {
+        pclaim = trim(Pr)
+        pcmd = ""
+      }
+      print pclaim
+      if (pcmd != "") print pcmd
+    }
     print "## Done when"
     print (DW == "" ? "(not in plan)" : DW)
     print "## Write"

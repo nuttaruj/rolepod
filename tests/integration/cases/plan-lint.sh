@@ -299,7 +299,7 @@ RC=0; OUT=$(bash "$LINT" "$TMP/g-none.md" 2>&1) || RC=$?
   || { echo "  ✗ legacy plan handling: rc=$RC $OUT"; fail=$((fail+1)); }
 
 # ── Template + examples carry the human line and the graph field ────────
-for needle in '\*\*Delivers:\*\*' '\*\*Blocked by:\*\*' '^## Changes during build' '^## Follow-ups'; do
+for needle in '\*\*Delivers:\*\*' '\*\*Blocked by:\*\*' '\*\*Proof:\*\*' '^## Changes during build' '^## Follow-ups'; do
   grep -qE "$needle" "$REPO_DIR/core/skills/write-plan/templates/plan-template.md" \
     && echo "  ✓ template carries $needle" \
     || { echo "  ✗ template missing $needle"; fail=$((fail+1)); }
@@ -786,6 +786,7 @@ EXPECTED_HEADINGS='## Worktree
 ## Change
 ## Test / evidence
 ## Command
+## Proof
 ## Done when
 ## Write
 ## Reviewers
@@ -1136,6 +1137,65 @@ printf '%s\n' "$OUT" | grep -q '^## Worktree' \
   && printf '%s\n' "$OUT" | grep -qE '^`git worktree add -b [a-z0-9-]+/t[0-9]+-[a-z0-9-]+ \.\./[A-Za-z0-9._-]+-wt-[a-z0-9-]+-t[0-9]+-[a-z0-9-]+`' \
   && echo "  ✓ --brief prints a task-named worktree command" \
   || { echo "  ✗ --brief Worktree line missing or malformed"; fail=$((fail+1)); }
+
+# ── --brief: ## Proof (spec R3) — a task's Proof field, right after Command ──
+cat > "$TMP/brief-proof.md" <<'EOF'
+### Task 1: with proof
+- **Delivers:** x
+- **Blocked by:** none
+- [ ] **Files:** `src/a.py`
+- [ ] **Test / evidence:** pytest src/
+- **Proof:** the fix holds :: `pytest -k "test_a" | tee /tmp/out.log`
+- [ ] **Command:** pytest src/
+- **Owner:** backend-developer
+- **Done when:** true
+
+### Task 2: without proof
+- **Delivers:** y
+- **Blocked by:** none
+- [ ] **Files:** `src/b.py`
+- [ ] **Command:** pytest src/b
+- **Owner:** backend-developer
+- **Done when:** true
+
+### Task 3: undeleted placeholder
+- **Delivers:** z
+- **Blocked by:** none
+- [ ] **Files:** `src/c.py`
+- [ ] **Command:** pytest src/c
+- **Proof:** <the one claim a reviewer of this task would check by hand> :: `<the command that proves it>`
+- **Owner:** backend-developer
+- **Done when:** true
+## Parallel layout
+Sequential — single owner.
+## Failure policy
+Default: stop.
+EOF
+OUTP1=$(bash "$LINT" --brief 1 "$TMP/brief-proof.md")
+CMD_TO_DW=$(printf '%s\n' "$OUTP1" | awk '/^## Command/{f=1;next} /^## Done when/{f=0} f')
+EXPECTED_CMD_TO_DW='pytest src/
+## Proof
+the fix holds
+`pytest -k "test_a" | tee /tmp/out.log`'
+if [ "$CMD_TO_DW" = "$EXPECTED_CMD_TO_DW" ]; then
+  echo "  ✓ plan-lint.sh --brief prints ## Proof right after ## Command, pipe + quoted string byte-for-byte"
+else
+  echo "  ✗ --brief Proof field wrong:"; diff <(printf '%s' "$EXPECTED_CMD_TO_DW") <(printf '%s' "$CMD_TO_DW"); fail=$((fail+1))
+fi
+OUTP2=$(bash "$LINT" --brief 2 "$TMP/brief-proof.md")
+PROOF2=$(printf '%s\n' "$OUTP2" | awk '/^## Proof/{f=1;next} /^## /{f=0} f')
+if [ "$PROOF2" = "none" ]; then
+  echo "  ✓ plan-lint.sh --brief prints Proof: none for a task without the field"
+else
+  echo "  ✗ --brief Proof missing-field wrong: $PROOF2"; fail=$((fail+1))
+fi
+OUTP3=$(bash "$LINT" --brief 3 "$TMP/brief-proof.md")
+PROOF3=$(printf '%s\n' "$OUTP3" | awk '/^## Proof/{f=1;next} /^## /{f=0} f')
+if [ "$PROOF3" = "none" ]; then
+  echo "  ✓ plan-lint.sh --brief treats an undeleted template placeholder as no Proof"
+else
+  echo "  ✗ --brief undeleted-placeholder Proof wrong: $PROOF3"; fail=$((fail+1))
+fi
 
 # ── --brief: an indented Change sub-bullet is the Change; a backticked flag on a Files-to-touch line is not a path ──
 BF=$(mktemp -d)

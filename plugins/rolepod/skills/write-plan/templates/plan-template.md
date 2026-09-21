@@ -37,6 +37,7 @@
       inline in the bullet.>
 - [ ] **Test / evidence:** <test type + the assertion that proves it — or, when no
       test can express the behaviour yet, 1-3 acceptance criteria the reviewer walks>
+- **Proof:** <the one claim a reviewer of this task would check by hand> :: `<the command that proves it>` (optional — it becomes the Lead's spot-check)
 - [ ] **Expected failing signal:** <for test-first tasks — the error the test
       shows before the fix. Omit if not test-first.>
 - [ ] **Command:** <exact command, runnable copy-paste as-is; when the behaviour
