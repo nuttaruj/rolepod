@@ -641,7 +641,7 @@ pcd() {
   rm -rf "$TMPT"; mkdir -p "$TMPT/.rolepod"
   ( cd "$TMPT" && git init -q . && git config user.email t@t && git config user.name t
     for spec in $1; do f="${spec%%=*}"; kind="${spec##*=}"; mkdir -p "$(dirname "$f")"
-      case "$kind" in logic) seq 15 | sed 's/^/x = /' > "$f" ;; comment) seq 15 | sed 's/^/# note /' > "$f" ;; prose) seq 15 | sed 's/^/Line /' > "$f" ;; esac
+      case "$kind" in logic) seq 15 | sed 's/^/x = /' > "$f" ;; comment) seq 15 | sed 's/^/# note /' > "$f" ;; prose) seq 15 | sed 's/^/Line /' > "$f" ;; version) seq 15 | sed 's/.*/"version": "1.2.3",/' > "$f" ;; esac
     done
     git add -A; printf 'codex\n' > .rolepod/cross-family )   # pool file written AFTER staging — never part of the diff
   printf '{"tool_name":"Bash","transcript_path":%s,"tool_input":{"command":"git commit -m x"}}' \
@@ -655,6 +655,8 @@ out=$(pcd auth/billing.py=comment "$TRANSCRIPT")
 check "comment-only diff on a risky path + internal strong reviewer + pool usable → allow (the pool reviews code only)" allow "$out"
 out=$(pcd auth/billing.py=logic "$TRANSCRIPT")
 check "logic diff on a risky path + internal strong reviewer + pool usable, nothing tried → deny (control: satellite-first still holds for code)" deny "$out"
+out=$(pcd billing/plan.json=version "$TRANSCRIPT")
+check "version-field lines on a risky path + internal strong reviewer + pool usable → deny (the HARD count keeps them; only the SOFT ask drops them)" deny "$out"
 out=$(pcd 'README=prose docs/guide.md=prose' "$EMPTY_T")
 check "extension-less README + docs → allow silently (prose)" allow "$out"
 
@@ -1171,6 +1173,54 @@ out=$(sf src/notes.ts "seq 10 | sed 's/^/\/\/ note /'")
 if echo "$out" | grep -q 'reviewers since last commit: 0' && ! echo "$out" | grep -q '0 reviewers on a logic diff'; then
   echo "  ✓ precommit SOFT: comment-only diff → count shown, no reviewer ask (nothing logic-bearing)"
 else echo "  ✗ precommit SOFT comment-only: ${out:0:200}"; fail=$((fail+1)); fi
+# v2.153.0 — the count is about code: prose lines of a mixed diff and pure
+# version-field lines are not logic, and the ask names its exception.
+sf_run() { printf '{"tool_name":"Bash","tool_input":{"command":"git commit -m x"}}' | (cd "$SF_TMP" && bash "$HOOKS/precommit-gate.sh") || true; }
+sfm() { # $1 = code lines in ONE code file, beside 30 prose lines
+  rm -rf "$SF_TMP"; mkdir -p "$SF_TMP/docs" "$SF_TMP/src"
+  ( cd "$SF_TMP" && git init -q . && git config user.email t@t && git config user.name t && seq 30 | sed 's/^/Line /' > docs/guide.md && seq "$1" | sed 's/^/const x = /' > src/util.ts && git add -A )
+  sf_run
+}
+out=$(sfm 2)
+if echo "$out" | grep -q '/ 2 logic' && ! echo "$out" | grep -q '0 reviewers on a logic diff'; then
+  echo "  ✓ precommit SOFT: docs + a 2-line code file → 2 logic (prose never counts), no reviewer ask"
+else echo "  ✗ precommit SOFT mixed docs + small code: ${out:0:200}"; fail=$((fail+1)); fi
+out=$(sfm 15)
+if echo "$out" | grep -q '/ 15 logic' && echo "$out" | grep -q '0 reviewers on a logic diff' && echo "$out" | grep -q 'Exception: '; then
+  echo "  ✓ precommit SOFT: docs + a 15-line code file → 15 logic, reviewer ask carries its Exception"
+else echo "  ✗ precommit SOFT mixed docs + code: ${out:0:260}"; fail=$((fail+1)); fi
+sfv() { # three manifests, only the version field moves
+  rm -rf "$SF_TMP"; mkdir -p "$SF_TMP"
+  ( cd "$SF_TMP" && git init -q . && git config user.email t@t && git config user.name t \
+    && printf '{\n  "name": "x",\n  "version": "1.2.3"\n}\n' > package.json && cp package.json plugin.json \
+    && printf '[package]\nname = "x"\nversion = "1.2.3"\n' > Cargo.toml && git add -A && git commit -q -m base \
+    && for f in package.json plugin.json Cargo.toml; do sed 's/1\.2\.3/1.2.4/' "$f" > "$f.n" && mv "$f.n" "$f"; done && git add -A )
+  sf_run
+}
+out=$(sfv)
+if echo "$out" | grep -q '3 files / 6 lines / 0 logic' && ! echo "$out" | grep -q '0 reviewers on a logic diff'; then
+  echo "  ✓ precommit SOFT: version bump across 3 manifests → 0 logic, no reviewer ask"
+else echo "  ✗ precommit SOFT version bump: ${out:0:200}"; fail=$((fail+1)); fi
+# A line that only LOOKS like a version field is still logic (6 lines → ask).
+out=$(sf src/ver.ts "printf 'const version = compute()\nversion: 1.2.3;run()\nversion: 1.2.3,foo:bar\nif (version > 2) go()\nversion = next(1.2.3)\nexport default version\n'")
+if echo "$out" | grep -q '/ 6 logic' && echo "$out" | grep -q '0 reviewers on a logic diff'; then
+  echo "  ✓ precommit SOFT: code that merely mentions a version (or trails junk after one) still counts as logic"
+else echo "  ✗ precommit SOFT version look-alikes: ${out:0:200}"; fail=$((fail+1)); fi
+out=$(sf src/rel.toml "printf 'version = \"1.2.3-rc.1+build.5\"\nversion: v2.0.0\n'")
+if echo "$out" | grep -q '/ 0 logic'; then
+  echo "  ✓ precommit SOFT: pre-release / build suffix and a v prefix are still a version field"
+else echo "  ✗ precommit SOFT semver suffix: ${out:0:200}"; fail=$((fail+1)); fi
+sfq() { # a prose file git must QUOTE in the diff header (non-ASCII name) + a deleted prose file + a removed SQL comment
+  rm -rf "$SF_TMP"; mkdir -p "$SF_TMP/docs" "$SF_TMP/db"
+  ( cd "$SF_TMP" && git init -q . && git config user.email t@t && git config user.name t \
+    && seq 12 | sed 's/^/Old /' > docs/old.md && printf -- '-- drop me\nSELECT 1;\n' > db/q.sql && git add -A && git commit -q -m base \
+    && seq 20 | sed 's/^/Line /' > "docs/$(printf '\303\251')tude.md" && git rm -q docs/old.md && printf 'SELECT 1;\n' > db/q.sql && git add -A )
+  sf_run
+}
+out=$(sfq)
+if echo "$out" | grep -q '3 files / 33 lines / 0 logic'; then
+  echo "  ✓ precommit SOFT: quoted-path prose, a deleted prose file and a removed SQL comment → 0 logic"
+else echo "  ✗ precommit SOFT quoted / deleted prose: ${out:0:200}"; fail=$((fail+1)); fi
 rm -rf "$SF_TMP"
 
 # ── route nudge (v2.98.0): commission + no fresh tier → one line ──────────

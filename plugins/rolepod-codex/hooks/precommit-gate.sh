@@ -423,13 +423,35 @@ if [ -z "$HIGH_RISK" ]; then
   [ -n "$CONTENT_RISK" ] && HIGH_RISK="staged content: money-movement term (refund/payout/chargeback/settlement)"
 fi
 
-# Logic-bearing line count — non-comment, non-blank, non-pure-rename lines
-LOGIC_LINES=$(git diff $GIT_DIFF_BASE -U0 2>/dev/null | grep -E '^[+-]' | grep -vE '^[+-]{3}' | grep -vE '^[+-][[:space:]]*$' | grep -vE '^[+-][[:space:]]*(#|//|/\*|\*/?|--|;)' || true)
+# Logic-bearing line count — non-comment, non-blank lines of NON-PROSE files
+# (v2.153.0). Prose is excluded on the header path, like CONTENT_RISK above:
+# a mixed diff used to count every .md line as logic (a docs task + one
+# script read "280 logic"). Headers are read only between `diff --git` and
+# the first `@@`, so a removed SQL comment (`--- x`) is never taken for one;
+# a deleted file (`+++ /dev/null`) keeps its `---` path; git quotes a path
+# with non-ASCII bytes (`+++ "b/\340…md"`), so the closing quote is dropped
+# before the suffix test.
+LOGIC_LINES=$(git diff $GIT_DIFF_BASE -U0 2>/dev/null \
+  | awk '/^diff --git /{hdr=1; next}
+         hdr && /^--- /{g=substr($0,5); sub(/[ \t]+$/,"",g); sub(/"$/,"",g); next}
+         hdr && /^\+\+\+ /{f=substr($0,5); sub(/[ \t]+$/,"",f); sub(/"$/,"",f); if (f=="/dev/null") f=g; next}
+         /^@@/{hdr=0; next}
+         !hdr && /^[+-]/{ if (f !~ /\.(md|mdx|mdc|txt|rst|adoc)(\.tmpl)?$/ && f !~ /(^|\/)(README|LICENSE|CHANGELOG)$/) print }' \
+  | grep -vE '^[+-][[:space:]]*$' | grep -vE '^[+-][[:space:]]*(#|//|/\*|\*/?|--|;)' || true)
 if [ -z "$LOGIC_LINES" ]; then
   LOGIC_COUNT=0
 else
   LOGIC_COUNT=$(printf '%s\n' "$LOGIC_LINES" | wc -l | tr -d ' ')
 fi
+# SOFT-only count: a line that is ONLY a version field — "version": "1.2.3" /
+# version = "1.2.3-rc.1" / version: v1.2.3 — is a release bump, not logic:
+# every release commit asked for a reviewer. The suffix is semver-shaped and
+# the line must end there, so `version: 1.2.3;run()` still counts. LOGIC_COUNT
+# above keeps those lines: the HARD side (auto-skip, cross-family hold on a
+# risky path) reads the wider count and does not move.
+VERSION_LINE_RE='^[+-][[:space:]]*"?version"?[[:space:]]*[:=][[:space:]]*"?v?[0-9]+(\.[0-9]+)+([-+][0-9A-Za-z.+-]*)?"?,?[[:space:]]*$'
+REVIEW_LOGIC=$(printf '%s\n' "$LOGIC_LINES" | grep -vE "$VERSION_LINE_RE" | grep -c . || true)
+REVIEW_LOGIC=${REVIEW_LOGIC:-0}
 
 # Docs are written, not reviewed (v2.143.0): every staged path is prose
 # (.md/.mdx/.mdc/.txt/.rst/.adoc, their .tmpl templates, or an extension-less README/LICENSE/CHANGELOG)
@@ -778,13 +800,16 @@ print(json.dumps({
 fi
 
 # SOFT warn path — emit reminder, exit 0
-WARN="precommit-gate SOFT: $FILES_CHANGED files / $LINES_CHANGED lines / $LOGIC_COUNT logic, no high-risk path; reviewers since last commit: $REVIEWERS. "
+WARN="precommit-gate SOFT: $FILES_CHANGED files / $LINES_CHANGED lines / $REVIEW_LOGIC logic, no high-risk path; reviewers since last commit: $REVIEWERS. "
 # A logic diff nobody but its author read (v2.95.0): the R2 floor is one
 # read-only universal-reviewer pass (v2.148.0) — named here, still advisory. An R1-shaped
 # diff (1 file, ≤5 lines) gets the count only: a user-facing string edit
 # counts as logic here but as zero in the router (v2.96.0), and the
 # hook cannot tell a label from a branch — the doctrine can.
-if [ "$LOGIC_COUNT" -gt 0 ] && [ "$REVIEWERS" -eq 0 ] && { [ "$FILES_CHANGED" -gt 1 ] || [ "$LINES_CHANGED" -gt 5 ]; }; then WARN+="0 reviewers on a logic diff = the author reviewed it. Fix: dispatch rolepod:universal-reviewer (read-only, two axes) on the diff, then commit (review-code §1; R2 = one file + test). "; fi
+# The R1 shape is judged on the CODE part (v2.153.0): docs riding along with
+# a 2-line label edit do not make it a reviewable diff, and neither do the
+# comment lines around one real line.
+if [ "$REVIEW_LOGIC" -gt 0 ] && [ "$REVIEWERS" -eq 0 ] && { [ "${NONPROSE_N:-0}" -gt 1 ] || [ "$REVIEW_LOGIC" -gt 5 ]; }; then WARN+="0 reviewers on a logic diff = the author reviewed it. Fix: dispatch rolepod:universal-reviewer (read-only, two axes) on the diff, then commit (review-code §1; R2 = one file + test). Exception: the task owner already had it reviewed, or the diff is config / generated copies / message text → commit. "; fi
 WARN+="Gates S1-S5 (simplicity) / T1-T6 (tests) / F1-F5 (finish) — finish-work §1, check-work §6 — are advisory here; ROLEPOD_GATES_HARD=1 enforces."
 [ -n "$LINT_WARN" ] && WARN+=" | $LINT_WARN"
 [ -n "$EMOJI_WARN" ] && WARN+=" | $EMOJI_WARN"
