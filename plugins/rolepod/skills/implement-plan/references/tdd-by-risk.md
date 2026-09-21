@@ -43,6 +43,12 @@ tests the same way. A suite that only ever grows is read less each round.
   or rows breaks on the next fixture change.
 - The test's own file is part of the change; the shared fixture is not.
   Touching `helpers/` or a seed to make one test pass is a finding.
+- Assert the contract — type, code, structured field, state, side effect —
+  never human-readable wording the requirement did not fix (UI copy, a log
+  line, error prose, prompt text). "Implemented as a string" is not "the
+  string is a contract": would rewording it break a consumer? No → not a
+  contract, and the test breaks on the next copy edit. Machine-read tokens,
+  public error codes and wording the spec quotes stay exact.
 
 ## The writer's self-check (unit tests are yours; the reviewer reads the same list)
 - Design at the seam: happy + edge + error (+ race on shared state); call the
