@@ -758,6 +758,132 @@ echo "$out" | grep -q 'private working docs' \
   || echo "  ✓ .rolepod/docs-tracked lets a repo track its working docs"
 rm -rf "$TMPD"
 
+# ── precommit-gate follows the commit's directory: cd / -C (2026-09-21 delta) ──
+# `cd <dir> && git commit` or `git -C <dir> commit` used to be judged against
+# the SESSION checkout (hook cwd) — a clean session checkout meant an empty
+# diff and a silent exit 0, so the worktree commit was never gated. Every
+# case here starts the hook with cwd = a clean MAIN checkout; the staged
+# diff lives only in a linked worktree.
+GD_MAIN=$(mktemp -d)
+( cd "$GD_MAIN" && git init -q . && git config user.email t@t && git config user.name t && git commit -q --allow-empty -m base )
+gd_wt() { # $1 = suffix — fresh linked worktree at $GD_MAIN-wt-$1, prints its path
+  local d="${GD_MAIN}-wt-$1"
+  git -C "$GD_MAIN" worktree add -q -b "gd-$1" "$d" >/dev/null 2>&1
+  printf '%s' "$d"
+}
+gd() { # $1 = command (hook cwd = $GD_MAIN), $2 = optional transcript path
+  # HOME=$GD_MAIN sandboxes an auto-pass's ~/.rolepod/gate-bypass.log write —
+  # test 5 below auto-passes and must not touch the real machine's home dir.
+  if [ -n "${2:-}" ]; then
+    printf '{"tool_name":"Bash","transcript_path":%s,"tool_input":{"command":%s}}' \
+      "$(printf '%s' "$2" | python3 -c 'import json,sys; print(json.dumps(sys.stdin.read()))')" \
+      "$(printf '%s' "$1" | python3 -c 'import json,sys; print(json.dumps(sys.stdin.read()))')" \
+      | (cd "$GD_MAIN" && HOME="$GD_MAIN" bash "$HOOKS/precommit-gate.sh") || true
+  else
+    printf '{"tool_name":"Bash","tool_input":{"command":%s}}' \
+      "$(printf '%s' "$1" | python3 -c 'import json,sys; print(json.dumps(sys.stdin.read()))')" \
+      | (cd "$GD_MAIN" && HOME="$GD_MAIN" bash "$HOOKS/precommit-gate.sh") || true
+  fi
+}
+
+# (1)/(2) worktree stages high-risk logic; main's own index stays empty.
+GD_WT1=$(gd_wt 1)
+( cd "$GD_WT1" && mkdir -p src/auth && seq 15 | sed 's/^/x = /' > src/auth/login.py && git add -A )
+out=$(gd "cd $GD_WT1 && git commit -m x")
+check "worktree high-risk diff via 'cd <wt> && git commit' from main → deny (was silent — main's own index is empty)" deny "$out"
+out=$(gd "git -C $GD_WT1 commit -m x")
+check "worktree high-risk diff via 'git -C <wt> commit' from main → deny" deny "$out"
+
+# (3) worktree stages plain (non-risk) logic → SOFT line carries the WORKTREE's own counts.
+GD_WT3=$(gd_wt 3)
+( cd "$GD_WT3" && mkdir -p src && seq 15 | sed 's/^/const x = /' > src/util.ts && git add -A )
+out=$(gd "cd $GD_WT3 && git commit -m x")
+check "worktree plain logic diff → allow (SOFT, not the session checkout's empty index)" allow "$out"
+echo "$out" | grep -q '1 files / 15 lines / 15 logic' \
+  && echo "  ✓ SOFT line carries the WORKTREE's own counts (1 files / 15 lines / 15 logic)" \
+  || { echo "  ✗ SOFT line missing the worktree's counts: ${out:0:200}"; fail=$((fail+1)); }
+
+# (4) worktree stages a private working doc → deny naming it, read off the worktree not main.
+GD_WT4=$(gd_wt 4)
+( cd "$GD_WT4" && mkdir -p docs/rolepod/plans && printf 'secret plan\n' > docs/rolepod/plans/x.md && git add -A )
+out=$(gd "cd $GD_WT4 && git commit -m x")
+check "worktree stages docs/rolepod/plans/x.md → deny (private docs, read off the worktree)" deny "$out"
+echo "$out" | grep -q 'docs/rolepod/plans/x.md' \
+  && echo "  ✓ deny names the worktree's staged private doc" \
+  || { echo "  ✗ private-docs deny missing the worktree's file: ${out:0:200}"; fail=$((fail+1)); }
+
+# (5) evidence window in a linked worktree (R4): a fast-forward from main is
+# not a commit and must not slide the window past a reviewer dispatched
+# before it. Differential proof: main's post-worktree commit is dated FAR in
+# the future (2099) — if the window were still anchored to "gitd log -1"
+# (today's non-worktree rule) the 2050-dated dispatch below would read as
+# stale against it; anchored to the worktree's own creation reflog instead
+# (real "now", years before 2050), it counts.
+GD_WT5=$(gd_wt 5)
+GD_T5="$GD_MAIN-t5.jsonl"
+printf '%s\n' \
+  '{"type":"assistant","timestamp":"2050-01-01T00:00:00.000Z","message":{"model":"claude-opus-5","content":[{"type":"tool_use","name":"Agent","input":{"subagent_type":"rolepod:universal-reviewer","prompt":"review"}}]}}' \
+  > "$GD_T5"
+( cd "$GD_MAIN" && printf 'y\n' > extra.txt && git add -A \
+  && GIT_COMMITTER_DATE="2099-01-01T00:00:00" git commit -q --date="2099-01-01T00:00:00" -m "main gains a future-dated commit" )
+( cd "$GD_WT5" && git merge -q --ff-only main )
+( cd "$GD_WT5" && mkdir -p src && seq 15 | sed 's/^/const x = /' > src/util2.ts && git add -A )
+out=$(gd "cd $GD_WT5 && git commit -m x" "$GD_T5")
+check "reviewer dispatched before a worktree ff-only merge + a plain logic diff → allow (SOFT)" allow "$out"
+echo "$out" | grep -q 'reviewers since last commit: 1' \
+  && echo "  ✓ SOFT line: the pre-merge reviewer still counts (window anchored to the worktree's creation, not gitd's last commit)" \
+  || { echo "  ✗ SOFT line lost the pre-merge reviewer: ${out:0:200}"; fail=$((fail+1)); }
+( cd "$GD_WT5" && mkdir -p src/auth && seq 15 | sed 's/^/x = /' > src/auth/pay.py && git add -A )
+out=$(gd "cd $GD_WT5 && git commit -m x" "$GD_T5")
+check "same reviewer + a HIGH-RISK diff staged after the ff-only merge → auto-pass" allow "$out"
+echo "$out" | grep -q 'auto-passed' \
+  && echo "  ✓ high-risk variant auto-passes on the pre-merge reviewer" \
+  || { echo "  ✗ high-risk variant did not auto-pass: ${out:0:200}"; fail=$((fail+1)); }
+# Catches a degenerate epoch (e.g. a %gd format change reading "1" out of
+# "HEAD@{1}" instead of a real unix stamp): that would still pass the digit
+# guard and anchor the window at 1970 — maximally lenient, so the assertions
+# above would stay green for the wrong reason. A real-looking anchor year
+# rules that out without pinning a literal date.
+echo "$out" | grep -q "since last commit $(date +%Y)-" \
+  && echo "  ✓ auto-pass note anchors the window to the real current year, not a degenerate 1970 (or other in-range) epoch" \
+  || { echo "  ✗ auto-pass note missing the real anchor year: ${out:0:200}"; fail=$((fail+1)); }
+
+# (6) unresolvable directory → today's behavior: fail open to the hook cwd,
+# silent rc 0, no `set -u` crash on an unset var or a missing path.
+GD_MAIN6=$(mktemp -d)
+( cd "$GD_MAIN6" && git init -q . && git config user.email t@t && git config user.name t && git commit -q --allow-empty -m base )
+out=$(printf '{"tool_name":"Bash","tool_input":{"command":"cd /nonexistent && git commit -m x"}}' | (cd "$GD_MAIN6" && HOME="$GD_MAIN6" bash "$HOOKS/precommit-gate.sh") || true)
+[ -z "$out" ] && echo "  ✓ cd /nonexistent (missing dir) + clean main → silent (fail-open to the hook cwd)" \
+  || { echo "  ✗ cd /nonexistent should fail open silently: ${out:0:120}"; fail=$((fail+1)); }
+rc=0
+out=$(printf '{"tool_name":"Bash","tool_input":{"command":"cd \"$NOPE\" && git commit -m x"}}' | (cd "$GD_MAIN6" && HOME="$GD_MAIN6" bash "$HOOKS/precommit-gate.sh")) || rc=$?
+[ "$rc" -eq 0 ] && [ -z "$out" ] \
+  && echo "  ✓ cd \"\$NOPE\" (unset var) + clean main → silent rc 0, no set -u crash" \
+  || { echo "  ✗ cd \"\$NOPE\" case: rc=$rc out=${out:0:120}"; fail=$((fail+1)); }
+
+# (7) F2 regression: hook cwd is not inside ANY git repo, but the resolved
+# `cd` directory is a real worktree with a high-risk staged diff (reusing
+# GD_WT1 from case 1/2). `_pd_root`'s `git rev-parse --show-toplevel` fails
+# here (hook cwd, rc 128) — without `|| true` on it and its fallback, that
+# kills the whole script under `set -e` before R3's own fallback ever runs.
+GD_NONREPO=$(mktemp -d)
+out=$(printf '{"tool_name":"Bash","tool_input":{"command":%s}}' \
+  "$(printf '%s' "cd $GD_WT1 && git commit -m x" | python3 -c 'import json,sys; print(json.dumps(sys.stdin.read()))')" \
+  | (cd "$GD_NONREPO" && HOME="$GD_NONREPO" bash "$HOOKS/precommit-gate.sh") || true)
+check "hook cwd is not a git repo + 'cd <worktree> && git commit' on a high-risk diff → deny (no set -e crash)" deny "$out"
+
+# (8) F1 regression: an UNQUOTED '#' in the worktree path must not truncate
+# the token walk (shlex.shlex's default commenters='#') and read as hit=0 —
+# a bare `# ...` reads as a shell comment in word state too, so this would
+# otherwise silently skip the gate exactly like the pre-fix bug case 1 covers.
+GD_WTHASH="${GD_MAIN}-wt#3"
+git -C "$GD_MAIN" worktree add -q -b gd-hash "$GD_WTHASH" >/dev/null 2>&1
+( cd "$GD_WTHASH" && mkdir -p src/auth && seq 15 | sed 's/^/x = /' > src/auth/login2.py && git add -A )
+out=$(gd "cd $GD_WTHASH && git commit -m x")
+check "worktree path with an unquoted '#' + high-risk diff → deny (not silently truncated)" deny "$out"
+
+rm -rf "$GD_MAIN" "$GD_MAIN"-wt-* "$GD_MAIN"-t5.jsonl "$GD_MAIN6" "$GD_NONREPO" "$GD_WTHASH"
+
 # ── project-context-loader: cross-family is never asked unprompted (v2.142.0) ──
 XF_HOME="$TMP/xfhome"; rm -rf "$XF_HOME"; mkdir -p "$XF_HOME"
 XF_REPO="$TMP/xfrepo"; mkdir -p "$XF_REPO"; git -C "$XF_REPO" init -q; git -C "$XF_REPO" -c user.email=t@t -c user.name=t commit -q --allow-empty -m init  # loader needs ≥1 commit

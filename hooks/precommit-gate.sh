@@ -193,18 +193,23 @@ print(r, s)
 
 INPUT=$(cat 2>/dev/null || echo '{}')
 
-# ONE python3 pass for tool_name + commit token-walk + command (was 3
-# spawns — ~30ms on EVERY Bash call, the hottest PreToolUse matcher).
-# Field order matters: tool + is_commit first via read -r; command LAST,
-# slurped with $(cat) so multi-line commit messages survive intact and an
-# empty trailing field cannot EOF-fail the read under set -e. The walk
-# matches flag-separated forms (`git -C . commit`, `git -c k=v commit`).
+# ONE python3 pass for tool_name + commit token-walk + resolved directory +
+# command (was 3 spawns — ~30ms on EVERY Bash call, the hottest PreToolUse
+# matcher). Field order matters: tool/mut/hit/dir first via read -r; command
+# LAST, slurped with $(cat) so multi-line commit messages survive intact and
+# an empty trailing field cannot EOF-fail the read under set -e — command
+# substitution strips ALL trailing blank lines, so when dir AND cmd are both
+# empty (malformed input, no "command" key) the dir read lands exactly on
+# that stripped boundary; `|| true` on it is the same fail-open the cmd read
+# gets for free from $(cat) (v2.153.0). The walk matches flag-separated
+# forms (`git -C . commit`, `git -c k=v commit`).
 PARSED=$(printf '%s' "$INPUT" | python3 -I -c "
 import json, os, shlex, sys
 tool = ''
 cmd = ''
 hit = 0
 mut = ''
+resolved_dir = ''
 # Tree-rewriting subcommands (v2.93.0): warned about while a detached
 # cross-family review is running. stash list/show and a mixed/soft reset
 # touch nothing the reviewer reads.
@@ -213,41 +218,111 @@ try:
     d = json.load(sys.stdin)
     tool = d.get('tool_name', '') or ''
     cmd = (d.get('tool_input', {}) or {}).get('command', '') or ''
+    # Directory the commit runs in (v2.153.0): punctuation kept as its own
+    # tokens ('&&', ';', '(', ')') so a 'cd' segment and a subshell paren
+    # split cleanly from the word beside them — shlex.split alone glues
+    # 'tmp;' or '(cd' into one token. Falls back to today's tokeniser (and
+    # the hit/mut walk below is byte-identical either way) on any lexer
+    # error.
     try:
-        toks = shlex.split(cmd)
-    except ValueError:
-        toks = cmd.split()
+        _lex = shlex.shlex(cmd, posix=True, punctuation_chars=True)
+        _lex.whitespace_split = True
+        _lex.commenters = ''  # unlike shlex.split(), shlex() defaults to '#' —
+        # an UNQUOTED mid-word hash (a worktree path like /tmp/wt#3, or an
+        # unquoted -m fix#123) would otherwise truncate the token stream
+        # there and read as hit=0; a QUOTED -m 'fix #123' was never at risk
+        # (shlex enters quote state before the commenters check either way).
+        toks = list(_lex)
+    except Exception:
+        try:
+            toks = shlex.split(cmd)
+        except ValueError:
+            toks = cmd.split()
     VALUE_OPTS = {'-C', '--git-dir', '--work-tree', '--namespace', '--exec-path'}
-    for i, t in enumerate(toks):
+    GLOB = set('*?[')
+    OPCHARS = set('();<>|&')
+    def _giveup(a):
+        # A var, a command substitution, a flag ('cd -' = previous dir) or a
+        # glob — none resolvable from the command text alone (R2:
+        # unresolvable never produces a new deny, it falls open to the hook
+        # cwd). chr(96) avoids a literal backtick inside this quoted block.
+        if not a or a[0] in '\$-' or chr(96) in a or any(c in a for c in GLOB):
+            return True
+        return all(c in OPCHARS for c in a)
+    def _join(cur, a):
+        if a.startswith('/'):
+            return a
+        if a.startswith('~'):
+            return os.path.expanduser(a)
+        return os.path.join(cur, a) if cur else a
+    cur_dir = None
+    dir_failed = False
+    k = 0
+    n = len(toks)
+    while k < n:
+        t = toks[k]
+        if t == 'cd':
+            # A bare 'cd' (home dir) or one immediately followed by an
+            # operator ('cd && …') has no operand token to consume — leave
+            # the operator for the next iteration instead of swallowing it
+            # as a fake directory argument.
+            nxt = toks[k + 1] if k + 1 < n else ''
+            if nxt and not all(c in OPCHARS for c in nxt):
+                if not dir_failed:
+                    if _giveup(nxt):
+                        dir_failed = True
+                    else:
+                        cur_dir = _join(cur_dir, nxt)
+                k += 2
+            else:
+                k += 1
+            continue
         if os.path.basename(t) == 'git':
-            j = i + 1
-            while j < len(toks) and toks[j].startswith('-'):
-                if toks[j] in VALUE_OPTS:
+            j = k + 1
+            c_dir = None
+            while j < n and toks[j].startswith('-'):
+                if toks[j] == '-C' and j + 1 < n:
+                    c_dir = toks[j + 1]
                     j += 2
-                elif toks[j] == '-c' and j + 1 < len(toks) and '=' in toks[j + 1]:
+                elif toks[j] in VALUE_OPTS:
+                    j += 2
+                elif toks[j] == '-c' and j + 1 < n and '=' in toks[j + 1]:
                     j += 2
                 else:
                     j += 1
-            if j < len(toks) and toks[j] == 'commit':
+            if j < n and toks[j] == 'commit':
                 hit = 1
+                # -C on the HIT invocation applies last, relative to every
+                # cd segment already walked (R1).
+                if c_dir is not None and not dir_failed:
+                    if _giveup(c_dir):
+                        dir_failed = True
+                    else:
+                        cur_dir = _join(cur_dir, c_dir)
                 break
-            if j < len(toks) and toks[j] in MUT and not mut:
+            if j < n and toks[j] in MUT and not mut:
                 sub = toks[j]
-                nxt = toks[j + 1] if j + 1 < len(toks) else ''
+                nxt = toks[j + 1] if j + 1 < n else ''
                 if sub == 'stash' and nxt in ('list', 'show'):
                     pass
-                elif sub == 'reset' and not any(t in ('--hard', '--merge', '--keep') for t in toks[j:]):
+                elif sub == 'reset' and not any(x in ('--hard', '--merge', '--keep') for x in toks[j:]):
                     pass
                 else:
                     mut = sub
+            k = j + 1
+            continue
+        k += 1
+    if not dir_failed and cur_dir:
+        resolved_dir = cur_dir
 except Exception:
     pass
 print(tool)
 print(mut)
 print(hit)
+print(resolved_dir)
 print(cmd)
 " 2>/dev/null) || exit 0
-{ read -r TOOL; read -r MUTATES; read -r IS_COMMIT; CMD=$(cat); } <<EOF
+{ read -r TOOL; read -r MUTATES; read -r IS_COMMIT; read -r RESOLVED_DIR || true; CMD=$(cat); } <<EOF
 $PARSED
 EOF
 
@@ -312,10 +387,24 @@ print(base)
 ' 2>/dev/null || echo "--cached")
 [ "$GIT_DIFF_BASE" = "HEAD" ] || GIT_DIFF_BASE="--cached"
 
+# Directory the commit runs in (v2.153.0, R1/R2): RESOLVED_DIR came out of
+# the python pass above. Accepted only when it is a real directory AND a
+# git work tree — a parse gap, a missing path, or a non-repo directory all
+# keep DIFF_DIR at "." (the hook's own cwd, exactly today's behavior; no new
+# deny can come from a parse problem). gitd() is every diff-reading call
+# from here down; `.rolepod/` config, phase-log, edit-ledger and
+# cross-family evidence stay pinned to the hook cwd (R3) — see _pd_root.
+DIFF_DIR="."
+if [ -n "$RESOLVED_DIR" ] && [ -d "$RESOLVED_DIR" ] \
+   && [ "$(git -C "$RESOLVED_DIR" rev-parse --is-inside-work-tree 2>/dev/null || true)" = "true" ]; then
+  DIFF_DIR="$RESOLVED_DIR"
+fi
+gitd() { git -C "$DIFF_DIR" "$@"; }
+
 # Compute diff stats — skip gate if trivial
-DIFF_STAT=$(git diff $GIT_DIFF_BASE --numstat 2>/dev/null || echo "")
+DIFF_STAT=$(gitd diff $GIT_DIFF_BASE --numstat 2>/dev/null || echo "")
 if [ "$GIT_DIFF_BASE" = "HEAD" ]; then
-  UNTRACKED=$(git ls-files --others --exclude-standard 2>/dev/null | awk -F'\t' '{print "1\t0\t" $0}' || true)
+  UNTRACKED=$(gitd ls-files --others --exclude-standard 2>/dev/null | awk -F'\t' '{print "1\t0\t" $0}' || true)
   [ -n "$UNTRACKED" ] && DIFF_STAT="$(printf '%s\n%s' "$DIFF_STAT" "$UNTRACKED" | sed '/^$/d')"
 fi
 if [ -z "$DIFF_STAT" ]; then
@@ -330,8 +419,14 @@ FILES_CHANGED=$(echo "$DIFF_STAT" | wc -l | tr -d ' ')
 # confidential by default and never enters a commit. `git add -A` sweeps it
 # in silently; this is the mechanical stop. A repo that WANTS them tracked
 # creates <git-root>/.rolepod/docs-tracked (an explicit, reviewable choice).
-_pd_root="$(git rev-parse --show-toplevel 2>/dev/null)"
-PRIVATE_DOCS=$( { git diff $GIT_DIFF_BASE --name-only 2>/dev/null | grep -E '^docs/rolepod/' || true; } | head -5 | tr '\n' ' ' | sed 's/ *$//')
+# _pd_root is the config/evidence root for the REST of this file (R3): pinned
+# to the hook's own cwd — every writer hook (edit-ledger, phase-log,
+# bypass.log, session locks) put its state there — and only when the hook
+# cwd is not itself a git work tree does it fall back to the resolved diff
+# directory's toplevel.
+_pd_root="$(git rev-parse --show-toplevel 2>/dev/null)" || true
+[ -n "$_pd_root" ] || _pd_root="$(gitd rev-parse --show-toplevel 2>/dev/null)" || true
+PRIVATE_DOCS=$( { gitd diff $GIT_DIFF_BASE --name-only 2>/dev/null | grep -E '^docs/rolepod/' || true; } | head -5 | tr '\n' ' ' | sed 's/ *$//')
 if [ -n "$PRIVATE_DOCS" ] && [ ! -f "$_pd_root/.rolepod/docs-tracked" ]; then
   ROLEPOD_HOOK_MSG="precommit-gate BLOCKED — private working docs staged: $PRIVATE_DOCS. docs/rolepod/ is never committed. Fix: git restore --staged docs/rolepod; make sure .gitignore lists docs/rolepod/. Repo tracks them on purpose → create .rolepod/docs-tracked, commit again." python3 -I -c "
 import json, os
@@ -353,7 +448,7 @@ fi
 # the line goes silent.
 EMOJI_WARN=""
 if [ ! -f "$_pd_root/.rolepod/allow-emoji" ] && command -v python3 >/dev/null 2>&1; then
-  EMOJI_HIT=$(git diff $GIT_DIFF_BASE -U0 2>/dev/null | python3 -I -c '
+  EMOJI_HIT=$(gitd diff $GIT_DIFF_BASE -U0 2>/dev/null | python3 -I -c '
 import re, sys
 rx = re.compile("[\U0001F000-\U0001FAFF\u231A\u231B\u23E9-\u23EC\u23F0\u23F3\u25FD\u25FE\u2614\u2615\u2648-\u2653\u267F\u2693\u26A1\u26AA\u26AB\u26BD\u26BE\u26C4\u26C5\u26CE\u26D4\u26EA\u26F2\u26F3\u26F5\u26FA\u26FD\u2705\u270A\u270B\u2728\u274C\u274E\u2753-\u2755\u2757\u2795-\u2797\u27B0\u27BF\u2B1B\u2B1C\u2B50\u2B55]|.\uFE0F")
 skip_path = re.compile(r"\.(md|mdx|mdc|txt|rst|adoc)(\.tmpl)?$|(^|/)(test|tests|spec|specs|__tests__|fixtures)(/|\.|_)|_test\.|\.test\.|_spec\.|\.spec\.")
@@ -415,7 +510,7 @@ if [ -z "$HIGH_RISK" ]; then
   # stripped before the suffix test. The candidate paths then go through
   # risk_filter so a `-` line in .rolepod/risk-paths excludes them exactly
   # like the path regex.
-  CONTENT_RISK=$(git diff $GIT_DIFF_BASE -U0 2>/dev/null \
+  CONTENT_RISK=$(gitd diff $GIT_DIFF_BASE -U0 2>/dev/null \
     | awk '/^\+\+\+ /{f=substr($0,5); sub(/[ \t]+$/,"",f)} /^\+[^+]/{if (f !~ /\.(md|mdx|mdc|txt|rst|adoc)(\.tmpl)?$/) print f "\t" $0}' \
     | grep -vE '(^|/)(test|tests|spec|specs|__tests__|fixtures)(/|\.|_)|_test\.|\.test\.|_spec\.|\.spec\.' \
     | grep -iE '(refund|payout|chargeback|settlement)' \
@@ -431,7 +526,7 @@ fi
 # a deleted file (`+++ /dev/null`) keeps its `---` path; git quotes a path
 # with non-ASCII bytes (`+++ "b/\340…md"`), so the closing quote is dropped
 # before the suffix test.
-LOGIC_LINES=$(git diff $GIT_DIFF_BASE -U0 2>/dev/null \
+LOGIC_LINES=$(gitd diff $GIT_DIFF_BASE -U0 2>/dev/null \
   | awk '/^diff --git /{hdr=1; next}
          hdr && /^--- /{g=substr($0,5); sub(/[ \t]+$/,"",g); sub(/"$/,"",g); next}
          hdr && /^\+\+\+ /{f=substr($0,5); sub(/[ \t]+$/,"",f); sub(/"$/,"",f); if (f=="/dev/null") f=g; next}
@@ -486,8 +581,33 @@ TEST_EDITS=0
 HIGH_RISK_EDITS=0
 REVIEWERS=0
 STRONG_REVIEWERS=0
-SINCE_EPOCH=$(git log -1 --format=%ct 2>/dev/null || true)
-SINCE_HUMAN=$(git log -1 --format=%cd --date=format:'%Y-%m-%d %H:%M' 2>/dev/null || true)
+SINCE_EPOCH=$(gitd log -1 --format=%ct 2>/dev/null || true)
+SINCE_HUMAN=$(gitd log -1 --format=%cd --date=format:'%Y-%m-%d %H:%M' 2>/dev/null || true)
+# Linked worktree (v2.153.0, R4): "since the last commit" follows the
+# WORKTREE's own HEAD reflog, not its last commit — a `git merge --ff-only
+# main` in the worktree shares main's commit clock but is not itself a
+# commit, and must not slide the window past a reviewer dispatched before
+# it. Newest reflog line whose subject starts with "commit" wins; none → the
+# oldest line (the worktree's creation). Outside a linked worktree
+# (git-dir == git-common-dir), unchanged.
+GIT_DIR_D=$(gitd rev-parse --git-dir 2>/dev/null || true)
+GIT_CDIR_D=$(gitd rev-parse --git-common-dir 2>/dev/null || true)
+if [ -n "$GIT_DIR_D" ] && [ -n "$GIT_CDIR_D" ] && [ "$GIT_DIR_D" != "$GIT_CDIR_D" ]; then
+  RLOG=$(gitd reflog show --date=unix --format='%gd %gs' HEAD 2>/dev/null || true)
+  if [ -n "$RLOG" ]; then
+    RL_PICK=$(printf '%s\n' "$RLOG" | grep -E '^HEAD@\{[0-9]+\} commit' | head -1 || true)
+    [ -n "$RL_PICK" ] || RL_PICK=$(printf '%s\n' "$RLOG" | tail -1)
+    WT_EPOCH=$(printf '%s' "$RL_PICK" | sed -E 's/^HEAD@\{([0-9]+)\}.*/\1/')
+    case "$WT_EPOCH" in ''|*[!0-9]*) WT_EPOCH="" ;; esac
+    if [ -n "$WT_EPOCH" ]; then
+      SINCE_EPOCH="$WT_EPOCH"
+      SINCE_HUMAN=$(python3 -I -c '
+import datetime, sys
+print(datetime.datetime.fromtimestamp(int(sys.argv[1])).strftime("%Y-%m-%d %H:%M"))
+' "$WT_EPOCH" 2>/dev/null || true)
+    fi
+  fi
+fi
 [ -n "$SINCE_HUMAN" ] && SINCE_HUMAN="since last commit $SINCE_HUMAN" || SINCE_HUMAN="whole session (no commit yet)"
 if [ -f "$SESSION_STATE" ] && command -v python3 >/dev/null 2>&1; then
   # ONE transcript scan for all four counts (see gate-reminder.sh).
@@ -513,7 +633,7 @@ if [ -f "$SESSION_STATE" ] && command -v python3 >/dev/null 2>&1; then
   # downgrade (mirrors count_all's own LOW_CLASSES refusal) — see
   # phase_log_reviewer_count's header for the full rationale + the
   # accepted repo-scope (not session-scope) residual.
-  NESTED_PHASE_LOG="$(git rev-parse --show-toplevel 2>/dev/null)/.rolepod/evidence/phase-log.jsonl"
+  NESTED_PHASE_LOG="$_pd_root/.rolepod/evidence/phase-log.jsonl"
   read -r NEST_R NEST_S <<< "$(phase_log_reviewer_count dispatch "$SINCE_EPOCH" "$NESTED_PHASE_LOG" "hook-auto" "1" "$SESSION_STATE")"
   [ "${NEST_R:-0}" -gt "${REVIEWERS:-0}" ] 2>/dev/null && REVIEWERS=$NEST_R
   [ "${NEST_S:-0}" -gt "${STRONG_REVIEWERS:-0}" ] 2>/dev/null && STRONG_REVIEWERS=$NEST_S
@@ -527,7 +647,7 @@ elif command -v python3 >/dev/null 2>&1; then
   # agent_type alone: the logged model is hook-reported with unverified
   # provenance (may be the parent's), and the agent TOMLs pin strong
   # reviewers to the strong model anyway.
-  PHASE_LOG="$(git rev-parse --show-toplevel 2>/dev/null)/.rolepod/evidence/phase-log.jsonl"
+  PHASE_LOG="$_pd_root/.rolepod/evidence/phase-log.jsonl"
   read -r REVIEWERS STRONG_REVIEWERS <<< "$(phase_log_reviewer_count dispatch-proof "$SINCE_EPOCH" "$PHASE_LOG")"
 fi
 # Edit ledger (v2.134.0): CLI-neutral edit evidence written at edit time by every
@@ -550,7 +670,7 @@ STRONG_REVIEWERS=${STRONG_REVIEWERS:-0}
 # output; count it as a strong reviewer only when that file really exists
 # inside .rolepod/evidence/ and is >= 500 bytes — a bare claim without the
 # artifact is ignored (claim-based evidence is what this gate exists to stop).
-EV_ROOT="$(git rev-parse --show-toplevel 2>/dev/null)/.rolepod/evidence"
+EV_ROOT="$_pd_root/.rolepod/evidence"
 if [ -f "$EV_ROOT/phase-log.jsonl" ] && command -v python3 >/dev/null 2>&1; then
   XREV=$(python3 -I -c '
 import json, os, sys, datetime
@@ -738,10 +858,13 @@ fi
 #     own transcript can show (qa-tester counts 0 since v2.148.4). Every
 #     auto-pass is logged and surfaced as context.
 # Test-tampering lint (warn-only) — grep-able half of the writer's test self-check.
+# Runs in a subshell cd-ed to DIFF_DIR (v2.153.0): the script reads
+# `git diff --cached` off its own cwd, so it must see the resolved commit
+# directory, not the hook's.
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 LINT_WARN=""
 if [ -f "$SCRIPT_DIR/test-diff-lint.sh" ]; then
-  LINT_WARN=$(bash "$SCRIPT_DIR/test-diff-lint.sh" 2>/dev/null || true)
+  LINT_WARN=$( (cd "$DIFF_DIR" 2>/dev/null && bash "$SCRIPT_DIR/test-diff-lint.sh") 2>/dev/null || true)
 fi
 
 AUTO_PASS=0
