@@ -86,6 +86,16 @@ git push origin main
 git push origin <tag>   # if tagging
 ```
 
+After the push, check the public Cursor marketplace path — the only install path that stores a commit pin (Claude and Codex marketplaces follow `main` on their update command; `bootstrap.sh` clones `main`):
+
+```bash
+agent plugin marketplace remove rolepod
+agent plugin marketplace add https://github.com/nuttaruj/rolepod   # expect: Added marketplace rolepod (1 plugin)
+agent plugin marketplace list --format json                         # rolepod gitRef == the release commit
+```
+
+The pin is per Cursor account, so this proves the path for a new user; it does not move anyone else's pin (README → Cursor IDE → Update). Keep the marketplace plugin uninstalled on the maintainer machine — it would shadow the `install.sh --target=cursor` copy and freeze at the pinned commit.
+
 Every required check on the PR green before promotion — today that is the single `installer` workflow (one job: lint, render, install round-trip; `on: push[main] + pull_request`, no path filters). rolepod's own CI has no Phase 2/3 lanes: `finish-work` §2's phase framework collapses to this one always-on lane here. Auto-merge OK iff:
 - Every required check on the PR green (today: the single `installer` workflow)
 - User explicit approval present for the PR

@@ -126,7 +126,23 @@ Restart Cursor (or reload the window) so the plugin registers. Verify under **Cu
 
 The always-on judgment core ships as an `alwaysApply: true` rule (`rules/always-on-core.mdc`) — loaded automatically on every Cursor session. Disabling **Settings → Features → Rules** suppresses it.
 
-> **Teams / Enterprise plans** can alternatively add `https://github.com/nuttaruj/rolepod` as a team marketplace under Settings → Plugins for one-click install. Team Marketplaces are not available on Free / Pro plans.
+**Or install from the marketplace** with Cursor's `agent` CLI. Cursor pins a user marketplace to the commit it indexed at `add` time; `agent plugin marketplace update` re-indexes but keeps that commit, so moving to a newer release is remove + add (the remove also drops the installed plugin — install it again):
+
+```bash
+# Install — then install "rolepod" from /plugins (agent CLI) or Settings → Plugins
+agent plugin marketplace add https://github.com/nuttaruj/rolepod
+
+# Update
+agent plugin marketplace remove rolepod
+agent plugin marketplace add https://github.com/nuttaruj/rolepod
+
+# Which commit is pinned
+agent plugin marketplace list --format json
+```
+
+Use one path, not both: an installed marketplace plugin takes precedence over the local copy of the same name, so a stale marketplace pin hides a fresh `bootstrap.sh` install.
+
+> **Teams / Enterprise plans** can alternatively add `https://github.com/nuttaruj/rolepod` as a team marketplace under Settings → Plugins for one-click install; a team marketplace has an **Enable Auto Refresh** switch that follows the tracked branch. Team Marketplaces are not available on Free / Pro plans.
 
 ### Antigravity CLI (agy) — Beta
 
