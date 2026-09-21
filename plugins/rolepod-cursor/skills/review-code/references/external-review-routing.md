@@ -183,7 +183,8 @@ satellite first whenever a usable non-Lead family exists:
   an external only at the round-3 breaker or when the external came back weak.
   Pool off / failed → `universal-reviewer` + `security-engineer`. The commit
   gate opens when one strong reviewer has finished (the anchored external, or an internal strong pass).
-- **Weak external → add internal.** Empty / partial return, a bare verdict, or
+- **Weak external → add internal.** Empty / partial return (a changed file
+  missing from the report's Scope list counts), a bare verdict, or
   no claims walked → dispatch the internal general pass too; record why.
   Internal otherwise
   fires on the carve-outs in review-code §1: empty / failed pool,

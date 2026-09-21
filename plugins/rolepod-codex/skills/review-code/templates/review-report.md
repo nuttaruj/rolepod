@@ -4,7 +4,9 @@
 # <Feature / PR> Review
 
 ## Scope
-<What was reviewed — the diff, the files, the spec it implements.>
+<What was reviewed — the diff, the spec it implements, and every changed
+ file once: `read` or `skipped — reason`. A changed file missing from this
+ list makes the report a partial return.>
 
 ## Claims traced
 <Each behavior the change claims → the path walked (entry → branches → exit)
