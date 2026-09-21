@@ -1097,6 +1097,23 @@ cat > "$TMP/brief-t1t4-contract.md" <<'EOF'
 EOF
 OUTT1=$(bash "$LINT" --brief 1 "$TMP/brief-t1t4-plan.md" "$TMP/brief-t1t4-contract.md")
 ALLOWEDT1=$(printf '%s\n' "$OUTT1" | awk '/^## Files allowed/{f=1;next} /^## /{f=0} f')
+# Round shape sits where the owner picks its reviewers (2026-09-21: two owners in a
+# row ran round 2 as a message to the finished reviewer — the answer landed at the
+# Lead — while the rule sat at the end of a long Bounds line).
+R3_REV=$(printf '%s\n' "$OUTR3" | awk '/^## Reviewers/{on=1; next} /^## /{on=0} on')
+R3_BND=$(printf '%s\n' "$OUTR3" | awk '/^## Bounds/{on=1; next} /^## /{on=0} on')
+if [ "$(printf '%s\n' "$R3_REV" | sed -n '2p' | grep -c '^Round 2 = ONE new foreground dispatch')" -eq 1 ] \
+  && ! printf '%s\n' "$R3_BND" | grep -q 'ound 2'; then
+  echo "  ✓ plan-lint.sh --brief states the round-2 shape under Reviewers (line 2), once, not in Bounds"
+else
+  echo "  ✗ --brief round-2 shape misplaced — Reviewers: $R3_REV | Bounds: $R3_BND"; fail=$((fail+1))
+fi
+if [ "$(printf '%s\n' "$OUT3" | awk '/^## Reviewers/{on=1; next} /^## /{on=0} on' | grep -c .)" -eq 1 ]; then
+  echo "  ✓ plan-lint.sh --brief prose-only task: Reviewers is the single line none (no round shape)"
+else
+  echo "  ✗ --brief prose-only Reviewers carries extra lines: $OUT3"; fail=$((fail+1))
+fi
+
 if [ "$ALLOWEDT1" = "- a/one.py" ]; then
   echo "  ✓ plan-lint.sh --brief uses only the T-tagged slice on a same-role contract split"
 else
@@ -1113,11 +1130,6 @@ printf '%s\n' "$OUT" | grep -q '^- Budget: build <= 40 tool calls' \
 printf '%s\n' "$OUT" | grep -qE '^- Edit only Files allowed, and only under \.\./[A-Za-z0-9._-]+-wt-[a-z0-9-]+-t[0-9]+-[a-z0-9-]+ ' \
   && echo "  ✓ --brief Bounds fence every edit inside the task's worktree" \
   || { echo "  ✗ --brief Bounds do not name the worktree as the only place to edit"; fail=$((fail+1)); }
-
-# Round 2 shape: a new foreground dispatch (a message to a finished reviewer never answers the owner).
-printf '%s\n' "$OUT" | grep -q 'round 2 = ONE new foreground dispatch of the flagging reviewer' \
-  && echo "  ✓ --brief Bounds state round 2 as a new foreground dispatch" \
-  || { echo "  ✗ --brief Bounds leave the round-2 shape open"; fail=$((fail+1)); }
 
 # Worktree line: the brief names the worktree after the task (mechanism).
 printf '%s\n' "$OUT" | grep -q '^## Worktree' \

@@ -382,10 +382,14 @@ if [ "${1:-}" = "--brief" ]; then
       }
       if (Te ~ /(E2E|e2e|[Ee]nd-to-end|browser|screenshot|uiproof|UI test|UI flow|user-visible|Playwright|Cypress|visual diff)/) r = r ", `qa-tester` (E2E)"
       print r
+      # The round shape lives HERE, where the owner picks its reviewers: at the
+      # end of the Bounds line two owners in a row still messaged the finished
+      # reviewer for round 2 and idled while the answer landed at the Lead.
+      print "Round 2 = ONE new foreground dispatch of the flagging reviewer on the fix delta, never a message to the finished one (a sub-agent gets no reply to it; the answer lands at the Lead). Max 2 rounds."
     }
     print "## Bounds"
     printf "- Edit only Files allowed, and only under ../%s-wt-%s-t%s-%s — the same path in the main checkout belongs to the Lead; no backup copies (.bak / .orig). Never commit or push; leave the tree staged.\n", repo, feat, want, tslug
-    print "- Run the Command in the foreground (Bash timeout 600000; never run_in_background - nothing wakes a sub-agent); a code diff → dispatch the Reviewers in ONE message (reports to .rolepod/evidence/review/<task>-<role>.md); fix; round 2 = ONE new foreground dispatch of the flagging reviewer on its delta (a message to a finished reviewer never answers you); max 2 rounds."
+    print "- Run the Command in the foreground (Bash timeout 600000; never run_in_background - nothing wakes a sub-agent); a code diff → dispatch the Reviewers in ONE message (reports to .rolepod/evidence/review/<task>-<role>.md); fix; then the Reviewers section above."
     print "- Budget: build <= 40 tool calls, whole loop <= 120; past it return PARTIAL with what is done, never grind."
     print "- Return a decision brief: verdict, `git diff --cached --stat | tail -3`, Command last 3 lines verbatim, reviewer verdicts + report paths, residuals."
   }
