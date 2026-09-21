@@ -128,6 +128,54 @@ else
   echo "  ✗ start --base wrong: worktree=[$BWT]"; ls "$BWT" 2>&1; cat "$TMP/base.err" >&2; fail=$((fail+1))
 fi
 
+# ── start's fleet hint (Task 5): a SECOND line, only when 2+ role-owned
+# tasks are ready — a single-ready-task plan (the acceptance-1 fixture
+# above) must keep printing exactly one line.
+HR="$TMP/hint-repo"
+mkdir -p "$HR"
+( cd "$HR" && git init -q . && git config user.email t@t && git config user.name t )
+cat > "$HR/plan.md" <<'EOF'
+# Hint Feature Plan
+
+## Tasks
+
+### Task 1: build the alpha widget
+- **Blocked by:** none
+- [ ] **Files:** `alpha.js`
+- [ ] **Command:** `true`
+- **Owner:** backend-developer
+- **Done when:** true
+
+### Task 2: build the beta widget
+- **Blocked by:** none
+- [ ] **Files:** `beta.js`
+- [ ] **Command:** `true`
+- **Owner:** frontend-developer
+- **Done when:** true
+
+## Parallel layout
+Sequential — single owner.
+
+## Failure policy
+Default: stop after 2 failed attempts (never a 4th).
+EOF
+( cd "$HR" && git add -A && git commit -q -m init )
+HOUT=$(bash "$TICKET" start "$HR/plan.md" 1 2>"$TMP/hint.err")
+HLINES=$(printf '%s\n' "$HOUT" | wc -l | tr -d ' ')
+if [ "$HLINES" -eq 2 ] && printf '%s\n' "$HOUT" | sed -n '2p' | grep -qF "fleet: rolepod-ticket fleet $HR/plan.md"; then
+  echo "  ✓ start prints a fleet hint line when 2+ role-owned tasks are ready"
+else
+  echo "  ✗ start fleet-hint wrong: [$HOUT]"; cat "$TMP/hint.err" >&2; fail=$((fail+1))
+fi
+
+HOUT2=$(bash "$TICKET" start "$FR/plan.md" 1 2>>"$TMP/hint.err")
+HLINES2=$(printf '%s\n' "$HOUT2" | wc -l | tr -d ' ')
+if [ "$HLINES2" -eq 1 ]; then
+  echo "  ✓ start prints no fleet hint when only one role-owned task is ready"
+else
+  echo "  ✗ start printed a hint with only one ready task: [$HOUT2]"; fail=$((fail+1))
+fi
+
 # ═══════════════════════════════════════════════════════════════════════
 # integrate — acceptance 2 + R2 (never commits) + docs/rolepod exclusion
 # ═══════════════════════════════════════════════════════════════════════
@@ -404,6 +452,125 @@ else
   else
     echo "  ✗ log refused but modified the plan anyway"; fail=$((fail+1))
   fi
+fi
+
+# ═══════════════════════════════════════════════════════════════════════
+# fleet — Task 5: two ready role-owned tasks, one blocked, one Owner: Lead
+# ═══════════════════════════════════════════════════════════════════════
+
+FLR="$TMP/fleet-repo"
+mkdir -p "$FLR"
+( cd "$FLR" && git init -q . && git config user.email t@t && git config user.name t )
+cat > "$FLR/plan.md" <<'EOF'
+# Fleet Feature Plan
+
+## Tasks
+
+### Task 1: build the alpha widget
+- **Blocked by:** none
+- [ ] **Files:** `alpha.js`
+- [ ] **Command:** `true`
+- **Owner:** backend-developer
+- **Done when:** true
+
+### Task 2: build the beta widget
+- **Blocked by:** none
+- [ ] **Files:** `beta.js`
+- [ ] **Command:** `true`
+- **Owner:** frontend-developer
+- **Done when:** true
+
+### Task 3: build the gamma widget
+- **Blocked by:** Task 1, Task 2
+- [ ] **Files:** `gamma.js`
+- [ ] **Command:** `true`
+- **Owner:** devops-sre
+- **Done when:** true
+
+### Task 4: write the docs
+- **Blocked by:** none
+- [ ] **Files:** `README.md`
+- [ ] **Command:** `true`
+- **Owner:** Lead
+- **Done when:** true
+
+## Parallel layout
+Sequential — single owner.
+
+## Failure policy
+Default: stop after 2 failed attempts (never a 4th).
+EOF
+( cd "$FLR" && git add -A && git commit -q -m init )
+
+WT_BEFORE=$(git -C "$FLR" worktree list | wc -l | tr -d ' ')
+OUT=$(bash "$TICKET" fleet "$FLR/plan.md" 2>"$TMP/fleet.err")
+RC=$?
+WT_AFTER=$(git -C "$FLR" worktree list | wc -l | tr -d ' ')
+FLEET_JSON=$(printf '%s\n' "$OUT" | sed -n '1p')
+FLEET_LAUNCH=$(printf '%s\n' "$OUT" | sed -n '2p')
+
+if [ "$RC" -eq 0 ] && [ "$WT_AFTER" -eq $((WT_BEFORE + 2)) ]; then
+  echo "  ✓ fleet exits 0 and creates exactly the two ready tasks' worktrees"
+else
+  echo "  ✗ fleet worktree count wrong (rc=$RC before=$WT_BEFORE after=$WT_AFTER)"; fail=$((fail+1))
+  cat "$TMP/fleet.err" >&2
+fi
+
+if printf '%s\n' "$FLEET_JSON" | python3 -c '
+import json, os, sys
+data = json.load(sys.stdin)
+assert "scriptPath" in data, "no scriptPath"
+tasks = data["args"]["tasks"]
+ns = sorted(t["n"] for t in tasks)
+assert ns == [1, 2], "expected tasks [1, 2], got %r" % (ns,)
+for t in tasks:
+    assert t["reviewers"] == ["universal-reviewer"], t
+    assert os.path.isdir(t["worktree"]), "no worktree dir: %r" % t["worktree"]
+    assert os.path.isfile(t["brief"]), "no brief file: %r" % t["brief"]
+    assert t["role"] in ("backend-developer", "frontend-developer"), t["role"]
+' 2>"$TMP/fleet-json.err"; then
+  echo "  ✓ fleet JSON holds exactly the two ready role-owned tasks, worktrees + reviewers from each brief"
+else
+  echo "  ✗ fleet JSON wrong: $FLEET_JSON"; cat "$TMP/fleet-json.err" >&2; fail=$((fail+1))
+fi
+
+if printf '%s\n' "$FLEET_LAUNCH" | grep -qi 'launch'; then
+  echo "  ✓ fleet prints one line on how to launch the script after the JSON"
+else
+  echo "  ✗ fleet did not print a launch line: [$FLEET_LAUNCH]"; fail=$((fail+1))
+fi
+
+# ── no ready role-owned task → says so, exit 0, nothing created
+NRR="$TMP/no-ready-repo"
+mkdir -p "$NRR"
+( cd "$NRR" && git init -q . && git config user.email t@t && git config user.name t )
+cat > "$NRR/plan.md" <<'EOF'
+# No Ready Feature Plan
+
+## Tasks
+
+### Task 1: write the docs
+- **Blocked by:** none
+- [ ] **Files:** `README.md`
+- [ ] **Command:** `true`
+- **Owner:** Lead
+- **Done when:** true
+
+## Parallel layout
+Sequential — single owner.
+
+## Failure policy
+Default: stop after 2 failed attempts (never a 4th).
+EOF
+( cd "$NRR" && git add -A && git commit -q -m init )
+WT_NR_BEFORE=$(git -C "$NRR" worktree list | wc -l | tr -d ' ')
+OUT=$(bash "$TICKET" fleet "$NRR/plan.md" 2>"$TMP/no-ready.err")
+RC=$?
+WT_NR_AFTER=$(git -C "$NRR" worktree list | wc -l | tr -d ' ')
+if [ "$RC" -eq 0 ] && printf '%s\n' "$OUT" | grep -qi 'no ready' && [ "$WT_NR_AFTER" = "$WT_NR_BEFORE" ]; then
+  echo "  ✓ fleet with no ready role-owned task: exit 0, says so, creates nothing"
+else
+  echo "  ✗ fleet no-ready handling wrong (rc=$RC): $OUT"; fail=$((fail+1))
 fi
 
 # ═══════════════════════════════════════════════════════════════════════

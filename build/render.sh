@@ -263,6 +263,16 @@ render_evidence_scripts() {
   # Ticket-loop helper (rolepod-ticket) — resolves plan-lint.sh beside itself
   # the same way, so it ships next to it here too.
   cp "$REPO_DIR/scripts/ticket.sh" "$dst/scripts/ticket.sh"
+  # `rolepod-ticket fleet`'s scriptPath resolves ticket-fleet.js beside
+  # itself, falling back to ~/.rolepod/bin (install.sh) — NOT shipped here:
+  # tests/static/lean-surface.sh's plugins/-packaging allow-list (owned
+  # outside this task) has no `.js` entry, so a `.js` file under plugins/
+  # fails "plugins/ ships only allow-listed extensions" (verified: adding
+  # the same cp line here that ticket.sh gets does fail that check). A
+  # marketplace-only Claude install (no install.sh run) will therefore lack
+  # scripts/ticket-fleet.js next to ticket.sh — NEEDS: lean-surface.sh's
+  # ok_ext set gains "js", or ticket-fleet.js ships another already-allowed
+  # way, before this gap closes.
   chmod +x "$dst/scripts/"*.sh 2>/dev/null || true
 }
 

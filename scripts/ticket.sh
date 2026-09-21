@@ -33,12 +33,26 @@
 #     bullet under "## Changes during build". The only writer of the plan
 #     file besides the Lead's own editor.
 #
+#   rolepod-ticket fleet <plan> [--base <branch>]
+#     On the one CLI with a workflow tool: for every task whose Blocked-by
+#     tasks are all done and whose Owner is a role (not Lead), runs `start`
+#     and reads its brief's "## Reviewers" line, then prints ONE JSON object
+#     {scriptPath, args} for scripts/ticket-fleet.js (args.tasks =
+#     [{n, brief, worktree, role, reviewers}]) plus one line on how to
+#     launch it. No ready role-owned task: says so, exit 0.
+#
 # bash 3.2 safe, set -u safe, no network, fail-closed with one-line errors.
 set -uo pipefail
 
 SELF_DIR="$(cd "$(dirname "$0")" && pwd)"
 LINT="$SELF_DIR/plan-lint.sh"
 [ -f "$LINT" ] || LINT="$HOME/.rolepod/bin/plan-lint.sh"
+
+# plan_task_rows' internal field separator (fleet only) — never a tab: `read`
+# treats tab as "IFS whitespace" regardless of what IFS is set to, so it
+# COLLAPSES adjacent tabs instead of yielding an empty field for a task with
+# no Blocked-by, silently shifting every field after it.
+ROW_FS=$'\x1f'
 
 usage() {
   cat <<'EOF'
@@ -47,6 +61,7 @@ usage:
   rolepod-ticket integrate <worktree> --brief <file> [--pre '<cmd>'] [--gate '<cmd>']
   rolepod-ticket finish <worktree>
   rolepod-ticket log <plan> <N> --sha <sha> --note '<text>'
+  rolepod-ticket fleet <plan> [--base <branch>]
 EOF
 }
 
@@ -143,6 +158,135 @@ find_owner_agent() { # $1 = main root, $2 = worktree (absolute)
   return 0
 }
 
+# One row per task: "<id>\t<owner>\t<blocked-ids-csv>\t<done 0|1>" — done
+# means no remaining `- [ ]` inside the task's own block (`ticket log` flips
+# every one to `- [x]`). A `(...)` aside on a Blocked-by reference (real
+# plans annotate each blocker, e.g. "Task 1 (`start` exists), Task 3 (...)")
+# is stripped per-reference, not from the first "(" to end of line — that
+# would drop every reference after the first blocker's own aside. NOTE:
+# this deliberately diverges from plan-lint.sh's own (advisory-only)
+# Blocked-by graph check, which strips from the first "(" to end of line —
+# fine for its one worked example ("none (T3 could gate…)") but on a real
+# multi-blocker aside (this plan's own Task 5: "Task 1 (...), Task 3 (...),
+# Task 4 (...)") it resolves only the first reference. plan-lint.sh is out
+# of this task's Files allowed; `fleet` cannot ship on its narrower parse
+# without risking a task dispatched before its true blockers are done.
+plan_task_rows() { # $1 = plan (absolute)
+  awk -v fs="$ROW_FS" '
+    function trim(x) { sub(/^[[:space:]]+/, "", x); sub(/[[:space:]]+$/, "", x); return x }
+    function flush() {
+      if (id == "") return
+      bv = B
+      gsub(/\([^)]*\)/, "", bv)
+      blist = ""
+      low = tolower(trim(bv))
+      if (low != "" && low !~ /^(none|—|-|–)/) {
+        rem = bv
+        while (match(rem, /[0-9]+/)) {
+          r = substr(rem, RSTART, RLENGTH); rem = substr(rem, RSTART + RLENGTH)
+          blist = (blist == "" ? r : blist "," r)
+        }
+      }
+      # A task with NO checkbox at all (every field a bare "- **Label:**"
+      # bullet, a shape the Command check above also accepts) is not
+      # vacuously "done": total_boxes guards against reading it as an
+      # immediately-satisfied blocker for everything that names it.
+      done = (total_boxes > 0 && open_boxes == 0) ? 1 : 0
+      printf "%s%s%s%s%s%s%d\n", id, fs, trim(Ow), fs, blist, fs, done
+    }
+    $0 ~ /^### (Task ?|T)[0-9]+/ {
+      flush()
+      id = $0; sub(/^### (Task ?|T)/, "", id); sub(/[^0-9].*$/, "", id)
+      B = ""; Ow = ""; open_boxes = 0; total_boxes = 0; field = ""
+      next
+    }
+    /^## / { flush(); id = ""; next }
+    id != "" {
+      line = $0
+      if (index(line, "Blocked by:") > 0) {
+        v = line; sub(/.*Blocked by:[[:space:]]*/, "", v); sub(/^\*+[[:space:]]*/, "", v)
+        B = trim(v); field = "B"; next
+      }
+      if (index(line, "Owner:") > 0) {
+        v = line; sub(/.*Owner:[[:space:]]*/, "", v); sub(/^\*+[[:space:]]*/, "", v)
+        Ow = trim(v); field = "O"; next
+      }
+      if (line ~ /^[[:space:]]*-[[:space:]]*\[[[:space:]]\]/) { open_boxes++; total_boxes++; field = ""; next }
+      if (line ~ /^[[:space:]]*-[[:space:]]*\[[xX]\]/) { total_boxes++; field = ""; next }
+      if (field != "" && trim(line) != "" && line !~ /^[-*][[:space:]]/) {
+        if (field == "B") B = B " " trim(line)
+        else if (field == "O") Ow = Ow " " trim(line)
+        next
+      }
+      next
+    }
+    END { flush() }
+  ' "$1"
+}
+
+# Role-owned (non-Lead) task ids whose every Blocked-by task is done — the
+# one definition of "ready" shared by start's fleet hint below and by
+# `fleet` itself, so the two can never disagree on which tasks qualify.
+ready_role_tasks() { # $1 = plan (absolute)
+  local plan="$1" rows id owner blocked done done_ids=" "
+  rows="$(plan_task_rows "$plan")"
+  while IFS="$ROW_FS" read -r id owner blocked done; do
+    [ -n "$id" ] || continue
+    [ "$done" = "1" ] && done_ids="$done_ids$id "
+  done <<EOF
+$rows
+EOF
+  local lead_rx='^Lead([[:space:](]|$)'
+  while IFS="$ROW_FS" read -r id owner blocked done; do
+    [ -n "$id" ] || continue
+    # already done (every box in ITS OWN block checked) — nothing left to
+    # build; the Blocked-by graph only cares about a done BLOCKER, not this.
+    [ "$done" = "1" ] && continue
+    if [[ "$owner" =~ $lead_rx ]] || [[ "$owner" == *"(Lead self-do)"* ]]; then
+      continue
+    fi
+    local ok=1 bid oldifs
+    if [ -n "$blocked" ]; then
+      oldifs="$IFS"; IFS=','
+      for bid in $blocked; do
+        case "$done_ids" in *" $bid "*) : ;; *) ok=0 ;; esac
+      done
+      IFS="$oldifs"
+    fi
+    [ "$ok" -eq 1 ] && printf '%s\n' "$id"
+  done <<EOF
+$rows
+EOF
+}
+
+json_escape() { # $1 = string -> backslash/quote escaped for a JSON string body
+  local s="$1"
+  s="${s//\\/\\\\}"
+  s="${s//\"/\\\"}"
+  printf '%s' "$s"
+}
+
+# The brief's "## Reviewers" first line, as backticked role tokens — the
+# pool-command alternative (`rolepod-cross-family --kind review ...`) always
+# carries a space and "none" (R1) is dropped, so only real role names survive.
+brief_reviewers() { # $1 = brief file
+  local line1
+  line1="$(section_body "$1" '## Reviewers' | sed -n '1p')"
+  printf '%s\n' "$line1" | grep -oE '`[^`]+`' | tr -d '`' | grep -vx 'none' | grep -v ' ' || true
+}
+
+# Reviewer tokens on stdin (one per line, from brief_reviewers) -> a compact
+# JSON array literal, e.g. ["universal-reviewer","qa-tester"].
+reviewers_json_array() {
+  local rev out="" first=1
+  while IFS= read -r rev; do
+    [ -n "$rev" ] || continue
+    if [ "$first" -eq 1 ]; then out="\"$(json_escape "$rev")\""; first=0
+    else out="${out},\"$(json_escape "$rev")\""; fi
+  done
+  printf '[%s]' "$out"
+}
+
 # ── start ────────────────────────────────────────────────────────────────
 
 cmd_start() {
@@ -231,6 +375,12 @@ cmd_start() {
   fi
 
   printf '%s %s\n' "$handoff" "$wt_abs"
+
+  local ready_count
+  ready_count="$(ready_role_tasks "$plan_abs" | grep -c '.')"
+  if [ "$ready_count" -ge 2 ]; then
+    printf 'fleet: rolepod-ticket fleet %s\n' "$plan_abs"
+  fi
 }
 
 # ── integrate ────────────────────────────────────────────────────────────
@@ -465,6 +615,79 @@ cmd_log() {
   echo "ticket: log: Task $n updated in $plan"
 }
 
+# ── fleet ────────────────────────────────────────────────────────────────
+
+cmd_fleet() {
+  local plan="${1:-}"; shift || true
+  local base=""
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --base) base="${2:-}"; shift 2 ;;
+      *) echo "ticket: fleet: unknown arg: $1" >&2; exit 2 ;;
+    esac
+  done
+  if [ -z "$plan" ] || [ ! -f "$plan" ]; then usage >&2; exit 2; fi
+
+  local plan_dir plan_abs repo_root script_path
+  plan_dir="$(cd "$(dirname "$plan")" && pwd)"
+  plan_abs="$plan_dir/$(basename "$plan")"
+  repo_root="$(git -C "$plan_dir" rev-parse --show-toplevel 2>/dev/null)"
+  [ -n "$repo_root" ] || { echo "ticket: fleet: not inside a git repo: $plan_abs" >&2; exit 2; }
+
+  local ready
+  ready="$(ready_role_tasks "$plan_abs")"
+  if [ -z "$ready" ]; then
+    echo "ticket: fleet: no ready role-owned task in $plan_abs"
+    return 0
+  fi
+
+  # Fail closed, same convention as $LINT above — a silently-wrong
+  # scriptPath in the JSON (the ~/.rolepod/bin fallback is the EXPECTED
+  # path on a marketplace-only Claude install, which ships no scripts/
+  # ticket-fleet.js today; see build/render.sh) would only surface when the
+  # Lead tries to launch it, worktrees and all already created.
+  script_path="$SELF_DIR/ticket-fleet.js"
+  [ -f "$script_path" ] || script_path="$HOME/.rolepod/bin/ticket-fleet.js"
+  [ -f "$script_path" ] || { echo "ticket: fleet: ticket-fleet.js not found beside $0 or in ~/.rolepod/bin" >&2; exit 2; }
+
+  local rows n role start_out start_rc handoff wt_abs revlist entry tasks_json="" first=1
+  rows="$(plan_task_rows "$plan_abs")"
+  while IFS= read -r n; do
+    [ -n "$n" ] || continue
+    if [ -n "$base" ]; then
+      start_out="$(cmd_start "$plan_abs" "$n" --base "$base")"
+    else
+      start_out="$(cmd_start "$plan_abs" "$n")"
+    fi
+    start_rc=$?
+    if [ "$start_rc" -ne 0 ]; then
+      echo "ticket: fleet: start failed for Task $n" >&2
+      exit 1
+    fi
+    handoff="$(printf '%s\n' "$start_out" | sed -n '1p' | awk '{print $1}')"
+    wt_abs="$(printf '%s\n' "$start_out" | sed -n '1p' | awk '{print $2}')"
+    role="$(printf '%s\n' "$rows" | awk -F"$ROW_FS" -v want="$n" '$1==want{print $2; exit}')"
+    # Fail closed on an empty role: an `agentType:"rolepod:"` in the JSON
+    # would only surface as a mid-run agent-type error inside the fleet
+    # script, well after this worktree (and any siblings before it) exist.
+    if [ -z "$role" ]; then
+      echo "ticket: fleet: Task $n has no Owner role — refusing (fail-closed)" >&2
+      exit 1
+    fi
+    revlist="$(brief_reviewers "$handoff")"
+    entry="$(printf '{"n":%s,"brief":"%s","worktree":"%s","role":"%s","reviewers":%s}' \
+      "$n" "$(json_escape "$handoff")" "$(json_escape "$wt_abs")" "$(json_escape "$role")" \
+      "$(printf '%s\n' "$revlist" | reviewers_json_array)")"
+    if [ "$first" -eq 1 ]; then tasks_json="$entry"; first=0
+    else tasks_json="$tasks_json,$entry"; fi
+  done <<EOF
+$ready
+EOF
+
+  printf '{"scriptPath":"%s","args":{"tasks":[%s]}}\n' "$(json_escape "$script_path")" "$tasks_json"
+  echo "launch: Workflow({scriptPath, args}) on the CLI with the workflow tool — one launch builds + reviews every task above"
+}
+
 # ── dispatch ─────────────────────────────────────────────────────────────
 
 SUB="${1:-}"
@@ -476,5 +699,6 @@ case "$SUB" in
   integrate) cmd_integrate "$@" ;;
   finish) cmd_finish "$@" ;;
   log) cmd_log "$@" ;;
+  fleet) cmd_fleet "$@" ;;
   *) echo "ticket: unknown subcommand: $SUB" >&2; usage >&2; exit 2 ;;
 esac
