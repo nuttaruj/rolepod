@@ -94,7 +94,7 @@ agent plugin marketplace add https://github.com/nuttaruj/rolepod   # expect: Add
 agent plugin marketplace list --format json                         # rolepod gitRef == the release commit
 ```
 
-The pin is per Cursor account, so this proves the path for a new user; it does not move anyone else's pin (README → Cursor IDE → Update). Keep the marketplace plugin uninstalled on the maintainer machine — it would shadow the `install.sh --target=cursor` copy and freeze at the pinned commit.
+Then install "rolepod" again under Cursor → Settings → Plugins (the remove dropped it). The marketplace install is the account-side copy: Cursor surfaces that never read `~/.cursor/plugins/local/` (cloud agents) get rolepod from it alone, and on the desktop it takes precedence over the `install.sh --target=cursor` copy — so skipping this step leaves the cloud, and the desktop, on the previous release. The pin is per Cursor account; it does not move anyone else's pin (README → Cursor IDE → Update).
 
 Every required check on the PR green before promotion — today that is the single `installer` workflow (one job: lint, render, install round-trip; `on: push[main] + pull_request`, no path filters). rolepod's own CI has no Phase 2/3 lanes: `finish-work` §2's phase framework collapses to this one always-on lane here. Auto-merge OK iff:
 - Every required check on the PR green (today: the single `installer` workflow)

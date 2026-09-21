@@ -140,7 +140,7 @@ agent plugin marketplace add https://github.com/nuttaruj/rolepod
 agent plugin marketplace list --format json
 ```
 
-Use one path, not both: an installed marketplace plugin takes precedence over the local copy of the same name, so a stale marketplace pin hides a fresh `bootstrap.sh` install.
+The marketplace install is the account-side copy — the one Cursor's cloud agents get; the `bootstrap.sh` folder exists on that machine only. With both installed, the marketplace plugin takes precedence over the local copy of the same name, so a stale pin hides a fresh `bootstrap.sh` install: update the marketplace pin on every release.
 
 > **Teams / Enterprise plans** can alternatively add `https://github.com/nuttaruj/rolepod` as a team marketplace under Settings → Plugins for one-click install; a team marketplace has an **Enable Auto Refresh** switch that follows the tracked branch. Team Marketplaces are not available on Free / Pro plans.
 
