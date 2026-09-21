@@ -1479,12 +1479,14 @@ rh_log() { printf '{"ts": "%s", "phase": "dispatch", "cli": "claude", "tool": "A
 ( cd "$RH" && git init -q . && git config user.email t@t && git config user.name t && printf 'a\n' > f.txt && git add f.txt && GIT_COMMITTER_DATE="$(rh_ts 90)" git commit -q -m init --date="$(rh_ts 90)" && printf 'b\n' > f.txt )
 rh_agent() { printf '{"tool_name":"Agent","tool_input":{"subagent_type":"%s","prompt":"review the diff"},"session_id":"rh1","transcript_path":"/nonexistent"}' "$1" | (cd "$RH" && HOME="$RH" bash "$HOOKS/workflow-tier-nudge.sh") || true; }
 rh_prompt() { printf '{"session_id":"rh1","prompt":%s}' "$(printf '%s' "$1" | python3 -c 'import json,sys; print(json.dumps(sys.stdin.read()))')" | (cd "$RH" && HOME="$RH" bash "$HOOKS/claim-verify-nudge.sh") || true; }
-: > "$RH/.rolepod/evidence/phase-log.jsonl"; rh_log 40 rolepod:security-engineer; rh_log 20 rolepod:qa-tester; rh_log 1 rolepod:security-engineer
+: > "$RH/.rolepod/evidence/phase-log.jsonl"; rh_log 40 rolepod:security-engineer; rh_log 25 rolepod:security-engineer
 out=$(rh_agent rolepod:security-engineer)
 if echo "$out" | grep -q 'review-rounds' && ! echo "$out" | grep -q '"permissionDecision": *"deny"'; then echo "  ✓ tier-nudge: reviewer dispatch at round 3 → breaker notice, not a deny"; else echo "  ✗ tier-nudge round 3: ${out:0:160}"; fail=$((fail+1)); fi
 out=$(rh_agent rolepod:backend-developer)
 if echo "$out" | grep -q 'review-rounds'; then echo "  ✗ tier-nudge: non-reviewer dispatch got the round note"; fail=$((fail+1)); else echo "  ✓ tier-nudge: non-reviewer dispatch → no round note"; fi
-: > "$RH/.rolepod/evidence/phase-log.jsonl"; rh_log 40 rolepod:security-engineer; rh_log 20 rolepod:qa-tester; rh_log 12 rolepod:security-engineer
+# v2.154.0 — rounds per reviewer: security-engineer's own key, not a mix with
+# qa-tester (a different reviewer no longer inflates this one's round).
+: > "$RH/.rolepod/evidence/phase-log.jsonl"; rh_log 40 rolepod:security-engineer; rh_log 25 rolepod:security-engineer; rh_log 13 rolepod:security-engineer
 out=$(rh_agent rolepod:security-engineer)
 check "tier-nudge: round 4 with no breaker ledger → deny" deny "$out"
 out=$(rh_prompt 'I hit my usage limit while you were working, but it has reset now. Please continue from where you left off.')
@@ -1494,11 +1496,35 @@ out=$(rh_agent rolepod:security-engineer)
 check "tier-nudge: round 4 with a class ledger → allow" allow "$out"
 out=$(rh_prompt 'Please continue from where you left off.')
 if echo "$out" | grep -q 'breaker open'; then echo "  ✓ claim-verify: breaker ledger open → auto-resume prompt gets the stop reminder"; else echo "  ✗ claim-verify breaker-open reminder: ${out:0:160}"; fail=$((fail+1)); fi
-rh_log 6 rolepod:qa-tester; rh_log 0 rolepod:security-engineer
+rh_log 7 rolepod:security-engineer
 out=$(rh_agent rolepod:security-engineer)
 check "tier-nudge: round 5 even with the ledger → deny (terminal)" deny "$out"
 out=$( (export ROLEPOD_GATES_SOFT=1; rh_agent rolepod:security-engineer) )
 check "tier-nudge: ROLEPOD_GATES_SOFT=1 lifts the round deny" allow "$out"
+
+# ── v2.154.0 — rounds per reviewer: acceptance 2 (a churning reviewer never
+# blocks a different one) and acceptance 7 (the terminal names the reopen). ──
+: > "$RH/.rolepod/evidence/phase-log.jsonl"
+rh_log 55 rolepod:security-engineer; rh_log 44 rolepod:security-engineer; rh_log 33 rolepod:security-engineer; rh_log 22 rolepod:security-engineer; rh_log 11 rolepod:security-engineer
+out=$(rh_agent rolepod:security-engineer)
+check "acceptance 2: the SAME reviewer's 6th dispatch on one uncommitted tree → deny (terminal)" deny "$out"
+if echo "$out" | grep -q "next typed prompt re-opens the window"; then echo "  ✓ acceptance 7: the terminal deny names the next typed prompt as the way out"; else echo "  ✗ acceptance 7: terminal text missing the reopen sentence: ${out:0:200}"; fail=$((fail+1)); fi
+out=$(rh_agent rolepod:qa-tester)
+check "acceptance 2: a DIFFERENT reviewer's first dispatch on the same tree → allow (its own round is 1)" allow "$out"
+# NEEDS (out of this task's Files allowed): dispatch-auto-log.sh's Agent/Task
+# branch never writes line["name"] (only its Workflow branch does — see its
+# `if tool == "Workflow": ... line["name"] = ...`), so a real Agent dispatch
+# never leaves a "name" a later --role named lookup can find; this fixture
+# writes the shape the logger WOULD need to produce, proving the reader
+# (review_rounds()'s "named" bucket) in isolation, not the producer→reader
+# loop end to end. rh_agent above already proves the live in-process check
+# (ti.get("name") read straight from the tool call) is correct regardless.
+rh_log_named() { printf '{"ts": "%s", "phase": "dispatch", "cli": "claude", "tool": "Agent", "name": "%s"}\n' "$(rh_ts "$1")" "$2" >> "$RH/.rolepod/evidence/phase-log.jsonl"; }
+rh_named() { printf '{"tool_name":"Agent","tool_input":{"subagent_type":"general-purpose","name":"%s","prompt":"look at the diff"},"session_id":"rh1","transcript_path":"/nonexistent"}' "$1" | (cd "$RH" && HOME="$RH" bash "$HOOKS/workflow-tier-nudge.sh") || true; }
+: > "$RH/.rolepod/evidence/phase-log.jsonl"
+rh_log_named 55 review-pass-a; rh_log_named 44 review-pass-b; rh_log_named 33 review-pass-c; rh_log_named 22 review-pass-d; rh_log_named 11 review-pass-e
+out=$(rh_named "review-pass-f")
+check "R1 'named': 5 review-shaped dispatch NAMES with no role match, then a 6th → deny (its own key, independent of the role table)" deny "$out"
 rm -rf "$RH"
 
 # ── auto-resume prompt (v2.100.0): a resume, not a decision; no route nudge ──

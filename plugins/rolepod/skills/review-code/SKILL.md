@@ -137,7 +137,7 @@ Whoever wrote the fix never verifies it: the reviewer who flagged it verifies by
 - Author and reviewer disagree on merits → technical data > documented style guide > engineering principle > codebase consistency.
 
 **Breaker.** Two rounds is the budget — review, then confirm the fixes; a third is a reassessment point. Triggers, any one:
-- round 3 on one uncommitted tree (dispatches closer than 5 min are one round; `rolepod-cross-family --rounds` shows the state)
+- one reviewer's round 3 on one uncommitted tree (dispatches < 5 min apart = one round; `rolepod-cross-family --rounds` shows it)
 - blockers tagged IN-FIX two rounds running
 - BLOCKER / MAJOR tagged NEW in files the previous round never touched, two rounds running
 - the same defect class at a new site

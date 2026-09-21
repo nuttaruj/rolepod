@@ -121,17 +121,22 @@ def _git_root():
     except Exception:
         return ""
 
-# v2.99.0 — review rounds on one uncommitted tree. ONE implementation: the
-# runner\x27s `--rounds` (shipped in every plugin tree next to hooks/). Round 3
-# = notice, round 4 without a breaker ledger (`## Class`) = deny, round 5+ =
-# deny (terminal: split & stop). Measured: 11+ rounds overnight, no consult,
-# no hand-back, while the breaker was doctrine only. The window starts at
-# the later of the last commit and the last real user prompt (v2.128.0 —
+# v2.99.0 — review rounds on one uncommitted tree, counted PER REVIEWER
+# since v2.154.0. ONE implementation: the runner\x27s `--rounds [--role
+# <key>]` (shipped in every plugin tree next to hooks/). Round 3 = notice,
+# round 4 without a breaker ledger (`## Rounds` + `## Class`) = deny, round
+# 5+ = deny (terminal: split & stop). A dispatch of a known role asks
+# `--role <role>`; a reviewer-shaped dispatch with no role match asks
+# `--role named`; a review-shaped Workflow asks with no role (the tree\x27s
+# busiest reviewer). Measured 2026-09-21: counting per reviewer instead of
+# the whole tree turns 7 of 185 windows\x27 round >= 4 into 2 — the two real
+# churn loops the breaker was built for. The window starts at the later of
+# the last commit and the last real user prompt (v2.128.0 —
 # claim-verify-nudge stamps it; a clean tree is 0 rounds), so separate
 # commissions on one tree never add up to a phantom loop.
 REVIEW_ROLES = ("security-engineer", "universal-reviewer", "code-reviewer", "qa-tester")
 
-def _review_rounds():
+def _review_rounds(role=None):
     import subprocess
     here = os.path.dirname(os.environ["ROLEPOD_SESSION_STATE"])
     for rp in (os.path.join(here, "..", "..", "scripts", "cross-family.sh"),
@@ -139,33 +144,35 @@ def _review_rounds():
         if not os.path.isfile(rp):
             continue
         try:
-            out = subprocess.run(["bash", rp, "--rounds"], capture_output=True, text=True, timeout=15).stdout
+            cmd = ["bash", rp, "--rounds"] + (["--role", role] if role else [])
+            out = subprocess.run(cmd, capture_output=True, text=True, timeout=15).stdout
         except Exception:
             return None
         m = re.search(r"current=(\d+).*?ledger=(\S+).*?class=([01])", out)
         return (int(m.group(1)), m.group(2), m.group(3) == "1") if m else None
     return None
 
-def _round_policy(label):
-    rr = _review_rounds()
+def _round_policy(label, role=None):
+    rr = _review_rounds(role)
     if not rr:
         return None, ""
     cur, ledger, klass = rr
     soft = os.environ.get("ROLEPOD_GATES_SOFT") == "1"
     if cur >= 5 and not soft:
-        return "deny", ("\u26d4 review-rounds: %s would be round %d on one uncommitted tree — past the breaker "
+        return "deny", ("\u26d4 review-rounds: %s would be its round %d on one uncommitted tree — past the breaker "
                         "budget (ledger, class fix once, ONE round). Fix: split & stop (review-code \u00a75 step 5): "
                         "commit the slices with no open finding, park the churning surface as a delta spec / "
-                        "Follow-ups, end the turn with the decision brief; the user decides. Exception: "
+                        "Follow-ups, end the turn with the decision brief. The user\x27s next typed "
+                        "prompt re-opens the window — no new session, no bypass. Exception: "
                         "ROLEPOD_GATES_SOFT=1 (user-set)." % (label, cur))
     if cur >= 4 and not klass and not soft:
-        return "deny", ("\u26d4 review-rounds: %s would be round %d on one uncommitted tree with no breaker ledger. "
+        return "deny", ("\u26d4 review-rounds: %s would be its round %d on one uncommitted tree with no breaker ledger. "
                         "Fix: write docs/rolepod/handoffs/<feature>-breaker-<date>.md (## Rounds \u00b7 ## Class: the one "
                         "root cause, its single point, every consumer \u00b7 ## Decision), make the class-level fix ONCE "
                         "with a class test, then dispatch this round (internal + rolepod-cross-family --since <job> "
                         "--ledger <file>). Exception: ROLEPOD_GATES_SOFT=1 (user-set)." % (label, cur))
     if cur >= 3:
-        return "ctx", ("\U0001f501 review-rounds: %s is round %d on one uncommitted tree — the breaker is armed: after "
+        return "ctx", ("\U0001f501 review-rounds: %s is on its round %d on one uncommitted tree — the breaker is armed: after "
                        "this verdict no more point fixes; ledger \u2192 class fix once (class test + consumer list) "
                        "\u2192 ONE round \u2192 else split & stop (review-code \u00a75). " % (label, cur))
     return None, ""
@@ -257,7 +264,7 @@ if tool == "Workflow":
     # review round too — deny levels only; the round-3 notice comes from the
     # Agent / runner channels.
     _wf_blob = script + " " + str(ti.get("name") or "")
-    if re.search(r"(security-engineer|universal-reviewer|code-reviewer|qa-tester)", _wf_blob) or re.search(r"review|verif", str(ti.get("name") or ""), re.I):
+    if re.search(r"(security-engineer|universal-reviewer|code-reviewer|qa-tester)", _wf_blob) or re.search(r"review|verif|audit", str(ti.get("name") or ""), re.I):
         _k, _m = _round_policy("this Workflow")
         if _k == "deny":
             emit({"hookSpecificOutput": {"hookEventName": "PreToolUse",
@@ -653,13 +660,23 @@ if tool in ("Agent", "Task"):
     rounds = ss.dispatch_rounds_this_turn(d.get("transcript_path") or "")
     loop_note = ""
     if atype in REVIEW_ROLES:
-        kind, rmsg = _round_policy("rolepod:" + atype)
+        kind, rmsg = _round_policy("rolepod:" + atype, atype)
         if kind == "deny":
             emit({"hookSpecificOutput": {"hookEventName": "PreToolUse",
                                          "permissionDecision": "deny",
                                          "permissionDecisionReason": rmsg}})
         if kind == "ctx":
             loop_note = rmsg
+    else:
+        dname = str(ti.get("name") or "")
+        if re.search(r"review|verif|audit", dname, re.I):
+            kind, rmsg = _round_policy(dname, "named")
+            if kind == "deny":
+                emit({"hookSpecificOutput": {"hookEventName": "PreToolUse",
+                                             "permissionDecision": "deny",
+                                             "permissionDecisionReason": rmsg}})
+            if kind == "ctx":
+                loop_note = rmsg
     if rounds == 2:
         ctxk = ss.last_context_tokens(d.get("transcript_path") or "") // 1000
         loop_note = ("coordinator-check: 3rd sequential Agent round-trip this turn — each "

@@ -70,15 +70,18 @@
 #            fixes, tags IN-FIX / NEW / REPEAT, and the budget goes to the
 #            delta, not the cumulative diff. One live review job per repo: a
 #            second `--kind review` is refused (exit 8) until --collect / --kill.
-#   breaker  review rounds on ONE uncommitted tree are counted (reviewer
-#            dispatches closer than 5 min = one round; internal roles from the
-#            phase-log, external jobs from their start times; the window starts
-#            at the later of the last commit and the last prompt the user typed,
-#            a clean tree is 0 rounds — v2.128.0). Round 3 gets a
-#            notice; round 4 needs `--ledger <breaker file>` (a `## Class`
-#            heading = the root cause was named); round 5 is refused, exit 9:
-#            split & stop (review-code §5). Measured: 11+ rounds overnight,
-#            no consult, no hand-back, when this was doctrine only. The first
+#   breaker  review rounds on ONE uncommitted tree are counted PER REVIEWER
+#            (v2.154.0): a round belongs to a key — security-engineer /
+#            universal-reviewer / code-reviewer / qa-tester / named / external
+#            — dispatches of that key closer than 5 min are one round; `rounds`
+#            is the busiest reviewer's count, `--role <key>` asks one
+#            reviewer's `current`. The window starts at the later of the last
+#            commit and the last prompt the user typed, a clean tree is 0
+#            rounds (v2.128.0). Round 3 gets a notice; round 4 needs
+#            `--ledger <breaker file>` (a `## Rounds` + `## Class` heading);
+#            round 5 is refused, exit 9: split & stop (review-code §5).
+#            Measured 2026-09-21: counting per reviewer instead of the whole
+#            tree turns 7 of 185 windows' round >= 4 into 2. The first
 #            anchored external pass in the window is the commit gate's floor,
 #            not a round: never refused, never counted (v2.154.0).
 #   read-only every invocation uses the CLI's read-only / plan mode; the
@@ -97,7 +100,7 @@
 # Usage:
 #   cross-family.sh --kind review|consult|critique|implement --brief <file> [--attach <file>]... [--allow <path>]... [--allow-risky]
 #                   [--lead <cli>] [--all] [--timeout <sec>] [--detach] [--partial-ok] [--since <job-id>] [--ledger <file>]
-#   cross-family.sh --rounds                               # review rounds since the last commit (breaker state)
+#   cross-family.sh --rounds [--role <key>]                # review rounds since the last commit (breaker state, per reviewer with --role)
 #   cross-family.sh --kill <job-id>                        # abandon a running job (status 137, no anchor)
 #   cross-family.sh --collect <job-id> [--timeout <sec>]   # wait for a detached job, print its output
 #   cross-family.sh --jobs                                # list detached jobs (running / done)
@@ -112,7 +115,7 @@
 set -uo pipefail
 
 KIND=""; BRIEF=""; LEAD="${ROLEPOD_LEAD_CLI:-}"; ALL=0; FLAG_TIMEOUT="${ROLEPOD_XFAM_TIMEOUT:-}"; FLAG_STALL="${ROLEPOD_XFAM_STALL:-}"
-MODE="run"; ATTACH=""; ALLOW=""; ALLOW_RISKY=0; SETUP_REVIEW=""; SETUP_IMPL=""; DETACH=0; JOB_DIR=""; COLLECT_ID=""; ROOT_FLAG=""; CFG_FLAG=""; PARTIAL_OK=0; SINCE_ID=""; KILL_ID=""; LEDGER=""; ROUND_NOTE=""
+MODE="run"; ATTACH=""; ALLOW=""; ALLOW_RISKY=0; SETUP_REVIEW=""; SETUP_IMPL=""; DETACH=0; JOB_DIR=""; COLLECT_ID=""; ROOT_FLAG=""; CFG_FLAG=""; PARTIAL_OK=0; SINCE_ID=""; KILL_ID=""; LEDGER=""; ROUND_NOTE=""; ROLE=""
 while [ $# -gt 0 ]; do
   case "$1" in
     --kind) KIND="${2:-}"; shift 2 ;;
@@ -133,6 +136,7 @@ while [ $# -gt 0 ]; do
     --kill) MODE="kill"; KILL_ID="${2:-}"; shift 2 ;;
     --ledger) LEDGER="${2:-}"; shift 2 ;;            # breaker ledger — round 4 needs it (review-code §5)
     --rounds) MODE="rounds"; shift ;;               # print review rounds on this uncommitted tree
+    --role) ROLE="${2:-}"; shift 2 ;;                # --rounds only: one reviewer key's current (unknown key → never seen)
     --job) JOB_DIR="${2:-}"; shift 2 ;;          # internal: the detached child
     --config) CFG_FLAG="${2:-}"; shift 2 ;;      # internal: the job's config snapshot
     --collect) MODE="collect"; COLLECT_ID="${2:-}"; shift 2 ;;
@@ -185,27 +189,37 @@ if [ "$MODE" = "jobs" ]; then
   done
   exit 0
 fi
-# ── Review rounds on one uncommitted tree (v2.99.0) ─────────────────────
-# Prints `rounds=<past clusters> current=<round a dispatch now would be>
-# ledger=<path|-> class=<0|1> gatepass=<0|1>`. Events = external review jobs
-# (`started`) + phase-log reviewer dispatches (internal roles, review-shaped
-# Workflows), since the WINDOW START; a gap > 5 min opens a new round.
-# gatepass=1 (v2.154.0) = no anchored external pass in the window yet — the
-# next external review is the commit gate's floor: never refused, and external
-# jobs up to that first anchored pass never count as rounds. The breaker ledger
-# = newest docs/rolepod/handoffs/*breaker*.md newer than the last commit.
-# Window start (v2.128.0) = the later of the last commit and the last REAL
-# user prompt — claim-verify-nudge stamps .rolepod/evidence/last-prompt on
-# every prompt the user typed (auto-resume "Please continue" and compaction
-# summaries never stamp, so an overnight loop still accumulates). A clean
-# tree (`git status --porcelain` empty) reads as 0 rounds: no uncommitted
-# tree, no loop. Measured 2026-09-14: five separate commissions in one day,
-# on a tree whose commits lived in another worktree, read as round 5 and
-# blocked the next task.
-review_rounds() {
-  ROLEPOD_XFAM_ROOT="$ROOT" ROLEPOD_XFAM_JOBS="$JOBS" python3 -I - <<'PY' 2>/dev/null || echo "rounds=0 current=1 ledger=- class=0"
+# ── Review rounds, per reviewer (v2.99.0, keyed per reviewer v2.154.0) ────
+# Prints `rounds=<the busiest reviewer's clusters> current=<that reviewer's
+# next round, or one reviewer's with --role> ledger=<path|-> class=<0|1>
+# gatepass=<0|1> roles=<key:n,...|->`. A round belongs to a reviewer key —
+# security-engineer / universal-reviewer / code-reviewer / qa-tester (from
+# `agent_type` + every `agent_types` entry), `named` (a review-shaped
+# dispatch name, no role match), `external` (runner review jobs, counted per
+# the gate-pass rule). Clusters are still cut on the WHOLE timeline (gap > 5
+# min); a reviewer's rounds = the clusters holding a counted event of that
+# reviewer; tree `rounds` = the highest. `--role <key>` asks one reviewer's
+# `current` (a key never seen reads current=1); no `--role` = the highest
+# `current` over the keys seen. gatepass=1 (v2.154.0) = no anchored external
+# pass in the window yet — the next external review is the commit gate's
+# floor: never refused, and its job never counts as a round (it still joins
+# and bridges the timeline). The breaker ledger = newest
+# docs/rolepod/handoffs/*breaker*.md newer than the window start that
+# carries a `## Rounds` heading (v2.154.0 — a review brief merely named
+# `*breaker*.md` is not the ledger). Window start (v2.128.0) = the later of
+# the last commit and the last REAL user prompt — claim-verify-nudge stamps
+# .rolepod/evidence/last-prompt on every prompt the user typed (auto-resume
+# "Please continue" and compaction summaries never stamp, so an overnight
+# loop still accumulates). A clean tree (`git status --porcelain` empty)
+# reads as 0 rounds: no uncommitted tree, no loop. Measured 2026-09-21:
+# counting per reviewer instead of the whole tree turns 7 of 185 windows'
+# round >= 4 into 2, and 4's round >= 5 into 2 — the two real churn loops
+# the breaker was built for.
+review_rounds() { # $1 = role filter, optional — overrides $ROLE (the runner's own breaker block always asks "external")
+  ROLEPOD_XFAM_ROLE="${1:-$ROLE}" ROLEPOD_XFAM_ROOT="$ROOT" ROLEPOD_XFAM_JOBS="$JOBS" python3 -I - <<'PY' 2>/dev/null || echo "rounds=0 current=1 ledger=- class=0 gatepass=0 roles=-"
 import glob, json, os, re, subprocess, time, datetime
 root = os.environ["ROLEPOD_XFAM_ROOT"]; jobs = os.environ["ROLEPOD_XFAM_JOBS"]
+role = os.environ.get("ROLEPOD_XFAM_ROLE") or ""
 try:
     last = int(subprocess.run(["git", "-C", root, "log", "-1", "--format=%ct"], capture_output=True, text=True).stdout.strip() or 0)
 except Exception:
@@ -222,16 +236,10 @@ try:
     clean = all(l[3:].startswith((".rolepod/", "docs/rolepod/")) for l in porcelain.splitlines() if l.strip())
 except Exception:
     clean = False
-ev = []; xjobs = []; anchors = []
-for d in glob.glob(os.path.join(jobs, "*-review-*")):
-    try:
-        t = int(open(os.path.join(d, "started")).read().strip())
-    except Exception:
-        continue
-    if t > last:
-        xjobs.append(t)
-log = os.path.join(root, ".rolepod", "evidence", "phase-log.jsonl")
 ROLES = re.compile(r"(security-engineer|universal-reviewer|code-reviewer|qa-tester)")
+log = os.path.join(root, ".rolepod", "evidence", "phase-log.jsonl")
+timeline = []  # (t, key, counted) — one entry per distinct key a dispatch names
+anchors = []
 if os.path.isfile(log):
     with open(log, "rb") as f:
         size = os.path.getsize(log); f.seek(max(0, size - 262144)); data = f.read().decode("utf-8", "ignore")
@@ -257,42 +265,67 @@ if os.path.isfile(log):
             continue
         blob = " ".join([str(e.get("agent_type") or ""), " ".join(str(x) for x in (e.get("agent_types") or []))])
         name = str(e.get("name") or "")
-        if not ROLES.search(blob) and not re.search(r"review|verif|audit", name, re.I):
+        keys = set(ROLES.findall(blob))
+        if not keys and re.search(r"review|verif|audit", name, re.I):
+            keys = {"named"}
+        if not keys:
             continue
         try:
             t = int(datetime.datetime.fromisoformat(str(e.get("ts", "")).replace("Z", "+00:00")).timestamp())
         except Exception:
             continue
         if t > last:
-            ev.append(t)
+            for k in keys:
+                timeline.append((t, k, 1))
 # The gate's pass is not a round: external jobs up to the first anchored pass
-# in the window (the pass itself + failed attempts before it) never count.
-# They stay in the timeline — an uncounted job still joins and bridges events
-# exactly as before — and a cluster is a round only when it holds a counted
-# event, so nothing ever reads a round stricter than the every-job-counts rule.
+# in the window (the pass itself + failed attempts before it) never count —
+# they still join and bridge the timeline (v2.154.0). Extended to reviewer
+# keys (v2.154.0): a cluster is a round for a key only when it holds a
+# COUNTED event of that key, so a churning reviewer no longer inflates the
+# tree's count just because a different reviewer also looked at it once.
 gatepass = 0 if anchors else 1
 first = min(anchors) if anchors else None
-timeline = sorted([(t, 1) for t in ev] + [(t, 1 if (first is not None and t > first) else 0) for t in xjobs])
-rounds = 0; prev = None; open_counted = 0
-for t, counted in timeline:
-    if prev is None or t - prev > 300:
-        open_counted = 0
-    if counted and not open_counted:
-        rounds += 1; open_counted = 1
-    prev = t
-now = int(time.time())
-current = rounds if (prev is not None and now - prev <= 300 and open_counted) else rounds + 1
-if clean:
-    rounds, current = 0, 1
-ledger = "-"; klass = 0
-cands = [p for p in glob.glob(os.path.join(root, "docs", "rolepod", "handoffs", "*breaker*.md")) if os.path.getmtime(p) > last]
-if cands:
-    ledger = max(cands, key=os.path.getmtime)
+for d in glob.glob(os.path.join(jobs, "*-review-*")):
     try:
-        klass = 1 if re.search(r"^## Class", open(ledger, encoding="utf-8", errors="ignore").read(), re.M) else 0
+        t = int(open(os.path.join(d, "started")).read().strip())
     except Exception:
-        klass = 0
-print("rounds=%d current=%d ledger=%s class=%d gatepass=%d" % (rounds, current, ledger, klass, gatepass))
+        continue
+    if t > last:
+        timeline.append((t, "external", 1 if (first is not None and t > first) else 0))
+timeline.sort(key=lambda x: x[0])
+per = {}; open_keys = set(); prev = None
+for t, k, counted in timeline:
+    if prev is None or t - prev > 300:
+        open_keys = set()
+    if counted and k not in open_keys:
+        per[k] = per.get(k, 0) + 1
+        open_keys.add(k)
+    prev = t
+rounds = max(per.values()) if per else 0
+now = int(time.time())
+joins_open = prev is not None and now - prev <= 300
+def current_for(k):
+    base = per.get(k, 0)
+    return base if (joins_open and k in open_keys) else base + 1
+current = current_for(role) if role else max((current_for(k) for k in per), default=1)
+if clean:
+    rounds, current, per = 0, 1, {}
+ledger = "-"; klass = 0; cands = []
+for p in glob.glob(os.path.join(root, "docs", "rolepod", "handoffs", "*breaker*.md")):
+    m = os.path.getmtime(p)
+    if m <= last:
+        continue
+    try:
+        text = open(p, encoding="utf-8", errors="ignore").read()
+    except Exception:
+        continue
+    if re.search(r"^## Rounds", text, re.M):
+        cands.append((m, p, text))
+if cands:
+    _, ledger, ltext = max(cands, key=lambda c: c[0])
+    klass = 1 if re.search(r"^## Class", ltext, re.M) else 0
+roles = ",".join("%s:%d" % (k, per[k]) for k in sorted(per)) or "-"
+print("rounds=%d current=%d ledger=%s class=%d gatepass=%d roles=%s" % (rounds, current, ledger, klass, gatepass, roles))
 PY
 }
 if [ "$MODE" = "rounds" ]; then review_rounds; exit 0; fi
@@ -1085,7 +1118,7 @@ fi
 # Round 3 = notice; round 4 needs the breaker ledger (--ledger, `## Class`);
 # round 5+ is terminal — split & stop, the user decides. Parent only.
 if [ "$KIND" = "review" ] && [ -z "$JOB_DIR" ]; then
-  RR=$(review_rounds)
+  RR=$(review_rounds external)
   CUR=$(printf '%s' "$RR" | sed -n 's/.*current=\([0-9]*\).*/\1/p'); CUR=${CUR:-1}
   LCLASS=$(printf '%s' "$RR" | sed -n 's/.*class=\([01]\).*/\1/p'); LCLASS=${LCLASS:-0}
   GATEPASS=$(printf '%s' "$RR" | sed -n 's/.*gatepass=\([01]\).*/\1/p'); GATEPASS=${GATEPASS:-0}
@@ -1102,13 +1135,13 @@ $ATTACH}"
   if [ "$GATEPASS" = "1" ]; then
     if [ "$CUR" -ge 3 ]; then echo "ROLEPOD-XFAM gate pass — no anchored external review in this window yet: this run is the commit gate's floor, not a breaker round. A re-review after it is round $CUR."; fi
   elif [ "$CUR" -ge 5 ] && [ "${ROLEPOD_GATES_SOFT:-0}" != "1" ]; then
-    echo "ROLEPOD-XFAM refused round=$CUR — review round $CUR on one uncommitted tree is past the breaker budget (ledger, class fix once, ONE round). Fix: split & stop (review-code §5 step 5) — commit the slices with no open finding, park the churning surface as a delta spec / Follow-ups, end the turn with the decision brief; the user decides. Exception: ROLEPOD_GATES_SOFT=1 (user-set)."
+    echo "ROLEPOD-XFAM refused round=$CUR — the external reviewer's round $CUR on one uncommitted tree is past the breaker budget (ledger, class fix once, ONE round). Fix: split & stop (review-code §5 step 5) — commit the slices with no open finding, park the churning surface as a delta spec / Follow-ups, end the turn with the decision brief. The user's next typed prompt re-opens the window — no new session, no bypass. Exception: ROLEPOD_GATES_SOFT=1 (user-set)."
     exit 9
   elif [ "$CUR" -ge 4 ] && [ "$LCLASS" != "1" ] && [ "${ROLEPOD_GATES_SOFT:-0}" != "1" ]; then
-    echo "ROLEPOD-XFAM refused round=$CUR — round 4 on one uncommitted tree without a breaker ledger. Fix: write docs/rolepod/handoffs/<feature>-breaker-<date>.md (## Rounds: one line per round · ## Class: the one root cause, its single point, every consumer · ## Decision), make the class-level fix ONCE with a class test, then re-run with --ledger <file> --since <job>. Exception: ROLEPOD_GATES_SOFT=1 (user-set)."
+    echo "ROLEPOD-XFAM refused round=$CUR — the external reviewer's round 4 on one uncommitted tree without a breaker ledger. Fix: write docs/rolepod/handoffs/<feature>-breaker-<date>.md (## Rounds: one line per round · ## Class: the one root cause, its single point, every consumer · ## Decision), make the class-level fix ONCE with a class test, then re-run with --ledger <file> --since <job>. Exception: ROLEPOD_GATES_SOFT=1 (user-set)."
     exit 9
   elif [ "$CUR" -ge 3 ]; then
-    ROUND_NOTE="ROLEPOD-XFAM round=$CUR on one uncommitted tree — the breaker is armed: after this verdict no more point fixes; ledger (## Rounds · ## Class · ## Decision) → class fix once (class test + consumer list) → ONE round with --ledger --since → else split & stop (review-code §5)."
+    ROUND_NOTE="ROLEPOD-XFAM round=$CUR of the external reviewer on one uncommitted tree — the breaker is armed: after this verdict no more point fixes; ledger (## Rounds · ## Class · ## Decision) → class fix once (class test + consumer list) → ONE round with --ledger --since → else split & stop (review-code §5)."
     echo "$ROUND_NOTE"
   fi
 fi

@@ -381,27 +381,44 @@ uses `--since <job-id>`: every detached dispatch records a working-tree
 snapshot (tree object; real index untouched), and `--since` attaches the
 fix delta (snapshot → now, new files included) plus the previous report,
 so the reviewer verifies the fixes and tags IN-FIX / NEW / REPEAT instead
-of re-reading the cumulative diff (v2.98.0). **Breaker (v2.99.0):** `--rounds`
-prints the review rounds on the current uncommitted tree (reviewer dispatches
-closer than 5 min = one round; internal roles from the phase-log, external
-jobs from their start times) plus the breaker ledger state. The window
-starts at the later of the last commit and the last prompt the user typed
-(v2.128.0 — `claim-verify-nudge` stamps `.rolepod/evidence/last-prompt`;
-auto-resume and compaction prompts never stamp, so an overnight loop still
-accumulates), and a clean tree reads as 0 rounds. Measured 2026-09-14: five
-separate commissions in one day, on a tree whose commits lived in another
-worktree, read as round 5 and blocked the next task. A review
-dispatch at round 3 gets a notice; round 4 needs `--ledger <file>` (a
-`docs/rolepod/handoffs/*breaker*.md` with a `## Class` heading — the root
-cause was named); round 5 is refused (exit 9): split & stop, the user
-decides. **The gate's pass is not a round (v2.154.0):** while the window
+of re-reading the cumulative diff (v2.98.0). **Breaker (v2.99.0, counted per
+reviewer since v2.154.0):** `--rounds` prints the review rounds on the
+current uncommitted tree, keyed by reviewer — `security-engineer` /
+`universal-reviewer` / `code-reviewer` / `qa-tester` (from the phase-log
+dispatch's role), `named` (a review-shaped dispatch name, no role match),
+`external` (runner review jobs, counted per the gate-pass rule); a
+reviewer's rounds are the clusters (dispatches closer than 5 min = one
+round) that hold that reviewer, and the tree's `rounds` is the highest.
+`--role <key>` asks one reviewer's `current` (a key never seen reads
+current=1); with no `--role`, `current` is the highest over the reviewers
+seen. Measured 2026-09-21: replaying every `phase-log.jsonl` (185
+inter-commit windows with reviewer events) — the tree-level rule reads
+round >= 4 in 7 windows and >= 5 in 4; counting per reviewer reads >= 4 in 2
+and >= 5 in 2, exactly the two real churn loops the breaker was built for.
+The window starts at the later of the last commit and the last prompt the
+user typed (v2.128.0 — `claim-verify-nudge` stamps
+`.rolepod/evidence/last-prompt`; auto-resume and compaction prompts never
+stamp, so an overnight loop still accumulates), and a clean tree reads as 0
+rounds. Measured 2026-09-14: five separate commissions in one day, on a
+tree whose commits lived in another worktree, read as round 5 and blocked
+the next task. A review dispatch at round 3 gets a notice; round 4 needs
+`--ledger <file>` (that file must exist and carry a `## Class` heading, the
+root cause was named — this flag's own check, unchanged). The AUTO-DETECTED
+`ledger=` field (`--rounds`, the claim-verify reminder) is separate and
+stricter (v2.154.0): only a `docs/rolepod/handoffs/*breaker*.md` newer than
+the window start that ALSO carries a `## Rounds` heading counts — a review
+brief merely named `*breaker*.md` is not the ledger. Round 5 is refused
+(exit 9): split & stop, the terminal text names the user's next typed
+prompt as the way out (no new session, no bypass).
+**The gate's pass is not a round (v2.154.0):** while the window
 holds no anchored external review (the phase-log line + raw file the commit
 gate counts), an external review run is never refused and its job never
 counts — `--rounds` prints `gatepass=1`; the re-review after it is a round
 again. Uncounted jobs stay in the timeline — they still join and bridge
 events inside the 5-min window, and a cluster is a round only when it holds a
 counted event — so nothing reads a round stricter than before (a seeded
-invariant test compares against the every-job-counts rule). Measured 2026-09-21: four internal
+invariant test compares against the exact pre-change, gate-pass-aware
+formula — not a naive every-job-counts stand-in). Measured 2026-09-21: four internal
 reviewer dispatches put a high-risk tree at round 5, the commit gate demanded
 the external pass, the runner refused it, and the refusal's Fix said
 "commit" — a circle only the user's next prompt could leave. `workflow-tier-nudge.sh` applies the same policy to internal

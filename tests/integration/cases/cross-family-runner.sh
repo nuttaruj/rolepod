@@ -441,7 +441,7 @@ check "--kill stops a running job: status 137, and a new review is no longer sta
 rm -f "$FIX"/grandchild.* 2>/dev/null
 cd "$REPO"
 
-# ── round breaker: --rounds / --ledger / exit 9 (v2.99.0) ─────────────────
+# ── round breaker: --rounds / --ledger / exit 9 (v2.99.0, per reviewer v2.154.0) ─
 echo "── cross-family: round breaker ──"
 RB="$FIX/rounds"; mkdir -p "$RB/.rolepod/evidence"; printf 'codex\n' > "$RB/.rolepod/cross-family"; printf 'brief\n' > "$RB/brief.md"
 rb_ts() { python3 -c "import datetime,sys;print((datetime.datetime.now(datetime.timezone.utc)-datetime.timedelta(minutes=int(sys.argv[1]))).strftime('%Y-%m-%dT%H:%M:%SZ'))" "$1"; }
@@ -452,19 +452,25 @@ rb_log() { printf '{"ts": "%s", "phase": "dispatch", "cli": "claude", "tool": "A
 # jobs count as rounds only after the first one of these in the window).
 rb_anchor() { mkdir -p "$RB/.rolepod/evidence/external"; [ -f "$RB/.rolepod/evidence/external/a.txt" ] || head -c 600 /dev/zero | tr '\0' x > "$RB/.rolepod/evidence/external/a.txt"
   printf '{"ts": "%s", "phase": "review", "reviewer": "external", "raw": "external/a.txt"}\n' "$(rb_ts "$1")" >> "$RB/.rolepod/evidence/phase-log.jsonl"; }
+# An external review JOB $1 minutes ago (the runner's own breaker key, v2.154.0)
+# — $2 status (default 3, failed; the round breaker only reads `started`, never `status`).
+rb_job() { mkdir -p "$RB/.rolepod/evidence/external/jobs/rb-review-$1"; rb_ep "$1" > "$RB/.rolepod/evidence/external/jobs/rb-review-$1/started"; echo "${2:-3}" > "$RB/.rolepod/evidence/external/jobs/rb-review-$1/status"; }
 ( cd "$RB" && git init -q . && git config user.email t@t && git config user.name t && printf 'a\n' > f.txt && git add f.txt && GIT_COMMITTER_DATE="$(rb_ts 90)" git commit -q -m init --date="$(rb_ts 90)" && printf 'b\n' > f.txt )
-: > "$RB/.rolepod/evidence/phase-log.jsonl"; rb_anchor 50; rb_log 40 rolepod:security-engineer; rb_log 39 rolepod:qa-tester
-mkdir -p "$RB/.rolepod/evidence/external/jobs/20260908T000000Z-review-1"; rb_ep 20 > "$RB/.rolepod/evidence/external/jobs/20260908T000000Z-review-1/started"; echo 0 > "$RB/.rolepod/evidence/external/jobs/20260908T000000Z-review-1/status"
-rb_log 1 rolepod:qa-tester
-out=$(cd "$RB" && bash "$RUNNER" --rounds)
-check "--rounds: clusters at 40m / 20m (job) / 1m → rounds=3, current=3 (an event within 5 min joins)" "printf '%s' \"\$out\" | grep -q 'rounds=3 current=3 ledger=- class=0'"
+# v2.154.0 — the runner's own breaker asks `--role external` (spec R2):
+# internal reviewer dispatches (security-engineer, qa-tester, …) sit in their
+# OWN key and never advance the external reviewer's round any more, so this
+# narrative drives it with external review JOBS, not internal dispatches
+# (acceptance 1/3/4/6 below cover the per-internal-reviewer keys).
+: > "$RB/.rolepod/evidence/phase-log.jsonl"; rb_anchor 80; rb_job 40 ok; rb_job 25 ok
+out=$(cd "$RB" && bash "$RUNNER" --rounds --role external)
+check "--rounds --role external: two anchored external jobs at 40m / 25m → rounds=2, current=3 (a dispatch now would be its 3rd)" "printf '%s' \"\$out\" | grep -q 'rounds=2 current=3 ledger=- class=0 gatepass=0'"
 : > "$LOG"; rc=0; out=$(cd "$RB" && bash "$RUNNER" --kind review --brief brief.md --lead claude 2>/dev/null) || rc=$?
-check "review dispatch at round 3 → runs, prints the breaker notice" "[ $rc -eq 0 ] && printf '%s' \"\$out\" | grep -q 'round=3 on one uncommitted tree' && grep -q '^codex |' '$LOG'"
-: > "$RB/.rolepod/evidence/phase-log.jsonl"; rb_anchor 50; rb_log 40 rolepod:security-engineer; rb_log 39 rolepod:qa-tester; rb_log 12 rolepod:security-engineer
-out=$(cd "$RB" && bash "$RUNNER" --rounds)
-check "--rounds: last event 12 min ago → a dispatch now would be round 4" "printf '%s' \"\$out\" | grep -q 'rounds=3 current=4'"
+check "review dispatch at round 3 → runs, prints the breaker notice" "[ $rc -eq 0 ] && printf '%s' \"\$out\" | grep -q 'round=3 of the external reviewer on one uncommitted tree' && grep -q '^codex |' '$LOG'"
+rb_job 10 ok
+out=$(cd "$RB" && bash "$RUNNER" --rounds --role external)
+check "--rounds --role external: a third job at 10m → rounds=3, current=4" "printf '%s' \"\$out\" | grep -q 'rounds=3 current=4'"
 : > "$LOG"; rc=0; out=$(cd "$RB" && bash "$RUNNER" --kind review --brief brief.md --lead claude 2>/dev/null) || rc=$?
-check "round 4 without a breaker ledger → refused exit 9, no member called" "[ $rc -eq 9 ] && printf '%s' \"\$out\" | grep -q 'without a breaker ledger' && ! grep -q '^codex |' '$LOG'"
+check "round 4 without a breaker ledger → refused exit 9, no member called" "[ $rc -eq 9 ] && printf '%s' \"\$out\" | grep -q 'the external reviewer.s round 4 on one uncommitted tree without a breaker ledger' && ! grep -q '^codex |' '$LOG'"
 mkdir -p "$RB/docs/rolepod/handoffs"; printf '# x\n\n## Rounds\n- r1\n\n## Decision\n- a\n' > "$RB/docs/rolepod/handoffs/x-breaker-2026-09-08.md"
 rc=0; out=$(cd "$RB" && bash "$RUNNER" --kind review --brief brief.md --lead claude --ledger docs/rolepod/handoffs/x-breaker-2026-09-08.md 2>&1) || rc=$?
 check "--ledger without a '## Class' heading → usage error exit 2" "[ $rc -eq 2 ] && printf '%s' \"\$out\" | grep -q '## Class'"
@@ -475,9 +481,9 @@ check "--rounds sees the ledger (class=1)" "printf '%s' \"\$out\" | grep -q 'x-b
 jr=$(printf '%s' "$out" | grep -o 'job=[^ ]*' | head -1 | cut -d= -f2)
 check "round 4 with the ledger → runs and attaches it" "[ $rc -eq 0 ] && grep -q -- 'x-breaker-2026-09-08.md' '$RB/.rolepod/evidence/external/jobs/$jr/args'"
 rc=0; bash "$RUNNER" --collect "$jr" --root "$RB" --timeout 30 >/dev/null 2>&1 || rc=$?
-rb_log 6 rolepod:security-engineer
+rb_ep 18 > "$RB/.rolepod/evidence/external/jobs/$jr/started"   # v2.154.0: age the ledger job past the 5-min join window — its OWN 4th external cluster, not a rejoin of the 10m one
 : > "$LOG"; rc=0; out=$(cd "$RB" && bash "$RUNNER" --kind review --brief brief.md --lead claude --ledger docs/rolepod/handoffs/x-breaker-2026-09-08.md 2>/dev/null) || rc=$?
-check "round 5 even with the ledger → refused exit 9 (terminal: split & stop)" "[ $rc -eq 9 ] && printf '%s' \"\$out\" | grep -q 'past the breaker budget' && ! grep -q '^codex |' '$LOG'"
+check "round 5 even with the ledger → refused exit 9 (terminal: split & stop, names the next typed prompt)" "[ $rc -eq 9 ] && printf '%s' \"\$out\" | grep -q 'past the breaker budget' && printf '%s' \"\$out\" | grep -q 'next typed prompt re-opens the window' && ! grep -q '^codex |' '$LOG'"
 rc=0; out=$(cd "$RB" && ROLEPOD_GATES_SOFT=1 bash "$RUNNER" --kind review --brief brief.md --lead claude 2>/dev/null) || rc=$?
 check "ROLEPOD_GATES_SOFT=1 (user-set) lifts the terminal refusal" "[ $rc -eq 0 ]"
 sleep 1; ( cd "$RB" && git add -A && git commit -qm checkpoint )
@@ -502,37 +508,85 @@ out=$(cd "$RB" && bash "$RUNNER" --rounds)
 check "--rounds: a prompt stamp OLDER than the events changes nothing → rounds=2 current=3" "printf '%s' \"\$out\" | grep -q 'rounds=2 current=3'"
 rm -f "$RB/.rolepod/evidence/last-prompt"
 # v2.154.0 — the commit gate's own external pass is not a breaker round.
-# Measured 2026-09-21: a high-risk diff sat at round 5 from internal reviews
-# alone; the gate demanded the external pass, the runner refused it, and the
-# refusal's Fix said "commit". With no anchored external pass in the window
-# the run is never refused and its job never counts; the re-review does.
-: > "$RB/.rolepod/evidence/phase-log.jsonl"; rb_log 50 rolepod:universal-reviewer; rb_log 40 rolepod:security-engineer; rb_log 25 rolepod:security-engineer; rb_log 12 rolepod:universal-reviewer
-mkdir -p "$RB/.rolepod/evidence/external/jobs/20260921T000000Z-review-9"; rb_ep 8 > "$RB/.rolepod/evidence/external/jobs/20260921T000000Z-review-9/started"; echo 3 > "$RB/.rolepod/evidence/external/jobs/20260921T000000Z-review-9/status"
-out=$(cd "$RB" && bash "$RUNNER" --rounds)
-check "--rounds: four internal rounds + a failed external attempt, nothing anchored → rounds=4 current=5 gatepass=1" "printf '%s' \"\$out\" | grep -q 'rounds=4 current=5 .*gatepass=1'"
+# Per reviewer (v2.154.0) this is scoped to the "external" key: while nothing
+# is anchored yet, EVERY external attempt is uncounted — current stays 1 no
+# matter how many failed — so the run itself is never refused.
+rm -rf "$RB/.rolepod/evidence/external/jobs"; rm -f "$RB/docs/rolepod/handoffs/x-breaker-2026-09-08.md"; : > "$RB/.rolepod/evidence/phase-log.jsonl"
+rb_job 40; rb_job 25; rb_job 10
+out=$(cd "$RB" && bash "$RUNNER" --rounds --role external)
+check "--rounds --role external: 3 failed attempts, nothing anchored → rounds=0 current=1 gatepass=1 (an attempt is never counted before the first pass)" "printf '%s' \"\$out\" | grep -q 'rounds=0 current=1 ledger=- class=0 gatepass=1'"
 : > "$LOG"; rc=0; out=$(cd "$RB" && bash "$RUNNER" --kind review --brief brief.md --lead claude --detach 2>/dev/null) || rc=$?
 jg=$(printf '%s' "$out" | grep -o 'job=[^ ]*' | head -1 | cut -d= -f2)
-check "round 5 by count, no anchored external pass yet → the run is the gate's pass: not refused, says so" "[ $rc -eq 0 ] && [ -n \"\$jg\" ] && printf '%s' \"\$out\" | grep -q 'gate pass'"
+check "no anchored pass yet → the run is never refused regardless of prior failures" "[ $rc -eq 0 ] && [ -n \"\$jg\" ]"
 bash "$RUNNER" --collect "$jg" --root "$RB" --timeout 30 >/dev/null 2>&1 || true
-rb_ep 10 > "$RB/.rolepod/evidence/external/jobs/$jg/started"   # age the pass's job past the 5-min join window (a fresh one holds round 4 open — asserted below)
-out=$(cd "$RB" && bash "$RUNNER" --rounds)
-check "--rounds after the pass is anchored: its job is not a round and the pass is spent → rounds=4 current=5 gatepass=0" "printf '%s' \"\$out\" | grep -q 'rounds=4 current=5 .*gatepass=0'"
+# The pass's own job is not a round (v2.154.0): written at the same backdated
+# minute as the anchor it triggers, so it lands at/before `first` and never
+# counts — per reviewer (v2.154.0) this is the external key's own gatepass.
+rm -rf "$RB/.rolepod/evidence/external/jobs"; : > "$RB/.rolepod/evidence/phase-log.jsonl"
+rb_job 50 ok; rb_anchor 50
+out=$(cd "$RB" && bash "$RUNNER" --rounds --role external)
+check "--rounds --role external: the pass's own job, anchored at the same minute → not counted, gatepass=0" "printf '%s' \"\$out\" | grep -q 'rounds=0 current=1 ledger=- class=0 gatepass=0'"
+# The re-review after the gate's pass is a round again: 4 external jobs after
+# the anchor build a real round 4, and a 5th dispatch now is refused exactly
+# as round 5 would be anywhere else in this file.
+rb_job 38 ok; rb_job 26 ok; rb_job 14 ok; rb_job 8 ok
+out=$(cd "$RB" && bash "$RUNNER" --rounds --role external)
+check "--rounds --role external: 4 real rounds after the pass → current=5" "printf '%s' \"\$out\" | grep -q 'rounds=4 current=5'"
 : > "$LOG"; rc=0; out=$(cd "$RB" && bash "$RUNNER" --kind review --brief brief.md --lead claude 2>/dev/null) || rc=$?
 check "the re-review after the gate's pass is a round again → round 5 refused exit 9, no member called" "[ $rc -eq 9 ] && printf '%s' \"\$out\" | grep -q 'past the breaker budget' && ! grep -q '^codex |' '$LOG'"
-# Never one round stricter than before: the pass's own job is not counted, but
-# it still holds the round open — a re-review inside 5 min of it joins the
-# round it would have joined when the job was an event.
-rm -rf "$RB/.rolepod/evidence/external/jobs"; : > "$RB/.rolepod/evidence/phase-log.jsonl"
-rb_log 40 rolepod:universal-reviewer; rb_log 30 rolepod:security-engineer; rb_log 20 rolepod:security-engineer; rb_log 7 rolepod:universal-reviewer
-mkdir -p "$RB/.rolepod/evidence/external/jobs/20260921T000001Z-review-7"; rb_ep 3 > "$RB/.rolepod/evidence/external/jobs/20260921T000001Z-review-7/started"; echo 0 > "$RB/.rolepod/evidence/external/jobs/20260921T000001Z-review-7/status"; rb_anchor 1
-out=$(cd "$RB" && bash "$RUNNER" --rounds)
-check "--rounds: internal round 4 at 7 min, the pass's job at 3 min, anchored → still round 4 (rounds=4 current=4), not 5" "printf '%s' \"\$out\" | grep -q 'rounds=4 current=4 .*gatepass=0'"
-: > "$RB/.rolepod/evidence/phase-log.jsonl"; rb_anchor 1
+# Never one round stricter than before: an uncounted job still bridges the
+# timeline (v2.154.0), so a recent dispatch near a STALE round joins it
+# instead of opening a new one — per reviewer (v2.154.0) this is now the
+# external key's own clusters, not the whole tree.
+rm -rf "$RB/.rolepod/evidence/external/jobs"; : > "$RB/.rolepod/evidence/phase-log.jsonl"; rb_anchor 90
+rb_job 55 ok; rb_job 40 ok; rb_job 25 ok; rb_job 7 ok
+out=$(cd "$RB" && bash "$RUNNER" --rounds --role external)
+check "--rounds --role external: round 4, last event 7 min ago → a dispatch now would be round 5" "printf '%s' \"\$out\" | grep -q 'rounds=4 current=5'"
+rb_job 3 ok
+out=$(cd "$RB" && bash "$RUNNER" --rounds --role external)
+check "--rounds --role external: a job 3 min ago bridges the 7-min one (gap <= 5 min) → still round 4 (current=4), not 5" "printf '%s' \"\$out\" | grep -q 'rounds=4 current=4'"
+rm -rf "$RB/.rolepod/evidence/external/jobs"; : > "$RB/.rolepod/evidence/phase-log.jsonl"; rb_anchor 1
 out=$(cd "$RB" && bash "$RUNNER" --rounds)
 check "--rounds: only the pass's job, 3 min ago → rounds=0 current=1 (never round 0)" "printf '%s' \"\$out\" | grep -q 'rounds=0 current=1 .*gatepass=0'"
+
+# ── v2.154.0 — rounds per reviewer (spec breaker-counts-churn-2026-09-21) ──
+echo "── cross-family: rounds per reviewer ──"
+: > "$RB/.rolepod/evidence/phase-log.jsonl"; rm -rf "$RB/.rolepod/evidence/external/jobs"
+rb_log 40 rolepod:universal-reviewer; rb_log 33 rolepod:security-engineer; rb_log 20 rolepod:security-engineer; rb_log 9 rolepod:universal-reviewer
+out=$(cd "$RB" && bash "$RUNNER" --rounds)
+check "acceptance 1: UR-40 / SE-33 / SE-20 / UR-9 → rounds=2, roles= lists both at 2" "printf '%s' \"\$out\" | grep -q 'rounds=2 ' && printf '%s' \"\$out\" | grep -q 'roles=security-engineer:2,universal-reviewer:2'"
+out=$(cd "$RB" && bash "$RUNNER" --rounds --role external)
+check "acceptance 1: --role external (never dispatched here) → current=1" "printf '%s' \"\$out\" | grep -q 'current=1'"
+out=$(cd "$RB" && bash "$RUNNER" --rounds --role security-engineer)
+check "acceptance 1: --role security-engineer → current=3 (its last event 20 min ago, past the 5-min join)" "printf '%s' \"\$out\" | grep -q 'current=3'"
+
+: > "$RB/.rolepod/evidence/phase-log.jsonl"
+printf '{"ts": "%s", "phase": "dispatch", "cli": "claude", "tool": "Workflow", "agent_types": ["security-engineer", "universal-reviewer"]}\n' "$(rb_ts 5)" >> "$RB/.rolepod/evidence/phase-log.jsonl"
+out=$(cd "$RB" && bash "$RUNNER" --rounds)
+check "acceptance 3: one dispatch line naming two agent_types → one round EACH, not two for the tree" "printf '%s' \"\$out\" | grep -q 'rounds=1 ' && printf '%s' \"\$out\" | grep -q 'roles=security-engineer:1,universal-reviewer:1'"
+
+: > "$RB/.rolepod/evidence/phase-log.jsonl"
+rb_log 20 rolepod:security-engineer; rb_log 16 rolepod:universal-reviewer; rb_log 12 rolepod:security-engineer
+out=$(cd "$RB" && bash "$RUNNER" --rounds --role security-engineer)
+check "acceptance 4: X-20 / Y-16 (bridges) / X-12 → X is still 1 round (R3: the old rule also read 1) → current=2" "printf '%s' \"\$out\" | grep -q 'current=2'"
+
+: > "$RB/.rolepod/evidence/phase-log.jsonl"
+rm -f "$RB/docs/rolepod/handoffs/x-breaker-2026-09-08.md"
+printf '# notes\n\nno heading here\n' > "$RB/docs/rolepod/handoffs/breaker-notes.md"
+out=$(cd "$RB" && bash "$RUNNER" --rounds)
+check "acceptance 6: *breaker*.md with no '## Rounds' heading → ledger=-" "printf '%s' \"\$out\" | grep -q 'ledger=-'"
+printf '\n## Rounds\n- r1\n' >> "$RB/docs/rolepod/handoffs/breaker-notes.md"
+out=$(cd "$RB" && bash "$RUNNER" --rounds)
+check "acceptance 6: the same file WITH '## Rounds' → ledger=<path>" "printf '%s' \"\$out\" | grep -q 'ledger=.*breaker-notes.md'"
+rm -f "$RB/docs/rolepod/handoffs/breaker-notes.md"
+
 # Class test — the invariant, not one input: for any mix of internal
 # dispatches, failed / successful external jobs and anchors, the new rounds /
-# current are never HIGHER than the pre-change formula (every job an event).
+# current are never HIGHER than the pre-change formula (the exact HEAD~
+# gate-pass-aware one below, not a naive every-job-counts stand-in).
+# v2.154.0 (acceptance 5): internal dispatches now name one of THREE reviewer
+# keys, and each key's own `--role` current is checked against the SAME
+# pre-change ceiling too (R3: never a round stricter, per reviewer either).
 # Slots are multiples of 3 min: gaps are 3 min (join) or 6+ (split), never the
 # 5-min edge, so wall-clock drift cannot flip a case. Fixed seed.
 rm -rf "$RB/.rolepod/evidence/external/jobs"; : > "$RB/.rolepod/evidence/phase-log.jsonl"
@@ -544,32 +598,51 @@ os.makedirs(os.path.join(ev_dir, "external"), exist_ok=True)
 open(os.path.join(ev_dir, "external", "a.txt"), "w").write("x" * 600)
 iso = lambda t: datetime.datetime.fromtimestamp(t, datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 rnd = random.Random(20260921); bad = []
+KEYS = ["universal-reviewer", "security-engineer", "qa-tester"]
 for case in range(24):
-    shutil.rmtree(jobs, ignore_errors=True); now = int(time.time()); lines = []; old = []
+    shutil.rmtree(jobs, ignore_errors=True); now = int(time.time()); lines = []
+    internal_old = []; job_old = []; anchors_old = []
     for slot in range(1, 15):                      # 3 .. 42 min ago
         kind = rnd.choice(["none", "none", "internal", "internal", "jobfail", "jobok"])
         t = now - slot * 180
         if kind == "internal":
-            lines.append(json.dumps({"ts": iso(t), "phase": "dispatch", "cli": "claude", "tool": "Agent", "agent_type": "rolepod:universal-reviewer"})); old.append(t)
+            k = rnd.choice(KEYS)
+            lines.append(json.dumps({"ts": iso(t), "phase": "dispatch", "cli": "claude", "tool": "Agent", "agent_type": "rolepod:" + k})); internal_old.append(t)
         elif kind in ("jobfail", "jobok"):
             d = os.path.join(jobs, "20260921T%06dZ-review-%d" % (slot, slot)); os.makedirs(d)
-            open(os.path.join(d, "started"), "w").write("%d\n" % t); open(os.path.join(d, "status"), "w").write("0\n" if kind == "jobok" else "3\n"); old.append(t)
+            open(os.path.join(d, "started"), "w").write("%d\n" % t); open(os.path.join(d, "status"), "w").write("0\n" if kind == "jobok" else "3\n"); job_old.append(t)
             if kind == "jobok":
-                lines.append(json.dumps({"ts": iso(t + 60), "phase": "review", "reviewer": "external", "raw": "external/a.txt"}))
+                anch_t = t + 60
+                lines.append(json.dumps({"ts": iso(anch_t), "phase": "review", "reviewer": "external", "raw": "external/a.txt"}))
+                anchors_old.append(anch_t)
     open(os.path.join(ev_dir, "phase-log.jsonl"), "w").write("\n".join(lines) + ("\n" if lines else ""))
     out = subprocess.run(["bash", runner, "--rounds"], cwd=rb, capture_output=True, text=True).stdout
     m = re.search(r"rounds=(\d+) current=(\d+)", out)
-    old.sort(); r = 0; prev = None
-    for t in old:
-        if prev is None or t - prev > 300: r += 1
+    # Pre-change (HEAD~) formula, verbatim: every internal dispatch counts; a
+    # job counts only after the FIRST anchor in the window (the gate-pass rule
+    # this task inherits, v2.154.0) — the exact predicate the old
+    # review_rounds() used, not a simpler every-event-counts stand-in.
+    first_old = min(anchors_old) if anchors_old else None
+    timeline_old = sorted([(t, 1) for t in internal_old] + [(t, 1 if (first_old is not None and t > first_old) else 0) for t in job_old])
+    r = 0; prev = None; open_counted = 0
+    for t, counted in timeline_old:
+        if prev is None or t - prev > 300:
+            open_counted = 0
+        if counted and not open_counted:
+            r += 1; open_counted = 1
         prev = t
-    c = r if (prev is not None and now - prev <= 300) else r + 1
+    c = r if (prev is not None and now - prev <= 300 and open_counted) else r + 1
     if not m or int(m.group(1)) > r or int(m.group(2)) > c:
         bad.append("case %d: new=%s old=rounds=%d current=%d" % (case, out.strip(), r, c))
+    for k in KEYS + ["external"]:
+        outk = subprocess.run(["bash", runner, "--rounds", "--role", k], cwd=rb, capture_output=True, text=True).stdout
+        mk = re.search(r"current=(\d+)", outk)
+        if not mk or int(mk.group(1)) > c:
+            bad.append("case %d role %s: current=%s > pre-change current=%d" % (case, k, mk.group(1) if mk else "?", c))
 print("ok" if not bad else " | ".join(bad[:3]))
 PY
 )
-check "class invariant: 24 seeded mixes of internal / failed / anchored external events → never a round stricter than the pre-change formula ($inv)" "[ \"$inv\" = ok ]"
+check "class invariant: 24 seeded mixes of 3 reviewer keys + failed / anchored external events → never a round stricter than the pre-change formula, per reviewer either ($inv)" "[ \"$inv\" = ok ]"
 rm -rf "$RB/.rolepod/evidence/external/jobs"
 cd "$REPO"
 
