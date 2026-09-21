@@ -545,8 +545,30 @@ fi
 # above keeps those lines: the HARD side (auto-skip, cross-family hold on a
 # risky path) reads the wider count and does not move.
 VERSION_LINE_RE='^[+-][[:space:]]*"?version"?[[:space:]]*[:=][[:space:]]*"?v?[0-9]+(\.[0-9]+)+([-+][0-9A-Za-z.+-]*)?"?,?[[:space:]]*$'
-REVIEW_LOGIC=$(printf '%s\n' "$LOGIC_LINES" | grep -vE "$VERSION_LINE_RE" | grep -c . || true)
+# SOFT-only, continued (v2.153.2): a generated file is not what a reviewer
+# reads. Two mechanical sources, no guessing from names beyond lockfiles:
+# a path git itself marks `linguist-generated` (.gitattributes /
+# .git/info/attributes — the platform convention for rendered copies, dist,
+# codegen, snapshots) and the standard lockfiles. Replayed over 80 commits
+# of this repo: docs-only source changes asked for a reviewer because their
+# rendered .toml copies counted as logic; a dependency add counts its whole
+# lockfile. A path git quotes, or a commit run from a subdirectory, simply
+# fails to match and keeps counting — the miss costs one extra ask, never a
+# skipped one. LOGIC_COUNT above still holds every line: HARD does not move.
+LOCK_RE='(^|/)(package-lock\.json|npm-shrinkwrap\.json|yarn\.lock|pnpm-lock\.yaml|bun\.lockb?|Cargo\.lock|poetry\.lock|uv\.lock|Pipfile\.lock|composer\.lock|Gemfile\.lock|go\.sum|flake\.lock|mix\.lock|pubspec\.lock|Podfile\.lock|packages\.lock\.json)$'
+GEN_PATHS=$(printf '%s\n' "$DIFF_STAT" | awk -F'\t' 'NF>=3{print $3}' | gitd check-attr --stdin linguist-generated 2>/dev/null | sed -nE 's/: linguist-generated: (set|true)$//p' || true)
+REVIEW_LOGIC=$(gitd diff $GIT_DIFF_BASE -U0 2>/dev/null \
+  | RP_GEN="$GEN_PATHS" RP_LOCK="$LOCK_RE" awk 'BEGIN{n=split(ENVIRON["RP_GEN"],a,"\n"); for(i=1;i<=n;i++) if (a[i]!="") gen[a[i]]=1; lock=ENVIRON["RP_LOCK"]}
+         /^diff --git /{hdr=1; next}
+         hdr && /^--- /{g=substr($0,5); sub(/[ \t]+$/,"",g); sub(/"$/,"",g); next}
+         hdr && /^\+\+\+ /{f=substr($0,5); sub(/[ \t]+$/,"",f); sub(/"$/,"",f); if (f=="/dev/null") f=g; p=f; sub(/^"?[ab]\//,"",p); next}
+         /^@@/{hdr=0; next}
+         !hdr && /^[+-]/{ if (f !~ /\.(md|mdx|mdc|txt|rst|adoc)(\.tmpl)?$/ && f !~ /(^|\/)(README|LICENSE|CHANGELOG)$/ && !(p in gen) && p !~ lock) print }' \
+  | grep -vE '^[+-][[:space:]]*$' | grep -vE '^[+-][[:space:]]*(#|//|/\*|\*/?|--|;)' | grep -vE "$VERSION_LINE_RE" | grep -c . || true)
 REVIEW_LOGIC=${REVIEW_LOGIC:-0}
+REVIEW_FILES=$(printf '%s\n' "$DIFF_STAT" | RP_GEN="$GEN_PATHS" RP_LOCK="$LOCK_RE" awk -F'\t' 'BEGIN{n=split(ENVIRON["RP_GEN"],a,"\n"); for(i=1;i<=n;i++) if (a[i]!="") gen[a[i]]=1; lock=ENVIRON["RP_LOCK"]}
+         NF>=3 && $3 !~ /\.(md|mdx|mdc|txt|rst|adoc)(\.tmpl)?$/ && $3 !~ /(^|\/)(README|LICENSE|CHANGELOG)$/ && !($3 in gen) && $3 !~ lock {c++} END{print c+0}' || true)
+REVIEW_FILES=${REVIEW_FILES:-0}
 
 # Docs are written, not reviewed (v2.143.0): every staged path is prose
 # (.md/.mdx/.mdc/.txt/.rst/.adoc, their .tmpl templates, or an extension-less README/LICENSE/CHANGELOG)
@@ -932,7 +954,7 @@ WARN="precommit-gate SOFT: $FILES_CHANGED files / $LINES_CHANGED lines / $REVIEW
 # The R1 shape is judged on the CODE part (v2.153.0): docs riding along with
 # a 2-line label edit do not make it a reviewable diff, and neither do the
 # comment lines around one real line.
-if [ "$REVIEW_LOGIC" -gt 0 ] && [ "$REVIEWERS" -eq 0 ] && { [ "${NONPROSE_N:-0}" -gt 1 ] || [ "$REVIEW_LOGIC" -gt 5 ]; }; then WARN+="0 reviewers on a logic diff = the author reviewed it. Fix: dispatch rolepod:universal-reviewer (read-only, two axes) on the diff, then commit (review-code §1; R2 = one file + test). Exception: the task owner already had it reviewed, or the diff is config / generated copies / message text → commit. "; fi
+if [ "$REVIEW_LOGIC" -gt 0 ] && [ "$REVIEWERS" -eq 0 ] && { [ "${REVIEW_FILES:-0}" -gt 1 ] || [ "$REVIEW_LOGIC" -gt 5 ]; }; then WARN+="0 reviewers on a logic diff = the author reviewed it. Fix: dispatch rolepod:universal-reviewer (read-only, two axes) on the diff, then commit (review-code §1; R2 = one file + test). Exception: the task owner already had it reviewed, or the diff is config / generated copies / message text → commit. "; fi
 WARN+="Gates S1-S5 (simplicity) / T1-T6 (tests) / F1-F5 (finish) — finish-work §1, check-work §6 — are advisory here; ROLEPOD_GATES_HARD=1 enforces."
 [ -n "$LINT_WARN" ] && WARN+=" | $LINT_WARN"
 [ -n "$EMOJI_WARN" ] && WARN+=" | $EMOJI_WARN"

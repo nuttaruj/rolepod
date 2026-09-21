@@ -640,6 +640,7 @@ EMPTY_T="$TMP/empty-transcript.jsonl"; : > "$EMPTY_T"
 pcd() {
   rm -rf "$TMPT"; mkdir -p "$TMPT/.rolepod"
   ( cd "$TMPT" && git init -q . && git config user.email t@t && git config user.name t
+    if [ -n "${PCD_GENATTR:-}" ]; then mkdir -p .git/info; printf '%s linguist-generated\n' "$PCD_GENATTR" > .git/info/attributes; fi   # outside the diff
     for spec in $1; do f="${spec%%=*}"; kind="${spec##*=}"; mkdir -p "$(dirname "$f")"
       case "$kind" in logic) seq 15 | sed 's/^/x = /' > "$f" ;; comment) seq 15 | sed 's/^/# note /' > "$f" ;; prose) seq 15 | sed 's/^/Line /' > "$f" ;; version) seq 15 | sed 's/.*/"version": "1.2.3",/' > "$f" ;; esac
     done
@@ -657,6 +658,8 @@ out=$(pcd auth/billing.py=logic "$TRANSCRIPT")
 check "logic diff on a risky path + internal strong reviewer + pool usable, nothing tried → deny (control: satellite-first still holds for code)" deny "$out"
 out=$(pcd billing/plan.json=version "$TRANSCRIPT")
 check "version-field lines on a risky path + internal strong reviewer + pool usable → deny (the HARD count keeps them; only the SOFT ask drops them)" deny "$out"
+out=$(PCD_GENATTR='billing/**' pcd billing/gen.py=logic "$TRANSCRIPT")
+check "linguist-generated logic on a risky path + internal strong reviewer + pool usable → deny (generated files leave the SOFT ask only)" deny "$out"
 out=$(pcd 'README=prose docs/guide.md=prose' "$EMPTY_T")
 check "extension-less README + docs → allow silently (prose)" allow "$out"
 
@@ -1343,6 +1346,28 @@ sfq() { # a prose file git must QUOTE in the diff header (non-ASCII name) + a de
     && seq 20 | sed 's/^/Line /' > "docs/$(printf '\303\251')tude.md" && git rm -q docs/old.md && printf 'SELECT 1;\n' > db/q.sql && git add -A )
   sf_run
 }
+# v2.153.2 — generated files are not what a reviewer reads: a path marked
+# linguist-generated (git attributes) and the standard lockfiles leave the SOFT count.
+sfg() { # $1 = 1 → gen/** is marked linguist-generated in .git/info/attributes (outside the diff)
+  rm -rf "$SF_TMP"; mkdir -p "$SF_TMP/docs" "$SF_TMP/gen"
+  ( cd "$SF_TMP" && git init -q . && git config user.email t@t && git config user.name t && mkdir -p .git/info \
+    && { [ "$1" != 1 ] || printf 'gen/** linguist-generated\n' > .git/info/attributes; } \
+    && seq 12 | sed 's/^/Line /' > docs/guide.md && seq 15 | sed 's/^/prompt = /' > gen/a.toml && cp gen/a.toml gen/b.toml && git add -A )
+  sf_run
+}
+out=$(sfg 0)
+if echo "$out" | grep -q '/ 30 logic' && echo "$out" | grep -q '0 reviewers on a logic diff'; then
+  echo "  ✓ precommit SOFT: docs + two unmarked copies → 30 logic, reviewer ask (control)"
+else echo "  ✗ precommit SOFT unmarked copies (control): ${out:0:200}"; fail=$((fail+1)); fi
+out=$(sfg 1)
+if echo "$out" | grep -q '/ 0 logic' && ! echo "$out" | grep -q '0 reviewers on a logic diff'; then
+  echo "  ✓ precommit SOFT: docs + two linguist-generated copies → 0 logic, no reviewer ask"
+else echo "  ✗ precommit SOFT linguist-generated copies: ${out:0:200}"; fail=$((fail+1)); fi
+out=$(rm -rf "$SF_TMP"; mkdir -p "$SF_TMP"; cd "$SF_TMP" && git init -q . && git config user.email t@t && git config user.name t \
+  && printf '{\n  "dependencies": {\n    "left-pad": "^1.3.0"\n  }\n}\n' > package.json && seq 40 | sed 's/^/    "resolved": /' > package-lock.json && git add -A && sf_run)
+if echo "$out" | grep -q '2 files / 45 lines / 5 logic' && ! echo "$out" | grep -q '0 reviewers on a logic diff'; then
+  echo "  ✓ precommit SOFT: a dependency add → the lockfile is not logic, the manifest edit is R1-shaped, no reviewer ask"
+else echo "  ✗ precommit SOFT lockfile: ${out:0:200}"; fail=$((fail+1)); fi
 out=$(sfq)
 if echo "$out" | grep -q '3 files / 33 lines / 0 logic'; then
   echo "  ✓ precommit SOFT: quoted-path prose, a deleted prose file and a removed SQL comment → 0 logic"

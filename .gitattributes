@@ -1,0 +1,4 @@
+# plugins/ is rendered from core/ + hooks/ + adapters/ by `make render` — never
+# edited by hand. Marked generated so review tools fold it and the commit
+# gate's SOFT reviewer ask counts the source change, not its copies.
+plugins/** linguist-generated
