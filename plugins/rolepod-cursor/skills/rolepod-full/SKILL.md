@@ -9,7 +9,7 @@ The user typed `/rolepod-full` (or `$rolepod-full`). A **command alias**, not a 
 
 ## Step 1 — defer to the router
 
-`using-rolepod` available → load it plus `using-rolepod/references/force-full-lifecycle.md` and enter **force-full-lifecycle mode**; phase detail, backend table, start banner, careful-mode rigor live there. Not available (copied standalone) → the embedded fallback below.
+`using-rolepod` available → load it plus `using-rolepod/references/force-full-lifecycle.md` and enter **force-full-lifecycle mode**; phase detail, backend table, start banner, careful-mode rigor live there. Either file absent (copied standalone) → the embedded fallback below.
 
 ## Boundary
 

@@ -162,11 +162,10 @@ Route line: `{"ts":"<iso8601>","phase":"route","tier":"R1-R4","skill":"<first sk
 
 Sibling plugins (`rolepod-uiproof` — browser + mobile UI / a11y / visual; `rolepod-wplab` — WordPress; `rolepod-dblab` — databases) are preferred over manual orchestration when installed — their slash commands are the signal; evidence lands in `.rolepod/evidence/` for `check-work`; the phase skills carry the integration and the not-installed fallbacks.
 
-## Vendor MCP awareness — recommend, never wrap
+## Vendor MCP awareness
 
 A framework or service central to the task ships an official MCP server not connected in this session → tell the user ONCE at a natural pause (name · one line of what it adds · where; verify live first — no verify, no recommend; declined → drop it). The user installs vendor MCPs; rolepod never wraps them and never blocks on them.
 
 ## References
-
-Load only when a request does not obviously match a router row:
-- `examples/routing-transcripts.md` — eight worked routing transcripts (vague feature, clear edit, bug, done-claim, repo-wide audit, `/rolepod-full`, refactor, a pattern-matched-into-Build correction).
+Load only when needed:
+- `examples/routing-transcripts.md` — routing transcripts.

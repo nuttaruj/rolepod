@@ -118,10 +118,9 @@ State after: <what is loaded, what is dropped>
 Next: <which skill resumes work>
 ```
 
-Fresh session → the durable artifact is `templates/handoff-brief.md`, saved under `docs/rolepod/handoffs/<topic>-YYYY-MM-DD.md`. **`docs/rolepod/` is private by default:** before the first save run `grep -qx 'docs/rolepod/' .gitignore || echo 'docs/rolepod/' >> .gitignore` — a repo that deliberately tracks its working docs creates `.rolepod/docs-tracked`.
+Fresh session → the durable artifact is `templates/handoff-brief.md` — original request, current branch / commit, files touched, tests run and status, constraints still active, decisions made, blockers, resume with — saved under `docs/rolepod/handoffs/<topic>-YYYY-MM-DD.md`. **`docs/rolepod/` is private by default:** before the first save run `grep -qx 'docs/rolepod/' .gitignore || echo 'docs/rolepod/' >> .gitignore` — a repo that deliberately tracks its working docs creates `.rolepod/docs-tracked`.
 
 ## References
-
 Load only when needed:
 - `references/cli-fallbacks.md` — context commands per CLI (Claude / Codex / Gemini), cross-CLI resume.
 - `examples/context-examples.md` — a zoom-out recovery and a session handoff, good/bad pairs.

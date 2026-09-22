@@ -70,7 +70,7 @@ Parallel agents help only when file ownership is genuinely disjoint and the work
 
 ### 5. If parallel, write a cohesion contract
 
-Fill `templates/cohesion-contract-template.md` — file ownership, shared interfaces, merge order, do-not-touch list, integration owner. Save to `contract.md` or `docs/rolepod/plans/<feature>-cohesion-YYYY-MM-DD.md`.
+Fill `templates/cohesion-contract-template.md` — shared goal, owners, file ownership, shared interfaces, merge order, do-not-touch list, verification per agent, integration owner, session split (optional). Save to `contract.md` or `docs/rolepod/plans/<feature>-cohesion-YYYY-MM-DD.md`.
 
 Tracks can also run as SEPARATE CLI sessions (cross-CLI wall-clock parallelism) → fill the contract's optional **Session split** section (per-track CLI + branch + kickoff prompt, one integration session). Execution: implement-plan's `references/subagent-dispatch.md`, "Session-split tracks".
 
@@ -110,21 +110,23 @@ Execute as Lead: read 2-3 nearby files → list paths → order smallest-reversi
 
 The plan template is the canonical artifact: `templates/plan-template.md` — fill every section; it is the contract `implement-plan` executes. A multi-agent plan adds `templates/cohesion-contract-template.md`.
 
+Sections, in order: Source spec · Files to touch · Tasks · High-risk surfaces touched · Spec coverage (both directions) · Parallel layout · Done criteria · Failure policy · Risks · Changes during build · Follow-ups.
+A task block, in order: Delivers · Blocked by · Files · Read first · Change · Test / evidence · Proof · Expected failing signal · Command · Check · Owner · Done when · On fail — one bold label per bullet.
+
 Tasks use `- [ ]` checkboxes so progress survives compaction. The file never absorbs build-time narrative: status is the checkbox; a deviation is one line under `## Changes during build`.
 
-One-session work → inline in chat. Multi-session → `docs/rolepod/plans/<feature>-YYYY-MM-DD.md`; re-planning never overwrites — a new dated file, `-v2` only when the date is the same (the diff between versions is the record).
+One-session work → inline in chat. Multi-session → `docs/rolepod/plans/<feature>-YYYY-MM-DD.md`; re-planning never overwrites — a new dated file, `-v2` only when the date is the same.
 - **`docs/rolepod/` is private by default:** before the first save run `grep -qx 'docs/rolepod/' .gitignore || echo 'docs/rolepod/' >> .gitignore` — a repo that deliberately tracks its working docs creates `.rolepod/docs-tracked`.
 
-More than one person or machine builds the plan → tasks can also publish to the repo's issue tracker (claim by assignee, frontier visible): `references/team-issues.md`. Solo work never needs it.
+Multi-person plans can publish to the issue tracker per `references/team-issues.md`; solo work never needs it.
 
 Harness plan mode active (a read-only planning state with its own approval gate) → present the plan through that gate and defer every disk write until it approves; do not fight the block — it is the same boundary as Iron Rule 1.
 
 ## References
-
 Load only when needed:
-- `references/plan-reviewer-prompt.md` — independent plan reviewer prompt for a risky or large plan (Agent tool, subagent_type=universal-reviewer).
-- `references/team-issues.md` — optional GitHub Issues backend for team-built plans.
-- `examples/plan-examples.md` — a sequential single-owner plan and a parallel multi-agent plan, good/bad pairs.
+- `references/plan-reviewer-prompt.md` — reviewer prompt.
+- `references/team-issues.md` — issues backend.
+- `examples/plan-examples.md` — good/bad pairs.
 
 ## Hard stops
 

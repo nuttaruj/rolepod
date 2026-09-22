@@ -171,7 +171,7 @@ Execute as Lead: read the diff and the touched files end-to-end with line number
 
 ## Output
 
-The review report is the canonical artifact: `templates/review-report.md` — scope, risk surfaces, reviewers, severity-ordered findings, test verdict, recommendation.
+The review report is the canonical artifact: `templates/review-report.md` — scope, claims traced, risk surfaces touched, reviewers, findings by severity (BLOCKER / MAJOR / MINOR), questions, tests reviewed, recommendation.
 
 {{INCLUDE: core/fragments/phase-log.md}}
 Review line: `{"ts":"<iso8601>","phase":"review","verdict":"<APPROVED|APPROVED-WITH-NITS|REJECTED>","blockers":<n>}` (round 2+: add `"round":<n>,"infix":<n>,"repeat":<n>`).
@@ -181,11 +181,10 @@ Review line: `{"ts":"<iso8601>","phase":"review","verdict":"<APPROVED|APPROVED-W
 - The Lead's merged verdict line above is still appended separately.
 
 ## References
-
 Load only when needed:
-- `references/external-review-routing.md` — cross-CLI review routing and degradation.
-- `references/receiving-findings.md` — author-side playbook.
-- `examples/finding-examples.md` — actionable vs vague findings.
+- `references/external-review-routing.md` — routing.
+- `references/receiving-findings.md` — playbook.
+- `examples/finding-examples.md` — examples.
 
 ## Hard stops
 

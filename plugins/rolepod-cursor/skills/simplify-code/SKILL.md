@@ -95,12 +95,11 @@ Execute as Lead: §1 green baseline → §2 smallest single cut → suite green 
 
 ## Output
 
-The simplification report is the canonical artifact: `templates/simplification-report.md` — green baseline, each cut, anything centralized, post-cut tests, the behavior-preserved verdict.
+The simplification report is the canonical artifact: `templates/simplification-report.md` — baseline, cuts made, patterns centralized, tests after, behavior preserved.
 
 ## References
-
 Load only when needed:
-- `examples/simplify-examples.md` — a single-use-helper inline and a defensive-check cut, good/bad pairs; read when unsure whether a cut is behavior-preserving.
+- `examples/simplify-examples.md` — cuts and pairs.
 
 ## Hard stops
 

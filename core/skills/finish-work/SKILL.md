@@ -126,16 +126,15 @@ Execute as Lead: §1 gate (S+T+F + Evidence + Reviewer + PR scope) → §2 lanes
 
 ## Output
 
-The finish menu is the canonical artifact: `templates/finish-menu.md` — gate status, the options, the plan's `## Follow-ups` each with a destination (next spec / issue / dropped + why — a parked idea never leaves silently), the recommendation, the action awaiting authorization. PR path adds `templates/pr-body.md`; a launch adds `templates/release-checklist.md`.
+The finish menu is the canonical artifact: `templates/finish-menu.md` — gate status, options, follow-ups carried (each of the plan's `## Follow-ups` with a destination: next spec / issue / dropped + why — a parked idea never leaves silently), recommendation, awaiting authorization for. PR path adds `templates/pr-body.md`; a launch adds `templates/release-checklist.md` — rollback, monitoring, feature flag, migration, go / no-go.
 
 {{INCLUDE: core/fragments/phase-log.md}}
 Ship line, written only after the authorized action actually completed (a failed or pending command logs nothing — report that instead), chained onto the ship command itself (`discard` logs unconditionally): `{"ts":"<iso8601>","phase":"ship","action":"<merge|pr|keep-open|discard>","commit":"<shipped head sha, or none>"}`.
 
 ## References
-
 Load only when needed:
-- `references/ci-triage.md` — triage a red required lane by cause before re-running; merge-conflict resolution.
-- `examples/finish-examples.md` — an authorization-discipline finish and a PR-body pair, good/bad.
+- `references/ci-triage.md` — triage red lanes.
+- `examples/finish-examples.md` — authorization and PR body.
 
 ## Hard stops
 

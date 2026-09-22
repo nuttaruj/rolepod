@@ -140,7 +140,6 @@ Verify line: `{"ts":"<iso8601>","phase":"verify","verdict":"pass|partial|fail","
 **P1 traceability.** A QA test-case table in play (this session or under `.rolepod/evidence/`) → every P1 row's ID must appear in a passing test's name: `grep` the RUNNER output for `TC<n>` (source presence proves authorship, not a pass; skipped / not-collected = missing). A P1 with no passing test → Status `PARTIAL` or `UNVERIFIED` (never `VERIFIED`), naming the missing IDs; the verdict is that Status mapped, not a separate `fail`.
 
 ## References
-
 Load only when needed:
 - `references/ui-verification.md` — tool order, what to observe.
 - `references/assertion-strength.md` — a weak assertion that passes with the bug present.

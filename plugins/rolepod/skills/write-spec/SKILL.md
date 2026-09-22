@@ -122,7 +122,6 @@ Execute the checklist directly as Lead: quote the request → goals + non-goals 
 The spec template is the canonical artifact: `templates/spec-template.md` — the contract `write-plan` consumes. Inline vs file and the matching gate: §6.
 
 ## References
-
 Load only when needed:
 - `references/question-bank.md` — question types, skip rules, cross-family critique protocol.
 - `references/scope-splitting.md` — a request too big for one spec.

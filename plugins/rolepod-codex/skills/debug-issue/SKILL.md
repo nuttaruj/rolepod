@@ -121,10 +121,9 @@ Execute as Lead: capture error + stack → one deterministic repro → roll back
 
 ## Output
 
-The debug report is the canonical artifact: `templates/debug-report.md` — error, repro, root cause, failing test, fix, verification.
+The debug report is the canonical artifact: `templates/debug-report.md` — error, severity, repro, root cause, failing test, fix, verification, status.
 
 ## References
-
 Load only when needed:
 - `references/root-cause-tracing.md` — the upstream walk: trace a bad value to where it is born.
 - `references/flake-triage.md` — diagnose an intermittent test instead of retrying it.

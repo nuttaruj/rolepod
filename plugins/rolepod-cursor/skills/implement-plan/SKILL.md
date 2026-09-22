@@ -121,15 +121,14 @@ Execute as Lead: read plan + touched files → failing test first at the plan's 
 
 ## Output
 
-The implementation manifest is the canonical artifact: `templates/implementation-manifest.md` — files changed, tests, commands, evidence, scope check, status. A subagent returns it; the Lead commits.
+The implementation manifest is the canonical artifact: `templates/implementation-manifest.md` — files changed, tests added / changed, verification, scope check, concerns, status. A subagent returns it; the Lead commits.
 
 ## References
-
 Load only when needed:
-- `references/tdd-by-risk.md` — task type → test discipline.
-- `references/wizard.md` — steps only the HUMAN can perform (credentials, vendor dashboards, CI secrets, a cutover) → an interactive bash wizard instead of a wall of instructions.
-- `references/subagent-dispatch.md` — status taxonomy, parallel-track protocol, review pass, model table, continuous-execution rationale.
-- `examples/execution-examples.md` — surgical-vs-scope-creep and accept-vs-reject manifest, good/bad pairs.
+- `references/tdd-by-risk.md` — task type test discipline.
+- `references/wizard.md` — interactive bash for human-only steps.
+- `references/subagent-dispatch.md` — dispatch protocol and status.
+- `examples/execution-examples.md` — scope and manifest pairs.
 
 ## Hard stops
 
