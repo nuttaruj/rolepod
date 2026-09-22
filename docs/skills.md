@@ -1,6 +1,6 @@
-# Rolepod Skill Catalog (Core 10 + 1 alias)
+# Rolepod Skill Catalog (Core 10 + 2 commands)
 
-Rolepod ships **11 skills total**: Core 10 (1 router + 9 workflow phase skills) plus the `rolepod-full` command alias. There are no legacy compatibility shim skill files in the install tree. Old skill names are preserved only as documentation in [legacy-skill-map.md](legacy-skill-map.md).
+Rolepod ships **12 skills total**: Core 10 (1 router + 9 workflow phase skills) plus two explicit-invoke commands — `rolepod-full` (force-full lifecycle) and `deepen-codebase` (architecture report → pick a card → write-spec). There are no legacy compatibility shim skill files in the install tree. Old skill names are preserved only as documentation in [legacy-skill-map.md](legacy-skill-map.md).
 
 Entry docs (`CLAUDE.md` / `AGENTS.md` / `GEMINI.md`) embed this same lean surface so the Lead does not spend context choosing among dozens of tiny workflow fragments. Deep domain expertise lives in the 15 specialist agents.
 
@@ -11,6 +11,7 @@ Entry docs (`CLAUDE.md` / `AGENTS.md` / `GEMINI.md`) embed this same lean surfac
 | **0** | Workflow router | 1 | yes | First read of every request |
 | **1** | Core workflow skills | 9 | yes | Phase match |
 | — | Command alias (`rolepod-full`) | 1 | yes (own section) | Explicit `/rolepod-full` invocation only (`disable-model-invocation: true`) |
+| — | Command (`deepen-codebase`) | 1 | yes (own section) | Explicit `/deepen-codebase` invocation only (`disable-model-invocation: true`): scope → one scout walks the codebase → HTML report of deepening candidates (six fields per card, Strength badge, Top recommendation) → the user picks a card and is offered a `write-spec` on it |
 | **2** | Specialist public skills | 0 default | no | Domain depth lives in agents |
 | **3** | Legacy compatibility shims | 0 | no | Removed; see migration map |
 
