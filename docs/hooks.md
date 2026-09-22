@@ -535,6 +535,17 @@ Measured 2026-09-21 on a ten-task day: the Lead made ~35 calls per task at an av
 
 On the one CLI with a workflow tool, **`fleet <plan> [--base <branch>]`** runs `start` for every task whose Blocked-by tasks are all done and whose Owner is a role (not Lead), reads each brief's reviewers, and prints one `{scriptPath, args}` object for `scripts/ticket-fleet.js` — one launch builds and reviews every ready task, returning each one's owner status and reviewer verdicts. The fleet has no scripted verifier stage: the owner prompt tells the owner to loop on the brief's `## Check` after each edit and run the `## Command` once itself before returning; the verifier is `rolepod-ticket integrate`, which re-runs the Command and the Proof before the commit command is printed. Integration and the commit still go through `integrate` / `finish` on the Lead's side; the fleet counts as ONE review-shaped launch for the round breaker, not one per reviewer stage. `ticket-fleet.js` ships next to `ticket.sh` in every plugin tree (also via `install.sh` to `~/.rolepod/bin`) — a marketplace-only Claude install has it too, and `fleet` still fails closed if a resolved path is somehow missing rather than print a scriptPath that does not exist.
 
+**Test levels** — the rule every brief prints under `## Check`, one line each, and the reason the loop is fast:
+
+```
+Test levels — each runs at ONE point, never at the one above it:
+1. Check   — the narrowest command covering the edit; the owner runs it after every edit.
+2. Command — the task suite; runs ONCE at integration, not by the owner.
+3. Release — the whole-repo suite; runs ONCE per release, by the Lead.
+```
+
+Measured 2026-09-22: before the rule, one task's owner ran two full hook suites ~10 times (40 % of a 41-minute fleet chain); a fleet verifier stage then ran the Command again, and `integrate` a third time. A red `integrate` prints the failing tail and the one Fix: send it to the task owner in a new dispatch — the Lead never repairs it.
+
 No new deny and no new stop: the helper only removes calls.
 
 ## Why hooks, not just doctrine

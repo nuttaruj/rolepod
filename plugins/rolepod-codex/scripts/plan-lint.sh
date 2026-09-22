@@ -394,7 +394,10 @@ if [ "${1:-}" = "--brief" ]; then
     # convention as the Proof placeholder skip below — treated as absent.
     if (Ck == "" || Ck ~ /^`?</) print "none — pick the narrowest command that covers each edit (one case file, one test name, one module)"
     else print Ck
-    print "Loop on the Check after every edit. Do not run the full Command — integration runs it once, independently; return when the Check is green and the diff is final."
+    print "Test levels — each runs at ONE point, never at the one above it:"
+    print "1. Check   — the narrowest command covering the edit; the owner runs it after every edit."
+    print "2. Command — the task suite; runs ONCE at integration, not by the owner."
+    print "3. Release — the whole-repo suite; runs ONCE per release, by the Lead."
     print "## Proof"
     # An undeleted template placeholder ("<the one claim...> :: `<the command
     # that proves it>`") is not a real Proof — same convention as the bare-path

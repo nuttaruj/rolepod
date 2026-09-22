@@ -140,6 +140,7 @@ run_step() {
   fi
   echo "$label: FAIL"
   printf '%s\n' "$out" | tail -n 15
+  echo "Fix: send this tail to the task owner in a NEW dispatch (it fixes, its reviewer re-checks, integrate again); the Lead never repairs it."
   return "$rc"
 }
 

@@ -1379,7 +1379,10 @@ CMD_TO_DW=$(printf '%s\n' "$OUTP1" | awk '/^## Command/{f=1;next} /^## Done when
 EXPECTED_CMD_TO_DW='pytest src/
 ## Check
 none — pick the narrowest command that covers each edit (one case file, one test name, one module)
-Loop on the Check after every edit. Do not run the full Command — integration runs it once, independently; return when the Check is green and the diff is final.
+Test levels — each runs at ONE point, never at the one above it:
+1. Check   — the narrowest command covering the edit; the owner runs it after every edit.
+2. Command — the task suite; runs ONCE at integration, not by the owner.
+3. Release — the whole-repo suite; runs ONCE per release, by the Lead.
 ## Proof
 the fix holds
 `pytest -k "test_a" | tee /tmp/out.log`'
@@ -1446,7 +1449,10 @@ Sequential — single owner.
 ## Failure policy
 Default: stop.
 EOF
-LOOP_RULE='Loop on the Check after every edit. Do not run the full Command — integration runs it once, independently; return when the Check is green and the diff is final.'
+LOOP_RULE='Test levels — each runs at ONE point, never at the one above it:
+1. Check   — the narrowest command covering the edit; the owner runs it after every edit.
+2. Command — the task suite; runs ONCE at integration, not by the owner.
+3. Release — the whole-repo suite; runs ONCE per release, by the Lead.'
 OUTCK1=$(bash "$LINT" --brief 1 "$TMP/brief-check.md")
 CHECK1=$(printf '%s\n' "$OUTCK1" | awk '/^## Check/{f=1;next} /^## /{f=0} f')
 EXPECTED_CHECK1="\`pytest src/a_test.py::test_a\`

@@ -40,9 +40,9 @@
 - **Proof:** <the one claim a reviewer of this task would check by hand> :: `<the command that proves it>` (optional — it becomes the Lead's spot-check)
 - [ ] **Expected failing signal:** <for test-first tasks — the error the test
       shows before the fix. Omit if not test-first.>
-- [ ] **Command:** <exact command, runnable copy-paste as-is; when the behaviour
-      has no test, the nearest mechanical check (lint / typecheck / smoke)>
-- **Check:** `<the narrowest command that covers this task's edits — one case file, one test name; the loop runs this, the Command runs once>`
+- [ ] **Command:** <the task suite, runnable copy-paste as-is; runs ONCE at integration,
+      never by the owner — the whole-repo suite runs once per release>
+- **Check:** `<the narrowest command covering the edits of this task — one case file, one test name; the owner runs it after every edit>`
 - **Owner:** <The role the domain map assigns to this task's Files — path first,
       then concern. `Lead` for R1/R2-sized work (≤2 files) or when the user said
       self-do; from R3 up the map decides. A vertical slice has ONE owner: the role
