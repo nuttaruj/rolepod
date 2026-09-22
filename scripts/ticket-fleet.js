@@ -35,9 +35,11 @@
 // a concatenation and never sees the rest, so that call reads as unpinned
 // on a fan-out and risks a bare-fan-out deny under a strong/unknown Lead;
 // a template literal's non-quote lead character is trusted like a variable
-// instead), a literal `model:` on the owner/fix (balanced) calls, and NO
-// literal strong model anywhere — the review stage's own tier comes from
-// the reviewer role's frontmatter, never a script pin.
+// instead), NO model literal on the owner/fix calls — the role's own
+// frontmatter pin (measured 2026-09-22: a sonnet/low pin copied from the
+// capability probe made two of three owners answer instead of build) — and
+// NO literal strong model anywhere: the review stage's tier comes from the
+// reviewer role's frontmatter, never a script pin.
 //
 // tier-reason: dynamic agentType per task/reviewer role from args — every
 // role renders its own frontmatter tier; no fleet-wide model inherit here.
@@ -106,9 +108,10 @@ function reportPath(task, role) {
 }
 
 function ownerPrompt(task) {
-  return `${task.brief} ${task.worktree}\ndo not dispatch reviewers — the script does\n` +
-    'Loop on the brief\'s ## Check after each edit; run the ## Command once when the diff is ' +
-    'final, before you return.'
+  return `Task owner for Task ${task.n}: BUILD it in the worktree ${task.worktree} per the brief ` +
+    `${task.brief} (read the brief first, then edit, test-first). Do not dispatch reviewers — the script does.\n` +
+    'Loop on the brief\'s ## Check after each edit. Do not run the full ## Command — integration ' +
+    'runs it once; return when the Check is green and the diff is final.'
 }
 
 function reviewPrompt(task, role) {
@@ -130,8 +133,8 @@ function fixPrompt(task, flagging) {
   const lines = flagging.map((f) => `${f.role}: ${f.result.blocking.join('; ')}`).join(' | ')
   return `Task owner for Task ${task.n}, worktree ${task.worktree}. Fix these blocking review ` +
     `findings, ONE round, then stop: ${lines}\n` +
-    'Loop on the brief\'s ## Check after each edit; run the ## Command once when the diff is ' +
-    'final, before you return.'
+    'Loop on the brief\'s ## Check after each edit. Do not run the full ## Command — integration ' +
+    'runs it once; return when the Check is green and the diff is final.'
 }
 
 async function processTask(prev, task) {
@@ -140,8 +143,6 @@ async function processTask(prev, task) {
 
   const owner = await agent(ownerPrompt(task), {
     agentType: `rolepod:${role}`,
-    model: 'sonnet',
-    effort: 'low',
     phase: 'Build',
     schema: OWNER_SCHEMA,
   })
@@ -166,8 +167,6 @@ async function processTask(prev, task) {
   if (flagging.length) {
     fixResult = await agent(fixPrompt(task, flagging), {
       agentType: `rolepod:${role}`,
-      model: 'sonnet',
-      effort: 'low',
       phase: 'Fix',
       schema: OWNER_SCHEMA,
     })
