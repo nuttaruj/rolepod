@@ -1127,20 +1127,15 @@ if [ "$KIND" = "review" ] && [ -z "$JOB_DIR" ]; then
     LCLASS=1; ATTACH="$LEDGER${ATTACH:+
 $ATTACH}"
   fi
-  # v2.154.0 — no anchored external pass in the window yet: this run is the
-  # pass the commit gate asks for on a high-risk diff, not review churn. It is
-  # never refused and never counted (measured 2026-09-21: internal rounds put a
-  # tree at round 5, the gate demanded this pass, the refusal's Fix said
-  # "commit" — a circle only the user's next prompt could leave).
-  if [ "$GATEPASS" = "1" ]; then
-    if [ "$CUR" -ge 3 ]; then echo "ROLEPOD-XFAM gate pass — no anchored external review in this window yet: this run is the commit gate's floor, not a breaker round. A re-review after it is round $CUR."; fi
-  elif [ "$CUR" -ge 5 ] && [ "${ROLEPOD_GATES_SOFT:-0}" != "1" ]; then
+  # v2.154.0: no anchored external pass in the window yet = the gate's own
+  # pass, never refused, never counted.
+  if [ "$GATEPASS" != "1" ] && [ "$CUR" -ge 5 ] && [ "${ROLEPOD_GATES_SOFT:-0}" != "1" ]; then
     echo "ROLEPOD-XFAM refused round=$CUR — the external reviewer's round $CUR on one uncommitted tree is past the breaker budget (ledger, class fix once, ONE round). Fix: split & stop (review-code §5 step 5) — commit the slices with no open finding, park the churning surface as a delta spec / Follow-ups, end the turn with the decision brief. The user's next typed prompt re-opens the window — no new session, no bypass. Exception: ROLEPOD_GATES_SOFT=1 (user-set)."
     exit 9
-  elif [ "$CUR" -ge 4 ] && [ "$LCLASS" != "1" ] && [ "${ROLEPOD_GATES_SOFT:-0}" != "1" ]; then
+  elif [ "$GATEPASS" != "1" ] && [ "$CUR" -ge 4 ] && [ "$LCLASS" != "1" ] && [ "${ROLEPOD_GATES_SOFT:-0}" != "1" ]; then
     echo "ROLEPOD-XFAM refused round=$CUR — the external reviewer's round 4 on one uncommitted tree without a breaker ledger. Fix: write docs/rolepod/handoffs/<feature>-breaker-<date>.md (## Rounds: one line per round · ## Class: the one root cause, its single point, every consumer · ## Decision), make the class-level fix ONCE with a class test, then re-run with --ledger <file> --since <job>. Exception: ROLEPOD_GATES_SOFT=1 (user-set)."
     exit 9
-  elif [ "$CUR" -ge 3 ]; then
+  elif [ "$GATEPASS" != "1" ] && [ "$CUR" -ge 3 ]; then
     ROUND_NOTE="ROLEPOD-XFAM round=$CUR of the external reviewer on one uncommitted tree — the breaker is armed: after this verdict no more point fixes; ledger (## Rounds · ## Class · ## Decision) → class fix once (class test + consumer list) → ONE round with --ledger --since → else split & stop (review-code §5)."
     echo "$ROUND_NOTE"
   fi

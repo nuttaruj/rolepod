@@ -113,6 +113,12 @@ if tool == "Workflow":
 else:
     atype = ti.get("subagent_type") or "general-purpose"
     line["agent_type"] = atype
+    # Matches workflow-tier-nudge dname computation exactly: ti.get(name) or
+    # "", no description fallback. The live gate named-bucket regex
+    # (review|verif|audit) never sees description, so falling back to it
+    # here would let a benign description (review the fixtures) widen the
+    # round-breaker named bucket beyond what the gate itself matches.
+    line["name"] = ti.get("name") or "?"
     model = ti.get("model") or ""
     is_strong_role = ss is not None and ss._bare_agent_name(atype) in ss.STRONG_ROLE_AGENTS
     # A model-less strong role runs its frontmatter pin (opus, v2.104.0).

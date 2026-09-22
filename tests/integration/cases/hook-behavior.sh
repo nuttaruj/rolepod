@@ -1511,14 +1511,12 @@ check "acceptance 2: the SAME reviewer's 6th dispatch on one uncommitted tree �
 if echo "$out" | grep -q "next typed prompt re-opens the window"; then echo "  ✓ acceptance 7: the terminal deny names the next typed prompt as the way out"; else echo "  ✗ acceptance 7: terminal text missing the reopen sentence: ${out:0:200}"; fail=$((fail+1)); fi
 out=$(rh_agent rolepod:qa-tester)
 check "acceptance 2: a DIFFERENT reviewer's first dispatch on the same tree → allow (its own round is 1)" allow "$out"
-# NEEDS (out of this task's Files allowed): dispatch-auto-log.sh's Agent/Task
-# branch never writes line["name"] (only its Workflow branch does — see its
-# `if tool == "Workflow": ... line["name"] = ...`), so a real Agent dispatch
-# never leaves a "name" a later --role named lookup can find; this fixture
-# writes the shape the logger WOULD need to produce, proving the reader
-# (review_rounds()'s "named" bucket) in isolation, not the producer→reader
-# loop end to end. rh_agent above already proves the live in-process check
-# (ti.get("name") read straight from the tool call) is correct regardless.
+# dispatch-auto-log.sh's Agent/Task branch writes line["name"] (v2.156.0:
+# `ti.get("name") or "?"`, matching workflow-tier-nudge.sh's own dname read
+# with no description fallback), so a real Agent dispatch leaves a "name" a
+# later --role named lookup can find. The fixture below still proves the
+# reader (review_rounds()'s "named" bucket) in isolation; the block further
+# down chains the REAL producer into the REAL reader end to end.
 rh_log_named() { printf '{"ts": "%s", "phase": "dispatch", "cli": "claude", "tool": "Agent", "name": "%s"}\n' "$(rh_ts "$1")" "$2" >> "$RH/.rolepod/evidence/phase-log.jsonl"; }
 rh_named() { printf '{"tool_name":"Agent","tool_input":{"subagent_type":"general-purpose","name":"%s","prompt":"look at the diff"},"session_id":"rh1","transcript_path":"/nonexistent"}' "$1" | (cd "$RH" && HOME="$RH" bash "$HOOKS/workflow-tier-nudge.sh") || true; }
 : > "$RH/.rolepod/evidence/phase-log.jsonl"
@@ -1526,6 +1524,26 @@ rh_log_named 55 review-pass-a; rh_log_named 44 review-pass-b; rh_log_named 33 re
 out=$(rh_named "review-pass-f")
 check "R1 'named': 5 review-shaped dispatch NAMES with no role match, then a 6th → deny (its own key, independent of the role table)" deny "$out"
 rm -rf "$RH"
+
+# ── producer→reader→gate chain end to end (v2.156.0): dispatch-auto-log.sh
+# (the REAL producer) writes a role-less Agent dispatch's name to the
+# phase-log. Two separate assertions cover the chain: `rounds=1` below
+# proves producer→reader (cross-family.sh --rounds --role named counts the
+# real write); the deny further down proves reader→gate (workflow-tier-
+# nudge.sh denies once the round-breaker budget is spent) — no fixture
+# standing in for either half. ─────────────────────────────────────────
+DAL_TMP=$(mktemp -d); ( cd "$DAL_TMP" && git init -q . && git config user.email t@t && git config user.name t && printf 'a\n' > f.txt && git add f.txt && GIT_COMMITTER_DATE="$(rh_ts 90)" git commit -q -m init --date="$(rh_ts 90)" && printf 'b\n' > f.txt )
+mkdir -p "$DAL_TMP/.rolepod/evidence"
+dal_dispatch() { printf '{"tool_name":"Agent","tool_input":{"subagent_type":"general-purpose","name":"%s","prompt":"look at the diff"},"session_id":"dal1","transcript_path":"/nonexistent"}' "$1" | (cd "$DAL_TMP" && HOME="$DAL_TMP" bash "$HOOKS/dispatch-auto-log.sh" >/dev/null 2>&1 || true); }
+dal_gate() { printf '{"tool_name":"Agent","tool_input":{"subagent_type":"general-purpose","name":"%s","prompt":"look at the diff"},"session_id":"dal1","transcript_path":"/nonexistent"}' "$1" | (cd "$DAL_TMP" && HOME="$DAL_TMP" bash "$HOOKS/workflow-tier-nudge.sh") || true; }
+dal_dispatch "review-x"
+out=$(cd "$DAL_TMP" && bash "$REPO_DIR/scripts/cross-family.sh" --rounds --role named)
+if echo "$out" | grep -q "rounds=1 current=1"; then echo "  ✓ dispatch-auto-log→review_rounds: one real named dispatch reads back as round 1"; else echo "  ✗ dispatch-auto-log→review_rounds: expected rounds=1 current=1, got: $out"; fail=$((fail+1)); fi
+dal_log_named() { printf '{"ts": "%s", "phase": "dispatch", "cli": "claude", "tool": "Agent", "name": "%s"}\n' "$(rh_ts "$1")" "$2" >> "$DAL_TMP/.rolepod/evidence/phase-log.jsonl"; }
+dal_log_named 55 review-pass-a; dal_log_named 44 review-pass-b; dal_log_named 33 review-pass-c; dal_log_named 22 review-pass-d
+out=$(dal_gate "review-pass-f")
+check "producer→reader→gate: 4 backdated named rounds + 1 REAL producer-logged dispatch → the live gate denies the 6th" deny "$out"
+rm -rf "$DAL_TMP"
 
 # ── auto-resume prompt (v2.100.0): a resume, not a decision; no route nudge ──
 AR_TMP=$(mktemp -d); ( cd "$AR_TMP" && git init -q . && git config user.email t@t && git config user.name t && git commit -q --allow-empty -m init )

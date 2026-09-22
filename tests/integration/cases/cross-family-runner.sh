@@ -518,6 +518,10 @@ check "--rounds --role external: 3 failed attempts, nothing anchored → rounds=
 : > "$LOG"; rc=0; out=$(cd "$RB" && bash "$RUNNER" --kind review --brief brief.md --lead claude --detach 2>/dev/null) || rc=$?
 jg=$(printf '%s' "$out" | grep -o 'job=[^ ]*' | head -1 | cut -d= -f2)
 check "no anchored pass yet → the run is never refused regardless of prior failures" "[ $rc -eq 0 ] && [ -n \"\$jg\" ]"
+# v2.156.0 — the external key's own current is structurally pinned to 1 while
+# gatepass=1 (an uncounted attempt never increments a round), so the old
+# "gate pass" echo behind `current>=3` could never fire; removed as dead code.
+check "gatepass=1 → the run never prints the unreachable ROLEPOD-XFAM gate pass line" "! printf '%s' \"\$out\" | grep -q 'gate pass'"
 bash "$RUNNER" --collect "$jg" --root "$RB" --timeout 30 >/dev/null 2>&1 || true
 # The pass's own job is not a round (v2.154.0): written at the same backdated
 # minute as the anchor it triggers, so it lands at/before `first` and never
