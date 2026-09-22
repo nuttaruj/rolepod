@@ -9,9 +9,11 @@
 #     plan-lint the plan (FAIL stops here), write Task N's brief to
 #     docs/rolepod/handoffs/<plan-slug>-tN-owner.md, create the worktree +
 #     branch the brief's own "## Worktree" line names (off <base>, default
-#     the current branch), print ONE line: "<brief-path> <worktree-path>".
-#     Re-running against an existing worktree reprints the same line and
-#     changes nothing else.
+#     the current branch), print "<brief-path> <worktree-path>" then a
+#     second line "agent: <name>" (the name recorded in the brief's own
+#     "Agent:" line, for `finish` to report back later).
+#     Re-running against an existing worktree reprints the same two lines
+#     and changes nothing else.
 #
 #   rolepod-ticket integrate <worktree> --brief <file> [--pre '<cmd>'] [--gate '<cmd>']
 #     Refuses an ambiguous worktree (unmerged commits + a dirty tree).
@@ -142,15 +144,25 @@ run_step() {
 }
 
 # The owner agent name, when the brief that names this worktree recorded one
-# (an "Agent: <name>" line — optional; most briefs will have none).
+# (an "Agent: <name>" line — optional; most briefs will have none). Matched
+# by the EXACT basename of the brief's own "## Worktree" path, never a
+# substring scan of the file — "-t1" is a literal substring of "-t11", so a
+# text-contains check would resolve Task 1's worktree to Task 11's brief
+# (or vice versa) whenever both exist side by side.
 find_owner_agent() { # $1 = main root, $2 = worktree (absolute)
-  local dir base f agent
+  local dir base f agent wtline wtcmd path pbase
   dir="$1/docs/rolepod/handoffs"
   [ -d "$dir" ] || return 0
   base="$(basename "$2")"
   for f in "$dir"/*.md; do
     [ -f "$f" ] || continue
-    if grep -qF "$base" "$f" 2>/dev/null; then
+    wtline="$(section_body "$f" '## Worktree' | grep -m1 'git worktree add')"
+    [ -n "$wtline" ] || continue
+    wtcmd="$(first_backtick "$wtline")"
+    path="$(printf '%s\n' "$wtcmd" | awk '{print $6}')"
+    [ -n "$path" ] || continue
+    pbase="$(basename "$path")"
+    if [ "$pbase" = "$base" ]; then
       agent="$(awk '/^Agent:/{sub(/^Agent:[[:space:]]*/,""); print; exit}' "$f")"
       if [ -n "$agent" ]; then printf '%s' "$agent"; return 0; fi
     fi
@@ -203,12 +215,17 @@ plan_task_rows() { # $1 = plan (absolute)
     /^## / { flush(); id = ""; next }
     id != "" {
       line = $0
-      if (index(line, "Blocked by:") > 0) {
-        v = line; sub(/.*Blocked by:[[:space:]]*/, "", v); sub(/^\*+[[:space:]]*/, "", v)
+      # A field is ONLY a line whose trimmed start is "- **<Field>:**" (a
+      # checkbox may sit between the dash and the bold label) — any other
+      # mention (a Test / evidence sentence quoting the same words) is prose
+      # and must never be read as the field itself.
+      tl = trim(line)
+      if (tl ~ /^-([[:space:]]*\[[ xX]\])?[[:space:]]*\*\*Blocked by:\*\*/) {
+        v = line; sub(/.*\*\*Blocked by:\*\*[[:space:]]*/, "", v)
         B = trim(v); field = "B"; next
       }
-      if (index(line, "Owner:") > 0) {
-        v = line; sub(/.*Owner:[[:space:]]*/, "", v); sub(/^\*+[[:space:]]*/, "", v)
+      if (tl ~ /^-([[:space:]]*\[[ xX]\])?[[:space:]]*\*\*Owner:\*\*/) {
+        v = line; sub(/.*\*\*Owner:\*\*[[:space:]]*/, "", v)
         Ow = trim(v); field = "O"; next
       }
       if (line ~ /^[[:space:]]*-[[:space:]]*\[[[:space:]]\]/) { open_boxes++; total_boxes++; field = ""; next }
@@ -340,8 +357,11 @@ cmd_start() {
   handoff_dir="$repo_root/docs/rolepod/handoffs"
   mkdir -p "$handoff_dir"
   handoff="$handoff_dir/${plan_slug}-t${n}-owner.md"
-  if [ ! -f "$handoff" ] || [ "$(cat "$handoff" 2>/dev/null)" != "$brief_out" ]; then
-    printf '%s\n' "$brief_out" > "$handoff"
+  local agent_name agent_line
+  agent_name="owner-${plan_slug}-t${n}"
+  agent_line="Agent: $agent_name"
+  if [ ! -f "$handoff" ] || [ "$(cat "$handoff" 2>/dev/null)" != "$brief_out"$'\n'"$agent_line" ]; then
+    printf '%s\n%s\n' "$brief_out" "$agent_line" > "$handoff"
   fi
 
   local wtline wtcmd branch wtpath wtparent wt_abs
@@ -375,6 +395,7 @@ cmd_start() {
   fi
 
   printf '%s %s\n' "$handoff" "$wt_abs"
+  printf 'agent: %s\n' "$agent_name"
 
   local ready_count
   ready_count="$(ready_role_tasks "$plan_abs" | grep -c '.')"
@@ -587,21 +608,33 @@ cmd_log() {
     rm -f "$tmp"; exit 1
   fi
 
-  # Idempotent: the exact same bullet is never appended twice.
+  # Idempotent: the exact same bullet is never appended twice — but only a
+  # look-alike line INSIDE "## Changes during build" counts; a Test /
+  # evidence sentence elsewhere in the plan quoting the same words is prose,
+  # not a prior log entry.
   bullet="- Task $n (\`$sha\`): $note"
-  if grep -qF -- "$bullet" "$tmp"; then
+  local existing_section
+  existing_section="$(awk '
+    /^## Changes during build/ { insec = 1; next }
+    insec && /^## / { exit }
+    insec { print }
+  ' "$tmp")"
+  if printf '%s\n' "$existing_section" | grep -qF -- "$bullet"; then
     cp "$tmp" "$tmp.2"
     rc=$?
   else
-    awk -v n="$n" -v sha="$sha" -v note="$note" '
+    # The note is free text (may hold a backslash) — pass it through the
+    # environment, never `awk -v`, which interprets backslash escapes and
+    # would mangle it.
+    TICKET_LOG_NOTE="$note" awk -v n="$n" -v sha="$sha" '
       /^## Changes during build/ { print; insec = 1; next }
       insec && /^## / {
-        printf "- Task %s (`%s`): %s\n\n", n, sha, note
+        printf "- Task %s (`%s`): %s\n\n", n, sha, ENVIRON["TICKET_LOG_NOTE"]
         added = 1; insec = 0
         print; next
       }
       { print }
-      END { if (insec && !added) printf "- Task %s (`%s`): %s\n\n", n, sha, note }
+      END { if (insec && !added) printf "- Task %s (`%s`): %s\n\n", n, sha, ENVIRON["TICKET_LOG_NOTE"] }
     ' "$tmp" > "$tmp.2"
     rc=$?
   fi

@@ -50,15 +50,21 @@ EOF
 
 OUT=$(bash "$TICKET" start "$FR/plan.md" 1 2>"$TMP/start.err")
 RC=$?
-BRIEF_PATH=$(printf '%s\n' "$OUT" | awk '{print $1}')
-WT_PATH=$(printf '%s\n' "$OUT" | awk '{print $2}')
-NFIELDS=$(printf '%s\n' "$OUT" | awk '{print NF}')
+LINE1=$(printf '%s\n' "$OUT" | sed -n '1p')
+AGENT_LINE=$(printf '%s\n' "$OUT" | sed -n '2p')
+BRIEF_PATH=$(printf '%s\n' "$LINE1" | awk '{print $1}')
+WT_PATH=$(printf '%s\n' "$LINE1" | awk '{print $2}')
+NFIELDS=$(printf '%s\n' "$LINE1" | awk '{print NF}')
 
+# Done when: line 1 stays exactly two paths (brief, worktree); the agent
+# name (needed by `finish`'s "close: <agent>") lands as its own line 2
+# "agent: <name>", never a third token that would break NFIELDS.
 if [ "$RC" -eq 0 ] && [ "$NFIELDS" -eq 2 ] && [ ${#OUT} -le 600 ] \
-  && [ -f "$BRIEF_PATH" ] && [ -d "$WT_PATH" ]; then
-  echo "  ✓ start prints one line <=600 chars holding exactly two paths (brief, worktree)"
+  && [ -f "$BRIEF_PATH" ] && [ -d "$WT_PATH" ] \
+  && [[ "$AGENT_LINE" == agent:\ * ]]; then
+  echo "  ✓ start prints line 1 with exactly two paths (brief, worktree) and line 2 'agent: <name>'"
 else
-  echo "  ✗ start dispatch line wrong: rc=$RC len=${#OUT} nfields=$NFIELDS out=[$OUT]"; fail=$((fail+1))
+  echo "  ✗ start dispatch lines wrong: rc=$RC len=${#OUT} nfields=$NFIELDS line1=[$LINE1] agent=[$AGENT_LINE]"; fail=$((fail+1))
   cat "$TMP/start.err" >&2
 fi
 
@@ -121,16 +127,17 @@ Default: stop after 2 failed attempts (never a 4th).
 EOF
 ( cd "$BBR" && git add -A && git commit -q -m "add plan" )
 BOUT=$(bash "$TICKET" start "$BBR/plan.md" 1 --base feature-base 2>"$TMP/base.err")
-BWT=$(printf '%s\n' "$BOUT" | awk '{print $2}')
+BWT=$(printf '%s\n' "$BOUT" | sed -n '1p' | awk '{print $2}')
 if [ -f "$BWT/feature-file.txt" ]; then
   echo "  ✓ start --base branches the worktree off the named base, not the current HEAD"
 else
   echo "  ✗ start --base wrong: worktree=[$BWT]"; ls "$BWT" 2>&1; cat "$TMP/base.err" >&2; fail=$((fail+1))
 fi
 
-# ── start's fleet hint (Task 5): a SECOND line, only when 2+ role-owned
-# tasks are ready — a single-ready-task plan (the acceptance-1 fixture
-# above) must keep printing exactly one line.
+# ── start's fleet hint (Task 5): a line AFTER "agent: <name>", only when
+# 2+ role-owned tasks are ready — a single-ready-task plan (the
+# acceptance-1 fixture above) must keep printing exactly two lines
+# (dispatch line + agent line), no third.
 HR="$TMP/hint-repo"
 mkdir -p "$HR"
 ( cd "$HR" && git init -q . && git config user.email t@t && git config user.name t )
@@ -162,7 +169,7 @@ EOF
 ( cd "$HR" && git add -A && git commit -q -m init )
 HOUT=$(bash "$TICKET" start "$HR/plan.md" 1 2>"$TMP/hint.err")
 HLINES=$(printf '%s\n' "$HOUT" | wc -l | tr -d ' ')
-if [ "$HLINES" -eq 2 ] && printf '%s\n' "$HOUT" | sed -n '2p' | grep -qF "fleet: rolepod-ticket fleet $HR/plan.md"; then
+if [ "$HLINES" -eq 3 ] && printf '%s\n' "$HOUT" | sed -n '3p' | grep -qF "fleet: rolepod-ticket fleet $HR/plan.md"; then
   echo "  ✓ start prints a fleet hint line when 2+ role-owned tasks are ready"
 else
   echo "  ✗ start fleet-hint wrong: [$HOUT]"; cat "$TMP/hint.err" >&2; fail=$((fail+1))
@@ -170,7 +177,7 @@ fi
 
 HOUT2=$(bash "$TICKET" start "$FR/plan.md" 1 2>>"$TMP/hint.err")
 HLINES2=$(printf '%s\n' "$HOUT2" | wc -l | tr -d ' ')
-if [ "$HLINES2" -eq 1 ]; then
+if [ "$HLINES2" -eq 2 ]; then
   echo "  ✓ start prints no fleet hint when only one role-owned task is ready"
 else
   echo "  ✗ start printed a hint with only one ready task: [$HOUT2]"; fail=$((fail+1))
@@ -571,6 +578,152 @@ if [ "$RC" -eq 0 ] && printf '%s\n' "$OUT" | grep -qi 'no ready' && [ "$WT_NR_AF
   echo "  ✓ fleet with no ready role-owned task: exit 0, says so, creates nothing"
 else
   echo "  ✗ fleet no-ready handling wrong (rc=$RC): $OUT"; fail=$((fail+1))
+fi
+
+# ═══════════════════════════════════════════════════════════════════════
+# fleet — a Test / evidence sentence quoting a field's own words is prose,
+# never the field itself (ROOT CAUSE: substring-anywhere field detection)
+# ═══════════════════════════════════════════════════════════════════════
+
+PRW="$TMP/prose-repo"
+mkdir -p "$PRW"
+( cd "$PRW" && git init -q . && git config user.email t@t && git config user.name t )
+cat > "$PRW/plan.md" <<'EOF'
+# Prose Feature Plan
+
+## Tasks
+
+### Task 1: build the widget
+- **Blocked by:** none
+- [ ] **Files:** `widget.txt`
+- [ ] **Test / evidence:** confirm the note does not say Blocked by: Task 9 anywhere
+- [ ] **Command:** `true`
+- **Owner:** backend-developer
+- **Done when:** true
+
+## Parallel layout
+Sequential — single owner.
+
+## Failure policy
+Default: stop after 2 failed attempts (never a 4th).
+EOF
+( cd "$PRW" && git add -A && git commit -q -m init )
+OUT=$(bash "$TICKET" fleet "$PRW/plan.md" 2>"$TMP/prose.err")
+RC=$?
+if [ "$RC" -eq 0 ] && printf '%s\n' "$OUT" | sed -n '1p' | python3 -c '
+import json, sys
+data = json.load(sys.stdin)
+ns = sorted(t["n"] for t in data["args"]["tasks"])
+assert ns == [1], "expected [1], got %r" % (ns,)
+' 2>"$TMP/prose-json.err"; then
+  echo "  ✓ fleet lists a ready task whose Test / evidence prose quotes a field's own words"
+else
+  echo "  ✗ fleet false-blocker parse wrong (rc=$RC): $OUT"; cat "$TMP/prose.err" "$TMP/prose-json.err" >&2; fail=$((fail+1))
+fi
+
+# ═══════════════════════════════════════════════════════════════════════
+# start/finish — the Agent: line start appends and finish reads back
+# ═══════════════════════════════════════════════════════════════════════
+
+AGR="$TMP/agent-repo"
+mkrepo "$AGR"
+cat > "$AGR/plan.md" <<'EOF'
+# Agent Feature Plan
+
+## Tasks
+
+### Task 1: build the widget
+- **Blocked by:** none
+- [ ] **Files:** `widget.txt`
+- [ ] **Command:** `true`
+- **Owner:** backend-developer
+- **Done when:** true
+
+## Parallel layout
+Sequential — single owner.
+
+## Failure policy
+Default: stop after 2 failed attempts (never a 4th).
+EOF
+( cd "$AGR" && git add -A && git commit -q -m "add plan" )
+AG_OUT=$(bash "$TICKET" start "$AGR/plan.md" 1 2>"$TMP/agent.err")
+AG_LINE1=$(printf '%s\n' "$AG_OUT" | sed -n '1p')
+AG_BRIEF=$(printf '%s\n' "$AG_LINE1" | awk '{print $1}')
+AG_WT=$(printf '%s\n' "$AG_LINE1" | awk '{print $2}')
+if grep -qE '^Agent: owner-plan-t1$' "$AG_BRIEF"; then
+  echo "  ✓ start appends an Agent: <name> line to the brief"
+else
+  echo "  ✗ start did not append the expected Agent: line"; cat "$AG_BRIEF" >&2; fail=$((fail+1))
+fi
+( cd "$AG_WT" && git commit -q --allow-empty -m "the owner's real commit" )
+AG_FIN=$(bash "$TICKET" finish "$AG_WT" 2>&1)
+if printf '%s\n' "$AG_FIN" | grep -qF 'close: owner-plan-t1'; then
+  echo "  ✓ finish prints close: <agent> for the name start recorded"
+else
+  echo "  ✗ finish did not report the recorded agent name: $AG_FIN"; fail=$((fail+1))
+fi
+
+# -t1 vs -t11: a second task on the SAME plan whose id is a digit-suffix of
+# the first (Task 11) must resolve `finish` to ITS OWN agent name, never the
+# other's, even though "-t1" is a literal substring of "-t11".
+AGR11="$TMP/agent-repo-11"
+mkrepo "$AGR11"
+{
+  printf '%s\n\n## Tasks\n\n' "# Agent Collision Plan"
+  printf '### Task 1: build the widget\n- **Blocked by:** none\n- [ ] **Files:** `widget.txt`\n- [ ] **Command:** `true`\n- **Owner:** backend-developer\n- **Done when:** true\n\n'
+  i=2
+  while [ "$i" -le 10 ]; do
+    printf '### Task %s: filler %s\n- **Blocked by:** none\n- [ ] **Files:** `f%s.txt`\n- [ ] **Command:** `true`\n- **Owner:** backend-developer\n- **Done when:** true\n\n' "$i" "$i" "$i"
+    i=$((i+1))
+  done
+  printf '### Task 11: build the other widget\n- **Blocked by:** none\n- [ ] **Files:** `widget11.txt`\n- [ ] **Command:** `true`\n- **Owner:** backend-developer\n- **Done when:** true\n\n'
+  printf '## Parallel layout\nSequential — single owner.\n\n## Failure policy\nDefault: stop after 2 failed attempts (never a 4th).\n'
+} > "$AGR11/plan.md"
+( cd "$AGR11" && git add -A && git commit -q -m "add plan" )
+AG11_OUT_1=$(bash "$TICKET" start "$AGR11/plan.md" 1 2>"$TMP/agent11-1.err")
+AG11_OUT_11=$(bash "$TICKET" start "$AGR11/plan.md" 11 2>"$TMP/agent11-11.err")
+AG11_WT_1=$(printf '%s\n' "$AG11_OUT_1" | sed -n '1p' | awk '{print $2}')
+AG11_WT_11=$(printf '%s\n' "$AG11_OUT_11" | sed -n '1p' | awk '{print $2}')
+( cd "$AG11_WT_1" && git commit -q --allow-empty -m "task 1 commit" )
+AG11_FIN_1=$(bash "$TICKET" finish "$AG11_WT_1" 2>&1)
+if printf '%s\n' "$AG11_FIN_1" | grep -qF 'close: owner-plan-t1'; then
+  echo "  ✓ finish resolves Task 1's own agent name, not Task 11's, despite the -t1/-t11 substring overlap"
+else
+  echo "  ✗ finish collided -t1 with -t11: $AG11_FIN_1"; fail=$((fail+1))
+fi
+
+# ═══════════════════════════════════════════════════════════════════════
+# log — dedupe is scoped to ## Changes during build; a look-alike line
+# elsewhere in the plan never blocks a real append; a backslash survives
+# ═══════════════════════════════════════════════════════════════════════
+
+cat > "$TMP/log-plan2.md" <<'EOF'
+# Log Plan Two
+
+## Tasks
+
+### Task 1: alpha
+- [ ] Files: a.txt
+- [ ] Test / evidence: the follow-up note reads "- Task 1 (`zz9999`): did the thing"
+- [ ] Command: true
+
+## Changes during build
+
+## Follow-ups
+EOF
+bash "$TICKET" log "$TMP/log-plan2.md" 1 --sha zz9999 --note "did the thing" >/dev/null
+IN_SECTION=$(awk '/^## Changes during build/{f=1;next} /^## /{f=0} f' "$TMP/log-plan2.md" | grep -cF -- '- Task 1 (`zz9999`): did the thing')
+if [ "$IN_SECTION" -eq 1 ]; then
+  echo "  ✓ log appends the real bullet even when a look-alike line sits elsewhere in the plan"
+else
+  echo "  ✗ log skipped the append because of the unrelated look-alike line (found=$IN_SECTION)"; fail=$((fail+1))
+fi
+
+bash "$TICKET" log "$TMP/log-plan.md" 2 --sha bs0001 --note 'a\b' >/dev/null
+if grep -qF -- '- Task 2 (`bs0001`): a\b' "$TMP/log-plan.md"; then
+  echo "  ✓ log writes a note holding a backslash byte-for-byte"
+else
+  echo "  ✗ log mangled a backslash in the note"; grep -F 'bs0001' "$TMP/log-plan.md" >&2; fail=$((fail+1))
 fi
 
 # ═══════════════════════════════════════════════════════════════════════

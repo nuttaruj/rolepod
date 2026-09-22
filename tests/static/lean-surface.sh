@@ -329,11 +329,39 @@ for p in sys.stdin.read().split():
     if low in (".ds_store", "thumbs.db") or re.search(r"(^|\.)(env|pem|key|p12|secrets|credentials)(\..*)?$", low) or low.endswith((".map", ".log", ".orig", ".rej", ".swp", ".bak")):
         bad.append(p); continue
     ext = name.rsplit(".", 1)[-1].lower() if "." in name else ""
-    if ext not in ok_ext and not name.startswith("."):
+    # .js is allowed ONLY at "plugins/<plugin>/scripts/<file>.js" — the
+    # narrowest exception for the ticket-fleet helper, not "scripts/"
+    # appearing anywhere at any depth. A .js anywhere else (plugin root,
+    # a nested scripts/ two levels down, etc.) is still a leak.
+    parts = p.split("/")
+    is_scripts_js = ext == "js" and len(parts) == 4 and parts[0] == "plugins" and parts[2] == "scripts"
+    allowed = ext in ok_ext or is_scripts_js
+    if not allowed and not name.startswith("."):
         bad.append(p)
 print("\n".join(bad))
 ' 2>/dev/null || true)
 check "plugins/ ships only allow-listed extensions, no secret-shaped or OS-artifact files (leak: ${LEAK:-none})" "[ -z \"$LEAK\" ]"
+
+# Self-test of the classifier above (never against real git ls-files output,
+# so a real leak elsewhere can't mask this): a .js exactly at
+# plugins/<plugin>/scripts/ passes; a .js at a plugin root, or under a
+# scripts/ dir at any other depth, still fails the guard.
+JS_SELFTEST=$(printf 'plugins/rolepod/scripts/ticket-fleet.js\nplugins/rolepod/stray.js\nplugins/rolepod/lib/scripts/nested.js\n' | python3 -c '
+import re, sys
+ok_ext = {"md", "sh", "py", "toml", "json", "mdc", "txt", "yml", "yaml"}
+bad = []
+for p in sys.stdin.read().split():
+    name = p.rsplit("/", 1)[-1]
+    ext = name.rsplit(".", 1)[-1].lower() if "." in name else ""
+    parts = p.split("/")
+    is_scripts_js = ext == "js" and len(parts) == 4 and parts[0] == "plugins" and parts[2] == "scripts"
+    allowed = ext in ok_ext or is_scripts_js
+    if not allowed and not name.startswith("."):
+        bad.append(p)
+print("\n".join(bad))
+' 2>/dev/null || true)
+check "a stray .js at a plugin root, or under scripts/ at the wrong depth, still fails the leak guard (bad: ${JS_SELFTEST:-NONE FLAGGED})" \
+  "[ \"\$JS_SELFTEST\" = \$'plugins/rolepod/stray.js\\nplugins/rolepod/lib/scripts/nested.js' ]"
 
 # ── Hook counts derived from manifests, not hand-maintained ────────────
 # The denylist above can only ban counts we already know went stale. This
