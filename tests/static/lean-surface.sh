@@ -974,6 +974,13 @@ check "codex hooks.json registers agent-sync.sh at SessionStart only" \
   "[ \"\$AS_EVENTS\" = SessionStart ]"
 check "codex agent-sync.sh is render-copied into the plugin tree" \
   "cmp -s adapters/codex/plugins/rolepod/hooks/agent-sync.sh plugins/rolepod-codex/hooks/agent-sync.sh"
+# ── Codex Stop entry (2026-09-22): session-lifecycle.sh defaults to --lock, and a
+# lock-mode run at Stop prints a SessionStart-shaped hookSpecificOutput that the
+# Codex Stop schema rejects (deny_unknown_fields) — `hook: Stop Failed` on every
+# turn, and a session lock that is never released. The Stop entry carries --unlock.
+CODEX_STOP_OK=$(python3 -c "import json;d=json.load(open('adapters/codex/plugins/rolepod/hooks/hooks.json'));sl=lambda ev:[h['command'] for g in d['hooks'].get(ev,[]) for h in g['hooks'] if 'session-lifecycle' in h['command']];s,l=sl('Stop'),sl('SessionStart');print('ok' if len(s)==1 and s[0].endswith('/hooks/session-lifecycle.sh --unlock') and len(l)==1 and l[0].endswith('/hooks/session-lifecycle.sh --lock') else 'bad:'+';'.join(s+l))")
+check "codex hooks.json names the session-lifecycle mode on both ends: SessionStart --lock, Stop --unlock (a lock-mode Stop prints output Codex rejects)" \
+  "[ \"\$CODEX_STOP_OK\" = ok ]"
 check "codex plugin bundles subagent-write-scope.sh byte-exact (Bash write rule class deny)" \
   "cmp -s hooks/subagent-write-scope.sh plugins/rolepod-codex/hooks/subagent-write-scope.sh"
 

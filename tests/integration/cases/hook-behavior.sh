@@ -1872,6 +1872,27 @@ check "cohesion: echo redirect to a quoted bare \"contract.md\" → allow" allow
 rm -rf "$CC_TMP"
 fi
 
+# ─── session-lifecycle: the Codex Stop entry, run as written ───
+# 2026-09-22 (found by the rolepod-brain session on codex 0.153 / 0.155): the
+# adapter's Stop entry ran session-lifecycle.sh with no mode, so it re-LOCKED at
+# Stop and printed a SessionStart-shaped hookSpecificOutput; Codex's Stop schema
+# rejects unknown fields → `hook: Stop Failed` every turn, lock never released.
+# The entry is executed exactly as the adapter writes it (PLUGIN_ROOT = repo).
+if section "session-lifecycle: Codex Stop entry unlocks and prints nothing"; then
+SL_HOME="$SANDBOX_CWD/.sl-home"; mkdir -p "$SL_HOME"
+SL_PAYLOAD=$(printf '{"session_id":"sl-test-1","cwd":%s,"hook_event_name":"Stop"}' \
+  "$(printf '%s' "$SANDBOX_CWD" | python3 -c 'import json,sys; print(json.dumps(sys.stdin.read()))')")
+printf '%s' "$SL_PAYLOAD" | HOME="$SL_HOME" bash "$HOOKS/session-lifecycle.sh" --lock >/dev/null 2>&1 || true
+SL_LOCK=$(find "$SL_HOME/.rolepod/session-locks" -name 'sl-test-1.lock' 2>/dev/null | head -1)
+if [ -n "$SL_LOCK" ]; then echo "  ✓ SessionStart (--lock) registered the session lock"; else echo "  ✗ --lock wrote no lock under the test HOME"; fail=$((fail+1)); fi
+# A live sibling is what made the lock-mode Stop print (the real Codex symptom).
+[ -n "$SL_LOCK" ] && touch "$(dirname "$SL_LOCK")/sl-sibling.lock"
+SL_STOP_CMD=$(python3 -c "import json;d=json.load(open('$REPO_DIR/adapters/codex/plugins/rolepod/hooks/hooks.json'));print([h['command'] for g in d['hooks']['Stop'] for h in g['hooks'] if 'session-lifecycle' in h['command']][0])")
+out=$(printf '%s' "$SL_PAYLOAD" | HOME="$SL_HOME" PLUGIN_ROOT="$REPO_DIR" bash -c "$SL_STOP_CMD" 2>/dev/null || true)
+if [ -z "$out" ]; then echo "  ✓ Codex Stop entry prints nothing (the Stop schema accepts no hookSpecificOutput)"; else echo "  ✗ Codex Stop entry printed: $out"; fail=$((fail+1)); fi
+if [ -n "$SL_LOCK" ] && [ ! -e "$SL_LOCK" ]; then echo "  ✓ Codex Stop entry released the session lock"; else echo "  ✗ the session lock survived the Codex Stop entry (ran in lock mode?)"; fail=$((fail+1)); fi
+fi
+
 # ─── the real edit ledger stayed untouched ───
 if section "the real edit ledger stayed untouched"; then
 SANDBOX_LEDGER="$SANDBOX_CWD/.rolepod/evidence/edits.jsonl"
