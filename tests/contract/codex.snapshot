@@ -1,4 +1,4 @@
-# rolepod CLI contract snapshot -- codex -- taken at 0.153.0 on 2026-09-14 (this line is informational, not diffed)
+# rolepod CLI contract snapshot -- codex -- taken at 0.153.0 on 2026-09-23 (this line is informational, not diffed)
 agents_keys: default_subagent_model default_subagent_reasoning_effort enabled interrupt_message max_concurrent_threads_per_session
 collab_tools: close_agent followup_task interrupt_agent list_agents resume_agent send_input send_message spawn_agent wait_agent
 effort_levels: high low max medium minimal ultra xhigh
