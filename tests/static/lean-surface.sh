@@ -141,9 +141,11 @@ fi
 # These caps lock the surface so the power-up does not regress into bloat:
 #   - supporting files per skill ≤ 5, except the using-rolepod router
 #     (≤ 3) and the rolepod-full alias (0)
-#   - total supporting files across all skills ≤ 44
-#     (44 since write-plan gained references/team-issues.md — the optional
-#     GitHub Issues backend for team-built plans; 43 for implement-plan's
+#   - total supporting files across all skills ≤ 43
+#     (43 since implement-plan's hand-written task-brief.md was removed —
+#     the brief is emitted by plan-lint.sh --brief; before that, 44 since
+#     write-plan gained references/team-issues.md — the optional GitHub
+#     Issues backend for team-built plans; 43 for implement-plan's
 #     wizard.md; 42 for write-spec's chart-work.md. Bump only for a
 #     deliberate new capability)
 #   - every examples/*-examples.md carries a "Why good wins" contrast table
@@ -156,9 +158,12 @@ for d in core/skills/*/; do
   case "$s" in
     using-rolepod)  cap=3 ;;
     rolepod-full)   cap=0 ;;
-    implement-plan) cap=6 ;;  # +1 for references/wizard.md (v2.69.0) — the
+    implement-plan) cap=5 ;;  # references/wizard.md (v2.69.0) — the
                               # human-only-steps wizard; template inlined in
-                              # the one file to keep the exception minimal
+                              # the one file to keep the exception minimal.
+                              # Was 6 (+1) until task-brief.md was removed
+                              # (v2.158.0; the brief is emitted by
+                              # plan-lint.sh --brief)
     write-plan)     cap=6 ;;  # +1 for references/team-issues.md (v2.71.0) —
                               # optional GitHub Issues backend for team-built
                               # plans; solo default stays the plan file
@@ -172,7 +177,7 @@ else
   echo "  ✗ supporting-file count over cap: $SUPPORT_OVER"
   fail=$((fail+1))
 fi
-check "total supporting files ≤ 44 (actual: $SUPPORT_TOTAL)" "[ $SUPPORT_TOTAL -le 44 ]"
+check "total supporting files ≤ 43 (actual: $SUPPORT_TOTAL)" "[ $SUPPORT_TOTAL -le 43 ]"
 
 # Supporting-file BYTE caps — the escape hatch is capped too, so a SKILL.md
 # cut cannot migrate into references/ / templates/ / examples/. Frozen at
@@ -208,6 +213,76 @@ else
   echo "  ✗ *-examples.md missing a 'Why good wins' table: $EXAMPLES_NO_TABLE"
   fail=$((fail+1))
 fi
+
+# ── Standalone guard — the artifact line stays the template ───────────
+# Each phase skill's artifact line names its templates/*.md sections in
+# the template's own words, so SKILL.md alone (no sibling files) still
+# produces the right artifact (agentskills.io progressive disclosure;
+# v2.158.0 skill-standalone closure). (a) every `## `/`### ` heading of
+# every skill's templates/*.md must appear in that skill's SKILL.md.
+# (b) every bold task-block label of plan-template's Task 1 block must
+# appear in write-plan/SKILL.md — plan-lint and rolepod-ticket parse
+# those exact field names. A heading or label added or renamed without
+# updating the prose that asserts it fails here, naming the skill and
+# the missing heading/label, before it ships as a silent drift.
+# Containment is substring match: a one-word heading already common in
+# prose (e.g. "Status") can pass vacuously. Accepted — the alternative
+# (heading-shaped markup in the SKILL.md prose) is the harder failure mode
+# to author correctly, and Task 1's artifact lines already spell headings
+# out in full.
+STANDALONE_HEADING_MISSES=$(python3 -I - <<'PYEOF'
+import pathlib, re
+ROOT = pathlib.Path(".")
+misses = []
+for d in sorted((ROOT / "core/skills").iterdir()):
+    skill_file = d / "SKILL.md"
+    if not skill_file.is_file():
+        continue
+    skill_text = skill_file.read_text(encoding="utf-8").lower()
+    for t in sorted(d.glob("templates/*.md")):
+        for line in t.read_text(encoding="utf-8").splitlines():
+            m = re.match(r"^##+ (.+)", line)
+            if not m or re.match(r"task \d", m.group(1).lower()):
+                continue
+            h = re.sub(r"\s+", " ", re.sub(r"[\x60*]|<[^>]*>|\([^)]*\)| — .*$", "", m.group(1)).strip().lower())
+            if h and h not in skill_text:
+                misses.append(f"{d.name}: {h}")
+print("; ".join(misses))
+PYEOF
+)
+check "every template heading is named in its SKILL.md (misses: ${STANDALONE_HEADING_MISSES:-none})" "[ -z \"\$STANDALONE_HEADING_MISSES\" ]"
+
+STANDALONE_FIELD_MISSES=$(python3 -I - <<'PYEOF'
+import pathlib, re
+ROOT = pathlib.Path(".")
+misses = []
+plan_template = ROOT / "core/skills/write-plan/templates/plan-template.md"
+write_plan = ROOT / "core/skills/write-plan/SKILL.md"
+if not plan_template.is_file():
+    misses.append("plan-template.md: file missing")
+elif not write_plan.is_file():
+    misses.append("write-plan/SKILL.md: file missing")
+else:
+    write_plan_text = write_plan.read_text(encoding="utf-8").lower()
+    in_task1, task1_lines = False, []
+    for line in plan_template.read_text(encoding="utf-8").splitlines():
+        if line.startswith("### Task 1:"):
+            in_task1 = True
+            continue
+        if in_task1 and line.startswith("### Task 2:"):
+            break
+        if in_task1:
+            task1_lines.append(line)
+    if not task1_lines:
+        misses.append("plan-template.md: no ### Task 1: block found")
+    for line in task1_lines:
+        for m in re.finditer(r"\*\*([A-Za-z /]+):\*\*", line):
+            if m.group(1).lower() not in write_plan_text:
+                misses.append(m.group(1))
+print("; ".join(misses))
+PYEOF
+)
+check "every plan task-block label is named in write-plan/SKILL.md (misses: ${STANDALONE_FIELD_MISSES:-none})" "[ -z \"\$STANDALONE_FIELD_MISSES\" ]"
 
 # ── No rules directory (spec: pure plugin) ────────────────────────────
 # The whole core/rules/ tree is gone: code/ + test/ rules were folded
@@ -306,7 +381,7 @@ STALE_HITS=$(grep -rEn "$STALE_PATTERNS" \
   --include='*.md' --include='*.json' --include='*.tmpl' \
   README.md CHEATSHEET.md docs/ .claude-plugin/ .cursor-plugin/ adapters/ core/skills/ core/fragments/ 2>/dev/null \
   | grep -v 'build/rendered/' \
-  | grep -v 'docs/plans/' | grep -v 'docs/specs/' | grep -v 'docs/legacy-skill-map' || true)
+  | grep -v 'docs/plans/' | grep -v 'docs/specs/' | grep -v 'docs/rolepod/' | grep -v 'docs/legacy-skill-map' || true)
 if [ -z "$STALE_HITS" ]; then
   echo "  ✓ no stale doc keywords (skill counts, hook counts, add-on-hook phrasings)"
 else
