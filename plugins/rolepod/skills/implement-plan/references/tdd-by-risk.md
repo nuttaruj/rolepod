@@ -33,6 +33,17 @@ one smoke; a test whose failure an existing test already catches is not
 written; collapsing N copies of a rule into one function collapses their
 tests the same way. A suite that only ever grows is read less each round.
 
+## Seams by dependency kind — what the test crosses
+Cut a seam only where something varies; one implementation behind an
+interface is indirection, not a seam.
+
+| Dependency | Seam | Test |
+|-----------|------|------|
+| In-process (pure logic, same module) | none | unit test through the public interface |
+| Local-substitutable (clock, random, filesystem, env) | inject at the seam | fake it in the unit test (frozen `now`, temp dir) |
+| Remote-but-owned (your DB, queue, own service) | thin adapter | integration test against a real local instance — never a mocked DB |
+| True-external (third-party API, payment, email) | adapter behind an interface you own | contract test on a recorded / fake response + ONE live smoke |
+
 ## Hygiene — what keeps a green suite green
 - Dates and times derive from ONE frozen `now` (fake timers / injected
   clock). A literal calendar date expires; the real clock drifts across

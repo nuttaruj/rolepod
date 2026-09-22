@@ -51,6 +51,7 @@ Before removing anything run Chesterton's Fence + the deletion test (Iron Rule 5
 | Pattern | Action |
 |---------|--------|
 | Interface / type with one implementation | Inline the impl, delete the interface |
+| Shallow module (interface as wide as what it hides) | Inline; extract only when the interface is smaller than the behavior behind it |
 | Config flag with one value used in code | Delete the flag |
 | Helper / wrapper with one caller | Inline at the call site |
 | Retry / timeout config without observed failure | Delete; add back when a real failure appears |

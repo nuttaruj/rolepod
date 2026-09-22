@@ -54,6 +54,7 @@ Read the touched files end-to-end; verify the symbols the plan expects exist.
 ### 2. TDD at the plan's seams
 
 Every logic slice: a failing unit test at the plan's seam (public interface, never internals) → must fail → smallest change → green → next; refactor at review, not in the loop. Prose / rename / config: no test. Matrix: `references/tdd-by-risk.md`.
+A seam's interface is everything a caller must know — the signature plus its invariants, ordering, error modes and required config — and the test asserts those, not the type alone.
 
 ### 3. Surgical edit + quality reflexes
 
