@@ -118,6 +118,18 @@ if [ "${1:-}" = "--brief" ]; then
     if (t == "R3") return 3
     return 4
   }
+  # A field is only a line whose trimmed, asterisk-stripped start is a
+  # bullet (dash OR asterisk — the same bullet grammar the Blocked-by /
+  # Files / Owner graph scan below accepts), an optional checkbox
+  # ([ ] / [x]), then the label -- never a prose sentence elsewhere on the
+  # line that quotes the label (a Blocked by or Owner mention inside
+  # Test / evidence prose must not be read as that field).
+  function fieldline(line, name,    g) {
+    g = line; sub(/^[[:space:]]+/, "", g)
+    if (g !~ /^[-*]/) return 0
+    g = substr(g, 2); gsub(/\*/, "", g); g = trim(g)
+    return (g ~ ("^(\\[[ xX]\\][[:space:]]*)?" name ":"))
+  }
   FNR == NR {
     if ($0 ~ /^## /) {
       intask = 0; field = ""
@@ -161,26 +173,26 @@ if [ "${1:-}" = "--brief" ]; then
       isf = 1
       # Field labels match with or without **bold** — real plans write both
       # dialects (core/skills/write-plan/examples/plan-examples.md "Good"
-      # scenario 1 is unbolded end to end). Grab the label substring first,
-      # slice the value off after it, then strip any leftover asterisks —
-      # the same technique the Blocked-by/Owner/Files graph scan above uses.
-      if (index(line, "Delivers:") > 0)             { field = "D";   v = line; sub(/.*Delivers:[[:space:]]*/, "", v) }
-      else if (index(line, "Blocked by:") > 0)      { field = "B";   v = line; sub(/.*Blocked by:[[:space:]]*/, "", v) }
-      else if (index(line, "Read first:") > 0)      { field = "R";   v = line; sub(/.*Read first:[[:space:]]*/, "", v) }
-      else if (index(line, "Files:") > 0)           { field = "F";   v = line; sub(/.*Files:[[:space:]]*/, "", v) }
-      else if (index(line, "Change:") > 0)          { field = "C";   v = line; sub(/.*Change:[[:space:]]*/, "", v) }
-      else if (index(line, "Test / evidence:") > 0) { field = "T";   v = line; sub(/.*Test \/ evidence:[[:space:]]*/, "", v) }
-      else if (index(line, "Command:") > 0)         { field = "Cmd"; v = line; sub(/.*Command:[[:space:]]*/, "", v) }
-      else if (index(line, "Owner:") > 0)           { field = "O";   v = line; sub(/.*Owner:[[:space:]]*/, "", v) }
-      else if (index(line, "Done when:") > 0)       { field = "DW";  v = line; sub(/.*Done when:[[:space:]]*/, "", v) }
+      # scenario 1 is unbolded end to end). fieldline() requires the label
+      # to START the (trimmed, unbolded) line, as a bullet — a prose
+      # sentence that merely quotes the label text is never the field.
+      if (fieldline(line, "Delivers"))             { field = "D";   v = line; sub(/^[[:space:]]*[-*][[:space:]]*(\[[ xX]\][[:space:]]*)?\*{0,2}Delivers\*{0,2}:\*{0,2}[[:space:]]*/, "", v) }
+      else if (fieldline(line, "Blocked by"))      { field = "B";   v = line; sub(/^[[:space:]]*[-*][[:space:]]*(\[[ xX]\][[:space:]]*)?\*{0,2}Blocked by\*{0,2}:\*{0,2}[[:space:]]*/, "", v) }
+      else if (fieldline(line, "Read first"))      { field = "R";   v = line; sub(/^[[:space:]]*[-*][[:space:]]*(\[[ xX]\][[:space:]]*)?\*{0,2}Read first\*{0,2}:\*{0,2}[[:space:]]*/, "", v) }
+      else if (fieldline(line, "Files"))           { field = "F";   v = line; sub(/^[[:space:]]*[-*][[:space:]]*(\[[ xX]\][[:space:]]*)?\*{0,2}Files\*{0,2}:\*{0,2}[[:space:]]*/, "", v) }
+      else if (fieldline(line, "Change"))          { field = "C";   v = line; sub(/^[[:space:]]*[-*][[:space:]]*(\[[ xX]\][[:space:]]*)?\*{0,2}Change\*{0,2}:\*{0,2}[[:space:]]*/, "", v) }
+      else if (fieldline(line, "Test / evidence")) { field = "T";   v = line; sub(/^[[:space:]]*[-*][[:space:]]*(\[[ xX]\][[:space:]]*)?\*{0,2}Test \/ evidence\*{0,2}:\*{0,2}[[:space:]]*/, "", v) }
+      else if (fieldline(line, "Command"))         { field = "Cmd"; v = line; sub(/^[[:space:]]*[-*][[:space:]]*(\[[ xX]\][[:space:]]*)?\*{0,2}Command\*{0,2}:\*{0,2}[[:space:]]*/, "", v) }
+      else if (fieldline(line, "Owner"))           { field = "O";   v = line; sub(/^[[:space:]]*[-*][[:space:]]*(\[[ xX]\][[:space:]]*)?\*{0,2}Owner\*{0,2}:\*{0,2}[[:space:]]*/, "", v) }
+      else if (fieldline(line, "Done when"))       { field = "DW";  v = line; sub(/^[[:space:]]*[-*][[:space:]]*(\[[ xX]\][[:space:]]*)?\*{0,2}Done when\*{0,2}:\*{0,2}[[:space:]]*/, "", v) }
       # Optional — the one claim + command a reviewer would check by hand
       # (spec R3). A bullet of its own right after Test / evidence, never
       # indented under it (an indented line is a continuation, handled below).
-      else if (index(line, "Proof:") > 0)           { field = "P";   v = line; sub(/.*Proof:[[:space:]]*/, "", v) }
+      else if (fieldline(line, "Proof"))           { field = "P";   v = line; sub(/^[[:space:]]*[-*][[:space:]]*(\[[ xX]\][[:space:]]*)?\*{0,2}Proof\*{0,2}:\*{0,2}[[:space:]]*/, "", v) }
       # Recognized-but-not-in-the-brief fields still end whatever field came
       # before them — otherwise their text glues onto Test/Command/Done when.
-      else if (index(line, "Expected failing signal:") > 0) { field = "" }
-      else if (index(line, "On fail:") > 0)                 { field = "" }
+      else if (fieldline(line, "Expected failing signal")) { field = "" }
+      else if (fieldline(line, "On fail"))                 { field = "" }
       else isf = 0
       if (isf && field != "") {
         # Only the LEADING run of bold asterisks (the closing ** of a bold
@@ -482,9 +494,22 @@ fi
 # at the top of the file — shared with --brief, not re-declared here.
 TASKS=$(grep -Ec "$TASK_RX" "$PLAN" || true)
 MISSING=$(awk -v rx="$TASK_RX" '
+  function trim(x) { sub(/^[[:space:]]+/, "", x); sub(/[[:space:]]+$/, "", x); return x }
+  # A field is only a line whose (left-trimmed) start is a bullet — dash OR
+  # asterisk — an optional checkbox, then the label. The bullet char is
+  # consumed BEFORE bold asterisks are stripped: a whole-line gsub(/\*/)
+  # first would eat an asterisk BULLET along with the bold markers, making
+  # a "* Command:" line unreachable — and would also let a prose sentence
+  # elsewhere on the line that merely quotes "Command:" pass the check.
+  function fieldgate(line, name,    g) {
+    g = line; sub(/^[[:space:]]+/, "", g)
+    if (g !~ /^[-*]/) return 0
+    g = substr(g, 2); gsub(/\*/, "", g); g = trim(g)
+    return (g ~ ("^(\\[[ xX]\\][[:space:]]*)?" name ":"))
+  }
   $0 ~ rx     { if (t != "" && !c) print t; t = $0; c = 0; next }
   /^## /      { if (t != "" && !c) print t; t = ""; next }
-  t != "" && /Command:/ { c = 1 }
+  t != "" && fieldgate($0, "Command") { c = 1 }
   END         { if (t != "" && !c) print t }
 ' "$PLAN")
 if [ "${TASKS:-0}" -eq 0 ]; then
@@ -517,6 +542,17 @@ printf '%s' "$LAYOUT" | grep -qiE '^[[:space:]]*([-*][[:space:]]*)?sequential' &
 # are prefixed so the shell can route them: E = fail, A = advisory.
 GRAPH=$(awk -v rx="$TASK_RX" -v seq="$SEQUENTIAL" '
   function trim(x) { sub(/^[[:space:]]+/, "", x); sub(/[[:space:]]+$/, "", x); return x }
+  # A field is only a line whose (left-trimmed) start is a bullet — dash OR
+  # asterisk — an optional checkbox, then the label. The bullet char must be
+  # consumed BEFORE bold asterisks are stripped: gsub(/\*/,"") on the whole
+  # line first would eat an asterisk BULLET along with the bold markers,
+  # making a "* Label:" line unreachable.
+  function fieldgate(line, name,    g) {
+    g = line; sub(/^[[:space:]]+/, "", g)
+    if (g !~ /^[-*]/) return 0
+    g = substr(g, 2); gsub(/\*/, "", g); g = trim(g)
+    return (g ~ ("^(\\[[ xX]\\][[:space:]]*)?" name ":"))
+  }
   function addpath(p, c) {
     if (!((p, c) in pathseen)) {
       if (!(p in pathtasks)) pathorder[++pn] = p
@@ -531,11 +567,23 @@ GRAPH=$(awk -v rx="$TASK_RX" -v seq="$SEQUENTIAL" '
   }
   /^## / { cur = "" ; next }
   cur != "" && /Blocked by:/ && !(cur in has) {
-    has[cur] = 1; v = $0; sub(/^.*Blocked by:[[:space:]]*/, "", v); v = trim(v)
-    gsub(/\*/, "", v)
-    if (v ~ /^([Nn]one|—|-|–)/) next
-    # strip a trailing aside so "none (T3 could gate…)" never grows an edge
-    sub(/[(—].*$/, "", v)
+    # A field is only a line whose trimmed start is the label (with or
+    # without a leading dash / checkbox bullet and bold markers) --
+    # a prose sentence elsewhere on the line that merely quotes the
+    # label text is never the field.
+    if (!fieldgate($0, "Blocked by")) next
+    has[cur] = 1; vt = $0; gsub(/\*/, "", vt); vt = trim(vt); sub(/^[-*][[:space:]]*/, "", vt); v = vt
+    sub(/^(\[[ xX]\][[:space:]]*)?Blocked by:[[:space:]]*/, "", v); v = trim(v)
+    # lowercased before the check — the same tolower() approach ticket.sh
+    # uses, so "NONE" (any casing) means no blockers on both parsers, not
+    # just "None"/"none".
+    if (tolower(v) ~ /^(none|—|-|–)/) next
+    # strip every parenthesised aside individually — "Task 1 (why), Task 3
+    # (why), Task 4 (why)" must resolve to {1,3,4}, not just the first ref.
+    gsub(/\([^)]*\)/, "", v)
+    # then a trailing em/en-dash aside (no parens) — "Task 3 — landed in
+    # v2.90.0" must resolve to {3}, not pick up 2/90/0 out of the prose.
+    sub(/[[:space:]]+(—|–)[[:space:]]+.*$/, "", v)
     m = v
     while (match(m, /[0-9]+/)) {
       r = substr(m, RSTART, RLENGTH); m = substr(m, RSTART + RLENGTH)
@@ -550,8 +598,12 @@ GRAPH=$(awk -v rx="$TASK_RX" -v seq="$SEQUENTIAL" '
   # comma-separated list — a backtick-only parse was a no-op on them), and
   # each task first "Owner:" value (for the nothing-to-dispatch check).
   cur != "" && /Files:/ && !(cur in filesdone) {
+    # Gate via fieldgate() (bullet consumed before bold strip) — the
+    # extracted value below keeps the raw line so a glob like
+    # `src/**/*.ts` is untouched.
+    if (!fieldgate($0, "Files")) next
     filesdone[cur] = 1
-    v = $0; sub(/^.*Files:[[:space:]]*/, "", v); gsub(/\*/, "", v)
+    v = $0; sub(/^[[:space:]]*[-*][[:space:]]*(\[[ xX]\][[:space:]]*)?\*{0,2}Files\*{0,2}:\*{0,2}[[:space:]]*/, "", v)
     m = v
     while (match(m, /`[^`]+`/)) {
       addpath(substr(m, RSTART + 1, RLENGTH - 2), cur)
@@ -574,8 +626,9 @@ GRAPH=$(awk -v rx="$TASK_RX" -v seq="$SEQUENTIAL" '
     next
   }
   cur != "" && /Owner:/ && !(cur in ownerdone) {
+    if (!fieldgate($0, "Owner")) next
     ownerdone[cur] = 1; v = $0
-    sub(/^.*Owner:[[:space:]]*/, "", v); gsub(/\*/, "", v); v = trim(v)
+    sub(/^[[:space:]]*[-*][[:space:]]*(\[[ xX]\][[:space:]]*)?\*{0,2}Owner\*{0,2}:\*{0,2}[[:space:]]*/, "", v); gsub(/\*/, "", v); v = trim(v)
     owner[cur] = v
     next
   }

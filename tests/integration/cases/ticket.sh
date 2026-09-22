@@ -622,6 +622,92 @@ else
 fi
 
 # ═══════════════════════════════════════════════════════════════════════
+# fleet — an em-dash aside with no parens must not feed its digits into the
+# Blocked-by graph (T2 follow-up, mirrored from plan-lint.sh)
+# ═══════════════════════════════════════════════════════════════════════
+
+EDR="$TMP/em-dash-repo"
+mkdir -p "$EDR"
+( cd "$EDR" && git init -q . && git config user.email t@t && git config user.name t )
+cat > "$EDR/plan.md" <<'EOF'
+# Em Dash Aside Plan
+
+## Tasks
+
+### Task 3: c
+- **Blocked by:** none
+- [x] **Files:** `c.txt`
+- [x] **Command:** `true`
+- **Owner:** backend-developer
+- **Done when:** true
+
+### Task 4: d
+- **Blocked by:** Task 3 — landed in v2.90.0
+- [ ] **Files:** `d.txt`
+- [ ] **Command:** `true`
+- **Owner:** backend-developer
+- **Done when:** true
+
+## Parallel layout
+Sequential — single owner.
+
+## Failure policy
+Default: stop after 2 failed attempts (never a 4th).
+EOF
+( cd "$EDR" && git add -A && git commit -q -m init )
+OUT=$(bash "$TICKET" fleet "$EDR/plan.md" 2>"$TMP/em-dash.err")
+RC=$?
+if [ "$RC" -eq 0 ] && printf '%s\n' "$OUT" | sed -n '1p' | python3 -c '
+import json, sys
+data = json.load(sys.stdin)
+ns = sorted(t["n"] for t in data["args"]["tasks"])
+assert ns == [4], "expected [4] (Task 3 is [x] and Task 4'"'"'s only real blocker), got %r" % (ns,)
+' 2>"$TMP/em-dash-json.err"; then
+  echo "  ✓ fleet reads Task 3 — landed in v2.90.0 as blocker {3} only, ready once Task 3 is done"
+else
+  echo "  ✗ fleet read digits out of an em-dash aside (rc=$RC): $OUT"; cat "$TMP/em-dash.err" "$TMP/em-dash-json.err" >&2; fail=$((fail+1))
+fi
+
+# ═══════════════════════════════════════════════════════════════════════
+# fleet — Blocked by: None (any case) is no blockers, same as plan-lint.sh
+# ═══════════════════════════════════════════════════════════════════════
+
+NCR="$TMP/none-case-repo"
+mkdir -p "$NCR"
+( cd "$NCR" && git init -q . && git config user.email t@t && git config user.name t )
+cat > "$NCR/plan.md" <<'EOF'
+# None Case Plan
+
+## Tasks
+
+### Task 1: a
+- **Blocked by:** None
+- [ ] **Files:** `a.txt`
+- [ ] **Command:** `true`
+- **Owner:** backend-developer
+- **Done when:** true
+
+## Parallel layout
+Sequential — single owner.
+
+## Failure policy
+Default: stop after 2 failed attempts (never a 4th).
+EOF
+( cd "$NCR" && git add -A && git commit -q -m init )
+OUT=$(bash "$TICKET" fleet "$NCR/plan.md" 2>"$TMP/none-case.err")
+RC=$?
+if [ "$RC" -eq 0 ] && printf '%s\n' "$OUT" | sed -n '1p' | python3 -c '
+import json, sys
+data = json.load(sys.stdin)
+ns = sorted(t["n"] for t in data["args"]["tasks"])
+assert ns == [1], "expected [1], got %r" % (ns,)
+' 2>"$TMP/none-case-json.err"; then
+  echo "  ✓ fleet treats Blocked by: None as no blockers"
+else
+  echo "  ✗ fleet did not treat None as no blockers (rc=$RC): $OUT"; cat "$TMP/none-case.err" "$TMP/none-case-json.err" >&2; fail=$((fail+1))
+fi
+
+# ═══════════════════════════════════════════════════════════════════════
 # start/finish — the Agent: line start appends and finish reads back
 # ═══════════════════════════════════════════════════════════════════════
 

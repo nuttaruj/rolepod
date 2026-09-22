@@ -175,14 +175,11 @@ find_owner_agent() { # $1 = main root, $2 = worktree (absolute)
 # every one to `- [x]`). A `(...)` aside on a Blocked-by reference (real
 # plans annotate each blocker, e.g. "Task 1 (`start` exists), Task 3 (...)")
 # is stripped per-reference, not from the first "(" to end of line — that
-# would drop every reference after the first blocker's own aside. NOTE:
-# this deliberately diverges from plan-lint.sh's own (advisory-only)
-# Blocked-by graph check, which strips from the first "(" to end of line —
-# fine for its one worked example ("none (T3 could gate…)") but on a real
-# multi-blocker aside (this plan's own Task 5: "Task 1 (...), Task 3 (...),
-# Task 4 (...)") it resolves only the first reference. plan-lint.sh is out
-# of this task's Files allowed; `fleet` cannot ship on its narrower parse
-# without risking a task dispatched before its true blockers are done.
+# would drop every reference after the first blocker's own aside. A trailing
+# em/en-dash aside with no parens is stripped too, the same as parenthesised
+# ones. plan-lint.sh's own (advisory-only) Blocked-by graph check now uses
+# the identical two-step strip (T2 follow-up) — the two parsers agree on
+# every ref shape either one is asked to read.
 plan_task_rows() { # $1 = plan (absolute)
   awk -v fs="$ROW_FS" '
     function trim(x) { sub(/^[[:space:]]+/, "", x); sub(/[[:space:]]+$/, "", x); return x }
@@ -190,6 +187,10 @@ plan_task_rows() { # $1 = plan (absolute)
       if (id == "") return
       bv = B
       gsub(/\([^)]*\)/, "", bv)
+      # then a trailing em/en-dash aside (no parens) — "Task 3 — landed in
+      # v2.90.0" must resolve to {3}, not pick up 2/90/0 out of the prose —
+      # mirrors the two-step strip plan-lint.sh now uses (T2 follow-up).
+      sub(/[[:space:]]+(—|–)[[:space:]]+.*$/, "", bv)
       blist = ""
       low = tolower(trim(bv))
       if (low != "" && low !~ /^(none|—|-|–)/) {

@@ -262,6 +262,208 @@ echo "$OUT" | grep -q 'parallel candidates: Tasks 1, 3' \
   && echo "  ✓ plan-lint.sh names the roots as parallel candidates (aside after none ignored)" \
   || { echo "  ✗ plan-lint.sh missed the parallel-candidate advisory: $OUT"; fail=$((fail+1)); }
 
+# ── every blocker on the line, and a field is a field line only (t2) ────
+# Three blockers each with their own (why) aside must ALL resolve — a
+# truncate-at-first-paren bug keeps only the FIRST ref (Task 1) and drops
+# Task 3 and Task 4 entirely. Task 3 shares src/shared3.sh and Task 4
+# shares src/shared4.sh with Task 5; the Blocked-by edge is what connects
+# each pair in the prefactor-smell graph, so a dropped ref shows up as a
+# false "no edge" advisory on the file the dropped ref should have wired.
+cat > "$TMP/asides-all.md" <<'EOF'
+# Asides Plan
+### Task 1: a
+- **Files:** `src/a.sh`
+- **Blocked by:** none
+- [ ] Command: true
+### Task 2: b
+- **Files:** `src/b.sh`
+- **Blocked by:** none
+- [ ] Command: true
+### Task 3: c
+- **Files:** `src/shared3.sh`
+- **Blocked by:** none
+- [ ] Command: true
+### Task 4: d
+- **Files:** `src/shared4.sh`
+- **Blocked by:** none
+- [ ] Command: true
+### Task 5: e
+- **Files:** `src/shared3.sh` `src/shared4.sh`
+- **Blocked by:** Task 1 (why), Task 3 (why), Task 4 (why)
+- [ ] Command: true
+## Parallel layout
+Sequential — single owner.
+## Failure policy
+Default: stop.
+EOF
+RC=0; OUT=$(bash "$LINT" "$TMP/asides-all.md" 2>&1) || RC=$?
+[ "$RC" -eq 0 ] && ! echo "$OUT" | grep -q 'prefactor smell' \
+  && echo "  ✓ plan-lint.sh resolves every blocker on a line with three parenthesised asides" \
+  || { echo "  ✗ plan-lint.sh dropped a blocker behind an aside: $OUT"; fail=$((fail+1)); }
+
+# A cycle hidden behind an aside must still be caught, not swallowed by the
+# aside strip.
+cat > "$TMP/asides-cycle.md" <<'EOF'
+# Asides Cycle Plan
+### Task 1: a
+- **Blocked by:** Task 2 (why)
+- [ ] Command: true
+### Task 2: b
+- **Blocked by:** Task 1 (why)
+- [ ] Command: true
+## Parallel layout
+Sequential — single owner.
+## Failure policy
+Default: stop.
+EOF
+OUT=$(bash "$LINT" "$TMP/asides-cycle.md" 2>&1) && RC=0 || RC=$?
+[ "$RC" -ne 0 ] && echo "$OUT" | grep -q 'cycle among Tasks 1, 2' \
+  && echo "  ✓ plan-lint.sh catches a Blocked-by cycle hidden behind asides" \
+  || { echo "  ✗ plan-lint.sh missed a cycle behind asides: $OUT"; fail=$((fail+1)); }
+
+# An em-dash aside with no parens ("Task 3 — landed in v2.90.0") must
+# resolve to {3} only — the per-aside paren strip does nothing here, so the
+# version numbers after the dash must not be read as Tasks 2/90/0.
+cat > "$TMP/em-dash-aside.md" <<'EOF'
+# Em Dash Aside Plan
+### Task 1: a
+- **Blocked by:** none
+- [ ] Command: true
+### Task 2: b
+- **Blocked by:** none
+- [ ] Command: true
+### Task 3: c
+- **Blocked by:** none
+- [ ] Command: true
+### Task 4: d
+- **Blocked by:** Task 3 — landed in v2.90.0
+- [ ] Command: true
+## Parallel layout
+Sequential — single owner.
+## Failure policy
+Default: stop.
+EOF
+RC=0; OUT=$(bash "$LINT" "$TMP/em-dash-aside.md" 2>&1) || RC=$?
+[ "$RC" -eq 0 ] && echo "$OUT" | grep -q 'graph resolves, no cycle (4 tasks)' \
+  && echo "  ✓ plan-lint.sh strips a trailing em-dash aside instead of reading its digits" \
+  || { echo "  ✗ plan-lint.sh read digits out of an em-dash aside: $OUT"; fail=$((fail+1)); }
+
+# "NONE" (any casing) means no blockers too, not just "None"/"none" — the
+# same tolower() parity ticket.sh's readiness parser already had (T-5). A
+# bare "NONE" alone is not discriminating (no digits either side of the
+# fix), so the trailing "v2" (no parens, no em-dash — neither aside strip
+# would rescue it) must NOT become a phantom Task 2 reference.
+cat > "$TMP/none-uppercase.md" <<'EOF'
+# None Uppercase Plan
+### Task 1: a
+- **Blocked by:** NONE - flagged for v2 already
+- [ ] Command: true
+## Parallel layout
+Sequential — single owner.
+## Failure policy
+Default: stop.
+EOF
+RC=0; OUT=$(bash "$LINT" "$TMP/none-uppercase.md" 2>&1) || RC=$?
+[ "$RC" -eq 0 ] && echo "$OUT" | grep -q 'graph resolves, no cycle (1 tasks)' \
+  && echo "  ✓ plan-lint.sh treats Blocked by: NONE as no blockers" \
+  || { echo "  ✗ plan-lint.sh did not treat NONE as no blockers: $OUT"; fail=$((fail+1)); }
+
+# A task whose Test / evidence prose quotes the LITERAL field labels
+# `- **Blocked by:**` / `- **Owner:**` (as the t2 handoff plan itself did,
+# referencing a Task 4 that does not exist here), sitting ABOVE the task's
+# real `- **Blocked by:**` / `- **Owner:**` bullets, must not be read as
+# those fields itself, and must not have its own content swallowed by
+# them — only the real bullets feed the graph, and the prose stays intact
+# in --brief's Test / evidence section.
+cat > "$TMP/prose-quotes-fields.md" <<'EOF'
+# Prose Quotes Fields Plan
+### Task 1: a
+- **Blocked by:** none
+- **Owner:** Lead
+- [ ] Command: true
+### Task 2: b
+- **Test / evidence:** the graph must not read `- **Blocked by:** Task 4 (why)` or `- **Owner:** devops-sre` out of this prose
+- **Blocked by:** Task 1
+- **Owner:** devops-sre
+- [ ] Command: true
+## Parallel layout
+Sequential — single owner.
+## Failure policy
+Default: stop.
+EOF
+RC=0; OUT=$(bash "$LINT" "$TMP/prose-quotes-fields.md" 2>&1) || RC=$?
+[ "$RC" -eq 0 ] && echo "$OUT" | grep -q 'graph resolves, no cycle (2 tasks)' \
+  && echo "  ✓ plan-lint.sh does not read a Blocked-by/Owner mention inside prose as the field" \
+  || { echo "  ✗ plan-lint.sh let prose fool the graph scan: $OUT"; fail=$((fail+1)); }
+BOUT=$(bash "$LINT" --brief 2 "$TMP/prose-quotes-fields.md" 2>/dev/null)
+BB=$(printf '%s\n' "$BOUT" | awk '/^## Blocked by/{f=1;next} /^## /{f=0} f')
+TE=$(printf '%s\n' "$BOUT" | awk '/^## Test \/ evidence/{f=1;next} /^## /{f=0} f')
+printf '%s' "$BB" | grep -qxF 'Task 1' \
+  && printf '%s' "$TE" | grep -qF 'must not read' \
+  && echo "  ✓ --brief keeps the prose in Test / evidence and Blocked by from the real field line only" \
+  || { echo "  ✗ --brief let the prose line swallow or leak a field: Blocked by=$BB / Test-evidence=$TE"; fail=$((fail+1)); }
+
+# A task with no real Command bullet, but whose Test / evidence prose
+# quotes the literal word "Command:", must still be flagged missing — a
+# bare substring match on the whole line would let the prose mention
+# stand in for the field.
+cat > "$TMP/prose-quotes-command.md" <<'EOF'
+# Prose Quotes Command Plan
+### Task 1: a
+- Blocked by: none
+- Command: true
+### Task 2: b
+- Blocked by: Task 1
+- Test / evidence: run the Command: listed in Task 1 first
+## Parallel layout
+Sequential — single owner.
+## Failure policy
+Default: stop.
+EOF
+RC=0; OUT=$(bash "$LINT" "$TMP/prose-quotes-command.md" 2>&1) || RC=$?
+[ "$RC" -ne 0 ] && echo "$OUT" | grep -q 'missing Command: Task 2' \
+  && echo "  ✓ plan-lint.sh does not read a prose mention of Command: as the field" \
+  || { echo "  ✗ plan-lint.sh let prose fool the Command check: rc=$RC $OUT"; fail=$((fail+1)); }
+
+# A field written with the bold markers OUTSIDE the label but the colon
+# inside them ("- **Owner**: value") must parse to the bare value, not to
+# the raw bulleted/bolded line — the strip regex must match stars on
+# either side of the colon.
+cat > "$TMP/bold-colon-outside.md" <<'EOF'
+# Bold Colon Outside Plan
+### Task 1: a
+- **Delivers**: a working thing
+- **Blocked by**: none
+- **Owner**: devops-sre
+- Command: true
+## Parallel layout
+Sequential — single owner.
+## Failure policy
+Default: stop.
+EOF
+BOUT=$(bash "$LINT" --brief 1 "$TMP/bold-colon-outside.md" 2>/dev/null)
+GOALLINE=$(printf '%s\n' "$BOUT" | awk '/^## Goal/{f=1;next} /^## /{f=0} f')
+printf '%s' "$GOALLINE" | grep -qxF 'a working thing' \
+  && echo "  ✓ --brief strips a \`- **Label**: value\` field to the bare value" \
+  || { echo "  ✗ --brief left the raw bulleted line as the field value: $GOALLINE"; fail=$((fail+1)); }
+
+# An asterisk-bulleted field ("* Command: ..." instead of "- Command: ...")
+# must be recognized — the gate must not require a dash bullet specifically.
+cat > "$TMP/star-bullet.md" <<'EOF'
+# Star Bullet Plan
+### Task 1: a
+* Blocked by: none
+* Command: true
+## Parallel layout
+Sequential — single owner.
+## Failure policy
+Default: stop.
+EOF
+RC=0; OUT=$(bash "$LINT" "$TMP/star-bullet.md" 2>&1) || RC=$?
+[ "$RC" -eq 0 ] && echo "$OUT" | grep -q 'every task carries a Command (1/1)' \
+  && echo "  ✓ plan-lint.sh accepts an asterisk-bulleted field line" \
+  || { echo "  ✗ plan-lint.sh missed an asterisk-bulleted Command: rc=$RC $OUT"; fail=$((fail+1)); }
+
 mk "$TMP/g-ref.md" $'### Task 1: a\n- Blocked by: none' $'### Task 2: b\n- Blocked by: Task 7'
 RC=0; OUT=$(bash "$LINT" "$TMP/g-ref.md" 2>&1) || RC=$?
 [ "$RC" -ne 0 ] && echo "$OUT" | grep -q 'blocked by Task 7 — no such task' && ! echo "$OUT" | grep -q 'cycle' \
