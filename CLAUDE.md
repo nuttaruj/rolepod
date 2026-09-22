@@ -2,7 +2,7 @@
 
 # Gate cadence
 
-- Editing: only the check that covers the file — `make test-lean-surface` (caps, invariants), `bash tests/static/<x>.sh`, `bash -n hooks/<x>.sh` + its case in `tests/integration/cases/`.
+- Editing: only the check that covers the file — `make test-lean-surface` (caps, invariants), `bash tests/static/<x>.sh`, `bash -n hooks/<x>.sh` + its case in `tests/integration/cases/`; a slow case file (`hook-behavior.sh`, `cross-family-runner.sh`) takes `ROLEPOD_CASE=<banner regex>` to run just the section for the hook/script just edited.
 - Commit: `make render && git add -A && make test-static` once; read the exit code, never `| grep`.
 - Release: `make test-all` once, then `docs/release-checklist.md`.
 - One release per completed request that changed `core/ hooks/ scripts/ adapters/ plugins/`; docs-only = commit + push. Earlier only when the next ticket needs the hook or script just shipped.

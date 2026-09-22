@@ -29,6 +29,12 @@ bash tests/integration/run.sh                # all cases
 bash tests/integration/run.sh install-parity # one case
 ```
 
+For a slow case file (`hook-behavior.sh`, `cross-family-runner.sh`) that groups its checks under `── banner ──` section markers (each printed by the file's own `section()` helper), `ROLEPOD_CASE=<regex>` runs only the sections whose banner matches — seconds instead of minutes while editing the hook or script the section covers; without the variable every section runs — the same checks, plus one tally line (`N of M sections ran`):
+
+```bash
+ROLEPOD_CASE='round breaker' bash tests/integration/cases/cross-family-runner.sh
+```
+
 Exit codes:
 - `0` — all cases passed or skipped cleanly
 - `1` — at least one case failed

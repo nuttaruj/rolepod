@@ -19,11 +19,33 @@ RUNNER="$REPO_DIR/scripts/cross-family.sh"
 fail=0
 check() { if eval "$2" >/dev/null 2>&1; then echo "  ✓ $1"; else echo "  ✗ $1"; fail=$((fail+1)); fi; }
 
+TOTAL_SECTIONS=0
+RAN_SECTIONS=0
+section() { # $1 = banner title; prints the banner itself (one copy of the
+  # title, never a separate `echo` call site the arg can drift from) and
+  # gates the block on ROLEPOD_CASE (regex substring match against the title)
+  echo "── $1 ──"
+  TOTAL_SECTIONS=$((TOTAL_SECTIONS+1))
+  if [ -n "${ROLEPOD_CASE:-}" ] && ! [[ "$1" =~ $ROLEPOD_CASE ]]; then
+    return 1
+  fi
+  RAN_SECTIONS=$((RAN_SECTIONS+1))
+  return 0
+}
+
 FIX="$(mktemp -d "${TMPDIR:-/tmp}/rolepod-xfam-test.XXXXXX")"
 trap 'rm -rf "$FIX"' EXIT
-export HOME="$FIX/home"; mkdir -p "$HOME"
+export HOME="$FIX/home"; mkdir -p "$HOME" "$HOME/.rolepod"
+# .config/opencode unconditional too: "ran-model detection" writes straight
+# into it (printf > opencode.json, no mkdir of its own) — a filter to that
+# section alone used to hit "No such file or directory" before "pool
+# resolution" (the section that used to create this dir) ever ran.
+mkdir -p "$HOME/.config/opencode"
 BIN="$FIX/bin"; mkdir -p "$BIN"
-LOG="$FIX/calls.log"
+LOG="$FIX/calls.log"; : > "$LOG"   # unconditional: "advise kind retired" reads
+# $LOG (wc -l) as its own first statement — a filter to that section alone
+# used to hit `[ "" -eq "" ]` → "integer expression expected" (no earlier
+# section had run `: > "$LOG"` yet to create the file).
 
 # Stub: records "<name> | args | BRAIN=<env>" and behaves per $STUB_<NAME>:
 #   ok (default) → prints ~600 bytes of review; fail → exit 1; empty → exit 0
@@ -67,13 +89,17 @@ mk_stub cursor-agent cursor
 export PATH="$BIN:/usr/bin:/bin"
 unset ROLEPOD_LEAD_CLI CLAUDECODE CLAUDE_PLUGIN_ROOT
 
-# Sandbox repo (git root = evidence root)
+# Sandbox repo (git root = evidence root). .rolepod/evidence is created here,
+# unconditionally, so a section run alone under ROLEPOD_CASE can `: >` a log
+# file under it without depending on an earlier (possibly filtered-out)
+# section's own `mkdir -p` to have run first.
 REPO="$FIX/repo"; mkdir -p "$REPO"; git -C "$REPO" init -q; cd "$REPO"
+mkdir -p .rolepod/evidence
 printf 'Review this diff.\n' > brief.md
 printf -- '--- a/x.py\n+++ b/x.py\n+print(1)\n' > diff.patch
 
 # ── pool ────────────────────────────────────────────────────────────────
-echo "── cross-family: opt-in default (no config = OFF) ──"
+if section "cross-family: opt-in default (no config = OFF)"; then
 names=$(bash "$RUNNER" --pool-names --lead claude | tr '\n' ' ')
 check "no config file → pool EMPTY (cross-family is opt-in)" "[ -z \"$names\" ]"
 out=$(bash "$RUNNER" --pool --lead claude)
@@ -90,7 +116,8 @@ check "run while OFF → exit 5, ROLEPOD-XFAM off, no CLI called, NOTHING logged
 rc=0; bash "$RUNNER" --probe --lead claude >/dev/null 2>&1 || rc=$?
 check "--probe while OFF → exit 5 without calling anyone" "[ $rc -eq 5 ] && [ ! -s '$LOG' ]"
 
-echo "── cross-family: pool resolution (enabled with every CLI listed) ──"
+fi
+if section "cross-family: pool resolution (enabled with every CLI listed)"; then
 mkdir -p "$HOME/.rolepod"; printf 'codex\nclaude\nagy\ncursor\nopencode\n' > "$HOME/.rolepod/cross-family"
 names=$(bash "$RUNNER" --pool-names --lead claude | tr '\n' ' ')
 check "all five listed, lead=claude → codex agy cursor opencode (claude excluded; gemini retired, never in the pool)" "[ \"$names\" = 'codex agy cursor opencode ' ]"
@@ -145,7 +172,8 @@ printf '{ "model": "openai/gpt-5.6" }\n' > "$HOME/.config/opencode/opencode.json
 printf '{ "model": "gemini-3-pro" }\n' > "$HOME/.cursor/cli-config.json"
 
 # ── config: global, project override, none ──────────────────────────────
-echo "── cross-family: --setup (guided, on request) ──"
+fi
+if section "cross-family: --setup (guided, on request)"; then
 rm -f "$HOME/.rolepod/cross-family"
 bash "$RUNNER" --setup --lead claude > "$FIX/setup.txt" 2>&1; rc=$?   # output holds | and < — never interpolate it into an eval
 check "--setup with no values prints the candidates and the two questions" "[ $rc -eq 0 ] && grep -q 'installed CLIs' '$FIX/setup.txt' && grep -q '1. review' '$FIX/setup.txt' && grep -q '2. implement' '$FIX/setup.txt'"
@@ -162,7 +190,8 @@ printf '%s' "$out" > "$FIX/setup-err.txt"
 check "an unknown CLI name is refused (exit 2) and the file is left as it was" "[ $rc -eq 2 ] && grep -q 'not an installed CLI' '$FIX/setup-err.txt' && grep -qx 'review = codex agy' '$HOME/.rolepod/cross-family'"
 rm -f "$HOME/.rolepod/cross-family" "$HOME/.rolepod/"cross-family.bak-*
 
-echo "── cross-family: config ──"
+fi
+if section "cross-family: config"; then
 mkdir -p "$HOME/.rolepod"; printf '# my pool\nagy\ncodex\n' > "$HOME/.rolepod/cross-family"
 names=$(bash "$RUNNER" --pool-names --lead claude | tr '\n' ' ')
 check "global config filters AND orders the pool (agy before codex)" "[ \"$names\" = 'agy codex ' ]"
@@ -182,12 +211,16 @@ check "enabled but only the Lead's own family listed → exit 4 + ROLEPOD-XFAM e
 printf 'bogus\ncodex\n' > "$REPO/.rolepod/cross-family"
 out=$(bash "$RUNNER" --pool --lead claude)
 check "unknown CLI name in config is reported, not fatal" "printf '%s' \"\$out\" | grep -q 'bogus .*unknown CLI name'"
+
+# ── run: success path anchors evidence ──────────────────────────────────
+fi
+# Unconditional: "run + evidence" (and every section after it) needs the pool
+# enabled with no project override — this used to live inside "config" above,
+# so filtering to a later section alone left the pool OFF (exit 5, red checks).
 rm -f "$REPO/.rolepod/cross-family"
 printf 'codex\nclaude\nagy\ncursor\nopencode\n' > "$HOME/.rolepod/cross-family"   # enabled for the run tests
 rm -f "$HOME/.config/opencode/opencode.json" "$HOME/.cursor/cli-config.json"
-
-# ── run: success path anchors evidence ──────────────────────────────────
-echo "── cross-family: run + evidence ──"
+if section "cross-family: run + evidence"; then
 : > "$LOG"; : > .rolepod/evidence/phase-log.jsonl
 rc=0; out=$(KIND_HINT=adversarial bash "$RUNNER" --kind review --brief brief.md --attach diff.patch --lead claude 2>/dev/null) || rc=$?
 check "review run → exit 0, first usable member (codex) answered" "[ $rc -eq 0 ] && grep -q '^codex |' '$LOG' && ! grep -q '^gemini |' '$LOG'"
@@ -221,7 +254,8 @@ rc=0; out=$(STUB_codex=short bash "$RUNNER" --kind consult --brief brief.md --le
 check "…the same 300-byte answer passes as a consult" "[ $rc -eq 0 ] && grep -q '\"phase\":\"consult\".*\"cli\":\"codex\"' .rolepod/evidence/phase-log.jsonl"
 
 # ── run: failure → next member; all fail → exit 3 ───────────────────────
-echo "── cross-family: fallback ──"
+fi
+if section "cross-family: fallback"; then
 : > "$LOG"; : > .rolepod/evidence/phase-log.jsonl
 rc=0; out=$(STUB_codex=fail STUB_agy=fail bash "$RUNNER" --kind consult --brief brief.md --lead claude 2>/dev/null) || rc=$?
 check "codex + agy fail → cursor answers, exit 0 (gemini stub on PATH never called)" "[ $rc -eq 0 ] && grep -q '^cursor |' '$LOG' && ! grep -q '^gemini |' '$LOG'"
@@ -241,7 +275,8 @@ check "agy got plan mode + print timeout, no --model / --effort" "grep '^agy |' 
 rm -f "$REPO/.rolepod/cross-family"
 
 # ── timeout ─────────────────────────────────────────────────────────────
-echo "── cross-family: timeout ──"
+fi
+if section "cross-family: timeout"; then
 printf 'codex\nagy\n' > "$REPO/.rolepod/cross-family"
 : > "$LOG"; : > .rolepod/evidence/phase-log.jsonl
 s=$(date +%s); rc=0; out=$(STUB_codex=hang bash "$RUNNER" --kind review --brief brief.md --lead claude --timeout 3 2>/dev/null) || rc=$?; secs=$(( $(date +%s) - s ))
@@ -251,7 +286,8 @@ check "…and the hung CLI's grandchild (sleep 30) is dead too — no process le
 rm -f "$REPO/.rolepod/cross-family"
 
 # ── --all panel ─────────────────────────────────────────────────────────
-echo "── cross-family: --all panel ──"
+fi
+if section "cross-family: --all panel"; then
 : > "$LOG"; : > .rolepod/evidence/phase-log.jsonl
 rc=0; out=$(bash "$RUNNER" --kind critique --brief brief.md --lead claude --all 2>/dev/null) || rc=$?
 check "--all runs every usable member concurrently (codex + agy + cursor + opencode)" \
@@ -262,20 +298,23 @@ check "cursor got plan mode + --trust, opencode got --agent plan; neither got a 
   "grep '^cursor |' '$LOG' | grep -q -- '--mode ask' && ! grep '^cursor |' '$LOG' | grep -q -- '--mode plan' && grep '^cursor |' '$LOG' | grep -q -- '--output-format stream-json' && grep '^cursor |' '$LOG' | grep -q -- '--trust' && grep '^opencode |' '$LOG' | grep -q -- '--agent plan' && ! grep -E '^(cursor|opencode) \|' '$LOG' | grep -qE -- '--model| -m '"
 
 # ── critique kind (write-spec) ──────────────────────────────────────────
-echo "── cross-family: --kind critique ──"
+fi
+if section "cross-family: --kind critique"; then
 : > "$LOG"; : > .rolepod/evidence/phase-log.jsonl
 rc=0; out=$(bash "$RUNNER" --kind critique --brief brief.md --lead claude 2>/dev/null) || rc=$?
 check "critique → spec-critic framing on stdin, logged as phase=critique kind=critique (never a strong pass)" \
   "[ $rc -eq 0 ] && grep -q 'STDIN=critique' '$LOG' && grep -q '\"phase\":\"critique\",\"reviewer\":\"external\",\"kind\":\"critique\"' .rolepod/evidence/phase-log.jsonl && ! grep -q '\"phase\":\"review\"' .rolepod/evidence/phase-log.jsonl"
 
 # ── advise is retired ────────────────────────────────────────────────────
-echo "── cross-family: advise kind retired ──"
+fi
+if section "cross-family: advise kind retired"; then
 _lc=$(wc -l < "$LOG")
 rc=0; out=$(bash "$RUNNER" --kind advise --brief brief.md --lead claude 2>&1) || rc=$?
 check "advise kind refused (exit 2), no member called" "[ $rc -eq 2 ] && [ \"\$(wc -l < '$LOG')\" -eq \"$_lc\" ]"
 
 # ── stall detector (v2.129.0): silence kills, output keeps a member alive ──
-echo "── cross-family: stall detector ──"
+fi
+if section "cross-family: stall detector"; then
 : > "$REPO/.rolepod/evidence/phase-log.jsonl"
 s=$(date +%s); rc=0; out=$(STUB_codex=hang bash "$RUNNER" --kind review --brief brief.md --lead claude --timeout 60 --stall 3 2>/dev/null) || rc=$?; secs=$(( $(date +%s) - s ))
 check "silent CLI is killed by --stall 3 long before --timeout 60; the next member answers (took ${secs}s)" \
@@ -293,7 +332,8 @@ check "cursor stream-json is unwrapped: plain report in the raw file (no JSON), 
   "[ $rc -eq 0 ] && printf '%s' \"\$out\" | grep -q 'cli=cursor' && printf '%s' \"\$out\" | grep -q 'ran=gpt-5.6-sol' && grep -l 'VERDICT: APPROVED' \"$REPO\"/.rolepod/evidence/external/*cursor*.txt >/dev/null && ! grep -q '\"type\":\"result\"' \"$REPO\"/.rolepod/evidence/external/*cursor*.txt"
 
 # ── per-CLI timeout, per-kind order, budget line ─────────────────────────
-echo "── cross-family: timeouts / per-kind order / budget ──"
+fi
+if section "cross-family: timeouts / per-kind order / budget"; then
 printf '[reviewer]\nreview = codex timeout=1800 agy\nconsult = agy codex\n\n[implement]\ncli = codex\n' > "$REPO/.rolepod/cross-family"   # v2.141.0 shape; the per-kind `consult:` line shape is covered below
 out=$(bash "$RUNNER" --pool --lead claude --kind review)
 check "review order = default list; codex carries timeout=1800s from config, agy the review default 600s (foreground)" \
@@ -312,7 +352,8 @@ rc=0; out=$(bash "$RUNNER" --kind review --brief brief.md --lead claude --timeou
 check "--timeout flag overrides the config timeout" "printf '%s' \"\$out\" | grep -q 'budget=120s'"
 
 # ── tier key: pool review tier (spec D1 — plan-lint --brief reads this) ──
-echo "── cross-family: tier key ──"
+fi
+if section "cross-family: tier key"; then
 printf 'codex\n' > "$REPO/.rolepod/cross-family"
 out=$(bash "$RUNNER" --review-tier --lead claude)
 check "pool file with no tier line → --review-tier prints R4" "[ \"$out\" = R4 ]"
@@ -341,10 +382,15 @@ check "--pool under 'review = none' + tier = R2 still says OFF by choice, no rev
 printf '[reviewer]\ntier = R2\n' > "$REPO/.rolepod/cross-family"
 out=$(bash "$RUNNER" --review-tier --lead claude)
 check "a tier line with an empty pool (no review = line) → R4 (STATE=none, nothing usable either way)" "[ \"$out\" = R4 ]"
-printf '[reviewer]\nreview = codex timeout=1800 agy\nconsult = agy codex\n\n[implement]\ncli = codex\n' > "$REPO/.rolepod/cross-family"   # restore for the sections below
 
 # ── detach / collect / jobs ──────────────────────────────────────────────
-echo "── cross-family: --detach job ──"
+fi
+if section "cross-family: --detach job"; then
+# This section's own fixture, not a restore from "tier key": the budgets=…
+# check below reads codex's timeout=1800 straight from this file, so it must
+# be written here — a ROLEPOD_CASE filter to this banner alone must not
+# depend on "tier key" having run first to leave it behind.
+printf '[reviewer]\nreview = codex timeout=1800 agy\nconsult = agy codex\n\n[implement]\ncli = codex\n' > "$REPO/.rolepod/cross-family"
 : > "$LOG"; : > .rolepod/evidence/phase-log.jsonl
 s=$(date +%s); rc=0; out=$(STUB_codex=slow bash "$RUNNER" --kind review --brief brief.md --attach diff.patch --lead claude --detach 2>/dev/null) || rc=$?; secs=$(( $(date +%s) - s ))
 jid=$(printf '%s' "$out" | grep -o 'job=[^ ]*' | head -1 | cut -d= -f2)
@@ -383,7 +429,8 @@ check "a job child that exits early (usage error) still writes status (=$rc) so 
 rm -rf .rolepod/evidence/external/jobs/t-early
 
 # ── partial-slice stop (v2.94.0) ─────────────────────────────────────────
-echo "── cross-family: partial-slice stop ──"
+fi
+if section "cross-family: partial-slice stop"; then
 SL="$FIX/slice"; mkdir -p "$SL/.rolepod"; printf 'codex\n' > "$SL/.rolepod/cross-family"; printf 'brief\n' > "$SL/brief.md"
 ( cd "$SL" && git init -q . && git config user.email t@t && git config user.name t && printf 'a\nb\nc\n' > f.txt && git add f.txt && git commit -qm init \
   && printf 'a\nB\nc\n' > f.txt && git add f.txt && printf 'a\nB\nC\n' > f.txt \
@@ -411,7 +458,8 @@ check "review preamble asks round-2+ findings to carry IN-FIX / NEW / REPEAT" "g
 cd "$REPO"
 
 # ── one live review per repo + --kill + --since (v2.98.0) ────────────────
-echo "── cross-family: stacking / --kill / --since ──"
+fi
+if section "cross-family: stacking / --kill / --since"; then
 SQ="$FIX/since"; mkdir -p "$SQ/.rolepod"; printf 'codex\n' > "$SQ/.rolepod/cross-family"; printf 'brief\n' > "$SQ/brief.md"
 ( cd "$SQ" && git init -q . && git config user.email t@t && git config user.name t && printf 'a\nb\nc\n' > f.txt && git add f.txt && git commit -qm init && printf 'a\nB\nc\n' > f.txt && git diff HEAD > "$FIX/sq-r1.patch" )
 : > "$LOG"; rc=0; out=$(cd "$SQ" && STUB_codex=slow bash "$RUNNER" --kind review --brief brief.md --attach "$FIX/sq-r1.patch" --lead claude --detach 2>/dev/null) || rc=$?
@@ -441,8 +489,11 @@ check "--kill stops a running job: status 137, and a new review is no longer sta
 rm -f "$FIX"/grandchild.* 2>/dev/null
 cd "$REPO"
 
-# ── round breaker: --rounds / --ledger / exit 9 (v2.99.0, per reviewer v2.154.0) ─
-echo "── cross-family: round breaker ──"
+fi
+# RB + its helpers are an unconditional fixture (not gated behind "round
+# breaker"): "rounds per reviewer" below reuses both under ROLEPOD_CASE, and
+# with set -u a gated definition left $RB unbound when that section alone
+# was filtered out — the run aborted instead of failing a check.
 RB="$FIX/rounds"; mkdir -p "$RB/.rolepod/evidence"; printf 'codex\n' > "$RB/.rolepod/cross-family"; printf 'brief\n' > "$RB/brief.md"
 rb_ts() { python3 -c "import datetime,sys;print((datetime.datetime.now(datetime.timezone.utc)-datetime.timedelta(minutes=int(sys.argv[1]))).strftime('%Y-%m-%dT%H:%M:%SZ'))" "$1"; }
 rb_ep() { python3 -c "import time,sys;print(int(time.time())-60*int(sys.argv[1]))" "$1"; }
@@ -455,7 +506,16 @@ rb_anchor() { mkdir -p "$RB/.rolepod/evidence/external"; [ -f "$RB/.rolepod/evid
 # An external review JOB $1 minutes ago (the runner's own breaker key, v2.154.0)
 # — $2 status (default 3, failed; the round breaker only reads `started`, never `status`).
 rb_job() { mkdir -p "$RB/.rolepod/evidence/external/jobs/rb-review-$1"; rb_ep "$1" > "$RB/.rolepod/evidence/external/jobs/rb-review-$1/started"; echo "${2:-3}" > "$RB/.rolepod/evidence/external/jobs/rb-review-$1/status"; }
+mkdir -p "$RB/docs/rolepod/handoffs"
+# $RB must be a git repo unconditionally too: cross-family.sh's `git status
+# --porcelain` on a non-repo exits non-zero with EMPTY stdout (no exception),
+# which review_rounds() reads as `clean` and zeroes every round — "rounds
+# per reviewer" below would silently pass a clean-tree short-circuit instead
+# of actually counting, whether or not "round breaker" ran first.
 ( cd "$RB" && git init -q . && git config user.email t@t && git config user.name t && printf 'a\n' > f.txt && git add f.txt && GIT_COMMITTER_DATE="$(rb_ts 90)" git commit -q -m init --date="$(rb_ts 90)" && printf 'b\n' > f.txt )
+
+# ── round breaker: --rounds / --ledger / exit 9 (v2.99.0, per reviewer v2.154.0) ─
+if section "cross-family: round breaker"; then
 # v2.154.0 — the runner's own breaker asks `--role external` (spec R2):
 # internal reviewer dispatches (security-engineer, qa-tester, …) sit in their
 # OWN key and never advance the external reviewer's round any more, so this
@@ -554,7 +614,8 @@ out=$(cd "$RB" && bash "$RUNNER" --rounds)
 check "--rounds: only the pass's job, 3 min ago → rounds=0 current=1 (never round 0)" "printf '%s' \"\$out\" | grep -q 'rounds=0 current=1 .*gatepass=0'"
 
 # ── v2.154.0 — rounds per reviewer (spec breaker-counts-churn-2026-09-21) ──
-echo "── cross-family: rounds per reviewer ──"
+fi
+if section "cross-family: rounds per reviewer"; then
 : > "$RB/.rolepod/evidence/phase-log.jsonl"; rm -rf "$RB/.rolepod/evidence/external/jobs"
 rb_log 40 rolepod:universal-reviewer; rb_log 33 rolepod:security-engineer; rb_log 20 rolepod:security-engineer; rb_log 9 rolepod:universal-reviewer
 out=$(cd "$RB" && bash "$RUNNER" --rounds)
@@ -651,7 +712,8 @@ rm -rf "$RB/.rolepod/evidence/external/jobs"
 cd "$REPO"
 
 # ── provenance labels + oversized-diff notice (v2.100.0) ──────────────────
-echo "── cross-family: provenance / oversized diff ──"
+fi
+if section "cross-family: provenance / oversized diff"; then
 check "review preamble asks for INTRODUCED / EXPOSED / ADJACENT provenance and keeps ADJACENT out of the verdict" "grep -q 'INTRODUCED (this diff caused it), EXPOSED' '$RUNNER' && grep -q 'never drive the verdict' '$RUNNER'"
 check "review-report template + review-code §4/§6 + receiving-findings carry the provenance rule" "grep -q 'ADJACENT findings never make a REJECTED' '$REPO_DIR/core/skills/review-code/templates/review-report.md' && grep -q 'IMPLEMENT by provenance' '$REPO_DIR/core/skills/review-code/SKILL.md' && grep -q 'Provenance first, then class' '$REPO_DIR/core/skills/review-code/references/receiving-findings.md'"
 SZ="$FIX/size"; mkdir -p "$SZ/.rolepod"; printf 'codex\n' > "$SZ/.rolepod/cross-family"; printf 'brief\n' > "$SZ/brief.md"
@@ -665,8 +727,12 @@ check "small attachment → no capacity notice" "[ $rc -eq 0 ] && ! printf '%s' 
 cd "$REPO"
 
 # ── review quality gates: PARTIAL / no VERDICT are not a pass ───────────
-echo "── cross-family: PARTIAL / VERDICT ──"
+fi
+# Unconditional: "ran-model detection" below reuses this default 5-CLI pool
+# too — it used to come only from this section running first, so filtering
+# ROLEPOD_CASE to "ran-model detection" alone left the pool OFF (exit 5).
 printf 'codex\nclaude\nagy\ncursor\nopencode\n' > "$HOME/.rolepod/cross-family"
+if section "cross-family: PARTIAL / VERDICT"; then
 : > "$LOG"; : > .rolepod/evidence/phase-log.jsonl
 rc=0; out=$(STUB_codex=partial bash "$RUNNER" --kind review --brief brief.md --lead claude 2>/dev/null) || rc=$?
 check "PARTIAL review → external-fail (kept as *.partial.txt), chain moves to agy, no review line for codex" \
@@ -679,7 +745,8 @@ rc=0; out=$(STUB_codex=partial bash "$RUNNER" --kind consult --brief brief.md --
 check "…but a PARTIAL consult still counts (only the review pass is strict)" "[ $rc -eq 0 ] && grep -q '\"phase\":\"consult\".*\"cli\":\"codex\".*\"partial\":true' .rolepod/evidence/phase-log.jsonl"
 
 # ── v2.83.3: the model that ACTUALLY ran, read from the CLI's own output ──
-echo "── cross-family: ran-model detection ──"
+fi
+if section "cross-family: ran-model detection"; then
 : > "$LOG"; : > .rolepod/evidence/phase-log.jsonl
 rc=0; out=$(bash "$RUNNER" --kind review --brief brief.md --lead claude 2>/dev/null) || rc=$?
 check "codex banner 'model: …' → phase-log + receipt carry ran=gpt-5.6-luna (family stays openai)" \
@@ -701,7 +768,8 @@ printf 'codex\nclaude\nagy\ncursor\nopencode\n' > "$HOME/.rolepod/cross-family"
 printf '{ "model": "openai/gpt-5.6" }\n' > "$HOME/.config/opencode/opencode.json"
 
 # ── hardening from the live codex review ─────────────────────────────────
-echo "── cross-family: hardening ──"
+fi
+if section "cross-family: hardening"; then
 rc=0; bash "$RUNNER" --kind review --brief brief.md --lead claude --timeout nope >/dev/null 2>&1 || rc=$?
 check "--timeout nope → exit 2 (never a watchdog that compares against a word)" "[ $rc -eq 2 ]"
 printf 'codex timeout=abc\nagy\n' > "$REPO/.rolepod/cross-family"
@@ -728,7 +796,8 @@ check "a job whose pid is alive but is NOT this runner (pid reuse) is reported d
 kill "$RP" 2>/dev/null; wait "$RP" 2>/dev/null || true; rm -rf .rolepod/evidence/external/jobs/t-reused
 
 # ── usage errors ────────────────────────────────────────────────────────
-echo "── cross-family: usage ──"
+fi
+if section "cross-family: usage"; then
 rc=0; bash "$RUNNER" --kind review --brief brief.md >/dev/null 2>&1 || rc=$?
 check "no --lead and no env marker → exit 2 (family exclusion needs the Lead)" "[ $rc -eq 2 ]"
 rc=0; CLAUDECODE=1 bash "$RUNNER" --pool-names >/dev/null 2>&1 || rc=$?
@@ -737,6 +806,14 @@ rc=0; bash "$RUNNER" --brief brief.md --lead claude >/dev/null 2>&1 || rc=$?
 check "missing --kind → exit 2" "[ $rc -eq 2 ]"
 rc=0; bash "$RUNNER" --kind review --brief nope.md --lead claude >/dev/null 2>&1 || rc=$?
 check "missing brief file → exit 2" "[ $rc -eq 2 ]"
+fi
 
+echo "  · $RAN_SECTIONS of $TOTAL_SECTIONS sections ran"
+if [ -n "${ROLEPOD_CASE:-}" ] && [ "$RAN_SECTIONS" -eq 0 ]; then
+  echo "cross-family-runner: ROLEPOD_CASE='$ROLEPOD_CASE' matched no section banner"
+fi
+# A 0-match filter has fail=0 (nothing ran to fail) and exits 0 like a normal
+# pass, same as hook-behavior.sh — the tally line above is what makes a
+# mistyped regex visible, not a distinct exit code (brief: exit 0 either way).
 if [ $fail -eq 0 ]; then echo "cross-family-runner: pass"; exit 0; fi
 echo "cross-family-runner: $fail failure(s)"; exit 1

@@ -48,12 +48,27 @@ check() { # $1 desc, $2 expected (deny|allow), $3 output
   fi
 }
 
+TOTAL_SECTIONS=0
+RAN_SECTIONS=0
+section() { # $1 = banner title; prints the banner itself (one copy of the
+  # title, never a separate `echo` call site the arg can drift from) and
+  # gates the block on ROLEPOD_CASE (regex substring match against the title)
+  echo "── $1 ──"
+  TOTAL_SECTIONS=$((TOTAL_SECTIONS+1))
+  if [ -n "${ROLEPOD_CASE:-}" ] && ! [[ "$1" =~ $ROLEPOD_CASE ]]; then
+    return 1
+  fi
+  RAN_SECTIONS=$((RAN_SECTIONS+1))
+  return 0
+}
+
 payload_subagent() { # $1 = command
   printf '{"agent_id":"a1","agent_type":"backend-developer","tool_name":"Bash","tool_input":{"command":%s}}' \
     "$(printf '%s' "$1" | python3 -c 'import json,sys; print(json.dumps(sys.stdin.read()))')"
 }
 
 # ── block-subagent-commit: deny destructive git, allow the rest ────────
+if section "block-subagent-commit: deny destructive git, allow the rest"; then
 out=$(payload_subagent 'git commit -m "x"' | bash "$HOOKS/block-subagent-commit.sh")
 check "subagent git commit → deny" deny "$out"
 
@@ -129,7 +144,9 @@ rm -rf "$SL_TMP"
 out=$(printf '{"tool_name":"Bash","tool_input":{"command":"git commit -m x"}}' | bash "$HOOKS/block-subagent-commit.sh")
 check "Lead git commit → allow (hook targets subagents only)" allow "$out"
 
+fi
 # ── block-subagent-commit: a sub-agent cannot wait on a backgrounded call ──
+if section "block-subagent-commit: a sub-agent cannot wait on a backgrounded call"; then
 bsc_ti() { printf '{"agent_id":"a1","agent_type":"devops-sre","tool_name":"%s","tool_input":%s}' "$1" "$2" | bash "$HOOKS/block-subagent-commit.sh"; }
 out=$(bsc_ti Bash '{"command":"make test-static","run_in_background":true}')
 check "subagent Bash run_in_background → deny (no completion notice reaches a sub-agent)" deny "$out"
@@ -200,7 +217,9 @@ grep -q 'timeout: 600000' <<<"$(bsc_ti Bash '{"command":"make test-static"}')" \
   && echo "  ✓ deny reason names the fix (timeout: 600000)" \
   || { echo "  ✗ deny reason lacks the timeout fix"; fail=$((fail+1)); }
 
+fi
 # ── block-subagent-commit: write rule — a Bash write is an edit (bash-writes-are-edits Task 2) ──
+if section "block-subagent-commit: write rule — a Bash write is an edit (bash-writes-are-edits Task 2)"; then
 # NOT mktemp -d: subagent-write-scope.sh treats /tmp, /private/tmp and (on
 # macOS) /var/folders/... as OS scratch and always allows a write there — a
 # fixture repo living under the system temp root would silently pass every
@@ -322,7 +341,9 @@ echo "  · sub-agent Bash allow path: ${SUB_MS} ms (task budget ≤ 60 ms, infor
 
 rm -rf "$BW_TMP"
 
+fi
 # ── gate-reminder: Claude AND Codex tool names must both fire ──────────
+if section "gate-reminder: Claude AND Codex tool names must both fire"; then
 gr() { printf '%s' "$1" | bash "$HOOKS/gate-reminder.sh"; }
 
 out=$(gr '{"tool_name":"Edit","tool_input":{"file_path":"src/auth/login.py"}}')
@@ -368,9 +389,15 @@ echo "$out" | grep -q 'COMMIT WILL BLOCK' \
   && { echo "  ✗ gate-reminder SOFT should silence the would-block wording"; fail=$((fail+1)); } \
   || echo "  ✓ gate-reminder SOFT silences the would-block wording (banner stays)"
 
+fi
 # ── precommit-gate: high-risk staged diff blocks; claim-bypass ignored ──
 TMP=$(mktemp -d)
-TMPT=""
+# Unconditional: pct() ("a test-ONLY diff...") and pcd() ("the pool reviews
+# CODE only") both reuse this same scratch dir path and manage its contents
+# themselves (rm -rf + mkdir -p per call) — filtering ROLEPOD_CASE to pcd()'s
+# section alone used to leave $TMPT empty, turning "$TMPT/.rolepod" into the
+# absolute path "/.rolepod" (read-only fs, hard mkdir failure).
+TMPT=$(mktemp -d)
 trap 'rm -rf "$TMP" "$SANDBOX_CWD" ${TMPT:+"$TMPT"}' EXIT
 (
   cd "$TMP"
@@ -385,6 +412,7 @@ pc() { # $1 = command json-escaped inline
     "$(printf '%s' "$1" | python3 -c 'import json,sys; print(json.dumps(sys.stdin.read()))')" \
     | (cd "$TMP" && bash "$HOOKS/precommit-gate.sh") || true
 }
+if section "precommit-gate: high-risk staged diff blocks; claim-bypass ignored"; then
 
 out=$(pc 'git commit -m "add billing"')
 check "precommit high-risk staged diff → deny" deny "$out"
@@ -397,8 +425,10 @@ check "precommit [gates: pass] with ZERO session evidence → still deny" deny "
 echo "$out" | grep -q 'IGNORED' \
   && echo "  ✓ precommit deny reason states the marker was ignored" \
   || { echo "  ✗ precommit deny reason missing marker-ignored note"; fail=$((fail+1)); }
+fi
 
 # ── precommit-gate: add+commit / commit -a one-liners are gated on the working tree (v2.134.1) ──
+if section "precommit-gate: add+commit / commit -a one-liners are gated on the working tree (v2.134.1)"; then
 # At hook time nothing is staged yet; the old index-only read let every CLI's Lead
 # ship `git add -A && git commit` past the gate (measured live 2026-09-16).
 TMP2=$(mktemp -d)   # own repo: the shared $TMP fixture must keep its staged diff for the cases below
@@ -417,10 +447,12 @@ out=$(pc2 'git commit -m "fix: add thing"')
 check "precommit plain commit with nothing staged (message says add) → silent" allow "$out"
 rm -rf "$TMP2"
 
+fi
 # ── precommit-gate: a test-ONLY diff on a risk-named path is not R4 code (v2.85.2) ──
+if section "precommit-gate: a test-ONLY diff on a risk-named path is not R4 code (v2.85.2)"; then
 # Filename convention only — bare directory segments would downgrade
 # api/specs/auth.yaml and tests/fixtures/seed_auth_users.py (cases c, d).
-TMPT=$(mktemp -d)
+# ($TMPT itself is the unconditional fixture above; pct() only manages its contents.)
 pct() { # $1 = space-separated files to stage (15 logic lines each), fresh repo per call
   rm -rf "$TMPT"; mkdir -p "$TMPT"
   ( cd "$TMPT" && git init -q . && git config user.email t@t && git config user.name t
@@ -443,7 +475,9 @@ out=$(printf '{"tool_name":"Bash","tool_input":{"command":"git commit -m x"}}' |
 check "precommit 'src/my app/auth/login.ts' (space in path, auth segment) → deny" deny "$out"
 check "precommit mixed test + src/auth/login.ts → deny" deny "$(pct 'tests/auth/login.spec.ts src/auth/login.ts')"
 
+fi
 # ── precommit-gate: emoji in product code → advisory line, never a deny; docs / comments / text marks silent (v2.110.0) ──
+if section "precommit-gate: emoji in product code → advisory line, never a deny; docs / comments / text marks silent (v2.110.0)"; then
 # Fresh repo per call: 14 logic lines + ONE payload line at $1; $3 = shell run
 # inside the repo before staging (e.g. the allow-emoji marker).
 pcm() { # $1 = path, $2 = payload line, $3 = pre-stage shell (optional)
@@ -483,7 +517,9 @@ checkwarn "precommit R1-shaped 3-line src/hero.html with 🚀" yes "$out"
 out=$(pc 'git status')
 check "precommit non-commit command → allow" allow "$out"
 
+fi
 # ── v2.39.0 single-parse regression guards ──────────────────────────────
+if section "v2.39.0 single-parse regression guards"; then
 # (a) Multi-line heredoc commit message: the command must survive the
 #     $(cat) slurp INTACT — deny still fires and a bypass marker on a
 #     LATER line is still detected (a read -r would truncate at line 1).
@@ -507,7 +543,9 @@ out=$(printf '{"tool_name":"Write","tool_input":{}}' | bash "$HOOKS/worktree-gua
   && echo "  ✓ worktree-guard pathless payload → exit 0 (was rc=1)" \
   || { echo "  ✗ worktree-guard pathless payload: rc=$rc"; fail=$((fail+1)); }
 
+fi
 # ── reuse-ladder nudge at first touch / new file / manifest (v2.109.0) ──
+if section "reuse-ladder nudge at first touch / new file / manifest (v2.109.0)"; then
 WG_TMP=$(mktemp -d); ( cd "$WG_TMP" && git init -q . && mkdir -p src docs && printf 'x\n' > src/a.ts && printf '{}\n' > package.json && printf '# r\n' > docs/r.md )
 wg() { printf '{"session_id":"wg1","cwd":"%s","tool_name":"%s","tool_input":{"file_path":"%s"}}' "$WG_TMP" "$1" "$WG_TMP/$2" | (cd "$WG_TMP" && HOME="$WG_TMP" bash "$HOOKS/worktree-guard.sh") || true; }
 out=$(wg Edit src/a.ts)
@@ -530,28 +568,46 @@ printf '{}\n' > "$WG_TMP/package-lock.json"; out=$(wg Edit package-lock.json)
 [ -z "$out" ] && echo "  ✓ reuse nudge: package-lock.json is a lockfile, not a manifest → silent" || { echo "  ✗ reuse nudge lockfile: ${out:0:80}"; fail=$((fail+1)); }
 rm -rf "$WG_TMP"
 
+fi
 # ── precommit: evidence auto-pass — split by risk (v2.46.0) ─────────────
 # A HIGH-RISK diff clears ONLY on a strong-class adversarial reviewer
 # dispatch (security-engineer / universal-reviewer). Test edits and qa-tester
 # are the balanced test floor, not the review — the CourtBook evidence:
 # 672 green tests + strong impl still shipped 4 money bugs that only the
 # adversarial pass caught. HOME points at $TMP so the log lands in sandbox.
+# $TMP/.rolepod itself is unconditional too: "running detached job named in
+# the hold" and "money / auth vs other high-risk" both write straight into
+# it (printf > "$TMP/.rolepod/cross-family", no mkdir of their own) — a
+# ROLEPOD_CASE filter to either alone used to hit "No such file or
+# directory" and abort the run under set -e before "satellite-first
+# ENFORCED" (the section that used to create this dir) ever ran. Same for
+# the "evidence" subdir: both sections' first statement also redirects
+# straight into "$TMP/.rolepod/evidence/phase-log.jsonl".
+mkdir -p "$TMP/.rolepod/evidence"
 TRANSCRIPT="$TMP/transcript.jsonl"
+# Unconditional: "satellite-first ENFORCED", "running detached job named in
+# the hold" and "the pool reviews CODE only" all reuse this default
+# security-engineer dispatch content without writing it themselves — a
+# ROLEPOD_CASE filter to one of those alone used to leave $TRANSCRIPT
+# missing, which flips an expected allow into a satellite-first deny (no
+# reviewer recognized) instead of failing the check for the right reason.
+printf '%s\n' \
+  '{"type":"tool_use","name":"Task","input":{"subagent_type":"rolepod:security-engineer","prompt":"review"}}' \
+  > "$TRANSCRIPT"
 pce() { # $1 = command; hook input carries transcript_path
   printf '{"tool_name":"Bash","transcript_path":%s,"tool_input":{"command":%s}}' \
     "$(printf '%s' "$TRANSCRIPT" | python3 -c 'import json,sys; print(json.dumps(sys.stdin.read()))')" \
     "$(printf '%s' "$1" | python3 -c 'import json,sys; print(json.dumps(sys.stdin.read()))')" \
     | (cd "$TMP" && HOME="$TMP" bash "$HOOKS/precommit-gate.sh") || true
 }
+if section "precommit: evidence auto-pass — split by risk (v2.46.0)"; then
 
-printf '%s\n' \
-  '{"type":"tool_use","name":"Task","input":{"subagent_type":"rolepod:security-engineer","prompt":"review"}}' \
-  > "$TRANSCRIPT"
 out=$(pce 'git commit -m "add billing"')
 check "precommit high-risk + security-engineer dispatch → auto-pass" allow "$out"
 echo "$out" | grep -q 'auto-passed' \
   && echo "  ✓ auto-pass surfaces an additionalContext note" \
   || { echo "  ✗ auto-pass note missing from hook output"; fail=$((fail+1)); }
+fi
 
 # ── precommit: satellite-first ENFORCED (v2.76.0) ───────────────────────
 # With a usable cross-family pool, an internal strong reviewer clears a
@@ -565,6 +621,7 @@ pcx() { # $1 = command, $2 = extra env assignments (string) — Lead = claude, s
     "$(printf '%s' "$1" | python3 -c 'import json,sys; print(json.dumps(sys.stdin.read()))')" \
     | (cd "$TMP" && env HOME="$TMP" PATH="$XF_BIN:/usr/bin:/bin" CLAUDE_PLUGIN_ROOT="$TMP" ${2:-} bash "$HOOKS/precommit-gate.sh") || true
 }
+if section "precommit: satellite-first ENFORCED (v2.76.0)"; then
 printf '%s\n' \
   '{"type":"tool_use","name":"Task","input":{"subagent_type":"rolepod:security-engineer","prompt":"review"}}' \
   > "$TRANSCRIPT"
@@ -616,8 +673,10 @@ out=$(printf '{"tool_name":"Bash","transcript_path":%s,"tool_input":{"command":"
     "$(printf '%s' "$TRANSCRIPT" | python3 -c 'import json,sys; print(json.dumps(sys.stdin.read()))')" \
     | (cd "$TMP" && env -u CLAUDE_PLUGIN_ROOT -u ROLEPOD_LEAD_CLI HOME="$TMP" PATH="$XF_BIN:/usr/bin:/bin" bash "$HOOKS/precommit-gate.sh") || true)
 check "Lead CLI unknown (no ROLEPOD_LEAD_CLI / CLAUDE_PLUGIN_ROOT) → cannot exclude a family → old behavior, allow" allow "$out"
+fi
 
 # ── running detached job named in the hold (v2.79.0) ────────────────────
+if section "running detached job named in the hold (v2.79.0)"; then
 printf 'codex\n' > "$TMP/.rolepod/cross-family"
 : > "$TMP/.rolepod/evidence/phase-log.jsonl"
 printf '%s\n' \
@@ -633,6 +692,7 @@ echo "$out" | grep -q 'ALREADY RUNNING: t-review-1' && ! echo "$out" | grep -q -
 kill "$JPID" 2>/dev/null; wait "$JPID" 2>/dev/null || true; rm -rf "$JOBD"
 rm -f "$TMP/.rolepod/cross-family"
 
+fi
 # ── the pool reviews CODE only; docs are written, not reviewed (v2.143.0) ──
 # Fresh repo per call, enabled pool (stub codex), Lead = claude. $1 = "path=kind …"
 # (kind: logic | comment | prose, 15 lines each); $2 = transcript path.
@@ -649,6 +709,7 @@ pcd() {
     "$(printf '%s' "$2" | python3 -c 'import json,sys; print(json.dumps(sys.stdin.read()))')" \
     | (cd "$TMPT" && env HOME="$TMPT" PATH="$XF_BIN:/usr/bin:/bin" CLAUDE_PLUGIN_ROOT="$TMPT" bash "$HOOKS/precommit-gate.sh") || true
 }
+if section "the pool reviews CODE only; docs are written, not reviewed (v2.143.0)"; then
 out=$(pcd docs/auth.md=prose "$EMPTY_T")
 check "docs-only diff on a risk-named prose path, NO reviewer, pool enabled → allow (docs are written, not reviewed)" allow "$out"
 [ -z "$out" ] && echo "  ✓ docs-only diff passes silently (no nudge)" || { echo "  ✗ docs-only diff produced hook output: ${out:0:120}"; fail=$((fail+1)); }
@@ -662,8 +723,10 @@ out=$(PCD_GENATTR='billing/**' pcd billing/gen.py=logic "$TRANSCRIPT")
 check "linguist-generated logic on a risky path + internal strong reviewer + pool usable → deny (generated files leave the SOFT ask only)" deny "$out"
 out=$(pcd 'README=prose docs/guide.md=prose' "$EMPTY_T")
 check "extension-less README + docs → allow silently (prose)" allow "$out"
+fi
 
 # ── qa-tester is never the per-diff review floor (v2.148.4) ──
+if section "qa-tester is never the per-diff review floor (v2.148.4)"; then
 T_QA="$TMP/t_qa.jsonl"; printf '%s\n' '{"type":"tool_use","name":"Agent","input":{"subagent_type":"rolepod:qa-tester","prompt":"run the E2E flow"}}' > "$T_QA"
 T_UR="$TMP/t_ur.jsonl"; printf '%s\n' '{"type":"tool_use","name":"Agent","input":{"subagent_type":"rolepod:universal-reviewer","prompt":"review the diff"}}' > "$T_UR"
 export ROLEPOD_GATES_HARD=1
@@ -687,7 +750,9 @@ echo "$out" | grep -q 'HIGH-RISK path' \
   || echo "  ✓ prose file in a mixed diff is not a risk path"
 rm -rf "$TMPT"
 
+fi
 # ── money / auth vs other high-risk (v2.78.0) ──────────────────────────
+if section "money / auth vs other high-risk (v2.78.0)"; then
 printf 'codex\n' > "$TMP/.rolepod/cross-family"
 printf '{"ts":"%s","phase":"external-fail","kind":"review","cli":"codex","family":"openai","lead":"claude","reason":"exit 1"}\n' \
   "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > "$TMP/.rolepod/evidence/phase-log.jsonl"
@@ -710,7 +775,9 @@ check "migration path (other high-risk) + external anchor ONLY → allow (extern
 rm -rf "$TMPM"
 rm -f "$TMP/.rolepod/evidence/phase-log.jsonl" "$TMP/.rolepod/cross-family"
 
+fi
 # ── hook message state: R4 floor wording, C1 (lean-workflow-dedupe 2026-09-19) ──
+if section "hook message state: R4 floor wording, C1 (lean-workflow-dedupe 2026-09-19)"; then
 # A Lead must never read "mandatory universal-reviewer + security-engineer" in
 # one sentence and "clears on ONE of" in the next — the deny states the R4
 # floor once, then the gate's actual (unchanged) mechanical bar.
@@ -745,7 +812,9 @@ echo "$out" | grep -q 'alone clears' \
   || echo "  ✓ AUTO-CAREFUL reminder drops the 'alone clears' money/auth sentence"
 rm -f "$TMP/.rolepod/cross-family"
 
+fi
 # ── private working docs never commit (v2.80.0) ─────────────────────────
+if section "private working docs never commit (v2.80.0)"; then
 TMPD=$(mktemp -d); ( cd "$TMPD" && git init -q . && git config user.email t@t && git config user.name t \
   && mkdir -p docs/rolepod/specs src && printf 'secret spec\n' > docs/rolepod/specs/x.md && printf 'x=1\n' > src/a.py && git add -A )
 pcd() { printf '{"tool_name":"Bash","tool_input":{"command":"git commit -m x"}}' | (cd "$TMPD" && HOME="$TMP" bash "$HOOKS/precommit-gate.sh") || true; }
@@ -761,7 +830,9 @@ echo "$out" | grep -q 'private working docs' \
   || echo "  ✓ .rolepod/docs-tracked lets a repo track its working docs"
 rm -rf "$TMPD"
 
+fi
 # ── precommit-gate follows the commit's directory: cd / -C (2026-09-21 delta) ──
+if section "precommit-gate follows the commit's directory: cd / -C (2026-09-21 delta)"; then
 # `cd <dir> && git commit` or `git -C <dir> commit` used to be judged against
 # the SESSION checkout (hook cwd) — a clean session checkout meant an empty
 # diff and a silent exit 0, so the worktree commit was never gated. Every
@@ -887,7 +958,9 @@ check "worktree path with an unquoted '#' + high-risk diff → deny (not silentl
 
 rm -rf "$GD_MAIN" "$GD_MAIN"-wt-* "$GD_MAIN"-t5.jsonl "$GD_MAIN6" "$GD_NONREPO" "$GD_WTHASH"
 
+fi
 # ── project-context-loader: cross-family is never asked unprompted (v2.142.0) ──
+if section "project-context-loader: cross-family is never asked unprompted (v2.142.0)"; then
 XF_HOME="$TMP/xfhome"; rm -rf "$XF_HOME"; mkdir -p "$XF_HOME"
 XF_REPO="$TMP/xfrepo"; mkdir -p "$XF_REPO"; git -C "$XF_REPO" init -q; git -C "$XF_REPO" -c user.email=t@t -c user.name=t commit -q --allow-empty -m init  # loader needs ≥1 commit
 pcl() { printf '{"cwd":%s}' "$(printf '%s' "$XF_REPO" | python3 -c 'import json,sys; print(json.dumps(sys.stdin.read()))')" \
@@ -938,7 +1011,9 @@ out=$(printf '{"tool_name":"Bash","transcript_path":%s,"tool_input":{"command":"
 check "precommit env-forced block on normal diff + test edit → auto-pass (OR preserved)" allow "$out"
 rm -rf "$TMP2"
 
+fi
 # ── precommit: content-based high-risk (v2.46.0) ────────────────────────
+if section "precommit: content-based high-risk (v2.46.0)"; then
 # Money-movement term in an added line of a generically named file must
 # classify HIGH-RISK even though no path segment matches the risk regex.
 TMP3=$(mktemp -d)
@@ -991,7 +1066,9 @@ out=$(printf '{"tool_name":"Bash","transcript_path":%s,"tool_input":{"command":"
 check "precommit same term inside a test file → allow (test paths excluded)" allow "$out"
 rm -rf "$TMP3"
 
+fi
 # ── precommit: evidence window = since the last commit (v2.47.0) ────────
+if section "precommit: evidence window = since the last commit (v2.47.0)"; then
 # A 12-day session must not clear today's high-risk commit with a reviewer
 # dispatched ten days ago. git's commit clock is the floor; events without a
 # timestamp stay counted (fail-open); subagent transcripts of the session
@@ -1044,7 +1121,9 @@ out=$(pcw "$T4" "ROLEPOD_GATES_HARD=1")
 check "precommit: test written by a Workflow subagent counts as evidence → auto-pass" allow "$out"
 rm -rf "$TMP4"
 
+fi
 # ─── fix-loop-breaker: count fails mechanically, reset on pass ────────
+if section "fix-loop-breaker: count fails mechanically, reset on pass"; then
 # The counter must fire at the 3rd consecutive identical-command failure and
 # stay silent after a passing run resets it — the whole point is that the
 # model does NOT do the counting.
@@ -1086,7 +1165,9 @@ check_ctx "loop-breaker: 'Exit code N' text form counts → nudge at 3rd" nudge 
 check_ctx "loop-breaker: different session id isolated → silent" silent "$(lb s3 1)"
 rm -rf "$LB_TMP"
 
+fi
 # ─── post-commit worktree reminder (v2.149.0): leftovers under .worktrees/ ──
+if section "post-commit worktree reminder (v2.149.0): leftovers under .worktrees/"; then
 # After a git commit the shared core lists the worktrees left under the
 # repo's .worktrees/, tagged merged / unmerged (+N) / in use, and says the
 # cleanup order — as additionalContext AND systemMessage. Never lists the
@@ -1160,7 +1241,9 @@ out=$(wtc 'git commit -m x')
 [ -z "$out" ] && echo "  ✓ no leftover worktree → silent" || { echo "  ✗ reminder with no leftovers: ${out:0:160}"; fail=$((fail+1)); }
 rm -rf "$WT_TMP"
 
+fi
 # ─── sweep-nudge: raw reads past 120 KB in one turn, no scout, no edit → ONE nudge ──
+if section "sweep-nudge: raw reads past 120 KB in one turn, no scout, no edit → ONE nudge"; then
 # The scout rule at the point of action. The hook must stay silent below the
 # line, on a build turn (edit seen), after a dispatch, and after it fired once.
 SW_TMP=$(mktemp -d)
@@ -1216,7 +1299,9 @@ out=$(printf '{"hook_event_name":"PostToolUse","tool_name":"Read","tool_input":{
 check_sw "sweep: no session_id → silent (fail-open)" silent "$out"
 rm -rf "$SW_TMP"
 
+fi
 # ── review in flight (v2.93.0): a live detached cross-family job freezes the diff ──
+if section "review in flight (v2.93.0): a live detached cross-family job freezes the diff"; then
 # gate-reminder warns (never denies) on an edit to a file the job's attached
 # diff touches; precommit-gate warns on a tree rewrite (stash / reset --hard /
 # checkout); both stay silent for other files, read-only git, or a finished job.
@@ -1283,7 +1368,9 @@ if { echo "$out"; echo "$out2"; } | grep -q 'REVIEW IN FLIGHT'; then echo "  ✗
 else echo "  ✓ job finished (status written) → both hooks silent"; fi
 kill "$RF_PID" 2>/dev/null; wait "$RF_PID" 2>/dev/null || true; rm -rf "$RF_TMP"
 
+fi
 # ── precommit SOFT line names the reviewer count (v2.95.0) ────────────────
+if section "precommit SOFT line names the reviewer count (v2.95.0)"; then
 SF_TMP=$(mktemp -d)
 sf() { # $1 file, $2 content-generator command
   rm -rf "$SF_TMP"; mkdir -p "$SF_TMP/$(dirname "$1")"
@@ -1374,9 +1461,17 @@ if echo "$out" | grep -q '3 files / 33 lines / 0 logic'; then
 else echo "  ✗ precommit SOFT quoted / deleted prose: ${out:0:200}"; fail=$((fail+1)); fi
 rm -rf "$SF_TMP"
 
-# ── route nudge (v2.98.0): commission + no fresh tier → one line ──────────
-RN_TMP=$(mktemp -d); ( cd "$RN_TMP" && git init -q . && git config user.email t@t && git config user.name t && git commit -q --allow-empty -m init )
+fi
+# Unconditional: "route record" below reuses $RN_TMP, rn() and the
+# .rolepod/evidence dir without building any of them itself — filtering
+# ROLEPOD_CASE to that section alone used to leave $RN_TMP unbound (set -u
+# abort, masked to exit 0 by the EXIT trap on bash 3.2 — the run silently
+# stopped mid-file) and, once that was fixed, "$RN_TMP/.rolepod/evidence"
+# missing (redirect into a non-existent dir, abort under set -e).
+RN_TMP=$(mktemp -d); mkdir -p "$RN_TMP/.rolepod/evidence"; ( cd "$RN_TMP" && git init -q . && git config user.email t@t && git config user.name t && git commit -q --allow-empty -m init )
 rn() { printf '{"session_id":"rn1","prompt":%s%s}' "$(printf '%s' "$1" | python3 -c 'import json,sys; print(json.dumps(sys.stdin.read()))')" "${2:+,\"transcript_path\":\"$2\"}" | (cd "$RN_TMP" && HOME="$RN_TMP" bash "$HOOKS/claim-verify-nudge.sh") || true; }
+# ── route nudge (v2.98.0): commission + no fresh tier → one line ──────────
+if section "route nudge (v2.98.0): commission + no fresh tier → one line"; then
 out=$(rn 'fix the login button')
 echo "$out" | grep -q 'commission with no tier' && echo "  ✓ route nudge: commission + no route line ever → nudge" || { echo "  ✗ route nudge missing: ${out:0:120}"; fail=$((fail+1)); }
 out=$(rn 'why does login fail')
@@ -1402,7 +1497,9 @@ out=$(rn 'continue with the plan' "$RN_TMP/t.jsonl")
 echo "$out" | grep -q 'commission with no tier' && echo "  ✓ route nudge: route older than the previous prompt → nudge" || { echo "  ✗ route nudge missing when the route predates the last prompt"; fail=$((fail+1)); }
 out=$( (export ROLEPOD_NUDGE_OFF=1; rn 'fix the login button') )
 [ -z "$out" ] && echo "  ✓ route nudge: ROLEPOD_NUDGE_OFF=1 → silent" || { echo "  ✗ route nudge ignores ROLEPOD_NUDGE_OFF"; fail=$((fail+1)); }
+fi
 # ── route record (v2.105.0): the hook writes the route line from the routing text ──
+if section "route record (v2.105.0): the hook writes the route line from the routing text"; then
 RLOG="$RN_TMP/.rolepod/evidence/phase-log.jsonl"; : > "$RLOG"
 TU=$(python3 -c 'import datetime;print((datetime.datetime.now(datetime.timezone.utc)-datetime.timedelta(minutes=10)).strftime("%Y-%m-%dT%H:%M:%S.000Z"))')
 TA=$(python3 -c 'import datetime;print((datetime.datetime.now(datetime.timezone.utc)-datetime.timedelta(minutes=9)).strftime("%Y-%m-%dT%H:%M:%S.000Z"))')
@@ -1472,13 +1569,25 @@ printf '{"session_id":"rn1","transcript_path":"%s","cwd":"%s"}' "$RN_TMP/t2.json
 grep -q '"tier":"R2"' "$RLOG" && echo "  ✓ route record: Stop hook (session-lifecycle --unlock) records the finished turn" || { echo "  ✗ route record at Stop: $(cat "$RLOG" 2>/dev/null)"; fail=$((fail+1)); }
 rm -rf "$RN_TMP"
 
-# ── review-rounds policy on internal reviewer dispatch + breaker reminder (v2.99.0) ──
+fi
+# RH + its helpers are an unconditional fixture (not gated behind this
+# section): "acceptance 2" further below reuses $RH/rh_agent/rh_log, and
+# "producer→reader→gate chain" reuses rh_ts — with set -euo a gated
+# definition left them unbound/undefined when only one of those later
+# sections was selected, aborting the run instead of failing a check.
 RH=$(mktemp -d); mkdir -p "$RH/.rolepod/evidence"
 rh_ts() { python3 -c "import datetime,sys;print((datetime.datetime.now(datetime.timezone.utc)-datetime.timedelta(minutes=int(sys.argv[1]))).strftime('%Y-%m-%dT%H:%M:%SZ'))" "$1"; }
 rh_log() { printf '{"ts": "%s", "phase": "dispatch", "cli": "claude", "tool": "Agent", "agent_type": "%s"}\n' "$(rh_ts "$1")" "$2" >> "$RH/.rolepod/evidence/phase-log.jsonl"; }
-( cd "$RH" && git init -q . && git config user.email t@t && git config user.name t && printf 'a\n' > f.txt && git add f.txt && GIT_COMMITTER_DATE="$(rh_ts 90)" git commit -q -m init --date="$(rh_ts 90)" && printf 'b\n' > f.txt )
 rh_agent() { printf '{"tool_name":"Agent","tool_input":{"subagent_type":"%s","prompt":"review the diff"},"session_id":"rh1","transcript_path":"/nonexistent"}' "$1" | (cd "$RH" && HOME="$RH" bash "$HOOKS/workflow-tier-nudge.sh") || true; }
 rh_prompt() { printf '{"session_id":"rh1","prompt":%s}' "$(printf '%s' "$1" | python3 -c 'import json,sys; print(json.dumps(sys.stdin.read()))')" | (cd "$RH" && HOME="$RH" bash "$HOOKS/claim-verify-nudge.sh") || true; }
+# $RH must be a git repo unconditionally too: cross-family.sh's `git status
+# --porcelain` on a non-repo exits non-zero with EMPTY stdout (no exception),
+# which review_rounds() reads as `clean` and zeroes every round — "acceptance
+# 2" below would silently pass a clean-tree short-circuit instead of
+# actually counting, whether or not this section ran first.
+( cd "$RH" && git init -q . && git config user.email t@t && git config user.name t && printf 'a\n' > f.txt && git add f.txt && GIT_COMMITTER_DATE="$(rh_ts 90)" git commit -q -m init --date="$(rh_ts 90)" && printf 'b\n' > f.txt )
+# ── review-rounds policy on internal reviewer dispatch + breaker reminder (v2.99.0) ──
+if section "review-rounds policy on internal reviewer dispatch + breaker reminder (v2.99.0)"; then
 : > "$RH/.rolepod/evidence/phase-log.jsonl"; rh_log 40 rolepod:security-engineer; rh_log 25 rolepod:security-engineer
 out=$(rh_agent rolepod:security-engineer)
 if echo "$out" | grep -q 'review-rounds' && ! echo "$out" | grep -q '"permissionDecision": *"deny"'; then echo "  ✓ tier-nudge: reviewer dispatch at round 3 → breaker notice, not a deny"; else echo "  ✗ tier-nudge round 3: ${out:0:160}"; fail=$((fail+1)); fi
@@ -1502,8 +1611,10 @@ check "tier-nudge: round 5 even with the ledger → deny (terminal)" deny "$out"
 out=$( (export ROLEPOD_GATES_SOFT=1; rh_agent rolepod:security-engineer) )
 check "tier-nudge: ROLEPOD_GATES_SOFT=1 lifts the round deny" allow "$out"
 
-# ── v2.154.0 — rounds per reviewer: acceptance 2 (a churning reviewer never
-# blocks a different one) and acceptance 7 (the terminal names the reopen). ──
+fi
+# v2.154.0 — rounds per reviewer: acceptance 2 (a churning reviewer never
+# blocks a different one) and acceptance 7 (the terminal names the reopen)
+if section "v2.154.0 — rounds per reviewer: acceptance 2/7"; then
 : > "$RH/.rolepod/evidence/phase-log.jsonl"
 rh_log 55 rolepod:security-engineer; rh_log 44 rolepod:security-engineer; rh_log 33 rolepod:security-engineer; rh_log 22 rolepod:security-engineer; rh_log 11 rolepod:security-engineer
 out=$(rh_agent rolepod:security-engineer)
@@ -1525,7 +1636,9 @@ out=$(rh_named "review-pass-f")
 check "R1 'named': 5 review-shaped dispatch NAMES with no role match, then a 6th → deny (its own key, independent of the role table)" deny "$out"
 rm -rf "$RH"
 
+fi
 # ── producer→reader→gate chain end to end (v2.156.0): dispatch-auto-log.sh
+if section "producer→reader→gate chain end to end (v2.156.0): dispatch-auto-log.sh"; then
 # (the REAL producer) writes a role-less Agent dispatch's name to the
 # phase-log. Two separate assertions cover the chain: `rounds=1` below
 # proves producer→reader (cross-family.sh --rounds --role named counts the
@@ -1545,7 +1658,9 @@ out=$(dal_gate "review-pass-f")
 check "producer→reader→gate: 4 backdated named rounds + 1 REAL producer-logged dispatch → the live gate denies the 6th" deny "$out"
 rm -rf "$DAL_TMP"
 
+fi
 # ── auto-resume prompt (v2.100.0): a resume, not a decision; no route nudge ──
+if section "auto-resume prompt (v2.100.0): a resume, not a decision; no route nudge"; then
 AR_TMP=$(mktemp -d); ( cd "$AR_TMP" && git init -q . && git config user.email t@t && git config user.name t && git commit -q --allow-empty -m init )
 out=$(printf '{"session_id":"ar1","prompt":"I hit my usage limit while you were working, but it has reset now. Please continue from where you left off."}' | (cd "$AR_TMP" && HOME="$AR_TMP" bash "$HOOKS/claim-verify-nudge.sh") || true)
 if echo "$out" | grep -q 'auto-resume' && ! echo "$out" | grep -q 'commission with no tier'; then echo "  ✓ claim-verify: auto-resume prompt → resume line, no route nudge"; else echo "  ✗ claim-verify auto-resume: ${out:0:200}"; fail=$((fail+1)); fi
@@ -1553,7 +1668,9 @@ out=$(printf '{"session_id":"ar1","prompt":"continue with the plan"}' | (cd "$AR
 if echo "$out" | grep -q 'auto-resume'; then echo "  ✗ claim-verify: a normal continue got the auto-resume line"; fail=$((fail+1)); else echo "  ✓ claim-verify: a user's own 'continue' → no auto-resume line"; fi
 rm -rf "$AR_TMP"
 
+fi
 # ── last-prompt stamp (v2.128.0): only a prompt the user typed moves the review-rounds window ──
+if section "last-prompt stamp (v2.128.0): only a prompt the user typed moves the review-rounds window"; then
 ST_TMP=$(mktemp -d); ( cd "$ST_TMP" && git init -q . && git config user.email t@t && git config user.name t && git commit -q --allow-empty -m init )
 st() { printf '{"session_id":"st1","prompt":%s}' "$(printf '%s' "$1" | python3 -c 'import json,sys; print(json.dumps(sys.stdin.read()))')" | (cd "$ST_TMP" && HOME="$ST_TMP" bash "$HOOKS/claim-verify-nudge.sh" >/dev/null 2>&1 || true); }
 STAMP="$ST_TMP/.rolepod/evidence/last-prompt"
@@ -1568,7 +1685,9 @@ st "<task-notification><task-id>x</task-id></task-notification>"
 [ "$(cat "$STAMP")" = "1000" ] && echo "  ✓ claim-verify: a system block does NOT move the stamp" || { echo "  ✗ claim-verify: system block moved the stamp"; fail=$((fail+1)); }
 rm -rf "$ST_TMP"
 
+fi
 # ── project-context-loader: session-start state pointers (v2.102.0) ────────
+if section "project-context-loader: session-start state pointers (v2.102.0)"; then
 PC_TMP=$(mktemp -d); ( cd "$PC_TMP" && git init -q . && git config user.email t@t && git config user.name t && printf 'a\n' > f.txt && git add f.txt && git commit -qm init )
 mkdir -p "$PC_TMP/docs/rolepod/plans" "$PC_TMP/.rolepod/evidence"
 printf '# Plan\n\n### Task 1: seed\n- [x] **Change:** done\n\n### Task 2: wire the gate\n- [ ] **Change:** todo\n- [ ] **Test / evidence:** todo\n' > "$PC_TMP/docs/rolepod/plans/x-2026-09-08.md"
@@ -1583,7 +1702,9 @@ out=$(pcl)
 if echo "$out" | grep -q 'Breaker ledger open'; then echo "  ✓ context-loader: open breaker ledger named at session start"; else echo "  ✗ context-loader breaker pointer: ${out:0:200}"; fail=$((fail+1)); fi
 rm -rf "$PC_TMP"
 
+fi
 # ── precommit: nested reviewer dispatch counts (v2.144.0) ──────────────────
+if section "precommit: nested reviewer dispatch counts (v2.144.0)"; then
 # session_state.count_all already discovers ONE level of nesting (a runner
 # subagent's own Agent-tool call to a reviewer is a tool_use in the
 # RUNNER's own transcript, which sits directly under the Lead's
@@ -1650,7 +1771,9 @@ out=$(nr "$NR_EMPTY_T")
 check "precommit: nested row with NO provenance field (bare forgery) → deny" deny "$out"
 rm -rf "$NR_TMP"
 
+fi
 # ── cohesion-contract-check: prescribed names + Bash heredoc ─────────────
+if section "cohesion-contract-check: prescribed names + Bash heredoc"; then
 # Gate arms when the transcript already has ≥1 recent Agent spawn and the
 # next spawn is a writer role (backend-developer). Contract evidence is a
 # Write/Edit of a known name OR a Bash command that WRITES one (redirect /
@@ -1747,8 +1870,10 @@ cc_bash_line 'echo "# c" > "contract.md"' >> "$CC_TMP/t11.jsonl"
 out=$(cc "$CC_TMP/t11.jsonl")
 check "cohesion: echo redirect to a quoted bare \"contract.md\" → allow" allow "$out"
 rm -rf "$CC_TMP"
+fi
 
 # ─── the real edit ledger stayed untouched ───
+if section "the real edit ledger stayed untouched"; then
 SANDBOX_LEDGER="$SANDBOX_CWD/.rolepod/evidence/edits.jsonl"
 SANDBOX_ROWS=$([ -f "$SANDBOX_LEDGER" ] && wc -l < "$SANDBOX_LEDGER" | tr -d ' ' || echo 0)
 if [ "$SANDBOX_ROWS" -gt 0 ]; then
@@ -1758,6 +1883,11 @@ else
   fail=$((fail+1))
 fi
 cd "$REPO_DIR" && rm -rf "$SANDBOX_CWD"
+fi
+# Unconditional: this guard must run on every invocation, even when
+# ROLEPOD_CASE filters out every section including this one's own banner —
+# a leaked fixture row into the real repo's ledger must never go unnoticed
+# just because a different section was the one being targeted.
 LEDGER_ROWS_AFTER=$(ledger_rows)
 if [ "$LEDGER_ROWS_AFTER" = "$LEDGER_ROWS_BEFORE" ]; then
   echo "  ✓ no fixture row leaked into the real repo's edit ledger"
@@ -1766,6 +1896,7 @@ else
   fail=$((fail+1))
 fi
 
+echo "  · $RAN_SECTIONS of $TOTAL_SECTIONS sections ran"
 # ─── result ───
 if [ "$fail" -eq 0 ]; then
   echo "  ✓ pass"
