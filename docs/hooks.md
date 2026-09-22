@@ -310,7 +310,7 @@ fails open everywhere (no git root, bad stdin → silence).
 | Codex | the same `gate-reminder.sh` on `apply_patch` (every `*** Add/Update/Delete File:` in the patch, tagged `codex`) | shared gates (no transcript → the ledger is the count) |
 | Cursor | `scripts/gate-reminder.sh` on postToolUse | `scripts/precommit-gate.sh` is now a translator around the shared gate (`scripts/shared/precommit-gate.sh`) — same tiering, window and auto-pass as Claude; a deny reaches the model as `agent_message` |
 | Antigravity | `hooks/pre-tool.sh` on the edit tools (`write_to_file|replace|edit|edit_file|multi_replace_file_content`), silent | `hooks/pre-tool.sh` → shared gate on `run_command` |
-| opencode | `plugins/rolepod.js` on `tool.execute.after` edit/write (`rolepod-shared/edit-ledger.py`) | the plugin's `git commit` deny counts the ledger since the last commit (was in-memory per session) |
+| opencode | `plugins/rolepod.js` on `tool.execute.after` edit/write (`rolepod-shared/edit-ledger.py`; opencode 2: `ctx.tool.hook("execute.after")`, input key `path`) | the plugin's `git commit` deny counts the ledger since the last commit (was in-memory per session) |
 
 Route record + reviewer evidence on every CLI (v2.135.0, slice B): `hooks/lib/route_check.py`
 now reads the turn's assistant text from whichever transcript the Lead's CLI keeps —
@@ -318,9 +318,10 @@ Claude JSONL, Cursor `agent-transcripts`, Codex rollouts, Antigravity `transcrip
 so the Stop hooks of Codex (`session-lifecycle.sh --unlock`), Cursor (`scripts/stop-unlock.sh`)
 and Antigravity (`hooks/stop-unlock.sh`) all record the `phase:"route"` line; opencode keeps no
 transcript file, so its plugin hands the turn's text to `route_check.py --record-text` at
-`session.idle` (the prompt time is the once-per-turn guard). Reviewer dispatches land as
+`session.idle` on opencode 1.x and, on opencode 2, from the `context` hook's messages at the
+start of the next turn (the prompt time is the once-per-turn guard). Reviewer dispatches land as
 `dispatch-proof` lines from Cursor's `scripts/dispatch-log.sh` (preToolUse Task, `subagent_type`)
-and opencode's `task` tool, next to Codex's SubagentStop line — the shared gate counts them
+and opencode's `task` (opencode 2: `subagent`) tool, next to Codex's SubagentStop line — the shared gate counts them
 without a transcript. Still transcript-only: claim-verify's prompt state (context size and
 auto-resume shape) on non-Claude CLIs.
 
@@ -614,6 +615,8 @@ Rules that follow from the contract: `hooks.json` must wrap the events in one na
 ## opencode adapter mapping (v2.133.0)
 
 Contract measured live on opencode 1.18.23 (2026-09-16): `tool.execute.before(input{tool, sessionID, callID}, output{args})` — throw = deny; `tool.execute.after(input{tool, sessionID, callID, args}, output{title, output, metadata})` — `output.output` is the string the model reads and is mutable, bash carries `metadata.exit`; `chat.message(input{sessionID, model}, output{message, parts})` fires per user prompt; events include `session.created` / `session.idle`. The plugin (`plugins/rolepod.js`) keeps its session lock, post-compact re-anchor and commit-gate deny, and since v2.133.0 runs the SHARED `hooks/sweep-nudge.sh` + `hooks/fix-loop-breaker.sh` (shipped byte-identical in `plugins/rolepod-shared/`) behind an opencode→Claude translator: `chat.message` resets the sweep state, edit/write set the edit flag, read/grep/glob/list/webfetch/bash output sizes accumulate, bash exit codes feed the loop breaker, and the one nudge each emits is appended to the tool result. Not ported: claim-verify-nudge (needs the transcript-backed `lib/session_state.py`), push-ref-check (no informational channel before a tool), worktree-guard per-file lock (no per-file deny event). Headless note: `opencode run` blocks on tool permissions unless the project `opencode.json` allows them.
+
+opencode 2 (v2.157.0, measured on 2.0.12, 2026-09-22): a v1 plugin no longer loads (`Plugin must export a default definition with an id and an effect or setup function`), so the same file also exports `default { id: "rolepod", setup(ctx) }` — opencode 2 reads the default export, 1.x reads the named one. The plugin runs inside the shared background service, one instance per project: `process.cwd()` is `$HOME` and `process.env` is the service's, so the directory comes from `ctx.location.directory` and an env flag reaches the plugin only through `ROLEPOD_GATES_SOFT=1 opencode service restart`; the service loads a plugin at boot and hot-reloads it on file change — `opencode reload` does not load plugins, so `install.sh` ends with `opencode service restart`. Mapping: `chat.message` → `ctx.session.hook("prompt")` (`e.prompt.text`, `e.sessionID`; the first prompt of a session registers the lock); `tool.execute.before` → `ctx.tool.hook("execute.before")` (`e.tool`, `e.input`; `bash` is now `shell` with `input.command`, `task` is `subagent`, `patch` is new, edit/write carry `input.path`); `tool.execute.after` → `ctx.tool.hook("execute.after")` (`e.status`, `e.result = { output, content, metadata }` — the cores measure the text of `content`, the nudge is pushed as a `{ type: "text", text }` part, shell exit at `metadata.exit`); the TUI toast → `ctx.session.hook("context")` pushing one system text part (sibling warning, post-compact re-anchor); `client.session.messages` at `session.idle` → the same `context` hook reads `e.messages` and records the previous turn's route line at the start of the next turn (one turn late, once per prompt); `session.compacted` → `session.compaction.ended`; `ctx.event.subscribe()` is one stream for every project, filtered by `data.location.directory` at `session.created` (a `parentID` marks a subagent child, skipped); `setup` returns the cleanup that aborts it. Orca terminals export `OPENCODE_CONFIG_DIR` to their own config dir — `unset OPENCODE_CONFIG_DIR` before verifying a global install from one.
 
 ## Installation
 

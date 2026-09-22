@@ -161,7 +161,7 @@ curl -fsSL https://raw.githubusercontent.com/nuttaruj/rolepod/main/bootstrap.sh 
 
 ### opencode
 
-Installs skills + agents natively into `~/.config/opencode/`, a JS plugin (session locks, post-compact re-anchor, and a `tool.execute.before` precommit deny gate), and an `AGENTS.md` managed block. Every rendered agent carries a platform-enforced `permission:` block (subagent commit ban; scout fully read-only) — remaining gates are skill-enforced (see [docs/cli-support.md](docs/cli-support.md)).
+Installs skills + agents natively into `~/.config/opencode/`, a JS plugin (session locks, post-compact re-anchor, a precommit deny gate — one file that loads on opencode 1.x and 2.x), and an `AGENTS.md` managed block. opencode 2 loads plugins when its shared service boots: run `opencode service restart` after every install or update. Every rendered agent carries a platform-enforced `permission:` block (subagent commit ban; scout fully read-only) — remaining gates are skill-enforced (see [docs/cli-support.md](docs/cli-support.md)).
 
 ```bash
 # Install
@@ -174,7 +174,7 @@ curl -fsSL https://raw.githubusercontent.com/nuttaruj/rolepod/main/bootstrap.sh 
 curl -fsSL https://raw.githubusercontent.com/nuttaruj/rolepod/main/bootstrap.sh | bash -s -- --uninstall --target=opencode
 ```
 
-**Install all six at once** with `--target=all`. **One repo only, no global config:** add `--scope=project`. Restart the CLI after installing. Full per-CLI matrix and install scopes: [docs/cli-support.md](docs/cli-support.md).
+**Install all six at once** with `--target=all`. **One repo only, no global config:** add `--scope=project`. Restart the CLI after installing (opencode 2: `opencode service restart`). Full per-CLI matrix and install scopes: [docs/cli-support.md](docs/cli-support.md).
 
 ## What's inside
 
