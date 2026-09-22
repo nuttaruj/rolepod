@@ -53,6 +53,9 @@ Use the native question UI when the CLI has one; otherwise numbered questions wi
 
 A question the codebase can answer → explore instead. While a round is out, that wait is free wall-clock: dispatch a scout on the researchable unknowns in parallel — a running scout is itself an unsettled prerequisite, so only its downstream questions wait.
 
+**Domain term with more than one live reading** — resolve it in the round, never assume: challenge it against the repo's `CONTEXT.md` when one exists, quote the code back when it disagrees with what the user just said (which is right?), and propose ONE canonical word.
+Settled and used beyond this feature → write it into `CONTEXT.md` at the repo root at that moment (create the file then, never at the end): `**Term**:` + one or two sentences of what it IS + `_Avoid_: <the synonyms not to use>` — project concepts only, no implementation detail; a glossary and nothing else. A feature-only term gets one line in the spec. Entry shape, sharpening moves, multi-context map: `references/question-bank.md` §Domain term.
+
 **Visual companion for UI-shape questions.**
 - Layout, flow, or visual hierarchy with `rolepod-uiproof` installed → offer a browser mockup or reference screenshot (`/verify-ui`, `/visual-diff`) before the text question.
 - Interaction FEEL → a disposable single-file HTML demo (inline CSS/JS, mock data, no server) on a throwaway `spike/` branch; the user clicks the options before answering.

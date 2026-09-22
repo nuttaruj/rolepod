@@ -89,7 +89,7 @@ SKILL_BYTES_REPORT=$(python3 -I - <<'PYEOF'
 import pathlib, re
 ROOT = pathlib.Path(".")
 CAPS = {"using-rolepod": 21500, "review-code": 19000, "rolepod-full": 3000}
-DEFAULT, TOTAL_CAP = 13000, 131000  # total = backstop; the per-skill caps do the work
+DEFAULT, TOTAL_CAP = 13000, 133000  # total = backstop (~1% above the v2.159.0 size; 131000 -> 133000 for the write-spec domain-term rule); the per-skill caps do the work
 inc = re.compile(r"^\{\{INCLUDE: (.+?)\}\}$")
 over, total = [], 0
 for d in sorted((ROOT / "core/skills").iterdir()):
@@ -116,7 +116,7 @@ else
   echo "  ✗ SKILL.md over byte cap (includes expanded): $SKILL_BYTES_OVER"
   fail=$((fail+1))
 fi
-check "all SKILL.md total ≤ 131000 B, includes expanded (actual: $SKILL_BYTES_TOTAL)" "[ $SKILL_BYTES_TOTAL -le 131000 ]"
+check "all SKILL.md total ≤ 133000 B, includes expanded (actual: $SKILL_BYTES_TOTAL)" "[ $SKILL_BYTES_TOTAL -le 133000 ]"
 
 # Clause-chain guard: no prose line past 600 chars. The accretion shape
 # was a 2,528-char line carrying eight directives with nested exceptions —

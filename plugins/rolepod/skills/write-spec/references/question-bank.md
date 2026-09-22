@@ -10,7 +10,21 @@ Ask every ready question in the round together, per SKILL.md §2's frontier-roun
 What does success look like in one sentence? What breaks if this is not built?
 
 ### Domain term
-A word the spec depends on ("account", "cancel", "member") with more than one live reading that changes behavior: read the repo's existing glossary / CONTEXT first, propose a definition with a boundary example, check it against the code, and ask only the part the user must decide. A term used by this feature alone gets one line in the spec — no new glossary file.
+A word the spec depends on ("account", "cancel", "member") with more than one live reading that changes behavior: read the repo's existing `CONTEXT.md` first (a `CONTEXT-MAP.md` at the root lists several contexts and where each `CONTEXT.md` lives — pick the one the topic belongs to, ask when unclear), propose a definition with a boundary example, check it against the code, and ask only the part the user must decide. A term used by this feature alone gets one line in the spec — no new glossary file.
+
+Moves that sharpen the model — each at the moment it applies, never batched at the end:
+- Challenge: the user's word conflicts with the glossary → say so and ask which reading holds.
+- Sharpen: an overloaded word ("account": the Customer or the User?) → propose the precise canonical term.
+- Scenario: a relationship between concepts → invent the edge case that forces the boundary (a partial cancellation, a member of two accounts).
+- Cross-reference: the user states how it works → check the code; a contradiction is quoted back ("the code cancels whole orders; you said partial — which is right?"), never assumed away.
+
+Glossary entry in `CONTEXT.md` (repo root, or the mapped context; create the file when the first term is resolved):
+```
+**Order**:
+A customer's request to buy, from placement until fulfilment or cancellation.
+_Avoid_: purchase, transaction
+```
+One or two sentences of what the term IS, not what it does; be opinionated — one word wins, the rest go under `_Avoid_`; only concepts specific to this project (a timeout or an error type is not a domain term); subheadings only when clusters emerge. The file is a glossary and nothing else — no specs, no implementation decisions: those are the spec, or an ADR (`docs/adr/NNNN-<slug>.md`, title + 1-3 sentences) when SKILL.md's three ADR tests hold.
 
 ### User / actor
 Who triggers this? Who sees the result? Is it self-service or admin-only?
