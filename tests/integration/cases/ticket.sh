@@ -7,14 +7,24 @@ set -uo pipefail
 
 fail=0
 TMP=$(mktemp -d)
+[ -n "$TMP" ] && [ -d "$TMP" ] || { echo "ticket: mktemp -d failed — refusing to run fixtures against an unresolved \$TMP" >&2; exit 1; }
 trap 'rm -rf "$TMP"' EXIT
 
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
 TICKET="$REPO_DIR/scripts/ticket.sh"
 
+# The real repo's HEAD and worktree registry must not move while this file
+# runs — every fixture lives under $TMP, so any write landing anywhere else
+# is a leak (2026-09-22: an unchecked `start` failure left $AG_WT empty,
+# `cd ""` no-op'd into the real checkout cwd, and two empty commits landed
+# on main — 4b6c061f "task 1 commit", b258f2b9 "the owner's real commit").
+# Asserted unconditionally in the epilogue below.
+REAL_HEAD_BEFORE="$(git -C "$REPO_DIR" rev-parse HEAD)"
+REAL_WORKTREES_BEFORE="$(git -C "$REPO_DIR" worktree list --porcelain)"
+
 mkrepo() { # $1 = dir — a throwaway repo with an initial empty commit
   mkdir -p "$1"
-  ( cd "$1" && git init -q . && git config user.email t@t && git config user.name t \
+  ( cd "${1:?}" && git init -q . && git config user.email t@t && git config user.name t \
     && git commit -q --allow-empty -m init )
 }
 
@@ -24,7 +34,7 @@ mkrepo() { # $1 = dir — a throwaway repo with an initial empty commit
 
 FR="$TMP/fixture-repo"
 mkdir -p "$FR"
-( cd "$FR" && git init -q . && git config user.email t@t && git config user.name t )
+( cd "${FR:?}" && git init -q . && git config user.email t@t && git config user.name t )
 cat > "$FR/plan.md" <<'EOF'
 # Sample Feature Plan
 
@@ -46,7 +56,7 @@ Sequential — single owner.
 ## Failure policy
 Default: stop after 2 failed attempts (never a 4th).
 EOF
-( cd "$FR" && git add -A && git commit -q -m init )
+( cd "${FR:?}" && git add -A && git commit -q -m init )
 
 OUT=$(bash "$TICKET" start "$FR/plan.md" 1 2>"$TMP/start.err")
 RC=$?
@@ -99,13 +109,13 @@ fi
 # ── --base: the worktree branches off the NAMED base, not the current HEAD
 BBR="$TMP/base-repo"
 mkdir -p "$BBR"
-( cd "$BBR" && git init -q . && git config user.email t@t && git config user.name t )
+( cd "${BBR:?}" && git init -q . && git config user.email t@t && git config user.name t )
 echo main-only > "$BBR/main-file.txt"
-( cd "$BBR" && git add -A && git commit -q -m "main commit" )
-( cd "$BBR" && git checkout -q -b feature-base )
+( cd "${BBR:?}" && git add -A && git commit -q -m "main commit" )
+( cd "${BBR:?}" && git checkout -q -b feature-base )
 echo feature-only > "$BBR/feature-file.txt"
-( cd "$BBR" && git add -A && git commit -q -m "feature-base commit" )
-( cd "$BBR" && git checkout -q main 2>/dev/null || git checkout -q master )
+( cd "${BBR:?}" && git add -A && git commit -q -m "feature-base commit" )
+( cd "${BBR:?}" && git checkout -q main 2>/dev/null || git checkout -q master )
 cat > "$BBR/plan.md" <<'EOF'
 # Base Feature Plan
 
@@ -125,7 +135,7 @@ Sequential — single owner.
 ## Failure policy
 Default: stop after 2 failed attempts (never a 4th).
 EOF
-( cd "$BBR" && git add -A && git commit -q -m "add plan" )
+( cd "${BBR:?}" && git add -A && git commit -q -m "add plan" )
 BOUT=$(bash "$TICKET" start "$BBR/plan.md" 1 --base feature-base 2>"$TMP/base.err")
 BWT=$(printf '%s\n' "$BOUT" | sed -n '1p' | awk '{print $2}')
 if [ -f "$BWT/feature-file.txt" ]; then
@@ -140,7 +150,7 @@ fi
 # (dispatch line + agent line), no third.
 HR="$TMP/hint-repo"
 mkdir -p "$HR"
-( cd "$HR" && git init -q . && git config user.email t@t && git config user.name t )
+( cd "${HR:?}" && git init -q . && git config user.email t@t && git config user.name t )
 cat > "$HR/plan.md" <<'EOF'
 # Hint Feature Plan
 
@@ -166,7 +176,7 @@ Sequential — single owner.
 ## Failure policy
 Default: stop after 2 failed attempts (never a 4th).
 EOF
-( cd "$HR" && git add -A && git commit -q -m init )
+( cd "${HR:?}" && git add -A && git commit -q -m init )
 HOUT=$(bash "$TICKET" start "$HR/plan.md" 1 2>"$TMP/hint.err")
 HLINES=$(printf '%s\n' "$HOUT" | wc -l | tr -d ' ')
 if [ "$HLINES" -eq 3 ] && printf '%s\n' "$HOUT" | sed -n '3p' | grep -qF "fleet: rolepod-ticket fleet $HR/plan.md"; then
@@ -190,7 +200,8 @@ fi
 # ── green path: ok steps, <=40 lines, ends in the commit command, no commit made
 IR="$TMP/integrate-repo"
 mkrepo "$IR"
-( cd "$IR" && git worktree add -q -b task-branch "$TMP/integrate-wt" )
+( cd "${IR:?}" && git worktree add -q -b task-branch "$TMP/integrate-wt" ) \
+  || { echo "ticket: fixture: git worktree add failed for \$IR/task-branch" >&2; exit 1; }
 echo widget > "$TMP/integrate-wt/widget.txt"
 LOG_BEFORE=$(git -C "$IR" log --oneline --all)
 cat > "$TMP/brief-ok.md" <<'EOF'
@@ -239,7 +250,8 @@ fi
 # ── a failing Proof (Command itself green) also exits non-zero
 PFR="$TMP/proof-repo"
 mkrepo "$PFR"
-( cd "$PFR" && git worktree add -q -b proof-branch "$TMP/proof-wt" )
+( cd "${PFR:?}" && git worktree add -q -b proof-branch "$TMP/proof-wt" ) \
+  || { echo "ticket: fixture: git worktree add failed for \$PFR/proof-branch" >&2; exit 1; }
 cat > "$TMP/brief-proof-fail.md" <<'EOF'
 ## Command
 `true`
@@ -258,7 +270,8 @@ fi
 # ── --gate: runs last, after a green Command/Proof; failing it exits non-zero
 GTR="$TMP/gate-repo"
 mkrepo "$GTR"
-( cd "$GTR" && git worktree add -q -b gate-branch "$TMP/gate-wt" )
+( cd "${GTR:?}" && git worktree add -q -b gate-branch "$TMP/gate-wt" ) \
+  || { echo "ticket: fixture: git worktree add failed for \$GTR/gate-branch" >&2; exit 1; }
 cat > "$TMP/brief-gate.md" <<'EOF'
 ## Command
 `true`
@@ -281,11 +294,13 @@ fi
 PRR="$TMP/pre-repo"
 mkrepo "$PRR"
 echo old > "$PRR/render.txt"
-( cd "$PRR" && git add -A && git commit -q -m "add render.txt" )
-( cd "$PRR" && git worktree add -q -b pre-branch-a "$TMP/pre-wt-a" )
-( cd "$PRR" && git worktree add -q -b pre-branch-b "$TMP/pre-wt-b" )
+( cd "${PRR:?}" && git add -A && git commit -q -m "add render.txt" )
+( cd "${PRR:?}" && git worktree add -q -b pre-branch-a "$TMP/pre-wt-a" ) \
+  || { echo "ticket: fixture: git worktree add failed for \$PRR/pre-branch-a" >&2; exit 1; }
+( cd "${PRR:?}" && git worktree add -q -b pre-branch-b "$TMP/pre-wt-b" ) \
+  || { echo "ticket: fixture: git worktree add failed for \$PRR/pre-branch-b" >&2; exit 1; }
 echo new > "$PRR/render.txt"
-( cd "$PRR" && git commit -aqm "advance base" )
+( cd "${PRR:?}" && git commit -aqm "advance base" )
 echo dirty-local > "$TMP/pre-wt-a/render.txt"
 echo dirty-local > "$TMP/pre-wt-b/render.txt"
 cat > "$TMP/brief-pre.md" <<'EOF'
@@ -310,7 +325,8 @@ fi
 # ── docs/rolepod/ is never staged, even when it holds an uncommitted file
 SR="$TMP/stage-repo"
 mkrepo "$SR"
-( cd "$SR" && git worktree add -q -b stage-branch "$TMP/stage-wt" )
+( cd "${SR:?}" && git worktree add -q -b stage-branch "$TMP/stage-wt" ) \
+  || { echo "ticket: fixture: git worktree add failed for \$SR/stage-branch" >&2; exit 1; }
 mkdir -p "$TMP/stage-wt/docs/rolepod"
 echo secret > "$TMP/stage-wt/docs/rolepod/private.md"
 echo public > "$TMP/stage-wt/public.txt"
@@ -338,7 +354,8 @@ fi
 # ── ambiguous state: commits ahead of base AND a dirty tree → refuse
 AR="$TMP/ambig-repo"
 mkrepo "$AR"
-( cd "$AR" && git worktree add -q -b ambig-branch "$TMP/ambig-wt" )
+( cd "${AR:?}" && git worktree add -q -b ambig-branch "$TMP/ambig-wt" ) \
+  || { echo "ticket: fixture: git worktree add failed for \$AR/ambig-branch" >&2; exit 1; }
 ( cd "$TMP/ambig-wt" && git commit -q --allow-empty -m "already committed once" )
 echo dirty > "$TMP/ambig-wt/uncommitted.txt"
 OUT=$(bash "$TICKET" integrate "$TMP/ambig-wt" --brief "$TMP/brief-stage.md" 2>&1)
@@ -356,7 +373,8 @@ fi
 # ── refuses a dirty worktree
 FDR="$TMP/finish-dirty-repo"
 mkrepo "$FDR"
-( cd "$FDR" && git worktree add -q -b finish-dirty-branch "$TMP/finish-dirty-wt" )
+( cd "${FDR:?}" && git worktree add -q -b finish-dirty-branch "$TMP/finish-dirty-wt" ) \
+  || { echo "ticket: fixture: git worktree add failed for \$FDR/finish-dirty-branch" >&2; exit 1; }
 echo dirty > "$TMP/finish-dirty-wt/x.txt"
 OUT=$(bash "$TICKET" finish "$TMP/finish-dirty-wt" 2>&1)
 RC=$?
@@ -369,8 +387,9 @@ fi
 # ── refuses a worktree whose branch diverged from base (nothing to merge)
 FVR="$TMP/finish-diverged-repo"
 mkrepo "$FVR"
-( cd "$FVR" && git worktree add -q -b finish-diverged-branch "$TMP/finish-diverged-wt" )
-( cd "$FVR" && git commit -q --allow-empty -m "base moves on" )
+( cd "${FVR:?}" && git worktree add -q -b finish-diverged-branch "$TMP/finish-diverged-wt" ) \
+  || { echo "ticket: fixture: git worktree add failed for \$FVR/finish-diverged-branch" >&2; exit 1; }
+( cd "${FVR:?}" && git commit -q --allow-empty -m "base moves on" )
 ( cd "$TMP/finish-diverged-wt" && git commit -q --allow-empty -m "branch diverges" )
 OUT=$(bash "$TICKET" finish "$TMP/finish-diverged-wt" 2>&1)
 RC=$?
@@ -383,7 +402,8 @@ fi
 # ── a clean, ff-mergeable worktree: merges, cleans up, leaves worktree list = one line
 FMR="$TMP/finish-merge-repo"
 mkrepo "$FMR"
-( cd "$FMR" && git worktree add -q -b finish-merge-branch "$TMP/finish-merge-wt" )
+( cd "${FMR:?}" && git worktree add -q -b finish-merge-branch "$TMP/finish-merge-wt" ) \
+  || { echo "ticket: fixture: git worktree add failed for \$FMR/finish-merge-branch" >&2; exit 1; }
 ( cd "$TMP/finish-merge-wt" && git commit -q --allow-empty -m "the owner's real commit" )
 OUT=$(bash "$TICKET" finish "$TMP/finish-merge-wt" 2>&1)
 RC=$?
@@ -467,7 +487,7 @@ fi
 
 FLR="$TMP/fleet-repo"
 mkdir -p "$FLR"
-( cd "$FLR" && git init -q . && git config user.email t@t && git config user.name t )
+( cd "${FLR:?}" && git init -q . && git config user.email t@t && git config user.name t )
 cat > "$FLR/plan.md" <<'EOF'
 # Fleet Feature Plan
 
@@ -507,7 +527,7 @@ Sequential — single owner.
 ## Failure policy
 Default: stop after 2 failed attempts (never a 4th).
 EOF
-( cd "$FLR" && git add -A && git commit -q -m init )
+( cd "${FLR:?}" && git add -A && git commit -q -m init )
 
 WT_BEFORE=$(git -C "$FLR" worktree list | wc -l | tr -d ' ')
 OUT=$(bash "$TICKET" fleet "$FLR/plan.md" 2>"$TMP/fleet.err")
@@ -550,7 +570,7 @@ fi
 # ── no ready role-owned task → says so, exit 0, nothing created
 NRR="$TMP/no-ready-repo"
 mkdir -p "$NRR"
-( cd "$NRR" && git init -q . && git config user.email t@t && git config user.name t )
+( cd "${NRR:?}" && git init -q . && git config user.email t@t && git config user.name t )
 cat > "$NRR/plan.md" <<'EOF'
 # No Ready Feature Plan
 
@@ -569,7 +589,7 @@ Sequential — single owner.
 ## Failure policy
 Default: stop after 2 failed attempts (never a 4th).
 EOF
-( cd "$NRR" && git add -A && git commit -q -m init )
+( cd "${NRR:?}" && git add -A && git commit -q -m init )
 WT_NR_BEFORE=$(git -C "$NRR" worktree list | wc -l | tr -d ' ')
 OUT=$(bash "$TICKET" fleet "$NRR/plan.md" 2>"$TMP/no-ready.err")
 RC=$?
@@ -587,7 +607,7 @@ fi
 
 PRW="$TMP/prose-repo"
 mkdir -p "$PRW"
-( cd "$PRW" && git init -q . && git config user.email t@t && git config user.name t )
+( cd "${PRW:?}" && git init -q . && git config user.email t@t && git config user.name t )
 cat > "$PRW/plan.md" <<'EOF'
 # Prose Feature Plan
 
@@ -607,7 +627,7 @@ Sequential — single owner.
 ## Failure policy
 Default: stop after 2 failed attempts (never a 4th).
 EOF
-( cd "$PRW" && git add -A && git commit -q -m init )
+( cd "${PRW:?}" && git add -A && git commit -q -m init )
 OUT=$(bash "$TICKET" fleet "$PRW/plan.md" 2>"$TMP/prose.err")
 RC=$?
 if [ "$RC" -eq 0 ] && printf '%s\n' "$OUT" | sed -n '1p' | python3 -c '
@@ -628,7 +648,7 @@ fi
 
 EDR="$TMP/em-dash-repo"
 mkdir -p "$EDR"
-( cd "$EDR" && git init -q . && git config user.email t@t && git config user.name t )
+( cd "${EDR:?}" && git init -q . && git config user.email t@t && git config user.name t )
 cat > "$EDR/plan.md" <<'EOF'
 # Em Dash Aside Plan
 
@@ -654,7 +674,7 @@ Sequential — single owner.
 ## Failure policy
 Default: stop after 2 failed attempts (never a 4th).
 EOF
-( cd "$EDR" && git add -A && git commit -q -m init )
+( cd "${EDR:?}" && git add -A && git commit -q -m init )
 OUT=$(bash "$TICKET" fleet "$EDR/plan.md" 2>"$TMP/em-dash.err")
 RC=$?
 if [ "$RC" -eq 0 ] && printf '%s\n' "$OUT" | sed -n '1p' | python3 -c '
@@ -674,7 +694,7 @@ fi
 
 NCR="$TMP/none-case-repo"
 mkdir -p "$NCR"
-( cd "$NCR" && git init -q . && git config user.email t@t && git config user.name t )
+( cd "${NCR:?}" && git init -q . && git config user.email t@t && git config user.name t )
 cat > "$NCR/plan.md" <<'EOF'
 # None Case Plan
 
@@ -693,7 +713,7 @@ Sequential — single owner.
 ## Failure policy
 Default: stop after 2 failed attempts (never a 4th).
 EOF
-( cd "$NCR" && git add -A && git commit -q -m init )
+( cd "${NCR:?}" && git add -A && git commit -q -m init )
 OUT=$(bash "$TICKET" fleet "$NCR/plan.md" 2>"$TMP/none-case.err")
 RC=$?
 if [ "$RC" -eq 0 ] && printf '%s\n' "$OUT" | sed -n '1p' | python3 -c '
@@ -731,7 +751,7 @@ Sequential — single owner.
 ## Failure policy
 Default: stop after 2 failed attempts (never a 4th).
 EOF
-( cd "$AGR" && git add -A && git commit -q -m "add plan" )
+( cd "${AGR:?}" && git add -A && git commit -q -m "add plan" )
 AG_OUT=$(bash "$TICKET" start "$AGR/plan.md" 1 2>"$TMP/agent.err")
 AG_LINE1=$(printf '%s\n' "$AG_OUT" | sed -n '1p')
 AG_BRIEF=$(printf '%s\n' "$AG_LINE1" | awk '{print $1}')
@@ -741,7 +761,7 @@ if grep -qE '^Agent: owner-plan-t1$' "$AG_BRIEF"; then
 else
   echo "  ✗ start did not append the expected Agent: line"; cat "$AG_BRIEF" >&2; fail=$((fail+1))
 fi
-( cd "$AG_WT" && git commit -q --allow-empty -m "the owner's real commit" )
+( cd "${AG_WT:?}" && git commit -q --allow-empty -m "the owner's real commit" )
 AG_FIN=$(bash "$TICKET" finish "$AG_WT" 2>&1)
 if printf '%s\n' "$AG_FIN" | grep -qF 'close: owner-plan-t1'; then
   echo "  ✓ finish prints close: <agent> for the name start recorded"
@@ -765,12 +785,12 @@ mkrepo "$AGR11"
   printf '### Task 11: build the other widget\n- **Blocked by:** none\n- [ ] **Files:** `widget11.txt`\n- [ ] **Command:** `true`\n- **Owner:** backend-developer\n- **Done when:** true\n\n'
   printf '## Parallel layout\nSequential — single owner.\n\n## Failure policy\nDefault: stop after 2 failed attempts (never a 4th).\n'
 } > "$AGR11/plan.md"
-( cd "$AGR11" && git add -A && git commit -q -m "add plan" )
+( cd "${AGR11:?}" && git add -A && git commit -q -m "add plan" )
 AG11_OUT_1=$(bash "$TICKET" start "$AGR11/plan.md" 1 2>"$TMP/agent11-1.err")
 AG11_OUT_11=$(bash "$TICKET" start "$AGR11/plan.md" 11 2>"$TMP/agent11-11.err")
 AG11_WT_1=$(printf '%s\n' "$AG11_OUT_1" | sed -n '1p' | awk '{print $2}')
 AG11_WT_11=$(printf '%s\n' "$AG11_OUT_11" | sed -n '1p' | awk '{print $2}')
-( cd "$AG11_WT_1" && git commit -q --allow-empty -m "task 1 commit" )
+( cd "${AG11_WT_1:?}" && git commit -q --allow-empty -m "task 1 commit" )
 AG11_FIN_1=$(bash "$TICKET" finish "$AG11_WT_1" 2>&1)
 if printf '%s\n' "$AG11_FIN_1" | grep -qF 'close: owner-plan-t1'; then
   echo "  ✓ finish resolves Task 1's own agent name, not Task 11's, despite the -t1/-t11 substring overlap"
@@ -813,6 +833,26 @@ else
 fi
 
 # ═══════════════════════════════════════════════════════════════════════
+# the real repo's HEAD and worktree registry stayed untouched — unconditional:
+# a fixture write that lands on the real repo instead of its own $TMP fixture
+# must never go unnoticed (2026-09-22: 4b6c061f, b258f2b9 — see the header).
+# ═══════════════════════════════════════════════════════════════════════
+
+REAL_HEAD_AFTER="$(git -C "$REPO_DIR" rev-parse HEAD)"
+if [ "$REAL_HEAD_AFTER" = "$REAL_HEAD_BEFORE" ]; then
+  echo "  ✓ the real repo's HEAD stayed at $REAL_HEAD_BEFORE — no fixture commit leaked onto main"
+else
+  echo "  ✗ the real repo's HEAD moved $REAL_HEAD_BEFORE -> $REAL_HEAD_AFTER during this run — leaked commit: $(git -C "$REPO_DIR" log -1 --format='%h %s' "$REAL_HEAD_AFTER")"
+  fail=$((fail+1))
+fi
+
+REAL_WORKTREES_AFTER="$(git -C "$REPO_DIR" worktree list --porcelain)"
+if [ "$REAL_WORKTREES_AFTER" = "$REAL_WORKTREES_BEFORE" ]; then
+  echo "  ✓ the real repo's worktree registry is unchanged"
+else
+  echo "  ✗ the real repo's worktree registry changed during this run — a fixture worktree registered against the real repo"
+  fail=$((fail+1))
+fi
 
 if [ "$fail" -eq 0 ]; then
   echo "ticket: PASS"
