@@ -79,14 +79,12 @@ function schemaLiteral(name) {
   }
 }
 const reviewerSchema = schemaLiteral('REVIEWER_SCHEMA')
-const verifySchema = schemaLiteral('VERIFY_SCHEMA')
-if (!reviewerSchema || !verifySchema) {
-  bad('REVIEWER_SCHEMA / VERIFY_SCHEMA not found as pure literals')
+if (!reviewerSchema) {
+  bad('REVIEWER_SCHEMA not found as a pure literal')
 } else {
   const reportCap = reviewerSchema.properties && reviewerSchema.properties.report
   const blockingCap = reviewerSchema.properties && reviewerSchema.properties.blocking &&
     reviewerSchema.properties.blocking.items
-  const tailCap = verifySchema.properties && verifySchema.properties.tail
   if (reportCap && typeof reportCap.maxLength === 'number' && reportCap.maxLength <= 300) {
     ok('REVIEWER_SCHEMA.report caps maxLength <= 300 — a path, never report text')
   } else {
@@ -97,11 +95,35 @@ if (!reviewerSchema || !verifySchema) {
   } else {
     bad('REVIEWER_SCHEMA.blocking items have no maxLength <= 120')
   }
-  if (tailCap && typeof tailCap.maxLength === 'number' && tailCap.maxLength <= 600) {
-    ok('VERIFY_SCHEMA.tail caps maxLength <= 600')
-  } else {
-    bad('VERIFY_SCHEMA.tail has no maxLength <= 600')
-  }
+}
+
+// no verifier stage: the fleet no longer re-runs the brief's Command/Proof
+// itself — 'rolepod-ticket integrate' is the sole re-verifier before commit.
+if (/VERIFY_SCHEMA/.test(src)) {
+  bad('VERIFY_SCHEMA still present — the verifier stage should be gone')
+} else {
+  ok('no VERIFY_SCHEMA — no scripted verifier stage')
+}
+if (/phase\s*:\s*['"]Verify['"]/i.test(src) || /['"]verifier['"]/i.test(src)) {
+  bad("a 'Verify'/'verifier' stage string is still present")
+} else {
+  ok("no 'Verify'/'verifier' stage string")
+}
+
+// the owner and fix prompts must tell the owner to loop on the brief's
+// ## Check and run ## Command once itself, since nothing downstream in the
+// fleet re-runs it for them anymore.
+const ownerPromptSrc = (src.match(/function ownerPrompt[\s\S]*?\n\}/) || [''])[0]
+const fixPromptSrc = (src.match(/function fixPrompt[\s\S]*?\n\}/) || [''])[0]
+if (/## Check/.test(ownerPromptSrc)) {
+  ok('ownerPrompt tells the owner to loop on the brief\'s ## Check')
+} else {
+  bad('ownerPrompt has no "## Check" instruction')
+}
+if (/## Check/.test(fixPromptSrc)) {
+  ok('fixPrompt tells the owner to loop on the brief\'s ## Check')
+} else {
+  bad('fixPrompt has no "## Check" instruction')
 }
 
 // no Date.now() / Math.random() / bare new Date() — they break workflow resume.
@@ -134,9 +156,8 @@ if (/\/\/\s*tier-reason:/.test(src)) {
 // invisible to the fleet-tier hook's per-call pin check (it resolves only
 // the closed 'rolepod:' portion and never sees the rest), so that call
 // reads as unpinned on a fan-out and risks a bare-fan-out deny under a
-// strong/unknown Lead. "Verify" is deliberately NOT a role-based stage (a
-// cheap model runs a shell command, not a review) — excluded on purpose,
-// unlike the fleet-tier hook's own broad "verif|judg|review|..." heuristic.
+// strong/unknown Lead. No scripted Verify stage exists anymore (§ above) —
+// every remaining agent( call is Build/Fix or Review and must be pinned.
 const WRITE_RX = /(implement|build|fix|integrat|migrat|refactor|patch|scaffold|write)/i
 const calls = []
 let i = 0

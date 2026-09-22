@@ -8,7 +8,7 @@
 // "## Owner" / "## Reviewers" lines, so this script never re-derives them).
 //
 // Per task, in ONE pipeline (no barrier between tasks — task A can be in
-// Verify while task B is still in Build):
+// Fix while task B is still in Build):
 //   Build  — the task owner, agentType:'rolepod:<role>', builds in its
 //            worktree. Prompt = start's own dispatch line (brief + worktree
 //            paths) plus one line telling it NOT to dispatch its own
@@ -23,7 +23,10 @@
 //            owner call with them, then ONE re-check by each flagging
 //            reviewer (never a second full review round — the two-round
 //            budget, as control flow instead of owner judgment).
-//   Verify — cheap model, runs the brief's Command + Proof, returns booleans.
+// No scripted verifier stage: the owner loops on the brief's ## Check as it
+// builds and runs ## Command once itself before returning; the verifier is
+// `rolepod-ticket integrate`, which re-runs the Command and the Proof
+// before the commit command is printed.
 //
 // Tier (probe-verified recipe, docs/rolepod/handoffs/ticket-fleet-probe-
 // 2026-09-22.md #5): a `// tier-reason:` comment, agentType dynamic via a
@@ -32,9 +35,9 @@
 // a concatenation and never sees the rest, so that call reads as unpinned
 // on a fan-out and risks a bare-fan-out deny under a strong/unknown Lead;
 // a template literal's non-quote lead character is trusted like a variable
-// instead), a literal `model:` on the owner/fix (balanced) and verify
-// (cheap) calls, and NO literal strong model anywhere — the review stage's
-// own tier comes from the reviewer role's frontmatter, never a script pin.
+// instead), a literal `model:` on the owner/fix (balanced) calls, and NO
+// literal strong model anywhere — the review stage's own tier comes from
+// the reviewer role's frontmatter, never a script pin.
 //
 // tier-reason: dynamic agentType per task/reviewer role from args — every
 // role renders its own frontmatter tier; no fleet-wide model inherit here.
@@ -54,7 +57,6 @@ export const meta = {
     { title: 'Build', detail: 'the task owner builds in its own worktree' },
     { title: 'Review', detail: 'one reviewer per task role, in parallel' },
     { title: 'Fix', detail: 'one owner fix call, only on blocking findings' },
-    { title: 'Verify', detail: 'cheap model runs the Command + Proof' },
   ],
 }
 
@@ -89,20 +91,6 @@ const REVIEWER_SCHEMA = {
   required: ['verdict', 'blocking'],
 }
 
-const VERIFY_SCHEMA = {
-  type: 'object',
-  properties: {
-    command_ok: { type: 'boolean' },
-    proof_ok: { type: 'boolean' },
-    tail: {
-      type: 'string',
-      maxLength: 600,
-      description: 'Tail of the failing output. Empty string when command_ok and proof_ok are both true.',
-    },
-  },
-  required: ['command_ok', 'proof_ok'],
-}
-
 // The main checkout's root, from the brief's own path — every brief `start`
 // writes lands at exactly "<repo-root>/docs/rolepod/handoffs/<slug>.md", so
 // this is a pure string op (the script has no filesystem access to `git`
@@ -118,7 +106,9 @@ function reportPath(task, role) {
 }
 
 function ownerPrompt(task) {
-  return `${task.brief} ${task.worktree}\ndo not dispatch reviewers — the script does`
+  return `${task.brief} ${task.worktree}\ndo not dispatch reviewers — the script does\n` +
+    'Loop on the brief\'s ## Check after each edit; run the ## Command once when the diff is ' +
+    'final, before you return.'
 }
 
 function reviewPrompt(task, role) {
@@ -139,14 +129,9 @@ function recheckPrompt(task, role, findings) {
 function fixPrompt(task, flagging) {
   const lines = flagging.map((f) => `${f.role}: ${f.result.blocking.join('; ')}`).join(' | ')
   return `Task owner for Task ${task.n}, worktree ${task.worktree}. Fix these blocking review ` +
-    `findings, ONE round, then stop: ${lines}`
-}
-
-function verifyPrompt(task) {
-  return `In the worktree ${task.worktree}, run exactly the "## Command" and then the ` +
-    `"## Proof" command from the brief ${task.brief}. Return command_ok and proof_ok; when ` +
-    'both are true return tail as an empty string — only a failing command gets a tail, and ' +
-    'even then just its last few lines.'
+    `findings, ONE round, then stop: ${lines}\n` +
+    'Loop on the brief\'s ## Check after each edit; run the ## Command once when the diff is ' +
+    'final, before you return.'
 }
 
 async function processTask(prev, task) {
@@ -195,13 +180,6 @@ async function processTask(prev, task) {
     ))
   }
 
-  const verify = await agent(verifyPrompt(task), {
-    model: 'haiku',
-    effort: 'low',
-    phase: 'Verify',
-    schema: VERIFY_SCHEMA,
-  })
-
   const verdicts = reviewers.map((r, i) => {
     const fi = flagging.findIndex((f) => f.role === r)
     const rc = fi >= 0 ? recheckResults[fi] : null
@@ -215,15 +193,12 @@ async function processTask(prev, task) {
 
   const reports = reviewResults.filter(Boolean).map((r) => r.report).filter(Boolean)
 
-  log(`Task ${task.n}: ${owner ? owner.status : 'unknown'}, ` +
-    `${reviewers.length} reviewer(s), verify command_ok=${verify ? verify.command_ok : false}`)
+  log(`Task ${task.n}: ${owner ? owner.status : 'unknown'}, ${reviewers.length} reviewer(s)`)
 
   return {
     n: task.n,
     status: (fixResult && fixResult.status) || (owner && owner.status) || 'unknown',
     verdicts,
-    command_ok: verify ? verify.command_ok : false,
-    proof_ok: verify ? verify.proof_ok : false,
     reports,
   }
 }
