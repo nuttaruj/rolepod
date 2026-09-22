@@ -51,6 +51,13 @@ check "rendered Bash agents carry the commit ban" "grep -q '\"git commit\\*\": d
 # Plugin shim is valid ESM (node syntax check) when node is available.
 if command -v node >/dev/null 2>&1; then
   check "rolepod.js passes node --check" "node --check $P/plugin/rolepod.js 2>/dev/null"
+  # v2.157.0: dual export — opencode 2.x needs a `default` definition
+  # (`PluginModule.LoadError` otherwise); opencode 1.x still wants the
+  # named export.
+  check "rolepod.js exports both entry points (default.id=rolepod + setup fn, named RolepodPlugin fn)" \
+    "node -e \"import('file://$REPO_DIR/adapters/opencode/plugin/rolepod.js').then(m=>{if(m.default?.id!=='rolepod'||typeof m.default?.setup!=='function'||typeof m.RolepodPlugin!=='function')process.exit(1)})\""
+  check "no process.cwd() fallback inside the v2 setup() (directory must come from ctx.location)" \
+    "! awk '/^export default/{f=1} f' $REPO_DIR/adapters/opencode/plugin/rolepod.js | grep -q 'process.cwd()'"
 else
   echo "  ~ node not on PATH — skipping JS syntax check"
 fi
@@ -151,6 +158,290 @@ DRIVEREOF
   check "oc-cores: session.idle → the turn's route line via the SDK messages (once per prompt)" "ocv routeLine True && ocv routeOnce True"
   check "oc-cores: missing shared dir → tool results untouched (fail open)" "[ \"\$(cd $OC_FIX && rm -rf .rolepod && ROLEPOD_OC_SHARED=/nonexistent node $DRIVER2 2>/dev/null | python3 -I -c 'import json,sys; d=json.load(sys.stdin); print(all(v is False for k,v in d.items() if k not in (\"plainUntouched\",\"dispatchProof\")) and d[\"plainUntouched\"] and d[\"dispatchProof\"])')\" = True ]"
   rm -rf "$OC_FIX"
+
+  # ── Behavioral: opencode 2.x default export (v2.157.0) ────────────────
+  # A fake ctx that mirrors the v2 contract measured against opencode
+  # 2.0.12 (docs/rolepod/handoffs/opencode-v2-migration-2026-09-22.md):
+  # tool.list/tool.hook/session.hook record their registrations and can
+  # invoke them directly; event.subscribe is an async generator fed from
+  # a push queue (mirrors ctx.event.subscribe's global stream); HOME is
+  # overridden so the session lock lands under a fake home, never the
+  # real one.
+  OC_FIX2="$(mktemp -d "${TMPDIR:-/tmp}/rolepod-ocv2.XXXXXX")"
+  FAKEHOME2="$(mktemp -d "${TMPDIR:-/tmp}/rolepod-ocv2home.XXXXXX")"
+  git -C "$OC_FIX2" init -q
+  DRIVERV2="$OC_FIX2/v2.mjs"
+  cat > "$DRIVERV2" <<'DRIVEREOF'
+import { createHash } from "node:crypto"
+import * as fs from "node:fs"
+import * as path from "node:path"
+import { execSync } from "node:child_process"
+const REPO_DIR = process.env.ROLEPOD_REPO_DIR
+const mod = await import("file://" + REPO_DIR + "/adapters/opencode/plugin/rolepod.js")
+const plugin = mod.default
+const DIR = process.cwd()
+function makeStream() {
+  const queue = []
+  let waiter = null
+  let capturedSignal = null
+  return {
+    push(ev) { if (waiter) { const w = waiter; waiter = null; w({ value: ev, done: false }) } else queue.push(ev) },
+    get signal() { return capturedSignal },
+    subscribe({ signal }) {
+      capturedSignal = signal
+      const iterator = {
+        async next() {
+          if (queue.length) return { value: queue.shift(), done: false }
+          if (signal.aborted) return { value: undefined, done: true }
+          return new Promise((resolve) => {
+            waiter = resolve
+            signal.addEventListener("abort", () => { waiter = null; resolve({ value: undefined, done: true }) }, { once: true })
+          })
+        },
+      }
+      return { [Symbol.asyncIterator]: () => iterator }
+    },
+  }
+}
+const hooks = { tool: {}, session: {} }
+const stream = makeStream()
+const ctx = {
+  location: { directory: DIR },
+  tool: { hook: async (name, cb) => { (hooks.tool[name] ??= []).push(cb) } },
+  session: { hook: async (name, cb) => { (hooks.session[name] ??= []).push(cb) } },
+  event: { subscribe: (opts) => stream.subscribe(opts) },
+}
+async function before(tool, input, sessionID = "s") {
+  for (const cb of hooks.tool["execute.before"] || []) await cb({ tool, input, sessionID, agent: "build", messageID: "m", id: "c" })
+}
+async function after(tool, input, result, sessionID = "s") {
+  const e = { tool, input, sessionID, agent: "build", messageID: "m", id: "c", status: "completed", result }
+  for (const cb of hooks.tool["execute.after"] || []) await cb(e)
+  return e.result
+}
+async function prompt(sessionID, text) {
+  for (const cb of hooks.session["prompt"] || []) await cb({ sessionID, messageID: "m", prompt: { text, files: [] }, delivery: "steer" })
+}
+async function context(sessionID, messages) {
+  const e = { sessionID, model: "m", system: [{ type: "text", text: "sys" }], messages, agent: "build", tools: {} }
+  for (const cb of hooks.session["context"] || []) await cb(e)
+  return e
+}
+function tick() { return new Promise((r) => setTimeout(r, 5)) }
+function wipeLedger() { fs.rmSync(path.join(DIR, ".rolepod"), { recursive: true, force: true }) }
+function lockDir() {
+  const worktree = execSync("git rev-parse --show-toplevel", { cwd: DIR }).toString().trim()
+  const hash = createHash("sha256").update(worktree).digest("hex").slice(0, 16)
+  return path.join(process.env.HOME, ".rolepod", "session-locks", hash)
+}
+function phaseLog() {
+  try { return fs.readFileSync(path.join(DIR, ".rolepod", "evidence", "phase-log.jsonl"), "utf8") } catch { return "" }
+}
+const res = {}
+const cleanup = await plugin.setup(ctx)
+res.setupReturnsCleanup = typeof cleanup === "function"
+// (2) gate
+wipeLedger()
+await after("edit", { path: "auth/login.py" }, { content: "ok" })
+try { await before("shell", { command: "git commit -m x" }); res.gateRisk = "ALLOW" } catch (e) { res.gateRisk = String(e?.message || "").includes("rolepod precommit gate") ? "DENY" : "BADMSG" }
+wipeLedger()
+await after("edit", { path: "auth/login.py" }, { content: "ok" })
+try { await before("shell", { command: "git -C /repo commit -m x" }); res.gateFlagC = "ALLOW" } catch (e) { res.gateFlagC = String(e?.message || "").includes("rolepod precommit gate") ? "DENY" : "BADMSG" }
+wipeLedger()
+await after("edit", { path: "auth/login.py" }, { content: "ok" })
+try { await before("shell", { command: "git log --oneline" }); res.gateLog = "ALLOW" } catch { res.gateLog = "DENY" }
+wipeLedger()
+await after("edit", { path: "docs/notes.md" }, { content: "ok" })
+try { await before("shell", { command: "git commit -m x" }); res.gateNormalPath = "ALLOW" } catch { res.gateNormalPath = "DENY" }
+wipeLedger()
+await after("edit", { path: "auth/login.py" }, { content: "ok" })
+await after("edit", { path: "tests/test_x.py" }, { content: "ok" })
+try { await before("shell", { command: "git commit -m x" }); res.gateWithTest = "ALLOW" } catch { res.gateWithTest = "DENY" }
+wipeLedger()
+await after("edit", { path: "auth/login.py" }, { content: "ok" })
+process.env.ROLEPOD_GATES_SOFT = "1"
+try { await before("shell", { command: "git commit -m x" }); res.gateSoft = "ALLOW" } catch { res.gateSoft = "DENY" }
+delete process.env.ROLEPOD_GATES_SOFT
+res.bypassLogged = fs.existsSync(path.join(DIR, ".rolepod", "evidence", "bypass.log")) &&
+  fs.readFileSync(path.join(DIR, ".rolepod", "evidence", "bypass.log"), "utf8").includes("opencode-precommit-gate")
+// leave a risk + test row on disk for the bash-side ledger-content check
+wipeLedger()
+await after("edit", { path: "auth/login.py" }, { content: "ok" })
+await after("edit", { path: "tests/test_x.py" }, { content: "ok" })
+// (3) sweep
+const sidSweep = "sweep-sess"
+await prompt(sidSweep, "go")
+let r1 = await after("read", { path: "/tmp/a" }, { content: "x".repeat(70000) }, sidSweep)
+let r2 = await after("read", { path: "/tmp/b" }, { content: "y".repeat(70000) }, sidSweep)
+let r3 = await after("grep", { pattern: "q" }, { content: "z".repeat(1000) }, sidSweep)
+res.sweep1 = String(r1.content).includes("⟂ sweep")
+res.sweep2 = String(r2.content).includes("⟂ sweep: ~136 KB")
+res.sweep3 = String(r3.content).includes("⟂ sweep")
+await prompt(sidSweep, "again")
+await after("write", { path: "/tmp/c", content: "x" }, { content: "ok" }, sidSweep)
+let r4 = await after("read", { path: "/tmp/a" }, { content: "x".repeat(200000) }, sidSweep)
+res.sweepAfterEdit = String(r4.content).includes("⟂ sweep")
+// (4) loop breaker
+const sidLoop = "loop-sess"
+let l1 = await after("shell", { command: "npm test" }, { content: "FAIL", metadata: { exit: 1 } }, sidLoop)
+let l2 = await after("shell", { command: "npm test" }, { content: "FAIL", metadata: { exit: 1 } }, sidLoop)
+let l3 = await after("shell", { command: "npm test" }, { content: "FAIL", metadata: { exit: 1 } }, sidLoop)
+res.loop2 = String(l2.content).includes("LOOP BREAKER")
+res.loop3 = String(l3.content).includes("LOOP BREAKER")
+let l4 = await after("shell", { command: "npm test" }, { content: "PASS", metadata: { exit: 0 } }, sidLoop)
+res.loopReset = String(l4.content).includes("LOOP BREAKER")
+let plain = await after("shell", { command: "echo hi" }, { content: "hi", metadata: { exit: 0 } }, sidLoop)
+res.plainUntouched = plain.content === "hi"
+// (5) subagent dispatch proof
+await after("subagent", { agent: "qa-tester", description: "review", prompt: "review it" }, { content: "ok" })
+res.dispatchProof = phaseLog().includes('"phase":"dispatch-proof","cli":"opencode","agent_type":"qa-tester"')
+// (6) lock + sibling
+const sidA = "ses-A"
+await prompt(sidA, "hello")
+await tick()
+const ld = lockDir()
+res.lockAExists = fs.existsSync(path.join(ld, `${sidA}.lock`))
+res.parentActiveExists = fs.existsSync(path.join(DIR, ".rolepod", "parent-active"))
+const lockCountAfterFirst = fs.readdirSync(ld).filter((f) => f.endsWith(".lock")).length
+await prompt(sidA, "hello again")
+const lockCountAfterSecond = fs.readdirSync(ld).filter((f) => f.endsWith(".lock")).length
+res.stillOneLock = lockCountAfterSecond === lockCountAfterFirst
+fs.mkdirSync(ld, { recursive: true })
+fs.writeFileSync(path.join(ld, "sibling-x.lock"), "")
+const sidB = "ses-B"
+await prompt(sidB, "hi")
+let cx1 = await context(sidB, [{ id: "m1", role: "user", content: [{ type: "text", text: "hi" }] }])
+res.siblingPushedOnce = cx1.system.filter((p) => String(p.text || "").includes("sibling session")).length === 1
+let cx2 = await context(sidB, [{ id: "m1", role: "user", content: [{ type: "text", text: "hi" }] }])
+res.siblingNotPushedTwice = cx2.system.filter((p) => String(p.text || "").includes("sibling session")).length === 0
+// (7) reanchor
+stream.push({ type: "session.created", data: { location: { directory: DIR }, sessionID: sidA } })
+await tick()
+stream.push({ type: "session.compaction.ended", data: { sessionID: sidA } })
+await tick()
+let cx3 = await context(sidA, [{ id: "m1", role: "user", content: [{ type: "text", text: "hi" }] }])
+res.reanchorPushedOnce = cx3.system.filter((p) => String(p.text || "").includes("post-compact re-anchor")).length === 1
+let cx4 = await context(sidA, [{ id: "m1", role: "user", content: [{ type: "text", text: "hi" }] }])
+res.reanchorNotPushedTwice = cx4.system.filter((p) => String(p.text || "").includes("post-compact re-anchor")).length === 0
+// (7b) reanchor for a session the event stream never announced with
+// session.created (e.g. it predates a service restart) — its own prompt
+// hook call (instance-scoped, unlike the global event stream) already
+// seeded `sessions` for it, so the later compaction event still arms.
+const sidUnseen = "ses-unseen"
+await prompt(sidUnseen, "hi")
+stream.push({ type: "session.compaction.ended", data: { sessionID: sidUnseen } })
+await tick()
+let cx5 = await context(sidUnseen, [{ id: "m1", role: "user", content: [{ type: "text", text: "hi" }] }])
+res.reanchorUnseenSession = cx5.system.filter((p) => String(p.text || "").includes("post-compact re-anchor")).length === 1
+// (8) route
+const sidRoute = "ses-route"
+await prompt(sidRoute, "fix the login bug")
+const routeMessages = [
+  { id: "u1", role: "user", content: [{ type: "text", text: "fix the login bug" }] },
+  { id: "a1", role: "assistant", content: [{ type: "text", text: "Route: R2 (one file + test) → implement-plan · one handler" }] },
+  { id: "u2", role: "user", content: [{ type: "text", text: "next" }] },
+]
+await context(sidRoute, routeMessages)
+res.routeOnce1 = (phaseLog().match(/"phase":"route"/g) || []).length === 1
+await context(sidRoute, routeMessages)
+res.routeOnce2 = (phaseLog().match(/"phase":"route"/g) || []).length === 1
+// (9) cross-directory + child sessions
+stream.push({ type: "session.created", data: { location: { directory: "/somewhere/else" }, sessionID: "other-dir-sess" } })
+await tick()
+stream.push({ type: "session.created", data: { location: { directory: DIR }, sessionID: "lead-sess" } })
+await tick()
+stream.push({ type: "session.created", data: { sessionID: "child-sess", parentID: "lead-sess" } })
+await tick()
+const lockCountBefore = fs.readdirSync(ld).filter((f) => f.endsWith(".lock")).length
+await prompt("child-sess", "do the subtask")
+const lockCountAfter = fs.readdirSync(ld).filter((f) => f.endsWith(".lock")).length
+res.childNoLock = lockCountAfter === lockCountBefore
+const routeCountBefore = (phaseLog().match(/"phase":"route"/g) || []).length
+await context("child-sess", routeMessages)
+const routeCountAfter = (phaseLog().match(/"phase":"route"/g) || []).length
+res.childNoRoute = routeCountAfter === routeCountBefore
+stream.push({ type: "session.compaction.ended", data: { sessionID: "other-dir-sess" } })
+await tick()
+let cxOther = await context("other-dir-sess", [{ id: "m1", role: "user", content: [{ type: "text", text: "hi" }] }])
+res.otherDirNoReanchor = cxOther.system.filter((p) => String(p.text || "").includes("post-compact re-anchor")).length === 0
+// (10) cleanup aborts the subscribe signal
+res.signalAbortedBefore = stream.signal.aborted
+await cleanup()
+res.signalAbortedAfter = stream.signal.aborted
+console.log(JSON.stringify(res))
+DRIVEREOF
+  V2RES=$(cd "$OC_FIX2" && HOME="$FAKEHOME2" ROLEPOD_REPO_DIR="$REPO_DIR" ROLEPOD_OC_SHARED="$REPO_DIR/build/rendered/opencode/plugin/rolepod-shared" node "$DRIVERV2" 2>/dev/null)
+  ocv2() { printf '%s' "$V2RES" | python3 -I -c "import json,sys; d=json.load(sys.stdin); sys.exit(0 if d.get('$1') == $2 else 1)"; }
+  check "oc-v2 gate: risk edit + shell 'git commit' → deny" "ocv2 gateRisk '\"DENY\"'"
+  check "oc-v2 gate: flag-separated git -C commit → deny" "ocv2 gateFlagC '\"DENY\"'"
+  check "oc-v2 gate: git log → allow" "ocv2 gateLog '\"ALLOW\"'"
+  check "oc-v2 gate: normal path commit → allow" "ocv2 gateNormalPath '\"ALLOW\"'"
+  check "oc-v2 gate: risk + test evidence → allow" "ocv2 gateWithTest '\"ALLOW\"'"
+  check "oc-v2 gate: ROLEPOD_GATES_SOFT logs bypass, no deny" "ocv2 gateSoft '\"ALLOW\"' && ocv2 bypassLogged True"
+  check "oc-v2: the edits landed in the ledger (risk + test rows, cli opencode)" "grep -q '\"path\": \"auth/login.py\", \"kind\": \"risk\"' $OC_FIX2/.rolepod/evidence/edits.jsonl && grep -q '\"kind\": \"test\"' $OC_FIX2/.rolepod/evidence/edits.jsonl && grep -q '\"cli\": \"opencode\"' $OC_FIX2/.rolepod/evidence/edits.jsonl"
+  check "oc-v2 sweep: first 70 KB read → no nudge; second (136 KB) → '⟂ sweep' text part; third → silent" "ocv2 sweep1 False && ocv2 sweep2 True && ocv2 sweep3 False"
+  check "oc-v2 sweep: a new prompt resets, an edit suppresses the sweep for the turn" "ocv2 sweepAfterEdit False"
+  check "oc-v2 loop breaker: same shell command failing 3× (metadata.exit) → LOOP BREAKER on the third result only" "ocv2 loop2 False && ocv2 loop3 True"
+  check "oc-v2 loop breaker: a passing run resets the counter; plain output untouched" "ocv2 loopReset False && ocv2 plainUntouched True"
+  check "oc-v2: subagent tool → dispatch-proof phase-log line (cli opencode, agent_type qa-tester)" "ocv2 dispatchProof True"
+  check "oc-v2: first prompt for a session → session lock + parent-active marker; a second prompt keeps one lock" "ocv2 lockAExists True && ocv2 parentActiveExists True && ocv2 stillOneLock True"
+  check "oc-v2: a pre-placed sibling lock → ONE 'sibling session' text part on the next context call, none on the following one" "ocv2 siblingPushedOnce True && ocv2 siblingNotPushedTwice True"
+  check "oc-v2: session.compaction.ended → the re-anchor text pushed once on the next context call, not the one after" "ocv2 reanchorPushedOnce True && ocv2 reanchorNotPushedTwice True"
+  check "oc-v2: a compaction event for a session the event stream never announced still re-anchors (the prompt hook already seeded it)" "ocv2 reanchorUnseenSession True"
+  check "oc-v2: a context call's trailing messages record the route line once; a second context call in the same turn adds no more" "ocv2 routeOnce1 True && ocv2 routeOnce2 True"
+  check "oc-v2: a session.created for another directory or with parentID set never locks or routes" "ocv2 childNoLock True && ocv2 childNoRoute True && ocv2 otherDirNoReanchor True"
+  check "oc-v2: setup() returns a cleanup that aborts the event.subscribe signal" "ocv2 setupReturnsCleanup True && ocv2 signalAbortedBefore False && ocv2 signalAbortedAfter True"
+
+  DRIVERV2FO="$OC_FIX2/v2-failopen.mjs"
+  cat > "$DRIVERV2FO" <<'DRIVEREOF'
+import * as fs from "node:fs"
+import * as path from "node:path"
+const REPO_DIR = process.env.ROLEPOD_REPO_DIR
+const mod = await import("file://" + REPO_DIR + "/adapters/opencode/plugin/rolepod.js")
+const plugin = mod.default
+const DIR = process.cwd()
+const hooks = { tool: {}, session: {} }
+const ctx = {
+  location: { directory: DIR },
+  tool: { hook: async (name, cb) => { (hooks.tool[name] ??= []).push(cb) } },
+  session: { hook: async (name, cb) => { (hooks.session[name] ??= []).push(cb) } },
+  event: { subscribe: () => ({ [Symbol.asyncIterator]: () => ({ next: async () => ({ value: undefined, done: true }) }) }) },
+}
+async function before(tool, input) {
+  for (const cb of hooks.tool["execute.before"] || []) await cb({ tool, input, sessionID: "s", agent: "build", messageID: "m", id: "c" })
+}
+async function after(tool, input, result) {
+  const e = { tool, input, sessionID: "s", agent: "build", messageID: "m", id: "c", status: "completed", result }
+  for (const cb of hooks.tool["execute.after"] || []) await cb(e)
+  return e.result
+}
+await plugin.setup(ctx)
+const res = {}
+await after("edit", { path: "auth/login.py" }, { content: "ok" })
+try { await before("shell", { command: "git commit -m x" }); res.gateAllows = true } catch { res.gateAllows = false }
+let r1 = await after("read", { path: "/tmp/a" }, { content: "x".repeat(70000) })
+let r2 = await after("read", { path: "/tmp/b" }, { content: "y".repeat(70000) })
+res.sweepUntouched = !String(r1.content).includes("⟂") && !String(r2.content).includes("⟂")
+let l = await after("shell", { command: "npm test" }, { content: "FAIL", metadata: { exit: 1 } })
+res.loopUntouched = !String(l.content).includes("LOOP BREAKER")
+let plain = await after("shell", { command: "echo hi" }, { content: "hi", metadata: { exit: 0 } })
+res.plainUntouched = plain.content === "hi"
+await after("subagent", { agent: "qa-tester" }, { content: "ok" })
+res.dispatchProof = (() => { try { return fs.readFileSync(path.join(DIR, ".rolepod", "evidence", "phase-log.jsonl"), "utf8").includes('"phase":"dispatch-proof"') } catch { return false } })()
+console.log(JSON.stringify(res))
+DRIVEREOF
+  OC_FIX2B="$(mktemp -d "${TMPDIR:-/tmp}/rolepod-ocv2fo.XXXXXX")"
+  git -C "$OC_FIX2B" init -q
+  V2FO=$(cd "$OC_FIX2B" && ROLEPOD_REPO_DIR="$REPO_DIR" ROLEPOD_OC_SHARED=/nonexistent node "$DRIVERV2FO" 2>/dev/null)
+  ocv2fo() { printf '%s' "$V2FO" | python3 -I -c "import json,sys; d=json.load(sys.stdin); sys.exit(0 if d.get('$1') == $2 else 1)"; }
+  # v2 fail-open: the ledger lives behind ROLEPOD_OC_SHARED too, so a
+  # broken SHARED path makes the count read as 0/0 — the gate falls open
+  # (allow) on the same "unknown/unreachable evidence -> never block" rule
+  # the v1 fail-open case asserts; sweep/loop stay silent; the dispatch-proof
+  # write is plain fs and never touches SHARED.
+  check "oc-v2: missing shared dir → ledger unreachable so the gate allows; sweep/loop untouched; dispatch-proof still recorded; plain output untouched" \
+    "ocv2fo gateAllows True && ocv2fo sweepUntouched True && ocv2fo loopUntouched True && ocv2fo plainUntouched True && ocv2fo dispatchProof True"
+  rm -rf "$OC_FIX2" "$FAKEHOME2" "$OC_FIX2B"
 else
   echo "  ~ node not on PATH — skipping opencode gate behavior checks"
 fi

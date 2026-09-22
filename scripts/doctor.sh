@@ -221,7 +221,16 @@ report "gemini"      "${GEMINI_V:-absent}"  "hooks-live (advisory — reminders 
 CURSOR_V=$(python3 -I -c "import json;print(json.load(open('$HOME/.cursor/plugins/local/rolepod/.cursor-plugin/plugin.json'))['version'])" 2>/dev/null)
 report "cursor"      "${CURSOR_V:-absent}"  "hooks-live (deny + post-edit reminders; live-verified 2026-09-16)"
 OC_V=$(python3 -I -c "import json;print(json.load(open('$HOME/.config/opencode/rolepod-version.json'))['version'])" 2>/dev/null)
-report "opencode"    "${OC_V:-absent}"      "hooks-live (partial — plugin precommit deny + sweep/loop-breaker on tool results + agent permission blocks; rest doctrine-only)"
+OC_PLUGIN_FILE="$HOME/.config/opencode/plugins/rolepod.js"
+OC_PLUGIN_NOTE=""
+if [ -f "$OC_PLUGIN_FILE" ]; then
+  if grep -q '^export default' "$OC_PLUGIN_FILE"; then
+    OC_PLUGIN_NOTE=" — plugin file: v2 shape"
+  else
+    OC_PLUGIN_NOTE=" — plugin file: v1 shape (opencode 2 will not load it: re-run install.sh --target=opencode --force)"
+  fi
+fi
+report "opencode"    "${OC_V:-absent}"      "hooks-live (partial — plugin precommit deny + sweep/loop-breaker on tool results + agent permission blocks; rest doctrine-only)$OC_PLUGIN_NOTE"
 AGY_V=$(command -v agy >/dev/null 2>&1 && agy plugin list 2>/dev/null | grep -q '"name": "rolepod"' && echo installed)
 report "antigravity" "${AGY_V:-absent}"     "hooks-live (deny-only — precommit gate on run_command; agy has no reminder channel)"
 

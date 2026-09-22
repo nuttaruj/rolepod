@@ -1723,7 +1723,9 @@ fi
 # (the FILENAME is the agent id), plugin shim → plugins/rolepod.js, always-on
 # core → AGENTS.md managed block. Both scopes get the full component set;
 # only the AGENTS.md location differs (project rules live at the repo root,
-# not inside .opencode/). Verified against opencode.ai/docs 2026-07-28.
+# not inside .opencode/). Verified against opencode.ai/v2/docs 2026-09-22
+# (opencode 2.0.12; the plugin file carries a v2 default export next to the
+# v1 named export).
 if opencode_selected; then
   OC_TARGET="$(resolve_target_for opencode)"
   RENDERED_OC_DIR="$REPO_DIR/build/rendered/opencode"
@@ -1863,8 +1865,10 @@ if [ "$SCOPE" = "project" ]; then
     gemini) echo "${BOLD}Final step${NC}: Gemini auto-loads $PWD/GEMINI.md when you run gemini in this project." ;;
     cursor) echo "${BOLD}Final step${NC}: restart Cursor in this project to load the rolepod plugin." ;;
     antigravity) echo "${BOLD}Final step${NC}: agy auto-loads $PWD/AGENTS.md when you run agy in this project." ;;
-    opencode) echo "${BOLD}Final step${NC}: opencode auto-loads $PWD/AGENTS.md + $PWD/.opencode/ when you run opencode in this project." ;;
-    all)    echo "${BOLD}Final step${NC}: restart Claude Code + Cursor in this project; Codex/Gemini/Antigravity/opencode auto-load $PWD/AGENTS.md and $PWD/GEMINI.md." ;;
+    opencode) echo "${BOLD}Final step${NC}: opencode auto-loads $PWD/AGENTS.md + $PWD/.opencode/ when you run opencode in this project."
+              echo "  opencode 2: run ${BOLD}opencode service restart${NC} first — the shared service loads plugins only when it boots, a TUI restart or \`opencode reload\` does not. opencode 1.x: just restart opencode." ;;
+    all)    echo "${BOLD}Final step${NC}: restart Claude Code + Cursor in this project; Codex/Gemini/Antigravity/opencode auto-load $PWD/AGENTS.md and $PWD/GEMINI.md."
+            echo "  opencode 2: run ${BOLD}opencode service restart${NC} too — a TUI restart or \`opencode reload\` does not reload its plugin." ;;
   esac
 else
   case "$CLI_TARGET" in
@@ -1875,9 +1879,10 @@ else
     cursor) echo "${BOLD}Final step${NC}: restart Cursor (or reload window) so the plugin + rules register."
             echo "  Verify under Cursor → Settings → Features → Rules / Plugins." ;;
     antigravity) echo "${BOLD}Final step${NC}: launch agy to load the rolepod plugin + AGENTS.md (verify: ${BOLD}agy plugin list${NC})." ;;
-    opencode) echo "${BOLD}Final step${NC}: restart opencode to load skills, agents, the rolepod.js plugin, and AGENTS.md." ;;
+    opencode) echo "${BOLD}Final step${NC}: on opencode 2, run ${BOLD}opencode service restart${NC} to load skills, agents, the rolepod.js plugin, and AGENTS.md — the shared service loads plugins only when it boots, a TUI restart or \`opencode reload\` does not. On opencode 1.x, just restart opencode." ;;
     all)    echo "${BOLD}Final step${NC}: restart Claude Code, Codex CLI, Gemini CLI, Cursor, Antigravity (agy), and opencode."
-            echo "  Codex hooks are default-enabled; trust the plugin's bundled hooks when prompted." ;;
+            echo "  Codex hooks are default-enabled; trust the plugin's bundled hooks when prompted."
+            echo "  opencode 2: restarting the app is not enough — run ${BOLD}opencode service restart${NC} (opencode 1.x: a normal restart is fine)." ;;
   esac
 fi
 
