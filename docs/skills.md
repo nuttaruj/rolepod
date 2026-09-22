@@ -66,7 +66,7 @@ Skills can run inline (default — body becomes part of Lead's conversation) or 
 2. Add the skill to the appropriate `emit_lean_section` call in `generate_skill_index_lean()` (`build/render.sh:70`) if it belongs in the public surface.
 3. `make render` — regenerates `core/fragments/skill-index-lean.md`.
 4. Add the row to the `## Core 10 skills` table above — it is the full catalog the lean index points at, and it does not regenerate.
-5. `make test-static` — render-clean + lean-surface confirm the Core 10 + 1 alias caps and portability.
+5. `make test-static` — render-clean + lean-surface confirm the Core 10 + 2 commands caps and portability.
 
 ## Skill design principles
 
@@ -74,5 +74,5 @@ Skills can run inline (default — body becomes part of Lead's conversation) or 
 - **Each core skill is standalone.** It includes an agent-available path and a no-agent fallback so a copy-only install still works, and it is complete as ONE file: a runtime that ships only SKILL.md (no `templates/` `references/` `examples/`) still runs the whole workflow — the artifact line IS the template (it names every section in the template's words; the file only adds the layout), and `tests/static/lean-surface.sh` fails when a template heading is missing from its skill.
 - **No hard dependency language.** Forbidden: `Requires <agent>`, `Always delegate to <agent>`, `Only works inside full Rolepod`.
 - **Frontmatter triggers are the routing surface.** `description:` and `when_to_use:` must include the phrases users actually type.
-- **Byte cap, not line cap.** Measured with every `{{INCLUDE:}}` expanded, since that is what the model reads: a phase skill ≤ 13 KB (`using-rolepod` ≤ 21.5 KB, `review-code` ≤ 19 KB, all SKILL.md ≤ 133 KB as a backstop — the per-skill caps do the work); supporting files ≤ 34 KB per skill, ≤ 176 KB total; no prose line past 600 chars. The old 190-line cap was met by lengthening lines while bytes grew 64% in three months. Caps sit ~1-2% above current size on purpose: when one bites, dedupe first, then move load-on-demand detail into `references/`, then name in the PR what the new doctrine replaces. Fallback sections stay concise; deep playbooks belong in agents.
+- **Byte cap, not line cap.** Measured with every `{{INCLUDE:}}` expanded, since that is what the model reads: a phase skill ≤ 13 KB (`using-rolepod` ≤ 21.5 KB, `review-code` ≤ 19 KB, all SKILL.md ≤ 141 KB as a backstop — the per-skill caps do the work); supporting files ≤ 34 KB per skill, ≤ 176 KB total; no prose line past 600 chars. The old 190-line cap was met by lengthening lines while bytes grew 64% in three months. Caps sit ~1-2% above current size on purpose: when one bites, dedupe first, then move load-on-demand detail into `references/`, then name in the PR what the new doctrine replaces. Fallback sections stay concise; deep playbooks belong in agents.
 - **Rule over mechanism.** A skill states the rule and the command; it does not narrate which hook denies under which sub-condition, exit codes, version history, or measurements — hooks print their own message when they bite, and on a CLI without hooks the rule itself is the gate.
