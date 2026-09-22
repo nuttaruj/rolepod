@@ -988,6 +988,7 @@ EXPECTED_HEADINGS='## Worktree
 ## Change
 ## Test / evidence
 ## Command
+## Check
 ## Proof
 ## Done when
 ## Write
@@ -1376,11 +1377,14 @@ EOF
 OUTP1=$(bash "$LINT" --brief 1 "$TMP/brief-proof.md")
 CMD_TO_DW=$(printf '%s\n' "$OUTP1" | awk '/^## Command/{f=1;next} /^## Done when/{f=0} f')
 EXPECTED_CMD_TO_DW='pytest src/
+## Check
+none — pick the narrowest command that covers each edit (one case file, one test name, one module)
+Loop on the Check after every edit. Do not run the full Command — integration runs it once, independently; return when the Check is green and the diff is final.
 ## Proof
 the fix holds
 `pytest -k "test_a" | tee /tmp/out.log`'
 if [ "$CMD_TO_DW" = "$EXPECTED_CMD_TO_DW" ]; then
-  echo "  ✓ plan-lint.sh --brief prints ## Proof right after ## Command, pipe + quoted string byte-for-byte"
+  echo "  ✓ plan-lint.sh --brief prints ## Check then ## Proof right after ## Command, pipe + quoted string byte-for-byte"
 else
   echo "  ✗ --brief Proof field wrong:"; diff <(printf '%s' "$EXPECTED_CMD_TO_DW") <(printf '%s' "$CMD_TO_DW"); fail=$((fail+1))
 fi
@@ -1397,6 +1401,83 @@ if [ "$PROOF3" = "none" ]; then
   echo "  ✓ plan-lint.sh --brief treats an undeleted template placeholder as no Proof"
 else
   echo "  ✗ --brief undeleted-placeholder Proof wrong: $PROOF3"; fail=$((fail+1))
+fi
+
+# ── --brief: ## Check (spec 2026-09-22) — the loop's own re-run command, right
+# after ## Command, so the build loop stops re-running the full Command per edit ──
+cat > "$TMP/brief-check.md" <<'EOF'
+### Task 1: with check
+- **Delivers:** x
+- **Blocked by:** none
+- [ ] **Files:** `src/a.py`
+- [ ] **Command:** pytest src/
+- **Check:** `pytest src/a_test.py::test_a`
+- **Owner:** backend-developer
+- **Done when:** true
+
+### Task 2: without check
+- **Delivers:** y
+- **Blocked by:** none
+- [ ] **Files:** `src/b.py`
+- [ ] **Command:** pytest src/b
+- **Owner:** backend-developer
+- **Done when:** true
+  the Check for this stays with backend-developer, not a new field
+
+### Task 3: prose quoting Check
+- **Delivers:** z
+- **Blocked by:** none
+- [ ] **Files:** `src/c.py`
+- [ ] **Command:** pytest src/c
+- **Test / evidence:** run the Check: command by hand once, then automate
+- **Owner:** backend-developer
+- **Done when:** true
+
+### Task 4: undeleted backticked placeholder
+- **Delivers:** w
+- **Blocked by:** none
+- [ ] **Files:** `src/d.py`
+- [ ] **Command:** pytest src/d
+- **Check:** `<the narrowest command that covers this task's edits — one case file, one test name; the loop runs this, the Command runs once>`
+- **Owner:** backend-developer
+- **Done when:** true
+## Parallel layout
+Sequential — single owner.
+## Failure policy
+Default: stop.
+EOF
+LOOP_RULE='Loop on the Check after every edit. Do not run the full Command — integration runs it once, independently; return when the Check is green and the diff is final.'
+OUTCK1=$(bash "$LINT" --brief 1 "$TMP/brief-check.md")
+CHECK1=$(printf '%s\n' "$OUTCK1" | awk '/^## Check/{f=1;next} /^## /{f=0} f')
+EXPECTED_CHECK1="\`pytest src/a_test.py::test_a\`
+$LOOP_RULE"
+if [ "$CHECK1" = "$EXPECTED_CHECK1" ]; then
+  echo "  ✓ plan-lint.sh --brief prints a task's Check command then the loop rule"
+else
+  echo "  ✗ --brief Check field wrong:"; diff <(printf '%s' "$EXPECTED_CHECK1") <(printf '%s' "$CHECK1"); fail=$((fail+1))
+fi
+OUTCK2=$(bash "$LINT" --brief 2 "$TMP/brief-check.md")
+CHECK2=$(printf '%s\n' "$OUTCK2" | awk '/^## Check/{f=1;next} /^## /{f=0} f')
+EXPECTED_CHECK2="none — pick the narrowest command that covers each edit (one case file, one test name, one module)
+$LOOP_RULE"
+if [ "$CHECK2" = "$EXPECTED_CHECK2" ]; then
+  echo "  ✓ plan-lint.sh --brief prints the derived Check hint then the loop rule when Check is absent"
+else
+  echo "  ✗ --brief missing-Check wrong:"; diff <(printf '%s' "$EXPECTED_CHECK2") <(printf '%s' "$CHECK2"); fail=$((fail+1))
+fi
+OUTCK3=$(bash "$LINT" --brief 3 "$TMP/brief-check.md")
+CHECK3=$(printf '%s\n' "$OUTCK3" | awk '/^## Check/{f=1;next} /^## /{f=0} f')
+if [ "$CHECK3" = "$EXPECTED_CHECK2" ]; then
+  echo "  ✓ plan-lint.sh --brief does not read a prose mention of 'Check:' as the field"
+else
+  echo "  ✗ --brief prose-Check-mention leaked into the field: $CHECK3"; fail=$((fail+1))
+fi
+OUTCK4=$(bash "$LINT" --brief 4 "$TMP/brief-check.md")
+CHECK4=$(printf '%s\n' "$OUTCK4" | awk '/^## Check/{f=1;next} /^## /{f=0} f')
+if [ "$CHECK4" = "$EXPECTED_CHECK2" ]; then
+  echo "  ✓ plan-lint.sh --brief treats an undeleted backticked Check placeholder as no Check"
+else
+  echo "  ✗ --brief backticked-placeholder Check wrong: $CHECK4"; fail=$((fail+1))
 fi
 
 # ── --brief: an indented Change sub-bullet is the Change; a backticked flag on a Files-to-touch line is not a path ──

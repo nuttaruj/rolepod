@@ -11,7 +11,7 @@
 #
 # Usage: scripts/plan-lint.sh --brief <N> <plan.md> [contract.md]
 #   Prints Task N's brief (Goal/Tier/Blocked by/Read first/Files allowed/
-#   Files forbidden/Change/Test/Command/Done when/Write/Reviewers/Bounds)
+#   Files forbidden/Change/Test/Command/Check/Done when/Write/Reviewers/Bounds)
 #   to stdout, assembled from the plan (and the contract's File-ownership +
 #   Do-not-touch-list when one is given). Exit 0 on success; exit 2 with
 #   one stderr line and empty stdout when Task N does not exist. Field
@@ -183,6 +183,11 @@ if [ "${1:-}" = "--brief" ]; then
       else if (fieldline(line, "Change"))          { field = "C";   v = line; sub(/^[[:space:]]*[-*][[:space:]]*(\[[ xX]\][[:space:]]*)?\*{0,2}Change\*{0,2}:\*{0,2}[[:space:]]*/, "", v) }
       else if (fieldline(line, "Test / evidence")) { field = "T";   v = line; sub(/^[[:space:]]*[-*][[:space:]]*(\[[ xX]\][[:space:]]*)?\*{0,2}Test \/ evidence\*{0,2}:\*{0,2}[[:space:]]*/, "", v) }
       else if (fieldline(line, "Command"))         { field = "Cmd"; v = line; sub(/^[[:space:]]*[-*][[:space:]]*(\[[ xX]\][[:space:]]*)?\*{0,2}Command\*{0,2}:\*{0,2}[[:space:]]*/, "", v) }
+      # Optional — the narrowest command the build loop re-runs after every
+      # edit, so the owner never falls back to the full Command per edit
+      # (spec 2026-09-22: T3 owner spent 77% of tool time inside full-Command
+      # single runs).
+      else if (fieldline(line, "Check"))           { field = "Ck";  v = line; sub(/^[[:space:]]*[-*][[:space:]]*(\[[ xX]\][[:space:]]*)?\*{0,2}Check\*{0,2}:\*{0,2}[[:space:]]*/, "", v) }
       else if (fieldline(line, "Owner"))           { field = "O";   v = line; sub(/^[[:space:]]*[-*][[:space:]]*(\[[ xX]\][[:space:]]*)?\*{0,2}Owner\*{0,2}:\*{0,2}[[:space:]]*/, "", v) }
       else if (fieldline(line, "Done when"))       { field = "DW";  v = line; sub(/^[[:space:]]*[-*][[:space:]]*(\[[ xX]\][[:space:]]*)?\*{0,2}Done when\*{0,2}:\*{0,2}[[:space:]]*/, "", v) }
       # Optional — the one claim + command a reviewer would check by hand
@@ -207,6 +212,7 @@ if [ "${1:-}" = "--brief" ]; then
         else if (field == "C") Ch = v
         else if (field == "T") Te = v
         else if (field == "Cmd") Cmd = v
+        else if (field == "Ck") Ck = v
         else if (field == "O") Ow = v
         else if (field == "DW") DW = v
         else if (field == "P") Pr = v
@@ -226,6 +232,7 @@ if [ "${1:-}" = "--brief" ]; then
         else if (field == "C") Ch = (Ch == "" ? cont : Ch "\n" cont)
         else if (field == "T") Te = (Te == "" ? cont : Te "\n" cont)
         else if (field == "Cmd") Cmd = (Cmd == "" ? cont : Cmd "\n" cont)
+        else if (field == "Ck") Ck = (Ck == "" ? cont : Ck "\n" cont)
         else if (field == "O") Ow = (Ow == "" ? cont : Ow "\n" cont)
         else if (field == "DW") DW = (DW == "" ? cont : DW "\n" cont)
         else if (field == "P") Pr = (Pr == "" ? cont : Pr "\n" cont)
@@ -382,6 +389,12 @@ if [ "${1:-}" = "--brief" ]; then
     print (Te == "" ? "(not in plan)" : Te)
     print "## Command"
     print (Cmd == "" ? "(not in plan)" : Cmd)
+    print "## Check"
+    # A value opening with "<" is an undeleted template placeholder — same
+    # convention as the Proof placeholder skip below — treated as absent.
+    if (Ck == "" || Ck ~ /^`?</) print "none — pick the narrowest command that covers each edit (one case file, one test name, one module)"
+    else print Ck
+    print "Loop on the Check after every edit. Do not run the full Command — integration runs it once, independently; return when the Check is green and the diff is final."
     print "## Proof"
     # An undeleted template placeholder ("<the one claim...> :: `<the command
     # that proves it>`") is not a real Proof — same convention as the bare-path
