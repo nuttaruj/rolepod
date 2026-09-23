@@ -157,6 +157,14 @@ resolve_contract() { # $1 = plan (absolute), $2 = repo root
   return 0
 }
 
+# A value flag given last has no value: `shift 2` then fails WITHOUT
+# shifting and the parse loop never ends — refuse it as a usage error.
+need_val() { # $1 = subcommand, $2 = flag, $3 = args left ($#)
+  [ "$3" -ge 2 ] && return 0
+  echo "ticket: $1: $2 needs a value" >&2
+  exit 2
+}
+
 # Runs "$2" (a shell command line, or empty/"(not in plan)"/"none" to skip)
 # in dir "$3", printing "$1: ok" or "$1: FAIL" + a <=15-line tail. Returns
 # the command's own exit status (0 on skip).
@@ -390,7 +398,7 @@ cmd_start() {
   local base=""
   while [ $# -gt 0 ]; do
     case "$1" in
-      --base) base="${2:-}"; shift 2 ;;
+      --base) need_val start --base $#; base="$2"; shift 2 ;;
       *) echo "ticket: start: unknown arg: $1" >&2; exit 2 ;;
     esac
   done
@@ -463,12 +471,16 @@ cmd_start() {
     # A branch left behind by a manual `worktree remove` (the branch itself
     # was never deleted) needs a plain add, not -b — otherwise git's own
     # multi-line "branch already exists" error breaks the one-line-message rule.
+    local add_rc
     if git -C "$repo_root" show-ref --verify --quiet "refs/heads/$branch"; then
-      add_out="$(git -C "$repo_root" worktree add "$wt_abs" "$branch" 2>&1)"
+      add_out="$(git -C "$repo_root" worktree add "$wt_abs" "$branch" 2>&1)"; add_rc=$?
     else
-      add_out="$(git -C "$repo_root" worktree add -b "$branch" "$wt_abs" "$base" 2>&1)"
+      add_out="$(git -C "$repo_root" worktree add -b "$branch" "$wt_abs" "$base" 2>&1)"; add_rc=$?
+      # `worktree add -b` creates the branch before it checks the path, so a
+      # failure leaves a new empty branch behind — this call made it, drop it.
+      [ "$add_rc" -eq 0 ] || git -C "$repo_root" branch -D "$branch" >/dev/null 2>&1
     fi
-    if [ $? -ne 0 ]; then
+    if [ "$add_rc" -ne 0 ]; then
       printf '%s\n' "$add_out" >&2
       exit 1
     fi
@@ -491,9 +503,9 @@ cmd_integrate() {
   local brief="" pre="" gate=""
   while [ $# -gt 0 ]; do
     case "$1" in
-      --brief) brief="${2:-}"; shift 2 ;;
-      --pre) pre="${2:-}"; shift 2 ;;
-      --gate) gate="${2:-}"; shift 2 ;;
+      --brief) need_val integrate --brief $#; brief="$2"; shift 2 ;;
+      --pre) need_val integrate --pre $#; pre="$2"; shift 2 ;;
+      --gate) need_val integrate --gate $#; gate="$2"; shift 2 ;;
       *) echo "ticket: integrate: unknown arg: $1" >&2; exit 2 ;;
     esac
   done
@@ -652,8 +664,8 @@ cmd_log() {
   local sha="" note=""
   while [ $# -gt 0 ]; do
     case "$1" in
-      --sha) sha="${2:-}"; shift 2 ;;
-      --note) note="${2:-}"; shift 2 ;;
+      --sha) need_val log --sha $#; sha="$2"; shift 2 ;;
+      --note) need_val log --note $#; note="$2"; shift 2 ;;
       *) echo "ticket: log: unknown arg: $1" >&2; exit 2 ;;
     esac
   done
@@ -778,13 +790,44 @@ task_list() { # $1 = space-separated ids
   printf '%s' "$out"
 }
 
+# Undo the worktrees a fleet run created before a later `start` failed —
+# left in place they read as "in flight" on the next run and are never
+# built. A branch this run created goes too; one that existed before the
+# run (start reuses a branch left by a manual `worktree remove`) is kept.
+rollback_worktrees() { # $1 = repo root, $2 = pre-run branch names, $3 = "id<ROW_FS>worktree" lines
+  local root="$1" pre_branches="$2" id wt br undone="" left=""
+  while IFS="$ROW_FS" read -r id wt; do
+    [ -n "$id" ] || continue
+    # Full refnames on both sides: `--short` forms disagree (for-each-ref
+    # shortens strictly to "heads/x" when a remote ref shares the name).
+    br="$(git -C "$wt" symbolic-ref --quiet HEAD 2>/dev/null)"
+    if ! git -C "$root" worktree remove "$wt" >/dev/null 2>&1; then
+      left="$left $wt"; continue
+    fi
+    # -D, not -d: created seconds ago by this run and nothing ran in its
+    # worktree, but -d refuses a branch cut from a --base other than HEAD.
+    if [ -n "$br" ] && ! printf '%s\n' "$pre_branches" | grep -qxF "$br"; then
+      git -C "$root" branch -D "${br#refs/heads/}" >/dev/null 2>&1 || left="$left branch:${br#refs/heads/}"
+    fi
+    undone="$undone$id "
+  done <<EOF
+$3
+EOF
+  if [ -n "$undone" ]; then
+    echo "ticket: fleet: rolled back this run's worktree(s): $(task_list "$undone")" >&2
+  fi
+  if [ -n "$left" ]; then
+    echo "ticket: fleet: could not roll back — remove by hand:$left" >&2
+  fi
+}
+
 cmd_fleet() {
   local plan="${1:-}"; shift || true
   local base="" gate="" max=""
   while [ $# -gt 0 ]; do
     case "$1" in
-      --base) base="${2:-}"; shift 2 ;;
-      --gate) gate="${2:-}"; shift 2 ;;
+      --base) need_val fleet --base $#; base="$2"; shift 2 ;;
+      --gate) need_val fleet --gate $#; gate="$2"; shift 2 ;;
       --max)
         max="${2:-}"
         if ! [[ "$max" =~ ^[1-9][0-9]*$ ]]; then
@@ -874,8 +917,9 @@ EOF
   done
 
   local rows role start_out start_rc handoff wt2 revlist entry tasks_json="" first=1
-  local started_ids=""
+  local started_rows="" pre_branches
   rows="$(plan_task_rows "$plan_abs")"
+  pre_branches="$(git -C "$repo_root" for-each-ref --format='%(refname)' refs/heads 2>/dev/null)"
 
   # Validate EVERY kept task's Owner role before `start` runs for ANY of
   # them: an `agentType:"rolepod:"` in the JSON would only surface as a
@@ -903,14 +947,19 @@ EOF
     start_rc=$?
     if [ "$start_rc" -ne 0 ]; then
       echo "ticket: fleet: start failed for Task $n" >&2
-      if [ -n "$started_ids" ]; then
-        echo "ticket: fleet: worktree(s) already created this run but not reported — clean up or re-run: $(task_list "$started_ids")" >&2
+      if [ -n "$started_rows" ]; then
+        rollback_worktrees "$repo_root" "$pre_branches" "$started_rows"
       fi
       exit 1
     fi
-    started_ids="$started_ids$n "
     handoff="$(printf '%s\n' "$start_out" | sed -n '1p' | awk '{print $1}')"
     wt2="$(printf '%s\n' "$start_out" | sed -n '1p' | awk '{print $2}')"
+    # Only a worktree this run created is ever rolled back — `start` also
+    # reprints one that already existed (no handoff, so not seen as in flight).
+    if ! printf '%s\n' "$wt_snapshot" | grep -qxF "worktree $wt2"; then
+      started_rows="$started_rows$n$ROW_FS$wt2
+"
+    fi
     revlist="$(brief_reviewers "$handoff")"
     entry="$(printf '{"n":%s,"brief":"%s","worktree":"%s","role":"%s","reviewers":%s}' \
       "$n" "$(json_escape "$handoff")" "$(json_escape "$wt2")" "$(json_escape "$role")" \

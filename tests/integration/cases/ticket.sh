@@ -895,6 +895,138 @@ else
   cat "$TMP/fleet-orr.err" >&2
 fi
 
+# ── a later `start` failure rolls back ONLY what this run created. Task 1
+# is fresh (worktree + branch rolled back). Task 2 has a pre-existing branch
+# whose short name a remote ref shares, so for-each-ref would print it as
+# "heads/<br>" (worktree rolled back, branch KEPT). Task 3 has a pre-existing
+# worktree whose handoff is gone, so it is not seen as in flight and start
+# reprints it (KEPT). Task 4's path is a plain non-empty dir and it has no
+# branch: `worktree add -b` fails and must not leave its new branch behind.
+SFR="$TMP/start-fail-repo"
+mkdir -p "$SFR"
+( cd "${SFR:?}" && git init -q . && git config user.email t@t && git config user.name t )
+cat > "$SFR/plan.md" <<'EOF'
+# Start Fail Feature Plan
+
+## Tasks
+
+### Task 1: build the alpha widget
+- **Blocked by:** none
+- [ ] **Files:** `alpha.js`
+- [ ] **Command:** `true`
+- **Owner:** backend-developer
+- **Done when:** true
+
+### Task 2: build the beta widget
+- **Blocked by:** none
+- [ ] **Files:** `beta.js`
+- [ ] **Command:** `true`
+- **Owner:** frontend-developer
+- **Done when:** true
+
+### Task 3: build the gamma widget
+- **Blocked by:** none
+- [ ] **Files:** `gamma.js`
+- [ ] **Command:** `true`
+- **Owner:** devops-sre
+- **Done when:** true
+
+### Task 4: build the delta widget
+- **Blocked by:** none
+- [ ] **Files:** `delta.js`
+- [ ] **Command:** `true`
+- **Owner:** data-scientist
+- **Done when:** true
+
+## Parallel layout
+Sequential — single owner.
+
+## Failure policy
+Default: stop after 2 failed attempts (never a 4th).
+EOF
+( cd "${SFR:?}" && git add -A && git commit -q -m init )
+SF_T2_WT="$(bash "$TICKET" start "$SFR/plan.md" 2 2>/dev/null | sed -n '1p' | awk '{print $2}')"
+SF_T2_BR="$(git -C "$SF_T2_WT" symbolic-ref --quiet --short HEAD 2>/dev/null)"
+git -C "$SFR" worktree remove "$SF_T2_WT"
+git -C "$SFR" update-ref "refs/remotes/$SF_T2_BR" HEAD
+SF_T3_OUT="$(bash "$TICKET" start "$SFR/plan.md" 3 2>/dev/null | sed -n '1p')"
+SF_T3_WT="$(printf '%s' "$SF_T3_OUT" | awk '{print $2}')"
+rm -f "$(printf '%s' "$SF_T3_OUT" | awk '{print $1}')"
+SF_T4_WT="$(bash "$TICKET" start "$SFR/plan.md" 4 2>/dev/null | sed -n '1p' | awk '{print $2}')"
+SF_T4_BR="$(git -C "$SF_T4_WT" symbolic-ref --quiet --short HEAD 2>/dev/null)"
+git -C "$SFR" worktree remove "$SF_T4_WT"
+git -C "$SFR" branch -D "$SF_T4_BR" >/dev/null
+mkdir -p "$SF_T4_WT" && : > "$SF_T4_WT/occupied"
+SF_BRANCHES_BEFORE=$(git -C "$SFR" branch --list | wc -l | tr -d ' ')
+WT_SF_BEFORE=$(git -C "$SFR" worktree list | wc -l | tr -d ' ')
+OUT=$(bash "$TICKET" fleet "$SFR/plan.md" 2>"$TMP/fleet-sf.err")
+RC=$?
+WT_SF_AFTER=$(git -C "$SFR" worktree list | wc -l | tr -d ' ')
+SF_BRANCHES_AFTER=$(git -C "$SFR" branch --list | wc -l | tr -d ' ')
+if [ -n "$SF_T2_BR" ] && [ -n "$SF_T3_WT" ] && [ -n "$SF_T4_BR" ] && [ "$RC" -eq 1 ] \
+  && [ "$WT_SF_AFTER" = "$WT_SF_BEFORE" ] && [ "$SF_BRANCHES_AFTER" = "$SF_BRANCHES_BEFORE" ] \
+  && git -C "$SFR" show-ref --verify --quiet "refs/heads/$SF_T2_BR" \
+  && ! git -C "$SFR" show-ref --verify --quiet "refs/heads/$SF_T4_BR" \
+  && git -C "$SFR" worktree list --porcelain | grep -qxF "worktree $SF_T3_WT" \
+  && grep -q 'start failed for Task 4' "$TMP/fleet-sf.err" \
+  && grep -q 'rolled back.*Task 1, Task 2' "$TMP/fleet-sf.err"; then
+  echo "  ✓ fleet start failure: rolls back only this run's worktrees + new branches; pre-existing branch and worktree kept"
+else
+  echo "  ✗ fleet start-failure rollback wrong (rc=$RC wt ${WT_SF_BEFORE}->${WT_SF_AFTER} branches ${SF_BRANCHES_BEFORE}->${SF_BRANCHES_AFTER}): $OUT"; fail=$((fail+1))
+  cat "$TMP/fleet-sf.err" >&2
+fi
+
+# ── rollback never forces: a worktree this run created but that is dirty
+# (a post-checkout hook drops an untracked file) is kept and reported.
+# core.hooksPath pinned locally — a global hooksPath would skip .git/hooks.
+DFR="$TMP/dirty-rollback-repo"
+mkdir -p "$DFR"
+( cd "${DFR:?}" && git init -q . && git config user.email t@t && git config user.name t )
+cat > "$DFR/plan.md" <<'EOF'
+# Dirty Rollback Feature Plan
+
+## Tasks
+
+### Task 1: build the alpha widget
+- **Blocked by:** none
+- [ ] **Files:** `alpha.js`
+- [ ] **Command:** `true`
+- **Owner:** backend-developer
+- **Done when:** true
+
+### Task 2: build the beta widget
+- **Blocked by:** none
+- [ ] **Files:** `beta.js`
+- [ ] **Command:** `true`
+- **Owner:** frontend-developer
+- **Done when:** true
+
+## Parallel layout
+Sequential — single owner.
+
+## Failure policy
+Default: stop after 2 failed attempts (never a 4th).
+EOF
+( cd "${DFR:?}" && git add -A && git commit -q -m init )
+DF_T2_WT="$(bash "$TICKET" start "$DFR/plan.md" 2 2>/dev/null | sed -n '1p' | awk '{print $2}')"
+git -C "$DFR" worktree remove "$DF_T2_WT"
+mkdir -p "$DF_T2_WT" && : > "$DF_T2_WT/occupied"
+mkdir -p "$DFR/.git/hooks"
+printf '#!/bin/sh\n: > stray.txt\n' > "$DFR/.git/hooks/post-checkout"
+chmod +x "$DFR/.git/hooks/post-checkout"
+git -C "$DFR" config core.hooksPath "$DFR/.git/hooks"
+WT_DF_BEFORE=$(git -C "$DFR" worktree list | wc -l | tr -d ' ')
+OUT=$(bash "$TICKET" fleet "$DFR/plan.md" 2>"$TMP/fleet-df.err")
+RC=$?
+WT_DF_AFTER=$(git -C "$DFR" worktree list | wc -l | tr -d ' ')
+if [ -n "$DF_T2_WT" ] && [ "$RC" -eq 1 ] && [ "$WT_DF_AFTER" -eq $((WT_DF_BEFORE + 1)) ] \
+  && grep -q 'could not roll back' "$TMP/fleet-df.err"; then
+  echo "  ✓ fleet rollback never forces: a dirty worktree is kept and reported"
+else
+  echo "  ✗ fleet dirty-rollback wrong (rc=$RC wt ${WT_DF_BEFORE}->${WT_DF_AFTER}): $OUT"; fail=$((fail+1))
+  cat "$TMP/fleet-df.err" >&2
+fi
+
 # ── no ready role-owned task → says so, exit 0, nothing created
 NRR="$TMP/no-ready-repo"
 mkdir -p "$NRR"
@@ -1159,6 +1291,27 @@ if grep -qF -- '- Task 2 (`bs0001`): a\b' "$TMP/log-plan.md"; then
 else
   echo "  ✗ log mangled a backslash in the note"; grep -F 'bs0001' "$TMP/log-plan.md" >&2; fail=$((fail+1))
 fi
+
+# ═══════════════════════════════════════════════════════════════════════
+# a value flag given last with no value is a usage error, never a hang:
+# `shift 2` with one arg left fails without shifting, so the parser looped
+# forever. perl's alarm bounds each run (macOS ships no `timeout`).
+# ═══════════════════════════════════════════════════════════════════════
+
+for flagcase in "start|$TMP/none.md|1|--base" "integrate|$TMP/none-wt|--brief" \
+  "integrate|$TMP/none-wt|--pre" "integrate|$TMP/none-wt|--gate" \
+  "log|$TMP/none.md|1|--sha" "log|$TMP/none.md|1|--note" \
+  "fleet|$TMP/none.md|--base" "fleet|$TMP/none.md|--gate"; do
+  oldifs="$IFS"; IFS='|'; set -- $flagcase; IFS="$oldifs"
+  OUT=$(perl -e 'alarm 10; exec @ARGV or die' bash "$TICKET" "$@" 2>&1)
+  RC=$?
+  last="${!#}"
+  if [ "$RC" -eq 2 ] && printf '%s\n' "$OUT" | grep -qF -- "$last needs a value"; then
+    echo "  ✓ $1 $last with no value: usage error, exit 2, no hang"
+  else
+    echo "  ✗ $1 $last with no value: rc=$RC (142 = hung until the alarm): $OUT"; fail=$((fail+1))
+  fi
+done
 
 # ═══════════════════════════════════════════════════════════════════════
 # the real repo's HEAD and worktree registry stayed untouched — unconditional:
