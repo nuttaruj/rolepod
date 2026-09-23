@@ -454,8 +454,11 @@ GOUT=$(cd "$FIX/repo2" && bash "$NUDGE" < "$FIX/wf-bare-fanout-fable.json"; cd "
 check "gate v2.107: bare-fanout never yields to the loop valve (3rd submission still denied)" \
   "printf '%s' \"\$GOUT\" | grep -c '\"deny\"' | grep -q 2 && ! grep -q '\"action\": \"yield\"' '$FIX/repo2/.rolepod/evidence/phase-log.jsonl'"
 
-# ── coordinator-loop check (v2.51.0) — 3rd sequential Agent round-trip in one turn ──
-mkturn() { # $1 out, $2 prior dispatch rounds (0..3) — one Agent tool_use per assistant msg + a tool_result
+# ── coordinator-loop check removed (v2.163.0) — dispatch_rounds_this_turn had
+# no caller left once this nudge was cut, so it (and the dispatch-rounds
+# query) is gone from session_state.py too; what would have been the 3rd
+# sequential round-trip now gets no coordinator line at all.
+mkturn() { # $1 out, $2 prior dispatch rounds — one Agent tool_use per assistant msg + a tool_result
   : > "$1"
   printf '{"type":"user","timestamp":"2026-08-18T01:00:00.000Z","message":{"role":"user","content":"do the thing"}}\n' >> "$1"
   local i=1
@@ -465,22 +468,10 @@ mkturn() { # $1 out, $2 prior dispatch rounds (0..3) — one Agent tool_use per 
     i=$((i+1))
   done
 }
-mkturn "$FIX/turn0.jsonl" 0; mkturn "$FIX/turn2.jsonl" 2; mkturn "$FIX/turn3.jsonl" 3
-printf '{"type":"user","message":{"role":"user","content":"go"}}\n{"type":"assistant","message":{"model":"claude-opus-5","content":[{"type":"tool_use","name":"Agent","input":{}},{"type":"tool_use","name":"Agent","input":{}},{"type":"tool_use","name":"Agent","input":{}}]}}\n' > "$FIX/turn-par.jsonl"
-SS="$REPO_DIR/hooks/lib/session_state.py"
-check "dispatch-rounds: counts assistant messages with an Agent dispatch since the last user prompt (0 / 2 / 3)" \
-  "[ \"\$(printf '{\"transcript_path\":\"$FIX/turn0.jsonl\"}' | python3 '$SS' dispatch-rounds)\" = 0 ] && [ \"\$(printf '{\"transcript_path\":\"$FIX/turn2.jsonl\"}' | python3 '$SS' dispatch-rounds)\" = 2 ] && [ \"\$(printf '{\"transcript_path\":\"$FIX/turn3.jsonl\"}' | python3 '$SS' dispatch-rounds)\" = 3 ]"
-check "dispatch-rounds: parallel fan-out inside ONE message counts as one round" \
-  "[ \"\$(printf '{\"transcript_path\":\"$FIX/turn-par.jsonl\"}' | python3 '$SS' dispatch-rounds)\" = 1 ]"
+mkturn "$FIX/turn2.jsonl" 2
 mkj "$FIX/agent-3rd.json" Agent "$FIX/turn2.jsonl" '{"subagent_type":"rolepod:backend-developer","prompt":"x"}'
-mkj "$FIX/agent-4th.json" Agent "$FIX/turn3.jsonl" '{"subagent_type":"rolepod:backend-developer","prompt":"x"}'
-mkj "$FIX/agent-3rd-explore.json" Agent "$FIX/turn2.jsonl" '{"subagent_type":"Explore","prompt":"x"}'
-check "coordinator-check: the 3rd sequential Agent round-trip in a turn → nudge to move to a Workflow pipeline (with context size)" \
-  "bash '$NUDGE' < '$FIX/agent-3rd.json' | grep -q 'coordinator-check' && bash '$NUDGE' < '$FIX/agent-3rd.json' | grep -q '300k tokens'"
-check "coordinator-check: 4th round-trip → silent again (fires once per turn)" \
-  "[ -z \"\$(bash '$NUDGE' < '$FIX/agent-4th.json')\" ]"
-check "coordinator-check: merges with a tier note when both apply (Explore on the 3rd round-trip)" \
-  "bash '$NUDGE' < '$FIX/agent-3rd-explore.json' | python3 -c 'import json,sys; a=json.load(sys.stdin)[\"hookSpecificOutput\"][\"additionalContext\"]; assert \"coordinator-check\" in a and \"tier-check\" in a'"
+check "coordinator-check: what would have been the 3rd sequential round-trip gets no coordinator line" \
+  "! bash '$NUDGE' < '$FIX/agent-3rd.json' | grep -q 'coordinator-check'"
 
 # ── context-bloat check (v2.49.0) — rides the UserPromptSubmit hook ────────
 CVN="$REPO_DIR/hooks/claim-verify-nudge.sh"
@@ -491,8 +482,8 @@ check "context-check: 575k context → additionalContext for the Lead only (no u
   "printf '{\"session_id\":\"c1\",\"transcript_path\":\"$FIX/ctx-big.jsonl\",\"prompt\":\"fix the button\"}' | HOME='$FIX/home' bash '$CVN' | python3 -c 'import json,sys; o=json.load(sys.stdin); a=o[\"hookSpecificOutput\"][\"additionalContext\"]; assert \"575k\" in a and \"scout\" in a and \"/compact\" in a and \"systemMessage\" not in o'"
 check "context-check: still above the line in the same session → silent (one crossing = one note)" \
   "! printf '{\"session_id\":\"c1\",\"transcript_path\":\"$FIX/ctx-big.jsonl\",\"prompt\":\"fix the button\"}' | HOME='$FIX/home' bash '$CVN' | grep -q context-check"
-check "context-check: 121k context → no context wording (claim-check still works)" \
-  "printf '{\"session_id\":\"c2\",\"transcript_path\":\"$FIX/ctx-small.jsonl\",\"prompt\":\"why is this broken\"}' | HOME='$FIX/home' bash '$CVN' | python3 -c 'import json,sys; o=json.load(sys.stdin); a=o[\"hookSpecificOutput\"][\"additionalContext\"]; assert \"claim-check\" in a and \"context-check\" not in a and \"systemMessage\" not in o'"
+check "context-check: 121k context + a question prompt → completely silent (read-first nudge removed v2.163.0)" \
+  "[ -z \"\$(printf '{\"session_id\":\"c2\",\"transcript_path\":\"$FIX/ctx-small.jsonl\",\"prompt\":\"why is this broken\"}' | HOME='$FIX/home' bash '$CVN')\" ]"
 printf '{"type":"assistant","timestamp":"2026-08-18T01:00:00.000Z","message":{"model":"claude-opus-5","usage":{"input_tokens":2,"cache_read_input_tokens":250000,"cache_creation_input_tokens":1000,"output_tokens":10},"content":[]}}\n' > "$FIX/ctx-mid.jsonl"
 check "context-check: 251k context → silent — the line is 500k, not the old 200k pricing knee (v2.119.1)" \
   "! printf '{\"session_id\":\"c4\",\"transcript_path\":\"$FIX/ctx-mid.jsonl\",\"prompt\":\"fix the button\"}' | HOME='$FIX/home' bash '$CVN' | grep -q context-check"
@@ -500,10 +491,10 @@ check "context-check: 121k in session c1 after the note → silent, and the line
   "! printf '{\"session_id\":\"c1\",\"transcript_path\":\"$FIX/ctx-small.jsonl\",\"prompt\":\"fix the button\"}' | HOME='$FIX/home' bash '$CVN' | grep -q context-check && [ ! -f '$FIX/home/.rolepod/ctx-nudge/c1' ]"
 check "context-check: 575k in session c1 again → one more note (crossed the line a second time)" \
   "printf '{\"session_id\":\"c1\",\"transcript_path\":\"$FIX/ctx-big.jsonl\",\"prompt\":\"fix the button\"}' | HOME='$FIX/home' bash '$CVN' | python3 -c 'import json,sys; a=json.load(sys.stdin)[\"hookSpecificOutput\"][\"additionalContext\"]; assert \"context-check\" in a and \"575k\" in a and \"THIS turn\" in a'"
-check "context-check: big context + claim prompt → both notes in one payload" \
-  "printf '{\"session_id\":\"c3\",\"transcript_path\":\"$FIX/ctx-big.jsonl\",\"prompt\":\"why is this broken\"}' | HOME='$FIX/home' bash '$CVN' | python3 -c 'import json,sys; o=json.load(sys.stdin); a=o[\"hookSpecificOutput\"][\"additionalContext\"]; assert \"context-check\" in a and \"claim-check\" in a'"
-check "context-check: no transcript → plain claim-nudge behaviour, no crash" \
-  "printf '{\"prompt\":\"why is this broken\"}' | HOME='$FIX/home' bash '$CVN' | grep -q claim-check"
+check "context-check: big context + a question prompt → context note fires alone (read-first nudge removed v2.163.0)" \
+  "printf '{\"session_id\":\"c3\",\"transcript_path\":\"$FIX/ctx-big.jsonl\",\"prompt\":\"why is this broken\"}' | HOME='$FIX/home' bash '$CVN' | python3 -c 'import json,sys; o=json.load(sys.stdin); a=o[\"hookSpecificOutput\"][\"additionalContext\"]; assert \"context-check\" in a'"
+check "context-check: no transcript, no session id → hook exits cleanly, no crash (read-first nudge removed v2.163.0)" \
+  "printf '{\"prompt\":\"why is this broken\"}' | HOME='$FIX/home' bash '$CVN'"
 check "session_state context-tokens reads input+cache_read+cache_creation of the last turn" \
   "[ \"\$(printf '{\"transcript_path\":\"$FIX/ctx-big.jsonl\"}' | python3 '$REPO_DIR/hooks/lib/session_state.py' context-tokens)\" = 575956 ]"
 

@@ -623,56 +623,6 @@ def last_context_tokens(transcript_path: str, tail_bytes: int = 262144) -> int:
         return 0
 
 
-def dispatch_rounds_this_turn(transcript_path: str, tail_bytes: int = 262144) -> int:
-    """How many ASSISTANT MESSAGES since the last real user prompt carried an
-    Agent/Task tool_use — i.e. how many times the Lead has already been the
-    coordinator round-trip in this turn (dispatch → wait → re-read the whole
-    context → dispatch again). Parallel dispatches inside ONE message count
-    once (that is fan-out, no extra round-trip). Tail-scan backwards to the
-    last user event whose content is a prompt (string or text block) — tool
-    results and meta events do not end the turn. 0 when unknown."""
-    if not transcript_path or not os.path.isfile(transcript_path):
-        return 0
-    try:
-        size = os.path.getsize(transcript_path)
-        with open(transcript_path, "rb") as f:
-            while True:
-                start = max(0, size - tail_bytes)
-                f.seek(start)
-                lines = f.read(size - start).split(b"\n")
-                if start > 0:
-                    lines = lines[1:]
-                rounds = 0
-                for raw in reversed(lines):
-                    if b'"type"' not in raw:
-                        continue
-                    try:
-                        ev = json.loads(raw)
-                    except Exception:
-                        continue
-                    t = ev.get("type")
-                    if t == "user":
-                        c = (ev.get("message") or {}).get("content")
-                        if ev.get("isMeta"):
-                            continue
-                        if isinstance(c, str):
-                            return rounds
-                        if isinstance(c, list) and any(
-                                isinstance(b, dict) and b.get("type") == "text" for b in c):
-                            return rounds
-                        continue  # tool_result carrier — same turn
-                    if t == "assistant":
-                        content = (ev.get("message") or {}).get("content") or []
-                        if any(isinstance(b, dict) and b.get("type") == "tool_use"
-                               and b.get("name") in AGENT_TOOLS for b in content):
-                            rounds += 1
-                if start == 0:
-                    return rounds
-                tail_bytes *= 4
-    except Exception:
-        return 0
-
-
 def _iter_tool_uses(
     transcript_path: str, since: str | None = None
 ) -> Iterable[tuple[str, dict]]:
@@ -1172,8 +1122,16 @@ def selfdo_state(transcript_path: str, target: str | None = None, root: str | No
 
 # claim-verify-nudge.sh's prompt shapes (v2.128.0 — moved here so the hook
 # reads prompt / context / session id / route freshness / auto-resume in ONE
-# python spawn instead of five; the message text stays in the hook).
-CLAIM_RX = re.compile(
+# python spawn instead of five; the message text stays in the hook). The
+# read-first NUDGE (the message) was cut v2.163.0, but its classifier still
+# gates the route check below: route_check.commission_shaped only excludes
+# Thai question particles and a literal "?" — an English question that also
+# contains a bare commission verb ("why does the build fail", "how do we
+# remove the dead code") would otherwise reach the route nudge with no gate
+# at all. _QUESTION_SHAPE_RX is that classifier, kept internal-only (no
+# message reads it, no extra field in prompt_state's return value) so route
+# nudge's own behavior stays exactly as it was before the cut.
+_QUESTION_SHAPE_RX = re.compile(
     r"(gap|gaps|root cause|diagnos|analy[sz]|audit|how does|how do|how is|how are|"
     r"why (is|does|do|are|did|isn|doesn|wasn|won|can|would)|what.?s the|"
     r"where (is|are|does|do)|is (it|this|that) (safe|correct|right|true|broken|working|wrong)|"
@@ -1206,18 +1164,19 @@ def _stamp_prompt() -> None:
 
 
 def prompt_state(d: dict) -> str:
-    """'<ctx tokens> <sid|-> <has_prompt 0/1> <claim 0/1> <route stale|-> <auto 0/1>'
+    """'<ctx tokens> <sid|-> <has_prompt 0/1> <route stale|-> <auto 0/1>'
     for claim-verify-nudge.sh. The route check (route_check.check — the
     commission shape, the phase-log freshness and the fallback recorder)
-    runs only for a non-claim prompt, exactly as the hook ordered it."""
+    runs for every real prompt EXCEPT a question-shaped one
+    (_QUESTION_SHAPE_RX) — the same exclusion the removed read-first nudge
+    used to apply, kept so route nudge's own behavior is unchanged."""
     prompt = str(d.get("prompt") or "")
     ctx = last_context_tokens(str(d.get("transcript_path") or ""))
     sid = re.sub(r"[^A-Za-z0-9._-]", "", str(d.get("session_id") or ""))
     if sid in (".", ".."):
         sid = ""
-    claim = bool(prompt) and CLAIM_RX.search(prompt) is not None
     route = "-"
-    if prompt and not claim:
+    if prompt and not _QUESTION_SHAPE_RX.search(prompt):
         try:
             sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
             import route_check  # type: ignore
@@ -1227,7 +1186,7 @@ def prompt_state(d: dict) -> str:
     auto = bool(prompt) and AUTO_RESUME_RX.search(prompt) is not None
     if prompt and not auto and not NOT_A_PROMPT_RX.search(prompt):
         _stamp_prompt()
-    return "%d %s %d %d %s %d" % (ctx, sid or "-", 1 if prompt else 0, 1 if claim else 0, route, 1 if auto else 0)
+    return "%d %s %d %s %d" % (ctx, sid or "-", 1 if prompt else 0, route, 1 if auto else 0)
 
 
 _GUARD_TOOLS = ("Edit", "Write", "MultiEdit", "NotebookEdit")
@@ -1314,9 +1273,6 @@ def main() -> int:
             except ValueError:
                 since_epoch = None
         print("%d %d %d %d" % count_all(transcript_path, since_epoch, hook_input.get("cwd")))
-    elif query == "dispatch-rounds":
-        # Assistant messages with an Agent/Task dispatch since the last user prompt.
-        print(dispatch_rounds_this_turn(transcript_path))
     elif query == "context-tokens":
         # Context size (tokens) the last assistant turn carried — 0 unknown.
         print(last_context_tokens(transcript_path))
@@ -1341,7 +1297,7 @@ def main() -> int:
         root = sys.argv[3] if len(sys.argv) > 3 else None
         print(selfdo_state(transcript_path, target, root))
     elif query == "prompt-state":
-        # claim-verify-nudge.sh: ctx sid has_prompt claim route auto — one spawn.
+        # claim-verify-nudge.sh: ctx sid has_prompt route auto — one spawn.
         print(prompt_state(hook_input))
     elif query == "edit-fields":
         # worktree-guard.sh: tool / sid / cwd / agent / transcript / root /

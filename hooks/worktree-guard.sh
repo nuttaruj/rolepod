@@ -120,25 +120,27 @@ if [ -z "$COLLISION" ] || [ "${ROLEPOD_ALLOW_SHARED_WORKTREE:-0}" = "1" ]; then
   FIRST_TOUCH=0
   grep -Fxq "$TARGET" "$MY_FILES" 2>/dev/null || { FIRST_TOUCH=1; printf '%s\n' "$TARGET" >> "$MY_FILES" 2>/dev/null || true; }
 
-  # Reuse-ladder nudge (v2.109.0) — the moment scope creep happens is the
-  # edit itself, and normal edits were silent (the per-edit Q1-Q4 reminder
-  # was cut for cost and nudge fatigue). This registry already knows whether
-  # the session has touched the file before, so the ladder is injected ONCE
-  # per file per session (first touch), on a Write that creates a file, and
-  # on every edit of a dependency manifest (a new dependency is the last
-  # rung). Docs / config / assets stay silent. ~45 tokens per fire. Only the
-  # ladder is repeated here: the scope rules (nothing beyond the request,
-  # single-use abstraction inline) already reach every CLI via the always-on
-  # core and S1-S5 at commit — one copy each. The
-  # shared-worktree bypass path stays silent (doctor asserts it).
+  # Reuse-ladder nudge (v2.109.0; the first-edit trigger cut v2.163.0 — the
+  # always-on core states the ladder every session already, so an edit of a
+  # file already in the codebase repeated it for free). The moment scope
+  # creep really needs a nudge is a NEW file or a NEW dependency, so the
+  # ladder now fires only on a Write that creates a file, and on every edit
+  # of a dependency manifest (a new dependency is the last rung). This
+  # registry still tracks whether the session edited the file before —
+  # worktree collision detection needs that regardless of the nudge. Docs /
+  # config / assets stay silent. Only the ladder is repeated here: the scope
+  # rules (nothing beyond the request, single-use abstraction inline)
+  # already reach every CLI via the always-on core and S1-S5 at commit — one
+  # copy each. The shared-worktree bypass path stays silent (doctor
+  # asserts it).
   [ "${ROLEPOD_NUDGE_OFF:-0}" = "1" ] && exit 0
   [ -n "$COLLISION" ] && exit 0
   BASE=$(basename "$TARGET")
   KIND=""
   if printf '%s' "$BASE" | grep -qiE '^(package\.json|requirements[^/]*\.txt|pyproject\.toml|go\.mod|Cargo\.toml|Gemfile|composer\.json|pubspec\.yaml|build\.gradle(\.kts)?|pom\.xml|Podfile|mix\.exs)$'; then
     KIND="manifest"
-  elif [ "$FIRST_TOUCH" = "1" ] && ! printf '%s' "$TARGET" | grep -qiE '\.(md|mdx|txt|rst|json|ya?ml|toml|lock|csv|svg|png|jpe?g|gif|ico|env|example)$|(^|/)(docs?|\.github|\.rolepod|node_modules|dist|build)/'; then
-    if [ "$TOOL" = "Write" ] && [ ! -e "$TARGET" ]; then KIND="new"; else KIND="code"; fi
+  elif [ "$FIRST_TOUCH" = "1" ] && [ "$TOOL" = "Write" ] && [ ! -e "$TARGET" ] && ! printf '%s' "$TARGET" | grep -qiE '\.(md|mdx|txt|rst|json|ya?ml|toml|lock|csv|svg|png|jpe?g|gif|ico|env|example)$|(^|/)(docs?|\.github|\.rolepod|node_modules|dist|build)/'; then
+    KIND="new"
   fi
 
   # Self-do nudge (v2.116.0) — the Lead, on an R3/R4 route, has made
@@ -177,13 +179,11 @@ EOF2
   LADDER="reuse before new logic (codebase \\u2192 stdlib \\u2192 platform \\u2192 installed dep \\u2192 one line before a helper). (off: ROLEPOD_NUDGE_OFF=1)"
   MSG_MANIFEST="\\u2702 dependency manifest $B: a NEW dependency is the last rung \\u2014 codebase \\u2192 stdlib \\u2192 platform \\u2192 installed dep first; if it stays, justify it in the plan (maintained \\u00b7 size \\u00b7 license). (off: ROLEPOD_NUDGE_OFF=1)"
   MSG_NEW="\\u2702 new file $B: does it need to exist \\u2014 extend an existing module first? Then $LADDER"
-  MSG_CODE="\\u2702 first touch of $B this session: $LADDER"
   [ -n "$SELFDO" ] && KIND=""   # the self-do line replaces the ladder this once (joined they pass 600 chars)
   PARTS=""
   case "$KIND" in
     manifest) PARTS="$MSG_MANIFEST" ;;
     new)      PARTS="$MSG_NEW" ;;
-    code)     PARTS="$MSG_CODE" ;;
   esac
   if [ -n "$SELFDO" ]; then
     S_T="${SELFDO%% *}"; S_N="${SELFDO#* }"

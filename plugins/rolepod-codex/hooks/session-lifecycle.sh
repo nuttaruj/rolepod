@@ -107,8 +107,9 @@ done
 # contact, so a test fixture or a deleted worktree leaves them forever
 # (measured: 109 dirs / 412 files). Stale = the same 30 min, locks only.
 find "$(dirname "$LOCK_DIR")" -mindepth 2 -maxdepth 2 -name '*.lock' -mmin +30 -delete 2>/dev/null || true
-# a .files registry ages differently (worktree-guard appends only on a first touch):
-# delete it only once its own .lock is gone, never on its own mtime
+# a .files registry ages differently (worktree-guard appends only the first
+# time a file is edited this session): delete it only once its own .lock is
+# gone, never on its own mtime
 for _f in "$(dirname "$LOCK_DIR")"/*/*.files; do
   if [ -f "$_f" ] && [ ! -f "${_f%.files}.lock" ]; then rm -f "$_f" 2>/dev/null || true; fi   # a failing rm must not end SessionStart before our own lock is written
 done

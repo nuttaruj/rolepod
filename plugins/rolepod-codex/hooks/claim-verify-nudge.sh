@@ -1,25 +1,14 @@
 #!/bin/bash
-# UserPromptSubmit — soft nudge on the CLAIM/ANSWER path.
-#
-# Every other rolepod hook fires only on a tool call (PreToolUse Edit|Write|
-# Bash|Agent) or a lifecycle event (SessionStart, Stop). A turn that answers an
-# analysis / diagnosis / "how does X work" / "what's the gap" / status question
-# in plain text is none of those, so it reaches the user with ZERO verification.
-# That is the path where a confident-but-unverified claim ships wrong and the
-# user has to correct it over several rounds.
-#
-# This hook injects ONE reminder — read a primary source + cite file:line before
-# claiming — when the prompt looks like a claim-about-real-code/state request.
+# UserPromptSubmit — soft nudges at the one moment before the Lead starts a
+# turn: a stale route (v2.98.0), a harness auto-resume (v2.100.0), and the
+# context-bloat check below. (The claim/answer-path read-first nudge that
+# used to ride this same event was cut v2.163.0 — the always-on core states
+# Verify-first every session already, so a per-question repeat of the same
+# line was the redundant part; route nudge, auto-resume and context-bloat
+# keep their own separate triggers and stay.)
 #
 # Soft by construction: emits additionalContext only, NEVER blocks. A pure-text
-# claim is structurally un-hookable to hard-enforce (no tool call to gate on),
-# so the honest ceiling here is to raise the cost of guessing and prompt a
-# read-first habit — not to make a wrong claim impossible.
-#
-# Heuristic trigger: keyword-shaped, deliberately broad. A false positive costs
-# one extra context line; a miss just restores today's behaviour. The claim
-# regex lives in lib/session_state.py (CLAIM_RX) since v2.128.0 — tune it
-# there, not the consumers.
+# prompt is structurally un-hookable to hard-enforce (no tool call to gate on).
 #
 # Context-bloat check (v2.49.0) — same event, no new registration. Measured on
 # a real project: a 12-day session ran every turn at 350-900k tokens of
@@ -62,10 +51,10 @@ INPUT=$(cat 2>/dev/null || echo '{}')
 SESSION_STATE="$(dirname "$0")/lib/session_state.py"
 [ -f "$SESSION_STATE" ] || exit 0
 
-# "<ctx tokens> <sid|-> <has_prompt> <claim> <route stale|-> <auto>" — one line.
-STATE=$(printf '%s' "$INPUT" | python3 -I "$SESSION_STATE" prompt-state 2>/dev/null || echo "0 - 0 0 - 0")
-CTX=0; SID="-"; HAS_PROMPT=0; CLAIM=0; ROUTE="-"; AUTO=0
-{ read -r CTX SID HAS_PROMPT CLAIM ROUTE AUTO; } <<EOF || true
+# "<ctx tokens> <sid|-> <has_prompt> <route stale|-> <auto>" — one line.
+STATE=$(printf '%s' "$INPUT" | python3 -I "$SESSION_STATE" prompt-state 2>/dev/null || echo "0 - 0 - 0")
+CTX=0; SID="-"; HAS_PROMPT=0; ROUTE="-"; AUTO=0
+{ read -r CTX SID HAS_PROMPT ROUTE AUTO; } <<EOF || true
 $STATE
 EOF
 CTX=${CTX:-0}; [ "$SID" = "-" ] && SID=""
@@ -98,33 +87,21 @@ print(json.dumps({'hookSpecificOutput':{'hookEventName':'UserPromptSubmit','addi
   exit 0
 fi
 
-# Claim-shaped verbs: analysis / diagnosis / explanation / audit / status about
-# real code or state (CLAIM_RX in lib/session_state.py — case-insensitive,
-# leans claim-specific rather than matching every "what/how" so the nudge
-# does not become per-turn wallpaper).
-MSG=""
-if [ "$CLAIM" = "1" ]; then
-  # v2.118.1: no tool named — the old text prescribed Read / Grep / file:line
-  # for every question shape, so a question about a vendor, a library or the
-  # world sent the Lead grepping the repo for a fact that does not live there.
-  # The Lead picks the source (Verify-first in the always-on names them).
-  MSG="claim-check: verify before you answer — primary source, never memory; cite it (file:line, command output, or URL). (off: ROLEPOD_NUDGE_OFF=1)"
-fi
-
 # Route nudge (v2.98.0): a commission-shaped prompt with no tier logged
 # since the previous request. Measured: one project, 199 requests over a
 # week, the router skill fired 0 times — a high-risk change to an existing
 # feature went straight to build and six review rounds drew its seam map.
-# Claim-shaped prompts (analysis) are R0 and skip this. Freshness = the
+# Question-shaped prompts (why/how/what, Thai question particles) are never
+# commission-shaped, so they never reach this branch. Freshness = the
 # newest `route` line in the repo phase-log is newer than the previous user
 # prompt (transcript tail); no transcript → within 30 min. Not a git repo →
 # silent. Prompt shape + freshness live in lib/route_check.py (ASCII-only
-# source), called in-process by prompt-state for a non-claim prompt.
+# source), called in-process by prompt-state for every prompt.
 # v2.105.0: the same checker RECORDS the tier from the previous turn's assistant
 # text (fallback to the Stop hook in session-lifecycle.sh), so the log fills
 # itself — the manual append was measured at 0 lines in every product repo.
 ROUTE_MSG=""
-if [ -z "$MSG" ] && [ "$ROUTE" = "stale" ]; then
+if [ "$ROUTE" = "stale" ]; then
   ROUTE_MSG="⟂ route: a commission with no tier stated since your last request. Fix: one line before the first edit — Route: R2 (one file + test) → <skill> · <reason> — where R0 answer only · R1 trivial edit · R2 one file + test · R3 multi-file · R4 high-risk; R3/R4 → using-rolepod (Define → Plan first). The hook records it; blast radius sets the tier, not feature age. Exception: a literal follow-up inside an already-routed task → say 'same task' and continue. (off: ROLEPOD_NUDGE_OFF=1) "
 fi
 
@@ -151,9 +128,9 @@ if [ -f "$XFAM_RUNNER" ] && git rev-parse --show-toplevel >/dev/null 2>&1; then
   fi
 fi
 
-if [ -n "$MSG$CTX_MSG$ROUTE_MSG$AUTO_MSG$BREAKER_MSG" ]; then
+if [ -n "$CTX_MSG$ROUTE_MSG$AUTO_MSG$BREAKER_MSG" ]; then
   # Env-passed (never interpolated) so quotes in either message cannot break the JSON.
-  ROLEPOD_HOOK_MSG="${CTX_MSG}${MSG}${ROUTE_MSG}${AUTO_MSG}${BREAKER_MSG}" python3 -I -c "
+  ROLEPOD_HOOK_MSG="${CTX_MSG}${ROUTE_MSG}${AUTO_MSG}${BREAKER_MSG}" python3 -I -c "
 import json, os
 print(json.dumps({'hookSpecificOutput':{'hookEventName':'UserPromptSubmit','additionalContext':os.environ.get('ROLEPOD_HOOK_MSG','')}}))
 " 2>/dev/null || echo '{}'

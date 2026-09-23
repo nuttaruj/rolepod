@@ -60,8 +60,6 @@
 #   (system-architect joined the strong-role floor in v2.73.0 — no nudge path)
 #   Agent sweep-type (Explore/general-purpose), no model        → nudge
 #     (rolepod:scout is frontmatter-pinned cheap → silent)
-#   Agent = the Lead's 3rd sequential dispatch round-trip this turn
-#                                                              → coordinator-loop nudge (once)
 #   anything else                                              → silent
 #
 # Fleet-tier gate (v2.48.0): the ONE deny in this hook, scoped to where money
@@ -651,13 +649,6 @@ if tool in ("Agent", "Task"):
     atype_raw = (ti.get("subagent_type") or "general-purpose").split()[0]
     atype = ss._bare_agent_name(atype_raw)
     model = (ti.get("model") or "").split()[0] if ti.get("model") else ""
-    # Coordinator-loop check (v2.51.0, from the CCW "Beat Model" comparison):
-    # this dispatch would be the Lead\x27s 3rd sequential Agent round-trip in
-    # ONE turn — each round-trip re-reads the whole context at the Lead\x27s
-    # price. Fires once (exactly at the 3rd), never on parallel fan-out inside
-    # one message, never blocks. Merged into the branch output below when a
-    # tier note also applies.
-    rounds = ss.dispatch_rounds_this_turn(d.get("transcript_path") or "")
     loop_note = ""
     if atype in REVIEW_ROLES:
         kind, rmsg = _round_policy("rolepod:" + atype, atype)
@@ -677,13 +668,6 @@ if tool in ("Agent", "Task"):
                                              "permissionDecisionReason": rmsg}})
             if kind == "ctx":
                 loop_note = rmsg
-    if rounds == 2:
-        ctxk = ss.last_context_tokens(d.get("transcript_path") or "") // 1000
-        loop_note = ("coordinator-check: 3rd sequential Agent round-trip this turn — each "
-                     "dispatch→wait→dispatch re-reads the whole context (%s) at the Lead\x27s price. "
-                     "Fix: dependent multi-step fan-out → a Workflow script (stages run outside the "
-                     "Lead); keep the Agent tool for one-off or parallel single-message dispatches. "
-                     % (("~%dk tokens" % ctxk) if ctxk else "all of it"))
     if atype in ss.STRONG_ROLE_AGENTS:
         # v2.104.0: the frontmatter of the role pins opus, so the floor holds
         # without this hook; under a low Lead write opus anyway (a pre-2.104
