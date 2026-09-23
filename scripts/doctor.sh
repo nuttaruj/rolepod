@@ -230,7 +230,7 @@ if [ -f "$OC_PLUGIN_FILE" ]; then
     OC_PLUGIN_NOTE=" — plugin file: v1 shape (opencode 2 will not load it: re-run install.sh --target=opencode --force)"
   fi
 fi
-report "opencode"    "${OC_V:-absent}"      "hooks-live (partial — plugin precommit deny + sweep/loop-breaker on tool results + agent permission blocks; rest doctrine-only)$OC_PLUGIN_NOTE"
+report "opencode"    "${OC_V:-absent}"      "hooks-live (partial — plugin precommit deny + loop-breaker on tool results + agent permission blocks; rest doctrine-only)$OC_PLUGIN_NOTE"
 AGY_V=$(command -v agy >/dev/null 2>&1 && agy plugin list 2>/dev/null | grep -q '"name": "rolepod"' && echo installed)
 report "antigravity" "${AGY_V:-absent}"     "hooks-live (deny-only — precommit gate on run_command; agy has no reminder channel)"
 
