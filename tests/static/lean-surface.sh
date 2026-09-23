@@ -198,17 +198,21 @@ check "total supporting files ≤ 45 (actual: $SUPPORT_TOTAL)" "[ $SUPPORT_TOTAL
 # Supporting-file BYTE caps — the escape hatch is capped too, so a SKILL.md
 # cut cannot migrate into references/ / templates/ / examples/. Frozen at
 # the 2026-09-12 sizes (largest skill dir 33,060 B; total 174,534 B); a
-# skill dir that needs more is cutting elsewhere first.
+# skill dir that needs more folds true duplicates first, then raises the cap
+# by the measured need — never cuts a rule to fit (owner rule 2026-09-22).
+# v2.161.0: per-skill 34000 -> 35100 (~1% above implement-plan's measured
+# 34,726 B: wizard.md's template gained the re-run default, the gh-failure
+# fallback that keeps gh's reason, and three bash 3.2 / set -u fixes).
 SUPPORT_BYTES_TOTAL=0
 SUPPORT_BYTES_OVER=""
 for d in core/skills/*/; do
   s=$(basename "$d")
   n=$(find "$d" -type f ! -name SKILL.md -exec cat {} + 2>/dev/null | wc -c | tr -d ' ')
   SUPPORT_BYTES_TOTAL=$((SUPPORT_BYTES_TOTAL + n))
-  [ "$n" -le 34000 ] || SUPPORT_BYTES_OVER="${SUPPORT_BYTES_OVER}${s} (${n}) "
+  [ "$n" -le 35100 ] || SUPPORT_BYTES_OVER="${SUPPORT_BYTES_OVER}${s} (${n}) "
 done
 if [ -z "$SUPPORT_BYTES_OVER" ]; then
-  echo "  ✓ supporting files per skill ≤ 34000 B"
+  echo "  ✓ supporting files per skill ≤ 35100 B"
 else
   echo "  ✗ supporting files over the per-skill byte cap: $SUPPORT_BYTES_OVER"
   fail=$((fail+1))
@@ -217,8 +221,10 @@ fi
 # Lead-tier fit) moved from the 20.8 KB always-loaded payload into
 # references/scope-then-spawn.md; the payload lost ~3 KB, the total went down.
 # v2.161.0: 178000 -> 192000 (~1% above the measured total; write-prototype's
-# references/logic.md + references/ui.md port Matt's LOGIC.md/UI.md whole).
-check "total supporting bytes ≤ 192000 (actual: $SUPPORT_BYTES_TOTAL)" "[ $SUPPORT_BYTES_TOTAL -le 192000 ]"
+# references/logic.md + references/ui.md port Matt's LOGIC.md/UI.md whole),
+# then -> 194900 (~1% above the measured 192,876 B once the ci-triage merge-
+# intent paragraph and the wizard template fixes landed).
+check "total supporting bytes ≤ 194900 (actual: $SUPPORT_BYTES_TOTAL)" "[ $SUPPORT_BYTES_TOTAL -le 194900 ]"
 
 EXAMPLES_NO_TABLE=""
 for f in core/skills/*/examples/*-examples.md; do

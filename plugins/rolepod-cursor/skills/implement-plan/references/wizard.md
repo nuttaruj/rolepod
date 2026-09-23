@@ -41,6 +41,11 @@ setup path worth keeping) — then link it from the README.
 Rules the template already encodes — keep them when authoring stages: open
 the URL **before** asking for its value; `ask_secret` for anything secret;
 `confirm` before every irreversible action; one focused task per stage.
+Re-running is cheap: `ask` / `ask_secret` take the `.env` key as their
+variable name and offer its current value (Enter keeps it); a stage that
+fills another file sets `ENV_FILE=<file>` first and back to `.env` after. A failed `gh` call (not
+installed, signed out, no access) turns the stage into a warning listed with
+gh's reason under "still to do by hand" instead of killing the run.
 
 ## Template
 
@@ -54,17 +59,20 @@ set -euo pipefail
 
 TOTAL_STAGES=1   # keep in sync with the stage calls below
 CURRENT=0
+ENV_FILE=.env
 CAPTURED=()
+SKIPPED=()
 
 B=$'\033[1m'; C=$'\033[36m'; Y=$'\033[33m'; N=$'\033[0m'
 
 stage() {           # stage "<title>"
   CURRENT=$((CURRENT + 1))
-  clear
+  clear 2>/dev/null || true
   printf '%s[%d/%d] %s%s\n\n' "$B" "$CURRENT" "$TOTAL_STAGES" "$1" "$N"
 }
 say()  { printf '%s\n' "$*"; }
 step() { printf '  %s→%s %s\n' "$C" "$N" "$*"; }
+warn() { printf '  %s! %s%s\n' "$Y" "$*" "$N"; }
 
 open_url() {        # open_url <url> — macOS / Linux / WSL
   printf '  %sopening%s %s\n' "$Y" "$N" "$1"
@@ -74,35 +82,46 @@ open_url() {        # open_url <url> — macOS / Linux / WSL
   else say "  (open manually: $1)"; fi
 }
 
-ask() {             # ask VAR "prompt"
-  local var="$1"; shift
-  read -r -p "  $* : " "${var?}"
+current() {         # current KEY — its value in $ENV_FILE, empty if none
+  [ -f "$ENV_FILE" ] || return 0
+  { grep "^$1=" "$ENV_FILE" || true; } | tail -n 1 | cut -d= -f2-
 }
-ask_secret() {      # ask_secret VAR "prompt" — hidden entry
-  local var="$1"; shift
-  read -r -s -p "  $* (hidden): " "${var?}"; echo
+ask() {             # ask KEY "prompt" — KEY is also the .env key; Enter keeps its current value
+  local key="$1" cur ans=""; shift
+  cur=$(current "$key")
+  read -r -p "  $*${cur:+ [Enter keeps current]} : " ans || true
+  printf -v "$key" '%s' "${ans:-$cur}"
 }
-
-write_env() {       # write_env KEY VALUE [file] — idempotent upsert
-  local key="$1" val="$2" f="${3:-.env}"
-  touch "$f"
-  if grep -q "^${key}=" "$f"; then
-    tmp=$(mktemp) && grep -v "^${key}=" "$f" > "$tmp" && mv "$tmp" "$f"
-  fi
-  printf '%s=%s\n' "$key" "$val" >> "$f"
-  CAPTURED+=("$key → $f")
-}
-set_secret() {      # set_secret NAME VALUE — GitHub Actions secret
-  gh secret set "$1" --body "$2" && CAPTURED+=("$1 → gh secret")
-}
-set_var() {         # set_var NAME VALUE — GitHub Actions variable
-  gh variable set "$1" --body "$2" && CAPTURED+=("$1 → gh variable")
+ask_secret() {      # ask_secret KEY "prompt" — hidden entry, same default rule
+  local key="$1" cur ans=""; shift
+  cur=$(current "$key")
+  read -r -s -p "  $* (hidden${cur:+, Enter keeps current}): " ans || true; echo
+  printf -v "$key" '%s' "${ans:-$cur}"
 }
 
-pause()   { read -r -p "  [enter] when done "; }
+write_env() {       # write_env KEY VALUE — idempotent upsert into $ENV_FILE
+  local key="$1" val="$2" tmp
+  touch "$ENV_FILE"
+  tmp=$(mktemp)
+  grep -v "^${key}=" "$ENV_FILE" > "$tmp" || true
+  printf '%s=%s\n' "$key" "$val" >> "$tmp"
+  cat "$tmp" > "$ENV_FILE" && rm -f "$tmp"   # rewrite in place: a symlinked .env stays a link
+  CAPTURED+=("$key → $ENV_FILE")
+}
+gh_run() {          # gh_run LABEL <gh args…> — stdin passes through; a failure becomes a to-do
+  local label="$1" err; shift
+  if ! command -v gh >/dev/null; then err="gh not installed"
+  elif err=$(gh "$@" 2>&1 >/dev/null); then CAPTURED+=("$label"); return 0; fi
+  err="${err%%$'\n'*}"
+  SKIPPED+=("gh $1 ${2-} ${3-} — ${err:-failed}"); warn "gh $1 ${2-} ${3-} failed: ${err:-unknown}"
+}
+set_secret() { gh_run "$1 → gh secret" secret set "$1" < <(printf '%s' "$2"); }   # value via stdin, never argv
+set_var()    { gh_run "$1 → gh variable" variable set "$1" --body "$2"; }
+
+pause()   { read -r -p "  [enter] when done " _ || true; }
 confirm() {         # confirm "about to X" — gate irreversible actions
-  read -r -p "  ${Y}CONFIRM${N} $1 — type yes: " a
-  [ "$a" = "yes" ] || { say "  aborted."; exit 1; }
+  read -r -p "  ${Y}CONFIRM${N} $1 — type yes: " a || true
+  [ "${a:-}" = "yes" ] || { say "  aborted."; exit 1; }
 }
 
 # ── STAGES — everything above is fixed; author below ──────────────────
@@ -110,11 +129,15 @@ confirm() {         # confirm "about to X" — gate irreversible actions
 stage "Example: API key"
 step "Log in and reveal the test key"
 open_url "https://example.com/dashboard/api-keys"
-ask_secret API_KEY "paste the key"
-write_env EXAMPLE_API_KEY "$API_KEY"
+ask_secret EXAMPLE_API_KEY "paste the key"
+write_env EXAMPLE_API_KEY "$EXAMPLE_API_KEY"
 
 # ── summary ───────────────────────────────────────────────────────────
-clear
+clear 2>/dev/null || true
 printf '%sdone — %d value(s) captured%s\n' "$B" "${#CAPTURED[@]}" "$N"
-for c in "${CAPTURED[@]}"; do say "  $c"; done
+for c in ${CAPTURED[@]+"${CAPTURED[@]}"}; do say "  $c"; done
+if [ "${#SKIPPED[@]}" -gt 0 ]; then
+  warn "still to do by hand:"
+  for s in ${SKIPPED[@]+"${SKIPPED[@]}"}; do say "    - $s"; done
+fi
 ```
