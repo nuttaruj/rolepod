@@ -110,20 +110,21 @@ if (/phase\s*:\s*['"]Verify['"]/i.test(src) || /['"]verifier['"]/i.test(src)) {
   ok("no 'Verify'/'verifier' stage string")
 }
 
-// the owner and fix prompts must tell the owner to loop on the brief's
-// ## Check and run ## Command once itself, since nothing downstream in the
-// fleet re-runs it for them anymore.
+// the owner and fix prompts must tell the owner to run the brief's own
+// ## Command after each edit and last before returning (spec lean-loop-
+// 2026-09-23 Task 2: ONE test field) — nothing downstream in the fleet
+// re-runs it for them.
 const ownerPromptSrc = (src.match(/function ownerPrompt[\s\S]*?\n\}/) || [''])[0]
 const fixPromptSrc = (src.match(/function fixPrompt[\s\S]*?\n\}/) || [''])[0]
-if (/## Check/.test(ownerPromptSrc)) {
-  ok('ownerPrompt tells the owner to loop on the brief\'s ## Check')
+if (/## Command/.test(ownerPromptSrc)) {
+  ok('ownerPrompt tells the owner to run the brief\'s ## Command')
 } else {
-  bad('ownerPrompt has no "## Check" instruction')
+  bad('ownerPrompt has no "## Command" instruction')
 }
-if (/## Check/.test(fixPromptSrc)) {
-  ok('fixPrompt tells the owner to loop on the brief\'s ## Check')
+if (/## Command/.test(fixPromptSrc)) {
+  ok('fixPrompt tells the owner to run the brief\'s ## Command')
 } else {
-  bad('fixPrompt has no "## Check" instruction')
+  bad('fixPrompt has no "## Command" instruction')
 }
 
 // no Date.now() / Math.random() / bare new Date() — they break workflow resume.

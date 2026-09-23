@@ -54,7 +54,7 @@ A task that guards, gates or restores (a security surface) gets a **threat-model
 
 Size every task to ONE fresh context window — the subagent (or teammate) that builds it starts with no memory beyond the ticket.
 A task is one vertical slice — narrow but complete through every layer it touches, demoable or verifiable on its own; no file or line count sizes it. Split when Delivers needs "and" and the halves touch different files, or when a slice cannot be verified without the next task; halves on the same files stay ONE task — that split only adds a dispatch, a review and an integration in sequence.
-Every task states **Delivers** (one user-visible sentence) and **Blocked by** (the tasks that gate it, or none) — the Blocked-by graph is the plan's only statement of order. A task is a ticket: it ships alone (own build → review → commit) and never assumes a batch; only tasks that share a seam (a contract or interface) form one ship group, named in the plan.
+Every task states **Delivers** (one user-visible sentence) and **Blocked by** (the tasks that gate it, or none) — the Blocked-by graph is the plan's only statement of order. A task is a ticket: it builds and ships alone, never a batch; tasks sharing a seam (a contract or interface) form one ship group, named in the plan — the review-split unit past ~15 files (implement-plan §6).
 
 Each **Blocked-by** edge names what it consumes (e.g., `Blocked by: Task 2 (its snapshot)`) — an edge naming nothing is a convenience edge: drop it. Two edge-free tasks on one file → **prefactor first** (an extract task giving them disjoint files: "make the change easy, then make the easy change"), or declare Sequential and say why.
 
@@ -114,7 +114,7 @@ Execute as Lead: read 2-3 nearby files → list paths → order smallest-reversi
 The plan template is the canonical artifact: `templates/plan-template.md` — fill every section; it is the contract `implement-plan` executes. A multi-agent plan adds `templates/cohesion-contract-template.md`.
 
 Sections, in order: Source spec · Files to touch · Tasks · High-risk surfaces touched · Spec coverage (both directions) · Parallel layout · Done criteria · Failure policy · Risks · Changes during build · Follow-ups.
-A task block, in order: Delivers · Blocked by · Files · Read first · Change · Test / evidence · Proof · Expected failing signal · Command · Check · Owner · Done when · On fail — one bold label per bullet.
+A task block, in order: Delivers · Blocked by · Files · Read first · Change · Test / evidence · Proof · Expected failing signal · Command · Owner · Done when · On fail — one bold label per bullet.
 
 Tasks use `- [ ]` checkboxes so progress survives compaction. The file never absorbs build-time narrative: status is the checkbox; a deviation is one line under `## Changes during build`.
 

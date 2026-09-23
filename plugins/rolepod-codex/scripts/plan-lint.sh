@@ -11,7 +11,9 @@
 #
 # Usage: scripts/plan-lint.sh --brief <N> <plan.md> [contract.md]
 #   Prints Task N's brief (Goal/Tier/Blocked by/Read first/Files allowed/
-#   Files forbidden/Change/Test/Command/Check/Done when/Write/Reviewers/Bounds)
+#   Files forbidden/Change/Test/Command/Done when/Write/Reviewers/Bounds) —
+#   ONE test field, the Command; an older plan's Check: line is read and
+#   ignored, never printed (spec lean-loop-2026-09-23 Task 2)
 #   to stdout, assembled from the plan (and the contract's File-ownership +
 #   Do-not-touch-list when one is given). Exit 0 on success; exit 2 with
 #   one stderr line and empty stdout when Task N does not exist. Field
@@ -112,12 +114,6 @@ if [ "${1:-}" = "--brief" ]; then
     if (lp ~ /_(test|spec)\.(go|rs|rb|ex|exs)$/) return 1
     return 0
   }
-  # R2 < R3 < R4 — used to compare a task tier against the pool `tier =` line (spec R2).
-  function tiernum(t) {
-    if (t == "R2") return 2
-    if (t == "R3") return 3
-    return 4
-  }
   # A field is only a line whose trimmed, asterisk-stripped start is a
   # bullet (dash OR asterisk — the same bullet grammar the Blocked-by /
   # Files / Owner graph scan below accepts), an optional checkbox
@@ -183,10 +179,11 @@ if [ "${1:-}" = "--brief" ]; then
       else if (fieldline(line, "Change"))          { field = "C";   v = line; sub(/^[[:space:]]*[-*][[:space:]]*(\[[ xX]\][[:space:]]*)?\*{0,2}Change\*{0,2}:\*{0,2}[[:space:]]*/, "", v) }
       else if (fieldline(line, "Test / evidence")) { field = "T";   v = line; sub(/^[[:space:]]*[-*][[:space:]]*(\[[ xX]\][[:space:]]*)?\*{0,2}Test \/ evidence\*{0,2}:\*{0,2}[[:space:]]*/, "", v) }
       else if (fieldline(line, "Command"))         { field = "Cmd"; v = line; sub(/^[[:space:]]*[-*][[:space:]]*(\[[ xX]\][[:space:]]*)?\*{0,2}Command\*{0,2}:\*{0,2}[[:space:]]*/, "", v) }
-      # Optional — the narrowest command the build loop re-runs after every
-      # edit, so the owner never falls back to the full Command per edit
-      # (spec 2026-09-22: T3 owner spent 77% of tool time inside full-Command
-      # single runs).
+      # Superseded (spec lean-loop-2026-09-23 Task 2: ONE test field, the
+      # Command, run after each edit and last before returning) — parsed
+      # only so a Check: line in an older plan ends whatever field came
+      # before it instead of gluing onto it; the value is captured and
+      # ignored, never printed into a new brief.
       else if (fieldline(line, "Check"))           { field = "Ck";  v = line; sub(/^[[:space:]]*[-*][[:space:]]*(\[[ xX]\][[:space:]]*)?\*{0,2}Check\*{0,2}:\*{0,2}[[:space:]]*/, "", v) }
       else if (fieldline(line, "Owner"))           { field = "O";   v = line; sub(/^[[:space:]]*[-*][[:space:]]*(\[[ xX]\][[:space:]]*)?\*{0,2}Owner\*{0,2}:\*{0,2}[[:space:]]*/, "", v) }
       else if (fieldline(line, "Done when"))       { field = "DW";  v = line; sub(/^[[:space:]]*[-*][[:space:]]*(\[[ xX]\][[:space:]]*)?\*{0,2}Done when\*{0,2}:\*{0,2}[[:space:]]*/, "", v) }
@@ -389,15 +386,9 @@ if [ "${1:-}" = "--brief" ]; then
     print (Te == "" ? "(not in plan)" : Te)
     print "## Command"
     print (Cmd == "" ? "(not in plan)" : Cmd)
-    print "## Check"
-    # A value opening with "<" is an undeleted template placeholder — same
-    # convention as the Proof placeholder skip below — treated as absent.
-    if (Ck == "" || Ck ~ /^`?</) print "none — pick the narrowest command that covers each edit (one case file, one test name, one module)"
-    else print Ck
-    print "Test levels — each runs at ONE point, never at the one above it:"
-    print "1. Check   — the narrowest command covering the edit; the owner runs it after every edit."
-    print "2. Command — the task suite; runs ONCE at integration, not by the owner."
-    print "3. Release — the whole-repo suite; runs ONCE per release, by the Lead."
+    print "Test levels — each runs at ONE point:"
+    print "1. Command — the tests covering this task; the owner runs it after each edit and last before returning."
+    print "2. Release — the whole-repo suite; runs ONCE per release, by the Lead."
     print "## Proof"
     # An undeleted template placeholder ("<the one claim...> :: `<the command
     # that proves it>`") is not a real Proof — same convention as the bare-path
@@ -424,28 +415,27 @@ if [ "${1:-}" = "--brief" ]; then
     printf "`%s`\n", write
     print "## Reviewers"
     if (tier == "R1") print "`none`"
-    else {
-      if (tier == "R4") r = "`universal-reviewer` (internal strong) or, with a usable pool, `rolepod-cross-family --kind review --brief <this brief> --attach <diff> --detach` then `--collect <job> --timeout 540` in the foreground (exit 6 = still running: run it again) instead, plus `security-engineer`"
-      else {
-        poolt = ENVIRON["RP_REVIEW_TIER"]
-        if (poolt == "") poolt = "R4"
-        # spec D1/D2: an R2/R3 task at or above the pool tier gets the same
-        # external-alternative clause the R4 line carries above.
-        if ((poolt == "R2" || poolt == "R3") && tiernum(tier) >= tiernum(poolt)) r = "`universal-reviewer` or, with a usable pool, `rolepod-cross-family --kind review --brief <this brief> --attach <diff> --detach` then `--collect <job> --timeout 540` in the foreground (exit 6 = still running: run it again) instead"
-        else r = "`universal-reviewer`"
-      }
+    else if (tier == "R4") {
+      r = "`universal-reviewer` (internal strong) or, with a usable pool, `rolepod-cross-family --kind review --brief <this brief> --attach <diff> --detach` then `--collect <job> --timeout 540` in the foreground (exit 6 = still running: run it again) instead, plus `security-engineer`"
       if (Te ~ /(E2E|e2e|[Ee]nd-to-end|browser|screenshot|uiproof|UI test|UI flow|user-visible|Playwright|Cypress|visual diff)/) r = r ", `qa-tester` (E2E)"
       print r
       # The round shape lives HERE, where the owner picks its reviewers: at the
       # end of the Bounds line two owners in a row still messaged the finished
       # reviewer for round 2 and idled while the answer landed at the Lead.
-      print "Round 2 = ONE new foreground dispatch of the flagging reviewer on the fix delta, never a message to the finished one (a sub-agent gets no reply to it; the answer lands at the Lead). Max 2 rounds. Only a BLOCKER or MAJOR fix gets round 2; a MINOR or NIT fix is proven by the Check. The round-2 prompt carries the findings and the fix delta only, never a new run, mutant or suite: round 1 proof is not redone."
+      print "Round 2 = ONE new foreground dispatch of the flagging reviewer on the fix delta, never a message to the finished one (a sub-agent gets no reply to it; the answer lands at the Lead). Max 2 rounds. Only a BLOCKER or MAJOR fix gets round 2; a MINOR or NIT fix is proven by the Command. The round-2 prompt carries the findings and the fix delta only, never a new run, mutant or suite: round 1 proof is not redone."
+    } else {
+      # R2 / R3: no reviewer in the loop — the Lead runs ONE combined
+      # review over the plan diff (implement-plan §6) instead, so there is
+      # no per-task external clause and no Round 2 line here.
+      r = "`none` in the loop — the Lead runs ONE combined review over the plan diff before release"
+      if (Te ~ /(E2E|e2e|[Ee]nd-to-end|browser|screenshot|uiproof|UI test|UI flow|user-visible|Playwright|Cypress|visual diff)/) r = r ", `qa-tester` (E2E)"
+      print r
     }
     print "## Bounds"
     printf "- Edit only Files allowed, and only under ../%s-wt-%s-t%s-%s — the same path in the main checkout belongs to the Lead; no backup copies (.bak / .orig). Never commit or push; leave the tree staged.\n", repo, feat, want, tslug
-    print "- Run the Check after each edit, in the foreground (Bash timeout 600000; never run_in_background - nothing wakes a sub-agent); never the Command - integration runs it once. A code diff → dispatch the Reviewers in ONE message (reports to .rolepod/evidence/review/<task>-<role>.md); fix; then the Reviewers section above."
+    print "- Run the Command after each edit and last before returning, in the foreground (Bash timeout 600000; never run_in_background - nothing wakes a sub-agent). Reviewers named above → dispatch them in ONE message (reports to .rolepod/evidence/review/<task>-<role>.md); fix; then the Reviewers section above."
     print "- Budget: build <= 40 tool calls, whole loop <= 120; past it return PARTIAL with what is done, never grind."
-    print "- Return a decision brief: verdict, `git diff --cached --stat | tail -3`, Check last 3 lines verbatim, reviewer verdicts + report paths, residuals."
+    print "- Return a decision brief: verdict, `git diff --cached --stat | tail -3`, Command last 3 lines verbatim, reviewer verdicts + report paths, residuals."
   }
   '
   BRIEF_ROOT="$(git -C "$(dirname "$PLAN")" rev-parse --show-toplevel 2>/dev/null || pwd)"
@@ -462,19 +452,6 @@ if [ "${1:-}" = "--brief" ]; then
   [ -z "$RP_RISK_ADD" ] || rp_ere_ok "$RP_RISK_ADD" || RP_RISK_ADD=""
   [ -z "$RP_RISK_EXCL" ] || rp_ere_ok "$RP_RISK_EXCL" || RP_RISK_EXCL=""
   export RP_RISK_ADD RP_RISK_EXCL
-  # Effective cross-family review tier (spec D1/D2) — resolved ONCE here and
-  # reused by ## Reviewers above, so the two can never print a mismatched
-  # pair. The runner beside this script wins (the shipped one), else the
-  # installed launcher; anything else (no runner, no pool, no line) → R4,
-  # which is today's behaviour untouched.
-  XFAM_RUNNER="$(dirname "$0")/cross-family.sh"
-  [ -f "$XFAM_RUNNER" ] || XFAM_RUNNER="$HOME/.rolepod/bin/cross-family.sh"
-  RP_REVIEW_TIER="R4"
-  if [ -f "$XFAM_RUNNER" ]; then
-    _rt="$(bash "$XFAM_RUNNER" --review-tier --root "$BRIEF_ROOT" 2>/dev/null)"
-    case "$_rt" in R2|R3|R4) RP_REVIEW_TIER="$_rt" ;; esac
-  fi
-  export RP_REVIEW_TIER
   if [ -n "$CONTRACT" ]; then
     awk -v rx="$TASK_RX" -v want="$BRIEF_N" -v planpath="$PLAN" -v repo="$BRIEF_REPO" -v hascontract=1 "$BRIEF_AWK" "$PLAN" "$CONTRACT"
   else

@@ -72,7 +72,7 @@ Touch only what the task requires — no "while I'm here" refactors, no reformat
 
 ### 4. Bounded delegation
 
-Decide *whether* first. The plan's **Owner:** line wins — `Owner: Lead` → self-do (R1/R2 only); a named role → dispatch the task brief to that role as the **task owner** — it builds on the Check, dispatches its own §6 reviewers, fixes, and returns a **decision brief** (agent-protocol **Ticket loop**). A task with no Owner runs Q1-Q4:
+Decide *whether* first. The plan's **Owner:** line wins — `Owner: Lead` → self-do (R1/R2 only); a named role → dispatch the task brief to that role as the **task owner** — it builds on the Command, dispatches the reviewers its brief names (R4), fixes, and returns a **decision brief** (agent-protocol **Ticket loop**). A task with no Owner runs Q1-Q4:
 
 {{INCLUDE: core/fragments/gates-q1-q4.md}}
 
@@ -89,15 +89,17 @@ Never point the owner at the plan file — the brief is its slice. Use the least
 
 Every unblocked task goes out in ONE message, each task owner in its OWN worktree named for the task (the brief prints the command), under the plan's cohesion contract; the Lead keeps working while task owners build. Integrate each as it returns (§6); merge in the contract's order. Two tracks reach for the same file → stop: sequential, or rewrite the contract.
 
-### 6. Per-task review pipeline — the task owner's decision brief replaces Lead review
+### 6. Review — one combined pass for R2/R3, per task for R4
 
-A task owner's **decision brief** replaces the Lead-run review — the Lead reads the brief, spot-checks ONE finding in its report file (a clean report → one traced claim), runs the task's Command once (the owner ran only the Check), then commits.
+A task owner's **decision brief** carries its Command tail; the Lead spot-checks ONE claim (the Proof, or one finding in an R4 report), then runs the ship line.
 
-The Lead opens the source only for the spot-check or a named residual; a reviewer reads the source its claims need. The task owner's reviewer — `universal-reviewer` (spec + standards; or concern-matched row) — plus `security-engineer` on high-risk paths and `qa-tester` (E2E / UI) when the user sees a change, in ONE message; the owner's unit tests are the test floor. A usable pool at the diff's tier (R4; lower by the pool file's `tier =`): external replaces `universal-reviewer`. Lead-built (R1/R2) → Lead runs §6.
+R2/R3 tasks carry no reviewer in the loop. When the plan's last code task is committed, the Lead runs ONE combined review over the plan diff (`rolepod-ticket log` prints the range): `universal-reviewer` (spec + standards; or the concern-matched row), `qa-tester` when the user sees a change — the external instead at the pool's tier. More than ~15 files → one review per ship group. Findings → ONE fix task to the owning role; round 2 only for a BLOCKER / MAJOR fix. Nothing pushes or releases before it.
+
+R4 tasks keep per-task review: the owner dispatches `security-engineer` + ONE strong pass (the external with a usable pool, else `universal-reviewer`) before returning — the commit gate denies an unreviewed high-risk commit.
 
 **Lead hop — one, not three.** Spot-check ONE traced claim, never axis walk. No report → Lead runs `review-code` §2, recorded as a LIMITATION.
 
-**One task per pass, then ship it.** Each task owner's decision brief → Lead spot-check + Command + commit → next unblocked task. Never batch tasks into one diff; the rhythm is a fresh context per task. A **whole-implementation review** runs only over a ship group (tasks sharing a seam, named in the plan) for cross-task drift: `security-engineer` when the group holds an R4 task, else `universal-reviewer`; never a re-review of a task's own diff; no group named → none. Build the next unblocked task in its OWN worktree while under review.
+**One task per pass, then ship it.** Each task owner's decision brief → Lead spot-check + ship line → next unblocked task. Never batch tasks into one diff; the rhythm is a fresh context per task.
 
 ## If a matching child plugin skill is available
 

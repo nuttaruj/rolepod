@@ -65,7 +65,7 @@ Match the intent to the FIRST skill that fires; that skill decides what comes ne
 | "is this done / fixed / does it work / verify" | **Verify** | `check-work` | balanced |
 | "review / check this / look at the diff" | **Review** | `review-code` | **strong** |
 | "audit / sweep / map / find all X" on **the whole repo** | **Review (repo-wide)** | Sweeps (below) → `review-code` | balanced |
-| "ship / merge / push / PR / ready / go live" — and any "done / finished / ready" or natural end of the work | **Ship** | `finish-work` (cite per-task review reports + check-work Status; `review-code` only for a task with no report, a named ship-group drift pass, or a missing R4 pass) | **strong** (only if review-code fires) |
+| "ship / merge / push / PR / ready / go live" — and any "done / finished / ready" or natural end of the work | **Ship** | `finish-work` (cite the plan's ONE combined review (R2/R3) + each R4 task's per-task report + check-work Status; `review-code` only when the combined review has not run yet, or an R4 task is missing its report) | **strong** (only if review-code fires) |
 | explain-only / conceptual question | (no phase) | answer directly — a wide repo / online sweep first → ONE `scout` returns a research report (the always-on Code search rule) | cheap |
 | unclear doc artifact / proposal / ADR scope | **Define** | `write-spec` | cheap |
 | clear doc edit / runbook section / README | **Build** | `implement-plan`, Owner `content-strategist` (`audience:` set); R1-sized stays with the Lead | cheap |

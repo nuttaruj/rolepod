@@ -41,8 +41,7 @@
 - [ ] **Expected failing signal:** <for test-first tasks — the error the test
       shows before the fix. Omit if not test-first.>
 - [ ] **Command:** <the tests covering this task's files, runnable copy-paste as-is — never a suite the
-      commit gate or the release already runs; runs ONCE at integration, never by the owner>
-- **Check:** `<the narrowest command covering the edits of this task — one case file, one test name; the owner runs it after every edit>`
+      commit gate or the release already runs; the owner runs it after each edit and last before returning>
 - **Owner:** <The role the domain map assigns to this task's Files — path first,
       then concern. `Lead` for R1/R2-sized work (≤2 files) or when the user said
       self-do; from R3 up the map decides. A vertical slice has ONE owner: the role

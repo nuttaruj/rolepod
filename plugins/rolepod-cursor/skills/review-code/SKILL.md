@@ -59,7 +59,7 @@ rolepod-brain: add `brain_seed(task, agent: <reviewer id>)` verbatim; no tool �
 **By rigor tier** (R1 trivial edit · R2 one file + test · R3 multi-file · R4 high-risk):
 - **R1** → no review, no re-read turn; the edit tool's echo is the evidence. A docs-only diff is R1 at any size — no reviewer, internal or external; its own check (link check / static lint) is the verify.
 - **R2** → ONE read-only `universal-reviewer` pass on the diff (two axes: spec + standards; the author never reviews own logic); a matched row (perf / UI / arch) → that role instead. The writer's unit tests are the floor.
-- **R3** → the row match, internal — the pool's tier is R4 unless the pool file sets `tier = R2|R3`: from that tier up a usable external replaces `universal-reviewer`, never both (the user asks → one pass). A high-risk path anywhere in the diff under review (the task or its ship group) tiers that diff R4; the commission's tier is the max over its tasks and governs Define / Plan only — a diff reviewed at its tier is never reviewed again at ship.
+- **R3** → the row match, internal — the pool's tier is R4 unless the pool file sets `tier = R2|R3`: from that tier up a usable external replaces `universal-reviewer`, never both (the user asks → one pass). A high-risk path anywhere in the diff under review (the task or its ship group) tiers that diff R4; the commission's tier is the max over its tasks and governs Define / Plan only — a diff reviewed at its tier is never reviewed again at ship. R2/R3 combines once (implement-plan §6); R4 stays per task.
 - **R4** → the full adversarial floor, never less. An R4 diff gets `security-engineer` + ONE general strong pass: the external when the pool is usable, else `universal-reviewer`. Never external + `universal-reviewer` on round 1 (money / auth included). Comment/blank-only carve-out: ONE internal strong reviewer, no external.
 
 **Satellite-first strong pass.** A usable cross-family external IS the R4 strong adversarial pass: `rolepod-cross-family --kind review --brief <brief> --attach <diff> --detach` — read-only, anchored by the runner.
@@ -129,7 +129,7 @@ Fill `templates/review-report.md`. Each finding: file:line, the issue, why it ma
 Round 2+: `rolepod-cross-family --kind review --brief <brief> --since <previous job> --detach` — the runner attaches the fix delta plus the previous report, findings tagged IN-FIX / NEW / REPEAT.
 Cadence, every tier: round 1 = every axis in ONE message, ≤ 40 tool calls each; round 2 = a BLOCKER / MAJOR fix only, the flagging reviewer re-runs its repro on the delta, ≤ 15 calls — its dispatch carries the findings + delta only: no suite re-run, new mutant or new axis.
 
-Whoever wrote a BLOCKER / MAJOR fix never verifies it (a MINOR / NIT fix: the author's Check): the reviewer who flagged it verifies by default; the Lead's cold read only when that reviewer cannot run. A Lead-built fix → one read-only `universal-reviewer` pass (R4 → the strong pass).
+Whoever wrote a BLOCKER / MAJOR fix never verifies it (a MINOR / NIT fix: the author's Command): the reviewer who flagged it verifies by default; the Lead's cold read only when that reviewer cannot run. A Lead-built fix → one read-only `universal-reviewer` pass (R4 → the strong pass).
 - The external re-runs only when its previous report carried a BLOCKER and the fix delta is logic-bearing code; otherwise the internal reviewer verifies the fix delta alone.
 - Author and reviewer disagree on merits → technical data > documented style guide > engineering principle > codebase consistency.
 

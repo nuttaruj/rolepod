@@ -954,6 +954,25 @@ git -C "$GD_MAIN" worktree add -q -b gd-hash "$GD_WTHASH" >/dev/null 2>&1
 out=$(gd "cd $GD_WTHASH && git commit -m x")
 check "worktree path with an unquoted '#' + high-risk diff → deny (not silently truncated)" deny "$out"
 
+# (9) SOFT: a rolepod-ticket worktree (basename *-wt-*-tN*) leaves out the
+# "0 reviewers on a logic diff" sentence — the Lead's ONE combined review
+# already covers it (spec lean-loop-2026-09-23 Task 2, implement-plan §6);
+# the rest of the SOFT line (counts, the Gates sentence) still prints.
+GD_WT9="${GD_MAIN}-wt-sample-feature-t9-build-widget"
+git -C "$GD_MAIN" worktree add -q -b gd-9 "$GD_WT9" >/dev/null 2>&1
+( cd "$GD_WT9" && mkdir -p src && seq 15 | sed 's/^/const x = /' > src/util9.ts && git add -A )
+out=$(gd "cd $GD_WT9 && git commit -m x")
+check "*-wt-*-t9-* worktree, plain logic diff, 0 reviewers → allow (SOFT)" allow "$out"
+echo "$out" | grep -qF '0 reviewers on a logic diff' \
+  && { echo "  ✗ ticket worktree SOFT line still carries the 0-reviewers sentence"; fail=$((fail+1)); } \
+  || echo "  ✓ ticket worktree (*-wt-*-t9-*) SOFT line leaves out the 0-reviewers sentence"
+echo "$out" | grep -qF 'Gates S1-S5' \
+  && echo "  ✓ ticket worktree SOFT line still carries the rest of the message" \
+  || { echo "  ✗ ticket worktree SOFT line dropped too much: ${out:0:200}"; fail=$((fail+1)); }
+echo "$out" | grep -qF '15 logic' \
+  && echo "  ✓ ticket worktree SOFT line still carries the diff counts" \
+  || { echo "  ✗ ticket worktree SOFT line missing diff counts: ${out:0:200}"; fail=$((fail+1)); }
+
 rm -rf "$GD_MAIN" "$GD_MAIN"-wt-* "$GD_MAIN"-t5.jsonl "$GD_MAIN6" "$GD_NONREPO" "$GD_WTHASH"
 
 fi

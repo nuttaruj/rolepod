@@ -18,11 +18,13 @@
 #   rolepod-ticket integrate <worktree> --brief <file> [--pre '<cmd>'] [--gate '<cmd>']
 #     Refuses an ambiguous worktree (unmerged commits + a dirty tree).
 #     Runs --pre, ff-merges the base into the worktree branch, stages
-#     everything except docs/rolepod/, then runs the brief's Command, its
-#     Proof command (if any) and --gate — one "ok" or a <=15-line failing
-#     tail per step, first failure exits non-zero. On success prints the
-#     cached diff stat, any reviewer verdict newer than the worktree, and
-#     the exact `git -C <worktree> commit` command. Never commits itself.
+#     everything except docs/rolepod/, then runs the brief's Proof command
+#     (if any) and --gate — one "ok" or a <=15-line failing tail per step,
+#     first failure exits non-zero (the owner already ran the brief's
+#     Command; integrate never re-runs it). On success prints the cached
+#     diff stat, any reviewer verdict newer than the worktree, and the same
+#     ship chain `start` printed, from `git -C <worktree> commit` on. Never
+#     commits itself.
 #
 #   rolepod-ticket finish <worktree>
 #     Refuses a dirty worktree or one whose branch cannot ff-merge (base is
@@ -36,7 +38,9 @@
 #     file besides the Lead's own editor. Then names every not-done task
 #     whose Blocked-by list names N and is now fully done ("ready now: Task
 #     a (<owner>), ..."), plus "fleet: rolepod-ticket fleet <plan>" when one
-#     of them is role-owned. Idempotent, same as the checkbox flip.
+#     of them is role-owned. Once every role-owned task is done, also prints
+#     "review: <first logged task sha>^..HEAD — one combined review before
+#     release (implement-plan §6)". Idempotent, same as the checkbox flip.
 #
 #   rolepod-ticket fleet <plan> [--base <branch>] [--max <N>] [--gate '<cmd>']
 #     On the one CLI with a workflow tool: for every task whose Blocked-by
@@ -166,10 +170,6 @@ handoff_worktree_cmd() { # $1 = handoff file
 # I3: the brief FILE is the only thing read here — never plan-lint's
 # internals — so this script stays correct whether or not the "## Proof"
 # section exists yet.
-extract_command() { # $1 = brief file
-  first_backtick "$(section_body "$1" '## Command')"
-}
-
 extract_proof_command() { # $1 = brief file — line 2's backticked span, optional
   local body line2
   body="$(section_body "$1" '## Proof')"
@@ -177,6 +177,29 @@ extract_proof_command() { # $1 = brief file — line 2's backticked span, option
   line2="$(printf '%s\n' "$body" | sed -n '2p')"
   [ -n "$line2" ] || return 0
   first_backtick "$line2"
+}
+
+# Task N and its plan's absolute path, off a brief's own first two lines
+# ("# Task N: ..." / "Plan: <path> · Spec: ...", both stamped by plan-lint.sh
+# --brief) — read back so integrate's ship-chain tail names the same `log`
+# call `start` already printed, with no new CLI argument. Empty on a brief
+# that predates this header shape (an ad hoc test fixture, say).
+brief_task_n() { # $1 = brief file
+  sed -n '1s/^# Task \([0-9][0-9]*\):.*/\1/p' "$1"
+}
+
+brief_plan_path() { # $1 = brief file
+  sed -n '2s/^Plan: \(.*\) · Spec:.*/\1/p' "$1"
+}
+
+# The commit -> finish -> log tail of the ONE ship chain (spec lean-loop-
+# 2026-09-23 Task 2), shared verbatim by `start`'s "ship:" line and
+# `integrate`'s own success output. <subject>/<note> stay literal
+# placeholders for the Lead to fill; "$(git rev-parse HEAD)" is printed
+# literal too — it runs only when the Lead pastes and runs the chain.
+ship_chain_tail() { # $1 = worktree (absolute), $2 = plan (absolute), $3 = task N
+  printf 'git -C %s commit -m '\''<subject>'\'' && rolepod-ticket finish %s && rolepod-ticket log %s %s --sha "$(git rev-parse HEAD)" --note '\''<note>'\''' \
+    "$1" "$1" "$2" "$3"
 }
 
 # scripts/plan-lint.sh --brief does not auto-resolve the contract path (only
@@ -528,6 +551,8 @@ cmd_start() {
 
   printf '%s %s\n' "$handoff" "$wt_abs"
   printf 'agent: %s\n' "$agent_name"
+  printf 'ship: rolepod-ticket integrate %s --brief %s --gate '\''<commit gate>'\'' && %s\n' \
+    "$wt_abs" "$handoff" "$(ship_chain_tail "$wt_abs" "$plan_abs" "$n")"
 
   local ready_count
   ready_count="$(ready_role_tasks "$plan_abs" | grep -c '.')"
@@ -605,11 +630,9 @@ cmd_integrate() {
     exit "$stage_rc"
   fi
 
-  local cmd_str proof_str
-  cmd_str="$(extract_command "$brief")"
+  local proof_str
   proof_str="$(extract_proof_command "$brief")"
 
-  run_step "command" "$cmd_str" "$wt_root" || exit $?
   run_step "proof" "$proof_str" "$wt_root" || exit $?
   run_step "gate" "$gate" "$wt_root" || exit $?
 
@@ -639,7 +662,14 @@ cmd_integrate() {
   done < "$review_list" | head -n 10
   rm -f "$review_list"
 
-  printf 'git -C "%s" commit -m "<subject>"\n' "$wt_root"
+  local plan_abs task_n
+  plan_abs="$(brief_plan_path "$brief")"
+  task_n="$(brief_task_n "$brief")"
+  if [ -n "$plan_abs" ] && [ -n "$task_n" ]; then
+    printf '%s\n' "$(ship_chain_tail "$wt_root" "$plan_abs" "$task_n")"
+  else
+    printf 'git -C "%s" commit -m "<subject>"\n' "$wt_root"
+  fi
 }
 
 # ── finish ───────────────────────────────────────────────────────────────
@@ -797,6 +827,34 @@ EOF
     if [ "$has_role" -eq 1 ]; then
       printf 'fleet: rolepod-ticket fleet %s\n' "$plan"
     fi
+  fi
+
+  # ONE combined review before release (spec lean-loop-2026-09-23 Task 2,
+  # implement-plan §6): once every role-owned task's own block is fully
+  # checked, name the range from the FIRST task this plan ever logged (its
+  # parent commit) through HEAD — never before every role task is done, and
+  # a re-run after that point reprints the same line (idempotent, like
+  # "ready now:" above). A Lead-only plan (no role-owned task at all) never
+  # prints it — there is nothing for the Lead to review that it did not
+  # already build.
+  local rrows rid rowner rblocked rdone role_total=0 role_done=0
+  rrows="$(plan_task_rows "$plan")"
+  while IFS="$ROW_FS" read -r rid rowner rblocked rdone; do
+    [ -n "$rid" ] || continue
+    is_lead_owner "$rowner" && continue
+    role_total=$((role_total + 1))
+    [ "$rdone" = "1" ] && role_done=$((role_done + 1))
+  done <<EOF
+$rrows
+EOF
+  if [ "$role_total" -gt 0 ] && [ "$role_total" -eq "$role_done" ]; then
+    local first_sha
+    first_sha="$(awk '
+      /^## Changes during build/ { insec = 1; next }
+      insec && /^## / { exit }
+      insec && match($0, /`[^`]+`/) { print substr($0, RSTART + 1, RLENGTH - 2); exit }
+    ' "$plan")"
+    [ -n "$first_sha" ] && printf 'review: %s^..HEAD — one combined review before release (implement-plan §6)\n' "$first_sha"
   fi
 }
 

@@ -5,7 +5,7 @@
 - Editing: only the check that covers the file — `make test-lean-surface` (caps, invariants), `bash tests/static/<x>.sh`, `bash -n hooks/<x>.sh` + its case in `tests/integration/cases/`; a slow case file (`hook-behavior.sh`, `cross-family-runner.sh`) takes `ROLEPOD_CASE=<banner regex>` to run just the section for the hook/script just edited.
 - Task Command: only the case files the task touches (`ROLEPOD_CASE=` for a section of a slow file); never `make test-lean-surface` / `test-static` — the commit gate runs them.
 - Commit: `make render && git add -A && make test-static` once; read the exit code, never `| grep`.
-- Release: `make test-all` once, then `docs/release-checklist.md`.
+- Release: the plan's combined review done, then `make test-all` once, then `docs/release-checklist.md`.
 - After the release: the closing line proposes /compact (or a fresh session) before the next request.
 - One release per completed request that changed `core/ hooks/ scripts/ adapters/ plugins/`; docs-only = commit + push. Earlier only when the next ticket needs the hook or script just shipped.
 - External member: `--detach`, next task, one `--collect` (it waits).

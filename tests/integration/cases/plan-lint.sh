@@ -988,7 +988,6 @@ EXPECTED_HEADINGS='## Worktree
 ## Change
 ## Test / evidence
 ## Command
-## Check
 ## Proof
 ## Done when
 ## Write
@@ -1124,7 +1123,9 @@ else
   echo "  ✗ --brief broke on a malformed risk-paths pattern (rc=$RC3)"; fail=$((fail+1))
 fi
 
-# (3b) two non-test source files, no risk path → R3 (multi-file), universal-reviewer only.
+# (3b) two non-test source files, no risk path → R3 (multi-file), no reviewer
+# in the loop (the Lead's ONE combined review covers it — spec lean-loop-
+# 2026-09-23 Task 2).
 cat > "$TMP/brief-tier-r3.md" <<'EOF'
 ### Task 1: two files
 - **Delivers:** x
@@ -1140,10 +1141,15 @@ Default: stop.
 EOF
 OUTR3=$(bash "$LINT" --brief 1 "$TMP/brief-tier-r3.md")
 if printf '%s\n' "$OUTR3" | grep -A1 '^## Tier' | grep -qF 'R3 (multi-file)' \
-  && [ "$(printf '%s\n' "$OUTR3" | grep -A1 '^## Reviewers' | tail -1)" = '`universal-reviewer`' ]; then
-  echo "  ✓ plan-lint.sh --brief sets Tier to R3 (multi-file) with universal-reviewer only"
+  && [ "$(printf '%s\n' "$OUTR3" | grep -A1 '^## Reviewers' | tail -1)" = '`none` in the loop — the Lead runs ONE combined review over the plan diff before release' ]; then
+  echo "  ✓ plan-lint.sh --brief sets Tier to R3 (multi-file) with no reviewer in the loop"
 else
-  echo "  ✗ --brief two-file Tier wrong: $OUTR3"; fail=$((fail+1))
+  echo "  ✗ --brief two-file Tier/Reviewers wrong: $OUTR3"; fail=$((fail+1))
+fi
+if ! printf '%s\n' "$OUTR3" | grep -q '^## Check$'; then
+  echo "  ✓ plan-lint.sh --brief prints no ## Check heading on an R3 task"
+else
+  echo "  ✗ --brief still prints ## Check on an R3 task"; fail=$((fail+1))
 fi
 
 # (3c) one source file plus its own test file → R2 (one file + test).
@@ -1167,38 +1173,19 @@ else
   echo "  ✗ --brief file+test Tier wrong: $OUTR2"; fail=$((fail+1))
 fi
 
-# (3d) a usable cross-family pool naming a review tier (spec D1/D2): an R2
-# task at or above that tier gets the external named as the alternative to
-# universal-reviewer; the same plan with no tier line in the pool file keeps
-# today's line. Its own repo + its own .rolepod/cross-family, like the
-# risk-repo fixture above (3a) — HOME already points at the empty fixture
-# home for this whole file, so this project override is the only pool file
-# either --brief call below can see.
+# (3d) superseded (spec lean-loop-2026-09-23 Task 2): the pool-tier-driven
+# external clause for R2/R3 is gone — an R2 task's Reviewers line ignores
+# .rolepod/cross-family's `tier =` line entirely now (no per-task reviewer
+# at all in the loop for R2/R3; the Lead's ONE combined review covers it).
 TRR="$TMP/tier-repo"; mkdir -p "$TRR/.rolepod" "$TRR/plans"
 ( cd "$TRR" && git init -q . )
 cp "$TMP/brief-tier-r2.md" "$TRR/plans/p.md"
-OUTNT=$(bash "$LINT" --brief 1 "$TRR/plans/p.md")
-if [ "$(printf '%s\n' "$OUTNT" | grep -A1 '^## Reviewers' | tail -1)" = '`universal-reviewer`' ]; then
-  echo "  ✓ plan-lint.sh --brief with no pool tier line keeps today's Reviewers line on an R2 task"
-else
-  echo "  ✗ --brief Reviewers changed with no tier line: $(printf '%s\n' "$OUTNT" | grep -A1 '^## Reviewers' | tail -1)"; fail=$((fail+1))
-fi
 printf '[reviewer]\nreview = codex\ntier = R2\n' > "$TRR/.rolepod/cross-family"
 OUTT2=$(bash "$LINT" --brief 1 "$TRR/plans/p.md")
-if printf '%s\n' "$OUTT2" | grep -A1 '^## Reviewers' | grep -qF 'rolepod-cross-family --kind review'; then
-  echo "  ✓ plan-lint.sh --brief with pool tier = R2 names the external as the universal-reviewer alternative on an R2 task"
+if [ "$(printf '%s\n' "$OUTT2" | grep -A1 '^## Reviewers' | tail -1)" = '`none` in the loop — the Lead runs ONE combined review over the plan diff before release' ]; then
+  echo "  ✓ plan-lint.sh --brief ignores a pool tier = R2 line on an R2 task (no per-task external clause)"
 else
-  echo "  ✗ --brief pool tier = R2 missing the external alternative: $(printf '%s\n' "$OUTT2" | grep -A1 '^## Reviewers' | tail -1)"; fail=$((fail+1))
-fi
-# A pool tier ABOVE the task's own tier must not fire (R2 task, tier = R3 pool) — this
-# is the discriminating half of the >= comparison; a stray `1` in its place stays green
-# on every other case above but would wrongly fire here.
-printf '[reviewer]\nreview = codex\ntier = R3\n' > "$TRR/.rolepod/cross-family"
-OUTT3=$(bash "$LINT" --brief 1 "$TRR/plans/p.md")
-if [ "$(printf '%s\n' "$OUTT3" | grep -A1 '^## Reviewers' | tail -1)" = '`universal-reviewer`' ]; then
-  echo "  ✓ plan-lint.sh --brief with pool tier = R3 leaves an R2 task's Reviewers line untouched (below the pool's own tier)"
-else
-  echo "  ✗ --brief pool tier = R3 wrongly fired on an R2 task: $(printf '%s\n' "$OUTT3" | grep -A1 '^## Reviewers' | tail -1)"; fail=$((fail+1))
+  echo "  ✗ --brief pool tier = R2 still changed Reviewers: $(printf '%s\n' "$OUTT2" | grep -A1 '^## Reviewers' | tail -1)"; fail=$((fail+1))
 fi
 
 # (4) Owner line with write: external → Write external.
@@ -1303,22 +1290,31 @@ OUTT1=$(bash "$LINT" --brief 1 "$TMP/brief-t1t4-plan.md" "$TMP/brief-t1t4-contra
 ALLOWEDT1=$(printf '%s\n' "$OUTT1" | awk '/^## Files allowed/{f=1;next} /^## /{f=0} f')
 # Round shape sits where the owner picks its reviewers (2026-09-21: two owners in a
 # row ran round 2 as a message to the finished reviewer — the answer landed at the
-# Lead — while the rule sat at the end of a long Bounds line).
+# Lead — while the rule sat at the end of a long Bounds line). Pinned on the R4
+# auth brief (2026-09-23, lean-loop T2): R2/R3 carries no reviewer in the loop
+# any more, so it carries no round-2 line either — only R4 still has one.
+A4_REV=$(printf '%s\n' "$OUTA" | awk '/^## Reviewers/{on=1; next} /^## /{on=0} on')
+A4_BND=$(printf '%s\n' "$OUTA" | awk '/^## Bounds/{on=1; next} /^## /{on=0} on')
+if [ "$(printf '%s\n' "$A4_REV" | sed -n '2p' | grep -c '^Round 2 = ONE new foreground dispatch')" -eq 1 ] \
+  && ! printf '%s\n' "$A4_BND" | grep -q 'ound 2'; then
+  echo "  ✓ plan-lint.sh --brief states the round-2 shape under Reviewers (line 2) on an R4 task, once, not in Bounds"
+else
+  echo "  ✗ --brief round-2 shape misplaced — Reviewers: $A4_REV | Bounds: $A4_BND"; fail=$((fail+1))
+fi
 R3_REV=$(printf '%s\n' "$OUTR3" | awk '/^## Reviewers/{on=1; next} /^## /{on=0} on')
 R3_BND=$(printf '%s\n' "$OUTR3" | awk '/^## Bounds/{on=1; next} /^## /{on=0} on')
-if [ "$(printf '%s\n' "$R3_REV" | sed -n '2p' | grep -c '^Round 2 = ONE new foreground dispatch')" -eq 1 ] \
-  && ! printf '%s\n' "$R3_BND" | grep -q 'ound 2'; then
-  echo "  ✓ plan-lint.sh --brief states the round-2 shape under Reviewers (line 2), once, not in Bounds"
+if [ "$(printf '%s\n' "$R3_REV" | grep -c .)" -eq 1 ] && ! printf '%s\n' "$R3_REV" | grep -q 'ound 2'; then
+  echo "  ✓ plan-lint.sh --brief prints no round-2 line under Reviewers on an R2/R3 task"
 else
-  echo "  ✗ --brief round-2 shape misplaced — Reviewers: $R3_REV | Bounds: $R3_BND"; fail=$((fail+1))
+  echo "  ✗ --brief R2/R3 Reviewers carries an unexpected round-2 line: $R3_REV"; fail=$((fail+1))
 fi
-# Owner loop runs each test level once (2026-09-23, lean-loop T1): the
-# generated Bounds send the owner to the Check, never the Command.
-if printf '%s\n' "$R3_BND" | grep -qF 'Run the Check after each edit' \
-  && ! printf '%s\n' "$R3_BND" | grep -q 'Run the Command'; then
-  echo "  ✓ --brief Bounds send the owner to the Check, never the Command"
+# ONE test field (2026-09-23, lean-loop T2): the generated Bounds send the
+# owner to the Command, after each edit and last before returning.
+if printf '%s\n' "$R3_BND" | grep -qF 'Run the Command after each edit and last before returning' \
+  && ! printf '%s\n' "$R3_BND" | grep -q 'Run the Check'; then
+  echo "  ✓ --brief Bounds send the owner to the Command, never the Check"
 else
-  echo "  ✗ --brief Bounds still point the owner at the Command — Bounds: $R3_BND"; fail=$((fail+1))
+  echo "  ✗ --brief Bounds still point the owner at the Check — Bounds: $R3_BND"; fail=$((fail+1))
 fi
 if [ "$(printf '%s\n' "$OUT3" | awk '/^## Reviewers/{on=1; next} /^## /{on=0} on' | grep -c .)" -eq 1 ]; then
   echo "  ✓ plan-lint.sh --brief prose-only task: Reviewers is the single line none (no round shape)"
@@ -1385,17 +1381,14 @@ EOF
 OUTP1=$(bash "$LINT" --brief 1 "$TMP/brief-proof.md")
 CMD_TO_DW=$(printf '%s\n' "$OUTP1" | awk '/^## Command/{f=1;next} /^## Done when/{f=0} f')
 EXPECTED_CMD_TO_DW='pytest src/
-## Check
-none — pick the narrowest command that covers each edit (one case file, one test name, one module)
-Test levels — each runs at ONE point, never at the one above it:
-1. Check   — the narrowest command covering the edit; the owner runs it after every edit.
-2. Command — the task suite; runs ONCE at integration, not by the owner.
-3. Release — the whole-repo suite; runs ONCE per release, by the Lead.
+Test levels — each runs at ONE point:
+1. Command — the tests covering this task; the owner runs it after each edit and last before returning.
+2. Release — the whole-repo suite; runs ONCE per release, by the Lead.
 ## Proof
 the fix holds
 `pytest -k "test_a" | tee /tmp/out.log`'
 if [ "$CMD_TO_DW" = "$EXPECTED_CMD_TO_DW" ]; then
-  echo "  ✓ plan-lint.sh --brief prints ## Check then ## Proof right after ## Command, pipe + quoted string byte-for-byte"
+  echo "  ✓ plan-lint.sh --brief prints the Test levels block then ## Proof right after ## Command, pipe + quoted string byte-for-byte"
 else
   echo "  ✗ --brief Proof field wrong:"; diff <(printf '%s' "$EXPECTED_CMD_TO_DW") <(printf '%s' "$CMD_TO_DW"); fail=$((fail+1))
 fi
@@ -1414,8 +1407,9 @@ else
   echo "  ✗ --brief undeleted-placeholder Proof wrong: $PROOF3"; fail=$((fail+1))
 fi
 
-# ── --brief: ## Check (spec 2026-09-22) — the loop's own re-run command, right
-# after ## Command, so the build loop stops re-running the full Command per edit ──
+# ── --brief: a Check: field from an older plan (superseded 2026-09-23, lean-
+# loop T2: ONE test field, the Command) is parsed and ignored — no ## Check
+# heading, and it never glues onto a later field ──
 cat > "$TMP/brief-check.md" <<'EOF'
 ### Task 1: with check
 - **Delivers:** x
@@ -1457,41 +1451,20 @@ Sequential — single owner.
 ## Failure policy
 Default: stop.
 EOF
-LOOP_RULE='Test levels — each runs at ONE point, never at the one above it:
-1. Check   — the narrowest command covering the edit; the owner runs it after every edit.
-2. Command — the task suite; runs ONCE at integration, not by the owner.
-3. Release — the whole-repo suite; runs ONCE per release, by the Lead.'
+for n in 1 2 3 4; do
+  OUTCK=$(bash "$LINT" --brief "$n" "$TMP/brief-check.md")
+  if printf '%s\n' "$OUTCK" | grep -q '^## Check$'; then
+    echo "  ✗ --brief Task $n still prints ## Check"; fail=$((fail+1))
+  else
+    echo "  ✓ --brief Task $n prints no ## Check heading (an old Check: field is ignored)"
+  fi
+done
 OUTCK1=$(bash "$LINT" --brief 1 "$TMP/brief-check.md")
-CHECK1=$(printf '%s\n' "$OUTCK1" | awk '/^## Check/{f=1;next} /^## /{f=0} f')
-EXPECTED_CHECK1="\`pytest src/a_test.py::test_a\`
-$LOOP_RULE"
-if [ "$CHECK1" = "$EXPECTED_CHECK1" ]; then
-  echo "  ✓ plan-lint.sh --brief prints a task's Check command then the loop rule"
+DW1=$(printf '%s\n' "$OUTCK1" | awk '/^## Done when/{f=1;next} /^## /{f=0} f')
+if [ "$DW1" = "true" ]; then
+  echo "  ✓ --brief a task's Check: field never glues onto a later field (Done when intact)"
 else
-  echo "  ✗ --brief Check field wrong:"; diff <(printf '%s' "$EXPECTED_CHECK1") <(printf '%s' "$CHECK1"); fail=$((fail+1))
-fi
-OUTCK2=$(bash "$LINT" --brief 2 "$TMP/brief-check.md")
-CHECK2=$(printf '%s\n' "$OUTCK2" | awk '/^## Check/{f=1;next} /^## /{f=0} f')
-EXPECTED_CHECK2="none — pick the narrowest command that covers each edit (one case file, one test name, one module)
-$LOOP_RULE"
-if [ "$CHECK2" = "$EXPECTED_CHECK2" ]; then
-  echo "  ✓ plan-lint.sh --brief prints the derived Check hint then the loop rule when Check is absent"
-else
-  echo "  ✗ --brief missing-Check wrong:"; diff <(printf '%s' "$EXPECTED_CHECK2") <(printf '%s' "$CHECK2"); fail=$((fail+1))
-fi
-OUTCK3=$(bash "$LINT" --brief 3 "$TMP/brief-check.md")
-CHECK3=$(printf '%s\n' "$OUTCK3" | awk '/^## Check/{f=1;next} /^## /{f=0} f')
-if [ "$CHECK3" = "$EXPECTED_CHECK2" ]; then
-  echo "  ✓ plan-lint.sh --brief does not read a prose mention of 'Check:' as the field"
-else
-  echo "  ✗ --brief prose-Check-mention leaked into the field: $CHECK3"; fail=$((fail+1))
-fi
-OUTCK4=$(bash "$LINT" --brief 4 "$TMP/brief-check.md")
-CHECK4=$(printf '%s\n' "$OUTCK4" | awk '/^## Check/{f=1;next} /^## /{f=0} f')
-if [ "$CHECK4" = "$EXPECTED_CHECK2" ]; then
-  echo "  ✓ plan-lint.sh --brief treats an undeleted backticked Check placeholder as no Check"
-else
-  echo "  ✗ --brief backticked-placeholder Check wrong: $CHECK4"; fail=$((fail+1))
+  echo "  ✗ --brief Check: field corrupted a later field — Done when: $DW1"; fail=$((fail+1))
 fi
 
 # ── --brief: an indented Change sub-bullet is the Change; a backticked flag on a Files-to-touch line is not a path ──
@@ -1553,11 +1526,12 @@ printf '%s' "$FB" | grep -q 'src/b.sh' && printf '%s' "$FB" | grep -q '^- Makefi
   && echo "  ✓ --brief Files forbidden lists paths only (a backticked flag on the line is commentary)" \
   || { echo "  ✗ --brief Files forbidden: $FB"; fail=$((fail+1)); }
 RV1=$(printf '%s\n' "$OUT" | grep -A1 '^## Reviewers' | tail -1)
-[ "$RV1" = '`universal-reviewer`' ] && echo "  ✓ --brief Reviewers default = universal-reviewer alone (the writer's unit tests are the floor)" \
+[ "$RV1" = '`none` in the loop — the Lead runs ONE combined review over the plan diff before release' ] \
+  && echo "  ✓ --brief Reviewers default = none in the loop (the Lead's combined review is the floor)" \
   || { echo "  ✗ --brief Reviewers default: $RV1"; fail=$((fail+1)); }
 OUT2=$(cd "$BF" && bash "$LINT" --brief 2 plan.md 2>/dev/null)
 RV2=$(printf '%s\n' "$OUT2" | grep -A1 '^## Reviewers' | tail -1)
-printf '%s' "$RV2" | grep -qF '`qa-tester` (E2E)' && printf '%s' "$RV2" | grep -qF '`universal-reviewer`' \
+printf '%s' "$RV2" | grep -qF '`qa-tester` (E2E)' && printf '%s' "$RV2" | grep -qF 'none' \
   && echo "  ✓ --brief Reviewers adds qa-tester (E2E) when the Test line names a user-visible flow" \
   || { echo "  ✗ --brief Reviewers E2E append: $RV2"; fail=$((fail+1)); }
 rm -rf "$BF"

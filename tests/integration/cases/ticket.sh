@@ -62,19 +62,28 @@ OUT=$(bash "$TICKET" start "$FR/plan.md" 1 2>"$TMP/start.err")
 RC=$?
 LINE1=$(printf '%s\n' "$OUT" | sed -n '1p')
 AGENT_LINE=$(printf '%s\n' "$OUT" | sed -n '2p')
+SHIP_LINE=$(printf '%s\n' "$OUT" | sed -n '3p')
 BRIEF_PATH=$(printf '%s\n' "$LINE1" | awk '{print $1}')
 WT_PATH=$(printf '%s\n' "$LINE1" | awk '{print $2}')
 NFIELDS=$(printf '%s\n' "$LINE1" | awk '{print NF}')
 
 # Done when: line 1 stays exactly two paths (brief, worktree); the agent
 # name (needed by `finish`'s "close: <agent>") lands as its own line 2
-# "agent: <name>", never a third token that would break NFIELDS.
-if [ "$RC" -eq 0 ] && [ "$NFIELDS" -eq 2 ] && [ ${#OUT} -le 600 ] \
+# "agent: <name>", never a third token that would break NFIELDS. Line 3 is
+# the ONE ship call (spec lean-loop-2026-09-23 Task 2) — integrate through
+# git -C's commit, finish and log, <commit gate>/<subject>/<note> left for
+# the Lead.
+if [ "$RC" -eq 0 ] && [ "$NFIELDS" -eq 2 ] \
   && [ -f "$BRIEF_PATH" ] && [ -d "$WT_PATH" ] \
-  && [[ "$AGENT_LINE" == agent:\ * ]]; then
-  echo "  ✓ start prints line 1 with exactly two paths (brief, worktree) and line 2 'agent: <name>'"
+  && [[ "$AGENT_LINE" == agent:\ * ]] \
+  && [[ "$SHIP_LINE" == ship:\ rolepod-ticket\ integrate\ "$WT_PATH"\ --brief\ "$BRIEF_PATH"* ]] \
+  && printf '%s\n' "$SHIP_LINE" | grep -qF "git -C $WT_PATH commit -m '<subject>'" \
+  && printf '%s\n' "$SHIP_LINE" | grep -qF "rolepod-ticket finish $WT_PATH" \
+  && printf '%s\n' "$SHIP_LINE" | grep -qF "rolepod-ticket log $FR/plan.md 1 --sha" \
+  && printf '%s\n' "$SHIP_LINE" | grep -qF -- "--note '<note>'"; then
+  echo "  ✓ start prints line 1 (brief, worktree), line 2 'agent: <name>', line 3 the ship chain"
 else
-  echo "  ✗ start dispatch lines wrong: rc=$RC len=${#OUT} nfields=$NFIELDS line1=[$LINE1] agent=[$AGENT_LINE]"; fail=$((fail+1))
+  echo "  ✗ start dispatch lines wrong: rc=$RC nfields=$NFIELDS line1=[$LINE1] agent=[$AGENT_LINE] ship=[$SHIP_LINE]"; fail=$((fail+1))
   cat "$TMP/start.err" >&2
 fi
 
@@ -144,10 +153,10 @@ else
   echo "  ✗ start --base wrong: worktree=[$BWT]"; ls "$BWT" 2>&1; cat "$TMP/base.err" >&2; fail=$((fail+1))
 fi
 
-# ── start's fleet hint (Task 5): a line AFTER "agent: <name>", only when
+# ── start's fleet hint (Task 5): a line AFTER the ship: line, only when
 # 2+ role-owned tasks are ready — a single-ready-task plan (the
-# acceptance-1 fixture above) must keep printing exactly two lines
-# (dispatch line + agent line), no third.
+# acceptance-1 fixture above) must keep printing exactly three lines
+# (dispatch line + agent line + ship line), no fourth.
 HR="$TMP/hint-repo"
 mkdir -p "$HR"
 ( cd "${HR:?}" && git init -q . && git config user.email t@t && git config user.name t )
@@ -179,7 +188,7 @@ EOF
 ( cd "${HR:?}" && git add -A && git commit -q -m init )
 HOUT=$(bash "$TICKET" start "$HR/plan.md" 1 2>"$TMP/hint.err")
 HLINES=$(printf '%s\n' "$HOUT" | wc -l | tr -d ' ')
-if [ "$HLINES" -eq 3 ] && printf '%s\n' "$HOUT" | sed -n '3p' | grep -qF "fleet: rolepod-ticket fleet $HR/plan.md"; then
+if [ "$HLINES" -eq 4 ] && printf '%s\n' "$HOUT" | sed -n '4p' | grep -qF "fleet: rolepod-ticket fleet $HR/plan.md"; then
   echo "  ✓ start prints a fleet hint line when 2+ role-owned tasks are ready"
 else
   echo "  ✗ start fleet-hint wrong: [$HOUT]"; cat "$TMP/hint.err" >&2; fail=$((fail+1))
@@ -187,7 +196,7 @@ fi
 
 HOUT2=$(bash "$TICKET" start "$FR/plan.md" 1 2>>"$TMP/hint.err")
 HLINES2=$(printf '%s\n' "$HOUT2" | wc -l | tr -d ' ')
-if [ "$HLINES2" -eq 2 ]; then
+if [ "$HLINES2" -eq 3 ]; then
   echo "  ✓ start prints no fleet hint when only one role-owned task is ready"
 else
   echo "  ✗ start printed a hint with only one ready task: [$HOUT2]"; fail=$((fail+1))
@@ -206,7 +215,7 @@ echo widget > "$TMP/integrate-wt/widget.txt"
 LOG_BEFORE=$(git -C "$IR" log --oneline --all)
 cat > "$TMP/brief-ok.md" <<'EOF'
 ## Command
-`test -f widget.txt`
+`false`
 ## Proof
 widget is non-empty
 `test -s widget.txt`
@@ -217,10 +226,10 @@ LOG_AFTER=$(git -C "$IR" log --oneline --all)
 LINES=$(printf '%s\n' "$OUT" | wc -l | tr -d ' ')
 if [ "$RC" -eq 0 ] && [ "$LINES" -le 40 ] \
   && printf '%s\n' "$OUT" | grep -q '^merge: ok' \
-  && printf '%s\n' "$OUT" | grep -q '^command: ok' \
+  && ! printf '%s\n' "$OUT" | grep -q '^command:' \
   && printf '%s\n' "$OUT" | grep -q '^proof: ok' \
   && printf '%s\n' "$OUT" | tail -1 | grep -q 'commit -m'; then
-  echo "  ✓ integrate green path: <=40 lines, ok per step, ends with the commit command"
+  echo "  ✓ integrate green path: a false Command still passes (never run), <=40 lines, ends with the commit command"
 else
   echo "  ✗ integrate green path wrong (rc=$RC lines=$LINES): $OUT"; fail=$((fail+1))
 fi
@@ -230,24 +239,20 @@ else
   echo "  ✗ integrate created a commit — git log changed"; fail=$((fail+1))
 fi
 
-# ── failing Command: non-zero + failing tail, Proof never runs
-cat > "$TMP/brief-fail.md" <<'EOF'
-## Command
-`false`
-## Proof
-should never run
-`false`
-EOF
-OUT=$(bash "$TICKET" integrate "$TMP/integrate-wt" --brief "$TMP/brief-fail.md" 2>&1)
-RC=$?
-if [ "$RC" -ne 0 ] && printf '%s\n' "$OUT" | grep -q '^command: FAIL' \
-  && ! printf '%s\n' "$OUT" | grep -q '^proof:'; then
-  echo "  ✓ integrate: a failing Command exits non-zero, prints a failing tail, never reaches Proof"
+# ── integrate on a start-generated brief (real "# Task N" / "Plan:" header
+# lines) prints the SAME ship chain `start` printed, from `git -C` on —
+# never the bare commit command (spec lean-loop-2026-09-23 Task 2).
+SHIP_OUT=$(bash "$TICKET" integrate "$WT_PATH" --brief "$BRIEF_PATH" 2>&1)
+SHIP_RC=$?
+if [ "$SHIP_RC" -eq 0 ] \
+  && printf '%s\n' "$SHIP_OUT" | tail -1 | grep -qF "git -C $WT_PATH commit -m '<subject>' && rolepod-ticket finish $WT_PATH && rolepod-ticket log $FR/plan.md 1 --sha" \
+  && printf '%s\n' "$SHIP_OUT" | tail -1 | grep -qF -- "--note '<note>'"; then
+  echo "  ✓ integrate on a start-generated brief prints the full ship chain, not the bare commit command"
 else
-  echo "  ✗ integrate failing-Command handling wrong (rc=$RC): $OUT"; fail=$((fail+1))
+  echo "  ✗ integrate ship-chain wrong: $SHIP_OUT"; fail=$((fail+1))
 fi
 
-# ── a failing Proof (Command itself green) also exits non-zero
+# ── a failing Proof (Command itself never runs) also exits non-zero
 PFR="$TMP/proof-repo"
 mkrepo "$PFR"
 ( cd "${PFR:?}" && git worktree add -q -b proof-branch "$TMP/proof-wt" ) \
@@ -261,13 +266,13 @@ a false claim
 EOF
 OUT=$(bash "$TICKET" integrate "$TMP/proof-wt" --brief "$TMP/brief-proof-fail.md" 2>&1)
 RC=$?
-if [ "$RC" -ne 0 ] && printf '%s\n' "$OUT" | grep -q '^command: ok' && printf '%s\n' "$OUT" | grep -q '^proof: FAIL'; then
-  echo "  ✓ integrate: a failing Proof command exits non-zero after a green Command"
+if [ "$RC" -ne 0 ] && ! printf '%s\n' "$OUT" | grep -q '^command:' && printf '%s\n' "$OUT" | grep -q '^proof: FAIL'; then
+  echo "  ✓ integrate: a failing Proof command exits non-zero (Command never runs)"
 else
   echo "  ✗ integrate failing-Proof handling wrong (rc=$RC): $OUT"; fail=$((fail+1))
 fi
 
-# ── --gate: runs last, after a green Command/Proof; failing it exits non-zero
+# ── --gate: runs last, after a green Proof; failing it exits non-zero
 GTR="$TMP/gate-repo"
 mkrepo "$GTR"
 ( cd "${GTR:?}" && git worktree add -q -b gate-branch "$TMP/gate-wt" ) \
@@ -281,10 +286,10 @@ trivially true
 EOF
 OUT=$(bash "$TICKET" integrate "$TMP/gate-wt" --brief "$TMP/brief-gate.md" --gate 'false' 2>&1)
 RC=$?
-if [ "$RC" -ne 0 ] && printf '%s\n' "$OUT" | grep -q '^command: ok' \
+if [ "$RC" -ne 0 ] && ! printf '%s\n' "$OUT" | grep -q '^command:' \
   && printf '%s\n' "$OUT" | grep -q '^proof: ok' && printf '%s\n' "$OUT" | grep -q '^gate: FAIL' \
   && ! printf '%s\n' "$OUT" | grep -q 'commit -m'; then
-  echo "  ✓ integrate: a failing --gate exits non-zero after green Command/Proof, no commit command printed"
+  echo "  ✓ integrate: a failing --gate exits non-zero after a green Proof, no commit command printed"
 else
   echo "  ✗ integrate --gate handling wrong (rc=$RC): $OUT"; fail=$((fail+1))
 fi
@@ -592,6 +597,61 @@ else
   echo "  ✗ log ready-now re-run differs: [$OUT_A2] vs [$OUT_A]"; fail=$((fail+1))
 fi
 
+# ── log's review: range (spec lean-loop-2026-09-23 Task 2): once every
+# role-owned task is done, name <first logged task sha>^..HEAD for the
+# Lead's ONE combined review — never before, and idempotent once true.
+cat > "$TMP/review-plan.md" <<'EOF'
+# Review Range Plan
+
+## Tasks
+
+### Task 1: alpha
+- **Blocked by:** none
+- [ ] **Files:** a.txt
+- [ ] **Command:** true
+- **Owner:** backend-developer
+
+### Task 2: beta
+- **Blocked by:** none
+- [ ] **Files:** b.txt
+- [ ] **Command:** true
+- **Owner:** frontend-developer
+
+### Task 3: docs
+- **Blocked by:** none
+- [ ] **Files:** c.md
+- [ ] **Command:** true
+- **Owner:** Lead
+
+## Changes during build
+
+## Follow-ups
+EOF
+OUT_R1=$(bash "$TICKET" log "$TMP/review-plan.md" 1 --sha aaa111 --note "alpha done" 2>"$TMP/review-r1.err")
+if ! printf '%s\n' "$OUT_R1" | grep -q '^review:'; then
+  echo "  ✓ log prints no review: line while a role-owned task (Task 2) is still open"
+else
+  echo "  ✗ log printed review: before every role task was done: [$OUT_R1]"; fail=$((fail+1))
+fi
+OUT_R3=$(bash "$TICKET" log "$TMP/review-plan.md" 3 --sha ccc333 --note "docs done" 2>"$TMP/review-r3.err")
+if ! printf '%s\n' "$OUT_R3" | grep -q '^review:'; then
+  echo "  ✓ log prints no review: line on a Lead-owned task while Task 2 is still open"
+else
+  echo "  ✗ log printed review: with a role task still open: [$OUT_R3]"; fail=$((fail+1))
+fi
+OUT_R2=$(bash "$TICKET" log "$TMP/review-plan.md" 2 --sha bbb222 --note "beta done" 2>"$TMP/review-r2.err")
+if printf '%s\n' "$OUT_R2" | grep -qF 'review: aaa111^..HEAD — one combined review before release (implement-plan §6)'; then
+  echo "  ✓ log prints the review: range off the FIRST logged task's sha once every role task is done"
+else
+  echo "  ✗ log review: range wrong: [$OUT_R2]"; cat "$TMP/review-r2.err" >&2; fail=$((fail+1))
+fi
+OUT_R2B=$(bash "$TICKET" log "$TMP/review-plan.md" 2 --sha bbb222 --note "beta done" 2>>"$TMP/review-r2.err")
+if [ "$OUT_R2B" = "$OUT_R2" ]; then
+  echo "  ✓ log's review: line is idempotent — a re-run prints the same line"
+else
+  echo "  ✗ log review: re-run differs: [$OUT_R2B] vs [$OUT_R2]"; fail=$((fail+1))
+fi
+
 # ═══════════════════════════════════════════════════════════════════════
 # fleet — Task 5: two ready role-owned tasks, one blocked, one Owner: Lead
 # ═══════════════════════════════════════════════════════════════════════
@@ -662,7 +722,7 @@ tasks = data["args"]["tasks"]
 ns = sorted(t["n"] for t in tasks)
 assert ns == [1, 2], "expected tasks [1, 2], got %r" % (ns,)
 for t in tasks:
-    assert t["reviewers"] == ["universal-reviewer"], t
+    assert t["reviewers"] == [], t
     assert os.path.isdir(t["worktree"]), "no worktree dir: %r" % t["worktree"]
     assert os.path.isfile(t["brief"]), "no brief file: %r" % t["brief"]
     assert t["role"] in ("backend-developer", "frontend-developer"), t["role"]

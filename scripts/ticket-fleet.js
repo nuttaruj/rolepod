@@ -23,10 +23,9 @@
 //            owner call with them, then ONE re-check by each flagging
 //            reviewer (never a second full review round — the two-round
 //            budget, as control flow instead of owner judgment).
-// No scripted verifier stage: the owner loops on the brief's ## Check as it
-// builds and never runs ## Command before returning; the verifier is
-// `rolepod-ticket integrate`, which runs the Command and the Proof once
-// before the commit command is printed.
+// No scripted verifier stage: the owner runs the brief's ## Command after
+// each edit and last before returning; the verifier is `rolepod-ticket
+// integrate`, which runs the Proof once before the ship chain is printed.
 //
 // Tier (probe-verified recipe, docs/rolepod/handoffs/ticket-fleet-probe-
 // 2026-09-22.md #5): a `// tier-reason:` comment, agentType dynamic via a
@@ -110,8 +109,8 @@ function reportPath(task, role) {
 function ownerPrompt(task) {
   return `Task owner for Task ${task.n}: BUILD it in the worktree ${task.worktree} per the brief ` +
     `${task.brief} (read the brief first, then edit, test-first). Do not dispatch reviewers — the script does.\n` +
-    'Loop on the brief\'s ## Check after each edit. Do not run the full ## Command — integration ' +
-    'runs it once; return when the Check is green and the diff is final.'
+    'Run the brief\'s ## Command after each edit and last before returning; return when it is ' +
+    'green and the diff is final.'
 }
 
 function reviewPrompt(task, role) {
@@ -133,8 +132,8 @@ function fixPrompt(task, flagging) {
   const lines = flagging.map((f) => `${f.role}: ${f.result.blocking.join('; ')}`).join(' | ')
   return `Task owner for Task ${task.n}, worktree ${task.worktree}. Fix these blocking review ` +
     `findings, ONE round, then stop: ${lines}\n` +
-    'Loop on the brief\'s ## Check after each edit. Do not run the full ## Command — integration ' +
-    'runs it once; return when the Check is green and the diff is final.'
+    'Run the brief\'s ## Command after each edit and last before returning; return when it is ' +
+    'green and the diff is final.'
 }
 
 async function processTask(prev, task) {

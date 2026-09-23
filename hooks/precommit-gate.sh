@@ -954,7 +954,16 @@ WARN="precommit-gate SOFT: $FILES_CHANGED files / $LINES_CHANGED lines / $REVIEW
 # The R1 shape is judged on the CODE part (v2.153.0): docs riding along with
 # a 2-line label edit do not make it a reviewable diff, and neither do the
 # comment lines around one real line.
-if [ "$REVIEW_LOGIC" -gt 0 ] && [ "$REVIEWERS" -eq 0 ] && { [ "${REVIEW_FILES:-0}" -gt 1 ] || [ "$REVIEW_LOGIC" -gt 5 ]; }; then WARN+="0 reviewers on a logic diff = the author reviewed it. Fix: dispatch rolepod:universal-reviewer (read-only, two axes) on the diff, then commit (review-code §1; R2 = one file + test). Exception: the task owner already had it reviewed, or the diff is config / generated copies / message text → commit. "; fi
+# A rolepod-ticket worktree (basename `*-wt-*-tN*`, the shape `ticket.sh
+# start` always creates) already gets the Lead's ONE combined review before
+# release (spec lean-loop-2026-09-23 Task 2, implement-plan §6) — the
+# "0 reviewers on a logic diff" sentence would double-count it there.
+WT_TOPLEVEL_BASE=$(basename "$(gitd rev-parse --show-toplevel 2>/dev/null || echo "$DIFF_DIR")")
+case "$WT_TOPLEVEL_BASE" in
+  *-wt-*-t[0-9]*) IN_TICKET_WT=1 ;;
+  *) IN_TICKET_WT=0 ;;
+esac
+if [ "$REVIEW_LOGIC" -gt 0 ] && [ "$REVIEWERS" -eq 0 ] && [ "$IN_TICKET_WT" -eq 0 ] && { [ "${REVIEW_FILES:-0}" -gt 1 ] || [ "$REVIEW_LOGIC" -gt 5 ]; }; then WARN+="0 reviewers on a logic diff = the author reviewed it. Fix: dispatch rolepod:universal-reviewer (read-only, two axes) on the diff, then commit (review-code §1; R2 = one file + test). Exception: the task owner already had it reviewed, or the diff is config / generated copies / message text → commit. "; fi
 WARN+="Gates S1-S5 (simplicity) / T1-T6 (tests) / F1-F5 (finish) — finish-work §1, check-work §6 — are advisory here; ROLEPOD_GATES_HARD=1 enforces."
 [ -n "$LINT_WARN" ] && WARN+=" | $LINT_WARN"
 [ -n "$EMOJI_WARN" ] && WARN+=" | $EMOJI_WARN"
