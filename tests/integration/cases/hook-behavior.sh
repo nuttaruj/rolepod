@@ -1787,7 +1787,8 @@ if section "cohesion-contract-check: prescribed names + Bash heredoc"; then
 # next spawn is a writer role (backend-developer). Contract evidence is a
 # Write/Edit of a known name OR a Bash command that WRITES one (redirect /
 # cp / mv / install / tee) — a command that only mentions the name does not
-# count.
+# count. No contract → one additionalContext nudge, never a deny (v2.163.0:
+# the hook warns, it does not block).
 CC_TMP=$(mktemp -d)
 CC_AGENT='{"type":"tool_use","name":"Agent","input":{"subagent_type":"rolepod:frontend-developer","prompt":"build ui"}}'
 cc() { # $1 = transcript path
@@ -1803,32 +1804,51 @@ cc_bash_line() { # $1 = command → one JSONL Bash tool_use line
   printf '{"type":"tool_use","name":"Bash","input":{"command":%s}}\n' \
     "$(printf '%s' "$1" | python3 -c 'import json,sys; print(json.dumps(sys.stdin.read()))')"
 }
+cc_check() { # $1 desc, $2 expected (nudge|silent), $3 hook output
+  local desc="$1" expected="$2" out="$3" got="silent" lines
+  lines=$(printf '%s' "$out" | grep -c . || true)
+  check "$desc → allow (never deny)" allow "$out"
+  if printf '%s' "$out" | python3 -I -c "
+import json, sys
+try:
+    d = json.load(sys.stdin)
+except Exception:
+    sys.exit(1)
+so = d.get('hookSpecificOutput', {})
+msg = so.get('additionalContext', '')
+ok = 'cohesion-contract gate' in msg and 'permissionDecision' not in so
+sys.exit(0 if ok else 1)
+" 2>/dev/null; then
+    got="nudge"
+  fi
+  if [ "$got" = "$expected" ] && [ "$lines" -le 1 ]; then
+    echo "  ✓ $desc → $expected (one line)"
+  else
+    echo "  ✗ $desc (expected $expected as ≤1 line, got $got across $lines line(s))"
+    fail=$((fail+1))
+  fi
+}
 
 printf '%s\n' "$CC_AGENT" > "$CC_TMP/t1.jsonl"
 cc_write_line 'docs/rolepod/plans/foo-cohesion-2026-09-17.md' >> "$CC_TMP/t1.jsonl"
-out=$(cc "$CC_TMP/t1.jsonl")
-check "cohesion: Write to <feature>-cohesion-<date>.md → allow" allow "$out"
+cc_check "cohesion: Write to <feature>-cohesion-<date>.md" silent "$(cc "$CC_TMP/t1.jsonl")"
 
 printf '%s\n' "$CC_AGENT" > "$CC_TMP/t2.jsonl"
 cc_bash_line "cat > docs/rolepod/plans/foo-cohesion-2026-09-17.md <<'EOF'
 # c
 EOF" >> "$CC_TMP/t2.jsonl"
-out=$(cc "$CC_TMP/t2.jsonl")
-check "cohesion: Bash heredoc to <feature>-cohesion-<date>.md → allow" allow "$out"
+cc_check "cohesion: Bash heredoc to <feature>-cohesion-<date>.md" silent "$(cc "$CC_TMP/t2.jsonl")"
 
 printf '%s\n' "$CC_AGENT" > "$CC_TMP/t3.jsonl"
 cc_bash_line 'cat README.md | head' >> "$CC_TMP/t3.jsonl"
-out=$(cc "$CC_TMP/t3.jsonl")
-check "cohesion: Bash mentioning README.md only → deny" deny "$out"
+cc_check "cohesion: Bash mentioning README.md only" nudge "$(cc "$CC_TMP/t3.jsonl")"
 
 printf '%s\n' "$CC_AGENT" > "$CC_TMP/t4.jsonl"
 cc_write_line 'contract.md' >> "$CC_TMP/t4.jsonl"
-out=$(cc "$CC_TMP/t4.jsonl")
-check "cohesion: Write to contract.md → allow" allow "$out"
+cc_check "cohesion: Write to contract.md" silent "$(cc "$CC_TMP/t4.jsonl")"
 
 printf '%s\n' "$CC_AGENT" > "$CC_TMP/t5.jsonl"
-out=$(cc "$CC_TMP/t5.jsonl")
-check "cohesion: parallel Agent, no contract artifact → deny" deny "$out"
+cc_check "cohesion: parallel Agent, no contract artifact" nudge "$(cc "$CC_TMP/t5.jsonl")"
 
 # TC6 — the ticket's own motivating incident: a BARE filename (no
 # directory prefix), which is the common shape once the Lead has already
@@ -1837,47 +1857,40 @@ printf '%s\n' "$CC_AGENT" > "$CC_TMP/t6.jsonl"
 cc_bash_line "cat > foo-contract.md <<'EOF'
 # c
 EOF" >> "$CC_TMP/t6.jsonl"
-out=$(cc "$CC_TMP/t6.jsonl")
-check "cohesion: Bash heredoc to a BARE contract.md (no dir prefix) → allow" allow "$out"
+cc_check "cohesion: Bash heredoc to a BARE contract.md (no dir prefix)" silent "$(cc "$CC_TMP/t6.jsonl")"
 
 printf '%s\n' "$CC_AGENT" > "$CC_TMP/t6b.jsonl"
 cc_bash_line 'cp draft.md contract.md' >> "$CC_TMP/t6b.jsonl"
-out=$(cc "$CC_TMP/t6b.jsonl")
-check "cohesion: Bash 'cp draft.md contract.md' (bare, cp) → allow" allow "$out"
+cc_check "cohesion: Bash 'cp draft.md contract.md' (bare, cp)" silent "$(cc "$CC_TMP/t6b.jsonl")"
 
 # TC7 — a command that only MENTIONS a contract name (read/inspect/delete)
 # must not satisfy the gate; only a write does.
 printf '%s\n' "$CC_AGENT" > "$CC_TMP/t7.jsonl"
 cc_bash_line 'cat contract.md' >> "$CC_TMP/t7.jsonl"
-out=$(cc "$CC_TMP/t7.jsonl")
-check "cohesion: Bash 'cat contract.md' (read, not write) → deny" deny "$out"
+cc_check "cohesion: Bash 'cat contract.md' (read, not write)" nudge "$(cc "$CC_TMP/t7.jsonl")"
 
 # TC8 — near-miss suffix: the trailing boundary must reject a match that is
 # only a PREFIX of the actual filename.
 printf '%s\n' "$CC_AGENT" > "$CC_TMP/t8.jsonl"
 cc_write_line 'spec.mdx' >> "$CC_TMP/t8.jsonl"
-out=$(cc "$CC_TMP/t8.jsonl")
-check "cohesion: Write to spec.mdx (near-miss suffix) → deny" deny "$out"
+cc_check "cohesion: Write to spec.mdx (near-miss suffix)" nudge "$(cc "$CC_TMP/t8.jsonl")"
 
 # TC9 — round-2 finding: cp/mv/install must not cross into a DIFFERENT
 # command via && to pick up an unrelated mention later in the line.
 printf '%s\n' "$CC_AGENT" > "$CC_TMP/t9.jsonl"
 cc_bash_line 'cp draft.md output.txt && cat contract.md' >> "$CC_TMP/t9.jsonl"
-out=$(cc "$CC_TMP/t9.jsonl")
-check "cohesion: 'cp a b && cat contract.md' (crosses &&) → deny" deny "$out"
+cc_check "cohesion: 'cp a b && cat contract.md' (crosses &&)" nudge "$(cc "$CC_TMP/t9.jsonl")"
 
 # TC10 — round-2 finding: mv naming a contract as its SOURCE (moved away,
 # not written) must not satisfy the gate — only the LAST arg counts.
 printf '%s\n' "$CC_AGENT" > "$CC_TMP/t10.jsonl"
 cc_bash_line 'mv contract.md /tmp/elsewhere' >> "$CC_TMP/t10.jsonl"
-out=$(cc "$CC_TMP/t10.jsonl")
-check "cohesion: 'mv contract.md /tmp/elsewhere' (source, not written) → deny" deny "$out"
+cc_check "cohesion: 'mv contract.md /tmp/elsewhere' (source, not written)" nudge "$(cc "$CC_TMP/t10.jsonl")"
 
 # TC11 — round-2 finding: a quoted bare target must still be recognized.
 printf '%s\n' "$CC_AGENT" > "$CC_TMP/t11.jsonl"
 cc_bash_line 'echo "# c" > "contract.md"' >> "$CC_TMP/t11.jsonl"
-out=$(cc "$CC_TMP/t11.jsonl")
-check "cohesion: echo redirect to a quoted bare \"contract.md\" → allow" allow "$out"
+cc_check "cohesion: echo redirect to a quoted bare \"contract.md\"" silent "$(cc "$CC_TMP/t11.jsonl")"
 rm -rf "$CC_TMP"
 fi
 

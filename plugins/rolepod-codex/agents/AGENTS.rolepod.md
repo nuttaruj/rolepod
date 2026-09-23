@@ -141,10 +141,11 @@ Pick the lowest level the request calls for.
   natively on Codex ≥0.144, default-enabled (`[features] hooks = true`).
 - **Enforcement tier: hooks-live (expanded)** — precommit test gate AND
   subagent-commit block can deny; cross-CLI sibling locks live via
-  session-lifecycle. Still doctrine-only: cohesion-contract check (Codex
-  SubagentStart fires post-spawn, cannot deny) and worktree guard
-  (apply_patch input carries no file_path) — hold those two as doctrine;
-  never report them as mechanically enforced here.
+  session-lifecycle. Still doctrine-only: cohesion-contract check (Claude's
+  copy only warns; Codex's SubagentStart fires post-spawn, too late for a
+  pre-spawn nudge) and worktree guard (apply_patch input carries no
+  file_path) — hold those two as doctrine; never report them as
+  mechanically enforced here.
 - **Peer review** — every logic diff → ask Codex to spawn `universal-reviewer`
   (read-only, spec + standards); high-risk → plus `security-engineer`. An external Claude
   review (`claude -p "review this diff"`) is a useful cross-model opinion.

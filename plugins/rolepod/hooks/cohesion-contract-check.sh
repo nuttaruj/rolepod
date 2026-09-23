@@ -1,5 +1,5 @@
 #!/bin/bash
-# PreToolUse(Agent) — enforce cohesion contract before parallel Agent spawn.
+# PreToolUse(Agent) — nudge for a cohesion contract before parallel Agent spawn.
 #
 # Real-world failure: Lead spawned 2 parallel engineering agents on shared
 # API contract without writing a contract.md first. The Core 10 `write-plan`
@@ -13,13 +13,17 @@
 #     specs/* / contracts/* / <feature>-cohesion-YYYY-MM-DD.md /
 #     <feature>-contract[-…].md, OR a Bash command whose target is one of
 #     those names — a redirect / cp / mv / install / tee, not a mere
-#     mention) → HARD block
+#     mention) → one additionalContext nudge naming the contract rule, never
+#     a permissionDecision deny (v2.163.0: warns, does not block)
 #
 # Bypass:
-#   ROLEPOD_GATES_SOFT=1   — soft warn instead of block
-#   ROLEPOD_NO_CONTRACT=1  — explicit acknowledgment that this Agent spawn
-#                            doesn't need a contract (e.g. read-only Explore,
-#                            single-domain task, fix for hook-found issue)
+#   ROLEPOD_GATES_SOFT=1   — logs a bypass event for parity with the other
+#                            gates; this hook already warns, so it changes
+#                            no output
+#   ROLEPOD_NO_CONTRACT=1  — silences the nudge: explicit acknowledgment
+#                            that this Agent spawn doesn't need a contract
+#                            (e.g. read-only Explore, single-domain task,
+#                            fix for hook-found issue)
 set -euo pipefail
 
 # Bypass accountability: a used bypass is recorded to .rolepod/evidence/bypass.log
@@ -190,32 +194,16 @@ print('no')
 
 [ "$CONTRACT_PRESENT" = "yes" ] && exit 0
 
-# No contract + parallel Agent spawn detected → block (or warn in soft mode).
+# No contract + parallel Agent spawn detected → one additionalContext nudge,
+# never a deny (v2.163.0). Env-pass REASON so a crafted subagent_type cannot
+# escape the Python string literal (RCE).
 REASON="cohesion-contract gate: parallel Agent ('$SUBAGENT') with $RECENT_AGENTS recent spawn(s) and NO cohesion contract. "
-REASON+="Fix: write contract.md (or SPEC.md / cohesion.md / specs/<name>.md / contracts/<name>.md / <feature>-cohesion-YYYY-MM-DD.md / <feature>-contract.md) — shared interfaces, RED tests, integration points, who owns each path — then re-spawn. "
+REASON+="Fix: write contract.md (or SPEC.md / cohesion.md / specs/<name>.md / contracts/<name>.md / <feature>-cohesion-YYYY-MM-DD.md / <feature>-contract.md) — shared interfaces, RED tests, integration points, who owns each path — before the next parallel spawn. "
 REASON+="Read-only / single-domain spawn → ask the USER to set ROLEPOD_NO_CONTRACT=1; env bypass is user-set only."
 
-if [ "$SOFT_MODE" -eq 1 ]; then
-  # Soft mode: emit additionalContext, don't block. Env-pass REASON so a crafted
-  # subagent_type cannot escape the Python string literal (RCE).
-  ROLEPOD_HOOK_MSG="$REASON" python3 -I -c "
+ROLEPOD_HOOK_MSG="$REASON" python3 -I -c "
 import json, os
 print(json.dumps({'hookSpecificOutput': {'hookEventName': 'PreToolUse', 'additionalContext': os.environ.get('ROLEPOD_HOOK_MSG', '')}}))
 " 2>/dev/null || true
-  exit 0
-fi
-
-# Hard block: deny JSON. Env-pass REASON so a crafted subagent_type cannot
-# escape the Python string literal (RCE).
-ROLEPOD_HOOK_MSG="$REASON" python3 -I -c "
-import json, os
-print(json.dumps({
-  'hookSpecificOutput': {
-    'hookEventName': 'PreToolUse',
-    'permissionDecision': 'deny',
-    'permissionDecisionReason': os.environ.get('ROLEPOD_HOOK_MSG', '')
-  }
-}))
-" 2>/dev/null || echo '{}'
 
 exit 0

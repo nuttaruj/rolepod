@@ -12,7 +12,8 @@ Lead does not invoke these manually. They fire automatically.
 |---|---|---|
 | **Always-on** | `always-on-loader` | Inject the rolepod always-on judgment core as SessionStart context |
 | **Output shape** | `terse-loader` | Inject the opt-in terse-output layer as SessionStart context, only when the user's flag file exists |
-| **Enforcement** | `block-subagent-commit`, `subagent-write-scope`, `cohesion-contract-check`, `gate-reminder`, `precommit-gate` | Hard / soft blocks on discipline violations (high-risk path, parallel-without-contract, sub-agent commit, schema-bound new file) |
+| **Enforcement** | `block-subagent-commit`, `subagent-write-scope`, `gate-reminder`, `precommit-gate` | Hard / soft blocks on discipline violations (high-risk path, sub-agent commit, schema-bound new file) |
+| **Advisory** | `cohesion-contract-check` | Nudges the Lead toward a written contract before a 2nd parallel engineering Agent spawns; never stops the spawn |
 | **Publication** | `push-ref-check` | Show every commit a `git push` would publish when the ref carries more than one |
 | **Context** | `project-context-loader` | Inject git state at SessionStart |
 | **Session safety** | `session-lifecycle`, `worktree-guard` | `session-lifecycle`: SessionStart lock + Stop unlock; every worktree's lock dir is swept of >30 min locks at SessionStart (v2.147.1). `worktree-guard`: hard-blocks an edit only when a live sibling owns that exact file — disjoint/solo edits flow free |
@@ -231,11 +232,11 @@ A sub-agent writes only what its role owns. Measured before the hook (30 days of
 
 ### `cohesion-contract-check.sh` — PreToolUse Agent (core)
 
-When Lead is about to spawn the 2nd+ engineering agent within 10 events, requires a contract file (`contract.md` / `SPEC.md` / `cohesion.md` / `specs/*.md`) to exist in the session.
+When Lead is about to spawn the 2nd+ engineering agent within 10 events, nudges for a contract file (`contract.md` / `SPEC.md` / `cohesion.md` / `specs/*.md`) to exist in the session.
 
-- **Effect**: `permissionDecision: deny` if 2+ agents spawned without contract.
+- **Effect**: one `additionalContext` nudge naming the rule if 2+ agents spawned without a contract; never a `permissionDecision` (v2.163.0 — was a hard stop through v2.162.x).
 - **Self-guards**: 1st agent → silent; contract present → silent.
-- **Bypass**: `ROLEPOD_NO_CONTRACT=1` (single-domain Agent spawn legit).
+- **Bypass**: `ROLEPOD_NO_CONTRACT=1` (single-domain Agent spawn legit) silences the nudge entirely.
 - **Pair**: skill `write-plan` (cohesion-contract step).
 
 ### `workflow-tier-nudge.sh` — PreToolUse Workflow|Agent (core)
@@ -553,9 +554,9 @@ No new deny and no new stop: the helper only removes calls.
 
 Doctrine (CLAUDE.md text) tells the model what to do. Hooks **enforce** it. Models drift, especially under flow-state success cues — soft reminders get ignored. Hard blocks via `permissionDecision: deny` are the only mechanism that survives drift.
 
-Three real failures motivated the hard hooks:
+Three real failures motivated dedicated hooks — two hard, one now a nudge:
 1. Sub-agent ran `git commit` after marking COMPLETED, bypassing qa-tester floor → `block-subagent-commit.sh`
-2. Lead spawned 2+ parallel agents without writing a cohesion contract first; agents produced incompatible interfaces → `cohesion-contract-check.sh`
+2. Lead spawned 2+ parallel agents without writing a cohesion contract first; agents produced incompatible interfaces → `cohesion-contract-check.sh` (nudge since v2.163.0)
 3. Concurrent Claude sessions on same worktree stomped each other's edits → `session-lifecycle.sh --lock`
 
 ## Why no "spec required" hook
@@ -574,7 +575,7 @@ Root `hooks/*.sh` is canonical. The Codex adapter mirrors the hooks whose events
 - **9 shared scripts render-copied** from canonical `hooks/` into `plugins/rolepod-codex/hooks/` by `build/render.sh` (since v2.39.0 — the hand-maintained mirror tree is gone): `gate-reminder.sh`, `precommit-gate.sh`, `project-context-loader.sh`, `claim-verify-nudge.sh`, `block-subagent-commit.sh`, `session-lifecycle.sh`, `test-diff-lint.sh`, `fix-loop-breaker.sh`, `sweep-nudge.sh`. Codex uses the same event names, stdin JSON, and `hookSpecificOutput`/`permissionDecision` protocol as Claude, so the scripts are shared verbatim (all smoke-tested against Codex-shaped payloads). Only `hooks.json`, `subagent-model-log.sh`, and `agent-sync.sh` live in the adapter dir. `hooks/lib/` (session_state.py, route_check.py) is render-copied as well since v2.128.1 — the shared scripts resolve it relative to themselves, and without it the Codex copies silently ran their no-lib fallbacks.
 - **`agent-sync.sh` (Codex-only, SessionStart, v2.75.0)** — the Codex plugin manifest has no `agents` component, so `codex plugin marketplace upgrade` alone never refreshed the 15 role agents or the `~/.codex/AGENTS.md` block. The plugin now bundles both (`plugins/rolepod-codex/agents/rolepod-*.toml` + `agents/AGENTS.rolepod.md`, rendered by `build/render.sh`); on session start the hook compares the plugin version with `~/.codex/agents/.rolepod-agents-version` and, when they differ, copies changed `rolepod-*.toml` files in, prunes retired ones (prefix-scoped — user agents are never touched), and replaces ONLY the `<!-- rolepod:start -->` … `<!-- rolepod:end -->` block of `~/.codex/AGENTS.md` (content outside the block is preserved byte-exact; no block → appended; file missing → created block-only). Fail-open and silent unless something changed (then one `additionalContext` line). `ROLEPOD_AGENT_SYNC_OFF=1` disables it; `install.sh` writes the same stamp so a fresh install is not re-synced on first launch; honors `CODEX_HOME`. Proven by `tests/integration/cases/codex-agent-sync.sh` against a sandboxed HOME. **Trust gate (Codex policy, verified 2026-09-03 against the official hooks reference):** Codex records hook trust against the hook definition's hash and *skips* new or changed plugin hooks until the user reviews them with `/hooks` — so the first session after this hook lands (or after its definition changes) needs that one-time trust; `codex exec` has `--dangerously-bypass-hook-trust` for vetted automation only.
 
-`always-on-loader`, `cohesion-contract-check`, `worktree-guard` stay Claude-only (`always-on-loader` is unnecessary on Codex/Gemini/Cursor — they load their always-on core natively from `AGENTS.md` / `GEMINI.md` / `rules/*.mdc`; `cohesion-contract-check` needs the pre-spawn `Agent` TOOL event — Codex's `SubagentStart` fires post-spawn and cannot deny; `worktree-guard` extracts `file_path`, which `apply_patch` input does not carry).
+`always-on-loader`, `cohesion-contract-check`, `worktree-guard` stay Claude-only (`always-on-loader` is unnecessary on Codex/Gemini/Cursor — they load their always-on core natively from `AGENTS.md` / `GEMINI.md` / `rules/*.mdc`; `cohesion-contract-check` needs the pre-spawn `Agent` TOOL event to warn before the spawn happens — Codex's `SubagentStart` fires post-spawn, too late for that; `worktree-guard` extracts `file_path`, which `apply_patch` input does not carry).
 
 Drift is structurally impossible: the shared scripts have exactly one source (`hooks/`), `make test-render-clean` git-diffs the committed render output, and `tests/static/lean-surface.sh` pins the adapter dir to its two Codex-specific files.
 
