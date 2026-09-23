@@ -1293,6 +1293,107 @@ else
 fi
 
 # ═══════════════════════════════════════════════════════════════════════
+# plan lock — two overlapping fleet runs both snapshotted the worktree list
+# before either created one, so both emitted (and would launch) every task:
+# 34/40 overlapping runs on 2026-09-23. One fleet / start per plan at a
+# time; a lock whose holder process is gone is taken over.
+# ═══════════════════════════════════════════════════════════════════════
+
+LKR="$TMP/lock-repo"
+mkdir -p "$LKR"
+( cd "${LKR:?}" && git init -q . && git config user.email t@t && git config user.name t )
+cat > "$LKR/plan.md" <<'EOF'
+# Lock Feature Plan
+
+## Tasks
+
+### Task 1: build the alpha widget
+- **Blocked by:** none
+- [ ] **Files:** `alpha.js`
+- [ ] **Command:** `true`
+- **Owner:** backend-developer
+- **Done when:** true
+
+### Task 2: build the beta widget
+- **Blocked by:** none
+- [ ] **Files:** `beta.js`
+- [ ] **Command:** `true`
+- **Owner:** frontend-developer
+- **Done when:** true
+
+## Parallel layout
+Sequential — single owner.
+
+## Failure policy
+Default: stop after 2 failed attempts (never a 4th).
+EOF
+( cd "${LKR:?}" && git add -A && git commit -q -m init )
+LK="$(cd "$LKR" && cd "$(git rev-parse --git-common-dir)" && pwd)/rolepod-ticket-plan.lock"
+lk_reset() {
+  git -C "$LKR" worktree list --porcelain | awk '/^worktree /{print $2}' | tail -n +2 |
+    while read -r w; do git -C "$LKR" worktree remove --force "$w"; done
+  git -C "$LKR" for-each-ref --format='%(refname)' refs/heads | grep -vx 'refs/heads/main\|refs/heads/master' |
+    while read -r b; do git -C "$LKR" branch -D "${b#refs/heads/}" >/dev/null; done
+  rm -rf "$LKR/docs/rolepod/handoffs" "$LK"
+}
+
+# ── a live holder: fleet and start both refuse, nothing created, lock kept
+mkdir "$LK" && echo "$$" > "$LK/pid"
+WT_LK_BEFORE=$(git -C "$LKR" worktree list | wc -l | tr -d ' ')
+OUT=$(bash "$TICKET" fleet "$LKR/plan.md" 2>"$TMP/lock-fleet.err"); RC_F=$?
+OUT_S=$(bash "$TICKET" start "$LKR/plan.md" 1 2>"$TMP/lock-start.err"); RC_S=$?
+WT_LK_AFTER=$(git -C "$LKR" worktree list | wc -l | tr -d ' ')
+if [ "$RC_F" -eq 1 ] && [ "$RC_S" -eq 1 ] && [ "$WT_LK_AFTER" = "$WT_LK_BEFORE" ] && [ "$(cat "$LK/pid" 2>/dev/null)" = "$$" ] \
+  && grep -q "is running for this plan (pid $$)" "$TMP/lock-fleet.err" \
+  && grep -q "is running for this plan (pid $$)" "$TMP/lock-start.err"; then
+  echo "  ✓ plan lock held by a live process: fleet and start refuse, nothing created"
+else
+  echo "  ✗ plan lock live-holder handling wrong (fleet rc=$RC_F start rc=$RC_S wt ${WT_LK_BEFORE}->${WT_LK_AFTER}): $OUT $OUT_S"; fail=$((fail+1))
+  cat "$TMP/lock-fleet.err" "$TMP/lock-start.err" >&2
+fi
+lk_reset
+
+# ── a stale lock (its holder is gone) is taken over, and released after
+( exit 0 ) & LK_DEAD=$!; wait "$LK_DEAD"
+mkdir "$LK" && echo "$LK_DEAD" > "$LK/pid"
+OUT=$(bash "$TICKET" fleet "$LKR/plan.md" 2>"$TMP/lock-stale.err"); RC=$?
+if [ "$RC" -eq 0 ] && [ "$(printf '%s\n' "$OUT" | sed -n '1p' | grep -o '"n":[0-9]*' | wc -l | tr -d ' ')" = 2 ] && [ ! -e "$LK" ]; then
+  echo "  ✓ plan lock left by a dead process is taken over, and released when the run ends"
+else
+  echo "  ✗ plan lock stale takeover wrong (rc=$RC lock-left=$([ -e "$LK" ] && echo yes || echo no)): $OUT"; fail=$((fail+1))
+  cat "$TMP/lock-stale.err" >&2
+fi
+
+lk_reset
+
+# ── a run that fails still releases the lock (the EXIT trap, not exit 0 only)
+OUT=$(bash "$TICKET" fleet "$LKR/plan.md" --gate 'false' 2>"$TMP/lock-fail.err"); RC=$?
+if [ "$RC" -eq 1 ] && [ ! -e "$LK" ]; then
+  echo "  ✓ plan lock released when the run fails (fleet --gate red)"
+else
+  echo "  ✗ plan lock after a failing run wrong (rc=$RC lock-left=$([ -e "$LK" ] && echo yes || echo no))"; fail=$((fail+1))
+  cat "$TMP/lock-fail.err" >&2
+fi
+lk_reset
+
+# ── overlap, made deterministic: A holds the lock through a 1 s gate, B
+# starts inside that window. Before the lock B emitted every task A did.
+bash "$TICKET" fleet "$LKR/plan.md" --gate 'sleep 1' > "$TMP/lk-a.out" 2>"$TMP/lk-a.err" &
+LK_A=$!
+sleep 0.3
+OUT=$(bash "$TICKET" fleet "$LKR/plan.md" 2>"$TMP/lk-b.err"); RC_B=$?
+wait "$LK_A"; RC_A=$?
+if [ "$RC_B" -eq 1 ] && grep -q 'is running for this plan' "$TMP/lk-b.err" \
+  && [ "$RC_A" -eq 0 ] && [ "$(sed -n '1p' "$TMP/lk-a.out" | grep -o '"n":[0-9]*' | wc -l | tr -d ' ')" = 2 ] \
+  && [ ! -e "$LK" ]; then
+  echo "  ✓ overlapping fleet runs: the second refuses while the first holds the lock; the first emits both tasks"
+else
+  echo "  ✗ overlapping fleet runs wrong (A rc=$RC_A B rc=$RC_B lock-left=$([ -e "$LK" ] && echo yes || echo no)): B=$OUT"; fail=$((fail+1))
+  cat "$TMP/lk-a.err" "$TMP/lk-b.err" >&2
+fi
+lk_reset
+
+# ═══════════════════════════════════════════════════════════════════════
 # a value flag given last with no value is a usage error, never a hang:
 # `shift 2` with one arg left fails without shifting, so the parser looped
 # forever. perl's alarm bounds each run (macOS ships no `timeout`).

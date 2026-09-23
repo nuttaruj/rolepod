@@ -55,6 +55,10 @@
 #     order and holds the rest back by name, deciding before `start` is
 #     ever called so a held-back task never gets a worktree.
 #
+# `start` and `fleet` hold a per-plan lock (<git-common-dir>/rolepod-ticket-
+# <plan-slug>.lock) for their run: a second one on the same plan refuses until
+# the first ends; a lock whose process is gone is taken over.
+#
 # bash 3.2 safe, set -u safe, no network, fail-closed with one-line errors.
 set -uo pipefail
 
@@ -111,6 +115,41 @@ plan_slug_of() { # $1 = plan (absolute)
   local slug
   slug="$(basename "$1" .md)"
   printf '%s' "$slug" | sed -E 's/-[0-9]{4}-[0-9]{2}-[0-9]{2}$//'
+}
+
+# One fleet / start per plan at a time. Two overlapping fleet runs both
+# snapshot the worktree list before either creates one, so both emitted —
+# and would launch — every ready task (34/40 overlapping runs, 2026-09-23).
+# mkdir is the atomic test-and-set; the lock sits in the git common dir
+# (never staged, shared by every worktree). fleet takes it for the whole run;
+# its own `start` calls run in a subshell that sees TICKET_LOCK already set.
+TICKET_LOCK=""
+take_plan_lock() { # $1 = subcommand, $2 = plan (absolute), $3 = repo root
+  [ -z "$TICKET_LOCK" ] || return 0
+  local common lock pid
+  # cd into it rather than --path-format=absolute (git 2.31+ only): the
+  # common dir may come back relative to $3.
+  common="$(cd "$3" && cd "$(git rev-parse --git-common-dir 2>/dev/null)" 2>/dev/null && pwd)"
+  [ -n "$common" ] || { echo "ticket: $1: cannot resolve the git dir of $3" >&2; exit 2; }
+  lock="$common/rolepod-ticket-$(plan_slug_of "$2").lock"
+  if ! mkdir "$lock" 2>/dev/null; then
+    if [ ! -d "$lock" ]; then
+      echo "ticket: $1: cannot create the plan lock $lock" >&2
+      exit 1
+    fi
+    pid="$(cat "$lock/pid" 2>/dev/null)"
+    # A holder that is gone left a stale lock: take it over. No pid yet
+    # means a holder that has not written it — treat as live.
+    if [ -n "$pid" ] && ! kill -0 "$pid" 2>/dev/null && rm -rf "$lock" && mkdir "$lock" 2>/dev/null; then
+      :
+    else
+      echo "ticket: $1: another fleet / start is running for this plan (pid ${pid:-unknown}) — re-run when it ends; no such process → rm -rf $lock" >&2
+      exit 1
+    fi
+  fi
+  echo "$$" > "$lock/pid"
+  TICKET_LOCK="$lock"
+  trap 'rm -rf "$TICKET_LOCK"' EXIT
 }
 
 # The backticked `git worktree add -b <branch> <path> [<base>]` command
@@ -412,6 +451,7 @@ cmd_start() {
   plan_abs="$plan_dir/$(basename "$plan")"
   repo_root="$(git -C "$plan_dir" rev-parse --show-toplevel 2>/dev/null)"
   [ -n "$repo_root" ] || { echo "ticket: start: not inside a git repo: $plan_abs" >&2; exit 2; }
+  take_plan_lock start "$plan_abs" "$repo_root"
 
   [ -n "$base" ] || base="$(git -C "$repo_root" rev-parse --abbrev-ref HEAD)"
 
@@ -847,6 +887,7 @@ cmd_fleet() {
   plan_abs="$plan_dir/$(basename "$plan")"
   repo_root="$(git -C "$plan_dir" rev-parse --show-toplevel 2>/dev/null)"
   [ -n "$repo_root" ] || { echo "ticket: fleet: not inside a git repo: $plan_abs" >&2; exit 2; }
+  take_plan_lock fleet "$plan_abs" "$repo_root"
 
   if [ -n "$gate" ]; then
     local gate_out gate_rc
