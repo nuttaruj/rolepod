@@ -33,7 +33,10 @@
 #   rolepod-ticket log <plan> <N> --sha <sha> --note '<text>'
 #     Flips every `- [ ]` inside Task N's block to `- [x]` and appends one
 #     bullet under "## Changes during build". The only writer of the plan
-#     file besides the Lead's own editor.
+#     file besides the Lead's own editor. Then names every not-done task
+#     whose Blocked-by list names N and is now fully done ("ready now: Task
+#     a (<owner>), ..."), plus "fleet: rolepod-ticket fleet <plan>" when one
+#     of them is role-owned. Idempotent, same as the checkbox flip.
 #
 #   rolepod-ticket fleet <plan> [--base <branch>] [--max <N>] [--gate '<cmd>']
 #     On the one CLI with a workflow tool: for every task whose Blocked-by
@@ -272,36 +275,80 @@ plan_task_rows() { # $1 = plan (absolute)
   ' "$1"
 }
 
+# Space-padded set " <id> <id> ... " of every task marked done in rows
+# "$1" (a plan_task_rows table) — the one done-id lookup ready_role_tasks
+# and log's ready-now line both build from, so a done check can never
+# disagree between the two callers.
+done_ids_of() { # $1 = plan_task_rows output
+  local id owner blocked done out=" "
+  while IFS="$ROW_FS" read -r id owner blocked done; do
+    [ -n "$id" ] || continue
+    [ "$done" = "1" ] && out="$out$id "
+  done <<EOF
+$1
+EOF
+  printf '%s' "$out"
+}
+
+# True (rc 0) when Owner field "$1" is the Lead, not a role — the one Lead
+# test ready_role_tasks and log's ready-now line both apply, so a
+# role-owned check can never disagree between the two callers.
+is_lead_owner() { # $1 = owner field
+  local owner="$1" lead_rx='^Lead([[:space:](]|$)'
+  [[ "$owner" =~ $lead_rx ]] || [[ "$owner" == *"(Lead self-do)"* ]]
+}
+
+# True (rc 0) when every comma-separated blocker id in "$1" is present in
+# done-id set "$2" (from done_ids_of) — an empty "$1" (no Blocked-by) is
+# vacuously done. The one "are its blockers all done" test ready_role_tasks
+# and ready_now_after both apply, so they can never disagree.
+all_blockers_done() { # $1 = blocked (comma list, may be empty), $2 = done_ids set
+  local blocked="$1" done_ids="$2" bid oldifs ok=1
+  if [ -n "$blocked" ]; then
+    oldifs="$IFS"; IFS=','
+    for bid in $blocked; do
+      case "$done_ids" in *" $bid "*) : ;; *) ok=0 ;; esac
+    done
+    IFS="$oldifs"
+  fi
+  [ "$ok" -eq 1 ]
+}
+
 # Role-owned (non-Lead) task ids whose every Blocked-by task is done — the
 # one definition of "ready" shared by start's fleet hint below and by
 # `fleet` itself, so the two can never disagree on which tasks qualify.
 ready_role_tasks() { # $1 = plan (absolute)
-  local plan="$1" rows id owner blocked done done_ids=" "
+  local plan="$1" rows id owner blocked done done_ids
   rows="$(plan_task_rows "$plan")"
-  while IFS="$ROW_FS" read -r id owner blocked done; do
-    [ -n "$id" ] || continue
-    [ "$done" = "1" ] && done_ids="$done_ids$id "
-  done <<EOF
-$rows
-EOF
-  local lead_rx='^Lead([[:space:](]|$)'
+  done_ids="$(done_ids_of "$rows")"
   while IFS="$ROW_FS" read -r id owner blocked done; do
     [ -n "$id" ] || continue
     # already done (every box in ITS OWN block checked) — nothing left to
     # build; the Blocked-by graph only cares about a done BLOCKER, not this.
     [ "$done" = "1" ] && continue
-    if [[ "$owner" =~ $lead_rx ]] || [[ "$owner" == *"(Lead self-do)"* ]]; then
-      continue
-    fi
-    local ok=1 bid oldifs
-    if [ -n "$blocked" ]; then
-      oldifs="$IFS"; IFS=','
-      for bid in $blocked; do
-        case "$done_ids" in *" $bid "*) : ;; *) ok=0 ;; esac
-      done
-      IFS="$oldifs"
-    fi
-    [ "$ok" -eq 1 ] && printf '%s\n' "$id"
+    is_lead_owner "$owner" && continue
+    all_blockers_done "$blocked" "$done_ids" && printf '%s\n' "$id"
+  done <<EOF
+$rows
+EOF
+}
+
+# Not-done tasks whose Blocked-by list names task "$2" and whose every
+# blocker is now done — the set `log` reports as "just became ready" after
+# flipping Task "$2"'s own checkboxes. Any owner, Lead included; the caller
+# decides the fleet-hint line separately (`is_lead_owner` per row). One row
+# per line: "<id><ROW_FS><owner>".
+ready_now_after() { # $1 = plan, $2 = task id just logged
+  local plan="$1" want="$2" rows id owner blocked done done_ids
+  rows="$(plan_task_rows "$plan")"
+  done_ids="$(done_ids_of "$rows")"
+  while IFS="$ROW_FS" read -r id owner blocked done; do
+    [ -n "$id" ] || continue
+    [ "$done" = "1" ] && continue
+    # only a task whose Blocked-by list names $want at all — a task that
+    # was already ready for other reasons is not "just became ready" here.
+    case ",$blocked," in *",$want,"*) : ;; *) continue ;; esac
+    all_blockers_done "$blocked" "$done_ids" && printf '%s%s%s\n' "$id" "$ROW_FS" "$owner"
   done <<EOF
 $rows
 EOF
@@ -679,6 +726,26 @@ cmd_log() {
   mv "$tmp.2" "$plan"
   rm -f "$tmp"
   echo "ticket: log: Task $n updated in $plan"
+
+  local ready_rows id2 owner2 list="" has_role=0
+  ready_rows="$(ready_now_after "$plan" "$n")"
+  if [ -n "$ready_rows" ]; then
+    while IFS="$ROW_FS" read -r id2 owner2; do
+      [ -n "$id2" ] || continue
+      if [ -n "$list" ]; then list="$list, Task $id2 ($owner2)"; else list="Task $id2 ($owner2)"; fi
+      is_lead_owner "$owner2" || has_role=1
+    done <<EOF
+$ready_rows
+EOF
+    echo "ready now: $list"
+    # `if`, not `&&`: cmd_log's exit status is its last command's — a bare
+    # `[ ... ] && printf ...` would make log exit 1 (a false "failure")
+    # whenever every newly-ready task is Lead-owned, on an otherwise
+    # successful write.
+    if [ "$has_role" -eq 1 ]; then
+      printf 'fleet: rolepod-ticket fleet %s\n' "$plan"
+    fi
+  fi
 }
 
 # ── fleet ────────────────────────────────────────────────────────────────

@@ -481,6 +481,117 @@ else
   fi
 fi
 
+# ── log's ready-now line (chief-adoptions T2): who Task N just unblocked
+cat > "$TMP/ready-a-plan.md" <<'EOF'
+# Ready Plan A
+
+## Tasks
+
+### Task 1: alpha
+- **Blocked by:** none
+- [x] **Files:** a.txt
+- [x] **Command:** true
+- **Owner:** backend-developer
+
+### Task 2: beta
+- **Blocked by:** none
+- [ ] **Files:** b.txt
+- [ ] **Command:** true
+- **Owner:** frontend-developer
+
+### Task 3: gamma
+- **Blocked by:** Task 1, Task 2
+- [ ] **Files:** c.txt
+- [ ] **Command:** true
+- **Owner:** devops-sre
+
+## Changes during build
+
+## Follow-ups
+EOF
+OUT_A=$(bash "$TICKET" log "$TMP/ready-a-plan.md" 2 --sha bbb222 --note "beta done" 2>"$TMP/ready-a.err")
+RC_A=$?
+if [ "$RC_A" -eq 0 ] && printf '%s\n' "$OUT_A" | grep -qF "ready now: Task 3 (devops-sre)" \
+  && printf '%s\n' "$OUT_A" | grep -qF "fleet: rolepod-ticket fleet $TMP/ready-a-plan.md"; then
+  echo "  ✓ log prints ready now with owners and the fleet line"
+else
+  echo "  ✗ log ready-now-with-fleet wrong (rc=$RC_A): [$OUT_A]"; cat "$TMP/ready-a.err" >&2; fail=$((fail+1))
+fi
+
+cat > "$TMP/ready-b-plan.md" <<'EOF'
+# Ready Plan B
+
+## Tasks
+
+### Task 1: alpha
+- **Blocked by:** none
+- [ ] **Files:** a.txt
+- [ ] **Command:** true
+- **Owner:** backend-developer
+
+### Task 2: beta
+- **Blocked by:** Task 1, Task 3
+- [ ] **Files:** b.txt
+- [ ] **Command:** true
+- **Owner:** frontend-developer
+
+### Task 3: gamma
+- **Blocked by:** none
+- [ ] **Files:** c.txt
+- [ ] **Command:** true
+- **Owner:** devops-sre
+
+## Changes during build
+
+## Follow-ups
+EOF
+OUT_B=$(bash "$TICKET" log "$TMP/ready-b-plan.md" 1 --sha ccc333 --note "alpha done" 2>"$TMP/ready-b.err")
+RC_B=$?
+if [ "$RC_B" -eq 0 ] && printf '%s\n' "$OUT_B" | grep -qF "ticket: log: Task 1 updated" \
+  && ! printf '%s\n' "$OUT_B" | grep -q '^ready now:'; then
+  echo "  ✓ log prints no ready line when nothing unblocks"
+else
+  echo "  ✗ log printed an unexpected ready line or failed (rc=$RC_B): [$OUT_B]"; cat "$TMP/ready-b.err" >&2; fail=$((fail+1))
+fi
+
+cat > "$TMP/ready-c-plan.md" <<'EOF'
+# Ready Plan C
+
+## Tasks
+
+### Task 1: alpha
+- **Blocked by:** none
+- [ ] **Files:** a.txt
+- [ ] **Command:** true
+- **Owner:** backend-developer
+
+### Task 2: beta
+- **Blocked by:** Task 1
+- [ ] **Files:** b.txt
+- [ ] **Command:** true
+- **Owner:** Lead
+
+## Changes during build
+
+## Follow-ups
+EOF
+OUT_C=$(bash "$TICKET" log "$TMP/ready-c-plan.md" 1 --sha ddd444 --note "alpha done" 2>"$TMP/ready-c.err")
+RC_C=$?
+if [ "$RC_C" -eq 0 ] && printf '%s\n' "$OUT_C" | grep -qF "ready now: Task 2 (Lead)" \
+  && ! printf '%s\n' "$OUT_C" | grep -q '^fleet:'; then
+  echo "  ✓ log names a Lead-owned task without the fleet line"
+else
+  echo "  ✗ log Lead-owned case wrong (rc=$RC_C): [$OUT_C]"; cat "$TMP/ready-c.err" >&2; fail=$((fail+1))
+fi
+
+# re-running the same log call prints the same ready-now lines, nothing else
+OUT_A2=$(bash "$TICKET" log "$TMP/ready-a-plan.md" 2 --sha bbb222 --note "beta done" 2>"$TMP/ready-a2.err")
+if [ "$OUT_A2" = "$OUT_A" ]; then
+  echo "  ✓ log's ready-now line is idempotent — a re-run prints the same lines"
+else
+  echo "  ✗ log ready-now re-run differs: [$OUT_A2] vs [$OUT_A]"; fail=$((fail+1))
+fi
+
 # ═══════════════════════════════════════════════════════════════════════
 # fleet — Task 5: two ready role-owned tasks, one blocked, one Owner: Lead
 # ═══════════════════════════════════════════════════════════════════════
