@@ -127,7 +127,7 @@ Fill `templates/review-report.md`. Each finding: file:line, the issue, why it ma
 ### 5. Fix-verify loop
 
 Round 2+: `rolepod-cross-family --kind review --brief <brief> --since <previous job> --detach` — the runner attaches the fix delta plus the previous report, findings tagged IN-FIX / NEW / REPEAT.
-Cadence, every tier: round 1 = every axis in ONE message, ≤ 40 tool calls each; round 2 = only the flagging reviewer re-runs its repro on the delta, ≤ 15 calls — no suite re-runs, no new axis.
+Cadence, every tier: round 1 = every axis in ONE message, ≤ 40 tool calls each; round 2 = only the flagging reviewer re-runs its repro on the delta, ≤ 15 calls — its dispatch carries the findings + delta only: no suite re-run, new mutant or new axis.
 
 Whoever wrote the fix never verifies it: the reviewer who flagged it verifies by default; the Lead's cold read only when that reviewer cannot run. A Lead-built fix → one read-only `universal-reviewer` pass (R4 → the strong pass).
 - The external re-runs only when its previous report carried a BLOCKER and the fix delta is logic-bearing code; otherwise the internal reviewer verifies the fix delta alone.

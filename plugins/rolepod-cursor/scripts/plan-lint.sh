@@ -439,7 +439,7 @@ if [ "${1:-}" = "--brief" ]; then
       # The round shape lives HERE, where the owner picks its reviewers: at the
       # end of the Bounds line two owners in a row still messaged the finished
       # reviewer for round 2 and idled while the answer landed at the Lead.
-      print "Round 2 = ONE new foreground dispatch of the flagging reviewer on the fix delta, never a message to the finished one (a sub-agent gets no reply to it; the answer lands at the Lead). Max 2 rounds."
+      print "Round 2 = ONE new foreground dispatch of the flagging reviewer on the fix delta, never a message to the finished one (a sub-agent gets no reply to it; the answer lands at the Lead). Max 2 rounds. The round-2 prompt carries the findings and the fix delta only, never a new run, mutant or suite: round 1 proof is not redone."
     }
     print "## Bounds"
     printf "- Edit only Files allowed, and only under ../%s-wt-%s-t%s-%s — the same path in the main checkout belongs to the Lead; no backup copies (.bak / .orig). Never commit or push; leave the tree staged.\n", repo, feat, want, tslug

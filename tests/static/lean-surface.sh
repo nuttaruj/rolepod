@@ -102,7 +102,10 @@ fi
 SKILL_BYTES_REPORT=$(python3 -I - <<'PYEOF'
 import pathlib, re
 ROOT = pathlib.Path(".")
-CAPS = {"using-rolepod": 21500, "review-code": 19000, "rolepod-full": 3000}
+# implement-plan 13100 + review-code 19100 (v2.162.3): the dispatch-prompt
+# rule — a Lead prompt widened two reviewer round 2s into 10 suite runs
+# (2026-09-23); folded into the existing sentences, still 13,020 / 19,046 B.
+CAPS = {"using-rolepod": 21500, "review-code": 19100, "implement-plan": 13100, "rolepod-full": 3000}
 DEFAULT, TOTAL_CAP = 13000, 145000  # total = backstop (~1% above the v2.161.0 size; +write-prototype); the per-skill caps do the work
 inc = re.compile(r"^\{\{INCLUDE: (.+?)\}\}$")
 over, total = [], 0
@@ -125,7 +128,7 @@ PYEOF
 SKILL_BYTES_OVER=$(printf '%s\n' "$SKILL_BYTES_REPORT" | sed -n 's/^OVER //p')
 SKILL_BYTES_TOTAL=$(printf '%s\n' "$SKILL_BYTES_REPORT" | awk '/^TOTAL /{print $2}')
 if [ -z "$SKILL_BYTES_OVER" ]; then
-  echo "  ✓ every SKILL.md within its byte cap, includes expanded (phase ≤13000; router ≤21500; review-code ≤19000; alias ≤3000)"
+  echo "  ✓ every SKILL.md within its byte cap, includes expanded (phase ≤13000; implement-plan ≤13100; router ≤21500; review-code ≤19100; alias ≤3000)"
 else
   echo "  ✗ SKILL.md over byte cap (includes expanded): $SKILL_BYTES_OVER"
   fail=$((fail+1))
