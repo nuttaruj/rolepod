@@ -58,6 +58,12 @@ Default: stop after 2 failed attempts (never a 4th).
 EOF
 ( cd "${FR:?}" && git add -A && git commit -q -m init )
 
+# ticket.sh resolves the base checkout through `git rev-parse --show-toplevel`
+# (canonical, symlinks resolved), while $FR itself is the raw mktemp path —
+# on macOS /var/folders/... is a symlink to /private/var/folders/..., so the
+# two differ in exactly the ship line's --sha base-checkout argument.
+FR_REAL="$(git -C "$FR" rev-parse --show-toplevel)"
+
 OUT=$(bash "$TICKET" start "$FR/plan.md" 1 2>"$TMP/start.err")
 RC=$?
 LINE1=$(printf '%s\n' "$OUT" | sed -n '1p')
@@ -76,10 +82,11 @@ NFIELDS=$(printf '%s\n' "$LINE1" | awk '{print NF}')
 if [ "$RC" -eq 0 ] && [ "$NFIELDS" -eq 2 ] \
   && [ -f "$BRIEF_PATH" ] && [ -d "$WT_PATH" ] \
   && [[ "$AGENT_LINE" == agent:\ * ]] \
-  && [[ "$SHIP_LINE" == ship:\ rolepod-ticket\ integrate\ "$WT_PATH"\ --brief\ "$BRIEF_PATH"* ]] \
-  && printf '%s\n' "$SHIP_LINE" | grep -qF "git -C $WT_PATH commit -m '<subject>'" \
-  && printf '%s\n' "$SHIP_LINE" | grep -qF "rolepod-ticket finish $WT_PATH" \
-  && printf '%s\n' "$SHIP_LINE" | grep -qF "rolepod-ticket log $FR/plan.md 1 --sha" \
+  && [[ "$SHIP_LINE" == "ship: rolepod-ticket integrate '$WT_PATH' --brief '$BRIEF_PATH'"* ]] \
+  && printf '%s\n' "$SHIP_LINE" | grep -qF "git -C '$WT_PATH' commit -m '<subject>'" \
+  && printf '%s\n' "$SHIP_LINE" | grep -qF "rolepod-ticket finish '$WT_PATH'" \
+  && printf '%s\n' "$SHIP_LINE" | grep -qF "rolepod-ticket log '$FR/plan.md' 1 --sha" \
+  && printf '%s\n' "$SHIP_LINE" | grep -qF "git -C '$FR_REAL' rev-parse --short HEAD" \
   && printf '%s\n' "$SHIP_LINE" | grep -qF -- "--note '<note>'"; then
   echo "  ✓ start prints line 1 (brief, worktree), line 2 'agent: <name>', line 3 the ship chain"
 else
@@ -245,7 +252,8 @@ fi
 SHIP_OUT=$(bash "$TICKET" integrate "$WT_PATH" --brief "$BRIEF_PATH" 2>&1)
 SHIP_RC=$?
 if [ "$SHIP_RC" -eq 0 ] \
-  && printf '%s\n' "$SHIP_OUT" | tail -1 | grep -qF "git -C $WT_PATH commit -m '<subject>' && rolepod-ticket finish $WT_PATH && rolepod-ticket log $FR/plan.md 1 --sha" \
+  && printf '%s\n' "$SHIP_OUT" | tail -1 | grep -qF "git -C '$WT_PATH' commit -m '<subject>' && rolepod-ticket finish '$WT_PATH' && rolepod-ticket log '$FR/plan.md' 1 --sha" \
+  && printf '%s\n' "$SHIP_OUT" | tail -1 | grep -qF "git -C '$FR_REAL' rev-parse --short HEAD" \
   && printf '%s\n' "$SHIP_OUT" | tail -1 | grep -qF -- "--note '<note>'"; then
   echo "  ✓ integrate on a start-generated brief prints the full ship chain, not the bare commit command"
 else
@@ -624,6 +632,7 @@ cat > "$TMP/review-plan.md" <<'EOF'
 - **Owner:** Lead
 
 ## Changes during build
+- Task 1 — kept `main` as the integration branch, no rename needed
 
 ## Follow-ups
 EOF
@@ -640,8 +649,14 @@ else
   echo "  ✗ log printed review: with a role task still open: [$OUT_R3]"; fail=$((fail+1))
 fi
 OUT_R2=$(bash "$TICKET" log "$TMP/review-plan.md" 2 --sha bbb222 --note "beta done" 2>"$TMP/review-r2.err")
+RC_R2=$?
+if [ "$RC_R2" -eq 0 ]; then
+  echo "  ✓ log exits 0 once every role task is done (the file's own if-not-&& rule at the review: line)"
+else
+  echo "  ✗ log exited $RC_R2 on the call that completes every role task"; fail=$((fail+1))
+fi
 if printf '%s\n' "$OUT_R2" | grep -qF 'review: aaa111^..HEAD — one combined review before release (implement-plan §6)'; then
-  echo "  ✓ log prints the review: range off the FIRST logged task's sha once every role task is done"
+  echo "  ✓ log prints the review: range off the FIRST logged task's sha once every role task is done — never the deviation line's \`main\` above it"
 else
   echo "  ✗ log review: range wrong: [$OUT_R2]"; cat "$TMP/review-r2.err" >&2; fail=$((fail+1))
 fi

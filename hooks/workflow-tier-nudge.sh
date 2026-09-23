@@ -629,19 +629,11 @@ if tool == "Workflow":
         sys.exit(0)
     if tiers:
         sys.exit(0)   # per-stage choice made (or accepted with a reason) — silent
-    if cls in ss.LOW_CLASSES:
-        ctx("⚖ tier-check: no per-agent model%s — every agent() inherits the Lead: %s. Build stages "
-            "are fine at that tier; sweep/research/read/map are NOT \u2014 give those "
-            "agentType:\x27rolepod:scout\x27 or model:\x27haiku\x27. An in-script judge stage is NOT the "
-            "strong review pass \u2014 dispatch rolepod:universal-reviewer / rolepod:security-engineer via "
-            "the Agent tool before commit (the hook runs them strong). In-script judge: sonnet routine, "
-            "model:\x27opus\x27 on money/auth/security.%s" % (eff, lead_txt, OFF))
-    else:
-        note = (" Stated reason accepted: \x27%s\x27." % stated) if stated else ""
-        ctx("⚖ tier-check: no per-agent model%s — every agent() inherits the Lead: %s — the WHOLE "
-            "fleet (%d agent() calls) at the Lead\x27s cost.%s Tier per stage: sweep/read → "
-            "model:\x27haiku\x27 · build → model:\x27sonnet\x27 or agentType:\x27rolepod:<role>\x27 · "
-            "verify/judge → sonnet, strong on money/auth/security.%s" % (eff, lead_txt, n_calls, note, OFF))
+    note = (" Stated reason accepted: \x27%s\x27." % stated) if stated else ""
+    ctx("⚖ tier-check: no per-agent model%s — every agent() inherits the Lead: %s — the WHOLE "
+        "fleet (%d agent() calls) at the Lead\x27s cost.%s Tier per stage: sweep/read → "
+        "model:\x27haiku\x27 · build → model:\x27sonnet\x27 or agentType:\x27rolepod:<role>\x27 · "
+        "verify/judge → sonnet, strong on money/auth/security.%s" % (eff, lead_txt, n_calls, note, OFF))
 
 if tool in ("Agent", "Task"):
     atype_raw = (ti.get("subagent_type") or "general-purpose").split()[0]

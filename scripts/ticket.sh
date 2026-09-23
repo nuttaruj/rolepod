@@ -11,8 +11,10 @@
 #     branch the brief's own "## Worktree" line names (off <base>, default
 #     the current branch), print "<brief-path> <worktree-path>" then a
 #     second line "agent: <name>" (the name recorded in the brief's own
-#     "Agent:" line, for `finish` to report back later).
-#     Re-running against an existing worktree reprints the same two lines
+#     "Agent:" line, for `finish` to report back later), then a third line
+#     "ship: <the commit -> finish -> log chain>" for the Lead to paste once
+#     the task is done.
+#     Re-running against an existing worktree reprints the same three lines
 #     and changes nothing else.
 #
 #   rolepod-ticket integrate <worktree> --brief <file> [--pre '<cmd>'] [--gate '<cmd>']
@@ -195,11 +197,14 @@ brief_plan_path() { # $1 = brief file
 # The commit -> finish -> log tail of the ONE ship chain (spec lean-loop-
 # 2026-09-23 Task 2), shared verbatim by `start`'s "ship:" line and
 # `integrate`'s own success output. <subject>/<note> stay literal
-# placeholders for the Lead to fill; "$(git rev-parse HEAD)" is printed
-# literal too — it runs only when the Lead pastes and runs the chain.
-ship_chain_tail() { # $1 = worktree (absolute), $2 = plan (absolute), $3 = task N
-  printf 'git -C %s commit -m '\''<subject>'\'' && rolepod-ticket finish %s && rolepod-ticket log %s %s --sha "$(git rev-parse HEAD)" --note '\''<note>'\''' \
-    "$1" "$1" "$2" "$3"
+# placeholders for the Lead to fill; "$(git -C <base> rev-parse --short
+# HEAD)" is printed literal too — it runs only when the Lead pastes and
+# runs the chain, and reads the base checkout, since `finish` (the step
+# before it in the chain) merges the commit there and removes the worktree
+# — the caller's own cwd may be neither.
+ship_chain_tail() { # $1 = worktree (absolute), $2 = plan (absolute), $3 = task N, $4 = base checkout (absolute)
+  printf 'git -C '\''%s'\'' commit -m '\''<subject>'\'' && rolepod-ticket finish '\''%s'\'' && rolepod-ticket log '\''%s'\'' %s --sha "$(git -C '\''%s'\'' rev-parse --short HEAD)" --note '\''<note>'\''' \
+    "$1" "$1" "$2" "$3" "$4"
 }
 
 # scripts/plan-lint.sh --brief does not auto-resolve the contract path (only
@@ -243,7 +248,7 @@ run_step() {
   fi
   echo "$label: FAIL"
   printf '%s\n' "$out" | tail -n 15
-  echo "Fix: send this tail to the task owner in a NEW dispatch (it fixes, its reviewer re-checks, integrate again); the Lead never repairs it."
+  echo "Fix: send this tail to the task owner in a NEW dispatch (it fixes, integrate again); the Lead never repairs it."
   return "$rc"
 }
 
@@ -551,8 +556,8 @@ cmd_start() {
 
   printf '%s %s\n' "$handoff" "$wt_abs"
   printf 'agent: %s\n' "$agent_name"
-  printf 'ship: rolepod-ticket integrate %s --brief %s --gate '\''<commit gate>'\'' && %s\n' \
-    "$wt_abs" "$handoff" "$(ship_chain_tail "$wt_abs" "$plan_abs" "$n")"
+  printf 'ship: rolepod-ticket integrate '\''%s'\'' --brief '\''%s'\'' --gate '\''<commit gate>'\'' && %s\n' \
+    "$wt_abs" "$handoff" "$(ship_chain_tail "$wt_abs" "$plan_abs" "$n" "$repo_root")"
 
   local ready_count
   ready_count="$(ready_role_tasks "$plan_abs" | grep -c '.')"
@@ -666,7 +671,7 @@ cmd_integrate() {
   plan_abs="$(brief_plan_path "$brief")"
   task_n="$(brief_task_n "$brief")"
   if [ -n "$plan_abs" ] && [ -n "$task_n" ]; then
-    printf '%s\n' "$(ship_chain_tail "$wt_root" "$plan_abs" "$task_n")"
+    printf '%s\n' "$(ship_chain_tail "$wt_root" "$plan_abs" "$task_n" "$main_root")"
   else
     printf 'git -C "%s" commit -m "<subject>"\n' "$wt_root"
   fi
@@ -849,12 +854,18 @@ $rrows
 EOF
   if [ "$role_total" -gt 0 ] && [ "$role_total" -eq "$role_done" ]; then
     local first_sha
+    # Anchored to the exact bullet shape this function writes above
+    # ("- Task N (`<sha>`): <note>") — never the first backticked span in
+    # the section, which a Lead deviation line ("Task N — what changed,
+    # why") can also hold, ahead of the first real log bullet.
     first_sha="$(awk '
       /^## Changes during build/ { insec = 1; next }
       insec && /^## / { exit }
-      insec && match($0, /`[^`]+`/) { print substr($0, RSTART + 1, RLENGTH - 2); exit }
+      insec && /^- Task [0-9]+ \(`/ && match($0, /`[^`]+`/) { print substr($0, RSTART + 1, RLENGTH - 2); exit }
     ' "$plan")"
-    [ -n "$first_sha" ] && printf 'review: %s^..HEAD — one combined review before release (implement-plan §6)\n' "$first_sha"
+    if [ -n "$first_sha" ]; then
+      printf 'review: %s^..HEAD — one combined review before release (implement-plan §6)\n' "$first_sha"
+    fi
   fi
 }
 

@@ -1661,6 +1661,25 @@ if section "cohesion-contract-check removed v2.164.0"; then
   || { echo "  ✗ hooks/cohesion-contract-check.sh still present"; fail=$((fail+1)); }
 fi
 
+# ── workflow-tier-nudge: the Agent-path sweep/haiku advisory's Workflow twin
+# is gone too (v2.164.0) — a low-class (balanced) Lead running a bare,
+# model-less Workflow fan-out used to get a LOW_CLASSES-only paragraph
+# ("Build stages are fine at that tier; sweep/research/read/map are NOT —
+# give those agentType:'rolepod:scout' or model:'haiku'..."); it now gets
+# the same generic "Tier per stage" cost wording every other Lead class does.
+if section "workflow-tier-nudge: low-tier Lead Workflow, no per-agent model — the removed sweep/research/read/map advisory stays gone"; then
+WT_TMP=$(mktemp -d)
+printf '{"type":"assistant","timestamp":"2026-09-23T01:00:00.000Z","message":{"model":"claude-sonnet-5","content":[]}}\n' > "$WT_TMP/lead-sonnet.jsonl"
+printf '{"tool_name":"Workflow","transcript_path":"%s","tool_input":{"script":"await agent(1)"}}' "$WT_TMP/lead-sonnet.jsonl" > "$WT_TMP/wf-sonnet.json"
+out=$(bash "$HOOKS/workflow-tier-nudge.sh" < "$WT_TMP/wf-sonnet.json")
+if echo "$out" | grep -q 'sweep/research/read/map are NOT'; then
+  echo "  ✗ workflow-tier-nudge: the removed LOW_CLASSES advisory still prints under a balanced Lead"; fail=$((fail+1))
+else
+  echo "  ✓ workflow-tier-nudge: a balanced-class Lead Workflow with no per-agent model prints no sweep/research/read/map advisory"
+fi
+rm -rf "$WT_TMP"
+fi
+
 # ─── session-lifecycle: the Codex Stop entry, run as written ───
 # 2026-09-22 (found by the rolepod-brain session on codex 0.153 / 0.155): the
 # adapter's Stop entry ran session-lifecycle.sh with no mode, so it re-LOCKED at

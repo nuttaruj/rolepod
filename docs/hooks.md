@@ -307,7 +307,6 @@ auto-resume shape) on non-Claude CLIs.
 |---|---|
 | `ROLEPOD_GATES_SOFT=1` | Iterating on doctrine itself; want warnings instead of hard blocks for one session. Set **permanently** (e.g. in a project's `settings.local.json` `env`) it silences the commit gate and the fleet-tier gate — the only hard checkpoints left — for good; `make stats` shows every use |
 | `ROLEPOD_GATES_PASSED=1` | Human-only, set at CLI launch. Legacy for commits: the precommit gate auto-passes on windowed evidence, and an env-prefixed `git commit` is never prescribed (permission layers read that shape as gate circumvention) |
-| `ROLEPOD_NO_CONTRACT=1` | Single-domain Agent spawn that doesn't need cohesion contract (e.g. read-only research agent) |
 | `ROLEPOD_ALLOW_OUT_OF_SCOPE_WRITE=1` | A reviewer or generic sub-agent must write outside its class for one dispatch (e.g. a qa-tester fixing a test helper that lives beside source). User-set; logged. |
 | `ROLEPOD_ALLOW_SHARED_WORKTREE=1` | Intentional shared session (read-only review, paired exploration) |
 

@@ -16,7 +16,7 @@ tests/integration/
     feature-from-spec.sh      ← write-spec → write-plan → implement-plan → check-work wiring
     subagent-review-order.sh  ← one universal-reviewer pass, two axes (implement-plan §6)
     high-risk-gates.sh        ← auth/billing/migration → review-code + security-engineer
-    multi-agent-contract.sh   ← cohesion-contract gate before 2nd parallel agent spawn
+    multi-agent-contract.sh   ← the cohesion-contract hook stays removed
     ship-gate.sh              ← finish-work as final Ship phase + S+T+F+P gates
 ```
 

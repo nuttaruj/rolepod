@@ -15,7 +15,7 @@
 #   JSON hookSpecificOutput.permissionDecision == deny  → {"decision":"deny","reason"}
 #   exit 2 (stderr = reason)                             → same
 #   anything else (allow / advisory context / errors)   → silence
-# The gate's advisory text (auto-pass note, emoji advisory, push-ref info) has no
+# The gate's advisory text (auto-pass note, push-ref info) has no
 # channel on agy and is dropped on purpose; the deny paths (high-risk diff without
 # tests, private docs staged, review-round breaker) fire exactly as on Claude.
 set -uo pipefail

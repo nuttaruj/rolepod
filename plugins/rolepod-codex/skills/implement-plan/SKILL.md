@@ -97,7 +97,7 @@ Every unblocked task goes out in ONE message, each task owner in its OWN worktre
 
 A task owner's **decision brief** carries its Command tail; the Lead spot-checks ONE claim (the Proof, or one finding in an R4 report), then runs the ship line.
 
-R2/R3 tasks carry no reviewer in the loop. When the plan's last code task is committed, the Lead runs ONE combined review over the plan diff (`rolepod-ticket log` prints the range): two `universal-reviewer` lenses in ONE message (`lens: spec` · `lens: standards`; or the concern-matched row), `qa-tester` when the user sees a change — the external instead at the pool's tier. More than ~15 files → one review per ship group. Findings → ONE fix task to the owning role; round 2 only for a BLOCKER / MAJOR fix. Nothing pushes or releases before it.
+R2/R3 tasks carry no reviewer in the loop. When the plan's last code task is committed, the Lead runs ONE combined review over the plan diff (`rolepod-ticket log` prints the range): two `universal-reviewer` lenses in ONE message (`lens: spec` · `lens: standards`; or the concern-matched row), the external instead at the pool's tier. More than ~15 files → one review per ship group. Findings → ONE fix task to the owning role; round 2 only for a BLOCKER / MAJOR fix. Nothing pushes or releases before it.
 
 R4 tasks keep per-task review: the owner dispatches `security-engineer` + ONE strong pass (the external with a usable pool, else `universal-reviewer`) before returning — the commit gate denies an unreviewed high-risk commit.
 

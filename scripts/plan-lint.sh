@@ -361,6 +361,9 @@ if [ "${1:-}" = "--brief" ]; then
     else if (trisk) tier = "R4"
     else if (tnontest == 1 && (acnt - tnontest) <= 1) tier = "R2"
     else tier = "R3"
+    # Computed ONCE here, reused by both Reviewers arms below (was written
+    # twice and could drift): does Test / evidence name an E2E-shaped check.
+    e2e = (Te ~ /(E2E|e2e|[Ee]nd-to-end|browser|screenshot|uiproof|UI test|UI flow|user-visible|Playwright|Cypress|visual diff)/)
     tiergloss["R1"] = "R1 (docs-only)"; tiergloss["R2"] = "R2 (one file + test)"
     tiergloss["R3"] = "R3 (multi-file)"; tiergloss["R4"] = "R4 (high-risk)"
     print tiergloss[tier]
@@ -417,7 +420,7 @@ if [ "${1:-}" = "--brief" ]; then
     if (tier == "R1") print "`none`"
     else if (tier == "R4") {
       r = "`universal-reviewer` (internal strong) or, with a usable pool, `rolepod-cross-family --kind review --brief <this brief> --attach <diff> --detach` then `--collect <job> --timeout 540` in the foreground (exit 6 = still running: run it again) instead, plus `security-engineer`"
-      if (Te ~ /(E2E|e2e|[Ee]nd-to-end|browser|screenshot|uiproof|UI test|UI flow|user-visible|Playwright|Cypress|visual diff)/) r = r ", `qa-tester` (E2E)"
+      if (e2e) r = r ", `qa-tester` (E2E)"
       print r
       # The round shape lives HERE, where the owner picks its reviewers: at the
       # end of the Bounds line two owners in a row still messaged the finished
@@ -428,12 +431,12 @@ if [ "${1:-}" = "--brief" ]; then
       # review over the plan diff (implement-plan §6) instead, so there is
       # no per-task external clause and no Round 2 line here.
       r = "`none` in the loop — the Lead runs ONE combined review over the plan diff before release"
-      if (Te ~ /(E2E|e2e|[Ee]nd-to-end|browser|screenshot|uiproof|UI test|UI flow|user-visible|Playwright|Cypress|visual diff)/) r = r ", `qa-tester` (E2E)"
+      if (e2e) r = r ", `qa-tester` (E2E)"
       print r
     }
     print "## Bounds"
     printf "- Edit only Files allowed, and only under ../%s-wt-%s-t%s-%s — the same path in the main checkout belongs to the Lead; no backup copies (.bak / .orig). Never commit or push; leave the tree staged.\n", repo, feat, want, tslug
-    print "- Run the Command after each edit and last before returning, in the foreground (Bash timeout 600000; never run_in_background - nothing wakes a sub-agent). Reviewers named above → dispatch them in ONE message (reports to .rolepod/evidence/review/<task>-<role>.md); fix; then the Reviewers section above."
+    print "- Run the Command after each edit and last before returning, then the repo commit check once (the one the project CLAUDE.md or AGENTS.md names), in the foreground (Bash timeout 600000; never run_in_background - nothing wakes a sub-agent). Reviewers named above → dispatch them in ONE message (reports to .rolepod/evidence/review/<task>-<role>.md); fix; then the Reviewers section above."
     print "- Budget: build <= 40 tool calls, whole loop <= 120; past it return PARTIAL with what is done, never grind."
     print "- Return a decision brief: verdict, `git diff --cached --stat | tail -3`, Command last 3 lines verbatim, reviewer verdicts + report paths, residuals."
   }
