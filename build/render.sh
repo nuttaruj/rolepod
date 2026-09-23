@@ -424,7 +424,7 @@ render_codex() {
     "$plugin_dst/hooks/terse-core.md"
   local h
   for h in gate-reminder precommit-gate project-context-loader claim-verify-nudge \
-           block-subagent-commit session-lifecycle test-diff-lint fix-loop-breaker sweep-nudge \
+           block-subagent-commit session-lifecycle test-diff-lint fix-loop-breaker \
            subagent-write-scope; do
     cp "$REPO_DIR/hooks/$h.sh" "$plugin_dst/hooks/$h.sh"
   done
@@ -586,13 +586,13 @@ render_cursor() {
     cp "$adapter_dir/scripts"/*.sh "$plugin_dst/scripts/" 2>/dev/null || true
     chmod +x "$plugin_dst/scripts/"*.sh 2>/dev/null || true
   fi
-  # Shared cores behind Cursor translators (scripts/sweep-nudge.sh maps Cursor's
-  # stdin/events onto the Claude script and its additionalContext back onto
-  # Cursor's additional_context). Byte-identical to hooks/, pinned by
-  # tests/integration/cases/cursor-adapter.sh.
+  # Shared cores behind Cursor translators (scripts/precommit-gate.sh maps
+  # Cursor's stdin/events onto the Claude script and its additionalContext
+  # back onto Cursor's additional_context). Byte-identical to hooks/, pinned
+  # by tests/integration/cases/cursor-adapter.sh.
   mkdir -p "$plugin_dst/scripts/shared"
   local h
-  for h in sweep-nudge precommit-gate test-diff-lint; do
+  for h in precommit-gate test-diff-lint; do
     cp "$REPO_DIR/hooks/$h.sh" "$plugin_dst/scripts/shared/$h.sh"
   done
   cp "$REPO_DIR/hooks/edit-ledger.py" "$plugin_dst/scripts/shared/edit-ledger.py"
@@ -727,7 +727,7 @@ render_opencode() {
     mkdir -p "$out_dir/plugin/rolepod-shared"
     cp "$adapter_dir/plugin/rolepod.js" "$out_dir/plugin/rolepod.js"
     local h
-    for h in sweep-nudge fix-loop-breaker; do
+    for h in fix-loop-breaker; do
       cp "$REPO_DIR/hooks/$h.sh" "$out_dir/plugin/rolepod-shared/$h.sh"
     done
     cp "$REPO_DIR/hooks/edit-ledger.py" "$out_dir/plugin/rolepod-shared/edit-ledger.py"

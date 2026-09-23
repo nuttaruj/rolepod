@@ -116,32 +116,13 @@ touch "$LOCK_DIR/$SESSION_ID.lock" 2>/dev/null || true
 # rightful owner back (mutual deadlock).
 if [ -z "$COLLISION" ] || [ "${ROLEPOD_ALLOW_SHARED_WORKTREE:-0}" = "1" ]; then
   [ -n "$COLLISION" ] && rolepod_log_bypass "worktree-guard" "ROLEPOD_ALLOW_SHARED_WORKTREE"
+  # Touched-files registry — worktree collision detection needs to know
+  # whether the session edited this file before, regardless of any nudge.
   MY_FILES="$LOCK_DIR/$SESSION_ID.files"
-  FIRST_TOUCH=0
-  grep -Fxq "$TARGET" "$MY_FILES" 2>/dev/null || { FIRST_TOUCH=1; printf '%s\n' "$TARGET" >> "$MY_FILES" 2>/dev/null || true; }
+  grep -Fxq "$TARGET" "$MY_FILES" 2>/dev/null || printf '%s\n' "$TARGET" >> "$MY_FILES" 2>/dev/null || true
 
-  # Reuse-ladder nudge (v2.109.0; the first-edit trigger cut v2.163.0 — the
-  # always-on core states the ladder every session already, so an edit of a
-  # file already in the codebase repeated it for free). The moment scope
-  # creep really needs a nudge is a NEW file or a NEW dependency, so the
-  # ladder now fires only on a Write that creates a file, and on every edit
-  # of a dependency manifest (a new dependency is the last rung). This
-  # registry still tracks whether the session edited the file before —
-  # worktree collision detection needs that regardless of the nudge. Docs /
-  # config / assets stay silent. Only the ladder is repeated here: the scope
-  # rules (nothing beyond the request, single-use abstraction inline)
-  # already reach every CLI via the always-on core and S1-S5 at commit — one
-  # copy each. The shared-worktree bypass path stays silent (doctor
-  # asserts it).
   [ "${ROLEPOD_NUDGE_OFF:-0}" = "1" ] && exit 0
   [ -n "$COLLISION" ] && exit 0
-  BASE=$(basename "$TARGET")
-  KIND=""
-  if printf '%s' "$BASE" | grep -qiE '^(package\.json|requirements[^/]*\.txt|pyproject\.toml|go\.mod|Cargo\.toml|Gemfile|composer\.json|pubspec\.yaml|build\.gradle(\.kts)?|pom\.xml|Podfile|mix\.exs)$'; then
-    KIND="manifest"
-  elif [ "$FIRST_TOUCH" = "1" ] && [ "$TOOL" = "Write" ] && [ ! -e "$TARGET" ] && ! printf '%s' "$TARGET" | grep -qiE '\.(md|mdx|txt|rst|json|ya?ml|toml|lock|csv|svg|png|jpe?g|gif|ico|env|example)$|(^|/)(docs?|\.github|\.rolepod|node_modules|dist|build)/'; then
-    KIND="new"
-  fi
 
   # Self-do nudge (v2.116.0) — the Lead, on an R3/R4 route, has made
   # SELFDO_EDITS edits to product code files since that route and dispatched
@@ -171,20 +152,12 @@ EOF2
         fi ;;
     esac
   fi
-  [ -z "$KIND" ] && [ -z "$SELFDO" ] && exit 0
+  [ -z "$SELFDO" ] && exit 0
 
-  # JSON built here (no python spawn): the only variable text is the file's
-  # basename, escaped for a JSON string; the symbols are JSON \u escapes.
-  B=$(printf '%s' "$BASE" | tr -d '\000-\037'); B=${B//\\/\\\\}; B=${B//\"/\\\"}
-  LADDER="reuse before new logic (codebase \\u2192 stdlib \\u2192 platform \\u2192 installed dep \\u2192 one line before a helper). (off: ROLEPOD_NUDGE_OFF=1)"
-  MSG_MANIFEST="\\u2702 dependency manifest $B: a NEW dependency is the last rung \\u2014 codebase \\u2192 stdlib \\u2192 platform \\u2192 installed dep first; if it stays, justify it in the plan (maintained \\u00b7 size \\u00b7 license). (off: ROLEPOD_NUDGE_OFF=1)"
-  MSG_NEW="\\u2702 new file $B: does it need to exist \\u2014 extend an existing module first? Then $LADDER"
-  [ -n "$SELFDO" ] && KIND=""   # the self-do line replaces the ladder this once (joined they pass 600 chars)
+  # JSON built here (no python spawn): the only variable text is the
+  # self-do line, and it carries no untrusted content beyond the tier /
+  # count fields already validated above.
   PARTS=""
-  case "$KIND" in
-    manifest) PARTS="$MSG_MANIFEST" ;;
-    new)      PARTS="$MSG_NEW" ;;
-  esac
   if [ -n "$SELFDO" ]; then
     S_T="${SELFDO%% *}"; S_N="${SELFDO#* }"
     MSG_SELFDO="\\u27c2 self-do: route $S_T, $S_N Lead edits on product code, 0 writer-role dispatch since the route. Fix: the rest goes out as a task brief to the Owner the domain map names (plan-template Owner hint: frontend-developer / backend-developer / devops-sre / content-strategist \\u2026); the Lead reviews the manifest. Exception: the user said self-do, or what remains is R1/R2-sized. (off: ROLEPOD_NUDGE_OFF=1)"

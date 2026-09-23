@@ -1,5 +1,5 @@
 {
-  "description": "Rolepod Codex hooks. Shared entries mirror root hooks/*.sh byte-exact (parity-enforced by tests/static/lean-surface.sh; Codex uses the same event names, stdin JSON, and hookSpecificOutput/permissionDecision protocol as Claude \u2014 verified against the official hooks reference, 2026-08-05). sweep-nudge.sh (v2.126.0) registers on UserPromptSubmit / PreToolUse apply_patch / PostToolUse Bash+read_file+grep_files+list_dir+spawn_agent / SubagentStart \u2014 direct tool calls only; reads inside a code-mode exec script do not reach PostToolUse upstream. Codex-only: subagent-model-log.sh (SubagentStop \u2192 dispatch-proof evidence line; Claude proves models via transcripts instead) and agent-sync.sh (SessionStart \u2192 the Codex manifest has no agents component, so the plugin bundles agents/rolepod-*.toml + agents/AGENTS.rolepod.md and this hook copies them into ~/.codex/agents/ and refreshes ONLY the rolepod block of ~/.codex/AGENTS.md when the plugin version changes \u2014 `codex plugin marketplace upgrade` alone is then a complete update; ROLEPOD_AGENT_SYNC_OFF=1 disables). Codex now exposes SubagentStart/SubagentStop/Stop, so block-subagent-commit (deny) and session-lifecycle (cross-CLI sibling locks) are registered; still Claude-only: cohesion-contract-check (needs the pre-spawn Agent TOOL event to warn before the spawn happens \u2014 Codex's SubagentStart fires post-spawn, too late for that) and worktree-guard (apply_patch input shape has no file_path field). Hooks fire natively on Codex >=0.144, default-enabled via [features] hooks = true (the legacy plugin_hooks opt-in flag was removed upstream); plugin-bundled hooks must be trusted by the user before they run.",
+  "description": "Rolepod Codex hooks. Shared entries mirror root hooks/*.sh byte-exact (parity-enforced by tests/static/lean-surface.sh; Codex uses the same event names, stdin JSON, and hookSpecificOutput/permissionDecision protocol as Claude \u2014 verified against the official hooks reference, 2026-08-05). Codex-only: subagent-model-log.sh (SubagentStop \u2192 dispatch-proof evidence line; Claude proves models via transcripts instead) and agent-sync.sh (SessionStart \u2192 the Codex manifest has no agents component, so the plugin bundles agents/rolepod-*.toml + agents/AGENTS.rolepod.md and this hook copies them into ~/.codex/agents/ and refreshes ONLY the rolepod block of ~/.codex/AGENTS.md when the plugin version changes \u2014 `codex plugin marketplace upgrade` alone is then a complete update; ROLEPOD_AGENT_SYNC_OFF=1 disables). Codex now exposes SubagentStart/SubagentStop/Stop, so block-subagent-commit (deny) and session-lifecycle (cross-CLI sibling locks) are registered; still Claude-only: worktree-guard (apply_patch input shape has no file_path field). Hooks fire natively on Codex >=0.144, default-enabled via [features] hooks = true (the legacy plugin_hooks opt-in flag was removed upstream); plugin-bundled hooks must be trusted by the user before they run.",
   "hooks": {
     "UserPromptSubmit": [
       {
@@ -7,11 +7,6 @@
           {
             "type": "command",
             "command": "bash ${PLUGIN_ROOT}/hooks/claim-verify-nudge.sh",
-            "timeout": 3
-          },
-          {
-            "type": "command",
-            "command": "bash ${PLUGIN_ROOT}/hooks/sweep-nudge.sh",
             "timeout": 3
           }
         ]
@@ -47,11 +42,6 @@
           {
             "type": "command",
             "command": "ROLEPOD_LEAD_CLI=codex bash ${PLUGIN_ROOT}/hooks/gate-reminder.sh",
-            "timeout": 5
-          },
-          {
-            "type": "command",
-            "command": "bash ${PLUGIN_ROOT}/hooks/sweep-nudge.sh",
             "timeout": 5
           }
         ]
@@ -101,27 +91,6 @@
           {
             "type": "command",
             "command": "bash ${PLUGIN_ROOT}/hooks/fix-loop-breaker.sh",
-            "timeout": 5
-          }
-        ]
-      },
-      {
-        "matcher": "Bash|exec|exec_command|read_file|grep_files|list_dir|spawn_agent|Agent",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash ${PLUGIN_ROOT}/hooks/sweep-nudge.sh",
-            "timeout": 5
-          }
-        ]
-      }
-    ],
-    "SubagentStart": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash ${PLUGIN_ROOT}/hooks/sweep-nudge.sh",
             "timeout": 5
           }
         ]

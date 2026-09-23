@@ -33,14 +33,12 @@
  *      documented deny mechanism, both versions). ROLEPOD_GATES_SOFT=1
  *      logs the bypass to .rolepod/evidence/bypass.log instead (same file
  *      `make stats` reads).
- *   5. sweep-nudge + fix-loop-breaker (v2.133.0) → the SHARED Claude hook
- *      scripts (plugins/rolepod-shared/*.sh, byte-identical to hooks/) run
- *      behind an opencode→Claude translator: a new prompt resets the sweep
- *      state, edit/write(/patch) set the edit flag, read/grep/glob/list/
- *      webfetch/bash output sizes accumulate, bash exit codes feed the
- *      loop breaker. The one nudge each emits is appended to the tool
- *      result the model reads — v1: `output.output`; v2: a pushed text
- *      part on `result.content`, or appended when `content` is a string.
+ *   5. fix-loop-breaker (v2.133.0) → the SHARED Claude hook script
+ *      (plugins/rolepod-shared/*.sh, byte-identical to hooks/) runs behind
+ *      an opencode→Claude translator: bash exit codes feed the loop
+ *      breaker. The nudge it emits is appended to the tool result the
+ *      model reads — v1: `output.output`; v2: a pushed text part on
+ *      `result.content`, or appended when `content` is a string.
  *   6. task/subagent dispatch → the dispatch-proof phase-log line the
  *      commit-gate's reviewer-evidence reading depends on.
  *   7. route record → the assistant's routing line (R-tier + skill) is
@@ -69,8 +67,8 @@ import { fileURLToPath } from "node:url"
 
 const STALE_MS = 30 * 60 * 1000 // matches session-lifecycle.sh STALE_THRESHOLD
 
-// Shared hook cores (hooks/sweep-nudge.sh, hooks/fix-loop-breaker.sh) ship next
-// to this file as plugins/rolepod-shared/; ROLEPOD_OC_SHARED overrides (tests).
+// Shared hook core (hooks/fix-loop-breaker.sh) ships next to this file as
+// plugins/rolepod-shared/; ROLEPOD_OC_SHARED overrides (tests).
 const HERE = path.dirname(fileURLToPath(import.meta.url))
 const SHARED = process.env.ROLEPOD_OC_SHARED || path.join(HERE, "rolepod-shared")
 // opencode tool id → the Claude tool name the shared cores classify on.
@@ -348,14 +346,8 @@ export const RolepodPlugin = async ({ directory, client }) => {
 
     "chat.message": async (input, output) => {
       try {
-        // New user prompt = new turn: the sweep counter starts over.
+        // New user prompt = new turn (route recording keys off this).
         lastPromptAt = Math.floor(Date.now() / 1000)
-        const text = (output?.parts || []).filter((p) => p?.type === "text").map((p) => p.text).join("\n")
-        core.runCore("sweep-nudge", {
-          hook_event_name: "UserPromptSubmit",
-          session_id: String(input?.sessionID ?? sessionId ?? ""),
-          prompt: text,
-        })
       } catch {
         /* fail open */
       }
@@ -378,12 +370,6 @@ export const RolepodPlugin = async ({ directory, client }) => {
         const claudeTool = TOOL_MAP[tool]
         if (sid && claudeTool && typeof output?.output === "string") {
           const notes = []
-          if (tool === "edit" || tool === "write") {
-            core.runCore("sweep-nudge", { hook_event_name: "PreToolUse", session_id: sid, tool_name: claudeTool, tool_input: args })
-          } else {
-            const m = core.runCore("sweep-nudge", { hook_event_name: "PostToolUse", session_id: sid, tool_name: claudeTool, tool_response: output.output })
-            if (m) notes.push(m)
-          }
           if (tool === "task") {
             // Reviewer dispatch evidence for the commit gate (same line Codex / Cursor write).
             const agent = String(args?.subagent_type ?? "")
@@ -530,11 +516,6 @@ export default {
           const sid = String(e?.sessionID ?? "")
           if (!sid) return
           lastPromptAt.set(sid, Math.floor(Date.now() / 1000))
-          core.runCore("sweep-nudge", {
-            hook_event_name: "UserPromptSubmit",
-            session_id: sid,
-            prompt: String(e?.prompt?.text ?? ""),
-          })
           // A subagent's session never locks or routes. `isChild` depends on
           // the (async, global) event stream having already delivered this
           // session's `session.created` — a child's very first prompt can in
@@ -605,12 +586,6 @@ export default {
           const text = resultText(result)
 
           const notes = []
-          if (tool === "edit" || tool === "write" || tool === "patch") {
-            core.runCore("sweep-nudge", { hook_event_name: "PreToolUse", session_id: sid, tool_name: claudeTool, tool_input: input })
-          } else {
-            const m = core.runCore("sweep-nudge", { hook_event_name: "PostToolUse", session_id: sid, tool_name: claudeTool, tool_response: text })
-            if (m) notes.push(m)
-          }
           if (tool === "subagent") {
             // Reviewer dispatch evidence for the commit gate (same line Codex / Cursor write).
             const agent = String(input?.agent ?? "")

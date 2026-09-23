@@ -501,8 +501,8 @@ read -r HC_CODEX  REG_CODEX  <<< "$(hook_script_count adapters/codex/plugins/rol
 read -r HC_GEMINI REG_GEMINI <<< "$(hook_script_count adapters/gemini/hooks/hooks.json)"
 read -r HC_CURSOR REG_CURSOR <<< "$(hook_script_count adapters/cursor/hooks/hooks.json)"
 read -r HC_AGY    REG_AGY    <<< "$(hook_script_count adapters/antigravity/hooks/hooks.json)"
-check "hook scripts per manifest = Claude 16 / Codex 10 / Gemini 5 / Cursor 6 / Antigravity 4 (actual: $HC_CLAUDE/$HC_CODEX/$HC_GEMINI/$HC_CURSOR/$HC_AGY)" \
-  "[ $HC_CLAUDE -eq 16 ] && [ $HC_CODEX -eq 10 ] && [ $HC_GEMINI -eq 5 ] && [ $HC_CURSOR -eq 6 ] && [ $HC_AGY -eq 4 ]"
+check "hook scripts per manifest = Claude 14 / Codex 9 / Gemini 5 / Cursor 5 / Antigravity 4 (actual: $HC_CLAUDE/$HC_CODEX/$HC_GEMINI/$HC_CURSOR/$HC_AGY)" \
+  "[ $HC_CLAUDE -eq 14 ] && [ $HC_CODEX -eq 9 ] && [ $HC_GEMINI -eq 5 ] && [ $HC_CURSOR -eq 5 ] && [ $HC_AGY -eq 4 ]"
 check "README hook counts match manifests" \
   "grep -q \"Claude $HC_CLAUDE / Codex $HC_CODEX / Gemini $HC_GEMINI / Cursor $HC_CURSOR / Antigravity $HC_AGY\" README.md"
 check "CHEATSHEET hook counts match manifests" \
@@ -1154,7 +1154,7 @@ check "session_state.py HIGH_RISK_PATH matches the canonical regex byte-for-byte
 # (the hooks/ ↔ codex copies are already covered by SHARED_CORE_HOOKS).
 lb_body() { awk '/^rolepod_log_bypass\(\) \{/,/^\}/' "$1"; }
 LB_REF=$(lb_body hooks/precommit-gate.sh)
-for f in hooks/worktree-guard.sh hooks/cohesion-contract-check.sh \
+for f in hooks/worktree-guard.sh \
          adapters/cursor/scripts/gate-reminder.sh; do
   check "rolepod_log_bypass byte-identical in $f" "[ \"\$(lb_body '$f')\" = \"\$LB_REF\" ]"
 done

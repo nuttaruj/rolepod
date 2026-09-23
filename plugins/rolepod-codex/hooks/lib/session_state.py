@@ -393,9 +393,7 @@ LOW_CLASSES = {"cheap", "balanced"}
 # own model but its strong reviewers run opus — never lifted (cost).
 # system-architect joined in v2.73.0: in teammate mode it writes the spec +
 # cohesion contract for the whole team — the judgment-heaviest role — and was
-# the one strong role left at nudge-only. cohesion-contract-check whitelists
-# it since v2.115.0: write-spec §3 dispatches it AFTER a §2 scout, so the
-# "first spawn" assumption no longer holds and the deny would have co-fired.
+# the one strong role left at nudge-only.
 STRONG_ROLE_AGENTS = {"security-engineer", "universal-reviewer", "system-architect"}
 STRONG_ALIAS = "opus"
 
@@ -1225,24 +1223,6 @@ def edit_fields(d: dict) -> list[str]:
     return [tool, sid, cwd, agent, tp, root, selfdo, f]
 
 
-def count_parallel_agent_spawns_on_path(
-    transcript_path: str, recent_window: int = 10
-) -> int:
-    """
-    Count Agent/Task spawns within the last `recent_window` tool uses.
-    Recency is the parallel-fan-out proxy; no path-overlap check is performed
-    (the caller's role whitelist at cohesion-contract-check.sh already exempts
-    read-only roles).
-    """
-    recent: list[tuple[str, dict]] = []
-    for tool, inp in _iter_tool_uses(transcript_path):
-        recent.append((tool, inp))
-        if len(recent) > recent_window:
-            recent.pop(0)
-
-    return sum(1 for tool, _ in recent if tool in AGENT_TOOLS)
-
-
 def main() -> int:
     if len(sys.argv) < 2:
         print("usage: session_state.py <query> [args]", file=sys.stderr)
@@ -1304,9 +1284,6 @@ def main() -> int:
         # self-do / target — one spawn (target last, may not be empty-safe
         # with read; the hook slurps it with cat).
         print("\n".join(edit_fields(hook_input)))
-    elif query == "count-recent-agent-spawns":
-        window = int(sys.argv[2]) if len(sys.argv) > 2 else 10
-        print(count_parallel_agent_spawns_on_path(transcript_path, window))
     else:
         print(f"unknown query: {query}", file=sys.stderr)
         return 1

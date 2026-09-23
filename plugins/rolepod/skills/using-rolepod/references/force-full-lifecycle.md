@@ -69,8 +69,8 @@ rigor is default-on, not mandatory-on.
 ## What still applies under force-full mode
 
 - `verify-first` for any factual claim
-- Hooks (subagent-commit block, precommit-gate, gate-reminder,
-  cohesion-contract-check) fire regardless
+- Hooks (subagent-commit block, precommit-gate, gate-reminder) fire
+  regardless
 - User override mid-flow: "skip review" / "just ship" → obey
 
 ## Common rationalizations to reject

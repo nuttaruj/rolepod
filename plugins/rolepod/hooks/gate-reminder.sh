@@ -1,14 +1,10 @@
 #!/bin/bash
 # PreToolUse(Edit|Write|MultiEdit) — HARD-block edits that violate
-# discipline rules + soft-warn on schema-bound new files + high-risk path
-# edits. Normal code edits are silent here (the per-edit Q1-Q4 reminder
-# was cut for cost); since v2.109.0 worktree-guard.sh injects the reuse
-# ladder on a Write that creates a file, and on a dependency-manifest edit
-# (the first-edit-of-existing-code trigger was cut v2.163.0).
+# discipline rules + soft-warn on high-risk path edits. Normal code edits
+# are silent here (the per-edit Q1-Q4 reminder was cut for cost).
 #
 # Default tiering:
 #   Trivial path (docs/configs/lockfiles)             → silent
-#   Schema-bound NEW file                             → soft warn (WebFetch spec FIRST)
 #   Normal code edit                                  → silent
 #   Review in flight: live detached cross-family    → one advisory line, never a deny —
 #     job + edit to a file its diff touches (v2.93.0)   the job reads the tree live; an
@@ -102,12 +98,6 @@ echo "$TOOL" | grep -qE '^(Edit|Write|MultiEdit|NotebookEdit|apply_patch)$' || e
 LEDGER="$(dirname "$0")/edit-ledger.py"
 [ -f "$LEDGER" ] && { printf '%s' "$INPUT" | python3 -I "$LEDGER" append-stdin "${ROLEPOD_CLI:-claude}" >/dev/null 2>&1 || true; }
 
-# Schema-bound NEW file → emit STRONG verify-doc reminder.
-SCHEMA_BOUND=""
-if [ ! -e "$FILE" ] && [[ "$FILE" =~ (\.claude-plugin/|\.codex-plugin/|/extensions/|marketplace\.json$|plugin\.json$|manifest\.json$|hooks\.json$|-extension\.(json|yaml|yml)$|\.mcp\.json$|gemini-extension\.json$|claude-extension\.json$) ]]; then
-  SCHEMA_BOUND="SCHEMA-BOUND new file: WebFetch the official spec first (not recall) and name the source URL. "
-fi
-
 # Test files are exempt: writing the RED test on a high-risk path is the very
 # action the hard block demands, so flagging it would deadlock. Mirrors
 # session_state.py's TEST_FILE exclusion.
@@ -182,7 +172,7 @@ fi
 # Silent pass when nothing is risky. Normal code / docs / config edits
 # never see a reminder from this hook — the Q1-Q4 doctrine lives in
 # CLAUDE.md / AGENTS.md and using-rolepod skill, read once per session.
-if [ -z "$SCHEMA_BOUND" ] && [ -z "$HIGH_RISK" ]; then
+if [ -z "$HIGH_RISK" ]; then
   [ -n "$XFAM_INFLIGHT" ] || exit 0
   ROLEPOD_HOOK_MSG="$XFAM_INFLIGHT" python3 -I -c "
 import json, os
@@ -266,9 +256,9 @@ if [ -n "$HIGH_RISK" ]; then
   CAREFUL_BANNER="${WOULD_BLOCK}AUTO-CAREFUL (high-risk path; since last commit: $HIGH_RISK_EDITS high-risk edits / $TEST_EDITS tests / $REVIEWERS reviewers, $STRONG_REVIEWERS strong). Before commit: (1) a test file exists or is written this session; (2) reviewers dispatched — ≥2 when available (${REVIEWER_LIST}; security-engineer for auth/billing/crypto), in a DIFFERENT CLI than this one; (3) S1-S5 (simplicity) + T1-T6 (tests) — finish-work §1. Reviewer path blocked by the user → say so; fallback = Lead cold self-review + limitation note. Env bypass is user-set only. "
 fi
 
-# Emit reminder ONLY when schema-bound or high-risk — no generic Q1-Q4 nag.
+# Emit reminder ONLY when high-risk — no generic Q1-Q4 nag.
 # Env-passed (see deny path) so apostrophes in the banner cannot break it.
-ROLEPOD_HOOK_MSG="${XFAM_INFLIGHT}${SCHEMA_BOUND}${CAREFUL_BANNER}${HIGH_RISK}" python3 -I -c "
+ROLEPOD_HOOK_MSG="${XFAM_INFLIGHT}${CAREFUL_BANNER}${HIGH_RISK}" python3 -I -c "
 import json, os
 print(json.dumps({
   'hookSpecificOutput': {

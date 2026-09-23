@@ -101,7 +101,7 @@ Tier and reviewers are per task; the plan's max tier only decides spec / plan ce
 
 ## Hooks
 
-16 Claude / 10 Codex / 5 Gemini / 6 Cursor / 4 Antigravity core hook scripts (opencode: plugin-event bridge, best-effort) — self-guarded, auto-fire, no add-on hooks. All CLIs fire hooks by default (Codex: `[features] hooks = true`, default-enabled). Full reference: [docs/hooks.md](docs/hooks.md).
+14 Claude / 9 Codex / 5 Gemini / 5 Cursor / 4 Antigravity core hook scripts (opencode: plugin-event bridge, best-effort) — self-guarded, auto-fire, no add-on hooks. All CLIs fire hooks by default (Codex: `[features] hooks = true`, default-enabled). Full reference: [docs/hooks.md](docs/hooks.md).
 
 Terse output (opt-in, every CLI): `touch ~/.claude/.rolepod-terse` shapes replies to cut output tokens; empty = `ultra` (the default), write `lite` inside for full sentences, delete the file to stop. Security warnings, destructive confirmations and "explain" requests keep their full shape.
 

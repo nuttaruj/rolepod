@@ -7,20 +7,9 @@
         "timeout": 5
       }
     ],
-    "beforeSubmitPrompt": [
-      {
-        "command": "./scripts/sweep-nudge.sh",
-        "timeout": 3
-      }
-    ],
     "preToolUse": [
       {
         "command": "./scripts/gate-reminder.sh",
-        "matcher": "Write|Edit|MultiEdit",
-        "timeout": 3
-      },
-      {
-        "command": "./scripts/sweep-nudge.sh",
         "matcher": "Write|Edit|MultiEdit",
         "timeout": 3
       },
@@ -34,17 +23,6 @@
       {
         "command": "./scripts/gate-reminder.sh",
         "matcher": "Write|Edit|MultiEdit",
-        "timeout": 3
-      },
-      {
-        "command": "./scripts/sweep-nudge.sh",
-        "matcher": "Read|Grep|Glob|WebFetch|WebSearch",
-        "timeout": 3
-      }
-    ],
-    "afterShellExecution": [
-      {
-        "command": "./scripts/sweep-nudge.sh",
         "timeout": 3
       }
     ],

@@ -476,43 +476,18 @@ check "precommit 'src/my app/auth/login.ts' (space in path, auth segment) → de
 check "precommit mixed test + src/auth/login.ts → deny" deny "$(pct 'tests/auth/login.spec.ts src/auth/login.ts')"
 
 fi
-# ── precommit-gate: emoji in product code → advisory line, never a deny; docs / comments / text marks silent (v2.110.0) ──
-if section "precommit-gate: emoji in product code → advisory line, never a deny; docs / comments / text marks silent (v2.110.0)"; then
-# Fresh repo per call: 14 logic lines + ONE payload line at $1; $3 = shell run
-# inside the repo before staging (e.g. the allow-emoji marker).
-pcm() { # $1 = path, $2 = payload line, $3 = pre-stage shell (optional)
-  rm -rf "$TMPT"; mkdir -p "$TMPT"
-  ( cd "$TMPT" && git init -q . && git config user.email t@t && git config user.name t
-    mkdir -p "$(dirname "$1")"; seq 14 | sed 's/^/x = /' > "$1"; printf '%s\n' "$2" >> "$1"
-    eval "${3:-:}"; git add -A )
-  printf '{"tool_name":"Bash","tool_input":{"command":"git commit -m x"}}' \
-    | (cd "$TMPT" && bash "$HOOKS/precommit-gate.sh") || true
-}
-# json.dumps escapes the emoji (🚀) — decode additionalContext before matching.
-ctx() { printf '%s' "$1" | python3 -c 'import json,sys; print(json.load(sys.stdin)["hookSpecificOutput"].get("additionalContext",""))' 2>/dev/null; }
-checkwarn() { # $1 desc, $2 yes|no (emoji line expected), $3 hook output
-  local got="no"; ctx "$3" | grep -q 'emoji in product code' && got="yes"
-  check "$1 → allow" allow "$3"
-  if [ "$got" = "$2" ]; then echo "  ✓ $1 → emoji line: $2"; else echo "  ✗ $1 → emoji line expected $2, got $got"; fail=$((fail+1)); fi
-}
-out=$(pcm src/ui/Button.tsx 'const label = "🚀 Launch";')
-checkwarn "precommit emoji 🚀 in src/ui/Button.tsx" yes "$out"
-ctx "$out" | grep -q 'src/ui/Button.tsx:15 🚀' \
-  && echo "  ✓ precommit emoji line names path:line and the character" \
-  || { echo "  ✗ precommit emoji line missing path:line + char"; fail=$((fail+1)); }
-checkwarn "precommit BMP colour emoji ✅ in src/status.py" yes "$(pcm src/status.py 'ok = "✅ done"')"
-checkwarn "precommit VS16-forced ⚠️ in src/alert.ts" yes "$(pcm src/alert.ts 'const w = "⚠️ careful";')"
-checkwarn "precommit text marks ✓ ✗ ⚠ → · in src/marks.ts" no "$(pcm src/marks.ts 'const m = "✓ ✗ ⚠ → ·";')"
-checkwarn "precommit emoji in README.md" no "$(pcm README.md '## 🚀 Quick start')"
-checkwarn "precommit emoji in a code comment line" no "$(pcm src/note.ts '// 🚀 launch helper')"
-checkwarn "precommit emoji in tests/ui/Button.test.tsx" no "$(pcm tests/ui/Button.test.tsx 'expect(t).toBe("🚀");')"
-checkwarn "precommit emoji with .rolepod/allow-emoji marker" no "$(pcm src/ui/Button.tsx 'const label = "🚀 Launch";' 'mkdir -p .rolepod && touch .rolepod/allow-emoji')"
-# R1-shaped diff (1 file, ≤5 lines, 0 logic) normally exits silent — the emoji line still speaks.
-rm -rf "$TMPT"; mkdir -p "$TMPT/src"
-( cd "$TMPT" && git init -q . && git config user.email t@t && git config user.name t \
-  && printf '# title\n\n🚀 hero\n' > src/hero.html && git add -A )
+# ── precommit-gate: emoji advisory removed v2.164.0 — emoji in product code no longer speaks ──
+if section "precommit-gate: emoji advisory removed v2.164.0 — emoji in product code no longer speaks"; then
+rm -rf "$TMPT"; mkdir -p "$TMPT/src/ui"
+( cd "$TMPT" && git init -q . && git config user.email t@t && git config user.name t
+  seq 14 | sed 's/^/x = /' > src/ui/button.py
+  printf 'label = "\xf0\x9f\x9a\x80 Launch"\n' >> src/ui/button.py
+  git add -A )
 out=$(printf '{"tool_name":"Bash","tool_input":{"command":"git commit -m x"}}' | (cd "$TMPT" && bash "$HOOKS/precommit-gate.sh") || true)
-checkwarn "precommit R1-shaped 3-line src/hero.html with 🚀" yes "$out"
+check "precommit emoji in product code → allow (no emoji rule left)" allow "$out"
+echo "$out" | grep -q 'emoji in product code' \
+  && { echo "  ✗ precommit still prints an emoji line (should be removed)"; fail=$((fail+1)); } \
+  || echo "  ✓ a commit with an emoji in product code prints no emoji line"
 
 out=$(pc 'git status')
 check "precommit non-commit command → allow" allow "$out"
@@ -544,26 +519,14 @@ out=$(printf '{"tool_name":"Write","tool_input":{}}' | bash "$HOOKS/worktree-gua
   || { echo "  ✗ worktree-guard pathless payload: rc=$rc"; fail=$((fail+1)); }
 
 fi
-# ── reuse-ladder nudge on new file / manifest; existing-file edits silent (v2.109.0, existing-file trigger cut v2.163.0) ──
-if section "reuse-ladder nudge on new file / manifest; existing-file edits are silent (v2.109.0, existing-file trigger cut v2.163.0)"; then
-WG_TMP=$(mktemp -d); ( cd "$WG_TMP" && git init -q . && mkdir -p src docs && printf 'x\n' > src/a.ts && printf '{}\n' > package.json && printf '# r\n' > docs/r.md )
+# ── worktree-guard: reuse-ladder nudge removed v2.164.0, touched-files registry stays ──
+if section "worktree-guard: reuse-ladder nudge removed v2.164.0, touched-files registry stays"; then
+WG_TMP=$(mktemp -d); ( cd "$WG_TMP" && git init -q . && mkdir -p src && printf '{}\n' > package.json )
 wg() { printf '{"session_id":"wg1","cwd":"%s","tool_name":"%s","tool_input":{"file_path":"%s"}}' "$WG_TMP" "$1" "$WG_TMP/$2" | (cd "$WG_TMP" && HOME="$WG_TMP" bash "$HOOKS/worktree-guard.sh") || true; }
-out=$(wg Edit src/a.ts)
-[ -z "$out" ] && echo "  ✓ reuse nudge: first edit of an EXISTING code file this session → silent (no first-touch line)" || { echo "  ✗ reuse nudge existing-file edit not silent: ${out:0:100}"; fail=$((fail+1)); }
 out=$(wg Write src/b.ts)
-echo "$out" | grep -q 'new file b.ts' && echo "  ✓ reuse nudge: Write of a file that does not exist → new-file wording" || { echo "  ✗ reuse nudge new file: ${out:0:100}"; fail=$((fail+1)); }
-out=$(wg Edit package.json); out2=$(wg Edit package.json)
-echo "$out" | grep -q 'dependency manifest package.json' && echo "$out2" | grep -q 'dependency manifest' && echo "  ✓ reuse nudge: dependency manifest → last-rung wording on every edit" || { echo "  ✗ reuse nudge manifest: ${out:0:80} / ${out2:0:40}"; fail=$((fail+1)); }
-out=$(wg Edit docs/r.md)
-[ -z "$out" ] && echo "  ✓ reuse nudge: docs path → silent" || { echo "  ✗ reuse nudge on docs: ${out:0:80}"; fail=$((fail+1)); }
-out=$( (export ROLEPOD_NUDGE_OFF=1; wg Write src/c.ts) )
-[ -z "$out" ] && echo "  ✓ reuse nudge: ROLEPOD_NUDGE_OFF=1 → silent even on a new file" || { echo "  ✗ reuse nudge ignores NUDGE_OFF: ${out:0:80}"; fail=$((fail+1)); }
-printf 'y\n' > "$WG_TMP/src/d.ts"; out=$(wg Write src/d.ts)
-[ -z "$out" ] && echo "  ✓ reuse nudge: Write to an EXISTING file → silent, not new-file wording" || { echo "  ✗ reuse nudge Write existing: ${out:0:100}"; fail=$((fail+1)); }
-out=$(wg MultiEdit src/e.ts)
-[ -z "$out" ] && echo "  ✓ reuse nudge: MultiEdit (never 'new', whatever the target) → silent" || { echo "  ✗ reuse nudge MultiEdit: ${out:0:100}"; fail=$((fail+1)); }
-printf '{}\n' > "$WG_TMP/package-lock.json"; out=$(wg Edit package-lock.json)
-[ -z "$out" ] && echo "  ✓ reuse nudge: package-lock.json is a lockfile, not a manifest → silent" || { echo "  ✗ reuse nudge lockfile: ${out:0:80}"; fail=$((fail+1)); }
+[ -z "$out" ] && echo "  ✓ a new code file prints no reuse-ladder line" || { echo "  ✗ new file still nudges: ${out:0:100}"; fail=$((fail+1)); }
+out=$(wg Edit package.json)
+[ -z "$out" ] && echo "  ✓ a dependency-manifest edit prints no reuse-ladder line" || { echo "  ✗ manifest edit still nudges: ${out:0:100}"; fail=$((fail+1)); }
 rm -rf "$WG_TMP"
 
 fi
@@ -1183,138 +1146,29 @@ check_ctx "loop-breaker: different session id isolated → silent" silent "$(lb 
 rm -rf "$LB_TMP"
 
 fi
-# ─── post-commit worktree reminder (v2.149.0): leftovers under .worktrees/ ──
-if section "post-commit worktree reminder (v2.149.0): leftovers under .worktrees/"; then
-# After a git commit the shared core lists the worktrees left under the
-# repo's .worktrees/, tagged merged / unmerged (+N) / in use, and says the
-# cleanup order — as additionalContext AND systemMessage. Never lists the
-# current checkout, a worktree outside .worktrees/, or fires on other commands.
+# ── fix-loop-breaker: post-commit worktree reminder removed v2.164.0 ──
+if section "fix-loop-breaker: post-commit worktree reminder removed v2.164.0"; then
 WT_TMP=$(mktemp -d); WT_HOME="$WT_TMP/home"; mkdir -p "$WT_HOME"
 ( cd "$WT_TMP" && git init -q r && cd r && git config user.email t@t && git config user.name t \
   && echo a > a && git add a && git commit -qm a \
-  && git worktree add -q .worktrees/t1 -b t1 2>/dev/null && ( cd .worktrees/t1 && echo b > b && git add b && git commit -qm b ) \
-  && git worktree add -q .worktrees/t2 -b t2 2>/dev/null \
-  && git worktree add -q "$WT_TMP/outside" -b t3 2>/dev/null \
-  && git worktree add -q "$WT_TMP/r-wt-t4" -b t4 2>/dev/null ) >/dev/null 2>&1
-# age every fixture worktree past the 30 min "just created" window
-for _w in "$WT_TMP/r/.worktrees/t1" "$WT_TMP/r/.worktrees/t2" "$WT_TMP/outside" "$WT_TMP/r-wt-t4"; do touch -t 202601010000 "$_w/.git"; done
+  && git worktree add -q .worktrees/t1 -b t1 2>/dev/null ) >/dev/null 2>&1
+touch -t 202601010000 "$WT_TMP/r/.worktrees/t1/.git"
 wtc() { # $1 = command, $2 = cwd
   printf '{"session_id":"w1","tool_name":"Bash","tool_input":{"command":"%s"},"tool_response":{"exit_code":0}}' "$1" \
     | (cd "${2:-$WT_TMP/r}" && HOME="$WT_HOME" TMPDIR="$WT_TMP" bash "$HOOKS/fix-loop-breaker.sh")
 }
 out=$(wtc 'git commit -m x')
-echo "$out" | grep -q 'WORKTREES LEFT: 3 rolepod worktree' \
-  && echo "$out" | grep -q '.worktrees/t1 (unmerged, +1)' && echo "$out" | grep -q '.worktrees/t2 (merged)' \
-  && echo "$out" | grep -q '\.\./r-wt-t4 (merged)' \
-  && echo "  ✓ post-commit: three leftovers listed (two under .worktrees/, one brief-shaped sibling), tagged unmerged +1 / merged" \
-  || { echo "  ✗ post-commit leftover list wrong: ${out:0:260}"; fail=$((fail+1)); }
-echo "$out" | grep -q 'outside' \
-  && { echo "  ✗ post-commit listed a worktree outside .worktrees/"; fail=$((fail+1)); } \
-  || echo "  ✓ post-commit ignores a worktree outside .worktrees/"
-echo "$out" | grep -q '"systemMessage"' && echo "$out" | grep -q 'git worktree remove' \
-  && echo "  ✓ post-commit: systemMessage for the user + the cleanup command" \
-  || { echo "  ✗ post-commit systemMessage / Fix missing: ${out:0:160}"; fail=$((fail+1)); }
-out=$(wtc 'pytest -q')
 echo "$out" | grep -q 'WORKTREES LEFT' \
-  && { echo "  ✗ post-commit reminder fired on a non-commit command"; fail=$((fail+1)); } \
-  || echo "  ✓ non-commit command → no worktree reminder"
-out=$(printf '{"session_id":"w1","tool_name":"Bash","tool_input":{"command":"git commit -m x"},"tool_response":{"exit_code":1,"stderr":"nothing to commit"}}' \
-  | (cd "$WT_TMP/r" && HOME="$WT_HOME" TMPDIR="$WT_TMP" bash "$HOOKS/fix-loop-breaker.sh"))
-echo "$out" | grep -q 'WORKTREES LEFT' \
-  && { echo "  ✗ post-commit reminder fired on a FAILED commit"; fail=$((fail+1)); } \
-  || echo "  ✓ failed commit → no worktree reminder"
-out=$(wtc "git -C $WT_TMP/r commit -m x" "$WT_TMP")
-echo "$out" | grep -q 'WORKTREES LEFT: 3 rolepod' \
-  && echo "  ✓ git -C <repo> commit from outside lists THAT repo's worktrees" \
-  || { echo "  ✗ git -C form missed: ${out:0:200}"; fail=$((fail+1)); }
-out=$(wtc 'git commit -m y' "$WT_TMP/r/.worktrees/t1")
-echo "$out" | grep -q 'WORKTREES LEFT: 2 rolepod' && echo "$out" | grep -q '.worktrees/t2 (merged)' \
-  && ! echo "$out" | grep -q '.worktrees/t1 (' \
-  && echo "  ✓ committing inside a worktree never lists the current checkout" \
-  || { echo "  ✗ current worktree listed or count wrong: ${out:0:200}"; fail=$((fail+1)); }
-_t2=$(cd "$WT_TMP/r/.worktrees/t2" && git rev-parse --show-toplevel)
-_h=$(printf '%s' "$_t2" | { shasum -a 256 2>/dev/null || sha256sum; } | awk '{print $1}' | head -c 16)
-mkdir -p "$WT_HOME/.rolepod/session-locks/$_h" && : > "$WT_HOME/.rolepod/session-locks/$_h/sib.lock"
-out=$(wtc 'git commit -m x')
-echo "$out" | grep -q '.worktrees/t2 (in use)' \
-  && echo "  ✓ a live sibling lock tags the worktree in use" \
-  || { echo "  ✗ in-use tag missing: ${out:0:200}"; fail=$((fail+1)); }
-rm -rf "$WT_TMP/r/.worktrees/t1"
-out=$(wtc 'git commit -m x')
-echo "$out" | grep -q '1 prunable entry (directory gone)' \
-  && echo "  ✓ a deleted worktree directory is reported as prunable" \
-  || { echo "  ✗ prunable count missing: ${out:0:220}"; fail=$((fail+1)); }
-( cd "$WT_TMP/r" && git worktree prune && git worktree add -q .worktrees/t5 -b t5 ) >/dev/null 2>&1   # fresh: no lock, no edits yet
-out=$(wtc 'git commit -m x')
-echo "$out" | grep -q '.worktrees/t5 (in use)' \
-  && echo "  ✓ a worktree created in the last 30 min is in use (task owner not yet editing)" \
-  || { echo "  ✗ fresh worktree not tagged in use: ${out:0:220}"; fail=$((fail+1)); }
-echo "$out" | grep -q '../r-wt-t4 (merged), .worktrees/t2 (in use), .worktrees/t5 (in use)' \
-  && echo "  ✓ list order: merged first, in use last" \
-  || { echo "  ✗ list order wrong: ${out:0:220}"; fail=$((fail+1)); }
-( cd "$WT_TMP/r" && git worktree remove --force .worktrees/t5 ) >/dev/null 2>&1
-( cd "$WT_TMP/r" && git worktree prune && git worktree remove --force .worktrees/t2 && git worktree remove --force "$WT_TMP/outside" && git worktree remove --force "$WT_TMP/r-wt-t4" ) >/dev/null 2>&1
-out=$(wtc 'git commit -m x')
-[ -z "$out" ] && echo "  ✓ no leftover worktree → silent" || { echo "  ✗ reminder with no leftovers: ${out:0:160}"; fail=$((fail+1)); }
+  && { echo "  ✗ a commit with a leftover worktree still prints a worktree reminder"; fail=$((fail+1)); } \
+  || echo "  ✓ a commit with a leftover worktree prints no worktree reminder (removed v2.164.0)"
 rm -rf "$WT_TMP"
 
 fi
-# ─── sweep-nudge: raw reads past 120 KB in one turn, no scout, no edit → ONE nudge ──
-if section "sweep-nudge: raw reads past 120 KB in one turn, no scout, no edit → ONE nudge"; then
-# The scout rule at the point of action. The hook must stay silent below the
-# line, on a build turn (edit seen), after a dispatch, and after it fired once.
-SW_TMP=$(mktemp -d)
-sw() { # $1 = event, $2 = tool_name, $3 = tool_response JSON (PostToolUse only)
-  local ev="$1" tool="${2:-}" resp="${3:-}"
-  if [ "$ev" = "UserPromptSubmit" ]; then
-    printf '{"session_id":"s-sweep","hook_event_name":"UserPromptSubmit","prompt":"hi"}'
-  elif [ "$ev" = "PostToolUse" ]; then
-    printf '{"session_id":"s-sweep","hook_event_name":"PostToolUse","tool_name":"%s","tool_input":{},"tool_response":%s}' "$tool" "$resp"
-  else
-    printf '{"session_id":"s-sweep","hook_event_name":"%s","tool_name":"%s","tool_input":{}}' "$ev" "$tool"
-  fi | TMPDIR="$SW_TMP" bash "$HOOKS/sweep-nudge.sh"
-}
-BIG=$(python3 -c 'import json; print(json.dumps("x" * 50000))')   # one 50 KB read
-check_sw() { # $1 desc, $2 expected (nudge|silent), $3 output
-  local desc="$1" expected="$2" out="$3" verdict="silent"
-  echo "$out" | grep -q 'sweep:' && verdict="nudge"
-  if [ "$verdict" = "$expected" ]; then
-    echo "  ✓ $desc"
-  else
-    echo "  ✗ $desc (expected $expected, got $verdict)"
-    fail=$((fail+1))
-  fi
-}
-sw UserPromptSubmit > /dev/null
-check_sw "sweep: 1st 50 KB read → silent" silent "$(sw PostToolUse Read "$BIG")"
-check_sw "sweep: 2nd read (100 KB) → silent" silent "$(sw PostToolUse Grep "$BIG")"
-check_sw "sweep: 3rd read (150 KB ≥ 120 KB) → nudge" nudge "$(sw PostToolUse Bash "$BIG")"
-check_sw "sweep: 4th read → silent (once per turn)" silent "$(sw PostToolUse Read "$BIG")"
-sw UserPromptSubmit > /dev/null
-check_sw "sweep: new prompt resets → 1 read silent" silent "$(sw PostToolUse Read "$BIG")"
-sw PreToolUse Edit > /dev/null
-sw PostToolUse Read "$BIG" > /dev/null; sw PostToolUse Read "$BIG" > /dev/null
-check_sw "sweep: edit earlier in the turn → silent at 200 KB (build turn)" silent "$(sw PostToolUse Read "$BIG")"
-sw UserPromptSubmit > /dev/null
-sw PostToolUse Agent '{"result":"ok"}' > /dev/null
-sw PostToolUse Read "$BIG" > /dev/null; sw PostToolUse Read "$BIG" > /dev/null
-check_sw "sweep: scout dispatched earlier → silent at 150 KB" silent "$(sw PostToolUse Read "$BIG")"
-sw UserPromptSubmit > /dev/null
-sw PostToolUse read_file "$BIG" > /dev/null; sw PostToolUse grep_files "$BIG" > /dev/null
-check_sw "sweep: Codex tool names (read_file / grep_files / Bash) count → nudge" nudge "$(sw PostToolUse Bash "$BIG")"
-sw UserPromptSubmit > /dev/null
-sw SubagentStart > /dev/null   # Codex marks the dispatch post-spawn
-sw PostToolUse read_file "$BIG" > /dev/null; sw PostToolUse read_file "$BIG" > /dev/null
-check_sw "sweep: Codex SubagentStart earlier → silent" silent "$(sw PostToolUse read_file "$BIG")"
-sw UserPromptSubmit > /dev/null
-sw PostToolUse Read "$BIG" > /dev/null; sw PostToolUse Read "$BIG" > /dev/null
-out=$(printf '{"session_id":"s-sweep","hook_event_name":"PostToolUse","tool_name":"Read","tool_input":{},"tool_response":%s}' "$BIG" \
-  | ROLEPOD_NUDGE_OFF=1 TMPDIR="$SW_TMP" bash "$HOOKS/sweep-nudge.sh")
-check_sw "sweep: ROLEPOD_NUDGE_OFF=1 → silent" silent "$out"
-out=$(printf '{"hook_event_name":"PostToolUse","tool_name":"Read","tool_input":{},"tool_response":%s}' "$BIG" \
-  | TMPDIR="$SW_TMP" bash "$HOOKS/sweep-nudge.sh")
-check_sw "sweep: no session_id → silent (fail-open)" silent "$out"
-rm -rf "$SW_TMP"
+# ── sweep-nudge removed v2.164.0 (the always-on core states the scout rule) ──
+if section "sweep-nudge removed v2.164.0"; then
+[ ! -e "$HOOKS/sweep-nudge.sh" ] \
+  && echo "  ✓ hooks/sweep-nudge.sh no longer ships" \
+  || { echo "  ✗ hooks/sweep-nudge.sh still present"; fail=$((fail+1)); }
 
 fi
 # ── review in flight (v2.93.0): a live detached cross-family job freezes the diff ──
@@ -1800,117 +1654,11 @@ check "precommit: nested row with NO provenance field (bare forgery) → deny" d
 rm -rf "$NR_TMP"
 
 fi
-# ── cohesion-contract-check: prescribed names + Bash heredoc ─────────────
-if section "cohesion-contract-check: prescribed names + Bash heredoc"; then
-# Gate arms when the transcript already has ≥1 recent Agent spawn and the
-# next spawn is a writer role (backend-developer). Contract evidence is a
-# Write/Edit of a known name OR a Bash command that WRITES one (redirect /
-# cp / mv / install / tee) — a command that only mentions the name does not
-# count. No contract → one additionalContext nudge, never a deny (v2.163.0:
-# the hook warns, it does not block).
-CC_TMP=$(mktemp -d)
-CC_AGENT='{"type":"tool_use","name":"Agent","input":{"subagent_type":"rolepod:frontend-developer","prompt":"build ui"}}'
-cc() { # $1 = transcript path
-  printf '{"tool_name":"Agent","tool_input":{"subagent_type":"rolepod:backend-developer","prompt":"build api"},"transcript_path":%s}' \
-    "$(printf '%s' "$1" | python3 -c 'import json,sys; print(json.dumps(sys.stdin.read()))')" \
-    | bash "$HOOKS/cohesion-contract-check.sh" || true
-}
-cc_write_line() { # $1 = file_path → one JSONL tool_use line
-  printf '{"type":"tool_use","name":"Write","input":{"file_path":%s,"content":"# c"}}\n' \
-    "$(printf '%s' "$1" | python3 -c 'import json,sys; print(json.dumps(sys.stdin.read()))')"
-}
-cc_bash_line() { # $1 = command → one JSONL Bash tool_use line
-  printf '{"type":"tool_use","name":"Bash","input":{"command":%s}}\n' \
-    "$(printf '%s' "$1" | python3 -c 'import json,sys; print(json.dumps(sys.stdin.read()))')"
-}
-cc_check() { # $1 desc, $2 expected (nudge|silent), $3 hook output
-  local desc="$1" expected="$2" out="$3" got="silent" lines
-  lines=$(printf '%s' "$out" | grep -c . || true)
-  check "$desc → allow (never deny)" allow "$out"
-  if printf '%s' "$out" | python3 -I -c "
-import json, sys
-try:
-    d = json.load(sys.stdin)
-except Exception:
-    sys.exit(1)
-so = d.get('hookSpecificOutput', {})
-msg = so.get('additionalContext', '')
-ok = 'cohesion-contract gate' in msg and 'permissionDecision' not in so
-sys.exit(0 if ok else 1)
-" 2>/dev/null; then
-    got="nudge"
-  fi
-  if [ "$got" = "$expected" ] && [ "$lines" -le 1 ]; then
-    echo "  ✓ $desc → $expected (one line)"
-  else
-    echo "  ✗ $desc (expected $expected as ≤1 line, got $got across $lines line(s))"
-    fail=$((fail+1))
-  fi
-}
-
-printf '%s\n' "$CC_AGENT" > "$CC_TMP/t1.jsonl"
-cc_write_line 'docs/rolepod/plans/foo-cohesion-2026-09-17.md' >> "$CC_TMP/t1.jsonl"
-cc_check "cohesion: Write to <feature>-cohesion-<date>.md" silent "$(cc "$CC_TMP/t1.jsonl")"
-
-printf '%s\n' "$CC_AGENT" > "$CC_TMP/t2.jsonl"
-cc_bash_line "cat > docs/rolepod/plans/foo-cohesion-2026-09-17.md <<'EOF'
-# c
-EOF" >> "$CC_TMP/t2.jsonl"
-cc_check "cohesion: Bash heredoc to <feature>-cohesion-<date>.md" silent "$(cc "$CC_TMP/t2.jsonl")"
-
-printf '%s\n' "$CC_AGENT" > "$CC_TMP/t3.jsonl"
-cc_bash_line 'cat README.md | head' >> "$CC_TMP/t3.jsonl"
-cc_check "cohesion: Bash mentioning README.md only" nudge "$(cc "$CC_TMP/t3.jsonl")"
-
-printf '%s\n' "$CC_AGENT" > "$CC_TMP/t4.jsonl"
-cc_write_line 'contract.md' >> "$CC_TMP/t4.jsonl"
-cc_check "cohesion: Write to contract.md" silent "$(cc "$CC_TMP/t4.jsonl")"
-
-printf '%s\n' "$CC_AGENT" > "$CC_TMP/t5.jsonl"
-cc_check "cohesion: parallel Agent, no contract artifact" nudge "$(cc "$CC_TMP/t5.jsonl")"
-
-# TC6 — the ticket's own motivating incident: a BARE filename (no
-# directory prefix), which is the common shape once the Lead has already
-# cd'd into the target directory. Covers both a redirect and cp/mv/tee.
-printf '%s\n' "$CC_AGENT" > "$CC_TMP/t6.jsonl"
-cc_bash_line "cat > foo-contract.md <<'EOF'
-# c
-EOF" >> "$CC_TMP/t6.jsonl"
-cc_check "cohesion: Bash heredoc to a BARE contract.md (no dir prefix)" silent "$(cc "$CC_TMP/t6.jsonl")"
-
-printf '%s\n' "$CC_AGENT" > "$CC_TMP/t6b.jsonl"
-cc_bash_line 'cp draft.md contract.md' >> "$CC_TMP/t6b.jsonl"
-cc_check "cohesion: Bash 'cp draft.md contract.md' (bare, cp)" silent "$(cc "$CC_TMP/t6b.jsonl")"
-
-# TC7 — a command that only MENTIONS a contract name (read/inspect/delete)
-# must not satisfy the gate; only a write does.
-printf '%s\n' "$CC_AGENT" > "$CC_TMP/t7.jsonl"
-cc_bash_line 'cat contract.md' >> "$CC_TMP/t7.jsonl"
-cc_check "cohesion: Bash 'cat contract.md' (read, not write)" nudge "$(cc "$CC_TMP/t7.jsonl")"
-
-# TC8 — near-miss suffix: the trailing boundary must reject a match that is
-# only a PREFIX of the actual filename.
-printf '%s\n' "$CC_AGENT" > "$CC_TMP/t8.jsonl"
-cc_write_line 'spec.mdx' >> "$CC_TMP/t8.jsonl"
-cc_check "cohesion: Write to spec.mdx (near-miss suffix)" nudge "$(cc "$CC_TMP/t8.jsonl")"
-
-# TC9 — round-2 finding: cp/mv/install must not cross into a DIFFERENT
-# command via && to pick up an unrelated mention later in the line.
-printf '%s\n' "$CC_AGENT" > "$CC_TMP/t9.jsonl"
-cc_bash_line 'cp draft.md output.txt && cat contract.md' >> "$CC_TMP/t9.jsonl"
-cc_check "cohesion: 'cp a b && cat contract.md' (crosses &&)" nudge "$(cc "$CC_TMP/t9.jsonl")"
-
-# TC10 — round-2 finding: mv naming a contract as its SOURCE (moved away,
-# not written) must not satisfy the gate — only the LAST arg counts.
-printf '%s\n' "$CC_AGENT" > "$CC_TMP/t10.jsonl"
-cc_bash_line 'mv contract.md /tmp/elsewhere' >> "$CC_TMP/t10.jsonl"
-cc_check "cohesion: 'mv contract.md /tmp/elsewhere' (source, not written)" nudge "$(cc "$CC_TMP/t10.jsonl")"
-
-# TC11 — round-2 finding: a quoted bare target must still be recognized.
-printf '%s\n' "$CC_AGENT" > "$CC_TMP/t11.jsonl"
-cc_bash_line 'echo "# c" > "contract.md"' >> "$CC_TMP/t11.jsonl"
-cc_check "cohesion: echo redirect to a quoted bare \"contract.md\"" silent "$(cc "$CC_TMP/t11.jsonl")"
-rm -rf "$CC_TMP"
+# ── cohesion-contract-check removed v2.164.0 (write-plan carries the contract step) ──
+if section "cohesion-contract-check removed v2.164.0"; then
+[ ! -e "$HOOKS/cohesion-contract-check.sh" ] \
+  && echo "  ✓ hooks/cohesion-contract-check.sh no longer ships" \
+  || { echo "  ✗ hooks/cohesion-contract-check.sh still present"; fail=$((fail+1)); }
 fi
 
 # ─── session-lifecycle: the Codex Stop entry, run as written ───

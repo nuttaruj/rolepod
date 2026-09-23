@@ -58,8 +58,6 @@
 #   Agent strong role, no model, Lead known-low                → allow + updatedInput model=opus
 #   Agent strong role, explicit low model                      → nudge (named downgrade)
 #   (system-architect joined the strong-role floor in v2.73.0 — no nudge path)
-#   Agent sweep-type (Explore/general-purpose), no model        → nudge
-#     (rolepod:scout is frontmatter-pinned cheap → silent)
 #   anything else                                              → silent
 #
 # Fleet-tier gate (v2.48.0): the ONE deny in this hook, scoped to where money
@@ -693,12 +691,6 @@ if tool in ("Agent", "Task"):
         if loop_note:
             ctx(loop_note.rstrip() + OFF)
         sys.exit(0)
-    # rolepod:scout is pinned cheap by its frontmatter (verified on disk) — no nudge.
-    # Only the platform sweep agents (Explore / general-purpose) truly inherit.
-    if not model and re.search(r"(explore|general-purpose)", atype, re.I):
-        ctx(loop_note + "⚖ tier-check: sweep agent (%s) with no model — inherits the Lead: %s. Fix: "
-            "model:\x27haiku\x27 or rolepod:scout (pinned cheap); keep inherit only with a stated reason.%s"
-            % (atype, lead_txt, OFF))
     if loop_note:
         ctx(loop_note.rstrip() + OFF)
 ' 2>/dev/null || true

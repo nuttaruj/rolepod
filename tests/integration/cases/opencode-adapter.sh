@@ -101,9 +101,9 @@ DRIVEREOF
   check "oc-gate: the edits landed in the ledger (risk + test rows, cli opencode)" "grep -q '\"path\": \"auth/login.py\", \"kind\": \"risk\"' $OC_FIX/.rolepod/evidence/edits.jsonl && grep -q '\"kind\": \"test\"' $OC_FIX/.rolepod/evidence/edits.jsonl && grep -q '\"cli\": \"opencode\"' $OC_FIX/.rolepod/evidence/edits.jsonl"
   check "oc-gate: ROLEPOD_GATES_SOFT logs bypass, no deny" "[ \"\$(ROLEPOD_GATES_SOFT=1 ocg auth/login.py - 'git commit -m x')\" = ALLOW ] && grep -q opencode-precommit-gate '$OC_FIX/.rolepod/evidence/bypass.log'"
   # ── Behavioral: shared cores behind the translator (v2.133.0) ─────────
-  # sweep-nudge / fix-loop-breaker are the Claude scripts in hooks/, run via
-  # ROLEPOD_OC_SHARED; the nudge must land INSIDE output.output (the string the
-  # model reads) — once per turn — and never break a tool call.
+  # fix-loop-breaker is the Claude script in hooks/, run via ROLEPOD_OC_SHARED;
+  # the nudge must land INSIDE output.output (the string the model reads) —
+  # once per turn — and never break a tool call.
   DRIVER2="$OC_FIX/cores.mjs"
   cat > "$DRIVER2" <<DRIVEREOF
 import { RolepodPlugin } from 'file://$REPO_DIR/adapters/opencode/plugin/rolepod.js'
@@ -112,14 +112,6 @@ const plugin = await RolepodPlugin({ directory: process.cwd(), client: null })
 const after = (tool, args, output, metadata) => { const o = { title: tool, output, metadata: metadata || {} }; return plugin['tool.execute.after']({ tool, sessionID: sid, callID: 'c', args }, o).then(() => o.output) }
 const res = {}
 await plugin['chat.message']({ sessionID: sid }, { message: {}, parts: [{ type: 'text', text: 'go' }] })
-let o1 = await after('read', { filePath: '/tmp/a' }, 'x'.repeat(70000))
-let o2 = await after('read', { filePath: '/tmp/b' }, 'y'.repeat(70000))
-let o3 = await after('grep', { pattern: 'q' }, 'z'.repeat(1000))
-res.sweep1 = o1.includes('⟂ sweep'); res.sweep2 = o2.includes('⟂ sweep: ~136 KB'); res.sweep3 = o3.includes('⟂ sweep')
-await plugin['chat.message']({ sessionID: sid }, { message: {}, parts: [{ type: 'text', text: 'again' }] })
-await after('write', { filePath: '/tmp/c' }, 'ok')
-let o4 = await after('read', { filePath: '/tmp/a' }, 'x'.repeat(200000))
-res.sweepAfterEdit = o4.includes('⟂ sweep')
 let l1 = await after('bash', { command: 'npm test' }, 'FAIL', { exit: 1 })
 let l2 = await after('bash', { command: 'npm test' }, 'FAIL', { exit: 1 })
 let l3 = await after('bash', { command: 'npm test' }, 'FAIL', { exit: 1 })
@@ -148,10 +140,8 @@ await plugin2.event({ event: { type: 'session.idle', properties: { sessionID: 's
 res.routeOnce = (fs.readFileSync(log, 'utf8').match(/"phase":"route"/g) || []).length === 1
 console.log(JSON.stringify(res))
 DRIVEREOF
-  CORES=$(cd "$OC_FIX" && ROLEPOD_OC_SHARED="$REPO_DIR/build/rendered/opencode/plugin/rolepod-shared" node "$DRIVER2" 2>/dev/null); rm -f "${TMPDIR:-/tmp}"/rolepod-sweep-oc-cores-test-*.json "${TMPDIR:-/tmp}"/rolepod-loopbreak-oc-cores-test-*.json
+  CORES=$(cd "$OC_FIX" && ROLEPOD_OC_SHARED="$REPO_DIR/build/rendered/opencode/plugin/rolepod-shared" node "$DRIVER2" 2>/dev/null); rm -f "${TMPDIR:-/tmp}"/rolepod-loopbreak-oc-cores-test-*.json
   ocv() { printf '%s' "$CORES" | python3 -I -c "import json,sys; d=json.load(sys.stdin); sys.exit(0 if d.get('$1') is $2 else 1)"; }
-  check "oc-cores: first 70 KB read → no nudge; second (136 KB) → '⟂ sweep' appended to the tool result; third → silent" "ocv sweep1 False && ocv sweep2 True && ocv sweep3 False"
-  check "oc-cores: chat.message resets, an edit suppresses the sweep for the turn" "ocv sweepAfterEdit False"
   check "oc-cores: same bash command failing 3× (metadata.exit) → LOOP BREAKER on the third result only" "ocv loop2 False && ocv loop3 True"
   check "oc-cores: a passing run resets the loop counter; plain output untouched" "ocv loopReset False && ocv plainUntouched True"
   check "oc-cores: task → dispatch-proof phase-log line (cli opencode, agent_type qa-tester)" "ocv dispatchProof True"
@@ -268,19 +258,6 @@ res.bypassLogged = fs.existsSync(path.join(DIR, ".rolepod", "evidence", "bypass.
 wipeLedger()
 await after("edit", { path: "auth/login.py" }, { content: "ok" })
 await after("edit", { path: "tests/test_x.py" }, { content: "ok" })
-// (3) sweep
-const sidSweep = "sweep-sess"
-await prompt(sidSweep, "go")
-let r1 = await after("read", { path: "/tmp/a" }, { content: "x".repeat(70000) }, sidSweep)
-let r2 = await after("read", { path: "/tmp/b" }, { content: "y".repeat(70000) }, sidSweep)
-let r3 = await after("grep", { pattern: "q" }, { content: "z".repeat(1000) }, sidSweep)
-res.sweep1 = String(r1.content).includes("⟂ sweep")
-res.sweep2 = String(r2.content).includes("⟂ sweep: ~136 KB")
-res.sweep3 = String(r3.content).includes("⟂ sweep")
-await prompt(sidSweep, "again")
-await after("write", { path: "/tmp/c", content: "x" }, { content: "ok" }, sidSweep)
-let r4 = await after("read", { path: "/tmp/a" }, { content: "x".repeat(200000) }, sidSweep)
-res.sweepAfterEdit = String(r4.content).includes("⟂ sweep")
 // (4) loop breaker
 const sidLoop = "loop-sess"
 let l1 = await after("shell", { command: "npm test" }, { content: "FAIL", metadata: { exit: 1 } }, sidLoop)
@@ -379,8 +356,6 @@ DRIVEREOF
   check "oc-v2 gate: risk + test evidence → allow" "ocv2 gateWithTest '\"ALLOW\"'"
   check "oc-v2 gate: ROLEPOD_GATES_SOFT logs bypass, no deny" "ocv2 gateSoft '\"ALLOW\"' && ocv2 bypassLogged True"
   check "oc-v2: the edits landed in the ledger (risk + test rows, cli opencode)" "grep -q '\"path\": \"auth/login.py\", \"kind\": \"risk\"' $OC_FIX2/.rolepod/evidence/edits.jsonl && grep -q '\"kind\": \"test\"' $OC_FIX2/.rolepod/evidence/edits.jsonl && grep -q '\"cli\": \"opencode\"' $OC_FIX2/.rolepod/evidence/edits.jsonl"
-  check "oc-v2 sweep: first 70 KB read → no nudge; second (136 KB) → '⟂ sweep' text part; third → silent" "ocv2 sweep1 False && ocv2 sweep2 True && ocv2 sweep3 False"
-  check "oc-v2 sweep: a new prompt resets, an edit suppresses the sweep for the turn" "ocv2 sweepAfterEdit False"
   check "oc-v2 loop breaker: same shell command failing 3× (metadata.exit) → LOOP BREAKER on the third result only" "ocv2 loop2 False && ocv2 loop3 True"
   check "oc-v2 loop breaker: a passing run resets the counter; plain output untouched" "ocv2 loopReset False && ocv2 plainUntouched True"
   check "oc-v2: subagent tool → dispatch-proof phase-log line (cli opencode, agent_type qa-tester)" "ocv2 dispatchProof True"
@@ -419,9 +394,6 @@ await plugin.setup(ctx)
 const res = {}
 await after("edit", { path: "auth/login.py" }, { content: "ok" })
 try { await before("shell", { command: "git commit -m x" }); res.gateAllows = true } catch { res.gateAllows = false }
-let r1 = await after("read", { path: "/tmp/a" }, { content: "x".repeat(70000) })
-let r2 = await after("read", { path: "/tmp/b" }, { content: "y".repeat(70000) })
-res.sweepUntouched = !String(r1.content).includes("⟂") && !String(r2.content).includes("⟂")
 let l = await after("shell", { command: "npm test" }, { content: "FAIL", metadata: { exit: 1 } })
 res.loopUntouched = !String(l.content).includes("LOOP BREAKER")
 let plain = await after("shell", { command: "echo hi" }, { content: "hi", metadata: { exit: 0 } })
@@ -437,10 +409,10 @@ DRIVEREOF
   # v2 fail-open: the ledger lives behind ROLEPOD_OC_SHARED too, so a
   # broken SHARED path makes the count read as 0/0 — the gate falls open
   # (allow) on the same "unknown/unreachable evidence -> never block" rule
-  # the v1 fail-open case asserts; sweep/loop stay silent; the dispatch-proof
+  # the v1 fail-open case asserts; loop stays silent; the dispatch-proof
   # write is plain fs and never touches SHARED.
-  check "oc-v2: missing shared dir → ledger unreachable so the gate allows; sweep/loop untouched; dispatch-proof still recorded; plain output untouched" \
-    "ocv2fo gateAllows True && ocv2fo sweepUntouched True && ocv2fo loopUntouched True && ocv2fo plainUntouched True && ocv2fo dispatchProof True"
+  check "oc-v2: missing shared dir → ledger unreachable so the gate allows; loop untouched; dispatch-proof still recorded; plain output untouched" \
+    "ocv2fo gateAllows True && ocv2fo loopUntouched True && ocv2fo plainUntouched True && ocv2fo dispatchProof True"
   rm -rf "$OC_FIX2" "$FAKEHOME2" "$OC_FIX2B"
 else
   echo "  ~ node not on PATH — skipping opencode gate behavior checks"
@@ -455,7 +427,7 @@ if ROLEPOD_OPENCODE_TARGET="$TMP_OC" ./install.sh --target=opencode --force --ye
   check "installed skills/using-rolepod"  "[ -f $TMP_OC/skills/using-rolepod/SKILL.md ]"
   check "installed 15 agents"             "[ \"\$(ls $TMP_OC/agents/*.md | wc -l | tr -d ' ')\" = 15 ]"
   check "installed plugins/rolepod.js"    "[ -f $TMP_OC/plugins/rolepod.js ]"
-  check "installed plugins/rolepod-shared/ = the two hook cores, byte-identical" "cmp -s hooks/sweep-nudge.sh $TMP_OC/plugins/rolepod-shared/sweep-nudge.sh && cmp -s hooks/fix-loop-breaker.sh $TMP_OC/plugins/rolepod-shared/fix-loop-breaker.sh"
+  check "installed plugins/rolepod-shared/ = the hook core, byte-identical" "cmp -s hooks/fix-loop-breaker.sh $TMP_OC/plugins/rolepod-shared/fix-loop-breaker.sh"
   check "installed AGENTS.md managed block" "grep -q 'rolepod:start' $TMP_OC/AGENTS.md"
   check "installed version stamp"         "[ -f $TMP_OC/rolepod-version.json ]"
   if ROLEPOD_OPENCODE_TARGET="$TMP_OC" ./install.sh --target=opencode --uninstall --yes >/dev/null 2>&1; then

@@ -114,7 +114,7 @@ if ./install.sh --target=claude > "$TMP/claude.log" 2>&1; then
     echo "  ✗ plugin hooks/hooks.json missing"
     FAIL=$((FAIL+1))
   else
-    for hook in project-context-loader gate-reminder precommit-gate block-subagent-commit cohesion-contract-check session-lifecycle; do
+    for hook in project-context-loader gate-reminder precommit-gate block-subagent-commit session-lifecycle; do
       if ! grep -q "$hook" "$PLUGIN_DIR/hooks/hooks.json"; then
         echo "  ✗ hook not in hooks/hooks.json: $hook"
         FAIL=$((FAIL+1))

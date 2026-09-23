@@ -2,9 +2,10 @@
 # multi-agent-contract — structural check.
 # Asserts the parallel-agent + cohesion-contract path is wired:
 #   - Core 10 skill `write-plan` owns agent routing + the contract pattern
-#   - hook `cohesion-contract-check.sh` is registered for PreToolUse Agent
 #   - using-rolepod router has a row for multi-agent intent
 #   - legacy shims are gone, so Core 10 carries the trigger surface directly
+#   - the point-of-action hook (`cohesion-contract-check.sh`) was removed
+#     v2.164.0 — the contract step is doctrine-only now, carried by write-plan
 #
 # Static fixture: proves routing wiring (skill + hook + router refs).
 # Rolepod does not ship `claude -p` headless behavior tests — interactive
@@ -21,8 +22,7 @@ check() {
 check "write-plan skill exists" "[ -f core/skills/write-plan/SKILL.md ]"
 check "write-plan mentions cohesion contract" "grep -q 'cohesion contract' core/skills/write-plan/SKILL.md"
 check "write-plan owns agent routing" "grep -qiE 'Route to agents|agent routing|Route specialist work' core/skills/write-plan/SKILL.md"
-check "cohesion-contract-check hook exists" "[ -x hooks/cohesion-contract-check.sh ]"
-check "hook checks for contract artifact" "grep -q 'contract\.md\|SPEC\.md\|cohesion\.md' hooks/cohesion-contract-check.sh"
+check "cohesion-contract-check hook removed (doctrine-only since v2.164.0)" "[ ! -e hooks/cohesion-contract-check.sh ]"
 check "using-rolepod routes multi-agent → write-plan" "grep -qiE 'multi-agent.*write-plan|write-plan.*cohesion contract|parallel.*write-plan' core/skills/using-rolepod/SKILL.md"
 check "legacy team-routing skill absent" "[ ! -d core/skills/team-routing ]"
 check "legacy parallel-contract-orchestration skill absent" "[ ! -d core/skills/parallel-contract-orchestration ]"

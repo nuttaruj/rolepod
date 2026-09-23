@@ -434,49 +434,6 @@ print(json.dumps({'hookSpecificOutput': {'hookEventName': 'PreToolUse', 'permiss
 " 2>/dev/null || echo '{}'
   exit 0
 fi
-# Emoji in the product (v2.110.0): a pictograph on a shipped surface — UI
-# copy, templates, source strings, CLI output — is an icon nobody asked for.
-# ADVISORY, never a block: the line rides on whichever message this gate
-# ends with (auto-pass note, HARD reason, SOFT warn, or the R1 early exit).
-# Only ADDED lines of non-prose, non-test staged files count, and comment
-# lines are skipped: docs, commit messages and code comments may carry
-# emoji; the product may not. Detection = Unicode Emoji_Presentation: every
-# char in U+1F000–U+1FAFF, the BMP chars that default to colour emoji
-# (✅ ❌ ⚡ ⛔ ⭐ …), and any char forced to emoji by U+FE0F (⚠️ ✔️). Plain
-# text marks (✓ ✗ ⚠ → ·) never match. A product that wants emoji creates
-# <git-root>/.rolepod/allow-emoji — explicit, reviewable, user-set — and
-# the line goes silent.
-EMOJI_WARN=""
-if [ ! -f "$_pd_root/.rolepod/allow-emoji" ] && command -v python3 >/dev/null 2>&1; then
-  EMOJI_HIT=$(gitd diff $GIT_DIFF_BASE -U0 2>/dev/null | python3 -I -c '
-import re, sys
-rx = re.compile("[\U0001F000-\U0001FAFF\u231A\u231B\u23E9-\u23EC\u23F0\u23F3\u25FD\u25FE\u2614\u2615\u2648-\u2653\u267F\u2693\u26A1\u26AA\u26AB\u26BD\u26BE\u26C4\u26C5\u26CE\u26D4\u26EA\u26F2\u26F3\u26F5\u26FA\u26FD\u2705\u270A\u270B\u2728\u274C\u274E\u2753-\u2755\u2757\u2795-\u2797\u27B0\u27BF\u2B1B\u2B1C\u2B50\u2B55]|.\uFE0F")
-skip_path = re.compile(r"\.(md|mdx|mdc|txt|rst|adoc)(\.tmpl)?$|(^|/)(test|tests|spec|specs|__tests__|fixtures)(/|\.|_)|_test\.|\.test\.|_spec\.|\.spec\.")
-comment = re.compile(r"^\s*(#|//|/\*|\*|--|;|<!--)")
-path = None; n = 0; hits = []
-for raw in sys.stdin.buffer:
-    line = raw.decode("utf-8", "replace").rstrip("\n")
-    if line.startswith("+++ "):
-        path = line[4:].rstrip(" \t"); path = path[2:] if path.startswith("b/") else path
-        continue
-    if line.startswith("@@"):
-        m = re.search(r"\+(\d+)", line); n = int(m.group(1)) - 1 if m else 0
-        continue
-    if not line.startswith("+") or line.startswith("+++"):
-        continue
-    n += 1
-    body = line[1:]
-    if path is None or skip_path.search(path) or comment.match(body):
-        continue
-    m = rx.search(body)
-    if m:
-        hits.append("%s:%d %s" % (path, n, m.group(0).strip()))
-if hits:
-    more = " (+%d more)" % (len(hits) - 1) if len(hits) > 1 else ""
-    print(hits[0] + more)
-' 2>/dev/null || true)
-  [ -n "$EMOJI_HIT" ] && EMOJI_WARN="emoji in product code: $EMOJI_HIT — a pictograph on a shipped surface is an icon nobody asked for. Fix: text, an icon component, or an SVG (docs, code comments, commit messages are not checked). Exception: the user wants emoji in this product → create .rolepod/allow-emoji."
-fi
 LINES_CHANGED=$(echo "$DIFF_STAT" | awk '{a+=$1; b+=$2} END {print a+b}')
 LINES_CHANGED=${LINES_CHANGED:-0}
 
@@ -572,10 +529,10 @@ REVIEW_FILES=${REVIEW_FILES:-0}
 
 # Docs are written, not reviewed (v2.143.0): every staged path is prose
 # (.md/.mdx/.mdc/.txt/.rst/.adoc, their .tmpl templates, or an extension-less README/LICENSE/CHANGELOG)
-# → allow silently, whatever the size. The private-docs deny and the emoji
-# advisory (docs exempt) already ran. A prose file is never a risk path
-# either (filtered before risk_filter above) — so a `+pattern` in
-# .rolepod/risk-paths cannot re-flag a prose file; accepted limitation.
+# → allow silently, whatever the size. The private-docs deny already ran.
+# A prose file is never a risk path either (filtered before risk_filter
+# above) — so a `+pattern` in .rolepod/risk-paths cannot re-flag a prose
+# file; accepted limitation.
 PROSE_N=$(printf '%s\n' "$DIFF_STAT" | awk -F'\t' 'NF>=3 && $3 ~ /\.(md|mdx|mdc|txt|rst|adoc)(\.tmpl)?$|(^|\/)(README|LICENSE|CHANGELOG)$/' | wc -l | tr -d ' ')
 NONPROSE_N=$(printf '%s\n' "$DIFF_STAT" | awk -F'\t' 'NF>=3 && $3 !~ /\.(md|mdx|mdc|txt|rst|adoc)(\.tmpl)?$|(^|\/)(README|LICENSE|CHANGELOG)$/' | wc -l | tr -d ' ')
 if [ "${PROSE_N:-0}" -gt 0 ] && [ "${NONPROSE_N:-1}" -eq 0 ]; then
@@ -584,10 +541,6 @@ fi
 
 # Auto-skip path: trivial commit
 if [ "$FILES_CHANGED" -eq 1 ] && [ "$LINES_CHANGED" -le 5 ] && [ "$LOGIC_COUNT" -eq 0 ] && [ -z "$HIGH_RISK" ]; then
-  [ -n "$EMOJI_WARN" ] && ROLEPOD_HOOK_MSG="precommit-gate: $EMOJI_WARN" python3 -I -c "
-import json, os
-print(json.dumps({'hookSpecificOutput': {'hookEventName': 'PreToolUse', 'additionalContext': os.environ.get('ROLEPOD_HOOK_MSG', '')}}))
-" 2>/dev/null || true
   exit 0
 fi
 
@@ -916,7 +869,6 @@ sys.stdout.write(' '.join(os.environ.get('ROLEPOD_BYPASS_CMD', '').split())[:200
   [ -n "$HIGH_RISK" ] && NOTE+=" (HIGH-RISK path: $HIGH_RISK)"
   NOTE+=" ($SINCE_HUMAN). Evidence is per-window — confirm S1-S5 (simplicity) / T1-T6 (tests) / F1-F5 (finish) — finish-work §1, check-work §6 — cover THIS change."
   [ -n "$LINT_WARN" ] && NOTE+=" | $LINT_WARN"
-  [ -n "$EMOJI_WARN" ] && NOTE+=" | $EMOJI_WARN"
   ROLEPOD_HOOK_MSG="$NOTE" python3 -I -c "
 import json, os
 print(json.dumps({'hookSpecificOutput': {'hookEventName': 'PreToolUse', 'additionalContext': os.environ.get('ROLEPOD_HOOK_MSG', '')}}))
@@ -927,7 +879,6 @@ fi
 if [ "$HARD_BLOCK" -eq 1 ]; then
   # Env-passed — quotes in the reason must not break the JSON emitter.
   [ -n "$LINT_WARN" ] && REASON+=" | $LINT_WARN"
-  [ -n "$EMOJI_WARN" ] && REASON+=" | $EMOJI_WARN"
   ROLEPOD_HOOK_MSG="$REASON" python3 -I -c "
 import json, os
 print(json.dumps({
@@ -966,7 +917,6 @@ esac
 if [ "$REVIEW_LOGIC" -gt 0 ] && [ "$REVIEWERS" -eq 0 ] && [ "$IN_TICKET_WT" -eq 0 ] && { [ "${REVIEW_FILES:-0}" -gt 1 ] || [ "$REVIEW_LOGIC" -gt 5 ]; }; then WARN+="0 reviewers on a logic diff = the author reviewed it. Fix: dispatch rolepod:universal-reviewer (read-only, two axes) on the diff, then commit (review-code §1; R2 = one file + test). Exception: the task owner already had it reviewed, or the diff is config / generated copies / message text → commit. "; fi
 WARN+="Gates S1-S5 (simplicity) / T1-T6 (tests) / F1-F5 (finish) — finish-work §1, check-work §6 — are advisory here; ROLEPOD_GATES_HARD=1 enforces."
 [ -n "$LINT_WARN" ] && WARN+=" | $LINT_WARN"
-[ -n "$EMOJI_WARN" ] && WARN+=" | $EMOJI_WARN"
 
 ROLEPOD_HOOK_MSG="$WARN" python3 -I -c "
 import json, os

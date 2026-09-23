@@ -25,8 +25,8 @@ bad()  { echo "  ✗ $1"; fail=$((fail + 1)); }
 SRC=adapters/claude/hooks.json
 RENDERED=plugins/rolepod/hooks/hooks.json
 
-# 1. Shape: every command carries the guard, one script each, 22 registrations
-#    over 16 distinct scripts (the lean-surface pins).
+# 1. Shape: every command carries the guard, one script each, 16 registrations
+#    over 14 distinct scripts (the lean-surface pins).
 if python3 -I - "$SRC" <<'PY'
 import json, re, sys
 d = json.load(open(sys.argv[1]))
@@ -43,9 +43,9 @@ walk(d)
 bad = [c for c in cmds if not rx.match(c)]
 assert not bad, "unguarded command(s): " + "; ".join(bad)
 scripts = {rx.match(c).group(1) for c in cmds}
-assert len(cmds) == 22 and len(scripts) == 16, (len(cmds), len(scripts))
+assert len(cmds) == 16 and len(scripts) == 14, (len(cmds), len(scripts))
 PY
-then pass "every Claude hook command carries the CURSOR_PROJECT_DIR guard (22 registrations / 16 scripts)"
+then pass "every Claude hook command carries the CURSOR_PROJECT_DIR guard (16 registrations / 14 scripts)"
 else bad "a Claude hook command lacks the guard or the counts moved"; fi
 
 # 2. Rendered plugin copy is byte-identical to the adapter source.

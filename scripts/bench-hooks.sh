@@ -69,17 +69,12 @@ cases = [
   ("PreToolUse Bash",   "push-ref-check.sh",         P(hook_event_name="PreToolUse", tool_name="Bash", tool_input={"command": "ls -la"})),
   ("PreToolUse Bash",   "block-subagent-commit.sh",  P(hook_event_name="PreToolUse", tool_name="Bash", tool_input={"command": "ls -la"})),
   ("PostToolUse Bash",  "fix-loop-breaker.sh",       P(hook_event_name="PostToolUse", tool_name="Bash", tool_input={"command": "ls -la"}, tool_response={"stdout": "ok"})),
-  ("PostToolUse Bash",  "sweep-nudge.sh",            P(hook_event_name="PostToolUse", tool_name="Bash", tool_input={"command": "ls -la"}, tool_response={"stdout": "ok"})),
   ("PreToolUse Edit",   "worktree-guard.sh",         P(hook_event_name="PreToolUse", tool_name="Edit", tool_input=edit)),
   ("PreToolUse Edit",   "gate-reminder.sh",          P(hook_event_name="PreToolUse", tool_name="Edit", tool_input=edit)),
   ("PreToolUse Edit",   "subagent-write-scope.sh",   P(hook_event_name="PreToolUse", tool_name="Edit", tool_input=edit)),
-  ("PreToolUse Edit",   "sweep-nudge.sh",            P(hook_event_name="PreToolUse", tool_name="Edit", tool_input=edit)),
-  ("PreToolUse Agent",  "cohesion-contract-check.sh", P(hook_event_name="PreToolUse", tool_name="Agent", tool_input=agent)),
   ("PreToolUse Agent",  "workflow-tier-nudge.sh",    P(hook_event_name="PreToolUse", tool_name="Agent", tool_input=agent)),
   ("PostToolUse Agent", "dispatch-auto-log.sh",      P(hook_event_name="PostToolUse", tool_name="Agent", tool_input=agent, tool_response="done")),
-  ("PostToolUse Agent", "sweep-nudge.sh",            P(hook_event_name="PostToolUse", tool_name="Agent", tool_input=agent, tool_response="done")),
   ("UserPromptSubmit",  "claim-verify-nudge.sh",     P(hook_event_name="UserPromptSubmit", prompt="fix the login bug")),
-  ("UserPromptSubmit",  "sweep-nudge.sh",            P(hook_event_name="UserPromptSubmit", prompt="fix the login bug")),
 ]
 env = {**os.environ, "HOME": home, "TMPDIR": tmp, "ROLEPOD_NUDGE_OFF": ""}
 env.pop("ROLEPOD_NUDGE_OFF", None)

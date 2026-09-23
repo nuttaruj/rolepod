@@ -63,8 +63,6 @@ request for role delegation; doctrine bounds scope, not permission.
 - End of turn: 1-2 sentences — what changed, what is next.
 - Surface tradeoffs early on security, data loss, migrations, public APIs,
   anything irreversible.
-- No emoji in the product (UI, templates, strings, CLI output); docs and
-  commits may.
 
 ## Risky actions — match the action to what was asked
 

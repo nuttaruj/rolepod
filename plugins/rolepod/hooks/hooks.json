@@ -7,11 +7,6 @@
             "type": "command",
             "command": "[ -z \"$CURSOR_PROJECT_DIR\" ] && exec bash \"${CLAUDE_PLUGIN_ROOT}/hooks/claim-verify-nudge.sh\"; cat >/dev/null",
             "timeout": 3
-          },
-          {
-            "type": "command",
-            "command": "[ -z \"$CURSOR_PROJECT_DIR\" ] && exec bash \"${CLAUDE_PLUGIN_ROOT}/hooks/sweep-nudge.sh\"; cat >/dev/null",
-            "timeout": 3
           }
         ]
       }
@@ -61,11 +56,6 @@
             "type": "command",
             "command": "[ -z \"$CURSOR_PROJECT_DIR\" ] && exec bash \"${CLAUDE_PLUGIN_ROOT}/hooks/subagent-write-scope.sh\"; cat >/dev/null",
             "timeout": 3
-          },
-          {
-            "type": "command",
-            "command": "[ -z \"$CURSOR_PROJECT_DIR\" ] && exec bash \"${CLAUDE_PLUGIN_ROOT}/hooks/sweep-nudge.sh\"; cat >/dev/null",
-            "timeout": 3
           }
         ]
       },
@@ -75,11 +65,6 @@
           {
             "type": "command",
             "command": "[ -z \"$CURSOR_PROJECT_DIR\" ] && exec bash \"${CLAUDE_PLUGIN_ROOT}/hooks/subagent-write-scope.sh\"; cat >/dev/null",
-            "timeout": 3
-          },
-          {
-            "type": "command",
-            "command": "[ -z \"$CURSOR_PROJECT_DIR\" ] && exec bash \"${CLAUDE_PLUGIN_ROOT}/hooks/sweep-nudge.sh\"; cat >/dev/null",
             "timeout": 3
           }
         ]
@@ -105,16 +90,6 @@
         ]
       },
       {
-        "matcher": "Agent",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "[ -z \"$CURSOR_PROJECT_DIR\" ] && exec bash \"${CLAUDE_PLUGIN_ROOT}/hooks/cohesion-contract-check.sh\"; cat >/dev/null",
-            "timeout": 5
-          }
-        ]
-      },
-      {
         "matcher": "Workflow|Agent",
         "hooks": [
           {
@@ -133,11 +108,6 @@
             "type": "command",
             "command": "[ -z \"$CURSOR_PROJECT_DIR\" ] && exec bash \"${CLAUDE_PLUGIN_ROOT}/hooks/dispatch-auto-log.sh\"; cat >/dev/null",
             "timeout": 3
-          },
-          {
-            "type": "command",
-            "command": "[ -z \"$CURSOR_PROJECT_DIR\" ] && exec bash \"${CLAUDE_PLUGIN_ROOT}/hooks/sweep-nudge.sh\"; cat >/dev/null",
-            "timeout": 3
           }
         ]
       },
@@ -148,16 +118,6 @@
             "type": "command",
             "command": "[ -z \"$CURSOR_PROJECT_DIR\" ] && exec bash \"${CLAUDE_PLUGIN_ROOT}/hooks/fix-loop-breaker.sh\"; cat >/dev/null",
             "timeout": 5
-          }
-        ]
-      },
-      {
-        "matcher": "Read|Grep|Glob|Bash|WebFetch|WebSearch",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "[ -z \"$CURSOR_PROJECT_DIR\" ] && exec bash \"${CLAUDE_PLUGIN_ROOT}/hooks/sweep-nudge.sh\"; cat >/dev/null",
-            "timeout": 3
           }
         ]
       }

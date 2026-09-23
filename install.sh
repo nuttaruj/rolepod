@@ -1776,7 +1776,7 @@ if opencode_selected; then
     oc_agents=$(ls "$OC_TARGET/agents/"*.md 2>/dev/null | wc -l | tr -d ' ')
     [ "$oc_agents" -ge 15 ] || fail "opencode verification failed — expected ≥15 agents, found $oc_agents"
     [ -f "$OC_TARGET/plugins/rolepod.js" ] || fail "opencode verification failed — plugins/rolepod.js missing"
-    [ -f "$OC_TARGET/plugins/rolepod-shared/sweep-nudge.sh" ] || fail "opencode verification failed — plugins/rolepod-shared/ missing"
+    [ -f "$OC_TARGET/plugins/rolepod-shared/fix-loop-breaker.sh" ] || fail "opencode verification failed — plugins/rolepod-shared/ missing"
     [ -e "$OC_AGENTS_MD" ] || fail "opencode verification failed — $OC_AGENTS_MD missing"
     ok "rolepod → opencode (skills + agents + plugin + AGENTS.md block)"
   else
