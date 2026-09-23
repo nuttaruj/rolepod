@@ -60,7 +60,7 @@ External-CLI breadth review = Lead's job, not yours. You stay read-only.
 
 1. Logic review — races readable in code, error handling completeness, invariant violations
 2. DRY — find duplication, suggest centralization
-3. Smells — long functions, deep nesting, magic numbers, dead code, primitive obsession
+3. Smells — long functions, deep nesting, magic numbers, dead code, and the Fowler baseline: Mysterious Name · Duplicated Code · Feature Envy · Data Clumps · Primitive Obsession · Repeated Switches · Shotgun Surgery · Divergent Change · Speculative Generality · Message Chains · Middle Man · Refused Bequest. Each is a judgement call (SUGGESTION); a documented repo rule overrides it, and a Hard stop below that sets a severity wins.
 4. Style consistency with codebase
 5. Architecture violations — feature → shared (good), shared → feature (bad), circular deps
 6. Maintainability — comment quality, naming, modularity

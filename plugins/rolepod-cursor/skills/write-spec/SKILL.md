@@ -50,7 +50,7 @@ Use the native question UI when the CLI has one; otherwise numbered questions wi
 
 **Recommend a default per question** — the simplest viable answer, stated alongside it. Faster than open-ended and forces a position you can defend.
 
-A question the codebase can answer → explore instead. While a round is out, that wait is free wall-clock: dispatch a scout on the researchable unknowns in parallel — a running scout is itself an unsettled prerequisite, so only its downstream questions wait.
+A question the codebase can answer → explore instead. While a round is out, that wait is free wall-clock: dispatch a scout on the researchable unknowns in parallel — a running scout is itself an unsettled prerequisite, so only its downstream questions wait. A user answer that names a file, symbol, library or existing pattern is a claim: the round's scout checks it when one is out, else grep it yourself, before it is recorded; a mismatch opens the next round with the code quoted.
 
 **Domain term with more than one live reading** — resolve it in the round, never assume: challenge it against the repo's `CONTEXT.md` when one exists, quote the code back when it disagrees with what the user just said (which is right?), and propose ONE canonical word.
 Settled and used beyond this feature → write it into `CONTEXT.md` at the repo root at that moment (create the file then, never at the end): `**Term**:` + one or two sentences of what it IS + `_Avoid_: <the synonyms not to use>` — project concepts only, no implementation detail; a glossary and nothing else. A feature-only term gets one line in the spec. Entry shape, sharpening moves, multi-context map: `references/question-bank.md` §Domain term.
