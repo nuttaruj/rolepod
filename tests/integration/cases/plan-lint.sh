@@ -1312,6 +1312,14 @@ if [ "$(printf '%s\n' "$R3_REV" | sed -n '2p' | grep -c '^Round 2 = ONE new fore
 else
   echo "  ✗ --brief round-2 shape misplaced — Reviewers: $R3_REV | Bounds: $R3_BND"; fail=$((fail+1))
 fi
+# Owner loop runs each test level once (2026-09-23, lean-loop T1): the
+# generated Bounds send the owner to the Check, never the Command.
+if printf '%s\n' "$R3_BND" | grep -qF 'Run the Check after each edit' \
+  && ! printf '%s\n' "$R3_BND" | grep -q 'Run the Command'; then
+  echo "  ✓ --brief Bounds send the owner to the Check, never the Command"
+else
+  echo "  ✗ --brief Bounds still point the owner at the Command — Bounds: $R3_BND"; fail=$((fail+1))
+fi
 if [ "$(printf '%s\n' "$OUT3" | awk '/^## Reviewers/{on=1; next} /^## /{on=0} on' | grep -c .)" -eq 1 ]; then
   echo "  ✓ plan-lint.sh --brief prose-only task: Reviewers is the single line none (no round shape)"
 else

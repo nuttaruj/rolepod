@@ -69,7 +69,7 @@ Touch only what the task requires — no "while I'm here" refactors, no reformat
 
 ### 4. Bounded delegation
 
-Decide *whether* first. The plan's **Owner:** line wins — `Owner: Lead` → self-do (R1/R2 only); a named role → dispatch the task brief to that role as the **task owner** — it builds, runs the Command, dispatches its own §6 reviewers, fixes, and returns a **decision brief** (agent-protocol **Ticket loop**). A task with no Owner runs Q1-Q4:
+Decide *whether* first. The plan's **Owner:** line wins — `Owner: Lead` → self-do (R1/R2 only); a named role → dispatch the task brief to that role as the **task owner** — it builds on the Check, dispatches its own §6 reviewers, fixes, and returns a **decision brief** (agent-protocol **Ticket loop**). A task with no Owner runs Q1-Q4:
 
 ```
 Q1: More than 1 file to edit?        Q2: Run tests / build / server?
@@ -92,13 +92,13 @@ Every unblocked task goes out in ONE message, each task owner in its OWN worktre
 
 ### 6. Per-task review pipeline — the task owner's decision brief replaces Lead review
 
-A task owner's **decision brief** replaces the Lead-run review — the Lead reads the brief, spot-checks ONE finding in its report file (a clean report → one traced claim), runs the task's Command only when it changed the tree after the owner's run (rebase onto moved main, a NEEDS edit, render), then commits.
+A task owner's **decision brief** replaces the Lead-run review — the Lead reads the brief, spot-checks ONE finding in its report file (a clean report → one traced claim), runs the task's Command once (the owner ran only the Check), then commits.
 
 The Lead opens the source only for the spot-check or a named residual; a reviewer reads the source its claims need. The task owner's reviewer — `universal-reviewer` (spec + standards; or concern-matched row) — plus `security-engineer` on high-risk paths and `qa-tester` (E2E / UI) when the user sees a change, in ONE message; the owner's unit tests are the test floor. A usable pool at the diff's tier (R4; lower by the pool file's `tier =`): external replaces `universal-reviewer`. Lead-built (R1/R2) → Lead runs §6.
 
 **Lead hop — one, not three.** Spot-check ONE traced claim, never axis walk. No report → Lead runs `review-code` §2, recorded as a LIMITATION.
 
-**One task per pass, then ship it.** Each task owner's Command → decision brief → Lead spot-check + commit → next unblocked task. Never batch tasks into one diff; the rhythm is a fresh context per task. A **whole-implementation review** runs only over a ship group (tasks sharing a seam, named in the plan) for cross-task drift: `security-engineer` when the group holds an R4 task, else `universal-reviewer`; never a re-review of a task's own diff; no group named → none. Build the next unblocked task in its OWN worktree while under review.
+**One task per pass, then ship it.** Each task owner's decision brief → Lead spot-check + Command + commit → next unblocked task. Never batch tasks into one diff; the rhythm is a fresh context per task. A **whole-implementation review** runs only over a ship group (tasks sharing a seam, named in the plan) for cross-task drift: `security-engineer` when the group holds an R4 task, else `universal-reviewer`; never a re-review of a task's own diff; no group named → none. Build the next unblocked task in its OWN worktree while under review.
 
 ## If a matching child plugin skill is available
 

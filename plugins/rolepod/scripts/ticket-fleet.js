@@ -24,8 +24,8 @@
 //            reviewer (never a second full review round — the two-round
 //            budget, as control flow instead of owner judgment).
 // No scripted verifier stage: the owner loops on the brief's ## Check as it
-// builds and runs ## Command once itself before returning; the verifier is
-// `rolepod-ticket integrate`, which re-runs the Command and the Proof
+// builds and never runs ## Command before returning; the verifier is
+// `rolepod-ticket integrate`, which runs the Command and the Proof once
 // before the commit command is printed.
 //
 // Tier (probe-verified recipe, docs/rolepod/handoffs/ticket-fleet-probe-

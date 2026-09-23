@@ -1260,7 +1260,7 @@ EOF
   TOS=""; for c in $USABLE; do TOS="$TOS${TOS:+ }$c=$( JOB_DIR="$JD" timeout_for "$c" )s"; done
   FROZEN_MSG="the tree under review is FROZEN until collected (work outside the diff; no stash / reset / checkout)"
   [ "$KIND" = "implement" ] && FROZEN_MSG="the member is EDITING this tree until collected — every edit outside its Files allowed made meanwhile (yours included) is reverted with a copy kept under the job's .reverted/, so work in another worktree or wait (no stash / reset / checkout)"
-  echo "ROLEPOD-XFAM job=$JOB_ID kind=$KIND members=$USABLE budgets=$TOS — ${FROZEN_MSG}; collect with: rolepod-cross-family --collect $JOB_ID --root $ROOT   (list: --jobs --root $ROOT). The chain falls through on its own and anchors the receipt; the commit gate sees the job."
+  echo "ROLEPOD-XFAM job=$JOB_ID kind=$KIND members=$USABLE budgets=$TOS — ${FROZEN_MSG}; collect with: rolepod-cross-family --collect $JOB_ID --root $ROOT (a sub-agent adds --timeout 540 and reruns on exit 6)   (list: --jobs --root $ROOT). The chain falls through on its own and anchors the receipt; the commit gate sees the job."
   exit 0
 fi
 TMPP=$(mktemp -d "${TMPDIR:-/tmp}/rolepod-xfam.XXXXXX")

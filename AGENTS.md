@@ -3,8 +3,10 @@
 # Gate cadence
 
 - Editing: only the check that covers the file — `make test-lean-surface` (caps, invariants), `bash tests/static/<x>.sh`, `bash -n hooks/<x>.sh` + its case in `tests/integration/cases/`.
+- Task Command: only the case files the task touches (`ROLEPOD_CASE=` for a section of a slow file); never `make test-lean-surface` / `test-static` — the commit gate runs them.
 - Commit: `make render && git add -A && make test-static` once; read the exit code, never `| grep`.
 - Release: `make test-all` once, then `docs/release-checklist.md`.
+- After the release: the closing line proposes /compact (or a fresh session) before the next request.
 - One release per completed request that changed `core/ hooks/ scripts/ adapters/ plugins/`; docs-only = commit + push. Earlier only when the next ticket needs the hook or script just shipped.
 - External member: `--detach`, next task, one `--collect` (it waits).
 - After a dispatch: next unblocked task, never idle on a reviewer.

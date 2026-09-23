@@ -21,7 +21,7 @@ Convert an approved spec or a clear small goal into a plan another engineer (or 
 - A one-line fix on a single file · a question / explanation only.
 - The router tiered the task **R2** (1 file + its own test, clear scope, ≈≤30 logic lines) → the plan is a 3-5 line inline checklist in chat, each step with its verify command; no artifact.
   - Scope grows past one file mid-flight (the task's own test file does not count) → stop, write the real plan here.
-  - **Spec-as-plan R3 lane:** ≤3 tasks the approved spec already lists 1:1 (files, order, verify command, dependencies), single-agent, no high-risk surface → the same inline checklist; a parallel layout, a risk path, a 4th task, or a compaction mid-plan → write the artifact.
+  - **Spec-as-plan R3 lane:** ≤3 tasks the approved spec — or a change list the user approved target by target — already lists 1:1 (files, order, verify command, dependencies), single-agent, no high-risk surface → the same inline checklist; a parallel layout, a risk path, a 4th task, or a compaction mid-plan → write the artifact.
 
 ## Boundary
 
@@ -50,7 +50,7 @@ Many thin slices beat a few thick ones. A slice carrying a major unknown (new in
 A task that guards, gates or restores (a security surface) gets a **threat-model** task first: the written attack list its reviewers verify against (symlinks, case-folded names, forged evidence, moved refs, ignore rules, the kill path…) — reviewers never discover it round by round.
 
 Size every task to ONE fresh context window — the subagent (or teammate) that builds it starts with no memory beyond the ticket.
-A task is one vertical slice — narrow but complete through every layer it touches, demoable or verifiable on its own; no file or line count sizes it. Split when Delivers needs "and", or when a slice cannot be verified without the next task.
+A task is one vertical slice — narrow but complete through every layer it touches, demoable or verifiable on its own; no file or line count sizes it. Split when Delivers needs "and" and the halves touch different files, or when a slice cannot be verified without the next task; halves on the same files stay ONE task — that split only adds a dispatch, a review and an integration in sequence.
 Every task states **Delivers** (one user-visible sentence) and **Blocked by** (the tasks that gate it, or none) — the Blocked-by graph is the plan's only statement of order. A task is a ticket: it ships alone (own build → review → commit) and never assumes a batch; only tasks that share a seam (a contract or interface) form one ship group, named in the plan.
 
 Each **Blocked-by** edge names what it consumes (e.g., `Blocked by: Task 2 (its snapshot)`) — an edge naming nothing is a convenience edge: drop it. Two edge-free tasks on one file → **prefactor first** (an extract task giving them disjoint files: "make the change easy, then make the easy change"), or declare Sequential and say why.

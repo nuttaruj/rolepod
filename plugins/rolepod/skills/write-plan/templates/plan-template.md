@@ -37,11 +37,11 @@
       inline in the bullet.>
 - [ ] **Test / evidence:** <test type + the assertion that proves it — or, when no
       test can express the behaviour yet, 1-3 acceptance criteria the reviewer walks>
-- **Proof:** <the one claim a reviewer of this task would check by hand> :: `<the command that proves it>` (optional — it becomes the Lead's spot-check)
+- **Proof:** <the one claim a reviewer of this task would check by hand> :: `<the command that proves it — exits 0 when the claim holds; an absence check is ! grep>` (optional — it becomes the Lead's spot-check)
 - [ ] **Expected failing signal:** <for test-first tasks — the error the test
       shows before the fix. Omit if not test-first.>
-- [ ] **Command:** <the task suite, runnable copy-paste as-is; runs ONCE at integration,
-      never by the owner — the whole-repo suite runs once per release>
+- [ ] **Command:** <the tests covering this task's files, runnable copy-paste as-is — never a suite the
+      commit gate or the release already runs; runs ONCE at integration, never by the owner>
 - **Check:** `<the narrowest command covering the edits of this task — one case file, one test name; the owner runs it after every edit>`
 - **Owner:** <The role the domain map assigns to this task's Files — path first,
       then concern. `Lead` for R1/R2-sized work (≤2 files) or when the user said

@@ -24,7 +24,7 @@ Fires on a COMMISSION, never on musing: the user exploring an idea ("what if we�
 
 ## Skip when
 
-- A one-line fix with an obvious diff · the user supplied a written spec · the user said "skip spec" / "just write the code".
+- A one-line fix with an obvious diff · the user supplied a written spec or approved an exact change list (each target named — that list is the spec) · the user said "skip spec" / "just write the code".
 
 ## Boundary
 

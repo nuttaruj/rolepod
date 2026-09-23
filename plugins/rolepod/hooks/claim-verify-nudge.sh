@@ -68,7 +68,7 @@ if [ -n "$SID" ] && [ "$CTX" -ge "$CTX_LINE" ] 2>/dev/null; then   # no session 
   if [ "$LAST" != "fired" ]; then   # a pre-v2.119.1 bucket number reads as "armed" — one note, then "fired"
     printf 'fired' > "$STATE_DIR/$SID" 2>/dev/null || true
     CTX_K=$((CTX / 1000))
-    CTX_MSG="context-check: last turn carried ${CTX_K}k tokens of context — every turn re-reads all of it. Fix: sweeps / many-file reads → dispatch rolepod:scout and read its report; in THIS turn's closing line tell the user once that /compact or a fresh session cuts per-turn cost (manage-context) — then never mention context again until a new context-check line arrives. "
+    CTX_MSG="context-check: last turn carried ${CTX_K}k tokens of context — every turn re-reads all of it. Fix: sweeps / many-file reads → dispatch rolepod:scout and read its report; in THIS turn's closing line tell the user once that /compact or a fresh session before the next request cuts per-turn cost (manage-context) — then never mention context again until a new context-check line arrives. "
   fi
 elif [ "$CTX" -gt 0 ] 2>/dev/null && [ -n "$SID" ]; then
   # Below the line with a real reading → re-arm, so the next crossing (after
