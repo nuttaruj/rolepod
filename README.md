@@ -126,7 +126,7 @@ Restart Cursor (or reload the window) so the plugin registers. Verify under **Cu
 
 The always-on judgment core ships as an `alwaysApply: true` rule (`rules/always-on-core.mdc`) — loaded automatically on every Cursor session. Disabling **Settings → Features → Rules** suppresses it.
 
-**Or install from the marketplace** with Cursor's `agent` CLI. Cursor pins a user marketplace to the commit it indexed at `add` time; `agent plugin marketplace update` re-indexes but keeps that commit, so moving to a newer release is remove + add (the remove also drops the installed plugin — install it again):
+**Or install from the marketplace** with Cursor's `agent` CLI. Cursor pins a user marketplace to the commit it indexed at `add` time; `agent plugin marketplace update` re-indexes but keeps that commit, so moving to a newer release is remove + add. That moves only the pin — the installed plugin stays on the commit it was installed from until you update or reinstall it from /plugins or Settings → Plugins:
 
 ```bash
 # Install — then install "rolepod" from /plugins (agent CLI) or Settings → Plugins
