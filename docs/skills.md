@@ -1,6 +1,6 @@
-# Rolepod Skill Catalog (Core 10 + 2 commands)
+# Rolepod Skill Catalog (Core 10 + 2 commands + 1 on-demand)
 
-Rolepod ships **12 skills total**: Core 10 (1 router + 9 workflow phase skills) plus two explicit-invoke commands — `rolepod-full` (force-full lifecycle) and `deepen-codebase` (architecture report → pick a card → write-spec). There are no legacy compatibility shim skill files in the install tree. Old skill names are preserved only as documentation in [legacy-skill-map.md](legacy-skill-map.md).
+Rolepod ships **13 skills total**: Core 10 (1 router + 9 workflow phase skills) plus two explicit-invoke commands — `rolepod-full` (force-full lifecycle) and `deepen-codebase` (architecture report → pick a card → write-spec) — and one on-demand skill, `write-prototype` (a throwaway layout or logic demo that answers one spec question; write-spec offers it). There are no legacy compatibility shim skill files in the install tree. Old skill names are preserved only as documentation in [legacy-skill-map.md](legacy-skill-map.md).
 
 Entry docs (`CLAUDE.md` / `AGENTS.md` / `GEMINI.md`) embed this same lean surface so the Lead does not spend context choosing among dozens of tiny workflow fragments. Deep domain expertise lives in the 15 specialist agents.
 
@@ -12,6 +12,7 @@ Entry docs (`CLAUDE.md` / `AGENTS.md` / `GEMINI.md`) embed this same lean surfac
 | **1** | Core workflow skills | 9 | yes | Phase match |
 | — | Command alias (`rolepod-full`) | 1 | yes (own section) | Explicit `/rolepod-full` invocation only (`disable-model-invocation: true`) |
 | — | Command (`deepen-codebase`) | 1 | yes (own section) | Explicit `/deepen-codebase` invocation only (`disable-model-invocation: true`): scope → one scout walks the codebase → HTML report of deepening candidates (six fields per card, Strength badge, Top recommendation) → the user picks a card and is offered a `write-spec` on it |
+| — | On demand (`write-prototype`) | 1 | yes (own section) | write-spec offers it for a layout / state-logic question, or the user types /write-prototype; needs a settled spec (Product mode + one question); builds layout variants or a clickable logic demo in a spike worktree, never merged |
 | **2** | Specialist public skills | 0 default | no | Domain depth lives in agents |
 | **3** | Legacy compatibility shims | 0 | no | Removed; see migration map |
 
@@ -66,7 +67,7 @@ Skills can run inline (default — body becomes part of Lead's conversation) or 
 2. Add the skill to the appropriate `emit_lean_section` call in `generate_skill_index_lean()` (`build/render.sh:70`) if it belongs in the public surface.
 3. `make render` — regenerates `core/fragments/skill-index-lean.md`.
 4. Add the row to the `## Core 10 skills` table above — it is the full catalog the lean index points at, and it does not regenerate.
-5. `make test-static` — render-clean + lean-surface confirm the Core 10 + 2 commands caps and portability.
+5. `make test-static` — render-clean + lean-surface confirm the Core 10 + 2 commands + 1 on-demand caps and portability.
 
 ## Skill design principles
 

@@ -26,7 +26,7 @@ P="build/rendered/opencode"
 
 # Rendered structure.
 check "opencode.json valid JSON"        "python3 -m json.tool $P/opencode.json >/dev/null"
-check "exactly 12 skills (Core 10 + 2 commands)" "[ \"\$(ls $P/skills | wc -l | tr -d ' ')\" = 12 ]"
+check "exactly 13 skills (Core 10 + 2 commands + 1 on-demand)" "[ \"\$(ls $P/skills | wc -l | tr -d ' ')\" = 13 ]"
 check "15 agents present"               "[ \"\$(ls $P/agents/*.md | wc -l | tr -d ' ')\" = 15 ]"
 check "plugin shim rendered"            "[ -f $P/plugin/rolepod.js ]"
 

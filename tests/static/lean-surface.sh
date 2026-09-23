@@ -43,11 +43,11 @@ check "lean skill-index Tier 1 = 9 (actual: $LEAN_TIER1)"    "[ $LEAN_TIER1 -eq 
 LEAN_SURFACE=$((LEAN_TIER0 + LEAN_TIER1))
 check "default Lead surface ≤ 10 (actual: $LEAN_SURFACE)"    "[ $LEAN_SURFACE -le 10 ]"
 
-# ── Core 10 workflow + 2 commands — no executable legacy shims ────────
+# ── Core 10 workflow + 2 commands + 1 on-demand — no executable legacy shims ──
 FS_SKILLS=$(find core/skills -maxdepth 1 -mindepth 1 -type d | wc -l | tr -d ' ')
 TIER3_SKILLS=$( { grep -Rsl "^tier: 3" core/skills/*/SKILL.md 2>/dev/null || true; } | wc -l | tr -d ' ')
 REDIRECT_FIELDS=$( { grep -Rsl "^redirect_to:" core/skills/*/SKILL.md 2>/dev/null || true; } | wc -l | tr -d ' ')
-check "filesystem skill dirs = Core 10 + 2 commands = 12 (actual: $FS_SKILLS)" "[ $FS_SKILLS -eq 12 ]"
+check "filesystem skill dirs = Core 10 + 2 commands + 1 on-demand = 13 (actual: $FS_SKILLS)" "[ $FS_SKILLS -eq 13 ]"
 check "no tier: 3 skill files remain (actual: $TIER3_SKILLS)" "[ $TIER3_SKILLS -eq 0 ]"
 check "no redirect_to shim fields remain (actual: $REDIRECT_FIELDS)" "[ $REDIRECT_FIELDS -eq 0 ]"
 
@@ -78,6 +78,13 @@ if [ -f "$DC" ]; then
   check "deepen-codebase skill ≤ 8000 B (actual: $DC_BYTES)" "[ $DC_BYTES -le 8000 ]"
   check "deepen-codebase is manual-invoke only (disable-model-invocation)" "grep -q '^disable-model-invocation: true' $DC"
 fi
+WP="core/skills/write-prototype/SKILL.md"
+check "write-prototype on-demand skill exists" "[ -f $WP ]"
+if [ -f "$WP" ]; then
+  WP_BYTES=$(wc -c < "$WP" | tr -d ' ')
+  check "write-prototype skill ≤ 8000 B (actual: $WP_BYTES)" "[ $WP_BYTES -le 8000 ]"
+  check "write-prototype is model + user callable (not manual-invoke only)" "! grep -q '^disable-model-invocation' $WP"
+fi
 
 # ── SKILL.md byte caps (bytes, not lines) ─────────────────────────────
 # A ≤190-line cap held from v2.6 to v2.119 while the 10 phase skills grew
@@ -96,7 +103,7 @@ SKILL_BYTES_REPORT=$(python3 -I - <<'PYEOF'
 import pathlib, re
 ROOT = pathlib.Path(".")
 CAPS = {"using-rolepod": 21500, "review-code": 19000, "rolepod-full": 3000}
-DEFAULT, TOTAL_CAP = 13000, 141000  # total = backstop (~1% above the v2.160.0 size; +deepen-codebase); the per-skill caps do the work
+DEFAULT, TOTAL_CAP = 13000, 145000  # total = backstop (~1% above the v2.161.0 size; +write-prototype); the per-skill caps do the work
 inc = re.compile(r"^\{\{INCLUDE: (.+?)\}\}$")
 over, total = [], 0
 for d in sorted((ROOT / "core/skills").iterdir()):
@@ -123,7 +130,7 @@ else
   echo "  ✗ SKILL.md over byte cap (includes expanded): $SKILL_BYTES_OVER"
   fail=$((fail+1))
 fi
-check "all SKILL.md total ≤ 141000 B, includes expanded (actual: $SKILL_BYTES_TOTAL)" "[ $SKILL_BYTES_TOTAL -le 141000 ]"
+check "all SKILL.md total ≤ 145000 B, includes expanded (actual: $SKILL_BYTES_TOTAL)" "[ $SKILL_BYTES_TOTAL -le 145000 ]"
 
 # Clause-chain guard: no prose line past 600 chars. The accretion shape
 # was a 2,528-char line carrying eight directives with nested exceptions —
@@ -148,14 +155,15 @@ fi
 # These caps lock the surface so the power-up does not regress into bloat:
 #   - supporting files per skill ≤ 5, except the using-rolepod router
 #     (≤ 3) and the rolepod-full alias (0)
-#   - total supporting files across all skills ≤ 44
-#     (44 since deepen-codebase gained references/html-report.md; 43 since
-#     implement-plan's hand-written task-brief.md was removed —
-#     the brief is emitted by plan-lint.sh --brief; before that, 44 since
-#     write-plan gained references/team-issues.md — the optional GitHub
-#     Issues backend for team-built plans; 43 for implement-plan's
-#     wizard.md; 42 for write-spec's chart-work.md. Bump only for a
-#     deliberate new capability)
+#   - total supporting files across all skills ≤ 45
+#     (45 since write-prototype (v2.161.0) gained references/logic.md +
+#     references/ui.md; 44 since deepen-codebase gained
+#     references/html-report.md; 43 since implement-plan's hand-written
+#     task-brief.md was removed — the brief is emitted by plan-lint.sh
+#     --brief; before that, 44 since write-plan gained
+#     references/team-issues.md — the optional GitHub Issues backend for
+#     team-built plans; 43 for implement-plan's wizard.md; 42 for
+#     write-spec's chart-work.md. Bump only for a deliberate new capability)
 #   - every examples/*-examples.md carries a "Why good wins" contrast table
 SUPPORT_TOTAL=0
 SUPPORT_OVER=""
@@ -185,7 +193,7 @@ else
   echo "  ✗ supporting-file count over cap: $SUPPORT_OVER"
   fail=$((fail+1))
 fi
-check "total supporting files ≤ 44 (actual: $SUPPORT_TOTAL)" "[ $SUPPORT_TOTAL -le 44 ]"
+check "total supporting files ≤ 45 (actual: $SUPPORT_TOTAL)" "[ $SUPPORT_TOTAL -le 45 ]"
 
 # Supporting-file BYTE caps — the escape hatch is capped too, so a SKILL.md
 # cut cannot migrate into references/ / templates/ / examples/. Frozen at
@@ -208,7 +216,9 @@ fi
 # v2.125.0: +2000 — the router's dispatch-time detail (dispatch line, hook note,
 # Lead-tier fit) moved from the 20.8 KB always-loaded payload into
 # references/scope-then-spawn.md; the payload lost ~3 KB, the total went down.
-check "total supporting bytes ≤ 178000 (actual: $SUPPORT_BYTES_TOTAL)" "[ $SUPPORT_BYTES_TOTAL -le 178000 ]"
+# v2.161.0: 178000 -> 192000 (~1% above the measured total; write-prototype's
+# references/logic.md + references/ui.md port Matt's LOGIC.md/UI.md whole).
+check "total supporting bytes ≤ 192000 (actual: $SUPPORT_BYTES_TOTAL)" "[ $SUPPORT_BYTES_TOTAL -le 192000 ]"
 
 EXAMPLES_NO_TABLE=""
 for f in core/skills/*/examples/*-examples.md; do
@@ -344,11 +354,11 @@ check "router keeps authorization-held work off a shared branch" \
 # Every skill carries a labeled `## Boundary` (Owns / Does not own /
 # Hand off) so Lead routes cleanly and phases do not duplicate work.
 BOUNDARY_MISSING=""
-for s in using-rolepod rolepod-full deepen-codebase write-spec write-plan implement-plan debug-issue check-work review-code finish-work simplify-code manage-context; do
+for s in using-rolepod rolepod-full deepen-codebase write-prototype write-spec write-plan implement-plan debug-issue check-work review-code finish-work simplify-code manage-context; do
   grep -q '^## Boundary' "core/skills/$s/SKILL.md" 2>/dev/null || BOUNDARY_MISSING="${BOUNDARY_MISSING}${s} "
 done
 if [ -z "$BOUNDARY_MISSING" ]; then
-  echo "  ✓ all 12 skills carry a ## Boundary section"
+  echo "  ✓ all 13 skills carry a ## Boundary section"
 else
   echo "  ✗ skills missing ## Boundary: $BOUNDARY_MISSING"
   fail=$((fail+1))

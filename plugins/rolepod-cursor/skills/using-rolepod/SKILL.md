@@ -61,6 +61,7 @@ Match the intent to the FIRST skill that fires; that skill decides what comes ne
 | edit / implement / fix on **auth / billing / payments / credits / migration / data deletion / secrets / tokens / crypto / permissions / security** (a "plan / design" ask → the architecture row) | **Define (high-risk)** | `write-spec` → `write-plan` → `implement-plan` (review = its §6, per task) | balanced build · **strong** review |
 | architecture decision (DB schema / API contract / module split) | **Define** | `write-spec` — §3 dispatches ONE `system-architect` for the approach (when available) → `write-plan` | **strong** |
 | "where should we deepen / refactor for testability / where is the architecture hurting" on the whole repo | **Define (entry)** | tell the user to type /deepen-codebase ($deepen-codebase on Codex) — explicit invoke only; the picked card lands in write-spec | cheap |
+| "prototype / demo / show me layout options / does this state model feel right" | **Define** | spec settled → `write-prototype` (model call, or the user types /write-prototype); no spec yet → `write-spec` first — it offers the prototype | cheap |
 | "is this done / fixed / does it work / verify" | **Verify** | `check-work` | balanced |
 | "review / check this / look at the diff" | **Review** | `review-code` | **strong** |
 | "audit / sweep / map / find all X" on **the whole repo** | **Review (repo-wide)** | Sweeps (below) → `review-code` | balanced |

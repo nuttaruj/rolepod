@@ -40,7 +40,7 @@ check "hooks/ = 4 agy-native scripts + the shared gate pair (6 files)" \
   "[ \"\$(ls $P/hooks/*.sh 2>/dev/null | wc -l | tr -d ' ')\" = 6 ] && [ -f $P/hooks/pre-tool.sh ] && [ -f $P/hooks/precommit-gate.sh ] && [ -f $P/hooks/test-diff-lint.sh ]"
 check "shared gate is byte-identical to hooks/precommit-gate.sh" "cmp -s hooks/precommit-gate.sh $P/hooks/precommit-gate.sh && cmp -s hooks/test-diff-lint.sh $P/hooks/test-diff-lint.sh"
 check "no gemini context emitters left (agy has no context channel)" "[ ! -f $P/hooks/before-tool.sh ] && [ ! -f $P/hooks/after-tool.sh ] && [ ! -f $P/hooks/claim-verify-nudge.sh ]"
-check "exactly 12 skills (Core 10 + 2 commands)" "[ \"\$(ls $P/skills | wc -l | tr -d ' ')\" = 12 ]"
+check "exactly 13 skills (Core 10 + 2 commands + 1 on-demand)" "[ \"\$(ls $P/skills | wc -l | tr -d ' ')\" = 13 ]"
 check "15 agents present"                   "[ \"\$(ls $P/agents/*.md | wc -l | tr -d ' ')\" = 15 ]"
 
 # hooks.json schema: ONE name key wrapping agy-native events; relative commands.

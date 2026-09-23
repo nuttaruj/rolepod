@@ -99,8 +99,8 @@ if ./install.sh --target=claude > "$TMP/claude.log" 2>&1; then
     fi
   done
   skill_count=$(find "$PLUGIN_DIR/skills" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | wc -l | tr -d ' ')
-  if [ "$skill_count" -ne 12 ]; then
-    echo "  ✗ expected exactly 12 plugin skills (Core 10 + 2 commands), got $skill_count"
+  if [ "$skill_count" -ne 13 ]; then
+    echo "  ✗ expected exactly 13 plugin skills (Core 10 + 2 commands + 1 on-demand), got $skill_count"
     FAIL=$((FAIL+1))
   fi
   # Migration must clean a pre-2.0 legacy shim skill from ~/.claude/skills/.
@@ -200,10 +200,10 @@ if ./install.sh --target=cursor > "$TMP/cursor.log" 2>&1; then
       cursor_fail=1
     fi
   done
-  # Exactly 12 skills (Core 10 + 2 commands) — same as Claude.
+  # Exactly 13 skills (Core 10 + 2 commands + 1 on-demand) — same as Claude.
   skill_count=$(find "$PLUGIN_DEST/skills" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | wc -l | tr -d ' ')
-  if [ "$skill_count" -ne 12 ]; then
-    echo "  ✗ expected 12 cursor skills (Core 10 + 2 commands), got $skill_count"
+  if [ "$skill_count" -ne 13 ]; then
+    echo "  ✗ expected 13 cursor skills (Core 10 + 2 commands + 1 on-demand), got $skill_count"
     cursor_fail=1
   fi
   # Exactly 15 agents.
