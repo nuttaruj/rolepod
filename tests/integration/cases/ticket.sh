@@ -567,6 +567,223 @@ else
   echo "  ✗ fleet did not print a launch line: [$FLEET_LAUNCH]"; fail=$((fail+1))
 fi
 
+# ── fleet rerun on FLR — both tasks just launched above are now in flight:
+# skipped by name, no JSON, worktree count unchanged (chief-adoptions T1)
+WT_RERUN_BEFORE=$(git -C "$FLR" worktree list | wc -l | tr -d ' ')
+OUT=$(bash "$TICKET" fleet "$FLR/plan.md" 2>"$TMP/fleet-rerun.err")
+RC=$?
+WT_RERUN_AFTER=$(git -C "$FLR" worktree list | wc -l | tr -d ' ')
+if [ "$RC" -eq 0 ] && [ "$WT_RERUN_AFTER" = "$WT_RERUN_BEFORE" ] \
+  && ! printf '%s\n' "$OUT" | sed -n '1p' | grep -q '^{' \
+  && printf '%s\n' "$OUT" | grep -qi 'in flight.*Task 1' \
+  && printf '%s\n' "$OUT" | grep -qi 'in flight.*Task 2'; then
+  echo "  ✓ fleet rerun: in-flight tasks skipped, no JSON entry"
+else
+  echo "  ✗ fleet rerun wrong (rc=$RC before=$WT_RERUN_BEFORE after=$WT_RERUN_AFTER): $OUT"; fail=$((fail+1))
+  cat "$TMP/fleet-rerun.err" >&2
+fi
+
+# ═══════════════════════════════════════════════════════════════════════
+# fleet --gate — a red base gate refuses before any worktree is created;
+# a green gate behaves exactly like no --gate at all (chief-adoptions T1)
+# ═══════════════════════════════════════════════════════════════════════
+
+FGTR="$TMP/fleet-gate-repo"
+mkdir -p "$FGTR"
+( cd "${FGTR:?}" && git init -q . && git config user.email t@t && git config user.name t )
+cat > "$FGTR/plan.md" <<'EOF'
+# Gate Feature Plan
+
+## Tasks
+
+### Task 1: build the alpha widget
+- **Blocked by:** none
+- [ ] **Files:** `alpha.js`
+- [ ] **Command:** `true`
+- **Owner:** backend-developer
+- **Done when:** true
+
+### Task 2: build the beta widget
+- **Blocked by:** none
+- [ ] **Files:** `beta.js`
+- [ ] **Command:** `true`
+- **Owner:** frontend-developer
+- **Done when:** true
+
+## Parallel layout
+Sequential — single owner.
+
+## Failure policy
+Default: stop after 2 failed attempts (never a 4th).
+EOF
+( cd "${FGTR:?}" && git add -A && git commit -q -m init )
+
+WT_GATE_BEFORE=$(git -C "$FGTR" worktree list | wc -l | tr -d ' ')
+OUT=$(bash "$TICKET" fleet "$FGTR/plan.md" --gate 'echo gate-boom-line; false' 2>"$TMP/gate-red.err")
+RC=$?
+WT_GATE_AFTER=$(git -C "$FGTR" worktree list | wc -l | tr -d ' ')
+if [ "$RC" -eq 1 ] && [ "$WT_GATE_AFTER" = "$WT_GATE_BEFORE" ] \
+  && printf '%s\n' "$OUT" | grep -qi 'base gate red' \
+  && printf '%s\n' "$OUT" | grep -qF 'gate-boom-line'; then
+  echo "  ✓ fleet --gate red: exit 1, no worktree created"
+else
+  echo "  ✗ fleet --gate red wrong (rc=$RC before=$WT_GATE_BEFORE after=$WT_GATE_AFTER): $OUT"; fail=$((fail+1))
+  cat "$TMP/gate-red.err" >&2
+fi
+
+OUT=$(bash "$TICKET" fleet "$FGTR/plan.md" --gate 'echo should-not-leak; true' 2>"$TMP/gate-green.err")
+RC=$?
+WT_GATE_GREEN_AFTER=$(git -C "$FGTR" worktree list | wc -l | tr -d ' ')
+GREEN_JSON=$(printf '%s\n' "$OUT" | sed -n '1p')
+GREEN_LAUNCH=$(printf '%s\n' "$OUT" | sed -n '2p')
+if [ "$RC" -eq 0 ] && [ "$WT_GATE_GREEN_AFTER" -eq $((WT_GATE_BEFORE + 2)) ] \
+  && printf '%s\n' "$GREEN_JSON" | python3 -c '
+import json, sys
+data = json.load(sys.stdin)
+ns = sorted(t["n"] for t in data["args"]["tasks"])
+assert ns == [1, 2], ns
+' 2>"$TMP/gate-green-json.err" \
+  && printf '%s\n' "$GREEN_LAUNCH" | grep -qi 'launch' \
+  && ! printf '%s\n' "$OUT" | grep -qF 'should-not-leak'; then
+  echo "  ✓ fleet --gate green: same output as without the flag"
+else
+  echo "  ✗ fleet --gate green wrong (rc=$RC after=$WT_GATE_GREEN_AFTER): $OUT"; fail=$((fail+1))
+  cat "$TMP/gate-green.err" "$TMP/gate-green-json.err" >&2 2>/dev/null
+fi
+
+# ═══════════════════════════════════════════════════════════════════════
+# fleet --max — keeps only the first N ready tasks in plan order and holds
+# the rest back by name without ever creating their worktree; --max 0 is a
+# usage error (chief-adoptions T1)
+# ═══════════════════════════════════════════════════════════════════════
+
+MXR="$TMP/max-repo"
+mkdir -p "$MXR"
+( cd "${MXR:?}" && git init -q . && git config user.email t@t && git config user.name t )
+cat > "$MXR/plan.md" <<'EOF'
+# Max Feature Plan
+
+## Tasks
+
+### Task 1: build the alpha widget
+- **Blocked by:** none
+- [ ] **Files:** `alpha.js`
+- [ ] **Command:** `true`
+- **Owner:** backend-developer
+- **Done when:** true
+
+### Task 2: build the beta widget
+- **Blocked by:** none
+- [ ] **Files:** `beta.js`
+- [ ] **Command:** `true`
+- **Owner:** frontend-developer
+- **Done when:** true
+
+## Parallel layout
+Sequential — single owner.
+
+## Failure policy
+Default: stop after 2 failed attempts (never a 4th).
+EOF
+( cd "${MXR:?}" && git add -A && git commit -q -m init )
+
+WT_MAX_BEFORE=$(git -C "$MXR" worktree list | wc -l | tr -d ' ')
+OUT=$(bash "$TICKET" fleet "$MXR/plan.md" --max 1 2>"$TMP/fleet-max.err")
+RC=$?
+WT_MAX_AFTER=$(git -C "$MXR" worktree list | wc -l | tr -d ' ')
+if [ "$RC" -eq 0 ] && [ "$WT_MAX_AFTER" -eq $((WT_MAX_BEFORE + 1)) ] \
+  && printf '%s\n' "$OUT" | sed -n '1p' | python3 -c '
+import json, sys
+data = json.load(sys.stdin)
+ns = sorted(t["n"] for t in data["args"]["tasks"])
+assert ns == [1], ns
+' 2>"$TMP/fleet-max-json.err" \
+  && printf '%s\n' "$OUT" | grep -qi 'held back.*Task 2'; then
+  echo "  ✓ fleet --max 1: one worktree, the other held back"
+else
+  echo "  ✗ fleet --max 1 wrong (rc=$RC before=$WT_MAX_BEFORE after=$WT_MAX_AFTER): $OUT"; fail=$((fail+1))
+  cat "$TMP/fleet-max.err" "$TMP/fleet-max-json.err" >&2 2>/dev/null
+fi
+
+# ── mixed run on the same repo: Task 1 (started above) is now in flight
+# and skipped, Task 2 (held back above) is remaining and starts — proves
+# the in-flight line prints AFTER the launch line even when this same run
+# also starts a task, not just in the all-in-flight/all-fresh extremes.
+WT_MIX_BEFORE=$(git -C "$MXR" worktree list | wc -l | tr -d ' ')
+OUT=$(bash "$TICKET" fleet "$MXR/plan.md" 2>"$TMP/fleet-mix.err")
+RC=$?
+WT_MIX_AFTER=$(git -C "$MXR" worktree list | wc -l | tr -d ' ')
+MIX_LINE1=$(printf '%s\n' "$OUT" | sed -n '1p')
+MIX_LINE2=$(printf '%s\n' "$OUT" | sed -n '2p')
+MIX_LINE3=$(printf '%s\n' "$OUT" | sed -n '3p')
+if [ "$RC" -eq 0 ] && [ "$WT_MIX_AFTER" -eq $((WT_MIX_BEFORE + 1)) ] \
+  && printf '%s\n' "$MIX_LINE1" | python3 -c '
+import json, sys
+data = json.load(sys.stdin)
+ns = sorted(t["n"] for t in data["args"]["tasks"])
+assert ns == [2], ns
+' 2>"$TMP/fleet-mix-json.err" \
+  && printf '%s\n' "$MIX_LINE2" | grep -qi 'launch' \
+  && [ "$MIX_LINE3" = "in flight — skipped: Task 1" ]; then
+  echo "  ✓ fleet mixed run: in-flight task named after the launch line, remaining task started"
+else
+  echo "  ✗ fleet mixed run wrong (rc=$RC before=$WT_MIX_BEFORE after=$WT_MIX_AFTER): $OUT"; fail=$((fail+1))
+  cat "$TMP/fleet-mix.err" "$TMP/fleet-mix-json.err" >&2 2>/dev/null
+fi
+
+OUT=$(bash "$TICKET" fleet "$MXR/plan.md" --max 0 2>"$TMP/fleet-max0.err")
+RC=$?
+if [ "$RC" -eq 2 ] && grep -qi 'positive integer' "$TMP/fleet-max0.err"; then
+  echo "  ✓ fleet --max 0: usage error"
+else
+  echo "  ✗ fleet --max 0 should be a usage error naming a positive integer (rc=$RC): $OUT"; fail=$((fail+1))
+  cat "$TMP/fleet-max0.err" >&2
+fi
+
+# ── an Owner-less task refuses BEFORE any `start` in the same run, even
+# one that comes after a task with a real role in plan order — the role
+# check must not strand an earlier task's just-created worktree (round-2
+# review finding on chief-adoptions T1).
+ORR="$TMP/owner-refused-repo"
+mkdir -p "$ORR"
+( cd "${ORR:?}" && git init -q . && git config user.email t@t && git config user.name t )
+cat > "$ORR/plan.md" <<'EOF'
+# Owner Refused Feature Plan
+
+## Tasks
+
+### Task 1: build the alpha widget
+- **Blocked by:** none
+- [ ] **Files:** `alpha.js`
+- [ ] **Command:** `true`
+- **Owner:** backend-developer
+- **Done when:** true
+
+### Task 2: build the beta widget
+- **Blocked by:** none
+- [ ] **Files:** `beta.js`
+- [ ] **Command:** `true`
+- **Done when:** true
+
+## Parallel layout
+Sequential — single owner.
+
+## Failure policy
+Default: stop after 2 failed attempts (never a 4th).
+EOF
+( cd "${ORR:?}" && git add -A && git commit -q -m init )
+
+WT_ORR_BEFORE=$(git -C "$ORR" worktree list | wc -l | tr -d ' ')
+OUT=$(bash "$TICKET" fleet "$ORR/plan.md" 2>"$TMP/fleet-orr.err")
+RC=$?
+WT_ORR_AFTER=$(git -C "$ORR" worktree list | wc -l | tr -d ' ')
+if [ "$RC" -eq 1 ] && [ "$WT_ORR_AFTER" = "$WT_ORR_BEFORE" ] && grep -qi 'Task 2 has no Owner' "$TMP/fleet-orr.err"; then
+  echo "  ✓ fleet refuses an Owner-less task before start ever runs for its plan-order sibling: no worktree stranded"
+else
+  echo "  ✗ fleet Owner-less refusal wrong (rc=$RC before=$WT_ORR_BEFORE after=$WT_ORR_AFTER): $OUT"; fail=$((fail+1))
+  cat "$TMP/fleet-orr.err" >&2
+fi
+
 # ── no ready role-owned task → says so, exit 0, nothing created
 NRR="$TMP/no-ready-repo"
 mkdir -p "$NRR"

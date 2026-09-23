@@ -35,13 +35,22 @@
 #     bullet under "## Changes during build". The only writer of the plan
 #     file besides the Lead's own editor.
 #
-#   rolepod-ticket fleet <plan> [--base <branch>]
+#   rolepod-ticket fleet <plan> [--base <branch>] [--max <N>] [--gate '<cmd>']
 #     On the one CLI with a workflow tool: for every task whose Blocked-by
 #     tasks are all done and whose Owner is a role (not Lead), runs `start`
 #     and reads its brief's "## Reviewers" line, then prints ONE JSON object
 #     {scriptPath, args} for scripts/ticket-fleet.js (args.tasks =
 #     [{n, brief, worktree, role, reviewers}]) plus one line on how to
 #     launch it. No ready role-owned task: says so, exit 0.
+#     --gate '<cmd>' runs once in the checkout fleet was called from, before
+#     any start; a non-zero exit prints its tail and refuses with no
+#     worktree created at all.
+#     A ready task whose worktree already exists (an earlier fleet/start
+#     already launched it) is skipped as "in flight", left out of the JSON,
+#     and never re-started.
+#     --max <N> keeps only the first N still-not-in-flight tasks in plan
+#     order and holds the rest back by name, deciding before `start` is
+#     ever called so a held-back task never gets a worktree.
 #
 # bash 3.2 safe, set -u safe, no network, fail-closed with one-line errors.
 set -uo pipefail
@@ -63,7 +72,7 @@ usage:
   rolepod-ticket integrate <worktree> --brief <file> [--pre '<cmd>'] [--gate '<cmd>']
   rolepod-ticket finish <worktree>
   rolepod-ticket log <plan> <N> --sha <sha> --note '<text>'
-  rolepod-ticket fleet <plan> [--base <branch>]
+  rolepod-ticket fleet <plan> [--base <branch>] [--max <N>] [--gate '<cmd>']
 EOF
 }
 
@@ -89,6 +98,27 @@ first_backtick() {
   printf '%s\n' "$1" | awk '
     { if (match($0, /`[^`]+`/)) { print substr($0, RSTART + 1, RLENGTH - 2); exit } }
   '
+}
+
+# The plan's own slug — its basename with the .md extension and a trailing
+# -YYYY-MM-DD date stripped. The one piece cmd_start (handoff path + agent
+# name) and fleet's in-flight check (handoff path only) both derive from
+# the same plan file — kept in one place so the two can never disagree.
+plan_slug_of() { # $1 = plan (absolute)
+  local slug
+  slug="$(basename "$1" .md)"
+  printf '%s' "$slug" | sed -E 's/-[0-9]{4}-[0-9]{2}-[0-9]{2}$//'
+}
+
+# The backticked `git worktree add -b <branch> <path> [<base>]` command
+# line from a handoff file's own "## Worktree" section — the one thing
+# both cmd_start (branch + path) and fleet's in-flight check (path only)
+# parse out of it, kept in one place so a plan-lint template change only
+# needs fixing here.
+handoff_worktree_cmd() { # $1 = handoff file
+  local wtline
+  wtline="$(section_body "$1" '## Worktree' | grep -m1 'git worktree add')"
+  first_backtick "$wtline"
 }
 
 # I3: the brief FILE is the only thing read here — never plan-lint's
@@ -151,15 +181,14 @@ run_step() {
 # text-contains check would resolve Task 1's worktree to Task 11's brief
 # (or vice versa) whenever both exist side by side.
 find_owner_agent() { # $1 = main root, $2 = worktree (absolute)
-  local dir base f agent wtline wtcmd path pbase
+  local dir base f agent wtcmd path pbase
   dir="$1/docs/rolepod/handoffs"
   [ -d "$dir" ] || return 0
   base="$(basename "$2")"
   for f in "$dir"/*.md; do
     [ -f "$f" ] || continue
-    wtline="$(section_body "$f" '## Worktree' | grep -m1 'git worktree add')"
-    [ -n "$wtline" ] || continue
-    wtcmd="$(first_backtick "$wtline")"
+    wtcmd="$(handoff_worktree_cmd "$f")"
+    [ -n "$wtcmd" ] || continue
     path="$(printf '%s\n' "$wtcmd" | awk '{print $6}')"
     [ -n "$path" ] || continue
     pbase="$(basename "$path")"
@@ -354,8 +383,7 @@ cmd_start() {
   fi
 
   local plan_slug handoff_dir handoff
-  plan_slug="$(basename "$plan_abs" .md)"
-  plan_slug="$(printf '%s' "$plan_slug" | sed -E 's/-[0-9]{4}-[0-9]{2}-[0-9]{2}$//')"
+  plan_slug="$(plan_slug_of "$plan_abs")"
   handoff_dir="$repo_root/docs/rolepod/handoffs"
   mkdir -p "$handoff_dir"
   handoff="$handoff_dir/${plan_slug}-t${n}-owner.md"
@@ -366,9 +394,8 @@ cmd_start() {
     printf '%s\n%s\n' "$brief_out" "$agent_line" > "$handoff"
   fi
 
-  local wtline wtcmd branch wtpath wtparent wt_abs
-  wtline="$(section_body "$handoff" '## Worktree' | grep -m1 'git worktree add')"
-  wtcmd="$(first_backtick "$wtline")"
+  local wtcmd branch wtpath wtparent wt_abs
+  wtcmd="$(handoff_worktree_cmd "$handoff")"
   [ -n "$wtcmd" ] || { echo "ticket: start: no worktree command found in $handoff" >&2; exit 2; }
   branch="$(printf '%s\n' "$wtcmd" | awk '{print $5}')"
   wtpath="$(printf '%s\n' "$wtcmd" | awk '{print $6}')"
@@ -378,7 +405,11 @@ cmd_start() {
   [ -n "$wtparent" ] || { echo "ticket: start: could not resolve the worktree path from $wtpath" >&2; exit 2; }
   wt_abs="$wtparent/$(basename "$wtpath")"
 
-  if git -C "$repo_root" worktree list --porcelain 2>/dev/null | grep -qF "worktree $wt_abs"; then
+  # -x: an exact whole-line match — "worktree $wt_abs" as a plain substring
+  # would also match a sibling worktree whose path this one merely prefixes
+  # (e.g. .../t1 inside .../t11), the same rule find_owner_agent already
+  # applies to a brief's basename above.
+  if git -C "$repo_root" worktree list --porcelain 2>/dev/null | grep -qxF "worktree $wt_abs"; then
     : # existing worktree — idempotent, nothing to create
   else
     local add_out
@@ -652,12 +683,50 @@ cmd_log() {
 
 # ── fleet ────────────────────────────────────────────────────────────────
 
+# The absolute worktree path recorded in an EXISTING handoff's own
+# "## Worktree" line, resolved the same way cmd_start resolves one (field 6
+# of handoff_worktree_cmd's line) — but read-only: it never creates the
+# handoff or the worktree, so it is safe to call on a task `fleet` has not
+# decided to start yet. Empty when the handoff doesn't exist, or its
+# Worktree line doesn't parse.
+handoff_worktree_path() { # $1 = handoff file, $2 = repo root
+  [ -f "$1" ] || return 0
+  local wtcmd wtpath wtparent
+  wtcmd="$(handoff_worktree_cmd "$1")"
+  [ -n "$wtcmd" ] || return 0
+  wtpath="$(printf '%s\n' "$wtcmd" | awk '{print $6}')"
+  [ -n "$wtpath" ] || return 0
+  wtparent="$(cd "$2/$(dirname "$wtpath")" 2>/dev/null && pwd)"
+  [ -n "$wtparent" ] || return 0
+  printf '%s/%s' "$wtparent" "$(basename "$wtpath")"
+}
+
+# Comma-joined "Task a, Task b" from a space-separated list of ids, in the
+# order given — the one formatter for every task-list line fleet prints.
+task_list() { # $1 = space-separated ids
+  local id out=""
+  for id in $1; do
+    if [ -z "$out" ]; then out="Task $id"; else out="$out, Task $id"; fi
+  done
+  printf '%s' "$out"
+}
+
 cmd_fleet() {
   local plan="${1:-}"; shift || true
-  local base=""
+  local base="" gate="" max=""
   while [ $# -gt 0 ]; do
     case "$1" in
       --base) base="${2:-}"; shift 2 ;;
+      --gate) gate="${2:-}"; shift 2 ;;
+      --max)
+        max="${2:-}"
+        if ! [[ "$max" =~ ^[1-9][0-9]*$ ]]; then
+          echo "ticket: fleet: --max requires a positive integer, got: ${max:-(none)}" >&2
+          usage >&2
+          exit 2
+        fi
+        shift 2
+        ;;
       *) echo "ticket: fleet: unknown arg: $1" >&2; exit 2 ;;
     esac
   done
@@ -668,6 +737,17 @@ cmd_fleet() {
   plan_abs="$plan_dir/$(basename "$plan")"
   repo_root="$(git -C "$plan_dir" rev-parse --show-toplevel 2>/dev/null)"
   [ -n "$repo_root" ] || { echo "ticket: fleet: not inside a git repo: $plan_abs" >&2; exit 2; }
+
+  if [ -n "$gate" ]; then
+    local gate_out gate_rc
+    gate_out="$(cd "$repo_root" && bash -c "$gate" 2>&1)"
+    gate_rc=$?
+    if [ "$gate_rc" -ne 0 ]; then
+      printf '%s\n' "$gate_out" | tail -n 15
+      echo "ticket: fleet: base gate red — no worktree created"
+      exit 1
+    fi
+  fi
 
   local ready
   ready="$(ready_role_tasks "$plan_abs")"
@@ -685,10 +765,69 @@ cmd_fleet() {
   [ -f "$script_path" ] || script_path="$HOME/.rolepod/bin/ticket-fleet.js"
   [ -f "$script_path" ] || { echo "ticket: fleet: ticket-fleet.js not found beside $0 or in ~/.rolepod/bin" >&2; exit 2; }
 
-  local rows n role start_out start_rc handoff wt_abs revlist entry tasks_json="" first=1
-  rows="$(plan_task_rows "$plan_abs")"
+  # Snapshot existing worktrees BEFORE any `start` call this run might make,
+  # so "in flight" always means "already running before this invocation".
+  local wt_snapshot
+  wt_snapshot="$(git -C "$repo_root" worktree list --porcelain 2>/dev/null)"
+
+  local plan_slug handoff_dir
+  plan_slug="$(plan_slug_of "$plan_abs")"
+  handoff_dir="$repo_root/docs/rolepod/handoffs"
+
+  # Pass 1 — split ready tasks (plan order) into in-flight vs remaining,
+  # read only from a handoff `start` already wrote in an earlier run; never
+  # calls `start` here, since that would create a worktree for a task that
+  # may end up held back below.
+  local n existing_handoff wt_abs inflight_ids="" remaining_ids=""
   while IFS= read -r n; do
     [ -n "$n" ] || continue
+    existing_handoff="$handoff_dir/${plan_slug}-t${n}-owner.md"
+    wt_abs="$(handoff_worktree_path "$existing_handoff" "$repo_root")"
+    # -x: an exact whole-line match — a plain substring would also match a
+    # sibling worktree this one's path merely prefixes (e.g. .../t1 inside
+    # .../t11).
+    if [ -n "$wt_abs" ] && printf '%s\n' "$wt_snapshot" | grep -qxF "worktree $wt_abs"; then
+      inflight_ids="$inflight_ids$n "
+    else
+      remaining_ids="$remaining_ids$n "
+    fi
+  done <<EOF
+$ready
+EOF
+
+  # Pass 2 — apply --max to the remaining (not-in-flight) tasks, plan order.
+  local keep_ids="" held_ids="" count=0
+  for n in $remaining_ids; do
+    if [ -z "$max" ] || [ "$count" -lt "$max" ]; then
+      keep_ids="$keep_ids$n "
+      count=$((count + 1))
+    else
+      held_ids="$held_ids$n "
+    fi
+  done
+
+  local rows role start_out start_rc handoff wt2 revlist entry tasks_json="" first=1
+  local started_ids=""
+  rows="$(plan_task_rows "$plan_abs")"
+
+  # Validate EVERY kept task's Owner role before `start` runs for ANY of
+  # them: an `agentType:"rolepod:"` in the JSON would only surface as a
+  # mid-run agent-type error inside the fleet script, well after worktrees
+  # exist — and a task refused for having no role must never get a
+  # worktree, same as a held-back one. Checking this mid-loop (task 1
+  # starts, then task 2's empty role aborts the run) would strand task 1's
+  # just-created worktree unreported, exactly the "in flight" on a later
+  # rerun this fix is meant to prevent.
+  for n in $keep_ids; do
+    role="$(printf '%s\n' "$rows" | awk -F"$ROW_FS" -v want="$n" '$1==want{print $2; exit}')"
+    if [ -z "$role" ]; then
+      echo "ticket: fleet: Task $n has no Owner role — refusing (fail-closed)" >&2
+      exit 1
+    fi
+  done
+
+  for n in $keep_ids; do
+    role="$(printf '%s\n' "$rows" | awk -F"$ROW_FS" -v want="$n" '$1==want{print $2; exit}')"
     if [ -n "$base" ]; then
       start_out="$(cmd_start "$plan_abs" "$n" --base "$base")"
     else
@@ -697,30 +836,38 @@ cmd_fleet() {
     start_rc=$?
     if [ "$start_rc" -ne 0 ]; then
       echo "ticket: fleet: start failed for Task $n" >&2
+      if [ -n "$started_ids" ]; then
+        echo "ticket: fleet: worktree(s) already created this run but not reported — clean up or re-run: $(task_list "$started_ids")" >&2
+      fi
       exit 1
     fi
+    started_ids="$started_ids$n "
     handoff="$(printf '%s\n' "$start_out" | sed -n '1p' | awk '{print $1}')"
-    wt_abs="$(printf '%s\n' "$start_out" | sed -n '1p' | awk '{print $2}')"
-    role="$(printf '%s\n' "$rows" | awk -F"$ROW_FS" -v want="$n" '$1==want{print $2; exit}')"
-    # Fail closed on an empty role: an `agentType:"rolepod:"` in the JSON
-    # would only surface as a mid-run agent-type error inside the fleet
-    # script, well after this worktree (and any siblings before it) exist.
-    if [ -z "$role" ]; then
-      echo "ticket: fleet: Task $n has no Owner role — refusing (fail-closed)" >&2
-      exit 1
-    fi
+    wt2="$(printf '%s\n' "$start_out" | sed -n '1p' | awk '{print $2}')"
     revlist="$(brief_reviewers "$handoff")"
     entry="$(printf '{"n":%s,"brief":"%s","worktree":"%s","role":"%s","reviewers":%s}' \
-      "$n" "$(json_escape "$handoff")" "$(json_escape "$wt_abs")" "$(json_escape "$role")" \
+      "$n" "$(json_escape "$handoff")" "$(json_escape "$wt2")" "$(json_escape "$role")" \
       "$(printf '%s\n' "$revlist" | reviewers_json_array)")"
     if [ "$first" -eq 1 ]; then tasks_json="$entry"; first=0
     else tasks_json="$tasks_json,$entry"; fi
-  done <<EOF
-$ready
-EOF
+  done
+
+  # Every ready task was already in flight — nothing started, no JSON.
+  if [ -z "$tasks_json" ]; then
+    for n in $inflight_ids; do
+      echo "in flight — skipped: Task $n"
+    done
+    return 0
+  fi
 
   printf '{"scriptPath":"%s","args":{"tasks":[%s]}}\n' "$(json_escape "$script_path")" "$tasks_json"
   echo "launch: Workflow({scriptPath, args}) on the CLI with the workflow tool — one launch builds + reviews every task above"
+  for n in $inflight_ids; do
+    echo "in flight — skipped: Task $n"
+  done
+  if [ -n "$held_ids" ]; then
+    echo "held back (--max $max): $(task_list "$held_ids")"
+  fi
 }
 
 # ── dispatch ─────────────────────────────────────────────────────────────
