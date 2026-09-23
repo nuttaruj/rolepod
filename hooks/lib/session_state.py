@@ -9,13 +9,13 @@ This script parses it to answer questions hooks need to enforce gates:
   - How many test files has Lead edited this session?
   - How many high-risk code files (auth/billing/etc.) has Lead edited?
   - Has Lead dispatched security-engineer / universal-reviewer (the review floor)?
-  - How many parallel Agent spawns share the same path?
 
 CLI: pass a hook-input JSON on stdin, request a query as argv[1]. Output is
-plain stdout (number or yes/no), exit 0 on success, non-zero on parse error.
+plain stdout (a number or one space-separated line), exit 0 on success,
+non-zero on parse error.
 
 Designed to be cheap (single scan of transcript) and safe (graceful fallback
-to 0 / "no" when transcript path missing or unreadable — hooks must not
+to 0 / empty when transcript path missing or unreadable — hooks must not
 block on infrastructure failure).
 """
 from __future__ import annotations
@@ -752,42 +752,6 @@ def count_test_edits(transcript_path: str, cwd: str | None = None) -> int:
     return n
 
 
-def count_high_risk_edits(transcript_path: str, cwd: str | None = None) -> int:
-    """
-    Count PRODUCTION code edits on high-risk paths. Test files are excluded
-    so writing `auth/login.test.ts` doesn't paradoxically trigger the same
-    block it satisfies — those count toward count_test_edits instead.
-    """
-    n = 0
-    for tool, inp in _iter_tool_uses(transcript_path):
-        if tool in EDIT_TOOLS:
-            path = _file_from_input(inp)
-            if is_test_file(path):
-                continue
-            if is_high_risk_path(path) and is_code_file(path):
-                n += 1
-        elif tool == "Bash":
-            for p in bash_write_paths(inp.get("command") or "", inp.get("cwd") or cwd):
-                if is_test_file(p):
-                    continue
-                if is_high_risk_path(p) and is_code_file(p):
-                    n += 1
-    return n
-
-
-def count_code_edits(transcript_path: str, cwd: str | None = None) -> int:
-    n = 0
-    for tool, inp in _iter_tool_uses(transcript_path):
-        if tool in EDIT_TOOLS:
-            if is_code_file(_file_from_input(inp)):
-                n += 1
-        elif tool == "Bash":
-            for p in bash_write_paths(inp.get("command") or "", inp.get("cwd") or cwd):
-                if is_code_file(p):
-                    n += 1
-    return n
-
-
 def _bare_agent_name(subagent_type: str | None) -> str:
     """Strip a plugin namespace prefix — 'rolepod:qa-tester' -> 'qa-tester'.
 
@@ -1001,9 +965,8 @@ def count_all(
 ) -> tuple[int, int, int, int]:
     """Single-pass tally of the four gate counts — one transcript scan instead
     of four. Returns (test_edits, high_risk_edits, reviewers, strong_reviewers);
-    the first three identical to the standalone count_* they replace
-    (test/high-risk are mutually exclusive per edit; test wins — same
-    precedence as count_high_risk_edits' skip).
+    test / high-risk are mutually exclusive per edit: a test-file edit counts
+    as a test edit, never as a high-risk edit.
 
     v2.47.0 — evidence is WINDOWED to `since_epoch` (the gate passes the last
     commit's timestamp): a 12-day session must not clear today's commit with
@@ -1230,16 +1193,6 @@ def main() -> int:
 
     query = sys.argv[1]
 
-    if query == "is-high-risk-path":
-        path = sys.argv[2] if len(sys.argv) > 2 else ""
-        print("yes" if is_high_risk_path(path) else "no")
-        return 0
-
-    if query == "is-test-file":
-        path = sys.argv[2] if len(sys.argv) > 2 else ""
-        print("yes" if is_test_file(path) else "no")
-        return 0
-
     hook_input = _load_hook_input()
     transcript_path = hook_input.get("transcript_path") or ""
 
@@ -1256,17 +1209,8 @@ def main() -> int:
     elif query == "context-tokens":
         # Context size (tokens) the last assistant turn carried — 0 unknown.
         print(last_context_tokens(transcript_path))
-    elif query == "lead-class":
-        # "<model> <class>" of the last assistant turn — "" unknown when
-        # the transcript is missing or has no model field.
-        m = lead_model(transcript_path)
-        print("%s %s" % (m or "-", model_class(m)))
     elif query == "count-test-edits":
         print(count_test_edits(transcript_path, hook_input.get("cwd")))
-    elif query == "count-high-risk-edits":
-        print(count_high_risk_edits(transcript_path, hook_input.get("cwd")))
-    elif query == "count-code-edits":
-        print(count_code_edits(transcript_path, hook_input.get("cwd")))
     elif query == "count-reviewers-dispatched":
         print(count_reviewers_dispatched(transcript_path))
     elif query == "selfdo-state":
