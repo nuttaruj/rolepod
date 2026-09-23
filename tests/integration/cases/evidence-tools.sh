@@ -122,8 +122,8 @@ check "tier nudge fires on override-less Workflow fan-out" \
 check "tier nudge silent when a per-stage override exists" \
   "[ -z \"\$(bash '$REPO_DIR/hooks/workflow-tier-nudge.sh' < '$FIX/wf-tiered.json')\" ]"
 printf '{"tool_name":"Agent","tool_input":{"subagent_type":"Explore"}}' > "$FIX/agent-explore.json"
-check "tier nudge fires on model-less platform sweep Agent (Explore)" \
-  "bash '$REPO_DIR/hooks/workflow-tier-nudge.sh' < '$FIX/agent-explore.json' | grep -q additionalContext"
+check "tier nudge silent on model-less platform sweep Agent (Explore — the sweep-specific nudge is gone; Agent-type calls have no fallback)" \
+  "[ -z \"\$(bash '$REPO_DIR/hooks/workflow-tier-nudge.sh' < '$FIX/agent-explore.json')\" ]"
 check "tier nudge silent on rolepod:scout (frontmatter-pinned cheap — was a false nudge)" \
   "[ -z \"\$(bash '$REPO_DIR/hooks/workflow-tier-nudge.sh' < '$FIX/agent-scout.json')\" ]"
 check "tier nudge honors ROLEPOD_NUDGE_OFF" \
@@ -361,8 +361,8 @@ mkj "$FIX/wf-gp-scout.json"   Workflow "$FIX/lead-opus.jsonl"   '{"script":"awai
 mkj "$FIX/wf-gp-strong.json"  Workflow "$FIX/lead-sonnet.jsonl" '{"script":"await agent(1); await agent(2, {agentType: \"rolepod:universal-reviewer\"})"}'
 check "gate v2.88: opus Lead + bare fan-out carrying agentType general-purpose → deny (no-tier, was silent)" \
   "cd '$FIX/repo' && bash '$NUDGE' < '$FIX/wf-gp-opus.json' | grep -q '\"deny\"' && tail -1 .rolepod/evidence/phase-log.jsonl | grep -q '\"reason\": \"no-tier\"'"
-check "gate v2.88: sonnet Lead + same fleet → nudge naming the cheap sweep (was silent)" \
-  "cd '$FIX/repo' && bash '$NUDGE' < '$FIX/wf-gp-sonnet.json' | grep -q additionalContext && bash '$NUDGE' < '$FIX/wf-gp-sonnet.json' | grep -q \"rolepod:scout\"" 
+check "gate v2.88: sonnet Lead + same fleet → still nudges, not silent (the cheap-sweep naming itself is gone)" \
+  "cd '$FIX/repo' && bash '$NUDGE' < '$FIX/wf-gp-sonnet.json' | grep -q additionalContext && ! bash '$NUDGE' < '$FIX/wf-gp-sonnet.json' | grep -q \"rolepod:scout\""
 check "gate v2.88: agentType rolepod:scout (renders model: haiku) still counts as a tier → silent" \
   "[ -z \"\$(cd '$FIX/repo' && bash '$NUDGE' < '$FIX/wf-gp-scout.json')\" ]"
 check "gate v2.104: strong role under a LOW Lead renders opus → a tier, silent (v2.88 nudged it as inherit)" \
