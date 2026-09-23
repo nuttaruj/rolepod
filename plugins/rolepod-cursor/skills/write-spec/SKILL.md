@@ -40,6 +40,8 @@ Inputs: the exact request (literal quote) · relevant repo state (existing patte
 
 One sentence for the goal, 2-3 likely constraints, every high-risk surface flagged. The goal needs an "and" → possibly several specs: `references/scope-splitting.md`. Slices cannot even be listed because unresolved decisions block the view → `references/chart-work.md`: chart the decisions first, spec each slice after.
 
+Name the **Product mode** — `change` (a product exists; this adds or alters part of it) or `new` (nothing to change yet) — from the repo; ask only when the repo cannot tell (a new app beside an existing one). It scopes every later step, a prototype included.
+
 ### 2. Discovery dialogue
 
 Model the open decisions as a tree — each answer unblocks the questions hanging off it. Ask in **rounds**: number every question on the current frontier and present the round together; a question whose answer depends on one still open belongs to the next round. Each question must change the implementation if the answer changes — skip obvious ones. A long frontier is grouped by topic and asked in full, never trimmed.
@@ -53,10 +55,7 @@ A question the codebase can answer → explore instead. While a round is out, th
 **Domain term with more than one live reading** — resolve it in the round, never assume: challenge it against the repo's `CONTEXT.md` when one exists, quote the code back when it disagrees with what the user just said (which is right?), and propose ONE canonical word.
 Settled and used beyond this feature → write it into `CONTEXT.md` at the repo root at that moment (create the file then, never at the end): `**Term**:` + one or two sentences of what it IS + `_Avoid_: <the synonyms not to use>` — project concepts only, no implementation detail; a glossary and nothing else. A feature-only term gets one line in the spec. Entry shape, sharpening moves, multi-context map: `references/question-bank.md` §Domain term.
 
-**Visual companion for UI-shape questions.**
-- Layout, flow, or visual hierarchy with `rolepod-uiproof` installed → offer a browser mockup or reference screenshot (`/verify-ui`, `/visual-diff`) before the text question.
-- Interaction FEEL → a disposable single-file HTML demo (inline CSS/JS, mock data, no server) on a throwaway `spike/` branch; the user clicks the options before answering.
-- Decision + branch pointer land in the spec; the branch is NEVER merged.
+**Prototype offer.** A layout or state-logic question that talking cannot settle → offer `write-prototype` in one line (yes / skip) and park that question. Yes → it builds once the rest of the frontier is settled — a spec with open questions builds the wrong demo — and before Gate 1; its verdict settles the parked question. Skip → carry on; Gate 1 and `write-plan` as usual.
 
 Unsure which questions change the implementation → `references/question-bank.md`.
 
