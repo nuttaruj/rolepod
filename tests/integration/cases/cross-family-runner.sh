@@ -714,8 +714,7 @@ cd "$REPO"
 # ── provenance labels + oversized-diff notice (v2.100.0) ──────────────────
 fi
 if section "cross-family: provenance / oversized diff"; then
-check "review preamble asks for INTRODUCED / EXPOSED / ADJACENT provenance and keeps ADJACENT out of the verdict" "grep -q 'INTRODUCED (this diff caused it), EXPOSED' '$RUNNER' && grep -q 'never drive the verdict' '$RUNNER'"
-check "review-report template + review-code §4/§6 + receiving-findings carry the provenance rule" "grep -q 'ADJACENT findings never make a REJECTED' '$REPO_DIR/core/skills/review-code/templates/review-report.md' && grep -q 'IMPLEMENT by provenance' '$REPO_DIR/core/skills/review-code/SKILL.md' && grep -q 'Provenance first, then class' '$REPO_DIR/core/skills/review-code/references/receiving-findings.md'"
+check "review preamble keeps the Scope list and VERDICT line and asks for no label" "grep -q 'a Scope list' '$RUNNER' && grep -q 'VERDICT: APPROVED' '$RUNNER' && ! grep -qE 'TRACED|SUSPECTED|INTRODUCED|EXPOSED|ADJACENT' '$RUNNER'"
 SZ="$FIX/size"; mkdir -p "$SZ/.rolepod"; printf 'codex\n' > "$SZ/.rolepod/cross-family"; printf 'brief\n' > "$SZ/brief.md"
 ( cd "$SZ" && git init -q . && git config user.email t@t && git config user.name t && printf 'a\n' > f.txt && git add f.txt && git commit -qm init )
 : > "$FIX/big.patch"; for i in $(seq 1 16); do { printf 'diff --git a/n%s.ts b/n%s.ts\nnew file mode 100644\n--- /dev/null\n+++ b/n%s.ts\n@@ -0,0 +1,60 @@\n' "$i" "$i" "$i"; seq 60 | sed 's/^/+x/'; } >> "$FIX/big.patch"; done

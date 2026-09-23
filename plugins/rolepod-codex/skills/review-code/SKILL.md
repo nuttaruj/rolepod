@@ -61,7 +61,7 @@ rolepod-brain: add `brain_seed(task, agent: <reviewer id>)` verbatim; no tool �
 
 **By rigor tier** (R1 trivial edit · R2 one file + test · R3 multi-file · R4 high-risk):
 - **R1** → no review, no re-read turn; the edit tool's echo is the evidence. A docs-only diff is R1 at any size — no reviewer, internal or external; its own check (link check / static lint) is the verify.
-- **R2** → ONE read-only `universal-reviewer` pass on the diff (two axes: spec + standards; the author never reviews own logic); a matched row (perf / UI / arch) → that role instead. The writer's unit tests are the floor.
+- **R2** → TWO read-only `universal-reviewer` lenses in ONE message, `lens: spec` and `lens: standards` (no spec → standards only; the author never reviews own logic); a matched row (perf / UI / arch) → that role instead. The writer's unit tests are the floor.
 - **R3** → the row match, internal — the pool's tier is R4 unless the pool file sets `tier = R2|R3`: from that tier up a usable external replaces `universal-reviewer`, never both (the user asks → one pass). A high-risk path anywhere in the diff under review (the task or its ship group) tiers that diff R4; the commission's tier is the max over its tasks and governs Define / Plan only — a diff reviewed at its tier is never reviewed again at ship. R2/R3 combines once (implement-plan §6); R4 stays per task.
 - **R4** → the full adversarial floor, never less. An R4 diff gets `security-engineer` + ONE general strong pass: the external when the pool is usable, else `universal-reviewer`. Never external + `universal-reviewer` on round 1 (money / auth included). Comment/blank-only carve-out: ONE internal strong reviewer, no external.
 
@@ -105,6 +105,7 @@ Reviews merge severity-ordered, deduped by file:line + root cause (the Lead's fi
 
 ### 2. Multi-axis read
 
+- **Depth** — R4: every axis below, Trace in full. An R2 / R3 lens: the diff and the direct callers of what it changes; the other axes only as far as that reach. Skip anything tooling already enforces (lint, formatter, typecheck, the commit gate).
 - **Intent** — the goal in one sentence; is there a smaller way, or should the change exist at all? Surface before the line read.
 - **Trace** — the diff is the entry point, not the scope. For each claimed behavior walk the real path (entry → call sites → branches → state → exit) through the seams into unchanged code; every surprise on the walk is findings signal. Bound the walk to the change's claims and seams (untouched code is a Question, not a BLOCKER); code-intel callers / impact when connected.
 - **Correctness** — logic vs spec, edge cases, off-by-one, null / undefined / empty.
@@ -122,9 +123,8 @@ Fresh context. The reviewer reads only the artifact + acceptance criteria, tries
 ### 4. Report findings, severity-ordered
 
 Fill `templates/review-report.md`. Each finding: file:line, the issue, why it matters, a fix direction — never a silent rewrite.
-- Label evidence **TRACED** (path walked; holds or fails at a named step) or **SUSPECTED** (pattern-level; the author verifies per §6).
-- Label provenance **INTRODUCED** (this diff caused it), **EXPOSED** (pre-existing, on a path this diff changes) or **ADJACENT** (pre-existing, path untouched; listed once, never drives the verdict).
-- A clean review is never a bare APPROVED: the Claims-traced section states what was walked and which axes ran.
+- A pre-existing issue on a path the diff does not touch → one note line, never drives the verdict.
+- A clean review is never a bare APPROVED: it names what was read and which lens or axes ran.
 - The full report goes to `.rolepod/evidence/review/<task>-<role>.md`; the reviewer returns ≤12 lines + verdict (a relayed message truncates).
 
 ### 5. Fix-verify loop
@@ -155,7 +155,7 @@ An advisor never substitutes for the §3 adversarial pass.
 
 ### 6. Author-side response
 
-READ the round's merged findings without reacting → VERIFY each against the codebase → RESPOND with a technical ack or reasoned pushback → IMPLEMENT by provenance: INTRODUCED → fix now; EXPOSED → fix now only when it makes THIS change wrong, otherwise a user decision (money / auth) or `## Follow-ups`; ADJACENT → `## Follow-ups`, never fixed this round.
+READ the round's merged findings without reacting → VERIFY each against the codebase → RESPOND with a technical ack or reasoned pushback → IMPLEMENT by provenance: introduced by this diff → fix now; pre-existing on a path this diff changes → fix now only when it makes THIS change wrong, otherwise a user decision (money / auth) or `## Follow-ups`; pre-existing on an untouched path → `## Follow-ups`, never fixed this round.
 
 Clarify unclear findings before touching anything LINKED to them; order blocking → simple → complex, testing each. No gratitude phrases — "Fixed in <file:line>." is the whole reply.
 
@@ -167,7 +167,7 @@ The §1 table names the reviewer per risk profile; the writer's unit tests are t
 
 ## If no matching agent is available
 
-Execute as Lead: read the diff and the touched files end-to-end with line numbers → run every §2 axis, tracing each claimed behavior through the seams → report per §4 (severity, file:line, TRACED / SUSPECTED) and record the missing adversarial pass as a LIMITATION.
+Execute as Lead: read the diff and the touched files end-to-end with line numbers → run every §2 axis, tracing each claimed behavior through the seams → report per §4 (severity, file:line, what was read and where it held or failed) and record the missing adversarial pass as a LIMITATION.
 
 ## Output
 

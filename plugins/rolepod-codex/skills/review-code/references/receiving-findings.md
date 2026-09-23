@@ -53,7 +53,7 @@ The reviewer outranks neither documented decisions nor user direction.
 ## Two questions per finding
 
 1. **Is it correct?** — verified against the code and the evidence, never taken from the reviewer's severity, its REJECTED label or its suggested fix.
-2. **Must THIS change repair it?** — yes for a requirement it violates, a regression it introduced, or a consumer it forces to migrate; anything else follows provenance (review-code §6: EXPOSED → a user decision or Follow-ups, ADJACENT → Follow-ups).
+2. **Must THIS change repair it?** — yes for a requirement it violates, a regression it introduced, or a consumer it forces to migrate; anything else follows provenance (review-code §6: pre-existing on a path this diff changes → a user decision or Follow-ups, pre-existing on an untouched path → Follow-ups).
 
 A real defect wrapped in an oversized repair (new guarantees, transactions, rollback, limits, compatibility paths the requirement never asked for) → keep the defect, take the minimum repair, say so in the reply.
 
@@ -108,9 +108,9 @@ When the round's findings land (every dispatched reviewer returned — merged, d
 1. **Read all** — do not start implementing while still reading, and never while a reviewer is still running on this tree
 2. **Clarify all unclear** — never partial-implement when items may be linked
 3. **Provenance first, then class:**
-   - ADJACENT (pre-existing, untouched path) → `## Follow-ups`, no fix this round
-   - EXPOSED (pre-existing, on a path this diff changes) → fix only when it makes THIS change wrong; otherwise the user decides (money / auth) or `## Follow-ups`
-   - INTRODUCED → the rest of this list
+   - A pre-existing issue on an untouched path → `## Follow-ups`, no fix this round
+   - Pre-existing on a path this diff changes → fix only when it makes THIS change wrong; otherwise the user decides (money / auth) or `## Follow-ups`
+   - Introduced by this diff → the rest of this list
    - Blocking (security / data loss / breaks build) → fix first
    - Simple (typo / import / rename / dead code) → batch second
    - Complex (refactor / logic / new abstraction) → last, one at a time

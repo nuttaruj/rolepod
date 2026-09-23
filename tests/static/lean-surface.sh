@@ -109,7 +109,10 @@ ROOT = pathlib.Path(".")
 # runs the Check not the Command, round 2 gated on BLOCKER/MAJOR only, and a
 # same-file Delivers split stays one task; no duplicate to fold, measured
 # 19,123 / 13,184 B.
-CAPS = {"using-rolepod": 21500, "review-code": 19200, "implement-plan": 13100, "write-plan": 13200, "rolepod-full": 3000}
+# review-code 19400 (2026-09-23, lean-loop T4): R2/R3 review = two lenses at
+# diff depth + the Depth bullet; the labels it cut did not cover it, measured
+# 19,318 B.
+CAPS = {"using-rolepod": 21500, "review-code": 19400, "implement-plan": 13100, "write-plan": 13200, "rolepod-full": 3000}
 DEFAULT, TOTAL_CAP = 13000, 145000  # total = backstop (~1% above the v2.161.0 size; +write-prototype); the per-skill caps do the work
 inc = re.compile(r"^\{\{INCLUDE: (.+?)\}\}$")
 over, total = [], 0
@@ -132,7 +135,7 @@ PYEOF
 SKILL_BYTES_OVER=$(printf '%s\n' "$SKILL_BYTES_REPORT" | sed -n 's/^OVER //p')
 SKILL_BYTES_TOTAL=$(printf '%s\n' "$SKILL_BYTES_REPORT" | awk '/^TOTAL /{print $2}')
 if [ -z "$SKILL_BYTES_OVER" ]; then
-  echo "  ✓ every SKILL.md within its byte cap, includes expanded (phase ≤13000; implement-plan ≤13100; write-plan ≤13200; router ≤21500; review-code ≤19200; alias ≤3000)"
+  echo "  ✓ every SKILL.md within its byte cap, includes expanded (phase ≤13000; implement-plan ≤13100; write-plan ≤13200; router ≤21500; review-code ≤19400; alias ≤3000)"
 else
   echo "  ✗ SKILL.md over byte cap (includes expanded): $SKILL_BYTES_OVER"
   fail=$((fail+1))

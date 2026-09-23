@@ -8,11 +8,10 @@
  file once: `read` or `skipped — reason`. A changed file missing from this
  list makes the report a partial return.>
 
-## Claims traced
-<Each behavior the change claims → the path walked (entry → branches → exit)
- and where it held or failed. Findings marked TRACED must anchor to a step
- here. On a clean review this section IS the evidence — a bare APPROVED with
- an empty trace list is not a review.>
+## Read
+<R4: each claimed behavior → the path walked and where it held or failed. A
+ lens (R2 / R3): the diff and the callers read. On a clean review this
+ section IS the evidence.>
 
 ## Risk surfaces touched
 <auth / billing / payments / credits / migration / data deletion / secrets /
@@ -42,10 +41,8 @@
  previous report is in the brief): prefix each finding IN-FIX (a defect
  inside the previous round's fixes) / NEW (not flagged before) / REPEAT
  (flagged before, still open) — the Lead's phase-log line counts them.
- Every finding also carries its provenance: INTRODUCED (this diff caused
- it) / EXPOSED (pre-existing, on a path this diff changes) / ADJACENT
- (pre-existing, untouched path — list once under "Adjacent", never a
- verdict driver; the author parks it in Follow-ups).>
+ A pre-existing issue on a path the diff does not touch → list once under
+ "Adjacent", never a verdict driver; the author parks it in Follow-ups.>
 
 ### BLOCKER — must fix before merge
 - `file:line` — <issue> — <why it matters> — <fix direction>
@@ -67,5 +64,8 @@
 ## Recommendation
 <APPROVED — nothing open above MINOR.
  APPROVED-WITH-NITS — only MINOR / Questions remain, none of which would change a correctness or security verdict.
- REJECTED — any open INTRODUCED or EXPOSED BLOCKER, or such a MAJOR neither fixed nor explicitly documented per its heading above. ADJACENT findings never make a REJECTED.>
+ REJECTED — any open BLOCKER introduced by this diff or pre-existing on a
+ path it changes, or such a MAJOR neither fixed nor explicitly documented
+ per its heading above. A pre-existing issue on an untouched path never
+ makes a REJECTED.>
 APPROVED | APPROVED-WITH-NITS | REJECTED — <one-line reason>
