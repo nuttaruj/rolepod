@@ -203,16 +203,18 @@ check "total supporting files ≤ 45 (actual: $SUPPORT_TOTAL)" "[ $SUPPORT_TOTAL
 # v2.161.0: per-skill 34000 -> 35100 (~1% above implement-plan's measured
 # 34,726 B: wizard.md's template gained the re-run default, the gh-failure
 # fallback that keeps gh's reason, and three bash 3.2 / set -u fixes).
+# v2.161.1: -> 35900 (~1% above the measured 35,561 B: the template refuses
+# a shell / template-owned KEY, aborts on Ctrl-D, survives a failing opener).
 SUPPORT_BYTES_TOTAL=0
 SUPPORT_BYTES_OVER=""
 for d in core/skills/*/; do
   s=$(basename "$d")
   n=$(find "$d" -type f ! -name SKILL.md -exec cat {} + 2>/dev/null | wc -c | tr -d ' ')
   SUPPORT_BYTES_TOTAL=$((SUPPORT_BYTES_TOTAL + n))
-  [ "$n" -le 35100 ] || SUPPORT_BYTES_OVER="${SUPPORT_BYTES_OVER}${s} (${n}) "
+  [ "$n" -le 35900 ] || SUPPORT_BYTES_OVER="${SUPPORT_BYTES_OVER}${s} (${n}) "
 done
 if [ -z "$SUPPORT_BYTES_OVER" ]; then
-  echo "  ✓ supporting files per skill ≤ 35100 B"
+  echo "  ✓ supporting files per skill ≤ 35900 B"
 else
   echo "  ✗ supporting files over the per-skill byte cap: $SUPPORT_BYTES_OVER"
   fail=$((fail+1))

@@ -43,9 +43,14 @@ the URL **before** asking for its value; `ask_secret` for anything secret;
 `confirm` before every irreversible action; one focused task per stage.
 Re-running is cheap: `ask` / `ask_secret` take the `.env` key as their
 variable name and offer its current value (Enter keeps it); a stage that
-fills another file sets `ENV_FILE=<file>` first and back to `.env` after. A failed `gh` call (not
-installed, signed out, no access) turns the stage into a warning listed with
-gh's reason under "still to do by hand" instead of killing the run.
+fills another file sets `ENV_FILE=<file>` first and back to `.env` after.
+Keys are UPPER_CASE `.env` names — the helpers refuse a shell or template
+name (`UID`, `PATH`, `ENV_FILE`) with a rename hint; asking for
+`GH_TOKEN` / `GITHUB_TOKEN` makes every later `gh` call run as the pasted
+token, so set GitHub secrets before that stage. Ctrl-D at an `ask` prompt
+aborts the run. A failed `gh` call (not installed, signed out, no access)
+becomes a warning with gh's reason under "still to do by hand"; a failing
+browser opener prints the URL to open by hand — neither kills the run.
 
 ## Template
 
@@ -74,33 +79,38 @@ say()  { printf '%s\n' "$*"; }
 step() { printf '  %s→%s %s\n' "$C" "$N" "$*"; }
 warn() { printf '  %s! %s%s\n' "$Y" "$*" "$N"; }
 
-open_url() {        # open_url <url> — macOS / Linux / WSL
+open_url() {        # open_url <url> — macOS / WSL / Linux; a failing opener is never fatal
   printf '  %sopening%s %s\n' "$Y" "$N" "$1"
-  if command -v open >/dev/null;        then open "$1"
-  elif command -v wslview >/dev/null;   then wslview "$1"
-  elif command -v xdg-open >/dev/null;  then xdg-open "$1"
-  else say "  (open manually: $1)"; fi
+  { open "$1" || wslview "$1" || xdg-open "$1"; } 2>/dev/null || say "  (open manually: $1)"
 }
 
+_key_ok() {         # _key_ok KEY — an UPPER_CASE .env key that no shell or template name owns
+  case "$1" in
+    TOTAL_STAGES|CURRENT|ENV_FILE|CAPTURED|SKIPPED|B|C|Y|N|PATH|HOME|SHELL|USER|PWD|IFS|TERM|_) ;;
+    *) [[ "$1" =~ ^[A-Z_][A-Z0-9_]*$ ]] && ( printf -v "$1" %s x && [ "${!1}" = x ] ) 2>/dev/null && return 0 ;;
+  esac
+  say "  wizard bug: '$1' cannot be a .env key here — rename it"; exit 1
+}
 current() {         # current KEY — its value in $ENV_FILE, empty if none
   [ -f "$ENV_FILE" ] || return 0
   { grep "^$1=" "$ENV_FILE" || true; } | tail -n 1 | cut -d= -f2-
 }
-ask() {             # ask KEY "prompt" — KEY is also the .env key; Enter keeps its current value
-  local key="$1" cur ans=""; shift
-  cur=$(current "$key")
-  read -r -p "  $*${cur:+ [Enter keeps current]} : " ans || true
-  printf -v "$key" '%s' "${ans:-$cur}"
+_ask() {            # _ask KEY 0|1 "prompt" — Enter keeps the current value; Ctrl-D aborts
+  local _k="$1" _s="$2" _c _a=""; shift 2
+  _key_ok "$_k"; _c=$(current "$_k")
+  if [ "$_s" = 1 ]; then
+    read -r -s -p "  $* (hidden${_c:+, Enter keeps current}): " _a || [ -n "$_a" ] || { echo; say "  aborted (no input)."; exit 1; }; echo
+  else
+    read -r -p "  $*${_c:+ [Enter keeps current]} : " _a || [ -n "$_a" ] || { echo; say "  aborted (no input)."; exit 1; }
+  fi
+  printf -v "$_k" '%s' "${_a:-$_c}"
 }
-ask_secret() {      # ask_secret KEY "prompt" — hidden entry, same default rule
-  local key="$1" cur ans=""; shift
-  cur=$(current "$key")
-  read -r -s -p "  $* (hidden${cur:+, Enter keeps current}): " ans || true; echo
-  printf -v "$key" '%s' "${ans:-$cur}"
-}
+ask()        { _ask "$1" 0 "${@:2}"; }   # ask KEY "prompt" — KEY is also the .env key
+ask_secret() { _ask "$1" 1 "${@:2}"; }   # ask_secret KEY "prompt" — hidden entry
 
 write_env() {       # write_env KEY VALUE — idempotent upsert into $ENV_FILE
   local key="$1" val="$2" tmp
+  _key_ok "$key"
   touch "$ENV_FILE"
   tmp=$(mktemp)
   grep -v "^${key}=" "$ENV_FILE" > "$tmp" || true
