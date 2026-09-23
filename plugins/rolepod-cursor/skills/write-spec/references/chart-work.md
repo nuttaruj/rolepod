@@ -13,8 +13,10 @@ spec.
 ## The decision map
 
 One markdown file per effort: `docs/rolepod/maps/<effort>.md`. Question
-tickets live beside it in `docs/rolepod/maps/<effort>/q-<slug>.md`. Both are
-committed — the map is a shared record, not session scratch.
+tickets live beside it in `docs/rolepod/maps/<effort>/q-<slug>.md`. Both
+persist across sessions under the private `docs/rolepod/` (write-spec §6) — the
+map is a durable record, not session scratch; they enter git only when the repo
+tracks its working docs (`.rolepod/docs-tracked`).
 
 ```markdown
 # Map: <effort>
@@ -98,7 +100,8 @@ parallel via scouts). More than one `discuss` per session degrades both.
    a ticket now (and leaves the ledger). Any ticket it invalidated is
    edited or closed. Anything it revealed as beyond the Target moves to
    **Ruled out** — closed, not resolved.
-5. Commit the map + ticket like any other doc change.
+5. Save the map + ticket; commit them only under `.rolepod/docs-tracked` —
+   otherwise the pre-commit gate blocks `docs/rolepod/`.
 
 ## Entry and exit
 

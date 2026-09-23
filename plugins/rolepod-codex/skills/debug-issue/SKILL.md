@@ -16,7 +16,7 @@ Replace guess-and-check with disciplined narrowing: reproduce → trace upstream
 1. NEVER fix before reproducing with a deterministic command. No repro = guess.
 2. NEVER stop at the first symptom fix. Trace upstream to a legitimate stopping point (external input, system boundary, "designed this way"), then fix at root.
 3. ALWAYS roll back your last action first (your own diff, reversible undos only) when the error appeared right after your change.
-4. ALWAYS write the failing test you wish had existed before shipping the fix.
+4. ALWAYS write the failing test you wish had existed before shipping the fix — or record why no seam can hold it (§6).
 5. After 2 failed fix attempts on the same surface, STOP fixing — get one cross-model opinion (§9). Its correction is the outside review that permits exactly ONE more attempt; fix #3 without it = thrashing.
 </EXTREMELY-IMPORTANT>
 
@@ -44,9 +44,13 @@ Inputs: the exact error (literal quote) · throw site (file:line) + stack · whe
 
 Capture the exact error, the throw site, and the stack before editing. The real cause is often mid-stack, not at the top.
 
+**Redact** every secret in the commands, output and artifacts you show — `<REDACTED>` in its place; build the loop against env vars so the credential never lands in the transcript.
+
 ### 2. Reproduce reliably
 
 One command, same failure every time — `pytest path/test_x.py::name -v`, the exact failing `curl`, or UI steps + browser + console. Intermittent → raise the rate first (loop the trigger, add stress, inject sleeps) until you have a 50%+ signal; a 1% flake is not yet debuggable (`references/flake-triage.md`). Cannot repro locally → reproduce in CI / staging. Do not fix what you cannot see fail.
+
+**Loop ready** = ONE named command, already run once, that is red-capable (asserts the user's exact symptom, not "didn't crash"), deterministic, fast (seconds) and runs unattended. Red → **minimise**: cut inputs, callers, config and steps one at a time, re-running after each cut, until every remaining element is load-bearing — that repro becomes the §6 test.
 
 **UI / browser bugs — backend order:**
 1. `rolepod-uiproof` when installed: `/check-errors` returns console + network failures during the flow, `/verify-ui` returns minimized repro steps + artifacts — reuse those steps in §6;
@@ -78,7 +82,7 @@ Symptom → caller → caller's caller, until: external input (user, API, env, f
 
 ### 6. Write the failing test
 
-The test you wish had existed. Fails before the fix, passes after. Tighten until a one-character regression would break it.
+The test you wish had existed. Fails before the fix, passes after. Tighten until a one-character regression would break it. No seam reaches the real bug pattern (only a shallow single-caller test fits) → that is the finding: record it in the debug report and point the user at `/deepen-codebase`; a test at a too-shallow seam is false confidence.
 
 ### 7. Minimal fix
 
@@ -88,7 +92,7 @@ Same root cause across many call sites → fix the first 2 inline, then using-ro
 
 ### 8. Verify regression-clean
 
-Run the module suite (full suite on high-risk surfaces). No new red → re-run the §2 repro itself.
+Run the module suite (full suite on high-risk surfaces). No new red → re-run the §2 repro itself. The `[DBG-]` tags grep to zero; the commit message names the hypothesis that held.
 
 **The fix fails → new evidence, not a prompt to adjust the patch.** Feed it back into §5 before any second attempt — the root may be wrong or partial; a re-fix without a re-trace is a blind retry. A second failure, same signature or new → §9: two misses from the same mind mean the mental model is wrong.
 
