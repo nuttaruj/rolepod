@@ -27,6 +27,12 @@ required lanes are green, then proceed with the authorized merge.
 A conflicted merge or rebase is a STOP-and-decide, not a dead end — and not
 free rein. Every line written during resolution is NEW, UNREVIEWED code.
 
+Before touching a hunk, read WHY each side changed it — the commit messages,
+the PR, the ticket. Resolve toward both intents where they fit; where they
+clash, the side that matches the merge's goal wins and the commit message
+names the trade-off. Never invent behaviour neither side had to paper over
+the clash.
+
 1. **Rebase onto the latest integration target (SKILL.md §4) BEFORE the pre-merge gate** — gates must never
    pass on a stale base and then meet the conflict after.
 2. **Trivial conflict** (imports, adjacent independent lines, lockfiles) —
