@@ -3,7 +3,7 @@
 # Gate cadence
 
 - Editing: only the check that covers the file — `make test-lean-surface` (caps, invariants), `bash tests/static/<x>.sh`, `bash -n hooks/<x>.sh` + its case in `tests/integration/cases/`.
-- Task Command: only the case files the task touches (`ROLEPOD_CASE=` for a section of a slow file); the owner ends with the commit check once — `make render && git add -A && make test-static` (~22 s) — so integration never fails on a static pin.
+- Task Command: every case file that names a file the task changes — `grep -rl <name> tests/` per file (`ROLEPOD_CASE=` for a section of a slow file); the owner ends with the commit check once — `make render && git add -A && make test-static` (~22 s) — so integration never fails on a static pin.
 - Commit: `make render && git add -A && make test-static` once; read the exit code, never `| grep`.
 - Release: the plan's combined review done, then `make test-all` once, then `docs/release-checklist.md`.
 - After the release: the closing line proposes /compact (or a fresh session) before the next request.

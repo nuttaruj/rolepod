@@ -40,8 +40,10 @@
 - **Proof:** <the one claim a reviewer of this task would check by hand> :: `<the command that proves it — exits 0 when the claim holds; an absence check is ! grep>` (optional — it becomes the Lead's spot-check)
 - [ ] **Expected failing signal:** <for test-first tasks — the error the test
       shows before the fix. Omit if not test-first.>
-- [ ] **Command:** <the tests covering this task's files, runnable copy-paste as-is — never a suite the
-      commit gate or the release already runs; the owner runs it after each edit and last before returning>
+- [ ] **Command:** <the tests covering this task's files — every test file that names a file this task
+      changes (grep the test dir for each file name, so a removal leaves no stale pin for the release to
+      find) — runnable copy-paste as-is; never the whole-repo suite; the owner runs it after each edit and
+      last before returning>
 - **Owner:** <The role the domain map assigns to this task's Files — path first,
       then concern. `Lead` for R1/R2-sized work (≤2 files) or when the user said
       self-do; from R3 up the map decides. A vertical slice has ONE owner: the role
