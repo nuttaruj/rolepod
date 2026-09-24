@@ -23,12 +23,12 @@ Done when: the slice is labelled test-first or evidence-after; evidence-after ha
 
 ### 2. Take the agreed seam
 
-Tests go only at an agreed seam, taken in this order: the spec's Testing decisions → the plan task's seam → neither (no spec, no plan) → pick the highest existing seam that reaches the behavior and state it (`Seam: <interface>`) before any test. Never a test at a seam nobody named.
+Tests go only at an agreed seam, taken in this order: the plan task's seam (the spec's Testing decisions, or a planner-added one) → neither (no spec, no plan) → pick the highest existing seam that reaches the behavior and state it (`Seam: <interface>`) before any test; brand-new code with no existing seam → the new code's public interface, stated the same way. Never a test at a seam nobody named.
 Highest = closest to the caller while still reaching the behavior; the fewest seams; an existing seam over a new one.
 The seam is the public interface a caller uses; the test goes there, never at internals.
 A seam's interface is everything a caller must know: the signature plus its invariants, ordering, error modes and required config. The test asserts those, not the type alone.
 Match the seam to the dependency: pure logic → a unit test through the interface; clock / random / filesystem / env → inject it and fake it (a frozen `now`, a temp dir); your own DB or queue → an integration test against a real local instance; a third-party API → a contract test on a recorded response plus one live smoke.
-No seam reaches the real behaviour (only a shallow single-caller test fits) → that is the finding: record it and stop; a test at a too-shallow seam is false confidence.
+A seam exists but none reaches the real behaviour (only a shallow single-caller test fits) → that is the finding: record it and stop; a test at a too-shallow seam is false confidence.
 
 Done when: the agreed seam is stated with the interface contents the test will assert, or the missing seam is recorded.
 
@@ -60,14 +60,14 @@ Done when: the run shows the named assertion failing.
 - Modifying an existing test on the way to green (loosened assert, skip or focus marker, deleted case, re-recorded snapshot) is a finding until justified.
 - Run the task's Command after each edit; the whole suite runs once per release.
 
-Done when: the new test is green and the task's Command passes; back to step 3 for the next slice.
+Done when: the new test is green and the task's Command passes; back to step 3 for the next behavior.
 
 ### 6. Self-check the tests
 
 The writer owns the unit tests; a reviewer reads this same list.
 - Weak assertion = still green after a one-character regression. High-risk logic: flip one operator in a throwaway worktree; nothing red → tighten.
 - Mock boundary: only external boundaries are mocked; no DB mock under an integration test.
-- R4 floors: an auth change has its deny-path test, money math its own test, a migration forward + rollback, shared state written concurrently its race test.
+- R4 floors: an auth change has its deny-path test, money math its own test, a migration forward + rollback, a race on shared state written concurrently (e.g. a credit balance) its race test.
 - Size the suite by rules: one test per rule at the rule's owner, one smoke per call site; skip a test whose failure an existing test already catches.
 - A test at a seam nobody agreed, or an edge / error / race case with no reason → a finding: drop it, or record it under `## Follow-ups`.
 - Implementation-coupled (reaches past the interface), tautological (asserts what it set up) or wording-pinned tests → rewrite at the seam.

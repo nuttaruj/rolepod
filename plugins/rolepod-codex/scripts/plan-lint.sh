@@ -428,7 +428,7 @@ if [ "${1:-}" = "--brief" ]; then
       # The round shape lives HERE, where the owner picks its reviewers: at the
       # end of the Bounds line two owners in a row still messaged the finished
       # reviewer for round 2 and idled while the answer landed at the Lead.
-      print "Round 2 is internal and not adversarial (a BLOCKER or MAJOR fix only; a MINOR or NIT fix is proven by the Command): a normal two-axis review of the fix delta. The flagging internal reviewer re-checks its own finding; an external finding goes to `security-engineer` on a high-risk path, else to `universal-reviewer` at strong class; never a new external round. ONE new foreground dispatch with the findings and the fix delta only, never a message to the finished one; <= 15 tool calls. A new issue it finds is a normal finding to fix."
+      print "Round 2 is internal and not adversarial (a BLOCKER or MAJOR fix only; a MINOR or NIT fix is proven by the Command): a normal re-check of the fix delta at the lens of the reviewer. The flagging internal reviewer re-checks its own finding; an external finding goes to `security-engineer` on a high-risk path, else to `universal-reviewer` at strong class; never a new external round. ONE new foreground dispatch with the findings and the fix delta only, never a message to the finished one; <= 15 tool calls. A new issue it finds is a normal finding to fix."
     } else {
       # R2 / R3: no reviewer in the loop — the Lead runs ONE combined
       # review over the plan diff (implement-plan Review) instead, so there is

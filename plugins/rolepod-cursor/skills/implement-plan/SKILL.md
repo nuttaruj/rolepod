@@ -30,8 +30,8 @@ Done when: the plan lints clean (or passes the by-eye check), the baseline is re
 
 ### 2. Test first at the agreed seams
 
-- Every logic slice runs `tdd-flow` at the agreed seam — the spec's Testing decisions, else the plan task's seam: a failing test at that public interface (never internals) → watch it fail (green before the code → tighten the assertion) → the smallest change → green → the next behavior. Refactor at review, not in the loop.
-- `tdd-flow` cannot be opened → these limits still hold: the agreed seam only; one behavior → one test; no test ahead of the behavior; edge / error / race only when an acceptance criterion names it or the surface is R4. Mock only external boundaries, never the DB in an integration test.
+- Every logic slice runs `tdd-flow` at the agreed seam — the spec's Testing decisions, else the plan task's seam, neither (an R2 checklist, a single-file edit) → the highest existing seam that reaches the behavior, stated `Seam: <interface>`: a failing test at that public interface (never internals) → watch it fail (green before the code → tighten the assertion) → the smallest change → green → the next behavior. Refactor at review, not in the loop.
+- `tdd-flow` cannot be opened → these limits still hold: the agreed seam only; one behavior → one test; no test ahead of the behavior; edge / error / race only when an acceptance criterion names it or it is an R4 (high-risk) floor — deny path, money math, migration rollback, shared-state race. Mock only external boundaries, never the DB in an integration test.
 - A test outside the agreed seam is scope creep → one line under `## Follow-ups`.
 - Prose, rename, config: no test.
 

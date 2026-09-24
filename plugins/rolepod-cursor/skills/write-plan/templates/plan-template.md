@@ -44,7 +44,9 @@
       typecheck / smoke) — never skipped. Tests cover logic, UI, behaviour: a doc,
       comment, config-text or string-literal change gets NO test (render / lint is
       its check). One test per rule at its owner, one smoke per call site — never a
-      test per copy of the rule.>
+      test per copy of the rule. An edge / error / race test carries its reason: a
+      Success criterion names it, or an R4 floor (deny path, money math, migration
+      rollback, shared-state race).>
 - **Proof:** <the one claim a reviewer of this task would check by hand> :: `<the command that proves it — exits 0 when the claim holds; an absence check is ! grep>` (optional — it becomes the Lead's spot-check)
 - [ ] **Expected failing signal:** <for test-first tasks — the error the test
       shows before the fix. Omit if not test-first.>

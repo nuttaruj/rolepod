@@ -49,12 +49,14 @@ time-limited link, sets a new password, and is logged in.
   submit a weak password, observe the validator rejection
 
 ## Testing decisions
-- Seam: the existing `POST /password_resets` + `PATCH /password_resets/:token`
-  request pair — one seam for the whole flow; request specs in
+- Seam: a new `POST /password_resets` + `PATCH /password_resets/:token`
+  request pair — no existing endpoint reaches reset; one seam for the whole
+  flow; request specs in
   `spec/requests/password_reset_spec.rb`, copying `spec/requests/sessions_spec.rb`.
 - One behavior per test, one logical assertion; expected values from this spec.
 - Edge / error cases, each with its reason: expired + reused link (a criterion),
-  neutral response for an unknown email (a criterion; auth deny path).
+  neutral response for an unknown email (a criterion; auth deny path), two
+  concurrent redemptions of one token → one success (shared-state race).
 
 ## Constraints
 - Stack: existing Rails app + Postgres + the current SMTP provider.

@@ -60,7 +60,7 @@ Done when: the user has 2-3 lensed approaches with one recommended.
 Fix in the draft:
 - placeholders (`[[FILL: …]]`, `TODO`, `tbd`), contradictions between sections, ambiguous wording ("maybe", "should", "if needed");
 - a Success criterion without "proven by", provable only at a seam the implementation alone reaches, or naming a not-yet-existing command unflagged — pair each with a real or explicitly-new command / observation a caller can reach;
-- Testing decisions missing, a seam lower or newer than an existing one that reaches the behavior, or an edge / error / race case with neither a Success criterion nor an R4 surface behind it;
+- Testing decisions missing, a seam lower or newer than an existing one that reaches the behavior, or an edge / error / race case with neither a Success criterion nor an R4 (high-risk) floor behind it — deny path, money math, migration rollback, shared-state race (`tdd-flow`);
 - a technical claim behind the approach with no verifiable pointer (file:line, commit, or URL + date);
 - a high-risk surface with no security / migration / audit plan — add it, or delegate to `security-engineer` / `system-architect`;
 - untested assumptions about the user's intent, scope creep, over-engineering for hypothetical needs.
@@ -84,7 +84,7 @@ Done when: the user accepted a direction. No contract before it.
 ### 7. Contract
 
 Fill `templates/spec-template.md`, every section resolved (legacy code: Current behavior lists every consumer, per its hint): Goal · User / actor · Non-goals · Current behavior · Desired behavior · Success criteria · Testing decisions · Constraints · High-risk surfaces · Chosen approach · Rejected approaches · Open questions.
-**Testing decisions** — the Lead picks the seams: the highest seam that reaches the behavior, the fewest (ideally one per feature), an existing seam over a new one; plus what a good test is here and the prior-art test files. They are approved with the spec at its gate (Gate 1 inline, Gate 2 in file mode) — no extra question. Edge / error / race cases only where a Success criterion names them or the surface is R4.
+**Testing decisions** — the Lead picks the seams: the highest seam that reaches the behavior, the fewest (ideally one per feature), an existing seam over a new one; plus what a good test is here and the prior-art test files. They are approved with the spec at its gate (Gate 1 inline, Gate 2 in file mode) — no extra question. Edge / error / race cases only where a Success criterion names them or an R4 floor covers them.
 Run the **spec-lint** (piped in inline mode, the saved file in file mode): `grep -niE '\[\[FILL:|TODO|TBD'` must print nothing. A printed line or a grep error is a lint failure, never a silent pass. It catches an unfilled marker or a stray TODO/TBD — never legitimate angle brackets like `<h1>` / `List<T>`, and not vague wording.
 
 - One-session work → inline in chat; Gate 1 is the only approval. The default when unsure.

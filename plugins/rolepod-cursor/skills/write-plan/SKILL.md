@@ -45,7 +45,7 @@ Done when: every task has Delivers and Blocked by with named edges, and every fi
 
 ### 3. Test plan per task
 
-Per task: the test type, the assertion, the **seam** (the public interface the test exercises; the failing test goes there first → `tdd-flow`) taken from the spec's Testing decisions — a seam the spec does not name gets one line of why in the task (no spec → the planner names the highest existing seam) and the exact **Command** — copy-paste runnable, never "run the tests". "Adds tests" is not a test plan.
+Per task: the test type, the assertion, the **seam** (the public interface the test exercises; the failing test goes there first → `tdd-flow`) taken from the spec's Testing decisions (a seam the spec does not name gets one line of why in the task; no spec → the planner names the highest existing seam); an edge / error / race test only with its reason (a Success criterion names it, or an R4 (high-risk) floor → `tdd-flow`); and the exact **Command** — copy-paste runnable, never "run the tests". "Adds tests" is not a test plan.
 The template's Test / evidence line carries the rest (no-test cases, one test per rule).
 No test infrastructure → the first task bootstraps the harness (edge-cases: No test infrastructure).
 

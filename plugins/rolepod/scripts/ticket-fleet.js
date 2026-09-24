@@ -21,8 +21,8 @@
 //            `rolepod-ticket integrate` already scans.
 //   Fix    — ONLY when a reviewer returned blocking findings: ONE more
 //            owner call with them, then ONE re-check by each flagging
-//            reviewer (never a second full review round — the two-round
-//            budget, as control flow instead of owner judgment).
+//            reviewer (round 2 re-checks the fix delta only, never a second
+//            full review — as control flow instead of owner judgment).
 // No scripted verifier stage: the owner runs the brief's ## Command after
 // each edit and last before returning; the verifier is `rolepod-ticket
 // integrate`, which runs the Proof once before the ship chain is printed.

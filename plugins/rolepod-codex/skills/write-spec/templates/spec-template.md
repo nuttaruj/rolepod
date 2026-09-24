@@ -4,7 +4,8 @@
      that did not move reads `Unchanged — <prior spec path> §<section>` instead of
      a re-write. Only Goal, User / actor, Non-goals, Constraints, Chosen approach and
      Rejected approaches may inherit. Current behavior, Desired behavior, Success
-     criteria, High-risk surfaces and Open questions are ALWAYS written fresh. -->
+     criteria, Testing decisions, High-risk surfaces and Open questions are ALWAYS
+     written fresh. -->
 
 # [[FILL: feature name]] Spec
 
