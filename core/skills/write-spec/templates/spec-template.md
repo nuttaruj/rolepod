@@ -33,6 +33,16 @@
 - [[FILL: criterion 1]] — proven by: [[FILL: command / observation]]
 - [[FILL: criterion 2]] — proven by: [[FILL: command / observation]]
 
+## Testing decisions
+[[FILL: The seams under test — the highest seam that reaches the behavior, the
+ fewest (ideally one per feature), an existing seam over a new one (a new seam:
+ one line of why). What a good test is here: one behavior through the public
+ interface, one logical assertion, expected values from this spec. Edge / error /
+ race cases: only those a Success criterion names or an R4 surface needs (auth
+ deny path, money math, migration rollback, shared-state race). Prior-art test
+ files to copy. The Lead picks these; they are approved with the spec at its
+ gate. No logic changes → `None — evidence-after: <the check>`.]]
+
 ## Constraints
 [[FILL: Stack, deadline, no-touch zones, compatibility the user already stated. Repeat feature: may inherit — `Unchanged — <prior> §Constraints`.]]
 

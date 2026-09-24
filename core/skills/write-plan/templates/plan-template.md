@@ -36,7 +36,8 @@
       edit spec (old → new) goes in a fenced block under this task, never
       inline in the bullet.>
 - [ ] **Test / evidence:** <test type (unit / integration / contract / E2E / smoke /
-      repro) + the assertion that proves it + the **seam** — the public interface the
+      repro) + the assertion that proves it + the **seam** — from the spec's Testing
+      decisions (a seam it does not name: one line of why) — the public interface the
       test exercises; the owner writes the failing test there first, never against
       internals. No test can express the behaviour yet → 1-3 acceptance criteria the
       reviewer walks, and the Command is the nearest mechanical check (lint /

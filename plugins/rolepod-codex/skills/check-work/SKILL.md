@@ -18,7 +18,7 @@ Turns a finished change into an evidence block: fresh proof that it works, or an
 | Change type | Required evidence |
 |-------------|-------------------|
 | Logic / bug fix | Red-green-revert: failing test → fix → green (the loop → `tdd-flow`) → prove red without the fix → green. The red proof is ONE command: remove the fix (a throwaway `git worktree` with the source-only patch reverse-applied; it cannot run the test → revert in place), run the one named test, restore. Red = a non-zero exit WITH the named assertion in the output; a collection / import error, a skip or a 0-test run is not red. Script: `references/verification-discipline.md` Revert in one call. A test that does not fail without the fix is not testing the fix. |
-| New feature | Happy + edge + error tests pass |
+| New feature | Each acceptance criterion has a passing test at the agreed seam |
 | Refactor | Existing suite green before and after |
 | Schema / migration | Forward + rollback dry run + row-count delta |
 | API contract | Contract test + downstream consumer smoke |

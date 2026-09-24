@@ -25,6 +25,12 @@ Lower-risk work where a test-first cycle adds ceremony without catching more.
 | Config / infra | Smoke test + restart confirmation |
 | Docs / ADR | Render output + link check |
 | Pure rename / typecheck-safe refactor | Existing suite green before and after |
+| Wiring / CRUD pass-through (no rule of its own) | Suite green + one smoke through the path |
+
+## Agreed seams — why
+
+Not everything can be tested; agreeing the seams up front puts the test effort on the critical paths and the complex logic instead of every edge case. The highest seam that reaches the behavior covers the most per test, and each extra seam is more surface to keep in step — the fewer the better, ideally one per feature. An existing seam beats a new one: it is already exercised and already understood.
+Edge / error / race tests need a reason (an acceptance criterion, or an R4 surface) because a blanket "cover every path" rule grows the suite past the work's scope; a count cap would only invite padding up to the cap.
 
 ## Sizing by rules
 

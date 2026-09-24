@@ -48,6 +48,14 @@ time-limited link, sets a new password, and is logged in.
 - A new password runs through the existing strength validator — proven by:
   submit a weak password, observe the validator rejection
 
+## Testing decisions
+- Seam: the existing `POST /password_resets` + `PATCH /password_resets/:token`
+  request pair — one seam for the whole flow; request specs in
+  `spec/requests/password_reset_spec.rb`, copying `spec/requests/sessions_spec.rb`.
+- One behavior per test, one logical assertion; expected values from this spec.
+- Edge / error cases, each with its reason: expired + reused link (a criterion),
+  neutral response for an unknown email (a criterion; auth deny path).
+
 ## Constraints
 - Stack: existing Rails app + Postgres + the current SMTP provider.
 - Reset tokens stored hashed, never plaintext.
@@ -150,6 +158,12 @@ filters produce, with the same columns as the on-screen table.
   loading state
 - Exporting a filter range with zero orders downloads a header-only CSV, not
   an error — proven by: apply a zero-match filter, open the downloaded file
+
+## Testing decisions
+- Seam: the existing reports API with a `format=csv` parameter — the same
+  seam the table's request specs already use; no new seam.
+- One behavior per test, one logical assertion; the zero-match case is tested
+  because a criterion names it. The loading state is a browser observation.
 
 ## Constraints
 - Stack: existing React frontend + the current reports API.

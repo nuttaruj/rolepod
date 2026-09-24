@@ -15,25 +15,28 @@ Turns one logic slice into a test that was red before the change and is green af
 ### 1. Pick the discipline by risk
 
 Test-first — the failing test comes BEFORE the code — for a bug fix, new business logic, auth / permission (the deny path before the allow path), billing / credits / payment (the money math), a migration or backfill (forward + rollback), and concurrency (the interleaving the bug needs).
-Evidence-after — make the change, then prove it — for UI copy or styling (a browser observation), config / infra (smoke + restart), docs (render + link check) and a typecheck-safe rename (the suite green before and after).
+Evidence-after — make the change, then prove it — for UI copy or styling (a browser observation), config / infra (smoke + restart), docs (render + link check), a typecheck-safe rename (the suite green before and after), and wiring or CRUD pass-through with no rule of its own (the suite green plus one smoke through the path).
 In doubt on a risk surface → test-first.
 Why each row sits where it does, and the seam per dependency kind → `references/test-by-risk.md`.
 
 Done when: the slice is labelled test-first or evidence-after; evidence-after hands straight to the Next phase.
 
-### 2. Name the seam
+### 2. Take the agreed seam
 
+Tests go only at an agreed seam, taken in this order: the spec's Testing decisions → the plan task's seam → neither (no spec, no plan) → pick the highest existing seam that reaches the behavior and state it (`Seam: <interface>`) before any test. Never a test at a seam nobody named.
+Highest = closest to the caller while still reaching the behavior; the fewest seams; an existing seam over a new one.
 The seam is the public interface a caller uses; the test goes there, never at internals.
 A seam's interface is everything a caller must know: the signature plus its invariants, ordering, error modes and required config. The test asserts those, not the type alone.
 Match the seam to the dependency: pure logic → a unit test through the interface; clock / random / filesystem / env → inject it and fake it (a frozen `now`, a temp dir); your own DB or queue → an integration test against a real local instance; a third-party API → a contract test on a recorded response plus one live smoke.
 No seam reaches the real behaviour (only a shallow single-caller test fits) → that is the finding: record it and stop; a test at a too-shallow seam is false confidence.
 
-Done when: the seam is named with the interface contents the test will assert, or the missing seam is recorded.
+Done when: the agreed seam is stated with the interface contents the test will assert, or the missing seam is recorded.
 
 ### 3. Write one failing test
 
-- One test, one rule, at the seam — the next slice gets its own test after this one is green. Vertical slices, never every test up front.
-- Cover the rule's happy, edge and error path (+ a race on shared state). A bug fix starts from the test that reproduces it.
+- One behavior, one test, at the agreed seam — the next behavior gets its own test after this one is green. Never a test ahead of a behavior not yet built; never every test up front.
+- One logical assertion per test (several asserts on one outcome count as one).
+- Edge / error / race cases only with a reason: an acceptance criterion names the case, or the surface is R4 (the auth deny path, money math, a migration rollback, a race on shared state). A bug fix starts from the test that reproduces it.
 - Expected values come from the spec, never from the code's current output or the shared seed.
 - Assert the contract — a value, code, structured field, state or side effect — never wording the requirement did not fix.
 - Dates and times derive from ONE frozen `now`; never a literal calendar date or the real clock.
@@ -64,8 +67,9 @@ Done when: the new test is green and the task's Command passes; back to step 3 f
 The writer owns the unit tests; a reviewer reads this same list.
 - Weak assertion = still green after a one-character regression. High-risk logic: flip one operator in a throwaway worktree; nothing red → tighten.
 - Mock boundary: only external boundaries are mocked; no DB mock under an integration test.
-- A migration has forward + rollback; billing / credits have a race test.
+- R4 floors: an auth change has its deny-path test, money math its own test, a migration forward + rollback, shared state written concurrently its race test.
 - Size the suite by rules: one test per rule at the rule's owner, one smoke per call site; skip a test whose failure an existing test already catches.
+- A test at a seam nobody agreed, or an edge / error / race case with no reason → a finding: drop it, or record it under `## Follow-ups`.
 - Implementation-coupled (reaches past the interface), tautological (asserts what it set up) or wording-pinned tests → rewrite at the seam.
 
 Done when: every new test survives the flip, sits at the seam, and each rule has exactly one owner test.

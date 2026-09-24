@@ -12,7 +12,7 @@
 |-------|-------------|
 | `write-spec` | Use when turning a fuzzy goal, half-stated feature, or vague request into a sharp implementation ... |
 | `write-plan` | Use when turning an approved spec or a small clear goal into an executable implementation plan — ... |
-| `implement-plan` | Use when executing an approved plan or a clear single-file edit — TDD at the plan's seams, surgic... |
+| `implement-plan` | Use when executing an approved plan or a clear single-file edit — TDD at the agreed seams, surgic... |
 | `debug-issue` | Use when something is broken — error appears, test fails, build breaks, output is wrong, regressi... |
 | `check-work` | Use after a change is made and before claiming the work is done — prove it with evidence (tests, ... |
 | `review-code` | Use before merging or shipping — review code with risk-appropriate adversarial pressure across co... |

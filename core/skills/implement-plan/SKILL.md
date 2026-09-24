@@ -1,6 +1,6 @@
 ---
 name: implement-plan
-description: Use when executing an approved plan or a clear single-file edit — TDD at the plan's seams, surgical edits, bounded delegation, worktrees only when real filesystem isolation is needed. Phase = Build.
+description: Use when executing an approved plan or a clear single-file edit — TDD at the agreed seams, surgical edits, bounded delegation, worktrees only when real filesystem isolation is needed. Phase = Build.
 when_to_use: when a plan is approved (or the diff is small and obvious) and the next step is to actually edit code, tests, configs, content, or other artifacts
 ---
 
@@ -29,12 +29,12 @@ Turns an approved plan into a built, reviewed diff, one task at a time, each del
 
 Done when: the plan lints clean (or passes the by-eye check), the baseline is recorded, and every file the task touches has been read.
 
-### 2. Test first at the plan's seams
+### 2. Test first at the agreed seams
 
-- Every logic slice: a failing unit test at the plan's seam (the public interface, never internals) → watch it fail (green before the code → tighten the assertion) → the smallest change → green → next slice. Refactor at review, not in the loop.
+- Every logic slice runs `tdd-flow` at the agreed seam — the spec's Testing decisions, else the plan task's seam: a failing test at that public interface (never internals) → watch it fail (green before the code → tighten the assertion) → the smallest change → green → the next behavior. Refactor at review, not in the loop.
+- `tdd-flow` cannot be opened → these limits still hold: the agreed seam only; one behavior → one test; no test ahead of the behavior; edge / error / race only when an acceptance criterion names it or the surface is R4. Mock only external boundaries, never the DB in an integration test.
+- A test outside the agreed seam is scope creep → one line under `## Follow-ups`.
 - Prose, rename, config: no test.
-
-The loop in full — test-first vs evidence-after, the seam's interface, mock boundaries (never a mocked DB in an integration test), your own test self-check → `tdd-flow`.
 
 Done when: each logic slice has a test that was red before its change and is green after.
 
@@ -103,7 +103,7 @@ A task owner's decision brief carries its Command tail. The Lead spot-checks ONE
 R2/R3 tasks carry no reviewer in the loop.
 - When the plan's last code task is committed, the Lead runs ONE combined review over the plan diff (`rolepod-ticket log` prints the range; without it, the recorded base sha..HEAD, i.e. the first task commit^..HEAD); more than ~15 files → one per ship group.
 - A plan that names a ship group → after its last task, one drift pass over the group's range, a normal review of the cross-task seams (never adversarial): `security-engineer` when it holds an R4 task, else the combined review is the drift pass.
-- Findings → ONE fix task to the owning role; round 2 only for a BLOCKER / MAJOR fix.
+- Findings → ONE fix task to the owning role; round 2 only for a BLOCKER / MAJOR fix — internal, never a new external round (`review-code` Fix-verify rounds).
 - Nothing pushes or releases before it.
 
 R4 tasks keep per-task review: the owner dispatches its reviewers before returning. Who reviews at each tier → `review-code` Pick reviewers.
