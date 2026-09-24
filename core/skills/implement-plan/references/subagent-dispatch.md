@@ -23,6 +23,27 @@ Fresh subagent per task — reusing one across tasks leaks Task N's mental model
 
 **The dispatch prompt = the brief + what it lacks.** Point the owner at the brief and add only facts that neither the brief nor the owner's own skill holds: a worktree path that differs, absolute paths of private docs, a trap measured in this repo. Never restate the workflow (test-first, review rounds, commit policy, edit tools) — the skill carries it, and every restated rule pushes the task's goal further down the owner's context.
 
+## Picking the owner
+
+Closest specialist by path / concern / strategy:
+- `frontend-developer` / `ui-ux-designer` — UI, interaction
+- `backend-developer` — API, business logic, DB models
+- `mobile-developer` — iOS, Android, RN, Flutter
+- `billing-engineer` — billing, credits, subscription
+- `ai-ml-engineer` — LLM, RAG, SDK, prompt cache
+- `data-scientist` — analytics, pipelines, dashboards
+- `content-strategist` — written output; pass `audience: dev|user|prospect`
+
+A write mandate goes only to the role that owns the path:
+- Never a generic platform agent (`general-purpose` / `default` / `claude`, or a bare Workflow `agent()`; a writing stage carries `agentType: 'rolepod:<role>'`).
+- Never a reviewer: `qa-tester` / `security-engineer` write tests and markdown only; `universal-reviewer` / `scout` write markdown only.
+
+Use the least powerful model that can handle the role (Model selection below).
+
+## The brief
+
+`plan-lint.sh --brief <N> <plan> [contract]` prints Goal / Tier / Blocked by / Read first / Files allowed + forbidden / Change / Command / Done when / Write / Reviewers by tier (`none` for a docs-only diff) / Bounds. The Lead adds only **Read first** and facts the brief lacks; the owner starts there and never re-surveys what the Lead already mapped.
+
 ## External write
 
 `Owner: <role> · write: external` (pool opt-in, per task):
@@ -34,7 +55,7 @@ The member never reviews its own draft, and the Lead never runs the SKILL.md Rev
 
 ## Implementer status taxonomy
 
-The implementer manifest declares `COMPLETED | PARTIAL | BLOCKED` (the enum every agent brief and `agent-protocol.md` teach) plus a **Concerns** section. Handle each with a specific protocol. A subagent that returns a QUESTION rather than a status is not `BLOCKED` — answer it inline and redispatch.
+The implementer manifest declares `COMPLETED | PARTIAL | BLOCKED` (the enum every agent brief and `agent-protocol.md` teach) plus a **Concerns** section. Handle each with a specific protocol. A subagent that returns a QUESTION rather than a status is not `BLOCKED` — answer it inline and redispatch. A `COMPLETED` whose Command tail shows a failing test is not `COMPLETED` — reject it and re-brief before anything below.
 
 ### `COMPLETED`, Concerns empty
 
@@ -72,7 +93,7 @@ The implementer cannot complete the task; the manifest states what blocks and wh
 ## Review per task
 
 Who reviews follows the task's tier (SKILL.md Review):
-- R2/R3 task in a plan → no reviewer in the loop; the Lead's ONE combined review over the plan diff covers it.
+- R2/R3 task in a plan → no reviewer in the loop; the Lead's ONE combined review over the plan diff covers it: two `universal-reviewer` lenses in ONE message (`lens: spec` · `lens: standards`, or the concern-matched row), the external instead at the pool's tier.
 - R4 task → the owner dispatches one read-only pass in ONE message: `security-engineer` + ONE strong pass (the external with a usable pool, else `universal-reviewer`), plus `qa-tester` when the slice changes what a user sees.
 - A standalone R2 brief (no plan) → the owner dispatches the two `universal-reviewer` lenses itself, never a self-review.
 
@@ -143,6 +164,8 @@ Stop **only** when:
 Anything else = continue.
 
 ## Parallel-track dispatch
+
+The plan's layout is the dispatch signal. Every unblocked task goes out in ONE message, each task owner in its OWN worktree named for the task (the brief prints the command). The Lead keeps working while task owners build, integrates each as it returns (SKILL.md Review) and merges in the contract's order. Two tracks reach for the same file → stop: run them sequentially, or rewrite the contract. A parallel-layout plan run one track at a time needs a stated reason.
 
 Fires only when the plan's **Parallel layout** line declares Parallel with a contract path AND that cohesion contract exists. Track order comes from the plan's per-task **Blocked by** plus the contract's merge order — never from the prose. No contract → no parallel dispatch, period — drop to sequential and say why.
 

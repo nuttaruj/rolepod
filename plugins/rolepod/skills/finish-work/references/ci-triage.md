@@ -1,9 +1,21 @@
-<!-- Load when a required CI lane is red before merge, or a merge/rebase conflicts. -->
+<!-- Load when deciding which CI lanes a merge needs, when a required lane is red, or when a merge/rebase conflicts. -->
+
+## CI lanes
+
+| Lane | Content | Required for merge? |
+|------|---------|---------------------|
+| Phase 1 (always-on, < 5 min) | lint · typecheck · smoke unit · auth / tenant guard · money core · migration apply · build | YES |
+| Phase 2 (path-triggered) | the touched module's full suite | YES when triggered |
+| Phase 3 (nightly / manual) | integration · E2E · chaos · security deep · perf benchmark | NO by default — YES if the repo's own required checks list it (read branch protection / CI config first; never demote a repo-required lane on this table's say-so) |
+
+**No CI configured** (local-only repo, direct deploy — `wrangler deploy` / `flyctl` / rsync): CI is a runner, not the requirement. Run the Phase 1 equivalent (lint · typecheck · smoke) + the Phase 2 equivalent (the touched module's full suite) locally BEFORE the merge / deploy, and a post-deploy smoke (curl the live endpoint / health probe) as deploy evidence.
+
+**Citing check-work's block (the Evidence gate).** The tree is unchanged since that block's recorded pass → cite it and skip the local re-run ONLY when a CI lane re-runs that scope on the merge path; no CI → run the Phase 1 + 2 equivalents locally before the irreversible act.
+
+## Triage a red lane
 
 A red required lane blocks the merge. Before re-running or escalating,
 triage WHY it is red — the response differs by cause.
-
-## Triage a red lane
 
 | First check | If yes | Action |
 |-------------|--------|--------|
@@ -33,8 +45,11 @@ clash, the side that matches the merge's goal wins and the commit message
 names the trade-off. Never invent behaviour neither side had to paper over
 the clash.
 
-1. **Rebase onto the latest integration target (SKILL.md Pre-merge gates) BEFORE the pre-merge gate** — gates must never
-   pass on a stale base and then meet the conflict after.
+1. **Rebase onto the latest integration target BEFORE the pre-merge gate** — gates must never
+   pass on a stale base and then meet the conflict after. The target, in
+   precedence order: explicit user request > the PR's base > the repo's
+   default branch. Conflicting signals → ask, never assume `main`. The
+   branch is already published → merge the target in instead of rebasing.
 2. **Trivial conflict** (imports, adjacent independent lines, lockfiles) —
    resolve by picking sides; regenerate lockfiles with their tool. Do not
    author logic inside conflict markers.

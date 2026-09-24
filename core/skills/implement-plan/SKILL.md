@@ -8,7 +8,7 @@ phase: build
 
 # Implement Plan
 
-Turns an approved plan into a built, reviewed diff, task by task: test first at the plan's seams, surgical edits, a fresh context per delegated task.
+Turns an approved plan into a built, reviewed diff, one task at a time, each delegated task in a fresh context.
 
 ## Skip when
 
@@ -25,18 +25,17 @@ Turns an approved plan into a built, reviewed diff, task by task: test first at 
 - Verify each task by running its **Command** verbatim, never a re-derived check. No Command named → `write-plan` for one.
 - Command passes → flip EVERY `- [ ]` under that task to `- [x]`. A **Test / evidence** proof the Command does not run (browser, manual) is not covered by the flip; do it first.
 - Command fails → the task's **On fail**, else the plan's **Failure policy**.
-- Shared plan (issue numbers in the plan header) → assign yourself the task's issue before touching a file; already assigned → take the next unblocked task; close it with the commit / PR pointer when review passes (write-plan's `references/team-issues.md`).
+- Shared plan (issue numbers in the header) → claim the task's issue before touching a file (write-plan's `references/team-issues.md`).
 
 Done when: the plan lints clean, the baseline is recorded, and every file the task touches has been read.
 
 ### 2. Test first at the plan's seams
 
 - Every logic slice: a failing unit test at the plan's seam (the public interface, never internals) → watch it fail → the smallest change → green → next slice. Refactor at review, not in the loop.
-- A seam's interface is everything a caller must know: the signature plus its invariants, ordering, error modes and required config. The test asserts those, not the type alone.
 - A test that passes before the code exists has a weak assertion; tighten it.
 - Prose, rename, config: no test.
 
-Unsure whether a task is test-first or evidence-after, or checking your own tests → `references/tdd-by-risk.md`.
+Test-first vs evidence-after, mock boundaries (never a mocked DB in an integration test), your own test self-check → `references/tdd-by-risk.md`.
 
 Done when: each logic slice has a test that was red before its change and is green after.
 
@@ -51,12 +50,10 @@ Done when: each logic slice has a test that was red before its change and is gre
   4. an installed dependency;
   5. only then the minimum new code — one line inline before a helper, a helper before a module.
 - A NEW dependency is the last rung: maintained, reasonable size, compatible license. Unsure → ask.
-- Tests use a real dependency over a fake / stub / mock. Never mock the database in an integration test.
 - Blast radius is the caller count, not the diff size. Changing the behavior, signature or return shape of anything with callers → walk the callers FIRST (code-intel callers / impact when connected, else grep) and decide per caller: absorb, adapt, or split.
 - Change files through the edit tool. Never a shell heredoc, `sed -i` or `tee`.
-- A sibling plugin covers the domain → its edit primitive over a hand-rolled write: `rolepod-uiproof` `/scaffold-e2e`; `rolepod-wplab` `/wp-edit-{design,plugin,theme}`, `/wp-scaffold` (WP primitives inside `wp-content/`). Its evidence lands under `<git-root>/.rolepod/evidence/` (a child's own path when standalone); `check-work` aggregates it.
 
-A stretch only the human can perform (a vendor dashboard, minting credentials or CI secrets, a one-off cutover) → `references/wizard.md`.
+A sibling plugin covers the domain → `references/sibling-plugins.md`. A step only the human can perform → `references/wizard.md`.
 
 Done when: the diff holds only the task's change and every caller of a changed behavior is accounted for.
 
@@ -64,48 +61,30 @@ Done when: the diff holds only the task's change and every caller of a changed b
 
 Decide *whether* first. The plan's **Owner:** line wins:
 - `Owner: Lead` → self-do (R1 only; R2 goes to the owner on main).
-- A named role → dispatch the task brief to that role as the **task owner**. It builds on the Command, dispatches the reviewers its brief names (R4), fixes, and returns a **decision brief** (agent-protocol **Ticket loop**).
+- A named role → the **task owner**: it builds on the Command, runs its brief's reviewers (R4), fixes, and returns a **decision brief** (agent-protocol **Ticket loop**).
 - No Owner line → run the delegation test:
 
 {{INCLUDE: core/fragments/gates-q1-q4.md}}
 
-Closest specialist: `frontend-developer` / `ui-ux-designer` (UI, interaction) · `backend-developer` (API, business logic, DB models) · `mobile-developer` (iOS, Android, RN, Flutter) · `billing-engineer` (billing, credits, subscription) · `ai-ml-engineer` (LLM, RAG, SDK, prompt cache) · `data-scientist` (analytics, pipelines, dashboards) · `content-strategist` (written output; pass `audience: dev|user|prospect`).
-
-The brief comes from the plan, never hand-written: `plan-lint.sh --brief <N> <plan> [contract]` prints Goal / Tier / Blocked by / Read first / Files allowed + forbidden / Change / Command / Done when / Write / Reviewers by tier (`none` for a docs-only diff) / Bounds.
+The brief comes from the plan, never hand-written: `plan-lint.sh --brief <N> <plan> [contract]` prints it.
 - The Lead adds only **Read first** (the 2-3 files and the pattern to copy) and facts the brief lacks. Never extra steps, runs or scope, a reviewer round 2 included.
-- The owner starts there and never re-surveys what the Lead already mapped.
 - Never point the owner at the plan file; the brief is its slice.
-- Use the least powerful model that can handle the role.
 
 The task owner NEVER commits and NEVER expands scope:
 - A path nobody in the wave owns → touch it, plus one `Also touched:` line in the brief.
 - A path another owner holds → stop, and put `NEEDS: <path> — <one-line change>` in the brief; the Lead applies it at integration (R1-sized) or reassigns.
 
-A write mandate goes only to the role that owns the path. Never a generic platform agent (`general-purpose` / `default` / `claude`, or a bare Workflow `agent()`; a writing stage carries `agentType: 'rolepod:<role>'`). Never a reviewer: `qa-tester` / `security-engineer` write tests and markdown only; `universal-reviewer` / `scout` write markdown only.
+A write mandate goes only to the path's owning role, never a generic agent or a reviewer; a writing stage carries `agentType: 'rolepod:<role>'`, never a bare `agent()` (`references/subagent-dispatch.md`: role, model, brief fields, `write: external`).
 
-`Owner: <role> · write: external` (pool opt-in, per task) → `references/subagent-dispatch.md` External write.
+Handle the brief's status (its first word) per `references/subagent-dispatch.md`. `COMPLETED` over a failing test → reject and re-brief. `BLOCKED` → change a variable (context, model, scope); never redispatch unchanged.
 
-The decision brief's first word is its status:
-- `COMPLETED` over a failing test → reject and re-brief.
-- `COMPLETED`, no concerns → Review.
-- `COMPLETED` with Concerns → resolve correctness and scope concerns first, then Review.
-- `PARTIAL` → review the done slice, redispatch the remainder narrowed.
-- `BLOCKED` → change a variable (context, model, scope); never redispatch unchanged.
-
-Status handling in depth, model choice, fleets → `references/subagent-dispatch.md`.
 No subagents → the Lead does it: steps 1-3 on each task, the module (or full) suite green, then `check-work` before claiming done.
 
 Done when: every task has an owner and each dispatched owner has returned a decision brief.
 
 ### 5. Parallel tracks
 
-The plan's layout is the dispatch signal. Every unblocked task goes out in ONE message, each task owner in its OWN worktree named for the task (the brief prints the command), under the plan's cohesion contract.
-- The Lead keeps working while task owners build.
-- Integrate each as it returns (Review); merge in the contract's order.
-- Two tracks reach for the same file → stop: run them sequentially, or rewrite the contract.
-- A parallel-layout plan run one track at a time needs a stated reason; otherwise dispatch the ready tracks together.
-
-Mid-flight conflicts, separate CLI sessions as track owners → `references/subagent-dispatch.md`.
+A parallel layout → every unblocked task in ONE message, each owner in its OWN worktree; serial needs a stated reason. Shared files, merge order → `references/subagent-dispatch.md` Parallel-track dispatch.
 
 Done when: every ready track is dispatched and each returned track is integrated in contract order.
 
@@ -113,21 +92,18 @@ Done when: every ready track is dispatched and each returned track is integrated
 
 One combined pass for R2/R3, per task for R4 (high-risk).
 
-A task owner's decision brief carries its Command tail. The Lead spot-checks ONE claim (the Proof, or one finding in an R4 report), then runs the ship line.
-- Spot-check ONE traced claim; never an axis walk.
+A task owner's decision brief carries its Command tail. The Lead spot-checks ONE claim (the Proof, or one finding in an R4 report; never an axis walk), then runs the ship line.
 - No report → the Lead runs `review-code` Axes, recorded as a LIMITATION.
 - A diff accepted without its review → stop and run it before building further.
 
 R2/R3 tasks carry no reviewer in the loop.
-- When the plan's last code task is committed, the Lead runs ONE combined review over the plan diff (`rolepod-ticket log` prints the range).
-- Two `universal-reviewer` lenses in ONE message: `lens: spec` · `lens: standards` (or the concern-matched row); the external instead at the pool's tier.
-- More than ~15 files → one review per ship group.
+- When the plan's last code task is committed, the Lead runs ONE combined review over the plan diff (`rolepod-ticket log` prints the range); more than ~15 files → one per ship group.
 - Findings → ONE fix task to the owning role; round 2 only for a BLOCKER / MAJOR fix.
 - Nothing pushes or releases before it.
 
-R4 tasks keep per-task review: the owner dispatches `security-engineer` + ONE strong pass (the external with a usable pool, else `universal-reviewer`), plus `qa-tester` when the slice changes what a user sees, before returning.
+R4 tasks keep per-task review: the owner dispatches its reviewers before returning. Who reviews at each tier → `review-code` Pick reviewers.
 
-One task per pass, then ship it: decision brief → Lead spot-check + ship line → next unblocked task. Never batch tasks into one diff; the rhythm is a fresh context per task.
+One task per pass: brief → spot-check + ship line → next task. Never batch tasks into one diff.
 
 Artifact: `templates/implementation-manifest.md` — Files changed, Tests added / changed, Verification, Scope check, Concerns, Status. A subagent returns it; the Lead commits.
 

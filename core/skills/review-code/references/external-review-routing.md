@@ -1,4 +1,4 @@
-<!-- Load when the cross-family pool is enabled, or an internal pass, apex or strong-class question comes up. -->
+<!-- Load on a high-risk diff (adversarial pass), an external round 2+, the cross-family pool enabled, or an internal pass, apex or strong-class question. -->
 <!-- review-code's Pick reviewers carries the trigger; this file is the routing. -->
 
 # External review routing
@@ -31,7 +31,21 @@ Lead's own; the model family is information, not a filter.
 - (d) an apex trigger holds (below) — external first, internal when (c);
 - (e) re-reading a fix delta in the fix-verify rounds.
 
-**Strong class.** Dispatch the internal general pass on a strong-class model, even under a balanced Lead — never a balanced model. `qa-tester` (E2E / UI) is never the strong pass and never counts as one.
+**Strong class.** Dispatch the internal general pass on a strong-class model, even under a balanced Lead — never a balanced model. An external runs on its own CLI's default model. `qa-tester` (E2E / UI) is never the strong pass and never counts as one.
+
+## Adversarial mode — what counts as the adversarial pass
+
+For a high-risk diff, a fresh-context reviewer reads only the artifact + acceptance criteria, tries to make the change fail, and hunts what is missing as hard as what is present. The author's own model is never the final adversarial reviewer.
+
+Done when: the adversarial reviewer has returned a full report. Only when no dispatch is possible at all (the user forbade agents / no subagent support) does the Lead's cold self-review stand in, recorded as a LIMITATION.
+
+- The external adversarial pass runs in a CLI different from the Lead's, on that CLI's own default model (same vendor is fine).
+- The vertical fallback (same CLI, stronger tier) and an inline advisor never satisfy it; both only raise the Lead floor, recorded as a LIMITATION.
+
+## External rounds 2+
+
+- `rolepod-cross-family --kind review --brief <brief> --since <previous job> --detach` — the runner attaches the fix delta plus the previous report; findings come back tagged IN-FIX / NEW / REPEAT.
+- The external re-runs only when its previous report carried a BLOCKER and the fix delta is logic-bearing code; otherwise the internal reviewer verifies the fix delta alone.
 
 ## Apex escalation
 

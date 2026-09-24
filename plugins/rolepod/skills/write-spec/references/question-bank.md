@@ -18,6 +18,8 @@ Moves that sharpen the model — each at the moment it applies, never batched at
 - Scenario: a relationship between concepts → invent the edge case that forces the boundary (a partial cancellation, a member of two accounts).
 - Cross-reference: the user states how it works → check the code; a contradiction is quoted back ("the code cancels whole orders; you said partial — which is right?"), never assumed away.
 
+Resolve the term in the round it comes up and propose ONE canonical word. Settled and used beyond this feature → write it into `CONTEXT.md` at that moment (create the file then, never at the end).
+
 Glossary entry in `CONTEXT.md` (repo root, or the mapped context; create the file when the first term is resolved):
 ```
 **Order**:
@@ -75,6 +77,12 @@ Stop early: if an answer makes a later question irrelevant, skip it.
   next round, never defaulted.
 - `defaults` takes only the recommendations shown that round; silence or
   elapsed time is not an answer.
+
+## Prototype offer
+
+A layout or state-logic question that talking cannot settle → offer `write-prototype` in one line (yes / skip) and park that question.
+- Yes → it builds once the rest of the frontier is settled — a spec with open questions builds the wrong demo — and before Gate 1; its verdict settles the parked question.
+- Skip → carry on; Gate 1 and `write-plan` as usual.
 
 ## Cross-family critique — questions only, before Gate 1
 

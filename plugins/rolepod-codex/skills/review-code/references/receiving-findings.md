@@ -117,6 +117,15 @@ When the round's findings land (every dispatched reviewer returned — merged, d
 4. **Test each individually** — do not batch the test pass; a regression in one obscures the others
 5. **Verify no regressions in upstream features** — touched-files end-to-end, not just the changed lines
 
+## Disagreement on merits
+
+Author and reviewer disagree on merits → technical data > documented style guide > engineering principle > codebase consistency.
+
+## rolepod-brain (when installed; no tool → skip)
+
+- Every reviewer dispatch: add `brain_seed(task, agent: <reviewer id>)` to the brief, verbatim.
+- Every finding not applied as written, and always on a user overrule: `brain_note(agent: <reviewer id>, text: "avoid:|refine:|keep: <class>…")`.
+
 ## GitHub thread replies
 
 When replying to an inline review comment on a PR, reply **in the thread** so the discussion stays attached to the line:

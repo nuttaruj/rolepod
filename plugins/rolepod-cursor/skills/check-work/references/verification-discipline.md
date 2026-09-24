@@ -141,6 +141,14 @@ If the diff is empty but the manifest says `DONE` → rejected, the subagent did
 If the diff exists but the test wasn't run by you → not verified.
 If the test was run but failed → manifest is lying about `DONE`, reject.
 
+## Counted results (JUnit / XUnit)
+
+The runner emits JUnit / XUnit XML (`pytest --junitxml` / `--reporter=junit` / surefire) → prefer it: cite the counted totals + failed test names via `rolepod-junit <xml>` (installed launcher) or `scripts/junit-summary.sh` (source repo / plugin `scripts/`). Counted results beat prose claims.
+
+## P1 traceability
+
+A QA test-case table in play (this session or under `.rolepod/evidence/`) → every P1 row's ID must appear in a PASSING test's name: `grep` the RUNNER output for `TC<n>`. Source presence proves authorship, not a pass; a skipped or not-collected test counts as missing. A P1 with no passing test → Status `PARTIAL` or `UNVERIFIED` (never `VERIFIED`), naming the missing IDs; the verify verdict is that Status mapped, not a separate `fail`.
+
 ## When verification is genuinely impossible
 
 Sometimes verification really cannot happen: no network, no test infra, no browser, no permission to run a destructive command. Be honest:

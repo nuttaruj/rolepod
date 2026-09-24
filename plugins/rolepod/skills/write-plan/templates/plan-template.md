@@ -35,8 +35,15 @@
 - [ ] **Change:** <what to do, concretely — at most 3 bullets. An exact-string
       edit spec (old → new) goes in a fenced block under this task, never
       inline in the bullet.>
-- [ ] **Test / evidence:** <test type + the assertion that proves it — or, when no
-      test can express the behaviour yet, 1-3 acceptance criteria the reviewer walks>
+- [ ] **Test / evidence:** <test type (unit / integration / contract / E2E / smoke /
+      repro) + the assertion that proves it + the **seam** — the public interface the
+      test exercises; the owner writes the failing test there first, never against
+      internals. No test can express the behaviour yet → 1-3 acceptance criteria the
+      reviewer walks, and the Command is the nearest mechanical check (lint /
+      typecheck / smoke) — never skipped. Tests cover logic, UI, behaviour: a doc,
+      comment, config-text or string-literal change gets NO test (render / lint is
+      its check). One test per rule at its owner, one smoke per call site — never a
+      test per copy of the rule.>
 - **Proof:** <the one claim a reviewer of this task would check by hand> :: `<the command that proves it — exits 0 when the claim holds; an absence check is ! grep>` (optional — it becomes the Lead's spot-check)
 - [ ] **Expected failing signal:** <for test-first tasks — the error the test
       shows before the fix. Omit if not test-first.>

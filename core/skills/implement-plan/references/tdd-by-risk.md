@@ -64,6 +64,9 @@ interface is indirection, not a seam.
 ## The writer's self-check (unit tests are yours; the reviewer reads the same list)
 - Design at the seam: happy + edge + error (+ race on shared state); call the
   plan's public interface, never internals.
+- A seam's interface is everything a caller must know: the signature plus its
+  invariants, ordering, error modes and required config. The test asserts
+  those, not the type alone.
 - A bug fix starts from a reproducing failing test; its flip to green is the proof.
 - Expected values derive from the spec, never from the code's current output.
 - Weak assertion = still green after a one-character regression. High-risk
