@@ -60,7 +60,7 @@ Done when: the brief file exists and a stranger could act on it alone.
 
 **consult**
 - FOREGROUND, short budget — a stuck loop needs the answer now. A `consult = <fast> <deep>` line in the pool file puts the fast member first and keeps the deep one as fallback.
-- No usable member → the vertical fallback: the Lead's own CLI at its strongest model. Its native advisor mode when it has one; else read its `--help` for the top tier and run it headless on the same ledger (`claude -p --model <name>` / `codex exec -m <name>`).
+- No usable member → the vertical fallback: the Lead's own CLI at its strongest model. Its native advisor mode when it has one; else read its `--help` for the top tier and run it headless on the same ledger (`claude -p --model <name>` / `codex exec -m <name>`). Never pin vendor model names in a skill or plan — the routing layer resolves them.
 - The vertical fallback is valid only when that model differs from the one running. Already on it, or cannot tell → no usable advisor. It never counts as a cross-family pass.
 
 **implement**
@@ -100,7 +100,7 @@ Done when: the caller or the user holds the answer or the named fallback.
 
 - `--kind review --brief <brief> --since <previous job> --detach` attaches the fix delta plus the previous report; findings come back IN-FIX / NEW / REPEAT.
 - The external re-runs only when its previous report carried a BLOCKER and the fix delta is logic-bearing code. Otherwise the flagging reviewer re-checks the delta alone.
-- One reviewer's dispatches under 5 minutes apart on one uncommitted tree are one round. `rolepod-cross-family --rounds` prints the count (`--role <key>` for one reviewer). Round 4 needs `--ledger <breaker file>`; round 5 is refused.
+- One reviewer's dispatches under 5 minutes apart on one uncommitted tree are one round. `rolepod-cross-family --rounds` prints the count (`--role <key>` for one reviewer). Round 3 → `review-code` Breaker: its one round is internal, no new external round; the runner refuses round 4 without `--ledger` and round 5 outright.
 
 Done when: the delta verdict is collected, or the round went to the flagging internal reviewer.
 

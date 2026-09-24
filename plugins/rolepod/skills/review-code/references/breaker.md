@@ -11,7 +11,7 @@ Run these steps in order.
 ## 0. Stop
 
 Write no fix and dispatch no reviewer.
-Collect or kill whatever is still running (a detached external: `cross-family` Read the return).
+Collect or kill whatever is still running: `rolepod-cross-family --collect <id>` or `rolepod-cross-family --kill <id>` (see step 3 review / references/review.md Jobs).
 
 ## 1. Ledger
 

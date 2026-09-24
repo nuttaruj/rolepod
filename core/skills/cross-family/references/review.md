@@ -35,8 +35,6 @@ Any CLI can be the Lead. The review goes to a different CLI than the Lead's, nev
 | 0 usable (exit 3 / 4) | internal strong reviewer, plus the vertical fallback when one exists; Cross-model line `NOT RUN — <reason from the runner>` |
 | off (exit 5 — no file / `none`) | internal strong reviewer is the pass; Cross-model line `NOT RUN — cross-family off (opt-in)`; never enable unasked |
 
-While the pool is usable, an internal strong reviewer does not replace the external on a high-risk diff — only after the runner reports exit 3 / 4.
-
 ## Jobs and health
 
 - `rolepod-cross-family --jobs` lists running and finished jobs; `--kill <job-id>` stops one with its process group.

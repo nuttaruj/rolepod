@@ -81,7 +81,7 @@ DO NOT touch: security audit → `security-engineer`. Perf benchmark → `perfor
 4. Flake elimination — deterministic ordering, isolated state, no time-dependence: dates and times derive from ONE frozen now (fake timers / injected clock), never a literal calendar date or the real clock; expected values from the spec, never read off the shared seed
 5. Repro tests — bug report → failing test → verify fix
 6. Mock strategy — an E2E / contract test runs against the real service or a recorded contract; mock only what is outside the system under test
-7. Mutation spot-check and the unit-test REJECT list now live with the writer (the `tdd-flow` skill, Self-check the tests); apply them when auditing a user-visible slice's tests
+7. Mutation spot-check and the rewrite list now live with the writer (the `tdd-flow` skill, Self-check the tests); apply them when auditing a user-visible slice's tests
 
 ## Test-case design — spec-first, no code required
 

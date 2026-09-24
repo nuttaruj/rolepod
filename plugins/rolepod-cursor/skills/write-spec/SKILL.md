@@ -69,7 +69,7 @@ Done when: no item above remains.
 ### 5. Cross-family critique
 
 Only when the cross-family pool is enabled (opt-in; off → skip silently) and the spec is R4 (high-risk) or the user asks; R3 stays internal.
-Pool on → `cross-family` kind critique with the draft + Q&A ledger; off or `cross-family` absent → skip, recording `Cross-family critique: not run — off`.
+Pool on → `cross-family` kind critique with the draft + Q&A ledger; off or `cross-family` absent → skip, recording `Cross-family critique: not run — off` (or `— cross-family absent`).
 Settle what the repo can, ask the rest in ONE extra Discovery round, one line under **Open questions**. Never blocks a spec. Protocol → `references/question-bank.md` Cross-family critique.
 
 Done when: the critique line is recorded, or the step was skipped.

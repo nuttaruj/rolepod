@@ -45,7 +45,7 @@ Otherwise the FIRST matching row fires:
 
 | Intent | Route |
 |---|---|
-| another CLI's opinion, review or draft (codex / agy / cursor / opencode / claude); set up or change cross-family | `cross-family` |
+| another CLI's opinion, review or draft (codex / agy / cursor / opencode / claude); set up or change cross-family | `cross-family` (no `cross-family` → a review ask → `review-code` internal strong pass; a setup ask → run `rolepod-cross-family --setup` and follow its printout, ONE question per turn) |
 | build / add / design with a vague target (UI, product, doc, ADR included) | Define → `write-spec` |
 | build X to a spec whose Success criteria cover it | Plan → `write-plan` |
 | add / change Y at R3+ where the spec does not cover Y, or no spec exists | Define → `write-spec` (a new dated delta spec); R2-sized → `implement-plan` with the step 2 checklist |

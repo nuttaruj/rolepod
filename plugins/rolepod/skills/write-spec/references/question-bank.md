@@ -107,7 +107,7 @@ Never for routine specs.
 2. **Run** — pool on → `cross-family` kind critique with that file; it
    returns every material item, no cap, ranked by implementation risk
    (`QUESTION` / `AMBIGUITY` / `MISSING`, or `NO FURTHER QUESTIONS`). Pool
-   off or `cross-family` absent → skip to step 4 with `not run — off`.
+   off or `cross-family` absent → skip to step 4.
 3. **Triage before the user sees anything.** Items the repo or the spec
    already settle → answer them yourself (Read / grep, never guess) and
    fold the answer into the draft. Items that are genuinely the user's
@@ -118,7 +118,8 @@ Never for routine specs.
 4. **Record** one line under **Open questions** (the template carries the
    slot): `Cross-family critique: <cli> — N items, K settled from repo, M
    asked` · `Cross-family critique: <cli> — NO FURTHER QUESTIONS` ·
-   `Cross-family critique: not run — off` / `— <runner reason>`.
+   `Cross-family critique: not run — off` / `— cross-family absent` /
+   `— <runner reason>`.
 
 ## Degradation
 
