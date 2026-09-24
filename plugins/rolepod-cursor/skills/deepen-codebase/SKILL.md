@@ -20,10 +20,10 @@ Three entries, in this order of precedence:
 2. The user names an area, a module, a pain point → start there. Legacy test work → look for the missing seams before testing code its interface cannot reach.
 3. Nothing named → `git log --oneline --name-only` over a good stretch: the paths that keep recurring pull attention FIRST — they order the walk, they never fence it. Scattered history or a brownfield audit → the whole tree. Routine upkeep every few days lands here too — it scans the hot spots.
 
-Read `CONTEXT.md` and `docs/adr/` for the area before walking. An ADR is a decision already made.
+Read `CONTEXT.md` and `docs/adr/` for the area before walking, when present. An ADR is a decision already made.
 YAGNI: a deepening in code nobody touches is a refactor never cashed in.
 
-Done when: the scope and its entry are named, and the area's `CONTEXT.md` and ADRs are read.
+Done when: the scope and its entry are named, and the area's `CONTEXT.md` and ADRs are read when present.
 
 ### 2. Explore
 
@@ -31,13 +31,14 @@ Dispatch ONE general sub-agent at full strength — the CLI's general-purpose ag
 
 Its brief:
 - the scope from Scope;
-- read `references/explorer-lens.md` first — vocabulary, deletion test, friction signals, evidence bar;
+- the **deletion test**: imagine deleting the module and inlining it into its callers — complexity reappearing across N callers means it earns its keep; complexity that just vanishes marks a shallow pass-through; N hand-kept copies of one rule = a candidate, and a candidate that fails the test is dropped, not softened;
+- read `references/explorer-lens.md` first when present — vocabulary, friction signals, evidence bar (optional depth);
 - use the codebase's own words: `CONTEXT.md` terms for the domain, module / interface / seam / depth for the shape;
 - walk organically, hot spots first, everything reachable after, noting where IT struggles;
 - any command that writes nothing in the repo (grep, `git log`, an existing test, a scratch script in the temp dir) may reproduce a claim;
 - return candidates (files with `path:line`, the friction, the deletion-test result) and every bug met on the way (`path:line` + the reproducing command, or `read only, not reproduced`) — never an edit, never an interface.
 
-No subagents → the Lead walks the same way with the lens, one area per run on a large legacy tree so the walk does not circle.
+No subagents → the Lead walks the same way (the deletion test above, the lens when present), one area per run on a large legacy tree so the walk does not circle.
 
 Done when: the explorer returned its candidates and bugs.
 

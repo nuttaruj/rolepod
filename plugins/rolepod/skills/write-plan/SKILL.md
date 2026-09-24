@@ -67,7 +67,7 @@ Done when: every path sits under exactly one owner.
 
 ### 6. Owners and briefs
 
-**Owner:** the role the domain map in `templates/plan-template.md` assigns to the task's files (path first, then concern; `Lead` for R1-sized work or when the user said self-do).
+**Owner:** the role the domain map in `templates/plan-template.md` assigns to the task's files (path first, then concern; `Lead` for R1-sized work or when the user said self-do). No template → API / services / models → `backend-developer`, UI components → `frontend-developer`, infra / CI / release → `devops-sre`, docs → `content-strategist`; else `Owner: Lead`.
 Reviewer roles are never owners: `qa-tester` (E2E / UI test tasks) and `security-engineer` (each touched high-risk surface, per task — the brief's Tier line) go on the Reviewer line.
 `plan-lint.sh --brief <N> <plan> [contract]` builds the owner's brief from the task block, so the block carries everything plus the spec.
 **Read first:** the 2-3 files and the pattern to copy, named by the Lead who read them; the owner never re-surveys the repo.
@@ -82,7 +82,7 @@ Done when: every task names its Owner and Read first.
 - **Symbol consistency** — `clearLayers()` in Task 3 vs `clearFullLayers()` in Task 7 is a bug; a missing symbol → verify or remove.
 - **Missing tests**, **untouched high-risk surfaces**, **unowned or dual-owned files** in a parallel layout.
 - **Boundary violations** against a declared module map (edge-cases: Module boundary map).
-- **Loop-runnable** — `plan-lint.sh <plan> [contract]` checks the Failure policy, a Command per task, acyclic Blocked-by edges and parallel ownership (edge-cases: No plan-lint).
+- **Loop-runnable** — `plan-lint.sh <plan> [contract]` checks the Failure policy, a Command per task, acyclic Blocked-by edges and parallel ownership. No plan-lint → check these four by eye (or the one-line check in edge-cases: No plan-lint).
 
 The plan touches a high-risk surface or the user asks for a second opinion → an independent plan review: `references/plan-reviewer-prompt.md` (its When to dispatch adds ~8+ tasks, several specialists, an unfamiliar module).
 
@@ -97,7 +97,7 @@ Harness plan mode → present through its gate, defer disk writes (edge-cases: H
 Several people or machines build it → `references/team-issues.md`; solo work never needs it.
 Plan shapes, good and bad → `examples/plan-examples.md`.
 
-Done when: every section is filled, and a saved plan passes plan-lint (or its fallback).
+Done when: every section is filled, and a saved plan passes plan-lint (or the four Loop-runnable checks by eye).
 
 ## Guardrails
 

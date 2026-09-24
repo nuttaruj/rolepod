@@ -33,7 +33,7 @@ Heavy context → run your CLI's trim command (Claude `/compact` · `/clear` · 
 
 **Compact at seams.** Good moments: research done before implementation starts · a milestone landed · a debug closed · a failed approach abandoned.
 - Never compact mid-task: the summary drops exactly the state you need next (variable names, paths, half-applied edits), and the re-anchor cost lands on top.
-- Heavy mid-task → finish or park the task at a seam (a checkpoint commit only as the Lead with finish-work's Pre-merge gates passing; a subagent never commits), then trim.
+- Heavy mid-task → finish or park the task at a seam (a checkpoint commit only as the Lead with finish-work's Pre-merge gates passing — finish-work absent → the task Command green + `git diff` reviewed; a subagent never commits), then trim.
 
 Load only what the task needs: the Tier 1 skills + the touched files is usually enough.
 
@@ -71,7 +71,7 @@ Done when: every touched file maps to a plan task, or a new plan exists.
 
 Escalate at the SECOND failed attempt at the same goal, never the tenth. Identical failure twice means the mental model is wrong, and even a progressing second fail is re-aimed cheaper by a cold advisor than by a third guess from the same mind.
 - Capture the exact problem: the error, what was tried, what failed.
-- Change the model, not just the prompt: redispatch at a stronger tier, or in a debug flow run `debug-issue` Second opinion — one cross-model consult, one advisor-informed attempt, then the user. A fresh session on the same model is the weakest lever.
+- Change the model, not just the prompt: redispatch at a stronger tier, or in a debug flow run `debug-issue` Second opinion — one cross-model consult, one advisor-informed attempt, then the user. A fresh session on the same model is the weakest lever. Arriving from `debug-issue` Second opinion with its opinion already in the ledger → the ladder is exhausted: go straight to the decision menu below, never back into `debug-issue` for the same bug.
 - After two failed attempts the only permitted attempt is that single informed 3rd; never a blind 3rd or 4th.
 - A fresh-context read of your in-flight diff → `universal-reviewer`; a recurring flake or a user-visible (E2E) failure → `qa-tester` (unit-test discipline belongs to the writer). Brief: the original request, what was tried, what failed, what you suspect. No subagents → the Lead does it.
 - Ladder exhausted (the strongest exposed tier and / or cross-family consulted, the blocker stands) → STOP and hand the user a decision menu: the attempt log (each rung + result) and 2-3 concrete options with trade-offs (relax a constraint / split or defer scope / accept a documented limitation) — never a bare "stuck".

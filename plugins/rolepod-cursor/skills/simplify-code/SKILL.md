@@ -85,7 +85,7 @@ Done when: the cut commits hold no behavior change and the feature change sits i
 
 - Run the suite between cuts.
 - A failing test mid-simplification means the previous cut went too far: revert that one, not all.
-- An "unused" abstraction turns out to have callers you missed → restore it, verify, then retry.
+- An "unused" abstraction turns out to have callers you missed → restore it, verify, then retry once through step 3; callers remain → keep it, with the reason in the report.
 - A delegated subagent stages and returns the diff + proof; the Lead commits (`implement-plan`).
 
 Done when: every cut is its own commit (or staged slice) with the suite green after it.
@@ -110,5 +110,5 @@ Single-use-helper and defensive-check pairs → `examples/simplify-examples.md`.
 
 ## Next phase
 
-- Part of a larger plan → `implement-plan`, next task. Uncovered a real bug → `debug-issue`.
+- Part of a larger plan → `implement-plan`, next task. Uncovered a real bug → `debug-issue`. If neither is available, the Lead fixes the bug at its root with a failing test first, then re-runs this skill's suite.
 - Cleanup complete → `check-work`, then `finish-work`; if neither is available, attach the report and ask the user whether to ship.

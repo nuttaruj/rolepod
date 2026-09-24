@@ -16,7 +16,7 @@ Turns a finished change into an evidence block: fresh proof that it works, or an
 
 | Change type | Required evidence |
 |-------------|-------------------|
-| Logic / bug fix | Red-green-revert: failing test → fix → green → prove red without the fix → green. The red proof runs as ONE call per `references/verification-discipline.md` Revert in one call (what counts as red; the in-place fallback). A test that does not fail without the fix is not testing the fix. |
+| Logic / bug fix | Red-green-revert: failing test → fix → green → prove red without the fix → green. The red proof is ONE command: remove the fix (a throwaway `git worktree` with the source-only patch reverse-applied; it cannot run the test → revert in place), run the one named test, restore. Red = a non-zero exit WITH the named assertion in the output; a collection / import error, a skip or a 0-test run is not red. Script: `references/verification-discipline.md` Revert in one call. A test that does not fail without the fix is not testing the fix. |
 | New feature | Happy + edge + error tests pass |
 | Refactor | Existing suite green before and after |
 | Schema / migration | Forward + rollback dry run + row-count delta |
@@ -34,8 +34,8 @@ Done when: each acceptance criterion has an evidence type.
 - Run every check AFTER the last change to the tree. No run since the last edit → you cannot claim it passes; yesterday's green and "should still work" do not count.
 - **Evidence cache:** tree unchanged since a pass THIS session (same `git status` + `git diff`; they miss untracked / ignored content, so hash or diff any untracked input the check reads) → cite that run's command + output, "tree unchanged since". ANY new edit invalidates it.
 - Capture the exact command and its proof lines. A failure already in the baseline (recorded before the first edit) is a limitation — cite the baseline line; a failure absent from it is this change's.
-- JUnit / XUnit XML → counted totals + failed names via `rolepod-junit <xml>` or `scripts/junit-summary.sh` (`references/verification-discipline.md`).
-- Scope ladder: the task Command while building → the touched module's suite here → the full suite only on high-risk or at merge via the CI lane the change must pass (no CI → locally at Ship). Map changed paths to a subset by import graph / naming before going wider.
+- JUnit / XUnit XML → counted totals + failed names via `rolepod-junit <xml>` or `scripts/junit-summary.sh` (`references/verification-discipline.md`); neither tool → count the `<testcase>` and `<failure>` / `<error>` elements with `grep -c` and name the failed tests.
+- Scope ladder: the task Command while building → the touched module's suite here → the full suite only on high-risk or at merge via the CI lane the change must pass (no CI → finish-work's local equivalents at Ship). Map changed paths to a subset by import graph / naming before going wider.
 - Tests fail → fix or report; not done.
 - A `manifest.json` under `.rolepod/evidence/` (a sibling plugin ran) → `references/child-plugin-evidence.md`; any kept `fail` fails verify as a whole.
 
@@ -100,7 +100,7 @@ Examples → `examples/evidence-examples.md`.
 ## Next phase
 
 - Verify-only ask → none; the evidence block is the deliverable.
-- Evidence fails → `debug-issue` or `implement-plan`.
+- Evidence fails → `debug-issue` or `implement-plan`; the same criterion failing a 2nd verify round on one change → `debug-issue` (its Second opinion cap), never a 3rd blind fix. Neither skill available → the Lead fixes at the root, then re-runs this skill; a 2nd failure → stop and report the attempts to the user.
 - Passes with risk (fails review-code's skip test: >5 lines, multi-file, logic-bearing, or high-risk) and no report under `.rolepod/evidence/review/` → `review-code`.
 - Otherwise → `implement-plan` while the plan has unchecked tasks (Ship asks once per plan), else `finish-work`.
 - If neither `review-code` nor `finish-work` is available, attach the evidence block and ask the user whether to ship.

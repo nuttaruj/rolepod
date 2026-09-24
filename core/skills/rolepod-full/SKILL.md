@@ -31,7 +31,7 @@ Either file is missing (this skill copied standalone) → run the lifecycle dire
 2. **Plan** — an ordered task list with one verification command per task.
 3. **Build** — implement surgically; every line traces to the goal.
 4. **Verify** — fresh evidence (test / build / curl / screenshot). No completion claim without it.
-5. **Review** — a risk-appropriate review: external adversarial reviewers (an installed CLI different from the Lead's) when configured, otherwise the internal strong reviewer (`security-engineer` / `universal-reviewer`). The writer's unit tests are the floor; `qa-tester` joins for user-visible behaviour.
+5. **Review** — a risk-appropriate review: external adversarial reviewers (an installed CLI different from the Lead's) when configured, otherwise the internal strong reviewer (`security-engineer` / `universal-reviewer`). The writer's unit tests are the floor; `qa-tester` joins for user-visible behaviour. No subagents → the Lead's cold review per axis (correctness, security, performance, tests), recorded as a LIMITATION.
 6. **Ship** — an explicit finish choice (merge / open PR / keep open / discard). Never auto-pick.
 
 This fallback carries about 70% of the full behavior; with `using-rolepod` present the lifecycle is router-backed.

@@ -56,14 +56,14 @@ Otherwise the FIRST matching row fires:
 | refactor / simplify / clean up | Build → `simplify-code` → `check-work` |
 | slow / latency / bundle size / N+1 / p95 | Verify → `check-work` baseline → `implement-plan`, Owner `performance-engineer` |
 | clear UI edit (design, screenshot, exact acceptance) | Build → `implement-plan`, Owner `frontend-developer` (design system / CSS / a11y → `ui-ux-designer`) |
-| write test cases / report a bug, no fix wanted | Verify → `qa-tester` agent; a found bug → `debug-issue` report-only |
+| write test cases / report a bug, no fix wanted | Verify → `qa-tester` agent (no agent → the Lead writes the case table); a found bug → `debug-issue` report-only |
 | is this done / does it (or the UI) work / verify | Verify → `check-work` |
 | audit UX / a11y of one page or flow | Verify → `check-work` UI verification → `review-code` Axes (UI) |
 | edit / fix on a high-risk path | Define → `write-spec` → `write-plan` → `implement-plan` (per-task review) |
 | clear doc edit; CI, Docker, deploy, infra config | Build → `implement-plan`, Owner `content-strategist` (`audience:` set) / `devops-sre`; R1 → the Lead |
 | review / look at the diff; audit / find all X across the repo | Review → `review-code`; a whole-repo sweep scopes first (References) |
 | ship / merge / PR / done, or the work's natural end | Ship → `finish-work` (`review-code` first if a review is missing) |
-| explain / conceptual question | answer; a wide repo or online sweep → ONE `scout` first |
+| explain / conceptual question | answer; a wide repo or online sweep → ONE `scout` first (no agent → the Lead greps) |
 | context too large / compact / resume / stuck | `manage-context` |
 
 No row matches → `examples/routing-transcripts.md`; still none → ask the user which phase.

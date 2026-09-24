@@ -16,15 +16,17 @@ Turns an approved plan into a built, reviewed diff, one task at a time, each del
 ### 1. Read the plan and the touched files
 
 - Lint the plan before the first task: `plan-lint.sh <plan>` (`~/.rolepod/bin/`). FAIL (no **Command**, no checkboxes, a broken Blocked-by graph) → back to `write-plan`; never build on it.
+- No `plan-lint.sh` → check by eye: a **Command** and checkboxes per task, an acyclic Blocked-by graph, a **Failure policy**.
 - Read the touched files end-to-end, match the style of 2-3 nearby files (invent no patterns), and confirm every symbol the plan expects exists. A planned file missing where expected → verify it, or re-plan.
 - Baseline: before the first edit, run the task's verify command once on the untouched tree and record what already fails as limitations. The task owner does it for a delegated task; the Lead only for its own R1 (trivial edit) work, never both.
 - An R2 (one file + test) or spec-as-plan R3 (multi-file) inline checklist is the same contract: run each step's command. Scope grows past one file (its test file included) → stop and write the real plan.
 - Verify each task by running its **Command** verbatim, never a re-derived check. No Command named → `write-plan` for one.
 - Command passes → flip EVERY `- [ ]` under that task to `- [x]`. A **Test / evidence** proof the Command does not run (browser, manual) is not covered by the flip; do it first.
-- Command fails → the task's **On fail**, else the plan's **Failure policy**.
+- Command fails → the task's **On fail**, else the plan's **Failure policy**, else (an R2 checklist has neither) `debug-issue`. The same criterion failing a 2nd time → `debug-issue`, whose Second opinion caps the attempts (no `debug-issue` → the Lead re-traces once; a 2nd failure → stop and report to the user).
+- Before the first task commit, record the base sha (`git rev-parse HEAD`) under the plan's `## Changes during build`.
 - Shared plan (issue numbers in the header) → claim the task's issue before touching a file (write-plan's `references/team-issues.md`).
 
-Done when: the plan lints clean, the baseline is recorded, and every file the task touches has been read.
+Done when: the plan lints clean (or passes the by-eye check), the baseline is recorded, and every file the task touches has been read.
 
 ### 2. Test first at the plan's seams
 
@@ -67,7 +69,7 @@ Q3: A real design-judgment call?     Q4: More than 3 tool calls total?
 ```
 All "no" → self-do. Any "yes" → delegate to the closest specialist by path / concern / strategy.
 
-The brief comes from the plan, never hand-written: `plan-lint.sh --brief <N> <plan> [contract]` prints it.
+The brief comes from the plan, generated when plan-lint exists: `plan-lint.sh --brief <N> <plan> [contract]` prints it. No plan-lint → the brief is the task block verbatim, plus the spec path and the Bounds: never commit, stay in scope, run the Command, return a decision brief.
 - The Lead adds only **Read first** (the 2-3 files and the pattern to copy) and facts the brief lacks. Never extra steps, runs or scope, a reviewer round 2 included.
 - Never point the owner at the plan file; the brief is its slice.
 
@@ -77,7 +79,12 @@ The task owner NEVER commits and NEVER expands scope:
 
 A write mandate goes only to the path's owning role, never a generic agent or a reviewer; a writing stage carries `agentType: 'rolepod:<role>'`, never a bare `agent()` (`references/subagent-dispatch.md`: role, model, brief fields, `write: external`).
 
-Handle the brief's status (its first word) per `references/subagent-dispatch.md`. `COMPLETED` over a failing test → reject and re-brief. `BLOCKED` → change a variable (context, model, scope); never redispatch unchanged.
+Handle the brief's status (its first word):
+- `COMPLETED` over a failing test → reject and re-brief.
+- `COMPLETED`, no concerns → Review; with Concerns → resolve correctness and scope concerns first.
+- `PARTIAL` → review the done slice, redispatch the remainder narrowed.
+- `BLOCKED` → change a variable (context, model, scope); never redispatch unchanged.
+- A question or any other first word → answer it or ask for the status, then redispatch.
 
 No subagents → the Lead does it: steps 1-3 on each task, the module (or full) suite green, then `check-work` before claiming done.
 
@@ -94,11 +101,12 @@ Done when: every ready track is dispatched and each returned track is integrated
 One combined pass for R2/R3, per task for R4 (high-risk).
 
 A task owner's decision brief carries its Command tail. The Lead spot-checks ONE claim (the Proof, or one finding in an R4 report; never an axis walk), then runs the ship line.
-- No report → the Lead runs `review-code` Axes, recorded as a LIMITATION.
+- No report → the Lead runs `review-code` Axes (no review-code → intent, trace, correctness, tests on the diff), recorded as a LIMITATION.
 - A diff accepted without its review → stop and run it before building further.
 
 R2/R3 tasks carry no reviewer in the loop.
-- When the plan's last code task is committed, the Lead runs ONE combined review over the plan diff (`rolepod-ticket log` prints the range); more than ~15 files → one per ship group.
+- When the plan's last code task is committed, the Lead runs ONE combined review over the plan diff (`rolepod-ticket log` prints the range; without it, the recorded base sha..HEAD, i.e. the first task commit^..HEAD); more than ~15 files → one per ship group.
+- A plan that names a ship group → after its last task, one drift pass over the group's range: `security-engineer` when it holds an R4 task, else the combined review is the drift pass.
 - Findings → ONE fix task to the owning role; round 2 only for a BLOCKER / MAJOR fix.
 - Nothing pushes or releases before it.
 
@@ -121,5 +129,5 @@ Scope and manifest pairs, good and bad → `examples/execution-examples.md`.
 ## Next phase
 
 - `check-work` proves the change works; the final done, the merge and the branch's fate belong to it and `finish-work`.
-- `BLOCKED` survives context, model and scope changes and a re-plan → `manage-context` (escalate).
+- `BLOCKED` survives context, model and scope changes and a re-plan → `manage-context` (escalate); if it is not available, stop and hand the user the attempt log and 2-3 options.
 - If `check-work` is not available, run tests / build / curl / browser yourself and report evidence inline.

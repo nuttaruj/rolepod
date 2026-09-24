@@ -43,17 +43,19 @@ A check that fails → revise before commit.
 Skip when the diff is docs-only (prose / comments / config text / string literals — any size: tests cover the work, not the words), or when ALL hold: ≤5 lines · single file · zero logic-bearing · NOT a high-risk path (= rigor tier R1, trivial edit). Otherwise → write the test.
 
 3. **Failure modes (F1-F5)** — check-work Failure modes; an unresolved F-finding blocks merge. The tree is unchanged since check-work's block → cite its Status for T + F.
-4. **Evidence** — check-work's `Status: UNVERIFIED` or `PARTIAL` blocks merge unless the user explicitly waives it; green tests alone do not satisfy this gate. Citing that block instead of a local re-run → only on the terms in `references/ci-triage.md` CI lanes. Fails → `check-work`.
+4. **Evidence** — check-work's `Status: UNVERIFIED` or `PARTIAL` blocks merge unless the user explicitly waives it; green tests alone do not satisfy this gate. The tree is unchanged since that block's pass → cite it and skip the local re-run ONLY when a CI lane re-runs that scope on the merge path; no CI → run the local equivalents (CI lanes) before the irreversible act. Fails → `check-work`.
 5. **Reviewer** — the `review-code` its Pick reviewers asks for is done; an R4 (high-risk) task's reports sit under `.rolepod/evidence/review/`, missing → `review-code` for that task's diff, never the whole branch. The plan names a ship group → its drift-pass report is there too (`implement-plan` Review, `implement-plan`'s `references/subagent-dispatch.md` Ship-group drift pass). Fails, or a BLOCKER is open → `review-code` or `implement-plan`.
    - A BLOCKER fix is confirmed before merge by a reviewer who did not write it — neither the flagging reviewer nor the author is the final authority (Lead-built fix → `universal-reviewer`; R4 → the internal strong reviewer; the Lead never approves its own fix).
-   - A high-risk diff → read the report's Cross-model adversarial pass line (`references/reviewer-gate.md`); any limitation it records is shown to the user before merge, never cleared silently.
+   - A high-risk diff → read the report's Cross-model adversarial pass line (`references/reviewer-gate.md`); the report has no such line → read its Reviewers and LIMITATION lines instead. Any limitation recorded is shown to the user before merge, never cleared silently.
 6. **PR scope (P)** — one concern per PR / merge. Mixed concerns → split first (`git add -p`, separate branches); a mixed diff is unreviewable.
 
 Done when: all six gates pass, or each failure is fixed, reported, or waived in the user's quoted words.
 
 ### 2. CI lanes
 
-Every required lane is green before merge: Phase 1 always, Phase 2 when path-triggered, Phase 3 only when the repo's own required checks list it. The lane table, the no-CI local equivalents (plus a post-deploy smoke) and red-lane triage → `references/ci-triage.md`.
+Every required lane is green before merge. Phase 1 = the always-on fast lane (lint · typecheck · smoke unit · auth / tenant guard · money core · migration apply · build), always required; Phase 2 = the touched module's full suite, required when path-triggered; Phase 3 = nightly / manual (integration · E2E · chaos · security deep · perf benchmark), required only when the repo's own required checks list it.
+- No CI configured → run lint · typecheck · smoke + the touched module's full suite · build locally BEFORE the merge / deploy, and a post-deploy smoke (curl the live endpoint / health probe) as deploy evidence.
+- The full lane table and red-lane triage → `references/ci-triage.md`.
 - A red required lane → triage it, then the Lead fixes and re-pushes; no per-iteration permission once merge intent is approved. Never merge over a red required lane, and never auto-merge a PR with one.
 - CI / deploy / rollback / monitoring → `devops-sre`; E2E / UI proof missing from check-work's block → `qa-tester`. Brief: branch, diff summary, CI status, review verdict, launch plan. No subagents → the Lead does it.
 
@@ -61,7 +63,7 @@ Done when: every required lane is green, or with no CI its local equivalents pas
 
 ### 3. Detect the environment
 
-Run the check in `references/environment.md`: a normal repo → 4 options, no worktree cleanup; a worktree on a named branch → 4 options + cleanup; detached HEAD → **3 options (no local merge)**, externally managed cleanup.
+Compare `git rev-parse --git-dir` with `git rev-parse --git-common-dir` (resolved to absolute paths; command in `references/environment.md`) and check `git symbolic-ref -q HEAD`: the same dir → a normal repo, 4 options, no worktree cleanup; different on a named branch → 4 options + cleanup; detached HEAD → **3 options (no local merge)**, externally managed cleanup.
 
 Done when: the menu size and the cleanup owner are known.
 
@@ -89,7 +91,7 @@ Before any push — **a push publishes the REF, not your commit.** Read `git log
 - About to `push --force` or `reset --hard` published history → stop and confirm with the user.
 - A 3rd PR on the same surface, or a 3rd agent on the same issue → stop and ask the user.
 
-Worktree cleanup after a merge follows the fixed order in `references/environment.md`. Remove only worktrees we created (under `.worktrees/` or `worktrees/`), never from inside one and never before the merge succeeded; never touch harness-owned workspaces.
+Worktree cleanup after a merge, in this order: merge → verify → `cd` to the main root → `git worktree remove` → `git worktree prune` → delete the branch; the reversed order leaves stuck refs. Remove only worktrees we created (under `.worktrees/` or `worktrees/`), never from inside one and never before the merge succeeded; never touch harness-owned workspaces.
 
 Evidence log: append the line to `<git-root>/.rolepod/evidence/phase-log.jsonl` chained onto the next command you run anyway (`<cmd> && printf '…' >> phase-log.jsonl`), never as a standalone turn; skip silently outside a git repo.
 Ship line, written only after the authorized action actually completed (a failed or pending command logs nothing — report that instead), chained onto the ship command itself (`gh pr create` included; `discard` logs unconditionally): `{"ts":"<iso8601>","phase":"ship","action":"<merge|pr|keep-open|discard>","commit":"<shipped head sha, or none>"}`.

@@ -39,7 +39,7 @@ One command, the same failure every time: `pytest path/test_x.py::name -v`, the 
 - Intermittent → raise the failure rate first (loop the trigger, add stress, inject sleeps) to a 50%+ signal; a 1% flake is not yet debuggable (`references/flake-triage.md`).
 - Fails in CI but not locally, or cannot repro locally → reproduce in CI / staging.
 - Fails locally but green in CI → diff the two environments (env vars, locale, services, versions).
-- No repro after 30 minutes → escalate, or expand the repro environment.
+- No repro after 30 minutes → expand the repro environment once; still none → `manage-context` (escalate), or, if it is not available, hand the user what you tried and stop.
 
 A UI / browser bug, a WordPress bug, or sibling-plugin evidence under `.rolepod/evidence/` → `references/repro-backends.md`.
 
@@ -107,7 +107,7 @@ Two failed fix attempts on the same surface → stop fixing; two misses from the
 1. Write ONE self-contained ledger file. The advisor is cold and sees only this: the symptom, the repro command, each failed fix and why it failed, the suspect code inline (never a pointer to the session).
 2. `rolepod-cross-family --kind consult --brief <ledger>` — a FOREGROUND call. Pool off or no usable member → the Lead's own CLI at its strongest model, valid only when that model differs from the one now running. Pool rules and the fallback run → `references/second-opinion.md`.
 3. Read the reply as a **correction** (a new hypothesis → exactly ONE advisor-informed attempt against the same repro), a **confirmation** ("approach right, check X"), or a **stop** ("wrong path").
-4. Still failing, or no usable advisor → `manage-context` (escalate) with the ledger and the opinion (or "no usable advisor — <reason>") attached. No further fix attempts.
+4. Still failing, or no usable advisor → `manage-context` (escalate) with the ledger and the opinion (or "no usable advisor — <reason>") attached. The Second opinion has then run: it is never re-entered for this bug. No `manage-context` → hand the user the ledger, the opinion and 2-3 options, and stop. No further fix attempts.
 
 Done when: the advisor-informed attempt passed, or the escalation is handed to `manage-context`.
 
