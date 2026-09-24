@@ -437,8 +437,8 @@ render_codex() {
   # claim-verify-nudge, gate-reminder, session-lifecycle and precommit-gate
   # resolve `$(dirname "$0")/lib/...` — without it the Codex copies ran their
   # fallbacks (no route nudge / recorder, no context check) and, since the
-  # v2.128.0 one-spawn rewrite, claim-verify-nudge exited before its claim,
-  # auto-resume and breaker lines. Measured on the 2.128.0 Codex cache.
+  # v2.128.0 one-spawn rewrite, claim-verify-nudge exited before its claim
+  # and auto-resume lines. Measured on the 2.128.0 Codex cache.
   rm -rf "$plugin_dst/hooks/lib"
   [ -d "$REPO_DIR/hooks/lib" ] && cp -R "$REPO_DIR/hooks/lib" "$plugin_dst/hooks/"
   find "$plugin_dst/hooks/lib" -name '__pycache__' -type d -prune -exec rm -rf {} + 2>/dev/null || true

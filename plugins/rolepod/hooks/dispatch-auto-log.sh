@@ -18,19 +18,6 @@
 # inferred.
 # Runtime companion: the "dispatch-proof" transcript/hook layer.
 #
-# v2.64.0 — workflow-round counter (fix-loop-breaker's sibling): the Bash
-# loop breaker counts identical failing commands, but a fix-fleet loop
-# repeats a WORKFLOW, not a command — real case 2026-08-24: six rounds of
-# the same fix workflow (defect count 16→5→3→6, not converging) with every
-# hook enabled and no nudge fired; the user had to suggest the cross-family
-# consult by hand, and it caught a plan flaw in one call. So: count
-# same-name Workflow dispatches per session; at the 3rd and every round
-# after, inject additionalContext telling the Lead to consult ONE
-# clean-room cross-family CLI before the next round. Advisory only — never
-# blocks. Scope limit (stated so a silent gap is not assumed covered): a
-# loop that renames its workflow every round evades the counter — accepted;
-# the hard-stops prose covers models strong enough to vary their scripts.
-#
 # Fail-open everywhere: no git root, no JSON, missing fields → exit 0.
 
 set -uo pipefail
@@ -44,7 +31,7 @@ mkdir -p "$EV_DIR" 2>/dev/null || exit 0
 
 SESSION_STATE="$(dirname "$0")/lib/session_state.py"
 printf '%s' "$INPUT" | ROLEPOD_SESSION_STATE="$SESSION_STATE" ROLEPOD_EV_DIR="$EV_DIR" python3 -I -c '
-import json, os, re, sys, datetime, tempfile
+import json, os, re, sys, datetime
 try:
     d = json.load(sys.stdin)
 except Exception:
@@ -150,52 +137,6 @@ try:
 except Exception:
     pass
 
-# ── workflow-round counter (v2.64.0) ── same-name Workflow dispatched a 3rd
-# time this session = the fix-loop signature at fleet scale. Nudge, never block.
-if tool != "Workflow":
-    sys.exit(0)
-name = line.get("name") or "?"
-if name == "?":
-    sys.exit(0)  # unnamed script — cannot count without false positives
-sid = re.sub(r"[^A-Za-z0-9_-]", "", str(d.get("session_id") or ""))[:64]
-if not sid:
-    sys.exit(0)
-state_path = os.path.join(tempfile.gettempdir(), "rolepod-wfrounds-%s.json" % sid)
-try:
-    with open(state_path) as f:
-        state = json.load(f)
-    if not isinstance(state, dict):
-        state = {}
-except Exception:
-    state = {}
-prev = state.get(name, 0)
-n = (prev if isinstance(prev, int) else 0) + 1
-state[name] = n
-if len(state) > 50:
-    for k in list(state)[: len(state) - 50]:
-        del state[k]
-try:
-    with open(state_path, "w") as f:
-        json.dump(state, f)
-except Exception:
-    pass
-
-if n < 3:
-    sys.exit(0)
-
-msg = (
-    "WORKFLOW ROUNDS: \x27%s\x27 dispatched %d times this session — a fix loop at "
-    "fleet scale. Before another round: is the defect count strictly falling? If "
-    "not, STOP and get ONE cross-family consult first (`rolepod-cross-family --kind "
-    "consult --brief <ledger.md>`): a short ledger — what each round changed, why it "
-    "failed — then decide rebuild vs iterate. Consult already done this loop → note "
-    "its verdict, continue. Advisory only."
-    % (name, n)
-)
-print(json.dumps({"hookSpecificOutput": {
-    "hookEventName": "PostToolUse",
-    "additionalContext": msg,
-}}))
 ' 2>/dev/null || true
 
 exit 0

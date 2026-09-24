@@ -79,8 +79,7 @@ REVIEWER_AGENTS = {
 # Strong-class adversarial reviewers — the subset whose dispatch clears a
 # HIGH-RISK commit gate. qa-tester is user-visible verification (E2E) and
 # never the per-diff review floor (v2.148.4): its dispatch counts at neither
-# gate. The round breaker (workflow-tier-nudge REVIEW_ROLES) still treats it
-# as review-shaped activity — round 2 is the flagging reviewer's own repro.
+# gate.
 STRONG_REVIEWER_AGENTS = {
     "security-engineer",
     "universal-reviewer",
@@ -235,7 +234,7 @@ def _expand_token(raw):
     stays LITERAL — a `$…` token is judged AS a repo path, exactly as
     before Task 6 (owner decision, 2026-09-24, final cut before release:
     the gate guards the NORMAL flow, not deliberate evasion, and three
-    review rounds of bind-detection code for `$`-expansion kept finding
+    review passes of bind-detection code for `$`-expansion kept finding
     one more bypass shape — the whole mechanism, and the code that only
     existed to serve it, is removed rather than chased further; see the
     residuals note in hooks/precommit-gate.sh's and
@@ -1629,29 +1628,6 @@ _QUESTION_SHAPE_RX = re.compile(
     r"what would break|impact of|explain (how|why|what)|why not|status of|"
     r"does (it|this|that) (work|handle|support|cause|break))", re.I)
 AUTO_RESUME_RX = re.compile(r"please continue from where you left off", re.I)
-# Not a user decision: harness resumes, compaction summaries, system blocks.
-NOT_A_PROMPT_RX = re.compile(r"^\s*(<|This session is being continued from a previous conversation)")
-
-
-def _stamp_prompt() -> None:
-    """Write this real prompt's epoch to <git root>/.rolepod/evidence/last-prompt.
-    The review-rounds window (cross-family.sh --rounds, v2.128.0) starts at
-    the later of the last commit and this stamp, so rounds never carry over
-    from one commission to the next; auto-resume and compaction prompts do
-    not stamp, so an autonomous loop still accumulates. Fail-open."""
-    try:
-        import subprocess
-        import time
-        root = subprocess.run(["git", "rev-parse", "--show-toplevel"], capture_output=True,
-                              text=True, timeout=10).stdout.strip()
-        if not root:
-            return
-        d = os.path.join(root, ".rolepod", "evidence")
-        os.makedirs(d, exist_ok=True)
-        with open(os.path.join(d, "last-prompt"), "w") as f:
-            f.write("%d\n" % int(time.time()))
-    except Exception:
-        pass
 
 
 def prompt_state(d: dict) -> str:
@@ -1675,8 +1651,6 @@ def prompt_state(d: dict) -> str:
         except Exception:
             route = "-"
     auto = bool(prompt) and AUTO_RESUME_RX.search(prompt) is not None
-    if prompt and not auto and not NOT_A_PROMPT_RX.search(prompt):
-        _stamp_prompt()
     return "%d %s %d %s %d" % (ctx, sid or "-", 1 if prompt else 0, route, 1 if auto else 0)
 
 

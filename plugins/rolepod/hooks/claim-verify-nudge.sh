@@ -35,12 +35,7 @@
 #
 # v2.128.0 — one python spawn for the prompt, the context size, the session
 # id, the route freshness and the auto-resume shape (lib/session_state.py
-# prompt-state; was five spawns ≈ 200 ms of the hook's 471 ms). The review-
-# rounds runner and the final emit stay as they were. The same spawn stamps
-# .rolepod/evidence/last-prompt for every prompt the USER typed (never for
-# an auto-resume or a compaction summary): the review-rounds window starts
-# there, so rounds from one commission never block the next — measured
-# 2026-09-14, five tasks in a day read as round 5 and stopped new work.
+# prompt-state; was five spawns ≈ 200 ms of the hook's 471 ms).
 #
 # Opt-out for a session: ROLEPOD_NUDGE_OFF=1
 set -euo pipefail
@@ -90,7 +85,7 @@ fi
 # Route nudge (v2.98.0): a commission-shaped prompt with no tier logged
 # since the previous request. Measured: one project, 199 requests over a
 # week, the router skill fired 0 times — a high-risk change to an existing
-# feature went straight to build and six review rounds drew its seam map.
+# feature went straight to build and six fix cycles drew its seam map.
 # Question-shaped prompts (why/how/what, Thai question particles) are never
 # commission-shaped, so they never reach this branch. Freshness = the
 # newest `route` line in the repo phase-log is newer than the previous user
@@ -105,33 +100,16 @@ if [ "$ROUTE" = "stale" ]; then
   ROUTE_MSG="⟂ route: a commission with no tier stated since your last request. Fix: one line before the first edit — Route: R2 (one file + test) → <skill> · <reason> — where R0 answer only · R1 trivial edit · R2 one file + test · R3 multi-file · R4 high-risk; R3/R4 → using-rolepod (Define → Plan first). The hook records it; blast radius sets the tier, not feature age. Exception: a literal follow-up inside an already-routed task → say 'same task' and continue. (off: ROLEPOD_NUDGE_OFF=1) "
 fi
 
-# Breaker state (v2.99.0; one round without stopping, v2.167.0): a breaker
-# ledger newer than the last commit arms the breaker — class fix once, ONE
-# internal strong re-check, then ship or split & stop and ask; an auto-resume
-# prompt ("Please continue") never opens another review round; 3+ rounds with
-# no ledger asks for the ledger first. Reader = the runner\x27s --rounds.
 # Auto-resume (v2.100.0): after a usage-limit pause the harness sends
 # "Please continue from where you left off" — a resume, not a user decision.
 # Measured: two such prompts carried an 11-round review loop through the night.
 AUTO_MSG=""
 if [ "$AUTO" = "1" ]; then
-  AUTO_MSG="↩ auto-resume: this prompt is the harness after a usage limit, not a user decision. Fix: the last turn ended at a question / breaker / decision brief → restate it and stop; otherwise continue the same task at the same tier — no new scope, no new review round. "
+  AUTO_MSG="↩ auto-resume: this prompt is the harness after a usage limit, not a user decision. Fix: the last turn ended at a question / decision brief → restate it and stop; otherwise continue the same task at the same tier — no new scope, no new review round. "
 fi
-BREAKER_MSG=""
-XFAM_RUNNER="$(dirname "$0")/../scripts/cross-family.sh"; [ -f "$XFAM_RUNNER" ] || XFAM_RUNNER="$HOME/.rolepod/bin/cross-family.sh"
-if [ -f "$XFAM_RUNNER" ] && git rev-parse --show-toplevel >/dev/null 2>&1; then
-  RR=$(bash "$XFAM_RUNNER" --rounds 2>/dev/null || true)
-  LP=$(printf '%s' "$RR" | sed -n 's/.*ledger=\([^ ]*\).*/\1/p'); RN=$(printf '%s' "$RR" | sed -n 's/.*rounds=\([0-9]*\).*/\1/p')
-  if [ -n "$LP" ] && [ "$LP" != "-" ]; then
-    BREAKER_MSG="⏹ breaker: $LP — class fix once, then ONE internal strong re-check with the ledger + fix delta (review-code Breaker). APPROVED → ship, no question. REJECTED → split & stop, restate the decision brief and ask the user. "
-  elif [ "${RN:-0}" -ge 3 ]; then
-    BREAKER_MSG="⏹ review-rounds: $RN rounds on one uncommitted tree, no breaker ledger. Fix: before any fix or review — docs/rolepod/handoffs/<feature>-breaker-<date>.md (## Rounds · ## Class · ## Decision), then the class fix once (review-code Breaker). "
-  fi
-fi
-
-if [ -n "$CTX_MSG$ROUTE_MSG$AUTO_MSG$BREAKER_MSG" ]; then
+if [ -n "$CTX_MSG$ROUTE_MSG$AUTO_MSG" ]; then
   # Env-passed (never interpolated) so quotes in either message cannot break the JSON.
-  ROLEPOD_HOOK_MSG="${CTX_MSG}${ROUTE_MSG}${AUTO_MSG}${BREAKER_MSG}" python3 -I -c "
+  ROLEPOD_HOOK_MSG="${CTX_MSG}${ROUTE_MSG}${AUTO_MSG}" python3 -I -c "
 import json, os
 print(json.dumps({'hookSpecificOutput':{'hookEventName':'UserPromptSubmit','additionalContext':os.environ.get('ROLEPOD_HOOK_MSG','')}}))
 " 2>/dev/null || echo '{}'

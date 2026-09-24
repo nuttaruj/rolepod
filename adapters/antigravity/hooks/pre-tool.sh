@@ -17,7 +17,7 @@
 #   anything else (allow / advisory context / errors)   → silence
 # The gate's advisory text (auto-pass note, push-ref info) has no
 # channel on agy and is dropped on purpose; the deny paths (high-risk diff without
-# tests, private docs staged, review-round breaker) fire exactly as on Claude.
+# tests, private docs staged) fire exactly as on Claude.
 set -uo pipefail
 
 IN=$(cat 2>/dev/null || true)

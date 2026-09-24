@@ -117,62 +117,6 @@ def _git_root():
     except Exception:
         return ""
 
-# v2.99.0 — review rounds on one uncommitted tree, counted PER REVIEWER
-# since v2.154.0. ONE implementation: the runner\x27s `--rounds [--role
-# <key>]` (shipped in every plugin tree next to hooks/). Round 3 = notice,
-# round 4 without a breaker ledger (`## Rounds` + `## Class`) = deny, round
-# 5+ = deny (terminal: split & stop). A dispatch of a known role asks
-# `--role <role>`; a reviewer-shaped dispatch with no role match asks
-# `--role named`; a review-shaped Workflow asks with no role (the tree\x27s
-# busiest reviewer). Measured 2026-09-21: counting per reviewer instead of
-# the whole tree turns 7 of 185 windows\x27 round >= 4 into 2 — the two real
-# churn loops the breaker was built for. The window starts at the later of
-# the last commit and the last real user prompt (v2.128.0 —
-# claim-verify-nudge stamps it; a clean tree is 0 rounds), so separate
-# commissions on one tree never add up to a phantom loop.
-REVIEW_ROLES = ("security-engineer", "universal-reviewer", "code-reviewer", "qa-tester")
-
-def _review_rounds(role=None):
-    import subprocess
-    here = os.path.dirname(os.environ["ROLEPOD_SESSION_STATE"])
-    for rp in (os.path.join(here, "..", "..", "scripts", "cross-family.sh"),
-               os.path.expanduser("~/.rolepod/bin/cross-family.sh")):
-        if not os.path.isfile(rp):
-            continue
-        try:
-            cmd = ["bash", rp, "--rounds"] + (["--role", role] if role else [])
-            out = subprocess.run(cmd, capture_output=True, text=True, timeout=15).stdout
-        except Exception:
-            return None
-        m = re.search(r"current=(\d+).*?ledger=(\S+).*?class=([01])", out)
-        return (int(m.group(1)), m.group(2), m.group(3) == "1") if m else None
-    return None
-
-def _round_policy(label, role=None):
-    rr = _review_rounds(role)
-    if not rr:
-        return None, ""
-    cur, ledger, klass = rr
-    soft = os.environ.get("ROLEPOD_GATES_SOFT") == "1"
-    if cur >= 5 and not soft:
-        return "deny", ("\u26d4 review-rounds: %s would be its round %d on one uncommitted tree — past the breaker "
-                        "budget (ledger, class fix once, ONE round). Fix: split & stop (review-code \u00a75 step 5): "
-                        "commit the slices with no open finding, park the churning surface as a delta spec / "
-                        "Follow-ups, end the turn with the decision brief. The user\x27s next typed "
-                        "prompt re-opens the window — no new session, no bypass. Exception: "
-                        "ROLEPOD_GATES_SOFT=1 (user-set)." % (label, cur))
-    if cur >= 4 and not klass and not soft:
-        return "deny", ("\u26d4 review-rounds: %s would be its round %d on one uncommitted tree with no breaker ledger. "
-                        "Fix: write docs/rolepod/handoffs/<feature>-breaker-<date>.md (## Rounds \u00b7 ## Class: the one "
-                        "root cause, its single point, every consumer \u00b7 ## Decision), make the class-level fix ONCE "
-                        "with a class test, then dispatch this round (internal + rolepod-cross-family --since <job> "
-                        "--ledger <file>). Exception: ROLEPOD_GATES_SOFT=1 (user-set)." % (label, cur))
-    if cur >= 3:
-        return "ctx", ("\U0001f501 review-rounds: %s is on its round %d on one uncommitted tree — the breaker is armed: after "
-                       "this verdict no more point fixes; ledger \u2192 class fix once (class test + consumer list) "
-                       "\u2192 ONE round \u2192 else split & stop (review-code \u00a75). " % (label, cur))
-    return None, ""
-
 def _log_bypass(hook, var):
     # Same line shape as rolepod_log_bypass() in the bash hooks — a used
     # bypass is recorded, never blocked; fail-open on any error.
@@ -256,16 +200,6 @@ def _log_gate(ti, script, lead, cls, n_calls, verdict="no-tier", tiers=None, sta
 
 if tool == "Workflow":
     script = ti.get("script") or ""
-    # Review-shaped fleet (a reviewer role or a review/verify name) counts as a
-    # review round too — deny levels only; the round-3 notice comes from the
-    # Agent / runner channels.
-    _wf_blob = script + " " + str(ti.get("name") or "")
-    if re.search(r"(security-engineer|universal-reviewer|code-reviewer|qa-tester)", _wf_blob) or re.search(r"review|verif|audit", str(ti.get("name") or ""), re.I):
-        _k, _m = _round_policy("this Workflow")
-        if _k == "deny":
-            emit({"hookSpecificOutput": {"hookEventName": "PreToolUse",
-                                         "permissionDecision": "deny",
-                                         "permissionDecisionReason": _m}})
     if not script and ti.get("scriptPath"):
         try:
             with open(ti["scriptPath"]) as f:
@@ -639,25 +573,6 @@ if tool in ("Agent", "Task"):
     atype_raw = (ti.get("subagent_type") or "general-purpose").split()[0]
     atype = ss._bare_agent_name(atype_raw)
     model = (ti.get("model") or "").split()[0] if ti.get("model") else ""
-    loop_note = ""
-    if atype in REVIEW_ROLES:
-        kind, rmsg = _round_policy("rolepod:" + atype, atype)
-        if kind == "deny":
-            emit({"hookSpecificOutput": {"hookEventName": "PreToolUse",
-                                         "permissionDecision": "deny",
-                                         "permissionDecisionReason": rmsg}})
-        if kind == "ctx":
-            loop_note = rmsg
-    else:
-        dname = str(ti.get("name") or "")
-        if re.search(r"review|verif|audit", dname, re.I):
-            kind, rmsg = _round_policy(dname, "named")
-            if kind == "deny":
-                emit({"hookSpecificOutput": {"hookEventName": "PreToolUse",
-                                             "permissionDecision": "deny",
-                                             "permissionDecisionReason": rmsg}})
-            if kind == "ctx":
-                loop_note = rmsg
     if atype in ss.STRONG_ROLE_AGENTS:
         # v2.104.0: the frontmatter of the role pins opus, so the floor holds
         # without this hook; under a low Lead write opus anyway (a pre-2.104
@@ -677,13 +592,9 @@ if tool in ("Agent", "Task"):
                                  % (atype, ss.STRONG_ALIAS, lead_txt),
             })
         if model and ss.model_class(model) in ss.LOW_CLASSES:
-            ctx(loop_note + "⚖ tier-check: %s dispatched with model=%s — an EXPLICIT downgrade of a strong "
+            ctx("⚖ tier-check: %s dispatched with model=%s — an EXPLICIT downgrade of a strong "
                 "review role; the commit gate will not count it as the strong pass. Fix: drop the model "
                 "field (the hook lifts it) or pass model:\x27opus\x27.%s" % (atype, model, OFF))
-        if loop_note:
-            ctx(loop_note.rstrip() + OFF)
         sys.exit(0)
-    if loop_note:
-        ctx(loop_note.rstrip() + OFF)
 ' 2>/dev/null || true
 exit 0

@@ -23,9 +23,9 @@ CTX="**$NAME** @ \`$BRANCH\` ($DIRTY uncommitted)\n\n**Recent:**\n\`\`\`\n$COMMI
 [ -n "$HOT" ] && CTX="$CTX\n\n**Hot (7d):**\n$HOT"
 
 # Session-start state pointers (v2.102.0): the newest plan with unchecked
-# steps, an open breaker ledger, the last phase-log line — "read the progress
-# file first" made automatic for continuation sessions (measured: 21
-# compactions in one project lineage and the plan was never re-read).
+# steps, the last phase-log line — "read the progress file first" made
+# automatic for continuation sessions (measured: 21 compactions in one
+# project lineage and the plan was never re-read).
 STATE=$(ROLEPOD_PCL_REPO="$REPO" python3 -I - <<'PY' 2>/dev/null || true
 import glob, json, os, re
 repo = os.environ["ROLEPOD_PCL_REPO"]; out = []
@@ -59,13 +59,6 @@ if os.path.isfile(log):
 print("\\n".join(out))
 PY
 )
-_xr="$(cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null && pwd)/../scripts/cross-family.sh"; [ -f "$_xr" ] || _xr="$HOME/.rolepod/bin/cross-family.sh"
-if [ -f "$_xr" ]; then
-  _rr=$(cd "$REPO" && bash "$_xr" --rounds 2>/dev/null || true)
-  _lp=$(printf '%s' "$_rr" | sed -n 's/.*ledger=\([^ ]*\).*/\1/p'); _rn=$(printf '%s' "$_rr" | sed -n 's/.*rounds=\([0-9]*\).*/\1/p')
-  if [ -n "$_lp" ] && [ "$_lp" != "-" ]; then STATE="$STATE\n**Breaker ledger open:** \`${_lp#$REPO/}\` — restate the decision brief; no new fix or review round until the user decides"
-  elif [ "${_rn:-0}" -ge 3 ]; then STATE="$STATE\n**Review rounds on this tree:** $_rn, no ledger — write docs/rolepod/handoffs/<feature>-breaker-<date>.md before any fix (review-code Breaker)"; fi
-fi
 [ -n "$STATE" ] && CTX="$CTX\n\n$STATE"
 
 # Cross-family runner locator (v2.76.0): marketplace installs have no
