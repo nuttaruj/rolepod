@@ -1,5 +1,5 @@
 <!-- Author-side deep playbook for processing review findings. -->
-<!-- Loaded on demand from review-code/SKILL.md §6. -->
+<!-- Loaded on demand from review-code/SKILL.md Author response. -->
 <!-- Reviewer-side doctrine lives in SKILL.md; this file is for the author. -->
 
 # Receiving findings
@@ -53,7 +53,7 @@ The reviewer outranks neither documented decisions nor user direction.
 ## Two questions per finding
 
 1. **Is it correct?** — verified against the code and the evidence, never taken from the reviewer's severity, its REJECTED label or its suggested fix.
-2. **Must THIS change repair it?** — yes for a requirement it violates, a regression it introduced, or a consumer it forces to migrate; anything else follows provenance (review-code §6: pre-existing on a path this diff changes → a user decision or Follow-ups, pre-existing on an untouched path → Follow-ups).
+2. **Must THIS change repair it?** — yes for a requirement it violates, a regression it introduced, or a consumer it forces to migrate; anything else follows provenance (`review-code` Author response: pre-existing on a path this diff changes → a user decision or Follow-ups, pre-existing on an untouched path → Follow-ups).
 
 A real defect wrapped in an oversized repair (new guarantees, transactions, rollback, limits, compatibility paths the requirement never asked for) → keep the defect, take the minimum repair, say so in the reply.
 

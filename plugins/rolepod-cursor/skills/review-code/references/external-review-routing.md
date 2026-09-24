@@ -1,5 +1,5 @@
-<!-- Load when routing the adversarial pass in a cross-CLI review. -->
-<!-- review-code's step 1 carries the trigger; this file is the routing. -->
+<!-- Load when the cross-family pool is enabled, or an internal pass, apex or strong-class question comes up. -->
+<!-- review-code's Pick reviewers carries the trigger; this file is the routing. -->
 
 # External review routing
 
@@ -10,6 +10,43 @@ and OpenCode (their model = whatever default their owner configured —
 recorded, never a criterion). Any CLI can be the Lead. The adversarial
 review pass routes to a **different CLI** than the Lead's, never to the
 Lead's own; the model family is information, not a filter.
+
+## When the external runs
+
+- **The pool is the user's choice, and it is opt-in.** The runner reads `<git-root>/.rolepod/cross-family`, then `~/.rolepod/cross-family` (`rolepod-cross-family --setup`), minus the Lead's own CLI. No file or `none` = off. Never turn it on unasked.
+- **Mandatory at the pool's tier.** Pool enabled + a logic-bearing code diff at the pool's tier (R4 unless the pool file sets `tier = R2|R3`) + a usable member → route the strong pass to it. Below that tier, and any doc / comment / config / rename-only diff, stay internal unless the user asks.
+- **The external IS the strong pass (satellite-first).** `rolepod-cross-family --kind review --brief <brief> --attach <diff> --detach` runs read-only on another CLI and anchors itself. From the pool's tier up it replaces `universal-reviewer`, never both on round 1 (the user asks → one pass).
+- **Detach by default.** The runner returns a job id and runs the chain (first member → fallbacks), each member on its own budget.
+  - Dispatch `security-engineer` in the same message.
+  - Then keep working OUTSIDE the diff, or end the turn.
+  - `rolepod-cross-family --collect <job-id>` waits up to the budget, in the foreground.
+- **An externally implemented ship group** (`--kind implement`) is reviewed by a DIFFERENT member; the runner skips the implementer while its ticket is uncommitted. A user-lifted risky scope (`risky:lifted`) → the external pass by a different member.
+
+## When the internal general pass runs
+
+`universal-reviewer` runs as the general strong pass when any of these holds:
+- (a) cross-family is off, or the runner reports no usable member (every member failed / pool empty — logged);
+- (b) the review-code Breaker fired — its one round goes to the internal strong reviewer (`breaker.md`);
+- (c) the external came back weak — empty / partial return, bare verdict, or no claims walked;
+- (d) an apex trigger holds (below) — external first, internal when (c);
+- (e) re-reading a fix delta in the fix-verify rounds.
+
+**Strong class.** Dispatch the internal general pass on a strong-class model, even under a balanced Lead — never a balanced model. `qa-tester` (E2E / UI) is never the strong pass and never counts as one.
+
+## Apex escalation
+
+Strong is the R4 default: "done right per the existing pattern?". Apex — the strongest model the CLI exposes — asks "is the pattern itself right?". Escalate only on:
+1. irreversible with no rollback — destructive migration, key rotation, live money movement;
+2. novel design with no pattern to diff against;
+3. deep cross-system reasoning — races on financial invariants, distributed consistency;
+4. the previous strong round missed blockers;
+5. the user asks.
+
+- No trigger → strong stands.
+- A CLI whose strong pin IS its ceiling collapses apex into strong.
+- A costlier rung is a cost decision: surface it first.
+- A ceiling below frontier class still gets the full review; record the depth cap as a LIMITATION.
+- The dispatch line's `override` records the rung sent.
 
 ## One command — the cross-family runner
 
@@ -34,8 +71,8 @@ skipped for friction: resolves the pool (below), invokes the first usable
 member **read-only on its own default model**, prefixes
 `ROLEPOD_BRAIN_SILENT=1` (clean room — no ambient memory leaks the author's
 narrative into the cold run), tees the raw output to
-`.rolepod/evidence/external/<utc>-<cli>.txt`, and appends the phase-log line
-the commit gate reads. Its last stdout line is the receipt:
+`.rolepod/evidence/external/<utc>-<cli>.txt`, and appends its own
+`"reviewer":"external"` phase-log line. Its last stdout line is the receipt:
 `ROLEPOD-XFAM ok kind=review cli=<cli> family=<family> raw=<path> secs=<n>`.
 **Time is per member, and the model is told its budget.** `--timeout` >
 `timeout=` in the config > kind default (review 1800 s detached / 600 s
@@ -46,8 +83,7 @@ managers … output PARTIAL if nearly spent", so a slow-but-deep member
 this) plans instead of wandering. `--detach` makes the chain a job in its
 own process group: the Lead keeps working, a member that overruns is
 killed with its grandchildren and the next member runs, the receipt is
-anchored when it lands, `--collect` waits for it, and the commit gate
-reports a running job instead of asking you to start one. Foreground is
+anchored when it lands, and `--collect` waits for it. Foreground is
 capped by the harness (Claude Bash: 600 s) — the runner warns when a
 member's budget exceeds it.
 
@@ -94,8 +130,8 @@ records `model: default`.
   (budget nearly spent) or without its `VERDICT:` line is kept as
   `*.partial.txt` for you to read, logged as `external-fail`, and the chain
   moves to the next member — it never anchors the strong pass (consult /
-  critique answers marked PARTIAL still count; only the pass the
-  gate trusts is strict). Every anchor carries `brief_sha` and, in a job,
+  critique answers marked PARTIAL still count; only the review pass
+  is strict). Every anchor carries `brief_sha` and, in a job,
   the job id, so an evidence line is tied to what was reviewed.
 - **Installed ≠ usable** — the runner proves it at invoke: exit ≠ 0,
   timeout, or < 200 bytes → an `external-fail` phase-log line and the next
@@ -160,7 +196,7 @@ the vertical fallback) still reviews every axis — but the review report's
 `finish-work`'s Reviewer gate surfaces that limitation before merge. It is a
 real verification limitation, not a pass.
 
-## Satellite-first — the external IS the strong pass, and the gate enforces it
+## Satellite-first — the external IS the strong pass
 
 Real installs run one main subscription (any family) plus cheaper satellite
 plans that would otherwise idle. Each plan is a separate flat-rate quota
@@ -170,27 +206,33 @@ satellite first whenever a usable non-Lead family exists:
 
 - **R4 strong adversarial pass** — the routed cross-family external IS the
   strong pass (better decorrelated than a same-family strong reviewing its
-  own family's work). `precommit-gate` counts it from the runner's anchor
-  (raw file ≥ 500 bytes + the `reviewer:external` review line). While the
-  pool is usable, an internal strong reviewer does **not** clear a
-  high-risk commit — only after the runner reports exit 3 / 4 (logged as
-  `external-fail`); a machine where cross-family is off (opt-in not given,
-  or `none`) is never held.
+  own family's work). Only the runner's anchor counts — the raw file under
+  `.rolepod/evidence/external/` plus its `"reviewer":"external"` phase-log
+  line (cli, family, `model:"default"`, raw path); a hand-typed line or a
+  hand-rolled external call is ignored. The Lead still appends its own
+  merged review verdict line. While the
+  pool is usable, an internal strong reviewer does **not** replace the
+  external on a high-risk diff — only after the runner reports exit 3 / 4
+  (logged as `external-fail`). Cross-family off (opt-in not given, or
+  `none`) → the internal strong reviewer is the pass.
 - **Money / auth — R4 rule applies.** billing · payments · credits · auth ·
   crypto · secrets · data deletion: `security-engineer` + ONE general strong
   pass (external when the pool is usable, else `universal-reviewer`). Never
   external + `universal-reviewer` on round 1. The internal general pass joins
-  an external only at the round-3 breaker or when the external came back weak.
-  Pool off / failed → `universal-reviewer` + `security-engineer`. The commit
-  gate opens when one strong reviewer has finished (the anchored external, or an internal strong pass).
+  an external only when the external came back weak; the Breaker's one round
+  is internal only, with no new external round (`breaker.md`).
+  Pool off / failed → `universal-reviewer` + `security-engineer`. Commit only
+  after one strong pass has finished (the anchored external, or an internal
+  strong pass).
 - **Weak external → add internal.** Empty / partial return (a changed file
   missing from the report's Scope list counts), a bare verdict, or
   no claims walked → dispatch the internal general pass too; record why.
   Internal otherwise
-  fires on the carve-outs in review-code §1: empty / failed pool,
-  apex trigger (external first), fix-verify re-read, round-3 breaker.
-- **Outside opinion** (debug-issue §9, `--kind consult`) and the spec
-  **critique** (write-spec §4b, `--kind critique`) — already cold one-shot by
+  fires on the carve-outs under "When the internal general pass runs"
+  above: empty / failed pool, apex trigger (external first), fix-verify
+  re-read, the Breaker.
+- **Outside opinion** (`debug-issue` Second opinion, `--kind consult`) and the spec
+  **critique** (`write-spec` Cross-family critique, `--kind critique`) — already cold one-shot by
   shape; same satellite-first order.
 
 This never widens WHO reviews (the pool reviews code at its tier — R4, or lower only when the pool
