@@ -1211,6 +1211,329 @@ def count_all(
     return test_edits, high_risk_edits, reviewers, strong_reviewers
 
 
+def _phase_log_reviewer_counts(phase, since_epoch, path, provenance="", strict=False):
+    """(reviewers, strong) tally from phase-log.jsonl rows of one `phase`
+    value — python twin of precommit-gate.sh's phase_log_reviewer_count
+    (kept in parity; see its header for the write_mode / provenance /
+    low-class rationale). `provenance` "" = no requirement — every current
+    caller in this file passes one (`hook-auto` for the dispatch backstop,
+    `hook-stdin` for dispatch-proof, HIGH-1 round-1 review); the empty
+    default is kept only for a future caller with no real requirement to
+    state. `strict` additionally drops a STRONG row whose model is a named
+    low-class downgrade (the hook-auto backstop only)."""
+    r = s = 0
+    cut = None
+    if since_epoch:
+        import datetime
+        try:
+            cut = datetime.datetime.fromtimestamp(float(since_epoch), datetime.timezone.utc)
+        except Exception:
+            cut = None
+    try:
+        with open(path, encoding="utf-8", errors="replace") as f:
+            for line in f:
+                try:
+                    d = json.loads(line)
+                    if not isinstance(d, dict) or d.get("phase") != phase:
+                        continue
+                    if provenance and d.get("provenance") != provenance:
+                        continue
+                    if d.get("write_mode"):
+                        continue
+                    if cut is not None:
+                        import datetime
+                        ts_raw = d.get("ts") or ""
+                        if not isinstance(ts_raw, str):
+                            continue
+                        ts = datetime.datetime.fromisoformat(ts_raw.replace("Z", "+00:00"))
+                        # A naive ts (no offset) is dropped, not assumed UTC —
+                        # the bash twin (phase_log_reviewer_count) drops it
+                        # too; a hand-written row without a timezone must
+                        # never buy reviewer credit across a commit boundary.
+                        if ts.tzinfo is None or ts < cut:
+                            continue
+                    name = _bare_agent_name(d.get("agent_type"))
+                    if name.startswith("rolepod-"):
+                        # Codex/Cursor/Antigravity dispatch rows may carry
+                        # the plugin-prefixed bare name (no ':') — the bash
+                        # twin (phase_log_reviewer_count) strips it too.
+                        name = name[len("rolepod-"):]
+                    # Both flags resolved BEFORE either counter moves
+                    # (round-2 review MINOR-1): model_class() raising on a
+                    # malformed `model` must not leave `r` incremented with
+                    # `s` never reached — the whole row is all-or-nothing.
+                    is_reviewer = name in REVIEWER_AGENTS
+                    is_strong = name in STRONG_REVIEWER_AGENTS and (
+                        not strict or model_class(d.get("model")) not in LOW_CLASSES)
+                    if is_reviewer:
+                        r += 1
+                    if is_strong:
+                        s += 1
+                except Exception:
+                    # One malformed row (a non-string agent_type/model/ts)
+                    # must never zero every OTHER row in the window — the
+                    # bash twin wraps each row the same way
+                    # (precommit-gate.sh's inline python).
+                    continue
+    except OSError:
+        pass
+    return r, s
+
+
+def _anchored_external_count(since_epoch, ev_dir):
+    """Anchored cross-family review passes since `since_epoch` — a phase-log
+    `review` row with `reviewer: external` whose raw output sits under
+    `ev_dir`, is relative, has no `..`, and is >= 500 bytes (python twin of
+    precommit-gate.sh's inline XREV computation, satellite-first, v2.61.0)."""
+    import datetime
+    cut = None
+    if since_epoch:
+        try:
+            cut = datetime.datetime.fromtimestamp(float(since_epoch), datetime.timezone.utc)
+        except Exception:
+            cut = None
+    n = 0
+    try:
+        with open(os.path.join(ev_dir, "phase-log.jsonl"), encoding="utf-8", errors="replace") as f:
+            for line in f:
+                try:
+                    d = json.loads(line)
+                    if not isinstance(d, dict) or d.get("phase") != "review" or d.get("reviewer") != "external":
+                        continue
+                    if cut is not None:
+                        ts = datetime.datetime.fromisoformat((d.get("ts") or "").replace("Z", "+00:00"))
+                        if ts.tzinfo is None:
+                            ts = ts.replace(tzinfo=datetime.timezone.utc)
+                        if ts < cut:
+                            continue
+                    raw = d.get("raw") or ""
+                    if not isinstance(raw, str) or not raw or raw.startswith("/") or ".." in raw:
+                        continue
+                    # P1 (Lead close-out, round 2 residual): `raw` must sit
+                    # under evidence/external/ — the anchor point review-code
+                    # actually writes to. Before this, `"raw":
+                    # "phase-log.jsonl"` (or edits.jsonl, or a symlink placed
+                    # under external/) passed the relative/no-".."/>=500B
+                    # checks and counted as a real cross-family pass — the
+                    # cheapest forgery in the gate. Both the name prefix and
+                    # the resolved realpath are checked (a symlink under
+                    # external/ pointing elsewhere must not count either).
+                    if not raw.startswith("external/"):
+                        continue
+                    candidate = os.path.join(ev_dir, raw)
+                    ext_root = os.path.realpath(os.path.join(ev_dir, "external"))
+                    real = os.path.realpath(candidate)
+                    if real != ext_root and not real.startswith(ext_root + os.sep):
+                        continue
+                    if os.path.getsize(candidate) >= 500:
+                        n += 1
+                except Exception:
+                    # One malformed row (a non-string raw/ts, a NUL byte in
+                    # the path) must never zero every OTHER anchored pass in
+                    # the window — same defense as _phase_log_reviewer_counts.
+                    continue
+    except OSError:
+        pass
+    return n
+
+
+def _window_since_epoch(diff_dir):
+    """Since-epoch at `diff_dir` — `git log -1 --format=%ct`, or (a linked
+    worktree, v2.153.0) the newest HEAD reflog line whose subject starts
+    with "commit", else the oldest line (the worktree's creation). Python
+    twin of precommit-gate.sh's SINCE_EPOCH block — S11 pins the two
+    windows equal on the same fixture. None when the directory has no
+    commits yet (whole-session evidence)."""
+    import subprocess
+
+    def run(*args):
+        try:
+            return subprocess.run(
+                ["git", "-C", diff_dir, *args], capture_output=True, text=True, timeout=10
+            ).stdout.strip()
+        except Exception:
+            return ""
+
+    since_epoch = None
+    ct = run("log", "-1", "--format=%ct")
+    if ct:
+        try:
+            since_epoch = float(ct)
+        except ValueError:
+            since_epoch = None
+    # Resolved to an absolute, symlink-resolved path before comparing
+    # (MEDIUM-3, round-1 review): from a subdirectory of the MAIN worktree,
+    # git prints an absolute --git-dir but a RELATIVE --git-common-dir — the
+    # raw strings then always differ and a plain-repo subdir call wrongly
+    # took the linked-worktree reflog branch. Kept in parity with the same
+    # fix in precommit-gate.sh's bash block.
+    def abspath(raw):
+        if not raw:
+            return ""
+        try:
+            return os.path.realpath(raw if os.path.isabs(raw) else os.path.join(diff_dir, raw))
+        except Exception:
+            return ""
+
+    git_dir = abspath(run("rev-parse", "--git-dir"))
+    git_cdir = abspath(run("rev-parse", "--git-common-dir"))
+    if git_dir and git_cdir and git_dir != git_cdir:
+        rlog = run("reflog", "show", "--date=unix", "--format=%gd %gs", "HEAD")
+        if rlog:
+            lines = rlog.splitlines()
+            pick = None
+            for ln in lines:
+                if re.match(r"^HEAD@\{[0-9]+\}\s+commit", ln):
+                    pick = ln
+                    break
+            if pick is None and lines:
+                pick = lines[-1]
+            if pick:
+                m = re.match(r"^HEAD@\{([0-9]+)\}", pick)
+                if m:
+                    since_epoch = float(m.group(1))
+    return since_epoch
+
+
+def _evidence_root(diff_dir):
+    """Config / evidence root (v2.153.0, R3): the hook's own process cwd's
+    git root — every writer hook (edit-ledger, phase-log, bypass.log,
+    session locks) puts its state there — falling back to `diff_dir`'s
+    toplevel only when the process cwd is not itself a git work tree."""
+    import subprocess
+
+    def toplevel(cwd):
+        try:
+            return subprocess.run(
+                ["git", "-C", cwd, "rev-parse", "--show-toplevel"],
+                capture_output=True, text=True, timeout=10,
+            ).stdout.strip()
+        except Exception:
+            return ""
+
+    root = toplevel(".")
+    if not root:
+        root = toplevel(diff_dir)
+    return root
+
+
+def gate_evidence(hook_input: dict, diff_dir: str) -> tuple[int, int, int, int, int]:
+    """One evidence tally for both the commit gate and the edit-time
+    reminder (spec Desired 2, 2026-09-24): the window computed once at
+    `diff_dir` (the commit's resolved directory for the gate, the edited
+    file's directory for the reminder), the evidence files pinned to
+    `_evidence_root` — returns (test_edits, high_risk_edits, reviewers,
+    strong_reviewers, external). MAX per source, never summed: the
+    transcript scan (count_all), the hook-auto phase-log "dispatch" backstop
+    (nested Agent dispatches the transcript walk's cap dropped), every CLI's
+    "dispatch-proof" rows (SubagentStop — Codex, Cursor, Antigravity,
+    opencode; the Codex bundle carries lib/ and used to take this same
+    branch while ignoring its own proof rows, reproduced 2026-09-24) and the
+    edit ledger. Anchored external passes (XREV) ADD on top of reviewers /
+    strong_reviewers, same as the gate's own long-standing rule, and are
+    also returned on their own for the satellite-first hold."""
+    diff_dir = diff_dir or "."
+    transcript_path = hook_input.get("transcript_path") or ""
+    since_epoch = _window_since_epoch(diff_dir)
+    root = _evidence_root(diff_dir)
+
+    test_edits, high_risk_edits, reviewers, strong = count_all(
+        transcript_path, since_epoch, hook_input.get("cwd"))
+
+    ev_dir = os.path.join(root, ".rolepod", "evidence") if root else ""
+    phase_log = os.path.join(ev_dir, "phase-log.jsonl") if ev_dir else ""
+    if phase_log and os.path.isfile(phase_log):
+        r1, s1 = _phase_log_reviewer_counts(
+            "dispatch", since_epoch, phase_log, "hook-auto", True)
+        reviewers = max(reviewers, r1)
+        strong = max(strong, s1)
+        # provenance "hook-stdin" required (HIGH-1, round-1 review): every
+        # real writer sets it (Codex subagent-model-log.sh, Cursor
+        # dispatch-log.sh, Antigravity model-log.sh, opencode rolepod.js) —
+        # on Claude NO hook ever writes a dispatch-proof row, so an
+        # unrequired read let one hand-written line clear a high-risk
+        # commit with no model, no cli and no provenance field at all.
+        r2, s2 = _phase_log_reviewer_counts(
+            "dispatch-proof", since_epoch, phase_log, "hook-stdin", False)
+        reviewers = max(reviewers, r2)
+        strong = max(strong, s2)
+
+    if root:
+        import subprocess
+        ledger_script = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "edit-ledger.py")
+        since_arg = "" if since_epoch is None else repr(since_epoch)
+        try:
+            out = subprocess.run(
+                ["python3", "-I", ledger_script, "count", since_arg, "--cwd", root],
+                capture_output=True, text=True, timeout=10,
+            ).stdout.strip()
+            l_test, l_risk = (int(x) for x in out.split())
+            test_edits = max(test_edits, l_test)
+            high_risk_edits = max(high_risk_edits, l_risk)
+        except Exception:
+            pass
+
+    external = 0
+    if ev_dir and os.path.isfile(phase_log):
+        external = _anchored_external_count(since_epoch, ev_dir)
+        if external > 0:
+            reviewers += external
+            strong += external
+
+    return test_edits, high_risk_edits, reviewers, strong, external
+
+
+def _external_fail_count(since_epoch, ev_dir):
+    """Count of phase-log `external-fail` rows since `since_epoch` — the
+    runner tried every usable cross-family member and they failed, or the
+    pool was empty (python twin of precommit-gate.sh's XFAM_FAILS block,
+    satellite-first, v2.76.0)."""
+    import datetime
+    cut = None
+    if since_epoch:
+        try:
+            cut = datetime.datetime.fromtimestamp(float(since_epoch), datetime.timezone.utc)
+        except Exception:
+            cut = None
+    n = 0
+    try:
+        with open(os.path.join(ev_dir, "phase-log.jsonl"), encoding="utf-8", errors="replace") as f:
+            for line in f:
+                try:
+                    d = json.loads(line)
+                    if not isinstance(d, dict) or d.get("phase") != "external-fail":
+                        continue
+                    if cut is not None:
+                        ts = datetime.datetime.fromisoformat((d.get("ts") or "").replace("Z", "+00:00"))
+                        if ts.tzinfo is None:
+                            ts = ts.replace(tzinfo=datetime.timezone.utc)
+                        if ts < cut:
+                            continue
+                    n += 1
+                except Exception:
+                    continue
+    except OSError:
+        pass
+    return n
+
+
+def gate_hold_predict(diff_dir: str) -> int:
+    """External-fail row count at `diff_dir`'s window/root — gate-reminder.sh
+    calls this ONLY in the one state where it also calls the cross-family
+    runner (a high-risk edit, strong > 0, external == 0): a usable pool with
+    an external-fail row since the window means the gate's satellite-first
+    hold does NOT apply (an internal strong reviewer clears it), so the
+    reminder must not predict a block there (MEDIUM-4, round-1 review)."""
+    diff_dir = diff_dir or "."
+    since_epoch = _window_since_epoch(diff_dir)
+    root = _evidence_root(diff_dir)
+    ev_dir = os.path.join(root, ".rolepod", "evidence") if root else ""
+    if not ev_dir or not os.path.isfile(os.path.join(ev_dir, "phase-log.jsonl")):
+        return 0
+    return _external_fail_count(since_epoch, ev_dir)
+
+
 def selfdo_state(transcript_path: str, target: str | None = None, root: str | None = None) -> str:
     """'<tier> <lead product edits since route> <writer dispatches since route> <route ts>'
     — "" when the Lead never wrote a routing line. One pass over the
@@ -1410,6 +1733,19 @@ def main() -> int:
     elif query == "context-tokens":
         # Context size (tokens) the last assistant turn carried — 0 unknown.
         print(last_context_tokens(transcript_path))
+    elif query == "gate-evidence":
+        # test_edits high_risk_edits reviewers strong_reviewers external —
+        # one tally shared by precommit-gate.sh and gate-reminder.sh (spec
+        # Desired 2). argv[2] = the directory the window is computed at
+        # (DIFF_DIR for the gate, the edited file's dir for the reminder).
+        diff_dir = sys.argv[2] if len(sys.argv) > 2 else "."
+        print("%d %d %d %d %d" % gate_evidence(hook_input, diff_dir))
+    elif query == "gate-hold-predict":
+        # external-fail row count — gate-reminder.sh's satellite-first
+        # prediction (MEDIUM-4): a usable pool with an external-fail row
+        # means the gate's hold does not apply, so 0 means "unknown/none".
+        diff_dir = sys.argv[2] if len(sys.argv) > 2 else "."
+        print(gate_hold_predict(diff_dir))
     elif query == "count-test-edits":
         print(count_test_edits(transcript_path, hook_input.get("cwd")))
     elif query == "selfdo-state":

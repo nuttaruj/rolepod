@@ -220,45 +220,92 @@ print(json.dumps({'hookSpecificOutput': {'hookEventName': 'PreToolUse', 'additio
   exit 0
 fi
 
-# Session-state inspection (Careful banner + would-block wording). Same
-# window as precommit-gate: since the last commit, Lead + subagent transcripts.
+# Session-state inspection (Careful banner + would-block wording) — the
+# same tally the commit gate reads (spec Desired 2): one session_state.py
+# call computes the window at the EDITED FILE's directory (DIFF_DIR there
+# is precommit-gate.sh's commit-resolved directory) and returns test edits,
+# high-risk edits, reviewers, strong reviewers (internal + anchored
+# external) and the anchored external count alone — transcript scan,
+# hook-auto phase-log backstop, every CLI's dispatch-proof rows and the
+# edit ledger, MAX per source, never summed.
+# This canonical script ships only where hooks/lib/session_state.py ships
+# alongside it (Claude, Codex — build/render.sh:320-333, 426-434); Cursor's
+# own gate-reminder is a separate hand-written adapter script under
+# adapters/cursor/scripts/, so no lib-less fallback is needed here — the
+# lib-less window stays only in precommit-gate.sh (S11).
 SESSION_STATE="$(dirname "$0")/lib/session_state.py"
 TEST_EDITS=0
 HIGH_RISK_EDITS=0
 REVIEWERS=0
 STRONG_REVIEWERS=0
-SINCE_EPOCH=$(git log -1 --format=%ct 2>/dev/null || true)
+EXTERNAL=0
+# Walk up to the nearest EXISTING ancestor (LOW-8, round-1 review): a Write
+# into a not-yet-created directory, or a relative Codex apply_patch path
+# when the hook cwd is not the repo root, made `git -C "$FILE_DIR"` fail —
+# the window then read as "no commits" (whole history), not "since the
+# last commit", and the reminder stayed silent while the gate denied. Same
+# walk as the FILE_REL block above.
+FILE_DIR="$(dirname "$FILE")"
+while [ ! -d "$FILE_DIR" ] && [ "$FILE_DIR" != "/" ] && [ "$FILE_DIR" != "." ]; do
+  FILE_DIR="$(dirname "$FILE_DIR")"
+done
+[ -d "$FILE_DIR" ] || FILE_DIR="."
 if [ -f "$SESSION_STATE" ] && command -v python3 >/dev/null 2>&1; then
-  # ONE transcript scan for all four counts — separate calls each re-read
-  # the whole transcript and blew the hook timeout on long sessions.
-  COUNTS=$(printf '%s' "$INPUT" | python3 "$SESSION_STATE" count-all "$SINCE_EPOCH" 2>/dev/null || echo "0 0 0 0")
-  read -r TEST_EDITS HIGH_RISK_EDITS REVIEWERS STRONG_REVIEWERS <<< "$COUNTS"
-fi
-# Edit ledger (v2.134.0): CLI-neutral edit evidence written at edit time by every
-# CLI's edit hook (hooks/edit-ledger.py). Max with the transcript scan, never summed.
-LEDGER="$(dirname "$0")/edit-ledger.py"
-if [ -f "$LEDGER" ] && command -v python3 >/dev/null 2>&1; then
-  read -r L_TEST L_RISK <<< "$(python3 -I "$LEDGER" count "$SINCE_EPOCH" 2>/dev/null || echo "0 0")"
-  [ "${L_TEST:-0}" -gt "${TEST_EDITS:-0}" ] 2>/dev/null && TEST_EDITS=$L_TEST
-  [ "${L_RISK:-0}" -gt "${HIGH_RISK_EDITS:-0}" ] 2>/dev/null && HIGH_RISK_EDITS=$L_RISK
+  GR_EV=$(printf '%s' "$INPUT" | python3 "$SESSION_STATE" gate-evidence "$FILE_DIR" 2>/dev/null || true)
+  [ -n "$GR_EV" ] && read -r TEST_EDITS HIGH_RISK_EDITS REVIEWERS STRONG_REVIEWERS EXTERNAL <<< "$GR_EV"
 fi
 TEST_EDITS=${TEST_EDITS:-0}
 HIGH_RISK_EDITS=${HIGH_RISK_EDITS:-0}
 REVIEWERS=${REVIEWERS:-0}
 STRONG_REVIEWERS=${STRONG_REVIEWERS:-0}
+EXTERNAL=${EXTERNAL:-0}
 
 SOFT_MODE=0
 [ "${ROLEPOD_GATES_SOFT:-0}" = "1" ] && { SOFT_MODE=1; rolepod_log_bypass "gate-reminder" "ROLEPOD_GATES_SOFT"; }
 
-# Would-block wording — what precommit-gate WILL require for this path. Warn
-# only, never deny (see header). SOFT silences the wording, not the banner.
+# Would-block wording predicts the GATE's own deny, not a rule of its own
+# (F3/F5, Desired 4): precommit-gate.sh's high-risk auto-pass needs only a
+# strong reviewer in the shared tally — 0 strong reviewers → the gate
+# denies whatever the test-edit count is (test edits are the T-gate floor,
+# a separate rule, never worded as a block here per v2.47.0's header). A
+# strong reviewer with no anchored external pass can still be zeroed by the
+# satellite-first hold (precommit-gate.sh ~1000) when the cross-family pool
+# is usable — the runner is called ONLY in that one state (measured 0.375s;
+# never on a plain edit), so this reminder predicts the hold too.
 WOULD_BLOCK=""
 if [ -n "$HIGH_RISK" ] && [ "$SOFT_MODE" -eq 0 ]; then
   if [ "$TEST_EDITS" -eq 0 ]; then
-    WOULD_BLOCK+="COMMIT WILL BLOCK — 0 test edits since the last commit while editing high-risk path '$FILE'. Write the failing test FIRST (RED), then implement. "
+    WOULD_BLOCK+="Write the failing test FIRST (RED), then implement — the T-gate floor, not the review. "
   fi
-  if [ "$HIGH_RISK_EDITS" -ge 1 ] && [ "$STRONG_REVIEWERS" -eq 0 ]; then
+  if [ "$STRONG_REVIEWERS" -eq 0 ]; then
     WOULD_BLOCK+="COMMIT WILL BLOCK — high-risk edits since the last commit, no strong adversarial reviewer. Fix: \`rolepod-cross-family --kind review --brief <file> --attach <diff>\` (different CLI, read-only, anchors the pass). An internal reviewer counts only after the runner reports the pool failed or empty → then dispatch rolepod:universal-reviewer or rolepod:security-engineer via the Agent tool (test edits are the floor, not the review). Reviewer impossible (user forbade agents / no subagents) → SURFACE it; fallback = Lead cold self-review recorded as a LIMITATION. Env bypass is user-set only. "
+  elif [ "$EXTERNAL" -eq 0 ]; then
+    # Mirrors the gate's own hold exactly (MEDIUM-4, round-1 review): an
+    # unknown Lead CLI fails OPEN there ("cannot exclude its own CLI → no
+    # tightening") — this reminder must not predict a block the gate would
+    # never apply. WB_LEAD stays unset (never defaulted to claude) when
+    # neither env var names it.
+    WB_LEAD="${ROLEPOD_LEAD_CLI:-}"
+    [ -z "$WB_LEAD" ] && [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && WB_LEAD="claude"
+    if [ -n "$WB_LEAD" ]; then
+      WB_RUNNER="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/../scripts/cross-family.sh"
+      [ -f "$WB_RUNNER" ] || WB_RUNNER="$HOME/.rolepod/bin/cross-family.sh"
+      if [ -f "$WB_RUNNER" ]; then
+        WB_POOL=$(bash "$WB_RUNNER" --lead "$WB_LEAD" --pool-names 2>/dev/null | tr '\n' ' ' | sed 's/ *$//')
+        if [ -n "$WB_POOL" ]; then
+          # The gate's hold also stands down once the runner already tried
+          # the pool and it failed/emptied since the window (an
+          # `external-fail` phase-log row) — checked here too, so this
+          # branch's own message does not contradict itself the way "gate
+          # passes, reminder still says WILL BLOCK, ... the internal
+          # reviewer counts" did before this fix.
+          WB_FAILS=$(printf '%s' "$INPUT" | python3 "$SESSION_STATE" gate-hold-predict "$FILE_DIR" 2>/dev/null || echo 0)
+          if [ "${WB_FAILS:-0}" -eq 0 ] 2>/dev/null; then
+            WOULD_BLOCK+="COMMIT WILL BLOCK — SATELLITE-FIRST: cross-family pool usable ($WB_POOL), no anchored external pass since the last commit — an internal reviewer alone does not clear a high-risk diff while a different CLI is available. Fix: \`rolepod-cross-family --kind review --brief <file> --attach <diff> --detach\` (add --lead $WB_LEAD outside a hook); --collect <job-id> waits. Pool fails or is empty (logged as external-fail) → the internal reviewer counts. "
+          fi
+        fi
+      fi
+    fi
   fi
 fi
 

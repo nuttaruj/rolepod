@@ -186,9 +186,15 @@ try:
                 name = (at.strip() if isinstance(at, str) else "").rsplit(":", 1)[-1]
                 if name.startswith("rolepod-"):
                     name = name[len("rolepod-"):]
-                if name in REVIEWERS:
+                # Both flags resolved before either counter moves (round-2
+                # review MINOR-1): model_class() raising on a malformed
+                # `model` must not leave `r` incremented with `s` never
+                # reached.
+                is_reviewer = name in REVIEWERS
+                is_strong = name in STRONG and (strict != "1" or (ss_ok and model_class(d.get("model")) not in LOW_CLASSES))
+                if is_reviewer:
                     r += 1
-                if name in STRONG and (strict != "1" or (ss_ok and model_class(d.get("model")) not in LOW_CLASSES)):
+                if is_strong:
                     s += 1
             except Exception:
                 continue
@@ -839,8 +845,18 @@ SINCE_HUMAN=$(gitd log -1 --format=%cd --date=format:'%Y-%m-%d %H:%M' 2>/dev/nul
 # it. Newest reflog line whose subject starts with "commit" wins; none → the
 # oldest line (the worktree's creation). Outside a linked worktree
 # (git-dir == git-common-dir), unchanged.
-GIT_DIR_D=$(gitd rev-parse --git-dir 2>/dev/null || true)
-GIT_CDIR_D=$(gitd rev-parse --git-common-dir 2>/dev/null || true)
+# Resolved to an absolute, symlink-resolved path before comparing (MEDIUM-3,
+# round-1 review): from a SUBDIRECTORY of the main worktree, git prints an
+# absolute --git-dir but a RELATIVE --git-common-dir (e.g. "../.git") — the
+# raw strings then always differ and every plain-repo subdir call wrongly
+# took the linked-worktree reflog branch. `cd` each raw answer from DIFF_DIR
+# (git prints it relative to the cwd it ran in) then `pwd -P`, so a relative
+# or already-absolute answer resolves the same way.
+GIT_DIR_RAW=$(gitd rev-parse --git-dir 2>/dev/null || true)
+GIT_CDIR_RAW=$(gitd rev-parse --git-common-dir 2>/dev/null || true)
+GIT_DIR_D=""; GIT_CDIR_D=""
+[ -n "$GIT_DIR_RAW" ] && GIT_DIR_D=$(cd "$DIFF_DIR" 2>/dev/null && cd "$GIT_DIR_RAW" 2>/dev/null && pwd -P || true)
+[ -n "$GIT_CDIR_RAW" ] && GIT_CDIR_D=$(cd "$DIFF_DIR" 2>/dev/null && cd "$GIT_CDIR_RAW" 2>/dev/null && pwd -P || true)
 if [ -n "$GIT_DIR_D" ] && [ -n "$GIT_CDIR_D" ] && [ "$GIT_DIR_D" != "$GIT_CDIR_D" ]; then
   RLOG=$(gitd reflog show --date=unix --format='%gd %gs' HEAD 2>/dev/null || true)
   if [ -n "$RLOG" ]; then
@@ -858,59 +874,58 @@ print(datetime.datetime.fromtimestamp(int(sys.argv[1])).strftime("%Y-%m-%d %H:%M
   fi
 fi
 [ -n "$SINCE_HUMAN" ] && SINCE_HUMAN="since last commit $SINCE_HUMAN" || SINCE_HUMAN="whole session (no commit yet)"
+GATE_EV_DONE=0
 if [ -f "$SESSION_STATE" ] && command -v python3 >/dev/null 2>&1; then
-  # ONE transcript scan for all four counts (see gate-reminder.sh).
-  COUNTS=$(printf '%s' "$INPUT" | python3 "$SESSION_STATE" count-all "$SINCE_EPOCH" 2>/dev/null || echo "0 0 0 0")
-  read -r TEST_EDITS HIGH_RISK_EDITS REVIEWERS STRONG_REVIEWERS <<< "$COUNTS"
-  # Nested reviewer dispatch backstop (v2.144.0): count_all's
-  # agent_transcripts() already discovers ONE level of nesting (a runner
-  # subagent's own Agent-tool call to a reviewer is a tool_use IN THE
-  # RUNNER'S OWN transcript file, which sits directly under the Lead's
-  # <session>/subagents/ and gets walked) — but that walk caps at the 60
-  # NEWEST subagent-transcript files in the window
-  # (session_state.AGENT_TRANSCRIPT_CAP), so a session running a large
-  # fleet since the last commit can push a real dispatch out of the cap and
-  # read 0. dispatch-auto-log.sh writes a "dispatch" row to the SAME
-  # phase-log for every Agent/Task/Workflow call in ANY session — an
-  # append-only log with no such cap — so it backstops exactly that drop.
-  # MAX with the transcript scan, never summed — the Lead's own direct
-  # dispatch is visible to both and must not double-count (case: 1 dispatch,
-  # both paths report it → reported count stays 1). Hardened above real
-  # session evidence: only "hook-auto"-provenance rows count (raises a bare
-  # forged line to parity with the real writer's field), and a STRONG row
-  # is dropped to a plain reviewer when its model is a named low-class
-  # downgrade (mirrors count_all's own LOW_CLASSES refusal) — see
-  # phase_log_reviewer_count's header for the full rationale + the
-  # accepted repo-scope (not session-scope) residual.
-  NESTED_PHASE_LOG="$_pd_root/.rolepod/evidence/phase-log.jsonl"
-  read -r NEST_R NEST_S <<< "$(phase_log_reviewer_count dispatch "$SINCE_EPOCH" "$NESTED_PHASE_LOG" "hook-auto" "1" "$SESSION_STATE")"
-  [ "${NEST_R:-0}" -gt "${REVIEWERS:-0}" ] 2>/dev/null && REVIEWERS=$NEST_R
-  [ "${NEST_S:-0}" -gt "${STRONG_REVIEWERS:-0}" ] 2>/dev/null && STRONG_REVIEWERS=$NEST_S
+  # One session_state.py call computes the window at DIFF_DIR itself (same
+  # algorithm as SINCE_EPOCH above, kept in bash for SINCE_HUMAN and the
+  # lib-less branch below — S11 pins the two windows equal) and returns all
+  # five numbers in one pass: test edits, high-risk edits, reviewers, strong
+  # reviewers (internal + anchored external) and the anchored external count
+  # alone. It folds in the transcript scan, the hook-auto phase-log backstop
+  # (v2.144.0, see below), every CLI's "dispatch-proof" rows (Codex ships
+  # lib/ and used to take this same branch while ignoring its own proof
+  # rows — reproduced 2026-09-24) and the edit ledger — MAX per source,
+  # never summed (spec Desired 2).
+  GATE_EV=$(printf '%s' "$INPUT" | python3 "$SESSION_STATE" gate-evidence "$DIFF_DIR" 2>/dev/null || true)
+  if [ -n "$GATE_EV" ]; then
+    read -r TEST_EDITS HIGH_RISK_EDITS REVIEWERS STRONG_REVIEWERS XREV <<< "$GATE_EV"
+    GATE_EV_DONE=1
+  fi
 elif command -v python3 >/dev/null 2>&1; then
-  # Renders without lib/session_state.py (codex + the non-Claude adapters):
-  # their transcripts are not Claude-JSONL, so reviewer evidence comes from
-  # the SubagentStop dispatch-proof log written by subagent-model-log.sh.
-  # Only reviewer counts exist on this path — test/high-risk edit evidence
-  # needs transcript parsing, and the HARD paths that consume those counts
-  # cannot fire when both sides read as 0. Strong class is decided by
-  # agent_type alone: the logged model is hook-reported with unverified
-  # provenance (may be the parent's), and the agent TOMLs pin strong
-  # reviewers to the strong model anyway.
+  # Renders without lib/session_state.py (Cursor / Antigravity — no lib/,
+  # build/render.sh:668-672): their transcripts are not Claude-JSONL, so
+  # reviewer evidence comes from the SubagentStop dispatch-proof log written
+  # by the adapter's own dispatch hook. Only reviewer counts exist on this
+  # path — test/high-risk edit evidence needs transcript parsing, and the
+  # HARD paths that consume those counts cannot fire when both sides read
+  # as 0. Strong class is decided by agent_type alone: the logged model is
+  # hook-reported with unverified provenance (may be the parent's), and the
+  # agent TOMLs pin strong reviewers to the strong model anyway. `provenance:
+  # hook-stdin` IS required (HIGH-1, round-1 review): every real writer sets
+  # it (Codex subagent-model-log.sh, Cursor dispatch-log.sh, Antigravity
+  # model-log.sh, opencode rolepod.js) — none of these bundles has a hook
+  # that could ever write a dispatch-proof row WITHOUT it, so requiring the
+  # field closes the hand-written-line forgery at no cost to a real one.
   PHASE_LOG="$_pd_root/.rolepod/evidence/phase-log.jsonl"
-  read -r REVIEWERS STRONG_REVIEWERS <<< "$(phase_log_reviewer_count dispatch-proof "$SINCE_EPOCH" "$PHASE_LOG")"
-fi
-# Edit ledger (v2.134.0): CLI-neutral edit evidence written at edit time by every
-# CLI's edit hook (hooks/edit-ledger.py). Max with the transcript scan, never summed.
-LEDGER="$(dirname "$0")/edit-ledger.py"
-if [ -f "$LEDGER" ] && command -v python3 >/dev/null 2>&1; then
-  read -r L_TEST L_RISK <<< "$(python3 -I "$LEDGER" count "$SINCE_EPOCH" 2>/dev/null || echo "0 0")"
-  [ "${L_TEST:-0}" -gt "${TEST_EDITS:-0}" ] 2>/dev/null && TEST_EDITS=$L_TEST
-  [ "${L_RISK:-0}" -gt "${HIGH_RISK_EDITS:-0}" ] 2>/dev/null && HIGH_RISK_EDITS=$L_RISK
+  read -r REVIEWERS STRONG_REVIEWERS <<< "$(phase_log_reviewer_count dispatch-proof "$SINCE_EPOCH" "$PHASE_LOG" "hook-stdin")"
 fi
 TEST_EDITS=${TEST_EDITS:-0}
 HIGH_RISK_EDITS=${HIGH_RISK_EDITS:-0}
 REVIEWERS=${REVIEWERS:-0}
 STRONG_REVIEWERS=${STRONG_REVIEWERS:-0}
+if [ "$GATE_EV_DONE" -ne 1 ]; then
+  # Edit ledger (v2.134.0): CLI-neutral edit evidence written at edit time by
+  # every CLI's edit hook (hooks/edit-ledger.py) — the lib-less path only;
+  # the python tally above already folds this in for the lib path.
+  LEDGER="$(dirname "$0")/edit-ledger.py"
+  if [ -f "$LEDGER" ] && command -v python3 >/dev/null 2>&1; then
+    read -r L_TEST L_RISK <<< "$(python3 -I "$LEDGER" count "$SINCE_EPOCH" 2>/dev/null || echo "0 0")"
+    [ "${L_TEST:-0}" -gt "${TEST_EDITS:-0}" ] 2>/dev/null && TEST_EDITS=$L_TEST
+    [ "${L_RISK:-0}" -gt "${HIGH_RISK_EDITS:-0}" ] 2>/dev/null && HIGH_RISK_EDITS=$L_RISK
+  fi
+fi
+TEST_EDITS=${TEST_EDITS:-0}
+HIGH_RISK_EDITS=${HIGH_RISK_EDITS:-0}
 
 # External strong pass (satellite-first, v2.61.0) — cross-family reviews are
 # plain Bash `codex exec` / `gemini -p` / `claude -p` calls, invisible to
@@ -919,8 +934,11 @@ STRONG_REVIEWERS=${STRONG_REVIEWERS:-0}
 # output; count it as a strong reviewer only when that file really exists
 # inside .rolepod/evidence/ and is >= 500 bytes — a bare claim without the
 # artifact is ignored (claim-based evidence is what this gate exists to stop).
+# The python tally above already computed XREV for the lib path — this
+# bash-python block is the lib-less path's own copy (kept, per Desired 2).
 EV_ROOT="$_pd_root/.rolepod/evidence"
-if [ -f "$EV_ROOT/phase-log.jsonl" ] && command -v python3 >/dev/null 2>&1; then
+XREV=${XREV:-0}
+if [ "$GATE_EV_DONE" -ne 1 ] && [ -f "$EV_ROOT/phase-log.jsonl" ] && command -v python3 >/dev/null 2>&1; then
   XREV=$(python3 -I -c '
 import json, os, sys, datetime
 since, ev = sys.argv[1], sys.argv[2]
@@ -951,10 +969,20 @@ try:
                 except Exception:
                     continue
             raw = d.get("raw") or ""
-            if not raw or raw.startswith("/") or ".." in raw:
+            if not isinstance(raw, str) or not raw or raw.startswith("/") or ".." in raw:
+                continue
+            # P1 (Lead close-out, round 2 residual): raw must sit under
+            # evidence/external/ — the python twin (_anchored_external_count
+            # in session_state.py) carries the full rationale.
+            if not raw.startswith("external/"):
+                continue
+            candidate = os.path.join(ev, raw)
+            ext_root = os.path.realpath(os.path.join(ev, "external"))
+            real = os.path.realpath(candidate)
+            if real != ext_root and not real.startswith(ext_root + os.sep):
                 continue
             try:
-                if os.path.getsize(os.path.join(ev, raw)) >= 500:
+                if os.path.getsize(candidate) >= 500:
                     n += 1
             except OSError:
                 continue
