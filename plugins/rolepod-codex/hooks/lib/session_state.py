@@ -206,8 +206,81 @@ def _repo_relative(root, path):
     return path
 
 
-def _resolve_write_path(raw, cwd, root):
+_VAR_RX = re.compile(r'\$(\{[A-Za-z_][A-Za-z0-9_]*\}|[A-Za-z_][A-Za-z0-9_]*)')
+_BIND_GLOBAL_RX = re.compile(r'\beval\b|\bsource\b|\$\'|\$"')
+_DOT_CMD_RX = re.compile(r'(?:^|[\s;&|])\.(?:[\s;&|]|$)')
+
+
+def _cmd_binds_name(cmd_text, name):
+    """True when `cmd_text` (the whole Bash command at THIS recursion
+    level — top-level, or a nested shell's own `-c` string; a loop var
+    bound in one segment is used in a later one, so the check is not
+    per-segment) rebinds `name` itself (`NAME=`, `for NAME`, `read NAME`,
+    `export NAME`), or contains a construct (`eval` / `source` / the `.`
+    dot-command / `$'…'` / `$"…"`) this lexical walk cannot see through the
+    effect of on any variable (spec Desired 7, security review 2026-09-24
+    B1). Generous by design — a false positive here only keeps a token
+    literal (still judged as a repo path, the safe direction); a false
+    negative would expand a value the command itself controls. The caller
+    passes `cmd_text` as the CURRENT recursion level's text combined with
+    the top-level command (`_bash_write_targets`'s `bind_text`) — a name
+    bound in the PARENT command around a nested `-c` / `eval` string is
+    caught too (security review 2026-09-24, r3-M1: `TMPDIR=hooks bash -c
+    'echo x > $TMPDIR/auth.py'` stays literal, not expanded from the hook's
+    own possibly-stale env).
+
+    Accepted residuals (MINOR, not this check's job): `NAME+=`, `NAME[i]=`,
+    `printf -v NAME`, `mapfile NAME`, a keyword split across quotes
+    (`ev''al`), and `$OLDPWD` (implicitly set by every `cd`, not checked)."""
+    if _BIND_GLOBAL_RX.search(cmd_text) or _DOT_CMD_RX.search(cmd_text):
+        return True
+    n = re.escape(name)
+    return bool(
+        re.search(r'(?<![\w${])' + n + r'=', cmd_text)
+        or re.search(r'\bfor\s+' + n + r'\b', cmd_text)
+        or re.search(r'\bread\b[^;&|\n]*\b' + n + r'\b', cmd_text)
+        or re.search(r'\bexport\s+' + n + r'\b', cmd_text)
+    )
+
+
+def _expand_token(raw, cwd=None, cmd_text=''):
+    """Expand `~` / `~/` and `$NAME` / `${NAME}` in a write-target token
+    before it is resolved against cwd (spec Desired 7, F8a). Tilde first
+    (bash only expands a LEADING `~`, `os.path.expanduser` matches that —
+    `$HOME`, else the passwd entry, so an unset `HOME` still resolves like
+    bash does). `$NAME` / `${NAME}` expands from the hook's own environment
+    ONLY when the name is set there AND `cmd_text` does not bind that name
+    itself — otherwise the token stays LITERAL (unchanged, still judged as
+    a repo path: the pre-diff, fail-closed behaviour; revised during build,
+    2026-09-24, security review B1 — expanding a command-bound or unset
+    name moved a real in-repo write outside the repo and dropped it from
+    every consumer). `$PWD` / `${PWD}` is the one name resolved against
+    `cwd` instead (the segment's tracked directory after any `cd`, not the
+    hook process's own, possibly stale, env value — M1); it is exempt from
+    the bind check, `cwd` IS the answer to "what does this command's PWD
+    look like right here". Applied whatever the token's original quoting
+    was — shlex has already dropped it (accepted imprecision: a literal
+    `'$X'` directory name expands too, unless `cmd_text` also contains a
+    `$'…'` / `$"…'` construct, which forces every name literal). Other
+    forms (`${X:-y}`, `$(...)`, backticks) never match `_VAR_RX` and stay
+    literal, as today."""
+    s = os.path.expanduser(raw) if raw.startswith('~') else raw
+
+    def _sub(m):
+        name = m.group(1).strip('{}')
+        if name == 'PWD' and cwd:
+            return cwd
+        if name not in os.environ or _cmd_binds_name(cmd_text, name):
+            return m.group(0)
+        return os.environ[name]
+    return _VAR_RX.sub(_sub, s)
+
+
+def _resolve_write_path(raw, cwd, root, cmd_text=''):
     if not raw or raw.startswith('/dev/') or raw.startswith('&'):
+        return None
+    raw = _expand_token(raw, cwd, cmd_text)
+    if not raw:
         return None
     p = raw if os.path.isabs(raw) else os.path.join(cwd, raw)
     p = os.path.normpath(p)
@@ -264,10 +337,10 @@ def _tokenize_segment(seg):
     return cmd_toks, redirects
 
 
-def _resolve_all(raws, cwd, root):
+def _resolve_all(raws, cwd, root, cmd_text=''):
     out = []
     for r in raws:
-        p = _resolve_write_path(r, cwd, root)
+        p = _resolve_write_path(r, cwd, root, cmd_text)
         if p:
             out.append(p)
     return out
@@ -350,7 +423,7 @@ def _command_targets(t):
     return out
 
 
-def _segment_write_targets(seg, cwd, root, depth):
+def _segment_write_targets(seg, cwd, root, depth, cmd_text='', top_cmd=None):
     if depth > 4:
         return []
     cmd_toks, redirect_raw = _tokenize_segment(seg)
@@ -358,21 +431,108 @@ def _segment_write_targets(seg, cwd, root, depth):
     if t and os.path.basename(t[0]) in SHELLS:
         for k in range(1, len(t)):
             if t[k] == '-c' and k + 1 < len(t):
-                return _bash_write_targets(t[k + 1], cwd, root, depth + 1)
+                return _bash_write_targets(t[k + 1], cwd, root, depth + 1, top_cmd)
         # no -c: a shell running a SCRIPT FILE (`bash run.sh > out.txt`) —
         # its own redirect is still a write, just not one we can see inside
         # the script itself.
-        return _resolve_all(redirect_raw, cwd, root)
-    return _resolve_all(redirect_raw + _command_targets(t), cwd, root)
+        return _resolve_all(redirect_raw, cwd, root, cmd_text)
+    return _resolve_all(redirect_raw + _command_targets(t), cwd, root, cmd_text)
 
 
-def _bash_write_targets(cmd, cwd, root, depth=0):
+_CD_GLOB = set('*?[')
+
+
+def _cd_dir(cmd_toks, redirect_raw):
+    """The operand of a PURE `cd [dir]` / `pushd [dir]` segment (bare `cd`
+    -> `~`, home dir; `popd` -> `-`, an automatic giveup — no directory
+    STACK is tracked, only a single cur_cwd), or None when the segment is
+    not a stand-alone directory change: a redirect on it (`cd . >
+    hooks/auth.py` writes hooks/auth.py, it is not just a cd) or more than
+    one operand token (`cd /x & echo ... > f` is one un-split segment —
+    segments() does not split on a bare `&`, security review 2026-09-24
+    B2) means the segment is a real write too and must still resolve
+    through _segment_write_targets, never be swallowed here. A leading
+    `builtin` / `command` wrapper is stripped first (same spelling either
+    way); `sudo cd` / `env cd` are NOT unwrapped — those do not change the
+    invoking shell's directory anyway."""
+    if redirect_raw or not cmd_toks:
+        return None
+    t = cmd_toks
+    if t[0] in ('builtin', 'command') and len(t) > 1:
+        t = t[1:]
+    if not t:
+        return None
+    if t[0] == 'popd':
+        return '-'
+    if t[0] not in ('cd', 'pushd') or len(t) > 2:
+        return None
+    return t[1] if len(t) > 1 else '~'
+
+
+def _cd_giveup(a):
+    """Unresolvable from the command text alone: `cd -` (previous dir), a
+    literal `$(...)` / backtick command substitution, a bare `$VAR` (this
+    walk only expands `$NAME` against the CURRENT environment, not a value
+    a prior segment may have set), or a glob. Mirrors precommit-gate.sh's
+    `_giveup` for the same reason: unresolvable never fabricates a new
+    directory, it falls open to keeping today's resolution (spec Desired
+    6c, F10)."""
+    if not a or a[0] in '$-' or chr(96) in a or any(c in a for c in _CD_GLOB):
+        return True
+    return False
+
+
+def _bash_write_targets(cmd, cwd, root, depth=0, top_cmd=None):
+    # `top_cmd` is the ORIGINAL, top-level command text, threaded unchanged
+    # through every nested `-c` / `eval` recursion (security review
+    # 2026-09-24, r3-M1): a name bound in the OUTER command around a nested
+    # shell (`TMPDIR=hooks bash -c 'echo x > $TMPDIR/auth.py'`) is invisible
+    # to a bind check scoped to the inner `-c` string alone. `depth == 0`
+    # (the first, non-recursive call) sets it to `cmd` itself.
+    top = cmd if top_cmd is None else top_cmd
+    bind_text = cmd if top == cmd else (top + '\n' + cmd)
     out = []
+    cur_cwd = cwd
+    dir_failed = False
     for seg in segments(cmd):
         seg = seg.strip()
         if not seg or seg == '<<HEREDOC':
             continue
-        out.extend(_segment_write_targets(seg, cwd, root, depth))
+        cmd_toks, redirect_raw = _tokenize_segment(seg)
+        cd_target = _cd_dir(cmd_toks, redirect_raw)
+        if cd_target is not None:
+            if not dir_failed:
+                if _cd_giveup(cd_target):
+                    # Unresolvable -> today's resolution against the HOOK
+                    # cwd, for every later segment too (spec Desired 6c) —
+                    # never left frozen at a stale cur_cwd (security review
+                    # 2026-09-24 B3; mirrors precommit-gate.sh's dir_failed
+                    # fallback to its own hook cwd).
+                    dir_failed = True
+                    cur_cwd = cwd
+                else:
+                    expanded = _expand_token(cd_target, cur_cwd, bind_text)
+                    new_cwd = expanded if os.path.isabs(expanded) \
+                        else os.path.normpath(os.path.join(cur_cwd, expanded))
+                    # A tracked cd must never carry cur_cwd outside the
+                    # root: bash may never have actually made this cd (a
+                    # failed / conditional / piped cd — this is a lexical
+                    # walk, not an executor, so exit status is unknowable),
+                    # so trusting an out-of-root target here would drop
+                    # every later in-repo write as a false "outside the
+                    # repo" (security review 2026-09-24 B3).
+                    if root:
+                        rp = os.path.realpath(root).rstrip('/')
+                        ap = os.path.realpath(new_cwd)
+                        if ap == rp or ap.startswith(rp + '/'):
+                            cur_cwd = new_cwd
+                        else:
+                            dir_failed = True
+                            cur_cwd = cwd
+                    else:
+                        cur_cwd = new_cwd
+            continue
+        out.extend(_segment_write_targets(seg, cur_cwd, root, depth, bind_text, top))
     return out
 
 
