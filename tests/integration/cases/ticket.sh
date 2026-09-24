@@ -660,11 +660,68 @@ if printf '%s\n' "$OUT_R2" | grep -qF 'review: aaa111^..HEAD — one combined re
 else
   echo "  ✗ log review: range wrong: [$OUT_R2]"; cat "$TMP/review-r2.err" >&2; fail=$((fail+1))
 fi
+# review-plan.md lives directly under $TMP, never git-inited — the diff
+# write can't resolve a base checkout, so a failed write never fails log
+# and the range prints with no "; lens diff:" suffix.
+if [ "$RC_R2" -eq 0 ] && ! printf '%s\n' "$OUT_R2" | grep -qF 'lens diff:'; then
+  echo "  ✓ log stays exit 0 and prints the range with no path when the diff can't be written (not a git repo)"
+else
+  echo "  ✗ log should exit 0 with no lens diff: path outside a git repo: rc=$RC_R2 out=[$OUT_R2]"; fail=$((fail+1))
+fi
 OUT_R2B=$(bash "$TICKET" log "$TMP/review-plan.md" 2 --sha bbb222 --note "beta done" 2>>"$TMP/review-r2.err")
 if [ "$OUT_R2B" = "$OUT_R2" ]; then
   echo "  ✓ log's review: line is idempotent — a re-run prints the same line"
 else
   echo "  ✗ log review: re-run differs: [$OUT_R2B] vs [$OUT_R2]"; fail=$((fail+1))
+fi
+
+# ── log's review: line names a lens diff file (spec lean-loop-2026-09-24
+# Task 2): inside a real repo the diff writes to
+# .rolepod/evidence/review/<plan-slug>.diff, holds the source change, and
+# leaves out a path .gitattributes marks linguist-generated.
+LSR="$TMP/lens-repo"
+mkdir -p "$LSR/plugins"
+( cd "${LSR:?}" && git init -q . && git config user.email t@t && git config user.name t \
+  && git commit -q --allow-empty -m init )
+# ticket.sh resolves the base checkout through `git rev-parse --show-toplevel`
+# (canonical, symlinks resolved) — see FR_REAL above for the same macOS
+# /var vs /private/var wrinkle.
+LSR_REAL="$(git -C "$LSR" rev-parse --show-toplevel)"
+printf 'plugins/** linguist-generated\n' > "$LSR/.gitattributes"
+printf 'v1\n' > "$LSR/real.txt"
+printf 'gen-v1\n' > "$LSR/plugins/generated.txt"
+( cd "${LSR:?}" && git add -A && git commit -q -m "task 1 commit" )
+LSR_TASK1_SHA="$(git -C "$LSR" rev-parse HEAD)"
+printf 'v2\n' > "$LSR/real.txt"
+printf 'gen-v2\n' > "$LSR/plugins/generated.txt"
+( cd "${LSR:?}" && git add -A && git commit -q -m "later work" )
+cat > "$LSR/lens-plan.md" <<'EOF'
+# Lens Diff Plan
+
+## Tasks
+
+### Task 1: alpha
+- **Blocked by:** none
+- [ ] **Files:** real.txt
+- [ ] **Command:** true
+- **Owner:** backend-developer
+
+## Changes during build
+
+## Follow-ups
+EOF
+LSR_DIFF="$LSR_REAL/.rolepod/evidence/review/lens-plan.diff"
+OUT_LD=$(bash "$TICKET" log "$LSR/lens-plan.md" 1 --sha "$LSR_TASK1_SHA" --note "alpha done" 2>"$TMP/lens-diff.err")
+RC_LD=$?
+if [ "$RC_LD" -eq 0 ] && printf '%s\n' "$OUT_LD" | grep -qF "review: ${LSR_TASK1_SHA}^..HEAD — one combined review before release (implement-plan §6); lens diff: $LSR_DIFF"; then
+  echo "  ✓ log names the lens diff file on the review: line once every role task is done"
+else
+  echo "  ✗ log lens diff line wrong (rc=$RC_LD): [$OUT_LD]"; cat "$TMP/lens-diff.err" >&2; fail=$((fail+1))
+fi
+if [ -f "$LSR_DIFF" ] && grep -q 'real.txt' "$LSR_DIFF" && ! grep -q 'plugins/generated.txt' "$LSR_DIFF"; then
+  echo "  ✓ the lens diff file holds the source change but excludes the linguist-generated path"
+else
+  echo "  ✗ lens diff file wrong or missing: $LSR_DIFF"; cat "$LSR_DIFF" 2>&1 >&2; fail=$((fail+1))
 fi
 
 # ═══════════════════════════════════════════════════════════════════════

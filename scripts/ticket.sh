@@ -42,7 +42,12 @@
 #     a (<owner>), ..."), plus "fleet: rolepod-ticket fleet <plan>" when one
 #     of them is role-owned. Once every role-owned task is done, also prints
 #     "review: <first logged task sha>^..HEAD — one combined review before
-#     release (implement-plan §6)". Idempotent, same as the checkbox flip.
+#     release (implement-plan §6)", and writes that same range (generated
+#     files left out) to .rolepod/evidence/review/<plan-slug>.diff, naming
+#     it on the same line ("; lens diff: <path>") so the review lenses get
+#     the diff as a file, not a shell. A write failure never fails log — the
+#     range still prints, just without the path. Idempotent, same as the
+#     checkbox flip.
 #
 #   rolepod-ticket fleet <plan> [--base <branch>] [--max <N>] [--gate '<cmd>']
 #     On the one CLI with a workflow tool: for every task whose Blocked-by
@@ -864,7 +869,24 @@ EOF
       insec && /^- Task [0-9]+ \(`/ && match($0, /`[^`]+`/) { print substr($0, RSTART + 1, RLENGTH - 2); exit }
     ' "$plan")"
     if [ -n "$first_sha" ]; then
-      printf 'review: %s^..HEAD — one combined review before release (implement-plan §6)\n' "$first_sha"
+      # The lenses get the diff as a file (owner-approved 2026-09-24: a
+      # reviewer has no shell). Written under the base checkout (the repo
+      # holding the plan, not a task worktree) so every task's diff lands
+      # in one place. A write failure (no repo, bad sha, unwritable dir)
+      # never fails log — the range still prints, just without the path.
+      local review_line repo_root diff_dir diff_path diff_content
+      review_line="review: ${first_sha}^..HEAD — one combined review before release (implement-plan §6)"
+      repo_root="$(git -C "$(dirname "$plan")" rev-parse --show-toplevel 2>/dev/null)"
+      if [ -n "$repo_root" ]; then
+        diff_dir="$repo_root/.rolepod/evidence/review"
+        diff_path="$diff_dir/$(plan_slug_of "$plan").diff"
+        if mkdir -p "$diff_dir" 2>/dev/null \
+          && diff_content="$(git -C "$repo_root" diff "${first_sha}^..HEAD" -- . ':(exclude,attr:linguist-generated)' 2>/dev/null)" \
+          && printf '%s\n' "$diff_content" > "$diff_path" 2>/dev/null; then
+          review_line="$review_line; lens diff: $diff_path"
+        fi
+      fi
+      printf '%s\n' "$review_line"
     fi
   fi
 }
