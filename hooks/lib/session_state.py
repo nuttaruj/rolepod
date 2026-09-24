@@ -783,164 +783,43 @@ def _bare_agent_name(subagent_type: str | None) -> str:
 # heuristic. Not exhaustive (a real JS parser tracks full expression state);
 # good enough to keep a division `a / b` as code while still recognizing the
 # regex literals a Workflow script actually writes.
-_REGEX_OPEN_PUNCT = set("(,=:[!&|?{};+-*/%<>~^")
-_REGEX_OPEN_KEYWORDS = {
-    "return", "typeof", "case", "in", "of", "instanceof", "new", "delete",
-    "void", "throw", "yield", "do", "else",
-}
-_IDENT_CHAR_RX = re.compile(r"[A-Za-z0-9_$]")
+_SCRIPT_STR_RX = re.compile(
+    r"//[^\n]*"                 # line comment
+    r"|/\*.*?\*/"               # block comment
+    r"|`(?:\\.|[^`\\])*`"       # template literal
+    r"|'(?:\\.|[^'\\])*'"       # single-quoted
+    r'|"(?:\\.|[^"\\])*"',      # double-quoted
+    re.S)
 
 
-def _blank_segment(seg: str) -> str:
-    """A comment / string / regex token, blanked but LENGTH- and
-    newline-preserving; a delimited token (string/regex) keeps its opening
-    and closing mark so a later offset-based reader still sees a quote."""
-    if seg[:2] in ("//", "/*"):
-        return "".join("\n" if c == "\n" else " " for c in seg)
-    if len(seg) < 2:
-        return seg
-    return seg[0] + "".join("\n" if c == "\n" else " " for c in seg[1:-1]) + seg[-1]
+def _blank_token(m: "re.Match") -> str:
+    s = m.group(0)
+    if s[:2] in ("//", "/*"):
+        # a comment carries no tier choice — blank it whole (newlines kept so
+        # every later offset and line count is unchanged)
+        return "".join("\n" if c == "\n" else " " for c in s)
+    # string literal: keep the quote marks, blank the contents (newline-safe)
+    return s[0] + "".join("\n" if c == "\n" else " " for c in s[1:-1]) + s[-1]
 
 
 def strip_strings(script: str) -> str:
-    """Blank string literals, comments AND regex literals, preserving
-    length, newlines, and (for strings/regex) the delimiter marks — so a
-    `key:` found in the result reads its value from the original script at
-    the same offset.
+    """Blank string literals and comments, preserving length, newlines, and
+    the string quote marks — so a `key:` found in the result reads its value
+    from the original script at the same offset.
 
-    A single hand-written regex (this function's pre-2026-09-24 shape)
-    could not tell a `/` that OPENS a regex literal from a `/` that is
-    division, or a stray quote INSIDE a regex body from a real string
-    delimiter — `const q = /'/g;` desynced the quote-pairing of every later
-    `'...'` / `"..."` on the same script, exposing a prompt string's text
-    (e.g. an `agentType:` mentioned only in prose) as if it were real code
-    (F9 follow-up finding, external review of commit c75a324c). This is a
-    single left-to-right scan instead: comments and quoted strings are
-    recognized as before (each quote type is only ever closed by its OWN
-    matching delimiter, never desynced by the other), and a `/` is a regex
-    literal open only per `_REGEX_OPEN_PUNCT` / `_REGEX_OPEN_KEYWORDS`
-    above — otherwise it is left as plain code (division)."""
-    script = script or ""
-    n = len(script)
-    out = []
-    i = 0
-    regex_ok = True     # start-of-script — a leading `/` is a regex, not division
-    word = ""            # identifier/keyword being accumulated
-
-    def flush_word():
-        nonlocal regex_ok, word
-        if word:
-            regex_ok = word in _REGEX_OPEN_KEYWORDS
-            word = ""
-
-    while i < n:
-        c = script[i]
-
-        # line comment — transparent to regex/division context (word state
-        # and regex_ok both carry through unchanged).
-        if c == "/" and i + 1 < n and script[i + 1] == "/":
-            j = script.find("\n", i)
-            j = n if j == -1 else j
-            out.append(_blank_segment(script[i:j]))
-            i = j
-            continue
-
-        # block comment — same transparency.
-        if c == "/" and i + 1 < n and script[i + 1] == "*":
-            j = script.find("*/", i + 2)
-            j = n if j == -1 else j + 2
-            out.append(_blank_segment(script[i:j]))
-            i = j
-            continue
-
-        # template literal (backtick-terminated only — `${...}` interior is
-        # not parsed as code; matches the pre-existing, pre-2026-09-24 rule)
-        if c == "`":
-            flush_word()
-            j = i + 1
-            while j < n:
-                if script[j] == "\\":
-                    j += 2
-                    continue
-                if script[j] == "`":
-                    j += 1
-                    break
-                j += 1
-            else:
-                j = n
-            out.append(_blank_segment(script[i:j]))
-            i = j
-            regex_ok = False
-            continue
-
-        # single / double quoted string — closed only by its OWN quote char,
-        # an embedded quote of the OTHER kind is ordinary content (the exact
-        # desync this function exists to prevent).
-        if c in ("'", '"'):
-            flush_word()
-            q = c
-            j = i + 1
-            closed = False
-            while j < n:
-                if script[j] == "\\":
-                    j += 2
-                    continue
-                if script[j] == "\n":
-                    break  # unterminated on this line — bail, leave as code
-                if script[j] == q:
-                    j += 1
-                    closed = True
-                    break
-                j += 1
-            if closed:
-                out.append(_blank_segment(script[i:j]))
-                i = j
-                regex_ok = False
-                continue
-            # unterminated — fall through, treat the quote as a plain char
-
-        # regex literal
-        if c == "/" and regex_ok:
-            flush_word()
-            j = i + 1
-            in_class = False
-            closed = False
-            while j < n:
-                ch = script[j]
-                if ch == "\\":
-                    j += 2
-                    continue
-                if ch == "\n":
-                    break
-                if ch == "[":
-                    in_class = True
-                elif ch == "]":
-                    in_class = False
-                elif ch == "/" and not in_class:
-                    j += 1
-                    closed = True
-                    break
-                j += 1
-            if closed:
-                while j < n and _IDENT_CHAR_RX.match(script[j]):  # trailing flags
-                    j += 1
-                out.append(_blank_segment(script[i:j]))
-                i = j
-                regex_ok = False
-                continue
-            # unterminated on this line — fall through, treat `/` as division
-
-        # plain code character
-        if _IDENT_CHAR_RX.match(c):
-            word += c
-        else:
-            flush_word()
-            if not c.isspace():
-                regex_ok = c in _REGEX_OPEN_PUNCT
-        out.append(c)
-        i += 1
-
-    return "".join(out)
+    Reverted to this shape 2026-09-24 (spec 6b): a regex-literal-aware
+    version briefly existed to close a specific desync (c75a324c), but a
+    second review round found more shapes it still mis-tokenized (`if (x)
+    /'/g`, `{} / 'x / y'`, a CRLF line continuation). The lesson (two rounds,
+    two new escapes each time): a script-text lexer guarding a security
+    surface can always be fooled by a crafted shape — a Workflow reviewer is
+    no longer counted from script text at all (see `count_all`'s Workflow
+    handling, which now reads `agent-<id>.meta.json` run evidence instead).
+    This function still guards the tier/model-spread nudges
+    (workflow-tier-nudge.sh) and the dispatch-auto-log stats line, where a
+    misread only skews advisory numbers, not a commit-gate decision — no
+    security path depends on it now."""
+    return _SCRIPT_STR_RX.sub(_blank_token, script or "")
 
 
 def script_option_values(script: str, key: str, code: str | None = None) -> list[str]:
@@ -961,9 +840,6 @@ def script_option_values(script: str, key: str, code: str | None = None) -> list
     return out
 
 
-_WF_MODEL_RX = re.compile(r"model\s*:\s*['\"]([^'\"]+)['\"]")
-
-
 def _workflow_script(inp: dict) -> str:
     """The script of a Workflow tool call — inline, or read from scriptPath
     (re-invocations pass only the path). Missing/unreadable → ""."""
@@ -975,46 +851,6 @@ def _workflow_script(inp: dict) -> str:
         except OSError:
             script = ""
     return script
-
-
-def count_workflow_reviewers(script: str) -> tuple[int, int]:
-    """(reviewers, strong) among a Workflow script's agent() calls.
-
-    Workflow fleets run reviewers as agent(..., {agentType:
-    'rolepod:universal-reviewer'}) — that never appears as an Agent tool_use
-    in any transcript, so without this the gate demanded a DUPLICATE
-    Agent-tool reviewer after the workflow already reviewed. Strong mirrors
-    the Agent-dispatch rule: an explicit known-low `model:` inside the same
-    opts window is a downgrade, not the strong pass. No override counts as
-    strong under any Lead since v2.104.0 — the role renders `model: opus`,
-    so a Workflow agentType strong reviewer runs strong with no lift (from
-    v2.74.0 to v2.103 it rendered inherit and counted only under a strong
-    Lead; a sonnet Lead had cleared this gate with a sonnet security-engineer,
-    CourtBook technician review fleet, v2.74).
-
-    F9: `agentType:` is matched on the STRING-STRIPPED script — the same
-    strip `script_option_values` uses — so a reviewer name that appears only
-    inside a comment or inside another string (a prompt) is not an `agent(`
-    call option and counts for nothing (S12)."""
-    reviewers = strong = 0
-    code = strip_strings(script)
-    for m in re.finditer(r"[,{\s]agentType\s*:\s*['\"]", code):
-        q = m.end() - 1
-        mv = re.match(r"['\"]([^'\"]+)['\"]", script[q:q + 200])
-        if not mv:
-            continue
-        name = _bare_agent_name(mv.group(1))
-        if name in REVIEWER_AGENTS:
-            reviewers += 1
-        if name in STRONG_REVIEWER_AGENTS:
-            window = script[max(0, m.start() - 200):m.end() + 200]
-            mm = _WF_MODEL_RX.search(window)
-            explicit = model_class(mm.group(1)) if mm else None
-            if explicit == "strong":
-                strong += 1
-            elif explicit not in LOW_CLASSES:
-                strong += 1
-    return reviewers, strong
 
 
 _WRITE_MODE_RE = re.compile(r"\bwrite[- ]mode\b", re.IGNORECASE)
@@ -1083,6 +919,32 @@ def agent_transcripts(transcript_path: str, since_epoch: float | None = None) ->
         return []
 
 
+def _workflow_meta_reviewer(meta_path: str) -> tuple[int, int]:
+    """(reviewer, strong) for ONE Workflow sub-agent, read from its
+    `agent-<id>.meta.json` — Claude Code writes it beside the sub-agent's own
+    transcript, under `subagents/workflows/<run>/` (`{"agentType": "...",
+    "model": "...", ...}`). Never from the Workflow tool_use's script text:
+    a script-level lexer guarding this same decision was tried twice
+    (c75a324c, 417c7f9e) and beaten twice, by a `/'/g`-shaped regex literal
+    and then by an `if (x) /'/g`-shaped one and a CRLF line continuation —
+    two rounds proved a script-text lexer on a security surface can always
+    be fooled by one more crafted shape (spec 6b, S12). Missing / unreadable
+    / malformed meta → (0, 0), fail-closed — a reviewer this file cannot
+    positively identify does not count."""
+    try:
+        with open(meta_path) as f:
+            meta = json.load(f)
+    except Exception:
+        return 0, 0
+    if not isinstance(meta, dict):
+        return 0, 0
+    name = _bare_agent_name(meta.get("agentType"))
+    reviewer = 1 if name in REVIEWER_AGENTS else 0
+    strong = 1 if (name in STRONG_REVIEWER_AGENTS
+                   and model_class(meta.get("model")) not in LOW_CLASSES) else 0
+    return reviewer, strong
+
+
 def count_all(
     transcript_path: str, since_epoch: float | None = None, cwd: str | None = None
 ) -> tuple[int, int, int, int]:
@@ -1097,11 +959,21 @@ def count_all(
     session (mtime inside the window) are tallied too — see agent_transcripts.
     A strong reviewer counts only when it was NOT explicitly dispatched at a
     known-low model (`model: sonnet` on universal-reviewer is a downgrade,
-    not the strong pass); a model-less dispatch counts on both the Agent and
-    the Workflow path because the role renders `model: opus` (v2.104.0)."""
+    not the strong pass); a model-less Agent/Task dispatch counts strong
+    because the role renders `model: opus` (v2.104.0).
+
+    A Workflow tool_use itself is never scanned for reviewers (spec 6b,
+    2026-09-24): only its SPAWNED sub-agent transcripts, discovered by
+    `agent_transcripts()` under `subagents/workflows/<run>/`, each read from
+    its own `agent-<id>.meta.json` run evidence — see
+    `_workflow_meta_reviewer`. An Agent/Task dispatch keeps the transcript
+    rule above (write-mode included); its own subagent file sits directly
+    under `subagents/`, never under `subagents/workflows/`, so it is never
+    double-counted through this path."""
     since = _since_iso(since_epoch)
     test_edits = high_risk_edits = reviewers = strong_reviewers = 0
-    paths = [transcript_path] + agent_transcripts(transcript_path, since_epoch)
+    subs = agent_transcripts(transcript_path, since_epoch)
+    paths = [transcript_path] + subs
     for tp in paths:
         for tool, inp in _iter_tool_uses(tp, since):
             if tool in EDIT_TOOLS:
@@ -1129,13 +1001,14 @@ def count_all(
                 if (name in STRONG_REVIEWER_AGENTS
                         and model_class(inp.get("model")) not in LOW_CLASSES):
                     strong_reviewers += 1
-            elif tool == "Workflow":
-                # Workflow-run reviewers (agent() agentType calls) count too —
-                # a workflow that already reviewed must not force a duplicate
-                # Agent-tool dispatch to clear the gate.
-                r, s = count_workflow_reviewers(_workflow_script(inp))
-                reviewers += r
-                strong_reviewers += s
+    for tp in subs:
+        if not tp.endswith(".jsonl"):
+            continue
+        parts = tp.split(os.sep)
+        if "subagents" in parts and "workflows" in parts:
+            r, s = _workflow_meta_reviewer(tp[:-len(".jsonl")] + ".meta.json")
+            reviewers += r
+            strong_reviewers += s
     return test_edits, high_risk_edits, reviewers, strong_reviewers
 
 
