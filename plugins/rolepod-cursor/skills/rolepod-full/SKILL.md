@@ -5,31 +5,38 @@ description: Force-full Rolepod lifecycle — Define → Plan → Build → Veri
 
 # Rolepod Full — force-full lifecycle entrypoint
 
-The user typed `/rolepod-full` (or `$rolepod-full`). A **command alias**, not a new workflow: it forces the complete 6-phase lifecycle — `Define → Plan → Build → Verify → Review → Ship` — with no phase skips, even for a trivial-looking task. The user can still override mid-flow ("skip review", "just ship").
+Turns an explicit `/rolepod-full` (or `$rolepod-full`) into the complete `Define → Plan → Build → Verify → Review → Ship` lifecycle with no phase skipped, even for a trivial-looking task.
+It is a command alias, not a new workflow. The user can still override mid-flow ("skip review", "just ship").
 
-## Step 1 — defer to the router
+### 1. Sanity-check the scale
 
-`using-rolepod` available → load it plus `using-rolepod/references/force-full-lifecycle.md` and enter **force-full-lifecycle mode**; phase detail, backend table, start banner, careful-mode rigor live there. Either file absent (copied standalone) → the embedded fallback below.
+`/rolepod-full` is for feature-scale work: a new feature, a major refactor, an architecture change, a product workflow, a high-risk change.
+An obviously trivial prompt (`/rolepod-full what time is it`) → ask whether the user meant force-full before running the full ceremony.
 
-## Boundary
+Done when: the task is feature-scale, or the user confirmed force-full.
 
-Owns: detecting the explicit `/rolepod-full` intent and entering force-full mode.
+### 2. Defer to the router
 
-Does not own: phase definitions, the execution backend, the Router table, the agent roster — `using-rolepod` and its force-full reference own these.
+Load `using-rolepod` plus `using-rolepod/references/force-full-lifecycle.md` and enter **force-full-lifecycle mode**. The phase detail, the execution backend, the start banner and the careful-mode rigor live there; this skill owns only the explicit intent.
 
-## Sanity check
+Done when: force-full mode is entered through the router, or step 3 runs.
 
-`/rolepod-full` is for feature-scale work: new feature, major refactor, architecture change, product workflow, high-risk change. An obviously trivial prompt (`/rolepod-full what time is it`) → ask whether the user meant force-full before running the full ceremony.
+### 3. Embedded fallback — `using-rolepod` absent
 
-## Embedded fallback — `using-rolepod` not available
+Either file is missing (this skill copied standalone) → run the lifecycle directly as the Lead:
 
-Run the lifecycle directly as Lead:
-
-1. **Define** — clarify goal, acceptance criteria, risk. Ask before assuming.
-2. **Plan** — ordered task list; one verification command per task.
+1. **Define** — clarify the goal, the acceptance criteria and the risk. Ask before assuming.
+2. **Plan** — an ordered task list with one verification command per task.
 3. **Build** — implement surgically; every line traces to the goal.
 4. **Verify** — fresh evidence (test / build / curl / screenshot). No completion claim without it.
-5. **Review** — risk-appropriate review; external adversarial reviewers (an installed CLI different from the Lead's) when configured, otherwise the internal strong reviewer (security-engineer / universal-reviewer); the writer's unit tests are the floor, qa-tester joins for user-visible behaviour.
+5. **Review** — a risk-appropriate review: external adversarial reviewers (an installed CLI different from the Lead's) when configured, otherwise the internal strong reviewer (`security-engineer` / `universal-reviewer`). The writer's unit tests are the floor; `qa-tester` joins for user-visible behaviour.
 6. **Ship** — an explicit finish choice (merge / open PR / keep open / discard). Never auto-pick.
 
-This fallback is ~70% of the full behavior; with `using-rolepod` present it is router-backed.
+This fallback carries about 70% of the full behavior; with `using-rolepod` present the lifecycle is router-backed.
+
+Done when: every phase has run and the user picked the finish.
+
+## Next phase
+
+- `using-rolepod` in force-full mode; it owns every phase from Define on.
+- If `using-rolepod` is not available, the embedded fallback above runs to Ship.

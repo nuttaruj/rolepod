@@ -33,7 +33,7 @@ clash, the side that matches the merge's goal wins and the commit message
 names the trade-off. Never invent behaviour neither side had to paper over
 the clash.
 
-1. **Rebase onto the latest integration target (SKILL.md §4) BEFORE the pre-merge gate** — gates must never
+1. **Rebase onto the latest integration target (SKILL.md Pre-merge gates) BEFORE the pre-merge gate** — gates must never
    pass on a stale base and then meet the conflict after.
 2. **Trivial conflict** (imports, adjacent independent lines, lockfiles) —
    resolve by picking sides; regenerate lockfiles with their tool. Do not

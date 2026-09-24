@@ -21,7 +21,7 @@ Lead does not invoke these manually. They fire automatically.
 All core hooks register on every Claude install. rolepod-brain and GitNexus integrate via their own plugins/CLI, not rolepod hooks.
 
 PR 6 dropped `verify-reminder.sh` (PostToolUse Edit/Write per-edit nag). The same discipline lives in:
-- skill `check-work` — Iron Rule + evidence-required output contract
+- skill `check-work` — fresh evidence + the evidence block's Status contract
 - `precommit-gate.sh` — hard-blocks commit on high-risk + zero tests
 - skill `using-rolepod` — Verify phase exit gate
 

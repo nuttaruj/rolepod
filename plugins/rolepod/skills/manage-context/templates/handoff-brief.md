@@ -20,7 +20,7 @@
 
 ## Tests run and status
 <What was run, green / red, the last known result. Reusing an older run? It
- must still meet check-work Iron Rule 2 before you cite it as current.>
+ must still meet check-work's evidence cache (Run the evidence) before you cite it as current.>
 
 ## Constraints still active
 <Deadlines, no-touch zones, style rules, decisions the user pinned.>

@@ -54,7 +54,7 @@ Lead: "All gates passed, so I merged feat/csv-export to main and pushed."
 | Area | Bad | Good |
 |------|-----|------|
 | Authorization | Merged without the user choosing | Presented the menu, waited for explicit auth |
-| Iron Rule 1 | Violated — "gates green" is not authorization | Satisfied — auth requested for the specific action |
+| Authorization guardrail | Violated — "gates green" is not authorization | Satisfied — auth requested for the specific action |
 | User control | Branch fate decided for the user | User picks merge / PR / keep / discard |
 | Reversibility | The push already happened | Nothing irreversible done yet |
 

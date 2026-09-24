@@ -1,5 +1,5 @@
 <!-- Deep verification playbook for check-work. -->
-<!-- Loaded on demand from SKILL.md §4 + Iron Rule 2. -->
+<!-- Loaded on demand from SKILL.md Guard against a false green + Run the evidence. -->
 <!-- Anti-self-deception kit. The author of work is the worst verifier. -->
 
 # Verification discipline
@@ -8,7 +8,7 @@ The hardest verification problem is not the test — it is honesty about whether
 
 ## Iron Law
 
-**No completion claims without fresh verification evidence run in THIS message — sole exception: a cache cite valid under check-work Iron Rule 2 (every input content-verified unchanged).**
+**No completion claims without fresh verification evidence run in THIS message — sole exception: an evidence-cache cite valid under check-work Run the evidence (every input content-verified unchanged).**
 
 If you didn't run the command in this turn, you cannot claim it passes. Yesterday's green run does not count. The agent reporting `DONE` does not count. The linter passing does not count. Only output you produced in this turn counts.
 
@@ -60,7 +60,7 @@ A regression test for a bug must follow this cycle. Skip any step → you don't 
 
 If step 6 passes — the test is not actually testing the bug. The assertion is weak, or the test exercises unrelated code, or the bug was never the cause. Tighten the test before claiming the bug is fixed.
 
-The "mentally flip `==` to `!=`" check is a cheap proxy for this; the revert cycle is the strong version. Use the revert cycle for any "Logic / bug fix" row (SKILL.md evidence table).
+The "mentally flip `==` to `!=`" check is a cheap proxy for this; the revert cycle is the strong version. Use the revert cycle for any "Logic / bug fix" row (SKILL.md Pick the evidence type).
 
 ### Revert in one call
 

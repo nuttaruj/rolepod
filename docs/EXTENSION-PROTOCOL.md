@@ -345,7 +345,7 @@ project type via generic verbs.
 |---|---|
 | Marker write/remove | `hooks/session-lifecycle.sh` |
 | Domain detection | `core/skills/using-rolepod/SKILL.md` |
-| Evidence aggregation | `core/skills/check-work/SKILL.md` |
+| Evidence aggregation | `core/skills/check-work/references/child-plugin-evidence.md` |
 | Child routing (debug) | `core/skills/debug-issue/SKILL.md` |
 | Child routing (build) | `core/skills/implement-plan/SKILL.md` |
 | Child handoff briefs | `brief/handoff-uiproof-v0.6.md`, `brief/handoff-wplab-v1.9.md` |

@@ -38,7 +38,7 @@ Lead: "let me add a ?. guard here too." (4th patch)
 | Area | Bad | Good |
 |------|-----|------|
 | 3-surface signal | Ignored — kept patching | Caught — stopped at the signal |
-| Iron Rule 1 | Violated (same bug 3+ angles → zoom out) | Satisfied |
+| Zoom-out rule | Violated (same bug 3+ angles → zoom out) | Satisfied |
 | Re-read request | Never | Re-read; found the patches missed the goal |
 | Outcome | 6 symptom patches, bug still alive | One root fix routed to debug-issue |
 
