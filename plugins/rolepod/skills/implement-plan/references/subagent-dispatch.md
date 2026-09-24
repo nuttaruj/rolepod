@@ -11,7 +11,7 @@ The Lead is a **controller**. A subagent gets only the context the controller cu
 The Lead is usually the priciest model in the session, and every token that
 enters its context is re-read on every later turn — a subagent's context dies
 with the task. The route and the plan's **Owner:** line decide who builds —
-R1/R2 stays with the Lead through its red→green loop; R3+ dispatches to the
+R1 stays with the Lead; R2 goes to the owner on main from a 3-5 line brief; R3+ dispatches to the
 named owner; a task with no Owner runs Q1-Q4 (SKILL.md §4). The Lead spends
 its own tokens on decisions — briefs, manifests, diffs, verdicts — never on
 wide mechanical loops (grep sweeps, bulk file reads, a long fail-retry

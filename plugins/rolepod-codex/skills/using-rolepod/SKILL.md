@@ -72,7 +72,7 @@ Match the intent to the FIRST skill that fires; that skill decides what comes ne
 | explain-only / conceptual question | (no phase) | answer directly — a wide repo / online sweep first → ONE `scout` returns a research report (the always-on Code search rule) | cheap |
 | unclear doc artifact / proposal / ADR scope | **Define** | `write-spec` | cheap |
 | clear doc edit / runbook section / README | **Build** | `implement-plan`, Owner `content-strategist` (`audience:` set); R1-sized stays with the Lead | cheap |
-| CI workflow / Dockerfile / compose / deploy config / `deploy/` `infra/` `terraform/` / release script | **Build (infra)** | `implement-plan`, Owner `devops-sre`; R1/R2-sized stays with the Lead | balanced |
+| CI workflow / Dockerfile / compose / deploy config / `deploy/` `infra/` `terraform/` / release script | **Build (infra)** | `implement-plan`, Owner `devops-sre`; R1-sized stays with the Lead | balanced |
 | "context too large / compact / resume / handoff" / stuck after repeated attempts | (cross-cut) | `manage-context` | cheap |
 
 No row matches → ask the user what phase the task is in. Don't pattern-match yourself into Build — nor musing into Define.
@@ -122,7 +122,7 @@ Match ceremony to the task.
 |---|---|---|
 | **R0** | pure question / explanation / lookup / conversation — no file change | answer directly IN THE USER'S REGISTER; no spine, no routing block — verify claims of fact, reason freely on opinions |
 | **R1** | a docs-only diff (every file is prose: .md / .txt / .rst …), ANY size — or diff ≤5 lines + 1 file + 0 logic-bearing lines (comment / blank — or a line whose only change is user-facing text inside a string literal: label, message, i18n value; never a URL, path, key, regex, query, or a value code branches on) + not high-risk + ≤3 tool calls (a test loop or exploration ahead → R2+) | direct edit; the edit tool's echo of the changed lines IS the verify — no re-read turn, no review, no block (docs: their own check only — link check, static lint) |
-| **R2** | 1 source file + its own test file, clear scope, logic-bearing, ≈≤30 changed lines, not high-risk | **inline plan** — 3-5 line checklist + verify command + baseline (what already fails on the untouched tree) in chat, no artifact → build (failing test first) → verify → **read-only review** (`universal-reviewer`, two axes — the author never reviews own logic) → ship; one-line routing note |
+| **R2** | 1 source file + its own test file, clear scope, logic-bearing, ≈≤30 changed lines, not high-risk | **inline plan** — 3-5 line checklist (goal, done-when, verify command) in chat, no artifact → a **task owner** builds it on main (baseline, failing test first, verify, the commit check, the two review lenses) — the Lead never pre-explores → Lead commits; one-line routing note |
 | **R3** | multi-file OR vague scope OR needs sequencing / delegation | full spine, full routing block |
 | **R4** | high-risk path (Stop conditions) | full spine + adversarial review floor — NEVER downgrades, whatever the diff size. One exception: 1 file, ≤5 lines, comment/blank-only (zero logic lines — a changed string literal still counts) → R2 with ONE internal strong reviewer, no external (the pool reviews code only). Tier is per task: an R4 task carries the floor; the commission's max tier sets the spine (Define → Plan) only |
 

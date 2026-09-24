@@ -22,7 +22,7 @@ Convert an approved spec or a clear small goal into a plan another engineer (or 
 ## Skip when
 
 - A one-line fix on a single file · a question / explanation only.
-- The router tiered the task **R2** (1 file + its own test, clear scope, ≈≤30 logic lines) → the plan is a 3-5 line inline checklist in chat, each step with its verify command; no artifact.
+- The router tiered the task **R2** (1 file + its own test, clear scope, ≈≤30 logic lines) → the plan is a 3-5 line inline checklist in chat, each step with its verify command; no artifact — that checklist is the owner's brief (goal, done-when, Command); the Lead does not pre-explore.
   - Scope grows past one file mid-flight (the task's own test file does not count) → stop, write the real plan here.
   - **Spec-as-plan R3 lane:** ≤3 tasks the approved spec — or a change list the user approved target by target — already lists 1:1 (files, order, verify command, dependencies), single-agent, no high-risk surface → the same inline checklist; a parallel layout, a risk path, a 4th task, or a compaction mid-plan → write the artifact.
 
@@ -79,7 +79,7 @@ Tracks can also run as SEPARATE CLI sessions (cross-CLI wall-clock parallelism) 
 
 ### 6. Route to agents
 
-Per task, the Owner-map role; the Lead only for R1/R2. The brief is generated from the task block (`plan-lint.sh --brief <N> <plan> [contract]`), so the block must carry everything the owner needs — plus **Read first:** the 2-3 files and the pattern to copy, named by the Lead who read them while planning; the owner starts there and never re-surveys the repo.
+Per task, the Owner-map role; the Lead only for R1. The brief is generated from the task block (`plan-lint.sh --brief <N> <plan> [contract]`), so the block must carry everything the owner needs — plus **Read first:** the 2-3 files and the pattern to copy, named by the Lead who read them while planning; the owner starts there and never re-surveys the repo.
 
 ### 7. Self-review the plan
 
@@ -101,7 +101,7 @@ Never ship a plan containing: `TBD` / `TODO` / "implement later" · "add appropr
 ## Owner per task
 
 Every task carries **Owner:** — the role the domain map in `templates/plan-template.md` assigns to the task's files (path first, then concern).
-- `Owner: Lead` for R1/R2-sized work (≤2 files) or when the user said self-do; from R3 up the map decides.
+- `Owner: Lead` for R1-sized work or when the user said self-do; from R3 up the map decides.
 - Reviewer roles are never owners: `qa-tester` = user-visible verification (E2E / UI test tasks); `security-engineer` on every touched high-risk surface (per task — the brief's Tier line) (auth / billing / payments / credits / migration / data deletion / secrets / tokens / crypto / permissions / security) — both named in the task's Reviewer line.
 - Brief each owner per §6, plus the spec.
 

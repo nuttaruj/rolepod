@@ -124,43 +124,55 @@ if [ -z "$COLLISION" ] || [ "${ROLEPOD_ALLOW_SHARED_WORKTREE:-0}" = "1" ]; then
   [ "${ROLEPOD_NUDGE_OFF:-0}" = "1" ] && exit 0
   [ -n "$COLLISION" ] && exit 0
 
-  # Self-do nudge (v2.116.0) — the Lead, on an R3/R4 route, has made
+  # Self-do nudge (v2.116.0; R2 lane added — R2 now routes to a task owner
+  # on main, not Lead self-do) — the Lead, on an R2/R3/R4 route, has made
   # SELFDO_EDITS edits to product code files since that route and dispatched
   # no writer role (WRITER_ROLE_AGENTS in lib/session_state.py). Fires ONCE
   # per route (marker = the route's timestamp in <session>.selfdo); never on
-  # a subagent's edit (agent_id set), never on R1/R2, never on test / doc
-  # files, silent when no routing line exists. Additive context, never a
-  # block — the exception (user said self-do) is the user's to state.
-  # lib/session_state.py is the one classifier: edit-fields returns the
-  # state only for a Lead edit of a product-code target with a transcript
-  # (the same rule it counts earlier edits with) and "" otherwise.
+  # a subagent's edit (agent_id set), never on R1, never on test / doc
+  # files, silent when no routing line exists. R2 fires on the Lead's FIRST
+  # product-code edit after the route (SELFDO_EDITS_R2); R3/R4 keep the
+  # 6-edit floor (SELFDO_EDITS). Additive context, never a block — the
+  # exception (user said self-do) is the user's to state. lib/session_state.py
+  # is the one classifier: edit-fields returns the state only for a Lead
+  # edit of a product-code target with a transcript (the same rule it
+  # counts earlier edits with) and "" otherwise.
   SELFDO=""
   SELFDO_EDITS=6
+  SELFDO_EDITS_R2=1
   if [ -z "$AGENT_ID" ] && [ -n "$TRANSCRIPT" ] && [ -f "$TRANSCRIPT" ] && [ -n "$SELFDO_STATE" ]; then
     S_TIER=""; S_EDITS=0; S_WRITERS=0; S_TS=""
     { read -r S_TIER S_EDITS S_WRITERS S_TS; } <<EOF2 || true
 $SELFDO_STATE
 EOF2
+    THRESH=""
     case "$S_TIER" in
-      R3|R4)
-        if [ "${S_EDITS:-0}" -ge "$SELFDO_EDITS" ] && [ "${S_WRITERS:-0}" -eq 0 ]; then
-          MARK="$LOCK_DIR/$SESSION_ID.selfdo"
-          if [ "$(cat "$MARK" 2>/dev/null || true)" != "$S_TS" ]; then
-            printf '%s' "$S_TS" > "$MARK" 2>/dev/null || true
-            SELFDO="$S_TIER $S_EDITS"
-          fi
-        fi ;;
+      R2) THRESH="$SELFDO_EDITS_R2" ;;
+      R3|R4) THRESH="$SELFDO_EDITS" ;;
     esac
+    if [ -n "$THRESH" ] && [ "${S_EDITS:-0}" -ge "$THRESH" ] && [ "${S_WRITERS:-0}" -eq 0 ]; then
+      MARK="$LOCK_DIR/$SESSION_ID.selfdo"
+      if [ "$(cat "$MARK" 2>/dev/null || true)" != "$S_TS" ]; then
+        printf '%s' "$S_TS" > "$MARK" 2>/dev/null || true
+        SELFDO="$S_TIER $S_EDITS"
+      fi
+    fi
   fi
   [ -z "$SELFDO" ] && exit 0
 
   # JSON built here (no python spawn): the only variable text is the
   # self-do line, and it carries no untrusted content beyond the tier /
-  # count fields already validated above.
+  # count fields already validated above. R2 names its own path (the owner
+  # builds it on main from the checklist); R3/R4 keeps the dispatch-to-Owner
+  # wording.
   PARTS=""
   if [ -n "$SELFDO" ]; then
     S_T="${SELFDO%% *}"; S_N="${SELFDO#* }"
-    MSG_SELFDO="\\u27c2 self-do: route $S_T, $S_N Lead edits on product code, 0 writer-role dispatch since the route. Fix: the rest goes out as a task brief to the Owner the domain map names (plan-template Owner hint: frontend-developer / backend-developer / devops-sre / content-strategist \\u2026); the Lead reviews the manifest. Exception: the user said self-do, or what remains is R1/R2-sized. (off: ROLEPOD_NUDGE_OFF=1)"
+    if [ "$S_T" = "R2" ]; then
+      MSG_SELFDO="\\u27c2 self-do: route R2, $S_N Lead edits on product code, 0 writer-role dispatch since the route. Fix: R2 goes to a task owner on main from the 3-5 line checklist (goal, done-when, Command); the Lead reviews the diff, never pre-explores. Exception: the user said self-do, or this is R1-sized. (off: ROLEPOD_NUDGE_OFF=1)"
+    else
+      MSG_SELFDO="\\u27c2 self-do: route $S_T, $S_N Lead edits on product code, 0 writer-role dispatch since the route. Fix: the rest goes out as a task brief to the Owner the domain map names (plan-template Owner hint: frontend-developer / backend-developer / devops-sre / content-strategist \\u2026); the Lead reviews the manifest. Exception: the user said self-do, or this is R1-sized. (off: ROLEPOD_NUDGE_OFF=1)"
+    fi
     PARTS="${PARTS:+$PARTS }$MSG_SELFDO"
   fi
   printf '{"hookSpecificOutput": {"hookEventName": "PreToolUse", "additionalContext": "%s"}}\n' "$PARTS"

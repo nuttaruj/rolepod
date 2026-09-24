@@ -69,7 +69,7 @@ Touch only what the task requires — no "while I'm here" refactors, no reformat
 
 ### 4. Bounded delegation
 
-Decide *whether* first. The plan's **Owner:** line wins — `Owner: Lead` → self-do (R1/R2 only); a named role → dispatch the task brief to that role as the **task owner** — it builds on the Command, dispatches the reviewers its brief names (R4), fixes, and returns a **decision brief** (agent-protocol **Ticket loop**). A task with no Owner runs Q1-Q4:
+Decide *whether* first. The plan's **Owner:** line wins — `Owner: Lead` → self-do (R1 only; R2 goes to the owner on main); a named role → dispatch the task brief to that role as the **task owner** — it builds on the Command, dispatches the reviewers its brief names (R4), fixes, and returns a **decision brief** (agent-protocol **Ticket loop**). A task with no Owner runs Q1-Q4:
 
 ```
 Q1: More than 1 file to edit?        Q2: Run tests / build / server?

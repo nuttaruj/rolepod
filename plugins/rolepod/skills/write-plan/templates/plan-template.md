@@ -45,7 +45,7 @@
       find) — runnable copy-paste as-is; never the whole-repo suite; the owner runs it after each edit and
       last before returning>
 - **Owner:** <The role the domain map assigns to this task's Files — path first,
-      then concern. `Lead` for R1/R2-sized work (≤2 files) or when the user said
+      then concern. `Lead` for R1-sized work or when the user said
       self-do; from R3 up the map decides. A vertical slice has ONE owner: the role
       of its dominant layer (the risk, else most files) builds the whole slice,
       thin ends in other layers included; two full-depth layers → two slices

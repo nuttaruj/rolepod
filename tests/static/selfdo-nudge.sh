@@ -10,6 +10,11 @@
 # never when a writer role was dispatched, never on a test / doc target,
 # silent without a routing line.
 #
+# R2 arms it too (R2 now routes to a task owner on main, not Lead self-do):
+# it fires on the Lead's FIRST product-code edit after an R2 route, with its
+# own message naming the owner-on-main path; R3/R4 keep the 6-edit floor and
+# the dispatch-to-Owner wording. Never on R1.
+#
 # Runs the real hook in a throwaway git repo with a fabricated transcript.
 # HOME is redirected so the session-lock registry never touches the real one.
 set -uo pipefail
@@ -76,8 +81,11 @@ run "R3 + 6 Bash product writes (printf > file) + 0 writer dispatch → nudge" "
 mark; reset; route R3 2026-01-01T10:00:00Z; n_edits 5 "$F" 2026-01-01T10:01:
 run "R3 + 5 edits → silent (below 6)" "$F" silent
 
-mark; reset; route R2 2026-01-01T10:00:00Z; n_edits 8 "$F" 2026-01-01T10:01:
-run "R2 + 8 edits → silent (R1/R2 self-do lane)" "$F" silent
+mark; reset; route R2 2026-01-01T10:00:00Z; n_edits 1 "$F" 2026-01-01T10:01:
+run "R2 + 1 product edit → nudge (fires on the first edit)" "$F" nudge
+
+mark; reset; route R1 2026-01-01T10:00:00Z; n_edits 8 "$F" 2026-01-01T10:01:
+run "R1 + 8 edits → silent (R1 self-do lane)" "$F" silent
 
 mark; reset; route R4 2026-01-01T10:00:00Z; n_edits 6 "$F" 2026-01-01T10:01:
 run "R4 + 6 edits → nudge" "$F" nudge
@@ -162,5 +170,15 @@ else
 fi
 mark; reset; route R4 2026-01-01T10:00:00Z; n_edits 23 "$F" 2026-01-01T10:01:
 run "dependency manifest target (Gemfile) is not product code → manifest nudge only, no self-do" "$tmp/repo/Gemfile" silent
+
+# R2's message names its own path (owner builds it on main from the
+# checklist), not the R3/R4 dispatch-to-Owner wording.
+mark; reset; route R2 2026-01-01T10:00:00Z; n_edits 1 "$F" 2026-01-01T10:01:
+MSG=$(msg_of "$tmp/repo/src/fresh2.ts")
+if printf '%s' "$MSG" | grep -q 'route R2, 1 Lead edits' && printf '%s' "$MSG" | grep -q 'task owner on main' && printf '%s' "$MSG" | grep -q 'Fix:' && printf '%s' "$MSG" | grep -q 'Exception:' && ! printf '%s' "$MSG" | grep -q 'domain map names' && [ "${#MSG}" -le 600 ]; then
+  echo "  ✓ R2 message names the task-owner-on-main path, ≤ 600 chars (${#MSG})"
+else
+  echo "  ✗ R2 message shape: ${MSG:0:160} (${#MSG} chars)"; fail=$((fail+1))
+fi
 
 [ "$fail" -eq 0 ] && echo "  → selfdo-nudge passed" || { echo "  ✗ selfdo-nudge: $fail failure(s)"; exit 1; }

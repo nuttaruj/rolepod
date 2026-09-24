@@ -116,8 +116,12 @@ ROOT = pathlib.Path(".")
 # scope line names R4 vs the plan's combined range, plus the "never reviewed
 # again" exclusion for R4 tasks the combined review already covered; no
 # duplicate to fold, measured 19,488 / 145,029 B.
-CAPS = {"using-rolepod": 21500, "review-code": 19500, "implement-plan": 13100, "write-plan": 13200, "rolepod-full": 3000}
-DEFAULT, TOTAL_CAP = 13000, 145100  # total = backstop (~1% above the v2.161.0 size; +write-prototype); the per-skill caps do the work
+# write-plan 13300 + TOTAL_CAP 145200 (2026-09-24, r2-owner T1): R2 now routes
+# to a task owner on main instead of Lead self-do — the R2-skip-spec line,
+# the §6 Owner-map sentence, and the Owner-per-task bullet all name the new
+# rule; no duplicate to fold, measured 13,274 / 145,115 B.
+CAPS = {"using-rolepod": 21500, "review-code": 19500, "implement-plan": 13100, "write-plan": 13300, "rolepod-full": 3000}
+DEFAULT, TOTAL_CAP = 13000, 145200  # total = backstop (~1% above the v2.161.0 size; +write-prototype); the per-skill caps do the work
 inc = re.compile(r"^\{\{INCLUDE: (.+?)\}\}$")
 over, total = [], 0
 for d in sorted((ROOT / "core/skills").iterdir()):
@@ -139,12 +143,12 @@ PYEOF
 SKILL_BYTES_OVER=$(printf '%s\n' "$SKILL_BYTES_REPORT" | sed -n 's/^OVER //p')
 SKILL_BYTES_TOTAL=$(printf '%s\n' "$SKILL_BYTES_REPORT" | awk '/^TOTAL /{print $2}')
 if [ -z "$SKILL_BYTES_OVER" ]; then
-  echo "  ✓ every SKILL.md within its byte cap, includes expanded (phase ≤13000; implement-plan ≤13100; write-plan ≤13200; router ≤21500; review-code ≤19500; alias ≤3000)"
+  echo "  ✓ every SKILL.md within its byte cap, includes expanded (phase ≤13000; implement-plan ≤13100; write-plan ≤13300; router ≤21500; review-code ≤19500; alias ≤3000)"
 else
   echo "  ✗ SKILL.md over byte cap (includes expanded): $SKILL_BYTES_OVER"
   fail=$((fail+1))
 fi
-check "all SKILL.md total ≤ 145100 B, includes expanded (actual: $SKILL_BYTES_TOTAL)" "[ $SKILL_BYTES_TOTAL -le 145100 ]"
+check "all SKILL.md total ≤ 145200 B, includes expanded (actual: $SKILL_BYTES_TOTAL)" "[ $SKILL_BYTES_TOTAL -le 145200 ]"
 
 # Clause-chain guard: no prose line past 600 chars. The accretion shape
 # was a 2,528-char line carrying eight directives with nested exceptions —
