@@ -1,4 +1,4 @@
-<!-- Adapted from mattpocock/skills prototype LOGIC.md (MIT). Load from write-prototype Step 2. -->
+<!-- Adapted from mattpocock/skills prototype LOGIC.md (MIT). Load from write-prototype Pick the branch. -->
 
 # Logic Prototype
 
@@ -23,7 +23,7 @@ Before writing code, write down what state model and what question this prototyp
 
 ### 2. Isolate the logic in a portable module
 
-Put the actual logic (the bit answering the question) in a single `<script>` block written as a small, pure module: the reference shape a later `implement-plan` rebuilds from, with tests, never code copied in directly (Iron rule 4). The page around it is throwaway; this module is the validated design.
+Put the actual logic (the bit answering the question) in a single `<script>` block written as a small, pure module: the reference shape a later `implement-plan` rebuilds from, with tests, never code copied in directly (`write-prototype` Guardrails). The page around it is throwaway; this module is the validated design.
 
 The right shape depends on the question:
 
@@ -32,7 +32,7 @@ The right shape depends on the question:
 - A small set of pure functions over a plain data type. Good when there's no implicit current state, just transformations.
 - A class or module with a clear method surface when the logic genuinely owns ongoing internal state.
 
-Pick whichever shape best fits the question, not whichever is easiest to wire to a page. Keep it pure: no DOM, no `document`, no button handlers reaching inside it. The page calls into it; nothing flows the other direction. This is what makes the prototype useful past its own lifetime: once the question is answered, the validated reducer / machine / function set is the reference shape `write-plan` → `implement-plan` rebuilds from, with tests, on the project's normal branch — never copied in directly (Iron rule 4).
+Pick whichever shape best fits the question, not whichever is easiest to wire to a page. Keep it pure: no DOM, no `document`, no button handlers reaching inside it. The page calls into it; nothing flows the other direction. This is what makes the prototype useful past its own lifetime: once the question is answered, the validated reducer / machine / function set is the reference shape `write-plan` → `implement-plan` rebuilds from, with tests, on the project's normal branch — never copied in directly (`write-prototype` Guardrails).
 
 ### 3. Build the shareable HTML file
 
@@ -57,7 +57,7 @@ Send them the file, or open it for them. They'll click through the walkthroughs 
 
 ### 5. Capture the answer and the prototype
 
-Once the prototype has answered its question, capture the answer, then capture the prototype the way `write-prototype` Step 5 describes. The logic-specific mapping: the validated reducer / machine / function set is the reference shape for the real module, rebuilt with tests through `write-plan` → `implement-plan` (never copied in directly — Iron rule 4); the HTML shell stays on the `spike/<name>` branch that keeps the prototype as a primary source, and being one self-contained file, it stays trivially re-runnable there.
+Once the prototype has answered its question, capture the answer, then capture the prototype the way `write-prototype` Capture describes. The logic-specific mapping: the validated reducer / machine / function set is the reference shape for the real module, rebuilt with tests through `write-plan` → `implement-plan` (never copied in directly — `write-prototype` Guardrails); the HTML shell stays on the `spike/<name>` branch that keeps the prototype as a primary source, and being one self-contained file, it stays trivially re-runnable there.
 
 ## Anti-patterns
 

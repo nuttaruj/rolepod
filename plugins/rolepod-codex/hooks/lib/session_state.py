@@ -598,7 +598,7 @@ TIER_PINNED_AGENTS = {
 }
 
 # Roles that OWN product code in the plan-template domain map (write-plan
-# "Owner per task", v2.115.0). Reviewer / test-only / read-only roles are not
+# "Owners and briefs", v2.115.0). Reviewer / test-only / read-only roles are not
 # owners; scout and system-architect are read-only at the moment of dispatch.
 WRITER_ROLE_AGENTS = {
     "ai-ml-engineer", "backend-developer", "billing-engineer",

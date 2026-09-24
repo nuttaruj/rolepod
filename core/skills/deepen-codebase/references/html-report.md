@@ -1,4 +1,4 @@
-<!-- Adapted from mattpocock/skills improve-codebase-architecture HTML-REPORT.md (MIT). Load from deepen-codebase Step 3. -->
+<!-- Adapted from mattpocock/skills improve-codebase-architecture HTML-REPORT.md (MIT). Load from deepen-codebase Report. -->
 
 # HTML Report Format
 

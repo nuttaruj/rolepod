@@ -1,4 +1,4 @@
-<!-- Vocabulary adapted from mattpocock/skills codebase-design (MIT). The deepen-codebase explorer reads this first (Step 2). -->
+<!-- Vocabulary adapted from mattpocock/skills codebase-design (MIT). The deepen-codebase explorer reads this first (Explore). -->
 
 # Explorer lens
 

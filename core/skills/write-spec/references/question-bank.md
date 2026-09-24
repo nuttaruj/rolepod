@@ -1,8 +1,8 @@
 <!-- Discovery question bank for write-spec. Load when unsure what to ask. -->
-<!-- Iron rule: ask ONLY questions whose answer changes the implementation. -->
+<!-- Rule: ask ONLY questions whose answer changes the implementation. -->
 <!-- If the codebase can answer it, read the codebase — do not spend a question. -->
 
-Ask every ready question in the round together, per SKILL.md §2's frontier-round policy; within a round, resolve the question that gates the others first.
+Ask every ready question in the round together, per the frontier-round policy in `write-spec` Discovery; within a round, resolve the question that gates the others first.
 
 ## Question types
 
@@ -24,7 +24,7 @@ Glossary entry in `CONTEXT.md` (repo root, or the mapped context; create the fil
 A customer's request to buy, from placement until fulfilment or cancellation.
 _Avoid_: purchase, transaction
 ```
-One or two sentences of what the term IS, not what it does; be opinionated — one word wins, the rest go under `_Avoid_`; only concepts specific to this project (a timeout or an error type is not a domain term); subheadings only when clusters emerge. The file is a glossary and nothing else — no specs, no implementation decisions: those are the spec, or an ADR (`docs/adr/NNNN-<slug>.md`, title + 1-3 sentences) when SKILL.md's three ADR tests hold.
+One or two sentences of what the term IS, not what it does; be opinionated — one word wins, the rest go under `_Avoid_`; only concepts specific to this project (a timeout or an error type is not a domain term); subheadings only when clusters emerge. The file is a glossary and nothing else — no specs, no implementation decisions: those are the spec, or an ADR (`docs/adr/NNNN-<slug>.md`, title + 1-3 sentences) when the three ADR tests in `write-spec` Approaches hold.
 
 ### User / actor
 Who triggers this? Who sees the result? Is it self-service or admin-only?
@@ -76,8 +76,7 @@ Stop early: if an answer makes a later question irrelevant, skip it.
 - `defaults` takes only the recommendations shown that round; silence or
   elapsed time is not an answer.
 
-## Cross-family critique — questions only, before Gate 1 (§4b)
-
+## Cross-family critique — questions only, before Gate 1
 
 The Lead's own discovery finds the questions the Lead's own model can see.
 A cold reader in a different CLI (its own model, none of your context) sees different gaps — cheapest at
@@ -94,7 +93,7 @@ Never for routine specs.
 
 ## Protocol
 
-1. **Brief file** = the draft spec as it stands after §1-§4 + the **Q&A
+1. **Brief file** = the draft spec as it stands after Self-review + the **Q&A
    ledger**: every question already asked, numbered, with the user's
    answer. The critic is told never to re-ask those; an incomplete ledger
    produces duplicate questions the user has already answered.
@@ -110,7 +109,7 @@ Never for routine specs.
 3. **Triage before the user sees anything.** Items the repo or the spec
    already settle → answer them yourself (Read / grep, never guess) and
    fold the answer into the draft. Items that are genuinely the user's
-   decision → ONE extra discovery round per §2: numbered, a recommended
+   decision → ONE extra round per Discovery: numbered, a recommended
    default per question. Never forward the critic's list raw, never run a
    second critique on the same draft — new material questions the answers
    reveal continue in normal discovery.

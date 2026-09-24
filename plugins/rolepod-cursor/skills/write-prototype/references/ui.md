@@ -1,4 +1,4 @@
-<!-- Adapted from mattpocock/skills prototype UI.md (MIT). Load from write-prototype Step 2. -->
+<!-- Adapted from mattpocock/skills prototype UI.md (MIT). Load from write-prototype Pick the branch. -->
 
 # UI Prototype
 
@@ -91,11 +91,11 @@ Sub-shape A: put the switcher in a single shared component, located wherever sha
 
 ### 5. Hand it over
 
-Surface both links per `write-prototype` Step 4 — the original route and the prototype route with each `?variant=` key — side by side, same route. The user will flip through whenever they get to it. The interesting feedback is usually "I want the header from B with the sidebar from C," which is the actual design they want.
+Surface both links per `write-prototype` Hand over — the original route and the prototype route with each `?variant=` key — side by side, same route. The user will flip through whenever they get to it. The interesting feedback is usually "I want the header from B with the sidebar from C," which is the actual design they want.
 
 ### 6. Capture the answer and clean up
 
-Once a variant has won, capture the answer (which variant and why) the way `write-prototype` Step 5 describes. The whole variant set — winner and losers, the switcher included — stays on `spike/<name>`, never merged, cherry-picked or copied into a non-spike branch (Iron rule 4). The winning variant is the reference shape: the decision goes into the spec, and a variant the user wants for real becomes a change — `write-plan` → `implement-plan` rebuilds it properly (tests, error handling) on the project's normal branch.
+Once a variant has won, capture the answer (which variant and why) the way `write-prototype` Capture describes. The whole variant set — winner and losers, the switcher included — stays on `spike/<name>`, never merged, cherry-picked or copied into a non-spike branch (`write-prototype` Guardrails). The winning variant is the reference shape: the decision goes into the spec, and a variant the user wants for real becomes a change — `write-plan` → `implement-plan` rebuilds it properly (tests, error handling) on the project's normal branch.
 
 The full set of variants is the primary source, so it stays on the spike branch as evidence — code written under prototype constraints (no tests, minimal error handling) left in the main branch rots fast and confuses the next reader.
 

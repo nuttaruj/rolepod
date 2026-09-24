@@ -18,7 +18,7 @@
 [[FILL: What this explicitly does NOT do. Cut scope creep here. Repeat feature: carry the prior list forward — `Unchanged — <prior> §Non-goals` plus any new line.]]
 
 ## Current behavior
-[[FILL: Start with `Product: change | new` (write-spec §1). What happens today. "Nothing — new surface" is a valid answer. Repeat feature: seed from the latest docs/rolepod/specs/<feature>-*.md Desired behavior, but verify it shipped before trusting it. Legacy change (no prior spec): list every consumer of the behavior that moves — grep the call sites, code-intel callers when connected — each becomes a plan task or a Non-goal; unlisted consumers are the seams reviewers find one round at a time.]]
+[[FILL: Start with `Product: change | new` (`write-spec` Frame the goal). What happens today. "Nothing — new surface" is a valid answer. Repeat feature: seed from the latest docs/rolepod/specs/<feature>-*.md Desired behavior, but verify it shipped before trusting it. Legacy change (no prior spec): list every consumer of the behavior that moves — grep the call sites, code-intel callers when connected — each becomes a plan task or a Non-goal; unlisted consumers are the seams reviewers find one round at a time.]]
 
 ## Desired behavior
 [[FILL: What should happen after. Observable, not internal.
@@ -46,7 +46,7 @@
  that is write-plan's job.]]
 
 ## Rejected approaches
-[[FILL: The other lenses (minimal / clean / pragmatic — write-spec §3) + why not chosen, or "None — no material alternative existed". Keeps the decision auditable. Repeat feature: may inherit — `Unchanged — <prior> §Rejected approaches` — so a rejected path is never re-proposed from a blank slate.]]
+[[FILL: The other lenses (minimal / clean / pragmatic — `write-spec` Approaches) + why not chosen, or "None — no material alternative existed". Keeps the decision auditable. Repeat feature: may inherit — `Unchanged — <prior> §Rejected approaches` — so a rejected path is never re-proposed from a blank slate.]]
 
 ## Open questions
 [[FILL: Anything unresolved. Empty is the goal. A non-empty list blocks write-plan.]]

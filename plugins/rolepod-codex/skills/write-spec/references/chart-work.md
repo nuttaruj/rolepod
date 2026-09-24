@@ -14,7 +14,7 @@ spec.
 
 One markdown file per effort: `docs/rolepod/maps/<effort>.md`. Question
 tickets live beside it in `docs/rolepod/maps/<effort>/q-<slug>.md`. Both
-persist across sessions under the private `docs/rolepod/` (write-spec §6) — the
+persist across sessions under the private `docs/rolepod/` (`write-spec` Contract) — the
 map is a durable record, not session scratch; they enter git only when the repo
 tracks its working docs (`.rolepod/docs-tracked`).
 
@@ -71,7 +71,7 @@ tools:
 
 | Kind | Who | Resolve with |
 |---|---|---|
-| `discuss` | with user | Discovery dialogue (this skill's Phase 1) on the one question. Default kind. |
+| `discuss` | with user | Discovery (`write-spec` Discovery) on the one question. Default kind. |
 | `investigate` | agent alone | Dispatch a `scout` — docs, APIs, prior art; report → resolution. |
 | `probe` | with user | A throwaway artifact to react to — `write-prototype` (layout variants or a clickable logic demo) on a `spike/` branch. Link it; never merge it. |
 | `unblock` | either | Real work a decision is waiting on (provision access, move data so its shape is visible). The only kind that *does* instead of decides. Human-only steps → generate a wizard (implement-plan `references/wizard.md`). |
@@ -101,7 +101,7 @@ parallel via scouts). More than one `discuss` per session degrades both.
    edited or closed. Anything it revealed as beyond the Target moves to
    **Ruled out** — closed, not resolved.
 5. Save the map + ticket; commit them only under `.rolepod/docs-tracked` —
-   otherwise the pre-commit gate blocks `docs/rolepod/`.
+   otherwise `docs/rolepod/` stays out of git.
 
 ## Entry and exit
 
