@@ -13,16 +13,15 @@ The adversarial review pass routes to a **different CLI** than the Lead's, never
 - **Run it:** pool on → `cross-family` kind review (`security-engineer` in the same message). Pool off, no usable member, or `cross-family` absent → `universal-reviewer` on a strong-class model, and the report's Cross-model line records why.
 - **An externally implemented ship group** is reviewed by a DIFFERENT member. A user-lifted risky scope (`risky:lifted`) → the external pass by a different member.
 - **Money / auth** — billing · payments · credits · auth · crypto · secrets · data deletion: `security-engineer` + ONE general strong pass (the external when the pool is usable, else `universal-reviewer`). Never external + `universal-reviewer` on round 1. Commit only after one strong pass has finished (the anchored external, or an internal strong pass).
-- While the pool is usable, an internal strong reviewer does not replace the external on a high-risk diff — only after the runner reports no usable member.
+- While the pool is usable, an internal strong reviewer does not replace the external on round 1 of a high-risk diff — only after the runner reports no usable member.
 
 ## When the internal general pass runs
 
 `universal-reviewer` runs as the general strong pass when any of these holds:
 - (a) cross-family is off, or the runner reports no usable member (every member failed / pool empty — logged);
-- (b) the review-code Breaker fired — its one round goes to the internal strong reviewer (`breaker.md`);
-- (c) the external came back weak — empty / partial return (a changed file missing from its Scope list counts), bare verdict, or no claims walked; record why;
-- (d) an apex trigger holds (below) — external first, internal when (c);
-- (e) re-reading a fix delta in the fix-verify rounds.
+- (b) the external came back weak — empty / partial return (a changed file missing from its Scope list counts), bare verdict, or no claims walked; record why;
+- (c) an apex trigger holds (below) — external first, internal when (b);
+- (d) round 2+ — re-reading the fix delta of the external's findings; the external runs round 1 only, never a new external round.
 
 **Strong class.** Dispatch the internal general pass on a strong-class model, even under a balanced Lead — never a balanced model. An external runs on its own CLI's default model. `qa-tester` (E2E / UI) is never the strong pass and never counts as one.
 
@@ -41,8 +40,7 @@ Strong is the R4 default: "done right per the existing pattern?". Apex — the s
 1. irreversible with no rollback — destructive migration, key rotation, live money movement;
 2. novel design with no pattern to diff against;
 3. deep cross-system reasoning — races on financial invariants, distributed consistency;
-4. the previous strong round missed blockers;
-5. the user asks.
+4. the user asks.
 
 - No trigger → strong stands.
 - A CLI whose strong pin IS its ceiling collapses apex into strong.

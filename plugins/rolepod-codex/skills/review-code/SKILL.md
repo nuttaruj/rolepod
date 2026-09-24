@@ -40,7 +40,7 @@ By rigor tier (R1 trivial edit · R2 one file + test · R3 multi-file · R4 high
 - **R2** → TWO read-only `universal-reviewer` lenses in ONE message, `lens: spec` + `lens: standards` (no spec → standards only); a matched row (perf / UI / arch) → that role instead. The writer's unit tests are the floor.
 - **R3** → the matched row, internal, unless the pool's tier is R2 or R3 → a usable external replaces `universal-reviewer`.
 - **R4** → `security-engineer` + ONE general strong pass: the external (`cross-family` kind review) when the pool is usable, else — or no `cross-family` — `universal-reviewer` on a strong-class model (never a balanced one), the reason on the Cross-model line. Never both on round 1, money and auth included. A comment/blank-only R4 diff → ONE internal strong reviewer, no external.
-- Adversarial fresh-context = the reviewer reads only the artifact + acceptance criteria, tries to make the change fail, and hunts for what is missing as hard as for what is present.
+- Adversarial fresh-context = the reviewer reads only the artifact + acceptance criteria, tries to make the change fail, and hunts for what is missing as hard as for what is present. Adversarial = round 1 of an R4 task only; every later round is the normal two-axis review (Fix-verify rounds).
 - A high-risk path anywhere in the diff (task or ship group) makes it R4; the commission's tier (max over its tasks) governs Define / Plan only.
 - A diff reviewed at its tier is never reviewed again at ship: R2/R3 combine once per plan (`implement-plan` Review), naming R4 tasks as already reviewed.
 - `qa-tester` is never the strong pass.
@@ -83,33 +83,20 @@ Fill `templates/review-report.md`: Scope, Read, Risk surfaces touched, Reviewers
 - Full report → `.rolepod/evidence/review/<task>-<role>.md`; the reviewer returns ≤ 12 lines + verdict.
 
 Evidence log: append the line to `<git-root>/.rolepod/evidence/phase-log.jsonl` chained onto the next command you run anyway (`<cmd> && printf '…' >> phase-log.jsonl`), never as a standalone turn; skip silently outside a git repo.
-Review line: `{"ts":"<iso8601>","phase":"review","verdict":"<APPROVED|APPROVED-WITH-NITS|REJECTED>","blockers":<n>}` (round 2+: add `"round":<n>,"infix":<n>,"repeat":<n>`).
+Review line: `{"ts":"<iso8601>","phase":"review","verdict":"<APPROVED|APPROVED-WITH-NITS|REJECTED>","blockers":<n>}`.
 
 Done when: the report carries a Recommendation and the review line is appended.
 
 ### 5. Fix-verify rounds
 
 - Round 1 = every axis in ONE message, ≤ 40 tool calls per reviewer.
-- Round 2 = a BLOCKER / MAJOR fix only: the flagging reviewer re-checks its finding on the fix delta, ≤ 15 tool calls, dispatched with findings + delta only (no suite re-run, new mutant or new axis). External rounds → `cross-family` Re-review a fix; absent → the flagging internal reviewer re-checks the delta.
-- The flagging reviewer verifies a BLOCKER / MAJOR fix (the Lead's cold read only when it cannot run); the fix's writer never does. MINOR / NIT → the author's Command.
+- Round 2+ = a BLOCKER / MAJOR fix only, always internal and never adversarial: a normal re-check of the fix delta against the spec / acceptance criteria at the reviewer's own lens (`universal-reviewer`: two axes, spec compliance + standards; `security-engineer`: its security lens, confined to the finding's class), ≤ 15 tool calls, findings + delta only (no suite re-run, new mutant or new axis).
+- `security-engineer` re-checks its own findings and the external's findings on a high-risk path; the external's other findings go to `universal-reviewer` on a strong-class model — never a new external round.
+- A new issue found in round 2+ is a normal finding: fix it like any other (Author response).
+- The flagging reviewer (for the external's findings, the round 2+ reviewer above) verifies a BLOCKER / MAJOR fix (the Lead's cold read only when it cannot run); the fix's writer never does. MINOR / NIT → the author's Command.
 - A Lead-built fix → one read-only `universal-reviewer` pass (R4 → the strong pass).
 
-Done when: every BLOCKER / MAJOR is closed by the reviewer that flagged it, or the Breaker fired.
-
-#### Breaker
-
-Any one of these triggers the Breaker:
-- one reviewer's round 3 on one uncommitted tree (dispatches under 5 minutes apart are one round; `cross-family` prints the count);
-- blockers tagged IN-FIX two rounds running;
-- BLOCKER / MAJOR tagged NEW in files the previous round never touched, two rounds running;
-- the same defect class at a new site;
-- any REPEAT.
-
-Then, in order (detail: `references/breaker.md`):
-1. Stop — no fix, no new reviewer; collect or kill what runs.
-2. Ledger — rounds · the one root-cause class · options, in `docs/rolepod/handoffs/<feature>-breaker-<date>.md`.
-3. One class fix, then ONE internal strong round on it — no question to the user in between. APPROVED / APPROVED-WITH-NITS → the ship path.
-4. Still REJECTED → commit the clean slices, park the rest in `## Follow-ups`, and end the turn with the decision brief (rounds · class · options). No further round.
+Done when: every BLOCKER / MAJOR is closed by its round 2+ reviewer.
 
 ### 6. Author response
 
@@ -121,7 +108,7 @@ On the whole round's merged findings, never the first report: READ all without r
 Reply "Fixed in <file:line>." — no gratitude. A test added to close a finding joins the fix delta for the next reviewer; the author's own green run closes nothing.
 Pushback, YAGNI, disagreement on merits, PR thread replies, rolepod-brain notes → `references/receiving-findings.md`.
 
-Done when: every finding is fixed, pushed back with a reason, or in `## Follow-ups`, and each BLOCKER / MAJOR fix is back with its reviewer.
+Done when: every finding is fixed, pushed back with a reason, or in `## Follow-ups`, and each BLOCKER / MAJOR fix is back with its round 2+ reviewer.
 
 ## Guardrails
 
@@ -134,7 +121,6 @@ Good / bad finding shapes → `examples/finding-examples.md`.
 ## Next phase
 
 - Review-only ask (no fix, no ship) → none; the report is the deliverable.
-- Findings need fixes → `implement-plan` or `debug-issue`; fixes landed → `check-work`. Neither available → the Lead fixes per Author response, then the flagging reviewer re-checks (Fix-verify rounds).
-- The Breaker ended REJECTED → none; the decision brief is the hand-off to the user.
+- Findings need fixes → `implement-plan` or `debug-issue`; fixes landed → `check-work`. Neither available → the Lead fixes per Author response, then its round 2+ reviewer re-checks (Fix-verify rounds).
 - No blockers, plan has unchecked tasks → `implement-plan` (Ship asks once per plan); plan exhausted → `finish-work` for the merge gate.
 - If `finish-work` is not available, present the findings + recommendation and ask the user which finish path to take.

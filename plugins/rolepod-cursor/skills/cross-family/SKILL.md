@@ -20,8 +20,8 @@ Outside Claude add `--lead <codex|agy|cursor|opencode>`. `--help` lists every fl
 `rolepod-cross-family --pool` prints the resolved pool and why each member is in or out.
 - The pool is opt-in: `<git-root>/.rolepod/cross-family` overrides `~/.rolepod/cross-family`. No file or `none` = off. Never turn it on unasked.
 - Only the Lead's own CLI is excluded. The model family is recorded as information, never a filter: a member on the Lead's vendor still counts, and a member reporting no family is a FULL external pass.
-- The user asked to set up or change the pool → step 7 first.
-- The user asked for another CLI's opinion and the pool is off → say so and offer step 7 once; write no file without their yes.
+- The user asked to set up or change the pool → step 6 first.
+- The user asked for another CLI's opinion and the pool is off → say so and offer step 6 once; write no file without their yes.
 
 Done when: at least one usable member is listed, or the pool is off / empty and step 5's fallback is named.
 
@@ -43,13 +43,13 @@ Done when: the brief file exists and a stranger could act on it alone.
 |---|---|---|---|
 | review | `review-code` strong pass: R4, or from the pool file's `tier = R2\|R3` up | `--kind review --brief <brief> --attach <diff> --detach` | background job |
 | critique | `write-spec`: R4 spec before Gate 1 (R3 stays internal), or the user asks | `--kind critique --brief <draft+ledger>` | foreground, 10 min |
-| consult | `debug-issue` after 2 failed attempts; a Breaker class question | `--kind consult --brief <ledger>` | foreground, short budget |
+| consult | `debug-issue` after 2 failed attempts | `--kind consult --brief <ledger>` | foreground, short budget |
 | implement | a plan task marked `write: external` | `--kind implement --brief <task-brief> --allow <path>... --detach` | background job, collected in the foreground |
 
 **review**
 - Attach `git diff HEAD` for uncommitted work (staged + unstaged) or `git diff <base>...HEAD` for a committed branch.
 - `--cached` alone is a slice: the runner refuses it while the same files carry unstaged edits. `--partial-ok` only when the user asked for the staged part.
-- The external IS the strong pass: it replaces `universal-reviewer`, never both on round 1. The R4 floor stays `security-engineer` + that ONE strong pass — dispatch `security-engineer` in the same message.
+- The external IS the strong pass: it replaces `universal-reviewer`, never both on round 1. It runs round 1 only: its BLOCKER / MAJOR fixes are re-checked by `universal-reviewer` on a strong-class model (`review-code` Fix-verify rounds), never a new external round. The R4 floor stays `security-engineer` + that ONE strong pass — dispatch `security-engineer` in the same message.
 - The diff stays frozen until the last reviewer returns: no edit to its files, no `git stash` / `reset` / `checkout`.
 - Then do the next task outside the diff. ONE `rolepod-cross-family --collect <job-id> --root <git-root>` before the commit — it waits.
 - Member order, `--all`, what anchors, the degradation table → `references/review.md`.
@@ -79,7 +79,7 @@ The runner ran the member read-only on its own default model, in a clean room (`
 - A weak review — empty or partial, a bare verdict, no claims walked, a changed file missing from its Scope list → the caller adds its internal strong pass and records why.
 - Consult and critique answers marked PARTIAL still count.
 - Exit 3 (every member failed), 4 (enabled, nothing usable), 5 (off) → step 5.
-- Exit 7 (partial slice) → attach the full diff. Exit 8 (a review job is live) → collect or `--kill` it first. Exit 9 (review round 5) → the Breaker's split and stop.
+- Exit 7 (partial slice) → attach the full diff. Exit 8 (a review job is live) → collect or `--kill` it first.
 - A member dies when it goes silent (`stall=`, default 600 s), not when it is slow. A foreground call is capped by the harness (Claude Bash: 600 s): run a long review with `--detach`.
 
 Done when: the answer is in hand with its receipt, or the exit is mapped to step 5.
@@ -96,15 +96,7 @@ Done when: the answer is in hand with its receipt, or the exit is mapped to step
 
 Done when: the caller or the user holds the answer or the named fallback.
 
-### 6. Re-review a fix — review rounds 2+
-
-- `--kind review --brief <brief> --since <previous job> --detach` attaches the fix delta plus the previous report; findings come back IN-FIX / NEW / REPEAT.
-- The external re-runs only when its previous report carried a BLOCKER and the fix delta is logic-bearing code. Otherwise the flagging reviewer re-checks the delta alone.
-- One reviewer's dispatches under 5 minutes apart on one uncommitted tree are one round. `rolepod-cross-family --rounds` prints the count (`--role <key>` for one reviewer). Round 3 → `review-code` Breaker: its one round is internal, no new external round; the runner refuses round 4 without `--ledger` and round 5 outright.
-
-Done when: the delta verdict is collected, or the round went to the flagging internal reviewer.
-
-### 7. Set up the pool — on request only
+### 6. Set up the pool — on request only
 
 The user asks to set up, enable or change cross-family, in any wording or language. Never raise it unprompted.
 1. `rolepod-cross-family --setup` prints the installed CLIs and two questions. One installed CLI → nothing to set; say so.

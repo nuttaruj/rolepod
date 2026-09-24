@@ -1,4 +1,4 @@
-<!-- Load when hand-editing the pool file. SKILL.md step 7 writes it through --setup. -->
+<!-- Load when hand-editing the pool file. SKILL.md step 6 writes it through --setup. -->
 
 # The pool file
 

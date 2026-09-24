@@ -39,12 +39,8 @@
 <Severity-ordered. Each finding: file:line — issue — why it matters — fix
  direction (a direction, not a rewrite; the author fixes). A reviewer's
  other scale maps in: CRITICAL/HIGH → BLOCKER, WARNING/MEDIUM → MAJOR,
- SUGGESTION/LOW → MINOR. Round 2+ (the
- previous report is in the brief): prefix each finding IN-FIX (a defect
- inside the previous round's fixes) / NEW (not flagged before) / REPEAT
- (flagged before, still open) — the Lead's phase-log line counts them.
- A pre-existing issue on a path the diff does not touch → list once under
- "Adjacent", never a verdict driver; the author parks it in Follow-ups.>
+ SUGGESTION/LOW → MINOR. A pre-existing issue on a path the diff does
+ not touch → list once under "Adjacent", never a verdict driver; the author parks it in Follow-ups.>
 
 ### BLOCKER — must fix before merge
 - `file:line` — <issue> — <why it matters> — <fix direction>

@@ -105,7 +105,7 @@ A task owner's decision brief carries its Command tail. The Lead spot-checks ONE
 
 R2/R3 tasks carry no reviewer in the loop.
 - When the plan's last code task is committed, the Lead runs ONE combined review over the plan diff (`rolepod-ticket log` prints the range; without it, the recorded base sha..HEAD, i.e. the first task commit^..HEAD); more than ~15 files → one per ship group.
-- A plan that names a ship group → after its last task, one drift pass over the group's range: `security-engineer` when it holds an R4 task, else the combined review is the drift pass.
+- A plan that names a ship group → after its last task, one drift pass over the group's range, a normal review of the cross-task seams (never adversarial): `security-engineer` when it holds an R4 task, else the combined review is the drift pass.
 - Findings → ONE fix task to the owning role; round 2 only for a BLOCKER / MAJOR fix.
 - Nothing pushes or releases before it.
 

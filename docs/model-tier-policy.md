@@ -30,8 +30,8 @@ pattern?"; apex asks "is the pattern itself right?". Escalate a strong
 dispatch to apex only on a trigger: (1) irreversible with no rollback
 (destructive migration, key rotation, live money movement); (2) novel design
 with no existing pattern to diff against; (3) deep cross-system reasoning
-(races on financial invariants, distributed consistency); (4) the previous
-strong round missed blockers; (5) explicit user ask. No trigger → strong is
+(races on financial invariants, distributed consistency); (4) explicit user
+ask. No trigger → strong is
 the paid ceiling. A CLI whose strong pin already IS its ceiling (Codex `sol`;
 Gemini) collapses apex into strong. The dispatch-log `override` field records
 which rung was sent.
@@ -116,7 +116,7 @@ and Anthropic's published numbers back the pairing (Sonnet + Opus advisor:
 rules keep it from fighting rolepod's own consult machinery:
 
 1. **Advisor IS the vertical-consult channel when configured.** debug-issue
-   §9's vertical fallback and review-code's fix-round circuit breaker use
+   §9's vertical fallback uses
    the inline advisor instead of shelling out to the CLI's strongest model.
    The discipline is unchanged: ONE consult, one advisor-informed round,
    never a second parallel consult for the same event — advisor on does not

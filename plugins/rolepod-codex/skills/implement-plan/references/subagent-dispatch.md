@@ -103,6 +103,7 @@ A ship-group drift pass runs only over a named group (the plan's **Ship group** 
 - Dispatch one reviewer on the cumulative diff across the group's tasks
 - Role: `security-engineer`
 - Scope: cross-task symbol / type / method name drift, API contract mismatch between producer and consumer, unowned files touched by group members, architecture consistency across tasks
+- A normal review of the cross-task seams at the role's own lens (security included), not an adversarial round
 - Never a re-review of a task's own diff (that reviewer already passed it)
 
 Tracks sharing a frozen interface are one group. No group named → no drift pass. Hand off to `check-work` only after the group clears.
