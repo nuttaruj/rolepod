@@ -780,6 +780,60 @@ cmd_log() {
     rm -f "$tmp"; exit 1
   fi
 
+  # The gate writes to the plan, never reads from it (spec Desired 10): the
+  # newest phase-log "gate" row whose head is this commit's PARENT ("$sha^")
+  # carries what the gate counted for it. No repo, no phase-log, or no
+  # matching row → "gate: no record" (fail-open, still appended).
+  local gate_repo_root gate_phase_log gate_parent_sha gate_str
+  gate_str="gate: no record"
+  gate_repo_root="$(git -C "$(dirname "$plan")" rev-parse --show-toplevel 2>/dev/null)"
+  if [ -n "$gate_repo_root" ]; then
+    gate_phase_log="$gate_repo_root/.rolepod/evidence/phase-log.jsonl"
+    if [ -f "$gate_phase_log" ]; then
+      gate_parent_sha="$(git -C "$gate_repo_root" rev-parse "${sha}^" 2>/dev/null)"
+      if [ -n "$gate_parent_sha" ]; then
+        local found
+        found="$(TICKET_GATE_PARENT="$gate_parent_sha" python3 -I -c '
+import json, os, sys
+parent = os.environ.get("TICKET_GATE_PARENT") or ""
+best = None
+try:
+    with open(sys.argv[1], encoding="utf-8", errors="replace") as f:
+        for line in f:
+            try:
+                d = json.loads(line)
+            except Exception:
+                continue
+            if not isinstance(d, dict):
+                continue
+            if d.get("phase") != "gate" or d.get("head") != parent:
+                continue
+            best = d  # last match in an append-only file = newest
+except Exception:
+    best = None
+if best is not None:
+    def _int(k):
+        try:
+            return int(best.get(k) or 0)
+        except Exception:
+            return 0
+    # security-engineer review (2026-09-24, gate-evidence-paths T9): the
+    # decision field is untrusted (a stale/forged phase-log row) — this
+    # line is a convenience note, not tamper-proof audit evidence, so it
+    # is constrained to the three real decisions rather than echoed raw.
+    _decision = best.get("decision")
+    if _decision not in ("pass", "deny", "soft"):
+        _decision = "?"
+    print("gate: %s · tests %d · risk %d · reviewers %d (strong %d, external %d)" % (
+        _decision, _int("tests"), _int("risk"),
+        _int("reviewers"), _int("strong"), _int("external")))
+' "$gate_phase_log" 2>/dev/null)"
+        [ -n "$found" ] && gate_str="$found"
+      fi
+    fi
+  fi
+  note="$note $gate_str"
+
   # Idempotent: the exact same bullet is never appended twice — but only a
   # look-alike line INSIDE "## Changes during build" counts; a Test /
   # evidence sentence elsewhere in the plan quoting the same words is prose,

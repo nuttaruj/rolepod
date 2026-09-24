@@ -1074,6 +1074,45 @@ print(n)
   fi
 fi
 
+# The plan is the readable record of each step; the gate writes to it, never
+# reads from it (spec Desired 10, 2026-09-24). One "phase":"gate" row per
+# judged commit, HEAD BEFORE the commit so `rolepod-ticket log --sha <sha>`
+# can match it as `<sha>^` after the commit lands. Fail-open: any error here
+# never changes HARD_BLOCK / AUTO_PASS — it only ever runs right before an
+# `exit 0` this file already reaches.
+append_gate_row() {
+  local decision="$1" head_sha
+  head_sha=$(gitd rev-parse HEAD 2>/dev/null || echo "")
+  mkdir -p "$EV_ROOT" 2>/dev/null || return 0
+  ROLEPOD_GATE_DECISION="$decision" ROLEPOD_GATE_TESTS="$TEST_EDITS" \
+  ROLEPOD_GATE_RISK="$HIGH_RISK_EDITS" ROLEPOD_GATE_REVIEWERS="$REVIEWERS" \
+  ROLEPOD_GATE_STRONG="$STRONG_REVIEWERS" ROLEPOD_GATE_EXTERNAL="${XREV:-0}" \
+  ROLEPOD_GATE_HEAD="$head_sha" ROLEPOD_EV_DIR="$EV_ROOT" python3 -I -c '
+import json, os, datetime
+def _int(name):
+    try:
+        return int(os.environ.get(name) or 0)
+    except Exception:
+        return 0
+line = {
+    "ts": datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds"),
+    "phase": "gate",
+    "decision": os.environ.get("ROLEPOD_GATE_DECISION") or "",
+    "tests": _int("ROLEPOD_GATE_TESTS"),
+    "risk": _int("ROLEPOD_GATE_RISK"),
+    "reviewers": _int("ROLEPOD_GATE_REVIEWERS"),
+    "strong": _int("ROLEPOD_GATE_STRONG"),
+    "external": _int("ROLEPOD_GATE_EXTERNAL"),
+    "head": os.environ.get("ROLEPOD_GATE_HEAD") or "",
+}
+try:
+    with open(os.path.join(os.environ.get("ROLEPOD_EV_DIR") or ".", "phase-log.jsonl"), "a") as f:
+        f.write(json.dumps(line, ensure_ascii=False) + "\n")
+except Exception:
+    pass
+' 2>/dev/null || true
+}
+
 # Legacy bypass markers are detected only so the deny reason can explain they
 # no longer do anything on their own: evidence auto-passes without a marker
 # (below), and without evidence a marker was always ignored — a blocked model
@@ -1175,6 +1214,7 @@ sys.stdout.write(' '.join(os.environ.get('ROLEPOD_BYPASS_CMD', '').split())[:200
 import json, os
 print(json.dumps({'hookSpecificOutput': {'hookEventName': 'PreToolUse', 'additionalContext': os.environ.get('ROLEPOD_HOOK_MSG', '')}}))
 " 2>/dev/null || true
+  append_gate_row "pass"
   exit 0
 fi
 
@@ -1191,6 +1231,7 @@ print(json.dumps({
   }
 }))
 " 2>/dev/null || echo "{}"
+  append_gate_row "deny"
   # exit 0 (not 2): Claude Code parses the stdout permissionDecision JSON only on
   # exit 0 — on exit 2 it reads stderr (empty here), so the deny reason is lost.
   # Matches gate-reminder.sh's proven deny path.
@@ -1224,5 +1265,6 @@ ROLEPOD_HOOK_MSG="$WARN" python3 -I -c "
 import json, os
 print(json.dumps({'hookSpecificOutput': {'hookEventName': 'PreToolUse', 'additionalContext': os.environ.get('ROLEPOD_HOOK_MSG', '')}}))
 " 2>/dev/null || true
+append_gate_row "soft"
 
 exit 0
