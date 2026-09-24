@@ -107,7 +107,7 @@ Terse output (opt-in, every CLI): `touch ~/.claude/.rolepod-terse` shapes replie
 
 ## Evidence stats
 
-`rolepod-stats` (on PATH after install.sh) — run inside any project: reads its `.rolepod/evidence/` and reports tier distribution, verify pass/fail, review verdicts, strong dispatches with/without explicit override (silent-downgrade audit), and unreasoned bypasses. `rolepod-junit <report.xml>` — counted JUnit totals + failed test names. In the source repo: `make stats`. Marketplace installs (no install.sh) carry the same scripts under the plugin's `scripts/` dir. Want a literal `make stats` in your own project? Add: `stats: ; @rolepod-stats`.
+`rolepod-stats` (on PATH after install.sh) — run inside any project: reads its `.rolepod/evidence/` and reports tier distribution, verify pass/fail, review verdicts, strong dispatches with/without explicit override (silent-downgrade audit), and unreasoned bypasses. `rolepod-junit <report.xml>` — counted JUnit totals + failed test names.
 
 ## Optional sibling plugins
 

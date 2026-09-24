@@ -194,12 +194,12 @@ Hooks are the product, so this is stated plainly. Everything stays on your disk;
 
 | What | Where | Off |
 |---|---|---|
-| Phase evidence — route tier, dispatch tier, verify / review verdicts, gate denies and bypasses | `<repo>/.rolepod/evidence/phase-log.jsonl`, `bypass.log` (per project, plain JSONL) | delete the dir; `make stats` reads it |
+| Phase evidence — route tier, dispatch tier, verify / review verdicts, gate denies and bypasses | `<repo>/.rolepod/evidence/phase-log.jsonl`, `bypass.log` (per project, plain JSONL) | delete the dir; `rolepod-stats` reads it |
 | Session liveness + the files each session edits (the stomp guard) | `~/.rolepod/session-locks/<sha256(worktree)>/<session>.lock` / `.files`, removed at Stop | `ROLEPOD_ALLOW_SHARED_WORKTREE=1` (user-set) |
 | Per-session counters — fix-loop fails, raw-read bytes, context-nudge state | `$TMPDIR/rolepod-*.json`, `~/.rolepod/ctx-nudge/` | `ROLEPOD_NUDGE_OFF=1` |
 | Cross-family reviewer output (opt-in) | `<repo>/.rolepod/evidence/external/` | no pool file = off |
 
-Hooks read the prompt, the tool input and the transcript tail to decide, then discard them: prompt text and file contents are never written anywhere. Nothing reads keychains, `~/.aws`, SSH keys, browser stores or the clipboard. `make bench-hooks` prints what each hook costs per call; `make contract-check` says whether the installed CLI still matches the contract the hooks were written against.
+Hooks read the prompt, the tool input and the transcript tail to decide, then discard them: prompt text and file contents are never written anywhere. Nothing reads keychains, `~/.aws`, SSH keys, browser stores or the clipboard.
 
 ## Plugin family — standalone × combined
 
