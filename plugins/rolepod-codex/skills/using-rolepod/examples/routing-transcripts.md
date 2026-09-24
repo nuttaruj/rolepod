@@ -25,10 +25,9 @@ Next step: discovery dialogue in frontier rounds — every ready question togeth
 
 User: "the footer copyright year is hardcoded to 2024 — make it dynamic"
 
-Routing: Build → implement-plan
-Reason: exact target, obvious change, one file, no design choice.
-Skipping: Define + Plan — the diff is clear. Lightweight Verify still runs.
-Next step: read the file, make the edit, confirm it renders.
+Route: R2 (one file + test) → implement-plan · exact target, one file, logic-bearing, no design choice
+Skipping: Define + Plan — the 3-5 line checklist is the plan. Its verify command still runs.
+Next step: write the checklist (goal, done-when, verify command); a task owner builds it on main.
 
 ---
 
@@ -96,7 +95,7 @@ User: "/rolepod-full add CSV export to the orders report"
 Routing: Force full lifecycle via /rolepod-full
 Reason: explicit force-full trigger — the user opted out of skip rules.
 Skipping: none — Define → Plan → Build → Verify → Review → Ship, all phases.
-Next step: announce the execution backend, enter Define / Phase 0 discovery.
+Next step: announce the execution backend, enter Define — discovery in frontier rounds.
 
 ---
 

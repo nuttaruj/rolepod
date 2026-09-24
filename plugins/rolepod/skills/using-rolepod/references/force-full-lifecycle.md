@@ -1,30 +1,37 @@
-<!-- Load when entering force-full mode (/rolepod-full or "force full lifecycle"). -->
-<!-- The router detects the trigger; this file is the force-full detail. -->
+<!-- Load when entering force-full mode, or when the user asks to set up / change cross-family. -->
+<!-- The router detects the trigger; this file is the force-full and cross-family setup detail. -->
 
 # Force-full lifecycle
 
-Run **every phase in order, no skips** — even a one-line fix. The user opted
-out of the auto-router's skip rules on purpose. They can still override
-mid-flow ("skip review", "just ship").
+Triggers — the message opens with one of: `/rolepod-full <task>` ·
+`$rolepod-full <task>` (Codex) · `force full lifecycle` ·
+`run full rolepod lifecycle` · `rolepod mode: full lifecycle` (exact). The
+`rolepod-full` skill is the explicit entrypoint. Bare `/rolepod`,
+`rolepod mode`, `run all phases` and `no skip` are not triggers; they
+auto-route.
+
+Run **every phase in order, no skips** — even a one-line fix — with external
+adversarial reviewers when configured. The user opted out of the
+auto-router's skip rules on purpose. They can still override mid-flow
+("skip review", "just ship").
 
 ## The six phases
 
-1. **Define — `write-spec`** — Phase 0 discovery dialogue: explore context,
-   clarifying questions one at a time, propose 2-3 approaches, incremental
-   approval, spec self-review. Pick the persistence tier per the skill's
-   hard-gate table.
+1. **Define — `write-spec`** — discovery in frontier rounds, 2-3
+   approaches, approval, spec self-review; inline or file per its Contract
+   step.
 2. **Plan — `write-plan`** — break the approved spec into bite-sized steps
    (2-5 min each). If multi-agent, write the cohesion contract before spawning.
 3. **Build — `implement-plan`** — execute task-by-task with bounded scope +
    explicit file ownership. Bug-flavored tasks route through `debug-issue`.
-   Apply S1-S5 / T1-T6 / F1-F5 per commit.
+   Every commit passes the commit gates.
 4. **Verify — `check-work`** — no completion claim without fresh verification
    evidence in this message.
 5. **Review — `review-code`** — one read-only reviewer + risk-appropriate reviewers.
    External adversarial reviewers (any installed CLI on a model different
    from the Lead's) when configured; otherwise universal-reviewer / security-engineer;
    qa-tester for user-visible (E2E / UI) behaviour.
-6. **Ship — `finish-work`** — S+T+F+P gates, required CI lane checks, then
+6. **Ship — `finish-work`** — its Pre-merge gates, required CI lane checks, then
    the 4-option branch finish menu (merge / open PR / keep open / discard).
 
 ## Execution backend
@@ -60,7 +67,7 @@ Next step: <first question or context read>
 - ≤3 files per commit
 - Mandatory peer review even for small diffs (no skip on ≤5 lines / single
   file / zero logic)
-- All S1-S5 + T1-T6 gates explicit every commit
+- Every commit gate stated explicitly on every commit
 - External adversarial reviewers (a different model than the Lead's) when configured
 
 The user can opt back to lighter review mid-flow ("normal review is fine") —
@@ -69,8 +76,7 @@ rigor is default-on, not mandatory-on.
 ## What still applies under force-full mode
 
 - `verify-first` for any factual claim
-- Hooks (subagent-commit block, precommit-gate, gate-reminder) fire
-  regardless
+- Every hook still fires
 - User override mid-flow: "skip review" / "just ship" → obey
 
 ## Common rationalizations to reject
@@ -80,3 +86,16 @@ rigor is default-on, not mandatory-on.
 | "Task is trivial, Define is overkill" | User invoked `/rolepod-full` precisely to disable that judgment. Run it. |
 | "User probably meant just Build" | If they wanted just Build they'd type the task without `/rolepod-full`. Read the directive literally. |
 | "I'll merge Define + Plan into one turn to save time" | Each phase has its own exit evidence. Run them sequentially. |
+
+## Cross-family setup — on request only
+
+The user asks to set up, enable or change cross-family (any wording, any
+language). Never raise it unprompted. One installed CLI → nothing to set;
+say so.
+
+1. Run `rolepod-cross-family --setup`; it prints the installed CLIs and the
+   two questions.
+2. Ask ONE question per turn: (1) which CLIs review, in order; (2)
+   implement: `same`, `none`, or its own order.
+3. Write it with `rolepod-cross-family --setup review="…" implement=…`, then
+   show `rolepod-cross-family --pool`.

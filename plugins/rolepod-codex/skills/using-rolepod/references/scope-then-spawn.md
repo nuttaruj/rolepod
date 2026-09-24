@@ -74,9 +74,3 @@ failures compactly" is mechanical-tier work even when the fixes are not.
 "Faster to just fix it myself" is true for THIS file, false for the sweep — by
 instance 3 the pattern is brief-ready, and every further inline fix pays
 top-tier price for zero new judgment.
-
-## Fleet notes — dispatch-time detail
-
-- **Dispatch line** — `{"ts":"<iso8601>","phase":"dispatch","tier":"<class>","override":"<model / effort sent, or none>"}` appended to `<git-root>/.rolepod/evidence/phase-log.jsonl`. A hooked CLI writes it for role-pinned Agent calls; the Lead writes it for Workflow fleets, a strong dispatch to a non-strong role, and every dispatch on a CLI without hooks. `make stats` audits the trail and names silent downgrades.
-- **Hooked CLI** — the fleet-tier gate enforces one strong slot at dispatch and names the fix; its single exception is a script comment `// tier-reason: <why>`, which covers ONE strong call, never a fan-out.
-- **Lead-tier fit — once per session, tier classes only, never a model name.** Classify your OWN model into a class (cannot tell → skip). Strong-class Lead + three consecutive R1/R2 routes → note ONCE that a balanced Lead plus rolepod's escalation valves (cross-model consults, strong reviewers, BLOCKED redispatch) covers routine sessions. Balanced-class Lead + an R4 / architecture route → note ONCE that strong-tier consults and reviewers are pulled in automatically; a strong Lead is worth it only when that is the day's main work.
