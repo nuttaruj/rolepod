@@ -2,8 +2,6 @@
 name: check-work
 description: Use after a change is made and before claiming the work is done — prove it with evidence (tests, build, typecheck, curl, logs, screenshot, browser). State limitations explicitly when verification is not possible. Phase = Verify.
 when_to_use: after editing code, configs, content, or any artifact, and before reporting completion to the user or moving to the next phase
-tier: 1
-phase: verify
 ---
 
 # Check Work

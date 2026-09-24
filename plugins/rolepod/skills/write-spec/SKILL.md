@@ -2,8 +2,6 @@
 name: write-spec
 description: Use when turning a fuzzy goal, half-stated feature, or vague request into a sharp implementation spec. Discovery dialogue first, then design, then user approval, then a compact contract. Phase = Define.
 when_to_use: when the user request is non-trivial and the goal, scope, success criteria, or risk surfaces are not already pinned down in the conversation or in the repo
-tier: 1
-phase: define
 ---
 
 # Write Spec

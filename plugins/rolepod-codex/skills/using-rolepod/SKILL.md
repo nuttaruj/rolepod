@@ -2,8 +2,6 @@
 name: using-rolepod
 description: Use at the start of every request to route work into Rolepod's workflow spine before planning, editing, delegating, verifying, reviewing, or shipping.
 when_to_use: every user request unless the task is a clearly trivial answer that requires no repo state, no action, no recommendation, and no workflow decision
-tier: 0
-phase: router
 ---
 
 # Using Rolepod — workflow router

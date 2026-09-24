@@ -3,8 +3,6 @@ name: rolepod-full
 description: Force-full Rolepod lifecycle — Define → Plan → Build → Verify → Review → Ship with no phase skips. Use only when the user explicitly invokes /rolepod-full or $rolepod-full for feature-scale work.
 when_to_use: explicit user invocation only (/rolepod-full or $rolepod-full); never auto-trigger for normal requests
 disable-model-invocation: true
-tier: 0
-phase: router
 ---
 
 # Rolepod Full — force-full lifecycle entrypoint

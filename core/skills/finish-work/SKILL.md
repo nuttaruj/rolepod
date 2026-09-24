@@ -2,8 +2,6 @@
 name: finish-work
 description: Use at the end of a development branch — pre-merge gate, CI lane discipline, 4-option finish menu (merge, PR, keep open, discard), release checklist for production launches. Phase = Ship.
 when_to_use: when implementation + verification + review are done and the next decision is about the fate of the branch — merge to main, open a PR, keep working, discard, or stage a production launch
-tier: 1
-phase: ship
 ---
 
 # Finish Work

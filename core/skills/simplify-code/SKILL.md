@@ -2,8 +2,6 @@
 name: simplify-code
 description: Use when code feels over-engineered, rotted, or duplicated — cut unused abstraction, inline single-use helpers, centralize patterns repeated in 3+ places, prefer structural impossibility over defensive clutter. Behavior-preserving. Phase = Simplify.
 when_to_use: when reviewing existing code that looks bloated, when a refactor request lands, when the same pattern shows up in 3+ places, or when a single-use abstraction is adding cost without payoff
-tier: 1
-phase: simplify
 ---
 
 # Simplify Code

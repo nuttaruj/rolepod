@@ -2,8 +2,6 @@
 name: debug-issue
 description: Use when something is broken — error appears, test fails, build breaks, output is wrong, regression returns. Reproduce, trace upstream to root cause, write a failing test, ship a minimal fix. Phase = Build / Debug.
 when_to_use: when an error appears, a test that was green is red, a build broke, output is wrong, something worked before and stopped, the same bug keeps recurring, or a fix made one error vanish while a similar one appeared nearby
-tier: 1
-phase: build
 ---
 
 # Debug Issue

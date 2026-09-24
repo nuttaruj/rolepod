@@ -2,8 +2,6 @@
 name: write-plan
 description: Use when turning an approved spec or a small clear goal into an executable implementation plan — ordered tasks, file list, test plan, agent routing, and parallel contracts if more than one agent will edit code. Phase = Plan.
 when_to_use: when a spec or clear goal exists and the next step is to decide what to touch, in what order, by whom, with what tests, before any edits start
-tier: 1
-phase: plan
 ---
 
 # Write Plan

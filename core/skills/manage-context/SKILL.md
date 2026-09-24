@@ -2,8 +2,6 @@
 name: manage-context
 description: Use when the session is long, the repo is unfamiliar, a multi-file change is fanning out beyond the plan, you are stuck, or you need to escalate to a stronger model. Context budget, session hygiene, zoom-out, deep triage, escalate, onboarding, post-compact re-anchor. Phase = Recovery / Re-context / Escalate.
 when_to_use: when context feels heavy or stale, when you are mid-session and forgetting earlier constraints, when starting in an unfamiliar repo, when stuck after multiple attempts, or when the model class you are running on cannot make further progress
-tier: 1
-phase: recovery
 ---
 
 # Manage Context

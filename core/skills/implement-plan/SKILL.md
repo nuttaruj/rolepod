@@ -2,8 +2,6 @@
 name: implement-plan
 description: Use when executing an approved plan or a clear single-file edit — TDD at the plan's seams, surgical edits, bounded delegation, worktrees only when real filesystem isolation is needed. Phase = Build.
 when_to_use: when a plan is approved (or the diff is small and obvious) and the next step is to actually edit code, tests, configs, content, or other artifacts
-tier: 1
-phase: build
 ---
 
 # Implement Plan

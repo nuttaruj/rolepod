@@ -3,8 +3,6 @@ name: deepen-codebase
 description: Scan a codebase for deepening opportunities — shallow modules, leaking seams, interfaces a test cannot cross — present them as a visual report, then offer a write-spec on the card the user picks. Use only when the user explicitly invokes /deepen-codebase or $deepen-codebase.
 when_to_use: explicit user invocation only (/deepen-codebase or $deepen-codebase); never auto-trigger for a normal request
 disable-model-invocation: true
-tier: 0
-phase: define
 ---
 
 # Deepen Codebase — where a module should get deeper
