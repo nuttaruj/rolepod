@@ -131,15 +131,16 @@ if [ -z "$COLLISION" ] || [ "${ROLEPOD_ALLOW_SHARED_WORKTREE:-0}" = "1" ]; then
   # per route (marker = the route's timestamp in <session>.selfdo); never on
   # a subagent's edit (agent_id set), never on R1, never on test / doc
   # files, silent when no routing line exists. R2 fires on the Lead's FIRST
-  # product-code edit after the route (SELFDO_EDITS_R2); R3/R4 keep the
-  # 6-edit floor (SELFDO_EDITS). Additive context, never a block — the
+  # product-code edit after the route — SELFDO_EDITS_R2 is zero, so it fires
+  # whether or not the transcript already holds the current edit; R3/R4 keep
+  # the 6-edit floor (SELFDO_EDITS). Additive context, never a block — the
   # exception (user said self-do) is the user's to state. lib/session_state.py
   # is the one classifier: edit-fields returns the state only for a Lead
   # edit of a product-code target with a transcript (the same rule it
   # counts earlier edits with) and "" otherwise.
   SELFDO=""
   SELFDO_EDITS=6
-  SELFDO_EDITS_R2=1
+  SELFDO_EDITS_R2=0
   if [ -z "$AGENT_ID" ] && [ -n "$TRANSCRIPT" ] && [ -f "$TRANSCRIPT" ] && [ -n "$SELFDO_STATE" ]; then
     S_TIER=""; S_EDITS=0; S_WRITERS=0; S_TS=""
     { read -r S_TIER S_EDITS S_WRITERS S_TS; } <<EOF2 || true
@@ -169,7 +170,7 @@ EOF2
   if [ -n "$SELFDO" ]; then
     S_T="${SELFDO%% *}"; S_N="${SELFDO#* }"
     if [ "$S_T" = "R2" ]; then
-      MSG_SELFDO="\\u27c2 self-do: route R2, $S_N Lead edits on product code, 0 writer-role dispatch since the route. Fix: R2 goes to a task owner on main from the 3-5 line checklist (goal, done-when, Command); the Lead reviews the diff, never pre-explores. Exception: the user said self-do, or this is R1-sized. (off: ROLEPOD_NUDGE_OFF=1)"
+      MSG_SELFDO="\\u27c2 self-do: route R2 and the Lead is editing product code (0 writer-role dispatch since the route). Fix: R2 goes to a task owner on main from the 3-5 line checklist (goal, done-when, Command) \\u2014 the owner builds, verifies and runs the two review lenses; the Lead commits. Exception: the user said self-do, or this is R1-sized. (off: ROLEPOD_NUDGE_OFF=1)"
     else
       MSG_SELFDO="\\u27c2 self-do: route $S_T, $S_N Lead edits on product code, 0 writer-role dispatch since the route. Fix: the rest goes out as a task brief to the Owner the domain map names (plan-template Owner hint: frontend-developer / backend-developer / devops-sre / content-strategist \\u2026); the Lead reviews the manifest. Exception: the user said self-do, or this is R1-sized. (off: ROLEPOD_NUDGE_OFF=1)"
     fi

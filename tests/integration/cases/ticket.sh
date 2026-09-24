@@ -724,6 +724,69 @@ else
   echo "  ✗ lens diff file wrong or missing: $LSR_DIFF"; cat "$LSR_DIFF" 2>&1 >&2; fail=$((fail+1))
 fi
 
+# ── log's review: line falls back to a plain `git diff <range>` when the
+# git on PATH rejects `attr:` pathspec magic for diff (portability MINOR,
+# r2-owner combined review 2026-09-24) — the lens file still gets written,
+# and log still exits 0.
+ASR="$TMP/attr-shim-repo"
+mkdir -p "$ASR/plugins"
+( cd "${ASR:?}" && git init -q . && git config user.email t@t && git config user.name t \
+  && git commit -q --allow-empty -m init )
+ASR_REAL="$(git -C "$ASR" rev-parse --show-toplevel)"
+printf 'plugins/** linguist-generated\n' > "$ASR/.gitattributes"
+printf 'v1\n' > "$ASR/real.txt"
+( cd "${ASR:?}" && git add -A && git commit -q -m "task 1 commit" )
+ASR_TASK1_SHA="$(git -C "$ASR" rev-parse HEAD)"
+printf 'v2\n' > "$ASR/real.txt"
+( cd "${ASR:?}" && git add -A && git commit -q -m "later work" )
+cat > "$ASR/attr-shim-plan.md" <<'EOF'
+# Attr Shim Plan
+
+## Tasks
+
+### Task 1: alpha
+- **Blocked by:** none
+- [ ] **Files:** real.txt
+- [ ] **Command:** true
+- **Owner:** backend-developer
+
+## Changes during build
+
+## Follow-ups
+EOF
+
+GITSHIM_DIR="$TMP/git-shim"
+mkdir -p "$GITSHIM_DIR"
+REAL_GIT="$(command -v git)"
+cat > "$GITSHIM_DIR/git" <<EOF2
+#!/bin/bash
+has_diff=0; has_attr=0
+for a in "\$@"; do
+  [ "\$a" = "diff" ] && has_diff=1
+  case "\$a" in *attr:*) has_attr=1 ;; esac
+done
+if [ "\$has_diff" -eq 1 ] && [ "\$has_attr" -eq 1 ]; then
+  echo "fatal: pathspec magic not supported in diff: 'attr:'" >&2
+  exit 128
+fi
+exec "$REAL_GIT" "\$@"
+EOF2
+chmod +x "$GITSHIM_DIR/git"
+
+ASR_DIFF="$ASR_REAL/.rolepod/evidence/review/attr-shim-plan.diff"
+OUT_ASR=$(PATH="$GITSHIM_DIR:$PATH" bash "$TICKET" log "$ASR/attr-shim-plan.md" 1 --sha "$ASR_TASK1_SHA" --note "alpha done" 2>"$TMP/attr-shim.err")
+RC_ASR=$?
+if [ "$RC_ASR" -eq 0 ] && printf '%s\n' "$OUT_ASR" | grep -qF "; lens diff: $ASR_DIFF"; then
+  echo "  ✓ log falls back to a plain diff (still writes the lens file, still exits 0) when git rejects the attr: pathspec"
+else
+  echo "  ✗ log attr-pathspec fallback wrong (rc=$RC_ASR): [$OUT_ASR]"; cat "$TMP/attr-shim.err" >&2; fail=$((fail+1))
+fi
+if [ -f "$ASR_DIFF" ] && grep -q 'real.txt' "$ASR_DIFF"; then
+  echo "  ✓ the fallback lens diff file holds the source change"
+else
+  echo "  ✗ fallback lens diff file wrong or missing: $ASR_DIFF"; cat "$ASR_DIFF" 2>&1 >&2; fail=$((fail+1))
+fi
+
 # ═══════════════════════════════════════════════════════════════════════
 # fleet — Task 5: two ready role-owned tasks, one blocked, one Owner: Lead
 # ═══════════════════════════════════════════════════════════════════════

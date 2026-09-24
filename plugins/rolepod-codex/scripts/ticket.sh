@@ -874,16 +874,22 @@ EOF
       # holding the plan, not a task worktree) so every task's diff lands
       # in one place. A write failure (no repo, bad sha, unwritable dir)
       # never fails log — the range still prints, just without the path.
+      # The attr:linguist-generated exclude needs a git that supports attr
+      # pathspec magic for diff; a git that rejects it falls back to a plain
+      # diff over the same range so the lens file still gets written.
       local review_line repo_root diff_dir diff_path diff_content
       review_line="review: ${first_sha}^..HEAD — one combined review before release (implement-plan §6)"
       repo_root="$(git -C "$(dirname "$plan")" rev-parse --show-toplevel 2>/dev/null)"
       if [ -n "$repo_root" ]; then
         diff_dir="$repo_root/.rolepod/evidence/review"
         diff_path="$diff_dir/$(plan_slug_of "$plan").diff"
-        if mkdir -p "$diff_dir" 2>/dev/null \
-          && diff_content="$(git -C "$repo_root" diff "${first_sha}^..HEAD" -- . ':(exclude,attr:linguist-generated)' 2>/dev/null)" \
-          && printf '%s\n' "$diff_content" > "$diff_path" 2>/dev/null; then
-          review_line="$review_line; lens diff: $diff_path"
+        if mkdir -p "$diff_dir" 2>/dev/null; then
+          if diff_content="$(git -C "$repo_root" diff "${first_sha}^..HEAD" -- . ':(exclude,attr:linguist-generated)' 2>/dev/null)" \
+            || diff_content="$(git -C "$repo_root" diff "${first_sha}^..HEAD" 2>/dev/null)"; then
+            if printf '%s\n' "$diff_content" > "$diff_path" 2>/dev/null; then
+              review_line="$review_line; lens diff: $diff_path"
+            fi
+          fi
         fi
       fi
       printf '%s\n' "$review_line"
