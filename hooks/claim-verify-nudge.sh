@@ -105,9 +105,10 @@ if [ "$ROUTE" = "stale" ]; then
   ROUTE_MSG="⟂ route: a commission with no tier stated since your last request. Fix: one line before the first edit — Route: R2 (one file + test) → <skill> · <reason> — where R0 answer only · R1 trivial edit · R2 one file + test · R3 multi-file · R4 high-risk; R3/R4 → using-rolepod (Define → Plan first). The hook records it; blast radius sets the tier, not feature age. Exception: a literal follow-up inside an already-routed task → say 'same task' and continue. (off: ROLEPOD_NUDGE_OFF=1) "
 fi
 
-# Breaker state (v2.99.0): a breaker ledger newer than the last commit means
-# the review→fix loop on this tree is closed until the user decides — an
-# auto-resume prompt ("Please continue") must not reopen it; 3+ rounds with
+# Breaker state (v2.99.0; one round without stopping, v2.167.0): a breaker
+# ledger newer than the last commit arms the breaker — class fix once, ONE
+# internal strong re-check, then ship or split & stop and ask; an auto-resume
+# prompt ("Please continue") never opens another review round; 3+ rounds with
 # no ledger asks for the ledger first. Reader = the runner\x27s --rounds.
 # Auto-resume (v2.100.0): after a usage-limit pause the harness sends
 # "Please continue from where you left off" — a resume, not a user decision.
@@ -122,7 +123,7 @@ if [ -f "$XFAM_RUNNER" ] && git rev-parse --show-toplevel >/dev/null 2>&1; then
   RR=$(bash "$XFAM_RUNNER" --rounds 2>/dev/null || true)
   LP=$(printf '%s' "$RR" | sed -n 's/.*ledger=\([^ ]*\).*/\1/p'); RN=$(printf '%s' "$RR" | sed -n 's/.*rounds=\([0-9]*\).*/\1/p')
   if [ -n "$LP" ] && [ "$LP" != "-" ]; then
-    BREAKER_MSG="⏹ breaker open: $LP — the review→fix loop on this tree is closed until the user decides. Fix: restate the decision brief (rounds · class · options) and stop; act only on the user\x27s pick. Exception: this message IS the pick → do it. "
+    BREAKER_MSG="⏹ breaker: $LP — class fix once, then ONE internal strong re-check with the ledger + fix delta (review-code §5). APPROVED → ship, no question. REJECTED → split & stop, restate the decision brief and ask the user. "
   elif [ "${RN:-0}" -ge 3 ]; then
     BREAKER_MSG="⏹ review-rounds: $RN rounds on one uncommitted tree, no breaker ledger. Fix: before any fix or review — docs/rolepod/handoffs/<feature>-breaker-<date>.md (## Rounds · ## Class · ## Decision), then the class fix once (review-code §5). "
   fi

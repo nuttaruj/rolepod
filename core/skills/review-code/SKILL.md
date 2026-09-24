@@ -146,10 +146,10 @@ Whoever wrote a BLOCKER / MAJOR fix never verifies it (a MINOR / NIT fix: the au
 
 Then, in order:
 0. **Stop** — no fix, no reviewer; `--collect` or `--kill` what runs.
-1. **Ledger** — `docs/rolepod/handoffs/<feature>-breaker-<date>.md`: `## Rounds` (per round: found → hypothesis → changed → test result → came back), `## Class` (one root cause, its single point, every consumer — grep the call sites now), `## Decision` (options for the user).
+1. **Ledger** — `docs/rolepod/handoffs/<feature>-breaker-<date>.md`: `## Rounds` (per round: found → hypothesis → changed → test result → came back), `## Class` (one root cause, its single point, every consumer — grep the call sites now), `## Decision` (the class fix chosen — the user is asked only when the breaker round fails).
 2. **Class** — cannot name the class or its single point → ONE consult (the CLI's native advisor, else `rolepod-cross-family --kind consult --brief <ledger>`) asking exactly that; never a second blind fix.
 3. **Class fix once** — one source of truth, every consumer calls it, per-site copies deleted; proof = a class test failing on ≥2 old sites + the consumer list checked off; NEW findings outside the class → `## Follow-ups`.
-4. **One round** — `--since <job> --ledger <ledger> --detach` plus the internal strong reviewer on the class with the same two files. Round 4 is refused without the ledger; round 5 is refused outright. APPROVED / NITS → ship path.
+4. **One round, no stop** — the internal strong reviewer re-checks the class with the ledger + the fix delta (≤ 15 calls); no new external round (it had its rounds; the runner refuses round 4 without the ledger, round 5 outright). Keep the fix uncommitted until it returns, so earlier external passes stay in the gate's window. APPROVED / NITS → ship path, no question to the user.
 5. **Split & stop** — REJECTED with any IN-FIX / REPEAT, or the user absent: commit the slices with no open finding, park the churning surface as a delta spec / Follow-ups, end the turn with the decision brief (rounds · class · options); a resume prompt restates the brief, never opens a round.
 
 An advisor never substitutes for the §3 adversarial pass.
