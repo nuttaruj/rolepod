@@ -777,30 +777,170 @@ def _bare_agent_name(subagent_type: str | None) -> str:
 # (observed: CourtBook coach-daily-wage, a `// tier-reason:` mentioning "Lead's
 # tier" silenced an 8×opus fleet). A `//` inside a string is still consumed as
 # string content, because the opening quote matches first at its own position.
-_SCRIPT_STR_RX = re.compile(
-    r"//[^\n]*"                 # line comment
-    r"|/\*.*?\*/"               # block comment
-    r"|`(?:\\.|[^`\\])*`"       # template literal
-    r"|'(?:\\.|[^'\\])*'"       # single-quoted
-    r'|"(?:\\.|[^"\\])*"',      # double-quoted
-    re.S)
+# A `/` opens a JS regex LITERAL (not division) only when the last
+# significant token before it is start-of-script, one of these punctuation
+# marks, or one of the prefix keywords below — the usual disambiguation
+# heuristic. Not exhaustive (a real JS parser tracks full expression state);
+# good enough to keep a division `a / b` as code while still recognizing the
+# regex literals a Workflow script actually writes.
+_REGEX_OPEN_PUNCT = set("(,=:[!&|?{};+-*/%<>~^")
+_REGEX_OPEN_KEYWORDS = {
+    "return", "typeof", "case", "in", "of", "instanceof", "new", "delete",
+    "void", "throw", "yield", "do", "else",
+}
+_IDENT_CHAR_RX = re.compile(r"[A-Za-z0-9_$]")
 
 
-def _blank_token(m: "re.Match") -> str:
-    s = m.group(0)
-    if s[:2] in ("//", "/*"):
-        # a comment carries no tier choice — blank it whole (newlines kept so
-        # every later offset and line count is unchanged)
-        return "".join("\n" if c == "\n" else " " for c in s)
-    # string literal: keep the quote marks, blank the contents (newline-safe)
-    return s[0] + "".join("\n" if c == "\n" else " " for c in s[1:-1]) + s[-1]
+def _blank_segment(seg: str) -> str:
+    """A comment / string / regex token, blanked but LENGTH- and
+    newline-preserving; a delimited token (string/regex) keeps its opening
+    and closing mark so a later offset-based reader still sees a quote."""
+    if seg[:2] in ("//", "/*"):
+        return "".join("\n" if c == "\n" else " " for c in seg)
+    if len(seg) < 2:
+        return seg
+    return seg[0] + "".join("\n" if c == "\n" else " " for c in seg[1:-1]) + seg[-1]
 
 
 def strip_strings(script: str) -> str:
-    """Blank string literals and comments, preserving length, newlines, and
-    the string quote marks — so a `key:` found in the result reads its value
-    from the original script at the same offset."""
-    return _SCRIPT_STR_RX.sub(_blank_token, script or "")
+    """Blank string literals, comments AND regex literals, preserving
+    length, newlines, and (for strings/regex) the delimiter marks — so a
+    `key:` found in the result reads its value from the original script at
+    the same offset.
+
+    A single hand-written regex (this function's pre-2026-09-24 shape)
+    could not tell a `/` that OPENS a regex literal from a `/` that is
+    division, or a stray quote INSIDE a regex body from a real string
+    delimiter — `const q = /'/g;` desynced the quote-pairing of every later
+    `'...'` / `"..."` on the same script, exposing a prompt string's text
+    (e.g. an `agentType:` mentioned only in prose) as if it were real code
+    (F9 follow-up finding, external review of commit c75a324c). This is a
+    single left-to-right scan instead: comments and quoted strings are
+    recognized as before (each quote type is only ever closed by its OWN
+    matching delimiter, never desynced by the other), and a `/` is a regex
+    literal open only per `_REGEX_OPEN_PUNCT` / `_REGEX_OPEN_KEYWORDS`
+    above — otherwise it is left as plain code (division)."""
+    script = script or ""
+    n = len(script)
+    out = []
+    i = 0
+    regex_ok = True     # start-of-script — a leading `/` is a regex, not division
+    word = ""            # identifier/keyword being accumulated
+
+    def flush_word():
+        nonlocal regex_ok, word
+        if word:
+            regex_ok = word in _REGEX_OPEN_KEYWORDS
+            word = ""
+
+    while i < n:
+        c = script[i]
+
+        # line comment — transparent to regex/division context (word state
+        # and regex_ok both carry through unchanged).
+        if c == "/" and i + 1 < n and script[i + 1] == "/":
+            j = script.find("\n", i)
+            j = n if j == -1 else j
+            out.append(_blank_segment(script[i:j]))
+            i = j
+            continue
+
+        # block comment — same transparency.
+        if c == "/" and i + 1 < n and script[i + 1] == "*":
+            j = script.find("*/", i + 2)
+            j = n if j == -1 else j + 2
+            out.append(_blank_segment(script[i:j]))
+            i = j
+            continue
+
+        # template literal (backtick-terminated only — `${...}` interior is
+        # not parsed as code; matches the pre-existing, pre-2026-09-24 rule)
+        if c == "`":
+            flush_word()
+            j = i + 1
+            while j < n:
+                if script[j] == "\\":
+                    j += 2
+                    continue
+                if script[j] == "`":
+                    j += 1
+                    break
+                j += 1
+            else:
+                j = n
+            out.append(_blank_segment(script[i:j]))
+            i = j
+            regex_ok = False
+            continue
+
+        # single / double quoted string — closed only by its OWN quote char,
+        # an embedded quote of the OTHER kind is ordinary content (the exact
+        # desync this function exists to prevent).
+        if c in ("'", '"'):
+            flush_word()
+            q = c
+            j = i + 1
+            closed = False
+            while j < n:
+                if script[j] == "\\":
+                    j += 2
+                    continue
+                if script[j] == "\n":
+                    break  # unterminated on this line — bail, leave as code
+                if script[j] == q:
+                    j += 1
+                    closed = True
+                    break
+                j += 1
+            if closed:
+                out.append(_blank_segment(script[i:j]))
+                i = j
+                regex_ok = False
+                continue
+            # unterminated — fall through, treat the quote as a plain char
+
+        # regex literal
+        if c == "/" and regex_ok:
+            flush_word()
+            j = i + 1
+            in_class = False
+            closed = False
+            while j < n:
+                ch = script[j]
+                if ch == "\\":
+                    j += 2
+                    continue
+                if ch == "\n":
+                    break
+                if ch == "[":
+                    in_class = True
+                elif ch == "]":
+                    in_class = False
+                elif ch == "/" and not in_class:
+                    j += 1
+                    closed = True
+                    break
+                j += 1
+            if closed:
+                while j < n and _IDENT_CHAR_RX.match(script[j]):  # trailing flags
+                    j += 1
+                out.append(_blank_segment(script[i:j]))
+                i = j
+                regex_ok = False
+                continue
+            # unterminated on this line — fall through, treat `/` as division
+
+        # plain code character
+        if _IDENT_CHAR_RX.match(c):
+            word += c
+        else:
+            flush_word()
+            if not c.isspace():
+                regex_ok = c in _REGEX_OPEN_PUNCT
+        out.append(c)
+        i += 1
+
+    return "".join(out)
 
 
 def script_option_values(script: str, key: str, code: str | None = None) -> list[str]:
