@@ -22,7 +22,7 @@
  *      concurrent edits to the same worktree. Stale locks (>30 min) are
  *      pruned on contact; a fresh sibling triggers a toast (v1) or a
  *      one-shot system-part nudge (v2 — server plugins have no toast).
- *   2. post-compact → re-anchor nudge (manage-context §7): trust disk over
+ *   2. post-compact → re-anchor nudge (manage-context Re-anchor after compaction): trust disk over
  *      summary — plan checkboxes, git log, spec.
  *   3. tool result → session evidence tracker: edit/write(/patch, v2) on a
  *      high-risk path vs a test path, via the CLI-neutral edit ledger

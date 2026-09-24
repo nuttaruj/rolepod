@@ -1145,7 +1145,7 @@ fi
 if [ -n "$HIGH_RISK" ] && [ "$STRONG_REVIEWERS" -eq 0 ] && [ -z "$XFAM_HELD" ]; then
   REASON+="NO STRONG ADVERSARIAL REVIEWER since the last commit. The gate opens when one of them has FINISHED: (a) a cross-family external strong review, anchored per review-code (raw output under .rolepod/evidence/external/ + the reviewer:external log line) — preferred; (b) a security-engineer or universal-reviewer dispatch (Agent tool or Workflow agentType) that has FINISHED. The hook lifts Agent-tool ones to strong — do not pass a balanced model. Test edits are the test floor, not the review. "
 fi
-REASON+="Run S1-S5 (simplicity) + T1-T6 (tests) + F1-F5 (finish) — finish-work §1, check-work §6. "
+REASON+="Run S1-S5 (simplicity) + T1-T6 (tests) + F1-F5 (finish) — finish-work Pre-merge gates, check-work Failure modes. "
 REASON+="Auto-passes once evidence exists SINCE THE LAST COMMIT: high-risk → dispatch security-engineer or universal-reviewer; other blocks → write the failing test or dispatch a reviewer; then rerun the SAME git commit. No bypass marker, no env prefix."
 
 # Decide: HARD block vs SOFT warn
@@ -1214,7 +1214,7 @@ sys.stdout.write(' '.join(os.environ.get('ROLEPOD_BYPASS_CMD', '').split())[:200
     >> "$HOME/.rolepod/gate-bypass.log" 2>/dev/null || true
   NOTE="precommit-gate auto-passed on session evidence: $TEST_EDITS test edits / $REVIEWERS reviewer dispatches / $STRONG_REVIEWERS strong"
   [ -n "$HIGH_RISK" ] && NOTE+=" (HIGH-RISK path: $HIGH_RISK)"
-  NOTE+=" ($SINCE_HUMAN). Evidence is per-window — confirm S1-S5 (simplicity) / T1-T6 (tests) / F1-F5 (finish) — finish-work §1, check-work §6 — cover THIS change."
+  NOTE+=" ($SINCE_HUMAN). Evidence is per-window — confirm S1-S5 (simplicity) / T1-T6 (tests) / F1-F5 (finish) — finish-work Pre-merge gates, check-work Failure modes — cover THIS change."
   [ -n "$LINT_WARN" ] && NOTE+=" | $LINT_WARN"
   ROLEPOD_HOOK_MSG="$NOTE" python3 -I -c "
 import json, os
@@ -1256,15 +1256,15 @@ WARN="precommit-gate SOFT: $FILES_CHANGED files / $LINES_CHANGED lines / $REVIEW
 # comment lines around one real line.
 # A rolepod-ticket worktree (basename `*-wt-*-tN*`, the shape `ticket.sh
 # start` always creates) already gets the Lead's ONE combined review before
-# release (spec lean-loop-2026-09-23 Task 2, implement-plan §6) — the
+# release (spec lean-loop-2026-09-23 Task 2, implement-plan Review) — the
 # "0 reviewers on a logic diff" sentence would double-count it there.
 WT_TOPLEVEL_BASE=$(basename "$(gitd rev-parse --show-toplevel 2>/dev/null || echo "$DIFF_DIR")")
 case "$WT_TOPLEVEL_BASE" in
   *-wt-*-t[0-9]*) IN_TICKET_WT=1 ;;
   *) IN_TICKET_WT=0 ;;
 esac
-if [ "$REVIEW_LOGIC" -gt 0 ] && [ "$REVIEWERS" -eq 0 ] && [ "$IN_TICKET_WT" -eq 0 ] && { [ "${REVIEW_FILES:-0}" -gt 1 ] || [ "$REVIEW_LOGIC" -gt 5 ]; }; then WARN+="0 reviewers on a logic diff = the author reviewed it. Fix: dispatch rolepod:universal-reviewer (read-only, two axes) on the diff, then commit (review-code §1; R2 = one file + test). Exception: the task owner already had it reviewed, or the diff is config / generated copies / message text → commit. "; fi
-WARN+="Gates S1-S5 (simplicity) / T1-T6 (tests) / F1-F5 (finish) — finish-work §1, check-work §6 — are advisory here; ROLEPOD_GATES_HARD=1 enforces."
+if [ "$REVIEW_LOGIC" -gt 0 ] && [ "$REVIEWERS" -eq 0 ] && [ "$IN_TICKET_WT" -eq 0 ] && { [ "${REVIEW_FILES:-0}" -gt 1 ] || [ "$REVIEW_LOGIC" -gt 5 ]; }; then WARN+="0 reviewers on a logic diff = the author reviewed it. Fix: dispatch rolepod:universal-reviewer (read-only, two axes) on the diff, then commit (review-code Pick reviewers; R2 = one file + test). Exception: the task owner already had it reviewed, or the diff is config / generated copies / message text → commit. "; fi
+WARN+="Gates S1-S5 (simplicity) / T1-T6 (tests) / F1-F5 (finish) — finish-work Pre-merge gates, check-work Failure modes — are advisory here; ROLEPOD_GATES_HARD=1 enforces."
 [ -n "$LINT_WARN" ] && WARN+=" | $LINT_WARN"
 
 ROLEPOD_HOOK_MSG="$WARN" python3 -I -c "

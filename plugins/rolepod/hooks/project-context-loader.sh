@@ -64,7 +64,7 @@ if [ -f "$_xr" ]; then
   _rr=$(cd "$REPO" && bash "$_xr" --rounds 2>/dev/null || true)
   _lp=$(printf '%s' "$_rr" | sed -n 's/.*ledger=\([^ ]*\).*/\1/p'); _rn=$(printf '%s' "$_rr" | sed -n 's/.*rounds=\([0-9]*\).*/\1/p')
   if [ -n "$_lp" ] && [ "$_lp" != "-" ]; then STATE="$STATE\n**Breaker ledger open:** \`${_lp#$REPO/}\` — restate the decision brief; no new fix or review round until the user decides"
-  elif [ "${_rn:-0}" -ge 3 ]; then STATE="$STATE\n**Review rounds on this tree:** $_rn, no ledger — write docs/rolepod/handoffs/<feature>-breaker-<date>.md before any fix (review-code §5)"; fi
+  elif [ "${_rn:-0}" -ge 3 ]; then STATE="$STATE\n**Review rounds on this tree:** $_rn, no ledger — write docs/rolepod/handoffs/<feature>-breaker-<date>.md before any fix (review-code Breaker)"; fi
 fi
 [ -n "$STATE" ] && CTX="$CTX\n\n$STATE"
 

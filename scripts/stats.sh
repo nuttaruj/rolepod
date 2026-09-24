@@ -290,7 +290,7 @@ if reviews:
             infix = sum(int(r.get("infix") or 0) for r in later)
             rep = sum(int(r.get("repeat") or 0) for r in later)
             print(f"    round-2+ reviews {len(later)}: IN-FIX {infix} · REPEAT {rep}"
-                  + ("  ⚠ IN-FIX > REPEAT + NEW share → fixes are point-patches; zoom out (review-code §5)" if infix and infix >= len(later) else ""))
+                  + ("  ⚠ IN-FIX > REPEAT + NEW share → fixes are point-patches; zoom out (review-code Breaker)" if infix and infix >= len(later) else ""))
 refused = [r for r in rows if r.get("phase") == "external-refused"]
 if refused:
     print(f"\n  Cross-family refusals ({len(refused)}): "

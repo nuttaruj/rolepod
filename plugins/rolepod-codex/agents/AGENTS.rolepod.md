@@ -88,7 +88,7 @@ Pick the lowest level the request calls for.
 
 ## Hard stops — stop and ask the user
 
-- 3rd failed attempt, or a 3rd review round on one tree → review-code §5
+- 3rd failed attempt, or a 3rd review round on one tree → review-code Breaker
   breaker: ledger, class fix once, one round, then split & stop.
 - Destructive command ahead → confirm first.
 - Cannot state the ask in one sentence → re-read the request.

@@ -33,7 +33,7 @@ Source of truth: [`core/fragments/agent-roster-lean.md`](../core/fragments/agent
 | AI / LLM features, RAG, prompt engineering | `ai-ml-engineer` |
 | Analytics, dashboards, data pipelines | `data-scientist` |
 | API design, module boundaries, data flow | `system-architect` |
-| Feature scope, priorities, pricing, ROI | the user — the product owner; `write-spec` §2 gathers it, no agent stands in |
+| Feature scope, priorities, pricing, ROI | the user — the product owner; `write-spec` Discovery gathers it, no agent stands in |
 | Wide read-only sweep — repo or online — before a plan or answer | `scout` |
 | Visual design, design system, a11y | `ui-ux-designer` |
 | `.github/workflows/**`, `Dockerfile` / `docker-compose*`, `vercel.json` / `wrangler.*` / `fly.toml` / `railway.*`, `deploy/**`, `infra/**`, `terraform/**`, release scripts, monitoring | `devops-sre` |
@@ -50,7 +50,7 @@ Source of truth: [`core/fragments/agent-roster-lean.md`](../core/fragments/agent
 
 ## Why not fewer agents?
 
-`product-manager` was retired in v2.115.0: over 90 days it was dispatched 0 times because the user IS the product owner — `write-spec` §2 gathers scope, priorities and commercial framing from them directly, so an agent standing in between was a role with no work.
+`product-manager` was retired in v2.115.0: over 90 days it was dispatched 0 times because the user IS the product owner — `write-spec` Discovery gathers scope, priorities and commercial framing from them directly, so an agent standing in between was a role with no work.
 
 The 15-specialist count comes from cost-aware role separation, not workflow stages. A senior backend developer model is cheap; a strongest model doing security review is expensive. Mixing them inside one agent collapses the cost-control dimension and forces the workflow to pay strongest-model rates for every task. Keeping them separate lets each agent carry its own tier-mapped model.
 

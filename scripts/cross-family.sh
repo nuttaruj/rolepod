@@ -79,7 +79,7 @@
 #            commit and the last prompt the user typed, a clean tree is 0
 #            rounds (v2.128.0). Round 3 gets a notice; round 4 needs
 #            `--ledger <breaker file>` (a `## Rounds` + `## Class` heading);
-#            round 5 is refused, exit 9: split & stop (review-code §5).
+#            round 5 is refused, exit 9: split & stop (review-code Breaker).
 #            Measured 2026-09-21: counting per reviewer instead of the whole
 #            tree turns 7 of 185 windows' round >= 4 into 2. The first
 #            anchored external pass in the window is the commit gate's floor,
@@ -134,7 +134,7 @@ while [ $# -gt 0 ]; do
     --allow-risky) ALLOW_RISKY=1; shift ;;        # implement: the USER lifts the money / auth / data refusal for this ticket (review-code then runs BOTH passes on it)
     --since) SINCE_ID="${2:-}"; shift 2 ;;         # round 2+: attach the fix delta since that job + its report
     --kill) MODE="kill"; KILL_ID="${2:-}"; shift 2 ;;
-    --ledger) LEDGER="${2:-}"; shift 2 ;;            # breaker ledger — round 4 needs it (review-code §5)
+    --ledger) LEDGER="${2:-}"; shift 2 ;;            # breaker ledger — round 4 needs it (review-code Breaker)
     --rounds) MODE="rounds"; shift ;;               # print review rounds on this uncommitted tree
     --role) ROLE="${2:-}"; shift 2 ;;                # --rounds only: one reviewer key's current (unknown key → never seen)
     --job) JOB_DIR="${2:-}"; shift 2 ;;          # internal: the detached child
@@ -1123,20 +1123,20 @@ if [ "$KIND" = "review" ] && [ -z "$JOB_DIR" ]; then
   LCLASS=$(printf '%s' "$RR" | sed -n 's/.*class=\([01]\).*/\1/p'); LCLASS=${LCLASS:-0}
   GATEPASS=$(printf '%s' "$RR" | sed -n 's/.*gatepass=\([01]\).*/\1/p'); GATEPASS=${GATEPASS:-0}
   if [ -n "$LEDGER" ]; then
-    { [ -f "$LEDGER" ] && grep -q '^## Class' "$LEDGER"; } || { echo "cross-family: --ledger $LEDGER must exist and carry a '## Class' heading (review-code §5 step 2)" >&2; exit 2; }
+    { [ -f "$LEDGER" ] && grep -q '^## Class' "$LEDGER"; } || { echo "cross-family: --ledger $LEDGER must exist and carry a '## Class' heading (review-code Breaker step 2)" >&2; exit 2; }
     LCLASS=1; ATTACH="$LEDGER${ATTACH:+
 $ATTACH}"
   fi
   # v2.154.0: no anchored external pass in the window yet = the gate's own
   # pass, never refused, never counted.
   if [ "$GATEPASS" != "1" ] && [ "$CUR" -ge 5 ] && [ "${ROLEPOD_GATES_SOFT:-0}" != "1" ]; then
-    echo "ROLEPOD-XFAM refused round=$CUR — the external reviewer's round $CUR on one uncommitted tree is past the breaker budget (ledger, class fix once, ONE round). Fix: split & stop (review-code §5 step 5) — commit the slices with no open finding, park the churning surface as a delta spec / Follow-ups, end the turn with the decision brief. The user's next typed prompt re-opens the window — no new session, no bypass. Exception: ROLEPOD_GATES_SOFT=1 (user-set)."
+    echo "ROLEPOD-XFAM refused round=$CUR — the external reviewer's round $CUR on one uncommitted tree is past the breaker budget (ledger, class fix once, ONE round). Fix: split & stop (review-code Breaker step 5) — commit the slices with no open finding, park the churning surface as a delta spec / Follow-ups, end the turn with the decision brief. The user's next typed prompt re-opens the window — no new session, no bypass. Exception: ROLEPOD_GATES_SOFT=1 (user-set)."
     exit 9
   elif [ "$GATEPASS" != "1" ] && [ "$CUR" -ge 4 ] && [ "$LCLASS" != "1" ] && [ "${ROLEPOD_GATES_SOFT:-0}" != "1" ]; then
     echo "ROLEPOD-XFAM refused round=$CUR — the external reviewer's round 4 on one uncommitted tree without a breaker ledger. Fix: write docs/rolepod/handoffs/<feature>-breaker-<date>.md (## Rounds: one line per round · ## Class: the one root cause, its single point, every consumer · ## Decision), make the class-level fix ONCE with a class test, then re-run with --ledger <file> --since <job>. Exception: ROLEPOD_GATES_SOFT=1 (user-set)."
     exit 9
   elif [ "$GATEPASS" != "1" ] && [ "$CUR" -ge 3 ]; then
-    ROUND_NOTE="ROLEPOD-XFAM round=$CUR of the external reviewer on one uncommitted tree — the breaker is armed: after this verdict no more point fixes; ledger (## Rounds · ## Class · ## Decision) → class fix once (class test + consumer list) → ONE round with --ledger --since → else split & stop (review-code §5)."
+    ROUND_NOTE="ROLEPOD-XFAM round=$CUR of the external reviewer on one uncommitted tree — the breaker is armed: after this verdict no more point fixes; ledger (## Rounds · ## Class · ## Decision) → class fix once (class test + consumer list) → ONE round with --ledger --since → else split & stop (review-code Breaker)."
     echo "$ROUND_NOTE"
   fi
 fi

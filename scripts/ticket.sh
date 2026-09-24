@@ -42,7 +42,7 @@
 #     a (<owner>), ..."), plus "fleet: rolepod-ticket fleet <plan>" when one
 #     of them is role-owned. Once every role-owned task is done, also prints
 #     "review: <first logged task sha>^..HEAD — one combined review before
-#     release (implement-plan §6)", and writes that same range (generated
+#     release (implement-plan Review)", and writes that same range (generated
 #     files left out) to .rolepod/evidence/review/<plan-slug>.diff, naming
 #     it on the same line ("; lens diff: <path>") so the review lenses get
 #     the diff as a file, not a shell. A write failure never fails log — the
@@ -894,7 +894,7 @@ EOF
   fi
 
   # ONE combined review before release (spec lean-loop-2026-09-23 Task 2,
-  # implement-plan §6): once every role-owned task's own block is fully
+  # implement-plan Review): once every role-owned task's own block is fully
   # checked, name the range from the FIRST task this plan ever logged (its
   # parent commit) through HEAD — never before every role task is done, and
   # a re-run after that point reprints the same line (idempotent, like
@@ -932,7 +932,7 @@ EOF
       # pathspec magic for diff; a git that rejects it falls back to a plain
       # diff over the same range so the lens file still gets written.
       local review_line repo_root diff_dir diff_path diff_content
-      review_line="review: ${first_sha}^..HEAD — one combined review before release (implement-plan §6)"
+      review_line="review: ${first_sha}^..HEAD — one combined review before release (implement-plan Review)"
       repo_root="$(git -C "$(dirname "$plan")" rev-parse --show-toplevel 2>/dev/null)"
       if [ -n "$repo_root" ]; then
         diff_dir="$repo_root/.rolepod/evidence/review"

@@ -1,7 +1,7 @@
 #!/bin/bash
 # plan-lint — deterministic lint of a filled plan artifact, plus the
 # cohesion contract when the plan declares a parallel layout. The
-# mechanical arm of write-plan §7 self-review.
+# mechanical arm of write-plan Self-review.
 #
 # Usage: scripts/plan-lint.sh <plan.md> [contract.md]
 #   The contract argument is optional — when omitted, the script looks for
@@ -431,7 +431,7 @@ if [ "${1:-}" = "--brief" ]; then
       print "Round 2 = ONE new foreground dispatch of the flagging reviewer on the fix delta, never a message to the finished one (a sub-agent gets no reply to it; the answer lands at the Lead). Max 2 rounds. Only a BLOCKER or MAJOR fix gets round 2; a MINOR or NIT fix is proven by the Command. The round-2 prompt carries the findings and the fix delta only, never a new run, mutant or suite: round 1 proof is not redone."
     } else {
       # R2 / R3: no reviewer in the loop — the Lead runs ONE combined
-      # review over the plan diff (implement-plan §6) instead, so there is
+      # review over the plan diff (implement-plan Review) instead, so there is
       # no per-task external clause and no Round 2 line here.
       r = "`none` in the loop — the Lead runs ONE combined review over the plan diff before release"
       if (e2e) r = r ", `qa-tester` (E2E)"

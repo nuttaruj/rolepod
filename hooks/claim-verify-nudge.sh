@@ -123,9 +123,9 @@ if [ -f "$XFAM_RUNNER" ] && git rev-parse --show-toplevel >/dev/null 2>&1; then
   RR=$(bash "$XFAM_RUNNER" --rounds 2>/dev/null || true)
   LP=$(printf '%s' "$RR" | sed -n 's/.*ledger=\([^ ]*\).*/\1/p'); RN=$(printf '%s' "$RR" | sed -n 's/.*rounds=\([0-9]*\).*/\1/p')
   if [ -n "$LP" ] && [ "$LP" != "-" ]; then
-    BREAKER_MSG="⏹ breaker: $LP — class fix once, then ONE internal strong re-check with the ledger + fix delta (review-code §5). APPROVED → ship, no question. REJECTED → split & stop, restate the decision brief and ask the user. "
+    BREAKER_MSG="⏹ breaker: $LP — class fix once, then ONE internal strong re-check with the ledger + fix delta (review-code Breaker). APPROVED → ship, no question. REJECTED → split & stop, restate the decision brief and ask the user. "
   elif [ "${RN:-0}" -ge 3 ]; then
-    BREAKER_MSG="⏹ review-rounds: $RN rounds on one uncommitted tree, no breaker ledger. Fix: before any fix or review — docs/rolepod/handoffs/<feature>-breaker-<date>.md (## Rounds · ## Class · ## Decision), then the class fix once (review-code §5). "
+    BREAKER_MSG="⏹ review-rounds: $RN rounds on one uncommitted tree, no breaker ledger. Fix: before any fix or review — docs/rolepod/handoffs/<feature>-breaker-<date>.md (## Rounds · ## Class · ## Decision), then the class fix once (review-code Breaker). "
   fi
 fi
 
