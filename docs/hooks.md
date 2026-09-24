@@ -355,10 +355,11 @@ One live review job per repo: a second `--kind review` is refused (exit 8)
 until `--collect <id>` or `--kill <id>` (status 137, no anchor). The
 external reviewer runs once per R4 task — round 1 only; round 2+ (the
 fix-verify pass) is internal (`security-engineer` re-checks its own
-BLOCKER / MAJOR findings, `universal-reviewer` at strong class re-checks
-the external's) and never re-dispatches the runner. A new issue found on a
-later pass is a normal finding and gets fixed like any other — there is no
-review-round circuit breaker at any layer.
+BLOCKER / MAJOR findings and the external's on a high-risk path,
+`universal-reviewer` at strong class re-checks the external's others) and
+never re-dispatches the runner. A new issue found on a later pass is a
+normal finding and gets fixed like any other — there is no review-round cap
+or loop stop at any layer.
 **Pre-existing findings (v2.164.0):** a pre-existing issue on a path the diff does not touch is one note line in the report and never drives the verdict.
 
 Names: `codex` `claude` `agy` `cursor` `opencode` (the standalone Gemini

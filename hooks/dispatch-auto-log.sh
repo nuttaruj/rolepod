@@ -100,11 +100,6 @@ if tool == "Workflow":
 else:
     atype = ti.get("subagent_type") or "general-purpose"
     line["agent_type"] = atype
-    # Matches workflow-tier-nudge dname computation exactly: ti.get(name) or
-    # "", no description fallback. The live gate named-bucket regex
-    # (review|verif|audit) never sees description, so falling back to it
-    # here would let a benign description (review the fixtures) widen the
-    # round-breaker named bucket beyond what the gate itself matches.
     line["name"] = ti.get("name") or "?"
     model = ti.get("model") or ""
     is_strong_role = ss is not None and ss._bare_agent_name(atype) in ss.STRONG_ROLE_AGENTS
@@ -128,8 +123,7 @@ else:
     if ss is not None and ss.is_write_mode_brief(ti.get("prompt")):
         line["write_mode"] = True
 
-# The log line goes to the file directly (stdout is reserved for the hook
-# JSON below). Same shape as before — consumers (stats, precommit-gate
+# The log line goes to the file directly. Same shape as before — consumers (stats, precommit-gate
 # fallback, integration fixtures) parse this line.
 try:
     with open(os.path.join(os.environ.get("ROLEPOD_EV_DIR") or ".", "phase-log.jsonl"), "a") as f:

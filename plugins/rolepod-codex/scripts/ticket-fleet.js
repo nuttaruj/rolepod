@@ -43,12 +43,6 @@
 // tier-reason: dynamic agentType per task/reviewer role from args — every
 // role renders its own frontmatter tier; no fleet-wide model inherit here.
 
-// meta.name carries "review" on purpose (never rename to drop it): the
-// dispatch-log line's agent_types is EMPTY for every call here (agentType is
-// a template literal, invisible to the logger's straight-quote-only
-// extractor by design — see the tier-reason above), so any consumer that
-// classifies a review dispatch falls back to a `review|verif|audit` match on
-// this very name.
 export const meta = {
   name: 'ticket-review-fleet',
   description: 'Build + review every ready ticket-loop task, one launch',

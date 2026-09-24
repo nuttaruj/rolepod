@@ -50,7 +50,7 @@ Done when: the brief file exists and a stranger could act on it alone.
 **review**
 - Attach `git diff HEAD` for uncommitted work (staged + unstaged) or `git diff <base>...HEAD` for a committed branch.
 - `--cached` alone is a slice: the runner refuses it while the same files carry unstaged edits. `--partial-ok` only when the user asked for the staged part.
-- The external IS the strong pass: it replaces `universal-reviewer`, never both on round 1. It runs round 1 only: its BLOCKER / MAJOR fixes are re-checked by `universal-reviewer` on a strong-class model (`review-code` Fix-verify rounds), never a new external round. The R4 floor stays `security-engineer` + that ONE strong pass — dispatch `security-engineer` in the same message.
+- The external IS the strong pass: it replaces `universal-reviewer`, never both on round 1. It runs round 1 only: its BLOCKER / MAJOR fixes are re-checked by `security-engineer` on a high-risk path, else by `universal-reviewer` on a strong-class model (`review-code` Fix-verify rounds), never a new external round. The R4 floor stays `security-engineer` + that ONE strong pass — dispatch `security-engineer` in the same message.
 - The diff stays frozen until the last reviewer returns: no edit to its files, no `git stash` / `reset` / `checkout`.
 - Then do the next task outside the diff. ONE `rolepod-cross-family --collect <job-id> --root <git-root>` before the commit — it waits.
 - Member order, `--all`, what anchors, the degradation table → `references/review.md`.
