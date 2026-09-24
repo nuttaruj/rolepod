@@ -54,3 +54,8 @@ docs/rolepod/
 docs/plans/
 docs/adrs/
 docs/handoffs/
+
+# Dev-only instructions for sessions working ON this repo — not part of the
+# installable payload or its docs.
+/CLAUDE.md
+/AGENTS.md
