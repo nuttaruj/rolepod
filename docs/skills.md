@@ -1,4 +1,4 @@
-# Rolepod Skill Catalog (Core 10 + 2 helpers + 1 on-demand)
+# Rolepod Skill Catalog (Core 10 + 2 helpers + 1 command + 1 on-demand)
 
 Rolepod ships **14 skills total**: Core 10 (1 router + 9 workflow phase skills) plus two helper skills — `cross-family` (another CLI's review / critique / consult / draft) and `tdd-flow` (red → green at a seam) — called by the phase skills that need them, plus one explicit-invoke command — `deepen-codebase` (architecture report → pick a card → write-spec) — and one on-demand skill, `write-prototype` (a throwaway layout or logic demo that answers one spec question; write-spec offers it). There are no legacy compatibility shim skill files in the install tree. Old skill names are preserved only as documentation in [legacy-skill-map.md](legacy-skill-map.md).
 

@@ -577,8 +577,8 @@ LOW_CLASSES = {"cheap", "balanced"}
 # pre-2.104 user-level agent file may still say inherit). opus is the paid
 # CEILING of the strong tier by owner decision: a fable-class Lead keeps its
 # own model but its strong reviewers run opus — never lifted (cost).
-# system-architect joined in v2.73.0: in teammate mode it writes the spec +
-# cohesion contract for the whole team — the judgment-heaviest role — and was
+# system-architect joined in v2.73.0: it writes the spec + cohesion contract
+# for parallel work — the judgment-heaviest role — and was
 # the one strong role left at nudge-only.
 STRONG_ROLE_AGENTS = {"security-engineer", "universal-reviewer", "system-architect"}
 STRONG_ALIAS = "opus"

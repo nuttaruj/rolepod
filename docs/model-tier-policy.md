@@ -87,7 +87,7 @@ Auto-escalate to the **strong** tier for adversarial review (regardless of agent
 - Touching auth / authn / authz / authentication / authorization / billing / payment / migration / credit / permission / secret / crypto / token / oauth / jwt / sso / saml / webhook / stripe / paypal / charge / invoice paths (illustrative — the canonical regex lives in `hooks/precommit-gate.sh` / `gate-reminder.sh`, parity-pinned by lean-surface).
 - About to ship to production (final `finish-work` review).
 - 3rd agent attempt on same surface (per CLAUDE.md hard stops).
-- User explicit "use careful mode" or `/rolepod` invocation.
+- The user explicitly asks for a stronger review.
 
 `gate-reminder.sh` names, on every high-risk edit, what the commit gate will require, and `precommit-gate.sh` blocks the commit of a high-risk diff without a strong reviewer dispatched since the last commit (v2.47.0: one hard checkpoint, at commit). The tier policy makes the *which* reviewer explicit.
 
