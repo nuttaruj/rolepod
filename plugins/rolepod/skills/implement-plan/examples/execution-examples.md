@@ -1,6 +1,6 @@
-<!-- Execution examples for implement-plan. Two scenarios, each a good/bad pair. -->
-<!-- Read the WHOLE file — the contrast IS the lesson. Scenario 1 is about -->
-<!-- staying surgical; scenario 2 is about not trusting a subagent blindly. -->
+<!-- Execution examples for implement-plan. Three scenarios, each a good/bad pair. -->
+<!-- Scenario 1 is about staying surgical; scenario 2 is about not trusting -->
+<!-- a subagent blindly; scenario 3 is about running a parallel layout. -->
 
 # Execution Examples
 
@@ -57,7 +57,7 @@ COMPLETED
 | Diff size | 3 files, a new hook, prop renames | 1 line + 1 test |
 | Task match | Date fix buried in an unrelated refactor | Exactly the date fix |
 | Reviewability | Every extra change needs its own review | Reviewable in seconds |
-| Iron Rule 2 | Violated — scope expanded mid-task | Satisfied — follow-up written, not done |
+| Scope guardrail | Violated — scope expanded mid-task | Satisfied — follow-up written, not done |
 | Tests | None added | Assertion on the new behavior |
 
 ---
@@ -97,7 +97,7 @@ Lead: "Subagent says COMPLETED — committing."
 | Evidence read | The status line only | The actual command output |
 | Catch | Missed the 1 failing example | Caught COMPLETED over a red test |
 | Action | Committed broken code | Rejected, re-briefed with a precise fix |
-| Hard stop | Ignored ("subagent COMPLETED with failing tests → reject") | Applied |
+| Delegate rule | Ignored ("`COMPLETED` over a failing test → reject and re-brief") | Applied |
 
 > "Status: COMPLETED" is a claim, not proof. Read the evidence the manifest
 > carries — a manifest can say COMPLETED over a failing test. The Lead, not
@@ -107,7 +107,7 @@ Lead: "Subagent says COMPLETED — committing."
 
 ## Scenario 3: The plan declares a parallel layout (API track + UI track)
 
-### Good — one dispatch, pipelined reviews
+### Good — one dispatch, pipelined integration
 
 ```text
 Plan: Parallel layout — backend-developer owns app/api/**, frontend-developer
@@ -120,7 +120,7 @@ Lead: both tracks' dependencies are met → ONE message, two Agent calls:
   else incl. the do-not-touch list; the frozen interface verbatim
 - frontend-developer — Tasks 3-4; allowed app/ui/**; same frozen interface
 
-UI track returns first → its §6 review runs NOW,
+UI track returns first → it is integrated (Review) NOW,
 not after the API track lands. API track returns → same pipeline. Merge per
 contract order: API slice, its tests green, then UI slice. Ship-group drift pass on the cumulative diff → check-work.
 ```
@@ -141,8 +141,8 @@ declared disjoint. No stated reason for serial.
 |------|-----------------|--------------|
 | Wall-clock | Sum of tracks (32 min) | Slowest track (~18 min) |
 | Plan respected | Parallel layout silently ignored | Layout executed as written |
-| Review latency | All reviews wait for the last track | Each track reviewed as it returns |
-| Hard stop | Trips "parallel-layout plan executed one track at a time with no stated reason" | Clean |
+| Integration latency | All integration waits for the last track | Each track integrated as it returns |
+| Parallel tracks rule | Trips "a parallel-layout plan run one track at a time needs a stated reason" | Clean |
 | Merge safety | Identical either way — contract order governs | Identical — contract order governs |
 
 > Parallel buys wall-clock, not tokens. The plan already paid for the

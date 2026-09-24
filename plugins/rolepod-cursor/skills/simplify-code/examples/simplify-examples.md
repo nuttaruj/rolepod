@@ -1,6 +1,6 @@
 <!-- Simplify examples for simplify-code. Two scenarios, each a good/bad pair. -->
 <!-- Read the WHOLE file — the contrast IS the lesson. Scenario 1 is a -->
-<!-- single-use helper; scenario 2 is a defensive check (the S4 case). -->
+<!-- single-use helper; scenario 2 is a defensive check (structural impossibility). -->
 
 # Simplify Examples
 
@@ -45,7 +45,7 @@ the test assertion was changed to match. Behavior preserved: NO.
 | Scope | Inline + rounding change + locale change | Inline only |
 | Tests | An assertion had to change | Same assertions, green before + after |
 | Behavior | Changed ($9.90 → 9.9) | Preserved |
-| Iron Rule 1 | Violated — not behavior-preserving | Satisfied — proven by unchanged tests |
+| Tests-before-and-after guardrail | Violated — not behavior-preserving | Satisfied — proven by unchanged tests |
 
 ---
 
@@ -87,7 +87,7 @@ genuinely CAN be nil.
 | The value | `customer` CAN be nil (guest orders) | `user` CANNOT be nil (`find` raises) |
 | The check | Load-bearing — guards a real case | Dead — guards an impossible case |
 | After the cut | NoMethodError on guest orders | No behavior change |
-| S4 reading | Misread a real case as "impossible" | Correctly cut a check for a structurally impossible state |
+| Impossible-state reading | Misread a real case as "impossible" | Correctly cut a check for a structurally impossible state |
 | Verification | Call site behavior not checked | Verified `find` raises, never returns nil |
 
 > A defensive check is clutter only when the bad state is structurally

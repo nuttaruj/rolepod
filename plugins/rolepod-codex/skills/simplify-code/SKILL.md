@@ -8,45 +8,26 @@ phase: simplify
 
 # Simplify Code
 
-Cut complexity that does not earn its keep. Behavior-preserving: every cut is provable by the existing tests. Usable mid-Build (refactor intent) or standalone.
-
-## Iron Rule
-
-<EXTREMELY-IMPORTANT>
-1. NEVER simplify without a test suite that proves behavior before and after.
-2. NEVER remove an abstraction the codebase depends on — verify call sites first.
-3. NEVER add an abstraction for "hypothetical future use". One concrete user is not enough.
-4. Same pattern in 3+ places enforcing the SAME rule (one invariant, one lifecycle) → centralize; text that only reads alike under a different contract stays separate. On the high-risk list — auth, billing, credits, URL validation, redirects, SSRF, cookies, logging, retries, external API — TWO occurrences already force it.
-5. Deletion test before any cut: imagine deleting the module. Complexity vanishes → it was a pass-through, delete it. Complexity reappears scattered across N callers → it earned its keep, keep it.
-</EXTREMELY-IMPORTANT>
+Turns code that does not earn its complexity into less code with the same behavior, each cut proven by the existing tests. Runs mid-Build (refactor intent) or standalone.
 
 ## Skip when
 
-- No tests cover the touched code → write them first via `implement-plan` or `debug-issue`.
-- The complexity is load-bearing (security boundary, data invariant).
-- Mid-feature and the cut is not needed to unblock the change — a required prefactor is not a skip (§4b).
+- No tests cover the touched code → write them first via `implement-plan` (baseline tests) or `debug-issue`.
+- The complexity is load-bearing (a security boundary, a data invariant).
+- Mid-feature and the cut is not needed to unblock the change. A required prefactor is not a skip (step 6).
+- The behavior itself must change → `write-spec` or `write-plan`.
 
-## Boundary
-
-Owns: behavior-preserving cuts — inline single-use helpers, delete unused config, centralize repeated patterns, structural simplification.
-
-Does not own: feature changes · bug fixes with unknown root cause · refactors without a test baseline · product / API behavior changes.
-
-Hand off:
-- Behavior must change → `write-spec` or `write-plan`.
-- Tests missing for a risky area → `implement-plan` (baseline tests first).
-- Bug found while simplifying → `debug-issue`.
-- Cuts complete → `check-work`.
-
-## Workflow
+Cuts touching module boundaries or APIs → `system-architect`; auth / secret / token / crypto paths → `security-engineer`; DRY / smell / structure cleanup → `universal-reviewer`. Brief: the file region, the existing tests, the user's intent (cleanup only, or cleanup + behavior change).
+No subagents → the Lead does it.
 
 ### 1. Green baseline
 
-Run the touched module's suite. Red → fix or write tests first; without a baseline nothing is provably behavior-preserving. Gather: the flagged region, its tests, call sites of anything you plan to inline or remove, the user's intent (cleanup only, or cleanup + behavior change).
+Run the touched module's suite. Red → fix it or write tests first; without a green baseline nothing is provably behavior-preserving.
+Gather: the flagged region, its tests, the call sites of anything you plan to inline or remove, and the user's intent.
+
+Done when: the suite is green and recorded as the Baseline.
 
 ### 2. Scan for these patterns
-
-Before removing anything run Chesterton's Fence + the deletion test (Iron Rule 5) together: `git blame` the origin commit — code with no callers may still encode a reason. Verify the WHY, not just the call sites. Both pass → safe to delete; either fails → stop.
 
 | Pattern | Action |
 |---------|--------|
@@ -61,58 +42,74 @@ Before removing anything run Chesterton's Fence + the deletion test (Iron Rule 5
 | Comment that restates what the code does | Delete the comment |
 | Wrapper that only forwards calls (delete it → complexity vanishes) | Inline; a pure pass-through earns nothing |
 
-**Debt markers.** A deliberate simplification with a KNOWN ceiling (global lock, O(n²) scan, naive heuristic) leaves one greppable comment: `rolepod-debt: <what>. ceiling: <limit>. upgrade when: <trigger>`. `grep 'rolepod-debt:'` lists the ledger; a marker naming no upgrade trigger is rot — fix the marker or do the upgrade. Exempt from the "comment restates code" row.
+**Debt markers.** A deliberate simplification with a KNOWN ceiling (global lock, O(n²) scan, naive heuristic) leaves one greppable comment: `rolepod-debt: <what>. ceiling: <limit>. upgrade when: <trigger>`.
+- `grep 'rolepod-debt:'` lists the ledger.
+- A marker naming no upgrade trigger is rot: fix the marker or do the upgrade.
+- Markers are exempt from the "comment restates code" row.
 
-### 3. Structural over runtime
+Done when: every match in the region has a proposed action, or is left with a reason.
 
-A runtime `if (x === null) throw` becomes a non-nullable type; a "must be set" config becomes a required constructor argument. Make the bad state un-representable where the type system allows. A type proves what your own code produces, not what arrived — JSON / network / config / DB values still need a check at the boundary where they enter.
+### 3. Check the fence before any cut
 
-### 4. Centralize at 3 occurrences
+For each cut the scan proposes, before removing anything:
+- Call sites: an abstraction the codebase depends on stays. Verify every caller.
+- Chesterton's Fence: `git blame` the origin commit. Code with no callers may still encode a reason; verify the WHY, not just the call sites.
+- Deletion test: imagine deleting the module. Complexity vanishes → it was a pass-through; delete it. Complexity reappears scattered across N callers → it earned its keep; keep it.
 
-Two is a coincidence, three is a pattern. On Iron Rule 4's high-risk list, two already force it.
+Both the fence and the deletion test pass → safe to cut. Either fails → stop.
 
-Inverse rule: one adapter behind an interface = hypothetical seam, inline it; two real adapters = real seam, keep the interface. Counts decide structure.
+Done when: every proposed cut has its callers listed and passes both checks.
 
-### 4b. Refactor before fix
+### 4. Structural over runtime
 
-A planned change is hard because the surrounding shape is wrong → first cut the shape until the change is easy, then make the easy change. Two commits: cut commits are behavior-preserving (this skill); the change commit is the feature (`implement-plan`). Mixing them hides which line caused which regression. Skip when the change is small and the shape is fine — never invent friction.
+Make the bad state un-representable where the type system allows: a runtime `if (x === null) throw` becomes a non-nullable type; a "must be set" config becomes a required constructor argument.
+A type proves what your own code produces, not what arrived. JSON / network / config / DB values still need a check at the boundary where they enter.
 
-### 5. One cut per commit
+Done when: each removed runtime check is replaced by a type or kept at an entry boundary.
 
-Run the suite between cuts. A delegated subagent stages and returns diff + proof; the Lead commits (`implement-plan`). A failing test mid-simplification means the previous cut went too far — revert that one, not all.
+### 5. Centralize at 3 occurrences
 
-### 6. Stop when behavior is at risk
+- The same pattern in 3+ places enforcing the SAME rule (one invariant, one lifecycle) → centralize. Two is a coincidence, three is a pattern.
+- Text that only reads alike under a different contract stays separate.
+- On the high-risk list — auth, billing, credits, URL validation, redirects, SSRF, cookies, logging, retries, external API — TWO occurrences already force it.
+- Inverse rule: one adapter behind an interface is a hypothetical seam; inline it. Two real adapters are a real seam; keep the interface. Counts decide structure.
 
-A cut that changes what a test ASSERTS → check what the assertion proved. The expected VALUE changes → no longer behavior-preserving: ask the user, or move it to an `implement-plan` task with a spec. A retarget onto the same observable output (a private detail, a mock's call shape) is still behavior-preserving.
+Done when: every repeated rule has one home, recorded under Patterns centralized.
 
-## If a matching Rolepod agent is available
+### 6. Refactor before fix
 
-- `universal-reviewer` — DRY / smell / structure cleanup
-- `system-architect` — cuts touching module boundaries or APIs
-- `security-engineer` — cuts touching auth / secret / token / crypto paths
+A planned change is hard because the surrounding shape is wrong → first cut the shape until the change is easy, then make the easy change.
+- Two commits: the cut commits are behavior-preserving (this skill); the change commit is the feature (`implement-plan`). Mixing them hides which line caused which regression; split them.
+- Skip this when the change is small and the shape is fine; never invent friction.
 
-Brief: the file region, the existing tests, the user intent (cleanup vs cleanup + behavior).
+Done when: the cut commits hold no behavior change and the feature change sits in its own commit.
 
-## If no matching agent is available
+### 7. One cut per commit
 
-Execute as Lead: §1 green baseline → §2 smallest single cut → suite green → commit or stage → repeat. Stop when a cut would change behavior; centralize anything in 3+ files.
+- Run the suite between cuts.
+- A failing test mid-simplification means the previous cut went too far: revert that one, not all.
+- An "unused" abstraction turns out to have callers you missed → restore it, verify, then retry.
+- A delegated subagent stages and returns the diff + proof; the Lead commits (`implement-plan`).
 
-## Output
+Done when: every cut is its own commit (or staged slice) with the suite green after it.
 
-The simplification report is the canonical artifact: `templates/simplification-report.md` — baseline, cuts made, patterns centralized, tests after, behavior preserved.
+### 8. Stop when behavior is at risk
 
-## References
-Load only when needed:
-- `examples/simplify-examples.md` — cuts and pairs.
+A cut that changes what a test ASSERTS → check what the assertion proved.
+- The expected VALUE changes → no longer behavior-preserving: ask the user, or move it to an `implement-plan` task with a spec.
+- A retarget onto the same observable output (a private detail, a mock's call shape) is still behavior-preserving.
 
-## Hard stops
+Artifact: `templates/simplification-report.md` — Baseline, Cuts made, Patterns centralized, Tests after, Behavior preserved.
 
-- Tests not green at the start → write tests first.
-- A cut changed a test's expected VALUE → behavior change, route to `implement-plan`.
-- An "unused" abstraction has callers you missed → restore, verify, then retry.
-- About to add an abstraction for one caller → reject.
-- About to delete a module without the deletion test → stop; Iron Rule 5.
-- Refactor-before-fix commits mixed with the feature change → split.
+Done when: Tests after is green with the same expected values and Behavior preserved reads YES, or the change is routed out.
+
+## Guardrails
+
+- Prove behavior with the same tests before and after. Never simplify without that suite.
+- Keep an abstraction the codebase depends on. Never remove one before its call sites and the deletion test say it is safe.
+- Add an abstraction only for concrete users that exist today (3+ for a shared rule, 2 on the high-risk list). Never for "hypothetical future use"; one caller is not enough.
+
+Single-use-helper and defensive-check pairs → `examples/simplify-examples.md`.
 
 ## Next phase
 

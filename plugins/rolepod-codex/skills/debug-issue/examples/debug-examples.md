@@ -48,7 +48,7 @@ Error gone. Done.
 |------|-------------|----------|
 | Where fixed | OrderRow.tsx:14 — where the value is used | The serializer — where the value is born |
 | The bad value | Still produced; resurfaces on any other consumer of `customer` | Never produced again |
-| Iron Rule 2 | Violated — stopped at the first symptom | Satisfied — traced to a system boundary |
+| Root-fix guardrail | Violated — stopped at the first symptom | Satisfied — traced to a system boundary |
 | `?.` | Added blindly, no known cause | Not needed — shape correct at source |
 | Test | None | Failing test pins the serializer contract |
 
