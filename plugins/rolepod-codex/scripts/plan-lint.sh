@@ -85,12 +85,15 @@ if [ "${1:-}" = "--brief" ]; then
     }
     return out
   }
-  function is_prose(p,    n, parts, base, lp) {
-    lp = tolower(p)
-    if (lp ~ /\.(md|mdx|mdc|txt|rst|adoc)(\.tmpl)?$/) return 1
-    n = split(lp, parts, "/")
-    base = parts[n]
-    if (base ~ /^(readme|license|changelog)$/) return 1
+  # Case-sensitive, exactly like the gates own PROSE_N/NONPROSE_N test
+  # (hooks/precommit-gate.sh): auth/README.MD is NOT prose -- only a
+  # literal lowercase extension or an extension-less, literal-uppercase
+  # README/LICENSE/CHANGELOG basename counts (security review 2026-09-24,
+  # plan-lint under-tiering a case-varied path the gate itself treats as
+  # code). Lowercasing stays ONLY in is_securitys risk-term word split.
+  function is_prose(p) {
+    if (p ~ /\.(md|mdx|mdc|txt|rst|adoc)(\.tmpl)?$/) return 1
+    if (p ~ /(^|\/)(README|LICENSE|CHANGELOG)$/) return 1
     return 0
   }
   function is_security(p,    lp, n, w, i) {

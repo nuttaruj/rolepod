@@ -35,6 +35,12 @@
 # into. The gate rule reads the head only (a false positive costs one
 # resend); the version-control rule tries every token (a wrapped commit must
 # still be caught) and skips only a pure-output head (echo / printf / :).
+#
+# Accepted residuals (owner decision, 2026-09-24, final cut before release):
+# deliberate evasion is out of scope by design — this hook catches mistakes
+# in the normal flow, not a deliberately crafted bypass. Not handled: ANSI-C
+# $'…' escapes, a bare & after an output command, quote- or backslash-split
+# names.
 set -euo pipefail
 
 INPUT=$(cat 2>/dev/null || echo '{}')

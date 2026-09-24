@@ -144,6 +144,28 @@ def segments(text):
     return re.split(r'\s*(?:&&|\|\||;|\||\n)\s*', text)
 
 
+def _segments_with_sep(text):
+    """Like segments(), but keeps the separator BEFORE each segment
+    (`None` for the first). A `cd`-tracking walk needs it: bash forks a
+    SUBSHELL on each side of a `|` — a `cd` inside one never persists into
+    the next segment's working directory. `&&`, `||`, `;` and a newline
+    all stay in the SAME shell process, so a `cd` carries across every one
+    of them (security review 2026-09-24, MAJOR-1; fix confirm — `||` does
+    NOT fork a subshell, only a bare `|` does)."""
+    def sub(m):
+        return '\n' + m.group(3) + '\n' if owner_is_shell(text, m.start()) else '<<HEREDOC'
+    text = HEREDOC.sub(sub, text)
+    parts = re.split(r'\s*(&&|\|\||;|\||\n)\s*', text)
+    out = []
+    sep = None
+    for i, tok in enumerate(parts):
+        if i % 2 == 0:
+            out.append((sep, tok))
+        else:
+            sep = tok
+    return out
+
+
 def head(t):
     w = ''
     while t:
@@ -206,80 +228,25 @@ def _repo_relative(root, path):
     return path
 
 
-_VAR_RX = re.compile(r'\$(\{[A-Za-z_][A-Za-z0-9_]*\}|[A-Za-z_][A-Za-z0-9_]*)')
-_BIND_GLOBAL_RX = re.compile(r'\beval\b|\bsource\b|\$\'|\$"')
-_DOT_CMD_RX = re.compile(r'(?:^|[\s;&|])\.(?:[\s;&|]|$)')
+def _expand_token(raw):
+    """Expand a LEADING `~` / `~/` in a write-target token via
+    `os.path.expanduser` (`$HOME`, else the passwd entry — as bash does;
+    an unset `HOME` still resolves). `$NAME` / `${NAME}` intentionally
+    stays LITERAL — a `$…` token is judged AS a repo path, exactly as
+    before Task 6 (owner decision, 2026-09-24, final cut before release:
+    the gate guards the NORMAL flow, not deliberate evasion, and three
+    review rounds of bind-detection code for `$`-expansion kept finding
+    one more bypass shape — the whole mechanism, and the code that only
+    existed to serve it, is removed rather than chased further; see the
+    residuals note in hooks/precommit-gate.sh's and
+    hooks/block-subagent-commit.sh's headers)."""
+    return os.path.expanduser(raw) if raw.startswith('~') else raw
 
 
-def _cmd_binds_name(cmd_text, name):
-    """True when `cmd_text` (the whole Bash command at THIS recursion
-    level — top-level, or a nested shell's own `-c` string; a loop var
-    bound in one segment is used in a later one, so the check is not
-    per-segment) rebinds `name` itself (`NAME=`, `for NAME`, `read NAME`,
-    `export NAME`), or contains a construct (`eval` / `source` / the `.`
-    dot-command / `$'…'` / `$"…"`) this lexical walk cannot see through the
-    effect of on any variable (spec Desired 7, security review 2026-09-24
-    B1). Generous by design — a false positive here only keeps a token
-    literal (still judged as a repo path, the safe direction); a false
-    negative would expand a value the command itself controls. The caller
-    passes `cmd_text` as the CURRENT recursion level's text combined with
-    the top-level command (`_bash_write_targets`'s `bind_text`) — a name
-    bound in the PARENT command around a nested `-c` / `eval` string is
-    caught too (security review 2026-09-24, r3-M1: `TMPDIR=hooks bash -c
-    'echo x > $TMPDIR/auth.py'` stays literal, not expanded from the hook's
-    own possibly-stale env).
-
-    Accepted residuals (MINOR, not this check's job): `NAME+=`, `NAME[i]=`,
-    `printf -v NAME`, `mapfile NAME`, a keyword split across quotes
-    (`ev''al`), and `$OLDPWD` (implicitly set by every `cd`, not checked)."""
-    if _BIND_GLOBAL_RX.search(cmd_text) or _DOT_CMD_RX.search(cmd_text):
-        return True
-    n = re.escape(name)
-    return bool(
-        re.search(r'(?<![\w${])' + n + r'=', cmd_text)
-        or re.search(r'\bfor\s+' + n + r'\b', cmd_text)
-        or re.search(r'\bread\b[^;&|\n]*\b' + n + r'\b', cmd_text)
-        or re.search(r'\bexport\s+' + n + r'\b', cmd_text)
-    )
-
-
-def _expand_token(raw, cwd=None, cmd_text=''):
-    """Expand `~` / `~/` and `$NAME` / `${NAME}` in a write-target token
-    before it is resolved against cwd (spec Desired 7, F8a). Tilde first
-    (bash only expands a LEADING `~`, `os.path.expanduser` matches that —
-    `$HOME`, else the passwd entry, so an unset `HOME` still resolves like
-    bash does). `$NAME` / `${NAME}` expands from the hook's own environment
-    ONLY when the name is set there AND `cmd_text` does not bind that name
-    itself — otherwise the token stays LITERAL (unchanged, still judged as
-    a repo path: the pre-diff, fail-closed behaviour; revised during build,
-    2026-09-24, security review B1 — expanding a command-bound or unset
-    name moved a real in-repo write outside the repo and dropped it from
-    every consumer). `$PWD` / `${PWD}` is the one name resolved against
-    `cwd` instead (the segment's tracked directory after any `cd`, not the
-    hook process's own, possibly stale, env value — M1); it is exempt from
-    the bind check, `cwd` IS the answer to "what does this command's PWD
-    look like right here". Applied whatever the token's original quoting
-    was — shlex has already dropped it (accepted imprecision: a literal
-    `'$X'` directory name expands too, unless `cmd_text` also contains a
-    `$'…'` / `$"…'` construct, which forces every name literal). Other
-    forms (`${X:-y}`, `$(...)`, backticks) never match `_VAR_RX` and stay
-    literal, as today."""
-    s = os.path.expanduser(raw) if raw.startswith('~') else raw
-
-    def _sub(m):
-        name = m.group(1).strip('{}')
-        if name == 'PWD' and cwd:
-            return cwd
-        if name not in os.environ or _cmd_binds_name(cmd_text, name):
-            return m.group(0)
-        return os.environ[name]
-    return _VAR_RX.sub(_sub, s)
-
-
-def _resolve_write_path(raw, cwd, root, cmd_text=''):
+def _resolve_write_path(raw, cwd, root):
     if not raw or raw.startswith('/dev/') or raw.startswith('&'):
         return None
-    raw = _expand_token(raw, cwd, cmd_text)
+    raw = _expand_token(raw)
     if not raw:
         return None
     p = raw if os.path.isabs(raw) else os.path.join(cwd, raw)
@@ -337,10 +304,10 @@ def _tokenize_segment(seg):
     return cmd_toks, redirects
 
 
-def _resolve_all(raws, cwd, root, cmd_text=''):
+def _resolve_all(raws, cwd, root):
     out = []
     for r in raws:
-        p = _resolve_write_path(r, cwd, root, cmd_text)
+        p = _resolve_write_path(r, cwd, root)
         if p:
             out.append(p)
     return out
@@ -423,7 +390,7 @@ def _command_targets(t):
     return out
 
 
-def _segment_write_targets(seg, cwd, root, depth, cmd_text='', top_cmd=None):
+def _segment_write_targets(seg, cwd, root, depth):
     if depth > 4:
         return []
     cmd_toks, redirect_raw = _tokenize_segment(seg)
@@ -431,15 +398,19 @@ def _segment_write_targets(seg, cwd, root, depth, cmd_text='', top_cmd=None):
     if t and os.path.basename(t[0]) in SHELLS:
         for k in range(1, len(t)):
             if t[k] == '-c' and k + 1 < len(t):
-                return _bash_write_targets(t[k + 1], cwd, root, depth + 1, top_cmd)
+                return _bash_write_targets(t[k + 1], cwd, root, depth + 1)
         # no -c: a shell running a SCRIPT FILE (`bash run.sh > out.txt`) —
         # its own redirect is still a write, just not one we can see inside
         # the script itself.
-        return _resolve_all(redirect_raw, cwd, root, cmd_text)
-    return _resolve_all(redirect_raw + _command_targets(t), cwd, root, cmd_text)
+        return _resolve_all(redirect_raw, cwd, root)
+    return _resolve_all(redirect_raw + _command_targets(t), cwd, root)
 
 
 _CD_GLOB = set('*?[')
+
+
+_CD_FLAGS = ('-L', '-P', '-e', '-@')
+_ASSIGN_PREFIX_RX = re.compile(r'^[A-Za-z_][A-Za-z0-9_]*=')
 
 
 def _cd_dir(cmd_toks, redirect_raw):
@@ -448,25 +419,40 @@ def _cd_dir(cmd_toks, redirect_raw):
     STACK is tracked, only a single cur_cwd), or None when the segment is
     not a stand-alone directory change: a redirect on it (`cd . >
     hooks/auth.py` writes hooks/auth.py, it is not just a cd) or more than
-    one operand token (`cd /x & echo ... > f` is one un-split segment —
-    segments() does not split on a bare `&`, security review 2026-09-24
-    B2) means the segment is a real write too and must still resolve
-    through _segment_write_targets, never be swallowed here. A leading
-    `builtin` / `command` wrapper is stripped first (same spelling either
-    way); `sudo cd` / `env cd` are NOT unwrapped — those do not change the
-    invoking shell's directory anyway."""
+    one operand token left after the strips below (`cd /x & echo ... > f`
+    is one un-split segment — segments() does not split on a bare `&`,
+    security review 2026-09-24 B2) means the segment is a real write too
+    and must still resolve through _segment_write_targets, never be
+    swallowed here. Stripped, in order, before the operand check: a
+    leading `builtin` / `command` wrapper (same spelling either way;
+    `sudo cd` / `env cd` are NOT unwrapped — those do not change the
+    invoking shell's directory anyway); any leading `NAME=value`
+    assignment word(s) — `cd` is a POSIX SPECIAL builtin, so `TMPDIR=/tmp
+    cd dir` still changes directory the same as a bare `cd dir` (the
+    assignment's effect on the shell persists after a special builtin
+    returns, unlike an ordinary command); `cd`'s own flags (`-L`, `-P`,
+    `-e`, `-@`, in any order/repetition) — they select symlink-resolution
+    behaviour, never a second operand (security review 2026-09-24,
+    MAJOR-2)."""
     if redirect_raw or not cmd_toks:
         return None
     t = cmd_toks
     if t[0] in ('builtin', 'command') and len(t) > 1:
         t = t[1:]
+    while t and _ASSIGN_PREFIX_RX.match(t[0]):
+        t = t[1:]
     if not t:
         return None
     if t[0] == 'popd':
         return '-'
-    if t[0] not in ('cd', 'pushd') or len(t) > 2:
+    if t[0] not in ('cd', 'pushd'):
         return None
-    return t[1] if len(t) > 1 else '~'
+    t = t[1:]
+    while t and t[0] in _CD_FLAGS:
+        t = t[1:]
+    if len(t) > 1:
+        return None
+    return t[0] if t else '~'
 
 
 def _cd_giveup(a):
@@ -482,25 +468,33 @@ def _cd_giveup(a):
     return False
 
 
-def _bash_write_targets(cmd, cwd, root, depth=0, top_cmd=None):
-    # `top_cmd` is the ORIGINAL, top-level command text, threaded unchanged
-    # through every nested `-c` / `eval` recursion (security review
-    # 2026-09-24, r3-M1): a name bound in the OUTER command around a nested
-    # shell (`TMPDIR=hooks bash -c 'echo x > $TMPDIR/auth.py'`) is invisible
-    # to a bind check scoped to the inner `-c` string alone. `depth == 0`
-    # (the first, non-recursive call) sets it to `cmd` itself.
-    top = cmd if top_cmd is None else top_cmd
-    bind_text = cmd if top == cmd else (top + '\n' + cmd)
+def _bash_write_targets(cmd, cwd, root, depth=0):
     out = []
     cur_cwd = cwd
     dir_failed = False
-    for seg in segments(cmd):
+    pairs = _segments_with_sep(cmd)
+    for i, (sep_before, seg) in enumerate(pairs):
         seg = seg.strip()
         if not seg or seg == '<<HEREDOC':
             continue
         cmd_toks, redirect_raw = _tokenize_segment(seg)
         cd_target = _cd_dir(cmd_toks, redirect_raw)
         if cd_target is not None:
+            # A single `|` forks a SUBSHELL on each side — a cd immediately
+            # before or after one never reaches a later segment's
+            # directory, in EITHER the current shell (a right-hand cd's
+            # subshell exits, taking its cd with it) or the subshell itself
+            # (a left-hand cd never left its own fork to begin with). `&&`,
+            # `||`, `;` and a newline all stay in the SAME shell process —
+            # a cd there carries forward normally (security review
+            # 2026-09-24, MAJOR-1 fix confirm: `||` does NOT fork a
+            # subshell, only `|` does — `cd src/auth || exit 1; echo x >
+            # login.py` still resolves inside src/auth). Not a giveup on a
+            # pipe — genuinely no effect, so `cur_cwd` / `dir_failed` are
+            # left exactly as they were.
+            next_sep = pairs[i + 1][0] if i + 1 < len(pairs) else None
+            if sep_before == '|' or next_sep == '|':
+                continue
             if not dir_failed:
                 if _cd_giveup(cd_target):
                     # Unresolvable -> today's resolution against the HOOK
@@ -511,7 +505,7 @@ def _bash_write_targets(cmd, cwd, root, depth=0, top_cmd=None):
                     dir_failed = True
                     cur_cwd = cwd
                 else:
-                    expanded = _expand_token(cd_target, cur_cwd, bind_text)
+                    expanded = _expand_token(cd_target)
                     new_cwd = expanded if os.path.isabs(expanded) \
                         else os.path.normpath(os.path.join(cur_cwd, expanded))
                     # A tracked cd must never carry cur_cwd outside the
@@ -532,7 +526,7 @@ def _bash_write_targets(cmd, cwd, root, depth=0, top_cmd=None):
                     else:
                         cur_cwd = new_cwd
             continue
-        out.extend(_segment_write_targets(seg, cur_cwd, root, depth, bind_text, top))
+        out.extend(_segment_write_targets(seg, cur_cwd, root, depth))
     return out
 
 
@@ -1114,7 +1108,7 @@ def agent_transcripts(transcript_path: str, since_epoch: float | None = None) ->
         return []
 
 
-def _workflow_meta_reviewer(meta_path: str) -> tuple[int, int]:
+def _workflow_meta_reviewer(meta_path: str, since_epoch: float | None = None) -> tuple[int, int]:
     """(reviewer, strong) for ONE Workflow sub-agent, read from its
     `agent-<id>.meta.json` — Claude Code writes it beside the sub-agent's own
     transcript, under `subagents/workflows/<run>/` (`{"agentType": "...",
@@ -1125,7 +1119,19 @@ def _workflow_meta_reviewer(meta_path: str) -> tuple[int, int]:
     two rounds proved a script-text lexer on a security surface can always
     be fooled by one more crafted shape (spec 6b, S12). Missing / unreadable
     / malformed meta → (0, 0), fail-closed — a reviewer this file cannot
-    positively identify does not count."""
+    positively identify does not count. `since_epoch`, when given, is also
+    checked against the META FILE'S OWN mtime, never just its paired
+    `.jsonl`'s: the caller (`count_all`) already windowed the jsonl through
+    `agent_transcripts()`, but a `.meta.json` `touch`ed after the fact (to
+    resurrect an old Workflow reviewer into a NEW commit's window) has a
+    fresher jsonl mtime and a stale meta mtime — checking only the jsonl
+    let that forged evidence back in (security review 2026-09-24, MINOR-5,
+    external cross-family pass)."""
+    try:
+        if since_epoch and os.path.getmtime(meta_path) < float(since_epoch):
+            return 0, 0
+    except OSError:
+        return 0, 0
     try:
         with open(meta_path) as f:
             meta = json.load(f)
@@ -1205,7 +1211,7 @@ def count_all(
             continue
         parts = tp.split(os.sep)
         if "subagents" in parts and "workflows" in parts:
-            r, s = _workflow_meta_reviewer(tp[:-len(".jsonl")] + ".meta.json")
+            r, s = _workflow_meta_reviewer(tp[:-len(".jsonl")] + ".meta.json", since_epoch)
             reviewers += r
             strong_reviewers += s
     return test_edits, high_risk_edits, reviewers, strong_reviewers

@@ -25,6 +25,12 @@
 #                            env-prefix form is also a command shape the
 #                            platform's own permission layer reads as gate
 #                            circumvention — nothing should prescribe it.
+#
+# Accepted residuals (owner decision, 2026-09-24, final cut before release):
+# deliberate evasion is out of scope by design — this gate catches mistakes
+# in the normal flow, not a deliberately crafted bypass. Not handled: ANSI-C
+# $'…' escapes, a bare & after an output command, quote- or backslash-split
+# names.
 set -euo pipefail
 
 # Per-repo risk-path override: <git-root>/.rolepod/risk-paths — one ERE per
