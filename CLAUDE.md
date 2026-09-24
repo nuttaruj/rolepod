@@ -1,5 +1,9 @@
 <!-- Thin stub: the Claude always-on core arrives through the plugin's SessionStart hook (hooks/always-on-loader.sh emits the rendered core). A full block here would load twice. Install rolepod globally to dogfood; `make render` refreshes build artifacts. -->
 
+# Language
+
+- Reply to the user in Thai — every message: explanations, summaries, reports, and the reply after a teammate / task notification or a long English-only stretch of work. Code, commits, PRs, identifiers, paths, commands and repo text stay English.
+
 # Gate cadence
 
 - Editing: only the check that covers the file — `make test-lean-surface` (caps, invariants), `bash tests/static/<x>.sh`, `bash -n hooks/<x>.sh` + its case in `tests/integration/cases/`; a slow case file (`hook-behavior.sh`, `cross-family-runner.sh`) takes `ROLEPOD_CASE=<banner regex>` to run just the section for the hook/script just edited.
