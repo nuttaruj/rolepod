@@ -27,8 +27,7 @@ import subprocess
 import sys
 import time
 
-# ── classification — byte-identical to hooks/lib/session_state.py (pinned by
-# tests/static/lean-surface.sh; edit both or neither) ────────────────────────
+# ── classification — byte-identical to hooks/lib/session_state.py; edit both or neither ──
 HIGH_RISK_PATH = re.compile(
     r"(^|/|_)"
     r"(auth|authn|authz|authentication|authorization|"

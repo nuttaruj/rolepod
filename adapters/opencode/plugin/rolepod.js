@@ -163,7 +163,7 @@ function lockDirFor(worktree, homedir) {
 }
 
 // Canonical high-risk regex — byte-equivalent (modulo JS `\/` escaping) to
-// the RISK_CANON pinned in tests/static/lean-surface.sh across all shells.
+// HIGH_RISK_PATH in hooks/lib/session_state.py; edit both or neither.
 const RISK_RE =
   /(^|\/|_)(auth|authn|authz|authentication|authorization|billing|payment|payments|migration|migrations|credit|credits|permission|permissions|secret|secrets|crypto|cryptography|token|tokens|oauth|jwt|sso|saml|webhook|webhooks|stripe|paypal|charge|charges|invoice|invoices|deletion|deletions|erasure|gdpr|security)(\/|\.|_|$)/i
 // Case-insensitive: the directory alternative only — the commit gate never

@@ -873,7 +873,7 @@ fi
 case "$KIND" in review|consult|critique|implement) ;; *) echo "cross-family: --kind review|consult|critique|implement required" >&2; exit 2 ;; esac
 if [ "$KIND" = "implement" ] && [ "$ALL" -eq 1 ]; then echo "cross-family: --all is a read-only panel — implement runs ONE member at a time in one working tree (drop --all)" >&2; exit 2; fi
 # ── implement: the allowed-path list — the member's write scope, enforced after the run (edits outside are reverted) ──
-# Money / auth / data paths (the commit gate's HIGH_RISK_PATH, byte-identical to hooks/lib/session_state.py — tests/static/edit-ledger.sh pins it,
+# Money / auth / data paths (the commit gate's HIGH_RISK_PATH, byte-identical to hooks/lib/session_state.py,
 # plus the repo's own .rolepod/risk-paths add/exclude lines exactly as hooks/precommit-gate.sh risk_filter reads them) are refused for an external
 # implementer unless the user lifts them with --allow-risky: review-code runs BOTH passes there, and the guard has no track record yet.
 RISKY_HITS=""
