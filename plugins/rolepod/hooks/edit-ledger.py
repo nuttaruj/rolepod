@@ -45,8 +45,15 @@ TEST_FILE = re.compile(
     r"(^|/)("
     r"test|tests|__tests__|spec|specs|e2e"
     r")/.*|"
-    r"\.(test|spec)\.(ts|tsx|js|jsx|py|go|rs|rb|java|kt|swift|cs|php)$|"
-    r"(^|/)(test_|_test|.*_test)\.(py|go|rs)$",
+    r"\.(test|spec)\.(ts|tsx|js|jsx|mjs|cjs|py|go|rs|rb|java|kt|swift|cs|php)$|"
+    # Case-SENSITIVE (local `(?-i:...)`, the whole pattern is compiled with
+    # re.IGNORECASE): the commit gate's own filename filter
+    # (precommit-gate.sh HIGH_RISK= line) has no -i, so a lowercase-`test`
+    # collision inside an unrelated word (AppAttest.swift, Latest.java,
+    # Contest.cs) must not be exempted here while the gate still calls it
+    # high-risk — reviewed 2026-09-24, MAJOR-1.
+    r"(?-i:(^|/)(test_[^/]*|[^/]*_test|[^/]*_spec)\.(py|go|rs|rb|php)$)|"
+    r"(?-i:(^|/)[^/]*Tests?\.(java|kt|cs|swift|php|scala)$)",
     re.IGNORECASE,
 )
 
@@ -69,12 +76,56 @@ def git_root(cwd):
         return None
 
 
-def classify(path):
+# .rolepod/risk-paths override — same parse as session_state._load_risk_overrides
+# (bare/`+` ADD, `-` EXCLUDE, `#` comment, bad regex skipped, missing file =
+# built-ins only), but read from the git root of the EDIT's cwd (the `root`
+# already resolved by the caller via git_root(cwd)), not the process cwd —
+# a ledger append run from another repo with --cwd pointing here must still
+# honour THIS repo's file. Cached per root: one edit-ledger process handles
+# one append call, but the cache keeps a repeated classify() cheap.
+_RISK_OVERRIDE_CACHE = {}
+
+
+def _load_risk_overrides(root):
+    if not root:
+        return [], []
+    if root in _RISK_OVERRIDE_CACHE:
+        return _RISK_OVERRIDE_CACHE[root]
+    add, excl = [], []
+    try:
+        with open(os.path.join(root, ".rolepod", "risk-paths"), encoding="utf-8") as f:
+            for ln in f:
+                ln = ln.split("#", 1)[0].strip()
+                if not ln:
+                    continue
+                try:
+                    if ln.startswith("-"):
+                        excl.append(re.compile(ln[1:], re.IGNORECASE))
+                    else:
+                        add.append(re.compile(ln.lstrip("+"), re.IGNORECASE))
+                except re.error:
+                    continue
+    except Exception:
+        pass
+    _RISK_OVERRIDE_CACHE[root] = (add, excl)
+    return add, excl
+
+
+def classify(path, root=None):
     if TEST_FILE.search(path):
         return "test"
-    if HIGH_RISK_PATH.search(path) and CODE_FILE.search(path):
-        return "risk"
-    return "other"
+    add, excl = _load_risk_overrides(root)
+    # CODE_FILE gates a risk-paths ADD hit too, same as a built-in hit — the
+    # session_state.py call site applies is_code_file() uniformly over
+    # is_high_risk_path() (built-ins + ADD overrides alike); an ADD pattern
+    # bypassing it here would count a non-code file (e.g. a doc) as a risk
+    # edit that session_state's own tally never would — reviewed
+    # 2026-09-24, MINOR-4.
+    path_risk = HIGH_RISK_PATH.search(path) or any(p.search(path) for p in add)
+    hit = bool(path_risk) and bool(CODE_FILE.search(path))
+    if hit and any(p.search(path) for p in excl):
+        return "other"
+    return "risk" if hit else "other"
 
 
 def relative(root, path):
@@ -113,8 +164,14 @@ def append(root, cli, paths, agent=""):
     ts = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(now))
     with open(ledger, "a", encoding="utf-8") as f:
         for p in paths:
+            rel = relative(root, p)
+            # classify() on the REPO-RELATIVE path, not the raw (often
+            # absolute) one: a `.rolepod/risk-paths` line anchored with `^`
+            # (e.g. `-^design_tokens/`) must anchor to the repo root, the
+            # same place session_state._load_risk_overrides anchors it —
+            # reviewed 2026-09-24, MINOR-2.
             f.write(json.dumps({"t": round(now, 3), "ts": ts, "cli": cli,
-                                "path": relative(root, p), "kind": classify(p),
+                                "path": rel, "kind": classify(rel, root),
                                 "agent": agent or ""}, ensure_ascii=False) + "\n")
     try:
         if os.path.getsize(ledger) > MAX_BYTES:

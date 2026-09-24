@@ -166,8 +166,13 @@ function lockDirFor(worktree, homedir) {
 // the RISK_CANON pinned in tests/static/lean-surface.sh across all shells.
 const RISK_RE =
   /(^|\/|_)(auth|authn|authz|authentication|authorization|billing|payment|payments|migration|migrations|credit|credits|permission|permissions|secret|secrets|crypto|cryptography|token|tokens|oauth|jwt|sso|saml|webhook|webhooks|stripe|paypal|charge|charges|invoice|invoices|deletion|deletions|erasure|gdpr|security)(\/|\.|_|$)/i
+// The last two alternatives are case-SENSITIVE (local `(?-i:...)`, the whole
+// pattern still carries /i): the commit gate's own filename filter has no
+// -i, so a lowercase-`test` collision inside an unrelated word
+// (AppAttest.swift, Latest.java) must not be exempted here while the gate
+// still calls it high-risk — reviewed 2026-09-24, MAJOR-1.
 const TEST_RE =
-  /(^|\/)(tests?|__tests__|spec|e2e)\/|\.(test|spec)\.[jt]sx?$|_test\.(go|py|rb|exs?|rs)$|(^|\/)test_[^/]*\.py$/i
+  /(^|\/)(tests?|__tests__|spec|specs|e2e)\/|\.(test|spec)\.(ts|tsx|js|jsx|mjs|cjs|py|go|rs|rb|java|kt|swift|cs|php)$|(?-i:(^|\/)(test_[^/]*|[^/]*_test|[^/]*_spec)\.(py|go|rs|rb|php)$)|(?-i:(^|\/)[^/]*Tests?\.(java|kt|cs|swift|php|scala)$)/i
 
 // git-commit detection — token walk ported from hooks/precommit-gate.sh.
 // The old adjacency regex missed flag-separated forms entirely:

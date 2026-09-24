@@ -49,8 +49,15 @@ TEST_FILE = re.compile(
     r"(^|/)("
     r"test|tests|__tests__|spec|specs|e2e"
     r")/.*|"
-    r"\.(test|spec)\.(ts|tsx|js|jsx|py|go|rs|rb|java|kt|swift|cs|php)$|"
-    r"(^|/)(test_|_test|.*_test)\.(py|go|rs)$",
+    r"\.(test|spec)\.(ts|tsx|js|jsx|mjs|cjs|py|go|rs|rb|java|kt|swift|cs|php)$|"
+    # Case-SENSITIVE (local `(?-i:...)`, the whole pattern is compiled with
+    # re.IGNORECASE): the commit gate's own filename filter
+    # (precommit-gate.sh HIGH_RISK= line) has no -i, so a lowercase-`test`
+    # collision inside an unrelated word (AppAttest.swift, Latest.java,
+    # Contest.cs) must not be exempted here while the gate still calls it
+    # high-risk — reviewed 2026-09-24, MAJOR-1.
+    r"(?-i:(^|/)(test_[^/]*|[^/]*_test|[^/]*_spec)\.(py|go|rs|rb|php)$)|"
+    r"(?-i:(^|/)[^/]*Tests?\.(java|kt|cs|swift|php|scala)$)",
     re.IGNORECASE,
 )
 

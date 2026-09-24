@@ -100,12 +100,30 @@ LEDGER="$(dirname "$0")/edit-ledger.py"
 
 # Test files are exempt: writing the RED test on a high-risk path is the very
 # action the hard block demands, so flagging it would deadlock. Mirrors
-# session_state.py's TEST_FILE exclusion.
-IS_TEST=0
-if [[ "$FILE" =~ (^|/)(test|tests|__tests__|spec|specs|e2e)(/|$) ]] \
-   || [[ "$FILE" =~ \.(test|spec)\.(ts|tsx|js|jsx|py|go|rs|rb|java|kt|swift|cs|php)$ ]] \
-   || [[ "$FILE" =~ (^|/)(test_|_test|.*_test)\.(py|go|rs)$ ]]; then
-  IS_TEST=1
+# session_state.py's TEST_FILE filename alternatives — byte-equivalent to the
+# commit gate's own test-name filter (precommit-gate.sh HIGH_RISK= line), so
+# a filename the gate exempts is never flagged risk here either (F4).
+COMMIT_TEST_EXEMPT=0
+if [[ "$FILE" =~ \.(test|spec)\.(ts|tsx|js|jsx|mjs|cjs|py|go|rs|rb|java|kt|swift|cs|php)$ ]] \
+   || [[ "$FILE" =~ (^|/)(test_[^/]*|[^/]*_test|[^/]*_spec)\.(py|go|rs|rb|php)$ ]] \
+   || [[ "$FILE" =~ (^|/)[^/]*Tests?\.(java|kt|cs|swift|php|scala)$ ]]; then
+  COMMIT_TEST_EXEMPT=1
+fi
+
+# The HIGH-RISK banner below keys off COMMIT_TEST_EXEMPT only — a bare test
+# DIRECTORY (tests/fixtures/seed_auth_users.py) is NOT filename-exempt, so it
+# still shows the banner: the commit gate calls a risk-term file under a test
+# directory high-risk by design (v2.85.2), and the banner must predict that
+# deny, not hide it (F5 / Desired 4). Evidence counting (TEST_EDITS) comes
+# from session_state.py / edit-ledger.py below, not from a variable here.
+
+# A prose file is never a risk path at commit either (precommit-gate.sh's
+# HIGH_RISK= line strips these by extension before risk_filter runs) — the
+# banner must agree, so `.cursor/rules/auth.mdc` never shows HIGH-RISK.
+PROSE_EXEMPT=0
+if [[ "$FILE" =~ \.(md|mdx|mdc|txt|rst|adoc)(\.tmpl)?$ ]] \
+   || [[ "$FILE" =~ (^|/)(README|LICENSE|CHANGELOG)$ ]]; then
+  PROSE_EXEMPT=1
 fi
 
 # High-risk path flag — match on path segments only, not substrings.
@@ -115,7 +133,7 @@ HIGH_RISK=""
 # pass at edit time and then block at commit time.
 _RISK_HIT=$(printf '%s\n' "$FILE" | risk_filter '(^|/|_)(auth|authn|authz|authentication|authorization|billing|payment|payments|migration|migrations|credit|credits|permission|permissions|secret|secrets|crypto|cryptography|token|tokens|oauth|jwt|sso|saml|webhook|webhooks|stripe|paypal|charge|charges|invoice|invoices|deletion|deletions|erasure|gdpr|security)(/|\.|_|$)' | head -1 || true)
 MONEY_RISK=""
-if [ "$IS_TEST" -eq 0 ] && [ -n "$_RISK_HIT" ]; then
+if [ "$COMMIT_TEST_EXEMPT" -eq 0 ] && [ "$PROSE_EXEMPT" -eq 0 ] && [ -n "$_RISK_HIT" ]; then
   HIGH_RISK="HIGH-RISK path → R4 floor: security-engineer + ONE general strong pass before commit. "
   # money / auth subset — retained unused: C1 (2026-09-19) gives money / auth
   # the same R4 floor as every high-risk path; the whole computation is a
