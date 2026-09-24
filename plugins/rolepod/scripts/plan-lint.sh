@@ -364,9 +364,6 @@ if [ "${1:-}" = "--brief" ]; then
     else if (trisk) tier = "R4"
     else if (tnontest == 1 && (acnt - tnontest) <= 1) tier = "R2"
     else tier = "R3"
-    # Computed ONCE here, reused by both Reviewers arms below (was written
-    # twice and could drift): does Test / evidence name an E2E-shaped check.
-    e2e = (Te ~ /(E2E|e2e|[Ee]nd-to-end|browser|screenshot|uiproof|UI test|UI flow|user-visible|Playwright|Cypress|visual diff)/)
     tiergloss["R1"] = "R1 (docs-only)"; tiergloss["R2"] = "R2 (one file + test)"
     tiergloss["R3"] = "R3 (multi-file)"; tiergloss["R4"] = "R4 (high-risk)"
     print tiergloss[tier]
@@ -423,7 +420,6 @@ if [ "${1:-}" = "--brief" ]; then
     if (tier == "R1") print "`none`"
     else if (tier == "R4") {
       r = "`universal-reviewer` (internal strong) or, with a usable pool, `rolepod-cross-family --kind review --brief <this brief> --attach <diff> --detach` then `--collect <job> --timeout 540` in the foreground (exit 6 = still running: run it again) instead, plus `security-engineer`"
-      if (e2e) r = r ", `qa-tester` (E2E)"
       print r
       # The round shape lives HERE, where the owner picks its reviewers: at the
       # end of the Bounds line two owners in a row still messaged the finished
@@ -434,7 +430,6 @@ if [ "${1:-}" = "--brief" ]; then
       # review over the plan diff (implement-plan Review) instead, so there is
       # no per-task external clause and no Round 2 line here.
       r = "`none` in the loop — the Lead runs ONE combined review over the plan diff before release"
-      if (e2e) r = r ", `qa-tester` (E2E)"
       print r
     }
     print "## Bounds"
