@@ -87,7 +87,7 @@ if [ "${1:-}" = "--brief" ]; then
   }
   function is_prose(p,    n, parts, base, lp) {
     lp = tolower(p)
-    if (lp ~ /\.(md|mdx|txt|rst|adoc)$/) return 1
+    if (lp ~ /\.(md|mdx|mdc|txt|rst|adoc)(\.tmpl)?$/) return 1
     n = split(lp, parts, "/")
     base = parts[n]
     if (base ~ /^(readme|license|changelog)$/) return 1
@@ -98,7 +98,7 @@ if [ "${1:-}" = "--brief" ]; then
     gsub(/[^a-z0-9]/, " ", lp)
     n = split(lp, w, " ")
     for (i = 1; i <= n; i++)
-      if (w[i] ~ /^(auth|authn|authz|billing|payment|payments|credit|credits|secret|secrets|token|tokens|crypto|migration|migrations|permission|permissions|webhook|webhooks|security|deletion)$/) return 1
+      if (w[i] ~ /^(auth|authn|authz|authentication|authorization|billing|payment|payments|migration|migrations|credit|credits|permission|permissions|secret|secrets|crypto|cryptography|token|tokens|oauth|jwt|sso|saml|webhook|webhooks|stripe|paypal|charge|charges|invoice|invoices|deletion|deletions|erasure|gdpr|security)$/) return 1
     return 0
   }
   # A test file is named as a companion of the source it tests (Pythons
