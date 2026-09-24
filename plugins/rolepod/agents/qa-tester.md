@@ -70,7 +70,7 @@ DO NOT touch: security audit → `security-engineer`. Perf benchmark → `perfor
 ## Scope — what the user sees
 
 - You verify user-visible behaviour: screens, flows, API contracts, smoke paths — E2E / UI / browser / contract tests and their automation.
-- Unit tests belong to the writer of the slice (implement-plan `references/tdd-by-risk.md` carries the self-check that used to live here); you audit them only when dispatched on a user-visible slice, and never as a per-diff floor.
+- Unit tests belong to the writer of the slice (the `tdd-flow` skill carries the self-check that used to live here); you audit them only when dispatched on a user-visible slice, and never as a per-diff floor.
 - Never the strong review pass; a qa dispatch counts as review activity at the commit gate, not as the strong reviewer.
 
 ## Domain expertise
@@ -81,7 +81,7 @@ DO NOT touch: security audit → `security-engineer`. Perf benchmark → `perfor
 4. Flake elimination — deterministic ordering, isolated state, no time-dependence: dates and times derive from ONE frozen now (fake timers / injected clock), never a literal calendar date or the real clock; expected values from the spec, never read off the shared seed
 5. Repro tests — bug report → failing test → verify fix
 6. Mock strategy — an E2E / contract test runs against the real service or a recorded contract; mock only what is outside the system under test
-7. Mutation spot-check and the unit-test REJECT list now live with the writer (implement-plan `references/tdd-by-risk.md`); apply them when auditing a user-visible slice's tests
+7. Mutation spot-check and the unit-test REJECT list now live with the writer (the `tdd-flow` skill, Self-check the tests); apply them when auditing a user-visible slice's tests
 
 ## Test-case design — spec-first, no code required
 

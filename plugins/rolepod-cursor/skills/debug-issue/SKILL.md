@@ -77,7 +77,7 @@ Done when: the trace ends at a named stopping point, with its file:line.
 
 ### 6. Write the failing test
 
-The test you wish had existed: red before the fix, green after. Tighten it until a one-character regression breaks it.
+The test you wish had existed: red before the fix, green after. Tighten it until a one-character regression breaks it. The loop → `tdd-flow`.
 No seam reaches the real bug pattern (only a shallow single-caller test fits) → that is the finding. Record it in the debug report and point the user at `/deepen-codebase`; a test at a too-shallow seam is false confidence.
 
 Done when: the test is red on the unfixed code, or the report records why no seam can hold it.
@@ -104,7 +104,7 @@ Done when: the suite is green, the repro passes, and zero `[DBG-]` tags remain.
 
 Two failed fix attempts on the same surface → stop fixing; two misses from the same mind mean the mental model is wrong.
 1. Write ONE self-contained ledger file. The advisor is cold and sees only this: the symptom, the repro command, each failed fix and why it failed, the suspect code inline (never a pointer to the session).
-2. `rolepod-cross-family --kind consult --brief <ledger>` — a FOREGROUND call. Pool off or no usable member → the Lead's own CLI at its strongest model, valid only when that model differs from the one now running. Pool rules and the fallback run → `references/second-opinion.md`.
+2. Pool on → `cross-family` kind consult with the ledger — a FOREGROUND call. Pool off, no usable member, or `cross-family` absent → the Lead's own CLI at its strongest model, valid only when that model differs from the one now running. The fallback run → `references/second-opinion.md`.
 3. Read the reply as a **correction** (a new hypothesis → exactly ONE advisor-informed attempt against the same repro), a **confirmation** ("approach right, check X"), or a **stop** ("wrong path").
 4. Still failing, or no usable advisor → `manage-context` (escalate) with the ledger and the opinion (or "no usable advisor — <reason>") attached. The Second opinion has then run: it is never re-entered for this bug. No `manage-context` → hand the user the ledger, the opinion and 2-3 options, and stop. No further fix attempts.
 

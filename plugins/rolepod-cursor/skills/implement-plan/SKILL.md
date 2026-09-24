@@ -30,11 +30,10 @@ Done when: the plan lints clean (or passes the by-eye check), the baseline is re
 
 ### 2. Test first at the plan's seams
 
-- Every logic slice: a failing unit test at the plan's seam (the public interface, never internals) → watch it fail → the smallest change → green → next slice. Refactor at review, not in the loop.
-- A test that passes before the code exists has a weak assertion; tighten it.
+- Every logic slice: a failing unit test at the plan's seam (the public interface, never internals) → watch it fail (green before the code → tighten the assertion) → the smallest change → green → next slice. Refactor at review, not in the loop.
 - Prose, rename, config: no test.
 
-Test-first vs evidence-after, mock boundaries (never a mocked DB in an integration test), your own test self-check → `references/tdd-by-risk.md`.
+The loop in full — test-first vs evidence-after, the seam's interface, mock boundaries (never a mocked DB in an integration test), your own test self-check → `tdd-flow`.
 
 Done when: each logic slice has a test that was red before its change and is green after.
 
@@ -77,7 +76,7 @@ The task owner NEVER commits and NEVER expands scope:
 - A path nobody in the wave owns → touch it, plus one `Also touched:` line in the brief.
 - A path another owner holds → stop, and put `NEEDS: <path> — <one-line change>` in the brief; the Lead applies it at integration (R1-sized) or reassigns.
 
-A write mandate goes only to the path's owning role, never a generic agent or a reviewer; a writing stage carries `agentType: 'rolepod:<role>'`, never a bare `agent()` (`references/subagent-dispatch.md`: role, model, brief fields, `write: external`).
+A write mandate goes only to the path's owning role, never a generic agent or a reviewer; a writing stage carries `agentType: 'rolepod:<role>'`, never a bare `agent()` (`references/subagent-dispatch.md`: role, model, brief fields). `write: external` → the owner writes the failing test first, then `cross-family` kind implement; pool off or `cross-family` absent → the owner writes the task.
 
 Handle the brief's status (its first word):
 - `COMPLETED` over a failing test → reject and re-brief.
