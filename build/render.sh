@@ -116,7 +116,6 @@ generate_skill_index_lean() {
       tdd-flow
 
     emit_lean_section "Commands (explicit invoke only)" \
-      rolepod-full \
       deepen-codebase
 
     emit_lean_section "On demand (offered by write-spec)" \
@@ -569,9 +568,10 @@ render_cursor() {
   # frontmatter to keep only the fields Cursor documents (name + description).
   # Defensive: the Cursor docs only acknowledge name/description in SKILL.md;
   # we don't want to gamble that Cursor silently ignores tier / phase /
-  # when_to_use / disable-model-invocation. The rolepod-full alias loses its
-  # disable-model-invocation guard on Cursor — its description is phrased
-  # ("explicit user invocation only") to keep auto-trigger rare even so.
+  # when_to_use / disable-model-invocation. A command skill (e.g.
+  # deepen-codebase) loses its disable-model-invocation guard on Cursor —
+  # its description is phrased ("explicit user invocation only") to keep
+  # auto-trigger rare even so.
   render_skills "$plugin_dst/skills"
   strip_skill_frontmatter "$plugin_dst/skills"
 

@@ -3,7 +3,7 @@
 #
 # Parses stdin (tool_name + tool_input.file_path) to skip read-only tools
 # and tailor reminder to the actual file being edited. High-risk paths
-# (auth/billing/migrations/etc.) get a stronger /rolepod-full nudge.
+# (auth/billing/migrations/etc.) get a stronger R4-route nudge.
 #
 # Contract: stdout = single JSON, stderr for debug, exit 0 on success.
 # Reference: https://github.com/google-gemini/gemini-cli/blob/main/docs/hooks/reference.md
@@ -48,7 +48,7 @@ if [ -n "$FILE" ]; then
 fi
 
 if [ "$HIGH_RISK" -eq 1 ]; then
-  MSG+=$'\n\nHIGH-RISK PATH DETECTED. Run /rolepod-full BEFORE the edit. Before commit: security-engineer + ONE strong pass — external via rolepod-cross-family --kind review when the pool is usable (a different CLI than this Lead), else universal-reviewer.'
+  MSG+=$'\n\nHIGH-RISK PATH DETECTED. Route R4: write-spec → write-plan BEFORE the edit. Before commit: security-engineer + ONE strong pass — external via rolepod-cross-family --kind review when the pool is usable (a different CLI than this Lead), else universal-reviewer.'
 fi
 
 python3 -c 'import json,sys; print(json.dumps({"systemMessage": sys.stdin.read()}))' <<EOF
