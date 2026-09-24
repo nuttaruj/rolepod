@@ -20,6 +20,13 @@
 | `simplify-code` | Use when code feels over-engineered, rotted, or duplicated — cut unused abstraction, inline singl... |
 | `manage-context` | Use when the session is long, the repo is unfamiliar, a multi-file change is fanning out beyond t... |
 
+### Helpers — called by phase skills
+
+| Skill | Description |
+|-------|-------------|
+| `cross-family` | Get another CLI's opinion or draft through the cross-family runner — a cold adversarial review of... |
+| `tdd-flow` | Run the red → green loop at a seam — pick test-first or evidence-after by risk, write one failing... |
+
 ### Commands (explicit invoke only)
 
 | Skill | Description |

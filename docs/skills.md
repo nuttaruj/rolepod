@@ -1,6 +1,6 @@
-# Rolepod Skill Catalog (Core 10 + 2 commands + 1 on-demand)
+# Rolepod Skill Catalog (Core 10 + 2 helpers + 2 commands + 1 on-demand)
 
-Rolepod ships **13 skills total**: Core 10 (1 router + 9 workflow phase skills) plus two explicit-invoke commands — `rolepod-full` (force-full lifecycle) and `deepen-codebase` (architecture report → pick a card → write-spec) — and one on-demand skill, `write-prototype` (a throwaway layout or logic demo that answers one spec question; write-spec offers it). There are no legacy compatibility shim skill files in the install tree. Old skill names are preserved only as documentation in [legacy-skill-map.md](legacy-skill-map.md).
+Rolepod ships **15 skills total**: Core 10 (1 router + 9 workflow phase skills) plus two helper skills — `cross-family` (another CLI's review / critique / consult / draft) and `tdd-flow` (red → green at a seam) — called by the phase skills that need them, plus two explicit-invoke commands — `rolepod-full` (force-full lifecycle) and `deepen-codebase` (architecture report → pick a card → write-spec) — and one on-demand skill, `write-prototype` (a throwaway layout or logic demo that answers one spec question; write-spec offers it). There are no legacy compatibility shim skill files in the install tree. Old skill names are preserved only as documentation in [legacy-skill-map.md](legacy-skill-map.md).
 
 Entry docs (`CLAUDE.md` / `AGENTS.md` / `GEMINI.md`) embed this same lean surface so the Lead does not spend context choosing among dozens of tiny workflow fragments. Deep domain expertise lives in the 15 specialist agents.
 
@@ -10,6 +10,7 @@ Entry docs (`CLAUDE.md` / `AGENTS.md` / `GEMINI.md`) embed this same lean surfac
 |---|---|---:|---|---|
 | **0** | Workflow router | 1 | yes | First read of every request |
 | **1** | Core workflow skills | 9 | yes | Phase match |
+| — | Helpers (`cross-family`, `tdd-flow`) | 2 | yes (own section) | Model-invoked by the phase skill that names them; allowed, never required |
 | — | Command alias (`rolepod-full`) | 1 | yes (own section) | Explicit `/rolepod-full` invocation only (`disable-model-invocation: true`) |
 | — | Command (`deepen-codebase`) | 1 | yes (own section) | Explicit `/deepen-codebase` invocation only (`disable-model-invocation: true`): scope → one full-strength sub-agent (the Lead's model, shell access) walks the codebase and reproduces its claims → the Lead verifies → HTML report of deepening candidates (six fields per card, Strength badge, bugs found on the way, Top recommendation) → the user picks a card and is offered a `write-spec` on it |
 | — | On demand (`write-prototype`) | 1 | yes (own section) | write-spec offers it for a layout / state-logic question, or the user types /write-prototype; needs a settled spec (Product mode + one question); builds layout variants or a clickable logic demo in a spike worktree, never merged |
@@ -30,6 +31,13 @@ Entry docs (`CLAUDE.md` / `AGENTS.md` / `GEMINI.md`) embed this same lean surfac
 | Ship | `finish-work` | "Ship / merge / push" — pre-merge gate, CI lanes, 4-option finish menu, launch ritual |
 | Simplify | `simplify-code` | Over-engineered / duplicated / single-use abstraction — behavior-preserving cut |
 | Recovery | `manage-context` | Stuck / context heavy / unfamiliar repo / advisor escalation / onboarding |
+
+## Helpers — called by phase skills
+
+| Skill | Called by | What it does |
+|-------|-----------|---------------|
+| `cross-family` | `review-code`, `write-spec`, `debug-issue`, `implement-plan` | Runs another CLI's review, critique, consult, or draft end to end. |
+| `tdd-flow` | `implement-plan`, `debug-issue`, `simplify-code`, `check-work`, `write-plan` | Runs the failing-test-first red → green loop at a seam. |
 
 ## Domain expertise → specialist agents
 

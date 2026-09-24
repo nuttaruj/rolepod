@@ -111,6 +111,10 @@ generate_skill_index_lean() {
       simplify-code \
       manage-context
 
+    emit_lean_section "Helpers — called by phase skills" \
+      cross-family \
+      tdd-flow
+
     emit_lean_section "Commands (explicit invoke only)" \
       rolepod-full \
       deepen-codebase
