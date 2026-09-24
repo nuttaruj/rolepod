@@ -171,6 +171,13 @@ try:
                     continue
                 if prov and d.get("provenance") != prov:
                     continue
+                if d.get("write_mode"):
+                    # F1/F2: a write-mode dispatch (dispatch-auto-log.sh) is a
+                    # writer, not a reviewer — count_all already excludes it
+                    # from the transcript scan; the phase-log backstop must
+                    # not re-admit it. A forged write_mode field can only
+                    # LOWER a count, never raise one.
+                    continue
                 if cut is not None:
                     ts = datetime.datetime.fromisoformat((d.get("ts") or "").replace("Z", "+00:00"))
                     if ts.tzinfo is None or ts < cut:

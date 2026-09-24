@@ -821,7 +821,6 @@ def script_option_values(script: str, key: str, code: str | None = None) -> list
     return out
 
 
-_WF_AGENTTYPE_RX = re.compile(r"agentType\s*:\s*['\"]([^'\"]+)['\"]")
 _WF_MODEL_RX = re.compile(r"model\s*:\s*['\"]([^'\"]+)['\"]")
 
 
@@ -851,10 +850,20 @@ def count_workflow_reviewers(script: str) -> tuple[int, int]:
     so a Workflow agentType strong reviewer runs strong with no lift (from
     v2.74.0 to v2.103 it rendered inherit and counted only under a strong
     Lead; a sonnet Lead had cleared this gate with a sonnet security-engineer,
-    CourtBook technician review fleet, v2.74)."""
+    CourtBook technician review fleet, v2.74).
+
+    F9: `agentType:` is matched on the STRING-STRIPPED script — the same
+    strip `script_option_values` uses — so a reviewer name that appears only
+    inside a comment or inside another string (a prompt) is not an `agent(`
+    call option and counts for nothing (S12)."""
     reviewers = strong = 0
-    for m in _WF_AGENTTYPE_RX.finditer(script):
-        name = _bare_agent_name(m.group(1))
+    code = strip_strings(script)
+    for m in re.finditer(r"[,{\s]agentType\s*:\s*['\"]", code):
+        q = m.end() - 1
+        mv = re.match(r"['\"]([^'\"]+)['\"]", script[q:q + 200])
+        if not mv:
+            continue
+        name = _bare_agent_name(mv.group(1))
         if name in REVIEWER_AGENTS:
             reviewers += 1
         if name in STRONG_REVIEWER_AGENTS:
@@ -879,32 +888,6 @@ def is_write_mode_brief(prompt) -> bool:
     agent file's own vocabulary) is a review: fail-open toward counting."""
     return bool(isinstance(prompt, str) and _WRITE_MODE_RE.search(prompt)
                 and not _REVIEW_MODE_RE.search(prompt))
-
-
-def count_reviewers_dispatched(transcript_path: str) -> int:
-    """Times Lead spawned security-engineer / universal-reviewer (qa-tester
-    is E2E verification, never the review floor — v2.148.4).
-
-    Matches the bare agent name and the plugin-namespaced form alike
-    ('rolepod:universal-reviewer'), and both the 'Agent' and 'Task' subagent tools.
-    A plugin-namespaced reviewer used to count as 0 — which false-blocked
-    commits at the precommit gate even after review actually ran. Workflow
-    scripts count via their agent() agentType calls (count_workflow_reviewers).
-
-    A brief that declares `write-mode` is a writer, not a reviewer (v2.113.0):
-    qa-tester / security-engineer dispatched to author tests used to count
-    as the review — on a high-risk diff a test-writing security-engineer
-    cleared the STRONG-review gate with no review having happened.
-    """
-    n = 0
-    for tool, inp in _iter_tool_uses(transcript_path):
-        if tool in AGENT_TOOLS:
-            if _bare_agent_name(inp.get("subagent_type")) in REVIEWER_AGENTS \
-                    and not is_write_mode_brief(inp.get("prompt")):
-                n += 1
-        elif tool == "Workflow":
-            n += count_workflow_reviewers(_workflow_script(inp))[0]
-    return n
 
 
 def _since_iso(since_epoch: float | None) -> str | None:
@@ -995,6 +978,12 @@ def count_all(
                         high_risk_edits += 1
             elif tool in AGENT_TOOLS:
                 name = _bare_agent_name(inp.get("subagent_type"))
+                # A brief that declares write-mode is a writer, not a
+                # reviewer (v2.113.0 rule, folded into count_all so it no
+                # longer needs a separate caller — F1): it counts toward
+                # neither reviewers nor strong_reviewers.
+                if is_write_mode_brief(inp.get("prompt")):
+                    continue
                 if name in REVIEWER_AGENTS:
                     reviewers += 1
                 if (name in STRONG_REVIEWER_AGENTS
@@ -1211,8 +1200,6 @@ def main() -> int:
         print(last_context_tokens(transcript_path))
     elif query == "count-test-edits":
         print(count_test_edits(transcript_path, hook_input.get("cwd")))
-    elif query == "count-reviewers-dispatched":
-        print(count_reviewers_dispatched(transcript_path))
     elif query == "selfdo-state":
         # "<tier> <lead product edits> <writer dispatches> <route ts>" since
         # the newest routing line — "" when no route was stated, or when
