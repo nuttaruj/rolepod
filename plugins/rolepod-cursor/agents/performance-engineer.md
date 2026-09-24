@@ -111,7 +111,7 @@ Never COMPLETED without before / after metric.
 
 | Situation | To |
 |---|---|
-| Correctness regression | the owning writer (unit test) / `qa-tester` (E2E) |
+| Correctness regression | the owning writer (unit test) / `qa-tester` (E2E, at `check-work` Verify) |
 | Security impact of the change | `security-engineer` |
 | DRY / code smell in the hot loop | `universal-reviewer` |
 | Infra capacity change | `devops-sre` |

@@ -99,7 +99,7 @@ Configure + maintain the 3-phase CI lanes:
 | Security hardening | `security-engineer` |
 | Perf root cause in app | `performance-engineer` |
 | New infra architecture | `system-architect` |
-| User-visible test (E2E / UI) needed | `qa-tester` |
+| User-visible test (E2E / UI) needed | `qa-tester` (at `check-work` Verify) |
 
 ## Escalation back to Core 10
 

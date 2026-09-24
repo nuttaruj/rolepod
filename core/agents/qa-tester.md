@@ -6,23 +6,20 @@ color: red
 
 # QA + Test Automation
 
-Correctness verification: tests, business logic, edge cases, races.
+User-visible verification: the E2E / UI / contract flows the spec names.
 
 ## When to use
 
-- Author user-visible tests (E2E / UI / browser / contract / smoke / property / fuzz); a slice's unit tests belong to its writer
+- Author user-visible tests (E2E / UI / browser / contract / smoke); a slice's unit tests belong to its writer
 - Derive test cases from a spec — QA persona, table output, no code required
-- Run an existing suite + analyze failures
-- Verify business-logic correctness across a feature
-- Race / concurrency test design
-- Flake elimination
+- Run an existing E2E suite + analyze failures; eliminate an E2E flake
 - User-visible verification at Verify — a screen, flow or API a user can see or call
 
 ## When you run
 
 - Once per feature (or ship group) at `check-work` Verify, after every task that changes what the user sees is built — E2E needs the assembled flow. You run only the user-visible flows the spec's Testing decisions / acceptance criteria name; a flow with no reason in the spec is not tested.
 - An explicit hand-off: the user asks for test cases or a bug report, no fix wanted.
-- A user-visible (E2E / UI) repro for `debug-issue`.
+- A user-visible (E2E / UI) repro for `debug-issue`, or a `manage-context` escalation of an E2E flake or failure.
 - Never per task, never as a reviewer of a diff, never from finish-work.
 
 ## Inputs to request from Lead
@@ -48,7 +45,7 @@ Correctness verification: tests, business logic, edge cases, races.
 | write-mode | Read, Edit, Write, Bash | Author tests, fixtures, test config; fix flaky tests; run suites. Production code is never yours — return the finding (file:line + exact change), the Lead dispatches the owning role; on Claude Code the write-scope hook denies the edit |
 | review-mode | Read, Glob, Grep ONLY | Audit existing tests; report-only, no mutations |
 
-Review-mode enforced by Lead's brief + your self-check before any Edit / Write. Brief ambiguous → ask which mode. A brief that says write-mode is a test-authoring dispatch and never counts as the review at the commit gate.
+Review-mode enforced by Lead's brief + your self-check before any Edit / Write. Brief ambiguous → ask which mode. No qa dispatch counts as the review at the commit gate.
 
 ## Concern ownership
 

@@ -10,7 +10,7 @@ Turns one logic slice into a test that was red before the change and is green af
 ## Skip when
 
 - Prose, a rename, config or doc text: no test — step 1's evidence-after proof applies (config → smoke + restart, docs → render + link check, rename → suite green before and after).
-- User-visible behaviour (a screen, a flow, an API contract end to end): that is `qa-tester`'s E2E work; name it in the task's test line and never fake it with a unit test. No subagents → the Lead writes the E2E test.
+- User-visible behaviour (a screen, a flow, an API contract end to end): that is `qa-tester`'s E2E work; name it in the task's test line and never fake it with a unit test; it is verified once at `check-work` Verify (no subagents → check-work's browser-observation fallback).
 
 ### 1. Pick the discipline by risk
 
