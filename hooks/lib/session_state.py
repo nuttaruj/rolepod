@@ -49,15 +49,18 @@ TEST_FILE = re.compile(
     r"(^|/)("
     r"test|tests|__tests__|spec|specs|e2e"
     r")/.*|"
-    r"\.(test|spec)\.(ts|tsx|js|jsx|mjs|cjs|py|go|rs|rb|java|kt|swift|cs|php)$|"
-    # Case-SENSITIVE (local `(?-i:...)`, the whole pattern is compiled with
-    # re.IGNORECASE): the commit gate's own filename filter
-    # (precommit-gate.sh HIGH_RISK= line) has no -i, so a lowercase-`test`
-    # collision inside an unrelated word (AppAttest.swift, Latest.java,
-    # Contest.cs) must not be exempted here while the gate still calls it
-    # high-risk — reviewed 2026-09-24, MAJOR-1.
-    r"(?-i:(^|/)(test_[^/]*|[^/]*_test|[^/]*_spec)\.(py|go|rs|rb|php)$)|"
-    r"(?-i:(^|/)[^/]*Tests?\.(java|kt|cs|swift|php|scala)$)",
+    # Every filename alternative below is case-SENSITIVE AS A WHOLE (one
+    # local `(?-i:...)` group; the pattern is compiled with re.IGNORECASE
+    # for the directory alternative above only): the commit gate's own
+    # filename filter (precommit-gate.sh HIGH_RISK= line) has no -i, so a
+    # lowercase-`test` collision inside an unrelated word (AppAttest.swift,
+    # Latest.java, Contest.cs) must not be exempted here while the gate
+    # still calls it high-risk, and `invoice.TEST.py` must not be exempted
+    # here while the gate still calls IT high-risk either — reviewed
+    # 2026-09-24, breaker round 2.
+    r"(?-i:\.(test|spec)\.(ts|tsx|js|jsx|mjs|cjs|py|go|rs|rb|java|kt|swift|cs|php)$"
+    r"|(^|/)(test_[^/]*|[^/]*_test|[^/]*_spec)\.(py|go|rs|rb|php)$"
+    r"|(^|/)[^/]*Tests?\.(java|kt|cs|swift|php|scala)$)",
     re.IGNORECASE,
 )
 
@@ -179,6 +182,28 @@ def _git_root(cwd):
         root = ''
     _ROOT_CACHE[key] = root
     return root
+
+
+def _repo_relative(root, path):
+    """Repo-relative when `path` sits under `root` — compared on realpaths,
+    the exact rule hooks/edit-ledger.py's relative() uses, so a CLI's own
+    absolute spelling (/var/... vs git's /private/var/...) resolves the same
+    way in every copy. Every classification call (is_test_file /
+    is_high_risk_path / is_code_file) goes through this first: a raw
+    absolute path defeats a root-anchored `.rolepod/risk-paths` line
+    (`^design_tokens/`) and can make an ancestor directory named `auth`
+    outside the repo look risky — reviewed 2026-09-24, breaker round 2."""
+    if not path or not root:
+        return path
+    try:
+        rr, rp = os.path.realpath(root), os.path.realpath(path)
+        if rp.startswith(rr + os.sep):
+            return rp[len(rr) + 1:]
+    except Exception:
+        pass
+    if path.startswith(root + "/"):
+        return path[len(root) + 1:]
+    return path
 
 
 def _resolve_write_path(raw, cwd, root):
@@ -750,11 +775,14 @@ def count_test_edits(transcript_path: str, cwd: str | None = None) -> int:
     n = 0
     for tool, inp in _iter_tool_uses(transcript_path):
         if tool in EDIT_TOOLS:
-            if is_test_file(_file_from_input(inp)):
+            root = _git_root(cwd or "")
+            if is_test_file(_repo_relative(root, _file_from_input(inp))):
                 n += 1
         elif tool == "Bash":
-            for p in bash_write_paths(inp.get("command") or "", inp.get("cwd") or cwd):
-                if is_test_file(p):
+            bash_cwd = inp.get("cwd") or cwd
+            root = _git_root(bash_cwd or "")
+            for p in bash_write_paths(inp.get("command") or "", bash_cwd):
+                if is_test_file(_repo_relative(root, p)):
                     n += 1
     return n
 
@@ -984,13 +1012,17 @@ def count_all(
     for tp in paths:
         for tool, inp in _iter_tool_uses(tp, since):
             if tool in EDIT_TOOLS:
-                path = _file_from_input(inp)
+                root = _git_root(cwd or "")
+                path = _repo_relative(root, _file_from_input(inp))
                 if is_test_file(path):
                     test_edits += 1
                 elif is_high_risk_path(path) and is_code_file(path):
                     high_risk_edits += 1
             elif tool == "Bash":
-                for p in bash_write_paths(inp.get("command") or "", inp.get("cwd") or cwd):
+                bash_cwd = inp.get("cwd") or cwd
+                root = _git_root(bash_cwd or "")
+                for p in bash_write_paths(inp.get("command") or "", bash_cwd):
+                    p = _repo_relative(root, p)
                     if is_test_file(p):
                         test_edits += 1
                     elif is_high_risk_path(p) and is_code_file(p):

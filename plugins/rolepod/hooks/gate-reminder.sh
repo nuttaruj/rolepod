@@ -98,15 +98,36 @@ echo "$TOOL" | grep -qE '^(Edit|Write|MultiEdit|NotebookEdit|apply_patch)$' || e
 LEDGER="$(dirname "$0")/edit-ledger.py"
 [ -f "$LEDGER" ] && { printf '%s' "$INPUT" | python3 -I "$LEDGER" append-stdin "${ROLEPOD_CLI:-claude}" >/dev/null 2>&1 || true; }
 
+# Repo-relative normalization (breaker round 2, item 1): every classification
+# check below (COMMIT_TEST_EXEMPT / PROSE_EXEMPT / risk_filter) reads
+# FILE_REL, not the raw FILE — a CLI's own absolute spelling must resolve
+# against the repo root the same realpath-aware way
+# hooks/edit-ledger.py's relative() resolves it, or a root-anchored
+# `.rolepod/risk-paths` line (`^design_tokens/`) and an ancestor directory
+# named `auth` OUTSIDE the repo disagree with the commit gate.
+FILE_REL="$FILE"
+_gr2_root="$(git rev-parse --show-toplevel 2>/dev/null || true)"
+if [ -n "$_gr2_root" ] && [ -n "$FILE" ]; then
+  _gr2_rel="$FILE"
+  if [ "${_gr2_rel#/}" != "$_gr2_rel" ]; then   # a NEW file in a not-yet-existing directory: resolve the nearest existing ancestor, re-append the rest
+    _gr2_walk=$(dirname "$_gr2_rel"); _gr2_tail=$(basename "$_gr2_rel")
+    while [ ! -d "$_gr2_walk" ] && [ "$_gr2_walk" != "/" ] && [ "$_gr2_walk" != "." ]; do _gr2_tail="$(basename "$_gr2_walk")/$_gr2_tail"; _gr2_walk=$(dirname "$_gr2_walk"); done
+    _gr2_dir=$(cd "$_gr2_walk" 2>/dev/null && pwd -P || true)
+    [ -n "$_gr2_dir" ] && _gr2_rel="$_gr2_dir/$_gr2_tail"
+  fi
+  _gr2_rootp=$(cd "$_gr2_root" 2>/dev/null && pwd -P || printf '%s' "$_gr2_root")
+  case "$_gr2_rel" in "$_gr2_rootp"/*) FILE_REL="${_gr2_rel#"$_gr2_rootp"/}" ;; "$_gr2_root"/*) FILE_REL="${_gr2_rel#"$_gr2_root"/}" ;; esac
+fi
+
 # Test files are exempt: writing the RED test on a high-risk path is the very
 # action the hard block demands, so flagging it would deadlock. Mirrors
 # session_state.py's TEST_FILE filename alternatives — byte-equivalent to the
 # commit gate's own test-name filter (precommit-gate.sh HIGH_RISK= line), so
 # a filename the gate exempts is never flagged risk here either (F4).
 COMMIT_TEST_EXEMPT=0
-if [[ "$FILE" =~ \.(test|spec)\.(ts|tsx|js|jsx|mjs|cjs|py|go|rs|rb|java|kt|swift|cs|php)$ ]] \
-   || [[ "$FILE" =~ (^|/)(test_[^/]*|[^/]*_test|[^/]*_spec)\.(py|go|rs|rb|php)$ ]] \
-   || [[ "$FILE" =~ (^|/)[^/]*Tests?\.(java|kt|cs|swift|php|scala)$ ]]; then
+if [[ "$FILE_REL" =~ \.(test|spec)\.(ts|tsx|js|jsx|mjs|cjs|py|go|rs|rb|java|kt|swift|cs|php)$ ]] \
+   || [[ "$FILE_REL" =~ (^|/)(test_[^/]*|[^/]*_test|[^/]*_spec)\.(py|go|rs|rb|php)$ ]] \
+   || [[ "$FILE_REL" =~ (^|/)[^/]*Tests?\.(java|kt|cs|swift|php|scala)$ ]]; then
   COMMIT_TEST_EXEMPT=1
 fi
 
@@ -121,8 +142,8 @@ fi
 # HIGH_RISK= line strips these by extension before risk_filter runs) — the
 # banner must agree, so `.cursor/rules/auth.mdc` never shows HIGH-RISK.
 PROSE_EXEMPT=0
-if [[ "$FILE" =~ \.(md|mdx|mdc|txt|rst|adoc)(\.tmpl)?$ ]] \
-   || [[ "$FILE" =~ (^|/)(README|LICENSE|CHANGELOG)$ ]]; then
+if [[ "$FILE_REL" =~ \.(md|mdx|mdc|txt|rst|adoc)(\.tmpl)?$ ]] \
+   || [[ "$FILE_REL" =~ (^|/)(README|LICENSE|CHANGELOG)$ ]]; then
   PROSE_EXEMPT=1
 fi
 
@@ -131,14 +152,14 @@ HIGH_RISK=""
 # Canonical high-risk regex — byte-for-byte the same segment/anchor set as
 # precommit-gate.sh's HIGH_RISK= line and session_state.py's HIGH_RISK_PATH, so a file cannot
 # pass at edit time and then block at commit time.
-_RISK_HIT=$(printf '%s\n' "$FILE" | risk_filter '(^|/|_)(auth|authn|authz|authentication|authorization|billing|payment|payments|migration|migrations|credit|credits|permission|permissions|secret|secrets|crypto|cryptography|token|tokens|oauth|jwt|sso|saml|webhook|webhooks|stripe|paypal|charge|charges|invoice|invoices|deletion|deletions|erasure|gdpr|security)(/|\.|_|$)' | head -1 || true)
+_RISK_HIT=$(printf '%s\n' "$FILE_REL" | risk_filter '(^|/|_)(auth|authn|authz|authentication|authorization|billing|payment|payments|migration|migrations|credit|credits|permission|permissions|secret|secrets|crypto|cryptography|token|tokens|oauth|jwt|sso|saml|webhook|webhooks|stripe|paypal|charge|charges|invoice|invoices|deletion|deletions|erasure|gdpr|security)(/|\.|_|$)' | head -1 || true)
 MONEY_RISK=""
 if [ "$COMMIT_TEST_EXEMPT" -eq 0 ] && [ "$PROSE_EXEMPT" -eq 0 ] && [ -n "$_RISK_HIT" ]; then
   HIGH_RISK="HIGH-RISK path → R4 floor: security-engineer + ONE general strong pass before commit. "
   # money / auth subset — retained unused: C1 (2026-09-19) gives money / auth
   # the same R4 floor as every high-risk path; the whole computation is a
   # separate, out-of-scope cut.
-  MONEY_RISK=$(printf '%s\n' "$FILE" | grep -iE '(^|/|_)(auth|authn|authz|authentication|authorization|billing|payment|payments|credit|credits|secret|secrets|crypto|cryptography|oauth|jwt|sso|saml|stripe|paypal|charge|charges|invoice|invoices|deletion|deletions|erasure|gdpr)(/|\.|_|$)' | head -1 || true)
+  MONEY_RISK=$(printf '%s\n' "$FILE_REL" | grep -iE '(^|/|_)(auth|authn|authz|authentication|authorization|billing|payment|payments|credit|credits|secret|secrets|crypto|cryptography|oauth|jwt|sso|saml|stripe|paypal|charge|charges|invoice|invoices|deletion|deletions|erasure|gdpr)(/|\.|_|$)' | head -1 || true)
 fi
 
 # Review in flight (v2.93.0): a detached cross-family job is still running

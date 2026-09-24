@@ -166,13 +166,20 @@ function lockDirFor(worktree, homedir) {
 // the RISK_CANON pinned in tests/static/lean-surface.sh across all shells.
 const RISK_RE =
   /(^|\/|_)(auth|authn|authz|authentication|authorization|billing|payment|payments|migration|migrations|credit|credits|permission|permissions|secret|secrets|crypto|cryptography|token|tokens|oauth|jwt|sso|saml|webhook|webhooks|stripe|paypal|charge|charges|invoice|invoices|deletion|deletions|erasure|gdpr|security)(\/|\.|_|$)/i
-// The last two alternatives are case-SENSITIVE (local `(?-i:...)`, the whole
-// pattern still carries /i): the commit gate's own filename filter has no
-// -i, so a lowercase-`test` collision inside an unrelated word
-// (AppAttest.swift, Latest.java) must not be exempted here while the gate
-// still calls it high-risk — reviewed 2026-09-24, MAJOR-1.
-const TEST_RE =
-  /(^|\/)(tests?|__tests__|spec|specs|e2e)\/|\.(test|spec)\.(ts|tsx|js|jsx|mjs|cjs|py|go|rs|rb|java|kt|swift|cs|php)$|(?-i:(^|\/)(test_[^/]*|[^/]*_test|[^/]*_spec)\.(py|go|rs|rb|php)$)|(?-i:(^|\/)[^/]*Tests?\.(java|kt|cs|swift|php|scala)$)/i
+// Case-insensitive: the directory alternative only — the commit gate never
+// exempts a bare test directory (v2.85.2), so this stays wider by design.
+const TEST_RE_CI = /(^|\/)(tests?|__tests__|spec|specs|e2e)\//i
+// Case-sensitive, matching the commit gate's own filename filter exactly
+// (no -i there either): no inline `(?-i:...)` modifier here — RegExp
+// modifiers reached Baseline only in 2025, so a pre-2025 Bun/Node build
+// throws a SyntaxError parsing this module and EVERY rolepod hook on
+// opencode (the commit gate included) silently fails to load — reviewed
+// 2026-09-24, breaker round 2, MINOR-6.
+const TEST_RE_CS =
+  /\.(test|spec)\.(ts|tsx|js|jsx|mjs|cjs|py|go|rs|rb|java|kt|swift|cs|php)$|(^|\/)(test_[^/]*|[^/]*_test|[^/]*_spec)\.(py|go|rs|rb|php)$|(^|\/)[^/]*Tests?\.(java|kt|cs|swift|php|scala)$/
+function isTestPath(p) {
+  return TEST_RE_CI.test(p) || TEST_RE_CS.test(p)
+}
 
 // git-commit detection — token walk ported from hooks/precommit-gate.sh.
 // The old adjacency regex missed flag-separated forms entirely:
@@ -522,7 +529,7 @@ function makeCore({ directory, homedir } = {}) {
     directory: dir, homedir: hd,
     ledger, lastCommitEpoch, phaseLogAppend, logBypass, registerLock,
     runCore, isGitCommit, worktreeRoot,
-    RISK_RE, TEST_RE, VALUE_OPTS,
+    RISK_RE, TEST_RE_CI, TEST_RE_CS, isTestPath, VALUE_OPTS,
   }
 }
 

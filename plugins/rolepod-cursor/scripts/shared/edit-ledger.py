@@ -45,15 +45,18 @@ TEST_FILE = re.compile(
     r"(^|/)("
     r"test|tests|__tests__|spec|specs|e2e"
     r")/.*|"
-    r"\.(test|spec)\.(ts|tsx|js|jsx|mjs|cjs|py|go|rs|rb|java|kt|swift|cs|php)$|"
-    # Case-SENSITIVE (local `(?-i:...)`, the whole pattern is compiled with
-    # re.IGNORECASE): the commit gate's own filename filter
-    # (precommit-gate.sh HIGH_RISK= line) has no -i, so a lowercase-`test`
-    # collision inside an unrelated word (AppAttest.swift, Latest.java,
-    # Contest.cs) must not be exempted here while the gate still calls it
-    # high-risk — reviewed 2026-09-24, MAJOR-1.
-    r"(?-i:(^|/)(test_[^/]*|[^/]*_test|[^/]*_spec)\.(py|go|rs|rb|php)$)|"
-    r"(?-i:(^|/)[^/]*Tests?\.(java|kt|cs|swift|php|scala)$)",
+    # Every filename alternative below is case-SENSITIVE AS A WHOLE (one
+    # local `(?-i:...)` group; the pattern is compiled with re.IGNORECASE
+    # for the directory alternative above only): the commit gate's own
+    # filename filter (precommit-gate.sh HIGH_RISK= line) has no -i, so a
+    # lowercase-`test` collision inside an unrelated word (AppAttest.swift,
+    # Latest.java, Contest.cs) must not be exempted here while the gate
+    # still calls it high-risk, and `invoice.TEST.py` must not be exempted
+    # here while the gate still calls IT high-risk either — reviewed
+    # 2026-09-24, breaker round 2.
+    r"(?-i:\.(test|spec)\.(ts|tsx|js|jsx|mjs|cjs|py|go|rs|rb|java|kt|swift|cs|php)$"
+    r"|(^|/)(test_[^/]*|[^/]*_test|[^/]*_spec)\.(py|go|rs|rb|php)$"
+    r"|(^|/)[^/]*Tests?\.(java|kt|cs|swift|php|scala)$)",
     re.IGNORECASE,
 )
 
