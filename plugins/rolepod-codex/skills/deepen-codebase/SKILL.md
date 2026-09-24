@@ -15,7 +15,7 @@ Surface architectural friction and propose **deepening**: a refactor that turns 
 
 Owns: scoping, the friction walk, the report, the hand-off question.
 
-Does not own: the design of the deepened module, the spec, the plan, the code — `write-spec` → `write-plan` → `implement-plan` own those. Cutting dead code is `simplify-code`.
+Does not own: the design of the deepened module, the spec, the plan, the code — `write-spec` → `write-plan` → `implement-plan` own those. Cutting dead code is `simplify-code`; fixing a bug met on the way is `debug-issue`.
 
 ## Iron rules
 
@@ -38,15 +38,15 @@ Read `CONTEXT.md` and `docs/adr/` for the area before walking. YAGNI: a deepenin
 
 ## Step 2 — explore
 
-Dispatch ONE `scout` — cheap, read-only — to walk the codebase organically: hot spots first, everything reachable after, no rigid heuristics — it notes where IT experiences friction. What friction looks like (a lens, not a filter):
+Dispatch ONE general sub-agent at full strength — the CLI's general-purpose agent, shell access, NO model override so it inherits the Lead's model. Never the cheap `scout`: the walk is judgment, not a sweep, and its worth is the claims it reproduces.
 
-- understanding one concept means bouncing between many small modules
-- a module is shallow, its interface nearly as complex as its implementation
-- pure functions were extracted for testability but the real bugs hide in how they are called, no locality
-- tightly-coupled modules leak across their seams
-- a part is untested or cannot be tested through its current interface
+Its brief: the Step 1 scope; read `references/explorer-lens.md` first — vocabulary, deletion test, friction signals, evidence bar; walk organically, hot spots first, everything reachable after, noting where IT struggles; any command that writes nothing in the repo (grep, `git log`, an existing test, a scratch script in the temp dir) may reproduce a claim. It returns candidates (files with `path:line`, the friction, the deletion-test result) and every bug met on the way (`path:line` + the reproducing command, or `read only, not reproduced`) — never an edit, never an interface.
 
-Apply the deletion test to every suspect — complexity concentrates behind a smaller interface when deleted = the signal; spreads across callers = drop it. The scout returns candidates only, never edits. No scout support on this CLI → the Lead walks the same way, one area per run on a large legacy tree so the walk does not circle.
+No sub-agent support on this CLI → the Lead walks the same way with the lens, one area per run on a large legacy tree so the walk does not circle.
+
+## Step 2b — verify
+
+The Lead checks what comes back before writing: open every `path:line` a kept candidate cites, re-run each claimed bug's reproduction (fails or cannot run → `read only`), re-apply the deletion test, merge duplicates, drop what fails. `Strong` only when the evidence still holds after this check.
 
 ## Step 3 — report
 
@@ -54,11 +54,11 @@ Write ONE self-contained HTML file to the OS temp dir — `$TMPDIR`, else `/tmp`
 
 One card per candidate, exactly these fields: **Files** · **Problem** (the friction, in the domain's words) · **Solution** (plain words, no interface yet) · **Benefits** (locality and leverage, how tests change) · **Before / After** (a side-by-side drawing of the shallow shape and the deepened shape) · **Strength** — `Strong`: the deletion test passes clearly and the friction is real; `Worth exploring`: plausible, the payoff depends on where the code is heading; `Speculative`: surfaced for completeness, safe to ignore.
 
-An ADR conflict is a marked callout on the card. The report ends with **Top recommendation** — which card first and why. The report is the only new file — no code changes during the run. Scaffold and drawing patterns: `references/html-report.md` — absent, a plain page with the six fields per card is the report.
+An ADR conflict is a marked callout on the card. After the cards, **Bugs found on the way** — one row each: `path:line` · what breaks · reproduced / read only · → `debug-issue`; a bug is never a card. The report ends with **Top recommendation** — which card first and why. The report is the only new file — no code changes during the run. Scaffold and drawing patterns: `references/html-report.md` — absent, a plain page with the six fields per card is the report.
 
 ## Step 4 — hand-off
 
-Stop after the report and ask, in one message: which card, and whether to open a `write-spec` on it now. "Just the report" → stop, the path is the deliverable.
+Stop after the report and ask, in one message: which card, and whether to open a `write-spec` on it now. "Just the report" → stop, the path is the deliverable. A listed bug → `debug-issue` on its own, or into the picked card's spec when it sits inside that card's files.
 
 Yes → `write-spec` with the card as the Source spec — its §2 questions settle the domain terms (into `CONTEXT.md` as they resolve) in frontier rounds, never one question at a time; its §3 presents the approaches with the one-shot `system-architect`; then `write-plan` → `implement-plan`. ONE card per session — a second card is a new spec in a fresh session, never stacked into this one.
 
@@ -78,4 +78,5 @@ A trivial or tiny repo, or a request that is really a bug or a feature → say s
 ## References
 
 Load only when needed:
+- `references/explorer-lens.md` — the explorer's vocabulary, tests, friction signals, evidence bar (Step 2).
 - `references/html-report.md` — scaffold, diagram patterns, styling.

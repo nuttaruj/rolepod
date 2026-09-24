@@ -11,7 +11,7 @@ Entry docs (`CLAUDE.md` / `AGENTS.md` / `GEMINI.md`) embed this same lean surfac
 | **0** | Workflow router | 1 | yes | First read of every request |
 | **1** | Core workflow skills | 9 | yes | Phase match |
 | — | Command alias (`rolepod-full`) | 1 | yes (own section) | Explicit `/rolepod-full` invocation only (`disable-model-invocation: true`) |
-| — | Command (`deepen-codebase`) | 1 | yes (own section) | Explicit `/deepen-codebase` invocation only (`disable-model-invocation: true`): scope → one scout walks the codebase → HTML report of deepening candidates (six fields per card, Strength badge, Top recommendation) → the user picks a card and is offered a `write-spec` on it |
+| — | Command (`deepen-codebase`) | 1 | yes (own section) | Explicit `/deepen-codebase` invocation only (`disable-model-invocation: true`): scope → one full-strength sub-agent (the Lead's model, shell access) walks the codebase and reproduces its claims → the Lead verifies → HTML report of deepening candidates (six fields per card, Strength badge, bugs found on the way, Top recommendation) → the user picks a card and is offered a `write-spec` on it |
 | — | On demand (`write-prototype`) | 1 | yes (own section) | write-spec offers it for a layout / state-logic question, or the user types /write-prototype; needs a settled spec (Product mode + one question); builds layout variants or a clickable logic demo in a spike worktree, never merged |
 | **2** | Specialist public skills | 0 default | no | Domain depth lives in agents |
 | **3** | Legacy compatibility shims | 0 | no | Removed; see migration map |

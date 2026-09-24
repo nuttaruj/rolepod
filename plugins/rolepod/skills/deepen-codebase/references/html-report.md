@@ -4,7 +4,7 @@
 
 The review is rendered as a single self-contained HTML file in the OS temp directory, named `deepen-codebase-<timestamp>.html`. Tailwind and Mermaid both come from CDNs. Mermaid handles graph-shaped diagrams reliably; hand-built divs and inline SVG handle the more editorial visuals (mass diagrams, cross-sections). Mix the two — leaning on Mermaid for everything starts to look generic.
 
-Offline or a locked-down network: the CDN libraries do not load. Write inline CSS and hand-built SVG diagrams instead — the six fields must read without any script.
+Offline or a locked-down network: the CDN libraries do not load. Write inline CSS and hand-built SVG diagrams instead — the six fields must read without any script. Either way the fonts are the scaffold's stacks: sans body, serif `h1` / `h2`, mono for files and code — never another face.
 
 ## Scaffold
 
@@ -25,12 +25,18 @@ Offline or a locked-down network: the CDN libraries do not load. Write inline CS
       .seam { stroke-dasharray: 4 4; }
       .leak { stroke: #dc2626; }
       .deep { background: linear-gradient(135deg, #0f172a, #1e293b); }
+      /* fonts — fixed: Tailwind's sans / serif / mono stacks, kept here so the
+         offline inline-CSS report reads the same */
+      body { font-family: ui-sans-serif, system-ui, sans-serif; font-size: 16px; line-height: 1.5; }
+      h1, h2 { font-family: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif; }
+      code, pre, .files { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
     </style>
   </head>
   <body class="bg-stone-50 text-slate-900 font-sans">
     <main class="max-w-5xl mx-auto px-6 py-12 space-y-12">
       <header>...</header>
       <section id="candidates" class="space-y-10">...</section>
+      <section id="bugs">...</section>
       <section id="top-recommendation">...</section>
     </main>
   </body>
@@ -97,11 +103,15 @@ Before: a tree of function calls rendered as nested boxes. After: the same tree 
 
 ## Style guidance
 
-- Lean editorial, not corporate-dashboard. Generous whitespace. Serif optional for headings.
+- Lean editorial, not corporate-dashboard. Generous whitespace. Serif headings (`font-serif`), sans body.
 - Color sparingly: one accent (emerald or indigo) plus red for leakage and amber for warnings.
 - Keep diagrams ~320px tall so before/after sits comfortably side by side without scrolling.
 - Use `text-xs uppercase tracking-wider` for module labels inside diagrams, so they read as schematic, not as UI.
 - The report is otherwise static: no app code, no interactivity beyond the diagram library's own rendering.
+
+## Bugs found on the way
+
+A plain table after the cards: `path:line` (mono) · what breaks · reproduced / read only · → `debug-issue`. No diagrams. None found → omit the section.
 
 ## Top recommendation section
 
