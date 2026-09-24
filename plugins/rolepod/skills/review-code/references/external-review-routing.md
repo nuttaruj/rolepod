@@ -23,7 +23,7 @@ The adversarial review pass routes to a **different CLI** than the Lead's, never
 - (c) an apex trigger holds (below) — external first, internal when (b);
 - (d) round 2+ — re-reading the fix delta of the external's findings off a high-risk path (on one, `security-engineer` re-checks); the external runs round 1 only, never a new external round.
 
-**Strong class.** Dispatch the internal general pass on a strong-class model, even under a balanced Lead — never a balanced model. An external runs on its own CLI's default model. `qa-tester` (E2E / UI) is never the strong pass and never counts as one.
+**Strong class.** Dispatch the internal general pass on a strong-class model, even under a balanced Lead — never a balanced model. An external runs on its own CLI's default model.
 
 ## Adversarial mode — what counts as the adversarial pass
 

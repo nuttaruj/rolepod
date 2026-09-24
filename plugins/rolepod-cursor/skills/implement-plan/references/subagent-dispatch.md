@@ -36,7 +36,7 @@ Closest specialist by path / concern / strategy:
 
 A write mandate goes only to the role that owns the path:
 - Never a generic platform agent (`general-purpose` / `default` / `claude`, or a bare Workflow `agent()`; a writing stage carries `agentType: 'rolepod:<role>'`).
-- Never a reviewer: `qa-tester` / `security-engineer` write tests and markdown only; `universal-reviewer` / `scout` write markdown only.
+- Never a test- or review-only role: `qa-tester` / `security-engineer` write tests and markdown only; `universal-reviewer` / `scout` write markdown only.
 
 Use the least powerful model that can handle the role (Model selection below).
 
@@ -94,7 +94,7 @@ The implementer cannot complete the task; the manifest states what blocks and wh
 
 Who reviews follows the task's tier (SKILL.md Review):
 - R2/R3 task in a plan → no reviewer in the loop; the Lead's ONE combined review over the plan diff covers it: two `universal-reviewer` lenses in ONE message (`lens: spec` · `lens: standards`, or the concern-matched row), the external instead at the pool's tier.
-- R4 task → the owner dispatches one read-only pass in ONE message: `security-engineer` + ONE strong pass (the external with a usable pool, else `universal-reviewer`), plus `qa-tester` when the slice changes what a user sees.
+- R4 task → the owner dispatches one read-only pass in ONE message: `security-engineer` + ONE strong pass (the external with a usable pool, else `universal-reviewer`). User-visible flows are verified once at `check-work`, never per task.
 - A standalone R2 brief (no plan) → the owner dispatches the two `universal-reviewer` lenses itself, never a self-review.
 
 ### Ship-group drift pass

@@ -45,7 +45,7 @@ Every required lane is green before merge. Phase 1 = the always-on fast lane (li
 - No CI configured → run lint · typecheck · smoke + the touched module's full suite · build locally BEFORE the merge / deploy, and a post-deploy smoke (curl the live endpoint / health probe) as deploy evidence.
 - The full lane table and red-lane triage → `references/ci-triage.md`.
 - A red required lane → triage it, then the Lead fixes and re-pushes; no per-iteration permission once merge intent is approved. Never merge over a red required lane, and never auto-merge a PR with one.
-- CI / deploy / rollback / monitoring → `devops-sre`; E2E / UI proof missing from check-work's block → `qa-tester`. Brief: branch, diff summary, CI status, review verdict, launch plan. No subagents → the Lead does it.
+- CI / deploy / rollback / monitoring → `devops-sre`; E2E / UI proof missing from check-work's block → back to `check-work` (its one E2E dispatch), never a dispatch from here. Brief: branch, diff summary, CI status, review verdict, launch plan. No subagents → the Lead does it.
 
 Done when: every required lane is green, or with no CI its local equivalents passed.
 

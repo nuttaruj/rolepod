@@ -31,7 +31,6 @@ High-risk surface = auth, billing, payments, credits, migration, data deletion, 
 |--------------|----------|
 | High-risk surface | `security-engineer` + adversarial fresh-context |
 | Correctness / spec compliance; generic quality / DRY / smell | `universal-reviewer` (spec; standards) |
-| User-visible behaviour (UI / E2E / API contract) | `qa-tester` (E2E) |
 | Performance regression risk | `performance-engineer` |
 | UI / interaction / a11y | `ui-ux-designer` |
 | Architecture / cross-module | `system-architect` |
@@ -43,7 +42,7 @@ By rigor tier (R1 trivial edit · R2 one file + test · R3 multi-file · R4 high
 - Adversarial fresh-context = the reviewer reads only the artifact + acceptance criteria, tries to make the change fail, and hunts for what is missing as hard as for what is present. Adversarial = round 1 of an R4 task only; every later round is the normal two-axis review (Fix-verify rounds).
 - A high-risk path anywhere in the diff (task or ship group) makes it R4; the commission's tier (max over its tasks) governs Define / Plan only.
 - A diff reviewed at its tier is never reviewed again at ship: R2/R3 combine once per plan (`implement-plan` Review), naming R4 tasks as already reviewed.
-- `qa-tester` is never the strong pass.
+- User-visible behaviour (UI / E2E flows) is no review row — `check-work` verifies it once per feature.
 
 High-risk diff (adversarial mode, what counts), cross-family pool (any tier it sets), internal-pass or apex question → `references/external-review-routing.md`.
 

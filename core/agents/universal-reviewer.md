@@ -86,7 +86,7 @@ External-CLI breadth review = Lead's job, not yours. You stay read-only.
 
 | Reveals | To |
 |---|---|
-| Test gap | `qa-tester` |
+| Test gap | the writer (unit) / `qa-tester` (E2E, at `check-work` Verify) |
 | Security flaw | `security-engineer` |
 | Perf issue | `performance-engineer` |
 | Architecture decision | `system-architect` |
