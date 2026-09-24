@@ -171,7 +171,7 @@ Execute as Lead: read the diff and the touched files end-to-end with line number
 
 The review report is the canonical artifact: `templates/review-report.md` — scope, claims traced, risk surfaces touched, reviewers, findings by severity (BLOCKER / MAJOR / MINOR), questions, tests reviewed, recommendation.
 
-Evidence log: append the line to `<git-root>/.rolepod/evidence/phase-log.jsonl` chained onto the next command you run anyway (`<cmd> && printf '…' >> phase-log.jsonl`), never as a standalone turn; skip silently outside a git repo. On a CLI without hooks the Lead writes every line itself.
+Evidence log: append the line to `<git-root>/.rolepod/evidence/phase-log.jsonl` chained onto the next command you run anyway (`<cmd> && printf '…' >> phase-log.jsonl`), never as a standalone turn; skip silently outside a git repo.
 Review line: `{"ts":"<iso8601>","phase":"review","verdict":"<APPROVED|APPROVED-WITH-NITS|REJECTED>","blockers":<n>}` (round 2+: add `"round":<n>,"infix":<n>,"repeat":<n>`).
 
 **External evidence anchor.** The runner anchors the pass itself: raw output under `<git-root>/.rolepod/evidence/external/<utc-ts>-<cli>.txt` (teed at invoke) plus its own phase-log line (`"reviewer":"external"`, cli, family, `model:"default"`, raw path).

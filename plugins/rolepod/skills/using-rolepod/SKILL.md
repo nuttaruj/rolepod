@@ -157,7 +157,7 @@ Next step: <concrete action>
 
 Every tier decision (R0 excepted) is STATED at line start in that routing line, and lands in the evidence log.
 
-Evidence log: append the line to `<git-root>/.rolepod/evidence/phase-log.jsonl` chained onto the next command you run anyway (`<cmd> && printf '…' >> phase-log.jsonl`), never as a standalone turn; skip silently outside a git repo. On a CLI without hooks the Lead writes every line itself.
+Evidence log: append the line to `<git-root>/.rolepod/evidence/phase-log.jsonl` chained onto the next command you run anyway (`<cmd> && printf '…' >> phase-log.jsonl`), never as a standalone turn; skip silently outside a git repo.
 Route line: `{"ts":"<iso8601>","phase":"route","tier":"R1-R4","skill":"<first skill>"}` — a hooked CLI records it from the transcript, so no manual append there. A tier that is not stated cannot be audited.
 
 ## Optional plugin skills
