@@ -26,7 +26,7 @@ Define → Plan → Build → Verify → Review → Ship
 
 Each phase has one skill that runs it, and each skill pulls in specialist agents when the work needs depth. Before any commit, gates fire automatically — simplicity, tests, failure-mode — as soft reminders on ordinary code and hard blocks on high-risk paths like auth, billing, and migrations.
 
-You invoke nothing for this; it just happens. For a deliberate run through every phase with no skips, invoke **`/rolepod-full`**.
+You invoke nothing for this; it just happens.
 
 ## The workflow
 
@@ -51,7 +51,7 @@ Every request is tiered before the first edit, and the tier sets how much of the
 
 ## Works with Claude Code Ultracode
 
-Rolepod composes with Claude Code's **Ultracode** mode out of the box — no setup. Ultracode is the harness orchestration layer (parallel multi-agent workflows, adversarial verification); Rolepod is the structure it runs — phases, specialist agents, cohesion contracts, and gates. Ultracode supplies the horsepower; Rolepod keeps it targeted and safe. The two principles are orthogonal, not opposed: Rolepod's *simplest-viable* governs the solution, Ultracode's *exhaustiveness* governs the process — so an exhaustive run still converges on a simple result. Effort governs how hard each stage thinks; the rigor tier governs how many stages there are — an R1/R2 change stays one review pass even under Ultracode, because an effort setting never lifts the tier. For a deliberate max-rigor pass, invoke **`/rolepod-full`**.
+Rolepod composes with Claude Code's **Ultracode** mode out of the box — no setup. Ultracode is the harness orchestration layer (parallel multi-agent workflows, adversarial verification); Rolepod is the structure it runs — phases, specialist agents, cohesion contracts, and gates. Ultracode supplies the horsepower; Rolepod keeps it targeted and safe. The two principles are orthogonal, not opposed: Rolepod's *simplest-viable* governs the solution, Ultracode's *exhaustiveness* governs the process — so an exhaustive run still converges on a simple result. Effort governs how hard each stage thinks; the rigor tier governs how many stages there are — an R1/R2 change stays one review pass even under Ultracode, because an effort setting never lifts the tier.
 
 ## Install
 

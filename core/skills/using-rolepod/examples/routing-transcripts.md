@@ -88,18 +88,7 @@ Next step: the Lead reads only those three files and routes the fix to
 
 ---
 
-## 6. /rolepod-full → force-full lifecycle
-
-User: "/rolepod-full add CSV export to the orders report"
-
-Routing: Force full lifecycle via /rolepod-full
-Reason: explicit force-full trigger — the user opted out of skip rules.
-Skipping: none — Define → Plan → Build → Verify → Review → Ship, all phases.
-Next step: announce the execution backend, enter Define — discovery in frontier rounds.
-
----
-
-## 7. Refactor request → Build / simplify-code
+## 6. Refactor request → Build / simplify-code
 
 User: "this OrdersService file is a mess, clean it up"
 
@@ -110,7 +99,7 @@ Next step: confirm the test suite is green first — no simplifying on red.
 
 ---
 
-## 8. Pattern-matched into Build → corrected
+## 7. Pattern-matched into Build → corrected
 
 User: "add rate limiting"
 

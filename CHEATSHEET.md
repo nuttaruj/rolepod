@@ -91,7 +91,6 @@ Tier and reviewers are per task; the plan's max tier only decides spec / plan ce
 | Action | Claude | Codex | Gemini | Cursor | Antigravity | opencode |
 |--------|--------|-------|--------|--------|-------------|----------|
 | Start | `claude` | `codex` | `gemini` | open Cursor | `agy` | `opencode` |
-| Force-full lifecycle | `/rolepod-full` | `$rolepod-full` | `/rolepod-full` | `/rolepod-full` | `/rolepod-full` | `/rolepod-full` |
 | Reset context | `/clear` | exit + restart | exit + restart | new chat | exit + restart | new session |
 | Restore checkpoint | `/rewind` (`Esc Esc`) | git | git | git | git | git |
 | Manual compaction | `/compact <focus>` | auto | auto | auto | auto | auto |

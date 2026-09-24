@@ -31,7 +31,6 @@
 
 | Skill | Description |
 |-------|-------------|
-| `rolepod-full` | Force-full Rolepod lifecycle — Define → Plan → Build → Verify → Review → Ship with no phase skips... |
 | `deepen-codebase` | Scan a codebase for deepening opportunities — shallow modules, leaking seams, interfaces a test c... |
 
 ### On demand (offered by write-spec)

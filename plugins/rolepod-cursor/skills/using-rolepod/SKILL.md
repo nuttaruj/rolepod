@@ -39,9 +39,7 @@ Done when: one tier is chosen from observed scope.
 
 ### 3. Pick the first skill
 
-Force-full: the message opens with `/rolepod-full`, `$rolepod-full`, `force full lifecycle`, `run full rolepod lifecycle` or `rolepod mode: full lifecycle` → `rolepod-full`, all six phases, even for a one-line fix. Bare `/rolepod`, `run all phases`, `no skip` auto-route.
-
-Otherwise the FIRST matching row fires:
+The FIRST matching row fires:
 
 | Intent | Route |
 |---|---|
@@ -84,7 +82,7 @@ Next step: <concrete action>
 
 - R0 / R1 — no line.
 - R2 — `Route: R2 (one file + test) → <skill> · <reason>`, then the checklist.
-- R3 / R4, force-full, or a surprising route — the full block.
+- R3 / R4 or a surprising route — the full block.
 - Each tier carries its gloss: R0 answer only · R1 trivial edit · R2 one file + test · R3 multi-file · R4 high-risk.
 
 Done when: the route is stated (R2 and up) and the named skill is running.
@@ -101,7 +99,6 @@ Done when: the route is stated (R2 and up) and the named skill is running.
 
 ## References
 
-- Force-full triggered → `references/force-full-lifecycle.md`.
 - Delegating, picking a model class, or running a fleet → `references/model-tiers.md`.
 - A repo-wide sweep, or the 3rd same-shaped fix in one loop → `references/scope-then-spawn.md`.
 - A sibling plugin is installed, or the task's central framework has an unconnected official MCP → `references/plugins-and-mcp.md`.

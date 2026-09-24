@@ -5,9 +5,8 @@ Always-on guidance for Gemini CLI Lead. Rolepod ships as Gemini extension; this 
 > **Gemini CLI transition (2026-06-18):** Google moved consumer tiers (free / AI Pro / Ultra) to Antigravity CLI (`agy`). Gemini CLI stays supported for enterprise (Code Assist Standard / Enterprise, Google Cloud) and paid API-key users. On a consumer tier seeing auth/quota failures, switch to enterprise / API-key auth, or install the rolepod agy adapter: `./install.sh --target=antigravity`.
 
 Bundled:
-- Slash commands: `/rolepod-full` is the cross-CLI force-full skill (Define → Ship, no skips); normal prompts auto-route via the `using-rolepod` skill. Gemini ships no native `commands/*.toml` — phase-named commands (/spec, /plan, /review, /test, /ship) were dropped to match Claude's design (per-phase commands caused pattern-match drift; see commits 0f8de4f / 6da9fe0).
 - Hooks `hooks/hooks.json` — 5 registered: `SessionStart` (context inject), `BeforeAgent` (claim-verify nudge), `BeforeTool` / `AfterTool` (verify-first / evidence reminders) on `write_file|replace|edit`, `PreCompress` (state summary)
-- Skills `skills/<name>/SKILL.md` — full rolepod skill set
+- Skills `skills/<name>/SKILL.md` — full rolepod skill set; normal prompts auto-route via the `using-rolepod` skill
 
 ## Rule priority (when conflict)
 
@@ -24,7 +23,6 @@ Conflict unsafe → ask user.
 ## Gemini-specific Lead notes
 
 - **Sub-agents** — the extension ships 15 agent definitions in `agents/<name>.md` (tier-mapped `model` per agent). Gemini CLI builds with sub-agent support load them automatically; older builds treat the roster below as a mental role-switching guide.
-- **Slash commands** — `/rolepod-full` (the `rolepod-full` skill) forces the full lifecycle for feature-scale / high-risk work; it also switches Gemini approval mode to plan (read-only).
 - **Hooks enabled** — `SessionStart` / `BeforeAgent` / `BeforeTool` / `AfterTool` / `PreCompress` fire automatically. **Enforcement tier: advisory** — reminders fire mechanically but no rolepod hook denies on Gemini; every blocking gate (commit bans, precommit test gate) is skill-enforced — never report one as mechanically enforced here.
 - **Skills auto-loaded** — Gemini's skill loader reads `skills/<name>/SKILL.md`.
 - **MCP support** — any MCP tools your project uses, via Gemini's MCP config; verify per-project.
@@ -82,7 +80,7 @@ Code-intel index via Gemini MCP config when available. Otherwise plain `git` + `
 ## Before ship — STOP
 
 - Run the S/T/F gates (in the phase skills) manually before commit (evidence required)
-- Every logic diff → one read-only review on two axes (spec compliance, standards); high-risk (auth/billing/migrations) → `/rolepod-full` first, then an external reviewer: `rolepod-cross-family --kind review` (pool enabled), else `claude -p` / `codex exec` with the same two axes.
+- Every logic diff → one read-only review on two axes (spec compliance, standards); high-risk (auth/billing/migrations) → write-spec → write-plan first, then `security-engineer` + ONE strong pass (`rolepod-cross-family --kind review` if pool enabled), else `claude -p` / `codex exec` with the same two axes.
 - Gemini spawns no reviewer: no other CLI → self-review on the two axes and say so in the evidence.
 
 {{INCLUDE: core/fragments/hard-stops.md}}
@@ -120,17 +118,3 @@ Multi-step → `[step] → verify: [check]` per row.
 
 {{INCLUDE: core/fragments/agent-roster-lean.md}}
 
-## Careful mode
-
-`/rolepod-full` switches Gemini approval mode to **plan** (read-only) + locks rolepod careful-mode rules:
-
-- ≤30 lines per change
-- Mandatory verify-first
-- Mandatory test BEFORE code (TDD strict)
-- Mandatory race-condition test for concurrent code
-- Mandatory rollback test for migrations
-- Mandatory adversarial review for high-risk surface
-- Hard cap 5 tool calls per task
-- No auto-merge — ask user before merge
-
-`/approval-mode default` to resume mutating tools.
