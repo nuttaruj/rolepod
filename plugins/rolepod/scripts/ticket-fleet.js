@@ -44,13 +44,11 @@
 // role renders its own frontmatter tier; no fleet-wide model inherit here.
 
 // meta.name carries "review" on purpose (never rename to drop it): the
-// round breaker's Workflow classifier (scripts/cross-family.sh --rounds)
-// reads agent_types off the dispatch-log line, which is EMPTY for every
-// call here (agentType is a template literal, invisible to the logger's
-// straight-quote-only extractor by design — see the tier-reason above) and
-// falls back to a `review|verif|audit` match on this very name; without it
-// the whole launch is silently dropped from the round count instead of
-// counting as ONE, as docs/hooks.md's "Ticket helper" section promises.
+// dispatch-log line's agent_types is EMPTY for every call here (agentType is
+// a template literal, invisible to the logger's straight-quote-only
+// extractor by design — see the tier-reason above), so any consumer that
+// classifies a review dispatch falls back to a `review|verif|audit` match on
+// this very name.
 export const meta = {
   name: 'ticket-review-fleet',
   description: 'Build + review every ready ticket-loop task, one launch',
