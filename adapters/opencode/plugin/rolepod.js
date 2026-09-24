@@ -175,8 +175,254 @@ const TEST_RE =
 // adapter's only hard-deny gate. Whitespace split matches the bash walk's
 // shlex fallback semantics (glued `;git` misses on both — same limitation).
 const VALUE_OPTS = new Set(["-C", "--git-dir", "--work-tree", "--namespace", "--exec-path"])
+
+// Quote-aware whitespace split (best-effort, not a full shell grammar): a
+// '...' or "..." run is one token even when it holds spaces — needed once a
+// `-c` / `eval` string argument (itself a whole sub-command) must come back
+// as a single token to recurse into, not fragments split on its own spaces.
+// A backslash inside "..." escapes the next char (shell double-quote rules);
+// inside '...' nothing is special, matching shlex(posix=True) on the Python
+// side.
+function qsplit(s) {
+  const toks = []
+  let i = 0
+  const n = s.length
+  while (i < n) {
+    while (i < n && /\s/.test(s[i])) i++
+    if (i >= n) break
+    let cur = ""
+    while (i < n && !/\s/.test(s[i])) {
+      const c = s[i]
+      if (c === "'" || c === '"') {
+        const q = c
+        i++
+        while (i < n && s[i] !== q) {
+          if (q === '"' && s[i] === "\\" && i + 1 < n) {
+            cur += s[i + 1]
+            i += 2
+          } else {
+            cur += s[i]
+            i++
+          }
+        }
+        i++ // closing quote (or end of string on an unterminated one)
+      } else {
+        cur += c
+        i++
+      }
+    }
+    toks.push(cur)
+  }
+  return toks
+}
+
+// F8b/S8 (v2.166.x) — shell-wrapped commit unwind, ported from the same
+// unwind in hooks/precommit-gate.sh (tables copied from
+// hooks/lib/session_state.py's PREFIX / WRAPPER_VALUE / SHELLS / DURATION).
+// `uwTokenize` is a real shell-grade tokenizer (quote/escape rules, a
+// literal newline as its own boundary token) — round-1's TEXT-split fix
+// (splitting on &&/||/;/|/newline via a hand-rolled scanner) was itself
+// wrong on an escaped quote, a comment apostrophe, a bare `&`, and
+// `$(...)` (round-2 external + security-engineer review): a hand-rolled
+// special case for each shell quirk keeps missing the next one. Segment
+// boundaries are any token made ENTIRELY of operator characters
+// (`;`, `&&`, `&`, `|`, `\n`, ...). Unbalanced quoting anywhere (top level
+// or inside a recursed -c / eval string) -> that segment's raw tokens are
+// kept UNTOUCHED (no drop, no recursion) — ambiguous input never
+// disappears, it just isn't optimized away, so `isGitCommit`'s own
+// `git`+`commit` walk still sees it. Per clean segment: skip env assigns
+// and a known wrapper's own flags/duration, then a shell head (SHELLS, or
+// $SHELL / ${SHELL} from the environment) with a flag cluster containing
+// 'c' (-c, -lc, -ec, -xc) — found by scanning every remaining token, never
+// stopping at the first non-flag one, so a value-taking option before -c
+// ('bash -o pipefail -c ...') or a long option ('--noprofile') cannot hide
+// it — recurses into its string; 'eval' recurses into its joined remaining
+// args. depth > 4 -> a forced commit hit (fail-closed).
+const UW_PREFIX = new Set([
+  "time", "env", "nice", "sudo", "rtk", "proxy", "caffeinate", "command", "exec", "nohup", "timeout",
+])
+const UW_WRAPPER_VALUE = {
+  sudo: new Set(["-u", "-g", "-C", "-p", "-h", "-r", "-t", "-U", "-D"]),
+  nice: new Set(["-n"]),
+  env: new Set(["-u", "-C", "-S"]),
+  timeout: new Set(["-k", "-s"]),
+  nohup: new Set(),
+  caffeinate: new Set(["-t", "-w"]),
+}
+const UW_ASSIGN_RE = /^[A-Za-z_][A-Za-z0-9_]*=/
+const UW_DURATION_RE = /^[0-9]+(\.[0-9]+)?[smhd]?$/
+const UW_SHELLS = new Set(["bash", "sh", "zsh", "dash", "ksh"])
+const UW_OUTPUT_ONLY = new Set(["echo", "printf", ":"])
+const UW_OPCHARS = new Set(["(", ")", ";", "<", ">", "|", "&", "\n"])
+
+function uwHead(tIn) {
+  // basename, not t[0] itself (round-3 external review: an absolute-path
+  // wrapper, '/usr/bin/env bash -c ...', evaded every PREFIX check).
+  let t = tIn
+  let w = ""
+  while (t.length) {
+    const b0 = path.basename(t[0])
+    if (UW_PREFIX.has(b0)) {
+      w = b0
+      t = t.slice(1)
+      continue
+    }
+    if (t[0].startsWith("-")) {
+      const takesValue = UW_WRAPPER_VALUE[w] && UW_WRAPPER_VALUE[w].has(t[0]) && t.length > 1
+      t = takesValue ? t.slice(2) : t.slice(1)
+      continue
+    }
+    if (UW_DURATION_RE.test(t[0]) || UW_ASSIGN_RE.test(t[0])) {
+      t = t.slice(1)
+      continue
+    }
+    break
+  }
+  return t
+}
+
+function uwIsOperatorTok(tok) {
+  return tok.length > 0 && [...tok].every((c) => UW_OPCHARS.has(c))
+}
+
+// Shell-grade tokenizer: '...' literal (no escapes); "..." escapes the next
+// char with a backslash; OUTSIDE quotes a backslash also escapes the very
+// next character (POSIX shell rule qsplit above never implemented); a run
+// of UW_OPCHARS characters (including a bare newline) is its own token
+// instead of vanishing as whitespace. Returns {toks, ok}; ok=false
+// (unbalanced quote) means the caller must not drop or unwrap anything.
+function uwTokenize(sIn) {
+  // ANSI-C / locale quoting (bash dollar-single-quote / dollar-double-quote
+  // strings) — this tokenizer has no concept of it, reading the leading $
+  // as an ordinary character that glues onto the quote instead of opening
+  // it, which hid a real commit entirely (round-3 external review). Swap
+  // the dollar-quote prefix for a plain quote first — enough for OUR
+  // purpose (seeing the words inside).
+  const s = sIn.split("$'").join("'").split('$"').join('"')
+  const toks = []
+  let i = 0
+  const n = s.length
+  while (i < n) {
+    while (i < n && (s[i] === " " || s[i] === "\t" || s[i] === "\r")) i++
+    if (i >= n) break
+    if (UW_OPCHARS.has(s[i])) {
+      let j = i
+      while (j < n && UW_OPCHARS.has(s[j])) j++
+      toks.push(s.slice(i, j))
+      i = j
+      continue
+    }
+    let cur = ""
+    let closed = true
+    while (i < n) {
+      const c = s[i]
+      if (c === "'") {
+        const start = i + 1
+        const end = s.indexOf("'", start)
+        if (end === -1) { closed = false; i = n; break }
+        cur += s.slice(start, end)
+        i = end + 1
+        continue
+      }
+      if (c === '"') {
+        i++
+        let done = false
+        while (i < n) {
+          if (s[i] === '"') { i++; done = true; break }
+          if (s[i] === "\\" && i + 1 < n) { cur += s[i + 1]; i += 2; continue }
+          cur += s[i]; i++
+        }
+        if (!done) { closed = false; i = n; break }
+        continue
+      }
+      if (c === "\\" && i + 1 < n) {
+        cur += s[i + 1]
+        i += 2
+        continue
+      }
+      if (c === " " || c === "\t" || c === "\r" || UW_OPCHARS.has(c)) break
+      cur += c
+      i++
+    }
+    toks.push(cur)
+    if (!closed) return { toks, ok: false }
+  }
+  return { toks, ok: true }
+}
+
+function uwProcess(toksIn, depth) {
+  if (depth > 4) return { toks: toksIn, forced: true }
+  const out = []
+  let i = 0
+  while (i < toksIn.length) {
+    let j = i
+    while (j < toksIn.length && !uwIsOperatorTok(toksIn[j])) j++
+    const seg = toksIn.slice(i, j)
+    const t = uwHead(seg)
+    let handled = false
+    let forced = false
+    if (t.length) {
+      let ht = t[0]
+      if (ht === "$SHELL" || ht === "${SHELL}") ht = process.env.SHELL || ""
+      const hbase = path.basename(ht)
+      if (UW_OUTPUT_ONLY.has(hbase)) {
+        // a pure-output head (echo/printf/:) never invokes what follows it —
+        // drop only THIS clean segment.
+        handled = true
+      } else if (UW_SHELLS.has(hbase)) {
+        let cflag = -1
+        for (let k = 1; k < t.length; k++) {
+          if (t[k].startsWith("-") && !t[k].startsWith("--") && t[k].slice(1).includes("c")) {
+            cflag = k
+            break
+          }
+        }
+        if (cflag !== -1 && cflag + 1 < t.length) {
+          const inner = uwTokenize(t[cflag + 1])
+          if (inner.ok) {
+            const r = uwProcess(inner.toks, depth + 1)
+            out.push(...r.toks)
+            handled = true
+            if (r.forced) forced = true
+          }
+        }
+      } else if (hbase === "eval" && t.length > 1) {
+        const inner = uwTokenize(t.slice(1).join(" "))
+        if (inner.ok) {
+          const r = uwProcess(inner.toks, depth + 1)
+          out.push(...r.toks)
+          handled = true
+          if (r.forced) forced = true
+        }
+      }
+    }
+    if (!handled) out.push(...seg)
+    if (forced) return { toks: out, forced: true }
+    if (j < toksIn.length) out.push(toksIn[j])
+    i = j + 1
+  }
+  return { toks: out, forced: false }
+}
+
 function isGitCommit(cmd) {
-  const toks = cmd.split(/\s+/).filter(Boolean)
+  const top = uwTokenize(cmd)
+  let toks
+  let forced = false
+  if (top.ok) {
+    const r = uwProcess(top.toks, 0)
+    toks = r.toks
+    forced = r.forced
+  } else {
+    // Unbalanced quoting at the top level: unwrap is unsafe. A quote-aware
+    // fallback (qsplit) can itself misparse here (an unterminated quote
+    // swallows the rest of the string into one token, hiding a later
+    // 'git'/'commit' pair) — a NAIVE whitespace split, ignoring quotes
+    // entirely, is the safer fallback: 'git' and 'commit' stay two
+    // separate words regardless of any quote confusion elsewhere in the
+    // string (matches session_state.py's own last-resort `s.split()`).
+    toks = cmd.split(/\s+/).filter(Boolean)
+  }
+  if (forced) return true
   for (let i = 0; i < toks.length; i++) {
     if (path.basename(toks[i]) !== "git") continue
     let j = i + 1

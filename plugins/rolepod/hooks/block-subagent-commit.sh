@@ -89,20 +89,40 @@ if agent_id:
         # (a gate false positive costs one resend, so head-only is right there).
         # every=True: every token position is tried (a wrapped commit - timeout,
         # xargs, watch - must still be caught); only a pure-output head is skipped.
+        # F8b/S8 (v2.166.x): a flag CLUSTER containing 'c' (-c, -lc, -ec, -xc)
+        # recurses like an exact '-c'; a $SHELL / ${SHELL} head is expanded
+        # from the environment first; 'eval' recurses into its joined
+        # remaining args. depth-4 cap's VALUE is unchanged; its RETURN on hit
+        # is now fail-closed (round-1 external review) — adding 'eval'
+        # recursion here means a 5-deep eval chain ('eval eval eval eval
+        # eval git commit') would otherwise fall through the empty '' this
+        # cap used to return with nothing else in the segment to check,
+        # silently clearing the sub-agent's only hard deny.
         if depth > 4:
-            return ''
+            return 'nested shell/eval too deep'
         for seg in segments(text):
             t = head(toks_of(seg))
             if not t:
                 continue
-            base = os.path.basename(t[0])
+            ht = t[0]
+            if ht in ('$SHELL', '${SHELL}'):
+                ht = os.environ.get('SHELL', '')
+            base = os.path.basename(ht)
+            if base == 'eval' and len(t) > 1:
+                r = walk(' '.join(t[1:]), rule, every, depth + 1)
+                if r:
+                    return r
+                continue
             if base in SHELLS:
+                cflag = None
                 for k in range(1, len(t)):
-                    if t[k] == '-c' and k + 1 < len(t):
-                        r = walk(t[k + 1], rule, every, depth + 1)
-                        if r:
-                            return r
+                    if t[k].startswith('-') and not t[k].startswith('--') and 'c' in t[k][1:]:
+                        cflag = k
                         break
+                if cflag is not None and cflag + 1 < len(t):
+                    r = walk(t[cflag + 1], rule, every, depth + 1)
+                    if r:
+                        return r
                 if len(t) > 1 and not t[1].startswith('-'):
                     t = t[1:]; base = os.path.basename(t[0])
             if every:

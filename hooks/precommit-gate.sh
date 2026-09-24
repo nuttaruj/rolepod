@@ -211,7 +211,7 @@ INPUT=$(cat 2>/dev/null || echo '{}')
 # gets for free from $(cat) (v2.153.0). The walk matches flag-separated
 # forms (`git -C . commit`, `git -c k=v commit`).
 PARSED=$(printf '%s' "$INPUT" | python3 -I -c "
-import json, os, shlex, sys
+import json, os, re, shlex, sys
 tool = ''
 cmd = ''
 hit = 0
@@ -225,29 +225,164 @@ try:
     d = json.load(sys.stdin)
     tool = d.get('tool_name', '') or ''
     cmd = (d.get('tool_input', {}) or {}).get('command', '') or ''
-    # Directory the commit runs in (v2.153.0): punctuation kept as its own
-    # tokens ('&&', ';', '(', ')') so a 'cd' segment and a subshell paren
-    # split cleanly from the word beside them — shlex.split alone glues
-    # 'tmp;' or '(cd' into one token. Falls back to today's tokeniser (and
-    # the hit/mut walk below is byte-identical either way) on any lexer
-    # error.
-    try:
-        _lex = shlex.shlex(cmd, posix=True, punctuation_chars=True)
-        _lex.whitespace_split = True
-        _lex.commenters = ''  # unlike shlex.split(), shlex() defaults to '#' —
-        # an UNQUOTED mid-word hash (a worktree path like /tmp/wt#3, or an
-        # unquoted -m fix#123) would otherwise truncate the token stream
-        # there and read as hit=0; a QUOTED -m 'fix #123' was never at risk
-        # (shlex enters quote state before the commenters check either way).
-        toks = list(_lex)
-    except Exception:
-        try:
-            toks = shlex.split(cmd)
-        except ValueError:
-            toks = cmd.split()
     VALUE_OPTS = {'-C', '--git-dir', '--work-tree', '--namespace', '--exec-path'}
     GLOB = set('*?[')
-    OPCHARS = set('();<>|&')
+    OPCHARS = set('();<>|&\n')
+    # Shell-wrapped commit unwind (F8b/S8, v2.166.x): the wrapper tables are
+    # hooks/lib/session_state.py's PREFIX / WRAPPER_VALUE / SHELLS / DURATION,
+    # copied inline — the gate runs lib-less on Cursor and Antigravity (no
+    # lib/ in those bundles). Tokenize the WHOLE command with real shlex
+    # first (posix quote/escape rules — correct by construction, never
+    # hand-rolled: a round-1 fix that hand-rolled a quote-aware text
+    # scanner was itself wrong on an escaped quote, a comment apostrophe, a
+    # bare '&', and command substitution — round-2 external + security review)
+    # — '\n' is added to punctuation_chars so a literal newline is its OWN
+    # token instead of silently eaten as whitespace (round-1 review; shlex
+    # otherwise folds a newline into nothing, hiding 'echo x<newline>git
+    # commit'). Segment boundaries are then any token made ENTIRELY of
+    # OPCHARS characters (';', '&&', '&', '|', '\n', ...). Unbalanced
+    # quoting anywhere (top level or inside a recursed -c / eval string) ->
+    # that segment's raw tokens are kept UNTOUCHED (no drop, no recursion) —
+    # ambiguous input never disappears, it just isn't optimized away, so the
+    # existing 'git'+'commit' token walk below still sees it. Per clean
+    # segment: skip env assigns and a known wrapper's own flags/duration,
+    # then a shell head (SHELLS, or \$SHELL / \${SHELL} expanded from the
+    # environment) with a flag cluster containing 'c' (-c, -lc, -ec, -xc) —
+    # found by scanning every remaining token, never stopping at the first
+    # non-flag one, so a value-taking option before -c ('bash -o pipefail
+    # -c ...') or a long option ('--noprofile') cannot hide it — recurses
+    # into its string; 'eval' recurses into its joined remaining args.
+    # depth > 4 -> a forced commit hit (fail-closed) — segments already
+    # unwound before the cap was hit are kept, so a preceding 'cd' still
+    # resolves. Residuals accepted, not handled (v2.166.x, 3 review rounds):
+    # xargs / find -exec / parallel, a script FILE that runs git commit, a
+    # git alias (incl. \`git -c alias.x=commit x\`), a wrapper long option
+    # this table does not name (\`exec -a\`, \`sudo --user\`, \`env -S\`,
+    # \`timeout --signal\`), and any shell-grammar shape neither this table
+    # nor real shlex covers (process substitution, brace/subshell grouping,
+    # \`{ ...; }\`, \`if...then\`). Full shell-grammar parity is open-ended by
+    # nature — this is the accepted line, matching the Pragmatic approach's
+    # own scope.
+    PREFIX = {'time', 'env', 'nice', 'sudo', 'rtk', 'proxy', 'caffeinate', 'command', 'exec', 'nohup', 'timeout'}
+    WRAPPER_VALUE = {'sudo': {'-u', '-g', '-C', '-p', '-h', '-r', '-t', '-U', '-D'}, 'nice': {'-n'},
+                      'env': {'-u', '-C', '-S'}, 'timeout': {'-k', '-s'}, 'nohup': set(), 'caffeinate': {'-t', '-w'}}
+    DURATION = re.compile(r'^[0-9]+(\.[0-9]+)?[smhd]?\$')
+    ASSIGN = re.compile(r'^[A-Za-z_][A-Za-z0-9_]*=')
+    SHELLS = {'bash', 'sh', 'zsh', 'dash', 'ksh'}
+    OUTPUT_ONLY = {'echo', 'printf', ':'}
+    def _uw_head(t):
+        # basename, not t[0] itself — '/usr/bin/env bash -c ...' must skip
+        # 'env' the wrapper the same as a bare 'env' (round-3 external
+        # review: an absolute-path wrapper evaded every PREFIX check).
+        w = ''
+        while t:
+            if os.path.basename(t[0]) in PREFIX:
+                w = os.path.basename(t[0]); t = t[1:]
+            elif t[0].startswith('-'):
+                t = t[2:] if (t[0] in WRAPPER_VALUE.get(w, set()) and len(t) > 1) else t[1:]
+            elif DURATION.match(t[0]) or ASSIGN.match(t[0]):
+                t = t[1:]
+            else:
+                break
+        return t
+    def _uw_tok(s):
+        # Fallback ONLY (top-level unbalanced quoting) — never used to feed
+        # the unwrap itself, so its looser semantics never gate a drop.
+        try:
+            _l = shlex.shlex(s, posix=True, punctuation_chars=True)
+            _l.whitespace_split = True
+            _l.commenters = ''
+            return list(_l)
+        except Exception:
+            try:
+                return shlex.split(s)
+            except ValueError:
+                return s.split()
+    def _uw_tokenize_full(s):
+        # ANSI-C / locale quoting (bash dollar-single-quote / dollar-double-
+        # quote strings) — shlex has no concept of it, reading the leading
+        # \$ as an ordinary character that glues onto the quote instead of
+        # opening it, which hid 'git commit' inside such a string entirely
+        # (round-3 external review). Swap the dollar-quote prefix for a
+        # plain quote before tokenizing — enough for OUR purpose (seeing
+        # the words inside), even though it is not a faithful backslash-
+        # escape reinterpretation.
+        s = s.replace(chr(36) + chr(39), chr(39)).replace(chr(36) + chr(34), chr(34))
+        _l = shlex.shlex(s, posix=True, punctuation_chars='();<>|&\n')
+        _l.whitespace = _l.whitespace.replace('\n', '')
+        _l.whitespace_split = True
+        _l.commenters = ''
+        return list(_l)  # raises ValueError on unbalanced quoting
+    def _uw_process(toks_in, depth):
+        if depth > 4:
+            return toks_in, True
+        out = []
+        forced = False
+        i = 0
+        n2 = len(toks_in)
+        while i < n2:
+            j = i
+            while j < n2 and not (toks_in[j] and all(c in OPCHARS for c in toks_in[j])):
+                j += 1
+            seg = toks_in[i:j]
+            t = _uw_head(seg)
+            handled = False
+            if t:
+                ht = t[0]
+                if ht in ('\$SHELL', '\${SHELL}'):
+                    ht = os.environ.get('SHELL', '')
+                hbase = os.path.basename(ht)
+                if hbase in OUTPUT_ONLY:
+                    # a pure-output head (echo/printf/:) never invokes what
+                    # follows it — drop only THIS clean segment (matches
+                    # block-subagent-commit.sh's every=True OUTPUT_ONLY
+                    # skip).
+                    handled = True
+                elif hbase in SHELLS:
+                    cflag = None
+                    for p in range(1, len(t)):
+                        if t[p].startswith('-') and not t[p].startswith('--') and 'c' in t[p][1:]:
+                            cflag = p
+                            break
+                    if cflag is not None and cflag + 1 < len(t):
+                        try:
+                            inner_toks = _uw_tokenize_full(t[cflag + 1])
+                        except ValueError:
+                            pass
+                        else:
+                            r_toks, f2 = _uw_process(inner_toks, depth + 1)
+                            out.extend(r_toks)
+                            handled = True
+                            if f2:
+                                forced = True
+                elif hbase == 'eval' and len(t) > 1:
+                    try:
+                        inner_toks = _uw_tokenize_full(' '.join(t[1:]))
+                    except ValueError:
+                        pass
+                    else:
+                        r_toks, f2 = _uw_process(inner_toks, depth + 1)
+                        out.extend(r_toks)
+                        handled = True
+                        if f2:
+                            forced = True
+            if not handled:
+                out.extend(seg)
+            if forced:
+                return out, True
+            if j < n2:
+                out.append(toks_in[j])
+            i = j + 1
+        return out, False
+    try:
+        _uw_top = _uw_tokenize_full(cmd)
+        toks, _uw_forced = _uw_process(_uw_top, 0)
+    except ValueError:
+        # Unbalanced quoting at the TOP level: unwrap is unsafe — fall back
+        # to the plain tokenizer, unfiltered (more visible tokens, never
+        # fewer; the existing 'git'+'commit' walk below still runs on it).
+        toks = _uw_tok(cmd)
+        _uw_forced = False
     def _giveup(a):
         # A var, a command substitution, a flag ('cd -' = previous dir) or a
         # glob — none resolvable from the command text alone (R2:
@@ -319,6 +454,8 @@ try:
             k = j + 1
             continue
         k += 1
+    if _uw_forced:
+        hit = 1
     if not dir_failed and cur_dir:
         resolved_dir = cur_dir
 except Exception:
@@ -359,12 +496,126 @@ fi
 # — measured live on every CLI. In that shape the gate reads the working tree
 # (tracked changes vs HEAD + untracked files) instead of the index.
 GIT_DIFF_BASE=$(ROLEPOD_GATE_CMD="$CMD" python3 -I -c '
-import os, shlex
+import os, re, shlex
 cmd = os.environ.get("ROLEPOD_GATE_CMD", "")
+# Same shell-wrapped unwind as the commit-hit walk above (F8b/S8): tables
+# copied from hooks/lib/session_state.py (PREFIX / WRAPPER_VALUE / SHELLS),
+# so `bash -c "git add x && git commit -m y"` reads the working tree here
+# too, not just the plain form.
+PREFIX = {"time", "env", "nice", "sudo", "rtk", "proxy", "caffeinate", "command", "exec", "nohup", "timeout"}
+WRAPPER_VALUE = {"sudo": {"-u", "-g", "-C", "-p", "-h", "-r", "-t", "-U", "-D"}, "nice": {"-n"},
+                 "env": {"-u", "-C", "-S"}, "timeout": {"-k", "-s"}, "nohup": set(), "caffeinate": {"-t", "-w"}}
+DURATION = re.compile(r"^[0-9]+(\.[0-9]+)?[smhd]?$")
+ASSIGN = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*=")
+SHELLS = {"bash", "sh", "zsh", "dash", "ksh"}
+OUTPUT_ONLY = {"echo", "printf", ":"}
+OPCHARS = set("();<>|&\n")
+# Tokenize with real shlex first (round-2 review: a hand-rolled quote
+# scanner was itself wrong on an escaped quote, a comment apostrophe, a
+# bare ampersand, and command substitution; newline is a punctuation char
+# so a literal newline is its own boundary token instead of vanishing as
+# whitespace (round-1). This block is bash SINGLE-quoted: no quote marks
+# in this comment, no escape mechanism exists for them here.
+def _tok(s):
+    try:
+        lx = shlex.shlex(s, posix=True, punctuation_chars=True)
+        lx.whitespace_split = True
+        lx.commenters = ""
+        return list(lx)
+    except Exception:
+        try:
+            return shlex.split(s)
+        except ValueError:
+            return s.split()
+def _uw_head(t):
+    # basename, not t[0] itself (round-3 external review: an absolute-path
+    # wrapper such as /usr/bin/env bash -c ..., evaded every PREFIX check).
+    w = ""
+    while t:
+        if os.path.basename(t[0]) in PREFIX:
+            w = os.path.basename(t[0]); t = t[1:]
+        elif t[0].startswith("-"):
+            t = t[2:] if (t[0] in WRAPPER_VALUE.get(w, set()) and len(t) > 1) else t[1:]
+        elif DURATION.match(t[0]) or ASSIGN.match(t[0]):
+            t = t[1:]
+        else:
+            break
+    return t
+def _uw_tokenize_full(s):
+    # ANSI-C / locale quoting (bash dollar-single-quote / dollar-double-quote
+    # strings) — shlex has no concept of it; swap the dollar-quote prefix
+    # for a plain quote before tokenizing, enough for OUR purpose (seeing
+    # the words inside), even though it is not a faithful backslash-escape
+    # reinterpretation (round-3 external review).
+    s = s.replace("$" + chr(39), chr(39)).replace("$\"", "\"")
+    lx = shlex.shlex(s, posix=True, punctuation_chars="();<>|&\n")
+    lx.whitespace = lx.whitespace.replace("\n", "")
+    lx.whitespace_split = True
+    lx.commenters = ""
+    return list(lx)  # raises ValueError on unbalanced quoting
+def _uw_process(toks_in, depth):
+    if depth > 4:
+        return toks_in, True
+    out = []
+    forced = False
+    i = 0
+    n2 = len(toks_in)
+    while i < n2:
+        j = i
+        while j < n2 and not (toks_in[j] and all(c in OPCHARS for c in toks_in[j])):
+            j += 1
+        seg = toks_in[i:j]
+        t = _uw_head(seg)
+        handled = False
+        if t:
+            ht = t[0]
+            if ht in ("$SHELL", "${SHELL}"):
+                ht = os.environ.get("SHELL", "")
+            hbase = os.path.basename(ht)
+            if hbase in OUTPUT_ONLY:
+                handled = True
+            elif hbase in SHELLS:
+                cflag = None
+                for p in range(1, len(t)):
+                    if t[p].startswith("-") and not t[p].startswith("--") and "c" in t[p][1:]:
+                        cflag = p
+                        break
+                if cflag is not None and cflag + 1 < len(t):
+                    try:
+                        inner_toks = _uw_tokenize_full(t[cflag + 1])
+                    except ValueError:
+                        pass
+                    else:
+                        r_toks, f2 = _uw_process(inner_toks, depth + 1)
+                        out.extend(r_toks)
+                        handled = True
+                        if f2:
+                            forced = True
+            elif hbase == "eval" and len(t) > 1:
+                try:
+                    inner_toks = _uw_tokenize_full(" ".join(t[1:]))
+                except ValueError:
+                    pass
+                else:
+                    r_toks, f2 = _uw_process(inner_toks, depth + 1)
+                    out.extend(r_toks)
+                    handled = True
+                    if f2:
+                        forced = True
+        if not handled:
+            out.extend(seg)
+        if forced:
+            return out, True
+        if j < n2:
+            out.append(toks_in[j])
+        i = j + 1
+    return out, False
 try:
-    toks = shlex.split(cmd)
+    _uw_top = _uw_tokenize_full(cmd)
+    toks, _uw_forced = _uw_process(_uw_top, 0)
 except ValueError:
-    toks = cmd.split()
+    toks = _tok(cmd)
+    _uw_forced = False
 VALUE_OPTS = {"-C", "--git-dir", "--work-tree", "--namespace", "--exec-path", "-c"}
 base = "--cached"
 i = 0
@@ -390,6 +641,11 @@ while i < len(toks):
             k += 1
         break
     i = j + 1
+if _uw_forced:
+    # Fail-closed past the unwrap depth cap: read the working tree, the more
+    # inclusive base, rather than trust whatever partial "--cached" default
+    # survived an unresolved deep nesting (round-1 external review).
+    base = "HEAD"
 print(base)
 ' 2>/dev/null || echo "--cached")
 [ "$GIT_DIFF_BASE" = "HEAD" ] || GIT_DIFF_BASE="--cached"
@@ -407,6 +663,17 @@ if [ -n "$RESOLVED_DIR" ] && [ -d "$RESOLVED_DIR" ] \
   DIFF_DIR="$RESOLVED_DIR"
 fi
 gitd() { git -C "$DIFF_DIR" "$@"; }
+
+# A forced fail-closed HEAD (past the shell-unwrap depth cap, above) is
+# unsafe in a repo with NO commits yet: `git diff HEAD` errors on an unborn
+# branch, the error is swallowed, DIFF_STAT comes back empty, and the hook
+# exits before ever reading the staged file (round-3 external review) —
+# `--cached` diffs the index against an empty tree and works with zero
+# commits, so it is the correct fallback here (not a loosening: HEAD was
+# only ever chosen to be MORE inclusive than --cached, never required).
+if [ "$GIT_DIFF_BASE" = "HEAD" ] && ! gitd rev-parse HEAD >/dev/null 2>&1; then
+  GIT_DIFF_BASE="--cached"
+fi
 
 # Compute diff stats — skip gate if trivial
 DIFF_STAT=$(gitd diff $GIT_DIFF_BASE --numstat 2>/dev/null || echo "")
