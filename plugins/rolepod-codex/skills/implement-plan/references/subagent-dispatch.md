@@ -48,8 +48,8 @@ Use the least powerful model that can handle the role (Model selection below).
 
 `Owner: <role> · write: external` (pool opt-in, per task):
 1. The owner, in its own worktree, writes the failing test at the seam first.
-2. It hands the draft that must turn that test green to another CLI: `rolepod-cross-family --kind implement --brief <task-brief> --allow <path>... --detach`. Edits outside `--allow` are reverted; money / auth / data needs `--allow-risky`.
-3. It `--collect`s in the FOREGROUND, then runs its own loop (Command, reviewers, fixes).
+2. Pool on → `cross-family` kind implement drafts the change that must turn that test green, scoped to the task's Files allowed; then the owner runs its own loop (Command, reviewers, fixes).
+3. Pool off or `cross-family` absent → the owner writes the task itself.
 
 The member never reviews its own draft, and the Lead never runs the SKILL.md Review for that task.
 

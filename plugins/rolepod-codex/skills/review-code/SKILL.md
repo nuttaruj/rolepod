@@ -39,7 +39,7 @@ High-risk surface = auth, billing, payments, credits, migration, data deletion, 
 By rigor tier (R1 trivial edit · R2 one file + test · R3 multi-file · R4 high-risk):
 - **R2** → TWO read-only `universal-reviewer` lenses in ONE message, `lens: spec` + `lens: standards` (no spec → standards only); a matched row (perf / UI / arch) → that role instead. The writer's unit tests are the floor.
 - **R3** → the matched row, internal, unless the pool's tier is R2 or R3 → a usable external replaces `universal-reviewer`.
-- **R4** → `security-engineer` + ONE general strong pass: the external when the pool is usable, else `universal-reviewer` on a strong-class model (never a balanced one). Never both on round 1, money and auth included. A comment/blank-only R4 diff → ONE internal strong reviewer, no external.
+- **R4** → `security-engineer` + ONE general strong pass: the external (`cross-family` kind review) when the pool is usable, else — or no `cross-family` — `universal-reviewer` on a strong-class model (never a balanced one), the reason on the Cross-model line. Never both on round 1, money and auth included. A comment/blank-only R4 diff → ONE internal strong reviewer, no external.
 - Adversarial fresh-context = the reviewer reads only the artifact + acceptance criteria, tries to make the change fail, and hunts for what is missing as hard as for what is present.
 - A high-risk path anywhere in the diff (task or ship group) makes it R4; the commission's tier (max over its tasks) governs Define / Plan only.
 - A diff reviewed at its tier is never reviewed again at ship: R2/R3 combine once per plan (`implement-plan` Review), naming R4 tasks as already reviewed.
@@ -90,7 +90,7 @@ Done when: the report carries a Recommendation and the review line is appended.
 ### 5. Fix-verify rounds
 
 - Round 1 = every axis in ONE message, ≤ 40 tool calls per reviewer.
-- Round 2 = a BLOCKER / MAJOR fix only: the flagging reviewer re-checks its finding on the fix delta, ≤ 15 tool calls, dispatched with findings + delta only (no suite re-run, new mutant or new axis). External rounds → the routing reference.
+- Round 2 = a BLOCKER / MAJOR fix only: the flagging reviewer re-checks its finding on the fix delta, ≤ 15 tool calls, dispatched with findings + delta only (no suite re-run, new mutant or new axis). External rounds → `cross-family` Re-review a fix; absent → the flagging internal reviewer re-checks the delta.
 - The flagging reviewer verifies a BLOCKER / MAJOR fix (the Lead's cold read only when it cannot run); the fix's writer never does. MINOR / NIT → the author's Command.
 - A Lead-built fix → one read-only `universal-reviewer` pass (R4 → the strong pass).
 
@@ -99,7 +99,7 @@ Done when: every BLOCKER / MAJOR is closed by the reviewer that flagged it, or t
 #### Breaker
 
 Any one of these triggers the Breaker:
-- one reviewer's round 3 on one uncommitted tree (`rolepod-cross-family --rounds` counts it);
+- one reviewer's round 3 on one uncommitted tree (dispatches under 5 minutes apart are one round; `cross-family` prints the count);
 - blockers tagged IN-FIX two rounds running;
 - BLOCKER / MAJOR tagged NEW in files the previous round never touched, two rounds running;
 - the same defect class at a new site;

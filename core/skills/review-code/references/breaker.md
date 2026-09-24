@@ -4,14 +4,14 @@
 
 Two rounds is the budget: review, then confirm the fixes. A third round is a reassessment point, not another fix.
 
-Round counting: one reviewer's dispatches less than 5 minutes apart on one uncommitted tree count as one round. `rolepod-cross-family --rounds` shows the count. Rounds never add up across tickets.
+Round counting: one reviewer's dispatches less than 5 minutes apart on one uncommitted tree count as one round. `cross-family` Re-review a fix prints the count. Rounds never add up across tickets.
 
 Run these steps in order.
 
 ## 0. Stop
 
 Write no fix and dispatch no reviewer.
-`--collect` or `--kill` whatever is still running.
+Collect or kill whatever is still running (a detached external: `cross-family` Read the return).
 
 ## 1. Ledger
 
@@ -22,7 +22,7 @@ Write `docs/rolepod/handoffs/<feature>-breaker-<date>.md` with three sections:
 
 ## 2. Class
 
-You cannot name the class or its single point → ONE consult asking exactly that: the CLI's native advisor, else `rolepod-cross-family --kind consult --brief <ledger>`.
+You cannot name the class or its single point → ONE consult asking exactly that: the CLI's native advisor, else `cross-family` kind consult with the ledger; neither → the user, with the ledger.
 Never a second blind fix.
 
 ## 3. Class fix, once

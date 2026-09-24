@@ -46,6 +46,7 @@ Otherwise the FIRST matching row fires:
 
 | Intent | Route |
 |---|---|
+| another CLI's opinion, review or draft (codex / agy / cursor / opencode / claude); set up or change cross-family | `cross-family` |
 | build / add / design with a vague target (UI, product, doc, ADR included) | Define → `write-spec` |
 | build X to a spec whose Success criteria cover it | Plan → `write-plan` |
 | add / change Y at R3+ where the spec does not cover Y, or no spec exists | Define → `write-spec` (a new dated delta spec); R2-sized → `implement-plan` with the step 2 checklist |
@@ -54,6 +55,7 @@ Otherwise the FIRST matching row fires:
 | where to deepen / refactor for testability, whole repo | tell the user to type /deepen-codebase ($deepen-codebase on Codex) |
 | prototype / layout options / does this state model feel right | spec settled → `write-prototype`; else `write-spec` first |
 | fix bug / failing test / regression / why does X fail | Build → `debug-issue` |
+| do a clear change test-first / TDD / red-green | Build → `tdd-flow` (no `tdd-flow` → `implement-plan`, failing test first at the seam) |
 | refactor / simplify / clean up | Build → `simplify-code` → `check-work` |
 | slow / latency / bundle size / N+1 / p95 | Verify → `check-work` baseline → `implement-plan`, Owner `performance-engineer` |
 | clear UI edit (design, screenshot, exact acceptance) | Build → `implement-plan`, Owner `frontend-developer` (design system / CSS / a11y → `ui-ux-designer`) |
@@ -100,7 +102,7 @@ Done when: the route is stated (R2 and up) and the named skill is running.
 
 ## References
 
-- Force-full triggered, or the user asks to set up / change cross-family → `references/force-full-lifecycle.md`.
+- Force-full triggered → `references/force-full-lifecycle.md`.
 - Delegating, picking a model class, or running a fleet → `references/model-tiers.md`.
 - A repo-wide sweep, or the 3rd same-shaped fix in one loop → `references/scope-then-spawn.md`.
 - A sibling plugin is installed, or the task's central framework has an unconnected official MCP → `references/plugins-and-mcp.md`.

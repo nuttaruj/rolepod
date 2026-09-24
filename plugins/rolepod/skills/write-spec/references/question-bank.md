@@ -92,10 +92,9 @@ Define, where an ambiguity costs a question instead of a rewrite.
 
 ## Gate
 
-All three: the user's cross-family pool is enabled (`rolepod-cross-family
---pool`; opt-in — off is a choice, skip silently, no limitation note), the
-spec is R4 / touches a high-risk surface (or the user asks; R3 stays
-internal), and the
+All three: the user's cross-family pool is enabled (opt-in — off is a
+choice, skip silently, no limitation note), the spec is R4 / touches a
+high-risk surface (or the user asks; R3 stays internal), and the
 discovery dialogue has converged (the Lead has no open questions of its own).
 Never for routine specs.
 
@@ -103,17 +102,12 @@ Never for routine specs.
 
 1. **Brief file** = the draft spec as it stands after Self-review + the **Q&A
    ledger**: every question already asked, numbered, with the user's
-   answer. The critic is told never to re-ask those; an incomplete ledger
-   produces duplicate questions the user has already answered.
-2. **Run** `rolepod-cross-family --kind critique --brief spec-draft.md`
-   (add `--lead <cli>` outside Claude; 10-minute budget per member, foreground). The runner frames the critic: every
-   material item, no cap, ranked by implementation risk, each `QUESTION` (only the
-   user can decide — the answer changes the implementation), `AMBIGUITY`
-   (wording two engineers would read differently, quoted), or `MISSING`
-   (an acceptance criterion / failure mode / edge case with no "proven
-   by"); `NO FURTHER QUESTIONS` when nothing material remains. Read-only,
-   the external's own default model, anchored under
-   `.rolepod/evidence/external/`, logged `phase: critique`, `kind: critique`.
+   answer. An incomplete ledger produces duplicate questions the user has
+   already answered.
+2. **Run** — pool on → `cross-family` kind critique with that file; it
+   returns every material item, no cap, ranked by implementation risk
+   (`QUESTION` / `AMBIGUITY` / `MISSING`, or `NO FURTHER QUESTIONS`). Pool
+   off or `cross-family` absent → skip to step 4 with `not run — off`.
 3. **Triage before the user sees anything.** Items the repo or the spec
    already settle → answer them yourself (Read / grep, never guess) and
    fold the answer into the draft. Items that are genuinely the user's
@@ -128,8 +122,7 @@ Never for routine specs.
 
 ## Degradation
 
-Runner exit 3 (every member failed) / 4 (enabled, nothing usable) / 5 (off)
-→ proceed to Gate 1 with the matching line. A spec never waits on an
+No usable member, or the pool off → proceed to Gate 1 with the matching line. A spec never waits on an
 external. A hard **approach** decision the critique surfaces (a fork, not a
 question) goes to Gate 1 as an option pair with a recommendation — the
 user decides; never a second external.

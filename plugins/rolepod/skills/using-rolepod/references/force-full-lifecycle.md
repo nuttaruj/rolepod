@@ -1,5 +1,5 @@
-<!-- Load when entering force-full mode, or when the user asks to set up / change cross-family. -->
-<!-- The router detects the trigger; this file is the force-full and cross-family setup detail. -->
+<!-- Load when entering force-full mode. -->
+<!-- The router detects the trigger; this file is the force-full detail. -->
 
 # Force-full lifecycle
 
@@ -28,8 +28,8 @@ auto-router's skip rules on purpose. They can still override mid-flow
 4. **Verify — `check-work`** — no completion claim without fresh verification
    evidence in this message.
 5. **Review — `review-code`** — one read-only reviewer + risk-appropriate reviewers.
-   External adversarial reviewers (any installed CLI on a model different
-   from the Lead's) when configured; otherwise universal-reviewer / security-engineer;
+   External adversarial reviewers (`cross-family` — any installed CLI other
+   than the Lead's) when configured; otherwise universal-reviewer / security-engineer;
    qa-tester for user-visible (E2E / UI) behaviour.
 6. **Ship — `finish-work`** — its Pre-merge gates, required CI lane checks, then
    the 4-option branch finish menu (merge / open PR / keep open / discard).
@@ -86,16 +86,3 @@ rigor is default-on, not mandatory-on.
 | "Task is trivial, Define is overkill" | User invoked `/rolepod-full` precisely to disable that judgment. Run it. |
 | "User probably meant just Build" | If they wanted just Build they'd type the task without `/rolepod-full`. Read the directive literally. |
 | "I'll merge Define + Plan into one turn to save time" | Each phase has its own exit evidence. Run them sequentially. |
-
-## Cross-family setup — on request only
-
-The user asks to set up, enable or change cross-family (any wording, any
-language). Never raise it unprompted. One installed CLI → nothing to set;
-say so.
-
-1. Run `rolepod-cross-family --setup`; it prints the installed CLIs and the
-   two questions.
-2. Ask ONE question per turn: (1) which CLIs review, in order; (2)
-   implement: `same`, `none`, or its own order.
-3. Write it with `rolepod-cross-family --setup review="…" implement=…`, then
-   show `rolepod-cross-family --pool`.
