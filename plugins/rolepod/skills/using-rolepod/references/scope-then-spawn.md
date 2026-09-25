@@ -54,8 +54,9 @@ Scope-then-spawn above covers a sweep you can see coming. This covers the
 other shape: a fix → check → fix loop where each check reveals the next fix,
 and the sweep only becomes visible once you are inside it.
 
-The first 2 same-shaped fixes are discovery — the Lead is learning the
-pattern, self-do is correct. The 3rd instance of the SAME shape (no new
+The first 2 same-shaped fixes are discovery — the loop's runner (the path
+owner; the Lead only at R1 or without sub-agents) is learning the pattern,
+fixing inline is correct. The 3rd instance of the SAME shape (no new
 decision, just the learned fix applied again) is the convergence signal:
 **stop, don't fix it inline.**
 

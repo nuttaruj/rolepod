@@ -79,8 +79,9 @@ Findings:
 - string-concat ORDER BY — `app/reports/sort.py:23`
 Gaps: raw SQL behind the `LEGACY_SQL` flag not exercised — flag was off.
 ```
-Next step: the Lead reads only those three files and routes the fix to
-`security-engineer` — it never re-swept the repo itself.
+Next step: the Lead reads only those three files and routes the fix to the
+path owner (`backend-developer`), with `security-engineer` on the R4
+reviewer line — it never re-swept the repo itself.
 
 ✗ Anti-pattern: spawn one agent per file across 300 files, or sweep all 300
   yourself and dump the matches.
@@ -95,7 +96,7 @@ User: "this OrdersService file is a mess, clean it up"
 Routing: Build (refactor) → simplify-code → check-work
 Reason: cleanup with no behavior change — behavior-preserving simplification.
 Skipping: Define + Plan.
-Next step: confirm the test suite is green first — no simplifying on red.
+Next step: brief the path owner (`implement-plan`, Owner <path role>); it confirms the test suite is green first — no simplifying on red.
 
 ---
 

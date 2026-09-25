@@ -39,6 +39,8 @@ Done when: one tier is chosen from observed scope.
 
 ### 3. Pick the first skill
 
+The Lead routes, scopes, briefs (3-5 lines: goal, region / files, done-when, Command), spot-checks and commits. A skill whose steps read code regions, run commands or iterate is run by the owner of the path, who calls the skill. Without sub-agents, the Lead runs it.
+
 The FIRST matching row fires:
 
 | Intent | Route |
@@ -52,13 +54,13 @@ The FIRST matching row fires:
 | where to deepen / refactor for testability, whole repo | tell the user to type /deepen-codebase ($deepen-codebase on Codex) |
 | prototype / layout options / does this state model feel right | spec settled → `write-prototype`; else `write-spec` first |
 | fix bug / failing test / regression / why does X fail | Build → `debug-issue` |
-| do a clear change test-first / TDD / red-green | Build → `tdd-flow` (no `tdd-flow` → `implement-plan`, failing test first at the seam) |
-| refactor / simplify / clean up | Build → `simplify-code` → `check-work` |
-| slow / latency / bundle size / N+1 / p95 | Verify → `check-work` baseline → `implement-plan`, Owner `performance-engineer` |
+| do a clear change test-first / TDD / red-green | Build → `tdd-flow`, run by the path owner: R2+ → `implement-plan`, Owner <path role>, who loads `tdd-flow`; R1 or no sub-agents → the Lead runs it (no `tdd-flow` → `implement-plan`, failing test first at the seam) |
+| refactor / simplify / clean up | Build → `simplify-code`, run by the path owner (`implement-plan`, Owner <path role>; R1 or no sub-agents → the Lead runs it) → `check-work` |
+| slow / latency / bundle size / N+1 / p95 | Build → `implement-plan`, Owner `performance-engineer` in ONE brief (baseline number, change, re-measure) → `check-work` reads its before / after numbers (no sub-agents → the Lead runs it) |
 | clear UI edit (design, screenshot, exact acceptance) | Build → `implement-plan`, Owner `frontend-developer` (design system / CSS / a11y → `ui-ux-designer`) |
 | write test cases / report a bug, no fix wanted | Verify → `qa-tester` agent (no agent → the Lead writes the case table); a found bug → `debug-issue` report-only |
 | is this done / does it (or the UI) work / verify | Verify → `check-work` |
-| audit UX / a11y of one page or flow | Verify → `check-work` UI verification → `review-code` Axes (UI) |
+| audit UX / a11y of one page or flow | Verify → ONE `ui-ux-designer` brief runs `check-work` UI verification + `review-code` Axes (UI) (no sub-agents → the Lead runs it) |
 | edit / fix on a high-risk path | Define → `write-spec` → `write-plan` → `implement-plan` (per-task review) |
 | clear doc edit; CI, Docker, deploy, infra config | Build → `implement-plan`, Owner `content-strategist` (`audience:` set) / `devops-sre`; R1 → the Lead |
 | review / look at the diff; audit / find all X across the repo | Review → `review-code`; a whole-repo sweep scopes first (References) |
