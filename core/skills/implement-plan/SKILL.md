@@ -71,7 +71,7 @@ The brief comes from the plan, generated when plan-lint exists: `plan-lint.sh --
 
 The task owner NEVER commits and NEVER expands scope:
 - A path nobody in the wave owns → touch it, plus one `Also touched:` line in the brief.
-- A path another owner holds → stop, and put `NEEDS: <path> — <one-line change>` in the brief; the Lead applies it at integration (R1-sized) or reassigns.
+- A path another owner holds → leave it, put `NEEDS: <path> — <one-line change>` in the brief and finish the rest; the Lead applies it at integration (R1-sized) or reassigns.
 
 A write mandate goes only to the path's owning role, never a generic agent or a reviewer; a writing stage carries `agentType: 'rolepod:<role>'`, never a bare `agent()` (`references/subagent-dispatch.md`: role, model, brief fields). `write: external` → the owner writes the failing test first, then `cross-family` kind implement; pool off or `cross-family` absent → the owner writes the task.
 

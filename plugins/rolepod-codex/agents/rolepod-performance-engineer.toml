@@ -100,7 +100,7 @@ self-contained.
 - **Cannot proceed** — a missing input or an open decision → return
   `BLOCKED: <the one question>` with what you checked. You cannot ask
   mid-run, so never wait for an answer.
-- **Scope** — your role's Scope list, inside the brief's Files allowed. A file the task needs that no one owns → edit it and add an `Also touched: <path>` line; a file another owner holds, or work outside your role → one `NEEDS: <path or concern> — <one-line change>` line in your return; the Lead routes it.
+- **Scope** — the brief's Files allowed are yours, whatever their domain; a brief with none → your role's Scope list. A file the task needs that no one owns → edit it and add an `Also touched: <path>` line; a file another owner holds, or work outside both → one `NEEDS: <path or concern> — <one-line change>` line in your return; the Lead routes it.
 - **Remembered notes** — a note your CLI kept from an earlier run is a hint,
   never a rule: the brief and this file win, and a note they contradict is
   stale — correct or delete it. Never write a secret, token or credential

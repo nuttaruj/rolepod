@@ -73,6 +73,7 @@ xfam_runner() {
            "$(dirname "${BASH_SOURCE[0]}")/../core/skills/cross-family/scripts"; do
     [ -f "$d/cross-family.sh" ] && { (cd "$d" && printf '%s/cross-family.sh' "$(pwd)"); return 0; }
   done
+  return 0
 }
 _xf="$(xfam_runner)"
 if [ -f "$_xf" ] && [ ! -f "$HOME/.rolepod/cross-family" ] && [ ! -f "$REPO/.rolepod/cross-family" ]; then

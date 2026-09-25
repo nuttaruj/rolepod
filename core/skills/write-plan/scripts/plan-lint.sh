@@ -639,8 +639,8 @@ if [ "${1:-}" = "--brief" ]; then
       print r
     }
     print "## Bounds"
-    if (onmain) print "- Edit only Files allowed, in the main checkout; no backup copies (.bak / .orig). Never commit or push; leave the tree staged."
-    else printf "- Edit only Files allowed, and only under ../%s-wt-%s-t%s-%s — the same path in the main checkout belongs to the Lead; no backup copies (.bak / .orig). Never commit or push; leave the tree staged.\n", repo, feat, want, tslug
+    if (onmain) print "- Edit only Files allowed, in the main checkout; no backup copies (.bak / .orig). Never commit or push; leave the tree staged. One exception: a file the task needs that is in no Files list (not forbidden) - edit it and add an Also touched: line."
+    else printf "- Edit only Files allowed, and only under ../%s-wt-%s-t%s-%s — the same path in the main checkout belongs to the Lead; no backup copies (.bak / .orig). Never commit or push; leave the tree staged. One exception: a file the task needs that is in no Files list (not forbidden) - edit it and add an Also touched: line.\n", repo, feat, want, tslug
     print "- Run the Command after each edit and last before returning, then the repo commit check once (the one the project CLAUDE.md or AGENTS.md names), in the foreground (Bash timeout 600000; never run_in_background - nothing wakes a sub-agent). Reviewers named above → dispatch them in ONE message (reports to .rolepod/evidence/review/<task>-<role>.md); fix; then the Reviewers section above."
     print "- Budget: build <= 40 tool calls, whole loop <= 120; past it return PARTIAL with what is done, never grind."
     print "- Return a decision brief: verdict, `git diff --cached --stat | tail -3`, Command last 3 lines verbatim, reviewer verdicts + report paths, `Assuming:` lines, residuals."

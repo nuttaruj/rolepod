@@ -17,8 +17,6 @@ Done when: the intent table is filled, or "no data" with the file paths named.
 
 ### 2. Execution proof
 
-Claude Code only — on another CLI skip this layer and say the execution proof is Claude-only.
-
 Layer 2 reads Claude Code transcripts (`~/.claude/projects`); on another CLI skip it and say so. Count which models ACTUALLY ran, in TWO separate tables — the Lead's own turns (main session files) and the subagent turns (`<session>/subagents/**/agent-*.jsonl` — Agent tool + Workflow fleets). Never merge them: the Lead's histogram is what `/model` was set to, not what fleets ran.
 
 ```bash

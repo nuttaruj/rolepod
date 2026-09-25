@@ -35,6 +35,7 @@
 # $'…' escapes, a bare & after an output command, quote- or backslash-split
 # names.
 set -euo pipefail
+unset XFAM_RUNNER
 
 # Cross-family runner (v2.179.0: inside the cross-family skill) — resolved
 # on FIRST USE only (this hook fires on every Bash call): a plugin tree's
@@ -48,6 +49,7 @@ xfam_runner() {
            "$(dirname "${BASH_SOURCE[0]}")/../core/skills/cross-family/scripts"; do
     [ -f "$d/cross-family.sh" ] && { (cd "$d" && printf '%s/cross-family.sh' "$(pwd)"); return 0; }
   done
+  return 0
 }
 
 # Per-repo risk-path override: <git-root>/.rolepod/risk-paths — one ERE per

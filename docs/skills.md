@@ -13,7 +13,7 @@ No entry doc embeds a skill index. Each skill's `description:` is its routing su
 | — | Helpers (`cross-family`, `tdd-flow`) | 2 | Model-invoked by the phase skill that names them; allowed, never required |
 | — | Command (`deepen-codebase`) | 1 | Explicit `/deepen-codebase` invocation only (`disable-model-invocation: true`): scope → one full-strength sub-agent (the Lead's model, shell access) walks the codebase and reproduces its claims → the Lead verifies → HTML report of deepening candidates (six fields per card, Strength badge, bugs found on the way, Top recommendation) → the user picks a card and is offered a `write-spec` on it |
 | — | On demand (`write-prototype`) | 1 | write-spec offers it for a layout / state-logic question, or the user types /write-prototype; needs a settled spec (Product mode + one question); builds layout variants or a clickable logic demo in a spike worktree, never merged |
-| — | On demand (`rolepod-stats`) | 1 | The user asks for the evidence report (`/rolepod-stats` on Claude, `$rolepod-stats` on Codex, or in words); runs its own `scripts/stats.sh` over `.rolepod/evidence/` — tier distribution, verify / review verdicts, strong-dispatch overrides, bypasses |
+| — | On demand (`rolepod-stats`) | 1 | The user asks for the evidence report (`/rolepod-stats` on Claude, `$rolepod-stats` on Codex, or in words); runs its own `scripts/stats.sh` over `.rolepod/evidence/` — tier distribution, verify / review verdicts, strong-dispatch overrides, bypasses; its second layer (which models ran) reads Claude Code transcripts only |
 | **2** | Specialist public skills | 0 default | Domain depth lives in agents |
 | **3** | Legacy compatibility shims | 0 | Removed; see migration map |
 
