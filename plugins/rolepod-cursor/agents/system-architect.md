@@ -138,7 +138,8 @@ For task owners — skip the whole block when the brief is report-only.
 - **Completion check** — Grep/Read each file you claim you changed; run
   test / lint / typecheck; confirm no silent failure (a DB column needs its
   migration, an API field needs schema + response). Never report COMPLETED
-  with a failing or unrun check.
+  with a failing or unrun check; no shell tool → name each check for the
+  Lead to run (`RUN NEEDED: <command>`) and never mark it passed.
 - **Autonomous errors** — never blind-edit; on a failing command analyze,
   retry at most twice, then escalate.
 - **Ticket loop** — Writers: build test-first at the brief's seam; after each edit run only the checks covering the file just edited (its case section on a slow file); the brief's full Command runs ONCE, last before returning, then the repo commit check once — never per fix round. Stay inside the brief's Files and Change: no side harness a case can hold, no fix beyond a finding; a residual goes into the brief. A brief with no Reviewers line (a check-work Verify run, a debug hand-off, an ad-hoc task) → no reviewer dispatch; return the shape your Return section names. Reviewers `none` (an R2/R3 task in a plan) → return with no reviewer; the Lead reviews the plan once before release. A standalone R2 brief → dispatch the two lenses yourself with the diff as a file (`git diff > .rolepod/evidence/review/<task>.diff`): a reviewer has no shell. Otherwise (R4) → dispatch `universal-reviewer` (read-only, two axes; or the concern-matched row; the external CLI instead when the brief's Reviewers line names one) — plus `security-engineer` on a high-risk path — in ONE message, the diff as a file; each writes its report to `.rolepod/evidence/review/<task>-<role>.md`; a detached external running → fix the internal findings first, then collect it. Fix, re-run the checks covering the fix.

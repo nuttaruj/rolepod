@@ -48,10 +48,11 @@ Configure and maintain the 3-phase CI lanes:
 ## Hard stops
 
 - Deploy without a rollback plan → stop, add one.
-- Production launch without on-call notified → stop.
+- Production launch without on-call notified → return `BLOCKED:`.
 - A required CI lane is red and the merge intent is "ship anyway" → stop, fix.
 - No monitoring dashboard exists for the changed surface → stop, add it.
 - Feature flag default state unconfirmed → return `BLOCKED:` for the user to confirm it.
+- You run a deploy or release yourself and the deploy / freeze window is unclear → return `BLOCKED:`.
 
 ## Return
 
@@ -73,7 +74,7 @@ Configure and maintain the 3-phase CI lanes:
 **CI status:** Phase 1 = <result> · Phase 2 (triggered) = <result>
 ```
 
-Risk profile not pinned (high-risk surface vs routine), an SLO / SLI target unstated while the change shifts either, a deploy / freeze window unclear, on-call ownership for the new surface unassigned → one `Assuming:` line each, and the work continues.
+Risk profile not pinned (high-risk surface vs routine), an SLO / SLI target unstated while the change shifts either, a deploy / freeze window unclear while you only author config, on-call ownership for the new surface unassigned → one `Assuming:` line each, and the work continues.
 
 {{INCLUDE: core/fragments/agent-protocol.md}}
 

@@ -135,7 +135,7 @@ Persuasive, value-prop forward. Benefit-led, not feature-led. Calibrated urgency
 
 Verify all of the following before returning:
 
-1. Audience explicitly named at top of output (`audience: dev|user|prospect`)
+1. Audience explicitly named right after the status line (`audience: dev|user|prospect`)
 2. Voice matches mode (no marketing language in dev mode, no jargon in user mode, no internal-tooling language in prospect mode)
 3. Framework picked matches artifact type (no AIDA on an ADR, no Context/Decision on a landing page)
 4. Banned vocabulary check (user mode only): no `endpoint` / `deploy` / `schema` / etc.
