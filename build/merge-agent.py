@@ -9,7 +9,7 @@ Usage:
   merge-agent.py --target=claude --name=qa-tester  (md — model/effort overlay)
   merge-agent.py --target=codex  --name=qa-tester  (toml — model/sandbox overlay)
   merge-agent.py --target=gemini --name=qa-tester  (md — model overlay)
-  merge-agent.py --target=cursor --name=qa-tester  (md — minimal name+description only)
+  merge-agent.py --target=cursor --name=qa-tester  (md — name/description + a derived readonly)
 
 Writes to stdout. Render driver pipes into the per-target rendered/ directory.
 
@@ -25,15 +25,24 @@ import re
 import sys
 from pathlib import Path
 
-# Field order for re-emission. `skills` (Claude preload) lives ONLY in
-# adapters/claude/agent-frontmatter/*.yml — core/agents carries no skills key
-# (v2.86.0): the overlay always won the merge and cursor/opencode/codex drop it.
+# Field order for re-emission. No overlay preloads skills (v2.173.0): Claude
+# roles call `Skill` on demand instead of a preloaded list. No overlay sets
+# `permissionMode` or `skills` any more either, so both are dropped from this
+# order (v2.173.1) — dead keys `emit()` would otherwise carry silently.
 CLAUDE_KEY_ORDER = ["name", "description", "model", "effort", "memory",
-                    "permissionMode", "color", "skills", "tools"]
+                    "color", "tools"]
 GEMINI_KEY_ORDER = ["name", "description", "model"]
-CURSOR_KEY_ORDER = ["name", "description"]
+CURSOR_KEY_ORDER = ["name", "description", "readonly"]
 OPENCODE_KEY_ORDER = ["description", "mode", "permission"]
 # Codex agents are TOML, not frontmatter — see emit_codex_toml().
+
+# Tools that grant write access, on Claude's naming — a fixed 3-tuple, not a
+# set, so both branches below can destructure it in a stable order. The
+# cursor branch derives `readonly: true` when a role's overlay holds none of
+# these; the opencode branch derives its `permission:` deny list from the
+# same three, tool by tool (kept separate there since opencode denies
+# edit/write/bash independently rather than folding them into one flag).
+WRITE_TOOLS = ("Edit", "Write", "Bash")
 
 # ── Tier → model: THE single source of model identity ────────────────────────
 # Overlays carry `tier:` (stable, semantic); this map resolves it to a concrete
@@ -176,6 +185,19 @@ def field_value(fields: dict[str, list[str]], key: str) -> str:
     return fields[key][0].split(":", 1)[1].strip()
 
 
+def _overlay_tools(overlay_path: Path) -> set[str]:
+    """Tool names from a Claude overlay's `tools:` list, or empty if none.
+
+    Shared by the cursor and opencode branches: both derive a permission
+    surface from the same Claude tool allowlist.
+    """
+    if not overlay_path.exists():
+        return set()
+    ov = parse_yaml_block(overlay_path.read_text())
+    return {ln.strip().lstrip("- ").strip()
+            for ln in ov.get("tools", [])[1:] if ln.strip().startswith("-")}
+
+
 def _toml_basic(s: str) -> str:
     """Quote a scalar as a TOML basic string. JSON string escaping (`"`, `\\`,
     control chars) is a subset of TOML basic-string escaping, so json.dumps is
@@ -252,12 +274,20 @@ def merge(target: str, name: str) -> str:
 
     if target == "cursor":
         # Cursor agents ship agents/<name>.md with minimal frontmatter — the
-        # documented spec only acknowledges `name` and `description`. We drop
-        # Claude's model / effort / color / tools / skills fields rather than
-        # gambling on Cursor tolerating unknown keys (the official
-        # plugin-template uses minimal frontmatter only).
-        # No overlay needed: name + description already live in core/agents.
-        return "---\n" + emit(CURSOR_KEY_ORDER, core_fields) + "---\n" + body
+        # documented spec acknowledges `name`, `description` and `readonly`.
+        # We drop Claude's model / effort / color / tools / skills fields
+        # rather than gambling on Cursor tolerating unknown keys (the
+        # official plugin-template uses minimal frontmatter only).
+        # name + description already live in core/agents. readonly is
+        # derived from the Claude overlay's tools list — the same tool parse
+        # the opencode branch below uses: a role whose overlay holds none of
+        # Edit / Write / Bash renders read-only on Cursor too.
+        overlay_path = REPO_DIR / "adapters" / "claude" / "agent-frontmatter" / f"{name}.yml"
+        tools = _overlay_tools(overlay_path)
+        merged = dict(core_fields)
+        if not any(t in tools for t in WRITE_TOOLS):
+            merged["readonly"] = ["readonly: true"]
+        return "---\n" + emit(CURSOR_KEY_ORDER, merged) + "---\n" + body
 
     if target == "opencode":
         # opencode agents ship agents/<name>.md where the FILENAME is the
@@ -271,17 +301,14 @@ def merge(target: str, name: str) -> str:
         # mechanical form of "subagents NEVER commit" (block-subagent-commit
         # parity; opencode enforces `permission:` natively per its agent docs).
         overlay_path = REPO_DIR / "adapters" / "claude" / "agent-frontmatter" / f"{name}.yml"
-        tools: set[str] = set()
-        if overlay_path.exists():
-            ov = parse_yaml_block(overlay_path.read_text())
-            tools = {ln.strip().lstrip("- ").strip()
-                     for ln in ov.get("tools", [])[1:] if ln.strip().startswith("-")}
+        tools = _overlay_tools(overlay_path)
+        edit_tool, write_tool, bash_tool = WRITE_TOOLS
         perm = ["permission:"]
-        if "Edit" not in tools:
+        if edit_tool not in tools:
             perm.append("  edit: deny")
-        if "Write" not in tools:
+        if write_tool not in tools:
             perm.append("  write: deny")
-        if "Bash" not in tools:
+        if bash_tool not in tools:
             perm.append("  bash: deny")
         else:
             perm += [

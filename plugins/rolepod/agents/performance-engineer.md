@@ -1,14 +1,10 @@
 ---
 name: performance-engineer
-description: Performance Engineer focused on load testing, profiling, latency optimization, bundle size, DB query performance, and p95/p99 metrics. Owns speed concern — distinct from qa-tester (user-visible tests) and security-engineer (security).
+description: Performance Engineer focused on load testing, profiling, latency optimization, bundle size, DB query performance, and p95/p99 metrics; owns the speed concern. Use when something measurable is slow, a perf regression is suspected after a deploy, or a launch needs a load test. Distinct from qa-tester (user-visible tests) and security-engineer (security).
 model: sonnet
 effort: high
 memory: project
 color: orange
-skills:
-  - review-code
-  - check-work
-  - debug-issue
 tools:
   - Read
   - Glob
@@ -20,6 +16,7 @@ tools:
   - SendMessage
   - WebFetch
   - WebSearch
+  - Skill
 ---
 
 # Performance Engineer

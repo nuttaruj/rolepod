@@ -1,15 +1,10 @@
 ---
 name: frontend-developer
-description: Frontend Specialist. Builds UI components with focus on state management, API integration, routing, and logic. Distinct from ui-ux-designer (visual design + polish).
+description: Frontend specialist — builds UI component logic, state management, API integration and routing. Use when work needs a component with non-trivial logic, client state (Redux / Zustand / Context / Pinia), data fetching and caching (React Query / SWR / Apollo), routing, route guards or code splitting, form logic, validation and error display, or auth-flow integration (cookies / tokens / redirects). Distinct from ui-ux-designer (visual design + polish).
 model: sonnet
 effort: medium
 memory: project
 color: cyan
-skills:
-  - implement-plan
-  - check-work
-  - debug-issue
-  - simplify-code
 tools:
   - Read
   - Glob
@@ -21,6 +16,7 @@ tools:
   - SendMessage
   - WebFetch
   - WebSearch
+  - Skill
 ---
 
 # Frontend Developer

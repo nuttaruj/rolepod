@@ -1,15 +1,10 @@
 ---
 name: mobile-developer
-description: Mobile Engineer for native iOS/Android + cross-platform (React Native / Flutter). Owns platform-specific code; cross-platform UI logic may overlap with frontend-developer.
+description: Mobile engineer for native iOS / Android and cross-platform (React Native / Flutter) apps; owns platform-specific code. Use when work touches iOS native (Swift / SwiftUI / UIKit / Objective-C), Android native (Kotlin / Jetpack Compose / Java), React Native or Flutter features, push (APNs / FCM), mobile permissions, or app-store submission readiness (signing config, store metadata, release checklist). Cross-platform UI logic may overlap with frontend-developer; the CI / fastlane / EAS scripts belong to devops-sre.
 model: sonnet
 effort: medium
 memory: project
 color: purple
-skills:
-  - implement-plan
-  - check-work
-  - debug-issue
-  - simplify-code
 tools:
   - Read
   - Glob
@@ -21,6 +16,7 @@ tools:
   - SendMessage
   - WebFetch
   - WebSearch
+  - Skill
 ---
 
 # Mobile Developer

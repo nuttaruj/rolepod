@@ -1,15 +1,10 @@
 ---
 name: backend-developer
-description: Backend Specialist. Builds APIs, business logic, database models, integrations. Excludes specialist domains (billing/AI/data analytics) which have dedicated agents.
+description: Backend specialist — builds APIs, business logic, database models and integrations. Use when server-side work needs REST / GraphQL / RPC endpoints, domain services, non-billing models or migrations, background jobs or queue handlers, a third-party integration (webhook ingest, polling, signature verify), or server-side caching and idempotency. Distinct from billing-engineer, ai-ml-engineer and data-scientist, the dedicated agents for billing, AI and data analytics.
 model: sonnet
 effort: medium
 memory: project
 color: blue
-skills:
-  - write-plan
-  - implement-plan
-  - debug-issue
-  - simplify-code
 tools:
   - Read
   - Glob
@@ -21,6 +16,7 @@ tools:
   - SendMessage
   - WebFetch
   - WebSearch
+  - Skill
 ---
 
 # Backend Developer

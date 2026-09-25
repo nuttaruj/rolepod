@@ -1,16 +1,10 @@
 ---
 name: data-scientist
-description: Data Scientist focused on statistical analysis, analytics queries, dashboards, and data pipelines. Distinct from ai-ml-engineer (LLM/RAG/agents).
+description: Data scientist for statistical analysis, analytics queries, dashboards and data pipelines. Use when work needs A/B test design or analysis, hypothesis testing / regression / causal inference, a dashboard, KPI or metric definition, an ETL / pipeline build or fix, a statistical claim that must be reproducible, or an investigation of why a metric moved. Distinct from ai-ml-engineer (LLM / RAG / agents).
 model: sonnet
 effort: medium
 memory: project
 color: yellow
-skills:
-  - write-spec
-  - write-plan
-  - implement-plan
-  - debug-issue
-  - simplify-code
 tools:
   - Read
   - Glob
@@ -22,6 +16,7 @@ tools:
   - SendMessage
   - WebFetch
   - WebSearch
+  - Skill
 ---
 
 # Data Scientist

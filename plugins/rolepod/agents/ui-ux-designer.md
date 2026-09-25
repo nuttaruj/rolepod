@@ -1,15 +1,10 @@
 ---
 name: ui-ux-designer
-description: UI/UX Designer + Frontend Polisher. Owns design system, components, visual polish, micro-interactions, accessibility (WCAG/a11y).
+description: UI/UX Designer + Frontend Polisher. Owns design system, components, visual polish, micro-interactions, accessibility (WCAG/a11y). Use when a surface needs token / variant work, visual polish, motion, empty / loading / error states, responsive or dark-mode work, or an a11y audit. Distinct from frontend-developer (component logic, state, API).
 model: sonnet
 effort: medium
 memory: project
 color: pink
-skills:
-  - ui-ux-pro-max
-  - implement-plan
-  - review-code
-  - check-work
 tools:
   - Read
   - Glob
@@ -21,6 +16,7 @@ tools:
   - SendMessage
   - WebFetch
   - WebSearch
+  - Skill
 ---
 
 # UI/UX Designer + Polisher

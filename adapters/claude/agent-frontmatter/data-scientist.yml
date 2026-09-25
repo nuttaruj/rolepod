@@ -1,15 +1,7 @@
-name: data-scientist
-description: Data Scientist focused on statistical analysis, analytics queries, dashboards, and data pipelines. Distinct from ai-ml-engineer (LLM/RAG/agents).
 # tools: SendMessage requires agent-teams context (Claude accepts standalone, may silently ignore).
 tier: balanced
 effort: medium
 memory: project
-skills:
-  - write-spec
-  - write-plan
-  - implement-plan
-  - debug-issue
-  - simplify-code
 tools:
   - Read
   - Glob
@@ -21,3 +13,4 @@ tools:
   - SendMessage
   - WebFetch
   - WebSearch
+  - Skill

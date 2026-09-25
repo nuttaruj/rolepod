@@ -1,19 +1,17 @@
 ---
 name: universal-reviewer
-description: Read-only code reviewer, two axes — spec compliance (the diff does what the spec asked, nothing more) and standards (logic / DRY / structure / smell). The per-diff review floor from R2 up. Distinct from qa-tester (user-visible tests) and security-engineer (security).
+description: Read-only code reviewer, two axes — spec compliance (the diff does what the spec asked, nothing more) and standards (logic / DRY / structure / smell / naming / architecture violations). Use after a diff or module is written — the per-diff review floor from R2 up, or the pre-merge pass when no domain reviewer fits cleanly. Distinct from qa-tester (user-visible tests) and security-engineer (security).
 model: opus
 effort: high
 memory: project
-permissionMode: acceptEdits
 color: red
-skills:
-  - review-code
 tools:
   - Read
   - Glob
   - Grep
   - WebFetch
   - WebSearch
+  - Skill
 ---
 
 # Universal Reviewer

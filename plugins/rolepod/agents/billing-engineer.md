@@ -1,15 +1,10 @@
 ---
 name: billing-engineer
-description: FinTech / Monetization Engineer. Owns billing, payments, credits, subscriptions, financial data integrity. Path-scoped to billing/payments/credits modules.
+description: FinTech / monetization engineer — owns billing, payments, credits, subscriptions and financial data integrity, path-scoped to the billing / payments / credits modules. Use when work touches a payment gateway (Stripe / Paddle / PayPal / Adyen), the subscription lifecycle, credit hold / confirm / release / refund, invoices or reconciliation, pricing tiers, usage metering or proration, or billing webhook handlers. Distinct from backend-developer (generic backend).
 model: sonnet
 effort: high
 memory: project
 color: green
-skills:
-  - write-plan
-  - implement-plan
-  - debug-issue
-  - simplify-code
 tools:
   - Read
   - Glob
@@ -21,6 +16,7 @@ tools:
   - SendMessage
   - WebFetch
   - WebSearch
+  - Skill
 ---
 
 # Billing Engineer
