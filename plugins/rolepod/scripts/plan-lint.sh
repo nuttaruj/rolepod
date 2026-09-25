@@ -51,6 +51,65 @@ set -uo pipefail
 # --brief (reused, not re-parsed, so both read the same task shape).
 TASK_RX='^### (Task ?|T)[0-9]+'
 
+# Cleans a Files-field value for path extraction — a `(` / `)` opens or
+# closes a note ONLY when it is outside a backtick span, so a path that
+# is itself backticked keeps its own parens intact (Next.js / Expo
+# route groups: `app/(auth)/login/page.tsx`). Outside a backtick span, a
+# bare `(` opens a note only at the start of the value or right after
+# whitespace or a comma; right after `/` or a word character it is part
+# of a bare path (`app/(auth)/login/page.tsx` with no backticks at all)
+# and is kept literally, together with its matching `)` — tracked on a
+# stack so a path-embedded paren and a real note can nest either way.
+# Inside a note, a bare (non-backticked) token is dropped outright; a
+# backticked token counts only when `notekeep` is true AND it has a
+# slash — a path fragment already named elsewhere (e.g. "`x.py` (`helper()`
+# only)" drops `helper()`, but "(+ `tests/static/x.sh`)" keeps
+# `tests/static/x.sh` when notekeep=1). `--brief`'s per-task Files value
+# passes notekeep=1 (a note may legitimately add a companion path); the
+# plain lint path's "## Files to touch" section passes notekeep=0 — a
+# note there is read against the contract's exact ownership strings, so
+# an explanatory aside ("moved from the old `agent-frontmatter/` dir")
+# must never masquerade as a second file to own (always-on-core-lean
+# follow-up). Shared by both parsers — never a second parser.
+# shellcheck disable=SC2016
+CLEANFILES_AWK='
+function cleanfiles(s, notekeep,    out, i, c, prevc, depth, inbt, notebt, bt, sp, stk, isnote) {
+  out = ""; depth = 0; inbt = 0; bt = ""; sp = 0
+  for (i = 1; i <= length(s); i++) {
+    c = substr(s, i, 1)
+    if (c == "`") {
+      if (inbt) {
+        bt = bt c
+        if (notebt) { if (notekeep && bt ~ /\//) out = out bt } else out = out bt
+        inbt = 0; bt = ""
+      } else { inbt = 1; notebt = (depth > 0); bt = c }
+      continue
+    }
+    if (inbt) { bt = bt c; continue }
+    if (c == "(") {
+      prevc = (i == 1) ? "" : substr(s, i - 1, 1)
+      isnote = (i == 1 || prevc ~ /[[:space:]]/ || prevc == ",")
+      stk[++sp] = isnote
+      if (isnote) depth++
+      else if (depth == 0) out = out c
+      continue
+    }
+    if (c == ")") {
+      if (sp > 0) {
+        isnote = stk[sp]; sp--
+        if (isnote) { if (depth > 0) depth-- }
+        else if (depth == 0) out = out c
+      } else if (depth == 0) out = out c
+      continue
+    }
+    if (depth > 0) continue
+    out = out c
+  }
+  if (inbt) out = out bt
+  return out
+}
+'
+
 if [ "${1:-}" = "--brief" ]; then
   shift
   # `--main` may appear in any position after --brief (a task that runs on
@@ -88,56 +147,8 @@ if [ "${1:-}" = "--brief" ]; then
     if (p == "") return
     if (!(p in allowedset)) { allowedset[p] = 1; allowedord[++acnt] = p }
   }
-  # Cleans a Files-field value for path extraction — a `(` / `)` opens or
-  # closes a note ONLY when it is outside a backtick span, so a path that
-  # is itself backticked keeps its own parens intact (Next.js / Expo
-  # route groups: `app/(auth)/login/page.tsx`). Outside a backtick span, a
-  # bare `(` opens a note only at the start of the value or right after
-  # whitespace or a comma; right after `/` or a word character it is part
-  # of a bare path (`app/(auth)/login/page.tsx` with no backticks at all)
-  # and is kept literally, together with its matching `)` — tracked on a
-  # stack so a path-embedded paren and a real note can nest either way.
-  # Inside a note, a bare (non-backticked) token is dropped outright, and
-  # a backticked token is kept only when it has a slash — a path fragment
-  # already named elsewhere (e.g. "`x.py` (`helper()` only)" drops
-  # `helper()`, but "(+ `tests/static/x.sh`)" keeps `tests/static/x.sh`).
-  # Feeds both the backtick-path loop and the bare-token pass below, so
-  # neither reads note text.
-  function cleanfiles(s,    out, i, c, prevc, depth, inbt, notebt, bt, sp, stk, isnote) {
-    out = ""; depth = 0; inbt = 0; bt = ""; sp = 0
-    for (i = 1; i <= length(s); i++) {
-      c = substr(s, i, 1)
-      if (c == "`") {
-        if (inbt) {
-          bt = bt c
-          if (notebt) { if (bt ~ /\//) out = out bt } else out = out bt
-          inbt = 0; bt = ""
-        } else { inbt = 1; notebt = (depth > 0); bt = c }
-        continue
-      }
-      if (inbt) { bt = bt c; continue }
-      if (c == "(") {
-        prevc = (i == 1) ? "" : substr(s, i - 1, 1)
-        isnote = (i == 1 || prevc ~ /[[:space:]]/ || prevc == ",")
-        stk[++sp] = isnote
-        if (isnote) depth++
-        else if (depth == 0) out = out c
-        continue
-      }
-      if (c == ")") {
-        if (sp > 0) {
-          isnote = stk[sp]; sp--
-          if (isnote) { if (depth > 0) depth-- }
-          else if (depth == 0) out = out c
-        } else if (depth == 0) out = out c
-        continue
-      }
-      if (depth > 0) continue
-      out = out c
-    }
-    if (inbt) out = out bt
-    return out
-  }
+  # cleanfiles() is shared with the plain lint path — defined once in
+  # CLEANFILES_AWK, prepended to this program at invocation.
   # Extracts the task-tag span from a contract File-ownership label: a
   # `T<N>` or `Task(s) <N>` reference, optionally chained by one or more
   # range/list connectors (hyphen family, en/em dash, comma, slash,
@@ -195,6 +206,23 @@ if [ "${1:-}" = "--brief" ]; then
       else out = out c
     }
     return out
+  }
+  # Position of the first UNMATCHED `)` in s (1-based), or length(s)+1 when
+  # every `)` has an opening `(` earlier in s — used to end a do-not-touch
+  # exception clause at a stray close-paren left over from an enclosing
+  # note the clause is embedded in ("`make render`), `hooks/...`" — the
+  # `)` after "make render" closes the OUTER note, not anything opened
+  # inside this token, so it ends the clause instead of printing "make
+  # render )". A genuinely balanced `(...)` inside the clause itself is
+  # never mistaken for this — depth only goes negative on a real orphan.
+  function firstunmatched(s,    i, c, depth) {
+    depth = 0
+    for (i = 1; i <= length(s); i++) {
+      c = substr(s, i, 1)
+      if (c == "(") depth++
+      else if (c == ")") { if (depth == 0) return i; depth-- }
+    }
+    return length(s) + 1
   }
   # Case-sensitive, exactly like the gates own PROSE_N/NONPROSE_N test
   # (hooks/precommit-gate.sh): auth/README.MD is NOT prose -- only a
@@ -377,10 +405,47 @@ if [ "${1:-}" = "--brief" ]; then
     }
     if (dnsec) {
       m = $0
+      # An entry may carry a trailing exception clause before the next
+      # comma, semicolon, sentence-ending period, or unmatched `)` ("core/
+      # skills/star-star except Task 4 four files") — kept verbatim
+      # alongside the glob in Files forbidden, so the printed line never
+      # contradicts a task whose Files allowed already lists the
+      # exception paths (always-on-core-lean follow-up: the bare glob
+      # alone read as a flat contradiction). Real do-not-touch lines also
+      # carry plain parenthetical asides with their OWN backticked
+      # mentions ("`plugins/**` and every rendered adapter output (an
+      # owner never runs `make render`), ...") — a backtick reached
+      # before any of those delimiters means this is one of those, not a
+      # clean "except ..." clause, so the entry prints bare rather than a
+      # fragment truncated mid-sentence. A period only ends the clause
+      # when it is itself sentence-ending (followed by whitespace or end
+      # of line) — "except SKILL.md" or "(v2.1)" must survive whole; a
+      # `)` only ends it when unmatched — the `)` closing `(an owner
+      # never runs `make render`)` belongs to the ENCLOSING note, not to
+      # the "make render" token itself, so it ends that token clause
+      # instead of printing "make render )".
       while (match(m, /`[^`]+`/)) {
-        p = substr(m, RSTART + 1, RLENGTH - 2)
-        if (!(p in dntset)) { dntset[p] = 1; dntord[++dn] = p }
-        m = substr(m, RSTART + RLENGTH)
+        # RSTART/RLENGTH are saved immediately — the match() call below
+        # (for the sentence-ending period) overwrites them, and they are
+        # still needed after to advance m past THIS backtick span.
+        mstart = RSTART; mlen = RLENGTH
+        p = substr(m, mstart + 1, mlen - 2)
+        rest = substr(m, mstart + mlen)
+        ci = index(rest, ","); if (ci == 0) ci = length(rest) + 1
+        bi = index(rest, "`"); if (bi == 0) bi = length(rest) + 1
+        di = match(rest, /\.([[:space:]]|$)/) ? RSTART : length(rest) + 1
+        si = index(rest, ";"); if (si == 0) si = length(rest) + 1
+        pu = firstunmatched(rest)
+        cut = ci; if (di < cut) cut = di; if (si < cut) cut = si; if (pu < cut) cut = pu
+        if (bi < cut) exc = ""
+        else {
+          exc = substr(rest, 1, cut - 1)
+          gsub(/^[[:space:]]+/, "", exc)
+          gsub(/[[:space:]]+$/, "", exc)
+        }
+        disp = (exc == "") ? p : p " " exc
+        if (!(p in dntset)) { dntset[p] = 1; dntord[++dn] = p; dntdisp[p] = disp }
+        m = substr(m, mstart + mlen)
       }
       next
     }
@@ -399,7 +464,7 @@ if [ "${1:-}" = "--brief" ]; then
     low = tolower(Ow)
     write = "self"
     if (index(low, "write:") > 0 && index(low, "external") > 0) write = "external"
-    cleaned = cleanfiles(Fr)
+    cleaned = cleanfiles(Fr, 1)
     m = cleaned
     while (match(m, /`[^`]+`/)) {
       p = substr(m, RSTART + 1, RLENGTH - 2)
@@ -504,7 +569,7 @@ if [ "${1:-}" = "--brief" ]; then
     # print twice or contradict the allowed list), AND against touchseen —
     # a path already printed by the touch-list loop above must not print a
     # second time just because it is ALSO on the do-not-touch list.
-    if (hascontract) for (i = 1; i <= dn; i++) { p = dntord[i]; if (!(p in allowedset) && !(p in touchseen)) print "- " p }
+    if (hascontract) for (i = 1; i <= dn; i++) { p = dntord[i]; if (!(p in allowedset) && !(p in touchseen)) print "- " dntdisp[p] }
     print "- everything else (an unowned path: touch it and add an Also touched line; a path another owner holds: a NEEDS line, never an edit)"
     print "## Change"
     print (Ch == "" ? "(not in plan)" : Ch)
@@ -578,9 +643,9 @@ if [ "${1:-}" = "--brief" ]; then
   [ -z "$RP_RISK_EXCL" ] || rp_ere_ok "$RP_RISK_EXCL" || RP_RISK_EXCL=""
   export RP_RISK_ADD RP_RISK_EXCL
   if [ -n "$CONTRACT" ]; then
-    awk -v rx="$TASK_RX" -v want="$BRIEF_N" -v planpath="$PLAN" -v repo="$BRIEF_REPO" -v hascontract=1 -v onmain="$BRIEF_MAIN" "$BRIEF_AWK" "$PLAN" "$CONTRACT"
+    awk -v rx="$TASK_RX" -v want="$BRIEF_N" -v planpath="$PLAN" -v repo="$BRIEF_REPO" -v hascontract=1 -v onmain="$BRIEF_MAIN" "$CLEANFILES_AWK$BRIEF_AWK" "$PLAN" "$CONTRACT"
   else
-    awk -v rx="$TASK_RX" -v want="$BRIEF_N" -v planpath="$PLAN" -v repo="$BRIEF_REPO" -v hascontract=0 -v onmain="$BRIEF_MAIN" "$BRIEF_AWK" "$PLAN"
+    awk -v rx="$TASK_RX" -v want="$BRIEF_N" -v planpath="$PLAN" -v repo="$BRIEF_REPO" -v hascontract=0 -v onmain="$BRIEF_MAIN" "$CLEANFILES_AWK$BRIEF_AWK" "$PLAN"
   fi
   exit $?
 fi
@@ -881,9 +946,27 @@ if [ -z "$OWNERSHIP" ]; then
 fi
 
 # Every backticked path in the plan's Files-to-touch must appear under
-# exactly one owner line.
-FILES=$(awk '/^## Files to touch/{f=1;next} /^## /{f=0} f' "$PLAN" \
-        | grep -oE '`[^`]+`' | tr -d '`' | sort -u)
+# exactly one owner line. Each line is run through the shared cleanfiles()
+# with notekeep=0 — a backticked token inside a `( … )` note (an
+# explanatory aside, e.g. "moved from the old `agent-frontmatter/` dir")
+# is commentary here, never a second file to own; contract ownership is
+# compared by exact string, so a leaked note token always reads unowned.
+# This also means a genuine companion path written as a note (the `--brief`
+# per-task Files field allows "`x.py` (+ `tests/static/x.sh`)" to add a
+# real companion) is NOT ownership-checked when written in this top-level
+# section — write it as its own bullet instead.
+FILES=$(awk "$CLEANFILES_AWK"'
+  /^## Files to touch/ { f = 1; next }
+  /^## / { f = 0 }
+  f {
+    cl = cleanfiles($0, 0)
+    m = cl
+    while (match(m, /`[^`]+`/)) {
+      print substr(m, RSTART + 1, RLENGTH - 2)
+      m = substr(m, RSTART + RLENGTH)
+    }
+  }
+' "$PLAN" | sort -u)
 if [ -z "$FILES" ]; then
   echo "  ✗ parallel plan has no backticked paths under '## Files to touch'"
   fail=1
