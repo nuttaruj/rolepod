@@ -13,10 +13,8 @@
 # + FAMILY class as read from the transcript (family word only — haiku /
 # sonnet / opus… — never a version, so renames within a family change
 # nothing; an unknown family logs as "unknown"), and records the OUTCOME of
-# the strong-role floor (workflow-tier-nudge.sh) — PostToolUse tool_input
-# already carries the lifted model, so `floor: applied|missed` is read, not
-# inferred.
-# Runtime companion: the "dispatch-proof" transcript/hook layer.
+# the strong-role floor: a strong role's own frontmatter pin (opus) held, or
+# an explicit low model on the call missed it (`floor: frontmatter|missed`).
 #
 # Fail-open everywhere: no git root, no JSON, missing fields → exit 0.
 
@@ -107,14 +105,14 @@ else:
     line["model"] = model or ("opus" if is_strong_role else "inherit")
     line["override"] = model or "none"
     if is_strong_role:
-        # Strong-role floor outcome. PostToolUse tool_input carries the
-        # PreToolUse updatedInput (live-verified 2026-08-17: lifted call
-        # logs model=opus here and the subagent transcript shows opus), so
-        # what we see IS what ran: strong-class model → applied (hook lift);
-        # no model → frontmatter (the opus pin, hook silent or not needed);
-        # an explicit low model → missed. Observable in `make stats`.
-        line["floor"] = ("applied" if ss.model_class(model) == "strong"
-                         else ("frontmatter" if not model else "missed"))
+        # Strong-role floor outcome. The hook-side lift (updatedInput) is
+        # gone (hook-layer-lean-2026-09-25) — a strong role now reaches this
+        # floor only via its own frontmatter pin (opus) or an explicit
+        # model:. Nothing can tell "the hook lifted it" apart from "the
+        # caller passed opus itself", so the distinction (floor: applied) is
+        # dropped: no model, or an explicit strong model → frontmatter (the
+        # pin held); an explicit low model → missed. Observable in `make stats`.
+        line["floor"] = "missed" if (model and ss.model_class(model) != "strong") else "frontmatter"
     # F1/F2: a brief that declares write-mode authors tests, not a review —
     # the phase-log backstop (precommit-gate.sh phase_log_reviewer_count)
     # must skip this row the same way count_all already does for the

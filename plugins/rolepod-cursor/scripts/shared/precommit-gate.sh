@@ -734,8 +734,8 @@ if [ -f "$SESSION_STATE" ] && command -v python3 >/dev/null 2>&1; then
   # strong reviewers (internal + anchored external) and the anchored
   # external count alone. It folds in the transcript scan and the hook-auto
   # phase-log "dispatch" backstop — Claude-native evidence only (spec
-  # Desired 10, 2026-09-25): no edit ledger, no CLI "dispatch-proof" rows,
-  # no lib-less fallback — this branch runs only on Claude (the ROLEPOD_LEAD_CLI
+  # Desired 10, 2026-09-25): no bash-write scope tracker, no cross-CLI proof
+  # rows, no lib-less fallback — this branch runs only on Claude (the ROLEPOD_LEAD_CLI
   # check above already excluded every other CLI).
   GATE_EV=$(printf '%s' "$INPUT" | python3 "$SESSION_STATE" gate-evidence "$DIFF_DIR" 2>/dev/null || true)
   if [ -n "$GATE_EV" ]; then

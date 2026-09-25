@@ -172,7 +172,7 @@ EOF2
     if [ "$S_T" = "R2" ]; then
       MSG_SELFDO="\\u27c2 self-do: route R2 and the Lead is editing product code (0 writer-role dispatch since the route). Fix: R2 goes to a task owner on main from the 3-5 line checklist (goal, done-when, Command) \\u2014 the owner builds, verifies and runs the two review lenses; the Lead commits. Exception: the user said self-do, or this is R1-sized. (off: ROLEPOD_NUDGE_OFF=1)"
     else
-      MSG_SELFDO="\\u27c2 self-do: route $S_T, $S_N Lead edits on product code, 0 writer-role dispatch since the route. Fix: the rest goes out as a task brief to the Owner the domain map names (plan-template Owner hint: frontend-developer / backend-developer / devops-sre / content-strategist \\u2026); the Lead reviews the manifest. Exception: the user said self-do, or this is R1-sized. (off: ROLEPOD_NUDGE_OFF=1)"
+      MSG_SELFDO="\\u27c2 self-do: route $S_T, $S_N Lead edits on product code, 0 writer-role dispatch since the route. Fix: the rest goes out as a task brief to the Owner the domain map names (plan-template Owner hint: frontend-developer / backend-developer / devops-sre / content-strategist \\u2026); the Lead reads the decision brief and spot-checks one claim. Exception: the user said self-do, or this is R1-sized. (off: ROLEPOD_NUDGE_OFF=1)"
     fi
     PARTS="${PARTS:+$PARTS }$MSG_SELFDO"
   fi

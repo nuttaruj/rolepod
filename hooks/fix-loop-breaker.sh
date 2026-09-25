@@ -97,9 +97,9 @@ if sid and not interrupted:
         notes.append(
             "LOOP BREAKER: this exact command failed %d times in a row, no pass between. "
             "STOP editing-and-retrying. Do: (1) stop fixing; (2) write the hypothesis "
-            "ledger — what you believed, what each attempt changed, why it failed; (3) ONE "
-            "cross-family consult (`rolepod-cross-family --kind consult --brief "
-            "<ledger.md>`) or escalate to the user with the ledger. Same failure twice = "
+            "ledger — what you believed, what each attempt changed, why it failed; (3) "
+            "the Second opinion step in debug-issue — hypothesis ledger, then a second "
+            "opinion, then escalate to the user with the ledger. Same failure twice = "
             "wrong model of the bug."
             % n
         )

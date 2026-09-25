@@ -182,8 +182,7 @@ def _git_root(cwd):
 
 def _repo_relative(root, path):
     """Repo-relative when `path` sits under `root` — compared on realpaths,
-    the exact rule hooks/edit-ledger.py's relative() uses, so a CLI's own
-    absolute spelling (/var/... vs git's /private/var/...) resolves the same
+    so a CLI's own absolute spelling (/var/... vs git's /private/var/...) resolves the same
     way in every copy. Every classification call (is_test_file /
     is_high_risk_path / is_code_file) goes through this first: a raw
     absolute path defeats a root-anchored `.rolepod/risk-paths` line
@@ -854,7 +853,7 @@ def _phase_log_reviewer_counts(phase, since_epoch, path, provenance="", strict=F
     (kept in parity; see its header for the write_mode / provenance /
     low-class rationale). `provenance` "" = no requirement — every current
     caller in this file passes one (`hook-auto` for the dispatch backstop,
-    `hook-stdin` for dispatch-proof, HIGH-1 round-1 review); the empty
+    `hook-stdin` for a cross-CLI provenance row, HIGH-1 round-1 review); the empty
     default is kept only for a future caller with no real requirement to
     state. `strict` additionally drops a STRONG row whose model is a named
     low-class downgrade (the hook-auto backstop only)."""
@@ -949,8 +948,8 @@ def _anchored_external_count(since_epoch, ev_dir):
                     # P1 (Lead close-out, round 2 residual): `raw` must sit
                     # under evidence/external/ — the anchor point review-code
                     # actually writes to. Before this, `"raw":
-                    # "phase-log.jsonl"` (or edits.jsonl, or a symlink placed
-                    # under external/) passed the relative/no-".."/>=500B
+                    # "phase-log.jsonl"` (or another evidence file, or a
+                    # symlink placed under external/) passed the relative/no-".."/>=500B
                     # checks and counted as a real cross-family pass — the
                     # cheapest forgery in the gate. Both the name prefix and
                     # the resolved realpath are checked (a symlink under
@@ -1034,8 +1033,8 @@ def _window_since_epoch(diff_dir):
 
 def _evidence_root(diff_dir):
     """Config / evidence root (v2.153.0, R3): the hook's own process cwd's
-    git root — every writer hook (edit-ledger, phase-log, bypass.log,
-    session locks) puts its state there — falling back to `diff_dir`'s
+    git root — every writer hook (phase-log, bypass.log, session locks)
+    puts its state there — falling back to `diff_dir`'s
     toplevel only when the process cwd is not itself a git work tree."""
     import subprocess
 
@@ -1063,8 +1062,8 @@ def gate_evidence(hook_input: dict, diff_dir: str) -> tuple[int, int, int, int, 
     strong_reviewers, external). MAX per source, never summed: the
     transcript scan (count_all) and the hook-auto phase-log "dispatch"
     backstop (nested Agent dispatches the transcript walk's cap dropped).
-    Claude-native only: no CLI "dispatch-proof" rows, no edit ledger — this
-    function runs only on Claude (precommit-gate.sh's ROLEPOD_LEAD_CLI check
+    Claude-native only: no cross-CLI provenance rows, no bash-write scope
+    tracker — this function runs only on Claude (precommit-gate.sh's ROLEPOD_LEAD_CLI check
     excludes every other CLI before calling it). Anchored external passes
     (XREV) ADD on top of reviewers / strong_reviewers, same as the gate's
     own long-standing rule, and are also returned on their own for the
@@ -1230,6 +1229,11 @@ _QUESTION_SHAPE_RX = re.compile(
     r"what would break|impact of|explain (how|why|what)|why not|status of|"
     r"does (it|this|that) (work|handle|support|cause|break))", re.I)
 AUTO_RESUME_RX = re.compile(r"please continue from where you left off", re.I)
+# A harness background-task notification carries this tag — it is not a user
+# request (the Lead did not type it), so the route check skips it the same
+# way it skips a question-shaped prompt. The context-bloat check still runs
+# (hook-layer-lean-2026-09-25, Route nudge).
+TASK_NOTIFICATION_RX = re.compile(r"<task-notification>", re.I)
 
 
 def prompt_state(d: dict) -> str:
@@ -1238,14 +1242,16 @@ def prompt_state(d: dict) -> str:
     commission shape, the phase-log freshness and the fallback recorder)
     runs for every real prompt EXCEPT a question-shaped one
     (_QUESTION_SHAPE_RX) — the same exclusion the removed read-first nudge
-    used to apply, kept so route nudge's own behavior is unchanged."""
+    used to apply, kept so route nudge's own behavior is unchanged — and
+    EXCEPT a harness background-task notification (TASK_NOTIFICATION_RX):
+    not a user request, so it never carries a stale-route line."""
     prompt = str(d.get("prompt") or "")
     ctx = last_context_tokens(str(d.get("transcript_path") or ""))
     sid = re.sub(r"[^A-Za-z0-9._-]", "", str(d.get("session_id") or ""))
     if sid in (".", ".."):
         sid = ""
     route = "-"
-    if prompt and not _QUESTION_SHAPE_RX.search(prompt):
+    if prompt and not _QUESTION_SHAPE_RX.search(prompt) and not TASK_NOTIFICATION_RX.search(prompt):
         try:
             sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
             import route_check  # type: ignore

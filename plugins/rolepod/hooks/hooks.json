@@ -90,7 +90,7 @@
         ]
       },
       {
-        "matcher": "Workflow|Agent",
+        "matcher": "Workflow",
         "hooks": [
           {
             "type": "command",

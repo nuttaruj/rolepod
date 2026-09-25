@@ -36,7 +36,7 @@ for p in plans:
     except Exception:
         continue
     open_n = len(re.findall(r"^\s*- \[ \]", text, re.M)); done_n = len(re.findall(r"^\s*- \[x\]", text, re.M | re.I))
-    if open_n == 0:
+    if open_n == 0 or done_n == 0:
         continue
     nxt = ""; head = ""
     for line in text.splitlines():
