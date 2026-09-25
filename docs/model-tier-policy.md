@@ -55,7 +55,7 @@ which rung was sent.
 
 **Codex** role files name no model: the user's `[agents] default_subagent_model` (else the Lead's model) runs every rolepod role, and the tier shows only as `model_reasoning_effort`.
 
-**Antigravity.** Google retired the standalone Gemini CLI for individual accounts on 2026-06-18 (removed from rolepod in v2.177.0 — no adapter, no `--target=gemini`); the live path is Antigravity (`agy`). `TIER_MODELS["antigravity"]` writes agy's own `gemini-3-flash-preview` / `gemini-3-pro-preview` ids into every agy agent's `model:` field (Antigravity is built on Google's Gemini model family — unrelated to the retired Gemini CLI, which shipped no adapter here), but `agy` **auto-selects** the model per task and ignores the field, so the pin is advisory only. Treat it as a comment, not an enforced knob, until an agy-native per-agent model field is verified.
+**Antigravity.** Google retired the standalone Gemini CLI for individual accounts on 2026-06-18 (removed from rolepod in v2.177.0 — no adapter, no `--target=gemini`); the live path is Antigravity (`agy`). `TIER_MODELS["antigravity"]` writes agy's own `gemini-3-flash-preview` / `gemini-3-pro-preview` ids into every agy agent's `model:` field (Antigravity is built on Google's Gemini model family — unrelated to the retired Gemini CLI, whose adapter rolepod removed in v2.177.0), but `agy` **auto-selects** the model per task and ignores the field, so the pin is advisory only. Treat it as a comment, not an enforced knob, until an agy-native per-agent model field is verified.
 
 ## Default agent → tier mapping
 
@@ -178,7 +178,7 @@ have different ceilings per CLI:
 | Codex | n/a — role files pin no model (the user's `default_subagent_model`) | doctrine — no hook logs the child's model (removed in v2.176.0) |
 | Cursor | n/a — the agent spec has no model field | doctrine + dispatch-log |
 | opencode | n/a by design — big catalogs map classes once per session (see AGENTS specifics) | doctrine + dispatch-log |
-| Antigravity | ✓ mechanical — `-preview` ids WILL rot | ✗ field is advisory — dispatch-log audit |
+| Antigravity | ✓ mechanical — `-preview` ids WILL rot | ✗ field is advisory — no hook logs agy's pick (removed in v2.176.0) |
 
 The dispatch-log (`{"phase":"dispatch","tier":"strong","override":...}` in
 `phase-log.jsonl`) is the CLI-agnostic audit: it cannot

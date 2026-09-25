@@ -91,15 +91,20 @@ if [ "${1:-}" = "--brief" ]; then
   # Cleans a Files-field value for path extraction — a `(` / `)` opens or
   # closes a note ONLY when it is outside a backtick span, so a path that
   # is itself backticked keeps its own parens intact (Next.js / Expo
-  # route groups: `app/(auth)/login/page.tsx`). Inside a note, a bare
-  # (non-backticked) token is dropped outright, and a backticked token
-  # is kept only when it has a slash — a path fragment already named
-  # elsewhere (e.g. "`x.py` (`helper()` only)" drops `helper()`, but
-  # "(+ `tests/static/x.sh`)" keeps `tests/static/x.sh`). Feeds both the
-  # backtick-path loop and the bare-token pass below, so neither reads
-  # note text.
-  function cleanfiles(s,    out, i, c, depth, inbt, notebt, bt) {
-    out = ""; depth = 0; inbt = 0; bt = ""
+  # route groups: `app/(auth)/login/page.tsx`). Outside a backtick span, a
+  # bare `(` opens a note only at the start of the value or right after
+  # whitespace or a comma; right after `/` or a word character it is part
+  # of a bare path (`app/(auth)/login/page.tsx` with no backticks at all)
+  # and is kept literally, together with its matching `)` — tracked on a
+  # stack so a path-embedded paren and a real note can nest either way.
+  # Inside a note, a bare (non-backticked) token is dropped outright, and
+  # a backticked token is kept only when it has a slash — a path fragment
+  # already named elsewhere (e.g. "`x.py` (`helper()` only)" drops
+  # `helper()`, but "(+ `tests/static/x.sh`)" keeps `tests/static/x.sh`).
+  # Feeds both the backtick-path loop and the bare-token pass below, so
+  # neither reads note text.
+  function cleanfiles(s,    out, i, c, prevc, depth, inbt, notebt, bt, sp, stk, isnote) {
+    out = ""; depth = 0; inbt = 0; bt = ""; sp = 0
     for (i = 1; i <= length(s); i++) {
       c = substr(s, i, 1)
       if (c == "`") {
@@ -111,8 +116,22 @@ if [ "${1:-}" = "--brief" ]; then
         continue
       }
       if (inbt) { bt = bt c; continue }
-      if (c == "(") { depth++; continue }
-      if (c == ")") { if (depth > 0) depth--; continue }
+      if (c == "(") {
+        prevc = (i == 1) ? "" : substr(s, i - 1, 1)
+        isnote = (i == 1 || prevc ~ /[[:space:]]/ || prevc == ",")
+        stk[++sp] = isnote
+        if (isnote) depth++
+        else if (depth == 0) out = out c
+        continue
+      }
+      if (c == ")") {
+        if (sp > 0) {
+          isnote = stk[sp]; sp--
+          if (isnote) { if (depth > 0) depth-- }
+          else if (depth == 0) out = out c
+        } else if (depth == 0) out = out c
+        continue
+      }
       if (depth > 0) continue
       out = out c
     }
@@ -120,15 +139,18 @@ if [ "${1:-}" = "--brief" ]; then
     return out
   }
   # Extracts the task-tag span from a contract File-ownership label: a
-  # `T<N>` or `Task(s) <N>` reference, optionally chained by a range/list
-  # connector (hyphen family, en/em dash, comma, slash, ampersand, plus,
-  # "and", "then", "or") to a further `T?<N>` — boundary-anchored so it
-  # never matches inside a longer word. Returns "" when the label carries
-  # no task tag at all; otherwise the span, prefixed M when it chains to
-  # a further number (several tasks named) or 1 when it names exactly one.
+  # `T<N>` or `Task(s) <N>` reference, optionally chained by one or more
+  # range/list connectors (hyphen family, en/em dash, comma, slash,
+  # ampersand, plus, "and", "then", "or") to further `T?<N>` references,
+  # each repeat matched in turn so a 3-or-more-way list or a range plus a
+  # trailing entry (`T1, T3, T5`, `T1-T2, T5`) names every number, not
+  # just the first two — boundary-anchored so it never matches inside a
+  # longer word. Returns "" when the label carries no task tag at all;
+  # otherwise the span, prefixed M when it chains to a further number
+  # (several tasks named) or 1 when it names exactly one.
   function tagspan(lbl,    hay) {
     hay = " " lbl
-    if (match(hay, /[^0-9A-Za-z](T|[Tt]asks?[[:space:]]+)[0-9]+([[:space:]]*(-|–|—|,|\/|&|\+|and|then|or))+[[:space:]]*T?[0-9]+/))
+    if (match(hay, /[^0-9A-Za-z](T|[Tt]asks?[[:space:]]+)[0-9]+(([[:space:]]*(-|–|—|,|\/|&|\+|and|then|or))+[[:space:]]*T?[0-9]+)+/))
       return "M" substr(hay, RSTART + 1, RLENGTH - 1)
     if (match(hay, /[^0-9A-Za-z](T|[Tt]asks?[[:space:]]+)[0-9]+/))
       return "1" substr(hay, RSTART + 1, RLENGTH - 1)

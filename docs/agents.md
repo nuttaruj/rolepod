@@ -2,7 +2,7 @@
 
 Full 15-agent specialist roster. Lead never picks from this list directly — the `write-plan` skill maps path + concern + risk to the right agent when delegation helps.
 
-This doc is the **reference**. No entry doc embeds a roster or a pointer any more (agy was the last includer; D6 dropped it) — `write-plan` reads this table directly when delegation helps.
+This doc is the **reference**. No entry doc embeds the roster; each agent file's `description:` is what the CLI shows.
 
 ## Routing principle
 
@@ -15,7 +15,7 @@ User intent
 
 Lead is never the picker of last resort. Each step narrows the choice.
 
-## Full agent table
+## Source of truth
 
 Source of truth: [`core/agents/*.md`](../core/agents/) — the domain map below picks the agent by path + concern; a role's own per-CLI frontmatter overlay picks the model tier.
 
@@ -58,4 +58,4 @@ One within-tier consolidation exists in the roster. `content-strategist` folds t
 
 The one addition outside the specialist pattern is `scout` — a read-only, cheapest-tier researcher backing the always-on "Scout for wide sweeps" rule. It exists so every CLI has a dispatchable, tool-restricted scout with the research-report contract built in, instead of the Lead improvising a brief each time.
 
-Model tiering is implemented per agent on Claude / Codex / Antigravity — see [model-tier-policy.md](model-tier-policy.md). Cursor agent files ship with `name` + `description` frontmatter, plus a derived `readonly: true` on the two roles whose Claude overlay holds none of Edit / Write / Bash (`scout`, `universal-reviewer`) — Cursor users pick the model in-IDE, so per-agent tiering is not enforced there.
+Model tiering per agent: Claude pins the model, Codex pins `reasoning_effort`, Antigravity writes an advisory `model:` that agy does not enforce — see [model-tier-policy.md](model-tier-policy.md). Cursor agent files ship with `name` + `description` frontmatter, plus a derived `readonly: true` on the two roles whose Claude overlay holds none of Edit / Write / Bash (`scout`, `universal-reviewer`) — Cursor users pick the model in-IDE, so per-agent tiering is not enforced there.

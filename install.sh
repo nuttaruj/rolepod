@@ -96,7 +96,10 @@ for arg in "$@"; do
     --target=*)      CLI_TARGET="${arg#--target=}" ;;
     --scope=*)       SCOPE="${arg#--scope=}" ;;
     -h|--help)
-      sed -n '2,63p' "$0"
+      # Print the header comment (line 1 is the shebang) up through the
+      # first non-# line, so the range can never drift out of sync with
+      # the header again as it grows.
+      awk 'NR==1{next} /^#/{print; next} {exit}' "$0"
       exit 0 ;;
     *) echo "Unknown arg: $arg" >&2; echo "" >&2; echo "Rolepod ships framework only. For siblings and 3rd-party add-ons (rolepod-brain / GitNexus / etc.), see README → Plugin family + Recommended add-ons." >&2; exit 1 ;;
   esac
