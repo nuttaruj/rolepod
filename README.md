@@ -2,9 +2,9 @@
 
 # Rolepod
 
-**Rolepod turns Claude Code, Codex CLI, Gemini CLI, Cursor IDE, Antigravity CLI (agy), and opencode into a disciplined software-house team — a workflow router, 15 specialist agents, and gates that catch bugs before they reach a commit.**
+**Rolepod turns Claude Code, Codex CLI, Cursor IDE, Antigravity CLI (agy), and opencode into a disciplined software-house team — a workflow router, 15 specialist agents, and gates that catch bugs before they reach a commit.**
 
-It is one source of truth rendered into a native plugin for each CLI. No CLI is the "default" — all six are first-class. Rolepod carries zero project-specific configuration, so it works in any repository from the first session.
+It is one source of truth rendered into a native plugin for each CLI. No CLI is the "default" — all five are first-class. Rolepod carries zero project-specific configuration, so it works in any repository from the first session.
 
 ## What it helps with
 
@@ -94,18 +94,7 @@ curl -fsSL https://raw.githubusercontent.com/nuttaruj/rolepod/main/bootstrap.sh 
 
 Codex hooks fire natively on Codex ≥0.144 — no opt-in needed (the legacy `plugin_hooks` flag was removed upstream). Agents, skills, and the `AGENTS.md` gate rules load independently of hooks.
 
-### Gemini CLI
-
-```bash
-# Install
-curl -fsSL https://raw.githubusercontent.com/nuttaruj/rolepod/main/bootstrap.sh | bash -s -- --target=gemini
-
-# Update — re-run with --force
-curl -fsSL https://raw.githubusercontent.com/nuttaruj/rolepod/main/bootstrap.sh | bash -s -- --target=gemini --force
-
-# Uninstall
-curl -fsSL https://raw.githubusercontent.com/nuttaruj/rolepod/main/bootstrap.sh | bash -s -- --uninstall --target=gemini
-```
+> Gemini CLI — removed in v2.177.0; Google moved consumers to Antigravity (`agy`) — use `--target=antigravity`.
 
 ### Cursor IDE
 
@@ -146,7 +135,7 @@ The marketplace install is the account-side copy — the one Cursor's cloud agen
 
 ### Antigravity CLI (agy) — Beta
 
-Google moved Gemini's consumer tiers (free / AI Pro / Ultra) to Antigravity CLI on 2026-06-18; this adapter installs rolepod as a native agy plugin (`agy plugin install`). Enterprise / API-key users can stay on the Gemini CLI adapter above.
+Google moved Gemini's consumer tiers (free / AI Pro / Ultra) to Antigravity CLI on 2026-06-18; this adapter installs rolepod as a native agy plugin (`agy plugin install`).
 
 ```bash
 # Install
@@ -174,7 +163,7 @@ curl -fsSL https://raw.githubusercontent.com/nuttaruj/rolepod/main/bootstrap.sh 
 curl -fsSL https://raw.githubusercontent.com/nuttaruj/rolepod/main/bootstrap.sh | bash -s -- --uninstall --target=opencode
 ```
 
-**Install all six at once** with `--target=all`. **One repo only, no global config:** add `--scope=project`. Restart the CLI after installing (opencode 2: `opencode service restart`). Full per-CLI matrix and install scopes: [docs/cli-support.md](docs/cli-support.md).
+**Install all five at once** with `--target=all`. **One repo only, no global config:** add `--scope=project`. Restart the CLI after installing (opencode 2: `opencode service restart`). Full per-CLI matrix and install scopes: [docs/cli-support.md](docs/cli-support.md).
 
 ## What's inside
 
@@ -247,4 +236,4 @@ See [docs/EXTENSION-PROTOCOL.md](docs/EXTENSION-PROTOCOL.md) for the full contra
 
 ---
 
-MIT licensed — see [LICENSE](LICENSE). Personal workflow system — fork freely; runtime reports for Codex and Gemini are especially welcome via [issues](https://github.com/nuttaruj/rolepod/issues).
+MIT licensed — see [LICENSE](LICENSE). Personal workflow system — fork freely; runtime reports for Codex and Antigravity are especially welcome via [issues](https://github.com/nuttaruj/rolepod/issues).

@@ -269,9 +269,8 @@ The marker is written at session start on **every CLI** (v2.14.1). Removal diffe
 |---|---|---|---|
 | Claude Code | ✓ | `session-lifecycle.sh` (SessionStart) | ✓ Stop event |
 | Codex | ✓ | `project-context-loader.sh` (SessionStart) | persists (no Stop event) |
-| Gemini | ✓ | `session-start.sh` | persists |
 | Cursor | ✓ | `project-context-loader.sh` (sessionStart) | persists |
-| Antigravity | ✓ | gemini `session-start.sh` (reused via PreInvocation) | persists |
+| Antigravity | ✓ | `session-start.sh` (PreInvocation) | persists |
 | opencode | ✓ | `plugin/rolepod.js` (session.created) | persists |
 
 A worktree that stops using rolepod keeps a stale marker until deleted (`rm -rf .rolepod/`); children treat it as with-rolepod mode, which degrades to writing evidence files nothing reads — harmless. Standalone behavior on machines without the parent installed is unaffected.

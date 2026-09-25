@@ -43,7 +43,7 @@ print('SUBAGENT turns (Agent tool + Workflow fleets — the execution proof):')
 [print(f'  {n:6d}  {k}') for k, n in subs.most_common()] or print('  (none)')"
 ```
 
-Codex / Gemini / Antigravity runs are external CLIs — they never appear in Claude transcripts; their proof is the `dispatch-proof` lines in the intent layer (hook-reported).
+Codex / Antigravity runs are external CLIs — they never appear in Claude transcripts; their proof is the `dispatch-proof` lines in the intent layer (hook-reported).
 
 ## Report format
 

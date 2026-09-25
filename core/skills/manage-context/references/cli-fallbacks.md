@@ -5,12 +5,12 @@ context tools — use the row for the CLI you are running on.
 
 ## Context tools by CLI
 
-| Need | Claude | Codex | Gemini | Cursor |
-|------|--------|-------|--------|--------|
-| Trim heavy context | `/compact <focus>` | summarize, then start a fresh session with the brief | summarize, then start a fresh session with the brief | summarize, then new chat |
-| Start fresh | `/clear` | new session, or `resume` a clean one | restart the context | new chat (chat menu) |
-| Undo a recent path | `/rewind` | `fork` from an earlier point if available | restart from a summary | no native — restart with brief |
-| Switch focus | `/rename` + `claude --continue` | resume the target session | new context with a brief | new chat with brief |
+| Need | Claude | Codex | Cursor |
+|------|--------|-------|--------|
+| Trim heavy context | `/compact <focus>` | summarize, then start a fresh session with the brief | summarize, then new chat |
+| Start fresh | `/clear` | new session, or `resume` a clean one | new chat (chat menu) |
+| Undo a recent path | `/rewind` | `fork` from an earlier point if available | no native — restart with brief |
+| Switch focus | `/rename` + `claude --continue` | resume the target session | new chat with brief |
 
 ## The universal fallback
 When a CLI lacks a native command, the fallback is always the same: write a
@@ -25,7 +25,7 @@ work resumable lives on disk and is CLI-agnostic: the handoff brief, the
 plan artifact (checkboxes = position), spec, cohesion contract, evidence,
 per-task commits. Skill names are identical across rolepod adapters, so
 "read the handoff brief at <path> and continue the plan" routes the same
-on claude / codex / cursor / gemini / antigravity / opencode — same
+on claude / codex / cursor / antigravity / opencode — same
 doctrine, same gates, and the same benefit applies to a fresh session on
 the SAME CLI.
 

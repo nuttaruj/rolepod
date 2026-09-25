@@ -28,7 +28,7 @@ Done when: one mode is picked from the table.
 
 ### 2. Context budget
 
-Heavy context → run your CLI's trim command (Claude `/compact` · `/clear` · `/rewind`; Codex / Gemini equivalents in `references/cli-fallbacks.md`).
+Heavy context → run your CLI's trim command (Claude `/compact` · `/clear` · `/rewind`; Codex equivalents in `references/cli-fallbacks.md`).
 
 **Compact at seams.** Good moments: research done before implementation starts · a milestone landed · a debug closed · a failed approach abandoned.
 - Never compact mid-task: the summary drops exactly the state you need next (variable names, paths, half-applied edits), and the re-anchor cost lands on top.
