@@ -1,6 +1,5 @@
 name = "devops-sre"
 description = "Owns infra, CI/CD, containers, deploy, monitoring, releases / versioning, runbooks, incident response. Use when a change touches a pipeline, Dockerfile, IaC, deploys, alerting, a release or a postmortem. Distinct from performance-engineer (app speed) and security-engineer (security policy)."
-model = "gpt-5.6-terra"
 model_reasoning_effort = "medium"
 sandbox_mode = "workspace-write"
 developer_instructions = """

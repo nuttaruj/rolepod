@@ -1,6 +1,5 @@
 name = "backend-developer"
 description = "Builds server-side REST / GraphQL / RPC APIs, business logic, DB models / migrations, background jobs, integrations (webhooks, polling, signature verify), caching, idempotency. Use when backend work falls outside billing, AI and analytics (billing-engineer, ai-ml-engineer, data-scientist)."
-model = "gpt-5.6-terra"
 model_reasoning_effort = "medium"
 sandbox_mode = "workspace-write"
 developer_instructions = """

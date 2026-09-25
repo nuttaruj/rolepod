@@ -1,6 +1,5 @@
 name = "performance-engineer"
 description = "Owns speed — load testing, profiling, latency, memory leaks, bundle size, DB query performance, p95 / p99. Use when something measurable is slow or leaking, a perf regression is suspected after a deploy, or a launch needs a load test. Distinct from qa-tester (user-visible tests)."
-model = "gpt-5.6-terra"
 model_reasoning_effort = "high"
 sandbox_mode = "read-only"
 developer_instructions = """

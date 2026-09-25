@@ -1,6 +1,5 @@
 name = "system-architect"
 description = "Designs before engineering — system design, API contracts, data models and flow, service boundaries, tech selection, cross-cutting refactor plans, cohesion contracts for parallel agents. Use when a decision or contract must precede implementation. Distinct from the implementing engineers."
-model = "gpt-5.6-sol"
 model_reasoning_effort = "high"
 sandbox_mode = "read-only"
 developer_instructions = """

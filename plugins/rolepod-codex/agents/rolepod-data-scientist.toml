@@ -1,6 +1,5 @@
 name = "data-scientist"
 description = "Statistical analysis, analytics queries, dashboards, metric definitions, ETL pipelines. Use when a task needs A/B test design / analysis, hypothesis testing, regression, causal inference, a reproducible statistical claim or why a metric moved. Distinct from ai-ml-engineer (LLM / RAG / agents)."
-model = "gpt-5.6-terra"
 model_reasoning_effort = "medium"
 sandbox_mode = "workspace-write"
 developer_instructions = """

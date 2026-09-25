@@ -1,6 +1,5 @@
 name = "billing-engineer"
 description = "Owns the money flow — payment gateways (Stripe / Paddle / PayPal / Adyen), subscriptions, credit hold / confirm / release / refund, invoices, reconciliation, pricing, metering, webhooks, financial integrity. Use when a change touches billing, payments or credits. Distinct from backend-developer."
-model = "gpt-5.6-terra"
 model_reasoning_effort = "high"
 sandbox_mode = "workspace-write"
 developer_instructions = """

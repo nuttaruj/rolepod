@@ -7,7 +7,7 @@ Reassembles a target-flavored agent file from:
 
 Usage:
   merge-agent.py --target=claude --name=qa-tester  (md — model/effort overlay)
-  merge-agent.py --target=codex  --name=qa-tester  (toml — model/sandbox overlay)
+  merge-agent.py --target=codex  --name=qa-tester  (toml — effort/sandbox overlay)
   merge-agent.py --target=gemini --name=qa-tester  (md — model overlay)
   merge-agent.py --target=cursor --name=qa-tester  (md — name/description + a derived readonly)
 
@@ -53,13 +53,16 @@ WRITE_TOOLS = ("Edit", "Write", "Bash")
 #                       under an expensive Lead. Claude uses aliases, which
 #                       auto-resolve to the newest model of that family — so a
 #                       Claude version bump needs no edit at all.
-#   strong (Claude)   → `inherit`: the subagent runs on the SAME model as the
-#                       Lead. A Fable Lead gets a Fable reviewer — never a
-#                       downgrade, and no model name to go stale. High-risk depth
-#                       for a below-strong Lead is guaranteed by review-code's
-#                       mandatory cross-family adversarial pass, not by this pin.
-#   strong (Codex)    → its ceiling (sol): Codex has no `inherit`, so pin the top
-#                       — an upgrade for a lower Lead, a match when the Lead is sol.
+#   strong (Claude)   → `opus` (v2.104.0; `inherit` before): the alias is the
+#                       paid ceiling of the tier and resolves to the newest opus,
+#                       so no model name goes stale. High-risk depth also rests
+#                       on review-code's cross-family adversarial pass.
+#   Codex (all tiers) → no pin: rolepod is a workflow harness and never
+#                       tracks vendor model ids for Codex. A Codex sub-agent
+#                       with no `model` inherits the user's
+#                       `default_subagent_model` or the Lead's model (Codex
+#                       docs). The tier still shows as `model_reasoning_effort`,
+#                       from the Codex overlay.
 #   Gemini/agy        → advisory only: agy auto-selects the model per task and
 #                       does not consume this value (documented in model-tier-policy).
 TIER_MODELS = {
@@ -71,9 +74,13 @@ TIER_MODELS = {
     # keeps its own model, its strong reviewers run opus, no lift. The hook
     # only re-writes opus under a low Lead for a stale user-level agent file.
     "claude": {"cheap": "haiku", "balanced": "sonnet", "strong": "opus"},
-    "codex": {"cheap": "gpt-5.6-luna", "balanced": "gpt-5.6-terra", "strong": "gpt-5.6-sol"},
     "gemini": {"cheap": "gemini-3-flash-preview", "balanced": "gemini-3-pro-preview", "strong": "gemini-3-pro-preview"},
 }
+
+# Codex has no model map (no pin at all — see TIER_MODELS comment above), but
+# the overlay's `tier:` is still validated against the same cheap/balanced/
+# strong vocabulary the other targets use, then dropped.
+CODEX_TIERS = ("cheap", "balanced", "strong")
 
 REPO_DIR = Path(__file__).resolve().parent.parent
 
@@ -82,11 +89,18 @@ def resolve_model(target: str, merged: dict[str, list[str]]) -> None:
     """Convert the overlay's `tier:` into a concrete `model:` for the target CLI.
 
     Mutates `merged` in place: sets `model` from TIER_MODELS and drops `tier`
-    (it is a rolepod concept, not a valid CLI frontmatter field).
+    (it is a rolepod concept, not a valid CLI frontmatter field). Codex is the
+    exception: `tier:` is still validated and dropped, but no `model` is set
+    (see TIER_MODELS comment) — emit_codex_toml omits the model line.
     """
     if "tier" not in merged:
         raise ValueError(f"{target}: overlay is missing the required `tier:` field")
     tier = field_value(merged, "tier")
+    if target == "codex":
+        if tier not in CODEX_TIERS:
+            raise ValueError(f"{target}: unknown tier {tier!r} (expected {sorted(CODEX_TIERS)})")
+        merged.pop("tier", None)
+        return
     models = TIER_MODELS.get(target, {})
     if tier not in models:
         raise ValueError(f"{target}: unknown tier {tier!r} (expected {sorted(models)})")
@@ -207,9 +221,13 @@ def _toml_basic(s: str) -> str:
 
 
 def emit_codex_toml(fields: dict[str, list[str]], body: str) -> str:
-    """Emit a Codex agent TOML — name/description from core, model /
+    """Emit a Codex agent TOML — name/description from core,
     model_reasoning_effort / sandbox_mode from the Codex overlay, and the
     core agent body as the developer_instructions multiline string.
+
+    No `model` line: rolepod never pins a vendor model id for Codex (see the
+    TIER_MODELS comment above) — an omitted model inherits the user's
+    `default_subagent_model` or the Lead's model.
 
     Scalars are escaped via _toml_basic. Agent bodies are plain markdown; a
     literal `\"\"\"` would close the multiline string early, so guard against it
@@ -223,7 +241,6 @@ def emit_codex_toml(fields: dict[str, list[str]], body: str) -> str:
     out = [
         f'name = {_toml_basic(field_value(fields, "name"))}',
         f'description = {_toml_basic(field_value(fields, "description"))}',
-        f'model = {_toml_basic(field_value(fields, "model"))}',
         f'model_reasoning_effort = {_toml_basic(field_value(fields, "model_reasoning_effort"))}',
         f'sandbox_mode = {_toml_basic(field_value(fields, "sandbox_mode"))}',
         'developer_instructions = """',

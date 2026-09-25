@@ -1,6 +1,5 @@
 name = "mobile-developer"
 description = "Native iOS / Android (Swift, SwiftUI, UIKit, Obj-C, Kotlin, Compose, Java) and React Native / Flutter apps. Use when work is platform-specific or touches push (APNs / FCM), permissions or app-store readiness. Overlaps frontend-developer on cross-platform UI logic; CI / fastlane / EAS → devops-sre."
-model = "gpt-5.6-terra"
 model_reasoning_effort = "medium"
 sandbox_mode = "workspace-write"
 developer_instructions = """
