@@ -143,7 +143,7 @@ If the test was run but failed → manifest is lying about `DONE`, reject.
 
 ## Counted results (JUnit / XUnit)
 
-The runner emits JUnit / XUnit XML (`pytest --junitxml` / `--reporter=junit` / surefire) → prefer it: cite the counted totals + failed test names via `rolepod-junit <xml>` (installed launcher) or `scripts/junit-summary.sh` (source repo / plugin `scripts/`). Counted results beat prose claims.
+The runner emits JUnit / XUnit XML (`pytest --junitxml` / `--reporter=junit` / surefire) → prefer it: cite the counted totals + failed test names via `scripts/junit-summary.sh <xml>` in this skill's folder. Counted results beat prose claims.
 
 ## P1 traceability
 

@@ -61,26 +61,20 @@ PY
 )
 [ -n "$STATE" ] && CTX="$CTX\n\n$STATE"
 
-# Cross-family runner locator (v2.76.0): marketplace installs have no
-# install.sh launcher on PATH, so name the shipped copy next to this hook
-# once per session — the skills say "rolepod-cross-family, or the path the
-# session context names".
-_xf="$(cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null && pwd)/../scripts/cross-family.sh"
-if [ -f "$_xf" ]; then
-  _xf=$(cd "$(dirname "$_xf")" && pwd)/cross-family.sh
-  _xfcmd="rolepod-cross-family"; command -v rolepod-cross-family >/dev/null 2>&1 || _xfcmd="bash $_xf"
-  command -v rolepod-cross-family >/dev/null 2>&1 || CTX="$CTX\n\ncross-family runner: \`$_xfcmd\` (reviews / consults in a different CLI — opt-in pool: .rolepod/cross-family)"
-  # No opt-in question (v2.142.0): rolepod never asks unprompted. With no pool file and a
-  # second CLI installed, ONE silent context line says how to set it up when the user asks.
-  if [ ! -f "$HOME/.rolepod/cross-family" ] && [ ! -f "$REPO/.rolepod/cross-family" ]; then
-    _lead="${ROLEPOD_LEAD_CLI:-}"
-    if [ -z "$_lead" ] && [ -n "${CLAUDE_PROJECT_DIR:-}${CLAUDE_PLUGIN_ROOT:-}" ]; then _lead=claude; fi
-    _cand=""
-    if [ -n "$_lead" ]; then
-      _cand=$( { bash "$_xf" --candidates --lead "$_lead" 2>/dev/null || true; } | tr '\n' ' ' | sed 's/ *$//' || true)
-    fi
-    [ -n "$_cand" ] && CTX="$CTX\n\ncross-family pool: not set (opt-in, never asked for you). When the user asks to set it up: \`rolepod-cross-family --setup\` (installed: $_cand)."
+# Cross-family pool nudge (v2.142.0: no opt-in question — rolepod never asks
+# unprompted). No pool file and a second CLI installed → ONE silent context
+# line says how to set it up when the user asks. The runner itself lives in
+# the cross-family skill's own scripts/ (v2.179.0) — no locator line here.
+_xf="$(cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null && pwd)/../skills/cross-family/scripts/cross-family.sh"
+[ -f "$_xf" ] || _xf="$(cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null && pwd)/../core/skills/cross-family/scripts/cross-family.sh"
+if [ -f "$_xf" ] && [ ! -f "$HOME/.rolepod/cross-family" ] && [ ! -f "$REPO/.rolepod/cross-family" ]; then
+  _lead="${ROLEPOD_LEAD_CLI:-}"
+  if [ -z "$_lead" ] && [ -n "${CLAUDE_PROJECT_DIR:-}${CLAUDE_PLUGIN_ROOT:-}" ]; then _lead=claude; fi
+  _cand=""
+  if [ -n "$_lead" ]; then
+    _cand=$( { bash "$_xf" --candidates --lead "$_lead" 2>/dev/null || true; } | tr '\n' ' ' | sed 's/ *$//' || true)
   fi
+  [ -n "$_cand" ] && CTX="$CTX\n\ncross-family pool: not set (opt-in, never asked for you). When the user asks to set it up: the cross-family skill's setup steps (installed: $_cand)."
 fi
 
 # Combined-mode marker for child plugins (uiproof / wplab / dblab): the

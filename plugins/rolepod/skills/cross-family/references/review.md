@@ -24,7 +24,7 @@ Any CLI can be the Lead. The review goes to a different CLI than the Lead's, nev
 - Only the runner's anchor counts: the raw file under `.rolepod/evidence/external/` plus its `"reviewer":"external"` phase-log line (cli, family, `model:"default"`, raw path, `brief_sha`, the job id). A hand-typed line or a hand-rolled external call is ignored.
 - The Lead still appends its own merged review verdict line.
 - The member runs on its own CLI's default model — its owner's cost decision. The model tier policy governs only the Lead's CLI.
-- Why the external goes first: each plan is a separate flat-rate quota; the main plan carries implementation, so one-shot cold-context review moves to a satellite plan whenever a usable non-Lead CLI exists. `rolepod-stats` reports external passes vs internal strong dispatches.
+- Why the external goes first: each plan is a separate flat-rate quota; the main plan carries implementation, so one-shot cold-context review moves to a satellite plan whenever a usable non-Lead CLI exists. the `rolepod-stats` skill reports external passes vs internal strong dispatches.
 
 ## Degradation
 
@@ -37,6 +37,6 @@ Any CLI can be the Lead. The review goes to a different CLI than the Lead's, nev
 
 ## Jobs and health
 
-- `rolepod-cross-family --jobs` lists running and finished jobs; `--kill <job-id>` stops one with its process group.
+- `cross-family.sh --jobs` lists running and finished jobs; `--kill <job-id>` stops one with its process group.
 - Installed ≠ usable: exit ≠ 0, a timeout, or too little output (review < 500 bytes, other kinds < 200) → an `external-fail` phase-log line and the next member.
-- `rolepod-cross-family --probe` sends each member a one-line prompt (one call each); `ROLEPOD_DOCTOR_PROBE=1 make doctor` does the same.
+- `cross-family.sh --probe` sends each member a one-line prompt (one call each); `ROLEPOD_DOCTOR_PROBE=1 make doctor` does the same.

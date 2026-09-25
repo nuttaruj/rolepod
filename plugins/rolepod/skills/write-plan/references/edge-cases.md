@@ -28,7 +28,7 @@ No test infrastructure at all → the FIRST task bootstraps the minimal harness 
 
 ## No plan-lint (steps 7-8)
 
-`plan-lint.sh` lives in `~/.rolepod/bin/`, the plugin's `scripts/`, or `scripts/` in the source repo. None of them available → run the inline check on the saved plan; it exits 0 only when the plan has a Failure policy and every task a Command:
+`plan-lint.sh` lives in this skill's `scripts/`. Missing → run the inline check on the saved plan; it exits 0 only when the plan has a Failure policy and every task a Command:
 
 ```bash
 grep -q '^## Failure policy' <plan> && awk '/^### (Task ?|T)[0-9]/{t++;c[t]=0;i=1;next} /^## /{i=0} i&&/Command:/{c[t]=1} END{if(!t)exit 1;for(k=1;k<=t;k++)if(!c[k])exit 1}' <plan>

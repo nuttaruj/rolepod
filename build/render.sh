@@ -172,33 +172,10 @@ PY
 #   .claude-plugin/marketplace.json            (marketplace manifest — repo root)
 #   plugins/rolepod/.claude-plugin/plugin.json (plugin manifest)
 #   plugins/rolepod/agents/*.md                (15 rendered agents)
-#   plugins/rolepod/skills/<name>/SKILL.md     (real dir, copied from core/skills)
-#   plugins/rolepod/commands/*.md              (slash commands)
+#   plugins/rolepod/skills/<name>/SKILL.md     (real dir, copied from core/skills;
+#                                                each skill's own scripts/ ships with it)
 #   plugins/rolepod/hooks/*.sh + *.md + lib/
 # Sources: adapters/claude/.claude-plugin/{marketplace,plugin}.json.
-
-# Evidence readers + the cross-family runner shipped with every plugin tree —
-# installed users get `rolepod-stats` / `rolepod-junit` / `rolepod-cross-family`
-# / `rolepod-ticket` (install.sh drops launchers on PATH) without cloning the
-# source repo. Byte-exact copies of scripts/.
-render_evidence_scripts() {
-  local dst="$1"
-  mkdir -p "$dst/scripts"
-  cp "$REPO_DIR/scripts/stats.sh" "$dst/scripts/stats.sh"
-  cp "$REPO_DIR/scripts/junit-summary.sh" "$dst/scripts/junit-summary.sh"
-  cp "$REPO_DIR/scripts/plan-lint.sh" "$dst/scripts/plan-lint.sh"
-  # Cross-family runner (v2.76.0) — the hooks resolve it as ../scripts/ from
-  # their own dir, so it ships in every tree, marketplace installs included.
-  cp "$REPO_DIR/scripts/cross-family.sh" "$dst/scripts/cross-family.sh"
-  # Ticket-loop helper (rolepod-ticket) — resolves plan-lint.sh beside itself
-  # the same way, so it ships next to it here too.
-  cp "$REPO_DIR/scripts/ticket.sh" "$dst/scripts/ticket.sh"
-  # `rolepod-ticket fleet`'s scriptPath resolves ticket-fleet.js beside
-  # itself, falling back to ~/.rolepod/bin (install.sh) — shipped here too so
-  # a marketplace-only install (no install.sh run) has it next to ticket.sh.
-  cp "$REPO_DIR/scripts/ticket-fleet.js" "$dst/scripts/ticket-fleet.js"
-  chmod +x "$dst/scripts/"*.sh 2>/dev/null || true
-}
 
 render_claude() {
   local adapter_dir="$REPO_DIR/adapters/claude"
@@ -230,12 +207,6 @@ render_claude() {
   # Skills as a real directory tree (rendered from core/skills/).
   render_skills "$plugin_dst/skills"
 
-  # Slash commands.
-  if [ -d "$REPO_DIR/commands" ]; then
-    mkdir -p "$plugin_dst/commands"
-    cp "$REPO_DIR/commands"/*.md "$plugin_dst/commands/" 2>/dev/null || true
-  fi
-
   # Hooks: hooks/hooks.json config (canonical plugin-root form) + 6 core
   # scripts + lib/ helpers.
   mkdir -p "$plugin_dst/hooks"
@@ -253,8 +224,6 @@ render_claude() {
     "$plugin_dst/hooks/always-on-core.md"
   [ -d "$REPO_DIR/hooks/lib" ] && cp -R "$REPO_DIR/hooks/lib" "$plugin_dst/hooks/"
   chmod +x "$plugin_dst/hooks/"*.sh 2>/dev/null || true
-
-  render_evidence_scripts "$plugin_dst"
 }
 
 # ─── Render Codex target ────────────────────────────────────────────────────
@@ -357,14 +326,12 @@ render_codex() {
 
   # Skills as a real directory tree (rendered from core/skills/).
   render_skills "$plugin_dst/skills"
-
-  render_evidence_scripts "$plugin_dst"
 }
 
 # ─── Render Cursor target ───────────────────────────────────────────────────
 # Cursor ships as a native plugin under ~/.cursor/plugins/local/rolepod/.
-# Layout mirrors Claude's plugin tree (skills/, agents/, hooks/, commands/)
-# with three Cursor-specific adjustments:
+# Layout mirrors Claude's plugin tree (skills/, agents/, hooks/) with three
+# Cursor-specific adjustments:
 #   1. .cursor-plugin/plugin.json (manifest) instead of .claude-plugin/
 #   2. rules/always-on-core.mdc (alwaysApply: true) replaces the SessionStart
 #      hook that emits always-on-core.md on Claude. Cleaner Cursor-native
@@ -452,8 +419,6 @@ render_cursor() {
   done
   cp "$REPO_DIR/hooks/lib/route_check.py" "$plugin_dst/scripts/shared/route_check.py"   # stop → route record (v2.135.0)
   chmod +x "$plugin_dst/scripts/shared/"*.sh 2>/dev/null || true
-
-  render_evidence_scripts "$plugin_dst"
 }
 
 # ─── Render Antigravity (agy) target ────────────────────────────────────────
@@ -530,8 +495,6 @@ render_antigravity() {
   done
   cp "$REPO_DIR/hooks/lib/route_check.py" "$plugin_dst/hooks/route_check.py"   # Stop → route record (v2.135.0)
   chmod +x "$plugin_dst/hooks/"*.sh 2>/dev/null || true
-
-  render_evidence_scripts "$plugin_dst"
 }
 
 # ─── Render opencode target ─────────────────────────────────────────────────
@@ -594,8 +557,6 @@ render_opencode() {
   else
     echo "render: missing $adapter_dir/plugin/rolepod.js" >&2; exit 1
   fi
-
-  render_evidence_scripts "$out_dir"
 }
 
 case "$TARGET" in

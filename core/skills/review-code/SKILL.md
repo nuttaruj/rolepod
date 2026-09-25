@@ -16,8 +16,8 @@ A finished diff → a severity-ordered review report, adversarial pressure match
 
 ### 1. Freeze the diff
 
-- The diff: the R4 task, or for R2/R3 the plan's combined range (`rolepod-ticket log` prints it). Committed → `<base>...HEAD`; uncommitted → `git diff HEAD` (staged + unstaged; `--cached` alone is a slice).
-- No `rolepod-ticket` → the combined range is `<plan's first task commit>^..HEAD` (find that commit with `git log --oneline`).
+- The diff: the R4 task, or for R2/R3 the plan's combined range (`../implement-plan/scripts/ticket.sh log` prints it). Committed → `<base>...HEAD`; uncommitted → `git diff HEAD` (staged + unstaged; `--cached` alone is a slice).
+- No `ticket.sh` → the combined range is `<plan's first task commit>^..HEAD` (find that commit with `git log --oneline`).
 - Past ~15 files / ~800 lines it is two concerns: split into ship groups, one review each.
 - Gather the spec / plan / acceptance criteria, the touched files end-to-end, and the risk profile (high-risk surface? new dependency? schema change?).
 

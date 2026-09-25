@@ -36,6 +36,15 @@
 # names.
 set -euo pipefail
 
+# Cross-family runner locator (v2.179.0: scripts moved into their skills) —
+# this skill's folder in a rendered plugin tree, else the source repo's
+# core/skills/ copy. No home-dir launcher-payload fallback (no launcher is
+# installed any more). Resolved once, up top, so every message below
+# (including the tree-rewrite advisory that exits before the rest of this
+# file runs) can quote the same real, runnable path.
+XFAM_RUNNER="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/../skills/cross-family/scripts/cross-family.sh"
+[ -f "$XFAM_RUNNER" ] || XFAM_RUNNER="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/../core/skills/cross-family/scripts/cross-family.sh"
+
 # Per-repo risk-path override: <git-root>/.rolepod/risk-paths — one ERE per
 # line; bare/+ lines ADD high-risk patterns, - lines EXCLUDE paths from the
 # built-in match, # comments. Absent file = built-ins only (fail-open).
@@ -374,7 +383,7 @@ if [ "$IS_COMMIT" != "1" ]; then
   [ -n "$MUTATES" ] || exit 0
   [ "${ROLEPOD_GATES_SOFT:-0}" = "1" ] && exit 0
   _mj="$(xfam_running_job)"; [ -n "$_mj" ] || exit 0
-  ROLEPOD_HOOK_MSG="⏸ REVIEW IN FLIGHT: cross-family job $_mj reads this tree live — \`git $MUTATES\` rewrites it, so that verdict becomes an artifact and the job re-runs. Fix: \`rolepod-cross-family --collect ${_mj%% *}\` first, then \`git $MUTATES\`. Exception: a red-proof revert goes in a throwaway git worktree, not a stash here; a dead job → --collect says so and this line stops." python3 -I -c "
+  ROLEPOD_HOOK_MSG="⏸ REVIEW IN FLIGHT: cross-family job $_mj reads this tree live — \`git $MUTATES\` rewrites it, so that verdict becomes an artifact and the job re-runs. Fix: \`bash $XFAM_RUNNER --collect ${_mj%% *}\` first, then \`git $MUTATES\`. Exception: a red-proof revert goes in a throwaway git worktree, not a stash here; a dead job → --collect says so and this line stops." python3 -I -c "
 import json, os
 print(json.dumps({'hookSpecificOutput': {'hookEventName': 'PreToolUse', 'additionalContext': os.environ.get('ROLEPOD_HOOK_MSG', '')}}))
 " 2>/dev/null || echo '{}'
@@ -770,8 +779,6 @@ XREV=${XREV:-0}
 # internal path untouched. Lead CLI unknown → cannot exclude its own CLI →
 # no tightening (fail-open).
 XFAM_HELD=""
-XFAM_RUNNER="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/../scripts/cross-family.sh"
-[ -f "$XFAM_RUNNER" ] || XFAM_RUNNER="$HOME/.rolepod/bin/cross-family.sh"
 XFAM_LEAD="${ROLEPOD_LEAD_CLI:-}"
 [ -z "$XFAM_LEAD" ] && [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && XFAM_LEAD="claude"
 XFAM_POOL=""; XFAM_FAILS=0; XFAM_POOL_ON=""
@@ -838,9 +845,9 @@ print(n)
   if [ -n "$XFAM_POOL" ] && [ "${XFAM_FAILS:-0}" -eq 0 ] 2>/dev/null; then
     XFAM_HELD="cross-family pool usable ($XFAM_POOL), no anchored external pass since the last commit — $STRONG_REVIEWERS internal reviewer(s) do NOT clear a high-risk diff while a different CLI is available. "
     if [ -n "$XFAM_RUNNING" ]; then
-      XFAM_HELD+="A detached job is ALREADY RUNNING: $XFAM_RUNNING — rolepod-cross-family --collect <job-id>, then retry; do not start another. "
+      XFAM_HELD+="A detached job is ALREADY RUNNING: $XFAM_RUNNING — bash $XFAM_RUNNER --collect <job-id>, then retry; do not start another. "
     else
-      XFAM_HELD+="Fix: rolepod-cross-family --kind review --brief <brief.md> --attach <diff> --detach (add --lead $XFAM_LEAD outside a hook); --collect <job-id> waits. "
+      XFAM_HELD+="Fix: bash $XFAM_RUNNER --kind review --brief <brief.md> --attach <diff> --detach (add --lead $XFAM_LEAD outside a hook); --collect <job-id> waits. "
     fi
     XFAM_HELD+="Pool failed or empty (logged) → the internal reviewer counts. "
     STRONG_REVIEWERS=0
@@ -849,7 +856,7 @@ fi
 
 # The plan is the readable record of each step; the gate writes to it, never
 # reads from it (spec Desired 10, 2026-09-24). One "phase":"gate" row per
-# judged commit, HEAD BEFORE the commit so `rolepod-ticket log --sha <sha>`
+# judged commit, HEAD BEFORE the commit so `ticket.sh log --sha <sha>`
 # can match it as `<sha>^` after the commit lands. Fail-open: any error here
 # never changes HARD_BLOCK / AUTO_PASS — it only ever runs right before an
 # `exit 0` this file already reaches.
@@ -909,7 +916,7 @@ REASON+="Diff: $FILES_CHANGED files / $LINES_CHANGED lines / $LOGIC_COUNT logic 
 REASON+="Evidence ($SINCE_HUMAN): $TEST_EDITS tests / $HIGH_RISK_EDITS risk edits / $REVIEWERS reviewers ($STRONG_REVIEWERS strong). "
 [ -n "$HIGH_RISK" ] && REASON+="HIGH-RISK path: $HIGH_RISK. "
 [ -n "$XFAM_HELD" ] && REASON+="SATELLITE-FIRST: $XFAM_HELD"
-[ -z "$XFAM_HELD" ] && [ -n "$XFAM_RUNNING" ] && [ -n "$HIGH_RISK" ] && [ "$STRONG_REVIEWERS" -eq 0 ] && REASON+="A detached cross-family job is still running: $XFAM_RUNNING — rolepod-cross-family --collect <job-id>, then retry. "
+[ -z "$XFAM_HELD" ] && [ -n "$XFAM_RUNNING" ] && [ -n "$HIGH_RISK" ] && [ "$STRONG_REVIEWERS" -eq 0 ] && REASON+="A detached cross-family job is still running: $XFAM_RUNNING — bash $XFAM_RUNNER --collect <job-id>, then retry. "
 if [ -n "$HIGH_RISK" ] && [ "$STRONG_REVIEWERS" -eq 0 ] && [ -z "$XFAM_HELD" ]; then
   REASON+="NO STRONG ADVERSARIAL REVIEWER since the last commit. Test edits are the test floor, not the review. "
 fi

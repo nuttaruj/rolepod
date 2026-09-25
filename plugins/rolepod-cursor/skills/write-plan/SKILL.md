@@ -68,7 +68,7 @@ Done when: every path sits under exactly one owner.
 
 **Owner:** the role the domain map in `templates/plan-template.md` assigns to the task's files (path first, then concern; `Lead` for R1-sized work or when the user said self-do). No template → API / services / models → `backend-developer`, UI components → `frontend-developer`, infra / CI / release → `devops-sre`, docs → `content-strategist`; else the closest writer role by path (`implement-plan`'s `references/subagent-dispatch.md` Picking the owner) — `Owner: Lead` only for R1-sized work.
 Reviewer roles are never owners: `security-engineer` (each touched high-risk surface, per task — the brief's Tier line) goes on the Reviewer line. A user-visible E2E flow the spec names gets no task owner and no reviewer role — `check-work` verifies it once the feature is built.
-`plan-lint.sh --brief <N> <plan> [contract]` builds the owner's brief from the task block, so the block carries everything plus the spec.
+`plan-lint.sh --brief <N> <plan> [contract]` (`scripts/plan-lint.sh` in this skill's folder) builds the owner's brief from the task block, so the block carries everything plus the spec.
 **Read first:** the 2-3 files and the pattern to copy, named by the Lead who read them; the owner never re-surveys the repo.
 No subagents → the Lead builds every task from the same blocks.
 

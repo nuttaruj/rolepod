@@ -30,6 +30,14 @@
 #   ROLEPOD_GATES_SOFT=1   — silence the would-block line entirely
 set -euo pipefail
 
+# Cross-family runner locator (v2.179.0: scripts moved into their skills) —
+# this skill's folder in a rendered plugin tree, else the source repo's
+# core/skills/ copy. No home-dir launcher-payload fallback (no launcher is
+# installed any more). Resolved once, up top, so the in-flight-job messages
+# below can quote the same real, runnable path.
+XFAM_RUNNER="$(cd "$(dirname "$0")" && pwd)/../skills/cross-family/scripts/cross-family.sh"
+[ -f "$XFAM_RUNNER" ] || XFAM_RUNNER="$(cd "$(dirname "$0")" && pwd)/../core/skills/cross-family/scripts/cross-family.sh"
+
 # Per-repo risk-path override: <git-root>/.rolepod/risk-paths — one ERE per
 # line; bare/+ lines ADD high-risk patterns, - lines EXCLUDE paths from the
 # built-in match, # comments. Absent file = built-ins only (fail-open).
@@ -197,14 +205,14 @@ if [ -n "$_gr_root" ] && [ -d "$_gr_root/.rolepod/evidence/external/jobs" ] && [
       _in=0; while IFS= read -r _ae; do [ -n "$_ae" ] || continue; case "$_ae" in */) case "$_gr_rel" in "${_ae%/}"/*) _in=1 ;; esac ;; *) [ "$_gr_rel" = "$_ae" ] && _in=1 ;; esac; done < "$_jd/allow"
       [ "$_in" -eq 1 ] && continue
       _js=$(cat "$_jd/started" 2>/dev/null || echo 0); _jm=$(( ($(date +%s) - _js) / 60 ))
-      XFAM_INFLIGHT="⏸ EXTERNAL IMPLEMENT IN FLIGHT: cross-family job $_jid (running ${_jm} min) is EDITING this tree — an edit outside the ticket's Files allowed made now (this one included) is reverted when the job returns (a copy is kept under the job's .reverted/). Fix: park the edit until \`rolepod-cross-family --collect $_jid\` returns, or work in another worktree. "
+      XFAM_INFLIGHT="⏸ EXTERNAL IMPLEMENT IN FLIGHT: cross-family job $_jid (running ${_jm} min) is EDITING this tree — an edit outside the ticket's Files allowed made now (this one included) is reverted when the job returns (a copy is kept under the job's .reverted/). Fix: park the edit until \`bash $XFAM_RUNNER --collect $_jid\` returns, or work in another worktree. "
       break
     fi
     _under=$( ( eval "set -- $(cat "$_jd/args" 2>/dev/null)" 2>/dev/null; while [ $# -gt 0 ]; do if [ "$1" = "--attach" ] && [ -f "${2:-}" ]; then grep -E '^\+\+\+ b/' "$2" 2>/dev/null | sed -E 's#^\+\+\+ b/##; s/[[:space:]]+$//'; shift; fi; shift; done ) 2>/dev/null || true )
     [ -n "$_under" ] || _under=$(git -C "$_gr_root" diff HEAD --name-only 2>/dev/null || true)
     if printf '%s\n' "$_under" | grep -qxF -- "$_gr_rel"; then
       _js=$(cat "$_jd/started" 2>/dev/null || echo 0); _jm=$(( ($(date +%s) - _js) / 60 ))
-      XFAM_INFLIGHT="⏸ REVIEW IN FLIGHT: cross-family job $_jid (running ${_jm} min) reads '$_gr_rel' live — this edit turns its verdict into an artifact and re-runs the job. Fix: park the edit until \`rolepod-cross-family --collect $_jid\` returns; work outside the diff meanwhile. Exception: a dead job → --collect says so and this line stops. "
+      XFAM_INFLIGHT="⏸ REVIEW IN FLIGHT: cross-family job $_jid (running ${_jm} min) reads '$_gr_rel' live — this edit turns its verdict into an artifact and re-runs the job. Fix: park the edit until \`bash $XFAM_RUNNER --collect $_jid\` returns; work outside the diff meanwhile. Exception: a dead job → --collect says so and this line stops. "
       break
     fi
   done
@@ -268,8 +276,6 @@ SOFT_MODE=0
 # commit-time gate never makes. Harmless over-warn, not a false silence.
 XFAM_HELD=0
 if [ -n "$HIGH_RISK" ] && [ "$SOFT_MODE" -eq 0 ] && [ "$STRONG_REVIEWERS" -gt 0 ] && [ "$XREV" -eq 0 ]; then
-  XFAM_RUNNER="$(cd "$(dirname "$0")" && pwd)/../scripts/cross-family.sh"
-  [ -f "$XFAM_RUNNER" ] || XFAM_RUNNER="$HOME/.rolepod/bin/cross-family.sh"
   XFAM_LEAD="${ROLEPOD_LEAD_CLI:-}"
   [ -z "$XFAM_LEAD" ] && [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && XFAM_LEAD="claude"
   if [ -n "$XFAM_LEAD" ] && [ -f "$XFAM_RUNNER" ]; then

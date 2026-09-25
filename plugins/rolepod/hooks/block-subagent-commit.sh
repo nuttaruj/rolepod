@@ -65,7 +65,7 @@ if agent_id:
     from session_state import toks_of, SHELLS, OUTPUT_ONLY, segments, head  # noqa: F401
 
     GIT_VALUE_OPTS = {'-C', '--git-dir', '--work-tree', '--namespace', '--exec-path'}
-    RUNNER = {'rolepod-cross-family', 'cross-family.sh'}
+    RUNNER = {'cross-family.sh'}
 
     def walk(text, rule, every, depth=0):
         # rule(t, base) -> label or ''. every=False: t starts at the segment head

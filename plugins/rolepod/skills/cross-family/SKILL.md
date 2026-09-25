@@ -8,7 +8,7 @@ when_to_use: a calling skill names a kind (review, critique, consult, implement)
 
 Turns a diff, a spec draft, a stuck bug or a test-first ticket into one anchored answer from a different CLI — or into the caller's fallback when no member can run.
 
-`rolepod-cross-family` runs every kind (installed on PATH; a plugin tree ships it as `scripts/cross-family.sh`, and the session context names that path).
+The runner is `scripts/cross-family.sh` in this skill's folder (`bash <this skill's folder>/scripts/cross-family.sh …`); below, `cross-family.sh` names it.
 Outside Claude add `--lead <codex|agy|cursor|opencode>`. `--help` lists every flag.
 
 ## Skip when
@@ -18,7 +18,7 @@ Outside Claude add `--lead <codex|agy|cursor|opencode>`. `--help` lists every fl
 
 ### 1. Resolve the pool
 
-`rolepod-cross-family --pool` prints the resolved pool and why each member is in or out.
+`cross-family.sh --pool` prints the resolved pool and why each member is in or out.
 - The pool is opt-in: `<git-root>/.rolepod/cross-family` overrides `~/.rolepod/cross-family`. No file or `none` = off. Never turn it on unasked.
 - Only the Lead's own CLI is excluded. The model family is recorded as information, never a filter: a member on the Lead's vendor still counts, and a member reporting no family is a FULL external pass.
 - The user asked to set up or change the pool → step 6 first.
@@ -52,7 +52,7 @@ Done when: the brief file exists and a stranger could act on it alone.
 - `--cached` alone is a slice: the runner refuses it while the same files carry unstaged edits. `--partial-ok` only when the user asked for the staged part.
 - The external IS the strong pass: it replaces `universal-reviewer`, never both on round 1. It runs round 1 only: its BLOCKER / MAJOR fixes are re-checked by `security-engineer` on a high-risk path, else by `universal-reviewer` on a strong-class model (`review-code` Fix-verify rounds), never a new external round. The R4 floor stays `security-engineer` + that ONE strong pass — dispatch `security-engineer` in the same message.
 - The diff stays frozen until the last reviewer returns: no edit to its files, no `git stash` / `reset` / `checkout`.
-- Then do the next task outside the diff. ONE `rolepod-cross-family --collect <job-id> --root <git-root>` before the commit — it waits.
+- Then do the next task outside the diff. ONE `cross-family.sh --collect <job-id> --root <git-root>` before the commit — it waits.
 - Member order, `--all`, what anchors, the degradation table → `references/review.md`.
 
 **critique**
@@ -100,9 +100,9 @@ Done when: the caller or the user holds the answer or the named fallback.
 ### 6. Set up the pool — on request only
 
 The user asks to set up, enable or change cross-family, in any wording or language. Never raise it unprompted.
-1. `rolepod-cross-family --setup` prints the installed CLIs and two questions. One installed CLI → nothing to set; say so.
+1. `cross-family.sh --setup` prints the installed CLIs and two questions. One installed CLI → nothing to set; say so.
 2. Ask ONE question per turn: (1) which CLIs review, in order; (2) implement: `same`, `none`, or its own order.
-3. Write it: `rolepod-cross-family --setup review="…" implement=…`, then show `rolepod-cross-family --pool`.
+3. Write it: `cross-family.sh --setup review="…" implement=…`, then show `cross-family.sh --pool`.
 
 List the Lead's own CLI too — it is skipped at run time, so switching Lead never means editing the file. The user says no → `none`.
 Hand-editing the file (`tier =`, per-kind order, `stall=`) → `references/pool.md`.
@@ -118,4 +118,4 @@ Done when: the file is written and `--pool` is shown to the user.
 
 - Called by a skill → back to that skill's step with the answer or the fallback.
 - Called alone → the report is the deliverable; review findings to fix → `review-code` Author response.
-- If `review-code` is not available, or the runner is missing (neither `rolepod-cross-family` nor `scripts/cross-family.sh`), hand the user the report or the caller's fallback from step 5 and say the runner needs the rolepod install.
+- If `review-code` is not available, or `scripts/cross-family.sh` is missing from this skill's folder, hand the user the report or the caller's fallback from step 5.
