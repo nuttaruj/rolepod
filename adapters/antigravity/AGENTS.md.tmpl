@@ -16,6 +16,8 @@ plan, build, verify, review, ship) lives in the skills; invoke them.
 
 A conflict that risks harm → ask before acting.
 
+{{INCLUDE: core/fragments/route-first.md}}
+
 {{INCLUDE: core/fragments/identity.md}}
 
 {{INCLUDE: core/fragments/verify-first.md}}
@@ -32,39 +34,19 @@ A conflict that risks harm → ask before acting.
 
 {{INCLUDE: core/fragments/hard-stops.md}}
 
-{{INCLUDE: core/fragments/skill-index-lean.md}}
-
-{{INCLUDE: core/fragments/agent-roster-lean.md}}
-
 ## Antigravity specifics
 
-- **Skills** — the workflow phases (`write-spec`, `write-plan`,
-  `implement-plan`, `debug-issue`, `check-work`, `review-code`,
-  `finish-work`, `simplify-code`, `manage-context`) ship inside the rolepod
-  plugin (`~/.gemini/config/plugins/rolepod/skills/`). agy auto-discovers
-  plugin skills and exposes each as a slash command (e.g. `/write-spec`). The
-  S/T/Q/F gates and CI lane policy live inside those phase skills — invoke the
-  phase skill rather than reciting gates here.
-- **Agents** — 15 specialists ship as plugin subagents. agy does not
-  auto-dispatch by description; the user invokes one by name or a
-  natural-language request ("spawn universal-reviewer on this diff"). Each agent file is
-  self-contained — it carries its own agent protocol.
-- **Hooks** — the plugin's `hooks.json` (at the plugin root; scripts under
-  `hooks/`) registers gate hooks on agy's
-  native events: `PreInvocation` (session context), `PreToolUse` (the
-  pre-commit private-docs gate on `run_command` — evidence-based
-  reviewer/test gating is Claude-only), `Stop` (release this session's
-  worktree lock so siblings stop seeing a phantom session). Inspect loaded
-  hooks with `agy hooks`.
-- **Enforcement tier: unverified** — hooks are registered but live firing
-  is unverified on current agy: treat every blocking gate as skill-enforced
-  (doctrine-only) and never report a hook gate as mechanically enforced
-  until `agy hooks` shows them firing.
-- **Tier classes** — rolepod's cheap / balanced / strong are CLASSES, never
-  model names; agy auto-selects models, so the classes shape what you
-  REQUEST: sweep / read = the fast class, build / verify = the pro class,
-  the ONE judge or security reviewer = the strongest available — never the
-  whole fan-out at the top class; cannot classify → balanced, and say so.
-- **Peer review** — every logic diff → spawn `universal-reviewer` (read-only,
-  spec + standards); high-risk → plus `security-engineer`. A cross-model opinion from
-  another CLI (e.g. `claude -p "review this diff"`) is a useful check.
+- **Skills and agents** — the rolepod skills ship inside the plugin
+  (`~/.gemini/config/plugins/rolepod/skills/`) and show as slash commands
+  (e.g. `/write-spec`); 15 specialists ship as plugin subagents, each
+  carrying its own protocol. agy does not dispatch by description: spawn
+  the specialist a skill names, by its name.
+- **Tier classes** — cheap / balanced / strong are CLASSES, never model
+  names; agy picks models, so request by class: sweep / read = the fast
+  class, build / verify = the pro class, the ONE judge or security reviewer
+  = the strongest available — never the whole fan-out; cannot classify →
+  balanced, and say so.
+- **Enforcement** — one hook denies: `PreToolUse` on `run_command` blocks a
+  commit with `docs/rolepod/` staged. agy has no context-injection channel,
+  so this file is the only always-on text. Every other rule is
+  skill-enforced — never report it as mechanically enforced.

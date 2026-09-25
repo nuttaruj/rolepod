@@ -15,6 +15,8 @@ verify, review, ship) lives in the skills; invoke them.
 
 A conflict that risks harm → ask before acting.
 
+{{INCLUDE: core/fragments/route-first.md}}
+
 {{INCLUDE: core/fragments/identity.md}}
 
 {{INCLUDE: core/fragments/verify-first.md}}
@@ -33,44 +35,16 @@ A conflict that risks harm → ask before acting.
 
 ## opencode specifics
 
-- **Skills** — the workflow phases (`using-rolepod` router + `write-spec`,
-  `write-plan`, `implement-plan`, `debug-issue`, `check-work`,
-  `review-code`, `finish-work`, `simplify-code`, `manage-context`) install
-  at `~/.config/opencode/skills/<name>/` in opencode's native SKILL.md
-  format and auto-trigger from their `description:`. The S/T/F gates and CI
-  lane policy live inside those phase skills — invoke the phase skill
-  rather than reciting gates here.
-- **Agents** — 15 specialists install at `~/.config/opencode/agents/*.md`
-  as subagents. opencode auto-invokes them by description or via `@<name>`
-  mention. Each agent file is self-contained — it carries its own agent
-  protocol, including the subagent commit ban.
-- **Hooks** — the `plugins/rolepod.js` plugin handles session locking
-  (cross-CLI sibling detection via `~/.rolepod/session-locks/`), the
-  post-compaction re-anchor nudge, and a PRECOMMIT GATE on
-  `tool.execute.before`: `git commit` while `docs/rolepod/` is staged
-  (and no `.rolepod/docs-tracked` opt-in) → denied (throw). Evidence-based
-  reviewer/test gating (high-risk path + zero test/reviewer evidence) is
-  Claude-only — this CLI gets the private-docs deny only. Subagent
-  commit/push/merge is denied by the `permission:` block rendered into
-  every agent file (platform-enforced).
-  **Enforcement tier: hooks-live (partial)** — the private-docs deny +
-  agent permission blocks are mechanical; cohesion-contract and
-  worktree-guard remain doctrine-only (no per-file deny event) — hold
-  those as doctrine and never report them as mechanically enforced.
-- **Cross-family review** — a reviewer agent inside opencode is still the
-  same CLI: switching its provider is `vertical — same CLI`, not a
-  cross-family pass. The cross-family pass is another CLI run through the
-  runner (`rolepod-cross-family`); record the model's family as
-  information only, never as a filter.
-- **Tier classes on a big catalog** (OpenRouter etc.) — rolepod's cheap /
-  balanced / strong are CLASSES, never model names. Map them ONCE per
-  session onto the models the user has OPTED INTO (configured providers /
-  models they already pay for) — never the full aggregator catalog:
-  exposure is not authorization, and a rung costlier than anything the
-  user configured is a cost decision to surface, not a silent dispatch.
-  Cheap = small/fast, balanced = mid flagship, strong = top reasoning
-  model of the set (any family); the set's ceiling is this machine's
-  apex. Strong resolving below frontier-class → run the review anyway and
-  record the depth cap as a LIMITATION in the report. Stay consistent —
-  churning models mid-task wastes cache and muddies review provenance.
-  Cannot classify a model → treat it as balanced and say so.
+- **Skills and agents** — the rolepod skills install at
+  `~/.config/opencode/skills/<name>/` and auto-trigger from their
+  `description:`; 15 specialists install at `~/.config/opencode/agents/*.md`
+  and run by description or `@<name>`, each carrying its own protocol.
+- **Tier classes** — map cheap / balanced / strong ONCE per session onto the
+  models the user has opted into (configured providers), never the whole
+  aggregator catalog; a rung costlier than anything configured is a cost
+  decision to surface. Cannot classify → balanced, and say so.
+- **Enforcement** — the `plugins/rolepod.js` plugin denies a `git commit`
+  with `docs/rolepod/` staged (unless `.rolepod/docs-tracked`), and every
+  agent's `permission:` block denies a sub-agent commit / push / merge.
+  Review / test evidence gating is Claude-only. Every other rule is
+  skill-enforced — never report it as mechanically enforced.

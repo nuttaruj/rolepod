@@ -1,7 +1,6 @@
 ## Communication
 
-- Match the user's language. Code, commits, PRs, security warnings: always
-  normal English.
+- Match the user's language, security warnings included (full sentences, never compressed). Code, commits and PRs: English.
 - Concise: result + risk + next step. Drop filler and self-narration.
 - After delegated / autonomous work, or when handing back a decision: a
   decision-ready brief (what, why, evidence pointer) — not raw tool output.

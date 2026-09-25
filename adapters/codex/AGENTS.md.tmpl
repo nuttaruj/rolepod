@@ -15,6 +15,8 @@ ship) lives in the skills; invoke them.
 
 A conflict that risks harm → ask before acting.
 
+{{INCLUDE: core/fragments/route-first.md}}
+
 {{INCLUDE: core/fragments/identity.md}}
 
 {{INCLUDE: core/fragments/verify-first.md}}
@@ -33,51 +35,20 @@ A conflict that risks harm → ask before acting.
 
 ## Codex specifics
 
-- **Skills** — the workflow phases (`write-spec`, `write-plan`,
-  `implement-plan`, `debug-issue`, `check-work`, `review-code`,
-  `finish-work`, `simplify-code`, `manage-context`) ship as skills and
-  auto-trigger from their `description:`. The S/T/Q/F gates and the CI lane
-  policy live inside those phase skills — invoke the phase skill rather than
-  reciting gates here.
-- **Agents** — 15 specialists install at `~/.codex/agents/rolepod-*.toml`.
-  Codex does NOT auto-dispatch by description alone — but per the official
-  subagent docs, AGENTS.md and skill directives ARE a sanctioned spawn
-  channel: when a phase skill's routing section names a specialist, the
-  Lead delegates to it directly, without waiting for the user to ask.
-  Direct user requests ("spawn universal-reviewer on this diff") work too; `/agent`
-  switches between active threads, it is not the invoke command. Spawn
-  precedence per docs: explicit spawn value → agent file → session config.
-  Each agent file is self-contained — it carries its own agent protocol.
-- **Fan-out tier — one strong slot (this is the AGENTS.md instruction
-  `spawn_agent` defers to).** No rolepod role file pins a model (owner,
-  2026-09-25: rolepod is a workflow harness and never tracks vendor model
-  ids) — an un-pinned child runs the user's `[agents]
-  default_subagent_model` in `~/.codex/config.toml`, else the Lead's model
-  (Codex docs: an omitted model inherits); the tool prompt allows a
-  `model` / `reasoning_effort` override on the spawn when AGENTS.md
-  instructs — it does: tier follows the work, carried by effort, not
-  model. Un-pinned child → set the spawn's `reasoning_effort` per task:
-  sweep/read `low`, build/verify `medium`; the ONE judgment slot = a
-  named strong role (`security-engineer` / `universal-reviewer`,
-  file-pinned `high`/`xhigh`) — never strong on the whole fan-out. How
-  many children is your call per task. Effort ceiling on every role is
-  `xhigh` — never `max`, never `ultra` (`ultra` = deepest effort AND
-  proactive delegation: the strong role spawns its own children, strong
-  × N per dispatch).
-  Full-history forks (`fork_turns` all) cannot override — use fresh
-  children for tiered work. No hook can deny a spawn here (SubagentStart
-  is post-spawn) — this paragraph is the gate.
-- **Hooks** — the plugin's `hooks/hooks.json` registers 7 core hook scripts
-  (SessionStart context loader + sibling-session lock, UserPromptSubmit
-  claim-verify nudge, pre-commit private-docs gate, subagent-commit block,
-  Stop unlock, test-diff-lint, fix-loop-breaker). They fire natively on
-  Codex ≥0.144, default-enabled (`[features] hooks = true`).
-- **Enforcement tier: hooks-live (expanded)** — the pre-commit gate denies
-  only a staged `docs/rolepod/` path here (evidence-based reviewer/test
-  gating is Claude-only); subagent-commit block can also deny; cross-CLI
-  sibling locks live via session-lifecycle. Still doctrine-only: worktree
-  guard (apply_patch input carries no file_path) — hold that one as
-  doctrine; never report it as mechanically enforced here.
-- **Peer review** — every logic diff → ask Codex to spawn `universal-reviewer`
-  (read-only, spec + standards); high-risk → plus `security-engineer`. An external Claude
-  review (`claude -p "review this diff"`) is a useful cross-model opinion.
+- **Skills and agents** — the rolepod skills auto-trigger from their
+  `description:`; 15 specialists install at `~/.codex/agents/rolepod-*.toml`,
+  each carrying its own protocol. Codex never dispatches by description
+  alone: when a skill names a specialist, spawn it yourself — this file is
+  the sanctioned spawn channel.
+- **Fan-out tier** — role files pin no model: an un-pinned child runs
+  `[agents] default_subagent_model` from `~/.codex/config.toml`, else your
+  model. Set each spawn's `reasoning_effort` by the work: sweep / read
+  `low`, build / verify `medium`; the ONE judgment slot is a named strong
+  role (`security-engineer` / `universal-reviewer`, file-pinned `high` /
+  `xhigh`), never the whole fan-out. Effort ceiling on every role:
+  `xhigh`. Tiered work uses fresh children — a full-history fork cannot
+  override.
+- **Enforcement** — hooks deny only a commit with `docs/rolepod/` staged
+  and a sub-agent commit; review / test evidence gating is Claude-only,
+  and no hook can deny a spawn here. Every other rule is skill-enforced —
+  never report it as mechanically enforced.
