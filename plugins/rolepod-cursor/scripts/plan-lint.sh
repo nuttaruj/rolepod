@@ -156,16 +156,34 @@ if [ "${1:-}" = "--brief" ]; then
   # each repeat matched in turn so a 3-or-more-way list or a range plus a
   # trailing entry (`T1, T3, T5`, `T1-T2, T5`) names every number, not
   # just the first two — boundary-anchored so it never matches inside a
-  # longer word. Returns "" when the label carries no task tag at all;
-  # otherwise the span, prefixed M when it chains to a further number
-  # (several tasks named) or 1 when it names exactly one.
-  function tagspan(lbl,    hay) {
+  # longer word. A bare number (no `T` prefix) is read as a COUNT, not a
+  # further task number, and the chain stops before consuming it, only
+  # when all three hold: it follows a dash-family connector (hyphen, en
+  # dash or em dash); whitespace separates that connector from the number;
+  # and whitespace plus a letter follows the number — `T2 — 3 hooks` / `T2
+  # - 3 files`. A dash immediately adjacent to its number (`T1-4`) is
+  # always a range, and every other connector (comma, slash, ampersand,
+  # plus, "and", "then", "or") always chains regardless of trailing text
+  # (`Tasks 1 and 2 only`, `T2, 3 files`) — a `T`-prefixed number always
+  # counts as a task too, regardless of what follows (`T2 — T3 hooks`).
+  # Returns "" when the label carries no task tag at all; otherwise the
+  # span, prefixed M when it chains to a further number (several tasks
+  # named) or 1 when it names exactly one.
+  function tagspan(lbl,    hay, span, rest, m, follow, chained) {
     hay = " " lbl
-    if (match(hay, /[^0-9A-Za-z](T|[Tt]asks?[[:space:]]+)[0-9]+(([[:space:]]*(-|–|—|,|\/|&|\+|and|then|or))+[[:space:]]*T?[0-9]+)+/))
-      return "M" substr(hay, RSTART + 1, RLENGTH - 1)
-    if (match(hay, /[^0-9A-Za-z](T|[Tt]asks?[[:space:]]+)[0-9]+/))
-      return "1" substr(hay, RSTART + 1, RLENGTH - 1)
-    return ""
+    if (!match(hay, /[^0-9A-Za-z](T|[Tt]asks?[[:space:]]+)[0-9]+/)) return ""
+    span = substr(hay, RSTART + 1, RLENGTH - 1)
+    rest = substr(hay, RSTART + RLENGTH)
+    chained = 0
+    while (match(rest, /^([[:space:]]*(-|–|—|,|\/|&|\+|and|then|or))+[[:space:]]*T?[0-9]+/)) {
+      m = substr(rest, RSTART, RLENGTH)
+      follow = substr(rest, RSTART + RLENGTH)
+      if (m !~ /T[0-9]+$/ && m ~ /(-|–|—)[[:space:]]+[0-9]+$/ && follow ~ /^[[:space:]]+[A-Za-z]/) break
+      span = span m
+      rest = follow
+      chained = 1
+    }
+    return (chained ? "M" : "1") span
   }
   function has_tasktag(lbl) { return tagspan(lbl) != "" }
   # A label that chains to a further task number (a range like `Tasks
