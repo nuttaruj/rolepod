@@ -92,14 +92,12 @@ EDIT_TOOLS = {"Edit", "Write", "MultiEdit", "NotebookEdit"}
 # match either so reviewer counting does not depend on the CLI version.
 AGENT_TOOLS = {"Agent", "Task"}
 
-# ── Bash write-path tokenizer (bash-writes-are-edits spec, 2026-09-18) ────
-# Moved here from block-subagent-commit.sh's inline python: that hook's
-# git/gate rules and bash_write_paths() below both need to walk a shell
-# command the same way (split into segments, drop heredoc bodies, skip past
-# a wrapper word's flags/values, recurse into a shell's -c string) — a
-# second hand-written copy of the wrapper/value-flag tables would drift (a
-# wrapper this detector doesn't know is a wrapper reports a real write as
-# unparsed, or vice-versa). This is the ONLY copy; block-subagent-commit.sh
+# ── Shell-command tokenizer ────────────────────────────────────────────
+# Shared by block-subagent-commit.sh's commit-ban and cannot-wait rules:
+# both need to walk a shell command the same way (split into segments, drop
+# heredoc bodies, skip past a wrapper word's flags/values, recurse into a
+# shell's -c string) — a second hand-written copy of the wrapper/value-flag
+# tables would drift. This is the ONLY copy; block-subagent-commit.sh
 # imports these names instead of defining them locally.
 PREFIX = {'time', 'env', 'nice', 'sudo', 'rtk', 'proxy', 'caffeinate', 'command', 'exec', 'nohup', 'timeout'}
 # per wrapper: the flags that take the NEXT token as their value (sudo -n / -k / -s are booleans)
@@ -143,28 +141,6 @@ def segments(text):
     return re.split(r'\s*(?:&&|\|\||;|\||\n)\s*', text)
 
 
-def _segments_with_sep(text):
-    """Like segments(), but keeps the separator BEFORE each segment
-    (`None` for the first). A `cd`-tracking walk needs it: bash forks a
-    SUBSHELL on each side of a `|` — a `cd` inside one never persists into
-    the next segment's working directory. `&&`, `||`, `;` and a newline
-    all stay in the SAME shell process, so a `cd` carries across every one
-    of them (security review 2026-09-24, MAJOR-1; fix confirm — `||` does
-    NOT fork a subshell, only a bare `|` does)."""
-    def sub(m):
-        return '\n' + m.group(3) + '\n' if owner_is_shell(text, m.start()) else '<<HEREDOC'
-    text = HEREDOC.sub(sub, text)
-    parts = re.split(r'\s*(&&|\|\||;|\||\n)\s*', text)
-    out = []
-    sep = None
-    for i, tok in enumerate(parts):
-        if i % 2 == 0:
-            out.append((sep, tok))
-        else:
-            sep = tok
-    return out
-
-
 def head(t):
     w = ''
     while t:
@@ -179,15 +155,14 @@ def head(t):
     return t
 
 
-_REDIRECT_OPS = ('>', '>>', '>|', '&>')
 _ROOT_CACHE: dict = {}
 
 
 def _git_root(cwd):
     """git rev-parse --show-toplevel from `cwd`, cached per cwd (a counting
-    pass calls this once per Bash tool_use — the cache keeps it to one
-    shell-out per distinct cwd). "" when not a repo / git missing (fail-open:
-    the "outside the git root" filter below is then skipped, never a false
+    pass calls this once per tool_use — the cache keeps it to one shell-out
+    per distinct cwd). "" when not a repo / git missing (fail-open: the
+    "outside the git root" filter below is then skipped, never a false
     drop)."""
     key = cwd or ''
     if key in _ROOT_CACHE:
@@ -225,334 +200,6 @@ def _repo_relative(root, path):
     if path.startswith(root + "/"):
         return path[len(root) + 1:]
     return path
-
-
-def _expand_token(raw):
-    """Expand a LEADING `~` / `~/` in a write-target token via
-    `os.path.expanduser` (`$HOME`, else the passwd entry — as bash does;
-    an unset `HOME` still resolves). `$NAME` / `${NAME}` intentionally
-    stays LITERAL — a `$…` token is judged AS a repo path, exactly as
-    before Task 6 (owner decision, 2026-09-24, final cut before release:
-    the gate guards the NORMAL flow, not deliberate evasion, and three
-    review passes of bind-detection code for `$`-expansion kept finding
-    one more bypass shape — the whole mechanism, and the code that only
-    existed to serve it, is removed rather than chased further; see the
-    residuals note in hooks/precommit-gate.sh's and
-    hooks/block-subagent-commit.sh's headers)."""
-    return os.path.expanduser(raw) if raw.startswith('~') else raw
-
-
-def _resolve_write_path(raw, cwd, root):
-    if not raw or raw.startswith('/dev/') or raw.startswith('&'):
-        return None
-    raw = _expand_token(raw)
-    if not raw:
-        return None
-    p = raw if os.path.isabs(raw) else os.path.join(cwd, raw)
-    p = os.path.normpath(p)
-    if root:
-        rp = os.path.realpath(root).rstrip('/')
-        ap = os.path.realpath(p)
-        if ap != rp and not ap.startswith(rp + '/'):
-            return None
-        return ap
-    return p
-
-
-_INPUT_REDIRECT_OPS = ('<', '<<', '<<<')
-
-
-def _tokenize_segment(seg):
-    """Punctuation-aware tokens for one already-heredoc-stripped, single-
-    command segment (no &&, ||, ;, |, or newline inside it — segments()
-    already split those out), split into (command_tokens, redirect_targets).
-    An OUTPUT redirect operator, its target, and a bare fd number immediately
-    before the operator are removed from command_tokens — otherwise `cp a b
-    2>/dev/null` reads its own stderr redirect as the copy destination. A
-    fd-duplication target (`2>&1`'s `&1`) is dropped, never resolved as a
-    path; `2>&1` itself never matches (its operator token is `>&`, not `>`).
-    An INPUT redirect operator (`<`, `<<`, `<<<` — the last one also being
-    the literal `<<HEREDOC` placeholder segments() leaves behind for a
-    dropped heredoc body) and its operand are consumed too, but never
-    recorded as a write target — otherwise `tee out.txt <<EOF` reads its own
-    heredoc marker/placeholder as a second file to write. Needs the shell's
-    compound-operator tokenizing (punctuation_chars), unlike toks_of above —
-    that plain shlex.split is for wrapper/flag walking, not for telling `>`
-    apart from `2>&1`. Parse failure -> ([], [])."""
-    try:
-        lex = shlex.shlex(seg, posix=True, punctuation_chars=True)
-        lex.whitespace_split = True
-        toks = list(lex)
-    except ValueError:
-        return [], []
-    cmd_toks, redirects = [], []
-    i = 0
-    while i < len(toks):
-        tok = toks[i]
-        if tok in _REDIRECT_OPS or tok in _INPUT_REDIRECT_OPS:
-            if cmd_toks and cmd_toks[-1].isdigit():
-                cmd_toks.pop()  # the fd number belongs to the redirect, not the command
-            if tok in _REDIRECT_OPS and i + 1 < len(toks):
-                tgt = toks[i + 1]
-                if not tgt.startswith('&'):
-                    redirects.append(tgt)
-            i += 2 if i + 1 < len(toks) else 1
-            continue
-        cmd_toks.append(tok)
-        i += 1
-    return cmd_toks, redirects
-
-
-def _resolve_all(raws, cwd, root):
-    out = []
-    for r in raws:
-        p = _resolve_write_path(r, cwd, root)
-        if p:
-            out.append(p)
-    return out
-
-
-def _positional_args(args, value_flags):
-    """Non-flag arguments, skipping a value-taking flag's own value too."""
-    pos = []
-    i = 0
-    while i < len(args):
-        a = args[i]
-        if a.startswith('-') and a != '-':
-            i += 2 if a in value_flags else 1
-            continue
-        pos.append(a)
-        i += 1
-    return pos
-
-
-def _strip_bsd_sed_i_suffix(args):
-    """BSD/macOS sed's `-i` REQUIRES a backup-suffix argument, even an empty
-    one (`sed -i '' ...`) — bash's idiom for "no backup, portable to both
-    sed dialects". Written as a separate word (no space would glue it, e.g.
-    `-i.bak`), that empty string is a flag VALUE, never the sed script or a
-    file: without this it lands in `_positional_args`' positional list and
-    the drop-first-as-script heuristic then drops the WRONG token (the
-    genuinely empty one), leaving the real script parsed as a second file."""
-    out = []
-    i = 0
-    while i < len(args):
-        out.append(args[i])
-        if args[i] == '-i' and i + 1 < len(args) and args[i + 1] == '':
-            i += 2
-            continue
-        i += 1
-    return out
-
-
-def _command_targets(t):
-    """Write targets from tee / sed -i / perl -pi / cp|mv|install (dest =
-    last arg) / truncate / dd of= / rm|unlink. `t` is the token list AFTER
-    the shared wrapper-skip (head) — the real command past sudo / env /
-    timeout N / VAR=x."""
-    if not t:
-        return []
-    base = os.path.basename(t[0])
-    args = t[1:]
-    out = []
-    if base == 'tee':
-        out.extend(_positional_args(args, set()))
-    elif base in ('sed', 'perl'):
-        if base == 'sed':
-            args = _strip_bsd_sed_i_suffix(args)
-        # sed -i[SUFFIX], flags clustered in any order (-ri, -Ei, -ni); perl
-        # bundles -i with other single-letter one-liner flags (-pi, -npi,
-        # -pi.bak — the in-place flag is always LAST in the cluster, anything
-        # after it is an optional backup suffix). Case-sensitive and
-        # cluster-anchored so `perl -Ilib` (an include-path flag, unrelated
-        # to in-place editing) never false-positives.
-        i_rx = re.compile(r'^-[nrEszu]*i') if base == 'sed' else re.compile(r'^-[nple0-9]*i')
-        has_i = any((a.startswith('-') and a != '-' and not a.startswith('--') and i_rx.match(a))
-                    or a == '--in-place' or a.startswith('--in-place=') for a in args)
-        if has_i:
-            has_script_flag = any(a in ('-e', '-f') for a in args)
-            pos = _positional_args(args, {'-e', '-f'})
-            if not has_script_flag and pos:
-                pos = pos[1:]
-            out.extend(pos)
-    elif base in ('cp', 'mv', 'install'):
-        value_flags = {'-m', '-o', '-g'} if base == 'install' else set()
-        pos = _positional_args(args, value_flags)
-        if pos:
-            out.append(pos[-1])
-    elif base == 'truncate':
-        out.extend(_positional_args(args, {'-s'}))
-    elif base == 'dd':
-        out.extend(a[3:] for a in args if a.startswith('of='))
-    elif base in ('rm', 'unlink'):
-        out.extend(_positional_args(args, set()))
-    return out
-
-
-def _segment_write_targets(seg, cwd, root, depth):
-    if depth > 4:
-        return []
-    cmd_toks, redirect_raw = _tokenize_segment(seg)
-    t = head(cmd_toks)
-    if t and os.path.basename(t[0]) in SHELLS:
-        for k in range(1, len(t)):
-            if t[k] == '-c' and k + 1 < len(t):
-                return _bash_write_targets(t[k + 1], cwd, root, depth + 1)
-        # no -c: a shell running a SCRIPT FILE (`bash run.sh > out.txt`) —
-        # its own redirect is still a write, just not one we can see inside
-        # the script itself.
-        return _resolve_all(redirect_raw, cwd, root)
-    return _resolve_all(redirect_raw + _command_targets(t), cwd, root)
-
-
-_CD_GLOB = set('*?[')
-
-
-_CD_FLAGS = ('-L', '-P', '-e', '-@')
-_ASSIGN_PREFIX_RX = re.compile(r'^[A-Za-z_][A-Za-z0-9_]*=')
-
-
-def _cd_dir(cmd_toks, redirect_raw):
-    """The operand of a PURE `cd [dir]` / `pushd [dir]` segment (bare `cd`
-    -> `~`, home dir; `popd` -> `-`, an automatic giveup — no directory
-    STACK is tracked, only a single cur_cwd), or None when the segment is
-    not a stand-alone directory change: a redirect on it (`cd . >
-    hooks/auth.py` writes hooks/auth.py, it is not just a cd) or more than
-    one operand token left after the strips below (`cd /x & echo ... > f`
-    is one un-split segment — segments() does not split on a bare `&`,
-    security review 2026-09-24 B2) means the segment is a real write too
-    and must still resolve through _segment_write_targets, never be
-    swallowed here. Stripped, in order, before the operand check: a
-    leading `builtin` / `command` wrapper (same spelling either way;
-    `sudo cd` / `env cd` are NOT unwrapped — those do not change the
-    invoking shell's directory anyway); any leading `NAME=value`
-    assignment word(s) — `cd` is a POSIX SPECIAL builtin, so `TMPDIR=/tmp
-    cd dir` still changes directory the same as a bare `cd dir` (the
-    assignment's effect on the shell persists after a special builtin
-    returns, unlike an ordinary command); `cd`'s own flags (`-L`, `-P`,
-    `-e`, `-@`, in any order/repetition) — they select symlink-resolution
-    behaviour, never a second operand (security review 2026-09-24,
-    MAJOR-2)."""
-    if redirect_raw or not cmd_toks:
-        return None
-    t = cmd_toks
-    if t[0] in ('builtin', 'command') and len(t) > 1:
-        t = t[1:]
-    while t and _ASSIGN_PREFIX_RX.match(t[0]):
-        t = t[1:]
-    if not t:
-        return None
-    if t[0] == 'popd':
-        return '-'
-    if t[0] not in ('cd', 'pushd'):
-        return None
-    t = t[1:]
-    while t and t[0] in _CD_FLAGS:
-        t = t[1:]
-    if len(t) > 1:
-        return None
-    return t[0] if t else '~'
-
-
-def _cd_giveup(a):
-    """Unresolvable from the command text alone: `cd -` (previous dir), a
-    literal `$(...)` / backtick command substitution, a bare `$VAR` (this
-    walk only expands `$NAME` against the CURRENT environment, not a value
-    a prior segment may have set), or a glob. Mirrors precommit-gate.sh's
-    `_giveup` for the same reason: unresolvable never fabricates a new
-    directory, it falls open to keeping today's resolution (spec Desired
-    6c, F10)."""
-    if not a or a[0] in '$-' or chr(96) in a or any(c in a for c in _CD_GLOB):
-        return True
-    return False
-
-
-def _bash_write_targets(cmd, cwd, root, depth=0):
-    out = []
-    cur_cwd = cwd
-    dir_failed = False
-    pairs = _segments_with_sep(cmd)
-    for i, (sep_before, seg) in enumerate(pairs):
-        seg = seg.strip()
-        if not seg or seg == '<<HEREDOC':
-            continue
-        cmd_toks, redirect_raw = _tokenize_segment(seg)
-        cd_target = _cd_dir(cmd_toks, redirect_raw)
-        if cd_target is not None:
-            # A single `|` forks a SUBSHELL on each side — a cd immediately
-            # before or after one never reaches a later segment's
-            # directory, in EITHER the current shell (a right-hand cd's
-            # subshell exits, taking its cd with it) or the subshell itself
-            # (a left-hand cd never left its own fork to begin with). `&&`,
-            # `||`, `;` and a newline all stay in the SAME shell process —
-            # a cd there carries forward normally (security review
-            # 2026-09-24, MAJOR-1 fix confirm: `||` does NOT fork a
-            # subshell, only `|` does — `cd src/auth || exit 1; echo x >
-            # login.py` still resolves inside src/auth). Not a giveup on a
-            # pipe — genuinely no effect, so `cur_cwd` / `dir_failed` are
-            # left exactly as they were.
-            next_sep = pairs[i + 1][0] if i + 1 < len(pairs) else None
-            if sep_before == '|' or next_sep == '|':
-                continue
-            if not dir_failed:
-                if _cd_giveup(cd_target):
-                    # Unresolvable -> today's resolution against the HOOK
-                    # cwd, for every later segment too (spec Desired 6c) —
-                    # never left frozen at a stale cur_cwd (security review
-                    # 2026-09-24 B3; mirrors precommit-gate.sh's dir_failed
-                    # fallback to its own hook cwd).
-                    dir_failed = True
-                    cur_cwd = cwd
-                else:
-                    expanded = _expand_token(cd_target)
-                    new_cwd = expanded if os.path.isabs(expanded) \
-                        else os.path.normpath(os.path.join(cur_cwd, expanded))
-                    # A tracked cd must never carry cur_cwd outside the
-                    # root: bash may never have actually made this cd (a
-                    # failed / conditional / piped cd — this is a lexical
-                    # walk, not an executor, so exit status is unknowable),
-                    # so trusting an out-of-root target here would drop
-                    # every later in-repo write as a false "outside the
-                    # repo" (security review 2026-09-24 B3).
-                    if root:
-                        rp = os.path.realpath(root).rstrip('/')
-                        ap = os.path.realpath(new_cwd)
-                        if ap == rp or ap.startswith(rp + '/'):
-                            cur_cwd = new_cwd
-                        else:
-                            dir_failed = True
-                            cur_cwd = cwd
-                    else:
-                        cur_cwd = new_cwd
-            continue
-        out.extend(_segment_write_targets(seg, cur_cwd, root, depth))
-    return out
-
-
-def bash_write_paths(cmd, cwd=None):
-    """The file paths a Bash command writes or removes (bash-writes-are-edits
-    spec R1). Detects redirect targets, tee / sed -i / perl -pi / cp|mv|
-    install destination / truncate / dd of= / rm|unlink; a nested shell's -c
-    string is parsed (like any other segment, its own quoting protects an
-    inner `>` from the outer scan — an operator INSIDE that quoted string
-    that is itself unquoted, e.g. a `-c` string built by string
-    concatenation, is not something this walks); heredoc bodies are data
-    (dropped, unless a shell owns the heredoc — then its body is segments,
-    same as a -c string). Relative paths resolve against `cwd`; paths
-    outside the git root (resolved from `cwd`) are dropped. Cannot parse ->
-    [] (fail-open)."""
-    try:
-        cwd = cwd or os.getcwd()
-        root = _git_root(cwd)
-        seen = set()
-        out = []
-        for p in _bash_write_targets(cmd or '', cwd, root):
-            if p not in seen:
-                seen.add(p)
-                out.append(p)
-        return out
-    except Exception:
-        return []
 
 
 # ── Model class (v2.47.0) ───────────────────────────────────────────────
@@ -931,12 +578,6 @@ def count_test_edits(transcript_path: str, cwd: str | None = None) -> int:
             root = _git_root(cwd or "")
             if is_test_file(_repo_relative(root, _file_from_input(inp))):
                 n += 1
-        elif tool == "Bash":
-            bash_cwd = inp.get("cwd") or cwd
-            root = _git_root(bash_cwd or "")
-            for p in bash_write_paths(inp.get("command") or "", bash_cwd):
-                if is_test_file(_repo_relative(root, p)):
-                    n += 1
     return n
 
 
@@ -1183,15 +824,6 @@ def count_all(
                     test_edits += 1
                 elif is_high_risk_path(path) and is_code_file(path):
                     high_risk_edits += 1
-            elif tool == "Bash":
-                bash_cwd = inp.get("cwd") or cwd
-                root = _git_root(bash_cwd or "")
-                for p in bash_write_paths(inp.get("command") or "", bash_cwd):
-                    p = _repo_relative(root, p)
-                    if is_test_file(p):
-                        test_edits += 1
-                    elif is_high_risk_path(p) and is_code_file(p):
-                        high_risk_edits += 1
             elif tool in AGENT_TOOLS:
                 name = _bare_agent_name(inp.get("subagent_type"))
                 # A brief that declares write-mode is a writer, not a
@@ -1561,10 +1193,6 @@ def selfdo_state(transcript_path: str, target: str | None = None, root: str | No
                     if tool in EDIT_TOOLS:
                         if is_product_code(_file_from_input(inp), root):
                             n_e += 1
-                    elif tool == "Bash":
-                        for p in bash_write_paths(inp.get("command") or "", root):
-                            if is_product_code(p, root):
-                                n_e += 1
                     elif tool in AGENT_TOOLS:
                         if _bare_agent_name(inp.get("subagent_type")) in WRITER_ROLE_AGENTS:
                             n_w += 1
