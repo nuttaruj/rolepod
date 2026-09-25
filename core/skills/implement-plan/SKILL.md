@@ -18,16 +18,16 @@ Turns an approved plan into a built, reviewed diff, one task at a time, each del
 
 - Lint the plan before the first task: `plan-lint.sh <plan>` (`~/.rolepod/bin/`). FAIL (no **Command**, no checkboxes, a broken Blocked-by graph) → back to `write-plan`; never build on it.
 - No `plan-lint.sh` → check by eye: a **Command** and checkboxes per task, an acyclic Blocked-by graph, a **Failure policy**.
-- Read the touched files end-to-end, match the style of 2-3 nearby files (invent no patterns), and confirm every symbol the plan expects exists. A planned file missing where expected → verify it, or re-plan.
+- Whoever builds the task reads the touched files end-to-end, matches the style of 2-3 nearby files (invent no patterns), and confirms every symbol the plan expects exists — the task owner on a delegated task, the Lead only on its own R1 (trivial edit) work (no subagents → the Lead). A planned file missing where expected → verify it, or re-plan. The Lead's part on a delegated task is the plan lint and the **Read first** names (Delegate).
 - Baseline: before the first edit, run the task's verify command once on the untouched tree and record what already fails as limitations. The task owner does it for a delegated task; the Lead only for its own R1 (trivial edit) work, never both.
 - An R2 (one file + test) or spec-as-plan R3 (multi-file) inline checklist is the same contract: run each step's command. Scope grows past one file (its test file included) → stop and write the real plan.
-- Verify each task by running its **Command** verbatim, never a re-derived check. No Command named → `write-plan` for one.
-- Command passes → flip EVERY `- [ ]` under that task to `- [x]`. A **Test / evidence** proof the Command does not run (browser, manual) is not covered by the flip; do it first.
+- Whoever builds verifies the task by running its **Command** verbatim, never a re-derived check — the task owner on a delegated task (its decision brief carries the tail), the Lead only on its own R1 work. No Command named → `write-plan` for one.
+- Command passes → flip EVERY `- [ ]` under that task to `- [x]` — on a delegated task the Lead flips them from the owner's Command tail (`rolepod-ticket log` in the ship line; without it, by hand). A **Test / evidence** proof the Command does not run (browser, manual) is not covered by the flip; do it first.
 - Command fails → the task's **On fail**, else the plan's **Failure policy**, else (an R2 checklist has neither) `debug-issue`. The same criterion failing a 2nd time → `debug-issue`, whose Second opinion caps the attempts (no `debug-issue` → the Lead re-traces once; a 2nd failure → stop and report to the user).
 - Before the first task commit, record the base sha (`git rev-parse HEAD`) under the plan's `## Changes during build`.
 - Shared plan (issue numbers in the header) → claim the task's issue before touching a file (write-plan's `references/team-issues.md`).
 
-Done when: the plan lints clean (or passes the by-eye check), the baseline is recorded, and every file the task touches has been read.
+Done when: the plan lints clean (or passes the by-eye check), the baseline is recorded, and every file the task touches has been read — by the task owner on a delegated task, by the Lead on its own R1 work.
 
 ### 2. Test first at the agreed seams
 

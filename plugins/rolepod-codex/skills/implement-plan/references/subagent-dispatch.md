@@ -32,6 +32,8 @@ Closest specialist by path / concern / strategy:
 - `billing-engineer` — billing, credits, subscription
 - `ai-ml-engineer` — LLM, RAG, SDK, prompt cache
 - `data-scientist` — analytics, pipelines, dashboards
+- `devops-sre` — infra, CI/CD, containers, deploy, release
+- `performance-engineer` — latency, profiling, load test, bundle size, query speed
 - `content-strategist` — written output; pass `audience: dev|user|prospect`
 
 A write mandate goes only to the role that owns the path:
