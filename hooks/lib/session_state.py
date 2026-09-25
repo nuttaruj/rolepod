@@ -1040,43 +1040,77 @@ def _evidence_root(diff_dir):
     return root
 
 
+def _evidence_dirs(diff_dir):
+    """The evidence roots for `diff_dir` (2026-09-25, D6, same fix reused by
+    `gate_evidence` and `gate_hold_predict`): `_evidence_root(diff_dir)`
+    (the session cwd's git root) AND `diff_dir`'s own toplevel
+    (`_git_root`), deduplicated by realpath to one when they coincide (the
+    ordinary non-worktree case — every writer hook already puts its state
+    there, so this stays a no-op there). A commit made from a session's own
+    checkout into a linked worktree (`cd <wt> && git commit`, `git -C <wt>
+    commit`) otherwise loses every anchored external pass AND every
+    external-fail row a cross-family run wrote to the WORKTREE's own
+    `.rolepod/evidence/` — reading only the session root missed both.
+    "" entries (no git root either way) dropped."""
+    roots = []
+    seen = set()
+    for r in (_evidence_root(diff_dir), _git_root(diff_dir)):
+        if not r:
+            continue
+        real = os.path.realpath(r)
+        if real in seen:
+            continue
+        seen.add(real)
+        roots.append(r)
+    return roots
+
+
 def gate_evidence(hook_input: dict, diff_dir: str) -> tuple[int, int, int, int, int]:
     """One evidence tally for both the commit gate and the edit-time
     reminder (spec Desired 10, 2026-09-25): the window computed once at
     `diff_dir` (the commit's resolved directory for the gate, the edited
-    file's directory for the reminder), the evidence files pinned to
-    `_evidence_root` — returns (test_edits, high_risk_edits, reviewers,
-    strong_reviewers, external). MAX per source, never summed: the
-    transcript scan (count_all) and the hook-auto phase-log "dispatch"
-    backstop (nested Agent dispatches the transcript walk's cap dropped).
-    Claude-native only: no cross-CLI provenance rows, no bash-write scope
-    tracker — this function runs only on Claude (precommit-gate.sh's ROLEPOD_LEAD_CLI check
-    excludes every other CLI before calling it). Anchored external passes
-    (XREV) ADD on top of reviewers / strong_reviewers, same as the gate's
-    own long-standing rule, and are also returned on their own for the
-    satellite-first hold."""
+    file's directory for the reminder) — returns (test_edits,
+    high_risk_edits, reviewers, strong_reviewers, external). MAX per
+    source, never summed: the transcript scan (count_all) and the
+    hook-auto phase-log "dispatch" backstop (nested Agent dispatches the
+    transcript walk's cap dropped). Claude-native only: no cross-CLI
+    provenance rows, no bash-write scope tracker — this function runs
+    only on Claude (precommit-gate.sh's ROLEPOD_LEAD_CLI check excludes
+    every other CLI before calling it). Anchored external passes (XREV)
+    ADD on top of reviewers / strong_reviewers, same as the gate's own
+    long-standing rule, and are also returned on their own for the
+    satellite-first hold.
+
+    Evidence is read from every `_evidence_dirs(diff_dir)` root (D6,
+    2026-09-25), not `_evidence_root(diff_dir)` alone. Per dir: the
+    hook-auto dispatch counts still combine by MAX (the existing rule,
+    now also across dirs — never summed), the anchored external count by
+    SUM (distinct files in distinct dirs; every existing forgery check in
+    `_anchored_external_count` — raw under that dir's own `external/`,
+    realpath inside it, >= 500 B — holds per dir). The window stays one
+    `_window_since_epoch(diff_dir)` call for every dir."""
     diff_dir = diff_dir or "."
     transcript_path = hook_input.get("transcript_path") or ""
     since_epoch = _window_since_epoch(diff_dir)
-    root = _evidence_root(diff_dir)
 
     test_edits, high_risk_edits, reviewers, strong = count_all(
         transcript_path, since_epoch, hook_input.get("cwd"))
 
-    ev_dir = os.path.join(root, ".rolepod", "evidence") if root else ""
-    phase_log = os.path.join(ev_dir, "phase-log.jsonl") if ev_dir else ""
-    if phase_log and os.path.isfile(phase_log):
+    external = 0
+    for root in _evidence_dirs(diff_dir):
+        ev_dir = os.path.join(root, ".rolepod", "evidence")
+        phase_log = os.path.join(ev_dir, "phase-log.jsonl")
+        if not os.path.isfile(phase_log):
+            continue
         r1, s1 = _phase_log_reviewer_counts(
             "dispatch", since_epoch, phase_log, "hook-auto", True)
         reviewers = max(reviewers, r1)
         strong = max(strong, s1)
+        external += _anchored_external_count(since_epoch, ev_dir)
 
-    external = 0
-    if ev_dir and os.path.isfile(phase_log):
-        external = _anchored_external_count(since_epoch, ev_dir)
-        if external > 0:
-            reviewers += external
-            strong += external
+    if external > 0:
+        reviewers += external
+        strong += external
 
     return test_edits, high_risk_edits, reviewers, strong, external
 
@@ -1116,19 +1150,24 @@ def _external_fail_count(since_epoch, ev_dir):
 
 
 def gate_hold_predict(diff_dir: str) -> int:
-    """External-fail row count at `diff_dir`'s window/root — gate-reminder.sh
-    calls this ONLY in the one state where it also calls the cross-family
-    runner (a high-risk edit, strong > 0, external == 0): a usable pool with
-    an external-fail row since the window means the gate's satellite-first
-    hold does NOT apply (an internal strong reviewer clears it), so the
-    reminder must not predict a block there (MEDIUM-4, round-1 review)."""
+    """External-fail row count at `diff_dir`'s window, SUMMED over every
+    `_evidence_dirs(diff_dir)` root (D6, 2026-09-25: precommit-gate.sh's own
+    XFAM_FAILS tally calls this same function now, not just gate-reminder.sh)
+    — a usable pool with an external-fail row since the window means the
+    gate's satellite-first hold does NOT apply (an internal strong reviewer
+    clears it). gate-reminder.sh calls this ONLY in the one state where it
+    also calls the cross-family runner (a high-risk edit, strong > 0,
+    external == 0), so the reminder must not predict a block there
+    (MEDIUM-4, round-1 review)."""
     diff_dir = diff_dir or "."
     since_epoch = _window_since_epoch(diff_dir)
-    root = _evidence_root(diff_dir)
-    ev_dir = os.path.join(root, ".rolepod", "evidence") if root else ""
-    if not ev_dir or not os.path.isfile(os.path.join(ev_dir, "phase-log.jsonl")):
-        return 0
-    return _external_fail_count(since_epoch, ev_dir)
+    total = 0
+    for root in _evidence_dirs(diff_dir):
+        ev_dir = os.path.join(root, ".rolepod", "evidence")
+        if not os.path.isfile(os.path.join(ev_dir, "phase-log.jsonl")):
+            continue
+        total += _external_fail_count(since_epoch, ev_dir)
+    return total
 
 
 def selfdo_state(transcript_path: str, target: str | None = None, root: str | None = None) -> str:

@@ -807,40 +807,21 @@ fi
 # `-z "$XFAM_HELD"` is defensive (no earlier block sets it now) — keeps this
 # `if` correct unchanged if a hold is ever added above it again.
 if [ -z "$XFAM_HELD" ] && [ -n "$XFAM_POOL_ON" ] && [ "${XREV:-0}" -eq 0 ] && [ "$STRONG_REVIEWERS" -gt 0 ]; then
+  # external-fail rows from BOTH evidence roots (D6, same class as
+  # gate-evidence above, 2026-09-25): a runner run as `cd <worktree> && …
+  # cross-family.sh …` logs its failure in the WORKTREE's own evidence, not
+  # the session root's — session_state.py's gate_hold_predict sums
+  # _external_fail_count over both dirs at $DIFF_DIR's own window, the same
+  # one SINCE_EPOCH computed above (S11 pins the two windows equal). No
+  # inline fallback: this branch runs only on Claude (the ROLEPOD_LEAD_CLI
+  # check above already excluded every other CLI) and session_state.py ships
+  # beside this file in every tree that reaches here — same as gate-evidence
+  # above, which has no such fallback either. Missing $SESSION_STATE/python3
+  # → XFAM_FAILS stays 0, same fail-open default as before.
   XFAM_FAILS=0
-  if [ -f "$EV_ROOT/phase-log.jsonl" ]; then
-    XFAM_FAILS=$(python3 -I -c '
-import json, sys, datetime
-since, path = sys.argv[1], sys.argv[2]
-cut = None
-if since:
-    try:
-        cut = datetime.datetime.fromtimestamp(int(since), datetime.timezone.utc)
-    except Exception:
-        cut = None
-n = 0
-try:
-    for line in open(path):
-        try:
-            d = json.loads(line)
-        except Exception:
-            continue
-        if d.get("phase") != "external-fail":
-            continue
-        if cut is not None:
-            try:
-                ts = datetime.datetime.fromisoformat((d.get("ts") or "").replace("Z", "+00:00"))
-                if ts.tzinfo is None:
-                    ts = ts.replace(tzinfo=datetime.timezone.utc)
-                if ts < cut:
-                    continue
-            except Exception:
-                continue
-        n += 1
-except OSError:
-    pass
-print(n)
-' "$SINCE_EPOCH" "$EV_ROOT/phase-log.jsonl" 2>/dev/null || echo 0)
+  if [ -f "$SESSION_STATE" ] && command -v python3 >/dev/null 2>&1; then
+    XFAM_FAILS=$(python3 "$SESSION_STATE" gate-hold-predict "$DIFF_DIR" 2>/dev/null || echo 0)
+    case "$XFAM_FAILS" in ''|*[!0-9]*) XFAM_FAILS=0 ;; esac
   fi
   if [ -n "$XFAM_POOL" ] && [ "${XFAM_FAILS:-0}" -eq 0 ] 2>/dev/null; then
     XFAM_HELD="cross-family pool usable ($XFAM_POOL), no anchored external pass since the last commit — $STRONG_REVIEWERS internal reviewer(s) do NOT clear a high-risk diff while a different CLI is available. "
