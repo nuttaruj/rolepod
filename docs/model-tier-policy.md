@@ -100,7 +100,7 @@ On Claude, `precommit-gate.sh` blocks the commit of a high-risk diff without a f
 
 `TIER_MODELS` — and every effort pin — governs the CLI that is the **Lead**
 (its subagents, its role files, its fan-out). A cross-family external
-(`rolepod-cross-family --kind review|consult|critique`) is another owner's
+(`scripts/cross-family.sh --kind review|consult|critique` in the `cross-family` skill) is another owner's
 CLI: it runs whatever that CLI's config sets as default, and the runner
 never passes a model or effort flag (the phase-log records `model:
 default`). The only place a model flag is legitimate on an external call is

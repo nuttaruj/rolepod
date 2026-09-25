@@ -1,6 +1,6 @@
-# Rolepod Skill Catalog (Core 10 + 2 helpers + 1 command + 1 on-demand)
+# Rolepod Skill Catalog (Core 10 + 2 helpers + 1 command + 2 on-demand)
 
-Rolepod ships **14 skills total**: Core 10 (1 router + 9 workflow phase skills) plus two helper skills — `cross-family` (another CLI's review / critique / consult / draft) and `tdd-flow` (red → green at a seam) — called by the phase skills that need them, plus one explicit-invoke command — `deepen-codebase` (architecture report → pick a card → write-spec) — and one on-demand skill, `write-prototype` (a throwaway layout or logic demo that answers one spec question; write-spec offers it). There are no legacy compatibility shim skill files in the install tree. Old skill names are preserved only as documentation in [legacy-skill-map.md](legacy-skill-map.md).
+Rolepod ships **15 skills total**: Core 10 (1 router + 9 workflow phase skills) plus two helper skills — `cross-family` (another CLI's review / critique / consult / draft) and `tdd-flow` (red → green at a seam) — called by the phase skills that need them, plus one explicit-invoke command — `deepen-codebase` (architecture report → pick a card → write-spec) — and two on-demand skills: `write-prototype` (a throwaway layout or logic demo that answers one spec question; write-spec offers it) and `rolepod-stats` (the project's evidence report, when the user asks). There are no legacy compatibility shim skill files in the install tree. Old skill names are preserved only as documentation in [legacy-skill-map.md](legacy-skill-map.md).
 
 No entry doc embeds a skill index. Each skill's `description:` is its routing surface, shown by the CLI; `using-rolepod` routes by its own table, so the Lead does not spend context choosing among dozens of tiny workflow fragments. Deep domain expertise lives in the 15 specialist agents.
 
@@ -13,6 +13,7 @@ No entry doc embeds a skill index. Each skill's `description:` is its routing su
 | — | Helpers (`cross-family`, `tdd-flow`) | 2 | Model-invoked by the phase skill that names them; allowed, never required |
 | — | Command (`deepen-codebase`) | 1 | Explicit `/deepen-codebase` invocation only (`disable-model-invocation: true`): scope → one full-strength sub-agent (the Lead's model, shell access) walks the codebase and reproduces its claims → the Lead verifies → HTML report of deepening candidates (six fields per card, Strength badge, bugs found on the way, Top recommendation) → the user picks a card and is offered a `write-spec` on it |
 | — | On demand (`write-prototype`) | 1 | write-spec offers it for a layout / state-logic question, or the user types /write-prototype; needs a settled spec (Product mode + one question); builds layout variants or a clickable logic demo in a spike worktree, never merged |
+| — | On demand (`rolepod-stats`) | 1 | The user asks for the evidence report (`/rolepod-stats` on Claude, `$rolepod-stats` on Codex, or in words); runs its own `scripts/stats.sh` over `.rolepod/evidence/` — tier distribution, verify / review verdicts, strong-dispatch overrides, bypasses |
 | **2** | Specialist public skills | 0 default | Domain depth lives in agents |
 | **3** | Legacy compatibility shims | 0 | Removed; see migration map |
 

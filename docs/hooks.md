@@ -39,7 +39,7 @@ The one hard checkpoint, at `git commit`.
 - **Private docs (every CLI)** — a staged path under `docs/rolepod/` → deny. Details under Private working docs below.
 - **High-risk diff (Claude only)** — a staged path matching the high-risk regex or `.rolepod/risk-paths` → deny until a strong reviewer has FINISHED since the last commit. Fix: the writer loop's `security-engineer` + a strong `universal-reviewer` (the external from the cross-family pool when it is on).
 - **Session risk without a test (Claude only)** — the session edited high-risk code, wrote no test, and the staged diff is not high-risk → deny until a failing test is written or a reviewer has run.
-- **Everything else** — silent. `test-diff-lint` findings, when present, print as one line. Each judged commit appends a `phase: gate` row that `rolepod-ticket log` copies into the plan.
+- **Everything else** — silent. `test-diff-lint` findings, when present, print as one line. Each judged commit appends a `phase: gate` row that `scripts/ticket.sh log` in `implement-plan` copies into the plan.
 - **What counts as high-risk** — the path regex (auth / billing / payment / migration / secret / crypto / token / oauth / webhook … — canonical list in the script, parity-pinned by lean-surface) plus `.rolepod/risk-paths`. Test-named files (`*.test.*`, `test_*.py`, `*_test.go` …) and prose files never count. A bare directory name (`tests/`, `spec/`) is not an exemption.
 - **Evidence (Claude)** — counted since the last commit (a linked worktree follows its own HEAD reflog): the Lead transcript plus the session's sub-agent transcripts (60 newest), MAX with the phase-log `dispatch` rows of provenance `hook-auto`, plus anchored external passes. A write-mode brief never counts as a review; `qa-tester` never counts; a strong role dispatched at an explicit cheap or balanced model counts as a plain reviewer.
 - **Satellite-first hold** — with the cross-family pool on, a high-risk logic diff clears on an internal strong reviewer only after the pool was tried (an anchored external pass, or an `external-fail` line). Pool off → nothing forced.
@@ -132,7 +132,7 @@ A Workflow `agent()` call defaults to the Lead's model and no frontmatter can ch
 
 - **Effect** — repo name, branch, dirty count, the last 5 commits, hot files (7 days), the last phase-log line, and an **Open plan** pointer: the newest `docs/rolepod/plans/*.md` that has at least one checked AND one unchecked box (a 0-done plan is never shown).
 - **Other CLIs** — where `session-lifecycle` does not run, this loader registers the session lock and adds the sibling warning.
-- **Cross-family** — no pool file and a second CLI installed → one context line naming `rolepod-cross-family --setup`, never a question.
+- **Cross-family** — no pool file and a second CLI installed → one context line pointing at the `cross-family` skill's setup steps, never a question.
 - **Bypass** — none (context only).
 
 ### `always-on-loader.sh` — SessionStart (Claude)
@@ -187,7 +187,7 @@ cli = codex claude                      # members that may WRITE a ticket (--kin
 ```
 
 - **Members** — `codex`, `claude`, `agy`, `cursor`, `opencode` (a `gemini` line is skipped). List every CLI you use: only the Lead's own CLI is skipped at run time, so one file serves every Lead. The model family is recorded for information and never filters a member.
-- **Setup** — never asked unprompted. When the user asks, the Lead runs `rolepod-cross-family --setup`, asks the review order then the implement order, and writes the file with `--setup review="…" implement=…`.
+- **Setup** — never asked unprompted. When the user asks, the Lead runs `scripts/cross-family.sh --setup` in the `cross-family` skill, asks the review order then the implement order, and writes the file with `--setup review="…" implement=…`.
 - **Time** — a member is killed when it goes SILENT for `stall` seconds (`--stall` > `stall=` > 600), not when it is slow; the wall-clock cap is runaway insurance only (review 7200 s detached / 600 s foreground, consult 300, critique 600). `--detach` runs the chain as a job under `.rolepod/evidence/external/jobs/<id>/`; `--collect <id>` waits, `--jobs` lists.
 - **Refusals** — a partial-slice diff (its files have edits it does not contain) → exit 7, attach `git diff HEAD` or commit first (`--partial-ok` only when the user asked for the staged part); a second live review job → exit 8 until `--collect` or `--kill`.
 - **Rounds** — the external runs once per R4 task, round 1 only; round 2+ is internal (`security-engineer` re-checks its own and the external's BLOCKER / MAJOR findings on a high-risk path, strong `universal-reviewer` the rest). A pre-existing issue on an untouched path is one note line and never drives the verdict.
@@ -210,9 +210,9 @@ Specs, plans, contracts and hand-off briefs under `docs/rolepod/` describe what 
 
 One extended regex per line: bare or `+` adds, `-` excludes a path the built-in list would match, `#` comments. Read by `precommit-gate.sh`, `gate-reminder.sh`, `session_state.py` and `plan-lint.sh --brief` (awk — keep patterns POSIX ERE, no `\b` / `\S`). Absent file = built-ins only; unreadable fails open. A prose file is never a risk path, even with a `+` line. Seed it from measurement: the paths with the highest bugfix-commit density.
 
-## Ticket helper — `rolepod-ticket` (v2.155.0)
+## Ticket helper — `ticket.sh` (v2.155.0)
 
-`scripts/ticket.sh`, on PATH after install and shipped in every plugin tree, turns a plan task's mechanics into two Lead calls:
+`scripts/ticket.sh` in the `implement-plan` skill turns a plan task's mechanics into two Lead calls:
 
 - **`start <plan> <N> [--base <branch>]`** — runs `plan-lint`, writes the owner brief, creates the worktree + branch, prints the dispatch line and a `ship:` line with `<commit gate>` / `<subject>` / `<note>` to fill in. Idempotent.
 - **The ship chain** — one Bash call after the owner returns; a red step stops it before the commit:
@@ -220,7 +220,6 @@ One extended regex per line: bare or `+` adds, `-` excludes a path the built-in 
   2. `git -C <worktree> commit -m '<subject>'`.
   3. `finish <worktree>` — fast-forward merge, remove the worktree and branch.
   4. `log <plan> <N> --sha … --note …` — flip the checkboxes, note the change, name newly unblocked tasks; once every role-owned task is done, print the combined-review range and write its diff to `.rolepod/evidence/review/<plan-slug>.diff`.
-- **`fleet <plan> [--base] [--max <N>] [--gate '<cmd>']`** (Claude) — runs `start` for every ready role-owned task and prints one `{scriptPath, args}` for `scripts/ticket-fleet.js`. `--gate` runs once first (red → no worktree created); a task already in flight is skipped; a per-plan lock stops two overlapping runs.
 
 Test levels, printed in every brief: the task's Command runs after each edit and last before returning; the whole-repo suite runs once per release, by the Lead. A red `integrate` goes back to the task owner in a new dispatch — the Lead never repairs it.
 
