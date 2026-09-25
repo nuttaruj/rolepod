@@ -115,5 +115,5 @@ Single-use-helper and defensive-check pairs → `examples/simplify-examples.md`.
 
 ## Next phase
 
-- Part of a larger plan → `implement-plan`, next task. Uncovered a real bug → `debug-issue`. If neither is available, the Lead fixes the bug at its root with a failing test first (→ `tdd-flow`), then re-runs this skill's suite.
+- Part of a larger plan → `implement-plan`, next task. Uncovered a real bug → `debug-issue`. If neither is available, the runner (the Lead without sub-agents) fixes the bug at its root with a failing test first (→ `tdd-flow`), then re-runs this skill's suite.
 - Cleanup complete → `check-work`, then `finish-work`; if neither is available, attach the report and ask the user whether to ship.

@@ -22,7 +22,7 @@ Turns an approved plan into a built, reviewed diff, one task at a time, each del
 - An R2 (one file + test) or spec-as-plan R3 (multi-file) inline checklist is the same contract: run each step's command. Scope grows past one file (its test file included) → stop and write the real plan.
 - Whoever builds verifies the task by running its **Command** verbatim, never a re-derived check — the task owner on a delegated task (its decision brief carries the tail), the Lead only on its own R1 work. No Command named → `write-plan` for one.
 - Command passes → flip EVERY `- [ ]` under that task to `- [x]` — on a delegated task the Lead flips them from the owner's Command tail (`rolepod-ticket log` in the ship line; without it, by hand). A **Test / evidence** proof the Command does not run (browser, manual) is not covered by the flip; do it first.
-- Command fails → the task's **On fail**, else the plan's **Failure policy**, else (an R2 checklist has neither) `debug-issue`. The same criterion failing a 2nd time → `debug-issue`, whose Second opinion caps the attempts (no `debug-issue` → the Lead re-traces once; a 2nd failure → stop and report to the user).
+- Command fails → the task's **On fail**, else the plan's **Failure policy**, else (an R2 checklist has neither) `debug-issue`. The same criterion failing a 2nd time → `debug-issue`, whose Second opinion caps the attempts (no `debug-issue` → the runner (the Lead without sub-agents) re-traces once; a 2nd failure → stop and report to the user).
 - Before the first task commit, record the base sha (`git rev-parse HEAD`) under the plan's `## Changes during build`.
 - Shared plan (issue numbers in the header) → claim the task's issue before touching a file (write-plan's `references/team-issues.md`).
 

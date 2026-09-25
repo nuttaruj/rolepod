@@ -1,6 +1,6 @@
 <!-- Plan examples for write-plan. Two scenarios, each a good/bad pair. -->
 <!-- Read the WHOLE file — the contrast between good and bad IS the lesson. -->
-<!-- Scenario 1 is a sequential single-owner plan; scenario 2 is parallel -->
+<!-- Scenario 1 is a sequential plan (one owner per task, no parallel tracks); scenario 2 is parallel -->
 <!-- multi-agent. Most plans are sequential — parallel is the exception. -->
 
 # Plan Examples
@@ -10,7 +10,7 @@ why the good version wins. Compare the pair — do not read one half alone.
 
 ---
 
-## Scenario 1: Orders CSV export (sequential, single owner)
+## Scenario 1: Orders CSV export (sequential)
 
 ### Good
 
@@ -36,7 +36,7 @@ docs/rolepod/specs/orders-csv-export-2026-05-20.md (approved)
   in on-screen table order
 - [ ] Expected failing signal: NameError: uninitialized constant OrdersCsv
 - [ ] Command: bundle exec rspec spec/services/orders_csv_spec.rb
-- Owner: Lead
+- Owner: backend-developer
 - Done when: spec green, columns match the report table
 
 ### Task 2: export action
@@ -47,7 +47,7 @@ docs/rolepod/specs/orders-csv-export-2026-05-20.md (approved)
 - [ ] Test / evidence: request spec — filtered export row count == table count;
   an empty range returns a header-only CSV
 - [ ] Command: bundle exec rspec spec/requests/reports_spec.rb
-- Owner: Lead
+- Owner: backend-developer
 - Done when: request spec green; 30s timeout not exceeded on a 10k-order range
 - On fail: timeout on the 10k range → switch to the chunked streamed
   response (Risks) instead of debugging the buffered path.
@@ -60,7 +60,7 @@ docs/rolepod/specs/orders-csv-export-2026-05-20.md (approved)
 - [ ] Test / evidence: system spec — click exports the current filter; button
   is disabled mid-generation
 - [ ] Command: bundle exec rspec spec/system/reports_export_spec.rb
-- Owner: Lead
+- Owner: frontend-developer
 - Done when: system spec green
 
 ## High-risk surfaces touched
@@ -78,7 +78,7 @@ Reverse — every task traces to a spec line; anything that does not is cut:
   excludes it → cut to a follow-up, not built here.
 
 ## Parallel layout
-Sequential — single owner.
+Sequential — one owner per task, no parallel tracks.
 
 ## Done criteria
 All 3 specs green; the exported CSV row set equals the filtered table.

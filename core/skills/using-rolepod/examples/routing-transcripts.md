@@ -38,7 +38,7 @@ User: "the checkout test was green yesterday, it's red now"
 Routing: Build (bug) → debug-issue
 Reason: a regression — root cause unknown. Not a feature, not a plan.
 Skipping: Define + Plan.
-Next step: reproduce with one command, then trace upstream — do not patch.
+Next step: brief the path owner from the symptom (the red test, its error, the diff since yesterday's green); it reproduces with one command and traces upstream — no patch before the trace.
 
 ---
 
