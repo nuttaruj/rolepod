@@ -82,7 +82,7 @@ Name the owner in your return; never edit it.
 - Migration forward + rollback dry-run (if schema changed)
 ```
 
-Add an `Assuming:` line and continue when:
+Add `Assuming: <reading> · Risk: <what> · Verify by: <how>` to the Return and continue when:
 - the brief names no test for a task;
 - the API contract leaves the request / response shape unclear;
 - the sequential vs parallel order is unclear while other engineers edit the same module.

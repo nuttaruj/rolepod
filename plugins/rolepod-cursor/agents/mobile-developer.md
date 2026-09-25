@@ -72,7 +72,7 @@ Name the owner in your return; never edit it.
 **Distribution:** TestFlight / Play internal / OTA status
 ```
 
-Add an `Assuming:` line and continue when:
+Add `Assuming: <reading> · Risk: <what> · Verify by: <how>` to the Return and continue when:
 - the target platforms are unclear (iOS-only vs both);
 - the cross-platform vs native choice for a new module is not made in the brief;
 - app-store metadata (screenshots, copy) has no named owner.

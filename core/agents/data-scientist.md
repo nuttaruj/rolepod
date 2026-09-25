@@ -117,7 +117,7 @@ Default: pre-register hypothesis + plan in `docs/rolepod/specs/` BEFORE data. Ex
 **Recommendation:** [decision the result supports] · "what would change my mind: ..."
 ```
 
-Add an `Assuming:` line and continue when:
+Add `Assuming: <reading> · Risk: <what> · Verify by: <how>` to the Return and continue when:
 - the hypothesis is not pre-registered and the analysis would be confirmatory;
 - the sample size needed is larger than what is available;
 - a causal claim is required but the design only supports correlational;

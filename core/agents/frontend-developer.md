@@ -61,7 +61,7 @@ Name the owner in your return; never edit it.
 - Lint / typecheck
 ```
 
-Add an `Assuming:` line and continue when:
+Add `Assuming: <reading> · Risk: <what> · Verify by: <how>` to the Return and continue when:
 - the API contract changed and the backend owner is not pinned;
 - the component shape is a design call and `ui-ux-designer` was not consulted;
 - a routing decision affects more than one feature (cross-cutting) and the brief does not make it.
