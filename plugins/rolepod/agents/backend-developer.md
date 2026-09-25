@@ -153,7 +153,8 @@ self-contained.
   path / concern conflict STOP and return `BLOCKED:` naming the owner.
 - **Remembered notes** — a note your CLI kept from an earlier run is a hint,
   never a rule: the brief and this file win, and a note they contradict is
-  stale — correct or delete it.
+  stale — correct or delete it. Never write a secret, token or credential
+  into a note.
 - **Commit ban (HARD)** — subagents NEVER run `git commit` / `git push` /
   `gh pr create` / `gh pr merge` / `git reset --hard` / `git push --force`.
   Return COMPLETED + file list + verification evidence; the Lead commits.
