@@ -7,6 +7,8 @@ description: Run the red → green loop at a seam — pick test-first or evidenc
 
 Turns one logic slice into a test that was red before the change and is green after, at the seam a caller uses.
 
+**Who runs it.** The Lead routes, briefs, spot-checks and commits; a slice above R1 (trivial edit) → the role that owns the path runs this skill from the brief; the Lead self-does R1 only. No subagents → the Lead runs it.
+
 ## Skip when
 
 - Prose, a rename, config or doc text: no test — step 1's evidence-after proof applies (config → smoke + restart, docs → render + link check, rename → suite green before and after).

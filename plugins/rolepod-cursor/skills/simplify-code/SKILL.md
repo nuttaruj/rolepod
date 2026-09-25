@@ -14,7 +14,11 @@ Turns code that does not earn its complexity into less code with the same behavi
 - Mid-feature and the cut is not needed to unblock the change. A required prefactor is not a skip (step 6).
 - The behavior itself must change → `write-spec` or `write-plan`.
 
-Cuts touching module boundaries or APIs → `system-architect`; auth / secret / token / crypto paths → `security-engineer`; DRY / smell / structure cleanup → `universal-reviewer`. Brief: the file region, the existing tests, the user's intent (cleanup only, or cleanup + behavior change).
+**Who runs the cuts.** The Lead routes, briefs, spot-checks and commits; the role that owns the path (`backend-developer` / `frontend-developer` / …) runs this skill's steps from the brief. Brief: the file region, the existing tests and their suite command, the user's intent (cleanup only, or cleanup + behavior change).
+- Cuts touching module boundaries or APIs → the owner returns `BLOCKED:` for a `system-architect` decision, and cuts after it.
+- Auth / secret / token / crypto paths → `security-engineer` reviews the cut diff.
+- DRY / smell / structure cleanup → `universal-reviewer` reviews the cut diff as usual.
+
 No subagents → the Lead does it.
 
 ### 1. Green baseline

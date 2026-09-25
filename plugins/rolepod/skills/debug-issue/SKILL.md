@@ -14,13 +14,14 @@ Turns an unknown failure into a root-cause fix by narrowing, not guessing: repro
 - The work is a planned feature or a broad refactor → `implement-plan` / `simplify-code`.
 - The fix spans several files or needs sequencing → `write-plan` once the root cause is known.
 
-**Who runs the loop.** Iteration is the costliest work to run in the Lead's context; delegate it:
-- the role that owns the path (`backend-developer` / `frontend-developer` / …) writes the reproducing failing test, then the fix; `qa-tester` only for a user-visible (E2E / UI) repro;
-- `security-engineer` — auth / token / injection symptoms;
+**Who runs the loop.** Iteration is the costliest work to run in the Lead's context; the Lead routes, briefs from the symptom, spot-checks and commits, and the path owner runs this skill:
+- the role that owns the path (`backend-developer` / `frontend-developer` / `billing-engineer` / …) reproduces, writes the failing test, then the fix, for every symptom class, auth / token / injection included;
+- auth / token / injection symptoms → `security-engineer` writes the exploit repro test (it serves as the owner's failing test) and reviews the owner's diff;
+- `qa-tester` only for a user-visible (E2E / UI) repro; its red test or report returns to the Lead, who briefs the path owner to make it pass;
 - `performance-engineer` — latency / memory regressions;
 - `devops-sre` — infra / deploy / CI failures.
 
-Brief: the exact error, stack, repro command, hypothesis, files touched since last green.
+Brief (the symptom, not a repro): the exact error and stack, where it shows, when it started, the diff since the last green; the owner reproduces and hypothesises.
 No subagents → the Lead does it.
 
 ### 1. Read the error
