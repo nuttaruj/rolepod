@@ -14,3 +14,8 @@ tools:
   - WebFetch
   - WebSearch
   - Skill
+  # browser servers only, never all MCP
+  - mcp__claude-in-chrome
+  - mcp__playwright
+  - mcp__chrome-devtools
+  - mcp__plugin_rolepod-uiproof_rolepod-uiproof

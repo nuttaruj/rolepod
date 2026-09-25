@@ -25,15 +25,23 @@ passing typecheck or build. Pick the strongest tool available.
    — similar atomic orchestration if its tools are registered. CDP-level
    access (console / network / performance) is sharper than Playwright for
    bugs that sit below the rendered DOM. Web only, Chromium-only.
-4. **Playwright (direct)** — if the repo has its own Playwright setup:
+4. **The CLI's own browser, or the user's** — an in-app browser the CLI
+   exposes, or the user's Chrome through an extension (Claude in Chrome):
+   navigate, read the page, capture, assert — observe-only (below).
+5. **Playwright (direct)** — if the repo has its own Playwright setup:
    drive the real flow, assert on the DOM, capture a screenshot.
-5. **Component test renderer** (Testing Library, etc.) — renders the
+6. **Component test renderer** (Testing Library, etc.) — renders the
    component in isolation; proves render + props, not full-page layout.
-6. **Ask the user** — last resort, still a real observation: describe the
+7. **Ask the user** — last resort, still a real observation: describe the
    page / flow and the exact states to capture; the user runs the dev
    server and sends screenshots, which you then read and assert against.
 
 Never ask the user to screenshot for you when any tool above is available.
+
+**Any browser carrying the user's real session is observe-only** — tier 4,
+or a DevTools / Playwright MCP attached to the user's Chrome: no purchase,
+send, delete, publish, payment, form submit or account change there. A flow
+that needs one runs on a test account or goes to the user.
 
 This is a fallback chain. Pick the first tier that is actually available
 and use it; do not descend to a weaker tier when a stronger one is present.

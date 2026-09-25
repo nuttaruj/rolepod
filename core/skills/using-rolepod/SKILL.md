@@ -61,7 +61,7 @@ The FIRST matching row fires:
 | clear UI edit (design, screenshot, exact acceptance) | Build → `implement-plan`, Owner `frontend-developer` (design system / CSS / a11y → `ui-ux-designer`) |
 | write test cases / report a bug, no fix wanted | Verify → `qa-tester` agent (no agent → the Lead writes the case table); a found bug → `debug-issue` report-only |
 | is this done / does it (or the UI) work / verify | Verify → `check-work` |
-| audit UX / a11y of one page or flow | Verify → `check-work` UI verification (the Lead, or a sub-agent that holds a browser tool) → ONE `ui-ux-designer` brief for `review-code` Axes (UI) on that observation (no sub-agents → the Lead runs both) |
+| audit UX / a11y of one page or flow | Verify → ONE `ui-ux-designer` brief: `check-work` UI verification + `review-code` Axes (UI); no browser reachable → the Lead observes and the designer audits that observation (no sub-agents → the Lead runs both) |
 | edit / fix on a high-risk path | Define → `write-spec` → `write-plan` → `implement-plan` (per-task review) |
 | clear doc edit; CI, Docker, deploy, infra config | Build → `implement-plan`, Owner `content-strategist` (`audience:` set) / `devops-sre`; R1 → the Lead |
 | review / look at the diff; audit / find all X across the repo | Review → `review-code`; a whole-repo sweep scopes first (References) |

@@ -17,6 +17,10 @@ tools:
   - WebFetch
   - WebSearch
   - Skill
+  - mcp__claude-in-chrome
+  - mcp__playwright
+  - mcp__chrome-devtools
+  - mcp__plugin_rolepod-uiproof_rolepod-uiproof
 ---
 
 # QA + Test Automation
