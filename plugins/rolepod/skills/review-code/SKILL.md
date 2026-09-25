@@ -60,7 +60,7 @@ Done when: every dispatched reviewer has returned a full report and its findings
 
 ### 3. Axes
 
-- **Depth** — R4: every axis, Trace in full. An R2/R3 lens: the diff + direct callers of what it changes; other axes that far only. Skip what tooling enforces (lint, formatter, typecheck, the commit gate). Re-run the suite only when a finding needs it.
+- **Depth** — R4: every axis, Trace in full. An R2/R3 lens: the diff + direct callers of what it changes; other axes that far only. Skip what tooling enforces (lint, formatter, typecheck, the commit gate). Never re-run the suite: a finding that needs a run names its repro command under Questions, and the task owner (else the Lead) runs it.
 - **Intent** — first: the goal in one sentence; a smaller way, or should the change exist at all?
 - **Trace** — the diff is the entry, not the scope: walk each claimed behavior (entry → call sites → branches → state → exit) through the seams into unchanged code; a surprise is a finding signal. Untouched code past the claims and seams is a Question, not a BLOCKER. Code-intel callers / impact when connected.
 - **Correctness** — logic vs spec, edge cases, off-by-one, null / undefined / empty.

@@ -42,7 +42,7 @@ Done when: each acceptance criterion has an evidence type.
 
 Verifier per evidence type: `performance-engineer` · `security-engineer` · `devops-sre` (CI / deploy smoke). Brief: change manifest + acceptance criteria + tools; several types → ONE message, same frozen change.
 **User-visible E2E — the one `qa-tester` point.** The feature (or ship group) changes what a user sees and every task that changes it is built → ONE `qa-tester` dispatch that runs only the user-visible flows the spec's Testing decisions / acceptance criteria name — a flow the spec gives no reason for is not tested (the `tdd-flow` rule). Never per task, never as a reviewer, never from finish-work; unit-suite failures are the writer's.
-No subagent, or no E2E harness → the Lead's browser observation (UI verification below) on those same flows.
+No E2E harness → that same `qa-tester` dispatch observes those flows in a browser (UI verification below); no subagents → the Lead's browser observation on those same flows.
 No subagents → the Lead runs the table's evidence itself: module tests + typecheck / lint; API → curl + assert the shape.
 A subagent's COMPLETED is a claim: read its diff and run the named test; no evidence → reject.
 
