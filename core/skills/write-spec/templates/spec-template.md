@@ -40,7 +40,10 @@
  one line of why). What a good test is here: one behavior through the public
  interface, one logical assertion, expected values from this spec. Edge / error /
  race cases: only those a Success criterion names or an R4 surface needs (auth
- deny path, money math, migration rollback, shared-state race). Prior-art test
+ deny path, money math, migration rollback, shared-state race). A user-visible
+ flow worth a permanent E2E test (a critical path such as sign-in or payment) is
+ named here as an E2E seam; every other user-visible flow is observed once at
+ Verify. Prior-art test
  files to copy. The Lead picks these; they are approved with the spec at its
  gate. No logic changes → `None — evidence-after: <the check>`.]]
 

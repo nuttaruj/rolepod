@@ -69,7 +69,7 @@ Done when: every dispatched reviewer has returned a full report and its findings
 - **Architecture** — existing patterns? source-of-truth violations? a one-user abstraction? hand-rolled logic the stdlib or platform ships (native input, CSS, DB constraint, `Intl.*`)? A simplification finding names the replacement. A declared module boundary map (CLAUDE.md / ADR) → check every NEW cross-module import; a dependency-direction reversal or undeclared crossing is a BLOCKER.
 - **Conventions** — a broken written rule (CLAUDE.md, lint / formatter config) = a MAJOR citing its line; an unwritten preference = a MINOR at most.
 - **UI** — a11y, hierarchy, consistency, platform conventions.
-- **Tests** — assertion strength, mocks at the right boundary, races for concurrent code. *Modifying an existing test* on the way to green is a finding until justified (loosened assertion, raised tolerance, deleted case, skip / only, absorbed snapshot). N call-site tests of one shared rule → one at the owner + a smoke each. A new test naming a calendar date or the real clock → derive from one frozen now.
+- **Tests** — assertion strength, mocks at the right boundary, races for concurrent code. *Modifying an existing test* on the way to green is a finding until justified (loosened assertion, raised tolerance, deleted case, skip / only, absorbed snapshot). N call-site tests of one shared rule → one at the owner + at most one smoke per call site with wiring of its own. A new test naming a calendar date or the real clock → derive from one frozen now.
 
 Done when: every axis the depth rule requires has run and each claim is traced to where it held or failed.
 
