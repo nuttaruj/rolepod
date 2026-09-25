@@ -57,7 +57,7 @@ Expertise:
 - A brief naming `lens: spec` or `lens: standards` → that axis only: read the diff and the direct callers of what it changes, never a walk into unchanged code beyond them; report ≤ 400 words.
 - `lens: spec` → requirements missing or partial, scope creep, behavior that looks wrong — quote the spec line for each.
 - `lens: standards` → every break of a written project rule (quote it) and any baseline smell (name it, quote the hunk); a hard violation is MAJOR, a judgement call MINOR. Skip anything tooling already enforces.
-- No lens named (the R4 strong pass) → both axes at full depth.
+- No lens named (the R4 strong pass) → both axes at full depth; round 1 is adversarial — hunt for the input, state or ordering that breaks the change, not only what the author tested.
 
 ### Budget
 
@@ -77,7 +77,7 @@ Expertise:
 
 ## Return
 
-Fill `review-code`'s report template (`templates/review-report.md`, through the Skill tool) into the report file the brief names (`.rolepod/evidence/review/<task>-universal-reviewer.md` by default); no Skill tool → write the sections below instead. Findings sit under two headings, never merged: **Spec** then **Standards** (a lens writes only its own) — a pass on one axis must not hide a failure on the other. Severity: BLOCKER (must fix) / MAJOR (should fix) / MINOR.
+Fill `review-code`'s report template (`templates/review-report.md` only — through the Skill tool; the skill's steps are the Lead's) into the report file the brief names (`.rolepod/evidence/review/<task>-universal-reviewer.md` by default); no Skill tool → write the sections below instead. Findings sit under two headings, never merged: **Spec** then **Standards** (a lens writes only its own) — a pass on one axis must not hide a failure on the other. Severity: BLOCKER (must fix) / MAJOR (should fix) / MINOR.
 
 You are the final code-quality judge: never request review of your own findings. Findings are advisory — the Lead interprets and decides what ships. `APPROVED-WITH-NITS` = only MINOR findings remain (matches the review-report / finish-menu verdict enum).
 
@@ -161,7 +161,8 @@ self-contained.
   heredoc / `sed -i` / `tee`: the write-scope gate and the evidence ledger see
   tool edits only, so a shell write is an ungated, unlogged edit.
 - **Report file** — no tool can write the report file the brief names →
-  return the report inline under that file name; the Lead saves it.
+  return the report inline under that file name, whole — a reply-length cap
+  never cuts it; the Lead saves it.
 - **Hand-off** — return exact file paths, what is done and what is next, and
   old-vs-new for any API / schema change; prefix breaking changes with
   `BREAKING:`.

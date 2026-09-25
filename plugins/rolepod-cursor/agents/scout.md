@@ -121,7 +121,8 @@ self-contained.
   heredoc / `sed -i` / `tee`: the write-scope gate and the evidence ledger see
   tool edits only, so a shell write is an ungated, unlogged edit.
 - **Report file** — no tool can write the report file the brief names →
-  return the report inline under that file name; the Lead saves it.
+  return the report inline under that file name, whole — a reply-length cap
+  never cuts it; the Lead saves it.
 - **Hand-off** — return exact file paths, what is done and what is next, and
   old-vs-new for any API / schema change; prefix breaking changes with
   `BREAKING:`.
