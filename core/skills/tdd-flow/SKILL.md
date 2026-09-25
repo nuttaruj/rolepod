@@ -25,7 +25,7 @@ Done when: the slice is labelled test-first or evidence-after; evidence-after ha
 
 ### 2. Take the agreed seam
 
-Tests go only at an agreed seam, taken in this order: the plan task's seam (the spec's Testing decisions, or a planner-added one) → neither (no spec, no plan) → pick the highest existing seam that reaches the behavior and state it (`Seam: <interface>`) before any test; brand-new code with no existing seam → the new code's public interface, stated the same way. Never a test at a seam nobody named.
+Tests go only at an agreed seam, taken in this order: the plan task's seam (the spec's Testing decisions, or a planner-added one) → neither (no spec, no plan) → pick the highest existing seam that reaches the behavior and state it (`Seam: <interface>`) before any test; brand-new code with no existing seam → the new code's public interface, stated the same way.
 Highest = closest to the caller while still reaching the behavior; the fewest seams; an existing seam over a new one.
 The seam is the public interface a caller uses; the test goes there, never at internals.
 A seam's interface is everything a caller must know: the signature plus its invariants, ordering, error modes and required config. The test asserts those, not the type alone.
@@ -38,7 +38,7 @@ Done when: the agreed seam is stated with the interface contents the test will a
 
 - One behavior, one test, at the agreed seam — the next behavior gets its own test after this one is green. Never a test ahead of a behavior not yet built; never every test up front.
 - One logical assertion per test (several asserts on one outcome count as one).
-- Edge / error / race cases only with a reason: an acceptance criterion names the case, or an R4 (high-risk) floor covers it (the auth deny path, money math, a migration rollback, a race on shared state written concurrently). A bug fix starts from the test that reproduces it.
+- Edge / error / race cases only with a reason: an acceptance criterion names the case, or it is an R4 (high-risk) floor from step 1. A bug fix starts from the test that reproduces it.
 - Changing an existing rule → the nearest inputs whose result must stay the same (the brief's Done when names them) get a pinning test first, green before and after, unless an existing test already holds them.
 - Expected values come from the spec, never from the code's current output or the shared seed.
 - Assert the contract — a value, code, structured field, state or side effect — never wording the requirement did not fix.
@@ -67,13 +67,11 @@ Done when: the new test is green and the task's Command passes; back to step 3 f
 
 ### 6. Self-check the tests
 
-The writer owns the unit tests; a reviewer reads this same list.
+The writer owns the unit tests; a reviewer reads this same list, plus steps 2-3 for every new test and each step 1 R4 floor with its test.
 - Weak assertion = still green after a one-character regression. High-risk logic: flip one operator in a throwaway worktree; nothing red → tighten.
-- Mock boundary: only external boundaries are mocked; no DB mock under an integration test.
-- R4 floors: an auth change has its deny-path test, money math its own test, a migration forward + rollback, a race on shared state written concurrently (e.g. a credit balance) its race test.
-- Size the suite by rules: one test per rule at the rule's owner, one smoke per call site; skip a test whose failure an existing test already catches.
+- Size the suite by rules: one test per rule at the rule's owner; a call site with wiring of its own gets at most one smoke; skip a test whose failure an existing test already catches.
 - A test at a seam nobody agreed, or an edge / error / race case with no reason → a finding: drop it, or record it under `## Follow-ups`.
-- Implementation-coupled (reaches past the interface), tautological (asserts what it set up) or wording-pinned tests → rewrite at the seam.
+- Implementation-coupled (reaches past the interface or mocks an internal), tautological (asserts what it set up) or wording-pinned tests → rewrite at the seam.
 
 Done when: every new test survives the flip, sits at the seam, and each rule has exactly one owner test.
 
