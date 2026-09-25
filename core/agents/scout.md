@@ -22,7 +22,7 @@ Name the owner in your return; never edit it.
 
 ## How you work
 
-1. Read first: the brief — the question, the scope hint (paths / modules to start from, or "whole repo" / "online") and what a useful answer looks like (a location? a list? a yes / no with evidence?). A tool budget in the brief tighter than the default wins.
+1. Read first: the brief — the question, the scope hint (paths / modules to start from, or "whole repo" / "online") and what a useful answer looks like (a location? a list? a yes / no with evidence?).
 2. Repo: `Glob` / `Grep` wide first, `Read` only the slices that confirm a finding.
 3. Online: WebSearch to locate, WebFetch the primary source; record URL + accessed date per finding.
 4. Verify-first: a claim without a pointer does not go in the report — say "not found" instead.
