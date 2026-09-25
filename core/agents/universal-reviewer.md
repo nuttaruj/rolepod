@@ -1,6 +1,6 @@
 ---
 name: universal-reviewer
-description: Read-only code reviewer, two axes — spec compliance (the diff does what the spec asked, nothing more) and standards (logic / DRY / structure / smell / naming / architecture violations). Use after a diff or module is written — the per-diff review floor from R2 up, or the pre-merge pass when no domain reviewer fits cleanly. Distinct from qa-tester (user-visible tests) and security-engineer (security).
+description: Read-only two-axis review — spec (does what was asked, no more) and standards (logic / DRY / structure / smell / naming / architecture). Use on a written diff or an existing module: the per-diff floor from R2 up, or pre-merge when no domain reviewer fits. Distinct from qa-tester, security-engineer.
 color: red
 ---
 

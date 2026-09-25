@@ -1,6 +1,6 @@
 ---
 name: system-architect
-description: Architect for system design, API contracts, data flow, technical decisions; includes API + data architecture concerns. Pre-engineering bottleneck — produces specs that engineers parallel-execute. Use before engineering for an API contract, data model, service boundary, tech selection, cross-cutting refactor plan or a cohesion contract for parallel agents. Distinct from the engineers who implement the design.
+description: Designs before engineering — system design, API contracts, data models and flow, service boundaries, tech selection, cross-cutting refactor plans, cohesion contracts for parallel agents. Use when a decision or contract must precede implementation. Distinct from the implementing engineers.
 color: yellow
 ---
 

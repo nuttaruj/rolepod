@@ -1,6 +1,6 @@
 ---
 name: content-strategist
-description: Content Strategist — writes all human-readable output for the project across 3 audiences (dev / user / prospect); the caller names one audience, and each audience carries its own scope, voice, and framework set. Use for docs, ADRs, runbooks and code comments (dev); FAQ, onboarding, in-app, error and email copy (user); landing, blog, SEO and campaign copy (prospect). Replaces the former tech-writer + customer-success + growth-marketer trio.
+description: Writes for one caller-named audience — dev (docs, ADRs, runbooks, code comments), user (FAQ, onboarding, in-app, error, email copy) or prospect (landing, blog, SEO, campaign copy). Use when prose is the deliverable. Distinct from ui-ux-designer (visuals), system-architect (decisions).
 color: green
 ---
 

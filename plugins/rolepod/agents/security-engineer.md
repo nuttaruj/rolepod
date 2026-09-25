@@ -1,6 +1,6 @@
 ---
 name: security-engineer
-description: Security Engineer for vuln audit (OWASP Top 10, CVE-aware), pentest, auth / token / session / crypto review, dependency supply-chain audit, system hardening and compliance (GDPR / SOC2 / HIPAA / PCI). Owns the security concern across all layers. Use for a security audit, or on a high-risk diff as the R4 security floor beside one strong pass (adversarial in round 1 only). Distinct from universal-reviewer (logic / DRY / standards).
+description: Owns security — vuln audit (OWASP Top 10, CVEs), pentest, auth / token / session / crypto review, supply-chain audit, hardening, compliance (GDPR / SOC2 / HIPAA / PCI). Use when an audit is due, or as the R4 floor on a high-risk diff beside one strong pass. Distinct from universal-reviewer.
 model: opus
 effort: xhigh
 memory: project

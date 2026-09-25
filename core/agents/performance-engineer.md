@@ -1,6 +1,6 @@
 ---
 name: performance-engineer
-description: Performance Engineer focused on load testing, profiling, latency optimization, bundle size, DB query performance, and p95/p99 metrics; owns the speed concern. Use when something measurable is slow, a perf regression is suspected after a deploy, or a launch needs a load test. Distinct from qa-tester (user-visible tests) and security-engineer (security).
+description: Owns speed — load testing, profiling, latency, memory leaks, bundle size, DB query performance, p95 / p99. Use when something measurable is slow or leaking, a perf regression is suspected after a deploy, or a launch needs a load test. Distinct from qa-tester (user-visible tests).
 color: orange
 ---
 

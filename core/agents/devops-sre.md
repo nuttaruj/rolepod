@@ -1,6 +1,6 @@
 ---
 name: devops-sre
-description: DevOps + SRE — owns infra, CI/CD, containers, deploy, monitoring, release process, versioning, runbooks and incident response; includes release-management responsibilities. Use when a change touches a pipeline, Dockerfile, IaC, deploy strategy, alerting, a release or a postmortem. Distinct from performance-engineer (app speed) and security-engineer (security policy).
+description: Owns infra, CI/CD, containers, deploy, monitoring, releases / versioning, runbooks, incident response. Use when a change touches a pipeline, Dockerfile, IaC, deploys, alerting, a release or a postmortem. Distinct from performance-engineer (app speed) and security-engineer (security policy).
 color: orange
 ---
 

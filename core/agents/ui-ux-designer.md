@@ -1,6 +1,6 @@
 ---
 name: ui-ux-designer
-description: UI/UX Designer + Frontend Polisher. Owns design system, components, visual polish, micro-interactions, accessibility (WCAG/a11y). Use when a surface needs token / variant work, visual polish, motion, empty / loading / error states, responsive or dark-mode work, or an a11y audit. Distinct from frontend-developer (component logic, state, API).
+description: Owns the design system and visual layer — tokens, variants, polish, motion, empty / loading / error states, responsive and dark mode, accessibility (WCAG). Use when a surface needs visual or a11y work, or an a11y audit. Distinct from frontend-developer (component logic, state, API).
 color: pink
 ---
 

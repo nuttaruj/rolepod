@@ -1,6 +1,6 @@
 ---
 name: qa-tester
-description: QA + Test Automation. Owns what the user sees — E2E / UI / browser / contract / smoke tests, test automation, flake elimination, spec-first test-case design. Use once per feature at check-work Verify on the spec's user-visible flows, for a user-visible repro or E2E flake (debug-issue, manage-context), or when the user asks for test cases or a bug report with no fix; never per task, never from finish-work, never a reviewer. Unit tests belong to the writer of the code.
+description: Owns user-visible tests (E2E / UI / contract / smoke) and flakes. Use when a feature reaches check-work Verify (once), a user-visible repro or E2E flake needs a test, or the user asks for test cases / a bug report; never per task, from finish-work or as a reviewer. Unit tests are the writer's.
 color: red
 ---
 
