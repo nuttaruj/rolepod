@@ -9,10 +9,9 @@
  *     module with no `default` export fails to load there:
  *     `PluginModule.LoadError: Plugin must export a default definition`).
  *   `makeCore({ directory, homedir })` holds the state both entry points
- *   read: the edit ledger, phase-log writers, the bypass log, and the
- *   cross-CLI session-lock registry. Nothing new is enforced — the same
- *   gates are re-attached to whichever event shape the running opencode
- *   speaks.
+ *   read: the bypass log and the cross-CLI session-lock registry. Nothing
+ *   new is enforced — the same gates are re-attached to whichever event
+ *   shape the running opencode speaks.
  *
  * Scope (deliberately small — every handler fails open):
  *   1. session start → register this session in the cross-CLI lock
@@ -24,24 +23,18 @@
  *      one-shot system-part nudge (v2 — server plugins have no toast).
  *   2. post-compact → re-anchor nudge (manage-context Re-anchor after compaction): trust disk over
  *      summary — plan checkboxes, git log, spec.
- *   3. tool result → session evidence tracker: edit/write(/patch, v2) on a
- *      high-risk path vs a test path, via the CLI-neutral edit ledger
- *      (<worktree>/.rolepod/evidence/edits.jsonl, windowed since the last
- *      commit — the same evidence every other CLI's gate reads).
- *   4. commit attempt → precommit gate: `git commit` while high-risk paths
- *      were edited and ZERO test evidence exists → throw (opencode's
- *      documented deny mechanism, both versions). ROLEPOD_GATES_SOFT=1
- *      logs the bypass to .rolepod/evidence/bypass.log instead (same file
- *      `make stats` reads).
- *   5. fix-loop-breaker (v2.133.0) → the SHARED Claude hook script
+ *   3. commit attempt → precommit gate: `git commit` while `docs/rolepod/`
+ *      is staged (and no `.rolepod/docs-tracked` opt-in) → throw (opencode's
+ *      documented deny mechanism, both versions). Evidence-based
+ *      reviewer/test gating is Claude-only now (spec Desired 10,
+ *      2026-09-25) — this CLI gets the private-docs deny only.
+ *   4. fix-loop-breaker (v2.133.0) → the SHARED Claude hook script
  *      (plugins/rolepod-shared/*.sh, byte-identical to hooks/) runs behind
  *      an opencode→Claude translator: bash exit codes feed the loop
  *      breaker. The nudge it emits is appended to the tool result the
  *      model reads — v1: `output.output`; v2: a pushed text part on
  *      `result.content`, or appended when `content` is a string.
- *   6. task/subagent dispatch → the dispatch-proof phase-log line the
- *      commit-gate's reviewer-evidence reading depends on.
- *   7. route record → the assistant's routing line (R-tier + skill) is
+ *   5. route record → the assistant's routing line (R-tier + skill) is
  *      recorded into phase-log.jsonl for `make stats`. opencode keeps no
  *      transcript file: v1 reads it back via the SDK client at
  *      `session.idle`; v2 has no idle in headless runs, so the `context`
@@ -54,7 +47,7 @@
  *
  * Every handler is wrapped so a failure never breaks the user's session —
  * a hygiene shim must never cost more than the hygiene it buys. The gate
- * only ever denies on POSITIVE evidence (risk edits seen, no test edits) —
+ * only ever denies on POSITIVE evidence (a staged private doc) —
  * unknown payload shapes fall through to allow, never to block.
  */
 
@@ -97,19 +90,15 @@ function runCore(name, input) {
   }
 }
 
-// v2.134.0: edit evidence lives in the CLI-neutral ledger
-// (<worktree>/.rolepod/evidence/edits.jsonl via rolepod-shared/edit-ledger.py),
-// windowed since the last commit — the same evidence every other CLI's gate reads.
-function ledger(args) {
+// Private working docs (v2.80.0, opencode v2.176.0): docs/rolepod/ is never
+// committed. Staged-path check only — no session transcript to read on this
+// CLI, so the evidence-based reviewer/test gate stays Claude-only (spec
+// Desired 10, 2026-09-25).
+function stagedPrivateDocs(dir) {
   try {
-    const script = path.join(SHARED, "edit-ledger.py")
-    if (!fs.existsSync(script)) return ""
-    const r = spawnSync("python3", ["-I", script, ...args], { encoding: "utf8", timeout: 3000, stdio: ["ignore", "pipe", "ignore"] })
-    return r.status === 0 ? String(r.stdout || "").trim() : ""
-  } catch { return "" }
-}
-function lastCommitEpoch(dir) {
-  try { return execSync("git log -1 --format=%ct", { cwd: dir, stdio: ["ignore", "pipe", "ignore"] }).toString().trim() } catch { return "" }
+    const out = execSync("git diff --cached --name-only", { cwd: dir, stdio: ["ignore", "pipe", "ignore"] }).toString()
+    return out.split("\n").filter((f) => /^docs\/rolepod\//.test(f)).slice(0, 5)
+  } catch { return [] }
 }
 
 const REANCHOR_MSG =
@@ -133,14 +122,12 @@ function shouldWarnSiblings(activeSiblings) {
   return activeSiblings > 0 && process.env.ROLEPOD_ALLOW_SHARED_WORKTREE !== "1"
 }
 
-function gateMessage(riskEdits) {
+function gateMessage(files) {
   return (
-    "rolepod precommit gate: this session edited " +
-    `${riskEdits} high-risk path(s) (auth/billing/migration/security` +
-    "-class) since the last commit with zero test evidence (edit ledger). Run the check-work skill (or " +
-    "add/run a test touching the changed surface) before `git " +
-    "commit`. Intentional override: ROLEPOD_GATES_SOFT=1 (logged to " +
-    ".rolepod/evidence/bypass.log, surfaced by `make stats`)."
+    "rolepod precommit gate BLOCKED — private working docs staged: " +
+    `${files}. docs/rolepod/ is never committed. Fix: git restore ` +
+    "--staged docs/rolepod; make sure .gitignore lists docs/rolepod/. " +
+    "Repo tracks them on purpose → create .rolepod/docs-tracked, commit again."
   )
 }
 
@@ -456,36 +443,6 @@ function makeCore({ directory, homedir } = {}) {
   const dir = directory || process.cwd()
   const hd = homedir || os.homedir()
 
-  const phaseLogAppend = (line) => {
-    try {
-      const worktree = worktreeRoot(dir)
-      if (!worktree) return
-      const evDir = path.join(worktree, ".rolepod", "evidence")
-      fs.mkdirSync(evDir, { recursive: true })
-      fs.appendFileSync(path.join(evDir, "phase-log.jsonl"), JSON.stringify(line) + "\n")
-    } catch { /* fail open */ }
-  }
-
-  const logBypass = () => {
-    try {
-      const worktree = worktreeRoot(dir)
-      if (!worktree) return
-      const evDir = path.join(worktree, ".rolepod", "evidence")
-      fs.mkdirSync(evDir, { recursive: true })
-      fs.appendFileSync(
-        path.join(evDir, "bypass.log"),
-        JSON.stringify({
-          ts: new Date().toISOString(),
-          hook: "opencode-precommit-gate",
-          var: "ROLEPOD_GATES_SOFT",
-          reason: "unreasoned",
-        }) + "\n",
-      )
-    } catch {
-      /* fail open */
-    }
-  }
-
   // Registers `id` in the worktree's lock dir and returns the count of
   // OTHER active (non-stale) sibling locks — the caller decides how to
   // surface that (v1: a toast; v2: a one-shot system-part nudge).
@@ -527,7 +484,7 @@ function makeCore({ directory, homedir } = {}) {
 
   return {
     directory: dir, homedir: hd,
-    ledger, lastCommitEpoch, phaseLogAppend, logBypass, registerLock,
+    stagedPrivateDocs, registerLock,
     runCore, isGitCommit, worktreeRoot,
     RISK_RE, TEST_RE_CI, TEST_RE_CS, isTestPath, VALUE_OPTS,
   }
@@ -614,25 +571,12 @@ export const RolepodPlugin = async ({ directory, client }) => {
     "tool.execute.after": async (input, output) => {
       const tool = String(input?.tool ?? "")
       const args = input?.args ?? output?.args ?? {}
-      try {
-        if (tool === "edit" || tool === "write") {
-          const fp = String(args?.filePath ?? args?.file_path ?? "")
-          if (fp) core.ledger(["append", "opencode", fp, "--cwd", directory || process.cwd()])
-        }
-      } catch {
-        /* fail open — evidence tracking must never break an edit */
-      }
       // Shared cores: the nudge rides on the tool result the model reads.
       try {
         const sid = String(input?.sessionID ?? sessionId ?? "")
         const claudeTool = TOOL_MAP[tool]
         if (sid && claudeTool && typeof output?.output === "string") {
           const notes = []
-          if (tool === "task") {
-            // Reviewer dispatch evidence for the commit gate (same line Codex / Cursor write).
-            const agent = String(args?.subagent_type ?? "")
-            if (agent) core.phaseLogAppend({ ts: new Date().toISOString().replace(/\.\d{3}Z$/, "Z"), phase: "dispatch-proof", cli: "opencode", agent_type: agent, model: "", provenance: "hook-stdin" })
-          }
           if (tool === "bash") {
             const exit = output?.metadata?.exit
             const m = core.runCore("fix-loop-breaker", {
@@ -650,24 +594,22 @@ export const RolepodPlugin = async ({ directory, client }) => {
     },
 
     "tool.execute.before": async (input, output) => {
-      let block = false
-      let riskEdits = 0
+      let blockedFiles = null
       try {
         if (String(input?.tool ?? "") !== "bash") return
         const cmd = String(output?.args?.command ?? "")
         if (!core.isGitCommit(cmd)) return
         const dir = directory || process.cwd()
-        const counts = core.ledger(["count", core.lastCommitEpoch(dir), "--cwd", dir]).split(/\s+/)
-        const testEvidence = parseInt(counts[0] || "0", 10) || 0
-        riskEdits = parseInt(counts[1] || "0", 10) || 0
-        if (riskEdits > 0 && testEvidence === 0) {
-          if (process.env.ROLEPOD_GATES_SOFT === "1") core.logBypass()
-          else block = true
+        const worktree = core.worktreeRoot(dir)
+        if (!worktree) return
+        const files = core.stagedPrivateDocs(worktree)
+        if (files.length && !fs.existsSync(path.join(worktree, ".rolepod", "docs-tracked"))) {
+          blockedFiles = files.join(" ")
         }
       } catch {
         /* fail open — unknown payload shape must never block */
       }
-      if (block) throw new Error(gateMessage(riskEdits))
+      if (blockedFiles) throw new Error(gateMessage(blockedFiles))
     },
   }
 }
@@ -802,24 +744,22 @@ export default {
 
     try {
       await ctx.tool.hook("execute.before", (e) => {
-        let block = false
-        let riskEdits = 0
+        let blockedFiles = null
         try {
           const tool = String(e?.tool ?? "")
           if (tool !== "shell" && tool !== "bash") return
           const cmd = String(e?.input?.command ?? "")
           if (!core.isGitCommit(cmd)) return
-          const counts = core.ledger(["count", core.lastCommitEpoch(directory), "--cwd", directory]).split(/\s+/)
-          const testEvidence = parseInt(counts[0] || "0", 10) || 0
-          riskEdits = parseInt(counts[1] || "0", 10) || 0
-          if (riskEdits > 0 && testEvidence === 0) {
-            if (process.env.ROLEPOD_GATES_SOFT === "1") core.logBypass()
-            else block = true
+          const worktree = core.worktreeRoot(directory)
+          if (!worktree) return
+          const files = core.stagedPrivateDocs(worktree)
+          if (files.length && !fs.existsSync(path.join(worktree, ".rolepod", "docs-tracked"))) {
+            blockedFiles = files.join(" ")
           }
         } catch {
           /* fail open — unknown payload shape must never block */
         }
-        if (block) throw new Error(gateMessage(riskEdits))
+        if (blockedFiles) throw new Error(gateMessage(blockedFiles))
       })
     } catch (error) {
       console.error("rolepod: execute.before hook not registered:", error)
@@ -834,21 +774,11 @@ export default {
           const sid = String(e?.sessionID ?? "")
           const result = e?.result
 
-          if (tool === "edit" || tool === "write" || tool === "patch") {
-            const fp = String(input?.path ?? input?.filePath ?? input?.file_path ?? "")
-            if (fp) core.ledger(["append", "opencode", fp, "--cwd", directory])
-          }
-
           const claudeTool = TOOL_MAP[tool]
           if (!sid || !claudeTool || !result) return
           const text = resultText(result)
 
           const notes = []
-          if (tool === "subagent") {
-            // Reviewer dispatch evidence for the commit gate (same line Codex / Cursor write).
-            const agent = String(input?.agent ?? "")
-            if (agent) core.phaseLogAppend({ ts: new Date().toISOString().replace(/\.\d{3}Z$/, "Z"), phase: "dispatch-proof", cli: "opencode", agent_type: agent, model: "", provenance: "hook-stdin" })
-          }
           if (tool === "shell") {
             const exit = result?.metadata?.exit
             const m = core.runCore("fix-loop-breaker", {

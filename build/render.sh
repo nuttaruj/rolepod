@@ -322,7 +322,6 @@ render_claude() {
     echo "render: missing $adapter_dir/hooks.json" >&2; exit 1
   fi
   cp "$REPO_DIR/hooks"/*.sh "$plugin_dst/hooks/" 2>/dev/null || true
-  cp "$REPO_DIR/hooks"/*.py "$plugin_dst/hooks/" 2>/dev/null || true   # edit-ledger.py (v2.134.0)
   # always-on-core — the judgment core emitted at runtime by
   # always-on-loader.sh. The .md.tmpl source resolves {{INCLUDE}} of shared
   # fragments into the shipped .md, so doctrine is single-sourced from
@@ -349,7 +348,7 @@ render_claude() {
 # Committed (repo root):
 #   .agents/plugins/marketplace.json                 (marketplace catalog)
 #   plugins/rolepod-codex/.codex-plugin/plugin.json  (plugin manifest)
-#   plugins/rolepod-codex/hooks/hooks.json + *.sh    (hooks.json + subagent-model-log.sh
+#   plugins/rolepod-codex/hooks/hooks.json + *.sh    (hooks.json + agent-sync.sh
 #                                                     from the adapter; 7 shared scripts
 #                                                     render-copied from hooks/)
 #   plugins/rolepod-codex/skills/<name>/SKILL.md     (copied from core/skills)
@@ -412,27 +411,24 @@ render_codex() {
   done
   cp "$output" "$plugin_dst/agents/AGENTS.rolepod.md"
 
-  # Hooks — the 8 shared scripts come straight from canonical hooks/ (same
+  # Hooks — the 7 shared scripts come straight from canonical hooks/ (same
   # single-source rule as render_claude above and render_antigravity below);
-  # only hooks.json + subagent-model-log.sh + agent-sync.sh are genuinely
-  # Codex-specific. subagent-write-scope.sh is not bundled — Codex has no
+  # only hooks.json + agent-sync.sh are genuinely Codex-specific.
+  # subagent-write-scope.sh is not bundled — Codex has no
   # Edit/Write/MultiEdit/NotebookEdit tools of its own to gate.
   # NOTE: hooks/lib/session_state.py is deliberately NOT copied — the codex
   # tree never shipped it and precommit-gate.sh degrades gracefully without.
   mkdir -p "$plugin_dst/hooks"
   cp "$plugin_src/hooks/hooks.json" "$plugin_dst/hooks/hooks.json"
-  cp "$plugin_src/hooks/subagent-model-log.sh" "$plugin_dst/hooks/subagent-model-log.sh"
   cp "$plugin_src/hooks/agent-sync.sh" "$plugin_dst/hooks/agent-sync.sh"
   # terse-core — the opt-in output layer the AGENTS.md pointer names.
   render_template "$REPO_DIR/hooks/terse-core.md.tmpl" \
     "$plugin_dst/hooks/terse-core.md"
   local h
-  for h in gate-reminder precommit-gate project-context-loader claim-verify-nudge \
+  for h in precommit-gate project-context-loader claim-verify-nudge \
            block-subagent-commit session-lifecycle test-diff-lint fix-loop-breaker; do
     cp "$REPO_DIR/hooks/$h.sh" "$plugin_dst/hooks/$h.sh"
   done
-  # edit-ledger.py (v2.134.0): gate-reminder writes it on apply_patch, precommit-gate reads it.
-  cp "$REPO_DIR/hooks/edit-ledger.py" "$plugin_dst/hooks/edit-ledger.py"
   # hooks/lib/ (session_state.py, route_check.py) ships here too (v2.128.1):
   # claim-verify-nudge, gate-reminder, session-lifecycle and precommit-gate
   # resolve `$(dirname "$0")/lib/...` — without it the Codex copies ran their
@@ -599,7 +595,6 @@ render_cursor() {
   for h in precommit-gate test-diff-lint; do
     cp "$REPO_DIR/hooks/$h.sh" "$plugin_dst/scripts/shared/$h.sh"
   done
-  cp "$REPO_DIR/hooks/edit-ledger.py" "$plugin_dst/scripts/shared/edit-ledger.py"
   cp "$REPO_DIR/hooks/lib/route_check.py" "$plugin_dst/scripts/shared/route_check.py"   # stop → route record (v2.135.0)
   chmod +x "$plugin_dst/scripts/shared/"*.sh 2>/dev/null || true
 
@@ -651,7 +646,7 @@ render_antigravity() {
   # Agents — md + YAML frontmatter (agy subagents reuse the gemini shape).
   render_agents "gemini" "$plugin_dst/agents"
 
-  # Hooks — agy-native event wiring (hooks.json at the PLUGIN ROOT) + four
+  # Hooks — agy-native event wiring (hooks.json at the PLUGIN ROOT) + three
   # agy-native scripts. Contract measured live on agy 1.2.3 (2026-09-16):
   # events sit under ONE name key ({"rolepod": {...}} — a flat top-level
   # manifest fails to parse and no hook ever fires), commands are relative
@@ -666,7 +661,7 @@ render_antigravity() {
     echo "render: missing $adapter_dir/hooks/hooks.json" >&2; exit 1
   fi
   local h
-  for h in session-start model-log pre-tool stop-unlock; do
+  for h in session-start pre-tool stop-unlock; do
     cp "$adapter_dir/hooks/$h.sh" "$plugin_dst/hooks/$h.sh"
   done
   # Shared commit gate reused verbatim: pre-tool.sh translates agy's
@@ -677,7 +672,6 @@ render_antigravity() {
   for h in precommit-gate test-diff-lint; do
     cp "$REPO_DIR/hooks/$h.sh" "$plugin_dst/hooks/$h.sh"
   done
-  cp "$REPO_DIR/hooks/edit-ledger.py" "$plugin_dst/hooks/edit-ledger.py"
   cp "$REPO_DIR/hooks/lib/route_check.py" "$plugin_dst/hooks/route_check.py"   # Stop → route record (v2.135.0)
   chmod +x "$plugin_dst/hooks/"*.sh 2>/dev/null || true
 
@@ -734,7 +728,6 @@ render_opencode() {
     for h in fix-loop-breaker; do
       cp "$REPO_DIR/hooks/$h.sh" "$out_dir/plugin/rolepod-shared/$h.sh"
     done
-    cp "$REPO_DIR/hooks/edit-ledger.py" "$out_dir/plugin/rolepod-shared/edit-ledger.py"
     cp "$REPO_DIR/hooks/lib/route_check.py" "$out_dir/plugin/rolepod-shared/route_check.py"   # session.idle → route record (v2.135.0)
     chmod +x "$out_dir/plugin/rolepod-shared/"*.sh 2>/dev/null || true
   else

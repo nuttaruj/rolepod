@@ -5,16 +5,11 @@
         "type": "command",
         "command": "hooks/session-start.sh",
         "timeout": 5
-      },
-      {
-        "type": "command",
-        "command": "hooks/model-log.sh",
-        "timeout": 3
       }
     ],
     "PreToolUse": [
       {
-        "matcher": "run_command|write_to_file|replace|edit|edit_file|multi_replace_file_content",
+        "matcher": "run_command",
         "hooks": [
           {
             "type": "command",
