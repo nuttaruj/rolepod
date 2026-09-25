@@ -156,8 +156,10 @@ self-contained.
   `gh pr create` / `gh pr merge` / `git reset --hard` / `git push --force`.
   Return COMPLETED + file list + verification evidence; the Lead commits.
 - **Edit tools only** — change files with the CLI's edit tool, never a shell
-  heredoc / `sed -i` / `tee`: the write-scope gate and the evidence ledger see
-  tool edits only, so a shell write is an ungated, unlogged edit.
+  heredoc / `sed -i` / `tee`: the write-scope gate sees tool edits only, so a
+  shell write is an ungated edit.
+- **Nested dispatch** — a sub-agent you start goes only to the rolepod role
+  the brief or the Writer loop names, never a generic platform agent.
 - **Report file** — no tool can write the report file the brief names →
   return the report inline under that file name, whole — a reply-length cap
   never cuts it; the Lead saves it.

@@ -144,7 +144,7 @@ Apply the table above there too — pass the tier-mapped model (or the rolepod a
 - per-finding adversarial verify = balanced at high effort;
 - the ONE judge / adjudicator = strong. On a non-strong Lead that is an EXPLICIT `opts.model` / effort override — "high-risk review at the session's model" is the silent downgrade the tier policy forbids.
 
-Whole-fleet inherit needs a stated reason (e.g. every stage is judgment-heavy), written IN the script as `// tier-reason: <why>`. It never covers the verify/judge stages of an R4 diff. A strong-class Lead's fan-out that is model-less, pins one balanced tier on every stage, or runs its judge stage below itself needs that reason. Under ANY Lead, a high-risk fleet's judge stage carries a strong / role-pin / dynamic tier — the tier follows the work, not the Lead; spread the tiers and re-submit when it does not.
+Pin every fan-out `agent()` call — a `model:` class or a rolepod `agentType:`; a bare fan-out runs the whole fleet at the Lead's price, and no script comment excuses it. A stage that writes carries `agentType: 'rolepod:<role>'` — a bare `agent()` cannot edit product files. A high-risk fleet's judge stage carries a strong tier under any Lead: the tier follows the work, not the Lead.
 
 **A command before a refuter.** Before spawning a per-finding verify agent, ask what a COMMAND can settle — a test, curl, a computed style, a grep — and run it in the same stage (or in the script itself: typed `schema` output plus a code check is the cheapest guardrail). Spend an LLM refuter only on the claims no command can check.
 

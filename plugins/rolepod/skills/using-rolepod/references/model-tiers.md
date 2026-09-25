@@ -31,7 +31,7 @@ The Lead picks the class at dispatch; escalate only on a BLOCKED redispatch or a
 - Never inherit the Lead's model across a fleet; never pin strong on a fan-out (price × N).
 - A stage that writes carries `agentType: 'rolepod:<role>'`; a bare `agent()` never edits product files.
 - ≥3 dependent dispatches → a Workflow pipeline, not a Lead loop of dispatch → wait → dispatch: every Lead round-trip re-reads the whole context at the Lead's price.
-- A strong call that must stay strong inside a fleet script carries the comment `// tier-reason: <why>`; it covers ONE call, never a fan-out.
+- Pin every fan-out `agent()` call — a `model:` class or a rolepod `agentType:`; no script comment excuses a bare fan-out.
 
 ## Effort never lifts the tier
 
