@@ -5,10 +5,6 @@ model: sonnet
 effort: high
 memory: project
 color: orange
-skills:
-  - review-code
-  - check-work
-  - debug-issue
 tools:
   - Read
   - Glob
@@ -20,6 +16,7 @@ tools:
   - SendMessage
   - WebFetch
   - WebSearch
+  - Skill
 ---
 
 # Performance Engineer

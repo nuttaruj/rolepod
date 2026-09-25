@@ -5,9 +5,6 @@ model: haiku
 effort: medium
 memory: project
 color: white
-skills:
-  - write-spec
-  - implement-plan
 tools:
   - Read
   - Glob
@@ -19,6 +16,7 @@ tools:
   - SendMessage
   - WebFetch
   - WebSearch
+  - Skill
 ---
 
 # Content Strategist

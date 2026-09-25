@@ -3,13 +3,8 @@ name: ai-ml-engineer
 description: AI/ML Engineer specializing in LLM integration, RAG systems, prompt engineering, agent design, embeddings, and Anthropic/OpenAI API usage. Distinct from data-scientist (statistics) — focus is applied AI features in production code.
 model: sonnet
 effort: high
-memory: user
+memory: project
 color: magenta
-skills:
-  - write-plan
-  - implement-plan
-  - debug-issue
-  - simplify-code
 tools:
   - Read
   - Glob
@@ -21,6 +16,7 @@ tools:
   - SendMessage
   - WebFetch
   - WebSearch
+  - Skill
 ---
 
 # AI/ML Engineer

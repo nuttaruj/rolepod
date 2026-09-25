@@ -5,12 +5,6 @@ model: sonnet
 effort: medium
 memory: project
 color: yellow
-skills:
-  - write-spec
-  - write-plan
-  - implement-plan
-  - debug-issue
-  - simplify-code
 tools:
   - Read
   - Glob
@@ -22,6 +16,7 @@ tools:
   - SendMessage
   - WebFetch
   - WebSearch
+  - Skill
 ---
 
 # Data Scientist

@@ -1,13 +1,7 @@
-name: devops-sre
-description: DevOps + SRE. Owns infra, CI/CD, deploy, monitoring, release process, versioning, runbooks. Includes release-management responsibilities.
 # tools: SendMessage requires agent-teams context (Claude accepts standalone, may silently ignore).
 tier: balanced
 effort: medium
 memory: project
-skills:
-  - implement-plan
-  - debug-issue
-  - simplify-code
 tools:
   - Read
   - Glob
@@ -19,3 +13,4 @@ tools:
   - SendMessage
   - WebFetch
   - WebSearch
+  - Skill

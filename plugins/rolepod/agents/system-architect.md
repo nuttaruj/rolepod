@@ -5,11 +5,6 @@ model: opus
 effort: high
 memory: project
 color: gold
-skills:
-  - write-spec
-  - write-plan
-  - implement-plan
-  - simplify-code
 tools:
   - Read
   - Glob
@@ -20,6 +15,7 @@ tools:
   - SendMessage
   - WebFetch
   - WebSearch
+  - Skill
 ---
 
 # System Architect

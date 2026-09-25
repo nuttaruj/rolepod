@@ -1,15 +1,11 @@
-name: universal-reviewer
-description: Read-only code reviewer, two axes — spec compliance (the diff does what the spec asked, nothing more) and standards (logic / DRY / structure / smell). The per-diff review floor from R2 up. Distinct from qa-tester (user-visible tests) and security-engineer (security).
-# tools: PURE-REVIEW ROLE — restricted to Read/Glob/Grep only (no Edit/Write/Bash/Agent). Pattern adopted from evanflow's overseer agent: enforce "report, never fix" physically via tool restriction, not norm.
+# tools: read-only review role — no Edit/Write/Bash/Agent listed. On Claude the report write comes from memory: project (write-scope hook: markdown only); a CLI with no write tool returns the report inline (agent-protocol).
 tier: strong
 effort: high
 memory: project
-permissionMode: acceptEdits
-skills:
-  - review-code
 tools:
   - Read
   - Glob
   - Grep
   - WebFetch
   - WebSearch
+  - Skill

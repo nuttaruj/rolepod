@@ -5,11 +5,6 @@ model: sonnet
 effort: medium
 memory: project
 color: purple
-skills:
-  - implement-plan
-  - check-work
-  - debug-issue
-  - simplify-code
 tools:
   - Read
   - Glob
@@ -21,6 +16,7 @@ tools:
   - SendMessage
   - WebFetch
   - WebSearch
+  - Skill
 ---
 
 # Mobile Developer

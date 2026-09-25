@@ -5,10 +5,6 @@ model: sonnet
 effort: medium
 memory: project
 color: gray
-skills:
-  - implement-plan
-  - debug-issue
-  - simplify-code
 tools:
   - Read
   - Glob
@@ -20,6 +16,7 @@ tools:
   - SendMessage
   - WebFetch
   - WebSearch
+  - Skill
 ---
 
 # DevOps + SRE

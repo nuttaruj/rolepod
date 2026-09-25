@@ -4,16 +4,14 @@ description: Read-only code reviewer, two axes — spec compliance (the diff doe
 model: opus
 effort: high
 memory: project
-permissionMode: acceptEdits
 color: red
-skills:
-  - review-code
 tools:
   - Read
   - Glob
   - Grep
   - WebFetch
   - WebSearch
+  - Skill
 ---
 
 # Universal Reviewer

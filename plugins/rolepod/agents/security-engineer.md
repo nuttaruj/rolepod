@@ -4,12 +4,7 @@ description: Security Engineer for vuln audit, pentest, system hardening, compli
 model: opus
 effort: xhigh
 memory: project
-permissionMode: acceptEdits
 color: red
-skills:
-  - review-code
-  - debug-issue
-  - simplify-code
 tools:
   - Read
   - Glob
@@ -21,6 +16,7 @@ tools:
   - SendMessage
   - WebFetch
   - WebSearch
+  - Skill
 ---
 
 # Security Engineer

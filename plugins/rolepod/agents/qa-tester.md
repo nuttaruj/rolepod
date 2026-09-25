@@ -1,14 +1,10 @@
 ---
 name: qa-tester
-description: QA + Test Automation. Owns what the user sees — E2E / UI / browser / contract / smoke tests, test automation, flake elimination, spec-first test-case design. Unit tests belong to the writer of the code; never the strong review pass.
+description: QA + Test Automation. Owns what the user sees — E2E / UI / browser / contract / smoke tests, test automation, flake elimination, spec-first test-case design. Runs once per feature at check-work Verify on the spec's user-visible flows; never a reviewer. Unit tests belong to the writer of the code.
 model: sonnet
 effort: high
 memory: project
-permissionMode: acceptEdits
 color: red
-skills:
-  - debug-issue
-  - check-work
 tools:
   - Read
   - Glob
@@ -20,6 +16,7 @@ tools:
   - SendMessage
   - WebFetch
   - WebSearch
+  - Skill
 ---
 
 # QA + Test Automation

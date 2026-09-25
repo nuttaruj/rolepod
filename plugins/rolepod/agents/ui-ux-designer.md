@@ -5,11 +5,6 @@ model: sonnet
 effort: medium
 memory: project
 color: pink
-skills:
-  - ui-ux-pro-max
-  - implement-plan
-  - review-code
-  - check-work
 tools:
   - Read
   - Glob
@@ -21,6 +16,7 @@ tools:
   - SendMessage
   - WebFetch
   - WebSearch
+  - Skill
 ---
 
 # UI/UX Designer + Polisher
