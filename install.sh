@@ -1734,7 +1734,7 @@ ${BOLD}rolepod framework installed.${NC} (Pure framework — no 3rd-party add-on
 Recommended add-ons (install separately — framework auto-integrates each):
   • Code intel    — CodeGraph, GitNexus
   • Memory        — rolepod-brain (sibling: github.com/nuttaruj/rolepod-brain)
-  • Token cuts    — rtk (replies: built in — touch ~/.claude/.rolepod-terse)
+  • Token cuts    — rtk (terse replies are built in, no flag)
   • Design        — ui-ux-pro-max
 
 See README → "Plugin family" (siblings) and "Recommended add-ons" (3rd-party)

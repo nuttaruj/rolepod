@@ -251,10 +251,6 @@ render_claude() {
   # core/fragments/.
   render_template "$REPO_DIR/hooks/always-on-core.md.tmpl" \
     "$plugin_dst/hooks/always-on-core.md"
-  # terse-core — the opt-in output layer emitted by terse-loader.sh only when
-  # the user has created the flag. Shipped unconditionally, loaded on demand.
-  render_template "$REPO_DIR/hooks/terse-core.md.tmpl" \
-    "$plugin_dst/hooks/terse-core.md"
   [ -d "$REPO_DIR/hooks/lib" ] && cp -R "$REPO_DIR/hooks/lib" "$plugin_dst/hooks/"
   chmod +x "$plugin_dst/hooks/"*.sh 2>/dev/null || true
 
@@ -343,9 +339,6 @@ render_codex() {
   mkdir -p "$plugin_dst/hooks"
   cp "$plugin_src/hooks/hooks.json" "$plugin_dst/hooks/hooks.json"
   cp "$plugin_src/hooks/agent-sync.sh" "$plugin_dst/hooks/agent-sync.sh"
-  # terse-core — the opt-in output layer the AGENTS.md pointer names.
-  render_template "$REPO_DIR/hooks/terse-core.md.tmpl" \
-    "$plugin_dst/hooks/terse-core.md"
   local h
   for h in precommit-gate project-context-loader claim-verify-nudge \
            block-subagent-commit session-lifecycle test-diff-lint fix-loop-breaker; do
@@ -422,14 +415,6 @@ render_cursor() {
   render_template "$pass1" "$plugin_dst/rules/always-on-core.mdc"
   rm -f "$pass1"
 
-  # Terse output — same two-pass shape, but alwaysApply: false. Cursor loads
-  # it on demand (flag file or an explicit ask), which is this CLI's native
-  # equivalent of the flag-gated SessionStart hook the other targets use.
-  local terse_pass1="$plugin_dst/rules/.terse.pass1"
-  render_template "$adapter_dir/rules/terse.mdc.tmpl" "$terse_pass1"
-  render_template "$terse_pass1" "$plugin_dst/rules/terse.mdc"
-  rm -f "$terse_pass1"
-
   # Skills — render the same source as Claude, then post-process each
   # frontmatter to keep only the fields Cursor documents (name + description).
   # Defensive: the Cursor docs only acknowledge name/description in SKILL.md;
@@ -503,7 +488,6 @@ render_antigravity() {
   # AGENTS.md context file — installed to the agy customization root, NOT the
   # plugin (agy loads always-on rules from the root, not a plugin component).
   render_template "$template" "$out_dir/AGENTS.md"
-  render_template "$REPO_DIR/hooks/terse-core.md.tmpl" "$out_dir/terse-core.md"
 
   # Plugin manifest.
   if [ -f "$adapter_dir/plugin.json" ]; then
@@ -574,7 +558,6 @@ render_opencode() {
   rm -rf "$out_dir"
   mkdir -p "$out_dir"
   render_template "$template" "$out_dir/AGENTS.md"
-  render_template "$REPO_DIR/hooks/terse-core.md.tmpl" "$out_dir/terse-core.md"
 
   # Version stamp (install verification + bump-script parity).
   if [ -f "$adapter_dir/opencode.json" ]; then

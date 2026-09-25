@@ -16,7 +16,7 @@ The *why* — incidents, doctrine — lives in this file and in the hook's sourc
 
 | Event | Matcher | Hooks |
 |---|---|---|
-| `SessionStart` | `startup\|resume\|clear\|compact` | `always-on-loader.sh`, `terse-loader.sh`, `project-context-loader.sh`, `session-lifecycle.sh --lock` |
+| `SessionStart` | `startup\|resume\|clear\|compact` | `always-on-loader.sh`, `project-context-loader.sh`, `session-lifecycle.sh --lock` |
 | `UserPromptSubmit` | — | `claim-verify-nudge.sh` |
 | `PreToolUse` | `Edit\|Write\|MultiEdit` | `worktree-guard.sh`, `gate-reminder.sh`, `subagent-write-scope.sh` |
 | `PreToolUse` | `NotebookEdit` | `subagent-write-scope.sh` |
@@ -138,13 +138,6 @@ A Workflow `agent()` call defaults to the Lead's model and no frontmatter can ch
 ### `always-on-loader.sh` — SessionStart (Claude)
 
 Emits `hooks/always-on-core.md` (identity, precedence, verify-first, simplest-viable, code search, communication, risky actions, hard stops; rendered from `always-on-core.md.tmpl` + `core/fragments/`) as `additionalContext`. A Claude plugin has no other always-on surface, which is why the plugin install writes nothing into `~/.claude/CLAUDE.md`. Other CLIs load the same core natively (`AGENTS.md`, `rules/*.mdc`). Missing core file → silent.
-
-### `terse-loader.sh` — SessionStart (Claude, opt-in)
-
-- **Opt in** — `touch ~/.claude/.rolepod-terse`. Empty = `ultra` (the default); `lite` = full sentences with only filler dropped. Delete the file to opt out. The flag lives in `CLAUDE_CONFIG_DIR` because output shape belongs to the reader, not the project.
-- **Effect** — emits `hooks/terse-core.md` behind a banner. The task always wins: security warnings, destructive-action confirmations, "explain" requests and real ambiguity keep their full shape. Identifiers, paths, counts and error text are never abbreviated.
-- **Other CLIs** — Cursor ships `rules/terse.mdc` (`alwaysApply: false`); Codex, Antigravity and opencode carry a pointer in their entry doc.
-- No flag → no output at all.
 
 ### `test-diff-lint.sh` — helper (called by `precommit-gate.sh`)
 

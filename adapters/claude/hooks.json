@@ -22,11 +22,6 @@
           },
           {
             "type": "command",
-            "command": "[ -z \"$CURSOR_PROJECT_DIR\" ] && exec bash \"${CLAUDE_PLUGIN_ROOT}/hooks/terse-loader.sh\"; cat >/dev/null",
-            "timeout": 3
-          },
-          {
-            "type": "command",
             "command": "[ -z \"$CURSOR_PROJECT_DIR\" ] && exec bash \"${CLAUDE_PLUGIN_ROOT}/hooks/project-context-loader.sh\"; cat >/dev/null",
             "timeout": 5
           },
