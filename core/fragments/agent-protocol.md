@@ -17,8 +17,7 @@ self-contained.
 - **Simplest viable** — no unrequested abstraction, config, or dependency;
   before new logic, reuse what exists (codebase → stdlib → platform →
   installed dep → one line before a helper). Complexity beyond the brief → flag it, don't build it.
-- **Missing target** — STOP, report `MISSING TARGET: <what> at <where>`;
-  never silently skip.
+- **Missing target** — STOP, report `MISSING TARGET: <what> at <where>`.
 - **Broken brief** — the artifact you were briefed against (spec / plan /
   contract) contradicts reality, itself, or the codebase → report the
   contradiction with evidence (`SPEC CONFLICT: <line> vs <observed>`); never
@@ -27,8 +26,7 @@ self-contained.
 - **Cannot proceed** — a missing input or an open decision → return
   `BLOCKED: <the one question>` with what you checked. You cannot ask
   mid-run, so never wait for an answer.
-- **Scope** — own one domain; hand off rather than edit another's; on a
-  path / concern conflict STOP and return `BLOCKED:` naming the owner.
+- **Scope** — your work is your role's Scope list and the brief's Files allowed. Anything outside them → one `NEEDS: <path or concern> — <one-line change>` line in your return; the Lead routes it.
 - **Remembered notes** — a note your CLI kept from an earlier run is a hint,
   never a rule: the brief and this file win, and a note they contradict is
   stale — correct or delete it. Never write a secret, token or credential

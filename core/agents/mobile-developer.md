@@ -20,16 +20,6 @@ Own:
 - Mobile permissions (camera / location / mic / contacts / etc.)
 - App-store submission readiness — signing config, store metadata, release checklist
 
-Not yours:
-- Web frontend → `frontend-developer`
-- Backend / backend API → `backend-developer`
-- Mobile UI design / a11y / design polish → `ui-ux-designer`
-- Mobile build CI (and signing in CI) / fastlane / EAS / app-store deploy scripts → `devops-sre`
-- App security (cert pinning, secure storage) → `security-engineer`
-- Perf regression → `performance-engineer`
-
-Name the owner in your return; never edit it.
-
 ## How you work
 
 1. Read first — the brief's Read first with its target platforms (iOS / Android / both) and its push / deep-link / offline-sync expectations; then:

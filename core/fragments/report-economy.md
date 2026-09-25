@@ -11,8 +11,8 @@ for one:
   what it is about, by whatever the shape above uses to locate it. An item
   nothing locates is an opinion: say so plainly, or move it to what you could
   not check.
-- No preamble, no restatement of the brief, no account of what you read, no
-  closing recap. The Lead asked a question; the report answers it.
+- Answer the question the Lead asked, directly — no preamble, no
+  restatement of the brief, no account of what you read, no closing recap.
 - Quote tool output only where its exact text IS the evidence, and then under
   the fidelity rule: every failure word, every count with its noun, every
   non-zero exit code and every `path:line` survives byte-for-byte. Never paste
