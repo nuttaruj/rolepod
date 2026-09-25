@@ -43,7 +43,7 @@ print('SUBAGENT turns (Agent tool + Workflow fleets — the execution proof):')
 [print(f'  {n:6d}  {k}') for k, n in subs.most_common()] or print('  (none)')"
 ```
 
-Codex / Antigravity runs are external CLIs — they never appear in Claude transcripts; their proof is the `dispatch-proof` lines in the intent layer (hook-reported).
+Codex / Antigravity runs are external CLIs — they never appear in Claude transcripts. When a cross-family pass ran, its proof is the runner's own phase-log rows (`phase: review|consult|critique|implement`, `reviewer: external`); older `dispatch-proof` rows (writers removed in v2.176.0) are read if still present in the log.
 
 ## Report format
 

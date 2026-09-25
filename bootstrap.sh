@@ -93,6 +93,9 @@ EOF
       4|antigravity)  INTERACTIVE_TARGET="antigravity" ;;
       5|opencode)     INTERACTIVE_TARGET="opencode" ;;
       6|all)          INTERACTIVE_TARGET="all" ;;
+      # Removed v2.177.0 — caught here (not left to fall through to install.sh)
+      # so muscle memory for the old menu fails fast, before the repo clone.
+      gemini)         echo "Gemini CLI support was removed in v2.177.0 — use --target=antigravity; remove the old extension with: gemini extensions uninstall rolepod" >&2; exit 1 ;;
       *) echo "Unknown choice '$target_choice' — defaulting to claude"; INTERACTIVE_TARGET="claude" ;;
     esac
 

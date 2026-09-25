@@ -97,7 +97,7 @@ fi
 # itself — the manual append was measured at 0 lines in every product repo.
 ROUTE_MSG=""
 if [ "$ROUTE" = "stale" ]; then
-  ROUTE_MSG="⟂ route: a commission with no tier stated since your last request. Fix: one line before the first edit — Route: R2 (one file + test) → <skill> · <reason> — where R0 answer only · R1 trivial edit · R2 one file + test · R3 multi-file · R4 high-risk; R2-R4 → using-rolepod (R3/R4: Define → Plan first). The hook records it; blast radius sets the tier, not feature age. Exception: a literal follow-up inside an already-routed task → say 'same task' and continue. (off: ROLEPOD_NUDGE_OFF=1) "
+  ROUTE_MSG="⟂ route: a commission with no tier stated since your last request. Fix: one line before the first edit — Route: R2 (one file + test) → <skill> · <reason> — where R0 answer only · R1 trivial edit · R2 one file + test · R3 multi-file · R4 high-risk; R2-R4 → using-rolepod, which names the first skill. The hook records it; blast radius sets the tier, not feature age. Exception: a literal follow-up inside an already-routed task → say 'same task' and continue. (off: ROLEPOD_NUDGE_OFF=1) "
 fi
 
 # Auto-resume (v2.100.0): after a usage-limit pause the harness sends

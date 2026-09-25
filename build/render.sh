@@ -485,8 +485,9 @@ render_cursor() {
 #   plugin/plugin.json         (agy plugin manifest)
 #   plugin/skills/<name>/...    (copied from core/skills)
 #   plugin/agents/<name>.md     (15 agents, md + YAML frontmatter)
-#   plugin/hooks.json           (agy-native event wiring at PLUGIN ROOT: PreInvocation/PreToolUse/PostToolUse)
-#   plugin/hooks/*.sh           (agy-native hook scripts)
+#   plugin/hooks.json           (agy-native event wiring at PLUGIN ROOT: PreInvocation/PreToolUse/Stop)
+#   plugin/hooks/*.sh           (3 agy-native scripts + the shared precommit-gate.sh /
+#                                test-diff-lint.sh / route_check.py, copied verbatim)
 
 render_antigravity() {
   local template="$REPO_DIR/adapters/antigravity/AGENTS.md.tmpl"

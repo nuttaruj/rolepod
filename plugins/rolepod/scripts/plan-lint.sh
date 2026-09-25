@@ -9,15 +9,18 @@
 #   (resolved against the plan's directory, then the repo root). A plan
 #   whose Parallel layout says "Sequential" skips the ownership check.
 #
-# Usage: scripts/plan-lint.sh --brief <N> <plan.md> [contract.md]
-#   Prints Task N's brief (Goal/Tier/Blocked by/Read first/Files allowed/
-#   Files forbidden/Change/Test/Command/Done when/Write/Reviewers/Bounds) —
-#   ONE test field, the Command; an older plan's Check: line is read and
-#   ignored, never printed (spec lean-loop-2026-09-23 Task 2)
-#   to stdout, assembled from the plan (and the contract's File-ownership +
-#   Do-not-touch-list when one is given). Exit 0 on success; exit 2 with
-#   one stderr line and empty stdout when Task N does not exist. Field
-#   labels match with or without `**bold**` (real plans use both dialects).
+# Usage: scripts/plan-lint.sh --brief <N> <plan.md> [contract.md] [--main]
+#   Prints Task N's brief (Worktree or Checkout/Goal/Tier/Blocked by/Read
+#   first/Files allowed/Files forbidden/Change/Test/Command/Done when/
+#   Write/Reviewers/Bounds) — ONE test field, the Command; an older plan's
+#   Check: line is read and ignored, never printed (spec
+#   lean-loop-2026-09-23 Task 2) to stdout, assembled from the plan (and
+#   the contract's File-ownership + Do-not-touch-list when one is given).
+#   `--main`, in any position after --brief: an on-main task, no
+#   worktree — prints `## Checkout` in place of `## Worktree`, and Bounds
+#   names no worktree path either. Exit 0 on success; exit 2 with one
+#   stderr line and empty stdout when Task N does not exist. Field labels
+#   match with or without `**bold**` (real plans use both dialects).
 #
 # Checks:
 #   1. `## Failure policy` section present (the loop's circuit breaker).
@@ -66,7 +69,7 @@ if [ "${1:-}" = "--brief" ]; then
     exit 2
   fi
   if [ -n "$CONTRACT" ] && [ ! -f "$CONTRACT" ]; then
-    echo "usage: plan-lint.sh --brief <N> <plan.md> [contract.md] — contract not found: $CONTRACT" >&2
+    echo "usage: plan-lint.sh --brief <N> <plan.md> [contract.md] [--main] — contract not found: $CONTRACT" >&2
     exit 2
   fi
   # shellcheck disable=SC2016
@@ -85,25 +88,81 @@ if [ "${1:-}" = "--brief" ]; then
     if (p == "") return
     if (!(p in allowedset)) { allowedset[p] = 1; allowedord[++acnt] = p }
   }
-  # Drops every ( … ) parenthetical from a Files-field value — a backticked
-  # token inside one is a note about a path already named, never a path of
-  # its own (e.g. "`x.py` (`helper()` only)" must not add `helper()`).
-  # Innermost-first so a nested parenthetical is fully removed too.
-  function stripparens(s,    t) {
-    t = s
-    while (match(t, /\([^()]*\)/)) t = substr(t, 1, RSTART - 1) substr(t, RSTART + RLENGTH)
-    return t
+  # Cleans a Files-field value for path extraction — a `(` / `)` opens or
+  # closes a note ONLY when it is outside a backtick span, so a path that
+  # is itself backticked keeps its own parens intact (Next.js / Expo
+  # route groups: `app/(auth)/login/page.tsx`). Inside a note, a bare
+  # (non-backticked) token is dropped outright, and a backticked token
+  # is kept only when it has a slash — a path fragment already named
+  # elsewhere (e.g. "`x.py` (`helper()` only)" drops `helper()`, but
+  # "(+ `tests/static/x.sh`)" keeps `tests/static/x.sh`). Feeds both the
+  # backtick-path loop and the bare-token pass below, so neither reads
+  # note text.
+  function cleanfiles(s,    out, i, c, depth, inbt, notebt, bt) {
+    out = ""; depth = 0; inbt = 0; bt = ""
+    for (i = 1; i <= length(s); i++) {
+      c = substr(s, i, 1)
+      if (c == "`") {
+        if (inbt) {
+          bt = bt c
+          if (notebt) { if (bt ~ /\//) out = out bt } else out = out bt
+          inbt = 0; bt = ""
+        } else { inbt = 1; notebt = (depth > 0); bt = c }
+        continue
+      }
+      if (inbt) { bt = bt c; continue }
+      if (c == "(") { depth++; continue }
+      if (c == ")") { if (depth > 0) depth--; continue }
+      if (depth > 0) continue
+      out = out c
+    }
+    if (inbt) out = out bt
+    return out
   }
-  # A contract File-ownership label that names SEVERAL tasks (a range like
-  # `Tasks 1-4` / `T1-T4`, or a list like `Tasks 1, 3`) is a tag for each
-  # task it names, never a scoped slice for one — the owning task already
-  # lists its own paths under Files, so such a label contributes no files
-  # to any task Files allowed (a label naming only this task, or a bare
-  # role name with no task tag at all, is unaffected).
-  function is_multitask(lbl) {
-    if (lbl ~ /[Tt]asks?[[:space:]]+[0-9]+[[:space:]]*(-[[:space:]]*[0-9]+|([,\/][[:space:]]*[0-9]+)+)/) return 1
-    if (lbl ~ /T[0-9]+[[:space:]]*-[[:space:]]*T[0-9]+/) return 1
-    if (lbl ~ /T[0-9]+([[:space:]]*,[[:space:]]*T[0-9]+)+/) return 1
+  # Extracts the task-tag span from a contract File-ownership label: a
+  # `T<N>` or `Task(s) <N>` reference, optionally chained by a range/list
+  # connector (hyphen family, en/em dash, comma, slash, ampersand, plus,
+  # "and", "then", "or") to a further `T?<N>` — boundary-anchored so it
+  # never matches inside a longer word. Returns "" when the label carries
+  # no task tag at all; otherwise the span, prefixed M when it chains to
+  # a further number (several tasks named) or 1 when it names exactly one.
+  function tagspan(lbl,    hay) {
+    hay = " " lbl
+    if (match(hay, /[^0-9A-Za-z](T|[Tt]asks?[[:space:]]+)[0-9]+([[:space:]]*(-|–|—|,|\/|&|\+|and|then|or))+[[:space:]]*T?[0-9]+/))
+      return "M" substr(hay, RSTART + 1, RLENGTH - 1)
+    if (match(hay, /[^0-9A-Za-z](T|[Tt]asks?[[:space:]]+)[0-9]+/))
+      return "1" substr(hay, RSTART + 1, RLENGTH - 1)
+    return ""
+  }
+  function has_tasktag(lbl) { return tagspan(lbl) != "" }
+  # A label that chains to a further task number (a range like `Tasks
+  # 1-4` / `T1-4` / `T1-T4`, or a list like `Tasks 1, 3` / `T1/T2` /
+  # `T1, then T2`) is a tag for EACH task it names, never a scoped slice
+  # for one — the owning task already lists its own paths under Files,
+  # so such a label contributes no files to any task Files allowed (a
+  # label naming only one task, or a bare role name with no task tag at
+  # all, is unaffected).
+  function is_multitask(lbl) { return substr(tagspan(lbl), 1, 1) == "M" }
+  # Does the label task-tag span name task `want` — a plain number match,
+  # or membership in a hyphen-family range (`Tasks 1-4`, `T1-T4`, an en
+  # dash) versus a discrete list otherwise (comma, slash, ampersand,
+  # plus, "and", "then", "or" all list rather than range).
+  function label_names_task(lbl, want,    span, s, num, pre, prevnum, lo, hi, j) {
+    span = tagspan(lbl)
+    if (span == "") return 0
+    s = substr(span, 2)
+    prevnum = ""
+    while (match(s, /[0-9]+/)) {
+      num = substr(s, RSTART, RLENGTH) + 0
+      pre = substr(s, 1, RSTART - 1)
+      if (prevnum != "" && pre ~ /-|–|—/) {
+        lo = prevnum; hi = num
+        if (lo > hi) { j = lo; lo = hi; hi = j }
+        for (j = lo; j <= hi; j++) if (j == want) return 1
+      } else if (num == want) return 1
+      prevnum = num
+      s = substr(s, RSTART + RLENGTH)
+    }
     return 0
   }
   function rxesc(s,    out, i, c) {
@@ -318,13 +377,14 @@ if [ "${1:-}" = "--brief" ]; then
     low = tolower(Ow)
     write = "self"
     if (index(low, "write:") > 0 && index(low, "external") > 0) write = "external"
-    m = stripparens(Fr)
+    cleaned = cleanfiles(Fr)
+    m = cleaned
     while (match(m, /`[^`]+`/)) {
       p = substr(m, RSTART + 1, RLENGTH - 2)
       addallowed(p)
       m = substr(m, RSTART + RLENGTH)
     }
-    restv = Fr
+    restv = cleaned
     gsub(/`[^`]+`/, " ", restv)
     ntok = split(restv, toks, /[,[:space:]]+/)
     for (ti = 1; ti <= ntok; ti++) {
@@ -335,27 +395,33 @@ if [ "${1:-}" = "--brief" ]; then
       if (tok ~ /\// || tok ~ /\.[[:alnum:]]+$/) addallowed(tok)
     }
     if (hascontract) {
-      # Pass 1: a `T<N>` / `Task N` tag on a label names THIS task
-      # unambiguously — when any label carries one, that is the whole
-      # answer and the (weaker) role-name match is not consulted at all.
-      # Otherwise two labels for the same role but different tasks, e.g.
-      # `backend-developer (T1)` and `backend-developer (T4)`, would both
-      # match Task 1 by role name and leak the T4 files into the T1 brief.
+      # Pass 1: a task tag on a label names THIS task unambiguously — a
+      # single tag (`T2`, `Task 2`) or a multi-task tag that lists or
+      # ranges over it (`Tasks 1-4`, `T1, T3`). When any label carries
+      # one, that is the whole answer and the (weaker) role-name match
+      # is not consulted at all — otherwise two labels for the same
+      # role but different tasks, e.g. `backend-developer (T1)` and
+      # `backend-developer (T4)`, would both match Task 1 by role name
+      # and leak the T4 files into the T1 brief.
       tagfound = 0
-      tpat = "(^|[^0-9A-Za-z])T" want "([^0-9A-Za-z]|$)"
-      tpat2 = "(^|[^0-9A-Za-z])Task[[:space:]]+" want "([^0-9A-Za-z]|$)"
       for (k = 1; k <= onum; k++) {
-        tagmatch[k] = !is_multitask(ownlabel[k]) && ((ownlabel[k] ~ tpat) || (ownlabel[k] ~ tpat2))
-        if (tagmatch[k]) tagfound = 1
+        named[k] = label_names_task(ownlabel[k], want)
+        if (named[k]) tagfound = 1
       }
       for (k = 1; k <= onum; k++) {
         ml = 0
         if (tagfound) {
-          ml = tagmatch[k]
-        } else if (role != "" && !is_multitask(ownlabel[k])) {
+          # A multi-task label tags every task it names, but stays a tag
+          # only — its files never widen any task Files allowed; the
+          # owning task already lists its own paths under Files.
+          ml = named[k] && !is_multitask(ownlabel[k])
+        } else if (role != "" && !has_tasktag(ownlabel[k])) {
           # Role match is boundary-anchored — a plain substring let
           # "backend-developer" match a label naming a DIFFERENT task.
-          # The boundary excludes hyphen (part of a kebab-case role token).
+          # The boundary excludes hyphen (part of a kebab-case role
+          # token). A label carrying ANY task tag (single or multi) is
+          # reserved for the task(s) it names and never falls back to a
+          # same-role match for a task it does not name.
           rolepat = "(^|[^A-Za-z0-9-])" rxesc(role) "([^A-Za-z0-9-]|$)"
           if (ownlabel[k] ~ rolepat) ml = 1
         }
@@ -369,7 +435,7 @@ if [ "${1:-}" = "--brief" ]; then
     tslug = slug(title)
     if (onmain) {
       print "## Checkout"
-      print "main — no worktree; run every command in the main checkout"
+      print "main checkout — no worktree; run every command in the main checkout"
     } else {
       print "## Worktree"
       printf "`git worktree add -b %s/t%s-%s ../%s-wt-%s-t%s-%s` — cd there for every command; the name says which task it holds\n", feat, want, tslug, repo, feat, want, tslug

@@ -137,7 +137,6 @@ if [ -n "$ROOT_FLAG" ]; then ROOT="$ROOT_FLAG"; else ROOT="$(git rev-parse --sho
 EV="$ROOT/.rolepod/evidence"
 JOBS="$EV/external/jobs"
 ALL_CLIS="codex claude agy cursor opencode"
-LEAD_CLIS="$ALL_CLIS"
 iso_now() { date -u +%Y-%m-%dT%H:%M:%SZ; }
 TMPP=""
 # A detached child records its exit status whatever path it leaves by —
@@ -203,7 +202,7 @@ if [ -z "$LEAD" ]; then
   elif [ -n "${OPENCODE:-}${OPENCODE_SESSION_ID:-}" ]; then LEAD=opencode
   fi
 fi
-case " $LEAD_CLIS " in
+case " $ALL_CLIS " in
   *" $LEAD "*) ;;
   *) echo "cross-family: pass --lead <codex|claude|agy|cursor|opencode> (could not detect the Lead CLI)" >&2; exit 2 ;;
 esac

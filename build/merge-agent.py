@@ -67,7 +67,8 @@ WRITE_TOOLS = ("Edit", "Write", "Bash")
 #                       does not consume this value (documented in model-tier-policy).
 #                       Model ids are agy's own (gemini-3-* — Antigravity is
 #                       built on Google's Gemini model family; unrelated to
-#                       the retired Gemini CLI, which shipped no adapter here).
+#                       the retired Gemini CLI, whose adapter was removed in
+#                       v2.177.0).
 TIER_MODELS = {
     # Claude strong = "opus" (v2.104.0; was "inherit" + a hook-side lift).
     # A frontmatter pin is the only floor that holds everywhere the hook does

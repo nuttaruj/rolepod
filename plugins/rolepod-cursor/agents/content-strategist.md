@@ -127,7 +127,7 @@ Persuasive, value-prop forward. Benefit-led, not feature-led. Calibrated urgency
 
 - One invocation = one audience. Switching mid-output → STOP, restart.
 - Voice patterns from one mode appearing in another → FAIL, regenerate.
-- Code blocks, commit messages, security warnings: **always normal English** regardless of mode.
+- Code blocks, commit messages: **always normal English** regardless of mode. Security warnings: full sentences, never compressed, in the audience's language.
 - File paths, URLs, identifiers, function names: exact.
 
 ### Cross-contamination self-check (before output)

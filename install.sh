@@ -46,13 +46,15 @@
 #                            • Single target (e.g. --target=codex): overrides the
 #                              destination path entirely.
 #                            • --target=all: each CLI installs into a subdir of
-#                              ROLEPOD_TARGET — claude/, codex/, antigravity/.
-#                              Unset when --target=all → use ~/.claude, ~/.codex,
-#                              ~/.gemini (antigravity).
+#                              ROLEPOD_TARGET — claude/, codex/, cursor/,
+#                              antigravity/, opencode/. Unset when --target=all
+#                              → use ~/.claude, ~/.codex, ~/.cursor,
+#                              ~/.gemini (antigravity), ~/.config/opencode.
 #   ROLEPOD_CLAUDE_TARGET    Per-CLI override — wins over ROLEPOD_TARGET for Claude.
 #   ROLEPOD_CODEX_TARGET     Per-CLI override — wins over ROLEPOD_TARGET for Codex.
 #   ROLEPOD_CURSOR_TARGET    Per-CLI override — wins over ROLEPOD_TARGET for Cursor.
 #   ROLEPOD_ANTIGRAVITY_TARGET  Per-CLI override — wins over ROLEPOD_TARGET for Antigravity.
+#   ROLEPOD_OPENCODE_TARGET  Per-CLI override — wins over ROLEPOD_TARGET for opencode.
 #
 # Non-TTY behavior: --uninstall without --yes in a non-interactive context
 # (no /dev/tty available) prints "Aborted. Re-run with --yes in non-interactive
@@ -157,7 +159,7 @@ default_target_path_for() {
 #   2. ROLEPOD_TARGET + --target=all → $ROLEPOD_TARGET/<cli>/  (subdir layout)
 #   3. ROLEPOD_TARGET (single target only) → use as-is
 #   4. default_target_path_for <cli> (scope-aware)
-# Keeps --target=all + ROLEPOD_TARGET consistent: all 3 CLIs land under one root.
+# Keeps --target=all + ROLEPOD_TARGET consistent: all 5 CLIs land under one root.
 # ROLEPOD_TARGET / per-CLI overrides win regardless of scope (CI temp dirs).
 resolve_target_for() {
   local cli="$1"
@@ -182,10 +184,6 @@ resolve_target_for() {
   default_target_path_for "$cli"
 }
 
-# Per-CLI plugin/extension dir (where 3rd-party skill bundles land).
-# Claude:  ~/.claude/plugins/<name>/
-# Codex:   ~/.codex/plugins/<name>/
-# Antigravity: ~/.gemini/config/plugins/<name>/
 # Colors
 if [ -t 1 ]; then
   CYAN=$(tput setaf 6 || true); GREEN=$(tput setaf 2 || true)
@@ -205,6 +203,21 @@ dry()  { echo "${YELLOW}[DRY-RUN]${NC} would: $*"; }
 # Generic helpers — defined early so install/uninstall blocks below can use them.
 have_cmd() { command -v "$1" >/dev/null 2>&1; }
 have_dir() { [ -d "$1" ]; }
+
+# Leftover Gemini CLI install detector (Gemini CLI support removed v2.177.0).
+# --target=antigravity / --target=all — install or uninstall — never touch
+# the old extension, so it silently goes stale across a normal upgrade.
+# Pure notice: checks the REAL $HOME (never ROLEPOD_TARGET — a temp/CI target
+# says nothing about the user's actual install), deletes nothing, and never
+# changes the exit code. Prints at most once per run.
+WARNED_STALE_GEMINI=0
+warn_stale_gemini_extension() {
+  [ "$WARNED_STALE_GEMINI" -eq 1 ] && return 0
+  if [ -d "$HOME/.gemini/extensions/rolepod" ]; then
+    echo "${YELLOW}!${NC} Found a leftover Gemini CLI install at \$HOME/.gemini/extensions/rolepod (Gemini CLI support was removed in v2.177.0). Remove it: gemini extensions uninstall rolepod (or: rm -rf ~/.gemini/extensions/rolepod)." >&2
+    WARNED_STALE_GEMINI=1
+  fi
+}
 
 # Rolepod no longer ships executable legacy skill shims. On upgrade, clean
 # previously installed shim dirs so users do not keep seeing the old bloated
@@ -881,6 +894,7 @@ PY
   fi
 
   if [ "$uninstall_antigravity" -eq 1 ]; then
+    warn_stale_gemini_extension
     if [ "$SCOPE" = "project" ]; then
       step "Stripping rolepod block from $A_TARGET/AGENTS.md"
       remove_managed_block "$A_TARGET/AGENTS.md"
@@ -1503,8 +1517,11 @@ fi
 # a managed block in the agy customization root (global:
 # ~/.gemini/antigravity-cli/AGENTS.md; project: $PWD/AGENTS.md). Verified
 # against agy 1.0.13. The plugin reuses the shared core skills/agents + its
-# own hook scripts (adapters/antigravity/hooks/) — agy-native end to end.
+# own hook scripts (adapters/antigravity/hooks/) plus the shared commit-gate
+# scripts (precommit-gate.sh, test-diff-lint.sh, route_check.py), copied
+# verbatim — not agy-native end to end.
 if antigravity_selected; then
+  warn_stale_gemini_extension
   AGY_TARGET="$(resolve_target_for antigravity)"
   RENDERED_AGY_DIR="$REPO_DIR/build/rendered/antigravity"
   RENDERED_AGY_MD="$RENDERED_AGY_DIR/AGENTS.md"
@@ -1670,6 +1687,9 @@ if [ -z "${ROLEPOD_TARGET:-}${ROLEPOD_CLAUDE_TARGET:-}${ROLEPOD_CODEX_TARGET:-}$
     cp '$REPO_DIR/scripts/ticket.sh' '$HOME/.rolepod/bin/ticket.sh'
     cp '$REPO_DIR/scripts/ticket-fleet.js' '$HOME/.rolepod/bin/ticket-fleet.js'
     rm -f '$HOME/.rolepod/bin/edit-ledger.py'
+    # prune: edit-ledger.py itself was removed v2.176.0 — drop it from an
+    # older ~/.rolepod/bin/ left behind by an upgrade; safe to delete this
+    # prune line once no supported release still ships the old file.
     printf '#!/bin/sh\nexec bash \"\$HOME/.rolepod/bin/stats.sh\" \"\$@\"\n' > '$HOME/.local/bin/rolepod-stats'
     printf '#!/bin/sh\nexec bash \"\$HOME/.rolepod/bin/junit-summary.sh\" \"\$@\"\n' > '$HOME/.local/bin/rolepod-junit'
     printf '#!/bin/sh\nexec bash \"\$HOME/.rolepod/bin/cross-family.sh\" \"\$@\"\n' > '$HOME/.local/bin/rolepod-cross-family'

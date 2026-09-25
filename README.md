@@ -92,7 +92,7 @@ codex plugin remove rolepod@rolepod && codex plugin add rolepod@rolepod
 curl -fsSL https://raw.githubusercontent.com/nuttaruj/rolepod/main/bootstrap.sh | bash -s -- --uninstall --target=codex
 ```
 
-Codex hooks fire natively on Codex ≥0.144 — no opt-in needed (the legacy `plugin_hooks` flag was removed upstream). Agents, skills, and the `AGENTS.md` gate rules load independently of hooks.
+Codex hooks fire natively on Codex ≥0.144 — no opt-in needed (the legacy `plugin_hooks` flag was removed upstream). Agents, skills, and the `AGENTS.md` always-on core load independently of hooks.
 
 > Gemini CLI — removed in v2.177.0; Google moved consumers to Antigravity (`agy`) — use `--target=antigravity`.
 
