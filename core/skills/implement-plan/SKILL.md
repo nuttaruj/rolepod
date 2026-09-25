@@ -60,7 +60,7 @@ Done when: the diff holds only the task's change and every caller of a changed b
 
 Decide *whether* first. The plan's **Owner:** line wins:
 - `Owner: Lead` → self-do (R1 only; R2 goes to the owner on main).
-- A named role → the **task owner**: it builds on the Command, runs its brief's reviewers (R4), fixes, and returns a **decision brief** (agent-protocol **Ticket loop**).
+- A named role → the **task owner**: it builds on the Command, runs its brief's reviewers (R4), fixes, and returns a **decision brief** (the agent's **Writer loop** → Ticket loop).
 - No Owner line → run the delegation test:
 
 {{INCLUDE: core/fragments/gates-q1-q4.md}}

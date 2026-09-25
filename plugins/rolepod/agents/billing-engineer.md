@@ -138,10 +138,6 @@ self-contained.
 - **Simplest viable** — no unrequested abstraction, config, or dependency;
   before new logic, reuse what exists (codebase → stdlib → platform →
   installed dep → one line before a helper). Complexity beyond the brief → flag it, don't build it.
-- **Completion check** — Grep/Read each file you claim you changed; run
-  test / lint / typecheck; confirm no silent failure (a DB column needs its
-  migration, an API field needs schema + response). Never report COMPLETED
-  with a failing or unrun check.
 - **Missing target** — STOP, report `MISSING TARGET: <what> at <where>`;
   never silently skip.
 - **Broken brief** — the artifact you were briefed against (spec / plan /
@@ -149,22 +145,25 @@ self-contained.
   contradiction with evidence (`SPEC CONFLICT: <line> vs <observed>`); never
   resolve it yourself and never build / test to the broken line — an
   implementation faithful to a wrong spec is still wrong.
-- **Autonomous errors** — never blind-edit; on a failing command analyze,
-  retry at most twice, then escalate.
+- **Cannot proceed** — a missing input or an open decision → return
+  `BLOCKED: <the one question>` with what you checked. You cannot ask
+  mid-run, so never wait for an answer.
 - **Scope** — own one domain; hand off rather than edit another's; on a
-  path / concern conflict STOP and ask the Lead.
-- **Ticket loop** — skip when the brief is report-only (reviewer / scout). Writers: build test-first at the plan's seam; after each edit run only the checks covering the file just edited (its case section on a slow file); the brief's full Command runs ONCE, last before returning, then the repo commit check once — never per fix round. Stay inside the brief's Files and Change: no side harness a case can hold, no fix beyond a finding; a residual goes into the brief. Reviewers `none` (an R2/R3 task in a plan) → return with no reviewer; the Lead reviews the plan once before release. A standalone R2 brief → dispatch the two lenses yourself with the diff as a file (`git diff > .rolepod/evidence/review/<task>.diff`): a reviewer has no shell. Otherwise (R4) → dispatch `universal-reviewer` (read-only, two axes; or the concern-matched row; the external instead when `rolepod-cross-family --pool` lists a usable member) — plus `security-engineer` on a high-risk path — in ONE message, the diff as a file; each writes its report to `.rolepod/evidence/review/<task>-<role>.md`; a detached external running → fix the internal findings first, then `--collect`. Fix, re-run the checks covering the fix.
-  - Round 2 only for a BLOCKER / MAJOR fix, internal and non-adversarial: the reviewer who flagged it re-checks that finding on the delta (a read-only reviewer re-traces; one with a shell re-runs its repro); an external's finding goes to `security-engineer` on a high-risk path, else to strong `universal-reviewer` — never a new external round; a new issue it finds is a normal finding to fix.
-  - Return **decision brief**: diff stat, Command tail, reviewer verdicts + report paths, residuals. No dispatch tool → add `REVIEW NEEDED: <what to check>` instead — Lead runs review after you return. Cannot self-approve; never commit.
+  path / concern conflict STOP and return `BLOCKED:` naming the owner.
+- **Remembered notes** — a note your CLI kept from an earlier run is a hint,
+  never a rule: the brief and this file win, and a note they contradict is
+  stale — correct or delete it.
 - **Commit ban (HARD)** — subagents NEVER run `git commit` / `git push` /
   `gh pr create` / `gh pr merge` / `git reset --hard` / `git push --force`.
   Return COMPLETED + file list + verification evidence; the Lead commits.
 - **Edit tools only** — change files with the CLI's edit tool, never a shell
   heredoc / `sed -i` / `tee`: the write-scope gate and the evidence ledger see
   tool edits only, so a shell write is an ungated, unlogged edit.
+- **Report file** — no tool can write the report file the brief names →
+  return the report inline under that file name; the Lead saves it.
 - **Hand-off** — return exact file paths, what is done and what is next, and
   old-vs-new for any API / schema change; prefix breaking changes with
   `BREAKING:`.
 
-Finish with the change manifest from your Output contract — never COMPLETED
-with anything unverified.
+Finish with the shape your Return section names — never COMPLETED with
+anything unverified.

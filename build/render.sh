@@ -64,8 +64,8 @@ find "$REPO_DIR/core" -name .DS_Store -delete 2>/dev/null || true
 
 # ─── Generate lean skill-index — Tier 0 + Tier 1 only ──────────────────────
 # Entry docs (CLAUDE.md / AGENTS.md / GEMINI.md) embed this lean version.
-# The full catalog is also Core 10 only now; a pre-2.0 name in a prompt is
-# routed by PHASE to whichever Core 10 skill owns it, never by the old name.
+# A pre-2.0 skill name in a prompt is routed by PHASE to whichever rolepod
+# skill owns it, never by the old name.
 
 generate_skill_index_lean() {
   local out="$REPO_DIR/core/fragments/skill-index-lean.md"
@@ -122,7 +122,7 @@ generate_skill_index_lean() {
       write-prototype
 
     echo ""
-    echo "**Legacy skill names are not shipped.** A pre-2.0 name in a prompt maps to whichever Core 10 skill owns that phase — route by phase, never by the old name."
+    echo "**Legacy skill names are not shipped.** A pre-2.0 name in a prompt maps to whichever rolepod skill owns that phase — route by phase, never by the old name."
   } > "$out"
 }
 

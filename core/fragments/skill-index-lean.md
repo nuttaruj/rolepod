@@ -39,4 +39,4 @@
 |-------|-------------|
 | `write-prototype` | Build a throwaway prototype that answers ONE design question from a spec — layout variants to com... |
 
-**Legacy skill names are not shipped.** A pre-2.0 name in a prompt maps to whichever Core 10 skill owns that phase — route by phase, never by the old name.
+**Legacy skill names are not shipped.** A pre-2.0 name in a prompt maps to whichever rolepod skill owns that phase — route by phase, never by the old name.
