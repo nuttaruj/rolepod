@@ -49,11 +49,20 @@ set -uo pipefail
 TASK_RX='^### (Task ?|T)[0-9]+'
 
 if [ "${1:-}" = "--brief" ]; then
-  BRIEF_N="${2:-}"
-  PLAN="${3:-}"
-  CONTRACT="${4:-}"
+  shift
+  # `--main` may appear in any position after --brief (a task that runs on
+  # the main checkout — a sequential track, no worktree); pull it out first
+  # so the remaining args keep their usual <N> <plan.md> [contract.md] order.
+  BRIEF_MAIN=0
+  BRIEF_POS=()
+  for a in "$@"; do
+    if [ "$a" = "--main" ]; then BRIEF_MAIN=1; else BRIEF_POS+=("$a"); fi
+  done
+  BRIEF_N="${BRIEF_POS[0]:-}"
+  PLAN="${BRIEF_POS[1]:-}"
+  CONTRACT="${BRIEF_POS[2]:-}"
   if [ -z "$BRIEF_N" ] || [ -z "$PLAN" ] || [ ! -f "$PLAN" ]; then
-    echo "usage: plan-lint.sh --brief <N> <plan.md> [contract.md]" >&2
+    echo "usage: plan-lint.sh --brief <N> <plan.md> [contract.md] [--main]" >&2
     exit 2
   fi
   if [ -n "$CONTRACT" ] && [ ! -f "$CONTRACT" ]; then
@@ -75,6 +84,27 @@ if [ "${1:-}" = "--brief" ]; then
   function addallowed(p) {
     if (p == "") return
     if (!(p in allowedset)) { allowedset[p] = 1; allowedord[++acnt] = p }
+  }
+  # Drops every ( … ) parenthetical from a Files-field value — a backticked
+  # token inside one is a note about a path already named, never a path of
+  # its own (e.g. "`x.py` (`helper()` only)" must not add `helper()`).
+  # Innermost-first so a nested parenthetical is fully removed too.
+  function stripparens(s,    t) {
+    t = s
+    while (match(t, /\([^()]*\)/)) t = substr(t, 1, RSTART - 1) substr(t, RSTART + RLENGTH)
+    return t
+  }
+  # A contract File-ownership label that names SEVERAL tasks (a range like
+  # `Tasks 1-4` / `T1-T4`, or a list like `Tasks 1, 3`) is a tag for each
+  # task it names, never a scoped slice for one — the owning task already
+  # lists its own paths under Files, so such a label contributes no files
+  # to any task Files allowed (a label naming only this task, or a bare
+  # role name with no task tag at all, is unaffected).
+  function is_multitask(lbl) {
+    if (lbl ~ /[Tt]asks?[[:space:]]+[0-9]+[[:space:]]*(-[[:space:]]*[0-9]+|([,\/][[:space:]]*[0-9]+)+)/) return 1
+    if (lbl ~ /T[0-9]+[[:space:]]*-[[:space:]]*T[0-9]+/) return 1
+    if (lbl ~ /T[0-9]+([[:space:]]*,[[:space:]]*T[0-9]+)+/) return 1
+    return 0
   }
   function rxesc(s,    out, i, c) {
     out = ""
@@ -288,7 +318,7 @@ if [ "${1:-}" = "--brief" ]; then
     low = tolower(Ow)
     write = "self"
     if (index(low, "write:") > 0 && index(low, "external") > 0) write = "external"
-    m = Fr
+    m = stripparens(Fr)
     while (match(m, /`[^`]+`/)) {
       p = substr(m, RSTART + 1, RLENGTH - 2)
       addallowed(p)
@@ -315,14 +345,14 @@ if [ "${1:-}" = "--brief" ]; then
       tpat = "(^|[^0-9A-Za-z])T" want "([^0-9A-Za-z]|$)"
       tpat2 = "(^|[^0-9A-Za-z])Task[[:space:]]+" want "([^0-9A-Za-z]|$)"
       for (k = 1; k <= onum; k++) {
-        tagmatch[k] = (ownlabel[k] ~ tpat) || (ownlabel[k] ~ tpat2)
+        tagmatch[k] = !is_multitask(ownlabel[k]) && ((ownlabel[k] ~ tpat) || (ownlabel[k] ~ tpat2))
         if (tagmatch[k]) tagfound = 1
       }
       for (k = 1; k <= onum; k++) {
         ml = 0
         if (tagfound) {
           ml = tagmatch[k]
-        } else if (role != "") {
+        } else if (role != "" && !is_multitask(ownlabel[k])) {
           # Role match is boundary-anchored — a plain substring let
           # "backend-developer" match a label naming a DIFFERENT task.
           # The boundary excludes hyphen (part of a kebab-case role token).
@@ -337,8 +367,13 @@ if [ "${1:-}" = "--brief" ]; then
     printf "Plan: %s · Spec: %s\n", planpath, specout
     feat = h1; sub(/[[:space:]]+[Pp]lan[[:space:]]*$/, "", feat); feat = slug(feat)
     tslug = slug(title)
-    print "## Worktree"
-    printf "`git worktree add -b %s/t%s-%s ../%s-wt-%s-t%s-%s` — cd there for every command; the name says which task it holds\n", feat, want, tslug, repo, feat, want, tslug
+    if (onmain) {
+      print "## Checkout"
+      print "main — no worktree; run every command in the main checkout"
+    } else {
+      print "## Worktree"
+      printf "`git worktree add -b %s/t%s-%s ../%s-wt-%s-t%s-%s` — cd there for every command; the name says which task it holds\n", feat, want, tslug, repo, feat, want, tslug
+    }
     print "## Goal"
     print (D == "" ? "(not in plan)" : D)
     print "## Tier"
@@ -433,7 +468,8 @@ if [ "${1:-}" = "--brief" ]; then
       print r
     }
     print "## Bounds"
-    printf "- Edit only Files allowed, and only under ../%s-wt-%s-t%s-%s — the same path in the main checkout belongs to the Lead; no backup copies (.bak / .orig). Never commit or push; leave the tree staged.\n", repo, feat, want, tslug
+    if (onmain) print "- Edit only Files allowed, in the main checkout; no backup copies (.bak / .orig). Never commit or push; leave the tree staged."
+    else printf "- Edit only Files allowed, and only under ../%s-wt-%s-t%s-%s — the same path in the main checkout belongs to the Lead; no backup copies (.bak / .orig). Never commit or push; leave the tree staged.\n", repo, feat, want, tslug
     print "- Run the Command after each edit and last before returning, then the repo commit check once (the one the project CLAUDE.md or AGENTS.md names), in the foreground (Bash timeout 600000; never run_in_background - nothing wakes a sub-agent). Reviewers named above → dispatch them in ONE message (reports to .rolepod/evidence/review/<task>-<role>.md); fix; then the Reviewers section above."
     print "- Budget: build <= 40 tool calls, whole loop <= 120; past it return PARTIAL with what is done, never grind."
     print "- Return a decision brief: verdict, `git diff --cached --stat | tail -3`, Command last 3 lines verbatim, reviewer verdicts + report paths, `Assuming:` lines, residuals."
@@ -454,9 +490,9 @@ if [ "${1:-}" = "--brief" ]; then
   [ -z "$RP_RISK_EXCL" ] || rp_ere_ok "$RP_RISK_EXCL" || RP_RISK_EXCL=""
   export RP_RISK_ADD RP_RISK_EXCL
   if [ -n "$CONTRACT" ]; then
-    awk -v rx="$TASK_RX" -v want="$BRIEF_N" -v planpath="$PLAN" -v repo="$BRIEF_REPO" -v hascontract=1 "$BRIEF_AWK" "$PLAN" "$CONTRACT"
+    awk -v rx="$TASK_RX" -v want="$BRIEF_N" -v planpath="$PLAN" -v repo="$BRIEF_REPO" -v hascontract=1 -v onmain="$BRIEF_MAIN" "$BRIEF_AWK" "$PLAN" "$CONTRACT"
   else
-    awk -v rx="$TASK_RX" -v want="$BRIEF_N" -v planpath="$PLAN" -v repo="$BRIEF_REPO" -v hascontract=0 "$BRIEF_AWK" "$PLAN"
+    awk -v rx="$TASK_RX" -v want="$BRIEF_N" -v planpath="$PLAN" -v repo="$BRIEF_REPO" -v hascontract=0 -v onmain="$BRIEF_MAIN" "$BRIEF_AWK" "$PLAN"
   fi
   exit $?
 fi
