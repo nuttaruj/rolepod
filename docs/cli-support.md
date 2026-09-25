@@ -12,7 +12,7 @@ Google retired the standalone Gemini CLI for individual accounts (2026-06-18) an
 |---|---|---|---|---|---|
 | Always-on instructions | SessionStart hook → `hooks/always-on-core.md` (additionalContext) | `~/.codex/AGENTS.md` (native) | `rules/always-on-core.mdc` with `alwaysApply: true` (Cursor native) | `AGENTS.md` at the customization root (auto-loaded) | `~/.config/opencode/AGENTS.md` managed block (native rules chain) |
 | Lazy-load rules (Read on trigger) | full | full | full (`.mdc` rules with explicit `alwaysApply: false` or glob match) | full | full |
-| Skills (`<plugin>/skills/<name>/SKILL.md`) | 14 — Core 10 + 2 helpers + 1 command + 1 on-demand (native) | 14 — Core 10 + 2 helpers + 1 command + 1 on-demand (native) | 14 — Core 10 + 2 helpers + 1 command + 1 on-demand (native; frontmatter stripped to `name` + `description` per Cursor spec) | 14 — Core 10 + 2 helpers + 1 command + 1 on-demand (native) | 14 — Core 10 + 2 helpers + 1 command + 1 on-demand (native `SKILL.md`) |
+| Skills (`<plugin>/skills/<name>/SKILL.md`) | 15 — Core 10 + 2 helpers + 1 command + 2 on-demand (native) | 15 — Core 10 + 2 helpers + 1 command + 2 on-demand (native) | 15 — Core 10 + 2 helpers + 1 command + 2 on-demand (native; frontmatter stripped to `name` + `description` per Cursor spec) | 15 — Core 10 + 2 helpers + 1 command + 2 on-demand (native) | 15 — Core 10 + 2 helpers + 1 command + 2 on-demand (native `SKILL.md`) |
 | Subagents (parallel team) | full Task / SendMessage (15 agents) | 15 agents as Codex `agents/*.toml` (Lead-orchestrated) | 15 agents in `agents/*.md` (Lead-orchestrated) | 15 agents in `agents/*.md` (Lead-orchestrated) | 15 agents in `agents/*.md` (filename = agent id, `mode: subagent`; Lead-orchestrated) |
 | Ticket loop (v2.144.0) | full — the Owner-line role builds on the Command (after each edit and last before returning), dispatches the reviewers its brief names (R4 only; nested Agent) — R2/R3 returns with none, the Lead's ONE combined review covers the plan diff instead — fixes, returns a decision brief; task owners run in parallel worktrees; the Lead integrates | doctrine — the role runs the loop; no nested dispatch → `REVIEW NEEDED:` in the brief and the Lead runs the review | doctrine — the role runs the loop; no nested dispatch → `REVIEW NEEDED:` in the brief and the Lead runs the review | doctrine — the role runs the loop; no nested dispatch → `REVIEW NEEDED:` in the brief and the Lead runs the review | doctrine — the role runs the loop; no nested dispatch → `REVIEW NEEDED:` in the brief and the Lead runs the review |
 | Hooks (core only) | 14 core hook scripts (16 registrations) in the plugin's `hooks/hooks.json` · auto-registered on install | 7 core hook scripts (8 registrations) across `SessionStart`/`UserPromptSubmit`/`PreToolUse`/`PostToolUse`/`Stop` · fire natively on Codex ≥0.144, default-enabled | 3 core hooks across `sessionStart`/`beforeShellExecution`/`stop` · auto-fires | 3 core hook scripts across `PreInvocation`/`PreToolUse`/`Stop` under a `rolepod` name wrapper · deny-only (agy honours no context field on any hook) | JS plugin (`plugin/rolepod.js`): cross-CLI session locks, post-compact re-anchor, `tool.execute.before` precommit DENY, fix-loop-breaker (the shared `hooks/*.sh` core in `plugins/rolepod-shared/`, its nudge appended to the tool result via `tool.execute.after`); per-agent `permission:` blocks (commit ban, scout read-only); rest skill-enforced |
@@ -159,21 +159,21 @@ The path-based ownership rules from `write-plan` apply identically across all CL
 
 Any installed CLI can be the Lead; the adversarial review, the stuck-state
 consult and the spec critique go to a **different CLI** (its own default model; the vendor may coincide) through
-one command, `rolepod-cross-family` (`install.sh` launcher; every plugin
-tree ships `scripts/cross-family.sh`, and the SessionStart context names
-the path on marketplace installs):
+`scripts/cross-family.sh` in the `cross-family` skill. The skill ships it
+in its own folder on every CLI, so a marketplace install needs nothing
+extra:
 
 ```bash
-rolepod-cross-family --pool                       # resolved pool with reasons (or OFF + candidates), no network
-rolepod-cross-family --kind implement --brief <task-brief> --allow <path>... [--allow-risky] --detach   # ONE member BUILDS one ticket in its write mode (v2.139.0). --allow is mandatory: `dir/` (or an existing dir) = everything below, a bare name = that one file; the allowed paths must start clean; money / auth / data paths (the commit gate's regex + .rolepod/risk-paths) are refused unless the USER passes --allow-risky. Exit 0 = kept; 21 = kept, edits outside --allow reverted (copies under <report>.reverted/); 22 = the member moved git state — refs, .git metadata, index and tree restored, nothing kept. The Lead reviews (§6) and commits.
-rolepod-cross-family --pool --kind implement      # which members may write here (`[implement] cli = …` in the pool file; absent → the `review` order)
-rolepod-cross-family --candidates                 # every installed CLI, the Lead's own included — the opt-in question
-rolepod-cross-family --probe                      # one-line "reply OK" per member (spends a call each)
-rolepod-cross-family --kind review  --brief brief.md --attach diff.patch --detach   # job; --collect <id> waits
-rolepod-cross-family --collect <job-id> --root <git-root>   # prints the review + receipt when the job lands (exit 6 = still running); PARTIAL / no-VERDICT reviews never anchor
-rolepod-cross-family --jobs                        # running / done
-rolepod-cross-family --kind consult --brief ledger.md
-rolepod-cross-family --kind critique --brief spec-draft.md          # write-spec: ranked open questions before Gate 1 (no cap)
+scripts/cross-family.sh --pool                       # resolved pool with reasons (or OFF + candidates), no network
+scripts/cross-family.sh --kind implement --brief <task-brief> --allow <path>... [--allow-risky] --detach   # ONE member BUILDS one ticket in its write mode (v2.139.0). --allow is mandatory: `dir/` (or an existing dir) = everything below, a bare name = that one file; the allowed paths must start clean; money / auth / data paths (the commit gate's regex + .rolepod/risk-paths) are refused unless the USER passes --allow-risky. Exit 0 = kept; 21 = kept, edits outside --allow reverted (copies under <report>.reverted/); 22 = the member moved git state — refs, .git metadata, index and tree restored, nothing kept. The Lead reviews (§6) and commits.
+scripts/cross-family.sh --pool --kind implement      # which members may write here (`[implement] cli = …` in the pool file; absent → the `review` order)
+scripts/cross-family.sh --candidates                 # every installed CLI, the Lead's own included — the opt-in question
+scripts/cross-family.sh --probe                      # one-line "reply OK" per member (spends a call each)
+scripts/cross-family.sh --kind review  --brief brief.md --attach diff.patch --detach   # job; --collect <id> waits
+scripts/cross-family.sh --collect <job-id> --root <git-root>   # prints the review + receipt when the job lands (exit 6 = still running); PARTIAL / no-VERDICT reviews never anchor
+scripts/cross-family.sh --jobs                        # running / done
+scripts/cross-family.sh --kind consult --brief ledger.md
+scripts/cross-family.sh --kind critique --brief spec-draft.md          # write-spec: ranked open questions before Gate 1 (no cap)
 # add --lead codex|agy|cursor|opencode when not running under Claude Code (ROLEPOD_LEAD_CLI also works)
 ```
 
@@ -190,7 +190,7 @@ Gemini CLI is retired for individual accounts (2026-06-18) and never a pool memb
 **Opt-in, off by default.** Pool = `.rolepod/cross-family` (project) →
 `~/.rolepod/cross-family` (machine): `[reviewer]` with `review = …` (the default order) and optional `consult = / critique = …`, `tier = R2|R3` (from that tier up, the external replaces `universal-reviewer` on a code diff — a `write-plan` brief names it as the alternative; default `R4` = today's behaviour, no external below R4), `[implement]` with `cli = …`; **no file = off,
 `none` = off** (exit 5, nothing logged). Nothing asks unprompted: when the
-user asks to set it up, `rolepod-cross-family --setup` prints the installed
+user asks to set it up, `scripts/cross-family.sh --setup` prints the installed
 candidates and the two questions (review order; implement `same` / `none` /
 an order) and `--setup review="…" implement=…` writes the file. List
 every CLI you use, the Lead's own included — it is skipped at run time, so
