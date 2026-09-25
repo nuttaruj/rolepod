@@ -9,17 +9,22 @@
 #   Review in flight: live detached cross-family    → one advisory line, never a deny —
 #     job + edit to a file its diff touches (v2.93.0)   the job reads the tree live; an
 #                                                       early edit voids its verdict
-#   High-risk path                                    → auto-Careful banner, and when
-#     the evidence window (since last commit, Lead + subagent transcripts)
-#     shows 0 test edits / 0 strong reviewers, the banner NAMES what the
-#     commit gate will require. Never a deny (v2.47.0): edit-time HARD
-#     blocks were the measured reason users set ROLEPOD_GATES_SOFT for
-#     good (CourtBook: 33 high-risk edits in one day, 116 unreasoned
-#     bypasses) — which then silenced the commit gate too. One hard
-#     checkpoint, at commit (precommit-gate.sh); this hook informs.
+#   High-risk path, a strong reviewer   → silent — the commit gate would pass.
+#     has already finished
+#   High-risk path, 0 strong reviewers  → ONE line, only now: fact (high-risk
+#     since the last commit               edit, 0 strong reviewers) → Fix
+#                                          (security-engineer + a finished
+#                                          strong universal-reviewer, or the
+#                                          external when the pool is on) →
+#                                          Exception (user-set bypass only).
+#     Never a deny (v2.47.0): edit-time HARD blocks were the measured reason
+#     users set ROLEPOD_GATES_SOFT for good (CourtBook: 33 high-risk edits in
+#     one day, 116 unreasoned bypasses) — which then silenced the commit gate
+#     too. One hard checkpoint, at commit (precommit-gate.sh); this hook
+#     informs.
 #
 # Bypass envs (user-set only):
-#   ROLEPOD_GATES_SOFT=1   — silence the would-block wording (banner stays)
+#   ROLEPOD_GATES_SOFT=1   — silence the would-block line entirely
 set -euo pipefail
 
 # Per-repo risk-path override: <git-root>/.rolepod/risk-paths — one ERE per
@@ -93,18 +98,12 @@ EOF
 # on Codex: disjoint tool-name sets).
 echo "$TOOL" | grep -qE '^(Edit|Write|MultiEdit|NotebookEdit|apply_patch)$' || exit 0
 
-# Edit ledger (v2.134.0): the same edit lands in .rolepod/evidence/edits.jsonl so the
-# commit gate can count test / high-risk edits on every CLI without a transcript.
-LEDGER="$(dirname "$0")/edit-ledger.py"
-[ -f "$LEDGER" ] && { printf '%s' "$INPUT" | python3 -I "$LEDGER" append-stdin "${ROLEPOD_CLI:-claude}" >/dev/null 2>&1 || true; }
-
 # Repo-relative normalization (breaker round 2, item 1): every classification
 # check below (COMMIT_TEST_EXEMPT / PROSE_EXEMPT / risk_filter) reads
 # FILE_REL, not the raw FILE — a CLI's own absolute spelling must resolve
-# against the repo root the same realpath-aware way
-# hooks/edit-ledger.py's relative() resolves it, or a root-anchored
-# `.rolepod/risk-paths` line (`^design_tokens/`) and an ancestor directory
-# named `auth` OUTSIDE the repo disagree with the commit gate.
+# against the repo root the same realpath-aware way as the commit gate, or a
+# root-anchored `.rolepod/risk-paths` line (`^design_tokens/`) and an
+# ancestor directory named `auth` OUTSIDE the repo disagree with it.
 FILE_REL="$FILE"
 _gr2_root="$(git rev-parse --show-toplevel 2>/dev/null || true)"
 if [ -n "$_gr2_root" ] && [ -n "$FILE" ]; then
@@ -135,8 +134,8 @@ fi
 # DIRECTORY (tests/fixtures/seed_auth_users.py) is NOT filename-exempt, so it
 # still shows the banner: the commit gate calls a risk-term file under a test
 # directory high-risk by design (v2.85.2), and the banner must predict that
-# deny, not hide it (F5 / Desired 4). Evidence counting (TEST_EDITS) comes
-# from session_state.py / edit-ledger.py below, not from a variable here.
+# deny, not hide it (F5 / Desired 4). Strong-reviewer evidence comes from
+# session_state.py below, not from a variable here.
 
 # A prose file is never a risk path at commit either (precommit-gate.sh's
 # HIGH_RISK= line strips these by extension before risk_filter runs) — the
@@ -220,25 +219,16 @@ print(json.dumps({'hookSpecificOutput': {'hookEventName': 'PreToolUse', 'additio
   exit 0
 fi
 
-# Session-state inspection (Careful banner + would-block wording) — the
-# same tally the commit gate reads (spec Desired 2): one session_state.py
-# call computes the window at the EDITED FILE's directory (DIFF_DIR there
-# is precommit-gate.sh's commit-resolved directory) and returns test edits,
-# high-risk edits, reviewers, strong reviewers (internal + anchored
-# external) and the anchored external count alone — transcript scan,
-# hook-auto phase-log backstop, every CLI's dispatch-proof rows and the
-# edit ledger, MAX per source, never summed.
+# Session-state inspection — the same tally the commit gate reads (spec
+# Desired 2, 2026-09-25): one session_state.py call computes the window at
+# the EDITED FILE's directory and returns strong reviewers since the last
+# commit — transcript scan + hook-auto phase-log "dispatch" backstop.
 # This canonical script ships only where hooks/lib/session_state.py ships
 # alongside it (Claude, Codex — build/render.sh:320-333, 426-434); Cursor's
 # own gate-reminder is a separate hand-written adapter script under
-# adapters/cursor/scripts/, so no lib-less fallback is needed here — the
-# lib-less window stays only in precommit-gate.sh (S11).
+# adapters/cursor/scripts/.
 SESSION_STATE="$(dirname "$0")/lib/session_state.py"
-TEST_EDITS=0
-HIGH_RISK_EDITS=0
-REVIEWERS=0
 STRONG_REVIEWERS=0
-EXTERNAL=0
 # Walk up to the nearest EXISTING ancestor (LOW-8, round-1 review): a Write
 # into a not-yet-created directory, or a relative Codex apply_patch path
 # when the hook cwd is not the repo root, made `git -C "$FILE_DIR"` fail —
@@ -252,99 +242,30 @@ done
 [ -d "$FILE_DIR" ] || FILE_DIR="."
 if [ -f "$SESSION_STATE" ] && command -v python3 >/dev/null 2>&1; then
   GR_EV=$(printf '%s' "$INPUT" | python3 "$SESSION_STATE" gate-evidence "$FILE_DIR" 2>/dev/null || true)
-  [ -n "$GR_EV" ] && read -r TEST_EDITS HIGH_RISK_EDITS REVIEWERS STRONG_REVIEWERS EXTERNAL <<< "$GR_EV"
+  [ -n "$GR_EV" ] && read -r _ _ _ STRONG_REVIEWERS _ <<< "$GR_EV"
 fi
-TEST_EDITS=${TEST_EDITS:-0}
-HIGH_RISK_EDITS=${HIGH_RISK_EDITS:-0}
-REVIEWERS=${REVIEWERS:-0}
 STRONG_REVIEWERS=${STRONG_REVIEWERS:-0}
-EXTERNAL=${EXTERNAL:-0}
 
 SOFT_MODE=0
 [ "${ROLEPOD_GATES_SOFT:-0}" = "1" ] && { SOFT_MODE=1; rolepod_log_bypass "gate-reminder" "ROLEPOD_GATES_SOFT"; }
 
-# Would-block wording predicts the GATE's own deny, not a rule of its own
-# (F3/F5, Desired 4): precommit-gate.sh's high-risk auto-pass needs only a
-# strong reviewer in the shared tally — 0 strong reviewers → the gate
-# denies whatever the test-edit count is (test edits are the T-gate floor,
-# a separate rule, never worded as a block here per v2.47.0's header). A
-# strong reviewer with no anchored external pass can still be zeroed by the
-# satellite-first hold (precommit-gate.sh ~1000) when the cross-family pool
-# is usable — the runner is called ONLY in that one state (measured 0.375s;
-# never on a plain edit), so this reminder predicts the hold too.
+# ONE line, only when the commit would block now (spec Desired 2, 2026-09-25):
+# fact (high-risk edit, strong reviewers since the last commit = 0) → Fix →
+# Exception. No always-on careful-mode banner, no per-CLI reviewer-list
+# builder, no test-first nudge — the gate's own deny (at commit) is the one hard
+# checkpoint; this is a cheap, silent-unless-blocking prediction of it.
 WOULD_BLOCK=""
-if [ -n "$HIGH_RISK" ] && [ "$SOFT_MODE" -eq 0 ]; then
-  if [ "$TEST_EDITS" -eq 0 ]; then
-    WOULD_BLOCK+="Write the failing test FIRST (RED), then implement — the T-gate floor, not the review. "
-  fi
-  if [ "$STRONG_REVIEWERS" -eq 0 ]; then
-    WOULD_BLOCK+="COMMIT WILL BLOCK — high-risk edits since the last commit, no strong adversarial reviewer. Fix: \`rolepod-cross-family --kind review --brief <file> --attach <diff>\` (different CLI, read-only, anchors the pass). An internal reviewer counts only after the runner reports the pool failed or empty → then dispatch rolepod:universal-reviewer or rolepod:security-engineer via the Agent tool (test edits are the floor, not the review). Reviewer impossible (user forbade agents / no subagents) → SURFACE it; fallback = Lead cold self-review recorded as a LIMITATION. Env bypass is user-set only. "
-  elif [ "$EXTERNAL" -eq 0 ]; then
-    # Mirrors the gate's own hold exactly (MEDIUM-4, round-1 review): an
-    # unknown Lead CLI fails OPEN there ("cannot exclude its own CLI → no
-    # tightening") — this reminder must not predict a block the gate would
-    # never apply. WB_LEAD stays unset (never defaulted to claude) when
-    # neither env var names it.
-    WB_LEAD="${ROLEPOD_LEAD_CLI:-}"
-    [ -z "$WB_LEAD" ] && [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && WB_LEAD="claude"
-    if [ -n "$WB_LEAD" ]; then
-      WB_RUNNER="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/../scripts/cross-family.sh"
-      [ -f "$WB_RUNNER" ] || WB_RUNNER="$HOME/.rolepod/bin/cross-family.sh"
-      if [ -f "$WB_RUNNER" ]; then
-        WB_POOL=$(bash "$WB_RUNNER" --lead "$WB_LEAD" --pool-names 2>/dev/null | tr '\n' ' ' | sed 's/ *$//')
-        if [ -n "$WB_POOL" ]; then
-          # The gate's hold also stands down once the runner already tried
-          # the pool and it failed/emptied since the window (an
-          # `external-fail` phase-log row) — checked here too, so this
-          # branch's own message does not contradict itself the way "gate
-          # passes, reminder still says WILL BLOCK, ... the internal
-          # reviewer counts" did before this fix.
-          WB_FAILS=$(printf '%s' "$INPUT" | python3 "$SESSION_STATE" gate-hold-predict "$FILE_DIR" 2>/dev/null || echo 0)
-          if [ "${WB_FAILS:-0}" -eq 0 ] 2>/dev/null; then
-            WOULD_BLOCK+="COMMIT WILL BLOCK — SATELLITE-FIRST: cross-family pool usable ($WB_POOL), no anchored external pass since the last commit — an internal reviewer alone does not clear a high-risk diff while a different CLI is available. Fix: \`rolepod-cross-family --kind review --brief <file> --attach <diff> --detach\` (add --lead $WB_LEAD outside a hook); --collect <job-id> waits. Pool fails or is empty (logged as external-fail) → the internal reviewer counts. "
-          fi
-        fi
-      fi
-    fi
-  fi
+if [ -n "$HIGH_RISK" ] && [ "$SOFT_MODE" -eq 0 ] && [ "$STRONG_REVIEWERS" -eq 0 ]; then
+  WOULD_BLOCK="COMMIT WILL BLOCK — HIGH-RISK edit, strong reviewers since the last commit = 0. Fix: the writer loop's rolepod:security-engineer + a FINISHED strong rolepod:universal-reviewer dispatch before commit (the external cross-family pass counts when the pool is on). Exception: user-set bypass only (ROLEPOD_GATES_SOFT). "
 fi
 
-# auto-Careful banner — every high-risk edit (would-block wording prepended). External
-# adversarial reviewers listed Lead-relative: every installed CLI EXCEPT
-# the one running this session (Iron Rule 2 — the adversarial pass runs on
-# a model different from the Lead's). This same script ships on all CLIs,
-# so it must never nudge a Lead toward its own model.
-CAREFUL_BANNER=""
-if [ -n "$HIGH_RISK" ]; then
-  # Self-identification: ROLEPOD_LEAD_CLI (set by the adapter's hooks.json
-  # command), else CLAUDE_PLUGIN_ROOT (Claude hook runtime). Unknown → list
-  # all; the exclusion sentence carries the discipline. Do NOT sniff shell
-  # env like CODEX_HOME — it leaks from the user's rc files.
-  SELF_CLI="${ROLEPOD_LEAD_CLI:-}"
-  [ -z "$SELF_CLI" ] && [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && SELF_CLI="claude"
-  REVIEWER_LIST="universal-reviewer"
-  # v2.76.0: the cross-family runner owns pool detection (config file +
-  # installed + Lead-CLI exclusion). Its --pool-names output IS the list;
-  # the pre-runner detection below is the fallback when the runner is absent.
-  XFAM_RUNNER="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/../scripts/cross-family.sh"
-  [ -f "$XFAM_RUNNER" ] || XFAM_RUNNER="$HOME/.rolepod/bin/cross-family.sh"
-  XFAM_POOL=""
-  if [ -f "$XFAM_RUNNER" ]; then
-    XFAM_POOL=$(bash "$XFAM_RUNNER" --lead "${SELF_CLI:-claude}" --pool-names 2>/dev/null | tr '\n' ' ' | sed 's/ *$//')
-    if [ -n "$XFAM_POOL" ]; then
-      REVIEWER_LIST="cross-family runner → $XFAM_POOL in place of universal-reviewer (\`rolepod-cross-family --kind review --brief <file> --attach <diff>\` — one command: default model, read-only, anchored) + rolepod:security-engineer"
-    else
-      REVIEWER_LIST="$REVIEWER_LIST + rolepod:security-engineer on this high-risk path (cross-family is opt-in and not enabled here — \`rolepod-cross-family --pool\` shows candidates; ask the user before enabling)"
-    fi
-  else
-    REVIEWER_LIST="$REVIEWER_LIST + rolepod:security-engineer on this high-risk path (no cross-family runner installed: the external pass needs rolepod-cross-family)"
-  fi
-  CAREFUL_BANNER="${WOULD_BLOCK}AUTO-CAREFUL (high-risk path; since last commit: $HIGH_RISK_EDITS high-risk edits / $TEST_EDITS tests / $REVIEWERS reviewers, $STRONG_REVIEWERS strong). Before commit: (1) a test file exists or is written this session; (2) reviewers dispatched — ≥2 when available (${REVIEWER_LIST}; security-engineer for auth/billing/crypto), in a DIFFERENT CLI than this one; (3) S1-S5 (simplicity) + T1-T6 (tests) — finish-work Pre-merge gates. Reviewer path blocked by the user → say so; fallback = Lead cold self-review + limitation note. Env bypass is user-set only. "
-fi
+# Emit reminder ONLY when high-risk AND would-block — no generic Q1-Q4 nag,
+# no output at all once a strong reviewer has already finished (spec
+# Success criterion 2, 2026-09-25).
+[ -z "${XFAM_INFLIGHT}${WOULD_BLOCK}" ] && exit 0
 
-# Emit reminder ONLY when high-risk — no generic Q1-Q4 nag.
 # Env-passed (see deny path) so apostrophes in the banner cannot break it.
-ROLEPOD_HOOK_MSG="${XFAM_INFLIGHT}${CAREFUL_BANNER}${HIGH_RISK}" python3 -I -c "
+ROLEPOD_HOOK_MSG="${XFAM_INFLIGHT}${WOULD_BLOCK}" python3 -I -c "
 import json, os
 print(json.dumps({
   'hookSpecificOutput': {

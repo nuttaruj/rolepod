@@ -1424,19 +1424,19 @@ def _evidence_root(diff_dir):
 
 def gate_evidence(hook_input: dict, diff_dir: str) -> tuple[int, int, int, int, int]:
     """One evidence tally for both the commit gate and the edit-time
-    reminder (spec Desired 2, 2026-09-24): the window computed once at
+    reminder (spec Desired 10, 2026-09-25): the window computed once at
     `diff_dir` (the commit's resolved directory for the gate, the edited
     file's directory for the reminder), the evidence files pinned to
     `_evidence_root` — returns (test_edits, high_risk_edits, reviewers,
     strong_reviewers, external). MAX per source, never summed: the
-    transcript scan (count_all), the hook-auto phase-log "dispatch" backstop
-    (nested Agent dispatches the transcript walk's cap dropped), every CLI's
-    "dispatch-proof" rows (SubagentStop — Codex, Cursor, Antigravity,
-    opencode; the Codex bundle carries lib/ and used to take this same
-    branch while ignoring its own proof rows, reproduced 2026-09-24) and the
-    edit ledger. Anchored external passes (XREV) ADD on top of reviewers /
-    strong_reviewers, same as the gate's own long-standing rule, and are
-    also returned on their own for the satellite-first hold."""
+    transcript scan (count_all) and the hook-auto phase-log "dispatch"
+    backstop (nested Agent dispatches the transcript walk's cap dropped).
+    Claude-native only: no CLI "dispatch-proof" rows, no edit ledger — this
+    function runs only on Claude (precommit-gate.sh's ROLEPOD_LEAD_CLI check
+    excludes every other CLI before calling it). Anchored external passes
+    (XREV) ADD on top of reviewers / strong_reviewers, same as the gate's
+    own long-standing rule, and are also returned on their own for the
+    satellite-first hold."""
     diff_dir = diff_dir or "."
     transcript_path = hook_input.get("transcript_path") or ""
     since_epoch = _window_since_epoch(diff_dir)
@@ -1452,32 +1452,6 @@ def gate_evidence(hook_input: dict, diff_dir: str) -> tuple[int, int, int, int, 
             "dispatch", since_epoch, phase_log, "hook-auto", True)
         reviewers = max(reviewers, r1)
         strong = max(strong, s1)
-        # provenance "hook-stdin" required (HIGH-1, round-1 review): every
-        # real writer sets it (Codex subagent-model-log.sh, Cursor
-        # dispatch-log.sh, Antigravity model-log.sh, opencode rolepod.js) —
-        # on Claude NO hook ever writes a dispatch-proof row, so an
-        # unrequired read let one hand-written line clear a high-risk
-        # commit with no model, no cli and no provenance field at all.
-        r2, s2 = _phase_log_reviewer_counts(
-            "dispatch-proof", since_epoch, phase_log, "hook-stdin", False)
-        reviewers = max(reviewers, r2)
-        strong = max(strong, s2)
-
-    if root:
-        import subprocess
-        ledger_script = os.path.join(
-            os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "edit-ledger.py")
-        since_arg = "" if since_epoch is None else repr(since_epoch)
-        try:
-            out = subprocess.run(
-                ["python3", "-I", ledger_script, "count", since_arg, "--cwd", root],
-                capture_output=True, text=True, timeout=10,
-            ).stdout.strip()
-            l_test, l_risk = (int(x) for x in out.split())
-            test_edits = max(test_edits, l_test)
-            high_risk_edits = max(high_risk_edits, l_risk)
-        except Exception:
-            pass
 
     external = 0
     if ev_dir and os.path.isfile(phase_log):

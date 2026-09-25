@@ -5,15 +5,18 @@
 #   Trivial diff (≤5 lines, 1 file, 0 logic lines, no risky path)
 #                                  → silent auto-pass
 #   Normal code (logic but no high-risk path)
-#                                  → SOFT warn (additionalContext, exit 0)
-#                                    Lead sees S1-S5 / T1-T6 / F1-F5 reminder.
-#                                    Commit proceeds.
+#                                  → silent (a workflow-following commit gets
+#                                    no context at all); a test-diff-lint
+#                                    finding, when present, still prints.
 #   High-risk path matched (auth/billing/payment/migration/credit/permission/
 #                            secret/crypto/token)
 #                                  → session evidence (≥1 test edit or ≥1
 #                                    reviewer dispatch) → AUTO-PASS + log +
 #                                    additionalContext note. No evidence →
 #                                    HARD block (permissionDecision: deny).
+#                                  This branch is Claude-native only: a
+#                                    non-Claude ROLEPOD_LEAD_CLI gets only the
+#                                    private-docs deny above, then passes.
 #
 # Env overrides:
 #   ROLEPOD_GATES_HARD=1   — escalate normal code from SOFT warn to HARD block
@@ -88,126 +91,6 @@ xfam_running_job() {
     _xr_out="$(basename "$_jd") (running ${_jm} min)"
   done
   printf '%s' "$_xr_out"
-}
-
-# Reviewer-dispatch count from phase-log.jsonl rows of one phase value
-# (v2.144.0) — shared by two callers below: the non-Claude Lead path
-# (dispatch-proof rows from Cursor Task / opencode task, v2.134/2.135) and
-# the Claude nested-Agent backstop (below). Same base classification both
-# times: qa-tester never counts (E2E verification, not the review floor —
-# v2.148.4); security-engineer / universal-reviewer / code-reviewer are
-# STRONG; a scout or writer-role row never counts (name in neither set).
-#
-# Claude nested-Agent case, precisely (round-1 review corrected the first
-# cut of this comment, which overclaimed): session_state.count_all already
-# discovers ONE level of nesting — a runner subagent's own Agent-tool call
-# to a reviewer is a tool_use recorded in the RUNNER's own transcript file,
-# and that file sits directly under the Lead's <session>/subagents/, which
-# agent_transcripts() walks. Measured gap instead: agent_transcripts() caps
-# at the 60 NEWEST subagent-transcript files in the window
-# (session_state.py AGENT_TRANSCRIPT_CAP) — a session running a large fleet
-# (many tickets, many named dispatches) since the last commit can push a
-# real reviewer dispatch out of that cap, and the transcript scan silently
-# reads 0. phase-log.jsonl is append-only with no such cap, so it backstops
-# exactly that drop (plus any dispatch shape whose transcript never lands
-# under the walked tree). MAX with the transcript scan, never summed.
-#
-# Hardening added after the same review: $4 REQUIRED provenance value
-# ("" = no requirement, preserving the non-Claude path's existing,
-# unchanged behavior) raises a bare `printf >> phase-log.jsonl` forgery to
-# parity with the real writer's own field — not authentication, a
-# determined agent can still add the key, but it closes the casual path
-# the shipped test used to demonstrate. $5 "1" additionally requires a
-# STRONG row's model to NOT be low-class (mirrors session_state.count_all's
-# own LOW_CLASSES refusal — a named sonnet/haiku downgrade of a strong
-# reviewer must not count as the adversarial pass); "" skips the check,
-# preserving the non-Claude path's pre-existing, documented leniency
-# (those rows are hook-reported with unverified provenance and the agent
-# TOMLs pin the strong model anyway). $6 session_state.py path for the
-# model-class lookup (only read when $5 is "1"). Fails CLOSED, not open:
-# when $5 is "1" but the import fails (session_state.py present but
-# broken — the call site already gates on the file existing), no row
-# counts as strong rather than falling back to a permissive default.
-#
-# Accepted, NOT fixed here (out of this file's owned scope — flagged to
-# the caller): phase-log.jsonl is repo-scoped, not session-scoped, same as
-# every other phase-log-based evidence in this file (XREV, external-fail,
-# the pre-existing dispatch-proof path) — a second Claude session sharing
-# this worktree gets the same repo-wide credit. Narrowing this needs a
-# session_id field on the "dispatch" row, written by dispatch-auto-log.sh
-# (not owned by this change).
-#
-# $1 phase value, $2 since-epoch (unix seconds; "" = no window), $3 path.
-# stdout: "<reviewers> <strong>".
-phase_log_reviewer_count() {
-  _pr_phase="$1"; _pr_since="$2"; _pr_path="$3"; _pr_prov="${4:-}"; _pr_strict="${5:-}"; _pr_ss="${6:-}"
-  [ -f "$_pr_path" ] || { printf '0 0\n'; return; }
-  python3 -I -c '
-import json, os, sys, datetime
-phase, since, path, prov, strict, ss_path = (sys.argv + [""] * 6)[1:7]
-cut = None
-if since:
-    try:
-        cut = datetime.datetime.fromtimestamp(int(since), datetime.timezone.utc)
-    except Exception:
-        cut = None
-REVIEWERS = {"security-engineer", "universal-reviewer", "code-reviewer"}   # qa-tester = E2E verification, never the review floor (v2.148.4)
-STRONG = {"security-engineer", "universal-reviewer", "code-reviewer"}
-model_class = lambda m: "unknown"
-LOW_CLASSES = set()
-ss_ok = False
-if strict == "1" and ss_path:
-    try:
-        sys.path.insert(0, os.path.dirname(ss_path))
-        import session_state as ss
-        model_class = ss.model_class
-        LOW_CLASSES = ss.LOW_CLASSES
-        ss_ok = True
-    except Exception:
-        pass
-r = s = 0
-try:
-    with open(path) as f:
-        for line in f:
-            try:
-                d = json.loads(line)
-                if not isinstance(d, dict):
-                    continue
-                if d.get("phase") != phase:
-                    continue
-                if prov and d.get("provenance") != prov:
-                    continue
-                if d.get("write_mode"):
-                    # F1/F2: a write-mode dispatch (dispatch-auto-log.sh) is a
-                    # writer, not a reviewer — count_all already excludes it
-                    # from the transcript scan; the phase-log backstop must
-                    # not re-admit it. A forged write_mode field can only
-                    # LOWER a count, never raise one.
-                    continue
-                if cut is not None:
-                    ts = datetime.datetime.fromisoformat((d.get("ts") or "").replace("Z", "+00:00"))
-                    if ts.tzinfo is None or ts < cut:
-                        continue
-                at = d.get("agent_type")
-                name = (at.strip() if isinstance(at, str) else "").rsplit(":", 1)[-1]
-                if name.startswith("rolepod-"):
-                    name = name[len("rolepod-"):]
-                # Both flags resolved before either counter moves (round-2
-                # review MINOR-1): model_class() raising on a malformed
-                # `model` must not leave `r` incremented with `s` never
-                # reached.
-                is_reviewer = name in REVIEWERS
-                is_strong = name in STRONG and (strict != "1" or (ss_ok and model_class(d.get("model")) not in LOW_CLASSES))
-                if is_reviewer:
-                    r += 1
-                if is_strong:
-                    s += 1
-            except Exception:
-                continue
-except OSError:
-    pass
-print(r, s)
-' "$_pr_phase" "$_pr_since" "$_pr_path" "$_pr_prov" "$_pr_strict" "$_pr_ss" 2>/dev/null || echo "0 0"
 }
 
 INPUT=$(cat 2>/dev/null || echo '{}')
@@ -667,8 +550,8 @@ print(base)
 # git work tree — a parse gap, a missing path, or a non-repo directory all
 # keep DIFF_DIR at "." (the hook's own cwd, exactly today's behavior; no new
 # deny can come from a parse problem). gitd() is every diff-reading call
-# from here down; `.rolepod/` config, phase-log, edit-ledger and
-# cross-family evidence stay pinned to the hook cwd (R3) — see _pd_root.
+# from here down; `.rolepod/` config, phase-log and cross-family evidence
+# stay pinned to the hook cwd (R3) — see _pd_root.
 DIFF_DIR="."
 if [ -n "$RESOLVED_DIR" ] && [ -d "$RESOLVED_DIR" ] \
    && [ "$(git -C "$RESOLVED_DIR" rev-parse --is-inside-work-tree 2>/dev/null || true)" = "true" ]; then
@@ -706,8 +589,8 @@ FILES_CHANGED=$(echo "$DIFF_STAT" | wc -l | tr -d ' ')
 # in silently; this is the mechanical stop. A repo that WANTS them tracked
 # creates <git-root>/.rolepod/docs-tracked (an explicit, reviewable choice).
 # _pd_root is the config/evidence root for the REST of this file (R3): pinned
-# to the hook's own cwd — every writer hook (edit-ledger, phase-log,
-# bypass.log, session locks) put its state there — and only when the hook
+# to the hook's own cwd — every writer hook (phase-log, bypass.log, session
+# locks) put its state there — and only when the hook
 # cwd is not itself a git work tree does it fall back to the resolved diff
 # directory's toplevel.
 _pd_root="$(git rev-parse --show-toplevel 2>/dev/null)" || true
@@ -720,6 +603,19 @@ print(json.dumps({'hookSpecificOutput': {'hookEventName': 'PreToolUse', 'permiss
 " 2>/dev/null || echo '{}'
   exit 0
 fi
+
+# The HARD evidence path (high-risk reviewer + session-risk-without-test) is
+# native only to Claude: its own transcript is Claude-JSONL and its hook-auto
+# phase-log "dispatch" rows are the trustworthy backstop (spec Desired 10,
+# 2026-09-25). A rendered CLI other than Claude gets only the private-docs
+# deny above, then passes — no evidence tally, no high-risk deny, no SOFT
+# reminder. ROLEPOD_LEAD_CLI unset (real Claude Code never sets it) or
+# "claude" (adapters that emulate it) keeps the full path below.
+_pd_lead="${ROLEPOD_LEAD_CLI:-}"
+if [ -n "$_pd_lead" ] && [ "$_pd_lead" != "claude" ]; then
+  exit 0
+fi
+
 LINES_CHANGED=$(echo "$DIFF_STAT" | awk '{a+=$1; b+=$2} END {print a+b}')
 LINES_CHANGED=${LINES_CHANGED:-0}
 
@@ -735,35 +631,17 @@ LINES_CHANGED=${LINES_CHANGED:-0}
 # (test + production file) still matches on the production path. The
 # Paths come from numstat, tab-separated: split on TAB (a path with a space
 # is one field, never truncated at the space — v2.85.3).
-# content-based money check below CANNOT see these files either (it excludes
-# test paths itself), so money primitives inside a test-named file are an
-# ACCEPTED blind spot: rspec/jest-only load, and the mixed diff still blocks.
+# High-risk is the path regex + .rolepod/risk-paths only (spec Desired 4,
+# 2026-09-25): the money-term content scan over added lines was removed — a
+# UI label / i18n value / rendered copy of prose holding "refund" is not
+# high-risk (it blocked this repo at v2.175.0). A money-movement primitive
+# living in a generically named file is an accepted blind spot now; the path
+# regex still catches it when the file sits under a risky directory.
 HIGH_RISK=$(echo "$DIFF_STAT" | awk -F'\t' '{print $3}' | grep -vE '\.(test|spec)\.(ts|tsx|js|jsx|mjs|cjs|py|go|rs|rb|java|kt|swift|cs|php)$|(^|/)(test_[^/]*|[^/]*_test|[^/]*_spec)\.(py|go|rs|rb|php)$|(^|/)[^/]*Tests?\.(java|kt|cs|swift|php|scala)$' | grep -vE '\.(md|mdx|mdc|txt|rst|adoc)(\.tmpl)?$|(^|/)(README|LICENSE|CHANGELOG)$' | risk_filter '(^|/|_)(auth|authn|authz|authentication|authorization|billing|payment|payments|migration|migrations|credit|credits|permission|permissions|secret|secrets|crypto|cryptography|token|tokens|oauth|jwt|sso|saml|webhook|webhooks|stripe|paypal|charge|charges|invoice|invoices|deletion|deletions|erasure|gdpr|security)(/|\.|_|$)' | head -1 || true)
 
-# Content-based high-risk (v2.46.0) — money-movement primitives in ADDED
-# lines of non-test staged files. Catches refund/payout logic living in a
-# generically named file (closure-service.ts, date-utils.ts) the path regex
-# cannot see — the shape of 2 of the 4 escaped CourtBook money bugs.
-if [ -z "$HIGH_RISK" ]; then
-  # Prose is excluded INSIDE awk, on the header path only (never on the
-  # added line's text — `b.refund.md + b.total` in a .py must still count):
-  # a doc that mentions a refund policy is not money logic (v2.86.0 — all
-  # 14 recorded content hits were executable files, 0 were docs). git
-  # appends a trailing tab to `+++ b/<path>` when the name has a space —
-  # stripped before the suffix test. The candidate paths then go through
-  # risk_filter so a `-` line in .rolepod/risk-paths excludes them exactly
-  # like the path regex.
-  CONTENT_RISK=$(gitd diff $GIT_DIFF_BASE -U0 2>/dev/null \
-    | awk '/^\+\+\+ /{f=substr($0,5); sub(/[ \t]+$/,"",f)} /^\+[^+]/{if (f !~ /\.(md|mdx|mdc|txt|rst|adoc)(\.tmpl)?$/) print f "\t" $0}' \
-    | grep -vE '(^|/)(test|tests|spec|specs|__tests__|fixtures)(/|\.|_)|_test\.|\.test\.|_spec\.|\.spec\.' \
-    | grep -iE '(refund|payout|chargeback|settlement)' \
-    | awk -F'\t' '{print $1}' | sed -E 's#^[abciow]/##' | risk_filter '.' | head -1 || true)
-  [ -n "$CONTENT_RISK" ] && HIGH_RISK="staged content: money-movement term (refund/payout/chargeback/settlement)"
-fi
-
 # Logic-bearing line count — non-comment, non-blank lines of NON-PROSE files
-# (v2.153.0). Prose is excluded on the header path, like CONTENT_RISK above:
-# a mixed diff used to count every .md line as logic (a docs task + one
+# (v2.153.0). Prose is excluded on the header path (same rule as HIGH_RISK
+# above): a mixed diff used to count every .md line as logic (a docs task + one
 # script read "280 logic"). Headers are read only between `diff --git` and
 # the first `@@`, so a removed SQL comment (`--- x`) is never taken for one;
 # a deleted file (`+++ /dev/null`) keeps its `---` path; git quotes a path
@@ -781,38 +659,6 @@ if [ -z "$LOGIC_LINES" ]; then
 else
   LOGIC_COUNT=$(printf '%s\n' "$LOGIC_LINES" | wc -l | tr -d ' ')
 fi
-# SOFT-only count: a line that is ONLY a version field — "version": "1.2.3" /
-# version = "1.2.3-rc.1" / version: v1.2.3 — is a release bump, not logic:
-# every release commit asked for a reviewer. The suffix is semver-shaped and
-# the line must end there, so `version: 1.2.3;run()` still counts. LOGIC_COUNT
-# above keeps those lines: the HARD side (auto-skip, cross-family hold on a
-# risky path) reads the wider count and does not move.
-VERSION_LINE_RE='^[+-][[:space:]]*"?version"?[[:space:]]*[:=][[:space:]]*"?v?[0-9]+(\.[0-9]+)+([-+][0-9A-Za-z.+-]*)?"?,?[[:space:]]*$'
-# SOFT-only, continued (v2.153.2): a generated file is not what a reviewer
-# reads. Two mechanical sources, no guessing from names beyond lockfiles:
-# a path git itself marks `linguist-generated` (.gitattributes /
-# .git/info/attributes — the platform convention for rendered copies, dist,
-# codegen, snapshots) and the standard lockfiles. Replayed over 80 commits
-# of this repo: docs-only source changes asked for a reviewer because their
-# rendered .toml copies counted as logic; a dependency add counts its whole
-# lockfile. A path git quotes, or a commit run from a subdirectory, simply
-# fails to match and keeps counting — the miss costs one extra ask, never a
-# skipped one. LOGIC_COUNT above still holds every line: HARD does not move.
-LOCK_RE='(^|/)(package-lock\.json|npm-shrinkwrap\.json|yarn\.lock|pnpm-lock\.yaml|bun\.lockb?|Cargo\.lock|poetry\.lock|uv\.lock|Pipfile\.lock|composer\.lock|Gemfile\.lock|go\.sum|flake\.lock|mix\.lock|pubspec\.lock|Podfile\.lock|packages\.lock\.json)$'
-GEN_PATHS=$(printf '%s\n' "$DIFF_STAT" | awk -F'\t' 'NF>=3{print $3}' | gitd check-attr --stdin linguist-generated 2>/dev/null | sed -nE 's/: linguist-generated: (set|true)$//p' || true)
-REVIEW_LOGIC=$(gitd diff $GIT_DIFF_BASE -U0 2>/dev/null \
-  | RP_GEN="$GEN_PATHS" RP_LOCK="$LOCK_RE" awk 'BEGIN{n=split(ENVIRON["RP_GEN"],a,"\n"); for(i=1;i<=n;i++) if (a[i]!="") gen[a[i]]=1; lock=ENVIRON["RP_LOCK"]}
-         /^diff --git /{hdr=1; next}
-         hdr && /^--- /{g=substr($0,5); sub(/[ \t]+$/,"",g); sub(/"$/,"",g); next}
-         hdr && /^\+\+\+ /{f=substr($0,5); sub(/[ \t]+$/,"",f); sub(/"$/,"",f); if (f=="/dev/null") f=g; p=f; sub(/^"?[ab]\//,"",p); next}
-         /^@@/{hdr=0; next}
-         !hdr && /^[+-]/{ if (f !~ /\.(md|mdx|mdc|txt|rst|adoc)(\.tmpl)?$/ && f !~ /(^|\/)(README|LICENSE|CHANGELOG)$/ && !(p in gen) && p !~ lock) print }' \
-  | grep -vE '^[+-][[:space:]]*$' | grep -vE '^[+-][[:space:]]*(#|//|/\*|\*/?|--|;)' | grep -vE "$VERSION_LINE_RE" | grep -c . || true)
-REVIEW_LOGIC=${REVIEW_LOGIC:-0}
-REVIEW_FILES=$(printf '%s\n' "$DIFF_STAT" | RP_GEN="$GEN_PATHS" RP_LOCK="$LOCK_RE" awk -F'\t' 'BEGIN{n=split(ENVIRON["RP_GEN"],a,"\n"); for(i=1;i<=n;i++) if (a[i]!="") gen[a[i]]=1; lock=ENVIRON["RP_LOCK"]}
-         NF>=3 && $3 !~ /\.(md|mdx|mdc|txt|rst|adoc)(\.tmpl)?$/ && $3 !~ /(^|\/)(README|LICENSE|CHANGELOG)$/ && !($3 in gen) && $3 !~ lock {c++} END{print c+0}' || true)
-REVIEW_FILES=${REVIEW_FILES:-0}
-
 # Docs are written, not reviewed (v2.143.0): every staged path is prose
 # (.md/.mdx/.mdc/.txt/.rst/.adoc, their .tmpl templates, or an extension-less README/LICENSE/CHANGELOG)
 # → allow silently, whatever the size. The private-docs deny already ran.
@@ -883,124 +729,26 @@ fi
 GATE_EV_DONE=0
 if [ -f "$SESSION_STATE" ] && command -v python3 >/dev/null 2>&1; then
   # One session_state.py call computes the window at DIFF_DIR itself (same
-  # algorithm as SINCE_EPOCH above, kept in bash for SINCE_HUMAN and the
-  # lib-less branch below — S11 pins the two windows equal) and returns all
-  # five numbers in one pass: test edits, high-risk edits, reviewers, strong
-  # reviewers (internal + anchored external) and the anchored external count
-  # alone. It folds in the transcript scan, the hook-auto phase-log backstop
-  # (v2.144.0, see below), every CLI's "dispatch-proof" rows (Codex ships
-  # lib/ and used to take this same branch while ignoring its own proof
-  # rows — reproduced 2026-09-24) and the edit ledger — MAX per source,
-  # never summed (spec Desired 2).
+  # algorithm as SINCE_EPOCH above, kept in bash for SINCE_HUMAN) and returns
+  # all five numbers in one pass: test edits, high-risk edits, reviewers,
+  # strong reviewers (internal + anchored external) and the anchored
+  # external count alone. It folds in the transcript scan and the hook-auto
+  # phase-log "dispatch" backstop — Claude-native evidence only (spec
+  # Desired 10, 2026-09-25): no edit ledger, no CLI "dispatch-proof" rows,
+  # no lib-less fallback — this branch runs only on Claude (the ROLEPOD_LEAD_CLI
+  # check above already excluded every other CLI).
   GATE_EV=$(printf '%s' "$INPUT" | python3 "$SESSION_STATE" gate-evidence "$DIFF_DIR" 2>/dev/null || true)
   if [ -n "$GATE_EV" ]; then
     read -r TEST_EDITS HIGH_RISK_EDITS REVIEWERS STRONG_REVIEWERS XREV <<< "$GATE_EV"
     GATE_EV_DONE=1
   fi
-elif command -v python3 >/dev/null 2>&1; then
-  # Renders without lib/session_state.py (Cursor / Antigravity — no lib/,
-  # build/render.sh:668-672): their transcripts are not Claude-JSONL, so
-  # reviewer evidence comes from the SubagentStop dispatch-proof log written
-  # by the adapter's own dispatch hook. Only reviewer counts exist on this
-  # path — test/high-risk edit evidence needs transcript parsing, and the
-  # HARD paths that consume those counts cannot fire when both sides read
-  # as 0. Strong class is decided by agent_type alone: the logged model is
-  # hook-reported with unverified provenance (may be the parent's), and the
-  # agent TOMLs pin strong reviewers to the strong model anyway. `provenance:
-  # hook-stdin` IS required (HIGH-1, round-1 review): every real writer sets
-  # it (Codex subagent-model-log.sh, Cursor dispatch-log.sh, Antigravity
-  # model-log.sh, opencode rolepod.js) — none of these bundles has a hook
-  # that could ever write a dispatch-proof row WITHOUT it, so requiring the
-  # field closes the hand-written-line forgery at no cost to a real one.
-  PHASE_LOG="$_pd_root/.rolepod/evidence/phase-log.jsonl"
-  read -r REVIEWERS STRONG_REVIEWERS <<< "$(phase_log_reviewer_count dispatch-proof "$SINCE_EPOCH" "$PHASE_LOG" "hook-stdin")"
 fi
 TEST_EDITS=${TEST_EDITS:-0}
 HIGH_RISK_EDITS=${HIGH_RISK_EDITS:-0}
 REVIEWERS=${REVIEWERS:-0}
 STRONG_REVIEWERS=${STRONG_REVIEWERS:-0}
-if [ "$GATE_EV_DONE" -ne 1 ]; then
-  # Edit ledger (v2.134.0): CLI-neutral edit evidence written at edit time by
-  # every CLI's edit hook (hooks/edit-ledger.py) — the lib-less path only;
-  # the python tally above already folds this in for the lib path.
-  LEDGER="$(dirname "$0")/edit-ledger.py"
-  if [ -f "$LEDGER" ] && command -v python3 >/dev/null 2>&1; then
-    read -r L_TEST L_RISK <<< "$(python3 -I "$LEDGER" count "$SINCE_EPOCH" 2>/dev/null || echo "0 0")"
-    [ "${L_TEST:-0}" -gt "${TEST_EDITS:-0}" ] 2>/dev/null && TEST_EDITS=$L_TEST
-    [ "${L_RISK:-0}" -gt "${HIGH_RISK_EDITS:-0}" ] 2>/dev/null && HIGH_RISK_EDITS=$L_RISK
-  fi
-fi
-TEST_EDITS=${TEST_EDITS:-0}
-HIGH_RISK_EDITS=${HIGH_RISK_EDITS:-0}
-
-# External strong pass (satellite-first, v2.61.0) — cross-family reviews are
-# plain Bash `codex exec` / `gemini -p` / `claude -p` calls, invisible to
-# transcript parsing on EVERY CLI. review-code's evidence anchor appends a
-# phase-log "review" line with reviewer:"external" pointing at the saved raw
-# output; count it as a strong reviewer only when that file really exists
-# inside .rolepod/evidence/ and is >= 500 bytes — a bare claim without the
-# artifact is ignored (claim-based evidence is what this gate exists to stop).
-# The python tally above already computed XREV for the lib path — this
-# bash-python block is the lib-less path's own copy (kept, per Desired 2).
 EV_ROOT="$_pd_root/.rolepod/evidence"
 XREV=${XREV:-0}
-if [ "$GATE_EV_DONE" -ne 1 ] && [ -f "$EV_ROOT/phase-log.jsonl" ] && command -v python3 >/dev/null 2>&1; then
-  XREV=$(python3 -I -c '
-import json, os, sys, datetime
-since, ev = sys.argv[1], sys.argv[2]
-cut = None
-if since:
-    try:
-        cut = datetime.datetime.fromtimestamp(int(since), datetime.timezone.utc)
-    except Exception:
-        cut = None
-n = 0
-try:
-    with open(os.path.join(ev, "phase-log.jsonl")) as f:
-        for line in f:
-            try:
-                d = json.loads(line)
-            except Exception:
-                continue
-            if d.get("phase") != "review" or d.get("reviewer") != "external":
-                continue
-            if cut is not None:
-                try:
-                    ts = datetime.datetime.fromisoformat(
-                        (d.get("ts") or "").replace("Z", "+00:00"))
-                    if ts.tzinfo is None:
-                        ts = ts.replace(tzinfo=datetime.timezone.utc)
-                    if ts < cut:
-                        continue
-                except Exception:
-                    continue
-            raw = d.get("raw") or ""
-            if not isinstance(raw, str) or not raw or raw.startswith("/") or ".." in raw:
-                continue
-            # P1 (Lead close-out, round 2 residual): raw must sit under
-            # evidence/external/ — the python twin (_anchored_external_count
-            # in session_state.py) carries the full rationale.
-            if not raw.startswith("external/"):
-                continue
-            candidate = os.path.join(ev, raw)
-            ext_root = os.path.realpath(os.path.join(ev, "external"))
-            real = os.path.realpath(candidate)
-            if real != ext_root and not real.startswith(ext_root + os.sep):
-                continue
-            try:
-                if os.path.getsize(candidate) >= 500:
-                    n += 1
-            except OSError:
-                continue
-except OSError:
-    pass
-print(n)
-' "$SINCE_EPOCH" "$EV_ROOT" 2>/dev/null || echo 0)
-  if [ "${XREV:-0}" -gt 0 ] 2>/dev/null; then
-    REVIEWERS=$((REVIEWERS + XREV))
-    STRONG_REVIEWERS=$((STRONG_REVIEWERS + XREV))
-  fi
-fi
 
 # Satellite-first, ENFORCED (v2.76.0). Measured before this: 210 dispatches,
 # 0 anchored cross-family passes — the internal strong reviewer was one
@@ -1132,20 +880,20 @@ if [ "$BYPASS_REQUESTED" -eq 1 ] && [ "$TEST_EDITS" -eq 0 ] && [ "$REVIEWERS" -e
   BYPASS_IGNORED="Bypass marker present but IGNORED — session shows 0 test edits and 0 reviewer dispatches; markers are never honored without gate evidence. "
 fi
 
-# Build deny reason
+# Build deny reason — names only what clears the block (spec Desired 3,
+# 2026-09-25): no T-gate label, no S1-S5/T1-T6/F1-F5 list, no "preferred".
 REASON="precommit-gate BLOCKED. ${BYPASS_IGNORED}"
 REASON+="Diff: $FILES_CHANGED files / $LINES_CHANGED lines / $LOGIC_COUNT logic lines. "
-REASON+="Evidence ($SINCE_HUMAN, Lead + subagent transcripts + edit ledger): $TEST_EDITS test edits / $HIGH_RISK_EDITS high-risk edits / $REVIEWERS reviewer dispatches ($STRONG_REVIEWERS strong). "
+REASON+="Evidence ($SINCE_HUMAN, Lead + subagent transcripts): $TEST_EDITS test edits / $HIGH_RISK_EDITS high-risk edits / $REVIEWERS reviewer dispatches ($STRONG_REVIEWERS strong). "
 [ -n "$HIGH_RISK" ] && REASON+="HIGH-RISK path: $HIGH_RISK → R4 floor: security-engineer + ONE general strong pass (the external when the pool is usable, else universal-reviewer). "
 if [ "$HIGH_RISK_EDITS" -gt 0 ] && [ "$TEST_EDITS" -eq 0 ]; then
-  REASON+="NO TEST EDITS in this session despite touching high-risk code — T-gate violation (T1: bug/feature/migration/auth/billing → test required). "
+  REASON+="High-risk code edited this session with no test edit. Fix: write the failing test, or dispatch a reviewer, then rerun the same git commit. "
 fi
 [ -n "$XFAM_HELD" ] && REASON+="SATELLITE-FIRST: $XFAM_HELD"
 [ -z "$XFAM_HELD" ] && [ -n "$XFAM_RUNNING" ] && [ -n "$HIGH_RISK" ] && [ "$STRONG_REVIEWERS" -eq 0 ] && REASON+="A detached cross-family job is still running: $XFAM_RUNNING — rolepod-cross-family --collect <job-id>, then retry. "
 if [ -n "$HIGH_RISK" ] && [ "$STRONG_REVIEWERS" -eq 0 ] && [ -z "$XFAM_HELD" ]; then
-  REASON+="NO STRONG ADVERSARIAL REVIEWER since the last commit. The gate opens when one of them has FINISHED: (a) a cross-family external strong review, anchored per review-code (raw output under .rolepod/evidence/external/ + the reviewer:external log line) — preferred; (b) a security-engineer or universal-reviewer dispatch (Agent tool or Workflow agentType) that has FINISHED. The hook lifts Agent-tool ones to strong — do not pass a balanced model. Test edits are the test floor, not the review. "
+  REASON+="NO STRONG ADVERSARIAL REVIEWER since the last commit. Fix: a FINISHED security-engineer or universal-reviewer dispatch (Agent tool or Workflow agentType) — a cross-family external strong review, anchored per review-code (raw output under .rolepod/evidence/external/ + the reviewer:external log line), also counts when the pool is on. Test edits are the test floor, not the review. "
 fi
-REASON+="Run S1-S5 (simplicity) + T1-T6 (tests) + F1-F5 (finish) — finish-work Pre-merge gates, check-work Failure modes. "
 REASON+="Auto-passes once evidence exists SINCE THE LAST COMMIT: high-risk → dispatch security-engineer or universal-reviewer; other blocks → write the failing test or dispatch a reviewer; then rerun the SAME git commit. No bypass marker, no env prefix."
 
 # Decide: HARD block vs SOFT warn
@@ -1244,33 +992,15 @@ print(json.dumps({
   exit 0
 fi
 
-# SOFT warn path — emit reminder, exit 0
-WARN="precommit-gate SOFT: $FILES_CHANGED files / $LINES_CHANGED lines / $REVIEW_LOGIC logic, no high-risk path; reviewers since last commit: $REVIEWERS. "
-# A logic diff nobody but its author read (v2.95.0): the R2 floor is one
-# read-only universal-reviewer pass (v2.148.0) — named here, still advisory. An R1-shaped
-# diff (1 file, ≤5 lines) gets the count only: a user-facing string edit
-# counts as logic here but as zero in the router (v2.96.0), and the
-# hook cannot tell a label from a branch — the doctrine can.
-# The R1 shape is judged on the CODE part (v2.153.0): docs riding along with
-# a 2-line label edit do not make it a reviewable diff, and neither do the
-# comment lines around one real line.
-# A rolepod-ticket worktree (basename `*-wt-*-tN*`, the shape `ticket.sh
-# start` always creates) already gets the Lead's ONE combined review before
-# release (spec lean-loop-2026-09-23 Task 2, implement-plan Review) — the
-# "0 reviewers on a logic diff" sentence would double-count it there.
-WT_TOPLEVEL_BASE=$(basename "$(gitd rev-parse --show-toplevel 2>/dev/null || echo "$DIFF_DIR")")
-case "$WT_TOPLEVEL_BASE" in
-  *-wt-*-t[0-9]*) IN_TICKET_WT=1 ;;
-  *) IN_TICKET_WT=0 ;;
-esac
-if [ "$REVIEW_LOGIC" -gt 0 ] && [ "$REVIEWERS" -eq 0 ] && [ "$IN_TICKET_WT" -eq 0 ] && { [ "${REVIEW_FILES:-0}" -gt 1 ] || [ "$REVIEW_LOGIC" -gt 5 ]; }; then WARN+="0 reviewers on a logic diff = the author reviewed it. Fix: dispatch rolepod:universal-reviewer (read-only, two axes) on the diff, then commit (review-code Pick reviewers; R2 = one file + test). Exception: the task owner already had it reviewed, or the diff is config / generated copies / message text → commit. "; fi
-WARN+="Gates S1-S5 (simplicity) / T1-T6 (tests) / F1-F5 (finish) — finish-work Pre-merge gates, check-work Failure modes — are advisory here; ROLEPOD_GATES_HARD=1 enforces."
-[ -n "$LINT_WARN" ] && WARN+=" | $LINT_WARN"
-
-ROLEPOD_HOOK_MSG="$WARN" python3 -I -c "
+# SOFT warn path (spec Desired 1, 2026-09-25) — a commit that follows the
+# workflow gets no context at all: no counts line, no reviewer ask, no S/T/F
+# line. Only test-diff-lint findings, when present, still print.
+if [ -n "$LINT_WARN" ]; then
+  ROLEPOD_HOOK_MSG="$LINT_WARN" python3 -I -c "
 import json, os
 print(json.dumps({'hookSpecificOutput': {'hookEventName': 'PreToolUse', 'additionalContext': os.environ.get('ROLEPOD_HOOK_MSG', '')}}))
 " 2>/dev/null || true
+fi
 append_gate_row "soft"
 
 exit 0
