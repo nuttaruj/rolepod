@@ -2,9 +2,12 @@
 # Claude PreToolUse(Workflow) — dispatch-time tier floor for fleets, scoped
 # to the two shapes that measurably cost money or block a run:
 #
-#   bare-fanout: a fan-out agent() call with NO tier at all (no model:,
-#     no agentType:) under a strong-class or unknown Lead — every item in
-#     the fan-out inherits the Lead's price. DENY, never yields.
+#   bare-fanout: a fan-out agent() call with NO tier at all (no model:, no
+#     variable agentType, no agentType naming a role that renders a pin —
+#     TIER_PINNED_AGENTS | STRONG_ROLE_AGENTS; a platform agentType like
+#     general-purpose/Explore renders no pin) under a strong-class or
+#     unknown Lead — every item in the fan-out inherits the Lead's price.
+#     DENY, never yields.
 #   bare-writer: an agent() call on a writing stage (implement/build/fix/
 #     integrate/migrate/refactor/patch/scaffold/write) with no agentType:
 #     — its edits are blocked at the first Write, minutes into the run.
@@ -158,10 +161,36 @@ def stage_of(pos, win):
     prev = re.findall(r"phase\(\s*[\x27\"]([^\x27\"]+)", script[:pos])
     return prev[-1] if prev else ""
 
+def agenttype_of(pos, win):
+    # (has_key, literal_value|None) — literal_value is None when the key is
+    # present but its value is not a quoted string (a variable: cannot
+    # resolve statically, so trusted, same as before v2.88.0).
+    if not re.search(r"[,{\s]agentType\s*:", win):
+        return False, None
+    ak = re.search(r"[,{\s]agentType\s*:\s*[\x27\"]", win)
+    if not ak:
+        return True, None
+    av = re.match(r"[\x27\"]([^\x27\"]+)[\x27\"]", script[pos + ak.end() - 1:pos + ak.end() + 79])
+    return True, (av.group(1) if av else None)
+
 for i, pos in enumerate(call_pos):
     end = call_pos[i + 1] if i + 1 < len(call_pos) else len(code)
     win = code[pos:end]
-    pinned = bool(re.search(r"[,{\s]model\s*:", win)) or bool(re.search(r"[,{\s]agentType\s*:", win))
+    # A Workflow call is tiered by model:, a variable agentType/model (not
+    # statically resolvable — trusted), or a literal agentType that RENDERS a
+    # tier pin (cheap/balanced roles, strong roles). A platform agentType
+    # (general-purpose, Explore, claude, Plan) or another plugin agent
+    # renders no pin and silently inherits the Lead price — same rule
+    # dispatch-auto-log.sh uses (v2.88.0), restored here (B-spec/B-standards
+    # fix round, 2026-09-25): a bare agentType general-purpose fan-out under
+    # a strong-class or unknown Lead must still deny.
+    model_pinned = bool(re.search(r"[,{\s]model\s*:", win))
+    at_has, at_lit = agenttype_of(pos, win)
+    if at_has and at_lit is not None:
+        at_pinned = ss._bare_agent_name(at_lit) in (ss.TIER_PINNED_AGENTS | ss.STRONG_ROLE_AGENTS)
+    else:
+        at_pinned = at_has
+    pinned = model_pinned or at_pinned
     stage = stage_of(pos, win)
     fanout = bool(re.search(r"label\s*:\s*`[^`]*\$\{", script[pos:end])) or _in_fanout(code, pos)
     if not re.search(r"[,{\s]agentType\s*:", win) and WRITE_RX.search(stage or ""):

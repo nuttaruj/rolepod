@@ -23,11 +23,14 @@
  *      one-shot system-part nudge (v2 — server plugins have no toast).
  *   2. post-compact → re-anchor nudge (manage-context Re-anchor after compaction): trust disk over
  *      summary — plan checkboxes, git log, spec.
- *   3. commit attempt → precommit gate: `git commit` while `docs/rolepod/`
- *      is staged (and no `.rolepod/docs-tracked` opt-in) → throw (opencode's
- *      documented deny mechanism, both versions). Evidence-based
- *      reviewer/test gating is Claude-only now (spec Desired 10,
- *      2026-09-25) — this CLI gets the private-docs deny only.
+ *   3. commit attempt → precommit gate: runs the SHARED hooks/precommit-
+ *      gate.sh itself (ROLEPOD_LEAD_CLI=opencode, `runCommitGate`) — a
+ *      permissionDecision:"deny" → throw (opencode's documented deny
+ *      mechanism, both versions). The shared script already handles a
+ *      compound `git add … && git commit` / `git commit -a` and `cd` /
+ *      `git -C`, and exits right after its private-docs deny for a
+ *      non-Claude lead — evidence-based reviewer/test gating stays
+ *      Claude-only (spec Desired 10, 2026-09-25).
  *   4. fix-loop-breaker (v2.133.0) → the SHARED Claude hook script
  *      (plugins/rolepod-shared/*.sh, byte-identical to hooks/) runs behind
  *      an opencode→Claude translator: bash exit codes feed the loop
@@ -60,8 +63,9 @@ import { fileURLToPath } from "node:url"
 
 const STALE_MS = 30 * 60 * 1000 // matches session-lifecycle.sh STALE_THRESHOLD
 
-// Shared hook core (hooks/fix-loop-breaker.sh) ships next to this file as
-// plugins/rolepod-shared/; ROLEPOD_OC_SHARED overrides (tests).
+// Shared hook cores (hooks/fix-loop-breaker.sh, hooks/precommit-gate.sh) ship
+// next to this file as plugins/rolepod-shared/; ROLEPOD_OC_SHARED overrides
+// (tests).
 const HERE = path.dirname(fileURLToPath(import.meta.url))
 const SHARED = process.env.ROLEPOD_OC_SHARED || path.join(HERE, "rolepod-shared")
 // opencode tool id → the Claude tool name the shared cores classify on.
@@ -90,15 +94,30 @@ function runCore(name, input) {
   }
 }
 
-// Private working docs (v2.80.0, opencode v2.176.0): docs/rolepod/ is never
-// committed. Staged-path check only — no session transcript to read on this
-// CLI, so the evidence-based reviewer/test gate stays Claude-only (spec
-// Desired 10, 2026-09-25).
-function stagedPrivateDocs(dir) {
+// Commit-time gate: runs the SHARED hooks/precommit-gate.sh itself (hook-
+// layer-lean fix round, 2026-09-25, B-spec MAJOR) instead of a hand-
+// duplicated JS private-docs check — it already handles a compound
+// `git add … && git commit` / `git commit -a` (reads the working tree, not
+// just the index), `cd` / `git -C` resolution, and exits right after the
+// private-docs deny for a non-Claude ROLEPOD_LEAD_CLI (Desired 10): no
+// evidence tally runs here, same as before. Returns the parsed
+// hookSpecificOutput, or null on any failure (fail open — a gate a CLI
+// cannot run must never block).
+function runCommitGate(dir, cmd) {
   try {
-    const out = execSync("git diff --cached --name-only", { cwd: dir, stdio: ["ignore", "pipe", "ignore"] }).toString()
-    return out.split("\n").filter((f) => /^docs\/rolepod\//.test(f)).slice(0, 5)
-  } catch { return [] }
+    const script = path.join(SHARED, "precommit-gate.sh")
+    if (!fs.existsSync(script)) return null
+    const input = { tool_name: "Bash", tool_input: { command: cmd } }
+    const r = spawnSync("bash", [script], {
+      input: JSON.stringify(input), encoding: "utf8", timeout: 5000,
+      stdio: ["pipe", "pipe", "ignore"], cwd: dir,
+      env: { ...process.env, ROLEPOD_LEAD_CLI: "opencode" },
+    })
+    if (!r.stdout) return null
+    return JSON.parse(r.stdout)
+  } catch {
+    return null
+  }
 }
 
 const REANCHOR_MSG =
@@ -122,15 +141,6 @@ function shouldWarnSiblings(activeSiblings) {
   return activeSiblings > 0 && process.env.ROLEPOD_ALLOW_SHARED_WORKTREE !== "1"
 }
 
-function gateMessage(files) {
-  return (
-    "rolepod precommit gate BLOCKED — private working docs staged: " +
-    `${files}. docs/rolepod/ is never committed. Fix: git restore ` +
-    "--staged docs/rolepod; make sure .gitignore lists docs/rolepod/. " +
-    "Repo tracks them on purpose → create .rolepod/docs-tracked, commit again."
-  )
-}
-
 function worktreeRoot(dir) {
   try {
     return execSync("git rev-parse --show-toplevel", {
@@ -149,24 +159,6 @@ function lockDirFor(worktree, homedir) {
   return path.join(homedir, ".rolepod", "session-locks", hash)
 }
 
-// Canonical high-risk regex — byte-equivalent (modulo JS `\/` escaping) to
-// HIGH_RISK_PATH in hooks/lib/session_state.py; edit both or neither.
-const RISK_RE =
-  /(^|\/|_)(auth|authn|authz|authentication|authorization|billing|payment|payments|migration|migrations|credit|credits|permission|permissions|secret|secrets|crypto|cryptography|token|tokens|oauth|jwt|sso|saml|webhook|webhooks|stripe|paypal|charge|charges|invoice|invoices|deletion|deletions|erasure|gdpr|security)(\/|\.|_|$)/i
-// Case-insensitive: the directory alternative only — the commit gate never
-// exempts a bare test directory (v2.85.2), so this stays wider by design.
-const TEST_RE_CI = /(^|\/)(tests?|__tests__|spec|specs|e2e)\//i
-// Case-sensitive, matching the commit gate's own filename filter exactly
-// (no -i there either): no inline `(?-i:...)` modifier here — RegExp
-// modifiers reached Baseline only in 2025, so a pre-2025 Bun/Node build
-// throws a SyntaxError parsing this module and EVERY rolepod hook on
-// opencode (the commit gate included) silently fails to load — reviewed
-// 2026-09-24, breaker round 2, MINOR-6.
-const TEST_RE_CS =
-  /\.(test|spec)\.(ts|tsx|js|jsx|mjs|cjs|py|go|rs|rb|java|kt|swift|cs|php)$|(^|\/)(test_[^/]*|[^/]*_test|[^/]*_spec)\.(py|go|rs|rb|php)$|(^|\/)[^/]*Tests?\.(java|kt|cs|swift|php|scala)$/
-function isTestPath(p) {
-  return TEST_RE_CI.test(p) || TEST_RE_CS.test(p)
-}
 
 // git-commit detection — token walk ported from hooks/precommit-gate.sh.
 // The old adjacency regex missed flag-separated forms entirely:
@@ -484,9 +476,9 @@ function makeCore({ directory, homedir } = {}) {
 
   return {
     directory: dir, homedir: hd,
-    stagedPrivateDocs, registerLock,
-    runCore, isGitCommit, worktreeRoot,
-    RISK_RE, TEST_RE_CI, TEST_RE_CS, isTestPath, VALUE_OPTS,
+    registerLock,
+    runCore, runCommitGate, isGitCommit, worktreeRoot,
+    VALUE_OPTS,
   }
 }
 
@@ -594,7 +586,7 @@ export const RolepodPlugin = async ({ directory, client }) => {
     },
 
     "tool.execute.before": async (input, output) => {
-      let blockedFiles = null
+      let denyReason = null
       try {
         if (String(input?.tool ?? "") !== "bash") return
         const cmd = String(output?.args?.command ?? "")
@@ -602,14 +594,14 @@ export const RolepodPlugin = async ({ directory, client }) => {
         const dir = directory || process.cwd()
         const worktree = core.worktreeRoot(dir)
         if (!worktree) return
-        const files = core.stagedPrivateDocs(worktree)
-        if (files.length && !fs.existsSync(path.join(worktree, ".rolepod", "docs-tracked"))) {
-          blockedFiles = files.join(" ")
+        const gate = core.runCommitGate(worktree, cmd)
+        if (gate?.hookSpecificOutput?.permissionDecision === "deny") {
+          denyReason = String(gate.hookSpecificOutput.permissionDecisionReason || "")
         }
       } catch {
         /* fail open — unknown payload shape must never block */
       }
-      if (blockedFiles) throw new Error(gateMessage(blockedFiles))
+      if (denyReason) throw new Error(denyReason)
     },
   }
 }
@@ -744,7 +736,7 @@ export default {
 
     try {
       await ctx.tool.hook("execute.before", (e) => {
-        let blockedFiles = null
+        let denyReason = null
         try {
           const tool = String(e?.tool ?? "")
           if (tool !== "shell" && tool !== "bash") return
@@ -752,14 +744,14 @@ export default {
           if (!core.isGitCommit(cmd)) return
           const worktree = core.worktreeRoot(directory)
           if (!worktree) return
-          const files = core.stagedPrivateDocs(worktree)
-          if (files.length && !fs.existsSync(path.join(worktree, ".rolepod", "docs-tracked"))) {
-            blockedFiles = files.join(" ")
+          const gate = core.runCommitGate(worktree, cmd)
+          if (gate?.hookSpecificOutput?.permissionDecision === "deny") {
+            denyReason = String(gate.hookSpecificOutput.permissionDecisionReason || "")
           }
         } catch {
           /* fail open — unknown payload shape must never block */
         }
-        if (blockedFiles) throw new Error(gateMessage(blockedFiles))
+        if (denyReason) throw new Error(denyReason)
       })
     } catch (error) {
       console.error("rolepod: execute.before hook not registered:", error)

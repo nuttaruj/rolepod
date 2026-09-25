@@ -47,14 +47,16 @@ A conflict that risks harm → ask before acting.
 - **Hooks** — the `plugins/rolepod.js` plugin handles session locking
   (cross-CLI sibling detection via `~/.rolepod/session-locks/`), the
   post-compaction re-anchor nudge, and a PRECOMMIT GATE on
-  `tool.execute.before`: `git commit` after high-risk edits with zero
-  test evidence → denied (throw); `ROLEPOD_GATES_SOFT=1` logs the bypass
-  instead. Subagent commit/push/merge is denied by the `permission:`
-  block rendered into every agent file (platform-enforced).
-  **Enforcement tier: hooks-live (partial)** — precommit deny + agent
-  permission blocks are mechanical; cohesion-contract and worktree-guard
-  remain doctrine-only (no per-file deny event) — hold those as doctrine
-  and never report them as mechanically enforced.
+  `tool.execute.before`: `git commit` while `docs/rolepod/` is staged
+  (and no `.rolepod/docs-tracked` opt-in) → denied (throw). Evidence-based
+  reviewer/test gating (high-risk path + zero test/reviewer evidence) is
+  Claude-only — this CLI gets the private-docs deny only. Subagent
+  commit/push/merge is denied by the `permission:` block rendered into
+  every agent file (platform-enforced).
+  **Enforcement tier: hooks-live (partial)** — the private-docs deny +
+  agent permission blocks are mechanical; cohesion-contract and
+  worktree-guard remain doctrine-only (no per-file deny event) — hold
+  those as doctrine and never report them as mechanically enforced.
 - **Cross-family review** — a reviewer agent inside opencode is still the
   same CLI: switching its provider is `vertical — same CLI`, not a
   cross-family pass. The cross-family pass is another CLI run through the

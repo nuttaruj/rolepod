@@ -135,14 +135,15 @@ Pick the lowest level the request calls for.
   is post-spawn) — this paragraph is the gate.
 - **Hooks** — the plugin's `hooks/hooks.json` registers 7 core hook scripts
   (SessionStart context loader + sibling-session lock, UserPromptSubmit
-  claim-verify nudge, pre-commit test gate, subagent-commit block, Stop
-  unlock). They fire natively on Codex ≥0.144, default-enabled
-  (`[features] hooks = true`).
-- **Enforcement tier: hooks-live (expanded)** — precommit test gate AND
-  subagent-commit block can deny; cross-CLI sibling locks live via
-  session-lifecycle. Still doctrine-only: worktree guard (apply_patch input
-  carries no file_path) — hold that one as doctrine; never report it as
-  mechanically enforced here.
+  claim-verify nudge, pre-commit private-docs gate, subagent-commit block,
+  Stop unlock, test-diff-lint, fix-loop-breaker). They fire natively on
+  Codex ≥0.144, default-enabled (`[features] hooks = true`).
+- **Enforcement tier: hooks-live (expanded)** — the pre-commit gate denies
+  only a staged `docs/rolepod/` path here (evidence-based reviewer/test
+  gating is Claude-only); subagent-commit block can also deny; cross-CLI
+  sibling locks live via session-lifecycle. Still doctrine-only: worktree
+  guard (apply_patch input carries no file_path) — hold that one as
+  doctrine; never report it as mechanically enforced here.
 - **Peer review** — every logic diff → ask Codex to spawn `universal-reviewer`
   (read-only, spec + standards); high-risk → plus `security-engineer`. An external Claude
   review (`claude -p "review this diff"`) is a useful cross-model opinion.

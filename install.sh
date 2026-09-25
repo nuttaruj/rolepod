@@ -1807,7 +1807,6 @@ if [ -z "${ROLEPOD_TARGET:-}${ROLEPOD_CLAUDE_TARGET:-}${ROLEPOD_CODEX_TARGET:-}$
     cp '$REPO_DIR/scripts/cross-family.sh' '$HOME/.rolepod/bin/cross-family.sh'
     cp '$REPO_DIR/scripts/ticket.sh' '$HOME/.rolepod/bin/ticket.sh'
     cp '$REPO_DIR/scripts/ticket-fleet.js' '$HOME/.rolepod/bin/ticket-fleet.js'
-    cp '$REPO_DIR/hooks/edit-ledger.py' '$HOME/.rolepod/bin/edit-ledger.py'
     printf '#!/bin/sh\nexec bash \"\$HOME/.rolepod/bin/stats.sh\" \"\$@\"\n' > '$HOME/.local/bin/rolepod-stats'
     printf '#!/bin/sh\nexec bash \"\$HOME/.rolepod/bin/junit-summary.sh\" \"\$@\"\n' > '$HOME/.local/bin/rolepod-junit'
     printf '#!/bin/sh\nexec bash \"\$HOME/.rolepod/bin/cross-family.sh\" \"\$@\"\n' > '$HOME/.local/bin/rolepod-cross-family'

@@ -9,14 +9,17 @@
 #   Review in flight: live detached cross-family    → one advisory line, never a deny —
 #     job + edit to a file its diff touches (v2.93.0)   the job reads the tree live; an
 #                                                       early edit voids its verdict
-#   High-risk path, a strong reviewer   → silent — the commit gate would pass.
-#     has already finished
-#   High-risk path, 0 strong reviewers  → ONE line, only now: fact (high-risk
-#     since the last commit               edit, 0 strong reviewers) → Fix
-#                                          (security-engineer + a finished
-#                                          strong universal-reviewer, or the
-#                                          external when the pool is on) →
-#                                          Exception (user-set bypass only).
+#   High-risk path, a strong reviewer   → silent — same evidence the commit
+#     already finished AND (no usable    gate reads at commit time; this
+#     pool, or an anchored external      predicts the pass, not just counts
+#     pass exists)                       a reviewer.
+#   High-risk path, 0 strong reviewers  → ONE line, only now: fact (0 strong
+#     OR the satellite-first hold         reviewers, or a usable pool with no
+#     applies (pool usable, no             anchored external pass) → Fix
+#     anchored external pass since        (security-engineer + the external
+#     the last commit)                    when the pool is on, else
+#                                          universal-reviewer) → Exception
+#                                          (user-set bypass only).
 #     Never a deny (v2.47.0): edit-time HARD blocks were the measured reason
 #     users set ROLEPOD_GATES_SOFT for good (CourtBook: 33 high-risk edits in
 #     one day, 116 unreasoned bypasses) — which then silenced the commit gate
@@ -130,16 +133,16 @@ if [[ "$FILE_REL" =~ \.(test|spec)\.(ts|tsx|js|jsx|mjs|cjs|py|go|rs|rb|java|kt|s
   COMMIT_TEST_EXEMPT=1
 fi
 
-# The HIGH-RISK banner below keys off COMMIT_TEST_EXEMPT only — a bare test
+# The WOULD_BLOCK line below keys off COMMIT_TEST_EXEMPT only — a bare test
 # DIRECTORY (tests/fixtures/seed_auth_users.py) is NOT filename-exempt, so it
-# still shows the banner: the commit gate calls a risk-term file under a test
-# directory high-risk by design (v2.85.2), and the banner must predict that
+# still counts as high-risk: the commit gate calls a risk-term file under a
+# test directory high-risk by design (v2.85.2), and this must predict that
 # deny, not hide it (F5 / Desired 4). Strong-reviewer evidence comes from
 # session_state.py below, not from a variable here.
 
 # A prose file is never a risk path at commit either (precommit-gate.sh's
-# HIGH_RISK= line strips these by extension before risk_filter runs) — the
-# banner must agree, so `.cursor/rules/auth.mdc` never shows HIGH-RISK.
+# HIGH_RISK= line strips these by extension before risk_filter runs) — this
+# must agree, so `.cursor/rules/auth.mdc` never counts as HIGH-RISK.
 PROSE_EXEMPT=0
 if [[ "$FILE_REL" =~ \.(md|mdx|mdc|txt|rst|adoc)(\.tmpl)?$ ]] \
    || [[ "$FILE_REL" =~ (^|/)(README|LICENSE|CHANGELOG)$ ]]; then
@@ -154,7 +157,7 @@ HIGH_RISK=""
 _RISK_HIT=$(printf '%s\n' "$FILE_REL" | risk_filter '(^|/|_)(auth|authn|authz|authentication|authorization|billing|payment|payments|migration|migrations|credit|credits|permission|permissions|secret|secrets|crypto|cryptography|token|tokens|oauth|jwt|sso|saml|webhook|webhooks|stripe|paypal|charge|charges|invoice|invoices|deletion|deletions|erasure|gdpr|security)(/|\.|_|$)' | head -1 || true)
 MONEY_RISK=""
 if [ "$COMMIT_TEST_EXEMPT" -eq 0 ] && [ "$PROSE_EXEMPT" -eq 0 ] && [ -n "$_RISK_HIT" ]; then
-  HIGH_RISK="HIGH-RISK path → R4 floor: security-engineer + ONE general strong pass before commit. "
+  HIGH_RISK=1
   # money / auth subset — retained unused: C1 (2026-09-19) gives money / auth
   # the same R4 floor as every high-risk path; the whole computation is a
   # separate, out-of-scope cut.
@@ -223,12 +226,13 @@ fi
 # Desired 2, 2026-09-25): one session_state.py call computes the window at
 # the EDITED FILE's directory and returns strong reviewers since the last
 # commit — transcript scan + hook-auto phase-log "dispatch" backstop.
-# This canonical script ships only where hooks/lib/session_state.py ships
-# alongside it (Claude, Codex — build/render.sh:320-333, 426-434); Cursor's
-# own gate-reminder is a separate hand-written adapter script under
+# This canonical script ships to Claude only (build/render.sh) — Codex has
+# no Edit/Write/MultiEdit/NotebookEdit tools to gate; Cursor's own
+# gate-reminder is a separate hand-written adapter script under
 # adapters/cursor/scripts/.
 SESSION_STATE="$(dirname "$0")/lib/session_state.py"
 STRONG_REVIEWERS=0
+XREV=0
 # Walk up to the nearest EXISTING ancestor (LOW-8, round-1 review): a Write
 # into a not-yet-created directory, or a relative Codex apply_patch path
 # when the hook cwd is not the repo root, made `git -C "$FILE_DIR"` fail —
@@ -242,21 +246,52 @@ done
 [ -d "$FILE_DIR" ] || FILE_DIR="."
 if [ -f "$SESSION_STATE" ] && command -v python3 >/dev/null 2>&1; then
   GR_EV=$(printf '%s' "$INPUT" | python3 "$SESSION_STATE" gate-evidence "$FILE_DIR" 2>/dev/null || true)
-  [ -n "$GR_EV" ] && read -r _ _ _ STRONG_REVIEWERS _ <<< "$GR_EV"
+  [ -n "$GR_EV" ] && read -r _ _ _ STRONG_REVIEWERS XREV <<< "$GR_EV"
 fi
 STRONG_REVIEWERS=${STRONG_REVIEWERS:-0}
+XREV=${XREV:-0}
 
 SOFT_MODE=0
 [ "${ROLEPOD_GATES_SOFT:-0}" = "1" ] && { SOFT_MODE=1; rolepod_log_bypass "gate-reminder" "ROLEPOD_GATES_SOFT"; }
 
+# Satellite-first hold, predicted again (mirrors precommit-gate.sh's XFAM
+# block, v2.76.0): with an internal-only strong reviewer (XREV=0) and a
+# usable cross-family pool, the gate zeroes that reviewer at commit unless
+# the pool was already tried and failed (an `external-fail` phase-log row).
+# session_state.py's gate_hold_predict is the same external-fail tally the
+# gate itself reads — called ONLY in this one state (a pool call otherwise
+# on every high-risk edit would be wasted cost).
+# Accepted (round-2 review, 2026-09-25): this hook sees ONE edited file, not
+# the eventual commit's total logic-line count — precommit-gate.sh only
+# holds when LOGIC_COUNT>0 (the pool reviews CODE only, v2.143.0), so a
+# comment-only change to a risky file can predict a block here that the
+# commit-time gate never makes. Harmless over-warn, not a false silence.
+XFAM_HELD=0
+if [ -n "$HIGH_RISK" ] && [ "$SOFT_MODE" -eq 0 ] && [ "$STRONG_REVIEWERS" -gt 0 ] && [ "$XREV" -eq 0 ]; then
+  XFAM_RUNNER="$(cd "$(dirname "$0")" && pwd)/../scripts/cross-family.sh"
+  [ -f "$XFAM_RUNNER" ] || XFAM_RUNNER="$HOME/.rolepod/bin/cross-family.sh"
+  XFAM_LEAD="${ROLEPOD_LEAD_CLI:-}"
+  [ -z "$XFAM_LEAD" ] && [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && XFAM_LEAD="claude"
+  if [ -n "$XFAM_LEAD" ] && [ -f "$XFAM_RUNNER" ]; then
+    XFAM_POOL=$(bash "$XFAM_RUNNER" --lead "$XFAM_LEAD" --pool-names 2>/dev/null | tr '\n' ' ' | sed 's/ *$//')
+    if [ -n "$XFAM_POOL" ] && [ -f "$SESSION_STATE" ]; then
+      XFAM_FAILS=$(python3 "$SESSION_STATE" gate-hold-predict "$FILE_DIR" 2>/dev/null || echo 0)
+      case "$XFAM_FAILS" in ''|*[!0-9]*) XFAM_FAILS=0 ;; esac
+      [ "$XFAM_FAILS" -eq 0 ] && XFAM_HELD=1
+    fi
+  fi
+fi
+
 # ONE line, only when the commit would block now (spec Desired 2, 2026-09-25):
-# fact (high-risk edit, strong reviewers since the last commit = 0) → Fix →
-# Exception. No always-on careful-mode banner, no per-CLI reviewer-list
-# builder, no test-first nudge — the gate's own deny (at commit) is the one hard
-# checkpoint; this is a cheap, silent-unless-blocking prediction of it.
+# fact → Fix → Exception. No always-on careful-mode banner, no per-CLI
+# reviewer-list builder, no test-first nudge — the gate's own deny (at
+# commit) is the one hard checkpoint; this is a cheap, silent-unless-blocking
+# prediction of it, now including the satellite-first hold above.
 WOULD_BLOCK=""
 if [ -n "$HIGH_RISK" ] && [ "$SOFT_MODE" -eq 0 ] && [ "$STRONG_REVIEWERS" -eq 0 ]; then
-  WOULD_BLOCK="COMMIT WILL BLOCK — HIGH-RISK edit, strong reviewers since the last commit = 0. Fix: the writer loop's rolepod:security-engineer + a FINISHED strong rolepod:universal-reviewer dispatch before commit (the external cross-family pass counts when the pool is on). Exception: user-set bypass only (ROLEPOD_GATES_SOFT). "
+  WOULD_BLOCK="COMMIT WILL BLOCK — HIGH-RISK edit, strong reviewers since the last commit = 0. Fix: security-engineer + the external when the pool is on, else universal-reviewer (a FINISHED dispatch before commit). Exception: user-set bypass only (ROLEPOD_GATES_SOFT). "
+elif [ -n "$HIGH_RISK" ] && [ "$SOFT_MODE" -eq 0 ] && [ "$XFAM_HELD" -eq 1 ]; then
+  WOULD_BLOCK="COMMIT WILL BLOCK — HIGH-RISK edit, cross-family pool usable with no anchored external pass since the last commit: the internal strong reviewer does not clear it alone. Fix: security-engineer + the external when the pool is on (internal counts after an external-fail), else universal-reviewer. Exception: user-set bypass only (ROLEPOD_GATES_SOFT). "
 fi
 
 # Emit reminder ONLY when high-risk AND would-block — no generic Q1-Q4 nag,
@@ -264,7 +299,7 @@ fi
 # Success criterion 2, 2026-09-25).
 [ -z "${XFAM_INFLIGHT}${WOULD_BLOCK}" ] && exit 0
 
-# Env-passed (see deny path) so apostrophes in the banner cannot break it.
+# Env-passed so an apostrophe in the message cannot break the JSON emitter.
 ROLEPOD_HOOK_MSG="${XFAM_INFLIGHT}${WOULD_BLOCK}" python3 -I -c "
 import json, os
 print(json.dumps({

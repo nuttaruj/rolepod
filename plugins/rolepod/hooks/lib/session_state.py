@@ -161,9 +161,7 @@ _ROOT_CACHE: dict = {}
 def _git_root(cwd):
     """git rev-parse --show-toplevel from `cwd`, cached per cwd (a counting
     pass calls this once per tool_use — the cache keeps it to one shell-out
-    per distinct cwd). "" when not a repo / git missing (fail-open: the
-    "outside the git root" filter below is then skipped, never a false
-    drop)."""
+    per distinct cwd). "" when not a repo / git missing (fail-open)."""
     key = cwd or ''
     if key in _ROOT_CACHE:
         return _ROOT_CACHE[key]
@@ -215,18 +213,14 @@ MODEL_CLASS = (
 )
 LOW_CLASSES = {"cheap", "balanced"}
 
-# Strong-tier roles render `model: opus` on Claude since v2.104.0 (they were
-# `inherit` + a hook-side lift; the pin holds where the hook does not run —
-# hooks off, first action of a session, Workflow agentType, another harness).
-# The dispatch hook still writes the strong alias under a known-low Lead (a
-# pre-2.104 user-level agent file may still say inherit). opus is the paid
-# CEILING of the strong tier by owner decision: a fable-class Lead keeps its
-# own model but its strong reviewers run opus — never lifted (cost).
-# system-architect joined in v2.73.0: it writes the spec + cohesion contract
-# for parallel work — the judgment-heaviest role — and was
-# the one strong role left at nudge-only.
+# Strong-tier roles render `model: opus` on Claude since v2.104.0 — their own
+# frontmatter pin, not a hook-side lift (that rewrite is gone, hook-layer-lean
+# 2026-09-25). opus is the paid CEILING of the strong tier by owner decision:
+# a fable-class Lead keeps its own model but its strong reviewers run opus —
+# never lifted (cost). system-architect joined in v2.73.0: it writes the spec
+# + cohesion contract for parallel work — the judgment-heaviest role — and
+# was the one strong role left at nudge-only.
 STRONG_ROLE_AGENTS = {"security-engineer", "universal-reviewer", "system-architect"}
-STRONG_ALIAS = "opus"
 
 # Roles whose rendered Claude frontmatter carries a REAL `model:` pin
 # (merge-agent.py TIER_MODELS: cheap -> haiku, balanced -> sonnet). A Workflow
@@ -849,14 +843,10 @@ def count_all(
 
 def _phase_log_reviewer_counts(phase, since_epoch, path, provenance="", strict=False):
     """(reviewers, strong) tally from phase-log.jsonl rows of one `phase`
-    value — python twin of precommit-gate.sh's phase_log_reviewer_count
-    (kept in parity; see its header for the write_mode / provenance /
-    low-class rationale). `provenance` "" = no requirement — every current
-    caller in this file passes one (`hook-auto` for the dispatch backstop,
-    `hook-stdin` for a cross-CLI provenance row, HIGH-1 round-1 review); the empty
-    default is kept only for a future caller with no real requirement to
-    state. `strict` additionally drops a STRONG row whose model is a named
-    low-class downgrade (the hook-auto backstop only)."""
+    value. `provenance` "" = no requirement; the one caller in this file
+    (the hook-auto dispatch backstop) passes `"hook-auto"`. `strict`
+    additionally drops a STRONG row whose model is a named low-class
+    downgrade (the hook-auto backstop only)."""
     r = s = 0
     cut = None
     if since_epoch:
@@ -883,16 +873,14 @@ def _phase_log_reviewer_counts(phase, since_epoch, path, provenance="", strict=F
                             continue
                         ts = datetime.datetime.fromisoformat(ts_raw.replace("Z", "+00:00"))
                         # A naive ts (no offset) is dropped, not assumed UTC —
-                        # the bash twin (phase_log_reviewer_count) drops it
-                        # too; a hand-written row without a timezone must
-                        # never buy reviewer credit across a commit boundary.
+                        # a hand-written row without a timezone must never
+                        # buy reviewer credit across a commit boundary.
                         if ts.tzinfo is None or ts < cut:
                             continue
                     name = _bare_agent_name(d.get("agent_type"))
                     if name.startswith("rolepod-"):
                         # Codex/Cursor/Antigravity dispatch rows may carry
-                        # the plugin-prefixed bare name (no ':') — the bash
-                        # twin (phase_log_reviewer_count) strips it too.
+                        # the plugin-prefixed bare name (no ':').
                         name = name[len("rolepod-"):]
                     # Both flags resolved BEFORE either counter moves
                     # (round-2 review MINOR-1): model_class() raising on a
@@ -907,9 +895,7 @@ def _phase_log_reviewer_counts(phase, since_epoch, path, provenance="", strict=F
                         s += 1
                 except Exception:
                     # One malformed row (a non-string agent_type/model/ts)
-                    # must never zero every OTHER row in the window — the
-                    # bash twin wraps each row the same way
-                    # (precommit-gate.sh's inline python).
+                    # must never zero every OTHER row in the window.
                     continue
     except OSError:
         pass
@@ -919,8 +905,9 @@ def _phase_log_reviewer_counts(phase, since_epoch, path, provenance="", strict=F
 def _anchored_external_count(since_epoch, ev_dir):
     """Anchored cross-family review passes since `since_epoch` — a phase-log
     `review` row with `reviewer: external` whose raw output sits under
-    `ev_dir`, is relative, has no `..`, and is >= 500 bytes (python twin of
-    precommit-gate.sh's inline XREV computation, satellite-first, v2.61.0)."""
+    `ev_dir`, is relative, has no `..`, and is >= 500 bytes. precommit-gate.sh
+    reads this XREV count from gate_evidence() below, not its own inline
+    computation (that bash copy is gone; satellite-first, v2.61.0)."""
     import datetime
     cut = None
     if since_epoch:

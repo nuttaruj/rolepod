@@ -114,15 +114,16 @@ else:
         # pin held); an explicit low model → missed. Observable in `make stats`.
         line["floor"] = "missed" if (model and ss.model_class(model) != "strong") else "frontmatter"
     # F1/F2: a brief that declares write-mode authors tests, not a review —
-    # the phase-log backstop (precommit-gate.sh phase_log_reviewer_count)
+    # the phase-log backstop (session_state _phase_log_reviewer_counts)
     # must skip this row the same way count_all already does for the
     # transcript scan, or a test-writing reviewer clears the strong-review
     # gate through the backstop alone.
     if ss is not None and ss.is_write_mode_brief(ti.get("prompt")):
         line["write_mode"] = True
 
-# The log line goes to the file directly. Same shape as before — consumers (stats, precommit-gate
-# fallback, integration fixtures) parse this line.
+# The log line goes to the file directly. Same shape as before — consumers
+# (stats, session_state gate-evidence tally, integration fixtures)
+# parse this line.
 try:
     with open(os.path.join(os.environ.get("ROLEPOD_EV_DIR") or ".", "phase-log.jsonl"), "a") as f:
         f.write(json.dumps(line, ensure_ascii=False) + "\n")

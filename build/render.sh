@@ -415,9 +415,8 @@ render_codex() {
   # single-source rule as render_claude above and render_antigravity below);
   # only hooks.json + agent-sync.sh are genuinely Codex-specific.
   # subagent-write-scope.sh is not bundled — Codex has no
-  # Edit/Write/MultiEdit/NotebookEdit tools of its own to gate.
-  # NOTE: hooks/lib/session_state.py is deliberately NOT copied — the codex
-  # tree never shipped it and precommit-gate.sh degrades gracefully without.
+  # Edit/Write/MultiEdit/NotebookEdit tools of its own to gate. gate-reminder.sh
+  # is not bundled either — it fires on Edit/Write, which Codex has none of.
   mkdir -p "$plugin_dst/hooks"
   cp "$plugin_src/hooks/hooks.json" "$plugin_dst/hooks/hooks.json"
   cp "$plugin_src/hooks/agent-sync.sh" "$plugin_dst/hooks/agent-sync.sh"
@@ -430,8 +429,8 @@ render_codex() {
     cp "$REPO_DIR/hooks/$h.sh" "$plugin_dst/hooks/$h.sh"
   done
   # hooks/lib/ (session_state.py, route_check.py) ships here too (v2.128.1):
-  # claim-verify-nudge, gate-reminder, session-lifecycle and precommit-gate
-  # resolve `$(dirname "$0")/lib/...` — without it the Codex copies ran their
+  # claim-verify-nudge, session-lifecycle and precommit-gate resolve
+  # `$(dirname "$0")/lib/...` — without it the Codex copies ran their
   # fallbacks (no route nudge / recorder, no context check) and, since the
   # v2.128.0 one-spawn rewrite, claim-verify-nudge exited before its claim
   # and auto-resume lines. Measured on the 2.128.0 Codex cache.
@@ -725,7 +724,13 @@ render_opencode() {
     mkdir -p "$out_dir/plugin/rolepod-shared"
     cp "$adapter_dir/plugin/rolepod.js" "$out_dir/plugin/rolepod.js"
     local h
-    for h in fix-loop-breaker; do
+    # precommit-gate ships too (hook-layer-lean fix round, 2026-09-25,
+    # B-spec MAJOR): the commit hook runs it directly (ROLEPOD_LEAD_CLI=
+    # opencode) instead of a hand-duplicated JS private-docs check, so a
+    # compound `git add -A && git commit` gets the same working-tree read
+    # every other CLI's gate has. It exits right after the private-docs
+    # deny for a non-Claude lead — no hooks/lib/ dependency to ship with it.
+    for h in fix-loop-breaker precommit-gate; do
       cp "$REPO_DIR/hooks/$h.sh" "$out_dir/plugin/rolepod-shared/$h.sh"
     done
     cp "$REPO_DIR/hooks/lib/route_check.py" "$out_dir/plugin/rolepod-shared/route_check.py"   # session.idle → route record (v2.135.0)

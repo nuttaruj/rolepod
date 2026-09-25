@@ -570,8 +570,14 @@ if [ "$GIT_DIFF_BASE" = "HEAD" ] && ! gitd rev-parse HEAD >/dev/null 2>&1; then
   GIT_DIFF_BASE="--cached"
 fi
 
-# Compute diff stats — skip gate if trivial
-DIFF_STAT=$(gitd diff $GIT_DIFF_BASE --numstat 2>/dev/null || echo "")
+# Compute diff stats — skip gate if trivial. --no-renames (round-2 review,
+# 2026-09-25): with rename detection on, `git mv x docs/rolepod/x` collapses
+# to one numstat line shaped "old => docs/rolepod/x" (or a `{old => new}`
+# common-prefix form) — PRIVATE_DOCS's `^docs/rolepod/` anchor on $3 never
+# matches that shape, so the private-docs deny missed a plain rename into
+# the tree. --no-renames reports it as a delete + a genuine add instead, so
+# the add line is a clean `docs/rolepod/x` path.
+DIFF_STAT=$(gitd diff $GIT_DIFF_BASE --no-renames --numstat 2>/dev/null || echo "")
 if [ "$GIT_DIFF_BASE" = "HEAD" ]; then
   UNTRACKED=$(gitd ls-files --others --exclude-standard 2>/dev/null | awk -F'\t' '{print "1\t0\t" $0}' || true)
   [ -n "$UNTRACKED" ] && DIFF_STAT="$(printf '%s\n%s' "$DIFF_STAT" "$UNTRACKED" | sed '/^$/d')"
@@ -595,7 +601,13 @@ FILES_CHANGED=$(echo "$DIFF_STAT" | wc -l | tr -d ' ')
 # directory's toplevel.
 _pd_root="$(git rev-parse --show-toplevel 2>/dev/null)" || true
 [ -n "$_pd_root" ] || _pd_root="$(gitd rev-parse --show-toplevel 2>/dev/null)" || true
-PRIVATE_DOCS=$( { gitd diff $GIT_DIFF_BASE --name-only 2>/dev/null | grep -E '^docs/rolepod/' || true; } | head -5 | tr '\n' ' ' | sed 's/ *$//')
+# Read off DIFF_STAT, not a fresh `gitd diff --name-only` (fix round,
+# 2026-09-25): on a compound `git add … && git commit` / `git commit -a`,
+# GIT_DIFF_BASE is HEAD and DIFF_STAT already has the UNTRACKED merge above
+# folded in — `git diff HEAD --name-only` alone does NOT list untracked
+# files, so a brand-new UNSTAGED docs/rolepod/x.md silently passed this
+# check (caught while wiring the opencode adapter onto this same script).
+PRIVATE_DOCS=$( { printf '%s\n' "$DIFF_STAT" | awk -F'\t' 'NF>=3{print $3}' | grep -E '^docs/rolepod/' || true; } | head -5 | tr '\n' ' ' | sed 's/ *$//')
 if [ -n "$PRIVATE_DOCS" ] && [ ! -f "$_pd_root/.rolepod/docs-tracked" ]; then
   ROLEPOD_HOOK_MSG="precommit-gate BLOCKED — private working docs staged: $PRIVATE_DOCS. docs/rolepod/ is never committed. Fix: git restore --staged docs/rolepod; make sure .gitignore lists docs/rolepod/. Repo tracks them on purpose → create .rolepod/docs-tracked, commit again." python3 -I -c "
 import json, os
@@ -676,9 +688,8 @@ if [ "$FILES_CHANGED" -eq 1 ] && [ "$LINES_CHANGED" -le 5 ] && [ "$LOGIC_COUNT" 
   exit 0
 fi
 
-# T-gate addition (Fix 2): inspect session transcript for test edits.
+# Test-edit check: inspect session transcript for test edits.
 # Logic: high-risk path diff + 0 test edits this session → strengthen block.
-#        Normal code diff + 0 test edits → escalate warn wording.
 # v2.47.0: evidence is WINDOWED to "since the last commit" (git's own clock —
 # unaffected by denied attempts, hook-less commits, or a 12-day session) and
 # includes the session's subagent transcripts (Workflow / Agent fleets write
@@ -726,7 +737,6 @@ print(datetime.datetime.fromtimestamp(int(sys.argv[1])).strftime("%Y-%m-%d %H:%M
   fi
 fi
 [ -n "$SINCE_HUMAN" ] && SINCE_HUMAN="since last commit $SINCE_HUMAN" || SINCE_HUMAN="whole session (no commit yet)"
-GATE_EV_DONE=0
 if [ -f "$SESSION_STATE" ] && command -v python3 >/dev/null 2>&1; then
   # One session_state.py call computes the window at DIFF_DIR itself (same
   # algorithm as SINCE_EPOCH above, kept in bash for SINCE_HUMAN) and returns
@@ -740,7 +750,6 @@ if [ -f "$SESSION_STATE" ] && command -v python3 >/dev/null 2>&1; then
   GATE_EV=$(printf '%s' "$INPUT" | python3 "$SESSION_STATE" gate-evidence "$DIFF_DIR" 2>/dev/null || true)
   if [ -n "$GATE_EV" ]; then
     read -r TEST_EDITS HIGH_RISK_EDITS REVIEWERS STRONG_REVIEWERS XREV <<< "$GATE_EV"
-    GATE_EV_DONE=1
   fi
 fi
 TEST_EDITS=${TEST_EDITS:-0}
@@ -765,10 +774,21 @@ XFAM_RUNNER="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/../scripts/cross-fami
 [ -f "$XFAM_RUNNER" ] || XFAM_RUNNER="$HOME/.rolepod/bin/cross-family.sh"
 XFAM_LEAD="${ROLEPOD_LEAD_CLI:-}"
 [ -z "$XFAM_LEAD" ] && [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && XFAM_LEAD="claude"
-XFAM_POOL=""; XFAM_FAILS=0
+XFAM_POOL=""; XFAM_FAILS=0; XFAM_POOL_ON=""
 # Detached runner job still running for this repo (v2.79.0): the hold reason
 # must say "wait / --collect", not "run the runner" (it is already running).
 XFAM_RUNNING="$(xfam_running_job)"
+# Pool state, read once when eligible: needed both to decide the hold below
+# AND to word the deny Fix ("the external when the pool is on, else
+# universal-reviewer") even when STRONG_REVIEWERS is 0 (no reviewer
+# dispatched yet at all — the hold check below never runs in that case).
+# `[ "${XREV:-0}" -eq 0 ]` (round-2 review, 2026-09-25): an anchored
+# external pass already cleared the commit on its own (v2.145.0) — calling
+# the runner just to word a Fix line nobody will read is a wasted spawn.
+if [ -n "$HIGH_RISK" ] && [ "${LOGIC_COUNT:-0}" -gt 0 ] && [ -n "$XFAM_LEAD" ] && [ -f "$XFAM_RUNNER" ] && [ "${XREV:-0}" -eq 0 ]; then
+  XFAM_POOL=$(bash "$XFAM_RUNNER" --lead "$XFAM_LEAD" --pool-names 2>/dev/null | tr '\n' ' ' | sed 's/ *$//')
+  [ -n "$XFAM_POOL" ] && XFAM_POOL_ON=1
+fi
 # Money / auth no longer needs BOTH passes (v2.78.0 hold REMOVED, v2.145.0):
 # the pool exists to move strong-class tokens OFF the main plan, so an
 # anchored external pass (XREV, already credited to STRONG_REVIEWERS above)
@@ -779,10 +799,9 @@ XFAM_RUNNING="$(xfam_running_job)"
 # risky path (LOGIC_COUNT 0) clears with the internal strong reviewer.
 # `-z "$XFAM_HELD"` is defensive (no earlier block sets it now) — keeps this
 # `if` correct unchanged if a hold is ever added above it again.
-if [ -z "$XFAM_HELD" ] && [ -n "$HIGH_RISK" ] && [ "${LOGIC_COUNT:-0}" -gt 0 ] && [ -n "$XFAM_LEAD" ] && [ -f "$XFAM_RUNNER" ] && [ "${XREV:-0}" -eq 0 ] && [ "$STRONG_REVIEWERS" -gt 0 ]; then
-  XFAM_POOL=$(bash "$XFAM_RUNNER" --lead "$XFAM_LEAD" --pool-names 2>/dev/null | tr '\n' ' ' | sed 's/ *$//')
+if [ -z "$XFAM_HELD" ] && [ -n "$XFAM_POOL_ON" ] && [ "${XREV:-0}" -eq 0 ] && [ "$STRONG_REVIEWERS" -gt 0 ]; then
   XFAM_FAILS=0
-  if [ -n "$XFAM_POOL" ] && [ -f "$EV_ROOT/phase-log.jsonl" ]; then
+  if [ -f "$EV_ROOT/phase-log.jsonl" ]; then
     XFAM_FAILS=$(python3 -I -c '
 import json, sys, datetime
 since, path = sys.argv[1], sys.argv[2]
@@ -881,20 +900,38 @@ if [ "$BYPASS_REQUESTED" -eq 1 ] && [ "$TEST_EDITS" -eq 0 ] && [ "$REVIEWERS" -e
 fi
 
 # Build deny reason — names only what clears the block (spec Desired 3,
-# 2026-09-25): no T-gate label, no S1-S5/T1-T6/F1-F5 list, no "preferred".
+# 2026-09-25).
 REASON="precommit-gate BLOCKED. ${BYPASS_IGNORED}"
 REASON+="Diff: $FILES_CHANGED files / $LINES_CHANGED lines / $LOGIC_COUNT logic lines. "
-REASON+="Evidence ($SINCE_HUMAN, Lead + subagent transcripts): $TEST_EDITS test edits / $HIGH_RISK_EDITS high-risk edits / $REVIEWERS reviewer dispatches ($STRONG_REVIEWERS strong). "
-[ -n "$HIGH_RISK" ] && REASON+="HIGH-RISK path: $HIGH_RISK → R4 floor: security-engineer + ONE general strong pass (the external when the pool is usable, else universal-reviewer). "
-if [ "$HIGH_RISK_EDITS" -gt 0 ] && [ "$TEST_EDITS" -eq 0 ]; then
-  REASON+="High-risk code edited this session with no test edit. Fix: write the failing test, or dispatch a reviewer, then rerun the same git commit. "
-fi
+# Round-2 review (2026-09-25): the assembled reason ran 660-830 chars, past
+# the 600 cap — shortened here (drop "Lead + subagent transcripts") and the
+# HIGH-RISK line below no longer repeats the Fix clause verbatim.
+REASON+="Evidence ($SINCE_HUMAN): $TEST_EDITS tests / $HIGH_RISK_EDITS risk edits / $REVIEWERS reviewers ($STRONG_REVIEWERS strong). "
+[ -n "$HIGH_RISK" ] && REASON+="HIGH-RISK path: $HIGH_RISK. "
 [ -n "$XFAM_HELD" ] && REASON+="SATELLITE-FIRST: $XFAM_HELD"
 [ -z "$XFAM_HELD" ] && [ -n "$XFAM_RUNNING" ] && [ -n "$HIGH_RISK" ] && [ "$STRONG_REVIEWERS" -eq 0 ] && REASON+="A detached cross-family job is still running: $XFAM_RUNNING — rolepod-cross-family --collect <job-id>, then retry. "
 if [ -n "$HIGH_RISK" ] && [ "$STRONG_REVIEWERS" -eq 0 ] && [ -z "$XFAM_HELD" ]; then
-  REASON+="NO STRONG ADVERSARIAL REVIEWER since the last commit. Fix: a FINISHED security-engineer or universal-reviewer dispatch (Agent tool or Workflow agentType) — a cross-family external strong review, anchored per review-code (raw output under .rolepod/evidence/external/ + the reviewer:external log line), also counts when the pool is on. Test edits are the test floor, not the review. "
+  REASON+="NO STRONG ADVERSARIAL REVIEWER since the last commit. Test edits are the test floor, not the review. "
 fi
-REASON+="Auto-passes once evidence exists SINCE THE LAST COMMIT: high-risk → dispatch security-engineer or universal-reviewer; other blocks → write the failing test or dispatch a reviewer; then rerun the SAME git commit. No bypass marker, no env prefix."
+# One Fix sentence, worded to what actually clears the block — never
+# "internal also counts": the satellite-first hold above already zeroed
+# STRONG_REVIEWERS when the pool is usable and untried (A-standards MAJOR,
+# 2026-09-25 fix round).
+if [ -n "$HIGH_RISK" ] && [ "$STRONG_REVIEWERS" -eq 0 ] && [ -z "$XFAM_HELD" ]; then
+  if [ -n "$XFAM_POOL_ON" ]; then
+    REASON+="Fix: security-engineer + the external when the pool is on, else universal-reviewer — a FINISHED dispatch (Agent tool or Workflow agentType), the external anchored per review-code (raw output under .rolepod/evidence/external/ + the reviewer:external log line). "
+  else
+    REASON+="Fix: security-engineer + a FINISHED strong universal-reviewer dispatch (Agent tool or Workflow agentType). "
+  fi
+elif [ -z "$HIGH_RISK" ]; then
+  # Round-2 review (2026-09-25): a deny forced by ROLEPOD_GATES_HARD=1 alone
+  # (normal diff, 0 risk edits this session) used to get NO Fix sentence —
+  # the HIGH_RISK_EDITS>0 guard excluded exactly that case. Reaching this
+  # branch at all already means AUTO_PASS was 0 on a non-high-risk diff,
+  # i.e. TEST_EDITS==0 AND REVIEWERS==0 — the Fix applies unconditionally.
+  REASON+="Fix: write the failing test, or dispatch a reviewer. "
+fi
+REASON+="Exception: none by marker — auto-passes once the evidence above exists SINCE THE LAST COMMIT; rerun the SAME git commit."
 
 # Decide: HARD block vs SOFT warn
 HARD_BLOCK=0
@@ -960,14 +997,12 @@ sys.stdout.write(' '.join(os.environ.get('ROLEPOD_BYPASS_CMD', '').split())[:200
   printf '%s auto-pass on evidence (tests=%s reviewers=%s strong=%s risk=%s): %s\n' \
     "$(date '+%Y-%m-%dT%H:%M:%S')" "$TEST_EDITS" "$REVIEWERS" "$STRONG_REVIEWERS" "${HIGH_RISK:-none}" "$SAFE_CMD" \
     >> "$HOME/.rolepod/gate-bypass.log" 2>/dev/null || true
-  NOTE="precommit-gate auto-passed on session evidence: $TEST_EDITS test edits / $REVIEWERS reviewer dispatches / $STRONG_REVIEWERS strong"
-  [ -n "$HIGH_RISK" ] && NOTE+=" (HIGH-RISK path: $HIGH_RISK)"
-  NOTE+=" ($SINCE_HUMAN). Evidence is per-window — confirm S1-S5 (simplicity) / T1-T6 (tests) / F1-F5 (finish) — finish-work Pre-merge gates, check-work Failure modes — cover THIS change."
-  [ -n "$LINT_WARN" ] && NOTE+=" | $LINT_WARN"
-  ROLEPOD_HOOK_MSG="$NOTE" python3 -I -c "
+  if [ -n "$LINT_WARN" ]; then
+    ROLEPOD_HOOK_MSG="$LINT_WARN" python3 -I -c "
 import json, os
 print(json.dumps({'hookSpecificOutput': {'hookEventName': 'PreToolUse', 'additionalContext': os.environ.get('ROLEPOD_HOOK_MSG', '')}}))
 " 2>/dev/null || true
+  fi
   append_gate_row "pass"
   exit 0
 fi

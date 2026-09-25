@@ -524,7 +524,7 @@ run_to() { # $1 outfile, $2... command; stdin = $RUN_STDIN (a `&` job gets /dev/
   ( cd "$ROOT" && ROLEPOD_BRAIN_SILENT=1 exec "$@" ) < "$RUN_STDIN" > "$_out" 2> "$_out.err" &
   _pid=$!
   set +m
-  trap 'kill -TERM -- "-$_pid" 2>/dev/null; kill -TERM "$_pid" 2>/dev/null; sleep 1; kill -KILL -- "-$_pid" 2>/dev/null; kill -KILL "$_pid" 2>/dev/null; wait "$_pid" 2>/dev/null; if [ "$KIND" = implement ] && [ -n "${_pre:-}" ]; then [ -n "${_meta0:-}" ] && gitmeta_restore "$_meta0" >/dev/null 2>&1; phaselog_scrub "${_pl0:-0}" "$EV/external/${_ts:-kill}-${_c:-member}-$RUN_TAG.member-phase-log.jsonl" >/dev/null 2>&1; implement_restore_all "$_pre" "${_save:-$EV/external/killed.reverted}" >/dev/null 2>&1; fi; exit 143' TERM INT   # --kill: the same three steps as every return path (metadata, phase-log, tree) — SIGKILL after the wait skips all of them (documented residual)   # --kill / Ctrl-C reach the member too (it is its own group — set -m)
+  trap 'kill -TERM -- "-$_pid" 2>/dev/null; kill -TERM "$_pid" 2>/dev/null; sleep 1; kill -KILL -- "-$_pid" 2>/dev/null; kill -KILL "$_pid" 2>/dev/null; wait "$_pid" 2>/dev/null; if [ "$KIND" = implement ] && [ -n "${_pre:-}" ]; then [ -n "${_meta0:-}" ] && gitmeta_restore "$_meta0" >/dev/null 2>&1; phaselog_scrub "${_pl0:-0}" >/dev/null 2>&1; implement_restore_all "$_pre" "${_save:-$EV/external/killed.reverted}" >/dev/null 2>&1; fi; exit 143' TERM INT   # --kill: the same three steps as every return path (metadata, phase-log, tree) — SIGKILL after the wait skips all of them (documented residual)   # --kill / Ctrl-C reach the member too (it is its own group — set -m)
   _start=$SECONDS; _quiet=$SECONDS; _seen=0
   while kill -0 "$_pid" 2>/dev/null; do
     # Progress = bytes landing on stdout / stderr / the codex -o file. A member
@@ -681,21 +681,21 @@ gitmeta_restore() { # $1 dir (from gitmeta_save) → prints what changed; config
   done
   printf '%s' "${_out# }"
 }
-phaselog_scrub() { # $1 byte offset of phase-log before the member ran, $2 member log file (unused since the dispatch evidence system retired, spec Desired 10, 2026-09-25 — kept for signature parity) → prints "<forged> <moved>"
+phaselog_scrub() { # $1 byte offset of phase-log before the member ran → prints "<forged>"
   # Lines appended while the member ran come from ITS hooks (route, write-scope…) or from the member itself. Judged the way the
   # commit gate reads them — parsed as JSON, never by byte shape: an external pass / implement / external-fail line can only be a forgery
   # (deleted + counted), anything unparseable is
   # dropped (hooks write valid JSON). A log shorter than before = the member truncated it: counted as forged, nothing recoverable.
-  _spl="$EV/phase-log.jsonl"; [ -f "$_spl" ] || { echo "0 0"; return 0; }
+  _spl="$EV/phase-log.jsonl"; [ -f "$_spl" ] || { echo "0"; return 0; }
   _now=$(wc -c < "$_spl" | tr -d ' ')
-  if [ "${_now:-0}" -lt "$1" ]; then echo "1 0"; return 0; fi   # the member truncated the log: nothing appended survives to scrub; the prefix is unverifiable — counted, reported, kept
-  _tail=$(mktemp) || { python3 -I -c 'import sys; open(sys.argv[1],"r+b").truncate(int(sys.argv[2]))' "$_spl" "$1" 2>/dev/null; echo "1 0"; return 0; }; tail -c +"$(( $1 + 1 ))" "$_spl" > "$_tail" 2>/dev/null
-  [ -s "$_tail" ] || { rm -f "$_tail"; echo "0 0"; return 0; }
-  _keep=$(mktemp) || { rm -f "$_tail"; python3 -I -c 'import sys; open(sys.argv[1],"r+b").truncate(int(sys.argv[2]))' "$_spl" "$1" 2>/dev/null; echo "1 0"; return 0; }
-  _cnt=$(python3 -I - "$_tail" "$_keep" "$2" 2>/dev/null <<'PYS' || echo "1 0"
+  if [ "${_now:-0}" -lt "$1" ]; then echo "1"; return 0; fi   # the member truncated the log: nothing appended survives to scrub; the prefix is unverifiable — counted, reported, kept
+  _tail=$(mktemp) || { python3 -I -c 'import sys; open(sys.argv[1],"r+b").truncate(int(sys.argv[2]))' "$_spl" "$1" 2>/dev/null; echo "1"; return 0; }; tail -c +"$(( $1 + 1 ))" "$_spl" > "$_tail" 2>/dev/null
+  [ -s "$_tail" ] || { rm -f "$_tail"; echo "0"; return 0; }
+  _keep=$(mktemp) || { rm -f "$_tail"; python3 -I -c 'import sys; open(sys.argv[1],"r+b").truncate(int(sys.argv[2]))' "$_spl" "$1" 2>/dev/null; echo "1"; return 0; }
+  _nf=$(python3 -I - "$_tail" "$_keep" 2>/dev/null <<'PYS' || echo "1"
 import json, sys
-forged = moved = 0
-keep = open(sys.argv[2], "w", encoding="utf-8"); mv = open(sys.argv[3], "a", encoding="utf-8")
+forged = 0
+keep = open(sys.argv[2], "w", encoding="utf-8")
 for l in open(sys.argv[1], encoding="utf-8", errors="replace"):
     if not l.strip(): continue
     try: d = json.loads(l)
@@ -703,17 +703,14 @@ for l in open(sys.argv[1], encoding="utf-8", errors="replace"):
     if not isinstance(d, dict): forged += 1; continue
     if d.get("reviewer") == "external" or d.get("phase") in ("implement", "external-fail"): forged += 1; continue
     keep.write(l if l.endswith("\n") else l + "\n")
-keep.close(); mv.close(); print(forged, moved)
+keep.close(); print(forged)
 PYS
 )
-  read -r _nf _nm <<EOF
-$_cnt
-EOF
-  if [ "$(( ${_nf:-0} + ${_nm:-0} ))" -gt 0 ]; then
+  if [ "${_nf:-0}" -gt 0 ]; then
     if _pt=$(mktemp); then { head -c "$1" "$_spl"; cat "$_keep"; } > "$_pt" 2>/dev/null && mv -f "$_pt" "$_spl"
     else python3 -I -c 'import sys; open(sys.argv[1],"r+b").truncate(int(sys.argv[2]))' "$_spl" "$1" 2>/dev/null; fi   # no temp file: the whole window goes (fail closed)
   fi
-  rm -f "$_tail" "$_keep"; echo "${_nf:-0} ${_nm:-0}"
+  rm -f "$_tail" "$_keep"; echo "${_nf:-0}"
 }
 implement_evidence() { # $1 pool cli, $2 tree before, $3 tree after → prints "<paths>|<note>" (kept run only)
   # The evidence-based reviewer/test gate is Claude-only now (spec Desired 10,
@@ -1085,11 +1082,9 @@ one() { # $1 cli → 0 ok / 1 fail / 21 implement done with outside edits revert
     printf '%s: cannot snapshot %s (not a git repo, git failed, or no temp dir) — the guard needs a baseline, member not run\n' "$_c" "$_nb0" > "$TMPP/$_c.line"; return 1
   fi
   _s=$SECONDS; invoke "$_c" "$TMPP/$_c.prompt" "$TMPP/$_c.out"; _rc=$?; _secs=$(( SECONDS - _s ))
-  _nforged=0; _nmoved=0; _lforged=0; _lwin=0
+  _nforged=0
   if [ "$KIND" = "implement" ]; then   # evidence integrity first, before any exit path is chosen: the phase-log window is scrubbed (no ledger window — the edit ledger is gone, spec Desired 10, 2026-09-25)
-    read -r _nforged _nmoved <<EOF
-$(phaselog_scrub "$_pl0" "$EV/external/$_ts-$_c-$RUN_TAG.member-phase-log.jsonl")
-EOF
+    _nforged=$(phaselog_scrub "$_pl0")
   fi
   # codex streams its event log to stderr; the reviewer's answer is the -o message file
   if [ "$_c" = "codex" ] && [ -s "$TMPP/$_c.out.msg" ]; then mv "$TMPP/$_c.out" "$TMPP/$_c.out.stream"; mv "$TMPP/$_c.out.msg" "$TMPP/$_c.out"; fi
@@ -1132,8 +1127,8 @@ EOF
         cat "$TMPP/$_c.out"; printf '\n--- stderr ---\n'; cat "$TMPP/$_c.out.err"; } > "$EV/$_frep" 2>/dev/null || :
       printf '%s\n' "{\"ts\":\"$(iso_now)\",\"phase\":\"external-fail\",\"kind\":\"implement\",\"cli\":\"$_c\",\"family\":\"$_f\",\"lead\":\"$LEAD\",\"secs\":$_secs,\"exit\":$_rc,\"reason\":\"git-state: $(jesc "$_gnote")\",\"reverted\":$_nr,\"left\":${_nl:-0},\"raw\":\"$_frep\"${JOB_ID_TAG:+,\"job\":\"$JOB_ID_TAG\"}}" > "$TMPP/$_c.jsonl"
       [ -n "${_meta0:-}" ] && rm -rf "$_meta0" 2>/dev/null
-      _ev22=""; [ "$(( ${_nforged:-0} + ${_lforged:-0} ))" -gt 0 ] && _ev22="; forged evidence stripped: $(( ${_nforged:-0} + ${_lforged:-0} )) line(s)"; [ "${_lwin:-0}" -gt 0 ] && _ev22="$_ev22; $_lwin member ledger row(s) dropped"
-      printf 'ROLEPOD-XFAM violations kind=implement cli=%s family=%s git-state=1 exit=%s reverted=%s forged=%s report=.rolepod/evidence/%s secs=%s — the member moved git state (%s); refs restored, %s, %s%s (copies under %s)%s; this member is dropped, no fall-through\n' "$_c" "$_f" "$_rc" "$_nr" "$(( ${_nforged:-0} + ${_lforged:-0} ))" "$_frep" "$_secs" "$_gnote" "$_reflog" "$_treeback" "$_left" "$_saverel" "$_ev22" > "$TMPP/$_c.line"
+      _ev22=""; [ "${_nforged:-0}" -gt 0 ] && _ev22="; forged evidence stripped: ${_nforged:-0} line(s)"
+      printf 'ROLEPOD-XFAM violations kind=implement cli=%s family=%s git-state=1 exit=%s reverted=%s forged=%s report=.rolepod/evidence/%s secs=%s — the member moved git state (%s); refs restored, %s, %s%s (copies under %s)%s; this member is dropped, no fall-through\n' "$_c" "$_f" "$_rc" "$_nr" "${_nforged:-0}" "$_frep" "$_secs" "$_gnote" "$_reflog" "$_treeback" "$_left" "$_saverel" "$_ev22" > "$TMPP/$_c.line"
       return 22
     fi
   fi
@@ -1156,10 +1151,9 @@ EOF
     fi
     _base=git; if [ -n "$_pre" ] && [ -n "$_post" ]; then git -C "$ROOT" diff-tree -p "$_pre" "$_post" -- . $PATCH_EXCLUDE > "$EV/$_patch" 2>/dev/null || :; else _base=none; : > "$EV/$_patch"; fi   # no baseline (not a git repo) is said out loud, never read as files=0
     _op=$(printf '%s\n' "$_guard" | grep '^reverted' | cut -f2 | head -20 | tr '\n' ' '); _up=$(printf '%s\n' "$_guard" | grep '^unsafe' | cut -f2 | head -20 | tr '\n' ' ')
-    _edits=0; _enote="no tree baseline — nothing ledgered"
+    _edits=0; _enote="no tree baseline — nothing recorded"
     [ -n "${_meta0:-}" ] && rm -rf "$_meta0" 2>/dev/null
     if [ -n "$_pre" ] && [ -n "$_post" ]; then _ev=$(implement_evidence "$_c" "$_pre" "$_post"); _edits="${_ev%%|*}"; _enote="${_ev#*|}"; fi
-    _nforged=$(( ${_nforged:-0} + ${_lforged:-0} ))
     [ -n "$JOB_DIR" ] && printf '%s\n' "$_c" > "$JOB_DIR/implementer" 2>/dev/null
     _allow_json=$(printf '%s\n' "$ALLOW_LIST" | python3 -I -c 'import json,sys; print(json.dumps([l for l in sys.stdin.read().split("\n") if l], separators=(",", ":")))' 2>/dev/null || echo '[]')
     _files=$(grep -c '^diff --git ' "$EV/$_patch" 2>/dev/null); _files=${_files:-0}
@@ -1170,13 +1164,12 @@ EOF
         "$_c" "$_f" "$LEAD" "$LEAD_FAMILY" "$(iso_now)" "$_rc" "$_secs" "$_bytes" "$TIMEOUT" "$_files" "$(( _nout + _nunsafe ))" "$_nforged" "${_ran:+ ran=$_ran}" "$BRIEF"
       cat "$TMPP/$_c.out"; } > "$EV/$_rep" 2>/dev/null || :
     if [ -n "$JOB_DIR" ]; then cp "$TMPP/$_c.out" "$JOB_DIR/report.txt" 2>/dev/null || :; cp "$EV/$_patch" "$JOB_DIR/patch.diff" 2>/dev/null || :; fi
-    printf '%s\n' "{\"ts\":\"$(iso_now)\",\"phase\":\"$PHASE\",\"kind\":\"$KIND\",\"cli\":\"$_c\",\"family\":\"$_f\",\"model\":\"default\",\"report\":\"$_rep\",\"patch\":\"$_patch\",\"baseline\":\"$_base\",\"files\":$_files,\"outside\":$(( _nout + _nunsafe )),\"forged\":$_nforged,\"outside_paths\":\"$(jesc "$_op")\",\"unsafe_paths\":\"$(jesc "$_up")\",\"allow\":$_allow_json,\"risky\":\"$( [ -n "$RISKY_HITS" ] && printf 'lifted' || printf 'no' )\",\"edits\":$_edits,\"moved\":${_nmoved:-0}${_enote:+,\"edits_note\":\"$(jesc "$_enote")\"},\"lead\":\"$LEAD\",\"secs\":$_secs,\"budget\":$TIMEOUT,\"brief_sha\":\"$BRIEF_SHA\"${JOB_ID_TAG:+,\"job\":\"$JOB_ID_TAG\"}${_ran:+,\"ran\":\"$(jesc "$_ran")\"}}" > "$TMPP/$_c.jsonl"
+    printf '%s\n' "{\"ts\":\"$(iso_now)\",\"phase\":\"$PHASE\",\"kind\":\"$KIND\",\"cli\":\"$_c\",\"family\":\"$_f\",\"model\":\"default\",\"report\":\"$_rep\",\"patch\":\"$_patch\",\"baseline\":\"$_base\",\"files\":$_files,\"outside\":$(( _nout + _nunsafe )),\"forged\":$_nforged,\"outside_paths\":\"$(jesc "$_op")\",\"unsafe_paths\":\"$(jesc "$_up")\",\"allow\":$_allow_json,\"risky\":\"$( [ -n "$RISKY_HITS" ] && printf 'lifted' || printf 'no' )\",\"edits\":$_edits${_enote:+,\"edits_note\":\"$(jesc "$_enote")\"},\"lead\":\"$LEAD\",\"secs\":$_secs,\"budget\":$TIMEOUT,\"brief_sha\":\"$BRIEF_SHA\"${JOB_ID_TAG:+,\"job\":\"$JOB_ID_TAG\"}${_ran:+,\"ran\":\"$(jesc "$_ran")\"}}" > "$TMPP/$_c.jsonl"
     _notes=""
     [ "$_nout" -gt 0 ] && _notes="$_notes — reverted (edits outside --allow, whoever made them; copies under .rolepod/evidence/external/$_ts-$_c-$RUN_TAG.reverted/): $_op"
     [ "$_nunsafe" -gt 0 ] && _notes="$_notes — NOT touched (a symlink in the leading path; inspect by hand): $_up"
     [ "${_nhk:-0}" -gt 0 ] && _notes="$_notes — housekeeping restored, not a violation (the member's runtime rewrites it on start): $(printf '%s\n' "$_guard" | grep '^housekept' | cut -f2 | tr '\n' ' ')"
-    [ "$_nforged" -gt 0 ] && _notes="$_notes — forged evidence stripped: $_nforged line(s) (phase-log shapes only the runner writes, ledger rows the tree does not back, or a truncated log)"
-    [ "${_nmoved:-0}" -gt 0 ] && _notes="$_notes — $_nmoved member-internal line(s) moved to .rolepod/evidence/external/$_ts-$_c-$RUN_TAG.member-phase-log.jsonl"
+    [ "$_nforged" -gt 0 ] && _notes="$_notes — forged evidence stripped: $_nforged line(s) (phase-log shapes only the runner writes, or a truncated log)"
     [ -n "$_enote" ] && _notes="$_notes — edits: $_enote"
     if [ "$(( _nout + _nunsafe + _nforged ))" -gt 0 ]; then
       printf 'ROLEPOD-XFAM violations kind=implement cli=%s family=%s files=%s outside=%s forged=%s %s report=.rolepod/evidence/%s secs=%s budget=%ss%s%s\n' "$_c" "$_f" "$_files" "$(( _nout + _nunsafe ))" "$_nforged" "$_patch_line" "$_rep" "$_secs" "$TIMEOUT" "${_ran:+ ran=$_ran}" "$_notes" > "$TMPP/$_c.line"
@@ -1207,7 +1200,7 @@ $(implement_restore_all "$_pre" "$_save")
 EOF
     _saverel="${_save#$ROOT/}"
     [ -n "${_meta0:-}" ] && rm -rf "$_meta0" 2>/dev/null
-    [ "$(( ${_nforged:-0} + ${_lforged:-0} + ${_lwin:-0} ))" -gt 0 ] && _why="$_why — evidence window scrubbed ($(( ${_nforged:-0} + ${_lforged:-0} )) forged, $_lwin ledger row(s) dropped)"
+    [ "${_nforged:-0}" -gt 0 ] && _why="$_why — evidence window scrubbed (${_nforged:-0} forged)"
     if [ "${_nb:-}" = nobase ]; then _why="$_why — tree NOT restored (no snapshot possible — inspect by hand before the next member runs)"
     elif [ "${_nl:-0}" -gt 0 ]; then _why="$_why — tree restored ($_nr path(s) reverted, copies under $_saverel) EXCEPT $_nl path(s) under a symlinked directory (left in place — inspect before the next member runs)"
     else _why="$_why — tree restored ($_nr path(s) reverted, copies under $_saverel); next member starts clean"; fi

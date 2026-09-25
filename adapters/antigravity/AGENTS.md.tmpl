@@ -52,7 +52,8 @@ A conflict that risks harm → ask before acting.
 - **Hooks** — the plugin's `hooks.json` (at the plugin root; scripts under
   `hooks/`) registers gate hooks on agy's
   native events: `PreInvocation` (session context), `PreToolUse` (the
-  pre-commit test gate on `run_command`), `Stop` (release this session's
+  pre-commit private-docs gate on `run_command` — evidence-based
+  reviewer/test gating is Claude-only), `Stop` (release this session's
   worktree lock so siblings stop seeing a phantom session). Inspect loaded
   hooks with `agy hooks`.
 - **Enforcement tier: unverified** — hooks are registered but live firing

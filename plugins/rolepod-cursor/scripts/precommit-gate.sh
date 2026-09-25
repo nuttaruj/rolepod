@@ -9,9 +9,9 @@
 # v2.134.0: this used to be a Cursor-only gate (any staged high-risk path →
 # HARD, no session evidence). It is now a translator around the shared
 # scripts/shared/precommit-gate.sh (byte-identical to hooks/precommit-gate.sh),
-# so Cursor runs the same tiering, the same evidence window (since the last
-# commit: edit ledger + phase-log reviewer lines + anchored cross-family
-# passes) and the same auto-pass as every other CLI.
+# invoked with ROLEPOD_LEAD_CLI=cursor — the same private-docs deny as every
+# other CLI; the evidence-based reviewer/test gate is Claude-only (spec
+# Desired 10, 2026-09-25), so Cursor gets the private-docs deny only.
 #
 # Cursor stdin: {"command", "cwd", "conversation_id", ...}. Cursor output:
 #   {"permission": "deny", "user_message", "agent_message"} + exit 2 → blocked,
