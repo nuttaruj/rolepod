@@ -65,6 +65,7 @@ The FIRST matching row fires:
 | clear doc edit; CI, Docker, deploy, infra config | Build → `implement-plan`, Owner `content-strategist` (`audience:` set) / `devops-sre`; R1 → the Lead |
 | review / look at the diff; audit / find all X across the repo | Review → `review-code`; a whole-repo sweep scopes first (References) |
 | ship / merge / PR / done, or the work's natural end | Ship → `finish-work` (`review-code` first if a review is missing) |
+| rolepod stats / evidence report / which models ran | `rolepod-stats` |
 | explain / conceptual question | answer; a wide repo or online sweep → ONE `scout` first (no agent → the Lead greps) |
 | context too large / compact / resume / stuck | `manage-context` |
 

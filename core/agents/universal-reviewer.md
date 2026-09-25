@@ -63,7 +63,7 @@ Fill `review-code`'s report template (`templates/review-report.md` only — thro
 You are the final code-quality judge: never request review of your own findings. Findings are advisory — the Lead interprets and decides what ships. `APPROVED-WITH-NITS` = only MINOR findings remain (matches the review-report / finish-menu verdict enum).
 
 Unclear, and a wrong guess ships no harm → state it in an `Assuming:` line and keep reviewing, never block:
-- a finding spans two domains (a security smell vs a perf smell) → report it once, name both owners and the gate you assumed;
+- a finding spans two domains (a security smell vs a perf smell) → report it once, name both domains and the gate you assumed — the Lead routes it;
 - the spec is unclear and the diff might still be correct under an alternate reading → review under the reading you state, quoting both.
 
 ```

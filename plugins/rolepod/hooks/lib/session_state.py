@@ -1057,7 +1057,12 @@ def _evidence_dirs(diff_dir):
     for r in (_evidence_root(diff_dir), _git_root(diff_dir)):
         if not r:
             continue
-        real = os.path.realpath(r)
+        # Dedup on the EVIDENCE dir's own realpath, not the root's (round-2
+        # fix, 2026-09-25): a repo that symlinks .rolepod between checkouts
+        # (worktrees sharing per-repo config) has two distinct root
+        # realpaths resolving to the same evidence dir — deduping on the
+        # root alone read that one dir twice and doubled its counts.
+        real = os.path.realpath(os.path.join(r, ".rolepod", "evidence"))
         if real in seen:
             continue
         seen.add(real)
@@ -1118,8 +1123,8 @@ def gate_evidence(hook_input: dict, diff_dir: str) -> tuple[int, int, int, int, 
 def _external_fail_count(since_epoch, ev_dir):
     """Count of phase-log `external-fail` rows since `since_epoch` — the
     runner tried every usable cross-family member and they failed, or the
-    pool was empty (python twin of precommit-gate.sh's XFAM_FAILS block,
-    satellite-first, v2.76.0)."""
+    pool was empty (satellite-first, v2.76.0; read by gate_hold_predict for
+    both hooks)."""
     import datetime
     cut = None
     if since_epoch:
@@ -1355,9 +1360,10 @@ def main() -> int:
         diff_dir = sys.argv[2] if len(sys.argv) > 2 else "."
         print("%d %d %d %d %d" % gate_evidence(hook_input, diff_dir))
     elif query == "gate-hold-predict":
-        # external-fail row count — gate-reminder.sh's satellite-first
-        # prediction (MEDIUM-4): a usable pool with an external-fail row
-        # means the gate's hold does not apply, so 0 means "unknown/none".
+        # external-fail row count — the satellite-first hold input for
+        # precommit-gate.sh and gate-reminder.sh (MEDIUM-4): a usable pool
+        # with an external-fail row means the hold does not apply, so 0
+        # means "unknown/none".
         diff_dir = sys.argv[2] if len(sys.argv) > 2 else "."
         print(gate_hold_predict(diff_dir))
     elif query == "count-test-edits":

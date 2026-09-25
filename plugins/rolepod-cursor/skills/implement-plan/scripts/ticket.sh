@@ -117,13 +117,12 @@ plan_slug_of() { # $1 = plan (absolute)
 # by every worktree).
 TICKET_LOCK=""
 take_plan_lock() { # $1 = subcommand, $2 = plan (absolute), $3 = repo root
-  [ -z "$TICKET_LOCK" ] || return 0
   local common lock pid
   # cd into it rather than --path-format=absolute (git 2.31+ only): the
   # common dir may come back relative to $3.
   common="$(cd "$3" && cd "$(git rev-parse --git-common-dir 2>/dev/null)" 2>/dev/null && pwd)"
   [ -n "$common" ] || { echo "ticket: $1: cannot resolve the git dir of $3" >&2; exit 2; }
-  lock="$common/ticket-$(plan_slug_of "$2").lock"
+  lock="$common/rolepod-ticket-$(plan_slug_of "$2").lock"
   if ! mkdir "$lock" 2>/dev/null; then
     if [ ! -d "$lock" ]; then
       echo "ticket: $1: cannot create the plan lock $lock" >&2
@@ -337,8 +336,7 @@ plan_task_rows() { # $1 = plan (absolute)
 
 # Space-padded set " <id> <id> ... " of every task marked done in rows
 # "$1" (a plan_task_rows table) — the one done-id lookup ready_now_after
-# and log's ready-now line both build from, so a done check can never
-# disagree between the two callers.
+# builds from.
 done_ids_of() { # $1 = plan_task_rows output
   local id owner blocked done out=" "
   while IFS="$ROW_FS" read -r id owner blocked done; do
@@ -350,9 +348,8 @@ EOF
   printf '%s' "$out"
 }
 
-# True (rc 0) when Owner field "$1" is the Lead, not a role — the one Lead
-# test log's role tally and its ready-now line both apply, so a role-owned
-# check can never disagree between the two callers.
+# True (rc 0) when Owner field "$1" is the Lead, not a role — log's role
+# tally (the Review-readiness count below).
 is_lead_owner() { # $1 = owner field
   local owner="$1" lead_rx='^Lead([[:space:](]|$)'
   [[ "$owner" =~ $lead_rx ]] || [[ "$owner" == *"(Lead self-do)"* ]]
@@ -392,34 +389,6 @@ ready_now_after() { # $1 = plan, $2 = task id just logged
   done <<EOF
 $rows
 EOF
-}
-
-json_escape() { # $1 = string -> backslash/quote escaped for a JSON string body
-  local s="$1"
-  s="${s//\\/\\\\}"
-  s="${s//\"/\\\"}"
-  printf '%s' "$s"
-}
-
-# The brief's "## Reviewers" first line, as backticked role tokens — the
-# pool-command alternative (`cross-family.sh --kind review ...`) always
-# carries a space and "none" (R1) is dropped, so only real role names survive.
-brief_reviewers() { # $1 = brief file
-  local line1
-  line1="$(section_body "$1" '## Reviewers' | sed -n '1p')"
-  printf '%s\n' "$line1" | grep -oE '`[^`]+`' | tr -d '`' | grep -vx 'none' | grep -v ' ' || true
-}
-
-# Reviewer tokens on stdin (one per line, from brief_reviewers) -> a compact
-# JSON array literal, e.g. ["universal-reviewer","qa-tester"].
-reviewers_json_array() {
-  local rev out="" first=1
-  while IFS= read -r rev; do
-    [ -n "$rev" ] || continue
-    if [ "$first" -eq 1 ]; then out="\"$(json_escape "$rev")\""; first=0
-    else out="${out},\"$(json_escape "$rev")\""; fi
-  done
-  printf '[%s]' "$out"
 }
 
 # ── start ────────────────────────────────────────────────────────────────
@@ -608,7 +577,7 @@ cmd_integrate() {
   # capped so this block alone cannot blow the <=40-line budget.
   local marker review_list f b v seen
   marker="$wt_root/.git"
-  review_list="$(mktemp "${TMPDIR:-/tmp}/ticket-review.XXXXXX")"
+  review_list="$(mktemp "${TMPDIR:-/tmp}/rolepod-ticket-review.XXXXXX")"
   {
     [ -d "$main_root/.rolepod/evidence/review" ] && find "$main_root/.rolepod/evidence/review" -type f -newer "$marker" 2>/dev/null
     if [ "$wt_root/.rolepod/evidence/review" != "$main_root/.rolepod/evidence/review" ] \
@@ -713,7 +682,7 @@ cmd_log() {
   fi
 
   local tmp rc bullet
-  tmp="$(mktemp "${TMPDIR:-/tmp}/ticket-log.XXXXXX")"
+  tmp="$(mktemp "${TMPDIR:-/tmp}/rolepod-ticket-log.XXXXXX")"
   [ -n "$tmp" ] || { echo "ticket: log: mktemp failed" >&2; exit 1; }
 
   awk -v want="$n" '

@@ -179,7 +179,7 @@ Fires only when the plan's **Parallel layout** line declares Parallel with a con
 5. **Ship-group drift pass** when the plan names one (tracks sharing a frozen interface are one group).
 
 Mid-flight conflicts:
-- A track needs a file outside its slice → it returns `BLOCKED` with the path; Lead either amends the contract (every owner re-briefed) or drops to sequential. Never silently widen a slice.
+- A track needs a file outside its slice → it returns `NEEDS: <path> — <one-line change>`; Lead either amends the contract (every owner re-briefed) or drops to sequential. Never silently widen a slice.
 - A frozen interface must change → stop every affected track, renegotiate the contract, redispatch. Cheaper than merging two halves built against different contracts.
 - One track `BLOCKED` while others run → let the running tracks finish; apply the standard variable changes to the blocked one. Its dependents wait; independent tracks do not.
 

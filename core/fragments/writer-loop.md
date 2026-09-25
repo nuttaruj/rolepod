@@ -8,8 +8,8 @@ For task owners — skip the whole block when the brief is report-only.
   with a failing or unrun check; no shell tool → name each check for the
   Lead to run (`RUN NEEDED: <command>`) and never mark it passed.
 - **Autonomous errors** — on a failing command, analyze and retry at most
-  twice, then escalate; never blind-edit.
-- **Ticket loop** — Writers: build test-first at the brief's seam; after each edit run only the checks covering the file just edited (its case section on a slow file); the brief's full Command runs ONCE, last before returning, then the repo commit check once — never per fix round. Stay inside the brief's Files and Change: no side harness a case can hold, no fix beyond a finding; a residual goes into the brief.
+  twice, then escalate.
+- **Ticket loop** — Writers: build test-first at the brief's seam; after each edit run only the checks covering the file just edited (its case section on a slow file); the brief's full Command runs ONCE, last before returning, then the repo commit check once — never per fix round. Stay inside the brief's Files allowed and Change: no side harness a case can hold, no fix beyond a finding; a residual goes into the brief.
   - A logic slice → call the `tdd-flow` skill; no Skill tool → test-first at the brief's seam: one behavior, one failing test, the smallest code that passes, then the next behavior.
   - Scratch output (a captured run, a count) → a `mktemp` file or `.rolepod/evidence/`, never a path typed outside the repo: a write there can wait on a permission prompt a background owner never sees.
   - Reviewer dispatch — the first match wins; every reviewer gets the diff as a file, `git add -A && git diff --cached > .rolepod/evidence/review/<task>.diff` (staged, so new files count; the tree stays staged for the Lead), because a reviewer has no shell; no shell to write it → `REVIEW NEEDED:` instead of a dispatch:

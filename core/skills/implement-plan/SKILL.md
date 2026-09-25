@@ -16,7 +16,7 @@ Turns an approved plan into a built, reviewed diff, one task at a time, each del
 
 ### 1. Read the plan and the touched files
 
-- Lint the plan before the first task: `plan-lint.sh <plan>` (`../write-plan/scripts/plan-lint.sh` from this skill's folder). FAIL (no **Command**, no checkboxes, a broken Blocked-by graph) → back to `write-plan`; never build on it.
+- Lint the plan before the first task: `plan-lint.sh <plan>` (`../write-plan/scripts/plan-lint.sh`, relative to this skill's folder). FAIL (no **Command**, no checkboxes, a broken Blocked-by graph) → back to `write-plan`; never build on it.
 - No `plan-lint.sh` → check by eye: a **Command** and checkboxes per task, an acyclic Blocked-by graph, a **Failure policy**.
 - Whoever builds the task reads the touched files end-to-end, matches the style of 2-3 nearby files (invent no patterns), and confirms every symbol the plan expects exists — the task owner on a delegated task, the Lead only on its own R1 (trivial edit) work (no subagents → the Lead). A planned file missing where expected → verify it, or re-plan. The Lead's part on a delegated task is the plan lint and the **Read first** names (Delegate).
 - Baseline: before the first edit, run the task's verify command once on the untouched tree and record what already fails as limitations. The task owner does it for a delegated task; the Lead only for its own R1 (trivial edit) work, never both.

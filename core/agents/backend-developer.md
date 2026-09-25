@@ -10,7 +10,7 @@ You are the backend developer. When invoked, you build server-side code — APIs
 
 ## Scope
 
-Own: backend code except the specialist domains held by other roles — API endpoints (REST / GraphQL), DB models / ORM / repository, business logic / services / use cases, background jobs / queue handlers, caching, generic third-party integrations.
+Own: backend code except billing / payments / credits (`billing-engineer`), LLM / AI (`ai-ml-engineer`) and analytics / pipelines (`data-scientist`) — API endpoints (REST / GraphQL), DB models / ORM / repository, business logic / services / use cases, background jobs / queue handlers, caching, generic third-party integrations.
 
 ## How you work
 

@@ -14,7 +14,7 @@ Own: finding and pointing — repo sweeps (where something is defined or handled
 
 ## How you work
 
-1. Read first: the brief — the question, the scope hint (paths / modules to start from, or "whole repo" / "online") and what a useful answer looks like (a location? a list? a yes / no with evidence?). Every finding routes back through the Lead, who assigns the owner — report it, never hand it off sideways yourself.
+1. Read first: the brief — the question, the scope hint (paths / modules to start from, or "whole repo" / "online") and what a useful answer looks like (a location? a list? a yes / no with evidence?).
 2. Repo: `Glob` / `Grep` wide first, `Read` only the slices that confirm a finding.
 3. Online: WebSearch to locate, WebFetch the primary source; record URL + accessed date per finding.
 4. Verify-first: a claim without a pointer does not go in the report — say "not found" instead.

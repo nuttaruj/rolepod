@@ -63,10 +63,18 @@ PY
 
 # Cross-family pool nudge (v2.142.0: no opt-in question — rolepod never asks
 # unprompted). No pool file and a second CLI installed → ONE silent context
-# line says how to set it up when the user asks. The runner itself lives in
-# the cross-family skill's own scripts/ (v2.179.0) — no locator line here.
-_xf="$(cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null && pwd)/../skills/cross-family/scripts/cross-family.sh"
-[ -f "$_xf" ] || _xf="$(cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null && pwd)/../core/skills/cross-family/scripts/cross-family.sh"
+# line says how to set it up when the user asks. Runner locator (v2.179.0:
+# inside the cross-family skill): a plugin tree's own skills/, else the
+# source repo's core/skills/ copy — canonicalized so --candidates below
+# runs a real, quotable path.
+xfam_runner() {
+  local d
+  for d in "$(dirname "${BASH_SOURCE[0]}")/../skills/cross-family/scripts" \
+           "$(dirname "${BASH_SOURCE[0]}")/../core/skills/cross-family/scripts"; do
+    [ -f "$d/cross-family.sh" ] && { (cd "$d" && printf '%s/cross-family.sh' "$(pwd)"); return 0; }
+  done
+}
+_xf="$(xfam_runner)"
 if [ -f "$_xf" ] && [ ! -f "$HOME/.rolepod/cross-family" ] && [ ! -f "$REPO/.rolepod/cross-family" ]; then
   _lead="${ROLEPOD_LEAD_CLI:-}"
   if [ -z "$_lead" ] && [ -n "${CLAUDE_PROJECT_DIR:-}${CLAUDE_PLUGIN_ROOT:-}" ]; then _lead=claude; fi

@@ -30,13 +30,19 @@
 #   ROLEPOD_GATES_SOFT=1   — silence the would-block line entirely
 set -euo pipefail
 
-# Cross-family runner locator (v2.179.0: scripts moved into their skills) —
-# this skill's folder in a rendered plugin tree, else the source repo's
-# core/skills/ copy. No home-dir launcher-payload fallback (no launcher is
-# installed any more). Resolved once, up top, so the in-flight-job messages
-# below can quote the same real, runnable path.
-XFAM_RUNNER="$(cd "$(dirname "$0")" && pwd)/../skills/cross-family/scripts/cross-family.sh"
-[ -f "$XFAM_RUNNER" ] || XFAM_RUNNER="$(cd "$(dirname "$0")" && pwd)/../core/skills/cross-family/scripts/cross-family.sh"
+# Cross-family runner (v2.179.0: inside the cross-family skill) — resolved
+# on FIRST USE only (this hook fires on every Edit/Write/MultiEdit call): a
+# plugin tree's own skills/, else the source repo's core/skills/ copy.
+# Prints the canonicalized path so every message that quotes it is real and
+# runnable. "" when neither resolves — no home-dir launcher-payload
+# fallback (no launcher is installed any more).
+xfam_runner() {
+  local d
+  for d in "$(dirname "${BASH_SOURCE[0]}")/../skills/cross-family/scripts" \
+           "$(dirname "${BASH_SOURCE[0]}")/../core/skills/cross-family/scripts"; do
+    [ -f "$d/cross-family.sh" ] && { (cd "$d" && printf '%s/cross-family.sh' "$(pwd)"); return 0; }
+  done
+}
 
 # Per-repo risk-path override: <git-root>/.rolepod/risk-paths — one ERE per
 # line; bare/+ lines ADD high-risk patterns, - lines EXCLUDE paths from the
@@ -179,42 +185,59 @@ fi
 # `+++ b/<path>` of every --attach in the job's args (written with %q, so
 # eval is the decoder); attachments gone (tmp cleaned) → the current WIP
 # (git diff HEAD) stands in. Liveness walk = precommit-gate.sh's
-# xfam_running_job (keep in parity).
+# xfam_running_job, dual-root (D6, keep in parity): a job started as `cd
+# <worktree> && cross-family.sh … --detach` writes its job dir under the
+# WORKTREE's own evidence, which can differ from the hook's own process cwd
+# when the edited FILE itself lives in that worktree.
 XFAM_INFLIGHT=""
-_gr_root="$(git rev-parse --show-toplevel 2>/dev/null || true)"
-if [ -n "$_gr_root" ] && [ -d "$_gr_root/.rolepod/evidence/external/jobs" ] && [ "${ROLEPOD_GATES_SOFT:-0}" != "1" ]; then
-  # Repo-relative target. Both sides go through pwd -P: git resolves symlinks
-  # (/private/var vs /var on macOS) while the tool passes the path as typed,
-  # and a mismatched prefix would silently skip the match.
-  _gr_rel="$FILE"
-  if [ "${_gr_rel#/}" != "$_gr_rel" ]; then   # a NEW file in a not-yet-existing directory: resolve the nearest existing ancestor, re-append the rest
-    _gr_walk=$(dirname "$_gr_rel"); _gr_tail=$(basename "$_gr_rel")
-    while [ ! -d "$_gr_walk" ] && [ "$_gr_walk" != "/" ] && [ "$_gr_walk" != "." ]; do _gr_tail="$(basename "$_gr_walk")/$_gr_tail"; _gr_walk=$(dirname "$_gr_walk"); done
-    _gr_dir=$(cd "$_gr_walk" 2>/dev/null && pwd -P || true)
-    [ -n "$_gr_dir" ] && _gr_rel="$_gr_dir/$_gr_tail"
-  fi
-  _gr_rootp=$(cd "$_gr_root" 2>/dev/null && pwd -P || printf '%s' "$_gr_root")
-  case "$_gr_rel" in "$_gr_rootp"/*) _gr_rel="${_gr_rel#"$_gr_rootp"/}" ;; "$_gr_root"/*) _gr_rel="${_gr_rel#"$_gr_root"/}" ;; esac
-  for _jd in "$_gr_root"/.rolepod/evidence/external/jobs/*/; do
-    [ -d "$_jd" ] || continue; [ -f "$_jd/status" ] && continue
-    _jp=$(cat "$_jd/pid" 2>/dev/null); case "$_jp" in ''|*[!0-9]*) continue ;; esac
-    kill -0 "$_jp" 2>/dev/null || continue
-    ps -o command= -p "$_jp" 2>/dev/null | grep -q 'cross-family' || continue
-    _jid=$(basename "$_jd"); _jk=$(printf '%s' "$_jid" | sed -n 's/^[^-]*-\([a-z]*\)-.*/\1/p'); _jk=${_jk:-review}
-    if [ "$_jk" = "implement" ] && [ -f "$_jd/allow" ]; then   # an implement job: every edit OUTSIDE the ticket's Files allowed is reverted when it returns — warn on those, stay silent inside the scope
-      _in=0; while IFS= read -r _ae; do [ -n "$_ae" ] || continue; case "$_ae" in */) case "$_gr_rel" in "${_ae%/}"/*) _in=1 ;; esac ;; *) [ "$_gr_rel" = "$_ae" ] && _in=1 ;; esac; done < "$_jd/allow"
-      [ "$_in" -eq 1 ] && continue
-      _js=$(cat "$_jd/started" 2>/dev/null || echo 0); _jm=$(( ($(date +%s) - _js) / 60 ))
-      XFAM_INFLIGHT="⏸ EXTERNAL IMPLEMENT IN FLIGHT: cross-family job $_jid (running ${_jm} min) is EDITING this tree — an edit outside the ticket's Files allowed made now (this one included) is reverted when the job returns (a copy is kept under the job's .reverted/). Fix: park the edit until \`bash $XFAM_RUNNER --collect $_jid\` returns, or work in another worktree. "
-      break
+if [ "${ROLEPOD_GATES_SOFT:-0}" != "1" ]; then
+  # Nearest EXISTING ancestor of FILE's directory (a NEW file in a
+  # not-yet-created directory resolves through it) — the second root
+  # candidate below.
+  _gr2_walk="$(dirname "$FILE")"
+  while [ ! -d "$_gr2_walk" ] && [ "$_gr2_walk" != "/" ] && [ "$_gr2_walk" != "." ]; do _gr2_walk="$(dirname "$_gr2_walk")"; done
+  _gr_seen=""
+  for _gr_root in "$(git rev-parse --show-toplevel 2>/dev/null || true)" "$(git -C "$_gr2_walk" rev-parse --show-toplevel 2>/dev/null || true)"; do
+    [ -n "$_gr_root" ] || continue
+    case " $_gr_seen " in *" $_gr_root "*) continue ;; esac
+    _gr_seen="$_gr_seen $_gr_root"
+    [ -d "$_gr_root/.rolepod/evidence/external/jobs" ] || continue
+    # Repo-relative target. Both sides go through pwd -P: git resolves symlinks
+    # (/private/var vs /var on macOS) while the tool passes the path as typed,
+    # and a mismatched prefix would silently skip the match.
+    _gr_rel="$FILE"
+    if [ "${_gr_rel#/}" != "$_gr_rel" ]; then   # a NEW file in a not-yet-existing directory: resolve the nearest existing ancestor, re-append the rest
+      _gr_walk=$(dirname "$_gr_rel"); _gr_tail=$(basename "$_gr_rel")
+      while [ ! -d "$_gr_walk" ] && [ "$_gr_walk" != "/" ] && [ "$_gr_walk" != "." ]; do _gr_tail="$(basename "$_gr_walk")/$_gr_tail"; _gr_walk=$(dirname "$_gr_walk"); done
+      _gr_dir=$(cd "$_gr_walk" 2>/dev/null && pwd -P || true)
+      [ -n "$_gr_dir" ] && _gr_rel="$_gr_dir/$_gr_tail"
     fi
-    _under=$( ( eval "set -- $(cat "$_jd/args" 2>/dev/null)" 2>/dev/null; while [ $# -gt 0 ]; do if [ "$1" = "--attach" ] && [ -f "${2:-}" ]; then grep -E '^\+\+\+ b/' "$2" 2>/dev/null | sed -E 's#^\+\+\+ b/##; s/[[:space:]]+$//'; shift; fi; shift; done ) 2>/dev/null || true )
-    [ -n "$_under" ] || _under=$(git -C "$_gr_root" diff HEAD --name-only 2>/dev/null || true)
-    if printf '%s\n' "$_under" | grep -qxF -- "$_gr_rel"; then
-      _js=$(cat "$_jd/started" 2>/dev/null || echo 0); _jm=$(( ($(date +%s) - _js) / 60 ))
-      XFAM_INFLIGHT="⏸ REVIEW IN FLIGHT: cross-family job $_jid (running ${_jm} min) reads '$_gr_rel' live — this edit turns its verdict into an artifact and re-runs the job. Fix: park the edit until \`bash $XFAM_RUNNER --collect $_jid\` returns; work outside the diff meanwhile. Exception: a dead job → --collect says so and this line stops. "
-      break
-    fi
+    _gr_rootp=$(cd "$_gr_root" 2>/dev/null && pwd -P || printf '%s' "$_gr_root")
+    case "$_gr_rel" in "$_gr_rootp"/*) _gr_rel="${_gr_rel#"$_gr_rootp"/}" ;; "$_gr_root"/*) _gr_rel="${_gr_rel#"$_gr_root"/}" ;; esac
+    for _jd in "$_gr_root"/.rolepod/evidence/external/jobs/*/; do
+      [ -d "$_jd" ] || continue; [ -f "$_jd/status" ] && continue
+      _jp=$(cat "$_jd/pid" 2>/dev/null); case "$_jp" in ''|*[!0-9]*) continue ;; esac
+      kill -0 "$_jp" 2>/dev/null || continue
+      ps -o command= -p "$_jp" 2>/dev/null | grep -q 'cross-family' || continue
+      _jid=$(basename "$_jd"); _jk=$(printf '%s' "$_jid" | sed -n 's/^[^-]*-\([a-z]*\)-.*/\1/p'); _jk=${_jk:-review}
+      if [ "$_jk" = "implement" ] && [ -f "$_jd/allow" ]; then   # an implement job: every edit OUTSIDE the ticket's Files allowed is reverted when it returns — warn on those, stay silent inside the scope
+        _in=0; while IFS= read -r _ae; do [ -n "$_ae" ] || continue; case "$_ae" in */) case "$_gr_rel" in "${_ae%/}"/*) _in=1 ;; esac ;; *) [ "$_gr_rel" = "$_ae" ] && _in=1 ;; esac; done < "$_jd/allow"
+        [ "$_in" -eq 1 ] && continue
+        _js=$(cat "$_jd/started" 2>/dev/null || echo 0); _jm=$(( ($(date +%s) - _js) / 60 ))
+        XFAM_RUNNER="${XFAM_RUNNER-$(xfam_runner)}"
+        XFAM_INFLIGHT="⏸ EXTERNAL IMPLEMENT IN FLIGHT: cross-family job $_jid (running ${_jm} min) is EDITING this tree — an edit outside the ticket's Files allowed is reverted when the job returns (a copy is kept under the job's .reverted/). Fix: park the edit until \`bash '$XFAM_RUNNER' --collect $_jid\` returns, or work in another worktree. "
+        break
+      fi
+      _under=$( ( eval "set -- $(cat "$_jd/args" 2>/dev/null)" 2>/dev/null; while [ $# -gt 0 ]; do if [ "$1" = "--attach" ] && [ -f "${2:-}" ]; then grep -E '^\+\+\+ b/' "$2" 2>/dev/null | sed -E 's#^\+\+\+ b/##; s/[[:space:]]+$//'; shift; fi; shift; done ) 2>/dev/null || true )
+      [ -n "$_under" ] || _under=$(git -C "$_gr_root" diff HEAD --name-only 2>/dev/null || true)
+      if printf '%s\n' "$_under" | grep -qxF -- "$_gr_rel"; then
+        _js=$(cat "$_jd/started" 2>/dev/null || echo 0); _jm=$(( ($(date +%s) - _js) / 60 ))
+        XFAM_RUNNER="${XFAM_RUNNER-$(xfam_runner)}"
+        XFAM_INFLIGHT="⏸ REVIEW IN FLIGHT: cross-family job $_jid (running ${_jm} min) reads '$_gr_rel' live — this edit turns its verdict into an artifact and re-runs the job. Fix: park the edit until \`bash '$XFAM_RUNNER' --collect $_jid\` returns; work outside the diff meanwhile. Exception: a dead job → --collect says so and this line stops. "
+        break
+      fi
+    done
+    [ -n "$XFAM_INFLIGHT" ] && break
   done
 fi
 
@@ -278,6 +301,7 @@ XFAM_HELD=0
 if [ -n "$HIGH_RISK" ] && [ "$SOFT_MODE" -eq 0 ] && [ "$STRONG_REVIEWERS" -gt 0 ] && [ "$XREV" -eq 0 ]; then
   XFAM_LEAD="${ROLEPOD_LEAD_CLI:-}"
   [ -z "$XFAM_LEAD" ] && [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && XFAM_LEAD="claude"
+  XFAM_RUNNER="${XFAM_RUNNER-$(xfam_runner)}"
   if [ -n "$XFAM_LEAD" ] && [ -f "$XFAM_RUNNER" ]; then
     XFAM_POOL=$(bash "$XFAM_RUNNER" --lead "$XFAM_LEAD" --pool-names 2>/dev/null | tr '\n' ' ' | sed 's/ *$//')
     if [ -n "$XFAM_POOL" ] && [ -f "$SESSION_STATE" ]; then

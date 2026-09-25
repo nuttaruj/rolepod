@@ -289,6 +289,25 @@ do_or_dry() {
   "$@"
 }
 
+# Legacy (pre-v2.179.0) PATH launchers + their ~/.rolepod/bin payload —
+# rolepod no longer ships either; each script now lives inside its owner
+# skill's scripts/. Shared by the install path and --uninstall (was
+# duplicated, byte for byte, in both). Global-scope only: --scope=project
+# touches no global path by design, so it must not delete a launcher a
+# global install on another CLI still calls; ROLEPOD_TARGET (or a per-CLI
+# override) set means a temp-target test run — never touch the real HOME
+# launchers there either (without this guard every `make test-all` silently
+# wiped ~/.rolepod/bin).
+remove_legacy_launchers() {
+  [ "$SCOPE" = "global" ] || return 0
+  [ -z "${ROLEPOD_TARGET:-}${ROLEPOD_CLAUDE_TARGET:-}${ROLEPOD_CODEX_TARGET:-}${ROLEPOD_CURSOR_TARGET:-}${ROLEPOD_ANTIGRAVITY_TARGET:-}${ROLEPOD_OPENCODE_TARGET:-}" ] \
+    || { warn "ROLEPOD_TARGET set — skipping global launcher removal (temp-target run)"; return 0; }
+  step "Removing legacy rolepod-stats / rolepod-junit / rolepod-cross-family / rolepod-ticket launchers"
+  do_or_dry "remove ~/.rolepod/bin + PATH launchers" bash -c "
+    rm -f '$HOME/.local/bin/rolepod-stats' '$HOME/.local/bin/rolepod-junit' '$HOME/.local/bin/rolepod-cross-family' '$HOME/.local/bin/rolepod-ticket'
+    rm -rf '$HOME/.rolepod/bin'"
+}
+
 # install_codex_agents <dest_dir> — copy the 15 rendered agent TOMLs with a
 # "rolepod-" filename prefix. Codex reads agents from ~/.codex/agents/
 # (global, SHARED with user-authored agents) — the plugin.json `agents`
@@ -661,13 +680,6 @@ if [ "$UNINSTALL" -eq 1 ]; then
       HOOK_NAMES+=("$(basename "$f")")
     done < <(find "$REPO_DIR/hooks" -maxdepth 1 -name '*.sh' 2>/dev/null)
   fi
-  COMMAND_NAMES=()
-  if [ -d "$REPO_DIR/commands" ]; then
-    while IFS= read -r f; do
-      COMMAND_NAMES+=("$(basename "$f")")
-    done < <(find "$REPO_DIR/commands" -maxdepth 1 -name '*.md' 2>/dev/null)
-  fi
-
   if [ "$uninstall_claude" -eq 1 ]; then
     step "Removing Claude rolepod files in $C_TARGET"
 
@@ -710,11 +722,6 @@ if [ "$UNINSTALL" -eq 1 ]; then
     if [ "$DRY_RUN" -eq 0 ]; then
       find "$C_TARGET/rules" -mindepth 1 -type d -empty -delete 2>/dev/null || true
     fi
-    # COMMAND_NAMES is empty whenever the repo has no top-level commands/ dir
-    # (the normal case — commands ship per-adapter). Expanding an empty array
-    # with "${arr[@]}" trips `set -u` on bash 3.2 (macOS); the +-form expands
-    # to nothing when unset and to the quoted elements otherwise.
-    for n in ${COMMAND_NAMES[@]+"${COMMAND_NAMES[@]}"}; do do_or_dry "rm -f $C_TARGET/commands/$n" rm -f "$C_TARGET/commands/$n"; done
     for n in "${HOOK_NAMES[@]}";    do do_or_dry "rm -f $C_TARGET/hooks/$n"    rm -f "$C_TARGET/hooks/$n"; done
     for n in "${SKILL_NAMES[@]}";   do do_or_dry "rm -rf $C_TARGET/skills/$n"  rm -rf "$C_TARGET/skills/$n"; done
     do_or_dry "rm -f $C_TARGET/CHEATSHEET.md"              rm -f "$C_TARGET/CHEATSHEET.md"
@@ -948,18 +955,7 @@ PY
     ok "opencode rolepod removed"
   fi
 
-  # Evidence-reader launchers + payload (installed for every target).
-  # ROLEPOD_TARGET set = temp-target test run — never touch the real HOME
-  # launchers (the integration round-trip uninstalls against a temp dir;
-  # without this guard every `make test-all` silently wiped ~/.rolepod/bin).
-  if [ -z "${ROLEPOD_TARGET:-}${ROLEPOD_CLAUDE_TARGET:-}${ROLEPOD_CODEX_TARGET:-}${ROLEPOD_CURSOR_TARGET:-}${ROLEPOD_ANTIGRAVITY_TARGET:-}${ROLEPOD_OPENCODE_TARGET:-}" ]; then
-    step "Removing rolepod-stats / rolepod-junit / rolepod-cross-family / rolepod-ticket launchers"
-    do_or_dry "remove ~/.rolepod/bin + PATH launchers" bash -c "
-      rm -f '$HOME/.local/bin/rolepod-stats' '$HOME/.local/bin/rolepod-junit' '$HOME/.local/bin/rolepod-cross-family' '$HOME/.local/bin/rolepod-ticket'
-      rm -rf '$HOME/.rolepod/bin'"
-  else
-    warn "ROLEPOD_TARGET set — skipping global launcher removal (temp-target run)"
-  fi
+  remove_legacy_launchers
 
   echo ""
   echo "${BOLD}Uninstall complete.${NC}"
@@ -1148,11 +1144,11 @@ PY
       [ -d "$d" ] || continue
       rm -rf "$TARGET/skills/$(basename "$d")" 2>/dev/null || true
     done
-    # Commands — match by basename from commands/
-    for f in "$REPO_DIR"/commands/*.md; do
-      [ -f "$f" ] || continue
-      rm -f "$TARGET/commands/$(basename "$f")" 2>/dev/null || true
-    done
+    # Commands — the repo ships no top-level commands/ dir any more
+    # (commands are per-adapter), so there is nothing to glob; the one
+    # pre-2.0 flat-file name worth cleaning up on an ancient install stays
+    # a literal.
+    rm -f "$TARGET/commands/rolepod-stats.md" 2>/dev/null || true
     # Hooks — match by basename from hooks/*.sh
     for f in "$REPO_DIR"/hooks/*.sh; do
       [ -f "$f" ] || continue
@@ -1673,20 +1669,13 @@ if [ -z "${TARGET:-}" ]; then
   PLUGINS_DIR="$TARGET/plugins"
 fi
 
-# ─── Evidence-reader launchers (any target) ────────────────────────────
-# Legacy cleanup only: rolepod no longer ships a ~/.rolepod/bin payload or
-# ~/.local/bin/rolepod-* launchers — each script now lives inside its owner
-# skill's scripts/ (already copied by the per-CLI install blocks above, as
-# part of that skill's directory). This removes what an older install left
-# behind — the same guarded removal the uninstaller runs.
-if [ -z "${ROLEPOD_TARGET:-}${ROLEPOD_CLAUDE_TARGET:-}${ROLEPOD_CODEX_TARGET:-}${ROLEPOD_CURSOR_TARGET:-}${ROLEPOD_ANTIGRAVITY_TARGET:-}${ROLEPOD_OPENCODE_TARGET:-}" ]; then
-  step "Removing stale rolepod-stats / rolepod-junit / rolepod-cross-family / rolepod-ticket launchers"
-  do_or_dry "remove ~/.rolepod/bin + PATH launchers" bash -c "
-    rm -f '$HOME/.local/bin/rolepod-stats' '$HOME/.local/bin/rolepod-junit' '$HOME/.local/bin/rolepod-cross-family' '$HOME/.local/bin/rolepod-ticket'
-    rm -rf '$HOME/.rolepod/bin'"
-else
-  warn "ROLEPOD_TARGET set — skipping global launcher removal (temp-target run)"
-fi
+# ─── Legacy launcher cleanup ─────────────────────────────────────────────
+# rolepod no longer ships a ~/.rolepod/bin payload or ~/.local/bin/rolepod-*
+# launchers — each script now lives inside its owner skill's scripts/
+# (already copied by the per-CLI install blocks above, as part of that
+# skill's directory). This removes what an older global install left
+# behind — see remove_legacy_launchers for the scope/temp-target guard.
+remove_legacy_launchers
 
 # ─── Summary ────────────────────────────────────────────────────────────
 echo ""

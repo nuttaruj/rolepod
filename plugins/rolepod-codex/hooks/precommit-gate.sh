@@ -36,14 +36,19 @@
 # names.
 set -euo pipefail
 
-# Cross-family runner locator (v2.179.0: scripts moved into their skills) —
-# this skill's folder in a rendered plugin tree, else the source repo's
-# core/skills/ copy. No home-dir launcher-payload fallback (no launcher is
-# installed any more). Resolved once, up top, so every message below
-# (including the tree-rewrite advisory that exits before the rest of this
-# file runs) can quote the same real, runnable path.
-XFAM_RUNNER="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/../skills/cross-family/scripts/cross-family.sh"
-[ -f "$XFAM_RUNNER" ] || XFAM_RUNNER="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/../core/skills/cross-family/scripts/cross-family.sh"
+# Cross-family runner (v2.179.0: inside the cross-family skill) — resolved
+# on FIRST USE only (this hook fires on every Bash call): a plugin tree's
+# own skills/, else the source repo's core/skills/ copy. Prints the
+# canonicalized path so every message that quotes it is real and runnable
+# (never the raw "../skills/..." spelling). "" when neither resolves — no
+# home-dir launcher-payload fallback (no launcher is installed any more).
+xfam_runner() {
+  local d
+  for d in "$(dirname "${BASH_SOURCE[0]}")/../skills/cross-family/scripts" \
+           "$(dirname "${BASH_SOURCE[0]}")/../core/skills/cross-family/scripts"; do
+    [ -f "$d/cross-family.sh" ] && { (cd "$d" && printf '%s/cross-family.sh' "$(pwd)"); return 0; }
+  done
+}
 
 # Per-repo risk-path override: <git-root>/.rolepod/risk-paths — one ERE per
 # line; bare/+ lines ADD high-risk patterns, - lines EXCLUDE paths from the
@@ -86,18 +91,31 @@ rolepod_log_bypass() {
 # "<job-id> (running N min)" for a live one, else nothing. Liveness = pid
 # alive AND still a cross-family process (a reused pid is a dead job).
 # Shared by the commit hold and the tree-rewrite warning below;
-# gate-reminder.sh carries the same walk (keep in parity).
+# gate-reminder.sh carries the same walk (keep in parity). D6 continued
+# (round-2, 2026-09-25): a job started as `cd <worktree> && cross-family.sh
+# … --detach` writes its job dir under the WORKTREE's own evidence, not the
+# session cwd's — same class as the pass/fail-row fix in session_state.py's
+# _evidence_dirs. Walks both roots, deduplicated. $1, when given, is the
+# diff directory to resolve the second root from (the advisory call below
+# runs before DIFF_DIR exists).
 xfam_running_job() {
-  _xr_jobs="$(git rev-parse --show-toplevel 2>/dev/null)/.rolepod/evidence/external/jobs"
-  [ -d "$_xr_jobs" ] || return 0
+  _xr_dir="${1:-${DIFF_DIR:-.}}"
+  _xr_seen=""
   _xr_out=""
-  for _jd in "$_xr_jobs"/*/; do
-    [ -d "$_jd" ] || continue; [ -f "$_jd/status" ] && continue
-    _jp=$(cat "$_jd/pid" 2>/dev/null); case "$_jp" in ''|*[!0-9]*) continue ;; esac
-    kill -0 "$_jp" 2>/dev/null || continue
-    ps -o command= -p "$_jp" 2>/dev/null | grep -q 'cross-family' || continue
-    _js=$(cat "$_jd/started" 2>/dev/null || echo 0); _jm=$(( ($(date +%s) - _js) / 60 ))
-    _xr_out="$(basename "$_jd") (running ${_jm} min)"
+  for _xr_root in "$(git rev-parse --show-toplevel 2>/dev/null)" "$(git -C "$_xr_dir" rev-parse --show-toplevel 2>/dev/null)"; do
+    [ -n "$_xr_root" ] || continue
+    case " $_xr_seen " in *" $_xr_root "*) continue ;; esac
+    _xr_seen="$_xr_seen $_xr_root"
+    _xr_jobs="$_xr_root/.rolepod/evidence/external/jobs"
+    [ -d "$_xr_jobs" ] || continue
+    for _jd in "$_xr_jobs"/*/; do
+      [ -d "$_jd" ] || continue; [ -f "$_jd/status" ] && continue
+      _jp=$(cat "$_jd/pid" 2>/dev/null); case "$_jp" in ''|*[!0-9]*) continue ;; esac
+      kill -0 "$_jp" 2>/dev/null || continue
+      ps -o command= -p "$_jp" 2>/dev/null | grep -q 'cross-family' || continue
+      _js=$(cat "$_jd/started" 2>/dev/null || echo 0); _jm=$(( ($(date +%s) - _js) / 60 ))
+      _xr_out="$(basename "$_jd") (running ${_jm} min)"
+    done
   done
   printf '%s' "$_xr_out"
 }
@@ -382,8 +400,9 @@ if [ "$IS_COMMIT" != "1" ]; then
   # live → its verdict is an artifact and the job re-runs. Advisory only.
   [ -n "$MUTATES" ] || exit 0
   [ "${ROLEPOD_GATES_SOFT:-0}" = "1" ] && exit 0
-  _mj="$(xfam_running_job)"; [ -n "$_mj" ] || exit 0
-  ROLEPOD_HOOK_MSG="⏸ REVIEW IN FLIGHT: cross-family job $_mj reads this tree live — \`git $MUTATES\` rewrites it, so that verdict becomes an artifact and the job re-runs. Fix: \`bash $XFAM_RUNNER --collect ${_mj%% *}\` first, then \`git $MUTATES\`. Exception: a red-proof revert goes in a throwaway git worktree, not a stash here; a dead job → --collect says so and this line stops." python3 -I -c "
+  _mj="$(xfam_running_job "$RESOLVED_DIR")"; [ -n "$_mj" ] || exit 0
+  XFAM_RUNNER="${XFAM_RUNNER-$(xfam_runner)}"
+  ROLEPOD_HOOK_MSG="⏸ REVIEW IN FLIGHT: cross-family job $_mj reads this tree live — \`git $MUTATES\` rewrites it, so that verdict becomes an artifact and the job re-runs. Fix: \`bash '$XFAM_RUNNER' --collect ${_mj%% *}\` first, then \`git $MUTATES\`. Exception: a red-proof revert goes in a throwaway git worktree, not a stash here; a dead job → --collect says so and this line stops." python3 -I -c "
 import json, os
 print(json.dumps({'hookSpecificOutput': {'hookEventName': 'PreToolUse', 'additionalContext': os.environ.get('ROLEPOD_HOOK_MSG', '')}}))
 " 2>/dev/null || echo '{}'
@@ -785,6 +804,11 @@ XFAM_POOL=""; XFAM_FAILS=0; XFAM_POOL_ON=""
 # Detached runner job still running for this repo (v2.79.0): the hold reason
 # must say "wait / --collect", not "run the runner" (it is already running).
 XFAM_RUNNING="$(xfam_running_job)"
+# Runner resolved here, guarded by HIGH_RISK only (never LOGIC_COUNT): the
+# fallback message at the REASON line below (XFAM_RUNNING, no XFAM_HELD)
+# reads $XFAM_RUNNER on a HIGH_RISK comment-only diff too, where the pool
+# block right after this never runs.
+[ -n "$HIGH_RISK" ] && XFAM_RUNNER="${XFAM_RUNNER-$(xfam_runner)}"
 # Pool state, read once when eligible: needed both to decide the hold below
 # AND to word the deny Fix ("the external when the pool is on, else
 # universal-reviewer") even when STRONG_REVIEWERS is 0 (no reviewer
@@ -817,18 +841,18 @@ if [ -z "$XFAM_HELD" ] && [ -n "$XFAM_POOL_ON" ] && [ "${XREV:-0}" -eq 0 ] && [ 
   # check above already excluded every other CLI) and session_state.py ships
   # beside this file in every tree that reaches here — same as gate-evidence
   # above, which has no such fallback either. Missing $SESSION_STATE/python3
-  # → XFAM_FAILS stays 0, same fail-open default as before.
+  # → XFAM_FAILS stays 0 — the hold applies (fail-closed), same default as before.
   XFAM_FAILS=0
   if [ -f "$SESSION_STATE" ] && command -v python3 >/dev/null 2>&1; then
     XFAM_FAILS=$(python3 "$SESSION_STATE" gate-hold-predict "$DIFF_DIR" 2>/dev/null || echo 0)
     case "$XFAM_FAILS" in ''|*[!0-9]*) XFAM_FAILS=0 ;; esac
   fi
   if [ -n "$XFAM_POOL" ] && [ "${XFAM_FAILS:-0}" -eq 0 ] 2>/dev/null; then
-    XFAM_HELD="cross-family pool usable ($XFAM_POOL), no anchored external pass since the last commit — $STRONG_REVIEWERS internal reviewer(s) do NOT clear a high-risk diff while a different CLI is available. "
+    XFAM_HELD="pool usable ($XFAM_POOL), no anchored external pass since the last commit — internal reviewers do not clear a high-risk diff. "
     if [ -n "$XFAM_RUNNING" ]; then
-      XFAM_HELD+="A detached job is ALREADY RUNNING: $XFAM_RUNNING — bash $XFAM_RUNNER --collect <job-id>, then retry; do not start another. "
+      XFAM_HELD+="A detached job is ALREADY RUNNING: $XFAM_RUNNING — bash '$XFAM_RUNNER' --collect <job-id>, then retry; do not start another. "
     else
-      XFAM_HELD+="Fix: bash $XFAM_RUNNER --kind review --brief <brief.md> --attach <diff> --detach (add --lead $XFAM_LEAD outside a hook); --collect <job-id> waits. "
+      XFAM_HELD+="Fix: bash '$XFAM_RUNNER' --kind review --brief <brief.md> --attach <diff> --detach (add --lead $XFAM_LEAD outside a hook); --collect <job-id> waits. "
     fi
     XFAM_HELD+="Pool failed or empty (logged) → the internal reviewer counts. "
     STRONG_REVIEWERS=0
@@ -897,7 +921,7 @@ REASON+="Diff: $FILES_CHANGED files / $LINES_CHANGED lines / $LOGIC_COUNT logic 
 REASON+="Evidence ($SINCE_HUMAN): $TEST_EDITS tests / $HIGH_RISK_EDITS risk edits / $REVIEWERS reviewers ($STRONG_REVIEWERS strong). "
 [ -n "$HIGH_RISK" ] && REASON+="HIGH-RISK path: $HIGH_RISK. "
 [ -n "$XFAM_HELD" ] && REASON+="SATELLITE-FIRST: $XFAM_HELD"
-[ -z "$XFAM_HELD" ] && [ -n "$XFAM_RUNNING" ] && [ -n "$HIGH_RISK" ] && [ "$STRONG_REVIEWERS" -eq 0 ] && REASON+="A detached cross-family job is still running: $XFAM_RUNNING — bash $XFAM_RUNNER --collect <job-id>, then retry. "
+[ -z "$XFAM_HELD" ] && [ -n "$XFAM_RUNNING" ] && [ -n "$HIGH_RISK" ] && [ "$STRONG_REVIEWERS" -eq 0 ] && REASON+="A detached cross-family job is still running: $XFAM_RUNNING — bash '$XFAM_RUNNER' --collect <job-id>, then retry. "
 if [ -n "$HIGH_RISK" ] && [ "$STRONG_REVIEWERS" -eq 0 ] && [ -z "$XFAM_HELD" ]; then
   REASON+="NO STRONG ADVERSARIAL REVIEWER since the last commit. Test edits are the test floor, not the review. "
 fi
