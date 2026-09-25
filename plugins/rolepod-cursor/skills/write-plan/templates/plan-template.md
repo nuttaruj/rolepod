@@ -77,7 +77,7 @@
       E2E / UI flow the spec names → no task; check-work verifies it once
         the feature is built (a slice's unit tests belong to its owner)
       another CLI drafts (pool opt-in) → `Owner: <role> · write: external`>
-- **Done when:** <pass/fail condition>
+- **Done when:** <pass/fail condition; a changed rule also names the nearest inputs whose result stays the same>
 - **On fail:** <non-default recovery, if any. Omit to use the Failure policy below.>
 
 ### Task 2: <title>

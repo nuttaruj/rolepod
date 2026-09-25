@@ -40,7 +40,7 @@ Done when: one tier is chosen from observed scope.
 
 ### 3. Pick the first skill
 
-The Lead routes, scopes, briefs (3-5 lines: goal, region / files, done-when, Command), spot-checks and commits. A skill whose steps read code regions, run commands or iterate is run by the owner of the path, who calls the skill. Without sub-agents, the Lead runs it.
+The Lead routes, scopes, briefs (3-5 lines: goal, region / files, done-when — a changed rule also names the nearest inputs whose result stays the same — Command), spot-checks and commits. A skill whose steps read code regions, run commands or iterate is run by the owner of the path, who calls the skill. Without sub-agents, the Lead runs it.
 
 The FIRST matching row fires:
 

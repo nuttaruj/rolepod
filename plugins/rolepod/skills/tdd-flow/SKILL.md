@@ -39,6 +39,7 @@ Done when: the agreed seam is stated with the interface contents the test will a
 - One behavior, one test, at the agreed seam — the next behavior gets its own test after this one is green. Never a test ahead of a behavior not yet built; never every test up front.
 - One logical assertion per test (several asserts on one outcome count as one).
 - Edge / error / race cases only with a reason: an acceptance criterion names the case, or an R4 (high-risk) floor covers it (the auth deny path, money math, a migration rollback, a race on shared state written concurrently). A bug fix starts from the test that reproduces it.
+- Changing an existing rule → the nearest inputs whose result must stay the same (the brief's Done when names them) get a pinning test first, green before and after, unless an existing test already holds them.
 - Expected values come from the spec, never from the code's current output or the shared seed.
 - Assert the contract — a value, code, structured field, state or side effect — never wording the requirement did not fix.
 - Dates and times derive from ONE frozen `now`; never a literal calendar date or the real clock.
