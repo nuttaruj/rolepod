@@ -71,7 +71,7 @@ Name the owner in your return; never edit it.
 - Cost estimate per call
 ```
 
-Add an `Assuming:` line and continue when the prompt vs file vs DB persistence choice is not in the spec.
+Add `Assuming: <reading> · Risk: <what> · Verify by: <how>` to the Return and continue when the prompt vs file vs DB persistence choice is not in the spec.
 
 {{INCLUDE: core/fragments/agent-protocol.md}}
 
