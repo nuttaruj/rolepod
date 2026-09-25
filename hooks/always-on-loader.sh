@@ -26,13 +26,15 @@ cat >/dev/null 2>&1 || true
 
 [ -f "$CORE_FILE" ] || exit 0
 
-# No enforcement-tier banner here: the SessionStart payload sits at the 5KB
-# docs-safe budget edge, and Claude is the one CLI where every deny gate IS
-# mechanical — the enforcement-illusion risk the banner guards against exists
-# only on CLIs that cannot deny (their always-on surfaces carry the tier
-# line). `make doctor` prints Claude's tier + proves the deny paths live.
+# Size: Claude Code caps a hook's additionalContext at 10,000 characters;
+# over it, the text moves to a file and Claude sees only a 2,000-char preview.
+# `make doctor` keeps this payload at or under 9000 B.
+# No enforcement-tier banner here: Claude is the one CLI where every deny gate
+# IS mechanical — the enforcement-illusion risk the banner guards against
+# exists only on CLIs that cannot deny (their always-on surfaces carry the
+# tier line). `make doctor` prints Claude's tier + proves the deny paths live.
 # ensure_ascii=False: the core carries ~50 non-ASCII glyphs (arrows, dashes);
-# escaping each as \uXXXX cost 153 B of the 5120 B budget for nothing.
+# escaping each as \uXXXX costs bytes for nothing.
 # Bytes are written explicitly so the locale of the hook shell cannot break it.
 python3 -I -c '
 import json, sys
