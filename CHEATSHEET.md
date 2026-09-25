@@ -1,6 +1,6 @@
 # Rolepod — Cheatsheet
 
-Quick reference for all 6 CLIs (Claude / Codex / Gemini / Cursor / Antigravity / opencode). Install, architecture, and full hook / model reference live in [README](README.md) and [docs/](docs/).
+Quick reference for all 5 CLIs (Claude / Codex / Cursor / Antigravity / opencode). Install, architecture, and full hook / model reference live in [README](README.md) and [docs/](docs/).
 
 ## Workflow — phase → skill
 
@@ -88,19 +88,19 @@ Tier and reviewers are per task; the plan's max tier only decides spec / plan ce
 
 ## Key commands — per CLI
 
-| Action | Claude | Codex | Gemini | Cursor | Antigravity | opencode |
-|--------|--------|-------|--------|--------|-------------|----------|
-| Start | `claude` | `codex` | `gemini` | open Cursor | `agy` | `opencode` |
-| Reset context | `/clear` | exit + restart | exit + restart | new chat | exit + restart | new session |
-| Restore checkpoint | `/rewind` (`Esc Esc`) | git | git | git | git | git |
-| Manual compaction | `/compact <focus>` | auto | auto | auto | auto | auto |
-| Resume last session | `claude --continue` | `codex resume` | `gemini` | last chat (sidebar) | `agy` | `opencode` (session list) |
-| Pick a session | `claude --resume` | `codex resume --list` | — | chat history (sidebar) | — | session list |
-| One-shot prompt | `claude -p "…"` | `codex exec "…"` | `gemini -p "…"` | Cmd+K | `agy -p "…"` | `opencode run "…"` |
+| Action | Claude | Codex | Cursor | Antigravity | opencode |
+|--------|--------|-------|--------|-------------|----------|
+| Start | `claude` | `codex` | open Cursor | `agy` | `opencode` |
+| Reset context | `/clear` | exit + restart | new chat | exit + restart | new session |
+| Restore checkpoint | `/rewind` (`Esc Esc`) | git | git | git | git |
+| Manual compaction | `/compact <focus>` | auto | auto | auto | auto |
+| Resume last session | `claude --continue` | `codex resume` | last chat (sidebar) | `agy` | `opencode` (session list) |
+| Pick a session | `claude --resume` | `codex resume --list` | chat history (sidebar) | — | session list |
+| One-shot prompt | `claude -p "…"` | `codex exec "…"` | Cmd+K | `agy -p "…"` | `opencode run "…"` |
 
 ## Hooks
 
-14 Claude / 9 Codex / 5 Gemini / 5 Cursor / 4 Antigravity core hook scripts (opencode: plugin-event bridge, best-effort) — self-guarded, auto-fire, no add-on hooks. All CLIs fire hooks by default (Codex: `[features] hooks = true`, default-enabled). Full reference: [docs/hooks.md](docs/hooks.md).
+14 Claude / 9 Codex / 5 Cursor / 4 Antigravity core hook scripts (opencode: plugin-event bridge, best-effort) — self-guarded, auto-fire, no add-on hooks. All CLIs fire hooks by default (Codex: `[features] hooks = true`, default-enabled). Full reference: [docs/hooks.md](docs/hooks.md).
 
 Terse output (opt-in, every CLI): `touch ~/.claude/.rolepod-terse` shapes replies to cut output tokens; empty = `ultra` (the default), write `lite` inside for full sentences, delete the file to stop. Security warnings, destructive confirmations and "explain" requests keep their full shape.
 
