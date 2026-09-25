@@ -29,8 +29,9 @@
 #                [implement]
 #                cli = codex claude                    # which members may WRITE (--kind implement)
 #            The older shape (bare lines + `consult: agy codex` per-kind lines) still reads.
-#            Names: codex claude agy cursor opencode (`gemini` is retired —
-#            skipped with a note; list agy instead).
+#            Names: codex claude agy cursor opencode. Gemini CLI support was
+#            removed in v2.177.0 — a `gemini` line in the pool file hits the
+#            generic unknown-CLI-name handling; list agy instead.
 #   cli      only the Lead's OWN CLI is excluded. The model family is
 #            recorded for information (agy = google; cursor / opencode = the
 #            family of their default model, else `unknown`; what actually ran
@@ -136,7 +137,7 @@ if [ -n "$ROOT_FLAG" ]; then ROOT="$ROOT_FLAG"; else ROOT="$(git rev-parse --sho
 EV="$ROOT/.rolepod/evidence"
 JOBS="$EV/external/jobs"
 ALL_CLIS="codex claude agy cursor opencode"
-LEAD_CLIS="$ALL_CLIS gemini"
+LEAD_CLIS="$ALL_CLIS"
 iso_now() { date -u +%Y-%m-%dT%H:%M:%SZ; }
 TMPP=""
 # A detached child records its exit status whatever path it leaves by —
@@ -197,7 +198,6 @@ fi
 if [ -z "$LEAD" ]; then
   if [ -n "${CLAUDECODE:-}" ] || [ -n "${CLAUDE_PLUGIN_ROOT:-}" ]; then LEAD=claude
   elif [ -n "${CODEX_SANDBOX:-}${CODEX_THREAD_ID:-}${CODEX_SANDBOX_NETWORK_DISABLED:-}" ]; then LEAD=codex
-  elif [ -n "${GEMINI_CLI:-}" ]; then LEAD=gemini
   elif [ -n "${ANTIGRAVITY_CLI:-}${AGY_CLI:-}" ]; then LEAD=agy
   elif [ -n "${CURSOR_AGENT:-}" ]; then LEAD=cursor
   elif [ -n "${OPENCODE:-}${OPENCODE_SESSION_ID:-}" ]; then LEAD=opencode
@@ -205,7 +205,7 @@ if [ -z "$LEAD" ]; then
 fi
 case " $LEAD_CLIS " in
   *" $LEAD "*) ;;
-  *) echo "cross-family: pass --lead <codex|claude|agy|cursor|opencode|gemini> (could not detect the Lead CLI)" >&2; exit 2 ;;
+  *) echo "cross-family: pass --lead <codex|claude|agy|cursor|opencode> (could not detect the Lead CLI)" >&2; exit 2 ;;
 esac
 
 # ── Family resolution ──────────────────────────────────────────────────
@@ -310,7 +310,7 @@ family_of() {
   case "$1" in
     codex) echo openai ;;
     claude) echo anthropic ;;
-    gemini|agy) echo google ;;
+    agy) echo google ;;
     cursor) classify_model "$(cursor_default_model)" ;;
     opencode) classify_model "$(opencode_default_model)" ;;
     *) echo unknown ;;
@@ -471,8 +471,6 @@ if [ "$STATE" != "on" ]; then
   else POOL_ROWS="-  off  -  cross-family is OPT-IN and not enabled on this machine"; fi
 else
   for cli in $CONFIGURED; do
-    if [ "$cli" = "gemini" ]; then POOL_ROWS="$POOL_ROWS
-gemini  skipped  google  retired — Google moved individual accounts to Antigravity; list agy instead"; continue; fi
     case " $ALL_CLIS " in *" $cli "*) ;; *) POOL_ROWS="$POOL_ROWS
 $cli  skipped  -  unknown CLI name in $CFG_SRC"; continue ;; esac
     bin=$(bin_of "$cli")

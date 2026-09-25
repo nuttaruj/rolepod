@@ -16,7 +16,7 @@
  * Scope (deliberately small — every handler fails open):
  *   1. session start → register this session in the cross-CLI lock
  *      protocol at ~/.rolepod/session-locks/<sha256(worktree)[:16]>/, the
- *      same registry rolepod's Claude / Gemini / agy hooks maintain, so
+ *      same registry rolepod's Claude / Codex / agy hooks maintain, so
  *      sibling sessions in ANY rolepod-equipped CLI can warn about
  *      concurrent edits to the same worktree. Stale locks (>30 min) are
  *      pruned on contact; a fresh sibling triggers a toast (v1) or a

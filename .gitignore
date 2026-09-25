@@ -59,7 +59,6 @@ docs/handoffs/
 # installable payload or its docs.
 /CLAUDE.md
 /AGENTS.md
-/GEMINI.md
 
 # Dev tooling — the repo ships the installable payload and its docs only.
 /.codegraph/

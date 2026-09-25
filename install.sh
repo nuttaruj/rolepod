@@ -22,16 +22,14 @@
 #                                      # kept — older ones are pruned on each install.
 #   ./install.sh --target=claude       # CLI target (default → ~/.claude)
 #   ./install.sh --target=codex        # Codex CLI       → ~/.codex
-#   ./install.sh --target=gemini       # Gemini CLI      → ~/.gemini
 #   ./install.sh --target=cursor       # Cursor IDE      → ~/.cursor
 #   ./install.sh --target=antigravity  # Antigravity CLI (agy) → ~/.gemini
 #   ./install.sh --target=opencode     # opencode CLI    → ~/.config/opencode
-#   ./install.sh --target=all          # install all six
+#   ./install.sh --target=all          # install all five
 #   ./install.sh --scope=global        # default — install to home (~/.claude/, etc.)
 #   ./install.sh --scope=project       # install to $PWD (no global config touched)
 #                                      #   Claude → $PWD/.claude/  (full plugin)
 #                                      #   Codex  → $PWD/AGENTS.md (managed block only)
-#                                      #   Gemini → $PWD/GEMINI.md (managed block only)
 #                                      #   Antigravity → $PWD/AGENTS.md (managed block only)
 #                                      #   opencode → $PWD/.opencode/ (full) + $PWD/AGENTS.md block
 #   ./install.sh --uninstall           # remove rolepod from selected --target
@@ -39,16 +37,20 @@
 #                                      # respects --scope (project = only project files)
 #   ./install.sh --dry-run             # preview every action; write nothing to disk
 #
+# Gemini CLI support was removed in v2.177.0 (Google moved consumer tiers to
+# Antigravity — use --target=antigravity). --target=gemini prints a removal
+# notice and exits 1.
+#
 # Env:
 #   ROLEPOD_TARGET           Single-target default OR root for --target=all.
 #                            • Single target (e.g. --target=codex): overrides the
 #                              destination path entirely.
 #                            • --target=all: each CLI installs into a subdir of
-#                              ROLEPOD_TARGET — claude/, codex/, gemini/. Unset
-#                              when --target=all → use ~/.claude, ~/.codex, ~/.gemini.
+#                              ROLEPOD_TARGET — claude/, codex/, antigravity/.
+#                              Unset when --target=all → use ~/.claude, ~/.codex,
+#                              ~/.gemini (antigravity).
 #   ROLEPOD_CLAUDE_TARGET    Per-CLI override — wins over ROLEPOD_TARGET for Claude.
 #   ROLEPOD_CODEX_TARGET     Per-CLI override — wins over ROLEPOD_TARGET for Codex.
-#   ROLEPOD_GEMINI_TARGET    Per-CLI override — wins over ROLEPOD_TARGET for Gemini.
 #   ROLEPOD_CURSOR_TARGET    Per-CLI override — wins over ROLEPOD_TARGET for Cursor.
 #   ROLEPOD_ANTIGRAVITY_TARGET  Per-CLI override — wins over ROLEPOD_TARGET for Antigravity.
 #
@@ -56,7 +58,7 @@
 # (no /dev/tty available) prints "Aborted. Re-run with --yes in non-interactive
 # mode." and exits 0 — never crashes on a missing TTY.
 #
-# Managed entry docs (CLAUDE.md / AGENTS.md / GEMINI.md): rolepod content is
+# Managed entry docs (CLAUDE.md / AGENTS.md): rolepod content is
 # wrapped in <!-- rolepod:start --> ... <!-- rolepod:end --> markers. User
 # content outside those markers is preserved across re-installs and uninstall.
 #
@@ -92,16 +94,24 @@ for arg in "$@"; do
     --target=*)      CLI_TARGET="${arg#--target=}" ;;
     --scope=*)       SCOPE="${arg#--scope=}" ;;
     -h|--help)
-      sed -n '2,53p' "$0"
+      sed -n '2,63p' "$0"
       exit 0 ;;
     *) echo "Unknown arg: $arg" >&2; echo "" >&2; echo "Rolepod ships framework only. For siblings and 3rd-party add-ons (rolepod-brain / GitNexus / etc.), see README → Plugin family + Recommended add-ons." >&2; exit 1 ;;
   esac
 done
 
+# Gemini CLI support was removed in v2.177.0 — a dedicated notice, not the
+# generic "unknown target" error below, so a stale `--target=gemini` script
+# or muscle memory gets a next step instead of a bare rejection.
+if [ "$CLI_TARGET" = "gemini" ]; then
+  echo "Gemini CLI support was removed in v2.177.0 — use --target=antigravity; remove the old extension with: gemini extensions uninstall rolepod" >&2
+  exit 1
+fi
+
 case "$CLI_TARGET" in
-  claude|codex|gemini|cursor|antigravity|opencode|all) ;;
+  claude|codex|cursor|antigravity|opencode|all) ;;
   *)
-    echo "Unknown --target value: $CLI_TARGET (expected claude|codex|gemini|cursor|antigravity|opencode|all)" >&2
+    echo "Unknown --target value: $CLI_TARGET (expected claude|codex|cursor|antigravity|opencode|all)" >&2
     exit 1 ;;
 esac
 
@@ -115,16 +125,15 @@ esac
 # Resolve install destination per CLI target. ROLEPOD_TARGET (env) wins for
 # all targets when set, so dry-run installs into a tempdir keep working.
 # Scope-aware:
-#   global  → ~/.<cli>      (Claude: ~/.claude, Codex: ~/.codex, Gemini: ~/.gemini)
-#   project → $PWD          (Claude: $PWD/.claude, Codex/Gemini: $PWD itself —
-#                            their managed-block doc lives at $PWD/AGENTS.md or
-#                            $PWD/GEMINI.md, NOT under a hidden dotdir)
+#   global  → ~/.<cli>      (Claude: ~/.claude, Codex: ~/.codex, Antigravity: ~/.gemini)
+#   project → $PWD          (Claude: $PWD/.claude, Codex/Antigravity: $PWD itself —
+#                            their managed-block doc lives at $PWD/AGENTS.md,
+#                            NOT under a hidden dotdir)
 default_target_path_for() {
   if [ "$SCOPE" = "project" ]; then
     case "$1" in
       claude) echo "$PWD/.claude" ;;
       codex)  echo "$PWD" ;;
-      gemini) echo "$PWD" ;;
       cursor) echo "$PWD/.cursor" ;;
       antigravity) echo "$PWD" ;;
       opencode) echo "$PWD/.opencode" ;;
@@ -135,7 +144,6 @@ default_target_path_for() {
   case "$1" in
     claude) echo "$HOME/.claude" ;;
     codex)  echo "$HOME/.codex" ;;
-    gemini) echo "$HOME/.gemini" ;;
     cursor) echo "$HOME/.cursor" ;;
     antigravity) echo "$HOME/.gemini" ;;
     opencode) echo "$HOME/.config/opencode" ;;
@@ -157,7 +165,6 @@ resolve_target_for() {
   case "$cli" in
     claude) override="${ROLEPOD_CLAUDE_TARGET:-}" ;;
     codex)  override="${ROLEPOD_CODEX_TARGET:-}" ;;
-    gemini) override="${ROLEPOD_GEMINI_TARGET:-}" ;;
     cursor) override="${ROLEPOD_CURSOR_TARGET:-}" ;;
     antigravity) override="${ROLEPOD_ANTIGRAVITY_TARGET:-}" ;;
     opencode) override="${ROLEPOD_OPENCODE_TARGET:-}" ;;
@@ -178,7 +185,7 @@ resolve_target_for() {
 # Per-CLI plugin/extension dir (where 3rd-party skill bundles land).
 # Claude:  ~/.claude/plugins/<name>/
 # Codex:   ~/.codex/plugins/<name>/
-# Gemini:  ~/.gemini/extensions/<name>/
+# Antigravity: ~/.gemini/config/plugins/<name>/
 # Colors
 if [ -t 1 ]; then
   CYAN=$(tput setaf 6 || true); GREEN=$(tput setaf 2 || true)
@@ -375,8 +382,8 @@ selective_backup() {
 }
 
 # ─── Managed-block helpers ──────────────────────────────────────────────
-# Entry docs (~/.claude/CLAUDE.md, ~/.codex/AGENTS.md, ~/.gemini/GEMINI.md)
-# may contain user content. Wrap rolepod content in HTML markers so we only
+# Entry docs (~/.claude/CLAUDE.md, ~/.codex/AGENTS.md, agy's AGENTS.md) may
+# contain user content. Wrap rolepod content in HTML markers so we only
 # touch our own block on subsequent installs.
 ROLEPOD_BLOCK_START="<!-- rolepod:start -->"
 ROLEPOD_BLOCK_END="<!-- rolepod:end -->"
@@ -425,7 +432,7 @@ update_managed_block() {
     ' "$target_file" > "$tmp"
     # Migration: if surviving (non-block) content contains legacy rolepod
     # H1, it's stale content from a pre-markers install — wipe it.
-    if grep -qE '^# (Claude Code|Codex|Gemini) — Core Rules' "$tmp"; then
+    if grep -qE '^# (Claude Code|Codex) — Core Rules' "$tmp"; then
       # One stamp for both the message and the file — two date calls could
       # straddle a second boundary and name a path that does not exist.
       local legacy_bak="${target_file}.legacy-$(date +%Y%m%d-%H%M%S)"
@@ -455,10 +462,10 @@ update_managed_block() {
 
   # No markers → check for legacy rolepod content (unmigrated install from
   # before managed-block markers existed). Signature: H1 "Claude Code — Core
-  # Rules" / "Codex — Core Rules" / "Gemini — Core Rules" appears in file.
+  # Rules" / "Codex — Core Rules" appears in file.
   # If matched, wipe legacy content + write fresh marker-wrapped block.
   # Otherwise treat as user's own content → append marker-wrapped block after.
-  if grep -qE '^# (Claude Code|Codex|Gemini) — Core Rules' "$target_file"; then
+  if grep -qE '^# (Claude Code|Codex) — Core Rules' "$target_file"; then
     local legacy_bak="${target_file}.legacy-$(date +%Y%m%d-%H%M%S)"
     warn "Detected legacy rolepod content in $target_file (no markers). Migrating to managed block — backup at $legacy_bak"
     cp "$target_file" "$legacy_bak"
@@ -541,7 +548,7 @@ for f in CHEATSHEET.md core/agents hooks core/skills adapters/claude/.claude-plu
   [ -e "$REPO_DIR/$f" ] || fail "missing $f in $REPO_DIR — run from rolepod repo"
 done
 
-# Codex/Gemini adapter sanity (only required if those targets selected).
+# Codex adapter sanity (only required if that target selected).
 # Phase 2.3: each CLI ships as a native plugin/extension — no wrapper scripts.
 case "$CLI_TARGET" in
   codex|all)
@@ -550,13 +557,6 @@ case "$CLI_TARGET" in
     [ -e "$REPO_DIR/adapters/codex/plugins/rolepod/.codex-plugin/plugin.json" ]            || fail "missing adapters/codex/plugins/rolepod/.codex-plugin/plugin.json"
     [ -d "$REPO_DIR/adapters/codex/agent-frontmatter" ]                                    || fail "missing adapters/codex/agent-frontmatter/ (codex agent overlays)"
     [ -e "$REPO_DIR/adapters/codex/plugins/rolepod/hooks/hooks.json" ]                     || fail "missing adapters/codex/plugins/rolepod/hooks/hooks.json"
-    ;;
-esac
-case "$CLI_TARGET" in
-  gemini|all)
-    [ -e "$REPO_DIR/adapters/gemini/GEMINI.md.tmpl" ]        || fail "missing adapters/gemini/GEMINI.md.tmpl"
-    [ -e "$REPO_DIR/adapters/gemini/gemini-extension.json" ] || fail "missing adapters/gemini/gemini-extension.json"
-    [ -e "$REPO_DIR/adapters/gemini/hooks/hooks.json" ]      || fail "missing adapters/gemini/hooks/hooks.json"
     ;;
 esac
 case "$CLI_TARGET" in
@@ -586,17 +586,15 @@ if [ "$UNINSTALL" -eq 1 ]; then
   echo ""
 
   # Discover what we'd remove so the user can decide.
-  uninstall_claude=0; uninstall_codex=0; uninstall_gemini=0; uninstall_cursor=0; uninstall_antigravity=0; uninstall_opencode=0
+  uninstall_claude=0; uninstall_codex=0; uninstall_cursor=0; uninstall_antigravity=0; uninstall_opencode=0
   case "$CLI_TARGET" in claude|all) uninstall_claude=1 ;; esac
   case "$CLI_TARGET" in codex|all)  uninstall_codex=1 ;; esac
-  case "$CLI_TARGET" in gemini|all) uninstall_gemini=1 ;; esac
   case "$CLI_TARGET" in cursor|all) uninstall_cursor=1 ;; esac
   case "$CLI_TARGET" in antigravity|all) uninstall_antigravity=1 ;; esac
   case "$CLI_TARGET" in opencode|all) uninstall_opencode=1 ;; esac
 
   C_TARGET="$(resolve_target_for claude)"
   X_TARGET="$(resolve_target_for codex)"
-  G_TARGET="$(resolve_target_for gemini)"
   R_TARGET="$(resolve_target_for cursor)"
   A_TARGET="$(resolve_target_for antigravity)"
   O_TARGET="$(resolve_target_for opencode)"
@@ -604,7 +602,6 @@ if [ "$UNINSTALL" -eq 1 ]; then
   echo "About to remove rolepod from:"
   [ "$uninstall_claude" -eq 1 ] && echo "  Claude → $C_TARGET (agents, skills, rules, hooks, managed CLAUDE.md block)"
   [ "$uninstall_codex"  -eq 1 ] && echo "  Codex  → rolepod marketplace + [plugins.\"rolepod@rolepod\"] in $X_TARGET/config.toml + managed AGENTS.md block"
-  [ "$uninstall_gemini" -eq 1 ] && echo "  Gemini → $G_TARGET/extensions/rolepod, managed GEMINI.md block"
   [ "$uninstall_cursor" -eq 1 ] && echo "  Cursor → $R_TARGET/plugins/local/rolepod"
   [ "$uninstall_antigravity" -eq 1 ] && echo "  Antigravity → agy plugin 'rolepod' + managed AGENTS.md block in $A_TARGET/antigravity-cli/"
   [ "$uninstall_opencode" -eq 1 ] && echo "  opencode → $O_TARGET (skills, agents, plugins/rolepod.js, managed AGENTS.md block)"
@@ -870,25 +867,6 @@ PY
     ok "Codex rolepod removed"
   fi
 
-  if [ "$uninstall_gemini" -eq 1 ]; then
-    if [ "$SCOPE" = "project" ]; then
-      step "Stripping rolepod block from $G_TARGET/GEMINI.md"
-      remove_managed_block "$G_TARGET/GEMINI.md"
-      ok "Gemini project rolepod removed (global extension untouched)"
-    else
-      step "Removing Gemini rolepod extension in $G_TARGET/extensions/rolepod"
-      do_or_dry "rm -rf $G_TARGET/extensions/rolepod" rm -rf "$G_TARGET/extensions/rolepod"
-      if [ "$DRY_RUN" -eq 1 ]; then
-        dry "rmdir $G_TARGET/extensions (if empty)"
-      else
-        rmdir "$G_TARGET/extensions" 2>/dev/null || true
-      fi
-      step "Stripping rolepod block from $G_TARGET/GEMINI.md"
-      remove_managed_block "$G_TARGET/GEMINI.md"
-      ok "Gemini rolepod removed"
-    fi
-  fi
-
   if [ "$uninstall_cursor" -eq 1 ]; then
     step "Removing Cursor rolepod plugin in $R_TARGET/plugins/local/rolepod"
     do_or_dry "rm -rf $R_TARGET/plugins/local/rolepod" rm -rf "$R_TARGET/plugins/local/rolepod"
@@ -957,7 +935,7 @@ PY
   # ROLEPOD_TARGET set = temp-target test run — never touch the real HOME
   # launchers (the integration round-trip uninstalls against a temp dir;
   # without this guard every `make test-all` silently wiped ~/.rolepod/bin).
-  if [ -z "${ROLEPOD_TARGET:-}${ROLEPOD_CLAUDE_TARGET:-}${ROLEPOD_CODEX_TARGET:-}${ROLEPOD_GEMINI_TARGET:-}${ROLEPOD_CURSOR_TARGET:-}${ROLEPOD_ANTIGRAVITY_TARGET:-}${ROLEPOD_OPENCODE_TARGET:-}" ]; then
+  if [ -z "${ROLEPOD_TARGET:-}${ROLEPOD_CLAUDE_TARGET:-}${ROLEPOD_CODEX_TARGET:-}${ROLEPOD_CURSOR_TARGET:-}${ROLEPOD_ANTIGRAVITY_TARGET:-}${ROLEPOD_OPENCODE_TARGET:-}" ]; then
     step "Removing rolepod-stats / rolepod-junit / rolepod-cross-family / rolepod-ticket launchers"
     do_or_dry "remove ~/.rolepod/bin + PATH launchers" bash -c "
       rm -f '$HOME/.local/bin/rolepod-stats' '$HOME/.local/bin/rolepod-junit' '$HOME/.local/bin/rolepod-cross-family' '$HOME/.local/bin/rolepod-ticket'
@@ -989,9 +967,6 @@ claude_selected() {
 }
 codex_selected() {
   case "$CLI_TARGET" in codex|all)  return 0 ;; *) return 1 ;; esac
-}
-gemini_selected() {
-  case "$CLI_TARGET" in gemini|all) return 0 ;; *) return 1 ;; esac
 }
 cursor_selected() {
   case "$CLI_TARGET" in cursor|all) return 0 ;; *) return 1 ;; esac
@@ -1449,120 +1424,6 @@ if codex_selected; then
   fi  # end CODEX_PROJECT_DONE guard
 fi
 
-# ─── install_gemini — Gemini CLI path (~/.gemini/) ─────────────────────
-# Phase 2.3: install as a native Gemini extension under
-# ~/.gemini/extensions/rolepod/. GEMINI.md goes to ~/.gemini/GEMINI.md (auto-loaded).
-if gemini_selected; then
-  GEMINI_TARGET="$(resolve_target_for gemini)"
-  GEMINI_EXT_DEST="$GEMINI_TARGET/extensions/rolepod"
-  echo ""
-  echo "${BOLD}─── Installing for Gemini CLI ───${NC}"
-  echo "  target:           $GEMINI_TARGET"
-  warn "Gemini CLI consumer tiers (free / AI Pro / Ultra) lost hosted serving on 2026-06-18."
-  warn "  Google migrated them to Antigravity CLI. If gemini requests fail with auth/quota"
-  warn "  errors, use enterprise / paid-API-key auth, or install the agy adapter:"
-  warn "    ./install.sh --target=antigravity"
-  if [ "$SCOPE" = "project" ]; then
-    echo "  mode:             project-scope (managed GEMINI.md only — extension NOT installed)"
-  else
-    echo "  extension dest:   $GEMINI_EXT_DEST"
-  fi
-
-  RENDERED_GEMINI_DIR="$REPO_DIR/build/rendered/gemini"
-  RENDERED_GEMINI_MD="$RENDERED_GEMINI_DIR/GEMINI.md"
-  [ -f "$RENDERED_GEMINI_MD" ] || fail "expected $RENDERED_GEMINI_MD after render"
-
-  if [ "$SCOPE" = "project" ]; then
-    # Project scope: only write $PWD/GEMINI.md managed block. Gemini extensions
-    # are global-only (load via ~/.gemini/extensions/) — same warn pattern as Codex.
-    warn "Gemini extensions are global only. Per-project install writes GEMINI.md only."
-    warn "  For full extension install, run --scope=global separately."
-    step "Updating GEMINI.md (managed block) → $GEMINI_TARGET/GEMINI.md"
-    update_managed_block "$GEMINI_TARGET/GEMINI.md" "$RENDERED_GEMINI_MD"
-    if [ "$DRY_RUN" -eq 0 ]; then
-      step "Verifying Gemini project install"
-      [ -e "$GEMINI_TARGET/GEMINI.md" ] || fail "Gemini verification failed — $GEMINI_TARGET/GEMINI.md missing"
-      ok "GEMINI.md → $GEMINI_TARGET/GEMINI.md"
-    else
-      skip "Gemini verification skipped (dry-run)"
-    fi
-    GEMINI_PROJECT_DONE=1
-  else
-    GEMINI_PROJECT_DONE=0
-  fi
-
-  if [ "${GEMINI_PROJECT_DONE:-0}" -eq 0 ]; then
-
-  if ! have_cmd gemini; then
-    warn "gemini binary not found — skipping Gemini install (file copy only)"
-    warn "  Install Gemini CLI: npm install -g @google/gemini-cli"
-  fi
-
-  [ -f "$RENDERED_GEMINI_DIR/gemini-extension.json" ]     || fail "expected $RENDERED_GEMINI_DIR/gemini-extension.json after render"
-  [ -d "$RENDERED_GEMINI_DIR/hooks" ]                     || fail "expected $RENDERED_GEMINI_DIR/hooks/ after render"
-  [ -d "$RENDERED_GEMINI_DIR/skills" ]                    || fail "expected $RENDERED_GEMINI_DIR/skills/ after render"
-
-  # Backup if --force on existing — rolepod-scoped only.
-  # Excludes: history/, log/, tmp/ — Gemini runtime data, not rolepod-managed.
-  if [ "$FORCE" -eq 1 ] && [ -d "$GEMINI_TARGET" ]; then
-    STAMP=$(date +%Y%m%d-%H%M%S)
-    BACKUP="${HOME}/.rolepod/backups/gemini/rolepod-$STAMP"
-    warn "Backing up rolepod-managed paths in $GEMINI_TARGET → $BACKUP"
-    selective_backup "$GEMINI_TARGET" "$BACKUP" \
-      GEMINI.md \
-      extensions/rolepod \
-      settings.json
-  fi
-
-  step "Creating Gemini extension directory"
-  # Wipe-before-copy: the extension dir is fully rolepod-managed. An additive
-  # copy would resurrect files removed upstream (stale skills, dropped hooks),
-  # so every install replaces the tree — same as the Codex / Antigravity path.
-  do_or_dry "rm -rf $GEMINI_EXT_DEST && mkdir -p $GEMINI_EXT_DEST" \
-    bash -c "rm -rf '$GEMINI_EXT_DEST' && mkdir -p '$GEMINI_EXT_DEST'"
-
-  step "Copying extension tree → $GEMINI_EXT_DEST/"
-  if [ "$DRY_RUN" -eq 1 ]; then
-    dry "cp -R $RENDERED_GEMINI_DIR/. → $GEMINI_EXT_DEST/ (incl. GEMINI.md context file)"
-  else
-    cp -R "$RENDERED_GEMINI_DIR/." "$GEMINI_EXT_DEST/" 2>/dev/null || true
-    # GEMINI.md ships INSIDE the extension dir. Gemini auto-loads it via the
-    # extension's contextFileName, so rolepod's context never touches the
-    # user's global ~/.gemini/GEMINI.md.
-  fi
-
-  # Migration: older installs wrote a rolepod managed block into the global
-  # ~/.gemini/GEMINI.md. The entry doc now lives in the extension dir, so
-  # strip any stale global block left behind by a pre-PR-8 install.
-  step "Stripping stale rolepod block from global $GEMINI_TARGET/GEMINI.md (migration)"
-  remove_managed_block "$GEMINI_TARGET/GEMINI.md"
-
-  step "Marking hook scripts executable"
-  if [ "$DRY_RUN" -eq 1 ]; then
-    dry "chmod +x $GEMINI_EXT_DEST/hooks/*.sh"
-  else
-    chmod +x "$GEMINI_EXT_DEST/hooks"/*.sh 2>/dev/null || true
-  fi
-
-  if [ "$DRY_RUN" -eq 0 ]; then
-    step "Verifying Gemini install"
-    for required in \
-      extensions/rolepod/GEMINI.md \
-      extensions/rolepod/gemini-extension.json \
-      extensions/rolepod/hooks/hooks.json \
-      extensions/rolepod/skills/using-rolepod/SKILL.md \
-      extensions/rolepod/skills/debug-issue/SKILL.md
-    do
-      [ -e "$GEMINI_TARGET/$required" ] || fail "Gemini verification failed — $GEMINI_TARGET/$required missing"
-    done
-    ok "rolepod gemini extension installed → $GEMINI_EXT_DEST"
-    ok "GEMINI.md (extension context file) → $GEMINI_EXT_DEST/GEMINI.md"
-  else
-    skip "Gemini verification skipped (dry-run)"
-  fi
-  fi  # end GEMINI_PROJECT_DONE guard
-fi
-
 # ─── install_cursor — Cursor IDE path (~/.cursor/) ─────────────────────
 # Cursor loads local plugins from ~/.cursor/plugins/local/<plugin-name>/
 # (per Cursor docs: cursor.com/docs/plugins). We copy the committed
@@ -1635,13 +1496,14 @@ if cursor_selected; then
 fi
 
 # ─── install_antigravity — Antigravity CLI (agy) path (~/.gemini/) ─────
-# agy is the consumer-tier successor to Gemini CLI. It ships as a PLUGIN
-# (skills + subagents + hooks) installed via `agy plugin install <dir>` to
+# agy is Google's native successor to the now-removed Gemini CLI (support
+# dropped in v2.177.0). It ships as a PLUGIN (skills + subagents + hooks)
+# installed via `agy plugin install <dir>` to
 # ~/.gemini/config/plugins/rolepod/, plus an AGENTS.md context file written as
 # a managed block in the agy customization root (global:
 # ~/.gemini/antigravity-cli/AGENTS.md; project: $PWD/AGENTS.md). Verified
-# against agy 1.0.13. The plugin reuses the shared core skills/agents + the
-# gemini hook scripts; only the hooks.json event wiring is agy-native.
+# against agy 1.0.13. The plugin reuses the shared core skills/agents + its
+# own hook scripts (adapters/antigravity/hooks/) — agy-native end to end.
 if antigravity_selected; then
   AGY_TARGET="$(resolve_target_for antigravity)"
   RENDERED_AGY_DIR="$REPO_DIR/build/rendered/antigravity"
@@ -1797,7 +1659,7 @@ fi
 # the cross-family reviewer, and the ticket-loop helper) without cloning the
 # source repo. Payload lives in ~/.rolepod/bin (refreshed every install =
 # version-synced); launchers are 2-line shims in ~/.local/bin.
-if [ -z "${ROLEPOD_TARGET:-}${ROLEPOD_CLAUDE_TARGET:-}${ROLEPOD_CODEX_TARGET:-}${ROLEPOD_GEMINI_TARGET:-}${ROLEPOD_CURSOR_TARGET:-}${ROLEPOD_ANTIGRAVITY_TARGET:-}${ROLEPOD_OPENCODE_TARGET:-}" ]; then
+if [ -z "${ROLEPOD_TARGET:-}${ROLEPOD_CLAUDE_TARGET:-}${ROLEPOD_CODEX_TARGET:-}${ROLEPOD_CURSOR_TARGET:-}${ROLEPOD_ANTIGRAVITY_TARGET:-}${ROLEPOD_OPENCODE_TARGET:-}" ]; then
   step "Installing rolepod-stats / rolepod-junit / rolepod-cross-family / rolepod-ticket launchers"
   do_or_dry "install evidence readers → ~/.rolepod/bin + ~/.local/bin" bash -c "
     mkdir -p '$HOME/.rolepod/bin' '$HOME/.local/bin'
@@ -1862,12 +1724,11 @@ if [ "$SCOPE" = "project" ]; then
   case "$CLI_TARGET" in
     claude) echo "${BOLD}Final step${NC}: restart Claude Code in this project to load the rolepod workflow." ;;
     codex)  echo "${BOLD}Final step${NC}: Codex auto-loads $PWD/AGENTS.md when you run codex in this project." ;;
-    gemini) echo "${BOLD}Final step${NC}: Gemini auto-loads $PWD/GEMINI.md when you run gemini in this project." ;;
     cursor) echo "${BOLD}Final step${NC}: restart Cursor in this project to load the rolepod plugin." ;;
     antigravity) echo "${BOLD}Final step${NC}: agy auto-loads $PWD/AGENTS.md when you run agy in this project." ;;
     opencode) echo "${BOLD}Final step${NC}: opencode auto-loads $PWD/AGENTS.md + $PWD/.opencode/ when you run opencode in this project."
               echo "  opencode 2: run ${BOLD}opencode service restart${NC} first — the shared service loads plugins only when it boots, a TUI restart or \`opencode reload\` does not. opencode 1.x: just restart opencode." ;;
-    all)    echo "${BOLD}Final step${NC}: restart Claude Code + Cursor in this project; Codex/Gemini/Antigravity/opencode auto-load $PWD/AGENTS.md and $PWD/GEMINI.md."
+    all)    echo "${BOLD}Final step${NC}: restart Claude Code + Cursor in this project; Codex/Antigravity/opencode auto-load $PWD/AGENTS.md."
             echo "  opencode 2: run ${BOLD}opencode service restart${NC} too — a TUI restart or \`opencode reload\` does not reload its plugin." ;;
   esac
 else
@@ -1875,12 +1736,11 @@ else
     claude) echo "${BOLD}Final step${NC}: restart Claude Code so the hooks register." ;;
     codex)  echo "${BOLD}Final step${NC}: restart Codex CLI to load the new plugin."
             echo "  Hooks are default-enabled (${BOLD}[features] hooks = true${NC} in ~/.codex/config.toml); trust the plugin's bundled hooks when prompted." ;;
-    gemini) echo "${BOLD}Final step${NC}: restart Gemini CLI to load the new extension and hooks." ;;
     cursor) echo "${BOLD}Final step${NC}: restart Cursor (or reload window) so the plugin + rules register."
             echo "  Verify under Cursor → Settings → Features → Rules / Plugins." ;;
     antigravity) echo "${BOLD}Final step${NC}: launch agy to load the rolepod plugin + AGENTS.md (verify: ${BOLD}agy plugin list${NC})." ;;
     opencode) echo "${BOLD}Final step${NC}: on opencode 2, run ${BOLD}opencode service restart${NC} to load skills, agents, the rolepod.js plugin, and AGENTS.md — the shared service loads plugins only when it boots, a TUI restart or \`opencode reload\` does not. On opencode 1.x, just restart opencode." ;;
-    all)    echo "${BOLD}Final step${NC}: restart Claude Code, Codex CLI, Gemini CLI, Cursor, Antigravity (agy), and opencode."
+    all)    echo "${BOLD}Final step${NC}: restart Claude Code, Codex CLI, Cursor, Antigravity (agy), and opencode."
             echo "  Codex hooks are default-enabled; trust the plugin's bundled hooks when prompted."
             echo "  opencode 2: restarting the app is not enough — run ${BOLD}opencode service restart${NC} (opencode 1.x: a normal restart is fine)." ;;
   esac

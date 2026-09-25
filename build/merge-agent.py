@@ -6,10 +6,10 @@ Reassembles a target-flavored agent file from:
   - adapter-specific frontmatter overlay
 
 Usage:
-  merge-agent.py --target=claude --name=qa-tester  (md — model/effort overlay)
-  merge-agent.py --target=codex  --name=qa-tester  (toml — effort/sandbox overlay)
-  merge-agent.py --target=gemini --name=qa-tester  (md — model overlay)
-  merge-agent.py --target=cursor --name=qa-tester  (md — name/description + a derived readonly)
+  merge-agent.py --target=claude      --name=qa-tester  (md — model/effort overlay)
+  merge-agent.py --target=codex       --name=qa-tester  (toml — effort/sandbox overlay)
+  merge-agent.py --target=antigravity --name=qa-tester  (md — model overlay; agy)
+  merge-agent.py --target=cursor      --name=qa-tester  (md — name/description + a derived readonly)
 
 Writes to stdout. Render driver pipes into the per-target rendered/ directory.
 
@@ -31,7 +31,7 @@ from pathlib import Path
 # order (v2.173.1) — dead keys `emit()` would otherwise carry silently.
 CLAUDE_KEY_ORDER = ["name", "description", "model", "effort", "memory",
                     "color", "tools"]
-GEMINI_KEY_ORDER = ["name", "description", "model"]
+ANTIGRAVITY_KEY_ORDER = ["name", "description", "model"]
 CURSOR_KEY_ORDER = ["name", "description", "readonly"]
 OPENCODE_KEY_ORDER = ["description", "mode", "permission"]
 # Codex agents are TOML, not frontmatter — see emit_codex_toml().
@@ -63,8 +63,11 @@ WRITE_TOOLS = ("Edit", "Write", "Bash")
 #                       `default_subagent_model` or the Lead's model (Codex
 #                       docs). The tier still shows as `model_reasoning_effort`,
 #                       from the Codex overlay.
-#   Gemini/agy        → advisory only: agy auto-selects the model per task and
+#   agy               → advisory only: agy auto-selects the model per task and
 #                       does not consume this value (documented in model-tier-policy).
+#                       Model ids are agy's own (gemini-3-* — Antigravity is
+#                       built on Google's Gemini model family; unrelated to
+#                       the retired Gemini CLI, which shipped no adapter here).
 TIER_MODELS = {
     # Claude strong = "opus" (v2.104.0; was "inherit" + a hook-side lift).
     # A frontmatter pin is the only floor that holds everywhere the hook does
@@ -74,7 +77,7 @@ TIER_MODELS = {
     # keeps its own model, its strong reviewers run opus, no lift. The hook
     # only re-writes opus under a low Lead for a stale user-level agent file.
     "claude": {"cheap": "haiku", "balanced": "sonnet", "strong": "opus"},
-    "gemini": {"cheap": "gemini-3-flash-preview", "balanced": "gemini-3-pro-preview", "strong": "gemini-3-pro-preview"},
+    "antigravity": {"cheap": "gemini-3-flash-preview", "balanced": "gemini-3-pro-preview", "strong": "gemini-3-pro-preview"},
 }
 
 # Codex has no model map (no pin at all — see TIER_MODELS comment above), but
@@ -173,7 +176,7 @@ def resolve_includes(text: str) -> str:
 def _sanitize_scalar(line: str) -> str:
     """YAML-quote a `key: value` line whose value contains an unquoted `: ` —
     a plain scalar with colon+space is a parse error on every runtime that
-    reads the frontmatter (Claude validate, Gemini loader). json.dumps emits
+    reads the frontmatter (Claude validate, agy loader). json.dumps emits
     a valid YAML double-quoted scalar."""
     m = re.match(r"^(\w+):\s+(.*)$", line)
     if not m:
@@ -269,7 +272,7 @@ def merge(target: str, name: str) -> str:
 
     if target == "codex":
         # Codex agents are TOML in ~/.codex/agents/. Generated from the same
-        # core/agents body as Claude/Gemini — no separate hand-maintained copy.
+        # core/agents body as Claude/agy — no separate hand-maintained copy.
         overlay_path = REPO_DIR / "adapters" / "codex" / "agent-frontmatter" / f"{name}.yml"
         if not overlay_path.exists():
             raise FileNotFoundError(f"missing {overlay_path}")
@@ -278,16 +281,17 @@ def merge(target: str, name: str) -> str:
         resolve_model("codex", merged)
         return emit_codex_toml(merged, body)
 
-    if target == "gemini":
-        # Gemini extension ships agents/<name>.md (md + YAML frontmatter).
-        # Overlay carries the tier-mapped `model:`; no effort field on Gemini.
-        overlay_path = REPO_DIR / "adapters" / "gemini" / "agent-frontmatter" / f"{name}.yml"
+    if target == "antigravity":
+        # agy's plugin ships agents/<name>.md (md + YAML frontmatter — the
+        # same shape the retired Gemini CLI adapter used). Overlay carries
+        # the tier-mapped `model:`; no effort field.
+        overlay_path = REPO_DIR / "adapters" / "antigravity" / "agent-frontmatter" / f"{name}.yml"
         if not overlay_path.exists():
             raise FileNotFoundError(f"missing {overlay_path}")
         overlay = parse_yaml_block(overlay_path.read_text())
         merged = {**core_fields, **overlay}
-        resolve_model("gemini", merged)
-        return "---\n" + emit(GEMINI_KEY_ORDER, merged) + "---\n" + body
+        resolve_model("antigravity", merged)
+        return "---\n" + emit(ANTIGRAVITY_KEY_ORDER, merged) + "---\n" + body
 
     if target == "cursor":
         # Cursor agents ship agents/<name>.md with minimal frontmatter — the
@@ -347,7 +351,7 @@ def merge(target: str, name: str) -> str:
 
 def main() -> int:
     p = argparse.ArgumentParser()
-    p.add_argument("--target", required=True, choices=["claude", "codex", "gemini", "cursor", "opencode"])
+    p.add_argument("--target", required=True, choices=["claude", "codex", "antigravity", "cursor", "opencode"])
     p.add_argument("--name", required=True)
     args = p.parse_args()
     sys.stdout.write(merge(args.target, args.name))
