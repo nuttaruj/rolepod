@@ -61,9 +61,9 @@ Done when: the run shows the named assertion failing.
 - Refactor at review, not in the loop.
 - The test's own file is part of the change; the shared fixture, helpers or seed is not — touching one to pass is a finding.
 - Modifying an existing test on the way to green (loosened assert, skip or focus marker, deleted case, re-recorded snapshot) is a finding until justified.
-- Run the task's Command after each edit; the whole suite runs once per release.
+- After each edit run only the checks covering the file just edited; the task's Command runs once, last before returning; the whole suite runs once per release.
 
-Done when: the new test is green and the task's Command passes; back to step 3 for the next behavior.
+Done when: the new test is green and the checks covering the edited files pass; back to step 3 for the next behavior; after the last one, the task's Command passes.
 
 ### 6. Self-check the tests
 

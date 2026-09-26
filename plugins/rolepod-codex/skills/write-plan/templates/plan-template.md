@@ -52,8 +52,8 @@
       shows before the fix. Omit if not test-first.>
 - [ ] **Command:** <the tests covering this task's files — every test file that names a file this task
       changes (grep the test dir for each file name, so a removal leaves no stale pin for the release to
-      find) — runnable copy-paste as-is; never the whole-repo suite; the owner runs it after each edit and
-      last before returning>
+      find) — runnable copy-paste as-is; never the whole-repo suite; the owner runs it once, last before
+      returning — each edit runs only the checks covering the file it touched>
 - **Owner:** <The role the domain map assigns to this task's Files — path first,
       then concern. `Lead` for R1-sized work or when the user said
       self-do; from R3 up the map decides. A vertical slice has ONE owner: the role
