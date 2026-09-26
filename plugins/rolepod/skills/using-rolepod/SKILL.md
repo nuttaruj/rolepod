@@ -6,7 +6,7 @@ when_to_use: every user request unless the task is a clearly trivial answer that
 
 # Using Rolepod — workflow router
 
-Turns each request into a tier and the first skill of `Define → Plan → Build → Verify → Review → Ship`; that skill owns what follows.
+Turns each request into a tier and the first skill of `Define → Plan → Build → Verify → Review → Ship` (R4 also reviews each task inside Build); that skill owns what follows.
 
 Route each new request. A literal follow-up on the same routed R0/R1 task, with no tool call in between, resumes; a phase or tier change, or a tool call in between, routes again.
 The user's explicit instruction wins ("skip spec", "answer only", "just write the code", "just commit", "no plan", "ship as-is"): obey, and say which step was skipped.

@@ -16,8 +16,9 @@ Turns an approved plan into a built, reviewed diff, one task at a time, each del
 
 ### 1. Read the plan and the touched files
 
-- Lint the plan before the first task: `plan-lint.sh <plan>` (`../write-plan/scripts/plan-lint.sh`, relative to this skill's folder). FAIL (no **Command**, no checkboxes, a broken Blocked-by graph) → back to `write-plan`; never build on it.
-- No `plan-lint.sh` → check by eye: a **Command** and checkboxes per task, an acyclic Blocked-by graph, a **Failure policy**.
+- Lint a plan file before the first task: `plan-lint.sh <plan>` (`../write-plan/scripts/plan-lint.sh`, relative to this skill's folder). FAIL (no **Command**, no checkboxes, a broken Blocked-by graph) → back to `write-plan`; never build on it.
+- No `plan-lint.sh` → check the plan file by eye: a **Command** and checkboxes per task, an acyclic Blocked-by graph, a **Failure policy**.
+- An inline chat checklist (R2 one file + test, spec-as-plan R3) has no file: no lint, no temp file; its only check is a verify command on every step.
 - Whoever builds the task reads the touched files end-to-end, matches the style of 2-3 nearby files (invent no patterns), and confirms every symbol the plan expects exists — the task owner on a delegated task, the Lead only on its own R1 (trivial edit) work (no subagents → the Lead). A planned file missing where expected → verify it, or re-plan. The Lead's part on a delegated task is the plan lint and the **Read first** names (Delegate).
 - Baseline: before the first edit, run the task's verify command once on the untouched tree and record what already fails as limitations. The task owner does it for a delegated task; the Lead only for its own R1 (trivial edit) work, never both.
 - An R2 (one file + test) or spec-as-plan R3 (multi-file) inline checklist is the same contract: run each step's command. Scope grows past one file (its test file included) → stop and write the real plan.
@@ -27,7 +28,7 @@ Turns an approved plan into a built, reviewed diff, one task at a time, each del
 - Before the first task commit, record the base sha (`git rev-parse HEAD`) under the plan's `## Changes during build`.
 - Shared plan (issue numbers in the header) → claim the task's issue before touching a file (write-plan's `references/team-issues.md`).
 
-Done when: the plan lints clean (or passes the by-eye check), the baseline is recorded, and every file the task touches has been read — by the task owner on a delegated task, by the Lead on its own R1 work.
+Done when: the plan lints clean (or passes the by-eye check; an inline checklist: every step names its verify command), the baseline is recorded, and every file the task touches has been read — by the task owner on a delegated task, by the Lead on its own R1 work.
 
 ### 2. Test first at the agreed seams
 
@@ -101,7 +102,7 @@ A task owner's decision brief carries its Command tail. The Lead spot-checks ONE
 - A diff accepted without its review → stop and run it before building further.
 
 R2/R3 tasks carry no reviewer in the loop.
-- When the plan's last code task is committed, the Lead runs ONE combined review over the plan diff (`scripts/ticket.sh log` prints the range; without it, the recorded base sha..HEAD, i.e. the first task commit^..HEAD); more than ~15 files → one per ship group.
+- After the plan's last code task is committed and `check-work` passes, the Lead runs ONE combined review over the plan diff, so a fix made during Verify is reviewed too (`scripts/ticket.sh log` prints the range; without it, the recorded base sha..HEAD, i.e. the first task commit^..HEAD); more than ~15 files → one per ship group.
 - A plan that names a ship group → after its last task, one drift pass over the group's range, a normal review of the cross-task seams (never adversarial): `security-engineer` when it holds an R4 task, else the combined review is the drift pass.
 - Findings → ONE fix task to the owning role; round 2 only for a BLOCKER / MAJOR fix — internal, never a new external round (`review-code` Fix-verify rounds).
 - Nothing pushes or releases before it.
@@ -112,7 +113,7 @@ One task per pass: brief → spot-check + ship line → next task. Never batch t
 
 Artifact: `templates/implementation-manifest.md` — Files changed, Tests added / changed, Verification, Scope check, Concerns, Status. A subagent returns it; the Lead commits.
 
-Done when: every task is shipped and, for R2/R3, the combined review is clean or its fixes are verified.
+Done when: every task is shipped (R4: with its per-task reports); R2/R3 then go to `check-work`, which is followed by the combined review.
 
 ## Guardrails
 
@@ -124,6 +125,6 @@ Scope and manifest pairs, good and bad → `examples/execution-examples.md`.
 
 ## Next phase
 
-- `check-work` proves the change works; the final done, the merge and the branch's fate belong to it and `finish-work`.
+- `check-work` proves the change works, then the R2/R3 combined review (`review-code`); the merge and the branch's fate belong to `finish-work`.
 - `BLOCKED` survives context, model and scope changes and a re-plan → `manage-context` (escalate); if it is not available, stop and hand the user the attempt log and 2-3 options.
 - If `check-work` is not available, run tests / build / curl / browser yourself and report evidence inline.

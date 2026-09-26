@@ -102,8 +102,8 @@ Examples → `examples/evidence-examples.md`.
 
 ## Next phase
 
-- Verify-only ask → none; the evidence block is the deliverable.
+- Verify-only ask → stop; the evidence block is the deliverable, and the lines below do not apply (not even to unchecked plan tasks).
 - Evidence fails → `debug-issue` or `implement-plan`; the same criterion failing a 2nd verify round on one change → `debug-issue` (its Second opinion cap), never a 3rd blind fix. Neither skill available → the Lead fixes at the root, then re-runs this skill; a 2nd failure → stop and report the attempts to the user.
-- Passes with risk (fails review-code's skip test: >5 lines, multi-file, logic-bearing, or high-risk) and no report under `.rolepod/evidence/review/` → `review-code`.
+- Passes with risk (fails review-code's skip test: >5 lines, multi-file, logic-bearing, or high-risk), no plan task left unchecked, and no review of this change yet → `review-code` (R2/R3: the plan's ONE combined review). An R4 task's report under `.rolepod/evidence/review/` covers that task only, and a report for another change does not count.
 - Otherwise → `implement-plan` while the plan has unchecked tasks (Ship asks once per plan), else `finish-work`.
 - If neither `review-code` nor `finish-work` is available, attach the evidence block and ask the user whether to ship.
