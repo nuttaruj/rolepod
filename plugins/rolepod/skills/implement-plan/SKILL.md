@@ -20,22 +20,22 @@ Turns an approved plan into a built, reviewed diff, one task at a time, each del
 - No `plan-lint.sh` → check the plan file by eye: a **Command** and checkboxes per task, an acyclic Blocked-by graph, a **Failure policy**.
 - An inline chat checklist (R2 one file + test, spec-as-plan R3) has no file: no lint, no temp file; its only check is a verify command on every step.
 - Whoever builds the task reads the touched files end-to-end, matches the style of 2-3 nearby files (invent no patterns), and confirms every symbol the plan expects exists — the task owner on a delegated task, the Lead only on its own R1 (trivial edit) work (no subagents → the Lead). A planned file missing where expected → verify it, or re-plan. The Lead's part on a delegated task is the plan lint and the **Read first** names (Delegate).
-- Baseline: before the first edit, run the task's verify command once on the untouched tree and record what already fails as limitations. The task owner does it for a delegated task; the Lead only for its own R1 (trivial edit) work, never both.
 - An R2 (one file + test) or spec-as-plan R3 (multi-file) inline checklist is the same contract: run each step's command. Scope grows past one file (its test file included) → stop and write the real plan.
 - Whoever builds verifies the task by running its **Command** verbatim, never a re-derived check — the task owner on a delegated task (its decision brief carries the tail), the Lead only on its own R1 work. No Command named → `write-plan` for one.
 - Command passes → flip EVERY `- [ ]` under that task to `- [x]` — on a delegated task the Lead flips them from the owner's Command tail (`scripts/ticket.sh log` in the ship line; without it, by hand). A **Test / evidence** proof the Command does not run (browser, manual) is not covered by the flip; do it first.
-- Command fails → the task's **On fail**, else the plan's **Failure policy**, else (an R2 checklist has neither) `debug-issue`. The same criterion failing a 2nd time → `debug-issue`, whose Second opinion caps the attempts (no `debug-issue` → the runner (the Lead without sub-agents) re-traces once; a 2nd failure → stop and report to the user).
+- Command fails → baseline first (never a run before the first edit): run only the failing tests once on the tree without this task's diff — a throwaway `git worktree` at HEAD; it cannot run them → set the diff aside in place, run, restore. Red there too → pre-existing: a limitation in the decision brief, and the Command counts as passing when the rest is green. Green there → this task's failure, handled below.
+- This task's failure → the task's **On fail**, else the plan's **Failure policy**, else (an R2 checklist has neither) `debug-issue`. The same criterion failing a 2nd time → `debug-issue`, whose Second opinion caps the attempts (no `debug-issue` → the runner (the Lead without sub-agents) re-traces once; a 2nd failure → stop and report to the user).
 - Before the first task commit, record the base sha (`git rev-parse HEAD`) under the plan's `## Changes during build`.
 - Shared plan (issue numbers in the header) → claim the task's issue before touching a file (write-plan's `references/team-issues.md`).
 
-Done when: the plan lints clean (or passes the by-eye check; an inline checklist: every step names its verify command), the baseline is recorded, and every file the task touches has been read — by the task owner on a delegated task, by the Lead on its own R1 work.
+Done when: the plan lints clean (or passes the by-eye check; an inline checklist: every step names its verify command), and every file the task touches has been read — by the task owner on a delegated task, by the Lead on its own R1 work.
 
 ### 2. Test first at the agreed seams
 
 - Every logic slice runs `tdd-flow` at the agreed seam — the spec's Testing decisions, else the plan task's seam, neither (an R2 checklist, a single-file edit) → the highest existing seam that reaches the behavior, stated `Seam: <interface>`: a failing test at that public interface (never internals) → watch it fail (green before the code → tighten the assertion) → the smallest change → green → the next behavior. Refactor at review, not in the loop.
 - `tdd-flow` cannot be opened → these limits still hold: the agreed seam only; one behavior → one test; no test ahead of the behavior; edge / error / race only when an acceptance criterion names it or it is an R4 (high-risk) floor — deny path, money math, migration rollback, shared-state race. Mock only external boundaries, never the DB in an integration test.
 - A test outside the agreed seam is scope creep → one line under `## Follow-ups`.
-- Prose, rename, config: no test.
+- Prose, a rename, config, wiring or CRUD pass-through with no rule of its own: no new test — the evidence-after proof its Test / evidence line names (render / lint, the suite green plus one smoke, smoke + restart).
 
 Done when: each logic slice has a test that was red before its change and is green after.
 
@@ -102,7 +102,7 @@ Done when: every ready track is dispatched and each returned track is integrated
 One combined pass for R2/R3, per task for R4 (high-risk).
 
 A task owner's decision brief carries its Command tail. The Lead spot-checks ONE claim (the Proof, or one finding in an R4 report; never an axis walk), then runs the ship line.
-- No report → the Lead runs `review-code` Axes (no review-code → intent, trace, correctness, tests on the diff), recorded as a LIMITATION.
+- A report the brief requires — R4, or a standalone R2 checklist's two lenses — missing, failed or empty → the Lead runs `review-code` Axes (no review-code → intent, trace, correctness, tests on the diff), recorded as a LIMITATION. An R2/R3 task in a plan returns no report by design: its review is the combined one below.
 - A diff accepted without its review → stop and run it before building further.
 
 R2/R3 tasks carry no reviewer in the loop.

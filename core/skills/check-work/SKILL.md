@@ -34,7 +34,7 @@ Done when: each acceptance criterion has an evidence type.
 
 - Run every check AFTER the last change to the tree. No run since the last edit → you cannot claim it passes; yesterday's green and "should still work" do not count.
 - **Evidence cache:** tree unchanged since a pass THIS session (same `git status` + `git diff`; they miss untracked / ignored content, so hash or diff any untracked input the check reads) → cite that run's command + output, "tree unchanged since". ANY new edit invalidates it.
-- Capture the exact command and its proof lines. A failure already in the baseline (recorded before the first edit) is a limitation — cite the baseline line; a failure absent from it is this change's.
+- Capture the exact command and its proof lines. A failure the build already recorded as pre-existing → a limitation, cite that line. Any other failure → run only the failing tests once on the tree without this change (a throwaway `git worktree` at the base sha; it cannot run them → set the diff aside in place, run, restore): red there too → a limitation, cite that run; green there → this change's.
 - JUnit / XUnit XML → counted totals + failed names via `scripts/junit-summary.sh <xml>` in this skill's folder (`references/verification-discipline.md`); no script → count the `<testcase>` and `<failure>` / `<error>` elements with `grep -c` and name the failed tests.
 - Scope ladder: the task Command while building → the touched module's suite here → the full suite only on high-risk or at merge via the CI lane the change must pass (no CI → finish-work's local equivalents at Ship). Map changed paths to a subset by import graph / naming before going wider.
 - Tests fail → fix or report; not done.
