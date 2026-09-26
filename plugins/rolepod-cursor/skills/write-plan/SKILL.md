@@ -106,5 +106,5 @@ Done when: every section is filled, and a saved plan passes plan-lint (or the fo
 
 ## Next phase
 
-- `implement-plan` with the plan artifact.
+- `implement-plan` with the plan artifact, or the inline checklist (R2, spec-as-plan R3), which is the owner's brief as written.
 - If `implement-plan` is not available, hand the plan to whoever will edit — file list, ordered tasks, per-task tests and done criteria are enough.
