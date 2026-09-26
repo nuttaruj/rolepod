@@ -313,7 +313,7 @@ if [ "${1:-}" = "--brief" ]; then
       intask = 0; field = ""
       specsec = ($0 ~ /^## Source spec/) ? 1 : 0
       filessec = ($0 ~ /^## Files to touch/) ? 1 : 0
-      hrsec = ($0 ~ /^## High-risk surfaces touched/) ? 1 : 0
+      hrsec = (tolower($0) ~ /^## high-risk surfaces touched/) ? 1 : 0
       next
     }
     # A task heading also closes Source spec / Files to touch — some real
