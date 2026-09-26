@@ -34,7 +34,9 @@
 - **Read first:** <2-3 files + the pattern to copy; the owner starts here, never re-surveys>
 - [ ] **Change:** <what to do, concretely — at most 3 bullets. An exact-string
       edit spec (old → new) goes in a fenced block under this task, never
-      inline in the bullet.>
+      inline in the bullet. A clause of the spec's agreed contract this task
+      builds or consumes (interface, data shape, compatibility rule, invariant)
+      is quoted here or in Done when — the owner sees only the brief.>
 - [ ] **Test / evidence:** <test type (unit / integration / contract / E2E / smoke /
       repro) + the assertion that proves it + the **seam** — from the spec's Testing
       decisions (a seam it does not name: one line of why) — the public interface the
@@ -64,8 +66,8 @@
       components / pages / hooks / state / *.tsx *.vue *.svelte → frontend-developer
       visual polish / design system / a11y / CSS → ui-ux-designer
       billing / payments / credits / subscriptions / invoices → billing-engineer
-      auth / permissions / tokens / secrets / crypto (the WRITE) → backend-developer,
-        Reviewer security-engineer (security-engineer writes tests only)
+      auth / permissions / tokens / secrets / crypto (the WRITE) → backend-developer;
+        its High-risk surfaces line routes security-engineer (who writes tests only)
       .github/workflows, Dockerfile, compose, vercel/wrangler/fly/railway config,
         deploy/ infra/ terraform/, release scripts, monitoring → devops-sre
       docs, README, runbooks, i18n / locales, emails, marketing copy,
@@ -84,9 +86,12 @@
 <same shape — checkbox each step>
 
 ## High-risk surfaces touched
-<auth / billing / payments / credits / migration / data deletion / secrets /
- tokens / crypto / permissions / security. "None" is valid — but state it
- deliberately.>
+<One line per surface, naming every task that touches it. The brief tiers each
+ named task R4 and routes security-engineer, even when no file name looks
+ risky (a docs-only task stays R1). Surfaces: auth / billing / payments / credits / migration / data
+ deletion / secrets / tokens / crypto / permissions / security. "None" is
+ valid — but state it deliberately.>
+- <surface> → Task <N>
 
 ## Spec coverage (both directions)
 <Every spec requirement → the task that implements it; a requirement with no

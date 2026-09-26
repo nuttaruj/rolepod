@@ -2,6 +2,7 @@
 <!-- Read the WHOLE file — the contrast between good and bad IS the lesson. -->
 <!-- Scenario 1 is a sequential plan (one owner per task, no parallel tracks); scenario 2 is parallel -->
 <!-- multi-agent. Most plans are sequential — parallel is the exception. -->
+<!-- Changes during build and Follow-ups are empty at plan time and left out of both plans. -->
 
 # Plan Examples
 
@@ -17,6 +18,10 @@ why the good version wins. Compare the pair — do not read one half alone.
 ```text
 # Orders CSV Export Plan
 
+Goal: Users can export a filtered report as CSV with the correct columns in one click.
+Architecture: Service layer (OrdersCsv) + REST endpoint + UI button.
+Stack: Ruby + ERB + RSpec (units and requests).
+
 ## Source spec
 docs/rolepod/specs/orders-csv-export-2026-05-20.md (approved)
 
@@ -31,20 +36,24 @@ docs/rolepod/specs/orders-csv-export-2026-05-20.md (approved)
 - Delivers: the report's rows can be produced as a CSV with the on-screen columns
 - Blocked by: none
 - [ ] Files: app/services/orders_csv.rb, spec/services/orders_csv_spec.rb
+- Read first: app/services/orders_report.rb (the service-object shape to copy),
+  app/controllers/reports_controller.rb (the index scope)
 - [ ] Change: build CSV rows from the same scope ReportsController#index uses
-- [ ] Test / evidence: unit — a 3-order scope yields 1 header + 3 rows, columns
-  in on-screen table order
+- [ ] Test / evidence: unit at OrdersCsv.call(scope) — a 3-order scope yields
+  1 header + 3 rows, columns in on-screen table order
 - [ ] Expected failing signal: NameError: uninitialized constant OrdersCsv
 - [ ] Command: bundle exec rspec spec/services/orders_csv_spec.rb
 - Owner: backend-developer
-- Done when: spec green, columns match the report table
+- Done when: spec green; columns match spec Chosen approach: "id, name, total, status"
 
 ### Task 2: export action
 - Delivers: a filtered report can be downloaded as CSV from the API
-- Blocked by: Task 1
+- Blocked by: Task 1 (OrdersCsv.call(scope))
 - [ ] Files: app/controllers/reports_controller.rb
+- Read first: app/services/orders_csv.rb (the service Task 1 builds),
+  app/controllers/reports_controller.rb#index (the filter scope)
 - [ ] Change: add #export, reuse the index filter scope, stream as attachment
-- [ ] Test / evidence: request spec — filtered export row count == table count;
+- [ ] Test / evidence: request spec at GET /reports/export — filtered export row count == table count;
   an empty range returns a header-only CSV
 - [ ] Command: bundle exec rspec spec/requests/reports_spec.rb
 - Owner: backend-developer
@@ -54,10 +63,12 @@ docs/rolepod/specs/orders-csv-export-2026-05-20.md (approved)
 
 ### Task 3: Export CSV button
 - Delivers: a user clicks Export CSV and gets the filtered table as a file
-- Blocked by: Task 2
+- Blocked by: Task 2 (GET /reports/export)
 - [ ] Files: app/views/reports/_toolbar.html.erb
+- Read first: app/views/reports/_print_button.html.erb (the disable + spinner
+  pattern to copy), spec/system/reports_filter_spec.rb (the system-spec setup)
 - [ ] Change: add the button wired to #export; disable + spinner while generating
-- [ ] Test / evidence: system spec — click exports the current filter; button
+- [ ] Test / evidence: system spec at the Export CSV button — click exports the current filter; button
   is disabled mid-generation
 - [ ] Command: bundle exec rspec spec/system/reports_export_spec.rb
 - Owner: frontend-developer
@@ -121,6 +132,7 @@ Touch the reports stuff and the frontend. Should be quick.
 | Loop | Not runnable — no checkboxes, no failure path | Checkbox state + Failure policy: the build loop executes, verifies, and recovers without re-asking |
 | Scope | "Touch the reports stuff and the frontend" — unbounded | Two-way spec trace: every criterion has a task, every task has a spec line, and the unasked Excel export is cut |
 | Risk | "Should be quick" | Timeout risk named with a fallback + a per-task On fail |
+| Hand-off | Nothing | Blocked by names what each edge consumes; Read first per task; spec contract quoted in the task |
 
 ---
 
@@ -130,6 +142,10 @@ Touch the reports stuff and the frontend. Should be quick.
 
 ```text
 # Notifications Center Plan
+
+Goal: Users see an unread notification count and can mark items as read from a dropdown.
+Architecture: Backend API (list + read endpoints) + frontend client + bell + dropdown component.
+Stack: Ruby + PostgreSQL (backend), TypeScript + React (frontend), frozen API contract.
 
 ## Source spec
 docs/rolepod/specs/notifications-center-2026-05-20.md (approved)
@@ -147,24 +163,43 @@ docs/rolepod/specs/notifications-center-2026-05-20.md (approved)
 - Delivers: the API lists a user's notifications, unread first, and marks one read
 - Blocked by: none
 - [ ] Files: app/models/notification.rb, app/controllers/api/notifications_controller.rb
+- Read first: docs/rolepod/plans/notifications-cohesion-2026-05-20.md (contract),
+  spec/fixtures/notifications.json (shape)
 - [ ] Change: model + GET /api/notifications + POST /api/notifications/:id/read
-- [ ] Test / evidence: request spec — list returns unread first; read marks read
+- [ ] Test / evidence: request spec at GET /api/notifications and
+  POST /api/notifications/:id/read — list returns unread first; read marks read
 - [ ] Command: bundle exec rspec spec/requests/api/notifications_spec.rb
 - Owner: backend-developer
-- Done when: request spec green; API matches the frozen contract
+- Done when: request spec green; the frozen contract holds — GET /api/notifications
+  returns [{id, title, read_at, created_at}] unread first; POST .../:id/read returns 204
 
 ### Task 2: API client + bell + dropdown (frontend)
 - Delivers: a user sees an unread count on the bell and clears items from the dropdown
 - Blocked by: none — builds against the contract's mock; the live wiring is Done criteria
 - [ ] Files: app/javascript/api/notifications.ts, NotificationBell.tsx, NotificationDropdown.tsx
-- [ ] Change: typed client, bell with unread count, dropdown with read-on-click
-- [ ] Test / evidence: component test — bell shows the count; click marks read
+- Read first: docs/rolepod/plans/notifications-cohesion-2026-05-20.md (contract),
+  app/javascript/api/orders.ts (the typed-client pattern to copy)
+- [ ] Change: typed client for the frozen contract ([{id, title, read_at, created_at}],
+  POST .../:id/read → 204), bell with unread count, dropdown with read-on-click
+- [ ] Test / evidence: component test at NotificationBell and NotificationDropdown —
+  bell shows the count; click marks read
 - [ ] Command: yarn vitest run app/javascript/components/__tests__/notifications
 - Owner: frontend-developer
 - Done when: component tests green against the contract's mock
 
 ## High-risk surfaces touched
 None.
+
+## Spec coverage (both directions)
+Forward — every spec criterion has an owning task:
+- list endpoint, unread first → Task 1
+- read endpoint, marks read → Task 1
+- bell shows unread count → Task 2
+- dropdown reads on click → Task 2
+
+Reverse — every task traces to a spec line; anything that does not is cut:
+- Task 1-2 each map to a criterion above.
+- "add email notifications too" — no spec line asked for it → cut to a follow-up.
 
 ## Parallel layout
 Parallel — contract: `docs/rolepod/plans/notifications-cohesion-2026-05-20.md` (merge order there: backend first, it provides the API contract).

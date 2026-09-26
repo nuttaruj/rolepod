@@ -10,12 +10,14 @@
 #   whose Parallel layout says "Sequential" skips the ownership check.
 #
 # Usage: scripts/plan-lint.sh --brief <N> <plan.md> [contract.md] [--main]
-#   Prints Task N's brief (Worktree or Checkout/Goal/Tier/Blocked by/Read
-#   first/Files allowed/Files forbidden/Change/Test/Command/Done when/
-#   Write/Reviewers/Bounds) — ONE test field, the Command; an older plan's
-#   Check: line is read and ignored, never printed (spec
-#   lean-loop-2026-09-23 Task 2) to stdout, assembled from the plan (and
-#   the contract's File-ownership + Do-not-touch-list when one is given).
+#   Prints Task N's brief to stdout, assembled from the plan (and the
+#   contract's File-ownership + Do-not-touch-list when one is given), in
+#   this order: Worktree or Checkout, Goal, Tier, Blocked by, Read first,
+#   Files allowed, Files forbidden, Change, Test / evidence, Expected
+#   failing signal (only when the task has one), Command, Proof, Done
+#   when, On fail (only when the task has one), Write, Reviewers, Bounds —
+#   ONE test field, the Command; an older plan's Check: line is read and
+#   ignored, never printed (spec lean-loop-2026-09-23 Task 2).
 #   `--main`, in any position after --brief: an on-main task, no
 #   worktree — prints `## Checkout` in place of `## Worktree`, and Bounds
 #   names no worktree path either. Exit 0 on success; exit 2 with one
@@ -216,6 +218,26 @@ if [ "${1:-}" = "--brief" ]; then
     }
     return 0
   }
+  # A "## High-risk surfaces touched" line may name several tasks in one
+  # go ("auth -> Task 2 and billing -> Task 4", "-> Task 1, Task 2") — walk
+  # every task-tag occurrence on the line rather than trusting one
+  # tagspan/label_names_task call to see them all: tagspans own chaining
+  # only recognizes an abbreviated `T2` right after a connector, never the
+  # full word (`, Task 2`), so a single call over the whole line would stop
+  # at the first tag. RSTART/RLENGTH are saved before calling
+  # label_names_task — it runs tagspan, which calls match() again and would
+  # otherwise clobber them. label_names_task still does the range/list math
+  # (`Tasks 1-3`, `T1, T3`) on whatever tag it is handed. A line with no
+  # task tag at all (a plain path, or "None - ...") never counts.
+  function line_names_task(line, want,    hay, rstart, rlen) {
+    hay = " " line
+    while (match(hay, /[^0-9A-Za-z](T|[Tt]asks?[[:space:]]+)[0-9]+/)) {
+      rstart = RSTART; rlen = RLENGTH
+      if (label_names_task(substr(hay, rstart), want)) return 1
+      hay = substr(hay, rstart + rlen)
+    }
+    return 0
+  }
   function rxesc(s,    out, i, c) {
     out = ""
     for (i = 1; i <= length(s); i++) {
@@ -291,6 +313,7 @@ if [ "${1:-}" = "--brief" ]; then
       intask = 0; field = ""
       specsec = ($0 ~ /^## Source spec/) ? 1 : 0
       filessec = ($0 ~ /^## Files to touch/) ? 1 : 0
+      hrsec = ($0 ~ /^## High-risk surfaces touched/) ? 1 : 0
       next
     }
     # A task heading also closes Source spec / Files to touch — some real
@@ -298,7 +321,7 @@ if [ "${1:-}" = "--brief" ]; then
     # from "## Files to touch" into "### Task 1" with no "## Tasks" line
     # between, so filessec must not still be open when the heading arrives.
     if ($0 ~ rx) {
-      specsec = 0; filessec = 0
+      specsec = 0; filessec = 0; hrsec = 0
       id = $0; sub(/^### (Task ?|T)/, "", id); sub(/[^0-9].*$/, "", id)
       if (id == want) {
         intask = 1; found = 1
@@ -324,6 +347,7 @@ if [ "${1:-}" = "--brief" ]; then
       }
       next
     }
+    if (hrsec) { if (trim($0) != "") hrline[++hrn] = $0; next }
     if (intask) {
       line = $0
       isf = 1
@@ -351,10 +375,11 @@ if [ "${1:-}" = "--brief" ]; then
       # (spec R3). A bullet of its own right after Test / evidence, never
       # indented under it (an indented line is a continuation, handled below).
       else if (fieldline(line, "Proof"))           { field = "P";   v = line; sub(/^[[:space:]]*[-*][[:space:]]*(\[[ xX]\][[:space:]]*)?\*{0,2}Proof\*{0,2}:\*{0,2}[[:space:]]*/, "", v) }
-      # Recognized-but-not-in-the-brief fields still end whatever field came
-      # before them — otherwise their text glues onto Test/Command/Done when.
-      else if (fieldline(line, "Expected failing signal")) { field = "" }
-      else if (fieldline(line, "On fail"))                 { field = "" }
+      # Optional — printed only when the task carries them, right after
+      # Test / evidence and Done when respectively (never their own heading
+      # when the task has neither field).
+      else if (fieldline(line, "Expected failing signal")) { field = "Ef"; v = line; sub(/^[[:space:]]*[-*][[:space:]]*(\[[ xX]\][[:space:]]*)?\*{0,2}Expected failing signal\*{0,2}:\*{0,2}[[:space:]]*/, "", v) }
+      else if (fieldline(line, "On fail"))                 { field = "Of"; v = line; sub(/^[[:space:]]*[-*][[:space:]]*(\[[ xX]\][[:space:]]*)?\*{0,2}On fail\*{0,2}:\*{0,2}[[:space:]]*/, "", v) }
       else isf = 0
       if (isf && field != "") {
         # Only the LEADING run of bold asterisks (the closing ** of a bold
@@ -373,6 +398,8 @@ if [ "${1:-}" = "--brief" ]; then
         else if (field == "O") Ow = v
         else if (field == "DW") DW = v
         else if (field == "P") Pr = v
+        else if (field == "Ef") Ef = v
+        else if (field == "Of") Of = v
       }
       # A continuation line extends the CURRENT field only when it is not
       # itself a new bullet — otherwise an unrecognized bullet (a field this
@@ -393,6 +420,8 @@ if [ "${1:-}" = "--brief" ]; then
         else if (field == "O") Ow = (Ow == "" ? cont : Ow "\n" cont)
         else if (field == "DW") DW = (DW == "" ? cont : DW "\n" cont)
         else if (field == "P") Pr = (Pr == "" ? cont : Pr "\n" cont)
+        else if (field == "Ef") Ef = (Ef == "" ? cont : Ef "\n" cont)
+        else if (field == "Of") Of = (Of == "" ? cont : Of "\n" cont)
       }
       next
     }
@@ -564,6 +593,12 @@ if [ "${1:-}" = "--brief" ]; then
       if (hit && rexcl != "" && lp ~ rexcl) hit = 0
       if (hit) trisk = 1
     }
+    # A "## High-risk surfaces touched" line naming this task counts as a
+    # risk hit exactly like a risk-path file above — same precedence, so a
+    # prose-only task (tprose, checked first below) still stays R1, and a
+    # line with no task tag changes nothing (a line reading "None - Task 3
+    # only reads" still tiers Task 3 — the tag is what matters, not the word).
+    for (i = 1; i <= hrn; i++) if (line_names_task(hrline[i], want)) trisk = 1
     tnontest = 0
     for (i = 1; i <= acnt; i++) if (!is_test(allowedord[i])) tnontest++
     if (acnt > 0 && tprose) tier = "R1"
@@ -593,6 +628,10 @@ if [ "${1:-}" = "--brief" ]; then
     print (Ch == "" ? "(not in plan)" : Ch)
     print "## Test / evidence"
     print (Te == "" ? "(not in plan)" : Te)
+    # An undeleted template placeholder (a value starting "<") is not a
+    # real field — same convention as Proof above and the bare-path token
+    # skip in Read first.
+    if (Ef != "" && Ef !~ /^</) { print "## Expected failing signal"; print Ef }
     print "## Command"
     print (Cmd == "" ? "(not in plan)" : Cmd)
     print "Test levels — each runs at ONE point:"
@@ -620,6 +659,7 @@ if [ "${1:-}" = "--brief" ]; then
     }
     print "## Done when"
     print (DW == "" ? "(not in plan)" : DW)
+    if (Of != "" && Of !~ /^</) { print "## On fail"; print Of }
     print "## Write"
     printf "`%s`\n", write
     print "## Reviewers"

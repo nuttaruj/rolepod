@@ -67,8 +67,9 @@ Done when: every path sits under exactly one owner.
 ### 6. Owners and briefs
 
 **Owner:** the role the domain map in `templates/plan-template.md` assigns to the task's files (path first, then concern; `Lead` for R1-sized work or when the user said self-do). No template → API / services / models → `backend-developer`, UI components → `frontend-developer`, infra / CI / release → `devops-sre`, docs → `content-strategist`; else the closest writer role by path (`implement-plan`'s `references/subagent-dispatch.md` Picking the owner) — `Owner: Lead` only for R1-sized work.
-Reviewer roles are never owners: `security-engineer` (each touched high-risk surface, per task — the brief's Tier line) goes on the Reviewer line. A user-visible E2E flow the spec names gets no task owner and no reviewer role — `check-work` verifies it once the feature is built.
-`plan-lint.sh --brief <N> <plan> [contract]` (`scripts/plan-lint.sh` in this skill's folder) builds the owner's brief from the task block, so the block carries everything plus the spec.
+Reviewer roles are never owners. Each high-risk surface names every task that touches it under **High-risk surfaces touched** (`- session-cookie validation (auth) → Task 2`): the brief tiers that task R4 and routes `security-engineer`, even when no file name looks risky (a docs-only task stays R1). A user-visible E2E flow the spec names gets no task owner and no reviewer role — `check-work` verifies it once the feature is built.
+`plan-lint.sh --brief <N> <plan> [contract]` (`scripts/plan-lint.sh` in this skill's folder) builds the owner's brief from the task block, Expected failing signal and On fail included; the brief is the owner's whole slice, so the block carries everything it needs.
+A task that builds or consumes the spec's agreed contract (Chosen approach: interface, data shape, compatibility rule, invariant) quotes the clause it must keep in its Change or Done when; its Blocked by edge names the symbol it consumes.
 **Read first:** the 2-3 files and the pattern to copy, named by the Lead who read them; the owner never re-surveys the repo.
 No subagents → the Lead builds every task from the same blocks.
 
