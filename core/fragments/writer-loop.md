@@ -1,6 +1,7 @@
 ## Writer loop
 
 For task owners — skip the whole block when the brief is report-only.
+A report-only brief (you are the reviewer for your `review-code` row, or an audit) → edit no file but the report; each Hard stop becomes a finding for the author — never a fix, a measurement of your own or a `BLOCKED`. A `review-code` brief → fill its report template (Skill tool; none → findings at `file:line`, BLOCKER / MAJOR / MINOR, fix direction) into the named report file, and return its verdict first (`APPROVED | APPROVED-WITH-NITS | REJECTED`), then the report path and ≤ 12 lines — not your Return section's build shape.
 
 - **Completion check** — Grep/Read each file you claim you changed; run
   test / lint / typecheck; confirm no silent failure (a DB column needs its

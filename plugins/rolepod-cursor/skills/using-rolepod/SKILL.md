@@ -57,7 +57,7 @@ The FIRST matching row fires:
 | do a clear change test-first / TDD / red-green | Build → `tdd-flow`, run by the path owner: R2+ → `implement-plan`, Owner <path role>, who loads `tdd-flow`; R1 or no sub-agents → the Lead runs it (no `tdd-flow` → `implement-plan`, failing test first at the seam) |
 | refactor / simplify / clean up | Build → `simplify-code`, run by the path owner (`implement-plan`, Owner <path role>; R1 or no sub-agents → the Lead runs it) → `check-work` |
 | slow / latency / bundle size / N+1 / p95 | Build → `implement-plan`, Owner `performance-engineer` in ONE brief (baseline number, change, re-measure) → `check-work` reads its before / after numbers (no sub-agents → the Lead runs it) |
-| clear UI edit (design, screenshot, exact acceptance) | Build → `implement-plan`, Owner `frontend-developer` (design system / CSS / a11y → `ui-ux-designer`) |
+| clear UI edit (design, screenshot, exact acceptance) | Build → `implement-plan`, Owner `frontend-developer` (iOS / Android / React Native / Flutter → `mobile-developer`; design system / CSS / a11y → `ui-ux-designer`) |
 | write test cases / report a bug, no fix wanted | Verify → `qa-tester` agent (no agent → the Lead writes the case table); a found bug → `debug-issue` report-only |
 | is this done / does it (or the UI) work / verify | Verify → `check-work` |
 | audit UX / a11y of one page or flow | Verify → ONE `ui-ux-designer` brief: `check-work` UI verification + `review-code` Axes (UI); no browser reachable → the Lead observes and the designer audits that observation (no sub-agents → the Lead runs both) |

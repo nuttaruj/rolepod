@@ -57,7 +57,7 @@ The member never reviews its own draft, and the Lead never runs the SKILL.md Rev
 
 ## Implementer status taxonomy
 
-The implementer manifest declares `COMPLETED | PARTIAL | BLOCKED` (the enum every agent brief and `agent-protocol.md` teach) plus a **Concerns** section. Handle each with a specific protocol. A subagent that returns a QUESTION rather than a status is not `BLOCKED` — answer it inline and redispatch. A `COMPLETED` whose Command tail shows a failing test is not `COMPLETED` — reject it and re-brief before anything below.
+The implementer manifest declares `COMPLETED | PARTIAL | BLOCKED` (the enum every agent brief and `agent-protocol.md` teach) plus a **Concerns** section. A role's own Return carries its concerns as `Assuming:` lines, residuals and `NEEDS:` lines — read them as Concerns; `MISSING TARGET` / `SPEC CONFLICT` arrive under `BLOCKED`. Handle each with a specific protocol. A subagent that returns a QUESTION rather than a status is not `BLOCKED` — answer it inline and redispatch. A `COMPLETED` whose Command tail shows a failing test is not `COMPLETED` — reject it and re-brief before anything below.
 
 ### `COMPLETED`, Concerns empty
 

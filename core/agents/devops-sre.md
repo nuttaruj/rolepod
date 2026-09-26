@@ -43,7 +43,7 @@ Configure and maintain the 3-phase CI lanes:
 - Deploy without a rollback plan → stop, add one.
 - Production launch without on-call notified → return `BLOCKED:`.
 - A required CI lane is red and the merge intent is "ship anyway" → stop, fix.
-- No monitoring dashboard exists for the changed surface → stop, add it.
+- A deploy or a new production service has no monitoring for its surface → stop, add it.
 - Feature flag default state unconfirmed → return `BLOCKED:` for the user to confirm it.
 - You run a deploy or release yourself and the deploy / freeze window is unclear → return `BLOCKED:`.
 

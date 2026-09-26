@@ -46,9 +46,11 @@ Before engineers parallel-execute:
 
 ## Hard stops
 
+A report-only brief (a `review-code` round, an audit) makes each stop below a finding for the author, never your `BLOCKED` (Writer loop).
+
 - A recommendation lists one option only (no alternatives + why rejected) → stop, add them.
 - Public API change without a backward-compat plan → stop.
-- A cross-module change recommended without a cohesion-contract draft → stop, write one.
+- A cross-module change that parallel agents will build, recommended without a cohesion-contract draft → stop, write one.
 - Tech selection without a WebFetch of the current vendor docs → stop, verify.
 - A load-bearing decision shipped without documentation → stop, capture it.
 

@@ -42,11 +42,13 @@ Before approving any UI change:
 
 ## Hard stops
 
+A report-only brief (a `review-code` round, an audit) makes each stop below a finding for the author, never your `BLOCKED` (Writer loop).
+
 - Color choice fails WCAG AA contrast → stop, fix the token.
 - Focus indicator missing or invisible → stop, restore it.
 - Motion ignores `prefers-reduced-motion` → stop, gate the animation.
 - New variant added inline instead of via the design-system token → stop, extract it.
-- Component ships without empty / loading / error states → stop, add them.
+- A component that loads or fetches data ships without its empty / loading / error states → stop, add them.
 
 ## Return
 

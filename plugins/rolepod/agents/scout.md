@@ -98,10 +98,12 @@ self-contained.
 - **Simplest viable** — no unrequested abstraction, config, or dependency;
   before new logic, reuse what exists (codebase → stdlib → platform →
   installed dep → one line before a helper). Complexity beyond the brief → flag it, don't build it.
-- **Missing target** — STOP, report `MISSING TARGET: <what> at <where>`.
+- **Missing target** — STOP; return status `BLOCKED` with
+  `MISSING TARGET: <what> at <where>` as the reason.
 - **Broken brief** — the artifact you were briefed against (spec / plan /
-  contract) contradicts reality, itself, or the codebase → report the
-  contradiction with evidence (`SPEC CONFLICT: <line> vs <observed>`); never
+  contract) contradicts reality, itself, or the codebase → return status
+  `BLOCKED` with the contradiction and its evidence
+  (`SPEC CONFLICT: <line> vs <observed>`); never
   resolve it yourself and never build / test to the broken line — an
   implementation faithful to a wrong spec is still wrong.
 - **Cannot proceed** — a missing input or an open decision → return
