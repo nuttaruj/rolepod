@@ -33,6 +33,8 @@ Ask in **frontier rounds**: number every question whose prerequisites are settle
 Ask only what changes the implementation; which questions do → `references/question-bank.md`.
 **Recommend a default per question** — the simplest viable answer; the user confirms or overrides.
 Native question UI when the CLI has one; else numbered questions with lettered options, the default marked, compact answers accepted (`1a 3c`, or `defaults`).
+A partial reply (`1a 3c`) closes only those questions; the rest stay open next round, never defaulted. `defaults` takes only the recommendations shown that round; silence is not an answer.
+"Don't know" → a fact becomes research; a decision stays open, or the user takes the default and Gate 1 lists it as an assumption. No option fits → the user's own words are the answer. The user asks for one question at a time → the same frontier, one question per message.
 
 Facts are researched, never asked: what the codebase or docs can answer, explore.
 While a round is out, a scout researches the unknowns; only questions downstream of a running scout wait. No subagents → the Lead researches between rounds.
@@ -49,12 +51,12 @@ Done when: the frontier is empty and no scout is still out.
 
 Present 2-3 approaches, one per **lens** so they differ for real: **minimal** (smallest diff, maximum reuse) · **clean** (the boundary a maintainer would want, more files) · **pragmatic** (the seam between).
 Each with trade-offs (complexity, blast radius, reversibility, cost); recommend one — simplest viable wins by default.
-The clean lens names what minimal costs later, so Rejected approaches records a real trade-off, not `None`.
+The clean lens names what minimal costs later, so Rejected approaches records a real trade-off, not `None`. The minimal diff already is the clean boundary → present that one design and record in one line what the clean lens checked; never invent an alternative.
 The approach adds or changes a DB table / migration, a public API contract, or a module boundary → ONE `system-architect` dispatch drafts the lenses (`references/approaches.md`). Otherwise, or no subagents, the Lead drafts them.
 ADR only when all three hold: hard to reverse · surprising without context · a real trade-off between genuine alternatives (shape: `references/approaches.md`). Any one missing → the spec is the record.
 The user declines every approach → stop; report the block.
 
-Done when: the user has 2-3 lensed approaches with one recommended.
+Done when: the user has 2-3 lensed approaches with one recommended, or one design with its converged-lens line.
 
 ### 4. Self-review
 
@@ -71,14 +73,14 @@ Done when: no item above remains.
 ### 5. Cross-family critique
 
 Only when the cross-family pool is enabled (opt-in; off → skip silently) and the spec is R4 (high-risk) or the user asks; R3 stays internal.
-Pool on → `cross-family` kind critique with the draft + Q&A ledger; off or `cross-family` absent → skip, recording `Cross-family critique: not run — off` (or `— cross-family absent`).
-Settle what the repo can, ask the rest in ONE extra Discovery round, one line under **Open questions**. Never blocks a spec. Protocol → `references/question-bank.md` Cross-family critique.
+Pool on → `cross-family` kind critique with the draft + Q&A ledger; skipped → record why: `Cross-family critique: not run — off` (or `— cross-family absent`, `— not R4`).
+Settle what the repo can, ask the rest in ONE extra Discovery round. The status line goes under **High-risk surfaces**, never Open questions. Never blocks a spec. Protocol → `references/question-bank.md` Cross-family critique.
 
-Done when: the critique line is recorded, or the step was skipped.
+Done when: the critique status line is recorded.
 
 ### 6. Gate 1 — direction approval
 
-Present the chosen approach, its rationale and the seams it will be tested at (Testing decisions). Wait for accept / edit / reject.
+Present a short block: goal, Success criteria, Non-goals, Constraints, the chosen approach with its rationale, and the seams it will be tested at (Testing decisions). Tag each item the user did not state `assumption` — a Lead inference, or a default taken on "don't know". Wait for accept / edit / reject.
 
 Done when: the user accepted a direction. No contract before it.
 
@@ -86,6 +88,10 @@ Done when: the user accepted a direction. No contract before it.
 
 Fill `templates/spec-template.md`, every section resolved (legacy code: Current behavior lists every consumer, per its hint): Goal · User / actor · Non-goals · Current behavior · Desired behavior · Success criteria · Testing decisions · Constraints · High-risk surfaces · Chosen approach · Rejected approaches · Open questions.
 **Testing decisions** — the Lead picks the seams: the highest seam that reaches the behavior, the fewest (ideally one per feature), an existing seam over a new one; plus what a good test is here and the prior-art test files. They are approved with the spec at its gate (Gate 1 inline, Gate 2 in file mode) — no extra question. Edge / error / race cases only where a Success criterion names them or an R4 floor covers them.
+
+**Chosen approach** — the direction and its one-line rationale; when the architect trigger fired (DB table / migration, public API contract, module boundary), also the accepted interface, data shape, compatibility rule and invariants `write-plan` must keep.
+The contract writes out what Gate 1 showed. A new decision it would add (a criterion, a Non-goal, an interface choice) → one question to the user before the hand-off, never written in unconfirmed.
+
 Run the **spec-lint** (piped in inline mode, the saved file in file mode): `grep -niE '\[\[FILL:|TODO|TBD'` must print nothing. A printed line or a grep error is a lint failure, never a silent pass. It catches an unfilled marker or a stray TODO/TBD — never legitimate angle brackets like `<h1>` / `List<T>`, and not vague wording.
 
 - One-session work → inline in chat; Gate 1 is the only approval. The default when unsure.

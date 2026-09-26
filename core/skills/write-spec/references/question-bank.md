@@ -72,12 +72,6 @@ Stop early: if an answer makes a later question irrelevant, skip it.
 - The user already answered it this session or in a prior spec revision —
   re-ask only when new evidence changes it, and say what changed.
 
-## Answering the round
-- A partial reply (`1a 3c`) closes only those questions; the rest stay open
-  next round, never defaulted.
-- `defaults` takes only the recommendations shown that round; silence or
-  elapsed time is not an answer.
-
 ## Prototype offer
 
 A layout or state-logic question that talking cannot settle → offer `write-prototype` in one line (yes / skip) and park that question.
@@ -115,11 +109,12 @@ Never for routine specs.
    default per question. Never forward the critic's list raw, never run a
    second critique on the same draft — new material questions the answers
    reveal continue in normal discovery.
-4. **Record** one line under **Open questions** (the template carries the
-   slot): `Cross-family critique: <cli> — N items, K settled from repo, M
-   asked` · `Cross-family critique: <cli> — NO FURTHER QUESTIONS` ·
+4. **Record** one status line under **High-risk surfaces** (the template
+   carries the slot; never under Open questions, which blocks `write-plan`):
+   `Cross-family critique: <cli> — N items, K settled from repo, M asked` ·
+   `Cross-family critique: <cli> — NO FURTHER QUESTIONS` ·
    `Cross-family critique: not run — off` / `— cross-family absent` /
-   `— <runner reason>`.
+   `— not R4` / `— <runner reason>`.
 
 ## Degradation
 

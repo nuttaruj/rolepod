@@ -30,7 +30,8 @@
 
 ## Success criteria
 [[FILL: Checkable conditions. Each must be pass/fail, not "works well", and each
- names how it will be proven — a command, an observation, or a user action.]]
+ names how it will be proven — a command, an observation, or a user action.
+ A post-ship success metric settled in discovery is a criterion here, with its proof.]]
 - [[FILL: criterion 1]] — proven by: [[FILL: command / observation]]
 - [[FILL: criterion 2]] — proven by: [[FILL: command / observation]]
 
@@ -48,20 +49,22 @@
  gate. No logic changes → `None — evidence-after: <the check>`.]]
 
 ## Constraints
-[[FILL: Stack, deadline, no-touch zones, compatibility the user already stated. Repeat feature: may inherit — `Unchanged — <prior> §Constraints`.]]
+[[FILL: Stack, deadline, no-touch zones, compatibility the user already stated; rollout / rollback (flag, staged rollout, off switch) when discovery settled it. Repeat feature: may inherit — `Unchanged — <prior> §Constraints`.]]
 
 ## High-risk surfaces
 [[FILL: auth / billing / payments / credits / migration / data deletion / secrets /
  tokens / crypto / permissions / security touched.
  "None" is valid — but state it deliberately, do not omit the section.]]
+Cross-family critique: [[FILL: cli — N items, K settled from repo, M asked | NO FURTHER QUESTIONS | not run — off | not run — not R4]]
 
 ## Chosen approach
-[[FILL: The selected direction + one-line rationale. No file-by-file order —
- that is write-plan's job.]]
+[[FILL: The selected direction + one-line rationale. The architect trigger fired
+ (DB table / migration, public API contract, module boundary) → also the accepted
+ interface, data shape, compatibility rule and invariants the plan must keep.
+ No file-by-file order — that is write-plan's job.]]
 
 ## Rejected approaches
-[[FILL: The other lenses (minimal / clean / pragmatic — `write-spec` Approaches) + why not chosen, or "None — no material alternative existed". Keeps the decision auditable. Repeat feature: may inherit — `Unchanged — <prior> §Rejected approaches` — so a rejected path is never re-proposed from a blank slate.]]
+[[FILL: The other lenses (minimal / clean / pragmatic — `write-spec` Approaches) + why not chosen. The minimal diff already is the clean boundary → one line: what the clean lens checked and why it converged — never `None`, never an invented alternative. Keeps the decision auditable. Repeat feature: may inherit — `Unchanged — <prior> §Rejected approaches` — so a rejected path is never re-proposed from a blank slate.]]
 
 ## Open questions
 [[FILL: Anything unresolved. Empty is the goal. A non-empty list blocks write-plan.]]
-Cross-family critique: [[FILL: cli — N items, K settled from repo, M asked | NO FURTHER QUESTIONS | not run — off]]
