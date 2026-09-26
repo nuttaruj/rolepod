@@ -33,7 +33,7 @@ A check that fails → revise before commit.
 
 2. **Tests (T1-T6)** — block on a failure:
 
-- **T1 test exists** — a bug, feature, migration, auth, billing, race, contract, perf or security task has a test; none → write it. A task its plan marks evidence-after (no test can express the behaviour yet: acceptance criteria + a mechanical check on its Test / evidence line) passes on that proof, walked and green — never a test-first task (bug fix, new business logic, auth, billing, migration, race).
+- **T1 test exists** — a bug, feature, migration, auth, billing, race, contract, perf or security task has a test; none → write it. A task its plan marks evidence-after (no test can express the behaviour yet: acceptance criteria + a mechanical check on its Test / evidence line) passes on that proof, walked and green — never a test-first task (bug fix, new business logic, auth, billing, migration, race), and never a contract, perf or security task: each keeps its own proof (contract test, before / after benchmark, exploit repro).
 - **T2 new tests pass.**
 - **T3 existing tests pass, none weakened** — a loosened assertion, a deleted case or a skip to get green is a T3 fail.
 - **T4 speed** — the tests run at the speed their tier allows.
