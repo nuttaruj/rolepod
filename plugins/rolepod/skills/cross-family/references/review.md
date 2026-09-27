@@ -16,7 +16,7 @@ Any CLI can be the Lead. The review goes to a different CLI than the Lead's, nev
 
 1. Read the diff; name the axes it needs (a diff can need several).
 2. The pool file is the order — put the member owning the dominant axis first, so a project can pin it.
-3. ONE member — the first usable in pool order — reviews every axis the diff needs. `--all` (every usable member, concurrently, each anchored) only on the user's ask; each CLI is one opinion.
+3. ONE member — the first usable in pool order, or the one the user named (`--member`, SKILL.md step 3) — reviews every axis the diff needs. `--all` (every usable member, concurrently, each anchored) only on the user's ask; each CLI is one opinion.
 4. Launch every routed reviewer — the runner and internal agents alike — in ONE dispatch. They read the same frozen diff independently; nothing is gained by waiting for one before starting the next.
 
 ## What anchors
@@ -38,5 +38,5 @@ Any CLI can be the Lead. The review goes to a different CLI than the Lead's, nev
 ## Jobs and health
 
 - `cross-family.sh --jobs` lists running and finished jobs; `--kill <job-id>` stops one with its process group.
-- Installed ≠ usable: exit ≠ 0, a timeout, or too little output (review < 500 bytes, other kinds < 200) → an `external-fail` phase-log line and the next member.
+- `--pool`'s `usable` = installed and eligible; a member proves usable only when it runs: exit ≠ 0, a timeout, or too little output (review < 500 bytes, other kinds < 200) → an `external-fail` phase-log line and the next member (none with `--member`).
 - `cross-family.sh --probe` sends each member a one-line prompt (one call each).

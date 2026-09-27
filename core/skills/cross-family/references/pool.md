@@ -2,7 +2,7 @@
 
 # The pool file
 
-`<git-root>/.rolepod/cross-family` (project) overrides `~/.rolepod/cross-family` (machine). No file = off. `none` = off.
+`<git-root>/.rolepod/cross-family` (project) overrides `~/.rolepod/cross-family` (machine). No file = off. `none` = off. `--setup` writes only the machine file; a project file keeps winning in its repo.
 
 ```ini
 [reviewer]

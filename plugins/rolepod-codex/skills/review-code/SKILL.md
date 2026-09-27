@@ -36,8 +36,8 @@ High-risk surface = auth, billing, payments, credits, migration, data deletion, 
 | Architecture / cross-module | `system-architect` |
 
 By rigor tier (R1 trivial edit · R2 one file + test · R3 multi-file · R4 high-risk):
-- **R2** → TWO read-only `universal-reviewer` lenses in ONE message, `lens: spec` + `lens: standards` (no spec → standards only); a matched row (perf / UI / arch) → that role instead. The writer's unit tests are the floor.
-- **R3** → the matched row, internal, unless the pool's tier is R2 or R3 → a usable external replaces `universal-reviewer`.
+- **R2** → TWO read-only `universal-reviewer` lenses in ONE message, `lens: spec` + `lens: standards` (no spec → standards only); a matched row (perf / UI / arch) → that role instead. The pool's tier is R2 → ONE usable external replaces both lenses and reviews both axes, never beside them on round 1. The writer's unit tests are the floor.
+- **R3** → the matched row, internal, unless the pool's tier is R2 or R3 → ONE usable external replaces the `universal-reviewer` lenses.
 - **R4** → `security-engineer` + ONE general strong pass: the external (`cross-family` kind review) when the pool is usable, else — or no `cross-family` — `universal-reviewer` on a strong-class model (never a balanced one), the reason on the Cross-model line. Never both on round 1, money and auth included. A comment/blank-only R4 diff → ONE internal strong reviewer, no external.
 - Adversarial fresh-context = the reviewer reads only the artifact + acceptance criteria, tries to make the change fail, and hunts for what is missing as hard as for what is present. Adversarial = round 1 of an R4 task only; every later round is the normal two-axis review (Fix-verify rounds).
 - A high-risk path anywhere in the diff (task or ship group) makes it R4; the commission's tier (max over its tasks) governs Define / Plan only.

@@ -29,6 +29,7 @@ Done when: at least one usable member is listed, or the pool is off / empty and 
 ### 2. Write the brief
 
 The brief file is the member's whole world: cold context, never a pointer to the session or the plan file.
+- Write the brief and any diff to attach outside the work tree (`${TMPDIR:-/tmp}`): a file inside it lands in the next `git add -A` and in the reviewer's live tree. Delete them once the runner returns — a detached job keeps its own copy.
 - Every kind: the intent in one sentence, the acceptance criteria, the settled decisions, the risk profile, the claimed behaviours to trace.
 - critique: the draft spec plus the Q&A ledger — every question already asked, numbered, with its answer. An incomplete ledger brings back questions the user already answered.
 - consult: the attempt ledger — symptom, repro command, each failed fix and why it failed, the suspect code inline — and the one question.
@@ -46,6 +47,10 @@ Done when: the brief file exists and a stranger could act on it alone.
 | critique | `write-spec`: R4 spec before Gate 1 (R3 stays internal), or the user asks | `--kind critique --brief <draft+ledger>` | foreground, 10 min |
 | consult | `debug-issue` after 2 failed attempts | `--kind consult --brief <ledger>` | foreground, short budget |
 | implement | a plan task marked `write: external` | `--kind implement --brief <task-brief> --allow <path>... --detach` | background job, collected in the foreground |
+
+**The user named a CLI** ("a second opinion from codex") → add `--member <cli>`: that member alone, never a fall-through to another.
+- Exit 9 (not usable: not in the pool, not installed, or the Lead) or exit 3 (it ran and failed) → tell the user what is usable, in pool order (the runner prints it), and ask whether to run the first one; never switch unasked. Yes → the same command without `--member`.
+- The pool is off (exit 5) → step 1: say so and offer step 6 once.
 
 **review**
 - Attach `git diff HEAD` for uncommitted work (staged + unstaged) or `git diff <base>...HEAD` for a committed branch.
@@ -80,6 +85,7 @@ The runner ran the member read-only on its own default model, in a clean room (`
 - A weak review — empty or partial, a bare verdict, no claims walked, a changed file missing from its Scope list → the caller adds its internal strong pass and records why.
 - Consult and critique answers marked PARTIAL still count.
 - Exit 3 (every member failed), 4 (enabled, nothing usable), 5 (off) → step 5.
+- `--member` given: exit 9 or exit 3 → step 3's named-CLI rule, never step 5's fallback unasked.
 - Exit 7 (partial slice) → attach the full diff. Exit 8 (a review job is live) → collect or `--kill` it first.
 - A member dies when it goes silent (`stall=`, default 600 s), not when it is slow. A foreground call is capped by the harness (Claude Bash: 600 s): run a long review with `--detach`.
 
@@ -101,6 +107,7 @@ Done when: the caller or the user holds the answer or the named fallback.
 
 The user asks to set up, enable or change cross-family, in any wording or language. Never raise it unprompted.
 1. `cross-family.sh --setup` prints the installed CLIs and two questions. One installed CLI → nothing to set; say so.
+   It writes only the machine file `~/.rolepod/cross-family`. The repo has its own `.rolepod/cross-family` (the runner prints a note) → tell the user before writing that the project file still wins in this repo; changing the pool here = editing it (`references/pool.md`) or deleting it, on their word.
 2. Ask ONE question per turn: (1) which CLIs review, in order; (2) implement: `same`, `none`, or its own order.
 3. Write it: `cross-family.sh --setup review="…" implement=…`, then show `cross-family.sh --pool`.
 
