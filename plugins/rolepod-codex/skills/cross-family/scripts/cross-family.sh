@@ -96,7 +96,6 @@
 #   cross-family.sh --candidates                          # every installed CLI, the Lead's own included (opt-in question)
 # Exit: 0 ok · 2 usage · 3 every member failed · 4 configured pool empty · 5 off · 6 job still running · 7 partial slice refused · 8 a job is live · 9 the --member CLI is not usable (the usable pool is printed) · 21 implement done, edits outside --allow reverted (in-scope work kept) · 22 implement member moved git state (refs + tree restored, nothing kept)
 set -uo pipefail
-trap '' PIPE   # a caller piping --pool / --pool-names into `grep -q` closes the pipe as soon as it matches; an unrelated later echo (e.g. the usable-pool footer) must not SIGPIPE-kill this script — EPIPE on one write, never the whole run
 
 KIND=""; BRIEF=""; LEAD="${ROLEPOD_LEAD_CLI:-}"; ALL=0; FLAG_TIMEOUT="${ROLEPOD_XFAM_TIMEOUT:-}"; FLAG_STALL="${ROLEPOD_XFAM_STALL:-}"
 MODE="run"; ATTACH=""; ALLOW=""; ALLOW_RISKY=0; SETUP_REVIEW=""; SETUP_IMPL=""; DETACH=0; JOB_DIR=""; COLLECT_ID=""; ROOT_FLAG=""; CFG_FLAG=""; PARTIAL_OK=0; KILL_ID=""; MEMBER=""
@@ -109,7 +108,7 @@ while [ $# -gt 0 ]; do
     --lead) LEAD="${2:-}"; shift 2 ;;
     --root) ROOT_FLAG="${2:-}"; shift 2 ;;
     --all) ALL=1; shift ;;
-    --member) MEMBER="${2:-}"; shift 2 ;;   # run this ONE CLI alone, never a fall-through
+    --member) MEMBER="${2:-}"; [ -n "$MEMBER" ] || { echo "cross-family: --member requires a CLI name" >&2; exit 2; }; shift 2 ;;   # run this ONE CLI alone, never a fall-through
     --timeout) FLAG_TIMEOUT="${2:-}"; shift 2 ;;
     --stall) FLAG_STALL="${2:-}"; shift 2 ;;        # seconds of silence (no new output) before a member counts as dead
     --detach) DETACH=1; shift ;;
@@ -141,7 +140,11 @@ EV="$ROOT/.rolepod/evidence"
 JOBS="$EV/external/jobs"
 ALL_CLIS="codex claude agy cursor opencode"
 if [ -n "$MEMBER" ] && [ "$ALL" -eq 1 ]; then echo "cross-family: --member and --all exclude each other" >&2; exit 2; fi
-if [ -n "$MEMBER" ]; then case " $ALL_CLIS " in *" $MEMBER "*) ;; *) echo "cross-family: --member $MEMBER: not a CLI name (codex claude agy cursor opencode)" >&2; exit 2 ;; esac; fi
+if [ -n "$MEMBER" ]; then
+  case "$MEMBER" in *[[:space:]]*) echo "cross-family: --member takes exactly one CLI name (no spaces): '$MEMBER'" >&2; exit 2 ;; esac
+  MEMBER=$(printf '%s' "$MEMBER" | tr 'A-Z' 'a-z')
+  case " $ALL_CLIS " in *" $MEMBER "*) ;; *) echo "cross-family: --member $MEMBER: not a CLI name ($ALL_CLIS)" >&2; exit 2 ;; esac
+fi
 iso_now() { date -u +%Y-%m-%dT%H:%M:%SZ; }
 TMPP=""
 # A detached child records its exit status whatever path it leaves by —
@@ -518,8 +521,12 @@ print_pool() {
 }
 
 case "$MODE" in
-  pool) print_pool; exit 0 ;;
-  pool-names) [ -n "$USABLE" ] && printf '%s\n' $USABLE; exit 0 ;;
+  # a caller piping --pool / --pool-names into `grep -q` closes the pipe as
+  # soon as it matches; ignore SIGPIPE for these two read-only, single-shot
+  # print branches only — never process-wide (SIG_IGN would be inherited
+  # across exec by every member CLI in run_to and by the detached child).
+  pool) trap '' PIPE; print_pool; exit 0 ;;
+  pool-names) trap '' PIPE; [ -n "$USABLE" ] && printf '%s\n' $USABLE; exit 0 ;;
   review-tier) echo "$REVIEW_TIER"; exit 0 ;;
 esac
 
@@ -895,12 +902,20 @@ if [ -n "$MEMBER" ]; then
   case " $USABLE " in
     *" $MEMBER "*) USABLE="$MEMBER" ;;
     *)
-      _mreason=$(printf '%s\n' "$POOL_ROWS" | awk -v m="$MEMBER" -F'  ' '$1==m{out=$4; for(i=5;i<=NF;i++) out=out"  "$i; print out; exit}')
-      if [ -z "$_mreason" ]; then
-        _mreason="not in the pool ($CFG)"
-        [ -n "$(bin_of "$MEMBER")" ] && _mreason="$_mreason — installed; --setup adds it"
+      if [ "$MEMBER" = "$LEAD" ]; then
+        _mreason="is the Lead"
+      else
+        _mreason=$(printf '%s\n' "$POOL_ROWS" | awk -v m="$MEMBER" -F'  ' '$1==m{out=$4; for(i=5;i<=NF;i++) out=out"  "$i; print out; exit}')
+        if [ -z "$_mreason" ]; then
+          _mreason="not in the pool ($CFG_SRC)"
+          [ -n "$(bin_of "$MEMBER")" ] && _mreason="$_mreason — installed; --setup adds it"
+        fi
       fi
-      echo "ROLEPOD-XFAM member-unusable — $MEMBER: $_mreason. usable in pool order: ${USABLE:-none}. Ask the user whether to run the first one (the same command without --member); never switch unasked."
+      if [ -n "$USABLE" ]; then
+        echo "ROLEPOD-XFAM member-unusable — $MEMBER: $_mreason. usable in pool order: $USABLE. Ask the user whether to run the first one (the same command without --member); never switch unasked."
+      else
+        echo "ROLEPOD-XFAM member-unusable — $MEMBER: $_mreason. Fall back to the internal strong reviewer / vertical consult and record the limitation."
+      fi
       exit 9
       ;;
   esac
@@ -1003,14 +1018,17 @@ fi
 if [ "$DETACH" -eq 1 ]; then
   JOB_ID="$(date -u +%Y%m%dT%H%M%SZ)-$KIND-$$"; JD="$JOBS/$JOB_ID"
   mkdir -p "$JD" 2>/dev/null || { echo "cross-family: cannot create $JD" >&2; exit 2; }
-  # Snapshot the pool the user had when they started it — fail closed: a
-  # job must never silently run on a different config than the one shown.
-  if ! cp "$CFG" "$JD/cross-family" 2>/dev/null; then echo "cross-family: cannot snapshot $CFG into $JD — not detaching" >&2; rm -rf "$JD"; exit 2; fi
+  # Fail closed, one shape for every snapshot: the config, the brief and each
+  # attachment — a job must never silently run on a source that moved or a
+  # caller path that is already gone.
+  snap_or_die() { mkdir -p "$(dirname "$2")" 2>/dev/null; cp "$1" "$2" 2>/dev/null || { echo "cross-family: cannot snapshot $1 into $JD — not detaching" >&2; rm -rf "$JD"; exit 2; }; }
+  # Snapshot the pool the user had when they started it.
+  snap_or_die "$CFG" "$JD/cross-family"
   printf '%s\n' "$CFG" > "$JD/cross-family.src"
   # Brief + attachments are snapshotted too — the parent may return before the
   # child re-execs and reads them; the caller's paths (or the caller itself)
-  # can be gone by then. Fail closed, same shape as the config snapshot.
-  if ! cp "$BRIEF" "$JD/brief.md" 2>/dev/null; then echo "cross-family: cannot snapshot $BRIEF into $JD — not detaching" >&2; rm -rf "$JD"; exit 2; fi
+  # can be gone by then.
+  snap_or_die "$BRIEF" "$JD/brief.md"
   # Child argv as an ARRAY — paths with spaces / globs survive the re-exec.
   CHILD_ARGS=(--kind "$KIND" --brief "$JD/brief.md" --lead "$LEAD" --root "$ROOT" --job "$JD" --config "$JD/cross-family")
   [ "$ALL" -eq 1 ] && CHILD_ARGS=("${CHILD_ARGS[@]}" --all)
@@ -1028,9 +1046,7 @@ EOF
     while IFS= read -r a; do
       [ -f "$a" ] || continue
       _an=$((_an+1)); _adir="$JD/attach/$_an"
-      if ! mkdir -p "$_adir" 2>/dev/null || ! cp "$a" "$_adir/$(basename "$a")" 2>/dev/null; then
-        echo "cross-family: cannot snapshot $a into $JD — not detaching" >&2; rm -rf "$JD"; exit 2
-      fi
+      snap_or_die "$a" "$_adir/$(basename "$a")"
       CHILD_ARGS=("${CHILD_ARGS[@]}" --attach "$_adir/$(basename "$a")")
     done <<EOF
 $ATTACH
@@ -1277,8 +1293,8 @@ for c in $USABLE; do
   if [ "$_ok" -eq 0 ] || [ "$_ok" -eq 21 ] || [ "$_ok" -eq 22 ]; then cat "$TMPP/$c.out"; echo; cat "$TMPP/$c.line"; exit "$_ok"; fi   # 21 = implement finished, edits outside --allow reverted (in-scope work kept) · 22 = git-state violation, everything reverted, member dropped
   FAILS="$FAILS${FAILS:+; }$(cat "$TMPP/$c.line")"
 done
-if [ -n "$MEMBER" ]; then
-  echo "ROLEPOD-XFAM none — $FAILS. The named member failed; usable in pool order: ${MEMBER_OTHERS:-none}. Ask the user whether to run the first one; never switch unasked."
+if [ -n "$MEMBER" ] && [ -n "$MEMBER_OTHERS" ]; then
+  echo "ROLEPOD-XFAM none — $FAILS. The named member failed; usable in pool order: $MEMBER_OTHERS. Ask the user whether to run the first one; never switch unasked."
 else
   echo "ROLEPOD-XFAM none — $FAILS. Fall back to the internal strong reviewer / vertical consult and record the limitation."
 fi
