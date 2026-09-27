@@ -60,7 +60,7 @@ A regression test for a bug must follow this cycle. Skip any step → you don't 
 
 If step 6 passes — the test is not actually testing the bug. The assertion is weak, or the test exercises unrelated code, or the bug was never the cause. Tighten the test before claiming the bug is fixed.
 
-The "mentally flip `==` to `!=`" check is a cheap proxy for this; the revert cycle is the strong version. Use the revert cycle for any "Logic / bug fix" row (SKILL.md Pick the evidence type).
+The "mentally flip `==` to `!=`" check is a cheap proxy for this; the revert cycle is the strong version. Use the revert cycle for any "Logic / bug fix" row (SKILL.md Pick the evidence type) — unless a `tdd-flow` red run of the same test qualifies there as the red proof (named assertion in its output, run before any part of the fix, no test file changed since).
 
 ### Revert in one call
 

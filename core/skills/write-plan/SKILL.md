@@ -39,7 +39,7 @@ A task is one vertical slice through every layer it touches, demoable or verifia
 Split when Delivers needs "and" and the halves touch different files, or when a slice cannot be verified without the next task. Halves on the same files stay ONE task — that split only adds a dispatch, a review and an integration in sequence.
 Every task states **Delivers** and **Blocked by**; the Blocked-by graph is the only statement of order, each edge naming what it consumes (the template's Blocked by line).
 Two edge-free tasks on one file → **prefactor first**, or Sequential with a reason (edge-cases: Prefactor).
-A task builds and ships alone, never a batch. Tasks sharing a seam (a contract or interface) form one named ship group — the review-split unit past ~15 files (`implement-plan` Review).
+A task builds and ships alone, never a batch. Tasks sharing a seam (a contract or interface) form one named ship group, written as the template's **Ship group** line — the review-split unit past ~15 files (`implement-plan` Review).
 A task names a file you have not read → read it.
 
 Done when: every task has Delivers and Blocked by with named edges, and every file it names is read.

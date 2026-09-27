@@ -43,7 +43,7 @@ the test assertion was changed to match. Behavior preserved: NO.
 | Area | Bad | Good |
 |------|-----|------|
 | Scope | Inline + rounding change + locale change | Inline only |
-| Tests | An assertion had to change | Same assertions, green before + after |
+| Tests | An assertion had to change | Same assertions, green after |
 | Behavior | Changed ($9.90 → 9.9) | Preserved |
 | Tests-before-and-after guardrail | Violated — not behavior-preserving | Satisfied — proven by unchanged tests |
 
@@ -63,7 +63,7 @@ dead — user.name is safe. It proves nothing about name, which can still be
 nil (nullable column); the fallback stays until that is separately proven.
 Removed the &. only: name = user.name || "Guest".
 
-Tests: green before + after. Behavior preserved: YES.
+Tests: green after, same assertions. Behavior preserved: YES.
 ```
 
 ### Bad — the check was load-bearing

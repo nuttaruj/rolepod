@@ -16,10 +16,11 @@ A finished diff → a severity-ordered review report, adversarial pressure match
 ### 1. Freeze the diff
 
 - The diff: the R4 task, or for R2/R3 the plan's combined range — `<plan's first task commit>^..HEAD` (find that commit with `git log --oneline`). Committed → `<base>...HEAD`; uncommitted → `git diff HEAD` (staged + unstaged; `--cached` alone is a slice).
+- Preflight before any dispatch: each ref resolves (`git rev-parse --verify <ref>^{commit}`) and the diff is non-empty (`git diff --quiet <range>` exits 1); either fails → re-derive the range, never dispatch. Record the snapshot for the report's Scope: `<base sha>..<head sha>`, plus `git diff HEAD | git hash-object --stdin` for uncommitted work.
 - Past ~15 files / ~800 lines it is two concerns: split into ship groups, one review each.
 - Gather the spec / plan / acceptance criteria, the touched files end-to-end, and the risk profile (high-risk surface? new dependency? schema change?).
 
-Done when: the range is named and every input is in hand.
+Done when: the range resolves to a non-empty diff, its snapshot is recorded, and every input is in hand.
 
 ### 2. Pick reviewers
 
@@ -44,15 +45,15 @@ By rigor tier (R1 trivial edit · R2 one file + test · R3 multi-file · R4 high
 
 High-risk diff (adversarial mode, what counts), cross-family pool (any tier it sets), internal-pass or apex question → `references/external-review-routing.md`.
 
-Brief every reviewer: diff + spec + acceptance criteria + risk profile + claimed behaviors to trace end-to-end + roles already run.
+Brief every reviewer: diff + spec + acceptance criteria + risk profile + claimed behaviors to trace end-to-end + roles already run + the bound: read-only, no sub-agent, no `review-code` run of its own.
 rolepod-brain → `brain_seed(task, agent: <reviewer id>)` verbatim; no tool → skip.
 
 **One review round.** Dispatch every reviewer in ONE message on the same frozen diff; the round ends when the LAST one returns.
 - Until then: no edit to a diff file, no `git stash / reset / checkout / add / commit` (a red-proof revert runs in a throwaway worktree) — reviewers read the live tree.
 - An empty or partial return (`""`, one sentence, a turn-limit notice) is a failed reviewer: resume it or re-dispatch narrower; the round stays open, the report records a LIMITATION.
-- Merge severity-ordered, deduped by file:line + root cause (the Lead's findings included; severity words per the template). The Lead spot-checks ONE finding, never re-walks a traced report.
+- Merge severity-ordered, deduped by file:line + root cause (the Lead's findings included; severity words per the template); each finding keeps its reviewer and axis (spec / standards / security / perf / UI / architecture). The Lead spot-checks ONE finding, never re-walks a traced report.
 
-No subagents, or a report missing / failed / empty → the Lead walks every Axes item cold, recorded as a LIMITATION; on a high-risk diff only when no dispatch is possible at all. The user forbade agents → surface the conflict; never self-set a bypass.
+No subagents, or a report missing / failed / empty → the Lead walks every Axes item cold, recorded as a LIMITATION; on a high-risk diff only when no dispatch is possible at all, and that walk never meets the high-risk floor: the merge stays blocked until the user waives it in words naming it (finish-work Reviewer gate). The user forbade agents → surface the conflict; never self-set a bypass.
 
 Done when: every dispatched reviewer has returned a full report and its findings are merged.
 
@@ -73,7 +74,7 @@ Done when: every axis the depth rule requires has run and each claim is traced t
 
 ### 4. Report
 
-Fill `templates/review-report.md`: Scope, Read, Risk surfaces touched, Reviewers (with its Cross-model adversarial pass line), Findings (BLOCKER / MAJOR / MINOR), Questions, Tests reviewed, Recommendation.
+Fill `templates/review-report.md`: Scope (with its Snapshot line), Read, Risk surfaces touched, Reviewers (with its Cross-model adversarial pass line), Findings (BLOCKER / MAJOR / MINOR, each with its axis), Questions, Tests reviewed, Recommendation.
 - Each finding: file:line, the issue, why it matters, a fix direction — the author writes the fix.
 - A pre-existing issue on a path the diff does not touch → one note line, never a verdict driver.
 - A clean review names what was read and the lenses run — never a bare APPROVED.
@@ -89,11 +90,12 @@ Done when: the report carries a Recommendation and the review line is appended.
 - Round 1 = every axis in ONE message, ≤ 40 tool calls per reviewer.
 - Round 2+ = a BLOCKER / MAJOR fix only, always internal and never adversarial: a normal re-check of the fix delta against the spec / acceptance criteria at the reviewer's own lens (`universal-reviewer`: two axes, spec compliance + standards; `security-engineer`: its security lens, confined to the finding's class), ≤ 15 tool calls, findings + delta only (no suite re-run, new mutant or new axis).
 - `security-engineer` re-checks its own findings and the external's findings on a high-risk path; the external's other findings go to `universal-reviewer` on a strong-class model — never a new external round.
-- A new issue found in round 2+ is a normal finding: fix it like any other (Author response).
+- Round 2+ checks each fix against its own finding on that finding's axis. The finding still open, or a new issue the fix itself made inside the fix delta → a normal finding: fix it, and the next round re-checks only that item. An issue outside the fix delta → `## Follow-ups` with its axis, never a new round.
+- Each round 2+ appends its fix delta's Snapshot line to the report.
 - The flagging reviewer (for the external's findings, the round 2+ reviewer above) verifies a BLOCKER / MAJOR fix (the Lead's cold read only when it cannot run); the fix's writer never does. MINOR / NIT → the author's Command.
 - A Lead-built fix → one read-only `universal-reviewer` pass (R4 → the strong pass).
 
-Done when: every BLOCKER / MAJOR is closed by its round 2+ reviewer.
+Done when: every round-1 BLOCKER / MAJOR, and every issue its fix made, is closed by its round 2+ reviewer, and anything outside a fix delta sits in `## Follow-ups` with its axis. The review then stops — never a full re-review until clean.
 
 ### 6. Author response
 
@@ -109,7 +111,7 @@ Done when: every finding is fixed, pushed back with a reason, or in `## Follow-u
 
 ## Guardrails
 
-- A high-risk diff gets an adversarial fresh-context review; never merge one without it (none yet → `security-engineer` first).
+- A high-risk diff gets an adversarial fresh-context review; never merge one without it (none yet → `security-engineer` first) unless the user waives it in words naming that review. The Lead's own walk is never that review.
 - A fresh reviewer is the final judge; never the author, a Lead-built fix included.
 - Evidence is the axis walk; never "tests pass" alone — tests prove the assertion, not the design.
 

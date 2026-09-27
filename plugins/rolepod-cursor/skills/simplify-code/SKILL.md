@@ -106,7 +106,7 @@ Done when: Tests after is green with the same expected values and Behavior prese
 
 ## Guardrails
 
-- Prove behavior with the same tests before and after. Never simplify without that suite.
+- Prove behavior with the same tests, green after the change with no assertion changed; a failure → run those tests on the tree without the change to tell a pre-existing red. Never simplify without that suite.
 - Keep an abstraction the codebase depends on. Never remove one before its call sites and the deletion test say it is safe.
 - Add an abstraction only for concrete users that exist today (3+ for a shared rule, 2 on the high-risk list). Never for "hypothetical future use"; one caller is not enough.
 

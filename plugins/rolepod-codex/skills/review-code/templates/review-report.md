@@ -7,6 +7,7 @@
 <What was reviewed — the diff, the spec it implements, and every changed
  file once: `read` or `skipped — reason`. A changed file missing from this
  list makes the report a partial return.>
+**Snapshot:** `<base sha>..<head sha>` <+ `diff <git diff HEAD | git hash-object --stdin>` for uncommitted work; each round 2+ appends one Snapshot line for its fix delta — finish-work checks they reach the merged head>
 
 ## Read
 <R4: each claimed behavior → the path walked and where it held or failed. A
@@ -30,26 +31,30 @@
  field — the receipt still clears the gate) | NOT RUN — cross-family off
  (opt-in; the user's choice — a note, not a limitation) | vertical — same
  CLI, reason (own CLI's stronger tier as cold reviewer; not a cross-family
- pass) | NOT RUN — reason (pool failed / empty; Lead floor covered every
- axis instead). Vertical or a NOT RUN other than opt-in-off on a high-risk
- diff is a recorded verification limitation — `finish-work`'s Reviewer gate
- surfaces it before merge.>
+ pass) | NOT RUN — reason (pool failed / empty; the `universal-reviewer`
+ floor covered every axis instead). Vertical or a NOT RUN other than
+ opt-in-off on a high-risk diff is a recorded verification limitation —
+ `finish-work`'s Reviewer gate surfaces it before merge. No fresh reviewer
+ at all (the Lead's own walk in its place) blocks the merge until the user
+ waives it.>
 
 ## Findings
-<Severity-ordered. Each finding: file:line — issue — why it matters — fix
- direction (a direction, not a rewrite; the author fixes). A reviewer's
+<Severity-ordered. Each finding: file:line — axis — issue — why it matters —
+ fix direction (a direction, not a rewrite; the author fixes). The axis
+ (spec / standards / security / perf / UI / architecture) and, in a merged
+ report, the reviewer stay on every finding. A reviewer's
  other scale maps in: CRITICAL/HIGH → BLOCKER, WARNING/MEDIUM → MAJOR,
  SUGGESTION/LOW → MINOR. A pre-existing issue on a path the diff does
  not touch → list once under "Adjacent", never a verdict driver; the author parks it in Follow-ups.>
 
 ### BLOCKER — must fix before merge
-- `file:line` — <issue> — <why it matters> — <fix direction>
+- `file:line` — <axis> — <issue> — <why it matters> — <fix direction>
 
 ### MAJOR — fix or explicitly document
-- `file:line` — <issue> — <why it matters> — <fix direction>
+- `file:line` — <axis> — <issue> — <why it matters> — <fix direction>
 
 ### MINOR — nice to fix
-- `file:line` — <issue> — <fix direction>
+- `file:line` — <axis> — <issue> — <fix direction>
 
 ## Questions
 <Anything unclear that needs an author answer, not a fix.>

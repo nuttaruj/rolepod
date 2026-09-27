@@ -29,7 +29,7 @@ The adversarial review pass routes to a **different CLI** than the Lead's, never
 
 For a high-risk diff, a fresh-context reviewer reads only the artifact + acceptance criteria, tries to make the change fail, and hunts what is missing as hard as what is present. The author's own model is never the final adversarial reviewer.
 
-Done when: the adversarial reviewer has returned a full report. Only when no dispatch is possible at all (the user forbade agents / no subagent support) does the Lead's cold self-review stand in, recorded as a LIMITATION.
+Done when: the adversarial reviewer has returned a full report. Only when no dispatch is possible at all (the user forbade agents / no subagent support) does the Lead's cold self-review stand in, recorded as a LIMITATION that blocks the merge until the user waives it (finish-work Reviewer gate).
 
 - The external adversarial pass runs in a CLI different from the Lead's, on that CLI's own default model (same vendor is fine).
 - The vertical fallback (same CLI, stronger tier) and an inline advisor never satisfy it; both only raise the Lead floor, recorded as a LIMITATION.

@@ -24,7 +24,7 @@ Lower-risk work where a test-first cycle adds ceremony without catching more.
 | UI copy / styling | Browser observation of the rendered result |
 | Config / infra | Smoke test + restart confirmation |
 | Docs / ADR | Render output + link check |
-| Pure rename / typecheck-safe refactor | Existing suite green before and after |
+| Pure rename / typecheck-safe refactor | Existing suite green after, no assertion weakened |
 | Wiring / CRUD pass-through (no rule of its own) | Suite green + one smoke through the path |
 
 ## Agreed seams — why

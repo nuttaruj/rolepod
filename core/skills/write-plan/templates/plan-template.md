@@ -106,6 +106,12 @@
  than one agent edits code (templates/cohesion-contract-template.md pins
  ownership and merge order).>
 
+## Ship groups
+<Optional — only when tasks share a seam (a contract or interface): one line
+ per group; none → delete this section. implement-plan runs one drift pass
+ per group; finish-work's Reviewer gate looks for its report.>
+- **Ship group:** <name> — Task <N>, Task <M> — seam: <the shared contract / interface>
+
 ## Done criteria
 <The whole-plan finish line. Every task done AND this is true.>
 

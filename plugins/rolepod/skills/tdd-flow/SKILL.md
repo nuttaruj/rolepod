@@ -11,14 +11,14 @@ Turns one logic slice into a test that was red before the change and is green af
 
 ## Skip when
 
-- Prose, a rename, config or doc text: no test — step 1's evidence-after proof applies (config → smoke + restart, docs → render + link check, rename → suite green before and after).
+- Prose, a rename, config or doc text: no test — step 1's evidence-after proof applies (config → smoke + restart, docs → render + link check, rename → the suite green after, no assertion weakened).
 - User-visible behaviour (a screen, a flow, an API contract end to end): that is `qa-tester`'s E2E work; name it in the task's test line and never fake it with a unit test; it is verified once at `check-work` Verify (no subagents → check-work's browser-observation fallback).
 - Checking tests that already exist, no change asked (a review, a spot-check): step 6 is the checklist — report findings only; edit no file, remove no fix, and hand nothing to `check-work`.
 
 ### 1. Pick the discipline by risk
 
 Test-first — the failing test comes BEFORE the code — for a bug fix, new business logic, auth / permission (the deny path before the allow path), billing / credits / payment (the money math), a migration or backfill (forward + rollback), and concurrency (the interleaving the bug needs).
-Evidence-after — make the change, then prove it — for UI copy or styling (a browser observation), config / infra (smoke + restart), docs (render + link check), a typecheck-safe rename (the suite green before and after), and wiring or CRUD pass-through with no rule of its own (the suite green plus one smoke through the path).
+Evidence-after — make the change, then prove it — for UI copy or styling (a browser observation), config / infra (smoke + restart), docs (render + link check), a typecheck-safe rename (the suite green after, no assertion weakened), and wiring or CRUD pass-through with no rule of its own (the suite green plus one smoke through the path).
 In doubt on a risk surface → test-first.
 Why each row sits where it does, and the seam per dependency kind → `references/test-by-risk.md`.
 
@@ -79,5 +79,5 @@ Done when: every new test survives the flip, sits at the seam, and each rule has
 ## Next phase
 
 - Called from another skill → back to that skill's next step with the red and green runs.
-- Called alone → `check-work`, which proves the fix with a red proof (the fix removed, the test red again).
-- If `check-work` is not available, run the module suite, remove the fix once to see the test go red, restore it, and report both runs.
+- Called alone → `check-work` with the red and green runs; the step 4 red run is its red proof while no test file has changed since, else it removes the fix and sees the test red again.
+- If `check-work` is not available, run the module suite and report it with the step 4 red run; a test file changed since that run → remove the fix once, see the test red, restore it, and report that run instead.

@@ -2,15 +2,17 @@
 
 ## CI lanes
 
+The repo's required checks (branch protection, CI config) decide what is required; this table only sorts them. Never add a lane the repo lacks.
+
 | Lane | Content | Required for merge? |
 |------|---------|---------------------|
-| Phase 1 (always-on, < 5 min) | lint · typecheck · smoke unit · auth / tenant guard · money core · migration apply · build | YES |
+| Phase 1 (fast, < 5 min) | whichever of lint · typecheck · smoke unit · auth / tenant guard · money core · migration apply · build the repo runs | YES — each one the repo requires |
 | Phase 2 (path-triggered) | the touched module's full suite | YES when triggered |
 | Phase 3 (nightly / manual) | integration · E2E · chaos · security deep · perf benchmark | NO by default — YES if the repo's own required checks list it (read branch protection / CI config first; never demote a repo-required lane on this table's say-so) |
 
-**No CI configured** (local-only repo, direct deploy — `wrangler deploy` / `flyctl` / rsync): CI is a runner, not the requirement. Run the Phase 1 equivalent (lint · typecheck · smoke) + the Phase 2 equivalent (the touched module's full suite) locally BEFORE the merge / deploy, and a post-deploy smoke (curl the live endpoint / health probe) as deploy evidence.
+**No CI configured** (local-only repo, direct deploy — `wrangler deploy` / `flyctl` / rsync): CI is a runner, not the requirement. Run the checks the repo defines (its lint / typecheck / test / build scripts or targets that exist) covering the diff, the touched module's full suite included, locally BEFORE the merge / deploy, and a post-deploy smoke (curl the live endpoint / health probe) as deploy evidence.
 
-**Citing check-work's block (the Evidence gate).** The tree is unchanged since that block's recorded pass → cite it and skip the local re-run ONLY when a CI lane re-runs that scope on the merge path; no CI → run the Phase 1 + 2 equivalents locally before the irreversible act.
+**Citing check-work's block (the Evidence gate).** The tree is unchanged since that block's recorded pass → cite it and skip the local re-run ONLY when a CI lane re-runs that scope on the merge path; no CI → run those local checks before the irreversible act.
 
 ## Triage a red lane
 

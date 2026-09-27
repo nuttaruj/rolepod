@@ -16,9 +16,9 @@ Turns a finished change into an evidence block: fresh proof that it works, or an
 
 | Change type | Required evidence |
 |-------------|-------------------|
-| Logic / bug fix | Red-green-revert: failing test → fix → green (the loop → `tdd-flow`) → prove red without the fix → green. The red proof is ONE command: remove the fix (a throwaway `git worktree` with the source-only patch reverse-applied; it cannot run the test → revert in place), run the one named test, restore. Red = a non-zero exit WITH the named assertion in the output; a collection / import error, a skip or a 0-test run is not red. Script: `references/verification-discipline.md` Revert in one call. A test that does not fail without the fix is not testing the fix. |
-| New feature | Each acceptance criterion has a passing test at the agreed seam, or the observation the spec names |
-| Refactor | Existing suite green before and after |
+| Logic / bug fix | Red-green-revert: failing test → fix → green (the loop → `tdd-flow`) → prove red without the fix → green. The red proof is ONE command: remove the fix (a throwaway `git worktree` with the source-only patch reverse-applied; it cannot run the test → revert in place), run the one named test, restore. Red = a non-zero exit WITH the named assertion in the output; a collection / import error, a skip or a 0-test run is not red. Script: `references/verification-discipline.md` Revert in one call. A `tdd-flow` red run of the same test THIS session is that red proof when its output carries the named assertion, it ran before any part of the fix, and no test file changed since — cite it; otherwise run the proof. A test that does not fail without the fix is not testing the fix. |
+| New feature | Each acceptance criterion has a passing test at the agreed seam. An observation stands in only for a user-visible flow (the `qa-tester` point below) or a task its plan marks evidence-after under finish-work's T1 — never a test-first, contract, perf or security task |
+| Refactor | The existing suite green after the change, no assertion weakened; a failure → the base-tree run in Run the evidence tells pre-existing from this change's |
 | Schema / migration | Forward + rollback dry run + row-count delta |
 | API contract | Contract test + downstream consumer smoke |
 | UI change | Browser observation (screenshot or DOM read) |
@@ -32,7 +32,7 @@ Done when: each acceptance criterion has an evidence type.
 ### 2. Run the evidence
 
 - Run every check AFTER the last change to the tree. No run since the last edit → you cannot claim it passes; yesterday's green and "should still work" do not count.
-- **Evidence cache:** tree unchanged since a pass THIS session (same `git status` + `git diff`; they miss untracked / ignored content, so hash or diff any untracked input the check reads) → cite that run's command + output, "tree unchanged since". ANY new edit invalidates it.
+- **Evidence cache:** tree unchanged since a pass THIS session (the same `git rev-parse HEAD`, `git status` and `git diff HEAD` — staged + unstaged; plain `git diff` misses a re-staged file, and none of them sees untracked / ignored content, so hash or diff any untracked input the check reads) → cite that run's command + output, "tree unchanged since". ANY new edit invalidates it.
 - Capture the exact command and its proof lines. A failure the build already recorded as pre-existing → a limitation, cite that line. Any other failure → run only the failing tests once on the tree without this change (a throwaway `git worktree` at the base sha; it cannot run them → set the diff aside in place, run, restore): red there too → a limitation, cite that run; green there → this change's.
 - JUnit / XUnit XML → counted totals + failed names via `scripts/junit-summary.sh <xml>` in this skill's folder (`references/verification-discipline.md`); no script → count the `<testcase>` and `<failure>` / `<error>` elements with `grep -c` and name the failed tests.
 - Scope ladder: the task Command while building → the touched module's suite here → the full suite only on high-risk or at merge via the CI lane the change must pass (no CI → finish-work's local equivalents at Ship). Map changed paths to a subset by import graph / naming before going wider.
