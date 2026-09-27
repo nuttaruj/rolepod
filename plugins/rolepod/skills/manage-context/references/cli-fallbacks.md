@@ -7,7 +7,7 @@ context tools — use the row for the CLI you are running on.
 
 | Need | Claude | Codex | Cursor |
 |------|--------|-------|--------|
-| Trim heavy context — same session, work carries on | `/compact <focus>` | `/compact` | `/summarize` |
+| Trim heavy context — same session, work carries on | `/compact <focus>` | `/compact` | `/summarize` (IDE chat and `cursor-agent`) |
 | Hand off / start fresh — after the handoff brief is written | `/clear` | new session, or `resume` a clean one | new chat (chat menu) |
 | Undo a recent path — drops work, never a trim | `/rewind` | `fork` from an earlier point if available | no native — restart with brief |
 | Switch focus | `/rename` + `claude --continue` | resume the target session | new chat with brief |
