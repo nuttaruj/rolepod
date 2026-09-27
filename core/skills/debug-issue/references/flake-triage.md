@@ -7,6 +7,8 @@ not retry until it passes.
 ## First: raise the signal
 A 1% flake is not debuggable. Loop the trigger, add concurrency, inject
 sleeps, shrink timeouts — push the failure rate above 50% before you debug.
+Then the loop IS the repro: one command running the trigger N ≥ 10 times, red
+when any run fails; after the fix, the same N runs all pass.
 
 ## Flake cause decision tree
 

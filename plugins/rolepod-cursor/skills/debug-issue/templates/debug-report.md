@@ -15,7 +15,8 @@
  report-only mode; optional when the same person fixes it below.>
 
 ## Repro
-<The one deterministic command that reproduces it.>
+<The one command that reproduces it. Intermittent: the N-run loop — N, the
+ per-run failure rate, the conditions (order, load, seed, clock).>
 
 ## Root cause
 <The upstream condition that caused it — file:line — and why the trace
@@ -30,7 +31,8 @@
 - `path` — <change>
 
 ## Verification
-<Commands run + result. Full module suite green, no new red.>
+<Commands run + result. Full module suite green, no new red; an intermittent
+ bug: the same N-run loop, all N runs passing.>
 - `<command>` — <result>
 
 ## Status

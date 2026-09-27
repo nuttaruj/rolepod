@@ -65,6 +65,8 @@ Triage:
 - raised the signal: ran the file in a loop — fails ~60% when run after
   cart_spec.rb, never when run alone
 - → order dependency, not a code race
+- repro: `(for i in $(seq 10); do rspec spec/cart_spec.rb spec/checkout_spec.rb || exit 1; done)`
+  — red on every run at ~60% per run
 
 Cause: cart_spec.rb leaves a coupon row in the test DB; checkout_spec picks
 it up and the discount math doubles.

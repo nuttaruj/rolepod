@@ -16,28 +16,28 @@ Turns an unknown failure into a root-cause fix by narrowing, not guessing: repro
 
 **Who runs the loop.** Iteration is the costliest work to run in the Lead's context; the Lead routes, briefs from the symptom, spot-checks and commits, and the path owner runs this skill:
 - the role that owns the path (`backend-developer` / `frontend-developer` / `billing-engineer` / …) reproduces, writes the failing test, then the fix, for every symptom class, auth / token / injection included;
-- auth / token / injection symptoms → `security-engineer` writes the exploit repro test first; it returns to the Lead, who briefs the path owner to make it pass (that test is the owner's failing test); `security-engineer` then reviews the owner's diff;
+- auth / token / injection symptoms → `security-engineer` writes the exploit repro test first — test evidence (`check-work`'s Security row), not a review; it returns to the Lead, who briefs the path owner to make it pass (that test is the owner's failing test). The owner's R4 (high-risk) review round is the only review: `security-engineer` + ONE strong pass per `review-code` Pick reviewers, reports under `.rolepod/evidence/review/` — never a second security review on top;
 - `qa-tester` only for a user-visible (E2E / UI) repro; its red test or report returns to the Lead, who briefs the path owner to make it pass;
 - `performance-engineer` — latency / memory regressions;
 - `devops-sre` — infra / deploy / CI failures.
 
-Brief (the symptom, not a repro): the exact error and stack, where it shows, when it started, the diff since the last green; the owner reproduces and hypothesises.
+Brief (the symptom, not a repro): the exact error and stack (or actual vs expected), where it shows, when it started, the diff since the last green, and — from `implement-plan` / `check-work` — `Attempts: <n> used` with each failed fix and why it stayed red; the owner reproduces and hypothesises.
 No subagents → the Lead does it.
 
 ### 1. Read the error
 
-- Gather: the exact error (literal quote), the throw site (file:line) and stack, when it started failing (last green commit, deploy, data event), the repro steps or failing test command, the diff since last green.
+- Gather: the exact error (literal quote) with its throw site (file:line) and stack — a wrong output with no exception: actual vs expected and the file:line where it is observed — when it started failing (last green commit, deploy, data event), the repro steps or failing test command, the diff since last green.
 - The real cause often sits mid-stack, not at the top.
 - Redact every secret in the commands, output and artifacts you show (`<REDACTED>` in its place). Build the loop on env vars so a credential never lands in the transcript.
 
-Done when: the literal error, throw site and stack are captured, before any edit.
+Done when: the literal error, throw site and stack (a wrong output: actual vs expected and where it is observed) are captured, before any edit.
 
 ### 2. Reproduce
 
-One command, the same failure every time: `pytest path/test_x.py::name -v`, the exact failing `curl`, or UI steps + browser + console.
+One command that fails on every run: `pytest path/test_x.py::name -v`, the exact failing `curl`, or UI steps + browser + console; an intermittent bug → the loop below.
 - The loop is ready when that ONE named command has run once and is red-capable (asserts the user's exact symptom, not "didn't crash"), deterministic, fast (seconds) and unattended.
 - Red → minimise: cut inputs, callers, config and steps one at a time, re-running after each cut, until every remaining element is load-bearing. That repro becomes step 6's test.
-- Intermittent → raise the failure rate first (loop the trigger, add stress, inject sleeps) to a 50%+ signal; a 1% flake is not yet debuggable (`references/flake-triage.md`).
+- Intermittent → raise the per-run failure rate first (loop the trigger, add stress, inject sleeps) to 50%+; a 1% flake is not yet debuggable (`references/flake-triage.md`). The repro is then the loop: ONE command running the trigger N times (N ≥ 10) that exits red when any run fails, so it fails on every run; record N, the rate and the conditions (order, load, seed, clock) in the ledger's Repro. After the fix, green means that same loop with all N runs passing.
 - Fails in CI but not locally, or cannot repro locally → reproduce in CI / staging.
 - Fails locally but green in CI → diff the two environments (env vars, locale, services, versions).
 - No repro after 30 minutes → expand the repro environment once; still none → `manage-context` (escalate), or, if it is not available, hand the user what you tried and stop.
@@ -46,7 +46,7 @@ A UI / browser bug, a WordPress bug, or sibling-plugin evidence under `.rolepod/
 
 **Report-only** (the user wants the bug documented, not fixed; a QA hand-off) → stop here; trace step 5 only when cheap. Fill the debug report with Error, Repro, Severity and evidence, leave Failing test and Fix empty, and hand it to the owning dev.
 
-Done when: one command reproduces the user's exact symptom on every run.
+Done when: one command reproduces the user's exact symptom on every run — an intermittent bug: the N-run loop, its rate and conditions recorded.
 
 ### 3. Roll back first
 
@@ -61,7 +61,7 @@ Done when: your own last change is ruled in or out.
 - State the chosen hypothesis as `<variable / state / condition> is <value> because <upstream cause>`.
 - Cheapest falsifier first: a log, a breakpoint, reading the called function, checking the fixture. One change per experiment; no spray of fixes.
 - Tag debug logs with a unique prefix (`[DBG-a4f2]`) so cleanup is one grep.
-- Find a working analog: code in the same codebase that does the similar thing successfully (adjacent feature, sibling endpoint, parallel module). List every difference from the broken surface, however small.
+- Find a working analog: code in the same codebase that does the similar thing successfully (adjacent feature, sibling endpoint, parallel module). List the differences on the path the symptom travels — input, config, call order, versions — however small; a difference off that path is noise.
 
 Track experiments in `templates/hypothesis-ledger.md` — Symptom, Repro, Experiments (one row each), Root cause. A new hypothesis must hold against every prior row.
 
@@ -96,7 +96,7 @@ Done when: the failing test is green.
 - Run the module suite (the full suite on high-risk surfaces). No new red → re-run the step 2 repro itself.
 - The `[DBG-]` tags grep to zero; the commit message names the hypothesis that held.
 - The fix fails, or the test passes but the symptom returns → that is new evidence, not a prompt to adjust the patch. Feed it back into step 5 before any second attempt; a re-fix without a re-trace is a blind retry.
-- A second failed attempt on the same surface, same signature or new → Second opinion.
+- A fix attempt = a change meant to turn the repro green that left it red; a falsifier, a log or a revert is not one. Log each in the ledger's Fix attempts, counting on from the brief's `Attempts:` line. The second on the same surface, same signature or new → Second opinion.
 
 Artifact: `templates/debug-report.md` — Error, Severity, Repro, Root cause, Failing test, Fix, Verification, Status.
 
@@ -104,11 +104,11 @@ Done when: the suite is green, the repro passes, and zero `[DBG-]` tags remain.
 
 ### 9. Second opinion
 
-Two failed fix attempts on the same surface → stop fixing; two misses from the same mind mean the mental model is wrong.
+Two failed fix attempts on the same surface, the brief's carried-in ones included → stop fixing; two misses from the same mind mean the mental model is wrong. Arriving with 2 already used → steps 1-2 for the repro, then here, before any fix.
 1. Write ONE self-contained ledger file. The advisor is cold and sees only this: the symptom, the repro command, each failed fix and why it failed, the suspect code inline (never a pointer to the session).
 2. Pool on → `cross-family` kind consult with the ledger — a FOREGROUND call. Pool off, no usable member, or `cross-family` absent → the Lead's own CLI at its strongest model, valid only when that model differs from the one now running. The fallback run → `references/second-opinion.md`.
 3. Read the reply as a **correction** (a new hypothesis → exactly ONE advisor-informed attempt against the same repro), a **confirmation** ("approach right, check X"), or a **stop** ("wrong path").
-4. Still failing, or no usable advisor → `manage-context` (escalate) with the ledger and the opinion (or "no usable advisor — <reason>") attached. The Second opinion has then run: it is never re-entered for this bug. No `manage-context` → hand the user the ledger, the opinion and 2-3 options, and stop. No further fix attempts.
+4. Still failing, or no usable advisor → `manage-context` (escalate) with the ledger and the opinion (or "no usable advisor — <reason>") attached. The Second opinion has then run — the ledger's `Second opinion:` line records it — and it is never re-entered for this bug. No `manage-context` → hand the user the ledger, the opinion and 2-3 options, and stop. No further fix attempts.
 
 Done when: the advisor-informed attempt passed, or the escalation is handed to `manage-context`.
 
