@@ -1,5 +1,5 @@
 <!-- Rolepod handoff brief — write before starting a fresh session. -->
-<!-- A new session reads ONLY this. Make it self-sufficient. Delete <hints>. -->
+<!-- The new session starts from this brief, then reads every artifact it links; nothing else carries over. Delete <hints>. -->
 
 # Handoff Brief — <task>
 
@@ -14,9 +14,13 @@
  test or bypass a gate just to get a commit. The next session resumes from
  disk, not from this session's memory.>
 
+## Artifacts to read next
+<Path to each one the flow has — plan (its checkboxes are the position; an
+ inline checklist is re-stated here with its ticks), spec, cohesion contract,
+ debug ledger. `none` for one the flow lacks. Link, never paste.>
+
 ## Files touched
-<Paths edited so far + a word on each. Link artifacts by path — never paste
- them in full.>
+<Paths edited so far + a word on each.>
 
 ## Tests run and status
 <What was run, green / red, the last known result. Reusing an older run? It
@@ -29,8 +33,11 @@
 <Non-obvious choices made this session and why — so the next session does
  not re-litigate them.>
 
-## Blockers
-<What is stuck, if anything, and what is needed to unblock.>
+## Blockers and attempts
+<What is stuck, if anything, and what is needed to unblock. Escalating or
+ mid-debug → `Attempts: <n> used` on the current goal with one line per
+ failed fix (what, why it stayed red), the ledger's `Second opinion:` state,
+ and the ledger path above — never the ledger pasted.>
 
 ## Resume with
 <Which skill the next session starts in, and the next concrete command.

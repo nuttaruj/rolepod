@@ -52,13 +52,14 @@ Lead: "let me add a ?. guard here too." (4th patch)
 Context bar is red mid-refactor. Lead fills a handoff brief:
   Original request: "..."
   Branch: refactor/orders @ a4f2e1
+  Artifacts: docs/rolepod/plans/orders-csv.md (plan — Task 2 of 4 open)
   Files touched: orders_controller.rb (done), orders_csv.rb (in progress)
   Tests: orders_spec green; orders_csv_spec 1 red — the empty-range case
   Constraints: stay within the 30s timeout; no schema change
   Decisions: chose server-side CSV (client-side misses paginated rows)
   Resume with: implement-plan — fix the empty-range test in orders_csv.rb
 
-A fresh session reads the brief and resumes exactly where work stopped.
+A fresh session reads the brief, then the plan it links, and resumes exactly where work stopped.
 ```
 
 ### Bad — clear and start over

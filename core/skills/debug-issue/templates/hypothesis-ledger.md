@@ -26,7 +26,7 @@
 |---|------|---------------------|-------------|-------------------|
 | 1 | <implement-plan / check-work / this run> | <path — change> | <red: literal line> | <what the fix missed> |
 
-Used: <n> of 2 · Second opinion: not yet | done — <correction / confirmation / stop>
+Used: <n> of 2 · Second opinion: not yet | done — <correction / confirmation / stop / no usable advisor: reason>
 
 ## Root cause
 <Filled once the trace reaches a legitimate stopping point — external input,

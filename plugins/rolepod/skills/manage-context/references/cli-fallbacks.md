@@ -8,14 +8,14 @@ context tools — use the row for the CLI you are running on.
 | Need | Claude | Codex | Cursor |
 |------|--------|-------|--------|
 | Trim heavy context | `/compact <focus>` | summarize, then start a fresh session with the brief | summarize, then new chat |
-| Start fresh | `/clear` | new session, or `resume` a clean one | new chat (chat menu) |
-| Undo a recent path | `/rewind` | `fork` from an earlier point if available | no native — restart with brief |
+| Start fresh — after the handoff brief is written | `/clear` | new session, or `resume` a clean one | new chat (chat menu) |
+| Undo a recent path — drops work, never a trim | `/rewind` | `fork` from an earlier point if available | no native — restart with brief |
 | Switch focus | `/rename` + `claude --continue` | resume the target session | new chat with brief |
 
 ## The universal fallback
 When a CLI lacks a native command, the fallback is always the same: write a
 handoff brief (`templates/handoff-brief.md`), end the session, and start a
-fresh one that reads the brief. The brief — not the CLI command — is what
+fresh one that reads the brief, then the artifacts it links. The brief — not the CLI command — is what
 makes the work resumable.
 
 ## Cross-CLI resume — the brief does not care which CLI reads it
