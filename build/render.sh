@@ -330,6 +330,25 @@ render_codex() {
 
   # Skills as a real directory tree (rendered from core/skills/).
   render_skills "$plugin_dst/skills"
+
+  # Codex's own explicit-invoke mechanism: a skill whose core SKILL.md
+  # frontmatter carries `disable-model-invocation: true` gets an
+  # agents/openai.yaml beside it (learn.chatgpt.com/docs/build-skills) so
+  # Codex won't implicitly invoke it from a bare prompt — $skill still
+  # works. The frontmatter flag stays the single source; no hand-written
+  # copy lives in core/.
+  local skill_dir
+  for skill_dir in "$plugin_dst/skills"/*/; do
+    local skill_md="$skill_dir/SKILL.md"
+    [ -f "$skill_md" ] || continue
+    if grep -q '^disable-model-invocation: true' "$skill_md"; then
+      mkdir -p "$skill_dir/agents"
+      cat > "$skill_dir/agents/openai.yaml" <<'EOF'
+policy:
+  allow_implicit_invocation: false
+EOF
+    fi
+  done
 }
 
 # ─── Render Cursor target ───────────────────────────────────────────────────
