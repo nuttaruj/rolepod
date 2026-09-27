@@ -29,7 +29,7 @@ Ambiguous with the user away → match the surrounding code (page / component �
 Scope follows the Product mode: `change` → only the surface the spec changes, the rest stays the real app; `new` → only the screen or flow the question names. Never the whole product.
 
 **Layout** — required elements:
-- 3 variants by default, 5 at most, differing in structure (layout, information hierarchy, primary affordance), never only colour or copy;
+- 3 variants by default (2 for a two-way question; 1 when the user already named the layout to test — no switcher then), 5 at most, differing in structure (layout, information hierarchy, primary affordance), never only colour or copy;
 - switched by `?variant=` and a floating bottom bar (previous / next, current label, arrow keys), reload-stable, hidden in production builds;
 - change mode → mounted on the existing route with its real data; new mode or no runnable app → one self-contained HTML file with the same switcher.
 
@@ -47,6 +47,7 @@ Done when: the branch is picked and its required elements are listed for the bui
 
 ### 3. Build in a spike worktree
 
+A new worktree starts from HEAD and never carries uncommitted changes. Change mode → first `git status --porcelain -- <the spec's paths>`: dirty → ask the user to commit them or build on HEAD; user away → HEAD. Built on HEAD over dirty paths → the top of the demo names the base SHA and says it excludes the uncommitted changes to those paths.
 Run `git worktree add <dir> -b spike/<name>`; everything happens there, and the user's working tree is never touched.
 Write the ONE question at the top of the demo.
 Name the files so a reader sees "prototype". One command runs it (the project's task runner), or a double-click.
@@ -56,8 +57,8 @@ Done when: the prototype runs with one command or a double-click.
 
 ### 4. Hand over
 
-Change mode: run the prototype on its own port and give BOTH links — the original route (the running app, or a server from the main tree) and the prototype route with each `?variant=` key — same route, side by side.
-Logic or new mode: give the file path, opened.
+Change mode with a runnable app: run the prototype on its own port and give BOTH links — the original route (the running app, or a server from the main tree) and the prototype route with each `?variant=` key — same route, side by side.
+Logic, new mode, or change mode with no runnable app: give the file path, opened; for the last, say the variants were not seen against the real app.
 `rolepod-uiproof` installed → a screenshot per variant is optional.
 Ask for the verdict; "the header from B with the sidebar from C" is a verdict. Iterate on request.
 

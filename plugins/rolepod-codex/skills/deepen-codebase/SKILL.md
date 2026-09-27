@@ -36,9 +36,9 @@ Its brief:
 - the **deletion test**: imagine deleting the module and inlining it into its callers — complexity reappearing across N callers means it earns its keep; complexity that just vanishes marks a shallow pass-through; N hand-kept copies of one rule = a candidate, and a candidate that fails the test is dropped, not softened;
 - read `references/explorer-lens.md` first when present — vocabulary, friction signals, evidence bar (optional depth);
 - use the codebase's own words: `CONTEXT.md` terms for the domain, module / interface / seam / depth for the shape;
-- walk organically, hot spots first, everything reachable after, noting where IT struggles;
+- walk organically in ONE pass over the scope — hot spots first, the rest of the scope after — noting where IT struggles; never a second lap: an area it did not reach is named in the return;
 - any command that writes nothing in the repo (grep, `git log`, an existing test, a scratch script in the temp dir) may reproduce a claim;
-- return candidates (files with `path:line`, the friction, the deletion-test result) and every bug met on the way (`path:line` + the reproducing command, or `read only, not reproduced`) — never an edit, never an interface.
+- return candidates (files with `path:line`, the friction, the deletion-test result), every bug met on the way (`path:line` + the reproducing command, or `read only, not reproduced`) and the areas not reached — never an edit, never an interface.
 
 No subagents → the Lead walks the same way (the deletion test above, the lens when present), one area per run on a large legacy tree so the walk does not circle.
 
@@ -56,7 +56,7 @@ Done when: every kept candidate passed the deletion test, and `Strong` stands on
 
 ### 4. Report
 
-Write ONE self-contained HTML file to the OS temp dir — `$TMPDIR`, else `/tmp`, `%TEMP%` on Windows — named `deepen-codebase-<timestamp>.html`. Open it (`open` on macOS, `xdg-open` on Linux, `start` on Windows) and print the absolute path.
+Write ONE HTML file to the OS temp dir — `$TMPDIR`, else `/tmp`, `%TEMP%` on Windows — named `deepen-codebase-<timestamp>.html`. Open it (`open` on macOS, `xdg-open` on Linux, `start` on Windows) and print the absolute path.
 
 One card per candidate, exactly these fields:
 - **Files**;
@@ -68,7 +68,8 @@ One card per candidate, exactly these fields:
 
 A conflict with an ADR is a marked callout on the card, raised only when the friction is worth reopening that decision.
 After the cards, **Bugs found on the way** — one row each: `path:line` · what breaks · reproduced / read only · → `debug-issue`. A bug is never a card.
-The report ends with **Top recommendation** — which card first and why.
+The report ends with **Top recommendation** — which card first and why; only a `Strong` or `Worth exploring` card qualifies.
+No such card → the report states `No deepening worth doing in <scope>` with the areas walked and not reached, and has no Top recommendation. That is a complete result; never promote a `Speculative` card to fill the slot.
 Scaffold and drawing patterns → `references/html-report.md`; absent, a plain page with the six fields per card is the report.
 
 Done when: the file is written, opened, and its path printed.
@@ -76,11 +77,12 @@ Done when: the file is written, opened, and its path printed.
 ### 5. Hand-off
 
 Stop after the report and ask, in one message: which card, and whether to open a `write-spec` on it now.
+- No Top recommendation → no card question: give the path, and offer only the listed bugs (`debug-issue`), if any.
 - "Just the report" → stop; the path is the deliverable.
 - A listed bug → `debug-issue` on its own, or into the picked card's spec when it sits inside that card's files.
 - The user rejects a card for a load-bearing reason → offer the ADR under write-spec's three tests, so a later run does not re-suggest it.
 
-Done when: the user picked a card, chose the report only, or rejected with the ADR offered.
+Done when: the user picked a card, chose the report only, rejected with the ADR offered, or the no-deepening report was handed over.
 
 ## Guardrails
 

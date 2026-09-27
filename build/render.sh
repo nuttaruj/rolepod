@@ -128,19 +128,23 @@ render_skills() {
   done
 }
 
-# ─── Strip skill frontmatter to name + description ──────────────────────────
-# Shared by the cursor + opencode targets: both CLIs document only those two
-# SKILL.md fields, so rolepod's extra keys (tier / phase / when_to_use /
-# disable-model-invocation) are stripped rather than gambling on tolerance.
+# ─── Strip skill frontmatter to name + description (+ extra keep keys) ──────
+# Shared by the cursor + opencode targets. opencode documents only name +
+# description in SKILL.md, so rolepod's extra keys (tier / phase /
+# when_to_use / disable-model-invocation) are all stripped rather than
+# gambling on tolerance. Cursor also documents `disable-model-invocation`
+# (cursor.com/docs/context/skills, checked 2026-09-27), so the cursor call
+# passes it as an extra keep key and the field survives there.
 
 strip_skill_frontmatter() {
-  python3 - "$1" <<'PY'
+  local target_dir="$1"; shift
+  python3 - "$target_dir" "$@" <<'PY'
 import re
 import sys
 from pathlib import Path
 
 target_dir = Path(sys.argv[1])
-keep = {"name", "description"}
+keep = {"name", "description", *sys.argv[2:]}
 for skill in target_dir.glob("*/SKILL.md"):
     text = skill.read_text()
     if not text.startswith("---\n"):
@@ -383,15 +387,13 @@ render_cursor() {
   rm -f "$pass1"
 
   # Skills — render the same source as Claude, then post-process each
-  # frontmatter to keep only the fields Cursor documents (name + description).
-  # Defensive: the Cursor docs only acknowledge name/description in SKILL.md;
-  # we don't want to gamble that Cursor silently ignores tier / phase /
-  # when_to_use / disable-model-invocation. A command skill (e.g.
-  # deepen-codebase) loses its disable-model-invocation guard on Cursor —
-  # its description is phrased ("explicit user invocation only") to keep
-  # auto-trigger rare even so.
+  # frontmatter to keep only the fields Cursor documents: name + description,
+  # plus disable-model-invocation (cursor.com/docs/context/skills, checked
+  # 2026-09-27) — tier / phase / when_to_use are still stripped. Keeping
+  # disable-model-invocation means a command skill (e.g. deepen-codebase)
+  # stays explicit-invoke only on Cursor, same as on Claude.
   render_skills "$plugin_dst/skills"
-  strip_skill_frontmatter "$plugin_dst/skills"
+  strip_skill_frontmatter "$plugin_dst/skills" disable-model-invocation
 
   # Agents — minimal name+description frontmatter (see merge-agent.py cursor target).
   render_agents "cursor" "$plugin_dst/agents"

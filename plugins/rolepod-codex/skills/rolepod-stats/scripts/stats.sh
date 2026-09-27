@@ -196,10 +196,10 @@ if dispatches:
             print(f"    ⚠ {costly} Workflow fleet(s) inherited a strong/unknown-class Lead — the "
                   "whole fleet ran at the Lead's price (pre-v2.48 or `fleet-inherit:` stated)")
 
-# Task-owner waves (v2.146.0) — writer-role hook-auto dispatches grouped by
-# time gap (≤ 90 s apart = one wave). Reviewer / scout / generic rows are not
-# tasks. Answers "did the plan let tasks run in parallel?": widths per wave
-# and the share of task dispatches that had a partner (1,1,1… = serial plan).
+# Task-owner dispatch bursts (v2.146.0) — writer-role hook-auto dispatches
+# grouped by time gap (≤ 90 s apart = one burst). Reviewer / scout / generic
+# rows are not tasks. Dispatch times only — no end time is logged — so a burst
+# shows tasks dispatched together, never proof that they ran concurrently.
 NON_TASK_ROLES = {"qa-tester", "security-engineer", "universal-reviewer", "code-reviewer",
                   "scout", "general-purpose", "default", "claude", "workflow-subagent", ""}
 def _task_role(d):
@@ -215,18 +215,18 @@ task_rows = [(_epoch(d), _task_role(d)) for d in dispatches
              if d.get("provenance") == "hook-auto" and _task_role(d) not in NON_TASK_ROLES]
 task_rows = sorted(t for t in task_rows if t[0] is not None)
 if task_rows:
-    waves = []
+    bursts = []
     for t, r in task_rows:
-        if waves and t - waves[-1][-1][0] <= 90:
-            waves[-1].append((t, r))
+        if bursts and t - bursts[-1][-1][0] <= 90:
+            bursts[-1].append((t, r))
         else:
-            waves.append([(t, r)])
-    widths = [len(w) for w in waves]
+            bursts.append([(t, r)])
+    widths = [len(b) for b in bursts]
     partnered = sum(w for w in widths if w >= 2)
     pct = partnered * 100 // len(task_rows)
-    print(f"\n  Task-owner waves ({len(task_rows)} task dispatches, {len(waves)} waves; ≤ 90 s apart = one wave):")
-    print(f"    widths: {', '.join(str(w) for w in widths)} · with a parallel partner: {partnered}/{len(task_rows)} ({pct}%)"
-          + ("  — every wave width 1: the plan ran serial" if max(widths) == 1 else ""))
+    print(f"\n  Task-owner dispatch bursts ({len(task_rows)} task dispatches, {len(bursts)} bursts; ≤ 90 s apart = one burst — dispatch time only, not proof of concurrent runs):")
+    print(f"    widths: {', '.join(str(w) for w in widths)} · dispatched within 90 s of another: {partnered}/{len(task_rows)} ({pct}%)"
+          + ("  — every burst width 1: no two task dispatches within 90 s" if max(widths) == 1 else ""))
 
 gated = [r for r in rows if r.get("phase") == "dispatch-gate"]
 if gated:
@@ -367,7 +367,9 @@ if bypasses:
 elif selftest:
     print(f"\n  Bypasses (0 findings; {len(selftest)} self-test rows excluded — reason rolepod-selftest/doctor)")
 
-# Fleet cost (v2.108.0) — what each Workflow / Agent fleet actually ran on.
+# Fleet token footprint (v2.108.0) — what each Workflow / Agent fleet ran
+# on, in output + cache-read tokens (no input or cache-creation tokens, no
+# prices — not a cost).
 # Source: Claude Code subagent transcripts under ~/.claude/projects/<key>/
 # <session>/subagents/{workflows/<wf>/,}agent-*.jsonl; <key> = repo root with
 # "/" replaced by "-". Read-only. Measured need (CourtBook readiness audit):
@@ -428,7 +430,7 @@ if root:
             mm = g["models"].setdefault(m, [0, 0, 0]); mm[0] += 1; mm[1] += out; mm[2] += cache
 if fleets:
     n_agents = sum(g["files"] for g in fleets.values())
-    print(f"\n  Fleet cost — subagent transcripts (last 14d, {len(fleets)} fleet(s), {n_agents} agents):")
+    print(f"\n  Fleet token footprint — subagent transcripts (last 14d, {len(fleets)} fleet(s), {n_agents} agents; output + cache-read tokens only — not total tokens, not billed cost):")
     def _k(x):
         if x <= 0: return "0"
         k = int(x / 1e3 + 0.5)                       # half-up, and 999,999 rolls to 1M

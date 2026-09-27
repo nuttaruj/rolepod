@@ -1,6 +1,6 @@
 ---
 name: rolepod-stats
-description: Show rolepod evidence stats for this project — tier routes, verify/review verdicts, strong-dispatch overrides, bypasses, plus which models actually ran (transcript proof). Use when the user asks for rolepod stats, the evidence report, or which models ran.
+description: Show rolepod evidence stats for this project — tier routes, verify/review verdicts, strong-dispatch overrides, bypasses, plus which models actually ran (Claude Code transcript proof; on other CLIs only what the evidence log recorded). Use when the user asks for rolepod stats, the evidence report, or which models ran.
 ---
 
 # Rolepod Stats
@@ -12,6 +12,8 @@ One project's evidence log and transcripts → three compact tables.
 Run `bash <this skill's folder>/scripts/stats.sh` from the project root — it reads the current git root (`$1` overrides); never `cd` into the skill folder.
 
 It reads `<git-root>/.rolepod/evidence/phase-log.jsonl` + `bypass.log`: tier distribution (R1-R4), verify pass/fail, review verdicts, strong dispatches with/without explicit override (silent-downgrade audit), unreasoned bypasses.
+
+It also reads the machine-global `~/.rolepod/gate-bypass.log`: those rows are reported apart, never folded into this project's rates.
 
 Done when: the intent table is filled, or "no data" with the file paths named.
 
@@ -48,8 +50,9 @@ Done when: both model tables are filled, or the layer is skipped with its reason
 
 ## Guardrails
 
-- One short table per layer (three tables total: intent, Lead turns, subagent turns). Never paste raw tool output — summarize.
+- Answer what the user asked plus every ⚠ line; a plain "stats" ask gets three short tables (intent, Lead turns, subagent turns), never every metric the script prints. Never paste raw tool output — summarize.
 - Flag any strong dispatch without explicit override (intent layer) and any SUBAGENT model the tier policy would not predict (proof layer); never flag the Lead's own histogram as a tier-policy finding.
+- A dispatch burst is dispatch timing, not proof of parallel runs; the fleet token footprint is not a cost.
 
 ## Next phase
 

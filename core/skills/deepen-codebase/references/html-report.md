@@ -2,9 +2,9 @@
 
 # HTML Report Format
 
-The review is rendered as a single self-contained HTML file in the OS temp directory, named `deepen-codebase-<timestamp>.html`. Tailwind and Mermaid both come from CDNs. Mermaid handles graph-shaped diagrams reliably; hand-built divs and inline SVG handle the more editorial visuals (mass diagrams, cross-sections). Mix the two — leaning on Mermaid for everything starts to look generic.
+The review is rendered as a single HTML file in the OS temp directory, named `deepen-codebase-<timestamp>.html`. It is not self-contained: Tailwind and Mermaid load from CDNs, so third-party scripts run in a page that holds repo paths and code. Mermaid handles graph-shaped diagrams reliably; hand-built divs and inline SVG handle the more editorial visuals (mass diagrams, cross-sections). Mix the two — leaning on Mermaid for everything starts to look generic.
 
-Offline or a locked-down network: the CDN libraries do not load. Write inline CSS and hand-built SVG diagrams instead — the six fields must read without any script. Either way the fonts are the scaffold's stacks: sans body, serif `h1` / `h2`, mono for files and code — never another face.
+Offline, a locked-down network, or a user who wants no third-party script: skip the CDNs. Write inline CSS and hand-built SVG diagrams instead — the six fields must read without any script. Either way the fonts are the scaffold's stacks: sans body, serif `h1` / `h2`, mono for files and code — never another face.
 
 ## Scaffold
 
@@ -17,7 +17,7 @@ Offline or a locked-down network: the CDN libraries do not load. Write inline CS
     <script src="https://cdn.tailwindcss.com"></script>
     <script type="module">
       import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
-      mermaid.initialize({ startOnLoad: true, theme: "neutral", securityLevel: "loose" });
+      mermaid.initialize({ startOnLoad: true, theme: "neutral", securityLevel: "strict" });
     </script>
     <style>
       /* small custom layer for things Tailwind doesn't cover cleanly:
@@ -76,9 +76,9 @@ Use a flowchart or graph when the point is "X calls Y calls Z, and look at the m
 <div class="rounded-lg border border-slate-200 bg-white p-4">
   <pre class="mermaid">
     flowchart LR
-      A[OrderHandler] --> B[OrderValidator]
-      B --> C[OrderRepo]
-      C -.leak.-> D[PricingClient]
+      A["OrderHandler"] --> B["OrderValidator"]
+      B --> C["OrderRepo"]
+      C -.leak.-> D["PricingClient"]
       classDef leak stroke:#dc2626,stroke-width:2px;
       class C,D leak
   </pre>
@@ -108,6 +108,7 @@ Before: a tree of function calls rendered as nested boxes. After: the same tree 
 - Keep diagrams ~320px tall so before/after sits comfortably side by side without scrolling.
 - Use `text-xs uppercase tracking-wider` for module labels inside diagrams, so they read as schematic, not as UI.
 - The report is otherwise static: no app code, no interactivity beyond the diagram library's own rendering.
+- Repo text — paths, identifiers, code — is HTML-escaped (`&`, `<`, `>`, quotes) before it enters the page, and quoted inside Mermaid labels (`A["name"]`).
 
 ## Bugs found on the way
 
@@ -116,6 +117,8 @@ A plain table after the cards: `path:line` (mono) · what breaks · reproduced /
 ## Top recommendation section
 
 One larger card. Candidate name, one sentence on why, anchor link to its card. That's it.
+
+No `Strong` or `Worth exploring` card → this section is one line instead: `No deepening worth doing in <scope>`, then the areas walked and not reached.
 
 ## Tone
 

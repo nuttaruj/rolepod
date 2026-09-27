@@ -35,7 +35,7 @@ In both sub-shapes the floating bottom bar is identical.
 
 ### 1. State the question and pick N
 
-Default to 3 variants. More than 5 stops being radically different and starts being noise, so cap there.
+Default to 3 variants; 2 for a two-way question; 1 when the user already named the layout to test (no switcher then). More than 5 stops being radically different and starts being noise, so cap there.
 
 Write down the plan in one line, in the prototype's location or a top-of-file comment, naming the spike branch:
 
@@ -87,11 +87,11 @@ Behaviour:
 - Visually distinct from the page (e.g. high-contrast pill, subtle shadow) so it's obviously not part of the design being evaluated.
 - Hidden in production builds: gate on the project's production check so a stray prototype merge can't ship the bar to users.
 
-Sub-shape A: put the switcher in a single shared component, located wherever shared UI lives in the project, so multiple hosted prototypes can reuse it. Sub-shape B: inline the same bar as plain markup and JS in the one HTML file — there is nothing to import from.
+Sub-shape A: write the switcher in the spike next to the variants, or reuse a prototype switcher the project already has — never a shared component built for future prototypes (the spike is throwaway). Sub-shape B: inline the same bar as plain markup and JS in the one HTML file — there is nothing to import from.
 
 ### 5. Hand it over
 
-Surface both links per `write-prototype` Hand over — the original route and the prototype route with each `?variant=` key — side by side, same route. The user will flip through whenever they get to it. The interesting feedback is usually "I want the header from B with the sidebar from C," which is the actual design they want.
+Hand over per `write-prototype` Hand over: sub-shape A gives both links — the original route and the prototype route with each `?variant=` key — side by side, same route; sub-shape B gives the file path. The user will flip through whenever they get to it. The interesting feedback is usually "I want the header from B with the sidebar from C," which is the actual design they want.
 
 ### 6. Capture the answer and clean up
 

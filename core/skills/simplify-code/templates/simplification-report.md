@@ -20,13 +20,14 @@
 - <pattern> → <new home>
 
 ## Tests after
-<The same suite, still green AFTER every cut.>
+<The Baseline suite, run once after the last cut (each cut passed its own
+ narrow check before the next).>
 - `<command>` — PASS: <proof line>
 
 ## Behavior preserved
 <YES — the tests covering the affected inputs and failure modes are green
- with the same expected values; only a private-detail / mock retarget changed,
- if anything.
+ with the same expected values; the only assertion change allowed is one moved
+ off a private detail / mock call shape onto the same observable output.
  NO — an expected value changed, or the green tests do not cover the affected
  inputs / failure modes; this is a behavior change (or insufficient coverage).
  Route to write-spec / implement-plan; do not ship it as a simplification.>

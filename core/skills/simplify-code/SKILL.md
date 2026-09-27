@@ -25,6 +25,7 @@ No subagents → the Lead does it.
 ### 1. Green baseline
 
 Run the touched module's suite. Red → fix it or write tests first; without a green baseline nothing is provably behavior-preserving.
+An earlier green run counts only when the command AND the pre-cut snapshot match — staged and unstaged changes and every input the tests read, not just the same HEAD; anything differs → run it again.
 Gather: the flagged region, its tests, the call sites of anything you plan to inline or remove, and the user's intent.
 
 Done when: the suite is green and recorded as the Baseline.
@@ -80,26 +81,26 @@ Done when: every repeated rule has one home, recorded under Patterns centralized
 
 ### 6. Refactor before fix
 
-A planned change is hard because the surrounding shape is wrong → first cut the shape until the change is easy, then make the easy change.
-- Two commits: the cut commits are behavior-preserving (this skill); the change commit is the feature (`implement-plan`). Mixing them hides which line caused which regression; split them.
-- Skip this when the change is small and the shape is fine; never invent friction.
+A planned change is hard because of the current shape → name the friction first: the `path:line` that forces the change to edit N places, copy a rule, or reach past a seam. Then cut that shape until the change is easy, and make the easy change.
+- Two commits: the cleanup commit is behavior-preserving (this skill); the change commit is the feature (`implement-plan`). Mixing them hides which line caused which regression; split them.
+- No friction you can name at a `path:line`, or the change goes in directly → skip this step; never invent friction.
 
-Done when: the cut commits hold no behavior change and the feature change sits in its own commit.
+Done when: the friction is named (or the step skipped), the cleanup commit holds no behavior change, and the feature change sits in its own commit.
 
-### 7. One cut per commit
+### 7. One cut at a time
 
-- Run the suite between cuts.
-- A failing test mid-simplification means the previous cut went too far: revert that one, not all.
+- After each cut, run the narrowest check that covers it (the touched file's tests). The Baseline suite runs once more, after the last cut, as Tests after.
+- A red check right after a cut means that cut went too far: revert that one, not all.
 - An "unused" abstraction turns out to have callers you missed → restore it, verify, then retry once through step 3; callers remain → keep it, with the reason in the report.
-- A delegated subagent stages and returns the diff + proof; the Lead commits (`implement-plan`).
+- A delegated subagent returns the diff + proof; the Lead commits the cleanup as one commit, apart from any feature commit (step 6, `implement-plan`).
 
-Done when: every cut is its own commit (or staged slice) with the suite green after it.
+Done when: every cut passed its narrow check before the next began, and the Baseline suite is green once after the last cut.
 
 ### 8. Stop when behavior is at risk
 
 A cut that changes what a test ASSERTS → check what the assertion proved.
 - The expected VALUE changes → no longer behavior-preserving: ask the user, or move it to an `implement-plan` task with a spec.
-- A retarget onto the same observable output (a private detail, a mock's call shape) is still behavior-preserving.
+- An assertion moved off a private detail or a mock's call shape onto the same observable output, expected value unchanged, is still behavior-preserving.
 
 Artifact: `templates/simplification-report.md` — Baseline, Cuts made, Patterns centralized, Tests after, Behavior preserved.
 
@@ -107,7 +108,7 @@ Done when: Tests after is green with the same expected values and Behavior prese
 
 ## Guardrails
 
-- Prove behavior with the same tests, green after the change with no assertion changed; a failure → run those tests on the tree without the change to tell a pre-existing red. Never simplify without that suite.
+- Prove behavior with the same tests, green after the change with no expected value or contract changed; an assertion moved off a private detail onto the same observable output is allowed (step 8). A failure → run those tests on the tree without the change to tell a pre-existing red. Never simplify without that suite.
 - Keep an abstraction the codebase depends on. Never remove one before its call sites and the deletion test say it is safe.
 - Add an abstraction only for concrete users that exist today (3+ for a shared rule, 2 on the high-risk list). Never for "hypothetical future use"; one caller is not enough.
 
