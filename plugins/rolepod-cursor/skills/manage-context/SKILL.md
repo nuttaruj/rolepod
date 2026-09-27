@@ -26,6 +26,7 @@ Inputs: the original request and every correction since (latest wins) · the cur
 
 Several rows match → run each matching mode once, top-down in table order; a later mode acts on the state an earlier one recovered.
 - After a compaction, Re-anchor runs first — before a fix or any edit; still heavy after it → Context budget's handoff path, not another trim.
+- Quota near → Context budget runs once, on its handoff path only — even when the context is heavy too, never a trim first.
 - Re-anchor and Session hygiene run as one pass: disk state first, then the request, its corrections and the constraints; a file re-read once serves both.
 - Zoom-out, then Escalate: the re-aim serves the same goal, so the failed attempts on it still count — a re-aim never resets them.
 
@@ -44,7 +45,7 @@ Heavy context → trim with your CLI's compact command (Claude `/compact <focus>
 Load only what the task needs: the Tier 1 skills + the touched files is usually enough.
 
 Context too heavy to trim safely, still heavy right after a compaction, or starting fresh → fill `templates/handoff-brief.md`, then start the fresh session (Claude `/clear`). The brief is the entry point: the fresh session reads it, then every artifact it links — plan, spec, cohesion contract, debug ledger. The brief and those artifacts are CLI-agnostic (`references/cli-fallbacks.md` Cross-CLI resume).
-A quota limit cannot be trimmed away: checkpoint what the gates allow, write the uncommitted state into the brief, switch.
+A quota limit cannot be trimmed away — skip the trim even when the context is heavy too: checkpoint what the gates allow, write the uncommitted state into the brief, switch.
 
 Done when: the context is trimmed at a seam, or a handoff brief is written for the fresh session.
 
