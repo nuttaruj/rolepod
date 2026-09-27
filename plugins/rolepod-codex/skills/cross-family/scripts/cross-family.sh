@@ -99,27 +99,29 @@ set -uo pipefail
 
 KIND=""; BRIEF=""; LEAD="${ROLEPOD_LEAD_CLI:-}"; ALL=0; FLAG_TIMEOUT="${ROLEPOD_XFAM_TIMEOUT:-}"; FLAG_STALL="${ROLEPOD_XFAM_STALL:-}"
 MODE="run"; ATTACH=""; ALLOW=""; ALLOW_RISKY=0; SETUP_REVIEW=""; SETUP_IMPL=""; DETACH=0; JOB_DIR=""; COLLECT_ID=""; ROOT_FLAG=""; CFG_FLAG=""; PARTIAL_OK=0; KILL_ID=""; MEMBER=""
+# A value flag given last: `shift 2` fails on 1 positional and the loop never advances.
+need_val() { [ "$1" -ge 2 ] || { echo "cross-family: $2 requires a value" >&2; exit 2; }; }
 while [ $# -gt 0 ]; do
   case "$1" in
-    --kind) KIND="${2:-}"; shift 2 ;;
-    --brief) BRIEF="${2:-}"; shift 2 ;;
-    --attach) ATTACH="$ATTACH${ATTACH:+
+    --kind) need_val $# --kind; KIND="${2:-}"; shift 2 ;;
+    --brief) need_val $# --brief; BRIEF="${2:-}"; shift 2 ;;
+    --attach) need_val $# --attach; ATTACH="$ATTACH${ATTACH:+
 }${2:-}"; shift 2 ;;
-    --lead) LEAD="${2:-}"; shift 2 ;;
-    --root) ROOT_FLAG="${2:-}"; shift 2 ;;
+    --lead) need_val $# --lead; LEAD="${2:-}"; shift 2 ;;
+    --root) need_val $# --root; ROOT_FLAG="${2:-}"; shift 2 ;;
     --all) ALL=1; shift ;;
-    --member) MEMBER="${2:-}"; [ -n "$MEMBER" ] || { echo "cross-family: --member requires a CLI name" >&2; exit 2; }; shift 2 ;;   # run this ONE CLI alone, never a fall-through
-    --timeout) FLAG_TIMEOUT="${2:-}"; shift 2 ;;
-    --stall) FLAG_STALL="${2:-}"; shift 2 ;;        # seconds of silence (no new output) before a member counts as dead
+    --member) need_val $# --member; MEMBER="${2:-}"; [ -n "$MEMBER" ] || { echo "cross-family: --member requires a CLI name" >&2; exit 2; }; shift 2 ;;   # run this ONE CLI alone, never a fall-through
+    --timeout) need_val $# --timeout; FLAG_TIMEOUT="${2:-}"; shift 2 ;;
+    --stall) need_val $# --stall; FLAG_STALL="${2:-}"; shift 2 ;;        # seconds of silence (no new output) before a member counts as dead
     --detach) DETACH=1; shift ;;
     --partial-ok) PARTIAL_OK=1; shift ;;         # the user asked for the staged part only
-    --allow) ALLOW="$ALLOW${ALLOW:+
+    --allow) need_val $# --allow; ALLOW="$ALLOW${ALLOW:+
 }${2:-}"; shift 2 ;;   # implement: a path the member may edit (exact file or directory prefix); repeatable
     --allow-risky) ALLOW_RISKY=1; shift ;;        # implement: the USER lifts the money / auth / data refusal for this ticket (review-code then runs BOTH passes on it)
-    --kill) MODE="kill"; KILL_ID="${2:-}"; shift 2 ;;
-    --job) JOB_DIR="${2:-}"; shift 2 ;;          # internal: the detached child
-    --config) CFG_FLAG="${2:-}"; shift 2 ;;      # internal: the job's config snapshot
-    --collect) MODE="collect"; COLLECT_ID="${2:-}"; shift 2 ;;
+    --kill) need_val $# --kill; MODE="kill"; KILL_ID="${2:-}"; shift 2 ;;
+    --job) need_val $# --job; JOB_DIR="${2:-}"; shift 2 ;;          # internal: the detached child
+    --config) need_val $# --config; CFG_FLAG="${2:-}"; shift 2 ;;      # internal: the job's config snapshot
+    --collect) need_val $# --collect; MODE="collect"; COLLECT_ID="${2:-}"; shift 2 ;;
     --jobs) MODE="jobs"; shift ;;
     --pool) MODE="pool"; shift ;;
     --pool-names) MODE="pool-names"; shift ;;
@@ -516,7 +518,7 @@ print_pool() {
   elif [ "$STATE" = "off" ]; then
     echo "  → OFF. Installed candidates: ${CANDIDATES:-none}"
     echo "  → $ENABLE_HINT"
-  elif [ "$STATE" = "none" ]; then echo "  → OFF by choice (none). Installed candidates: ${CANDIDATES:-none}; edit $CFG to enable"
+  elif [ "$STATE" = "none" ]; then echo "  → OFF by choice (none). Installed candidates: ${CANDIDATES:-none}; edit $CFG_SRC to enable"
   else echo "  → configured but nothing usable (see rows) — internal strong reviewer is the pass; recorded as a limitation"; fi
 }
 
