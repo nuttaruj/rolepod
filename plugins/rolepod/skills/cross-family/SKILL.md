@@ -62,7 +62,7 @@ Done when: the brief file exists and a stranger could act on it alone.
 
 **critique**
 - The member returns every material item, no cap, ranked by implementation risk: `QUESTION` (only the user can decide), `AMBIGUITY` (quoted wording two engineers would read differently), `MISSING` (an acceptance criterion, failure mode or edge case with no "proven by") — or `NO FURTHER QUESTIONS`.
-- One critique per draft. The caller settles from the repo what it can and asks the rest in ONE extra Discovery round. It never blocks the spec.
+- One critique per spec: a draft revised after it (the extra round's answers, a Gate 1 edit or reject) never runs another. The caller settles from the repo what it can and asks the rest in ONE extra Discovery round. It never blocks the spec.
 
 **consult**
 - FOREGROUND, short budget — a stuck loop needs the answer now. A `consult = <fast> <deep>` line in the pool file puts the fast member first and keeps the deep one as fallback.
@@ -71,6 +71,7 @@ Done when: the brief file exists and a stranger could act on it alone.
 
 **implement**
 - The owner writes the failing test at the seam first; the member drafts the change that turns it green.
+- One draft per task: its fixes, or a rejected draft, are the owner's to write — never a second implement run.
 - `--allow` names the ticket's files; an edit outside them is reverted. A money / auth / data path needs `--allow-risky`, only when the user lifts that refusal for this ticket.
 - `--collect` in the FOREGROUND, then the owner runs its own loop (Command, reviewers, fixes).
 - The member never reviews its own draft: a DIFFERENT member reviews it (the runner skips the implementer while the ticket is uncommitted).

@@ -107,8 +107,9 @@ Never for routine specs.
    fold the answer into the draft. Items that are genuinely the user's
    decision → ONE extra round per Discovery: numbered, a recommended
    default per question. Never forward the critic's list raw, never run a
-   second critique on the same draft — new material questions the answers
-   reveal continue in normal discovery.
+   second critique on this spec — a draft revised after it (the extra
+   round's answers, a Gate 1 edit or reject) never runs another; new
+   material questions the answers reveal continue in normal discovery.
 4. **Record** one status line under **High-risk surfaces** (the template
    carries the slot; never under Open questions, which blocks `write-plan`):
    `Cross-family critique: <cli> — N items, K settled from repo, M asked` ·

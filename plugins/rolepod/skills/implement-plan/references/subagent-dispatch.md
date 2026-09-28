@@ -50,7 +50,7 @@ Use the least powerful model that can handle the role (Model selection below).
 
 `Owner: <role> · write: external` (pool opt-in, per task):
 1. The owner, in its own worktree, writes the failing test at the seam first.
-2. Pool on → `cross-family` kind implement drafts the change that must turn that test green, scoped to the task's Files allowed; then the owner runs its own loop (Command, reviewers, fixes).
+2. Pool on → `cross-family` kind implement drafts the change that must turn that test green, scoped to the task's Files allowed; then the owner runs its own loop (Command, reviewers, fixes). One draft per task: its fixes, or a rejected draft, are the owner's to write — never a second implement run.
 3. Pool off or `cross-family` absent → the owner writes the task itself.
 
 The member never reviews its own draft, and the Lead never runs the SKILL.md Review for that task.
