@@ -38,6 +38,7 @@ No entry doc embeds a skill index. Each skill's `description:` is its routing su
 |-------|-----------|---------------|
 | `cross-family` | `review-code`, `write-spec`, `debug-issue`, `implement-plan` | Runs another CLI's review, critique, consult, or draft end to end. |
 | `tdd-flow` | `implement-plan`, `debug-issue`, `simplify-code`, `check-work`, `write-plan` | Runs the failing-test-first red → green loop at a seam. |
+| `adversarial-review` | `review-code` | Runs the adversarial pass of an R4 round 1 — external via `cross-family` when the pool is usable, else internal strong. |
 
 ## Domain expertise → specialist agents
 

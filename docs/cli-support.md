@@ -190,7 +190,7 @@ scripts/cross-family.sh --kind critique --brief spec-draft.md          # write-s
 Gemini CLI is retired for individual accounts (2026-06-18) and never a pool member — a `gemini` pool-file line is skipped; list `agy` instead.
 
 **Opt-in, off by default.** Pool = `.rolepod/cross-family` (project) →
-`~/.rolepod/cross-family` (machine): `[reviewer]` with `review = …` (the default order) and optional `consult = / critique = …`, `tier = R2|R3` (from that tier up, the external replaces `universal-reviewer` on a code diff — a `write-plan` brief names it as the alternative; default `R4` = today's behaviour, no external below R4), `[implement]` with `cli = …`; **no file = off,
+`~/.rolepod/cross-family` (machine): `[reviewer]` with `review = …` (the default order) and optional `consult = / critique = …`, `tier = R2|R3` (from that tier up, the external's standard pass replaces the lens pair on a code diff — a `write-plan` brief names it as the alternative; at R4 it is the adversarial pass; default `R4` = no external below R4), `[implement]` with `cli = …`; **no file = off,
 `none` = off** (exit 5, nothing logged). Nothing asks unprompted: when the
 user asks to set it up, `scripts/cross-family.sh --setup` prints the installed
 candidates and the two questions (review order; implement `same` / `none` /

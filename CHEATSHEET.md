@@ -70,7 +70,7 @@ The writer's unit tests are the floor. One read-only `universal-reviewer` pass (
 | Tier / profile | Reviewers |
 |-----------|-----------|
 | R2 / R3 | `universal-reviewer` (read-only) — or the external instead, when the pool file sets `tier = R2` / `R3` |
-| R4 code | ONE strong pass: external when the pool is usable, else internal strong |
+| R4 code | `security-engineer` + two lenses (spec + standards) + adversarial pass (external via `cross-family` when usable, else `universal-reviewer` on a strong model) |
 | High-risk path (auth · billing · payments · credits · migration · deletion · secrets · tokens · crypto · permissions) | + `security-engineer` |
 | User-visible change (screen / flow / API contract) | + `qa-tester` (E2E / UI) |
 
