@@ -100,7 +100,7 @@ Done when: every round-1 BLOCKER / MAJOR, and every issue its fix made, is close
 ### 6. Author response
 
 On the whole round's merged findings, never the first report: READ all without reacting → VERIFY each against the codebase (never implement an unverified one) → RESPOND with a technical ack or reasoned pushback. Clarify every unclear finding before touching anything linked to it. IMPLEMENT by provenance:
-- introduced by this diff → fix now, blocking → simple → complex, testing each;
+- introduced by this diff → fix now, blocking → simple → complex, testing each; a behavior the diff changed or lost outside its own lines counts, even when the reviewer filed it as a question or follow-up;
 - pre-existing on a path this diff changes → fix only when it makes THIS change wrong; else a user decision (money / auth) or `## Follow-ups`;
 - pre-existing on an untouched path → `## Follow-ups`, never this round.
 

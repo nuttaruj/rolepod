@@ -78,6 +78,7 @@ Done when: the menu size and the cleanup owner are known.
 | **Discard** | An experiment that did not pan out | yes |
 
 Fill `templates/finish-menu.md`: gate status, options, follow-ups carried, recommendation, awaiting authorization for.
+- A follow-up the Lead can close now with tools in hand (a one-line fix, a command the checklist names) is closed before the menu, never carried; a leftover list without an action or a question is not a finish.
 - State the recommendation and wait for the pick — unless the user's own message already named the action AND the target: that IS the pick; state the gate status plus the single action and act.
 - Authorization never widens: a PR is not a merge, one target is not another.
 - Keep open proceeds on the named ACTION alone (a checkpoint commit: no push, no merge, no cleanup). Merge, Open PR and Discard need action AND target.

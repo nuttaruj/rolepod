@@ -77,7 +77,7 @@ Spec:
 Standards:
 - `file:line` — BLOCKER|MAJOR|MINOR — <issue> — <why it matters> — <fix direction>
 Questions:
-- `file:line` — <question>
+- `file:line` — <question>   (never a behavior this diff changed or lost — that is a Spec finding, even outside the diff's lines)
 Tests reviewed: <assertions strong? mocks at the right boundary?>
 ```
 
