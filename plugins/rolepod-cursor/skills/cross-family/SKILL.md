@@ -78,8 +78,8 @@ Done when: the kind ran in its mode, or the runner returned an exit for step 4.
 
 ### 4. Read the return
 
-The receipt is the last stdout line: `ROLEPOD-XFAM ok kind=<k> cli=<cli> family=<family> raw=<path> secs=<n>`.
-The runner ran the member read-only on its own default model, in a clean room (`ROLEPOD_BRAIN_SILENT=1`), and anchored the raw output under `.rolepod/evidence/external/` with its phase-log line.
+The receipt is the last stdout line: `ROLEPOD-XFAM ok kind=<k> cli=<cli> family=<family> raw=<path> secs=<n>`. Implement returns `files=<n> edits=<n> patch=<path> report=<path>` in place of `raw=`, or `ROLEPOD-XFAM violations …` when the member edited outside `--allow`, forged evidence or moved git state — the runner already reverted it; read its report before keeping the draft.
+The runner ran the member on its own default model — review / consult / critique read-only, implement in write mode confined to `--allow` — in a clean room (`ROLEPOD_BRAIN_SILENT=1`), and anchored the output under `.rolepod/evidence/external/` with its phase-log line.
 - A review counts only with its `VERDICT:` line. PARTIAL or no verdict → kept as `*.partial.txt`; the chain moves to the next member.
 - A weak review — empty or partial, a bare verdict, no claims walked, a changed file missing from its Scope list → the caller adds its internal strong pass and records why.
 - Consult and critique answers marked PARTIAL still count.

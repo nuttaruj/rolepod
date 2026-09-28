@@ -30,6 +30,7 @@ their account email.
 - No password strength rule changes — reuse the existing validator.
 
 ## Current behavior
+Product: change
 No reset path exists. A locked-out user emails support, who resets
 manually. ~15 tickets/week.
 
@@ -67,6 +68,7 @@ time-limited link, sets a new password, and is logged in.
 - auth — issues a credential-changing capability.
 - security — token must resist guessing and replay; flow must not leak
   account existence.
+Cross-family critique: codex — 3 items, 2 settled from repo, 1 asked
 
 ## Chosen approach
 Single-use signed token, SHA-256 hashed at rest, 30-minute TTL, consumed
@@ -142,6 +144,7 @@ or permission.
 - No export of fields beyond what the report table already shows.
 
 ## Current behavior
+Product: change
 The orders report renders on screen only. To get data out, users copy
 rows by hand or ask an analyst for a database dump.
 
@@ -174,6 +177,7 @@ filters produce, with the same columns as the on-screen table.
 ## High-risk surfaces
 None — read-only export of data the user can already see on screen. No
 credential, billing, or permission change.
+Cross-family critique: not run — not R4
 
 ## Chosen approach
 Server builds the CSV from the same query the report table uses, streamed

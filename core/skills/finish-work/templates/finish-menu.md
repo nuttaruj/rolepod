@@ -24,9 +24,10 @@
 4. **Discard** — safe because <experiment; backup tagged>
 
 ## Follow-ups carried
-<Every line from the plan's `## Follow-ups`, each with a destination: next
- spec (repeat feature) / issue #n / dropped — why. "none" when the plan
- parked nothing. A parked idea never leaves the branch silently.>
+<Every line from the plan's `## Follow-ups` (no plan file → each review
+ report's `## Follow-ups`), each with a destination: next spec (repeat
+ feature) / issue #n / dropped — why. "none" when nothing was parked. A
+ parked idea never leaves the branch silently.>
 
 ## Recommendation
 <The one option that fits, with a one-line why.>

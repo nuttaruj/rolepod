@@ -106,6 +106,7 @@ On the whole round's merged findings, never the first report: READ all without r
 - pre-existing on an untouched path → `## Follow-ups`, never this round.
 
 Reply "Fixed in <file:line>." — no gratitude. A test added to close a finding joins the fix delta for the next reviewer; the author's own green run closes nothing.
+Every `## Follow-ups` line — each report's and your own — goes into the plan's `## Follow-ups` (no plan file → straight into the finish menu's Follow-ups carried), the one list finish-work carries.
 Pushback, YAGNI, disagreement on merits, PR thread replies, rolepod-brain notes → `references/receiving-findings.md`.
 
 Done when: every finding is fixed, pushed back with a reason, or in `## Follow-ups`, and each BLOCKER / MAJOR fix is back with its round 2+ reviewer.

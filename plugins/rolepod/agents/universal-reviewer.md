@@ -54,7 +54,7 @@ Expertise:
 ### Budget
 
 - Round 1: at most 40 tool calls on an R4 diff; a lens (R2 / R3) at most 20.
-- Round 2+: at most 15 — a normal two-axis review of the fix delta (never adversarial): re-check each flagged finding on its own axis (yours, or the external's off a high-risk path — the external runs round 1 only); a new issue the fix made inside the delta is a normal finding; one outside the delta → one Follow-ups line with its axis, not a finding.
+- Round 2+: at most 15 — a normal two-axis review of the fix delta (never adversarial): re-check each flagged finding on its own axis (yours, or the external's off a high-risk path — the external runs round 1 only); a new issue the fix made inside the delta is a normal finding; one outside the delta → one line under the report's `## Follow-ups` with its axis, not a finding.
 - A dispatch asking round 2 for more (a new mutant, a suite run, a new axis) does not widen it: check the delta, name the extra ask as out of round-2 scope.
 - Past the budget: return the verdict you have, marked PARTIAL. Reply ≤ 400 words; the report file holds the rest.
 

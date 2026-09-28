@@ -45,12 +45,12 @@
  report, the reviewer stay on every finding. A reviewer's
  other scale maps in: CRITICAL/HIGH → BLOCKER, WARNING/MEDIUM → MAJOR,
  SUGGESTION/LOW → MINOR. A pre-existing issue on a path the diff does
- not touch → list once under "Adjacent", never a verdict driver; the author parks it in Follow-ups.>
+ not touch → one line under `## Follow-ups` below, never a verdict driver.>
 
 ### BLOCKER — must fix before merge
 - `file:line` — <axis> — <issue> — <why it matters> — <fix direction>
 
-### MAJOR — fix or explicitly document
+### MAJOR — fix; only a pre-existing one may be parked in Follow-ups with its reason
 - `file:line` — <axis> — <issue> — <why it matters> — <fix direction>
 
 ### MINOR — nice to fix
@@ -60,15 +60,22 @@
 <Anything unclear that needs an author answer, not a fix.>
 - `file:line` — <question>
 
+## Follow-ups
+<Issues this review will not fix: pre-existing on an untouched path, or
+ outside a round 2+ fix delta — each with its axis, never a verdict driver.
+ The author copies every line into the plan's `## Follow-ups`, the list
+ finish-work carries. "none" when empty.>
+- `file:line` — <axis> — <issue>
+
 ## Tests reviewed
 <yes / no — and the verdict: assertions strong? mocks at the right boundary?
  concurrency covered?>
 
 ## Recommendation
-<APPROVED — nothing open above MINOR.
+<APPROVED — nothing open above MINOR; a pre-existing MAJOR parked in Follow-ups with its reason is closed.
  APPROVED-WITH-NITS — only MINOR / Questions remain, none of which would change a correctness or security verdict.
  REJECTED — any open BLOCKER introduced by this diff or pre-existing on a
- path it changes, or such a MAJOR neither fixed nor explicitly documented
- per its heading above. A pre-existing issue on an untouched path never
- makes a REJECTED.>
+ path it changes, or such a MAJOR neither fixed nor — pre-existing only —
+ parked in Follow-ups with its reason. A pre-existing issue on an untouched
+ path never makes a REJECTED.>
 APPROVED | APPROVED-WITH-NITS | REJECTED — <one-line reason>

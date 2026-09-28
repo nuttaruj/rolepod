@@ -6,7 +6,10 @@
 # and the exact failed test names.
 #
 # Usage: scripts/junit-summary.sh <report.xml> [more.xml ...]
-# Exit 0 = all parsed suites green. Exit 1 = any failure/error present.
+# Exit 0 = all parsed suites green AND at least one test passed.
+# Exit 1 = any failure/error present, OR nothing ran (empty report /
+# all-skipped report) — a report with 0 failures and 0 passed reads as
+# green Verify evidence with nothing actually tested.
 set -uo pipefail
 
 if [ $# -eq 0 ]; then
@@ -65,5 +68,8 @@ print(f"junit: {total} tests — {passed} passed, {failures} failed, "
       f"{errors} errors, {skipped} skipped")
 for n in failed_names:
     print(f"  ✗ {n}")
-sys.exit(1 if (failures or errors) else 0)
+no_test_ran = failures == 0 and errors == 0 and passed <= 0
+if no_test_ran:
+    print("  ✗ no test ran — 0 passed (empty or all-skipped report)")
+sys.exit(1 if (failures or errors or no_test_ran) else 0)
 PY

@@ -46,7 +46,7 @@ actionable one. Compare the pair — do not read one half alone.
 ### Actionable
 
 ```text
-### MAJOR — fix or explicitly document
+### MAJOR — fix; only a pre-existing one may be parked in Follow-ups with its reason
 - app/controllers/orders_controller.rb:18 — the orders.each { |o| o.customer.name }
   loop fires one query per order (N+1); a 200-order page issues 201 queries
   — preload with .includes(:customer).
