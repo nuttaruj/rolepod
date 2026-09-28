@@ -7,9 +7,10 @@ defined — locate it.
 
 **Scout for wide sweeps.** A broad sweep (many files, unknown location,
 several naming conventions, online sources) and the harness can spawn
-subagents → dispatch ONE read-only **scout on a cheap model** (`scout`
-when installed) instead of sweeping yourself; a file you already know →
-read it yourself. It returns a research report (conclusion → one pointer
+subagents → dispatch a read-only **scout on a cheap model** (`scout`
+when installed) instead of sweeping yourself — ONE per question; several
+independent questions (no answer feeds another) → one scout each, all in
+ONE message; never one per file. A file you already know → read it yourself. It returns a research report (conclusion → one pointer
 per finding → gaps), never raw dumps; the Lead reads only what it points
 at. No subagent support → sweep yourself per Verify-first. Scouts never
 edit, change state, or address the user.

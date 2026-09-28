@@ -37,7 +37,7 @@ A partial reply (`1a 3c`) closes only those questions; the rest stay open next r
 "Don't know" → a fact becomes research; a decision stays open, or the user takes the default and Gate 1 lists it as an assumption. No option fits → the user's own words are the answer. The user asks for one question at a time → the same frontier, one question per message.
 
 Facts are researched, never asked: what the codebase or docs can answer, explore.
-While a round is out, a scout researches the unknowns; only questions downstream of a running scout wait. No subagents → the Lead researches between rounds.
+While a round is out, scouts research the unknowns — one per independent unknown, all in ONE message; only questions downstream of a running scout wait. No subagents → the Lead researches between rounds.
 A user answer naming a file, symbol, library or pattern is a claim: check it (the scout, else grep) before recording; a mismatch opens the next round with the code quoted.
 Scope, user stories, priorities and cost / ROI come from the user — the product owner.
 A domain term with more than one live reading → resolve it in the round (`CONTEXT.md` handling: `references/question-bank.md` Domain term).
