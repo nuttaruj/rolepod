@@ -766,7 +766,7 @@ print(datetime.datetime.fromtimestamp(int(sys.argv[1])).strftime("%Y-%m-%d %H:%M
     fi
   fi
 fi
-[ -n "$SINCE_HUMAN" ] && SINCE_HUMAN="since last commit $SINCE_HUMAN" || SINCE_HUMAN="whole session (no commit yet)"
+[ -n "$SINCE_HUMAN" ] && SINCE_HUMAN="since last commit $SINCE_HUMAN" || SINCE_HUMAN="session, no commit"
 if [ -f "$SESSION_STATE" ] && command -v python3 >/dev/null 2>&1; then
   # One session_state.py call computes the window at DIFF_DIR itself (same
   # algorithm as SINCE_EPOCH above, kept in bash for SINCE_HUMAN) and returns
@@ -925,7 +925,7 @@ REASON+="Evidence ($SINCE_HUMAN): $TEST_EDITS tests / $HIGH_RISK_EDITS risk edit
 [ -n "$XFAM_HELD" ] && REASON+="SATELLITE-FIRST: $XFAM_HELD"
 [ -z "$XFAM_HELD" ] && [ -n "$XFAM_RUNNING" ] && [ -n "$HIGH_RISK" ] && [ "$STRONG_REVIEWERS" -eq 0 ] && REASON+="A detached cross-family job is still running: $XFAM_RUNNING — bash '$XFAM_RUNNER' --collect <job-id>, then retry. "
 if [ -n "$HIGH_RISK" ] && [ "$STRONG_REVIEWERS" -eq 0 ] && [ -z "$XFAM_HELD" ]; then
-  REASON+="NO STRONG ADVERSARIAL REVIEWER since the last commit. Test edits are the test floor, not the review. "
+  REASON+="NO STRONG ADVERSARIAL REVIEWER since the last commit — test edits are not the review. "
 fi
 # One Fix sentence, worded to what actually clears the block — never
 # "internal also counts": the satellite-first hold above already zeroed
@@ -933,9 +933,9 @@ fi
 # 2026-09-25 fix round).
 if [ -n "$HIGH_RISK" ] && [ "$STRONG_REVIEWERS" -eq 0 ] && [ -z "$XFAM_HELD" ]; then
   if [ -n "$XFAM_POOL_ON" ]; then
-    REASON+="Fix: security-engineer + the external when the pool is on, else universal-reviewer — a FINISHED dispatch (Agent tool or Workflow agentType), the external anchored per review-code (raw output under .rolepod/evidence/external/ + the reviewer:external log line). "
+    REASON+="Fix: security-engineer + the external when the pool is on, else universal-reviewer — a FINISHED dispatch (Agent/Workflow agentType), the external anchored per review-code (raw output under .rolepod/evidence/external/ + the reviewer:external log line). "
   else
-    REASON+="Fix: security-engineer + a FINISHED strong universal-reviewer dispatch (Agent tool or Workflow agentType). "
+    REASON+="Fix: security-engineer + a FINISHED strong universal-reviewer dispatch (Agent/Workflow agentType). "
   fi
 elif [ -z "$HIGH_RISK" ]; then
   # Round-2 review (2026-09-25): a deny forced by ROLEPOD_GATES_HARD=1 alone
@@ -945,7 +945,7 @@ elif [ -z "$HIGH_RISK" ]; then
   # i.e. TEST_EDITS==0 AND REVIEWERS==0 — the Fix applies unconditionally.
   REASON+="Fix: write the failing test, or dispatch a reviewer. "
 fi
-REASON+="Exception: none by marker — auto-passes once the evidence above exists SINCE THE LAST COMMIT; rerun the SAME git commit."
+REASON+="Exception: none by marker — auto-passes once evidence exists SINCE THE LAST COMMIT; rerun the SAME commit. Reviewed in another worktree → commit there (git -C <worktree> commit), then merge or cherry-pick; a patch carries no evidence."
 
 # Decide: HARD block vs SOFT warn
 HARD_BLOCK=0
