@@ -925,7 +925,7 @@ REASON+="Evidence ($SINCE_HUMAN): $TEST_EDITS tests / $HIGH_RISK_EDITS risk edit
 [ -n "$XFAM_HELD" ] && REASON+="SATELLITE-FIRST: $XFAM_HELD"
 [ -z "$XFAM_HELD" ] && [ -n "$XFAM_RUNNING" ] && [ -n "$HIGH_RISK" ] && [ "$STRONG_REVIEWERS" -eq 0 ] && REASON+="A detached cross-family job is still running: $XFAM_RUNNING — bash '$XFAM_RUNNER' --collect <job-id>, then retry. "
 if [ -n "$HIGH_RISK" ] && [ "$STRONG_REVIEWERS" -eq 0 ] && [ -z "$XFAM_HELD" ]; then
-  REASON+="NO STRONG ADVERSARIAL REVIEWER since the last commit — test edits are not the review. "
+  REASON+="NO STRONG ADVERSARIAL REVIEWER — test edits are not the review. "
 fi
 # One Fix sentence, worded to what actually clears the block — never
 # "internal also counts": the satellite-first hold above already zeroed
