@@ -309,6 +309,11 @@ if externals or xfails or strong_internal:
     ext_reviews = sum(1 for r in externals if r.get("phase") == "review")
     if strong_internal or ext_reviews:
         print(f"    strong pass source: external {ext_reviews} vs internal strong dispatch {len(strong_internal)}")
+        if ext_reviews:
+            review_rows = [r for r in externals if r.get("phase") == "review"]
+            adv = sum(1 for r in review_rows if r.get("mode") == "adversarial")
+            std = ext_reviews - adv
+            print(f"    external review mode: adversarial {adv} · standard {std}")
         cfg = None
         for cand in (os.path.join(os.path.dirname(ev.rstrip("/")), "cross-family"),
                      os.path.expanduser("~/.rolepod/cross-family")):

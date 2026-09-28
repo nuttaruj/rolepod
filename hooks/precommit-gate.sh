@@ -854,7 +854,7 @@ if [ -z "$XFAM_HELD" ] && [ -n "$XFAM_POOL_ON" ] && [ "${XREV:-0}" -eq 0 ] && [ 
     if [ -n "$XFAM_RUNNING" ]; then
       XFAM_HELD+="A detached job is ALREADY RUNNING: $XFAM_RUNNING — bash '$XFAM_RUNNER' --collect <job-id>, then retry; do not start another. "
     else
-      XFAM_HELD+="Fix: bash '$XFAM_RUNNER' --kind review --brief <brief.md> --attach <diff> --detach (add --lead $XFAM_LEAD outside a hook); --collect <job-id> waits. "
+      XFAM_HELD+="Fix: bash '$XFAM_RUNNER' --kind review --adversarial --brief <brief.md> --attach <diff> --detach (add --lead $XFAM_LEAD outside a hook); --collect <job-id> waits. "
     fi
     XFAM_HELD+="Pool failed or empty (logged) → the internal reviewer counts. "
     STRONG_REVIEWERS=0

@@ -762,7 +762,7 @@ if [ "${1:-}" = "--brief" ]; then
     print "## Reviewers"
     if (tier == "R1") print "`none`"
     else if (tier == "R4") {
-      r = "`universal-reviewer` (internal strong) or, with a usable pool, the `cross-family` skill runner (`bash <cross-family skill folder>/scripts/cross-family.sh --kind review --brief <this brief> --attach <diff> --detach`) then `--collect <job> --timeout 540` in the foreground (exit 6 = still running: run it again) instead, plus `security-engineer`"
+      r = "`security-engineer` + `universal-reviewer` `lens: spec` + `universal-reviewer` `lens: standards` + the adversarial pass (the `adversarial-review` skill): with a usable pool the `cross-family` skill runner (`bash <cross-family skill folder>/scripts/cross-family.sh --kind review --adversarial --brief <this brief> --attach <diff> --detach`) then `--collect <job> --timeout 540` in the foreground (exit 6 = still running: run it again), else `universal-reviewer` `mode: adversarial` (internal strong) — all four in ONE message"
       print r
       # The round shape lives HERE, where the owner picks its reviewers: at the
       # end of the Bounds line two owners in a row still messaged the finished
