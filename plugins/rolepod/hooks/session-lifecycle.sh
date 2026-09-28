@@ -43,6 +43,20 @@ case "$MODE" in
   --lock|--unlock) ;;
   *) echo "session-lifecycle.sh: unknown mode: $MODE (expected --lock | --unlock)" >&2; exit 0 ;;
 esac
+shift || true
+
+# CLI identity (this task): Claude and Codex both run this script, so the
+# adapter's own hooks.json states which one via --cli <name>. Content of the
+# lock file becomes that name, so a sibling-warning reader can print a
+# per-CLI breakdown instead of a bare count. No --cli given (older call site,
+# manual invocation) -> "claude", the more common caller.
+CLI_NAME="claude"
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --cli) CLI_NAME="${2:-claude}"; shift 2 ;;
+    *) shift ;;
+  esac
+done
 
 # Honor override env. SessionStart still writes our lock so siblings
 # detect us; the env only silences the warning.
@@ -87,7 +101,12 @@ NOW=$(date +%s)
 STALE_THRESHOLD=1800   # 30 min — covers most legit gaps between turns
 
 # Scan siblings + prune stale. Use stat -f (BSD) with -c fallback (GNU).
+# SIBLING_NAMES collects one CLI name per active sibling (newline-separated,
+# no assoc arrays — /bin/bash on macOS is still 3.2) for the warning's
+# per-CLI breakdown. A lock's content is the CLI name (this task); an empty
+# lock (written by a version before this one) has none -> "unknown".
 ACTIVE_SIBLINGS=0
+SIBLING_NAMES=""
 for lock in "$LOCK_DIR"/*.lock; do
   [ -f "$lock" ] || continue
   lock_basename=$(basename "$lock" .lock)
@@ -97,6 +116,10 @@ for lock in "$LOCK_DIR"/*.lock; do
   age=$((NOW - mtime))
   if [ "$age" -lt "$STALE_THRESHOLD" ]; then
     ACTIVE_SIBLINGS=$((ACTIVE_SIBLINGS + 1))
+    sib_name=$(tr -d '[:space:]' < "$lock" 2>/dev/null || echo "")
+    [ -z "$sib_name" ] && sib_name="unknown"
+    SIBLING_NAMES="${SIBLING_NAMES}${sib_name}
+"
   else
     rm -f "$lock" "$LOCK_DIR/$lock_basename.files" 2>/dev/null || true
   fi
@@ -114,8 +137,10 @@ for _f in "$(dirname "$LOCK_DIR")"/*/*.files; do
 done
 find "$(dirname "$LOCK_DIR")" -mindepth 1 -maxdepth 1 -type d -empty ! -path "$LOCK_DIR" -delete 2>/dev/null || true
 
-# Write our lock (touch updates mtime on each SessionStart resume).
-touch "$LOCK_DIR/$SESSION_ID.lock" 2>/dev/null || true
+# Write our lock. Content = this CLI's name (a sibling reader prints it in
+# its breakdown); overwriting refreshes mtime on each SessionStart resume,
+# same as the old touch did.
+printf '%s' "$CLI_NAME" > "$LOCK_DIR/$SESSION_ID.lock" 2>/dev/null || true
 
 # Extension Protocol v1: signal to child plugins (rolepod-uiproof, wplab)
 # that rolepod parent is active in this worktree. Children read this file
@@ -145,19 +170,24 @@ BRANCH=$(git -C "$WORKTREE" branch --show-current 2>/dev/null || echo "HEAD")
 SUGGEST_PATH="${WORKTREE}-task-$(date +%s)"
 
 # Emit additionalContext so Lead reads it on turn 1 and self-acts. Env-pass the
-# branch / path / count so a quote in a branch name cannot break the emitter
-# (which would fail open on the exact concurrency risk this hook flags).
-ROLEPOD_HOOK_SIBLINGS="$ACTIVE_SIBLINGS" ROLEPOD_HOOK_PATH="$SUGGEST_PATH" ROLEPOD_HOOK_BRANCH="$BRANCH" python3 -I -c "
+# branch / path / count / names so a quote in a branch name cannot break the
+# emitter (which would fail open on the exact concurrency risk this hook flags).
+ROLEPOD_HOOK_SIBLINGS="$ACTIVE_SIBLINGS" ROLEPOD_HOOK_PATH="$SUGGEST_PATH" ROLEPOD_HOOK_BRANCH="$BRANCH" ROLEPOD_HOOK_NAMES="$SIBLING_NAMES" python3 -I -c "
 import json, os
+from collections import Counter
 n = os.environ.get('ROLEPOD_HOOK_SIBLINGS', '?')
 path = os.environ.get('ROLEPOD_HOOK_PATH', '')
 branch = os.environ.get('ROLEPOD_HOOK_BRANCH', 'HEAD')
-msg = ('Sibling rolepod session(s) detected in this worktree (%s active). '
+names = [x for x in os.environ.get('ROLEPOD_HOOK_NAMES', '').split(chr(10)) if x]
+counts = Counter(names)
+breakdown = ', '.join('%s ×%d' % (k, counts[k]) for k in sorted(counts))
+detail = (': ' + breakdown) if breakdown else ''
+msg = ('Sibling rolepod session(s) detected in this worktree (%s active%s). '
        'Concurrent edits will stomp each other. '
        'Before any Edit/Write: spawn an isolated worktree FIRST:\n\n'
        '  git worktree add %s %s\n'
        '  cd %s\n\n'
        'Then continue work there. Override with ROLEPOD_ALLOW_SHARED_WORKTREE=1 '
-       'if this session is intentionally shared (e.g. read-only review).') % (n, path, branch, path)
-print(json.dumps({'hookSpecificOutput': {'hookEventName': 'SessionStart', 'additionalContext': msg}}))
+       'if this session is intentionally shared (e.g. read-only review).') % (n, detail, path, branch, path)
+print(json.dumps({'hookSpecificOutput': {'hookEventName': 'SessionStart', 'additionalContext': msg}}, ensure_ascii=False))
 " 2>/dev/null || echo '{}'

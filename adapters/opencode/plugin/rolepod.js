@@ -127,12 +127,22 @@ const REANCHOR_MSG =
   "`git status`, re-open the spec if the flow has one. Disk beats summary " +
   "on every conflict."
 
-function siblingMessage(activeSiblings) {
+// `names` = one CLI name per active sibling (as read from its lock's
+// content; an empty/older-version lock reads as "unknown") — folded into a
+// per-CLI breakdown like "opencode ×2, unknown ×1" so the warning says WHICH
+// CLI, not just how many.
+function siblingBreakdown(names) {
+  const counts = new Map()
+  for (const n of names) counts.set(n, (counts.get(n) || 0) + 1)
+  return [...counts.keys()].sort().map((k) => `${k} ×${counts.get(k)}`).join(", ")
+}
+function siblingMessage(activeSiblings, names = []) {
+  const breakdown = siblingBreakdown(names)
   return (
     `rolepod: ${activeSiblings} sibling session(s) active in this ` +
-    "worktree (possibly another CLI). Concurrent edits will stomp " +
-    "each other — isolate with `git worktree add` before editing, or " +
-    "set ROLEPOD_ALLOW_SHARED_WORKTREE=1 if intentional."
+    `worktree${breakdown ? ` (${breakdown})` : ""} (possibly another CLI). ` +
+    "Concurrent edits will stomp each other — isolate with `git worktree " +
+    "add` before editing, or set ROLEPOD_ALLOW_SHARED_WORKTREE=1 if intentional."
   )
 }
 // One rule, both entry points: warn only when siblings exist and the user
@@ -435,12 +445,14 @@ function makeCore({ directory, homedir } = {}) {
   const dir = directory || process.cwd()
   const hd = homedir || os.homedir()
 
-  // Registers `id` in the worktree's lock dir and returns the count of
-  // OTHER active (non-stale) sibling locks — the caller decides how to
-  // surface that (v1: a toast; v2: a one-shot system-part nudge).
+  // Registers `id` in the worktree's lock dir and returns the OTHER active
+  // (non-stale) sibling locks as { count, names } — the caller decides how
+  // to surface that (v1: a toast; v2: a one-shot system-part nudge). Each
+  // lock's content is read as the CLI name that wrote it (this task); an
+  // empty lock (an older version) reads as "unknown".
   const registerLock = (id) => {
     const worktree = worktreeRoot(dir)
-    if (!worktree) return 0 // non-git dir = no stomp risk (same as bash hook)
+    if (!worktree) return { count: 0, names: [] } // non-git dir = no stomp risk (same as bash hook)
 
     // Combined-mode marker for child plugins (uiproof/wplab/dblab) — parent
     // active in this worktree. opencode has no session-end hook; the marker
@@ -457,6 +469,7 @@ function makeCore({ directory, homedir } = {}) {
     fs.mkdirSync(lockDir, { recursive: true })
 
     let activeSiblings = 0
+    const names = []
     const now = Date.now()
     for (const entry of fs.readdirSync(lockDir)) {
       if (!entry.endsWith(".lock")) continue
@@ -464,14 +477,19 @@ function makeCore({ directory, homedir } = {}) {
       const p = path.join(lockDir, entry)
       try {
         const age = now - fs.statSync(p).mtimeMs
-        if (age < STALE_MS) activeSiblings += 1
-        else fs.rmSync(p, { force: true })
+        if (age < STALE_MS) {
+          activeSiblings += 1
+          const name = fs.readFileSync(p, "utf8").trim()
+          names.push(name || "unknown")
+        } else {
+          fs.rmSync(p, { force: true })
+        }
       } catch {
         /* raced with another session's prune — ignore */
       }
     }
-    fs.writeFileSync(path.join(lockDir, `${id}.lock`), "")
-    return activeSiblings
+    fs.writeFileSync(path.join(lockDir, `${id}.lock`), "opencode")
+    return { count: activeSiblings, names }
   }
 
   return {
@@ -523,8 +541,8 @@ export const RolepodPlugin = async ({ directory, client }) => {
   }
 
   const registerLockAndWarn = (id) => {
-    const activeSiblings = core.registerLock(id)
-    if (shouldWarnSiblings(activeSiblings)) toast(siblingMessage(activeSiblings))
+    const { count, names } = core.registerLock(id)
+    if (shouldWarnSiblings(count)) toast(siblingMessage(count, names))
   }
 
   return {
@@ -676,7 +694,7 @@ export default {
     // this instance already) are the reliable source of "is this ours".
     const sessions = new Map()
     const lockedSessions = new Set()
-    const pendingSibling = new Map() // sessionID -> activeSiblings count
+    const pendingSibling = new Map() // sessionID -> { count, names }
     const pendingReanchor = new Set()
     const pendingRoute = new Set()
     const lastPromptAt = new Map()
@@ -724,8 +742,8 @@ export default {
           if (!sessions.has(sid)) sessions.set(sid, { child: false })
           if (!lockedSessions.has(sid)) {
             lockedSessions.add(sid)
-            const activeSiblings = core.registerLock(sid)
-            if (shouldWarnSiblings(activeSiblings)) pendingSibling.set(sid, activeSiblings)
+            const { count, names } = core.registerLock(sid)
+            if (shouldWarnSiblings(count)) pendingSibling.set(sid, { count, names })
           }
           pendingRoute.add(sid)
         } catch { /* fail open */ }
@@ -795,9 +813,9 @@ export default {
           const sid = String(e?.sessionID ?? "")
           if (!sid || !Array.isArray(e?.system)) return
           if (pendingSibling.has(sid)) {
-            const n = pendingSibling.get(sid)
+            const { count, names } = pendingSibling.get(sid)
             pendingSibling.delete(sid)
-            e.system.push({ type: "text", text: siblingMessage(n) })
+            e.system.push({ type: "text", text: siblingMessage(count, names) })
           }
           if (pendingReanchor.has(sid)) {
             pendingReanchor.delete(sid)

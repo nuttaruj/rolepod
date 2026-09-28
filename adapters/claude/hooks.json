@@ -27,7 +27,7 @@
           },
           {
             "type": "command",
-            "command": "[ -z \"$CURSOR_PROJECT_DIR\" ] && exec bash \"${CLAUDE_PLUGIN_ROOT}/hooks/session-lifecycle.sh\" --lock; cat >/dev/null",
+            "command": "[ -z \"$CURSOR_PROJECT_DIR\" ] && exec bash \"${CLAUDE_PLUGIN_ROOT}/hooks/session-lifecycle.sh\" --lock --cli claude; cat >/dev/null",
             "timeout": 3
           }
         ]

@@ -45,19 +45,33 @@ if [ "${ROLEPOD_ALLOW_SHARED_WORKTREE:-0}" != "1" ]; then
   _h=$(printf '%s' "$REPO" | { shasum -a 256 2>/dev/null || sha256sum 2>/dev/null; } | awk '{print $1}' | head -c 16)
   _ld="$HOME/.rolepod/session-locks/$_h"; _sid="cursor-${CONV:-auto-$PPID}"
   mkdir -p "$_ld" 2>/dev/null || true
-  _now=$(date +%s); _act=0
+  _now=$(date +%s); _act=0; _names=""
   for _lk in "$_ld"/*.lock; do
     [ -f "$_lk" ] || continue; _b=$(basename "$_lk" .lock); [ "$_b" = "$_sid" ] && continue
     _m=$(stat -c %Y "$_lk" 2>/dev/null || stat -f %m "$_lk" 2>/dev/null || echo 0)
-    if [ $((_now - _m)) -lt 1800 ]; then _act=$((_act + 1)); else rm -f "$_lk" "$_ld/$_b.files" 2>/dev/null || true; fi
+    if [ $((_now - _m)) -lt 1800 ]; then
+      _act=$((_act + 1))
+      _nm=$(tr -d '[:space:]' < "$_lk" 2>/dev/null || echo "")
+      [ -z "$_nm" ] && _nm="unknown"
+      _names="${_names}${_nm}
+"
+    else
+      rm -f "$_lk" "$_ld/$_b.files" 2>/dev/null || true
+    fi
   done
-  touch "$_ld/$_sid.lock" 2>/dev/null || true
-  [ "$_act" -gt 0 ] && CTX="$CTX\n\n**$_act concurrent session(s)** in this worktree. Edits to the SAME file stomp each other — isolate with a git worktree before editing a shared file. Override: \`ROLEPOD_ALLOW_SHARED_WORKTREE=1\`."
+  # Lock content = this CLI's name, same convention as every other reader
+  # (session-lifecycle.sh, the opencode plugin) — a sibling then knows which
+  # CLI it is, not just how many.
+  printf '%s' "cursor" > "$_ld/$_sid.lock" 2>/dev/null || true
+  if [ "$_act" -gt 0 ]; then
+    _breakdown=$(printf '%s' "$_names" | sort | uniq -c | awk '{printf "%s%s ×%d", sep, $2, $1; sep=", "}')
+    CTX="$CTX\n\n**$_act concurrent session(s)** ($_breakdown) in this worktree. Edits to the SAME file stomp each other — isolate with a git worktree before editing a shared file. Override: \`ROLEPOD_ALLOW_SHARED_WORKTREE=1\`."
+  fi
 fi
 
 # Env-pass so a crafted commit message / branch cannot escape the Python string
 # literal (RCE). CTX carries literal `\n`; convert to real newlines here.
 ROLEPOD_HOOK_CTX="${CTX//\\n/$'\n'}" python3 -c "
 import json, os
-print(json.dumps({'additional_context':os.environ.get('ROLEPOD_HOOK_CTX','')}))
+print(json.dumps({'additional_context':os.environ.get('ROLEPOD_HOOK_CTX','')}, ensure_ascii=False))
 " 2>/dev/null || echo '{}'
