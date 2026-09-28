@@ -16,7 +16,7 @@
 # a 14-command grep sweep cost 31 turns × 558k = 17.3M tokens ≈ $9 at
 # opus, and the Lead's own re-reads were ~90% of the project's spend. No
 # hook watched it because none looked at `usage`. This one reads the last
-# turn's context size from the transcript and, on crossing 500k, tells the
+# turn's context size from the transcript and, on crossing the line, tells the
 # Lead via additionalContext (v2.119.1 — 200k per 200k bucket until then,
 # picked as the long-context pricing knee; Claude 4.6+ bill the full 1M
 # window at one rate, so the knee is gone, and the owner asked for one note
@@ -28,6 +28,8 @@
 # can raise it in its own words at a natural pause. Edge-triggered: the
 # state file says "fired" while the context sits above the line and is
 # removed on the first reading below it, so one crossing = one note.
+# 2026-09-28 (owner decision): the line moved from 500k to 400k — the owner
+# wants the compact note earlier; edge-trigger and re-arm are unchanged.
 # Measured 2026-09-11 over 7 days: the hook fired 2x in one session and the
 # Lead relayed "/compact" 43x, because "when the task is done" read as every
 # turn's end — the line now binds the relay to THIS turn's close and forbids
@@ -55,7 +57,7 @@ EOF
 CTX=${CTX:-0}; [ "$SID" = "-" ] && SID=""
 
 CTX_MSG=""
-CTX_LINE=500000
+CTX_LINE=400000
 STATE_DIR="$HOME/.rolepod/ctx-nudge"
 if [ -n "$SID" ] && [ "$CTX" -ge "$CTX_LINE" ] 2>/dev/null; then   # no session id = no throttle = no note
   mkdir -p "$STATE_DIR" 2>/dev/null || true
