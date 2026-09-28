@@ -18,6 +18,8 @@
   words, quoted. A waiver is recorded here, never silently applied.>
 
 ## Options
+<Detached HEAD (finish-work Detect the environment) → drop Merge to main and
+ renumber: 3 options.>
 1. **Merge to main** — ready because <evidence the gates are green>
 2. **Open PR** — useful because <needs upstream review / CI on the PR runner>
 3. **Keep open** — useful because <work remaining>

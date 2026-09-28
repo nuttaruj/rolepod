@@ -21,6 +21,7 @@ Repeat feature (a prior `docs/rolepod/specs/<feature>-*.md`) → its Desired beh
 Write the goal in one sentence, 2-3 likely constraints, and every high-risk surface: auth, billing, payments, credits, migration, data deletion, secrets, tokens, crypto, permissions, security.
 The goal needs an "and" → possibly several specs: `references/scope-splitting.md`.
 Open decisions block listing the slices → chart them, then spec each slice: `references/chart-work.md`.
+A slice handed off from a chart-work map → read the map and each Decided ticket it links first; a decided question is cited (`Decided — q-<slug>`), never asked again in Discovery.
 Name the **Product mode** from the repo — `change` (adds to or alters an existing product) or `new` (nothing to change yet); ask only when the repo cannot tell (a new app beside an existing one). It scopes every later step, a prototype included.
 
 Done when: the goal, constraints, risk surfaces and Product mode are written down.

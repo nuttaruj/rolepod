@@ -681,6 +681,11 @@ cmd_log() {
     exit 1
   fi
 
+  if ! plan_task_rows "$plan" | awk -F "$ROW_FS" -v want="$n" '($1 "") == (want "") { f = 1 } END { exit !f }'; then
+    echo "ticket: log: no Task $n in $plan — refusing (fail-closed)" >&2
+    exit 1
+  fi
+
   local tmp rc bullet
   tmp="$(mktemp "${TMPDIR:-/tmp}/rolepod-ticket-log.XXXXXX")"
   [ -n "$tmp" ] || { echo "ticket: log: mktemp failed" >&2; exit 1; }

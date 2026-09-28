@@ -9,7 +9,7 @@ Turns code that does not earn its complexity into less code with the same behavi
 
 ## Skip when
 
-- No tests cover the touched code → write them first via `implement-plan` (baseline tests) or `debug-issue`.
+- No tests cover the touched code → write them first via `implement-plan` (baseline tests) or `debug-issue`, then resume at step 1 with them as the Baseline; the cleanup is still owed, never dropped at their Next phase.
 - The complexity is load-bearing (a security boundary, a data invariant).
 - Mid-feature and the cut is not needed to unblock the change. A required prefactor is not a skip (step 6).
 - The behavior itself must change → `write-spec` or `write-plan`.

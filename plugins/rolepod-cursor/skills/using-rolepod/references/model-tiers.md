@@ -15,7 +15,7 @@ Route rows by class:
 - cheap — vague build / doc / UI asks and repeat or legacy features (`write-spec`), prototypes, clear doc edits, `manage-context`, explain-only answers.
 - cheap to balanced — `write-plan` against an existing spec, `qa-tester` hand-offs.
 - balanced — executing a plan, multi-agent planning, `debug-issue`, `simplify-code`, perf, UI and infra builds, `check-work`, repo-wide sweeps, high-risk builds.
-- strong — high-risk review, architecture, `review-code`, `finish-work` when `review-code` fires, `deepen-codebase` (its explorer inherits the Lead).
+- strong — high-risk review, architecture, `review-code`, `finish-work` when `review-code` fires, `deepen-codebase` (its explorer inherits a strong Lead, else takes a one-call strong override).
 
 The Lead picks the class at dispatch; escalate only on a BLOCKED redispatch or a user ask.
 

@@ -78,6 +78,9 @@ Done when: every new test survives the flip, sits at the seam, and each rule has
 
 ## Next phase
 
-- Called from another skill → back to that skill's next step with the red and green runs.
-- Called alone → `check-work` with the red and green runs; the step 4 red run is its red proof while no test file has changed since, else it removes the fix and sees the test red again.
-- If `check-work` is not available, run the module suite and report it with the step 4 red run; a test file changed since that run → remove the fix once, see the test red, restore it, and report that run instead.
+- Report-only (Skip when: checking tests that already exist) → the step 6 findings go to the caller, or to the user when called alone; nothing goes to `check-work`.
+- Called from another skill → back to that skill's next step with the slice's proof: test-first → the red and green runs; evidence-after → the step 1 proof.
+- Called alone, test-first → `check-work` with the red and green runs; the step 4 red run is its red proof while no test file has changed since, else it removes the fix and sees the test red again.
+- Called alone, evidence-after → `check-work` with the step 1 proof (browser observation, smoke + restart, render + link check, or the suite green after); there is no red run to carry.
+- If `check-work` is not available, test-first → run the module suite and report it with the step 4 red run; a test file changed since that run → remove the fix once, see the test red, restore it, and report that run instead.
+- If `check-work` is not available, evidence-after → run the module suite and report it with the step 1 proof.

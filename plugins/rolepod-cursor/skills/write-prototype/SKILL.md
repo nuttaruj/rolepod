@@ -14,8 +14,8 @@ Turns ONE question from a spec into throwaway code the user can react to, then w
 ### 1. Check the spec
 
 A spec here is a draft whose other questions are settled, an approved spec, or a chart-work `probe` ticket.
-Read its Product mode, the ONE question, and in change mode the paths the spec touches. Any missing → `write-spec`.
-The question does not fit one sitting → it is too broad: back to `write-spec` to split it.
+Read its Product mode, the ONE question, and in change mode the paths the spec touches. Any missing → `write-spec`; a `probe` ticket missing one → fill that line in the ticket from the repo (ask only what the repo cannot tell) — it stays a ticket, never a new spec.
+The question does not fit one sitting → it is too broad: back to `write-spec` to split it (a `probe` ticket: split it on the map, chart-work's Ripple step).
 Labels use the spec's words and the `CONTEXT.md` terms.
 
 Done when: the Product mode and exactly one question are named.
@@ -29,8 +29,8 @@ Scope follows the Product mode: `change` → only the surface the spec changes, 
 
 **Layout** — required elements:
 - 3 variants by default (2 for a two-way question; 1 when the user already named the layout to test — no switcher then), 5 at most, differing in structure (layout, information hierarchy, primary affordance), never only colour or copy;
-- switched by `?variant=` and a floating bottom bar (previous / next, current label, arrow keys), reload-stable, hidden in production builds;
-- change mode → mounted on the existing route with its real data; new mode or no runnable app → one self-contained HTML file with the same switcher.
+- 2+ variants → switched by `?variant=` and a floating bottom bar (previous / next, current label, arrow keys), reload-stable, hidden in production builds;
+- change mode → mounted on the existing route with its real data; new mode or no runnable app → one self-contained HTML file, with the same switcher when there are 2+ variants.
 
 **Logic** — required elements:
 - one self-contained HTML file (inline CSS/JS, no build, no server) that opens by double-click;
@@ -56,7 +56,7 @@ Done when: the prototype runs with one command or a double-click.
 
 ### 4. Hand over
 
-Change mode with a runnable app: run the prototype on its own port and give BOTH links — the original route (the running app, or a server from the main tree) and the prototype route with each `?variant=` key — same route, side by side.
+Change mode with a runnable app: run the prototype on its own port and give BOTH links — the original route (the running app, or a server from the main tree) and the prototype route with each `?variant=` key (one variant: the prototype route alone) — same route, side by side.
 Logic, new mode, or change mode with no runnable app: give the file path, opened; for the last, say the variants were not seen against the real app.
 `rolepod-uiproof` installed → a screenshot per variant is optional.
 Ask for the verdict; "the header from B with the sidebar from C" is a verdict. Iterate on request.
@@ -65,10 +65,10 @@ Done when: the user gave a verdict.
 
 ### 5. Capture
 
-Write into the spec: the question, the verdict, and the line `Prototype: spike/<name> — reference only, never merged, rebuilt from this spec`.
+Write into the spec (a `probe` ticket: its `## Resolution`, the line ending `rebuilt from the spec that cites this ticket`): the question, the verdict, and the line `Prototype: spike/<name> — reference only, never merged, rebuilt from this spec`.
 Commit the prototype on its spike branch (pushed only when the user asks), then remove the worktree; the branch keeps the evidence.
 
-Done when: the verdict is in the spec and the worktree is removed.
+Done when: the verdict is in the spec (or the probe ticket) and the worktree is removed.
 
 ## Guardrails
 
@@ -76,5 +76,6 @@ Done when: the verdict is in the spec and the worktree is removed.
 
 ## Next phase
 
-- `write-spec` for Gate 1 with the verdict. The spec was already approved and the verdict changed a decision → `write-spec` re-opens Gate 1, and Gate 2 in file mode.
+- From a `probe` ticket → back to the map: `write-spec`'s `references/chart-work.md`, Working the map step 3 (Record) — the ticket flips resolved and its gist goes under Decided.
+- From a spec → `write-spec` for Gate 1 with the verdict. The spec was already approved and the verdict changed a decision → `write-spec` re-opens Gate 1, and Gate 2 in file mode.
 - If `write-spec` is not available, hand the user the question, the verdict and the spike branch name as the design decision to build from.

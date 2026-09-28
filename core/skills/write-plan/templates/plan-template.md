@@ -11,7 +11,9 @@
 ---
 
 ## Source spec
-<Link or one-line pointer to the approved spec this plan implements.>
+<Link or one-line pointer to the approved spec this plan implements. No spec
+ (a clear goal) → the user's request, quoted; its asks are the requirements
+ Spec coverage maps.>
 
 ## Files to touch
 <Concrete paths, not categories. One line each, with a word on what changes.>
@@ -95,8 +97,10 @@
 
 ## Spec coverage (both directions)
 <Every spec requirement → the task that implements it; a requirement with no
- task is a plan failure. Every task → the spec line that asked for it; a task
- no spec line asked for is scope creep — cut it or move it to a follow-up list.>
+ task is a plan failure. A user-visible E2E flow the spec names maps to the
+ tasks that build it plus `check-work` (verified once) — never an E2E task of
+ its own. Every task → the spec line that asked for it; a task no spec line
+ asked for is scope creep — cut it or move it to a follow-up list.>
 - <spec requirement> → Task <N>
 
 ## Parallel layout

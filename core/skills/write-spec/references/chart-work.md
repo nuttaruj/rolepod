@@ -51,6 +51,8 @@ on the map is how two copies drift.
 Status: open | resolved | ruled-out
 Blocked-by: q-<slug>, q-<slug>   # omit when unblocked
 Kind: discuss | investigate | probe | unblock
+Product mode: change | new       # probe only
+Paths: <paths the question touches>   # probe in change mode only
 
 ## Question
 <the single decision this ticket resolves — sized to one session>
@@ -73,7 +75,7 @@ tools:
 |---|---|---|
 | `discuss` | with user | Discovery (`write-spec` Discovery) on the one question. Default kind. |
 | `investigate` | agent alone | Dispatch a `scout` — docs, APIs, prior art; report → resolution. |
-| `probe` | with user | A throwaway artifact to react to — `write-prototype` (layout variants or a clickable logic demo) on a `spike/` branch. Link it; never merge it. |
+| `probe` | with user | A throwaway artifact to react to — `write-prototype` (layout variants or a clickable logic demo) on a `spike/` branch, fed the ticket's Question, Product mode and Paths; its verdict is the ticket's Resolution. Link it; never merge it. |
 | `unblock` | either | Real work a decision is waiting on (provision access, move data so its shape is visible). The only kind that *does* instead of decides. Human-only steps → generate a wizard (implement-plan `references/wizard.md`). |
 
 `discuss` and `probe` resolve **only through the user's own answers** — the
@@ -91,7 +93,8 @@ parallel via scouts). More than one `discuss` per session degrades both.
    predates now — if the touched code or dependency has since changed,
    re-run the scout before trusting it.
 2. Resolve per its kind. Zoom into related resolved tickets only as needed.
-3. Record: write `## Resolution` in the ticket, flip `Status: resolved`,
+3. Record: write `## Resolution` in the ticket (a `probe`: `write-prototype`
+   already wrote it), flip `Status: resolved`,
    add the one-line gist to **Decided**. The user reversing a resolved
    decision appends a dated superseding `## Resolution` and edits the gist
    in place — it never reopens tickets that did not depend on the changed

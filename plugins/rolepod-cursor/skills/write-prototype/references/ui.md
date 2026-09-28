@@ -55,6 +55,8 @@ Variants must be structurally different: different layout, different information
 
 ### 3. Wire them together
 
+One variant (the user named the layout) → no switcher: skip this step and step 4, and render that variant on the route (sub-shape B: as the HTML file's only content).
+
 Create a single switcher component on the route:
 
 ```
@@ -91,11 +93,11 @@ Sub-shape A: write the switcher in the spike next to the variants, or reuse a pr
 
 ### 5. Hand it over
 
-Hand over per `write-prototype` Hand over: sub-shape A gives both links — the original route and the prototype route with each `?variant=` key — side by side, same route; sub-shape B gives the file path. The user will flip through whenever they get to it. The interesting feedback is usually "I want the header from B with the sidebar from C," which is the actual design they want.
+Hand over per `write-prototype` Hand over: sub-shape A gives both links — the original route and the prototype route with each `?variant=` key (one variant: the route alone) — side by side, same route; sub-shape B gives the file path. The user will flip through whenever they get to it. The interesting feedback is usually "I want the header from B with the sidebar from C," which is the actual design they want.
 
 ### 6. Capture the answer and clean up
 
-Once a variant has won, capture the answer (which variant and why) the way `write-prototype` Capture describes. The whole variant set — winner and losers, the switcher included — stays on `spike/<name>`, never merged, cherry-picked or copied into a non-spike branch (`write-prototype` Guardrails). The winning variant is the reference shape: the decision goes into the spec, and a variant the user wants for real becomes a change — `write-plan` → `implement-plan` rebuilds it properly (tests, error handling) on the project's normal branch.
+Once a variant has won, capture the answer (which variant and why) the way `write-prototype` Capture describes. The whole variant set — winner and losers, the switcher when there is one — stays on `spike/<name>`, never merged, cherry-picked or copied into a non-spike branch (`write-prototype` Guardrails). The winning variant is the reference shape: the decision goes into the spec, and a variant the user wants for real becomes a change — `write-plan` → `implement-plan` rebuilds it properly (tests, error handling) on the project's normal branch.
 
 The full set of variants is the primary source, so it stays on the spike branch as evidence — code written under prototype constraints (no tests, minimal error handling) left in the main branch rots fast and confuses the next reader.
 

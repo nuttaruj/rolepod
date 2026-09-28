@@ -29,7 +29,7 @@ Done when: the scope and its entry are named, and the area's `CONTEXT.md` and AD
 
 ### 2. Explore
 
-Dispatch ONE general sub-agent at full strength — the CLI's general-purpose agent, shell access, NO model override so it inherits the Lead's model. Never the cheap `scout`: the walk is judgment, not a sweep, and its worth is the claims it reproduces.
+Dispatch ONE general sub-agent at full strength — the CLI's general-purpose agent, shell access, NO model override so it inherits the Lead's model; a Lead below the strong class passes the strong class on this ONE call instead (no per-call model on the CLI → the report names the explorer's class as a limitation). Never the cheap `scout`: the walk is judgment, not a sweep, and its worth is the claims it reproduces.
 
 Its brief:
 - the scope from Scope;
