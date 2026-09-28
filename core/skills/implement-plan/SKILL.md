@@ -91,7 +91,7 @@ Done when: every task has an owner and each dispatched owner has returned a deci
 
 A parallel layout → every unblocked task in ONE message, each owner in its OWN worktree; serial needs a stated reason. Shared files, merge order → `references/subagent-dispatch.md` Parallel-track dispatch.
 
-The task commits in the owner's worktree (the ship line; a harness-made worktree the same way), where the commit gate finds the owner's reviewer and external evidence; the Lead then brings the commit over (`git merge --ff-only`, or `cherry-pick` once its branch moved). Never move the diff as a patch: a patch carries no evidence, and the gate asks for the whole R4 set again.
+The Lead commits each task in the owner's worktree (the ship line; a harness-made worktree the same way): the commit gate finds the owner's reviewer and external evidence there. The ship line's `finish` then fast-forwards the Lead's branch. A harness-made worktree, or a `finish` refused because the Lead's branch moved → `git cherry-pick <sha>` (a conflict ends with `git cherry-pick --continue`, never a new `git commit`), then remove the worktree. Never move the diff as a patch: a patch carries no evidence, and the gate asks for the whole R4 set again.
 
 Done when: every ready track is dispatched and each returned track is integrated in contract order.
 
