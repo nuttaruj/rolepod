@@ -1,6 +1,6 @@
 ---
 name: cross-family
-description: Get another CLI's opinion or draft through the cross-family runner — a cold adversarial review of a diff, a spec critique, a stuck-bug consult, or a ticket drafted by another CLI — and set up the opt-in pool. Use when a calling skill names a kind, the user asks for a second opinion from codex / agy / cursor / opencode / claude, or the user asks to set up or change cross-family.
+description: Get another CLI's opinion or draft through the cross-family runner — a cold review of a diff (adversarial on an R4 round 1), a spec critique, a stuck-bug consult, or a ticket drafted by another CLI — and set up the opt-in pool. Use when a calling skill names a kind, the user asks for a second opinion from codex / agy / cursor / opencode / claude, or the user asks to set up or change cross-family.
 ---
 
 # Cross-family — another CLI's opinion, one command
@@ -34,7 +34,7 @@ The brief file is the member's whole world: cold context, never a pointer to the
 - consult: the attempt ledger — symptom, repro command, each failed fix and why it failed, the suspect code inline — and the one question.
 - implement: the task brief with its failing test named.
 
-The runner adds the adversarial framing, the verdict contract and the time budget itself.
+The runner adds the kind's framing (review: the standard two-axis stance, or with `--adversarial` the `adversarial-review` skill's Reviewer stance), the verdict contract and the time budget itself.
 
 Done when: the brief file exists and a stranger could act on it alone.
 
@@ -42,7 +42,7 @@ Done when: the brief file exists and a stranger could act on it alone.
 
 | Kind | Fires when (the caller owns this) | Command | Mode |
 |---|---|---|---|
-| review | `review-code` strong pass: R4, or from the pool file's `tier = R2\|R3` up | `--kind review --brief <brief> --attach <diff> --detach` | background job |
+| review | R4 round 1: the adversarial pass (`adversarial-review`, add `--adversarial`); from the pool file's `tier = R2\|R3`: the standard pass in the lens pair's place | `--kind review [--adversarial] --brief <brief> --attach <diff> --detach` | background job |
 | critique | `write-spec`: R4 spec before Gate 1 (R3 stays internal), or the user asks | `--kind critique --brief <draft+ledger>` | foreground, 10 min |
 | consult | `debug-issue` after 2 failed attempts | `--kind consult --brief <ledger>` | foreground, short budget |
 | implement | a plan task marked `write: external` | `--kind implement --brief <task-brief> --allow <path>... --detach` | background job, collected in the foreground |
@@ -54,7 +54,7 @@ Done when: the brief file exists and a stranger could act on it alone.
 **review**
 - Attach `git diff HEAD` for uncommitted work (staged + unstaged) or `git diff <base>...HEAD` for a committed branch.
 - `--cached` alone is a slice: the runner refuses it while the same files carry unstaged edits. `--partial-ok` only when the user asked for the staged part.
-- The external IS the strong pass: it replaces `universal-reviewer`, never both on round 1. It runs round 1 only: its BLOCKER / MAJOR fixes are re-checked by `security-engineer` on a high-risk path, else by `universal-reviewer` on a strong-class model (`review-code` Fix-verify rounds), never a new external round. The R4 floor stays `security-engineer` + that ONE strong pass — dispatch `security-engineer` in the same message.
+- At R4 the external is the adversarial pass (`--adversarial`), dispatched in the same message as `security-engineer` and the lens pair; at the pool's tier R2/R3 it is the standard pass in the lens pair's place, never beside it. It runs round 1 only: its BLOCKER / MAJOR fixes are re-checked by `security-engineer` on a high-risk path, else by `universal-reviewer` on a strong-class model (`review-code` Fix-verify rounds), never a new external round. The R4 floor stays `security-engineer` + the adversarial pass.
 - The diff stays frozen until the last reviewer returns: no edit to its files, no `git stash` / `reset` / `checkout`.
 - Then do the next task outside the diff. ONE `cross-family.sh --collect <job-id> --root <git-root>` before the commit — it waits.
 - Member order, `--all`, what anchors, the degradation table → `references/review.md`.

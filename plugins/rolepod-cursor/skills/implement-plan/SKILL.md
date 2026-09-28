@@ -106,6 +106,7 @@ A task owner's decision brief carries its Command tail. The Lead spot-checks ONE
 
 R2/R3 tasks carry no reviewer in the loop.
 - After the plan's last code task is committed and `check-work` passes, the Lead runs ONE combined review over the plan diff, so a fix made during Verify is reviewed too (`scripts/ticket.sh log` prints the range; without it, the recorded base sha..HEAD, i.e. the first task commit^..HEAD); more than ~15 files → one per ship group.
+- The combined review reviews the R2/R3 task deltas and the Verify fixes nobody has reviewed; an R4 task's commits are context, covered by its reports (listed in the Scope with their paths), never tiered R4 again. A Verify fix on a high-risk path gets the R4 round-1 set on that fix alone, before its commit.
 - A plan that names a ship group → after its last task, one drift pass over the group's range, a normal review of the cross-task seams (never adversarial): `security-engineer` when it holds an R4 task, else the combined review is the drift pass.
 - Findings → ONE fix task to the owning role; round 2 only for a BLOCKER / MAJOR fix — internal, never a new external round (`review-code` Fix-verify rounds).
 - Nothing pushes or releases before it.

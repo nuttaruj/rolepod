@@ -95,8 +95,8 @@ The implementer cannot complete the task; the manifest states what blocks and wh
 ## Review per task
 
 Who reviews follows the task's tier (SKILL.md Review):
-- R2/R3 task in a plan → no reviewer in the loop; the Lead's ONE combined review over the plan diff covers it: two `universal-reviewer` lenses in ONE message (`lens: spec` · `lens: standards`, or the concern-matched row), the external instead at the pool's tier.
-- R4 task → the owner dispatches one read-only pass in ONE message: `security-engineer` + ONE strong pass (the external with a usable pool, else `universal-reviewer`). User-visible flows are verified once at `check-work`, never per task.
+- R2/R3 task in a plan → no reviewer in the loop; the Lead's ONE combined review over the plan diff covers it: two `universal-reviewer` lenses in ONE message (`lens: spec` · `lens: standards`, or the concern-matched row), the external instead at the pool's tier (the standard prompt, never `--adversarial`).
+- R4 task → the owner dispatches the round-1 set in ONE message: `security-engineer` + `universal-reviewer` `lens: spec` + `universal-reviewer` `lens: standards` + the adversarial pass (`adversarial-review`: the external with `--adversarial` when the pool is usable, else `universal-reviewer` `mode: adversarial` at strong class). User-visible flows are verified once at `check-work`, never per task.
 - A standalone R2 brief (no plan) → the owner dispatches the two `universal-reviewer` lenses itself, never a self-review.
 
 ### Ship-group drift pass

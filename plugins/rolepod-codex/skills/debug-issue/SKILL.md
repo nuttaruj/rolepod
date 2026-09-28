@@ -16,7 +16,7 @@ Turns an unknown failure into a root-cause fix by narrowing, not guessing: repro
 
 **Who runs the loop.** Iteration is the costliest work to run in the Lead's context; the Lead routes, briefs from the symptom, spot-checks and commits, and the path owner runs this skill:
 - the role that owns the path (`backend-developer` / `frontend-developer` / `billing-engineer` / …) reproduces, writes the failing test, then the fix, for every symptom class, auth / token / injection included;
-- auth / token / injection symptoms → `security-engineer` writes the exploit repro test first — test evidence (`check-work`'s Security row), not a review; it returns to the Lead, who briefs the path owner to make it pass (that test is the owner's failing test). The owner's R4 (high-risk) review round is the only review: `security-engineer` + ONE strong pass per `review-code` Pick reviewers, reports under `.rolepod/evidence/review/` — never a second security review on top;
+- auth / token / injection symptoms → `security-engineer` writes the exploit repro test first — test evidence (`check-work`'s Security row), not a review; it returns to the Lead, who briefs the path owner to make it pass (that test is the owner's failing test). The owner's R4 (high-risk) review round is the only review: the R4 round-1 set per `review-code` Pick reviewers (`security-engineer` + the lens pair + the adversarial pass), reports under `.rolepod/evidence/review/` — never a second security review on top;
 - `qa-tester` only for a user-visible (E2E / UI) repro; its red test or report returns to the Lead, who briefs the path owner to make it pass;
 - `performance-engineer` — latency / memory regressions;
 - `devops-sre` — infra / deploy / CI failures.
