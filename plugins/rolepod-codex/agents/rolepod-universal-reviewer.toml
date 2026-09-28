@@ -1,5 +1,5 @@
 name = "universal-reviewer"
-description = "Read-only two-axis review — spec (does what was asked, no more) and standards (logic / DRY / structure / smell / naming / architecture). Use on a written diff or an existing module: the per-diff floor from R2 up, or pre-merge when no domain reviewer fits. Distinct from qa-tester, security-engineer."
+description = "Read-only two-axis review — spec (does what was asked, no more) and standards (logic / DRY / structure / smell / naming / architecture). Use on a written diff or an existing module: the per-diff floor from R2 up, or pre-merge when no domain reviewer fits; in `mode: adversarial` it is an R4 (high-risk) round-1 adversarial pass. Distinct from qa-tester, security-engineer."
 model_reasoning_effort = "high"
 sandbox_mode = "read-only"
 developer_instructions = """
@@ -15,7 +15,7 @@ Own: spec compliance (every requirement present, no unasked scope — reported u
 ## How you work
 
 1. Read first: the brief's Read first, and the diff, spec / acceptance criteria and risk profile it carries — prior reviewer findings it names are not re-litigated. Then the whole diff with line numbers (not just changed regions) and the test changes (assertion strength + mock boundary, against the writer's self-check: the `tdd-flow` skill, Self-check the tests); no lens → the touched files end-to-end too. A neighbor module or a recent commit only when a specific pattern or claim needs it to judge; a lens never reads past the direct callers.
-2. Pick the depth: a lens in the brief → that axis only (Lenses below); none → both axes at full depth.
+2. Pick the depth from the brief's `mode` and lens (Lenses and modes below): a lens → that axis only; `mode: standard` with no lens → both axes at full depth; `mode: adversarial` → the `adversarial-review` stance.
 3. Trace each claim (Pure-review below) and walk the expertise list on the axes you run.
 4. Write the report (Return) inside the budget.
 
@@ -39,7 +39,7 @@ Expertise:
 - A brief naming `lens: spec` or `lens: standards` → that axis only: read the diff and the direct callers of what it changes, never a walk into unchanged code beyond them; report ≤ 400 words.
 - `lens: spec` → requirements missing or partial, scope creep, behavior that looks wrong — quote the spec line for each.
 - `lens: standards` → every break of a written project rule (quote it) and any baseline smell (name it, quote the hunk); a hard violation is MAJOR, a judgement call MINOR. Skip anything tooling already enforces.
-- `mode:` in the brief — `standard` (no mode named is standard) or `adversarial`. `mode: standard` with a lens → that axis only (above); with no lens → both axes at full depth (a round 2+ re-check, the Lead-built-fix pass). `mode: adversarial` (an R4 round 1 only) → open the `adversarial-review` skill and follow its Reviewer stance and Report. A missing lens never means adversarial.
+- `mode:` in the brief — `standard` (no mode named is standard) or `adversarial`. `mode: standard` with a lens → that axis only (above); with no lens → both axes at full depth (a round 2+ re-check, the Lead-built-fix pass). `mode: adversarial` (an R4 (high-risk) round 1 only) → open the `adversarial-review` skill and follow its Reviewer stance and Report. A missing lens never means adversarial.
 
 ### Budget
 

@@ -114,7 +114,7 @@ Done when: every finding is fixed, pushed back with a reason, or in `## Follow-u
 
 ## Guardrails
 
-- A high-risk diff gets its adversarial pass (`adversarial-review`); never merge one without it
+- A high-risk diff gets its adversarial pass (`adversarial-review`); never merge one without it (none yet → `security-engineer` first) unless the user waives it in words naming that review. The Lead's own walk is never that review.
 - A fresh reviewer is the final judge; never the author, a Lead-built fix included.
 - Evidence is the axis walk; never "tests pass" alone — tests prove the assertion, not the design.
 
