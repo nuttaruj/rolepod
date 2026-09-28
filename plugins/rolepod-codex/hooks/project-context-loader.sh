@@ -35,16 +35,32 @@ for p in plans:
         text = open(p, encoding="utf-8", errors="ignore").read()
     except Exception:
         continue
-    open_n = len(re.findall(r"^\s*- \[ \]", text, re.M)); done_n = len(re.findall(r"^\s*- \[x\]", text, re.M | re.I))
-    if open_n == 0 or done_n == 0:
-        continue
-    nxt = ""; head = ""
+    # Fence rule (2026-09-28-plan-fence contract): a fenced line (opening
+    # delimiter through the closing one) is literal — it never counts as an
+    # open/done box or a task heading, however many the line's text spells.
+    open_n = 0; done_n = 0; nxt = None; head = ""
+    fence_ch = None; fence_len = 0
     for line in text.splitlines():
+        if fence_ch is None:
+            fm = re.match(r"^ {0,3}(\x60{3,}|~{3,})", line)
+            if fm:
+                fence_ch = fm.group(1)[0]; fence_len = len(fm.group(1))
+                continue
+        else:
+            if re.match(r"^ {0,3}" + re.escape(fence_ch) + "{" + str(fence_len) + ",}[ \t]*$", line):
+                fence_ch = None; fence_len = 0
+            continue
         m = re.match(r"^### ((Task ?|T)\d+.*)", line)
         if m:
             head = m.group(1).strip()
-        if re.match(r"^\s*- \[ \]", line):
-            nxt = head; break
+        if re.match(r"^\s*-\s*\[\s\]", line):
+            open_n += 1
+            if nxt is None:
+                nxt = head
+        elif re.match(r"^\s*-\s*\[[xX]\]", line):
+            done_n += 1
+    if open_n == 0 or done_n == 0:
+        continue
     out.append("**Open plan:** `%s` — %d done / %d open · next: %s" % (os.path.relpath(p, repo), done_n, open_n, (nxt or "first unchecked step")[:80]))
     break
 log = os.path.join(repo, ".rolepod", "evidence", "phase-log.jsonl")

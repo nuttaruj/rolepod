@@ -68,6 +68,66 @@ LINT="$SELF_DIR/../../write-plan/scripts/plan-lint.sh"
 # Blocked-by, silently shifting every field after it.
 ROW_FS=$'\x1f'
 
+# Fence rule (plan-fence contract, 2026-09-28): the canonical awk
+# fence text every plan-reading pass in this script includes verbatim (no
+# shared lib across scripts — declined earlier; each script that needs it
+# carries its own copy — only this shell variable's name is script-local).
+# A line whose text, after at most 3 leading spaces, starts with 3+
+# backticks or 3+ tildes opens a fence; it closes at the first later line
+# that, after at most 3 leading spaces, repeats the same character at
+# least as many times with only spaces/tabs after it. An unclosed fence
+# runs to end of file. No `{n,m}` interval expression (mawk has none) —
+# fence length is counted with a for-loop instead. A caller places
+# `{ if (fenceline($0)) { <literal action>; next } }` as its FIRST rule so
+# a fenced line never reaches the patterns below it. A pass whose OUTPUT a
+# caller then pattern-matches (resolve_contract's Parallel-layout read,
+# section_body, the bullet-dedupe scan) skips a fenced line entirely
+# (`next`, print nothing); only a log write pass — one that copies the
+# plan back out — prints it unchanged.
+FENCE_FN='
+function leadspaces(s,    i, c, n) {
+  n = 0
+  for (i = 1; i <= length(s); i++) {
+    c = substr(s, i, 1)
+    if (c == " ") n++
+    else break
+  }
+  return n
+}
+function fenceline(line,    lead, rest, ch, n, i, c, after) {
+  if (FNR == 1) { infence = 0; fencechar = ""; fencelen = 0; fenceopen = 0 }
+  sub(/\r$/, "", line)
+  lead = leadspaces(line)
+  rest = substr(line, lead + 1)
+  if (infence) {
+    if (lead <= 3) {
+      ch = substr(rest, 1, 1)
+      if (ch == fencechar) {
+        n = 0
+        for (i = 1; i <= length(rest); i++) { c = substr(rest, i, 1); if (c == fencechar) n++; else break }
+        if (n >= fencelen) {
+          after = substr(rest, n + 1)
+          gsub(/[ \t]/, "", after)
+          if (after == "") { infence = 0; fencechar = ""; fencelen = 0; fenceopen = 0 }
+        }
+      }
+    }
+    return 1
+  }
+  if (lead <= 3) {
+    ch = substr(rest, 1, 1)
+    if (ch == "`" || ch == "~") {
+      n = 0
+      for (i = 1; i <= length(rest); i++) { c = substr(rest, i, 1); if (c == ch) n++; else break }
+      if (n >= 3) { fencechar = ch; fencelen = n; infence = 1; fenceopen = FNR; return 1 }
+    }
+  }
+  return 0
+}
+function fence_is_open() { return infence }
+function fence_open_line() { return fenceopen }
+'
+
 usage() {
   cat <<'EOF'
 usage:
@@ -86,9 +146,14 @@ main_root_of() {
   git -C "$1" worktree list --porcelain 2>/dev/null | awk '/^worktree /{print $2; exit}'
 }
 
-# Lines of section "$2" (an exact "## Heading" string) inside file "$1".
+# Lines of section "$2" (an exact "## Heading" string) inside file "$1" —
+# fence-aware: a fenced "## Heading" look-alike never opens or closes the
+# section, and a fenced line is skipped outright — this output is always
+# pattern-matched by a caller (a backticked command, a Proof line), never
+# copied back out, so a fenced line never enters it.
 section_body() {
-  awk -v h="$2" '
+  awk -v h="$2" "$FENCE_FN"'
+    { if (fenceline($0)) next }
     $0 == h { f = 1; next }
     /^## / { f = 0 }
     f { print }
@@ -198,7 +263,10 @@ ship_chain_tail() { # $1 = worktree (absolute), $2 = plan (absolute), $3 = task 
 # dir, then the repo root.
 resolve_contract() { # $1 = plan (absolute), $2 = repo root
   local layout rel plan_dir cand
-  layout="$(awk '/^## Parallel layout/{f=1;next} /^## /{f=0} f' "$1")"
+  layout="$(awk "$FENCE_FN"'
+    { if (fenceline($0)) next }
+    /^## Parallel layout/{f=1;next} /^## /{f=0} f
+  ' "$1")"
   rel="$(printf '%s\n' "$layout" | grep -oE '`[^`]+\.md`' | head -1 | tr -d '`')"
   [ -n "$rel" ] || return 0
   plan_dir="$(dirname "$1")"
@@ -273,7 +341,8 @@ find_owner_agent() { # $1 = main root, $2 = worktree (absolute)
 # the identical two-step strip (T2 follow-up) — the two parsers agree on
 # every ref shape either one is asked to read.
 plan_task_rows() { # $1 = plan (absolute)
-  awk -v fs="$ROW_FS" '
+  awk -v fs="$ROW_FS" "$FENCE_FN"'
+    { if (fenceline($0)) next }
     function trim(x) { sub(/^[[:space:]]+/, "", x); sub(/[[:space:]]+$/, "", x); return x }
     function flush() {
       if (id == "") return
@@ -323,6 +392,11 @@ plan_task_rows() { # $1 = plan (absolute)
       }
       if (line ~ /^[[:space:]]*-[[:space:]]*\[[[:space:]]\]/) { open_boxes++; total_boxes++; field = ""; next }
       if (line ~ /^[[:space:]]*-[[:space:]]*\[[xX]\]/) { total_boxes++; field = ""; next }
+      # A heading line (`#`-led — a non-task "### Notes" subheading, since a
+      # real task heading or "## " is already caught above) ends whatever
+      # field was open: an Owner or Blocked-by value must never absorb a
+      # subheading line that merely sits inside the same block.
+      if (line ~ /^#/) { field = ""; next }
       if (field != "" && trim(line) != "" && line !~ /^[-*][[:space:]]/) {
         if (field == "B") B = B " " trim(line)
         else if (field == "O") Ow = Ow " " trim(line)
@@ -676,7 +750,11 @@ cmd_log() {
     usage >&2; exit 2
   fi
 
-  if ! grep -q '^## Changes during build' "$plan"; then
+  if ! awk "$FENCE_FN"'
+    { if (fenceline($0)) next }
+    /^## Changes during build/ { found = 1; exit }
+    END { exit !found }
+  ' "$plan"; then
     echo "ticket: log: no '## Changes during build' heading in $plan — refusing (fail-closed)" >&2
     exit 1
   fi
@@ -690,16 +768,17 @@ cmd_log() {
   tmp="$(mktemp "${TMPDIR:-/tmp}/rolepod-ticket-log.XXXXXX")"
   [ -n "$tmp" ] || { echo "ticket: log: mktemp failed" >&2; exit 1; }
 
-  awk -v want="$n" '
+  awk -v want="$n" "$FENCE_FN"'
+    { if (fenceline($0)) { print; next } }
     /^### / {
       if ($0 ~ /^### (Task ?|T)[0-9]+/) {
         id = $0; sub(/^### (Task ?|T)/, "", id); sub(/[^0-9].*$/, "", id)
         intask = (id == want) ? 1 : 0
-      } else intask = 0
+      }
       print; next
     }
     /^## / { intask = 0; print; next }
-    intask && /^- \[ \]/ { sub(/\[ \]/, "[x]"); print; next }
+    intask && /^[[:space:]]*-[[:space:]]*\[[[:space:]]\]/ { sub(/\[[[:space:]]\]/, "[x]"); print; next }
     { print }
   ' "$plan" > "$tmp"
   rc=$?
@@ -768,7 +847,8 @@ if best is not None:
   # not a prior log entry.
   bullet="- Task $n (\`$sha\`): $note"
   local existing_section
-  existing_section="$(awk '
+  existing_section="$(awk "$FENCE_FN"'
+    { if (fenceline($0)) next }
     /^## Changes during build/ { insec = 1; next }
     insec && /^## / { exit }
     insec { print }
@@ -780,7 +860,8 @@ if best is not None:
     # The note is free text (may hold a backslash) — pass it through the
     # environment, never `awk -v`, which interprets backslash escapes and
     # would mangle it.
-    TICKET_LOG_NOTE="$note" awk -v n="$n" -v sha="$sha" '
+    TICKET_LOG_NOTE="$note" awk -v n="$n" -v sha="$sha" "$FENCE_FN"'
+      { if (fenceline($0)) { print; next } }
       /^## Changes during build/ { print; insec = 1; next }
       insec && /^## / {
         printf "- Task %s (`%s`): %s\n\n", n, sha, ENVIRON["TICKET_LOG_NOTE"]
@@ -837,7 +918,8 @@ EOF
     # ("- Task N (`<sha>`): <note>") — never the first backticked span in
     # the section, which a Lead deviation line ("Task N — what changed,
     # why") can also hold, ahead of the first real log bullet.
-    first_sha="$(awk '
+    first_sha="$(awk "$FENCE_FN"'
+      { if (fenceline($0)) next }
       /^## Changes during build/ { insec = 1; next }
       insec && /^## / { exit }
       insec && /^- Task [0-9]+ \(`/ && match($0, /`[^`]+`/) { print substr($0, RSTART + 1, RLENGTH - 2); exit }

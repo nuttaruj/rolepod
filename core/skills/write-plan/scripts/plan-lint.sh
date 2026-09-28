@@ -112,6 +112,65 @@ function cleanfiles(s, notekeep,    out, i, c, prevc, depth, inbt, notebt, bt, s
 }
 '
 
+# Fence rule (write-plan Contract): a line whose text, after at most 3
+# leading spaces, opens with 3+ backticks or tildes opens a fence; it closes
+# at the first later line whose (likewise up-to-3-space-indented) run of the
+# SAME character is at least as long. Every line from the opening delimiter
+# to the closing one, both included, is literal — it never matches a task
+# heading, a `## ` heading, a field line or a checkbox. An unclosed fence
+# runs to end of file; fence_is_open() / fence_open_line() let the caller
+# report that. State resets on FNR==1 so one awk invocation reading two
+# files (the `FNR == NR` plan-then-contract pattern used by --brief) never
+# leaks fence state from one file into the other. No `{n,m}` interval —
+# mawk has none — lengths are counted with a loop. A trailing `\r` (a
+# CRLF-saved plan) is stripped before any of it is read, so a Windows line
+# ending never widens or narrows a fence run. Shared by every awk pass in
+# this script that reads a plan or a contract — never a second parser.
+# shellcheck disable=SC2016
+FENCE_AWK='
+function leadspaces(s,    i, c, n) {
+  n = 0
+  for (i = 1; i <= length(s); i++) {
+    c = substr(s, i, 1)
+    if (c == " ") n++
+    else break
+  }
+  return n
+}
+function fenceline(line,    lead, rest, ch, n, i, c, after) {
+  if (FNR == 1) { infence = 0; fencechar = ""; fencelen = 0; fenceopen = 0 }
+  sub(/\r$/, "", line)
+  lead = leadspaces(line)
+  rest = substr(line, lead + 1)
+  if (infence) {
+    if (lead <= 3) {
+      ch = substr(rest, 1, 1)
+      if (ch == fencechar) {
+        n = 0
+        for (i = 1; i <= length(rest); i++) { c = substr(rest, i, 1); if (c == fencechar) n++; else break }
+        if (n >= fencelen) {
+          after = substr(rest, n + 1)
+          gsub(/[ \t]/, "", after)
+          if (after == "") { infence = 0; fencechar = ""; fencelen = 0; fenceopen = 0 }
+        }
+      }
+    }
+    return 1
+  }
+  if (lead <= 3) {
+    ch = substr(rest, 1, 1)
+    if (ch == "`" || ch == "~") {
+      n = 0
+      for (i = 1; i <= length(rest); i++) { c = substr(rest, i, 1); if (c == ch) n++; else break }
+      if (n >= 3) { fencechar = ch; fencelen = n; infence = 1; fenceopen = FNR; return 1 }
+    }
+  }
+  return 0
+}
+function fence_is_open() { return infence }
+function fence_open_line() { return fenceopen }
+'
+
 if [ "${1:-}" = "--brief" ]; then
   shift
   # `--main` may appear in any position after --brief (a task that runs on
@@ -308,7 +367,47 @@ if [ "${1:-}" = "--brief" ]; then
     g = substr(g, 2); gsub(/\*/, "", g); g = trim(g)
     return (g ~ ("^(\\[[ xX]\\][[:space:]]*)?" name ":"))
   }
+  # The one field-append ladder — every site that extends the CURRENT
+  # field (a fenced line copied in whole, or an unfenced continuation line)
+  # calls this instead of repeating the if/else chain.
+  function appendfield(f, cont) {
+    if (f == "D") D = (D == "" ? cont : D "\n" cont)
+    else if (f == "B") B = (B == "" ? cont : B "\n" cont)
+    else if (f == "R") R = (R == "" ? cont : R "\n" cont)
+    else if (f == "F") Fr = (Fr == "" ? cont : Fr "\n" cont)
+    else if (f == "C") Ch = (Ch == "" ? cont : Ch "\n" cont)
+    else if (f == "T") Te = (Te == "" ? cont : Te "\n" cont)
+    else if (f == "Cmd") Cmd = (Cmd == "" ? cont : Cmd "\n" cont)
+    else if (f == "Ck") Ck = (Ck == "" ? cont : Ck "\n" cont)
+    else if (f == "O") Ow = (Ow == "" ? cont : Ow "\n" cont)
+    else if (f == "DW") DW = (DW == "" ? cont : DW "\n" cont)
+    else if (f == "P") Pr = (Pr == "" ? cont : Pr "\n" cont)
+    else if (f == "Ef") Ef = (Ef == "" ? cont : Ef "\n" cont)
+    else if (f == "Of") Of = (Of == "" ? cont : Of "\n" cont)
+  }
   FNR == NR {
+    # Fence rule first, ahead of every other match on this line — a fenced
+    # line never becomes a task heading, a `## ` heading, a field line or a
+    # checkbox. It joins the parsed value of the open field only when the
+    # field is prose (Delivers, Read first, Change, Test / evidence, Expected
+    # failing signal, Done when, On fail) — a fence pasted into a checked
+    # field would otherwise smuggle text into Files allowed, Command, Proof
+    # or a role string. Every other case (no field yet, Files, Owner,
+    # Proof, Check, Command, Blocked by) lands in `plantext`, ONE per-task
+    # buffer that is never fed to a parsed field and is printed verbatim,
+    # untouched, as its own `## Plan text` section — so it is still visible
+    # in the brief no matter where in the task it sits, including right
+    # after the last real field of the task.
+    if (fenceline($0)) {
+      if (intask) {
+        if (field == "D" || field == "R" || field == "C" || field == "T" || field == "Ef" || field == "DW" || field == "Of") {
+          appendfield(field, $0)
+        } else {
+          plantext = (plantext == "" ? $0 : plantext "\n" $0)
+        }
+      }
+      next
+    }
     if ($0 ~ /^## /) {
       intask = 0; field = ""
       specsec = ($0 ~ /^## Source spec/) ? 1 : 0
@@ -408,26 +507,18 @@ if [ "${1:-}" = "--brief" ]; then
       # An INDENTED bullet is a sub-item of the current field (the template
       # allows a Change block of up to 3 bullets); only an unindented one is new.
       if (!isf && field != "" && trim(line) != "" && line !~ /^[-*][[:space:]]/) {
-        cont = trim(line)
-        if (field == "D") D = (D == "" ? cont : D "\n" cont)
-        else if (field == "B") B = (B == "" ? cont : B "\n" cont)
-        else if (field == "R") R = (R == "" ? cont : R "\n" cont)
-        else if (field == "F") Fr = (Fr == "" ? cont : Fr "\n" cont)
-        else if (field == "C") Ch = (Ch == "" ? cont : Ch "\n" cont)
-        else if (field == "T") Te = (Te == "" ? cont : Te "\n" cont)
-        else if (field == "Cmd") Cmd = (Cmd == "" ? cont : Cmd "\n" cont)
-        else if (field == "Ck") Ck = (Ck == "" ? cont : Ck "\n" cont)
-        else if (field == "O") Ow = (Ow == "" ? cont : Ow "\n" cont)
-        else if (field == "DW") DW = (DW == "" ? cont : DW "\n" cont)
-        else if (field == "P") Pr = (Pr == "" ? cont : Pr "\n" cont)
-        else if (field == "Ef") Ef = (Ef == "" ? cont : Ef "\n" cont)
-        else if (field == "Of") Of = (Of == "" ? cont : Of "\n" cont)
+        appendfield(field, trim(line))
       }
       next
     }
     next
   }
   FNR != NR {
+    # Fence rule first here too — a fenced `## File ownership` or
+    # `## Do-not-touch list` heading (or the owner/exception lines inside
+    # it) never opens or feeds those sections, same as the standalone
+    # ownership pass below in the plain-lint path.
+    if (fenceline($0)) { next }
     if ($0 ~ /^## /) {
       ownsec = ($0 ~ /^## File ownership/) ? 1 : 0
       dnsec = ($0 ~ /^## Do-not-touch list/) ? 1 : 0
@@ -626,6 +717,12 @@ if [ "${1:-}" = "--brief" ]; then
     print "- everything else (an unowned path: touch it and add an Also touched line; a path another owner holds: a NEEDS line, never an edit)"
     print "## Change"
     print (Ch == "" ? "(not in plan)" : Ch)
+    # Verbatim, never cleared before this point — every fenced line that
+    # was not itself joined into a prose field (Files, Owner, Proof, Check,
+    # Command, Blocked by, or a fence before any field at all) lands here,
+    # so nothing is silently dropped. Printed only when non-empty — an
+    # unfenced plan must stay byte-identical (the Unchanged clause).
+    if (plantext != "") { print "## Plan text"; print plantext }
     print "## Test / evidence"
     print (Te == "" ? "(not in plan)" : Te)
     # An undeleted template placeholder (a value starting "<") is not a
@@ -701,9 +798,9 @@ if [ "${1:-}" = "--brief" ]; then
   [ -z "$RP_RISK_EXCL" ] || rp_ere_ok "$RP_RISK_EXCL" || RP_RISK_EXCL=""
   export RP_RISK_ADD RP_RISK_EXCL
   if [ -n "$CONTRACT" ]; then
-    awk -v rx="$TASK_RX" -v want="$BRIEF_N" -v planpath="$PLAN" -v repo="$BRIEF_REPO" -v hascontract=1 -v onmain="$BRIEF_MAIN" "$CLEANFILES_AWK$BRIEF_AWK" "$PLAN" "$CONTRACT"
+    awk -v rx="$TASK_RX" -v want="$BRIEF_N" -v planpath="$PLAN" -v repo="$BRIEF_REPO" -v hascontract=1 -v onmain="$BRIEF_MAIN" "$CLEANFILES_AWK$FENCE_AWK$BRIEF_AWK" "$PLAN" "$CONTRACT"
   else
-    awk -v rx="$TASK_RX" -v want="$BRIEF_N" -v planpath="$PLAN" -v repo="$BRIEF_REPO" -v hascontract=0 -v onmain="$BRIEF_MAIN" "$CLEANFILES_AWK$BRIEF_AWK" "$PLAN"
+    awk -v rx="$TASK_RX" -v want="$BRIEF_N" -v planpath="$PLAN" -v repo="$BRIEF_REPO" -v hascontract=0 -v onmain="$BRIEF_MAIN" "$CLEANFILES_AWK$FENCE_AWK$BRIEF_AWK" "$PLAN"
   fi
   exit $?
 fi
@@ -719,7 +816,14 @@ fi
 fail=0
 
 # ── 1. Failure policy ────────────────────────────────────────────────────
-if grep -q '^## Failure policy' "$PLAN"; then
+# Fence-aware — a `## Failure policy` heading INSIDE a fenced example (an
+# edit spec quoting the template) must never satisfy this, same as it never
+# opens a section anywhere else in the script.
+if awk "$FENCE_AWK"'
+  fenceline($0) { next }
+  /^## Failure policy/ { found = 1 }
+  END { exit(found ? 0 : 1) }
+' "$PLAN"; then
   echo "  ✓ Failure policy present"
 else
   echo "  ✗ missing '## Failure policy' — the build loop has no circuit breaker"
@@ -733,8 +837,12 @@ fi
 # Heading shapes: `### Task 1:` (template) and `### T1 —` (a real CourtBook
 # plan, which this lint rejected wholesale before v2.90.0). TASK_RX is set
 # at the top of the file — shared with --brief, not re-declared here.
-TASKS=$(grep -Ec "$TASK_RX" "$PLAN" || true)
-MISSING=$(awk -v rx="$TASK_RX" '
+# TASKS is counted through the same fence-aware pass as MISSING, never
+# `grep -Ec` — a fenced `### Task 9` line must not inflate the count. The
+# single awk call prints tagged lines (N = the count, M = a task missing its
+# Command, U = the line an unclosed fence opened on, if any) that the shell
+# below splits back apart.
+TASKPASS=$(awk -v rx="$TASK_RX" "$FENCE_AWK"'
   function trim(x) { sub(/^[[:space:]]+/, "", x); sub(/[[:space:]]+$/, "", x); return x }
   # A field is only a line whose (left-trimmed) start is a bullet — dash OR
   # asterisk — an optional checkbox, then the label. The bullet char is
@@ -748,11 +856,23 @@ MISSING=$(awk -v rx="$TASK_RX" '
     g = substr(g, 2); gsub(/\*/, "", g); g = trim(g)
     return (g ~ ("^(\\[[ xX]\\][[:space:]]*)?" name ":"))
   }
-  $0 ~ rx     { if (t != "" && !c) print t; t = $0; c = 0; next }
-  /^## /      { if (t != "" && !c) print t; t = ""; next }
+  BEGIN { tcount = 0 }
+  fenceline($0) { next }
+  $0 ~ rx     { if (t != "" && !c) print "M " t; t = $0; c = 0; tcount++; next }
+  /^## /      { if (t != "" && !c) print "M " t; t = ""; next }
   t != "" && fieldgate($0, "Command") { c = 1 }
-  END         { if (t != "" && !c) print t }
+  END {
+    if (t != "" && !c) print "M " t
+    print "N " tcount
+    if (fence_is_open()) print "U " fence_open_line()
+  }
 ' "$PLAN")
+# A 2-char tag ("M ", "N ", "U ") plus substr($0, 3) for the rest — not
+# `awk -F'\t'` splitting on $2 — so a task heading that happens to carry a
+# literal tab of its own is never truncated at the first internal tab.
+TASKS=$(printf '%s\n' "$TASKPASS" | awk '/^N /{print substr($0,3)}')
+MISSING=$(printf '%s\n' "$TASKPASS" | awk '/^M /{print substr($0,3)}')
+UNCLOSED_LINE=$(printf '%s\n' "$TASKPASS" | awk '/^U /{print substr($0,3)}')
 if [ "${TASKS:-0}" -eq 0 ]; then
   echo "  ✗ no task blocks found (### Task N: / ### TN —) — nothing for the build loop to run"
   fail=1
@@ -766,13 +886,22 @@ $MISSING
 EOF
   fail=1
 fi
+if [ -n "$UNCLOSED_LINE" ]; then
+  echo "  ✗ unclosed code fence opened at line $UNCLOSED_LINE"
+  fail=1
+fi
 
 # Parallel layout is read once here — the graph check below needs to know
 # whether Sequential was CHOSEN (then extra roots are an advisory, not a
 # mistake), and the ownership check needs the contract path.
 # Anchored to a line START (optional bullet) — a bare substring grep let
 # 'Not sequential — two tracks run concurrently' skip the ownership check.
-LAYOUT=$(awk '/^## Parallel layout/{f=1;next} /^## /{f=0} f' "$PLAN")
+LAYOUT=$(awk "$FENCE_AWK"'
+  fenceline($0) { next }
+  /^## Parallel layout/ { f = 1; next }
+  /^## / { f = 0; next }
+  f
+' "$PLAN")
 SEQUENTIAL=0
 printf '%s' "$LAYOUT" | grep -qiE '^[[:space:]]*([-*][[:space:]]*)?sequential' && SEQUENTIAL=1
 
@@ -781,7 +910,7 @@ printf '%s' "$LAYOUT" | grep -qiE '^[[:space:]]*([-*][[:space:]]*)?sequential' &
 # (integers after the colon; "none" / "—" / "-" = no blockers). Then resolve
 # every ref, count fields, and run Kahn's algorithm for a cycle. Output lines
 # are prefixed so the shell can route them: E = fail, A = advisory.
-GRAPH=$(awk -v rx="$TASK_RX" -v seq="$SEQUENTIAL" '
+GRAPH=$(awk -v rx="$TASK_RX" -v seq="$SEQUENTIAL" "$FENCE_AWK"'
   function trim(x) { sub(/^[[:space:]]+/, "", x); sub(/[[:space:]]+$/, "", x); return x }
   # A field is only a line whose (left-trimmed) start is a bullet — dash OR
   # asterisk — an optional checkbox, then the label. The bullet char must be
@@ -801,6 +930,9 @@ GRAPH=$(awk -v rx="$TASK_RX" -v seq="$SEQUENTIAL" '
       pathseen[p, c] = 1
     }
   }
+  # Fence rule first — a fenced task heading / Blocked-by / Files / Owner
+  # line never joins the graph.
+  fenceline($0) { next }
   $0 ~ rx {
     id = $0; sub(/^### (Task ?|T)/, "", id); sub(/[^0-9].*$/, "", id)
     if (id in seen) dup[id] = 1
@@ -996,7 +1128,12 @@ if [ -z "$CONTRACT" ] || [ ! -f "$CONTRACT" ]; then
   exit 1
 fi
 
-OWNERSHIP=$(awk '/^## File ownership/{f=1;next} /^## /{f=0} f' "$CONTRACT")
+OWNERSHIP=$(awk "$FENCE_AWK"'
+  fenceline($0) { next }
+  /^## File ownership/ { f = 1; next }
+  /^## / { f = 0; next }
+  f
+' "$CONTRACT")
 if [ -z "$OWNERSHIP" ]; then
   echo "  ✗ contract has no '## File ownership' section"
   echo "plan-lint: FAIL"
@@ -1013,7 +1150,8 @@ fi
 # per-task Files field allows "`x.py` (+ `tests/static/x.sh`)" to add a
 # real companion) is NOT ownership-checked when written in this top-level
 # section — write it as its own bullet instead.
-FILES=$(awk "$CLEANFILES_AWK"'
+FILES=$(awk "$CLEANFILES_AWK$FENCE_AWK"'
+  fenceline($0) { next }
   /^## Files to touch/ { f = 1; next }
   /^## / { f = 0 }
   f {
