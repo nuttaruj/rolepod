@@ -1,6 +1,6 @@
 # Team issues — publish plan tasks to the repo tracker
 
-Optional backend for the approved plan when **more than one person or machine
+Optional backend for a saved plan when **more than one person or machine
 will build it**. Solo work skips this entirely: the plan file already carries
 order, tests, and checkboxes, and adding a tracker for one builder is pure
 overhead. Turn this on only when the user says the work is shared. The plan
@@ -22,7 +22,7 @@ Gist + link, don't duplicate task bodies.
 | What can start now | The **frontier**: open + unblocked + unassigned |
 | Task done | Close the issue with a comment pointing at the commit / PR — and flip the plan checkboxes too; the plan stays canonical |
 
-## Publishing (after plan approval only)
+## Publishing (after the plan is saved)
 
 Creating issues on a shared repo is outward-facing — **confirm with the user
 before publishing**, and show the issue list you are about to create.

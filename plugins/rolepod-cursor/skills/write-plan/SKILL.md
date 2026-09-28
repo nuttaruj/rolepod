@@ -51,12 +51,13 @@ No test infrastructure → the first task bootstraps the harness (edge-cases: No
 
 Done when: every task names a test or evidence and a runnable Command; a task on a high-risk surface without a test plan gets one.
 
-### 4. Approve the task list
+### 4. Settle what the spec left open
 
-Quiz the user on the numbered list before writing the artifact — per task: title, Delivers, Blocked by. Ask: granularity right? edges right (blocked only by what genuinely gates it)? merge or split any? Iterate; the approved list is what the file records.
+Order, split, owner and seam are the plan's own calls — never stop for the user to approve the task list.
+A task needs a choice the spec does not make and the user would weigh — a new dependency, a public API or schema change, a migration, anything irreversible → one question with the simplest option recommended, before writing the artifact.
 Parallel only with genuinely disjoint file ownership and no handoff; edge-free tasks are candidates, never a mandate → `references/parallel.md`.
 
-Done when: the user approved the list and the Parallel layout is decided.
+Done when: every open choice is the plan's own or answered by the user, and the Parallel layout is decided.
 
 ### 5. Cohesion contract (parallel only)
 
@@ -80,6 +81,7 @@ Done when: every task names its Owner and Read first.
 - **Placeholders** — never `TBD` / `TODO` / "implement later" · "add appropriate error handling / validation / edge cases" unnamed · "write tests" without type, assertion and command · "similar to Task N" (repeat the shape; tasks are read out of order) · a step with no file path · a symbol defined in no task and absent from the codebase.
 - **Spec coverage, both directions** — each requirement names its task; each task names its spec line. No spec line = scope creep: cut it or move it to `## Follow-ups`.
 - **Symbol consistency** — `clearLayers()` in Task 3 vs `clearFullLayers()` in Task 7 is a bug; a missing symbol → verify or remove.
+- **Granularity and edges** — each task fits one fresh context and passes the split rule (step 2); each Blocked-by edge names what it consumes, and no task blocks one it does not gate.
 - **Missing tests**, **untouched high-risk surfaces**, **unowned or dual-owned files** in a parallel layout.
 - **Boundary violations** against a declared module map (edge-cases: Module boundary map).
 - **Loop-runnable** — `plan-lint.sh <plan> [contract]` checks the Failure policy, a Command per task, acyclic Blocked-by edges and parallel ownership. No plan-lint → check these four by eye (or the one-line check in edge-cases: No plan-lint).
@@ -107,5 +109,5 @@ Done when: every section is filled, and a saved plan passes plan-lint (or the fo
 
 ## Next phase
 
-- `implement-plan` with the plan artifact, or the inline checklist (R2, spec-as-plan R3), which is the owner's brief as written.
+- `implement-plan` with the plan artifact, or the inline checklist (R2, spec-as-plan R3), which is the owner's brief as written. A saved plan → show its task list first, one line each (title · Delivers · Blocked by), then start without waiting for a reply.
 - If `implement-plan` is not available, hand the plan to whoever will edit — file list, ordered tasks, per-task tests and done criteria are enough.
