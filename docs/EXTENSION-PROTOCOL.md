@@ -29,7 +29,7 @@ The parent never ships domain tooling. Children never ship workflow phases.
 
 ## Detection
 
-Parent writes a marker file at the git worktree root when a session is active.
+Parent writes a marker file at the git worktree root at session start; it persists.
 Children read the file at skill execution time.
 
 ### Marker file
@@ -55,14 +55,12 @@ when in doubt (graceful degradation), and may emit a one-line warning.
 - **Refresh:** every SessionStart re-touches the file with the current
   protocol version. Multiple concurrent rolepod sessions on the same
   worktree share the same marker.
-- **Remove:** parent's Stop hook (`session-lifecycle.sh --unlock`) removes
-  the marker **only if no other rolepod sessions hold locks** for the same
-  worktree. The marker survives partial unlocks.
+- **Remove:** never — the marker persists; see Per-CLI support.
 
 ### `.gitignore`
 
 Children and users **should** add `.rolepod/` to their repo's `.gitignore`.
-The marker is ephemeral session state, and evidence written under
+The marker is local, persisting state, and evidence written under
 `.rolepod/evidence/` is per-run output. Neither should be committed.
 
 The parent does not modify `.gitignore` automatically — that would be
@@ -263,12 +261,12 @@ When in doubt, prefix.
 
 ## Per-CLI support
 
-The marker is written at session start on **every CLI** (v2.14.1). Removal differs: Claude Code and Codex clean the marker up on their Stop event once no session lock remains; on the other CLIs the marker persists between sessions. That is safe by design — children only read the marker's *presence* to pick with-rolepod mode, and a stale marker merely routes evidence into `.rolepod/evidence/` (where it still gets aggregated on the next rolepod session).
+The marker is written at session start on **every CLI** (v2.14.1). No CLI removes it (v2.180.5): Claude Code and Codex fire Stop at the end of every turn, not at session end, so removing it there dropped combined mode from turn 2 on; the marker persists between sessions on every CLI. That is safe by design — children only read the marker's *presence* to pick with-rolepod mode, and a stale marker merely routes evidence into `.rolepod/evidence/` (where it still gets aggregated on the next rolepod session).
 
 | CLI | Protocol v1 active | Written by | Removed |
 |---|---|---|---|
-| Claude Code | ✓ | `session-lifecycle.sh` (SessionStart) | ✓ Stop event |
-| Codex | ✓ | `session-lifecycle.sh` (SessionStart) | ✓ Stop event |
+| Claude Code | ✓ | `session-lifecycle.sh` (SessionStart) | persists |
+| Codex | ✓ | `session-lifecycle.sh` (SessionStart) | persists |
 | Cursor | ✓ | `project-context-loader.sh` (sessionStart) | persists |
 | Antigravity | ✓ | `session-start.sh` (PreInvocation) | persists |
 | opencode | ✓ | `plugin/rolepod.js` (session.created) | persists |
@@ -342,7 +340,7 @@ project type via generic verbs.
 
 | Concern | File |
 |---|---|
-| Marker write/remove | `hooks/session-lifecycle.sh` |
+| Marker write | `hooks/session-lifecycle.sh` |
 | Domain detection | `core/skills/using-rolepod/SKILL.md` |
 | Evidence aggregation | `core/skills/check-work/references/child-plugin-evidence.md` |
 | Child routing (debug) | `core/skills/debug-issue/SKILL.md` |

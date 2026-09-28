@@ -23,11 +23,19 @@
 # Single file replaces the previous session-lock.sh + session-unlock.sh
 # pair (PR 5 — hook consolidation).
 #
-# v2.7: also writes/removes .rolepod/parent-active in the worktree as the
+# v2.7: also writes .rolepod/parent-active in the worktree as the
 # Extension Protocol v1 marker for sibling plugins (rolepod-uiproof,
 # rolepod-wplab). The marker IS the contract: present = a rolepod parent
 # session owns this worktree, so a child writes its manifest into
 # .rolepod/evidence/ for check-work to aggregate.
+#
+# v2.180.5: --unlock no longer removes the marker. Claude and Codex fire
+# Stop at the end of EVERY turn, not at session end, so the old "last lock
+# gone -> drop marker" logic cleared it after turn 1 and children fell back
+# to standalone mode from turn 2 on. A stale marker is benign under the
+# Extension Protocol (Cursor/Antigravity/opencode never remove it either) —
+# it is refreshed on the next --lock, and a child reads it only as a hint
+# to try with-rolepod mode.
 set -euo pipefail
 
 MODE="${1:---lock}"
@@ -68,15 +76,6 @@ if [ "$MODE" = "--unlock" ]; then
   # Release the files this session claimed (worktree-guard.sh registry) so a
   # sibling can pick them up once we are gone.
   rm -f "$LOCK_DIR/$SESSION_ID.files" 2>/dev/null || true
-
-  # Extension Protocol v1: if no rolepod sessions remain in this worktree,
-  # drop the parent-active marker so child plugins (rolepod-uiproof, wplab)
-  # fall back to standalone mode on their next skill run.
-  remaining=$(find "$LOCK_DIR" -maxdepth 1 -name "*.lock" 2>/dev/null | wc -l | tr -d ' ')
-  if [ "${remaining:-0}" -eq 0 ]; then
-    rm -f "$WORKTREE/.rolepod/parent-active" 2>/dev/null || true
-    rmdir "$WORKTREE/.rolepod" 2>/dev/null || true
-  fi
   exit 0
 fi
 

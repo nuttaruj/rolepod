@@ -125,7 +125,8 @@ A Workflow `agent()` call defaults to the Lead's model and no frontmatter can ch
 ### `session-lifecycle.sh` — SessionStart `--lock` / Stop `--unlock` (Claude, Codex)
 
 - **`--lock`** — writes `~/.rolepod/session-locks/<sha256(worktree)>/<session_id>.lock`; a live sibling lock (< 30 min) → one warning suggesting `git worktree add`. Stale locks (> 30 min) are swept in every worktree's lock dir. The lock dir is shared by every CLI, so a Claude and a Codex session on one checkout see each other.
-- **`--unlock`** — removes this session's lock and its `.files` registry (releasing what `worktree-guard` recorded), then runs the route record.
+- **`--unlock`** — removes this session's lock and its `.files` registry (releasing what `worktree-guard` recorded), then runs the route record. `.rolepod/parent-active` stays (v2.180.5): Stop fires at the end of every turn, so removing it there dropped child plugins to standalone mode from turn 2 on.
+- **Per-turn lock (accepted gap)** — the lock lives from SessionStart to the turn's Stop. Claude re-touches it on each edit (`worktree-guard`), so an editing Claude session stays visible; Codex has no edit hook, so a Codex session is visible to siblings only until its first Stop. No workaround hook: a CLI without the event goes without.
 - **Route record (v2.105.0)** — `lib/route_check.py --record` reads the finished turn's assistant text and, when it holds a routing line at line start (`Route: R2 …` / `Tier: R3 …` / the arrow form), appends one `phase: route` row. Fenced code, placeholders and ranges (`R0-R4`) are ignored. Every CLI records it from its own transcript (Cursor `stop-unlock.sh`, agy `stop-unlock.sh`, opencode from the plugin). Incident: the manual route append was written 0 times across every product repo.
 - **Bypass** — `ROLEPOD_ALLOW_SHARED_WORKTREE=1` silences the warning.
 
