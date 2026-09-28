@@ -528,6 +528,21 @@ if [ "${1:-}" = "--brief" ]; then
       if (match($0, /`[^`]+`/)) {
         label = substr($0, RSTART + 1, RLENGTH - 2)
         rest = substr($0, RSTART + RLENGTH)
+        # A task tag may sit between the backticked role and the colon that
+        # ends the label (`` `devops-sre` (Task 1): `path` ``) instead of
+        # inside the backticks (`` `devops-sre (Task 1)`: `path` ``) — fold
+        # it into label so tagspan()/has_tasktag() see it exactly the same
+        # way (adversarial-review-split follow-up). Only a genuine task tag
+        # qualifies — a plain parenthetical aside naming another role
+        # (`` `backend-developer` (pairs with frontend-developer): `x` ``)
+        # must never widen the role-fallback match at :664, so has_tasktag()
+        # gates the append; a colon-free span, or one that itself carries a
+        # backtick (a second owner label on the same line), is left alone.
+        ci = index(rest, ":")
+        if (ci > 0) {
+          pretag = substr(rest, 1, ci - 1)
+          if (pretag !~ /`/ && has_tasktag(pretag)) label = label pretag
+        }
         onum++
         ownlabel[onum] = label
         cnt = 0
@@ -678,6 +693,11 @@ if [ "${1:-}" = "--brief" ]; then
     radd = tolower(ENVIRON["RP_RISK_ADD"]); rexcl = tolower(ENVIRON["RP_RISK_EXCL"])
     trisk = 0
     for (i = 1; i <= acnt; i++) {
+      # A prose path never counts as a risk hit — neither via is_security
+      # nor via a .rolepod/risk-paths add pattern — mirroring the HIGH_RISK=
+      # prose filter in hooks/precommit-gate.sh, which drops docs before its
+      # own risk filter (adversarial-review-split follow-up).
+      if (is_prose(allowedord[i])) continue
       lp = tolower(allowedord[i])
       hit = is_security(allowedord[i])
       if (radd != "" && lp ~ radd) hit = 1
