@@ -263,12 +263,12 @@ When in doubt, prefix.
 
 ## Per-CLI support
 
-The marker is written at session start on **every CLI** (v2.14.1). Removal differs: only Claude Code has a Stop event to clean the marker up; on the other CLIs the marker persists between sessions. That is safe by design — children only read the marker's *presence* to pick with-rolepod mode, and a stale marker merely routes evidence into `.rolepod/evidence/` (where it still gets aggregated on the next rolepod session).
+The marker is written at session start on **every CLI** (v2.14.1). Removal differs: Claude Code and Codex clean the marker up on their Stop event once no session lock remains; on the other CLIs the marker persists between sessions. That is safe by design — children only read the marker's *presence* to pick with-rolepod mode, and a stale marker merely routes evidence into `.rolepod/evidence/` (where it still gets aggregated on the next rolepod session).
 
 | CLI | Protocol v1 active | Written by | Removed |
 |---|---|---|---|
 | Claude Code | ✓ | `session-lifecycle.sh` (SessionStart) | ✓ Stop event |
-| Codex | ✓ | `project-context-loader.sh` (SessionStart) | persists (no Stop event) |
+| Codex | ✓ | `session-lifecycle.sh` (SessionStart) | ✓ Stop event |
 | Cursor | ✓ | `project-context-loader.sh` (sessionStart) | persists |
 | Antigravity | ✓ | `session-start.sh` (PreInvocation) | persists |
 | opencode | ✓ | `plugin/rolepod.js` (session.created) | persists |

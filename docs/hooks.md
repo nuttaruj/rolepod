@@ -58,6 +58,7 @@ The one hard checkpoint, at `git commit`.
 ### `block-subagent-commit.sh` — PreToolUse `Bash` (Claude, Codex)
 
 - **Commit ban** — a sub-agent (`agent_id` set) running `git commit` / `git push` / `gh pr create` / `gh pr merge` / `git reset --hard` / `git push --force` → deny. The Lead owns version-control state. Wrapped forms (`timeout 300 git commit`, `xargs git commit`) are caught; a pure-output head (`echo`, `printf`) and a data heredoc are not.
+- **Codex: unverified on the wire** — Codex documents `agent_id` on `SubagentStart` / `SubagentStop` only, not on `PreToolUse`; without it the hook exits silently. The registration stays until a real Codex sub-agent payload shows whether the field arrives. No lifecycle-to-tool-call correlator: parallel sub-agents have no documented join key.
 - **Cannot-wait rule (Claude)** — a sub-agent Bash call with `run_in_background: true`, or a cross-family gate (`--kind …` without `--detach`, or `--collect`) with no `timeout` → deny. No completion notice ever reaches a sub-agent.
 - **Incidents** — a `backend-developer` committed past the QA floor after marking COMPLETED; a task owner idled its whole budget waiting on a backgrounded gate.
 - **Bypass** — none.
@@ -131,7 +132,7 @@ A Workflow `agent()` call defaults to the Lead's model and no frontmatter can ch
 ### `project-context-loader.sh` — SessionStart (Claude, Codex, Cursor)
 
 - **Effect** — repo name, branch, dirty count, the last 5 commits, hot files (7 days), the last phase-log line, and an **Open plan** pointer: the newest `docs/rolepod/plans/*.md` that has at least one checked AND one unchecked box (a 0-done plan is never shown).
-- **Other CLIs** — where `session-lifecycle` does not run, this loader registers the session lock and adds the sibling warning.
+- **Context only** — the session lock, the sibling warning and `.rolepod/parent-active` belong to `session-lifecycle` on Claude and Codex (Codex launches SessionStart hooks concurrently, so a second lock writer here read as a phantom sibling and outlived Stop). Cursor ships its own loader, which keeps its `cursor-<conversation_id>` lock.
 - **Cross-family** — no pool file and a second CLI installed → one context line pointing at the `cross-family` skill's setup steps, never a question.
 - **Bypass** — none (context only).
 

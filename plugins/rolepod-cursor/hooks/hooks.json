@@ -10,7 +10,7 @@
     "beforeShellExecution": [
       {
         "command": "./scripts/precommit-gate.sh",
-        "matcher": "(^|[;&|]|\\s)git(\\s|$)",
+        "matcher": "(^|[^A-Za-z0-9_-])git(\\s|$|[\"'])",
         "timeout": 5
       }
     ],

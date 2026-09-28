@@ -85,16 +85,16 @@ adapters/
 | Session start | `SessionStart` (`startup\|resume\|clear\|compact`) | `SessionStart` (`startup\|resume`) | `sessionStart` (no matcher) | `PreInvocation` (no matcher) |
 | Prompt submit (claim-verify nudge) | `UserPromptSubmit` (no matcher) | `UserPromptSubmit` (no matcher) | — (`beforeSubmitPrompt` fires on submit but cannot inject pre-answer context) | — (agy has no prompt-submit event) |
 | Before tool run | `PreToolUse` (`Edit\|Write\|MultiEdit`, `NotebookEdit`, `Bash`, `Workflow`) | `PreToolUse` (`Bash`) | `beforeShellExecution` (any `git` command) | `PreToolUse` (`run_command`) |
-| After tool run | `PostToolUse` (`Workflow\|Agent`, `Bash`) | `PostToolUse` (`Bash`) | — (uses `beforeShellExecution` for commit gate; no observational hooks yet) | — (agy has no post-tool event) |
+| After tool run | `PostToolUse` (`Workflow\|Agent`, `Bash`) | `PostToolUse` (`Bash`) | — (uses `beforeShellExecution` for commit gate; no observational hooks yet) | — (none on agy 1.2.3, live-measured; current vendor docs list `PostToolUse` / `PostInvocation` — not adopted, untested on the installed 1.2.10) |
 | Stop / compact | `Stop` (no matcher) | `Stop` (no matcher; `session-lifecycle.sh --unlock`) | `stop` (no matcher; `stop-unlock.sh`) | `Stop` (no matcher) |
 
 Per-CLI hook counts (distinct scripts, v2.176.0). The evidence gate and the edit-time hooks run on Claude only; every CLI keeps the private-docs commit deny. Per-hook detail: [docs/hooks.md](hooks.md).
 
 - **Claude** — 14 core hook scripts, 16 registrations (`session-lifecycle.sh` twice, `--lock` / `--unlock`; `subagent-write-scope.sh` twice, Edit/Write and NotebookEdit).
-- **Codex** — 7 scripts, 8 registrations: `claim-verify-nudge`, `project-context-loader`, `session-lifecycle` (`--lock` / `--unlock`), `agent-sync` (Codex-only SessionStart sync of the bundled agents + AGENTS.md block into `~/.codex`), `block-subagent-commit`, `precommit-gate` (`ROLEPOD_LEAD_CLI=codex` → private-docs deny only), `fix-loop-breaker`. Plugin hooks must be trusted once via `/hooks`.
+- **Codex** — 7 scripts, 8 registrations: `claim-verify-nudge`, `project-context-loader`, `session-lifecycle` (`--lock` / `--unlock`), `agent-sync` (Codex-only SessionStart sync of the bundled agents + AGENTS.md block into `~/.codex`), `block-subagent-commit` (unverified on Codex: `PreToolUse` documents no `agent_id`), `precommit-gate` (`ROLEPOD_LEAD_CLI=codex` → private-docs deny only), `fix-loop-breaker`. Plugin hooks must be trusted once via `/hooks`.
 - **Cursor** — 3: `project-context-loader` on `sessionStart` (+ the `cursor-<conversation_id>` lock), `precommit-gate` on `beforeShellExecution` (a translator around the shared gate → private-docs deny only), `stop-unlock` on `stop` (releases the lock, records the route line). Always-on judgment is an `alwaysApply` rule.
-- **Antigravity** — 3 in `hooks.json` under a `rolepod` name key: `session-start` on PreInvocation, `pre-tool` on PreToolUse(`run_command`) → the shared gate (private-docs deny only, returned as `{decision, reason}`), `stop-unlock` on Stop. agy accepts no context field on any event, so nothing but a deny reaches the model.
-- `claim-verify-nudge` ships on Claude / Codex, not Cursor (`beforeSubmitPrompt` cannot inject context). Rolepod ships no add-on hooks — rolepod-brain and GitNexus integrate via their own plugins / CLI.
+- **Antigravity** — 3 in `hooks.json` under a `rolepod` name key: `session-start` on PreInvocation, `pre-tool` on PreToolUse(`run_command`) → the shared gate (private-docs deny only, returned as `{decision, reason}`), `stop-unlock` on Stop. On agy 1.2.3 (live-measured) no event accepted a context field, so nothing but a deny reaches the model; current vendor docs add `injectSteps` on PreInvocation / PostInvocation — not adopted, untested on 1.2.10.
+- `claim-verify-nudge` ships on Claude / Codex, not Cursor (`beforeSubmitPrompt` cannot inject context). Rolepod ships no add-on hooks — rolepod-brain integrates via its own plugin.
 
 ## Verification status — what's confirmed locally
 

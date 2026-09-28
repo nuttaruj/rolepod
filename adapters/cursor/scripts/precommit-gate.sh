@@ -4,7 +4,12 @@
 # The matcher is a regex on the literal command, so it fires on every `git …`
 # (v2.134.2; the old literal "git commit" missed `git -c k=v commit` and
 # `git add -A && git -c … commit` — measured live 2026-09-16, the commit went
-# through). The shared gate's own token walk decides whether it is a commit.
+# through). v2.180.4: the matcher itself missed quoted wrappers and absolute
+# paths — `bash -lc 'git commit -m x'`, `sh -c "git commit"`,
+# `/usr/bin/git commit -m x`, `(git commit -m x)`, `$(git commit)` — because
+# it anchored on whitespace/`;&|` before `git`; it now anchors on "not a git
+# identifier character" instead, so a quote, slash, paren or `$(` all count.
+# The shared gate's own token walk decides whether it is a commit.
 #
 # v2.134.0: this used to be a Cursor-only gate (any staged high-risk path →
 # HARD, no session evidence). It is now a translator around the shared
