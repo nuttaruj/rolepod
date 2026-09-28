@@ -45,15 +45,15 @@ case "$MODE" in
 esac
 shift || true
 
-# CLI identity (this task): Claude and Codex both run this script, so the
-# adapter's own hooks.json states which one via --cli <name>. Content of the
-# lock file becomes that name, so a sibling-warning reader can print a
-# per-CLI breakdown instead of a bare count. No --cli given (older call site,
-# manual invocation) -> "claude", the more common caller.
-CLI_NAME="claude"
+# CLI identity: Claude and Codex both run this script, so the adapter's own
+# hooks.json states which one via --cli <name>. Content of the lock file
+# becomes that name, so a sibling-warning reader can print a per-CLI
+# breakdown instead of a bare count. No --cli given (older call site, manual
+# invocation) -> "unknown", same label a reader gives an unnamed lock.
+CLI_NAME="unknown"
 while [ $# -gt 0 ]; do
   case "$1" in
-    --cli) CLI_NAME="${2:-claude}"; shift 2 ;;
+    --cli) CLI_NAME="${2:-unknown}"; shift; [ $# -gt 0 ] && shift ;;
     *) shift ;;
   esac
 done
@@ -103,8 +103,11 @@ STALE_THRESHOLD=1800   # 30 min — covers most legit gaps between turns
 # Scan siblings + prune stale. Use stat -f (BSD) with -c fallback (GNU).
 # SIBLING_NAMES collects one CLI name per active sibling (newline-separated,
 # no assoc arrays — /bin/bash on macOS is still 3.2) for the warning's
-# per-CLI breakdown. A lock's content is the CLI name (this task); an empty
-# lock (written by a version before this one) has none -> "unknown".
+# per-CLI breakdown. Lock-name rule (same in the cursor loader and the
+# opencode plugin): read at most 32 bytes, strip one trailing newline, keep
+# it only if it matches [a-z0-9_-]+ — anything else (empty, junk, a lock
+# that vanished or failed to read between the count and this read) is
+# "unknown", so the count and the breakdown always agree.
 ACTIVE_SIBLINGS=0
 SIBLING_NAMES=""
 for lock in "$LOCK_DIR"/*.lock; do
@@ -116,8 +119,9 @@ for lock in "$LOCK_DIR"/*.lock; do
   age=$((NOW - mtime))
   if [ "$age" -lt "$STALE_THRESHOLD" ]; then
     ACTIVE_SIBLINGS=$((ACTIVE_SIBLINGS + 1))
-    sib_name=$(tr -d '[:space:]' < "$lock" 2>/dev/null || echo "")
-    [ -z "$sib_name" ] && sib_name="unknown"
+    sib_name=$(head -c 32 "$lock" 2>/dev/null || echo "")
+    sib_name="${sib_name%$'\n'}"
+    [[ "$sib_name" =~ ^[a-z0-9_-]+$ ]] || sib_name="unknown"
     SIBLING_NAMES="${SIBLING_NAMES}${sib_name}
 "
   else
@@ -189,5 +193,5 @@ msg = ('Sibling rolepod session(s) detected in this worktree (%s active%s). '
        '  cd %s\n\n'
        'Then continue work there. Override with ROLEPOD_ALLOW_SHARED_WORKTREE=1 '
        'if this session is intentionally shared (e.g. read-only review).') % (n, detail, path, branch, path)
-print(json.dumps({'hookSpecificOutput': {'hookEventName': 'SessionStart', 'additionalContext': msg}}, ensure_ascii=False))
+print(json.dumps({'hookSpecificOutput': {'hookEventName': 'SessionStart', 'additionalContext': msg}}))
 " 2>/dev/null || echo '{}'

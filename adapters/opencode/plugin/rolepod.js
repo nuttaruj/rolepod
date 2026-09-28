@@ -138,11 +138,12 @@ function siblingBreakdown(names) {
 }
 function siblingMessage(activeSiblings, names = []) {
   const breakdown = siblingBreakdown(names)
+  const detail = breakdown ? ` (${breakdown})` : " (possibly another CLI)"
   return (
     `rolepod: ${activeSiblings} sibling session(s) active in this ` +
-    `worktree${breakdown ? ` (${breakdown})` : ""} (possibly another CLI). ` +
-    "Concurrent edits will stomp each other — isolate with `git worktree " +
-    "add` before editing, or set ROLEPOD_ALLOW_SHARED_WORKTREE=1 if intentional."
+    `worktree${detail}. Concurrent edits will stomp each other — isolate ` +
+    "with `git worktree add` before editing, or set " +
+    "ROLEPOD_ALLOW_SHARED_WORKTREE=1 if intentional."
   )
 }
 // One rule, both entry points: warn only when siblings exist and the user
@@ -445,11 +446,33 @@ function makeCore({ directory, homedir } = {}) {
   const dir = directory || process.cwd()
   const hd = homedir || os.homedir()
 
+  // Lock-name rule (same in hooks/session-lifecycle.sh and the cursor
+  // loader): read at most 32 bytes, strip one trailing newline, keep it
+  // only if it matches [a-z0-9_-]+ — anything else (empty, junk, a lock
+  // that vanished or failed to read between the count and this read) is
+  // "unknown", so the count and the breakdown always agree (never throws).
+  const readLockName = (p) => {
+    let fd
+    try {
+      fd = fs.openSync(p, "r")
+      const buf = Buffer.alloc(32)
+      const n = fs.readSync(fd, buf, 0, 32, 0)
+      const raw = buf.toString("utf8", 0, n).replace(/\n$/, "")
+      return /^[a-z0-9_-]+$/.test(raw) ? raw : "unknown"
+    } catch {
+      return "unknown"
+    } finally {
+      if (fd !== undefined) {
+        try { fs.closeSync(fd) } catch { /* already closed/gone */ }
+      }
+    }
+  }
+
   // Registers `id` in the worktree's lock dir and returns the OTHER active
   // (non-stale) sibling locks as { count, names } — the caller decides how
   // to surface that (v1: a toast; v2: a one-shot system-part nudge). Each
-  // lock's content is read as the CLI name that wrote it (this task); an
-  // empty lock (an older version) reads as "unknown".
+  // lock's content is read as the CLI name that wrote it; an empty lock (an
+  // older version) reads as "unknown".
   const registerLock = (id) => {
     const worktree = worktreeRoot(dir)
     if (!worktree) return { count: 0, names: [] } // non-git dir = no stomp risk (same as bash hook)
@@ -479,8 +502,7 @@ function makeCore({ directory, homedir } = {}) {
         const age = now - fs.statSync(p).mtimeMs
         if (age < STALE_MS) {
           activeSiblings += 1
-          const name = fs.readFileSync(p, "utf8").trim()
-          names.push(name || "unknown")
+          names.push(readLockName(p))
         } else {
           fs.rmSync(p, { force: true })
         }

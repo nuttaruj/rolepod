@@ -51,20 +51,26 @@ if [ "${ROLEPOD_ALLOW_SHARED_WORKTREE:-0}" != "1" ]; then
     _m=$(stat -c %Y "$_lk" 2>/dev/null || stat -f %m "$_lk" 2>/dev/null || echo 0)
     if [ $((_now - _m)) -lt 1800 ]; then
       _act=$((_act + 1))
-      _nm=$(tr -d '[:space:]' < "$_lk" 2>/dev/null || echo "")
-      [ -z "$_nm" ] && _nm="unknown"
+      # Lock-name rule (same in session-lifecycle.sh and the opencode
+      # plugin): read at most 32 bytes, strip one trailing newline, keep it
+      # only if it matches [a-z0-9_-]+ — anything else (empty, junk, a lock
+      # that vanished or failed to read between the count and this read) is
+      # "unknown", so the count and the breakdown always agree.
+      _nm=$(head -c 32 "$_lk" 2>/dev/null || echo "")
+      _nm="${_nm%$'\n'}"
+      case "$_nm" in *[!a-z0-9_-]*|"") _nm="unknown" ;; esac
       _names="${_names}${_nm}
 "
     else
       rm -f "$_lk" "$_ld/$_b.files" 2>/dev/null || true
     fi
   done
-  # Lock content = this CLI's name, same convention as every other reader
+  # Lock content = this CLI's name, same convention as every other writer
   # (session-lifecycle.sh, the opencode plugin) — a sibling then knows which
   # CLI it is, not just how many.
   printf '%s' "cursor" > "$_ld/$_sid.lock" 2>/dev/null || true
   if [ "$_act" -gt 0 ]; then
-    _breakdown=$(printf '%s' "$_names" | sort | uniq -c | awk '{printf "%s%s ×%d", sep, $2, $1; sep=", "}')
+    _breakdown=$(printf '%s' "$_names" | LC_ALL=C sort | uniq -c | awk '{printf "%s%s ×%d", sep, $2, $1; sep=", "}')
     CTX="$CTX\n\n**$_act concurrent session(s)** ($_breakdown) in this worktree. Edits to the SAME file stomp each other — isolate with a git worktree before editing a shared file. Override: \`ROLEPOD_ALLOW_SHARED_WORKTREE=1\`."
   fi
 fi
@@ -73,5 +79,5 @@ fi
 # literal (RCE). CTX carries literal `\n`; convert to real newlines here.
 ROLEPOD_HOOK_CTX="${CTX//\\n/$'\n'}" python3 -c "
 import json, os
-print(json.dumps({'additional_context':os.environ.get('ROLEPOD_HOOK_CTX','')}, ensure_ascii=False))
+print(json.dumps({'additional_context':os.environ.get('ROLEPOD_HOOK_CTX','')}))
 " 2>/dev/null || echo '{}'

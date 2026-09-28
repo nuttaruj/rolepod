@@ -107,8 +107,15 @@ for lock in "$LOCK_DIR"/*.lock; do
 done
 
 # Always refresh our liveness so an actively-editing session never goes stale
-# (this is independent of which files we own).
-touch "$LOCK_DIR/$SESSION_ID.lock" 2>/dev/null || true
+# (this is independent of which files we own). A bare `touch` on a lock Stop
+# already deleted this turn would recreate it EMPTY, mislabelling a live
+# Claude session as unknown to every sibling reader — keep the content when
+# there is one, else name this CLI (worktree-guard runs on Claude only).
+if [ -s "$LOCK_DIR/$SESSION_ID.lock" ]; then
+  touch "$LOCK_DIR/$SESSION_ID.lock" 2>/dev/null || true
+else
+  printf '%s' "claude" > "$LOCK_DIR/$SESSION_ID.lock" 2>/dev/null || true
+fi
 
 # No real collision, or the operator opted into a shared worktree → claim the
 # file (we are about to write it) and pass silently. We record ONLY on the
