@@ -10,8 +10,9 @@
 **Snapshot:** `<base sha>..<head sha>` <+ `diff <git diff HEAD | git hash-object --stdin>` for uncommitted work; each round 2+ appends one Snapshot line for its fix delta — finish-work checks they reach the merged head>
 
 ## Read
-<R4: each claimed behavior → the path walked and where it held or failed. A
- lens (R2 / R3): the diff and the callers read. On a clean review this
+<`security-engineer` and the adversarial pass: each claimed behavior → the
+ path walked and where it held or failed. A lens (any tier): the diff and the
+ callers read. On a clean review this
  section IS the evidence.>
 
 ## Risk surfaces touched
@@ -22,17 +23,17 @@
 ## Reviewers
 <Which reviewer roles ran, and that the round is complete — every
  dispatched reviewer returned before any fix; N reports merged → U unique
- findings (dedup key: file:line + root cause). For a high-risk diff, name
- the adversarial fresh-context reviewer and confirm it ran on a different
- CLI than the Lead's, or is the internal strong pass.>
+ findings (dedup key: file:line + root cause). For an R4 (high-risk)
+ diff, name the adversarial pass (`adversarial-review`) and confirm it ran on
+ a different CLI than the Lead's, or is the internal strong pass.>
 
-**Cross-model adversarial pass:** <ran on `<cli>` (cross-family, its default model — receipt: ROLEPOD-XFAM ok … raw=<path>) |
+**Cross-model adversarial pass** (R4 only — delete the line otherwise): <ran on `<cli>` (cross-family, its default model — receipt: ROLEPOD-XFAM ok … raw=<path>) |
  ran on `<cli>`, model family not reported (a CLI preset with no family
  field — the receipt still clears the gate) | NOT RUN — cross-family off
  (opt-in; the user's choice — a note, not a limitation) | vertical — same
  CLI, reason (own CLI's stronger tier as cold reviewer; not a cross-family
- pass) | NOT RUN — reason (pool failed / empty; the `universal-reviewer`
- floor covered every axis instead). Vertical or a NOT RUN other than
+ pass) | NOT RUN — reason (pool failed / empty; the internal strong
+ pass ran instead). Vertical or a NOT RUN other than
  opt-in-off on a high-risk diff is a recorded verification limitation —
  `finish-work`'s Reviewer gate surfaces it before merge. No fresh reviewer
  at all (the Lead's own walk in its place) blocks the merge until the user
