@@ -120,6 +120,7 @@ Done when: every task is shipped (R4: with its per-task reports); R2/R3 then go 
 
 - Finish the planned task as planned. Never expand scope or silently redesign the plan mid-build: a new idea is one line under the plan's `## Follow-ups`.
 - Run continuously between tasks and plan phases. Never ask "should I continue?" or end the turn mid-plan; an ended turn is a stop however it is worded. Stop only on a BLOCKED (after a variable change), a spec / plan gap, or a scope ambiguity that SURVIVES a re-read of the plan and the touched files. Forced to end anyway (usage limit, context, user stop) → the last act is one line under the plan's `## Changes during build`: stopped after Task N · next Task M · how to start the env.
+- Every ready dispatch out, sub-agents running in the background, nothing unblocked left → the turn ends as a wait, not a stop: a return resumes the Lead. Its closing line offers the compact, paste-ready and never a question: your CLI's compact command (Claude `/compact <focus>`), the focus naming the plan path, each running owner and the next step; an inline checklist goes into the focus with its ticks.
 - Read the evidence, not the status. Never accept `COMPLETED` without its Command tail.
 
 Scope and manifest pairs, good and bad → `examples/execution-examples.md`.
