@@ -123,7 +123,7 @@ Author and reviewer disagree on merits → technical data > documented style gui
 
 ## rolepod-brain (when installed; no tool → skip)
 
-- Every reviewer dispatch: add `brain_seed(task, agent: <reviewer id>)` to the brief, verbatim.
+- Every reviewer dispatch: `brain_seed(task, agent: <reviewer id>, budget: 1024)`; only the lines about this diff go in the brief.
 - Every finding not applied as written, and always on a user overrule: `brain_note(agent: <reviewer id>, text: "avoid:|refine:|keep: <class>…")`.
 
 ## GitHub thread replies
