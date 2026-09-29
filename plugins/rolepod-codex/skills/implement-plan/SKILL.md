@@ -99,6 +99,7 @@ The Lead commits each task in the owner's worktree (the ship line; a harness-mad
 - The ship line's `finish` then fast-forwards the Lead's branch.
 - A harness-made worktree, or a `finish` refused because the Lead's branch moved → `git cherry-pick <sha>` (a conflict ends with `git cherry-pick --continue`, never a new `git commit`), then remove the worktree, delete its branch, and run the chain's `log` step.
 - Never move the diff as a patch: a patch carries no evidence, and the gate asks for the whole R4 set again.
+- Integrated → stop the owner (TaskStop, or the CLI's close) in the same turn; its return notes it stopped with background work still running → stop it at once, since that leftover work runs for hours unwatched (`references/subagent-dispatch.md` Close what finished).
 
 Done when: every ready track is dispatched and each returned track is integrated in contract order.
 

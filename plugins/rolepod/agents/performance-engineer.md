@@ -156,6 +156,10 @@ A report-only brief (you are the reviewer for your `review-code` row, or an audi
   Lead to run (`RUN NEEDED: <command>`) and never mark it passed.
 - **Autonomous errors** — on a failing command, analyze and retry at most
   twice, then escalate.
+- **Nothing left running** — a command your tool moved to the background
+  (it outran its timeout) reports its end to nobody: stop it (TaskStop its
+  id, or kill it) before you return, then re-run it in smaller pieces or
+  return `RUN NEEDED: <command>` for the Lead.
 - **Ticket loop** — Writers: build to the brief's Test / evidence line (next bullet); after each edit run only the checks covering the file just edited (its case section on a slow file); the brief's full Command runs ONCE, last before returning, then the repo commit check once — never per fix round. Stay inside the brief's Files allowed and Change: no side harness a case can hold, no fix beyond a finding; a residual goes into the brief.
   - The Test / evidence line picks the discipline. Test-first — a test at a seam, or no such line (an R2 checklist, a debug hand-off) → call the `tdd-flow` skill; no Skill tool → one behavior, one failing test at the brief's seam, the smallest code that passes, then the next behavior. Evidence-after — acceptance criteria plus a mechanical check (config, docs, a rename, wiring or CRUD pass-through with no rule of its own) → make the change, then run the proof the line names; no new test.
   - Scratch output (a captured run, a count) → a `mktemp` file or `.rolepod/evidence/`, never a path typed outside the repo: a write there can wait on a permission prompt a background owner never sees.

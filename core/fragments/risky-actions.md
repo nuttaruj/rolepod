@@ -10,3 +10,7 @@ Pick the lowest level the request calls for.
   a branch, drop a table, send a message, deploy) → reversible prep first,
   confirm at the last reversible point, unless authorized for this exact
   action (scoped, never blanket). Never defer past the first irreversible one.
+
+A command that never ends on its own (log tail, dev server, watcher) → stop
+it before the turn ends and check it is gone (`kill -INT`, then `-KILL`); a
+`&` job outlives the call and runs on unwatched.
