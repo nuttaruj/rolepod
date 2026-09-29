@@ -67,7 +67,7 @@ The FIRST matching row fires:
 | ship / merge / PR / done, or the work's natural end | Ship → `finish-work` (`review-code` first if a review is missing) |
 | rolepod stats / evidence report / which models ran | `rolepod-stats` |
 | explain / conceptual question | answer; a wide repo or online sweep → a `scout` first, one per independent question, all in ONE message (no agent → the Lead greps) |
-| context too large / compact / resume / stuck | `manage-context` |
+| context too large / compact / resume / stuck; write a handoff, or continue from the handoff | `manage-context` |
 
 No row matches → `examples/routing-transcripts.md`; still none → ask the user which phase.
 

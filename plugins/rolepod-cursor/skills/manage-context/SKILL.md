@@ -21,6 +21,7 @@ Inputs: the original request and every correction since (latest wins) · the cur
 | Multi-file edits beyond the plan | Deep triage |
 | Context bar yellow / red, a compaction warning, degraded recall (re-reading files already read, forgetting stated constraints) | Context budget |
 | Unfamiliar repo, no clear entry point | Onboarding |
+| The user asks for a handoff, or to continue from the handoff | Context budget — handoff path |
 
 ~70% of a context meter is the line; act on the observable signal, not the estimate.
 
@@ -44,7 +45,8 @@ Heavy context → trim with your CLI's compact command (Claude `/compact <focus>
 
 Load only what the task needs: the Tier 1 skills + the touched files is usually enough.
 
-Context too heavy to trim safely, still heavy right after a compaction, or starting fresh → fill `templates/handoff-brief.md`, then start the fresh session (Claude `/clear`). The brief is the entry point: the fresh session reads it, then every artifact it links — plan, spec, cohesion contract, debug ledger. The brief and those artifacts are CLI-agnostic (`references/cli-fallbacks.md` Cross-CLI resume).
+Context too heavy to trim safely, still heavy right after a compaction, or starting fresh, or the user asks for a handoff → fill `templates/handoff-brief.md` into `docs/rolepod/handoff.md` (overwrite; never committed), then start the fresh session (Claude `/clear`).
+"Continue from the handoff" → read `docs/rolepod/handoff.md` first; no such file → say so and ask. The brief is the entry point: the fresh session reads it, then every artifact it links — plan, spec, cohesion contract, debug ledger. The brief and those artifacts are CLI-agnostic (`references/cli-fallbacks.md` Cross-CLI resume).
 A quota limit cannot be trimmed away — skip the trim even when the context is heavy too: checkpoint what the gates allow, write the uncommitted state into the brief, switch.
 
 Done when: the context is trimmed at a seam, or a handoff brief is written for the fresh session.
