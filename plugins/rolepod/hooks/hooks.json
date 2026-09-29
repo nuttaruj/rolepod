@@ -93,6 +93,16 @@
             "timeout": 3
           }
         ]
+      },
+      {
+        "matcher": "Agent|SendMessage",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "[ -z \"$CURSOR_PROJECT_DIR\" ] && exec bash \"${CLAUDE_PLUGIN_ROOT}/hooks/block-subagent-commit.sh\"; cat >/dev/null",
+            "timeout": 3
+          }
+        ]
       }
     ],
     "PostToolUse": [

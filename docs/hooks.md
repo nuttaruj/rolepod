@@ -22,11 +22,12 @@ The *why* — incidents, doctrine — lives in this file and in the hook's sourc
 | `PreToolUse` | `NotebookEdit` | `subagent-write-scope.sh` |
 | `PreToolUse` | `Bash` | `precommit-gate.sh`, `push-ref-check.sh`, `block-subagent-commit.sh` |
 | `PreToolUse` | `Workflow` | `workflow-tier-nudge.sh` |
+| `PreToolUse` | `Agent\|SendMessage` | `block-subagent-commit.sh` |
 | `PostToolUse` | `Workflow\|Agent` | `dispatch-auto-log.sh` |
 | `PostToolUse` | `Bash` | `fix-loop-breaker.sh` |
 | `Stop` | — | `session-lifecycle.sh --unlock` (+ route record) |
 
-14 hook scripts, 16 registrations (`session-lifecycle.sh` and `subagent-write-scope.sh` register twice). `test-diff-lint.sh` is a helper the commit gate calls, not a registered hook. All hook Python runs `python3 -I`, so a stray `json.py` in the working directory cannot mute a hook.
+13 hook scripts, 16 registrations (`session-lifecycle.sh`, `subagent-write-scope.sh` and `block-subagent-commit.sh` register twice). `test-diff-lint.sh` is a helper the commit gate calls, not a registered hook. All hook Python runs `python3 -I`, so a stray `json.py` in the working directory cannot mute a hook.
 
 **Cursor host guard (v2.130.1).** Cursor auto-imports Claude Code plugins and runs their `hooks/hooks.json`. Every Claude manifest command is therefore `[ -z "$CURSOR_PROJECT_DIR" ] && exec bash "${CLAUDE_PLUGIN_ROOT}/hooks/<x>.sh"; cat >/dev/null`: under Cursor the imported copy drains stdin and exits 0, and the Cursor-native plugin owns the host. Disable the imported copy on Cursor's Plugins page to stop its agents and skills loading twice.
 
@@ -55,12 +56,12 @@ The one hard checkpoint, at `git commit`.
 - **Incident** — edit-time hard blocks once pushed a user to set `ROLEPOD_GATES_SOFT` for good (33 high-risk edits in a day, 116 unreasoned bypasses), which silenced the commit gate too; this hook only informs.
 - **Bypass** — `ROLEPOD_GATES_SOFT=1` silences it.
 
-### `block-subagent-commit.sh` — PreToolUse `Bash` (Claude, Codex)
+### `block-subagent-commit.sh` — PreToolUse `Bash` (Claude, Codex) · `Agent|SendMessage` (Claude)
 
 - **Commit ban** — a sub-agent (`agent_id` set) running `git commit` / `git push` / `gh pr create` / `gh pr merge` / `git reset --hard` / `git push --force` → deny. The Lead owns version-control state. Wrapped forms (`timeout 300 git commit`, `xargs git commit`) are caught; a pure-output head (`echo`, `printf`) and a data heredoc are not.
 - **Codex: unverified on the wire** — Codex documents `agent_id` on `SubagentStart` / `SubagentStop` only, not on `PreToolUse`; without it the hook exits silently. The registration stays until a real Codex sub-agent payload shows whether the field arrives. No lifecycle-to-tool-call correlator: parallel sub-agents have no documented join key.
-- **Cannot-wait rule (Claude)** — a sub-agent Bash call with `run_in_background: true`, or a cross-family gate (`--kind …` without `--detach`, or `--collect`) with no `timeout` → deny. No completion notice ever reaches a sub-agent.
-- **Incidents** — a `backend-developer` committed past the QA floor after marking COMPLETED; a task owner idled its whole budget waiting on a backgrounded gate.
+- **Cannot-wait rule (Claude)** — a sub-agent Bash call with `run_in_background: true`, or a cross-family gate (`--kind …` without `--detach`, or `--collect`) with no `timeout` → deny. A sub-agent `Agent` call without `run_in_background: false` (the platform default is background) → deny. A sub-agent `SendMessage` to a raw agent id (`a` + hex — how an owner addresses the unnamed reviewer it spawned) → deny: the message resumes that agent in the background; a named target (`main`, `team-lead`, another owner) passes. A child that finishes after the sub-agent's turn ends reports to the Lead, and nothing wakes the sub-agent. In-process teammates carry `agent_id` too (live probe, 2026-09-29). The Agent deny's exception: no `run_in_background` parameter → return `REVIEW NEEDED:` for the Lead.
+- **Incidents** — a `backend-developer` committed past the QA floor after marking COMPLETED; a task owner idled its whole budget waiting on a backgrounded gate; an R4 task owner dispatched its four reviewers in the background, ended its turn "waiting for their notifications", and idled 6.6 h while the reports sat with the Lead (2026-09-28).
 - **Bypass** — none.
 
 ### `subagent-write-scope.sh` — PreToolUse `Edit|Write|MultiEdit|NotebookEdit` (Claude)

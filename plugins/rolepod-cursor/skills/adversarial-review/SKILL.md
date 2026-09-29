@@ -15,8 +15,8 @@ An R4 (high-risk) diff's round 1 → one adversarial report beside `security-eng
 
 ### 1. Run the pass
 
-- Dispatch it in the SAME message as the rest of round 1 (`review-code` Pick reviewers): `security-engineer` · `universal-reviewer` `lens: spec` · `universal-reviewer` `lens: standards` · this pass.
-- A usable pool → the `cross-family` skill: `cross-family.sh --kind review --adversarial --brief <brief> --attach <diff> --detach`, then ONE `--collect <job-id>` before the commit. The runner hands the member this skill's Reviewer stance.
+- Run it with the rest of round 1 (`review-code` Pick reviewers): `security-engineer` · `universal-reviewer` `lens: spec` · `universal-reviewer` `lens: standards` · this pass. The internal pass goes in the SAME message; the external's `--detach` runs just before that message — it returns at once — so the external runs while the foreground reviewers do.
+- A usable pool → the `cross-family` skill's runner, `<cross-family skill folder>/scripts/cross-family.sh` (that folder sits beside this skill's): `--kind review --adversarial --brief <brief> --attach <diff> --detach`, then ONE `--collect <job-id>` before the commit. The runner hands the member this skill's Reviewer stance.
 - Pool off, no usable member, no `cross-family`, or the runner refuses `--adversarial` (exit 2: the stance is missing beside it) → `universal-reviewer` with `mode: adversarial` on a strong-class model — never a balanced one, even under a balanced Lead. It writes `.rolepod/evidence/review/<task>-adversarial.md`.
 - The brief is the reviewer's whole world: the diff, the spec / acceptance criteria, the risk profile, the claimed behaviors to trace.
 - Called alone (the user asked; no `review-code` round) → freeze the diff first — each ref resolves and the diff is non-empty — then run the pass as above.

@@ -96,7 +96,8 @@ The implementer cannot complete the task; the manifest states what blocks and wh
 
 Who reviews follows the task's tier (SKILL.md Review):
 - R2/R3 task in a plan → no reviewer in the loop; the Lead's ONE combined review over the plan diff covers it: two `universal-reviewer` lenses in ONE message (`lens: spec` · `lens: standards`, or the concern-matched row), the external instead at the pool's tier (the standard prompt, never `--adversarial`).
-- R4 task → the owner dispatches the round-1 set in ONE message: `security-engineer` + `universal-reviewer` `lens: spec` + `universal-reviewer` `lens: standards` + the adversarial pass (`adversarial-review`: the external with `--adversarial` when the pool is usable, else `universal-reviewer` `mode: adversarial` at strong class). User-visible flows are verified once at `check-work`, never per task.
+- An owner's own dispatches wait inside the call — foreground, never background (Claude: `run_in_background: false`; an async-only spawn → wait on each child before returning): a child that finishes after the owner's turn ends reports to the Lead, and nothing wakes the owner. No way to wait → `REVIEW NEEDED:` and the Lead runs the review.
+- R4 task → the owner dispatches the round-1 set in ONE message (an external adversarial pass: its `--detach` runs just before): `security-engineer` + `universal-reviewer` `lens: spec` + `universal-reviewer` `lens: standards` + the adversarial pass (`adversarial-review`: the external with `--adversarial` when the pool is usable, else `universal-reviewer` `mode: adversarial` at strong class). User-visible flows are verified once at `check-work`, never per task.
 - A standalone R2 brief (no plan) → the owner dispatches the two `universal-reviewer` lenses itself, never a self-review.
 
 ### Ship-group drift pass

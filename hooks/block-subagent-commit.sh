@@ -1,5 +1,6 @@
 #!/bin/bash
-# PreToolUse Bash hook — block sub-agents from the calls they cannot recover from.
+# PreToolUse Bash / Agent / SendMessage hook — block sub-agents from the calls
+# they cannot recover from.
 #
 # 1. Version control (original rule). A backend-developer sub-agent ran
 #    `git commit` after marking tasks COMPLETED, bypassing the review floor
@@ -13,6 +14,25 @@
 #    blocks a gate (make test*, a tests/integration/ script, a cross-family
 #    run or collect) with no timeout. An explicit timeout of any size passes.
 #    Codex payloads carry neither field, so the rule stays silent there.
+#    Extended to Agent/SendMessage (incident 2026-09-28): an R4 task owner
+#    dispatched 4 reviewers with run_in_background unset - the platform
+#    default is background - ended its turn "waiting for their
+#    notifications", and idled 6.6 h. A child that finishes after the
+#    dispatching sub-agent's own turn ends reports to the Lead; nothing wakes
+#    the sub-agent. Blocks a sub-agent's Agent dispatch when
+#    run_in_background is not explicitly false (unset, true, or anything but
+#    False / "false"). Blocks a sub-agent's SendMessage only when `to` is a
+#    raw agentId (regex ^a[0-9a-f-]{8,}$ - how an owner addresses the
+#    finished, unnamed reviewer it just spawned; all 3 Kyni incidents used
+#    one) - that message resumes the child in the background the same way,
+#    and its reply goes to the Lead. A named target (main, team-lead, a
+#    teammate's own name) always passes - narrowed from "anyone but main"
+#    (round-1 fix, 2026-09-29): that shape denied a resumed reviewer's
+#    legitimate reply to its parent owner by name. Both checks decide from
+#    tool_input alone (run_in_background / to) - neither carries a shell
+#    command, so neither imports the tokenizer below. In-process teammates
+#    carry agent_id too, same as an Agent-tool sub-agent (live probe
+#    2026-09-29: a teammate's `git commit --dry-run` was denied).
 # Mechanism: Claude Code PreToolUse input carries `agent_id` + `agent_type`
 # ONLY when the call originates from a sub-agent; the Lead has neither. One
 # python pass tokenises the command once and answers rules 1 and 2 (only for
@@ -28,7 +48,10 @@
 # deliberate evasion is out of scope by design — this hook catches mistakes
 # in the normal flow, not a deliberately crafted bypass. Not handled: ANSI-C
 # $'…' escapes, a bare & after an output command, quote- or backslash-split
-# names.
+# names. A child the owner spawned WITH a name and later resumes by that name
+# passes the SendMessage rule: the raw-id regex stays narrow on purpose, since
+# a named target (main, team-lead, a parent owner) is a legit send; doctrine
+# (round 2 = a fresh foreground dispatch) covers the named case.
 set -euo pipefail
 
 INPUT=$(cat 2>/dev/null || echo '{}')
@@ -43,7 +66,7 @@ RP_LIB="$(cd "$(dirname "$0")/lib" && pwd)"
 
 # The payload travels by env: the program itself is python's stdin (heredoc).
 VERDICT=$(RP_INPUT="$INPUT" RP_LIB="$RP_LIB" python3 -I - <<'PY' 2>/dev/null || printf '\n\n\n'
-import sys, json, os
+import sys, json, os, re
 try:
     d = json.loads(os.environ.get('RP_INPUT') or '{}')
 except Exception:
@@ -56,11 +79,32 @@ cmd = ti.get('command') or ''
 blocked = ''
 wait = ''
 
-if agent_id:
+tool_name = d.get('tool_name') or ''
+
+if agent_id and tool_name == 'Agent':
+    # Cannot-wait, Agent form: no shell command to walk, so no tokenizer.
+    rib = ti.get('run_in_background')
+    if rib is not False and rib not in ('false', 'False'):
+        wait = 'agent-bg'
+
+elif agent_id and tool_name == 'SendMessage':
+    # Cannot-wait, SendMessage form: deny only a raw agentId - the shape an
+    # owner uses to message the finished, unnamed reviewer it just spawned
+    # (all 3 Kyni incidents used one). A named target (main, team-lead, a
+    # teammate's own name - a resumed reviewer's legitimate reply path) is
+    # never denied (round-1 fix, 2026-09-29: "anyone but main" caught that
+    # legitimate reply too). Newlines are replaced with spaces, not stripped,
+    # to keep the `to` value on one line for the 3-line verdict protocol.
+    to_clean = str(ti.get('to') or '').replace('\r', ' ').replace('\n', ' ').strip()
+    if re.match(r'^a[0-9a-f-]{8,}$', to_clean):
+        wait = 'sendmessage:' + to_clean
+
+elif agent_id:
     # Tokenizer (toks_of / PREFIX / WRAPPER_VALUE / DURATION / SHELLS / ASSIGN /
     # OUTPUT_ONLY / HEREDOC / segments / head) lives in session_state.py — the
     # only copy; a second hand-written copy would drift. Imported only for a
-    # sub-agent call — a Lead's Bash call never reaches here (fast path above).
+    # sub-agent's Bash call — a Lead's Bash call never reaches here (fast path
+    # above), and an Agent/SendMessage call is handled above with no import.
     sys.path.insert(0, os.environ.get('RP_LIB', ''))
     from session_state import toks_of, SHELLS, OUTPUT_ONLY, segments, head  # noqa: F401
 
@@ -153,7 +197,7 @@ if agent_id:
         return ''
 
     blocked = walk(cmd, git_rule, True)
-    if not blocked and d.get('tool_name') == 'Bash':
+    if not blocked and tool_name == 'Bash':
         if ti.get('run_in_background') in (True, 'true', 'True'):
             wait = 'run_in_background'
         else:
@@ -202,6 +246,24 @@ elif w == 'run_in_background':
       'foreground with timeout: 600000 (10 min), write its output to a file and read the '
       'tail. Exception: none - background runs belong to the Lead.'
     ) % a
+elif w == 'agent-bg':
+    reason = (
+      'BLOCKED: sub-agent %r dispatched an agent in the background (run_in_background '
+      'unset or true - the platform default is background). Its report goes to the Lead '
+      'and nothing wakes you once your turn ends. Fix: resend with run_in_background: '
+      'false; several reviewers or scouts go in ONE message and still run in parallel. '
+      'Exception: your Agent tool has no run_in_background parameter - return REVIEW '
+      'NEEDED: <what to check> and the Lead runs it.'
+    ) % a
+elif w.startswith('sendmessage:'):
+    to = w[len('sendmessage:'):][:60]
+    reason = (
+      'BLOCKED: sub-agent %r messaged agent %r by its raw id - a finished child you '
+      'spawned. The message resumes it in the background; its reply goes to the Lead and '
+      'nothing wakes you. Fix: a round-2 re-check is a fresh Agent dispatch of that role '
+      'with run_in_background: false, its report and the fix delta in the brief. '
+      'Exception: a named teammate or the Lead (main / team-lead) passes.'
+    ) % (a, to)
 else:
     reason = (
       'BLOCKED: sub-agent %r ran a gate (%s) with no timeout. A gate that outruns the '
