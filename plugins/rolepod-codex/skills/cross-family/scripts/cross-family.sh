@@ -1272,7 +1272,9 @@ EOF
       cat "$TMPP/$_c.out"; } > "$EV/$_raw" 2>/dev/null || true
     _modetag=""; [ "$KIND" = "review" ] && [ "$ADV_MODE" -eq 1 ] && _modetag=",\"mode\":\"adversarial\""
     printf '%s\n' "{\"ts\":\"$(iso_now)\",\"phase\":\"$PHASE\",\"reviewer\":\"external\",\"kind\":\"$KIND\",\"cli\":\"$_c\",\"family\":\"$_f\",\"model\":\"default\",\"raw\":\"$_raw\",\"lead\":\"$LEAD\",\"secs\":$_secs,\"budget\":$TIMEOUT,\"brief_sha\":\"$BRIEF_SHA\"${JOB_ID_TAG:+,\"job\":\"$JOB_ID_TAG\"}${_partial:+,\"partial\":true}${_ran:+,\"ran\":\"$(jesc "$_ran")\"}$_modetag}" > "$TMPP/$_c.jsonl"
-    printf 'ROLEPOD-XFAM ok kind=%s cli=%s family=%s raw=.rolepod/evidence/%s secs=%s budget=%ss%s%s\n' "$KIND" "$_c" "$_f" "$_raw" "$_secs" "$TIMEOUT" "$_partial" "${_ran:+ ran=$_ran}" > "$TMPP/$_c.line"
+    : > "$TMPP/$_c.line"
+    [ "$KIND" = "review" ] && echo 'ROLEPOD-XFAM note: this pass counts for the commit gate whatever its VERDICT — BLOCKER / MAJOR fixes go to review-code round 2 (security-engineer for security-class, else universal-reviewer), never a new external run.' >> "$TMPP/$_c.line"
+    printf 'ROLEPOD-XFAM ok kind=%s cli=%s family=%s raw=.rolepod/evidence/%s secs=%s budget=%ss%s%s\n' "$KIND" "$_c" "$_f" "$_raw" "$_secs" "$TIMEOUT" "$_partial" "${_ran:+ ran=$_ran}" >> "$TMPP/$_c.line"
     return 0
   fi
   _why="exit $_rc"

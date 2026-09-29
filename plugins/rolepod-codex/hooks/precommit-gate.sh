@@ -925,7 +925,7 @@ REASON+="Evidence ($SINCE_HUMAN): $TEST_EDITS tests / $HIGH_RISK_EDITS risk edit
 [ -n "$XFAM_HELD" ] && REASON+="SATELLITE-FIRST: $XFAM_HELD"
 [ -z "$XFAM_HELD" ] && [ -n "$XFAM_RUNNING" ] && [ -n "$HIGH_RISK" ] && [ "$STRONG_REVIEWERS" -eq 0 ] && REASON+="A detached cross-family job is still running: $XFAM_RUNNING — bash '$XFAM_RUNNER' --collect <job-id>, then retry. "
 if [ -n "$HIGH_RISK" ] && [ "$STRONG_REVIEWERS" -eq 0 ] && [ -z "$XFAM_HELD" ]; then
-  REASON+="NO STRONG ADVERSARIAL REVIEWER — test edits are not the review. "
+  REASON+="NO STRONG ADVERSARIAL REVIEWER. "
 fi
 # One Fix sentence, worded to what actually clears the block — never
 # "internal also counts": the satellite-first hold above already zeroed
@@ -933,7 +933,7 @@ fi
 # 2026-09-25 fix round).
 if [ -n "$HIGH_RISK" ] && [ "$STRONG_REVIEWERS" -eq 0 ] && [ -z "$XFAM_HELD" ]; then
   if [ -n "$XFAM_POOL_ON" ]; then
-    REASON+="Fix: security-engineer + the external when the pool is on, else universal-reviewer — a FINISHED dispatch (an Agent or Workflow call), the external anchored per review-code (raw output under .rolepod/evidence/external/ + the reviewer:external log line). "
+    REASON+="Fix: security-engineer + ONE external (any verdict counts; its fixes are re-checked internally) when the pool is on, else universal-reviewer — FINISHED dispatches, the external anchored per review-code (reviewer:external log). "
   else
     REASON+="Fix: security-engineer + a FINISHED strong universal-reviewer dispatch (an Agent or Workflow call). "
   fi
@@ -945,7 +945,7 @@ elif [ -z "$HIGH_RISK" ]; then
   # i.e. TEST_EDITS==0 AND REVIEWERS==0 — the Fix applies unconditionally.
   REASON+="Fix: write the failing test, or dispatch a reviewer. "
 fi
-REASON+="Exception: none by marker — auto-passes once evidence exists SINCE THE LAST COMMIT; rerun it. Reviewed in another worktree → git -C <worktree> commit there, then merge/cherry-pick; a patch carries no evidence."
+REASON+="Exception: none by marker — auto-passes once evidence exists SINCE THE LAST COMMIT; rerun it. Reviewed in another worktree → commit there; a patch carries no evidence."
 
 # Decide: HARD block vs SOFT warn
 HARD_BLOCK=0

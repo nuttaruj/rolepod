@@ -13,11 +13,12 @@ An R4 (high-risk) diff's round 1 → one adversarial report beside `security-eng
 - R1 (trivial edit), R2 (one file + test), R3 (multi-file) — `review-code`'s standard review covers them.
 - Round 2+ — a fix delta gets `review-code`'s internal re-check (Fix-verify rounds), never this pass.
 - An R4 comment/blank-only diff — ONE internal strong reviewer, no adversarial pass.
+- The commit gate — it asks for no pass of its own: the round-1 external counts whatever its verdict, and a REJECTED external is never re-run for an APPROVED. Evidence missing because the diff moved as a patch → commit in the owner's worktree (`implement-plan`), never a new pass.
 
 ### 1. Run the pass
 
 - Run it with the rest of round 1 (`review-code` Pick reviewers): `security-engineer` · `universal-reviewer` `lens: spec` · `universal-reviewer` `lens: standards` · this pass. The internal pass goes in the SAME message; the external's `--detach` runs just before that message — it returns at once — so the external runs while the internal reviewers do.
-- A usable pool → the external is the only adversarial pass: no internal `mode: adversarial` beside it (the internal pass stands in only under What counts below). The `cross-family` skill's runner, `<cross-family skill folder>/scripts/cross-family.sh` (that folder sits beside this skill's): `--kind review --adversarial --brief <brief> --attach <diff> --detach`, then ONE `--collect <job-id>` before the commit. The runner hands the member this skill's Reviewer stance.
+- A usable pool → the external is the only adversarial pass: no internal `mode: adversarial` beside it (the internal pass stands in only under What counts below). The `cross-family` skill's runner, `<cross-family skill folder>/scripts/cross-family.sh` (that folder sits beside this skill's): `--kind review --adversarial --brief <brief> --attach <diff> --detach`, then ONE `--collect <job-id>`; its report joins round 1 with the other reports. The runner hands the member this skill's Reviewer stance.
 - Pool off, no usable member, no `cross-family`, or the runner refuses `--adversarial` (exit 2: the stance is missing beside it) → `universal-reviewer` with `mode: adversarial` on a strong-class model — never a balanced one, even under a balanced Lead. It writes `.rolepod/evidence/review/<task>-adversarial.md`.
 - The brief is the reviewer's whole world: the diff, the spec / acceptance criteria, the risk profile, the claimed behaviors to trace.
 - Called alone (the user asked; no `review-code` round) → freeze the diff first — each ref resolves and the diff is non-empty — then run the pass as above.
