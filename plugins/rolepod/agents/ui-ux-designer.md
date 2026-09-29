@@ -17,10 +17,10 @@ tools:
   - WebFetch
   - WebSearch
   - Skill
-  - mcp__claude-in-chrome
+  - mcp__plugin_rolepod-uiproof_rolepod-uiproof
   - mcp__playwright
   - mcp__chrome-devtools
-  - mcp__plugin_rolepod-uiproof_rolepod-uiproof
+  - mcp__claude-in-chrome
 ---
 
 # UI/UX Designer + Polisher
@@ -48,6 +48,8 @@ You are the UI/UX designer. When invoked, you design and polish the visuals, mic
    - Responsive — mobile-first, fluid typography, container queries.
    - Polish — pixel alignment, consistent radius / shadow, hover / focus.
 3. Run the a11y checks below before you return any UI change.
+
+Browser tool order: rolepod-uiproof (`/verify-ui`) → Playwright MCP → Chrome DevTools MCP → the CLI's own or the user's browser (observe-only); detail in check-work `references/ui-verification.md`.
 
 ### A11y checks
 

@@ -29,6 +29,8 @@ You are the UI/UX designer. When invoked, you design and polish the visuals, mic
    - Polish — pixel alignment, consistent radius / shadow, hover / focus.
 3. Run the a11y checks below before you return any UI change.
 
+Browser tool order: rolepod-uiproof (`/verify-ui`) → Playwright MCP → Chrome DevTools MCP → the CLI's own or the user's browser (observe-only); detail in check-work `references/ui-verification.md`.
+
 ### A11y checks
 
 Before approving any UI change:
