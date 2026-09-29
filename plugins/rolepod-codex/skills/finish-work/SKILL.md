@@ -44,7 +44,7 @@ A check that fails → revise before commit.
 Skip when the diff is docs-only (prose / comments / config text / string literals — any size: tests cover the work, not the words), or when ALL hold: ≤5 lines · single file · zero logic-bearing · NOT a high-risk path (= rigor tier R1, trivial edit). Otherwise → write the test.
 
 3. **Failure modes (F1-F5)** — check-work Failure modes; an unresolved F-finding blocks merge. The tree is unchanged since check-work's block → cite its Status for T + F.
-4. **Evidence** — check-work's `Status: UNVERIFIED` or `PARTIAL` blocks merge unless the user explicitly waives it; green tests alone do not satisfy this gate. The tree is unchanged since that block's pass → cite it and skip the local re-run ONLY when a CI lane re-runs that scope on the merge path; no CI → run the local equivalents (CI lanes) before the irreversible act. Fails → `check-work`.
+4. **Evidence** — check-work's `Status: UNVERIFIED` or `PARTIAL` blocks merge unless the user explicitly waives it; green tests alone do not satisfy this gate. the block's `Verified tree` id equals the current `git rev-parse HEAD^{tree}` and the tree is clean → cite that block in any session, no local re-run (CI or not; an ignored input the check reads that changed since → re-run it); another tree → re-run only the checks covering the change; the post-deploy smoke always runs (deploy evidence, not a re-test). Fails → `check-work`.
 5. **Reviewer** — the `review-code` its Pick reviewers asks for is done; an R4 (high-risk) task's reports sit under `.rolepod/evidence/review/`, missing → `review-code` for that task's diff, never the whole branch. The plan has a **Ship group** line → its drift-pass report is there too (`implement-plan` Review, `implement-plan`'s `references/subagent-dispatch.md` Ship-group drift pass). Fails, or a BLOCKER is open → `review-code` or `implement-plan`.
    - A BLOCKER fix is confirmed before merge by ONE reviewer who did not write it, per `review-code` Fix-verify rounds: the flagging reviewer (for the external's findings, its round 2+ reviewer); a Lead-built fix → one read-only `universal-reviewer` pass (R4 → the strong pass). The author never confirms its own fix, and the Lead never approves its own fix.
    - The reports' **Snapshot** lines reach the head being merged. A commit past the last one is a new delta for `review-code` at its own tier (its Skip when first — an R1 delta needs none), never a full re-review of what a Snapshot covers.
@@ -56,12 +56,12 @@ Done when: all six gates pass, or each failure is fixed, reported, or waived in 
 ### 2. CI lanes
 
 Every required lane is green before merge. Read the repo's required checks first (branch protection, CI config): they decide what is required — never a lane the repo lacks, never a demoted one it requires. Phase 1 = its fast lane (whichever of lint · typecheck · smoke unit · auth / tenant guard · money core · migration apply · build it runs); Phase 2 = the touched module's full suite, when path-triggered; Phase 3 = nightly / manual (integration · E2E · chaos · security deep · perf benchmark), required only when those checks list it.
-- No CI configured → run locally, BEFORE the merge / deploy, the checks the repo defines (its lint / typecheck / test / build scripts or targets that exist) covering the diff, the touched module's full suite included, and a post-deploy smoke (curl the live endpoint / health probe) as deploy evidence. Never invent a check the repo does not have.
+- No CI configured and the tree changed since check-work's recorded pass → run locally, BEFORE the merge / deploy, the checks the repo defines (its lint / typecheck / test / build scripts or targets that exist) covering the change; unchanged → cite the block. Always a post-deploy smoke (curl the live endpoint / health probe) as deploy evidence. Never invent a check the repo does not have.
 - The full lane table and red-lane triage → `references/ci-triage.md`.
 - A red required lane → the Lead triages it, then briefs the lane's owner: a diff-caused red → the path's owner fixes it, infra → `devops-sre`, an R1-sized fix or no subagents → the Lead. Several red lanes → triage all first; owners with disjoint files go out in ONE message, each in its OWN worktree (`implement-plan` Parallel-track dispatch), a file two fixes share goes to one owner; the Lead re-pushes once all return. No per-iteration permission once merge intent is approved. Never merge over a red required lane, and never auto-merge a PR with one.
 - CI / deploy / rollback / monitoring → `devops-sre`; E2E / UI proof missing from check-work's block → back to `check-work` (its one E2E dispatch), never a dispatch from here — unless its Limitations already name it, then gate 4 (the user's waiver). Brief: branch, diff summary, CI status, review verdict, launch plan. No subagents → the Lead does it.
 
-Done when: every required lane is green, or with no CI its local equivalents passed.
+Done when: every required lane is green, or with no CI its local equivalents passed (or check-work's block still holds: gate 4).
 
 ### 3. Detect the environment
 
@@ -79,7 +79,7 @@ Done when: the menu size and the cleanup owner are known.
 | **Discard** | An experiment that did not pan out | yes |
 
 Fill `templates/finish-menu.md`: gate status, options, follow-ups carried, recommendation, awaiting authorization for.
-- A follow-up the Lead can close now with tools in hand (a one-line fix, a command the checklist names) is closed before the menu, never carried; a leftover list without an action or a question is not a finish.
+- A follow-up the Lead can close now — a one-line fix, a command, or work inside the approved spec or context it already holds → closed before the menu (in-spec work: a new task, tiered, dispatched to an owner; a high-risk path → R4 with its full review), never carried; only a follow-up outside the spec or a user decision (money / auth / new scope) is carried, as a question. A leftover list without an action or a question is not a finish.
 - State the recommendation and wait for the pick — unless the user's own message already named the action AND the target: that IS the pick; state the gate status plus the single action and act.
 - Authorization never widens: a PR is not a merge, one target is not another.
 - Keep open proceeds on the named ACTION alone (a checkpoint commit: no push, no merge, no cleanup). Merge, Open PR and Discard need action AND target.

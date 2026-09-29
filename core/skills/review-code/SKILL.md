@@ -16,7 +16,7 @@ A finished diff → a severity-ordered review report, reviewers matched to risk.
 
 ### 1. Freeze the diff
 
-- The diff: the R4 task, or for R2/R3 the plan's combined range — `<plan's first task commit>^..HEAD` (find that commit with `git log --oneline`). Committed → `<base>...HEAD`; uncommitted → `git diff HEAD` (staged + unstaged; `--cached` alone is a slice).
+- The diff: the R4 task, or for an R2/R3 task in-task its own diff, for the combined review the plan's range — `<plan's first task commit>^..HEAD` (find that commit with `git log --oneline`). Committed → `<base>...HEAD`; uncommitted → `git diff HEAD` (staged + unstaged; `--cached` alone is a slice).
 - Preflight before any dispatch: each ref resolves (`git rev-parse --verify <ref>^{commit}`) and the diff is non-empty (`git diff --quiet <range>` exits 1); either fails → re-derive the range, never dispatch. Record the snapshot for the report's Scope: `<base sha>..<head sha>`, plus `git diff HEAD | git hash-object --stdin` for uncommitted work.
 - Past ~15 files / ~800 lines it is two concerns: split into ship groups, one review each.
 - Gather the spec / plan / acceptance criteria, the touched files end-to-end, and the risk profile (high-risk surface? new dependency? schema change?).
@@ -43,7 +43,7 @@ By rigor tier (R1 trivial edit · R2 one file + test · R3 multi-file · R4 high
 - The R4 floor is `security-engineer` + the adversarial pass; a missing lens report is a LIMITATION, never a merge block. A comment/blank-only R4 diff → ONE internal strong reviewer, no external.
 - Every `universal-reviewer` brief names its `mode`: `standard` (a lens, or both axes on a round 2+ re-check) or `adversarial` (R4 round 1 only — `adversarial-review`); no mode named → standard. Every later round is the standard review (Fix-verify rounds).
 - A high-risk path anywhere in the unreviewed diff (a task, a ship group, or a combined review's unreviewed delta) makes it R4; the commission's tier (max over its tasks) governs Define / Plan only.
-- A diff reviewed at its tier is never reviewed again at ship. The combined review (`implement-plan` Review) reviews the R2/R3 task deltas and the Verify fixes nobody has reviewed; an R4 task's commits are context, covered by its reports — the Scope lists each with its report path — never tiered R4 again. The range stays the plan's, so the Snapshot reaches HEAD.
+- A diff reviewed at its tier is never reviewed again at ship. The combined review (`implement-plan` Review, run by a fresh owner; only when a task got `none`; the other R2/R3 tasks were reviewed in-task) reviews the `none` task deltas and the Verify fixes nobody has reviewed; an R4 task's commits are context, covered by its reports — the Scope lists each with its report path — never tiered R4 again. The range stays the plan's, so the Snapshot reaches HEAD.
 - A Verify fix on a high-risk path → the R4 round-1 set on that fix alone, before its commit. A fix for a review finding → round 2 (Fix-verify rounds), never a new external or adversarial pass.
 - User-visible behaviour (UI / E2E flows) is no review row — `check-work` verifies it once per feature.
 
@@ -64,7 +64,7 @@ Done when: every dispatched reviewer has returned a full report and its findings
 
 ### 3. Axes
 
-- **Depth** — R4: `security-engineer` and the adversarial pass trace in full. A lens at any tier: the diff + direct callers of what it changes; other axes that far only. Skip what tooling enforces (lint, formatter, typecheck, the commit gate). Never re-run the suite (the ship gate runs it once). A finding that needs a run: a reviewer with a shell runs only the diff's repro command; one without names it under Questions, and the task owner (else the Lead) runs it.
+- **Depth** — R4: `security-engineer` and the adversarial pass trace in full. A lens at any tier: the diff + direct callers of what it changes; other axes that far only. Skip what tooling enforces (lint, formatter, typecheck, the commit gate). Never re-run the suite (check-work runs it once; Ship cites that block, finish-work gate 4). A finding that needs a run: a reviewer with a shell runs only the diff's repro command; one without names it under Questions, and the task owner (else the Lead) runs it.
 - **Intent** — first: the goal in one sentence; a smaller way, or should the change exist at all?
 - **Trace** — the diff is the entry, not the scope: walk each claimed behavior (entry → call sites → branches → state → exit) through the seams into unchanged code; a surprise is a finding signal. Untouched code past the claims and seams is a Question, not a BLOCKER. Code-intel callers / impact when connected.
 - **Correctness** — logic vs spec, edge cases, off-by-one, null / undefined / empty.
@@ -94,7 +94,7 @@ Done when: the report carries a Recommendation and the review line is appended.
 
 - Round 1 = every axis in ONE message, ≤ 40 tool calls for `security-engineer` and the adversarial pass, ≤ 20 per lens.
 - Round 2+ = a BLOCKER / MAJOR fix only, always internal and never adversarial: a normal re-check of the fix delta against the spec / acceptance criteria at the reviewer's own lens (`universal-reviewer`: two axes, spec compliance + standards; `security-engineer`: its security lens, confined to the finding's class), ≤ 15 tool calls, findings + delta only (no suite re-run, new mutant or new axis).
-- `security-engineer` re-checks its own findings and the external's security-class findings (auth, permissions / IDOR, injection, secrets, crypto, credits / billing); the external's other findings go to `universal-reviewer` — never a new external round.
+- `security-engineer` re-checks its own findings and the external's security-class findings (auth, permissions / IDOR, injection, secrets, tokens, crypto, credits / billing / payments, PII, data deletion); the external's other findings go to `universal-reviewer` — never a new external round.
 - A sub-agent sends a round 2+ re-check as a fresh dispatch of the flagging role, its report and the fix delta in the brief — never a message that resumes it (a resume runs in the background).
 - Round 2+ checks each fix against its own finding on that finding's axis. The finding still open, or a new issue the fix itself made inside the fix delta → a normal finding: fix it, and the next round re-checks only that item. An issue outside the fix delta → `## Follow-ups` with its axis, never a new round.
 - Each round 2+ appends its fix delta's Snapshot line to the report.
@@ -111,7 +111,7 @@ On the whole round's merged findings, never the first report: READ all without r
 - pre-existing on an untouched path → `## Follow-ups`, never this round.
 
 Reply "Fixed in <file:line>." — no gratitude. A test added to close a finding joins the fix delta for the next reviewer; the author's own green run closes nothing.
-Every `## Follow-ups` line — each report's and your own — goes into the plan's `## Follow-ups` (no plan file → straight into the finish menu's Follow-ups carried), the one list finish-work carries.
+Every `## Follow-ups` line — each report's and your own — goes into the plan's `## Follow-ups` (no plan file → straight into the finish menu's Follow-ups carried), the one list `finish-work` works through (its closing rule decides what is closed before the menu and what is carried).
 Pushback, YAGNI, disagreement on merits, PR thread replies, rolepod-brain notes → `references/receiving-findings.md`.
 
 Done when: every finding is fixed, pushed back with a reason, or in `## Follow-ups`, and each BLOCKER / MAJOR fix is back with its round 2+ reviewer.

@@ -222,7 +222,7 @@ One extended regex per line: bare or `+` adds, `-` excludes a path the built-in 
   1. `integrate <worktree> --brief <file> --gate '<cmd>'` — fast-forward to the base, stage everything except `docs/rolepod/`, run the brief's Proof, then the gate.
   2. `git -C <worktree> commit -m '<subject>'`.
   3. `finish <worktree>` — fast-forward merge, remove the worktree and branch.
-  4. `log <plan> <N> --sha … --note …` — flip the checkboxes, note the change, name newly unblocked tasks; once every role-owned task is done, print the combined-review range and write its diff to `.rolepod/evidence/review/<plan-slug>.diff`.
+  4. `log <plan> <N> --sha … --note …` — flip the checkboxes, note the change, name newly unblocked tasks; once every role-owned task is done, print the combined-review range (used only when a task got `none`) and write its diff to `.rolepod/evidence/review/<plan-slug>.diff`.
 
 Test levels, printed in every brief: the task's Command runs after each edit and last before returning; the whole-repo suite runs once per release, by the Lead. A red `integrate` goes back to the task owner in a new dispatch — the Lead never repairs it.
 

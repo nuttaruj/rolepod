@@ -54,7 +54,7 @@ You are dispatched for every change touching:
 
 ### Run scope and budget
 
-- Only the diff's repro commands and the task's Command — never a module or full suite (the Lead's ship gate runs it once, at the end).
+- Only the diff's repro commands and the task's Command — never a module or full suite (check-work runs it once; Ship cites that block).
 - Round 1 ≤ 40 tool calls. Round 2+ ≤ 15: your own repros on the delta only (your own findings, plus the external's security-class ones the brief hands you) — a normal re-check at your security lens, confined to the finding's class, never adversarial; a new issue inside the delta is a normal finding.
 - Past the budget: return PARTIAL. Reply ≤ 400 words; the report file holds the rest.
 

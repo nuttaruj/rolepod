@@ -46,8 +46,8 @@
 #     file besides the Lead's own editor. Then names every not-done task
 #     whose Blocked-by list names N and is now fully done ("ready now: Task
 #     a (<owner>), ..."). Once every role-owned task is done, also prints
-#     "review: <first logged task sha>^..HEAD — one combined review before
-#     release (implement-plan Review)", and writes that same range (generated
+#     "review: <first logged task sha>^..HEAD — the combined-review range,
+#     used only when a task got none (implement-plan Review)", and writes that same range (generated
 #     files left out) to .rolepod/evidence/review/<plan-slug>.diff, naming
 #     it on the same line ("; lens diff: <path>") so the review lenses get
 #     the diff as a file, not a shell. A write failure never fails log — the
@@ -958,7 +958,7 @@ EOF
       # pathspec magic for diff; a git that rejects it falls back to a plain
       # diff over the same range so the lens file still gets written.
       local review_line repo_root diff_dir diff_path diff_content
-      review_line="review: ${first_sha}^..HEAD — one combined review before release (implement-plan Review)"
+      review_line="review: ${first_sha}^..HEAD — the combined-review range, used only when a task got none (implement-plan Review)"
       repo_root="$(git -C "$(dirname "$plan")" rev-parse --show-toplevel 2>/dev/null)"
       if [ -n "$repo_root" ]; then
         diff_dir="$repo_root/.rolepod/evidence/review"

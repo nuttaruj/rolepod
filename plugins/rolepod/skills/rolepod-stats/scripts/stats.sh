@@ -273,7 +273,7 @@ if verifies:
 # External (cross-family) passes — written by scripts/cross-family.sh. The
 # review line with reviewer:external is what precommit-gate counts as the
 # strong pass; consult lines are the debug channel.
-externals = [r for r in rows if r.get("reviewer") == "external" or r.get("phase") == "implement"]   # implement lines carry no reviewer key: the runner built, the Lead reviews
+externals = [r for r in rows if r.get("reviewer") == "external" or r.get("phase") == "implement"]   # implement lines carry no reviewer key: the runner built, the combined-review owner reviews
 xfails = [r for r in rows if r.get("phase") == "external-fail"]
 if reviews:
     own = [r for r in reviews if r.get("reviewer") != "external"]

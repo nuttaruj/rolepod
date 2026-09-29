@@ -44,7 +44,7 @@ Use the least powerful model that can handle the role (Model selection below).
 
 ## The brief
 
-`plan-lint.sh --brief <N> <plan> [contract] [--main]` prints Goal / Tier / Blocked by / Read first / Files allowed + forbidden / Change / Command / Done when / Write / Reviewers by tier (`none` for a docs-only diff) / Bounds. The Lead adds only **Read first** and facts the brief lacks; the owner starts there and never re-surveys what the Lead already mapped.
+`plan-lint.sh --brief <N> <plan> [contract] [--main]` prints Goal / Tier / Blocked by / Read first / Files allowed + forbidden / Change / Command / Done when / Write / Reviewers by tier (`none` for a docs-only diff or an R2/R3 task nothing depends on, beside another such task; the two lenses for an R2/R3 task another task is Blocked by, or the plan's only one nothing depends on) / Bounds. The Lead adds only **Read first** and facts the brief lacks; the owner starts there and never re-surveys what the Lead already mapped.
 
 ## External write
 
@@ -95,14 +95,14 @@ The implementer cannot complete the task; the manifest states what blocks and wh
 ## Review per task
 
 Who reviews follows the task's tier (SKILL.md Review):
-- R2/R3 task in a plan → no reviewer in the loop; the Lead's ONE combined review over the plan diff covers it: two `universal-reviewer` lenses in ONE message (`lens: spec` · `lens: standards`, or the concern-matched row), the external instead at the pool's tier (the standard prompt, never `--adversarial`).
-- An owner's own dispatches are all waited on: return your brief only after each child's report is in — a child's end wakes you, so end a turn only to wait for one; no `name`, fork or remote isolation (such a child reports to the Lead). No way to wait → `REVIEW NEEDED:` and the Lead runs the review.
+- R2/R3 task in a plan: one another task is Blocked by, or the plan's only one nothing depends on → its owner runs the two lenses in-task (its brief's Reviewers line); two or more that nothing depends on → `none`, and ONE fresh owner (the role owning most code tasks, never the Lead) runs the combined review at the end, only when a task got `none`, over the plan diff: two `universal-reviewer` lenses in ONE message (`lens: spec` · `lens: standards`, or the concern-matched row), the external instead at the pool's tier (the standard prompt, never `--adversarial`).
+- An owner's own dispatches are all waited on: return your brief only after each child's report is in — a child's end wakes you, so end a turn only to wait for one; no `name`, fork or remote isolation (such a child reports to the Lead). No way to wait → `REVIEW NEEDED:` and the Lead dispatches a fresh owner to run the review.
 - R4 task → the owner dispatches the round-1 set in ONE message (an external adversarial pass: its `--detach` runs just before): `security-engineer` + `universal-reviewer` `lens: spec` + `universal-reviewer` `lens: standards` + the adversarial pass (`adversarial-review`: the external with `--adversarial` when the pool is usable, else `universal-reviewer` `mode: adversarial` at strong class; pool usable → the external is the only adversarial pass, no internal `mode: adversarial` beside it; an external that fails or comes back weak, per `adversarial-review` What counts → the internal pass then). User-visible flows are verified once at `check-work`, never per task.
 - A standalone R2 brief (no plan) → the owner dispatches the two `universal-reviewer` lenses itself, never a self-review.
 
 ### Ship-group drift pass
 
-A ship-group drift pass runs only over a named group (the plan's **Ship group** line names which tasks run under one final review). A group of R2/R3 tasks only → the combined review over the plan diff is that pass. A group holding any R4 task → a separate drift pass after its R4 per-task passes clear:
+A ship-group drift pass runs only over a named group (the plan's **Ship group** line names which tasks run under one final review). A group of R2/R3 tasks only → the combined-review owner's pass over the plan diff is that pass; with no combined review, one fresh owner runs the drift pass over the group's range. A group holding any R4 task → a separate drift pass after its R4 per-task passes clear:
 - Dispatch one reviewer on the cumulative diff across the group's tasks
 - Role: `security-engineer`
 - Scope: cross-task symbol / type / method name drift, API contract mismatch between producer and consumer, unowned files touched by group members, architecture consistency across tasks
@@ -190,7 +190,7 @@ Cost note: parallel buys wall-clock, not tokens — N tracks cost the same token
 
 The same contract that governs parallel subagents can be executed by SEPARATE CLI sessions, one per track — e.g. an API-heavy track on codex, a UI-heavy track on claude — when the user wants wall-clock parallelism across CLIs. The contract's optional **Session split** section carries the assignment and the per-session kickoff prompt. Differences from subagent tracks:
 
-- **Each session runs its own Lead.** It executes its track's tasks, runs its own reviews (R2/R3: one combined review over its track; R4: per task), and — unlike a subagent — COMMITS its own slice to a track branch (or worktree). The subagent commit ban binds subagents, not session Leads; the atomicity the ban protects is preserved by branch isolation + contract merge order instead.
+- **Each session runs its own Lead.** It executes its track's tasks, runs its own reviews (R2/R3: one combined review over its track, by a fresh owner; R4: per task), and — unlike a subagent — COMMITS its own slice to a track branch (or worktree). The subagent commit ban binds subagents, not session Leads; the atomicity the ban protects is preserved by branch isolation + contract merge order instead.
 - **Disk is the only shared truth.** Plan + contract are CLI-agnostic files; each session flips only its OWN tasks' checkboxes, so the checkbox union merges cleanly at integration. A session that edits another track's tasks, files, or checkboxes has broken the contract.
 - **One branch or worktree per track.** Prefer it whenever slices share any filesystem state (generated files, build artifacts, lockfiles); two sessions in one worktree stomp each other.
 - **The integration session** (named in the contract) merges track branches in contract order, runs the interface provider's tests before its consumers, and runs the ship-group drift pass when the plan names one. Per-track self-review never substitutes for that pass — cross-task drift is exactly what no single track can see.
@@ -204,7 +204,7 @@ The subagent **never** commits. It returns a manifest; the Lead commits. Two rea
 
 This is the opposite of some external subagent-driven patterns where the implementer commits its own work. Stay with Lead-commits — it is load-bearing for bounded delegation.
 
-**Lead hop — one, not three.** The Lead reads the decision brief, spot-checks ONE claim — the Proof, or (R4) one finding in the reviewer's report file — then runs the ship line. Opens the source only for that spot-check, never for an axis walk or second review. Spot-check fails → send the findings back to the owner (exact strings where the Lead has them), do not commit; the Lead edits only a NEEDS path or a fact only it holds (the release number), in ONE message. No report on an R4 task (missing / failed / empty) → the Lead runs the `review-code` Axes walk, recorded as a LIMITATION. A brief you cannot summarise in one sentence is a brief defect — send it back.
+**Lead hop — one, not three.** The Lead reads the decision brief, spot-checks ONE claim — the Proof, or (R4) one finding in the reviewer's report file — then runs the ship line. Opens the source only for that spot-check, never for an axis walk or second review. Spot-check fails → send the findings back to the owner (exact strings where the Lead has them), do not commit; the Lead edits only a NEEDS path or a fact only it holds (the release number), in ONE message. No report on an R4 task (missing / failed / empty) → a fresh owner runs the `review-code` Axes walk, recorded as a LIMITATION. A brief you cannot summarise in one sentence is a brief defect — send it back.
 
 **Two calls per task.** `scripts/ticket.sh start <plan> <N>` (this skill's folder) prints the brief, the worktree, the dispatch line and a `ship:` line. When the owner returns, the Lead fills the ship line (the commit check, subject, note) and runs it as ONE Bash call — integrate (Proof + commit check) → commit → finish → log. A red step stops the chain and nothing commits. The Lead reads product code only when a step fails.
 

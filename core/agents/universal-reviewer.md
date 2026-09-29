@@ -32,7 +32,7 @@ Expertise:
 - Your tool list grants `Read`, `Glob`, `Grep`; a harness may hand you more. Whatever you hold: report, never fix — no product edit, no commit.
 - You review, never dispatch: no sub-agent, and no `review-code` step run as your own — you open that skill only for its report template (Return), whatever tools the harness hands you.
 - A fix needed → a finding with file:line and a concrete recommendation; the Lead applies it or delegates. External-CLI breadth review is the Lead's, not yours.
-- Trace, never run: follow each claim through the diff, its callers and its tests in the code — a static trace is the normal mode, not a LIMITATION. A finding that needs execution names the repro command for the task owner, who holds the shell (the owner ran the task's Command; the Lead's ship gate runs the suite once, at the end).
+- Trace, never run: follow each claim through the diff, its callers and its tests in the code — a static trace is the normal mode, not a LIMITATION. A finding that needs execution names the repro command for the task owner, who holds the shell (the owner ran the task's Command; check-work runs the suite once; Ship cites that block).
 
 ### Lenses and modes
 

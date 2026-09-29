@@ -10,9 +10,9 @@ The repo's required checks (branch protection, CI config) decide what is require
 | Phase 2 (path-triggered) | the touched module's full suite | YES when triggered |
 | Phase 3 (nightly / manual) | integration · E2E · chaos · security deep · perf benchmark | NO by default — YES if the repo's own required checks list it (read branch protection / CI config first; never demote a repo-required lane on this table's say-so) |
 
-**No CI configured** (local-only repo, direct deploy — `wrangler deploy` / `flyctl` / rsync): CI is a runner, not the requirement. Run the checks the repo defines (its lint / typecheck / test / build scripts or targets that exist) covering the diff, the touched module's full suite included, locally BEFORE the merge / deploy, and a post-deploy smoke (curl the live endpoint / health probe) as deploy evidence.
+**No CI configured** (local-only repo, direct deploy — `wrangler deploy` / `flyctl` / rsync): CI is a runner, not the requirement. The tree is the one check-work's block recorded (the Evidence gate below) → cite it; another tree → run the checks the repo defines (its lint / typecheck / test / build scripts or targets that exist) covering the change locally BEFORE the merge / deploy. Always a post-deploy smoke (curl the live endpoint / health probe) as deploy evidence.
 
-**Citing check-work's block (the Evidence gate).** The tree is unchanged since that block's recorded pass → cite it and skip the local re-run ONLY when a CI lane re-runs that scope on the merge path; no CI → run those local checks before the irreversible act.
+**Citing check-work's block (the Evidence gate).** the block's `Verified tree` id equals the current `git rev-parse HEAD^{tree}` and the tree is clean → cite that block in any session, no local re-run (CI or not; an ignored input the check reads that changed since → re-run it); another tree → re-run only the checks covering the change; the post-deploy smoke always runs (deploy evidence, not a re-test).
 
 ## Triage a red lane
 

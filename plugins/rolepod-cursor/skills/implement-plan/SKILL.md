@@ -104,16 +104,16 @@ Done when: every ready track is dispatched and each returned track is integrated
 
 ### 6. Review
 
-One combined pass for R2/R3, per task for R4 (high-risk).
+R2/R3: in-task two lenses by the task owner (a task others are Blocked by, or the only one nothing depends on), else one combined pass by a fresh owner; per task for R4 (high-risk).
 
 A task owner's decision brief carries its Command tail. The Lead spot-checks ONE claim (the Proof, or one finding in an R4 report; never an axis walk), then runs the ship line.
-- A report the brief requires — R4, or a standalone R2 checklist's two lenses — missing, failed or empty → the Lead runs `review-code` Axes (no review-code → intent, trace, correctness, tests on the diff), recorded as a LIMITATION. An R2/R3 task in a plan returns no report by design: its review is the combined one below.
-- A diff accepted without its review → stop and run it before building further.
+- A report the brief requires — R4, an in-task R2/R3 task's two lenses, or a standalone R2 checklist's — missing, failed or empty → a fresh owner runs `review-code` Axes (no review-code → intent, trace, correctness, tests on the diff), recorded as a LIMITATION. A `none` R2/R3 task returns no report by design: its review is the combined one below.
+- A diff accepted without its review → stop and have its owner (a fresh one for a combined review) run it before building further.
 
-R2/R3 tasks carry no reviewer in the loop.
-- After the plan's last code task is committed and `check-work` passes, the Lead runs ONE combined review over the plan diff, so a fix made during Verify is reviewed too (`scripts/ticket.sh log` prints the range; without it, the recorded base sha..HEAD, i.e. the first task commit^..HEAD); more than ~15 files → one per ship group.
-- The combined review reviews the R2/R3 task deltas and the Verify fixes nobody has reviewed; an R4 task's commits are context, covered by its reports (listed in the Scope with their paths), never tiered R4 again. A Verify fix on a high-risk path gets the R4 round-1 set on that fix alone, before its commit.
-- A plan that names a ship group → after its last task, one drift pass over the group's range, a normal review of the cross-task seams (never adversarial): `security-engineer` when it holds an R4 task, else the combined review is the drift pass.
+The Lead never runs a review loop itself; it talks to owners. An R2/R3 task another task is Blocked by, or the plan's only R2/R3 task nothing depends on, reviews in-task with the two lenses (its brief's Reviewers line); two or more that nothing depends on → `none` and one combined-review owner at the end. Docs-only tasks never count; an R4 task Blocked by an R2/R3 task makes it a dependency.
+- After the plan's last code task is committed and `check-work` passes, a plan with a `none` task gets ONE combined review, run by ONE fresh owner (the role owning most of the plan's code tasks), never the Lead: its brief = the plan range (`scripts/ticket.sh log` prints it; without it, the first task commit^..HEAD), Files allowed = every file in that range, the plan's Command. The owner runs the two lenses in ONE message, fixes, runs round 2, returns ONE decision brief; more than ~15 files → one per ship group. No `none` task → no combined review.
+- The combined review reviews the `none` tasks' deltas and the Verify fixes nobody has reviewed; an R4 task's commits and an in-task-reviewed task's are context, covered by their reports (listed in the Scope with their paths), never re-tiered. A Verify fix on a high-risk path gets the R4 round-1 set on that fix alone, before its commit; with no combined review, a Verify fix nobody reviewed → its owner runs the two lenses on that fix alone.
+- A plan that names a ship group → after its last task, one drift pass over the group's range, a normal review of the cross-task seams (never adversarial): `security-engineer` when it holds an R4 task, else the combined-review owner's pass is the drift pass (no combined review → one fresh owner runs it).
 - Findings → ONE fix task to the owning role; round 2 only for a BLOCKER / MAJOR fix — internal, never a new external round (`review-code` Fix-verify rounds).
 - Nothing pushes or releases before it.
 
@@ -123,7 +123,7 @@ One task per pass: brief → spot-check + ship line → next task. Never batch t
 
 Artifact: `templates/implementation-manifest.md` — Files changed, Tests added / changed, Verification, Scope check, Concerns, Status. A subagent returns it; the Lead commits.
 
-Done when: every task is shipped (R4: with its per-task reports); R2/R3 then go to `check-work`, which is followed by the combined review.
+Done when: every task is shipped (R4: with its per-task reports); R2/R3 then go to `check-work`, which is followed by the combined review (only when a task got `none`).
 
 ## Guardrails
 
@@ -137,6 +137,6 @@ Scope and manifest pairs, good and bad → `examples/execution-examples.md`.
 
 ## Next phase
 
-- `check-work` proves the change works, then the R2/R3 combined review (`review-code`); the merge and the branch's fate belong to `finish-work`.
+- `check-work` proves the change works, then the R2/R3 combined review (`review-code`, run by a fresh owner); the merge and the branch's fate belong to `finish-work`.
 - `BLOCKED` survives context, model and scope changes and a re-plan → `manage-context` (escalate); if it is not available, stop and hand the user the attempt log and 2-3 options.
 - If `check-work` is not available, run tests / build / curl / browser yourself and report evidence inline.
