@@ -17,12 +17,15 @@
 #    Extended to Agent/SendMessage (incident 2026-09-28): an R4 task owner
 #    dispatched 4 reviewers with run_in_background unset - the platform
 #    default is background - ended its turn "waiting for their
-#    notifications", and idled 6.6 h. A child that finishes after the
-#    dispatching sub-agent's own turn ends reports to the Lead; nothing wakes
-#    the sub-agent. Blocks a sub-agent's Agent dispatch when
-#    run_in_background is not explicitly false (unset, true, or anything but
-#    False / "false"). Blocks a sub-agent's SendMessage only when `to` is a
-#    raw agentId (regex ^a[0-9a-f-]{8,}$ - how an owner addresses the
+#    notifications", and idled 6.6 h (a named / resumed child reports to the
+#    Lead; nothing wakes the sub-agent). Live probe 2026-09-29 (Claude Code 2.1.284): the Agent
+#    tool has NO run_in_background parameter (every dispatch is async) and a
+#    child's end DOES wake a sub-agent that ended its turn (parent ended
+#    03:07:57, child done 03:08:13, the notification reached the parent, the
+#    Lead got nothing) - so an unset flag is allowed. Blocks a sub-agent's
+#    Agent dispatch only on an explicit run_in_background: true / "true" /
+#    "True" (older builds, where that flag exists). Blocks a sub-agent's
+#    SendMessage only when `to` is a raw agentId (regex ^a[0-9a-f-]{8,}$ - how an owner addresses the
 #    finished, unnamed reviewer it just spawned; all 3 Kyni incidents used
 #    one) - that message resumes the child in the background the same way,
 #    and its reply goes to the Lead. A named target (main, team-lead, a
@@ -98,10 +101,10 @@ if agent_id and tool_name == 'Agent':
     isolation = str(ti.get('isolation') or '').strip()
     if name or subagent_type == 'fork' or isolation == 'remote':
         wait = 'agent-always-bg'
-    else:
-        rib = ti.get('run_in_background')
-        if rib is not False and rib not in ('false', 'False'):
-            wait = 'agent-bg'
+    elif ti.get('run_in_background') in (True, 'true', 'True'):
+        # An unset flag is fine: Claude Code 2.1.284 has no such parameter
+        # and a child's end wakes the dispatching sub-agent.
+        wait = 'agent-bg'
 
 elif agent_id and tool_name == 'SendMessage':
     # Cannot-wait, SendMessage form: deny only a raw agentId - the shape an
@@ -264,19 +267,16 @@ elif w == 'run_in_background':
     ) % a
 elif w == 'agent-bg':
     reason = (
-      'BLOCKED: sub-agent %r dispatched an agent in the background (run_in_background '
-      'unset or true - the platform default is background). Its report goes to the Lead '
-      'and nothing wakes you once your turn ends. Fix: resend with run_in_background: '
-      'false; several reviewers or scouts go in ONE message and still run in parallel. '
-      'Exception: your Agent tool has no run_in_background parameter - return REVIEW '
-      'NEEDED: <what to check> and the Lead runs it.'
+      'BLOCKED: sub-agent %r set run_in_background: true on an agent dispatch. Where '
+      'that flag exists, the child\'s report can go to the Lead and nothing wakes you. '
+      'Fix: resend without run_in_background. Exception: none.'
     ) % a
 elif w == 'agent-always-bg':
     reason = (
       'BLOCKED: sub-agent %r dispatched an agent that always runs in the background '
       '(a name, a fork, or isolation: remote), even with run_in_background: false. Its '
       'report goes to the Lead and nothing wakes you once your turn ends. Fix: resend '
-      'unnamed, with no fork or remote isolation, and run_in_background: false. '
+      'unnamed, with no fork or remote isolation. '
       'Exception: none.'
     ) % a
 elif w.startswith('sendmessage:'):
@@ -285,7 +285,7 @@ elif w.startswith('sendmessage:'):
       'BLOCKED: sub-agent %r messaged agent %r by its raw id - a finished child you '
       'spawned. The message resumes it in the background; its reply goes to the Lead and '
       'nothing wakes you. Fix: a round-2 re-check is a fresh Agent dispatch of that role '
-      'with run_in_background: false, its report and the fix delta in the brief. '
+      'its report and the fix delta in the brief. '
       'Exception: a named teammate or the Lead (main / team-lead) passes.'
     ) % (a, to)
 else:
