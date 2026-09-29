@@ -49,7 +49,6 @@ By rigor tier (R1 trivial edit · R2 one file + test · R3 multi-file · R4 high
 Cross-family pool (any tier it sets) or internal-pass question → `references/external-review-routing.md`. The adversarial pass — who runs it, what counts, apex → the `adversarial-review` skill.
 
 Brief every reviewer: diff + spec + acceptance criteria + risk profile + claimed behaviors to trace end-to-end + roles already run + its `mode` (and `lens`) + the report path it writes + the bound: read-only, no sub-agent, no `review-code` run of its own.
-rolepod-brain → `brain_seed(task, agent: <reviewer id>, budget: 1024)`; only the lines about this diff go in the brief, none → nothing; no tool → skip.
 
 **One review round.** Dispatch every reviewer in ONE message on the same frozen diff; the round ends when the LAST one returns.
 - A sub-agent running its own round (a task owner) waits on every dispatch: return your brief only after each child's report is in — a child's end wakes you (the Claude desktop app sends it to the Lead, which relays it), so end a turn only to wait for one, its last line `WAITING: <report paths>`; no `name`, fork or remote isolation (such a child reports to the Lead). No way to wait → `REVIEW NEEDED:` for the Lead instead of a dispatch.
@@ -111,7 +110,7 @@ On the whole round's merged findings, never the first report: READ all without r
 
 Reply "Fixed in <file:line>." — no gratitude. A test added to close a finding joins the fix delta for the next reviewer; the author's own green run closes nothing.
 Every `## Follow-ups` line — each report's and your own — goes into the plan's `## Follow-ups` (no plan file → straight into the finish menu's Follow-ups carried), the one list `finish-work` works through (its closing rule decides what is closed before the menu and what is carried).
-Pushback, YAGNI, disagreement on merits, PR thread replies, rolepod-brain notes → `references/receiving-findings.md`.
+Pushback, YAGNI, disagreement on merits, PR thread replies → `references/receiving-findings.md`.
 
 Done when: every finding is fixed, pushed back with a reason, or in `## Follow-ups`, and each BLOCKER / MAJOR fix is back with its round 2+ reviewer.
 

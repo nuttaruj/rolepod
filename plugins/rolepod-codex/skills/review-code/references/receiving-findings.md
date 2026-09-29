@@ -121,11 +121,6 @@ When the round's findings land (every dispatched reviewer returned — merged, d
 
 Author and reviewer disagree on merits → technical data > documented style guide > engineering principle > codebase consistency.
 
-## rolepod-brain (when installed; no tool → skip)
-
-- Every reviewer dispatch: `brain_seed(task, agent: <reviewer id>, budget: 1024)`; only the lines about this diff go in the brief.
-- Every finding not applied as written, and always on a user overrule: `brain_note(agent: <reviewer id>, text: "avoid:|refine:|keep: <class>…")`.
-
 ## GitHub thread replies
 
 When replying to an inline review comment on a PR, reply **in the thread** so the discussion stays attached to the line:
