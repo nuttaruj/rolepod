@@ -28,11 +28,18 @@
 #    and its reply goes to the Lead. A named target (main, team-lead, a
 #    teammate's own name) always passes - narrowed from "anyone but main"
 #    (round-1 fix, 2026-09-29): that shape denied a resumed reviewer's
-#    legitimate reply to its parent owner by name. Both checks decide from
-#    tool_input alone (run_in_background / to) - neither carries a shell
-#    command, so neither imports the tokenizer below. In-process teammates
+#    legitimate reply to its parent owner by name. In-process teammates
 #    carry agent_id too, same as an Agent-tool sub-agent (live probe
 #    2026-09-29: a teammate's `git commit --dry-run` was denied).
+#    Round 2 (live probe 2026-09-29): run_in_background: false does not save
+#    an Agent call that always runs in the background regardless - a `name`
+#    (the platform spawns it as a background teammate: "Spawned successfully
+#    ... will receive instructions via mailbox"), subagent_type "fork", or
+#    isolation "remote" (both documented as always-background). Denied
+#    before the run_in_background check even when it is explicitly false.
+#    All three checks decide from tool_input alone (run_in_background / to /
+#    name / subagent_type / isolation) - none carries a shell command, so
+#    none imports the tokenizer below.
 # Mechanism: Claude Code PreToolUse input carries `agent_id` + `agent_type`
 # ONLY when the call originates from a sub-agent; the Lead has neither. One
 # python pass tokenises the command once and answers rules 1 and 2 (only for
@@ -48,10 +55,10 @@
 # deliberate evasion is out of scope by design — this hook catches mistakes
 # in the normal flow, not a deliberately crafted bypass. Not handled: ANSI-C
 # $'…' escapes, a bare & after an output command, quote- or backslash-split
-# names. A child the owner spawned WITH a name and later resumes by that name
-# passes the SendMessage rule: the raw-id regex stays narrow on purpose, since
-# a named target (main, team-lead, a parent owner) is a legit send; doctrine
-# (round 2 = a fresh foreground dispatch) covers the named case.
+# names. A sub-agent can no longer spawn a named child at all (the `name`
+# deny above closes that resume path at spawn time); the SendMessage raw-id
+# regex still stays narrow on purpose, since a named target reaching it
+# (main, team-lead, a parent owner, a Lead-spawned teammate) is a legit send.
 set -euo pipefail
 
 INPUT=$(cat 2>/dev/null || echo '{}')
@@ -83,9 +90,18 @@ tool_name = d.get('tool_name') or ''
 
 if agent_id and tool_name == 'Agent':
     # Cannot-wait, Agent form: no shell command to walk, so no tokenizer.
-    rib = ti.get('run_in_background')
-    if rib is not False and rib not in ('false', 'False'):
-        wait = 'agent-bg'
+    # A named / fork / remote-isolation dispatch always runs in the
+    # background (round 2, live probe 2026-09-29) - checked before
+    # run_in_background, since an explicit false does not save it.
+    name = str(ti.get('name') or '').strip()
+    subagent_type = str(ti.get('subagent_type') or '').strip()
+    isolation = str(ti.get('isolation') or '').strip()
+    if name or subagent_type == 'fork' or isolation == 'remote':
+        wait = 'agent-always-bg'
+    else:
+        rib = ti.get('run_in_background')
+        if rib is not False and rib not in ('false', 'False'):
+            wait = 'agent-bg'
 
 elif agent_id and tool_name == 'SendMessage':
     # Cannot-wait, SendMessage form: deny only a raw agentId - the shape an
@@ -254,6 +270,14 @@ elif w == 'agent-bg':
       'false; several reviewers or scouts go in ONE message and still run in parallel. '
       'Exception: your Agent tool has no run_in_background parameter - return REVIEW '
       'NEEDED: <what to check> and the Lead runs it.'
+    ) % a
+elif w == 'agent-always-bg':
+    reason = (
+      'BLOCKED: sub-agent %r dispatched an agent that always runs in the background '
+      '(a name, a fork, or isolation: remote), even with run_in_background: false. Its '
+      'report goes to the Lead and nothing wakes you once your turn ends. Fix: resend '
+      'unnamed, with no fork or remote isolation, and run_in_background: false. '
+      'Exception: none.'
     ) % a
 elif w.startswith('sendmessage:'):
     to = w[len('sendmessage:'):][:60]
