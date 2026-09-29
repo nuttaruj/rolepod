@@ -850,13 +850,13 @@ if [ -z "$XFAM_HELD" ] && [ -n "$XFAM_POOL_ON" ] && [ "${XREV:-0}" -eq 0 ] && [ 
     case "$XFAM_FAILS" in ''|*[!0-9]*) XFAM_FAILS=0 ;; esac
   fi
   if [ -n "$XFAM_POOL" ] && [ "${XFAM_FAILS:-0}" -eq 0 ] 2>/dev/null; then
-    XFAM_HELD="pool usable ($XFAM_POOL), no anchored external pass since the last commit — internal reviewers do not clear a high-risk diff. "
+    XFAM_HELD="pool usable ($XFAM_POOL), no anchored external pass since the last commit — internal reviewers don't clear this diff. "
     if [ -n "$XFAM_RUNNING" ]; then
-      XFAM_HELD+="A detached job is ALREADY RUNNING: $XFAM_RUNNING — bash '$XFAM_RUNNER' --collect <job-id>, then retry; do not start another. "
+      XFAM_HELD+="A detached job is ALREADY RUNNING: $XFAM_RUNNING — bash '$XFAM_RUNNER' --collect <job-id>, then retry. "
     else
-      XFAM_HELD+="Fix: bash '$XFAM_RUNNER' --kind review --adversarial --brief <brief.md> --attach <diff> --detach (add --lead $XFAM_LEAD outside a hook); --collect <job-id> waits. "
+      XFAM_HELD+="Fix: bash '$XFAM_RUNNER' --kind review --adversarial --brief <brief> --attach <diff> --detach; --collect <job-id> waits. "
     fi
-    XFAM_HELD+="Pool failed or empty (logged) → the internal reviewer counts. "
+    XFAM_HELD+="Pool failed/empty → internal reviewer counts. "
     STRONG_REVIEWERS=0
   fi
 fi
@@ -916,11 +916,11 @@ fi
 # Build deny reason — names only what clears the block (spec Desired 3,
 # 2026-09-25).
 REASON="precommit-gate BLOCKED. ${BYPASS_IGNORED}"
-REASON+="Diff: $FILES_CHANGED files / $LINES_CHANGED lines / $LOGIC_COUNT logic lines. "
 # Round-2 review (2026-09-25): the assembled reason ran 660-830 chars, past
 # the 600 cap — shortened here (drop "Lead + subagent transcripts") and the
 # HIGH-RISK line below no longer repeats the Fix clause verbatim.
-REASON+="Evidence ($SINCE_HUMAN): $TEST_EDITS tests / $HIGH_RISK_EDITS risk edits / $REVIEWERS reviewers ($STRONG_REVIEWERS strong). "
+# Diff: clause dropped 2026-09-29 — Evidence carries the numbers; 600-char literal cap (the runner path is outside it).
+REASON+="Evidence ($SINCE_HUMAN): $TEST_EDITS tests, $HIGH_RISK_EDITS risk edits, $REVIEWERS reviewers ($STRONG_REVIEWERS strong). "
 [ -n "$HIGH_RISK" ] && REASON+="HIGH-RISK path: $HIGH_RISK. "
 [ -n "$XFAM_HELD" ] && REASON+="SATELLITE-FIRST: $XFAM_HELD"
 [ -z "$XFAM_HELD" ] && [ -n "$XFAM_RUNNING" ] && [ -n "$HIGH_RISK" ] && [ "$STRONG_REVIEWERS" -eq 0 ] && REASON+="A detached cross-family job is still running: $XFAM_RUNNING — bash '$XFAM_RUNNER' --collect <job-id>, then retry. "
@@ -945,7 +945,7 @@ elif [ -z "$HIGH_RISK" ]; then
   # i.e. TEST_EDITS==0 AND REVIEWERS==0 — the Fix applies unconditionally.
   REASON+="Fix: write the failing test, or dispatch a reviewer. "
 fi
-REASON+="Exception: none by marker — auto-passes once evidence exists SINCE THE LAST COMMIT; rerun it. Reviewed in another worktree → commit there; a patch carries no evidence."
+REASON+="Exception: auto-passes once evidence exists SINCE THE LAST COMMIT; worktree review → commit there, a patch carries no evidence."
 
 # Decide: HARD block vs SOFT warn
 HARD_BLOCK=0
