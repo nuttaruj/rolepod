@@ -804,7 +804,8 @@ if [ "${1:-}" = "--brief" ]; then
   }
   '
   BRIEF_ROOT="$(git -C "$(dirname "$PLAN")" rev-parse --show-toplevel 2>/dev/null || pwd)"
-  BRIEF_REPO="$(basename "$BRIEF_ROOT")"
+  # slugged: the worktree command is later split on whitespace (ticket.sh start)
+  BRIEF_REPO="$(basename "$BRIEF_ROOT" | sed 's/[^A-Za-z0-9._-]/-/g')"
   # <git-root>/.rolepod/risk-paths — parsed exactly like precommit-gate.sh risk_filter.
   RP_RISK_ADD=""; RP_RISK_EXCL=""
   if [ -f "$BRIEF_ROOT/.rolepod/risk-paths" ]; then

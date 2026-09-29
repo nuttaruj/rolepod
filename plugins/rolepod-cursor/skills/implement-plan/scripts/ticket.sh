@@ -17,14 +17,16 @@
 #     "Agent:" line, for `finish` to report back later), then a third line
 #     "ship: <the commit -> finish -> log chain>" for the Lead to paste once
 #     the task is done.
-#     Re-running against an existing worktree reprints the same three lines
-#     and changes nothing else.
+#     Also records the base checkout (the plan's own) in the task branch's
+#     git config, for integrate/finish. Re-running against an existing
+#     worktree reprints the same three lines and re-records the base.
 #
 #   ticket.sh integrate <worktree> --brief <file> [--pre '<cmd>'] [--gate '<cmd>']
 #     Refuses an ambiguous worktree (unmerged commits + a dirty tree).
-#     Runs --pre, ff-merges the base into the worktree branch, stages
-#     everything except docs/rolepod/, then runs the brief's Proof command
-#     (if any) and --gate — one "ok" or a <=15-line failing tail per step,
+#     The base is the checkout `start` recorded (else the first-listed
+#     worktree). Runs --pre, ff-merges the base into the worktree branch,
+#     stages everything except docs/rolepod/, then runs the brief's Proof
+#     command (if any) and --gate — one "ok" or a <=15-line failing tail per step,
 #     first failure exits non-zero (the owner already ran the brief's
 #     Command; integrate never re-runs it). On success prints the cached
 #     diff stat, any reviewer verdict newer than the worktree, and the same
@@ -34,8 +36,9 @@
 #   ticket.sh finish <worktree>
 #     Refuses a dirty worktree or one whose branch cannot ff-merge (base is
 #     not an ancestor of its HEAD — nothing safely mergeable). Otherwise
-#     ff-merges the branch into the base checkout, removes + prunes the
-#     worktree, deletes the branch, prints "close: <agent name or (unrecorded)>".
+#     ff-merges the branch into the base checkout (as for integrate),
+#     removes + prunes the worktree, deletes the branch, prints
+#     "close: <agent name or (unrecorded)>".
 #
 #   ticket.sh log <plan> <N> --sha <sha> --note '<text>'
 #     Flips every `- [ ]` inside Task N's block to `- [x]` and appends one
@@ -140,10 +143,25 @@ EOF
 
 # ── helpers ──────────────────────────────────────────────────────────────
 
-# The main (first-listed) worktree of the repo $1 belongs to — resolvable
-# from any linked worktree since worktrees share one ref database.
-main_root_of() {
-  git -C "$1" worktree list --porcelain 2>/dev/null | awk '/^worktree /{print $2; exit}'
+# The base checkout of worktree $1 — the checkout its task was STARTED from:
+# the plan's own checkout (where `start` ran and the handoffs live), which
+# may be a linked worktree on a feature branch — not the Lead's cwd.
+# `start` records it in the task branch's git config (shared by every
+# worktree, gone with `branch -d`). A record that is no longer a worktree
+# → empty (the callers fail closed). No record (a worktree made without
+# `start`) → the first-listed worktree, parsed by stripping the "worktree "
+# prefix so a path with a space survives.
+base_root_of() {
+  local branch cfg list
+  list="$(git -C "$1" worktree list --porcelain 2>/dev/null | sed -n 's/^worktree //p')"
+  branch="$(git -C "$1" rev-parse --abbrev-ref HEAD 2>/dev/null)"
+  cfg=""
+  [ -n "$branch" ] && cfg="$(git -C "$1" config --get "branch.$branch.rolepod-base-root" 2>/dev/null)"
+  if [ -z "$cfg" ]; then
+    printf '%s' "$list" | head -n 1
+  elif printf '%s\n' "$list" | grep -qxF -- "$cfg"; then
+    printf '%s' "$cfg"
+  fi
 }
 
 # Lines of section "$2" (an exact "## Heading" string) inside file "$1" —
@@ -310,7 +328,7 @@ run_step() {
 # substring scan of the file — "-t1" is a literal substring of "-t11", so a
 # text-contains check would resolve Task 1's worktree to Task 11's brief
 # (or vice versa) whenever both exist side by side.
-find_owner_agent() { # $1 = main root, $2 = worktree (absolute)
+find_owner_agent() { # $1 = base root, $2 = worktree (absolute)
   local dir base f agent wtcmd path pbase
   dir="$1/docs/rolepod/handoffs"
   [ -d "$dir" ] || return 0
@@ -562,6 +580,12 @@ cmd_start() {
     fi
   fi
 
+  # integrate / finish work against this checkout, not the first-listed one.
+  if ! git -C "$repo_root" config "branch.$branch.rolepod-base-root" "$repo_root" >/dev/null 2>&1; then
+    echo "ticket: start: cannot record the base checkout for $branch — re-run start" >&2
+    exit 1
+  fi
+
   printf '%s %s\n' "$handoff" "$wt_abs"
   printf 'agent: %s\n' "$agent_name"
   printf 'ship: bash '\''%s'\'' integrate '\''%s'\'' --brief '\''%s'\'' --gate '\''<commit gate>'\'' && %s\n' \
@@ -585,17 +609,17 @@ cmd_integrate() {
     usage >&2; exit 2
   fi
 
-  local wt_root main_root base_branch dirty ahead ahead_rc
+  local wt_root base_root base_branch dirty ahead ahead_rc
   wt_root="$(cd "$wt" && pwd)"
-  main_root="$(main_root_of "$wt_root")"
-  [ -n "$main_root" ] || { echo "ticket: integrate: cannot resolve the main checkout for $wt_root" >&2; exit 2; }
-  if [ "$main_root" = "$wt_root" ]; then
-    echo "ticket: integrate: $wt_root is the main checkout, not a linked worktree — refusing" >&2
+  base_root="$(base_root_of "$wt_root")"
+  [ -n "$base_root" ] || { echo "ticket: integrate: cannot resolve the base checkout for $wt_root" >&2; exit 2; }
+  if [ "$base_root" = "$wt_root" ]; then
+    echo "ticket: integrate: $wt_root is the base checkout, not a task worktree — refusing" >&2
     exit 2
   fi
-  base_branch="$(git -C "$main_root" rev-parse --abbrev-ref HEAD)"
+  base_branch="$(git -C "$base_root" rev-parse --abbrev-ref HEAD)"
   if [ "$base_branch" = "HEAD" ]; then
-    echo "ticket: integrate: the main checkout at $main_root is in a detached HEAD state — refusing (no named base branch)" >&2
+    echo "ticket: integrate: the base checkout at $base_root is in a detached HEAD state — refusing (no named base branch)" >&2
     exit 1
   fi
 
@@ -645,7 +669,7 @@ cmd_integrate() {
 
   git -C "$wt_root" diff --cached --stat | tail -n 3
 
-  # A reviewer report can land under the main checkout's evidence root (the
+  # A reviewer report can land under the base checkout's evidence root (the
   # Lead's own convention) or the worktree's own (an owner working inside it
   # per its Bounds) — both are scanned, deduped by basename, newest first,
   # capped so this block alone cannot blow the <=40-line budget.
@@ -653,8 +677,8 @@ cmd_integrate() {
   marker="$wt_root/.git"
   review_list="$(mktemp "${TMPDIR:-/tmp}/rolepod-ticket-review.XXXXXX")"
   {
-    [ -d "$main_root/.rolepod/evidence/review" ] && find "$main_root/.rolepod/evidence/review" -type f -newer "$marker" 2>/dev/null
-    if [ "$wt_root/.rolepod/evidence/review" != "$main_root/.rolepod/evidence/review" ] \
+    [ -d "$base_root/.rolepod/evidence/review" ] && find "$base_root/.rolepod/evidence/review" -type f -newer "$marker" 2>/dev/null
+    if [ "$wt_root/.rolepod/evidence/review" != "$base_root/.rolepod/evidence/review" ] \
       && [ -d "$wt_root/.rolepod/evidence/review" ]; then
       find "$wt_root/.rolepod/evidence/review" -type f -newer "$marker" 2>/dev/null
     fi
@@ -673,7 +697,7 @@ cmd_integrate() {
   plan_abs="$(brief_plan_path "$brief")"
   task_n="$(brief_task_n "$brief")"
   if [ -n "$plan_abs" ] && [ -n "$task_n" ]; then
-    printf '%s\n' "$(ship_chain_tail "$wt_root" "$plan_abs" "$task_n" "$main_root")"
+    printf '%s\n' "$(ship_chain_tail "$wt_root" "$plan_abs" "$task_n" "$base_root")"
   else
     printf 'git -C "%s" commit -m "<subject>"\n' "$wt_root"
   fi
@@ -685,12 +709,12 @@ cmd_finish() {
   local wt="${1:-}"
   if [ -z "$wt" ] || [ ! -d "$wt" ]; then usage >&2; exit 2; fi
 
-  local wt_root main_root branch base_branch
+  local wt_root base_root branch base_branch
   wt_root="$(cd "$wt" && pwd)"
-  main_root="$(main_root_of "$wt_root")"
-  [ -n "$main_root" ] || { echo "ticket: finish: cannot resolve the main checkout for $wt_root" >&2; exit 2; }
-  if [ "$main_root" = "$wt_root" ]; then
-    echo "ticket: finish: $wt_root is the main checkout, not a linked worktree" >&2
+  base_root="$(base_root_of "$wt_root")"
+  [ -n "$base_root" ] || { echo "ticket: finish: cannot resolve the base checkout for $wt_root" >&2; exit 2; }
+  if [ "$base_root" = "$wt_root" ]; then
+    echo "ticket: finish: $wt_root is the base checkout, not a task worktree" >&2
     exit 2
   fi
 
@@ -700,9 +724,9 @@ cmd_finish() {
   fi
 
   branch="$(git -C "$wt_root" rev-parse --abbrev-ref HEAD)"
-  base_branch="$(git -C "$main_root" rev-parse --abbrev-ref HEAD)"
+  base_branch="$(git -C "$base_root" rev-parse --abbrev-ref HEAD)"
   if [ "$base_branch" = "HEAD" ]; then
-    echo "ticket: finish: the main checkout at $main_root is in a detached HEAD state — refusing (no named base branch)" >&2
+    echo "ticket: finish: the base checkout at $base_root is in a detached HEAD state — refusing (no named base branch)" >&2
     exit 1
   fi
 
@@ -712,7 +736,7 @@ cmd_finish() {
   fi
 
   local merge_out merge_rc
-  merge_out="$(git -C "$main_root" merge --ff-only "$branch" 2>&1)"
+  merge_out="$(git -C "$base_root" merge --ff-only "$branch" 2>&1)"
   merge_rc=$?
   if [ "$merge_rc" -ne 0 ]; then
     echo "ticket: finish: fast-forward merge failed:" >&2
@@ -720,16 +744,16 @@ cmd_finish() {
     exit "$merge_rc"
   fi
 
-  if ! git -C "$main_root" worktree remove "$wt_root" >/dev/null 2>&1; then
+  if ! git -C "$base_root" worktree remove "$wt_root" >/dev/null 2>&1; then
     echo "ticket: finish: worktree remove failed for $wt_root" >&2
     exit 1
   fi
-  git -C "$main_root" worktree prune >/dev/null 2>&1 || true
-  git -C "$main_root" branch -d "$branch" >/dev/null 2>&1 \
+  git -C "$base_root" worktree prune >/dev/null 2>&1 || true
+  git -C "$base_root" branch -d "$branch" >/dev/null 2>&1 \
     || echo "ticket: finish: branch $branch left in place (delete by hand)" >&2
 
   local agent
-  agent="$(find_owner_agent "$main_root" "$wt_root")"
+  agent="$(find_owner_agent "$base_root" "$wt_root")"
   echo "close: ${agent:-(unrecorded)}"
 }
 
