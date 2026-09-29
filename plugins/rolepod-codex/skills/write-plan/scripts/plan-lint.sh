@@ -782,12 +782,12 @@ if [ "${1:-}" = "--brief" ]; then
     print "## Reviewers"
     if (tier == "R1") print "`none`"
     else if (tier == "R4") {
-      r = "`security-engineer` + `universal-reviewer` `lens: spec` + `universal-reviewer` `lens: standards` + the adversarial pass (the `adversarial-review` skill): with a usable pool the `cross-family` skill runner (`bash <cross-family skill folder>/scripts/cross-family.sh --kind review --adversarial --brief <this brief> --attach <diff> --detach`) then `--collect <job> --timeout 540` in the foreground (exit 6 = still running: run it again), else `universal-reviewer` `mode: adversarial` (internal strong) — the external --detach first, then the rest in ONE message"
+      r = "`security-engineer` + `universal-reviewer` `lens: spec` + `universal-reviewer` `lens: standards` + the adversarial pass (the `adversarial-review` skill): with a usable pool the `cross-family` skill runner (`bash <cross-family skill folder>/scripts/cross-family.sh --kind review --adversarial --brief <this brief> --attach <diff> --detach`) then `--collect <job> --timeout 540` in the foreground (exit 6 = still running: run it again), else `universal-reviewer` `mode: adversarial` (internal strong, only if the external fails) — the external --detach first, then the rest in ONE message"
       print r
       # The round shape lives HERE, where the owner picks its reviewers: at the
       # end of the Bounds line two owners in a row still messaged the finished
       # reviewer for round 2 and idled while the answer landed at the Lead.
-      print "Round 2 is internal and not adversarial (a BLOCKER or MAJOR fix only; a MINOR or NIT fix is proven by the Command): a normal re-check of the fix delta at the lens of the reviewer. The flagging internal reviewer re-checks its own finding; an external finding goes to `security-engineer` on a high-risk path, else to `universal-reviewer` at strong class; never a new external round. ONE new dispatch with the findings and the fix delta only, never a message to the finished one; <= 15 tool calls. A new issue it finds is a normal finding to fix."
+      print "Round 2 is internal and not adversarial (a BLOCKER or MAJOR fix only; a MINOR or NIT fix is proven by the Command): a normal re-check of the fix delta. The flagging internal reviewer re-checks its own finding; an external security-class finding (auth, permissions / IDOR, injection, secrets, crypto, credits / billing) goes to `security-engineer`, its other findings to `universal-reviewer`; never a new external round. ONE new dispatch with the findings and the fix delta only, never a message to the finished one; <= 15 tool calls. A new issue it finds is a normal finding to fix."
     } else {
       # R2 / R3: no reviewer in the loop — the Lead runs ONE combined
       # review over the plan diff (implement-plan Review) instead, so there is
