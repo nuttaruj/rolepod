@@ -15,9 +15,9 @@ A finished diff → a severity-ordered review report, reviewers matched to risk.
 
 ### 1. Freeze the diff
 
-- The diff: the R4 task, or for an R2/R3 task in-task its own diff, for the combined review the plan's range — `<plan's first task commit>^..HEAD` (find that commit with `git log --oneline`). Committed → `<base>...HEAD`; uncommitted → `git diff HEAD` (staged + unstaged; `--cached` alone is a slice).
+- The diff: the R4 task, or for an R2/R3 task in-task its own diff, for the combined review the plan's range (a size slice: its slice's diff file) — `<plan's first task commit>^..HEAD` (find that commit with `git log --oneline`). Committed → `<base>...HEAD`; uncommitted → `git diff HEAD` (staged + unstaged; `--cached` alone is a slice).
 - Preflight before any dispatch: each ref resolves (`git rev-parse --verify <ref>^{commit}`) and the diff is non-empty (`git diff --quiet <range>` exits 1); either fails → re-derive the range, never dispatch. Record the snapshot for the report's Scope: `<base sha>..<head sha>`, plus `git diff HEAD | git hash-object --stdin` for uncommitted work.
-- Past ~15 files / ~800 lines it is two concerns: split into ship groups, one review each.
+- Past ~15 files / ~800 lines it is two concerns: split it, one review each: a combined review by size slice (`implement-plan` Review), any other diff by ship group.
 - Gather the spec / plan / acceptance criteria, the touched files end-to-end, and the risk profile (high-risk surface? new dependency? schema change?).
 
 Done when: the range resolves to a non-empty diff, its snapshot is recorded, and every input is in hand.
@@ -42,7 +42,7 @@ By rigor tier (R1 trivial edit · R2 one file + test · R3 multi-file · R4 high
 - The R4 floor is `security-engineer` + the adversarial pass; a missing lens report is a LIMITATION, never a merge block. A comment/blank-only R4 diff → ONE internal strong reviewer, no external.
 - Every `universal-reviewer` brief names its `mode`: `standard` (a lens, or both axes on a round 2+ re-check) or `adversarial` (R4 round 1 only — `adversarial-review`); no mode named → standard. Every later round is the standard review (Fix-verify rounds).
 - A high-risk path anywhere in the unreviewed diff (a task, a ship group, or a combined review's unreviewed delta) makes it R4; the commission's tier (max over its tasks) governs Define / Plan only.
-- A diff reviewed at its tier is never reviewed again at ship. The combined review (`implement-plan` Review, run by a fresh owner; only when a task got `none`; the other R2/R3 tasks were reviewed in-task) reviews the `none` task deltas and the Verify fixes nobody has reviewed; an R4 task's commits are context, covered by its reports — the Scope lists each with its report path — never tiered R4 again. The range stays the plan's, so the Snapshot reaches HEAD.
+- A diff reviewed at its tier is never reviewed again at ship. The combined review (`implement-plan` Review, run by a fresh owner, or one per size slice when the delta is over ~800 changed lines or ~15 files; only when a task got `none`; the other R2/R3 tasks were reviewed in-task) reviews the `none` task deltas and the Verify fixes nobody has reviewed; an R4 task's commits are context, covered by its reports — the Scope lists each with its report path — never tiered R4 again. The range stays the plan's, so the Snapshot reaches HEAD.
 - A Verify fix on a high-risk path → the R4 round-1 set on that fix alone, before its commit. A fix for a review finding → round 2 (Fix-verify rounds), never a new external or adversarial pass.
 - User-visible behaviour (UI / E2E flows) is no review row — `check-work` verifies it once per feature.
 

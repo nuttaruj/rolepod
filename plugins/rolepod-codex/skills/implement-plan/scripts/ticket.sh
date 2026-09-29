@@ -958,7 +958,7 @@ EOF
       # pathspec magic for diff; a git that rejects it falls back to a plain
       # diff over the same range so the lens file still gets written.
       local review_line repo_root diff_dir diff_path diff_content
-      review_line="review: ${first_sha}^..HEAD — the combined-review range, used only when a task got none (implement-plan Review)"
+      review_line="review: ${first_sha}^..HEAD — the combined-review range (it may split into size slices), used only when a task got none (implement-plan Review)"
       repo_root="$(git -C "$(dirname "$plan")" rev-parse --show-toplevel 2>/dev/null)"
       if [ -n "$repo_root" ]; then
         diff_dir="$repo_root/.rolepod/evidence/review"
