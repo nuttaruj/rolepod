@@ -103,7 +103,8 @@ if agent_id and tool_name == 'Agent':
         wait = 'agent-always-bg'
     elif ti.get('run_in_background') in (True, 'true', 'True'):
         # An unset flag is fine: Claude Code 2.1.284 has no such parameter
-        # and a child's end wakes the dispatching sub-agent.
+        # and a child's end wakes the dispatching sub-agent (the desktop app
+        # sends it to the Lead, which relays it).
         wait = 'agent-bg'
 
 elif agent_id and tool_name == 'SendMessage':

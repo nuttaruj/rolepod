@@ -100,6 +100,7 @@ The Lead commits each task in the owner's worktree (the ship line; a harness-mad
 - A harness-made worktree, or a `finish` refused because the Lead's branch moved → `git cherry-pick <sha>` (a conflict ends with `git cherry-pick --continue`, never a new `git commit`), then remove the worktree, delete its branch, and run the chain's `log` step.
 - Never move the diff as a patch: a patch carries no evidence, and the gate asks for the whole R4 set again.
 - Integrated → stop the owner (TaskStop, or the CLI's close) in the same turn; its return notes it stopped with background work still running → stop it at once, since that leftover work runs for hours unwatched (`references/subagent-dispatch.md` Close what finished).
+- An owner's return whose last line is `WAITING: <report paths>` is mid-task — never integrate or stop it. A report it names reaches you instead of the owner (the Claude desktop app sends a nested child's end to the Lead) → SendMessage the owner `Report in: <path>` in the same turn.
 
 Done when: every ready track is dispatched and each returned track is integrated in contract order.
 

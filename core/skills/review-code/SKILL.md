@@ -53,7 +53,7 @@ Brief every reviewer: diff + spec + acceptance criteria + risk profile + claimed
 rolepod-brain → `brain_seed(task, agent: <reviewer id>)` verbatim; no tool → skip.
 
 **One review round.** Dispatch every reviewer in ONE message on the same frozen diff; the round ends when the LAST one returns.
-- A sub-agent running its own round (a task owner) waits on every dispatch: return your brief only after each child's report is in — a child's end wakes you, so end a turn only to wait for one; no `name`, fork or remote isolation (such a child reports to the Lead). No way to wait → `REVIEW NEEDED:` for the Lead instead of a dispatch.
+- A sub-agent running its own round (a task owner) waits on every dispatch: return your brief only after each child's report is in — a child's end wakes you (the Claude desktop app sends it to the Lead, which relays it), so end a turn only to wait for one, its last line `WAITING: <report paths>`; no `name`, fork or remote isolation (such a child reports to the Lead). No way to wait → `REVIEW NEEDED:` for the Lead instead of a dispatch.
 - Until then: no edit to a diff file, no `git stash / reset / checkout / add / commit` (a red-proof revert runs in a throwaway worktree) — reviewers read the live tree.
 - An empty or partial return (`""`, one sentence, a turn-limit notice) is a failed reviewer: re-dispatch it narrower (the Lead may resume it instead; a resume runs in the background); the round stays open, the report records a LIMITATION.
 - Merge severity-ordered, deduped by file:line + root cause (the Lead's findings included; severity words per the template); each finding keeps its reviewer and axis (spec / standards / security / perf / UI / architecture). The Lead spot-checks ONE finding, never re-walks a traced report.
