@@ -48,7 +48,8 @@ INPUT=$(cat 2>/dev/null || echo '{}')
 SESSION_STATE="$(dirname "$0")/lib/session_state.py"
 [ -f "$SESSION_STATE" ] || exit 0
 
-# "<ctx tokens> <sid|-> <has_prompt> <route stale|-> <auto>" — one line.
+# "<ctx tokens> <sid|-> <has_prompt> <route stale|-> <auto> <child>" — one line;
+# child = 1 when the payload carries a non-empty agent_id (a sub-agent's prompt): the hook stays silent.
 STATE=$(printf '%s' "$INPUT" | python3 -I "$SESSION_STATE" prompt-state 2>/dev/null || echo "0 - 0 - 0 0")
 CTX=0; SID="-"; HAS_PROMPT=0; ROUTE="-"; AUTO=0; CHILD=0
 { read -r CTX SID HAS_PROMPT ROUTE AUTO CHILD; } <<EOF || true

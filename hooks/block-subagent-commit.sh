@@ -13,8 +13,11 @@
 #    background - ends in an idle turn nobody wakes. Blocks run_in_background;
 #    blocks a gate (make test*, a tests/integration/ script, a cross-family
 #    run or collect) with no timeout. An explicit timeout of any size passes.
-#    Codex payloads carry no run_in_background, so that half stays silent there.
-#    C9a (denied live): a sub-agent's `git commit` / `git push` is denied — a child's PreToolUse carries `agent_id` (live probe 2026-09-30, Codex 0.159).
+#    The Codex hooks.json entry passes `--cli codex`: that half is skipped
+#    there (a Codex Bash payload has no timeout field to satisfy it).
+#    C9a: rule 1 runs on Codex too - a child's PreToolUse carries `agent_id`
+#    (live probe 2026-09-30, Codex 0.159), so a sub-agent's `git commit` /
+#    `git push` is denied.
 #    Extended to Agent/SendMessage (incident 2026-09-28): an R4 task owner
 #    dispatched 4 reviewers with run_in_background unset - the platform
 #    default is background - ended its turn "waiting for their
@@ -75,8 +78,13 @@ if [[ "$INPUT" != *'"agent_id"'* ]]; then exit 0; fi
 
 RP_LIB="$(cd "$(dirname "$0")/lib" && pwd)"
 
+# --cli codex (Codex hooks.json): only rule 1 runs; the cannot-wait rules are
+# Claude-harness rules. No arg = Claude behavior.
+RP_CLI=""
+if [ "${1:-}" = "--cli" ]; then RP_CLI="${2:-}"; fi
+
 # The payload travels by env: the program itself is python's stdin (heredoc).
-VERDICT=$(RP_INPUT="$INPUT" RP_LIB="$RP_LIB" python3 -I - <<'PY' 2>/dev/null || printf '\n\n\n'
+VERDICT=$(RP_INPUT="$INPUT" RP_LIB="$RP_LIB" RP_CLI="$RP_CLI" python3 -I - <<'PY' 2>/dev/null || printf '\n\n\n'
 import sys, json, os, re
 try:
     d = json.loads(os.environ.get('RP_INPUT') or '{}')
@@ -229,6 +237,8 @@ elif agent_id:
             if to <= 0:
                 wait = walk(cmd, gate_rule, False)
 
+if os.environ.get('RP_CLI') == 'codex':
+    wait = ''   # cannot-wait rules are Claude-only; the commit ban above stays
 print(atype); print(blocked); print(wait)
 PY
 )

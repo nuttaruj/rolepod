@@ -241,7 +241,7 @@ render_claude() {
 #   .agents/plugins/marketplace.json                 (marketplace catalog)
 #   plugins/rolepod-codex/.codex-plugin/plugin.json  (plugin manifest)
 #   plugins/rolepod-codex/hooks/hooks.json + *.sh    (hooks.json + agent-sync.sh
-#                                                     from the adapter; 7 shared scripts
+#                                                     from the adapter; 8 shared scripts
 #                                                     render-copied from hooks/)
 #   plugins/rolepod-codex/skills/<name>/SKILL.md     (copied from core/skills)
 # Gitignored (build/rendered/codex/ — read by install.sh only):

@@ -1149,7 +1149,7 @@ def prompt_state(d: dict) -> str:
     if sid in (".", ".."):
         sid = ""
     route = "-"
-    if prompt and not _QUESTION_SHAPE_RX.search(prompt) and not TASK_NOTIFICATION_RX.search(prompt):
+    if prompt and not d.get("agent_id") and not _QUESTION_SHAPE_RX.search(prompt) and not TASK_NOTIFICATION_RX.search(prompt):
         try:
             sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
             import route_check  # type: ignore
