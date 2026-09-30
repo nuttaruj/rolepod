@@ -429,7 +429,10 @@ if root:
 # ultracode turns — main-session rows {"type":"attachment","attachment":{"type":"workflow_keyword_request"}}
 # (one per turn whose prompt carried the keyword). A marker opens a keyword turn at its timestamp; the turn ends at the next
 # typed user prompt of the main session. A fleet is tagged when it started inside a keyword turn of its session.
-marks = {}
+# ultracode as a SESSION setting (/effort ultracode) writes no keyword row: one main-session row
+# {"type":"attachment","attachment":{"type":"ultra_effort_enter"}} opens a window at its timestamp, the next
+# ultra_effort_exit closes it, no exit = open to the end of the session. The row `effort` (xhigh) cannot tell it apart.
+marks, wins = {}, {}
 def _typed_prompt(e):
     if e.get("type") != "user" or not e.get("promptId") or e.get("isMeta"): return False
     c = (e.get("message") or {}).get("content")
@@ -439,14 +442,20 @@ if root:
         for f in glob.glob(os.path.join(base, "*.jsonl")):
             try:
                 if os.path.getmtime(f) < cutoff: continue
-                turns, opened = [], None
+                turns, opened, sw = [], None, []
                 with open(f, encoding="utf-8", errors="ignore") as fh:
                     for line in fh:
                         # a prompt row only matters while a keyword turn is open
-                        if "workflow_keyword_request" not in line and (opened is None or '"promptId"' not in line): continue
+                        if "workflow_keyword_request" not in line and "ultra_effort_" not in line and (opened is None or '"promptId"' not in line): continue
                         try: e = json.loads(line)
                         except Exception: continue
-                        if e.get("type") == "attachment" and (e.get("attachment") or {}).get("type") == "workflow_keyword_request":
+                        at = (e.get("attachment") or {}).get("type") if e.get("type") == "attachment" else None
+                        if at in ("ultra_effort_enter", "ultra_effort_exit") and not e.get("timestamp"): continue   # no time, no window edge
+                        if at == "ultra_effort_enter":
+                            if not sw or sw[-1][1] is not None: sw.append([e["timestamp"], None])
+                        elif at == "ultra_effort_exit":
+                            if sw and sw[-1][1] is None: sw[-1][1] = e["timestamp"]
+                        elif at == "workflow_keyword_request":
                             if opened is None:    # a second marker inside the same turn is not a new turn
                                 opened = e.get("timestamp") or ""
                                 turns.append([opened, None])
@@ -455,12 +464,14 @@ if root:
                                 if t[1] is None: t[1] = e.get("timestamp") or ""
                             opened = None
                 if turns: marks[os.path.basename(f)[:-6]] = turns
+                if sw: wins[os.path.basename(f)[:-6]] = sw
             except OSError:
                 continue
-if marks:
-    print(f"\n  ultracode turns: {sum(len(v) for v in marks.values())} (last 14d, {len(marks)} session(s); rows type=attachment attachment.type=workflow_keyword_request)")
+if marks or wins:
+    print(f"\n  ultracode turns: {sum(len(v) for v in marks.values())} · ultracode sessions: {len(wins)} (last 14d; rows type=attachment attachment.type=workflow_keyword_request / ultra_effort_enter..ultra_effort_exit)")
 def _ultra(g):
-    return bool(g["first"]) and any(a <= g["first"] and (b is None or g["first"] < b) for a, b in marks.get(g.get("sess"), []))
+    return bool(g["first"]) and any(a <= g["first"] and (b is None or g["first"] < b)
+                                    for a, b in marks.get(g.get("sess"), []) + wins.get(g.get("sess"), []))
 if fleets:
     n_agents = sum(g["files"] for g in fleets.values())
     print(f"\n  Fleet token footprint — subagent transcripts (last 14d, {len(fleets)} fleet(s), {n_agents} agents; output + cache-read tokens only — not total tokens, not billed cost):")
@@ -482,7 +493,7 @@ if fleets:
     print(f"    input + cache-write (per API call, deduped by message.id): input {_k(t_in)} · cache-write {_k(t_cw)}")
     ug = [g for g in fleets.values() if _ultra(g)]
     if ug:
-        print(f"    ultracode fleets: {len(ug)} of {len(fleets)} (started inside a keyword turn) — {sum(g['files'] for g in ug)} agents")
+        print(f"    ultracode fleets: {len(ug)} of {len(fleets)} (keyword turn or ultracode session) — {sum(g['files'] for g in ug)} agents")
     strong = sum(v[0] for g in fleets.values() for m, v in g["models"].items() if _cls(m) == "strong")
     low = sum(v[0] for g in fleets.values() for m, v in g["models"].items() if _cls(m) in ("cheap", "balanced"))
     if n_agents >= 5 and strong > low:
