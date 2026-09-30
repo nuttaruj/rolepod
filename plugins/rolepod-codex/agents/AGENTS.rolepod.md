@@ -114,15 +114,7 @@ the turn ends and check it is gone (`kill -INT`, then `-KILL`).
   each carrying its own protocol. Codex never dispatches by description
   alone: when a skill names a specialist, spawn it yourself — this file is
   the sanctioned spawn channel.
-- **Fan-out tier** — role files pin no model: an un-pinned child runs
-  `[agents] default_subagent_model` from `~/.codex/config.toml`, else your
-  model. Set each spawn's `reasoning_effort` by the work: sweep / read
-  `low`, build / verify `medium`; the ONE judgment slot is a named strong
-  role (`security-engineer` / `universal-reviewer`, file-pinned `high` /
-  `xhigh`), never the whole fan-out. Effort ceiling on every role:
-  `xhigh`. Tiered work uses fresh children — a full-history fork cannot
-  override.
-- **Enforcement** — hooks deny only a commit with `docs/rolepod/` staged
-  and a sub-agent commit; review / test evidence gating is Claude-only,
-  and no hook can deny a spawn here. Every other rule is skill-enforced —
-  never report it as mechanically enforced.
+- **Fan-out tier** — `[agents] default_subagent_model` and `default_subagent_reasoning_effort` apply to every spawn, role spawns included; a rolepod role overrides only the effort, so its child runs `default_subagent_model` when set, else your model. The ONE judgment slot is a named strong role (`security-engineer` / `universal-reviewer`), never the whole fan-out; effort ceiling on every role: `xhigh`.
+- **Ultra** — For rolepod work spawn only a rolepod role — `agent_type` = its `name` (`scout`, not `rolepod-scout`), `fork_turns="none"`, a self-contained brief. Never `default`, `explorer`, `worker` or a role-less spawn: they inherit your effort, and at `ultra` they delegate again with no depth cap. Details → the `using-rolepod` skill's `references/fanout-codex.md`.
+- **Persistent** — `persistent` is a follow-up mode, not deeper thinking: follow-ups stay inside the scope the user asked for, a wait uses the sleep tool (never a watcher left running), and delegation is explicit-only.
+- **Enforcement** — hooks deny a commit with `docs/rolepod/` staged; a sub-agent's `git commit` / `git push` is denied — a child's PreToolUse carries `agent_id` (live probe 2026-09-30, Codex 0.159). Codex's PreToolUse sees every spawn (`spawn_agent`, or `collaborationspawn_agent` on V2); rolepod registers no spawn gate. Review / test evidence gating is Claude-only; every other rule is skill-enforced — never report it as mechanically enforced.
