@@ -54,6 +54,21 @@
 #     range still prints, just without the path. Idempotent, same as the
 #     checkbox flip.
 #
+# Tracks (spec worktree-track-2026-09-30): a task whose brief names a track
+# worktree reuses it when it exists (the 2nd+ task of the track) and records
+# the plan path in `branch.<b>.rolepod-plan`; its ship line is `integrate ->
+# git commit -> log` with NO finish, and integrate accepts the track's earlier
+# task commits ahead of base. A single-track plan (no ## Tracks, Sequential)
+# whose first task starts while another session holds a live lock on the base
+# checkout runs in one `<feature>/plan` worktree; with no live lock and no plan
+# worktree it stays on the base checkout (the --main brief, no worktree, one
+# "on the base checkout: ..." line instead of the ship line). A plan whose
+# `## Parallel layout` does not START with "Sequential" keeps per-task
+# worktrees. `finish` refusing a base that moved names the merge fix. `log` of a track's last task
+# prints "track <id> done — review: <base>..<head>" and writes
+# .rolepod/evidence/review/<feature>-<id>.diff; `finish <worktree>` (once, at
+# track end) merges the track and names any fan-in task now ready.
+#
 # `start` holds a per-plan lock (<git-common-dir>/ticket-<plan-slug>.lock)
 # for its run: a second one on the same plan refuses until the first ends;
 # a lock whose process is gone is taken over.
@@ -194,6 +209,75 @@ plan_slug_of() { # $1 = plan (absolute)
   printf '%s' "$slug" | sed -E 's/-[0-9]{4}-[0-9]{2}-[0-9]{2}$//'
 }
 
+# The plan's feature name — its basename with the .md extension and a LEADING
+# YYYY-MM-DD- date stripped (worktree-track spec: branch <feature>/<id>-<slug>,
+# plan worktree <feature>/plan).
+plan_feature_of() { # $1 = plan (absolute)
+  basename "$1" .md | sed -E 's/^[0-9]{4}-[0-9]{2}-[0-9]{2}-//'
+}
+
+# True (rc 0) when the plan has a `## Tracks` section with a body.
+plan_has_tracks() { # $1 = plan
+  [ -n "$(section_body "$1" '## Tracks' | grep -v '^[[:space:]]*$')" ]
+}
+
+# True (rc 0) when the plan's `## Parallel layout` starts with "Sequential".
+plan_is_sequential() { # $1 = plan
+  section_body "$1" '## Parallel layout' | grep -v '^[[:space:]]*$' | head -n 1 | grep -q '^Sequential'
+}
+
+# One row per task: "<id><ROW_FS><track>" off each task's `- **Track:** X`
+# field (first one wins); a task with no Track field has no row.
+plan_task_tracks() { # $1 = plan
+  awk -v fs="$ROW_FS" "$FENCE_FN"'
+    { if (fenceline($0)) next }
+    /^### (Task ?|T)[0-9]+/ { id = $0; sub(/^### (Task ?|T)/, "", id); sub(/[^0-9].*$/, "", id); seen = 0; next }
+    /^## / { id = ""; next }
+    id != "" && !seen && $0 ~ /^[[:space:]]*-([[:space:]]*\[[ xX]\])?[[:space:]]*\*\*Track:\*\*/ {
+      v = $0; sub(/.*\*\*Track:\*\*[[:space:]]*/, "", v); sub(/[[:space:]].*$/, "", v); gsub(/`/, "", v)
+      if (v != "") { printf "%s%s%s\n", id, fs, v; seen = 1 }
+    }
+  ' "$1"
+}
+
+# The track of task "$2" in track table "$1" (plan_task_tracks output).
+track_of() { # $1 = table, $2 = task id
+  printf '%s\n' "$1" | awk -F "$ROW_FS" -v want="$2" '($1 "") == (want "") { print $2; exit }'
+}
+
+# The sha `log` recorded for task "$2" ("- Task N (`sha`): ..." under
+# ## Changes during build), empty when none.
+task_logged_sha() { # $1 = plan, $2 = task id
+  awk -v want="$2" "$FENCE_FN"'
+    { if (fenceline($0)) next }
+    /^## Changes during build/ { insec = 1; next }
+    insec && /^## / { exit }
+    insec && index($0, "- Task " want " (`") == 1 && match($0, /`[^`]+`/) { print substr($0, RSTART + 1, RLENGTH - 2); exit }
+  ' "$1"
+}
+
+# True (rc 0) when another session holds a live lock on checkout "$1": a
+# *.lock under $HOME/.rolepod/session-locks/<first 16 hex of sha256 of the
+# path>/ younger than 1800 s (the rule hooks/session-lifecycle.sh writes and
+# prunes by). This session's own lock (its id in CLAUDE_CODE_SESSION_ID /
+# ROLEPOD_SESSION_ID) is skipped.
+foreign_live_lock() { # $1 = checkout (git toplevel)
+  local hash dir lock now mtime own
+  hash="$(printf '%s' "$1" | { shasum -a 256 2>/dev/null || sha256sum 2>/dev/null; } | awk '{print $1}' | head -c 16)"
+  [ -n "$hash" ] || return 1
+  dir="${HOME:-}/.rolepod/session-locks/$hash"
+  [ -d "$dir" ] || return 1
+  own="${CLAUDE_CODE_SESSION_ID:-${ROLEPOD_SESSION_ID:-}}"
+  now="$(date +%s)"
+  for lock in "$dir"/*.lock; do
+    [ -f "$lock" ] || continue
+    [ -n "$own" ] && [ "$(basename "$lock" .lock)" = "$own" ] && continue
+    mtime="$(stat -c %Y "$lock" 2>/dev/null || stat -f %m "$lock" 2>/dev/null || echo 0)"
+    [ $((now - mtime)) -lt 1800 ] && return 0
+  done
+  return 1
+}
+
 # One `start` per plan at a time. Two overlapping runs against the same
 # plan could both create the same worktree/branch. mkdir is the atomic
 # test-and-set; the lock sits in the git common dir (never staged, shared
@@ -269,9 +353,15 @@ brief_plan_path() { # $1 = brief file
 # runs the chain, and reads the base checkout, since `finish` (the step
 # before it in the chain) merges the commit there and removes the worktree
 # — the caller's own cwd may be neither.
-ship_chain_tail() { # $1 = worktree (absolute), $2 = plan (absolute), $3 = task N, $4 = base checkout (absolute)
-  printf 'git -C '\''%s'\'' commit -m '\''<subject>'\'' && bash '\''%s'\'' finish '\''%s'\'' && bash '\''%s'\'' log '\''%s'\'' %s --sha "$(git -C '\''%s'\'' rev-parse --short HEAD)" --note '\''<note>'\''' \
-    "$1" "$SELF_PATH" "$1" "$SELF_PATH" "$2" "$3" "$4"
+# A task in a track (or a plan worktree) drops `finish` — the Lead runs it
+# once, after the track-end review ($5 = "track" or "plan"; empty = per task).
+ship_chain_tail() { # $1 = worktree (absolute), $2 = plan (absolute), $3 = task N, $4 = base checkout (absolute), $5 = mode or empty
+  local fin=""
+  if [ -z "${5:-}" ]; then
+    fin="$(printf "bash '%s' finish '%s' && " "$SELF_PATH" "$1")"
+  fi
+  printf 'git -C '\''%s'\'' commit -m '\''<subject>'\'' && %sbash '\''%s'\'' log '\''%s'\'' %s --sha "$(git -C '\''%s'\'' rev-parse --short HEAD)" --note '\''<note>'\''' \
+    "$1" "$fin" "$SELF_PATH" "$2" "$3" "$4"
 }
 
 # scripts/plan-lint.sh --brief does not auto-resolve the contract path (only
@@ -467,20 +557,64 @@ all_blockers_done() { # $1 = blocked (comma list, may be empty), $2 = done_ids s
 # blocker is now done — the set `log` reports as "just became ready" after
 # flipping Task "$2"'s own checkboxes. Any owner, Lead included. One row
 # per line: "<id><ROW_FS><owner>".
-ready_now_after() { # $1 = plan, $2 = task id just logged
-  local plan="$1" want="$2" rows id owner blocked done done_ids
+#
+# In a plan with tracks a blocker in ANOTHER track counts only once that
+# track is merged (fan-in starts from the merged base): "$3" = the base
+# checkout to test that against. "$2" empty = every fan-in candidate (finish).
+ready_now_after() { # $1 = plan, $2 = task id just logged (or empty), $3 = base checkout
+  local plan="$1" want="$2" root="${3:-}" rows id owner blocked done done_ids tracks
   rows="$(plan_task_rows "$plan")"
   done_ids="$(done_ids_of "$rows")"
+  tracks="$(plan_task_tracks "$plan")"
   while IFS="$ROW_FS" read -r id owner blocked done; do
     [ -n "$id" ] || continue
     [ "$done" = "1" ] && continue
     # only a task whose Blocked-by list names $want at all — a task that
     # was already ready for other reasons is not "just became ready" here.
-    case ",$blocked," in *",$want,"*) : ;; *) continue ;; esac
-    all_blockers_done "$blocked" "$done_ids" && printf '%s%s%s\n' "$id" "$ROW_FS" "$owner"
+    if [ -n "$want" ]; then
+      case ",$blocked," in *",$want,"*) : ;; *) continue ;; esac
+    elif ! has_cross_track_blocker "$tracks" "$id" "$blocked"; then
+      continue
+    fi
+    all_blockers_done "$blocked" "$done_ids" || continue
+    blockers_merged "$plan" "$root" "$tracks" "$id" "$blocked" || continue
+    printf '%s%s%s\n' "$id" "$ROW_FS" "$owner"
   done <<EOF
 $rows
 EOF
+}
+
+# True (rc 0) when a comma-list blocker of task "$2" sits in another track.
+has_cross_track_blocker() { # $1 = tracks table, $2 = task id, $3 = blocked csv
+  local mine b theirs oldifs="$IFS" hit=1
+  mine="$(track_of "$1" "$2")"
+  [ -n "$mine" ] || return 1
+  IFS=','
+  for b in $3; do
+    theirs="$(track_of "$1" "$b")"
+    [ -n "$theirs" ] && [ "$theirs" != "$mine" ] && hit=0
+  done
+  IFS="$oldifs"
+  return "$hit"
+}
+
+# True (rc 0) when every blocker of task "$4" that sits in another track has
+# its logged commit inside checkout "$2"'s HEAD (its track merged). No track
+# table (a plan without tracks) or no checkout → true.
+blockers_merged() { # $1 = plan, $2 = base checkout, $3 = tracks table, $4 = task id, $5 = blocked csv
+  local mine b theirs sha oldifs="$IFS" ok=0
+  [ -n "$3" ] && [ -n "$2" ] || return 0
+  mine="$(track_of "$3" "$4")"
+  [ -n "$mine" ] || return 0
+  IFS=','
+  for b in $5; do
+    theirs="$(track_of "$3" "$b")"
+    [ -n "$theirs" ] && [ "$theirs" != "$mine" ] || continue
+    sha="$(task_logged_sha "$1" "$b")"
+    if [ -z "$sha" ] || ! git -C "$2" merge-base --is-ancestor "$sha" HEAD 2>/dev/null; then ok=1; fi
+  done
+  IFS="$oldifs"
+  return "$ok"
 }
 
 # ── start ────────────────────────────────────────────────────────────────
@@ -531,6 +665,43 @@ cmd_start() {
     exit 1
   fi
 
+  # Worktree mode (worktree-track spec). "track": the brief names a track
+  # worktree shared by the track's tasks (an existing one is reused below).
+  # "plan": a single-track plan (no ## Tracks, Sequential layout) whose plan
+  # worktree exists already, or whose FIRST task starts while another session
+  # holds a live lock on this checkout — the brief is rewritten to name
+  # <feature>/plan. Anything else keeps the per-task worktree as before.
+  local wt_mode=""
+  if printf '%s\n' "$brief_out" | grep -q 'which track it holds'; then
+    wt_mode="track"
+  elif ! plan_has_tracks "$plan_abs" && plan_is_sequential "$plan_abs" \
+    && ! printf '%s\n' "$brief_out" | grep -q '^## Checkout'; then
+    local pfeat prepo pwt_abs prows
+    pfeat="$(plan_feature_of "$plan_abs")"
+    prepo="$(basename "$repo_root" | sed 's/[^A-Za-z0-9._-]/-/g')"
+    pwt_abs="$(cd "$repo_root/.." && pwd)/${prepo}-wt-${pfeat}"
+    prows="$(plan_task_rows "$plan_abs")"
+    if git -C "$repo_root" worktree list --porcelain 2>/dev/null | grep -qxF "worktree $pwt_abs" \
+      || { [ "$(done_ids_of "$prows")" = " " ] && foreign_live_lock "$repo_root"; }; then
+      wt_mode="plan"
+      brief_out="$(printf '%s\n' "$brief_out" | TICKET_WT_LINE="\`git worktree add -b ${pfeat}/plan ../${prepo}-wt-${pfeat}\` — cd there for every command; a single-track plan runs on the base checkout unless another session holds a live lock on it when its first task starts; then the whole plan runs in one plan worktree" \
+        awk '!done && /^`git worktree add / { print ENVIRON["TICKET_WT_LINE"]; done = 1; next } { print }')"
+    else
+      # No live lock, no plan worktree: the base checkout (C4) — the --main
+      # brief, no worktree, no branch.
+      wt_mode="main"
+      if [ -n "$contract" ]; then
+        brief_out="$(bash "$LINT" --brief "$n" "$plan_abs" "$contract" --main 2>&1)"
+      else
+        brief_out="$(bash "$LINT" --brief "$n" "$plan_abs" --main 2>&1)"
+      fi
+      if [ $? -ne 0 ]; then
+        printf '%s\n' "$brief_out" >&2
+        exit 1
+      fi
+    fi
+  fi
+
   local plan_slug handoff_dir handoff
   plan_slug="$(plan_slug_of "$plan_abs")"
   handoff_dir="$repo_root/docs/rolepod/handoffs"
@@ -541,6 +712,13 @@ cmd_start() {
   agent_line="Agent: $agent_name"
   if [ ! -f "$handoff" ] || [ "$(cat "$handoff" 2>/dev/null)" != "$brief_out"$'\n'"$agent_line" ]; then
     printf '%s\n%s\n' "$brief_out" "$agent_line" > "$handoff"
+  fi
+
+  if [ "$wt_mode" = "main" ]; then
+    printf '%s %s\n' "$handoff" "$repo_root"
+    printf 'agent: %s\n' "$agent_name"
+    echo "on the base checkout: the Lead commits with the commit check, then ticket.sh log <plan> <N> --sha <sha>"
+    return 0
   fi
 
   local wtcmd branch wtpath wtparent wt_abs
@@ -586,10 +764,17 @@ cmd_start() {
     exit 1
   fi
 
+  # A track / plan worktree: the plan path rides on the branch (integrate
+  # reads it to tell a track worktree from a per-task one).
+  if [ -n "$wt_mode" ] && ! git -C "$repo_root" config "branch.$branch.rolepod-plan" "$plan_abs" >/dev/null 2>&1; then
+    echo "ticket: start: cannot record the plan for $branch — re-run start" >&2
+    exit 1
+  fi
+
   printf '%s %s\n' "$handoff" "$wt_abs"
   printf 'agent: %s\n' "$agent_name"
   printf 'ship: bash '\''%s'\'' integrate '\''%s'\'' --brief '\''%s'\'' --gate '\''<commit gate>'\'' && %s\n' \
-    "$SELF_PATH" "$wt_abs" "$handoff" "$(ship_chain_tail "$wt_abs" "$plan_abs" "$n" "$repo_root")"
+    "$SELF_PATH" "$wt_abs" "$handoff" "$(ship_chain_tail "$wt_abs" "$plan_abs" "$n" "$repo_root" "$wt_mode")"
 }
 
 # ── integrate ────────────────────────────────────────────────────────────
@@ -632,6 +817,38 @@ cmd_integrate() {
     exit 1
   fi
   ahead="${ahead:-0}"
+
+  # A track / plan worktree (`start` recorded branch.<b>.rolepod-plan): the
+  # commits ahead of base are the track's earlier tasks — each named by the
+  # plan's log (its sha) or by a "Task N" subject — so a dirty tree on top is
+  # the next task, not an ambiguity. One unnamed commit keeps the refusal.
+  local track_mode="" track_plan wt_branch c csubj csha logged l ahead_unnamed=""
+  wt_branch="$(git -C "$wt_root" rev-parse --abbrev-ref HEAD 2>/dev/null)"
+  track_plan="$(git -C "$wt_root" config --get "branch.$wt_branch.rolepod-plan" 2>/dev/null)"
+  if [ -n "$track_plan" ]; then
+    track_mode="track"
+    if [ "$ahead" -gt 0 ] && [ -n "$dirty" ]; then
+      logged="$(awk "$FENCE_FN"'
+        { if (fenceline($0)) next }
+        /^## Changes during build/ { insec = 1; next }
+        insec && /^## / { exit }
+        insec && /^- Task [0-9]+ \(`/ && match($0, /`[^`]+`/) { print substr($0, RSTART + 1, RLENGTH - 2) }
+      ' "$track_plan" 2>/dev/null)"
+      for c in $(git -C "$wt_root" rev-list "$base_branch..HEAD" 2>/dev/null); do
+        csubj="$(git -C "$wt_root" log -1 --format=%s "$c")"
+        if printf '%s\n' "$csubj" | grep -qiE '(^|[^A-Za-z0-9])task[ -]?[0-9]+'; then continue; fi
+        csha=""
+        while IFS= read -r l; do
+          [ -n "$l" ] && case "$c" in "$l"*) csha=1 ;; esac
+        done <<EOF
+$logged
+EOF
+        [ -n "$csha" ] && continue
+        ahead_unnamed=1
+      done
+      [ -z "$ahead_unnamed" ] && ahead=0
+    fi
+  fi
   if [ "$ahead" -gt 0 ] && [ -n "$dirty" ]; then
     echo "ticket: integrate: ambiguous — $ahead commit(s) ahead of $base_branch AND a dirty tree; resolve by hand first" >&2
     exit 1
@@ -697,7 +914,7 @@ cmd_integrate() {
   plan_abs="$(brief_plan_path "$brief")"
   task_n="$(brief_task_n "$brief")"
   if [ -n "$plan_abs" ] && [ -n "$task_n" ]; then
-    printf '%s\n' "$(ship_chain_tail "$wt_root" "$plan_abs" "$task_n" "$base_root")"
+    printf '%s\n' "$(ship_chain_tail "$wt_root" "$plan_abs" "$task_n" "$base_root" "$track_mode")"
   else
     printf 'git -C "%s" commit -m "<subject>"\n' "$wt_root"
   fi
@@ -731,11 +948,12 @@ cmd_finish() {
   fi
 
   if ! git -C "$wt_root" merge-base --is-ancestor "$base_branch" HEAD 2>/dev/null; then
-    echo "ticket: finish: $branch is not an ancestor-or-equal of $base_branch's committed state — nothing to merge (integrate + commit first)" >&2
+    echo "ticket: finish: $branch is not an ancestor-or-equal of $base_branch's committed state — nothing to merge (integrate + commit first). Base moved? Fix: git -C $wt_root merge $base_branch, re-run the commit check in $wt_root, then finish again" >&2
     exit 1
   fi
 
-  local merge_out merge_rc
+  local merge_out merge_rc track_plan
+  track_plan="$(git -C "$wt_root" config --get "branch.$branch.rolepod-plan" 2>/dev/null)"
   merge_out="$(git -C "$base_root" merge --ff-only "$branch" 2>&1)"
   merge_rc=$?
   if [ "$merge_rc" -ne 0 ]; then
@@ -755,6 +973,22 @@ cmd_finish() {
   local agent
   agent="$(find_owner_agent "$base_root" "$wt_root")"
   echo "close: ${agent:-(unrecorded)}"
+
+  # A merged track may unblock a fan-in task (it waits for every track it
+  # names to merge) — name it now, `log` cannot see the merge yet.
+  if [ -n "$track_plan" ] && [ -f "$track_plan" ]; then
+    local frows fid fowner flist=""
+    frows="$(ready_now_after "$track_plan" "" "$base_root")"
+    if [ -n "$frows" ]; then
+      while IFS="$ROW_FS" read -r fid fowner; do
+        [ -n "$fid" ] || continue
+        if [ -n "$flist" ]; then flist="$flist, Task $fid ($fowner)"; else flist="Task $fid ($fowner)"; fi
+      done <<EOF
+$frows
+EOF
+      echo "ready now: $flist"
+    fi
+  fi
 }
 
 # ── log ──────────────────────────────────────────────────────────────────
@@ -906,8 +1140,9 @@ if best is not None:
   rm -f "$tmp"
   echo "ticket: log: Task $n updated in $plan"
 
-  local ready_rows id2 owner2 list=""
-  ready_rows="$(ready_now_after "$plan" "$n")"
+  local ready_rows id2 owner2 list="" log_root
+  log_root="$(git -C "$(dirname "$plan")" rev-parse --show-toplevel 2>/dev/null)"
+  ready_rows="$(ready_now_after "$plan" "$n" "$log_root")"
   if [ -n "$ready_rows" ]; then
     while IFS="$ROW_FS" read -r id2 owner2; do
       [ -n "$id2" ] || continue
@@ -936,7 +1171,54 @@ EOF
   done <<EOF
 $rrows
 EOF
-  if [ "$role_total" -gt 0 ] && [ "$role_total" -eq "$role_done" ]; then
+
+  # A plan with tracks (or one running in its plan worktree) is reviewed at
+  # the END OF EACH TRACK, not once per plan: when the last task of the
+  # track just logged is done, name the track's range and write its diff.
+  # Idempotent, like the lines above. No combined-review range for these.
+  local plan_abs_log feat_log plan_mode_log="" tracked_log="" ttable mytrack
+  plan_abs_log="$(cd "$(dirname "$plan")" && pwd)/$(basename "$plan")"
+  feat_log="$(plan_feature_of "$plan_abs_log")"
+  if plan_has_tracks "$plan_abs_log"; then
+    tracked_log=1
+  elif [ -n "$log_root" ] && [ "$(git -C "$log_root" config --get "branch.$feat_log/plan.rolepod-plan" 2>/dev/null)" = "$plan_abs_log" ]; then
+    plan_mode_log=1
+  fi
+  if [ -n "$tracked_log" ] || [ -n "$plan_mode_log" ]; then
+    ttable="$(plan_task_tracks "$plan_abs_log")"
+    if [ -n "$tracked_log" ]; then mytrack="$(track_of "$ttable" "$n")"; else mytrack="plan"; fi
+    if [ -n "$mytrack" ] && [ -n "$log_root" ]; then
+      local tt_total=0 tt_done=0 tt_role=0 ttid ttowner ttblocked ttdone ttrack
+      while IFS="$ROW_FS" read -r ttid ttowner ttblocked ttdone; do
+        [ -n "$ttid" ] || continue
+        if [ -n "$tracked_log" ]; then ttrack="$(track_of "$ttable" "$ttid")"; else ttrack="plan"; fi
+        [ "$ttrack" = "$mytrack" ] || continue
+        tt_total=$((tt_total + 1))
+        [ "$ttdone" = "1" ] && tt_done=$((tt_done + 1))
+        is_lead_owner "$ttowner" || tt_role=$((tt_role + 1))
+      done <<EOF
+$rrows
+EOF
+      if [ "$tt_total" -gt 0 ] && [ "$tt_total" -eq "$tt_done" ] && [ "$tt_role" -gt 0 ]; then
+        local tbase tline tdir tpath
+        tbase="$(git -C "$log_root" rev-parse --abbrev-ref HEAD 2>/dev/null)"
+        [ -n "$tbase" ] || tbase="HEAD"
+        tline="track $mytrack done — review: $tbase..$sha"
+        tdir="$log_root/.rolepod/evidence/review"
+        tpath="$tdir/${feat_log}-${mytrack}.diff"
+        if git -C "$log_root" rev-parse --verify --quiet "$sha^{commit}" >/dev/null 2>&1 && mkdir -p "$tdir" 2>/dev/null; then
+          if {
+            git -C "$log_root" diff --stat "$tbase..$sha" -- . ':(exclude)plugins' ':(exclude)build/rendered'
+            git -C "$log_root" diff -U10 "$tbase..$sha" -- . ':(exclude)plugins' ':(exclude)build/rendered'
+          } > "$tpath" 2>/dev/null; then
+            tline="$tline; lens diff: $tpath"
+          fi
+        fi
+        printf '%s\n' "$tline"
+        echo "Track end: one fresh owner (the role owning most of the track's code) runs the two lenses in ONE message on the track diff and fixes each BLOCKER / MAJOR with its proof, no round 2; the Lead commits the fixes in the track worktree, then \`ticket.sh finish <worktree>\` merges the track."
+      fi
+    fi
+  elif [ "$role_total" -gt 0 ] && [ "$role_total" -eq "$role_done" ]; then
     local first_sha
     # Anchored to the exact bullet shape this function writes above
     # ("- Task N (`<sha>`): <note>") — never the first backticked span in
