@@ -16,7 +16,9 @@
 
 ## Shared interfaces
 <Function signatures, API shapes, types crossed between owners. Frozen —
- a change here needs every owner to agree.>
+ a change here needs every owner to agree.
+ Shared wording: one entry per sentence — `C1 (<where it goes>):` then
+ the sentence on a `> ` line; tasks cite the id, the brief quotes it.>
 
 ## Merge order
 <Which slice merges first, and why. Usually the interface provider.>

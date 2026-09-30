@@ -527,6 +527,18 @@ if [ "${1:-}" = "--brief" ]; then
     if ($0 ~ /^## /) {
       ownsec = ($0 ~ /^## File ownership/) ? 1 : 0
       dnsec = ($0 ~ /^## Do-not-touch list/) ? 1 : 0
+      sisec = ($0 ~ /^## Shared interfaces/) ? 1 : 0
+      next
+    }
+    # Shared interfaces: a label line opening with an id C<n> starts an entry,
+    # each following `> ` line is one quoted sentence of it, kept verbatim.
+    if (sisec) {
+      cl = $0; sub(/\r$/, "", cl)
+      if (match(cl, /^C[0-9]+([^A-Za-z0-9]|$)/)) {
+        cid = substr(cl, 1, RLENGTH); sub(/[^0-9]+$/, "", cid)
+        if (!(cid in sitext)) sids[++nsi] = cid
+        sitext[cid] = ""
+      } else if (cid != "" && cl ~ /^> /) sitext[cid] = (sitext[cid] == "" ? cl : sitext[cid] "\n" cl)
       next
     }
     if (ownsec) {
@@ -742,6 +754,25 @@ if [ "${1:-}" = "--brief" ]; then
     print "- everything else (an unowned path: touch it and add an Also touched line; a path another owner holds: a NEEDS line, never an edit)"
     print "## Change"
     print (Ch == "" ? "(not in plan)" : Ch)
+    # Canonical sentences: every contract Shared-interfaces id this task cites
+    # (a whole token in Change, Proof or Done when), in id order, quoted verbatim.
+    # No contract, no entries or no cited id prints nothing (byte-identical brief).
+    if (hascontract && nsi > 0) {
+      cited = Ch "\n" Pr "\n" DW
+      nc = 0
+      for (i = 1; i <= nsi; i++) {
+        if (cited ~ ("(^|[^A-Za-z0-9])" sids[i] "([^A-Za-z0-9]|$)") && sitext[sids[i]] != "") cl2[++nc] = sids[i]
+      }
+      for (i = 2; i <= nc; i++) {
+        v = cl2[i]; j = i - 1
+        while (j >= 1 && substr(cl2[j], 2) + 0 > substr(v, 2) + 0) { cl2[j + 1] = cl2[j]; j-- }
+        cl2[j + 1] = v
+      }
+      if (nc > 0) {
+        print "## Canonical sentences"
+        for (i = 1; i <= nc; i++) { print cl2[i] ":"; print sitext[cl2[i]] }
+      }
+    }
     # Verbatim, never cleared before this point — every fenced line that
     # was not itself joined into a prose field (Files, Owner, Proof, Check,
     # Command, Blocked by, or a fence before any field at all) lands here,

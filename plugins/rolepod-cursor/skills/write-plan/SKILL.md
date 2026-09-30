@@ -62,6 +62,7 @@ Done when: every open choice is the plan's own or answered by the user, and the 
 ### 5. Cohesion contract (parallel only)
 
 Fill `templates/cohesion-contract-template.md` — Shared goal · Owners · File ownership · Shared interfaces · Merge order · Do-not-touch list · Verification per agent · Integration owner · Session split (optional). Save path, ownership rules, session split → `references/parallel.md`.
+Wording several owners must write the same (a rule sentence, a message, a command) → one Shared interfaces entry per sentence: a label line starting with its id `C<n>`, then the sentence as a `> ` quote. A task that uses it cites the id in Change, and its Proof greps the sentence verbatim (`grep -F`); the brief then quotes it for the owner.
 
 Done when: every path sits under exactly one owner.
 
