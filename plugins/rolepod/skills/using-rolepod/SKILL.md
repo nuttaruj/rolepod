@@ -105,9 +105,9 @@ Done when: the route is stated (R2 and up), the named skill is loaded, and the o
 ## Stop conditions
 
 - Coding before Define on an ambiguous request → `write-spec`. Claiming done before Verify → `check-work`.
-- A 2nd parallel agent without a cohesion contract → `write-plan` first.
+- A 2nd parallel writer without an ownership map → `write-plan` first. A Workflow script that gives each writer a disjoint slice is its own map; read-only fleets are exempt.
 - High-risk paths — auth, billing, payments, credits, migration, data deletion, secrets, tokens, crypto, permissions, security (override: `.rolepod/risk-paths`) — with zero reviewer reports at commit or ship → STOP. Floor: `security-engineer` + the adversarial pass (`review-code` Pick reviewers).
-- A 3rd agent on one issue, or a 3rd PR on one surface in a session → STOP, ask the user.
+- A 3rd sequential attempt to fix the same failure, or a 3rd PR on one surface in a session → STOP, ask the user. Parallel verifiers, panels and discovery rounds inside one Workflow do not count.
 - A diff mixing unrelated concerns at push → split the PRs (`finish-work` Pre-merge gates).
 - Concurrent sessions share the REF as well as the files. A sibling / concurrent session warning at session start → before editing a SHARED file, work in `git worktree add .worktrees/<task> -b <branch>`; disjoint edits flow free.
 - Holding work for authorization → keep it on its own branch; never merge it into a SHARED branch before the answer comes — unpushed there, it ships with whoever pushes next.

@@ -110,7 +110,7 @@ Done when: every section is filled, and a saved plan passes plan-lint (or the fo
 ## Guardrails
 
 - The plan names the files, the order and the verification per task before any edit. Never start editing earlier.
-- Parallel agents on one feature work under a written cohesion contract pinning file ownership and merge order. Never spawn more than one without it.
+- Parallel writers on one feature work under a written ownership map pinning file ownership and merge order — a cohesion contract, or a Workflow script that gives each writer a disjoint slice. Never spawn a second writer without one; read-only fleets are exempt.
 - Pick the simplest viable approach. Complexity needs an explicit reason and the user's awareness.
 - **Backward compatibility:** a plan without `## Tracks` + Parallel layout treats every task as its own track (worktree per task, old behavior); + Sequential means one track named `plan`. Plans with `## Tracks` use the new track-end review model.
 

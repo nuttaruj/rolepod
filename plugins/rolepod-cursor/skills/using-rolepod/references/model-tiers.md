@@ -32,13 +32,29 @@ The Lead picks the class at dispatch; escalate only on a BLOCKED redispatch or a
 - A stage that writes carries `agentType: 'rolepod:<role>'`; a bare `agent()` never edits product files.
 - ≥3 dependent dispatches → a Workflow pipeline, not a Lead loop of dispatch → wait → dispatch: every Lead round-trip re-reads the whole context at the Lead's price.
 - Pin every fan-out `agent()` call — a `model:` class or a rolepod `agentType:`; no script comment excuses a bare fan-out.
+- A fan-out stage runs a rolepod role first (`agentType: 'rolepod:<role>'`): it pins the tier and carries a third of a bare agent's fixed context; `model:` alone is the fallback when no role fits.
+- Set `effort:` per stage; it overrides the role's default; never `max` on a fan-out.
 
-## Effort never lifts the tier
+## Ultracode profile
 
-`/effort`, ultracode and xhigh raise reasoning, not ceremony.
-- R1/R2 get at most ONE Workflow, and it is the review: one read-only `universal-reviewer` pass.
-- Design or judge panels and adversarial fan-out are R3+ work.
+ultracode widens breadth inside the tier; it never adds a tier, a round or a strong slot.
+
+- R1/R2 get at most ONE Workflow: the one review round `review-code` names for the tier, with a command or balanced refuter per MAJOR finding.
 - R2 verify stays the checklist command (+ a browser observation for UI), never the full suite.
+
+| Phase | Ultracode shape |
+|---|---|
+| R0 research | a cheap fact pack → balanced readers, one facet each → verify only findings that change the answer → ONE strong critic on a digest |
+| Define (R3+) | cheap scouts map code and past decisions; an open approach adds 2-3 balanced lens drafts + ONE strong judge |
+| Plan | one author |
+| Build | one role per disjoint slice, on main |
+| Debug | the first repro does not point at the cause → 2-3 read-only balanced hypothesis testers, then ONE role fixer |
+| Verify | the checklist + the suite as one stage |
+| Review | the tier's review set in one round + a command or balanced refuter per MAJOR finding |
+
+Never fan out: user dialogue, plan authoring, the strong slot, writers on shared files, the fix for one failure, a review round 2, commit.
+
+Critic and judge take a digest of verified findings, never the raw journal.
 
 ## Lead-tier fit — once per session
 

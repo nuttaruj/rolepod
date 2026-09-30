@@ -139,6 +139,8 @@ ladder is for depth gaps — try the cheaper rung first.
 
 **Orchestration harnesses (workflow / ultracode).** A scripted fan-out defaults every agent to the Lead's own model. On a strong-tier Lead that silently runs the whole fleet at the top tier; on a balanced-class Lead the INVERSE trap: inherit silently DOWNGRADES the verify/judge stages below what a high-risk diff requires.
 
+A fan-out stage runs a rolepod role first (`agentType: 'rolepod:<role>'`): it pins the tier and carries a third of a bare agent's fixed context; `model:` alone is the fallback when no role fits.
+
 Apply the table above there too — pass the tier-mapped model (or the rolepod agentType, which carries its tier) per stage:
 - mechanical sweep / scan = cheap;
 - implementation = balanced;
@@ -146,6 +148,8 @@ Apply the table above there too — pass the tier-mapped model (or the rolepod a
 - the ONE judge / adjudicator = strong. On a non-strong Lead that is an EXPLICIT `opts.model` / effort override — "high-risk review at the session's model" is the silent downgrade the tier policy forbids.
 
 Pin every fan-out `agent()` call — a `model:` class or a rolepod `agentType:`; a bare fan-out runs the whole fleet at the Lead's price, and no script comment excuses it. A stage that writes carries `agentType: 'rolepod:<role>'` — a bare `agent()` cannot edit product files. A high-risk fleet's judge stage carries a strong tier under any Lead: the tier follows the work, not the Lead.
+
+An `isolation: 'worktree'` agent holds tracked files only: a gitignored test harness is missing there, so the brief names how the Command gets in, or the writer runs on main with disjoint files.
 
 **A command before a refuter.** Before spawning a per-finding verify agent, ask what a COMMAND can settle — a test, curl, a computed style, a grep — and run it in the same stage (or in the script itself: typed `schema` output plus a code check is the cheapest guardrail). Spend an LLM refuter only on the claims no command can check.
 
