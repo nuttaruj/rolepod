@@ -2,7 +2,7 @@
 <!-- Rule: ask ONLY questions whose answer changes the implementation. -->
 <!-- If the codebase can answer it, read the codebase — do not spend a question. -->
 
-Ask every ready question in the round together, per the frontier-round policy in `write-spec` Discovery; within a round, resolve the question that gates the others first.
+Once the goal, user and scope are settled, ask every ready question in the round together, per the pacing and frontier-round policy in `write-spec` Discovery; within a round, resolve the question that gates the others first.
 
 ## Question types
 

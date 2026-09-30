@@ -29,6 +29,7 @@ Done when: the goal, constraints, risk surfaces and Product mode are written dow
 ### 2. Discovery
 
 Model open decisions as a tree; each answer unblocks the questions under it.
+Pace by how clear the goal is. Goal, user or scope still vague (step 1's one-sentence goal was a guess) → one question per message, each shaped by the last answer, until those three are settled; then the rest of the tree goes out in frontier rounds. Goal already clear → frontier rounds from the start.
 Ask in **frontier rounds**: number every question whose prerequisites are settled and present them together; a question depending on an open answer waits. A long frontier is grouped by topic and asked in full, never trimmed.
 Ask only what changes the implementation; which questions do → `references/question-bank.md`.
 **Recommend a default per question** — the simplest viable answer; the user confirms or overrides.
