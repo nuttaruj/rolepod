@@ -356,12 +356,14 @@ brief_plan_path() { # $1 = brief file
 # A task in a track (or a plan worktree) drops `finish` — the Lead runs it
 # once, after the track-end review ($5 = "track" or "plan"; empty = per task).
 ship_chain_tail() { # $1 = worktree (absolute), $2 = plan (absolute), $3 = task N, $4 = base checkout (absolute), $5 = mode or empty
-  local fin=""
+  local fin="" shabase="$4"
   if [ -z "${5:-}" ]; then
     fin="$(printf "bash '%s' finish '%s' && " "$SELF_PATH" "$1")"
+  else
+    shabase="$1" # no finish: the commit lives only in the track / plan worktree
   fi
   printf 'git -C '\''%s'\'' commit -m '\''<subject>'\'' && %sbash '\''%s'\'' log '\''%s'\'' %s --sha "$(git -C '\''%s'\'' rev-parse --short HEAD)" --note '\''<note>'\''' \
-    "$1" "$fin" "$SELF_PATH" "$2" "$3" "$4"
+    "$1" "$fin" "$SELF_PATH" "$2" "$3" "$shabase"
 }
 
 # scripts/plan-lint.sh --brief does not auto-resolve the contract path (only
@@ -679,13 +681,21 @@ cmd_start() {
     local pfeat prepo pwt_abs prows
     pfeat="$(plan_feature_of "$plan_abs")"
     prepo="$(basename "$repo_root" | sed 's/[^A-Za-z0-9._-]/-/g')"
-    pwt_abs="$(cd "$repo_root/.." && pwd)/${prepo}-wt-${pfeat}"
+    pwt_abs="$(cd "$repo_root/.." && pwd -P)/${prepo}-wt-${pfeat}"
     prows="$(plan_task_rows "$plan_abs")"
     if git -C "$repo_root" worktree list --porcelain 2>/dev/null | grep -qxF "worktree $pwt_abs" \
       || { [ "$(done_ids_of "$prows")" = " " ] && foreign_live_lock "$repo_root"; }; then
       wt_mode="plan"
-      brief_out="$(printf '%s\n' "$brief_out" | TICKET_WT_LINE="\`git worktree add -b ${pfeat}/plan ../${prepo}-wt-${pfeat}\` — cd there for every command; a single-track plan runs on the base checkout unless another session holds a live lock on it when its first task starts; then the whole plan runs in one plan worktree" \
-        awk '!done && /^`git worktree add / { print ENVIRON["TICKET_WT_LINE"]; done = 1; next } { print }')"
+      # Worktree, Bounds and Reviewers all come from plan-lint's plan-worktree brief.
+      if [ -n "$contract" ]; then
+        brief_out="$(bash "$LINT" --brief "$n" "$plan_abs" "$contract" --plan-worktree 2>&1)"
+      else
+        brief_out="$(bash "$LINT" --brief "$n" "$plan_abs" --plan-worktree 2>&1)"
+      fi
+      if [ $? -ne 0 ]; then
+        printf '%s\n' "$brief_out" >&2
+        exit 1
+      fi
     else
       # No live lock, no plan worktree: the base checkout (C4) — the --main
       # brief, no worktree, no branch.
@@ -1203,13 +1213,15 @@ EOF
         local tbase tline tdir tpath
         tbase="$(git -C "$log_root" rev-parse --abbrev-ref HEAD 2>/dev/null)"
         [ -n "$tbase" ] || tbase="HEAD"
-        tline="track $mytrack done — review: $tbase..$sha"
+        # three dots: from the merge-base, so a base that moved on (another
+        # track merged first) never shows up reversed in the lens diff
+        tline="track $mytrack done — review: $tbase...$sha"
         tdir="$log_root/.rolepod/evidence/review"
         tpath="$tdir/${feat_log}-${mytrack}.diff"
         if git -C "$log_root" rev-parse --verify --quiet "$sha^{commit}" >/dev/null 2>&1 && mkdir -p "$tdir" 2>/dev/null; then
           if {
-            git -C "$log_root" diff --stat "$tbase..$sha" -- . ':(exclude)plugins' ':(exclude)build/rendered'
-            git -C "$log_root" diff -U10 "$tbase..$sha" -- . ':(exclude)plugins' ':(exclude)build/rendered'
+            git -C "$log_root" diff --stat "$tbase...$sha" -- . ':(exclude)plugins' ':(exclude)build/rendered'
+            git -C "$log_root" diff -U10 "$tbase...$sha" -- . ':(exclude)plugins' ':(exclude)build/rendered'
           } > "$tpath" 2>/dev/null; then
             tline="$tline; lens diff: $tpath"
           fi

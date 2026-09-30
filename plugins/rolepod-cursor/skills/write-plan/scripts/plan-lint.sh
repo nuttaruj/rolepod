@@ -9,7 +9,7 @@
 #   (resolved against the plan's directory, then the repo root). A plan
 #   whose Parallel layout says "Sequential" skips the ownership check.
 #
-# Usage: scripts/plan-lint.sh --brief <N> <plan.md> [contract.md] [--main]
+# Usage: scripts/plan-lint.sh --brief <N> <plan.md> [contract.md] [--main] [--plan-worktree]
 #   Prints Task N's brief to stdout, assembled from the plan (and the
 #   contract's File-ownership + Do-not-touch-list when one is given), in
 #   this order: Worktree or Checkout, Goal, Tier, Blocked by, Read first,
@@ -22,6 +22,9 @@
 #   Blocked by, via internal re-runs guarded by PLAN_LINT_NOCOUNT): in-task
 #   two lenses when another task is Blocked by it or it is the only R2/R3
 #   task nothing depends on; else `none` (a combined-review owner).
+#   `--plan-worktree`: the task runs in the plan worktree (branch
+#   <feature>/plan, path ../<repo>-wt-<feature>) — Worktree, Bounds and the
+#   R2/R3 Reviewers (`none`, the track-end review) follow from it.
 #   `--main`, in any position after --brief: an on-main task, no
 #   worktree — prints `## Checkout` in place of `## Worktree`, and Bounds
 #   names no worktree path either. Exit 0 on success; exit 2 with one
@@ -180,26 +183,16 @@ function fence_is_open() { return infence }
 function fence_open_line() { return fenceopen }
 '
 
-# Tracks (spec worktree-track-2026-09-30): the `## Tracks` section — one line
-# per track, `- A — <short name>: Task 1, Task 2 · branch <feature>/a-<slug>` —
-# and each task `- **Track:** A` field. One parser for both callers, told
-# apart by -v mode: `brief` prints the branch of task `want` (nothing when
-# the plan has no `## Tracks` or the task names no listed track), `lint`
-# prints one `E ...` line per violation and one `OK ...` line when the plan
-# has tracks and none is broken. -v feature = the plan file name without its
-# date. Runs with CLEANFILES_AWK and FENCE_AWK prepended.
+# One copy of the field helpers every awk pass below shares (trim, fieldgate,
+# fieldval). A field is only a line whose (left-trimmed) start is a bullet —
+# dash OR asterisk — an optional checkbox, then the label. The bullet char is
+# consumed BEFORE bold asterisks are stripped: a whole-line gsub(/\*/) first
+# would eat an asterisk BULLET along with the bold markers, making a
+# "* Label:" line unreachable — and would let prose that merely quotes
+# "Label:" elsewhere on the line pass.
 # shellcheck disable=SC2016
-TRACKS_AWK='
+FIELD_AWK='
 function trim(x) { sub(/^[[:space:]]+/, "", x); sub(/[[:space:]]+$/, "", x); return x }
-function tslug(x,   t, n, a, k, o, w) {
-  t = tolower(x); gsub(/[^a-z0-9]+/, "-", t); gsub(/^-+|-+$/, "", t)
-  n = split(t, a, "-"); o = ""
-  for (k = 1; k <= n && split(o, w, "-") < 3; k++) {
-    if (a[k] == "" || a[k] ~ /^(the|a|an|of|to|in|for|and|on|is|with)$/) continue
-    o = (o == "") ? a[k] : o "-" a[k]
-  }
-  return (o == "") ? "track" : o
-}
 function fieldgate(line, name,    g) {
   g = line; sub(/^[[:space:]]+/, "", g)
   if (g !~ /^[-*]/) return 0
@@ -210,6 +203,31 @@ function fieldval(line, name,    v) {
   v = line; gsub(/\*/, "", v); v = trim(v); sub(/^[-*][[:space:]]*/, "", v)
   sub(/^(\[[ xX]\][[:space:]]*)?[A-Za-z ]+:[[:space:]]*/, "", v)
   return trim(v)
+}
+'
+
+# Tracks (spec worktree-track-2026-09-30): the `## Tracks` section — one line
+# per track, `- A — <short name>: Task 1, Task 2 · branch <feature>/a-<slug>` —
+# and each task `- **Track:** A` field. One parser for both callers, told
+# apart by -v mode: `brief` prints the branch of task `want` (nothing when
+# the plan has no `## Tracks` or the task names no listed track), `lint`
+# prints one `E ...` line per violation and one `OK ...` line when the plan
+# has tracks and none is broken. -v feature = the plan file name without its
+# date. Runs with CLEANFILES_AWK and FENCE_AWK prepended.
+# shellcheck disable=SC2016
+TRACKS_AWK='
+function tslug(x,   t, n, a, k, o, w) {
+  t = tolower(x); gsub(/[^a-z0-9]+/, "-", t); gsub(/^-+|-+$/, "", t)
+  n = split(t, a, "-"); o = ""
+  for (k = 1; k <= n && split(o, w, "-") < 3; k++) {
+    if (a[k] == "" || a[k] ~ /^(the|a|an|of|to|in|for|and|on|is|with)$/) continue
+    o = (o == "") ? a[k] : o "-" a[k]
+  }
+  return (o == "") ? "track" : o
+}
+function addrefs(c, v) {
+  gsub(/\([^)]*\)/, "", v); sub(/[[:space:]]+(—|–)[[:space:]]+.*$/, "", v)
+  while (match(v, /[0-9]+/)) { refs[c] = refs[c] " " substr(v, RSTART, RLENGTH); v = substr(v, RSTART + RLENGTH) }
 }
 function addfile(p, c) {
   if (!((p, c) in fseen)) { fseen[p, c] = 1; ftasks[p] = ftasks[p] " " c; if (!(p in fknown)) { fknown[p] = 1; forder[++fn] = p } }
@@ -243,14 +261,17 @@ insec {
   next
 }
 cur != "" {
-  if (fieldgate($0, "Track") && !(cur in trk)) { v = fieldval($0, "Track"); sub(/[[:space:]].*$/, "", v); gsub(/`/, "", v); trk[cur] = v; next }
+  if (fieldgate($0, "Track") && !(cur in trk)) { v = fieldval($0, "Track"); sub(/[[:space:]].*$/, "", v); gsub(/`/, "", v); trk[cur] = v; bcont = ""; next }
   if (fieldgate($0, "Blocked by") && !(cur in bdone)) {
-    bdone[cur] = 1; v = fieldval($0, "Blocked by")
-    if (tolower(v) ~ /^(none|—|-|–)/) next
-    gsub(/\([^)]*\)/, "", v); sub(/[[:space:]]+(—|–)[[:space:]]+.*$/, "", v)
-    while (match(v, /[0-9]+/)) { refs[cur] = refs[cur] " " substr(v, RSTART, RLENGTH); v = substr(v, RSTART + RLENGTH) }
+    bdone[cur] = 1; v = fieldval($0, "Blocked by"); bcont = cur
+    if (tolower(v) ~ /^(none|—|-|–)/) { bcont = ""; next }
+    addrefs(cur, v)
     next
   }
+  # A wrapped Blocked-by value (the template wraps it): continuation lines
+  # are unbulleted, like ticket.sh plan_task_rows reads them.
+  if (bcont == cur && trim($0) != "" && $0 !~ /^[-*][[:space:]]/ && $0 !~ /^[[:space:]]*[-*][[:space:]]/ && $0 !~ /^#/) { addrefs(cur, trim($0)); next }
+  if ($0 ~ /^[[:space:]]*[-*][[:space:]]/ || $0 ~ /^#/) bcont = ""
   if (fieldgate($0, "Files") && !(cur in fdone)) {
     fdone[cur] = 1; v = $0
     sub(/^[[:space:]]*[-*][[:space:]]*(\[[ xX]\][[:space:]]*)?\*{0,2}Files\*{0,2}:\*{0,2}[[:space:]]*/, "", v)
@@ -304,24 +325,26 @@ if [ "${1:-}" = "--brief" ]; then
   # the main checkout — a sequential track, no worktree); pull it out first
   # so the remaining args keep their usual <N> <plan.md> [contract.md] order.
   BRIEF_MAIN=0
+  BRIEF_PLANWT=0
   BRIEF_POS=()
   for a in "$@"; do
-    if [ "$a" = "--main" ]; then BRIEF_MAIN=1; else BRIEF_POS+=("$a"); fi
+    if [ "$a" = "--main" ]; then BRIEF_MAIN=1
+    elif [ "$a" = "--plan-worktree" ]; then BRIEF_PLANWT=1
+    else BRIEF_POS+=("$a"); fi
   done
   BRIEF_N="${BRIEF_POS[0]:-}"
   PLAN="${BRIEF_POS[1]:-}"
   CONTRACT="${BRIEF_POS[2]:-}"
   if [ -z "$BRIEF_N" ] || [ -z "$PLAN" ] || [ ! -f "$PLAN" ]; then
-    echo "usage: plan-lint.sh --brief <N> <plan.md> [contract.md] [--main]" >&2
+    echo "usage: plan-lint.sh --brief <N> <plan.md> [contract.md] [--main] [--plan-worktree]" >&2
     exit 2
   fi
   if [ -n "$CONTRACT" ] && [ ! -f "$CONTRACT" ]; then
-    echo "usage: plan-lint.sh --brief <N> <plan.md> [contract.md] [--main] — contract not found: $CONTRACT" >&2
+    echo "usage: plan-lint.sh --brief <N> <plan.md> [contract.md] [--main] [--plan-worktree] — contract not found: $CONTRACT" >&2
     exit 2
   fi
   # shellcheck disable=SC2016
   BRIEF_AWK='
-  function trim(x) { sub(/^[[:space:]]+/, "", x); sub(/[[:space:]]+$/, "", x); return x }
   function slug(x,   t, n, a, k, o, w) {
     t = tolower(x); gsub(/[^a-z0-9]+/, "-", t); gsub(/^-+|-+$/, "", t)
     n = split(t, a, "-"); o = ""
@@ -820,6 +843,7 @@ if [ "${1:-}" = "--brief" ]; then
       # A task in a track (## Tracks): the track branch and worktree, shared
       # by every task of the track — path = the branch with / turned into -.
       tpath = tbranch; gsub(/\//, "-", tpath)
+if (planwt == 1) tpath = substr(tbranch, 1, length(tbranch) - 5)
       print "## Worktree"
       printf "`git worktree add -b %s ../%s-wt-%s` — cd there for every command; the name says which track it holds\n", tbranch, repo, tpath
     } else {
@@ -1018,11 +1042,12 @@ if [ "${1:-}" = "--brief" ]; then
   # The task track branch (empty when the plan has no ## Tracks, or the task
   # names no listed track — then the per-task worktree line stays as it was).
   BRIEF_FEATURE=$(basename "$PLAN" .md | sed 's/^[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]-//')
-  BRIEF_TBRANCH=$(awk -v rx="$TASK_RX" -v mode=brief -v want="$BRIEF_N" -v feature="$BRIEF_FEATURE" "$CLEANFILES_AWK$FENCE_AWK$TRACKS_AWK" "$PLAN")
+  BRIEF_TBRANCH=$(awk -v rx="$TASK_RX" -v mode=brief -v want="$BRIEF_N" -v feature="$BRIEF_FEATURE" "$CLEANFILES_AWK$FENCE_AWK$FIELD_AWK$TRACKS_AWK" "$PLAN")
+  [ "$BRIEF_PLANWT" = 1 ] && BRIEF_TBRANCH="$BRIEF_FEATURE/plan"
   if [ -n "$CONTRACT" ]; then
-    awk -v rx="$TASK_RX" -v want="$BRIEF_N" -v planpath="$PLAN" -v repo="$BRIEF_REPO" -v hascontract=1 -v onmain="$BRIEF_MAIN" -v rvin="$BRIEF_INTASK" -v tbranch="$BRIEF_TBRANCH" "$CLEANFILES_AWK$FENCE_AWK$BRIEF_AWK" "$PLAN" "$CONTRACT"
+    awk -v rx="$TASK_RX" -v want="$BRIEF_N" -v planpath="$PLAN" -v repo="$BRIEF_REPO" -v hascontract=1 -v onmain="$BRIEF_MAIN" -v rvin="$BRIEF_INTASK" -v planwt="$BRIEF_PLANWT" -v tbranch="$BRIEF_TBRANCH" "$CLEANFILES_AWK$FENCE_AWK$FIELD_AWK$BRIEF_AWK" "$PLAN" "$CONTRACT"
   else
-    awk -v rx="$TASK_RX" -v want="$BRIEF_N" -v planpath="$PLAN" -v repo="$BRIEF_REPO" -v hascontract=0 -v onmain="$BRIEF_MAIN" -v rvin="$BRIEF_INTASK" -v tbranch="$BRIEF_TBRANCH" "$CLEANFILES_AWK$FENCE_AWK$BRIEF_AWK" "$PLAN"
+    awk -v rx="$TASK_RX" -v want="$BRIEF_N" -v planpath="$PLAN" -v repo="$BRIEF_REPO" -v hascontract=0 -v onmain="$BRIEF_MAIN" -v rvin="$BRIEF_INTASK" -v planwt="$BRIEF_PLANWT" -v tbranch="$BRIEF_TBRANCH" "$CLEANFILES_AWK$FENCE_AWK$FIELD_AWK$BRIEF_AWK" "$PLAN"
   fi
   exit $?
 fi
@@ -1064,20 +1089,7 @@ fi
 # single awk call prints tagged lines (N = the count, M = a task missing its
 # Command, U = the line an unclosed fence opened on, if any) that the shell
 # below splits back apart.
-TASKPASS=$(awk -v rx="$TASK_RX" "$FENCE_AWK"'
-  function trim(x) { sub(/^[[:space:]]+/, "", x); sub(/[[:space:]]+$/, "", x); return x }
-  # A field is only a line whose (left-trimmed) start is a bullet — dash OR
-  # asterisk — an optional checkbox, then the label. The bullet char is
-  # consumed BEFORE bold asterisks are stripped: a whole-line gsub(/\*/)
-  # first would eat an asterisk BULLET along with the bold markers, making
-  # a "* Command:" line unreachable — and would also let a prose sentence
-  # elsewhere on the line that merely quotes "Command:" pass the check.
-  function fieldgate(line, name,    g) {
-    g = line; sub(/^[[:space:]]+/, "", g)
-    if (g !~ /^[-*]/) return 0
-    g = substr(g, 2); gsub(/\*/, "", g); g = trim(g)
-    return (g ~ ("^(\\[[ xX]\\][[:space:]]*)?" name ":"))
-  }
+TASKPASS=$(awk -v rx="$TASK_RX" "$FENCE_AWK$FIELD_AWK"'
   BEGIN { tcount = 0 }
   fenceline($0) { next }
   $0 ~ rx     { if (t != "" && !c) print "M " t; t = $0; c = 0; tcount++; next }
@@ -1132,19 +1144,7 @@ printf '%s' "$LAYOUT" | grep -qiE '^[[:space:]]*([-*][[:space:]]*)?sequential' &
 # (integers after the colon; "none" / "—" / "-" = no blockers). Then resolve
 # every ref, count fields, and run Kahn's algorithm for a cycle. Output lines
 # are prefixed so the shell can route them: E = fail, A = advisory.
-GRAPH=$(awk -v rx="$TASK_RX" -v seq="$SEQUENTIAL" "$FENCE_AWK"'
-  function trim(x) { sub(/^[[:space:]]+/, "", x); sub(/[[:space:]]+$/, "", x); return x }
-  # A field is only a line whose (left-trimmed) start is a bullet — dash OR
-  # asterisk — an optional checkbox, then the label. The bullet char must be
-  # consumed BEFORE bold asterisks are stripped: gsub(/\*/,"") on the whole
-  # line first would eat an asterisk BULLET along with the bold markers,
-  # making a "* Label:" line unreachable.
-  function fieldgate(line, name,    g) {
-    g = line; sub(/^[[:space:]]+/, "", g)
-    if (g !~ /^[-*]/) return 0
-    g = substr(g, 2); gsub(/\*/, "", g); g = trim(g)
-    return (g ~ ("^(\\[[ xX]\\][[:space:]]*)?" name ":"))
-  }
+GRAPH=$(awk -v rx="$TASK_RX" -v seq="$SEQUENTIAL" "$FENCE_AWK$FIELD_AWK"'
   function addpath(p, c) {
     if (!((p, c) in pathseen)) {
       if (!(p in pathtasks)) pathorder[++pn] = p
@@ -1316,7 +1316,7 @@ fi
 # ── Tracks (worktree-track spec) — silent for a plan with no ## Tracks and
 # no Track field; else every task names a listed track, one file lives in
 # one track, and Blocked by crosses tracks only at a track's first task.
-TRACKS_OUT=$(awk -v rx="$TASK_RX" -v mode=lint -v feature="" "$CLEANFILES_AWK$FENCE_AWK$TRACKS_AWK" "$PLAN")
+TRACKS_OUT=$(awk -v rx="$TASK_RX" -v mode=lint -v feature="" "$CLEANFILES_AWK$FENCE_AWK$FIELD_AWK$TRACKS_AWK" "$PLAN")
 if printf '%s\n' "$TRACKS_OUT" | grep -q '^E '; then
   printf '%s\n' "$TRACKS_OUT" | grep '^E ' | sed 's/^E /  ✗ /'
   fail=1
