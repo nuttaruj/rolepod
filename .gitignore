@@ -70,3 +70,4 @@ docs/handoffs/
 /scripts/bump-version.sh
 /scripts/contract-snapshot.sh
 /scripts/doctor.sh
+/scripts/doctor_codex.py
