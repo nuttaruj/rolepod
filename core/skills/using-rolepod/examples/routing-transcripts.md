@@ -25,7 +25,7 @@ Next step: discovery dialogue in frontier rounds — every ready question togeth
 
 User: "the footer copyright year is hardcoded to 2024 — make it dynamic"
 
-Route: R2 (one file + test) → implement-plan · exact target, one file, logic-bearing, no design choice
+Route: R2 (one file + test) → implement-plan · Owner frontend-developer · exact target, one file, logic-bearing, no design choice
 Skipping: Define + Plan — the 3-5 line checklist is the plan. Its verify command still runs.
 Next step: write the checklist (goal, done-when, verify command); a task owner builds it on main.
 

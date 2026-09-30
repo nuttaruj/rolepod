@@ -31,7 +31,7 @@ Done when: a conversation is answered in the user's register, or a commission go
 
 - Unsure about risk → the higher tier.
 - Unsure about size only → read the affected regions of the named files (and `git status` once work started) and tier from that; an unresolved dependency → higher.
-- The task grows (a second source file, hidden logic, a risk path) → re-tier up at once, never down.
+- The task grows (a second source file, hidden logic, a risk path) → re-tier up at once, never down: print the new Route line before the next edit or dispatch; a risk path (credits, auth, …) → R4 and its review floor.
 - Tier is per task; the commission's highest tier sets the spine (Define → Plan) only.
 - Verify never fully skips: R1/R2 drop the full suite and browser drive, never the echo or the checklist command.
 - Effort settings (`/effort`, ultracode) raise reasoning, never the tier.
@@ -41,6 +41,7 @@ Done when: one tier is chosen from observed scope.
 ### 3. Pick the first skill
 
 The Lead routes, scopes, briefs (3-5 lines: goal, region / files, done-when — a changed rule also names the nearest inputs whose result stays the same — Command), spot-checks and commits. A skill whose steps read code regions, run commands or iterate is run by the owner of the path, who calls the skill. Without sub-agents, the Lead runs it.
+R2 and up, with sub-agents: after the Route line the Lead loads the named skill, then dispatches the owner the line names. The Lead never reads code regions, edits a source file or runs the fix loop itself; that work is the owner's even when it looks small. The owner's reviewers are the owner's to dispatch and re-check; the Lead reads the owner's decision brief, never relays review rounds.
 
 The FIRST matching row fires:
 
@@ -85,11 +86,11 @@ Next step: <concrete action>
 ```
 
 - R0 / R1 — no line.
-- R2 — `Route: R2 (one file + test) → <skill> · <reason>`, then the checklist.
-- R3 / R4 or a surprising route — the full block.
+- R2 — `Route: R2 (one file + test) → <skill> · Owner <path role> · <reason>`, then the checklist as the owner's brief.
+- R3 / R4 or a surprising route — the full block; `Next step:` names the owner (or `write-spec` / `write-plan`, which assign owners).
 - Each tier carries its gloss: R0 answer only · R1 trivial edit · R2 one file + test · R3 multi-file · R4 high-risk.
 
-Done when: the route is stated (R2 and up) and the named skill is running.
+Done when: the route is stated (R2 and up), the named skill is loaded, and the owner it names is dispatched (no sub-agents → the Lead runs the skill).
 
 ## Stop conditions
 
