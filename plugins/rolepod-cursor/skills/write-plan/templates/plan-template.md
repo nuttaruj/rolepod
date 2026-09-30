@@ -32,6 +32,7 @@
       consumes from it — `Task 2 (its snapshot)` — or "none". This field IS the
       plan's order — nothing restates it in prose; an edge naming nothing is a
       convenience edge: drop it.>
+- **Track:** <track id from ## Tracks — delete this line when the plan has no ## Tracks>
 - [ ] **Files:** <paths this task touches>
 - **Read first:** <2-3 files + the pattern to copy; the owner starts here, never re-surveys>
 - [ ] **Change:** <what to do, concretely — at most 3 bullets. An exact-string
@@ -109,6 +110,14 @@
  parallel; say why in a clause. Or "Parallel — contract: <path>" when more
  than one agent edits code (templates/cohesion-contract-template.md pins
  ownership and merge order).>
+
+## Tracks
+<Optional — only when the plan runs as tracks (a track = tasks that run in order
+ in one worktree); none → delete this section. One line per track; every task
+ names its track in `**Track:**`. Tasks that edit the same file share one track;
+ Blocked by crosses tracks only at a track's first task. feature = this plan's
+ file name without its date.>
+- <A> — <short name>: Task <N>, Task <M> · branch <feature>/<a>-<short-slug>
 
 ## Ship groups
 <Optional — only when tasks share a seam (a contract or interface): one line

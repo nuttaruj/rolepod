@@ -42,6 +42,11 @@
 #      appears under EXACTLY one owner in the contract's "## File ownership"
 #      — an unowned file is unplannable work; a dual-owned file is a merge
 #      conflict on schedule.
+#   5. Tracks (only when the plan has `## Tracks` or a `**Track:**` field):
+#      every task names a track listed there; two tasks that edit one file
+#      share a track; Blocked by crosses tracks only at a track first task.
+#      `--brief` then prints the track branch and worktree for a track task
+#      and Reviewers `none — the track-end review covers this task` for R2/R3.
 #
 # Advisories (v2.144.0, never a FAIL — a Sequential plan may be legitimate):
 #   a. Prefactor smell: a backticked path on the `Files:` line of >= 2 tasks
@@ -173,6 +178,124 @@ function fenceline(line,    lead, rest, ch, n, i, c, after) {
 }
 function fence_is_open() { return infence }
 function fence_open_line() { return fenceopen }
+'
+
+# Tracks (spec worktree-track-2026-09-30): the `## Tracks` section — one line
+# per track, `- A — <short name>: Task 1, Task 2 · branch <feature>/a-<slug>` —
+# and each task `- **Track:** A` field. One parser for both callers, told
+# apart by -v mode: `brief` prints the branch of task `want` (nothing when
+# the plan has no `## Tracks` or the task names no listed track), `lint`
+# prints one `E ...` line per violation and one `OK ...` line when the plan
+# has tracks and none is broken. -v feature = the plan file name without its
+# date. Runs with CLEANFILES_AWK and FENCE_AWK prepended.
+# shellcheck disable=SC2016
+TRACKS_AWK='
+function trim(x) { sub(/^[[:space:]]+/, "", x); sub(/[[:space:]]+$/, "", x); return x }
+function tslug(x,   t, n, a, k, o, w) {
+  t = tolower(x); gsub(/[^a-z0-9]+/, "-", t); gsub(/^-+|-+$/, "", t)
+  n = split(t, a, "-"); o = ""
+  for (k = 1; k <= n && split(o, w, "-") < 3; k++) {
+    if (a[k] == "" || a[k] ~ /^(the|a|an|of|to|in|for|and|on|is|with)$/) continue
+    o = (o == "") ? a[k] : o "-" a[k]
+  }
+  return (o == "") ? "track" : o
+}
+function fieldgate(line, name,    g) {
+  g = line; sub(/^[[:space:]]+/, "", g)
+  if (g !~ /^[-*]/) return 0
+  g = substr(g, 2); gsub(/\*/, "", g); g = trim(g)
+  return (g ~ ("^(\\[[ xX]\\][[:space:]]*)?" name ":"))
+}
+function fieldval(line, name,    v) {
+  v = line; gsub(/\*/, "", v); v = trim(v); sub(/^[-*][[:space:]]*/, "", v)
+  sub(/^(\[[ xX]\][[:space:]]*)?[A-Za-z ]+:[[:space:]]*/, "", v)
+  return trim(v)
+}
+function addfile(p, c) {
+  if (!((p, c) in fseen)) { fseen[p, c] = 1; ftasks[p] = ftasks[p] " " c; if (!(p in fknown)) { fknown[p] = 1; forder[++fn] = p } }
+}
+fenceline($0) { next }
+/^## / { insec = ($0 ~ /^## Tracks[[:space:]]*$/) ? 1 : 0; cur = ""; next }
+$0 ~ rx {
+  id = $0; sub(/^### (Task ?|T)/, "", id); sub(/[^0-9].*$/, "", id)
+  cur = id; n++; order[n] = id; next
+}
+insec {
+  l = $0; sub(/\r$/, "", l)
+  if (l !~ /^[[:space:]]*[-*][[:space:]]+/) next
+  sub(/^[[:space:]]*[-*][[:space:]]+/, "", l); gsub(/\*/, "", l)
+  if (!match(l, /^[A-Za-z0-9]+/)) next
+  tid = substr(l, 1, RLENGTH); rest = substr(l, RLENGTH + 1)
+  if (rest !~ /^[[:space:]]+(—|–|-)[[:space:]]+/) next
+  sub(/^[[:space:]]+(—|–|-)[[:space:]]+/, "", rest)
+  if (rest !~ /Task/ && rest !~ /branch/) next
+  # name and member list sit before the middle dot, the branch after it
+  pre = rest; post = ""; di = index(rest, "·")
+  if (di > 0) { pre = substr(rest, 1, di - 1); post = substr(rest, di + length("·")) }
+  nm = pre; ci = index(nm, ":"); if (ci > 0) nm = substr(nm, 1, ci - 1)
+  if (ci > 0) { mem = substr(pre, ci + 1); while (match(mem, /[0-9]+/)) { listed[tid, substr(mem, RSTART, RLENGTH)] = 1; nlisted[tid]++; mem = substr(mem, RSTART + RLENGTH) } }
+  br = ""
+  if (match(post, /branch[[:space:]]+[^[:space:]]+/)) {
+    br = substr(post, RSTART, RLENGTH); sub(/^branch[[:space:]]+/, "", br); gsub(/`/, "", br); sub(/[,.;]+$/, "", br)
+  }
+  if (br == "") br = feature "/" tolower(tid) "-" tslug(nm)
+  tk[tid] = 1; tbr[tid] = br; ntk++
+  next
+}
+cur != "" {
+  if (fieldgate($0, "Track") && !(cur in trk)) { v = fieldval($0, "Track"); sub(/[[:space:]].*$/, "", v); gsub(/`/, "", v); trk[cur] = v; next }
+  if (fieldgate($0, "Blocked by") && !(cur in bdone)) {
+    bdone[cur] = 1; v = fieldval($0, "Blocked by")
+    if (tolower(v) ~ /^(none|—|-|–)/) next
+    gsub(/\([^)]*\)/, "", v); sub(/[[:space:]]+(—|–)[[:space:]]+.*$/, "", v)
+    while (match(v, /[0-9]+/)) { refs[cur] = refs[cur] " " substr(v, RSTART, RLENGTH); v = substr(v, RSTART + RLENGTH) }
+    next
+  }
+  if (fieldgate($0, "Files") && !(cur in fdone)) {
+    fdone[cur] = 1; v = $0
+    sub(/^[[:space:]]*[-*][[:space:]]*(\[[ xX]\][[:space:]]*)?\*{0,2}Files\*{0,2}:\*{0,2}[[:space:]]*/, "", v)
+    v = cleanfiles(v, 1); m = v
+    while (match(m, /`[^`]+`/)) { addfile(substr(m, RSTART + 1, RLENGTH - 2), cur); m = substr(m, RSTART + RLENGTH) }
+    gsub(/`[^`]+`/, " ", v); nt = split(v, toks, /[,[:space:]]+/)
+    for (i = 1; i <= nt; i++) { t = toks[i]; gsub(/[,;)]+$/, "", t); if (t == "" || t ~ /^</) continue; if (t ~ /\// || t ~ /\.[[:alnum:]]+$/) addfile(t, cur) }
+    next
+  }
+}
+END {
+  if (mode == "brief") {
+    if (ntk > 0 && (want in trk) && (trk[want] in tk)) print tbr[trk[want]]
+    exit 0
+  }
+  bad = 0
+  for (k = 1; k <= n; k++) {
+    t = order[k]
+    if (ntk > 0 && !(t in trk)) { print "E Task " t " has no Track — the plan has a ## Tracks section, every task names its track"; bad++ }
+    else if ((t in trk) && !(trk[t] in tk)) { print "E Task " t " names track " trk[t] " — not in ## Tracks"; bad++ }
+    else if (t in trk) {
+      if (!(trk[t] in first)) first[trk[t]] = t
+      if (nlisted[trk[t]] > 0 && !((trk[t], t) in listed)) { print "E Task " t " names track " trk[t] " but the ## Tracks line for " trk[t] " does not list it"; bad++ }
+    }
+  }
+  for (k = 1; k <= n; k++) {
+    t = order[k]; if (!((t in trk) && (trk[t] in tk))) continue
+    nr = split(refs[t], rs, " ")
+    for (j = 1; j <= nr; j++) {
+      r = rs[j]
+      if (!(r in trk) || !(trk[r] in tk) || trk[r] == trk[t] || first[trk[t]] == t) continue
+      print "E Task " t " (track " trk[t] ") is Blocked by Task " r " (track " trk[r] ") — only the first task of a track may wait on another track"; bad++
+    }
+  }
+  for (k = 1; k <= fn; k++) {
+    p = forder[k]; na = split(ftasks[p], ids, " ")
+    for (i = 1; i <= na; i++) for (j = i + 1; j <= na; j++) {
+      a = ids[i]; b = ids[j]
+      if ((a in trk) && (b in trk) && (trk[a] in tk) && (trk[b] in tk) && trk[a] != trk[b]) {
+        print "E `" p "` is edited by Task " a " (track " trk[a] ") and Task " b " (track " trk[b] ") — tasks that edit one file belong to one track"; bad++
+      }
+    }
+  }
+  if (ntk > 0 && bad == 0) print "OK tracks: " ntk " tracks, every task assigned, no file shared across tracks"
+}
 '
 
 if [ "${1:-}" = "--brief" ]; then
@@ -693,6 +816,12 @@ if [ "${1:-}" = "--brief" ]; then
     if (onmain) {
       print "## Checkout"
       print "main checkout — no worktree; run every command in the main checkout"
+    } else if (tbranch != "") {
+      # A task in a track (## Tracks): the track branch and worktree, shared
+      # by every task of the track — path = the branch with / turned into -.
+      tpath = tbranch; gsub(/\//, "-", tpath)
+      print "## Worktree"
+      printf "`git worktree add -b %s ../%s-wt-%s` — cd there for every command; the name says which track it holds\n", tbranch, repo, tpath
     } else {
       print "## Worktree"
       printf "`git worktree add -b %s/t%s-%s ../%s-wt-%s-t%s-%s` — cd there for every command; the name says which task it holds\n", feat, want, tslug, repo, feat, want, tslug
@@ -830,12 +959,14 @@ if [ "${1:-}" = "--brief" ]; then
       # task in the plan nothing depends on, reviews in-task (rvin=1); two or more
       # independent ones → none, a combined-review owner reviews the plan diff
       # once (implement-plan Review). No Round 2 line here.
-      if (rvin == 1) r ="Review in-task, no combined review covers this task: run the two lenses yourself in ONE message, `universal-reviewer` `lens: spec` + `universal-reviewer` `lens: standards` (reports `.rolepod/evidence/review/<task>-<lens>.md`), fix; round 2+ — R2/R3: none; the owner fixes each BLOCKER / MAJOR and attaches its proof (the Command tail, the reviewer repro re-run, or the grep showing the old line gone)"
+      if (tbranch != "" && !onmain) r = "`none` — the track-end review covers this task"
+      else if (rvin == 1) r ="Review in-task, no combined review covers this task: run the two lenses yourself in ONE message, `universal-reviewer` `lens: spec` + `universal-reviewer` `lens: standards` (reports `.rolepod/evidence/review/<task>-<lens>.md`), fix; round 2+ — R2/R3: none; the owner fixes each BLOCKER / MAJOR and attaches its proof (the Command tail, the reviewer repro re-run, or the grep showing the old line gone)"
       else r = "`none` — a combined-review owner reviews the plan diff once before release"
       print r
     }
     print "## Bounds"
     if (onmain) print "- Edit only Files allowed, in the main checkout; no backup copies (.bak / .orig). Never commit or push; leave the tree staged. One exception: a file the task needs that is in no Files list (not forbidden) - edit it and add an Also touched: line."
+    else if (tbranch != "") printf "- Edit only Files allowed, and only under ../%s-wt-%s — the same path in the main checkout belongs to the Lead; no backup copies (.bak / .orig). Never commit or push; leave the tree staged. One exception: a file the task needs that is in no Files list (not forbidden) - edit it and add an Also touched: line.\n", repo, tpath
     else printf "- Edit only Files allowed, and only under ../%s-wt-%s-t%s-%s — the same path in the main checkout belongs to the Lead; no backup copies (.bak / .orig). Never commit or push; leave the tree staged. One exception: a file the task needs that is in no Files list (not forbidden) - edit it and add an Also touched: line.\n", repo, feat, want, tslug
     print "- After each edit run only the checks covering the file just edited; run the Command once, last before returning, then the repo commit check once (the one the project CLAUDE.md or AGENTS.md names), in the foreground (Bash timeout 600000; never run_in_background). Reviewers named above → dispatch them in ONE message, no name, fork or remote isolation (such a child reports to the Lead); return only after each report is in (a child ending wakes you, or the Lead relays it; a turn ended to wait has the last line WAITING: <report paths>); no way to wait → REVIEW NEEDED: (reports: .rolepod/evidence/review/<task>-<role>.md, a lens <task>-<lens>.md); fix; then the Reviewers section above."
     print "- Budget: build <= 40 tool calls, whole loop <= 120; past it return PARTIAL with what is done, never grind."
@@ -884,10 +1015,14 @@ if [ "${1:-}" = "--brief" ]; then
     done
     case "$RC_DEPS" in *" $BRIEF_N "*) ;; *) [ "$RC_LEAVES" -ge 2 ] && BRIEF_INTASK=0 ;; esac
   fi
+  # The task track branch (empty when the plan has no ## Tracks, or the task
+  # names no listed track — then the per-task worktree line stays as it was).
+  BRIEF_FEATURE=$(basename "$PLAN" .md | sed 's/^[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]-//')
+  BRIEF_TBRANCH=$(awk -v rx="$TASK_RX" -v mode=brief -v want="$BRIEF_N" -v feature="$BRIEF_FEATURE" "$CLEANFILES_AWK$FENCE_AWK$TRACKS_AWK" "$PLAN")
   if [ -n "$CONTRACT" ]; then
-    awk -v rx="$TASK_RX" -v want="$BRIEF_N" -v planpath="$PLAN" -v repo="$BRIEF_REPO" -v hascontract=1 -v onmain="$BRIEF_MAIN" -v rvin="$BRIEF_INTASK" "$CLEANFILES_AWK$FENCE_AWK$BRIEF_AWK" "$PLAN" "$CONTRACT"
+    awk -v rx="$TASK_RX" -v want="$BRIEF_N" -v planpath="$PLAN" -v repo="$BRIEF_REPO" -v hascontract=1 -v onmain="$BRIEF_MAIN" -v rvin="$BRIEF_INTASK" -v tbranch="$BRIEF_TBRANCH" "$CLEANFILES_AWK$FENCE_AWK$BRIEF_AWK" "$PLAN" "$CONTRACT"
   else
-    awk -v rx="$TASK_RX" -v want="$BRIEF_N" -v planpath="$PLAN" -v repo="$BRIEF_REPO" -v hascontract=0 -v onmain="$BRIEF_MAIN" -v rvin="$BRIEF_INTASK" "$CLEANFILES_AWK$FENCE_AWK$BRIEF_AWK" "$PLAN"
+    awk -v rx="$TASK_RX" -v want="$BRIEF_N" -v planpath="$PLAN" -v repo="$BRIEF_REPO" -v hascontract=0 -v onmain="$BRIEF_MAIN" -v rvin="$BRIEF_INTASK" -v tbranch="$BRIEF_TBRANCH" "$CLEANFILES_AWK$FENCE_AWK$BRIEF_AWK" "$PLAN"
   fi
   exit $?
 fi
@@ -1177,6 +1312,17 @@ elif [ -n "$GRAPH_A" ] && ! printf '%s' "$GRAPH_A" | grep -q 'no Blocked by fiel
   echo "  ✓ Blocked-by graph resolves, no cycle ($TASKS tasks)"
 fi
 [ -n "$GRAPH_A" ] && printf '%s\n' "$GRAPH_A" | sed 's/^A /  · /'
+
+# ── Tracks (worktree-track spec) — silent for a plan with no ## Tracks and
+# no Track field; else every task names a listed track, one file lives in
+# one track, and Blocked by crosses tracks only at a track's first task.
+TRACKS_OUT=$(awk -v rx="$TASK_RX" -v mode=lint -v feature="" "$CLEANFILES_AWK$FENCE_AWK$TRACKS_AWK" "$PLAN")
+if printf '%s\n' "$TRACKS_OUT" | grep -q '^E '; then
+  printf '%s\n' "$TRACKS_OUT" | grep '^E ' | sed 's/^E /  ✗ /'
+  fail=1
+elif printf '%s\n' "$TRACKS_OUT" | grep -q '^OK '; then
+  printf '%s\n' "$TRACKS_OUT" | grep '^OK ' | sed 's/^OK /  ✓ /'
+fi
 
 # ── Advisories (v2.144.0) — never fail; a Sequential plan may be legitimate.
 GRAPH_F=$(printf '%s\n' "$GRAPH" | grep '^F ' || true)
