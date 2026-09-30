@@ -53,10 +53,11 @@ if [ "${ROLEPOD_ALLOW_SHARED_WORKTREE:-0}" != "1" ]; then
       _act=$((_act + 1))
       # Lock-name rule (same in session-lifecycle.sh and the opencode
       # plugin): first line only (line 2 of a session-lifecycle lock is the
-      # CLI pid), at most 32 bytes, keep it only if it matches [a-z0-9_-]+ — anything else (empty, junk, a lock
-      # that vanished or failed to read between the count and this read) is
-      # "unknown", so the count and the breakdown always agree.
-      _nm=$(head -n 1 "$_lk" 2>/dev/null | head -c 32)
+      # CLI pid), at most 32 bytes, keep it only if it matches [a-z0-9_-]+ —
+      # anything else (empty, junk, a lock that vanished or failed to read
+      # between the count and this read) is "unknown", so the count and the
+      # breakdown always agree.
+      _nm=$(head -n 1 "$_lk" 2>/dev/null | head -c 32) || _nm=""
       case "$_nm" in *[!a-z0-9_-]*|"") _nm="unknown" ;; esac
       _names="${_names}${_nm}
 "
@@ -67,7 +68,9 @@ if [ "${ROLEPOD_ALLOW_SHARED_WORKTREE:-0}" != "1" ]; then
   # Lock content = this CLI's name, same convention as every other writer
   # (session-lifecycle.sh, the opencode plugin) — a sibling then knows which
   # CLI it is, not just how many.
-  printf '%s' "cursor" > "$_ld/$_sid.lock" 2>/dev/null || true
+  # Line 2 = the Cursor process pid ($PPID) so ticket.sh recognises the lock as
+  # its own; a reader takes line 1 only.
+  printf '%s\n%s' "cursor" "$PPID" > "$_ld/$_sid.lock" 2>/dev/null || true
   if [ "$_act" -gt 0 ]; then
     _breakdown=$(printf '%s' "$_names" | LC_ALL=C sort | uniq -c | awk '{printf "%s%s ×%d", sep, $2, $1; sep=", "}')
     CTX="$CTX\n\n**$_act concurrent session(s)** ($_breakdown) in this worktree. Edits to the SAME file stomp each other — isolate with a git worktree before editing a shared file. Override: \`ROLEPOD_ALLOW_SHARED_WORKTREE=1\`."

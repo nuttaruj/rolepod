@@ -114,7 +114,7 @@ done
 if [ -s "$LOCK_DIR/$SESSION_ID.lock" ]; then
   touch "$LOCK_DIR/$SESSION_ID.lock" 2>/dev/null || true
 else
-  printf '%s' "claude" > "$LOCK_DIR/$SESSION_ID.lock" 2>/dev/null || true
+  printf '%s\n%s' "claude" "$PPID" > "$LOCK_DIR/$SESSION_ID.lock" 2>/dev/null || true
 fi
 
 # No real collision, or the operator opted into a shared worktree → claim the

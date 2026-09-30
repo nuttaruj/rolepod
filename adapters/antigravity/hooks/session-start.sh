@@ -45,5 +45,5 @@ mkdir -p "$LD" 2>/dev/null || exit 0
 # sibling reader's warning can say which CLI, not just how many. agy itself
 # emits no sibling warning (PreInvocation honours no context field — an
 # unknown field is a hook error, so this hook stays side-effect-only).
-printf '%s' "antigravity" > "$LD/agy-$SID.lock" 2>/dev/null || true
+printf '%s\n%s' "antigravity" "$PPID" > "$LD/agy-$SID.lock" 2>/dev/null || true
 exit 0

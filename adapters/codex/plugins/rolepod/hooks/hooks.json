@@ -23,7 +23,7 @@
           },
           {
             "type": "command",
-            "command": "bash ${PLUGIN_ROOT}/hooks/session-lifecycle.sh --lock --cli codex",
+            "command": "exec bash ${PLUGIN_ROOT}/hooks/session-lifecycle.sh --lock --cli codex",
             "timeout": 5
           },
           {

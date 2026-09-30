@@ -105,8 +105,8 @@ STALE_THRESHOLD=1800   # 30 min — covers most legit gaps between turns
 # no assoc arrays — /bin/bash on macOS is still 3.2) for the warning's
 # per-CLI breakdown. Lock-name rule (same in the cursor loader and the
 # opencode plugin): first line only (line 2 is the CLI pid), at most 32
-# bytes, keep it only if it matches [a-z0-9_-]+ — anything else (empty, junk, a lock
-# that vanished or failed to read between the count and this read) is
+# bytes, keep it only if it matches [a-z0-9_-]+ — anything else (empty, junk,
+# a lock that vanished or failed to read between the count and this read) is
 # "unknown", so the count and the breakdown always agree.
 ACTIVE_SIBLINGS=0
 SIBLING_NAMES=""
@@ -119,7 +119,7 @@ for lock in "$LOCK_DIR"/*.lock; do
   age=$((NOW - mtime))
   if [ "$age" -lt "$STALE_THRESHOLD" ]; then
     ACTIVE_SIBLINGS=$((ACTIVE_SIBLINGS + 1))
-    sib_name=$(head -n 1 "$lock" 2>/dev/null | head -c 32)
+    sib_name=$(head -n 1 "$lock" 2>/dev/null | head -c 32) || sib_name=""
     [[ "$sib_name" =~ ^[a-z0-9_-]+$ ]] || sib_name="unknown"
     SIBLING_NAMES="${SIBLING_NAMES}${sib_name}
 "

@@ -39,15 +39,15 @@
 #      than one root gets an advisory naming the parallel candidates.
 #      A plan with NO Blocked-by fields at all (pre-v2.90.0) is advised, not
 #      failed — order was prose there.
-#   4. Parallel plans only: every backticked path under "## Files to touch"
-#      appears under EXACTLY one owner in the contract's "## File ownership"
-#      — an unowned file is unplannable work; a dual-owned file is a merge
-#      conflict on schedule.
-#   5. Tracks (only when the plan has `## Tracks` or a `**Track:**` field):
+#   4. Tracks (only when the plan has `## Tracks` or a `**Track:**` field):
 #      every task names a track listed there; two tasks that edit one file
 #      share a track; Blocked by crosses tracks only at a track first task.
 #      `--brief` then prints the track branch and worktree for a track task
 #      and Reviewers `none — the track-end review covers this task` for R2/R3.
+#   5. Parallel plans only: every backticked path under "## Files to touch"
+#      appears under EXACTLY one owner in the contract's "## File ownership"
+#      — an unowned file is unplannable work; a dual-owned file is a merge
+#      conflict on schedule.
 #
 # Advisories (v2.144.0, never a FAIL — a Sequential plan may be legitimate):
 #   a. Prefactor smell: a backticked path on the `Files:` line of >= 2 tasks
@@ -182,7 +182,8 @@ function fence_open_line() { return fenceopen }
 '
 
 # One copy of the field helpers every awk pass below shares (trim, fieldgate,
-# fieldval, fieldbody, blockedrefs, filepaths — the Files and Blocked-by parsing). A field is only a line whose (left-trimmed) start is a bullet —
+# fieldval, fieldbody, blockedrefs, filepaths — the Files and Blocked-by
+# parsing). A field is only a line whose (left-trimmed) start is a bullet —
 # dash OR asterisk — an optional checkbox, then the label. The bullet char is
 # consumed BEFORE bold asterisks are stripped: a whole-line gsub(/\*/) first
 # would eat an asterisk BULLET along with the bold markers, making a
@@ -1011,9 +1012,9 @@ if (planwt == 1) tpath = substr(tbranch, 1, length(tbranch) - 5)
       print r
     }
     print "## Bounds"
-    if (onmain) print "- Edit only Files allowed, in the main checkout; no backup copies (.bak / .orig). Never commit or push; leave the tree staged. One exception: a file the task needs that is in no Files list (not forbidden) - edit it and add an Also touched: line."
-    else if (tbranch != "") printf "- Edit only Files allowed, and only under ../%s-wt-%s — the same path in the main checkout belongs to the Lead; no backup copies (.bak / .orig). Never commit or push; leave the tree staged. One exception: a file the task needs that is in no Files list (not forbidden) - edit it and add an Also touched: line.\n", repo, tpath
-    else printf "- Edit only Files allowed, and only under ../%s-wt-%s-t%s-%s — the same path in the main checkout belongs to the Lead; no backup copies (.bak / .orig). Never commit or push; leave the tree staged. One exception: a file the task needs that is in no Files list (not forbidden) - edit it and add an Also touched: line.\n", repo, feat, want, tslug
+    if (onmain) print "- Edit only Files allowed, in the main checkout; no backup copies (.bak / .orig). Never commit or push; leave the tree staged. Never `git stash`. One exception: a file the task needs that is in no Files list (not forbidden) - edit it and add an Also touched: line."
+    else if (tbranch != "") printf "- Edit only Files allowed, and only under ../%s-wt-%s — the same path in the main checkout belongs to the Lead; no backup copies (.bak / .orig). Never commit or push; leave the tree staged. Never `git stash`. One exception: a file the task needs that is in no Files list (not forbidden) - edit it and add an Also touched: line.\n", repo, tpath
+    else printf "- Edit only Files allowed, and only under ../%s-wt-%s-t%s-%s — the same path in the main checkout belongs to the Lead; no backup copies (.bak / .orig). Never commit or push; leave the tree staged. Never `git stash`. One exception: a file the task needs that is in no Files list (not forbidden) - edit it and add an Also touched: line.\n", repo, feat, want, tslug
     print "- After each edit run only the checks covering the file just edited; run the Command once, last before returning, then the repo commit check once (the one the project CLAUDE.md or AGENTS.md names), in the foreground (Bash timeout 600000; never run_in_background). Reviewers named above → dispatch them in ONE message, no name, fork or remote isolation (such a child reports to the Lead); return only after each report is in (a child ending wakes you, or the Lead relays it; a turn ended to wait has the last line WAITING: <report paths>); no way to wait → REVIEW NEEDED: (reports: .rolepod/evidence/review/<task>-<role>.md, a lens <task>-<lens>.md); fix; then the Reviewers section above."
     print "- Budget: build <= 40 tool calls, whole loop <= 120; past it return PARTIAL with what is done, never grind."
     print "- Return a decision brief: verdict, `git diff --cached --stat | tail -3`, Command last 3 lines verbatim, reviewer verdicts + report paths, `Assuming:` lines, residuals."
@@ -1285,7 +1286,7 @@ elif [ -n "$GRAPH_A" ] && ! printf '%s' "$GRAPH_A" | grep -q 'no Blocked by fiel
 fi
 [ -n "$GRAPH_A" ] && printf '%s\n' "$GRAPH_A" | sed 's/^A /  · /'
 
-# ── 5. Tracks (worktree-track spec; runs before 4, which exits early on a
+# ── 4. Tracks (worktree-track spec; runs before 5, which exits early on a
 # Sequential plan) — silent for a plan with no ## Tracks and
 # no Track field; else every task names a listed track, one file lives in
 # one track, and Blocked by crosses tracks only at a track's first task.
@@ -1303,7 +1304,7 @@ GRAPH_O=$(printf '%s\n' "$GRAPH" | grep '^O ' || true)
 [ -n "$GRAPH_F" ] && printf '%s\n' "$GRAPH_F" | sed 's/^F /  /'
 [ -n "$GRAPH_O" ] && printf '%s\n' "$GRAPH_O" | sed 's/^O /  /'
 
-# ── 4. Parallel ownership completeness ───────────────────────────────────
+# ── 5. Parallel ownership completeness ───────────────────────────────────
 if [ "$SEQUENTIAL" -eq 1 ]; then
   echo "  ✓ sequential layout — ownership check not applicable"
   echo "plan-lint: $([ "$fail" -eq 0 ] && echo PASS || echo FAIL)"

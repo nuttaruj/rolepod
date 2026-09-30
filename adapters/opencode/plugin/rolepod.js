@@ -448,9 +448,10 @@ function makeCore({ directory, homedir } = {}) {
 
   // Lock-name rule (same in hooks/session-lifecycle.sh and the cursor
   // loader): read at most 32 bytes, take the first line only (line 2 of a
-  // session-lifecycle lock is the CLI pid), keep it only if it matches [a-z0-9_-]+ — anything else (empty, junk, a lock
-  // that vanished or failed to read between the count and this read) is
-  // "unknown", so the count and the breakdown always agree (never throws).
+  // session-lifecycle lock is the CLI pid), keep it only if it matches
+  // [a-z0-9_-]+ — anything else (empty, junk, a lock that vanished or failed
+  // to read between the count and this read) is "unknown", so the count and
+  // the breakdown always agree (never throws).
   const readLockName = (p) => {
     let fd
     try {
@@ -510,7 +511,9 @@ function makeCore({ directory, homedir } = {}) {
         /* raced with another session's prune — ignore */
       }
     }
-    fs.writeFileSync(path.join(lockDir, `${id}.lock`), "opencode")
+    // Line 2 = this opencode process pid, so ticket.sh recognises the lock as
+    // its own; a reader takes line 1 only.
+    fs.writeFileSync(path.join(lockDir, `${id}.lock`), `opencode\n${process.pid}`)
     return { count: activeSiblings, names }
   }
 

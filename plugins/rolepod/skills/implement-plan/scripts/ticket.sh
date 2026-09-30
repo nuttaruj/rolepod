@@ -189,9 +189,11 @@ base_root_of() {
 # pattern-matched by a caller (a backticked command, a Proof line), never
 # copied back out, so a fenced line never enters it.
 # Heading rule = plan-lint.sh's: case-sensitive, trailing whitespace / CR
-# ignored ("## Tracks" is `^## Tracks[[:space:]]*$` there); "$3" = "prefix"
-# also takes a suffix after the name, as plan-lint reads "## Parallel layout".
-section_body() { # $1 = file, $2 = "## Heading", $3 = "prefix" or empty
+# ignored ("## Tracks" is `^## Tracks[[:space:]]*$` there); "$3" =
+# $HEADING_PREFIX (any non-empty value works) also takes a suffix after the
+# name, as plan-lint reads "## Parallel layout".
+HEADING_PREFIX=prefix
+section_body() { # $1 = file, $2 = "## Heading", $3 = $HEADING_PREFIX or empty
   awk -v h="$2" -v pfx="${3:-}" "$FENCE_FN"'
     { if (fenceline($0)) next }
     { hl = $0; sub(/[[:space:]]+$/, "", hl) }
@@ -231,7 +233,7 @@ plan_has_tracks() { # $1 = plan
 
 # True (rc 0) when the plan's `## Parallel layout` starts with "Sequential".
 plan_is_sequential() { # $1 = plan
-  section_body "$1" '## Parallel layout' prefix | grep -v '^[[:space:]]*$' | head -n 1 | grep -q '^Sequential'
+  section_body "$1" '## Parallel layout' "$HEADING_PREFIX" | grep -v '^[[:space:]]*$' | head -n 1 | grep -q '^Sequential'
 }
 
 # One row per task: "<id><ROW_FS><track>" off each task's `- **Track:** X`
@@ -271,13 +273,6 @@ task_logged_sha() { # $1 = plan, $2 = task id
   logged_shas "$1" "$2" | head -n 1
 }
 
-# True (rc 0) when another session holds a live lock on checkout "$1": a
-# *.lock under $HOME/.rolepod/session-locks/<first 16 hex of sha256 of the
-# path>/ younger than 1800 s (the rule hooks/session-lifecycle.sh writes and
-# prunes by). This session's own lock is skipped: its id in
-# CLAUDE_CODE_SESSION_ID / ROLEPOD_SESSION_ID first, else a lock whose line 2
-# (the CLI pid session-lifecycle.sh recorded) is one of this process's
-# ancestors — no env var needed on any CLI.
 own_ancestor_pids() { # prints " <pid> <pid> ... " — $$ and every ancestor
   local p="$$" out=" " i=0
   while [ -n "$p" ] && [ "$p" -gt 1 ] 2>/dev/null && [ "$i" -lt 32 ]; do
@@ -288,6 +283,13 @@ own_ancestor_pids() { # prints " <pid> <pid> ... " — $$ and every ancestor
   printf '%s' "$out"
 }
 
+# True (rc 0) when another session holds a live lock on checkout "$1": a
+# *.lock under $HOME/.rolepod/session-locks/<first 16 hex of sha256 of the
+# path>/ younger than 1800 s (the rule hooks/session-lifecycle.sh writes and
+# prunes by). This session's own lock is skipped: its id in
+# CLAUDE_CODE_SESSION_ID / ROLEPOD_SESSION_ID first, else a lock whose line 2
+# (the CLI pid session-lifecycle.sh recorded) is one of this process's
+# ancestors — no env var needed on any CLI.
 foreign_live_lock() { # $1 = checkout (git toplevel)
   local hash dir lock now mtime own lpid ancestors=""
   hash="$(printf '%s' "$1" | { shasum -a 256 2>/dev/null || sha256sum 2>/dev/null; } | awk '{print $1}' | head -c 16)"
@@ -1210,15 +1212,17 @@ $rrows
 EOF
     # Only the task that closes the track speaks: re-logging an EARLIER task
     # of a finished track (its sha is older) would print a shorter range and
-    # overwrite the lens diff with it. This log is the closing one when every
-    # other task's logged commit is an ancestor of (or equal to) $sha.
+    # overwrite the lens diff with it. This log is NOT the closing one only when
+    # another task's logged commit is a strict descendant of $sha — a rebased or
+    # amended track (shas no longer ancestors) still prints its line.
     if [ -n "$log_root" ] && git -C "$log_root" rev-parse --verify --quiet "$sha^{commit}" >/dev/null 2>&1; then
       for ttid in $tt_ids; do
         [ "$ttid" = "$n" ] && continue
         tt_sha2="$(task_logged_sha "$plan" "$ttid")"
         [ -n "$tt_sha2" ] || continue
         git -C "$log_root" rev-parse --verify --quiet "$tt_sha2^{commit}" >/dev/null 2>&1 || continue
-        git -C "$log_root" merge-base --is-ancestor "$tt_sha2" "$sha" 2>/dev/null || tt_tip=0
+        [ "$(git -C "$log_root" rev-parse "$tt_sha2^{commit}")" = "$(git -C "$log_root" rev-parse "$sha^{commit}")" ] && continue
+        git -C "$log_root" merge-base --is-ancestor "$sha" "$tt_sha2" 2>/dev/null && tt_tip=0
       done
     fi
     if [ "$tt_total" -gt 0 ] && [ "$tt_total" -eq "$tt_done" ] && [ "$tt_role" -gt 0 ] && [ "$tt_tip" -eq 1 ]; then
