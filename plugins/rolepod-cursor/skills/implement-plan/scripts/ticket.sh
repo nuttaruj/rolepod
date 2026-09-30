@@ -45,14 +45,18 @@
 #     bullet under "## Changes during build". The only writer of the plan
 #     file besides the Lead's own editor. Then names every not-done task
 #     whose Blocked-by list names N and is now fully done ("ready now: Task
-#     a (<owner>), ..."). Once every role-owned task is done, also prints
-#     "review: <first logged task sha>^..HEAD — the combined-review range,
-#     used only when a task got none (implement-plan Review)", and writes that same range (generated
-#     files left out) to .rolepod/evidence/review/<plan-slug>.diff, naming
-#     it on the same line ("; lens diff: <path>") so the review lenses get
-#     the diff as a file, not a shell. A write failure never fails log — the
-#     range still prints, just without the path. Idempotent, same as the
-#     checkbox flip.
+#     a (<owner>), ..."). When the last task of a track is done, also prints
+#     "track <id> done — review: <base>...<head>" plus the track-end
+#     instruction, and writes that range (generated files left out) to
+#     .rolepod/evidence/review/<feature>-<id>.diff, naming it on the same
+#     line ("; lens diff: <path>") so the review lenses get the diff as a
+#     file, not a shell. A write failure never fails log — the range still
+#     prints, just without the path. Idempotent, same as the checkbox flip.
+#     Tracks: listed in `## Tracks`; without it a Parallel plan makes each
+#     task its own track (id = the task number) and a Sequential plan is one
+#     track `plan` (id `plan`, diff <feature>-plan.diff). With no track
+#     worktree the commits sit on the base checkout, so <base> is the parent
+#     of the track's first logged commit.
 #
 # Tracks (spec worktree-track-2026-09-30): a task whose brief names a track
 # worktree reuses it when it exists (the 2nd+ task of the track) and records
@@ -686,7 +690,7 @@ cmd_start() {
     if git -C "$repo_root" worktree list --porcelain 2>/dev/null | grep -qxF "worktree $pwt_abs" \
       || { [ "$(done_ids_of "$prows")" = " " ] && foreign_live_lock "$repo_root"; }; then
       wt_mode="plan"
-      # Worktree, Bounds and Reviewers all come from plan-lint's plan-worktree brief.
+      # Worktree and Bounds come from plan-lint's plan-worktree brief.
       if [ -n "$contract" ]; then
         brief_out="$(bash "$LINT" --brief "$n" "$plan_abs" "$contract" --plan-worktree 2>&1)"
       else
@@ -1163,62 +1167,94 @@ EOF
     echo "ready now: $list"
   fi
 
-  # ONE combined review before release (spec lean-loop-2026-09-23 Task 2,
-  # implement-plan Review): once every role-owned task's own block is fully
-  # checked, name the range from the FIRST task this plan ever logged (its
-  # parent commit) through HEAD — never before every role task is done, and
-  # a re-run after that point reprints the same line (idempotent, like
-  # "ready now:" above). A Lead-only plan (no role-owned task at all) never
-  # prints it — there is nothing for the Lead to review that it did not
-  # already build.
-  local rrows rid rowner rblocked rdone role_total=0 role_done=0
+  # Track end (spec worktree-track-2026-09-30, implement-plan Review): when
+  # the last task of a track just logged is done, name the track's range and
+  # write its diff, once per track. A plan with `## Tracks` uses the listed
+  # tracks; without them a Parallel plan makes each task its own track (id =
+  # the task number) and a Sequential plan is one track named `plan`. Idempotent
+  # (a re-run reprints the same line), like "ready now:" above. A track with no
+  # role-owned task prints nothing: there is nothing for the Lead to review
+  # that it did not already build.
+  local rrows
   rrows="$(plan_task_rows "$plan")"
-  while IFS="$ROW_FS" read -r rid rowner rblocked rdone; do
-    [ -n "$rid" ] || continue
-    is_lead_owner "$rowner" && continue
-    role_total=$((role_total + 1))
-    [ "$rdone" = "1" ] && role_done=$((role_done + 1))
-  done <<EOF
-$rrows
-EOF
-
-  # A plan with tracks (or one running in its plan worktree) is reviewed at
-  # the END OF EACH TRACK, not once per plan: when the last task of the
-  # track just logged is done, name the track's range and write its diff.
-  # Idempotent, like the lines above. No combined-review range for these.
-  local plan_abs_log feat_log plan_mode_log="" tracked_log="" ttable mytrack
+  local plan_abs_log feat_log plan_mode_log="" tracked_log="" seq_log="" ttable="" mytrack=""
   plan_abs_log="$(cd "$(dirname "$plan")" && pwd)/$(basename "$plan")"
   feat_log="$(plan_feature_of "$plan_abs_log")"
   if plan_has_tracks "$plan_abs_log"; then
     tracked_log=1
-  elif [ -n "$log_root" ] && [ "$(git -C "$log_root" config --get "branch.$feat_log/plan.rolepod-plan" 2>/dev/null)" = "$plan_abs_log" ]; then
-    plan_mode_log=1
-  fi
-  if [ -n "$tracked_log" ] || [ -n "$plan_mode_log" ]; then
     ttable="$(plan_task_tracks "$plan_abs_log")"
-    if [ -n "$tracked_log" ]; then mytrack="$(track_of "$ttable" "$n")"; else mytrack="plan"; fi
-    if [ -n "$mytrack" ] && [ -n "$log_root" ]; then
-      local tt_total=0 tt_done=0 tt_role=0 ttid ttowner ttblocked ttdone ttrack
-      while IFS="$ROW_FS" read -r ttid ttowner ttblocked ttdone; do
-        [ -n "$ttid" ] || continue
-        if [ -n "$tracked_log" ]; then ttrack="$(track_of "$ttable" "$ttid")"; else ttrack="plan"; fi
-        [ "$ttrack" = "$mytrack" ] || continue
-        tt_total=$((tt_total + 1))
-        [ "$ttdone" = "1" ] && tt_done=$((tt_done + 1))
-        is_lead_owner "$ttowner" || tt_role=$((tt_role + 1))
+    mytrack="$(track_of "$ttable" "$n")"
+  elif [ -n "$log_root" ] && [ "$(git -C "$log_root" config --get "branch.$feat_log/plan.rolepod-plan" 2>/dev/null)" = "$plan_abs_log" ]; then
+    plan_mode_log=1; mytrack="plan"
+  elif plan_is_sequential "$plan_abs_log"; then
+    seq_log=1; mytrack="plan"
+  else
+    mytrack="$n"
+  fi
+  if [ -n "$mytrack" ]; then
+    local tt_total=0 tt_done=0 tt_role=0 ttid ttowner ttblocked ttdone ttrack
+    while IFS="$ROW_FS" read -r ttid ttowner ttblocked ttdone; do
+      [ -n "$ttid" ] || continue
+      if [ -n "$tracked_log" ]; then ttrack="$(track_of "$ttable" "$ttid")"
+      elif [ -n "$plan_mode_log" ] || [ -n "$seq_log" ]; then ttrack="plan"
+      else ttrack="$ttid"; fi
+      [ "$ttrack" = "$mytrack" ] || continue
+      tt_total=$((tt_total + 1))
+      [ "$ttdone" = "1" ] && tt_done=$((tt_done + 1))
+      is_lead_owner "$ttowner" || tt_role=$((tt_role + 1))
+    done <<EOF
+$rrows
+EOF
+    if [ "$tt_total" -gt 0 ] && [ "$tt_total" -eq "$tt_done" ] && [ "$tt_role" -gt 0 ]; then
+      local tbase tline tdir tpath first_sha="" tt_code=0 ctid cowner cblocked cdone ctier ctrack
+      # A docs-only track (every role-owned task briefed R1) takes no track-end
+      # review: print just `track <id> done`.
+      while IFS="$ROW_FS" read -r ctid cowner cblocked cdone; do
+        [ -n "$ctid" ] || continue
+        if [ -n "$tracked_log" ]; then ctrack="$(track_of "$ttable" "$ctid")"
+        elif [ -n "$plan_mode_log" ] || [ -n "$seq_log" ]; then ctrack="plan"
+        else ctrack="$ctid"; fi
+        [ "$ctrack" = "$mytrack" ] || continue
+        is_lead_owner "$cowner" && continue
+        ctier="$(bash "$LINT" --brief "$ctid" "$plan_abs_log" --main 2>/dev/null | awk '/^## Tier/ { getline; print substr($0, 1, 2); exit }')"
+        [ "$ctier" = "R1" ] || tt_code=$((tt_code + 1))
       done <<EOF
 $rrows
 EOF
-      if [ "$tt_total" -gt 0 ] && [ "$tt_total" -eq "$tt_done" ] && [ "$tt_role" -gt 0 ]; then
-        local tbase tline tdir tpath
-        tbase="$(git -C "$log_root" rev-parse --abbrev-ref HEAD 2>/dev/null)"
+      if [ "$tt_code" -eq 0 ]; then
+        printf 'track %s done\n' "$mytrack"
+        return 0
+      fi
+      if [ -n "$tracked_log" ] || [ -n "$plan_mode_log" ]; then
+        tbase=""
+        [ -z "$log_root" ] || tbase="$(git -C "$log_root" rev-parse --abbrev-ref HEAD 2>/dev/null)"
         [ -n "$tbase" ] || tbase="HEAD"
+      else
+        # No track worktree: the commits already sit on the base checkout, so
+        # the range starts at the parent of the track's first logged commit
+        # (a per-task track: this task's own). Anchored to the exact bullet
+        # shape this function writes above ("- Task N (`<sha>`): <note>").
+        if [ -n "$seq_log" ]; then
+          first_sha="$(awk "$FENCE_FN"'
+            { if (fenceline($0)) next }
+            /^## Changes during build/ { insec = 1; next }
+            insec && /^## / { exit }
+            insec && /^- Task [0-9]+ \(`/ && match($0, /`[^`]+`/) { print substr($0, RSTART + 1, RLENGTH - 2); exit }
+          ' "$plan")"
+        else
+          first_sha="$sha"
+        fi
+        tbase=""
+        [ -z "$first_sha" ] || tbase="${first_sha}^"
+      fi
+      if [ -n "$tbase" ]; then
         # three dots: from the merge-base, so a base that moved on (another
         # track merged first) never shows up reversed in the lens diff
         tline="track $mytrack done — review: $tbase...$sha"
         tdir="$log_root/.rolepod/evidence/review"
         tpath="$tdir/${feat_log}-${mytrack}.diff"
-        if git -C "$log_root" rev-parse --verify --quiet "$sha^{commit}" >/dev/null 2>&1 && mkdir -p "$tdir" 2>/dev/null; then
+        # Outside a git repo the range still prints, just without the path.
+        if [ -n "$log_root" ] && git -C "$log_root" rev-parse --verify --quiet "$sha^{commit}" >/dev/null 2>&1 && mkdir -p "$tdir" 2>/dev/null; then
           if {
             git -C "$log_root" diff --stat "$tbase...$sha" -- . ':(exclude)plugins' ':(exclude)build/rendered'
             git -C "$log_root" diff -U10 "$tbase...$sha" -- . ':(exclude)plugins' ':(exclude)build/rendered'
@@ -1229,44 +1265,6 @@ EOF
         printf '%s\n' "$tline"
         echo "Track end: one fresh owner (the role owning most of the track's code) runs the two lenses in ONE message on the track diff and fixes each BLOCKER / MAJOR with its proof, no round 2; the Lead commits the fixes in the track worktree, then \`ticket.sh finish <worktree>\` merges the track."
       fi
-    fi
-  elif [ "$role_total" -gt 0 ] && [ "$role_total" -eq "$role_done" ]; then
-    local first_sha
-    # Anchored to the exact bullet shape this function writes above
-    # ("- Task N (`<sha>`): <note>") — never the first backticked span in
-    # the section, which a Lead deviation line ("Task N — what changed,
-    # why") can also hold, ahead of the first real log bullet.
-    first_sha="$(awk "$FENCE_FN"'
-      { if (fenceline($0)) next }
-      /^## Changes during build/ { insec = 1; next }
-      insec && /^## / { exit }
-      insec && /^- Task [0-9]+ \(`/ && match($0, /`[^`]+`/) { print substr($0, RSTART + 1, RLENGTH - 2); exit }
-    ' "$plan")"
-    if [ -n "$first_sha" ]; then
-      # The lenses get the diff as a file (owner-approved 2026-09-24: a
-      # reviewer has no shell). Written under the base checkout (the repo
-      # holding the plan, not a task worktree) so every task's diff lands
-      # in one place. A write failure (no repo, bad sha, unwritable dir)
-      # never fails log — the range still prints, just without the path.
-      # The attr:linguist-generated exclude needs a git that supports attr
-      # pathspec magic for diff; a git that rejects it falls back to a plain
-      # diff over the same range so the lens file still gets written.
-      local review_line repo_root diff_dir diff_path diff_content
-      review_line="review: ${first_sha}^..HEAD — the combined-review range (it may split into size slices), used only when a task got none (implement-plan Review)"
-      repo_root="$(git -C "$(dirname "$plan")" rev-parse --show-toplevel 2>/dev/null)"
-      if [ -n "$repo_root" ]; then
-        diff_dir="$repo_root/.rolepod/evidence/review"
-        diff_path="$diff_dir/$(plan_slug_of "$plan").diff"
-        if mkdir -p "$diff_dir" 2>/dev/null; then
-          if diff_content="$(git -C "$repo_root" diff "${first_sha}^..HEAD" -- . ':(exclude,attr:linguist-generated)' 2>/dev/null)" \
-            || diff_content="$(git -C "$repo_root" diff "${first_sha}^..HEAD" 2>/dev/null)"; then
-            if printf '%s\n' "$diff_content" > "$diff_path" 2>/dev/null; then
-              review_line="$review_line; lens diff: $diff_path"
-            fi
-          fi
-        fi
-      fi
-      printf '%s\n' "$review_line"
     fi
   fi
 }

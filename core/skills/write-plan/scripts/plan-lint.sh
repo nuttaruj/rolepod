@@ -18,13 +18,11 @@
 #   when, On fail (only when the task has one), Write, Reviewers, Bounds —
 #   ONE test field, the Command; an older plan's Check: line is read and
 #   ignored, never printed (spec lean-loop-2026-09-23 Task 2).
-#   Reviewers of an R2/R3 task read the WHOLE plan (each task's tier and
-#   Blocked by, via internal re-runs guarded by PLAN_LINT_NOCOUNT): in-task
-#   two lenses when another task is Blocked by it or it is the only R2/R3
-#   task nothing depends on; else `none` (a combined-review owner).
+#   Reviewers of an R2/R3 task are always `none`: its track's track-end
+#   review (one fresh owner per track) covers it.
 #   `--plan-worktree`: the task runs in the plan worktree (branch
-#   <feature>/plan, path ../<repo>-wt-<feature>) — Worktree, Bounds and the
-#   R2/R3 Reviewers (`none`, the track-end review) follow from it.
+#   <feature>/plan, path ../<repo>-wt-<feature>) — Worktree and Bounds
+#   follow from it.
 #   `--main`, in any position after --brief: an on-main task, no
 #   worktree — prints `## Checkout` in place of `## Worktree`, and Bounds
 #   names no worktree path either. Exit 0 on success; exit 2 with one
@@ -979,13 +977,9 @@ if (planwt == 1) tpath = substr(tbranch, 1, length(tbranch) - 5)
       print "Round 2+ — R2/R3: none; the owner fixes each BLOCKER / MAJOR and attaches its proof (the Command tail, the reviewer repro re-run, or the grep showing the old line gone). R4: only a finding raised by `security-engineer` or the adversarial pass whose fix touches code — the flagging role re-checks the fix delta only, on a balanced model (an external finding → `security-engineer` for security-class, else `universal-reviewer`); at most 5 rounds, rounds 4-5 a fresh fixer on a stronger model; still open after round 5 → stop and hand the user the open findings with the attempt log."
       print "ONE new dispatch with the findings and the fix delta only, never a message to the finished one; <= 15 tool calls. A new issue it finds is a normal finding to fix."
     } else {
-      # R2 / R3: a task another task is Blocked by, or the only such
-      # task in the plan nothing depends on, reviews in-task (rvin=1); two or more
-      # independent ones → none, a combined-review owner reviews the plan diff
-      # once (implement-plan Review). No Round 2 line here.
-      if (tbranch != "" && !onmain) r = "`none` — the track-end review covers this task"
-      else if (rvin == 1) r ="Review in-task, no combined review covers this task: run the two lenses yourself in ONE message, `universal-reviewer` `lens: spec` + `universal-reviewer` `lens: standards` (reports `.rolepod/evidence/review/<task>-<lens>.md`), fix; round 2+ — R2/R3: none; the owner fixes each BLOCKER / MAJOR and attaches its proof (the Command tail, the reviewer repro re-run, or the grep showing the old line gone)"
-      else r = "`none` — a combined-review owner reviews the plan diff once before release"
+      # R2 / R3: every task in a plan is reviewed once by the
+      # track-end review of its track (implement-plan Review); no in-task review here.
+      r = "`none` — the track-end review covers this task"
       print r
     }
     print "## Bounds"
@@ -1012,42 +1006,15 @@ if (planwt == 1) tpath = substr(tbranch, 1, length(tbranch) - 5)
   [ -z "$RP_RISK_ADD" ] || rp_ere_ok "$RP_RISK_ADD" || RP_RISK_ADD=""
   [ -z "$RP_RISK_EXCL" ] || rp_ere_ok "$RP_RISK_EXCL" || RP_RISK_EXCL=""
   export RP_RISK_ADD RP_RISK_EXCL
-  # Who reviews an R2/R3 code task (a docs-only R1 task never counts). It
-  # reviews in-task (the two lenses) when another non-docs task is Blocked by
-  # it, or when it is the plan's only R2/R3 task nothing depends on; two or
-  # more such leaves share a combined review (`none`). Each task's tier and
-  # Blocked by are read from its own brief run (the tier logic lives once, in
-  # the awk above); PLAN_LINT_NOCOUNT is the internal guard that stops the
-  # recursion. A count that fails leaves BRIEF_INTASK=1: the task is reviewed.
-  BRIEF_INTASK=1
-  if [ -z "${PLAN_LINT_NOCOUNT:-}" ]; then
-    RC_TIERS=""; RC_DEPS=" "
-    for tn in $(awk -v rx="$TASK_RX" "$FENCE_AWK"'
-      fenceline($0) { next }
-      $0 ~ rx { s = $0; sub(/^### (Task ?|T)/, "", s); sub(/[^0-9].*$/, "", s); print s }
-    ' "$PLAN"); do
-      tb=$(PLAN_LINT_NOCOUNT=1 bash "${BASH_SOURCE[0]}" --brief "$tn" "$PLAN" ${CONTRACT:+"$CONTRACT"} --main 2>/dev/null)
-      tt=$(printf '%s\n' "$tb" | awk '/^## Tier/ { getline; print substr($0, 1, 2); exit }')
-      [ -n "$tt" ] || continue
-      RC_TIERS="$RC_TIERS $tn:$tt"
-      [ "$tt" = "R1" ] && continue
-      RC_DEPS="$RC_DEPS$(printf '%s\n' "$tb" | awk '/^## Blocked by/ { f = 1; next } /^## / { f = 0 } f' | awk '{ v = $0; if (tolower(v) ~ /^[[:space:]]*(none|—|-|–)/) next; gsub(/\([^)]*\)/, "", v); sub(/[[:space:]]+(—|–)[[:space:]]+.*$/, "", v); while (match(v, /[0-9]+/)) { print substr(v, RSTART, RLENGTH); v = substr(v, RSTART + RLENGTH) } }' | tr '\n' ' ')"
-    done
-    RC_LEAVES=0
-    for e in $RC_TIERS; do
-      case "${e#*:}" in R2|R3) case "$RC_DEPS" in *" ${e%%:*} "*) ;; *) RC_LEAVES=$((RC_LEAVES + 1)) ;; esac ;; esac
-    done
-    case "$RC_DEPS" in *" $BRIEF_N "*) ;; *) [ "$RC_LEAVES" -ge 2 ] && BRIEF_INTASK=0 ;; esac
-  fi
   # The task track branch (empty when the plan has no ## Tracks, or the task
   # names no listed track — then the per-task worktree line stays as it was).
   BRIEF_FEATURE=$(basename "$PLAN" .md | sed 's/^[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]-//')
   BRIEF_TBRANCH=$(awk -v rx="$TASK_RX" -v mode=brief -v want="$BRIEF_N" -v feature="$BRIEF_FEATURE" "$CLEANFILES_AWK$FENCE_AWK$FIELD_AWK$TRACKS_AWK" "$PLAN")
   [ "$BRIEF_PLANWT" = 1 ] && BRIEF_TBRANCH="$BRIEF_FEATURE/plan"
   if [ -n "$CONTRACT" ]; then
-    awk -v rx="$TASK_RX" -v want="$BRIEF_N" -v planpath="$PLAN" -v repo="$BRIEF_REPO" -v hascontract=1 -v onmain="$BRIEF_MAIN" -v rvin="$BRIEF_INTASK" -v planwt="$BRIEF_PLANWT" -v tbranch="$BRIEF_TBRANCH" "$CLEANFILES_AWK$FENCE_AWK$FIELD_AWK$BRIEF_AWK" "$PLAN" "$CONTRACT"
+    awk -v rx="$TASK_RX" -v want="$BRIEF_N" -v planpath="$PLAN" -v repo="$BRIEF_REPO" -v hascontract=1 -v onmain="$BRIEF_MAIN" -v planwt="$BRIEF_PLANWT" -v tbranch="$BRIEF_TBRANCH" "$CLEANFILES_AWK$FENCE_AWK$FIELD_AWK$BRIEF_AWK" "$PLAN" "$CONTRACT"
   else
-    awk -v rx="$TASK_RX" -v want="$BRIEF_N" -v planpath="$PLAN" -v repo="$BRIEF_REPO" -v hascontract=0 -v onmain="$BRIEF_MAIN" -v rvin="$BRIEF_INTASK" -v planwt="$BRIEF_PLANWT" -v tbranch="$BRIEF_TBRANCH" "$CLEANFILES_AWK$FENCE_AWK$FIELD_AWK$BRIEF_AWK" "$PLAN"
+    awk -v rx="$TASK_RX" -v want="$BRIEF_N" -v planpath="$PLAN" -v repo="$BRIEF_REPO" -v hascontract=0 -v onmain="$BRIEF_MAIN" -v planwt="$BRIEF_PLANWT" -v tbranch="$BRIEF_TBRANCH" "$CLEANFILES_AWK$FENCE_AWK$FIELD_AWK$BRIEF_AWK" "$PLAN"
   fi
   exit $?
 fi
