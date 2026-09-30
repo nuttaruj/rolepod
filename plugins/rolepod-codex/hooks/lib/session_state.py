@@ -829,11 +829,14 @@ def count_all(
     # Meta reads are cheap (mtime + one small json) and a reviewer must not
     # fall off the 60-newest jsonl cap behind a large later fleet: walk every
     # windowed transcript here, cap only the jsonl scan above.
+    sub_root = os.path.join(transcript_path[:-6], "subagents") if transcript_path.endswith(".jsonl") else ""
     for tp in agent_transcripts(transcript_path, since_epoch, cap=None):
         if not tp.endswith(".jsonl"):
             continue
-        parts = tp.split(os.sep)
-        if "subagents" in parts and "workflows" in parts:
+        # Relative to <session>/subagents/, so a `workflows` directory anywhere
+        # above the session never makes a plain Agent transcript a Workflow one.
+        parts = os.path.relpath(tp, sub_root).split(os.sep)
+        if len(parts) > 1 and parts[0] == "workflows":
             r, s = _workflow_meta_reviewer(tp[:-len(".jsonl")] + ".meta.json", since_epoch)
             reviewers += r
             strong_reviewers += s
