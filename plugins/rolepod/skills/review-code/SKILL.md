@@ -63,7 +63,7 @@ Done when: every dispatched reviewer has returned a full report and its findings
 
 ### 3. Axes
 
-- **Depth** — R4: `security-engineer` and the adversarial pass trace in full. A lens at any tier: the diff + direct callers of what it changes; other axes that far only. Skip what tooling enforces (lint, formatter, typecheck, the commit gate). Never re-run the suite (check-work runs it once; Ship cites that block, finish-work gate 4). A finding that needs a run: a reviewer with a shell runs only the diff's repro command; one without names it under Questions, and the task owner (else the Lead) runs it.
+- **Depth** — R4: `security-engineer` and the adversarial pass trace in full. A lens at any tier: a file the task changed is read from the diff; open it only when a hunk you must judge is cut off. Callers and other unchanged files may be opened. Skip what tooling enforces (lint, formatter, typecheck, the commit gate). Never re-run the suite (check-work runs it once; the finish-work pre-merge gate verifies this). A finding that needs a run: a reviewer with a shell runs only the diff's repro command; one without names it under Questions, and the task owner (else the Lead) runs it.
 - **Intent** — first: the goal in one sentence; a smaller way, or should the change exist at all?
 - **Trace** — the diff is the entry, not the scope: walk each claimed behavior (entry → call sites → branches → state → exit) through the seams into unchanged code; a surprise is a finding signal. Untouched code past the claims and seams is a Question, not a BLOCKER. Code-intel callers / impact when connected.
 - **Correctness** — logic vs spec, edge cases, off-by-one, null / undefined / empty.
@@ -92,12 +92,7 @@ Done when: the report carries a Recommendation and the review line is appended.
 ### 5. Fix-verify rounds
 
 - Round 1 = every axis in ONE message, ≤ 40 tool calls for `security-engineer` and the adversarial pass, ≤ 20 per lens.
-- Round 2+ = a BLOCKER / MAJOR fix only, always internal and never adversarial: a normal re-check of the fix delta against the spec / acceptance criteria at the reviewer's own lens (`universal-reviewer`: two axes, spec compliance + standards; `security-engineer`: its security lens, confined to the finding's class), ≤ 15 tool calls, findings + delta only (no suite re-run, new mutant or new axis).
-- `security-engineer` re-checks its own findings and the external's security-class findings (auth, permissions / IDOR, injection, secrets, tokens, crypto, credits / billing / payments, PII, data deletion); the external's other findings go to `universal-reviewer` — never a new external round, whatever the external's verdict.
-- A sub-agent sends a round 2+ re-check as a fresh dispatch of the flagging role, its report and the fix delta in the brief — never a message that resumes it (a resume runs in the background).
-- Round 2+ checks each fix against its own finding on that finding's axis. The finding still open, or a new issue the fix itself made inside the fix delta → a normal finding: fix it, and the next round re-checks only that item. An issue outside the fix delta → `## Follow-ups` with its axis, never a new round.
-- Each round 2+ appends its fix delta's Snapshot line to the report.
-- The flagging reviewer (for the external's findings, the round 2+ reviewer above) verifies a BLOCKER / MAJOR fix (the Lead's cold read only when it cannot run); the fix's writer never does. MINOR / NIT → the author's Command.
+- Round 2+ — R2/R3: none; the owner fixes each BLOCKER / MAJOR and attaches its proof (the Command tail, the reviewer's repro re-run, or the grep showing the old line gone). R4: only a finding raised by `security-engineer` or the adversarial pass whose fix touches code — the flagging role re-checks the fix delta only, on a balanced model (an external's finding → `security-engineer` for security-class, else `universal-reviewer`); at most 5 rounds, rounds 4-5 a fresh fixer on a stronger model; still open after round 5 → stop and hand the user the open findings with the attempt log.
 - A Lead-built fix → one read-only `universal-reviewer` pass, `mode: standard` (R4 → on a strong-class model).
 
 Done when: every round-1 BLOCKER / MAJOR, and every issue its fix made, is closed by its round 2+ reviewer, and anything outside a fix delta sits in `## Follow-ups` with its axis. The review then stops — never a full re-review until clean.
