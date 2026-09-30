@@ -30,9 +30,8 @@ The `using-rolepod` router fires first on every request and picks the phase.
 | Gate | When | Checks |
 |------|------|--------|
 | **Q1-Q4** | before edit | files >1 / must run-verify / design judgment / tools >3 → delegate |
-| **S1-S5** | before commit | feature beyond request / single-use abstraction / config nobody asked / defensive-for-impossible / pattern in 3+ |
-| **T1-T6** | before commit | needs a test / new pass / existing pass / fast / isolated / assertion correct |
 | **F1-F5** | before done | hallucinated / scope creep / cascading error / context loss / tool misuse |
+| **Pre-merge** | merge | check-work status matches tree / CI lanes green / review reports + Snapshot at head / R4 has security-engineer + adversarial-pass / one concern per PR |
 | **CI 3-phase** | merge | Phase 1 always (<5 min) / Phase 2 path-triggered / Phase 3 nightly |
 | **Hard stops** | escalate | 3rd failed attempt / file vs claim / destructive cmd / 50k+ no convergence |
 
