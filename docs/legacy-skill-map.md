@@ -38,7 +38,7 @@ Use this table when updating old docs, prompts, or agent memories.
 | `security-and-hardening` | `review-code` | Security review and hardening |
 | `performance-optimization` | `review-code` | Performance review and perf-risk routing |
 | `pre-merge-gate` | `finish-work` | Simplicity/test/reviewer gate before merge |
-| `finishing-a-development-branch` | `finish-work` | 4-option branch finish menu |
+| `finishing-a-development-branch` | `finish-work` | 3-option branch finish menu (discard on request) |
 | `shipping-and-launch` | `finish-work` | Launch / monitoring / rollback checklist |
 | `ci-cd-and-automation` | `finish-work` | CI/CD lane discipline |
 | `code-simplification` | `simplify-code` | Behavior-preserving cleanup |

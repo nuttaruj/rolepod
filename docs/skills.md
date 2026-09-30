@@ -28,7 +28,7 @@ No entry doc embeds a skill index. Each skill's `description:` is its routing su
 | Build (bug) | `debug-issue` | Error / failing test / regression — reproduce → trace → failing test → minimal fix |
 | Verify | `check-work` | Done claim before report — evidence (tests / build / curl / browser / log / screenshot) |
 | Review | `review-code` | Before merge — multi-axis review, adversarial for high-risk diffs, reviewer routing |
-| Ship | `finish-work` | "Ship / merge / push" — pre-merge gate, CI lanes, 4-option finish menu, launch ritual |
+| Ship | `finish-work` | "Ship / merge / push" — pre-merge gate, CI lanes, 3-option finish menu, launch ritual |
 | Simplify | `simplify-code` | Over-engineered / duplicated / single-use abstraction — behavior-preserving cut |
 | Recovery | `manage-context` | Stuck / context heavy / unfamiliar repo / advisor escalation / onboarding |
 

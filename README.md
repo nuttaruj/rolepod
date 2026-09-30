@@ -24,7 +24,7 @@ Every real change then moves through six phases:
 Define → Plan → Build → Verify → Review → Ship
 ```
 
-Each phase has one skill that runs it, and each skill pulls in specialist agents when the work needs depth. A commit that follows the workflow passes silently; on Claude, a high-risk diff (auth, billing, migrations and similar paths) is blocked until a strong reviewer has finished.
+Each phase has one skill that runs it, and each skill pulls in specialist agents when the work needs depth. A commit that follows the workflow passes silently; on Claude, a high-risk diff (auth, billing, migrations and similar paths) is blocked until a `security-engineer` review has run.
 
 You invoke nothing for this; it just happens.
 
@@ -35,7 +35,7 @@ You invoke nothing for this; it just happens.
 3. **Build — `implement-plan`.** Executes the plan test-first with bounded delegation. Bug fixes take the `debug-issue` path: reproduce → failing test → minimal fix.
 4. **Verify — `check-work`.** Proves the change with evidence — tests, build, curl, a screenshot — never just a "done".
 5. **Review — `review-code`.** Every logic diff gets two lenses (spec compliance + standards); an R4 (high-risk) diff adds `security-engineer` and one adversarial pass (`adversarial-review`).
-6. **Ship — `finish-work`.** Pre-merge gate, CI lanes, and a 4-option finish menu.
+6. **Ship — `finish-work`.** One pre-merge gate, CI lanes, and a 3-option finish menu (merge, PR, keep open; discard only when you ask).
 
 Two skills run across phases: **`simplify-code`** (behavior-preserving cleanup) and **`manage-context`** (recovery when a session is long, stuck, or in an unfamiliar repo).
 
@@ -169,7 +169,7 @@ curl -fsSL https://raw.githubusercontent.com/nuttaruj/rolepod/main/bootstrap.sh 
 
 - **15 specialist agents** — architecture, engineering, quality, ops, design, content, and review. Each owns a path or concern and runs on a cost-tiered model (~50-60% cheaper than all-strong). → [docs/agents.md](docs/agents.md), [docs/model-tier-policy.md](docs/model-tier-policy.md)
 - **Core 10 skills** — one router plus nine phase skills, the workflow spine. Plus 3 helper skills the phase skills call: `cross-family` (another CLI's review / critique / consult / draft), `tdd-flow` (red → green at a seam), and `adversarial-review` (the R4 round-1 adversarial pass). → [docs/skills.md](docs/skills.md)
-- **Per-CLI hooks** — silent while you follow the workflow; they speak only on a real mistake: a high-risk commit with no strong reviewer, a sub-agent commit, a sub-agent writing outside its role, two sessions editing the same file, a private working doc staged. The full set runs on Claude; the other CLIs keep the private-docs commit deny, session safety and what their hook API allows, and the rest is skill-enforced. → [docs/hooks.md](docs/hooks.md)
+- **Per-CLI hooks** — silent while you follow the workflow; they speak only on a real mistake: a high-risk commit with no `security-engineer` review, a sub-agent commit, a sub-agent writing outside its role, two sessions editing the same file, a private working doc staged. The full set runs on Claude; the other CLIs keep the private-docs commit deny, session safety and what their hook API allows, and the rest is skill-enforced. → [docs/hooks.md](docs/hooks.md)
 - **Terse output (built in)** — every rolepod CLI shapes its replies to cut output tokens: result first, the reading language's politeness register dropped, numbered steps, flat error tone, a five-item display cap that never limits analysis or tool results. Security warnings, destructive-action confirmations and "explain" requests keep their full shape — the shape yields to the task, never the reverse. → [docs/hooks.md](docs/hooks.md) (`always-on-loader.sh`)
 - **Evidence stats** — the `rolepod-stats` skill reads any project's `.rolepod/evidence/`: tier distribution, verify pass/fail, review verdicts, strong-dispatch overrides, bypasses (available at `/rolepod-stats` on Claude and `$rolepod-stats` on Codex). `check-work` skill's `scripts/junit-summary.sh` counts JUnit XML. `scripts/ticket.sh` in `implement-plan` runs a plan task's mechanics in one call per step (`start` / `integrate` / `finish` / `log`) and never commits. Every plugin tree ships these scripts under their skill's `scripts/` folder.
 - **Discipline checklists** — Q1-Q4 delegation, S1-S5 simplicity, T1-T6 tests, F1-F5 failure-mode — live in the skills that run each phase. Rolepod's own working docs (`docs/rolepod/` — specs, plans, contracts, hand-offs) are private by default: gitignored on first save and refused at commit unless the repo opts in with `.rolepod/docs-tracked`.
