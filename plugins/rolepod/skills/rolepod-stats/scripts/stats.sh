@@ -353,8 +353,8 @@ elif selftest:
     print(f"\n  Bypasses (0 findings; {len(selftest)} self-test rows excluded — reason rolepod-selftest/doctor)")
 
 # Fleet token footprint (v2.108.0) — what each Workflow / Agent fleet ran
-# on, in output + cache-read tokens (no input or cache-creation tokens, no
-# prices — not a cost).
+# on, in output + cache-read tokens per model cell (input + cache-write in one
+# total line; no prices — not a cost). Usage counts once per API call (message.id).
 # Source: Claude Code subagent transcripts under ~/.claude/projects/<key>/
 # <session>/subagents/{workflows/<wf>/,}agent-*.jsonl; <key> = repo root with
 # "/" replaced by "-". Read-only. Measured need (CourtBook readiness audit):
@@ -389,7 +389,8 @@ if root:
         parts = f.split(os.sep)
         # workflows/<wf>/... at any depth (a workflow agent may spawn its own subagents/)
         grp = parts[parts.index("workflows") + 1] if "workflows" in parts[:-1] and parts.index("workflows") + 1 < len(parts) - 1 else "agent-tool"
-        per, first = {}, None     # per model: [out, cache] — a file may switch model mid-way (retry / fallback)
+        sess = parts[parts.index("subagents") - 1] if "subagents" in parts else ""
+        calls, first, eff = {}, None, "-"    # one API call is written as several rows (thinking/text/tool_use) sharing message.id and usage — keep the row with the highest output_tokens per id
         try:
             with open(f, encoding="utf-8", errors="ignore") as fh:
                 for line in fh:
@@ -401,18 +402,60 @@ if root:
                     if not m or m.startswith("<"):   # "<synthetic>" = harness placeholder, not a model
                         continue
                     u = msg.get("usage") or {}
-                    p = per.setdefault(m, [0, 0])
-                    p[0] += u.get("output_tokens", 0) or 0
-                    p[1] += u.get("cache_read_input_tokens", 0) or 0
+                    o = u.get("output_tokens", 0) or 0
+                    key = msg.get("id") or ("row", len(calls))    # no id → its own call
+                    if key not in calls or o >= calls[key][1]:
+                        calls[key] = (m, o, u.get("cache_read_input_tokens", 0) or 0,
+                                      u.get("input_tokens", 0) or 0, u.get("cache_creation_input_tokens", 0) or 0)
                     first = first or e.get("timestamp")
+                    if e.get("effort"): eff = str(e.get("effort"))
         except OSError:
             continue
+        per = {}     # per model: [out, cache-read, input, cache-write] — a file may switch model mid-way (retry / fallback)
+        for m, o, cr, i, cw in calls.values():
+            p = per.setdefault(m, [0, 0, 0, 0])
+            p[0] += o; p[1] += cr; p[2] += i; p[3] += cw
         if not per: continue
-        g = fleets.setdefault(grp, {"first": first or "", "models": {}, "files": 0})
+        g = fleets.setdefault(grp, {"first": first or "", "models": {}, "files": 0, "sess": sess, "effort": Counter()})
         g["files"] += 1
+        g["effort"][eff] += 1
         if first and (not g["first"] or first < g["first"]): g["first"] = first
-        for m, (out, cache) in per.items():   # an agent counts under every model it ran on
-            mm = g["models"].setdefault(m, [0, 0, 0]); mm[0] += 1; mm[1] += out; mm[2] += cache
+        for m, (out, cache, inp, cw) in per.items():   # an agent counts under every model it ran on
+            mm = g["models"].setdefault(m, [0, 0, 0, 0, 0]); mm[0] += 1; mm[1] += out; mm[2] += cache; mm[3] += inp; mm[4] += cw
+# ultracode turns — main-session rows {"type":"attachment","attachment":{"type":"workflow_keyword_request"}}
+# (one per turn whose prompt carried the keyword). A marker opens a keyword turn at its timestamp; the turn ends at the next
+# typed user prompt of the main session. A fleet is tagged when it started inside a keyword turn of its session.
+marks = {}
+def _typed_prompt(e):
+    if e.get("type") != "user" or not e.get("promptId") or e.get("isMeta"): return False
+    c = (e.get("message") or {}).get("content")
+    return not (isinstance(c, list) and any(isinstance(b, dict) and b.get("type") == "tool_result" for b in c))
+if root:
+    for key in keys:
+        base = os.path.join(os.environ.get("HOME", ""), ".claude", "projects", key)
+        for f in glob.glob(os.path.join(base, "*.jsonl")):
+            try:
+                if os.path.getmtime(f) < cutoff: continue
+                turns, opened = [], None
+                with open(f, encoding="utf-8", errors="ignore") as fh:
+                    for line in fh:
+                        if "workflow_keyword_request" not in line and '"promptId"' not in line: continue
+                        try: e = json.loads(line)
+                        except Exception: continue
+                        if e.get("type") == "attachment" and (e.get("attachment") or {}).get("type") == "workflow_keyword_request":
+                            if opened is None: opened = e.get("timestamp") or ""
+                            turns.append([opened, None])
+                        elif opened is not None and _typed_prompt(e):
+                            for t in turns:
+                                if t[1] is None: t[1] = e.get("timestamp") or ""
+                            opened = None
+                if turns: marks[os.path.basename(f)[:-6]] = turns
+            except OSError:
+                continue
+if marks:
+    print(f"\n  ultracode turns: {sum(len(v) for v in marks.values())} (last 14d, {len(marks)} session(s); rows type=attachment attachment.type=workflow_keyword_request)")
+def _ultra(g):
+    return bool(g["first"]) and any(a <= g["first"] and (b is None or g["first"] < b) for a, b in marks.get(g.get("sess"), []))
 if fleets:
     n_agents = sum(g["files"] for g in fleets.values())
     print(f"\n  Fleet token footprint — subagent transcripts (last 14d, {len(fleets)} fleet(s), {n_agents} agents; output + cache-read tokens only — not total tokens, not billed cost):")
@@ -422,11 +465,18 @@ if fleets:
         return f"{int(x / 1e6 + 0.5)}M" if k >= 1000 else f"{k}k"
     for grp, g in sorted(fleets.items(), key=lambda kv: kv[1]["first"], reverse=True)[:8]:
         cells = " · ".join(f"{_short(m)} {v[0]} (out {_k(v[1])}, cache-read {_k(v[2])})" for m, v in sorted(g["models"].items(), key=lambda kv: -kv[1][0]))
-        print(f"    {grp[:16]:16} {(g['first'] or '')[5:16].replace('T', ' '):11}  {cells}")
+        eff = " ".join(f"{k}×{n}" for k, n in sorted(g["effort"].items()))
+        print(f"    {grp[:16]:16} {(g['first'] or '')[5:16].replace('T', ' '):11}  {cells}  · effort {eff}" + ("  [ultracode]" if _ultra(g) else ""))
     tot = Counter()
     for g in fleets.values():
         for m, v in g["models"].items(): tot[_short(m)] += v[0]
     print("    total: " + " · ".join(f"{m} {n}" for m, n in tot.most_common()))
+    print("    input + cache-write (per API call, deduped by message.id): "
+          f"input {_k(sum(v[3] for g in fleets.values() for v in g['models'].values()))} · "
+          f"cache-write {_k(sum(v[4] for g in fleets.values() for v in g['models'].values()))}")
+    ug = [g for g in fleets.values() if _ultra(g)]
+    if ug:
+        print(f"    ultracode fleets: {len(ug)} of {len(fleets)} (started inside a keyword turn) — {sum(g['files'] for g in ug)} agents")
     strong = sum(v[0] for g in fleets.values() for m, v in g["models"].items() if _cls(m) == "strong")
     low = sum(v[0] for g in fleets.values() for m, v in g["models"].items() if _cls(m) in ("cheap", "balanced"))
     if n_agents >= 5 and strong > low:
