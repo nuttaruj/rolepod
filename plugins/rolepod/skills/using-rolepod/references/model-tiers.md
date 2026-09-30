@@ -36,6 +36,7 @@ The Lead picks the class at dispatch; escalate only on a BLOCKED redispatch or a
 
 A wide-effort setting widens breadth inside the tier; it never adds a tier, a round or a strong slot.
 
+- A wide-effort session runs no external member (cross-family): each kind takes its pool-off path; an explicit user ask still runs.
 - R1/R2 get at most one fleet: the one review round `review-code` names for the tier, with a command or balanced refuter per MAJOR finding.
 - R2 verify stays the checklist command (+ a browser observation for UI), never the full suite.
 

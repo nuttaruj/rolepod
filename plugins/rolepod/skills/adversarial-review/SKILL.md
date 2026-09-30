@@ -19,7 +19,7 @@ An R4 (high-risk) diff's round 1 → one adversarial report beside `security-eng
 
 - Run it with the rest of round 1 (`review-code` Pick reviewers): `security-engineer` · `universal-reviewer` `lens: spec` · `universal-reviewer` `lens: standards` · this pass. The internal pass goes in the SAME message; the external's `--detach` runs just before that message — it returns at once — so the external runs while the internal reviewers do.
 - A usable pool → the external is the only adversarial pass: no internal `mode: adversarial` beside it (the internal pass stands in only under What counts below). The `cross-family` skill's runner, `<cross-family skill folder>/scripts/cross-family.sh` (that folder sits beside this skill's): `--kind review --adversarial --brief <brief> --attach <diff> --detach`, then ONE `--collect <job-id>`; its report joins round 1 with the other reports. The runner hands the member this skill's Reviewer stance.
-- Pool off, no usable member, no `cross-family`, or the runner refuses `--adversarial` (exit 2: the stance is missing beside it) → `universal-reviewer` with `mode: adversarial` on a strong-class model — never a balanced one, even under a balanced Lead. It writes `.rolepod/evidence/review/<task>-adversarial.md`.
+- Pool off, wide-effort session, no usable member, no `cross-family`, or the runner refuses `--adversarial` (exit 2: the stance is missing beside it) → `universal-reviewer` with `mode: adversarial` on a strong-class model — never a balanced one, even under a balanced Lead. It writes `.rolepod/evidence/review/<task>-adversarial.md`.
 - The brief is the reviewer's whole world: the diff, the spec / acceptance criteria, the risk profile, the claimed behaviors to trace.
 - Called alone (the user asked; no `review-code` round) → freeze the diff first — each ref resolves and the diff is non-empty — then run the pass as above.
 
@@ -28,10 +28,10 @@ Done when: the adversarial report is back in full — never partial — and sits
 ### 2. What counts
 
 - The external runs in a CLI different from the Lead's, on that CLI's own default model (the same vendor is fine).
-- The internal strong pass stands in when (a) cross-family is off, the runner reports no usable member (every member failed / pool empty — logged) or refuses `--adversarial`; (b) the external came back weak — an empty or partial return (a changed file missing from its Scope list counts), a bare verdict, or no claims walked. Record why.
+- The internal strong pass stands in when (a) cross-family is off, wide-effort session, the runner reports no usable member (every member failed / pool empty — logged) or refuses `--adversarial`; (b) the external came back weak — an empty or partial return (a changed file missing from its Scope list counts), a bare verdict, or no claims walked. Record why.
 - The vertical fallback (same CLI, stronger tier) and an inline advisor never satisfy this pass; each only raises the Lead floor, recorded as a LIMITATION.
 - The author's own model is never the final adversarial reviewer, and the Lead's own walk is never this pass. Only when no dispatch is possible at all (the user forbade agents, no subagent support) does the Lead's cold self-review stand in — a LIMITATION that blocks the merge until the user waives it (`finish-work` Reviewer gate).
-- The review report's **Cross-model adversarial pass** line: `ran on <cli>` (a `ROLEPOD-XFAM ok` receipt) · `NOT RUN — cross-family off (opt-in)` (the user's choice — a note, not a limitation) · `NOT RUN — <reason>` (the internal strong pass ran) · `vertical — same CLI, <reason>`.
+- The review report's **Cross-model adversarial pass** line: `ran on <cli>` (a `ROLEPOD-XFAM ok` receipt) · `NOT RUN — cross-family off (opt-in)` / `NOT RUN — wide-effort session` (the user's choice — a note, not a limitation) · `NOT RUN — <reason>` (the internal strong pass ran) · `vertical — same CLI, <reason>`.
 
 Done when: the pass that ran is one of the above and the Cross-model line names it.
 

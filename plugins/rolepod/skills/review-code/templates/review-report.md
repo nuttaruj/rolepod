@@ -30,11 +30,12 @@
 **Cross-model adversarial pass** (R4 only — delete the line otherwise): <ran on `<cli>` (cross-family, its default model — receipt: ROLEPOD-XFAM ok … raw=<path>) |
  ran on `<cli>`, model family not reported (a CLI preset with no family
  field — the receipt still clears the gate) | NOT RUN — cross-family off
- (opt-in; the user's choice — a note, not a limitation) | vertical — same
+ (opt-in; the user's choice — a note, not a limitation) | NOT RUN — wide-effort session
+ (the user's choice — a note, not a limitation) | vertical — same
  CLI, reason (own CLI's stronger tier as cold reviewer; not a cross-family
  pass) | NOT RUN — reason (pool failed / empty; the internal strong
  pass ran instead). Vertical or a NOT RUN other than
- opt-in-off on a high-risk diff is a recorded verification limitation —
+ opt-in-off or wide-effort session on a high-risk diff is a recorded verification limitation —
  `finish-work`'s Reviewer gate surfaces it before merge. No fresh reviewer
  at all (the Lead's own walk in its place) blocks the merge until the user
  waives it.>

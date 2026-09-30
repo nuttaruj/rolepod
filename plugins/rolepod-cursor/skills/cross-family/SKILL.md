@@ -19,6 +19,7 @@ Outside Claude add `--lead <codex|agy|cursor|opencode>`. `--help` lists every fl
 
 `cross-family.sh --pool` prints the resolved pool and why each member is in or out.
 - The pool is opt-in: `<git-root>/.rolepod/cross-family` overrides `~/.rolepod/cross-family`. No file or `none` = off. Never turn it on unasked.
+- A wide-effort session (Claude ultracode — a keyword turn or the session setting; Codex `ultra` — proactive delegation active) runs no cross-family member: every kind takes its pool-off path, and the Cross-model line reads `NOT RUN — wide-effort session`, the user's choice like `cross-family off (opt-in)`. An explicit user ask for another CLI's opinion still runs.
 - Only the Lead's own CLI is excluded. The model family is recorded as information, never a filter: a member on the Lead's vendor still counts, and a member reporting no family is a FULL external pass.
 - The user asked to set up or change the pool → step 6 first.
 - The user asked for another CLI's opinion and the pool is off → say so and offer step 6 once; write no file without their yes.

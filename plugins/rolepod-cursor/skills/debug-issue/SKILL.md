@@ -105,7 +105,7 @@ Done when: the suite is green, the repro passes, and zero `[DBG-]` tags remain.
 
 Two failed fix attempts on the same surface, the brief's carried-in ones included → stop fixing; two misses from the same mind mean the mental model is wrong. Arriving with 2 already used → steps 1-2 for the repro, then here, before any fix.
 1. Write ONE self-contained ledger file. The advisor is cold and sees only this: the symptom, the repro command, each failed fix and why it failed, the suspect code inline (never a pointer to the session).
-2. Pool on → `cross-family` kind consult with the ledger — a FOREGROUND call. Pool off, no usable member, or `cross-family` absent → the Lead's own CLI at its strongest model, valid only when that model differs from the one now running. The fallback run → `references/second-opinion.md`.
+2. Pool on → `cross-family` kind consult with the ledger — a FOREGROUND call. Pool off, wide-effort session, no usable member, or `cross-family` absent → the Lead's own CLI at its strongest model, valid only when that model differs from the one now running. The fallback run → `references/second-opinion.md`.
 3. Read the reply as a **correction** (a new hypothesis → exactly ONE advisor-informed attempt against the same repro), a **confirmation** ("approach right, check X"), or a **stop** ("wrong path").
 4. Still failing, or no usable advisor → `manage-context` (escalate) with the ledger and the opinion (or "no usable advisor — <reason>") attached. The Second opinion has then run — the ledger's `Second opinion:` line records it — and it is never re-entered for this bug. No `manage-context` → hand the user the ledger, the opinion and 2-3 options, and stop. No further fix attempts.
 

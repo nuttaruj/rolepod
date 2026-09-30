@@ -72,13 +72,14 @@ All "no" → self-do. Any "yes" → delegate to the closest specialist by path /
 
 The brief comes from the plan, generated when plan-lint exists: `plan-lint.sh --brief <N> <plan> [contract]` prints it; add `--main` for a task that runs on the main checkout (a sequential track), so the brief names no worktree. No plan-lint → the brief is the task block verbatim, plus the spec path and the Bounds: never commit, stay in scope, run the Command, return a decision brief.
 - The Lead adds only **Read first** (the 2-3 files and the pattern to copy) and facts the brief lacks. Never extra steps, runs or scope, a reviewer round 2 included.
+- A wide-effort session (the `cross-family` skill's rule) → every owner brief carries `External: off — wide-effort session`: the owner cannot see the Lead's mode, and its cross-family kinds take their pool-off path.
 - Never point the owner at the plan file; the brief is its slice.
 
 The task owner NEVER commits and NEVER expands scope:
 - A path nobody in the wave owns → touch it, plus one `Also touched:` line in the brief.
 - A path another owner holds → leave it, put `NEEDS: <path> — <one-line change>` in the brief and finish the rest; the Lead applies it at integration (R1-sized) or reassigns.
 
-A write mandate goes only to the path's owning role, never a generic agent or a reviewer; a writing stage carries `agentType: 'rolepod:<role>'`, never a bare `agent()` (`references/subagent-dispatch.md`: role, model, brief fields). `write: external` → the owner writes the failing test first, then `cross-family` kind implement; pool off or `cross-family` absent → the owner writes the task.
+A write mandate goes only to the path's owning role, never a generic agent or a reviewer; a writing stage carries `agentType: 'rolepod:<role>'`, never a bare `agent()` (`references/subagent-dispatch.md`: role, model, brief fields). `write: external` → the owner writes the failing test first, then `cross-family` kind implement; pool off, wide-effort session, or `cross-family` absent → the owner writes the task.
 
 Handle the brief's status (its first word):
 - `COMPLETED` over a failing test → reject and re-brief.

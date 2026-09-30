@@ -12,8 +12,8 @@
 - Cross-model adversarial pass (high-risk diff only): <ran on `<cli>`
   (cross-family) / ran on `<cli>`, model family not reported (still clears
   the gate) / cross-family off (opt-in — the user's choice, no limitation)
-  / vertical — same CLI / NOT RUN — reason. Vertical or a NOT RUN other
-  than opt-in-off is a limitation the user must see.>
+  / wide-effort session (the user's choice, no limitation) / vertical — same CLI / NOT RUN — reason. Vertical or a NOT RUN other
+  than opt-in-off or wide-effort session is a limitation the user must see.>
 - User waivers this session: <none, or per waiver: which gate — the user's
   words, quoted. A waiver is recorded here, never silently applied.>
 
