@@ -103,7 +103,8 @@ if bare == "workflow-subagent":
     reason = ("BLOCKED: bare Workflow agent() attempted %s on %s. A writing stage needs a role: "
               "set agentType: \x27rolepod:<role>\x27 (backend-developer / frontend-developer / ...) on "
               "this agent() call and resume the workflow (finished stages replay from cache). "
-              "Fix now: return BLOCKED naming this path. Exception: "
+              "Fix now: put BLOCKED and this path in your StructuredOutput answer (or final text); "
+              "a repro script goes to $TMPDIR or the scratchpad. Exception: "
               "ROLEPOD_ALLOW_OUT_OF_SCOPE_WRITE=1 (user-set).") % (verb, short)
 elif cls == "generic":
     reason = ("BLOCKED: generic sub-agent %r attempted %s on %s. A platform agent "
