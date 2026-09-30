@@ -373,12 +373,12 @@ def _short(m):
         if k in m.lower(): return k
     return m[:12]
 fleets = {}
+bases, cutoff = [], time.time() - 14 * 86400
 if root:
     # the harness keys the project dir by the cwd it saw — try the literal and the resolved path
-    keys = {os.path.abspath(root).replace("/", "-"), os.path.realpath(root).replace("/", "-")}
-    cutoff = time.time() - 14 * 86400
+    bases = [os.path.join(os.environ.get("HOME", ""), ".claude", "projects", p.replace("/", "-"))
+             for p in {os.path.abspath(root), os.path.realpath(root)}]
     files = []
-    bases = [os.path.join(os.environ.get("HOME", ""), ".claude", "projects", key) for key in keys]
     for base in bases:
         files += glob.glob(os.path.join(base, "*", "subagents", "**", "agent-*.jsonl"), recursive=True)
     for f in sorted(set(files)):

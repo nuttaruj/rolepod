@@ -220,29 +220,35 @@ why = ("strong class" if cls == "strong" else "unknown family, priced as strong"
 
 verdict = ""
 reason_txt = ""
-stages_by_verdict = {"bare-fanout": bare_fanout, "strong-fanout": strong_fanout, "bare-writer": bare_writer}
+stages = []
 if costly and bare_fanout and strong_fanout:
     verdict = "bare-fanout+strong-fanout"
-    stages_by_verdict[verdict] = bare_fanout + strong_fanout
+    stages = bare_fanout + strong_fanout
+    # two stage lists capped at 60 each keep the whole text under 600 by construction
     reason_txt = (
-        "⛔ fleet-tier: fan-out stage(s) %s are bare — they inherit the Lead %s (%s) × N — and stage(s) %s "
-        "pin a strong model × N. Fix: pin every fan-out non-strong — a stage that WRITES → a non-strong "
-        "rolepod role (agentType:\x27rolepod:<role>\x27); read/sweep → agentType:\x27rolepod:scout\x27 or "
-        "model:\x27haiku\x27; per-item verify → model:\x27sonnet\x27; ONE strong call outside the fan-out "
-        "for the judge. Exception: none; ROLEPOD_GATES_SOFT=1 (user-set) warns."
+        "⛔ fleet-tier: bare fan-out stage(s) %s inherit the Lead %s (%s) × N, and stage(s) %s pin a "
+        "strong model × N. "
+        "Fix: pin every fan-out non-strong — a stage that WRITES → a non-strong rolepod role "
+        "(agentType:\x27rolepod:<role>\x27); read/browse/sweep → agentType:\x27rolepod:scout\x27 or "
+        "model:\x27haiku\x27; per-item verify → model:\x27sonnet\x27, effort:\x27high\x27; ONE strong slot on the "
+        "single review call. "
+        "Exception: none — pin the fan-out; ROLEPOD_GATES_SOFT=1 (user-set) warns."
         % (", ".join(sorted(set(bare_fanout)))[:60], lead or "unknown model", why,
            ", ".join(sorted(set(strong_fanout)))[:60]))
 elif costly and bare_fanout:
     verdict = "bare-fanout"
+    stages = bare_fanout
     reason_txt = (
         "⛔ fleet-tier: bare fan-out call(s) — stage(s) %s — inherit the Lead %s (%s) × N. "
-        "Fix: pin the fan-out — a stage that WRITES → agentType:\x27rolepod:<role>\x27 (the role pins "
-        "its tier); read/browse/sweep → agentType:\x27rolepod:scout\x27 or model:\x27haiku\x27; per-item "
+        "Fix: pin the fan-out — a stage that WRITES → a non-strong rolepod role "
+        "(agentType:\x27rolepod:<role>\x27, which pins its tier); read/browse/sweep → "
+        "agentType:\x27rolepod:scout\x27 or model:\x27haiku\x27; per-item "
         "verify → model:\x27sonnet\x27, effort:\x27high\x27; ONE strong slot on the single review call. "
         "Exception: none — pin the fan-out; ROLEPOD_GATES_SOFT=1 (user-set) warns."
         % (", ".join(sorted(set(bare_fanout)))[:120], lead or "unknown model", why))
 elif strong_fanout:
     verdict = "strong-fanout"
+    stages = strong_fanout
     reason_txt = (
         "⛔ fleet-tier: strong model pinned on fan-out stage(s) %s — the top price × N. "
         "Fix: a fan-out runs a non-strong rolepod role (agentType:\x27rolepod:<role>\x27, which pins its "
@@ -251,6 +257,7 @@ elif strong_fanout:
         % ", ".join(sorted(set(strong_fanout)))[:120])
 elif bare_writer:
     verdict = "bare-writer"
+    stages = bare_writer
     reason_txt = (
         "⛔ write-scope: bare agent() on writing stage(s) %s — a call that edits product files needs "
         "agentType:\x27rolepod:<role>\x27 (backend-developer / frontend-developer / devops-sre; E2E tests → "
@@ -264,7 +271,7 @@ if verdict:
         _log_bypass("workflow-tier-nudge", "ROLEPOD_GATES_SOFT")
         ctx(reason_txt)
     else:
-        _log_gate(ti, script, lead, cls, n_calls, verdict, sorted(set(stages_by_verdict[verdict])))
+        _log_gate(ti, script, lead, cls, n_calls, verdict, sorted(set(stages)))
         print(json.dumps({"hookSpecificOutput": {
             "hookEventName": "PreToolUse",
             "permissionDecision": "deny",
