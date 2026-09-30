@@ -40,6 +40,9 @@ Split when Delivers needs "and" and the halves touch different files, or when a 
 Every task states **Delivers** and **Blocked by**; the Blocked-by graph is the only statement of order, each edge naming what it consumes (the template's Blocked by line).
 Two edge-free tasks on one file → **prefactor first**, or Sequential with a reason (edge-cases: Prefactor).
 A task builds and ships alone, never a batch. Tasks sharing a seam (a contract or interface) form one named ship group, written as the template's **Ship group** line — the unit that bounds its own review (`implement-plan` Review; a size split applies inside it).
+
+In a parallel layout with multiple tracks: tasks that edit the same files or are chained by **Blocked by** edges within the same task group belong to one track (they run together in one worktree). A task that **Blocked by** tasks in two or more tracks starts after those tracks merge, as the first task of a new track. Document tracks in the plan's **Parallel layout** section as `## Tracks` (one line per track: `- A — <short name>: Task 1, Task 2 · branch <feature>/a-<short-slug>`), and tag each task with its track: `**Track:** A`.
+
 A task names a file you have not read → read it.
 
 Done when: every task has Delivers and Blocked by with named edges, and every file it names is read.
@@ -56,9 +59,9 @@ Done when: every task names a test or evidence and a runnable Command; a task on
 
 Order, split, owner and seam are the plan's own calls — never stop for the user to approve the task list.
 A task needs a choice the spec does not make and the user would weigh — a new dependency, a public API or schema change, a migration, anything irreversible → one question with the simplest option recommended, before writing the artifact.
-Parallel only with genuinely disjoint file ownership and no handoff; edge-free tasks are candidates, never a mandate → `references/parallel.md`.
+Parallel only with genuinely disjoint file ownership and no handoff; track-free tasks are candidates, never a mandate. Tracks share files and **Blocked by** relationships; organize by track, write the cohesion contract (section 5) → `references/parallel.md`.
 
-Done when: every open choice is the plan's own or answered by the user, and the Parallel layout is decided.
+Done when: every open choice is the plan's own or answered by the user, and the Parallel layout (with tracks) is decided.
 
 ### 5. Cohesion contract (parallel only)
 
@@ -109,6 +112,7 @@ Done when: every section is filled, and a saved plan passes plan-lint (or the fo
 - The plan names the files, the order and the verification per task before any edit. Never start editing earlier.
 - Parallel agents on one feature work under a written cohesion contract pinning file ownership and merge order. Never spawn more than one without it.
 - Pick the simplest viable approach. Complexity needs an explicit reason and the user's awareness.
+- **Backward compatibility:** a plan without `## Tracks` + Parallel layout treats every task as its own track (worktree per task, old behavior); + Sequential means one track named `plan`. Plans with `## Tracks` use the new track-end review model.
 
 ## Next phase
 
