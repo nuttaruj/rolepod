@@ -154,9 +154,11 @@ self-contained.
   shell write is an ungated edit.
 - **Nested dispatch** — a sub-agent you start goes only to the rolepod role
   the brief or the Writer loop names.
-- **Report file** — no tool can write the report file the brief names →
-  return the report inline under that file name, whole — a reply-length cap
-  never cuts it; the Lead saves it.
+- **Report file** — the report file the brief names is input the next step
+  reads (a nested agent's final text reaches the Lead, not its owner), not a
+  summary: write it, even where the platform says not to write report files.
+  No tool can write it → return the report inline under that file name,
+  whole — a reply-length cap never cuts it; the Lead saves it.
 - **Schema** — inside a Workflow with a schema, the schema is the report: answer through it; write the report file only when the brief names a path.
 - **Hand-off** — return exact file paths, what is done and what is next, and
   old-vs-new for any API / schema change; prefix breaking changes with
