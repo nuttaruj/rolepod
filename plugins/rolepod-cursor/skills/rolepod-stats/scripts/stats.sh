@@ -108,7 +108,7 @@ dispatches = [r for r in rows if r.get("phase") == "dispatch"]
 # hook-auto row whose agent_type is a strong-named role (v2.86.0: the manual
 # line is written only where the hook cannot see the tier). Mirrors
 # session_state.STRONG_REVIEWER_AGENTS.
-STRONG_ROLES = {"security-engineer", "universal-reviewer", "code-reviewer"}
+STRONG_ROLES = {"security-engineer"}
 def is_strong(d):
     if d.get("tier") == "strong":
         return True
@@ -271,8 +271,8 @@ if verifies:
     print(f"  ({100 * fails // total}% fail rate)" if total else "")
 
 # External (cross-family) passes — written by scripts/cross-family.sh. The
-# review line with reviewer:external is what precommit-gate counts as the
-# strong pass; consult lines are the debug channel.
+# review line with reviewer:external records an external pass (the commit
+# gate never counts it, C4); consult lines are the debug channel.
 externals = [r for r in rows if r.get("reviewer") == "external" or r.get("phase") == "implement"]   # implement lines carry no reviewer key: the runner built, the combined-review owner reviews
 xfails = [r for r in rows if r.get("phase") == "external-fail"]
 if reviews:
@@ -314,26 +314,6 @@ if externals or xfails or strong_internal:
             adv = sum(1 for r in review_rows if r.get("mode") == "adversarial")
             std = ext_reviews - adv
             print(f"    external review mode: adversarial {adv} · standard {std}")
-        cfg = None
-        for cand in (os.path.join(os.path.dirname(ev.rstrip("/")), "cross-family"),
-                     os.path.expanduser("~/.rolepod/cross-family")):
-            if os.path.isfile(cand):
-                cfg = cand
-                break
-        enabled = False
-        if cfg:
-            try:
-                names = [w for w in open(cfg).read().lower().split() if not w.startswith("#")]
-                enabled = bool(names) and "none" not in names
-            except OSError:
-                pass
-        if strong_internal and not ext_reviews:
-            if enabled:
-                print("      ⚠ every strong pass ran in the Lead's own CLI although a cross-family pool is "
-                      "configured — satellite-first wants `cross-family.sh --kind review` first")
-            else:
-                print("      cross-family is opt-in and not enabled here (no ~/.rolepod/cross-family) — "
-                      "`cross-family.sh --pool` lists candidates")
 
 if ships:
     a = Counter(r.get("action", "?") for r in ships)

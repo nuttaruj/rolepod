@@ -35,7 +35,7 @@
 # $'…' escapes, a bare & after an output command, quote- or backslash-split
 # names.
 set -euo pipefail
-unset XFAM_RUNNER
+unset XF_RUNNER
 
 # Cross-family runner (v2.179.0: inside the cross-family skill) — resolved
 # on FIRST USE only (this hook fires on every Bash call): a plugin tree's
@@ -403,8 +403,8 @@ if [ "$IS_COMMIT" != "1" ]; then
   [ -n "$MUTATES" ] || exit 0
   [ "${ROLEPOD_GATES_SOFT:-0}" = "1" ] && exit 0
   _mj="$(xfam_running_job "$RESOLVED_DIR")"; [ -n "$_mj" ] || exit 0
-  XFAM_RUNNER="${XFAM_RUNNER-$(xfam_runner)}"
-  ROLEPOD_HOOK_MSG="⏸ REVIEW IN FLIGHT: cross-family job $_mj reads this tree live — \`git $MUTATES\` rewrites it, so that verdict becomes an artifact and the job re-runs. Fix: \`bash '$XFAM_RUNNER' --collect ${_mj%% *}\` first, then \`git $MUTATES\`. Exception: a red-proof revert goes in a throwaway git worktree, not a stash here; a dead job → --collect says so and this line stops." python3 -I -c "
+  XF_RUNNER="${XF_RUNNER-$(xfam_runner)}"
+  ROLEPOD_HOOK_MSG="⏸ REVIEW IN FLIGHT: cross-family job $_mj reads this tree live — \`git $MUTATES\` rewrites it, so that verdict becomes an artifact and the job re-runs. Fix: \`bash '$XF_RUNNER' --collect ${_mj%% *}\` first, then \`git $MUTATES\`. Exception: a red-proof revert goes in a throwaway git worktree, not a stash here; a dead job → --collect says so and this line stops." python3 -I -c "
 import json, os
 print(json.dumps({'hookSpecificOutput': {'hookEventName': 'PreToolUse', 'additionalContext': os.environ.get('ROLEPOD_HOOK_MSG', '')}}))
 " 2>/dev/null || echo '{}'
@@ -770,16 +770,16 @@ fi
 if [ -f "$SESSION_STATE" ] && command -v python3 >/dev/null 2>&1; then
   # One session_state.py call computes the window at DIFF_DIR itself (same
   # algorithm as SINCE_EPOCH above, kept in bash for SINCE_HUMAN) and returns
-  # all five numbers in one pass: test edits, high-risk edits, reviewers,
-  # strong reviewers (internal + anchored external) and the anchored
-  # external count alone. It folds in the transcript scan and the hook-auto
+  # all four numbers in one pass: test edits, high-risk edits, reviewers and
+  # strong reviewers (= `security-engineer` dispatches, any model; an external
+  # pass never counts). It folds in the transcript scan and the hook-auto
   # phase-log "dispatch" backstop — Claude-native evidence only (spec
   # Desired 10, 2026-09-25): no bash-write scope tracker, no cross-CLI proof
   # rows, no lib-less fallback — this branch runs only on Claude (the ROLEPOD_LEAD_CLI
   # check above already excluded every other CLI).
   GATE_EV=$(printf '%s' "$INPUT" | python3 "$SESSION_STATE" gate-evidence "$DIFF_DIR" 2>/dev/null || true)
   if [ -n "$GATE_EV" ]; then
-    read -r TEST_EDITS HIGH_RISK_EDITS REVIEWERS STRONG_REVIEWERS XREV <<< "$GATE_EV"
+    read -r TEST_EDITS HIGH_RISK_EDITS REVIEWERS STRONG_REVIEWERS <<< "$GATE_EV"
   fi
 fi
 TEST_EDITS=${TEST_EDITS:-0}
@@ -787,79 +787,6 @@ HIGH_RISK_EDITS=${HIGH_RISK_EDITS:-0}
 REVIEWERS=${REVIEWERS:-0}
 STRONG_REVIEWERS=${STRONG_REVIEWERS:-0}
 EV_ROOT="$_pd_root/.rolepod/evidence"
-XREV=${XREV:-0}
-
-# Satellite-first, ENFORCED (v2.76.0). Measured before this: 210 dispatches,
-# 0 anchored cross-family passes — the internal strong reviewer was one
-# Agent call away and counted the same, so it always won. Now, on a
-# high-risk diff, an internal strong reviewer clears the gate only when the
-# cross-family pool was actually tried: an anchored external pass (XREV), OR
-# an `external-fail` phase-log line since the last commit (the runner tried
-# every usable member and they failed / the pool is empty). Machines with no
-# usable cross-family CLI (runner --pool-names prints nothing) keep the
-# internal path untouched. Lead CLI unknown → cannot exclude its own CLI →
-# no tightening (fail-open).
-XFAM_HELD=""
-XFAM_LEAD="${ROLEPOD_LEAD_CLI:-}"
-[ -z "$XFAM_LEAD" ] && [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && XFAM_LEAD="claude"
-XFAM_POOL=""; XFAM_FAILS=0; XFAM_POOL_ON=""
-# Detached runner job still running for this repo (v2.79.0): the hold reason
-# must say "wait / --collect", not "run the runner" (it is already running).
-XFAM_RUNNING="$(xfam_running_job)"
-# Runner resolved here, guarded by HIGH_RISK only (never LOGIC_COUNT): the
-# fallback message at the REASON line below (XFAM_RUNNING, no XFAM_HELD)
-# reads $XFAM_RUNNER on a HIGH_RISK comment-only diff too, where the pool
-# block right after this never runs.
-[ -n "$HIGH_RISK" ] && XFAM_RUNNER="${XFAM_RUNNER-$(xfam_runner)}"
-# Pool state, read once when eligible: needed both to decide the hold below
-# AND to word the deny Fix ("the external when the pool is on, else
-# universal-reviewer") even when STRONG_REVIEWERS is 0 (no reviewer
-# dispatched yet at all — the hold check below never runs in that case).
-# `[ "${XREV:-0}" -eq 0 ]` (round-2 review, 2026-09-25): an anchored
-# external pass already cleared the commit on its own (v2.145.0) — calling
-# the runner just to word a Fix line nobody will read is a wasted spawn.
-if [ -n "$HIGH_RISK" ] && [ "${LOGIC_COUNT:-0}" -gt 0 ] && [ -n "$XFAM_LEAD" ] && [ -f "$XFAM_RUNNER" ] && [ "${XREV:-0}" -eq 0 ]; then
-  XFAM_POOL=$(bash "$XFAM_RUNNER" --lead "$XFAM_LEAD" --pool-names 2>/dev/null | tr '\n' ' ' | sed 's/ *$//')
-  [ -n "$XFAM_POOL" ] && XFAM_POOL_ON=1
-fi
-# Money / auth no longer needs BOTH passes (v2.78.0 hold REMOVED, v2.145.0):
-# the pool exists to move strong-class tokens OFF the main plan, so an
-# anchored external pass (XREV, already credited to STRONG_REVIEWERS above)
-# clears a money/auth diff alone, same as any other high-risk surface.
-# Satellite-first below is unchanged: an internal reviewer with NOTHING
-# tried against the pool still does not clear.
-# The pool reviews CODE only (v2.143.0): a comment / blank-only diff on a
-# risky path (LOGIC_COUNT 0) clears with the internal strong reviewer.
-# `-z "$XFAM_HELD"` is defensive (no earlier block sets it now) — keeps this
-# `if` correct unchanged if a hold is ever added above it again.
-if [ -z "$XFAM_HELD" ] && [ -n "$XFAM_POOL_ON" ] && [ "${XREV:-0}" -eq 0 ] && [ "$STRONG_REVIEWERS" -gt 0 ]; then
-  # external-fail rows from BOTH evidence roots (D6, same class as
-  # gate-evidence above, 2026-09-25): a runner run as `cd <worktree> && …
-  # cross-family.sh …` logs its failure in the WORKTREE's own evidence, not
-  # the session root's — session_state.py's gate_hold_predict sums
-  # _external_fail_count over both dirs at $DIFF_DIR's own window, the same
-  # one SINCE_EPOCH computed above (S11 pins the two windows equal). No
-  # inline fallback: this branch runs only on Claude (the ROLEPOD_LEAD_CLI
-  # check above already excluded every other CLI) and session_state.py ships
-  # beside this file in every tree that reaches here — same as gate-evidence
-  # above, which has no such fallback either. Missing $SESSION_STATE/python3
-  # → XFAM_FAILS stays 0 — the hold applies (fail-closed), same default as before.
-  XFAM_FAILS=0
-  if [ -f "$SESSION_STATE" ] && command -v python3 >/dev/null 2>&1; then
-    XFAM_FAILS=$(python3 "$SESSION_STATE" gate-hold-predict "$DIFF_DIR" 2>/dev/null || echo 0)
-    case "$XFAM_FAILS" in ''|*[!0-9]*) XFAM_FAILS=0 ;; esac
-  fi
-  if [ -n "$XFAM_POOL" ] && [ "${XFAM_FAILS:-0}" -eq 0 ] 2>/dev/null; then
-    XFAM_HELD="pool usable ($XFAM_POOL), no anchored external pass since the last commit — internal reviewers don't clear this diff. "
-    if [ -n "$XFAM_RUNNING" ]; then
-      XFAM_HELD+="A detached job is ALREADY RUNNING: $XFAM_RUNNING — bash '$XFAM_RUNNER' --collect <job-id>, then retry. "
-    else
-      XFAM_HELD+="Fix: bash '$XFAM_RUNNER' --kind review --adversarial --brief <brief> --attach <diff> --detach; --collect <job-id> waits. "
-    fi
-    XFAM_HELD+="Pool failed/empty → internal reviewer counts. "
-    STRONG_REVIEWERS=0
-  fi
-fi
 
 # The plan is the readable record of each step; the gate writes to it, never
 # reads from it (spec Desired 10, 2026-09-24). One "phase":"gate" row per
@@ -873,7 +800,7 @@ append_gate_row() {
   mkdir -p "$EV_ROOT" 2>/dev/null || return 0
   ROLEPOD_GATE_DECISION="$decision" ROLEPOD_GATE_TESTS="$TEST_EDITS" \
   ROLEPOD_GATE_RISK="$HIGH_RISK_EDITS" ROLEPOD_GATE_REVIEWERS="$REVIEWERS" \
-  ROLEPOD_GATE_STRONG="$STRONG_REVIEWERS" ROLEPOD_GATE_EXTERNAL="${XREV:-0}" \
+  ROLEPOD_GATE_STRONG="$STRONG_REVIEWERS" \
   ROLEPOD_GATE_HEAD="$head_sha" ROLEPOD_EV_DIR="$EV_ROOT" python3 -I -c '
 import json, os, datetime
 def _int(name):
@@ -889,7 +816,6 @@ line = {
     "risk": _int("ROLEPOD_GATE_RISK"),
     "reviewers": _int("ROLEPOD_GATE_REVIEWERS"),
     "strong": _int("ROLEPOD_GATE_STRONG"),
-    "external": _int("ROLEPOD_GATE_EXTERNAL"),
     "head": os.environ.get("ROLEPOD_GATE_HEAD") or "",
 }
 try:
@@ -920,23 +846,12 @@ REASON="precommit-gate BLOCKED. ${BYPASS_IGNORED}"
 # the 600 cap — shortened here (drop "Lead + subagent transcripts") and the
 # HIGH-RISK line below no longer repeats the Fix clause verbatim.
 # Diff: clause dropped 2026-09-29 — Evidence carries the numbers; 600-char literal cap (the runner path is outside it).
-REASON+="Evidence ($SINCE_HUMAN): $TEST_EDITS tests, $HIGH_RISK_EDITS risk edits, $REVIEWERS reviewers ($STRONG_REVIEWERS strong). "
+REASON+="Evidence ($SINCE_HUMAN): $TEST_EDITS tests, $HIGH_RISK_EDITS risk edits, $REVIEWERS reviewers ($STRONG_REVIEWERS security-engineer). "
 [ -n "$HIGH_RISK" ] && REASON+="HIGH-RISK path: $HIGH_RISK. "
-[ -n "$XFAM_HELD" ] && REASON+="SATELLITE-FIRST: $XFAM_HELD"
-[ -z "$XFAM_HELD" ] && [ -n "$XFAM_RUNNING" ] && [ -n "$HIGH_RISK" ] && [ "$STRONG_REVIEWERS" -eq 0 ] && REASON+="A detached cross-family job is still running: $XFAM_RUNNING — bash '$XFAM_RUNNER' --collect <job-id>, then retry. "
-if [ -n "$HIGH_RISK" ] && [ "$STRONG_REVIEWERS" -eq 0 ] && [ -z "$XFAM_HELD" ]; then
-  REASON+="NO STRONG ADVERSARIAL REVIEWER. "
-fi
-# One Fix sentence, worded to what actually clears the block — never
-# "internal also counts": the satellite-first hold above already zeroed
-# STRONG_REVIEWERS when the pool is usable and untried (A-standards MAJOR,
-# 2026-09-25 fix round).
-if [ -n "$HIGH_RISK" ] && [ "$STRONG_REVIEWERS" -eq 0 ] && [ -z "$XFAM_HELD" ]; then
-  if [ -n "$XFAM_POOL_ON" ]; then
-    REASON+="Fix: security-engineer + ONE external (any verdict counts; its fixes are re-checked internally) when the pool is on, else universal-reviewer — FINISHED dispatches, the external anchored per review-code (reviewer:external log). "
-  else
-    REASON+="Fix: security-engineer + a FINISHED strong universal-reviewer dispatch (an Agent or Workflow call). "
-  fi
+# C4 (review-finish-lean, 2026-09-30): fact → Fix → Exception, the rule word
+# for word; no pool, no external anchor, no model check.
+if [ -n "$HIGH_RISK" ] && [ "$STRONG_REVIEWERS" -eq 0 ]; then
+  REASON+="A high-risk commit needs at least one \`security-engineer\` dispatch since the last commit, any model; an external pass never counts. Fix: dispatch \`security-engineer\` (a FINISHED Agent or Workflow call), then retry. "
 elif [ -z "$HIGH_RISK" ]; then
   # Round-2 review (2026-09-25): a deny forced by ROLEPOD_GATES_HARD=1 alone
   # (normal diff, 0 risk edits this session) used to get NO Fix sentence —
@@ -967,9 +882,8 @@ fi
 # `ROLEPOD_GATES_PASSED=1 git commit` deadlocked against the platform's own
 # permission layer, which reads that command shape as gate circumvention.
 # Evidence is split by risk (v2.46.0):
-#   HIGH-RISK diff  → only a STRONG-class adversarial reviewer dispatch
-#     (security-engineer / universal-reviewer) clears it. Test edits and
-#     test edits are the floor, not the review — CourtBook
+#   HIGH-RISK diff  → only a `security-engineer` dispatch (any model, C4)
+#     clears it. Test edits are the floor, not the review — CourtBook
 #     proof: 672 green tests + opus impl still shipped 4 money bugs that
 #     only the adversarial pass caught.
 #   other HARD blocks (session risk edits w/o tests, env) → original OR

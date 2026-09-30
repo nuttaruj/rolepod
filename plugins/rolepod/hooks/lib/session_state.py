@@ -76,14 +76,12 @@ REVIEWER_AGENTS = {
     "code-reviewer",
 }
 
-# Strong-class adversarial reviewers — the subset whose dispatch clears a
-# HIGH-RISK commit gate. qa-tester is user-visible verification (E2E) and
-# never the per-diff review floor (v2.148.4): its dispatch counts at neither
-# gate.
+# The HIGH-RISK commit floor: a `security-engineer` dispatch since the last
+# commit, any model (C4). universal-reviewer / code-reviewer count as
+# reviewers only; qa-tester is user-visible verification (E2E) and counts at
+# neither gate (v2.148.4).
 STRONG_REVIEWER_AGENTS = {
     "security-engineer",
-    "universal-reviewer",
-    "code-reviewer",
 }
 
 EDIT_TOOLS = {"Edit", "Write", "MultiEdit", "NotebookEdit"}
@@ -211,7 +209,6 @@ MODEL_CLASS = (
     (re.compile(r"sonnet", re.IGNORECASE), "balanced"),
     (re.compile(r"opus|fable|mythos", re.IGNORECASE), "strong"),
 )
-LOW_CLASSES = {"cheap", "balanced"}
 
 # Strong-tier roles render `model: opus` on Claude since v2.104.0 — their own
 # frontmatter pin, not a hook-side lift (that rewrite is gone, hook-layer-lean
@@ -220,7 +217,7 @@ LOW_CLASSES = {"cheap", "balanced"}
 # never lifted (cost). system-architect joined in v2.73.0: it writes the spec
 # + cohesion contract for parallel work — the judgment-heaviest role — and
 # was the one strong role left at nudge-only.
-STRONG_ROLE_AGENTS = {"security-engineer", "universal-reviewer", "system-architect"}
+STRONG_ROLE_AGENTS = {"security-engineer", "system-architect"}
 
 # Roles whose rendered Claude frontmatter carries a REAL `model:` pin
 # (merge-agent.py TIER_MODELS: cheap -> haiku, balanced -> sonnet). A Workflow
@@ -233,7 +230,7 @@ TIER_PINNED_AGENTS = {
     "ai-ml-engineer", "backend-developer", "billing-engineer",   # balanced
     "data-scientist", "devops-sre", "frontend-developer",
     "mobile-developer", "performance-engineer", "qa-tester",
-    "ui-ux-designer",
+    "ui-ux-designer", "universal-reviewer",
 }
 
 # Roles that OWN product code in the plan-template domain map (write-plan
@@ -774,8 +771,7 @@ def _workflow_meta_reviewer(meta_path: str, since_epoch: float | None = None) ->
         return 0, 0
     name = _bare_agent_name(meta.get("agentType"))
     reviewer = 1 if name in REVIEWER_AGENTS else 0
-    strong = 1 if (name in STRONG_REVIEWER_AGENTS
-                   and model_class(meta.get("model")) not in LOW_CLASSES) else 0
+    strong = 1 if name in STRONG_REVIEWER_AGENTS else 0
     return reviewer, strong
 
 
@@ -791,10 +787,7 @@ def count_all(
     commit's timestamp): a 12-day session must not clear today's commit with
     a reviewer dispatched ten days ago. Subagent transcripts of the same
     session (mtime inside the window) are tallied too — see agent_transcripts.
-    A strong reviewer counts only when it was NOT explicitly dispatched at a
-    known-low model (`model: sonnet` on universal-reviewer is a downgrade,
-    not the strong pass); a model-less Agent/Task dispatch counts strong
-    because the role renders `model: opus` (v2.104.0).
+    The strong count is `security-engineer` dispatches, any model (C4).
 
     A Workflow tool_use itself is never scanned for reviewers (spec 6b,
     2026-09-24): only its SPAWNED sub-agent transcripts, discovered by
@@ -827,8 +820,7 @@ def count_all(
                     continue
                 if name in REVIEWER_AGENTS:
                     reviewers += 1
-                if (name in STRONG_REVIEWER_AGENTS
-                        and model_class(inp.get("model")) not in LOW_CLASSES):
+                if name in STRONG_REVIEWER_AGENTS:
                     strong_reviewers += 1
     for tp in subs:
         if not tp.endswith(".jsonl"):
@@ -841,12 +833,10 @@ def count_all(
     return test_edits, high_risk_edits, reviewers, strong_reviewers
 
 
-def _phase_log_reviewer_counts(phase, since_epoch, path, provenance="", strict=False):
+def _phase_log_reviewer_counts(phase, since_epoch, path, provenance=""):
     """(reviewers, strong) tally from phase-log.jsonl rows of one `phase`
     value. `provenance` "" = no requirement; the one caller in this file
-    (the hook-auto dispatch backstop) passes `"hook-auto"`. `strict`
-    additionally drops a STRONG row whose model is a named low-class
-    downgrade (the hook-auto backstop only)."""
+    (the hook-auto dispatch backstop) passes `"hook-auto"`."""
     r = s = 0
     cut = None
     if since_epoch:
@@ -882,16 +872,9 @@ def _phase_log_reviewer_counts(phase, since_epoch, path, provenance="", strict=F
                         # Codex/Cursor/Antigravity dispatch rows may carry
                         # the plugin-prefixed bare name (no ':').
                         name = name[len("rolepod-"):]
-                    # Both flags resolved BEFORE either counter moves
-                    # (round-2 review MINOR-1): model_class() raising on a
-                    # malformed `model` must not leave `r` incremented with
-                    # `s` never reached — the whole row is all-or-nothing.
-                    is_reviewer = name in REVIEWER_AGENTS
-                    is_strong = name in STRONG_REVIEWER_AGENTS and (
-                        not strict or model_class(d.get("model")) not in LOW_CLASSES)
-                    if is_reviewer:
+                    if name in REVIEWER_AGENTS:
                         r += 1
-                    if is_strong:
+                    if name in STRONG_REVIEWER_AGENTS:
                         s += 1
                 except Exception:
                     # One malformed row (a non-string agent_type/model/ts)
@@ -900,64 +883,6 @@ def _phase_log_reviewer_counts(phase, since_epoch, path, provenance="", strict=F
     except OSError:
         pass
     return r, s
-
-
-def _anchored_external_count(since_epoch, ev_dir):
-    """Anchored cross-family review passes since `since_epoch` — a phase-log
-    `review` row with `reviewer: external` whose raw output sits under
-    `ev_dir`, is relative, has no `..`, and is >= 500 bytes. precommit-gate.sh
-    reads this XREV count from gate_evidence() below, not its own inline
-    computation (that bash copy is gone; satellite-first, v2.61.0)."""
-    import datetime
-    cut = None
-    if since_epoch:
-        try:
-            cut = datetime.datetime.fromtimestamp(float(since_epoch), datetime.timezone.utc)
-        except Exception:
-            cut = None
-    n = 0
-    try:
-        with open(os.path.join(ev_dir, "phase-log.jsonl"), encoding="utf-8", errors="replace") as f:
-            for line in f:
-                try:
-                    d = json.loads(line)
-                    if not isinstance(d, dict) or d.get("phase") != "review" or d.get("reviewer") != "external":
-                        continue
-                    if cut is not None:
-                        ts = datetime.datetime.fromisoformat((d.get("ts") or "").replace("Z", "+00:00"))
-                        if ts.tzinfo is None:
-                            ts = ts.replace(tzinfo=datetime.timezone.utc)
-                        if ts < cut:
-                            continue
-                    raw = d.get("raw") or ""
-                    if not isinstance(raw, str) or not raw or raw.startswith("/") or ".." in raw:
-                        continue
-                    # P1 (Lead close-out, round 2 residual): `raw` must sit
-                    # under evidence/external/ — the anchor point review-code
-                    # actually writes to. Before this, `"raw":
-                    # "phase-log.jsonl"` (or another evidence file, or a
-                    # symlink placed under external/) passed the relative/no-".."/>=500B
-                    # checks and counted as a real cross-family pass — the
-                    # cheapest forgery in the gate. Both the name prefix and
-                    # the resolved realpath are checked (a symlink under
-                    # external/ pointing elsewhere must not count either).
-                    if not raw.startswith("external/"):
-                        continue
-                    candidate = os.path.join(ev_dir, raw)
-                    ext_root = os.path.realpath(os.path.join(ev_dir, "external"))
-                    real = os.path.realpath(candidate)
-                    if real != ext_root and not real.startswith(ext_root + os.sep):
-                        continue
-                    if os.path.getsize(candidate) >= 500:
-                        n += 1
-                except Exception:
-                    # One malformed row (a non-string raw/ts, a NUL byte in
-                    # the path) must never zero every OTHER anchored pass in
-                    # the window — same defense as _phase_log_reviewer_counts.
-                    continue
-    except OSError:
-        pass
-    return n
 
 
 def _window_since_epoch(diff_dir):
@@ -1042,16 +967,15 @@ def _evidence_root(diff_dir):
 
 def _evidence_dirs(diff_dir):
     """The evidence roots for `diff_dir` (2026-09-25, D6, same fix reused by
-    `gate_evidence` and `gate_hold_predict`): `_evidence_root(diff_dir)`
+    `gate_evidence`): `_evidence_root(diff_dir)`
     (the session cwd's git root) AND `diff_dir`'s own toplevel
     (`_git_root`), deduplicated by realpath to one when they coincide (the
     ordinary non-worktree case — every writer hook already puts its state
     there, so this stays a no-op there). A commit made from a session's own
     checkout into a linked worktree (`cd <wt> && git commit`, `git -C <wt>
-    commit`) otherwise loses every anchored external pass AND every
-    external-fail row a cross-family run wrote to the WORKTREE's own
-    `.rolepod/evidence/` — reading only the session root missed both.
-    "" entries (no git root either way) dropped."""
+    commit`) otherwise loses every hook-auto dispatch row written to the
+    WORKTREE's own `.rolepod/evidence/` — reading only the session root
+    missed it. "" entries (no git root either way) dropped."""
     roots = []
     seen = set()
     for r in (_evidence_root(diff_dir), _git_root(diff_dir)):
@@ -1070,30 +994,24 @@ def _evidence_dirs(diff_dir):
     return roots
 
 
-def gate_evidence(hook_input: dict, diff_dir: str) -> tuple[int, int, int, int, int]:
+def gate_evidence(hook_input: dict, diff_dir: str) -> tuple[int, int, int, int]:
     """One evidence tally for both the commit gate and the edit-time
     reminder (spec Desired 10, 2026-09-25): the window computed once at
     `diff_dir` (the commit's resolved directory for the gate, the edited
     file's directory for the reminder) — returns (test_edits,
-    high_risk_edits, reviewers, strong_reviewers, external). MAX per
-    source, never summed: the transcript scan (count_all) and the
-    hook-auto phase-log "dispatch" backstop (nested Agent dispatches the
-    transcript walk's cap dropped). Claude-native only: no cross-CLI
-    provenance rows, no bash-write scope tracker — this function runs
-    only on Claude (precommit-gate.sh's ROLEPOD_LEAD_CLI check excludes
-    every other CLI before calling it). Anchored external passes (XREV)
-    ADD on top of reviewers / strong_reviewers, same as the gate's own
-    long-standing rule, and are also returned on their own for the
-    satellite-first hold.
+    high_risk_edits, reviewers, strong_reviewers), where strong_reviewers
+    is the `security-engineer` dispatch count, any model (C4); an external
+    cross-family pass never counts. MAX per source, never summed: the
+    transcript scan (count_all) and the hook-auto phase-log "dispatch"
+    backstop (nested Agent dispatches the transcript walk's cap dropped).
+    Claude-native only: no cross-CLI provenance rows, no bash-write scope
+    tracker — this function runs only on Claude (precommit-gate.sh's
+    ROLEPOD_LEAD_CLI check excludes every other CLI before calling it).
 
     Evidence is read from every `_evidence_dirs(diff_dir)` root (D6,
-    2026-09-25), not `_evidence_root(diff_dir)` alone. Per dir: the
-    hook-auto dispatch counts still combine by MAX (the existing rule,
-    now also across dirs — never summed), the anchored external count by
-    SUM (distinct files in distinct dirs; every existing forgery check in
-    `_anchored_external_count` — raw under that dir's own `external/`,
-    realpath inside it, >= 500 B — holds per dir). The window stays one
-    `_window_since_epoch(diff_dir)` call for every dir."""
+    2026-09-25), not `_evidence_root(diff_dir)` alone; the hook-auto
+    dispatch counts combine by MAX across dirs — never summed. The window
+    stays one `_window_since_epoch(diff_dir)` call for every dir."""
     diff_dir = diff_dir or "."
     transcript_path = hook_input.get("transcript_path") or ""
     since_epoch = _window_since_epoch(diff_dir)
@@ -1101,78 +1019,16 @@ def gate_evidence(hook_input: dict, diff_dir: str) -> tuple[int, int, int, int, 
     test_edits, high_risk_edits, reviewers, strong = count_all(
         transcript_path, since_epoch, hook_input.get("cwd"))
 
-    external = 0
     for root in _evidence_dirs(diff_dir):
-        ev_dir = os.path.join(root, ".rolepod", "evidence")
-        phase_log = os.path.join(ev_dir, "phase-log.jsonl")
+        phase_log = os.path.join(root, ".rolepod", "evidence", "phase-log.jsonl")
         if not os.path.isfile(phase_log):
             continue
         r1, s1 = _phase_log_reviewer_counts(
-            "dispatch", since_epoch, phase_log, "hook-auto", True)
+            "dispatch", since_epoch, phase_log, "hook-auto")
         reviewers = max(reviewers, r1)
         strong = max(strong, s1)
-        external += _anchored_external_count(since_epoch, ev_dir)
 
-    if external > 0:
-        reviewers += external
-        strong += external
-
-    return test_edits, high_risk_edits, reviewers, strong, external
-
-
-def _external_fail_count(since_epoch, ev_dir):
-    """Count of phase-log `external-fail` rows since `since_epoch` — the
-    runner tried every usable cross-family member and they failed, or the
-    pool was empty (satellite-first, v2.76.0; read by gate_hold_predict for
-    both hooks)."""
-    import datetime
-    cut = None
-    if since_epoch:
-        try:
-            cut = datetime.datetime.fromtimestamp(float(since_epoch), datetime.timezone.utc)
-        except Exception:
-            cut = None
-    n = 0
-    try:
-        with open(os.path.join(ev_dir, "phase-log.jsonl"), encoding="utf-8", errors="replace") as f:
-            for line in f:
-                try:
-                    d = json.loads(line)
-                    if not isinstance(d, dict) or d.get("phase") != "external-fail":
-                        continue
-                    if cut is not None:
-                        ts = datetime.datetime.fromisoformat((d.get("ts") or "").replace("Z", "+00:00"))
-                        if ts.tzinfo is None:
-                            ts = ts.replace(tzinfo=datetime.timezone.utc)
-                        if ts < cut:
-                            continue
-                    n += 1
-                except Exception:
-                    continue
-    except OSError:
-        pass
-    return n
-
-
-def gate_hold_predict(diff_dir: str) -> int:
-    """External-fail row count at `diff_dir`'s window, SUMMED over every
-    `_evidence_dirs(diff_dir)` root (D6, 2026-09-25: precommit-gate.sh's own
-    XFAM_FAILS tally calls this same function now, not just gate-reminder.sh)
-    — a usable pool with an external-fail row since the window means the
-    gate's satellite-first hold does NOT apply (an internal strong reviewer
-    clears it). gate-reminder.sh calls this ONLY in the one state where it
-    also calls the cross-family runner (a high-risk edit, strong > 0,
-    external == 0), so the reminder must not predict a block there
-    (MEDIUM-4, round-1 review)."""
-    diff_dir = diff_dir or "."
-    since_epoch = _window_since_epoch(diff_dir)
-    total = 0
-    for root in _evidence_dirs(diff_dir):
-        ev_dir = os.path.join(root, ".rolepod", "evidence")
-        if not os.path.isfile(os.path.join(ev_dir, "phase-log.jsonl")):
-            continue
-        total += _external_fail_count(since_epoch, ev_dir)
-    return total
+    return test_edits, high_risk_edits, reviewers, strong
 
 
 def selfdo_state(transcript_path: str, target: str | None = None, root: str | None = None) -> str:
@@ -1353,19 +1209,12 @@ def main() -> int:
         # Context size (tokens) the last assistant turn carried — 0 unknown.
         print(last_context_tokens(transcript_path))
     elif query == "gate-evidence":
-        # test_edits high_risk_edits reviewers strong_reviewers external —
-        # one tally shared by precommit-gate.sh and gate-reminder.sh (spec
-        # Desired 2). argv[2] = the directory the window is computed at
-        # (DIFF_DIR for the gate, the edited file's dir for the reminder).
+        # test_edits high_risk_edits reviewers strong_reviewers — one tally
+        # shared by precommit-gate.sh and gate-reminder.sh (spec Desired 2).
+        # argv[2] = the directory the window is computed at (DIFF_DIR for the
+        # gate, the edited file's dir for the reminder).
         diff_dir = sys.argv[2] if len(sys.argv) > 2 else "."
-        print("%d %d %d %d %d" % gate_evidence(hook_input, diff_dir))
-    elif query == "gate-hold-predict":
-        # external-fail row count — the satellite-first hold input for
-        # precommit-gate.sh and gate-reminder.sh (MEDIUM-4): a usable pool
-        # with an external-fail row means the hold does not apply, so 0
-        # means "unknown/none".
-        diff_dir = sys.argv[2] if len(sys.argv) > 2 else "."
-        print(gate_hold_predict(diff_dir))
+        print("%d %d %d %d" % gate_evidence(hook_input, diff_dir))
     elif query == "count-test-edits":
         print(count_test_edits(transcript_path, hook_input.get("cwd")))
     elif query == "selfdo-state":

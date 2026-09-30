@@ -1,7 +1,7 @@
 ---
 name: universal-reviewer
 description: "Read-only two-axis review — spec (does what was asked, no more) and standards (logic / DRY / structure / smell / naming / architecture). Use on a written diff or an existing module: the per-diff floor from R2 up, or pre-merge when no domain reviewer fits; in `mode: adversarial` it is an R4 (high-risk) round-1 adversarial pass. Distinct from qa-tester, security-engineer."
-model: opus
+model: sonnet
 effort: high
 memory: project
 color: red

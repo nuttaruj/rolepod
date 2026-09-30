@@ -15,7 +15,7 @@ Route rows by class:
 - cheap — vague build / doc / UI asks and repeat or legacy features (`write-spec`), prototypes, clear doc edits, `manage-context`, explain-only answers.
 - cheap to balanced — `write-plan` against an existing spec, `qa-tester` hand-offs.
 - balanced — executing a plan, multi-agent planning, `debug-issue`, `simplify-code`, perf, UI and infra builds, `check-work`, repo-wide sweeps, high-risk builds.
-- strong — high-risk review, architecture, `review-code`, `finish-work` when `review-code` fires, `deepen-codebase` (its explorer inherits a strong Lead, else takes a one-call strong override).
+- strong — high-risk review (`security-engineer`, and the `universal-reviewer` `mode: adversarial` pass), architecture, `review-code`, `finish-work` when `review-code` fires, `deepen-codebase` (its explorer inherits a strong Lead, else takes a one-call strong override).
 
 The Lead picks the class at dispatch; escalate only on a BLOCKED redispatch or a user ask.
 
@@ -23,7 +23,7 @@ The Lead picks the class at dispatch; escalate only on a BLOCKED redispatch or a
 
 - A strong row dispatches with a strong pin; rolepod role files carry it.
 - A spawn with no pin (a plain-prompt subagent, a bare Workflow `agent()`) inherits the Lead. Under a balanced or cheap Lead that is a silent downgrade, so pass an explicit strong-class override on that ONE call, never on a fan-out.
-- A downgraded strong role is not the strong slot.
+- A downgraded strong role is not the strong slot. `universal-reviewer` runs balanced on every CLI; only its `mode: adversarial` pass takes a strong-class model, so pass the explicit strong-class override on that ONE dispatch. The commit gate checks a `security-engineer` dispatch, any model, not the tier.
 
 ## Fleets — Workflow, ultracode, native fan-out
 

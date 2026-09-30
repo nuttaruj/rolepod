@@ -38,20 +38,19 @@ The *why* — incidents, doctrine — lives in this file and in the hook's sourc
 The one hard checkpoint, at `git commit`.
 
 - **Private docs (every CLI)** — a staged path under `docs/rolepod/` → deny. Details under Private working docs below.
-- **High-risk diff (Claude only)** — a staged path matching the high-risk regex or `.rolepod/risk-paths` → deny until a strong reviewer has FINISHED since the last commit. Fix: the writer loop's `security-engineer` + a strong `universal-reviewer` (the external from the cross-family pool when it is on).
+- **High-risk diff (Claude only)** — a staged path matching the high-risk regex or `.rolepod/risk-paths` → deny until a `security-engineer` dispatch has FINISHED since the last commit. A high-risk commit needs at least one `security-engineer` dispatch since the last commit, any model; an external pass never counts. Fix: dispatch `security-engineer`.
 - **Session risk without a test (Claude only)** — the session edited high-risk code, wrote no test, and the staged diff is not high-risk → deny until a failing test is written or a reviewer has run.
 - **Everything else** — silent. `test-diff-lint` findings, when present, print as one line. Each judged commit appends a `phase: gate` row that `scripts/ticket.sh log` in `implement-plan` copies into the plan.
 - **What counts as high-risk** — the path regex (auth / billing / payment / migration / secret / crypto / token / oauth / webhook … — canonical list in the script, parity-pinned by lean-surface) plus `.rolepod/risk-paths`. Test-named files (`*.test.*`, `test_*.py`, `*_test.go` …) and prose files never count. A bare directory name (`tests/`, `spec/`) is not an exemption.
-- **Evidence (Claude)** — counted since the last commit (a linked worktree follows its own HEAD reflog): the Lead transcript plus the session's sub-agent transcripts (60 newest), MAX with the phase-log `dispatch` rows of provenance `hook-auto`, plus anchored external passes. A write-mode brief never counts as a review; `qa-tester` never counts; a strong role dispatched at an explicit cheap or balanced model counts as a plain reviewer.
-- **Satellite-first hold** — with the cross-family pool on, a high-risk logic diff clears on an internal strong reviewer only after the pool was tried (an anchored external pass, or an `external-fail` line). Pool off → nothing forced.
+- **Evidence (Claude)** — counted since the last commit (a linked worktree follows its own HEAD reflog): the Lead transcript plus the session's sub-agent transcripts (60 newest), MAX with the phase-log `dispatch` rows of provenance `hook-auto`. A write-mode brief never counts as a review; `qa-tester` and `universal-reviewer` never count toward the high-risk floor; `security-engineer` counts at any model; an anchored external pass counts for nothing (the gate does not read the cross-family pool).
 - **Which commit it judges** — `cd <dir> &&` and `git -C <dir>` move the diff directory; `bash -c`, `eval` and the common wrappers (`env`, `timeout`, `sudo` …) are unwrapped; `git add … && git commit` and `git commit -a` are judged on the working tree. Anything unresolvable falls back to the hook's cwd — never a new deny.
 - **Review in flight** — a tree-rewriting git command (`stash`, `reset --hard`, `checkout`, `rebase`, `merge` …) while a detached cross-family job runs → one advisory line naming `--collect`.
-- **Incidents** — a sub-agent-heavy day where high-risk commits cleared on stale day-1 evidence (window is now since the last commit); 672 green tests + an opus build still shipped 4 money bugs only the adversarial pass caught (high-risk needs a strong reviewer, not tests).
+- **Incidents** — a sub-agent-heavy day where high-risk commits cleared on stale day-1 evidence (window is now since the last commit); 672 green tests + an opus build still shipped 4 money bugs only the adversarial pass caught (high-risk needs a `security-engineer` review, not tests).
 - **Bypass** — none needed: evidence auto-passes. `ROLEPOD_GATES_SOFT=1` silences the whole gate, private-docs deny included (logged). `ROLEPOD_GATES_HARD=1` turns a normal logic commit into a block that clears on a test edit or a reviewer. Legacy markers (`ROLEPOD_GATES_PASSED=1`, `[gates: pass]`) do nothing without evidence.
 
 ### `gate-reminder.sh` — PreToolUse `Edit|Write|MultiEdit` (Claude)
 
-- **Effect** — on a high-risk path, ONE line and only when the commit would block now: fact (high-risk edit, 0 strong reviewers since the last commit) → Fix (the writer loop's `security-engineer` + strong `universal-reviewer`, or the external when the pool is on, must finish before commit) → Exception (user-set bypass only). Every other edit → silent.
+- **Effect** — on a high-risk path, ONE line and only when the commit would block now: fact (a high-risk commit needs at least one `security-engineer` dispatch since the last commit, any model; an external pass never counts) → Fix (dispatch `security-engineer`, finished before commit) → Exception (user-set bypass only). Every other edit → silent.
 - **In-flight lines** — a live detached cross-family review whose diff holds the edited file → `⏸ REVIEW IN FLIGHT` (the job reads the tree live; editing now makes its verdict an artifact). A live `--kind implement` job and an edit outside its allowed paths → `⏸ EXTERNAL IMPLEMENT IN FLIGHT` (that edit is reverted when the job returns).
 - **Incident** — edit-time hard blocks once pushed a user to set `ROLEPOD_GATES_SOFT` for good (33 high-risk edits in a day, 116 unreasoned bypasses), which silenced the commit gate too; this hook only informs.
 - **Bypass** — `ROLEPOD_GATES_SOFT=1` silences it.
@@ -150,7 +149,6 @@ Warn-only grep of the staged diff: focus / skip markers added, deleted test case
 
 | Removed | Reason |
 |---|---|
-| Commit gate SOFT line: diff counts, "reviewers since last commit", the reviewer ask, the `S1-S5 / T1-T6 / F1-F5` advisory | normal-flow noise — it fired on every commit, including plan tasks whose review is the combined one before release |
 | `AUTO-CAREFUL` banner on every high-risk edit | normal-flow noise — careful mode was removed in v2.171.0; the one would-block line replaces it |
 | `T-gate violation`, the S/T/F list and "preferred" in the deny text | normal-flow noise — the deny now names only what clears it |
 | Money-term content check (refund / payout / chargeback / settlement in added lines) | normal-flow noise — it flagged UI labels, i18n values and rendered prose (blocked this repo at v2.175.0) |
@@ -194,7 +192,7 @@ cli = codex claude                      # members that may WRITE a ticket (--kin
 - **Time** — a member is killed when it goes SILENT for `stall` seconds (`--stall` > `stall=` > 600), not when it is slow; the wall-clock cap is runaway insurance only (review 7200 s detached / 600 s foreground, consult 300, critique 600). `--detach` runs the chain as a job under `.rolepod/evidence/external/jobs/<id>/`; `--collect <id>` waits, `--jobs` lists.
 - **Refusals** — a partial-slice diff (its files have edits it does not contain) → exit 7, attach `git diff HEAD` or commit first (`--partial-ok` only when the user asked for the staged part); a second live review job → exit 8 until `--collect` or `--kill`.
 - **Rounds** — the external runs once per R4 task, round 1 only; round 2+ is internal (`security-engineer` re-checks its own and the external's security-class BLOCKER / MAJOR findings, `universal-reviewer` the external's other findings). A pre-existing issue on an untouched path is one note line and never drives the verdict.
-- **At commit (Claude)** — see the satellite-first hold under `precommit-gate.sh`. Code only: a docs-only diff passes the gate at any size (docs are written, not reviewed — owner rule).
+- **At commit (Claude)** — an external pass is not read by the gate (C4, see `precommit-gate.sh`). A docs-only diff passes the gate at any size (docs are written, not reviewed — owner rule).
 
 ## Private working docs — `docs/rolepod/` never commits (v2.80.0)
 

@@ -1,5 +1,5 @@
 # tools: read-only review role — no Edit/Write/Bash/Agent listed. On Claude the report write comes from memory: project (write-scope hook: markdown only); a CLI with no write tool returns the report inline (agent-protocol).
-tier: strong
+tier: balanced
 effort: high
 memory: project
 tools:
