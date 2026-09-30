@@ -1125,8 +1125,9 @@ preamble() { # $1 kind
 }
 budget_line() { # $1 seconds
   _m=$(( ( ($1 < 1800 ? $1 : 1800) + 59) / 60 ))   # planning horizon ≤ 30 min; the cap itself is runaway insurance (v2.129.0)
-  if [ "$KIND" = "implement" ]; then printf 'Time budget: about %s minute(s) — a hard stop kills the run mid-edit and nothing half-written counts as delivered. Build the ticket, run only its test command, then report. Answer yourself; do not spawn sub-agents.' "$_m"; return; fi
-  printf 'Time budget: about %s minute(s) — a hard stop kills the run and loses everything. The brief and attachments are complete: do NOT run builds, test suites, linters, or package managers; read only the files the diff touches when you need surrounding context, and start writing your answer well before the budget ends. If the budget is nearly spent, stop and output what you have, prefixed PARTIAL. Answer yourself; do not spawn sub-agents.' "$_m"
+  _nosub='Answer yourself; do not spawn sub-agents.'
+  if [ "$KIND" = "implement" ]; then printf 'Time budget: about %s minute(s) — a hard stop kills the run mid-edit and nothing half-written counts as delivered. Build the ticket, run only its test command, then report. %s' "$_m" "$_nosub"; return; fi
+  printf 'Time budget: about %s minute(s) — a hard stop kills the run and loses everything. The brief and attachments are complete: do NOT run builds, test suites, linters, or package managers; read only the files the diff touches when you need surrounding context, and start writing your answer well before the budget ends. If the budget is nearly spent, stop and output what you have, prefixed PARTIAL. %s' "$_m" "$_nosub"
 }
 BBYTES=$(wc -c < "$BODY" | tr -d ' ')
 # codex / claude take the prompt on stdin (400 KB cap); agy / cursor / opencode

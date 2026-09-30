@@ -7,6 +7,9 @@
 #    and the Lead's verify step; soft reminders were ignored because the agent
 #    saw success signals (tsc=0, imports OK). Blocks git commit / push /
 #    reset --hard, gh pr merge / create.
+#    C9a: rule 1 runs on Codex too - a child's PreToolUse carries `agent_id`
+#    (live probe 2026-09-30, Codex 0.159), so a sub-agent's `git commit` /
+#    `git push` is denied there.
 # 2. Cannot-wait (v2.147.0, Claude only). A sub-agent receives no completion
 #    notice for a backgrounded call, so a Bash run_in_background - or a long
 #    gate left on the 120 s default timeout, which the harness moves to the
@@ -15,9 +18,6 @@
 #    run or collect) with no timeout. An explicit timeout of any size passes.
 #    The Codex hooks.json entry passes `--cli codex`: that half is skipped
 #    there (a Codex Bash payload has no timeout field to satisfy it).
-#    C9a: rule 1 runs on Codex too - a child's PreToolUse carries `agent_id`
-#    (live probe 2026-09-30, Codex 0.159), so a sub-agent's `git commit` /
-#    `git push` is denied.
 #    Extended to Agent/SendMessage (incident 2026-09-28): an R4 task owner
 #    dispatched 4 reviewers with run_in_background unset - the platform
 #    default is background - ended its turn "waiting for their
@@ -48,7 +48,9 @@
 #    name / subagent_type / isolation) - none carries a shell command, so
 #    none imports the tokenizer below.
 # Mechanism: Claude Code PreToolUse input carries `agent_id` + `agent_type`
-# ONLY when the call originates from a sub-agent; the Lead has neither. One
+# ONLY when the call originates from a sub-agent; the Lead has neither. Codex
+# PreToolUse carries agent_id too (live probe 2026-09-30, Codex 0.159); the
+# Codex hooks.json entry passes --cli codex (commit ban only). One
 # python pass tokenises the command once and answers rules 1 and 2 (only for
 # a sub-agent — a Lead is never subject to them): every segment (split on &&
 # || ; | and newlines; heredoc bodies dropped first) is read past the

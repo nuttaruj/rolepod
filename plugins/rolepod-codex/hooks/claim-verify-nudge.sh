@@ -9,6 +9,7 @@
 #
 # Soft by construction: emits additionalContext only, NEVER blocks. A pure-text
 # prompt is structurally un-hookable to hard-enforce (no tool call to gate on).
+# A sub-agent's prompt (agent_id set) gets no nudge.
 #
 # Context-bloat check (v2.49.0) — same event, no new registration. Measured on
 # a real project: a 12-day session ran every turn at 350-900k tokens of
