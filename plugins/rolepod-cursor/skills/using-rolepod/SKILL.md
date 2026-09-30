@@ -26,7 +26,7 @@ Done when: a conversation is answered in the user's register, or a commission go
 | **R1** trivial edit | a docs-only diff, any size — or ≤5 lines in 1 file with zero logic lines (comment, blank, user-facing text in a string; never a URL, path, key, regex, query or a value code branches on), not high-risk, ≤3 tool calls | direct edit; the edit echo is the verify; no review |
 | **R2** one file + test | 1 source file + its test, clear scope, logic, ≈≤30 lines, not high-risk | its step 3 skill still fires (bug → `debug-issue`, else `implement-plan`); a 3-5 line chat checklist (goal, done-when, verify command) replaces spec + plan; a task owner builds it on main (failing test first, verify, the commit check, the two review lenses); the Lead never pre-explores, then commits |
 | **R3** multi-file | several files, vague scope, or sequencing / delegation | the full spine |
-| **R4** high-risk | a high-risk path (Stop conditions), any size | the full spine + adversarial review floor, never downgraded; 1 file, ≤5 lines, comment / blank only → R2 with ONE internal strong reviewer |
+| **R4** high-risk | a high-risk path (Stop conditions), any size | the full spine + adversarial review floor, never downgraded; 1 file, ≤5 lines, comment / blank only → R2 with ONE `security-engineer` pass |
 
 - Unsure about risk → the higher tier.
 - Unsure about size only → read the affected regions of the named files (and `git status` once work started) and tier from that; an unresolved dependency → higher.

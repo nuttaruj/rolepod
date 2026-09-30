@@ -12,8 +12,8 @@ An R4 (high-risk) diff's round 1 → one adversarial report beside `security-eng
 
 - R1 (trivial edit), R2 (one file + test), R3 (multi-file) — `review-code`'s standard review covers them.
 - Round 2+ — a fix delta gets `review-code`'s internal re-check (Fix-verify rounds), never this pass.
-- An R4 comment/blank-only diff — ONE internal strong reviewer, no adversarial pass.
-- The commit gate — it asks for no pass of its own: the round-1 external counts whatever its verdict, and a REJECTED external is never re-run for an APPROVED. Evidence missing because the diff moved as a patch → commit in the owner's worktree (`implement-plan`), never a new pass.
+- An R4 comment/blank-only diff — ONE `security-engineer` pass, no adversarial pass.
+- The commit gate — it asks for no pass of its own and never counts an external (it counts `security-engineer`); a REJECTED external is never re-run for an APPROVED. Evidence missing because the diff moved as a patch → commit in the owner's worktree (`implement-plan`), never a new pass.
 
 ### 1. Run the pass
 

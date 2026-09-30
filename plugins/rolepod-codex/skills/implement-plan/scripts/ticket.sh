@@ -855,9 +855,9 @@ if best is not None:
     _decision = best.get("decision")
     if _decision not in ("pass", "deny", "soft"):
         _decision = "?"
-    print("gate: %s · tests %d · risk %d · reviewers %d (strong %d, external %d)" % (
+    print("gate: %s · tests %d · risk %d · reviewers %d (security-engineer %d)" % (
         _decision, _int("tests"), _int("risk"),
-        _int("reviewers"), _int("strong"), _int("external")))
+        _int("reviewers"), _int("strong")))
 ' "$gate_phase_log" 2>/dev/null)"
         [ -n "$found" ] && gate_str="$found"
       fi
