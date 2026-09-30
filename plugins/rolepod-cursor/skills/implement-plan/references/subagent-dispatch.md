@@ -96,7 +96,7 @@ The implementer cannot complete the task; the manifest states what blocks and wh
 
 Who reviews follows the task's tier (SKILL.md Review):
 - R2/R3 task in a track: the track-end review covers it once the track finishes. Each track's R2/R3 tasks get no in-task review; one fresh owner (the role owning most code in that track) runs the two lenses in ONE message over the track diff after all tasks commit, fixes each BLOCKER / MAJOR with proof, no round 2. Over ~800 changed lines or ~15 files it splits into size slices (`implement-plan` Review).
-- An owner's own dispatches are all waited on: return your brief only after each child's report is in — a child's end wakes you (the Claude desktop app sends it to the Lead, which relays it), so end a turn only to wait for one, its last line `WAITING: <report paths>`; no `name`, fork or remote isolation (such a child reports to the Lead). No way to wait → `REVIEW NEEDED:` and the Lead dispatches a fresh owner to run the review.
+- An owner's own dispatches are all waited on: return your brief only after each child's report is in — a child's end wakes you (the Claude desktop app sends it to the Lead, which relays it; on Codex, `wait_agent` returns it), so end a turn only to wait for one, its last line `WAITING: <report paths>`; no `name`, fork or remote isolation (such a child reports to the Lead). No way to wait → `REVIEW NEEDED:` and the Lead dispatches a fresh owner to run the review.
 - R4 task → the owner dispatches the round-1 set in ONE message (an external adversarial pass: its `--detach` runs just before): `security-engineer` + `universal-reviewer` `lens: spec` + `universal-reviewer` `lens: standards` + the adversarial pass (`adversarial-review`: the external with `--adversarial` when the pool is usable, else `universal-reviewer` `mode: adversarial` at strong class; pool usable → the external is the only adversarial pass, no internal `mode: adversarial` beside it; an external that fails or comes back weak, per `adversarial-review` What counts → the internal pass then). User-visible flows are verified once at `check-work`, never per task.
 - A standalone R2 brief (no plan) → the owner dispatches the two `universal-reviewer` lenses itself, never a self-review.
 
@@ -137,17 +137,7 @@ high-risk diff — those keep the tier floor below. The tier ladder above
 (re-dispatch one TIER up on `BLOCKED`) is for capability gaps; this effort
 ladder is for depth gaps — try the cheaper rung first.
 
-**Orchestration harnesses (workflow / ultracode).** A scripted fan-out defaults every agent to the Lead's own model. On a strong-tier Lead that silently runs the whole fleet at the top tier; on a balanced-class Lead the INVERSE trap: inherit silently DOWNGRADES the verify/judge stages below what a high-risk diff requires.
-
-A fan-out stage runs a rolepod role first (`agentType: 'rolepod:<role>'`): it pins the tier and carries a third of a bare agent's fixed context; `model:` alone is the fallback when no role fits.
-
-Apply the table above there too — pass the tier-mapped model (or the rolepod agentType, which carries its tier) per stage:
-- mechanical sweep / scan = cheap;
-- implementation = balanced;
-- per-finding adversarial verify = balanced at high effort;
-- the ONE judge / adjudicator = strong. On a non-strong Lead that is an EXPLICIT `opts.model` / effort override — "high-risk review at the session's model" is the silent downgrade the tier policy forbids.
-
-Pin every fan-out `agent()` call — a `model:` class or a rolepod `agentType:`; a bare fan-out runs the whole fleet at the Lead's price, and no script comment excuses it. A stage that writes carries `agentType: 'rolepod:<role>'` — a bare `agent()` cannot edit product files. A high-risk fleet's judge stage carries a strong tier under any Lead: the tier follows the work, not the Lead.
+**Orchestration harnesses** (a Workflow script, ultracode, Codex `ultra`): the tier per stage is `using-rolepod`'s `references/model-tiers.md` Fleets; the mechanics are its `references/fanout-<cli>.md`.
 
 An `isolation: 'worktree'` agent holds tracked files only: a gitignored test harness is missing there, so the brief names how the Command gets in, or the writer runs on main with disjoint files.
 
