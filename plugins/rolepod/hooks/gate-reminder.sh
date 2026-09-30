@@ -265,7 +265,7 @@ STRONG_REVIEWERS=0
 # A sub-agent (agent_id set — same test as worktree-guard.sh) never dispatches
 # a reviewer: the Lead does. Skip the transcript scan and the dispatch line;
 # the review-in-flight advisory above still reaches it.
-[ -n "$AGENT_ID" ] && exit_after_inflight=1 || exit_after_inflight=0
+[ -n "$AGENT_ID" ] && IS_SUBAGENT=1 || IS_SUBAGENT=0
 # Walk up to the nearest EXISTING ancestor (LOW-8, round-1 review): a Write
 # into a not-yet-created directory, or a relative Codex apply_patch path
 # when the hook cwd is not the repo root, made `git -C "$FILE_DIR"` fail —
@@ -277,7 +277,7 @@ while [ ! -d "$FILE_DIR" ] && [ "$FILE_DIR" != "/" ] && [ "$FILE_DIR" != "." ]; 
   FILE_DIR="$(dirname "$FILE_DIR")"
 done
 [ -d "$FILE_DIR" ] || FILE_DIR="."
-if [ "$exit_after_inflight" -eq 0 ] && [ -f "$SESSION_STATE" ] && command -v python3 >/dev/null 2>&1; then
+if [ "$IS_SUBAGENT" -eq 0 ] && [ -f "$SESSION_STATE" ] && command -v python3 >/dev/null 2>&1; then
   GR_EV=$(printf '%s' "$INPUT" | python3 "$SESSION_STATE" gate-evidence "$FILE_DIR" 2>/dev/null || true)
   [ -n "$GR_EV" ] && read -r _ _ _ STRONG_REVIEWERS <<< "$GR_EV"
 fi
@@ -292,7 +292,7 @@ SOFT_MODE=0
 # commit) is the one hard checkpoint; this is a cheap, silent-unless-blocking
 # prediction of it. C4 wording (review-finish-lean, 2026-09-30).
 WOULD_BLOCK=""
-if [ -n "$HIGH_RISK" ] && [ "$exit_after_inflight" -eq 0 ] && [ "$SOFT_MODE" -eq 0 ] && [ "$STRONG_REVIEWERS" -eq 0 ]; then
+if [ -n "$HIGH_RISK" ] && [ "$IS_SUBAGENT" -eq 0 ] && [ "$SOFT_MODE" -eq 0 ] && [ "$STRONG_REVIEWERS" -eq 0 ]; then
   WOULD_BLOCK="COMMIT WILL BLOCK — HIGH-RISK edit: a high-risk commit needs at least one \`security-engineer\` dispatch since the last commit, any model; an external pass never counts. Fix: dispatch \`security-engineer\` (a FINISHED dispatch before commit). Exception: user-set bypass only (ROLEPOD_GATES_SOFT). "
 fi
 
