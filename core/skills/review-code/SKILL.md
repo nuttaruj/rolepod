@@ -93,9 +93,9 @@ Done when: the report carries a Recommendation and the review line is appended.
 
 - Round 1 = every axis in ONE message, ≤ 40 tool calls for `security-engineer` and the adversarial pass, ≤ 20 per lens.
 - Round 2+ — R2/R3: none; the owner fixes each BLOCKER / MAJOR and attaches its proof (the Command tail, the reviewer's repro re-run, or the grep showing the old line gone). R4: only a finding raised by `security-engineer` or the adversarial pass whose fix touches code — the flagging role re-checks the fix delta only, on a balanced model (an external's finding → `security-engineer` for security-class, else `universal-reviewer`); at most 5 rounds, rounds 4-5 a fresh fixer on a stronger model; still open after round 5 → stop and hand the user the open findings with the attempt log.
-- A Lead-built fix → one read-only `universal-reviewer` pass, `mode: standard` (R4 → on a strong-class model).
+- A Lead-built fix follows the round 2+ rule at its tier.
 
-Done when: every round-1 BLOCKER / MAJOR, and every issue its fix made, is closed by its round 2+ reviewer, and anything outside a fix delta sits in `## Follow-ups` with its axis. The review then stops — never a full re-review until clean.
+Done when: every round-1 BLOCKER / MAJOR, and every issue its fix made, is closed by the owner's proof (R2/R3) or the R4 round 2+ re-check, and anything outside a fix delta sits in `## Follow-ups` with its axis. The review then stops — never a full re-review until clean.
 
 ### 6. Author response
 
@@ -108,7 +108,7 @@ Reply "Fixed in <file:line>." — no gratitude. A test added to close a finding 
 Every `## Follow-ups` line — each report's and your own — goes into the plan's `## Follow-ups` (no plan file → straight into the finish menu's Follow-ups carried), the one list `finish-work` works through (its closing rule decides what is closed before the menu and what is carried).
 Pushback, YAGNI, disagreement on merits, PR thread replies → `references/receiving-findings.md`.
 
-Done when: every finding is fixed, pushed back with a reason, or in `## Follow-ups`, and each BLOCKER / MAJOR fix is back with its round 2+ reviewer.
+Done when: every finding is fixed, pushed back with a reason, or in `## Follow-ups`, and each BLOCKER / MAJOR fix carries its owner proof (R2/R3) or is back with its R4 round 2+ re-check.
 
 ## Guardrails
 
@@ -121,6 +121,6 @@ Good / bad finding shapes → `examples/finding-examples.md`.
 ## Next phase
 
 - Review-only ask (no fix, no ship) → none; the report is the deliverable.
-- Findings need fixes → `implement-plan` or `debug-issue`; fixes landed → `check-work`. Neither available → the Lead fixes per Author response, then its round 2+ reviewer re-checks (Fix-verify rounds).
+- Findings need fixes → `implement-plan` or `debug-issue`; fixes landed → `check-work`. Neither available → the Lead fixes per Author response, then the round 2+ rule at its tier applies (Fix-verify rounds).
 - No blockers, plan has unchecked tasks → `implement-plan` (Ship asks once per plan); plan exhausted → `finish-work` for the merge gate.
 - If `finish-work` is not available, present the findings + recommendation and ask the user which finish path to take.
