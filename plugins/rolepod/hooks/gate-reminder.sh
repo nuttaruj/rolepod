@@ -87,10 +87,12 @@ INPUT=$(cat 2>/dev/null || echo '{}')
 PARSED=$(printf '%s' "$INPUT" | python3 -I -c "
 import json, re, sys
 tool = ''
+aid = ''
 p = ''
 try:
     d = json.load(sys.stdin)
     tool = d.get('tool_name', '') or ''
+    aid = str(d.get('agent_id', '') or '').replace('\\n', ' ')
     ti = d.get('tool_input', {}) or {}
     p = ti.get('file_path', '') or ti.get('notebook_path', '') or ti.get('path', '') or ''
     if not p:
@@ -100,9 +102,10 @@ try:
 except Exception:
     pass
 print(tool)
+print(aid)
 print(p)
 " 2>/dev/null) || exit 0
-{ read -r TOOL; FILE=$(cat); } <<EOF
+{ read -r TOOL; read -r AGENT_ID; FILE=$(cat); } <<EOF
 $PARSED
 EOF
 
@@ -259,6 +262,10 @@ fi
 # adapters/cursor/scripts/.
 SESSION_STATE="$(dirname "$0")/lib/session_state.py"
 STRONG_REVIEWERS=0
+# A sub-agent (agent_id set — same test as worktree-guard.sh) never dispatches
+# a reviewer: the Lead does. Skip the transcript scan and the dispatch line;
+# the review-in-flight advisory above still reaches it.
+[ -n "$AGENT_ID" ] && exit_after_inflight=1 || exit_after_inflight=0
 # Walk up to the nearest EXISTING ancestor (LOW-8, round-1 review): a Write
 # into a not-yet-created directory, or a relative Codex apply_patch path
 # when the hook cwd is not the repo root, made `git -C "$FILE_DIR"` fail —
@@ -270,7 +277,7 @@ while [ ! -d "$FILE_DIR" ] && [ "$FILE_DIR" != "/" ] && [ "$FILE_DIR" != "." ]; 
   FILE_DIR="$(dirname "$FILE_DIR")"
 done
 [ -d "$FILE_DIR" ] || FILE_DIR="."
-if [ -f "$SESSION_STATE" ] && command -v python3 >/dev/null 2>&1; then
+if [ "$exit_after_inflight" -eq 0 ] && [ -f "$SESSION_STATE" ] && command -v python3 >/dev/null 2>&1; then
   GR_EV=$(printf '%s' "$INPUT" | python3 "$SESSION_STATE" gate-evidence "$FILE_DIR" 2>/dev/null || true)
   [ -n "$GR_EV" ] && read -r _ _ _ STRONG_REVIEWERS <<< "$GR_EV"
 fi
@@ -285,7 +292,7 @@ SOFT_MODE=0
 # commit) is the one hard checkpoint; this is a cheap, silent-unless-blocking
 # prediction of it. C4 wording (review-finish-lean, 2026-09-30).
 WOULD_BLOCK=""
-if [ -n "$HIGH_RISK" ] && [ "$SOFT_MODE" -eq 0 ] && [ "$STRONG_REVIEWERS" -eq 0 ]; then
+if [ -n "$HIGH_RISK" ] && [ "$exit_after_inflight" -eq 0 ] && [ "$SOFT_MODE" -eq 0 ] && [ "$STRONG_REVIEWERS" -eq 0 ]; then
   WOULD_BLOCK="COMMIT WILL BLOCK — HIGH-RISK edit: a high-risk commit needs at least one \`security-engineer\` dispatch since the last commit, any model; an external pass never counts. Fix: dispatch \`security-engineer\` (a FINISHED dispatch before commit). Exception: user-set bypass only (ROLEPOD_GATES_SOFT). "
 fi
 
