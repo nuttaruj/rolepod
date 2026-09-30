@@ -697,19 +697,23 @@ def _since_iso(since_epoch: float | None) -> str | None:
         return None
 
 
-# Newest-first cap on subagent transcripts scanned per gate call — a
+# Newest-first cap on subagent transcripts CONTENT-scanned per gate call (the
+# workflow meta.json reviewer read is uncapped, bounded by the commit window) — a
 # never-committed repo has no window, and a long session can hold hundreds
 # of agent files (CourtBook: 293 / 127 MB). 60 newest covers any real fleet
 # (Workflow concurrency caps at 16 per run).
 AGENT_TRANSCRIPT_CAP = 60
 
 
-def agent_transcripts(transcript_path: str, since_epoch: float | None = None) -> list[str]:
+def agent_transcripts(
+    transcript_path: str, since_epoch: float | None = None, cap: int | None = AGENT_TRANSCRIPT_CAP
+) -> list[str]:
     """Subagent transcripts of the same session — Claude Code stores them
     next to the main file: `<session-id>/subagents/agent-*.jsonl` (Agent
     tool) and `<session-id>/subagents/workflows/<run>/agent-*.jsonl`
     (Workflow tool fleets). Walked recursively; only files modified at/after
-    `since_epoch` (when given), newest first, capped. Delegated sessions put
+    `since_epoch` (when given), newest first, capped at `cap` (None = uncapped;
+    count_all's jsonl scan takes the default, its meta loop takes None). Delegated sessions put
     test-writing INSIDE subagents: without this the Lead's own transcript
     shows 0 test edits and the gate false-blocks — the documented reason
     users reach for ROLEPOD_GATES_SOFT."""
@@ -733,7 +737,7 @@ def agent_transcripts(transcript_path: str, since_epoch: float | None = None) ->
                     continue
                 cands.append((mt, fp))
         cands.sort(reverse=True)
-        return [fp for _, fp in cands[:AGENT_TRANSCRIPT_CAP]]
+        return [fp for _, fp in (cands if cap is None else cands[:cap])]
     except Exception:
         return []
 
@@ -822,7 +826,10 @@ def count_all(
                     reviewers += 1
                 if name in STRONG_REVIEWER_AGENTS:
                     strong_reviewers += 1
-    for tp in subs:
+    # Meta reads are cheap (mtime + one small json) and a reviewer must not
+    # fall off the 60-newest jsonl cap behind a large later fleet: walk every
+    # windowed transcript here, cap only the jsonl scan above.
+    for tp in agent_transcripts(transcript_path, since_epoch, cap=None):
         if not tp.endswith(".jsonl"):
             continue
         parts = tp.split(os.sep)
