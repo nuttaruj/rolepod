@@ -3,7 +3,7 @@
 # the adversarial review pass, the spec critique, the stuck-state
 # consult — and, since v2.139.0, ONE cross-CLI build: `--kind
 # implement` runs a member in its own write mode on one ticket (--allow scope
-# enforced after the run, git state guarded, the track-end review owner reviews and the Lead commits).
+# enforced after the run, git state guarded, the result stays uncommitted for the Lead, and the implementing CLI is skipped as reviewer until its paths are committed).
 # Lives in this skill's (cross-family) `scripts/` folder on every rendered
 # plugin tree (v2.179.0 — no PATH launcher is installed; invoke it by its
 # resolved path, e.g. `bash <this skill's folder>/scripts/cross-family.sh`).

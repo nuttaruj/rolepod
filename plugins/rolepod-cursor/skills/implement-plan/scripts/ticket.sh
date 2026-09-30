@@ -188,10 +188,14 @@ base_root_of() {
 # section, and a fenced line is skipped outright — this output is always
 # pattern-matched by a caller (a backticked command, a Proof line), never
 # copied back out, so a fenced line never enters it.
-section_body() {
-  awk -v h="$2" "$FENCE_FN"'
+# Heading rule = plan-lint.sh's: case-sensitive, trailing whitespace / CR
+# ignored ("## Tracks" is `^## Tracks[[:space:]]*$` there); "$3" = "prefix"
+# also takes a suffix after the name, as plan-lint reads "## Parallel layout".
+section_body() { # $1 = file, $2 = "## Heading", $3 = "prefix" or empty
+  awk -v h="$2" -v pfx="${3:-}" "$FENCE_FN"'
     { if (fenceline($0)) next }
-    $0 == h { f = 1; next }
+    { hl = $0; sub(/[[:space:]]+$/, "", hl) }
+    hl == h || (pfx != "" && index($0, h) == 1) { f = 1; next }
     /^## / { f = 0 }
     f { print }
   ' "$1"
@@ -227,7 +231,7 @@ plan_has_tracks() { # $1 = plan
 
 # True (rc 0) when the plan's `## Parallel layout` starts with "Sequential".
 plan_is_sequential() { # $1 = plan
-  section_body "$1" '## Parallel layout' | grep -v '^[[:space:]]*$' | head -n 1 | grep -q '^Sequential'
+  section_body "$1" '## Parallel layout' prefix | grep -v '^[[:space:]]*$' | head -n 1 | grep -q '^Sequential'
 }
 
 # One row per task: "<id><ROW_FS><track>" off each task's `- **Track:** X`
@@ -249,24 +253,43 @@ track_of() { # $1 = table, $2 = task id
   printf '%s\n' "$1" | awk -F "$ROW_FS" -v want="$2" '($1 "") == (want "") { print $2; exit }'
 }
 
-# The sha `log` recorded for task "$2" ("- Task N (`sha`): ..." under
-# ## Changes during build), empty when none.
-task_logged_sha() { # $1 = plan, $2 = task id
+# Every sha `log` recorded ("- Task N (`sha`): ..." under ## Changes during
+# build), one per line in log order; "$2" = one task id, empty = every task.
+# The one scan behind task_logged_sha, the track's first commit and integrate's
+# named-commit check.
+logged_shas() { # $1 = plan, $2 = task id or empty
   awk -v want="$2" "$FENCE_FN"'
     { if (fenceline($0)) next }
     /^## Changes during build/ { insec = 1; next }
     insec && /^## / { exit }
-    insec && index($0, "- Task " want " (`") == 1 && match($0, /`[^`]+`/) { print substr($0, RSTART + 1, RLENGTH - 2); exit }
+    insec && (want == "" ? $0 ~ /^- Task [0-9]+ \(`/ : index($0, "- Task " want " (`") == 1) && match($0, /`[^`]+`/) { print substr($0, RSTART + 1, RLENGTH - 2) }
   ' "$1"
+}
+
+# The sha `log` recorded for task "$2", empty when none.
+task_logged_sha() { # $1 = plan, $2 = task id
+  logged_shas "$1" "$2" | head -n 1
 }
 
 # True (rc 0) when another session holds a live lock on checkout "$1": a
 # *.lock under $HOME/.rolepod/session-locks/<first 16 hex of sha256 of the
 # path>/ younger than 1800 s (the rule hooks/session-lifecycle.sh writes and
-# prunes by). This session's own lock (its id in CLAUDE_CODE_SESSION_ID /
-# ROLEPOD_SESSION_ID) is skipped.
+# prunes by). This session's own lock is skipped: its id in
+# CLAUDE_CODE_SESSION_ID / ROLEPOD_SESSION_ID first, else a lock whose line 2
+# (the CLI pid session-lifecycle.sh recorded) is one of this process's
+# ancestors — no env var needed on any CLI.
+own_ancestor_pids() { # prints " <pid> <pid> ... " — $$ and every ancestor
+  local p="$$" out=" " i=0
+  while [ -n "$p" ] && [ "$p" -gt 1 ] 2>/dev/null && [ "$i" -lt 32 ]; do
+    out="$out$p "
+    p="$(ps -o ppid= -p "$p" 2>/dev/null | tr -d '[:space:]')"
+    i=$((i + 1))
+  done
+  printf '%s' "$out"
+}
+
 foreign_live_lock() { # $1 = checkout (git toplevel)
-  local hash dir lock now mtime own
+  local hash dir lock now mtime own lpid ancestors=""
   hash="$(printf '%s' "$1" | { shasum -a 256 2>/dev/null || sha256sum 2>/dev/null; } | awk '{print $1}' | head -c 16)"
   [ -n "$hash" ] || return 1
   dir="${HOME:-}/.rolepod/session-locks/$hash"
@@ -276,6 +299,11 @@ foreign_live_lock() { # $1 = checkout (git toplevel)
   for lock in "$dir"/*.lock; do
     [ -f "$lock" ] || continue
     [ -n "$own" ] && [ "$(basename "$lock" .lock)" = "$own" ] && continue
+    lpid="$(sed -n '2p' "$lock" 2>/dev/null | tr -d '[:space:]')"
+    if [ -n "$lpid" ] && [ "$lpid" -eq "$lpid" ] 2>/dev/null; then
+      [ -n "$ancestors" ] || ancestors="$(own_ancestor_pids)"
+      case "$ancestors" in *" $lpid "*) continue ;; esac
+    fi
     mtime="$(stat -c %Y "$lock" 2>/dev/null || stat -f %m "$lock" 2>/dev/null || echo 0)"
     [ $((now - mtime)) -lt 1800 ] && return 0
   done
@@ -659,29 +687,20 @@ cmd_start() {
   local contract
   contract="$(resolve_contract "$plan_abs" "$repo_root")"
 
-  local brief_out brief_rc
-  if [ -n "$contract" ]; then
-    brief_out="$(bash "$LINT" --brief "$n" "$plan_abs" "$contract" 2>&1)"
-  else
-    brief_out="$(bash "$LINT" --brief "$n" "$plan_abs" 2>&1)"
-  fi
-  brief_rc=$?
-  if [ "$brief_rc" -ne 0 ]; then
-    printf '%s\n' "$brief_out" >&2
-    exit 1
-  fi
-
-  # Worktree mode (worktree-track spec). "track": the brief names a track
+  # Worktree mode (worktree-track spec), decided from the plan's structure
+  # (never from brief prose) BEFORE the one plan-lint --brief call below.
+  # "track": the plan has `## Tracks` and the task carries a `**Track:**`
+  # (plan-lint FAILed above for an unlisted one) — the brief names a track
   # worktree shared by the track's tasks (an existing one is reused below).
   # "plan": a single-track plan (no ## Tracks, Sequential layout) whose plan
   # worktree exists already, or whose FIRST task starts while another session
-  # holds a live lock on this checkout — the brief is rewritten to name
-  # <feature>/plan. Anything else keeps the per-task worktree as before.
-  local wt_mode=""
-  if printf '%s\n' "$brief_out" | grep -q 'which track it holds'; then
-    wt_mode="track"
-  elif ! plan_has_tracks "$plan_abs" && plan_is_sequential "$plan_abs" \
-    && ! printf '%s\n' "$brief_out" | grep -q '^## Checkout'; then
+  # holds a live lock on this checkout — the brief names <feature>/plan.
+  # "main": the same plan with neither (C4) — the base checkout, no worktree.
+  # Anything else keeps the per-task worktree as before.
+  local wt_mode="" brief_flag=""
+  if plan_has_tracks "$plan_abs"; then
+    [ -z "$(track_of "$(plan_task_tracks "$plan_abs")" "$n")" ] || wt_mode="track"
+  elif plan_is_sequential "$plan_abs"; then
     local pfeat prepo pwt_abs prows
     pfeat="$(plan_feature_of "$plan_abs")"
     prepo="$(basename "$repo_root" | sed 's/[^A-Za-z0-9._-]/-/g')"
@@ -689,31 +708,19 @@ cmd_start() {
     prows="$(plan_task_rows "$plan_abs")"
     if git -C "$repo_root" worktree list --porcelain 2>/dev/null | grep -qxF "worktree $pwt_abs" \
       || { [ "$(done_ids_of "$prows")" = " " ] && foreign_live_lock "$repo_root"; }; then
-      wt_mode="plan"
-      # Worktree and Bounds come from plan-lint's plan-worktree brief.
-      if [ -n "$contract" ]; then
-        brief_out="$(bash "$LINT" --brief "$n" "$plan_abs" "$contract" --plan-worktree 2>&1)"
-      else
-        brief_out="$(bash "$LINT" --brief "$n" "$plan_abs" --plan-worktree 2>&1)"
-      fi
-      if [ $? -ne 0 ]; then
-        printf '%s\n' "$brief_out" >&2
-        exit 1
-      fi
+      wt_mode="plan"; brief_flag="--plan-worktree"
     else
-      # No live lock, no plan worktree: the base checkout (C4) — the --main
-      # brief, no worktree, no branch.
-      wt_mode="main"
-      if [ -n "$contract" ]; then
-        brief_out="$(bash "$LINT" --brief "$n" "$plan_abs" "$contract" --main 2>&1)"
-      else
-        brief_out="$(bash "$LINT" --brief "$n" "$plan_abs" --main 2>&1)"
-      fi
-      if [ $? -ne 0 ]; then
-        printf '%s\n' "$brief_out" >&2
-        exit 1
-      fi
+      wt_mode="main"; brief_flag="--main"
     fi
+  fi
+
+  local brief_out brief_args
+  brief_args=("$n" "$plan_abs")
+  [ -z "$contract" ] || brief_args+=("$contract")
+  [ -z "$brief_flag" ] || brief_args+=("$brief_flag")
+  if ! brief_out="$(bash "$LINT" --brief "${brief_args[@]}" 2>&1)"; then
+    printf '%s\n' "$brief_out" >&2
+    exit 1
   fi
 
   local plan_slug handoff_dir handoff
@@ -842,12 +849,7 @@ cmd_integrate() {
   if [ -n "$track_plan" ]; then
     track_mode="track"
     if [ "$ahead" -gt 0 ] && [ -n "$dirty" ]; then
-      logged="$(awk "$FENCE_FN"'
-        { if (fenceline($0)) next }
-        /^## Changes during build/ { insec = 1; next }
-        insec && /^## / { exit }
-        insec && /^- Task [0-9]+ \(`/ && match($0, /`[^`]+`/) { print substr($0, RSTART + 1, RLENGTH - 2) }
-      ' "$track_plan" 2>/dev/null)"
+      logged="$(logged_shas "$track_plan" "" 2>/dev/null)"
       for c in $(git -C "$wt_root" rev-list "$base_branch..HEAD" 2>/dev/null); do
         csubj="$(git -C "$wt_root" log -1 --format=%s "$c")"
         if printf '%s\n' "$csubj" | grep -qiE '(^|[^A-Za-z0-9])task[ -]?[0-9]+'; then continue; fi
@@ -1192,7 +1194,7 @@ EOF
     mytrack="$n"
   fi
   if [ -n "$mytrack" ]; then
-    local tt_total=0 tt_done=0 tt_role=0 ttid ttowner ttblocked ttdone ttrack
+    local tt_total=0 tt_done=0 tt_role=0 ttid ttowner ttblocked ttdone ttrack tt_ids=" " tt_tip=1 tt_sha2
     while IFS="$ROW_FS" read -r ttid ttowner ttblocked ttdone; do
       [ -n "$ttid" ] || continue
       if [ -n "$tracked_log" ]; then ttrack="$(track_of "$ttable" "$ttid")"
@@ -1200,12 +1202,26 @@ EOF
       else ttrack="$ttid"; fi
       [ "$ttrack" = "$mytrack" ] || continue
       tt_total=$((tt_total + 1))
+      tt_ids="$tt_ids$ttid "
       [ "$ttdone" = "1" ] && tt_done=$((tt_done + 1))
       is_lead_owner "$ttowner" || tt_role=$((tt_role + 1))
     done <<EOF
 $rrows
 EOF
-    if [ "$tt_total" -gt 0 ] && [ "$tt_total" -eq "$tt_done" ] && [ "$tt_role" -gt 0 ]; then
+    # Only the task that closes the track speaks: re-logging an EARLIER task
+    # of a finished track (its sha is older) would print a shorter range and
+    # overwrite the lens diff with it. This log is the closing one when every
+    # other task's logged commit is an ancestor of (or equal to) $sha.
+    if [ -n "$log_root" ] && git -C "$log_root" rev-parse --verify --quiet "$sha^{commit}" >/dev/null 2>&1; then
+      for ttid in $tt_ids; do
+        [ "$ttid" = "$n" ] && continue
+        tt_sha2="$(task_logged_sha "$plan" "$ttid")"
+        [ -n "$tt_sha2" ] || continue
+        git -C "$log_root" rev-parse --verify --quiet "$tt_sha2^{commit}" >/dev/null 2>&1 || continue
+        git -C "$log_root" merge-base --is-ancestor "$tt_sha2" "$sha" 2>/dev/null || tt_tip=0
+      done
+    fi
+    if [ "$tt_total" -gt 0 ] && [ "$tt_total" -eq "$tt_done" ] && [ "$tt_role" -gt 0 ] && [ "$tt_tip" -eq 1 ]; then
       local tbase tline tdir tpath first_sha="" tt_code=0 ctid cowner cblocked cdone ctier ctrack
       # A docs-only track (every role-owned task briefed R1) takes no track-end
       # review: print just `track <id> done`.
@@ -1226,21 +1242,19 @@ EOF
         return 0
       fi
       if [ -n "$tracked_log" ] || [ -n "$plan_mode_log" ]; then
+        # Outside a git repo there is no base to name: stay silent.
         tbase=""
-        [ -z "$log_root" ] || tbase="$(git -C "$log_root" rev-parse --abbrev-ref HEAD 2>/dev/null)"
-        [ -n "$tbase" ] || tbase="HEAD"
+        if [ -n "$log_root" ]; then
+          tbase="$(git -C "$log_root" rev-parse --abbrev-ref HEAD 2>/dev/null)"
+          [ -n "$tbase" ] || tbase="HEAD"
+        fi
       else
         # No track worktree: the commits already sit on the base checkout, so
         # the range starts at the parent of the track's first logged commit
         # (a per-task track: this task's own). Anchored to the exact bullet
         # shape this function writes above ("- Task N (`<sha>`): <note>").
         if [ -n "$seq_log" ]; then
-          first_sha="$(awk "$FENCE_FN"'
-            { if (fenceline($0)) next }
-            /^## Changes during build/ { insec = 1; next }
-            insec && /^## / { exit }
-            insec && /^- Task [0-9]+ \(`/ && match($0, /`[^`]+`/) { print substr($0, RSTART + 1, RLENGTH - 2); exit }
-          ' "$plan")"
+          first_sha="$(logged_shas "$plan" "" | head -n 1)"
         else
           first_sha="$sha"
         fi

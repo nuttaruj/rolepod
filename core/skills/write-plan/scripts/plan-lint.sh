@@ -182,7 +182,7 @@ function fence_open_line() { return fenceopen }
 '
 
 # One copy of the field helpers every awk pass below shares (trim, fieldgate,
-# fieldval). A field is only a line whose (left-trimmed) start is a bullet —
+# fieldval, fieldbody, blockedrefs, filepaths — the Files and Blocked-by parsing). A field is only a line whose (left-trimmed) start is a bullet —
 # dash OR asterisk — an optional checkbox, then the label. The bullet char is
 # consumed BEFORE bold asterisks are stripped: a whole-line gsub(/\*/) first
 # would eat an asterisk BULLET along with the bold markers, making a
@@ -201,6 +201,36 @@ function fieldval(line, name,    v) {
   v = line; gsub(/\*/, "", v); v = trim(v); sub(/^[-*][[:space:]]*/, "", v)
   sub(/^(\[[ xX]\][[:space:]]*)?[A-Za-z ]+:[[:space:]]*/, "", v)
   return trim(v)
+}
+# The raw value after a field label on its (already fieldgate-d) line — the
+# bullet, checkbox and bold markers off the front, the value itself untouched
+# (a glob like `src/**/*.ts` keeps its asterisks). `\**` (not an interval
+# expression) so old awks read it too.
+function fieldbody(line, name) {
+  sub("^[[:space:]]*[-*][[:space:]]*(\\[[ xX]\\][[:space:]]*)?\\**" name "\\**:\\**[[:space:]]*", "", line)
+  return line
+}
+# A Blocked-by value cut down to its refs: every `(...)` aside, then a
+# trailing em/en-dash aside, so "Task 1 (why), Task 3 — landed in v2.90.0"
+# leaves only the refs. Callers pull the integers out of the result.
+function blockedrefs(v) {
+  gsub(/\([^)]*\)/, "", v)
+  sub(/[[:space:]]+(—|–)[[:space:]]+.*$/, "", v)
+  return v
+}
+# Every path on a Files value into out[1..n] (returns n): backticked spans
+# first, then bare comma/space-separated tokens that look like a path (a slash,
+# or a dot + alnum extension); placeholders ("<paths>") and and/or are dropped.
+function filepaths(v, out,    m, rest, toks, nt, i, t, n) {
+  n = 0; m = v
+  while (match(m, /`[^`]+`/)) { out[++n] = substr(m, RSTART + 1, RLENGTH - 2); m = substr(m, RSTART + RLENGTH) }
+  rest = v; gsub(/`[^`]+`/, " ", rest); nt = split(rest, toks, /[,[:space:]]+/)
+  for (i = 1; i <= nt; i++) {
+    t = toks[i]; gsub(/[,;)]+$/, "", t)
+    if (t == "" || t ~ /^</ || t ~ /^([Aa]nd|[Oo]r)$/) continue
+    if (t ~ /\// || t ~ /\.[[:alnum:]]+$/) out[++n] = t
+  }
+  return n
 }
 '
 
@@ -224,7 +254,7 @@ function tslug(x,   t, n, a, k, o, w) {
   return (o == "") ? "track" : o
 }
 function addrefs(c, v) {
-  gsub(/\([^)]*\)/, "", v); sub(/[[:space:]]+(—|–)[[:space:]]+.*$/, "", v)
+  v = blockedrefs(v)
   while (match(v, /[0-9]+/)) { refs[c] = refs[c] " " substr(v, RSTART, RLENGTH); v = substr(v, RSTART + RLENGTH) }
 }
 function addfile(p, c) {
@@ -271,12 +301,10 @@ cur != "" {
   if (bcont == cur && trim($0) != "" && $0 !~ /^[-*][[:space:]]/ && $0 !~ /^[[:space:]]*[-*][[:space:]]/ && $0 !~ /^#/) { addrefs(cur, trim($0)); next }
   if ($0 ~ /^[[:space:]]*[-*][[:space:]]/ || $0 ~ /^#/) bcont = ""
   if (fieldgate($0, "Files") && !(cur in fdone)) {
-    fdone[cur] = 1; v = $0
-    sub(/^[[:space:]]*[-*][[:space:]]*(\[[ xX]\][[:space:]]*)?\*{0,2}Files\*{0,2}:\*{0,2}[[:space:]]*/, "", v)
-    v = cleanfiles(v, 1); m = v
-    while (match(m, /`[^`]+`/)) { addfile(substr(m, RSTART + 1, RLENGTH - 2), cur); m = substr(m, RSTART + RLENGTH) }
-    gsub(/`[^`]+`/, " ", v); nt = split(v, toks, /[,[:space:]]+/)
-    for (i = 1; i <= nt; i++) { t = toks[i]; gsub(/[,;)]+$/, "", t); if (t == "" || t ~ /^</) continue; if (t ~ /\// || t ~ /\.[[:alnum:]]+$/) addfile(t, cur) }
+    fdone[cur] = 1
+    v = cleanfiles(fieldbody($0, "Files"), 1)
+    nfp = filepaths(v, fp)
+    for (i = 1; i <= nfp; i++) addfile(fp[i], cur)
     next
   }
 }
@@ -604,30 +632,30 @@ if [ "${1:-}" = "--brief" ]; then
       # scenario 1 is unbolded end to end). fieldline() requires the label
       # to START the (trimmed, unbolded) line, as a bullet — a prose
       # sentence that merely quotes the label text is never the field.
-      if (fieldline(line, "Delivers"))             { field = "D";   v = line; sub(/^[[:space:]]*[-*][[:space:]]*(\[[ xX]\][[:space:]]*)?\*{0,2}Delivers\*{0,2}:\*{0,2}[[:space:]]*/, "", v) }
-      else if (fieldline(line, "Blocked by"))      { field = "B";   v = line; sub(/^[[:space:]]*[-*][[:space:]]*(\[[ xX]\][[:space:]]*)?\*{0,2}Blocked by\*{0,2}:\*{0,2}[[:space:]]*/, "", v) }
-      else if (fieldline(line, "Read first"))      { field = "R";   v = line; sub(/^[[:space:]]*[-*][[:space:]]*(\[[ xX]\][[:space:]]*)?\*{0,2}Read first\*{0,2}:\*{0,2}[[:space:]]*/, "", v) }
-      else if (fieldline(line, "Files"))           { field = "F";   v = line; sub(/^[[:space:]]*[-*][[:space:]]*(\[[ xX]\][[:space:]]*)?\*{0,2}Files\*{0,2}:\*{0,2}[[:space:]]*/, "", v) }
-      else if (fieldline(line, "Change"))          { field = "C";   v = line; sub(/^[[:space:]]*[-*][[:space:]]*(\[[ xX]\][[:space:]]*)?\*{0,2}Change\*{0,2}:\*{0,2}[[:space:]]*/, "", v) }
-      else if (fieldline(line, "Test / evidence")) { field = "T";   v = line; sub(/^[[:space:]]*[-*][[:space:]]*(\[[ xX]\][[:space:]]*)?\*{0,2}Test \/ evidence\*{0,2}:\*{0,2}[[:space:]]*/, "", v) }
-      else if (fieldline(line, "Command"))         { field = "Cmd"; v = line; sub(/^[[:space:]]*[-*][[:space:]]*(\[[ xX]\][[:space:]]*)?\*{0,2}Command\*{0,2}:\*{0,2}[[:space:]]*/, "", v) }
+      if (fieldline(line, "Delivers"))             { field = "D";   v = fieldbody(line, "Delivers") }
+      else if (fieldline(line, "Blocked by"))      { field = "B";   v = fieldbody(line, "Blocked by") }
+      else if (fieldline(line, "Read first"))      { field = "R";   v = fieldbody(line, "Read first") }
+      else if (fieldline(line, "Files"))           { field = "F";   v = fieldbody(line, "Files") }
+      else if (fieldline(line, "Change"))          { field = "C";   v = fieldbody(line, "Change") }
+      else if (fieldline(line, "Test / evidence")) { field = "T";   v = fieldbody(line, "Test / evidence") }
+      else if (fieldline(line, "Command"))         { field = "Cmd"; v = fieldbody(line, "Command") }
       # Superseded (spec lean-loop-2026-09-23 Task 2: ONE test field, the
       # Command, run once, last before returning) — parsed
       # only so a Check: line in an older plan ends whatever field came
       # before it instead of gluing onto it; the value is captured and
       # ignored, never printed into a new brief.
-      else if (fieldline(line, "Check"))           { field = "Ck";  v = line; sub(/^[[:space:]]*[-*][[:space:]]*(\[[ xX]\][[:space:]]*)?\*{0,2}Check\*{0,2}:\*{0,2}[[:space:]]*/, "", v) }
-      else if (fieldline(line, "Owner"))           { field = "O";   v = line; sub(/^[[:space:]]*[-*][[:space:]]*(\[[ xX]\][[:space:]]*)?\*{0,2}Owner\*{0,2}:\*{0,2}[[:space:]]*/, "", v) }
-      else if (fieldline(line, "Done when"))       { field = "DW";  v = line; sub(/^[[:space:]]*[-*][[:space:]]*(\[[ xX]\][[:space:]]*)?\*{0,2}Done when\*{0,2}:\*{0,2}[[:space:]]*/, "", v) }
+      else if (fieldline(line, "Check"))           { field = "Ck";  v = fieldbody(line, "Check") }
+      else if (fieldline(line, "Owner"))           { field = "O";   v = fieldbody(line, "Owner") }
+      else if (fieldline(line, "Done when"))       { field = "DW";  v = fieldbody(line, "Done when") }
       # Optional — the one claim + command a reviewer would check by hand
       # (spec R3). A bullet of its own right after Test / evidence, never
       # indented under it (an indented line is a continuation, handled below).
-      else if (fieldline(line, "Proof"))           { field = "P";   v = line; sub(/^[[:space:]]*[-*][[:space:]]*(\[[ xX]\][[:space:]]*)?\*{0,2}Proof\*{0,2}:\*{0,2}[[:space:]]*/, "", v) }
+      else if (fieldline(line, "Proof"))           { field = "P";   v = fieldbody(line, "Proof") }
       # Optional — printed only when the task carries them, right after
       # Test / evidence and Done when respectively (never their own heading
       # when the task has neither field).
-      else if (fieldline(line, "Expected failing signal")) { field = "Ef"; v = line; sub(/^[[:space:]]*[-*][[:space:]]*(\[[ xX]\][[:space:]]*)?\*{0,2}Expected failing signal\*{0,2}:\*{0,2}[[:space:]]*/, "", v) }
-      else if (fieldline(line, "On fail"))                 { field = "Of"; v = line; sub(/^[[:space:]]*[-*][[:space:]]*(\[[ xX]\][[:space:]]*)?\*{0,2}On fail\*{0,2}:\*{0,2}[[:space:]]*/, "", v) }
+      else if (fieldline(line, "Expected failing signal")) { field = "Ef"; v = fieldbody(line, "Expected failing signal") }
+      else if (fieldline(line, "On fail"))                 { field = "Of"; v = fieldbody(line, "On fail") }
       else isf = 0
       if (isf && field != "") {
         # Only the LEADING run of bold asterisks (the closing ** of a bold
@@ -1134,19 +1162,15 @@ GRAPH=$(awk -v rx="$TASK_RX" -v seq="$SEQUENTIAL" "$FENCE_AWK$FIELD_AWK"'
     # a prose sentence elsewhere on the line that merely quotes the
     # label text is never the field.
     if (!fieldgate($0, "Blocked by")) next
-    has[cur] = 1; vt = $0; gsub(/\*/, "", vt); vt = trim(vt); sub(/^[-*][[:space:]]*/, "", vt); v = vt
-    sub(/^(\[[ xX]\][[:space:]]*)?Blocked by:[[:space:]]*/, "", v); v = trim(v)
+    has[cur] = 1; v = fieldval($0, "Blocked by")
     # lowercased before the check — the same tolower() approach ticket.sh
     # uses, so "NONE" (any casing) means no blockers on both parsers, not
     # just "None"/"none".
     if (tolower(v) ~ /^(none|—|-|–)/) next
-    # strip every parenthesised aside individually — "Task 1 (why), Task 3
-    # (why), Task 4 (why)" must resolve to {1,3,4}, not just the first ref.
-    gsub(/\([^)]*\)/, "", v)
-    # then a trailing em/en-dash aside (no parens) — "Task 3 — landed in
-    # v2.90.0" must resolve to {3}, not pick up 2/90/0 out of the prose.
-    sub(/[[:space:]]+(—|–)[[:space:]]+.*$/, "", v)
-    m = v
+    # every parenthesised aside and a trailing em/en-dash aside come off
+    # (blockedrefs): "Task 1 (why), Task 3 (why)" resolves to {1,3}, and
+    # "Task 3 — landed in v2.90.0" to {3}, not 2/90/0 out of the prose.
+    m = blockedrefs(v)
     while (match(m, /[0-9]+/)) {
       r = substr(m, RSTART, RLENGTH); m = substr(m, RSTART + RLENGTH)
       if (!(cur SUBSEP r in edge)) { edge[cur, r] = 1; refs[cur] = refs[cur] " " r }
@@ -1165,32 +1189,13 @@ GRAPH=$(awk -v rx="$TASK_RX" -v seq="$SEQUENTIAL" "$FENCE_AWK$FIELD_AWK"'
     # `src/**/*.ts` is untouched.
     if (!fieldgate($0, "Files")) next
     filesdone[cur] = 1
-    v = $0; sub(/^[[:space:]]*[-*][[:space:]]*(\[[ xX]\][[:space:]]*)?\*{0,2}Files\*{0,2}:\*{0,2}[[:space:]]*/, "", v)
-    m = v
-    while (match(m, /`[^`]+`/)) {
-      addpath(substr(m, RSTART + 1, RLENGTH - 2), cur)
-      m = substr(m, RSTART + RLENGTH)
-    }
-    # Bare tokens: strip out what was already claimed as backticked, split
-    # the rest on commas/whitespace, then keep only path-shaped tokens —
-    # contains a slash, or ends in a dot + an alnum extension.
-    # Placeholders ("<paths...>") and filler words ("and"/"or") are dropped.
-    rest = v
-    gsub(/`[^`]+`/, " ", rest)
-    ntok = split(rest, toks, /[,[:space:]]+/)
-    for (ti = 1; ti <= ntok; ti++) {
-      tok = toks[ti]
-      gsub(/[,;)]+$/, "", tok)
-      if (tok == "" || tok ~ /^</) continue
-      if (tok ~ /^([Aa]nd|[Oo]r)$/) continue
-      if (tok ~ /\// || tok ~ /\.[[:alnum:]]+$/) addpath(tok, cur)
-    }
+    nfp = filepaths(fieldbody($0, "Files"), fp)
+    for (i = 1; i <= nfp; i++) addpath(fp[i], cur)
     next
   }
   cur != "" && /Owner:/ && !(cur in ownerdone) {
     if (!fieldgate($0, "Owner")) next
-    ownerdone[cur] = 1; v = $0
-    sub(/^[[:space:]]*[-*][[:space:]]*(\[[ xX]\][[:space:]]*)?\*{0,2}Owner\*{0,2}:\*{0,2}[[:space:]]*/, "", v); gsub(/\*/, "", v); v = trim(v)
+    ownerdone[cur] = 1; v = fieldbody($0, "Owner"); gsub(/\*/, "", v); v = trim(v)
     owner[cur] = v
     next
   }
@@ -1280,7 +1285,8 @@ elif [ -n "$GRAPH_A" ] && ! printf '%s' "$GRAPH_A" | grep -q 'no Blocked by fiel
 fi
 [ -n "$GRAPH_A" ] && printf '%s\n' "$GRAPH_A" | sed 's/^A /  · /'
 
-# ── Tracks (worktree-track spec) — silent for a plan with no ## Tracks and
+# ── 5. Tracks (worktree-track spec; runs before 4, which exits early on a
+# Sequential plan) — silent for a plan with no ## Tracks and
 # no Track field; else every task names a listed track, one file lives in
 # one track, and Blocked by crosses tracks only at a track's first task.
 TRACKS_OUT=$(awk -v rx="$TASK_RX" -v mode=lint -v feature="" "$CLEANFILES_AWK$FENCE_AWK$FIELD_AWK$TRACKS_AWK" "$PLAN")

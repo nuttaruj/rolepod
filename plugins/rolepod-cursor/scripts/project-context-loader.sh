@@ -52,12 +52,11 @@ if [ "${ROLEPOD_ALLOW_SHARED_WORKTREE:-0}" != "1" ]; then
     if [ $((_now - _m)) -lt 1800 ]; then
       _act=$((_act + 1))
       # Lock-name rule (same in session-lifecycle.sh and the opencode
-      # plugin): read at most 32 bytes, strip one trailing newline, keep it
-      # only if it matches [a-z0-9_-]+ — anything else (empty, junk, a lock
+      # plugin): first line only (line 2 of a session-lifecycle lock is the
+      # CLI pid), at most 32 bytes, keep it only if it matches [a-z0-9_-]+ — anything else (empty, junk, a lock
       # that vanished or failed to read between the count and this read) is
       # "unknown", so the count and the breakdown always agree.
-      _nm=$(head -c 32 "$_lk" 2>/dev/null || echo "")
-      _nm="${_nm%$'\n'}"
+      _nm=$(head -n 1 "$_lk" 2>/dev/null | head -c 32)
       case "$_nm" in *[!a-z0-9_-]*|"") _nm="unknown" ;; esac
       _names="${_names}${_nm}
 "

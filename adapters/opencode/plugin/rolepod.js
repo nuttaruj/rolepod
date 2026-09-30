@@ -447,8 +447,8 @@ function makeCore({ directory, homedir } = {}) {
   const hd = homedir || os.homedir()
 
   // Lock-name rule (same in hooks/session-lifecycle.sh and the cursor
-  // loader): read at most 32 bytes, strip one trailing newline, keep it
-  // only if it matches [a-z0-9_-]+ — anything else (empty, junk, a lock
+  // loader): read at most 32 bytes, take the first line only (line 2 of a
+  // session-lifecycle lock is the CLI pid), keep it only if it matches [a-z0-9_-]+ — anything else (empty, junk, a lock
   // that vanished or failed to read between the count and this read) is
   // "unknown", so the count and the breakdown always agree (never throws).
   const readLockName = (p) => {
@@ -457,7 +457,7 @@ function makeCore({ directory, homedir } = {}) {
       fd = fs.openSync(p, "r")
       const buf = Buffer.alloc(32)
       const n = fs.readSync(fd, buf, 0, 32, 0)
-      const raw = buf.toString("utf8", 0, n).replace(/\n$/, "")
+      const raw = buf.toString("utf8", 0, n).split("\n")[0]
       return /^[a-z0-9_-]+$/.test(raw) ? raw : "unknown"
     } catch {
       return "unknown"

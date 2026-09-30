@@ -104,8 +104,8 @@ STALE_THRESHOLD=1800   # 30 min — covers most legit gaps between turns
 # SIBLING_NAMES collects one CLI name per active sibling (newline-separated,
 # no assoc arrays — /bin/bash on macOS is still 3.2) for the warning's
 # per-CLI breakdown. Lock-name rule (same in the cursor loader and the
-# opencode plugin): read at most 32 bytes, strip one trailing newline, keep
-# it only if it matches [a-z0-9_-]+ — anything else (empty, junk, a lock
+# opencode plugin): first line only (line 2 is the CLI pid), at most 32
+# bytes, keep it only if it matches [a-z0-9_-]+ — anything else (empty, junk, a lock
 # that vanished or failed to read between the count and this read) is
 # "unknown", so the count and the breakdown always agree.
 ACTIVE_SIBLINGS=0
@@ -119,8 +119,7 @@ for lock in "$LOCK_DIR"/*.lock; do
   age=$((NOW - mtime))
   if [ "$age" -lt "$STALE_THRESHOLD" ]; then
     ACTIVE_SIBLINGS=$((ACTIVE_SIBLINGS + 1))
-    sib_name=$(head -c 32 "$lock" 2>/dev/null || echo "")
-    sib_name="${sib_name%$'\n'}"
+    sib_name=$(head -n 1 "$lock" 2>/dev/null | head -c 32)
     [[ "$sib_name" =~ ^[a-z0-9_-]+$ ]] || sib_name="unknown"
     SIBLING_NAMES="${SIBLING_NAMES}${sib_name}
 "
@@ -143,8 +142,10 @@ find "$(dirname "$LOCK_DIR")" -mindepth 1 -maxdepth 1 -type d -empty ! -path "$L
 
 # Write our lock. Content = this CLI's name (a sibling reader prints it in
 # its breakdown); overwriting refreshes mtime on each SessionStart resume,
-# same as the old touch did.
-printf '%s' "$CLI_NAME" > "$LOCK_DIR/$SESSION_ID.lock" 2>/dev/null || true
+# same as the old touch did. Line 2 = this CLI process's pid ($PPID), so a
+# script run under that CLI (ticket.sh) recognises the lock as its own without
+# any session env var; a reader takes line 1 only.
+printf '%s\n%s' "$CLI_NAME" "$PPID" >"$LOCK_DIR/$SESSION_ID.lock" 2>/dev/null || true
 
 # Extension Protocol v1: signal to child plugins (rolepod-uiproof, wplab)
 # that rolepod parent is active in this worktree. Children read this file

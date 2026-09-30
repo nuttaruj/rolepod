@@ -273,7 +273,7 @@ if verifies:
 # External (cross-family) passes — written by scripts/cross-family.sh. The
 # review line with reviewer:external records an external pass (the commit
 # gate never counts it, C4); consult lines are the debug channel.
-externals = [r for r in rows if r.get("reviewer") == "external" or r.get("phase") == "implement"]   # implement lines carry no reviewer key: the runner built, the track-end review owner reviews
+externals = [r for r in rows if r.get("reviewer") == "external" or r.get("phase") == "implement"]   # implement lines carry no reviewer key (a member built the ticket, it did not review), so they are matched on phase
 xfails = [r for r in rows if r.get("phase") == "external-fail"]
 if reviews:
     own = [r for r in reviews if r.get("reviewer") != "external"]
