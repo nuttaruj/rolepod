@@ -51,7 +51,7 @@ The one hard checkpoint, at `git commit`.
 
 ### `gate-reminder.sh` — PreToolUse `Edit|Write|MultiEdit` (Claude)
 
-- **Effect** — on a high-risk path, ONE line and only when the commit would block now: fact (a high-risk commit needs at least one `security-engineer` dispatch since the last commit, any model; an external pass never counts) → Fix (dispatch `security-engineer`, finished before commit) → Exception (user-set bypass only). Every other edit → silent.
+- **Effect** — on a high-risk path, ONE line and only when the commit would block now: fact (a high-risk commit needs at least one `security-engineer` dispatch since the last commit, any model; an external pass never counts) → Fix (dispatch `security-engineer`, finished before commit) → Exception (user-set bypass only). Every other edit → silent. A sub-agent edit (`agent_id` set) gets neither this line nor the evidence scan (the Lead dispatches), only the review-in-flight advisory.
 - **In-flight lines** — a live detached cross-family review whose diff holds the edited file → `⏸ REVIEW IN FLIGHT` (the job reads the tree live; editing now makes its verdict an artifact). A live `--kind implement` job and an edit outside its allowed paths → `⏸ EXTERNAL IMPLEMENT IN FLIGHT` (that edit is reverted when the job returns).
 - **Incident** — edit-time hard blocks once pushed a user to set `ROLEPOD_GATES_SOFT` for good (33 high-risk edits in a day, 116 unreasoned bypasses), which silenced the commit gate too; this hook only informs.
 - **Bypass** — `ROLEPOD_GATES_SOFT=1` silences it.
@@ -89,9 +89,10 @@ A sub-agent writes only what its role owns.
 
 ### `workflow-tier-nudge.sh` — PreToolUse `Workflow` (Claude)
 
-A Workflow `agent()` call defaults to the Lead's model and no frontmatter can change that, so this hook reads the script before it runs. Two denies, neither yields:
+A Workflow `agent()` call defaults to the Lead's model and no frontmatter can change that, so this hook reads the script before it runs. Three denies, neither yields (checked in this order: `bare-fanout`, `strong-fanout`, `bare-writer`):
 
 - **`bare-fanout`** — under a strong-class or unknown Lead, a fan-out `agent()` call (interpolated label, or inside `.map(` / `pipeline(` / `Array.from(` / a loop) with no tier. A tier is a `model:` or an `agentType:` that pins one (a rolepod role; a variable counts); a platform `agentType:` such as `general-purpose` pins nothing. Fix: pin every fan-out — sweep → cheap or `rolepod:scout`, build and per-item verify → balanced, the ONE judge → strong.
+- **`strong-fanout`** — under any Lead, a fan-out `agent()` call pinned strong (a strong `model:` or a strong-role `agentType:`). Fix: the fan-out runs a role or haiku / sonnet; keep ONE strong judge outside the fan-out.
 - **`bare-writer`** — under any Lead, an `agent()` with no `agentType:` on a stage whose name says it writes (Implement / Build / Fix / Integrate / Migrate / Refactor / Patch / Scaffold / Write). Fix: `agentType: 'rolepod:<role>'`. Without it `subagent-write-scope` blocks the first write minutes into the run.
 - **Lead class** — the family word of the Lead's last transcript turn (haiku = cheap, sonnet = balanced, opus / fable / mythos = strong, else unknown).
 - **Logging** — each deny appends a `phase: dispatch-gate` row (a denied fleet never reaches PostToolUse).
@@ -165,7 +166,7 @@ Warn-only grep of the staged diff: focus / skip markers added, deleted test case
 | The evidence gate on Codex, Cursor, Antigravity and opencode (the gate's lib-less branch included) | platform twin — parity is skills + workflow; those CLIs keep the private-docs deny |
 | Cursor `gate-reminder.sh` (`preToolUse` and `postToolUse`); Codex `apply_patch` → `gate-reminder.sh` | platform twin |
 | `block-subagent-commit.sh` shell-write rule (`bash_write_paths()`, its ledger rows, the synthesized write-scope check; the Codex copy of `subagent-write-scope.sh`) | dead path — it fed the removed ledger; "edit tools only" stays doctrine |
-| Fleet gate `no-tier`, `single-tier`, `no-strong-judge`, `strong-spread`, `named-downgrade`, the loop valve, the low-Lead nudge, the `// tier-reason:` escape | normal-flow noise — two denies cover the measured cases |
+| Fleet gate `no-tier`, `single-tier`, `no-strong-judge`, `strong-spread`, `named-downgrade`, the loop valve, the low-Lead nudge, the `// tier-reason:` escape | normal-flow noise — three denies cover the measured cases |
 | Fleet gate on `Agent`: the `updatedInput` → `opus` floor and the downgrade nudge | dead path — strong roles render `opus` in frontmatter since v2.104.0 |
 | `dispatch-auto-log` `floor: applied` value | dead path — nothing lifts a model any more |
 

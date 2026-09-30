@@ -387,9 +387,13 @@ if root:
         except OSError:
             continue
         parts = f.split(os.sep)
+        # the path relative to <session>/subagents/, so a `workflows` dir above the session never counts;
         # workflows/<wf>/... at any depth (a workflow agent may spawn its own subagents/)
-        grp = parts[parts.index("workflows") + 1] if "workflows" in parts[:-1] and parts.index("workflows") + 1 < len(parts) - 1 else "agent-tool"
-        sess = parts[parts.index("subagents") - 1] if "subagents" in parts else ""
+        si = parts.index("subagents") if "subagents" in parts else -1
+        rel = parts[si + 1:] if si >= 0 else parts
+        sess = parts[si - 1] if si >= 0 else ""
+        # one agent-tool bucket per session, so a fleet's ultracode tag reads its own session's turns
+        grp = rel[1] if len(rel) > 2 and rel[0] == "workflows" else "agent-tool:" + sess[:8]
         calls, first, eff = {}, None, "-"    # one API call is written as several rows (thinking/text/tool_use) sharing message.id and usage — keep the row with the highest output_tokens per id
         try:
             with open(f, encoding="utf-8", errors="ignore") as fh:
