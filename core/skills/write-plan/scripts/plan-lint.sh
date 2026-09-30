@@ -26,13 +26,17 @@
 #   `--main`, in any position after --brief: an on-main task, no
 #   worktree — prints `## Checkout` in place of `## Worktree`, and Bounds
 #   names no worktree path either. Exit 0 on success; exit 2 with one
-#   stderr line and empty stdout when Task N does not exist. Field labels
+#   stderr line and empty stdout when Task N does not exist, and likewise
+#   (`missing Files: Task N: ...`, the plain lint's message) when Task N has
+#   no `Files:` line — no brief is printed for it. Field labels
 #   match with or without `**bold**` (real plans use both dialects).
 #
 # Checks:
 #   1. `## Failure policy` section present (the loop's circuit breaker).
 #   2. Every task block carries a `Command:` (loop-runnable). A task heading
 #      is `### Task N:` or `### TN —` — both shapes appear in real plans.
+#   2b. Every task block carries a `Files:` line — a Files-less task FAILs
+#      (`missing Files: Task N: ...`), since its owner would have no Files allowed.
 #   3. Blocked-by graph (v2.90.0): every task carries `Blocked by:`, every
 #      reference resolves to a task in this plan, and the graph has no cycle.
 #      The graph IS the plan's order; a Sequential plan whose graph has more
@@ -601,6 +605,7 @@ if [ "${1:-}" = "--brief" ]; then
       id = $0; sub(/^### (Task ?|T)/, "", id); sub(/[^0-9].*$/, "", id)
       if (id == want) {
         intask = 1; found = 1
+        hline = $0
         title = $0
         sub(/^### (Task ?|T)[0-9]+/, "", title)
         # strip only ASCII separators and the dashes: a UTF-8 (Thai) title is not alnum to awk and must stay
@@ -667,7 +672,7 @@ if [ "${1:-}" = "--brief" ]; then
         if (field == "D") D = v
         else if (field == "B") B = v
         else if (field == "R") R = v
-        else if (field == "F") Fr = v
+        else if (field == "F") { Fr = v; sawfiles = 1 }
         else if (field == "C") Ch = v
         else if (field == "T") Te = v
         else if (field == "Cmd") Cmd = v
@@ -786,9 +791,30 @@ if [ "${1:-}" = "--brief" ]; then
           gsub(/^[[:space:]]+/, "", exc)
           gsub(/[[:space:]]+$/, "", exc)
         }
+        # Only an "except ..." clause rides along; any other trailing text is
+        # prose ("(a migration need stops the task", "first") and never
+        # part of the path. A backticked label such as `NEEDS:` is no path.
+        if (exc !~ /^[(]?[Ee]xcept[[:space:]]/) exc = ""
+        m = substr(m, mstart + mlen)
+        if (p ~ /:$/) continue
         disp = (exc == "") ? p : p " " exc
         if (!(p in dntset)) { dntset[p] = 1; dntord[++dn] = p; dntdisp[p] = disp }
-        m = substr(m, mstart + mlen)
+      }
+      # No backtick on the line: the first path-shaped token only, read by
+      # the shared filepaths() and then held to a stricter shape — a trailing
+      # slash, or a dot + a 2+ char extension opening with a letter — so
+      # prose ("e.g", "v2.1", "read/write") never becomes a path. A line
+      # with none prints nothing.
+      if ($0 !~ /`/) {
+        bl = $0; gsub(/[(]/, " ", bl); gsub(/[.:]([[:space:]]|$)/, " ", bl)
+        delete bp
+        nbp = filepaths(bl, bp)
+        for (ti = 1; ti <= nbp; ti++) {
+          tk = bp[ti]
+          if (tk ~ /^https?:/ || !(tk ~ /\/$/ || tk ~ /\.[A-Za-z][A-Za-z0-9]+$/)) continue
+          if (!(tk in dntset)) { dntset[tk] = 1; dntord[++dn] = tk; dntdisp[tk] = tk }
+          break
+        }
       }
       next
     }
@@ -797,6 +823,11 @@ if [ "${1:-}" = "--brief" ]; then
   END {
     if (!found) {
       print "plan-lint --brief: Task " want " not found in " planpath > "/dev/stderr"
+      exit 2
+    }
+    if (!sawfiles) {
+      sub(/^### /, "", hline); sub(/\r$/, "", hline)
+      print "plan-lint --brief: missing Files: " hline " — a Files-less task has no Files allowed for its owner" > "/dev/stderr"
       exit 2
     }
     role = Ow
@@ -1088,11 +1119,13 @@ fi
 TASKPASS=$(awk -v rx="$TASK_RX" "$FENCE_AWK$FIELD_AWK"'
   BEGIN { tcount = 0 }
   fenceline($0) { next }
-  $0 ~ rx     { if (t != "" && !c) print "M " t; t = $0; c = 0; tcount++; next }
-  /^## /      { if (t != "" && !c) print "M " t; t = ""; next }
+  $0 ~ rx     { if (t != "" && !c) print "M " t; if (t != "" && !fl) print "L " t; t = $0; c = 0; fl = 0; tcount++; next }
+  /^## /      { if (t != "" && !c) print "M " t; if (t != "" && !fl) print "L " t; t = ""; next }
   t != "" && fieldgate($0, "Command") { c = 1 }
+  t != "" && fieldgate($0, "Files") { fl = 1 }
   END {
     if (t != "" && !c) print "M " t
+    if (t != "" && !fl) print "L " t
     print "N " tcount
     if (fence_is_open()) print "U " fence_open_line()
   }
@@ -1113,6 +1146,15 @@ else
     [ -n "$t" ] && echo "  ✗ missing Command: ${t#\#\#\# } — a Command-less task cannot be verified by the loop"
   done <<EOF
 $MISSING
+EOF
+  fail=1
+fi
+NOFILES=$(printf '%s\n' "$TASKPASS" | awk '/^L /{print substr($0,3)}')
+if [ -n "$NOFILES" ]; then
+  while IFS= read -r t; do
+    [ -n "$t" ] && echo "  ✗ missing Files: ${t#\#\#\# } — a Files-less task has no Files allowed for its owner"
+  done <<EOF
+$NOFILES
 EOF
   fail=1
 fi
