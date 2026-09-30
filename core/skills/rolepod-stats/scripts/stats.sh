@@ -378,8 +378,8 @@ if root:
     keys = {os.path.abspath(root).replace("/", "-"), os.path.realpath(root).replace("/", "-")}
     cutoff = time.time() - 14 * 86400
     files = []
-    for key in keys:
-        base = os.path.join(os.environ.get("HOME", ""), ".claude", "projects", key)
+    bases = [os.path.join(os.environ.get("HOME", ""), ".claude", "projects", key) for key in keys]
+    for base in bases:
         files += glob.glob(os.path.join(base, "*", "subagents", "**", "agent-*.jsonl"), recursive=True)
     for f in sorted(set(files)):
         try:
@@ -435,20 +435,21 @@ def _typed_prompt(e):
     c = (e.get("message") or {}).get("content")
     return not (isinstance(c, list) and any(isinstance(b, dict) and b.get("type") == "tool_result" for b in c))
 if root:
-    for key in keys:
-        base = os.path.join(os.environ.get("HOME", ""), ".claude", "projects", key)
+    for base in bases:
         for f in glob.glob(os.path.join(base, "*.jsonl")):
             try:
                 if os.path.getmtime(f) < cutoff: continue
                 turns, opened = [], None
                 with open(f, encoding="utf-8", errors="ignore") as fh:
                     for line in fh:
-                        if "workflow_keyword_request" not in line and '"promptId"' not in line: continue
+                        # a prompt row only matters while a keyword turn is open
+                        if "workflow_keyword_request" not in line and (opened is None or '"promptId"' not in line): continue
                         try: e = json.loads(line)
                         except Exception: continue
                         if e.get("type") == "attachment" and (e.get("attachment") or {}).get("type") == "workflow_keyword_request":
-                            if opened is None: opened = e.get("timestamp") or ""
-                            turns.append([opened, None])
+                            if opened is None:    # a second marker inside the same turn is not a new turn
+                                opened = e.get("timestamp") or ""
+                                turns.append([opened, None])
                         elif opened is not None and _typed_prompt(e):
                             for t in turns:
                                 if t[1] is None: t[1] = e.get("timestamp") or ""
@@ -475,9 +476,10 @@ if fleets:
     for g in fleets.values():
         for m, v in g["models"].items(): tot[_short(m)] += v[0]
     print("    total: " + " · ".join(f"{m} {n}" for m, n in tot.most_common()))
-    print("    input + cache-write (per API call, deduped by message.id): "
-          f"input {_k(sum(v[3] for g in fleets.values() for v in g['models'].values()))} · "
-          f"cache-write {_k(sum(v[4] for g in fleets.values() for v in g['models'].values()))}")
+    t_in = t_cw = 0
+    for g in fleets.values():
+        for v in g["models"].values(): t_in += v[3]; t_cw += v[4]
+    print(f"    input + cache-write (per API call, deduped by message.id): input {_k(t_in)} · cache-write {_k(t_cw)}")
     ug = [g for g in fleets.values() if _ultra(g)]
     if ug:
         print(f"    ultracode fleets: {len(ug)} of {len(fleets)} (started inside a keyword turn) — {sum(g['files'] for g in ug)} agents")
