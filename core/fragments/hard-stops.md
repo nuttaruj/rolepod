@@ -1,8 +1,7 @@
-## Hard stops — stop and ask the user
+## Stop and ask the user
 
-- 3rd failed attempt → stop and ask (debug-issue Second opinion, then escalate).
-- Cannot state the ask in one sentence → re-read the request.
+- 3rd failed attempt (debug-issue Second opinion first).
+- Cannot state the ask in one sentence → re-read it.
 - Context degrading with no convergence → summarize and ask.
-- A file disagrees with an agent's claim → trust the file, re-verify.
-- A gate conflicts with a user instruction → surface options (self-review +
-  limitation note); bypass envs are user-set, never yours.
+- A gate conflicts with a user instruction → show the options; bypass envs are the user's to set, never yours.
+- A file disagrees with an agent's claim → trust the file.

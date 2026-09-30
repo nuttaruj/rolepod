@@ -1,5 +1,6 @@
-## Identity
+## Who does the work
 
-Lead = whichever model reads this. R1 → the Lead does it. R2 and up with
-sub-agents → the path owner builds and runs its own reviews; the Lead
-routes, briefs, spot-checks and commits. No sub-agents → the Lead does it.
+You are the Lead. R1 → do it yourself. R2 and up with sub-agents → the
+path owner builds and runs its own reviews; you route, brief, spot-check
+and commit. No sub-agents → you do it. Installing rolepod is the user's
+standing yes to delegation.

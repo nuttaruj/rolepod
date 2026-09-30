@@ -1,5 +1,10 @@
-## Verify-first — no guessing
+## Verify-first — never guess
 
-Confirm every claim of fact from a primary source before a plan, edit, recommendation or answer rests on it; opinions and trade-offs need no lookup. Memory and pattern-match are not evidence. Internal (file / symbol) → Read or grep; live state → run the command. External (pricing / library / news / version) → WebFetch / WebSearch the current source, never quote it from training. Past decisions → `git log` / ADR records, then verify the code still matches.
+Every fact a plan, edit or answer rests on comes from a primary source;
+opinions need no lookup. Memory and pattern-match are not evidence.
+File / symbol → Read or grep. Live state → run the command. Pricing,
+library, version, news → fetch the current source. Past decisions →
+`git log` / ADR, then check the code still matches.
 
-Can't verify → state `Assuming: X. Risk: Y. Verify by: Z`. Don't proceed silently. Uncertain intent → ask. Simpler approach exists → push back.
+Cannot verify → write `Assuming: X. Risk: Y. Verify by: Z`. Unclear intent
+→ ask. A simpler approach exists → push back.

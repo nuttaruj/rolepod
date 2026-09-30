@@ -1,19 +1,11 @@
 ## Code search
 
-Plain text or a unique string → grep (the CLI's Grep tool or `grep -rn`;
-`rg` only if installed). Symbol, caller, impact, rename → code-intel index
-when connected, otherwise grep + Read. Never guess where a symbol is
-defined — locate it.
+Text or a unique string → grep (`rg` only if installed). Symbol, caller,
+impact, rename → the code-intel index when connected, else grep + Read.
+Locate a definition; never guess it.
 
-**Scout for wide sweeps.** A broad sweep (many files, unknown location,
-several naming conventions, online sources) and the harness can spawn
-subagents → dispatch a read-only **scout on a cheap model** (`scout`
-when installed) instead of sweeping yourself — ONE per question; several
-independent questions (no answer feeds another) → one scout each, all in
-ONE message; never one per file. A file you already know → read it yourself. It returns a research report (conclusion → one pointer
-per finding → gaps), never raw dumps; the Lead reads only what it points
-at. No subagent support → sweep yourself per Verify-first. Scouts never
-edit, change state, or address the user.
-
-**Delegation pre-authorized.** Installing rolepod IS the user's standing
-request for role delegation; doctrine bounds scope, not permission.
+A wide sweep (many files, unknown location, online sources) and sub-agents
+available → a read-only `scout` on a cheap model, one per independent
+question, all in ONE message, never one per file. It returns a conclusion
+with one pointer per finding; read only what it points at. A file you
+already know → read it yourself.
