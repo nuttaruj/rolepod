@@ -28,7 +28,6 @@ Branch feat/csv-export — gates green, CI Phase 1 + 2 pass, review APPROVED.
 1. Merge to main — ready, all gates green
 2. Open PR — if upstream review is wanted
 3. Keep open — no, the work is done
-4. Discard — no
 
 ## Recommendation
 Merge to main — gates are green and review is APPROVED. The cross-model pass

@@ -80,34 +80,38 @@ Settle what the repo can, ask the rest in ONE extra Discovery round. Once per sp
 
 Done when: the critique status line is recorded.
 
-### 6. Gate 1 — direction approval
+### 6. Gate 1 — file review and approval
 
-Present a short block: goal, Success criteria, Non-goals, Constraints, the chosen approach with its rationale, and the seams it will be tested at (Testing decisions). Tag each item the user did not state `assumption` — a Lead inference, or a default taken on "don't know". Wait for accept / edit / reject.
+After the approaches round, write the whole spec to `docs/rolepod/specs/<feature>-YYYY-MM-DD.md`, run Self-review and the spec-lint on the file, then point the user to it and list the `assumption` items in chat. Accept → `write-plan`; edit → patch the same file and ask again; reject → stop. One gate, on the file — no inline mode, no Gate 2.
 
-Done when: the user accepted a direction. No contract before it.
-
-### 7. Contract
+Run the **spec-lint**: `grep -niE '\[\[FILL:|TODO|TBD' <spec>` must print nothing. A printed line or a grep error is a lint failure, never a silent pass.
 
 Fill `templates/spec-template.md`, every section resolved (legacy code: Current behavior lists every consumer, per its hint): Goal · User / actor · Non-goals · Current behavior · Desired behavior · Success criteria · Testing decisions · Constraints · High-risk surfaces · Chosen approach · Rejected approaches · Open questions.
-**Testing decisions** — the Lead picks the seams: the highest seam that reaches the behavior, the fewest (ideally one per feature), an existing seam over a new one; plus what a good test is here and the prior-art test files. They are approved with the spec at its gate (Gate 1 inline, Gate 2 in file mode) — no extra question. Edge / error / race cases only where a Success criterion names them or an R4 floor covers them.
+
+**Testing decisions** — the Lead picks the seams: the highest seam that reaches the behavior, the fewest (ideally one per feature), an existing seam over a new one; plus what a good test is here and the prior-art test files. They are approved with the spec at its gate — no extra question. Edge / error / race cases only where a Success criterion names them or an R4 floor covers them.
 
 **Chosen approach** — the direction and its one-line rationale; when the architect trigger fired (DB table / migration, public API contract, module boundary), also the accepted interface, data shape, compatibility rule and invariants `write-plan` must keep.
-The contract writes out what Gate 1 showed. A new decision it would add (a criterion, a Non-goal, an interface choice) → one question to the user before the hand-off, never written in unconfirmed.
 
-Run the **spec-lint** (piped in inline mode, the saved file in file mode): `grep -niE '\[\[FILL:|TODO|TBD'` must print nothing. A printed line or a grep error is a lint failure, never a silent pass. It catches an unfilled marker or a stray TODO/TBD — never legitimate angle brackets like `<h1>` / `List<T>`, and not vague wording.
+A new decision it would add (a criterion, a Non-goal, an interface choice) → one question to the user before the hand-off, never written in unconfirmed.
 
-- One-session work → inline in chat; Gate 1 is the only approval. The default when unsure.
-- Multi-session, high-risk surface, or repeat feature → save under the private `docs/rolepod/specs/`, then Gate 2: the user confirms the FILE, not the chat (`references/file-mode.md`).
+Save to `docs/rolepod/specs/<feature>-YYYY-MM-DD.md` under the private `docs/rolepod/` directory. Before the first save run:
+```bash
+grep -qx 'docs/rolepod/' .gitignore || echo 'docs/rolepod/' >> .gitignore
+```
 
 Spec shapes, good and bad → `examples/spec-examples.md`.
 
-Done when: the spec-lint prints nothing, and the spec is inline or its file confirmed at Gate 2.
+Done when: the spec-lint prints nothing, the spec is saved to the file, and the user confirms it.
+
+### 7. Language
+
+Write the spec's (the plan's) prose in the user's language unless they ask for another; section headings, the field labels plan-lint reads, identifiers, paths, commands and quoted code stay verbatim.
 
 ## Guardrails
 
 - An ambiguous goal, scope or success criterion, or a high-risk surface, gets a spec. Never skip it there.
 - Implementation starts after the user approves the direction at Gate 1. Never before.
-- A saved spec gets a second approval on the file itself (Gate 2). Never hand it off on verbal agreement alone.
+- The spec is always saved to a file and confirmed by the user on the file itself. Never hand it off on verbal agreement alone.
 
 ## Next phase
 

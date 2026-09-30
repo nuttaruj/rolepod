@@ -121,7 +121,7 @@ Use the least powerful model that can handle the role. Cost compounds across N t
 | **Implementer — mechanical** | 1-2 files, complete spec, isolated logic, no API contract change | Fast / cheap |
 | **Implementer — integration** | Multi-file, pattern matching, debugging touch | Standard |
 | **Implementer — architecture / judgment** | Broad codebase, design tradeoffs, new abstraction | Most capable |
-| **Reviewer — fresh-context pass** | One read-only pass (spec + standards); role's pinned tier: `universal-reviewer` / `security-engineer` = strong | Role's tier |
+| **Reviewer — fresh-context pass** | One read-only pass (spec + standards); role's pinned tier: `universal-reviewer` = balanced, `security-engineer` = strong (universal-reviewer = strong only in `mode: adversarial`) | Role's tier |
 | **Ship-group drift pass** | Cross-task drift (symbol / type / contract), when plan names a group holding an R4 task; role `security-engineer` | Most capable |
 
 `BLOCKED` after a fast-model dispatch → re-dispatch the same task at one tier up before escalating to the human.

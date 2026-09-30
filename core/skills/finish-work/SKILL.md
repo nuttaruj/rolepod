@@ -1,44 +1,32 @@
 ---
 name: finish-work
-description: Use at the end of a development branch — pre-merge gate, CI lane discipline, 4-option finish menu (merge, PR, keep open, discard), release checklist for production launches. Phase = Ship.
+description: Use at the end of a development branch — pre-merge gate, CI lane discipline, 3-option finish menu (merge, PR, keep open; discard only on explicit request), release checklist for production launches. Phase = Ship.
 when_to_use: when implementation + verification + review are done and the next decision is about the fate of the branch — merge to main, open a PR, keep working, discard, or stage a production launch
 ---
 
 # Finish Work
 
-Turns a verified, reviewed branch into one authorized finish — merge, PR, keep open or discard — after the six pre-merge gates pass.
+Turns a verified, reviewed branch into one authorized finish — merge, PR, or keep open; discard only on explicit user request — after the pre-merge gate passes.
 
 ## Skip when
 
 - The branch is not implementation-complete.
 - The user said "don't ship, just experiment".
 
-### 1. Pre-merge gates
+### 1. Pre-merge gate
+
+One pre-merge gate: check-work's Status matches the current tree (else re-run the checks covering the change) · required CI lanes green · review reports present, their Snapshot reaches the head, and an R4 diff has its `security-engineer` and adversarial-pass reports · one concern per PR.
 
 Inputs: branch + base · diff summary (files, lines, risk surfaces) · CI per lane · review verdict · check-work's `Status:` · the user's intent.
 
-A stale base or a conflict → rebase first; the target precedence, the published-branch case and the `check-work` re-run → `references/ci-triage.md` Merge conflicts.
+A stale base or a conflict → rebase first; the target precedence, the published-branch case and the `check-work` re-run → `references/ci-triage.md` Merge conflicts. A failing gate → fix or report; never merge. A user waiver granted at an earlier phase carries forward: quote it in the finish menu's gate status (which gate, the user's words) instead of re-demanding the waived work or skipping silently.
 
-Run all six gates before any merge / push action. A failing gate → fix or report; never merge.
-A small diff still runs all six. A user waiver granted at an earlier phase carries forward: quote it in the finish menu's gate status (which gate, the user's words) instead of re-demanding the waived work or skipping silently.
+- **Check-work Status** — `UNVERIFIED` or `PARTIAL` blocks merge unless the user explicitly waives it; green tests alone do not satisfy it. The block's `Verified tree` id equals `git rev-parse HEAD^{tree}` and the tree is clean → cite that block in any session, no local re-run (an ignored input the check reads that changed since → re-run it); another tree → re-run only the checks covering the change; the post-deploy smoke always runs. Fails → `check-work`.
+- **Review reports** — the `review-code` its Pick reviewers asks for is done; R4 reports sit under `.rolepod/evidence/review/`, missing → `review-code` for that task's diff, never the whole branch. The plan has a **Ship group** line → its drift-pass report is there too (`implement-plan`'s `references/subagent-dispatch.md` Ship-group drift pass).
+- **Snapshot and floor** — a commit past the last Snapshot is a new delta for `review-code` at its own tier (an R1 delta needs none), never a full re-review. An R4 floor report missing blocks the merge; only the user's waiver naming this gate, quoted in the finish menu, clears it.
+- **PR scope** — one concern per PR / merge. Mixed concerns → split first (`git add -p`, separate branches); a mixed diff is unreviewable.
 
-1. **Simplicity (S1-S5)** — revise on any failed check:
-
-{{INCLUDE: core/fragments/gates-s1-s5.md}}
-
-2. **Tests (T1-T6)** — block on a failure:
-
-{{INCLUDE: core/fragments/gates-t1-t6.md}}
-
-3. **Failure modes (F1-F5)** — check-work Failure modes; an unresolved F-finding blocks merge. The tree is unchanged since check-work's block → cite its Status for T + F.
-4. **Evidence** — check-work's `Status: UNVERIFIED` or `PARTIAL` blocks merge unless the user explicitly waives it; green tests alone do not satisfy this gate. the block's `Verified tree` id equals the current `git rev-parse HEAD^{tree}` and the tree is clean → cite that block in any session, no local re-run (CI or not; an ignored input the check reads that changed since → re-run it); another tree → re-run only the checks covering the change; the post-deploy smoke always runs (deploy evidence, not a re-test). Fails → `check-work`.
-5. **Reviewer** — the `review-code` its Pick reviewers asks for is done; an R4 (high-risk) task's reports sit under `.rolepod/evidence/review/`, missing → `review-code` for that task's diff, never the whole branch. The plan has a **Ship group** line → its drift-pass report is there too (`implement-plan` Review, `implement-plan`'s `references/subagent-dispatch.md` Ship-group drift pass). Fails, or a BLOCKER is open → `review-code` or `implement-plan`.
-   - A BLOCKER fix is confirmed before merge by ONE reviewer who did not write it, per `review-code` Fix-verify rounds: the flagging reviewer (for the external's findings, its round 2+ reviewer); a Lead-built fix → one read-only `universal-reviewer` pass (R4 → the strong pass). The author never confirms its own fix, and the Lead never approves its own fix.
-   - The reports' **Snapshot** lines reach the head being merged. A commit past the last one is a new delta for `review-code` at its own tier (its Skip when first — an R1 delta needs none), never a full re-review of what a Snapshot covers.
-   - A high-risk diff → read the report's Cross-model adversarial pass line (`references/reviewer-gate.md`); the report has no such line → read its Reviewers and LIMITATION lines instead. The floor ran (`security-engineer` + the adversarial pass: external, vertical or the internal strong pass) → the gate passes, and each limitation recorded is one line the user sees before merge. A floor reviewer missing — the Lead's own walk in its place included — blocks the merge; only the user's waiver naming this gate, quoted in the finish menu, clears it. Never cleared silently.
-6. **PR scope (P)** — one concern per PR / merge. Mixed concerns → split first (`git add -p`, separate branches); a mixed diff is unreviewable.
-
-Done when: all six gates pass, or each failure is fixed, reported, or waived in the user's quoted words.
+Done when: the gate passes, or each failure is fixed, reported, or waived in the user's quoted words.
 
 ### 2. CI lanes
 
@@ -52,7 +40,7 @@ Done when: every required lane is green, or with no CI its local equivalents pas
 
 ### 3. Detect the environment
 
-Compare `git rev-parse --git-dir` with `git rev-parse --git-common-dir` (resolved to absolute paths; command in `references/environment.md`) and check `git symbolic-ref -q HEAD`: the same dir → a normal repo, 4 options, no worktree cleanup; different on a named branch → 4 options + cleanup; detached HEAD → **3 options (no local merge)**, externally managed cleanup.
+Compare `git rev-parse --git-dir` with `git rev-parse --git-common-dir` (resolved to absolute paths; command in `references/environment.md`) and check `git symbolic-ref -q HEAD`: the same dir → a normal repo, 3 options (merge / PR / keep open) + discard on request, no worktree cleanup; different on a named branch → 3 options + discard on request + cleanup; detached HEAD → **2 options (PR / keep open) + discard on request**, externally managed cleanup.
 
 Done when: the menu size and the cleanup owner are known.
 
@@ -63,14 +51,13 @@ Done when: the menu size and the cleanup owner are known.
 | **Merge to main** | All gates green, user authorized | no |
 | **Open PR** | Needs upstream review or CI on the PR runner | yes |
 | **Keep open** | More work planned; checkpoint commit only | yes |
-| **Discard** | An experiment that did not pan out | yes |
 
 Fill `templates/finish-menu.md`: gate status, options, follow-ups carried, recommendation, awaiting authorization for.
 - A follow-up the Lead can close now — a one-line fix, a command, or work inside the approved spec or context it already holds → closed before the menu (in-spec work: a new task, tiered, dispatched to an owner; a high-risk path → R4 with its full review), never carried; only a follow-up outside the spec or a user decision (money / auth / new scope) is carried, as a question. A leftover list without an action or a question is not a finish.
 - State the recommendation and wait for the pick — unless the user's own message already named the action AND the target: that IS the pick; state the gate status plus the single action and act.
 - Authorization never widens: a PR is not a merge, one target is not another.
-- Keep open proceeds on the named ACTION alone (a checkpoint commit: no push, no merge, no cleanup). Merge, Open PR and Discard need action AND target.
-- Discard → the user types the literal word `discard`; a generic yes / ok / sure is not enough. Suggest a `git tag` or branch backup before the delete.
+- Keep open proceeds on the named ACTION alone (a checkpoint commit: no push, no merge, no cleanup). Merge and Open PR need action AND target.
+- **Discard** — never offered; only when the user asks. List the branch, its commits and the worktree path that will be lost, suggest `git tag backup-<branch>` first, and proceed only when the user types the literal word `discard`; a generic yes / ok / sure is not enough.
 - Open PR → `templates/pr-body.md` (summary, test plan, risks, linked artifacts), a title under 70 chars, `gh pr create` with a HEREDOC body; report the PR URL. Leave the worktree in place; the user iterates on PR feedback there.
 - A genuine launch event → `templates/release-checklist.md` (rollback, monitoring, feature flag, migration, go / no-go) before traffic; any box unchecked → NO-GO. What counts as a launch → `references/launch.md`.
 - After any merge: update the spec / plan where reality drifted; document the non-obvious decisions.

@@ -18,12 +18,17 @@
   words, quoted. A waiver is recorded here, never silently applied.>
 
 ## Options
-<Detached HEAD (finish-work Detect the environment) → drop Merge to main and
- renumber: 3 options.>
+<Detached HEAD (finish-work Detect the environment) → drop Merge to main, leaving 2 options: PR and Keep open. Discard available only on explicit user request — never presented as a standard option.>
 1. **Merge to main** — ready because <evidence the gates are green>
 2. **Open PR** — useful because <needs upstream review / CI on the PR runner>
 3. **Keep open** — useful because <work remaining>
-4. **Discard** — safe because <experiment; backup tagged>
+
+## If user explicitly asks to discard
+- Branch to delete: <branch name>
+- Commits to lose: <list of commit shas from branch not in main>
+- Worktree at: <path will be deleted>
+- Backup suggestion: `git tag backup-<branch> -m "backup before discard"` to save the commits before deletion
+- **To proceed:** type the word `discard` to confirm. (A generic "yes" is not confirmation.)
 
 ## Follow-ups carried
 <Every line from the plan's `## Follow-ups` (no plan file → each review

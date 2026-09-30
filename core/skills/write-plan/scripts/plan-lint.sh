@@ -430,7 +430,8 @@ if [ "${1:-}" = "--brief" ]; then
         intask = 1; found = 1
         title = $0
         sub(/^### (Task ?|T)[0-9]+/, "", title)
-        sub(/^[^[:alnum:]]+/, "", title)
+        # strip only ASCII separators and the dashes: a UTF-8 (Thai) title is not alnum to awk and must stay
+        sub(/^([[:space:][:punct:]]|—|–)+/, "", title)
       } else intask = 0
       field = ""
       next
@@ -526,6 +527,18 @@ if [ "${1:-}" = "--brief" ]; then
     if ($0 ~ /^## /) {
       ownsec = ($0 ~ /^## File ownership/) ? 1 : 0
       dnsec = ($0 ~ /^## Do-not-touch list/) ? 1 : 0
+      sisec = ($0 ~ /^## Shared interfaces/) ? 1 : 0
+      next
+    }
+    # Shared interfaces: a label line opening with an id C<n> starts an entry,
+    # each following `> ` line is one quoted sentence of it, kept verbatim.
+    if (sisec) {
+      cl = $0; sub(/\r$/, "", cl)
+      if (match(cl, /^C[0-9]+([^A-Za-z0-9]|$)/)) {
+        cid = substr(cl, 1, RLENGTH); sub(/[^0-9]+$/, "", cid)
+        if (!(cid in sitext)) sids[++nsi] = cid
+        sitext[cid] = ""
+      } else if (cid != "" && cl ~ /^> /) sitext[cid] = (sitext[cid] == "" ? cl : sitext[cid] "\n" cl)
       next
     }
     if (ownsec) {
@@ -741,6 +754,25 @@ if [ "${1:-}" = "--brief" ]; then
     print "- everything else (an unowned path: touch it and add an Also touched line; a path another owner holds: a NEEDS line, never an edit)"
     print "## Change"
     print (Ch == "" ? "(not in plan)" : Ch)
+    # Canonical sentences: every contract Shared-interfaces id this task cites
+    # (a whole token in Change, Proof or Done when), in id order, quoted verbatim.
+    # No contract, no entries or no cited id prints nothing (byte-identical brief).
+    if (hascontract && nsi > 0) {
+      cited = Ch "\n" Pr "\n" DW
+      nc = 0
+      for (i = 1; i <= nsi; i++) {
+        if (cited ~ ("(^|[^A-Za-z0-9])" sids[i] "([^A-Za-z0-9]|$)") && sitext[sids[i]] != "") cl2[++nc] = sids[i]
+      }
+      for (i = 2; i <= nc; i++) {
+        v = cl2[i]; j = i - 1
+        while (j >= 1 && substr(cl2[j], 2) + 0 > substr(v, 2) + 0) { cl2[j + 1] = cl2[j]; j-- }
+        cl2[j + 1] = v
+      }
+      if (nc > 0) {
+        print "## Canonical sentences"
+        for (i = 1; i <= nc; i++) { print cl2[i] ":"; print sitext[cl2[i]] }
+      }
+    }
     # Verbatim, never cleared before this point — every fenced line that
     # was not itself joined into a prose field (Files, Owner, Proof, Check,
     # Command, Blocked by, or a fence before any field at all) lands here,
@@ -791,14 +823,14 @@ if [ "${1:-}" = "--brief" ]; then
       # The round shape lives HERE, where the owner picks its reviewers: at the
       # end of the Bounds line two owners in a row still messaged the finished
       # reviewer for round 2 and idled while the answer landed at the Lead.
-      print "Round 2 is internal and not adversarial (a BLOCKER or MAJOR fix only; a MINOR or NIT fix is proven by the Command): a normal re-check of the fix delta. The flagging internal reviewer re-checks its own finding; an external security-class finding (auth, permissions / IDOR, injection, secrets, tokens, crypto, credits / billing / payments, PII, data deletion) goes to `security-engineer`, its other findings to `universal-reviewer`; never a new external round."
+      print "Round 2+ — R2/R3: none; the owner fixes each BLOCKER / MAJOR and attaches its proof (the Command tail, the reviewer repro re-run, or the grep showing the old line gone). R4: only a finding raised by `security-engineer` or the adversarial pass whose fix touches code — the flagging role re-checks the fix delta only, on a balanced model (an external finding → `security-engineer` for security-class, else `universal-reviewer`); at most 5 rounds, rounds 4-5 a fresh fixer on a stronger model; still open after round 5 → stop and hand the user the open findings with the attempt log."
       print "ONE new dispatch with the findings and the fix delta only, never a message to the finished one; <= 15 tool calls. A new issue it finds is a normal finding to fix."
     } else {
       # R2 / R3: a task another task is Blocked by, or the only such
       # task in the plan nothing depends on, reviews in-task (rvin=1); two or more
       # independent ones → none, a combined-review owner reviews the plan diff
       # once (implement-plan Review). No Round 2 line here.
-      if (rvin == 1) r ="Review in-task, no combined review covers this task: run the two lenses yourself in ONE message, `universal-reviewer` `lens: spec` + `universal-reviewer` `lens: standards` (reports `.rolepod/evidence/review/<task>-<lens>.md`), fix, and re-check a BLOCKER or MAJOR fix with a fresh dispatch of the flagging lens"
+      if (rvin == 1) r ="Review in-task, no combined review covers this task: run the two lenses yourself in ONE message, `universal-reviewer` `lens: spec` + `universal-reviewer` `lens: standards` (reports `.rolepod/evidence/review/<task>-<lens>.md`), fix; round 2+ — R2/R3: none; the owner fixes each BLOCKER / MAJOR and attaches its proof (the Command tail, the reviewer repro re-run, or the grep showing the old line gone)"
       else r = "`none` — a combined-review owner reviews the plan diff once before release"
       print r
     }

@@ -14,7 +14,7 @@ An external review routes to a **different CLI** than the Lead's, never to the L
 - **Money / auth** — billing · payments · credits · auth · crypto · secrets · data deletion: the full R4 round-1 set (`review-code` Pick reviewers); commit only after the adversarial pass has finished (the anchored external, or the internal strong pass).
 ## Round 2+
 
-The external runs round 1 only; the fix deltas of its findings are re-checked internally — `security-engineer` for the security-class ones, `universal-reviewer` for the rest (`review-code` Fix-verify rounds).
+The external runs round 1 only; round 2+ — only a finding raised by the external whose fix touches code is re-checked internally on a balanced model (an external's finding → `security-engineer` for security-class, else `universal-reviewer`; `review-code` Fix-verify rounds).
 
 ## The Lead floor — covers every axis
 

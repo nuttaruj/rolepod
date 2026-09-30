@@ -62,6 +62,7 @@ Done when: every open choice is the plan's own or answered by the user, and the 
 ### 5. Cohesion contract (parallel only)
 
 Fill `templates/cohesion-contract-template.md` — Shared goal · Owners · File ownership · Shared interfaces · Merge order · Do-not-touch list · Verification per agent · Integration owner · Session split (optional). Save path, ownership rules, session split → `references/parallel.md`.
+Wording several owners must write the same (a rule sentence, a message, a command) → one Shared interfaces entry per sentence: a label line starting with its id `C<n>`, then the sentence as a `> ` quote. A task that uses it cites the id in Change, and its Proof greps the sentence verbatim (`grep -F`); the brief then quotes it for the owner.
 
 Done when: every path sits under exactly one owner.
 
@@ -94,6 +95,7 @@ Done when: every check passes on the draft; Loop-runnable runs on the saved file
 
 Fill `templates/plan-template.md`, every section, in order: Source spec · Files to touch · Tasks · High-risk surfaces touched · Spec coverage (both directions) · Parallel layout · Done criteria · Failure policy · Risks · Changes during build · Follow-ups.
 A task block, in order, one bold label per bullet: Delivers · Blocked by · Files · Read first · Change · Test / evidence · Proof · Expected failing signal · Command · Owner · Done when · On fail.
+Write the plan's prose in the user's language unless they ask for another; section headings, the field labels plan-lint reads, identifiers, paths, commands and quoted code stay verbatim.
 One-session work → inline in chat. Multi-session → a dated file under the private `docs/rolepod/plans/`, never overwritten (edge-cases: Saving the plan).
 Harness plan mode → present through its gate, defer disk writes (edge-cases: Harness plan mode).
 Several people or machines build it → `references/team-issues.md`; solo work never needs it.
