@@ -16,6 +16,9 @@
 #     — its edits are blocked at the first Write, minutes into the run.
 #     DENY on any Lead, never yields.
 #
+# A script with both fan-out shapes under a costly Lead gets ONE deny (verdict
+# bare-fanout+strong-fanout) naming both stage lists.
+#
 # Every other verdict this hook used to carry (the per-stage tier spread
 # checks, the judgment-floor checks, the fan-out vs single-call pin checks,
 # the loop valve, the low-Lead nudge, the escape-hatch comment, and the
@@ -157,11 +160,18 @@ strong_fanout = []  # stage of every fan-out agent() call pinned strong (model: 
 bare_writer = []    # stage of every agent() call with no agentType on a writing stage
 call_pos = [m.start() for m in re.finditer(r"\bagent\(", code)]
 
+def literal_of(key, pos, win):
+    # The quoted literal after `key:` in the call window, or None when the key
+    # is absent or its value is not a quoted string (a variable).
+    m = re.search(r"[,{\s]" + key + r"\s*:\s*[\x27\"]", win)
+    if not m:
+        return None
+    v = re.match(r"[\x27\"]([^\x27\"]+)[\x27\"]", script[pos + m.end() - 1:pos + m.end() + 79])
+    return v.group(1) if v else None
+
 def stage_of(pos, win):
-    pk = re.search(r"[,{\s]phase\s*:\s*[\x27\"]", win)
-    if pk:
-        pv = re.match(r"[\x27\"]([^\x27\"]+)[\x27\"]", script[pos + pk.end() - 1:pos + pk.end() + 79])
-        return pv.group(1) if pv else ""
+    if re.search(r"[,{\s]phase\s*:\s*[\x27\"]", win):
+        return literal_of("phase", pos, win) or ""
     prev = re.findall(r"phase\(\s*[\x27\"]([^\x27\"]+)", script[:pos])
     return prev[-1] if prev else ""
 
@@ -171,11 +181,7 @@ def agenttype_of(pos, win):
     # resolve statically, so trusted, same as before v2.88.0).
     if not re.search(r"[,{\s]agentType\s*:", win):
         return False, None
-    ak = re.search(r"[,{\s]agentType\s*:\s*[\x27\"]", win)
-    if not ak:
-        return True, None
-    av = re.match(r"[\x27\"]([^\x27\"]+)[\x27\"]", script[pos + ak.end() - 1:pos + ak.end() + 79])
-    return True, (av.group(1) if av else None)
+    return True, literal_of("agentType", pos, win)
 
 for i, pos in enumerate(call_pos):
     end = call_pos[i + 1] if i + 1 < len(call_pos) else len(code)
@@ -202,9 +208,8 @@ for i, pos in enumerate(call_pos):
     if fanout and not pinned:
         bare_fanout.append(stage or "(no phase)")
     if fanout:
-        mk = re.search(r"[,{\s]model\s*:\s*[\x27\"]", win)
-        mv = re.match(r"[\x27\"]([^\x27\"]+)[\x27\"]", script[pos + mk.end() - 1:pos + mk.end() + 79]) if mk else None
-        strong_model = bool(mv) and ss.model_class(mv.group(1)) == "strong"
+        mv = literal_of("model", pos, win)
+        strong_model = bool(mv) and ss.model_class(mv) == "strong"
         strong_role = at_has and at_lit is not None and ss._bare_agent_name(at_lit) in ss.STRONG_ROLE_AGENTS
         if strong_model or strong_role:
             strong_fanout.append(stage or "(no phase)")
@@ -215,7 +220,19 @@ why = ("strong class" if cls == "strong" else "unknown family, priced as strong"
 
 verdict = ""
 reason_txt = ""
-if costly and bare_fanout:
+stages_by_verdict = {"bare-fanout": bare_fanout, "strong-fanout": strong_fanout, "bare-writer": bare_writer}
+if costly and bare_fanout and strong_fanout:
+    verdict = "bare-fanout+strong-fanout"
+    stages_by_verdict[verdict] = bare_fanout + strong_fanout
+    reason_txt = (
+        "⛔ fleet-tier: fan-out stage(s) %s are bare — they inherit the Lead %s (%s) × N — and stage(s) %s "
+        "pin a strong model × N. Fix: pin every fan-out non-strong — a stage that WRITES → a non-strong "
+        "rolepod role (agentType:\x27rolepod:<role>\x27); read/sweep → agentType:\x27rolepod:scout\x27 or "
+        "model:\x27haiku\x27; per-item verify → model:\x27sonnet\x27; ONE strong call outside the fan-out "
+        "for the judge. Exception: none; ROLEPOD_GATES_SOFT=1 (user-set) warns."
+        % (", ".join(sorted(set(bare_fanout)))[:60], lead or "unknown model", why,
+           ", ".join(sorted(set(strong_fanout)))[:60]))
+elif costly and bare_fanout:
     verdict = "bare-fanout"
     reason_txt = (
         "⛔ fleet-tier: bare fan-out call(s) — stage(s) %s — inherit the Lead %s (%s) × N. "
@@ -228,8 +245,8 @@ elif strong_fanout:
     verdict = "strong-fanout"
     reason_txt = (
         "⛔ fleet-tier: strong model pinned on fan-out stage(s) %s — the top price × N. "
-        "Fix: a fan-out runs agentType:\x27rolepod:<role>\x27 (the role pins its tier and trims fixed "
-        "context) or model:\x27haiku\x27 / model:\x27sonnet\x27; keep ONE strong call outside the fan-out "
+        "Fix: a fan-out runs a non-strong rolepod role (agentType:\x27rolepod:<role>\x27, which pins its "
+        "tier and trims fixed context) or model:\x27haiku\x27 / model:\x27sonnet\x27; keep ONE strong call outside the fan-out "
         "for the judge. Exception: ROLEPOD_GATES_SOFT=1 (user-set) warns."
         % ", ".join(sorted(set(strong_fanout)))[:120])
 elif bare_writer:
@@ -247,8 +264,7 @@ if verdict:
         _log_bypass("workflow-tier-nudge", "ROLEPOD_GATES_SOFT")
         ctx(reason_txt)
     else:
-        _log_gate(ti, script, lead, cls, n_calls, verdict,
-                   sorted(set({"bare-fanout": bare_fanout, "strong-fanout": strong_fanout}.get(verdict, bare_writer))))
+        _log_gate(ti, script, lead, cls, n_calls, verdict, sorted(set(stages_by_verdict[verdict])))
         print(json.dumps({"hookSpecificOutput": {
             "hookEventName": "PreToolUse",
             "permissionDecision": "deny",

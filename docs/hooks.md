@@ -89,7 +89,7 @@ A sub-agent writes only what its role owns.
 
 ### `workflow-tier-nudge.sh` — PreToolUse `Workflow` (Claude)
 
-A Workflow `agent()` call defaults to the Lead's model and no frontmatter can change that, so this hook reads the script before it runs. Three denies, neither yields (checked in this order: `bare-fanout`, `strong-fanout`, `bare-writer`):
+A Workflow `agent()` call defaults to the Lead's model and no frontmatter can change that, so this hook reads the script before it runs. Three denies, none yields (checked in this order: `bare-fanout`, `strong-fanout`, `bare-writer`; a script with both fan-out shapes gets ONE deny, verdict `bare-fanout+strong-fanout`, naming both stage lists):
 
 - **`bare-fanout`** — under a strong-class or unknown Lead, a fan-out `agent()` call (interpolated label, or inside `.map(` / `pipeline(` / `Array.from(` / a loop) with no tier. A tier is a `model:` or an `agentType:` that pins one (a rolepod role; a variable counts); a platform `agentType:` such as `general-purpose` pins nothing. Fix: pin every fan-out — sweep → cheap or `rolepod:scout`, build and per-item verify → balanced, the ONE judge → strong.
 - **`strong-fanout`** — under any Lead, a fan-out `agent()` call pinned strong (a strong `model:` or a strong-role `agentType:`). Fix: the fan-out runs a role or haiku / sonnet; keep ONE strong judge outside the fan-out.
