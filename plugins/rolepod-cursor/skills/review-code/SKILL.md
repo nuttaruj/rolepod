@@ -15,7 +15,7 @@ A finished diff → a severity-ordered review report, reviewers matched to risk.
 
 ### 1. Freeze the diff
 
-- The diff: the R4 task, or for an R2/R3 task in a track the track-end review covers it. For an R2/R3 task in-task its own diff. Committed → `<base>...HEAD`; uncommitted → `git diff HEAD` (staged + unstaged; `--cached` alone is a slice).
+- The diff: the R4 task, or for an R2/R3 task in a track the track-end review covers it. A standalone R2 checklist (no plan): its own diff. Committed → `<base>...HEAD`; uncommitted → `git diff HEAD` (staged + unstaged; `--cached` alone is a slice).
 - Preflight before any dispatch: each ref resolves (`git rev-parse --verify <ref>^{commit}`) and the diff is non-empty (`git diff --quiet <range>` exits 1); either fails → re-derive the range, never dispatch. Record the snapshot for the report's Scope: `<base sha>..<head sha>`, plus `git diff HEAD | git hash-object --stdin` for uncommitted work.
 - Past ~15 files / ~800 lines in a track-end review it is two concerns: split it, one review each: a track-end review by size slice (`implement-plan` Review), any other diff by ship group.
 - Gather the spec / plan / acceptance criteria, the touched files end-to-end, and the risk profile (high-risk surface? new dependency? schema change?).
