@@ -44,7 +44,7 @@ print('SUBAGENT turns (Agent tool + Workflow fleets — the execution proof):')
 [print(f'  {n:6d}  {k}') for k, n in subs.most_common()] or print('  (none)')"
 ```
 
-Codex / Antigravity runs are external CLIs — they never appear in Claude transcripts. When a cross-family pass ran, its proof is the runner's own phase-log rows: `phase: review|consult|critique` with `reviewer: external`, and `phase: implement` with no reviewer key (the member built; the combined-review owner reviews); older `dispatch-proof` rows are read if still present in the log.
+Codex / Antigravity runs are external CLIs — they never appear in Claude transcripts. When a cross-family pass ran, its proof is the runner's own phase-log rows: `phase: review|consult|critique` with `reviewer: external`, and `phase: implement` with no reviewer key (the member built; the track-end review owner reviews); older `dispatch-proof` rows are read if still present in the log.
 
 Done when: both model tables are filled, or the layer is skipped with its reason.
 

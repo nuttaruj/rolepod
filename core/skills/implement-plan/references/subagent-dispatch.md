@@ -44,7 +44,7 @@ Use the least powerful model that can handle the role (Model selection below).
 
 ## The brief
 
-`plan-lint.sh --brief <N> <plan> [contract] [--main]` prints Goal / Tier / Blocked by / Read first / Files allowed + forbidden / Change / Command / Done when / Write / Reviewers by tier (`none` for a docs-only diff or an R2/R3 task nothing depends on, beside another such task; the two lenses for an R2/R3 task another task is Blocked by, or the plan's only one nothing depends on) / Bounds. The Lead adds only **Read first** and facts the brief lacks; the owner starts there and never re-surveys what the Lead already mapped.
+`plan-lint.sh --brief <N> <plan> [contract] [--main]` prints Goal / Tier / Blocked by / Read first / Files allowed + forbidden / Change / Command / Done when / Write / Reviewers by tier (`none` for a docs-only diff or an R2/R3 task — its track-end review covers it; the R4 round-1 set for an R4 task) / Bounds. The Lead adds only **Read first** and facts the brief lacks; the owner starts there and never re-surveys what the Lead already mapped.
 
 ## External write
 
