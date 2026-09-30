@@ -25,9 +25,10 @@ The *why* — incidents, doctrine — lives in this file and in the hook's sourc
 | `PreToolUse` | `Agent\|SendMessage` | `block-subagent-commit.sh` |
 | `PostToolUse` | `Workflow\|Agent` | `dispatch-auto-log.sh` |
 | `PostToolUse` | `Bash` | `fix-loop-breaker.sh` |
+| `SubagentStart` | `^(workflow-subagent\|general-purpose)$` | `subagent-core.sh` |
 | `Stop` | — | `session-lifecycle.sh --unlock` (+ route record) |
 
-13 hook scripts, 16 registrations (`session-lifecycle.sh`, `subagent-write-scope.sh` and `block-subagent-commit.sh` register twice). `test-diff-lint.sh` is a helper the commit gate calls, not a registered hook. All hook Python runs `python3 -I`, so a stray `json.py` in the working directory cannot mute a hook.
+14 hook scripts, 17 registrations (`session-lifecycle.sh`, `subagent-write-scope.sh` and `block-subagent-commit.sh` register twice). `test-diff-lint.sh` is a helper the commit gate calls, not a registered hook. All hook Python runs `python3 -I`, so a stray `json.py` in the working directory cannot mute a hook.
 
 **Cursor host guard (v2.130.1).** Cursor auto-imports Claude Code plugins and runs their `hooks/hooks.json`. Every Claude manifest command is therefore `[ -z "$CURSOR_PROJECT_DIR" ] && exec bash "${CLAUDE_PLUGIN_ROOT}/hooks/<x>.sh"; cat >/dev/null`: under Cursor the imported copy drains stdin and exits 0, and the Cursor-native plugin owns the host. Disable the imported copy on Cursor's Plugins page to stop its agents and skills loading twice.
 
@@ -96,6 +97,13 @@ A Workflow `agent()` call defaults to the Lead's model and no frontmatter can ch
 - **Logging** — each deny appends a `phase: dispatch-gate` row (a denied fleet never reaches PostToolUse).
 - **Incidents** — six fleets in one day ran at opus/fable with a nudge ignored; a role-less writing agent worked 96 turns before its first write was blocked.
 - **Bypass** — `ROLEPOD_GATES_SOFT=1` turns a deny into a nudge (logged); `ROLEPOD_NUDGE_OFF=1` silences the hook.
+
+### `subagent-core.sh` — SubagentStart `workflow-subagent|general-purpose` (Claude)
+
+A bare Workflow `agent()` and a general-purpose Agent-tool sub-agent carry no role file, so they got none of the agent protocol. This hook adds the short core (one ~500-char `additionalContext`: output is data, verify at file:line, batched reads, command timeouts, Edit/Write only, no commit, answer through the schema). A `rolepod:<role>` agent is never matched (its definition already carries the protocol); the matcher is anchored because plugin agent types contain a colon, which puts the matcher on the regex path, and the hook re-checks `agent_type` itself.
+
+- **Observational** — SubagentStart cannot block; the hook only adds context and prints `{}` for any other agent type.
+- **Bypass** — `ROLEPOD_NUDGE_OFF=1` silences it.
 
 ### `dispatch-auto-log.sh` — PostToolUse `Workflow|Agent` (Claude)
 
@@ -169,7 +177,7 @@ Warn-only grep of the staged diff: focus / skip markers added, deleted test case
 | `ROLEPOD_GATES_HARD=1` | A normal logic commit blocks until a test edit or a reviewer | A repo that wants every commit gated |
 | `ROLEPOD_ALLOW_OUT_OF_SCOPE_WRITE=1` | `subagent-write-scope` passes | One dispatch that must write outside its class (a test helper beside source) |
 | `ROLEPOD_ALLOW_SHARED_WORKTREE=1` | `worktree-guard` and the sibling warning pass | Intentional shared session (read-only review, coordinated file ownership) |
-| `ROLEPOD_NUDGE_OFF=1` | `claim-verify-nudge`, the self-do nudge and `workflow-tier-nudge` silent | A session that does not want nudges |
+| `ROLEPOD_NUDGE_OFF=1` | `claim-verify-nudge`, the self-do nudge, `workflow-tier-nudge` and `subagent-core` silent | A session that does not want nudges |
 | `ROLEPOD_GATES_PASSED=1` | Legacy; nothing without evidence | Never prescribed — permission layers read `ENV=1 git commit` as gate circumvention |
 
 Apply them per session, never globally. **They are the user's hand only:** a model that meets a gate conflicting with an instruction surfaces the conflict with options; it never sets a bypass itself. Every used bypass appends `{"ts","hook","var","reason"}` to `<git-root>/.rolepod/evidence/bypass.log`, the reason taken from `ROLEPOD_BYPASS_REASON` (default `"unreasoned"`); `rolepod-selftest` tags doctor and test probes so `rolepod-stats` counts them apart. `ROLEPOD_*` is rolepod's namespace; Claude Code's own behavior stays under `CLAUDE_CODE_*`.

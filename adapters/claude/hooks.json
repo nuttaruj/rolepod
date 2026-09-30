@@ -127,6 +127,18 @@
         ]
       }
     ],
+    "SubagentStart": [
+      {
+        "matcher": "^(workflow-subagent|general-purpose)$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "[ -z \"$CURSOR_PROJECT_DIR\" ] && exec bash \"${CLAUDE_PLUGIN_ROOT}/hooks/subagent-core.sh\"; cat >/dev/null",
+            "timeout": 3
+          }
+        ]
+      }
+    ],
     "Stop": [
       {
         "hooks": [
