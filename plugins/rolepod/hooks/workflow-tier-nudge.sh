@@ -8,6 +8,9 @@
 #     general-purpose/Explore renders no pin) under a strong-class or
 #     unknown Lead — every item in the fan-out inherits the Lead's price.
 #     DENY, never yields.
+#   strong-fanout: a fan-out agent() call pinned strong (model: opus-class, or
+#     agentType a STRONG_ROLE_AGENTS role) — the top price × N. On any Lead.
+#     DENY, never yields; ONE strong call outside the fan-out (the judge) is fine.
 #   bare-writer: an agent() call on a writing stage (implement/build/fix/
 #     integrate/migrate/refactor/patch/scaffold/write) with no agentType:
 #     — its edits are blocked at the first Write, minutes into the run.
@@ -150,6 +153,7 @@ def _in_fanout(code, pos):
 
 WRITE_RX = re.compile(r"(implement|build|fix|integrat|migrat|refactor|patch|scaffold|write)", re.I)
 bare_fanout = []    # stage of every fan-out agent() call with no pin at all
+strong_fanout = []  # stage of every fan-out agent() call pinned strong (model: or strong role)
 bare_writer = []    # stage of every agent() call with no agentType on a writing stage
 call_pos = [m.start() for m in re.finditer(r"\bagent\(", code)]
 
@@ -197,6 +201,13 @@ for i, pos in enumerate(call_pos):
         bare_writer.append(stage)
     if fanout and not pinned:
         bare_fanout.append(stage or "(no phase)")
+    if fanout:
+        mk = re.search(r"[,{\s]model\s*:\s*[\x27\"]", win)
+        mv = re.match(r"[\x27\"]([^\x27\"]+)[\x27\"]", script[pos + mk.end() - 1:pos + mk.end() + 79]) if mk else None
+        strong_model = bool(mv) and ss.model_class(mv.group(1)) == "strong"
+        strong_role = at_has and at_lit is not None and ss._bare_agent_name(at_lit) in ss.STRONG_ROLE_AGENTS
+        if strong_model or strong_role:
+            strong_fanout.append(stage or "(no phase)")
 
 soft = os.environ.get("ROLEPOD_GATES_SOFT", "0") == "1"
 costly = cls == "strong" or (bool(lead) and cls == "unknown")
@@ -209,10 +220,18 @@ if costly and bare_fanout:
     reason_txt = (
         "⛔ fleet-tier: bare fan-out call(s) — stage(s) %s — inherit the Lead %s (%s) × N. "
         "Fix: pin the fan-out — a stage that WRITES → agentType:\x27rolepod:<role>\x27 (the role pins "
-        "its tier); read/browse/sweep → model:\x27haiku\x27 or agentType:\x27rolepod:scout\x27; per-item "
+        "its tier); read/browse/sweep → agentType:\x27rolepod:scout\x27 or model:\x27haiku\x27; per-item "
         "verify → model:\x27sonnet\x27, effort:\x27high\x27; ONE strong slot on the single review call. "
         "Exception: none — pin the fan-out; ROLEPOD_GATES_SOFT=1 (user-set) warns."
         % (", ".join(sorted(set(bare_fanout)))[:120], lead or "unknown model", why))
+elif strong_fanout:
+    verdict = "strong-fanout"
+    reason_txt = (
+        "⛔ fleet-tier: strong model pinned on fan-out stage(s) %s — the top price × N. "
+        "Fix: a fan-out runs agentType:\x27rolepod:<role>\x27 (the role pins its tier and trims fixed "
+        "context) or model:\x27haiku\x27 / model:\x27sonnet\x27; keep ONE strong call outside the fan-out "
+        "for the judge. Exception: ROLEPOD_GATES_SOFT=1 (user-set) warns."
+        % ", ".join(sorted(set(strong_fanout)))[:120])
 elif bare_writer:
     verdict = "bare-writer"
     reason_txt = (
@@ -229,7 +248,7 @@ if verdict:
         ctx(reason_txt)
     else:
         _log_gate(ti, script, lead, cls, n_calls, verdict,
-                   sorted(set(bare_fanout)) if verdict == "bare-fanout" else sorted(set(bare_writer)))
+                   sorted(set({"bare-fanout": bare_fanout, "strong-fanout": strong_fanout}.get(verdict, bare_writer))))
         print(json.dumps({"hookSpecificOutput": {
             "hookEventName": "PreToolUse",
             "permissionDecision": "deny",
