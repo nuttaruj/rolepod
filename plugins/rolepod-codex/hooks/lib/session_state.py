@@ -1134,8 +1134,9 @@ TASK_NOTIFICATION_RX = re.compile(r"<task-notification>", re.I)
 
 
 def prompt_state(d: dict) -> str:
-    """'<ctx tokens> <sid|-> <has_prompt 0/1> <route stale|-> <auto 0/1>'
-    for claim-verify-nudge.sh. The route check (route_check.check — the
+    """'<ctx tokens> <sid|-> <has_prompt 0/1> <route stale|-> <auto 0/1> <child 0/1>'
+    for claim-verify-nudge.sh (child = the payload has a non-empty agent_id
+    field, i.e. a sub-agent's prompt: the hook stays silent). The route check (route_check.check — the
     commission shape, the phase-log freshness and the fallback recorder)
     runs for every real prompt EXCEPT a question-shaped one
     (_QUESTION_SHAPE_RX) — the same exclusion the removed read-first nudge
@@ -1156,7 +1157,8 @@ def prompt_state(d: dict) -> str:
         except Exception:
             route = "-"
     auto = bool(prompt) and AUTO_RESUME_RX.search(prompt) is not None
-    return "%d %s %d %s %d" % (ctx, sid or "-", 1 if prompt else 0, route, 1 if auto else 0)
+    child = bool(d.get("agent_id"))
+    return "%d %s %d %s %d %d" % (ctx, sid or "-", 1 if prompt else 0, route, 1 if auto else 0, 1 if child else 0)
 
 
 _GUARD_TOOLS = ("Edit", "Write", "MultiEdit", "NotebookEdit")

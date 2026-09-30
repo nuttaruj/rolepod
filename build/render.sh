@@ -303,7 +303,7 @@ render_codex() {
   done
   cp "$output" "$plugin_dst/agents/AGENTS.rolepod.md"
 
-  # Hooks — the 7 shared scripts come straight from canonical hooks/ (same
+  # Hooks — the 8 shared scripts come straight from canonical hooks/ (same
   # single-source rule as render_claude above and render_antigravity below);
   # only hooks.json + agent-sync.sh are genuinely Codex-specific.
   # subagent-write-scope.sh is not bundled — Codex has no
@@ -314,7 +314,7 @@ render_codex() {
   cp "$plugin_src/hooks/agent-sync.sh" "$plugin_dst/hooks/agent-sync.sh"
   local h
   for h in precommit-gate project-context-loader claim-verify-nudge \
-           block-subagent-commit session-lifecycle test-diff-lint fix-loop-breaker; do
+           block-subagent-commit session-lifecycle test-diff-lint fix-loop-breaker subagent-core; do
     cp "$REPO_DIR/hooks/$h.sh" "$plugin_dst/hooks/$h.sh"
   done
   # hooks/lib/ (session_state.py, route_check.py) ships here too (v2.128.1):

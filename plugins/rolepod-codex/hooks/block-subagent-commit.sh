@@ -13,7 +13,8 @@
 #    background - ends in an idle turn nobody wakes. Blocks run_in_background;
 #    blocks a gate (make test*, a tests/integration/ script, a cross-family
 #    run or collect) with no timeout. An explicit timeout of any size passes.
-#    Codex payloads carry neither field, so the rule stays silent there.
+#    Codex payloads carry no run_in_background, so that half stays silent there.
+#    C9a (denied live): a sub-agent's `git commit` / `git push` is denied — a child's PreToolUse carries `agent_id` (live probe 2026-09-30, Codex 0.159).
 #    Extended to Agent/SendMessage (incident 2026-09-28): an R4 task owner
 #    dispatched 4 reviewers with run_in_background unset - the platform
 #    default is background - ended its turn "waiting for their
