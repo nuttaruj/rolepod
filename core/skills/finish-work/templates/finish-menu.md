@@ -32,7 +32,7 @@
 
 ## Follow-ups carried
 <Every line from the plan's `## Follow-ups` (no plan file → each review
- report's `## Follow-ups`), each with a destination: next spec (repeat
+ report's `## Follow-ups`), each with a destination: backlog line (issue tracker, else docs/rolepod/backlog.md) / next spec (repeat
  feature) / issue #n / dropped — why. "none" when nothing was parked. A
  parked idea never leaves the branch silently.>
 

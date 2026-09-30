@@ -54,6 +54,7 @@ Done when: the menu size and the cleanup owner are known.
 
 Fill `templates/finish-menu.md`: gate status, options, follow-ups carried, recommendation, awaiting authorization for.
 - A follow-up the Lead can close now — a one-line fix, a command, or work inside the approved spec or context it already holds → closed before the menu (in-spec work: a new task, tiered, dispatched to an owner; a high-risk path → R4 with its full review), never carried; only a follow-up outside the spec or a user decision (money / auth / new scope) is carried, as a question. A leftover list without an action or a question is not a finish.
+- Each carried line lands in the project's one follow-up list — its issue tracker when it keeps one, else `docs/rolepod/backlog.md`, one line per item with a pointer to the plan or commit it came from. A line this branch closed leaves that list in the same pass; the list holds only what is still open.
 - State the recommendation and wait for the pick — unless the user's own message already named the action AND the target: that IS the pick; state the gate status plus the single action and act.
 - Authorization never widens: a PR is not a merge, one target is not another.
 - Keep open proceeds on the named ACTION alone (a checkpoint commit: no push, no merge, no cleanup). Merge and Open PR need action AND target.

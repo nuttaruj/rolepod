@@ -18,6 +18,7 @@ Turns a vague request into an approved spec the next phase executes against: dis
 ### 1. Frame the goal
 
 Quote the request. Read the repo state it touches (patterns, prior decisions) and the stated constraints (deadline, stack, no-touch zones).
+Read the project's follow-up list (`docs/rolepod/backlog.md`, or its issue tracker) — never the old plans' Follow-ups. An item this spec takes on is named in it, and its backlog line is removed when the spec is approved.
 Repeat feature (a prior `docs/rolepod/specs/<feature>-*.md`) → its Desired behavior is a hypothesis for today's Current behavior, verified against the code. An unmoved Goal, User / actor, Non-goals, Constraints, Chosen approach or Rejected approaches reads `Unchanged — <prior spec> §<name>`; the other sections are always written fresh.
 Write the goal in one sentence, 2-3 likely constraints, and every high-risk surface: auth, billing, payments, credits, migration, data deletion, secrets, tokens, crypto, permissions, security.
 The goal needs an "and" → possibly several specs: `references/scope-splitting.md`.
