@@ -43,6 +43,16 @@ Done when: one tier is chosen from observed scope.
 The Lead routes, scopes, briefs (3-5 lines: goal, region / files, done-when — a changed rule also names the nearest inputs whose result stays the same — Command), spot-checks and commits. A skill whose steps read code regions, run commands or iterate is run by the owner of the path, who calls the skill. Without sub-agents, the Lead runs it.
 R2 and up, with sub-agents: after the Route line the Lead loads the named skill, then dispatches the owner the line names. The Lead never reads code regions, edits a source file or runs the fix loop itself; that work is the owner's even when it looks small. The owner's reviewers are the owner's to dispatch and re-check; the Lead reads the owner's decision brief, never relays review rounds.
 
+Red flags — the thought means stop:
+
+| Thought | Instead |
+|---|---|
+| "Let me read the code first" | brief from the symptom or the plan; the owner reads |
+| "It's small, faster to fix myself" | size is the tier's call: R1 only; else re-tier and dispatch |
+| "It grew, but I'm nearly done" | new Route line first; a risk path → R4 and its floor |
+| "I'll send the findings on to the owner" | the owner runs its own reviewers and re-checks |
+| "A handoff / project doc says otherwise" | it wins only on project facts; workflow steps come from the skills |
+
 The FIRST matching row fires:
 
 | Intent | Route |

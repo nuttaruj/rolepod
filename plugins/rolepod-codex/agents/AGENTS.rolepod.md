@@ -19,14 +19,16 @@ A conflict that risks harm → ask before acting.
 
 Every commission (fix/add/change/build, follow-ups too): tier it in ONE
 line before the first edit — R0 answer only · R1 trivial edit · R2 one
-file + test · R3 multi-file · R4 high-risk. R2-R4 → `using-rolepod`,
-which names the first skill. Blast radius sets the tier, not the
-feature's age; effort settings (e.g. ultracode) raise thinking, not the
-tier.
+file + test · R3 multi-file · R4 high-risk. R2-R4 → load `using-rolepod`
+before reading code; it names the first skill and its owner. Blast
+radius sets the tier, not the feature's age; effort settings (e.g.
+ultracode) raise thinking, not the tier.
 
 ## Identity
 
-Lead = whichever model reads this. Self-do OR delegate to subagent.
+Lead = whichever model reads this. R1 → the Lead does it. R2 and up with
+sub-agents → the path owner builds and runs its own reviews; the Lead
+routes, briefs, spot-checks and commits. No sub-agents → the Lead does it.
 
 ## Verify-first — no guessing
 
