@@ -18,8 +18,9 @@
 #   when, On fail (only when the task has one), Write, Reviewers, Bounds —
 #   ONE test field, the Command; an older plan's Check: line is read and
 #   ignored, never printed (spec lean-loop-2026-09-23 Task 2).
-#   Reviewers of an R2/R3 task are always `none`: its track's track-end
-#   review (one fresh owner per track) covers it.
+#   Reviewers of an R2/R3 task are `none` (its track's track-end review, one
+#   fresh owner per track, covers it) unless it is its track's only code task:
+#   then the two lenses, run by the task owner before returning.
 #   `--plan-worktree`: the task runs in the plan worktree (branch
 #   <feature>/plan, path ../<repo>-wt-<feature>) — Worktree and Bounds
 #   follow from it.
@@ -47,7 +48,8 @@
 #      every task names a track listed there; two tasks that edit one file
 #      share a track; Blocked by crosses tracks only at a track first task.
 #      `--brief` then prints the track branch and worktree for a track task
-#      and Reviewers `none — the track-end review covers this task` for R2/R3.
+#      and Reviewers `none — the track-end review covers this task` for R2/R3
+#      (the two lenses when it is the track's only code task).
 #   5. Parallel plans only: every backticked path under "## Files to touch"
 #      appears under EXACTLY one owner in the contract's "## File ownership"
 #      — an unowned file is unplannable work; a dual-owned file is a merge
@@ -1036,6 +1038,10 @@ if (planwt == 1) tpath = substr(tbranch, 1, length(tbranch) - 5)
       # reviewer for round 2 and idled while the answer landed at the Lead.
       print "Round 2+ — R2/R3: none; the owner fixes each BLOCKER / MAJOR and attaches its proof (the Command tail, the reviewer repro re-run, or the grep showing the old line gone). R4: only a finding raised by `security-engineer` or the adversarial pass whose fix touches code — the flagging role re-checks the fix delta only, on a balanced model (an external finding → `security-engineer` for security-class, else `universal-reviewer`); at most 5 rounds, rounds 4-5 a fresh fixer on a stronger model; still open after round 5 → stop and hand the user the open findings with the attempt log."
       print "ONE new dispatch with the findings and the fix delta only, never a message to the finished one; <= 15 tool calls. A new issue it finds is a normal finding to fix."
+    } else if (onlycode == 1) {
+      # R2 / R3 and the only code task of its track: no track-end review exists, so
+      # the owner runs the two lenses itself.
+      print "`universal-reviewer` `lens: spec` + `universal-reviewer` `lens: standards` in ONE message — this is the track'"'"'s only code task, so you run its review before returning; fix each BLOCKER / MAJOR with its proof, no round 2"
     } else {
       # R2 / R3: every task in a plan is reviewed once by the
       # track-end review of its track (implement-plan Review); no in-task review here.
@@ -1071,10 +1077,50 @@ if (planwt == 1) tpath = substr(tbranch, 1, length(tbranch) - 5)
   BRIEF_FEATURE=$(basename "$PLAN" .md | sed 's/^[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]-//')
   BRIEF_TBRANCH=$(awk -v rx="$TASK_RX" -v mode=brief -v want="$BRIEF_N" -v feature="$BRIEF_FEATURE" "$CLEANFILES_AWK$FENCE_AWK$FIELD_AWK$TRACKS_AWK" "$PLAN")
   [ "$BRIEF_PLANWT" = 1 ] && BRIEF_TBRANCH="$BRIEF_FEATURE/plan"
+  # A task that is its track's only code task (a code task = Owner not Lead,
+  # tier not R1 — ticket.sh's rule) reviews itself: the lenses line below.
+  # Track: `**Track:**` under `## Tracks`; else one track `plan` (Sequential or
+  # --plan-worktree); else every task is its own track. The sibling tier comes
+  # from a guarded recursive --brief.
+  BRIEF_ONLYCODE=0
+  if [ -z "${ROLEPOD_BRIEF_NOREC:-}" ]; then
+    BRIEF_SCAN=$(awk -v want="$BRIEF_N" -v rx="$TASK_RX" "$FENCE_AWK$FIELD_AWK"'
+      fenceline($0) { next }
+      /^## / { cur = ""; if ($0 ~ /^## Tracks[[:space:]]*$/) hast = 1; if ($0 ~ /^## Parallel layout/) pl = 1; else if (pl) pl = 2; next }
+      pl == 1 && !plseen && trim($0) != "" { plseen = 1; if ($0 ~ /^Sequential/) seq = 1 }
+      $0 ~ rx { id = $0; sub(/^### (Task ?|T)/, "", id); sub(/[^0-9].*$/, "", id); cur = id; order[++n] = id; next }
+      cur != "" {
+        if (fieldgate($0, "Track") && !(cur in trk)) { v = fieldval($0, "Track"); sub(/[[:space:]].*$/, "", v); gsub(/`/, "", v); trk[cur] = v; next }
+        if (fieldgate($0, "Owner") && !(cur in own)) { v = fieldbody($0, "Owner"); gsub(/\*/, "", v); own[cur] = trim(v); next }
+      }
+      END {
+        print "M " (hast ? 1 : 0) " " (seq ? 1 : 0)
+        for (k = 1; k <= n; k++) { t = order[k]; print "R " t "\037" trk[t] "\037" own[t] }
+      }
+    ' "$PLAN")
+    BRIEF_HAST=$(printf '%s\n' "$BRIEF_SCAN" | awk '/^M /{print $2}')
+    BRIEF_SEQ=$(printf '%s\n' "$BRIEF_SCAN" | awk '/^M /{print $3}')
+    BRIEF_MYT=$(printf '%s\n' "$BRIEF_SCAN" | awk -F'\037' -v want="$BRIEF_N" '/^R /{ id=$1; sub(/^R /,"",id); if (id==want) print $2 }')
+    BRIEF_CODE=0
+    lead_rx='^Lead([[:space:]\(]|$)'
+    while IFS=$'\037' read -r bid btrack bown; do
+      bid="${bid#R }"
+      if [ "$BRIEF_HAST" = 1 ]; then [ "$btrack" = "$BRIEF_MYT" ] || continue
+      elif [ "$BRIEF_SEQ" = 1 ] || [ "$BRIEF_PLANWT" = 1 ]; then :
+      else [ "$bid" = "$BRIEF_N" ] || continue; fi
+      if [[ "$bown" =~ $lead_rx ]] ||[[ "$bown" == *"(Lead self-do)"* ]]; then continue; fi
+      if [ "$bid" = "$BRIEF_N" ]; then BRIEF_CODE=$((BRIEF_CODE + 1)); continue; fi
+      btier=$(ROLEPOD_BRIEF_NOREC=1 bash "${BASH_SOURCE[0]}" --brief "$bid" "$PLAN" --main 2>/dev/null | awk '/^## Tier/ { getline; print substr($0, 1, 2); exit }')
+      [ "$btier" = "R1" ] || BRIEF_CODE=$((BRIEF_CODE + 1))
+    done <<EOF
+$(printf '%s\n' "$BRIEF_SCAN" | awk '/^R /')
+EOF
+    [ "$BRIEF_CODE" -eq 1 ] && BRIEF_ONLYCODE=1
+  fi
   if [ -n "$CONTRACT" ]; then
-    awk -v rx="$TASK_RX" -v want="$BRIEF_N" -v planpath="$PLAN" -v repo="$BRIEF_REPO" -v hascontract=1 -v onmain="$BRIEF_MAIN" -v planwt="$BRIEF_PLANWT" -v tbranch="$BRIEF_TBRANCH" "$CLEANFILES_AWK$FENCE_AWK$FIELD_AWK$BRIEF_AWK" "$PLAN" "$CONTRACT"
+    awk -v rx="$TASK_RX" -v want="$BRIEF_N" -v planpath="$PLAN" -v repo="$BRIEF_REPO" -v hascontract=1 -v onmain="$BRIEF_MAIN" -v planwt="$BRIEF_PLANWT" -v tbranch="$BRIEF_TBRANCH" -v onlycode="$BRIEF_ONLYCODE" "$CLEANFILES_AWK$FENCE_AWK$FIELD_AWK$BRIEF_AWK" "$PLAN" "$CONTRACT"
   else
-    awk -v rx="$TASK_RX" -v want="$BRIEF_N" -v planpath="$PLAN" -v repo="$BRIEF_REPO" -v hascontract=0 -v onmain="$BRIEF_MAIN" -v planwt="$BRIEF_PLANWT" -v tbranch="$BRIEF_TBRANCH" "$CLEANFILES_AWK$FENCE_AWK$FIELD_AWK$BRIEF_AWK" "$PLAN"
+    awk -v rx="$TASK_RX" -v want="$BRIEF_N" -v planpath="$PLAN" -v repo="$BRIEF_REPO" -v hascontract=0 -v onmain="$BRIEF_MAIN" -v planwt="$BRIEF_PLANWT" -v tbranch="$BRIEF_TBRANCH" -v onlycode="$BRIEF_ONLYCODE" "$CLEANFILES_AWK$FENCE_AWK$FIELD_AWK$BRIEF_AWK" "$PLAN"
   fi
   exit $?
 fi

@@ -93,7 +93,7 @@ Done when: every task has an owner and each dispatched owner has returned a deci
 A parallel layout → every unblocked track in ONE message, each owner in its OWN worktree; serial needs a stated reason. Shared files, merge order, track layout → `references/subagent-dispatch.md` Parallel-track dispatch.
 
 C1:
-> A track's tasks run in order in one worktree: each task builds, runs its Command and is committed there; an R4 task keeps its round-1 review before its commit, and an R2/R3 task gets no review until the track ends.
+> A track's tasks run in order in one worktree: each task builds, runs its Command and is committed there; an R4 task keeps its round-1 review before its commit, and an R2/R3 task gets no review until the track ends (a track's only code task runs its own two lenses before returning).
 
 The Lead integrates each task in the track's worktree (the ship line per task; a harness-made worktree the same way): the commit gate finds the owner's reviewer evidence there.
 - Each task in the track commits once ready, no `finish` until the track ends.
@@ -107,7 +107,7 @@ Done when: every ready track is dispatched and each returned track is integrated
 ### 6. Build and review per track
 
 C2:
-> Track end: one fresh owner (the role owning most of the track's code) runs the two lenses in ONE message on the track diff and fixes each BLOCKER / MAJOR with its proof, no round 2; the Lead commits the fixes in the track worktree, then `ticket.sh finish <worktree>` merges the track.
+> Track end: a track with two or more code tasks → one fresh owner (the role owning most of the track's code) runs the two lenses in ONE message on the track diff and fixes each BLOCKER / MAJOR with its proof, no round 2; the Lead commits the fixes in the track worktree, then `ticket.sh finish <worktree>` merges the track. A track with one code task → its task owner runs the two lenses before returning, the same way, and the track takes no track-end review.
 
 C3:
 > A task Blocked by tasks in two or more tracks starts after those tracks merge, as the first task of a new track from the base.
@@ -116,13 +116,13 @@ C4:
 > A single-track plan runs on the base checkout unless another session holds a live lock on it when its first task starts; then the whole plan runs in one plan worktree.
 
 A task owner's decision brief carries its Command tail. The Lead spot-checks ONE claim (the Proof, or one finding in an R4 report; never an axis walk), then commits the task in the track's worktree.
-- A report the brief requires — R4, or a standalone R2 checklist's — missing, failed or empty → a fresh owner runs `review-code` Axes (no review-code → intent, trace, correctness, tests on the diff), recorded as a LIMITATION; its findings go to the task owner as the fix task (a fresh owner of the path once it has stopped), never a Lead edit. An R2/R3 task in a track returns no report by design: its review is the track-end review.
+- A report the brief requires — R4, or a standalone R2 checklist's — missing, failed or empty → a fresh owner runs `review-code` Axes (no review-code → intent, trace, correctness, tests on the diff), recorded as a LIMITATION; its findings go to the task owner as the fix task (a fresh owner of the path once it has stopped), never a Lead edit. An R2/R3 task in a multi-code-task track returns no report by design: its review is the track-end review.
 - A diff accepted without its review → stop and have its owner run the review before committing further.
 
-The Lead never runs a review loop itself; it talks to owners. A docs-only track takes no track-end review.
+The Lead never runs a review loop itself; it talks to owners. A docs-only track, or a track with one code task, takes no track-end review.
 - Over ~800 changed lines or ~15 files in one track → size slices by task, in plan order, each within that size (a single task over it is its own slice; a Verify fix joins the slice of the task it fixes); one fresh owner per slice, all dispatched in ONE message, each reviewing, fixing each BLOCKER / MAJOR and attaching proof on its slice and returning its own brief. Within the size → one owner, as above.
 - A slice owner's Files allowed = its tasks' files only (a file two slices share goes to the earlier slice), and it writes its slice's diff file for the lenses. A named ship group still bounds its own review; the size split applies inside it, and one seams-only drift pass by a fresh owner still covers the group. A slice owner runs only its own slice's checks; a finding in a file it does not own goes back as `NEEDS:`. All slices back → the Lead runs the plan's Command and the commit check once, then commits.
-- The track-end review reviews the R2/R3 tasks' deltas and any unreviewed Verify fixes; an R4 task's commits are context, covered by their reports (listed in the Scope with their paths), never re-tiered. A Verify fix on a high-risk path gets the R4 round-1 set on that fix alone, before its commit; with no track-end review (docs-only), a Verify fix nobody reviewed → its owner runs the two lenses on that fix alone.
+- The track-end review reviews the R2/R3 tasks' deltas and any unreviewed Verify fixes; an R4 task's commits are context, covered by their reports (listed in the Scope with their paths), never re-tiered. A Verify fix on a high-risk path gets the R4 round-1 set on that fix alone, before its commit; with no track-end review (docs-only, one code task), a Verify fix nobody reviewed → its owner runs the two lenses on that fix alone.
 - A plan that names a ship group within a track → after all its tasks, one drift pass over the group's range, a normal review of the cross-task seams (never adversarial): `security-engineer` when it holds an R4 task, else the track-end review owner's pass is the drift pass (split by size → a fresh owner's seams-only pass). Ship groups across tracks: drift pass after all tracks of the group merge.
 - Findings → ONE fix task to the owning role (`review-code` Fix-verify rounds).
 - Round 2+ — R2/R3: none; the owner fixes each BLOCKER / MAJOR and attaches its proof (the Command tail, the reviewer's repro re-run, or the grep showing the old line gone). R4: only a finding raised by `security-engineer` or the adversarial pass whose fix touches code — the flagging role re-checks the fix delta only, on a balanced model (an external's finding → `security-engineer` for security-class, else `universal-reviewer`); at most 5 rounds, rounds 4-5 a fresh fixer on a stronger model; still open after round 5 → stop and hand the user the open findings with the attempt log.
@@ -134,7 +134,7 @@ One task per pass: brief → spot-check + commit in track worktree → next task
 
 Artifact: `templates/implementation-manifest.md` — Files changed, Tests added / changed, Verification, Scope check, Concerns, Status. A subagent returns it; the Lead integrates it in the track worktree.
 
-Done when: every track is shipped with its track-end review (or no review for docs-only tracks); then the Lead runs `check-work` on the full diff before release.
+Done when: every track is shipped with its track-end review (or no track-end review for docs-only and one-code-task tracks); then the Lead runs `check-work` on the full diff before release.
 
 ## Guardrails
 

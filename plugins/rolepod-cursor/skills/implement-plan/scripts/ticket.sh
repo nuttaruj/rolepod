@@ -1227,8 +1227,9 @@ EOF
     fi
     if [ "$tt_total" -gt 0 ] && [ "$tt_total" -eq "$tt_done" ] && [ "$tt_role" -gt 0 ] && [ "$tt_tip" -eq 1 ]; then
       local tbase tline tdir tpath first_sha="" tt_code=0 ctid cowner cblocked cdone ctier ctrack
-      # A docs-only track (every role-owned task briefed R1) takes no track-end
-      # review: print just `track <id> done`.
+      # A docs-only track (every role-owned task briefed R1) or a track with
+      # one code task (its owner ran the lenses) takes no track-end review:
+      # print just `track <id> done`.
       while IFS="$ROW_FS" read -r ctid cowner cblocked cdone; do
         [ -n "$ctid" ] || continue
         if [ -n "$tracked_log" ]; then ctrack="$(track_of "$ttable" "$ctid")"
@@ -1236,12 +1237,12 @@ EOF
         else ctrack="$ctid"; fi
         [ "$ctrack" = "$mytrack" ] || continue
         is_lead_owner "$cowner" && continue
-        ctier="$(bash "$LINT" --brief "$ctid" "$plan_abs_log" --main 2>/dev/null | awk '/^## Tier/ { getline; print substr($0, 1, 2); exit }')"
+        ctier="$(ROLEPOD_BRIEF_NOREC=1 bash "$LINT" --brief "$ctid" "$plan_abs_log" --main 2>/dev/null | awk '/^## Tier/ { getline; print substr($0, 1, 2); exit }')"
         [ "$ctier" = "R1" ] || tt_code=$((tt_code + 1))
       done <<EOF
 $rrows
 EOF
-      if [ "$tt_code" -eq 0 ]; then
+      if [ "$tt_code" -le 1 ]; then
         printf 'track %s done\n' "$mytrack"
         return 0
       fi
@@ -1281,7 +1282,7 @@ EOF
           fi
         fi
         printf '%s\n' "$tline"
-        echo "Track end: one fresh owner (the role owning most of the track's code) runs the two lenses in ONE message on the track diff and fixes each BLOCKER / MAJOR with its proof, no round 2; the Lead commits the fixes in the track worktree, then \`ticket.sh finish <worktree>\` merges the track."
+        echo "Track end: a track with two or more code tasks → one fresh owner (the role owning most of the track's code) runs the two lenses in ONE message on the track diff and fixes each BLOCKER / MAJOR with its proof, no round 2; the Lead commits the fixes in the track worktree, then \`ticket.sh finish <worktree>\` merges the track. A track with one code task → its task owner runs the two lenses before returning, the same way, and the track takes no track-end review."
       fi
     fi
   fi
