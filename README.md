@@ -92,7 +92,7 @@ claude plugin update rolepod@rolepod || true
 claude plugin list || true
 ```
 
-Save it once; it stays. The environment caches the install and rebuilds it about every 7 days, pulling the latest release on its own. To get a release sooner, edit the comment line; the next session re-runs the script. Check it worked: in a new session, `claude plugin list` shows `rolepod@rolepod`. Cross-family members (codex, agy, cursor, opencode) are not on the cloud VM, so `cross-family` stays off there.
+Save it once; it stays. Each new session got the latest release without editing the script (observed 2026-10-01; the docs describe a cache rebuilt about every 7 days). A session already running keeps its version — start a new one after a release. If a new session still shows the old version, edit the comment line to force a rebuild. Check it worked: in a new session, `claude plugin list` shows `rolepod@rolepod`. Cross-family members (codex, agy, cursor, opencode) are not on the cloud VM, so `cross-family` stays off there.
 
 ### Codex CLI
 
