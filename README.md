@@ -72,6 +72,26 @@ claude plugin update rolepod@rolepod
 curl -fsSL https://raw.githubusercontent.com/nuttaruj/rolepod/main/bootstrap.sh | bash -s -- --uninstall --target=claude
 ```
 
+#### Claude Code cloud sessions (claude.ai/code)
+
+A cloud session loads none of your local plugins, none synced from your claude.ai account, and none a repo enables in `.claude/settings.json`; a plugin folder committed under `.claude/skills/` is skipped as untrusted. Install rolepod from the cloud environment's **Setup script** instead — it runs before Claude Code starts, so hooks, agents and skills all load. One environment covers every repo that uses it, and your local install is untouched.
+
+In claude.ai/code → **Add cloud environment** (or edit one):
+
+- **Network access:** Trusted (it already allows github.com)
+- **Environment variables:** `CLAUDE_CODE_PLUGIN_PREFER_HTTPS=1`
+- **Setup script:**
+
+```bash
+#!/bin/bash
+# rolepod <version> — change this line after a release to force a cache rebuild
+claude plugin marketplace add nuttaruj/rolepod || true
+claude plugin install rolepod@rolepod || true
+claude plugin list || true
+```
+
+The environment caches the install for about 7 days. To update sooner, edit the comment line; the next session re-runs the script. Check it worked: in a new session, `claude plugin list` shows `rolepod@rolepod`. Cross-family members (codex, agy, cursor, opencode) are not on the cloud VM, so `cross-family` stays off there.
+
 ### Codex CLI
 
 ```bash
