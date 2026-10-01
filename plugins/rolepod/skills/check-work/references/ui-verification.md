@@ -30,9 +30,18 @@ passing typecheck or build. Pick the strongest tool available.
    navigate, read the page, capture, assert — observe-only (below).
 5. **Playwright (direct)** — if the repo has its own Playwright setup:
    drive the real flow, assert on the DOM, capture a screenshot.
-6. **Component test renderer** (Testing Library, etc.) — renders the
+6. **A headless browser the machine already has** — no browser MCP, but a
+   Chromium binary is on disk (`$PLAYWRIGHT_BROWSERS_PATH`, e.g.
+   `/opt/pw-browsers/chromium-*` on a cloud VM; `chromium` /
+   `google-chrome` on PATH; `chromedriver`): drive it from a throwaway
+   script outside the repo — Playwright with `executablePath` set to that
+   binary, or `chrome --headless --screenshot=<file> <url>` for a still —
+   then assert on the DOM / console output and read the screenshot. A
+   version mismatch with the repo's Playwright is a limitation, never a
+   reason to skip; never download a browser here.
+7. **Component test renderer** (Testing Library, etc.) — renders the
    component in isolation; proves render + props, not full-page layout.
-7. **Ask the user** — last resort, still a real observation: describe the
+8. **Ask the user** — last resort, still a real observation: describe the
    page / flow and the exact states to capture; the user runs the dev
    server and sends screenshots, which you then read and assert against.
 
@@ -68,5 +77,5 @@ ladder observes, then judgment runs against `core/agents/ui-ux-designer.md`
 labels, focus) plus the spec'd states above. Findings return in review-code's
 finding format (severity + location + fix direction), not as a pass/fail
 verdict. With `rolepod-uiproof` installed, `/audit-a11y` runs the WCAG axis
-directly. No tool available → tier 6: the user sends screenshots, audit
+directly. No tool available → tier 8: the user sends screenshots, audit
 those, and record the coverage limit in the evidence block.

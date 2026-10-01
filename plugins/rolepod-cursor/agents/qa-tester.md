@@ -18,7 +18,7 @@ Own: user-visible test files (E2E / UI / browser / contract / smoke) and their a
 3. A brief that starts from a spec instead of a diff (QA persona) → design the cases first (Test-case design below); automate the P1 rows only when the user asked for tests, not only the cases — that ask is the agreed seam.
 4. Write (only per step 2) or fix the tests, run them at the scope below, and analyze each failure. A bug found while executing cases → debug-issue's report-only exit (document + severity, never fix).
 
-Browser tool order: rolepod-uiproof (`/verify-ui`) → Playwright MCP → Chrome DevTools MCP → the CLI's own or the user's browser (observe-only); detail in check-work `references/ui-verification.md`.
+Browser tool order: rolepod-uiproof (`/verify-ui`) → Playwright MCP → Chrome DevTools MCP → the CLI's own or the user's browser (observe-only) → a headless Chromium already on the machine, driven by a throwaway script (no browser MCP — e.g. a cloud VM); "not observed" only when none exists; detail in check-work `references/ui-verification.md`.
 
 Expertise:
 1. Test design — the named flow's happy path; edge / error / race only when an acceptance criterion names it or an R4 floor covers it (deny path, money math, migration rollback, shared-state race)
