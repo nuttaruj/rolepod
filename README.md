@@ -84,13 +84,15 @@ In claude.ai/code → **Add cloud environment** (or edit one):
 
 ```bash
 #!/bin/bash
-# rolepod <version> — change this line after a release to force a cache rebuild
+# rolepod — edit this line to force a cache rebuild (pull the latest release now)
 claude plugin marketplace add nuttaruj/rolepod || true
+claude plugin marketplace update rolepod || true
 claude plugin install rolepod@rolepod || true
+claude plugin update rolepod@rolepod || true
 claude plugin list || true
 ```
 
-The environment caches the install for about 7 days. To update sooner, edit the comment line; the next session re-runs the script. Check it worked: in a new session, `claude plugin list` shows `rolepod@rolepod`. Cross-family members (codex, agy, cursor, opencode) are not on the cloud VM, so `cross-family` stays off there.
+Save it once; it stays. The environment caches the install and rebuilds it about every 7 days, pulling the latest release on its own. To get a release sooner, edit the comment line; the next session re-runs the script. Check it worked: in a new session, `claude plugin list` shows `rolepod@rolepod`. Cross-family members (codex, agy, cursor, opencode) are not on the cloud VM, so `cross-family` stays off there.
 
 ### Codex CLI
 
