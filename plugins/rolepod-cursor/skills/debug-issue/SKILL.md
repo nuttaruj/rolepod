@@ -43,7 +43,7 @@ One command that fails on every run: `pytest path/test_x.py::name -v`, the exact
 
 A UI / browser bug, a WordPress bug, or sibling-plugin evidence under `.rolepod/evidence/` → `references/repro-backends.md`.
 
-**Report-only** (the user wants the bug documented, not fixed; a QA hand-off) → stop here; trace step 5 only when cheap. Fill the debug report with Error, Repro, Severity and evidence, leave Failing test and Fix empty, and hand it to the owning dev.
+**Report-only** (the user wants the bug documented, not fixed, or only asked why it fails; a QA hand-off) → stop here; trace step 5 only when cheap. Fill the debug report with Error, Repro, Severity and evidence, leave Failing test and Fix empty, and hand it to the owning dev.
 
 Done when: one command reproduces the user's exact symptom on every run — an intermittent bug: the N-run loop, its rate and conditions recorded.
 

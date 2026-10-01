@@ -13,5 +13,6 @@ code. Its table sets R2 one file + test · R3 multi-file · R4 high-risk
 and names the first skill and its owner. Blast radius sets the tier, not the feature's
 age; effort settings raise thinking, not the tier.
 
-Work reaching Verify or Ship (a done claim, opening a PR, a merge) → load
-`check-work` / `finish-work` first; memory of a skill is not its text.
+Reaching Verify or Ship → load `check-work` (a done claim, R2 and up) or
+`finish-work` (a PR, a merge, a push to the base, a deploy, any tier) first;
+memory of a skill is not its text.

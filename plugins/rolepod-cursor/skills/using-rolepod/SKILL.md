@@ -64,7 +64,8 @@ The FIRST matching row fires:
 | architecture (DB schema, API contract, module split) | Define → `write-spec` (Approaches: ONE `system-architect`) |
 | where to deepen / refactor for testability, whole repo | tell the user to type /deepen-codebase ($deepen-codebase on Codex) |
 | prototype / layout options / does this state model feel right | spec settled → `write-prototype`; else `write-spec` first |
-| fix bug / failing test / regression / why does X fail | Build → `debug-issue` |
+| fix bug / failing test / regression | Build → `debug-issue` |
+| why does X fail / what causes this, no fix asked | Build → `debug-issue` report-only: the cause and the evidence, no edit |
 | do a clear change test-first / TDD / red-green | Build → `tdd-flow`, run by the path owner: R2+ → `implement-plan`, Owner <path role>, who loads `tdd-flow`; R1 or no sub-agents → the Lead runs it (no `tdd-flow` → `implement-plan`, failing test first at the seam) |
 | refactor / simplify / clean up | Build → `simplify-code`, run by the path owner (`implement-plan`, Owner <path role>; R1 or no sub-agents → the Lead runs it) → `check-work` |
 | slow / latency / bundle size / N+1 / p95 | Build → `implement-plan`, Owner `performance-engineer` in ONE brief (baseline number, change, re-measure) → `check-work` reads its before / after numbers (no sub-agents → the Lead runs it) |

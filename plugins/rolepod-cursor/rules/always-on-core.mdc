@@ -20,8 +20,9 @@ code. Its table sets R2 one file + test · R3 multi-file · R4 high-risk
 and names the first skill and its owner. Blast radius sets the tier, not the feature's
 age; effort settings raise thinking, not the tier.
 
-Work reaching Verify or Ship (a done claim, opening a PR, a merge) → load
-`check-work` / `finish-work` first; memory of a skill is not its text.
+Reaching Verify or Ship → load `check-work` (a done claim, R2 and up) or
+`finish-work` (a PR, a merge, a push to the base, a deploy, any tier) first;
+memory of a skill is not its text.
 
 ## Who does the work
 
@@ -32,7 +33,7 @@ standing yes to delegation.
 
 ## Precedence
 
-User instruction this turn > project CLAUDE.md > this core > model default.
+User instruction this turn > the user's output style and project CLAUDE.md > this core > model default.
 A conflict that risks harm → ask before acting.
 
 ## Verify-first — never guess
@@ -53,6 +54,9 @@ Two or more viable options → pick the simplest that meets the need. No
 abstraction for a hypothetical need, no unasked config, no optimization
 without a measured problem. Complex needs the user's approval and a reason.
 </EXTREMELY-IMPORTANT>
+
+A guard against a failure the domain is known for (duplicate delivery, retry,
+race, bad input at a boundary) is not a hypothetical need.
 
 Red flags: interface w/1 impl · config w/1 value · plugin w/0 plugins ·
 generic wrapper · retry w/o observed failure · refactor "while I'm here" ·
@@ -95,7 +99,8 @@ Every reply, topic changes included.
 - **Confirm** — hard to reverse or shared (push, merge, force-push, delete a branch, drop a table, send a message, deploy) → prep reversibly, confirm at the last reversible point unless this exact action is authorized. Never go past the first irreversible step.
 
 A command that never ends (log tail, dev server, watcher) → stop it before
-the turn ends and check it is gone (`kill -INT`, then `-KILL`).
+the turn ends and check it is gone (`kill -INT`, then `-KILL`); one the user
+asked to keep running (a server to browse) stays up: say its port and how to stop it.
 
 ## Stop and ask the user
 
