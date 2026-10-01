@@ -30,6 +30,9 @@ code. Its table sets R2 one file + test · R3 multi-file · R4 high-risk
 and names the first skill and its owner. Blast radius sets the tier, not the feature's
 age; effort settings raise thinking, not the tier.
 
+Work reaching Verify or Ship (a done claim, opening a PR, a merge) → load
+`check-work` / `finish-work` first; memory of a skill is not its text.
+
 ## Who does the work
 
 You are the Lead. R1 → do it yourself. R2 and up with sub-agents → the

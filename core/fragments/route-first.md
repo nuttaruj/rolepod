@@ -12,3 +12,6 @@ Any doubt it is R0 or R1 → it is not; load `using-rolepod` before reading
 code. Its table sets R2 one file + test · R3 multi-file · R4 high-risk
 and names the first skill and its owner. Blast radius sets the tier, not the feature's
 age; effort settings raise thinking, not the tier.
+
+Work reaching Verify or Ship (a done claim, opening a PR, a merge) → load
+`check-work` / `finish-work` first; memory of a skill is not its text.
