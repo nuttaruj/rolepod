@@ -38,7 +38,7 @@ High-risk surface = auth, billing, payments, credits, migration, data deletion, 
 By rigor tier (R1 trivial edit · R2 one file + test · R3 multi-file · R4 high-risk):
 - **R2** → TWO read-only `universal-reviewer` lenses in ONE message, `lens: spec` + `lens: standards` (no spec → standards only); a matched row (perf / UI / arch) → that role instead. The pool's tier is R2 → ONE usable external (`--kind review`, the standard prompt — never `--adversarial`) replaces both lenses and reviews both axes, never beside them on round 1. The writer's unit tests are the floor.
 - **R3** → the matched row, internal, unless the pool's tier is R2 or R3 → ONE usable external replaces the `universal-reviewer` lenses.
-- **R4** → round 1 is ONE message, four dispatches (an external adversarial pass: its `--detach` runs just before that message): `security-engineer` · `universal-reviewer` `lens: spec` · `universal-reviewer` `lens: standards` (the R2/R3 pair, balanced; a concern-matched row takes the pair's place) · the adversarial pass (`adversarial-review`: the external with `--adversarial` when the pool is usable, else `universal-reviewer` `mode: adversarial` on a strong-class model), the reason on the Cross-model line. Money and auth included.
+- **R4** → round 1 is ONE message, four dispatches (an external adversarial pass: its `--detach` runs just before that message): `security-engineer` · `universal-reviewer` `lens: spec` · `universal-reviewer` `lens: standards` (the R2/R3 pair, balanced; a concern-matched row takes the pair's place) · the adversarial pass (`adversarial-review`: the external with `--adversarial` when the pool is usable, else `universal-reviewer` `mode: adversarial` on a strong-class model set explicitly, never inherited), the reason on the Cross-model line. Money and auth included.
 - Pool usable → the external is the only adversarial pass, no internal `mode: adversarial` beside it (an external that fails or comes back weak, per `adversarial-review` What counts → the internal pass then).
 - The R4 floor is `security-engineer` + the adversarial pass; a missing lens report is a LIMITATION, never a merge block. A comment/blank-only R4 diff → ONE `security-engineer` pass, no external.
 - Every `universal-reviewer` brief names its `mode`: `standard` (a lens, or both axes on a round 2+ re-check) or `adversarial` (R4 round 1 only — `adversarial-review`); no mode named → standard. Every later round is the standard review (Fix-verify rounds).
@@ -48,6 +48,8 @@ By rigor tier (R1 trivial edit · R2 one file + test · R3 multi-file · R4 high
 - User-visible behaviour (UI / E2E flows) is no review row — `check-work` verifies it once per feature.
 
 Cross-family pool (any tier it sets) or internal-pass question → `references/external-review-routing.md`. The adversarial pass — who runs it, what counts, apex → the `adversarial-review` skill.
+
+A reviewer's brief carries the diff, the task block and the spec clauses it covers, quoted — never the path of the whole plan or spec.
 
 Brief every reviewer: diff + spec + acceptance criteria + risk profile + claimed behaviors to trace end-to-end + roles already run + its `mode` (and `lens`) + the report path it writes + the bound: read-only, no sub-agent, no `review-code` run of its own.
 

@@ -78,6 +78,10 @@ The task owner NEVER commits and NEVER expands scope:
 - A path nobody in the wave owns → touch it, plus one `Also touched:` line in the brief.
 - A path another owner holds → leave it, put `NEEDS: <path> — <one-line change>` in the brief and finish the rest; the Lead applies it at integration (R1-sized) or reassigns.
 
+The owner writes its decision brief to its task file, docs/rolepod/tasks/<plan>/task-NN.md (its Handoff section: at most ~15 lines, only what a Blocked-by task consumes — signatures, invariants). Owners and reviewers never edit the plan file; the Lead's own points go under ## Lead notes of that task file.
+
+A Blocked-by task gets each predecessor's task file as Read first (plan-lint --brief adds it); the Lead never tells an owner to read or write the plan's ## Changes during build.
+
 A write mandate goes only to the path's owning role, never a generic agent or a reviewer; a writing stage carries `agentType: 'rolepod:<role>'`, never a bare `agent()` (`references/subagent-dispatch.md`: role, model, brief fields). `write: external` → the owner writes the failing test first, then `cross-family` kind implement; pool off, wide-effort session, or `cross-family` absent → the owner writes the task.
 
 Handle the brief's status (its first word):

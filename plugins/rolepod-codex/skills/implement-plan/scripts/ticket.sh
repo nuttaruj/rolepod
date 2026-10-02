@@ -375,6 +375,12 @@ brief_task_n() { # $1 = brief file
   sed -n '1s/^# Task \([0-9][0-9]*\):.*/\1/p' "$1"
 }
 
+# The task's record file, repo-relative: docs/rolepod/tasks/<plan file name
+# without .md>/task-NN.md (NN zero-padded to 2 digits).
+task_file_rel() { # $1 = plan, $2 = task number
+  printf 'docs/rolepod/tasks/%s/task-%02d.md' "$(basename "$1" .md)" "$((10#$2))"
+}
+
 brief_plan_path() { # $1 = brief file
   sed -n '2s/^Plan: \(.*\) · Spec:.*/\1/p' "$1"
 }
@@ -737,10 +743,22 @@ cmd_start() {
     printf '%s\n%s\n' "$brief_out" "$agent_line" > "$handoff"
   fi
 
+  # The task's own record file (handoff board off the plan): created once.
+  local task_file task_title
+  task_file="$repo_root/$(task_file_rel "$plan_abs" "$n")"
+  if [ ! -f "$task_file" ]; then
+    task_title="$(printf '%s\n' "$brief_out" | sed -n '1s/^# Task [0-9][0-9]*: *//p')"
+    mkdir -p "$(dirname "$task_file")" 2>/dev/null
+    printf '# Task %s — %s\nBase: %s\n\n## Decision brief\n\n## Handoff\n\n## Reviews\n\n## Lead notes\n' \
+      "$n" "$task_title" "$(git -C "$repo_root" rev-parse HEAD 2>/dev/null)" > "$task_file" \
+      || { echo "ticket: start: cannot write the task file $task_file" >&2; exit 1; }
+  fi
+
   if [ "$wt_mode" = "main" ]; then
     printf '%s %s\n' "$handoff" "$repo_root"
     printf 'agent: %s\n' "$agent_name"
     echo "on the base checkout: the Lead commits with the commit check, then ticket.sh log <plan> <N> --sha <sha>"
+    printf 'task file: %s\n' "$task_file"
     return 0
   fi
 
@@ -798,6 +816,7 @@ cmd_start() {
   printf 'agent: %s\n' "$agent_name"
   printf 'ship: bash '\''%s'\'' integrate '\''%s'\'' --brief '\''%s'\'' --gate '\''<commit gate>'\'' && %s\n' \
     "$SELF_PATH" "$wt_abs" "$handoff" "$(ship_chain_tail "$wt_abs" "$plan_abs" "$n" "$repo_root" "$wt_mode")"
+  printf 'task file: %s\n' "$task_file"
 }
 
 # ── integrate ────────────────────────────────────────────────────────────
@@ -980,6 +999,18 @@ cmd_finish() {
     exit "$merge_rc"
   fi
 
+  # Review reports written only inside the worktree survive its removal: the
+  # .md files are copied to the base evidence dir, never overwriting one there
+  # (.diff / .log stay behind).
+  if [ -d "$wt_root/.rolepod/evidence/review" ]; then
+    local rep
+    mkdir -p "$base_root/.rolepod/evidence/review" 2>/dev/null
+    for rep in "$wt_root/.rolepod/evidence/review/"*.md; do
+      [ -f "$rep" ] || continue
+      cp -n "$rep" "$base_root/.rolepod/evidence/review/" 2>/dev/null || true
+    done
+  fi
+
   if ! git -C "$base_root" worktree remove "$wt_root" >/dev/null 2>&1; then
     echo "ticket: finish: worktree remove failed for $wt_root" >&2
     exit 1
@@ -1024,6 +1055,12 @@ cmd_log() {
   done
   if [ -z "$plan" ] || [ ! -f "$plan" ] || [ -z "$n" ] || [ -z "$sha" ] || [ -z "$note" ]; then
     usage >&2; exit 2
+  fi
+
+  local nl=$'\n'
+  if [ "${#note}" -gt 300 ] || [ "${note#*"$nl"}" != "$note" ]; then
+    echo "ticket: log: --note must be one line of at most 300 chars (got ${#note} chars). Fix: keep the detail in the task file and pass a one-line summary here" >&2
+    exit 2
   fi
 
   if ! awk "$FENCE_FN"'
@@ -1115,7 +1152,9 @@ if best is not None:
       fi
     fi
   fi
-  note="$note $gate_str"
+  local task_rel
+  task_rel="$(task_file_rel "$plan" "$n")"
+  note="$note $gate_str -> $task_rel"
 
   # Idempotent: the exact same bullet is never appended twice — but only a
   # look-alike line INSIDE "## Changes during build" counts; a Test /
@@ -1157,6 +1196,28 @@ if best is not None:
   mv "$tmp.2" "$plan"
   rm -f "$tmp"
   echo "ticket: log: Task $n updated in $plan"
+
+  # Reviews: a reviewer's report name is the owner's pick (<task>-<role>.md,
+  # not deterministic per task), so none is copied — pointers to the .md reports
+  # written since this task's brief (never .diff / .log) go under ## Reviews.
+  local tfile rdir hfile rf rline rtmp
+  tfile="$gate_repo_root/$task_rel"
+  rdir="$gate_repo_root/.rolepod/evidence/review"
+  hfile="$gate_repo_root/docs/rolepod/handoffs/$(plan_slug_of "$plan")-t${n}-owner.md"
+  if [ -n "$gate_repo_root" ] && [ -f "$tfile" ] && [ -f "$hfile" ] && [ -d "$rdir" ]; then
+    while IFS= read -r rf; do
+      [ -n "$rf" ] || continue
+      rline="- .rolepod/evidence/review/$(basename "$rf")"
+      grep -qxF -- "$rline" "$tfile" && continue
+      rtmp="$(mktemp "${TMPDIR:-/tmp}/rolepod-ticket-task.XXXXXX")" || continue
+      if TICKET_RLINE="$rline" awk '{ print } /^## Reviews[[:space:]]*$/ { print ENVIRON["TICKET_RLINE"] }' "$tfile" > "$rtmp" && [ -s "$rtmp" ]; then
+        cp "$rtmp" "$tfile"
+      fi
+      rm -f "$rtmp"
+    done <<EOF
+$(find "$rdir" -maxdepth 1 -type f -name '*.md' -newer "$hfile" 2>/dev/null | sort | head -n 10)
+EOF
+  fi
 
   local ready_rows id2 owner2 list="" log_root
   log_root="$(git -C "$(dirname "$plan")" rev-parse --show-toplevel 2>/dev/null)"

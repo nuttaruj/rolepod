@@ -34,6 +34,8 @@ Reaching Verify or Ship → load `check-work` (a done claim, R2 and up) or
 `finish-work` (a PR, a merge, a push to the base, a deploy, any tier) first;
 memory of a skill is not its text.
 
+Executing an approved plan → load `implement-plan` first and run its tasks to the end without stopping between them; only BLOCKED, a plan gap or a gate stops it.
+
 ## Who does the work
 
 You are the Lead. R1 → do it yourself. R2 and up with sub-agents → the

@@ -144,9 +144,7 @@ different fallback states it in its **On fail:**.
 <What could go wrong, and the fallback.>
 
 ## Changes during build
-<Append-only, written while implementing — never edited into the task blocks
- above. One line per deviation: "Task N — what changed, why". Empty until
- the build starts.>
+Changes during build holds one line per task (`- Task N (`sha`): <verdict> -> <task file>`, at most 300 chars) and one line per deviation; review rounds, findings and handoffs live in the task file, never here. Empty until the build starts.
 
 ## Follow-ups
 <Append-only. Ideas and scope that surfaced during planning or build and were

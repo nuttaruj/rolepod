@@ -953,6 +953,16 @@ if (planwt == 1) tpath = substr(tbranch, 1, length(tbranch) - 5)
     print (B == "" ? "(not in plan)" : B)
     print "## Read first"
     print (R == "" ? "(Lead: 2-3 files + the pattern to copy — the owner never re-surveys the repo)" : R)
+    # Each Blocked-by task record file (its Handoff section is what this task
+    # consumes); the plan file stays one line per task, never the handoff board.
+    tbase = planpath; sub(/^.*\//, "", tbase); sub(/\.md$/, "", tbase)
+    if (B != "" && tolower(B) !~ /^(none|—|-|–)/) {
+      bm = blockedrefs(B)
+      while (match(bm, /[0-9]+/)) {
+        br = substr(bm, RSTART, RLENGTH) + 0; bm = substr(bm, RSTART + RLENGTH)
+        if (!(br in bseen)) { bseen[br] = 1; printf "docs/rolepod/tasks/%s/task-%02d.md\n", tbase, br }
+      }
+    }
     print "## Files allowed"
     if (acnt == 0) print "(not in plan)"
     else for (i = 1; i <= acnt; i++) print "- " allowedord[i]
@@ -1053,6 +1063,7 @@ if (planwt == 1) tpath = substr(tbranch, 1, length(tbranch) - 5)
     else if (tbranch != "") printf "- Edit only Files allowed, and only under ../%s-wt-%s — the same path in the main checkout belongs to the Lead; no backup copies (.bak / .orig). Never commit or push; leave the tree staged. Never `git stash`. One exception: a file the task needs that is in no Files list (not forbidden) - edit it and add an Also touched: line.\n", repo, tpath
     else printf "- Edit only Files allowed, and only under ../%s-wt-%s-t%s-%s — the same path in the main checkout belongs to the Lead; no backup copies (.bak / .orig). Never commit or push; leave the tree staged. Never `git stash`. One exception: a file the task needs that is in no Files list (not forbidden) - edit it and add an Also touched: line.\n", repo, feat, want, tslug
     print "- After each edit run only the checks covering the file just edited; run the Command once, last before returning, then the repo commit check once (the one the project CLAUDE.md or AGENTS.md names), in the foreground (Bash timeout 600000; never run_in_background). Reviewers named above → dispatch them in ONE message, no name, fork or remote isolation (such a child reports to the Lead); return only after each report is in (a child ending wakes you, or the Lead relays it; a turn ended to wait has the last line WAITING: <report paths>); no way to wait → REVIEW NEEDED: (reports: .rolepod/evidence/review/<task>-<role>.md, a lens <task>-<lens>.md); fix; then the Reviewers section above."
+    printf "- Write your decision brief to docs/rolepod/tasks/%s/task-%02d.md; its Handoff section is at most ~15 lines, only what a Blocked-by task consumes (signatures, invariants). Never edit the plan file.\n", tbase, want + 0
     print "- Budget: build <= 40 tool calls, whole loop <= 120; past it return PARTIAL with what is done, never grind."
     print "- Return a decision brief: verdict, `git diff --cached --stat | tail -3`, Command last 3 lines verbatim, reviewer verdicts + report paths, `Assuming:` lines, residuals."
   }
