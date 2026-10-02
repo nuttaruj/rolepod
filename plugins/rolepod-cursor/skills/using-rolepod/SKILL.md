@@ -26,7 +26,7 @@ Done when: a conversation is answered in the user's register, or a commission go
 | **R1** trivial edit | a docs-only diff, any size — or ≤5 lines in 1 file with zero logic lines (comment, blank, user-facing text in a string; never a URL, path, key, regex, query or a value code branches on), not high-risk, ≤3 tool calls | direct edit; the edit echo is the verify; no review |
 | **R2** one file + test | 1 source file + its test, clear scope, logic, ≈≤30 lines, not high-risk | its step 3 skill still fires (bug → `debug-issue`, else `implement-plan`); a 3-5 line chat checklist (goal, done-when, verify command) replaces spec + plan; a task owner builds it on main (failing test first, verify, the commit check, the two review lenses); the Lead never pre-explores, then commits |
 | **R3** multi-file | several files, vague scope, or sequencing / delegation | the full spine |
-| **R4** high-risk | a high-risk path (Stop conditions), any size | the full spine + adversarial review floor, never downgraded; 1 file, ≤5 lines, comment / blank only → R2 with ONE `security-engineer` pass |
+| **R4** high-risk | a high-risk path (Stop conditions), any size | the full spine + review floor (The R4 floor is `security-engineer`; in `full` also the adversarial pass; see `review-code` Review mode), never downgraded; 1 file, ≤5 lines, comment / blank only → R2 with ONE `security-engineer` pass |
 
 - Unsure about risk → the higher tier.
 - Unsure about size only → read the affected regions of the named files (and `git status` once work started) and tier from that; an unresolved dependency → higher.
@@ -106,7 +106,7 @@ Done when: the route is stated (R2 and up), the named skill is loaded, and the o
 
 - Coding before Define on an ambiguous request → `write-spec`. Claiming done before Verify → `check-work`.
 - A 2nd parallel writer without an ownership map → `write-plan` first. A Workflow script that gives each writer a disjoint slice is its own map; read-only fleets are exempt.
-- High-risk paths — auth, billing, payments, credits, migration, data deletion, secrets, tokens, crypto, permissions, security (override: `.rolepod/risk-paths`) — with zero reviewer reports at commit or ship → STOP. Floor: `security-engineer` + the adversarial pass (`review-code` Pick reviewers). A high-risk path is code that handles one of these — reads, refreshes, stores, sends or logs it, a third-party credential included — not only code that changes its rules.
+- High-risk paths — auth, billing, payments, credits, migration, data deletion, secrets, tokens, crypto, permissions, security (override: `.rolepod/risk-paths`) — with zero reviewer reports at commit or ship → STOP. The R4 floor is `security-engineer`; in `full` also the adversarial pass (see `review-code` Review mode). A high-risk path is code that handles one of these — reads, refreshes, stores, sends or logs it, a third-party credential included — not only code that changes its rules.
 - A merge the user authorized while a required CI lane still runs → the Lead waits on it (`finish-work` CI lanes), never hands the wait to the user.
 - A 3rd sequential attempt to fix the same failure, or a 3rd PR on one surface in a session → STOP, ask the user. Parallel verifiers, panels and discovery rounds inside one Workflow do not count.
 - A diff mixing unrelated concerns at push → split the PRs (`finish-work` Pre-merge gates).

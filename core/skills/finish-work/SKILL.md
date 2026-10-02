@@ -15,7 +15,7 @@ Turns a verified, reviewed branch into one authorized finish — merge, PR, or k
 
 ### 1. Pre-merge gate
 
-One pre-merge gate: check-work's Status matches the current tree (else re-run the checks covering the change) · required CI lanes green · review reports present, their Snapshot reaches the head, and an R4 diff has its `security-engineer` and adversarial-pass reports · one concern per PR.
+One pre-merge gate: check-work's Status matches the current tree (else re-run the checks covering the change) · required CI lanes green · review reports present, their Snapshot reaches the head, and an R4 diff has the required reports (see Snapshot and floor below) · one concern per PR.
 
 Inputs: branch + base · diff summary (files, lines, risk surfaces) · CI per lane · review verdict · check-work's `Status:` · the user's intent.
 
@@ -23,7 +23,7 @@ A stale base or a conflict → rebase first; the target precedence, the publishe
 
 - **Check-work Status** — `UNVERIFIED` or `PARTIAL` blocks merge unless the user explicitly waives it; green tests alone do not satisfy it. The block's `Verified tree` id equals `git rev-parse HEAD^{tree}` and the tree is clean → cite that block in any session, no local re-run (an ignored input the check reads that changed since → re-run it); another tree → re-run only the checks covering the change; the post-deploy smoke always runs. Fails → `check-work`.
 - **Review reports** — the `review-code` its Pick reviewers asks for is done; R4 reports sit under `.rolepod/evidence/review/`, missing → `review-code` for that task's diff, never the whole branch. Each track holding two or more code tasks → its track-end review brief is in; a one-code-task track → its owner's lens reports. The plan has a **Ship group** line → its drift-pass report is there too (`implement-plan`'s `references/subagent-dispatch.md` Ship-group drift pass).
-- **Snapshot and floor** — a commit past the last Snapshot is a new delta for `review-code` at its own tier (an R1 delta needs none), never a full re-review. An R4 floor report missing blocks the merge; only the user's waiver naming this gate, quoted in the finish menu, clears it.
+- **Snapshot and floor** — a commit past the last Snapshot is a new delta for `review-code` at its own tier (an R1 delta needs none), never a full re-review. An R4 diff needs its `security-engineer` report; in `full` mode also the adversarial-pass report (the mode comes from `review-code`'s Review mode). Missing → blocks the merge; only the user's waiver naming this gate, quoted in the finish menu, clears it.
 - **PR scope** — one concern per PR / merge. Mixed concerns → split first (`git add -p`, separate branches); a mixed diff is unreviewable.
 
 Done when: the gate passes, or each failure is fixed, reported, or waived in the user's quoted words.

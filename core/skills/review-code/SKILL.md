@@ -25,6 +25,8 @@ Done when: the range resolves to a non-empty diff, its snapshot is recorded, and
 
 ### 2. Pick reviewers
 
+Review mode: run `scripts/review-mode.sh` in `review-code`'s folder; it prints `standard` or `full` (project `.rolepod/config.json` over `~/.rolepod/config.json`, else `standard`).
+
 High-risk surface = auth, billing, payments, credits, migration, data deletion, secrets, tokens, crypto, permissions, security.
 
 | Risk profile | Reviewer |
@@ -38,9 +40,9 @@ High-risk surface = auth, billing, payments, credits, migration, data deletion, 
 By rigor tier (R1 trivial edit · R2 one file + test · R3 multi-file · R4 high-risk):
 - **R2** → TWO read-only `universal-reviewer` lenses in ONE message, `lens: spec` + `lens: standards` (no spec → standards only); a matched row (perf / UI / arch) → that role instead. The pool's tier is R2 → ONE usable external (`--kind review`, the standard prompt — never `--adversarial`) replaces both lenses and reviews both axes, never beside them on round 1. The writer's unit tests are the floor.
 - **R3** → the matched row, internal, unless the pool's tier is R2 or R3 → ONE usable external replaces the `universal-reviewer` lenses.
-- **R4** → round 1 is ONE message, four dispatches (an external adversarial pass: its `--detach` runs just before that message): `security-engineer` · `universal-reviewer` `lens: spec` · `universal-reviewer` `lens: standards` (the R2/R3 pair, balanced; a concern-matched row takes the pair's place) · the adversarial pass (`adversarial-review`: the external with `--adversarial` when the pool is usable, else `universal-reviewer` `mode: adversarial` on a strong-class model set explicitly, never inherited), the reason on the Cross-model line. Money and auth included.
+- **R4** → **standard**: R4 round 1 is `security-engineer` (`depth: checklist`) + `lens: spec` + `lens: standards` in ONE message — no adversarial pass, no round 2+ (the owner fixes each BLOCKER / MAJOR and attaches its proof). **full**: R4 round 1 is the four dispatches below, `security-engineer` at `depth: full`, and round 2+ as written. Money and auth included.
 - Pool usable → the external is the only adversarial pass, no internal `mode: adversarial` beside it (an external that fails or comes back weak, per `adversarial-review` What counts → the internal pass then).
-- The R4 floor is `security-engineer` + the adversarial pass; a missing lens report is a LIMITATION, never a merge block. A comment/blank-only R4 diff → ONE `security-engineer` pass, no external.
+- The R4 floor is `security-engineer`; in `full` also the adversarial pass. A missing lens report is a LIMITATION, never a merge block. A comment/blank-only R4 diff → ONE `security-engineer` pass, no external.
 - Every `universal-reviewer` brief names its `mode`: `standard` (a lens, or both axes on a round 2+ re-check) or `adversarial` (R4 round 1 only — `adversarial-review`); no mode named → standard. Every later round is the standard review (Fix-verify rounds).
 - A high-risk path anywhere in the unreviewed diff (a task, a ship group, or a track-end review's unreviewed delta) makes it R4; the commission's tier (max over its tasks) governs Define / Plan only.
 - A diff reviewed at its tier is never reviewed again at ship. The track-end review (`implement-plan` Review, for a track with two or more code tasks, run by a fresh owner, or one per size slice when the delta is over ~800 changed lines or ~15 files over a track) reviews the R2/R3 task deltas and the Verify fixes nobody has reviewed; an R4 task's commits are context, covered by its reports — the Scope lists each with its report path — never tiered R4 again. The range stays the track's, so the Snapshot reaches the track head.

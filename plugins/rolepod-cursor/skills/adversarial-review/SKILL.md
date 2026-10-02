@@ -5,6 +5,8 @@ description: Run the one adversarial pass of an R4 (high-risk) diff's round 1 â€
 
 # Adversarial Review
 
+The adversarial pass runs only in `full` mode; in `standard` mode skip this skill.
+
 An R4 (high-risk) diff's round 1 â†’ one adversarial report beside `security-engineer` and the two standard lenses.
 
 ## Skip when

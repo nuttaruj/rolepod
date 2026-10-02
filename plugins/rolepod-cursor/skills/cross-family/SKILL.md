@@ -35,7 +35,7 @@ The brief file is the member's whole world: cold context, never a pointer to the
 - consult: the attempt ledger — symptom, repro command, each failed fix and why it failed, the suspect code inline — and the one question.
 - implement: the task brief with its failing test named.
 
-The runner adds the kind's framing (review: the standard two-axis stance, or with `--adversarial` the `adversarial-review` skill's Reviewer stance), the verdict contract and the time budget itself.
+The runner adds the kind's framing (review: the standard two-axis stance, or with `--adversarial` the `adversarial-review` skill's Reviewer stance for `full` mode, see `review-code` Review mode), the verdict contract and the time budget itself.
 
 Done when: the brief file exists and a stranger could act on it alone.
 
@@ -43,7 +43,7 @@ Done when: the brief file exists and a stranger could act on it alone.
 
 | Kind | Fires when (the caller owns this) | Command | Mode |
 |---|---|---|---|
-| review | R4 round 1: the adversarial pass (`adversarial-review`, add `--adversarial`); from the pool file's `tier = R2\|R3`: the standard pass in the lens pair's place | `--kind review [--adversarial] --brief <brief> --attach <diff> --detach` | background job |
+| review | R4 round 1 (in `full` mode): the adversarial pass (`adversarial-review`, add `--adversarial`); R2\|R3: the standard pass in the lens pair's place | `--kind review [--adversarial] --brief <brief> --attach <diff> --detach` | background job |
 | critique | `write-spec`: R4 spec before Gate 1 (R3 stays internal), or the user asks | `--kind critique --brief <draft+ledger>` | foreground, 10 min |
 | consult | `debug-issue` after 2 failed attempts | `--kind consult --brief <ledger>` | foreground, short budget |
 | implement | a plan task marked `write: external` | `--kind implement --brief <task-brief> --allow <path>... --detach` | background job, collected in the foreground |
@@ -55,9 +55,9 @@ Done when: the brief file exists and a stranger could act on it alone.
 **review**
 - Attach `git diff HEAD` for uncommitted work (staged + unstaged) or `git diff <base>...HEAD` for a committed branch.
 - `--cached` alone is a slice: the runner refuses it while the same files carry unstaged edits. `--partial-ok` only when the user asked for the staged part.
-- At R4 the external is the adversarial pass (`--adversarial`), sent with `security-engineer` and the lens pair; at the pool's tier R2/R3 it is the standard pass in the lens pair's place, never beside it. It runs round 1 only.
+- In `full` mode at R4, the external is the adversarial pass (`--adversarial`), sent with `security-engineer` and the lens pair; at the pool's tier R2/R3 it is the standard pass in the lens pair's place, never beside it. It runs round 1 only. In `standard` mode, no external adversarial pass runs (see `review-code` Review mode).
 - Round 2+ — only a finding raised by the external whose fix touches code is re-checked internally on a balanced model (`security-engineer` for security-class, else `universal-reviewer`; `review-code` Fix-verify), never a new external round.
-- Its verdict, APPROVED or REJECTED, completes the pass; a REJECTED external is never re-run for an APPROVED. The R4 floor stays `security-engineer` + the adversarial pass.
+- Its verdict, APPROVED or REJECTED, completes the pass; a REJECTED external is never re-run for an APPROVED. An external adversarial pass runs only in `full` mode.
 - The diff stays frozen until the last reviewer returns: no edit to its files, no `git stash` / `reset` / `checkout`.
 - Then do the next task outside the diff. ONE `cross-family.sh --collect <job-id> --root <git-root>` — it waits; its report joins the round's other reports.
 - Member order, `--all`, what anchors, the degradation table → `references/review.md`.

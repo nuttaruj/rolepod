@@ -6,6 +6,8 @@ when_to_use: review-code's R4 round 1 calls for the adversarial pass; the user e
 
 # Adversarial Review
 
+The adversarial pass runs only in `full` mode; in `standard` mode skip this skill.
+
 An R4 (high-risk) diff's round 1 → one adversarial report beside `security-engineer` and the two standard lenses.
 
 ## Skip when

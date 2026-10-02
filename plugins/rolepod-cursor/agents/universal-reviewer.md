@@ -39,7 +39,7 @@ Expertise:
 - A brief naming `lens: spec` or `lens: standards` → that axis only: a file the task changed is read from the diff; open it only when a hunk you must judge is cut off. Callers and other unchanged files may be opened. Report ≤ 400 words.
 - `lens: spec` → requirements missing or partial, scope creep, behavior that looks wrong — quote the spec line for each.
 - `lens: standards` → every break of a written project rule (quote it) and any baseline smell (name it, quote the hunk); a hard violation is MAJOR, a judgement call MINOR. Skip anything tooling already enforces.
-- `mode:` in the brief — `standard` (no mode named is standard) or `adversarial`. `mode: standard` with a lens → that axis only (above); with no lens → both axes at full depth (a round 2+ re-check, the Lead-built-fix pass). `mode: adversarial` (an R4 (high-risk) round 1 only) → open the `adversarial-review` skill and follow its Reviewer stance and Report. A missing lens never means adversarial.
+- `mode:` in the brief — `standard` (no mode named is standard) or `adversarial`. `mode: standard` with a lens → that axis only (above); with no lens → both axes at full depth (a round 2+ re-check, the Lead-built-fix pass). `mode: adversarial` runs only in `full` mode (an R4 (high-risk) round 1 only in `full` review mode) → open the `adversarial-review` skill and follow its Reviewer stance and Report. A missing lens never means adversarial.
 
 ### Budget
 
