@@ -51,6 +51,8 @@ Cross-family pool (any tier it sets) or internal-pass question → `references/e
 
 A reviewer's brief carries the diff, the task block and the spec clauses it covers, quoted — never the path of the whole plan or spec.
 
+The `security-engineer` brief (R4) also carries, only when they exist: the result of a security scanner the repo already runs locally (audit, secret scan, a security lint config), run on the changed files; and the security rules the project states (a CLAUDE.md or standards-file section), quoted as its checklist. None present → none added; never invent a scanner or a rule.
+
 Brief every reviewer: diff + spec + acceptance criteria + risk profile + claimed behaviors to trace end-to-end + roles already run + its `mode` (and `lens`) + the report path it writes + the bound: read-only, no sub-agent, no `review-code` run of its own.
 
 **One review round.** Dispatch every reviewer in ONE message on the same frozen diff; the round ends when the LAST one returns.
