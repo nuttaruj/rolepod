@@ -1677,6 +1677,32 @@ fi
 # behind — see remove_legacy_launchers for the scope/temp-target guard.
 remove_legacy_launchers
 
+# ─── Machine config (written once) ───────────────────────────────────────
+# ~/.rolepod/config.json is the user's: write the defaults only when nothing
+# is there (an existing file, even a broken one, is never touched; uninstall
+# never removes it). The pool lists are written but `cross-family` is off —
+# only the user (cross-family.sh --setup) turns it on.
+if [ "$SCOPE" = "global" ] && [ "$DRY_RUN" -eq 0 ]; then
+  CFG_FILE="$HOME/.rolepod/config.json"
+  if [ ! -e "$CFG_FILE" ] && [ ! -L "$CFG_FILE" ]; then
+    mkdir -p "$HOME/.rolepod"
+    cat > "$CFG_FILE" <<'EOF'
+{
+  "version": 1,
+  "review": { "mode": "standard" },
+  "gates": { "mode": "soft" },
+  "nudge": { "enabled": true },
+  "pool": {
+    "cross-family": "off",
+    "reviewer": { "review": "claude codex agy", "consult": "claude codex agy", "critique": "claude codex agy" },
+    "implement": { "cli": "claude codex agy" }
+  }
+}
+EOF
+    ok "wrote $CFG_FILE (defaults; edit to change review mode, gates, nudge; the pool is listed but off)"
+  fi
+fi
+
 # ─── Summary ────────────────────────────────────────────────────────────
 echo ""
 echo "${BOLD}─── Summary ───${NC}"

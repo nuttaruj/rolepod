@@ -191,7 +191,7 @@ curl -fsSL https://raw.githubusercontent.com/nuttaruj/rolepod/main/bootstrap.sh 
 
 Machine-wide settings live in `~/.rolepod/config.json`. Project-level `review.mode` can override the machine setting in the same file's project section. No project file can override `gates`, `nudge` or `pool` — they are machine-wide only.
 
-**Location:** `~/.rolepod/config.json`
+**Location:** `~/.rolepod/config.json` — a global `install.sh` writes this file once with the defaults, including the pool lists switched off, and never overwrites or removes it.
 
 **Example:**
 
