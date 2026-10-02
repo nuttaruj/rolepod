@@ -71,7 +71,7 @@ Q3: A real design-judgment call?     Q4: More than 3 tool calls total?
 All "no" → self-do. Any "yes" → delegate to the closest specialist by path / concern / strategy.
 
 The brief comes from the plan, generated when plan-lint exists: `plan-lint.sh --brief <N> <plan> [contract]` prints it; add `--main` for a task that runs on the main checkout (a sequential track), so the brief names no worktree. No plan-lint → the brief is the task block verbatim, plus the spec path and the Bounds: never commit, stay in scope, run the Command, return a decision brief.
-- The Lead adds only **Read first** (the 2-3 files and the pattern to copy) and facts the brief lacks. Never extra steps, runs or scope, a reviewer round 2 included. The generated brief is appended to, never rewritten: put your own points (one for a reviewer to probe, a decision made since the plan) after the generated sections, as the task needs; Tier, Reviewers and Command stay as generated.
+- The Lead adds only **Read first** (the 2-3 files and the pattern to copy) and facts the brief lacks. Never extra steps, runs or scope — a whole-suite run (the Lead's, once, at release) and a reviewer round 2 included. The generated brief is appended to, never rewritten: put your own points (one for a reviewer to probe, a decision made since the plan) after the generated sections, as the task needs; Tier, Reviewers and Command stay as generated.
 - A wide-effort session (the `cross-family` skill's rule) → every owner brief carries `External: off — wide-effort session`: the owner cannot see the Lead's mode, and its cross-family kinds take their pool-off path.
 - Never point the owner at the plan file; the brief is its slice.
 
