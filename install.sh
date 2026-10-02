@@ -1682,7 +1682,16 @@ remove_legacy_launchers
 # is there (an existing file, even a broken one, is never touched; uninstall
 # never removes it). The pool lists are written but `cross-family` is off —
 # only the user (cross-family.sh --setup) turns it on.
-if [ "$SCOPE" = "global" ] && [ "$DRY_RUN" -eq 0 ]; then
+# A redirected install (any ROLEPOD_*_TARGET set) against a real, non-temp
+# $HOME is a test run: it must never create the real user's file.
+CFG_REDIRECTED=0
+[ -n "${ROLEPOD_TARGET:-}${ROLEPOD_CLAUDE_TARGET:-}${ROLEPOD_CODEX_TARGET:-}${ROLEPOD_CURSOR_TARGET:-}${ROLEPOD_ANTIGRAVITY_TARGET:-}${ROLEPOD_OPENCODE_TARGET:-}" ] && CFG_REDIRECTED=1
+if [ "$CFG_REDIRECTED" -eq 1 ]; then
+  case "$HOME" in
+    "${TMPDIR:-/tmp}"*|/tmp/*|/private/tmp/*|/var/folders/*|/private/var/folders/*) CFG_REDIRECTED=0 ;;
+  esac
+fi
+if [ "$SCOPE" = "global" ] && [ "$DRY_RUN" -eq 0 ] && [ "$CFG_REDIRECTED" -eq 0 ]; then
   CFG_FILE="$HOME/.rolepod/config.json"
   if [ ! -e "$CFG_FILE" ] && [ ! -L "$CFG_FILE" ]; then
     mkdir -p "$HOME/.rolepod"
