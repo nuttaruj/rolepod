@@ -28,7 +28,7 @@ The Lead picks the class at dispatch; escalate only on a BLOCKED redispatch or a
 ## Fleets
 
 - One strong slot per fleet: sweep = cheap · build = balanced · per-item verify = balanced at high effort · the ONE judge or security reviewer = strong.
-- Never inherit the Lead's model across a fleet; never pin strong on a fan-out (price × N).
+- Never inherit the Lead's model across a fleet (a plan fleet, `write-plan` step 8, is the one exception: the user's model choice for plans); never pin strong on a fan-out (price × N).
 - A stage that writes runs a rolepod role, never a generic agent; a fan-out stage runs a role first (it pins the tier), a bare model class only when no role fits.
 - Mechanics live in your CLI's `references/fanout-<cli>.md` (Claude: `fanout-claude.md`, Codex: `fanout-codex.md`); no file for your CLI → dispatch roles one at a time.
 
