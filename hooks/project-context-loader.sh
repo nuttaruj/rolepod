@@ -8,6 +8,13 @@ INPUT=$(cat 2>/dev/null || echo '{}')
 CWD=$(echo "$INPUT" | python3 -I -c "import sys,json;print(json.load(sys.stdin).get('cwd','') or '')" 2>/dev/null || echo "$PWD")
 cd "$CWD" 2>/dev/null || exit 0
 
+# Machine config (written once): a plugin-manager update never runs install.sh,
+# so the first session start writes ~/.rolepod/config.json when it is absent.
+# The bash test comes first, so a normal start spawns nothing; silent, fail-open.
+_cf="${HOME:-/nonexistent}/.rolepod/config.json"
+_cr="$(dirname "${BASH_SOURCE[0]}")/lib/rolepod_config.py"
+{ [ -e "$_cf" ] || [ -L "$_cf" ] || [ ! -f "$_cr" ] || python3 -I "$_cr" init; } >/dev/null 2>&1 || true
+
 REPO=$(git rev-parse --show-toplevel 2>/dev/null) || exit 0
 NAME=$(basename "$REPO")
 BRANCH=$(git -C "$REPO" branch --show-current 2>/dev/null || echo "?")

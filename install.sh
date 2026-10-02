@@ -1692,22 +1692,10 @@ if [ "$CFG_REDIRECTED" -eq 1 ]; then
   esac
 fi
 if [ "$SCOPE" = "global" ] && [ "$DRY_RUN" -eq 0 ] && [ "$CFG_REDIRECTED" -eq 0 ]; then
+  # The defaults live only in hooks/lib/rolepod_config.py (`init`; the
+  # SessionStart hook calls the same code).
   CFG_FILE="$HOME/.rolepod/config.json"
-  if [ ! -e "$CFG_FILE" ] && [ ! -L "$CFG_FILE" ]; then
-    mkdir -p "$HOME/.rolepod"
-    cat > "$CFG_FILE" <<'EOF'
-{
-  "version": 1,
-  "review": { "mode": "standard" },
-  "gates": { "mode": "soft" },
-  "nudge": { "enabled": true },
-  "pool": {
-    "cross-family": "off",
-    "reviewer": { "review": "claude codex agy", "consult": "claude codex agy", "critique": "claude codex agy" },
-    "implement": { "cli": "claude codex agy" }
-  }
-}
-EOF
+  if [ -f "$REPO_DIR/hooks/lib/rolepod_config.py" ] && [ -n "$(python3 -I "$REPO_DIR/hooks/lib/rolepod_config.py" init 2>/dev/null)" ]; then
     ok "wrote $CFG_FILE (defaults; edit to change review mode, gates, nudge; the pool is listed but off)"
   fi
 fi

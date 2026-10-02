@@ -2,6 +2,8 @@
 """rolepod_config — the one reader of $HOME/.rolepod/config.json.
 
 Usage (run as `python3 -I hooks/lib/rolepod_config.py <cmd>`):
+  init   writes the default config to $HOME/.rolepod/config.json when nothing
+         (file or symlink) is there; prints `wrote <path>` only when it wrote
   shell  prints two lines: gates=<off|soft|hard>  nudge=<on|off>
   pool   prints key=value lines: enabled=on|off, configured=yes|no (no = no
          `pool` key at all), then review= consult= critique= tier= implement=
@@ -19,6 +21,21 @@ import sys
 
 
 BROKEN = []   # set when the global file exists but cannot be read
+
+# The one copy of the default machine config (`init` writes it once; the pool
+# lists are written but cross-family is off — only the user turns it on).
+DEFAULT_CONFIG = """{
+  "version": 1,
+  "review": { "mode": "standard" },
+  "gates": { "mode": "soft" },
+  "nudge": { "enabled": true },
+  "pool": {
+    "cross-family": "off",
+    "reviewer": { "review": "claude codex agy", "consult": "claude codex agy", "critique": "claude codex agy" },
+    "implement": { "cli": "claude codex agy" }
+  }
+}
+"""
 
 
 def warn(msg):
@@ -143,8 +160,32 @@ def pool(cfg):
     return out
 
 
+def init():
+    """Write the defaults to $HOME/.rolepod/config.json only when nothing (no
+    file, no symlink, dangling included) is there. Prints `wrote <path>` when
+    it wrote; silent on every other outcome, including any error."""
+    try:
+        home = os.environ.get("HOME", "")
+        if not home:
+            return
+        d = os.path.join(home, ".rolepod")
+        path = os.path.join(d, "config.json")
+        if os.path.lexists(path):
+            return
+        os.makedirs(d, exist_ok=True)
+        fd = os.open(path, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o644)
+        with os.fdopen(fd, "w") as f:
+            f.write(DEFAULT_CONFIG)
+        sys.stdout.write("wrote %s\n" % path)
+    except Exception:
+        pass
+
+
 def main(argv):
     cmd = argv[1] if len(argv) > 1 else "shell"
+    if cmd == "init":
+        init()
+        return 0
     try:
         cfg = load_global()
         check_project()
