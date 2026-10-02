@@ -102,6 +102,7 @@ Write the plan's prose in the user's language unless they ask for another; secti
 One-session work → inline in chat. Multi-session → a dated file under the private `docs/rolepod/plans/`, never overwritten (edge-cases: Saving the plan).
 Harness plan mode → present through its gate, defer disk writes (edge-cases: Harness plan mode).
 Several people or machines build it → `references/team-issues.md`; solo work never needs it.
+Several plans asked at once (a phase each, for separate sessions) → one agent per plan on the CLI's default agent, no role and no `model`, so each runs on the model the user chose for the Lead; its brief names the spec, the phase, the output file and a `plan-lint.sh` run on it; the Lead reads each lint and spot-checks each plan. No default agent → the Lead writes them in turn.
 Plan shapes, good and bad → `examples/plan-examples.md`.
 
 Done when: every section is filled, and a saved plan passes plan-lint (or the four Loop-runnable checks by eye).

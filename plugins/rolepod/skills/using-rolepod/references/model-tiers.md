@@ -50,7 +50,7 @@ A wide-effort setting widens breadth inside the tier; it never adds a tier, a ro
 | Verify | the checklist + the suite as one stage |
 | Review | the tier's review set in one round + a command or balanced refuter per MAJOR finding |
 
-Never fan out: user dialogue, plan authoring, the strong slot, writers on shared files, the fix for one failure, a review round 2, commit.
+Never fan out: user dialogue, plan authoring (one plan; several asked at once → `write-plan` step 8), the strong slot, writers on shared files, the fix for one failure, a review round 2, commit.
 
 Critic and judge take a digest of verified findings, never the raw journal.
 

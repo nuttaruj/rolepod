@@ -37,7 +37,7 @@ Closest specialist by path / concern / strategy:
 - `content-strategist` — written output; pass `audience: dev|user|prospect`
 
 A write mandate goes only to the role that owns the path:
-- Never a generic platform agent (`general-purpose` / `default` / `claude`, or a bare Workflow `agent()`; a writing stage carries `agentType: 'rolepod:<role>'`).
+- Never a generic platform agent (`general-purpose` / `default` / `claude`, or a bare Workflow `agent()`; a writing stage carries `agentType: 'rolepod:<role>'`); the one exception is a plan file under `docs/rolepod/plans/` (`write-plan` step 8).
 - Never a test- or review-only role: `qa-tester` / `security-engineer` write tests and markdown only; `universal-reviewer` / `scout` write markdown only.
 
 Use the least powerful model that can handle the role (Model selection below).
