@@ -716,7 +716,7 @@ def agent_transcripts(
     count_all's jsonl scan takes the default, its meta loop takes None). Delegated sessions put
     test-writing INSIDE subagents: without this the Lead's own transcript
     shows 0 test edits and the gate false-blocks — the documented reason
-    users reach for ROLEPOD_GATES_SOFT."""
+    users turn the gates off."""
     if not transcript_path or not transcript_path.endswith(".jsonl"):
         return []
     sub = os.path.join(transcript_path[:-6], "subagents")

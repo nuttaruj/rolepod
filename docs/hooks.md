@@ -47,14 +47,14 @@ The one hard checkpoint, at `git commit`.
 - **Which commit it judges** — `cd <dir> &&` and `git -C <dir>` move the diff directory; `bash -c`, `eval` and the common wrappers (`env`, `timeout`, `sudo` …) are unwrapped; `git add … && git commit` and `git commit -a` are judged on the working tree. Anything unresolvable falls back to the hook's cwd — never a new deny.
 - **Review in flight** — a tree-rewriting git command (`stash`, `reset --hard`, `checkout`, `rebase`, `merge` …) while a detached cross-family job runs → one advisory line naming `--collect`.
 - **Incidents** — a sub-agent-heavy day where high-risk commits cleared on stale day-1 evidence (window is now since the last commit); 672 green tests + an opus build still shipped 4 money bugs only the adversarial pass caught (high-risk needs a `security-engineer` review, not tests).
-- **Bypass** — none needed: evidence auto-passes. `ROLEPOD_GATES_SOFT=1` silences the whole gate, private-docs deny included (logged). `ROLEPOD_GATES_HARD=1` turns a normal logic commit into a block that clears on a test edit or a reviewer. Legacy markers (`ROLEPOD_GATES_PASSED=1`, `[gates: pass]`) do nothing without evidence.
+- **Bypass** — none needed: evidence auto-passes. Set `gates.mode: "off"` in `~/.rolepod/config.json` to silence the whole gate, private-docs deny included (each commit logged with source `config`). Set `gates.mode: "hard"` to turn a normal logic commit into a block that clears on a test edit or a reviewer.
 
 ### `gate-reminder.sh` — PreToolUse `Edit|Write|MultiEdit` (Claude)
 
 - **Effect** — on a high-risk path, ONE line and only when the commit would block now: fact (a high-risk commit needs at least one `security-engineer` dispatch since the last commit, any model; an external pass never counts) → Fix (dispatch `security-engineer`, finished before commit) → Exception (user-set bypass only). Every other edit → silent. A sub-agent edit (`agent_id` set) gets neither this line nor the evidence scan (the Lead dispatches), only the review-in-flight advisory.
 - **In-flight lines** — a live detached cross-family review whose diff holds the edited file → `⏸ REVIEW IN FLIGHT` (the job reads the tree live; editing now makes its verdict an artifact). A live `--kind implement` job and an edit outside its allowed paths → `⏸ EXTERNAL IMPLEMENT IN FLIGHT` (that edit is reverted when the job returns).
-- **Incident** — edit-time hard blocks once pushed a user to set `ROLEPOD_GATES_SOFT` for good (33 high-risk edits in a day, 116 unreasoned bypasses), which silenced the commit gate too; this hook only informs.
-- **Bypass** — `ROLEPOD_GATES_SOFT=1` silences it.
+- **Incident** — edit-time hard blocks once pushed a user to set `gates.mode: "off"` for good (33 high-risk edits in a day, 116 unreasoned bypasses), which silenced the commit gate too; this hook only informs.
+- **Bypass** — set `gates.mode: "off"` to silence it.
 
 ### `block-subagent-commit.sh` — PreToolUse `Bash` (Claude, Codex) · `Agent|SendMessage` (Claude)
 
@@ -83,7 +83,7 @@ A sub-agent writes only what its role owns.
 ### `worktree-guard.sh` — PreToolUse `Edit|Write|MultiEdit` (Claude)
 
 - **Per-file deny** — a live sibling session in the same worktree already edited this exact file → deny, pointing at `EnterWorktree` then `git worktree add`. No sibling, or a different file → silent. A file is recorded as this session's only on the pass path, so a blocked attempt never claims it.
-- **Self-do nudge (v2.116.0)** — the Lead (no `agent_id`) edits product code after its own routing line with no writer-role dispatch since: route R2 → at the first edit; route R3/R4 → at 6 edits. One line per route. R2: go to a task owner on main from the 3-5 line checklist. R3/R4: brief the Owner the map names; the Lead reads the decision brief and spot-checks one claim. Exception: the user said self-do, or the change is R1-sized. `ROLEPOD_NUDGE_OFF=1` silences it.
+- **Self-do nudge (v2.116.0)** — the Lead (no `agent_id`) edits product code after its own routing line with no writer-role dispatch since: route R2 → at the first edit; route R3/R4 → at 6 edits. One line per route. R2: go to a task owner on main from the 3-5 line checklist. R3/R4: brief the Owner the map names; the Lead reads the decision brief and spot-checks one claim. Exception: the user said self-do, or the change is R1-sized. Set `nudge.enabled: false` in `~/.rolepod/config.json` to silence it.
 - **Incident** — two Claude sessions on one worktree stomped each other's edits.
 - **Bypass** — `ROLEPOD_ALLOW_SHARED_WORKTREE=1` (intentional shared session).
 
@@ -97,14 +97,14 @@ A Workflow `agent()` call defaults to the Lead's model and no frontmatter can ch
 - **Lead class** — the family word of the Lead's last transcript turn (haiku = cheap, sonnet = balanced, opus / fable / mythos = strong, else unknown).
 - **Logging** — each deny appends a `phase: dispatch-gate` row (a denied fleet never reaches PostToolUse).
 - **Incidents** — six fleets in one day ran at opus/fable with a nudge ignored; a role-less writing agent worked 96 turns before its first write was blocked.
-- **Bypass** — `ROLEPOD_GATES_SOFT=1` turns a deny into a nudge (logged); `ROLEPOD_NUDGE_OFF=1` silences the hook.
+- **Bypass** — set `gates.mode: "off"` to turn a deny into a nudge (logged); set `nudge.enabled: false` to silence the hook.
 
 ### `subagent-core.sh` — SubagentStart `workflow-subagent|general-purpose` (Claude)
 
 A bare Workflow `agent()` and a general-purpose Agent-tool sub-agent carry no role file, so they got none of the agent protocol. This hook adds the short core (one ~500-char `additionalContext`: output is data, verify at file:line, batched reads, command timeouts, Edit/Write only, no commit, answer through the schema). A `rolepod:<role>` agent is never matched (its definition already carries the protocol); the matcher is anchored because plugin agent types contain a colon, which puts the matcher on the regex path, and the hook re-checks `agent_type` itself.
 
 - **Observational** — SubagentStart cannot block; the hook only adds context and prints `{}` for any other agent type.
-- **Bypass** — `ROLEPOD_NUDGE_OFF=1` silences it.
+- **Bypass** — set `nudge.enabled: false` to silence it.
 
 ### `dispatch-auto-log.sh` — PostToolUse `Workflow|Agent` (Claude)
 
@@ -129,7 +129,7 @@ A bare Workflow `agent()` and a general-purpose Agent-tool sub-agent carry no ro
 - **Route nudge (v2.98.0)** — a commission-shaped prompt while the newest `phase: route` line predates the previous prompt → one `⟂ route:` line asking for the R0-R4 tier before the first edit. A question-shaped prompt and a harness background-task notification (`<task-notification>`) are not commissions and never get it. Incident: 199 requests, 0 router invocations in one project.
 - **Auto-resume (v2.100.0)** — the harness's "continue from where you left off" prompt is a resume, not a user decision: a turn that ended at a question is restated, never continued into new scope.
 - **Context-bloat note** — the last turn's context crosses 400k tokens → one Lead-facing note (sweeps go to `rolepod:scout`; mention `/compact` or a fresh session to the user once); re-arms only after the context drops under the line. Incident: a 12-day session re-read 350-900k tokens every turn.
-- **Bypass** — `ROLEPOD_NUDGE_OFF=1` silences the whole hook.
+- **Bypass** — set `nudge.enabled: false` to silence the whole hook.
 
 ### `session-lifecycle.sh` — SessionStart `--lock` / Stop `--unlock` (Claude, Codex)
 
@@ -174,31 +174,19 @@ Warn-only grep of the staged diff: focus / skip markers added, deleted test case
 
 | Env | Effect | When |
 |---|---|---|
-| `ROLEPOD_GATES_SOFT=1` | Commit gate silent (private-docs deny included); fleet denies become nudges; `gate-reminder` silent | Iterating on rolepod's own doctrine for one session. Set permanently it switches off every hard checkpoint |
-| `ROLEPOD_GATES_HARD=1` | A normal logic commit blocks until a test edit or a reviewer | A repo that wants every commit gated |
 | `ROLEPOD_ALLOW_OUT_OF_SCOPE_WRITE=1` | `subagent-write-scope` passes | One dispatch that must write outside its class (a test helper beside source) |
 | `ROLEPOD_ALLOW_SHARED_WORKTREE=1` | `worktree-guard` and the sibling warning pass | Intentional shared session (read-only review, coordinated file ownership) |
-| `ROLEPOD_NUDGE_OFF=1` | `claim-verify-nudge`, the self-do nudge, `workflow-tier-nudge` and `subagent-core` silent | A session that does not want nudges |
-| `ROLEPOD_GATES_PASSED=1` | Legacy; nothing without evidence | Never prescribed — permission layers read `ENV=1 git commit` as gate circumvention |
 
 Apply them per session, never globally. **They are the user's hand only:** a model that meets a gate conflicting with an instruction surfaces the conflict with options; it never sets a bypass itself. Every used bypass appends `{"ts","hook","var","reason"}` to `<git-root>/.rolepod/evidence/bypass.log`, the reason taken from `ROLEPOD_BYPASS_REASON` (default `"unreasoned"`); `rolepod-selftest` tags doctor and test probes so `rolepod-stats` counts them apart. `ROLEPOD_*` is rolepod's namespace; Claude Code's own behavior stays under `CLAUDE_CODE_*`.
 
-## Cross-family pool — `.rolepod/cross-family` (v2.76.0)
+To change gate strictness, nudge behavior, or the cross-family pool, set these in `~/.rolepod/config.json`: `gates.mode` (off/soft/hard), `nudge.enabled` (true/false), and the `pool` object.
 
-Opt-in and off by default. `<git-root>/.rolepod/cross-family` (project) overrides `~/.rolepod/cross-family` (machine); no file or `none` = off.
+## Cross-family pool — `~/.rolepod/config.json` `pool` key
 
-```
-[reviewer]
-review = agy codex opencode stall=900   # default order for every kind; stall= is the silence budget (default 600 s)
-consult = agy codex                     # per-kind order
+Opt-in and off by default. Machine-wide only; no project-level override. Set in `~/.rolepod/config.json` under the `pool` key: `pool.cross-family` ("on"|"off"), `pool.reviewer` (review/consult/critique/tier), `pool.implement.cli`. Use `cross-family.sh --setup` or hand-edit; `cross-family.sh --pool` shows the resolved pool.
 
-[implement]
-cli = codex claude                      # members that may WRITE a ticket (--kind implement, v2.139.0)
-```
-
-- **Members** — `codex`, `claude`, `agy`, `cursor`, `opencode` (a `gemini` line is skipped). List every CLI you use: only the Lead's own CLI is skipped at run time, so one file serves every Lead. The model family is recorded for information and never filters a member.
-- **Setup** — never asked unprompted. When the user asks, the Lead runs `scripts/cross-family.sh --setup` in the `cross-family` skill, asks the review order then the implement order, and writes the file with `--setup review="…" implement=…`.
-- **Time** — a member is killed when it goes SILENT for `stall` seconds (`--stall` > `stall=` > 600), not when it is slow; the wall-clock cap is runaway insurance only (review 7200 s detached / 600 s foreground, consult 300, critique 600). `--detach` runs the chain as a job under `.rolepod/evidence/external/jobs/<id>/`; `--collect <id>` waits, `--jobs` lists.
+- **Members** — space-separated: `codex`, `claude`, `agy`, `cursor`, `opencode`. List every CLI you use in the order you prefer for each kind. The Lead's own CLI is skipped at run time, so one file serves every Lead. The model family is recorded for information and never filters a member.
+- **Time** — a member is killed when it goes SILENT for `stall` seconds (flag `--stall` > config `stall=` > 600), not when it is slow; the wall-clock cap is runaway insurance only (review 7200 s detached / 600 s foreground, consult 300, critique 600). `--detach` runs the chain as a job under `.rolepod/evidence/external/jobs/<id>/`; `--collect <id>` waits, `--jobs` lists.
 - **Refusals** — a partial-slice diff (its files have edits it does not contain) → exit 7, attach `git diff HEAD` or commit first (`--partial-ok` only when the user asked for the staged part); a second live review job → exit 8 until `--collect` or `--kill`.
 - **Rounds** — the external runs once per R4 task, round 1 only; round 2+ is internal (`security-engineer` re-checks its own and the external's security-class BLOCKER / MAJOR findings, `universal-reviewer` the external's other findings). A pre-existing issue on an untouched path is one note line and never drives the verdict.
 - **At commit (Claude)** — an external pass is not read by the gate (C4, see `precommit-gate.sh`). A docs-only diff passes the gate at any size (docs are written, not reviewed — owner rule).
@@ -247,7 +235,7 @@ Root `hooks/` is the one source; `build/render.sh` copies the shared scripts (an
 - **Codex** — same event names and stdin JSON as Claude, so the shared scripts run verbatim. `agent-sync.sh` (SessionStart) copies the bundled role TOMLs into `~/.codex/agents/` and replaces only the rolepod block of `~/.codex/AGENTS.md` when the plugin version changes (`ROLEPOD_AGENT_SYNC_OFF=1` disables it). `subagent-core.sh --cli codex` (SubagentStart) adds the short agent protocol to built-in children (`default`, `explorer`, `worker`) when a spawn has no rolepod role file; `claim-verify-nudge` stays silent for a payload with an `agent_id`. Codex's PreToolUse sees every spawn (`spawn_agent`, or `collaborationspawn_agent` on V2); rolepod registers no spawn gate. Codex trusts hooks by hash: a new or changed hook is skipped until the user trusts it once with `/hooks` — a release that changes a hook needs a re-trust. `always-on-loader` and `worktree-guard` do not run there (`apply_patch` input carries no `file_path`).
 - **Cursor** — camelCase events; stdin / stdout JSON, exit 2 denies; hook commands run with cwd = plugin root. Always-on core is `rules/always-on-core.mdc` (`alwaysApply: true`). Not portable: `fix-loop-breaker` (no exit code on `afterShellExecution`), `push-ref-check` (no informational channel before a shell command), `claim-verify-nudge` (`beforeSubmitPrompt` cannot inject context).
 - **Antigravity** — `hooks.json` wraps the events in one name key (`{"rolepod": {...}}`); commands are relative to the `hooks.json` directory. A PreToolUse hook prints one deny object or nothing: `{}` denies, and any unknown field or non-zero exit blocks the tool. agy accepts no context field, so nothing reaches the model except a deny reason.
-- **opencode** — one plugin file exports both the 1.x named plugin and the opencode 2 `default { id, setup }`. On opencode 2 the plugin runs in the shared background service (`process.cwd()` is `$HOME`; the directory comes from `ctx.location.directory`; an env flag reaches it only via `ROLEPOD_GATES_SOFT=1 opencode service restart`), so `install.sh` ends with `opencode service restart`. `unset OPENCODE_CONFIG_DIR` before verifying a global install from an Orca terminal.
+- **opencode** — one plugin file exports both the 1.x named plugin and the opencode 2 `default { id, setup }`. On opencode 2 the plugin runs in the shared background service (`process.cwd()` is `$HOME`; the directory comes from `ctx.location.directory`), so `install.sh` ends with `opencode service restart`. `unset OPENCODE_CONFIG_DIR` before verifying a global install from an Orca terminal.
 
 ## Installation
 

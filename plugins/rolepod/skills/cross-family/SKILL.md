@@ -19,7 +19,7 @@ Outside Claude add `--lead <codex|agy|cursor|opencode>`. `--help` lists every fl
 ### 1. Resolve the pool
 
 `cross-family.sh --pool` prints the resolved pool and why each member is in or out.
-- The pool is opt-in: `<git-root>/.rolepod/cross-family` overrides `~/.rolepod/cross-family`. No file or `none` = off. Never turn it on unasked.
+- The pool is opt-in and machine-wide, set in `~/.rolepod/config.json` under the `pool` key: run `--pool` first to see what is in force. An unset key or `pool.cross-family: "off"` = off. Never turn it on unasked.
 - A wide-effort session (Claude ultracode — a keyword turn or the session setting; Codex `ultra` — proactive delegation active) runs no cross-family member: every kind takes its pool-off path, and the Cross-model line reads `NOT RUN — wide-effort session`, the user's choice like `cross-family off (opt-in)`. An explicit user ask for another CLI's opinion still runs.
 - Only the Lead's own CLI is excluded. The model family is recorded as information, never a filter: a member on the Lead's vendor still counts, and a member reporting no family is a FULL external pass.
 - The user asked to set up or change the pool → step 6 first.
@@ -111,12 +111,12 @@ Done when: the caller or the user holds the answer or the named fallback.
 
 The user asks to set up, enable or change cross-family, in any wording or language. Never raise it unprompted.
 1. `cross-family.sh --setup` prints the installed CLIs and two questions. One installed CLI → nothing to set; say so.
-   It writes only the machine file `~/.rolepod/cross-family`. The repo has its own `.rolepod/cross-family` (the runner prints a note) → tell the user before writing that the project file still wins in this repo; changing the pool here = editing it (`references/pool.md`) or deleting it, on their word.
+   It writes only the machine file `~/.rolepod/config.json` under the `pool` key. No project override of pool.
 2. Ask ONE question per turn: (1) which CLIs review, in order; (2) implement: `same`, `none`, or its own order.
 3. Write it: `cross-family.sh --setup review="…" implement=…`, then show `cross-family.sh --pool`.
 
 List the Lead's own CLI too — it is skipped at run time, so switching Lead never means editing the file. The user says no → `none`.
-Hand-editing the file (`tier =`, per-kind order, `stall=`) → `references/pool.md`.
+Hand-editing the file (`pool.reviewer.tier`, member order, `stall=`) — keep the structure of the JSON `pool` object.
 
 Done when: the file is written and `--pool` is shown to the user.
 

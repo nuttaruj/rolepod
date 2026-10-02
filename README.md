@@ -187,6 +187,44 @@ curl -fsSL https://raw.githubusercontent.com/nuttaruj/rolepod/main/bootstrap.sh 
 
 **Install all five at once** with `--target=all`. **One repo only, no global config:** add `--scope=project`. Restart the CLI after installing (opencode 2: `opencode service restart`). Full per-CLI matrix and install scopes: [docs/cli-support.md](docs/cli-support.md).
 
+## Config
+
+Machine-wide settings live in `~/.rolepod/config.json`. Project-level `review.mode` can override the machine setting in the same file's project section. No project file can override `gates`, `nudge` or `pool` — they are machine-wide only.
+
+**Location:** `~/.rolepod/config.json`
+
+**Example:**
+
+```json
+{
+  "version": 1,
+  "review": { "mode": "standard" },
+  "gates": { "mode": "soft" },
+  "nudge": { "enabled": true },
+  "pool": {
+    "cross-family": "on",
+    "reviewer": { "review": "opencode cursor agy codex claude", "consult": "opencode codex cursor agy claude", "critique": "opencode cursor agy codex claude", "tier": "R4" },
+    "implement": { "cli": "opencode cursor agy codex claude" }
+  }
+}
+```
+
+**Settings:**
+
+| Key | Values | Default | Scope |
+|---|---|---|---|
+| `review.mode` | `standard` \| `full` | `standard` | Machine; project `.rolepod/config.json` overrides |
+| `gates.mode` | `off` \| `soft` \| `hard` | `soft` | Machine only. `off` = every commit passes (logged); `soft` = today's behavior (some checks warn/block); `hard` = `soft` plus block on normal-code commit with no evidence |
+| `nudge.enabled` | `true` \| `false` | `true` | Machine only. `false` silences the four nudge hooks |
+| `pool.cross-family` | `"on"` \| `"off"` | `"off"` | Machine only. `"off"` disables the external pool even if members are listed |
+| `pool.reviewer.review` | space-separated CLI names | (none) | Machine only. External review for R4 (adversarial) or at the tier the `tier` key sets |
+| `pool.reviewer.consult` | space-separated CLI names | (none) | Machine only. External debug consult after 2 failed local attempts |
+| `pool.reviewer.critique` | space-separated CLI names | (none) | Machine only. External spec critique during `write-spec` |
+| `pool.reviewer.tier` | `R2` \| `R3` \| `R4` | `R4` | Machine only. Tiers at which the external's standard pass replaces the internal lens pair |
+| `pool.implement.cli` | space-separated CLI names | (none) | Machine only. External draft implementation when a plan task is marked `write: external` |
+
+To set the pool, use `cross-family.sh --setup` from the `cross-family` skill, or hand-edit the file (member order, `tier`, per-member `stall=` / `timeout=` options: see `core/skills/cross-family/references/pool.md`).
+
 ## What's inside
 
 - **15 specialist agents** — architecture, engineering, quality, ops, design, content, and review. Each owns a path or concern and runs on a cost-tiered model (~50-60% cheaper than all-strong). → [docs/agents.md](docs/agents.md), [docs/model-tier-policy.md](docs/model-tier-policy.md)
@@ -195,7 +233,7 @@ curl -fsSL https://raw.githubusercontent.com/nuttaruj/rolepod/main/bootstrap.sh 
 - **Terse output (built in)** — every rolepod CLI shapes its replies to cut output tokens: result first, the reading language's politeness register dropped, numbered steps, flat error tone, a five-item display cap that never limits analysis or tool results. Security warnings, destructive-action confirmations and "explain" requests keep their full shape — the shape yields to the task, never the reverse. → [docs/hooks.md](docs/hooks.md) (`always-on-loader.sh`)
 - **Evidence stats** — the `rolepod-stats` skill reads any project's `.rolepod/evidence/`: tier distribution, verify pass/fail, review verdicts, strong-dispatch overrides, bypasses (available at `/rolepod-stats` on Claude and `$rolepod-stats` on Codex). `check-work` skill's `scripts/junit-summary.sh` counts JUnit XML. `scripts/ticket.sh` in `implement-plan` runs a plan task's mechanics in one call per step (`start` / `integrate` / `finish` / `log`) and never commits. Every plugin tree ships these scripts under their skill's `scripts/` folder.
 - **Discipline checklists** — Q1-Q4 delegation, S1-S5 simplicity, T1-T6 tests, F1-F5 failure-mode — live in the skills that run each phase. Rolepod's own working docs (`docs/rolepod/` — specs, plans, contracts, hand-offs) are private by default: gitignored on first save and refused at commit unless the repo opts in with `.rolepod/docs-tracked`.
-- **Cross-family reviewer (opt-in)** — `scripts/cross-family.sh` in the `cross-family` skill sends the review (adversarial on an R4 round 1) / debug consult / spec critique to a *different CLI* (on its own default model) in one command. Off until you list CLIs in `~/.rolepod/cross-family` (or the project's `.rolepod/cross-family`; `none` = keep off) — rolepod asks once, never enables it for you; list every CLI you use, this one included — the Lead's own CLI is skipped at run time, so one file serves every Lead. First usable member, read-only on **its own default model**, with a per-member time budget the model is told about (`codex timeout=1800`, per-kind order `consult: agy codex`); `--detach` runs the chain as a job so a slow member never hits the harness cap; evidence anchored; a member that fails is logged and skipped, all fail → the Lead's own path. Once enabled, the commit gate on Claude insists on it while a member is usable. By default it reviews only high-risk (R4) code, money / auth included: there the external is the adversarial pass beside `security-engineer` and the lens pair; one line in the pool file (`tier = R2`) lets its standard pass replace the lens pair on everyday diffs too. `write-spec` hands the draft to the same pool for one round of questions before approval. → [docs/cli-support.md](docs/cli-support.md#cross-family-externals--one-runner-any-lead)
+- **Cross-family reviewer (opt-in)** — `scripts/cross-family.sh` in the `cross-family` skill sends the review (adversarial on an R4 round 1) / debug consult / spec critique to a *different CLI* (on its own default model) in one command. Off by default (set `pool.cross-family: "on"` in `~/.rolepod/config.json` to enable); rolepod asks once, never enables it for you; list every CLI you use in `pool.reviewer.review` / `pool.reviewer.consult` / `pool.reviewer.critique` / `pool.implement.cli`, this one included — the Lead's own CLI is skipped at run time, so one file serves every Lead. First usable member, read-only on **its own default model**, with a per-member time budget the model is told about (`codex timeout=1800`, per-kind order `pool.reviewer.consult`); `--detach` runs the chain as a job so a slow member never hits the harness cap; evidence anchored; a member that fails is logged and skipped, all fail → the Lead's own path. Once enabled, the commit gate on Claude insists on it while a member is usable. By default it reviews only high-risk (R4) code, money / auth included: there the external is the adversarial pass beside `security-engineer` and the lens pair; set `pool.reviewer.tier: "R2"` to let its standard pass replace the lens pair on everyday diffs too. `write-spec` hands the draft to the same pool for one round of questions before approval. → [docs/cli-support.md](docs/cli-support.md#cross-family-externals--one-runner-any-lead)
 
 The source lives in `core/`; per-CLI adapters render it into a native plugin for each CLI.
 
@@ -207,8 +245,8 @@ Hooks are the product, so this is stated plainly. Everything stays on your disk;
 |---|---|---|
 | Phase evidence — route tier, dispatch tier, verify / review verdicts, gate denies and bypasses | `<repo>/.rolepod/evidence/phase-log.jsonl`, `bypass.log` (per project, plain JSONL) | delete the dir; the `rolepod-stats` skill reads it |
 | Session liveness + the files each session edits (the stomp guard) | `~/.rolepod/session-locks/<sha256(worktree)>/<session>.lock` / `.files`, removed at Stop | `ROLEPOD_ALLOW_SHARED_WORKTREE=1` (user-set) |
-| Per-session counters — fix-loop fails, raw-read bytes, context-nudge state | `$TMPDIR/rolepod-*.json`, `~/.rolepod/ctx-nudge/` | `ROLEPOD_NUDGE_OFF=1` |
-| Cross-family reviewer output (opt-in) | `<repo>/.rolepod/evidence/external/` | no pool file = off |
+| Per-session counters — fix-loop fails, raw-read bytes, context-nudge state | `$TMPDIR/rolepod-*.json`, `~/.rolepod/ctx-nudge/` | set `nudge.enabled: false` in `~/.rolepod/config.json` |
+| Cross-family reviewer output (opt-in) | `<repo>/.rolepod/evidence/external/` | `pool.cross-family: "off"` in config, or unset `pool` key = off |
 
 Hooks read the prompt, the tool input and the transcript tail to decide, then discard them: prompt text and file contents are never written anywhere. Nothing reads keychains, `~/.aws`, SSH keys, browser stores or the clipboard.
 

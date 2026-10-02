@@ -78,7 +78,7 @@ PY
 [ -n "$STATE" ] && CTX="$CTX\n\n$STATE"
 
 # Cross-family pool nudge (v2.142.0: no opt-in question — rolepod never asks
-# unprompted). No pool file and a second CLI installed → ONE silent context
+# unprompted). Pool not on (the shared reader says so) and a second CLI installed → ONE silent context
 # line says how to set it up when the user asks. Runner locator (v2.179.0:
 # inside the cross-family skill): a plugin tree's own skills/, else the
 # source repo's core/skills/ copy — canonicalized so --candidates below
@@ -92,7 +92,10 @@ xfam_runner() {
   return 0
 }
 _xf="$(xfam_runner)"
-if [ -f "$_xf" ] && [ ! -f "$HOME/.rolepod/cross-family" ] && [ ! -f "$REPO/.rolepod/cross-family" ]; then
+_xr="$(dirname "${BASH_SOURCE[0]}")/lib/rolepod_config.py"   # the one reader; missing = no nudge (never a guess)
+_xp=""   # the reader's `configured=` line: only "no" (no pool key at all) earns the one setup line; a pool that is on or deliberately off stays silent
+[ -f "$_xf" ] && [ -f "$_xr" ] && { _xp=$(python3 -I "$_xr" pool 2>/dev/null | grep '^configured=' || true); }
+if [ -f "$_xf" ] && [ "$_xp" = "configured=no" ]; then
   _lead="${ROLEPOD_LEAD_CLI:-}"
   if [ -z "$_lead" ] && [ -n "${CLAUDE_PROJECT_DIR:-}${CLAUDE_PLUGIN_ROOT:-}" ]; then _lead=claude; fi
   _cand=""

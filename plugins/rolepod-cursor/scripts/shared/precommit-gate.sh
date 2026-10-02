@@ -18,16 +18,11 @@
 #                                    non-Claude ROLEPOD_LEAD_CLI gets only the
 #                                    private-docs deny above, then passes.
 #
-# Env overrides:
-#   ROLEPOD_GATES_HARD=1   — escalate normal code from SOFT warn to HARD block
-#                            (recovers pre-change behavior across the board).
-#   ROLEPOD_GATES_SOFT=1   — suppress ALL warnings entirely (silent).
-#   ROLEPOD_GATES_PASSED=1 / [gates: pass] — legacy bypass markers. Never
-#                            required: evidence auto-passes without them, and
-#                            without evidence they were always ignored. The
-#                            env-prefix form is also a command shape the
-#                            platform's own permission layer reads as gate
-#                            circumvention — nothing should prescribe it.
+# Mode (gates.mode in ~/.rolepod/config.json, via hooks/lib/rolepod-config.sh):
+#   soft (default) — the tiering above.
+#   hard           — escalate normal code from SOFT warn to HARD block.
+#   off            — pass every commit silently; each use is logged to
+#                    .rolepod/evidence/bypass.log as config:gates=off.
 #
 # Accepted residuals (owner decision, 2026-09-24, final cut before release):
 # deliberate evasion is out of scope by design — this gate catches mistakes
@@ -78,16 +73,32 @@ $(printf '%s\n' "$_rf_in" | grep -iE "$_rf_add" 2>/dev/null || true)"
 
 # Bypass accountability: a used bypass is recorded to .rolepod/evidence/bypass.log
 # (reason via ROLEPOD_BYPASS_REASON), never blocked. Fail-open on any error.
+# $3 (optional) = the directory the command runs in (a `git -C` / `cd` commit);
+# no repo root resolvable → $HOME/.rolepod/gate-bypass.log, so a use is never unlogged.
 rolepod_log_bypass() {
-  _rlb_root="$(git rev-parse --show-toplevel 2>/dev/null)" || return 0
-  [ -n "$_rlb_root" ] || return 0
-  mkdir -p "$_rlb_root/.rolepod/evidence" 2>/dev/null || return 0
+  _rlb_log=""
+  _rlb_root="$(git -C "${3:-.}" rev-parse --show-toplevel 2>/dev/null)" || _rlb_root=""
+  if [ -n "$_rlb_root" ] && mkdir -p "$_rlb_root/.rolepod/evidence" 2>/dev/null; then
+    _rlb_log="$_rlb_root/.rolepod/evidence/bypass.log"
+  elif [ -n "${HOME:-}" ] && mkdir -p "$HOME/.rolepod" 2>/dev/null; then
+    _rlb_log="$HOME/.rolepod/gate-bypass.log"
+  else
+    return 0
+  fi
   _rlb_reason="${ROLEPOD_BYPASS_REASON:-unreasoned}"
   _rlb_reason="${_rlb_reason//\"/ }"
   printf '{"ts":"%s","hook":"%s","var":"%s","reason":"%s"}\n' \
     "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$1" "$2" "$_rlb_reason" \
-    >> "$_rlb_root/.rolepod/evidence/bypass.log" 2>/dev/null || true
+    >> "$_rlb_log" 2>/dev/null || true
 }
+
+# gates.mode (off|soft|hard) from ~/.rolepod/config.json → ROLEPOD_CFG_GATES.
+# Beside the script (flat Cursor / agy / opencode renders) or in lib/; a missing
+# file is fail-open: soft, never an abort.
+_rcfg="${BASH_SOURCE[0]%/*}"; [ "$_rcfg" != "${BASH_SOURCE[0]}" ] || _rcfg=.
+if [ -f "$_rcfg/lib/rolepod-config.sh" ]; then . "$_rcfg/lib/rolepod-config.sh"
+elif [ -f "$_rcfg/rolepod-config.sh" ]; then . "$_rcfg/rolepod-config.sh"
+else rolepod_cfg_load() { ROLEPOD_CFG_GATES=soft; ROLEPOD_CFG_NUDGE=on; }; fi
 
 # Detached cross-family job still running for this repo (v2.79.0): prints
 # "<job-id> (running N min)" for a live one, else nothing. Liveness = pid
@@ -401,8 +412,9 @@ if [ "$IS_COMMIT" != "1" ]; then
   # checkout / … empties or moves the tree a running cross-family job reads
   # live → its verdict is an artifact and the job re-runs. Advisory only.
   [ -n "$MUTATES" ] || exit 0
-  [ "${ROLEPOD_GATES_SOFT:-0}" = "1" ] && exit 0
   _mj="$(xfam_running_job "$RESOLVED_DIR")"; [ -n "$_mj" ] || exit 0
+  rolepod_cfg_load
+  [ "$ROLEPOD_CFG_GATES" = "off" ] && exit 0
   XF_RUNNER="${XF_RUNNER-$(xfam_runner)}"
   ROLEPOD_HOOK_MSG="⏸ REVIEW IN FLIGHT: cross-family job $_mj reads this tree live — \`git $MUTATES\` rewrites it, so that verdict becomes an artifact and the job re-runs. Fix: \`bash '$XF_RUNNER' --collect ${_mj%% *}\` first, then \`git $MUTATES\`. Exception: a red-proof revert goes in a throwaway git worktree, not a stash here; a dead job → --collect says so and this line stops." python3 -I -c "
 import json, os
@@ -411,8 +423,9 @@ print(json.dumps({'hookSpecificOutput': {'hookEventName': 'PreToolUse', 'additio
   exit 0
 fi
 
-if [ "${ROLEPOD_GATES_SOFT:-0}" = "1" ]; then
-  rolepod_log_bypass "precommit-gate" "ROLEPOD_GATES_SOFT"
+rolepod_cfg_load
+if [ "$ROLEPOD_CFG_GATES" = "off" ]; then
+  rolepod_log_bypass "precommit-gate" "config:gates=off" "$RESOLVED_DIR"
   exit 0
 fi
 
@@ -826,22 +839,9 @@ except Exception:
 ' 2>/dev/null || true
 }
 
-# Legacy bypass markers are detected only so the deny reason can explain they
-# no longer do anything on their own: evidence auto-passes without a marker
-# (below), and without evidence a marker was always ignored — a blocked model
-# must not self-release by echoing it in its very next tool call
-# ("claim-based bypass").
-BYPASS_REQUESTED=0
-echo "$CMD" | grep -qE 'ROLEPOD_GATES_PASSED=1' && BYPASS_REQUESTED=1
-echo "$CMD" | grep -qE '\[gates:[[:space:]]*pass\]' && BYPASS_REQUESTED=1
-BYPASS_IGNORED=""
-if [ "$BYPASS_REQUESTED" -eq 1 ] && [ "$TEST_EDITS" -eq 0 ] && [ "$REVIEWERS" -eq 0 ]; then
-  BYPASS_IGNORED="Bypass marker present but IGNORED — session shows 0 test edits and 0 reviewer dispatches; markers are never honored without gate evidence. "
-fi
-
 # Build deny reason — names only what clears the block (spec Desired 3,
 # 2026-09-25).
-REASON="precommit-gate BLOCKED. ${BYPASS_IGNORED}"
+REASON="precommit-gate BLOCKED. "
 # Round-2 review (2026-09-25): the assembled reason ran 660-830 chars, past
 # the 600 cap — shortened here (drop "Lead + subagent transcripts") and the
 # HIGH-RISK line below no longer repeats the Fix clause verbatim.
@@ -853,7 +853,7 @@ REASON+="Evidence ($SINCE_HUMAN): $TEST_EDITS tests, $HIGH_RISK_EDITS risk edits
 if [ -n "$HIGH_RISK" ] && [ "$STRONG_REVIEWERS" -eq 0 ]; then
   REASON+="A high-risk commit needs at least one \`security-engineer\` dispatch since the last commit, any model; an external pass never counts. Fix: dispatch \`security-engineer\` (a FINISHED Agent or Workflow call), then retry. "
 elif [ -z "$HIGH_RISK" ]; then
-  # Round-2 review (2026-09-25): a deny forced by ROLEPOD_GATES_HARD=1 alone
+  # Round-2 review (2026-09-25): a deny forced by hard mode alone
   # (normal diff, 0 risk edits this session) used to get NO Fix sentence —
   # the HIGH_RISK_EDITS>0 guard excluded exactly that case. Reaching this
   # branch at all already means AUTO_PASS was 0 on a non-high-risk diff,
@@ -866,7 +866,7 @@ REASON+="Exception: auto-passes once evidence exists SINCE THE LAST COMMIT; work
 HARD_BLOCK=0
 if [ -n "$HIGH_RISK" ]; then
   HARD_BLOCK=1
-elif [ "${ROLEPOD_GATES_HARD:-0}" = "1" ]; then
+elif [ "$ROLEPOD_CFG_GATES" = "hard" ]; then
   HARD_BLOCK=1
 # Fix 2: escalate to HARD when high-risk *code edits* happened this session
 # but Lead never wrote a test. Catches the "session touched auth + nobody
@@ -876,17 +876,13 @@ elif [ "$HIGH_RISK_EDITS" -gt 0 ] && [ "$TEST_EDITS" -eq 0 ]; then
 fi
 
 # Evidence auto-pass — a would-block commit passes directly when the session
-# already shows gate evidence. The marker round-trip this replaces added no
-# security: a blocked model could echo the marker in its very next call, so
-# the evidence check was always the real guard — and prescribing
-# `ROLEPOD_GATES_PASSED=1 git commit` deadlocked against the platform's own
-# permission layer, which reads that command shape as gate circumvention.
+# already shows gate evidence; the evidence check is the real guard.
 # Evidence is split by risk (v2.46.0):
 #   HIGH-RISK diff  → only a `security-engineer` dispatch (any model, C4)
 #     clears it. Test edits are the floor, not the review — CourtBook
 #     proof: 672 green tests + opus impl still shipped 4 money bugs that
 #     only the adversarial pass caught.
-#   other HARD blocks (session risk edits w/o tests, env) → original OR
+#   other HARD blocks (session risk edits w/o tests, gates.mode hard) → original OR
 #     (≥1 test edit or ≥1 reviewer dispatch): delegated sessions route
 #     test-writing into subagents whose edits land in the child transcript,
 #     so a universal-reviewer dispatch is often the only evidence the Lead's

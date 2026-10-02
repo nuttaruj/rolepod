@@ -5,7 +5,7 @@
 ## Pool on
 
 `cross-family` kind consult with the ledger file — a FOREGROUND call on a short budget; it runs the member, the order and the evidence.
-The pool is the user's opt-in (`.rolepod/cross-family` → `~/.rolepod/cross-family`; no file or `none` = off). Never enable it unasked.
+The pool is the user's opt-in (set `pool` in `~/.rolepod/config.json` machine-wide only; unset key or `pool.cross-family: "off"` = off). Never enable it unasked.
 
 ## Vertical fallback
 

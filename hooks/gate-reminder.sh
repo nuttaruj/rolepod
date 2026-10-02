@@ -15,13 +15,13 @@
 #     dispatches since the last commit    (dispatch security-engineer) →
 #                                         Exception (user-set bypass only).
 #     Never a deny (v2.47.0): edit-time HARD blocks were the measured reason
-#     users set ROLEPOD_GATES_SOFT for good (CourtBook: 33 high-risk edits in
+#     users turn the gates off for good (CourtBook: 33 high-risk edits in
 #     one day, 116 unreasoned bypasses) — which then silenced the commit gate
 #     too. One hard checkpoint, at commit (precommit-gate.sh); this hook
 #     informs.
 #
-# Bypass envs (user-set only):
-#   ROLEPOD_GATES_SOFT=1   — silence the would-block line entirely
+# gates.mode in ~/.rolepod/config.json (hooks/lib/rolepod-config.sh):
+#   off — silence the would-block line and the review-in-flight line entirely
 set -euo pipefail
 unset XF_RUNNER
 
@@ -67,15 +67,27 @@ $(printf '%s\n' "$_rf_in" | grep -iE "$_rf_add" 2>/dev/null || true)"
 # Bypass accountability: a used bypass is recorded to .rolepod/evidence/bypass.log
 # (reason via ROLEPOD_BYPASS_REASON), never blocked. Fail-open on any error.
 rolepod_log_bypass() {
-  _rlb_root="$(git rev-parse --show-toplevel 2>/dev/null)" || return 0
-  [ -n "$_rlb_root" ] || return 0
-  mkdir -p "$_rlb_root/.rolepod/evidence" 2>/dev/null || return 0
+  _rlb_log=""
+  _rlb_root="$(git rev-parse --show-toplevel 2>/dev/null)" || _rlb_root=""
+  if [ -n "$_rlb_root" ] && mkdir -p "$_rlb_root/.rolepod/evidence" 2>/dev/null; then
+    _rlb_log="$_rlb_root/.rolepod/evidence/bypass.log"
+  elif [ -n "${HOME:-}" ] && mkdir -p "$HOME/.rolepod" 2>/dev/null; then
+    _rlb_log="$HOME/.rolepod/gate-bypass.log"   # no repo root: never unlogged (parity with precommit-gate.sh)
+  else
+    return 0
+  fi
   _rlb_reason="${ROLEPOD_BYPASS_REASON:-unreasoned}"
   _rlb_reason="${_rlb_reason//\"/ }"
   printf '{"ts":"%s","hook":"%s","var":"%s","reason":"%s"}\n' \
     "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$1" "$2" "$_rlb_reason" \
-    >> "$_rlb_root/.rolepod/evidence/bypass.log" 2>/dev/null || true
+    >> "$_rlb_log" 2>/dev/null || true
 }
+
+# gates.mode (off|soft|hard) from ~/.rolepod/config.json → ROLEPOD_CFG_GATES.
+# Fail-open like precommit-gate.sh: a missing lib means soft, never an abort.
+_rcfg="${BASH_SOURCE[0]%/*}"; [ "$_rcfg" != "${BASH_SOURCE[0]}" ] || _rcfg=.
+if [ -f "$_rcfg/lib/rolepod-config.sh" ]; then . "$_rcfg/lib/rolepod-config.sh"
+else rolepod_cfg_load() { ROLEPOD_CFG_GATES=soft; ROLEPOD_CFG_NUDGE=on; }; fi
 
 INPUT=$(cat 2>/dev/null || echo '{}')
 
@@ -189,7 +201,8 @@ fi
 # WORKTREE's own evidence, which can differ from the hook's own process cwd
 # when the edited FILE itself lives in that worktree.
 XF_INFLIGHT=""
-if [ "${ROLEPOD_GATES_SOFT:-0}" != "1" ]; then
+ROLEPOD_CFG_GATES=soft   # set -u guard; rolepod_cfg_load below runs only when there is something to say
+gr_inflight_scan() {
   # Nearest EXISTING ancestor of FILE's directory (a NEW file in a
   # not-yet-created directory resolves through it) — the second root
   # candidate below.
@@ -238,6 +251,16 @@ if [ "${ROLEPOD_GATES_SOFT:-0}" != "1" ]; then
     done
     [ -n "$XF_INFLIGHT" ] && break
   done
+  return 0
+}
+gr_inflight_scan
+
+# gates.mode is read only when this hook has something to say (a job in flight
+# or a high-risk edit): a plain edit stays on the no-python-spawn fast path.
+# off = silent: the in-flight line goes too.
+if [ -n "$XF_INFLIGHT" ] || [ -n "$HIGH_RISK" ]; then
+  rolepod_cfg_load
+  [ "$ROLEPOD_CFG_GATES" = "off" ] && XF_INFLIGHT=""
 fi
 
 # Silent pass when nothing is risky. Normal code / docs / config edits
@@ -284,7 +307,7 @@ fi
 STRONG_REVIEWERS=${STRONG_REVIEWERS:-0}
 
 SOFT_MODE=0
-[ "${ROLEPOD_GATES_SOFT:-0}" = "1" ] && { SOFT_MODE=1; rolepod_log_bypass "gate-reminder" "ROLEPOD_GATES_SOFT"; }
+[ "$ROLEPOD_CFG_GATES" = "off" ] && { SOFT_MODE=1; rolepod_log_bypass "gate-reminder" "config:gates=off"; }
 
 # ONE line, only when the commit would block now (spec Desired 2, 2026-09-25):
 # fact → Fix → Exception. No always-on careful-mode banner, no per-CLI
@@ -293,7 +316,7 @@ SOFT_MODE=0
 # prediction of it. C4 wording (review-finish-lean, 2026-09-30).
 WOULD_BLOCK=""
 if [ -n "$HIGH_RISK" ] && [ "$IS_SUBAGENT" -eq 0 ] && [ "$SOFT_MODE" -eq 0 ] && [ "$STRONG_REVIEWERS" -eq 0 ]; then
-  WOULD_BLOCK="COMMIT WILL BLOCK — HIGH-RISK edit: a high-risk commit needs at least one \`security-engineer\` dispatch since the last commit, any model; an external pass never counts. Fix: dispatch \`security-engineer\` (a FINISHED dispatch before commit). Exception: user-set bypass only (ROLEPOD_GATES_SOFT). "
+  WOULD_BLOCK="COMMIT WILL BLOCK — HIGH-RISK edit: a high-risk commit needs at least one \`security-engineer\` dispatch since the last commit, any model; an external pass never counts. Fix: dispatch \`security-engineer\` (a FINISHED dispatch before commit). Exception: only the user, never the model, can lower this gate. "
 fi
 
 # Emit reminder ONLY when high-risk AND would-block — no generic Q1-Q4 nag,

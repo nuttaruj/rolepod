@@ -40,10 +40,14 @@
 # id, the route freshness and the auto-resume shape (lib/session_state.py
 # prompt-state; was five spawns ≈ 200 ms of the hook's 471 ms).
 #
-# Opt-out for a session: ROLEPOD_NUDGE_OFF=1
+# Silenced by the user's nudge setting (hooks/lib/rolepod-config.sh), read
+# only when a note would be sent.
 set -euo pipefail
 
-[ "${ROLEPOD_NUDGE_OFF:-0}" = "1" ] && exit 0
+_rcfg="${BASH_SOURCE[0]%/*}"; [ "$_rcfg" != "${BASH_SOURCE[0]}" ] || _rcfg=.
+if [ -f "$_rcfg/lib/rolepod-config.sh" ]; then . "$_rcfg/lib/rolepod-config.sh"
+elif [ -f "$_rcfg/rolepod-config.sh" ]; then . "$_rcfg/rolepod-config.sh"
+else rolepod_cfg_load() { ROLEPOD_CFG_GATES=soft; ROLEPOD_CFG_NUDGE=on; }; fi
 
 INPUT=$(cat 2>/dev/null || echo '{}')
 SESSION_STATE="$(dirname "$0")/lib/session_state.py"
@@ -59,6 +63,12 @@ EOF
 # A sub-agent's prompt (payload carries a non-empty agent_id) gets no nudge.
 [ "${CHILD:-0}" = "1" ] && exit 0
 CTX=${CTX:-0}; [ "$SID" = "-" ] && SID=""
+
+# Only a prompt that could draw a note pays the config read; nudge off → silent.
+if [ "$ROUTE" = "stale" ] || [ "$AUTO" = "1" ] || [ "$CTX" -ge 400000 ] 2>/dev/null; then
+  rolepod_cfg_load
+  [ "$ROLEPOD_CFG_NUDGE" = "off" ] && exit 0
+fi
 
 CTX_MSG=""
 CTX_LINE=400000
@@ -103,7 +113,7 @@ fi
 # itself — the manual append was measured at 0 lines in every product repo.
 ROUTE_MSG=""
 if [ "$ROUTE" = "stale" ]; then
-  ROUTE_MSG="⟂ route: a commission with no tier stated since your last request. Fix: before the first edit, R2 → one line: Route: R2 (one file + test) → <skill> · Owner <path role> · <reason>; R3/R4 → the full block (Tier, Routing, Reason, Skipping), a high-risk path starting at write-spec. R0 answer only · R1 trivial edit · R2 one file + test · R3 multi-file · R4 high-risk; R2-R4 → using-rolepod. The hook records it; blast radius sets the tier, not feature age. Exception: a literal follow-up inside an already-routed task → say 'same task' and continue. (off: ROLEPOD_NUDGE_OFF=1) "
+  ROUTE_MSG="⟂ route: a commission with no tier stated since your last request. Fix: before the first edit, R2 → one line: Route: R2 (one file + test) → <skill> · Owner <path role> · <reason>; R3/R4 → the full block (Tier, Routing, Reason, Skipping), a high-risk path starting at write-spec. R0 answer only · R1 trivial edit · R2 one file + test · R3 multi-file · R4 high-risk; R2-R4 → using-rolepod. The hook records it; blast radius sets the tier, not feature age. Exception: a literal follow-up inside an already-routed task → say 'same task' and continue. "
 fi
 
 # Auto-resume (v2.100.0): after a usage-limit pause the harness sends

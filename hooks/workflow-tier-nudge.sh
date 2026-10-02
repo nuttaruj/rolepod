@@ -28,12 +28,20 @@
 # skill reminder cannot catch after the fact.
 #
 # Deny rows still log phase: dispatch-gate (read by make stats).
-# ROLEPOD_GATES_SOFT=1 (user-set) degrades a deny to a nudge, logged to
-# bypass.log. ROLEPOD_NUDGE_OFF=1 silences the hook entirely.
+# The user's gates setting off (hooks/lib/rolepod-config.sh) degrades a deny to
+# a nudge, logged to bypass.log; the nudge setting off silences the hook.
+# The config is read only for a Workflow call.
 set -uo pipefail
-[ "${ROLEPOD_NUDGE_OFF:-0}" = "1" ] && exit 0
+_rcfg="${BASH_SOURCE[0]%/*}"; [ "$_rcfg" != "${BASH_SOURCE[0]}" ] || _rcfg=.
+if [ -f "$_rcfg/lib/rolepod-config.sh" ]; then . "$_rcfg/lib/rolepod-config.sh"
+elif [ -f "$_rcfg/rolepod-config.sh" ]; then . "$_rcfg/rolepod-config.sh"
+else rolepod_cfg_load() { ROLEPOD_CFG_GATES=soft; ROLEPOD_CFG_NUDGE=on; }; fi
 INPUT=$(cat 2>/dev/null || true)
 [ -n "$INPUT" ] || exit 0
+case "$INPUT" in *Workflow*) ;; *) exit 0 ;; esac
+rolepod_cfg_load
+[ "$ROLEPOD_CFG_NUDGE" = "off" ] && exit 0
+export ROLEPOD_CFG_GATES
 
 SESSION_STATE="$(dirname "$0")/lib/session_state.py"
 [ -f "$SESSION_STATE" ] || exit 0
@@ -214,7 +222,7 @@ for i, pos in enumerate(call_pos):
         if strong_model or strong_role:
             strong_fanout.append(stage or "(no phase)")
 
-soft = os.environ.get("ROLEPOD_GATES_SOFT", "0") == "1"
+soft = os.environ.get("ROLEPOD_CFG_GATES", "soft") == "off"   # gates off = a deny becomes a nudge
 costly = cls == "strong" or (bool(lead) and cls == "unknown")
 why = ("strong class" if cls == "strong" else "unknown family, priced as strong")
 
@@ -232,7 +240,7 @@ if costly and bare_fanout and strong_fanout:
         "(agentType:\x27rolepod:<role>\x27); read/browse/sweep → agentType:\x27rolepod:scout\x27 or "
         "model:\x27haiku\x27; per-item verify → model:\x27sonnet\x27, effort:\x27high\x27; ONE strong slot on the "
         "single review call. "
-        "Exception: none — pin the fan-out; ROLEPOD_GATES_SOFT=1 (user-set) warns."
+        "Exception: none — pin the fan-out."
         % (", ".join(sorted(set(bare_fanout)))[:60], lead or "unknown model", why,
            ", ".join(sorted(set(strong_fanout)))[:60]))
 elif costly and bare_fanout:
@@ -244,7 +252,7 @@ elif costly and bare_fanout:
         "(agentType:\x27rolepod:<role>\x27, which pins its tier); read/browse/sweep → "
         "agentType:\x27rolepod:scout\x27 or model:\x27haiku\x27; per-item "
         "verify → model:\x27sonnet\x27, effort:\x27high\x27; ONE strong slot on the single review call. "
-        "Exception: none — pin the fan-out; ROLEPOD_GATES_SOFT=1 (user-set) warns."
+        "Exception: none — pin the fan-out."
         % (", ".join(sorted(set(bare_fanout)))[:120], lead or "unknown model", why))
 elif strong_fanout:
     verdict = "strong-fanout"
@@ -253,7 +261,7 @@ elif strong_fanout:
         "⛔ fleet-tier: strong model pinned on fan-out stage(s) %s — the top price × N. "
         "Fix: a fan-out runs a non-strong rolepod role (agentType:\x27rolepod:<role>\x27, which pins its "
         "tier and trims fixed context) or model:\x27haiku\x27 / model:\x27sonnet\x27; keep ONE strong call outside the fan-out "
-        "for the judge. Exception: ROLEPOD_GATES_SOFT=1 (user-set) warns."
+        "for the judge."
         % ", ".join(sorted(set(strong_fanout)))[:120])
 elif bare_writer:
     verdict = "bare-writer"
@@ -263,12 +271,11 @@ elif bare_writer:
         "agentType:\x27rolepod:<role>\x27 (backend-developer / frontend-developer / devops-sre; E2E tests → "
         "qa-tester). model: alone pins the tier, not the write permission — its edits are blocked at the "
         "first Write. Fix: add agentType to every call that edits files; read-only calls may stay bare. "
-        "Exception: a stage that only reads → name it so (Research / Verify); ROLEPOD_GATES_SOFT=1 "
-        "(user-set) warns." % ", ".join(sorted(set(bare_writer)))[:120])
+        "Exception: a stage that only reads → name it so (Research / Verify)." %", ".join(sorted(set(bare_writer)))[:120])
 
 if verdict:
     if soft:
-        _log_bypass("workflow-tier-nudge", "ROLEPOD_GATES_SOFT")
+        _log_bypass("workflow-tier-nudge", "config:gates=off")
         ctx(reason_txt)
     else:
         _log_gate(ti, script, lead, cls, n_calls, verdict, sorted(set(stages)))

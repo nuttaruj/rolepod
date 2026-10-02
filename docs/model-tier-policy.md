@@ -106,8 +106,7 @@ never passes a model or effort flag (the phase-log records `model:
 default`). The only place a model flag is legitimate on an external call is
 the **vertical fallback** — the Lead consulting its own CLI at a stronger
 tier — because that CLI IS the Lead. The pool is **opt-in** and the user's
-choice: `~/.rolepod/cross-family` (machine) / `.rolepod/cross-family`
-(project), one CLI per line; no file or `none` = off, and the SessionStart
+choice: set `pool` in `~/.rolepod/config.json` (machine-wide only, no project override); space-separated CLI names per kind; `pool.cross-family: "off"` or unset key = off, and the SessionStart
 context asks once rather than enabling anything; the runner excludes the
 Lead's own CLI and drops members that fail at invoke.
 

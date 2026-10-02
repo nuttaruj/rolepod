@@ -6,7 +6,7 @@ An external review routes to a **different CLI** than the Lead's, never to the L
 
 ## When the external runs
 
-- **The pool is the user's choice, and it is opt-in** (`.rolepod/cross-family`, then `~/.rolepod/cross-family`; no file or `none` = off). Never turn it on unasked.
+- **The pool is the user's choice, and it is opt-in** (set `pool` in `~/.rolepod/config.json` machine-wide only; unset key or `pool.cross-family: "off"` = off). Never turn it on unasked.
 - **Mandatory at the pool's tier.** Pool enabled + a logic-bearing code diff at the pool's tier (R4 unless the pool file sets `tier = R2|R3`) + a usable member → the strong pass is the external. Below that tier, and any doc / comment / config / rename-only diff, stay internal unless the user asks. At R4 it is the adversarial pass (`--adversarial`, the `adversarial-review` skill); at the pool's tier R2/R3 it is the standard pass.
 - **What the external replaces.** At R4 it is the adversarial pass beside `security-engineer` and the lens pair; at the pool's tier R2/R3 it replaces the lens pair — never beside it on round 1.
 - **Run it:** R4 → the `adversarial-review` skill; the pool's tier R2/R3 → `cross-family` kind review without `--adversarial`, else the lens pair.

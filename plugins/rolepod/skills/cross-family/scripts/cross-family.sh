@@ -18,22 +18,21 @@
 # away, and nothing measured the gap. This script is the whole path.
 #
 # Rules it encodes:
-#   pool     OPT-IN. <git-root>/.rolepod/cross-family (project) overrides
-#            ~/.rolepod/cross-family (machine). NO file = OFF, `none` = OFF —
-#            rolepod never enables cross-family on its own and never asks
-#            unprompted: the user asks for it → `--setup` (guided, two questions).
-#            Format (v2.141.0) — two sections, members in preference order,
-#            options after a name; a missing key falls back to `review`:
-#                [reviewer]
-#                review = cursor agy codex stall=900   # the default order for every kind; stall= binds to codex
-#                consult = agy codex                   # debug consults want the fast answer first
+#   pool     OPT-IN, read from the machine setting by the shared reader
+#            (rolepod_config.py `pool`, found beside this script, else the
+#            source repo's hooks/lib; a missing reader = OFF). Nothing set =
+#            OFF, `review none` = OFF — rolepod never enables cross-family on
+#            its own and never asks unprompted: the user asks for it → `--setup`
+#            (guided, two questions). The reader hands over members in
+#            preference order, options after a name; a missing kind falls back to `review`:
+#                review   = cursor agy codex stall=900   # the default order for every kind; stall= binds to codex
+#                consult  = agy codex                    # debug consults want the fast answer first
 #                critique = cursor agy codex
-#                tier = R2   # the external replaces universal-reviewer from this tier up (default R4)
-#                [implement]
-#                cli = codex claude                    # which members may WRITE (--kind implement)
-#            The older shape (bare lines + `consult: agy codex` per-kind lines) still reads.
+#                tier     = R2   # the external replaces universal-reviewer from this tier up (default R4)
+#                implement = codex claude                # which members may WRITE (--kind implement)
+#            The older INI pool files are never read.
 #            Names: codex claude agy cursor opencode. Gemini CLI support was
-#            removed in v2.177.0 — a `gemini` line in the pool file hits the
+#            removed in v2.177.0 — a `gemini` entry in the pool hits the
 #            generic unknown-CLI-name handling; list agy instead.
 #   cli      only the Lead's OWN CLI is excluded. The model family is
 #            recorded for information (agy = google; cursor / opencode = the
@@ -350,10 +349,7 @@ for cli in $ALL_CLIS; do
 done
 if [ "$MODE" = "candidates" ]; then printf '%s\n' $CANDIDATES; exit 0; fi
 if [ "$MODE" = "setup" ]; then   # ── guided setup, ON REQUEST only (nothing ever asks unprompted; a one-CLI machine has nothing to set) ──
-  # `--setup` always writes ~/.rolepod/cross-family (machine-wide); a repo's own
-  # .rolepod/cross-family overrides it, so a project override left behind
-  # silently defeats a fresh --setup — surface it, do not touch it.
-  setup_override_note() { [ -f "$ROOT/.rolepod/cross-family" ] && [ "$ROOT/.rolepod/cross-family" != "$HOME/.rolepod/cross-family" ] && echo "note: $ROOT/.rolepod/cross-family overrides the machine file in this repo — --setup writes ~/.rolepod/cross-family only; edit or delete the project file to change the pool here"; }
+  # `--setup` writes the machine-wide pool setting only; no repo file overrides it.
   _inst=""; for _cn in $CANDIDATES; do _inst="$_inst${_inst:+ }${_cn%%(*}"; done
   _n=$(printf '%s' "$_inst" | wc -w | tr -d ' ')
   if [ -z "$SETUP_REVIEW" ]; then
@@ -362,70 +358,143 @@ if [ "$MODE" = "setup" ]; then   # ── guided setup, ON REQUEST only (nothing
     echo "Ask the user ONE question at a time, then write:"
     echo "  1. review — which CLIs review (adversarial review / consult / critique), in preference order? e.g. cursor agy codex"
     echo "  2. implement — let a different CLI BUILD a ticket (--kind implement)? same (= the review order) · none · or its own order"
-    echo "  then: cross-family.sh --setup review=\"<order>\" implement=<same|none|\"<order>\">   (writes ~/.rolepod/cross-family, keeps a backup)"
-    echo "  current file: $( [ -f "$HOME/.rolepod/cross-family" ] && echo "$HOME/.rolepod/cross-family" || echo none )"
-    setup_override_note
+    echo "  then: cross-family.sh --setup review=\"<order>\" implement=<same|none|\"<order>\">   (writes the machine pool setting, keeps a backup)"
     exit 0
   fi
   _rv=$(printf '%s' "$SETUP_REVIEW" | tr 'A-Z' 'a-z' | tr -s ',[:space:]' ' ' | sed -e 's/^ //' -e 's/ $//')
   _im=$(printf '%s' "${SETUP_IMPL:-same}" | tr 'A-Z' 'a-z' | tr -s ',[:space:]' ' ' | sed -e 's/^ //' -e 's/ $//')
   [ "$_im" = "same" ] && _im="$_rv"
+  [ -n "$_rv" ] && [ -n "$_im" ] || { echo "cross-family: --setup: review and implement need at least one CLI name (or none)" >&2; exit 2; }
   for _w in $_rv $_im; do   # every name must be an installed CLI (or none)
     [ "$_w" = "none" ] && continue
     case " $_inst " in *" $_w "*) ;; *) echo "cross-family: --setup: '$_w' is not an installed CLI (installed: ${_inst:-none}); names: codex claude agy cursor opencode" >&2; exit 2 ;; esac
   done
-  _f="$HOME/.rolepod/cross-family"; mkdir -p "$HOME/.rolepod" 2>/dev/null
-  [ -f "$_f" ] && cp -p "$_f" "$_f.bak-$(date +%Y%m%dT%H%M%S)" 2>/dev/null
-  { echo "# rolepod cross-family pool — machine-wide (a repo's .rolepod/cross-family overrides this)."
-    echo "# Members in preference order; the Lead's own CLI is skipped at run time."
-    echo "# \`review = none\` = off. Options after a name (stall=900); a missing key falls back to review."
-    echo "# Written by: cross-family.sh --setup review=\"$_rv\" implement=\"$_im\"   ($(date -u +%Y-%m-%dT%H:%M:%SZ))"
-    echo; echo "[reviewer]"; echo "review = $_rv"; echo; echo "[implement]"; echo "cli = $_im"; } > "$_f"
-  echo "written: $_f"; echo "  [reviewer] review = $_rv"; echo "  [implement] cli = $_im"
-  setup_override_note
-  [ "$_im" = "none" ] && echo "  (implement off — reviews still run; enable later with --setup or by editing the file)"
+  # Merge into the machine setting: every other key (and the other pool keys) stays; a file that is
+  # not valid JSON is never overwritten; the previous file is kept as a backup; the write is atomic.
+  python3 -I - "$HOME/.rolepod/config.json" "$_rv" "$_im" <<'PYS'
+import glob, json, os, re, shutil, sys, tempfile, time
+path, rv, im = sys.argv[1:4]
+real = os.path.realpath(path)   # a symlinked setting is written through, not replaced by a plain file
+def die(msg):
+    sys.stderr.write("cross-family: --setup: %s\n" % msg)
+    sys.exit(2)
+d = {}
+mode = 0o600
+if os.path.exists(real):
+    try:
+        mode = os.stat(real).st_mode & 0o777
+        with open(real) as f:
+            d = json.load(f)
+        if not isinstance(d, dict):
+            raise ValueError("not an object")
+    except Exception:
+        die("the machine setting file could not be read as a JSON object, so it was left untouched. The user fixes or removes it, then --setup runs again")
+p = d.get("pool") if isinstance(d.get("pool"), dict) else {}
+rev = p.get("reviewer") if isinstance(p.get("reviewer"), dict) else {}
+imp = p.get("implement") if isinstance(p.get("implement"), dict) else {}
+rev["review"] = rv
+imp["cli"] = im
+p["cross-family"] = "on"
+p["reviewer"] = rev
+p["implement"] = imp
+d["pool"] = p
+try:
+    os.makedirs(os.path.dirname(real), exist_ok=True)
+    if os.path.exists(real):
+        shutil.copy2(real, "%s.bak-%s-%d" % (real, time.strftime("%Y%m%dT%H%M%S"), os.getpid()))
+        mine = re.compile(r"\.bak-\d{8}T\d{6}-\d+$")   # only the names this writes; a user's own .bak-* stays
+        old = sorted((b for b in glob.glob(glob.escape(real) + ".bak-*") if mine.search(b)), reverse=True)
+        for b in old[3:]:   # keep the newest three backups (the name carries the time)
+            try:
+                os.remove(b)
+            except OSError:
+                pass
+    fd, tmp = tempfile.mkstemp(dir=os.path.dirname(real), prefix=".config.json.")
+    try:
+        with os.fdopen(fd, "w") as f:
+            json.dump(d, f, indent=2)
+            f.write("\n")
+        os.chmod(tmp, mode)
+        os.replace(tmp, real)
+    except BaseException:
+        try:
+            os.remove(tmp)
+        except OSError:
+            pass
+        raise
+except OSError:
+    die("the machine setting could not be written (permissions or a read-only home); nothing was changed")
+PYS
+  _src=$?; [ "$_src" -eq 0 ] || exit 2
+  echo "written: the machine pool setting"; echo "  review: $_rv"; echo "  implement: $_im"
+  [ "$_im" = "none" ] && echo "  (implement off — reviews still run; enable later with --setup)"
   exit 0
 fi
 
-# ── Config (opt-in: no file = off) ─────────────────────────────────────
-# default list = bare lines; `<kind>:` lines = per-kind order; `key=value`
-# tokens attach to the CLI named just before them (timeout= and stall=).
-CFG=""; CFG_SRC=""; STATE="on"
-if [ -n "$CFG_FLAG" ] && [ -f "$CFG_FLAG" ]; then CFG="$CFG_FLAG"; CFG_SRC="$(head -1 "$CFG_FLAG.src" 2>/dev/null || echo "$CFG_FLAG") (job snapshot)"
-elif [ -f "$ROOT/.rolepod/cross-family" ]; then CFG="$ROOT/.rolepod/cross-family"; CFG_SRC="$CFG"
-elif [ -f "$HOME/.rolepod/cross-family" ]; then CFG="$HOME/.rolepod/cross-family"; CFG_SRC="$CFG"; fi
-DEFAULT_LIST=""; KIND_LIST=""; TO_LIST=""; ST_LIST=""; _sec=""; REVIEW_TIER="R4"
-if [ -n "$CFG" ]; then
+# ── Pool (opt-in: nothing set = off) ───────────────────────────────────
+# The one reader (rolepod_config.py `pool`) prints `enabled=on|off`, then
+# review= consult= critique= tier= implement= lines. A reader that is missing,
+# broken or silent means OFF: a diff leaves the machine only when the setting
+# clearly says so. A detached child reads the snapshot its parent wrote (--config).
+# review = the default order every kind falls back to; consult / critique /
+# implement = that kind only; `key=value` tokens (timeout= stall=) attach to
+# the CLI named just before them.
+CFG_SRC="no pool is set"; STATE="off"; POOL_TXT=""
+DEFAULT_LIST=""; KIND_LIST=""; TO_LIST=""; ST_LIST=""; REVIEW_TIER="R4"
+# The reader sits beside this script in every rendered tree; only the source layout (core/skills/cross-family/scripts)
+# may fall back to its own hooks/lib — never a path inside the repo under review.
+_rdr=""; _rdd="$(cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null && pwd)"
+if [ -f "$_rdd/rolepod_config.py" ]; then _rdr="$_rdd/rolepod_config.py"
+else case "$_rdd" in */core/skills/cross-family/scripts) [ -f "$_rdd/../../../../hooks/lib/rolepod_config.py" ] && _rdr="$_rdd/../../../../hooks/lib/rolepod_config.py" ;; esac; fi
+# --config is the detached child's own snapshot: honored only with --job and a path under this repo's jobs dir
+if [ -n "$CFG_FLAG" ]; then
+  # exactly <job dir>/cross-family of the --job given, under the jobs dir (resolved paths: /var vs /private/var)
+  _cfd=$(cd "$(dirname "$CFG_FLAG")" 2>/dev/null && pwd -P); _jbd=$(cd "$JOBS" 2>/dev/null && pwd -P); _jod=$(cd "${JOB_DIR:-/nonexistent}" 2>/dev/null && pwd -P)
+  case "$CFG_FLAG" in */../*|*/..) CFG_FLAG="" ;; esac
+  [ -n "$JOB_DIR" ] && [ -n "$_cfd" ] && [ -n "$_jbd" ] && [ -n "$_jod" ] && [ ! -L "$CFG_FLAG" ] && [ "$(basename "$CFG_FLAG")" = cross-family ] || CFG_FLAG=""
+  [ "$_cfd" = "$_jod" ] || CFG_FLAG=""
+  case "$_jod/" in "$_jbd"/*) ;; *) CFG_FLAG="" ;; esac
+  [ -n "$CFG_FLAG" ] && [ -f "$CFG_FLAG" ] || { echo "cross-family: --config is internal to detached jobs (it needs --job and a snapshot under the jobs dir)" >&2; exit 2; }
+fi
+_pool_raw=""; _pool_warn=""
+if [ -n "$CFG_FLAG" ]; then _pool_raw=$(cat "$CFG_FLAG" 2>/dev/null || true)
+elif [ -n "$_rdr" ]; then
+  _ef=$(mktemp "${TMPDIR:-/tmp}/rolepod-xfpool.XXXXXX" 2>/dev/null) || _ef=/dev/null
+  _pool_raw=$(python3 -I "$_rdr" pool 2>"$_ef" || true)   # stdout is the data; stderr (the reader's warnings) never mixes into it
+  [ "$_ef" = /dev/null ] || { _pool_warn=$(tr -d '\000-\010\013-\037\177' < "$_ef" 2>/dev/null | head -5); rm -f "$_ef"; }
+  [ -z "$_pool_warn" ] || printf '%s\n' "$_pool_warn" | sed 's/^/cross-family: /' >&2
+else echo "cross-family: the pool reader is missing from this install, so the pool is off. Reinstall rolepod" >&2; CFG_SRC="the pool reader is missing"; fi
+POOL_TXT=$(printf '%s\n' "$_pool_raw" | grep -E '^(enabled|configured|review|consult|critique|tier|implement)=[^[:cntrl:]]*$' || true)   # only the reader's own keys, one line each
+case "$(printf '%s\n' "$POOL_TXT" | grep '^configured=')" in configured=yes) [ "$STATE" = off ] && CFG_SRC="the pool is turned off" ;; esac
+if [ "$(printf '%s\n' "$POOL_TXT" | head -1)" = "enabled=on" ]; then
+  CFG_SRC="the pool setting"
+  STATE="on"
   while IFS= read -r _ln || [ -n "$_ln" ]; do
-    _ln=$(printf '%s' "$_ln" | sed -e 's/#.*//' | tr 'A-Z' 'a-z' | tr -s '[:space:]' ' ' | sed -e 's/^ //' -e 's/ $//')
-    [ -n "$_ln" ] || continue
-    case "$_ln" in "["*"]") _sec="${_ln#[}"; _sec="${_sec%]}"; continue ;; esac   # [reviewer] / [implement] section headers (v2.141.0 shape)
-    case "$_ln" in   # tier = R2|R3|R4 (any section; spec D1) — never adds a member, so it is peeled off before the member-list cases
-      tier\ =*|tier=*) _tv="${_ln#*=}"; _tv="${_tv# }"
-        case "$_tv" in
-          r2) REVIEW_TIER=R2 ;;
-          r3) REVIEW_TIER=R3 ;;
-          r4) REVIEW_TIER=R4 ;;
-          *) echo "cross-family: ignoring tier='$_tv' in $CFG (R2, R3 or R4)" >&2; REVIEW_TIER=R4 ;;
-        esac
-        continue ;;
-    esac
+    _key="${_ln%%=*}"; [ "$_key" != "$_ln" ] || continue
+    _ln=$(printf '%s' "${_ln#*=}" | tr 'A-Z' 'a-z' | tr -s '[:space:]' ' ' | sed -e 's/^ //' -e 's/ $//')
     _k=""
-    case "$_ln" in   # `key = members` lines: review = the default order every kind falls back to; consult / critique / cli(implement) = that kind only
-      review\ =*|review=*|default\ =*|default=*) _ln="${_ln#*=}"; _ln="${_ln# }" ;;
-      consult\ =*|consult=*|critique\ =*|critique=*) _k="${_ln%%=*}"; _k="${_k% }"; _ln="${_ln#*=}"; _ln="${_ln# }" ;;
-      cli\ =*|cli=*) _k=implement; _ln="${_ln#*=}"; _ln="${_ln# }" ;;
-      review:*|consult:*|critique:*|implement:*) _k="${_ln%%:*}"; _ln="${_ln#*:}" ;;   # the pre-v2.141 `kind:` shape still reads
+    case "$_key" in
+      tier) case "$_ln" in
+              r2) REVIEW_TIER=R2 ;;
+              r3) REVIEW_TIER=R3 ;;
+              r4) REVIEW_TIER=R4 ;;
+              *) echo "cross-family: ignoring the review tier '$_ln' (R2, R3 or R4)" >&2; REVIEW_TIER=R4 ;;
+            esac
+            continue ;;
+      review) ;;
+      consult|critique) _k="$_key" ;;
+      implement) _k=implement ;;
+      *) continue ;;
     esac
     _acc=""; _last=""
     for _t in $_ln; do
       case "$_t" in
-        *=*) _key="${_t%%=*}"; _val="${_t#*=}"
-             if [ "$_key" = "timeout" ] && [ -n "$_last" ]; then
-               if ! is_num "$_val"; then echo "cross-family: ignoring timeout='$_val' for $_last in $CFG (whole seconds only)" >&2
+        *=*) _okey="${_t%%=*}"; _val="${_t#*=}"
+             if [ "$_okey" = "timeout" ] && [ -n "$_last" ]; then
+               if ! is_num "$_val"; then echo "cross-family: ignoring timeout='$_val' for $_last (whole seconds only)" >&2
                elif [ -z "$_k" ] || [ "$_k" = "$KIND" ]; then TO_LIST="$TO_LIST $_last=$_val"; fi   # a kind line's options bind to that kind only
-             elif [ "$_key" = "stall" ] && [ -n "$_last" ]; then
-               if ! is_num "$_val"; then echo "cross-family: ignoring stall='$_val' for $_last in $CFG (whole seconds only)" >&2
+             elif [ "$_okey" = "stall" ] && [ -n "$_last" ]; then
+               if ! is_num "$_val"; then echo "cross-family: ignoring stall='$_val' for $_last (whole seconds only)" >&2
                elif [ -z "$_k" ] || [ "$_k" = "$KIND" ]; then ST_LIST="$ST_LIST $_last=$_val"; fi
              fi ;;
         *) _last="$_t"; _acc="$_acc${_acc:+ }$_t" ;;
@@ -433,16 +502,17 @@ if [ -n "$CFG" ]; then
     done
     if [ -z "$_k" ]; then DEFAULT_LIST="$DEFAULT_LIST${DEFAULT_LIST:+ }$_acc"
     elif [ "$_k" = "$KIND" ]; then KIND_LIST="$_acc"; fi
-  done < "$CFG"
+  done <<EOF
+$POOL_TXT
+EOF
   printf '%s' "$DEFAULT_LIST" | grep -qw none && STATE="none"
   [ -z "$DEFAULT_LIST$KIND_LIST" ] && STATE="none"
-else
-  STATE="off"; CFG_SRC="no ~/.rolepod/cross-family (opt-in not given)"
 fi
-[ "$STATE" = "on" ] || REVIEW_TIER="R4"   # a `tier =` line under `review = none` (or an empty/off pool) never claims an external that cannot run
+[ "$STATE" = "on" ] || REVIEW_TIER="R4"   # a tier under an off or empty pool never claims an external that cannot run
 CONFIGURED="${KIND_LIST:-$DEFAULT_LIST}"
-[ "$KIND_LIST" = "none" ] && STATE="none"   # `cli = none` / `consult = none`: that kind is off while the others keep their lists
-ENABLE_HINT="enable: printf '[reviewer]\\nreview = codex claude agy cursor opencode\\n\\n[implement]\\ncli = codex claude\\n' > ~/.rolepod/cross-family  (list EVERY CLI you want, this one included — the Lead's own CLI is skipped at run time, so one file serves every Lead; your order = preference; 'consult: agy codex' = per-kind order; project override: <git-root>/.rolepod/cross-family; 'none' = keep off)"
+[ "$KIND_LIST" = "none" ] && STATE="none"   # `implement = none` / `consult = none`: that kind is off while the others keep their lists
+[ "$STATE" = "none" ] && CFG_SRC="the pool lists no CLI for this kind (none)"
+ENABLE_HINT="enable: only when the user asks — run cross-family.sh --setup (guided: it lists the installed CLIs and records the pool; name EVERY CLI you want, this one included — the Lead's own CLI is skipped at run time; your order = preference)"
 
 stall_for() { # $1 cli → seconds of silence that count as dead (flag > config > 600)
   [ -n "$FLAG_STALL" ] && { echo "$FLAG_STALL"; return; }
@@ -489,8 +559,8 @@ PYI
 POOL_ROWS=""; USABLE=""; SEEN_FAMILIES=""; IMPL_SKIPS=""
 [ "$STATE" = "on" ] && [ "$KIND" = "review" ] && IMPL_SKIPS=$(implement_skips)   # only a live pool pays the phase-log pass
 if [ "$STATE" != "on" ]; then
-  if [ "$STATE" = "none" ]; then POOL_ROWS="-  off  -  cross-family disabled by $CFG_SRC (none)"
-  else POOL_ROWS="-  off  -  cross-family is OPT-IN and not enabled on this machine"; fi
+  if [ "$STATE" = "none" ]; then POOL_ROWS="-  off  -  cross-family disabled: $CFG_SRC"
+  else POOL_ROWS="-  off  -  cross-family is OPT-IN and not enabled on this machine ($CFG_SRC)"; fi
 else
   for cli in $CONFIGURED; do
     case " $ALL_CLIS " in *" $cli "*) ;; *) POOL_ROWS="$POOL_ROWS
@@ -524,7 +594,7 @@ print_pool() {
   elif [ "$STATE" = "off" ]; then
     echo "  → OFF. Installed candidates: ${CANDIDATES:-none}"
     echo "  → $ENABLE_HINT"
-  elif [ "$STATE" = "none" ]; then echo "  → OFF by choice (none). Installed candidates: ${CANDIDATES:-none}; edit $CFG_SRC to enable"
+  elif [ "$STATE" = "none" ]; then echo "  → OFF by choice (none). Installed candidates: ${CANDIDATES:-none}; the user turns it on with --setup"
   else echo "  → configured but nothing usable (see rows) — internal strong reviewer is the pass; recorded as a limitation"; fi
 }
 
@@ -665,7 +735,7 @@ implement_restore_all() { # $1 tree before, $2 save dir → every change since $
   printf '%s %s' "$(printf '%s\n' "$_ra" | grep -c '^reverted' || true)" "$(printf '%s\n' "$_ra" | grep -c '^unsafe' || true)"
 }
 git_dir() { _gd=$(git -C "$ROOT" rev-parse --git-dir 2>/dev/null); case "$_gd" in /*) ;; *) _gd="$ROOT/$_gd" ;; esac; printf '%s' "$_gd"; }
-ROLEPOD_CFG="cross-family risk-paths docs-tracked"   # rolepod config under .rolepod/ — ignored by every rolepod-using repo's info/exclude, so guarded as metadata, never via the tree
+ROLEPOD_CFG="risk-paths docs-tracked config.json"   # rolepod config under .rolepod/ — ignored by every rolepod-using repo's info/exclude, so guarded as metadata, never via the tree
 prime_rolepod_exclude() { # what every rolepod session-start hook does: `.rolepod/` in .git/info/exclude — done BEFORE the metadata copy so the member's own hook changes nothing
   _pe=$(git -C "$ROOT" rev-parse --git-path info/exclude 2>/dev/null); [ -n "$_pe" ] || return 0
   case "$_pe" in /*) ;; *) _pe="$ROOT/$_pe" ;; esac
@@ -1052,8 +1122,7 @@ if [ "$DETACH" -eq 1 ]; then
   # caller path that is already gone.
   snap_or_die() { mkdir -p "$(dirname "$2")" 2>/dev/null; cp "$1" "$2" 2>/dev/null || { echo "cross-family: cannot snapshot $1 into $JD — not detaching" >&2; rm -rf "$JD"; exit 2; }; }
   # Snapshot the pool the user had when they started it.
-  snap_or_die "$CFG" "$JD/cross-family"
-  printf '%s\n' "$CFG" > "$JD/cross-family.src"
+  printf '%s\n' "$POOL_TXT" > "$JD/cross-family" 2>/dev/null || { echo "cross-family: cannot snapshot the pool into $JD — not detaching" >&2; rm -rf "$JD"; exit 2; }
   # Brief + attachments are snapshotted too — the parent may return before the
   # child re-execs and reads them; the caller's paths (or the caller itself)
   # can be gone by then.

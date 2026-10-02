@@ -123,6 +123,10 @@ render_skills() {
   for skill_dir in "$REPO_DIR"/core/skills/*/; do
     local name; name="$(basename "$skill_dir")"
     cp -R "$skill_dir" "$skills_dst/$name"
+    # The pool is read from the machine setting by the shared reader; the runner
+    # looks for it beside itself (its source copy lives in hooks/lib/). A tree
+    # without it runs with the pool OFF, never on.
+    [ "$name" = "cross-family" ] && cp "$REPO_DIR/hooks/lib/rolepod_config.py" "$skills_dst/$name/scripts/rolepod_config.py"
     [ -f "$skill_dir/SKILL.md" ] && \
       render_template "$skill_dir/SKILL.md" "$skills_dst/$name/SKILL.md"
   done
@@ -439,6 +443,7 @@ render_cursor() {
     cp "$REPO_DIR/hooks/$h.sh" "$plugin_dst/scripts/shared/$h.sh"
   done
   cp "$REPO_DIR/hooks/lib/route_check.py" "$plugin_dst/scripts/shared/route_check.py"   # stop → route record (v2.135.0)
+  cp "$REPO_DIR/hooks/lib/rolepod-config.sh" "$REPO_DIR/hooks/lib/rolepod_config.py" "$plugin_dst/scripts/shared/"   # gates.mode, flat beside the gate
   chmod +x "$plugin_dst/scripts/shared/"*.sh 2>/dev/null || true
 }
 
@@ -509,12 +514,14 @@ render_antigravity() {
   # Shared commit gate reused verbatim: pre-tool.sh translates agy's
   # run_command call into the Claude-shape stdin precommit-gate.sh expects
   # and its deny back into agy's {decision, reason}; test-diff-lint.sh rides
-  # along (the gate calls it by dirname). No lib/ — agy has no Claude
+  # along (the gate calls it by dirname), as does the gates.mode reader, flat
+  # (no lib/ dir). agy has no Claude
   # transcript, so the gate takes its non-Claude evidence path (phase-log).
   for h in precommit-gate test-diff-lint; do
     cp "$REPO_DIR/hooks/$h.sh" "$plugin_dst/hooks/$h.sh"
   done
   cp "$REPO_DIR/hooks/lib/route_check.py" "$plugin_dst/hooks/route_check.py"   # Stop → route record (v2.135.0)
+  cp "$REPO_DIR/hooks/lib/rolepod-config.sh" "$REPO_DIR/hooks/lib/rolepod_config.py" "$plugin_dst/hooks/"   # gates.mode, flat beside the gate
   chmod +x "$plugin_dst/hooks/"*.sh 2>/dev/null || true
 }
 
@@ -569,11 +576,13 @@ render_opencode() {
     # opencode) instead of a hand-duplicated JS private-docs check, so a
     # compound `git add -A && git commit` gets the same working-tree read
     # every other CLI's gate has. It exits right after the private-docs
-    # deny for a non-Claude lead — no hooks/lib/ dependency to ship with it.
+    # deny for a non-Claude lead; it reads gates.mode first, so the config
+    # reader (rolepod-config.sh + rolepod_config.py) ships flat beside it.
     for h in fix-loop-breaker precommit-gate; do
       cp "$REPO_DIR/hooks/$h.sh" "$out_dir/plugin/rolepod-shared/$h.sh"
     done
     cp "$REPO_DIR/hooks/lib/route_check.py" "$out_dir/plugin/rolepod-shared/route_check.py"   # session.idle → route record (v2.135.0)
+    cp "$REPO_DIR/hooks/lib/rolepod-config.sh" "$REPO_DIR/hooks/lib/rolepod_config.py" "$out_dir/plugin/rolepod-shared/"   # gates.mode, flat beside the gate
     chmod +x "$out_dir/plugin/rolepod-shared/"*.sh 2>/dev/null || true
   else
     echo "render: missing $adapter_dir/plugin/rolepod.js" >&2; exit 1
