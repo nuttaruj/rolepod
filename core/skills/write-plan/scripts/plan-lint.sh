@@ -1040,12 +1040,20 @@ if (planwt == 1) tpath = substr(tbranch, 1, length(tbranch) - 5)
     printf "`%s`\n", write
     print "## Reviewers"
     if (tier == "R1") print "`none`"
-    else if (tier == "R4" && rmode != "full") {
+    else if (wmode == "lite") {
+      print "Workflow intensity: lite (" wsrc "); this overrides all generic R4, agent-role, specialist, adversarial, and round-2 instructions."
+      if (tier == "R4" || onlycode == 1) {
+        print "Exactly two fresh, isolated `universal-reviewer` contexts in parallel: `lens: spec` and `lens: standards`; same frozen diff/snapshot/hash, separate reports, no access to the other report/findings. Aggregate only after both return. No agents → Lead performs both axes and records the limitation. No formal spec → use the supplied goal and acceptance criteria as the spec-lens input; still run both. One round only; no automatic security/specialist/adversarial review, same-lens rerun, or round 2+. Author fixes verified findings and attaches evidence."
+      } else {
+        print "No in-task review; the track-end review must use exactly two fresh, isolated `universal-reviewer` contexts in parallel (`lens: spec`, `lens: standards`) on one frozen snapshot/hash, with separate reports and aggregate-after-both. No agents → Lead performs both axes and records the limitation. No formal spec → supplied goal/acceptance is the spec-lens input. No automatic specialist, security, adversarial, same-lens rerun, or round 2+."
+      }
+      print "Workflow intensity: lite (" wsrc "); reviewer protocol is standard."
+    } else if (tier == "R4" && wmode == "standard") {
       # standard mode: the security floor at checklist depth and the two lenses, no
       # strong-class attack pass; no round 2+ either.
       print "`security-engineer` (depth: checklist) + `universal-reviewer` `lens: spec` + `universal-reviewer` `lens: standards` in ONE message — no strong-class attack pass in standard mode"
       print "Round 2+ — none in standard: the owner fixes each BLOCKER / MAJOR and attaches its proof."
-      print "Review mode: " rmode " (" rsrc ")"
+      print "Workflow intensity: standard (" wsrc "); reviewer protocol: standard."
     } else if (tier == "R4") {
       r = "`security-engineer` (depth: full) + `universal-reviewer` `lens: spec` + `universal-reviewer` `lens: standards` + the adversarial pass (the `adversarial-review` skill): with a usable pool the `cross-family` skill runner (`bash <cross-family skill folder>/scripts/cross-family.sh --kind review --adversarial --brief <this brief> --attach <diff> --detach`) then `--collect <job> --timeout 540` in the foreground (exit 6 = still running: run it again), else `universal-reviewer` `mode: adversarial` (internal strong, only if the external fails) — the external --detach first, then the rest in ONE message"
       print r
@@ -1055,7 +1063,7 @@ if (planwt == 1) tpath = substr(tbranch, 1, length(tbranch) - 5)
       print "Round 2+ — R2/R3: none; the owner fixes each BLOCKER / MAJOR and attaches its proof (the Command tail, the reviewer repro re-run, or the grep showing the old line gone). R4: only a finding raised by `security-engineer` or the adversarial pass whose fix touches code — the flagging role re-checks the fix delta only, on a balanced model (an external finding → `security-engineer` for security-class, else `universal-reviewer`); at most 5 rounds, rounds 4-5 a fresh fixer on a stronger model; still open after round 5 → stop and hand the user the open findings with the attempt log."
       print "ONE new dispatch with the findings and the fix delta only, never a message to the finished one; <= 15 tool calls. A new issue it finds is a normal finding to fix."
       print "Default to reject until there is evidence: a passing Command tail and a clean security pass."
-      print "Review mode: " rmode " (" rsrc ")"
+      print "Workflow intensity: full (" wsrc "); reviewer protocol: " rmode "."
     } else if (onlycode == 1) {
       # R2 / R3 and the only code task of its track: no track-end review exists, so
       # the owner runs the two lenses itself.
@@ -1136,18 +1144,18 @@ $(printf '%s\n' "$BRIEF_SCAN" | awk '/^R /')
 EOF
     [ "$BRIEF_CODE" -eq 1 ] && BRIEF_ONLYCODE=1
   fi
-  # The review mode (review-code's resolver beside this skill): standard or full.
-  # A missing or failing resolver, or an answer that is not `<mode> (<source>)`, is standard.
-  BRIEF_RMODE="standard"; BRIEF_RSRC="default"
-  RMODE_SH="$(dirname "${BASH_SOURCE[0]}")/../../review-code/scripts/review-mode.sh"
-  if [ -f "$RMODE_SH" ]; then
-    RMODE_OUT=$(cd "$BRIEF_ROOT" 2>/dev/null && bash "$RMODE_SH" --source 2>/dev/null) || RMODE_OUT=""
-    if [[ "$RMODE_OUT" =~ ^(standard|full)\ \(([a-z]+)\)$ ]]; then BRIEF_RMODE="${BASH_REMATCH[1]}"; BRIEF_RSRC="${BASH_REMATCH[2]}"; fi
-  fi
+  # Plan briefs use the active session profile passed by the caller. Config
+  # inspection is separate; a later plan lint must not hot-switch the session.
+  BRIEF_WMODE="${ROLEPOD_SESSION_MODE:-standard}"
+  BRIEF_WSRC="${ROLEPOD_SESSION_SOURCE:-uncaptured}"
+  case "$BRIEF_WMODE" in lite|standard|full) ;; *) BRIEF_WMODE=standard; BRIEF_WSRC=uncaptured ;; esac
+  case "$BRIEF_WSRC" in project|global|default|uncaptured) ;; *) BRIEF_WSRC=uncaptured ;; esac
+  BRIEF_RMODE="standard"
+  [ "$BRIEF_WMODE" = "full" ] && BRIEF_RMODE="full"
   if [ -n "$CONTRACT" ]; then
-    awk -v rx="$TASK_RX" -v want="$BRIEF_N" -v planpath="$PLAN" -v repo="$BRIEF_REPO" -v hascontract=1 -v onmain="$BRIEF_MAIN" -v planwt="$BRIEF_PLANWT" -v tbranch="$BRIEF_TBRANCH" -v onlycode="$BRIEF_ONLYCODE" -v rmode="$BRIEF_RMODE" -v rsrc="$BRIEF_RSRC" "$CLEANFILES_AWK$FENCE_AWK$FIELD_AWK$BRIEF_AWK" "$PLAN" "$CONTRACT"
+    awk -v rx="$TASK_RX" -v want="$BRIEF_N" -v planpath="$PLAN" -v repo="$BRIEF_REPO" -v hascontract=1 -v onmain="$BRIEF_MAIN" -v planwt="$BRIEF_PLANWT" -v tbranch="$BRIEF_TBRANCH" -v onlycode="$BRIEF_ONLYCODE" -v rmode="$BRIEF_RMODE" -v wmode="$BRIEF_WMODE" -v wsrc="$BRIEF_WSRC" "$CLEANFILES_AWK$FENCE_AWK$FIELD_AWK$BRIEF_AWK" "$PLAN" "$CONTRACT"
   else
-    awk -v rx="$TASK_RX" -v want="$BRIEF_N" -v planpath="$PLAN" -v repo="$BRIEF_REPO" -v hascontract=0 -v onmain="$BRIEF_MAIN" -v planwt="$BRIEF_PLANWT" -v tbranch="$BRIEF_TBRANCH" -v onlycode="$BRIEF_ONLYCODE" -v rmode="$BRIEF_RMODE" -v rsrc="$BRIEF_RSRC" "$CLEANFILES_AWK$FENCE_AWK$FIELD_AWK$BRIEF_AWK" "$PLAN"
+    awk -v rx="$TASK_RX" -v want="$BRIEF_N" -v planpath="$PLAN" -v repo="$BRIEF_REPO" -v hascontract=0 -v onmain="$BRIEF_MAIN" -v planwt="$BRIEF_PLANWT" -v tbranch="$BRIEF_TBRANCH" -v onlycode="$BRIEF_ONLYCODE" -v rmode="$BRIEF_RMODE" -v wmode="$BRIEF_WMODE" -v wsrc="$BRIEF_WSRC" "$CLEANFILES_AWK$FENCE_AWK$FIELD_AWK$BRIEF_AWK" "$PLAN"
   fi
   exit $?
 fi

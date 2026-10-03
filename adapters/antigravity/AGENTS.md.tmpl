@@ -44,7 +44,8 @@ A conflict that risks harm → ask before acting.
   class, build / verify = the pro class, the ONE judge or security reviewer
   = the strongest available — never the whole fan-out; cannot classify →
   balanced, and say so.
-- **Enforcement** — one hook denies: `PreToolUse` on `run_command` blocks a
-  commit with `docs/rolepod/` staged. agy has no context-injection channel,
-  so this file is the only always-on text. Every other rule is
-  skill-enforced — never report it as mechanically enforced.
+- **workflow.mode** — `lite` skips Rolepod workflow gates and nudges;
+  `standard` warns and allows; `full` enforces existing workflow conditions.
+  The `PreToolUse` hook adapts the shared commit gate. agy has no context-
+  injection channel, so this file is the only always-on text. Every other
+  rule is skill-enforced — never report it as mechanically enforced.

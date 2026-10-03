@@ -123,10 +123,14 @@ render_skills() {
   for skill_dir in "$REPO_DIR"/core/skills/*/; do
     local name; name="$(basename "$skill_dir")"
     cp -R "$skill_dir" "$skills_dst/$name"
-    # The pool is read from the machine setting by the shared reader; the runner
-    # looks for it beside itself (its source copy lives in hooks/lib/). A tree
-    # without it runs with the pool OFF, never on.
+    # Standalone workflow/review helpers resolve config from this bundled
+    # canonical reader; cross-family uses it for the independent pool setting.
+    # Keep hooks/lib/rolepod_config.py the only parser.
     [ "$name" = "cross-family" ] && cp "$REPO_DIR/hooks/lib/rolepod_config.py" "$skills_dst/$name/scripts/rolepod_config.py"
+    [ "$name" = "using-rolepod" ] && cp "$REPO_DIR/hooks/lib/rolepod_config.py" "$skills_dst/$name/scripts/rolepod_config.py"
+    [ "$name" = "using-rolepod" ] && cp "$REPO_DIR/hooks/lib/session-mode.sh" "$skills_dst/$name/scripts/session-mode.sh"
+    [ "$name" = "review-code" ] && cp "$REPO_DIR/hooks/lib/rolepod_config.py" "$skills_dst/$name/scripts/rolepod_config.py"
+    [ "$name" = "review-code" ] && cp "$REPO_DIR/hooks/lib/session-mode.sh" "$skills_dst/$name/scripts/session-mode.sh"
     [ -f "$skill_dir/SKILL.md" ] && \
       render_template "$skill_dir/SKILL.md" "$skills_dst/$name/SKILL.md"
   done
@@ -317,7 +321,7 @@ render_codex() {
   cp "$plugin_src/hooks/hooks.json" "$plugin_dst/hooks/hooks.json"
   cp "$plugin_src/hooks/agent-sync.sh" "$plugin_dst/hooks/agent-sync.sh"
   local h
-  for h in precommit-gate project-context-loader claim-verify-nudge \
+  for h in precommit-gate session-start project-context-loader claim-verify-nudge \
            block-subagent-commit session-lifecycle test-diff-lint fix-loop-breaker subagent-core; do
     cp "$REPO_DIR/hooks/$h.sh" "$plugin_dst/hooks/$h.sh"
   done
@@ -443,7 +447,13 @@ render_cursor() {
     cp "$REPO_DIR/hooks/$h.sh" "$plugin_dst/scripts/shared/$h.sh"
   done
   cp "$REPO_DIR/hooks/lib/route_check.py" "$plugin_dst/scripts/shared/route_check.py"   # stop → route record (v2.135.0)
-  cp "$REPO_DIR/hooks/lib/rolepod-config.sh" "$REPO_DIR/hooks/lib/rolepod_config.py" "$plugin_dst/scripts/shared/"   # gates.mode, flat beside the gate
+  cp "$REPO_DIR/hooks/lib/rolepod-config.sh" "$REPO_DIR/hooks/lib/rolepod_config.py" "$plugin_dst/scripts/shared/"   # canonical workflow.mode reader, flat beside the gate
+  cp "$REPO_DIR/hooks/lib/session-mode.sh" "$plugin_dst/scripts/shared/session-mode.sh"   # rolepod-config.sh sources this adjacent path
+  mkdir -p "$plugin_dst/scripts/shared/lib"
+  cp "$REPO_DIR/hooks/lib/session-mode.sh" "$plugin_dst/scripts/shared/lib/session-mode.sh"
+  cp "$REPO_DIR/hooks/session-start.sh" "$plugin_dst/scripts/"
+  mkdir -p "$plugin_dst/scripts/lib"
+  cp -R "$REPO_DIR/hooks/lib/." "$plugin_dst/scripts/lib/"
   chmod +x "$plugin_dst/scripts/shared/"*.sh 2>/dev/null || true
 }
 
@@ -511,17 +521,20 @@ render_antigravity() {
   for h in session-start pre-tool stop-unlock; do
     cp "$adapter_dir/hooks/$h.sh" "$plugin_dst/hooks/$h.sh"
   done
+  cp "$REPO_DIR/hooks/session-start.sh" "$plugin_dst/hooks/rolepod-session-start.sh"
+  mkdir -p "$plugin_dst/hooks/lib"
+  cp -R "$REPO_DIR/hooks/lib/." "$plugin_dst/hooks/lib/"
   # Shared commit gate reused verbatim: pre-tool.sh translates agy's
   # run_command call into the Claude-shape stdin precommit-gate.sh expects
   # and its deny back into agy's {decision, reason}; test-diff-lint.sh rides
-  # along (the gate calls it by dirname), as does the gates.mode reader, flat
+  # along (the gate calls it by dirname), as does the workflow.mode reader, flat
   # (no lib/ dir). agy has no Claude
   # transcript, so the gate takes its non-Claude evidence path (phase-log).
   for h in precommit-gate test-diff-lint; do
     cp "$REPO_DIR/hooks/$h.sh" "$plugin_dst/hooks/$h.sh"
   done
   cp "$REPO_DIR/hooks/lib/route_check.py" "$plugin_dst/hooks/route_check.py"   # Stop → route record (v2.135.0)
-  cp "$REPO_DIR/hooks/lib/rolepod-config.sh" "$REPO_DIR/hooks/lib/rolepod_config.py" "$plugin_dst/hooks/"   # gates.mode, flat beside the gate
+  cp "$REPO_DIR/hooks/lib/rolepod-config.sh" "$REPO_DIR/hooks/lib/rolepod_config.py" "$plugin_dst/hooks/"   # canonical workflow.mode reader, flat beside the gate
   chmod +x "$plugin_dst/hooks/"*.sh 2>/dev/null || true
 }
 
@@ -575,14 +588,17 @@ render_opencode() {
     # B-spec MAJOR): the commit hook runs it directly (ROLEPOD_LEAD_CLI=
     # opencode) instead of a hand-duplicated JS private-docs check, so a
     # compound `git add -A && git commit` gets the same working-tree read
-    # every other CLI's gate has. It exits right after the private-docs
-    # deny for a non-Claude lead; it reads gates.mode first, so the config
+    # every other CLI's gate has. Its private-docs and workflow conditions
+    # follow workflow.mode; it reads the profile first, so the config
     # reader (rolepod-config.sh + rolepod_config.py) ships flat beside it.
     for h in fix-loop-breaker precommit-gate; do
       cp "$REPO_DIR/hooks/$h.sh" "$out_dir/plugin/rolepod-shared/$h.sh"
     done
     cp "$REPO_DIR/hooks/lib/route_check.py" "$out_dir/plugin/rolepod-shared/route_check.py"   # session.idle → route record (v2.135.0)
-    cp "$REPO_DIR/hooks/lib/rolepod-config.sh" "$REPO_DIR/hooks/lib/rolepod_config.py" "$out_dir/plugin/rolepod-shared/"   # gates.mode, flat beside the gate
+    cp "$REPO_DIR/hooks/lib/rolepod-config.sh" "$REPO_DIR/hooks/lib/rolepod_config.py" "$out_dir/plugin/rolepod-shared/"   # canonical workflow.mode reader, flat beside the gate
+    cp "$REPO_DIR/hooks/lib/session-mode.sh" "$out_dir/plugin/rolepod-shared/session-mode.sh"
+    mkdir -p "$out_dir/plugin/rolepod-shared/lib"
+    cp "$REPO_DIR/hooks/lib/session-mode.sh" "$out_dir/plugin/rolepod-shared/lib/session-mode.sh"
     chmod +x "$out_dir/plugin/rolepod-shared/"*.sh 2>/dev/null || true
   else
     echo "render: missing $adapter_dir/plugin/rolepod.js" >&2; exit 1

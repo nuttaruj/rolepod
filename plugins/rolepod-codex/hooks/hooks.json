@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash ${PLUGIN_ROOT}/hooks/claim-verify-nudge.sh",
+            "command": "ROLEPOD_SESSION_CLI=codex bash ${PLUGIN_ROOT}/hooks/claim-verify-nudge.sh",
             "timeout": 3
           }
         ]
@@ -18,18 +18,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash ${PLUGIN_ROOT}/hooks/project-context-loader.sh",
-            "statusMessage": "Loading project context"
-          },
-          {
-            "type": "command",
-            "command": "exec bash ${PLUGIN_ROOT}/hooks/session-lifecycle.sh --lock --cli codex",
-            "timeout": 5
-          },
-          {
-            "type": "command",
-            "command": "bash ${PLUGIN_ROOT}/hooks/agent-sync.sh",
-            "timeout": 10,
+            "command": "exec bash ${PLUGIN_ROOT}/hooks/session-start.sh --cli codex --sync ${PLUGIN_ROOT}/hooks/agent-sync.sh",
+            "timeout": 15,
             "statusMessage": "Syncing rolepod agents"
           }
         ]
@@ -41,7 +31,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash ${PLUGIN_ROOT}/hooks/subagent-core.sh --cli codex",
+            "command": "ROLEPOD_SESSION_CLI=codex bash ${PLUGIN_ROOT}/hooks/subagent-core.sh --cli codex",
             "timeout": 3
           }
         ]
@@ -53,12 +43,12 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash ${PLUGIN_ROOT}/hooks/block-subagent-commit.sh --cli codex",
+            "command": "ROLEPOD_SESSION_CLI=codex bash ${PLUGIN_ROOT}/hooks/block-subagent-commit.sh --cli codex",
             "timeout": 5
           },
           {
             "type": "command",
-            "command": "ROLEPOD_LEAD_CLI=codex bash ${PLUGIN_ROOT}/hooks/precommit-gate.sh",
+            "command": "ROLEPOD_SESSION_CLI=codex ROLEPOD_LEAD_CLI=codex bash ${PLUGIN_ROOT}/hooks/precommit-gate.sh",
             "timeout": 5
           }
         ]
@@ -69,7 +59,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash ${PLUGIN_ROOT}/hooks/session-lifecycle.sh --unlock",
+            "command": "ROLEPOD_SESSION_CLI=codex bash ${PLUGIN_ROOT}/hooks/session-lifecycle.sh --unlock",
             "timeout": 5
           }
         ]
@@ -81,7 +71,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash ${PLUGIN_ROOT}/hooks/fix-loop-breaker.sh",
+            "command": "ROLEPOD_SESSION_CLI=codex bash ${PLUGIN_ROOT}/hooks/fix-loop-breaker.sh",
             "timeout": 5
           }
         ]

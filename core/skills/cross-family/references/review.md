@@ -14,9 +14,9 @@ Any CLI can be the Lead. The review goes to a different CLI than the Lead's, nev
 | Anthropic (`claude`) | architecture · code quality · maintainability |
 | Cursor / OpenCode | the family of their default model — the runner tells you |
 
-1. Read the diff; name the axes it needs (a diff can need several).
+1. Read the diff; name the axes it needs (a diff can need several). The caller chooses workflow intensity via `workflow.mode`; this reference defines only cross-family dispatch and reviewer protocol.
 2. The pool file is the order — put the member owning the dominant axis first, so a project can pin it.
-3. ONE member — the first usable in pool order, or the one the user named (`--member`, SKILL.md step 3) — reviews every axis the diff needs, in the mode the caller set (`--adversarial` on an R4 round 1 in `full` mode only, the standard prompt otherwise). `--all` (every usable member, concurrently, each anchored) only on the user's ask; each CLI is one opinion.
+3. ONE member — the first usable in pool order, or the one the user named (`--member`, SKILL.md step 3) — reviews every axis the diff needs, in the reviewer protocol the caller set (`--adversarial` only for an R4 Full round 1, the standard prompt otherwise). This protocol argument is separate from workflow intensity (`lite|standard|full`); the caller owns intensity-based routing. `--all` (every usable member, concurrently, each anchored) only on the user's ask; each CLI is one opinion.
 4. Launch every routed reviewer — the runner and internal agents alike — in ONE dispatch. They read the same frozen diff independently; nothing is gained by waiting for one before starting the next.
 
 ## What anchors

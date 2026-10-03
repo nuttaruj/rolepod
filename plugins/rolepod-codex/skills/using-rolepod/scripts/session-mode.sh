@@ -1,0 +1,88 @@
+#!/bin/bash
+# Session profile snapshot bridge. Runtime consumers do not invoke Python or
+# reread config; only the SessionStart capture entry writes a profile.
+
+rolepod_session_id_from_input() {
+  local json=${1:-}
+  ROLEPOD_SESSION_ID=""
+  if [[ "$json" =~ \"(session_id|sessionId|conversation_id|conversationId)\"[[:space:]]*:[[:space:]]*\"([A-Za-z0-9][A-Za-z0-9_.:-]{0,127})\" ]]; then
+    ROLEPOD_SESSION_ID=${BASH_REMATCH[2]}
+  fi
+}
+
+rolepod_session_cwd_from_input() {
+  local json=${1:-}
+  ROLEPOD_INPUT_CWD=""
+  if [[ "$json" =~ \"cwd\"[[:space:]]*:[[:space:]]*\"([^\"\\]*)\" ]]; then
+    ROLEPOD_INPUT_CWD=${BASH_REMATCH[1]}
+  fi
+}
+
+rolepod_session_profile_path() {
+  local cli=${1:-} sid=${2:-}
+  [[ "$cli" =~ ^(claude|codex|cursor|antigravity|opencode)$ ]] || return 1
+  [[ "$sid" =~ ^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$ ]] || return 1
+  printf '%s/.rolepod/session-profiles/%s/%s.mode' "${HOME:-/nonexistent}" "$cli" "$sid"
+}
+
+rolepod_session_profile_apply() {
+  local mode=${1:-standard} source=${2:-uncaptured}
+  case "$mode" in lite|standard|full) ;; *) mode=standard; source=uncaptured ;; esac
+  case "$source" in project|global|default|uncaptured) ;; *) source=uncaptured ;; esac
+  ROLEPOD_SESSION_MODE=$mode
+  ROLEPOD_SESSION_SOURCE=$source
+  ROLEPOD_CFG_MODE=$mode
+  ROLEPOD_CFG_SOURCE=$source
+  ROLEPOD_CFG_MODERN=unknown
+  ROLEPOD_CFG_GATES=soft
+  ROLEPOD_CFG_NUDGE=on
+  ROLEPOD_CFG_REVIEW=standard
+  ROLEPOD_CFG_REVIEW_SOURCE=$source
+  case "$mode" in
+    lite) ROLEPOD_CFG_GATES=off; ROLEPOD_CFG_NUDGE=off ;;
+    full) ROLEPOD_CFG_GATES=hard; ROLEPOD_CFG_REVIEW=full ;;
+  esac
+  export ROLEPOD_SESSION_MODE ROLEPOD_SESSION_SOURCE ROLEPOD_CFG_MODE ROLEPOD_CFG_SOURCE
+  export ROLEPOD_CFG_MODERN ROLEPOD_CFG_GATES ROLEPOD_CFG_NUDGE ROLEPOD_CFG_REVIEW ROLEPOD_CFG_REVIEW_SOURCE
+}
+
+rolepod_session_profile_store() {
+  local cli=${1:-} sid=${2:-} mode=${3:-standard} source=${4:-uncaptured} path dir tmp
+  path=$(rolepod_session_profile_path "$cli" "$sid") || return 1
+  case "$mode" in lite|standard|full) ;; *) return 1 ;; esac
+  case "$source" in project|global|default|uncaptured) ;; *) source=uncaptured ;; esac
+  dir=${path%/*}
+  (umask 077; mkdir -p "$dir" && chmod 700 "${dir%/*}" "$dir") 2>/dev/null || return 1
+  tmp="$dir/.${sid}.$$.tmp"
+  (umask 077; printf '%s\n%s\n' "$mode" "$source" > "$tmp" && chmod 600 "$tmp" && mv -f "$tmp" "$path") 2>/dev/null || { rm -f "$tmp" 2>/dev/null || true; return 1; }
+  return 0
+}
+
+rolepod_session_profile_load() {
+  local json=${1:-} cli=${2:-${ROLEPOD_SESSION_CLI:-unknown}} sid path mode source native_id=${ROLEPOD_SESSION_ID:-}
+  if [[ "$cli" = unknown || -z "$cli" ]]; then
+    if [[ -n "${CLAUDE_PLUGIN_ROOT:-}" ]]; then cli=claude
+    elif [[ "${CODEX_THREAD_ID:-}" =~ ^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$ ]]; then cli=codex
+    fi
+  fi
+  mode=${ROLEPOD_SESSION_MODE:-}
+  source=${ROLEPOD_SESSION_SOURCE:-}
+  case "$mode" in lite|standard|full)
+    rolepod_session_profile_apply "$mode" "${source:-uncaptured}"
+    return 0
+  esac
+  rolepod_session_id_from_input "$json"
+  sid=$ROLEPOD_SESSION_ID
+  if [[ -z "$sid" && -n "$native_id" && "$native_id" =~ ^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$ ]]; then sid=$native_id; fi
+  if [[ -z "$sid" && "$cli" = codex && "${CODEX_THREAD_ID:-}" =~ ^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$ ]]; then sid=$CODEX_THREAD_ID; fi
+  path=$(rolepod_session_profile_path "$cli" "$sid" 2>/dev/null || true)
+  if [[ -n "$path" && -f "$path" ]]; then
+    {
+      IFS= read -r mode || true
+      IFS= read -r source || true
+    } < "$path"
+    rolepod_session_profile_apply "$mode" "$source"
+    return 0
+  fi
+  rolepod_session_profile_apply standard uncaptured
+}

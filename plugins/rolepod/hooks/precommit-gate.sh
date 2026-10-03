@@ -1,7 +1,7 @@
 #!/bin/bash
 # PreToolUse(Bash) — path-aware gate on `git commit`.
 #
-# Default behavior (path-aware tiering — reduces overforce for day-to-day work):
+# workflow.mode=full applies the existing path-aware tiering:
 #   Trivial diff (≤5 lines, 1 file, 0 logic lines, no risky path)
 #                                  → silent auto-pass
 #   Normal code (logic but no high-risk path)
@@ -18,11 +18,14 @@
 #                                    non-Claude ROLEPOD_LEAD_CLI gets only the
 #                                    private-docs deny above, then passes.
 #
-# Mode (gates.mode in ~/.rolepod/config.json, via hooks/lib/rolepod-config.sh):
-#   soft (default) — the tiering above.
-#   hard           — escalate normal code from SOFT warn to HARD block.
-#   off            — pass every commit silently; each use is logged to
-#                    .rolepod/evidence/bypass.log as config:gates=off.
+# workflow.mode is captured once at SessionStart. Hook consumers read its
+# private session snapshot (or inherited profile environment):
+#   lite     — exit before workflow gate work.
+#   standard — warn and allow when a workflow condition would deny.
+#   full     — enforce the existing deny conditions.
+# Non-Claude adapters receive the private-doc gate; transcript evidence
+# checks remain Claude-native. Standard and Full never alter role tools or
+# native CLI/user permissions.
 #
 # Accepted residuals (owner decision, 2026-09-24, final cut before release):
 # deliberate evasion is out of scope by design — this gate catches mistakes
@@ -134,6 +137,11 @@ xfam_running_job() {
 }
 
 INPUT=$(cat 2>/dev/null || echo '{}')
+. "$(dirname "${BASH_SOURCE[0]}")/lib/session-mode.sh"
+rolepod_session_profile_load "$INPUT" "${ROLEPOD_SESSION_CLI:-unknown}"
+_mode=$ROLEPOD_SESSION_MODE
+[ "$_mode" = lite ] && exit 0
+export ROLEPOD_PROJECT_ROOT="$(printf '%s' "$INPUT" | python3 -I -c 'import json,sys; print(json.load(sys.stdin).get("cwd") or "")' 2>/dev/null || true)"
 
 # ONE python3 pass for tool_name + commit token-walk + resolved directory +
 # command (was 3 spawns — ~30ms on EVERY Bash call, the hottest PreToolUse
@@ -652,6 +660,10 @@ _pd_root="$(git rev-parse --show-toplevel 2>/dev/null)" || true
 # check (caught while wiring the opencode adapter onto this same script).
 PRIVATE_DOCS=$( { printf '%s\n' "$DIFF_STAT" | awk -F'\t' 'NF>=3{print $3}' | grep -E '^docs/rolepod/' || true; } | head -5 | tr '\n' ' ' | sed 's/ *$//')
 if [ -n "$PRIVATE_DOCS" ] && [ ! -f "$_pd_root/.rolepod/docs-tracked" ]; then
+  if [ "$_mode" = standard ]; then
+    ROLEPOD_HOOK_MSG="WARNING: private working docs staged: $PRIVATE_DOCS. Review the files before continuing; standard mode allows this commit." python3 -I -c "import json,os; print(json.dumps({'hookSpecificOutput': {'hookEventName': 'PreToolUse', 'additionalContext': os.environ.get('ROLEPOD_HOOK_MSG','')}}))" 2>/dev/null || true
+    exit 0
+  fi
   ROLEPOD_HOOK_MSG="precommit-gate BLOCKED — private working docs staged: $PRIVATE_DOCS. docs/rolepod/ is never committed. Fix: git restore --staged docs/rolepod; make sure .gitignore lists docs/rolepod/. Repo tracks them on purpose → create .rolepod/docs-tracked, commit again." python3 -I -c "
 import json, os
 print(json.dumps({'hookSpecificOutput': {'hookEventName': 'PreToolUse', 'permissionDecision': 'deny', 'permissionDecisionReason': os.environ.get('ROLEPOD_HOOK_MSG', '')}}))
@@ -934,6 +946,11 @@ fi
 if [ "$HARD_BLOCK" -eq 1 ]; then
   # Env-passed — quotes in the reason must not break the JSON emitter.
   [ -n "$LINT_WARN" ] && REASON+=" | $LINT_WARN"
+  if [ "$_mode" = standard ]; then
+    ROLEPOD_HOOK_MSG="WARNING: $REASON Standard mode allows this commit; full mode enforces the workflow gate." python3 -I -c "import json,os; print(json.dumps({'hookSpecificOutput': {'hookEventName': 'PreToolUse', 'additionalContext': os.environ.get('ROLEPOD_HOOK_MSG','')}}))" 2>/dev/null || true
+    append_gate_row "soft"
+    exit 0
+  fi
   ROLEPOD_HOOK_MSG="$REASON" python3 -I -c "
 import json, os
 print(json.dumps({

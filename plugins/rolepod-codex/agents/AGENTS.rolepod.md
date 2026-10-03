@@ -34,7 +34,11 @@ Reaching Verify or Ship → load `check-work` (a done claim, R2 and up) or
 `finish-work` (a PR, a merge, a push to the base, a deploy, any tier) first;
 memory of a skill is not its text.
 
-Executing an approved plan → load `implement-plan` first and run its tasks to the end without stopping between them; only BLOCKED, a plan gap or a gate stops it.
+Executing an approved plan → load `implement-plan` first and run its tasks to the end without stopping between them; do not restart Define or Plan because of a skill invocation. Concrete bugs, regressions, or failing tests route to `debug-issue` before edits at every tier; after root cause, use `write-spec` only if behavior/design is unresolved before editing, and `write-plan` only when sequencing or ownership requires it.
+
+Manual or mid-task use of `using-rolepod` is valid with or without hooks. Select workflow mode once at native session startup; without startup capture, select once at the first manual `using-rolepod` entry and carry active mode and source in session context, phase briefs, and compaction summaries.
+Configured-mode inspection is distinct from active session mode. A tool call, config change, or skill reload never reselects mode or reroutes; route each user request on its intent, scope, and tier, and resume the visible owning phase when it still matches. Re-evaluate routing only when intent, scope, or tier changes.
+Reload skill text after compaction or skill reload within the same session, then reuse the carried mode. A fresh native startup/resume/clear supplies its newly captured profile. Never persist an on-disk loaded-skill stamp. Report-only requests are read-only answers unless the user explicitly requested a saved artifact.
 
 ## Who does the work
 
@@ -127,4 +131,7 @@ asked to keep running (a server to browse) stays up: say its port and how to sto
 - **Fan-out tier** — `[agents] default_subagent_model` and `default_subagent_reasoning_effort` apply to every spawn, role spawns included; a rolepod role overrides only the effort, so its child runs `default_subagent_model` when set, else your model. The ONE judgment slot is a named strong role (`security-engineer` / `universal-reviewer`), never the whole fan-out; effort ceiling on every role: `xhigh`.
 - **Ultra** — For rolepod work spawn only a rolepod role — `agent_type` = its `name` (`scout`, not `rolepod-scout`), `fork_turns="none"`, a self-contained brief. Never `default`, `explorer`, `worker` or a role-less spawn: they inherit your effort, and at `ultra` they delegate again with no depth cap. Details → the `using-rolepod` skill's `references/fanout-codex.md`.
 - **Persistent** — `persistent` is a follow-up mode, not deeper thinking: follow-ups stay inside the scope the user asked for, a wait uses the sleep tool (never a watcher left running), and delegation is explicit-only.
-- **Enforcement** — hooks deny a commit with `docs/rolepod/` staged; a sub-agent's `git commit` / `git push` is denied — a child's PreToolUse carries `agent_id` (live probe 2026-09-30, Codex 0.159). Codex's PreToolUse sees every spawn (`spawn_agent`, or `collaborationspawn_agent` on V2); rolepod registers no spawn gate. Review / test evidence gating is Claude-only; every other rule is skill-enforced — never report it as mechanically enforced.
+- **workflow.mode** — `lite` skips Rolepod workflow gates and nudges;
+  `standard` warns and allows; `full` enforces existing workflow conditions.
+  Codex runs its native hooks. Review / test evidence gating is Claude-only;
+  every other rule is skill-enforced — never report it as mechanically enforced.

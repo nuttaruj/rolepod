@@ -27,27 +27,23 @@
 # carries the tier-per-stage rule; this hook only stops the two shapes a
 # skill reminder cannot catch after the fact.
 #
-# Deny rows still log phase: dispatch-gate (read by make stats).
-# The user's gates setting off (hooks/lib/rolepod-config.sh) degrades a deny to
-# a nudge, logged to bypass.log; the nudge setting off silences the hook.
-# The config is read only for a Workflow call.
+# Full denies and logs phase: dispatch-gate. Standard warns and allows without
+# writing a deny or bypass row. Lite exits silently before transcript work.
 set -uo pipefail
 _rcfg="${BASH_SOURCE[0]%/*}"; [ "$_rcfg" != "${BASH_SOURCE[0]}" ] || _rcfg=.
-if [ -f "$_rcfg/lib/rolepod-config.sh" ]; then . "$_rcfg/lib/rolepod-config.sh"
-elif [ -f "$_rcfg/rolepod-config.sh" ]; then . "$_rcfg/rolepod-config.sh"
-else rolepod_cfg_load() { ROLEPOD_CFG_GATES=soft; ROLEPOD_CFG_NUDGE=on; }; fi
 INPUT=$(cat 2>/dev/null || true)
+ . "$_rcfg/lib/session-mode.sh"
+rolepod_session_profile_load "$INPUT" "${ROLEPOD_SESSION_CLI:-unknown}"
+_mode=$ROLEPOD_SESSION_MODE
+[ "$_mode" = lite ] && exit 0
 [ -n "$INPUT" ] || exit 0
 case "$INPUT" in *Workflow*) ;; *) exit 0 ;; esac
-rolepod_cfg_load
-[ "$ROLEPOD_CFG_NUDGE" = "off" ] && exit 0
-export ROLEPOD_CFG_GATES
 
 SESSION_STATE="$(dirname "$0")/lib/session_state.py"
 [ -f "$SESSION_STATE" ] || exit 0
 command -v python3 >/dev/null 2>&1 || exit 0
 
-printf '%s' "$INPUT" | ROLEPOD_SESSION_STATE="$SESSION_STATE" python3 -I -c '
+printf '%s' "$INPUT" | ROLEPOD_SESSION_STATE="$SESSION_STATE" ROLEPOD_WORKFLOW_MODE="$_mode" python3 -I -c '
 import json, os, re, sys
 try:
     d = json.load(sys.stdin)
@@ -222,7 +218,7 @@ for i, pos in enumerate(call_pos):
         if strong_model or strong_role:
             strong_fanout.append(stage or "(no phase)")
 
-soft = os.environ.get("ROLEPOD_CFG_GATES", "soft") == "off"   # gates off = a deny becomes a nudge
+soft = os.environ.get("ROLEPOD_WORKFLOW_MODE") == "standard"
 costly = cls == "strong" or (bool(lead) and cls == "unknown")
 why = ("strong class" if cls == "strong" else "unknown family, priced as strong")
 
@@ -275,7 +271,6 @@ elif bare_writer:
 
 if verdict:
     if soft:
-        _log_bypass("workflow-tier-nudge", "config:gates=off")
         ctx(reason_txt)
     else:
         _log_gate(ti, script, lead, cls, n_calls, verdict, sorted(set(stages)))

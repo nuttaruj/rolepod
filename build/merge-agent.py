@@ -319,9 +319,8 @@ def merge(target: str, name: str) -> str:
         # stays doctrine (docs/model-tier-policy). The permission block is
         # derived from the Claude overlay's tools list — the CLI-neutral role
         # contract: tools the role does not carry are denied outright, and
-        # every Bash-carrying subagent gets the commit-ban patterns — the
-        # mechanical form of "subagents NEVER commit" (block-subagent-commit
-        # parity; opencode enforces `permission:` natively per its agent docs).
+        # workflow commit/push rules are mode-dependent and live in the plugin
+        # gate; this permission map only preserves role tool capabilities.
         overlay_path = REPO_DIR / "adapters" / "claude" / "agent-frontmatter" / f"{name}.yml"
         tools = _overlay_tools(overlay_path)
         edit_tool, write_tool, bash_tool = WRITE_TOOLS
@@ -333,15 +332,7 @@ def merge(target: str, name: str) -> str:
         if bash_tool not in tools:
             perm.append("  bash: deny")
         else:
-            perm += [
-                "  bash:",
-                '    "git commit*": deny',
-                '    "git push*": deny',
-                '    "gh pr create*": deny',
-                '    "gh pr merge*": deny',
-                '    "git reset --hard*": deny',
-                '    "*": allow',
-            ]
+            perm += ["  bash:", '    "*": allow']
         merged = {"description": core_fields["description"],
                   "mode": ["mode: subagent"],
                   "permission": perm}

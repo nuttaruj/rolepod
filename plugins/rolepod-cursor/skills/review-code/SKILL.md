@@ -1,6 +1,6 @@
 ---
 name: review-code
-description: Use before merging or shipping — review code with reviewers matched to risk across correctness, security, performance, UI, and architecture; an R4 (high-risk) diff adds one adversarial pass (`adversarial-review`). Pick reviewer by risk profile.
+description: Use before merging or shipping — review code with reviewers matched to risk across correctness, security, performance, UI, and architecture; R4 adversarial review depends on workflow intensity (`workflow.mode`). Pick reviewer by risk profile and intensity.
 ---
 
 # Review Code
@@ -24,28 +24,34 @@ Done when: the range resolves to a non-empty diff, its snapshot is recorded, and
 
 ### 2. Pick reviewers
 
-Review mode: run `scripts/review-mode.sh` in `review-code`'s folder; it prints `standard` or `full` (project `.rolepod/config.json` over `~/.rolepod/config.json`, else `standard`).
+Workflow intensity is the active session mode carried from startup or first manual `using-rolepod` entry. Do not re-read configured mode when review begins; config changes take effect in a new session/restart.
+Configured-mode inspection through `rolepod_config.py mode` is separate and cannot replace the active profile. If a helper invocation lacks native mode environment, pass `ROLEPOD_SESSION_MODE` and `ROLEPOD_SESSION_SOURCE` from the carried profile.
+Do not use `review-mode.sh` to choose workflow behavior: it reports compatibility review intensity `standard|full`; cross-family's `standard|adversarial` is a separate reviewer protocol argument.
 
 High-risk surface = auth, billing, payments, credits, migration, data deletion, secrets, tokens, crypto, permissions, security.
 
 | Risk profile | Reviewer |
 |--------------|----------|
-| High-risk surface | `security-engineer` + the adversarial pass (`adversarial-review`) |
+| High-risk surface | Lite: two lenses; Standard: `security-engineer` + two lenses; Full: `security-engineer` + two lenses + adversarial pass |
 | Correctness / spec compliance; generic quality / DRY / smell | `universal-reviewer` (spec; standards) |
 | Performance regression risk | `performance-engineer` |
 | UI / interaction / a11y | `ui-ux-designer` |
 | Architecture / cross-module | `system-architect` |
 
-By rigor tier (R1 trivial edit · R2 one file + test · R3 multi-file · R4 high-risk):
+By workflow intensity, then risk tier (R1 trivial edit · R2 one file + test · R3 multi-file · R4 high-risk). Risk tier is independent of workflow intensity:
+- **Lite (any tier, including R4)** → exactly two fresh, isolated read-only `universal-reviewer` contexts, dispatched in parallel: `lens: spec` and `lens: standards`.
+  Freeze one diff and record its snapshot/hash; attach the identical snapshot to both briefs. Each reviewer receives its own lens only, cannot read the other reviewer's report or findings, and writes a separate report. Wait for both reports before aggregating and deduplicating findings.
+  With no agents, the Lead performs both axes and records that limitation. A missing formal spec uses the user's supplied goal and acceptance criteria as the spec-lens input; still run both lenses.
+  One round only: no automatic security/specialist/adversarial review, no same-lens rerun, and no round 2+, even on R4. The author fixes findings verified against the diff and attaches evidence. Lite review uses the standard reviewer protocol; this does not change the `standard|adversarial` argument's meaning.
 - **R2** → TWO read-only `universal-reviewer` lenses in ONE message, `lens: spec` + `lens: standards` (no spec → standards only); a matched row (perf / UI / arch) → that role instead. The pool's tier is R2 → ONE usable external (`--kind review`, the standard prompt — never `--adversarial`) replaces both lenses and reviews both axes, never beside them on round 1. The writer's unit tests are the floor.
 - **R3** → the matched row, internal, unless the pool's tier is R2 or R3 → ONE usable external replaces the `universal-reviewer` lenses.
-- **R4** → **standard**: R4 round 1 is `security-engineer` (`depth: checklist`) + `lens: spec` + `lens: standards` in ONE message — no adversarial pass, no round 2+ (the owner fixes each BLOCKER / MAJOR and attaches its proof). **full**: R4 round 1 is the four dispatches below, `security-engineer` at `depth: full`, and round 2+ as written. Money and auth included.
-- Pool usable → the external is the only adversarial pass, no internal `mode: adversarial` beside it (an external that fails or comes back weak, per `adversarial-review` What counts → the internal pass then).
-- The R4 floor is `security-engineer`; in `full` also the adversarial pass. A missing lens report is a LIMITATION, never a merge block. A comment/blank-only R4 diff → ONE `security-engineer` pass, no external.
+- **R4 in Standard**: R4 round 1 is `security-engineer` (`depth: checklist`) + `lens: spec` + `lens: standards` in ONE message — no adversarial pass, no round 2+ (the owner fixes each BLOCKER / MAJOR and attaches its proof). **R4 in Full**: R4 round 1 is the four dispatches below, `security-engineer` at `depth: full`, and round 2+ as written. Money and auth included. Lite is handled by the preceding Lite rule and never inherits these overrides.
+- Pool usable in Full → the external is the only adversarial pass, no internal `mode: adversarial` beside it (an external that fails or comes back weak, per `adversarial-review` What counts → the internal pass then).
+- R4 review floors follow intensity: Lite uses its two lenses; Standard requires `security-engineer`; Full also requires the adversarial pass. A missing lens report is a LIMITATION, never a merge block. A comment/blank-only R4 diff → Lite follows its two lenses; Standard or Full uses ONE `security-engineer` pass, no external.
 - Every `universal-reviewer` brief names its `mode`: `standard` (a lens, or both axes on a round 2+ re-check) or `adversarial` (R4 round 1 only — `adversarial-review`); no mode named → standard. Every later round is the standard review (Fix-verify rounds).
 - A high-risk path anywhere in the unreviewed diff (a task, a ship group, or a track-end review's unreviewed delta) makes it R4; the commission's tier (max over its tasks) governs Define / Plan only.
 - A diff reviewed at its tier is never reviewed again at ship. The track-end review (`implement-plan` Review, for a track with two or more code tasks, run by a fresh owner, or one per size slice when the delta is over ~800 changed lines or ~15 files over a track) reviews the R2/R3 task deltas and the Verify fixes nobody has reviewed; an R4 task's commits are context, covered by its reports — the Scope lists each with its report path — never tiered R4 again. The range stays the track's, so the Snapshot reaches the track head.
-- A Verify fix on a high-risk path → the R4 round-1 set on that fix alone, before its commit. A fix for a review finding → round 2 (Fix-verify rounds), never a new external or adversarial pass.
+- A Verify fix on a high-risk path → the workflow-mode R4 set on that fix alone, before its commit (Lite follows its two-lens rule; Standard and Full follow their R4 rules). A fix for a review finding → the applicable Fix-verify rule; Lite never adds a same-lens review or automatic round 2+.
 - User-visible behaviour (UI / E2E flows) is no review row — `check-work` verifies it once per feature.
 
 Cross-family pool (any tier it sets) or internal-pass question → `references/external-review-routing.md`. The adversarial pass — who runs it, what counts, apex → the `adversarial-review` skill.
@@ -62,13 +68,14 @@ Brief every reviewer: diff + spec + acceptance criteria + risk profile + claimed
 - An empty or partial return (`""`, one sentence, a turn-limit notice) is a failed reviewer: re-dispatch it narrower (the Lead may resume it instead; a resume runs in the background); the round stays open, the report records a LIMITATION.
 - Whoever dispatched the round (the task owner, the track-end owner; the Lead only for a round it dispatched) merges severity-ordered, deduped by file:line + root cause (its own findings included; severity words per the template); each finding keeps its reviewer and axis (spec / standards / security / perf / UI / architecture). The Lead gets one merged brief, spot-checks ONE finding, never re-walks a traced report.
 
-No subagents, or a report missing / failed / empty → the Lead walks every Axes item cold, recorded as a LIMITATION; on a high-risk diff only when no dispatch is possible at all, and that walk never meets the high-risk floor: the merge stays blocked until the user waives it in words naming it (finish-work Reviewer gate). The user forbade agents → surface the conflict; never self-set a bypass.
+No subagents, or a report missing / failed / empty → the Lead walks every Axes item cold, recorded as a LIMITATION. Lite's no-agent fallback is the two Lead-performed axes required by the Lite rule above; record the lack of reviewer independence as a limitation and do not add specialists or rounds. Outside Lite, a high-risk diff with no dispatch possible still fails the high-risk floor: the merge stays blocked until the user waives it in words naming it (finish-work Reviewer gate). The user forbade agents → surface the conflict; never self-set a bypass.
 
 Done when: every dispatched reviewer has returned a full report and its findings are merged.
 
 ### 3. Axes
 
-- **Depth** — R4: `security-engineer` and the adversarial pass trace in full. A lens at any tier: a file the task changed is read from the diff; open it only when a hunk you must judge is cut off. Callers and other unchanged files may be opened. Skip what tooling enforces (lint, formatter, typecheck, the commit gate). Never re-run the suite (check-work runs it once; the finish-work pre-merge gate verifies this). A finding that needs a run: a reviewer with a shell runs only the diff's repro command; one without names it under Questions, and the task owner (else the Lead) runs it.
+- **Depth** — Full R4: `security-engineer` and the adversarial pass trace in full; Lite and Standard use their intensity-specific reviewer sets above.
+  A lens at any tier: a file the task changed is read from the diff; open it only when a hunk you must judge is cut off. Callers and other unchanged files may be opened. Skip what tooling enforces (lint, formatter, typecheck, the commit gate). Never re-run the suite (check-work runs it once; the finish-work pre-merge gate verifies this). A finding that needs a run: a reviewer with a shell runs only the diff's repro command; one without names it under Questions, and the task owner (else the Lead) runs it.
 - **Intent** — first: the goal in one sentence; a smaller way, or should the change exist at all?
 - **Trace** — the diff is the entry, not the scope: walk each claimed behavior (entry → call sites → branches → state → exit) through the seams into unchanged code; a surprise is a finding signal. Untouched code past the claims and seams is a Question, not a BLOCKER. Code-intel callers / impact when connected.
 - **Correctness** — logic vs spec, edge cases, off-by-one, null / undefined / empty.
@@ -97,10 +104,10 @@ Done when: the report carries a Recommendation and the review line is appended.
 ### 5. Fix-verify rounds
 
 - Round 1 = every axis in ONE message, ≤ 40 tool calls for `security-engineer` and the adversarial pass, ≤ 20 per lens.
-- Round 2+ — R2/R3: none; the owner fixes each BLOCKER / MAJOR and attaches its proof (the Command tail, the reviewer's repro re-run, or the grep showing the old line gone). R4: only a finding raised by `security-engineer` or the adversarial pass whose fix touches code — the flagging role re-checks the fix delta only, on a balanced model (an external's finding → `security-engineer` for security-class, else `universal-reviewer`); at most 5 rounds, rounds 4-5 a fresh fixer on a stronger model; still open after round 5 → stop and hand the user the open findings with the attempt log.
-- A Lead-built fix follows the round 2+ rule at its tier.
+- Fix verification follows workflow intensity: Lite and Standard R4 have no automatic reviewer round; Full R4 re-checks only code-touching fixes for findings raised by `security-engineer` or the adversarial pass (external security-class finding → `security-engineer`, else `universal-reviewer`). At most 5 Full R4 rounds; rounds 4-5 use a fresh fixer on a stronger model. Still open after round 5 → stop and hand the user the findings and attempt log.
+- R2/R3 also have no round 2+. In every no-recheck branch, the author closes each verified finding with finding-specific evidence and an exact bounded fix delta; a green suite alone does not close findings. See Author response and the report template.
 
-Done when: every round-1 BLOCKER / MAJOR, and every issue its fix made, is closed by the owner's proof (R2/R3) or the R4 round 2+ re-check, and anything outside a fix delta sits in `## Follow-ups` with its axis. The review then stops — never a full re-review until clean.
+Done when: every BLOCKER / MAJOR and every issue its fix made is closed by its applicable intensity rule: author evidence plus bounded delta where no re-check applies, or the specified Full R4 re-check. Anything outside a finding fix delta sits in `## Follow-ups` with its axis. The review then stops — never a full re-review until clean.
 
 ### 6. Author response
 
@@ -109,16 +116,16 @@ On the whole round's merged findings, never the first report: READ all without r
 - pre-existing on a path this diff changes → fix only when it makes THIS change wrong; else a user decision (money / auth) or `## Follow-ups`;
 - pre-existing on an untouched path → `## Follow-ups`, never this round.
 
-Reply "Fixed in <file:line>." — no gratitude. A test added to close a finding joins the fix delta for the next reviewer; the author's own green run closes nothing.
+Reply "Fixed in <file:line>." — no gratitude. Preserve each original lens report and its H1 snapshot unchanged. In a no-recheck branch, the merged report records each finding's closure evidence (a finding-specific repro or test and result), the exact bounded fix delta H1→H2 (changed paths and delta hash), and the final verified snapshot H2. A passing suite alone is not finding-specific evidence. If the applicable Full R4 rule requires a reviewer re-check, dispatch that re-check against H2 and keep it in a separate report.
 Every `## Follow-ups` line — each report's and your own — goes into the plan's `## Follow-ups` (no plan file → straight into the finish menu's Follow-ups carried), the one list `finish-work` works through (its closing rule decides what is closed before the menu and what is carried).
 Pushback, YAGNI, disagreement on merits, PR thread replies → `references/receiving-findings.md`.
 
-Done when: every finding is fixed, pushed back with a reason, or in `## Follow-ups`, and each BLOCKER / MAJOR fix carries its owner proof (R2/R3) or is back with its R4 round 2+ re-check.
+Done when: every finding is fixed, pushed back with a reason, or in `## Follow-ups`. No-recheck branches carry finding-specific author proof and the H1→H2 delta record; only specified Full R4 findings require a reviewer re-check.
 
 ## Guardrails
 
-- A high-risk diff gets its adversarial pass (`adversarial-review`); never merge one without it (none yet → `security-engineer` first) unless the user waives it in words naming that review. The Lead's own walk is never that review.
-- A fresh reviewer is the final judge; never the author, a Lead-built fix included.
+- Required reviewers follow workflow intensity: only Full R4 requires the adversarial pass; Standard R4 requires `security-engineer`; Lite R4 requires its two lenses. No-recheck branches close verified finding fixes with author evidence and the H1→H2 delta record; Full R4 re-checks only its specified security/adversarial code fixes. The Lead's own walk is never an independent reviewer.
+- Original reports remain immutable at H1. Record the verified H2 tree and exact bounded H1→H2 delta; never relabel H1 as H2. Unrelated or new H2 changes are uncovered and must be surfaced and routed at their current tier and mode.
 - Evidence is the axis walk; never "tests pass" alone — tests prove the assertion, not the design.
 
 Good / bad finding shapes → `examples/finding-examples.md`.
@@ -126,6 +133,6 @@ Good / bad finding shapes → `examples/finding-examples.md`.
 ## Next phase
 
 - Review-only ask (no fix, no ship) → none; the report is the deliverable.
-- Findings need fixes → `implement-plan` or `debug-issue`; fixes landed → `check-work`. Neither available → the Lead fixes per Author response, then the round 2+ rule at its tier applies (Fix-verify rounds).
+- Findings need fixes → `implement-plan` or `debug-issue`; fixes landed → `check-work`. Neither available → the Lead fixes per Author response, then applies the workflow-mode Fix verification rule above.
 - No blockers, plan has unchecked tasks → `implement-plan` (Ship asks once per plan); plan exhausted → `finish-work` for the merge gate.
 - If `finish-work` is not available, present the findings + recommendation and ask the user which finish path to take.

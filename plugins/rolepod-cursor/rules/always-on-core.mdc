@@ -24,7 +24,11 @@ Reaching Verify or Ship → load `check-work` (a done claim, R2 and up) or
 `finish-work` (a PR, a merge, a push to the base, a deploy, any tier) first;
 memory of a skill is not its text.
 
-Executing an approved plan → load `implement-plan` first and run its tasks to the end without stopping between them; only BLOCKED, a plan gap or a gate stops it.
+Executing an approved plan → load `implement-plan` first and run its tasks to the end without stopping between them; do not restart Define or Plan because of a skill invocation. Concrete bugs, regressions, or failing tests route to `debug-issue` before edits at every tier; after root cause, use `write-spec` only if behavior/design is unresolved before editing, and `write-plan` only when sequencing or ownership requires it.
+
+Manual or mid-task use of `using-rolepod` is valid with or without hooks. Select workflow mode once at native session startup; without startup capture, select once at the first manual `using-rolepod` entry and carry active mode and source in session context, phase briefs, and compaction summaries.
+Configured-mode inspection is distinct from active session mode. A tool call, config change, or skill reload never reselects mode or reroutes; route each user request on its intent, scope, and tier, and resume the visible owning phase when it still matches. Re-evaluate routing only when intent, scope, or tier changes.
+Reload skill text after compaction or skill reload within the same session, then reuse the carried mode. A fresh native startup/resume/clear supplies its newly captured profile. Never persist an on-disk loaded-skill stamp. Report-only requests are read-only answers unless the user explicitly requested a saved artifact.
 
 ## Who does the work
 
@@ -114,4 +118,4 @@ asked to keep running (a server to browse) stays up: say its port and how to sto
 
 **Tier classes** — rolepod's cheap / balanced / strong are CLASSES, never model names. Map them once onto the models the user has opted into in Cursor's picker (cheap = small / fast, balanced = mid flagship, strong = top reasoning model of that set); the ONE judgment slot runs strong, never the whole fan-out; cannot classify → balanced, and say so.
 
-**Enforcement** — the `beforeShellExecution` hook denies a commit with `docs/rolepod/` staged; there is no sub-agent commit block, cohesion check or worktree guard, and review / test evidence gating is Claude-only. Every other rule is skill-enforced — never report it as mechanically enforced.
+**workflow.mode** — `lite` skips Rolepod workflow gates and nudges; `standard` warns and allows; `full` enforces existing workflow conditions. The `beforeShellExecution` hook adapts the shared precommit gate. Review / test evidence gating is Claude-only. Every other rule is skill-enforced — never report it as mechanically enforced.

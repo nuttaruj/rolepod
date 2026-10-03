@@ -44,14 +44,12 @@
  *      hook's `messages` carry it instead — the previous turn's text is
  *      recorded at the start of the next one (one turn late by design).
  *
- * Subagent-commit ban is NOT here — it ships as `permission:` blocks in
- * every rendered agent file (platform-enforced; see build/merge-agent.py),
- * because agent identity inside tool.execute.before is undocumented.
+ * Child ship-operation rules live here and follow workflow.mode. An unseen
+ * session is looked up before its first ship command is classified. Synthetic
+ * hook tests prove this adapter branch, not live enforcement by every runtime.
  *
- * Every handler is wrapped so a failure never breaks the user's session —
- * a hygiene shim must never cost more than the hygiene it buys. The gate
- * only ever denies on POSITIVE evidence (a staged private doc) —
- * unknown payload shapes fall through to allow, never to block.
+ * Hygiene handlers fail open. In Full mode, an unresolved identity on a
+ * ship command is held until the SDK can confirm Lead or child status.
  */
 
 import { createHash } from "node:crypto"
@@ -78,13 +76,13 @@ const TOOL_MAP = {
   shell: "Bash", subagent: "Agent", patch: "Edit",
 }
 // Run one shared core with a Claude-shape stdin; return its additionalContext or "".
-function runCore(name, input) {
+function runCore(name, input, profile = {}) {
   try {
     const script = path.join(SHARED, `${name}.sh`)
     if (!fs.existsSync(script)) return ""
     const r = spawnSync("bash", [script], {
       input: JSON.stringify(input), encoding: "utf8", timeout: 3000,
-      stdio: ["pipe", "pipe", "ignore"], env: process.env,
+      stdio: ["pipe", "pipe", "ignore"], env: { ...process.env, ...profile },
     })
     if (r.status !== 0 || !r.stdout) return ""
     const o = JSON.parse(r.stdout)
@@ -103,7 +101,7 @@ function runCore(name, input) {
 // evidence tally runs here, same as before. Returns the parsed
 // hookSpecificOutput, or null on any failure (fail open — a gate a CLI
 // cannot run must never block).
-function runCommitGate(dir, cmd) {
+function runCommitGate(dir, cmd, profile = {}) {
   try {
     const script = path.join(SHARED, "precommit-gate.sh")
     if (!fs.existsSync(script)) return null
@@ -111,7 +109,12 @@ function runCommitGate(dir, cmd) {
     const r = spawnSync("bash", [script], {
       input: JSON.stringify(input), encoding: "utf8", timeout: 5000,
       stdio: ["pipe", "pipe", "ignore"], cwd: dir,
-      env: { ...process.env, ROLEPOD_LEAD_CLI: "opencode" },
+      env: {
+        ...process.env,
+        ROLEPOD_LEAD_CLI: "opencode",
+        ROLEPOD_PROJECT_ROOT: dir,
+        ...profile,
+      },
     })
     if (!r.stdout) return null
     return JSON.parse(r.stdout)
@@ -438,6 +441,35 @@ function isGitCommit(cmd) {
   return false
 }
 
+function shipOperation(cmd) {
+  const top = uwTokenize(cmd)
+  const toks = top.ok ? uwProcess(top.toks, 0).toks : cmd.split(/\s+/).filter(Boolean)
+  let i = 0
+  while (i < toks.length) {
+    let end = i
+    while (end < toks.length && !uwIsOperatorTok(toks[end])) end++
+    const seg = toks.slice(i, end)
+    const head = uwHead(seg)
+    const exe = path.basename(head[0] || "")
+    if (exe === "git") {
+      let j = 1
+      while (j < head.length && head[j].startsWith("-")) {
+        if (VALUE_OPTS.has(head[j])) j += 2
+        else if (head[j] === "-c" && head[j + 1]?.includes("=")) j += 2
+        else j++
+      }
+      if (head[j] === "commit" || head[j] === "push") return head[j]
+      if (head[j] === "reset" && head.slice(j + 1).includes("--hard")) return "reset --hard"
+    }
+    if (exe === "gh") {
+      const pr = head.indexOf("pr", 1)
+      if (pr >= 0 && (head[pr + 1] === "create" || head[pr + 1] === "merge")) return `gh pr ${head[pr + 1]}`
+    }
+    i = end + 1
+  }
+  return ""
+}
+
 // The state and helpers both entry points share, bound to one plugin
 // instance's project directory. Stateless helpers (ledger, runCore,
 // isGitCommit, worktreeRoot, the regexes) are re-exposed here too, so a
@@ -445,6 +477,20 @@ function isGitCommit(cmd) {
 function makeCore({ directory, homedir } = {}) {
   const dir = directory || process.cwd()
   const hd = homedir || os.homedir()
+  let configuredMode = "standard"
+  {
+    const reader = path.join(SHARED, "rolepod_config.py")
+    if (fs.existsSync(reader)) try {
+      const result = spawnSync("python3", ["-I", reader, "mode"], {
+        cwd: dir, encoding: "utf8", timeout: 1500,
+        env: { ...process.env, ROLEPOD_PROJECT_ROOT: dir },
+        stdio: ["ignore", "pipe", "ignore"],
+      })
+      const mode = result.stdout?.split(/\r?\n/).find((line) => line.startsWith("mode="))?.slice(5)
+      if (["lite", "standard", "full"].includes(mode)) configuredMode = mode
+    } catch { /* uncaptured startup profile defaults to Standard */ }
+  }
+  const workflowMode = () => configuredMode
 
   // Lock-name rule (same in hooks/session-lifecycle.sh and the cursor
   // loader): read at most 32 bytes, take the first line only (line 2 of a
@@ -518,9 +564,11 @@ function makeCore({ directory, homedir } = {}) {
   }
 
   return {
-    directory: dir, homedir: hd,
+    directory: dir, homedir: hd, workflowMode,
     registerLock,
-    runCore, runCommitGate, isGitCommit, worktreeRoot,
+    runCore: (name, input) => runCore(name, input, { ROLEPOD_SESSION_MODE: configuredMode, ROLEPOD_SESSION_CLI: "opencode" }),
+    runCommitGate: (root, cmd) => runCommitGate(root, cmd, { ROLEPOD_SESSION_MODE: configuredMode, ROLEPOD_SESSION_CLI: "opencode" }),
+    isGitCommit, worktreeRoot,
     VALUE_OPTS,
   }
 }
@@ -528,8 +576,12 @@ function makeCore({ directory, homedir } = {}) {
 // ── v1: opencode 1.x named export ───────────────────────────────────────
 export const RolepodPlugin = async ({ directory, client }) => {
   const core = makeCore({ directory })
+  const mode = core.workflowMode()
+  if (mode === "lite") return {}
   let sessionId = null
   let lastPromptAt = 0 // epoch seconds of the newest user prompt (chat.message)
+  const childSessions = new Set()
+  const leadSessions = new Set()
 
   // Route record: opencode keeps no transcript file, so at session.idle the plugin
   // hands the turn's assistant text to route_check.py --record-text (prompt_ts =
@@ -573,12 +625,17 @@ export const RolepodPlugin = async ({ directory, client }) => {
   return {
     event: async ({ event }) => {
       try {
+        if (!["session.created", "session.compacted", "session.idle"].includes(event?.type)) return
         if (event?.type === "session.created") {
+          const info = event?.properties?.info
+          const createdId = info?.id
+          if (createdId && (info?.parentID ?? event?.properties?.parentID)) childSessions.add(String(createdId))
+          else if (createdId) leadSessions.add(String(createdId))
           // The first session this process sees is the Lead's; a task subagent
           // creates a child session later and must not become "the session"
           // (measured live 2026-09-16: the child's id shadowed the parent's and
           // the parent's session.idle never matched, so no route was recorded).
-          if (!sessionId) {
+          if (!sessionId && !childSessions.has(String(createdId || ""))) {
             sessionId =
               event?.properties?.info?.id ?? `opencode-${process.pid}-${Date.now()}`
             registerLockAndWarn(sessionId)
@@ -633,13 +690,45 @@ export const RolepodPlugin = async ({ directory, client }) => {
       try {
         if (String(input?.tool ?? "") !== "bash") return
         const cmd = String(output?.args?.command ?? "")
-        if (!core.isGitCommit(cmd)) return
-        const dir = directory || process.cwd()
-        const worktree = core.worktreeRoot(dir)
-        if (!worktree) return
-        const gate = core.runCommitGate(worktree, cmd)
-        if (gate?.hookSpecificOutput?.permissionDecision === "deny") {
-          denyReason = String(gate.hookSpecificOutput.permissionDecisionReason || "")
+        const sid = String(input?.sessionID ?? output?.sessionID ?? "")
+        const ship = shipOperation(cmd)
+        let role = childSessions.has(sid) ? "child" : leadSessions.has(sid) ? "lead" : "unknown"
+        if (ship && role === "unknown") {
+          try {
+            if (sid && typeof client?.session?.get === "function") {
+              const result = await client.session.get({ path: { id: sid } })
+              const info = result?.data ?? result
+              if (info && typeof info === "object" && info.id === sid) {
+                role = info.parentID ? "child" : "lead"
+                if (role === "child") childSessions.add(sid)
+                else leadSessions.add(sid)
+              }
+            }
+          } catch { /* unresolved remains distinct from a confirmed Lead */ }
+        }
+        if (ship && role === "child") {
+          const reason = `Rolepod ${mode === "full" ? "Full" : "Standard"} mode: child sessions cannot run ${ship}.`
+          if (mode === "full") denyReason = reason
+          else toast(`WARNING: ${reason} Standard mode allows this operation.`)
+        } else if (ship && role === "unknown") {
+          const reason = `Rolepod Full mode: cannot verify session identity for ${ship}; retry after session lookup succeeds.`
+          if (mode === "full") denyReason = reason
+          else toast(`WARNING: ${reason} Standard mode allows this operation.`)
+        } else if (core.isGitCommit(cmd)) {
+          const dir = directory || process.cwd()
+          const worktree = core.worktreeRoot(dir)
+          if (!worktree) return
+          const gate = core.runCommitGate(worktree, cmd)
+          if (gate?.hookSpecificOutput?.permissionDecision === "deny") {
+            const reason = String(gate.hookSpecificOutput.permissionDecisionReason || "")
+            if (mode === "full") denyReason = reason
+            else {
+              try { client?.tui?.showToast?.({ body: { message: `WARNING: ${reason}`, variant: "warning" } }) } catch { /* v1 toast unavailable */ }
+            }
+          }
+          if (mode === "standard" && gate?.hookSpecificOutput?.additionalContext) {
+            try { client?.tui?.showToast?.({ body: { message: gate.hookSpecificOutput.additionalContext, variant: "warning" } }) } catch { /* v1 toast unavailable */ }
+          }
         }
       } catch {
         /* fail open — unknown payload shape must never block */
@@ -711,6 +800,8 @@ export default {
       return
     }
     const core = makeCore({ directory })
+    const mode = core.workflowMode()
+    if (mode === "lite") return
 
     // sessions: sessionID -> { child } for sessions this instance has seen
     // via the (global) event stream and knows belong to this project —
@@ -718,13 +809,26 @@ export default {
     // its own first session.created, so the prompt/tool hooks (scoped to
     // this instance already) are the reliable source of "is this ours".
     const sessions = new Map()
+    // Only direct session lookup (or an explicit parentID event) establishes
+    // identity for ship gates. The prompt hook can establish ownership for
+    // routing, but it cannot prove that an unseen session is the Lead.
+    const verifiedRoles = new Map()
     const lockedSessions = new Set()
     const pendingSibling = new Map() // sessionID -> { count, names }
     const pendingReanchor = new Set()
     const pendingRoute = new Set()
+    const pendingGateNotice = new Map()
     const lastPromptAt = new Map()
 
     const isChild = (sid) => sessions.get(sid)?.child === true
+    const clearPendingSession = (sid) => {
+      if (!sid) return
+      pendingSibling.delete(sid)
+      pendingReanchor.delete(sid)
+      pendingRoute.delete(sid)
+      pendingGateNotice.delete(sid)
+      lastPromptAt.delete(sid)
+    }
 
     const recordRouteV2 = (sid, messages) => {
       try {
@@ -778,18 +882,47 @@ export default {
     }
 
     try {
-      await ctx.tool.hook("execute.before", (e) => {
+      await ctx.tool.hook("execute.before", async (e) => {
         let denyReason = null
         try {
+          const sid = String(e?.sessionID ?? "")
           const tool = String(e?.tool ?? "")
           if (tool !== "shell" && tool !== "bash") return
           const cmd = String(e?.input?.command ?? "")
-          if (!core.isGitCommit(cmd)) return
-          const worktree = core.worktreeRoot(directory)
-          if (!worktree) return
-          const gate = core.runCommitGate(worktree, cmd)
-          if (gate?.hookSpecificOutput?.permissionDecision === "deny") {
-            denyReason = String(gate.hookSpecificOutput.permissionDecisionReason || "")
+          const ship = shipOperation(cmd)
+          let role = verifiedRoles.get(sid) || "unknown"
+          if (ship && role === "unknown") {
+            try {
+              if (sid && typeof ctx.session?.get === "function") {
+                const result = await ctx.session.get({ sessionID: sid })
+                const info = result?.data ?? result
+                if (info && typeof info === "object" && info.id === sid) {
+                  role = info.parentID ? "child" : "lead"
+                  sessions.set(sid, { child: role === "child" })
+                  verifiedRoles.set(sid, role)
+                }
+              }
+            } catch { /* unresolved remains distinct from a confirmed Lead */ }
+          }
+          if (ship && role === "child") {
+            const reason = `Rolepod ${mode === "full" ? "Full" : "Standard"} mode: child sessions cannot run ${ship}.`
+            if (mode === "full") denyReason = reason
+            else pendingGateNotice.set(sid, `WARNING: ${reason} Standard mode allows this operation.`)
+          } else if (ship && role === "unknown") {
+            const reason = `Rolepod Full mode: cannot verify session identity for ${ship}; retry after session lookup succeeds.`
+            if (mode === "full") denyReason = reason
+            else pendingGateNotice.set(sid, `WARNING: ${reason} Standard mode allows this operation.`)
+          } else if (core.isGitCommit(cmd)) {
+            const worktree = core.worktreeRoot(directory)
+            if (!worktree) return
+            const gate = core.runCommitGate(worktree, cmd)
+            if (gate?.hookSpecificOutput?.permissionDecision === "deny") {
+              const reason = String(gate.hookSpecificOutput.permissionDecisionReason || "")
+              if (mode === "full") denyReason = reason
+              else pendingGateNotice.set(sid, `WARNING: ${reason} Standard mode allows this operation.`)
+            }
+            if (mode === "standard" && gate?.hookSpecificOutput?.additionalContext)
+              pendingGateNotice.set(sid, gate.hookSpecificOutput.additionalContext)
           }
         } catch {
           /* fail open — unknown payload shape must never block */
@@ -803,10 +936,10 @@ export default {
     try {
       await ctx.tool.hook("execute.after", (e) => {
         try {
+          const sid = String(e?.sessionID ?? "")
           if (e?.status !== "completed") return
           const tool = String(e?.tool ?? "")
           const input = e?.input ?? {}
-          const sid = String(e?.sessionID ?? "")
           const result = e?.result
 
           const claudeTool = TOOL_MAP[tool]
@@ -837,6 +970,10 @@ export default {
         try {
           const sid = String(e?.sessionID ?? "")
           if (!sid || !Array.isArray(e?.system)) return
+          if (pendingGateNotice.has(sid)) {
+            e.system.push({ type: "text", text: pendingGateNotice.get(sid) })
+            pendingGateNotice.delete(sid)
+          }
           if (pendingSibling.has(sid)) {
             const { count, names } = pendingSibling.get(sid)
             pendingSibling.delete(sid)
@@ -864,13 +1001,15 @@ export default {
     void (async () => {
       try {
         for await (const ev of ctx.event.subscribe({ signal: controller.signal })) {
-          try {
-            const data = ev?.data ?? {}
+        try {
+          if (!["session.created", "session.compaction.ended", "session.deleted"].includes(ev?.type)) continue
+          const data = ev?.data ?? {}
             const sid = data.sessionID ?? null
             if (ev?.type === "session.created") {
               const ours = data.location?.directory === directory || sessions.has(data.parentID)
               if (!ours) continue
               sessions.set(sid, { child: Boolean(data.parentID) })
+              if (data.parentID) verifiedRoles.set(sid, "child")
             } else if (ev?.type === "session.compaction.ended") {
               // `sessions` is seeded either here (session.created) or by the
               // prompt hook the first time this sessionID prompts (measured
@@ -881,6 +1020,7 @@ export default {
               if (known && !known.child) pendingReanchor.add(sid)
             } else if (ev?.type === "session.deleted") {
               sessions.delete(sid)
+              verifiedRoles.delete(sid)
               lockedSessions.delete(sid)
               pendingSibling.delete(sid)
               pendingReanchor.delete(sid)

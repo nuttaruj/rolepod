@@ -44,6 +44,13 @@ rolepod_log_bypass() {
 }
 
 INPUT=$(cat 2>/dev/null || echo '{}')
+_rcfg="${BASH_SOURCE[0]%/*}"; [ "$_rcfg" != "${BASH_SOURCE[0]}" ] || _rcfg=.
+. "$_rcfg/lib/session-mode.sh"
+rolepod_session_profile_load "$INPUT" "${ROLEPOD_SESSION_CLI:-unknown}"
+_mode=$ROLEPOD_SESSION_MODE
+[ "$_mode" = lite ] && exit 0
+_cwd=$(printf '%s' "$INPUT" | python3 -I -c 'import json,sys; print(json.load(sys.stdin).get("cwd") or "")' 2>/dev/null || true)
+export ROLEPOD_PROJECT_ROOT="${_cwd:-$PWD}"
 command -v python3 >/dev/null 2>&1 || exit 0
 
 # One pass: parse, classify, decide. Prints the deny JSON, BYPASS, or nothing.
@@ -132,5 +139,9 @@ if [ "$DECISION" = "BYPASS" ]; then
   rolepod_log_bypass "subagent-write-scope" "ROLEPOD_ALLOW_OUT_OF_SCOPE_WRITE"
   exit 0
 fi
-printf '%s\n' "$DECISION"
+if [ "$_mode" = standard ]; then
+  printf '%s' "$DECISION" | python3 -I -c 'import json,sys; d=json.load(sys.stdin); h=d.get("hookSpecificOutput",{}); reason=h.pop("permissionDecisionReason",""); h.pop("permissionDecision",None); h["additionalContext"]="WARNING: "+reason+" Standard mode allows the write; full mode enforces workflow scope."; print(json.dumps(d))' 2>/dev/null || true
+else
+  printf '%s\n' "$DECISION"
+fi
 exit 0

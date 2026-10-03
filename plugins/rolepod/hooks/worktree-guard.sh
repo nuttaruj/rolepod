@@ -55,6 +55,12 @@ elif [ -f "$_rcfg/rolepod-config.sh" ]; then . "$_rcfg/rolepod-config.sh"
 else rolepod_cfg_load() { ROLEPOD_CFG_GATES=soft; ROLEPOD_CFG_NUDGE=on; }; fi
 
 INPUT=$(cat 2>/dev/null || echo '{}')
+. "$_rcfg/lib/session-mode.sh"
+rolepod_session_profile_load "$INPUT" "${ROLEPOD_SESSION_CLI:-unknown}"
+_mode=$ROLEPOD_SESSION_MODE
+[ "$_mode" = lite ] && exit 0
+_cwd=$(printf '%s' "$INPUT" | python3 -I -c 'import json,sys; print(json.load(sys.stdin).get("cwd") or "")' 2>/dev/null || true)
+export ROLEPOD_PROJECT_ROOT="${_cwd:-$PWD}"
 SS="$(dirname "$0")/lib/session_state.py"
 [ -f "$SS" ] || exit 0
 
@@ -200,7 +206,7 @@ REL="${TARGET#"$WORKTREE"/}"
 
 # HARD deny — a live sibling owns this exact file. Point at native isolation
 # first (EnterWorktree), git worktree fallback second, override last.
-REL="$REL" SUGGEST_PATH="$SUGGEST_PATH" BRANCH="$BRANCH" python3 -I -c '
+REL="$REL" SUGGEST_PATH="$SUGGEST_PATH" BRANCH="$BRANCH" RP_MODE="$_mode" python3 -I -c '
 import json, os
 rel = os.environ.get("REL", "")
 sug = os.environ.get("SUGGEST_PATH", "")
@@ -213,13 +219,13 @@ reason = (
     "Intentionally shared (read-only review / coordinated owner) → ask the USER to set "
     "ROLEPOD_ALLOW_SHARED_WORKTREE=1; env bypass is user-set only."
 )
-print(json.dumps({
-    "hookSpecificOutput": {
-        "hookEventName": "PreToolUse",
-        "permissionDecision": "deny",
-        "permissionDecisionReason": reason,
-    }
-}))
+hook = {"hookEventName": "PreToolUse"}
+if os.environ.get("RP_MODE") == "standard":
+    hook["additionalContext"] = "WARNING: " + reason + " Standard mode allows the write; full mode enforces this guard."
+else:
+    hook["permissionDecision"] = "deny"
+    hook["permissionDecisionReason"] = reason
+print(json.dumps({"hookSpecificOutput": hook}))
 ' 2>/dev/null || echo '{}'
 
 exit 0

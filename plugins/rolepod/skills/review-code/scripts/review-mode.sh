@@ -1,54 +1,47 @@
 #!/bin/bash
-# review-mode — print the review mode, `standard` or `full`.
-#
-# Usage: scripts/review-mode.sh [--source]
-#   stdout: one word. `--source` prints `<mode> (project|global|default)`.
-#
-# Layers, first one with a `review.mode` key decides:
-#   1. <git root of cwd, or cwd when not a git repo>/.rolepod/config.json
-#   2. $HOME/.rolepod/config.json
-#   3. default `standard`
-# A deciding layer whose file is unreadable (broken JSON) or whose value is
-# not standard|full counts as `standard` with one warning line on stderr.
-# Keys outside `review` and `version` are never read. Always exits 0.
+# Review intensity follows the captured workflow profile, then configured workflow.mode.
+set -euo pipefail
 
-root=$(git rev-parse --show-toplevel 2>/dev/null || pwd)
+HERE=$(cd "$(dirname "$0")" && pwd)
+ROOT=$(cd "$HERE/../../../.." && pwd)
+READER="$HERE/rolepod_config.py"
+[ -f "$READER" ] || READER="$ROOT/hooks/lib/rolepod_config.py"
 
-# read_layer <file> -> prints "absent" | "standard" | "full" | "bad"
-read_layer() {
-  [ -f "$1" ] || { echo absent; return; }
-  python3 -I -c '
-import json, sys
-try:
-    with open(sys.argv[1]) as f:
-        d = json.load(f)
-except Exception:
-    print("bad"); sys.exit(0)
-r = d.get("review") if isinstance(d, dict) else None
-if not isinstance(r, dict) or "mode" not in r:
-    print("absent")
-elif r["mode"] in ("standard", "full"):
-    print(r["mode"])
-else:
-    print("bad")
-' "$1" 2>/dev/null || echo bad
-}
-
-mode=standard; src=default
-for layer in "project:$root/.rolepod/config.json" "global:$HOME/.rolepod/config.json"; do
-  name=${layer%%:*}; file=${layer#*:}
-  v=$(read_layer "$file")
-  [ "$v" = absent ] && continue
-  if [ "$v" = bad ]; then
-    echo "review-mode: $file is unreadable or review.mode is not standard|full; using standard" >&2
-    v=standard
-  fi
-  mode=$v; src=$name
-  break
+source_flag=0
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --source) source_flag=1; shift ;;
+    --project-root) [ "$#" -ge 2 ] || exit 2; export ROLEPOD_PROJECT_ROOT=$2; shift 2 ;;
+    *) echo "review-mode: unknown argument: $1" >&2; exit 2 ;;
+  esac
 done
 
-if [ "${1:-}" = "--source" ]; then
-  echo "$mode ($src)"
-else
-  echo "$mode"
+mode=
+source=${ROLEPOD_SESSION_SOURCE:-}
+if [[ "${ROLEPOD_SESSION_MODE:-}" =~ ^(lite|standard|full)$ ]]; then
+  [ "${ROLEPOD_SESSION_MODE}" = full ] && mode=full || mode=standard
 fi
+if [[ ! "$mode" =~ ^(standard|full)$ ]]; then
+  CLI=${ROLEPOD_SESSION_CLI:-}
+  SESSION_MODE="$HERE/session-mode.sh"
+  [ -f "$SESSION_MODE" ] || SESSION_MODE="$ROOT/hooks/lib/session-mode.sh"
+  . "$SESSION_MODE" 2>/dev/null || true
+  if [[ -z "$CLI" && "${CODEX_THREAD_ID:-}" =~ ^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$ ]] \
+    && type rolepod_session_profile_path >/dev/null 2>&1; then
+    _codex_profile=$(rolepod_session_profile_path codex "$CODEX_THREAD_ID" 2>/dev/null || true)
+    [ -f "$_codex_profile" ] && CLI=codex
+  fi
+  if [ -n "$CLI" ] && type rolepod_session_profile_load >/dev/null 2>&1; then
+    rolepod_session_profile_load "${ROLEPOD_HOOK_INPUT:-}" "$CLI"
+    [ "$ROLEPOD_SESSION_MODE" = full ] && mode=full || mode=standard
+    source=$ROLEPOD_SESSION_SOURCE
+  fi
+fi
+if [[ ! "$mode" =~ ^(standard|full)$ ]]; then
+  out=$(python3 -I "$READER" review || true)
+  mode=$(printf '%s\n' "$out" | awk -F= 'NR == 1 {print $1}')
+  source=$(printf '%s\n' "$out" | awk -F= '$1 == "source" {print $2}')
+fi
+case "$mode" in standard|full) ;; *) mode=standard ;; esac
+case "$source" in project|global|default|uncaptured) ;; *) source=default ;; esac
+if [ "$source_flag" = 1 ]; then echo "$mode ($source)"; else echo "$mode"; fi

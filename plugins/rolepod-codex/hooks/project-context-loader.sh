@@ -5,15 +5,19 @@
 set -euo pipefail
 
 INPUT=$(cat 2>/dev/null || echo '{}')
-CWD=$(echo "$INPUT" | python3 -I -c "import sys,json;print(json.load(sys.stdin).get('cwd','') or '')" 2>/dev/null || echo "$PWD")
+_rcfg="${BASH_SOURCE[0]%/*}"; [ "$_rcfg" != "${BASH_SOURCE[0]}" ] || _rcfg=.
+. "$_rcfg/lib/session-mode.sh"
+rolepod_session_profile_load "$INPUT" "${ROLEPOD_SESSION_CLI:-unknown}"
+_mode=$ROLEPOD_SESSION_MODE
+[ "$_mode" = lite ] && exit 0
+CWD=$(printf '%s' "$INPUT" | python3 -I -c "import sys,json; d=json.load(sys.stdin); print(d.get('cwd') or (d.get('workspace_roots') or [''])[0] or (d.get('workspacePaths') or [''])[0])" 2>/dev/null || echo "$PWD")
+[ -n "$CWD" ] || CWD="$PWD"
+export ROLEPOD_PROJECT_ROOT="$CWD"
 cd "$CWD" 2>/dev/null || exit 0
 
 # Machine config (written once): a plugin-manager update never runs install.sh,
 # so the first session start writes ~/.rolepod/config.json when it is absent.
 # The bash test comes first, so a normal start spawns nothing; silent, fail-open.
-_cf="${HOME:-/nonexistent}/.rolepod/config.json"
-_cr="$(dirname "${BASH_SOURCE[0]}")/lib/rolepod_config.py"
-{ [ -e "$_cf" ] || [ -L "$_cf" ] || [ ! -f "$_cr" ] || python3 -I "$_cr" init; } >/dev/null 2>&1 || true
 
 REPO=$(git rev-parse --show-toplevel 2>/dev/null) || exit 0
 NAME=$(basename "$REPO")

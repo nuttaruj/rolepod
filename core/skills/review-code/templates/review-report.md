@@ -7,7 +7,7 @@
 <What was reviewed — the diff, the spec it implements, and every changed
  file once: `read` or `skipped — reason`. A changed file missing from this
  list makes the report a partial return.>
-**Snapshot:** `<base sha>..<head sha>` <+ `diff <git diff HEAD | git hash-object --stdin>` for uncommitted work; each round 2+ appends one Snapshot line for its fix delta — finish-work checks they reach the merged head>
+**Snapshot H1 (immutable):** `<base sha>..<head sha>` <+ `diff <git diff HEAD | git hash-object --stdin>` for uncommitted work. Lite lens reports must record the identical frozen snapshot/hash; each report names only its own lens. Never relabel H1 as a later snapshot; a reviewer re-check gets a separate report.
 
 ## Read
 <`security-engineer` and the adversarial pass: each claimed behavior → the
@@ -26,6 +26,17 @@
  findings (dedup key: file:line + root cause). For an R4 (high-risk)
  diff, name the adversarial pass (`adversarial-review`) and confirm it ran on
  a different CLI than the Lead's, or is the internal strong pass.>
+
+**Lite isolation** (Lite only — remove otherwise): <lens: spec | lens: standards>; fresh context: yes; received only this lens: yes; other report/findings visible: no; snapshot/hash matches paired report: yes.
+
+## Author fix closure
+<For Lite and other no-recheck branches, the merged report records each finding's author closure. Keep the original lens reports immutable at H1.>
+
+| Finding | Closure evidence (repro/test + result) | Bounded fix delta H1→H2 (paths + delta hash) | Final verified snapshot H2 | Covered by finding fix? |
+|---|---|---|---|---|
+| `<finding id>` | `<specific evidence>` | `<paths; hash>` | `<tree id>` | yes / no |
+
+<A green suite alone does not close a finding. Unrelated or new changes are uncovered and must be surfaced and routed at their current tier and mode.>
 
 **Cross-model adversarial pass** (R4 only — delete the line otherwise): <ran on `<cli>` (cross-family, its default model — receipt: ROLEPOD-XFAM ok … raw=<path>) |
  ran on `<cli>`, model family not reported (a CLI preset with no family

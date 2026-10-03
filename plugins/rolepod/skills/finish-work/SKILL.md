@@ -15,7 +15,7 @@ Turns a verified, reviewed branch into one authorized finish — merge, PR, or k
 
 ### 1. Pre-merge gate
 
-One pre-merge gate: check-work's Status matches the current tree (else re-run the checks covering the change) · required CI lanes green · review reports present, their Snapshot reaches the head, and an R4 diff has the required reports (see Snapshot and floor below) · one concern per PR.
+One pre-merge gate: check-work's Status matches the current tree (else re-run the checks covering the change) · required CI lanes green · review reports and finding-closure provenance cover the current tree, and an R4 diff has its mode-required reports (see Snapshot and floor below) · one concern per PR.
 
 Inputs: branch + base · diff summary (files, lines, risk surfaces) · CI per lane · review verdict · check-work's `Status:` · the user's intent.
 
@@ -23,7 +23,13 @@ A stale base or a conflict → rebase first; the target precedence, the publishe
 
 - **Check-work Status** — `UNVERIFIED` or `PARTIAL` blocks merge unless the user explicitly waives it; green tests alone do not satisfy it. The block's `Verified tree` id equals `git rev-parse HEAD^{tree}` and the tree is clean → cite that block in any session, no local re-run (an ignored input the check reads that changed since → re-run it); another tree → re-run only the checks covering the change; the post-deploy smoke always runs. Fails → `check-work`.
 - **Review reports** — the `review-code` its Pick reviewers asks for is done; R4 reports sit under `.rolepod/evidence/review/`, missing → `review-code` for that task's diff, never the whole branch. Each track holding two or more code tasks → its track-end review brief is in; a one-code-task track → its owner's lens reports. The plan has a **Ship group** line → its drift-pass report is there too (`implement-plan`'s `references/subagent-dispatch.md` Ship-group drift pass).
-- **Snapshot and floor** — a commit past the last Snapshot is a new delta for `review-code` at its own tier (an R1 delta needs none), never a full re-review. An R4 diff needs its `security-engineer` report; in `full` mode also the adversarial-pass report (the mode comes from `review-code`'s Review mode). Missing → blocks the merge; only the user's waiver naming this gate, quoted in the finish menu, clears it.
+- **Snapshot and floor** — a commit past the last Snapshot is a new delta for `review-code` at its own tier (an R1 delta needs none), never a full re-review. Use the active session mode carried from startup/manual selection; do not re-read configured mode at Ship. Report configured mode separately if inspected. Restart or open a new session to apply config changes.
+  - Original lens reports are immutable at H1. A no-recheck branch may reuse them only with a finding-specific author repro/test and result, exact bounded H1→H2 fix delta, and final verified snapshot H2 recorded in the merged report. `check-work`'s Verified tree must equal H2 and the current tree must be clean.
+  - Lite R4: both isolated lens reports must cover the same H1 snapshot, or the Lead must document its no-agent walkthrough of both axes and reviewer-independence limitation. No security or adversarial report is required. Reuse H1 plus verified author closure at H2 only when every H1→H2 change is a verified finding fix and the current tree is H2; never relabel H1 as H2.
+  - R2/R3 and Standard R4 follow their no-recheck rules with the same finding-specific H1→H2 closure evidence. Full R4 re-checks only code-touching fixes for findings raised by `security-engineer` or the adversarial pass, as `review-code` specifies.
+  - Unrelated or new changes after H1 are uncovered: surface them and route the changed scope at its current tier and workflow mode. Do not hide them in a finding fix or claim H1 covers them. Green suite alone is not finding-specific closure evidence.
+  - Standard R4: the `security-engineer` report is required. Full R4 also needs the adversarial-pass report.
+  - A missing required report blocks merge; only the user's waiver naming this gate, quoted in the finish menu, clears it.
 - **PR scope** — one concern per PR / merge. Mixed concerns → split first (`git add -p`, separate branches); a mixed diff is unreviewable.
 
 Done when: the gate passes, or each failure is fixed, reported, or waived in the user's quoted words.
@@ -55,7 +61,7 @@ Done when: the menu size and the cleanup owner are known.
 | **Keep open** | More work planned; checkpoint commit only | yes |
 
 Fill `templates/finish-menu.md`: gate status, options, follow-ups carried, recommendation, awaiting authorization for.
-- A follow-up the Lead can close now — a one-line fix, a command, or work inside the approved spec or context it already holds → closed before the menu (in-spec work: a new task, tiered, dispatched to an owner; a high-risk path → R4 with its full review), never carried; only a follow-up outside the spec or a user decision (money / auth / new scope) is carried, as a question. A leftover list without an action or a question is not a finish.
+- A follow-up the Lead can close now — a one-line fix, a command, or work inside the approved spec or context it already holds → closed before the menu (in-spec work: a new task, tiered, dispatched to an owner; a high-risk path → R4 with its workflow-mode review set), never carried; only a follow-up outside the spec or a user decision (money / auth / new scope) is carried, as a question. A leftover list without an action or a question is not a finish.
 - Each carried line lands in the project's one follow-up list — its issue tracker when it keeps one, else `docs/rolepod/backlog.md`, one line per item with a pointer to the plan or commit it came from. A line this branch closed leaves that list in the same pass; the list holds only what is still open.
 - State the recommendation and wait for the pick — unless the user's own message already named the action AND the target: that IS the pick; state the gate status plus the single action and act.
 - Authorization never widens: a PR is not a merge, one target is not another.

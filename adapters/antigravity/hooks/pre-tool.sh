@@ -26,6 +26,9 @@ set -uo pipefail
 IN=$(cat 2>/dev/null || true)
 [ -n "$IN" ] || exit 0
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+. "$HERE/lib/session-mode.sh"
+rolepod_session_profile_load "$IN" antigravity
+[ "$ROLEPOD_SESSION_MODE" = lite ] && exit 0
 GATE="$HERE/precommit-gate.sh"
 [ -f "$GATE" ] || exit 0
 
@@ -57,7 +60,7 @@ CWD="${TRANS%%$'\t'*}"
 CLAUDE_IN="${TRANS#*$'\t'}"
 
 ERR=$(mktemp "${TMPDIR:-/tmp}/rolepod-agy-gate.XXXXXX" 2>/dev/null || echo /dev/null)
-OUT=$(cd "$CWD" 2>/dev/null && printf '%s' "$CLAUDE_IN" | CLAUDE_PLUGIN_ROOT="$HERE/.." ROLEPOD_LEAD_CLI="${ROLEPOD_LEAD_CLI:-antigravity}" bash "$GATE" 2>"$ERR"); RC=$?
+OUT=$(cd "$CWD" 2>/dev/null && printf '%s' "$CLAUDE_IN" | CLAUDE_PLUGIN_ROOT="$HERE/.." ROLEPOD_SESSION_CLI=antigravity ROLEPOD_LEAD_CLI="${ROLEPOD_LEAD_CLI:-antigravity}" bash "$GATE" 2>"$ERR"); RC=$?
 STDERR=$(cat "$ERR" 2>/dev/null || true); [ "$ERR" = /dev/null ] || rm -f "$ERR"
 
 # Back-translate: only a deny produces output.

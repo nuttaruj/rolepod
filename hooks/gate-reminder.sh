@@ -20,8 +20,8 @@
 #     too. One hard checkpoint, at commit (precommit-gate.sh); this hook
 #     informs.
 #
-# gates.mode in ~/.rolepod/config.json (hooks/lib/rolepod-config.sh):
-#   off — silence the would-block line and the review-in-flight line entirely
+# workflow.mode controls the reminder: Full may predict a commit block;
+# Standard gives advisory output; Lite exits before hook work.
 set -euo pipefail
 unset XF_RUNNER
 
@@ -83,13 +83,14 @@ rolepod_log_bypass() {
     >> "$_rlb_log" 2>/dev/null || true
 }
 
-# gates.mode (off|soft|hard) from ~/.rolepod/config.json → ROLEPOD_CFG_GATES.
-# Fail-open like precommit-gate.sh: a missing lib means soft, never an abort.
+# workflow.mode is resolved from the event workspace's root; the environment
+# config fallback is handled by the shared resolver.
 _rcfg="${BASH_SOURCE[0]%/*}"; [ "$_rcfg" != "${BASH_SOURCE[0]}" ] || _rcfg=.
-if [ -f "$_rcfg/lib/rolepod-config.sh" ]; then . "$_rcfg/lib/rolepod-config.sh"
-else rolepod_cfg_load() { ROLEPOD_CFG_GATES=soft; ROLEPOD_CFG_NUDGE=on; }; fi
-
 INPUT=$(cat 2>/dev/null || echo '{}')
+ . "$_rcfg/lib/session-mode.sh"
+rolepod_session_profile_load "$INPUT" "${ROLEPOD_SESSION_CLI:-unknown}"
+_mode=$ROLEPOD_SESSION_MODE
+[ "$_mode" = lite ] && exit 0
 
 # ONE python3 pass for tool_name + file path (was 2 spawns — ~16ms on
 # every edit). tool first via read -r; path LAST, slurped with $(cat) so
@@ -201,7 +202,6 @@ fi
 # WORKTREE's own evidence, which can differ from the hook's own process cwd
 # when the edited FILE itself lives in that worktree.
 XF_INFLIGHT=""
-ROLEPOD_CFG_GATES=soft   # set -u guard; rolepod_cfg_load below runs only when there is something to say
 gr_inflight_scan() {
   # Nearest EXISTING ancestor of FILE's directory (a NEW file in a
   # not-yet-created directory resolves through it) — the second root
@@ -255,13 +255,8 @@ gr_inflight_scan() {
 }
 gr_inflight_scan
 
-# gates.mode is read only when this hook has something to say (a job in flight
-# or a high-risk edit): a plain edit stays on the no-python-spawn fast path.
-# off = silent: the in-flight line goes too.
-if [ -n "$XF_INFLIGHT" ] || [ -n "$HIGH_RISK" ]; then
-  rolepod_cfg_load
-  [ "$ROLEPOD_CFG_GATES" = "off" ] && XF_INFLIGHT=""
-fi
+# The selected workflow.mode is authoritative. In-flight advisories remain
+# visible in Standard; Lite exited above.
 
 # Silent pass when nothing is risky. Normal code / docs / config edits
 # never see a reminder from this hook — the Q1-Q4 doctrine lives in
@@ -307,16 +302,21 @@ fi
 STRONG_REVIEWERS=${STRONG_REVIEWERS:-0}
 
 SOFT_MODE=0
-[ "$ROLEPOD_CFG_GATES" = "off" ] && { SOFT_MODE=1; rolepod_log_bypass "gate-reminder" "config:gates=off"; }
+[ "$_mode" = standard ] && SOFT_MODE=1
 
 # ONE line, only when the commit would block now (spec Desired 2, 2026-09-25):
 # fact → Fix → Exception. No always-on careful-mode banner, no per-CLI
 # reviewer-list builder, no test-first nudge — the gate's own deny (at
 # commit) is the one hard checkpoint; this is a cheap, silent-unless-blocking
-# prediction of it. C4 wording (review-finish-lean, 2026-09-30).
+# prediction of it in Full. Standard emits advisory wording without claiming
+# enforcement. C4 wording (review-finish-lean, 2026-09-30).
 WOULD_BLOCK=""
-if [ -n "$HIGH_RISK" ] && [ "$IS_SUBAGENT" -eq 0 ] && [ "$SOFT_MODE" -eq 0 ] && [ "$STRONG_REVIEWERS" -eq 0 ]; then
-  WOULD_BLOCK="COMMIT WILL BLOCK — HIGH-RISK edit: a high-risk commit needs at least one \`security-engineer\` dispatch since the last commit, any model; an external pass never counts. Fix: dispatch \`security-engineer\` (a FINISHED dispatch before commit). Exception: only the user, never the model, can lower this gate. "
+if [ -n "$HIGH_RISK" ] && [ "$IS_SUBAGENT" -eq 0 ] && [ "$STRONG_REVIEWERS" -eq 0 ]; then
+  if [ "$SOFT_MODE" -eq 1 ]; then
+    WOULD_BLOCK="HIGH-RISK edit: Standard mode advises dispatching a \`security-engineer\` reviewer before commit. "
+  else
+    WOULD_BLOCK="COMMIT WILL BLOCK — HIGH-RISK edit: a high-risk commit needs at least one \`security-engineer\` dispatch since the last commit, any model; an external pass never counts. Fix: dispatch \`security-engineer\` (a FINISHED dispatch before commit). Exception: only the user, never the model, can lower this gate. "
+  fi
 fi
 
 # Emit reminder ONLY when high-risk AND would-block — no generic Q1-Q4 nag,

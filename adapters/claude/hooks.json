@@ -5,7 +5,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "[ -z \"$CURSOR_PROJECT_DIR\" ] && exec bash \"${CLAUDE_PLUGIN_ROOT}/hooks/claim-verify-nudge.sh\"; cat >/dev/null",
+            "command": "export ROLEPOD_SESSION_CLI=claude; [ -z \"$CURSOR_PROJECT_DIR\" ] && exec bash \"${CLAUDE_PLUGIN_ROOT}/hooks/claim-verify-nudge.sh\"; cat >/dev/null",
             "timeout": 3
           }
         ]
@@ -17,18 +17,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "[ -z \"$CURSOR_PROJECT_DIR\" ] && exec bash \"${CLAUDE_PLUGIN_ROOT}/hooks/always-on-loader.sh\"; cat >/dev/null",
-            "timeout": 3
-          },
-          {
-            "type": "command",
-            "command": "[ -z \"$CURSOR_PROJECT_DIR\" ] && exec bash \"${CLAUDE_PLUGIN_ROOT}/hooks/project-context-loader.sh\"; cat >/dev/null",
-            "timeout": 5
-          },
-          {
-            "type": "command",
-            "command": "[ -z \"$CURSOR_PROJECT_DIR\" ] && exec bash \"${CLAUDE_PLUGIN_ROOT}/hooks/session-lifecycle.sh\" --lock --cli claude; cat >/dev/null",
-            "timeout": 3
+            "command": "[ -z \"$CURSOR_PROJECT_DIR\" ] && exec bash \"${CLAUDE_PLUGIN_ROOT}/hooks/session-start.sh\" --cli claude; cat >/dev/null",
+            "timeout": 8
           }
         ]
       }
@@ -39,17 +29,17 @@
         "hooks": [
           {
             "type": "command",
-            "command": "[ -z \"$CURSOR_PROJECT_DIR\" ] && exec bash \"${CLAUDE_PLUGIN_ROOT}/hooks/worktree-guard.sh\"; cat >/dev/null",
+            "command": "export ROLEPOD_SESSION_CLI=claude; [ -z \"$CURSOR_PROJECT_DIR\" ] && exec bash \"${CLAUDE_PLUGIN_ROOT}/hooks/worktree-guard.sh\"; cat >/dev/null",
             "timeout": 3
           },
           {
             "type": "command",
-            "command": "[ -z \"$CURSOR_PROJECT_DIR\" ] && exec bash \"${CLAUDE_PLUGIN_ROOT}/hooks/gate-reminder.sh\"; cat >/dev/null",
+            "command": "export ROLEPOD_SESSION_CLI=claude; [ -z \"$CURSOR_PROJECT_DIR\" ] && exec bash \"${CLAUDE_PLUGIN_ROOT}/hooks/gate-reminder.sh\"; cat >/dev/null",
             "timeout": 3
           },
           {
             "type": "command",
-            "command": "[ -z \"$CURSOR_PROJECT_DIR\" ] && exec bash \"${CLAUDE_PLUGIN_ROOT}/hooks/subagent-write-scope.sh\"; cat >/dev/null",
+            "command": "export ROLEPOD_SESSION_CLI=claude; [ -z \"$CURSOR_PROJECT_DIR\" ] && exec bash \"${CLAUDE_PLUGIN_ROOT}/hooks/subagent-write-scope.sh\"; cat >/dev/null",
             "timeout": 3
           }
         ]
@@ -69,17 +59,17 @@
         "hooks": [
           {
             "type": "command",
-            "command": "[ -z \"$CURSOR_PROJECT_DIR\" ] && exec bash \"${CLAUDE_PLUGIN_ROOT}/hooks/precommit-gate.sh\"; cat >/dev/null",
+            "command": "export ROLEPOD_SESSION_CLI=claude; [ -z \"$CURSOR_PROJECT_DIR\" ] && exec bash \"${CLAUDE_PLUGIN_ROOT}/hooks/precommit-gate.sh\"; cat >/dev/null",
             "timeout": 5
           },
           {
             "type": "command",
-            "command": "[ -z \"$CURSOR_PROJECT_DIR\" ] && exec bash \"${CLAUDE_PLUGIN_ROOT}/hooks/push-ref-check.sh\"; cat >/dev/null",
+            "command": "export ROLEPOD_SESSION_CLI=claude; [ -z \"$CURSOR_PROJECT_DIR\" ] && exec bash \"${CLAUDE_PLUGIN_ROOT}/hooks/push-ref-check.sh\"; cat >/dev/null",
             "timeout": 3
           },
           {
             "type": "command",
-            "command": "[ -z \"$CURSOR_PROJECT_DIR\" ] && exec bash \"${CLAUDE_PLUGIN_ROOT}/hooks/block-subagent-commit.sh\"; cat >/dev/null",
+            "command": "export ROLEPOD_SESSION_CLI=claude; [ -z \"$CURSOR_PROJECT_DIR\" ] && exec bash \"${CLAUDE_PLUGIN_ROOT}/hooks/block-subagent-commit.sh\"; cat >/dev/null",
             "timeout": 3
           }
         ]
@@ -89,7 +79,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "[ -z \"$CURSOR_PROJECT_DIR\" ] && exec bash \"${CLAUDE_PLUGIN_ROOT}/hooks/workflow-tier-nudge.sh\"; cat >/dev/null",
+            "command": "export ROLEPOD_SESSION_CLI=claude; [ -z \"$CURSOR_PROJECT_DIR\" ] && exec bash \"${CLAUDE_PLUGIN_ROOT}/hooks/workflow-tier-nudge.sh\"; cat >/dev/null",
             "timeout": 3
           }
         ]
@@ -111,7 +101,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "[ -z \"$CURSOR_PROJECT_DIR\" ] && exec bash \"${CLAUDE_PLUGIN_ROOT}/hooks/dispatch-auto-log.sh\"; cat >/dev/null",
+            "command": "export ROLEPOD_SESSION_CLI=claude; [ -z \"$CURSOR_PROJECT_DIR\" ] && exec bash \"${CLAUDE_PLUGIN_ROOT}/hooks/dispatch-auto-log.sh\"; cat >/dev/null",
             "timeout": 3
           }
         ]
@@ -121,7 +111,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "[ -z \"$CURSOR_PROJECT_DIR\" ] && exec bash \"${CLAUDE_PLUGIN_ROOT}/hooks/fix-loop-breaker.sh\"; cat >/dev/null",
+            "command": "export ROLEPOD_SESSION_CLI=claude; [ -z \"$CURSOR_PROJECT_DIR\" ] && exec bash \"${CLAUDE_PLUGIN_ROOT}/hooks/fix-loop-breaker.sh\"; cat >/dev/null",
             "timeout": 5
           }
         ]
@@ -133,7 +123,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "[ -z \"$CURSOR_PROJECT_DIR\" ] && exec bash \"${CLAUDE_PLUGIN_ROOT}/hooks/subagent-core.sh\"; cat >/dev/null",
+            "command": "export ROLEPOD_SESSION_CLI=claude; [ -z \"$CURSOR_PROJECT_DIR\" ] && exec bash \"${CLAUDE_PLUGIN_ROOT}/hooks/subagent-core.sh\"; cat >/dev/null",
             "timeout": 3
           }
         ]
@@ -144,7 +134,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "[ -z \"$CURSOR_PROJECT_DIR\" ] && exec bash \"${CLAUDE_PLUGIN_ROOT}/hooks/session-lifecycle.sh\" --unlock; cat >/dev/null",
+            "command": "export ROLEPOD_SESSION_CLI=claude; [ -z \"$CURSOR_PROJECT_DIR\" ] && exec bash \"${CLAUDE_PLUGIN_ROOT}/hooks/session-lifecycle.sh\" --unlock; cat >/dev/null",
             "timeout": 3
           }
         ]

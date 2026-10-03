@@ -520,6 +520,57 @@ update_managed_block() {
   } >> "$target_file"
 }
 
+# Use one full core across global + project instruction channels. When a
+# project block is added beside an installed global Rolepod block, keep only
+# a compact pointer in the project block. User-owned text remains outside the
+# managed markers and is preserved by update_managed_block.
+update_cli_managed_block() {
+  local target_file="$1" source_file="$2" global_file="$3"
+  if [ "$target_file" != "$global_file" ] && \
+     grep -qF "$ROLEPOD_BLOCK_START" "$global_file" 2>/dev/null && \
+     grep -qF "$ROLEPOD_BLOCK_END" "$global_file" 2>/dev/null; then
+    local pointer
+    pointer=$(mktemp)
+    cat > "$pointer" <<EOF
+# Rolepod project pointer
+
+Use the Rolepod always-on judgment installed globally at $global_file. Keep
+project-specific instructions here; apply the global Rolepod routing and
+workflow guidance for this project.
+EOF
+    update_managed_block "$target_file" "$pointer"
+    local rc=$?
+    rm -f "$pointer"
+    return "$rc"
+  fi
+  update_managed_block "$target_file" "$source_file"
+}
+
+# Global installation can follow a project-only installation in the current
+# repo. Compact that already-managed project block after the full global core
+# has been written; do not create a project file during global install.
+compact_existing_cli_project_block() {
+  local project_file="$1" global_file="$2"
+  [ "$project_file" != "$global_file" ] && [ -f "$project_file" ] || return 0
+  grep -qF "$ROLEPOD_BLOCK_START" "$project_file" 2>/dev/null || return 0
+  grep -qF "$ROLEPOD_BLOCK_END" "$project_file" 2>/dev/null || return 0
+  grep -qF "$ROLEPOD_BLOCK_START" "$global_file" 2>/dev/null || return 0
+  grep -qF "$ROLEPOD_BLOCK_END" "$global_file" 2>/dev/null || return 0
+  local pointer
+  pointer=$(mktemp)
+  cat > "$pointer" <<EOF
+# Rolepod project pointer
+
+Use the Rolepod always-on judgment installed globally at $global_file. Keep
+project-specific instructions here; apply the global Rolepod routing and
+workflow guidance for this project.
+EOF
+  update_managed_block "$project_file" "$pointer"
+  local rc=$?
+  rm -f "$pointer"
+  return "$rc"
+}
+
 # remove_managed_block <target_file>
 # - removes ROLEPOD_BLOCK_START..ROLEPOD_BLOCK_END (inclusive)
 # - leaves rest of file intact
@@ -1260,7 +1311,7 @@ if codex_selected; then
     warn "Codex plugins are global only. Per-project install writes AGENTS.md only."
     warn "  For full plugin install, run --scope=global separately."
     step "Updating AGENTS.md (managed block) → $CODEX_TARGET/AGENTS.md"
-    update_managed_block "$CODEX_TARGET/AGENTS.md" "$RENDERED_AGENTS_MD"
+    update_cli_managed_block "$CODEX_TARGET/AGENTS.md" "$RENDERED_AGENTS_MD" "$HOME/.codex/AGENTS.md"
     if [ "$DRY_RUN" -eq 0 ]; then
       step "Verifying Codex project install"
       [ -e "$CODEX_TARGET/AGENTS.md" ] || fail "Codex verification failed — $CODEX_TARGET/AGENTS.md missing"
@@ -1402,7 +1453,10 @@ if codex_selected; then
   fi
 
   step "Updating AGENTS.md (managed block) → $CODEX_TARGET/AGENTS.md"
-  update_managed_block "$CODEX_TARGET/AGENTS.md" "$RENDERED_AGENTS_MD"
+  update_cli_managed_block "$CODEX_TARGET/AGENTS.md" "$RENDERED_AGENTS_MD" "$CODEX_TARGET/AGENTS.md"
+  if [ "$CODEX_IS_TEMP_TARGET" -eq 0 ]; then
+    compact_existing_cli_project_block "$PWD/AGENTS.md" "$CODEX_TARGET/AGENTS.md"
+  fi
 
   if [ "$DRY_RUN" -eq 0 ]; then
     step "Verifying Codex install"
@@ -1536,7 +1590,7 @@ if antigravity_selected; then
     warn "agy plugins are global only. Per-project install writes AGENTS.md only."
     warn "  For the full plugin install, run --scope=global separately."
     step "Updating AGENTS.md (managed block) → $AGY_TARGET/AGENTS.md"
-    update_managed_block "$AGY_TARGET/AGENTS.md" "$RENDERED_AGY_MD"
+    update_cli_managed_block "$AGY_TARGET/AGENTS.md" "$RENDERED_AGY_MD" "$HOME/.gemini/antigravity-cli/AGENTS.md"
     if [ "$DRY_RUN" -eq 0 ]; then
       [ -e "$AGY_TARGET/AGENTS.md" ] || fail "Antigravity verification failed — $AGY_TARGET/AGENTS.md missing"
       ok "AGENTS.md → $AGY_TARGET/AGENTS.md"
@@ -1573,7 +1627,10 @@ if antigravity_selected; then
 
     step "Updating AGENTS.md (managed block) → $AGY_TARGET/antigravity-cli/AGENTS.md"
     do_or_dry "mkdir -p $AGY_TARGET/antigravity-cli" mkdir -p "$AGY_TARGET/antigravity-cli"
-    update_managed_block "$AGY_TARGET/antigravity-cli/AGENTS.md" "$RENDERED_AGY_MD"
+    update_cli_managed_block "$AGY_TARGET/antigravity-cli/AGENTS.md" "$RENDERED_AGY_MD" "$AGY_TARGET/antigravity-cli/AGENTS.md"
+    if [ "$AGY_IS_TEMP_TARGET" -eq 0 ]; then
+      compact_existing_cli_project_block "$PWD/AGENTS.md" "$AGY_TARGET/antigravity-cli/AGENTS.md"
+    fi
 
     if [ "$DRY_RUN" -eq 0 ]; then
       step "Verifying Antigravity install"
@@ -1646,7 +1703,16 @@ if opencode_selected; then
     cp "$RENDERED_OC_DIR/opencode.json" "$OC_TARGET/rolepod-version.json"
 
   step "Updating AGENTS.md (managed block) → $OC_AGENTS_MD"
-  update_managed_block "$OC_AGENTS_MD" "$RENDERED_OC_DIR/AGENTS.md"
+  OC_GLOBAL_AGENTS_MD="$HOME/.config/opencode/AGENTS.md"
+  [ "$SCOPE" = "project" ] || OC_GLOBAL_AGENTS_MD="$OC_AGENTS_MD"
+  update_cli_managed_block "$OC_AGENTS_MD" "$RENDERED_OC_DIR/AGENTS.md" "$OC_GLOBAL_AGENTS_MD"
+  if [ "$SCOPE" != "project" ]; then
+    OC_TARGET_RESOLVED="$(cd "$OC_TARGET" 2>/dev/null && pwd -P || echo "$OC_TARGET")"
+    OC_REAL_TARGET_RESOLVED="$(cd "$HOME/.config/opencode" 2>/dev/null && pwd -P || echo "$HOME/.config/opencode")"
+    if [ "$OC_TARGET_RESOLVED" = "$OC_REAL_TARGET_RESOLVED" ]; then
+      compact_existing_cli_project_block "$PWD/AGENTS.md" "$OC_AGENTS_MD"
+    fi
+  fi
 
   if [ "$DRY_RUN" -eq 0 ]; then
     step "Verifying opencode install"
@@ -1677,11 +1743,10 @@ fi
 # behind — see remove_legacy_launchers for the scope/temp-target guard.
 remove_legacy_launchers
 
-# ─── Machine config (written once) ───────────────────────────────────────
-# ~/.rolepod/config.json is the user's: write the defaults only when nothing
-# is there (an existing file, even a broken one, is never touched; uninstall
-# never removes it). The pool lists are written but `cross-family` is off —
-# only the user (cross-family.sh --setup) turns it on.
+# ─── Machine config ──────────────────────────────────────────────────────
+# Normal initialization is create-only. Explicit reinstall (--force) migrates
+# the prior profile to workflow.mode=standard while preserving the user's pool.
+# Uninstall never removes this machine-owned file.
 # A redirected install (any ROLEPOD_*_TARGET set) against a real, non-temp
 # $HOME is a test run: it must never create the real user's file.
 CFG_REDIRECTED=0
@@ -1692,11 +1757,22 @@ if [ "$CFG_REDIRECTED" -eq 1 ]; then
   esac
 fi
 if [ "$SCOPE" = "global" ] && [ "$DRY_RUN" -eq 0 ] && [ "$CFG_REDIRECTED" -eq 0 ]; then
-  # The defaults live only in hooks/lib/rolepod_config.py (`init`; the
-  # SessionStart hook calls the same code).
+  # hooks/lib/rolepod_config.py is the sole parser and owns both operations.
   CFG_FILE="$HOME/.rolepod/config.json"
-  if [ -f "$REPO_DIR/hooks/lib/rolepod_config.py" ] && [ -n "$(python3 -I "$REPO_DIR/hooks/lib/rolepod_config.py" init 2>/dev/null)" ]; then
-    ok "wrote $CFG_FILE (defaults; edit to change review mode, gates, nudge; the pool is listed but off)"
+  if [ -f "$REPO_DIR/hooks/lib/rolepod_config.py" ]; then
+    if [ "$FORCE" -eq 1 ] && [ -e "$CFG_FILE" ]; then
+      CFG_ACTION=init-replace
+    else
+      CFG_ACTION=init
+    fi
+    CFG_WRITTEN="$(python3 -I "$REPO_DIR/hooks/lib/rolepod_config.py" "$CFG_ACTION" 2>/dev/null)"
+    if [ -n "$CFG_WRITTEN" ]; then
+      if [ "$CFG_ACTION" = init-replace ]; then
+        ok "replaced $CFG_FILE with workflow.mode=standard; preserved pool"
+      else
+        ok "wrote $CFG_FILE (defaults; edit workflow.mode to change workflow gates)"
+      fi
+    fi
   fi
 fi
 

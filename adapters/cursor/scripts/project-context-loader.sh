@@ -6,6 +6,27 @@
 set -euo pipefail
 
 INPUT=$(cat 2>/dev/null || echo '{}')
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROFILE=$(printf '%s' "$INPUT" | ROLEPOD_SESSION_CLI=cursor bash "$HERE/session-start.sh" --cli cursor --format env 2>/dev/null || echo '{}')
+_mode=$(printf '%s' "$PROFILE" | python3 -I -c 'import json,sys; print((json.load(sys.stdin).get("env") or {}).get("ROLEPOD_SESSION_MODE", "standard"))' 2>/dev/null || echo standard)
+ROLEPOD_SESSION_SOURCE=$(printf '%s' "$PROFILE" | python3 -I -c 'import json,sys; print((json.load(sys.stdin).get("env") or {}).get("ROLEPOD_SESSION_SOURCE", "uncaptured"))' 2>/dev/null || echo uncaptured)
+export ROLEPOD_SESSION_CLI=cursor ROLEPOD_SESSION_MODE="$_mode" ROLEPOD_SESSION_SOURCE
+PROFILE_CONTEXT="Active Rolepod workflow profile: $_mode (source: $ROLEPOD_SESSION_SOURCE). This profile is fixed for this conversation; start a new conversation to apply configuration changes."
+emit_output() {
+  ROLEPOD_PROFILE_JSON="$PROFILE" ROLEPOD_PROFILE_CONTEXT="$PROFILE_CONTEXT" ROLEPOD_HOOK_CTX="${1:-}" python3 -I -c '
+import json, os
+try: out=json.loads(os.environ.get("ROLEPOD_PROFILE_JSON", "{}"))
+except Exception: out={}
+parts=[os.environ.get("ROLEPOD_PROFILE_CONTEXT", "")]
+context=os.environ.get("ROLEPOD_HOOK_CTX", "")
+if context: parts.append(context)
+out["additional_context"]="\n\n".join(part for part in parts if part)
+print(json.dumps(out))
+' 2>/dev/null || printf '%s\n' '{}'
+}
+_root=$(printf '%s' "$INPUT" | python3 -I -c 'import json,sys; d=json.load(sys.stdin); print((d.get("workspace_roots") or [""])[0] or d.get("cwd") or "")' 2>/dev/null || true)
+[ "$_mode" = lite ] && { emit_output; exit 0; }
+export ROLEPOD_PROJECT_ROOT="${_root:-$PWD}"
 IFS=$'\t' read -r CWD CONV <<< "$(echo "$INPUT" | python3 -c "
 import sys, json
 try:
@@ -16,9 +37,9 @@ except Exception:
     print('\t')
 " 2>/dev/null || printf '\t')"
 [ -z "${CWD:-}" ] && CWD="$PWD"
-cd "$CWD" 2>/dev/null || exit 0
+cd "$CWD" 2>/dev/null || { emit_output; exit 0; }
 
-REPO=$(git rev-parse --show-toplevel 2>/dev/null) || exit 0
+REPO=$(git rev-parse --show-toplevel 2>/dev/null) || { emit_output; exit 0; }
 
 # Combined-mode marker for child plugins — parent active in this worktree.
 # Cursor has no session-end hook wired; the marker persists (stale is benign —
@@ -32,7 +53,7 @@ HOT=$(git -C "$REPO" log --since="7 days ago" --name-only --pretty=format: 2>/de
   | grep -v '^$' | sort | uniq -c | sort -rn | head -5 \
   | awk '{printf "  %s (%dx)\n", $2, $1}' || echo "")
 
-[ -z "$COMMITS" ] && exit 0
+[ -z "$COMMITS" ] && { emit_output; exit 0; }
 
 CTX="**$NAME** @ \`$BRANCH\` ($DIRTY uncommitted)\n\n**Recent:**\n\`\`\`\n$COMMITS\n\`\`\`"
 [ -n "$HOT" ] && CTX="$CTX\n\n**Hot (7d):**\n$HOT"
@@ -77,9 +98,6 @@ if [ "${ROLEPOD_ALLOW_SHARED_WORKTREE:-0}" != "1" ]; then
   fi
 fi
 
-# Env-pass so a crafted commit message / branch cannot escape the Python string
-# literal (RCE). CTX carries literal `\n`; convert to real newlines here.
-ROLEPOD_HOOK_CTX="${CTX//\\n/$'\n'}" python3 -c "
-import json, os
-print(json.dumps({'additional_context':os.environ.get('ROLEPOD_HOOK_CTX','')}))
-" 2>/dev/null || echo '{}'
+# CTX carries literal `\n`; convert to real newlines before adding the frozen
+# workflow profile line. The env fields from capture remain intact.
+emit_output "${CTX//\\n/$'\n'}"

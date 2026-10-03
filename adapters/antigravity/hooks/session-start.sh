@@ -10,6 +10,9 @@
 #            only leaves side effects. The always-on core reaches the model
 #            through AGENTS.md, never through a hook.
 #
+# The first PreInvocation captures one session profile. Later invocations
+# reuse that private snapshot; agy exposes no verified restart event, so a
+# reused conversation may need a new conversation ID before config changes apply.
 # Side effects (both fail-open):
 #   <worktree>/.rolepod/parent-active        — child plugins pick with-rolepod mode
 #   ~/.rolepod/session-locks/<sha16>/agy-<conversationId>.lock
@@ -21,6 +24,20 @@ set -uo pipefail
 
 IN=$(cat 2>/dev/null || true)
 [ -n "$IN" ] || exit 0
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+INPUT="$IN"
+. "$HERE/lib/session-mode.sh"
+rolepod_session_id_from_input "$IN"
+SID="$ROLEPOD_SESSION_ID"
+PROFILE_PATH=$(rolepod_session_profile_path antigravity "$SID" 2>/dev/null || true)
+if [ -n "$PROFILE_PATH" ] && [ ! -f "$PROFILE_PATH" ] && [ -f "$HERE/rolepod-session-start.sh" ]; then
+  printf '%s' "$IN" | ROLEPOD_SESSION_CLI=antigravity bash "$HERE/rolepod-session-start.sh" --cli antigravity --format env >/dev/null 2>&1 || true
+fi
+rolepod_session_profile_load "$IN" antigravity
+_mode=$ROLEPOD_SESSION_MODE
+export ROLEPOD_SESSION_CLI=antigravity
+[ "$_mode" = lite ] && exit 0
+_root=$(printf '%s' "$IN" | python3 -I -c 'import json,sys; print((json.load(sys.stdin).get("workspacePaths") or [""])[0] or "")' 2>/dev/null || true)
 
 IFS=$'\t' read -r WS SID <<< "$(printf '%s' "$IN" | python3 -I -c '
 import json, sys

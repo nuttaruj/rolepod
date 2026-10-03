@@ -10,13 +10,13 @@ Turns an unknown failure into a root-cause fix by narrowing, not guessing: repro
 
 ## Skip when
 
-- Requirements are unclear → `write-spec`.
+- A concrete bug, regression, or failing test routes here first at every tier. After root cause, use `write-spec` only when desired behavior/design is unresolved before edits; use `write-plan` only when sequencing or ownership needs it.
 - The work is a planned feature or a broad refactor → `implement-plan` / `simplify-code`.
-- The fix spans several files or needs sequencing → `write-plan` once the root cause is known.
+- An approved plan is already in progress → continue with `implement-plan`; do not restart Define or Plan because this skill was invoked.
 
 **Who runs the loop.** Iteration is the costliest work to run in the Lead's context; the Lead routes, briefs from the symptom, spot-checks and commits, and the path owner runs this skill:
 - the role that owns the path (`backend-developer` / `frontend-developer` / `billing-engineer` / …) reproduces, writes the failing test, then the fix, for every symptom class, auth / token / injection included;
-- auth / token / injection symptoms → `security-engineer` writes the exploit repro test first — test evidence (`check-work`'s Security row), not a review; it returns to the Lead, who briefs the path owner to make it pass (that test is the owner's failing test). The owner's R4 (high-risk) review round is the only review: the R4 round-1 set per `review-code` Pick reviewers (`security-engineer` + the lens pair + the adversarial pass), reports under `.rolepod/evidence/review/` — never a second security review on top;
+- auth / token / injection symptoms → `security-engineer` writes the exploit repro test first — test evidence (`check-work`'s Security row), not a review; it returns to the Lead, who briefs the path owner to make it pass (that test is the owner's failing test). The owner's R4 review follows `workflow.mode` and `review-code` Pick reviewers (Lite two lenses; Standard security + lenses; Full those plus adversarial), reports under `.rolepod/evidence/review/` — never a second security review on top;
 - `qa-tester` only for a user-visible (E2E / UI) repro; its red test or report returns to the Lead, who briefs the path owner to make it pass;
 - `performance-engineer` — latency / memory regressions;
 - `devops-sre` — infra / deploy / CI failures.
@@ -44,7 +44,7 @@ One command that fails on every run: `pytest path/test_x.py::name -v`, the exact
 
 A UI / browser bug, a WordPress bug, or sibling-plugin evidence under `.rolepod/evidence/` → `references/repro-backends.md`.
 
-**Report-only** (the user wants the bug documented, not fixed, or only asked why it fails; a QA hand-off) → stop here; trace step 5 only when cheap. Fill the debug report with Error, Repro, Severity and evidence, leave Failing test and Fix empty, and hand it to the owning dev.
+**Report-only** → stop here; trace step 5 only when cheap. If the user only asked why it fails, answer with the cause and evidence in the response and make no file changes. Write a debug report or QA hand-off artifact only when the user explicitly requested one; then fill Error, Repro, Severity and evidence, leave Failing test and Fix empty, and hand it to the owning dev.
 
 Done when: one command reproduces the user's exact symptom on every run — an intermittent bug: the N-run loop, its rate and conditions recorded.
 
@@ -98,7 +98,7 @@ Done when: the failing test is green.
 - The fix fails, or the test passes but the symptom returns → that is new evidence, not a prompt to adjust the patch. Feed it back into step 5 before any second attempt; a re-fix without a re-trace is a blind retry.
 - A fix attempt = a change meant to turn the repro green that left it red; a falsifier, a log or a revert is not one. Log each in the ledger's Fix attempts, counting on from the brief's `Attempts:` line. The second on the same surface, same signature or new → Second opinion.
 
-Artifact: `templates/debug-report.md` — Error, Severity, Repro, Root cause, Failing test, Fix, Verification, Status.
+When the user requests a saved artifact: `templates/debug-report.md` — Error, Severity, Repro, Root cause, Failing test, Fix, Verification, Status.
 
 Done when: the suite is green, the repro passes, and zero `[DBG-]` tags remain.
 

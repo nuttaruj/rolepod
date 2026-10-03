@@ -172,7 +172,13 @@ curl -fsSL https://raw.githubusercontent.com/nuttaruj/rolepod/main/bootstrap.sh 
 
 ### opencode
 
-Installs skills + agents natively into `~/.config/opencode/`, a JS plugin (session locks, post-compact re-anchor, a precommit deny gate — one file that loads on opencode 1.x and 2.x), and an `AGENTS.md` managed block. opencode 2 loads plugins when its shared service boots: run `opencode service restart` after every install or update. Every rendered agent carries a platform-enforced `permission:` block (subagent commit ban; scout fully read-only) — remaining gates are skill-enforced (see [docs/cli-support.md](docs/cli-support.md)).
+Installs skills + agents natively into `~/.config/opencode/`, a JS plugin
+(session locks, post-compact re-anchor, mode-aware child ship gate and Lead
+precommit conditions), and an `AGENTS.md` managed block. opencode 2 loads
+plugins when its shared service boots: run `opencode service restart` after
+every install or update. Native read-only agent permissions remain separate
+from Rolepod workflow gates. Plugin gate behavior is fixture-verified; see
+[docs/cli-support.md](docs/cli-support.md) for the current runtime limits.
 
 ```bash
 # Install
@@ -189,18 +195,21 @@ curl -fsSL https://raw.githubusercontent.com/nuttaruj/rolepod/main/bootstrap.sh 
 
 ## Config
 
-Machine-wide settings live in `~/.rolepod/config.json`. Project-level `review.mode` can override the machine setting in the same file's project section. No project file can override `gates`, `nudge` or `pool` — they are machine-wide only.
+Workflow settings live in `~/.rolepod/config.json`; a project's
+`.rolepod/config.json` can override its `workflow.mode`. The independent
+`pool` setting remains global-only.
 
-**Location:** `~/.rolepod/config.json` — a global `install.sh` writes this file once with the defaults, including the pool lists switched off, and never overwrites or removes it; the first session start also creates it when it is missing (a plugin-manager update never runs `install.sh`).
+**Location:** `~/.rolepod/config.json` — normal install and first session
+initialization create it only when absent. Explicit `install.sh --force`
+reinstall resets the profile to `workflow.mode=standard` and preserves the
+global pool. Uninstall never removes the file.
 
 **Example:**
 
 ```json
 {
   "version": 1,
-  "review": { "mode": "standard" },
-  "gates": { "mode": "soft" },
-  "nudge": { "enabled": true },
+  "workflow": { "mode": "standard" },
   "pool": {
     "cross-family": "on",
     "reviewer": { "review": "opencode cursor agy codex claude", "consult": "opencode codex cursor agy claude", "critique": "opencode cursor agy codex claude", "tier": "R4" },
@@ -213,15 +222,25 @@ Machine-wide settings live in `~/.rolepod/config.json`. Project-level `review.mo
 
 | Key | Values | Default | Scope |
 |---|---|---|---|
-| `review.mode` | `standard` \| `full` | `standard` | Machine; project `.rolepod/config.json` overrides |
-| `gates.mode` | `off` \| `soft` \| `hard` | `soft` | Machine only. `off` = every commit passes (logged); `soft` = today's behavior (some checks warn/block); `hard` = `soft` plus block on normal-code commit with no evidence |
-| `nudge.enabled` | `true` \| `false` | `true` | Machine only. `false` silences the four nudge hooks |
+| `workflow.mode` | `lite` \| `standard` \| `full` | `standard` | Machine profile; project `.rolepod/config.json` overrides. `lite` skips Rolepod workflow gates and nudges; `standard` warns and allows; `full` enforces existing workflow conditions. Legacy `review`, `gates`, and `nudge` keys are ignored. |
 | `pool.cross-family` | `"on"` \| `"off"` | `"off"` | Machine only. `"off"` disables the external pool even if members are listed |
 | `pool.reviewer.review` | space-separated CLI names | (none) | Machine only. External review for R4 (adversarial) or at the tier the `tier` key sets |
 | `pool.reviewer.consult` | space-separated CLI names | (none) | Machine only. External debug consult after 2 failed local attempts |
 | `pool.reviewer.critique` | space-separated CLI names | (none) | Machine only. External spec critique during `write-spec` |
 | `pool.reviewer.tier` | `R2` \| `R3` \| `R4` | `R4` | Machine only. Tiers at which the external's standard pass replaces the internal lens pair |
 | `pool.implement.cli` | space-separated CLI names | (none) | Machine only. External draft implementation when a plan task is marked `write: external` |
+
+Each session captures its effective workflow mode at startup and keeps it until
+a new startup. Without native startup capture, the first manual `using-rolepod`
+entry selects mode once. OpenCode requires a plugin/backend restart; Antigravity
+refreshes on a new conversation identity, and same-conversation restart behavior
+is unverified. If a workflow hook cannot identify its session, it uses
+Standard/uncaptured. Compaction and later phases retain the active profile.
+
+Lite review has one round with two fresh reviewers in parallel: spec and
+standards, each with its own context and report. Standard and Full retain their
+review contracts. Risk tier remains independent of mode. Native permissions
+and role tool capabilities still apply in every mode.
 
 To set the pool, use `cross-family.sh --setup` from the `cross-family` skill, or hand-edit the file (member order, `tier`, per-member `stall=` / `timeout=` options: see `core/skills/cross-family/references/pool.md`).
 
@@ -245,7 +264,7 @@ Hooks are the product, so this is stated plainly. Everything stays on your disk;
 |---|---|---|
 | Phase evidence — route tier, dispatch tier, verify / review verdicts, gate denies and bypasses | `<repo>/.rolepod/evidence/phase-log.jsonl`, `bypass.log` (per project, plain JSONL) | delete the dir; the `rolepod-stats` skill reads it |
 | Session liveness + the files each session edits (the stomp guard) | `~/.rolepod/session-locks/<sha256(worktree)>/<session>.lock` / `.files`, removed at Stop | `ROLEPOD_ALLOW_SHARED_WORKTREE=1` (user-set) |
-| Per-session counters — fix-loop fails, raw-read bytes, context-nudge state | `$TMPDIR/rolepod-*.json`, `~/.rolepod/ctx-nudge/` | set `nudge.enabled: false` in `~/.rolepod/config.json` |
+| Per-session counters — fix-loop fails, raw-read bytes, context-nudge state | `$TMPDIR/rolepod-*.json`, `~/.rolepod/ctx-nudge/` | set `workflow.mode` to `lite` in `~/.rolepod/config.json` |
 | Cross-family reviewer output (opt-in) | `<repo>/.rolepod/evidence/external/` | `pool.cross-family: "off"` in config, or unset `pool` key = off |
 
 Hooks read the prompt, the tool input and the transcript tail to decide, then discard them: prompt text and file contents are never written anywhere. Nothing reads keychains, `~/.aws`, SSH keys, browser stores or the clipboard.

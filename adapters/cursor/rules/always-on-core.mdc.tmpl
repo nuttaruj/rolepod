@@ -7,4 +7,4 @@ alwaysApply: true
 
 **Tier classes** — rolepod's cheap / balanced / strong are CLASSES, never model names. Map them once onto the models the user has opted into in Cursor's picker (cheap = small / fast, balanced = mid flagship, strong = top reasoning model of that set); the ONE judgment slot runs strong, never the whole fan-out; cannot classify → balanced, and say so.
 
-**Enforcement** — the `beforeShellExecution` hook denies a commit with `docs/rolepod/` staged; there is no sub-agent commit block, cohesion check or worktree guard, and review / test evidence gating is Claude-only. Every other rule is skill-enforced — never report it as mechanically enforced.
+**workflow.mode** — `lite` skips Rolepod workflow gates and nudges; `standard` warns and allows; `full` enforces existing workflow conditions. The `beforeShellExecution` hook adapts the shared precommit gate. Review / test evidence gating is Claude-only. Every other rule is skill-enforced — never report it as mechanically enforced.

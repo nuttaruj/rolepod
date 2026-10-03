@@ -18,16 +18,17 @@
 # other CLI; the evidence-based reviewer/test gate is Claude-only (spec
 # Desired 10, 2026-09-25), so Cursor gets the private-docs deny only.
 #
-# Cursor stdin: {"command", "cwd", "conversation_id", ...}. Cursor output:
-#   {"permission": "deny", "user_message", "agent_message"} + exit 2 → blocked,
-#   the reason reaches the model through agent_message (fed back only on deny).
-#   Anything the gate says on an ALLOW (soft warn, auto-pass note) has no
-#   channel here — agent_message is dropped on allow — so the translator
-#   prints nothing in that case.
+# Cursor beforeShellExecution accepts `agent_message` on an allow decision;
+# translate the shared gate's additionalContext there so Standard warnings
+# reach the agent. This is adapter payload proof, not a live model-session
+# assertion.
 set -uo pipefail
 
 INPUT=$(cat 2>/dev/null || echo '{}')
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+. "$HERE/lib/session-mode.sh"
+rolepod_session_profile_load "$INPUT" cursor
+[ "$ROLEPOD_SESSION_MODE" = lite ] && exit 0
 GATE="$HERE/shared/precommit-gate.sh"
 [ -f "$GATE" ] || exit 0
 
@@ -54,7 +55,7 @@ CWD="${TRANS%%$'\t'*}"
 CLAUDE_IN="${TRANS#*$'\t'}"
 
 ERR=$(mktemp "${TMPDIR:-/tmp}/rolepod-cursor-gate.XXXXXX" 2>/dev/null || echo /dev/null)
-OUT=$(cd "$CWD" 2>/dev/null && printf '%s' "$CLAUDE_IN" | CLAUDE_PLUGIN_ROOT="$HERE/.." ROLEPOD_LEAD_CLI="${ROLEPOD_LEAD_CLI:-cursor}" bash "$GATE" 2>"$ERR"); RC=$?
+OUT=$(cd "$CWD" 2>/dev/null && printf '%s' "$CLAUDE_IN" | CLAUDE_PLUGIN_ROOT="$HERE/.." ROLEPOD_SESSION_CLI=cursor ROLEPOD_LEAD_CLI="${ROLEPOD_LEAD_CLI:-cursor}" bash "$GATE" 2>"$ERR"); RC=$?
 STDERR=$(cat "$ERR" 2>/dev/null || true); [ "$ERR" = /dev/null ] || rm -f "$ERR"
 
 REASON=$(printf '%s' "$OUT" | python3 -I -c '
@@ -67,10 +68,27 @@ h = d.get("hookSpecificOutput") or {}
 if h.get("permissionDecision") == "deny":
     print(h.get("permissionDecisionReason") or "blocked by rolepod precommit-gate")
 ' 2>/dev/null || true)
+WARNING=$(printf '%s' "$OUT" | python3 -I -c '
+import json, sys
+try:
+    d = json.load(sys.stdin)
+except Exception:
+    sys.exit(0)
+h = d.get("hookSpecificOutput") or {}
+if h.get("permissionDecision") != "deny":
+    print(h.get("additionalContext") or "")
+' 2>/dev/null || true)
 if [ -z "$REASON" ] && [ "$RC" -eq 2 ]; then
   REASON="${STDERR:-blocked by rolepod precommit-gate}"
 fi
-[ -n "$REASON" ] || exit 0
+if [ -z "$REASON" ]; then
+  [ -n "$WARNING" ] || exit 0
+  ROLEPOD_HOOK_MSG="$WARNING" python3 -I -c '
+import json, os
+print(json.dumps({"permission": "allow", "agent_message": os.environ.get("ROLEPOD_HOOK_MSG", "")[:1500]}))
+' 2>/dev/null
+  exit 0
+fi
 
 ROLEPOD_HOOK_MSG="$REASON" python3 -I -c '
 import json, os

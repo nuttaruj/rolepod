@@ -44,8 +44,10 @@ A conflict that risks harm → ask before acting.
   strong = the set's top reasoning model; the ONE judge or security
   reviewer runs strong, never the whole fan-out. Cannot classify →
   balanced, and say so.
-- **Enforcement** — the `plugins/rolepod.js` plugin denies a `git commit`
-  with `docs/rolepod/` staged (unless `.rolepod/docs-tracked`), and every
-  agent's `permission:` block denies a sub-agent commit / push / merge.
-  Review / test evidence gating is Claude-only. Every other rule is
-  skill-enforced — never report it as mechanically enforced.
+- **workflow.mode** — `lite` skips Rolepod workflow gates and nudges;
+  `standard` warns and allows; `full` enforces the existing gate conditions.
+  OpenCode's plugin applies child ship-operation rules through its supported
+  before-tool hook and session lookup. The fixture proves adapter behavior;
+  it does not prove live enforcement in every installed runtime. Lead commits
+  retain the existing precommit conditions. Review / test evidence gating is
+  Claude-only; every other rule is skill-enforced.
