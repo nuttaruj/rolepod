@@ -15,7 +15,7 @@ At a manual or mid-task invocation, inspect current intent and visible artifacts
 After compaction or skill reload within the same session, reload skill text as needed and reuse the carried mode. A fresh native startup/resume/clear supplies its newly captured profile.
 When invoking a helper or `plan-lint.sh` later without a guaranteed native mode environment, pass `ROLEPOD_SESSION_MODE` and `ROLEPOD_SESSION_SOURCE` from the carried profile. Do not persist a loaded-skill stamp to disk.
 
-Startup refresh boundaries: Claude and Codex capture on startup/resume/clear; Cursor captures through `sessionStart.env` and the visible startup profile; Antigravity captures at first pre-invocation/new conversation identity (same-conversation CLI restart behavior is unverified); OpenCode refreshes on plugin/backend restart, not each new chat.
+Startup refresh boundaries: Claude captures on startup/resume/clear; Codex captures on startup/resume. Cursor captures through `sessionStart.env` and the visible startup profile; Antigravity captures at first pre-invocation/new conversation identity (same-conversation CLI restart behavior is unverified); OpenCode refreshes on plugin/backend restart, not each new chat.
 The user's explicit instruction wins ("skip spec", "answer only", "just write the code", "just commit", "no plan", "ship as-is"): obey, and say which step was skipped.
 
 ### 1. Commission or conversation
