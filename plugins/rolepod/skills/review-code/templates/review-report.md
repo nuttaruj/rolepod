@@ -1,94 +1,42 @@
-<!-- Rolepod review report — the canonical Review-phase artifact. -->
-<!-- Findings before fixes — never a silent rewrite. Delete the <hints>. -->
+<!-- Canonical Review-phase artifact. Record each fact once; omit empty optional sections. -->
 
 # <Feature / PR> Review
 
 ## Scope
-<What was reviewed — the diff, the spec it implements, and every changed
- file once: `read` or `skipped — reason`. A changed file missing from this
- list makes the report a partial return.>
-**Snapshot H1 (immutable):** `<base sha>..<head sha>` <+ `diff <git diff HEAD | git hash-object --stdin>` for uncommitted work. Lite lens reports must record the identical frozen snapshot/hash; each report names only its own lens. Never relabel H1 as a later snapshot; a reviewer re-check gets a separate report.
+<Diff/spec and every changed file: `read` or `skipped — reason`. A missing changed file makes this partial.>
+**Snapshot H1 (immutable):** `<base sha>..<head sha>` <+ `diff <git diff HEAD | git hash-object --stdin>` for uncommitted work. Paired Lite reports use the same H1/hash and each names only its own lens. Never relabel H1; a re-check gets a separate report.
 
 ## Read
-<`security-engineer` and the adversarial pass: each claimed behavior → the
- path walked and where it held or failed. A lens (any tier): the diff and the
- callers read. On a clean review this
- section IS the evidence.>
+<Reviewer lens/role and coverage: files and behaviors read, paths traced, and where each claimed behavior held or failed. On a clean review, this is the evidence; security/full adversarial reports retain the depth-required trace.>
 
 ## Risk surfaces touched
-<auth / billing / payments / credits / migration / data deletion / secrets /
- tokens / crypto / permissions / security — plus API contract / perf / UI.
- "None" is valid — state it deliberately.>
+<List touched risk surfaces, or `None`.>
 
 ## Reviewers
-<Which reviewer roles ran, and that the round is complete — every
- dispatched reviewer returned before any fix; N reports merged → U unique
- findings (dedup key: file:line + root cause). For an R4 (high-risk)
- diff, name the adversarial pass (`adversarial-review`) and confirm it ran on
- a different CLI than the Lead's, or is the internal strong pass.>
+<Roles run and whether the round is complete; when merged, N reports → U unique findings (dedup key: file:line + root cause). R4 names its security and adversarial coverage.>
 
-**Lite isolation** (Lite only — remove otherwise): <lens: spec | lens: standards>; fresh context: yes; received only this lens: yes; other report/findings visible: no; snapshot/hash matches paired report: yes.
-
-## Author fix closure
-<For Lite and other no-recheck branches, the merged report records each finding's author closure. Keep the original lens reports immutable at H1.>
-
-| Finding | Closure evidence (repro/test + result) | Bounded fix delta H1→H2 (paths + delta hash) | Final verified snapshot H2 | Covered by finding fix? |
-|---|---|---|---|---|
-| `<finding id>` | `<specific evidence>` | `<paths; hash>` | `<tree id>` | yes / no |
-
-<A green suite alone does not close a finding. Unrelated or new changes are uncovered and must be surfaced and routed at their current tier and mode.>
-
-**Cross-model adversarial pass** (R4 only — delete the line otherwise): <ran on `<cli>` (cross-family, its default model — receipt: ROLEPOD-XFAM ok … raw=<path>) |
- ran on `<cli>`, model family not reported (a CLI preset with no family
- field — the receipt still clears the gate) | NOT RUN — cross-family off
- (opt-in; the user's choice — a note, not a limitation) | NOT RUN — wide-effort session
- (the user's choice — a note, not a limitation) | vertical — same
- CLI, reason (own CLI's stronger tier as cold reviewer; not a cross-family
- pass) | NOT RUN — reason (pool failed / empty; the internal strong
- pass ran instead). Vertical or a NOT RUN other than
- opt-in-off or wide-effort session on a high-risk diff is a recorded verification limitation —
- `finish-work`'s Reviewer gate surfaces it before merge. No fresh reviewer
- at all (the Lead's own walk in its place) blocks the merge until the user
- waives it.>
+**Lite isolation** (Lite only; omit otherwise): <lens: spec | lens: standards>; fresh context: yes; received only this lens: yes; other report/findings visible: no; paired H1/hash matches: yes.
 
 ## Findings
-<Severity-ordered. Each finding: file:line — axis — issue — why it matters —
- fix direction (a direction, not a rewrite; the author fixes). The axis
- (spec / standards / security / perf / UI / architecture) and, in a merged
- report, the reviewer stay on every finding. A reviewer's
- other scale maps in: CRITICAL/HIGH → BLOCKER, WARNING/MEDIUM → MAJOR,
- SUGGESTION/LOW → MINOR. A pre-existing issue on a path the diff does
- not touch → one line under `## Follow-ups` below, never a verdict driver.>
-
-### BLOCKER — must fix before merge
-- `file:line` — <axis> — <issue> — <why it matters> — <fix direction>
-
-### MAJOR — fix; only a pre-existing one may be parked in Follow-ups with its reason
-- `file:line` — <axis> — <issue> — <why it matters> — <fix direction>
-
-### MINOR — nice to fix
-- `file:line` — <axis> — <issue> — <fix direction>
+<Omit this section when clean. Severity ordered. Each finding retains severity, file:line, axis, issue, impact, and fix direction; merged findings retain reviewer.>
+- `file:line` — BLOCKER|MAJOR|MINOR — <axis> — <issue> — <impact> — <fix direction> — <reviewer, when merged>
 
 ## Questions
-<Anything unclear that needs an author answer, not a fix.>
+<Omit when none. Questions need an author answer, not a fix.>
 - `file:line` — <question>
 
 ## Follow-ups
-<Issues this review will not fix: pre-existing on an untouched path, or
- outside a round 2+ fix delta — each with its axis, never a verdict driver.
- The author copies every line into the plan's `## Follow-ups`, the list
- finish-work carries. "none" when empty.>
+<Omit when none. Untouched pre-existing issues or issues outside a fix delta; each has axis and never drives verdict. Copy each to the plan.>
 - `file:line` — <axis> — <issue>
 
 ## Tests reviewed
-<yes / no — and the verdict: assertions strong? mocks at the right boundary?
- concurrency covered?>
+<Omit when none. State yes/no and whether assertions, mock boundary, and relevant concurrency coverage are strong.>
+
+## Author fix closure
+<No-recheck branches only; omit when there are no findings. Preserve source reports at H1. Each finding needs specific evidence, bounded H1→H2 fix delta (paths + delta hash), final H2, and whether the delta is covered. A green suite alone does not close a finding.>
+
+**Cross-model adversarial pass** (R4 only; omit otherwise): <CLI/model receipt or precise NOT RUN reason. On a high-risk diff, vertical or NOT RUN except opt-in-off / wide-effort is a verification limitation; no fresh reviewer blocks merge until the user waives it.>
 
 ## Recommendation
-<APPROVED — nothing open above MINOR; a pre-existing MAJOR parked in Follow-ups with its reason is closed.
- APPROVED-WITH-NITS — only MINOR / Questions remain, none of which would change a correctness or security verdict.
- REJECTED — any open BLOCKER introduced by this diff or pre-existing on a
- path it changes, or such a MAJOR neither fixed nor — pre-existing only —
- parked in Follow-ups with its reason. A pre-existing issue on an untouched
- path never makes a REJECTED.>
+<APPROVED — nothing open above MINOR; a pre-existing MAJOR parked in Follow-ups with its reason is closed. APPROVED-WITH-NITS — only MINOR / Questions remain. REJECTED — any open BLOCKER introduced here or on a changed path, or a MAJOR neither fixed nor parked as pre-existing with reason. Untouched pre-existing issues do not reject.>
 APPROVED | APPROVED-WITH-NITS | REJECTED — <one-line reason>

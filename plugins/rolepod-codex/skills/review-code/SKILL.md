@@ -91,11 +91,11 @@ Done when: every axis the depth rule requires has run and each claim is traced t
 
 ### 4. Report
 
-Fill `templates/review-report.md`: Scope (with its Snapshot line), Read, Risk surfaces touched, Reviewers (R4: with its Cross-model adversarial pass line), Findings (BLOCKER / MAJOR / MINOR, each with its axis), Questions, Tests reviewed, Recommendation.
+Store scope, immutable snapshot, reviewer lens/role, coverage/read trace, limitations, and verdict once in the report. Findings retain severity, file:line, axis, issue, impact, and fix direction. Omit empty optional sections; do not create mode-specific report formats. The compact report is `Scope` (including H1 and hash), `Read`, `Risk surfaces touched`, `Reviewers`, and `Recommendation`; add Findings, Questions, Follow-ups, Tests reviewed, Author fix closure, and the R4 adversarial receipt only when applicable.
 - Each finding: file:line, the issue, why it matters, a fix direction — the author writes the fix.
 - A pre-existing issue on a path the diff does not touch → one note line, never a verdict driver.
-- A clean review names what was read and the lenses run — never a bare APPROVED.
-- Full report → `.rolepod/evidence/review/<task>-<role>.md` — a lens writes `<task>-spec.md` / `<task>-standards.md`, the internal adversarial pass `<task>-adversarial.md`; the reviewer returns ≤ 12 lines + verdict.
+- A clean review names the reviewer lens/role, changed files and behaviors covered, trace paths and where claims held, risk surfaces, and limitations. Preserve the required depth trace for security and Full adversarial reviews. Never accept bare `APPROVED` or infer clean from an absent finding list when coverage is missing or partial.
+- Full report → `.rolepod/evidence/review/<task>-<role>.md` — a lens writes `<task>-spec.md` / `<task>-standards.md`, the internal adversarial pass `<task>-adversarial.md`. Return verdict + report path + finding counts + any limitation or action requiring a decision in ≤ 12 lines; do not repeat findings. If no tool can write the report, return the complete compact schema inline, including coverage, limitations, findings and verdict, even when it exceeds 12 lines; never claim a path that was not written.
 
 Evidence log: append the line to `<git-root>/.rolepod/evidence/phase-log.jsonl` chained onto the next command you run anyway (`<cmd> && printf '…' >> phase-log.jsonl`), never as a standalone turn; skip silently outside a git repo.
 Review line: `{"ts":"<iso8601>","phase":"review","verdict":"<APPROVED|APPROVED-WITH-NITS|REJECTED>","blockers":<n>}`.
