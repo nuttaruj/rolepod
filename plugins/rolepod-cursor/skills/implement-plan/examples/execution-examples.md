@@ -68,12 +68,15 @@ COMPLETED
 
 ```text
 Subagent returned:
-  ## Files changed
-  - lib/rate_limiter.rb — added the sliding-window check
-  ## Commands run
-  - bundle exec rspec spec/rate_limiter_spec.rb — 6 examples, 1 failure
-  ## Status
-  COMPLETED
+## Decision brief
+### Change
+- lib/rate_limiter.rb — added the sliding-window check
+### Commands
+- bundle exec rspec spec/rate_limiter_spec.rb — 6 examples, 1 failure
+### Owner status
+COMPLETED
+## Verify status
+UNVERIFIED
 
 Lead: the manifest says COMPLETED, but the test output shows 1 failure —
 reject. Re-brief: "rate_limiter_spec.rb has a failing example — fix the code

@@ -1037,6 +1037,7 @@ if (planwt == 1) tpath = substr(tbranch, 1, length(tbranch) - 5)
     if (Of != "" && Of !~ /^</) { print "## On fail"; print Of }
     print "## Write"
     printf "`%s`\n", write
+    printf "Canonical task receipt: %s/docs/rolepod/tasks/%s/task-%02d.md\n", baseroot, tbase, want + 0
     print "## Reviewers"
     if (tier == "R1") print "`none`"
     else if (wmode == "lite") {
@@ -1080,9 +1081,14 @@ if (planwt == 1) tpath = substr(tbranch, 1, length(tbranch) - 5)
     printf "- Write your decision brief to docs/rolepod/tasks/%s/task-%02d.md; its Handoff section is at most ~15 lines, only what a Blocked-by task consumes (signatures, invariants). Never edit the plan file.\n", tbase, want + 0
     print "- Budget: build <= 40 tool calls, whole loop <= 120; past it return PARTIAL with what is done, never grind."
     print "- Return a decision brief: verdict, `git diff --cached --stat | tail -3`, Command last 3 lines verbatim, reviewer verdicts + report paths, `Assuming:` lines, residuals."
+    if (ENVIRON["ROLEPOD_BRIEF_FAILURE_POLICY"] != "") { print "## Failure policy"; print ENVIRON["ROLEPOD_BRIEF_FAILURE_POLICY"] }
   }
   '
   BRIEF_ROOT="$(git -C "$(dirname "$PLAN")" rev-parse --show-toplevel 2>/dev/null || pwd)"
+  BRIEF_RECEIPT_ROOT="$BRIEF_ROOT"
+  BRIEF_BRANCH="$(git -C "$BRIEF_ROOT" rev-parse --abbrev-ref HEAD 2>/dev/null)"
+  BRIEF_BASE_ROOT="$(git -C "$BRIEF_ROOT" config --get "branch.$BRIEF_BRANCH.rolepod-base-root" 2>/dev/null)"
+  [ -n "$BRIEF_BASE_ROOT" ] && [ -d "$BRIEF_BASE_ROOT" ] && BRIEF_RECEIPT_ROOT="$BRIEF_BASE_ROOT"
   # slugged: the worktree command is later split on whitespace (ticket.sh start)
   BRIEF_REPO="$(basename "$BRIEF_ROOT" | sed 's/[^A-Za-z0-9._-]/-/g')"
   # <git-root>/.rolepod/risk-paths — parsed exactly like precommit-gate.sh risk_filter.
@@ -1150,10 +1156,16 @@ EOF
   case "$BRIEF_WSRC" in project|global|default|uncaptured) ;; *) BRIEF_WSRC=uncaptured ;; esac
   BRIEF_RMODE="standard"
   [ "$BRIEF_WMODE" = "full" ] && BRIEF_RMODE="full"
+  BRIEF_FAILURE_POLICY="$(awk "$FENCE_AWK"'
+    fenceline($0) { if (inside) print; next }
+    /^## Failure policy[[:space:]]*$/ { inside = 1; next }
+    /^## / { inside = 0 }
+    inside { print }
+  ' "$PLAN")"
   if [ -n "$CONTRACT" ]; then
-    awk -v rx="$TASK_RX" -v want="$BRIEF_N" -v planpath="$PLAN" -v repo="$BRIEF_REPO" -v hascontract=1 -v onmain="$BRIEF_MAIN" -v planwt="$BRIEF_PLANWT" -v tbranch="$BRIEF_TBRANCH" -v onlycode="$BRIEF_ONLYCODE" -v rmode="$BRIEF_RMODE" -v wmode="$BRIEF_WMODE" -v wsrc="$BRIEF_WSRC" "$CLEANFILES_AWK$FENCE_AWK$FIELD_AWK$BRIEF_AWK" "$PLAN" "$CONTRACT"
+    ROLEPOD_BRIEF_FAILURE_POLICY="$BRIEF_FAILURE_POLICY" awk -v rx="$TASK_RX" -v want="$BRIEF_N" -v planpath="$PLAN" -v repo="$BRIEF_REPO" -v baseroot="$BRIEF_RECEIPT_ROOT" -v hascontract=1 -v onmain="$BRIEF_MAIN" -v planwt="$BRIEF_PLANWT" -v tbranch="$BRIEF_TBRANCH" -v onlycode="$BRIEF_ONLYCODE" -v rmode="$BRIEF_RMODE" -v wmode="$BRIEF_WMODE" -v wsrc="$BRIEF_WSRC" "$CLEANFILES_AWK$FENCE_AWK$FIELD_AWK$BRIEF_AWK" "$PLAN" "$CONTRACT"
   else
-    awk -v rx="$TASK_RX" -v want="$BRIEF_N" -v planpath="$PLAN" -v repo="$BRIEF_REPO" -v hascontract=0 -v onmain="$BRIEF_MAIN" -v planwt="$BRIEF_PLANWT" -v tbranch="$BRIEF_TBRANCH" -v onlycode="$BRIEF_ONLYCODE" -v rmode="$BRIEF_RMODE" -v wmode="$BRIEF_WMODE" -v wsrc="$BRIEF_WSRC" "$CLEANFILES_AWK$FENCE_AWK$FIELD_AWK$BRIEF_AWK" "$PLAN"
+    ROLEPOD_BRIEF_FAILURE_POLICY="$BRIEF_FAILURE_POLICY" awk -v rx="$TASK_RX" -v want="$BRIEF_N" -v planpath="$PLAN" -v repo="$BRIEF_REPO" -v baseroot="$BRIEF_RECEIPT_ROOT" -v hascontract=0 -v onmain="$BRIEF_MAIN" -v planwt="$BRIEF_PLANWT" -v tbranch="$BRIEF_TBRANCH" -v onlycode="$BRIEF_ONLYCODE" -v rmode="$BRIEF_RMODE" -v wmode="$BRIEF_WMODE" -v wsrc="$BRIEF_WSRC" "$CLEANFILES_AWK$FENCE_AWK$FIELD_AWK$BRIEF_AWK" "$PLAN"
   fi
   exit $?
 fi

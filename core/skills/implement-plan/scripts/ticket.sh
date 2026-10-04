@@ -749,7 +749,7 @@ cmd_start() {
   if [ ! -f "$task_file" ]; then
     task_title="$(printf '%s\n' "$brief_out" | sed -n '1s/^# Task [0-9][0-9]*: *//p')"
     mkdir -p "$(dirname "$task_file")" 2>/dev/null
-    printf '# Task %s — %s\nBase: %s\n\n## Decision brief\n\n## Handoff\n\n## Reviews\n\n## Lead notes\n' \
+    printf '# Task %s — %s\nBase: %s\n\n## Decision brief\n\n### Owner status\nCOMPLETED | PARTIAL | BLOCKED\n\n## Verify status\nVERIFIED | PARTIAL | UNVERIFIED\n\n## Handoff\n\n## Reviews\n\n## Lead notes\n' \
       "$n" "$task_title" "$(git -C "$repo_root" rev-parse HEAD 2>/dev/null)" > "$task_file" \
       || { echo "ticket: start: cannot write the task file $task_file" >&2; exit 1; }
   fi
@@ -999,9 +999,30 @@ cmd_finish() {
     exit "$merge_rc"
   fi
 
-  # Review reports written only inside the worktree survive its removal: the
-  # .md files are copied to the base evidence dir, never overwriting one there
-  # (.diff / .log stay behind).
+  # Canonical receipts written only inside a worktree must survive cleanup.
+  # Preserve them at the brief's base path; conflicting content stops cleanup.
+  if [ -d "$wt_root/docs/rolepod/tasks" ]; then
+    local receipt dest rel
+    while IFS= read -r receipt; do
+      [ -n "$receipt" ] || continue
+      rel="${receipt#"$wt_root/"}"
+      dest="$base_root/$rel"
+      if [ -e "$dest" ]; then
+        if ! cmp -s "$receipt" "$dest"; then
+          echo "ticket: finish: receipt collision at $dest — refusing cleanup" >&2
+          exit 1
+        fi
+      else
+        mkdir -p "$(dirname "$dest")" || { echo "ticket: finish: cannot create receipt directory for $dest" >&2; exit 1; }
+        cp "$receipt" "$dest" || { echo "ticket: finish: cannot preserve receipt at $dest" >&2; exit 1; }
+      fi
+    done <<EOF
+$(find "$wt_root/docs/rolepod/tasks" -type f -name 'task-*.md' -print 2>/dev/null)
+EOF
+  fi
+
+  # Reviewer reports written only inside the worktree survive its removal:
+  # the .md files are copied to base, never overwriting an existing report.
   if [ -d "$wt_root/.rolepod/evidence/review" ]; then
     local rep
     mkdir -p "$base_root/.rolepod/evidence/review" 2>/dev/null

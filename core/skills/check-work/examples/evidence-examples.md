@@ -17,7 +17,8 @@ strongly. Compare the pair — do not read one half alone.
 ## Change manifest
 - lib/pagination.rb — fixed off-by-one in the last-page offset
 
-## Evidence
+## Decision brief
+### Evidence
 - bundle exec rspec spec/pagination_spec.rb — PASS: 8 examples, 0 failures;
   the new test "last page includes the final row" was RED before the fix
 - bundle exec rspec — PASS: 214 examples, 0 failures (full suite, no regression)
@@ -25,18 +26,19 @@ strongly. Compare the pair — do not read one half alone.
 ## Limitations
 None — logic change, fully covered by the suite.
 
-## Status
+## Verify status
 VERIFIED
 ```
 
 ### Weak (false green)
 
 ```text
-## Evidence
+## Decision brief
+### Evidence
 - ran the tests, looks good
 - assert page.rows.present?
 
-## Status
+## Verify status
 VERIFIED
 ```
 

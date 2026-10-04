@@ -95,12 +95,14 @@ Not run / flaky: <named flows not run or flaky, and why — or "none">
 
 The dispatch defines the canonical artifact and its required shape: a
 `review-code` pass fills `templates/review-report.md`, a spec-first test-case
-design returns its table, and a write-mode task uses the named task receipt.
-Return status/verdict, pointers, proof lines and actionable residuals. Do not
-copy a report's finding list into chat or another merged report. A clean pair
-needs no third report; finding closure and required Full rechecks retain their
-existing evidence. The Lead validates the receipt and spot-checks one claim,
-not another review axis.
+design returns its table, and a write-mode task records current facts once in
+the named task receipt. Owner status (`COMPLETED | PARTIAL | BLOCKED`) and
+Verify status (`VERIFIED | PARTIAL | UNVERIFIED`) are separate. Return
+status/verdict, pointers, proof lines and actionable residuals. Do not copy
+findings into chat or create a merged report. A clean pair needs no third
+report; finding closure belongs in the receipt's Author fix closure section
+with report pointers. The Lead validates the receipt and spot-checks one
+claim, not another review axis.
 
 - Pointers must resolve to readable canonical artifacts after integration and
   worktree removal. Proof complete at base needs no export. Preserve required
@@ -197,4 +199,4 @@ A report-only brief that explicitly requests a review report (you are the review
     - any other brief (a standalone R2 checklist, a debug hand-off) → the two lenses yourself (`universal-reviewer` with `lens: spec` and `lens: standards`), in ONE message; each lens writes `.rolepod/evidence/review/<task>-<lens>.md`.
   - Fix the findings, re-run the checks covering the fix.
   - Round 2+ — R2/R3: none; owner fixes each BLOCKER / MAJOR with proof (Command tail, repro re-run, or grep). Lite: no automatic round 2+ at any tier; author fixes findings verified against the diff and attaches evidence. Standard R4: no round 2+. Full R4: only findings from `security-engineer` or adversarial pass with code touch — re-check delta on balanced model (external → `security-engineer` for security-class, else `universal-reviewer`); max 4 rounds total including round 1; round 4 uses a fresh fixer on a stronger model. Still open → stop, hand user findings + fix-attempt log. Review rounds do not reset the separate four-failed-fix cap; no automatic extra review is authorized for Lite, Standard, R2 or R3.
-  - Return: a plan task returns the **decision brief** — verdict, diff stat, Command tail, named evidence pointers, proof lines, reviewer verdicts + report paths, `Assuming:` lines and actionable residuals. Other briefs return their required shape and pointers. Chat does not copy finding lists from canonical reports. Preserve exact failure words, counts with nouns, non-zero exit codes and `path:line`; a pointer never hides a failure. With no file-writing tool, return the complete required receipt inline and name the limitation; never claim an unwritten path or persisted proof. The Lead validates the receipt and spot-checks one claim, not another axis. A reviewer is due and no dispatch tool exists → add `REVIEW NEEDED: <what to check>`. Cannot self-approve.
+  - Return: a plan task updates the absolute base receipt named by its brief with the **decision brief** — verdict, diff stat, Command tail, named evidence pointers, proof lines, reviewer verdicts + report paths, `Assuming:` lines and actionable residuals. Keep owner status (`COMPLETED | PARTIAL | BLOCKED`) separate from Verify status (`VERIFIED | PARTIAL | UNVERIFIED`). Other briefs return their required shape and pointers. Chat does not copy finding lists from canonical reports. Preserve exact failure words, counts with nouns, non-zero exit codes and `path:line`; a pointer never hides a failure. With no file-writing tool, return the complete required receipt inline and name the limitation; never claim an unwritten path or persisted proof. A reviewer report is missing and reviewer agents are available → have the assigned reviewer fill its named report in the same round; no-agent fallback stays unchanged. The Lead validates the receipt and spot-checks one claim, not another axis. A reviewer is due and no dispatch tool exists → add `REVIEW NEEDED: <what to check>`. Cannot self-approve.

@@ -89,9 +89,9 @@ Skip only when ALL hold: ≤5 lines · single file · zero logic-bearing (user-f
 
 Done when: every check holds, or its failure is fixed.
 
-### 7. Compose the evidence block
+### 7. Update the canonical task receipt
 
-Fill `templates/evidence-block.md` (change manifest, evidence, limitations, status). `## Status` is exactly one of `VERIFIED | PARTIAL | UNVERIFIED` — finish-work's Pre-merge gates read the word; PARTIAL / UNVERIFIED block merge.
+Fill the Evidence fields from `templates/evidence-block.md` in the task receipt named by the brief; do not create a second report. Keep Verify status (`VERIFIED | PARTIAL | UNVERIFIED`) separate from the owner's task status (`COMPLETED | PARTIAL | BLOCKED`). Finish-work reads Verify status; PARTIAL / UNVERIFIED block merge.
 R1 / R2 (trivial edit / one file + test), one file, no QA table, nothing to limit → `<command> → PASS: <specific proof>. Status: VERIFIED`.
 
 Evidence log: append the line to `<git-root>/.rolepod/evidence/phase-log.jsonl` chained onto the next command you run anyway (`<cmd> && printf '…' >> phase-log.jsonl`), never as a standalone turn; skip silently outside a git repo.
