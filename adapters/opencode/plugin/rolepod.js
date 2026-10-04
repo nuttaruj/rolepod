@@ -44,7 +44,7 @@
  *      hook's `messages` carry it instead — the previous turn's text is
  *      recorded at the start of the next one (one turn late by design).
  *
- * Child ship-operation rules live here and follow workflow.mode. An unseen
+ * Child ship-operation rules live here and follow the GATE_ACTION table. An unseen
  * session is looked up before its first ship command is classified. Synthetic
  * hook tests prove this adapter branch, not live enforcement by every runtime.
  *
@@ -75,6 +75,35 @@ const TOOL_MAP = {
   websearch: "WebSearch", bash: "Bash", task: "Agent", edit: "Edit", write: "Write",
   shell: "Bash", subagent: "Agent", patch: "Edit",
 }
+// Gate policy table, the two rows this adapter decides itself. Same values as
+// rolepod_gate_action in hooks/lib/session-mode.sh (tests/integration/cases/
+// mode-gate-matrix.sh `parity` compares them): [lite, standard, full].
+const GATE_ACTION = {
+  "private-docs": ["deny", "deny", "deny"],
+  "subagent-ship": ["deny", "deny", "deny"],
+}
+// deny | warn | silent for a gate and mode; unknown mode -> lite, unknown gate -> silent.
+function gateAction(id, mode) {
+  const row = GATE_ACTION[id]
+  if (!row) return "silent"
+  const i = ["lite", "standard", "full"].indexOf(mode)
+  return row[i < 0 ? 0 : i]
+}
+// A child session's (or an unverifiable session's) ship command, per the table.
+// Returns { deny } to throw or { warn } to surface; unverified identity is held
+// (deny) only in Full, where it cannot be told from a child.
+function shipVerdict(ship, role, mode) {
+  const act = gateAction("subagent-ship", mode)
+  if (role === "child") {
+    const fact = `child sessions cannot run ${ship}.`
+    const fix = "Fix: hand the work back to the Lead, who commits and pushes. Exception: none for a child session."
+    return act === "deny" ? { deny: `Rolepod BLOCKED: ${fact} ${fix}` } : { warn: `WARNING: ${fact} ${fix}` }
+  }
+  const fact = `cannot verify session identity for ${ship}.`
+  const fix = "Fix: make the session lookup work, then run the command again. Exception: a confirmed Lead session passes."
+  return act === "deny" && mode === "full" ? { deny: `Rolepod BLOCKED: ${fact} ${fix}` } : { warn: `WARNING: ${fact} ${fix}` }
+}
+
 // Run one shared core with a Claude-shape stdin; return its additionalContext or "".
 function runCore(name, input, profile = {}) {
   try {
@@ -577,7 +606,6 @@ function makeCore({ directory, homedir } = {}) {
 export const RolepodPlugin = async ({ directory, client }) => {
   const core = makeCore({ directory })
   const mode = core.workflowMode()
-  if (mode === "lite") return {}
   let sessionId = null
   let lastPromptAt = 0 // epoch seconds of the newest user prompt (chat.message)
   const childSessions = new Set()
@@ -706,14 +734,10 @@ export const RolepodPlugin = async ({ directory, client }) => {
             }
           } catch { /* unresolved remains distinct from a confirmed Lead */ }
         }
-        if (ship && role === "child") {
-          const reason = `Rolepod ${mode === "full" ? "Full" : "Standard"} mode: child sessions cannot run ${ship}.`
-          if (mode === "full") denyReason = reason
-          else toast(`WARNING: ${reason} Standard mode allows this operation.`)
-        } else if (ship && role === "unknown") {
-          const reason = `Rolepod Full mode: cannot verify session identity for ${ship}; retry after session lookup succeeds.`
-          if (mode === "full") denyReason = reason
-          else toast(`WARNING: ${reason} Standard mode allows this operation.`)
+        if (ship && (role === "child" || role === "unknown")) {
+          const v = shipVerdict(ship, role, mode)
+          if (v.deny) denyReason = v.deny
+          else toast(v.warn)
         } else if (core.isGitCommit(cmd)) {
           const dir = directory || process.cwd()
           const worktree = core.worktreeRoot(dir)
@@ -721,12 +745,10 @@ export const RolepodPlugin = async ({ directory, client }) => {
           const gate = core.runCommitGate(worktree, cmd)
           if (gate?.hookSpecificOutput?.permissionDecision === "deny") {
             const reason = String(gate.hookSpecificOutput.permissionDecisionReason || "")
-            if (mode === "full") denyReason = reason
-            else {
-              try { client?.tui?.showToast?.({ body: { message: `WARNING: ${reason}`, variant: "warning" } }) } catch { /* v1 toast unavailable */ }
-            }
+            if (gateAction("private-docs", mode) === "deny") denyReason = reason
+            else toast(`WARNING: ${reason}`)
           }
-          if (mode === "standard" && gate?.hookSpecificOutput?.additionalContext) {
+          if (gate?.hookSpecificOutput?.additionalContext) {
             try { client?.tui?.showToast?.({ body: { message: gate.hookSpecificOutput.additionalContext, variant: "warning" } }) } catch { /* v1 toast unavailable */ }
           }
         }
@@ -801,7 +823,6 @@ export default {
     }
     const core = makeCore({ directory })
     const mode = core.workflowMode()
-    if (mode === "lite") return
 
     // sessions: sessionID -> { child } for sessions this instance has seen
     // via the (global) event stream and knows belong to this project —
@@ -904,24 +925,20 @@ export default {
               }
             } catch { /* unresolved remains distinct from a confirmed Lead */ }
           }
-          if (ship && role === "child") {
-            const reason = `Rolepod ${mode === "full" ? "Full" : "Standard"} mode: child sessions cannot run ${ship}.`
-            if (mode === "full") denyReason = reason
-            else pendingGateNotice.set(sid, `WARNING: ${reason} Standard mode allows this operation.`)
-          } else if (ship && role === "unknown") {
-            const reason = `Rolepod Full mode: cannot verify session identity for ${ship}; retry after session lookup succeeds.`
-            if (mode === "full") denyReason = reason
-            else pendingGateNotice.set(sid, `WARNING: ${reason} Standard mode allows this operation.`)
+          if (ship && (role === "child" || role === "unknown")) {
+            const v = shipVerdict(ship, role, mode)
+            if (v.deny) denyReason = v.deny
+            else pendingGateNotice.set(sid, v.warn)
           } else if (core.isGitCommit(cmd)) {
             const worktree = core.worktreeRoot(directory)
             if (!worktree) return
             const gate = core.runCommitGate(worktree, cmd)
             if (gate?.hookSpecificOutput?.permissionDecision === "deny") {
               const reason = String(gate.hookSpecificOutput.permissionDecisionReason || "")
-              if (mode === "full") denyReason = reason
-              else pendingGateNotice.set(sid, `WARNING: ${reason} Standard mode allows this operation.`)
+              if (gateAction("private-docs", mode) === "deny") denyReason = reason
+              else pendingGateNotice.set(sid, `WARNING: ${reason}`)
             }
-            if (mode === "standard" && gate?.hookSpecificOutput?.additionalContext)
+            if (gate?.hookSpecificOutput?.additionalContext)
               pendingGateNotice.set(sid, gate.hookSpecificOutput.additionalContext)
           }
         } catch {
