@@ -1010,9 +1010,8 @@ if (planwt == 1) tpath = substr(tbranch, 1, length(tbranch) - 5)
     if (Ef != "" && Ef !~ /^</) { print "## Expected failing signal"; print Ef }
     print "## Command"
     print (Cmd == "" ? "(not in plan)" : Cmd)
-    print "Test levels — each runs at ONE point:"
-    print "1. Command — the tests covering this task; the owner runs it once, last before returning; each edit runs only the checks covering the file it touched."
-    print "2. Release — the whole-repo suite; runs ONCE per release, by the Lead."
+    print "Cadence: Check changed behavior and affected consumers only; use the narrowest covering check after each relevant edit. Matching passing evidence for planned Command scope after the final relevant edit satisfies Command; phase changes add no check. Reuse only matching scope, inputs, environment and provenance."
+    print "The whole-repo suite runs once per release, by the Lead."
     print "## Proof"
     # An undeleted template placeholder ("<the one claim...> :: `<the command
     # that proves it>`") is not a real Proof — same convention as the bare-path
@@ -1047,7 +1046,6 @@ if (planwt == 1) tpath = substr(tbranch, 1, length(tbranch) - 5)
       } else {
         print "No in-task review; the track-end review must use exactly two fresh, isolated `universal-reviewer` contexts in parallel (`lens: spec`, `lens: standards`) on one frozen snapshot/hash, with separate reports and aggregate-after-both. No agents → Lead performs both axes and records the limitation. No formal spec → supplied goal/acceptance is the spec-lens input. No automatic specialist, security, adversarial, same-lens rerun, or round 2+."
       }
-      print "Workflow intensity: lite (" wsrc "); reviewer protocol is standard."
     } else if (tier == "R4" && wmode == "standard") {
       # standard mode: the security floor at checklist depth and the two lenses, no
       # strong-class attack pass; no round 2+ either.
@@ -1078,7 +1076,7 @@ if (planwt == 1) tpath = substr(tbranch, 1, length(tbranch) - 5)
     if (onmain) print "- Edit only Files allowed, in the main checkout; no backup copies (.bak / .orig). Never commit or push; leave the tree staged. Never `git stash`. One exception: a file the task needs that is in no Files list (not forbidden) - edit it and add an Also touched: line."
     else if (tbranch != "") printf "- Edit only Files allowed, and only under ../%s-wt-%s — the same path in the main checkout belongs to the Lead; no backup copies (.bak / .orig). Never commit or push; leave the tree staged. Never `git stash`. One exception: a file the task needs that is in no Files list (not forbidden) - edit it and add an Also touched: line.\n", repo, tpath
     else printf "- Edit only Files allowed, and only under ../%s-wt-%s-t%s-%s — the same path in the main checkout belongs to the Lead; no backup copies (.bak / .orig). Never commit or push; leave the tree staged. Never `git stash`. One exception: a file the task needs that is in no Files list (not forbidden) - edit it and add an Also touched: line.\n", repo, feat, want, tslug
-    print "- After each edit run the narrowest check that covers it — one test, or one section / case of a large test file through the repo\047s own filter (a whole file only when it runs in under ~30 s); never the whole suite, which the Lead runs once at release; run the Command once, last before returning, then the repo commit check once (the one the project CLAUDE.md or AGENTS.md names), in the foreground (Bash timeout 600000; never run_in_background). Reviewers named above → dispatch them in ONE message, no name, fork or remote isolation (such a child reports to the Lead); return only after each report is in (a child ending wakes you, or the Lead relays it; a turn ended to wait has the last line WAITING: <report paths>); no way to wait → REVIEW NEEDED: (reports: .rolepod/evidence/review/<task>-<role>.md, a lens <task>-<lens>.md); fix; then the Reviewers section above."
+    print "- Return with passing scoped Command evidence; run the repo commit check once. Foreground only; Bash timeout 600000; never run_in_background. Reviewers named above → dispatch in ONE message, no name, fork or remote isolation (child reports to Lead); wait for every report before returning (WAITING: <report paths> if yielding); unable to wait → REVIEW NEEDED with .rolepod/evidence/review/<task>-<role>.md or <task>-<lens>.md; fix findings per Reviewers above."
     printf "- Write your decision brief to docs/rolepod/tasks/%s/task-%02d.md; its Handoff section is at most ~15 lines, only what a Blocked-by task consumes (signatures, invariants). Never edit the plan file.\n", tbase, want + 0
     print "- Budget: build <= 40 tool calls, whole loop <= 120; past it return PARTIAL with what is done, never grind."
     print "- Return a decision brief: verdict, `git diff --cached --stat | tail -3`, Command last 3 lines verbatim, reviewer verdicts + report paths, `Assuming:` lines, residuals."
