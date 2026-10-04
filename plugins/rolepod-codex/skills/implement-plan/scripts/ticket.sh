@@ -749,7 +749,7 @@ cmd_start() {
   if [ ! -f "$task_file" ]; then
     task_title="$(printf '%s\n' "$brief_out" | sed -n '1s/^# Task [0-9][0-9]*: *//p')"
     mkdir -p "$(dirname "$task_file")" 2>/dev/null
-    printf '# Task %s — %s\nBase: %s\n\n## Decision brief\n\n### Owner status\nCOMPLETED | PARTIAL | BLOCKED\n\n## Verify status\nVERIFIED | PARTIAL | UNVERIFIED\n\n## Handoff\n\n## Reviews\n\n## Lead notes\n' \
+    printf '# Task %s — %s\nBase: %s\n\n## Decision brief\n\n### Author fix closure\n- Delta H1→H2: <changed paths + delta hash>\n- H2: <verified snapshot after the fixes>\n- Re-check: <report path of the Fix-verify re-check at H2, or `none — no BLOCKER / MAJOR fixed`>\n\n### Owner status\nCOMPLETED | PARTIAL | BLOCKED\n\n## Verify status\nVERIFIED | PARTIAL | UNVERIFIED\n\n## Handoff\n\n## Reviews\n\n## Lead notes\n' \
       "$n" "$task_title" "$(git -C "$repo_root" rev-parse HEAD 2>/dev/null)" > "$task_file" \
       || { echo "ticket: start: cannot write the task file $task_file" >&2; exit 1; }
   fi
@@ -1007,7 +1007,10 @@ cmd_finish() {
       [ -n "$receipt" ] || continue
       rel="${receipt#"$wt_root/"}"
       dest="$base_root/$rel"
-      if [ -e "$dest" ]; then
+      if [ -e "$dest" ] && grep -qxF 'COMPLETED | PARTIAL | BLOCKED' "$dest" 2>/dev/null; then
+        # The base copy is still the unfilled skeleton `start` wrote: the owner's receipt replaces it.
+        cp "$receipt" "$dest" || { echo "ticket: finish: cannot preserve receipt at $dest" >&2; exit 1; }
+      elif [ -e "$dest" ]; then
         if ! cmp -s "$receipt" "$dest"; then
           echo "ticket: finish: receipt collision at $dest — refusing cleanup" >&2
           exit 1
@@ -1364,7 +1367,7 @@ EOF
           fi
         fi
         printf '%s\n' "$tline"
-        echo "Track end: a track with two or more code tasks → one fresh owner (the role owning most of the track's code) runs the two lenses in ONE message on the track diff and fixes each BLOCKER / MAJOR with its proof, no round 2; the Lead commits the fixes in the track worktree, then \`ticket.sh finish <worktree>\` merges the track. A track with one code task → its task owner runs the two lenses before returning, the same way, and the track takes no track-end review."
+        echo "Track end: a track with two or more code tasks → one fresh owner (the role owning most of the track's code) runs the two lenses in ONE message on the track diff and fixes each BLOCKER / MAJOR with its proof (\`review-code\` Fix-verify: one fresh re-check of the fix delta, at most four rounds); the Lead commits the fixes in the track worktree, then \`ticket.sh finish <worktree>\` merges the track. A track with one code task → its task owner runs the two lenses before returning, the same way, and the track takes no track-end review."
       fi
     fi
   fi

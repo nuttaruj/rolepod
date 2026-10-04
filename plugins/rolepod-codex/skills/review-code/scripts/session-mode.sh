@@ -76,6 +76,18 @@ rolepod_session_profile_store() {
   return 0
 }
 
+# Shell entry points with no CLI named (workflow-mode, review-mode, plan-lint):
+# when a captured profile exists for the native session id of Claude Code or
+# Codex, set ROLEPOD_SESSION_CLI / ROLEPOD_SESSION_ID (shell vars, not exported).
+rolepod_session_native_profile() {
+  local pair path
+  for pair in "claude:${CLAUDE_CODE_SESSION_ID:-}" "codex:${CODEX_THREAD_ID:-}"; do
+    path=$(rolepod_session_profile_path "${pair%%:*}" "${pair#*:}" 2>/dev/null) || continue
+    if [[ -f "$path" ]]; then ROLEPOD_SESSION_CLI=${pair%%:*}; ROLEPOD_SESSION_ID=${pair#*:}; return 0; fi
+  done
+  return 1
+}
+
 rolepod_session_profile_load() {
   local json=${1:-} cli=${2:-${ROLEPOD_SESSION_CLI:-unknown}} sid path mode source native_id=${ROLEPOD_SESSION_ID:-}
   if [[ "$cli" = unknown || -z "$cli" ]]; then
@@ -92,6 +104,7 @@ rolepod_session_profile_load() {
   rolepod_session_id_from_input "$json"
   sid=$ROLEPOD_SESSION_ID
   if [[ -z "$sid" && -n "$native_id" && "$native_id" =~ ^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$ ]]; then sid=$native_id; fi
+  if [[ -z "$sid" && "$cli" = claude && "${CLAUDE_CODE_SESSION_ID:-}" =~ ^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$ ]]; then sid=$CLAUDE_CODE_SESSION_ID; fi
   if [[ -z "$sid" && "$cli" = codex && "${CODEX_THREAD_ID:-}" =~ ^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$ ]]; then sid=$CODEX_THREAD_ID; fi
   path=$(rolepod_session_profile_path "$cli" "$sid" 2>/dev/null || true)
   if [[ -n "$path" && -f "$path" ]]; then

@@ -131,6 +131,12 @@ render_skills() {
     [ "$name" = "using-rolepod" ] && cp "$REPO_DIR/hooks/lib/session-mode.sh" "$skills_dst/$name/scripts/session-mode.sh"
     [ "$name" = "review-code" ] && cp "$REPO_DIR/hooks/lib/rolepod_config.py" "$skills_dst/$name/scripts/rolepod_config.py"
     [ "$name" = "review-code" ] && cp "$REPO_DIR/hooks/lib/session-mode.sh" "$skills_dst/$name/scripts/session-mode.sh"
+    # plan-lint --brief resolves the workflow mode beside itself; implement-plan
+    # carries the same readers so a mode-aware helper there needs no repo checkout.
+    case "$name" in write-plan|implement-plan)
+      cp "$REPO_DIR/hooks/lib/rolepod_config.py" "$skills_dst/$name/scripts/rolepod_config.py"
+      cp "$REPO_DIR/hooks/lib/session-mode.sh" "$skills_dst/$name/scripts/session-mode.sh" ;;
+    esac
     [ -f "$skill_dir/SKILL.md" ] && \
       render_template "$skill_dir/SKILL.md" "$skills_dst/$name/SKILL.md"
   done

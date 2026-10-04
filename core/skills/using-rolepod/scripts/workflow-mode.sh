@@ -24,10 +24,9 @@ if [[ ! "$mode" =~ ^(lite|standard|full)$ ]]; then
   SESSION_MODE="$HERE/session-mode.sh"
   [ -f "$SESSION_MODE" ] || SESSION_MODE="$ROOT/hooks/lib/session-mode.sh"
   . "$SESSION_MODE" 2>/dev/null || true
-  if [[ -z "$CLI" && "${CODEX_THREAD_ID:-}" =~ ^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$ ]] \
-    && type rolepod_session_profile_path >/dev/null 2>&1; then
-    _codex_profile=$(rolepod_session_profile_path codex "$CODEX_THREAD_ID" 2>/dev/null || true)
-    [ -f "$_codex_profile" ] && CLI=codex
+  # No CLI named: the native session id of Claude Code / Codex finds the profile.
+  if [ -z "$CLI" ] && type rolepod_session_native_profile >/dev/null 2>&1 && rolepod_session_native_profile; then
+    CLI=$ROLEPOD_SESSION_CLI
   fi
   if [ -n "$CLI" ] && type rolepod_session_profile_load >/dev/null 2>&1; then
     rolepod_session_profile_load "${ROLEPOD_HOOK_INPUT:-}" "$CLI"
