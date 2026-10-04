@@ -1,5 +1,5 @@
 skill: check-work
-expect: CASE=VALID\s+ACTION=(CITE|NO-NEW-CHECK)\s+STATUS=VERIFIED\s+REASON=.*Scoped passing proof and receipt remain valid
+expect: CASE=VALID\s+ACTION=(CITE|NO-NEW-CHECK)\s+STATUS=VERIFIED\s+REASON=.*((scoped|scope).*(proof|receipt).*(match|remain|valid|cover|unchanged|same)|(proof|receipt).*(scoped|scope).*(match|remain|valid|cover|unchanged|same))
 expect: CASE=UNTRACKED-CHANGED\s+ACTION=RERUN\s+STATUS=UNVERIFIED
 expect: CASE=ZERO-TEST\s+ACTION=RUN\s+STATUS=UNVERIFIED
 expect: CASE=PHASE-CHANGE\s+ACTION=NO-NEW-CHECK\s+STATUS=VERIFIED

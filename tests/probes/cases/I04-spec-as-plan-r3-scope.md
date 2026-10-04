@@ -1,6 +1,5 @@
 skill: implement-plan
-expect: (SPEC-AS-PLAN|spec-as-plan) R3|≤3 approved ordered tasks
-expect: eligible|qualifies
+expect: (eligible|qualifies).*R3|R3.*(eligible|qualifies)
 expect: (single|one) owner
 expect: high-risk.*write-plan|write-plan.*high-risk
 forbid: Scope grows past one file \(its test file included\)

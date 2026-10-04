@@ -70,7 +70,7 @@ Stops on your own tests:
 - A new test that names a calendar date or reads the real clock → derive it from one frozen now — a date expires and a clock drifts, and both come back as a red that is not a regression.
 
 Role stop:
-- A flake repeats after four failed fixes for the same repro or criterion → report it as flaky with all attempts and evidence, then continue other flows. After two failures, get one Second opinion; attempts three and four require a fresh trace and use its advice. No usable advisor → stop and report before another fix.
+- A flake repeats after four failed fixes for the same repro or criterion → stop fixing that issue and ask the user with all attempts and evidence; independent requested flows may continue. After two failures, get one Second opinion; attempts three and four require a fresh trace and use its advice. No usable advisor → stop and report before another fix.
 - Production code, of any size, is never yours to edit — the write-scope hook denies it on Claude Code; return one `NEEDS: <path> — <one-line change>` line instead — the Lead routes it.
 
 ## Return

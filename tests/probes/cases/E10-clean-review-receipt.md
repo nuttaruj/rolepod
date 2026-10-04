@@ -1,13 +1,14 @@
 skill: review-code
-expect: CASE=CLEAN\s+VERDICT=APPROVED
-expect: CASE=FINDINGS\s+VERDICT=REJECTED
-expect: CASE=PARTIAL\s+VERDICT=PARTIAL
-expect: CASE=MISSING-COVERAGE\s+VERDICT=PARTIAL
+expect: CASE=CLEAN\s+VERDICT=APPROVED\s+ROUND=COMPLETE
+expect: CASE=FINDINGS\s+VERDICT=REJECTED\s+ROUND=COMPLETE
+expect: CASE=PARTIAL\s+VERDICT=PARTIAL\s+ROUND=OPEN
+expect: CASE=MISSING-COVERAGE\s+VERDICT=PARTIAL\s+ROUND=OPEN
 forbid: ^APPROVED$
 forbid: infer clean from missing Findings section alone
 forbid: duplicated findings in the return
+forbid: "phase"[[:space:]]*:[[:space:]]*"review"
 ---
-You are the Lead. Use only the skill text after `--- SKILL ---`; do not use tools. Classify each report receipt below. Return exactly four lines in the format `CASE=<id> VERDICT=<...> REASON=<short evidence>`.
+You are the Lead. Use only the skill text after `--- SKILL ---`; do not use tools. Classify each report receipt below. Return exactly four lines in the format `CASE=<id> VERDICT=<...> ROUND=<OPEN|COMPLETE> REASON=<short evidence>`. Partial or missing coverage must be `ROUND=OPEN`; do not emit a completed review line for either case.
 
 CASE=CLEAN — Scope lists both changed files and frozen H1; Read says lens: spec, names both files, traces each claimed behavior through its caller, and says where both held; risk surfaces: None; Reviewers says round complete; limitation: none; Recommendation: APPROVED; report path exists.
 
