@@ -59,6 +59,11 @@ else
   fi
 fi
 
+# Prune stale profiles (fail open; the current session's file is kept).
+if [ -n "${HOME:-}" ] && [ -d "$HOME/.rolepod/session-profiles" ]; then
+  find "$HOME/.rolepod/session-profiles" -mindepth 2 -maxdepth 2 -name '*.mode' -mtime +14 ! -name "${SESSION_ID:-}.mode" -delete >/dev/null 2>&1 || true
+fi
+
 # Native env-channel adapters (Cursor, Antigravity) own their context/lock
 # handlers and call this entry only to capture their startup profile.
 if [ "$FORMAT" = env ]; then
@@ -114,6 +119,11 @@ for key in ("ROLEPOD_STARTUP_CORE", "ROLEPOD_STARTUP_CONTEXT", "ROLEPOD_STARTUP_
             parts.append(msg)
     except Exception:
         parts.append(value)
+text = "\n\n".join(parts)
+CAP = 9500  # Claude Code moves a hook additionalContext over 10,000 chars to a file; banner + core come first, the tail is cut
+if len(text) > CAP:
+    note = "\n[rolepod: session context truncated to %d chars]" % CAP
+    text = text[:CAP - len(note)] + note
 if parts:
-    print(json.dumps({"hookSpecificOutput": {"hookEventName": "SessionStart", "additionalContext": "\n\n".join(parts)}}))
+    print(json.dumps({"hookSpecificOutput": {"hookEventName": "SessionStart", "additionalContext": text}}))
 ' 2>/dev/null || true
