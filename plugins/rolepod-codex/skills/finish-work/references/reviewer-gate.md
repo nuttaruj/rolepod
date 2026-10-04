@@ -4,18 +4,17 @@
 
 On a high-risk diff, use the active session mode carried from startup/manual selection, then check the matching reports. Do not re-read configured mode at Ship; configuration changes apply after restart or a new session. Configured-mode inspection is separate. `review-mode.sh` is only a compatibility review-intensity helper.
 
-**In `lite` mode:** both isolated `universal-reviewer` lens reports (`spec` and `standards`) must cover the same immutable H1 snapshot; when agents are unavailable, the Lead performs both axes and records the lack of reviewer independence as a limitation. No security or adversarial report is required.
+**In `lite` mode:** both isolated `universal-reviewer` lens reports (`spec` and `standards`) must cover the same immutable H1 snapshot. With agents available, a missing, failed, empty, or partial report keeps that same round open; that same isolated reviewer completes it against H1. Only when agents are unavailable does the Lead perform both axes and record the lack of reviewer independence as a limitation. No security or adversarial report is required.
 
-For a no-recheck fix, the merged report keeps H1 unchanged and records finding-specific author repro/test evidence, the exact bounded H1→H2 delta, and final verified snapshot H2. Reuse H1 reports only when `check-work` verifies H2, the current tree is clean at H2, and every H1→H2 change is a verified finding fix. A green suite alone is insufficient. Unrelated/new changes are uncovered and must be surfaced and routed at their current tier and mode; never relabel H1 as H2.
+For a no-recheck fix, preserve each source report at H1. The canonical task receipt records finding-specific author repro/test evidence, the exact bounded H1→H2 delta, and final verified snapshot H2. Existing valid merged reports remain readable; do not require a new merged report. Reuse H1 reports only when `check-work` verifies H2, the current tree is clean at H2, and every H1→H2 change is a verified finding fix. A green suite alone is insufficient. Unrelated/new changes are uncovered and must be surfaced and routed at their current tier and mode; never relabel H1 as H2.
 
 Full R4 re-checks only code-touching fixes for findings raised by `security-engineer` or the adversarial pass. A required re-check gets its own report at H2; it never mutates or relabels the original H1 reports.
 
-**In `standard` mode:** the `security-engineer` report must be present; an adversarial pass is not run.
+**In `standard` mode:** R4 requires the `security-engineer` report and both lens reports; an adversarial pass is not run or recorded. For a comment/blank-only R4 diff, apply the `review-code` exception.
 
-**In `full` mode:** read the review report's **Cross-model adversarial pass** line before merge:
+**In `full` mode:** Full R4 requires the adversarial pass and its evidence, except for the comment/blank-only R4 case handled by `review-code`; read the review report's **Cross-model adversarial pass** line before merge. If an external pass is unavailable or intentionally not used, the required internal strong pass must be recorded; `NOT RUN` alone does not satisfy the Full R4 floor:
 
 - `ran on <cli>` (a ROLEPOD-XFAM ok receipt) clears the gate whatever the family field says. A CLI preset that reports no model family is stated neutrally, never as a limitation.
-- `NOT RUN — cross-family off (opt-in)` / `NOT RUN — wide-effort session` is the user's choice: one neutral line in the finish menu.
-- `NOT RUN` for any other reason (pool failed / empty, the internal strong pass ran instead) or `vertical — same CLI` is a limitation the user sees before merge; the gate still passes.
-- Missing `security-engineer` report or missing adversarial pass — the Lead's own walk in its place — blocks the merge; only the user's waiver naming this gate, quoted in the finish menu, clears it. Never clear the gate silently.
-- A missing lens report (`<task>-spec.md` / `<task>-standards.md`) is one limitation line the user sees before merge, never a block.
+- `NOT RUN — cross-family off (opt-in)` / `NOT RUN — wide-effort session` describes the user's choice of external reviewer; it does not replace required Full R4 adversarial evidence.
+- `internal strong pass — <reason>` records the required internal pass when external review is unavailable or intentionally not used. `NOT RUN` with no completed internal pass, or `vertical — same CLI` without an accepted pass, is a limitation and does not satisfy the Full R4 floor.
+- Missing required `security-engineer`, lens, or Full R4 adversarial report keeps the same review round open; the same isolated reviewer completes its report on the frozen H1. Never substitute a Lead review when agents are available. Only a user waiver naming the gate, quoted in the finish menu, clears a report requirement; never clear it silently.

@@ -74,27 +74,29 @@ actionable one. Compare the pair — do not read one half alone.
 
 ---
 
-## The Cross-model adversarial pass line — three honest states
+## Full R4 Cross-model adversarial pass line — three honest states
 
-The review-report line is a fact to record, not a box to satisfy. Write the
-state that is TRUE — `finish-work` reads this line verbatim at the merge gate:
+Only Full R4 uses this line; Lite, Standard, comment/blank-only R4, and
+non-R4 reports omit it. It records a fact, not a box to satisfy. A completed
+internal strong pass or an external pass satisfies Full R4. Write the state
+that is TRUE — `finish-work` reads this line at the merge gate:
 
 ```
 Cross-model adversarial pass: ran on codex (cross-family)
 ```
-A second-vendor CLI reviewed the diff cold. The only state that clears the
-high-risk gate outright.
+A second-vendor CLI reviewed the diff cold. This records a completed
+cross-family pass.
 
 ```
 Cross-model adversarial pass: vertical — same CLI (single-CLI machine;
 own CLI's strongest tier ran as cold reviewer; not a cross-family pass)
 ```
-Stronger tier, same vendor. Upgrades the floor, does not satisfy Iron Rule 2 —
-recorded as a verification limitation the user must see before merge.
+Stronger tier, same vendor. This is a verification limitation the user must
+see before merge.
 
 ```
 Cross-model adversarial pass: NOT RUN — 0 external CLIs on PATH; Lead floor
 covered every axis
 ```
-Honest absence. Beats a fabricated pass — writing `cross-family` when the
-reviewer was the Lead's own CLI is the false-green of reviews.
+Honest absence of an external CLI. It does not satisfy Full R4 by itself;
+record the internal strong pass required by the active Full review contract.

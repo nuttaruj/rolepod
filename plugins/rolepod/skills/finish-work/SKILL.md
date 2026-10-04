@@ -25,13 +25,13 @@ A stale base or a conflict → rebase first; the target precedence, the publishe
 - **Review evidence** — required `review-code` reports and provenance cover this tree. Each multi-code-task track needs its track-end report; a one-code-task track needs its owner's reports; a **Ship group** needs its drift-pass report (`implement-plan` → `references/subagent-dispatch.md`).
   Use named canonical pointers. Before worktree cleanup, retain required local-only proof at its named private path. Evidence already complete on base needs no export or merged copy.
 - **Snapshot and floor** — a commit past the last Snapshot is a new delta for `review-code` at its own tier (an R1 delta needs none), never a full re-review. Use the active session mode carried from startup/manual selection; do not re-read configured mode at Ship. Report configured mode separately if inspected. Restart or open a new session to apply config changes.
-  - Original lens reports are immutable at H1. A no-recheck branch may reuse H1 only with each finding's repro/test and result, exact bounded H1→H2 delta, and final verified H2 in the report; `check-work` must name a clean H2 tree.
+  - Original reports are immutable at H1. A no-recheck branch may reuse H1 only when the canonical task receipt records each finding's specific author proof, exact bounded H1→H2 delta, and final verified H2; `check-work` must name a clean H2 tree. Keep valid legacy merged reports readable; do not require a new merged report.
   - Lite R4 requires two isolated reports on the same H1, or, only without agents, the Lead's two-axis walkthrough and independence limitation. No security or adversarial report applies. H1 closure covers H2 only when every delta is a verified finding fix; never relabel H1.
   - R2/R3 and Standard R4 follow their no-recheck rules with the same finding-specific H1→H2 closure evidence. Full R4 re-checks only code-touching fixes for findings raised by `security-engineer` or the adversarial pass, as `review-code` specifies.
-  - With agents available, a missing, failed, empty or partial report keeps its same round open; its isolated reviewer completes the report on the same frozen diff before aggregation or ship. Never substitute a Lead review.
+  - With agents available, a missing, failed, empty or partial required report keeps its same round open; that same isolated reviewer completes it on the same frozen diff in that round before aggregation or ship. Never substitute a Lead review.
   - Unrelated or new changes after H1 are uncovered; surface and route them at their current tier and mode. A green suite alone is not finding-specific closure evidence.
   - Standard R4: the `security-engineer` report is required. Full R4 also needs the adversarial-pass report.
-  - A missing required report blocks merge; only the user's waiver naming this gate, quoted in the finish menu, clears it.
+  - Lite requires both lenses; Standard R4 requires security and both lenses; Full R4 requires security, both lenses, and adversarial evidence. A missing required report blocks merge; only the user's waiver naming this gate, quoted in the finish menu, clears it. The comment/blank-only R4 exception follows `review-code`.
 - **PR scope** — one concern per PR / merge. Mixed concerns → split first (`git add -p`, separate branches); a mixed diff is unreviewable.
 
 Done when: the gate passes, or each failure is fixed, reported, or waived in the user's quoted words.
@@ -70,7 +70,7 @@ Fill `templates/finish-menu.md`: gate status, options, follow-ups carried, recom
 - Keep open proceeds on the named ACTION alone (a checkpoint commit: no push, no merge, no cleanup). Merge and Open PR need action AND target.
 - **Discard** — never offered; only when the user asks. List the branch, its commits and the worktree path that will be lost, suggest `git tag backup-<branch>` first, and proceed only when the user types the literal word `discard`; a generic yes / ok / sure is not enough.
 - Open PR → `templates/pr-body.md` (summary, test plan, risks, linked artifacts), a title under 70 chars, `gh pr create` with a HEREDOC body; report the PR URL. Leave the worktree in place; the user iterates on PR feedback there.
-- A genuine launch event → `templates/release-checklist.md` (rollback, monitoring, feature flag, migration, go / no-go) before traffic; any box unchecked → NO-GO. What counts as a launch → `references/launch.md`.
+- A genuine launch event → `templates/release-checklist.md` before traffic; include infrastructure fields only when applicable, with a short omission reason otherwise. Required rollback, success signal, and operational safety remain; any applicable unchecked box → NO-GO. What counts as a launch → `references/launch.md`.
 - After any merge: update the spec / plan where reality drifted; document the non-obvious decisions.
 
 Before any push — **a push publishes the REF, not your commit.** Read `git log --oneline @{push}..HEAD` first; a branch you have not pushed has no `@{push}` (`fatal: no upstream configured`), so read `git log --oneline origin/<base>..HEAD` instead.

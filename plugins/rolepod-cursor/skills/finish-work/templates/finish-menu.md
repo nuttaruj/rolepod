@@ -9,11 +9,11 @@
   UNVERIFIED — reason. PARTIAL / UNVERIFIED blocks merge unless waived.>
 - CI: Phase 1 <status> · Phase 2 <status, or n/a>
 - Review verdict: <APPROVED / APPROVED-WITH-NITS / REJECTED>
-- Cross-model adversarial pass (high-risk diff only): <ran on `<cli>`
+- Cross-model adversarial pass (Full R4 only; omit otherwise): <ran on `<cli>`
   (cross-family) / ran on `<cli>`, model family not reported (still clears
-  the gate) / cross-family off (opt-in — the user's choice, no limitation)
-  / wide-effort session (the user's choice, no limitation) / vertical — same CLI / NOT RUN — reason. Vertical or a NOT RUN other
-  than opt-in-off or wide-effort session is a limitation the user must see.>
+  the external-review route) / internal strong pass — `<reason>` / NOT RUN —
+  reason (does not satisfy Full R4 without a completed internal pass). External
+  route opt-out and same-CLI use are limitations to state accurately.>
 - User waivers this session: <none, or per waiver: which gate — the user's
   words, quoted. A waiver is recorded here, never silently applied.>
 

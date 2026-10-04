@@ -13,7 +13,7 @@
 <List touched risk surfaces, or `None`.>
 
 ## Reviewers
-<Roles run and whether the round is complete; when merged, N reports → U unique findings (dedup key: file:line + root cause). R4 names its security and adversarial coverage.>
+<Roles run and whether the round is complete; when merged, N reports → U unique findings (dedup key: file:line + root cause). Record only the coverage required by the active mode; adversarial coverage applies only to Full R4.>
 
 **Lite isolation** (Lite only; omit otherwise): <lens: spec | lens: standards>; fresh context: yes; received only this lens: yes; other report/findings visible: no; paired H1/hash matches: yes.
 
@@ -33,10 +33,10 @@
 <Omit when none. State yes/no and whether assertions, mock boundary, and relevant concurrency coverage are strong.>
 
 ## Author fix closure
-<No-recheck branches only; omit when there are no findings. Preserve source reports at H1. Each finding needs specific evidence, bounded H1→H2 fix delta (paths + delta hash), final H2, and whether the delta is covered. A green suite alone does not close a finding.>
+<No-recheck branches only; omit when there are no findings. Preserve this source report at H1. Record finding-specific author repro/test evidence here; the canonical task receipt records the bounded H1→H2 delta (paths + delta hash), final verified H2, and closure proof. A green suite alone does not close a finding.>
 
-**Cross-model adversarial pass** (R4 only; omit otherwise): <CLI/model receipt or precise NOT RUN reason. On a high-risk diff, vertical or NOT RUN except opt-in-off / wide-effort is a verification limitation; no fresh reviewer blocks merge until the user waives it.>
+**Cross-model adversarial pass** (Full R4 only; omit for Lite, Standard, comment/blank-only R4, and non-R4): <external CLI/model receipt or `internal strong pass — <reason>`. A NOT RUN reason without a completed pass does not satisfy Full R4; record the limitation and keep the round open.>
 
 ## Recommendation
-<APPROVED — nothing open above MINOR; a pre-existing MAJOR parked in Follow-ups with its reason is closed. APPROVED-WITH-NITS — only MINOR / Questions remain. REJECTED — any open BLOCKER introduced here or on a changed path, or a MAJOR neither fixed nor parked as pre-existing with reason. Untouched pre-existing issues do not reject. PARTIAL — coverage is missing or incomplete; include the limitation and keep the round open.>
+<APPROVED — nothing open above MINOR; a pre-existing MAJOR parked in Follow-ups with its reason is closed. APPROVED-WITH-NITS — only MINOR / Questions remain. REJECTED — any open BLOCKER introduced here or on a changed path, or a MAJOR neither fixed nor parked as pre-existing with reason. Untouched pre-existing issues do not reject. PARTIAL — required coverage/report is missing or incomplete; the same isolated reviewer must complete it in this round, and the round stays open.>
 APPROVED | APPROVED-WITH-NITS | REJECTED | PARTIAL — <one-line reason>
