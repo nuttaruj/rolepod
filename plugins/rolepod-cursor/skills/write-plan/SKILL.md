@@ -5,21 +5,22 @@ description: Use when turning an approved spec or a small clear goal into an exe
 
 # Write Plan
 
-Turns an approved spec or a clear small goal into a plan another engineer or agent executes without re-asking the user.
+Turns an approved spec or clear goal into the shortest executable hand-off.
 
 ## Skip when
 
 - A one-line fix on a single file, or a question / explanation only.
 - The router tiered the task **R2** (one file + its own test, clear scope, ≈≤30 logic lines) → the plan is a 3-5 line inline checklist in chat, each step with its verify command. No artifact: that checklist is the owner's brief (goal, done-when, Command); the Lead does not pre-explore.
   - Scope grows past one file mid-flight (the task's own test file does not count) → stop, write the real plan here.
-- **Spec-as-plan R3 lane:** ≤3 tasks the approved spec — or a change list the user approved target by target — already lists 1:1 (files, order, verify command, dependencies), single owner, no parallel work or high-risk surface → the same inline checklist. A parallel layout, a risk path, a 4th task, or a compaction mid-plan → write the artifact. Otherwise write the plan artifact before building.
+- **Spec-as-plan R3 lane:** ≤3 tasks the approved spec — or target-by-target change list — already lists 1:1 (files, order, verify command, dependencies), one owner, no parallel work or high-risk surface → the same inline checklist. Parallel work, a risk path, a 4th task, or compaction → write the artifact. Otherwise use the checklist.
+
+These shortcuts prevent duplicate spec and plan artifacts when the input already supplies its contract and execution order.
 
 Each `edge-cases:` pointer below → `references/edge-cases.md`.
 
-### 1. List files to touch
+### 1. Resolve scope and files
 
-Read the spec or goal, the module layout, 2-3 nearby files for patterns, the constraints (stack, style, no-touch zones), and the module boundary map if one is declared (CLAUDE.md / ADR / docs).
-The spec is unclear or incomplete → back to `write-spec`; the plan never re-opens product scope or acceptance criteria.
+Read the approved spec or goal, concrete paths, constraints, relevant patterns, and any declared module boundary map. An unclear spec or open decision → return to `write-spec`; the plan does not reopen approved scope or acceptance criteria.
 2+ modules and no map → offer a one-time bootstrap (edge-cases: No module boundary map).
 Name concrete paths — a directory or module when the slice's shape is still open (`hooks/lib/`; ownership then pins that directory), never a category (code-intel, else grep + read).
 
@@ -33,9 +34,7 @@ Done when: every path is concrete and read.
 - Thin slices beat thick ones. A slice carrying a major unknown (new integration, unproven assumption) goes first — fail fast.
 - A task that guards, gates or restores (a security surface) → a **threat-model** task first (edge-cases: Security-surface task).
 
-Size every task to ONE fresh context window; its builder knows only the ticket.
-A task is one vertical slice through every layer it touches, demoable or verifiable on its own; no file or line count sizes it.
-Split when Delivers needs "and" and the halves touch different files, or when a slice cannot be verified without the next task. Halves on the same files stay ONE task — that split only adds a dispatch, a review and an integration in sequence.
+Size each task for one fresh context. Make each a verifiable vertical slice. Split when outcomes touch different files or cannot be verified together; keep same-file halves together.
 Every task states **Delivers** and **Blocked by**; the Blocked-by graph is the only statement of order, each edge naming what it consumes (the template's Blocked by line).
 Two edge-free tasks on one file → **prefactor first**, or Sequential with a reason (edge-cases: Prefactor).
 A task builds and ships alone, never a batch. Tasks sharing a seam (a contract or interface) form one named ship group, written as the template's **Ship group** line — the unit that bounds its own review (`implement-plan` Review; a size split applies inside it).
@@ -48,8 +47,7 @@ Done when: every task has Delivers and Blocked by with named edges, and every fi
 
 ### 3. Test plan per task
 
-Per task: the test type, the assertion, the **seam** (the public interface the test exercises; the failing test goes there first → `tdd-flow`) taken from the spec's Testing decisions (a seam the spec does not name gets one line of why in the task; no spec → the planner names the highest existing seam); an edge / error / race test only with its reason (a Success criterion names it, or an R4 (high-risk) floor → `tdd-flow`); and the exact **Command** — copy-paste runnable, never "run the tests". "Adds tests" is not a test plan.
-The template's Test / evidence line carries the rest (no-test cases, one test per rule).
+For each task, specify test or evidence type, assertion, seam, and exact runnable **Command**. Use the spec's Testing decisions; if no seam is named, choose the highest existing seam and explain why. Edge / error / race tests need a criterion or R4 floor. Docs, comments, config-text, and string-only changes use a mechanical check, not a behavior test. The template carries the task contract.
 No test infrastructure → the first task bootstraps the harness (edge-cases: No test infrastructure).
 
 Done when: every task names a test or evidence and a runnable Command; a task on a high-risk surface without a test plan gets one.
@@ -62,7 +60,7 @@ Parallel only with genuinely disjoint file ownership and no handoff; track-free 
 
 Done when: every open choice is the plan's own or answered by the user, and the Parallel layout (with tracks) is decided.
 
-### 5. Cohesion contract (parallel only)
+### 5. Parallel ownership (only when needed)
 
 Fill `templates/cohesion-contract-template.md` — Shared goal · Owners · File ownership · Shared interfaces · Merge order · Do-not-touch list · Verification per agent · Integration owner · Session split (optional). Save path, ownership rules, session split → `references/parallel.md`.
 Wording several owners must write the same (a rule sentence, a message, a command) → one Shared interfaces entry per sentence: a label line starting with its id `C<n>`, then the sentence as a `> ` quote. A task that uses it cites the id in Change, and its Proof greps the sentence verbatim (`grep -F`); the brief then quotes it for the owner.
@@ -96,7 +94,7 @@ Done when: every check passes on the draft; Loop-runnable runs on the saved file
 
 ### 8. Write the artifact
 
-Fill `templates/plan-template.md`, every section, in order: Source spec · Files to touch · Tasks · High-risk surfaces touched · Spec coverage (both directions) · Parallel layout · Done criteria · Failure policy · Risks · Changes during build · Follow-ups. Changes during build holds one line per task (`- Task N (`sha`): <verdict> -> <task file>`, at most 300 chars) and one line per deviation; review rounds, findings and handoffs live in the task file, never here.
+Fill `templates/plan-template.md` in its defined order, retaining required task labels, dependencies, high-risk surfaces, parallel layout, failure policy, changes during build, and follow-ups. Keep conditional sections concise or omit when not applicable. Changes during build keeps one line per task and deviation; review rounds, findings, and hand-offs belong in task records.
 A task block, in order, one bold label per bullet: Delivers · Blocked by · Files · Read first · Change · Test / evidence · Proof · Expected failing signal · Command · Owner · Done when · On fail.
 Write the plan's prose in the user's language unless they ask for another; section headings, the field labels plan-lint reads, identifiers, paths, commands and quoted code stay verbatim.
 One-session work → inline in chat. Multi-session → a dated file under the private `docs/rolepod/plans/`, never overwritten (edge-cases: Saving the plan).

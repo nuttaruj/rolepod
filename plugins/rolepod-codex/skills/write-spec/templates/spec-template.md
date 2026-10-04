@@ -1,11 +1,9 @@
 <!-- Rolepod spec template — the canonical Define-phase artifact. -->
 <!-- Fill every section. Replace every [[FILL: …]] marker. write-plan consumes this. -->
-<!-- Repeat feature (a prior docs/rolepod/specs/<feature>-*.md exists): a section
-     that did not move reads `Unchanged — <prior spec path> §<section>` instead of
-     a re-write. Only Goal, User / actor, Non-goals, Constraints, Chosen approach and
-     Rejected approaches may inherit. Current behavior, Desired behavior, Success
-     criteria, Testing decisions, High-risk surfaces and Open questions are ALWAYS
-     written fresh. -->
+<!-- Repeat feature: only Goal, User / actor, Non-goals, Constraints, Chosen
+     approach, and Rejected approaches may say `Unchanged — <prior> §<section>`.
+     Verify Current behavior; write behavior, acceptance, testing, risk, and
+     open decisions fresh. -->
 
 # [[FILL: feature name]] Spec
 
@@ -13,58 +11,37 @@
 [[FILL: One sentence. The outcome, not the implementation.]]
 
 ## User / actor
-[[FILL: Who triggers this and who benefits. Name the role, not "the user" if avoidable.]]
+[[FILL: Who triggers this and benefits. Name a distinct role when it affects scope; keep an obvious actor brief.]]
 
 ## Non-goals
-[[FILL: What this explicitly does NOT do. Cut scope creep here. Repeat feature: carry the prior list forward — `Unchanged — <prior> §Non-goals` plus any new line.]]
+[[FILL: Exclude plausible scope that could be mistaken as included. Use `None` when there is no meaningful exclusion. Repeat feature may cite `Unchanged — <prior> §Non-goals` plus changes.]]
 
 ## Current behavior
-[[FILL: Start with `Product: change | new` (`write-spec` Frame the goal). What happens today. "Nothing — new surface" is a valid answer. Repeat feature: seed from the latest docs/rolepod/specs/<feature>-*.md Desired behavior, but verify it shipped before trusting it. Legacy change (no prior spec): list every consumer of the behavior that moves — grep the call sites, code-intel callers when connected — each becomes a plan task or a Non-goal; unlisted consumers are the seams reviewers find one round at a time.]]
+[[FILL: Start `Product: change | new`. For change, describe current behavior and affected consumers of what moves; verify any prior spec against shipped code. For new, `Nothing — new surface` is valid. Each affected consumer maps to a task or a Non-goal.]]
 
 ## Desired behavior
-[[FILL: What should happen after. Observable, not internal.
- Repeat feature (a Current behavior exists): enumerate the delta explicitly —
- **Added:** / **Changed:** (old → new) / **Removed:** (+ why) bullets against
- the verified Current behavior. A reviewer then reads what MOVES, not two
- prose blocks to diff by eye; anything unlisted is asserted unchanged.]]
+[[FILL: Observable behavior. For a repeat change, list only the delta as Added / Changed (old → new) / Removed (+ why); unlisted behavior stays unchanged.]]
 
 ## Success criteria
-[[FILL: Checkable conditions. Each must be pass/fail, not "works well", and each
- names how it will be proven — a command, an observation, or a user action.
- A post-ship success metric settled in discovery is a criterion here, with its proof.]]
+[[FILL: Pass/fail conditions with a command, observation, or user action that proves each. Include a post-ship metric only when discovery settled one.]]
 - [[FILL: criterion 1]] — proven by: [[FILL: command / observation]]
 - [[FILL: criterion 2]] — proven by: [[FILL: command / observation]]
 
 ## Testing decisions
-[[FILL: The seams under test — the highest seam that reaches the behavior, the
- fewest (ideally one per feature), an existing seam over a new one (a new seam:
- one line of why). What a good test is here: one behavior through the public
- interface, one logical assertion, expected values from this spec. Edge / error /
- race cases: only those a Success criterion names or an R4 surface needs (auth
- deny path, money math, migration rollback, shared-state race). A user-visible
- flow worth a permanent E2E test (a critical path such as sign-in or payment) is
- named here as an E2E seam; every other user-visible flow is observed once at
- Verify. Prior-art test
- files to copy. The Lead picks these; they are approved with the spec at its
- gate. No logic changes → `None — evidence-after: <the check>`.]]
+[[FILL: Name the fewest highest existing seams that reach behavior, expected assertion, and prior-art tests. Explain a new seam. Edge / error / race cases need a criterion or R4 risk. Name a permanent user-visible E2E only for a critical path; Verify observes other flows once. No logic change → `None — evidence-after: <check>`.]]
 
 ## Constraints
-[[FILL: Stack, deadline, no-touch zones, compatibility the user already stated; rollout / rollback (flag, staged rollout, off switch) when discovery settled it. Repeat feature: may inherit — `Unchanged — <prior> §Constraints`.]]
+[[FILL: Stated stack, deadline, no-touch zones, compatibility, and settled rollout / rollback constraints. Repeat feature may cite `Unchanged — <prior> §Constraints`. Omit unstated details.]]
 
 ## High-risk surfaces
-[[FILL: auth / billing / payments / credits / migration / data deletion / secrets /
- tokens / crypto / permissions / security touched.
- "None" is valid — but state it deliberately, do not omit the section.]]
-Cross-family critique: [[FILL: cli — N items, K settled from repo, M asked | NO FURTHER QUESTIONS | not run — off | not run — not R4]]
+[[FILL: Touched surfaces among auth / billing / payments / credits / migration / data deletion / secrets / tokens / crypto / permissions / security. State `None` deliberately when none apply.]]
+Cross-family critique: [[FILL only when applicable: cli — N items, K settled from repo, M asked | NO FURTHER QUESTIONS | not run — off | not run — not R4]]
 
 ## Chosen approach
-[[FILL: The selected direction + one-line rationale. The architect trigger fired
- (DB table / migration, public API contract, module boundary) → also the accepted
- interface, data shape, compatibility rule and invariants the plan must keep.
- No file-by-file order — that is write-plan's job.]]
+[[FILL: Chosen direction and rationale. If DB table / migration, public API contract, or module boundary changes, include accepted interface, data shape, compatibility rule, and invariants. No file order here.]]
 
 ## Rejected approaches
-[[FILL: The other lenses (minimal / clean / pragmatic — `write-spec` Approaches) + why not chosen. The minimal diff already is the clean boundary → one line: what the clean lens checked and why it converged — never `None`, never an invented alternative. Keeps the decision auditable. Repeat feature: may inherit — `Unchanged — <prior> §Rejected approaches` — so a rejected path is never re-proposed from a blank slate.]]
+[[FILL: Real alternatives and why rejected. If minimal is already clean, state what the clean lens checked. Never invent alternatives or write `None`. Repeat feature may cite `Unchanged — <prior> §Rejected approaches`.]]
 
 ## Open questions
-[[FILL: Anything unresolved. Empty is the goal. A non-empty list blocks write-plan.]]
+[[FILL: Unresolved decisions only. Empty permits write-plan; any listed decision blocks it.]]

@@ -230,3 +230,22 @@ scheduled-email option.
 > `High-risk surfaces: None` on purpose. Omitting the section is the bug;
 > a deliberate "None" is correct. Do not invent security depth that the
 > feature does not have.
+
+---
+
+## Short path: user-approved change list
+
+When the user has already approved each target and its change, that list is
+the spec. Do not repeat discovery or ask for Gate 1 again. Keep the approved
+list as the source of truth and proceed to `write-plan`.
+
+```text
+Approved changes:
+- `app/orders/export.rb` — add CSV output using the existing filtered query.
+- `app/views/orders/index.html.erb` — add an export action for current filters.
+Check: export rows match the filtered report; run `bundle exec rspec spec/requests/orders_export_spec.rb`.
+```
+
+This shortcut does not apply to a vague goal or an unapproved proposal. If a
+decision still changes scope, behavior, acceptance, risk, or implementation,
+resolve it before approval.

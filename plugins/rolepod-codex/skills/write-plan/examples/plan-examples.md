@@ -252,3 +252,21 @@ Run them in parallel to go faster.
 > single integration owner. Parallel is not "everyone edits at once"; it is
 > disjoint ownership plus a contract. If files cannot be split cleanly, the
 > good answer is sequential, not a vague contract.
+
+---
+
+## Short path: eligible R3 change list
+
+If the user approved this exact target list, it already supplies the small
+plan. Keep it inline as the owner checklist; no second plan artifact is needed.
+
+```text
+Goal: Add a CSV export for the currently filtered orders.
+1. `app/orders/export.rb` — build CSV from the existing query. Verify: request spec rows match the filtered report.
+2. `app/views/orders/index.html.erb` — add the export action. Verify: browser download retains current filters.
+Done when: both checks pass. Command: `bundle exec rspec spec/requests/orders_export_spec.rb`
+```
+
+This lane requires at most three ordered tasks, exact files and checks, one
+owner, and no parallel or high-risk work. If any condition is missing, write
+the full plan using the task contract above.

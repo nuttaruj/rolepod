@@ -6,7 +6,7 @@ when_to_use: when the user request is non-trivial and the goal, scope, success c
 
 # Write Spec
 
-Turns a vague request into an approved spec the next phase executes against: discovery in frontier rounds → 2-3 approaches → Gate 1 → the contract.
+Turns an unclear, non-trivial request into an approved contract for implementation. Keep clear requests and user-approved change lists on the shortest path.
 
 ## Skip when
 
@@ -15,25 +15,19 @@ Turns a vague request into an approved spec the next phase executes against: dis
 - The user supplied a written spec, or approved an exact change list with each target named — that list is the spec.
 - The user said "skip spec" / "just write the code".
 
-### 1. Frame the goal
+### 1. Route and frame
 
-Quote the request. Read the repo state it touches (patterns, prior decisions) and the stated constraints (deadline, stack, no-touch zones).
-Read the project's follow-up list (`docs/rolepod/backlog.md`, or its issue tracker) — never the old plans' Follow-ups. An item this spec takes on is named in it, and its backlog line is removed when the spec is approved.
-Repeat feature (a prior `docs/rolepod/specs/<feature>-*.md`) → its Desired behavior is a hypothesis for today's Current behavior, verified against the code. An unmoved Goal, User / actor, Non-goals, Constraints, Chosen approach or Rejected approaches reads `Unchanged — <prior spec> §<name>`; the other sections are always written fresh.
-Write the goal in one sentence, 2-3 likely constraints, and every high-risk surface: auth, billing, payments, credits, migration, data deletion, secrets, tokens, crypto, permissions, security.
-The goal needs an "and" → possibly several specs: `references/scope-splitting.md`.
-Open decisions block listing the slices → chart them, then spec each slice: `references/chart-work.md`.
-A slice handed off from a chart-work map → read the map and each Decided ticket it links first; a decided question is cited (`Decided — q-<slug>`), never asked again in Discovery.
-Name the **Product mode** from the repo — `change` (adds to or alters an existing product) or `new` (nothing to change yet); ask only when the repo cannot tell (a new app beside an existing one). It scopes every later step, a prototype included.
+- User-supplied spec or exact approved change list naming each target → use it as the spec; do not interview again.
+- Otherwise, quote the request and inspect relevant code and decisions, constraints, and the project's follow-up list (`docs/rolepod/backlog.md` or its issue tracker). Remove an adopted backlog item when the spec is approved.
+- Record one-sentence goal, actor, product mode (`change` or `new`), constraints, and touched high-risk surfaces: auth, billing, payments, credits, migration, data deletion, secrets, tokens, crypto, permissions, security.
+- A repeat feature may inherit Goal, User / actor, Non-goals, Constraints, Chosen approach, or Rejected approaches as `Unchanged — <prior spec> §<section>`; verify current behavior from code and write behavior, criteria, testing, risk, and open questions fresh.
+- Goal spans independent outcomes → `references/scope-splitting.md`. Open decisions that block work slices → `references/chart-work.md`. A mapped, decided question is cited as `Decided — q-<slug>`, never asked again.
 
-Done when: the goal, constraints, risk surfaces and Product mode are written down.
+Done when: goal, actor, product mode, constraints, risk surfaces, and any needed work split are recorded.
 
 ### 2. Discovery
 
-Model open decisions as a tree; each answer unblocks the questions under it.
-Pace by how clear the goal is. Goal, user or scope still vague (step 1's one-sentence goal was a guess) → one question per message, each shaped by the last answer, until those three are settled; then the rest of the tree goes out in frontier rounds. Goal already clear → frontier rounds from the start.
-Ask in **frontier rounds**: number every question whose prerequisites are settled and present them together; a question depending on an open answer waits. A long frontier is grouped by topic and asked in full, never trimmed.
-Ask only what changes the implementation; which questions do → `references/question-bank.md`.
+Ask only decisions that change scope, behavior, success, risk, or implementation. If goal, user, or scope is genuinely unclear, resolve it first; otherwise ask all currently unblocked questions in **frontier rounds**, grouped by topic. Do not repeat questions answered by a supplied spec or decided map. Patterns: `references/question-bank.md`.
 **Recommend a default per question** — the simplest viable answer; the user confirms or overrides.
 Native question UI when the CLI has one; else numbered questions with lettered options, the default marked, compact answers accepted (`1a 3c`, or `defaults`).
 A partial reply (`1a 3c`) closes only those questions; the rest stay open next round, never defaulted. `defaults` takes only the recommendations shown that round; silence is not an answer.
@@ -54,7 +48,7 @@ Done when: the frontier is empty and no scout is still out.
 
 Present 2-3 approaches, one per **lens** so they differ for real: **minimal** (smallest diff, maximum reuse) · **clean** (the boundary a maintainer would want, more files) · **pragmatic** (the seam between).
 Each with trade-offs (complexity, blast radius, reversibility, cost); recommend one — simplest viable wins by default.
-The clean lens names what minimal costs later, so Rejected approaches records a real trade-off, not `None`. The minimal diff already is the clean boundary → present that one design and record in one line what the clean lens checked; never invent an alternative.
+The clean lens names what minimal costs later, so Rejected approaches records a real trade-off. If minimal is already the clean boundary, present one design and state what the clean lens checked; never invent an alternative.
 The approach adds or changes a DB table / migration, a public API contract, or a module boundary → ONE `system-architect` dispatch drafts the lenses (`references/approaches.md`). Otherwise, or no subagents, the Lead drafts them.
 ADR only when all three hold: hard to reverse · surprising without context · a real trade-off between genuine alternatives (shape: `references/approaches.md`). Any one missing → the spec is the record.
 The user declines every approach → stop; report the block.
@@ -87,13 +81,13 @@ After the approaches round, write the whole spec to `docs/rolepod/specs/<feature
 
 Run the **spec-lint**: `grep -niE '\[\[FILL:|TODO|TBD' <spec>` must print nothing. A printed line or a grep error is a lint failure, never a silent pass.
 
-Fill `templates/spec-template.md`, every section resolved (legacy code: Current behavior lists every consumer, per its hint): Goal · User / actor · Non-goals · Current behavior · Desired behavior · Success criteria · Testing decisions · Constraints · High-risk surfaces · Chosen approach · Rejected approaches · Open questions.
+Fill `templates/spec-template.md`. Keep the decision contract complete: goal/scope, desired behavior, checkable acceptance, testing decisions, constraints/risk, chosen contract, and open decisions. For an existing change, record current behavior and affected consumers. Keep obvious actors, absent alternatives, and unchanged history concise. Include conditional template detail only when its condition applies; do not create a second compact schema.
 
-**Testing decisions** — the Lead picks the seams: the highest seam that reaches the behavior, the fewest (ideally one per feature), an existing seam over a new one; plus what a good test is here and the prior-art test files. They are approved with the spec at its gate — no extra question. Edge / error / race cases only where a Success criterion names them or an R4 floor covers them.
+**Testing decisions** — pick the highest existing seam that reaches behavior and the fewest seams; state why a new seam is needed. Name the assertion and prior-art tests. Edge / error / race cases need a criterion or an R4 floor.
 
 **Chosen approach** — the direction and its one-line rationale; when the architect trigger fired (DB table / migration, public API contract, module boundary), also the accepted interface, data shape, compatibility rule and invariants `write-plan` must keep.
 
-A new decision it would add (a criterion, a Non-goal, an interface choice) → one question to the user before the hand-off, never written in unconfirmed.
+A new decision (criterion, Non-goal, or interface choice) requires the user's answer before hand-off; never write it as approved while unresolved.
 
 Save to `docs/rolepod/specs/<feature>-YYYY-MM-DD.md` under the private `docs/rolepod/` directory. Before the first save run:
 ```bash

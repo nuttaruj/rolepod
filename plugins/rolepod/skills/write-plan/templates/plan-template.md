@@ -1,64 +1,40 @@
 <!-- Rolepod plan template — the canonical Plan-phase artifact. -->
-<!-- Fill every section. Delete the <hints>. implement-plan executes this. -->
+<!-- Keep the execution contract complete. Omit conditional sections when not applicable; delete remaining hints. -->
 <!-- Tasks use - [ ] checkboxes so progress survives session compaction. -->
 
 # <Feature> Plan
 
-**Goal:** <one sentence — what this builds, the outcome>
-**Architecture:** <2-3 sentences — chosen approach in one breath>
+**Goal:** <one sentence describing the outcome>
+**Architecture:** <2-3 concise sentences describing the approach>
 **Stack:** <key libraries / frameworks / services this plan depends on>
 
 ---
 
 ## Source spec
-<Link or one-line pointer to the approved spec this plan implements. No spec
- (a clear goal) → the user's request, quoted; its asks are the requirements
- Spec coverage maps.>
+<Approved spec path, or the clear goal that supplies requirements>
 
 ## Files to touch
-<Concrete paths, not categories. One line each, with a word on what changes.>
+<Concrete paths with a short change description>
 - `path/to/file` — <what changes>
 
 ## Tasks
-<Ordered, smallest reversible unit first. Each task is independently
- verifiable. A task whose title needs "and" is two tasks. A task block is
- what was PLANNED — it never absorbs build-time narrative: status is the
- checkbox, a deviation is one line under ## Changes during build.>
+<Ordered, independently verifiable tasks. Keep the planned contract here; record status by checkbox and deviations under Changes during build.>
 
 ### Task 1: <title>
-- **Delivers:** <one sentence — what a user can do or see once this lands.
-      Behaviour, not layers. The line a human reads.>
-- **Blocked by:** <Task numbers that must land first, each with what this task
-      consumes from it — `Task 2 (its snapshot)` — or "none". This field IS the
-      plan's order — nothing restates it in prose; an edge naming nothing is a
-      convenience edge: drop it.>
+- **Delivers:** <observable outcome>
+- **Blocked by:** <Task N (the contract or output consumed), or none>
 - **Track:** <track id from ## Tracks — delete this line when the plan has no ## Tracks>
 - [ ] **Files:** <paths this task touches>
-- **Read first:** <2-3 files + the pattern to copy; the owner starts here, never re-surveys>
+- **Read first:** <2-3 files and the pattern to copy>
 - [ ] **Change:** <what to do, concretely — at most 3 bullets. An exact-string
       edit spec (old → new) goes in a fenced block under this task, never
       inline in the bullet. A clause of the spec's agreed contract this task
       builds or consumes (interface, data shape, compatibility rule, invariant)
       is quoted here or in Done when — the owner sees only the brief.>
-- [ ] **Test / evidence:** <test type (unit / integration / contract / E2E / smoke /
-      repro) + the assertion that proves it + the **seam** — from the spec's Testing
-      decisions (a seam it does not name: one line of why) — the public interface the
-      test exercises; the owner writes the failing test there first, never against
-      internals. No test can express the behaviour yet → 1-3 acceptance criteria the
-      reviewer walks, and the Command is the nearest mechanical check (lint /
-      typecheck / smoke) — never skipped. Tests cover logic, UI, behaviour: a doc,
-      comment, config-text or string-literal change gets NO test (render / lint is
-      its check). One test per rule at its owner, at most one smoke per call site
-      with wiring of its own — never a test per copy of the rule. An edge / error / race test carries its reason: a
-      Success criterion names it, or an R4 floor (deny path, money math, migration
-      rollback, shared-state race).>
-- **Proof:** <the one claim a reviewer of this task would check by hand> :: `<the command that proves it — exits 0 when the claim holds; an absence check is ! grep>` (optional — it becomes the Lead's spot-check)
-- [ ] **Expected failing signal:** <for test-first tasks — the error the test
-      shows before the fix. Omit if not test-first.>
-- [ ] **Command:** <the tests covering this task's files — every test file that names a file this task
-      changes (grep the test dir for each file name, so a removal leaves no stale pin for the release to
-      find) — runnable copy-paste as-is; never the whole-repo suite; the owner runs it once, last before
-      returning — each edit runs only the checks covering the file it touched>
+- [ ] **Test / evidence:** <test or evidence type, assertion, and seam from Testing decisions; explain any new seam. Docs, comments, config-text, and string-only changes use a mechanical check. Edge / error / race cases need a criterion or R4 floor.>
+- **Proof:** <one reviewer-checkable claim> :: `<command that proves it>` (optional)
+- [ ] **Expected failing signal:** <failure observed before the fix; omit if not test-first>
+- [ ] **Command:** <exact, runnable check covering this task; not the whole-repo suite>
 - **Owner:** <The role the domain map assigns to this task's Files — path first,
       then concern. `Lead` for R1-sized work or when the user said
       self-do; from R3 up the map decides. A vertical slice has ONE owner: the role
@@ -89,27 +65,15 @@
 <same shape — checkbox each step>
 
 ## High-risk surfaces touched
-<One line per surface, naming every task that touches it. The brief tiers each
- named task R4 and routes security-engineer, even when no file name looks
- risky (a docs-only task stays R1). Surfaces: auth / billing / payments / credits / migration / data
- deletion / secrets / tokens / crypto / permissions / security. "None" is
- valid — but state it deliberately.>
+<Name each touched auth / billing / payments / credits / migration / data deletion / secrets / tokens / crypto / permissions / security surface and every task that touches it. State None when applicable.>
 - <surface> → Task <N>
 
 ## Spec coverage (both directions)
-<Every spec requirement → the task that implements it; a requirement with no
- task is a plan failure. A user-visible E2E flow the spec names maps to the
- tasks that build it plus `check-work` (verified once) — never an E2E task of
- its own. Every task → the spec line that asked for it; a task no spec line
- asked for is scope creep — cut it or move it to a follow-up list.>
+<Map each requirement to a task and each task to its source requirement. Move unrequested work to Follow-ups. Verify a named user-visible flow once at Verify.>
 - <spec requirement> → Task <N>
 
 ## Parallel layout
-<ONE line — the decision, not the order (order lives in each Blocked by).
- "Sequential — single owner." — valid even when the graph would allow
- parallel; say why in a clause. Or "Parallel — contract: <path>" when more
- than one agent edits code (templates/cohesion-contract-template.md pins
- ownership and merge order).>
+<Sequential — one owner (reason optional), or Parallel — contract: <path>. Task order lives in Blocked by.>
 
 ## Tracks
 <Optional — only when the plan runs as tracks (a track = tasks that run in order
