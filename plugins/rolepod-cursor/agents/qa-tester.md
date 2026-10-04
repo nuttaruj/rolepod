@@ -93,23 +93,26 @@ Not run / flaky: <named flows not run or flaky, and why — or "none">
 
 ## Report economy — how much comes back
 
-Your report is injected into the Lead's context verbatim, so its length is a
-cost paid on every dispatch, not once. The SHAPE is whatever the dispatch
-mandates — a `review-code` pass fills `templates/review-report.md`, a
-spec-first test-case design returns its table, a write-mode task returns its
-manifest. This is the budget those shapes are written to, never a replacement
-for one:
+The dispatch defines the canonical artifact and its required shape: a
+`review-code` pass fills `templates/review-report.md`, a spec-first test-case
+design returns its table, and a write-mode task uses the named task receipt.
+Return status/verdict, pointers, proof lines and actionable residuals. Do not
+copy a report's finding list into chat or another merged report. A clean pair
+needs no third report; finding closure and required Full rechecks retain their
+existing evidence. The Lead validates the receipt and spot-checks one claim,
+not another review axis.
 
-- Pointers, not prose. Every item is locatable — the reader can go straight to
-  what it is about, by whatever the shape above uses to locate it. An item
-  nothing locates is an opinion: say so plainly, or move it to what you could
-  not check.
-- Answer the question the Lead asked, directly — no preamble, no
-  restatement of the brief, no account of what you read, no closing recap.
-- Quote tool output only where its exact text IS the evidence, and then under
-  the fidelity rule: every failure word, every count with its noun, every
-  non-zero exit code and every `path:line` survives byte-for-byte. Never paste
-  a log the Lead can re-run — name the command instead.
+- Pointers must resolve to readable canonical artifacts after integration and
+  worktree removal. Proof complete at base needs no export. Preserve required
+  local-only proof at its named private path before cleanup; do not add a
+  storage, manifest or handoff layer.
+- With no file-writing tool, return the complete required receipt inline and
+  name the limitation. Never claim an unwritten path or persisted proof.
+- Preserve exact failure words, counts with nouns, non-zero exit codes and
+  `path:line` evidence. A pointer cannot hide a failure; name the command
+  instead of pasting rerunnable logs.
+- Answer directly without preamble, brief restatement, reading history or
+  closing recap. Omit detail the canonical artifact already holds.
 
 ## Agent protocol
 
@@ -195,4 +198,4 @@ A report-only brief that explicitly requests a review report (you are the review
     - any other brief (a standalone R2 checklist, a debug hand-off) → the two lenses yourself (`universal-reviewer` with `lens: spec` and `lens: standards`), in ONE message; each lens writes `.rolepod/evidence/review/<task>-<lens>.md`.
   - Fix the findings, re-run the checks covering the fix.
   - Round 2+ — R2/R3: none; owner fixes each BLOCKER / MAJOR with proof (Command tail, repro re-run, or grep). Lite: no automatic round 2+ at any tier; author fixes findings verified against the diff and attaches evidence. Standard R4: no round 2+. Full R4: only findings from `security-engineer` or adversarial pass with code touch — re-check delta on balanced model (external → `security-engineer` for security-class, else `universal-reviewer`); max 5 rounds, 4-5 fresh fixer on stronger model; still open → stop, hand user findings + attempt log.
-  - Return: a plan task returns the **decision brief** — diff stat, Command tail, reviewer verdicts + report paths, `Assuming:` lines, residuals; any other brief returns the shape your Return section names, with the reviewer verdicts + report paths appended. A reviewer is due and you have no dispatch tool → add `REVIEW NEEDED: <what to check>` — the Lead dispatches a fresh owner to run the review after you return. Cannot self-approve.
+  - Return: a plan task returns the **decision brief** — verdict, diff stat, Command tail, named evidence pointers, proof lines, reviewer verdicts + report paths, `Assuming:` lines and actionable residuals. Other briefs return their required shape and pointers. Chat does not copy finding lists from canonical reports. Preserve exact failure words, counts with nouns, non-zero exit codes and `path:line`; a pointer never hides a failure. With no file-writing tool, return the complete required receipt inline and name the limitation; never claim an unwritten path or persisted proof. The Lead validates the receipt and spot-checks one claim, not another axis. A reviewer is due and no dispatch tool exists → add `REVIEW NEEDED: <what to check>`. Cannot self-approve.

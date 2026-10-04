@@ -122,7 +122,8 @@ C3:
 C4:
 > A single-track plan runs on the base checkout unless another session holds a live lock on it when its first task starts; then the whole plan runs in one plan worktree.
 
-A task owner's decision brief carries its Command tail. The Lead spot-checks ONE claim (the Proof, or one finding in an R4 report; never an axis walk), then commits the task in the track's worktree.
+A task owner's decision brief carries its verdict, Command tail, evidence pointers, proof lines and actionable residuals. It does not copy finding lists from named reports. The Lead validates the receipt and spot-checks ONE claim (the Proof, or one finding in an R4 report; never an axis walk), then commits the task in the track's worktree.
+The task file named by the brief is the canonical receipt; chat returns its status and pointers. Proof complete on base needs no export. Before worktree cleanup, preserve only required local-only proof that would otherwise disappear, at its named private path; do not create another report or handoff.
 - A report the brief requires — R4, or a standalone R2 checklist's — missing, failed or empty → a fresh owner runs `review-code` Axes (no review-code → intent, trace, correctness, tests on the diff), recorded as a LIMITATION; its findings go to the task owner as the fix task (a fresh owner of the path once it has stopped), never a Lead edit. An R2/R3 task in a multi-code-task track returns no report by design: its review is the track-end review.
 - A diff accepted without its review → stop and have its owner run the review before committing further.
 

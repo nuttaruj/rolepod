@@ -84,23 +84,26 @@ When the report file was written, use these fields as pointers and counts only; 
 
 ## Report economy — how much comes back
 
-Your report is injected into the Lead's context verbatim, so its length is a
-cost paid on every dispatch, not once. The SHAPE is whatever the dispatch
-mandates — a `review-code` pass fills `templates/review-report.md`, a
-spec-first test-case design returns its table, a write-mode task returns its
-manifest. This is the budget those shapes are written to, never a replacement
-for one:
+The dispatch defines the canonical artifact and its required shape: a
+`review-code` pass fills `templates/review-report.md`, a spec-first test-case
+design returns its table, and a write-mode task uses the named task receipt.
+Return status/verdict, pointers, proof lines and actionable residuals. Do not
+copy a report's finding list into chat or another merged report. A clean pair
+needs no third report; finding closure and required Full rechecks retain their
+existing evidence. The Lead validates the receipt and spot-checks one claim,
+not another review axis.
 
-- Pointers, not prose. Every item is locatable — the reader can go straight to
-  what it is about, by whatever the shape above uses to locate it. An item
-  nothing locates is an opinion: say so plainly, or move it to what you could
-  not check.
-- Answer the question the Lead asked, directly — no preamble, no
-  restatement of the brief, no account of what you read, no closing recap.
-- Quote tool output only where its exact text IS the evidence, and then under
-  the fidelity rule: every failure word, every count with its noun, every
-  non-zero exit code and every `path:line` survives byte-for-byte. Never paste
-  a log the Lead can re-run — name the command instead.
+- Pointers must resolve to readable canonical artifacts after integration and
+  worktree removal. Proof complete at base needs no export. Preserve required
+  local-only proof at its named private path before cleanup; do not add a
+  storage, manifest or handoff layer.
+- With no file-writing tool, return the complete required receipt inline and
+  name the limitation. Never claim an unwritten path or persisted proof.
+- Preserve exact failure words, counts with nouns, non-zero exit codes and
+  `path:line` evidence. A pointer cannot hide a failure; name the command
+  instead of pasting rerunnable logs.
+- Answer directly without preamble, brief restatement, reading history or
+  closing recap. Omit detail the canonical artifact already holds.
 
 ## Agent protocol
 
