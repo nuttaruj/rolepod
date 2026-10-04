@@ -21,6 +21,8 @@ Per stage: mechanical sweep / scan = cheap; implementation = balanced; per-findi
 
 ## The fleet-tier gate
 
+The fleet-tier gate denies in every workflow mode; a plan fleet (`write-plan` step 8) passes.
+
 The gate reads each Workflow script at submit. A fan-out is a `.map` / `.flatMap` / `.forEach`, `pipeline(`, `Array.from`, a loop or a `${}` label; a hand-written `parallel([...])` is not one.
 - `bare-fanout` — a fan-out `agent()` with no tier pin (no `model:`, no rolepod `agentType:`; a platform agent type pins nothing) under a strong or unknown Lead.
 - `strong-fanout` — a strong model or strong role pinned on a fan-out, under any Lead.

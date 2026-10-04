@@ -498,7 +498,7 @@ if fleets:
     low = sum(v[0] for g in fleets.values() for m, v in g["models"].items() if _cls(m) in ("cheap", "balanced"))
     if n_agents >= 5 and strong > low:
         print("    ⚠ strong-class agents outnumber cheap/balanced ones — fan-outs ran at the Lead price; the tier follows the work: "
-              "read/browse haiku or scout, per-item verify sonnet, ONE opus judge (fleet-tier v2.107 denies new ones)")
+              "read/browse haiku or scout, per-item verify sonnet, ONE opus judge (the fleet-tier gate denies new ones)")
 
 print()
 PY

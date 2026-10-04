@@ -44,10 +44,4 @@ A conflict that risks harm → ask before acting.
   strong = the set's top reasoning model; the ONE judge or security
   reviewer runs strong, never the whole fan-out. Cannot classify →
   balanced, and say so.
-- **workflow.mode** — `lite` skips Rolepod workflow gates and nudges;
-  `standard` warns and allows; `full` enforces the existing gate conditions.
-  OpenCode's plugin applies child ship-operation rules through its supported
-  before-tool hook and session lookup. The fixture proves adapter behavior;
-  it does not prove live enforcement in every installed runtime. Lead commits
-  retain the existing precommit conditions. Review / test evidence gating is
-  Claude-only; every other rule is skill-enforced.
+- **workflow.mode** — Workflow modes: every mode runs the hooks. Commit of private docs, a sub-agent commit or push, a cannot-wait call, a same-file edit by a live sibling session and an untiered or strong fan-out are blocked in every mode; Standard and Full also block an R4 commit without `security-engineer` and an out-of-scope sub-agent write; Full alone blocks untested commits. Everything else warns. OpenCode's plugin applies child ship-operation rules through its supported before-tool hook and session lookup. The fixture proves adapter behavior; it does not prove live enforcement in every installed runtime. Lead commits retain the existing precommit conditions. Review / test evidence gating is Claude-only; every other rule is skill-enforced.

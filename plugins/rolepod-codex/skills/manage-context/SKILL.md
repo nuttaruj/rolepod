@@ -131,6 +131,7 @@ Next: <which skill resumes work>
 A session handoff uses `templates/handoff-brief.md` at `docs/rolepod/handoff.md` by default. Record the request/corrections, repository and worktree state, phase, next task/command, constraints, decisions, and checklist ticks.
 - Include receipt, contract, debug, and evidence pointers plus unresolved attempts/Second opinion state. Point to receipts for files/tests; without a receipt, keep required facts in the handoff.
 - An explicit user path remains valid, including a dated legacy handoff. Never select or overwrite one automatically. Task-owner briefs keep their generated paths.
+**`docs/rolepod/` is private by default:** before the first save run `grep -qx 'docs/rolepod/' .gitignore || echo 'docs/rolepod/' >> .gitignore`; a repo that deliberately tracks its working docs creates `.rolepod/docs-tracked`.
 
 Done when: the report names the mode and the skill that resumes.
 

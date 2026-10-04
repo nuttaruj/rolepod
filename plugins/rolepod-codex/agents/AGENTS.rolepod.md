@@ -86,6 +86,8 @@ question, all in ONE message, never one per file. It returns a conclusion
 with one pointer per finding; read only what it points at. A file you
 already know → read it yourself.
 
+A fan-out (several agents from one script or message) pins each agent cheap or balanced — `model:` or a rolepod role — with at most one strong judge; never leave it on the Lead's model. Exception: a plan fleet (`write-plan` step 8).
+
 ## Communication
 
 Every reply, topic changes included.
@@ -131,7 +133,4 @@ asked to keep running (a server to browse) stays up: say its port and how to sto
 - **Fan-out tier** — `[agents] default_subagent_model` and `default_subagent_reasoning_effort` apply to every spawn, role spawns included; a rolepod role overrides only the effort, so its child runs `default_subagent_model` when set, else your model. The ONE judgment slot is a named strong role (`security-engineer` / `universal-reviewer`), never the whole fan-out; effort ceiling on every role: `xhigh`.
 - **Ultra** — Prefer the native role — `agent_type` = its `name` (`scout`, not `rolepod-scout`) — with `fork_turns="none"` and a self-contained brief. If custom roles are unavailable but a default/general child exists, follow `using-rolepod` portable role dispatch; at `ultra`, keep the brief bounded and explicit. A prompt role name is not native dispatch metadata or hook evidence. Details → `references/fanout-codex.md`.
 - **Persistent** — `persistent` is a follow-up mode, not deeper thinking: follow-ups stay inside the scope the user asked for, a wait uses the sleep tool (never a watcher left running), and delegation is explicit-only.
-- **workflow.mode** — `lite` skips Rolepod workflow gates and nudges;
-  `standard` warns and allows; `full` enforces existing workflow conditions.
-  Codex runs its native hooks. Review / test evidence gating is Claude-only;
-  every other rule is skill-enforced — never report it as mechanically enforced.
+- **workflow.mode** — Workflow modes: every mode runs the hooks. Commit of private docs, a sub-agent commit or push, a cannot-wait call, a same-file edit by a live sibling session and an untiered or strong fan-out are blocked in every mode; Standard and Full also block an R4 commit without `security-engineer` and an out-of-scope sub-agent write; Full alone blocks untested commits. Everything else warns. Codex runs its native hooks. Review / test evidence gating is Claude-only; every other rule is skill-enforced — never report it as mechanically enforced.
