@@ -13,9 +13,10 @@
 #
 # Mechanics: fingerprint = sha1 of the whitespace-normalized command. A
 # non-zero exit increments that fingerprint's consecutive-fail count; a clean
-# run resets it. At >= 3 consecutive fails, inject additionalContext telling
-# the Lead to apply debug-issue Iron Rule #5 (stop fixing, hypothesis ledger,
-# ONE cross-model advisor opinion or escalate). Advisory only — never blocks.
+# run resets it. At two failures, remind the Lead to consult once after two
+# actual failed fixes; later failures carry informed retry guidance, with a
+# stop reminder at four actual failed fixes. Command failures are only a proxy.
+# Advisory only — never blocks.
 #
 # Scope limit (stated so a silent gap is not assumed covered): only
 # identical-command loops (the rerun-the-repro loop) are counted. A loop that
@@ -100,15 +101,36 @@ if sid and not interrupted:
     except Exception:
         pass
 
-    if n >= 3:
+    if n >= 4:
         notes.append(
-            "LOOP BREAKER: this exact command failed %d times in a row, no pass between. "
-            "STOP editing-and-retrying. Do: (1) stop fixing; (2) write the hypothesis "
-            "ledger — what you believed, what each attempt changed, why it failed; (3) "
-            "the Second opinion step in debug-issue — hypothesis ledger, then a second "
-            "opinion, then escalate to the user with the ledger. Same failure twice = "
-            "wrong model of the bug."
+            "LOOP BREAKER: this exact command failed %d times in a row, no pass between; "
+            "command failures are only a proxy, not proof of failed fixes. If this is the "
+            "fourth failed fix for the same unresolved repro or criterion, STOP and ask "
+            "the user with the attempt log. Otherwise check the actual failed-fix ledger: "
+            "if two fixes failed and no Second opinion is complete, consult once; never "
+            "repeat a completed opinion. Carry usable advice into the next fresh trace; "
+            "if no usable advisor is available, stop before another fix."
             % n
+        )
+    elif n >= 3:
+        notes.append(
+            "LOOP BREAKER: this exact command failed %d times in a row, no pass between; "
+            "command failures are only a proxy, not proof of failed fixes. If two fixes "
+            "for this unresolved repro or criterion failed and no Second opinion is "
+            "complete, consult once now; never repeat a completed opinion. For attempts "
+            "three and four, make a fresh trace and apply usable advice. If no usable "
+            "advisor is available, stop before another fix; this command count alone "
+            "does not exhaust the fix budget."
+            % n
+        )
+    elif n == 2:
+        notes.append(
+            "LOOP BREAKER: this exact command failed twice in a row; command failures "
+            "are only a proxy, not proof of failed fixes. If two fixes for the same "
+            "unresolved repro or criterion failed and no Second opinion is complete, "
+            "get ONE now; never repeat a completed opinion. If none is usable, stop "
+            "before another fix. A usable opinion leaves attempts three and four "
+            "available; trace again and apply its advice before those fixes."
         )
 
 if not notes:
