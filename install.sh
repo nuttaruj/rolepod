@@ -1757,21 +1757,13 @@ if [ "$CFG_REDIRECTED" -eq 1 ]; then
   esac
 fi
 if [ "$SCOPE" = "global" ] && [ "$DRY_RUN" -eq 0 ] && [ "$CFG_REDIRECTED" -eq 0 ]; then
-  # hooks/lib/rolepod_config.py is the sole parser and owns both operations.
+  # hooks/lib/rolepod_config.py is the sole parser; it writes only when the file
+  # is missing, unreadable or the old format, and keeps the pool (any --force).
   CFG_FILE="$HOME/.rolepod/config.json"
   if [ -f "$REPO_DIR/hooks/lib/rolepod_config.py" ]; then
-    if [ "$FORCE" -eq 1 ] && [ -e "$CFG_FILE" ]; then
-      CFG_ACTION=init-replace
-    else
-      CFG_ACTION=init
-    fi
-    CFG_WRITTEN="$(python3 -I "$REPO_DIR/hooks/lib/rolepod_config.py" "$CFG_ACTION" 2>/dev/null)"
+    CFG_WRITTEN="$(python3 -I "$REPO_DIR/hooks/lib/rolepod_config.py" init 2>/dev/null)"
     if [ -n "$CFG_WRITTEN" ]; then
-      if [ "$CFG_ACTION" = init-replace ]; then
-        ok "replaced $CFG_FILE with workflow.mode=lite; preserved pool"
-      else
-        ok "wrote $CFG_FILE (defaults; edit workflow.mode to change workflow gates)"
-      fi
+      ok "wrote $CFG_FILE (${CFG_WRITTEN##*(}; edit workflow.mode to change workflow gates"
     fi
   fi
 fi

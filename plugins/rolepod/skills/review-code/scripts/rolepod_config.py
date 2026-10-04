@@ -2,8 +2,10 @@
 """rolepod_config — the one reader of $HOME/.rolepod/config.json.
 
 Usage (run as `python3 -I hooks/lib/rolepod_config.py <cmd>`):
-  init   writes the default config to $HOME/.rolepod/config.json when nothing
-         (file or symlink) is there; prints `wrote <path>` only when it wrote
+  init   writes the default config to $HOME/.rolepod/config.json when it is
+         missing, unreadable JSON or the old format (top-level review / gates /
+         nudge, or no workflow.mode), keeping any `pool`; no backup; prints
+         `wrote <path> (<missing|unreadable|old format>)` only when it wrote
   mode   prints stable key=value metadata for the effective workflow profile
   shell  prints two lines: gates=<off|soft|hard>  nudge=<on|off>
   pool   prints key=value lines: enabled=on|off, configured=yes|no (no = no
@@ -176,39 +178,68 @@ def pool(cfg):
     return out
 
 
-def init(replace=False):
-    """Write the defaults to $HOME/.rolepod/config.json only when nothing (no
-    file, no symlink, dangling included) is there. Prints `wrote <path>` when
-    it wrote; silent on every other outcome, including any error."""
+def init():
+    """Write the defaults to $HOME/.rolepod/config.json only when the path is
+    missing, the file is not valid JSON, or it is the old format (a top-level
+    review / gates / nudge key, or no workflow.mode). A pool object is kept;
+    no backup is made. Prints `wrote <path> (<missing|unreadable|old format>)`
+    when it wrote; silent on every other outcome, including any error."""
     try:
         home = os.environ.get("HOME", "")
         if not home:
             return
         d = os.path.join(home, ".rolepod")
         path = os.path.join(d, "config.json")
-        if os.path.lexists(path) and not replace:
-            return
+        existing = None
+        if not os.path.lexists(path):
+            reason = "missing"
+        elif not os.path.isfile(path):
+            return   # a dangling symlink or a directory is never touched
+        else:
+            try:
+                with open(path) as f:
+                    existing = json.load(f)
+            except (OSError, ValueError):   # ValueError covers bad JSON and bad UTF-8
+                existing = None
+                reason = "unreadable"
+            else:
+                w = existing.get("workflow") if isinstance(existing, dict) else None
+                if (isinstance(existing, dict) and not any(k in existing for k in ("review", "gates", "nudge"))
+                        and isinstance(w, dict) and "mode" in w):
+                    return
+                reason = "old format"
         os.makedirs(d, exist_ok=True)
         contents = DEFAULT_CONFIG
-        if replace:
+        if isinstance(existing, dict) and isinstance(existing.get("pool"), dict):
             replacement = json.loads(DEFAULT_CONFIG)
-            existing = load_global()
-            if isinstance(existing.get("pool"), dict):
-                replacement["pool"] = existing["pool"]
+            replacement["pool"] = existing["pool"]
             contents = json.dumps(replacement, indent=2) + "\n"
-        flags = os.O_CREAT | os.O_WRONLY | (os.O_TRUNC if replace else os.O_EXCL)
-        fd = os.open(path, flags, 0o644)
-        with os.fdopen(fd, "w") as f:
-            f.write(contents)
-        sys.stdout.write("wrote %s\n" % path)
+        # Complete file or nothing: a concurrent reader or init never sees a
+        # half-written config. A symlinked config is written through to its target.
+        target = os.path.realpath(path) if reason != "missing" else path
+        tmp = "%s.%d.tmp" % (target, os.getpid())
+        fd = os.open(tmp, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o644)
+        try:
+            with os.fdopen(fd, "w") as f:
+                f.write(contents)
+            if reason == "missing":
+                os.link(tmp, target)   # fails if a concurrent init got there first
+            else:
+                os.replace(tmp, target)
+        finally:
+            try:
+                os.unlink(tmp)
+            except OSError:
+                pass
+        sys.stdout.write("wrote %s (%s)\n" % (path, reason))
     except Exception:
         pass
 
 
 def main(argv):
     cmd = argv[1] if len(argv) > 1 else "shell"
-    if cmd in ("init", "init-replace"):
-        init(replace=(cmd == "init-replace"))
+    if cmd == "init":
+        init()
         return 0
     try:
         cfg = load_global()
