@@ -10,8 +10,8 @@ Turns each request into a tier and the first skill of `Define → Plan → Build
 Route each user request on its intent, scope, and tier. Select workflow mode once at native session startup and carry the active mode/source through every phase, brief, and compaction summary.
 When startup capture is unavailable, the first manual `using-rolepod` entry selects mode once; retain it in session context.
 A tool call, config change, or skill reload does not reselect mode or reroute. Configured-mode inspection is separate and never overwrites the active session profile.
-At a manual or mid-task invocation, inspect current intent and visible artifacts, then resume the owning phase when they still match. Re-evaluate routing only when intent, scope, or tier changes.
-After compaction or skill reload within the same session, reload skill text as needed and reuse the carried mode. A fresh native startup/resume/clear supplies its newly captured profile.
+At a manual or mid-task invocation, inspect current intent and visible artifacts, then resume the owning phase when they still match. Re-evaluate routing only when intent, scope, or tier changes. A compacted session resumes from verified disk state and the user's latest corrections; it does not restart Define or replace an approved plan.
+After compaction or skill reload within the same session, reload skill text as needed and reuse the carried mode. A fresh native startup/resume/clear supplies its newly captured profile. Without startup capture, a standalone skill/manual entry selects the mode once; preserve it for that session. Skills remain executable without native hooks, though hook enforcement is absent.
 When invoking a helper or `plan-lint.sh` later without a guaranteed native mode environment, pass `ROLEPOD_SESSION_MODE` and `ROLEPOD_SESSION_SOURCE` from the carried profile. Do not persist a loaded-skill stamp to disk.
 
 Startup refresh boundaries: Claude on startup/resume/clear; Codex on startup/resume; Cursor via `sessionStart.env`; Antigravity at conversation identity; OpenCode on plugin/backend restart. Antigravity's same-conversation CLI restart behavior is unverified.

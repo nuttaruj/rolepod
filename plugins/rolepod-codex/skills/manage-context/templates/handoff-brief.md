@@ -1,5 +1,5 @@
-<!-- Rolepod handoff brief — write before starting a fresh session. -->
-<!-- The new session starts from this brief, then reads every artifact it links; nothing else carries over. Delete <hints>. -->
+<!-- Rolepod session handoff — default path: docs/rolepod/handoff.md. -->
+<!-- The next session re-anchors from disk and reads only required linked state. -->
 
 # Handoff Brief — <task>
 
@@ -14,10 +14,16 @@
  test or bypass a gate just to get a commit. The next session resumes from
  disk, not from this session's memory.>
 
-## Artifacts to read next
-<Path to each one the flow has — plan (its checkboxes are the position; an
- inline checklist is re-stated here with its ticks), spec, cohesion contract,
- debug ledger. `none` for one the flow lacks. Link, never paste.>
+## Resume state
+<Repository root, worktree, branch, SHA, and dirty state; owning phase, next
+ task and command. Include inline checklist ticks when applicable.>
+
+## Required reads
+<Next task and only the predecessor handoff, contract clauses, unresolved
+ debug state, or other artifact required for the next decision. Link receipts
+ and evidence for files/tests already covered; do not repeat their details.
+ Read the full plan/spec only if scope, acceptance, ownership, or position is
+ unclear. `none` when there are no required predecessor artifacts.>
 
 ## Files touched
 <Paths edited so far + a word on each.>
@@ -34,12 +40,14 @@
  not re-litigate them.>
 
 ## Blockers and attempts
-<What is stuck, if anything, and what is needed to unblock. Escalating or
- mid-debug → `Attempts: <n> used` on the current goal with one line per
- failed fix (what, why it stayed red), the ledger's `Second opinion:` state,
- and the ledger path above — never the ledger pasted.>
+<What is stuck, if anything, and what is needed to unblock. Preserve the
+ current failed-attempt count and each failed fix; include Second opinion
+ state and its ledger pointer. Do not reset these on owner, phase, CLI, or
+ session changes.>
 
 ## Resume with
-<Which skill the next session starts in, and the next concrete command.
- Any rolepod-equipped CLI can be the next session — skill names match
- across adapters.>
+<Which owning phase/skill resumes and the next concrete command. This is
+ runnable from the standalone skill text without helpers, native hooks, or
+ agents; state when any of those are unavailable instead of implying they ran.
+ A new native startup uses its captured mode; same-session compact/reload
+ keeps the carried mode.>

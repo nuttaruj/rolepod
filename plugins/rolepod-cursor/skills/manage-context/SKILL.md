@@ -41,8 +41,14 @@ Heavy context → compact with the CLI command (Claude `/compact <focus>`; other
 
 Load only what the task needs: the Tier 1 skills + the touched files is usually enough.
 
-Context too heavy to trim safely, still heavy right after a compaction, or starting fresh, or the user asks for a handoff → fill `templates/handoff-brief.md` into `docs/rolepod/handoff.md` (overwrite; never committed), then start the fresh session (Claude `/clear`).
-"Continue from the handoff" → read `docs/rolepod/handoff.md` first; no such file → say so and ask. The brief is the entry point: the fresh session reads it, then every artifact it links — plan, spec, cohesion contract, debug ledger. The brief and those artifacts are CLI-agnostic (`references/cli-fallbacks.md` Cross-CLI resume).
+Context too heavy to trim safely, still heavy after compaction, starting fresh, or the user asks for a handoff → write `templates/handoff-brief.md` to the active repository's `docs/rolepod/handoff.md`.
+- This is the default session path; overwrite only that file. An explicit user path is authoritative, including a dated legacy handoff. Never select the newest file or overwrite a legacy path automatically; keep task-owner briefs at their generated paths.
+- If the required file is missing or belongs to another checkout, stop before editing and ask for the exact artifact or checkout state.
+
+"Continue from the handoff" → establish the repository/worktree, then read the requested handoff (default `docs/rolepod/handoff.md` unless the user gave a path).
+- Inspect `git status` and recent commits, then read the next task and only the predecessor handoff, required contract clauses, or unresolved debug state.
+- Use receipt/evidence pointers for files and tests already recorded. Expand reads only when a next-task decision, contract, or debug fact is missing.
+- Read the full spec/plan only when scope, acceptance, ownership, or position remains unclear. Do not invent a plan; ask for the exact missing artifact or state. See `references/cli-fallbacks.md` for cross-CLI resume.
 A quota limit cannot be trimmed away — skip the trim even when the context is heavy too: checkpoint what the gates allow, write the uncommitted state into the brief, switch.
 
 Done when: the context is trimmed at a seam, or a handoff brief is written for the fresh session.
@@ -87,16 +93,16 @@ Done when: a stronger model or outside opinion has run, or the user holds the de
 
 ### 7. Re-anchor after compaction
 
-A compaction summary is a lossy narrator, not a state file. Before the first action after any compaction:
-- Re-read the plan artifact — its checkboxes mark the real position, not the summary's claim. An inline checklist (R2 one file + test / spec-as-plan R3 multi-file) is re-stated in the hand-off with its ticks, or written to an artifact before compacting.
-- `git log --oneline -5` + `git status` — commits and staged files are the ground truth.
-- Re-open the spec / cohesion contract if the flow has one.
+Before acting after compaction, inspect `git status` and recent commits; disk is ground truth.
+- Read the next task and only required predecessor handoff, contract clauses, or unresolved debug state. Use receipt/evidence pointers for files and tests already recorded.
+- Expand reads only when a next-task decision is missing. Read the full plan/spec only if scope, acceptance, ownership, or position remains unclear; restore checklist ticks from the handoff or its artifact.
+- Preserve the user's latest correction and failed-attempt counts. Same-session compaction keeps the carried mode; fresh native startup/resume/clear uses its newly captured profile.
 
 Disk beats the summary on implementation state; a user correction that never touched disk still stands.
 
 Still yellow / red after the re-anchor → Context budget's handoff path, never a second compaction in a row.
 
-Done when: the plan position, the last commits and the staged files are read from disk.
+Done when: the repository state, next task, and required predecessor state are read from disk.
 
 ### 8. Onboarding (new repo)
 
@@ -121,8 +127,9 @@ State after: <what is loaded, what is dropped>
 Next: <which skill resumes work>
 ```
 
-A fresh session's durable artifact is `templates/handoff-brief.md` — original request, current branch / commit, artifacts to read next, files touched, tests run and status, constraints still active, decisions made, blockers and attempts, resume with — saved under `docs/rolepod/handoffs/<topic>-YYYY-MM-DD.md`.
-**`docs/rolepod/` is private by default:** before the first save run `grep -qx 'docs/rolepod/' .gitignore || echo 'docs/rolepod/' >> .gitignore`; a repo that deliberately tracks its working docs creates `.rolepod/docs-tracked`.
+A session handoff uses `templates/handoff-brief.md` at `docs/rolepod/handoff.md` by default. Record the request/corrections, repository and worktree state, phase, next task/command, constraints, decisions, and checklist ticks.
+- Include receipt, contract, debug, and evidence pointers plus unresolved attempts/Second opinion state. Point to receipts for files/tests; without a receipt, keep required facts in the handoff.
+- An explicit user path remains valid, including a dated legacy handoff. Never select or overwrite one automatically. Task-owner briefs keep their generated paths.
 
 Done when: the report names the mode and the skill that resumes.
 

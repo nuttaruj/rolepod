@@ -59,7 +59,7 @@ Context bar is red mid-refactor. Lead fills a handoff brief:
   Decisions: chose server-side CSV (client-side misses paginated rows)
   Resume with: implement-plan — fix the empty-range test in orders_csv.rb
 
-A fresh session reads the brief, then the plan it links, and resumes exactly where work stopped.
+A fresh session verifies the checkout and disk state, reads the next task and only required predecessor state, then resumes the owning phase. It expands reads only when a required decision or fact is missing.
 ```
 
 ### Bad — clear and start over

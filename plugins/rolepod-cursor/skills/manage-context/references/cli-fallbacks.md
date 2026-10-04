@@ -13,18 +13,23 @@ context tools — use the row for the CLI you are running on.
 | Switch focus | `/rename` + `claude --continue` | resume the target session | new chat with brief |
 
 ## The universal fallback
-When a CLI lacks a native command, the fallback is always the same: write a
-handoff brief (`templates/handoff-brief.md`), end the session, and start a
-fresh one that reads the brief, then the artifacts it links. The brief — not the CLI command — is what
-makes the work resumable.
+When a CLI lacks a native command, write the handoff template to
+`docs/rolepod/handoff.md` in the active repository, end the session, and start
+a fresh one that verifies the checkout and disk state before reading the next
+task and required predecessor state. The brief — not the CLI command — makes
+the work resumable. An explicit user path, including a dated legacy handoff,
+remains valid; never choose the newest handoff or overwrite a legacy file
+automatically. A missing or wrong-checkout handoff means stop and ask for the
+exact artifact or checkout state.
 
 ## Cross-CLI resume — the brief does not care which CLI reads it
 
 The fresh session does NOT have to be the same CLI. Everything that makes
-work resumable lives on disk and is CLI-agnostic: the handoff brief, the
-plan artifact (checkboxes = position), spec, cohesion contract, evidence,
-per-task commits. Skill names are identical across rolepod adapters, so
-"read the handoff brief at <path> and continue the plan" routes the same
+work resumable lives on disk and is CLI-agnostic: the handoff brief, next task,
+required predecessor state, receipts/evidence, and per-task commits. Read
+further artifacts only when a next-task decision, contract clause, or debug
+fact is missing. Skill names are identical across rolepod adapters, so
+"read the handoff brief at <path> and resume the owning phase" routes the same
 on claude / codex / cursor / antigravity / opencode — same
 doctrine, same gates, and the same benefit applies to a fresh session on
 the SAME CLI.
@@ -32,9 +37,11 @@ the SAME CLI.
 - Usage quota hit ≠ context full: quota kills the session regardless of
   context state — skip trimming, checkpoint what the gates allow, write the
   uncommitted state into the brief, switch.
-- A CLI without a rolepod adapter resumes degraded: it can read the brief +
-  plan (plain markdown), but gates and doctrine do not travel — route its
-  diff back through a rolepod-equipped CLI for review before merging.
+- Without native hooks or an adapter, hook enforcement is absent. If the CLI
+  can load the standalone skills, follow their portable procedures and
+  evidence gates; reviewer and Ship limitations still apply. If skills are
+  unavailable, the handoff remains readable markdown, but do not claim the
+  workflow gates ran.
 - The sibling-session soft warn may fire for up to 30 min after an abrupt
   switch (the dead session's lock is not yet stale). It is a warning, not
   a block — `ROLEPOD_ALLOW_SHARED_WORKTREE=1` silences the intentional case.
