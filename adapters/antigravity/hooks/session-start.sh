@@ -34,9 +34,7 @@ if [ -n "$PROFILE_PATH" ] && [ ! -f "$PROFILE_PATH" ] && [ -f "$HERE/rolepod-ses
   printf '%s' "$IN" | ROLEPOD_SESSION_CLI=antigravity bash "$HERE/rolepod-session-start.sh" --cli antigravity --format env >/dev/null 2>&1 || true
 fi
 rolepod_session_profile_load "$IN" antigravity
-_mode=$ROLEPOD_SESSION_MODE
 export ROLEPOD_SESSION_CLI=antigravity
-[ "$_mode" = lite ] && exit 0
 _root=$(printf '%s' "$IN" | python3 -I -c 'import json,sys; print((json.load(sys.stdin).get("workspacePaths") or [""])[0] or "")' 2>/dev/null || true)
 
 IFS=$'\t' read -r WS SID <<< "$(printf '%s' "$IN" | python3 -I -c '

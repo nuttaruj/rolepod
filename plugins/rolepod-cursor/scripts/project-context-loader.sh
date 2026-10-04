@@ -25,7 +25,6 @@ print(json.dumps(out))
 ' 2>/dev/null || printf '%s\n' '{}'
 }
 _root=$(printf '%s' "$INPUT" | python3 -I -c 'import json,sys; d=json.load(sys.stdin); print((d.get("workspace_roots") or [""])[0] or d.get("cwd") or "")' 2>/dev/null || true)
-[ "$_mode" = lite ] && { emit_output; exit 0; }
 export ROLEPOD_PROJECT_ROOT="${_root:-$PWD}"
 IFS=$'\t' read -r CWD CONV <<< "$(echo "$INPUT" | python3 -c "
 import sys, json

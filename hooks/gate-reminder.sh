@@ -89,8 +89,6 @@ _rcfg="${BASH_SOURCE[0]%/*}"; [ "$_rcfg" != "${BASH_SOURCE[0]}" ] || _rcfg=.
 INPUT=$(cat 2>/dev/null || echo '{}')
  . "$_rcfg/lib/session-mode.sh"
 rolepod_session_profile_load "$INPUT" "${ROLEPOD_SESSION_CLI:-unknown}"
-_mode=$ROLEPOD_SESSION_MODE
-[ "$_mode" = lite ] && exit 0
 
 # ONE python3 pass for tool_name + file path (was 2 spawns — ~16ms on
 # every edit). tool first via read -r; path LAST, slurped with $(cat) so
@@ -302,7 +300,7 @@ fi
 STRONG_REVIEWERS=${STRONG_REVIEWERS:-0}
 
 SOFT_MODE=0
-[ "$_mode" = standard ] && SOFT_MODE=1
+[ "$(rolepod_gate_action r4-security)" = deny ] || SOFT_MODE=1
 
 # ONE line, only when the commit would block now (spec Desired 2, 2026-09-25):
 # fact → Fix → Exception. No always-on careful-mode banner, no per-CLI
@@ -313,7 +311,7 @@ SOFT_MODE=0
 WOULD_BLOCK=""
 if [ -n "$HIGH_RISK" ] && [ "$IS_SUBAGENT" -eq 0 ] && [ "$STRONG_REVIEWERS" -eq 0 ]; then
   if [ "$SOFT_MODE" -eq 1 ]; then
-    WOULD_BLOCK="HIGH-RISK edit: Standard mode advises dispatching a \`security-engineer\` reviewer before commit. "
+    WOULD_BLOCK="WARNING: HIGH-RISK edit: a high-risk commit should have at least one \`security-engineer\` dispatch since the last commit. Fix: dispatch \`security-engineer\` (a FINISHED dispatch) before the next commit. Exception: only the user can waive it. "
   else
     WOULD_BLOCK="COMMIT WILL BLOCK — HIGH-RISK edit: a high-risk commit needs at least one \`security-engineer\` dispatch since the last commit, any model; an external pass never counts. Fix: dispatch \`security-engineer\` (a FINISHED dispatch before commit). Exception: only the user, never the model, can lower this gate. "
   fi

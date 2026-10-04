@@ -71,17 +71,6 @@ rolepod_session_cwd_from_input "$INPUT"
 CWD=${ROLEPOD_INPUT_CWD:-${ROLEPOD_PROJECT_ROOT:-$PWD}}
 [ -z "$CWD" ] && CWD="$PWD"
 rolepod_session_profile_load "$INPUT" "${ROLEPOD_SESSION_CLI:-$CLI_NAME}"
-_mode=$ROLEPOD_SESSION_MODE
-if [ "$_mode" = lite ]; then
-  # Do not route-log in Lite, but release this session's prior lock if mode
-  # changed after SessionStart.
-  if [ "$MODE" = "--unlock" ] && [ -n "$SESSION_ID" ]; then
-    WT=$(cd "$CWD" 2>/dev/null && git rev-parse --show-toplevel 2>/dev/null) || exit 0
-    H=$(printf '%s' "$WT" | { shasum -a 256 2>/dev/null || sha256sum 2>/dev/null; } | awk '{print $1}' | head -c 16)
-    rm -f "$HOME/.rolepod/session-locks/$H/$SESSION_ID.lock" "$HOME/.rolepod/session-locks/$H/$SESSION_ID.files" 2>/dev/null || true
-  fi
-  exit 0
-fi
 export ROLEPOD_PROJECT_ROOT="$CWD"
 
 # Only act inside a git worktree. Non-git dirs = no stomp risk.

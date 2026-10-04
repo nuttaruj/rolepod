@@ -8,8 +8,6 @@ INPUT=$(cat 2>/dev/null || echo '{}')
 _rcfg="${BASH_SOURCE[0]%/*}"; [ "$_rcfg" != "${BASH_SOURCE[0]}" ] || _rcfg=.
 . "$_rcfg/lib/session-mode.sh"
 rolepod_session_profile_load "$INPUT" "${ROLEPOD_SESSION_CLI:-unknown}"
-_mode=$ROLEPOD_SESSION_MODE
-[ "$_mode" = lite ] && exit 0
 CWD=$(printf '%s' "$INPUT" | python3 -I -c "import sys,json; d=json.load(sys.stdin); print(d.get('cwd') or (d.get('workspace_roots') or [''])[0] or (d.get('workspacePaths') or [''])[0])" 2>/dev/null || echo "$PWD")
 [ -n "$CWD" ] || CWD="$PWD"
 export ROLEPOD_PROJECT_ROOT="$CWD"

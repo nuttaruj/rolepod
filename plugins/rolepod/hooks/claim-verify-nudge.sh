@@ -51,8 +51,6 @@ else rolepod_cfg_load() { ROLEPOD_CFG_GATES=soft; ROLEPOD_CFG_NUDGE=on; }; fi
 
 INPUT=$(cat 2>/dev/null || echo '{}')
 rolepod_cfg_load
-_mode=$ROLEPOD_CFG_MODE
-[ "$_mode" = lite ] && exit 0
 SESSION_STATE="$(dirname "$0")/lib/session_state.py"
 [ -f "$SESSION_STATE" ] || exit 0
 

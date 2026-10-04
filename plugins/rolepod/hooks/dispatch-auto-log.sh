@@ -25,8 +25,6 @@ INPUT=$(cat 2>/dev/null || true)
 _rcfg="${BASH_SOURCE[0]%/*}"; [ "$_rcfg" != "${BASH_SOURCE[0]}" ] || _rcfg=.
 . "$_rcfg/lib/session-mode.sh"
 rolepod_session_profile_load "$INPUT" "${ROLEPOD_SESSION_CLI:-unknown}"
-_mode=$ROLEPOD_SESSION_MODE
-[ "$_mode" = lite ] && exit 0
 _cwd=$(printf '%s' "$INPUT" | python3 -I -c 'import json,sys; print(json.load(sys.stdin).get("cwd") or "")' 2>/dev/null || true)
 export ROLEPOD_PROJECT_ROOT="${_cwd:-$PWD}"
 
