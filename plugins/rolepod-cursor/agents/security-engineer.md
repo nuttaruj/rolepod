@@ -143,8 +143,7 @@ self-contained.
 - **Edit tools only** — change files with the CLI's edit tool, never a shell
   heredoc / `sed -i` / `tee`: the write-scope gate sees tool edits only, so a
   shell write is an ungated edit.
-- **Nested dispatch** — a sub-agent you start goes only to the rolepod role
-  the brief or the Writer loop names.
+- **Nested dispatch** — use the role named by the brief or Writer loop. Prefer its native named role; when unavailable, use the portable role dispatch rules in `using-rolepod/references/model-tiers.md`. Preserve bounded scope and no-commit rules.
 - **Report file** — the report file the brief names is input the next step
   reads (a nested agent's final text reaches the Lead, not its owner), not a
   summary: write it, even where the platform says not to write report files.

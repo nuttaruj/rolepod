@@ -84,7 +84,7 @@ The owner writes its decision brief to its task file, docs/rolepod/tasks/<plan>/
 
 A Blocked-by task gets each predecessor's task file as Read first (plan-lint --brief adds it); the Lead never tells an owner to read or write the plan's ## Changes during build.
 
-A write mandate goes only to the path's owning role, never a generic agent or a reviewer; a writing stage carries `agentType: 'rolepod:<role>'`, never a bare `agent()`, except a plan file (`references/subagent-dispatch.md`: role, model, brief fields). `write: external` → the owner writes the failing test first, then `cross-family` kind implement; pool off, wide-effort session, or `cross-family` absent → the owner writes the task.
+A write mandate goes to the path's owning role, never a reviewer. Prefer the CLI's native named role; when unavailable, use the portable dispatch rules in `using-rolepod/references/model-tiers.md` (`references/subagent-dispatch.md`: role, model, brief fields). `write: external` → the owner writes the failing test first, then `cross-family` kind implement; pool off, wide-effort session, or `cross-family` absent → the owner writes the task.
 
 Handle the brief's status (its first word):
 - `COMPLETED` over a failing test → reject and re-brief.

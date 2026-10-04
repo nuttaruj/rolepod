@@ -39,7 +39,7 @@ A conflict that risks harm → ask before acting.
   alone: when a skill names a specialist, spawn it yourself — this file is
   the sanctioned spawn channel.
 - **Fan-out tier** — `[agents] default_subagent_model` and `default_subagent_reasoning_effort` apply to every spawn, role spawns included; a rolepod role overrides only the effort, so its child runs `default_subagent_model` when set, else your model. The ONE judgment slot is a named strong role (`security-engineer` / `universal-reviewer`), never the whole fan-out; effort ceiling on every role: `xhigh`.
-- **Ultra** — For rolepod work spawn only a rolepod role — `agent_type` = its `name` (`scout`, not `rolepod-scout`), `fork_turns="none"`, a self-contained brief. Never `default`, `explorer`, `worker` or a role-less spawn: they inherit your effort, and at `ultra` they delegate again with no depth cap. Details → the `using-rolepod` skill's `references/fanout-codex.md`.
+- **Ultra** — Prefer the native role — `agent_type` = its `name` (`scout`, not `rolepod-scout`) — with `fork_turns="none"` and a self-contained brief. If custom roles are unavailable but a default/general child exists, follow `using-rolepod` portable role dispatch; at `ultra`, keep the brief bounded and explicit. A prompt role name is not native dispatch metadata or hook evidence. Details → `references/fanout-codex.md`.
 - **Persistent** — `persistent` is a follow-up mode, not deeper thinking: follow-ups stay inside the scope the user asked for, a wait uses the sleep tool (never a watcher left running), and delegation is explicit-only.
 - **workflow.mode** — `lite` skips Rolepod workflow gates and nudges;
   `standard` warns and allows; `full` enforces existing workflow conditions.

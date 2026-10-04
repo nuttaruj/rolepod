@@ -4,6 +4,10 @@
 
 Tiers are classes, never model names. Map them once onto the models the user has opted into (this CLI's always-on names them; never a full aggregator catalog). A model you cannot classify → balanced, and say so.
 
+### Portable role dispatch
+
+A role defines responsibilities and instructions; an agent type is CLI transport. Prefer the CLI's native named role when available. If custom roles are unavailable but a default/general subagent exists, dispatch a fresh isolated child with the same rendered role instructions and bounded task brief. Read only the needed role from an accessible rendered or installed file, including its shared protocol and writer loop when present; never forward unresolved `INCLUDE` directives. If role instructions are unavailable, report the missing role and use a fallback explicitly defined for that condition; otherwise report BLOCKED. Missing role text does not mean custom roles are unavailable. Carry model, effort, tool limits, read/write scope and no-commit rule through controls the CLI exposes. Unsupported controls remain instruction-level limits, reported as limitations; never invent tool fields or claim mechanical enforcement. A prompt role name is not native dispatch metadata or hook evidence. Keep reviewer floors and report provenance; if a mechanical gate cannot recognize the fallback, report that limitation and keep the gate blocked without a user waiver. With no subagent facility, the Lead follows the existing skill loop. Reviewer independence, mode-specific floors and no-agent limitations still follow `review-code`.
+
 | Class | The set's… | Work |
 |---|---|---|
 | **cheap** | small / fast model | docs, PM, copy, read-only sweeps |
@@ -29,7 +33,7 @@ The Lead picks the class at dispatch; escalate only on a BLOCKED redispatch or a
 
 - One strong slot per fleet: sweep = cheap · build = balanced · per-item verify = balanced at high effort · the ONE judge or security reviewer = strong.
 - Never inherit the Lead's model across a fleet (a plan fleet, `write-plan` step 8, is the one exception: the user's model choice for plans); never pin strong on a fan-out (price × N).
-- A stage that writes runs a rolepod role, never a generic agent; a fan-out stage runs a role first (it pins the tier), a bare model class only when no role fits.
+- A stage that writes uses the role's instructions. Prefer the CLI's native named role; portable transport and Lead fallback are defined above. A fan-out uses the role's model tier where the CLI exposes that control.
 - Mechanics live in your CLI's `references/fanout-<cli>.md` (Claude: `fanout-claude.md`, Codex: `fanout-codex.md`); no file for your CLI → dispatch roles one at a time.
 
 ## Wide-effort profile

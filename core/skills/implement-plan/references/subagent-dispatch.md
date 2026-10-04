@@ -36,8 +36,7 @@ Closest specialist by path / concern / strategy:
 - `performance-engineer` — latency, profiling, load test, bundle size, query speed
 - `content-strategist` — written output; pass `audience: dev|user|prospect`
 
-A write mandate goes only to the role that owns the path:
-- Never a generic platform agent (`general-purpose` / `default` / `claude`, or a bare Workflow `agent()`; a writing stage carries `agentType: 'rolepod:<role>'`); the one exception is a plan file under `docs/rolepod/plans/` (`write-plan` step 8).
+A write mandate goes only to the role that owns the path. Prefer the CLI's native named role; when unavailable, use the portable role dispatch contract in `using-rolepod/references/model-tiers.md`. Do not treat a prompt role name as native dispatch metadata or hook evidence. The plan-file exception under `docs/rolepod/plans/` is described in `write-plan` step 8.
 - Never a test- or review-only role: `qa-tester` / `security-engineer` write tests and markdown only; `universal-reviewer` / `scout` write markdown only.
 
 Use the least powerful model that can handle the role (Model selection below).

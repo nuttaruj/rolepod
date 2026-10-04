@@ -23,6 +23,8 @@ Google retired the standalone Gemini CLI for individual accounts (2026-06-18) an
 | Optional add-on integration | vendor-installed (own plugin / MCP); rolepod auto-detects, falls back to `rg` + `find` | vendor-installed (own plugin / MCP); rolepod auto-detects, falls back to `rg` + `find` | vendor-installed (Cursor MCP / `mcp.json`); rolepod auto-detects, falls back to `rg` + `find` | vendor-installed; rolepod auto-detects, falls back to `rg` + `find` | vendor-installed; rolepod auto-detects, falls back to `rg` + `find` |
 | MCP server config | global + per-plugin | global (`codex mcp`) | global (`~/.cursor/mcp.json`) + per-plugin (`plugin/mcp.json`) | global (agy config tree; not yet live-verified) | global (opencode config) |
 
+Portable role dispatch details and evidence limits are in Notes on subagent behavior. This summary does not add live verification for any CLI.
+
 ## Install destinations
 
 ## Workflow profile and bootstrap behavior
@@ -177,9 +179,10 @@ Help close the gap — install on Codex / Cursor and report at [issues/](https:/
 
 ## Notes on subagent behavior
 
-- **Claude Code**: agents auto-spawn via the `Task` / `SendMessage` tool — Lead delegates and merges results in parallel.
-- **Codex CLI**: 15 `agents/*.toml` are registered with the plugin and load via the plugin loader. Codex doesn't currently expose a public `codex agent` subcommand or a parallel-fanout primitive equivalent to Claude's `Task`, so verification is via plugin config, session logs, and observed dispatch behavior — Lead orchestrates by inline reading of the relevant agent's `developer_instructions` block.
-- **Antigravity**: 15 agent definitions ship as plugin `agents/*.md`; a build without sub-agent support has no roster fallback — the Lead reads the named agent file.
+Role files define responsibilities and instructions; agent types are CLI transport. Prefer native named roles. If custom roles are unavailable but the orchestration tool exposes a default/general child, pass the same rendered role body (including shared protocol and writer loop) with a bounded brief to a fresh isolated child. Load only the needed role from an accessible rendered or installed file; never send unresolved `INCLUDE` directives. A missing role file needs an explicit fallback or BLOCKED; it does not mean custom roles are unavailable. Carry model, effort, tool limits, read/write scope and no-commit rule through controls the CLI exposes. Unsupported controls remain instruction-level limits and must be reported. Prompt role names are not native dispatch metadata or hook evidence. Preserve reviewer floors and report provenance; if a mechanical gate cannot recognize the fallback, report that limitation and keep the gate blocked without a user waiver. With no child facility, the Lead follows the skill's existing loop. These portable instructions do not add live verification for any CLI.
+
+- **Claude Code**: the native role and nested Task mechanics are documented above; the Lead owns dispatch and result integration.
+- **Codex CLI**: rendered role TOMLs are synchronized to `~/.codex/agents/` by `agent-sync.sh`; prefer a native named role with `spawn_agent` when available. Prompt role text does not satisfy hook evidence requirements.
 
 The path-based ownership rules from `write-plan` apply identically across all CLIs — same agent picks the same paths regardless of which CLI is in charge of orchestration.
 

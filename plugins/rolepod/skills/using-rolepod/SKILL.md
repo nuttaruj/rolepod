@@ -124,7 +124,7 @@ Done when: the route is stated (R2 and up), the named skill is loaded, and the o
 
 ## References
 
-- Delegating, picking a model class, or running a fleet → `references/model-tiers.md` (mechanics: `references/fanout-<cli>.md`).
+- Delegating, picking a model class, or running a fleet → `references/model-tiers.md` (mechanics: `references/fanout-<cli>.md`). A role is instructions; agent type is transport. Prefer native roles; if custom roles are unavailable and a default/general child exists, pass the same rendered role body and bounded brief to a fresh isolated child. If role text is missing, report it; use only an explicit fallback, else BLOCKED. No child facility → Lead runs the existing loop.
 - A repo-wide sweep, or the 3rd same-shaped fix in one loop → `references/scope-then-spawn.md`.
 - A sibling plugin is installed, or the task's central framework has an unconnected official MCP → `references/plugins-and-mcp.md`.
 
