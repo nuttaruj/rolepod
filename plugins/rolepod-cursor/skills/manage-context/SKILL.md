@@ -17,7 +17,7 @@ Inputs: the original request and every correction since (latest wins) · the cur
 | Usage / quota limit near — the session dies regardless of context | Context budget — handoff path, not trim |
 | Forgot a stated constraint | Session hygiene |
 | Same bug at 3 surfaces | Zoom-out |
-| 2+ failed fix attempts on the same target (an informed 3rd is still allowed), or stuck on architecture / root cause, or the previous fix was wrong but almost looked right | Escalate |
+| 2+ failed fix attempts on the same unresolved repro or criterion, or stuck on architecture / root cause, or the previous fix was wrong but almost looked right | Escalate |
 | Multi-file edits beyond the plan | Deep triage |
 | Context bar yellow / red, a compaction warning, degraded recall (re-reading files already read, forgetting stated constraints) | Context budget |
 | Unfamiliar repo, no clear entry point | Onboarding |
@@ -78,12 +78,12 @@ Done when: every touched file maps to a plan task, or a new plan exists.
 
 ### 6. Escalate
 
-Escalate at the SECOND failed attempt at the same goal, never the tenth. Identical failure twice means the mental model is wrong, and even a progressing second fail is re-aimed cheaper by a cold advisor than by a third guess from the same mind.
+After two failed fixes for the same unresolved repro or criterion, get one Second opinion before attempts three and four. Carry the count across owners and phases. Retrace before each remaining attempt and use the advice; no usable advisor means stop before another fix. Four failed fixes means stop and ask the user. Keep review rounds on their separate count.
 - Capture the exact problem: the error, what was tried, what failed.
-- Change the model, not just the prompt: redispatch at a stronger tier, or in a debug flow run `debug-issue` Second opinion — one cross-model consult, one advisor-informed attempt, then the user. A fresh session on the same model is the weakest lever. Arriving from `debug-issue` with the ledger's `Second opinion:` line at `done` (an opinion, or `no usable advisor`) → the ladder is exhausted: go straight to the decision menu below; never re-enter `debug-issue` or run another consult for the same bug. The line's state decides, not whether an opinion text exists.
-- After two failed attempts the only permitted attempt is that single informed 3rd; never a blind 3rd or 4th.
+- Change the model, not just the prompt: in a debug flow run `debug-issue` Second opinion once after two failures. A fresh session on the same model is not an independent opinion. The ledger records whether advice was usable; never consult twice for the same issue.
+- After the opinion, attempts three and four require a fresh trace and use the advice plus new repro evidence. No usable advisor → stop before another fix. After four failed fixes, go straight to the decision menu; never reset the count on owner, model or phase changes.
 - A fresh-context read of your in-flight diff → `universal-reviewer`; an E2E flake or a user-visible (E2E) failure → `qa-tester` for the repro test or bug report (unit-test discipline belongs to the writer); a product failure it reports returns to the Lead, who briefs the path owner to fix against that test. Brief: the original request, what was tried, what failed, what you suspect. No subagents → the Lead does it.
-- Ladder exhausted (the strongest exposed tier and / or cross-family consulted, the blocker stands) → STOP and hand the user a decision menu: the attempt log (each rung + result) and 2-3 concrete options with trade-offs (relax a constraint / split or defer scope / accept a documented limitation) — never a bare "stuck".
+- The failed-fix ladder is exhausted at four failures, when no usable advisor exists, or when the advisor says stop and no informed attempt remains → STOP and hand the user a decision menu: the attempt log (each fix + result) and 2-3 concrete options with trade-offs (relax a constraint / split or defer scope / accept a documented limitation) — never a bare "stuck". A completed usable opinion alone does not exhaust the ladder; carry out the informed third and, if needed, fourth attempt.
   - This stop is legitimate mid-plan: implement-plan's continuous execution yields to an exhausted ladder, never the other way around.
 - After the menu, nothing runs on this blocker — no attempt, consult or escalation — until the user picks an option; then resume on that pick.
 

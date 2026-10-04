@@ -76,7 +76,7 @@ Before any push — **a push publishes the REF, not your commit.** Read `git log
 - Every commit on that list is yours or cleared by its author for PUBLICATION — approved work is not a cleared push (another session may hold an approved commit unpushed on purpose; your push ends that hold). Cannot tell → ask that session, then the user.
 - Never force-push to unpublish one; that is a second unauthorized act on a shared ref.
 - About to `push --force` or `reset --hard` published history → stop and confirm with the user.
-- A 3rd PR on the same surface, or a 3rd sequential attempt at the same failure → stop and ask the user.
+- A 4th PR on the same surface → stop and ask the user. Failed fixes for the same unresolved repro or criterion carry a separate four-attempt cap across owners and phases; consult once after two, and stop earlier if no usable advisor exists.
 
 Worktree cleanup after a merge, in this order: merge → verify → `cd` to the main root → `git worktree remove` → `git worktree prune` → delete the branch; the reversed order leaves stuck refs. Remove only worktrees we created (under `.worktrees/` or `worktrees/`), never from inside one and never before the merge succeeded; never touch harness-owned workspaces.
 

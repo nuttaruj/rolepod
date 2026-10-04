@@ -130,10 +130,12 @@
 
 ## Failure policy
 Default: a failing **Command** → debug-issue (reproduce → minimal fix →
-re-run the same Command). Stop and escalate to the user after 2 failed
-attempts on one task (debug-issue's one cross-model consult and its single
-advisor-informed attempt happen inside this stop — never a 4th attempt), or
-on oscillation (a fix for one task reopens another). A task needing a
+re-run the same Command). Count failed fixes for the same unresolved repro or
+criterion across owners and phases. After 2 failures, get one Second opinion;
+attempts 3 and 4 require a fresh trace and use its advice. No usable advisor
+means stop before another fix; after 4 failed fixes, stop and ask the user.
+Keep review rounds separate; they never reset fix attempts. Also stop on
+oscillation (a fix for one task reopens another). A task needing a
 different fallback states it in its **On fail:**.
 <This default is body text, NOT a hint — keep it in the filled plan (the
  circuit-breaker must survive in the artifact so the build loop runs without
