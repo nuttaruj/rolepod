@@ -39,11 +39,29 @@ rolepod_session_profile_apply() {
   ROLEPOD_CFG_REVIEW=standard
   ROLEPOD_CFG_REVIEW_SOURCE=$source
   case "$mode" in
-    lite) ROLEPOD_CFG_GATES=off; ROLEPOD_CFG_NUDGE=off ;;
+    lite) ROLEPOD_CFG_GATES=off; ROLEPOD_CFG_NUDGE=on ;;
     full) ROLEPOD_CFG_GATES=hard; ROLEPOD_CFG_REVIEW=full ;;
   esac
   export ROLEPOD_SESSION_MODE ROLEPOD_SESSION_SOURCE ROLEPOD_CFG_MODE ROLEPOD_CFG_SOURCE
   export ROLEPOD_CFG_MODERN ROLEPOD_CFG_GATES ROLEPOD_CFG_NUDGE ROLEPOD_CFG_REVIEW ROLEPOD_CFG_REVIEW_SOURCE
+}
+
+# rolepod_gate_action <gate-id> -> deny|warn|silent for the session mode.
+# Unknown mode -> lite; unknown gate -> silent. Pure bash, no python.
+rolepod_gate_action() {
+  local gate=${1:-} mode=${ROLEPOD_SESSION_MODE:-lite}
+  case "$mode" in lite|standard|full) ;; *) mode=lite ;; esac
+  case "$gate" in
+    private-docs|subagent-ship|cannot-wait|collision|bare-fanout|strong-fanout|bare-writer)
+      echo deny ;;
+    r4-security|scope-generic|scope-bare-workflow|scope-test-role|scope-readonly-role)
+      case "$mode" in lite) echo warn ;; *) echo deny ;; esac ;;
+    risk-no-test)
+      case "$mode" in full) echo deny ;; *) echo warn ;; esac ;;
+    code-no-test)
+      case "$mode" in full) echo deny ;; *) echo silent ;; esac ;;
+    *) echo silent ;;
+  esac
 }
 
 rolepod_session_profile_store() {

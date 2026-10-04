@@ -118,7 +118,7 @@ def selected_mode(project, global_cfg):
 
 def effective(project, global_cfg):
     mode, source, modern = selected_mode(project, global_cfg)
-    gates_value, nudge_value = {"lite": ("off", "off"), "standard": ("soft", "on"), "full": ("hard", "on")}[mode]
+    gates_value, nudge_value = {"lite": ("off", "on"), "standard": ("soft", "on"), "full": ("hard", "on")}[mode]
     review_value = "full" if mode == "full" else "standard"
     return mode, source, modern, gates_value, nudge_value, review_value, source
 
