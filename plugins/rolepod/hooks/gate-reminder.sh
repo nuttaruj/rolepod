@@ -20,8 +20,8 @@
 #     too. One hard checkpoint, at commit (precommit-gate.sh); this hook
 #     informs.
 #
-# workflow.mode controls the reminder: Full may predict a commit block;
-# Standard gives advisory output; Lite exits before hook work.
+# workflow.mode controls the R4 wording: Standard/Full predict a commit block;
+# Lite gives an advisory warning. Every mode runs the hook.
 set -euo pipefail
 unset XF_RUNNER
 
@@ -254,7 +254,7 @@ gr_inflight_scan() {
 gr_inflight_scan
 
 # The selected workflow.mode is authoritative. In-flight advisories remain
-# visible in Standard; Lite exited above.
+# visible in every mode.
 
 # Silent pass when nothing is risky. Normal code / docs / config edits
 # never see a reminder from this hook — the Q1-Q4 doctrine lives in
@@ -306,8 +306,8 @@ SOFT_MODE=0
 # fact → Fix → Exception. No always-on careful-mode banner, no per-CLI
 # reviewer-list builder, no test-first nudge — the gate's own deny (at
 # commit) is the one hard checkpoint; this is a cheap, silent-unless-blocking
-# prediction of it in Full. Standard emits advisory wording without claiming
-# enforcement. C4 wording (review-finish-lean, 2026-09-30).
+# prediction of it where the gate denies (deny → COMMIT WILL BLOCK; warn, i.e.
+# Lite → advisory WARNING without claiming enforcement). C4 wording (review-finish-lean, 2026-09-30).
 WOULD_BLOCK=""
 if [ -n "$HIGH_RISK" ] && [ "$IS_SUBAGENT" -eq 0 ] && [ "$STRONG_REVIEWERS" -eq 0 ]; then
   if [ "$SOFT_MODE" -eq 1 ]; then

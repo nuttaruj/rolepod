@@ -82,16 +82,11 @@ PART_CONTEXT=""
 PART_CORE=""
 PART_LOCK=""
 PART_SYNC=""
-if [ "$ROLEPOD_SESSION_MODE" != lite ]; then
-  if [ "$CLI" = claude ] && [ -f "$HOOK_DIR/always-on-loader.sh" ]; then
-    PART_CORE=$(printf '%s' "$INPUT" | ROLEPOD_SESSION_CLI="$CLI" ROLEPOD_SESSION_ID="$SESSION_ID" ROLEPOD_SESSION_MODE="$ROLEPOD_SESSION_MODE" ROLEPOD_SESSION_SOURCE="$ROLEPOD_SESSION_SOURCE" bash "$HOOK_DIR/always-on-loader.sh" 2>/dev/null || true)
-  fi
-  PART_CONTEXT=$(printf '%s' "$INPUT" | ROLEPOD_SESSION_CLI="$CLI" ROLEPOD_SESSION_ID="$SESSION_ID" ROLEPOD_SESSION_MODE="$ROLEPOD_SESSION_MODE" ROLEPOD_SESSION_SOURCE="$ROLEPOD_SESSION_SOURCE" bash "$HOOK_DIR/project-context-loader.sh" 2>/dev/null || true)
-  PART_LOCK=$(printf '%s' "$INPUT" | ROLEPOD_SESSION_CLI="$CLI" ROLEPOD_SESSION_ID="$SESSION_ID" ROLEPOD_SESSION_MODE="$ROLEPOD_SESSION_MODE" ROLEPOD_SESSION_SOURCE="$ROLEPOD_SESSION_SOURCE" bash "$HOOK_DIR/session-lifecycle.sh" --lock --cli "$CLI" 2>/dev/null || true)
-fi
-if [ "$CLI" = claude ] && [ "$ROLEPOD_SESSION_MODE" = lite ] && [ -f "$HOOK_DIR/always-on-loader.sh" ]; then
+if [ "$CLI" = claude ] && [ -f "$HOOK_DIR/always-on-loader.sh" ]; then
   PART_CORE=$(printf '%s' "$INPUT" | ROLEPOD_SESSION_CLI="$CLI" ROLEPOD_SESSION_ID="$SESSION_ID" ROLEPOD_SESSION_MODE="$ROLEPOD_SESSION_MODE" ROLEPOD_SESSION_SOURCE="$ROLEPOD_SESSION_SOURCE" bash "$HOOK_DIR/always-on-loader.sh" 2>/dev/null || true)
 fi
+PART_CONTEXT=$(printf '%s' "$INPUT" | ROLEPOD_SESSION_CLI="$CLI" ROLEPOD_SESSION_ID="$SESSION_ID" ROLEPOD_SESSION_MODE="$ROLEPOD_SESSION_MODE" ROLEPOD_SESSION_SOURCE="$ROLEPOD_SESSION_SOURCE" bash "$HOOK_DIR/project-context-loader.sh" 2>/dev/null || true)
+PART_LOCK=$(printf '%s' "$INPUT" | ROLEPOD_SESSION_CLI="$CLI" ROLEPOD_SESSION_ID="$SESSION_ID" ROLEPOD_SESSION_MODE="$ROLEPOD_SESSION_MODE" ROLEPOD_SESSION_SOURCE="$ROLEPOD_SESSION_SOURCE" bash "$HOOK_DIR/session-lifecycle.sh" --lock --cli "$CLI" 2>/dev/null || true)
 if [ "$CLI" = codex ]; then
   if [ -z "$SYNC" ]; then
     [ -f "$HOOK_DIR/agent-sync.sh" ] && SYNC="$HOOK_DIR/agent-sync.sh"
@@ -103,8 +98,7 @@ if [ "$CLI" = codex ]; then
 fi
 
 # SessionStart exposes one output object; combine supported advisory context
-# from the sequential shared handlers. Codex agent-sync remains a bootstrap
-# exception and may still produce context in Lite.
+# from the sequential shared handlers, in every mode.
 ROLEPOD_STARTUP_MODE="$ROLEPOD_SESSION_MODE" ROLEPOD_STARTUP_SOURCE="$ROLEPOD_SESSION_SOURCE" ROLEPOD_STARTUP_CORE="$PART_CORE" ROLEPOD_STARTUP_CONTEXT="$PART_CONTEXT" ROLEPOD_STARTUP_LOCK="$PART_LOCK" ROLEPOD_STARTUP_SYNC="$PART_SYNC" python3 -I -c '
 import json, os
 parts = ["Active Rolepod workflow profile: %s (source: %s). This profile is fixed for this session; restart or open a new session to apply configuration changes." % (os.environ.get("ROLEPOD_STARTUP_MODE", "lite"), os.environ.get("ROLEPOD_STARTUP_SOURCE", "uncaptured"))]
