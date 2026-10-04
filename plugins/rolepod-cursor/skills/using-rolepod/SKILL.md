@@ -104,7 +104,7 @@ Next step: <concrete action>
 
 - R0 / R1 — no line.
 - R2 — `Route: R2 (one source file + its own test) → <skill> · Owner <path role> · <reason>`, then the checklist as the owner's brief.
-- Eligible spec-as-plan R3 — `Route: R3 (spec-as-plan; ≤3 approved ordered tasks, complete files/commands/dependencies, single owner, no parallel or high-risk work, no mid-plan compaction) → Build → implement-plan`; give the inline checklist as the owner's brief. Any missing condition, including compaction mid-plan, routes to the plan artifact; R4 always does.
+- Eligible spec-as-plan R3 — `Route: R3 (spec-as-plan) → Build → implement-plan`; give the inline checklist as the owner's brief. Apply step 2's complete eligibility conditions; any missing condition, including mid-plan compaction, routes to the plan artifact. R4 always does.
 - Other R3 / R4 or a surprising route — the full block; `Next step:` names the owner (or `write-spec` / `write-plan`, which assign owners).
 - Each tier carries its gloss: R0 answer only · R1 trivial edit · R2 one file + test · R3 multi-file · R4 high-risk.
 
