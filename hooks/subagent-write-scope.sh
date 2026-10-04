@@ -47,13 +47,11 @@ INPUT=$(cat 2>/dev/null || echo '{}')
 _rcfg="${BASH_SOURCE[0]%/*}"; [ "$_rcfg" != "${BASH_SOURCE[0]}" ] || _rcfg=.
 . "$_rcfg/lib/session-mode.sh"
 rolepod_session_profile_load "$INPUT" "${ROLEPOD_SESSION_CLI:-unknown}"
-_mode=$ROLEPOD_SESSION_MODE
-[ "$_mode" = lite ] && exit 0
-_cwd=$(printf '%s' "$INPUT" | python3 -I -c 'import json,sys; print(json.load(sys.stdin).get("cwd") or "")' 2>/dev/null || true)
-export ROLEPOD_PROJECT_ROOT="${_cwd:-$PWD}"
+[[ "$INPUT" == *'"agent_id"'* ]] || exit 0         # Lead conversation: no python spawn
 command -v python3 >/dev/null 2>&1 || exit 0
 
-# One pass: parse, classify, decide. Prints the deny JSON, BYPASS, or nothing.
+# One pass: parse, classify, decide. Prints nothing (pass), BYPASS, or three
+# lines: the gate id (scope-*), the deny JSON, the warn JSON (C4 shape).
 DECISION=$(printf '%s' "$INPUT" | python3 -I -c '
 import sys, json, os, re, datetime, tempfile
 try:
@@ -107,31 +105,37 @@ except Exception:
 short = path if len(path) <= 80 else "…" + path[-79:]
 verb = tool or "a write"
 if bare == "workflow-subagent":
-    reason = ("BLOCKED: bare Workflow agent() attempted %s on %s. A writing stage needs a role: "
-              "set agentType: \x27rolepod:<role>\x27 (backend-developer / frontend-developer / ...) on "
-              "this agent() call and resume the workflow (finished stages replay from cache). "
-              "Fix now: put BLOCKED and this path in your StructuredOutput answer (or final text); "
-              "a repro script goes to $TMPDIR or the scratchpad. Exception: "
-              "ROLEPOD_ALLOW_OUT_OF_SCOPE_WRITE=1 (user-set).") % (verb, short)
+    gate = "scope-bare-workflow"
+    body = ("a bare Workflow agent() attempted %s on %s. A writing stage needs a role. "
+            "Fix: set agentType: \x27rolepod:<role>\x27 (backend-developer / frontend-developer / ...) on "
+            "this agent() call and resume the workflow (finished stages replay from cache); "
+            "NAMEPATH; a repro script goes to $TMPDIR or the scratchpad. "
+            "Exception: none for a bare agent().") % (verb, short)
 elif cls == "generic":
-    reason = ("BLOCKED: generic sub-agent %r attempted %s on %s. A platform agent "
-              "(general-purpose / default) never writes product files. Fix: stop and return "
-              "BLOCKED naming this path — the Lead re-dispatches the write to a rolepod role "
-              "(backend-developer / frontend-developer / qa-tester / ...). Exception: "
-              "ROLEPOD_ALLOW_OUT_OF_SCOPE_WRITE=1 (user-set).") % (atype, verb, short)
+    gate = "scope-generic"
+    body = ("generic sub-agent %r attempted %s on %s. A platform agent "
+            "(general-purpose / default) never writes product files. Fix: stop and return "
+            "the finding naming this path — the Lead re-dispatches the write to a rolepod role "
+            "(backend-developer / frontend-developer / qa-tester / ...). "
+            "Exception: none for a platform agent.") % (atype, verb, short)
 elif cls == "test-only":
-    reason = ("BLOCKED: %r attempted %s on %s — not a test path. This role writes tests, "
-              "fixtures, test config and markdown only; production code belongs to the owning "
-              "role. Fix: return the finding (file:line + the exact change) — the Lead dispatches "
-              "the domain role. Exception: ROLEPOD_ALLOW_OUT_OF_SCOPE_WRITE=1 (user-set).") % (atype, verb, short)
+    gate = "scope-test-role"
+    body = ("%r attempted %s on %s — not a test path. This role writes tests, "
+            "fixtures, test config and markdown only; production code belongs to the owning "
+            "role. Fix: return the finding (file:line + the exact change) — the Lead dispatches "
+            "the domain role. Exception: none outside test paths and markdown.") % (atype, verb, short)
 else:
-    reason = ("BLOCKED: %r attempted %s on %s. This role is read-only: report and point, "
-              "never modify. Fix: put the change in the report (file:line + exact fix) — the "
-              "Lead applies it or dispatches the owning role. Exception: "
-              "ROLEPOD_ALLOW_OUT_OF_SCOPE_WRITE=1 (user-set).") % (atype, verb, short)
-print(json.dumps({"hookSpecificOutput": {"hookEventName": "PreToolUse",
-                                         "permissionDecision": "deny",
-                                         "permissionDecisionReason": reason}}))
+    gate = "scope-readonly-role"
+    body = ("%r attempted %s on %s. This role is read-only: report and point, "
+            "never modify. Fix: put the change in the report (file:line + exact fix) — the "
+            "Lead applies it or dispatches the owning role. Exception: markdown files.") % (atype, verb, short)
+def out(**kw):
+    h = {"hookEventName": "PreToolUse"}; h.update(kw)
+    return json.dumps({"hookSpecificOutput": h})
+print(gate)
+print(out(permissionDecision="deny", permissionDecisionReason="BLOCKED: " + body.replace(
+    "NAMEPATH", "put BLOCKED and this path in your StructuredOutput answer (or final text)")))
+print(out(additionalContext="WARNING: " + body.replace("NAMEPATH", "name this path in your final answer")))
 ' 2>/dev/null || echo "")
 
 [ -z "$DECISION" ] && exit 0
@@ -139,9 +143,11 @@ if [ "$DECISION" = "BYPASS" ]; then
   rolepod_log_bypass "subagent-write-scope" "ROLEPOD_ALLOW_OUT_OF_SCOPE_WRITE"
   exit 0
 fi
-if [ "$_mode" = standard ]; then
-  printf '%s' "$DECISION" | python3 -I -c 'import json,sys; d=json.load(sys.stdin); h=d.get("hookSpecificOutput",{}); reason=h.pop("permissionDecisionReason",""); h.pop("permissionDecision",None); h["additionalContext"]="WARNING: "+reason+" Standard mode allows the write; full mode enforces workflow scope."; print(json.dumps(d))' 2>/dev/null || true
-else
-  printf '%s\n' "$DECISION"
-fi
+{ IFS= read -r _gate; IFS= read -r _deny; IFS= read -r _warn; } <<EOF || true
+$DECISION
+EOF
+case "$(rolepod_gate_action "$_gate")" in
+  deny) printf '%s\n' "$_deny" ;;
+  warn) printf '%s\n' "$_warn" ;;
+esac
 exit 0

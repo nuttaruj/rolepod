@@ -74,10 +74,6 @@ INPUT=$(cat 2>/dev/null || echo '{}')
 _rcfg="${BASH_SOURCE[0]%/*}"; [ "$_rcfg" != "${BASH_SOURCE[0]}" ] || _rcfg=.
 . "$_rcfg/lib/session-mode.sh"
 rolepod_session_profile_load "$INPUT" "${ROLEPOD_SESSION_CLI:-unknown}"
-_mode=$ROLEPOD_SESSION_MODE
-[ "$_mode" = lite ] && exit 0
-_cwd=$(printf '%s' "$INPUT" | python3 -I -c 'import json,sys; print(json.load(sys.stdin).get("cwd") or "")' 2>/dev/null || true)
-export ROLEPOD_PROJECT_ROOT="${_cwd:-$PWD}"
 
 # Fast path: only a sub-agent call (agent_id present) can trip rules 1/2 —
 # a Lead is never subject to either, so a Lead Bash call skips the python
@@ -267,10 +263,14 @@ $VERDICT
 EOF
 
 [ -z "$BLOCKED" ] && [ -z "$WAIT" ] && exit 0
+# Gate ids: the version-control ban is subagent-ship, every cannot-wait form
+# is cannot-wait. Both deny in every mode (rolepod_gate_action table).
+if [ -n "$BLOCKED" ]; then _gate=subagent-ship; else _gate=cannot-wait; fi
+[ "$(rolepod_gate_action "$_gate")" = deny ] || exit 0
 
 # Deny via PreToolUse JSON; Claude Code surfaces the reason to the agent.
 # Fields are env-passed so a quote in agent_type / command cannot break the emitter.
-RP_AGENT_TYPE="$AGENT_TYPE" RP_BLOCKED="$BLOCKED" RP_WAIT="$WAIT" RP_MODE="$_mode" python3 -I -c "
+RP_AGENT_TYPE="$AGENT_TYPE" RP_BLOCKED="$BLOCKED" RP_WAIT="$WAIT" python3 -I -c "
 import json, os
 a = os.environ.get('RP_AGENT_TYPE', ''); b = os.environ.get('RP_BLOCKED', ''); w = os.environ.get('RP_WAIT', '')
 if b:
@@ -316,11 +316,7 @@ else:
       'sub-agent. Fix: resend with timeout: 600000 (10 min) on the Bash call. Exception: '
       'a gate you know finishes under 2 min - state it with timeout: 120000.'
     ) % (a, w)
-hook = {'hookEventName': 'PreToolUse'}
-if os.environ.get('RP_MODE') == 'standard':
-    hook['additionalContext'] = 'WARNING: ' + reason + ' Standard mode allows the operation; full mode enforces this workflow guard.'
-else:
-    hook.update(permissionDecision='deny', permissionDecisionReason=reason)
+hook = {'hookEventName': 'PreToolUse', 'permissionDecision': 'deny', 'permissionDecisionReason': reason}
 print(json.dumps({'hookSpecificOutput': hook}))
 " 2>/dev/null
 

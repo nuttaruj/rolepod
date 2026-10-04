@@ -27,15 +27,15 @@
 # carries the tier-per-stage rule; this hook only stops the two shapes a
 # skill reminder cannot catch after the fact.
 #
-# Full denies and logs phase: dispatch-gate. Standard warns and allows without
-# writing a deny or bypass row. Lite exits silently before transcript work.
+# Every mode denies and logs phase: dispatch-gate (rolepod_gate_action
+# bare-fanout / strong-fanout / bare-writer). A plan fleet — every agent() bare
+# and each call's prompt naming docs/rolepod/plans/ — is exempt from
+# bare-fanout and bare-writer.
 set -uo pipefail
 _rcfg="${BASH_SOURCE[0]%/*}"; [ "$_rcfg" != "${BASH_SOURCE[0]}" ] || _rcfg=.
 INPUT=$(cat 2>/dev/null || true)
  . "$_rcfg/lib/session-mode.sh"
 rolepod_session_profile_load "$INPUT" "${ROLEPOD_SESSION_CLI:-unknown}"
-_mode=$ROLEPOD_SESSION_MODE
-[ "$_mode" = lite ] && exit 0
 [ -n "$INPUT" ] || exit 0
 case "$INPUT" in *Workflow*) ;; *) exit 0 ;; esac
 
@@ -43,7 +43,7 @@ SESSION_STATE="$(dirname "$0")/lib/session_state.py"
 [ -f "$SESSION_STATE" ] || exit 0
 command -v python3 >/dev/null 2>&1 || exit 0
 
-printf '%s' "$INPUT" | ROLEPOD_SESSION_STATE="$SESSION_STATE" ROLEPOD_WORKFLOW_MODE="$_mode" python3 -I -c '
+printf '%s' "$INPUT" | ROLEPOD_SESSION_STATE="$SESSION_STATE" RP_ACT_BF="$(rolepod_gate_action bare-fanout)" RP_ACT_SF="$(rolepod_gate_action strong-fanout)" RP_ACT_BW="$(rolepod_gate_action bare-writer)" python3 -I -c '
 import json, os, re, sys
 try:
     d = json.load(sys.stdin)
@@ -163,6 +163,7 @@ bare_fanout = []    # stage of every fan-out agent() call with no pin at all
 strong_fanout = []  # stage of every fan-out agent() call pinned strong (model: or strong role)
 bare_writer = []    # stage of every agent() call with no agentType on a writing stage
 call_pos = [m.start() for m in re.finditer(r"\bagent\(", code)]
+plan_fleet = bool(call_pos)  # every agent() bare (no model:, no agentType) and tied to docs/rolepod/plans/
 
 def literal_of(key, pos, win):
     # The quoted literal after `key:` in the call window, or None when the key
@@ -205,6 +206,8 @@ for i, pos in enumerate(call_pos):
     else:
         at_pinned = at_has
     pinned = model_pinned or at_pinned
+    if model_pinned or at_has or "docs/rolepod/plans/" not in script[pos:end]:
+        plan_fleet = False
     stage = stage_of(pos, win)
     fanout = bool(re.search(r"label\s*:\s*`[^`]*\$\{", script[pos:end])) or _in_fanout(code, pos)
     if not re.search(r"[,{\s]agentType\s*:", win) and WRITE_RX.search(stage or ""):
@@ -218,7 +221,12 @@ for i, pos in enumerate(call_pos):
         if strong_model or strong_role:
             strong_fanout.append(stage or "(no phase)")
 
-soft = os.environ.get("ROLEPOD_WORKFLOW_MODE") == "standard"
+if plan_fleet:
+    # A plan fleet (every call bare, each prompt names docs/rolepod/plans/) is
+    # the plan runner: exempt from bare-fanout and bare-writer (the first product
+    # Write of a bare agent is still refused by subagent-write-scope).
+    bare_fanout = []
+    bare_writer = []
 costly = cls == "strong" or (bool(lead) and cls == "unknown")
 why = ("strong class" if cls == "strong" else "unknown family, priced as strong")
 
@@ -269,16 +277,17 @@ elif bare_writer:
         "first Write. Fix: add agentType to every call that edits files; read-only calls may stay bare. "
         "Exception: a stage that only reads → name it so (Research / Verify)." %", ".join(sorted(set(bare_writer)))[:120])
 
-if verdict:
-    if soft:
-        ctx(reason_txt)
-    else:
-        _log_gate(ti, script, lead, cls, n_calls, verdict, sorted(set(stages)))
-        print(json.dumps({"hookSpecificOutput": {
-            "hookEventName": "PreToolUse",
-            "permissionDecision": "deny",
-            "permissionDecisionReason": reason_txt}}, ensure_ascii=False))
-        sys.exit(0)
+ACT = {"bare-fanout": os.environ.get("RP_ACT_BF"), "strong-fanout": os.environ.get("RP_ACT_SF"),
+       "bare-writer": os.environ.get("RP_ACT_BW")}
+# The verdict labels are the gate ids; a combined verdict denies when any of
+# its gates denies. The table has no warn form for these three gates.
+if verdict and any(ACT.get(v) == "deny" for v in verdict.split("+")):
+    _log_gate(ti, script, lead, cls, n_calls, verdict, sorted(set(stages)))
+    print(json.dumps({"hookSpecificOutput": {
+        "hookEventName": "PreToolUse",
+        "permissionDecision": "deny",
+        "permissionDecisionReason": reason_txt}}, ensure_ascii=False))
+    sys.exit(0)
 sys.exit(0)
 ' 2>/dev/null || true
 exit 0
