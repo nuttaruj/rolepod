@@ -20,9 +20,11 @@
 #
 # workflow.mode is captured once at SessionStart. Hook consumers read its
 # private session snapshot (or inherited profile environment):
-#   lite     — exit before workflow gate work.
-#   standard — warn and allow when a workflow condition would deny.
-#   full     — enforce the existing deny conditions.
+#   Every mode runs the gate; rolepod_gate_action (hooks/lib/session-mode.sh)
+#   returns deny|warn|silent per gate-id: private-docs denies in every mode,
+#   r4-security warns in lite and denies in standard/full, risk-no-test warns
+#   until full, code-no-test is silent until full. Group B advisories
+#   (tree-rewrite, test-diff-lint) speak in every mode.
 # Non-Claude adapters receive the private-doc gate; transcript evidence
 # checks remain Claude-native. Standard and Full never alter role tools or
 # native CLI/user permissions.
@@ -74,35 +76,6 @@ $(printf '%s\n' "$_rf_in" | grep -iE "$_rf_add" 2>/dev/null || true)"
   printf '%s\n' "$_rf_hits" | sed '/^$/d'
 }
 
-# Bypass accountability: a used bypass is recorded to .rolepod/evidence/bypass.log
-# (reason via ROLEPOD_BYPASS_REASON), never blocked. Fail-open on any error.
-# $3 (optional) = the directory the command runs in (a `git -C` / `cd` commit);
-# no repo root resolvable → $HOME/.rolepod/gate-bypass.log, so a use is never unlogged.
-rolepod_log_bypass() {
-  _rlb_log=""
-  _rlb_root="$(git -C "${3:-.}" rev-parse --show-toplevel 2>/dev/null)" || _rlb_root=""
-  if [ -n "$_rlb_root" ] && mkdir -p "$_rlb_root/.rolepod/evidence" 2>/dev/null; then
-    _rlb_log="$_rlb_root/.rolepod/evidence/bypass.log"
-  elif [ -n "${HOME:-}" ] && mkdir -p "$HOME/.rolepod" 2>/dev/null; then
-    _rlb_log="$HOME/.rolepod/gate-bypass.log"
-  else
-    return 0
-  fi
-  _rlb_reason="${ROLEPOD_BYPASS_REASON:-unreasoned}"
-  _rlb_reason="${_rlb_reason//\"/ }"
-  printf '{"ts":"%s","hook":"%s","var":"%s","reason":"%s"}\n' \
-    "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$1" "$2" "$_rlb_reason" \
-    >> "$_rlb_log" 2>/dev/null || true
-}
-
-# gates.mode (off|soft|hard) from ~/.rolepod/config.json → ROLEPOD_CFG_GATES.
-# Beside the script (flat Cursor / agy / opencode renders) or in lib/; a missing
-# file is fail-open: soft, never an abort.
-_rcfg="${BASH_SOURCE[0]%/*}"; [ "$_rcfg" != "${BASH_SOURCE[0]}" ] || _rcfg=.
-if [ -f "$_rcfg/lib/rolepod-config.sh" ]; then . "$_rcfg/lib/rolepod-config.sh"
-elif [ -f "$_rcfg/rolepod-config.sh" ]; then . "$_rcfg/rolepod-config.sh"
-else rolepod_cfg_load() { ROLEPOD_CFG_GATES=soft; ROLEPOD_CFG_NUDGE=on; }; fi
-
 # Detached cross-family job still running for this repo (v2.79.0): prints
 # "<job-id> (running N min)" for a live one, else nothing. Liveness = pid
 # alive AND still a cross-family process (a reused pid is a dead job).
@@ -139,9 +112,6 @@ xfam_running_job() {
 INPUT=$(cat 2>/dev/null || echo '{}')
 . "$(dirname "${BASH_SOURCE[0]}")/lib/session-mode.sh"
 rolepod_session_profile_load "$INPUT" "${ROLEPOD_SESSION_CLI:-unknown}"
-_mode=$ROLEPOD_SESSION_MODE
-[ "$_mode" = lite ] && exit 0
-export ROLEPOD_PROJECT_ROOT="$(printf '%s' "$INPUT" | python3 -I -c 'import json,sys; print(json.load(sys.stdin).get("cwd") or "")' 2>/dev/null || true)"
 
 # ONE python3 pass for tool_name + commit token-walk + resolved directory +
 # command (was 3 spawns — ~30ms on EVERY Bash call, the hottest PreToolUse
@@ -421,19 +391,11 @@ if [ "$IS_COMMIT" != "1" ]; then
   # live → its verdict is an artifact and the job re-runs. Advisory only.
   [ -n "$MUTATES" ] || exit 0
   _mj="$(xfam_running_job "$RESOLVED_DIR")"; [ -n "$_mj" ] || exit 0
-  rolepod_cfg_load
-  [ "$ROLEPOD_CFG_GATES" = "off" ] && exit 0
   XF_RUNNER="${XF_RUNNER-$(xfam_runner)}"
   ROLEPOD_HOOK_MSG="⏸ REVIEW IN FLIGHT: cross-family job $_mj reads this tree live — \`git $MUTATES\` rewrites it, so that verdict becomes an artifact and the job re-runs. Fix: \`bash '$XF_RUNNER' --collect ${_mj%% *}\` first, then \`git $MUTATES\`. Exception: a red-proof revert goes in a throwaway git worktree, not a stash here; a dead job → --collect says so and this line stops." python3 -I -c "
 import json, os
 print(json.dumps({'hookSpecificOutput': {'hookEventName': 'PreToolUse', 'additionalContext': os.environ.get('ROLEPOD_HOOK_MSG', '')}}))
 " 2>/dev/null || echo '{}'
-  exit 0
-fi
-
-rolepod_cfg_load
-if [ "$ROLEPOD_CFG_GATES" = "off" ]; then
-  rolepod_log_bypass "precommit-gate" "config:gates=off" "$RESOLVED_DIR"
   exit 0
 fi
 
@@ -659,11 +621,7 @@ _pd_root="$(git rev-parse --show-toplevel 2>/dev/null)" || true
 # files, so a brand-new UNSTAGED docs/rolepod/x.md silently passed this
 # check (caught while wiring the opencode adapter onto this same script).
 PRIVATE_DOCS=$( { printf '%s\n' "$DIFF_STAT" | awk -F'\t' 'NF>=3{print $3}' | grep -E '^docs/rolepod/' || true; } | head -5 | tr '\n' ' ' | sed 's/ *$//')
-if [ -n "$PRIVATE_DOCS" ] && [ ! -f "$_pd_root/.rolepod/docs-tracked" ]; then
-  if [ "$_mode" = standard ]; then
-    ROLEPOD_HOOK_MSG="WARNING: private working docs staged: $PRIVATE_DOCS. Review the files before continuing; standard mode allows this commit." python3 -I -c "import json,os; print(json.dumps({'hookSpecificOutput': {'hookEventName': 'PreToolUse', 'additionalContext': os.environ.get('ROLEPOD_HOOK_MSG','')}}))" 2>/dev/null || true
-    exit 0
-  fi
+if [ -n "$PRIVATE_DOCS" ] && [ ! -f "$_pd_root/.rolepod/docs-tracked" ] && [ "$(rolepod_gate_action private-docs)" = deny ]; then
   ROLEPOD_HOOK_MSG="precommit-gate BLOCKED — private working docs staged: $PRIVATE_DOCS. docs/rolepod/ is never committed. Fix: git restore --staged docs/rolepod; make sure .gitignore lists docs/rolepod/. Repo tracks them on purpose → create .rolepod/docs-tracked, commit again." python3 -I -c "
 import json, os
 print(json.dumps({'hookSpecificOutput': {'hookEventName': 'PreToolUse', 'permissionDecision': 'deny', 'permissionDecisionReason': os.environ.get('ROLEPOD_HOOK_MSG', '')}}))
@@ -853,7 +811,18 @@ except Exception:
 
 # Build deny reason — names only what clears the block (spec Desired 3,
 # 2026-09-25).
-REASON="precommit-gate BLOCKED. "
+# Which gate judges this commit, then what the mode table does with it. A
+# high-risk path is r4-security; session risk edits with no test (even when
+# the final diff is small) is risk-no-test; a plain commit with no evidence
+# is code-no-test. silent = no block and no warning.
+if [ -n "$HIGH_RISK" ]; then GATE_ID=r4-security
+elif [ "$HIGH_RISK_EDITS" -gt 0 ] && [ "$TEST_EDITS" -eq 0 ]; then GATE_ID=risk-no-test
+else GATE_ID=code-no-test; fi
+GATE_ACT=$(rolepod_gate_action "$GATE_ID")
+# deny reads "precommit-gate BLOCKED. … then retry"; warn follows C4:
+# "WARNING:" + fact → Fix → Exception, no BLOCKED / retry, ≤600 chars.
+if [ "$GATE_ACT" = deny ]; then REASON="precommit-gate BLOCKED. "; FIX_TAIL=", then retry. "
+else REASON="WARNING: "; FIX_TAIL=" before the next commit. "; fi
 # Round-2 review (2026-09-25): the assembled reason ran 660-830 chars, past
 # the 600 cap — shortened here (drop "Lead + subagent transcripts") and the
 # HIGH-RISK line below no longer repeats the Fix clause verbatim.
@@ -863,9 +832,9 @@ REASON+="Evidence ($SINCE_HUMAN): $TEST_EDITS tests, $HIGH_RISK_EDITS risk edits
 # C4 (review-finish-lean, 2026-09-30): fact → Fix → Exception, the rule word
 # for word; no pool, no external anchor, no model check.
 if [ -n "$HIGH_RISK" ] && [ "$STRONG_REVIEWERS" -eq 0 ]; then
-  REASON+="A high-risk commit needs at least one \`security-engineer\` dispatch since the last commit, any model; an external pass never counts. Fix: dispatch \`security-engineer\` (a FINISHED Agent or Workflow call), then retry. "
+  REASON+="A high-risk commit needs at least one \`security-engineer\` dispatch since the last commit, any model; an external pass never counts. Fix: dispatch \`security-engineer\` (a FINISHED Agent or Workflow call)${FIX_TAIL}"
 elif [ -z "$HIGH_RISK" ]; then
-  # Round-2 review (2026-09-25): a deny forced by hard mode alone
+  # Round-2 review (2026-09-25): a code-no-test deny alone
   # (normal diff, 0 risk edits this session) used to get NO Fix sentence —
   # the HIGH_RISK_EDITS>0 guard excluded exactly that case. Reaching this
   # branch at all already means AUTO_PASS was 0 on a non-high-risk diff,
@@ -876,16 +845,7 @@ REASON+="Exception: auto-passes once evidence exists SINCE THE LAST COMMIT; work
 
 # Decide: HARD block vs SOFT warn
 HARD_BLOCK=0
-if [ -n "$HIGH_RISK" ]; then
-  HARD_BLOCK=1
-elif [ "$ROLEPOD_CFG_GATES" = "hard" ]; then
-  HARD_BLOCK=1
-# Fix 2: escalate to HARD when high-risk *code edits* happened this session
-# but Lead never wrote a test. Catches the "session touched auth + nobody
-# wrote a test" pattern even when the FINAL commit diff is small.
-elif [ "$HIGH_RISK_EDITS" -gt 0 ] && [ "$TEST_EDITS" -eq 0 ]; then
-  HARD_BLOCK=1
-fi
+[ "$GATE_ACT" = silent ] || HARD_BLOCK=1
 
 # Evidence auto-pass — a would-block commit passes directly when the session
 # already shows gate evidence; the evidence check is the real guard.
@@ -894,7 +854,7 @@ fi
 #     clears it. Test edits are the floor, not the review — CourtBook
 #     proof: 672 green tests + opus impl still shipped 4 money bugs that
 #     only the adversarial pass caught.
-#   other HARD blocks (session risk edits w/o tests, gates.mode hard) → original OR
+#   other HARD blocks (session risk edits w/o tests, code-no-test in full) → original OR
 #     (≥1 test edit or ≥1 reviewer dispatch): delegated sessions route
 #     test-writing into subagents whose edits land in the child transcript,
 #     so a universal-reviewer dispatch is often the only evidence the Lead's
@@ -945,12 +905,15 @@ fi
 
 if [ "$HARD_BLOCK" -eq 1 ]; then
   # Env-passed — quotes in the reason must not break the JSON emitter.
-  [ -n "$LINT_WARN" ] && REASON+=" | $LINT_WARN"
-  if [ "$_mode" = standard ]; then
-    ROLEPOD_HOOK_MSG="WARNING: $REASON Standard mode allows this commit; full mode enforces the workflow gate." python3 -I -c "import json,os; print(json.dumps({'hookSpecificOutput': {'hookEventName': 'PreToolUse', 'additionalContext': os.environ.get('ROLEPOD_HOOK_MSG','')}}))" 2>/dev/null || true
+  if [ "$GATE_ACT" = warn ]; then
+    # The lint note (group B advisory) rides after the C4 warning, outside its 600.
+    [ -n "$LINT_WARN" ] && REASON+="
+$LINT_WARN"
+    ROLEPOD_HOOK_MSG="$REASON" python3 -I -c "import json,os; print(json.dumps({'hookSpecificOutput': {'hookEventName': 'PreToolUse', 'additionalContext': os.environ.get('ROLEPOD_HOOK_MSG','')}}))" 2>/dev/null || true
     append_gate_row "soft"
     exit 0
   fi
+  [ -n "$LINT_WARN" ] && REASON+=" | $LINT_WARN"
   ROLEPOD_HOOK_MSG="$REASON" python3 -I -c "
 import json, os
 print(json.dumps({

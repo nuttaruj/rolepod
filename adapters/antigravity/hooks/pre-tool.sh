@@ -28,7 +28,6 @@ IN=$(cat 2>/dev/null || true)
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 . "$HERE/lib/session-mode.sh"
 rolepod_session_profile_load "$IN" antigravity
-[ "$ROLEPOD_SESSION_MODE" = lite ] && exit 0
 GATE="$HERE/precommit-gate.sh"
 [ -f "$GATE" ] || exit 0
 
