@@ -18,7 +18,7 @@ Turns a finished change into an evidence block: fresh proof that it works, or an
 |-------------|-------------------|
 | Logic / bug fix | Red-green-revert: failing test → fix → green (the loop → `tdd-flow`) → prove red without the fix → green. The red proof is ONE command: remove the fix (a throwaway `git worktree` with the source-only patch reverse-applied; it cannot run the test → revert in place), run the one named test, restore. Red = a non-zero exit WITH the named assertion in the output; a collection / import error, a skip or a 0-test run is not red. Script: `references/verification-discipline.md` Revert in one call. A `tdd-flow` red run of the same test THIS session is that red proof when its output carries the named assertion, it ran before any part of the fix, and no test file changed since — cite it; otherwise run the proof. A test that does not fail without the fix is not testing the fix. |
 | New feature | Each acceptance criterion has a passing test at the agreed seam. An observation stands in only for a user-visible flow (the `qa-tester` point below) or a task its plan marks evidence-after — never a test-first, contract, perf or security task |
-| Refactor | The existing suite green after the change, no assertion weakened; a failure → the base-tree run in Run the evidence tells pre-existing from this change's |
+| Refactor | The checks covering changed behavior and affected consumers pass, no assertion weakened; a failure → the base-tree run in Run the evidence tells pre-existing from this change's |
 | Schema / migration | Forward + rollback dry run + row-count delta |
 | API contract | Contract test + downstream consumer smoke |
 | UI change | Browser observation (screenshot or DOM read) |
@@ -31,18 +31,20 @@ Done when: each acceptance criterion has an evidence type.
 
 ### 2. Run the evidence
 
-- Run every check AFTER the last change to the tree. No run since the last edit → you cannot claim it passes; yesterday's green and "should still work" do not count.
-- **Evidence cache:** tree unchanged since a pass (a clean tree, any session: the block's `Verified tree` id equals `git rev-parse HEAD^{tree}`, as finish-work's Evidence gate says; an uncommitted tree: the same `git rev-parse HEAD`, `git status` and `git diff HEAD` — staged + unstaged; none of them sees untracked / ignored content, so hash or diff any such input the check reads, and re-run if it changed) → cite that run's command + output, "tree unchanged since". ANY new edit invalidates it.
+- Run only checks that cover the task's changed behavior, affected consumers and acceptance criteria. A matching passing run after the final relevant edit satisfies that scoped proof; changing phase alone adds no check.
+- **Evidence cache:** reuse a passing run only when scope, relevant inputs, environment and provenance still match. Record its command, output, execution checkout or snapshot, and result; HEAD equality alone is insufficient.
+  For tracked inputs compare the relevant snapshot. Include any untracked or ignored input read by the check, and compare the environment and provenance.
+  After integration, cherry-pick or helper updates, compare resulting inputs and environment before reuse. Rerun only checks whose proof no longer matches or whose claim remains uncovered. A relevant edit invalidates proof for that claim, not unrelated proof.
 - Capture the exact command and its proof lines. A failure the build already recorded as pre-existing → a limitation, cite that line. Any other failure → run only the failing tests once on the tree without this change (a throwaway `git worktree` at the base sha; it cannot run them → set the diff aside in place, run, restore): red there too → a limitation, cite that run; green there → this change's.
 - JUnit / XUnit XML → counted totals + failed names via `scripts/junit-summary.sh <xml>` in this skill's folder (`references/verification-discipline.md`); no script → count the `<testcase>` and `<failure>` / `<error>` elements with `grep -c` and name the failed tests. Zero cases, or every case skipped → no test ran, never green.
-- Scope ladder: the task Command while building → the touched module's suite here → the full suite only on high-risk or at merge via the CI lane the change must pass (no CI → the block's `Verified tree` id lets finish-work cite it; a changed tree re-runs only the checks covering the change). Map changed paths to a subset by import graph / naming before going wider.
+- Select the narrowest check that covers each changed behavior and affected consumer. Preserve any high-risk related tests, integration checks, required CI lane and post-deploy smoke; run them when the change or required gate calls for them. At merge, use the required CI lane. A changed tree alone does not require unrelated suites when matching scoped proof remains valid.
 - Tests fail → fix or report; not done.
 - A `manifest.json` under `.rolepod/evidence/` (a sibling plugin ran) → `references/child-plugin-evidence.md`; any kept `fail` fails verify as a whole.
 
 Verifier per evidence type: `performance-engineer` · `security-engineer` · `devops-sre` (CI / deploy smoke). Performance built by a `performance-engineer` owner → its before / after numbers on the unchanged tree are the evidence (Evidence cache); no second dispatch. Brief: change manifest + acceptance criteria + tools; several types → ONE message, same frozen change.
 **User-visible E2E — the one `qa-tester` point.** The feature (or ship group) changes what a user sees and every task that changes it is built → ONE `qa-tester` dispatch that runs only the user-visible flows the spec's Testing decisions / acceptance criteria name — a flow the spec gives no reason for is not tested (the `tdd-flow` rule). A new E2E test only for a flow the Testing decisions name as an E2E seam; every other flow is observed once. Never per task, never as a reviewer, never from finish-work; unit-suite failures are the writer's.
 No E2E harness → that same `qa-tester` dispatch observes those flows in a browser (UI verification below; its role file grants the browser tools); no browser reachable → it reports "not observed" and the Lead observes those same flows; no subagents → the Lead's.
-No subagents → the Lead runs the table's evidence itself: module tests + typecheck / lint; API → curl + assert the shape.
+No subagents → the Lead runs the table's evidence itself, scoped to changed behavior and affected consumers: relevant tests plus required typecheck / lint; API → curl + assert the shape.
 A subagent's COMPLETED is a claim: read its diff and run the named test; no evidence → reject.
 
 Done when: every check has a command + proof line newer than the last edit, or a valid cache cite.
@@ -78,7 +80,7 @@ Check the diff against F1-F5:
 
 - **F1 invented name** — every function, file and API used exists (Read / Grep).
 - **F2 scope creep** — the diff is no wider than the request; cut the extra.
-- **F3 cascading error** — the fix brought no new bug; run the full suite.
+- **F3 cascading error** — the fix brought no new bug; run checks covering the fix and affected consumers. Run the full suite when a high-risk criterion or required CI lane calls for it.
 - **F4 context loss** — every earlier constraint holds (re-read the request).
 - **F5 tool misuse** — nothing destructive ran unannounced; review and announce it.
 

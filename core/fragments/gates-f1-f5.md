@@ -1,6 +1,6 @@
 - **F1 invented name** — every function, file and API used exists (Read / Grep).
 - **F2 scope creep** — the diff is no wider than the request; cut the extra.
-- **F3 cascading error** — the fix brought no new bug; run the full suite.
+- **F3 cascading error** — the fix brought no new bug; run checks covering the fix and affected consumers. Run the full suite when a high-risk criterion or required CI lane calls for it.
 - **F4 context loss** — every earlier constraint holds (re-read the request).
 - **F5 tool misuse** — nothing destructive ran unannounced; review and announce it.
 
