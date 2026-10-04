@@ -32,19 +32,18 @@ Done when: each acceptance criterion has an evidence type.
 
 ### 2. Run the evidence
 
-- Run only checks that cover the task's changed behavior, affected consumers and acceptance criteria. A matching passing run after the final relevant edit satisfies that scoped proof; changing phase alone adds no check.
+- Run checks for changed behavior, affected consumers and acceptance criteria. Reuse matching proof after the final relevant edit; a phase change adds no check.
 - **Evidence cache:** reuse a passing run only when scope, relevant inputs, environment and provenance still match. Record its command, output, execution checkout or snapshot, and result; HEAD equality alone is insufficient.
-  For tracked inputs compare the relevant snapshot. Include any untracked or ignored input read by the check, and compare the environment and provenance.
-  After integration, cherry-pick or helper updates, compare resulting inputs and environment before reuse. Rerun only checks whose proof no longer matches or whose claim remains uncovered. A relevant edit invalidates proof for that claim, not unrelated proof.
+  Compare tracked, untracked and ignored inputs the check reads, plus environment and provenance. After integration or helper updates, rerun only stale or uncovered claims; a relevant edit does not invalidate unrelated proof.
 - Capture the exact command and its proof lines. A failure the build already recorded as pre-existing → a limitation, cite that line. Any other failure → run only the failing tests once on the tree without this change (a throwaway `git worktree` at the base sha; it cannot run them → set the diff aside in place, run, restore): red there too → a limitation, cite that run; green there → this change's.
 - JUnit / XUnit XML → counted totals + failed names via `scripts/junit-summary.sh <xml>` in this skill's folder (`references/verification-discipline.md`); no script → count the `<testcase>` and `<failure>` / `<error>` elements with `grep -c` and name the failed tests. Zero cases, or every case skipped → no test ran, never green.
-- Select the narrowest check that covers each changed behavior and affected consumer. Preserve any high-risk related tests, integration checks, required CI lane and post-deploy smoke; run them when the change or required gate calls for them. At merge, use the required CI lane. A changed tree alone does not require unrelated suites when matching scoped proof remains valid.
+- Select the narrowest covering check; retain required high-risk, integration, CI and post-deploy smoke gates. A changed tree alone does not require unrelated suites when scoped proof remains valid.
 - Tests fail → fix or report; not done.
 - A `manifest.json` under `.rolepod/evidence/` (a sibling plugin ran) → `references/child-plugin-evidence.md`; any kept `fail` fails verify as a whole.
 
 Verifier per evidence type: `performance-engineer` · `security-engineer` · `devops-sre` (CI / deploy smoke). Performance built by a `performance-engineer` owner → its before / after numbers on the unchanged tree are the evidence (Evidence cache); no second dispatch. Brief: change manifest + acceptance criteria + tools; several types → ONE message, same frozen change.
 **User-visible E2E — the one `qa-tester` point.** The feature (or ship group) changes what a user sees and every task that changes it is built → ONE `qa-tester` dispatch that runs only the user-visible flows the spec's Testing decisions / acceptance criteria name — a flow the spec gives no reason for is not tested (the `tdd-flow` rule). A new E2E test only for a flow the Testing decisions name as an E2E seam; every other flow is observed once. Never per task, never as a reviewer, never from finish-work; unit-suite failures are the writer's.
-No E2E harness → that same `qa-tester` dispatch observes those flows in a browser (UI verification below; its role file grants the browser tools); no browser reachable → it reports "not observed" and the Lead observes those same flows; no subagents → the Lead's.
+No E2E harness → that `qa-tester` observes the flows in a browser; no browser → it reports "not observed" and the Lead observes them. No subagents → the Lead runs them.
 No subagents → the Lead runs the table's evidence itself, scoped to changed behavior and affected consumers: relevant tests plus required typecheck / lint; API → curl + assert the shape.
 A subagent's COMPLETED is a claim: read its diff and run the named test; no evidence → reject.
 
@@ -106,7 +105,7 @@ Examples → `examples/evidence-examples.md`.
 
 - Verify-only ask → stop; the evidence block is the deliverable, and the lines below do not apply (not even to unchecked plan tasks).
 - Evidence fails → `debug-issue` or `implement-plan`; the same criterion failing a 2nd verify round on one change → `debug-issue`, carrying `Attempts: <n> used` and each failed fix with why it stayed red. Verify rounds are not failed fixes; never make a blind fix.
-- Neither skill available → the Lead fixes at the root and re-runs this skill, carrying the same criterion's failed-fix count across owners and phases. After two failed fixes, get one Second opinion before attempts three and four; retrace and use its advice. No usable advisor means stop before another fix; failed fix four means stop and report the attempt log.
+- Neither skill available → the Lead fixes at the root, then repeats verification. Failed-fix counts carry across owners and phases; after two, consult once before attempts three or four. No usable advisor or failure four → stop and report the attempt log.
 - Passes with risk (fails review-code's skip test: >5 lines, multi-file, logic-bearing, or high-risk), no plan task left unchecked, and no review of this change yet → `review-code` (R2/R3: the track-end review (one code task: the owner's lenses) covers it; R4: per-task review before commit). An R4 task's report under `.rolepod/evidence/review/` covers that task only, and a report for another change does not count. A review that ran before a fix for a check that failed here does not cover that fix; a fix for review findings is covered (any round 2 is `review-code`'s Fix-verify rounds).
 - Otherwise → `implement-plan` while the plan has unchecked tasks (Ship asks once per plan), else `finish-work`.
 - If neither `review-code` nor `finish-work` is available, attach the evidence block and ask the user whether to ship.

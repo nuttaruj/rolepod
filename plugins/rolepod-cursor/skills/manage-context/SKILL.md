@@ -25,17 +25,13 @@ Inputs: the original request and every correction since (latest wins) · the cur
 
 ~70% of a context meter is the line; act on the observable signal, not the estimate.
 
-Several rows match → run each matching mode once, top-down in table order; a later mode acts on the state an earlier one recovered.
-- After a compaction, Re-anchor runs first — before a fix or any edit; still heavy after it → Context budget's handoff path, not another trim.
-- Quota near → Context budget runs once, on its handoff path only — even when the context is heavy too, never a trim first.
-- Re-anchor and Session hygiene run as one pass: disk state first, then the request, its corrections and the constraints; a file re-read once serves both.
-- Zoom-out, then Escalate: the re-aim serves the same goal, so the failed attempts on it still count — a re-aim never resets them.
+Several rows match → run each once, top-down. Re-anchor precedes edits; quota uses handoff without trimming; re-anchor and hygiene share one reread; zoom-out never resets failed attempts.
 
 Done when: every matching mode is picked, in table order.
 
 ### 2. Context budget
 
-Heavy context → trim with your CLI's compact command (Claude `/compact <focus>`; other CLIs in `references/cli-fallbacks.md`). Still heavy right after a compaction → the handoff path below, never a second compaction in a row.
+Heavy context → compact with the CLI command (Claude `/compact <focus>`; other CLIs: `references/cli-fallbacks.md`). Still heavy → hand off; do not compact twice in a row.
 - `/clear` is not a trim: it starts a fresh session, and runs only after the handoff brief is written, or when no work is left to carry.
 - `/rewind` is not a trim: it undoes recent work, and runs only when that path itself is wrong — never to free context.
 

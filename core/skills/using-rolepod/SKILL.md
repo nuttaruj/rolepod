@@ -15,7 +15,7 @@ At a manual or mid-task invocation, inspect current intent and visible artifacts
 After compaction or skill reload within the same session, reload skill text as needed and reuse the carried mode. A fresh native startup/resume/clear supplies its newly captured profile.
 When invoking a helper or `plan-lint.sh` later without a guaranteed native mode environment, pass `ROLEPOD_SESSION_MODE` and `ROLEPOD_SESSION_SOURCE` from the carried profile. Do not persist a loaded-skill stamp to disk.
 
-Startup refresh boundaries: Claude captures on startup/resume/clear; Codex captures on startup/resume. Cursor captures through `sessionStart.env` and the visible startup profile; Antigravity captures at first pre-invocation/new conversation identity (same-conversation CLI restart behavior is unverified); OpenCode refreshes on plugin/backend restart, not each new chat.
+Startup refresh boundaries: Claude on startup/resume/clear; Codex on startup/resume; Cursor via `sessionStart.env`; Antigravity at conversation identity; OpenCode on plugin/backend restart. Antigravity's same-conversation CLI restart behavior is unverified.
 The user's explicit instruction wins ("skip spec", "answer only", "just write the code", "just commit", "no plan", "ship as-is"): obey, and say which step was skipped.
 
 ### 1. Commission or conversation
@@ -36,12 +36,10 @@ Done when: a conversation is answered in the user's register, or a commission go
 | **R3** multi-file | several source files, vague scope, or sequencing / delegation | an approved spec/change list already enumerates ≤3 ordered tasks and each task's files, verify command, and dependencies; single owner, no parallel work or high-risk path, and no mid-plan compaction → Build → `implement-plan` with the inline checklist. Otherwise use the full spine |
 | **R4** high-risk | a high-risk path (Stop conditions), any size | the full spine; review intensity comes from `workflow.mode` and follows `review-code` (Lite has two universal-reviewer lenses only; Standard and Full follow their own contracts); never downgrade risk; 1 file, ≤5 lines, comment / blank only → R2 |
 
-- Unsure about risk → the higher tier.
-- Unsure about size only → read the affected regions of the named files (and `git status` once work started) and tier from that; an unresolved dependency → higher.
+- Unsure about risk or dependencies → the higher tier. Unsure about size → inspect affected regions and `git status` once work starts.
 - The task grows (a second source file, hidden logic, a risk path) → re-tier up at once, never down: print the new Route line before the next edit or dispatch; a risk path (credits, auth, …) → R4 and its review floor.
 - Tier is per task; the commission's highest tier sets the spine (Define → Plan) only.
 - Verify never fully skips: R1/R2 drop the full suite and browser drive, never the echo or the checklist command.
-- Effort settings (`/effort`, ultracode) raise reasoning, never the tier.
 
 Done when: one tier is chosen from observed scope.
 

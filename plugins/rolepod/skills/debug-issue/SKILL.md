@@ -104,7 +104,7 @@ Done when: the suite is green, the repro passes, and zero `[DBG-]` tags remain.
 
 ### 9. Second opinion
 
-After two failed fixes for the same unresolved repro or criterion, including carried-in attempts → run Second opinion once before another fix. Arriving with 2 already used → steps 1-2 for the repro, then here, before any fix. The count follows the issue across owners and phases.
+After two failed fixes for the same unresolved repro or criterion, including carried-in attempts → run Second opinion once before another fix. Arriving with 2 already used → reproduce (steps 1-2), then consult here before another hypothesis or fix. Carry the count across owners and phases.
 1. Write ONE self-contained ledger file. The advisor is cold and sees only this: the symptom, the repro command, each failed fix and why it failed, the suspect code inline (never a pointer to the session).
 2. Pool on → `cross-family` kind consult with the ledger — a FOREGROUND call. Pool off, wide-effort session, no usable member, or `cross-family` absent → the Lead's own CLI at its strongest model, valid only when that model differs from the one now running. The fallback run → `references/second-opinion.md`.
 3. Read the reply as a **correction** (a new hypothesis), a **confirmation** ("approach right, check X"), or a **stop** ("wrong path"). Retrace the failure and use the advice and new repro evidence for each remaining attempt, up to four failed fixes total.
@@ -114,9 +114,8 @@ Done when: the issue is fixed, or the fourth failed fix / unavailable advisor is
 
 ## Guardrails
 
-- Reproduce before you fix. Never fix what you cannot see fail.
-- Fix where the bad value is born. Never add a defensive `?.` / null-check / try-catch without a known cause; one already added that way comes out, and the trace resumes.
-- Get Second opinion once after two failed fixes. Attempt three and, if needed, four require a fresh trace and the advice; no usable advisor means stop. Four failed fixes for the same issue means stop and ask.
+- Reproduce first and fix at the traced source; a defensive guard without a demonstrated cause is not a fix.
+- The Second opinion and four-failure stop follow step 9; carry that count across owners and phases.
 
 Symptom-vs-root and retry-hack-vs-triaged-flake pairs → `examples/debug-examples.md`.
 
