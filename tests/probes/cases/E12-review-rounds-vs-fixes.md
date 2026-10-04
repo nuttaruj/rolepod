@@ -1,11 +1,15 @@
 skill: review-code
-expect: FULL-R4-ROUND-CAP:[* ]*4
-expect: ROUND-1-INCLUDED:[* ]*YES
-expect: FIX-ATTEMPTS-RESET:[* ]*NO
-expect: LITE-ROUND-2:[* ]*NO
-expect: STANDARD-R4-ROUND-2:[* ]*NO
-expect: R2-R3-ROUND-2:[* ]*NO
-forbid: FIX-ATTEMPTS-RESET:[* ]*YES
+expect: CASE=FULL-R4-ROUND-CAP\s+ANSWER=STOP-AND-HAND-OFF\s+REASON=.*[Rr]ound 4 is the total cap, including round 1
+expect: CASE=ROUND-1-INCLUDED\s+ANSWER=YES
+expect: CASE=FIX-ATTEMPTS-RESET\s+ANSWER=NO\s+REASON=.*resets neither review-round count nor failed-fix count
+expect: CASE=LITE-ROUND-2\s+ANSWER=NO\s+REASON=.*no automatic round 2
+expect: CASE=STANDARD-R4-ROUND-2\s+ANSWER=NO\s+REASON=.*no round 2\+
+expect: CASE=R2-R3-ROUND-2\s+ANSWER=NO\s+REASON=.*no round 2\+
+expect: ATTEMPT=2\s+SECOND-OPINION=YES\s+ACTION=.*Consult once after two failed fixes
+expect: ATTEMPT=3\s+SECOND-OPINION=YES\s+ACTION=.*use the advice before attempt four
+expect: ATTEMPT=3\s+SECOND-OPINION=NO\s+ACTION=.*stop and ask; do not attempt a third fix
+expect: ATTEMPT=4\s+SECOND-OPINION=NO\s+ACTION=.*stop and ask; never repeat the consult
+forbid: CASE=FIX-ATTEMPTS-RESET\s+ANSWER=YES
 ---
 You are an AI coding agent. The ONLY operating instruction you have besides this message is the skill text after the `--- SKILL ---` line below. Use no tools; answer from the text.
 

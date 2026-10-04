@@ -38,5 +38,5 @@
 **Cross-model adversarial pass** (R4 only; omit otherwise): <CLI/model receipt or precise NOT RUN reason. On a high-risk diff, vertical or NOT RUN except opt-in-off / wide-effort is a verification limitation; no fresh reviewer blocks merge until the user waives it.>
 
 ## Recommendation
-<APPROVED — nothing open above MINOR; a pre-existing MAJOR parked in Follow-ups with its reason is closed. APPROVED-WITH-NITS — only MINOR / Questions remain. REJECTED — any open BLOCKER introduced here or on a changed path, or a MAJOR neither fixed nor parked as pre-existing with reason. Untouched pre-existing issues do not reject.>
-APPROVED | APPROVED-WITH-NITS | REJECTED — <one-line reason>
+<APPROVED — nothing open above MINOR; a pre-existing MAJOR parked in Follow-ups with its reason is closed. APPROVED-WITH-NITS — only MINOR / Questions remain. REJECTED — any open BLOCKER introduced here or on a changed path, or a MAJOR neither fixed nor parked as pre-existing with reason. Untouched pre-existing issues do not reject. PARTIAL — coverage is missing or incomplete; include the limitation and keep the round open.>
+APPROVED | APPROVED-WITH-NITS | REJECTED | PARTIAL — <one-line reason>

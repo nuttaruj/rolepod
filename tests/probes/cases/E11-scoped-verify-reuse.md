@@ -1,9 +1,9 @@
 skill: check-work
-expect: CASE=VALID\s+ACTION=CITE
-expect: CASE=UNTRACKED-CHANGED\s+ACTION=RERUN
-expect: CASE=ZERO-TEST\s+STATUS=UNVERIFIED
-expect: CASE=PHASE-CHANGE\s+ACTION=NO-NEW-CHECK
-expect: CASE=REQUIRED-GATE\s+ACTION=RUN
+expect: CASE=VALID\s+ACTION=(CITE|NO-NEW-CHECK)\s+STATUS=VERIFIED\s+REASON=.*Scoped passing proof and receipt remain valid
+expect: CASE=UNTRACKED-CHANGED\s+ACTION=RERUN\s+STATUS=UNVERIFIED
+expect: CASE=ZERO-TEST\s+ACTION=RUN\s+STATUS=UNVERIFIED
+expect: CASE=PHASE-CHANGE\s+ACTION=NO-NEW-CHECK\s+STATUS=VERIFIED
+expect: CASE=REQUIRED-GATE\s+ACTION=RUN\s+STATUS=UNVERIFIED
 forbid: CASE=VALID\s+ACTION=FULL-SUITE
 ---
 You are an AI coding agent. The ONLY operating instruction you have besides this message is the skill text after the `--- SKILL ---` line below. Use no tools; answer from the text.
