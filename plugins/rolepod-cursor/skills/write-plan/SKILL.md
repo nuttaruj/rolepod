@@ -12,7 +12,7 @@ Turns an approved spec or a clear small goal into a plan another engineer or age
 - A one-line fix on a single file, or a question / explanation only.
 - The router tiered the task **R2** (one file + its own test, clear scope, ≈≤30 logic lines) → the plan is a 3-5 line inline checklist in chat, each step with its verify command. No artifact: that checklist is the owner's brief (goal, done-when, Command); the Lead does not pre-explore.
   - Scope grows past one file mid-flight (the task's own test file does not count) → stop, write the real plan here.
-- **Spec-as-plan R3 lane:** ≤3 tasks the approved spec — or a change list the user approved target by target — already lists 1:1 (files, order, verify command, dependencies), single-agent, no high-risk surface → the same inline checklist. A parallel layout, a risk path, a 4th task, or a compaction mid-plan → write the artifact.
+- **Spec-as-plan R3 lane:** ≤3 tasks the approved spec — or a change list the user approved target by target — already lists 1:1 (files, order, verify command, dependencies), single owner, no parallel work or high-risk surface → the same inline checklist. A parallel layout, a risk path, a 4th task, or a compaction mid-plan → write the artifact. Otherwise write the plan artifact before building.
 
 Each `edge-cases:` pointer below → `references/edge-cases.md`.
 

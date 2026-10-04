@@ -31,8 +31,8 @@ Done when: a conversation is answered in the user's register, or a commission go
 |---|---|---|
 | **R0** answer only | question, lookup, conversation — no file change | answer; verify facts, reason freely on opinions |
 | **R1** trivial edit | a docs-only diff, any size — or ≤5 lines in 1 file with zero logic lines (comment, blank, user-facing text in a string; never a URL, path, key, regex, query or a value code branches on), not high-risk, ≤3 tool calls | direct edit; the edit echo is the verify; no review |
-| **R2** one file + test | 1 source file + its test, clear scope, logic, ≈≤30 lines, not high-risk | its step 3 skill still fires (bug → `debug-issue`, else `implement-plan`); a 3-5 line chat checklist (goal, done-when, verify command) replaces spec + plan; a task owner builds it on main (failing test first, verify, the commit check, the two review lenses); the Lead never pre-explores, then commits |
-| **R3** multi-file | several files, vague scope, or sequencing / delegation | the full spine |
+| **R2** one file + test | 1 source file + its own test, clear scope, logic, ≈≤30 lines, not high-risk | its step 3 skill still fires (bug → `debug-issue`, else `implement-plan`); a 3-5 line chat checklist (goal, done-when, verify command) replaces spec + plan; the test does not count toward the one-source-file limit; a task owner builds it on main (failing test first, verify, the commit check, the two review lenses); the Lead never pre-explores, then commits |
+| **R3** multi-file | several source files, vague scope, or sequencing / delegation | an approved spec/change list already enumerates ≤3 ordered tasks and each task's files, verify command, and dependencies; single owner, no parallel work or high-risk path, and no mid-plan compaction → Build → `implement-plan` with the inline checklist. Otherwise use the full spine |
 | **R4** high-risk | a high-risk path (Stop conditions), any size | the full spine; review intensity comes from `workflow.mode` and follows `review-code` (Lite has two universal-reviewer lenses only; Standard and Full follow their own contracts); never downgrade risk; 1 file, ≤5 lines, comment / blank only → R2 |
 
 - Unsure about risk → the higher tier.
@@ -67,8 +67,8 @@ The FIRST matching row fires:
 | fix bug / failing test / regression | Build → `debug-issue` first at every tier; after root cause, use `write-spec` only if desired behavior/design is unresolved before edits, and `write-plan` only if sequencing or ownership needs a plan |
 | why does X fail / what causes this, no fix asked | Build → `debug-issue` report-only: answer from cause and evidence, read-only; save an artifact only when the user requested one |
 | build / add / design with a vague target (UI, product, doc, ADR included) | Define → `write-spec` |
-| build X to a spec whose Success criteria cover it | Plan → `write-plan` |
-| add / change Y at R3+ where the spec does not cover Y, or no spec exists | Define → `write-spec` (a new dated delta spec); R2-sized → `implement-plan` with the step 2 checklist |
+| build X to a spec whose Success criteria cover it | complete spec-as-plan R3 eligibility → Build → `implement-plan` with the inline checklist; otherwise Plan → `write-plan` |
+| add / change Y at R3+ where the spec does not cover Y, or no spec exists | Define → `write-spec` (a new dated delta spec); eligible R2 → `implement-plan` with the step 2 checklist; other R3 → `write-plan` |
 | execute an approved plan / use agents in parallel | Build → `implement-plan` |
 | architecture (DB schema, API contract, module split) | Define → `write-spec` (Approaches: ONE `system-architect`) |
 | where to deepen / refactor for testability, whole repo | tell the user to type /deepen-codebase ($deepen-codebase on Codex) |
@@ -103,8 +103,9 @@ Next step: <concrete action>
 ```
 
 - R0 / R1 — no line.
-- R2 — `Route: R2 (one file + test) → <skill> · Owner <path role> · <reason>`, then the checklist as the owner's brief.
-- R3 / R4 or a surprising route — the full block; `Next step:` names the owner (or `write-spec` / `write-plan`, which assign owners).
+- R2 — `Route: R2 (one source file + its own test) → <skill> · Owner <path role> · <reason>`, then the checklist as the owner's brief.
+- Eligible spec-as-plan R3 — `Route: R3 (spec-as-plan; ≤3 approved ordered tasks, complete files/commands/dependencies, single owner, no parallel or high-risk work, no mid-plan compaction) → Build → implement-plan`; give the inline checklist as the owner's brief. Any missing condition, including compaction mid-plan, routes to the plan artifact; R4 always does.
+- Other R3 / R4 or a surprising route — the full block; `Next step:` names the owner (or `write-spec` / `write-plan`, which assign owners).
 - Each tier carries its gloss: R0 answer only · R1 trivial edit · R2 one file + test · R3 multi-file · R4 high-risk.
 
 Done when: the route is stated (R2 and up), the named skill is loaded, and the owner it names is dispatched (no sub-agents → the Lead runs the skill).

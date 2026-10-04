@@ -31,6 +31,16 @@ Next step: write the checklist (goal, done-when, verify command); a task owner b
 
 ---
 
+## 2a. Approved spec with a complete three-task sequence → Build / implement-plan
+
+User: "Implement the approved spec."
+
+Route: R3 spec-as-plan (3 ordered tasks; every task names files, verify command and dependencies; one owner; no parallel work or high-risk path) → implement-plan
+Skipping: Define + Plan — the approved spec already supplies the checklist's task boundaries and commands.
+Next step: use the spec's ordered tasks as the owner's inline checklist; no plan artifact. A fourth task, missing detail, parallel work, high-risk path, changed acceptance or compaction routes to the plan artifact.
+
+---
+
 ## 3. Bug / failing test → Build / debug-issue
 
 User: "the checkout test was green yesterday, it's red now"
