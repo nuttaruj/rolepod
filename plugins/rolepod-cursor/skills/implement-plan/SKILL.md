@@ -72,7 +72,7 @@ Q3: A real design-judgment call?     Q4: More than 3 tool calls total?
 All "no" → self-do. Any "yes" → delegate to the closest specialist by path / concern / strategy.
 
 The brief comes from the plan, generated when plan-lint exists: `plan-lint.sh --brief <N> <plan> [contract]` prints it; add `--main` for a task that runs on the main checkout (a sequential track), so the brief names no worktree. No plan-lint → the brief is the task block verbatim, plus the spec path and the Bounds: never commit, stay in scope, run the Command, return a decision brief.
-- The Lead adds only **Read first** (the 2-3 files and the pattern to copy) and facts the brief lacks. Never extra steps, runs or scope — a whole-suite run (the Lead's, once, at release) and a reviewer round 2 included. The generated brief is appended to, never rewritten: put your own points (one for a reviewer to probe, a decision made since the plan) after the generated sections, as the task needs; Tier, Reviewers and Command stay as generated.
+- The Lead adds only **Read first** (the 2-3 files and the pattern to copy) and facts the brief lacks. Never extra steps, runs or scope — a whole-suite run (the Lead's, once, at release) included. The generated brief is appended to, never rewritten: put your own points (one for a reviewer to probe, a decision made since the plan) after the generated sections, as the task needs; Tier, Reviewers and Command stay as generated.
 - A wide-effort session (the `cross-family` skill's rule) → every owner brief carries `External: off — wide-effort session`: the owner cannot see the Lead's mode, and its cross-family kinds take their pool-off path.
 - Never point the owner at the plan file; the brief is its slice.
 
@@ -116,7 +116,7 @@ Done when: every ready track is dispatched and each returned track is integrated
 ### 6. Build and review per track
 
 C2:
-> Track end: a track with two or more code tasks → one fresh owner (the role owning most of the track's code) runs the two lenses in ONE message on the track diff and fixes each BLOCKER / MAJOR with its proof, no round 2; the Lead commits the fixes in the track worktree, then `ticket.sh finish <worktree>` merges the track. A track with one code task → its task owner runs the two lenses before returning, the same way, and the track takes no track-end review.
+> Track end: a track with two or more code tasks → one fresh owner (the role owning most of the track's code) runs the two lenses in ONE message on the track diff and fixes each BLOCKER / MAJOR with its proof (`review-code` Fix-verify); the Lead commits the fixes in the track worktree, then `ticket.sh finish <worktree>` merges the track. A track with one code task → its task owner runs the two lenses before returning, the same way, and the track takes no track-end review.
 
 C3:
 > A task Blocked by tasks in two or more tracks starts after those tracks merge, as the first task of a new track from the base.
@@ -128,7 +128,7 @@ A task owner's decision brief carries verdict, Command tail, evidence pointers, 
 The absolute base receipt path named by the brief is the canonical task record. Keep owner status (`COMPLETED | PARTIAL | BLOCKED`) distinct from Verify status (`VERIFIED | PARTIAL | UNVERIFIED`); neither status implies the other. Chat returns status and pointers only. Proof complete on base needs no export. Before worktree cleanup, preserve only required local-only proof that would otherwise disappear, at its named private path.
 Preserve an older worktree receipt to the named base path first. A differing destination is a collision: stop cleanup and report it. Do not create another report or handoff.
 
-When there is no receipt helper, the Lead names the same absolute base path in the brief. Without a file-writing tool, return the complete receipt inline and name the limitation. Keep raw logs and reviewer findings in their canonical artifacts; finding closure belongs in the receipt's Author fix closure section with report pointers, not a merged report. Verify-only still returns its evidence block and stops. Duplicate `COMPLETED` never overrides a failed check.
+When there is no receipt helper, the Lead names the same absolute base path in the brief. Without a file-writing tool, return the complete receipt inline and name the limitation. Keep raw logs and reviewer findings in their canonical artifacts; finding closure (`review-code` Fix-verify) belongs in the receipt's Author fix closure section with report pointers, not a merged report. Verify-only still returns its evidence block and stops. Duplicate `COMPLETED` never overrides a failed check.
 - A required report missing, failed, empty or partial keeps that same review round open: its isolated reviewer completes its own report on the frozen diff before aggregation or ship. Never substitute a Lead review when agents are available. With no agents, the Lead records both axes and the independence limitation. R2/R3 tasks in a multi-code-task track are covered at track end.
 - Never accept a diff without required review reports; stop before further commits.
 
@@ -138,7 +138,7 @@ The Lead never runs a review loop itself; it talks to owners. A docs-only track,
 - The track-end review reviews the R2/R3 tasks' deltas and any unreviewed Verify fixes; an R4 task's commits are context, covered by their reports (listed in the Scope with their paths), never re-tiered. A Verify fix on a high-risk path gets the workflow-mode R4 set on that fix alone before its commit (Lite follows its two-lens rule; Standard and Full follow their R4 rules); with no track-end review (docs-only, one code task), a Verify fix nobody reviewed → its owner runs the workflow-mode review set on that fix alone.
 - A plan that names a ship group within a track → after all its tasks, one drift pass over the group's range, a normal review of the cross-task seams (never adversarial): `security-engineer` when it holds an R4 task, else the track-end review owner's pass is the drift pass (split by size → a fresh owner's seams-only pass). Ship groups across tracks: drift pass after all tracks of the group merge.
 - Findings → ONE fix task to the owning role (`review-code` Fix-verify rounds).
-- Review mechanics live in `review-code`: R2/R3 and Lite have no automatic round 2+; authors close verified findings with finding-specific proof and exact H1→H2 delta. Standard R4 also has no round 2+. Full R4 re-checks code fixes for security / adversarial findings on a balanced model, with at most four rounds total (round 4 uses a fresh, stronger fixer); unresolved findings stop for the user. Review rounds never change the separate four-failed-fix limit or the one Second opinion after two failures (`debug-issue`).
+- Review mechanics (round 1, the Fix-verify re-check, closure at the receipt) live in `review-code`. Review rounds never change the separate four-failed-fix limit or the one Second opinion after two failures (`debug-issue`).
 - Nothing pushes or releases before it.
 
 R4 tasks keep per-task review: the owner dispatches its reviewers before returning. Who reviews at each tier → `review-code` Pick reviewers.

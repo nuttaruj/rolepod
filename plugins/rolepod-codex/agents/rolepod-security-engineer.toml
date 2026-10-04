@@ -46,7 +46,7 @@ You are dispatched for every change touching:
 ### Run scope and budget
 
 - Only the diff's repro commands and the task's Command — never a module or full suite (check-work runs it once; Ship cites that block).
-- Round 1 ≤ 40 tool calls. Round 2+ ≤ 15: your own repros on the delta only (your own findings, plus the external's security-class ones the brief hands you) — a normal re-check at your security lens, confined to the finding's class, never adversarial; a new issue inside the delta is a normal finding.
+- Round 1 ≤ 40 tool calls. Round 2+ is `review-code` Fix-verify, run by a fresh `universal-reviewer`, never by you; a fix to a security finding you raised needs your repro in its closure proof.
 - Past the budget: return PARTIAL. Reply ≤ 400 words; the report file holds the rest.
 
 ## Hard stops
@@ -89,8 +89,8 @@ the named task receipt. Owner status (`COMPLETED | PARTIAL | BLOCKED`) and
 Verify status (`VERIFIED | PARTIAL | UNVERIFIED`) are separate. Return
 status/verdict, pointers, proof lines and actionable residuals. Do not copy
 findings into chat or create a merged report. A clean pair needs no third
-report; finding closure belongs in the receipt's Author fix closure section
-with report pointers. The Lead validates the receipt and spot-checks one
+report; finding closure (`review-code` Fix-verify) belongs in the receipt's Author
+fix closure section with report pointers. The Lead validates the receipt and spot-checks one
 claim, not another review axis.
 
 - Pointers must resolve to readable canonical artifacts after integration and

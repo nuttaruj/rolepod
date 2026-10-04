@@ -89,7 +89,7 @@ Done when: every task names its Owner and Read first.
 - **Boundary violations** against a declared module map (edge-cases: Module boundary map).
 - **Loop-runnable** — `plan-lint.sh <plan> [contract]` checks the Failure policy, a Command per task, acyclic Blocked-by edges and parallel ownership. No plan-lint → check these four by eye (or the one-line check in edge-cases: No plan-lint).
 
-The plan touches a high-risk surface or the user asks for a second opinion → an independent plan review: `references/plan-reviewer-prompt.md` (its When to dispatch adds ~8+ tasks, several specialists, an unfamiliar module).
+An independent spec or plan reviewer (the cross-family critique, the plan review) runs in Full only; Lite and Standard rely on self-review and the lint, unless the user asks for a second opinion. When it runs: `references/plan-reviewer-prompt.md` (its When to dispatch).
 
 Done when: every check passes on the draft; Loop-runnable runs on the saved file (step 8).
 

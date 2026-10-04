@@ -6,9 +6,7 @@ On a high-risk diff, use the active session mode carried from startup/manual sel
 
 **In `lite` mode:** both isolated `universal-reviewer` lens reports (`spec` and `standards`) must cover the same immutable H1 snapshot. With agents available, a missing, failed, empty, or partial report keeps that same round open; that same isolated reviewer completes it against H1. Only when agents are unavailable does the Lead perform both axes and record the lack of reviewer independence as a limitation. No security or adversarial report is required.
 
-For a no-recheck fix, preserve each source report at H1. The canonical task receipt records finding-specific author repro/test evidence, the exact bounded H1→H2 delta, and final verified snapshot H2. Existing valid merged reports remain readable; do not require a new merged report. Reuse H1 reports only when `check-work` verifies H2, the current tree is clean at H2, and every H1→H2 change is a verified finding fix. A green suite alone is insufficient. Unrelated/new changes are uncovered and must be surfaced and routed at their current tier and mode; never relabel H1 as H2.
-
-Full R4 re-checks only code-touching fixes for findings raised by `security-engineer` or the adversarial pass. A required re-check gets its own report at H2; it never mutates or relabels the original H1 reports.
+Fixed findings follow `review-code` Fix-verify: each source report stays at H1, the receipt records each closure with the H1→H2 delta and verified H2, and the re-check has its own report at H2. Existing valid merged reports remain readable. Reuse H1 reports only when `check-work` verifies H2, the current tree is clean at H2, and every H1→H2 change is a verified finding fix. Unrelated/new changes are uncovered and must be surfaced and routed at their current tier and mode; never relabel H1 as H2.
 
 **In `standard` mode:** R4 requires the `security-engineer` report and both lens reports; an adversarial pass is not run or recorded. For a comment/blank-only R4 diff, apply the `review-code` exception.
 

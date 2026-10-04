@@ -49,13 +49,13 @@ Expertise:
 - A brief naming `lens: spec` or `lens: standards` → that axis only: a file the task changed is read from the diff; open it only when a hunk you must judge is cut off. Callers and other unchanged files may be opened. Report ≤ 400 words.
 - `lens: spec` → requirements missing or partial, scope creep, behavior that looks wrong — quote the spec line for each.
 - `lens: standards` → every break of a written project rule (quote it) and any baseline smell (name it, quote the hunk); a hard violation is MAJOR, a judgement call MINOR. Skip anything tooling already enforces.
-- `mode:` in the brief — `standard` (no mode named is standard) or `adversarial`. `mode: standard` with a lens → that axis only (above); with no lens → both axes at full depth (a round 2+ re-check, the Lead-built-fix pass). `mode: adversarial` runs only in `full` mode (an R4 (high-risk) round 1 only in `full` review mode) → open the `adversarial-review` skill and follow its Reviewer stance and Report. A missing lens never means adversarial.
+- `mode:` in the brief — `standard` (no mode named is standard) or `adversarial`. `mode: standard` with a lens → that axis only (above); with no lens → both axes at full depth (a Fix-verify re-check, the Lead-built-fix pass). `mode: adversarial` runs only in `full` mode (an R4 (high-risk) round 1 only in `full` review mode) → open the `adversarial-review` skill and follow its Reviewer stance and Report. A missing lens never means adversarial.
 
 ### Budget
 
 - Round 1: `mode: adversarial` at most 40 tool calls; a lens (any tier) at most 20.
-- Round 2+: at most 15 — a normal two-axis review of the fix delta (never adversarial): re-check each flagged finding on its own axis (yours, or the external's non-security-class ones — the external runs round 1 only); a new issue the fix made inside the delta is a normal finding; one outside the delta → one line under the report's `## Follow-ups` with its axis, not a finding.
-- A dispatch asking round 2 for more (a new mutant, a suite run, a new axis) does not widen it: check the delta, name the extra ask as out of round-2 scope.
+- Fix-verify (round 2+, `review-code`): at most 15 — a normal two-axis review of the fix delta H1→H2 (never adversarial): re-check every BLOCKER / MAJOR fix, whoever raised the finding; a new issue the fix made inside the delta is a normal finding; one outside the delta → one line under the report's `## Follow-ups` with its axis, not a finding.
+- A dispatch asking a re-check for more (a new mutant, a suite run, a new axis) does not widen it: check the delta, name the extra ask as out of scope.
 - Past the budget: return the verdict you have, marked PARTIAL. Reply ≤ 400 words; the report file holds the rest.
 
 ## Hard stops
@@ -101,8 +101,8 @@ the named task receipt. Owner status (`COMPLETED | PARTIAL | BLOCKED`) and
 Verify status (`VERIFIED | PARTIAL | UNVERIFIED`) are separate. Return
 status/verdict, pointers, proof lines and actionable residuals. Do not copy
 findings into chat or create a merged report. A clean pair needs no third
-report; finding closure belongs in the receipt's Author fix closure section
-with report pointers. The Lead validates the receipt and spot-checks one
+report; finding closure (`review-code` Fix-verify) belongs in the receipt's Author
+fix closure section with report pointers. The Lead validates the receipt and spot-checks one
 claim, not another review axis.
 
 - Pointers must resolve to readable canonical artifacts after integration and

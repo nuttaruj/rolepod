@@ -14,7 +14,7 @@ An external review routes to a **different CLI** than the Lead's, never to the L
 - **Money / auth** — billing · payments · credits · auth · crypto · secrets · data deletion: use the active mode's R4 set from `review-code`; require the adversarial pass only in Full (and keep the comment/blank-only exception).
 ## Round 2+
 
-The external runs round 1 only; round 2+ — only a finding raised by the external whose fix touches code is re-checked internally on a balanced model (an external's finding → `security-engineer` for security-class, else `universal-reviewer`; `review-code` Fix-verify rounds).
+The external runs round 1 only; round 2+ is the internal re-check in `review-code` Fix-verify.
 
 ## Fallback follows the active review contract
 

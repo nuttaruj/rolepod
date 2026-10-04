@@ -32,9 +32,6 @@
 ## Tests reviewed
 <Omit when none. State yes/no and whether assertions, mock boundary, and relevant concurrency coverage are strong.>
 
-## Author fix closure
-<No-recheck branches only; omit when there are no findings. Preserve this source report at H1. Record finding-specific author repro/test evidence here; the canonical task receipt records the bounded H1→H2 delta (paths + delta hash), final verified H2, and closure proof. A green suite alone does not close a finding.>
-
 **Cross-model adversarial pass** (Full R4 only; omit for Lite, Standard, comment/blank-only R4, and non-R4): <external CLI/model receipt or `internal strong pass — <reason>`. A NOT RUN reason without a completed pass does not satisfy Full R4; record the limitation and keep the round open.>
 
 ## Recommendation

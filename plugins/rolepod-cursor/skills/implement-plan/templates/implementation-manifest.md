@@ -29,6 +29,9 @@
 ### Author fix closure
 <For each finding fixed, give report pointer, finding id/location, fix, and
 proof pointer. Leave findings and full review rationale in the reviewer report.>
+- Delta H1→H2: <changed paths + delta hash>
+- H2: <verified snapshot after the fixes>
+- Re-check: <report path of the Fix-verify re-check at H2, or `none — no BLOCKER / MAJOR fixed`>
 
 ### Owner status
 COMPLETED | PARTIAL | BLOCKED

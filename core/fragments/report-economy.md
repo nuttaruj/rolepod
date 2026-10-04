@@ -7,8 +7,8 @@ the named task receipt. Owner status (`COMPLETED | PARTIAL | BLOCKED`) and
 Verify status (`VERIFIED | PARTIAL | UNVERIFIED`) are separate. Return
 status/verdict, pointers, proof lines and actionable residuals. Do not copy
 findings into chat or create a merged report. A clean pair needs no third
-report; finding closure belongs in the receipt's Author fix closure section
-with report pointers. The Lead validates the receipt and spot-checks one
+report; finding closure (`review-code` Fix-verify) belongs in the receipt's Author
+fix closure section with report pointers. The Lead validates the receipt and spot-checks one
 claim, not another review axis.
 
 - Pointers must resolve to readable canonical artifacts after integration and

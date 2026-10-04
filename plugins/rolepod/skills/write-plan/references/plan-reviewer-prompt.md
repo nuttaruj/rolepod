@@ -6,6 +6,8 @@
 
 ## When to dispatch
 
+An independent spec or plan reviewer (the cross-family critique, the plan review) runs in Full only; Lite and Standard rely on self-review and the lint, unless the user asks for a second opinion.
+
 - Plan touches a high-risk surface (auth / billing / payments / credits / migration / data deletion / secrets / tokens / crypto / permissions / security)
 - Plan has more than ~8 tasks or spans multiple specialists
 - Plan was drafted by Lead in an unfamiliar module
