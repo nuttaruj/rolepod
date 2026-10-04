@@ -57,6 +57,32 @@ If a CLI does not deliver its primary bootstrap, invoke the native
 `using-rolepod` skill manually or read its installed `SKILL.md`. After context
 loss, reload the visible skill instructions before continuing.
 
+### Standalone workflow continuation
+
+Each phase skill carries its own route, working steps, and fallback. A CLI can
+continue from the installed standalone skill without first loading every
+workflow skill or requiring hooks. On resume, inspect the checkout and recent
+commits, then read the next task and only the required predecessor handoff,
+contract, or unresolved debug state. An explicit handoff path stays
+authoritative; a missing handoff or one from another checkout stops the resume
+until the correct artifact or checkout is identified.
+
+An approved plan task brief carries its exact files, inputs, Command, and
+failure policy. Run that Command as written. Verification records its command,
+proof, execution checkout or snapshot, and result in the task's canonical
+receipt; owner status and Verify status remain separate. Reuse evidence only
+when the relevant inputs, environment, scope, and provenance still match.
+
+Review and Ship use the active session mode captured at startup or first manual
+entry. Lite R4 uses two isolated lenses; Standard adds the security review;
+Full adds the adversarial pass. The comment/blank-only R4 exception uses one
+security review. Required reports and finding closure are checked against the
+current tree. A routine merge on the existing pipeline does not
+need a launch checklist; a genuine launch does, with only applicable
+infrastructure fields and a reason for each omission. See the standalone
+`review-code`, `finish-work`, `check-work`, and `manage-context` skills for the
+current procedures.
+
 | CLI | Plugin / extension destination | Always-on core destination |
 |---|---|---|
 | Claude Code | repo IS the marketplace — `.claude-plugin/marketplace.json` + committed `plugins/rolepod/` (agents/, hooks/, skills/, .claude-plugin/) at the repo root; `claude plugin marketplace add nuttaruj/rolepod` installs straight from GitHub | SessionStart hook emits `hooks/always-on-core.md` (no CLAUDE.md) |

@@ -960,12 +960,13 @@ if (planwt == 1) tpath = substr(tbranch, 1, length(tbranch) - 5)
       bm = blockedrefs(B)
       while (match(bm, /[0-9]+/)) {
         br = substr(bm, RSTART, RLENGTH) + 0; bm = substr(bm, RSTART + RLENGTH)
-        if (!(br in bseen)) { bseen[br] = 1; printf "docs/rolepod/tasks/%s/task-%02d.md\n", tbase, br }
+        if (!(br in bseen)) { bseen[br] = 1; printf "%s/docs/rolepod/tasks/%s/task-%02d.md\n", baseroot, tbase, br }
       }
     }
     print "## Files allowed"
     if (acnt == 0) print "(not in plan)"
     else for (i = 1; i <= acnt; i++) print "- " allowedord[i]
+    printf "- Canonical task receipt %s/docs/rolepod/tasks/%s/task-%02d.md (base checkout only)\n", baseroot, tbase, want + 0
     print "## Files forbidden"
     for (i = 1; i <= tn; i++) { p = touchorder[i]; if (!(p in allowedset)) print "- " p }
     # Guarded against Files allowed the same way the touch-list loop above
@@ -1075,10 +1076,10 @@ if (planwt == 1) tpath = substr(tbranch, 1, length(tbranch) - 5)
     }
     print "## Bounds"
     if (onmain) print "- Edit only Files allowed, in the main checkout; no backup copies (.bak / .orig). Never commit or push; leave the tree staged. Never `git stash`. One exception: a file the task needs that is in no Files list (not forbidden) - edit it and add an Also touched: line."
-    else if (tbranch != "") printf "- Edit only Files allowed, and only under ../%s-wt-%s — the same path in the main checkout belongs to the Lead; no backup copies (.bak / .orig). Never commit or push; leave the tree staged. Never `git stash`. One exception: a file the task needs that is in no Files list (not forbidden) - edit it and add an Also touched: line.\n", repo, tpath
-    else printf "- Edit only Files allowed, and only under ../%s-wt-%s-t%s-%s — the same path in the main checkout belongs to the Lead; no backup copies (.bak / .orig). Never commit or push; leave the tree staged. Never `git stash`. One exception: a file the task needs that is in no Files list (not forbidden) - edit it and add an Also touched: line.\n", repo, feat, want, tslug
+    else if (tbranch != "") printf "- Edit only Files allowed under ../%s-wt-%s, except update the canonical receipt at %s/docs/rolepod/tasks/%s/task-%02d.md in the base checkout; no other base-checkout path is allowed. No backup copies (.bak / .orig). Never commit or push; leave the tree staged. Never `git stash`. One exception: a file the task needs that is in no Files list (not forbidden) - edit it under the worktree and add an Also touched: line.\n", repo, tpath, baseroot, tbase, want + 0
+    else printf "- Edit only Files allowed under ../%s-wt-%s-t%s-%s, except update the canonical receipt at %s/docs/rolepod/tasks/%s/task-%02d.md in the base checkout; no other base-checkout path is allowed. No backup copies (.bak / .orig). Never commit or push; leave the tree staged. Never `git stash`. One exception: a file the task needs that is in no Files list (not forbidden) - edit it under the worktree and add an Also touched: line.\n", repo, feat, want, tslug, baseroot, tbase, want + 0
     print "- Return with passing scoped Command evidence; run the repo commit check once. Foreground only; Bash timeout 600000; never run_in_background. Reviewers named above → dispatch in ONE message, no name, fork or remote isolation (child reports to Lead); wait for every report before returning (WAITING: <report paths> if yielding); unable to wait → REVIEW NEEDED with .rolepod/evidence/review/<task>-<role>.md or <task>-<lens>.md; fix findings per Reviewers above."
-    printf "- Write your decision brief to docs/rolepod/tasks/%s/task-%02d.md; its Handoff section is at most ~15 lines, only what a Blocked-by task consumes (signatures, invariants). Never edit the plan file.\n", tbase, want + 0
+    printf "- Write your decision brief to %s/docs/rolepod/tasks/%s/task-%02d.md on the base checkout; its Handoff section is at most ~15 lines, only what a Blocked-by task consumes (signatures, invariants). Never edit the plan file.\n", baseroot, tbase, want + 0
     print "- Budget: build <= 40 tool calls, whole loop <= 120; past it return PARTIAL with what is done, never grind."
     print "- Return a decision brief: verdict, `git diff --cached --stat | tail -3`, Command last 3 lines verbatim, reviewer verdicts + report paths, `Assuming:` lines, residuals."
     if (ENVIRON["ROLEPOD_BRIEF_FAILURE_POLICY"] != "") { print "## Failure policy"; print ENVIRON["ROLEPOD_BRIEF_FAILURE_POLICY"] }
