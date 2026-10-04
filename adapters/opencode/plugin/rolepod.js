@@ -477,7 +477,7 @@ function shipOperation(cmd) {
 function makeCore({ directory, homedir } = {}) {
   const dir = directory || process.cwd()
   const hd = homedir || os.homedir()
-  let configuredMode = "standard"
+  let configuredMode = "lite"
   {
     const reader = path.join(SHARED, "rolepod_config.py")
     if (fs.existsSync(reader)) try {
@@ -488,7 +488,7 @@ function makeCore({ directory, homedir } = {}) {
       })
       const mode = result.stdout?.split(/\r?\n/).find((line) => line.startsWith("mode="))?.slice(5)
       if (["lite", "standard", "full"].includes(mode)) configuredMode = mode
-    } catch { /* uncaptured startup profile defaults to Standard */ }
+    } catch { /* uncaptured startup profile defaults to Lite */ }
   }
   const workflowMode = () => configuredMode
 

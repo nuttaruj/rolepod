@@ -36,16 +36,20 @@ ignored. Lite skips Rolepod workflow gates and nudges, Standard warns and
 allows, and Full enforces the existing conditions. Native permissions and
 independent read-only role capabilities remain platform-owned.
 Each session captures its effective mode at startup and keeps it until a new
-session or CLI restart. A missing or unsafe session identity falls back to
-Standard/uncaptured instead of rereading config on each tool event.
+session or CLI restart. Missing configuration selects Lite. Malformed config
+falls back to Standard with a warning. A session profile that cannot be stored
+safely falls back to Lite/uncaptured instead of rereading config on each
+tool event.
 
 Each CLI has one primary always-on channel: Claude SessionStart, Codex native
 AGENTS, Cursor native `alwaysApply` rule, and native AGENTS for Antigravity and
 OpenCode. Cursor self-disables the separately imported Claude hooks. When a
 full global managed block already exists, project installs add a compact
 pointer instead of repeating the full core. Normal initialization creates
-config only when absent; explicit `--force` reinstall replaces the profile
-with `workflow.mode=standard` and preserves the global `pool`. Context recovery
+config only when absent, with `workflow.mode=lite`; an existing explicit
+Standard or Full value remains. Explicit `--force` reinstall resets the profile
+to Lite and preserves the global `pool`. Native plugin reinstall leaves an
+existing config untouched. Context recovery
 uses visible skill text and reloads it after compaction; no permanent
 "skill loaded" marker is written.
 

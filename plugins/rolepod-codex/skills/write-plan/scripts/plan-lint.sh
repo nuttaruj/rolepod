@@ -1144,9 +1144,9 @@ EOF
   fi
   # Plan briefs use the active session profile passed by the caller. Config
   # inspection is separate; a later plan lint must not hot-switch the session.
-  BRIEF_WMODE="${ROLEPOD_SESSION_MODE:-standard}"
+  BRIEF_WMODE="${ROLEPOD_SESSION_MODE:-lite}"
   BRIEF_WSRC="${ROLEPOD_SESSION_SOURCE:-uncaptured}"
-  case "$BRIEF_WMODE" in lite|standard|full) ;; *) BRIEF_WMODE=standard; BRIEF_WSRC=uncaptured ;; esac
+  case "$BRIEF_WMODE" in lite|standard|full) ;; *) BRIEF_WMODE=lite; BRIEF_WSRC=uncaptured ;; esac
   case "$BRIEF_WSRC" in project|global|default|uncaptured) ;; *) BRIEF_WSRC=uncaptured ;; esac
   BRIEF_RMODE="standard"
   [ "$BRIEF_WMODE" = "full" ] && BRIEF_RMODE="full"

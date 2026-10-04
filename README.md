@@ -200,16 +200,18 @@ Workflow settings live in `~/.rolepod/config.json`; a project's
 `pool` setting remains global-only.
 
 **Location:** `~/.rolepod/config.json` — normal install and first session
-initialization create it only when absent. Explicit `install.sh --force`
-reinstall resets the profile to `workflow.mode=standard` and preserves the
-global pool. Uninstall never removes the file.
+initialization create it only when absent, with `workflow.mode=lite`.
+Explicit `install.sh --force` reinstall resets the profile to Lite and preserves
+the global pool. Native plugin uninstall/reinstall leaves an existing config
+untouched, including an explicit Standard or Full profile. Uninstall never
+removes the file.
 
 **Example:**
 
 ```json
 {
   "version": 1,
-  "workflow": { "mode": "standard" },
+  "workflow": { "mode": "lite" },
   "pool": {
     "cross-family": "on",
     "reviewer": { "review": "opencode cursor agy codex claude", "consult": "opencode codex cursor agy claude", "critique": "opencode cursor agy codex claude", "tier": "R4" },
@@ -222,7 +224,7 @@ global pool. Uninstall never removes the file.
 
 | Key | Values | Default | Scope |
 |---|---|---|---|
-| `workflow.mode` | `lite` \| `standard` \| `full` | `standard` | Machine profile; project `.rolepod/config.json` overrides. `lite` skips Rolepod workflow gates and nudges; `standard` warns and allows; `full` enforces existing workflow conditions. Legacy `review`, `gates`, and `nudge` keys are ignored. |
+| `workflow.mode` | `lite` \| `standard` \| `full` | `lite` | Machine profile; project `.rolepod/config.json` overrides. `lite` skips Rolepod workflow gates and nudges; `standard` warns and allows; `full` enforces existing workflow conditions. Legacy `review`, `gates`, and `nudge` keys are ignored. |
 | `pool.cross-family` | `"on"` \| `"off"` | `"off"` | Machine only. `"off"` disables the external pool even if members are listed |
 | `pool.reviewer.review` | space-separated CLI names | (none) | Machine only. External review for R4 (adversarial) or at the tier the `tier` key sets |
 | `pool.reviewer.consult` | space-separated CLI names | (none) | Machine only. External debug consult after 2 failed local attempts |
@@ -235,7 +237,9 @@ a new startup. Without native startup capture, the first manual `using-rolepod`
 entry selects mode once. OpenCode requires a plugin/backend restart; Antigravity
 refreshes on a new conversation identity, and same-conversation restart behavior
 is unverified. If a workflow hook cannot identify its session, it uses
-Standard/uncaptured. Compaction and later phases retain the active profile.
+Lite/uncaptured when no session profile can be stored safely.
+Compaction and later phases retain the active profile. Malformed configuration
+also falls back to Standard with a warning.
 
 Lite review has one round with two fresh reviewers in parallel: spec and
 standards, each with its own context and report. Standard and Full retain their

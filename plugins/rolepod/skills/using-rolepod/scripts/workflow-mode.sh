@@ -39,6 +39,6 @@ if [[ ! "$mode" =~ ^(lite|standard|full)$ ]]; then
   mode=$(printf '%s\n' "$out" | awk -F= '$1 == "mode" {print $2}')
   source=$(printf '%s\n' "$out" | awk -F= '$1 == "source" {print $2}')
 fi
-case "$mode" in lite|standard|full) ;; *) mode=standard ;; esac
+case "$mode" in lite|standard|full) ;; *) mode=lite ;; esac
 case "$source" in project|global|default|uncaptured) ;; *) source=default ;; esac
 if [ "$source_flag" = 1 ]; then echo "$mode ($source)"; else echo "$mode"; fi

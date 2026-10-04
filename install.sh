@@ -1745,7 +1745,7 @@ remove_legacy_launchers
 
 # ─── Machine config ──────────────────────────────────────────────────────
 # Normal initialization is create-only. Explicit reinstall (--force) migrates
-# the prior profile to workflow.mode=standard while preserving the user's pool.
+# workflow.mode to lite while preserving the user's pool.
 # Uninstall never removes this machine-owned file.
 # A redirected install (any ROLEPOD_*_TARGET set) against a real, non-temp
 # $HOME is a test run: it must never create the real user's file.
@@ -1768,7 +1768,7 @@ if [ "$SCOPE" = "global" ] && [ "$DRY_RUN" -eq 0 ] && [ "$CFG_REDIRECTED" -eq 0 
     CFG_WRITTEN="$(python3 -I "$REPO_DIR/hooks/lib/rolepod_config.py" "$CFG_ACTION" 2>/dev/null)"
     if [ -n "$CFG_WRITTEN" ]; then
       if [ "$CFG_ACTION" = init-replace ]; then
-        ok "replaced $CFG_FILE with workflow.mode=standard; preserved pool"
+        ok "replaced $CFG_FILE with workflow.mode=lite; preserved pool"
       else
         ok "wrote $CFG_FILE (defaults; edit workflow.mode to change workflow gates)"
       fi

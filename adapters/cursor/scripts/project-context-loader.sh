@@ -8,7 +8,7 @@ set -euo pipefail
 INPUT=$(cat 2>/dev/null || echo '{}')
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROFILE=$(printf '%s' "$INPUT" | ROLEPOD_SESSION_CLI=cursor bash "$HERE/session-start.sh" --cli cursor --format env 2>/dev/null || echo '{}')
-_mode=$(printf '%s' "$PROFILE" | python3 -I -c 'import json,sys; print((json.load(sys.stdin).get("env") or {}).get("ROLEPOD_SESSION_MODE", "standard"))' 2>/dev/null || echo standard)
+_mode=$(printf '%s' "$PROFILE" | python3 -I -c 'import json,sys; print((json.load(sys.stdin).get("env") or {}).get("ROLEPOD_SESSION_MODE", "lite"))' 2>/dev/null || echo lite)
 ROLEPOD_SESSION_SOURCE=$(printf '%s' "$PROFILE" | python3 -I -c 'import json,sys; print((json.load(sys.stdin).get("env") or {}).get("ROLEPOD_SESSION_SOURCE", "uncaptured"))' 2>/dev/null || echo uncaptured)
 export ROLEPOD_SESSION_CLI=cursor ROLEPOD_SESSION_MODE="$_mode" ROLEPOD_SESSION_SOURCE
 PROFILE_CONTEXT="Active Rolepod workflow profile: $_mode (source: $ROLEPOD_SESSION_SOURCE). This profile is fixed for this conversation; start a new conversation to apply configuration changes."

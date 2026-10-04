@@ -44,7 +44,7 @@ else
   # existing config and is deliberately before the one effective-mode read.
   [ -f "$READER" ] && python3 -I "$READER" init >/dev/null 2>&1 || true
   RESOLVED=$(ROLEPOD_PROJECT_ROOT="$CWD" python3 -I "$READER" mode 2>/dev/null || true)
-  MODE=standard SOURCE=default
+  MODE=lite SOURCE=default
   while IFS= read -r line; do
     case "$line" in
       mode=lite|mode=standard|mode=full) MODE=${line#mode=} ;;
@@ -53,9 +53,9 @@ else
   done <<< "$RESOLVED"
   rolepod_session_profile_apply "$MODE" "$SOURCE"
   if [ -n "$SESSION_ID" ]; then
-    rolepod_session_profile_store "$CLI" "$SESSION_ID" "$MODE" "$SOURCE" || rolepod_session_profile_apply standard uncaptured
+    rolepod_session_profile_store "$CLI" "$SESSION_ID" "$MODE" "$SOURCE" || rolepod_session_profile_apply lite uncaptured
   else
-    rolepod_session_profile_apply standard uncaptured
+    rolepod_session_profile_apply lite uncaptured
   fi
 fi
 
@@ -102,7 +102,7 @@ fi
 # exception and may still produce context in Lite.
 ROLEPOD_STARTUP_MODE="$ROLEPOD_SESSION_MODE" ROLEPOD_STARTUP_SOURCE="$ROLEPOD_SESSION_SOURCE" ROLEPOD_STARTUP_CORE="$PART_CORE" ROLEPOD_STARTUP_CONTEXT="$PART_CONTEXT" ROLEPOD_STARTUP_LOCK="$PART_LOCK" ROLEPOD_STARTUP_SYNC="$PART_SYNC" python3 -I -c '
 import json, os
-parts = ["Active Rolepod workflow profile: %s (source: %s). This profile is fixed for this session; restart or open a new session to apply configuration changes." % (os.environ.get("ROLEPOD_STARTUP_MODE", "standard"), os.environ.get("ROLEPOD_STARTUP_SOURCE", "uncaptured"))]
+parts = ["Active Rolepod workflow profile: %s (source: %s). This profile is fixed for this session; restart or open a new session to apply configuration changes." % (os.environ.get("ROLEPOD_STARTUP_MODE", "lite"), os.environ.get("ROLEPOD_STARTUP_SOURCE", "uncaptured"))]
 for key in ("ROLEPOD_STARTUP_CORE", "ROLEPOD_STARTUP_CONTEXT", "ROLEPOD_STARTUP_LOCK", "ROLEPOD_STARTUP_SYNC"):
     value = os.environ.get(key, "").strip()
     if not value:

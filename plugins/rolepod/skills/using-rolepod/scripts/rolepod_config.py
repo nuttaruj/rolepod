@@ -27,7 +27,7 @@ BROKEN = []   # set when the global file exists but cannot be read
 # lists are written but cross-family is off — only the user turns it on).
 DEFAULT_CONFIG = """{
   "version": 1,
-  "workflow": { "mode": "standard" },
+  "workflow": { "mode": "lite" },
   "pool": {
     "cross-family": "off",
     "reviewer": { "review": "claude codex agy", "consult": "claude codex agy", "critique": "claude codex agy" },
@@ -103,6 +103,8 @@ def selected_mode(project, global_cfg):
         warn("project config is unreadable; using standard workflow mode")
         return "standard", "project", False
     for source, cfg in (("project", project), ("global", global_cfg)):
+        if source == "global" and BROKEN:
+            return "standard", "global", False
         if "workflow" not in cfg:
             continue
         w = cfg.get("workflow")
@@ -111,7 +113,7 @@ def selected_mode(project, global_cfg):
             return v, source, True
         warn("workflow.mode is not lite|standard|full; using standard")
         return "standard", source, True
-    return "standard", "default", False
+    return "lite", "default", False
 
 
 def effective(project, global_cfg):

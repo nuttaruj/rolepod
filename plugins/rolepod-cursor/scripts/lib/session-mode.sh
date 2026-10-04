@@ -26,8 +26,8 @@ rolepod_session_profile_path() {
 }
 
 rolepod_session_profile_apply() {
-  local mode=${1:-standard} source=${2:-uncaptured}
-  case "$mode" in lite|standard|full) ;; *) mode=standard; source=uncaptured ;; esac
+  local mode=${1:-lite} source=${2:-uncaptured}
+  case "$mode" in lite|standard|full) ;; *) mode=lite; source=uncaptured ;; esac
   case "$source" in project|global|default|uncaptured) ;; *) source=uncaptured ;; esac
   ROLEPOD_SESSION_MODE=$mode
   ROLEPOD_SESSION_SOURCE=$source
@@ -84,5 +84,5 @@ rolepod_session_profile_load() {
     rolepod_session_profile_apply "$mode" "$source"
     return 0
   fi
-  rolepod_session_profile_apply standard uncaptured
+  rolepod_session_profile_apply lite uncaptured
 }
