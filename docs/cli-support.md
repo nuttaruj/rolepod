@@ -16,7 +16,7 @@ Google retired the standalone Gemini CLI for individual accounts (2026-06-18) an
 | Subagents (parallel team) | full Task / SendMessage (15 agents) | 15 agents as Codex `agents/*.toml` (Lead-orchestrated) | 15 agents in `agents/*.md` (Lead-orchestrated) | 15 agents in `agents/*.md` (Lead-orchestrated) | 15 agents in `agents/*.md` (filename = agent id, `mode: subagent`; Lead-orchestrated) |
 | Ticket loop (v2.144.0) | full — the Owner-line role builds on the Command (after each edit and last before returning), dispatches the reviewers its brief names (R4, or a standalone R2 checklist; nested Agent, waited on — no `name` / fork / remote isolation, no `run_in_background: true`, hook-enforced; Claude Code 2.1.284 has no such flag and a child's end wakes the parent in the terminal CLI; the desktop app sends it to the Lead, which relays it to the owner's `WAITING:` line, live probe 2026-09-29) — an R2/R3 task in a plan returns with none; when its track ends, one fresh track-end review owner runs the two lenses on the track diff, fixes, returns a decision brief; tracks run in parallel worktrees; the Lead integrates | doctrine — the role runs the loop; `agents.max_depth` defaults to 1 (Codex V1 only; V2 limits the subagent slot) → `REVIEW NEEDED:` in the brief and the Lead dispatches a fresh owner to run the review | doctrine — the role runs the loop; a nested subagent (one level) blocks by default (vendor docs, 2026-09-29) — never `is_background`; no dispatch tool → `REVIEW NEEDED:` and the Lead dispatches a fresh owner to run the review | doctrine — the role runs the loop; a nested `invoke_subagent` is async, but agy re-wakes the idle parent when its child returns (live-verified 2026-09-29, agy 1.2.12: a 3-level chain returned `PARENT-GOT CHILD-GOT GRANDCHILD-OK`) — no stall; no dispatch tool → `REVIEW NEEDED:` and the Lead dispatches a fresh owner to run the review | doctrine — the role runs the loop; the nested `task` tool is synchronous by default (vendor docs, 2026-09-29) — never `background: true`; no dispatch tool → `REVIEW NEEDED:` and the Lead dispatches a fresh owner to run the review |
 | Hooks (core only) | 14 core hook scripts (17 registrations) in the plugin's `hooks/hooks.json` · auto-registered on install | 8 core hook scripts (9 registrations) across `SessionStart`/`UserPromptSubmit`/`PreToolUse`/`PostToolUse`/`SubagentStart`/`Stop` · fire natively on Codex ≥0.144, default-enabled | 3 core hooks across `sessionStart`/`beforeShellExecution`/`stop` · auto-fires | 3 core hook scripts across `PreInvocation`/`PreToolUse`/`Stop` under a `rolepod` name wrapper · deny and no contextual warning channel | JS plugin (`plugin/rolepod.js`): workflow-mode child ship gate, Lead precommit gate, cross-CLI session locks, post-compact re-anchor, fix-loop-breaker; rendered agents retain independent read-only tool permissions |
-| Workflow gates | `workflow.mode` controls shared hooks and workflow gates | same | same; `agent_message` carries Standard advisory allow payload | same; enforcement conditions deny-only | same; plugin lookup classifies first ship call |
+| Workflow gates | `workflow.mode` picks deny / warn / silent per gate from one fixed table ([hooks.md](hooks.md#gates-by-mode)) | same | same; `agent_message` carries the warning (allow payload) | same; deny-only (a warn cell is silent) | same table in the plugin JS; plugin lookup classifies first ship call |
 | Evidence gate | Full retains existing private-doc and Claude evidence conditions | existing Full workflow conditions | existing Full workflow conditions; evidence-based reviewer/test gate remains Claude-only | existing Full workflow conditions; evidence-based reviewer/test gate remains Claude-only | existing Full workflow conditions; evidence-based reviewer/test gate remains Claude-only |
 | External implement (v2.139.0, live-verified 2026-09-17: all five members built the same 2-file ticket) | `-p --permission-mode acceptEdits --allowedTools Bash` (its rolepod hooks fire; 32 s) | `exec -s workspace-write` (plugin hooks fire once trusted; ~8 min) | `-p --force --trust` (runs shell; keep out of `[implement] cli` unless wanted; 36 s) | `-p --mode accept-edits --add-dir <repo>` (37 s) | `run` only when an `opencode.json(c)` (project, `OPENCODE_CONFIG_DIR` or `~/.config/opencode`) grants edit + bash; its start-up rewrite of the project file is restored as housekeeping (37 s) |
 | Plugin manifest | `plugins/rolepod/.claude-plugin/plugin.json` (spec-conformant) + `.claude-plugin/marketplace.json` catalog at the repo root | `.codex-plugin/plugin.json` (Codex plugin schema, 1.6KB) | `plugins/rolepod-cursor/.cursor-plugin/plugin.json` (spec-conformant) + `.cursor-plugin/marketplace.json` catalog at the repo root | `plugin.json` at plugin root (agy plugin schema, validated by `agy plugin validate`) | `opencode.json` (version metadata — opencode has no plugin manifest for this install style) |
@@ -32,8 +32,9 @@ Portable role dispatch details and evidence limits are in Notes on subagent beha
 All CLIs read the machine profile from `~/.rolepod/config.json` through the
 canonical `hooks/lib/rolepod_config.py` reader. `workflow.mode` accepts
 `lite`, `standard`, or `full`; legacy `review`, `gates`, and `nudge` keys are
-ignored. Lite skips Rolepod workflow gates and nudges, Standard warns and
-allows, and Full enforces the existing conditions. Native permissions and
+ignored. Every mode runs the hooks; the mode sets each gate to deny, warn or
+silent from one fixed table (see [hooks.md](hooks.md#gates-by-mode)): Lite is
+the loosest, Full denies the most. Native permissions and
 independent read-only role capabilities remain platform-owned.
 Each session captures its effective mode at startup and keeps it until a new
 session or CLI restart. Missing configuration selects Lite. Malformed config
@@ -45,11 +46,13 @@ Each CLI has one primary always-on channel: Claude SessionStart, Codex native
 AGENTS, Cursor native `alwaysApply` rule, and native AGENTS for Antigravity and
 OpenCode. Cursor self-disables the separately imported Claude hooks. When a
 full global managed block already exists, project installs add a compact
-pointer instead of repeating the full core. Normal initialization creates
-config only when absent, with `workflow.mode=lite`; an existing explicit
-Standard or Full value remains. Explicit `--force` reinstall resets the profile
-to Lite and preserves the global `pool`. Native plugin reinstall leaves an
-existing config untouched. Context recovery
+pointer instead of repeating the full core. `install.sh` (every flag) and
+session start write the config only when it is missing, unreadable, or in the
+old format (a top-level `review`, `gates` or `nudge` key, or no
+`workflow.mode`); the rewrite uses `workflow.mode=lite`, keeps the global
+`pool`, and makes no backup. A valid config, including an explicit Standard or
+Full value, is never touched, `--force` included. Native plugin reinstall
+leaves an existing config untouched. Context recovery
 uses visible skill text and reloads it after compaction; no permanent
 "skill loaded" marker is written.
 
@@ -74,9 +77,11 @@ receipt; owner status and Verify status remain separate. Reuse evidence only
 when the relevant inputs, environment, scope, and provenance still match.
 
 Review and Ship use the active session mode captured at startup or first manual
-entry. Lite R4 uses two isolated lenses; Standard adds the security review;
-Full adds the adversarial pass. The comment/blank-only R4 exception uses one
-security review. Required reports and finding closure are checked against the
+entry. Round 1 on R4: Lite uses two isolated lenses; Standard adds the security review
+(checklist); Full adds the full security review and the adversarial pass. A
+re-check (round 2+, at most four rounds) is one fresh `universal-reviewer` on
+the fix delta of every BLOCKER / MAJOR finding. A comment/blank-only R4 diff
+gets the active mode's R4 set. Required reports and finding closure are checked against the
 current tree. A routine merge on the existing pipeline does not
 need a launch checklist; a genuine launch does, with only applicable
 infrastructure fields and a reason for each omission. See the standalone
@@ -149,10 +154,10 @@ adapters/
 
 Per-CLI hook counts (distinct scripts, v2.176.0). The evidence gate and the edit-time hooks run on Claude only; every CLI keeps the private-docs commit deny. Per-hook detail: [docs/hooks.md](hooks.md).
 
-- **Claude** — 14 core hook scripts, 17 registrations (`session-lifecycle.sh` twice, `--lock` / `--unlock`; `subagent-write-scope.sh` twice, Edit/Write and NotebookEdit; `block-subagent-commit.sh` twice, Bash and Agent|SendMessage).
-- **Codex** — 8 scripts, 9 registrations: `claim-verify-nudge`, `project-context-loader`, `session-lifecycle` (`--lock` / `--unlock`), `agent-sync`, `block-subagent-commit` (workflow-mode-aware child ship gate), `precommit-gate` (workflow-mode-aware Lead commit conditions), `subagent-core.sh --cli codex`, and `fix-loop-breaker`. Full denies existing conditions, Standard warns and allows, Lite skips workflow checks; independent read-only permissions remain native. Plugin hooks must be trusted once via `/hooks`.
-- **Cursor** — 3: `project-context-loader` on `sessionStart` (+ the `cursor-<conversation_id>` lock), `precommit-gate` on `beforeShellExecution` (shared gate translator; Standard warnings use the documented allow `agent_message` field), and `stop-unlock` on `stop` (releases the lock, records the route line). Always-on judgment is an `alwaysApply` rule. The adapter fixture verifies JSON payload, not live model consumption.
-- **Antigravity** — 3 in `hooks.json` under a `rolepod` name key: `session-start` on PreInvocation, `pre-tool` on PreToolUse(`run_command`) → the shared mode-aware gate, `stop-unlock` on Stop. Full conditions can deny; Standard warns through the supported response and allows; Lite skips. On agy 1.2.3 (live-measured) no context field was available, so advisory content cannot be injected; deny responses remain visible to the model.
+- **Claude** — 13 registered hook scripts, 15 registrations (`subagent-write-scope.sh` twice, Edit/Write and NotebookEdit; `block-subagent-commit.sh` twice, Bash and Agent|SendMessage). `session-start.sh` is the one SessionStart entry: it captures the profile, then runs `always-on-loader.sh`, `project-context-loader.sh` and `session-lifecycle.sh --lock`; `session-lifecycle.sh --unlock` runs on Stop.
+- **Codex** — 7 registrations: `claim-verify-nudge`, `session-start.sh --cli codex` (runs the context loader and the lock, and `agent-sync` through `--sync`), `session-lifecycle --unlock`, `block-subagent-commit` (child ship gate), `precommit-gate` (Lead commit conditions), `subagent-core.sh --cli codex`, and `fix-loop-breaker`. Each gate follows the mode table (deny / warn / silent); independent read-only permissions remain native. Plugin hooks must be trusted once via `/hooks`.
+- **Cursor** — 3: `project-context-loader` on `sessionStart` (+ the `cursor-<conversation_id>` lock), `precommit-gate` on `beforeShellExecution` (shared gate translator; warnings use the documented allow `agent_message` field), and `stop-unlock` on `stop` (releases the lock, records the route line). Always-on judgment is an `alwaysApply` rule. The adapter fixture verifies JSON payload, not live model consumption.
+- **Antigravity** — 3 in `hooks.json` under a `rolepod` name key: `session-start` on PreInvocation, `pre-tool` on PreToolUse(`run_command`) → the shared mode-aware gate, `stop-unlock` on Stop. Only deny is supported: a gate whose cell is `warn` or `silent` in the active mode prints nothing. On agy 1.2.3 (live-measured) no context field was available, so advisory content cannot be injected; deny responses remain visible to the model.
 - `claim-verify-nudge` ships on Claude / Codex, not Cursor (`beforeSubmitPrompt` cannot inject context). Rolepod ships no add-on hooks — rolepod-brain integrates via its own plugin.
 
 ## Verification status — what's confirmed locally
@@ -172,9 +177,9 @@ Per-CLI hook counts (distinct scripts, v2.176.0). The evidence gate and the edit
 |--------|---------------|-----------------|--------------------|-----------------------|--------|
 | Claude Code | ✓ | ✓ | ✓ verified | ✓ verified | **Production** |
 | Codex CLI   | ✓ | ✓ | ✓ native — hooks fire without any opt-in on current Codex; `codex features list` (0.144.1, 2026-07-30) shows `hooks stable true` and the legacy `plugin_hooks` flag `removed` | ✓ verified (15 agents + 15 skills via native loader) | **Production** |
-| Cursor IDE  | ✓ | ✓ | ✓ live-verified 2026-09-16 (agent CLI 2026.09.10 / IDE 3.20.21): `alwaysApply` rule loads, `sessionStart` writes the marker, hook cwd = plugin root; documented before-shell output accepts `agent_message` with allow or deny. Fixture proves Standard warning payload; live model consumption is not claimed. | ⚠️ 15 agents + 11 skills load (minimal-frontmatter shape); subagent dispatch unverified | **Production for hooks + rule** (subagent dispatch still unverified) |
+| Cursor IDE  | ✓ | ✓ | ✓ live-verified 2026-09-16 (agent CLI 2026.09.10 / IDE 3.20.21): `alwaysApply` rule loads, `sessionStart` writes the marker, hook cwd = plugin root; documented before-shell output accepts `agent_message` with allow or deny. Fixture proves the warning payload; live model consumption is not claimed. | ⚠️ 15 agents + 11 skills load (minimal-frontmatter shape); subagent dispatch unverified | **Production for hooks + rule** (subagent dispatch still unverified) |
 | Antigravity CLI (agy) | ✓ (`agy plugin validate` [ok]; integration test locks the measured schema) | ✓ (live `agy plugin install`/`uninstall` round-trip verified; temp-target guard proven) | ✓ live-verified 2026-09-16 (agy 1.2.3): named-wrapper `hooks.json` loads (the old flat one never parsed), PreInvocation/PreToolUse/Stop fire, `{decision: deny, reason}` blocks the tool with the reason visible to the model; no context field exists on any event, `{}` = deny, hook cwd = plugin dir, stdin camelCase (`toolCall`, `workspacePaths`) | ⚠️ 15 agents + 11 skills install; subagent dispatch unverified | **Production for workflow gates** (deny-only; advisory warnings cannot be injected; evidence gate is Claude-only) |
-| opencode | ✓ (15 skills / 15 agents / plugin JS `node --check` clean) | ✓ (temp-target install/uninstall round-trip verified) | Synthetic v1/v2 lifecycle fixtures cover direct session lookup and mode decisions; no current live-session enforcement claim. Official v2 plugin docs define `ctx.session.get({sessionID})`; v1 uses `client.session.get({path:{id}})`. Full unknown identity denies the pending ship command; Standard warns and allows; Lite skips lookup. | ⚠️ live subagent dispatch unverified | **Beta** (native skills/agents verified via install; hook behavior is fixture-verified only) |
+| opencode | ✓ (15 skills / 15 agents / plugin JS `node --check` clean) | ✓ (temp-target install/uninstall round-trip verified) | Synthetic v1/v2 lifecycle fixtures cover direct session lookup and mode decisions; no current live-session enforcement claim. Official v2 plugin docs define `ctx.session.get({sessionID})`; v1 uses `client.session.get({path:{id}})`. Unknown identity denies the pending ship command only in Full; Standard and Lite warn and allow. The gate table is the same in every mode. | ⚠️ live subagent dispatch unverified | **Beta** (native skills/agents verified via install; hook behavior is fixture-verified only) |
 
 **Static checks** = `bash -n` on shell scripts, `python3 -m json.tool` on JSON manifests, `tomllib.load()` on TOML, plus snapshot diffs (no leaked `{{INCLUDE: ...}}` placeholders). **Dry-run install** = `install.sh --target=<cli>` writes correct files into a temp dir and the layout matches each CLI's expected destination. **Live** = installed in the real CLI, hooks fire on real sessions (Claude + Codex + Cursor + Antigravity + opencode), subagents/skills dispatch correctly.
 

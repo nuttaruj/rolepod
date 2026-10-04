@@ -33,7 +33,8 @@ The `using-rolepod` router fires first on every request and picks the phase.
 | **F1-F5** | before done | hallucinated / scope creep / cascading error / context loss / tool misuse |
 | **Pre-merge** | merge | check-work status matches tree / CI lanes green / review reports + Snapshot at head / R4 has security-engineer + adversarial-pass / one concern per PR |
 | **CI 3-phase** | merge | Phase 1 always (<5 min) / Phase 2 path-triggered / Phase 3 nightly |
-| **Hard stops** | escalate | 3rd failed attempt / file vs claim / destructive cmd / 50k+ no convergence |
+| **Hard stops** | escalate | consult once after 2 failed fixes, stop and ask the user at 4 / file vs claim / destructive cmd / 50k+ no convergence |
+| **Hook gates** | commit / edit / dispatch | 14 gates that can block, set per `workflow.mode` (lite / standard / full): table in [docs/hooks.md](docs/hooks.md#gates-by-mode) |
 
 ## Verify-first
 
@@ -69,7 +70,8 @@ The writer's unit tests are the floor. One read-only `universal-reviewer` pass (
 | Tier / profile | Reviewers |
 |-----------|-----------|
 | R2 / R3 | `universal-reviewer` (read-only) — or the external instead, when the pool file sets `tier = R2` / `R3` |
-| R4 code | `security-engineer` + two lenses (spec + standards) + adversarial pass (external via `cross-family` when usable, else `universal-reviewer` on a strong model) |
+| R4 code, round 1 | lite: two lenses (spec + standards). standard: two lenses + `security-engineer` (checklist). full: two lenses + `security-engineer` (full) + one adversarial pass (external via `cross-family` when usable, else `universal-reviewer` on a strong model) |
+| Re-check, round 2+ (every mode and tier) | one fresh `universal-reviewer` checks the fix delta (H1→H2) of all BLOCKER / MAJOR findings in one pass; at most 4 rounds counting round 1, then stop and hand the findings and log to the user |
 | High-risk path (auth · billing · payments · credits · migration · deletion · secrets · tokens · crypto · permissions) | + `security-engineer` |
 | User-visible change (screen / flow / API contract) | + `qa-tester` (E2E / UI) |
 

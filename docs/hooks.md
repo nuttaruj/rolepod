@@ -10,13 +10,61 @@ Rolepod's hooks are bash + python scripts in `hooks/` (canonical source). Each C
 2. **Fix** — the exact change that makes the same call pass.
 3. **Exception** — the escape hatch, always user-set or stated in the artifact.
 
-The *why* — incidents, doctrine — lives in this file and in the hook's source comments, never in the message. No message literal is over 600 chars.
+The *why* — incidents, doctrine — lives in this file and in the hook's source comments, never in the message. No message literal is over 600 chars. A warning starts with `WARNING:` and never says `BLOCKED` or "retry"; a deny keeps `BLOCKED:`. No message names a key, path or env that switches a gate off.
+
+## Gates by mode
+
+The session captures `workflow.mode` (`lite` / `standard` / `full`) once at startup. One table in `hooks/lib/session-mode.sh` (`rolepod_gate_action <gate-id>` → `deny` / `warn` / `silent`) decides every gate below; the opencode plugin carries the same table as a JS `const`. No config key and no env changes a cell: the table is fixed per mode. No hook exits early in `lite` any more — the mode only changes what a gate does.
+
+### Group A — gates that can block
+
+| # | Gate | lite | standard | full |
+|---|---|---|---|---|
+| 1 | Commit stages a path under `docs/rolepod/` (unless `.rolepod/docs-tracked` exists) | deny | deny | deny |
+| 2 | R4 (high-risk) commit with no `security-engineer` dispatch since the last commit | warn | deny | deny |
+| 3 | Session edited a high-risk path and wrote no test | warn | warn | deny |
+| 4 | Ordinary code commit with no test and no reviewer | silent | silent | deny |
+| 5 | Sub-agent runs `git commit`, `git push` (incl. `--force`), `git reset --hard`, `gh pr create` or `gh pr merge` | deny | deny | deny |
+| 6 | Sub-agent cannot-wait rules, all five shapes (listed under `block-subagent-commit.sh`) | deny | deny | deny |
+| 7 | Generic agent writes outside `docs/rolepod/`, `.rolepod/` and scratch paths | warn | deny | deny |
+| 8 | Role-less Workflow `agent()` writes a file | warn | deny | deny |
+| 9 | `qa-tester` or `security-engineer` writes a file that is neither a test nor markdown | warn | deny | deny |
+| 10 | `universal-reviewer` or `scout` writes a non-markdown file | warn | deny | deny |
+| 11 | Edit of a file another live session in the same worktree already holds | deny | deny | deny |
+| 12 | `bare-fanout` under a strong or unknown-class Lead | deny | deny | deny |
+| 13 | `strong-fanout` | deny | deny | deny |
+| 14 | `bare-writer` | deny | deny | deny |
+
+A cell that is not listed as `deny` is a warning in that mode. A `silent` cell prints nothing.
+
+**Plan-fleet exception (gates 12 and 14).** A fan-out passes when every `agent()` leaves `model` and `agentType` unset and every prompt names a result path under `docs/rolepod/plans/` — the plan fleet of `write-plan` step 8, which runs on the Lead's model. Any `model:` or `agentType:` on any call voids the exception. The check lives only in `workflow-tier-nudge.sh`.
+
+**Per CLI.** Antigravity accepts deny responses only, so a `warn` cell is silent there (a platform limit, accepted). Cursor sends a warning as `agent_message`. opencode applies the same table in JS.
+
+### Group B — warnings that never block
+
+Every mode warns the way `standard` does; `lite` no longer skips them:
+
+- tree-rewrite advisory while a detached cross-family review runs
+- `test-diff-lint` findings L1 to L5
+- `push-ref-check`
+- `gate-reminder` (review in flight, implement in flight, "this R4 commit would block")
+- loop breaker at the 2nd failure and from the 4th on
+- route nudge, auto-resume note, context-check note
+- self-do nudge
+- another live session in the same checkout
+- `subagent-core`
+- `project-context-loader`
+
+### Group C — silent records
+
+On in every mode, because the gates above read them: session lock and edit registry (gate 11), dispatch log (evidence for gate 2), route record, the `phase: gate` row, the captured session profile and the config bootstrap. At session start, profile files older than 14 days are deleted.
 
 ## Event coverage (Claude)
 
 | Event | Matcher | Hooks |
 |---|---|---|
-| `SessionStart` | `startup\|resume\|clear\|compact` | `always-on-loader.sh`, `project-context-loader.sh`, `session-lifecycle.sh --lock` |
+| `SessionStart` | `startup\|resume\|clear\|compact` | `session-start.sh` (captures the profile, then runs `always-on-loader.sh`, `project-context-loader.sh` and `session-lifecycle.sh --lock`; combined context is capped at 9,500 characters, core first) |
 | `UserPromptSubmit` | — | `claim-verify-nudge.sh` |
 | `PreToolUse` | `Edit\|Write\|MultiEdit` | `worktree-guard.sh`, `gate-reminder.sh`, `subagent-write-scope.sh` |
 | `PreToolUse` | `NotebookEdit` | `subagent-write-scope.sh` |
@@ -28,7 +76,7 @@ The *why* — incidents, doctrine — lives in this file and in the hook's sourc
 | `SubagentStart` | `^(workflow-subagent\|general-purpose)$` | `subagent-core.sh` |
 | `Stop` | — | `session-lifecycle.sh --unlock` (+ route record) |
 
-14 hook scripts, 17 registrations (`session-lifecycle.sh`, `subagent-write-scope.sh` and `block-subagent-commit.sh` register twice). `test-diff-lint.sh` is a helper the commit gate calls, not a registered hook. All hook Python runs `python3 -I`, so a stray `json.py` in the working directory cannot mute a hook.
+13 registered hook scripts, 15 registrations (`subagent-write-scope.sh` and `block-subagent-commit.sh` register twice). `always-on-loader.sh` and `project-context-loader.sh` run from `session-start.sh`, and `test-diff-lint.sh` runs from the commit gate; none of the three is registered itself. All hook Python runs `python3 -I`, so a stray `json.py` in the working directory cannot mute a hook.
 
 **Cursor host guard (v2.130.1).** Cursor auto-imports Claude Code plugins and runs their `hooks/hooks.json`. Every Claude manifest command is therefore `[ -z "$CURSOR_PROJECT_DIR" ] && exec bash "${CLAUDE_PLUGIN_ROOT}/hooks/<x>.sh"; cat >/dev/null`: under Cursor the imported copy drains stdin and exits 0, and the Cursor-native plugin owns the host. Disable the imported copy on Cursor's Plugins page to stop its agents and skills loading twice.
 
@@ -38,23 +86,24 @@ The *why* — incidents, doctrine — lives in this file and in the hook's sourc
 
 The one hard checkpoint, at `git commit`.
 
-- **Private docs (every CLI)** — a staged path under `docs/rolepod/` → deny. Details under Private working docs below.
-- **High-risk diff (Claude only)** — a staged path matching the high-risk regex or `.rolepod/risk-paths` → deny until a `security-engineer` dispatch has FINISHED since the last commit. A high-risk commit needs at least one `security-engineer` dispatch since the last commit, any model; an external pass never counts. Fix: dispatch `security-engineer`.
-- **Session risk without a test (Claude only)** — the session edited high-risk code, wrote no test, and the staged diff is not high-risk → deny until a failing test is written or a reviewer has run.
-- **Everything else** — silent. `test-diff-lint` findings, when present, print as one line. Each judged commit appends a `phase: gate` row that `scripts/ticket.sh log` in `implement-plan` copies into the plan.
+- **Private docs (every CLI, every mode)** — a staged path under `docs/rolepod/` → deny. Details under Private working docs below.
+- **High-risk diff (Claude only)** — a staged path matching the high-risk regex or `.rolepod/risk-paths` and no `security-engineer` dispatch FINISHED since the last commit → `lite` warns, `standard` and `full` deny. A high-risk commit needs at least one `security-engineer` dispatch since the last commit, any model; an external pass never counts. Fix: dispatch `security-engineer`.
+- **Session risk without a test (Claude only)** — the session edited high-risk code, wrote no test, and the staged diff is not high-risk → `full` denies until a failing test is written or a reviewer has run; `lite` and `standard` warn.
+- **Ordinary code without a test or reviewer (Claude only)** — `full` denies; `lite` and `standard` stay silent.
+- **Everything else** — silent. `test-diff-lint` findings, when present, print as one line in every mode. Each judged commit appends a `phase: gate` row that `scripts/ticket.sh log` in `implement-plan` copies into the plan.
 - **What counts as high-risk** — the path regex (auth / billing / payment / migration / secret / crypto / token / oauth / webhook … — canonical list in the script, parity-pinned by lean-surface) plus `.rolepod/risk-paths`. Test-named files (`*.test.*`, `test_*.py`, `*_test.go` …) and prose files never count. A bare directory name (`tests/`, `spec/`) is not an exemption.
 - **Evidence (Claude)** — counted since the last commit (a linked worktree follows its own HEAD reflog): the Lead transcript plus the session's sub-agent transcripts (60 newest), MAX with the phase-log `dispatch` rows of provenance `hook-auto`. A write-mode brief never counts as a review; `qa-tester` and `universal-reviewer` never count toward the high-risk floor; `security-engineer` counts at any model; an anchored external pass counts for nothing (the gate does not read the cross-family pool).
 - **Which commit it judges** — `cd <dir> &&` and `git -C <dir>` move the diff directory; `bash -c`, `eval` and the common wrappers (`env`, `timeout`, `sudo` …) are unwrapped; `git add … && git commit` and `git commit -a` are judged on the working tree. Anything unresolvable falls back to the hook's cwd — never a new deny.
 - **Review in flight** — a tree-rewriting git command (`stash`, `reset --hard`, `checkout`, `rebase`, `merge` …) while a detached cross-family job runs → one advisory line naming `--collect`.
 - **Incidents** — a sub-agent-heavy day where high-risk commits cleared on stale day-1 evidence (window is now since the last commit); 672 green tests + an opus build still shipped 4 money bugs only the adversarial pass caught (high-risk needs a `security-engineer` review, not tests).
-- **Bypass** — none needed: evidence auto-passes. Set `gates.mode: "off"` in `~/.rolepod/config.json` to silence the whole gate, private-docs deny included (each commit logged with source `config`). Set `gates.mode: "hard"` to turn a normal logic commit into a block that clears on a test edit or a reviewer.
+- **Bypass** — none: evidence auto-passes, and each gate's action is fixed per mode (see Gates by mode).
 
 ### `gate-reminder.sh` — PreToolUse `Edit|Write|MultiEdit` (Claude)
 
-- **Effect** — on a high-risk path, ONE line and only when the commit would block now: fact (a high-risk commit needs at least one `security-engineer` dispatch since the last commit, any model; an external pass never counts) → Fix (dispatch `security-engineer`, finished before commit) → Exception (user-set bypass only). Every other edit → silent. A sub-agent edit (`agent_id` set) gets neither this line nor the evidence scan (the Lead dispatches), only the review-in-flight advisory.
+- **Effect** — on a high-risk path, ONE line when the R4 commit gate would act on it now: fact (a high-risk commit needs at least one `security-engineer` dispatch since the last commit, any model; an external pass never counts) → Fix (dispatch `security-engineer`, finished before commit) → Exception. In `standard` and `full` the line says the commit will block; in `lite` it is a `WARNING:`. Every other edit → silent. A sub-agent edit (`agent_id` set) gets neither this line nor the evidence scan (the Lead dispatches), only the review-in-flight advisory.
 - **In-flight lines** — a live detached cross-family review whose diff holds the edited file → `⏸ REVIEW IN FLIGHT` (the job reads the tree live; editing now makes its verdict an artifact). A live `--kind implement` job and an edit outside its allowed paths → `⏸ EXTERNAL IMPLEMENT IN FLIGHT` (that edit is reverted when the job returns).
-- **Incident** — edit-time hard blocks once pushed a user to set `gates.mode: "off"` for good (33 high-risk edits in a day, 116 unreasoned bypasses), which silenced the commit gate too; this hook only informs.
-- **Bypass** — set `gates.mode: "off"` to silence it.
+- **Incident** — edit-time hard blocks once pushed a user to switch the whole gate layer off for good (33 high-risk edits in a day, 116 unreasoned bypasses), which silenced the commit gate too; this hook only informs.
+- **Bypass** — none (informational).
 
 ### `block-subagent-commit.sh` — PreToolUse `Bash` (Claude, Codex) · `Agent|SendMessage` (Claude)
 
@@ -74,37 +123,38 @@ A sub-agent writes only what its role owns.
 | test-only | `qa-tester`, `security-engineer` | test paths (`tests/`, `__tests__/`, `fixtures/`, `e2e/`, RSpec `spec/`, `*.test.*`, `*.spec.*`, `test_*.py`, `conftest.py`, test-runner config …) + markdown |
 | read-only | `universal-reviewer`, `scout` | markdown only |
 
-- **Effect** — deny (fact → Fix → Exception per class); the sub-agent returns the finding and the Lead dispatches the owning role. A `phase: write-scope` row lands in the phase-log. Owning roles, the Lead, an unknown `agent_type`, OS temp roots and scratch / evidence paths (`scratchpad/`, `.rolepod/`, `.claude/agent-memory/`, `docs/rolepod/`) pass.
+- **Effect** — gates 7 to 10 of the mode table: `lite` warns (`WARNING:` + fact → Fix → Exception), `standard` and `full` deny; a denied sub-agent returns the finding and the Lead dispatches the owning role. A `phase: write-scope` row lands in the phase-log. Owning roles, the Lead, an unknown `agent_type`, OS temp roots and scratch / evidence paths (`scratchpad/`, `.rolepod/`, `.claude/agent-memory/`, `docs/rolepod/`) pass.
 - **Doctrine pair** — the agent protocol says a nested dispatch goes only to the rolepod role the brief or the Writer loop names; this hook is the backstop when it does not.
 - **Incident** — 16 of 31 `general-purpose` dispatches edited product code with no role doctrine; `qa-tester` wrote 99 non-test product files.
 - **Not enforced** — an owning role drifting into another domain (the brief's Files allowed bounds it); a write through the shell (doctrine: edit tools only).
-- **Bypass** — `ROLEPOD_ALLOW_OUT_OF_SCOPE_WRITE=1` (user-set, logged).
+- **Bypass** — none documented; the action per class is fixed by mode.
 
 ### `worktree-guard.sh` — PreToolUse `Edit|Write|MultiEdit` (Claude)
 
 - **Per-file deny** — a live sibling session in the same worktree already edited this exact file → deny, pointing at `EnterWorktree` then `git worktree add`. No sibling, or a different file → silent. A file is recorded as this session's only on the pass path, so a blocked attempt never claims it.
-- **Self-do nudge (v2.116.0)** — the Lead (no `agent_id`) edits product code after its own routing line with no writer-role dispatch since: route R2 → at the first edit; route R3/R4 → at 6 edits. One line per route. R2: go to a task owner on main from the 3-5 line checklist. R3/R4: brief the Owner the map names; the Lead reads the decision brief and spot-checks one claim. Exception: the user said self-do, or the change is R1-sized. Set `nudge.enabled: false` in `~/.rolepod/config.json` to silence it.
+- **Self-do nudge (v2.116.0)** — the Lead (no `agent_id`) edits product code after its own routing line with no writer-role dispatch since: route R2 → at the first edit; route R3/R4 → at 6 edits. One line per route. R2: go to a task owner on main from the 3-5 line checklist. R3/R4: brief the Owner the map names; the Lead reads the decision brief and spot-checks one claim. Exception: the user said self-do, or the change is R1-sized. Warns in every mode.
 - **Incident** — two Claude sessions on one worktree stomped each other's edits.
-- **Bypass** — `ROLEPOD_ALLOW_SHARED_WORKTREE=1` (intentional shared session).
+- **Bypass** — none documented; the deny is the same in every mode.
 
 ### `workflow-tier-nudge.sh` — PreToolUse `Workflow` (Claude)
 
-A Workflow `agent()` call defaults to the Lead's model and no frontmatter can change that, so this hook reads the script before it runs. Three denies, none yields (checked in this order: `bare-fanout`, `strong-fanout`, `bare-writer`; a script with both fan-out shapes gets ONE deny, verdict `bare-fanout+strong-fanout`, naming both stage lists):
+A Workflow `agent()` call defaults to the Lead's model and no frontmatter can change that, so this hook reads the script before it runs. Three denies, in every mode and none yields, except the plan-fleet exception below (checked in this order: `bare-fanout`, `strong-fanout`, `bare-writer`; a script with both fan-out shapes gets ONE deny, verdict `bare-fanout+strong-fanout`, naming both stage lists):
 
 - **`bare-fanout`** — under a strong-class or unknown Lead, a fan-out `agent()` call (interpolated label, or inside `.map(` / `pipeline(` / `Array.from(` / a loop) with no tier. A tier is a `model:` or an `agentType:` that pins one (a rolepod role; a variable counts); a platform `agentType:` such as `general-purpose` pins nothing. Fix: pin every fan-out (a writing stage → a non-strong rolepod role) — sweep → cheap or `rolepod:scout`, build and per-item verify → balanced, the ONE judge → strong.
 - **`strong-fanout`** — under any Lead, a fan-out `agent()` call pinned strong (a strong `model:` or a strong-role `agentType:`). Fix: the fan-out runs a non-strong role or haiku / sonnet; keep ONE strong judge outside the fan-out.
 - **`bare-writer`** — under any Lead, an `agent()` with no `agentType:` on a stage whose name says it writes (Implement / Build / Fix / Integrate / Migrate / Refactor / Patch / Scaffold / Write). Fix: `agentType: 'rolepod:<role>'`. Without it `subagent-write-scope` blocks the first write minutes into the run.
+- **Plan fleet** — a fan-out whose every `agent()` sets no `model:` and no `agentType:` and whose prompts name a result path under `docs/rolepod/plans/` passes `bare-fanout` and `bare-writer` (it is the `write-plan` step 8 fleet on the Lead's model). One `model:` or `agentType:` anywhere voids it. `strong-fanout` has no exception.
 - **Lead class** — the family word of the Lead's last transcript turn (haiku = cheap, sonnet = balanced, opus / fable / mythos = strong, else unknown).
 - **Logging** — each deny appends a `phase: dispatch-gate` row (a denied fleet never reaches PostToolUse).
 - **Incidents** — six fleets in one day ran at opus/fable with a nudge ignored; a role-less writing agent worked 96 turns before its first write was blocked.
-- **Bypass** — set `gates.mode: "off"` to turn a deny into a nudge (logged); set `nudge.enabled: false` to silence the hook.
+- **Bypass** — none; the denies are the same in every mode.
 
 ### `subagent-core.sh` — SubagentStart `workflow-subagent|general-purpose` (Claude)
 
 A bare Workflow `agent()` and a general-purpose Agent-tool sub-agent carry no role file, so they got none of the agent protocol. This hook adds the short core (one ~500-char `additionalContext`: output is data, verify at file:line, batched reads, command timeouts, Edit/Write only, no commit, answer through the schema). A `rolepod:<role>` agent is never matched (its definition already carries the protocol); the matcher is anchored because plugin agent types contain a colon, which puts the matcher on the regex path, and the hook re-checks `agent_type` itself.
 
 - **Observational** — SubagentStart cannot block; the hook only adds context and prints `{}` for any other agent type.
-- **Bypass** — set `nudge.enabled: false` to silence it.
+- **Bypass** — none (observational, on in every mode).
 
 ### `dispatch-auto-log.sh` — PostToolUse `Workflow|Agent` (Claude)
 
@@ -114,7 +164,7 @@ A bare Workflow `agent()` and a general-purpose Agent-tool sub-agent carry no ro
 
 ### `fix-loop-breaker.sh` — PostToolUse `Bash` (Claude, Codex, opencode)
 
-- **Effect** — fingerprints the whitespace-normalized command and counts consecutive non-zero exits per session; a passing run resets it. At the 3rd consecutive failure of the same command → one note: stop fixing and go to `debug-issue`'s Second opinion step (hypothesis ledger → second opinion → escalate). Advisory, never blocks. A user cancel, an undetectable exit code or a changed command is not counted.
+- **Effect** — fingerprints the whitespace-normalized command and counts consecutive non-zero exits per session; a passing run resets it. At the 2nd consecutive failure of the same command → one note: consult once, via `debug-issue`'s Second opinion step (hypothesis ledger → second opinion → escalate), after two actual failed fixes. From the 4th failure → a stop note: if it is the fourth failed fix for the same repro or criterion, stop and ask the user with the attempt log. Command failures are only a proxy for failed fixes. Advisory in every mode, never blocks. A user cancel, an undetectable exit code or a changed command is not counted.
 - **Incident** — a weaker Lead looped a failing fix for many rounds while the prose stop rule sat in context; counting its own attempts is what it could not do.
 - **Bypass** — none (advisory).
 
@@ -129,7 +179,7 @@ A bare Workflow `agent()` and a general-purpose Agent-tool sub-agent carry no ro
 - **Route nudge (v2.98.0)** — a commission-shaped prompt while the newest `phase: route` line predates the previous prompt → one `⟂ route:` line asking for the R0-R4 tier before the first edit. A question-shaped prompt and a harness background-task notification (`<task-notification>`) are not commissions and never get it. Incident: 199 requests, 0 router invocations in one project.
 - **Auto-resume (v2.100.0)** — the harness's "continue from where you left off" prompt is a resume, not a user decision: a turn that ended at a question is restated, never continued into new scope.
 - **Context-bloat note** — the last turn's context crosses 400k tokens → one Lead-facing note (sweeps go to `rolepod:scout`; mention `/compact` or a fresh session to the user once); re-arms only after the context drops under the line. Incident: a 12-day session re-read 350-900k tokens every turn.
-- **Bypass** — set `nudge.enabled: false` to silence the whole hook.
+- **Bypass** — none (advisory, on in every mode).
 
 ### `session-lifecycle.sh` — SessionStart `--lock` / Stop `--unlock` (Claude, Codex)
 
@@ -137,7 +187,7 @@ A bare Workflow `agent()` and a general-purpose Agent-tool sub-agent carry no ro
 - **`--unlock`** — removes this session's lock and its `.files` registry (releasing what `worktree-guard` recorded), then runs the route record. `.rolepod/parent-active` stays (v2.180.5): Stop fires at the end of every turn, so removing it there dropped child plugins to standalone mode from turn 2 on.
 - **Per-turn lock (accepted gap)** — the lock lives from SessionStart to the turn's Stop. Claude re-touches it on each edit (`worktree-guard`), so an editing Claude session stays visible; Codex has no edit hook, so a Codex session is visible to siblings only until its first Stop. No workaround hook: a CLI without the event goes without.
 - **Route record (v2.105.0)** — `lib/route_check.py --record` reads the finished turn's assistant text and, when it holds a routing line at line start (`Route: R2 …` / `Tier: R3 …` / the arrow form), appends one `phase: route` row. Fenced code, placeholders and ranges (`R0-R4`) are ignored. Every CLI records it from its own transcript (Cursor `stop-unlock.sh`, agy `stop-unlock.sh`, opencode from the plugin). Incident: the manual route append was written 0 times across every product repo.
-- **Bypass** — `ROLEPOD_ALLOW_SHARED_WORKTREE=1` silences the warning.
+- **Bypass** — none (the lock is a silent record in every mode).
 
 ### `project-context-loader.sh` — SessionStart (Claude, Codex, Cursor)
 
@@ -170,16 +220,9 @@ Warn-only grep of the staged diff: focus / skip markers added, deleted test case
 | Fleet gate on `Agent`: the `updatedInput` → `opus` floor and the downgrade nudge | dead path — strong roles render `opus` in frontmatter since v2.104.0 |
 | `dispatch-auto-log` `floor: applied` value | dead path — nothing lifts a model any more |
 
-## Bypass envs
+## Changing gate strictness
 
-| Env | Effect | When |
-|---|---|---|
-| `ROLEPOD_ALLOW_OUT_OF_SCOPE_WRITE=1` | `subagent-write-scope` passes | One dispatch that must write outside its class (a test helper beside source) |
-| `ROLEPOD_ALLOW_SHARED_WORKTREE=1` | `worktree-guard` and the sibling warning pass | Intentional shared session (read-only review, coordinated file ownership) |
-
-Apply them per session, never globally. **They are the user's hand only:** a model that meets a gate conflicting with an instruction surfaces the conflict with options; it never sets a bypass itself. Every used bypass appends `{"ts","hook","var","reason"}` to `<git-root>/.rolepod/evidence/bypass.log`, the reason taken from `ROLEPOD_BYPASS_REASON` (default `"unreasoned"`); `rolepod-selftest` tags doctor and test probes so `rolepod-stats` counts them apart. `ROLEPOD_*` is rolepod's namespace; Claude Code's own behavior stays under `CLAUDE_CODE_*`.
-
-To change gate strictness, nudge behavior, or the cross-family pool, set these in `~/.rolepod/config.json`: `gates.mode` (off/soft/hard), `nudge.enabled` (true/false), and the `pool` object.
+You change strictness with `workflow.mode` in `~/.rolepod/config.json` (a project's `.rolepod/config.json` overrides it); each mode's gate table is fixed (see Gates by mode). No config key and no env turns one gate off. A model that meets a gate that conflicts with an instruction surfaces the conflict with options; it never works around the gate itself. The cross-family pool is the `pool` object in the same file.
 
 ## Cross-family pool — `~/.rolepod/config.json` `pool` key
 
@@ -188,7 +231,7 @@ Opt-in and off by default. Machine-wide only; no project-level override. Set in 
 - **Members** — space-separated: `codex`, `claude`, `agy`, `cursor`, `opencode`. List every CLI you use in the order you prefer for each kind. The Lead's own CLI is skipped at run time, so one file serves every Lead. The model family is recorded for information and never filters a member.
 - **Time** — a member is killed when it goes SILENT for `stall` seconds (flag `--stall` > config `stall=` > 600), not when it is slow; the wall-clock cap is runaway insurance only (review 7200 s detached / 600 s foreground, consult 300, critique 600). `--detach` runs the chain as a job under `.rolepod/evidence/external/jobs/<id>/`; `--collect <id>` waits, `--jobs` lists.
 - **Refusals** — a partial-slice diff (its files have edits it does not contain) → exit 7, attach `git diff HEAD` or commit first (`--partial-ok` only when the user asked for the staged part); a second live review job → exit 8 until `--collect` or `--kill`.
-- **Rounds** — the external runs once per R4 task, round 1 only; round 2+ is internal (`security-engineer` re-checks its own and the external's security-class BLOCKER / MAJOR findings, `universal-reviewer` the external's other findings). A pre-existing issue on an untouched path is one note line and never drives the verdict.
+- **Rounds** — the external runs once per R4 task, round 1 only; round 2+ is internal: one fresh `universal-reviewer` re-checks the fix delta (H1→H2) of every BLOCKER / MAJOR finding in one pass, whichever reviewer or external raised it (`review-code` Fix-verify; at most four rounds, round 1 included). A pre-existing issue on an untouched path is one note line and never drives the verdict.
 - **At commit (Claude)** — an external pass is not read by the gate (C4, see `precommit-gate.sh`). A docs-only diff passes the gate at any size (docs are written, not reviewed — owner rule).
 
 ## Private working docs — `docs/rolepod/` never commits (v2.80.0)
@@ -223,11 +266,11 @@ Test levels, printed in every brief: the task's Command runs after each edit and
 
 ## Other CLIs
 
-Root `hooks/` is the one source; `build/render.sh` copies the shared scripts (and `hooks/lib/`) into each plugin tree, so there is no hand-kept mirror. The evidence gate and the edit-time hooks are Claude-only; every CLI keeps the private-docs deny.
+The mode table above applies on every CLI whose hook API can carry it; Antigravity's deny-only API turns a `warn` into silence. Root `hooks/` is the one source; `build/render.sh` copies the shared scripts (and `hooks/lib/`) into each plugin tree, so there is no hand-kept mirror. The evidence gate and the edit-time hooks are Claude-only; every CLI keeps the private-docs deny.
 
 | CLI | Registered | Evidence gate |
 |---|---|---|
-| Codex | `claim-verify-nudge`, `project-context-loader`, `session-lifecycle --lock/--unlock`, `agent-sync`, `block-subagent-commit`, `precommit-gate` (`ROLEPOD_LEAD_CLI=codex`), `subagent-core --cli codex`, `fix-loop-breaker` | no — private-docs deny + commit ban |
+| Codex | `claim-verify-nudge`, `session-start` (+ `agent-sync`; runs the context loader and the lock), `session-lifecycle --unlock`, `block-subagent-commit`, `precommit-gate` (`ROLEPOD_LEAD_CLI=codex`), `subagent-core --cli codex`, `fix-loop-breaker` | no — private-docs deny + commit ban |
 | Cursor | `project-context-loader` (`sessionStart`, + session lock), `precommit-gate` (`beforeShellExecution`, a translator around the shared gate), `stop-unlock` (`stop`, + route record) | no — private-docs deny |
 | Antigravity | `session-start.sh` (`PreInvocation`, session lock), `pre-tool.sh` (`PreToolUse` `run_command` → shared gate), `stop-unlock.sh` (`Stop`) | no — private-docs deny |
 | opencode | JS plugin: session lock, post-compact re-anchor, commit deny, the shared `fix-loop-breaker` behind a translator, route record | no — private-docs deny + agent `permission:` blocks (subagent commit / push / merge) |

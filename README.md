@@ -34,7 +34,7 @@ You invoke nothing for this; it just happens.
 2. **Plan — `write-plan`.** Breaks the spec into tasks, assigns agent ownership, writes a cohesion contract before any parallel work.
 3. **Build — `implement-plan`.** Executes the plan test-first with bounded delegation. Bug fixes take the `debug-issue` path: reproduce → failing test → minimal fix.
 4. **Verify — `check-work`.** Proves the change with evidence — tests, build, curl, a screenshot — never just a "done".
-5. **Review — `review-code`.** Every logic diff gets two lenses (spec compliance + standards); an R4 (high-risk) diff adds `security-engineer` and one adversarial pass (`adversarial-review`).
+5. **Review — `review-code`.** Every logic diff gets two lenses (spec compliance + standards); an R4 (high-risk) diff adds `security-engineer` (Standard and Full) and, in Full, one adversarial pass (`adversarial-review`).
 6. **Ship — `finish-work`.** One pre-merge gate, CI lanes, and a 3-option finish menu (merge, PR, keep open; discard only when you ask).
 
 Two skills run across phases: **`simplify-code`** (behavior-preserving cleanup) and **`manage-context`** (recovery when a session is long, stuck, or in an unfamiliar repo).
@@ -199,12 +199,13 @@ Workflow settings live in `~/.rolepod/config.json`; a project's
 `.rolepod/config.json` can override its `workflow.mode`. The independent
 `pool` setting remains global-only.
 
-**Location:** `~/.rolepod/config.json` — normal install and first session
-initialization create it only when absent, with `workflow.mode=lite`.
-Explicit `install.sh --force` reinstall resets the profile to Lite and preserves
-the global pool. Native plugin uninstall/reinstall leaves an existing config
-untouched, including an explicit Standard or Full profile. Uninstall never
-removes the file.
+**Location:** `~/.rolepod/config.json`. `install.sh` (every flag, `--force`
+included) and first session initialization write it only when it is missing,
+unreadable, or in the old format (a top-level `review`, `gates` or `nudge` key,
+or no `workflow.mode`). The new file has `workflow.mode=lite` and keeps your
+existing `pool`; no backup is made. A valid config is never touched, so
+`--force` keeps an explicit Standard or Full profile. Native plugin
+uninstall/reinstall leaves it alone too, and uninstall never removes the file.
 
 **Example:**
 
@@ -224,7 +225,7 @@ removes the file.
 
 | Key | Values | Default | Scope |
 |---|---|---|---|
-| `workflow.mode` | `lite` \| `standard` \| `full` | `lite` | Machine profile; project `.rolepod/config.json` overrides. `lite` skips Rolepod workflow gates and nudges; `standard` warns and allows; `full` enforces existing workflow conditions. Legacy `review`, `gates`, and `nudge` keys are ignored. |
+| `workflow.mode` | `lite` \| `standard` \| `full` | `lite` | Machine profile; project `.rolepod/config.json` overrides. Every mode runs the hooks; the mode sets how strict each gate is (`lite` is the loosest, `full` blocks the most) from a fixed table in [docs/hooks.md](docs/hooks.md#gates-by-mode). Legacy `review`, `gates`, and `nudge` keys are ignored. |
 | `pool.cross-family` | `"on"` \| `"off"` | `"off"` | Machine only. `"off"` disables the external pool even if members are listed |
 | `pool.reviewer.review` | space-separated CLI names | (none) | Machine only. External review for R4 (adversarial) or at the tier the `tier` key sets |
 | `pool.reviewer.consult` | space-separated CLI names | (none) | Machine only. External debug consult after 2 failed local attempts |
@@ -241,10 +242,14 @@ Lite/uncaptured when no session profile can be stored safely.
 Compaction and later phases retain the active profile. Malformed configuration
 also falls back to Standard with a warning.
 
-Lite review has one round with two fresh reviewers in parallel: spec and
-standards, each with its own context and report. Standard and Full retain their
-review contracts. Risk tier remains independent of mode. Native permissions
-and role tool capabilities still apply in every mode.
+Review round 1 by mode: Lite runs two fresh lenses in parallel (spec and
+standards, each with its own context and report); Standard adds
+`security-engineer` (checklist) on R4 or a risky path; Full adds
+`security-engineer` (full) and one adversarial pass on R4. A re-check (round 2+,
+at most four rounds counting round 1) is one fresh `universal-reviewer` that
+checks only the fix delta of every BLOCKER / MAJOR finding. Independent spec and
+plan reviewers run in Full only. Risk tier remains independent of mode. Native
+permissions and role tool capabilities still apply in every mode.
 
 To set the pool, use `cross-family.sh --setup` from the `cross-family` skill, or hand-edit the file (member order, `tier`, per-member `stall=` / `timeout=` options: see `core/skills/cross-family/references/pool.md`).
 
@@ -252,7 +257,7 @@ To set the pool, use `cross-family.sh --setup` from the `cross-family` skill, or
 
 - **15 specialist agents** — architecture, engineering, quality, ops, design, content, and review. Each owns a path or concern and runs on a cost-tiered model (~50-60% cheaper than all-strong). → [docs/agents.md](docs/agents.md), [docs/model-tier-policy.md](docs/model-tier-policy.md)
 - **Core 10 skills** — one router plus nine phase skills, the workflow spine. Plus 3 helper skills the phase skills call: `cross-family` (another CLI's review / critique / consult / draft), `tdd-flow` (red → green at a seam), and `adversarial-review` (the R4 round-1 adversarial pass). → [docs/skills.md](docs/skills.md)
-- **Per-CLI hooks** — silent while you follow the workflow; they speak only on a real mistake: a high-risk commit with no `security-engineer` review, a sub-agent commit, a sub-agent writing outside its role, two sessions editing the same file, a private working doc staged. The full set runs on Claude; the other CLIs keep the private-docs commit deny, session safety and what their hook API allows, and the rest is skill-enforced. → [docs/hooks.md](docs/hooks.md)
+- **Per-CLI hooks** — silent while you follow the workflow; they speak only on a real mistake: a high-risk commit with no `security-engineer` review, a sub-agent commit, a sub-agent writing outside its role, two sessions editing the same file, a private working doc staged. They run in every mode; `workflow.mode` only sets whether each gate warns or denies (the table of 14 gates by mode, plus the always-warn and silent-record groups, is in [docs/hooks.md](docs/hooks.md#gates-by-mode)). The full set runs on Claude; the other CLIs keep the private-docs commit deny, session safety and what their hook API allows (Antigravity can deny but not warn), and the rest is skill-enforced. → [docs/hooks.md](docs/hooks.md)
 - **Terse output (built in)** — every rolepod CLI shapes its replies to cut output tokens: result first, the reading language's politeness register dropped, numbered steps, flat error tone, a five-item display cap that never limits analysis or tool results. Security warnings, destructive-action confirmations and "explain" requests keep their full shape — the shape yields to the task, never the reverse. → [docs/hooks.md](docs/hooks.md) (`always-on-loader.sh`)
 - **Evidence stats** — the `rolepod-stats` skill reads any project's `.rolepod/evidence/`: tier distribution, verify pass/fail, review verdicts, strong-dispatch overrides, bypasses (available at `/rolepod-stats` on Claude and `$rolepod-stats` on Codex). `check-work` skill's `scripts/junit-summary.sh` counts JUnit XML. `scripts/ticket.sh` in `implement-plan` runs a plan task's mechanics in one call per step (`start` / `integrate` / `finish` / `log`) and never commits. Every plugin tree ships these scripts under their skill's `scripts/` folder.
 - **Discipline checklists** — Q1-Q4 delegation, S1-S5 simplicity, T1-T6 tests, F1-F5 failure-mode — live in the skills that run each phase. Rolepod's own working docs (`docs/rolepod/` — specs, plans, contracts, hand-offs) are private by default: gitignored on first save and refused at commit unless the repo opts in with `.rolepod/docs-tracked`.
@@ -267,8 +272,8 @@ Hooks are the product, so this is stated plainly. Everything stays on your disk;
 | What | Where | Off |
 |---|---|---|
 | Phase evidence — route tier, dispatch tier, verify / review verdicts, gate denies and bypasses | `<repo>/.rolepod/evidence/phase-log.jsonl`, `bypass.log` (per project, plain JSONL) | delete the dir; the `rolepod-stats` skill reads it |
-| Session liveness + the files each session edits (the stomp guard) | `~/.rolepod/session-locks/<sha256(worktree)>/<session>.lock` / `.files`, removed at Stop | `ROLEPOD_ALLOW_SHARED_WORKTREE=1` (user-set) |
-| Per-session counters — fix-loop fails, raw-read bytes, context-nudge state | `$TMPDIR/rolepod-*.json`, `~/.rolepod/ctx-nudge/` | set `workflow.mode` to `lite` in `~/.rolepod/config.json` |
+| Session liveness + the files each session edits (the stomp guard) | `~/.rolepod/session-locks/<sha256(worktree)>/<session>.lock` / `.files`, removed at Stop | delete the files (the stomp guard then has nothing to read) |
+| Per-session counters — fix-loop fails, raw-read bytes, context-nudge state | `$TMPDIR/rolepod-*.json`, `~/.rolepod/ctx-nudge/` | delete the files |
 | Cross-family reviewer output (opt-in) | `<repo>/.rolepod/evidence/external/` | `pool.cross-family: "off"` in config, or unset `pool` key = off |
 
 Hooks read the prompt, the tool input and the transcript tail to decide, then discard them: prompt text and file contents are never written anywhere. Nothing reads keychains, `~/.aws`, SSH keys, browser stores or the clipboard.
