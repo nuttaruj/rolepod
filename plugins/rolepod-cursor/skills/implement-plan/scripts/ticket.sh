@@ -60,6 +60,23 @@
 #     worktree the commits sit on the base checkout, so <base> is the parent
 #     of the track's first logged commit.
 #
+#   ticket.sh review-diff start <name>
+#     In the current git checkout: `git add -A`; writes
+#     .rolepod/evidence/review/<name>.diff = `git diff --cached --stat` then
+#     `git diff --cached -U10`, both over `-- . ':!docs/rolepod' ':!*.lock'
+#     ':!package-lock.json' ':!pnpm-lock.yaml'`; prints `diff: <absolute path>`
+#     then `H1: <git write-tree>`. An empty diff -> "ticket: review-diff: empty
+#     diff" on stderr, exit 1, no file.
+#   ticket.sh review-diff delta <name> <H1-tree> <k>
+#     <k> is 2, 3 or 4; `git add -A`; H2 = `git write-tree`; writes
+#     .rolepod/evidence/review/<name>-r<k>.diff = `git diff <H1-tree> <H2> -U10`
+#     over the same pathspec; prints `diff: <absolute path>` then `H2: <tree>`.
+#     An <H1-tree> that is not a tree object (a commit sha too) -> exit 2. A
+#     delta with no change since <H1-tree> -> "empty diff", exit 1, no file.
+#     <name> matches [A-Za-z0-9._-]+; a bad name, bad k or a missing argument
+#     -> one usage line on stderr, exit 2. The tree stays staged; never commits,
+#     stashes, resets or checks out.
+#
 # Tracks (spec worktree-track-2026-09-30): a task whose brief names a track
 # worktree reuses it when it exists (the 2nd+ task of the track) and records
 # the plan path in `branch.<b>.rolepod-plan`; its ship line is `integrate ->
@@ -159,6 +176,8 @@ usage:
   ticket.sh integrate <worktree> --brief <file> [--pre '<cmd>'] [--gate '<cmd>']
   ticket.sh finish <worktree>
   ticket.sh log <plan> <N> --sha <sha> --note '<text>'
+  ticket.sh review-diff start <name>
+  ticket.sh review-diff delta <name> <H1-tree> <k>
 EOF
 }
 
@@ -1387,6 +1406,66 @@ EOF
   fi
 }
 
+# ── review-diff (C67) ────────────────────────────────────────────────────
+# The one home of the frozen review diff, the H1 / H2 tree and the fix delta
+# `run-review` hands its reviewers. Stages the whole tree (`git add -A`, as
+# writer-loop always did) and never commits, stashes, resets or checks out.
+RD_USAGE="usage: ticket.sh review-diff start <name> | ticket.sh review-diff delta <name> <H1-tree> <k: 2|3|4>"
+
+cmd_review_diff() {
+  local sub="${1:-}" name="${2:-}" h1="" k="" top dir out h2
+  case "$sub" in
+    start) [ $# -eq 2 ] || { echo "ticket: review-diff: $RD_USAGE" >&2; exit 2; } ;;
+    delta) [ $# -eq 4 ] || { echo "ticket: review-diff: $RD_USAGE" >&2; exit 2; }
+           h1="$3"; k="$4" ;;
+    *) echo "ticket: review-diff: $RD_USAGE" >&2; exit 2 ;;
+  esac
+  case "$name" in
+    ""|*[!A-Za-z0-9._-]*) echo "ticket: review-diff: name must match [A-Za-z0-9._-]+ — $RD_USAGE" >&2; exit 2 ;;
+  esac
+  if [ "$sub" = "delta" ]; then
+    case "$k" in
+      2|3|4) ;;
+      *) echo "ticket: review-diff: k must be 2, 3 or 4 — $RD_USAGE" >&2; exit 2 ;;
+    esac
+    if [ "$(git cat-file -t "$h1" 2>/dev/null)" != "tree" ]; then
+      echo "ticket: review-diff: not a tree object: $h1" >&2
+      exit 2
+    fi
+  fi
+  top="$(git rev-parse --show-toplevel 2>/dev/null)" \
+    || { echo "ticket: review-diff: not in a git checkout" >&2; exit 2; }
+  git -C "$top" add -A || { echo "ticket: review-diff: git add -A failed" >&2; exit 1; }
+  dir="$top/.rolepod/evidence/review"
+  if [ "$sub" = "start" ]; then
+    out="$dir/$name.diff"
+    if git -C "$top" diff --cached --quiet -- . ':!docs/rolepod' ':!*.lock' ':!package-lock.json' ':!pnpm-lock.yaml'; then
+      echo "ticket: review-diff: empty diff" >&2
+      exit 1
+    fi
+    mkdir -p "$dir" || { echo "ticket: review-diff: cannot create $dir" >&2; exit 1; }
+    {
+      git -C "$top" diff --cached --stat -- . ':!docs/rolepod' ':!*.lock' ':!package-lock.json' ':!pnpm-lock.yaml'
+      git -C "$top" diff --cached -U10 -- . ':!docs/rolepod' ':!*.lock' ':!package-lock.json' ':!pnpm-lock.yaml'
+    } > "$out" || { echo "ticket: review-diff: cannot write $out" >&2; rm -f "$out"; exit 1; }
+    h2="$(git -C "$top" write-tree)" || { echo "ticket: review-diff: git write-tree failed" >&2; rm -f "$out"; exit 1; }
+    echo "diff: $out"
+    echo "H1: $h2"
+  else
+    out="$dir/$name-r$k.diff"
+    h2="$(git -C "$top" write-tree)" || { echo "ticket: review-diff: git write-tree failed" >&2; exit 1; }
+    if git -C "$top" diff --quiet "$h1" "$h2" -- . ':!docs/rolepod' ':!*.lock' ':!package-lock.json' ':!pnpm-lock.yaml'; then
+      echo "ticket: review-diff: empty diff" >&2
+      exit 1
+    fi
+    mkdir -p "$dir" || { echo "ticket: review-diff: cannot create $dir" >&2; exit 1; }
+    git -C "$top" diff "$h1" "$h2" -U10 -- . ':!docs/rolepod' ':!*.lock' ':!package-lock.json' ':!pnpm-lock.yaml' > "$out" \
+      || { echo "ticket: review-diff: cannot write $out" >&2; rm -f "$out"; exit 1; }
+    echo "diff: $out"
+    echo "H2: $h2"
+  fi
+}
+
 # ── dispatch ─────────────────────────────────────────────────────────────
 
 SUB="${1:-}"
@@ -1398,5 +1477,6 @@ case "$SUB" in
   integrate) cmd_integrate "$@" ;;
   finish) cmd_finish "$@" ;;
   log) cmd_log "$@" ;;
+  review-diff) cmd_review_diff "$@" ;;
   *) echo "ticket: unknown subcommand: $SUB" >&2; usage >&2; exit 2 ;;
 esac
