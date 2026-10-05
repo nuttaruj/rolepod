@@ -25,7 +25,7 @@ Done when: the range resolves to a non-empty diff, its snapshot is recorded, and
 ### 2. Pick reviewers
 
 Workflow mode = the active session mode carried from startup or the first `using-rolepod` entry; a helper call gets `ROLEPOD_SESSION_MODE` / `ROLEPOD_SESSION_SOURCE`.
-No carried mode (a standalone run) → `using-rolepod`'s `scripts/workflow-mode.sh` once (prints the mode), then carry it; no `using-rolepod` → Standard.
+No carried mode (a standalone run) → `using-rolepod`'s `scripts/workflow-mode.sh` once (prints the mode), then carry it; no `using-rolepod` → Lite.
 A helper or `plan-lint.sh` call without the native mode environment → pass both variables from the carried profile.
 Review never re-reads the configured mode (a config change takes effect in a new session), and `review-mode.sh` reports only a compatibility review intensity, never the mode.
 
@@ -66,7 +66,7 @@ Done when: every required reviewer of the active mode and tier is named with its
 
 - Dispatch every reviewer of the round in ONE message on the same frozen diff, with the identical recorded snapshot / hash in every brief; the round ends when the LAST one returns. Round 1 budget: ≤ 40 tool calls for `security-engineer` and the adversarial pass, ≤ 20 per lens.
 - Each reviewer receives its own lens or role only, never sees another reviewer's report or findings, and writes a separate report. Aggregate and deduplicate only after every report is in.
-- A task owner running its own round waits on every child before returning (its last line `WAITING: <report paths>`; dispatch with no `name`, fork or remote isolation — such a child reports to the Lead; wake mechanics → `writer-loop`); no way to wait → `REVIEW NEEDED:` for the Lead instead of a dispatch.
+- A task owner running its own round orders it through `run-review`. The fixes wait for every report: dispatch the whole set in ONE message, then take every report in before you fix anything. Cannot dispatch a reviewer → return the diff unreviewed to your caller, naming the set: `REVIEW NEEDED: <set>`.
 - Until the round ends: no edit to a diff file, no `git stash / reset / checkout / add / commit` (a red-proof revert runs in a throwaway worktree) — reviewers read the live tree.
 - With agents available, a missing, failed, empty or partial internal reviewer report keeps the same round open (an external lens falls back per step 2): that same isolated reviewer completes its own report on the same frozen diff in that round, before aggregation or ship. Never substitute a Lead review. Recommendation stays `PARTIAL` until every report is complete.
 - No agents available → Lite: the Lead walks both axes and records the loss of reviewer independence, with no added specialist or round. Standard / Full: the gate stays blocked unless the user explicitly waives it. The Lead's own walk is never an independent reviewer; strength routing may give an axis to a specialist but never removes a required axis. The user forbids agents → surface the conflict.

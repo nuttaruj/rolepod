@@ -78,7 +78,7 @@ The FIRST matching row fires:
 | audit UX / a11y of one page or flow | Verify → ONE `ui-ux-designer` brief: `check-work` UI verification + `review-code` `references/axes.md` (UI); no browser reachable → the Lead observes and the designer audits that observation (no sub-agents → the Lead runs both) |
 | edit / fix on a high-risk path | Define → `write-spec` → `write-plan` → `implement-plan` (per-task review) |
 | clear doc edit; CI, Docker, deploy, infra config | Build → `implement-plan`, Owner `content-strategist` (`audience:` set) / `devops-sre`; R1 → the Lead |
-| review / look at the diff; audit / find all X across the repo | Review → `review-code`; a whole-repo sweep scopes first (step 4) |
+| review / look at the diff; audit / find all X across the repo | Review → `run-review`; a whole-repo sweep scopes first (step 4) |
 | ship / merge / PR / done, or the work's natural end | Ship → `finish-work` (`review-code` first if a review is missing) |
 | rolepod stats / evidence report / which models ran | `rolepod-stats` |
 | explain / conceptual question | answer; a wide repo or online sweep → a `scout` first, one per independent question, all in ONE message (no agent → the Lead greps) |
