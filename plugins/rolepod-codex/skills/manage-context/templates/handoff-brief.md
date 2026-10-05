@@ -21,7 +21,8 @@
 ## Required reads
 <Next task and only the predecessor handoff, contract clauses, unresolved
  debug state, or other artifact required for the next decision. Link receipts
- and evidence for files/tests already covered; do not repeat their details.
+ and evidence for files/tests already covered; do not repeat their details;
+ without a receipt, keep the required facts here.
  Read the full plan/spec only if scope, acceptance, ownership, or position is
  unclear. `none` when there are no required predecessor artifacts.>
 

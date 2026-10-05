@@ -60,9 +60,15 @@ You are dispatched for every change touching:
 
 ## Return
 
-Fill `review-code`'s report template (`templates/review-report.md` only — through the Skill tool; the skill's steps are the Lead's) into the report file the brief names (`.rolepod/evidence/review/<task>-security-engineer.md` by default); no Skill tool → write the sections below instead. Severity: CRITICAL / HIGH / MEDIUM / LOW — the template maps them into its BLOCKER / MAJOR / MINOR.
+Write the report into the file the brief names (`.rolepod/evidence/review/<task>-security-engineer.md` by default), in this shape:
 
-Store scope, immutable H1, your role/depth, coverage/read trace, limitations, and verdict once in the report. Omit empty optional sections. A clean report names changed files and behaviors covered, paths traced and where claims held, risk surfaces, and limitations; preserve the depth-required trace even when clean. Never use bare `APPROVED` or treat missing coverage as clean. Findings keep severity, file:line, impact, and fix direction.
+```markdown
+{{INCLUDE: core/skills/review-code/templates/review-report.md}}
+```
+
+Severity: CRITICAL / HIGH / MEDIUM / LOW — record them as BLOCKER (CRITICAL, HIGH) / MAJOR (MEDIUM) / MINOR (LOW).
+
+Store scope, immutable H1, your role/depth, coverage/read trace, limitations, and verdict once in the report. Omit empty optional sections. A clean report names changed files and behaviors covered, paths traced and where claims held, risk surfaces, and limitations; preserve the depth-required trace even when clean. Never use bare `APPROVED` or treat missing coverage as clean. Findings keep severity, file:line, axis (`security`), impact, and fix direction.
 
 You are the final security judge: never request review of your own findings.
 

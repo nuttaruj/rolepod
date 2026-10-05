@@ -229,6 +229,7 @@ if plan_fleet:
     bare_writer = []
 costly = cls == "strong" or (bool(lead) and cls == "unknown")
 why = ("strong class" if cls == "strong" else "unknown family, priced as strong")
+lead_s = (lead or "unknown model")[:20]
 
 verdict = ""
 reason_txt = ""
@@ -236,16 +237,16 @@ stages = []
 if costly and bare_fanout and strong_fanout:
     verdict = "bare-fanout+strong-fanout"
     stages = bare_fanout + strong_fanout
-    # two stage lists capped at 60 each keep the whole text under 600 by construction
+    # stage lists capped at 60 each + lead name capped at 20 keep the text <= 600 by construction
     reason_txt = (
         "⛔ fleet-tier: bare fan-out stage(s) %s inherit the Lead %s (%s) × N, and stage(s) %s pin a "
         "strong model × N. "
         "Fix: pin every fan-out non-strong — a stage that WRITES → a non-strong rolepod role "
-        "(agentType:\x27rolepod:<role>\x27); read/browse/sweep → agentType:\x27rolepod:scout\x27 or "
+        "(agentType:\x27rolepod:<role>\x27); read-only sweep (no Bash/MCP) → agentType:\x27rolepod:scout\x27, else "
         "model:\x27haiku\x27; per-item verify → model:\x27sonnet\x27, effort:\x27high\x27; ONE strong slot on the "
         "single review call. "
         "Exception: none — pin the fan-out."
-        % (", ".join(sorted(set(bare_fanout)))[:60], lead or "unknown model", why,
+        % (", ".join(sorted(set(bare_fanout)))[:60], lead_s, why,
            ", ".join(sorted(set(strong_fanout)))[:60]))
 elif costly and bare_fanout:
     verdict = "bare-fanout"
@@ -253,11 +254,11 @@ elif costly and bare_fanout:
     reason_txt = (
         "⛔ fleet-tier: bare fan-out call(s) — stage(s) %s — inherit the Lead %s (%s) × N. "
         "Fix: pin the fan-out — a stage that WRITES → a non-strong rolepod role "
-        "(agentType:\x27rolepod:<role>\x27, which pins its tier); read/browse/sweep → "
-        "agentType:\x27rolepod:scout\x27 or model:\x27haiku\x27; per-item "
+        "(agentType:\x27rolepod:<role>\x27, which pins its tier); read-only sweep (no Bash/MCP) → "
+        "agentType:\x27rolepod:scout\x27 (~15k vs ~71k context), else model:\x27haiku\x27; per-item "
         "verify → model:\x27sonnet\x27, effort:\x27high\x27; ONE strong slot on the single review call. "
         "Exception: none — pin the fan-out."
-        % (", ".join(sorted(set(bare_fanout)))[:120], lead or "unknown model", why))
+        % (", ".join(sorted(set(bare_fanout)))[:120], lead_s, why))
 elif strong_fanout:
     verdict = "strong-fanout"
     stages = strong_fanout
