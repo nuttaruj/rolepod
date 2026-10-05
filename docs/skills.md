@@ -1,6 +1,6 @@
-# Rolepod Skill Catalog (Core 10 + 2 helpers + 1 command + 2 on-demand)
+# Rolepod Skill Catalog (Core 10 + 4 helpers + 1 command + 2 on-demand)
 
-Rolepod ships **15 skills total**: Core 10 (1 router + 9 workflow phase skills) plus two helper skills — `cross-family` (another CLI's review / critique / consult) and `tdd-flow` (red → green at a seam) — called by the phase skills that need them, plus one explicit-invoke command — `deepen-codebase` (architecture report → pick a card → write-spec) — and two on-demand skills: `write-prototype` (a throwaway layout or logic demo that answers one spec question; write-spec offers it) and `rolepod-stats` (the project's evidence report, when the user asks). There are no legacy compatibility shim skill files in the install tree. Old skill names are preserved only as documentation in [legacy-skill-map.md](legacy-skill-map.md).
+Rolepod ships **17 skills total**: Core 10 (1 router + 9 workflow phase skills) plus four helper skills — `cross-family` (another CLI's review / critique / consult), `tdd-flow` (red → green at a seam), `adversarial-review` (the R4 round-1 adversarial pass), and `run-tracks` (parallel task execution) — called by the phase skills that need them, plus one explicit-invoke command — `deepen-codebase` (architecture report → pick a card → write-spec) — and two on-demand skills: `write-prototype` (a throwaway layout or logic demo that answers one spec question; write-spec offers it) and `rolepod-stats` (the project's evidence report, when the user asks). There are no legacy compatibility shim skill files in the install tree. Old skill names are preserved only as documentation in [legacy-skill-map.md](legacy-skill-map.md).
 
 No entry doc embeds a skill index. Each skill's `description:` is its routing surface, shown by the CLI; `using-rolepod` routes by its own table, so the Lead does not spend context choosing among dozens of tiny workflow fragments. Deep domain expertise lives in the 15 specialist agents.
 
@@ -39,6 +39,7 @@ No entry doc embeds a skill index. Each skill's `description:` is its routing su
 | `cross-family` | `review-code`, `write-spec`, `debug-issue`, `implement-plan` | Runs another CLI's review, critique, or consult end to end. |
 | `tdd-flow` | `implement-plan`, `debug-issue`, `simplify-code`, `check-work`, `write-plan` | Runs the failing-test-first red → green loop at a seam. |
 | `adversarial-review` | `review-code` | Runs the adversarial pass of an R4 round 1 — external via `cross-family` when the pool is usable, else internal strong. |
+| `run-tracks` | `implement-plan` | Orchestrates parallel task execution across plan tracks. |
 
 ## Domain expertise → specialist agents
 
@@ -62,7 +63,7 @@ Domain depth that used to live in standalone skills now lives in the 15 speciali
 
 ## Skill table
 
-Source of truth: the `## Core 10 skills` table above, and each skill's own frontmatter (`description:` + `when_to_use:`) in `core/skills/<name>/SKILL.md`.
+Source of truth: the `## Core 10 skills` table above, and each skill's own frontmatter (`description:`) in `core/skills/<name>/SKILL.md`.
 
 ## Execution context — inline vs fork
 
@@ -72,7 +73,7 @@ Skills can run inline (default — body becomes part of Lead's conversation) or 
 
 ## How a skill is added or moved
 
-1. Add `core/skills/<name>/SKILL.md` with `name:`, `description:` and `when_to_use:`, following the minimal skeleton in `core/skills/_template.md`.
+1. Add `core/skills/<name>/SKILL.md` with `name:` and `description:`, following the minimal skeleton in `core/skills/_template.md`.
 2. Add the row to the `## Core 10 skills` table above — it is the full catalog; there is no generated index to regenerate.
 
 ## Skill design principles
@@ -80,6 +81,6 @@ Skills can run inline (default — body becomes part of Lead's conversation) or 
 - **One public skill per workflow phase.** Domain expertise belongs in agents unless users naturally invoke that workflow directly.
 - **Each core skill is standalone.** A delegating step names its role and carries the line "No subagents → the Lead does it", and `## Next phase` names the fallback when the next skill is not available, so a copy-only install still works. It is complete as ONE file: a runtime that ships only SKILL.md (no `templates/` `references/` `examples/`) still runs the whole workflow — the artifact line IS the template (it names every section in the template's words; the file only adds the layout).
 - **No hard dependency language.** Forbidden: `Requires <agent>`, `Always delegate to <agent>`, `Only works inside full Rolepod`.
-- **Frontmatter triggers are the routing surface.** `description:` and `when_to_use:` must include the phrases users actually type.
+- **Frontmatter triggers are the routing surface.** `description:` must include the phrases users actually type.
 - **Minimal skeleton, lean by the authoring guide.** Every skill follows the skeleton in `core/skills/_template.md` (frontmatter `name` + `description`, one-line framing, numbered steps each ending in a done-when, `## Next phase` with its fallback) and its writing levers; branch-only content moves into the skill's own `references/`. No prose line past 600 chars. Deep playbooks belong in agents.
 - **Rule over mechanism.** A skill states the rule and the command; it does not narrate which hook denies under which sub-condition, exit codes, version history, or measurements — hooks print their own message when they bite.

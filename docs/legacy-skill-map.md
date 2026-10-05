@@ -53,5 +53,5 @@ Use this table when updating old docs, prompts, or agent memories.
 ## Compatibility policy
 
 - Do not re-add executable compatibility shims unless a real install break is proven.
-- If a legacy phrase stops routing correctly, update the matching Core 10 `description:` / `when_to_use:` instead of adding a new skill.
+- If a legacy phrase stops routing correctly, update the matching Core 10 `description:` instead of adding a new skill.
 - If a domain workflow is large enough to deserve its own public skill, it must pass the skill-design bar in [skills.md](skills.md) and stay useful when copied alone.

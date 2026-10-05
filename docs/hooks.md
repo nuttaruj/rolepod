@@ -191,7 +191,7 @@ A bare Workflow `agent()` and a general-purpose Agent-tool sub-agent carry no ro
 
 ### `project-context-loader.sh` — SessionStart (Claude, Codex, Cursor)
 
-- **Effect** — repo name, branch, dirty count, the last 5 commits, hot files (7 days), the last phase-log line, and an **Open plan** pointer: the newest `docs/rolepod/plans/*.md` that has at least one checked AND one unchecked box (a 0-done plan is never shown).
+- **Effect** — repo name, branch, dirty count, the last 3 commits (each subject cut to one line), hot files (7 days; manifest churn such as `plugin.json` and lockfiles skipped), the last phase-log line, and an **Open plan** pointer: the newest `docs/rolepod/plans/*.md` that has at least one checked AND one unchecked box (a 0-done plan is never shown).
 - **Context only** — the session lock, the sibling warning and `.rolepod/parent-active` belong to `session-lifecycle` on Claude and Codex (Codex launches SessionStart hooks concurrently, so a second lock writer here read as a phantom sibling and outlived Stop). Cursor ships its own loader, which keeps its `cursor-<conversation_id>` lock.
 - **Cross-family** — no pool file and a second CLI installed → one context line pointing at the `cross-family` skill's setup steps, never a question.
 - **Bypass** — none (context only).
