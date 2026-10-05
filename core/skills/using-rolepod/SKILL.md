@@ -1,6 +1,6 @@
 ---
 name: using-rolepod
-description: Use when a user request arrives, before any planning, editing, delegating, verifying, reviewing or shipping; when a request may change repo state, asks for an action or a recommendation, or opens a workflow decision.
+description: Use when a user request arrives, before any planning, editing, delegating, verifying, reviewing or shipping; when a request reads or may change repo state, asks for an action or a recommendation, or opens a workflow decision.
 ---
 
 # Using Rolepod — workflow router
@@ -61,7 +61,7 @@ The FIRST matching row fires:
 |---|---|
 | another CLI's opinion or review (codex / agy / cursor / opencode / claude); set up or change cross-family | `cross-family` (no `cross-family` → a review ask → `review-code` internal strong pass; a setup ask → say cross-family is not installed) |
 | fix bug / failing test / regression | Build → `debug-issue` first at every tier; it decides after root cause whether `write-spec` or `write-plan` follows |
-| why does X fail / what causes this error or bug, no fix asked | Build → `debug-issue` report-only: answer from cause and evidence, read-only; save an artifact only when the user requested one |
+| why does X fail / what causes this error, bug or metric / number change, no fix asked | Build → `debug-issue` report-only: answer from cause and evidence, read-only; save an artifact only when the user requested one |
 | build / add / design with a vague target (UI, product, doc, ADR included) | Define → `write-spec` |
 | build X to a spec whose Success criteria cover it | the R3 row's spec-as-plan eligibility met → Build → `implement-plan` with the inline checklist; otherwise Plan → `write-plan` |
 | add / change Y at R3+ where the spec does not cover Y, or no spec exists | Define → `write-spec` (a new dated delta spec); eligible R2 → `implement-plan` with the step 2 checklist; other R3 → `write-plan` |
@@ -117,8 +117,8 @@ Done when: the route is stated (R2 and up), the named skill is loaded, and the o
   A high-risk path with no reports from the active mode's R4 set at commit or ship → STOP (review-code Pick reviewers; Lite = the two lenses).
 - A merge the user authorized while a required CI lane still runs → the Lead waits on it (`finish-work` CI lanes), never hands the wait to the user.
 - Four failed fixes for one unresolved repro or criterion → stop and ask; one Second opinion after two (`debug-issue` Second opinion); review rounds count separately. The count carries across owners and phases. A 4th PR on one surface in a session → STOP, ask the user. Parallel verifiers, panels and discovery rounds inside one Workflow do not count.
-- A diff mixing unrelated concerns at push → split the PRs (`finish-work` Pre-merge gates).
-- Concurrent sessions share the REF as well as the files: a sibling / concurrent session warning at session start → before editing a SHARED file, work in `git worktree add .worktrees/<task> -b <branch>` (disjoint edits flow free); work held for authorization stays on its own branch, never merged into a SHARED branch before the answer; push rules → finish-work.
+- A diff mixing unrelated concerns at push → split the PRs (`finish-work` Pre-merge gate).
+- Concurrent sessions share the REF as well as the files: a sibling / concurrent session warning at session start → before editing a SHARED file, work in `git worktree add .worktrees/<task> -b <branch>` (disjoint edits flow free); work held for authorization stays on its own branch, never merged into a SHARED branch before the answer; push rules → `finish-work` Finish menu ("Before any push").
 
 ## Next phase
 
