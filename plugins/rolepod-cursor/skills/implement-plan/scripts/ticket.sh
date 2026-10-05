@@ -50,7 +50,9 @@
 #     instruction, and writes that range (generated files left out) to
 #     .rolepod/evidence/review/<feature>-<id>.diff, naming it on the same
 #     line ("; lens diff: <path>") so the review lenses get the diff as a
-#     file, not a shell. A write failure never fails log — the range still
+#     file, not a shell. The next line is `Review:` — the R3 cell of
+#     `plan-lint.sh --review-set` for the session mode — then `Track end:`
+#     names who runs `run-review`. A write failure never fails log — the range still
 #     prints, just without the path. Idempotent, same as the checkbox flip.
 #     Tracks: listed in `## Tracks`; without it a Parallel plan makes each
 #     task its own track (id = the task number) and a Sequential plan is one
@@ -763,7 +765,7 @@ cmd_start() {
   if [ ! -f "$task_file" ]; then
     task_title="$(printf '%s\n' "$brief_out" | sed -n '1s/^# Task [0-9][0-9]*: *//p')"
     mkdir -p "$(dirname "$task_file")" 2>/dev/null
-    printf '# Task %s — %s\nBase: %s\n\n## Decision brief\n\n### Author fix closure\n- Delta H1→H2: <changed paths + delta hash>\n- H2: <verified snapshot after the fixes>\n- Re-check: <report path of the Fix-verify re-check at H2, or `none — no BLOCKER / MAJOR fixed`>\n\n### Owner status\nCOMPLETED | PARTIAL | BLOCKED\n\n## Verify status\nVERIFIED | PARTIAL | UNVERIFIED\n\n## Handoff\n\n## Reviews\n\n## Lead notes\n' \
+    printf '# Task %s — %s\nBase: %s\n\n## Decision brief\n\n### Change\n- `<path>` — <what changed>\n\n### Tests added / changed\n- `<path>` — <what the test asserts>\n\n### Commands\n- `<command>` — <result and the proof lines>\n\n### Scope check\n<the diff matches the task; deferred ideas listed, not acted on>\n\n### Concerns\n<correctness, scope or observation doubts for the Lead, or None>\n\n### Author fix closure\n- Delta H1→H2: <changed paths + delta hash>\n- H2: <verified snapshot after the fixes>\n- Re-check: <report path of the Fix-verify re-check at H2, or `none — no BLOCKER / MAJOR fixed`>\n\n### Owner status\nCOMPLETED | PARTIAL | BLOCKED\n\n## Verify status\nVERIFIED | PARTIAL | UNVERIFIED\n\n## Handoff\n\n## Reviews\n\n## Lead notes\n' \
       "$n" "$task_title" "$(git -C "$repo_root" rev-parse HEAD 2>/dev/null)" > "$task_file" \
       || { echo "ticket: start: cannot write the task file $task_file" >&2; exit 1; }
   fi
@@ -1375,7 +1377,11 @@ EOF
           fi
         fi
         printf '%s\n' "$tline"
-        echo "Track end: a track with two or more code tasks → one fresh owner (the role owning most of the track's code) runs the two lenses in ONE message on the track diff and fixes each BLOCKER / MAJOR with its proof (\`review-code\` Fix-verify: one fresh re-check of the fix delta, at most four rounds); the Lead commits the fixes in the track worktree, then \`ticket.sh finish <worktree>\` merges the track. A track with one code task → its task owner runs the two lenses before returning, the same way, and the track takes no track-end review."
+        # The cell lives in plan-lint.sh --review-set (one home); a failing
+        # call prints a pointer line and never fails log.
+        ROLEPOD_BRIEF_NOREC=1 bash "$LINT" --review-set --tier R3 2>/dev/null \
+          || echo "Review: unknown — run plan-lint.sh --review-set --tier R3"
+        echo "Track end: a track with two or more code tasks → its last code task's owner runs \`run-review\` with the \`Review:\` line \`ticket.sh log\` prints, on the track diff, and fixes each BLOCKER / MAJOR (owner gone → a fresh owner of the role owning most of its code; an owner that cannot dispatch returns the diff unreviewed and the Lead runs \`run-review\`); the Lead commits the fixes in the track worktree, then \`ticket.sh finish <worktree>\` merges the track. A track with one code task → its owner ordered its own review before returning, and the track takes no track-end review."
       fi
     fi
   fi
