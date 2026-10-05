@@ -46,7 +46,7 @@ For <condition>, read `references/<topic>.md`.
 - No other skill → stop and tell the user what changed, what was verified and what is still unverified or unreviewed.
 ```
 
-Required: frontmatter `name` + `description`, the one-line framing, numbered steps each ending in a done-when, `## Next phase` in the three-case hand-off: the next skill and what it receives; not available → `review-code` on the diff, only when the phase changed code; no other skill → stop and tell the user what changed, what was verified and what is still unverified or unreviewed. A fallback line that carries a rule with no other home moves that rule into its step first.
+Required: frontmatter `name` + `description`, the one-line framing, numbered steps each ending in a done-when, `## Next phase` in the three-case hand-off: the next skill and what it receives; not available → `review-code` on the diff, only when the phase changed code; no other skill → stop and tell the user what changed, what was verified and what is still unverified or unreviewed. A fallback line that carries a rule with no other home moves that rule into its step first. Each skill names the evidence its stop line carries, for example the failing line quoted or the diff trimmed to the change.
 Optional: up to 3 guardrails, each paired with its positive target; `## Skip when`; reference pointers.
 A step that delegates names its role in one line, plus the line "No subagents → the Lead does it."
 Add another frontmatter key only when a CLI or script reads it.
@@ -91,6 +91,7 @@ Placeholders belong only in `templates/` and the bad half of an example.
 - A new rule names its actor, the one reader who acts on it, and gets one home in a file that actor loads. Another reader that must know it gets the computed fact in its brief or a fragment both INCLUDE, never a second copy.
 - Moving text from a reference into `SKILL.md` adds to every load: the commit message states how many chars moved.
 - An incident rule in the always-on core names its removal condition, the skill or hook change that fixes the cause, and leaves in the commit that ships that fix.
+- A recurring mistake is fixed at the highest rung first: structure, then a type or lint check, then a test, written text last. Prove the check fails on the real mistake, then remove the written rule once a machine enforces it.
 
 ## Before you commit a skill change
 
