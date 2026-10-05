@@ -839,9 +839,6 @@ if [ "${1:-}" = "--brief" ]; then
     sub(/[[:space:]]*\(.*/, "", role)
     sub(/[[:space:]]*·.*/, "", role)
     role = trim(role)
-    low = tolower(Ow)
-    write = "self"
-    if (index(low, "write:") > 0 && index(low, "external") > 0) write = "external"
     cleaned = cleanfiles(Fr, 1)
     m = cleaned
     while (match(m, /`[^`]+`/)) {
@@ -1039,17 +1036,19 @@ if (planwt == 1) tpath = substr(tbranch, 1, length(tbranch) - 5)
     print "## Done when"
     print (DW == "" ? "(not in plan)" : DW)
     if (Of != "" && Of !~ /^</) { print "## On fail"; print Of }
-    print "## Write"
-    printf "`%s`\n", write
     printf "Canonical task receipt: %s/docs/rolepod/tasks/%s/task-%02d.md\n", baseroot, tbase, want + 0
     # C1 (review-code Fix-verify), printed verbatim wherever the brief names reviewers.
     c1 = "Round 2+ (every mode, every tier): ONE fresh `universal-reviewer` (balanced) re-checks only the fix delta H1→H2 of every BLOCKER / MAJOR fix in one pass, whoever raised the finding; never the original role. MINOR closes on author evidence. At most four rounds including round 1; still open → stop and hand the user the findings and the fix log."
+    # C2: pool on and an R3 / R4 task → each lens runs external; printed under the lens line, never on R2 / R1.
+    c2 = ""
+    if (xpool == 1 && (tier == "R3" || tier == "R4")) c2 = "Pool on → each lens runs external instead: `bash <cross-family skill folder>/scripts/cross-family.sh --kind review --lens spec --brief <this brief> --attach <diff> --detach`, the same with `--lens standards`, then `--collect <job> --timeout 540` for each in the foreground (exit 6 = still running: run it again); a lens whose run fails, comes back weak or is refused → `universal-reviewer` with that lens, same round."
     print "## Reviewers"
     if (tier == "R1") print "`none`"
     else if (wmode == "lite") {
       print "Lite: the lines below override all generic R4, agent-role, specialist and adversarial review instructions."
       if (tier == "R4" || onlycode == 1) {
         print "Exactly two fresh, isolated `universal-reviewer` contexts in parallel: `lens: spec` and `lens: standards`; same frozen diff/snapshot/hash, separate reports, no access to the other report/findings. Aggregate only after both return. No agents → Lead performs both axes and records the limitation. No formal spec → use the supplied goal and acceptance criteria as the spec-lens input; still run both. Lite adds no security, specialist or adversarial reviewer, even on R4. Author fixes verified findings and attaches evidence."
+        if (c2 != "") print c2
         print c1
       } else {
         print "No in-task review; the track-end review must use exactly two fresh, isolated `universal-reviewer` contexts in parallel (`lens: spec`, `lens: standards`) on one frozen snapshot/hash, with separate reports and aggregate-after-both. No agents → Lead performs both axes and records the limitation. No formal spec → supplied goal/acceptance is the spec-lens input. Lite adds no specialist, security or adversarial reviewer."
@@ -1059,10 +1058,12 @@ if (planwt == 1) tpath = substr(tbranch, 1, length(tbranch) - 5)
       # standard mode: the security floor at checklist depth and the two lenses, no
       # strong-class attack pass.
       print "`security-engineer` (depth: checklist) + `universal-reviewer` `lens: spec` + `universal-reviewer` `lens: standards` in ONE message — no strong-class attack pass in standard mode"
+      if (c2 != "") print c2
       print c1
     } else if (tier == "R4") {
       r = "`security-engineer` (depth: full) + `universal-reviewer` `lens: spec` + `universal-reviewer` `lens: standards` + the adversarial pass (the `adversarial-review` skill): with a usable pool the `cross-family` skill runner (`bash <cross-family skill folder>/scripts/cross-family.sh --kind review --adversarial --brief <this brief> --attach <diff> --detach`) then `--collect <job> --timeout 540` in the foreground (exit 6 = still running: run it again), else `universal-reviewer` `mode: adversarial` (internal strong, only if the external fails) — the external --detach first, then the rest in ONE message"
       print r
+      if (c2 != "") print c2
       # The round shape lives HERE, where the owner picks its reviewers: at the
       # end of the Bounds line two owners in a row still messaged the finished
       # reviewer for round 2 and idled while the answer landed at the Lead.
@@ -1073,6 +1074,7 @@ if (planwt == 1) tpath = substr(tbranch, 1, length(tbranch) - 5)
       # R2 / R3 and the only code task of its track: no track-end review exists, so
       # the owner runs the two lenses itself.
       print "`universal-reviewer` `lens: spec` + `universal-reviewer` `lens: standards` in ONE message — this is the track'"'"'s only code task, so you run its review before returning; fix each BLOCKER / MAJOR with its proof"
+      if (c2 != "") print c2
       print c1
     } else {
       # R2 / R3: every task in a plan is reviewed once by the
@@ -1184,6 +1186,11 @@ EOF
   fi
   case "$BRIEF_WMODE" in lite|standard|full) ;; *) BRIEF_WMODE=lite; BRIEF_WSRC=uncaptured ;; esac
   case "$BRIEF_WSRC" in project|global|default|uncaptured) ;; *) BRIEF_WSRC=uncaptured ;; esac
+  # Pool on/off for the external lens line; any reader error or a missing reader = off.
+  BRIEF_READER="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/rolepod_config.py"
+  [ -f "$BRIEF_READER" ] || BRIEF_READER="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/../../../../hooks/lib/rolepod_config.py"
+  BRIEF_XPOOL=0
+  if [ -f "$BRIEF_READER" ] && [ "$(ROLEPOD_PROJECT_ROOT="${ROLEPOD_PROJECT_ROOT:-$BRIEF_ROOT}" python3 -I "$BRIEF_READER" pool 2>/dev/null | awk -F= '$1 == "enabled" {print $2; exit}')" = on ]; then BRIEF_XPOOL=1; fi
   BRIEF_FAILURE_POLICY="$(awk "$FENCE_AWK"'
     fenceline($0) { if (inside) print; next }
     /^## Failure policy([^A-Za-z0-9_-].*)?$/ { inside = 1; next }
@@ -1191,9 +1198,9 @@ EOF
     inside { print }
   ' "$PLAN")"
   if [ -n "$CONTRACT" ]; then
-    RP_BRIEF_PLAN="$PLAN" RP_BRIEF_REPO="$BRIEF_REPO" RP_BRIEF_BASE="$BRIEF_RECEIPT_ROOT" ROLEPOD_BRIEF_FAILURE_POLICY="$BRIEF_FAILURE_POLICY" awk -v rx="$TASK_RX" -v want="$BRIEF_N" -v hascontract=1 -v onmain="$BRIEF_MAIN" -v planwt="$BRIEF_PLANWT" -v tbranch="$BRIEF_TBRANCH" -v onlycode="$BRIEF_ONLYCODE" -v wmode="$BRIEF_WMODE" -v wsrc="$BRIEF_WSRC" "$CLEANFILES_AWK$FENCE_AWK$FIELD_AWK$BRIEF_AWK" "$PLAN" "$CONTRACT"
+    RP_BRIEF_PLAN="$PLAN" RP_BRIEF_REPO="$BRIEF_REPO" RP_BRIEF_BASE="$BRIEF_RECEIPT_ROOT" ROLEPOD_BRIEF_FAILURE_POLICY="$BRIEF_FAILURE_POLICY" awk -v rx="$TASK_RX" -v want="$BRIEF_N" -v hascontract=1 -v onmain="$BRIEF_MAIN" -v planwt="$BRIEF_PLANWT" -v tbranch="$BRIEF_TBRANCH" -v onlycode="$BRIEF_ONLYCODE" -v wmode="$BRIEF_WMODE" -v wsrc="$BRIEF_WSRC" -v xpool="$BRIEF_XPOOL" "$CLEANFILES_AWK$FENCE_AWK$FIELD_AWK$BRIEF_AWK" "$PLAN" "$CONTRACT"
   else
-    RP_BRIEF_PLAN="$PLAN" RP_BRIEF_REPO="$BRIEF_REPO" RP_BRIEF_BASE="$BRIEF_RECEIPT_ROOT" ROLEPOD_BRIEF_FAILURE_POLICY="$BRIEF_FAILURE_POLICY" awk -v rx="$TASK_RX" -v want="$BRIEF_N" -v hascontract=0 -v onmain="$BRIEF_MAIN" -v planwt="$BRIEF_PLANWT" -v tbranch="$BRIEF_TBRANCH" -v onlycode="$BRIEF_ONLYCODE" -v wmode="$BRIEF_WMODE" -v wsrc="$BRIEF_WSRC" "$CLEANFILES_AWK$FENCE_AWK$FIELD_AWK$BRIEF_AWK" "$PLAN"
+    RP_BRIEF_PLAN="$PLAN" RP_BRIEF_REPO="$BRIEF_REPO" RP_BRIEF_BASE="$BRIEF_RECEIPT_ROOT" ROLEPOD_BRIEF_FAILURE_POLICY="$BRIEF_FAILURE_POLICY" awk -v rx="$TASK_RX" -v want="$BRIEF_N" -v hascontract=0 -v onmain="$BRIEF_MAIN" -v planwt="$BRIEF_PLANWT" -v tbranch="$BRIEF_TBRANCH" -v onlycode="$BRIEF_ONLYCODE" -v wmode="$BRIEF_WMODE" -v wsrc="$BRIEF_WSRC" -v xpool="$BRIEF_XPOOL" "$CLEANFILES_AWK$FENCE_AWK$FIELD_AWK$BRIEF_AWK" "$PLAN"
   fi
   exit $?
 fi
