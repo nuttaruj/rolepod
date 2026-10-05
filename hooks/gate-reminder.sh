@@ -229,15 +229,7 @@ gr_inflight_scan() {
       _jp=$(cat "$_jd/pid" 2>/dev/null); case "$_jp" in ''|*[!0-9]*) continue ;; esac
       kill -0 "$_jp" 2>/dev/null || continue
       ps -o command= -p "$_jp" 2>/dev/null | grep -q 'cross-family' || continue
-      _jid=$(basename "$_jd"); _jk=$(printf '%s' "$_jid" | sed -n 's/^[^-]*-\([a-z]*\)-.*/\1/p'); _jk=${_jk:-review}
-      if [ "$_jk" = "implement" ] && [ -f "$_jd/allow" ]; then   # an implement job: every edit OUTSIDE the ticket's Files allowed is reverted when it returns — warn on those, stay silent inside the scope
-        _in=0; while IFS= read -r _ae; do [ -n "$_ae" ] || continue; case "$_ae" in */) case "$_gr_rel" in "${_ae%/}"/*) _in=1 ;; esac ;; *) [ "$_gr_rel" = "$_ae" ] && _in=1 ;; esac; done < "$_jd/allow"
-        [ "$_in" -eq 1 ] && continue
-        _js=$(cat "$_jd/started" 2>/dev/null || echo 0); _jm=$(( ($(date +%s) - _js) / 60 ))
-        XF_RUNNER="${XF_RUNNER-$(xfam_runner)}"
-        XF_INFLIGHT="⏸ EXTERNAL IMPLEMENT IN FLIGHT: cross-family job $_jid (running ${_jm} min) is EDITING this tree — an edit outside the ticket's Files allowed is reverted when the job returns (a copy is kept under the job's .reverted/). Fix: park the edit until \`bash '$XF_RUNNER' --collect $_jid\` returns, or work in another worktree. "
-        break
-      fi
+      _jid=$(basename "$_jd")
       _under=$( ( eval "set -- $(cat "$_jd/args" 2>/dev/null)" 2>/dev/null; while [ $# -gt 0 ]; do if [ "$1" = "--attach" ] && [ -f "${2:-}" ]; then grep -E '^\+\+\+ b/' "$2" 2>/dev/null | sed -E 's#^\+\+\+ b/##; s/[[:space:]]+$//'; shift; fi; shift; done ) 2>/dev/null || true )
       [ -n "$_under" ] || _under=$(git -C "$_gr_root" diff HEAD --name-only 2>/dev/null || true)
       if printf '%s\n' "$_under" | grep -qxF -- "$_gr_rel"; then
