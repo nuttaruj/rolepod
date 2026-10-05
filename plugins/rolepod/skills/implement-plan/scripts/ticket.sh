@@ -60,15 +60,23 @@
 #     worktree the commits sit on the base checkout, so <base> is the parent
 #     of the track's first logged commit.
 #
-#   ticket.sh review-diff start <name>
-#     In the current git checkout: `git add -A`; writes
+#   ticket.sh review-diff start <name> [-- <path>...]
+#     In the current git checkout: `git add -A` (with `-- <path>...`: only
+#     those paths, new files under them included, nothing else staged; a path
+#     is literal and relative to the checkout root — a missing one is skipped
+#     with a stderr note, none left, or a ":"/"."/".."/absolute one -> exit 2,
+#     never a whole-tree stage); writes
 #     .rolepod/evidence/review/<name>.diff = `git diff --cached --stat` then
-#     `git diff --cached -U10`, both over `-- . ':!docs/rolepod' ':!*.lock'
-#     ':!package-lock.json' ':!pnpm-lock.yaml'`; prints `diff: <absolute path>`
-#     then `H1: <git write-tree>`. An empty diff -> "ticket: review-diff: empty
-#     diff" on stderr, exit 1, no file.
-#   ticket.sh review-diff delta <name> <H1-tree> <k>
-#     <k> is 2, 3 or 4; `git add -A`; H2 = `git write-tree`; writes
+#     `git diff --cached -U10`, both over `-- <paths or .>` minus the one
+#     exclude list (review_excludes: docs/rolepod, lockfiles, plus one git
+#     pathspec per line of <git-root>/.rolepod/review-exclude, read from the
+#     checkout or, absent there, the base checkout; blank and # lines skipped);
+#     prints `diff: <absolute path>` then `H1: <git write-tree>`. No path list
+#     -> whole tree and a third line `limitation: whole-tree diff — ...`. An
+#     empty diff -> "ticket: review-diff: empty diff" on stderr, exit 1, no file.
+#   ticket.sh review-diff delta <name> <H1-tree> <k> [-- <path>...]
+#     <k> is 2, 3 or 4; `git add -A` (or `-- <path>...` only); H2 = `git
+#     write-tree`; writes
 #     .rolepod/evidence/review/<name>-r<k>.diff = `git diff <H1-tree> <H2> -U10`
 #     over the same pathspec; prints `diff: <absolute path>` then `H2: <tree>`.
 #     An <H1-tree> that is not a tree object (a commit sha too) -> exit 2. A
@@ -176,8 +184,9 @@ usage:
   ticket.sh integrate <worktree> --brief <file> [--pre '<cmd>'] [--gate '<cmd>']
   ticket.sh finish <worktree>
   ticket.sh log <plan> <N> --sha <sha> --note '<text>'
-  ticket.sh review-diff start <name>
-  ticket.sh review-diff delta <name> <H1-tree> <k>
+  ticket.sh review-diff start <name> [-- <path>...]
+  ticket.sh review-diff delta <name> <H1-tree> <k> [-- <path>...]
+  (review-diff excludes: docs/rolepod, lockfiles, plus .rolepod/review-exclude lines)
 EOF
 }
 
@@ -202,6 +211,29 @@ base_root_of() {
   elif printf '%s\n' "$list" | grep -qxF -- "$cfg"; then
     printf '%s' "$cfg"
   fi
+}
+
+# The one review-diff exclude list for checkout "$1": git pathspecs, one per
+# line, used verbatim after `-- <paths or .>` by review-diff start / delta and
+# the track-end lens diff. Defaults (docs/rolepod, lockfiles) plus one
+# `:!<line>` per line of <root>/.rolepod/review-exclude (blank and # lines
+# skipped); absent there → the base checkout's file (a track worktree sees the
+# base's), absent in both → defaults only. No project path lives in this script.
+review_excludes() {
+  local root="$1" cfg base line
+  printf '%s\n' ':!docs/rolepod' ':!*.lock' ':!package-lock.json' ':!pnpm-lock.yaml'
+  cfg="$root/.rolepod/review-exclude"
+  if [ ! -f "$cfg" ]; then
+    base="$(base_root_of "$root")"
+    [ -n "$base" ] && cfg="$base/.rolepod/review-exclude"
+  fi
+  [ -f "$cfg" ] || return 0
+  while IFS= read -r line || [ -n "$line" ]; do
+    line="${line%"${line##*[![:space:]]}"}"
+    case "$line" in ''|'#'*) continue ;; esac
+    printf ':!%s\n' "$line"
+  done < "$cfg"
+  return 0
 }
 
 # Lines of section "$2" (an exact "## Heading" string) inside file "$1" —
@@ -1272,7 +1304,7 @@ $(task_review_reports "$rdir" "$(plan_slug_of "$plan")" "$n" "$hfile")
 EOF
   fi
 
-  local ready_rows id2 owner2 list="" log_root
+  local ready_rows id2 owner2 list="" log_root lex lx
   log_root="$(git -C "$(dirname "$plan")" rev-parse --show-toplevel 2>/dev/null)"
   ready_rows="$(ready_now_after "$plan" "$n" "$log_root")"
   if [ -n "$ready_rows" ]; then
@@ -1388,9 +1420,11 @@ EOF
         tpath="$tdir/${feat_log}-${mytrack}.diff"
         # Outside a git repo the range still prints, just without the path.
         if [ -n "$log_root" ] && git -C "$log_root" rev-parse --verify --quiet "$sha^{commit}" >/dev/null 2>&1 && mkdir -p "$tdir" 2>/dev/null; then
+          lex=()
+          while IFS= read -r lx; do lex+=("$lx"); done < <(review_excludes "$log_root")
           if {
-            git -C "$log_root" diff --stat "$tbase...$sha" -- . ':(exclude)plugins' ':(exclude)build/rendered'
-            git -C "$log_root" diff -U10 "$tbase...$sha" -- . ':(exclude)plugins' ':(exclude)build/rendered'
+            git -C "$log_root" diff --stat "$tbase...$sha" -- . "${lex[@]}"
+            git -C "$log_root" diff -U10 "$tbase...$sha" -- . "${lex[@]}"
           } > "$tpath" 2>/dev/null; then
             tline="$tline; lens diff: $tpath"
           fi
@@ -1409,14 +1443,20 @@ EOF
 # ── review-diff (C67) ────────────────────────────────────────────────────
 # The one home of the frozen review diff, the H1 / H2 tree and the fix delta
 # `run-review` hands its reviewers. Stages the whole tree (`git add -A`, as
-# writer-loop always did) and never commits, stashes, resets or checks out.
-RD_USAGE="usage: ticket.sh review-diff start <name> | ticket.sh review-diff delta <name> <H1-tree> <k: 2|3|4>"
+# writer-loop always did) or, with `-- <path>...`, only those paths; never
+# commits, stashes, resets or checks out. The exclude list is review_excludes.
+RD_USAGE="usage: ticket.sh review-diff start <name> [-- <path>...] | ticket.sh review-diff delta <name> <H1-tree> <k: 2|3|4> [-- <path>...]"
 
 cmd_review_diff() {
-  local sub="${1:-}" name="${2:-}" h1="" k="" top dir out h2
+  local sub="${1:-}" name="${2:-}" h1="" k="" top dir out h2 want p
+  local paths=() live=() stage=() ex=() spec=()
   case "$sub" in
-    start) [ $# -eq 2 ] || { echo "ticket: review-diff: $RD_USAGE" >&2; exit 2; } ;;
-    delta) [ $# -eq 4 ] || { echo "ticket: review-diff: $RD_USAGE" >&2; exit 2; }
+    start) if [ $# -eq 2 ]; then :
+           elif [ $# -ge 4 ] && [ "$3" = "--" ]; then paths=("${@:4}")
+           else echo "ticket: review-diff: $RD_USAGE" >&2; exit 2; fi ;;
+    delta) if [ $# -eq 4 ]; then :
+           elif [ $# -ge 6 ] && [ "$5" = "--" ]; then paths=("${@:6}")
+           else echo "ticket: review-diff: $RD_USAGE" >&2; exit 2; fi
            h1="$3"; k="$4" ;;
     *) echo "ticket: review-diff: $RD_USAGE" >&2; exit 2 ;;
   esac
@@ -1435,31 +1475,62 @@ cmd_review_diff() {
   fi
   top="$(git rev-parse --show-toplevel 2>/dev/null)" \
     || { echo "ticket: review-diff: not in a git checkout" >&2; exit 2; }
-  git -C "$top" add -A || { echo "ticket: review-diff: git add -A failed" >&2; exit 1; }
+  if [ "${#paths[@]}" -gt 0 ]; then
+    # Only a path that exists (worktree, index or HEAD — a path the task
+    # deleted counts) is staged; never fall back to the whole tree.
+    for p in "${paths[@]}"; do
+      # A path is literal and relative to the checkout root: pathspec magic,
+      # ".", "..", an absolute path or "" would widen the stage to the tree.
+      # (a path made only of dots and slashes is the tree root or its parent)
+      case "$p" in
+        ""|:*|../*|*/..|*/../*|/*) echo "ticket: review-diff: path must be a plain checkout-relative path, not '$p' — $RD_USAGE" >&2; exit 2 ;;
+      esac
+      case "${p//[.\/]/}" in
+        "") echo "ticket: review-diff: path must be a plain checkout-relative path, not '$p' — $RD_USAGE" >&2; exit 2 ;;
+      esac
+      if [ -e "$top/$p" ] || [ -n "$(git --literal-pathspecs -C "$top" ls-files -- "$p" 2>/dev/null)" ]; then
+        live+=("$p"); stage+=("$p")
+      elif [ -n "$(git --literal-pathspecs -C "$top" ls-tree -r --name-only HEAD -- "$p" 2>/dev/null)" ]; then
+        live+=("$p")   # deleted and already staged: diffed, nothing left to add
+      else
+        echo "ticket: review-diff: skipped path (not in worktree, index or HEAD): $p" >&2
+      fi
+    done
+    [ "${#live[@]}" -gt 0 ] || { echo "ticket: review-diff: none of the paths exists — $RD_USAGE" >&2; exit 2; }
+    if [ "${#stage[@]}" -gt 0 ]; then
+      git --literal-pathspecs -C "$top" add -A -- "${stage[@]}" || { echo "ticket: review-diff: git add -A failed" >&2; exit 1; }
+    fi
+    spec=("${live[@]}")
+  else
+    git -C "$top" add -A || { echo "ticket: review-diff: git add -A failed" >&2; exit 1; }
+    spec=(.)
+  fi
+  while IFS= read -r want; do ex+=("$want"); done < <(review_excludes "$top")
   dir="$top/.rolepod/evidence/review"
   if [ "$sub" = "start" ]; then
     out="$dir/$name.diff"
-    if git -C "$top" diff --cached --quiet -- . ':!docs/rolepod' ':!*.lock' ':!package-lock.json' ':!pnpm-lock.yaml'; then
+    if git -C "$top" diff --cached --quiet -- "${spec[@]}" "${ex[@]}"; then
       echo "ticket: review-diff: empty diff" >&2
       exit 1
     fi
     mkdir -p "$dir" || { echo "ticket: review-diff: cannot create $dir" >&2; exit 1; }
     {
-      git -C "$top" diff --cached --stat -- . ':!docs/rolepod' ':!*.lock' ':!package-lock.json' ':!pnpm-lock.yaml'
-      git -C "$top" diff --cached -U10 -- . ':!docs/rolepod' ':!*.lock' ':!package-lock.json' ':!pnpm-lock.yaml'
+      git -C "$top" diff --cached --stat -- "${spec[@]}" "${ex[@]}"
+      git -C "$top" diff --cached -U10 -- "${spec[@]}" "${ex[@]}"
     } > "$out" || { echo "ticket: review-diff: cannot write $out" >&2; rm -f "$out"; exit 1; }
     h2="$(git -C "$top" write-tree)" || { echo "ticket: review-diff: git write-tree failed" >&2; rm -f "$out"; exit 1; }
     echo "diff: $out"
     echo "H1: $h2"
+    [ "${#paths[@]}" -gt 0 ] || echo "limitation: whole-tree diff — no path list, so other work in this checkout is included"
   else
     out="$dir/$name-r$k.diff"
     h2="$(git -C "$top" write-tree)" || { echo "ticket: review-diff: git write-tree failed" >&2; exit 1; }
-    if git -C "$top" diff --quiet "$h1" "$h2" -- . ':!docs/rolepod' ':!*.lock' ':!package-lock.json' ':!pnpm-lock.yaml'; then
+    if git -C "$top" diff --quiet "$h1" "$h2" -- "${spec[@]}" "${ex[@]}"; then
       echo "ticket: review-diff: empty diff" >&2
       exit 1
     fi
     mkdir -p "$dir" || { echo "ticket: review-diff: cannot create $dir" >&2; exit 1; }
-    git -C "$top" diff "$h1" "$h2" -U10 -- . ':!docs/rolepod' ':!*.lock' ':!package-lock.json' ':!pnpm-lock.yaml' > "$out" \
+    git -C "$top" diff "$h1" "$h2" -U10 -- "${spec[@]}" "${ex[@]}" > "$out" \
       || { echo "ticket: review-diff: cannot write $out" >&2; rm -f "$out"; exit 1; }
     echo "diff: $out"
     echo "H2: $h2"
