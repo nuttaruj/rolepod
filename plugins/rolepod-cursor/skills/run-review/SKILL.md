@@ -68,15 +68,19 @@ Done when: reports listed in the receipt; review line appended.
 - Each aggregated MINOR → Act on / Consider / Noted / Dismissed, one-line reason; filters: nitpick weight (behavior or taste?) and assumed vs actual (does the code show it?); Act on → fixed, closed on author evidence; MINORs never open a re-check.
 - The delta: `ticket.sh review-diff delta <task> <H1> <k>` (`<k>` = round 2-4; H1 is a tree, committed or not); no script → `git add -A && git diff <H1> $(git write-tree) -U10`, same excludes, into `<task>-r<k>.diff`; that tree is H2.
 - ONE fresh `universal-reviewer` re-checks only the delta and each pushback (held closes; reopened goes back open), ≤ 15 tool calls — never the original role, never a message to a finished reviewer.
-- At most four rounds, round 1 included; still open → stop; hand the user the findings and fix log. Review rounds never reset the failed-fix count.
+- At most four rounds, round 1 included; review rounds never reset the failed-fix count. Open after round 4 → rule once on each open finding, one `Ruling:` line each in the receipt, then go on without waiting for the user:
+  - wrong or arguable → `Ruling: <finding> — parked — <why>`;
+  - real, nothing ahead depends on it → parked as real-deferred, plus one line under `## Follow-ups`;
+  - real, later work depends on it → the smallest fix that unblocks it; `Ruling: <finding> — <decision + why>` in the decision brief.
+- Who fixes: a round-2 fix → the same owner; a round-3 or round-4 fix → a fresh owner of the same role one tier higher (strong at most), given the open findings verbatim, the receipt path and "A prior owner fixed this <N> times; you own it now — read the receipt for what was tried." Cannot dispatch → return the open findings to your caller.
 - A finding closes at the receipt only (repro or test, H1→H2 paths + delta hash, H2); a green suite alone closes nothing.
 - Pushback / YAGNI → `../review-code/references/receiving-findings.md`; no file → per finding, the fix or a reasoned pushback.
 
-Done when: each BLOCKER / MAJOR closed at the receipt or held; each MINOR sorted with its reason.
+Done when: each BLOCKER / MAJOR closed at the receipt, held, or ruled at the cap; each MINOR sorted with its reason.
 
 ## Next phase
 
-- Every finding closed → back to the caller: a task owner returns its decision brief; a Lead review → `check-work` when fixes landed, else `finish-work`.
+- Every finding closed or ruled → back to the caller: a task owner returns its decision brief; a Lead review → `check-work` when fixes landed, else `finish-work`.
 - Not available → `review-code` on the diff.
 - No other skill → stop and tell the user what changed, what was verified and what is still unverified or unreviewed.
 
