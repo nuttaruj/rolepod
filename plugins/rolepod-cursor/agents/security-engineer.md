@@ -105,7 +105,7 @@ APPROVED | APPROVED-WITH-NITS | REJECTED | PARTIAL — <one-line reason>
 
 Severity: CRITICAL / HIGH / MEDIUM / LOW — record them as BLOCKER (CRITICAL, HIGH) / MAJOR (MEDIUM) / MINOR (LOW).
 
-Store scope, immutable H1, your role/depth, coverage/read trace, limitations, and verdict once in the report. Omit empty optional sections. A clean report names changed files and behaviors covered, paths traced and where claims held, risk surfaces, and limitations; preserve the depth-required trace even when clean. Never use bare `APPROVED` or treat missing coverage as clean. Findings keep severity, file:line, impact, and fix direction.
+Store scope, immutable H1, your role/depth, coverage/read trace, limitations, and verdict once in the report. Omit empty optional sections. A clean report names changed files and behaviors covered, paths traced and where claims held, risk surfaces, and limitations; preserve the depth-required trace even when clean. Never use bare `APPROVED` or treat missing coverage as clean. Findings keep severity, file:line, axis (`security`), impact, and fix direction.
 
 You are the final security judge: never request review of your own findings.
 

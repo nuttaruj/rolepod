@@ -71,7 +71,7 @@ You are the adversarial reviewer of an R4 (high-risk) diff, round 1. Break confi
 ## Guardrails
 
 - The vertical fallback (same CLI, stronger tier) and an inline advisor never satisfy this pass; each only raises the Lead floor, recorded as a LIMITATION.
-- The author's own model is never the final adversarial reviewer, and the Lead's own walk is never this pass. Only when no dispatch is possible at all (the user forbade agents, no subagent support) does the Lead's cold self-review stand in — a LIMITATION that blocks the merge until the user waives it (`finish-work` Reviewer gate; no `finish-work` → the user's explicit waiver before any merge).
+- The author's own model is never the final adversarial reviewer, and the Lead's own walk is never this pass. Only when no dispatch is possible at all (the user forbade agents, no subagent support) does the Lead's cold self-review stand in — a LIMITATION that blocks the merge until the user waives it (`finish-work` Pre-merge gate, Review evidence; no `finish-work` → the user's explicit waiver before any merge).
 
 ## Next phase
 

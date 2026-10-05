@@ -13,7 +13,7 @@ A role defines responsibilities and instructions; an agent type is CLI transport
 | **cheap** | small / fast model | docs, PM, copy, read-only sweeps |
 | **balanced** | mid flagship | ALL implementation, high-risk paths included — the net is the strong review floor, never the writer's tier |
 | **strong** | top reasoning model | architecture, final-pass and adversarial review. A set whose top sits below frontier-class still gets the full review; the depth cap is a recorded LIMITATION |
-| **apex** | strongest tier the CLI exposes | only on the `adversarial-review` skill's Apex escalation triggers |
+| **apex** | strongest tier the CLI exposes | only on the `adversarial-review` skill's apex escalation triggers (Pick the rung) |
 
 Route rows by class:
 - cheap — vague build / doc / UI asks and repeat or legacy features (`write-spec`), prototypes, clear doc edits, `manage-context`, explain-only answers.
