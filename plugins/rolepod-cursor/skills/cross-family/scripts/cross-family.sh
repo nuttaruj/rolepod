@@ -119,7 +119,7 @@ while [ $# -gt 0 ]; do
     --detach) DETACH=1; shift ;;
     --partial-ok) PARTIAL_OK=1; shift ;;         # the user asked for the staged part only
     --adversarial) ADV_MODE=1; shift ;;       # --kind review only: the adversarial-review skill's stance replaces the standard two-axis prompt
-    --lens) need_val $# --lens; LENS="${2:-}"; shift 2 ;;               # --kind review only: one axis (spec|standards) instead of the two-axis prompt
+    --lens) need_val $# --lens; LENS="${2:-}"; [ -n "$LENS" ] || { echo "cross-family: --lens requires spec or standards" >&2; exit 2; }; shift 2 ;;              # --kind review only: one axis (spec|standards) instead of the two-axis prompt
     --kill) need_val $# --kill; MODE="kill"; KILL_ID="${2:-}"; shift 2 ;;
     --job) need_val $# --job; JOB_DIR="${2:-}"; shift 2 ;;          # internal: the detached child
     --config) need_val $# --config; CFG_FLAG="${2:-}"; shift 2 ;;      # internal: the job's config snapshot
@@ -717,7 +717,7 @@ if [ "$KIND" = "review" ] && [ -z "$JOB_DIR" ] && [ -d "$JOBS" ]; then
     _ls=review; [ -f "$_ld/slot" ] && _ls=$(cat "$_ld/slot" 2>/dev/null)
     [ "$_ls" = "$SLOT" ] || continue
     _lid=$(basename "$_ld")
-    echo "ROLEPOD-XFAM refused stacked — review job $_lid is still running ($(job_elapsed "$_ld") min) on this repo; a second review on the same tree would race it. Fix: cross-family.sh --collect $_lid (waits). Abandon it instead: --kill $_lid."
+    echo "ROLEPOD-XFAM refused stacked — review job $_lid (slot $_ls) is still running ($(job_elapsed "$_ld") min) on this repo; a second review on the same tree would race it. Fix: cross-family.sh --collect $_lid (waits). Abandon it instead: --kill $_lid."
     exit 8
   done
 fi

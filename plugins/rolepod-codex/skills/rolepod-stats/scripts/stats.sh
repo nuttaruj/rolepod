@@ -258,7 +258,7 @@ if proofs:
     prov_s = ", ".join(f"{k} ×{n}" for k, n in sorted(prov.items()))
     gloss = "hook-stdin = the CLI's own report, not independently verified"
     if prov.get("cross-family"):
-        gloss += "; cross-family = the runner's line for an external reviewer, model = the member CLI's own banner ('default' when it prints none)"
+        gloss += "; cross-family = older rows only (legacy external implementer), model = the member CLI's own banner ('default' when it prints none)"
     print(f"\n  Model proof — as recorded ({len(proofs)}; provenance: {prov_s} — {gloss}):")
     for (cli, model, agent), n in sorted(combo.items()):
         print(f"    {cli:<12} {model:<28} {agent:<20} ×{n}")

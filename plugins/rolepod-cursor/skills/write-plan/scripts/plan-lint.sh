@@ -1041,6 +1041,12 @@ if (planwt == 1) tpath = substr(tbranch, 1, length(tbranch) - 5)
     c1 = "Round 2+ (every mode, every tier): ONE fresh `universal-reviewer` (balanced) re-checks only the fix delta H1→H2 of every BLOCKER / MAJOR fix in one pass, whoever raised the finding; never the original role. MINOR closes on author evidence. At most four rounds including round 1; still open → stop and hand the user the findings and the fix log."
     # C2: pool on and an R3 / R4 task → each lens runs external; printed under the lens line, never on R2 / R1.
     c2 = ""
+    xpool = 0
+    if (ENVIRON["RP_BRIEF_POOLRD"] != "" && (tier == "R3" || tier == "R4")) {
+      pcmd = "python3 -I \"$RP_BRIEF_POOLRD\" pool 2>/dev/null"
+      while ((pcmd | getline pl) > 0) if (pl == "enabled=on") { xpool = 1; break }
+      close(pcmd)
+    }
     if (xpool == 1 && (tier == "R3" || tier == "R4")) c2 = "Pool on → each lens runs external instead: `bash <cross-family skill folder>/scripts/cross-family.sh --kind review --lens spec --brief <this brief> --attach <diff> --detach`, the same with `--lens standards`, then `--collect <job> --timeout 540` for each in the foreground (exit 6 = still running: run it again); a lens whose run fails, comes back weak or is refused → `universal-reviewer` with that lens, same round."
     print "## Reviewers"
     if (tier == "R1") print "`none`"
@@ -1177,20 +1183,21 @@ EOF
       BRIEF_WMODE="$ROLEPOD_SESSION_MODE"; BRIEF_WSRC="$ROLEPOD_SESSION_SOURCE"
     fi
   fi
+  # Config reader, resolved once: beside this script when installed, else under the repo's hooks/lib.
+  BRIEF_READER="${BRIEF_HERE:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)}/rolepod_config.py"
+  [ -f "$BRIEF_READER" ] || BRIEF_READER="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/../../../../hooks/lib/rolepod_config.py"
   if [[ ! "$BRIEF_WMODE" =~ ^(lite|standard|full)$ ]]; then
-    BRIEF_READER="${BRIEF_HERE:-}/rolepod_config.py"
-    [ -f "$BRIEF_READER" ] || BRIEF_READER="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/../../../../hooks/lib/rolepod_config.py"
     BRIEF_CFG="$(ROLEPOD_PROJECT_ROOT="${ROLEPOD_PROJECT_ROOT:-$BRIEF_ROOT}" python3 -I "$BRIEF_READER" mode 2>/dev/null || true)"
     BRIEF_WMODE="$(printf '%s\n' "$BRIEF_CFG" | awk -F= '$1 == "mode" {print $2}')"
     BRIEF_WSRC="$(printf '%s\n' "$BRIEF_CFG" | awk -F= '$1 == "source" {print $2}')"
   fi
   case "$BRIEF_WMODE" in lite|standard|full) ;; *) BRIEF_WMODE=lite; BRIEF_WSRC=uncaptured ;; esac
   case "$BRIEF_WSRC" in project|global|default|uncaptured) ;; *) BRIEF_WSRC=uncaptured ;; esac
-  # Pool on/off for the external lens line; any reader error or a missing reader = off.
-  BRIEF_READER="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/rolepod_config.py"
-  [ -f "$BRIEF_READER" ] || BRIEF_READER="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/../../../../hooks/lib/rolepod_config.py"
-  BRIEF_XPOOL=0
-  if [ -f "$BRIEF_READER" ] && [ "$(ROLEPOD_PROJECT_ROOT="${ROLEPOD_PROJECT_ROOT:-$BRIEF_ROOT}" python3 -I "$BRIEF_READER" pool 2>/dev/null | awk -F= '$1 == "enabled" {print $2; exit}')" = on ]; then BRIEF_XPOOL=1; fi
+  # Pool on/off for the external lens line: the awk reads it only for an R3 / R4 brief (RP_BRIEF_POOLRD);
+  # any reader error or a missing reader = off; the recursive tier call never reads it.
+  RP_BRIEF_POOLRD=""
+  if [ -z "${ROLEPOD_BRIEF_NOREC:-}" ] && [ -f "$BRIEF_READER" ]; then RP_BRIEF_POOLRD="$BRIEF_READER"; fi
+  export RP_BRIEF_POOLRD ROLEPOD_PROJECT_ROOT="${ROLEPOD_PROJECT_ROOT:-$BRIEF_ROOT}"
   BRIEF_FAILURE_POLICY="$(awk "$FENCE_AWK"'
     fenceline($0) { if (inside) print; next }
     /^## Failure policy([^A-Za-z0-9_-].*)?$/ { inside = 1; next }
@@ -1198,9 +1205,9 @@ EOF
     inside { print }
   ' "$PLAN")"
   if [ -n "$CONTRACT" ]; then
-    RP_BRIEF_PLAN="$PLAN" RP_BRIEF_REPO="$BRIEF_REPO" RP_BRIEF_BASE="$BRIEF_RECEIPT_ROOT" ROLEPOD_BRIEF_FAILURE_POLICY="$BRIEF_FAILURE_POLICY" awk -v rx="$TASK_RX" -v want="$BRIEF_N" -v hascontract=1 -v onmain="$BRIEF_MAIN" -v planwt="$BRIEF_PLANWT" -v tbranch="$BRIEF_TBRANCH" -v onlycode="$BRIEF_ONLYCODE" -v wmode="$BRIEF_WMODE" -v wsrc="$BRIEF_WSRC" -v xpool="$BRIEF_XPOOL" "$CLEANFILES_AWK$FENCE_AWK$FIELD_AWK$BRIEF_AWK" "$PLAN" "$CONTRACT"
+    RP_BRIEF_PLAN="$PLAN" RP_BRIEF_REPO="$BRIEF_REPO" RP_BRIEF_BASE="$BRIEF_RECEIPT_ROOT" ROLEPOD_BRIEF_FAILURE_POLICY="$BRIEF_FAILURE_POLICY" awk -v rx="$TASK_RX" -v want="$BRIEF_N" -v hascontract=1 -v onmain="$BRIEF_MAIN" -v planwt="$BRIEF_PLANWT" -v tbranch="$BRIEF_TBRANCH" -v onlycode="$BRIEF_ONLYCODE" -v wmode="$BRIEF_WMODE" -v wsrc="$BRIEF_WSRC" "$CLEANFILES_AWK$FENCE_AWK$FIELD_AWK$BRIEF_AWK" "$PLAN" "$CONTRACT"
   else
-    RP_BRIEF_PLAN="$PLAN" RP_BRIEF_REPO="$BRIEF_REPO" RP_BRIEF_BASE="$BRIEF_RECEIPT_ROOT" ROLEPOD_BRIEF_FAILURE_POLICY="$BRIEF_FAILURE_POLICY" awk -v rx="$TASK_RX" -v want="$BRIEF_N" -v hascontract=0 -v onmain="$BRIEF_MAIN" -v planwt="$BRIEF_PLANWT" -v tbranch="$BRIEF_TBRANCH" -v onlycode="$BRIEF_ONLYCODE" -v wmode="$BRIEF_WMODE" -v wsrc="$BRIEF_WSRC" -v xpool="$BRIEF_XPOOL" "$CLEANFILES_AWK$FENCE_AWK$FIELD_AWK$BRIEF_AWK" "$PLAN"
+    RP_BRIEF_PLAN="$PLAN" RP_BRIEF_REPO="$BRIEF_REPO" RP_BRIEF_BASE="$BRIEF_RECEIPT_ROOT" ROLEPOD_BRIEF_FAILURE_POLICY="$BRIEF_FAILURE_POLICY" awk -v rx="$TASK_RX" -v want="$BRIEF_N" -v hascontract=0 -v onmain="$BRIEF_MAIN" -v planwt="$BRIEF_PLANWT" -v tbranch="$BRIEF_TBRANCH" -v onlycode="$BRIEF_ONLYCODE" -v wmode="$BRIEF_WMODE" -v wsrc="$BRIEF_WSRC" "$CLEANFILES_AWK$FENCE_AWK$FIELD_AWK$BRIEF_AWK" "$PLAN"
   fi
   exit $?
 fi
