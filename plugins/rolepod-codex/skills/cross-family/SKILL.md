@@ -58,7 +58,7 @@ Done when: the brief file exists and a stranger could act on it alone.
 - Its verdict, APPROVED or REJECTED, completes the pass; a REJECTED external is never re-run for an APPROVED. An external adversarial pass runs only in `full` mode.
 - The diff stays frozen until the last reviewer returns: no edit to its files, no `git stash` / `reset` / `checkout`.
 - Then do the next task outside the diff. ONE `cross-family.sh --collect <job-id> --root <git-root>` — it waits; its report joins the round's other reports.
-- Member order, `--all`, what anchors, the degradation table → `references/review.md`.
+- Member order, `--all`, what anchors, the degradation table → `references/review.md`; no `references/review.md` → members run in pool order, a failed run passes to the next member, and with none left the internal lens runs.
 
 **critique**
 - The member returns every material item, no cap, ranked by implementation risk: `QUESTION` (only the user can decide), `AMBIGUITY` (quoted wording two engineers would read differently), `MISSING` (an acceptance criterion, failure mode or edge case with no "proven by") — or `NO FURTHER QUESTIONS`.

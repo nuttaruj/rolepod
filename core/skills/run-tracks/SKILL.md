@@ -61,7 +61,7 @@ The Lead integrates each returned task in its track's worktree (the ship line pe
 - Each task in the track commits once ready; no `finish` until the track ends.
 - A harness-made worktree, or a commit refused because the Lead's branch moved → `git cherry-pick <sha>` (a conflict ends with `git cherry-pick --continue`, never a new `git commit`), then (after all tasks integrate) remove the worktree, delete its branch, and run the `log` step (record each task: `ticket.sh log <plan> <N> --sha <sha> --note '<text>'` flips its boxes and appends the Changes line; no `ticket.sh` → flip the boxes by hand and add one `## Changes during build` line per task with the cherry-picked sha).
 - Integrated → stop the owner (TaskStop, or the CLI's close) in the same turn. Its return notes background work still running → stop that at once; leftover work runs for hours unwatched.
-- An owner's return whose last line is `WAITING: <report paths>` is mid-task — never integrate or stop it. A report it names reaches you instead of the owner → SendMessage the owner `Report in: <path>` in the same turn; never merge or fix its findings yourself.
+- An owner's return whose last line is `WAITING: <report paths>` is mid-task → `implement-plan` step 3 (the relay); no `implement-plan` → never integrate or stop it, and a report that reaches you goes to the owner as `Report in: <path>` in the same turn.
 - Before any cleanup, preserve an older worktree receipt to the named base path first. A differing destination is a collision: stop cleanup and report it. Do not create another report or handoff.
 
 Done when: each returned task is committed in its track worktree and its owner is stopped.

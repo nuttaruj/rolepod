@@ -40,7 +40,7 @@ Scope follows the Product mode: `change` → only the surface the spec changes, 
 - scenario tabs — the happy path, a tricky edge, something that should be illegal — each resetting to a known state;
 - every label in domain words, written for a non-developer.
 
-Depth → `references/ui.md` (Layout) or `references/logic.md` (Logic); load only the chosen one.
+Depth → `references/ui.md` (Layout) or `references/logic.md` (Logic); load only the chosen one; no `references/ui.md` / `references/logic.md` → the required elements above are enough.
 
 Done when: the branch is picked and its required elements are listed for the build.
 
