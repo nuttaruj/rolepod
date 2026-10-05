@@ -13,12 +13,9 @@ Phase = Build / Debug: turns an unknown failure into a root-cause fix by narrowi
 - A planned feature or a broad refactor → `implement-plan` / `simplify-code`.
 - An approved plan in progress → continue `implement-plan`; never restart Define or Plan because this skill was invoked.
 
-**Who runs the loop.** The Lead / owner contract → `using-rolepod` step 3; without it: the Lead routes, briefs from the symptom, spot-checks and commits, and the path owner runs this skill. Role map:
-- the role that owns the path (`backend-developer` / `frontend-developer` / `billing-engineer` / …) reproduces, writes the failing test, then the fix, for every symptom class, auth / token / injection included;
-- auth / token / injection symptoms → `security-engineer` writes the exploit repro test first — test evidence (`check-work`'s Security row), not a review; it returns to the Lead, who briefs the path owner to make it pass (that test is the owner's failing test). The owner's R4 review follows `review-code` by `workflow.mode` (Lite two lenses; Standard security + lenses; Full those plus adversarial) — never a second security review on top;
-- `qa-tester` only for a user-visible (E2E / UI) repro; its red test or report returns to the Lead, who briefs the path owner to make it pass;
-- `performance-engineer` — latency / memory regressions;
-- `devops-sre` — infra / deploy / CI failures.
+**Who runs the loop.** The Lead routes, briefs from the symptom, spot-checks and commits; the owner of the path — the role the Lead picks from the agent listing — reproduces, writes the failing test, then the fix, for every symptom class. Two repros come first from another role and return to the Lead, who briefs the path owner to make them pass (each is that owner's failing test):
+- auth / token / injection symptoms → `security-engineer` writes the exploit repro test — test evidence (`check-work`'s Security row), not a review; the owner's R4 review is its brief's Reviewers line, never a second security review on top;
+- a user-visible (E2E / UI) repro → `qa-tester` writes its red test or report.
 
 Brief (the symptom, not a repro): the exact error and stack (or actual vs expected), where it shows, when it started, the diff since the last green, and — from `implement-plan` / `check-work` — `Attempts: <n> used` with each failed fix and why it stayed red; the owner reproduces and hypothesises.
 No subagents → the Lead does it.

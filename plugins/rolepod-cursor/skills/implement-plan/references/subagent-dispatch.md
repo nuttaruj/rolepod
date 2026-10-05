@@ -12,21 +12,9 @@ Fresh subagent per task — reusing one across tasks leaks Task N's mental model
 
 **The dispatch prompt = the brief + what it lacks.** Point the owner at the brief and add only facts that neither the brief nor the owner's own skill holds: a worktree path that differs, absolute paths of private docs, a trap measured in this repo. Never restate the workflow (test-first, review rounds, commit policy, edit tools) — the skill carries it, and every restated rule pushes the task's goal further down the owner's context.
 
-## Picking the owner
+## The owner
 
-Closest specialist by path / concern / strategy:
-- `frontend-developer` / `ui-ux-designer` — UI, interaction
-- `backend-developer` — API, business logic, DB models
-- `mobile-developer` — iOS, Android, RN, Flutter
-- `billing-engineer` — billing, credits, subscription
-- `ai-ml-engineer` — LLM, RAG, SDK, prompt cache
-- `data-scientist` — analytics, pipelines, dashboards
-- `devops-sre` — infra, CI/CD, containers, deploy, release
-- `performance-engineer` — latency, profiling, load test, bundle size, query speed
-- `content-strategist` — written output; pass `audience: dev|user|prospect`
-
-A write mandate goes only to the role that owns the path. Prefer the CLI's native named role; when unavailable, use the portable role dispatch contract and the model tier per role in `using-rolepod/references/model-tiers.md`. Do not treat a prompt role name as native dispatch metadata or hook evidence. The plan-file exception under `docs/rolepod/plans/` is described in `write-plan` step 8.
-- Never a test- or review-only role: `qa-tester` / `security-engineer` write tests and markdown only; `universal-reviewer` / `scout` write markdown only.
+The Lead picks the owner from the agent listing (each description names its scope); the plan's **Owner:** line is that pick. A write mandate goes only to the role that owns the path, never a test- or review-only role: `qa-tester` / `security-engineer` write tests and markdown only; `universal-reviewer` / `scout` write markdown only. Prefer the CLI's native named role; when unavailable, use the portable role dispatch contract and the model tier per role in `using-rolepod/references/model-tiers.md`. Do not treat a prompt role name as native dispatch metadata or hook evidence. The plan-file exception under `docs/rolepod/plans/` is described in `write-plan` step 8.
 
 An `isolation: 'worktree'` agent holds tracked files only: a gitignored test harness is missing there, so the brief names how the Command gets in, or the writer runs on main with disjoint files.
 

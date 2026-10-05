@@ -35,28 +35,16 @@
 - **Proof:** <one reviewer-checkable claim> :: `<command that proves it>` (optional)
 - [ ] **Expected failing signal:** <failure observed before the fix; omit if not test-first>
 - [ ] **Command:** <exact, runnable check covering this task; not the whole-repo suite>
-- **Owner:** <The role the domain map assigns to this task's Files — path first,
-      then concern. `Lead` for R1-sized work or when the user said
-      self-do; from R3 up the map decides. A vertical slice has ONE owner: the role
-      of its dominant layer (the risk, else most files) builds the whole slice,
-      thin ends in other layers included; two full-depth layers → two slices
-      joined by Blocked by. Map:
-      backend / API routes / services / models / migrations → backend-developer
-      components / pages / hooks / state / *.tsx *.vue *.svelte → frontend-developer
-      visual polish / design system / a11y / CSS → ui-ux-designer
-      billing / payments / credits / subscriptions / invoices → billing-engineer
-      auth / permissions / tokens / secrets / crypto (the WRITE) → backend-developer;
-        its High-risk surfaces line routes security-engineer (who writes tests only)
-      .github/workflows, Dockerfile, compose, vercel/wrangler/fly/railway config,
-        deploy/ infra/ terraform/, release scripts, monitoring → devops-sre
-      docs, README, runbooks, i18n / locales, emails, marketing copy,
-        blog → content-strategist (`audience: dev | user | prospect`)
-      ios / android / expo / react-native → mobile-developer
-      LLM / RAG / embeddings / prompts → ai-ml-engineer
-      analytics / dashboards / pipelines / ETL → data-scientist
-      profiling, p95/p99, bundle size, query plans → performance-engineer
-      E2E / UI flow the spec names → no task; check-work verifies it once
-        the feature is built (a slice's unit tests belong to its owner)
+- **Owner:** <The role you pick for this task's Files from the agent listing — each
+      description names its scope. `Lead` for R1-sized work or when the user said
+      self-do. A vertical slice has ONE owner: the role of its dominant layer (the
+      risk, else most files) builds the whole slice, thin ends in other layers
+      included; two full-depth layers → two slices joined by Blocked by. A
+      high-risk write goes to the path's owner and the High-risk surfaces line
+      names the task; security-engineer writes tests only. An E2E / UI flow the
+      spec names → no task; check-work verifies it once the feature is built (a
+      slice's unit tests belong to its owner).>
+
 - **Done when:** <pass/fail condition; a changed rule also names the nearest inputs whose result stays the same>
 - **On fail:** <non-default recovery, if any. Omit to use the Failure policy below.>
 
