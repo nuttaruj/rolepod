@@ -1,11 +1,12 @@
 ---
 name: implement-plan
-description: Use when executing an approved plan or a clear single-file edit — TDD at the agreed seams, surgical edits, bounded delegation, worktrees only when real filesystem isolation is needed. Phase = Build.
+description: Use when an approved plan, an inline R2 checklist or a spec-as-plan R3 list is ready to build; a plan's next task is unblocked; a clear single-file edit is next; or the user says to execute the plan.
 ---
 
 # Implement Plan
 
-Turns an approved plan into a built, reviewed diff, one task at a time, each delegated task in a fresh context.
+Phase = Build: turns an approved plan into a built, reviewed diff, one task at a time, each delegated task in a fresh context.
+An approved plan with a task in progress → resume Build at that task; never restart Define or Plan.
 
 ## Skip when
 
@@ -13,156 +14,106 @@ Turns an approved plan into a built, reviewed diff, one task at a time, each del
 - The plan is still vague, wrong, or names a file that does not exist → `write-plan` first.
 - The root cause of a failure is unknown → `debug-issue`.
 
-### 1. Read the plan and the touched files
+### 1. Lint the plan
 
-- Lint a plan file before the first task: `plan-lint.sh <plan>` (`../write-plan/scripts/plan-lint.sh`, relative to this skill's folder). FAIL (no **Command**, no checkboxes, a broken Blocked-by graph) → back to `write-plan`; never build on it.
-- No `plan-lint.sh` → check the plan file by eye: a **Command** and checkboxes per task, an acyclic Blocked-by graph, a **Failure policy**.
-- An inline chat checklist has no file: no lint, no temp file; every step needs a verify command. R2 covers one source file plus its own test, which does not count toward the file limit. Spec-as-plan R3 uses the inline-checklist eligibility rule below; missing any → `write-plan` before building.
-- Whoever builds the task reads the touched files end-to-end, matches the style of 2-3 nearby files (invent no patterns), and confirms every symbol the plan expects exists — the task owner on a delegated task, the Lead only on its own R1 (trivial edit) work (no subagents → the Lead). A planned file missing where expected → verify it, or re-plan. The Lead's part on a delegated task is the plan lint and the **Read first** names (Delegate).
-- An inline checklist is eligible only for R2 (one source file plus its excluded own test) or spec-as-plan R3 (≤3 approved ordered tasks, each naming files, verify command and dependencies; single owner; no parallel work or high-risk path). Run each step's command. Any added source file or other R2 scope change, or a 4th R3 task, parallel work, high-risk path, changed acceptance, or compaction → stop and write the real plan.
-- Whoever builds verifies the task against its **Command** verbatim, never a re-derived check: run it or cite a passing run whose scope, relevant inputs, environment and provenance still match after the final relevant edit.
-  Record the execution checkout or snapshot and actual result; HEAD equality alone does not prove matching untracked or ignored inputs. After integration, cherry-pick or helper updates, compare resulting inputs and environment before reuse. Run only checks whose proof no longer matches or whose claims remain uncovered. Phase changes alone add no check.
-  The task owner carries this proof in its decision brief; the Lead verifies it for own R1 work. No Command named → `write-plan` for one.
-- Command passes → flip EVERY `- [ ]` under that task to `- [x]` — on a delegated task the Lead flips them from the owner's Command tail (`scripts/ticket.sh log` in the ship line; without it, by hand). A **Test / evidence** proof the Command does not run (browser, manual) is not covered by the flip; do it first.
-- Command fails → baseline first (never a run before the first edit): run only the failing tests once on the tree without this task's diff — a throwaway `git worktree` at HEAD; it cannot run them → set the diff aside in place, run, restore. Red there too → pre-existing: a limitation in the decision brief, and the Command counts as passing when the rest is green. Green there → this task's failure, handled below.
-- This task's failure → the task's **On fail**, else the plan's **Failure policy**, else (an R2 checklist has neither) `debug-issue`. Carry failed-fix attempts for the same unresolved repro or criterion across owners and phases. After two failures, route to `debug-issue` for one Second opinion before attempts three and four; the brief carries each failed fix and why it stayed red. No usable advisor → stop before another fix; the fourth failed fix → stop and report to the user.
-- Before the first task commit, record the base sha (`git rev-parse HEAD`) under the plan's `## Changes during build`. After each task, keep plan progress to one line: sha / verdict / canonical receipt pointer.
-- Shared plan (issue numbers in the header) → claim the task's issue before touching a file (write-plan's `references/team-issues.md`).
+- A plan file → `plan-lint.sh <plan>` (`../write-plan/scripts/plan-lint.sh`, relative to this skill's folder) before the first task. FAIL (no **Command**, no checkboxes, a broken Blocked-by graph) → back to `write-plan`; never build on it. No `plan-lint.sh` → check by eye: a **Command** and checkboxes per task, an acyclic Blocked-by graph, a **Failure policy**.
+- An inline chat checklist has no file: no lint, no temp file; it is the owner's brief, and every step names its verify command. It fits only R2 (one source file plus its own test) or spec-as-plan R3 (≤3 approved ordered tasks, each naming files, verify command and dependencies; single owner; no parallel work or high-risk path). An added source file, a 4th task, parallel work, a high-risk path, changed acceptance or compaction → stop and `write-plan` the real plan.
+- No **Command** named for a task → `write-plan` for one.
+- Before the first task commit, record the base sha (`git rev-parse HEAD`) under the plan's `## Changes during build`.
+- Shared plan (issue numbers in the header) → claim the task's issue before touching a file (`write-plan` team issues; no `write-plan` → assign the issue to yourself).
 
-Done when: the plan lints clean (or passes the by-eye check; an inline checklist: every step names its verify command), and every file the task touches has been read — by the task owner on a delegated task, by the Lead on its own R1 work.
+Done when: the plan lints clean (or passes the by-eye check; an inline checklist: every step names its verify command) and the base sha is recorded.
 
-### 2. Test first at the agreed seams
+### 2. Brief each ready task
 
-- Every logic slice runs `tdd-flow` at the agreed seam — the spec's Testing decisions, else the plan task's seam, neither (an R2 checklist, a single-file edit) → the highest existing seam that reaches the behavior, stated `Seam: <interface>`: a failing test at that public interface (never internals) → watch it fail (green before the code → tighten the assertion) → the smallest change → green → the next behavior. Refactor at review, not in the loop.
-- `tdd-flow` cannot be opened → these limits still hold: the agreed seam only; one behavior → one test; no test ahead of the behavior; edge / error / race only when an acceptance criterion names it or it is an R4 (high-risk) floor — deny path, money math, migration rollback, shared-state race. Mock only external boundaries, never the DB in an integration test.
-- A test outside the agreed seam is scope creep → one line under `## Follow-ups`.
-- Prose, a rename, config, wiring or CRUD pass-through with no rule of its own: no new test — use the evidence-after proof its Test / evidence line names (render / lint, relevant scoped checks plus any required smoke, smoke + restart).
+The plan's **Owner:** line wins:
+- `Owner: Lead` → Build it yourself (below; R1 only — R2 goes to the owner on main).
+- A named role → the **task owner**: it builds on the Command, runs its brief's reviewers, fixes, and returns a **decision brief** (its agent's Writer loop).
+- No Owner line → self-do only when all four are no: more than one file to edit, a test / build / server run, a real design-judgment call, more than 3 tool calls; any yes → the path's writer role (write-plan's domain map).
 
-Done when: each logic slice has a test that was red before its change and is green after.
-
-### 3. Edit surgically
-
-- Touch only what the task requires: no "while I'm here" refactor, no reformatting, no single-use abstraction. Adjacent dead code → flag it; delete nothing unasked.
-- Comments: none by default. Write one only for a non-obvious WHY (hidden constraint, workaround, surprising invariant), never the WHAT.
-- Reuse ladder: before a new helper / constant / type / validation, stop at the first rung that holds:
-  1. already in this codebase — extend, don't duplicate;
-  2. stdlib;
-  3. a native platform feature — DB constraint over app code, CSS over JS, `<input type="date">` over a picker lib;
-  4. an installed dependency;
-  5. only then the minimum new code — one line inline before a helper, a helper before a module.
-- A NEW dependency is the last rung: maintained, reasonable size, compatible license. Unsure → ask.
-- Blast radius is the caller count, not the diff size. Changing the behavior, signature or return shape of anything with callers → walk the callers FIRST (code-intel callers / impact when connected, else grep) and decide per caller: absorb, adapt, or split.
-- Change files through the edit tool. Never a shell heredoc, `sed -i` or `tee`.
-
-A sibling plugin covers the domain → `references/sibling-plugins.md`. A step only the human can perform → `references/wizard.md`.
-
-Done when: the diff holds only the task's change and every caller of a changed behavior is accounted for.
-
-### 4. Delegate
-
-Decide *whether* first. The plan's **Owner:** line wins:
-- `Owner: Lead` → self-do (R1 only; R2 goes to the owner on main).
-- A named role → the **task owner**: it builds on the Command, runs its brief's reviewers (R4), fixes, and returns a **decision brief** (the agent's **Writer loop** → Ticket loop).
-- No Owner line → run the delegation test:
-
-```
-Q1: More than 1 file to edit?        Q2: Run tests / build / server?
-Q3: A real design-judgment call?     Q4: More than 3 tool calls total?
-```
-All "no" → self-do. Any "yes" → delegate to the closest specialist by path / concern / strategy.
-
-The brief comes from the plan, generated when plan-lint exists: `plan-lint.sh --brief <N> <plan> [contract]` prints it; add `--main` for a task that runs on the main checkout (a sequential track), so the brief names no worktree. No plan-lint → the brief is the task block verbatim, plus the spec path and the Bounds: never commit, stay in scope, run the Command, return a decision brief.
-- The Lead adds only **Read first** (the 2-3 files and the pattern to copy) and facts the brief lacks. Never extra steps, runs or scope — a whole-suite run (the Lead's, once, at release) included. The generated brief is appended to, never rewritten: put your own points (one for a reviewer to probe, a decision made since the plan) after the generated sections, as the task needs; Tier, Reviewers and Command stay as generated.
-- A wide-effort session (the `cross-family` skill's rule) → every owner brief carries `External: off — wide-effort session`: the owner cannot see the Lead's mode, and its cross-family kinds take their pool-off path.
+The brief: `scripts/ticket.sh start <plan> <N>`, or `plan-lint.sh --brief <N> <plan> [contract]` (add `--main` for a task on the main checkout, so the brief names no worktree). No script → the task block verbatim, plus the spec path and the Bounds: never commit, stay in scope, run the Command, return a decision brief. Picking the role, the BLOCKED variables and the ship recipe → `references/subagent-dispatch.md`; no reference → the closest specialist by path.
+- The Lead adds only **Read first** (the 2-3 files and the pattern to copy) and facts the brief lacks, appended after the generated sections; Tier, Reviewers and Command stay as generated. Never extra steps, runs or scope — a whole-suite run (the Lead's, once, at release) included.
+- A wide-effort session (the `cross-family` skill's rule) → every owner brief carries `External: off — wide-effort session`.
 - Never point the owner at the plan file; the brief is its slice.
 
-The task owner NEVER commits and NEVER expands scope:
-- A path nobody in the wave owns → touch it, plus one `Also touched:` line in the brief.
-- A path another owner holds → leave it, put `NEEDS: <path> — <one-line change>` in the brief and finish the rest; the Lead applies it at integration (R1-sized) or reassigns.
+A Blocked-by task's brief carries each predecessor's Handoff (plan-lint --brief prints the section, or the receipt path when it cannot); the Lead never tells an owner to read or write the plan's ## Changes during build.
 
-The owner writes its decision brief to its task file, docs/rolepod/tasks/<plan>/task-NN.md (its Handoff section: at most ~15 lines, only what a Blocked-by task consumes — signatures, invariants). Owners and reviewers never edit the plan file; the Lead's own points go under ## Lead notes of that task file.
+The task owner NEVER commits and NEVER expands scope: a path nobody in the wave owns → touch it, plus one `Also touched:` line; a path another owner holds → `NEEDS: <path> — <one-line change>`, and the Lead applies it at integration (R1-sized) or reassigns. A write mandate goes to the path's owning role, never a reviewer; portable dispatch → `using-rolepod` model tiers; no `using-rolepod` → a fresh default subagent given the role's text.
 
-A Blocked-by task gets each predecessor's task file as Read first (plan-lint --brief adds it); the Lead never tells an owner to read or write the plan's ## Changes during build.
+Done when: every ready task is dispatched, independent ones in ONE message.
 
-A write mandate goes to the path's owning role, never a reviewer. Prefer the CLI's native named role; when unavailable, use the portable dispatch rules in `using-rolepod/references/model-tiers.md` (`references/subagent-dispatch.md`: role, model, brief fields).
+### 3. Build: accept the return
 
 Handle the brief's status (its first word):
-- `COMPLETED` over a failing test → reject and re-brief.
-- `COMPLETED`, no concerns → Review; with Concerns → resolve correctness and scope concerns first.
+- `COMPLETED` over a failing test, or with no Command tail → reject and re-brief.
+- `COMPLETED`, no concerns → step 4; with Concerns → resolve correctness and scope concerns first.
 - `PARTIAL` → review the done slice, redispatch the remainder narrowed.
 - `BLOCKED` → change a variable (context, model, scope); never redispatch unchanged.
 - A question or any other first word → answer it or ask for the status, then redispatch.
 
-No subagents → the Lead does it: steps 1-3 on each task, checks covering changed behavior and affected consumers, then `check-work` before claiming done. Run high-risk related checks and required CI or smoke gates when applicable.
+An owner's return whose last line is `WAITING: <report paths>` is mid-task — never integrate or stop it. A report it names reaches you instead → SendMessage the owner `Report in: <path>` in the same turn; never merge or fix its findings yourself.
 
-Done when: every task has an owner and each dispatched owner has returned a decision brief.
+The owner writes its decision brief to the absolute base receipt its brief names (docs/rolepod/tasks/<plan>/task-NN.md; Handoff at most ~15 lines — signatures, invariants); owners and reviewers never edit the plan file, and the Lead's own points go under ## Lead notes. Owner status (`COMPLETED | PARTIAL | BLOCKED`) and Verify status (`VERIFIED | PARTIAL | UNVERIFIED`) stay distinct; neither implies the other.
+A plan task's chat reply stays within 12 lines: status, receipt path, Command tail, reviewer verdicts + report paths, residuals.
 
-### 5. Parallel tracks
+Validate the receipt, spot-check ONE claim, then integrate: the ship line (`ticket.sh integrate` → commit → `log`); no script → the commit check, `git commit`, then one `## Changes during build` line (sha / verdict / receipt pointer). Flip EVERY `- [ ]` under the task to `- [x]` from the Command tail; a **Test / evidence** proof the Command does not run (browser, manual) comes first. Integrated → stop the owner (TaskStop, or the CLI's close) in the same turn, and any background work it reports. One task per pass; never batch tasks into one diff.
 
-A parallel layout → every unblocked track in ONE message, each owner in its OWN worktree; serial needs a stated reason. Shared files, merge order, track layout → `references/subagent-dispatch.md` Parallel-track dispatch.
+Artifact: `templates/implementation-manifest.md` — `## Decision brief` (Change, Tests added / changed, Commands, Scope check, Concerns, Author fix closure, Owner status), `## Verify status`, `## Handoff`, `## Reviews`, `## Lead notes`, filled inside the task receipt. Without a file-writing tool, the owner returns the complete receipt inline and names the limitation.
 
-C1:
-> A track's tasks run in order in one worktree: each task builds, runs its Command and is committed there; an R4 task keeps its round-1 review before its commit, and an R2/R3 task gets no review until the track ends (a track's only code task runs its own two lenses before returning).
+Done when: the task is committed, its boxes flipped, its owner stopped.
 
-The Lead integrates each task in the track's worktree (the ship line per task; a harness-made worktree the same way): the commit gate finds the owner's reviewer evidence there.
-- Each task in the track commits once ready, no `finish` until the track ends.
-- A harness-made worktree, or a commit refused because the Lead's branch moved → `git cherry-pick <sha>` (a conflict ends with `git cherry-pick --continue`, never a new `git commit`), then (after all tasks integrate) remove the worktree, delete its branch, and run the `log` step.
-- Never move the diff as a patch: a patch carries no evidence, and the gate asks for the whole R4 set again.
-- Integrated → stop the owner (TaskStop, or the CLI's close) in the same turn; its return notes it stopped with background work still running → stop it at once, since that leftover work runs for hours unwatched (`references/subagent-dispatch.md` Close what finished).
-- An owner's return whose last line is `WAITING: <report paths>` is mid-task — never integrate or stop it. A report it names reaches you instead of the owner (the Claude desktop app sends a nested child's end to the Lead) → SendMessage the owner `Report in: <path>` in the same turn — never merge or fix its findings yourself: the owner holds the files in a smaller context, so the relay costs one call.
+### 4. Review at its seam
 
-Done when: every ready track is dispatched and each returned track is integrated in contract order.
+- R4 task → per-task review: the owner's round-1 reports exist before its commit (who reviews at each tier → `review-code` Pick reviewers; no `review-code` → the brief's Reviewers line).
+- R2/R3 tasks:
 
-### 6. Build and review per track
-
-C2:
 > Track end: a track with two or more code tasks → one fresh owner (the role owning most of the track's code) runs the two lenses in ONE message on the track diff and fixes each BLOCKER / MAJOR with its proof (`review-code` Fix-verify); the Lead commits the fixes in the track worktree, then `ticket.sh finish <worktree>` merges the track. A track with one code task → its task owner runs the two lenses before returning, the same way, and the track takes no track-end review.
 
-A track-end review brief the Lead writes over a diff holding an R3 or R4 task carries the pool-on lens line when `cross-family.sh --pool-names` prints a member.
+- A docs-only track takes no review. A track-end brief over a diff holding an R3 or R4 task carries the pool-on lens line when `cross-family.sh --pool-names` prints a member.
+- A required report missing, failed, empty or partial keeps that round open: its isolated reviewer completes its own report on the frozen diff. Never substitute a Lead review when agents are available; with no agents, the Lead records both axes and the independence limitation. Never accept a diff without its required reports.
+- The Lead never runs a review loop itself; it talks to owners. Findings → ONE fix task to the owning role; rounds and closure → `review-code` Fix-verify (no `review-code` → one fresh reviewer re-checks only each fix's delta, at most four rounds), closure in the receipt's Author fix closure with report pointers. Nothing pushes or releases before it.
 
-C3:
-> A task Blocked by tasks in two or more tracks starts after those tracks merge, as the first task of a new track from the base.
+Done when: every track's review is closed at the receipts.
 
-C4:
-> A single-track plan runs on the base checkout unless another session holds a live lock on it when its first task starts; then the whole plan runs in one plan worktree.
+### 5. Tracks
 
-A task owner's decision brief carries verdict, Command tail, evidence pointers, proof lines and residuals, not copied findings. The Lead validates it, spot-checks one claim, then commits in the track worktree.
-The absolute base receipt path named by the brief is the canonical task record. Keep owner status (`COMPLETED | PARTIAL | BLOCKED`) distinct from Verify status (`VERIFIED | PARTIAL | UNVERIFIED`); neither status implies the other. Chat returns status and pointers only. Proof complete on base needs no export. Before worktree cleanup, preserve only required local-only proof that would otherwise disappear, at its named private path.
-Preserve an older worktree receipt to the named base path first. A differing destination is a collision: stop cleanup and report it. Do not create another report or handoff.
+- Two or more tracks, a ship group, a track over ~800 changed lines or ~15 files, or another session's live lock on the base checkout → call `run-tracks` (layout, worktrees, size slices, drift pass, session split).
+- No `run-tracks` → run the tracks one after another on the base checkout in plan order. A named ship group → after its tasks one seams-only drift pass by a fresh owner (`security-engineer` when the group holds an R4 task), never adversarial. Another session holds a live lock on the base → the whole plan runs in one worktree (`git worktree add .worktrees/<plan> -b <branch>`). A track over ~800 changed lines / ~15 files → split its review by task ranges.
 
-When there is no receipt helper, the Lead names the same absolute base path in the brief. Without a file-writing tool, return the complete receipt inline and name the limitation. Keep raw logs and reviewer findings in their canonical artifacts; finding closure (`review-code` Fix-verify) belongs in the receipt's Author fix closure section with report pointers, not a merged report. Verify-only still returns its evidence block and stops. Duplicate `COMPLETED` never overrides a failed check.
-- A required report missing, failed, empty or partial keeps that same review round open: its isolated reviewer completes its own report on the frozen diff before aggregation or ship. Never substitute a Lead review when agents are available. With no agents, the Lead records both axes and the independence limitation. R2/R3 tasks in a multi-code-task track are covered at track end.
-- Never accept a diff without required review reports; stop before further commits.
+Done when: every track is merged.
 
-The Lead never runs a review loop itself; it talks to owners. A docs-only track, or a track with one code task, takes no track-end review.
-- Over ~800 changed lines or ~15 files in one track → size slices by task, in plan order, each within that size (a single task over it is its own slice; a Verify fix joins the slice of the task it fixes); one fresh owner per slice, all dispatched in ONE message, each reviewing, fixing each BLOCKER / MAJOR and attaching proof on its slice and returning its own brief. Within the size → one owner, as above.
-- A slice owner's Files allowed = its tasks' files only (a file two slices share goes to the earlier slice), and it writes its slice's diff file for the lenses. A named ship group still bounds its own review; the size split applies inside it, and one seams-only drift pass by a fresh owner still covers the group. A slice owner runs only its own slice's checks; a finding in a file it does not own goes back as `NEEDS:`. All slices back → the Lead runs the plan's Command and the commit check once, then commits.
-- The track-end review reviews the R2/R3 tasks' deltas and any unreviewed Verify fixes; an R4 task's commits are context, covered by their reports (listed in the Scope with their paths), never re-tiered. A Verify fix on a high-risk path gets the workflow-mode R4 set on that fix alone before its commit (Lite follows its two-lens rule; Standard and Full follow their R4 rules); with no track-end review (docs-only, one code task), a Verify fix nobody reviewed → its owner runs the workflow-mode review set on that fix alone.
-- A plan that names a ship group within a track → after all its tasks, one drift pass over the group's range, a normal review of the cross-task seams (never adversarial): `security-engineer` when it holds an R4 task, else the track-end review owner's pass is the drift pass (split by size → a fresh owner's seams-only pass). Ship groups across tracks: drift pass after all tracks of the group merge.
-- Findings → ONE fix task to the owning role (`review-code` Fix-verify rounds).
-- Review mechanics (round 1, the Fix-verify re-check, closure at the receipt) live in `review-code`. Review rounds never change the separate four-failed-fix limit or the one Second opinion after two failures (`debug-issue`).
-- Nothing pushes or releases before it.
+### 6. Prove the whole
 
-R4 tasks keep per-task review: the owner dispatches its reviewers before returning. Who reviews at each tier → `review-code` Pick reviewers.
+`check-work` on the full diff (it writes the plan's `docs/rolepod/tasks/<plan file name without .md>/verify.md`). No `check-work` → run every task Command and the suite once and report the evidence inline.
 
-One task per pass: brief → spot-check + commit in track worktree → next task. Never batch tasks into one diff.
+Done when: a Verify status is recorded.
 
-Artifact: `templates/implementation-manifest.md` — Files changed, Tests added / changed, Verification, Scope check, Concerns, Status. A subagent returns it; the Lead integrates it in the track worktree.
+## Build it yourself
 
-Done when: every track is shipped with its track-end review (or no track-end review for docs-only and one-code-task tracks); then the Lead runs `check-work` on the full diff before release.
+`Owner: Lead` (R1), or no subagents (then steps 1-6 run here per task):
+- Read the touched files end to end, match the style of 2-3 nearby files (invent no patterns), and confirm every symbol the plan expects exists; a planned file missing → verify it, or re-plan.
+- Logic → call `tdd-flow` at the agreed seam (the spec's Testing decisions, else the plan task's seam, else the highest existing seam, stated `Seam: <interface>`); a test outside it → one line under `## Follow-ups`.
+  No `tdd-flow` → one behavior, one failing test at the agreed seam, the smallest change to green; edge / error / race only with a criterion or an R4 floor; mock only external boundaries.
+- Prose, a rename, config, wiring or CRUD pass-through with no rule of its own → no new test; the evidence-after proof its Test / evidence line names.
+- Touch only the task: no "while I'm here" refactor, no reformatting, no single-use abstraction; adjacent dead code → flag it. Comments only for a non-obvious why.
+- Reuse first: codebase → stdlib → platform feature → installed dependency → minimal new code; a new dependency → ask.
+- Changing a behavior, signature or return shape with callers → walk the callers first (code-intel or grep) and decide per caller: absorb, adapt or split.
+- Change files through the edit tool, never a shell heredoc, `sed -i` or `tee`.
+- A sibling plugin covers the domain → `references/sibling-plugins.md`; no reference → its edit primitive when installed. A step only the human can perform → `references/wizard.md`; no reference → ask the user for that one step and wait.
+- Verify on the Command verbatim or cite a matching passing run (`check-work` Evidence cache); a failure → run just those tests on the base tree (`check-work` Run the evidence): red there too = pre-existing, a limitation.
+- Failure → the task's **On fail**, else the plan's **Failure policy**, else `debug-issue`. Four failed fixes for one unresolved repro or criterion → stop and ask; one Second opinion after two (`debug-issue` Second opinion); review rounds count separately.
+
+Scope and receipt pairs, good and bad → `examples/execution-examples.md`; no examples → the Artifact line in step 3.
 
 ## Guardrails
 
-- Finish the planned task as planned. Never expand scope or silently redesign the plan mid-build: a new idea is one line under the plan's `## Follow-ups`.
-- Run continuously between tasks and plan phases. Never ask "should I continue?" or end the turn mid-plan; an ended turn is a stop however it is worded. Stop only on a BLOCKED (after a variable change), a spec / plan gap, or a scope ambiguity that SURVIVES a re-read of the plan and the touched files. Forced to end anyway (usage limit, context, user stop) → the last act is one line under the plan's `## Changes during build`: stopped after Task N · next Task M · how to start the env.
-- Every ready dispatch out, sub-agents running in the background, nothing unblocked left → the turn ends as a wait, not a stop: a return resumes the Lead. A wait counts only on something whose end wakes you (a sub-agent, a background command); CI or any other external job returns nothing → `finish-work` CI lanes (the pending-lane wait).
-- A wait offers the compact only as the relay of a context-check line (context past the hook's line) that arrived since the last compact and is not yet relayed; none → no offer. The offer is ONE line of ~100 characters or fewer, never a question: your CLI's compact command (Claude `/compact <focus>`), the focus naming the plan path (or "inline checklist") and the next step. A longer one wraps in the terminal, and a multi-line paste reaches the CLI as text, not a command.
-- Read the evidence, not the status. Never accept `COMPLETED` without its Command tail.
-
-Scope and manifest pairs, good and bad → `examples/execution-examples.md`.
+- Finish the planned task as planned; a new idea is one line under the plan's `## Follow-ups`, never a mid-build redesign.
+- Run continuously between tasks: stop only on a BLOCKED after a variable change, or a spec / plan gap or scope ambiguity that survives a re-read. Every dispatch out and nothing unblocked → the turn ends as a wait on something whose end wakes you (CI → `finish-work` CI lanes; no `finish-work` → poll the lane). Forced to end → one line under `## Changes during build`: stopped after Task N · next Task M · how to start the env.
+  A wait offers /compact only as the relay of a context-check line → manage-context Compact at seams; no manage-context → ONE line of ~100 characters naming the plan path and the next step, never a question.
+- Read the evidence, not the status: never accept `COMPLETED` without its Command tail.
 
 ## Next phase
 
-- After all tracks are shipped and reviewed, `check-work` proves the full change works; then the merge and the branch's fate belong to `finish-work`.
+- All tracks shipped and reviewed → `check-work` (step 6); then the merge and the branch's fate belong to `finish-work`.
 - `BLOCKED` survives context, model and scope changes and a re-plan → `manage-context` (escalate); if it is not available, stop and hand the user the attempt log and 2-3 options.
 - If `check-work` is not available, run tests / build / curl / browser yourself and report evidence inline.

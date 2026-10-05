@@ -40,7 +40,7 @@ COMPLETED | PARTIAL | BLOCKED
 VERIFIED | PARTIAL | UNVERIFIED
 
 ## Handoff
-<Only facts the next blocked task consumes: signatures, invariants, and pointers.>
+<Only facts the next blocked task consumes: signatures, invariants, pointers. The first ~600 characters are inlined into that task's brief, so put the contract first.>
 
 ## Reviews
 <Pointers to reviewer reports; findings remain in their reports.>
