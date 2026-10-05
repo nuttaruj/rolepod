@@ -393,6 +393,21 @@ if [ "${1:-}" = "--brief" ]; then
     if (p == "") return
     if (!(p in allowedset)) { allowedset[p] = 1; allowedord[++acnt] = p }
   }
+  # The Handoff section of a blocked-by task receipt, whole lines up to cap chars; "" when the
+  # receipt or its section is missing or empty. Own fence flag: fenceline() state belongs to the plan pass.
+  function handoff_of(rfile, cap,    line, on, fence, out, cut) {
+    out = ""; on = 0; fence = 0; cut = 0
+    while ((getline line < rfile) > 0) {
+      if (line ~ /^ *(```|~~~)/) fence = !fence
+      if (!fence && line ~ /^## /) { if (on) break; if (line ~ /^## Handoff/) on = 1; continue }
+      if (!on || line ~ /^[ \t]*$/ || line ~ /^<.*>$/) continue
+      if (length(line) + 1 > cap - length(out)) { if (out == "") out = substr(line, 1, cap) "\n"; cut = 1; break }
+      out = out line "\n"
+    }
+    close(rfile)
+    if (out != "" && cut) out = out "(cut - the rest is in the receipt)\n"
+    return out
+  }
   # cleanfiles() is shared with the plain lint path — defined once in
   # CLEANFILES_AWK, prepended to this program at invocation.
   # Extracts the task-tag span from a contract File-ownership label: a
@@ -961,7 +976,13 @@ if (planwt == 1) tpath = substr(tbranch, 1, length(tbranch) - 5)
       bm = blockedrefs(B)
       while (match(bm, /[0-9]+/)) {
         br = substr(bm, RSTART, RLENGTH) + 0; bm = substr(bm, RSTART + RLENGTH)
-        if (!(br in bseen)) { bseen[br] = 1; printf "%s/docs/rolepod/tasks/%s/task-%02d.md\n", baseroot, tbase, br }
+        if (!(br in bseen)) {
+          bseen[br] = 1
+          rfile = sprintf("%s/docs/rolepod/tasks/%s/task-%02d.md", baseroot, tbase, br)
+          hf = handoff_of(rfile, 600)
+          if (hf != "") printf "Handoff of Task %d (full receipt %s):\n%s", br, rfile, hf
+          else print rfile
+        }
       }
     }
     print "## Files allowed"
@@ -1096,7 +1117,7 @@ if (planwt == 1) tpath = substr(tbranch, 1, length(tbranch) - 5)
     print "- Return with passing scoped Command evidence; run the repo commit check once. Foreground only; Bash timeout 600000; never run_in_background. Reviewers named above → dispatch in ONE message, no name, fork or remote isolation (child reports to Lead); wait for every report before returning (WAITING: <report paths> if yielding); unable to wait → REVIEW NEEDED with .rolepod/evidence/review/" rname "-<role>.md or " rname "-<lens>.md; fix findings per Reviewers above."
     printf "- Write your decision brief to %s/docs/rolepod/tasks/%s/task-%02d.md on the base checkout; its Handoff section is at most ~15 lines, only what a Blocked-by task consumes (signatures, invariants). Never edit the plan file.\n", baseroot, tbase, want + 0
     print "- Budget: build <= 40 tool calls, whole loop <= 120; past it return PARTIAL with what is done, never grind."
-    print "- Return a decision brief: verdict, `git diff --cached --stat | tail -3`, Command last 3 lines verbatim, reviewer verdicts + report paths, `Assuming:` lines, residuals."
+    print "- Return a decision brief: verdict, `git diff --cached --stat | tail -3`, Command last 3 lines verbatim, reviewer verdicts + report paths, `Assuming:` lines, residuals. Your chat reply stays within 12 lines: status, receipt path, Command tail, reviewer verdicts + report paths, residuals; the receipt holds the rest."
     if (ENVIRON["ROLEPOD_BRIEF_FAILURE_POLICY"] != "") { print "## Failure policy"; print ENVIRON["ROLEPOD_BRIEF_FAILURE_POLICY"] }
   }
   '
