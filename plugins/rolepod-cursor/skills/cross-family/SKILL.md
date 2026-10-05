@@ -1,11 +1,11 @@
 ---
 name: cross-family
-description: Get another CLI's opinion through the cross-family runner — a cold review of a diff (adversarial on an R4 round 1), a spec critique, or a stuck-bug consult — and set up the opt-in pool. Use when a calling skill names a kind, the user asks for a second opinion from codex / agy / cursor / opencode / claude, or the user asks to set up or change cross-family.
+description: Use when a calling skill names a cross-family kind (review, critique, consult); the user asks another CLI for a second opinion or review of a diff, spec or bug; the user asks to set up or change the cross-family pool.
 ---
 
 # Cross-family — another CLI's opinion, one command
 
-Turns a diff, a spec draft, a stuck bug or a test-first ticket into one anchored answer from a different CLI — or into the caller's fallback when no member can run.
+Turns a diff, a spec draft or a stuck bug into one anchored answer from a different CLI — or into the caller's fallback when no member can run.
 
 The runner is `scripts/cross-family.sh` in this skill's folder (`bash <this skill's folder>/scripts/cross-family.sh …`); below, `cross-family.sh` names it.
 Outside Claude add `--lead <codex|agy|cursor|opencode>`. `--help` lists every flag.
@@ -43,7 +43,7 @@ Done when: the brief file exists and a stranger could act on it alone.
 | Kind | Fires when (the caller owns this) | Command | Mode |
 |---|---|---|---|
 | review | round 1, pool on: one run per lens (`--lens spec`, `--lens standards`); Full R4 adds `--adversarial`; see `review-code` for routing | `--kind review [--lens spec` or `--lens standards` or `--adversarial] --brief <brief> --attach <diff> --detach` | background job |
-| critique | `write-spec`: R4 spec before Gate 1 (R3 stays internal), or the user asks | `--kind critique --brief <draft+ledger>` | foreground, 10 min |
+| critique | `write-spec` step 5 owns the trigger; no `write-spec` → only when the user asks | `--kind critique --brief <draft+ledger>` | foreground, 10 min |
 | consult | `debug-issue` after 2 failed attempts | `--kind consult --brief <ledger>` | foreground, short budget |
 
 **The user named a CLI** ("a second opinion from codex") → add `--member <cli>`: that member alone, never a fall-through to another.
@@ -62,12 +62,11 @@ Done when: the brief file exists and a stranger could act on it alone.
 
 **critique**
 - The member returns every material item, no cap, ranked by implementation risk: `QUESTION` (only the user can decide), `AMBIGUITY` (quoted wording two engineers would read differently), `MISSING` (an acceptance criterion, failure mode or edge case with no "proven by") — or `NO FURTHER QUESTIONS`.
-- One critique per spec: a draft revised after it (the extra round's answers, a Gate 1 edit or reject) never runs another. The caller settles from the repo what it can and asks the rest in ONE extra Discovery round. It never blocks the spec.
+- Once per spec, and the triage of its items → `write-spec` step 5 (the caller's rules); no `write-spec` → hand the ranked items to the user, never re-run it on a revised draft, never block the spec.
 
 **consult**
 - FOREGROUND, short budget — a stuck loop needs the answer now. A `consult = <fast> <deep>` line in the pool file puts the fast member first and keeps the deep one as fallback.
-- No usable member → the vertical fallback: the Lead's own CLI at its strongest model. Its native advisor mode when it has one; else read its `--help` for the top tier and run it headless on the same ledger (`claude -p --model <name>` / `codex exec -m <name>`). Never pin vendor model names in a skill or plan — the routing layer resolves them.
-- The vertical fallback is valid only when that model differs from the one running. Already on it, or cannot tell → no usable advisor. It never counts as a cross-family pass.
+- No usable member → the vertical fallback (`debug-issue` Second opinion item 2 holds the recipe); no `debug-issue` → the Lead's own CLI at its strongest model, valid only when it differs from the running one. It never counts as a cross-family pass.
 
 Done when: the kind ran in its mode, or the runner returned an exit for step 4.
 
@@ -78,10 +77,7 @@ The runner ran the member on its own default model — review / consult / critiq
 - A review counts only with its `VERDICT:` line. PARTIAL or no verdict → kept as `*.partial.txt`; the chain moves to the next member.
 - A weak review — empty or partial, a bare verdict, no claims walked, a changed file missing from its Scope list → the caller adds its internal strong pass and records why.
 - Consult and critique answers marked PARTIAL still count.
-- Exit 3 (every member failed), 4 (enabled, nothing usable), 5 (off) → step 5.
-- `--member` given: exit 9 or exit 3 → step 3's named-CLI rule, never step 5's fallback unasked.
-- Exit 7 (partial slice) → attach the full diff. Exit 8 (a review job is live) → collect or `--kill` it first.
-- A member dies when it goes silent (`stall=`, default 600 s), not when it is slow. A foreground call is capped by the harness (Claude Bash: 600 s): run a long review with `--detach`.
+- A non-zero exit → `references/exits.md` (each exit and its next move, the stall and foreground caps); no `references/exits.md` → any non-zero exit → step 5's named fallback (`--member` given → step 3's named-CLI rule).
 
 Done when: the answer is in hand with its receipt, or the exit is mapped to step 5.
 
@@ -91,27 +87,21 @@ Done when: the answer is in hand with its receipt, or the exit is mapped to step
 - Pool off, empty or failed → the caller's fallback, with the reason for its record:
   - review → the internal strong reviewer; Cross-model line `NOT RUN — cross-family off (opt-in)` or `NOT RUN — <runner reason>`;
   - critique → skip; `Cross-family critique: not run — off` or `— <runner reason>`;
-  - consult → the vertical fallback (step 3), else escalate.
+  - consult → the vertical fallback (`debug-issue` Second opinion item 2; no `debug-issue` → step 3's consult line), else escalate.
 - Called alone → report to the user: the member, its verdict or answer, the raw path, and the next move you recommend.
 
 Done when: the caller or the user holds the answer or the named fallback.
 
 ### 6. Set up the pool — on request only
 
-The user asks to set up, enable or change cross-family, in any wording or language. Never raise it unprompted.
-1. `cross-family.sh --setup` prints the installed CLIs and one question. One installed CLI → nothing to set; say so.
-   It writes only the machine file `~/.rolepod/config.json` under the `pool` key. No project override of pool.
-2. Ask ONE question per turn: (1) which CLIs review, in order.
-3. Write it: `cross-family.sh --setup review="…"`, then show `cross-family.sh --pool`.
-
-List the Lead's own CLI too — it is skipped at run time, so switching Lead never means editing the file. The user says no → `none`.
-Hand-editing the file (member order, `stall=`) — keep the structure of the JSON `pool` object.
+The user asks to set up, enable or change cross-family, in any wording or language; never raise it unprompted. `cross-family.sh --setup` lists the installed CLIs (one → nothing to set; say so); ask ONE question — which CLIs review, in order, the Lead's own CLI included (skipped at run time; no → `none`) — then `cross-family.sh --setup review="…"` and show `cross-family.sh --pool`.
+Hand-editing → `references/pool.md` (the `pool` JSON shape, per-kind order, `stall=` / `timeout=`, precedence); no `references/pool.md` → change it only through `cross-family.sh --setup review="…"`, never by hand. The pool lives only in `~/.rolepod/config.json`, no project override.
 
 Done when: the file is written and `--pool` is shown to the user.
 
 ## Guardrails
 
-- Every external call goes through the runner so it is anchored. Never a hand-rolled CLI call, a hand-typed evidence line, or a model / effort flag on a member.
+- Every external call goes through the runner so it is anchored. Never a hand-rolled CLI call, a hand-typed evidence line, or a model / effort flag on a member. Never pin a vendor model name in a skill or plan — the routing layer resolves them.
 - The user owns the pool. Never enable, widen or re-ask it unprompted.
 
 ## Next phase
