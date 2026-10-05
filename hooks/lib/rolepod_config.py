@@ -9,7 +9,7 @@ Usage (run as `python3 -I hooks/lib/rolepod_config.py <cmd>`):
   mode   prints stable key=value metadata for the effective workflow profile
   shell  prints two lines: gates=<off|soft|hard>  nudge=<on|off>
   pool   prints key=value lines: enabled=on|off, configured=yes|no (no = no
-         `pool` key at all), then review= consult= critique= tier= implement=
+         `pool` key at all), then review= consult= critique=
          (a key that is not set is left out; no pool, cross-family off, or
          review=none -> `enabled=off` and `configured=` only)
 
@@ -32,8 +32,7 @@ DEFAULT_CONFIG = """{
   "workflow": { "mode": "lite" },
   "pool": {
     "cross-family": "off",
-    "reviewer": { "review": "claude codex agy", "consult": "claude codex agy", "critique": "claude codex agy" },
-    "implement": { "cli": "claude codex agy" }
+    "reviewer": { "review": "claude codex agy", "consult": "claude codex agy", "critique": "claude codex agy" }
   }
 }
 """
@@ -142,24 +141,15 @@ def pool(cfg):
         return ["enabled=off"]
     vals = {}
     rev = p.get("reviewer")
-    imp = p.get("implement")
     if rev is not None and not isinstance(rev, dict):
         warn("pool.reviewer is not an object; ignored")
     if isinstance(rev, dict):
-        for k in ("review", "consult", "critique", "tier"):
+        for k in ("review", "consult", "critique"):
             if k in rev and not isinstance(rev[k], str):
                 warn("pool.reviewer.%s is not a string; ignored" % k)
             v = clean(rev.get(k))
             if v:
                 vals[k] = v
-    if imp is not None and not isinstance(imp, dict):
-        warn("pool.implement is not an object; ignored")
-    if isinstance(imp, dict):
-        if "cli" in imp and not isinstance(imp["cli"], str):
-            warn("pool.implement.cli is not a string; ignored")
-        v = clean(imp.get("cli"))
-        if v:
-            vals["implement"] = v
     if "cross-family" in p:
         sw = p["cross-family"]
         if sw == "off":
@@ -172,7 +162,7 @@ def pool(cfg):
     if vals.get("review") == "none" or not vals:
         return ["enabled=off"]
     out = ["enabled=on"]
-    for k in ("review", "consult", "critique", "tier", "implement"):
+    for k in ("review", "consult", "critique"):
         if k in vals:
             out.append("%s=%s" % (k, vals[k]))
     return out
