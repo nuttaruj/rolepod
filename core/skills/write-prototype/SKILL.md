@@ -78,5 +78,5 @@ Done when: the verdict is in the spec (or the probe ticket) and the worktree is 
 ## Next phase
 
 - From a `probe` ticket → back to the map: `write-spec`'s `references/chart-work.md`, Working the map step 3 (Record) — the ticket flips resolved and its gist goes under Decided.
-- From a spec → `write-spec` for Gate 1 with the verdict. The spec was already approved and the verdict changed a decision → `write-spec` re-opens Gate 1, and Gate 2 in file mode.
+- From a spec → `write-spec` for Gate 1 with the verdict. The spec was already approved and the verdict changed a decision → `write-spec` re-opens Gate 1 on the file.
 - If `write-spec` is not available, hand the user the question, the verdict and the spike branch name as the design decision to build from.

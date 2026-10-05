@@ -14,7 +14,7 @@ spec.
 
 One markdown file per effort: `docs/rolepod/maps/<effort>.md`. Question
 tickets live beside it in `docs/rolepod/maps/<effort>/q-<slug>.md`. Both
-persist across sessions under the private `docs/rolepod/` (`write-spec` Contract) — the
+persist across sessions under the private `docs/rolepod/` (`write-spec` Gate 1) — the
 map is a durable record, not session scratch; they enter git only when the repo
 tracks its working docs (`.rolepod/docs-tracked`).
 
