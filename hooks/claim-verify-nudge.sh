@@ -114,7 +114,17 @@ fi
 # itself — the manual append was measured at 0 lines in every product repo.
 ROUTE_MSG=""
 if [ "$ROUTE" = "stale" ]; then
-  ROUTE_MSG="⟂ route: a commission with no tier stated since your last request. Fix: before the first edit, R2 → one line: Route: R2 (one file + test) → <skill> · Owner <path role> · <reason>; R3/R4 → the full block (Tier, Routing, Reason, Skipping), a high-risk path starting at write-spec. R0 answer only · R1 trivial edit · R2 one file + test · R3 multi-file · R4 high-risk; R2-R4 → using-rolepod. The hook records it; blast radius sets the tier, not feature age. Exception: a literal follow-up inside an already-routed task → say 'same task' and continue. "
+  # Full ladder once per session, then a one-line reminder (v2.209). No session id = no throttle = full text.
+  RSEEN="$HOME/.rolepod/route-nudge"
+  if [ -n "$SID" ] && [ -f "$RSEEN/$SID" ]; then
+    ROUTE_MSG="⟂ route: a commission with no tier since your last request. Fix: before the first edit, one line — Route: R<n> → <skill> · Owner <role> · <reason>; a literal follow-up → same task. "
+  else
+    ROUTE_MSG="⟂ route: a commission with no tier stated since your last request. Fix: before the first edit, R2 → one line: Route: R2 (one file + test) → <skill> · Owner <path role> · <reason>; R3/R4 → the full block (Tier, Routing, Reason, Skipping), a high-risk path starting at write-spec. R0 answer only · R1 trivial edit · R2 one file + test · R3 multi-file · R4 high-risk; R2-R4 → using-rolepod. The hook records it; blast radius sets the tier, not feature age. Exception: a literal follow-up inside an already-routed task → say 'same task' and continue. "
+    if [ -n "$SID" ] && mkdir -p "$RSEEN" 2>/dev/null; then
+      : > "$RSEEN/$SID" 2>/dev/null || true
+      find "$RSEEN" -type f -mtime +14 -delete 2>/dev/null || true
+    fi
+  fi
 fi
 
 # Auto-resume (v2.100.0): after a usage-limit pause the harness sends

@@ -43,6 +43,9 @@ EN_COMMISSION = re.compile(
     r"migrate|rename|make|write|ship|deploy|wire|continue|go ahead|do it|proceed)([^a-z]|$)",
     re.I,
 )
+TH_NOT_COMMISSION = [
+    "\N{THAI CHARACTER THO THAHAN}\N{THAI CHARACTER SARA AM}\N{THAI CHARACTER NGO NGU}\N{THAI CHARACTER SARA AA}\N{THAI CHARACTER NO NU}",  # works / operates (descriptive, not an imperative)
+]
 TH_COMMISSION = [
     "\u0e41\u0e01\u0e49",                          # fix
     "\u0e40\u0e1e\u0e34\u0e48\u0e21",              # add
@@ -108,7 +111,10 @@ def commission_shaped(prompt):
         return False
     if EN_COMMISSION.search(prompt):
         return True
-    return any(w in prompt for w in TH_COMMISSION)
+    p = prompt
+    for w in TH_NOT_COMMISSION:
+        p = p.replace(w, "")
+    return any(w in p for w in TH_COMMISSION)
 
 
 def git_root():

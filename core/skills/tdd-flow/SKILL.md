@@ -1,26 +1,25 @@
 ---
 name: tdd-flow
-description: Run the red → green loop at a seam — pick test-first or evidence-after by risk, write one failing test at the public interface, watch it fail, make the smallest change to green, then self-check the test. Use when asked to build test-first, do TDD, write the failing test first, or reproduce a bug as a test.
+description: Use when the user asks to build test-first, do TDD or red-green, or write the failing test first; a bug must be reproduced as a test; a skill or brief calls for one failing test at an agreed seam.
 ---
 
 # TDD Flow
 
 Turns one logic slice into a test that was red before the change and is green after, at the seam a caller uses.
-
-**Who runs it.** The Lead routes, briefs, spot-checks and commits; a slice above R1 (trivial edit) → the role that owns the path runs this skill from the brief; the Lead self-does R1 only. No subagents → the Lead runs it.
+The path owner runs it from the brief; the Lead runs it only for R1 (trivial edit) or with no subagents.
 
 ## Skip when
 
 - Prose, a rename, config or doc text: no test — step 1's evidence-after proof applies (config → smoke + restart, docs → render + link check, rename → the suite green after, no assertion weakened).
-- User-visible behaviour (a screen, a flow, an API contract end to end): that is `qa-tester`'s E2E work; name it in the task's test line and never fake it with a unit test; it is verified once at `check-work` Verify (no subagents → check-work's browser-observation fallback).
-- Checking tests that already exist, no change asked (a review, a spot-check): step 6 is the checklist — report findings only; edit no file, remove no fix, and hand nothing to `check-work`.
+- User-visible behaviour (a screen, a flow, an API contract end to end): that is `qa-tester`'s E2E work; name it in the task's test line and never fake it with a unit test; it is verified once at `check-work` Verify (no subagents → check-work's browser-observation fallback; no `check-work` → observe the flow in a browser and report it).
+- Checking tests that already exist, no change asked (a review, a spot-check): step 6 is the checklist — report its findings to the caller (to the user when called alone); edit no file, remove no fix, and hand nothing to `check-work`.
 
 ### 1. Pick the discipline by risk
 
 Test-first — the failing test comes BEFORE the code — for a bug fix, new business logic, auth / permission (the deny path before the allow path), billing / credits / payment (the money math), a migration or backfill (forward + rollback), and concurrency (the interleaving the bug needs).
 Evidence-after — make the change, then prove it — for UI copy or styling (a browser observation), config / infra (smoke + restart), docs (render + link check), a typecheck-safe rename (the suite green after, no assertion weakened), and wiring or CRUD pass-through with no rule of its own (the suite green plus one smoke through the path).
 In doubt on a risk surface → test-first.
-Why each row sits where it does, and the seam per dependency kind → `references/test-by-risk.md`.
+Why each row sits where it does, and the seam per dependency kind → `references/test-by-risk.md`; no reference → the rows above and step 2's dependency line decide.
 
 Done when: the slice is labelled test-first or evidence-after; evidence-after hands straight to the Next phase.
 
@@ -59,9 +58,6 @@ Done when: the run shows the named assertion failing.
 ### 5. Smallest change to green
 
 - The smallest change that turns the test green, at the root; no "while I'm here" edits.
-- Refactor at review, not in the loop.
-- The test's own file is part of the change; the shared fixture, helpers or seed is not — touching one to pass is a finding.
-- Modifying an existing test on the way to green (loosened assert, skip or focus marker, deleted case, re-recorded snapshot) is a finding until justified.
 - After each edit run the narrowest check that covers it (one test, or one section of a large test file; a whole file only when it runs in under ~30 s); the task's Command runs once, last before returning; the whole suite runs once per release, by the Lead.
 
 Done when: the new test is green and the checks covering the edited files pass; back to step 3 for the next behavior; after the last one, the task's Command passes.
@@ -76,11 +72,14 @@ The writer owns the unit tests; a reviewer reads this same list, plus steps 2-3 
 
 Done when: every new test survives the flip, sits at the seam, and each rule has exactly one owner test.
 
+## Guardrails
+
+- Refactor at review, not in the loop.
+- The test's own file is part of the change; the shared fixture, helpers or seed is not — touching one to pass is a finding.
+- Modifying an existing test on the way to green (loosened assert, skip or focus marker, deleted case, re-recorded snapshot) is a finding until justified.
+
 ## Next phase
 
-- Report-only (Skip when: checking tests that already exist) → the step 6 findings go to the caller, or to the user when called alone; nothing goes to `check-work`.
-- Called from another skill → back to that skill's next step with the slice's proof: test-first → the red and green runs; evidence-after → the step 1 proof.
-- Called alone, test-first → `check-work` with the red and green runs; the step 4 red run is its red proof while no test file has changed since, else it removes the fix and sees the test red again.
-- Called alone, evidence-after → `check-work` with the step 1 proof (browser observation, smoke + restart, render + link check, or the suite green after); there is no red run to carry.
-- If `check-work` is not available, test-first → run the module suite and report it with the step 4 red run; a test file changed since that run → remove the fix once, see the test red, restore it, and report that run instead.
-- If `check-work` is not available, evidence-after → run the module suite and report it with the step 1 proof.
+- Called from another skill → back to that skill's next step with the slice's proof: test-first → the red and green runs; evidence-after → the step 1 proof (no red run to carry).
+- Called alone → `check-work` with that proof; test-first: the step 4 red run is its red proof while no test file has changed since, else `check-work` removes the fix and sees the test red again.
+- If `check-work` is not available, run the module suite and report it with the same proof (test-first: the step 4 red run; a test file changed since → remove the fix once, see the test red, restore it, and report that run instead).
