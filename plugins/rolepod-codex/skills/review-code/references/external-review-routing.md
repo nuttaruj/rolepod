@@ -1,4 +1,4 @@
-<!-- Load when the cross-family pool is enabled at any tier, or on an internal-pass question. The adversarial pass (what counts, apex, strong class) is the `adversarial-review` skill. -->
+<!-- Load when the cross-family pool is enabled, or on an internal-pass question. The adversarial pass (what counts, apex, strong class) is the `adversarial-review` skill. -->
 
 # External review routing
 
@@ -7,11 +7,11 @@ An external review routes to a **different CLI** than the Lead's, never to the L
 ## When the external runs
 
 - **The pool is the user's choice, and it is opt-in** (set `pool` in `~/.rolepod/config.json` machine-wide only; unset key or `pool.cross-family: "off"` = off). Never turn it on unasked.
-- **Mandatory only when the active mode requires it.** Pool enabled + a usable member does not by itself add an adversarial pass. Full R4 requires the adversarial pass and uses the external when available. Standard R4 requires security plus both lenses and has no adversarial field/pass. Lite uses its two isolated lenses only. The pool's R2/R3 tier may replace the lens pair with one standard external review. Below the configured tier, and for doc / comment / config / rename-only diffs, stay internal unless the user asks or a caller explicitly requests cross-family review.
-- **What the external replaces.** Full R4 external is the adversarial pass alongside `security-engineer` and the lens pair. At the pool's R2/R3 tier it replaces the lens pair, never beside them on round 1. It does not alter Lite or Standard R4 review sets.
-- **Run it:** Full R4 → the `adversarial-review` skill; the pool's tier R2/R3 → `cross-family` kind review without `--adversarial`, else the lens pair. Explicit user or caller requests for cross-family behavior remain in force.
-- **An externally implemented ship group** is reviewed by a DIFFERENT member. A user-lifted risky scope (`risky:lifted`) → the external pass by a different member.
-- **Money / auth** — billing · payments · credits · auth · crypto · secrets · data deletion: use the active mode's R4 set from `review-code`; require the adversarial pass only in Full (and keep the comment/blank-only exception).
+- **Pool enabled:** external lenses run on R3 or R4 diffs (`review-code` Pick reviewers). A comment-only, config-only or rename-only diff and a wide-effort session stay internal. R2 diffs keep internal lenses. Money and auth require the active mode's R4 set (per `review-code`).
+- **Full R4 adversarial pass:** external when pool is usable, else internal universal-reviewer `mode: adversarial` at strong class.
+- An external lens comes back weak when its return is empty or PARTIAL, a changed file is missing from its Scope list, or it gives a bare verdict with no claim walked; its report is the raw file its `ROLEPOD-XFAM ok … raw=<path>` receipt names.
+- **Fallback:** A lens whose run fails, comes back weak, or is refused → `universal-reviewer` with that lens, same round.
+
 ## Round 2+
 
 The external runs round 1 only; round 2+ is the internal re-check in `review-code` Fix-verify.
@@ -24,4 +24,4 @@ Strength routing may assign a specialist to an axis when available; it never rem
 
 Only Full R4 uses an adversarial pass and its Cross-model line, following the `adversarial-review` skill. Lite and Standard do not gain either from pool availability alone.
 
-This never widens WHO reviews: a pool tier of R2/R3 may replace the lens pair only where the active mode permits it. It never adds adversarial review to Lite or Standard R4; an explicit user or caller request for cross-family review remains in force.
+This never widens WHO reviews: an external lens runs only where `review-code` Pick reviewers puts a lens. It never adds adversarial review to Lite or Standard R4; an explicit user or caller request for cross-family review remains in force.

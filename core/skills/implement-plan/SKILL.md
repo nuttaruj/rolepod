@@ -81,7 +81,7 @@ The owner writes its decision brief to its task file, docs/rolepod/tasks/<plan>/
 
 A Blocked-by task gets each predecessor's task file as Read first (plan-lint --brief adds it); the Lead never tells an owner to read or write the plan's ## Changes during build.
 
-A write mandate goes to the path's owning role, never a reviewer. Prefer the CLI's native named role; when unavailable, use the portable dispatch rules in `using-rolepod/references/model-tiers.md` (`references/subagent-dispatch.md`: role, model, brief fields). `write: external` → the owner writes the failing test first, then `cross-family` kind implement; pool off, wide-effort session, or `cross-family` absent → the owner writes the task.
+A write mandate goes to the path's owning role, never a reviewer. Prefer the CLI's native named role; when unavailable, use the portable dispatch rules in `using-rolepod/references/model-tiers.md` (`references/subagent-dispatch.md`: role, model, brief fields).
 
 Handle the brief's status (its first word):
 - `COMPLETED` over a failing test → reject and re-brief.
@@ -114,6 +114,8 @@ Done when: every ready track is dispatched and each returned track is integrated
 
 C2:
 > Track end: a track with two or more code tasks → one fresh owner (the role owning most of the track's code) runs the two lenses in ONE message on the track diff and fixes each BLOCKER / MAJOR with its proof (`review-code` Fix-verify); the Lead commits the fixes in the track worktree, then `ticket.sh finish <worktree>` merges the track. A track with one code task → its task owner runs the two lenses before returning, the same way, and the track takes no track-end review.
+
+A track-end review brief the Lead writes over a diff holding an R3 or R4 task carries the pool-on lens line when `cross-family.sh --pool-names` prints a member.
 
 C3:
 > A task Blocked by tasks in two or more tracks starts after those tracks merge, as the first task of a new track from the base.

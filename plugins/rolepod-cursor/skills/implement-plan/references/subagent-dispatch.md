@@ -43,18 +43,9 @@ Use the least powerful model that can handle the role (Model selection below).
 
 ## The brief
 
-`plan-lint.sh --brief <N> <plan> [contract] [--main]` prints Goal / Tier / Blocked by / Read first / Files allowed + forbidden / Change / Command / Done when / Write / Reviewers by tier (`none` for a docs-only diff or an R2/R3 task — its track-end review covers it, or the two lenses when it is its track's only code task; the R4 round-1 set for an R4 task) / Bounds. The Lead adds only **Read first** and facts the brief lacks; the owner starts there and never re-surveys what the Lead already mapped.
+`plan-lint.sh --brief <N> <plan> [contract] [--main]` prints Goal / Tier / Blocked by / Read first / Files allowed + forbidden / Change / Command / Done when / Reviewers by tier (`none` for a docs-only diff or an R2/R3 task — its track-end review covers it, or the two lenses when it is its track's only code task; the R4 round-1 set for an R4 task) / Bounds. The Lead adds only **Read first** and facts the brief lacks; the owner starts there and never re-surveys what the Lead already mapped.
 
 The owner writes its decision brief to its task file, docs/rolepod/tasks/<plan>/task-NN.md (its Handoff section: at most ~15 lines, only what a Blocked-by task consumes — signatures, invariants). Owners and reviewers never edit the plan file; the Lead's own points go under ## Lead notes of that task file.
-
-## External write
-
-`Owner: <role> · write: external` (pool opt-in, per task):
-1. The owner, in its own worktree, writes the failing test at the seam first.
-2. Pool on → `cross-family` kind implement drafts the change that must turn that test green, scoped to the task's Files allowed; then the owner runs its own loop (Command, reviewers, fixes). One draft per task: its fixes, or a rejected draft, are the owner's to write — never a second implement run.
-3. Pool off or `cross-family` absent → the owner writes the task itself.
-
-The member never reviews its own draft, and the Lead never runs the SKILL.md Review for that task.
 
 ## Implementer status taxonomy
 
@@ -97,7 +88,7 @@ The implementer cannot complete the task; the manifest states what blocks and wh
 
 Who reviews follows the task's tier (SKILL.md Review):
 - R2/R3 task that is its track's only code task: its owner dispatches the two lenses in ONE message before returning and fixes each BLOCKER / MAJOR with proof and runs `review-code` Fix-verify; the track takes no track-end review.
-- R2/R3 task in a track with two or more code tasks: the track-end review covers it once the track finishes. Each such track's R2/R3 tasks get no in-task review; one fresh owner (the role owning most code in that track) runs the two lenses in ONE message over the track diff after all tasks commit, fixes each BLOCKER / MAJOR with proof and runs `review-code` Fix-verify. Over ~800 changed lines or ~15 files it splits into size slices (`implement-plan` Review).
+- R2/R3 task in a track with two or more code tasks: the track-end review covers it once the track finishes. Each such track's R2/R3 tasks get no in-task review; one fresh owner (the role owning most code in that track) runs the two lenses in ONE message over the track diff after all tasks commit. When pool is on and the diff holds an R3 or R4 task, those lenses run external (`review-code` Pick reviewers); the Lead's brief carries the pool-on lens line. The owner fixes each BLOCKER / MAJOR with proof and runs `review-code` Fix-verify. Over ~800 changed lines or ~15 files it splits into size slices (`implement-plan` Review).
 - An owner's own dispatches are all waited on: return your brief only after each child's report is in — a child's end wakes you (the Claude desktop app sends it to the Lead, which relays it; on Codex, `wait_agent` returns it), so end a turn only to wait for one, its last line `WAITING: <report paths>`; no `name`, fork or remote isolation (such a child reports to the Lead). No way to wait → `REVIEW NEEDED:` and the Lead dispatches a fresh owner to run the review.
 - R4 task → use the active session mode carried in the plan/task brief from startup or first manual `using-rolepod` entry; never reread configured mode at Build. Configured-mode inspection is distinct and cannot replace the active profile. **Lite** (any tier, including R4): exactly two fresh isolated universal-reviewer lenses (`spec`, `standards`) in parallel on the same frozen diff/snapshot/hash; separate reports and no cross-report access; aggregate after both return; no security or adversarial reviewer. No agents → Lead does both lenses and records the limitation. Missing formal spec → user's supplied goal/acceptance is the spec input; still both lenses. **Standard**: `security-engineer` + two lenses. **Full**: those plus adversarial (external CLI with `--adversarial` when pool usable, else internal universal-reviewer `mode: adversarial` at strong; external fails → internal then). Full/Standard R4 protocol cannot override Lite. Pass the carried `ROLEPOD_SESSION_MODE`/`ROLEPOD_SESSION_SOURCE` when invoking `plan-lint.sh` or a helper without guaranteed native mode environment. User-visible flows verified once at `check-work`, never per task.
 - A standalone R2 brief (no plan) → the owner dispatches the two `universal-reviewer` lenses itself, never a self-review.

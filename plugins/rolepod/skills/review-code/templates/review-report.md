@@ -13,7 +13,7 @@
 <List touched risk surfaces, or `None`.>
 
 ## Reviewers
-<Roles run and whether the round is complete; when merged, N reports → U unique findings (dedup key: file:line + root cause). Record only the coverage required by the active mode; adversarial coverage applies only to Full R4.>
+<Roles run and whether the round is complete; when merged, N reports → U unique findings (dedup key: file:line + root cause). Record only the coverage required by the active mode; adversarial coverage applies only to Full R4. External lenses: `lens: spec — ran on <cli>`, `lens: standards — ran on <cli>`.>
 
 **Lite isolation** (Lite only; omit otherwise): <lens: spec | lens: standards>; fresh context: yes; received only this lens: yes; other report/findings visible: no; paired H1/hash matches: yes.
 
