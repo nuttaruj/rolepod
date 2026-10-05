@@ -11,11 +11,7 @@ The pool lives in `~/.rolepod/config.json` under the `pool` key (machine-wide on
     "reviewer": {
       "review": "cursor agy codex codex",
       "consult": "agy codex",
-      "critique": "cursor agy codex",
-      "tier": "R4"
-    },
-    "implement": {
-      "cli": "codex claude"
+      "critique": "cursor agy codex"
     }
   }
 }
@@ -26,9 +22,6 @@ The pool lives in `~/.rolepod/config.json` under the `pool` key (machine-wide on
   - **`review`** (space-separated CLI names, order matters) — for R4 adversarial pass and standard-pass review. Default order used for all kinds if other kinds are unset.
   - **`consult`** (space-separated CLI names, order matters) — for debug consult. Default: falls back to `review` order if unset.
   - **`critique`** (space-separated CLI names, order matters) — for spec critique during `write-spec`. Default: falls back to `review` order if unset.
-  - **`tier`** (string "R2", "R3", or "R4") — tiers at which the external's standard pass replaces the internal lens pair (R2/R3) or is the adversarial pass (R4). At R4, the external never runs below that tier. Default: "R4" = no external run below R4.
-- **`implement`** (object) — external draft implementation:
-  - **`cli`** (space-separated CLI names, order matters) — members that may WRITE a ticket when a plan task is marked `write: external`.
 
 **Members** — valid values: `codex`, `claude`, `agy`, `cursor`, `opencode`. List every CLI you use; the Lead's own CLI is skipped at run time, so one pool serves every Lead. Member order matters: the runner tries them in order and uses the first available one. The model family (vendor) is recorded for information and never filters a member — a member on the Lead's own vendor still counts as external.
 

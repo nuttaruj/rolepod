@@ -62,7 +62,7 @@ The FIRST matching row fires:
 
 | Intent | Route |
 |---|---|
-| another CLI's opinion, review or draft (codex / agy / cursor / opencode / claude); set up or change cross-family | `cross-family` (no `cross-family` → a review ask → `review-code` internal strong pass; a setup ask → say cross-family is not installed) |
+| another CLI's opinion or review (codex / agy / cursor / opencode / claude); set up or change cross-family | `cross-family` (no `cross-family` → a review ask → `review-code` internal strong pass; a setup ask → say cross-family is not installed) |
 | fix bug / failing test / regression | Build → `debug-issue` first at every tier; after root cause, use `write-spec` only if desired behavior/design is unresolved before edits, and `write-plan` only if sequencing or ownership needs a plan |
 | why does X fail / what causes this, no fix asked | Build → `debug-issue` report-only: answer from cause and evidence, read-only; save an artifact only when the user requested one |
 | build / add / design with a vague target (UI, product, doc, ADR included) | Define → `write-spec` |
