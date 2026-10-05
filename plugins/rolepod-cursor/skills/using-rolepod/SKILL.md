@@ -1,22 +1,19 @@
 ---
 name: using-rolepod
-description: Use at the start of every request to route work into Rolepod's workflow spine before planning, editing, delegating, verifying, reviewing, or shipping.
+description: Use when a user request arrives, before any planning, editing, delegating, verifying, reviewing or shipping; when a request may change repo state, asks for an action or a recommendation, or opens a workflow decision.
 ---
 
 # Using Rolepod — workflow router
 
 Turns each request into a tier and the first skill of `Define → Plan → Build → Verify → Review → Ship` (R4 also reviews each task inside Build); that skill owns what follows.
 
-Route each user request on its intent, scope, and tier. Select workflow mode once at native session startup and carry the active mode/source through every phase, brief, and compaction summary.
-When startup capture is unavailable, the first manual `using-rolepod` entry selects mode once; retain it in session context.
-A tool call, config change, or skill reload does not reselect mode or reroute. Configured-mode inspection is separate and never overwrites the active session profile.
-At a manual or mid-task invocation, inspect current intent and visible artifacts, then resume the owning phase when they still match. Re-evaluate routing only when intent, scope, or tier changes. A compacted session resumes from verified disk state and the user's latest corrections; it does not restart Define or replace an approved plan.
-After compaction or skill reload within the same session, reload skill text as needed and reuse the carried mode. A fresh native startup/resume/clear supplies its newly captured profile. Without startup capture, a standalone skill/manual entry selects the mode once; preserve it for that session. Skills remain executable without native hooks, though hook enforcement is absent.
-When invoking a helper or `plan-lint.sh` later without a guaranteed native mode environment, pass `ROLEPOD_SESSION_MODE` and `ROLEPOD_SESSION_SOURCE` from the carried profile. Do not persist a loaded-skill stamp to disk.
-No `Active Rolepod workflow profile` line in your context → run `scripts/workflow-mode.sh` once and carry its mode; a sub-agent reads the mode from its brief's `Workflow mode:` line.
-
-Startup refresh boundaries: Claude on startup/resume/clear; Codex on startup/resume; Cursor via `sessionStart.env`; Antigravity at conversation identity; OpenCode on plugin/backend restart. Antigravity's same-conversation CLI restart behavior is unverified.
+Workflow mode = the active session mode carried from startup or the first `using-rolepod` entry; a helper call gets `ROLEPOD_SESSION_MODE` / `ROLEPOD_SESSION_SOURCE`. No `Active Rolepod workflow profile` line in your context → run `scripts/workflow-mode.sh` once and carry its mode; a sub-agent reads its brief's `Workflow mode:` line. Carry the mode and its source into every brief and compaction summary; never persist a loaded-skill stamp to disk. Per-CLI refresh boundaries and configured-mode inspection → `references/session-mode.md`; no file → this paragraph alone is enough.
+Route each request on its intent, scope and tier. A tool call, config change or skill reload never reselects mode or reroutes; re-evaluate routing only when intent, scope or tier changes. A manual or mid-task entry inspects current intent and visible artifacts and resumes the owning phase when they still match; a compacted session resumes from verified disk state and the user's latest corrections — it never restarts Define or replaces an approved plan.
 The user's explicit instruction wins ("skip spec", "answer only", "just write the code", "just commit", "no plan", "ship as-is"): obey, and say which step was skipped.
+
+## Skip when
+
+- A clearly trivial answer that needs no repo state, no action, no recommendation and no workflow decision → answer it.
 
 ### 1. Commission or conversation
 
@@ -34,7 +31,7 @@ Done when: a conversation is answered in the user's register, or a commission go
 | **R1** trivial edit | a docs-only diff, any size — or ≤5 lines in 1 file with zero logic lines (comment, blank, user-facing text in a string; never a URL, path, key, regex, query or a value code branches on), not high-risk, ≤3 tool calls | direct edit; the edit echo is the verify; no review |
 | **R2** one file + test | 1 source file + its own test, clear scope, logic, ≈≤30 lines, not high-risk | its step 3 skill still fires (bug → `debug-issue`, else `implement-plan`); a 3-5 line chat checklist (goal, done-when, verify command) replaces spec + plan; the test does not count toward the one-source-file limit; a task owner builds it on main (failing test first, verify, the commit check, the two review lenses); the Lead never pre-explores, then commits |
 | **R3** multi-file | several source files, vague scope, or sequencing / delegation | an approved spec/change list already enumerates ≤3 ordered tasks and each task's files, verify command, and dependencies; single owner, no parallel work or high-risk path, and no mid-plan compaction → Build → `implement-plan` with the inline checklist. Otherwise use the full spine |
-| **R4** high-risk | a high-risk path (Stop conditions), any size | the full spine; review intensity comes from `workflow.mode` and follows `review-code` (Lite has two universal-reviewer lenses only; Standard and Full follow their own contracts); never downgrade risk; 1 file, ≤5 lines, comment / blank only → R2 |
+| **R4** high-risk | a high-risk path — auth, tokens, billing, credits, secrets, data deletion, … (the full list: Stop conditions) — any size, one constant included | the full spine; review intensity comes from `workflow.mode` and follows `review-code` (Lite has two universal-reviewer lenses only; Standard and Full follow their own contracts); never downgrade risk; 1 file, ≤5 lines, comment / blank only → R2 |
 
 - Unsure about risk or dependencies → the higher tier. Unsure about size → inspect affected regions and `git status` once work starts.
 - The task grows (a second source file, hidden logic, a risk path) → re-tier up at once, never down: print the new Route line before the next edit or dispatch; a risk path (credits, auth, …) → R4 and its review floor.
@@ -45,8 +42,8 @@ Done when: one tier is chosen from observed scope.
 
 ### 3. Pick the first skill
 
-The Lead routes, scopes, briefs (3-5 lines: goal, region / files, done-when — a changed rule also names the nearest inputs whose result stays the same — Command), spot-checks and commits. A skill whose steps read code regions, run commands or iterate is run by the owner of the path, who calls the skill. Without sub-agents, the Lead runs it.
-R2 and up, with sub-agents: after the Route line the Lead loads the named skill, then dispatches the owner the line names. The Lead never reads code regions, edits a source file or runs the fix loop itself; that work is the owner's even when it looks small. The owner's reviewers are the owner's to dispatch and re-check; the Lead reads the owner's decision brief, never relays review rounds.
+The Lead routes, scopes, briefs (3-5 lines: goal, region / files, done-when — a changed rule also names the nearest inputs whose result stays the same — Command), spot-checks and commits; a skill whose steps read code regions, run commands or iterate is run by the owner of the path. Without sub-agents, the Lead runs it.
+R2 and up, with sub-agents: after the Route line the Lead loads the named skill and dispatches the owner it names, never reads code regions, edits a source file or runs the fix loop itself, even when it looks small; the owner dispatches and re-checks its own reviewers, and the Lead reads its decision brief, never relays review rounds.
 
 Red flags — the thought means stop:
 
@@ -63,10 +60,10 @@ The FIRST matching row fires:
 | Intent | Route |
 |---|---|
 | another CLI's opinion or review (codex / agy / cursor / opencode / claude); set up or change cross-family | `cross-family` (no `cross-family` → a review ask → `review-code` internal strong pass; a setup ask → say cross-family is not installed) |
-| fix bug / failing test / regression | Build → `debug-issue` first at every tier; after root cause, use `write-spec` only if desired behavior/design is unresolved before edits, and `write-plan` only if sequencing or ownership needs a plan |
-| why does X fail / what causes this, no fix asked | Build → `debug-issue` report-only: answer from cause and evidence, read-only; save an artifact only when the user requested one |
+| fix bug / failing test / regression | Build → `debug-issue` first at every tier; it decides after root cause whether `write-spec` or `write-plan` follows |
+| why does X fail / what causes this error or bug, no fix asked | Build → `debug-issue` report-only: answer from cause and evidence, read-only; save an artifact only when the user requested one |
 | build / add / design with a vague target (UI, product, doc, ADR included) | Define → `write-spec` |
-| build X to a spec whose Success criteria cover it | complete spec-as-plan R3 eligibility → Build → `implement-plan` with the inline checklist; otherwise Plan → `write-plan` |
+| build X to a spec whose Success criteria cover it | the R3 row's spec-as-plan eligibility met → Build → `implement-plan` with the inline checklist; otherwise Plan → `write-plan` |
 | add / change Y at R3+ where the spec does not cover Y, or no spec exists | Define → `write-spec` (a new dated delta spec); eligible R2 → `implement-plan` with the step 2 checklist; other R3 → `write-plan` |
 | execute an approved plan / use agents in parallel | Build → `implement-plan` |
 | architecture (DB schema, API contract, module split) | Define → `write-spec` (Approaches: ONE `system-architect`) |
@@ -81,7 +78,7 @@ The FIRST matching row fires:
 | audit UX / a11y of one page or flow | Verify → ONE `ui-ux-designer` brief: `check-work` UI verification + `review-code` Axes (UI); no browser reachable → the Lead observes and the designer audits that observation (no sub-agents → the Lead runs both) |
 | edit / fix on a high-risk path | Define → `write-spec` → `write-plan` → `implement-plan` (per-task review) |
 | clear doc edit; CI, Docker, deploy, infra config | Build → `implement-plan`, Owner `content-strategist` (`audience:` set) / `devops-sre`; R1 → the Lead |
-| review / look at the diff; audit / find all X across the repo | Review → `review-code`; a whole-repo sweep scopes first (References) |
+| review / look at the diff; audit / find all X across the repo | Review → `review-code`; a whole-repo sweep scopes first (step 4) |
 | ship / merge / PR / done, or the work's natural end | Ship → `finish-work` (`review-code` first if a review is missing) |
 | rolepod stats / evidence report / which models ran | `rolepod-stats` |
 | explain / conceptual question | answer; a wide repo or online sweep → a `scout` first, one per independent question, all in ONE message (no agent → the Lead greps) |
@@ -106,6 +103,9 @@ Next step: <concrete action>
 - Eligible spec-as-plan R3 — `Route: R3 (spec-as-plan) → Build → implement-plan`; give the inline checklist as the owner's brief. Apply step 2's complete eligibility conditions; any missing condition, including mid-plan compaction, routes to the plan artifact. R4 always does.
 - Other R3 / R4 or a surprising route — the full block; `Next step:` names the owner (or `write-spec` / `write-plan`, which assign owners).
 - Each tier carries its gloss: R0 answer only · R1 trivial edit · R2 one file + test · R3 multi-file · R4 high-risk.
+- Dispatching the owner, picking a model class or running a fleet → `references/model-tiers.md` (class per role, portable role dispatch, Fleets; mechanics `references/fanout-<cli>.md`); no file → the native role, else a fresh isolated child given the role's text; implementation balanced, one strong slot for the judge; no child facility → the Lead runs the loop.
+- A repo-wide sweep, or the 3rd same-shaped fix in one loop → `references/scope-then-spawn.md` (scope first, then one batch); no file → count the instances, then ONE cheap-class batch with the fixed ones as examples.
+- A sibling plugin is installed, or the central framework has an unconnected official MCP → `references/plugins-and-mcp.md`; no file → prefer the plugin; name the MCP to the user once.
 
 Done when: the route is stated (R2 and up), the named skill is loaded, and the owner it names is dispatched (no sub-agents → the Lead runs the skill).
 
@@ -113,20 +113,12 @@ Done when: the route is stated (R2 and up), the named skill is loaded, and the o
 
 - Coding before Define on an ambiguous request → `write-spec`. Claiming done before Verify → `check-work`.
 - A 2nd parallel writer without an ownership map → `write-plan` first. A Workflow script that gives each writer a disjoint slice is its own map; read-only fleets are exempt.
-- High-risk paths — auth, billing, payments, credits, migration, data deletion, secrets, tokens, crypto, permissions, security (override: `.rolepod/risk-paths`) — with zero required reviewer reports at commit or ship → STOP.
-  Reviewer reports follow `workflow.mode`: Lite requires both isolated universal-reviewer lens reports; Standard requires `security-engineer`; Full also requires the adversarial pass (see `review-code`).
-  A high-risk path is code that handles one of these — reads, refreshes, stores, sends or logs it, a third-party credential included — not only code that changes its rules.
+- High-risk paths — auth, billing, payments, credits, migration, data deletion, secrets, tokens, crypto, permissions, security (override: `.rolepod/risk-paths`). A high-risk path is code that handles one of these — reads, refreshes, stores, sends or logs it, a third-party credential included — not only code that changes its rules.
+  A high-risk path with no reports from the active mode's R4 set at commit or ship → STOP (review-code Pick reviewers; Lite = the two lenses).
 - A merge the user authorized while a required CI lane still runs → the Lead waits on it (`finish-work` CI lanes), never hands the wait to the user.
-- The same unresolved repro or criterion carries at most four failed fix attempts across owners and phases. After two failures, get one Second opinion before attempts three and four; retrace and use its advice. No usable advisor → STOP before another fix. After the fourth failed fix, STOP and ask the user. Review rounds have a separate count and never reset fix attempts. A 4th PR on one surface in a session → STOP, ask the user. Parallel verifiers, panels and discovery rounds inside one Workflow do not count.
+- Four failed fixes for one unresolved repro or criterion → stop and ask; one Second opinion after two (`debug-issue` Second opinion); review rounds count separately. The count carries across owners and phases. A 4th PR on one surface in a session → STOP, ask the user. Parallel verifiers, panels and discovery rounds inside one Workflow do not count.
 - A diff mixing unrelated concerns at push → split the PRs (`finish-work` Pre-merge gates).
-- Concurrent sessions share the REF as well as the files. A sibling / concurrent session warning at session start → before editing a SHARED file, work in `git worktree add .worktrees/<task> -b <branch>`; disjoint edits flow free.
-- Holding work for authorization → keep it on its own branch; never merge it into a SHARED branch before the answer comes — unpushed there, it ships with whoever pushes next.
-
-## References
-
-- Delegating, picking a model class, or running a fleet → `references/model-tiers.md` (mechanics: `references/fanout-<cli>.md`). A role is instructions; agent type is transport. Prefer native roles; if custom roles are unavailable and a default/general child exists, pass the same rendered role body and bounded brief to a fresh isolated child. If role text is missing, report it; use only an explicit fallback, else BLOCKED. No child facility → Lead runs the existing loop.
-- A repo-wide sweep, or the 3rd same-shaped fix in one loop → `references/scope-then-spawn.md`.
-- A sibling plugin is installed, or the task's central framework has an unconnected official MCP → `references/plugins-and-mcp.md`.
+- Concurrent sessions share the REF as well as the files: a sibling / concurrent session warning at session start → before editing a SHARED file, work in `git worktree add .worktrees/<task> -b <branch>` (disjoint edits flow free); work held for authorization stays on its own branch, never merged into a SHARED branch before the answer; push rules → finish-work.
 
 ## Next phase
 

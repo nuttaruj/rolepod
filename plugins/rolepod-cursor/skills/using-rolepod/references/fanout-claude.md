@@ -9,7 +9,7 @@ A Workflow script fans out with `agent()` / `pipeline()`; ultracode is the `/eff
 - Prefer `agentType: 'rolepod:<role>'` for a native named role. If custom roles are unavailable but a default/general child exists, use the portable role dispatch contract in `model-tiers.md`; a bare, unbriefed `agent()` never edits product files.
 - ≥3 dependent dispatches → a Workflow pipeline, not a Lead loop of dispatch → wait → dispatch: every Lead round-trip re-reads the whole context at the Lead's price.
 - Pin every fan-out `agent()` call — a `model:` class or a rolepod `agentType:`; no script comment excuses a bare fan-out.
-- A fan-out stage prefers the role's native `agentType`; it pins the tier and carries a third of a bare agent's fixed context. If custom roles are unavailable, use the role payload fallback in `model-tiers.md` and pin `model:` when available.
+- A read-only file or web sweep stage that needs no Bash or MCP → `agentType: 'rolepod:scout'`: measured fixed context about 15k tokens (median, n=50) against about 71k for a bare `agent()` (n=146). A stage that needs Bash or an MCP tool takes the role that carries it, or a bare `agent()` pinned with `model:`.
 - Set `effort:` per stage; it overrides the role's default; never `max` on a fan-out.
 - R1/R2 get at most ONE Workflow: the one review round `review-code` names for the tier, with a command or balanced refuter per MAJOR finding.
 
