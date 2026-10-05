@@ -65,7 +65,7 @@ Done when: the brief file exists and a stranger could act on it alone.
 - Once per spec, and the triage of its items → `write-spec` step 5 (the caller's rules); no `write-spec` → hand the ranked items to the user, never re-run it on a revised draft, never block the spec.
 
 **consult**
-- FOREGROUND, short budget — a stuck loop needs the answer now. A `consult = <fast> <deep>` line in the pool file puts the fast member first and keeps the deep one as fallback.
+- FOREGROUND, short budget — a stuck loop needs the answer now. The pool's `reviewer.consult` order (e.g. `"consult": "agy codex"` — `references/pool.md`; unset → the `review` order) puts the fast member first and keeps the deep one as fallback.
 - No usable member → the vertical fallback (`debug-issue` Second opinion item 2 holds the recipe); no `debug-issue` → the Lead's own CLI at its strongest model, valid only when it differs from the running one. It never counts as a cross-family pass.
 
 Done when: the kind ran in its mode, or the runner returned an exit for step 4.
@@ -77,7 +77,7 @@ The runner ran the member on its own default model — review / consult / critiq
 - A review counts only with its `VERDICT:` line. PARTIAL or no verdict → kept as `*.partial.txt`; the chain moves to the next member.
 - A weak review — empty or partial, a bare verdict, no claims walked, a changed file missing from its Scope list → the caller adds its internal strong pass and records why.
 - Consult and critique answers marked PARTIAL still count.
-- A non-zero exit → `references/exits.md` (each exit and its next move, the stall and foreground caps); no `references/exits.md` → any non-zero exit → step 5's named fallback (`--member` given → step 3's named-CLI rule).
+- A non-zero exit → `references/exits.md` (each exit and its next move, the stall and foreground caps); no `references/exits.md` → exit 2 → fix the command, never a fallback; 6 → `--collect` again later; 7 → attach the full diff; 8 → `--collect` or `--kill` the live job first; 3, 4, 5 → step 5's named fallback (`--member` given: 3 or 9 → step 3's named-CLI rule).
 
 Done when: the answer is in hand with its receipt, or the exit is mapped to step 5.
 
@@ -87,7 +87,7 @@ Done when: the answer is in hand with its receipt, or the exit is mapped to step
 - Pool off, empty or failed → the caller's fallback, with the reason for its record:
   - review → the internal strong reviewer; Cross-model line `NOT RUN — cross-family off (opt-in)` or `NOT RUN — <runner reason>`;
   - critique → skip; `Cross-family critique: not run — off` or `— <runner reason>`;
-  - consult → the vertical fallback (`debug-issue` Second opinion item 2; no `debug-issue` → step 3's consult line), else escalate.
+  - consult → the vertical fallback (`debug-issue` Second opinion item 2; no `debug-issue` → step 3's consult line), else stop and ask the user before another fix (`debug-issue` Second opinion item 4).
 - Called alone → report to the user: the member, its verdict or answer, the raw path, and the next move you recommend.
 
 Done when: the caller or the user holds the answer or the named fallback.

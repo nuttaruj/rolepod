@@ -36,12 +36,12 @@ Done when: the literal error, throw site and stack (a wrong output: actual vs ex
 One command that fails on every run: `pytest path/test_x.py::name -v`, the exact failing `curl`, or UI steps + browser + console; an intermittent bug → the loop below.
 - The loop is ready when that ONE named command has run once and is red-capable (asserts the user's exact symptom, not "didn't crash"), deterministic, fast (seconds) and unattended.
 - Red → minimise: cut inputs, callers, config and steps one at a time, re-running after each cut, until every remaining element is load-bearing. That repro becomes step 6's test.
-- Intermittent → raise the per-run failure rate to 50%+ first (loop the trigger, add stress, inject sleeps); a 1% flake is not yet debuggable (`references/flake-triage.md`). The repro is then ONE command running the trigger N times (N ≥ 10) that exits red when any run fails; record N, the rate and the conditions (order, load, seed, clock) in the ledger's Repro. After the fix, green = that same loop with all N runs passing.
+- Intermittent → raise the per-run failure rate to 50%+ first (loop the trigger, add stress, inject sleeps); a 1% flake is not yet debuggable (`references/flake-triage.md`; no `references/flake-triage.md` → the loop below is the whole recipe). The repro is then ONE command running the trigger N times (N ≥ 10) that exits red when any run fails; record N, the rate and the conditions (order, load, seed, clock) in the ledger's Repro. After the fix, green = that same loop with all N runs passing.
 - Fails in CI but not locally, or cannot repro locally → reproduce in CI / staging.
 - Fails locally but green in CI → diff the two environments (env vars, locale, services, versions).
 - No repro after 30 minutes → expand the repro environment once; still none → `manage-context` (escalate), or, if it is not available, hand the user what you tried and stop.
 
-A UI / browser bug, a WordPress bug, or sibling-plugin evidence under `.rolepod/evidence/` → `references/repro-backends.md`.
+A UI / browser bug, a WordPress bug, or sibling-plugin evidence under `.rolepod/evidence/` → `references/repro-backends.md`; no `references/repro-backends.md` → the first browser tool connected (none → describe the repro and ask the user to confirm it), or `wp-content/debug.log` for WordPress.
 
 **Report-only** (the user only asked why it fails) → stop here; trace step 5 only when cheap; answer with the cause and evidence, no file changes. A debug report or QA hand-off only when the user asked for one: Error, Repro, Severity and evidence filled, Failing test and Fix empty, handed to the owning dev.
 
@@ -62,7 +62,7 @@ Done when: your own last change is ruled in or out.
 - Tag debug logs with a unique prefix (`[DBG-a4f2]`) so cleanup is one grep.
 - Find a working analog in the same codebase (adjacent feature, sibling endpoint, parallel module). List every difference on the path the symptom travels — input, config, call order, versions — however small; a difference off that path is noise.
 
-Track experiments in `templates/hypothesis-ledger.md` — Symptom, Repro, Experiments (one row each), Root cause. A new hypothesis must hold against every prior row.
+Track experiments in `templates/hypothesis-ledger.md` — Symptom, Repro, Experiments (one row each), Root cause; no `templates/hypothesis-ledger.md` → a plain list under those four headings. A new hypothesis must hold against every prior row.
 
 Done when: one hypothesis survives its falsifier and every prior ledger row.
 
@@ -72,7 +72,7 @@ Symptom → caller → caller's caller, until a legitimate stopping point: exter
 - Multi-component failure (CI → build → signing; API → service → DB; worker → queue → store) → instrument every boundary in one pass (what enters, what exits, what env / config / state is visible), run once, read which layer fails, investigate inside it. Never guess the layer without boundary evidence.
 - Two traces lead to contradictory causes → re-read; you missed an interaction.
 
-The upstream walk step by step, or a trace that forks → `references/root-cause-tracing.md`.
+The upstream walk step by step, or a trace that forks → `references/root-cause-tracing.md`; no `references/root-cause-tracing.md` → walk caller by caller as above and log each fork as a ledger row.
 
 Done when: the trace ends at a named stopping point, with its file:line.
 
@@ -97,7 +97,7 @@ Done when: the failing test is green.
 - The fix fails, or the test passes but the symptom returns → that is new evidence, not a prompt to adjust the patch. Feed it back into step 5 before any second attempt; a re-fix without a re-trace is a blind retry.
 - A failed fix attempt = a change meant to turn the same unresolved repro or criterion green that left it red; a falsifier, diagnostic, review rejection, verification-only rerun or revert is not one. Log each in the ledger's Fix attempts, carrying the count from the brief's `Attempts:` line across owners and phases. At most four failed fixes count toward that same issue; unrelated criteria have separate counts.
 
-When the user requests a saved artifact: `templates/debug-report.md` — Error, Severity, Repro, Root cause, Failing test, Fix, Verification, Status.
+When the user requests a saved artifact: `templates/debug-report.md` — Error, Severity, Repro, Root cause, Failing test, Fix, Verification, Status; no `templates/debug-report.md` → a Markdown file with those eight headings.
 
 Done when: the suite is green, the repro passes, and zero `[DBG-]` tags remain.
 
@@ -116,7 +116,7 @@ Done when: the issue is fixed, or the fourth failed fix / unavailable advisor is
 - Reproduce first and fix at the traced source; a defensive guard without a demonstrated cause is not a fix.
 - The Second opinion and four-failure stop follow step 9; carry that count across owners and phases.
 
-Symptom-vs-root and retry-hack-vs-triaged-flake pairs → `examples/debug-examples.md`.
+Symptom-vs-root and retry-hack-vs-triaged-flake pairs → `examples/debug-examples.md`; no `examples/debug-examples.md` → skip, the steps above stand alone.
 
 ## Next phase
 
