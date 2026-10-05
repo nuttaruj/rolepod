@@ -61,6 +61,9 @@
 #      appears under EXACTLY one owner in the contract's "## File ownership"
 #      — an unowned file is unplannable work; a dual-owned file is a merge
 #      conflict on schedule.
+#   3c. Plain lint only: a task that is R4 by a risk path (the --brief tier rule:
+#      risk-path Files, the prose filter, .rolepod/risk-paths) while no line under
+#      `## High-risk surfaces touched` names it FAILs, one line per task. `--brief` never fails on it.
 #
 # Advisories (v2.144.0, never a FAIL — a Sequential plan may be legitimate):
 #   a. Prefactor smell: a backticked path on the `Files:` line of >= 2 tasks
@@ -1051,13 +1054,20 @@ if (planwt == 1) tpath = substr(tbranch, 1, length(tbranch) - 5)
     # prose-only task (tprose, checked first below) still stays R1, and a
     # line with no task tag changes nothing (a line reading "None - Task 3
     # only reads" still tiers Task 3 — the tag is what matters, not the word).
-    for (i = 1; i <= hrn; i++) if (line_names_task(hrline[i], want)) trisk = 1
+    riskpath = trisk; hrnamed = 0
+    for (i = 1; i <= hrn; i++) if (line_names_task(hrline[i], want)) { trisk = 1; hrnamed = 1 }
+    # Plain lint check 3c reads the tier through this same computation (RP_TIER3C):
+    # one line, `3C R4 named` or `3C R4 unnamed` (R4 by a risk path, no line names it).
     tnontest = 0
     for (i = 1; i <= acnt; i++) if (!is_test(allowedord[i])) tnontest++
     if (acnt > 0 && tprose) tier = "R1"
     else if (trisk) tier = "R4"
     else if (tnontest == 1 && (acnt - tnontest) <= 1) tier = "R2"
     else tier = "R3"
+    if (ENVIRON["RP_TIER3C"] != "") {
+      if (tier == "R4") print "3C R4 " ((riskpath && !hrnamed) ? "unnamed" : "named")
+      exit 0
+    }
     tiergloss["R1"] = "R1 (docs-only)"; tiergloss["R2"] = "R2 (one file + test)"
     tiergloss["R3"] = "R3 (multi-file)"; tiergloss["R4"] = "R4 (high-risk)"
     print tiergloss[tier]
@@ -1528,6 +1538,22 @@ if printf '%s\n' "$TRACKS_OUT" | grep -q '^E '; then
 elif printf '%s\n' "$TRACKS_OUT" | grep -q '^OK '; then
   printf '%s\n' "$TRACKS_OUT" | grep '^OK ' | sed 's/^OK /  ✓ /'
 fi
+
+# ── 3c. R4 tasks are named — a task that is R4 by a risk path needs a line under
+# `## High-risk surfaces touched` that names it. Each task's tier is read from the
+# --brief computation itself (RP_TIER3C), so the two never disagree; --brief never
+# fails on this rule. A task --brief cannot read (no Files) is 2b's finding, skipped here.
+R4N=0; R4U=0
+for tid in $(awk -v rx="$TASK_RX" "$FENCE_AWK"'
+  fenceline($0) { next }
+  $0 ~ rx { id = $0; sub(/^### (Task ?|T)/, "", id); sub(/[^0-9].*$/, "", id); print id }
+' "$PLAN"); do
+  case "$(RP_TIER3C=1 ROLEPOD_BRIEF_NOREC=1 ROLEPOD_SESSION_MODE=lite ROLEPOD_SESSION_SOURCE=default bash "${BASH_SOURCE[0]}" --brief "$tid" "$PLAN" ${CONTRACT:+"$CONTRACT"} --main 2>/dev/null | awk '/^3C /{print $3; exit}')" in
+    unnamed) echo "  ✗ R4 task without a high-risk line: Task $tid — name it under ## High-risk surfaces touched with its surface"; R4U=$((R4U + 1)); fail=1 ;;
+    named) R4N=$((R4N + 1)) ;;
+  esac
+done
+[ "$R4U" -eq 0 ] && [ "$R4N" -gt 0 ] && echo "  ✓ every R4 task is named under ## High-risk surfaces touched"
 
 # ── Advisories (v2.144.0) — never fail; a Sequential plan may be legitimate.
 GRAPH_F=$(printf '%s\n' "$GRAPH" | grep '^F ' || true)
