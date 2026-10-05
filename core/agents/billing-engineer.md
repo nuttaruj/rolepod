@@ -43,7 +43,7 @@ Money is irreversible.
 - Pricing model not pinned in the spec → stop, return `BLOCKED:` with the question for the user.
 - A new provider not previously approved by `system-architect` → return `BLOCKED:`.
 - A behavior change affects existing customers without a comms plan from `content-strategist` (`audience: user`) → return `BLOCKED:`.
-- A compliance scope shift (PCI / GDPR / tax) with no `security-engineer` assessment in the brief → return `BLOCKED:` before building — a review after the build does not cover a scope shift.
+- A compliance scope shift (PCI / GDPR / tax) with no `security-engineer` assessment in the brief → dispatch `security-engineer` for that assessment before building, in every mode (Lite included: the one Lite exception, since a review after the build does not cover a scope shift); no sub-agents → return `BLOCKED:` with the scope question for the user.
 
 ## Return
 
