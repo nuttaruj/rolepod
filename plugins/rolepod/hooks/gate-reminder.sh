@@ -11,6 +11,8 @@
 #                                                       early edit voids its verdict
 #   High-risk path, a security-engineer → silent — same evidence the commit
 #     dispatch already finished           gate reads at commit time (C4).
+#     Lite instead: the two universal-reviewer lenses (spec, standards) → silent;
+#     fewer → the one line names the lenses (Lite forbids security-engineer).
 #   High-risk path, 0 security-engineer → ONE line, only now: fact (C4) → Fix
 #     dispatches since the last commit    (dispatch security-engineer) →
 #                                         Exception (user-set bypass only).
@@ -287,9 +289,10 @@ done
 [ -d "$FILE_DIR" ] || FILE_DIR="."
 if [ "$IS_SUBAGENT" -eq 0 ] && [ -f "$SESSION_STATE" ] && command -v python3 >/dev/null 2>&1; then
   GR_EV=$(printf '%s' "$INPUT" | python3 "$SESSION_STATE" gate-evidence "$FILE_DIR" 2>/dev/null || true)
-  [ -n "$GR_EV" ] && read -r _ _ _ STRONG_REVIEWERS <<< "$GR_EV"
+  [ -n "$GR_EV" ] && read -r _ _ GR_REVIEWERS STRONG_REVIEWERS <<< "$GR_EV"
 fi
 STRONG_REVIEWERS=${STRONG_REVIEWERS:-0}
+GR_REVIEWERS=${GR_REVIEWERS:-0}
 
 SOFT_MODE=0
 [ "$(rolepod_gate_action r4-security)" = deny ] || SOFT_MODE=1
@@ -301,7 +304,14 @@ SOFT_MODE=0
 # prediction of it where the gate denies (deny → COMMIT WILL BLOCK; warn, i.e.
 # Lite → advisory WARNING without claiming enforcement). C4 wording (review-finish-lean, 2026-09-30).
 WOULD_BLOCK=""
-if [ -n "$HIGH_RISK" ] && [ "$IS_SUBAGENT" -eq 0 ] && [ "$STRONG_REVIEWERS" -eq 0 ]; then
+# Lite forbids `security-engineer`: its evidence is the two `universal-reviewer`
+# lenses (reviewers minus security-engineer dispatches). Same rule as the gate.
+LITE_LENSES=$((GR_REVIEWERS - STRONG_REVIEWERS))
+if [ -n "$HIGH_RISK" ] && [ "$IS_SUBAGENT" -eq 0 ] && [ "$SOFT_MODE" -eq 1 ] && [ "$(rolepod_gate_action r4-security)" = warn ]; then
+  if [ "$LITE_LENSES" -lt 2 ]; then
+    WOULD_BLOCK="WARNING: HIGH-RISK edit: a high-risk commit should have the two \`universal-reviewer\` lenses (spec, standards) since the last commit. Fix: dispatch both (FINISHED dispatches) before the next commit. Exception: only the user can waive it. "
+  fi
+elif [ -n "$HIGH_RISK" ] && [ "$IS_SUBAGENT" -eq 0 ] && [ "$STRONG_REVIEWERS" -eq 0 ]; then
   if [ "$SOFT_MODE" -eq 1 ]; then
     WOULD_BLOCK="WARNING: HIGH-RISK edit: a high-risk commit should have at least one \`security-engineer\` dispatch since the last commit. Fix: dispatch \`security-engineer\` (a FINISHED dispatch) before the next commit. Exception: only the user can waive it. "
   else

@@ -831,7 +831,22 @@ REASON+="Evidence ($SINCE_HUMAN): $TEST_EDITS tests, $HIGH_RISK_EDITS risk edits
 [ -n "$HIGH_RISK" ] && REASON+="HIGH-RISK path: $HIGH_RISK. "
 # C4 (review-finish-lean, 2026-09-30): fact → Fix → Exception, the rule word
 # for word; no pool, no external anchor, no model check.
-if [ -n "$HIGH_RISK" ] && [ "$STRONG_REVIEWERS" -eq 0 ]; then
+#
+# Lite (warn on r4-security) forbids `security-engineer`: its high-risk
+# evidence is the two isolated `universal-reviewer` lenses (spec, standards).
+# REVIEWERS minus STRONG_REVIEWERS (security-engineer) = universal-reviewer
+# dispatches (code-reviewer legacy included) since the last commit.
+LITE_R4=0
+LITE_LENSES=0
+if [ -n "$HIGH_RISK" ] && [ "$GATE_ID" = r4-security ] && [ "$GATE_ACT" = warn ]; then
+  LITE_R4=1
+  LITE_LENSES=$((REVIEWERS - STRONG_REVIEWERS))
+fi
+if [ "$LITE_R4" -eq 1 ]; then
+  if [ "$LITE_LENSES" -lt 2 ]; then
+    REASON+="A high-risk commit needs the two \`universal-reviewer\` lenses (spec, standards) since the last commit. Fix: dispatch both (FINISHED Agent calls)${FIX_TAIL}"
+  fi
+elif [ -n "$HIGH_RISK" ] && [ "$STRONG_REVIEWERS" -eq 0 ]; then
   REASON+="A high-risk commit needs at least one \`security-engineer\` dispatch since the last commit, any model; an external pass never counts. Fix: dispatch \`security-engineer\` (a FINISHED Agent or Workflow call)${FIX_TAIL}"
 elif [ -z "$HIGH_RISK" ]; then
   # Round-2 review (2026-09-25): a code-no-test deny alone
@@ -873,7 +888,11 @@ fi
 AUTO_PASS=0
 if [ "$HARD_BLOCK" -eq 1 ]; then
   if [ -n "$HIGH_RISK" ]; then
-    [ "$STRONG_REVIEWERS" -gt 0 ] && AUTO_PASS=1
+    if [ "$LITE_R4" -eq 1 ]; then
+      [ "$LITE_LENSES" -ge 2 ] && AUTO_PASS=1
+    else
+      [ "$STRONG_REVIEWERS" -gt 0 ] && AUTO_PASS=1
+    fi
   elif [ "$TEST_EDITS" -gt 0 ] || [ "$REVIEWERS" -gt 0 ]; then
     AUTO_PASS=1
   fi
