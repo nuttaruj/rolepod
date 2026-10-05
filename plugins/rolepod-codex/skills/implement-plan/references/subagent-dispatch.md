@@ -1,5 +1,5 @@
 <!-- Deep playbook for dispatching task owners from implement-plan. -->
-<!-- Loaded on demand from SKILL.md Delegate, Parallel tracks and Review. -->
+<!-- Loaded on demand from SKILL.md steps 2-4. -->
 <!-- Lead-as-controller pattern: controller curates context; subagent stays focused. -->
 
 # Subagent dispatch
@@ -93,16 +93,7 @@ Who reviews follows the task's tier (SKILL.md Review):
 - R4 task → use the active session mode carried in the plan/task brief from startup or first manual `using-rolepod` entry; never reread configured mode at Build. Configured-mode inspection is distinct and cannot replace the active profile. **Lite** (any tier, including R4): exactly two fresh isolated universal-reviewer lenses (`spec`, `standards`) in parallel on the same frozen diff/snapshot/hash; separate reports and no cross-report access; aggregate after both return; no security or adversarial reviewer. No agents → Lead does both lenses and records the limitation. Missing formal spec → user's supplied goal/acceptance is the spec input; still both lenses. **Standard**: `security-engineer` + two lenses. **Full**: those plus adversarial (external CLI with `--adversarial` when pool usable, else internal universal-reviewer `mode: adversarial` at strong; external fails → internal then). Full/Standard R4 protocol cannot override Lite. Pass the carried `ROLEPOD_SESSION_MODE`/`ROLEPOD_SESSION_SOURCE` when invoking `plan-lint.sh` or a helper without guaranteed native mode environment. User-visible flows verified once at `check-work`, never per task.
 - A standalone R2 brief (no plan) → the owner dispatches the two `universal-reviewer` lenses itself, never a self-review.
 
-### Ship-group drift pass
-
-A ship-group drift pass runs only over a named group (the plan's **Ship group** line names which tasks run under one final review). A group within a single track → the track-end review owner's pass over the group's range is that pass (seams-only when split by size, by a fresh owner). A group spanning multiple tracks → a separate drift pass after all tracks of the group merge:
-- Dispatch one reviewer on the cumulative diff across the group's tasks
-- Role: `security-engineer`
-- Scope: cross-task symbol / type / method name drift, API contract mismatch between producer and consumer, unowned files touched by group members, architecture consistency across tasks
-- A normal review of the cross-task seams at the role's own lens (security included), not an adversarial round
-- Never a re-review of a task's own diff (that reviewer already passed it)
-
-Tracks sharing a frozen interface are one group. No group named → no drift pass. Hand off to `check-work` only after the group clears.
+Tracks, size slices, ship-group drift passes and session split → the `run-tracks` skill; no `run-tracks` → run the tracks one after another on the base checkout (`implement-plan` step 5 fallback).
 
 ## Model selection
 
@@ -119,22 +110,9 @@ Use the least powerful model that can handle the role. Cost compounds across N t
 
 `BLOCKED` after a fast-model dispatch → re-dispatch the same task at one tier up before escalating to the human.
 
-**Retry-at-higher-effort (checkable stages).** When a stage's outcome is
-mechanically checkable (tests, verifier, schema), dispatch it at LOW effort
-and re-run only the failures one effort step up — before any other recovery.
-Anthropic's own measurement (SWE-bench Pro): low-then-retry-at-default held
-the pass rate of all-default at about half the cost. Two conditions: a real
-failure signal (a checker that passes bad work forwards the failure instead
-of catching it), and it never applies to the verify/judge stages of a
-high-risk diff — those keep the tier floor below. The tier ladder above
-(re-dispatch one TIER up on `BLOCKED`) is for capability gaps; this effort
-ladder is for depth gaps — try the cheaper rung first.
-
 **Orchestration harnesses** (a Workflow script, ultracode, Codex `ultra`): the tier per stage is `using-rolepod`'s `references/model-tiers.md` Fleets; the mechanics are its `references/fanout-<cli>.md`.
 
 An `isolation: 'worktree'` agent holds tracked files only: a gitignored test harness is missing there, so the brief names how the Command gets in, or the writer runs on main with disjoint files.
-
-**A command before a refuter.** Before spawning a per-finding verify agent, ask what a COMMAND can settle — a test, curl, a computed style, a grep — and run it in the same stage (or in the script itself: typed `schema` output plus a code check is the cheapest guardrail). Spend an LLM refuter only on the claims no command can check.
 
 ## Continuous execution rule
 
@@ -154,34 +132,7 @@ Stop **only** when:
 
 Anything else = continue.
 
-## Parallel-track dispatch
-
-The plan's layout is the dispatch signal. Every unblocked track goes out in ONE message, each track owner in its OWN worktree named for the track (the brief prints the command). Tasks within a track run in order in the same worktree. The Lead keeps working while track owners build, integrates each as it returns (SKILL.md Review) and merges in the contract's order. Two tracks reach for the same file → stop: run them sequentially, or rewrite the contract. A parallel-layout plan run one track at a time needs a stated reason.
-
-Fires only when the plan's **Parallel layout** line declares Parallel with a contract path AND that cohesion contract exists. Track order comes from the plan's per-task **Blocked by** plus the contract's merge order — never from the prose. No contract → no parallel dispatch, period — drop to sequential and say why.
-
-1. **Group tasks by track** (contract owner). A track's dependencies are the tasks in other tracks whose interfaces it consumes — the contract's merge order encodes this.
-2. **Dispatch every ready track in ONE message** — one Agent call per track, same message, so they run concurrently. Each brief carries all tasks in the track (in order), the track's file-ownership slice (allowed paths = own slice; forbidden = everything else including the do-not-touch list), the frozen shared interfaces verbatim, tests per task, and done criteria. Copy the allowed/forbidden paths and the interfaces VERBATIM from the contract — a retyped path list is how a brief silently drifts from the ownership the contract pinned (`scripts/plan-lint.sh` proves plan↔contract; the verbatim rule covers contract↔brief).
-3. **Pipeline, never barrier** — as each track returns its manifest, integrate it (SKILL.md Review) immediately; do not wait for slower tracks. The Lead hop applies per track (reviewing and fixing at track end). Answer implementer questions inline as they arrive.
-4. **Merge in contract order** — the integration owner (Lead) merges reviewed tracks per the contract's merge order, running the interface provider's tests before merging its consumers. Subagents still never commit.
-5. **Ship-group drift pass** when the plan names one (tracks sharing a frozen interface are one group).
-
-Mid-flight conflicts:
-- A track needs a file outside its slice → it returns `NEEDS: <path> — <one-line change>`; Lead either amends the contract (every owner re-briefed) or drops to sequential. Never silently widen a slice.
-- A frozen interface must change → stop every affected track, renegotiate the contract, redispatch. Cheaper than merging two halves built against different contracts.
-- One track `BLOCKED` while others run → let the running tracks finish; apply the standard variable changes to the blocked one. Its dependents wait; independent tracks do not.
-
-Cost note: parallel buys wall-clock, not tokens — N tracks cost the same tokens as N sequential tasks plus contract overhead. Dispatch parallel for speed, never to "use more agents".
-
-## Session-split tracks — separate CLI sessions as track owners
-
-The same contract that governs parallel subagents can be executed by SEPARATE CLI sessions, one per track — e.g. an API-heavy track on codex, a UI-heavy track on claude — when the user wants wall-clock parallelism across CLIs. The contract's optional **Session split** section carries the assignment and the per-session kickoff prompt. Differences from subagent tracks:
-
-- **Each session runs its own Lead.** It executes its track's tasks in one worktree, runs its own track-end review (R2/R3: by a fresh owner for two or more code tasks, size-sliced as in SKILL.md Review; a track's only code task: its owner's two lenses; R4: per task), and — unlike a subagent — COMMITS its own slice. The subagent commit ban binds subagents, not session Leads; the atomicity the ban protects is preserved by branch isolation + contract merge order instead.
-- **Disk is the only shared truth.** Plan + contract are CLI-agnostic files; each session flips only its OWN tasks' checkboxes, so the checkbox union merges cleanly at integration. A session that edits another track's tasks, files, or checkboxes has broken the contract.
-- **One branch or worktree per track.** Prefer it whenever slices share any filesystem state (generated files, build artifacts, lockfiles); two sessions in one worktree stomp each other.
-- **The integration session** (named in the contract) merges track branches in contract order, runs the interface provider's tests before its consumers, and runs the ship-group drift pass when the plan names one. Per-track track-end review never substitutes for that pass — cross-task drift is exactly what no single track can see.
-- **A frozen interface change stops every affected session.** Renegotiate in the contract file, re-kickoff the affected tracks. Silent divergence between sessions is the failure mode this whole protocol exists to prevent.
+Tracks, size slices, ship-group drift passes and session split → the `run-tracks` skill; no `run-tracks` → run the tracks one after another on the base checkout (`implement-plan` step 5 fallback).
 
 ## Subagent commit policy
 

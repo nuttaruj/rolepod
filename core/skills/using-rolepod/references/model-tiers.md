@@ -13,7 +13,7 @@ A role defines responsibilities and instructions; an agent type is CLI transport
 | **cheap** | small / fast model | docs, PM, copy, read-only sweeps |
 | **balanced** | mid flagship | ALL implementation, high-risk paths included — the net is the strong review floor, never the writer's tier |
 | **strong** | top reasoning model | architecture, final-pass and adversarial review. A set whose top sits below frontier-class still gets the full review; the depth cap is a recorded LIMITATION |
-| **apex** | strongest tier the CLI exposes | only on `review-code`'s apex triggers |
+| **apex** | strongest tier the CLI exposes | only on the `adversarial-review` skill's Apex escalation triggers |
 
 Route rows by class:
 - cheap — vague build / doc / UI asks and repeat or legacy features (`write-spec`), prototypes, clear doc edits, `manage-context`, explain-only answers.
@@ -35,6 +35,19 @@ The Lead picks the class at dispatch; escalate only on a BLOCKED redispatch or a
 - Never inherit the Lead's model across a fleet (a plan fleet, `write-plan` step 8, is the one exception: the user's model choice for plans); never pin strong on a fan-out (price × N).
 - A stage that writes uses the role's instructions. Prefer the CLI's native named role; portable transport and Lead fallback are defined above. A fan-out uses the role's model tier where the CLI exposes that control.
 - Mechanics live in your CLI's `references/fanout-<cli>.md` (Claude: `fanout-claude.md`, Codex: `fanout-codex.md`); no file for your CLI → dispatch roles one at a time.
+
+**Retry-at-higher-effort (checkable stages).** When a stage's outcome is
+mechanically checkable (tests, verifier, schema), dispatch it at LOW effort
+and re-run only the failures one effort step up — before any other recovery.
+Anthropic's own measurement (SWE-bench Pro): low-then-retry-at-default held
+the pass rate of all-default at about half the cost. Two conditions: a real
+failure signal (a checker that passes bad work forwards the failure instead
+of catching it), and it never applies to the verify/judge stages of a
+high-risk diff — those keep the strong floor (Keep a strong row strong). The
+tier ladder (re-dispatch one TIER up on `BLOCKED`) is for capability gaps; this effort
+ladder is for depth gaps — try the cheaper rung first.
+
+**A command before a refuter.** Before spawning a per-finding verify agent, ask what a COMMAND can settle — a test, curl, a computed style, a grep — and run it in the same stage (or in the script itself: typed `schema` output plus a code check is the cheapest guardrail). Spend an LLM refuter only on the claims no command can check.
 
 ## Wide-effort profile
 
