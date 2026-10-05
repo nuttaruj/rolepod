@@ -1,6 +1,6 @@
 ---
 name: review-code
-description: Use when a finished diff needs review before merge or ship; a task, track end or R4 change reaches its review round; a fix needs its Fix-verify re-check; or the user asks to review a diff, branch or PR.
+description: The reviewer's method — walk a diff on the spec and standards axes, write the severity-ordered report, re-check a Fix-verify delta. Use when you are dispatched to review or re-check a diff.
 ---
 
 # Review Code
@@ -16,7 +16,7 @@ Phase = Review: a finished diff → a severity-ordered review report from review
 ### 1. Freeze the diff
 
 - The diff: the R4 task, or for an R2/R3 task in a track with two or more code tasks the track-end review covers it (a track's only code task: its owner's two lenses). A standalone R2 checklist (no plan): its own diff. Committed → `<base>...HEAD`; uncommitted → `git diff HEAD` (staged + unstaged; `--cached` alone is a slice).
-- Preflight before any dispatch: each ref resolves (`git rev-parse --verify <ref>^{commit}`) and the diff is non-empty (`git diff --quiet <range>` exits 1); either fails → re-derive the range, never dispatch. Record the snapshot for the report's Scope: `<base sha>..<head sha>`, plus `git diff HEAD | git hash-object --stdin` for uncommitted work.
+- Preflight before any dispatch: each ref resolves (`git rev-parse --verify <ref>^{commit}`) and the diff is non-empty (`git diff --quiet <range>` exits 1); either fails → re-derive the range, never dispatch. Record the snapshot for the report's Scope: `<base sha>..<head sha>`, plus `git hash-object <diff file>`, equal to the brief's hash.
 - Past ~15 files / ~800 lines in a track-end review it is two concerns: split it, one review each: a track-end review by size slice (`run-tracks` step 4; no `run-tracks` → slices by task in plan order, each within that size), any other diff by ship group.
 - Gather the spec / plan / acceptance criteria, the touched files end-to-end, and the risk profile (high-risk surface? new dependency? schema change?).
 
@@ -25,7 +25,7 @@ Done when: the range resolves to a non-empty diff, its snapshot is recorded, and
 ### 2. Pick reviewers
 
 Workflow mode = the active session mode carried from startup or the first `using-rolepod` entry; a helper call gets `ROLEPOD_SESSION_MODE` / `ROLEPOD_SESSION_SOURCE`.
-No carried mode (a standalone run) → `using-rolepod`'s `scripts/workflow-mode.sh` once (prints the mode), then carry it; no `using-rolepod` → Lite.
+No carried mode (a standalone run) → `using-rolepod`'s `scripts/workflow-mode.sh` once (prints the mode), then carry it; no `using-rolepod` → `lite`.
 A helper or `plan-lint.sh` call without the native mode environment → pass both variables from the carried profile.
 Review never re-reads the configured mode (a config change takes effect in a new session), and `review-mode.sh` reports only a compatibility review intensity, never the mode.
 

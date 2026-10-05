@@ -1,6 +1,6 @@
 ---
 name: run-review
-description: Use when a built diff needs its review round ordered — freeze it, pick the reviewer set, dispatch, take the reports, run Fix-verify; a track ends; the user asks to review a diff, branch or PR.
+description: Use when the user asks to review a diff, branch or PR, or a track ends; a built diff needs its review round ordered — freeze it, pick the reviewer set, dispatch, take the reports, run Fix-verify.
 ---
 
 # Run Review
@@ -16,8 +16,8 @@ A built diff → its round-1 reviewer set run on one frozen snapshot, findings c
 
 ### 1. Freeze the diff
 
-- Uncommitted work → `../implement-plan/scripts/ticket.sh review-diff start <task>` (paths relative to this skill's folder; `<task>` = the brief's report name, else a short one) prints the diff file and H1.
-- No script → `git add -A`; the staged `--stat` + `-U10` diff, excluding `docs/rolepod` and lockfiles, into `.rolepod/evidence/review/<task>.diff`; H1 = `git write-tree`.
+- Uncommitted work → `../implement-plan/scripts/ticket.sh review-diff start <name> [-- <path>...]` (the script relative to this skill's folder; `<name>` = `<task>`, the brief's report name, else a short one; each `<path>` relative to the checkout root, literal: the brief's Files plus each `Also touched:` path) prints the diff file and H1; no path list → the whole tree, and its limitation line goes in the receipt.
+- No script → `git add -A -- <paths>`; the staged `--stat` + `-U10` diff of those paths, excluding `docs/rolepod`, lockfiles and each `.rolepod/review-exclude` line, into `.rolepod/evidence/review/<task>.diff`; H1 = `git write-tree`.
 - Committed (a track end: the lens diff `ticket.sh log` wrote; a branch / PR: `git diff <base>...<head>`, same excludes, into `<task>.diff`) → that file; H1 = `git rev-parse <head>^{tree}`.
 - Record the hash beside H1: `git hash-object <diff file>`. Preflight: refs resolve, diff non-empty; else re-derive, never dispatch.
 - Past ~15 files / ~800 lines → split, one review each: a track end by size slice (`run-tracks` step 4; none → by task in plan order), else by task or ship group.
@@ -42,6 +42,7 @@ Done when: each reviewer named with its lens or role.
 ### 3. Dispatch the round
 
 - Each brief: its own lens or role only, never another's report; the same diff file, H1 and hash; the task block and spec clauses it covers, quoted (no plan / spec path; no spec → the user's goal); acceptance criteria; risk profile; behaviors to trace; roles already run; `mode`; report `.rolepod/evidence/review/<task>-<lens|role>.md`; read-only, no sub-agent.
+- Spec lens only: the writer's Command and the tail of its result, quoted — unverified claims; check them against the diff and the tests, never re-run them; the writer's reasons never lower a finding's severity.
 - ≤ 20 tool calls per lens, ≤ 40 for `security-engineer` and the adversarial pass; `security-engineer` also gets the repo's existing scanner and stated security rules, if any.
 - `universal-reviewer` → one fresh context per lens; else a default sub-agent per lens, given its lens and `review-code` if present; portable dispatch → `using-rolepod/references/model-tiers.md`, no file → the native role or a fresh child given the role's text.
 - The fixes wait for every report: dispatch the whole set in ONE message, then take every report in before you fix anything.

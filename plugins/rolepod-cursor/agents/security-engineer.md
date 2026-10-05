@@ -68,7 +68,7 @@ Write the report into the file the brief names (`.rolepod/evidence/review/<task>
 
 ## Scope
 <Diff/spec and every changed file: `read` or `skipped — reason`. A missing changed file makes this partial.>
-**Snapshot H1 (immutable):** `<base sha>..<head sha>` <+ `diff <git diff HEAD | git hash-object --stdin>` for uncommitted work. Paired Lite reports use the same H1/hash and each names only its own lens. Never relabel H1; a re-check gets a separate report.
+**Snapshot H1 (immutable):** `<base sha>..<head sha>` <+ `diff <git hash-object <diff file>>` for uncommitted work. Paired Lite reports use the same H1/hash and each names only its own lens. Never relabel H1; a re-check gets a separate report.
 
 ## Read
 <Reviewer lens/role and coverage: files and behaviors read, paths traced, and where each claimed behavior held or failed. On a clean review, this is the evidence; security/full adversarial reports retain the depth-required trace.>
