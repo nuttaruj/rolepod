@@ -85,7 +85,7 @@
 ## Ship groups
 <Optional — only when tasks share a seam (a contract or interface): one line
  per group; none → delete this section. implement-plan runs one drift pass
- per group; finish-work's Reviewer gate looks for its report.>
+ per group; finish-work's Pre-merge gate (Review evidence) looks for its report.>
 - **Ship group:** <name> — Task <N>, Task <M> — seam: <the shared contract / interface>
 
 ## Done criteria
