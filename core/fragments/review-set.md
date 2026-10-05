@@ -1,0 +1,1 @@
+**Review set** (round 1; mode unknown → Lite). Lite, any tier: the two lenses only. Standard: R2 the two lenses, a matched row → that role instead · R3 the two lenses + each matched specialist · R4 the two lenses + `security-engineer` (`depth: checklist`). Full: as Standard, but R4 `depth: full` + one adversarial pass.
