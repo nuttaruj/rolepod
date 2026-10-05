@@ -101,7 +101,7 @@ The one hard checkpoint, at `git commit`.
 ### `gate-reminder.sh` — PreToolUse `Edit|Write|MultiEdit` (Claude)
 
 - **Effect** — on a high-risk path, ONE line when the R4 commit gate would act on it now: fact (a high-risk commit needs at least one `security-engineer` dispatch since the last commit, any model; an external pass never counts) → Fix (dispatch `security-engineer`, finished before commit) → Exception. In `standard` and `full` the line says the commit will block; in `lite` it is a `WARNING:`. Every other edit → silent. A sub-agent edit (`agent_id` set) gets neither this line nor the evidence scan (the Lead dispatches), only the review-in-flight advisory.
-- **In-flight lines** — a live detached cross-family review whose diff holds the edited file → `⏸ REVIEW IN FLIGHT` (the job reads the tree live; editing now makes its verdict an artifact). A live `--kind implement` job and an edit outside its allowed paths → `⏸ EXTERNAL IMPLEMENT IN FLIGHT` (that edit is reverted when the job returns).
+- **In-flight lines** — a live detached cross-family review whose diff holds the edited file → `⏸ REVIEW IN FLIGHT` (the job reads the tree live; editing now makes its verdict an artifact).
 - **Incident** — edit-time hard blocks once pushed a user to switch the whole gate layer off for good (33 high-risk edits in a day, 116 unreasoned bypasses), which silenced the commit gate too; this hook only informs.
 - **Bypass** — none (informational).
 
@@ -226,12 +226,12 @@ You change strictness with `workflow.mode` in `~/.rolepod/config.json` (a projec
 
 ## Cross-family pool — `~/.rolepod/config.json` `pool` key
 
-Opt-in and off by default. Machine-wide only; no project-level override. Set in `~/.rolepod/config.json` under the `pool` key: `pool.cross-family` ("on"|"off"), `pool.reviewer` (review/consult/critique/tier), `pool.implement.cli`. Use `cross-family.sh --setup` or hand-edit; `cross-family.sh --pool` shows the resolved pool.
+Opt-in and off by default. Machine-wide only; no project-level override. Set in `~/.rolepod/config.json` under the `pool` key: `pool.cross-family` ("on"|"off"), `pool.reviewer` (review/consult/critique). Use `cross-family.sh --setup` or hand-edit; `cross-family.sh --pool` shows the resolved pool.
 
 - **Members** — space-separated: `codex`, `claude`, `agy`, `cursor`, `opencode`. List every CLI you use in the order you prefer for each kind. The Lead's own CLI is skipped at run time, so one file serves every Lead. The model family is recorded for information and never filters a member.
 - **Time** — a member is killed when it goes SILENT for `stall` seconds (flag `--stall` > config `stall=` > 600), not when it is slow; the wall-clock cap is runaway insurance only (review 7200 s detached / 600 s foreground, consult 300, critique 600). `--detach` runs the chain as a job under `.rolepod/evidence/external/jobs/<id>/`; `--collect <id>` waits, `--jobs` lists.
 - **Refusals** — a partial-slice diff (its files have edits it does not contain) → exit 7, attach `git diff HEAD` or commit first (`--partial-ok` only when the user asked for the staged part); a second live review job → exit 8 until `--collect` or `--kill`.
-- **Rounds** — the external runs once per R4 task, round 1 only; round 2+ is internal: one fresh `universal-reviewer` re-checks the fix delta (H1→H2) of every BLOCKER / MAJOR finding in one pass, whichever reviewer or external raised it (`review-code` Fix-verify; at most four rounds, round 1 included). A pre-existing issue on an untouched path is one note line and never drives the verdict.
+- **Rounds** — externals run in round 1 only: R3 / R4 diffs run the spec and standards lenses external, Full R4 adds external adversarial; round 2+ is internal: one fresh `universal-reviewer` re-checks the fix delta (H1→H2) of every BLOCKER / MAJOR finding in one pass, whichever reviewer or external raised it (`review-code` Fix-verify; at most four rounds, round 1 included). A pre-existing issue on an untouched path is one note line and never drives the verdict.
 - **At commit (Claude)** — an external pass is not read by the gate (C4, see `precommit-gate.sh`). A docs-only diff passes the gate at any size (docs are written, not reviewed — owner rule).
 
 ## Private working docs — `docs/rolepod/` never commits (v2.80.0)

@@ -18,7 +18,6 @@ Google retired the standalone Gemini CLI for individual accounts (2026-06-18) an
 | Hooks (core only) | 14 core hook scripts (17 registrations) in the plugin's `hooks/hooks.json` · auto-registered on install | 8 core hook scripts (9 registrations) across `SessionStart`/`UserPromptSubmit`/`PreToolUse`/`PostToolUse`/`SubagentStart`/`Stop` · fire natively on Codex ≥0.144, default-enabled | 3 core hooks across `sessionStart`/`beforeShellExecution`/`stop` · auto-fires | 3 core hook scripts across `PreInvocation`/`PreToolUse`/`Stop` under a `rolepod` name wrapper · deny and no contextual warning channel | JS plugin (`plugin/rolepod.js`): workflow-mode child ship gate, Lead precommit gate, cross-CLI session locks, post-compact re-anchor, fix-loop-breaker; rendered agents retain independent read-only tool permissions |
 | Workflow gates | `workflow.mode` picks deny / warn / silent per gate from one fixed table ([hooks.md](hooks.md#gates-by-mode)) | same | same; `agent_message` carries the warning (allow payload) | same; deny-only (a warn cell is silent) | same table in the plugin JS; plugin lookup classifies first ship call |
 | Evidence gate | Full retains existing private-doc and Claude evidence conditions | existing Full workflow conditions | existing Full workflow conditions; evidence-based reviewer/test gate remains Claude-only | existing Full workflow conditions; evidence-based reviewer/test gate remains Claude-only | existing Full workflow conditions; evidence-based reviewer/test gate remains Claude-only |
-| External implement (v2.139.0, live-verified 2026-09-17: all five members built the same 2-file ticket) | `-p --permission-mode acceptEdits --allowedTools Bash` (its rolepod hooks fire; 32 s) | `exec -s workspace-write` (plugin hooks fire once trusted; ~8 min) | `-p --force --trust` (runs shell; keep out of `[implement] cli` unless wanted; 36 s) | `-p --mode accept-edits --add-dir <repo>` (37 s) | `run` only when an `opencode.json(c)` (project, `OPENCODE_CONFIG_DIR` or `~/.config/opencode`) grants edit + bash; its start-up rewrite of the project file is restored as housekeeping (37 s) |
 | Plugin manifest | `plugins/rolepod/.claude-plugin/plugin.json` (spec-conformant) + `.claude-plugin/marketplace.json` catalog at the repo root | `.codex-plugin/plugin.json` (Codex plugin schema, 1.6KB) | `plugins/rolepod-cursor/.cursor-plugin/plugin.json` (spec-conformant) + `.cursor-plugin/marketplace.json` catalog at the repo root | `plugin.json` at plugin root (agy plugin schema, validated by `agy plugin validate`) | `opencode.json` (version metadata — opencode has no plugin manifest for this install style) |
 | Optional add-on integration | vendor-installed (own plugin / MCP); rolepod auto-detects, falls back to `rg` + `find` | vendor-installed (own plugin / MCP); rolepod auto-detects, falls back to `rg` + `find` | vendor-installed (Cursor MCP / `mcp.json`); rolepod auto-detects, falls back to `rg` + `find` | vendor-installed; rolepod auto-detects, falls back to `rg` + `find` | vendor-installed; rolepod auto-detects, falls back to `rg` + `find` |
 | MCP server config | global + per-plugin | global (`codex mcp`) | global (`~/.cursor/mcp.json`) + per-plugin (`plugin/mcp.json`) | global (agy config tree; not yet live-verified) | global (opencode config) |
@@ -77,8 +76,7 @@ receipt; owner status and Verify status remain separate. Reuse evidence only
 when the relevant inputs, environment, scope, and provenance still match.
 
 Review and Ship use the active session mode captured at startup or first manual
-entry. Round 1 on R4: Lite uses two isolated lenses; Standard adds the security review
-(checklist); Full adds the full security review and the adversarial pass. A
+entry. Round 1 on R3 / R4: Pool on runs the spec and standards lenses external in every mode; R2 keeps internal lenses, R1 has no review; Full R4 adds external adversarial; security-engineer and specialists stay internal; a failed or weak lens falls back to internal; round 2+ is internal. Pool off: Lite two isolated lenses; Standard adds the security review (checklist); Full adds the full security review and the adversarial pass. A
 re-check (round 2+, at most four rounds) is one fresh `universal-reviewer` on
 the fix delta of every BLOCKER / MAJOR finding. A comment/blank-only R4 diff
 gets the active mode's R4 set. Required reports and finding closure are checked against the
@@ -232,11 +230,9 @@ extra:
 ```bash
 # paths relative to the cross-family skill's folder
 scripts/cross-family.sh --pool                       # resolved pool with reasons (or OFF + candidates), no network
-scripts/cross-family.sh --kind implement --brief <task-brief> --allow <path>... [--allow-risky] --detach   # ONE member BUILDS one ticket in its write mode (v2.139.0). --allow is mandatory: `dir/` (or an existing dir) = everything below, a bare name = that one file; the allowed paths must start clean; money / auth / data paths (the commit gate's regex + .rolepod/risk-paths) are refused unless the USER passes --allow-risky. Exit 0 = kept; 21 = kept, edits outside --allow reverted (copies under <report>.reverted/); 22 = the member moved git state — refs, .git metadata, index and tree restored, nothing kept. The combined-review owner reviews (§6) and the Lead commits.
-scripts/cross-family.sh --pool --kind implement      # which members may write here (`[implement] cli = …` in the pool file; absent → the `review` order)
 scripts/cross-family.sh --candidates                 # every installed CLI, the Lead's own included — the opt-in question
 scripts/cross-family.sh --probe                      # one-line "reply OK" per member (spends a call each)
-scripts/cross-family.sh --kind review  --brief brief.md --attach diff.patch --detach   # job; --collect <id> waits
+scripts/cross-family.sh --kind review --lens spec --brief brief.md --attach diff.patch --detach   # review with spec lens; --lens standards runs the standards axis
 scripts/cross-family.sh --collect <job-id> --root <git-root>   # prints the review + receipt when the job lands (exit 6 = still running); PARTIAL / no-VERDICT reviews never anchor
 scripts/cross-family.sh --jobs                        # running / done
 scripts/cross-family.sh --kind consult --brief ledger.md
@@ -244,7 +240,7 @@ scripts/cross-family.sh --kind critique --brief spec-draft.md          # write-s
 # add --lead codex|agy|cursor|opencode when not running under Claude Code (ROLEPOD_LEAD_CLI also works)
 ```
 
-| CLI | In the pool as | Invocation the runner uses (read-only for review / consult / critique — the write-mode form for `--kind implement` is in the capability matrix above; always **its own default model**, `ROLEPOD_BRAIN_SILENT=1`) | Family |
+| CLI | In the pool as | Invocation the runner uses (read-only for review / consult / critique; always **its own default model**, `ROLEPOD_BRAIN_SILENT=1`) | Family |
 |---|---|---|---|
 | Codex | `codex` | `codex exec -s read-only --skip-git-repo-check --ephemeral -o <msg> -` (prompt on stdin) | openai |
 | Claude Code | `claude` | `claude -p --permission-mode plan --no-session-persistence` (prompt on stdin) | anthropic |
@@ -254,18 +250,17 @@ scripts/cross-family.sh --kind critique --brief spec-draft.md          # write-s
 
 Gemini CLI is retired for individual accounts (2026-06-18) and never a pool member — a `gemini` pool-file line is skipped; list `agy` instead.
 
-**Opt-in, off by default.** Pool = `~/.rolepod/config.json` `pool` key (machine-wide): `pool.cross-family` ("on"/"off"), `pool.reviewer` with `review` / `consult` / `critique` (space-separated CLI names in order), `tier` (R2|R3|R4; from that tier up, the external's standard pass replaces the lens pair on a code diff — a `write-plan` brief names it as the alternative; at R4 it is the adversarial pass; default `R4` = no external below R4), `pool.implement.cli` (space-separated CLI names). **Unset pool key or cross-family "off" = off** (exit 5, nothing logged). Nothing asks unprompted: when the user asks to set it up, `scripts/cross-family.sh --setup` prints the installed
-candidates and the two questions (review order; implement `same` / `none` /
-an order) and `--setup review="…" implement=…` writes the file. List
+**Opt-in, off by default.** Pool = `~/.rolepod/config.json` `pool` key (machine-wide): `pool.cross-family` ("on"/"off"), `pool.reviewer` with `review` / `consult` / `critique` (space-separated CLI names in order). Review: round 1 on R3 / R4 diffs runs the spec and standards lenses as two separate externals in every mode; R2 keeps internal lenses, R1 has no review; Full R4 adds external adversarial; security-engineer and specialists stay internal; a failed or weak lens falls back to the internal lens; round 2+ is internal. Consult and critique run end to end. **Unset pool key or cross-family "off" = off** (exit 5, nothing logged). Nothing asks unprompted: when the user asks to set it up, `scripts/cross-family.sh --setup` prints the installed
+candidates and the one question (review order) and `--setup review="…"` writes the file. List
 every CLI you use, the Lead's own included — it is skipped at run time, so
 one file serves every Lead. **Installed ≠ usable** is proven at invoke: exit ≠ 0, timeout
 (a member is killed when it goes SILENT — no new output for `stall` seconds: `--stall` > `stall=` in the config > 600 — not when it is slow; the wall-clock cap is runaway insurance only: `--timeout` > `timeout=` > kind default, review 7200 s detached / 600 s foreground, consult 300, critique 600 (v2.129.0; measured: codex reviews run 15-29 min and stream the whole way); the prompt carries a ≤30-min planning budget; `--detach` runs the chain as a job so the 600 s harness cap never kills a slow member),
-or an answer under the floor (review < 500 bytes, consult / critique / implement < 200; implement budget 3600 s detached / 600 s foreground)
+or an answer under the floor (review < 500 bytes, consult / critique < 200)
 → `external-fail` phase-log line, next member; every member failed → exit
 3; empty pool → exit 4 — then the Lead's own path (internal strong
 reviewer / vertical consult) runs and the review report records the
 limitation. Evidence: `.rolepod/evidence/external/<utc>-<cli>.txt` + one
-phase-log line (`phase: review|consult|critique`, `reviewer: external`) — an implement run writes `phase: implement` instead,
+phase-log line (`phase: review|consult|critique`, `reviewer: external`),
 `model: default`, plus `ran: <id>` when the CLI names the model it ran —
 Codex's `model:` banner, OpenCode's `> agent · model` header; the family
 follows what ran and is recorded for information — a member is never failed

@@ -65,12 +65,12 @@ Can't verify  → state "Assuming X. Risk Y. Verify by Z" — never proceed sile
 
 ## Reviewer routing
 
-The writer's unit tests are the floor. One read-only `universal-reviewer` pass (spec + standards, ≤400 words, no execution) reviews every diff from R2 up; `qa-tester` joins when a slice changes what a user sees (E2E / UI). An external reviewer = a CLI from the user's **opt-in** cross-family pool — a **different CLI** than the Lead, on its own default model — and reviews R4 code only.
+The writer's unit tests are the floor. One read-only `universal-reviewer` pass (spec + standards, ≤400 words, no execution) reviews every diff from R2 up; `qa-tester` joins when a slice changes what a user sees (E2E / UI). An external reviewer = a CLI from the user's **opt-in** cross-family pool — a **different CLI** than the Lead, on its own default model. Pool on: round 1 of an R3 or R4 diff runs the spec and standards lenses as two separate externals in every mode; R2 keeps internal lenses, R1 has no review; Full R4 adds external adversarial; security-engineer and specialists stay internal; a failed or weak lens falls back to the internal lens; round 2+ is internal.
 
 | Tier / profile | Reviewers |
 |-----------|-----------|
-| R2 / R3 | `universal-reviewer` (read-only) — or the external instead, when the pool file sets `tier = R2` / `R3` |
-| R4 code, round 1 | lite: two lenses (spec + standards). standard: two lenses + `security-engineer` (checklist). full: two lenses + `security-engineer` (full) + one adversarial pass (external via `cross-family` when usable, else `universal-reviewer` on a strong model) |
+| R2 / R3 | `universal-reviewer` (read-only); with pool on, R3 lenses run external instead |
+| R4 code, round 1 | Pool off: lite two lenses (spec + standards). standard two lenses + `security-engineer` (checklist). full two lenses + `security-engineer` (full) + one adversarial pass (external via `cross-family` when usable, else `universal-reviewer` on a strong model). Pool on: spec and standards lenses external; Full R4 adds external adversarial; security-engineer stays internal. |
 | Re-check, round 2+ (every mode and tier) | one fresh `universal-reviewer` checks the fix delta (H1→H2) of all BLOCKER / MAJOR findings in one pass; at most 4 rounds counting round 1, then stop and hand the findings and log to the user |
 | High-risk path (auth · billing · payments · credits · migration · deletion · secrets · tokens · crypto · permissions) | + `security-engineer` |
 | User-visible change (screen / flow / API contract) | + `qa-tester` (E2E / UI) |
