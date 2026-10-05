@@ -69,6 +69,7 @@ Done when: the task is committed, its boxes flipped, its owner stopped.
 
 > Track end: a track with two or more code tasks → one fresh owner (the role owning most of the track's code) runs the two lenses in ONE message on the track diff and fixes each BLOCKER / MAJOR with its proof (`review-code` Fix-verify); the Lead commits the fixes in the track worktree, then `ticket.sh finish <worktree>` merges the track. A track with one code task → its task owner runs the two lenses before returning, the same way, and the track takes no track-end review.
 
+  No `ticket.sh` → the track diff is `git diff <base>...<track branch>`; the merge: fast-forward the track branch into the base, `git worktree remove`, `git worktree prune`, delete the branch.
 - A docs-only track takes no review. A track-end brief over a diff holding an R3 or R4 task carries the pool-on lens line when `cross-family.sh --pool-names` prints a member.
 - A required report missing, failed, empty or partial keeps that round open: its isolated reviewer completes its own report on the frozen diff. Never substitute a Lead review when agents are available; with no agents, the Lead records both axes and the independence limitation. Never accept a diff without its required reports.
 - The Lead never runs a review loop itself; it talks to owners. Findings → ONE fix task to the owning role; rounds and closure → `review-code` Fix-verify (no `review-code` → one fresh reviewer re-checks only each fix's delta, at most four rounds), closure in the receipt's Author fix closure with report pointers. Nothing pushes or releases before it.
@@ -100,7 +101,7 @@ Done when: a Verify status is recorded.
 - Changing a behavior, signature or return shape with callers → walk the callers first (code-intel or grep) and decide per caller: absorb, adapt or split.
 - Change files through the edit tool, never a shell heredoc, `sed -i` or `tee`.
 - A sibling plugin covers the domain → `references/sibling-plugins.md`; no reference → its edit primitive when installed. A step only the human can perform → `references/wizard.md`; no reference → ask the user for that one step and wait.
-- Verify on the Command verbatim or cite a matching passing run (`check-work` Evidence cache); a failure → run just those tests on the base tree (`check-work` Run the evidence): red there too = pre-existing, a limitation.
+- Verify on the Command verbatim or cite a matching passing run (`check-work` Evidence cache); a failure → run just those tests on the base tree (`check-work` Run the evidence): red there too = pre-existing, a limitation. A failure recorded as pre-existing does not block the `COMPLETED` verdict; the Command counts as passing when the rest is green.
 - Failure → the task's **On fail**, else the plan's **Failure policy**, else `debug-issue`. Four failed fixes for one unresolved repro or criterion → stop and ask; one Second opinion after two (`debug-issue` Second opinion); review rounds count separately.
 
 Scope and receipt pairs, good and bad → `examples/execution-examples.md`; no examples → the Artifact line in step 3.
@@ -108,7 +109,7 @@ Scope and receipt pairs, good and bad → `examples/execution-examples.md`; no e
 ## Guardrails
 
 - Finish the planned task as planned; a new idea is one line under the plan's `## Follow-ups`, never a mid-build redesign.
-- Run continuously between tasks: stop only on a BLOCKED after a variable change, or a spec / plan gap or scope ambiguity that survives a re-read. Every dispatch out and nothing unblocked → the turn ends as a wait on something whose end wakes you (CI → `finish-work` CI lanes; no `finish-work` → poll the lane). Forced to end → one line under `## Changes during build`: stopped after Task N · next Task M · how to start the env.
+- Run continuously between tasks: stop only on a BLOCKED after a variable change, or a spec / plan gap or scope ambiguity that survives a re-read. Never ask 'should I continue?'; an ended turn is a stop however it is worded. Every dispatch out and nothing unblocked → the turn ends as a wait on something whose end wakes you (CI → `finish-work` CI lanes; no `finish-work` → poll the lane). Forced to end → one line under `## Changes during build`: stopped after Task N · next Task M · how to start the env.
   A wait offers /compact only as the relay of a context-check line → manage-context Compact at seams; no manage-context → ONE line of ~100 characters naming the plan path and the next step, never a question.
 - Read the evidence, not the status: never accept `COMPLETED` without its Command tail.
 
