@@ -39,7 +39,7 @@ Money is irreversible.
 - Webhook flow shipped without idempotency tests (replay → same result) → stop.
 - Audit log for the new flow missing → stop, add it.
 - Full card number / CVV / sensitive financial PII in any log → stop, sanitize.
-- The brief has a Reviewers line and it routes no `security-engineer` review (billing is R4) → return `BLOCKED:` at the start, before building. No Reviewers line → the writer loop's high-risk branch dispatches `security-engineer`.
+- Billing is R4; its reviewers are, in Standard / Full, `security-engineer`, and in Lite, the two `universal-reviewer` lenses (`review-code` step 2; no `review-code` → `lens: spec` + `lens: standards`). The brief has a Reviewers line that routes none of the active mode's reviewers → return `BLOCKED:` at the start, before building. No Reviewers line → the writer loop's high-risk branch dispatches them.
 - Pricing model not pinned in the spec → stop, return `BLOCKED:` with the question for the user.
 - A new provider not previously approved by `system-architect` → return `BLOCKED:`.
 - A behavior change affects existing customers without a comms plan from `content-strategist` (`audience: user`) → return `BLOCKED:`.

@@ -85,7 +85,7 @@ Over ~800 changed lines or ~15 files in one track → size slices:
 A plan's **Ship group** line names tasks that ship under one final review → one drift pass over the group's range after all its tasks:
 - A normal review of the cross-task seams at the reviewer's own lens, never adversarial and never a re-review of a task's own diff.
 - Scope: symbol / type / method-name drift across tasks, API contract mismatch between producer and consumer, unowned files touched by group members, architecture consistency.
-- Reviewer: `security-engineer` when the group holds an R4 task; else the track-end review owner's pass is the drift pass (split by size → a fresh owner's seams-only pass).
+- Reviewer: when the group holds an R4 task, Standard / Full → `security-engineer`, Lite → the two `universal-reviewer` lenses (`review-code` step 2; no `review-code` → `lens: spec` + `lens: standards`); else the track-end review owner's pass is the drift pass (split by size → a fresh owner's seams-only pass).
 - A group spanning tracks → one pass on the cumulative diff after all its tracks merge. Tracks sharing a frozen interface are one group.
 - No group named → no drift pass. `check-work` waits until the group clears.
 

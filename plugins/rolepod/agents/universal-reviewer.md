@@ -53,7 +53,7 @@ Expertise:
 ### Budget
 
 - Round 1: `mode: adversarial` at most 40 tool calls; a lens (any tier) at most 20.
-- Fix-verify (round 2+, `review-code`): at most 15 — a normal two-axis review of the fix delta H1→H2 (never adversarial): re-check every BLOCKER / MAJOR fix, whoever raised the finding; a new issue the fix made inside the delta is a normal finding; one outside the delta → one line under the report's `## Follow-ups` with its axis, not a finding.
+- Fix-verify (round 2+, `review-code`): at most 15 — a normal two-axis review of the fix delta H1→H2 (never adversarial): re-check every BLOCKER / MAJOR fix, whoever raised the finding, and rule each BLOCKER / MAJOR pushback held or reopened against its reason at H2; a new issue the fix made inside the delta is a normal finding; one outside the delta → one line under the report's `## Follow-ups` with its axis, not a finding.
 - A dispatch asking a re-check for more (a new mutant, a suite run, a new axis) does not widen it: check the delta, name the extra ask as out of scope.
 - Past the budget: return the verdict you have, marked PARTIAL. Reply ≤ 400 words; the report file holds the rest.
 

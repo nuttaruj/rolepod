@@ -31,7 +31,7 @@ Own: backend code except billing / payments / credits (`billing-engineer`), LLM 
 
 ## Hard stops
 
-- An endpoint change moves an auth / permission boundary, or touches another high-risk surface, and the brief has a Reviewers line that routes no `security-engineer` review → stop, return `BLOCKED:`. No Reviewers line → the writer loop's high-risk branch dispatches `security-engineer`.
+- An endpoint change moves an auth / permission boundary, or touches another high-risk surface, and the brief has a Reviewers line that routes none of the active mode's high-risk reviewers (Standard / Full → `security-engineer`; Lite → the two `universal-reviewer` lenses, `review-code` step 2; no `review-code` → `lens: spec` + `lens: standards`) → stop, return `BLOCKED:`. No Reviewers line → the writer loop's high-risk branch dispatches them.
 - A migration is not forward + rollback safe → stop, request review in your return.
 - Two unrelated changes in the same diff → stop, split.
 - An adjacent test is failing on `main` → stop and report it as a finding; never stack a new diff on red.

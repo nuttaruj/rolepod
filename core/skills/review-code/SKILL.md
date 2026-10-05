@@ -90,12 +90,13 @@ Done when: the report carries a Recommendation and the review line is appended.
 
 ### 5. Fix-verify rounds
 
-- Round 2+ (every mode, every tier): ONE fresh `universal-reviewer` (balanced) re-checks only the fix delta H1→H2 of every BLOCKER / MAJOR fix in one pass, whoever raised the finding; never the original role. MINOR closes on author evidence. At most four rounds including round 1; still open → stop and hand the user the findings and the fix log.
+- Round 2+ (every mode, every tier): ONE fresh `universal-reviewer` (balanced) re-checks only the fix delta H1→H2 of every BLOCKER / MAJOR fix, and every BLOCKER / MAJOR pushback against its reason at H2, in one pass, whoever raised the finding; never the original role. A pushback the re-check marks held closes; one it marks reopened goes back to the author as an open finding. MINOR closes on author evidence. At most four rounds including round 1; still open → stop and hand the user the findings and the fix log.
 - Review-round count is separate from failed-fix count; changing reviewers or owners resets neither. A review rejection is not a failed fix.
-- Four failed fixes for one unresolved repro or criterion → stop and ask; one Second opinion after two (`debug-issue` Second opinion); review rounds count separately.- A finding closes at the receipt only: the canonical task receipt records, per finding, the author's finding-specific repro or test and result, the bounded fix delta H1→H2 (changed paths + delta hash) and the verified H2; a green suite alone closes nothing. Reports stay immutable at H1; the re-check writes its own report at H2.
+- Four failed fixes for one unresolved repro or criterion → stop and ask; one Second opinion after two (`debug-issue` Second opinion); review rounds count separately.
+- A finding closes at the receipt only: the canonical task receipt records, per finding, the author's finding-specific repro or test and result, the bounded fix delta H1→H2 (changed paths + delta hash) and the verified H2; a green suite alone closes nothing. Reports stay immutable at H1; the re-check writes its own report at H2.
 - The re-check's diff file is the delta only. The owner records the H1 tree when it stages the round-1 diff (`git add -A && git write-tree`, the `check-work` Verified-tree recipe); after the fixes it writes `git add -A && git diff <H1-tree> $(git write-tree) -U10 -- . ':!docs/rolepod' ':!*.lock' ':!package-lock.json' ':!pnpm-lock.yaml'` to `.rolepod/evidence/review/<task>-r2.diff` and hands the re-check that file, never the cumulative diff. A committed H1 → its commit sha for the tree. No H1 tree kept → the cumulative diff plus the paths the fixes touched, and say so.
 
-Done when: every BLOCKER / MAJOR and every issue its fix made is closed at the receipt after the re-check above. Anything outside a finding fix delta sits in `## Follow-ups` with its axis. The review then stops — never a full re-review until clean.
+Done when: every BLOCKER / MAJOR and every issue its fix made is closed at the receipt after the re-check above; a pushed-back finding closes only when the re-check marks it held. Anything outside a finding fix delta sits in `## Follow-ups` with its axis. The review then stops — never a full re-review until clean.
 
 ### 6. Author response
 
@@ -107,9 +108,9 @@ READ all → VERIFY each against the code → RESPOND (fix or reasoned pushback;
 - A pre-existing issue on a changed path that does not make this change wrong → a user decision (money / auth) or `## Follow-ups`.
 - "The plan's list" = the plan's `## Follow-ups`; no plan file → the finish menu's Follow-ups carried, the one list `finish-work` works through.
 - No `references/receiving-findings.md` → per finding, reply with the fix or a reasoned pushback.
-- BLOCKER / MAJOR fixes recorded → dispatch the Fix-verify re-check (step 5) against H2.
+- BLOCKER / MAJOR fixes or pushbacks recorded → dispatch the Fix-verify re-check (step 5) against H2; a pushback goes in with its reason, and the re-check marks it held or reopened.
 
-Done when: every finding is fixed, pushed back with a reason, or in `## Follow-ups`, and each fixed finding's closure is in the receipt.
+Done when: every finding is fixed, pushed back with a reason, or in `## Follow-ups`; each fixed finding's closure is in the receipt, and each BLOCKER / MAJOR pushback is marked held there by the re-check.
 
 ## Guardrails
 

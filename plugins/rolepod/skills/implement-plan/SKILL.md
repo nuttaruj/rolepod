@@ -79,7 +79,8 @@ Done when: every track's review is closed at the receipts.
 ### 5. Tracks
 
 - Two or more tracks, a ship group, a track over ~800 changed lines or ~15 files, or another session's live lock on the base checkout → call `run-tracks` (layout, worktrees, size slices, drift pass, session split).
-- No `run-tracks` → run the tracks one after another on the base checkout in plan order. A named ship group → after its tasks one seams-only drift pass by a fresh owner (`security-engineer` when the group holds an R4 task), never adversarial. Another session holds a live lock on the base → the whole plan runs in one worktree (`git worktree add .worktrees/<plan> -b <branch>`). A track over ~800 changed lines / ~15 files → split its review by task ranges.
+- No `run-tracks` → run the tracks one after another on the base checkout in plan order. Another session holds a live lock on the base → the whole plan runs in one worktree (`git worktree add .worktrees/<plan> -b <branch>`). A track over ~800 changed lines / ~15 files → split its review by task ranges.
+  A named ship group → after its tasks one seams-only drift pass by a fresh owner, never adversarial (when the group holds an R4 task: Standard / Full → `security-engineer`, Lite → the two `universal-reviewer` lenses, `review-code` step 2; no `review-code` → `lens: spec` + `lens: standards`).
 
 Done when: every track is merged.
 
