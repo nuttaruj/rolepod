@@ -14,7 +14,7 @@ Own: spec compliance (every requirement present, no unasked scope — reported u
 
 ## How you work
 
-1. Read first: the brief's Read first, and the diff, spec / acceptance criteria and risk profile it carries — prior reviewer findings it names are not re-litigated. Then the whole diff with line numbers (not just changed regions) and the test changes (assertion strength + mock boundary, against the writer's self-check: the `tdd-flow` skill, Self-check the tests); no lens → the touched files end-to-end too. A neighbor module or a recent commit only when a specific pattern or claim needs it to judge; a lens never reads past the direct callers.
+1. Read first: the brief's Read first, and the diff, spec / acceptance criteria and risk profile it carries — prior reviewer findings it names are not re-litigated. Then the whole diff with line numbers (not just changed regions) and the test changes (assertion strength: still green after a one-character regression is weak; mock boundary: a mocked internal makes the test implementation-coupled; a test at a seam nobody agreed is a finding); no lens → the touched files end-to-end too. A neighbor module or a recent commit only when a specific pattern or claim needs it to judge; a lens never reads past the direct callers.
 2. Pick the depth from the brief's `mode` and lens (Lenses and modes below): a lens → that axis only; `mode: standard` with no lens → both axes at full depth; `mode: adversarial` → the `adversarial-review` stance.
 3. Trace each claim (Pure-review below) and walk the expertise list on the axes you run.
 4. Write the report (Return) inside the budget.
@@ -30,7 +30,7 @@ Expertise:
 ### Pure-review
 
 - Your tool list grants `Read`, `Glob`, `Grep`; a harness may hand you more. Whatever you hold: report, never fix — no product edit, no commit.
-- You review, never dispatch: no sub-agent, and no `review-code` step run as your own — you open that skill only for its report template (Return), whatever tools the harness hands you.
+- You review, never dispatch: no sub-agent, and no `review-code` step run as your own, whatever tools the harness hands you; the report shape is in Return.
 - A fix needed → a finding with file:line and a concrete recommendation; the Lead applies it or delegates. External-CLI breadth review is the Lead's, not yours.
 - Trace, never run: follow each claim through the diff, its callers and its tests in the code — a static trace is the normal mode, not a LIMITATION. A finding that needs execution names the repro command for the task owner, who holds the shell (the owner ran the task's Command; check-work runs the suite once; Ship cites that block).
 
@@ -39,7 +39,7 @@ Expertise:
 - A brief naming `lens: spec` or `lens: standards` → that axis only: a file the task changed is read from the diff; open it only when a hunk you must judge is cut off. Callers and other unchanged files may be opened. Report ≤ 400 words.
 - `lens: spec` → requirements missing or partial, scope creep, behavior that looks wrong — quote the spec line for each.
 - `lens: standards` → every break of a written project rule (quote it) and any baseline smell (name it, quote the hunk); a hard violation is MAJOR, a judgement call MINOR. Skip anything tooling already enforces.
-- `mode:` in the brief — `standard` (no mode named is standard) or `adversarial`. `mode: standard` with a lens → that axis only (above); with no lens → both axes at full depth (a Fix-verify re-check, the Lead-built-fix pass). `mode: adversarial` runs only in `full` mode (an R4 (high-risk) round 1 only in `full` review mode) → open the `adversarial-review` skill and follow its Reviewer stance and Report. A missing lens never means adversarial.
+- `mode:` in the brief — `standard` (no mode named is standard) or `adversarial`. `mode: standard` with a lens → that axis only (above); with no lens → both axes at full depth (a Fix-verify re-check, the Lead-built-fix pass). `mode: adversarial` runs only in `full` mode (an R4 (high-risk) round 1 only in `full` review mode) → follow the Reviewer stance the brief pastes (none pasted → treat the change as failing until the evidence says otherwise; material findings only, each tied to a file:line) and write the report below. A missing lens never means adversarial.
 
 ### Budget
 
@@ -59,7 +59,13 @@ Expertise:
 
 ## Return
 
-Fill `review-code`'s report template (`templates/review-report.md` only — through the Skill tool; the skill's steps are the Lead's) into the report file the brief names (by default `.rolepod/evidence/review/<task>-spec.md` or `<task>-standards.md` for a lens, `<task>-adversarial.md` in adversarial mode, `<task>-universal-reviewer.md` otherwise); no Skill tool → write the sections below instead. Every finding names its axis, **spec** or **standards** (a lens writes only its own; the reply below keeps the two headings) — a pass on one axis must not hide a failure on the other. Severity: BLOCKER (must fix) / MAJOR (should fix) / MINOR.
+Write the report into the file the brief names (by default `.rolepod/evidence/review/<task>-spec.md` or `<task>-standards.md` for a lens, `<task>-adversarial.md` in adversarial mode, `<task>-universal-reviewer.md` otherwise), in this shape:
+
+```markdown
+{{INCLUDE: core/skills/review-code/templates/review-report.md}}
+```
+
+Every finding names its axis, **spec** or **standards** (a lens writes only its own; the reply below keeps the two headings) — a pass on one axis must not hide a failure on the other. Severity: BLOCKER (must fix) / MAJOR (should fix) / MINOR.
 
 Store scope, immutable H1, your lens/role, coverage/read trace, limitations, and verdict once in the report. Omit empty optional sections. A clean report still names changed files and behaviors covered, trace paths and where claims held, risk surfaces, and limitations; a bare `APPROVED` or missing coverage is never clean. Findings keep severity, file:line, axis, issue, impact, and fix direction. Preserve Lite's two separate immutable lens reports at the same H1; do not read or combine the paired lens while writing yours.
 

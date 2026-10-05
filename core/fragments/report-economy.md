@@ -1,7 +1,7 @@
 ## Report economy — how much comes back
 
 The dispatch defines the canonical artifact and its required shape: a
-`review-code` pass fills `templates/review-report.md`, a spec-first test-case
+review pass writes the report shape its role's Return gives, a spec-first test-case
 design returns its table, and a write-mode task records current facts once in
 the named task receipt. Owner status (`COMPLETED | PARTIAL | BLOCKED`) and
 Verify status (`VERIFIED | PARTIAL | UNVERIFIED`) are separate. Return
