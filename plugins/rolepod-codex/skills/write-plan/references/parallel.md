@@ -13,11 +13,11 @@ Tracks group tasks that share files or are linked by **Blocked by** edges within
 
 ## The contract
 
-Fill `templates/cohesion-contract-template.md` — Shared goal · Owners · File ownership · Shared interfaces · Merge order · Do-not-touch list · Verification per agent · Integration owner · Session split (optional). Save it to `contract.md` or `docs/rolepod/plans/<feature>-cohesion-YYYY-MM-DD.md`.
+Fill `templates/cohesion-contract-template.md` — Shared goal · Owners · File ownership · Shared interfaces · Merge order · Do-not-touch list · Verification per agent · Integration owner · Session split (optional). Save it to `docs/rolepod/plans/<feature>-cohesion-YYYY-MM-DD.md` (private, beside the plan).
 
 - Every path sits under EXACTLY one owner: unowned = unplannable, dual-owned = a scheduled merge conflict.
 - Two parallel tracks need the same file → sequential, or rewrite the contract, then re-run `plan-lint.sh <plan> <contract>`.
 
 ## Session split
 
-Tracks run as SEPARATE CLI sessions (cross-CLI wall-clock parallelism) → fill the contract's optional **Session split** section: per-track CLI + branch + kickoff prompt, one integration session. Execution: implement-plan's `references/subagent-dispatch.md`, "Session-split tracks".
+Tracks as separate CLI sessions → the run-tracks skill (session split); no `run-tracks` → fill the contract's optional **Session split** section: per-track CLI + branch + kickoff prompt, one integration session that merges in the contract's order.

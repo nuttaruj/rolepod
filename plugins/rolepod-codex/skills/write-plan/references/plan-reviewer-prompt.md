@@ -1,19 +1,11 @@
-<!-- Reusable subagent prompt for an independent plan-document review. -->
-<!-- Use when the plan is risky, large, or spans multiple specialists. -->
-<!-- Dispatch via the Agent tool with subagent_type=universal-reviewer. -->
+<!-- Reusable prompt for an independent plan-document review (write-plan step 7). -->
 
 # Plan reviewer prompt
 
 ## When to dispatch
 
-An independent spec or plan reviewer (the cross-family critique, the plan review) runs in Full only; Lite and Standard rely on self-review and the lint, unless the user asks for a second opinion.
-
-- Plan touches a high-risk surface (auth / billing / payments / credits / migration / data deletion / secrets / tokens / crypto / permissions / security)
-- Plan has more than ~8 tasks or spans multiple specialists
-- Plan was drafted by Lead in an unfamiliar module
-- User asked for a second opinion
-
-Skip for trivial single-owner plans — self-review is enough.
+Only under write-plan step 7's trigger: workflow mode Full with the cross-family pool on and an R4 (high-risk) plan, or the user asks for a second opinion. Outside it, self-review and the lint decide — never dispatch on plan size alone.
+Runner: the `cross-family` skill's critique kind when the pool is usable; else (or no `cross-family`) a fresh `universal-reviewer` subagent with the brief below; no subagents → the Lead runs the seven checks on a fresh read.
 
 ## Dispatch
 
@@ -23,7 +15,7 @@ Brief the reviewer with:
 - Path to the source spec (or inline the spec)
 - Any specific concern Lead wants pressure-tested
 
-## Reviewer brief — paste into the Agent prompt
+## Reviewer brief — paste into the reviewer's prompt
 
 ```
 You are an independent plan reviewer. Verify this plan is complete,
