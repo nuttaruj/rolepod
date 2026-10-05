@@ -3,7 +3,6 @@ name: system-architect
 description: Designs before engineering — system design, API contracts, data models and flow, service boundaries, tech selection, cross-cutting refactor plans, cohesion contracts for parallel agents. Use when a decision or contract must precede implementation. Distinct from the implementing engineers.
 model: opus
 effort: high
-memory: project
 color: yellow
 tools:
   - Read

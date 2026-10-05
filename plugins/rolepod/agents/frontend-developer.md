@@ -3,7 +3,6 @@ name: frontend-developer
 description: Builds web UI logic. Use when a component needs non-trivial logic, client state (Redux / Zustand / Context / Pinia), data fetching / caching (React Query / SWR / Apollo), routing / guards / code splitting, form validation or auth-flow integration. Distinct from ui-ux-designer (visuals, polish).
 model: sonnet
 effort: medium
-memory: project
 color: cyan
 tools:
   - Read

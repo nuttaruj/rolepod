@@ -3,7 +3,6 @@ name: mobile-developer
 description: Native iOS / Android (Swift, SwiftUI, UIKit, Obj-C, Kotlin, Compose, Java) and React Native / Flutter apps. Use when work is platform-specific or touches push (APNs / FCM), permissions or app-store readiness. Overlaps frontend-developer on cross-platform UI logic; CI / fastlane / EAS → devops-sre.
 model: sonnet
 effort: medium
-memory: project
 color: purple
 tools:
   - Read

@@ -3,7 +3,6 @@ name: billing-engineer
 description: Owns the money flow — payment gateways (Stripe / Paddle / PayPal / Adyen), subscriptions, credit hold / confirm / release / refund, invoices, reconciliation, pricing, metering, webhooks, financial integrity. Use when a change touches billing, payments or credits. Distinct from backend-developer.
 model: sonnet
 effort: high
-memory: project
 color: green
 tools:
   - Read

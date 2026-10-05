@@ -3,7 +3,6 @@ name: backend-developer
 description: Builds server-side REST / GraphQL / RPC APIs, business logic, DB models / migrations, background jobs, integrations (webhooks, polling, signature verify), caching, idempotency. Use when backend work falls outside billing, AI and analytics (billing-engineer, ai-ml-engineer, data-scientist).
 model: sonnet
 effort: medium
-memory: project
 color: blue
 tools:
   - Read

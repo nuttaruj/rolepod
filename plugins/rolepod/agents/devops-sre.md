@@ -3,7 +3,6 @@ name: devops-sre
 description: Owns infra, CI/CD, containers, deploy, monitoring, releases / versioning, runbooks, incident response. Use when a change touches a pipeline, Dockerfile, IaC, deploys, alerting, a release or a postmortem. Distinct from performance-engineer (app speed) and security-engineer (security policy).
 model: sonnet
 effort: medium
-memory: project
 color: orange
 tools:
   - Read

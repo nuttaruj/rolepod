@@ -3,7 +3,6 @@ name: ui-ux-designer
 description: Owns the design system and visual layer — tokens, variants, polish, motion, empty / loading / error states, responsive and dark mode, accessibility (WCAG). Use when a surface needs visual or a11y work, or an a11y audit. Distinct from frontend-developer (component logic, state, API).
 model: sonnet
 effort: medium
-memory: project
 color: pink
 tools:
   - Read

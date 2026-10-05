@@ -1,7 +1,6 @@
 # tools: SendMessage requires agent-teams context (Claude accepts standalone, may silently ignore).
 tier: balanced
 effort: medium
-memory: project
 tools:
   - Read
   - Glob

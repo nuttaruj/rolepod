@@ -3,7 +3,6 @@ name: ai-ml-engineer
 description: Applied AI in production code — LLM APIs (Anthropic / OpenAI / Vertex / Bedrock), prompts and prompt caching, RAG, embeddings, agents and MCP tools, token / cost optimization, eval / safety harnesses. Use when a feature calls or builds on an LLM. Distinct from data-scientist (statistics).
 model: sonnet
 effort: high
-memory: project
 color: purple
 tools:
   - Read

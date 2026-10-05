@@ -3,7 +3,6 @@ name: performance-engineer
 description: Owns speed — load testing, profiling, latency, memory leaks, bundle size, DB query performance, p95 / p99. Use when something measurable is slow or leaking, a perf regression is suspected after a deploy, or a launch needs a load test. Distinct from qa-tester (user-visible tests).
 model: sonnet
 effort: high
-memory: project
 color: orange
 tools:
   - Read

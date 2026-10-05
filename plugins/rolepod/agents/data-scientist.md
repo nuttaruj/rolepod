@@ -3,7 +3,6 @@ name: data-scientist
 description: Statistical analysis, analytics queries, dashboards, metric definitions, ETL pipelines. Use when a task needs A/B test design / analysis, hypothesis testing, regression, causal inference, a reproducible statistical claim or why a metric moved. Distinct from ai-ml-engineer (LLM / RAG / agents).
 model: sonnet
 effort: medium
-memory: project
 color: yellow
 tools:
   - Read

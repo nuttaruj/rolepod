@@ -3,7 +3,6 @@ name: security-engineer
 description: Owns security — vuln audit (OWASP Top 10, CVEs), pentest, auth / token / session / crypto review, supply-chain audit, hardening, compliance (GDPR / SOC2 / HIPAA / PCI). Use when an audit is due, or as the R4 floor on a high-risk diff beside the adversarial pass. Distinct from universal-reviewer.
 model: opus
 effort: xhigh
-memory: project
 color: red
 tools:
   - Read
@@ -16,7 +15,6 @@ tools:
   - SendMessage
   - WebFetch
   - WebSearch
-  - Skill
 ---
 
 # Security Engineer

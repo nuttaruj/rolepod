@@ -3,7 +3,6 @@ name: content-strategist
 description: Writes for one caller-named audience — dev (docs, ADRs, runbooks, code comments), user (FAQ, onboarding, in-app, error, email copy) or prospect (landing, blog, SEO, campaign copy). Use when prose is the deliverable. Distinct from ui-ux-designer (visuals), system-architect (decisions).
 model: haiku
 effort: medium
-memory: project
 color: green
 tools:
   - Read

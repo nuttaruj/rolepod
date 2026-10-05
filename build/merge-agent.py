@@ -207,13 +207,18 @@ def _overlay_tools(overlay_path: Path) -> set[str]:
     """Tool names from a Claude overlay's `tools:` list, or empty if none.
 
     Shared by the cursor and opencode branches: both derive a permission
-    surface from the same Claude tool allowlist.
+    surface from the same Claude tool allowlist. A `Write` with neither `Edit`
+    nor `Bash` is a report-only grant on Claude (the write-scope hook keeps
+    that role to markdown), so Cursor and opencode keep the role read-only.
     """
     if not overlay_path.exists():
         return set()
     ov = parse_yaml_block(overlay_path.read_text())
-    return {ln.strip().lstrip("- ").strip()
-            for ln in ov.get("tools", [])[1:] if ln.strip().startswith("-")}
+    tools = {ln.strip().lstrip("- ").strip()
+             for ln in ov.get("tools", [])[1:] if ln.strip().startswith("-")}
+    if "Write" in tools and not tools & {"Edit", "Bash"}:
+        tools.discard("Write")
+    return tools
 
 
 def _toml_basic(s: str) -> str:
@@ -303,7 +308,8 @@ def merge(target: str, name: str) -> str:
         # name + description already live in core/agents. readonly is
         # derived from the Claude overlay's tools list — the same tool parse
         # the opencode branch below uses: a role whose overlay holds none of
-        # Edit / Write / Bash renders read-only on Cursor too.
+        # Edit / Write / Bash (a lone report-only Write counts as none, see
+        # _overlay_tools) renders read-only on Cursor too.
         overlay_path = REPO_DIR / "adapters" / "claude" / "agent-frontmatter" / f"{name}.yml"
         tools = _overlay_tools(overlay_path)
         merged = dict(core_fields)

@@ -3,7 +3,6 @@ name: qa-tester
 description: Owns user-visible tests (E2E / UI / contract / smoke) and flakes. Use when a feature reaches check-work Verify (once), a user-visible repro or E2E flake needs a test, or the user asks for test cases / a bug report; never per task, from finish-work or as a reviewer. Unit tests are the writer's.
 model: sonnet
 effort: high
-memory: project
 color: red
 tools:
   - Read
