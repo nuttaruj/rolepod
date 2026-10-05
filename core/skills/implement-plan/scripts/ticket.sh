@@ -1449,7 +1449,7 @@ RD_USAGE="usage: ticket.sh review-diff start <name> [-- <path>...] | ticket.sh r
 
 cmd_review_diff() {
   local sub="${1:-}" name="${2:-}" h1="" k="" top dir out h2 want p
-  local paths=() live=() stage=() ex=() spec=()
+  local paths=() live=() stage=() stageu=() ex=() spec=()
   case "$sub" in
     start) if [ $# -eq 2 ]; then :
            elif [ $# -ge 4 ] && [ "$3" = "--" ]; then paths=("${@:4}")
@@ -1488,7 +1488,13 @@ cmd_review_diff() {
       case "${p//[.\/]/}" in
         "") echo "ticket: review-diff: path must be a plain checkout-relative path, not '$p' — $RD_USAGE" >&2; exit 2 ;;
       esac
-      if [ -e "$top/$p" ] || [ -n "$(git --literal-pathspecs -C "$top" ls-files -- "$p" 2>/dev/null)" ]; then
+      if [ -n "$(git --literal-pathspecs -C "$top" ls-files -- "$p" 2>/dev/null)" ]; then
+        live+=("$p")
+        stageu+=("$p")   # tracked: staged below, `add -A` first, `add -u` when ignored files refuse it
+      elif git -C "$top" check-ignore -q -- "$p" 2>/dev/null; then
+        # nothing tracked and gitignored: `git add` would refuse it and fail the call
+        echo "ticket: review-diff: skipped path (gitignored): $p" >&2
+      elif [ -e "$top/$p" ]; then
         live+=("$p"); stage+=("$p")
       elif [ -n "$(git --literal-pathspecs -C "$top" ls-tree -r --name-only HEAD -- "$p" 2>/dev/null)" ]; then
         live+=("$p")   # deleted and already staged: diffed, nothing left to add
@@ -1496,10 +1502,16 @@ cmd_review_diff() {
         echo "ticket: review-diff: skipped path (not in worktree, index or HEAD): $p" >&2
       fi
     done
-    [ "${#live[@]}" -gt 0 ] || { echo "ticket: review-diff: none of the paths exists — $RD_USAGE" >&2; exit 2; }
+    [ "${#live[@]}" -gt 0 ] || { echo "ticket: review-diff: none of the paths exists or is reviewable (missing or gitignored) — $RD_USAGE" >&2; exit 2; }
     if [ "${#stage[@]}" -gt 0 ]; then
       git --literal-pathspecs -C "$top" add -A -- "${stage[@]}" || { echo "ticket: review-diff: git add -A failed" >&2; exit 1; }
     fi
+    for p in ${stageu[@]+"${stageu[@]}"}; do
+      # git add -A refuses a dir holding ignored files even when tracked ones sit in it
+      git --literal-pathspecs -C "$top" add -A -- "$p" 2>/dev/null \
+        || git --literal-pathspecs -C "$top" add -u -- "$p" \
+        || { echo "ticket: review-diff: git add failed for $p" >&2; exit 1; }
+    done
     spec=("${live[@]}")
   else
     git -C "$top" add -A || { echo "ticket: review-diff: git add -A failed" >&2; exit 1; }
