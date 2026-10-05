@@ -20,7 +20,7 @@ Tracks come from the plan's `## Tracks`; their order comes from each task's **Bl
 Parallel fires only when the plan's **Parallel layout** line declares Parallel with a contract path AND that contract exists. No contract → run the tracks one after another and say why.
 A track's dependencies are the tasks in other tracks whose interfaces it consumes; the contract's merge order encodes them.
 
-A track's tasks run in order in one worktree: each task builds, runs its Command and is committed there; an R4 task keeps its round-1 review before its commit, and an R2/R3 task gets no review until the track ends (a track's only code task runs its own two lenses before returning).
+A track's tasks run in order in one worktree: each task builds, runs its Command and is committed there; an R4 task keeps its round-1 review before its commit, and an R2/R3 task gets no review until the track ends (a track's only code task orders its own review before returning).
 
 A task Blocked by tasks in two or more tracks starts after those tracks merge, as the first task of a new track from the base.
 
@@ -60,17 +60,17 @@ Done when: every ready track is out, or the reason for running them serially is 
 The Lead integrates each returned task in its track's worktree (the ship line per task [`implement-plan` step 3: `ticket.sh integrate` → commit → `log`]; no `ticket.sh` → the commit check, `git commit`, one `## Changes during build` line; a harness-made worktree the same way): the commit gate finds the owner's reviewer evidence there.
 - Each task in the track commits once ready; no `finish` until the track ends.
 - A harness-made worktree, or a commit refused because the Lead's branch moved → `git cherry-pick <sha>` (a conflict ends with `git cherry-pick --continue`, never a new `git commit`), then (after all tasks integrate) remove the worktree, delete its branch, and run the `log` step (record each task: `ticket.sh log <plan> <N> --sha <sha> --note '<text>'` flips its boxes and appends the Changes line; no `ticket.sh` → flip the boxes by hand and add one `## Changes during build` line per task with the cherry-picked sha).
-- Integrated → stop the owner (TaskStop, or the CLI's close) in the same turn. Its return notes background work still running → stop that at once; leftover work runs for hours unwatched.
-- An owner's return whose last line is `WAITING: <report paths>` is mid-task → `implement-plan` step 3 (the relay); no `implement-plan` → never integrate or stop it, and a report that reaches you goes to the owner as `Report in: <path>` in the same turn.
+- Integrated → stop the owner (TaskStop, or the CLI's close) in the same turn — keep a track's last code-task owner for its track end. Its return notes background work still running → stop that at once; leftover work runs for hours unwatched.
+- An owner returns its diff unreviewed → `implement-plan` step 3; no `implement-plan` → `run-review` on that diff before you integrate.
 - Before any cleanup, preserve an older worktree receipt to the named base path first. A differing destination is a collision: stop cleanup and report it. Do not create another report or handoff.
 
-Done when: each returned task is committed in its track worktree and its owner is stopped.
+Done when: each returned task is committed in its track worktree and its owner is stopped or kept for its track end.
 
 ### 4. Review the track
 
-Track end: a track with two or more code tasks → one fresh owner (the role owning most of the track's code) runs the two `universal-reviewer` lenses in ONE message on the track diff `ticket.sh log` names and fixes each BLOCKER / MAJOR (`review-code` Fix-verify); a track with one code task → its owner ran them before returning; a docs-only track → none.
+Track end → the `Track end:` and `Review:` lines `ticket.sh log` prints; no `ticket.sh` → the last code task's owner runs `run-review` on the track diff with the active mode's R3 set (`plan-lint.sh --review-set --tier R3`) and fixes each BLOCKER / MAJOR; a track with one code task → its owner ordered its own review before returning; a docs-only track → none.
 No `ticket.sh` → the track diff is `git diff <base>...<track branch>`.
-The fix re-check → `review-code` Fix-verify (rounds and closure); no `review-code` → one fresh `universal-reviewer` re-checks only each fix's delta, at most four rounds in all.
+The fix re-check → `run-review` Fix-verify (rounds and closure); no `run-review` → one fresh `universal-reviewer` re-checks only each fix's delta, at most four rounds in all.
 The Lead commits the fixes in the track worktree.
 
 Over ~800 changed lines or ~15 files in one track → size slices:

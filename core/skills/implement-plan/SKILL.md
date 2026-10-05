@@ -29,7 +29,7 @@ Done when: the plan lints clean (or passes the by-eye check; an inline checklist
 The plan's **Owner:** line wins:
 - `Owner: Lead` → Build it yourself (below; R1 only — R2 goes to the owner on main).
 - A named role → the **task owner**: it builds on the Command, runs its brief's reviewers, fixes, and returns a **decision brief** (its agent's Writer loop).
-- No Owner line → self-do only when all four are no: more than one file to edit, a test / build / server run, a real design-judgment call, more than 3 tool calls; any yes → the path's writer role (write-plan's domain map).
+- No Owner line → self-do only when all four are no: more than one file to edit, a test / build / server run, a real design-judgment call, more than 3 tool calls; any yes → the path's writer role (your pick from the agent listing).
 
 The brief: `scripts/ticket.sh start <plan> <N>`, or `plan-lint.sh --brief <N> <plan> [contract]` (add `--main` for a task on the main checkout, so the brief names no worktree). No script → the task block verbatim, plus the spec path and the Bounds: never commit, stay in scope, run the Command, return a decision brief. Picking the role, the BLOCKED variables and the ship recipe → `references/subagent-dispatch.md`; no reference → the closest specialist by path.
 - The Lead adds only **Read first** (the 2-3 files and the pattern to copy) and facts the brief lacks, appended after the generated sections; Tier, Reviewers and Command stay as generated. Never extra steps, runs or scope — a whole-suite run (the Lead's, once, at release) included.
@@ -51,28 +51,30 @@ Handle the brief's status (its first word):
 - `BLOCKED` → change a variable (context, model, scope); never redispatch unchanged.
 - A question or any other first word → answer it or ask for the status, then redispatch.
 
-An owner's return whose last line is `WAITING: <report paths>` is mid-task — never integrate or stop it. A report it names reaches you instead → SendMessage the owner `Report in: <path>` in the same turn; never merge or fix its findings yourself.
+An owner returns its diff unreviewed (it could not dispatch its set) → `run-review` on that diff before you integrate; its findings go back to that owner as one fix brief, never fixed or merged by you.
 
 The owner writes its decision brief to the absolute base receipt its brief names (docs/rolepod/tasks/<plan>/task-NN.md; Handoff at most ~15 lines — signatures, invariants); owners and reviewers never edit the plan file, and the Lead's own points go under ## Lead notes. Owner status (`COMPLETED | PARTIAL | BLOCKED`) and Verify status (`VERIFIED | PARTIAL | UNVERIFIED`) stay distinct; neither implies the other.
 A plan task's chat reply stays within 12 lines: status, receipt path, Command tail, reviewer verdicts + report paths, residuals.
 
-Validate the receipt, spot-check ONE claim, then integrate: the ship line (`ticket.sh integrate` → commit → `log`); no script → the commit check, `git commit`, then one `## Changes during build` line (sha / verdict / receipt pointer). Flip EVERY `- [ ]` under the task to `- [x]` from the Command tail; a **Test / evidence** proof the Command does not run (browser, manual) comes first. Integrated → stop the owner (TaskStop, or the CLI's close) in the same turn, and any background work it reports. One task per pass; never batch tasks into one diff.
+Validate the receipt, spot-check ONE claim, then integrate: the ship line (`ticket.sh integrate` → commit → `log`); no script → the commit check, `git commit`, then one `## Changes during build` line (sha / verdict / receipt pointer). Flip EVERY `- [ ]` under the task to `- [x]` from the Command tail; a **Test / evidence** proof the Command does not run (browser, manual) comes first.
+
+Integrated → stop the owner (TaskStop, or the CLI's close) in the same turn, and any background work it reports — keep a track's last code-task owner for its track end. One task per pass; never batch tasks into one diff.
 
 Artifact: `templates/implementation-manifest.md` — `## Decision brief` (Change, Tests added / changed, Commands, Scope check, Concerns, Author fix closure, Owner status), `## Verify status`, `## Handoff`, `## Reviews`, `## Lead notes`, filled inside the task receipt. Without a file-writing tool, the owner returns the complete receipt inline and names the limitation.
 
-Done when: the task is committed, its boxes flipped, its owner stopped.
+Done when: the task is committed, its boxes flipped, its owner stopped or kept for its track end.
 
 ### 4. Review at its seam
 
-- R4 task → per-task review: the owner's round-1 reports exist before its commit (who reviews at each tier → `review-code` Pick reviewers; no `review-code` → the brief's Reviewers line).
+- R4 task → per-task review: the owner's round-1 reports exist before its commit (the brief's Reviewers line; no brief → `plan-lint.sh --review-set --tier R4`).
 - R2/R3 tasks:
 
-> Track end: a track with two or more code tasks → one fresh owner (the role owning most of the track's code) runs the two lenses in ONE message on the track diff and fixes each BLOCKER / MAJOR with its proof (`review-code` Fix-verify); the Lead commits the fixes in the track worktree, then `ticket.sh finish <worktree>` merges the track. A track with one code task → its task owner runs the two lenses before returning, the same way, and the track takes no track-end review.
+> Track end: a track with two or more code tasks → its last code task's owner runs `run-review` with the `Review:` line `ticket.sh log` prints, on the track diff, and fixes each BLOCKER / MAJOR (owner gone → a fresh owner of the role owning most of its code; an owner that cannot dispatch returns the diff unreviewed and the Lead runs `run-review`); the Lead commits the fixes in the track worktree, then `ticket.sh finish <worktree>` merges the track. A track with one code task → its owner ordered its own review before returning, and the track takes no track-end review.
 
   No `ticket.sh` → the track diff is `git diff <base>...<track branch>`; the merge: fast-forward the track branch into the base, `git worktree remove`, `git worktree prune`, delete the branch.
 - A docs-only track takes no review. A track-end brief over a diff holding an R3 or R4 task carries the pool-on lens line when `cross-family.sh --pool-names` prints a member.
 - A required report missing, failed, empty or partial keeps that round open: its isolated reviewer completes its own report on the frozen diff. Never substitute a Lead review when agents are available; with no agents, the Lead records both axes and the independence limitation. Never accept a diff without its required reports.
-- The Lead never runs a review loop itself; it talks to owners. Findings → ONE fix task to the owning role; rounds and closure → `review-code` Fix-verify (no `review-code` → one fresh reviewer re-checks only each fix's delta, at most four rounds), closure in the receipt's Author fix closure with report pointers. Nothing pushes or releases before it.
+- The Lead runs no review loop of its own beyond step 3's `run-review`; it talks to owners. Findings → ONE fix task to the owning role; rounds and closure → `run-review` Fix-verify (no `run-review` → one fresh reviewer re-checks only each fix's delta, at most four rounds), closure in the receipt's Author fix closure with report pointers. Nothing pushes or releases before it.
 
 Done when: every track's review is closed at the receipts.
 
@@ -116,6 +118,8 @@ Scope and receipt pairs, good and bad → `examples/execution-examples.md`; no e
 
 ## Next phase
 
+- A diff you built yourself, Command green → `run-review` with its brief's Reviewers line (a plan track's `none` → the track end; no brief → `plan-lint.sh --review-set`): a `universal-reviewer` role per lens; no custom role but sub-agents → a default sub-agent per lens given `review-code`; cannot dispatch → the last line.
 - All tracks shipped and reviewed → `check-work` (step 6); then the merge and the branch's fate belong to `finish-work`.
 - `BLOCKED` survives context, model and scope changes and a re-plan → `manage-context` (escalate); if it is not available, stop and hand the user the attempt log and 2-3 options.
-- If `check-work` is not available, run tests / build / curl / browser yourself and report evidence inline.
+- Not available → `review-code` on the diff.
+- No other skill → stop and tell the user what changed, what was verified and what is still unverified or unreviewed.
