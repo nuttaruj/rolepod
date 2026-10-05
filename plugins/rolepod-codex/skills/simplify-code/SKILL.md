@@ -1,31 +1,25 @@
 ---
 name: simplify-code
-description: Use when code feels over-engineered, rotted, or duplicated — cut unused abstraction, inline single-use helpers, centralize patterns repeated in 3+ places, prefer structural impossibility over defensive clutter. Behavior-preserving. Phase = Simplify.
-when_to_use: when reviewing existing code that looks bloated, when a refactor request lands, when the same pattern shows up in 3+ places, or when a single-use abstraction is adding cost without payoff
+description: Use when code looks bloated, over-engineered or rotted; a refactor or cleanup request lands; the same pattern shows up in 3+ places; a single-use helper or abstraction adds cost without payoff.
 ---
 
 # Simplify Code
 
-Turns code that does not earn its complexity into less code with the same behavior, each cut proven by the existing tests. Runs mid-Build (refactor intent) or standalone.
+Turns code that does not earn its complexity into less code with the same behavior, each cut proven by the existing tests. Phase = Build (refactor): runs mid-Build or standalone.
 
 ## Skip when
 
-- No tests cover the touched code → write them first via `implement-plan` (baseline tests) or `debug-issue`, then resume at step 1 with them as the Baseline; the cleanup is still owed, never dropped at their Next phase.
+- No tests cover the touched code → write them first via `implement-plan` (baseline tests) or `debug-issue` (neither available → characterization tests at the public interface that pin today's output), then resume at step 1 with them as the Baseline; the cleanup is still owed, never dropped at their Next phase.
 - The complexity is load-bearing (a security boundary, a data invariant).
 - Mid-feature and the cut is not needed to unblock the change. A required prefactor is not a skip (step 6).
-- The behavior itself must change → `write-spec` or `write-plan`.
+- The behavior itself must change → `write-spec` or `write-plan`; neither available → ask the user to define the new behavior first.
 
-**Who runs the cuts.** The Lead routes, briefs, spot-checks and commits; the role that owns the path (`backend-developer` / `frontend-developer` / …) runs this skill's steps from the brief. Brief: the file region, the existing tests and their suite command, the user's intent (cleanup only, or cleanup + behavior change).
-- Cuts touching module boundaries or APIs → the owner returns `BLOCKED:` for a `system-architect` decision, and cuts after it.
-- Auth / secret / token / crypto paths → `security-engineer` reviews the cut diff.
-- DRY / smell / structure cleanup → `universal-reviewer` reviews the cut diff as usual.
-
-No subagents → the Lead does it.
+**Who runs the cuts.** The path owner runs these steps from the Lead's brief (region, its tests and suite command, cleanup-only or cleanup + behavior change), and the Lead spot-checks and commits; module-boundary or API cuts wait on a `system-architect` decision (the owner returns `BLOCKED:`), auth / secret / token / crypto cut diffs get a `security-engineer` review, every other cut diff `universal-reviewer`; no subagents → the Lead does it.
 
 ### 1. Green baseline
 
 Run the touched module's suite. Red → fix it or write tests first; without a green baseline nothing is provably behavior-preserving.
-An earlier green run counts only when the command AND the pre-cut snapshot match — staged and unstaged changes and every input the tests read, not just the same HEAD; anything differs → run it again.
+An earlier green run counts only under `check-work`'s Evidence cache; no `check-work` → only when the command AND the pre-cut snapshot match (staged and unstaged changes and every input the tests read, not just the same HEAD), else run it again.
 Gather: the flagged region, its tests, the call sites of anything you plan to inline or remove, and the user's intent.
 
 Done when: the suite is green and recorded as the Baseline.
@@ -102,17 +96,18 @@ A cut that changes what a test ASSERTS → check what the assertion proved.
 - The expected VALUE changes → no longer behavior-preserving: ask the user, or move it to an `implement-plan` task with a spec.
 - An assertion moved off a private detail or a mock's call shape onto the same observable output, expected value unchanged, is still behavior-preserving.
 
-Artifact: `templates/simplification-report.md` — Baseline, Cuts made, Patterns centralized, Tests after, Behavior preserved.
+Artifact: `templates/simplification-report.md` — Baseline, Cuts made, Patterns centralized, Tests after, Behavior preserved; no template → those five headings in the report, a pre-existing red under Tests after as a limitation.
 
 Done when: Tests after is green with the same expected values and Behavior preserved reads YES, or the change is routed out.
 
 ## Guardrails
 
-- Prove behavior with the same tests, green after the change with no expected value or contract changed; an assertion moved off a private detail onto the same observable output is allowed (step 8). A failure → run those tests on the tree without the change to tell a pre-existing red. Never simplify without that suite.
+- Prove behavior with the same tests, green after the change with no expected value or contract changed; an assertion moved off a private detail onto the same observable output is allowed (step 8). Never simplify without that suite.
+- Verify on the Command verbatim or cite a matching passing run (`check-work` Evidence cache); a failure → run just those tests on the base tree (`check-work` Run the evidence): red there too = pre-existing, a limitation. Here the Command is the Baseline suite; no `check-work` → matching is step 1's rule, and the base tree is the tree without the cuts.
 - Keep an abstraction the codebase depends on. Never remove one before its call sites and the deletion test say it is safe.
 - Add an abstraction only for concrete users that exist today (3+ for a shared rule, 2 on the high-risk list). Never for "hypothetical future use"; one caller is not enough.
 
-Single-use-helper and defensive-check pairs → `examples/simplify-examples.md`.
+Single-use-helper and defensive-check pairs → `examples/simplify-examples.md`; no file → the step 2 table is the guide.
 
 ## Next phase
 
