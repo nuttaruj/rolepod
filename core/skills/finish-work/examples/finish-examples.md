@@ -20,9 +20,9 @@ Branch feat/csv-export — gates green, CI Phase 1 + 2 pass, review APPROVED.
 
 ## Gate status
 - Evidence: VERIFIED — check-work ran the 4 rspec specs, all green
-- Cross-model adversarial pass: vertical — same CLI (no second-vendor CLI
-  on PATH; the Lead's own stronger tier ran the cold review). Recorded as a
-  verification limitation, not a cross-family pass — surfaced here, not hidden.
+- Cross-model adversarial pass (Full R4 only): internal strong pass — no
+  second-vendor CLI on PATH, so a strong-tier reviewer ran it. Surfaced here,
+  not hidden.
 
 ## Options
 1. Merge to main — ready, all gates green
@@ -30,8 +30,8 @@ Branch feat/csv-export — gates green, CI Phase 1 + 2 pass, review APPROVED.
 3. Keep open — no, the work is done
 
 ## Recommendation
-Merge to main — gates are green and review is APPROVED. The cross-model pass
-was vertical only; call that out to the user so they can accept it or ask for
+Merge to main — gates are green and review is APPROVED. The adversarial pass
+was internal only; call that out to the user so they can accept it or ask for
 a second-vendor review before merge.
 
 ## Awaiting authorization for
@@ -54,7 +54,7 @@ Lead: "All gates passed, so I merged feat/csv-export to main and pushed."
 |------|-----|------|
 | Authorization | Merged without the user choosing | Presented the menu, waited for explicit auth |
 | Authorization guardrail | Violated — "gates green" is not authorization | Satisfied — auth requested for the specific action |
-| User control | Branch fate decided for the user | User picks merge / PR / keep / discard |
+| User control | Branch fate decided for the user | User picks merge / PR / keep open; discard only on request |
 | Reversibility | The push already happened | Nothing irreversible done yet |
 
 ---

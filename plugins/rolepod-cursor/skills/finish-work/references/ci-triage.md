@@ -10,10 +10,6 @@ The repo's required checks (branch protection, CI config) decide what is require
 | Phase 2 (path-triggered) | the touched module's full suite | YES when triggered |
 | Phase 3 (nightly / manual) | integration · E2E · chaos · security deep · perf benchmark | NO by default — YES if the repo's own required checks list it (read branch protection / CI config first; never demote a repo-required lane on this table's say-so) |
 
-**No CI configured** (local-only repo, direct deploy — `wrangler deploy` / `flyctl` / rsync): CI is a runner, not the requirement. The tree is the one check-work's block recorded (the Evidence gate below) → cite it; another tree → run the checks the repo defines (its lint / typecheck / test / build scripts or targets that exist) covering the change locally BEFORE the merge / deploy. Always a post-deploy smoke (curl the live endpoint / health probe) as deploy evidence.
-
-**Citing check-work's block (the Evidence gate).** the block's `Verified tree` id equals the current `git rev-parse HEAD^{tree}` and the tree is clean → cite that block in any session, no local re-run (CI or not; an ignored input the check reads that changed since → re-run it); another tree → re-run only the checks covering the change; the post-deploy smoke always runs (deploy evidence, not a re-test).
-
 ## Triage a red lane
 
 A red required lane blocks the merge. Before re-running or escalating,
@@ -62,5 +58,5 @@ the clash.
    commands recorded in its evidence block, plus the tests covering any
    module the OTHER side of the conflict touched that those commands never
    ran. A gate that passed pre-conflict has NOT passed on the resolved tree.
-5. High-risk surface in the conflict → the adversarial review re-runs on
-   the resolved diff before merge.
+5. High-risk surface in the conflict → the workflow-mode R4 review set
+   (`SKILL.md` step 1 floors) re-runs on the resolved diff before merge.

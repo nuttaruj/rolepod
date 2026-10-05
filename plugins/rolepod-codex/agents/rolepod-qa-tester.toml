@@ -59,7 +59,7 @@ Automation comes after the table:
 
 - While building: the task's own Command only.
 - Debugging or verifying: the touched module's suite (full suite only on a high-risk surface).
-- Pre-merge: CI Phase 2 runs the touched module's full suite (no CI configured → the Lead runs the checks covering the change locally before merge / deploy, unless check-work's block still holds: its `Verified tree` id matches, finish-work gate 4); integration / E2E belong to Phase 3 (nightly).
+- Pre-merge: CI Phase 2 runs the touched module's full suite (no CI configured → the Lead runs the checks covering the change locally before merge / deploy, unless check-work's block still holds: its `Verified tree` id matches, finish-work's Check-work Status); integration / E2E belong to Phase 3 (nightly).
 - Map changed paths → test subset by import graph or naming convention (`billing.py` → `test_billing*`); mapping unclear → default to the module suite, not the world. A full-suite run per iteration burns minutes and tokens buying nothing the ladder does not already buy at merge time.
 
 ## Hard stops

@@ -4,16 +4,12 @@
 # <Branch> — Finish
 
 ## Gate status
-- Pre-merge gate (S/T/F/P — simplicity, test, failure-mode, PR scope): <PASS / FAIL — name what failed>
+- Pre-merge gate: <PASS / FAIL — name what failed>
 - Evidence status (from check-work's evidence block): <VERIFIED / PARTIAL /
   UNVERIFIED — reason. PARTIAL / UNVERIFIED blocks merge unless waived.>
-- CI: Phase 1 <status> · Phase 2 <status, or n/a>
+- CI: <each required lane: status, or no CI — local checks / cited block>
 - Review verdict: <APPROVED / APPROVED-WITH-NITS / REJECTED>
-- Cross-model adversarial pass (Full R4 only; omit otherwise): <ran on `<cli>`
-  (cross-family) / ran on `<cli>`, model family not reported (still clears
-  the external-review route) / internal strong pass — `<reason>` / NOT RUN —
-  reason (does not satisfy Full R4 without a completed internal pass). External
-  route opt-out and same-CLI use are limitations to state accurately.>
+- Cross-model adversarial pass (Full R4 only): <receipt or internal strong pass — reason>
 - User waivers this session: <none, or per waiver: which gate — the user's
   words, quoted. A waiver is recorded here, never silently applied.>
 
