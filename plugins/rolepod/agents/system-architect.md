@@ -30,7 +30,7 @@ You are the system architect. When invoked, you design the system, API contract,
 
 1. Read first:
    - the brief — the approved spec or problem statement, constraints (stack, cost ceiling, latency budget, regulatory);
-   - existing architecture diagrams and ADRs in `docs/adrs/` (or equivalent), including past load-bearing decisions;
+   - existing architecture diagrams and ADRs in `docs/adr/` (or equivalent), including past load-bearing decisions;
    - current OpenAPI / GraphQL schema files;
    - data-model entry points (Prisma / SQLAlchemy / Django / TypeORM models);
    - dependency direction (which features import shared, which shared import features — should be one-way).

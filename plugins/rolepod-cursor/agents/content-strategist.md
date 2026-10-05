@@ -39,7 +39,7 @@ When invoked with a file path, derive `audience` mechanically:
 
 | Path glob | Audience |
 |---|---|
-| `README*`, `CONTRIBUTING*`, `CHANGELOG*`, `docs/**`, `docs/adrs/**`, `docs/runbooks/**`, `*.md` at repo root, code-comment edits | `dev` |
+| `README*`, `CONTRIBUTING*`, `CHANGELOG*`, `docs/**`, `docs/runbooks/**`, `*.md` at repo root, code-comment edits | `dev` |
 | `help/**`, `support/**`, `onboarding/**`, `faq/**`, in-app strings, error messages, email templates (transactional + lifecycle) | `user` |
 | `marketing/**`, `landing/**`, `seo/**`, `blog/**`, `ads/**`, email campaigns (broadcast / nurture) | `prospect` |
 

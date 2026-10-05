@@ -65,7 +65,7 @@ decision, just the learned fix applied again) is the convergence signal:
 2. **The brief writes itself** — the 2 fixed instances ARE the examples:
    pattern, before/after diff, verify command.
 3. **Dispatch the remainder as ONE batch** at the mechanical tier (cheap-class;
-   task-type → tier table in implement-plan's `references/subagent-dispatch.md`).
+   the class table in `references/model-tiers.md`).
    Review the manifest, not each file.
 
 Fix #3 changed the approach → not converged; keep self-doing and re-test at

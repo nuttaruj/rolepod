@@ -43,8 +43,13 @@ EN_COMMISSION = re.compile(
     r"migrate|rename|make|write|ship|deploy|wire|continue|go ahead|do it|proceed)([^a-z]|$)",
     re.I,
 )
-TH_NOT_COMMISSION = [
-    "\N{THAI CHARACTER THO THAHAN}\N{THAI CHARACTER SARA AM}\N{THAI CHARACTER NGO NGU}\N{THAI CHARACTER SARA AA}\N{THAI CHARACTER NO NU}",  # works / operates (descriptive, not an imperative)
+TH_WORK = "\N{THAI CHARACTER THO THAHAN}\N{THAI CHARACTER SARA AM}\N{THAI CHARACTER NGO NGU}\N{THAI CHARACTER SARA AA}\N{THAI CHARACTER NO NU}"  # works / operates (descriptive, not an imperative); \N names because the Edit tool rewrites \u escapes of this word
+TH_NOT_COMMISSION = [TH_WORK]
+TH_WORK_COMMISSION = [   # TH_WORK in an imperative frame: stays a commission
+    TH_WORK + "\N{THAI CHARACTER TO TAO}\N{THAI CHARACTER MAI EK}\N{THAI CHARACTER O ANG}",   # continue working
+    "\N{THAI CHARACTER SARA E}\N{THAI CHARACTER RO RUA}\N{THAI CHARACTER SARA I}\N{THAI CHARACTER MAI EK}\N{THAI CHARACTER MO MA}" + TH_WORK,   # start working
+    TH_WORK + "\N{THAI CHARACTER NO NU}\N{THAI CHARACTER SARA II}\N{THAI CHARACTER MAI THO}",   # this task
+    "\N{THAI CHARACTER CHO CHANG}\N{THAI CHARACTER MAI EK}\N{THAI CHARACTER WO WAEN}\N{THAI CHARACTER YO YAK}" + TH_WORK,   # help do the work
 ]
 TH_COMMISSION = [
     "\u0e41\u0e01\u0e49",                          # fix
@@ -110,6 +115,8 @@ def commission_shaped(prompt):
     if any(q in prompt for q in TH_QUESTION):
         return False
     if EN_COMMISSION.search(prompt):
+        return True
+    if any(w in prompt for w in TH_WORK_COMMISSION):
         return True
     p = prompt
     for w in TH_NOT_COMMISSION:

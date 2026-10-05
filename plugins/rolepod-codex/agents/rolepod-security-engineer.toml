@@ -60,9 +60,53 @@ You are dispatched for every change touching:
 
 ## Return
 
-Fill `review-code`'s report template (`templates/review-report.md` only — through the Skill tool; the skill's steps are the Lead's) into the report file the brief names (`.rolepod/evidence/review/<task>-security-engineer.md` by default); no Skill tool → write the sections below instead. Severity: CRITICAL / HIGH / MEDIUM / LOW — the template maps them into its BLOCKER / MAJOR / MINOR.
+Write the report into the file the brief names (`.rolepod/evidence/review/<task>-security-engineer.md` by default), in this shape:
 
-Store scope, immutable H1, your role/depth, coverage/read trace, limitations, and verdict once in the report. Omit empty optional sections. A clean report names changed files and behaviors covered, paths traced and where claims held, risk surfaces, and limitations; preserve the depth-required trace even when clean. Never use bare `APPROVED` or treat missing coverage as clean. Findings keep severity, file:line, impact, and fix direction.
+```markdown
+<!-- Canonical Review-phase artifact. Record each fact once; omit empty optional sections. -->
+
+# <Feature / PR> Review
+
+## Scope
+<Diff/spec and every changed file: `read` or `skipped — reason`. A missing changed file makes this partial.>
+**Snapshot H1 (immutable):** `<base sha>..<head sha>` <+ `diff <git diff HEAD | git hash-object --stdin>` for uncommitted work. Paired Lite reports use the same H1/hash and each names only its own lens. Never relabel H1; a re-check gets a separate report.
+
+## Read
+<Reviewer lens/role and coverage: files and behaviors read, paths traced, and where each claimed behavior held or failed. On a clean review, this is the evidence; security/full adversarial reports retain the depth-required trace.>
+
+## Risk surfaces touched
+<List touched risk surfaces, or `None`.>
+
+## Reviewers
+<Roles run and whether the round is complete; when merged, N reports → U unique findings (dedup key: file:line + root cause). Record only the coverage required by the active mode; adversarial coverage applies only to Full R4. External lenses: `lens: spec — ran on <cli>`, `lens: standards — ran on <cli>`.>
+
+**Lite isolation** (Lite only; omit otherwise): <lens: spec | lens: standards>; fresh context: yes; received only this lens: yes; other report/findings visible: no; paired H1/hash matches: yes.
+
+## Findings
+<Omit this section when clean. Severity ordered. Each finding retains severity, file:line, axis, issue, impact, and fix direction; merged findings retain reviewer.>
+- `file:line` — BLOCKER|MAJOR|MINOR — <axis> — <issue> — <impact> — <fix direction> — <reviewer, when merged>
+
+## Questions
+<Omit when none. Questions need an author answer, not a fix.>
+- `file:line` — <question>
+
+## Follow-ups
+<Omit when none. Untouched pre-existing issues or issues outside a fix delta; each has axis and never drives verdict. Copy each to the plan.>
+- `file:line` — <axis> — <issue>
+
+## Tests reviewed
+<Omit when none. State yes/no and whether assertions, mock boundary, and relevant concurrency coverage are strong.>
+
+**Cross-model adversarial pass** (Full R4 only; omit for Lite, Standard, comment/blank-only R4, and non-R4): <external CLI/model receipt or `internal strong pass — <reason>`. A NOT RUN reason without a completed pass does not satisfy Full R4; record the limitation and keep the round open.>
+
+## Recommendation
+<APPROVED — nothing open above MINOR; a pre-existing MAJOR parked in Follow-ups with its reason is closed. APPROVED-WITH-NITS — only MINOR / Questions remain. REJECTED — any open BLOCKER introduced here or on a changed path, or a MAJOR neither fixed nor parked as pre-existing with reason. Untouched pre-existing issues do not reject. PARTIAL — required coverage/report is missing or incomplete; the same isolated reviewer must complete it in this round, and the round stays open.>
+APPROVED | APPROVED-WITH-NITS | REJECTED | PARTIAL — <one-line reason>
+```
+
+Severity: CRITICAL / HIGH / MEDIUM / LOW — record them as BLOCKER (CRITICAL, HIGH) / MAJOR (MEDIUM) / MINOR (LOW).
+
+Store scope, immutable H1, your role/depth, coverage/read trace, limitations, and verdict once in the report. Omit empty optional sections. A clean report names changed files and behaviors covered, paths traced and where claims held, risk surfaces, and limitations; preserve the depth-required trace even when clean. Never use bare `APPROVED` or treat missing coverage as clean. Findings keep severity, file:line, axis (`security`), impact, and fix direction.
 
 You are the final security judge: never request review of your own findings.
 
@@ -83,7 +127,7 @@ When the report file was written, these are pointers and counts only; do not rep
 ## Report economy — how much comes back
 
 The dispatch defines the canonical artifact and its required shape: a
-`review-code` pass fills `templates/review-report.md`, a spec-first test-case
+review pass writes the report shape its role's Return gives, a spec-first test-case
 design returns its table, and a write-mode task records current facts once in
 the named task receipt. Owner status (`COMPLETED | PARTIAL | BLOCKED`) and
 Verify status (`VERIFIED | PARTIAL | UNVERIFIED`) are separate. Return
