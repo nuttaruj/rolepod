@@ -29,7 +29,7 @@
 #     command (if any) and --gate — one "ok" or a <=15-line failing tail per step,
 #     first failure exits non-zero (the owner already ran the brief's
 #     Command; integrate never re-runs it). On success prints the cached
-#     diff stat, any reviewer verdict newer than the worktree, and the same
+#     diff stat, the VERDICT lines of this task's review reports, and the same
 #     ship chain `start` printed, from `git -C <worktree> commit` on. Never
 #     commits itself.
 #
@@ -383,6 +383,20 @@ task_file_rel() { # $1 = plan, $2 = task number
 
 brief_plan_path() { # $1 = brief file
   sed -n '2s/^Plan: \(.*\) · Spec:.*/\1/p' "$1"
+}
+
+# One task's review reports (.md) in one reviews dir, at most 10: the files named
+# <plan-slug>-task<N>- (the name the brief's Bounds gives the owner); none so named
+# (an owner that ignored it) -> the .md files newer than anchor "$4", minus any
+# named for ANOTHER task of the plan, so one task never lists a sibling's report.
+task_review_reports() { # $1 = reviews dir, $2 = plan slug, $3 = task number, $4 = anchor file
+  local out
+  [ -d "$1" ] || return 0
+  out="$(find "$1" -maxdepth 1 -type f -name "$2-task$((10#$3))-*.md" 2>/dev/null | sort)"
+  if [ -z "$out" ] && [ -e "$4" ]; then
+    out="$(find "$1" -maxdepth 1 -type f -name '*.md' -newer "$4" 2>/dev/null | grep -Ev "/$2-task[0-9]+-[^/]*\$" | sort)"
+  fi
+  [ -z "$out" ] || printf '%s\n' "$out" | head -n 10
 }
 
 # The commit -> finish -> log tail of the ONE ship chain (spec lean-loop-
@@ -923,33 +937,26 @@ EOF
 
   git -C "$wt_root" diff --cached --stat | tail -n 3
 
-  # A reviewer report can land under the base checkout's evidence root (the
-  # Lead's own convention) or the worktree's own (an owner working inside it
-  # per its Bounds) — both are scanned, deduped by basename, newest first,
-  # capped so this block alone cannot blow the <=40-line budget.
-  local marker review_list f b v seen
-  marker="$wt_root/.git"
-  review_list="$(mktemp "${TMPDIR:-/tmp}/rolepod-ticket-review.XXXXXX")"
-  {
-    [ -d "$base_root/.rolepod/evidence/review" ] && find "$base_root/.rolepod/evidence/review" -type f -newer "$marker" 2>/dev/null
-    if [ "$wt_root/.rolepod/evidence/review" != "$base_root/.rolepod/evidence/review" ] \
-      && [ -d "$wt_root/.rolepod/evidence/review" ]; then
-      find "$wt_root/.rolepod/evidence/review" -type f -newer "$marker" 2>/dev/null
-    fi
-  } | sort > "$review_list"
+  # This task's reviewer reports: the base checkout's evidence root (the Lead's own
+  # convention) and the worktree's own (an owner working inside it per its Bounds),
+  # deduped by basename, capped at 10 so this block cannot blow the <=40-line budget.
+  local plan_abs task_n f b v seen rp_slug
+  plan_abs="$(brief_plan_path "$brief")"
+  task_n="$(brief_task_n "$brief")"
+  rp_slug=""; [ -z "$plan_abs" ] || rp_slug="$(plan_slug_of "$plan_abs")"
   seen=""
   while IFS= read -r f; do
+    [ -n "$f" ] || continue
     b="$(basename "$f")"
     case " $seen " in *" $b "*) continue ;; esac
     seen="$seen $b"
     v="$(grep -m1 '^VERDICT:' "$f" 2>/dev/null)"
     [ -n "$v" ] && printf '%s: %s\n' "$b" "$v"
-  done < "$review_list" | head -n 10
-  rm -f "$review_list"
-
-  local plan_abs task_n
-  plan_abs="$(brief_plan_path "$brief")"
-  task_n="$(brief_task_n "$brief")"
+  done <<EOF | head -n 10
+$(task_review_reports "$base_root/.rolepod/evidence/review" "$rp_slug" "${task_n:-0}" "$wt_root/.git"
+  [ "$wt_root/.rolepod/evidence/review" = "$base_root/.rolepod/evidence/review" ] \
+    || task_review_reports "$wt_root/.rolepod/evidence/review" "$rp_slug" "${task_n:-0}" "$wt_root/.git")
+EOF
   if [ -n "$plan_abs" ] && [ -n "$task_n" ]; then
     printf '%s\n' "$(ship_chain_tail "$wt_root" "$plan_abs" "$task_n" "$base_root" "$track_mode")"
   else
@@ -1221,9 +1228,10 @@ if best is not None:
   rm -f "$tmp"
   echo "ticket: log: Task $n updated in $plan"
 
-  # Reviews: a reviewer's report name is the owner's pick (<task>-<role>.md,
-  # not deterministic per task), so none is copied — pointers to the .md reports
-  # written since this task's brief (never .diff / .log) go under ## Reviews.
+  # Reviews: a report is named <plan-slug>-task<N>-<lens|role>.md (the brief's
+  # Bounds), so none is copied — pointers to this task's .md reports go under
+  # ## Reviews; only a legacy name without that prefix falls back to "written
+  # since this task's brief" (never .diff / .log).
   local tfile rdir hfile rf rline rtmp
   tfile="$gate_repo_root/$task_rel"
   rdir="$gate_repo_root/.rolepod/evidence/review"
@@ -1239,7 +1247,7 @@ if best is not None:
       fi
       rm -f "$rtmp"
     done <<EOF
-$(find "$rdir" -maxdepth 1 -type f -name '*.md' -newer "$hfile" 2>/dev/null | sort | head -n 10)
+$(task_review_reports "$rdir" "$(plan_slug_of "$plan")" "$n" "$hfile")
 EOF
   fi
 
