@@ -176,7 +176,7 @@ A bare Workflow `agent()` and a general-purpose Agent-tool sub-agent carry no ro
 
 ### `claim-verify-nudge.sh` — UserPromptSubmit (Claude, Codex)
 
-- **Route nudge (v2.98.0)** — a commission-shaped prompt while the newest `phase: route` line predates the previous prompt → one `⟂ route:` line asking for the R0-R4 tier before the first edit. A question-shaped prompt and a harness background-task notification (`<task-notification>`) are not commissions and never get it. Incident: 199 requests, 0 router invocations in one project.
+- **Route nudge (v2.98.0)** — a commission-shaped prompt while the newest `phase: route` line predates the previous prompt → one `⟂ route:` line asking for the R0-R4 tier before the first edit (full text on the first nudge of a session, a one-line reminder after). A question-shaped prompt and a harness background-task notification (`<task-notification>`) are not commissions and never get it. Incident: 199 requests, 0 router invocations in one project.
 - **Auto-resume (v2.100.0)** — the harness's "continue from where you left off" prompt is a resume, not a user decision: a turn that ended at a question is restated, never continued into new scope.
 - **Context-bloat note** — the last turn's context crosses 400k tokens → one Lead-facing note (sweeps go to `rolepod:scout`; mention `/compact` or a fresh session to the user once); re-arms only after the context drops under the line. Incident: a 12-day session re-read 350-900k tokens every turn.
 - **Bypass** — none (advisory, on in every mode).
