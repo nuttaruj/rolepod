@@ -21,10 +21,12 @@ REPO=$(git rev-parse --show-toplevel 2>/dev/null) || exit 0
 NAME=$(basename "$REPO")
 BRANCH=$(git -C "$REPO" branch --show-current 2>/dev/null || echo "?")
 DIRTY=$(git -C "$REPO" status --porcelain 2>/dev/null | wc -l | tr -d ' ')
-COMMITS=$(git -C "$REPO" log --oneline -5 2>/dev/null || echo "")
+COMMITS=$(git -C "$REPO" log -5 --pretty=format:'%h %<(92,trunc)%s' 2>/dev/null | sed 's/[[:space:]]*$//' || echo "")
 HOT=$(git -C "$REPO" log --since="7 days ago" --name-only --pretty=format: 2>/dev/null \
   | grep -v '^$' | sort | uniq -c | sort -rn | head -5 \
   | awk '{printf "  %s (%dx)\n", $2, $1}' || echo "")
+# A manifest / lockfile on top is release churn, not a work area: drop the block.
+printf '%s\n' "$HOT" | head -1 | grep -Eq '(^|[[:space:]/])(plugin|marketplace|package|opencode|composer)\.json \(|(package-lock\.json|pnpm-lock\.yaml|yarn\.lock|bun\.lockb?|Cargo\.(toml|lock)|go\.(mod|sum)|poetry\.lock|uv\.lock|Gemfile\.lock|composer\.lock|CHANGELOG\.md|VERSION) \(' && HOT=""
 
 [ -z "$COMMITS" ] && exit 0
 
