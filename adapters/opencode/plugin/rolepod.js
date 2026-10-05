@@ -21,8 +21,8 @@
  *      concurrent edits to the same worktree. Stale locks (>30 min) are
  *      pruned on contact; a fresh sibling triggers a toast (v1) or a
  *      one-shot system-part nudge (v2 — server plugins have no toast).
- *   2. post-compact → re-anchor nudge (manage-context Re-anchor after compaction): trust disk over
- *      summary — plan checkboxes, git log, spec.
+ *   2. post-compact → re-anchor nudge (manage-context Re-anchor): trust disk over
+ *      summary — git status/log, next task + deps handoff.
  *   3. commit attempt → precommit gate: runs the SHARED hooks/precommit-
  *      gate.sh itself (ROLEPOD_LEAD_CLI=opencode, `runCommitGate`) — a
  *      permissionDecision:"deny" → throw (opencode's documented deny
@@ -154,10 +154,11 @@ function runCommitGate(dir, cmd, profile = {}) {
 
 const REANCHOR_MSG =
   "rolepod post-compact re-anchor: the summary is a lossy narrator, not a " +
-  "state file. Before the next action: re-read the plan artifact " +
-  "(checkboxes mark the real position), run `git log --oneline -5` + " +
-  "`git status`, re-open the spec if the flow has one. Disk beats summary " +
-  "on every conflict."
+  "state file. Before the next action: run `git status` + `git log " +
+  "--oneline -5`, read only the plan's next task and its dependencies' " +
+  "handoff (checkboxes mark the real position), and open the full plan or " +
+  "spec only if scope or position stays unclear. Disk beats summary on " +
+  "every conflict."
 
 // `names` = one CLI name per active sibling (as read from its lock's
 // content; an empty/older-version lock reads as "unknown") — folded into a
