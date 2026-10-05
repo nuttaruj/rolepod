@@ -1,6 +1,6 @@
 ---
 name: rolepod-stats
-description: Show rolepod evidence stats for this project — tier routes, verify/review verdicts, strong-dispatch overrides, bypasses, plus which models actually ran (Claude Code transcript proof; on other CLIs only what the evidence log recorded). Use when the user asks for rolepod stats, the evidence report, or which models ran.
+description: Use when user asks for rolepod stats; user wants evidence report; user seeks tier distributions; user asks for verify verdicts; user wants review outcomes; user asks which models ran
 ---
 
 # Rolepod Stats

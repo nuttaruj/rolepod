@@ -13,7 +13,7 @@ A skill is the work steps a model follows without friction. Write it so it holds
 ```markdown
 ---
 name: <skill-name>
-description: <what it does + the phrases that trigger it, one sentence>
+description: Use when <trigger>; <trigger> … — 150-230 chars, triggers only, no process summary
 ---
 
 # <Skill Title>

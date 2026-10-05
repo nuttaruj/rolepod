@@ -1,6 +1,6 @@
 ---
 name: write-prototype
-description: Build a throwaway prototype that answers ONE design question from a spec — layout variants to compare, or a clickable logic demo a non-developer can drive. Use when write-spec offers a prototype and the user accepts, or the user asks for a prototype, demo or layout options of a spec'd change.
+description: Use when write-spec offers a prototype and the user accepts; user asks for a prototype, demo, or layout options; user needs throwaway code to explore a design question
 ---
 
 # Write Prototype — throwaway code that answers one question
