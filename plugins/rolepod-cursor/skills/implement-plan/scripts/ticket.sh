@@ -21,10 +21,10 @@
 #     git config, for integrate/finish. Re-running against an existing
 #     worktree reprints the same three lines and re-records the base.
 #
-#   ticket.sh integrate <worktree> --brief <file> [--pre '<cmd>'] [--gate '<cmd>']
+#   ticket.sh integrate <worktree> --brief <file> [--gate '<cmd>']
 #     Refuses an ambiguous worktree (unmerged commits + a dirty tree).
 #     The base is the checkout `start` recorded (else the first-listed
-#     worktree). Runs --pre, ff-merges the base into the worktree branch,
+#     worktree). ff-merges the base into the worktree branch,
 #     stages everything except docs/rolepod/, then runs the brief's Proof
 #     command (if any) and --gate — one "ok" or a <=15-line failing tail per step,
 #     first failure exits non-zero (the owner already ran the brief's
@@ -59,6 +59,14 @@
 #     track `plan` (id `plan`, diff <feature>-plan.diff). With no track
 #     worktree the commits sit on the base checkout, so <base> is the parent
 #     of the track's first logged commit.
+#
+#   ticket.sh log <plan> <N> --start
+#     Marks Task N `running` (its Owner role, since HH:MM) in the plan's
+#     `## Status` block; `log --sha` rewrites it `done` plus the sha.
+#   ticket.sh status <plan>
+#     Prints the Status block — `N/M done · K running`, one row per task
+#     (done / running / `waits on <ids>` / todo) — and writes nothing. The
+#     writer puts `## Status` before the plan's first `## ` heading.
 #
 #   ticket.sh review-diff start <name> [-- <path>...]
 #     In the current git checkout: `git add -A` (with `-- <path>...`: only
@@ -181,9 +189,11 @@ usage() {
   cat <<'EOF'
 usage:
   ticket.sh start <plan> <N> [--base <branch>]
-  ticket.sh integrate <worktree> --brief <file> [--pre '<cmd>'] [--gate '<cmd>']
+  ticket.sh integrate <worktree> --brief <file> [--gate '<cmd>']
   ticket.sh finish <worktree>
   ticket.sh log <plan> <N> --sha <sha> --note '<text>'
+  ticket.sh log <plan> <N> --start
+  ticket.sh status <plan>
   ticket.sh review-diff start <name> [-- <path>...]
   ticket.sh review-diff delta <name> <H1-tree> <k> [-- <path>...]
   (review-diff excludes: docs/rolepod, lockfiles, plus .rolepod/review-exclude lines)
@@ -639,6 +649,110 @@ EOF
   printf '%s' "$out"
 }
 
+# Status block (S1). `log --start` marks a task running (its Owner role and
+# since HH:MM); `log --sha` flips it done plus the sha; `status` prints the
+# block without writing. The block lives in the plan under `## Status`.
+# One "<id><ROW_FS><title>" row per task heading ("### Task N: title").
+plan_task_titles() { # $1 = plan (absolute)
+  awk -v fs="$ROW_FS" "$FENCE_FN"'
+    { if (fenceline($0)) next }
+    /^### (Task ?|T)[0-9]+/ {
+      id = $0; sub(/^### (Task ?|T)/, "", id); sub(/[^0-9].*$/, "", id)
+      t = $0; sub(/^### (Task ?|T)[0-9]+[[:space:]]*[:.—–-]*[[:space:]]*/, "", t)
+      sub(/[[:space:]]+$/, "", t)
+      printf "%s%s%s\n", id, fs, t
+    }
+  ' "$1"
+}
+
+# "<id><ROW_FS><role, since HH:MM>" for every `running` row of the plan's
+# existing `## Status` block.
+status_running_rows() { # $1 = plan
+  awk -v fs="$ROW_FS" "$FENCE_FN"'
+    { if (fenceline($0)) next }
+    /^## Status[[:space:]]*$/ { insec = 1; next }
+    insec && /^## / { exit }
+    insec && /^- Task [0-9]+ — .*: running \([^)]*\)[[:space:]]*$/ {
+      id = $0; sub(/^- Task /, "", id); sub(/[^0-9].*$/, "", id)
+      d = $0; sub(/^.*: running \(/, "", d); sub(/\)[[:space:]]*$/, "", d)
+      printf "%s%s%s\n", id, fs, d
+    }
+  ' "$1"
+}
+
+# The block body: `N/M done · K running`, one row per task. "$2" = a task id
+# to mark running now (empty: only rows already running stay running).
+status_body() { # $1 = plan, $2 = task id starting or empty
+  local plan="$1" start_n="${2:-}" rows titles prior done_ids
+  local id owner blocked done title sha detail bid state oldifs wait total=0 ndone=0 nrun=0 lines=""
+  rows="$(plan_task_rows "$plan")"
+  titles="$(plan_task_titles "$plan")"
+  prior="$(status_running_rows "$plan")"
+  done_ids="$(done_ids_of "$rows")"
+  while IFS="$ROW_FS" read -r id owner blocked done; do
+    [ -n "$id" ] || continue
+    total=$((total + 1))
+    title="$(printf '%s\n' "$titles" | awk -F "$ROW_FS" -v want="$id" '($1 "") == (want "") { print $2; exit }')"
+    if [ "$done" = "1" ]; then
+      sha="$(task_logged_sha "$plan" "$id")"
+      state="done"; [ -z "$sha" ] || state="done (\`$sha\`)"
+      ndone=$((ndone + 1))
+    else
+      detail="$(printf '%s\n' "$prior" | awk -F "$ROW_FS" -v want="$id" '($1 "") == (want "") { print $2; exit }')"
+      if [ "$id" = "$start_n" ]; then
+        detail="$(printf '%s' "$owner" | sed 's/ *([^)]*)//g'), since $(date +%H:%M)"
+      fi
+      if [ -n "$detail" ]; then
+        state="running ($detail)"
+        nrun=$((nrun + 1))
+      else
+        wait=""
+        if [ -n "$blocked" ]; then
+          oldifs="$IFS"; IFS=','
+          for bid in $blocked; do
+            case "$done_ids" in *" $bid "*) : ;; *) wait="${wait:+$wait, }$bid" ;; esac
+          done
+          IFS="$oldifs"
+        fi
+        if [ -n "$wait" ]; then state="waits on $wait"; else state="todo"; fi
+      fi
+    fi
+    lines="$lines- Task $id — $title: $state"$'\n'
+  done <<EOF
+$rows
+EOF
+  printf '%s/%s done · %s running\n%s' "$ndone" "$total" "$nrun" "$lines"
+}
+
+# Writes `## Status` + body "$2" into plan "$1": replaces an existing block in
+# place, else goes before the first `## ` heading (end of file when none).
+# Fence-aware; fail-open (a failed pass leaves the plan untouched).
+status_write() { # $1 = plan, $2 = body
+  local plan="$1" body="$2" has="" tmp
+  awk "$FENCE_FN"'
+    { if (fenceline($0)) next }
+    /^## Status[[:space:]]*$/ { f = 1; exit }
+    END { exit !f }
+  ' "$plan" && has=1
+  tmp="$(mktemp "${TMPDIR:-/tmp}/rolepod-ticket-status.XXXXXX")" || return 0
+  if TICKET_STATUS_BODY="$body" awk -v has="$has" "$FENCE_FN"'
+    function emit() { printf "## Status\n%s\n\n", ENVIRON["TICKET_STATUS_BODY"]; done = 1 }
+    { if (fenceline($0)) { if (!skip) print; next } }
+    /^## Status[[:space:]]*$/ { if (!done) emit(); skip = 1; next }
+    /^## / {
+      skip = 0
+      if (!done && has == "") emit()
+      print; next
+    }
+    skip { next }
+    { print }
+    END { if (!done) { print ""; emit() } }
+  ' "$plan" > "$tmp" && [ -s "$tmp" ]; then
+    cp "$tmp" "$plan"
+  fi
+  rm -f "$tmp"
+}
+
 # True (rc 0) when Owner field "$1" is the Lead, not a role — log's role
 # tally (the Review-readiness count below).
 is_lead_owner() { # $1 = owner field
@@ -890,11 +1004,10 @@ cmd_start() {
 
 cmd_integrate() {
   local wt="${1:-}"; shift || true
-  local brief="" pre="" gate=""
+  local brief="" gate=""
   while [ $# -gt 0 ]; do
     case "$1" in
       --brief) need_val integrate --brief $#; brief="$2"; shift 2 ;;
-      --pre) need_val integrate --pre $#; pre="$2"; shift 2 ;;
       --gate) need_val integrate --gate $#; gate="$2"; shift 2 ;;
       *) echo "ticket: integrate: unknown arg: $1" >&2; exit 2 ;;
     esac
@@ -957,8 +1070,6 @@ EOF
     echo "ticket: integrate: ambiguous — $ahead commit(s) ahead of $base_branch AND a dirty tree; resolve by hand first" >&2
     exit 1
   fi
-
-  run_step "pre" "$pre" "$wt_root" || exit $?
 
   local merge_out merge_rc
   merge_out="$(git -C "$wt_root" merge --ff-only "$base_branch" 2>&1)"
@@ -1095,8 +1206,11 @@ EOF
     done
   fi
 
-  if ! git -C "$base_root" worktree remove "$wt_root" >/dev/null 2>&1; then
-    echo "ticket: finish: worktree remove failed for $wt_root" >&2
+  local rm_out
+  if ! rm_out="$(git -C "$base_root" worktree remove "$wt_root" 2>&1)"; then
+    echo "ticket: finish: worktree remove failed for $wt_root (the merge into $base_branch already landed):" >&2
+    printf '%s\n' "$rm_out" | tail -n 15 >&2
+    echo "ticket: finish: never --force; show \`git -C $wt_root status --porcelain -uall\`, then ask the user: commit, move or delete what it lists" >&2
     exit 1
   fi
   git -C "$base_root" worktree prune >/dev/null 2>&1 || true
@@ -1129,14 +1243,27 @@ EOF
 cmd_log() {
   local plan="${1:-}"; shift || true
   local n="${1:-}"; shift || true
-  local sha="" note=""
+  local sha="" note="" start=""
   while [ $# -gt 0 ]; do
     case "$1" in
       --sha) need_val log --sha $#; sha="$2"; shift 2 ;;
       --note) need_val log --note $#; note="$2"; shift 2 ;;
+      --start) start=1; shift ;;
       *) echo "ticket: log: unknown arg: $1" >&2; exit 2 ;;
     esac
   done
+  if [ -n "$start" ]; then
+    if [ -z "$plan" ] || [ ! -f "$plan" ] || [ -z "$n" ] || [ -n "$sha" ] || [ -n "$note" ]; then
+      usage >&2; exit 2
+    fi
+    if ! plan_task_rows "$plan" | awk -F "$ROW_FS" -v want="$n" '($1 "") == (want "") { f = 1 } END { exit !f }'; then
+      echo "ticket: log: no Task $n in $plan — refusing (fail-closed)" >&2
+      exit 1
+    fi
+    status_write "$plan" "$(status_body "$plan" "$n")"
+    echo "ticket: log: Task $n running in $plan"
+    return 0
+  fi
   if [ -z "$plan" ] || [ ! -f "$plan" ] || [ -z "$n" ] || [ -z "$sha" ] || [ -z "$note" ]; then
     usage >&2; exit 2
   fi
@@ -1279,6 +1406,7 @@ if best is not None:
 
   mv "$tmp.2" "$plan"
   rm -f "$tmp"
+  status_write "$plan" "$(status_body "$plan" "")"
   echo "ticket: log: Task $n updated in $plan"
 
   # Reviews: a report is named <plan-slug>-task<N>-<lens|role>.md (the brief's
@@ -1440,10 +1568,18 @@ EOF
   fi
 }
 
+# ── status ───────────────────────────────────────────────────────────────
+
+cmd_status() {
+  local plan="${1:-}"
+  if [ -z "$plan" ] || [ ! -f "$plan" ] || [ $# -ne 1 ]; then usage >&2; exit 2; fi
+  status_body "$plan" ""
+}
+
 # ── review-diff (C67) ────────────────────────────────────────────────────
 # The one home of the frozen review diff, the H1 / H2 tree and the fix delta
 # `convening-code-review` hands its reviewers. Stages the whole tree (`git add -A`, as
-# writer-loop always did) or, with `-- <path>...`, only those paths; never
+# every review round always did) or, with `-- <path>...`, only those paths; never
 # commits, stashes, resets or checks out. The exclude list is review_excludes.
 RD_USAGE="usage: ticket.sh review-diff start <name> [-- <path>...] | ticket.sh review-diff delta <name> <H1-tree> <k: 2|3|4> [-- <path>...]"
 
@@ -1560,6 +1696,7 @@ case "$SUB" in
   integrate) cmd_integrate "$@" ;;
   finish) cmd_finish "$@" ;;
   log) cmd_log "$@" ;;
+  status) cmd_status "$@" ;;
   review-diff) cmd_review_diff "$@" ;;
   *) echo "ticket: unknown subcommand: $SUB" >&2; usage >&2; exit 2 ;;
 esac

@@ -1511,7 +1511,7 @@ GRAPH=$(awk -v rx="$TASK_RX" -v seq="$SEQUENTIAL" "$FENCE_AWK$FIELD_AWK"'
         lead = (ov ~ /^Lead$/) || (ov ~ /^Lead[[:space:](]/) || (ov ~ /\(Lead self-do\)/)
         if (!lead) all_lead = 0
       }
-      if (all_lead) print "O ⚠ every Owner is Lead (" n " tasks) — nothing to dispatch; from R3 up the Owner map decides"
+      if (all_lead) print "O ⚠ every Owner is Lead (" n " tasks) — nothing to dispatch"
     }
   }
 ' "$PLAN")
