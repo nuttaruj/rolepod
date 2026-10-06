@@ -20,10 +20,10 @@ Own: spec compliance (every requirement present, no unasked scope — each a spe
   - Mysterious Name — Naming obscures intent rather than clarifying it → Rename to reveal purpose.
   - Duplicated Code — Same logic repeated in multiple locations → Extract shared function or method.
   - Feature Envy — Method uses another object's data more than its own → Move to the owning object.
-  - Data Clumps — Related fields often moved together without forming a concept → Introduce a class.
+  - Data Clumps — Fields or parameters that travel together → Introduce Parameter Object or Extract Class.
   - Primitive Obsession — Primitives used for domain values lacking specialized behavior → Replace with value object.
-  - Repeated Switches — Same switch condition appears in multiple places → Use polymorphism instead.
-  - Shotgun Surgery — Single change scatters edits across many files and classes → Consolidate related code.
+  - Repeated Switches — Same switch condition appears in multiple places → Replace Conditional with Polymorphism.
+  - Shotgun Surgery — Single change scatters edits across many files and classes → Move Function / Combine Functions into Class.
   - Divergent Change — One class changes for multiple unrelated business reasons → Extract by responsibility.
   - Speculative Generality — Abstract code exists without current concrete need or use → Remove dead abstraction.
   - Message Chains — Code steps through several delegations to reach final object → Hide intermediate delegation.
