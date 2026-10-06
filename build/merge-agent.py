@@ -10,6 +10,7 @@ Usage:
   merge-agent.py --target=codex       --name=qa-tester  (toml — effort/sandbox overlay)
   merge-agent.py --target=antigravity --name=qa-tester  (md — model overlay; agy)
   merge-agent.py --target=cursor      --name=qa-tester  (md — name/description + a derived readonly)
+  --preload=native|inline|none overrides PRELOAD_MODE for one render (tests and probes)
 
 Writes to stdout. Render driver pipes into the per-target rendered/ directory.
 
@@ -25,12 +26,12 @@ import re
 import sys
 from pathlib import Path
 
-# Field order for re-emission. No overlay preloads skills (v2.173.0): Claude
-# roles call `Skill` on demand instead of a preloaded list. No overlay sets
-# `permissionMode` or `skills` any more either, so both are dropped from this
-# order (v2.173.1) — dead keys `emit()` would otherwise carry silently.
+# Field order for re-emission. Claude roles call `Skill` on demand (v2.173.0);
+# only a role whose Claude overlay names `skills:` carries that manual from its
+# first turn, preloaded through the harness (see PRELOAD_MODE). No overlay sets
+# `permissionMode` (v2.173.1) — a dead key `emit()` would otherwise carry silently.
 CLAUDE_KEY_ORDER = ["name", "description", "model", "effort", "memory",
-                    "color", "tools"]
+                    "color", "tools", "skills"]
 ANTIGRAVITY_KEY_ORDER = ["name", "description", "model"]
 CURSOR_KEY_ORDER = ["name", "description", "readonly"]
 OPENCODE_KEY_ORDER = ["description", "mode", "permission"]
@@ -43,6 +44,24 @@ OPENCODE_KEY_ORDER = ["description", "mode", "permission"]
 # same three, tool by tool (kept separate there since opencode denies
 # edit/write/bash independently rather than folding them into one flag).
 WRITE_TOOLS = ("Edit", "Write", "Bash")
+
+# ── Preload: how a target receives a role's manual ───────────────────────────
+# The Claude overlay's `skills:` list (bare skill names) is the one home of a
+# role's preload; every target derives from it. Three ways to receive it, chosen
+# per CLI by a live probe (docs/cli-support.md, "Role preload"):
+#   native — the harness injects the skill into the sub-agent's context: Claude
+#            `skills:` (a plugin skill is named `rolepod:<name>`); the role then
+#            needs no `Skill` tool and no skill listing.
+#   inline — render appends each skill body to the role inside
+#            <preloaded_skill name="..."> ... </preloaded_skill>: for a CLI whose
+#            role file has no preload field (Codex: `skills.config` only enables
+#            or disables a skill, it never injects one).
+#   none   — nothing is emitted; the role's Skill Mapping line loads the skill
+#            at run time.
+PRELOAD_MODE = {"claude": "native", "codex": "inline", "antigravity": "none",
+                "cursor": "none", "opencode": "none"}
+CLAUDE_SKILL_PREFIX = "rolepod:"
+NATIVE_SKILL_REF = {"claude": lambda n: CLAUDE_SKILL_PREFIX + n}
 
 # ── Tier → model: THE single source of model identity ────────────────────────
 # Overlays carry `tier:` (stable, semantic); this map resolves it to a concrete
@@ -221,6 +240,35 @@ def _overlay_tools(overlay_path: Path) -> set[str]:
     return tools
 
 
+def overlay_skills(name: str) -> list[str]:
+    """Bare skill names from the Claude overlay's `skills:` list ([] when none)."""
+    path = REPO_DIR / "adapters" / "claude" / "agent-frontmatter" / f"{name}.yml"
+    if not path.exists():
+        return []
+    ov = parse_yaml_block(path.read_text())
+    return [ln.strip().lstrip("- ").strip()
+            for ln in ov.get("skills", [])[1:] if ln.strip().startswith("-")]
+
+
+def skill_body(skill: str) -> str:
+    """Body of core/skills/<skill>/SKILL.md, frontmatter off, INCLUDEs resolved.
+
+    Raises for a missing skill or a manual-invoke one: Claude cannot preload a
+    skill that sets `disable-model-invocation`, and a wrong name would load
+    nothing and warn only in a debug log, leaving the role without its method.
+    """
+    path = REPO_DIR / "core" / "skills" / skill / "SKILL.md"
+    if not path.exists():
+        raise FileNotFoundError(f"preload names a missing skill: core/skills/{skill}/SKILL.md")
+    text = path.read_text()
+    if not text.startswith("---\n") or "\n---\n" not in text[4:]:
+        raise ValueError(f"core/skills/{skill}/SKILL.md has no frontmatter")
+    fm, body = text[4:].split("\n---\n", 1)
+    if re.search(r"^disable-model-invocation:\s*true\s*$", fm, re.M):
+        raise ValueError(f"core/skills/{skill} sets disable-model-invocation: a role cannot preload it")
+    return resolve_includes(body).strip("\n")
+
+
 def _toml_basic(s: str) -> str:
     """Quote a scalar as a TOML basic string. JSON string escaping (`"`, `\\`,
     control chars) is a subset of TOML basic-string escaping, so json.dumps is
@@ -259,12 +307,24 @@ def emit_codex_toml(fields: dict[str, list[str]], body: str) -> str:
     return "\n".join(out) + "\n"
 
 
-def merge(target: str, name: str) -> str:
+def merge(target: str, name: str, preload: str | None = None) -> str:
     core_path = REPO_DIR / "core" / "agents" / f"{name}.md"
     if not core_path.exists():
         raise FileNotFoundError(f"missing {core_path}")
     core_fields, body = split_core_agent(core_path.read_text())
     body = resolve_includes(body)
+
+    # Preload: the Claude overlay's `skills:` list, validated for every target
+    # (a bad name must fail the render, not load nothing at run time).
+    skills = overlay_skills(name)
+    bodies = {n: skill_body(n) for n in skills}
+    mode = preload or PRELOAD_MODE[target]
+    if mode == "native" and skills and target not in NATIVE_SKILL_REF:
+        raise ValueError(f"{target}: no native preload form (use inline or none)")
+    if mode == "inline" and skills:
+        body = body.rstrip("\n") + "".join(
+            f'\n\n<preloaded_skill name="{n}">\n{bodies[n]}\n</preloaded_skill>'
+            for n in skills) + "\n"
 
     if target == "claude":
         overlay_path = REPO_DIR / "adapters" / "claude" / "agent-frontmatter" / f"{name}.yml"
@@ -273,6 +333,9 @@ def merge(target: str, name: str) -> str:
         overlay = parse_yaml_block(overlay_path.read_text())
         merged = {**core_fields, **overlay}
         resolve_model("claude", merged)
+        merged.pop("skills", None)
+        if skills and mode == "native":
+            merged["skills"] = ["skills:"] + [f"  - {NATIVE_SKILL_REF['claude'](n)}" for n in skills]
         # Re-order to match Claude original
         return "---\n" + emit(CLAUDE_KEY_ORDER, merged) + "---\n" + body
 
@@ -351,8 +414,10 @@ def main() -> int:
     p = argparse.ArgumentParser()
     p.add_argument("--target", required=True, choices=["claude", "codex", "antigravity", "cursor", "opencode"])
     p.add_argument("--name", required=True)
+    p.add_argument("--preload", choices=["native", "inline", "none"],
+                   help="override PRELOAD_MODE for this render (tests and probes)")
     args = p.parse_args()
-    sys.stdout.write(merge(args.target, args.name))
+    sys.stdout.write(merge(args.target, args.name, args.preload))
     return 0
 
 
