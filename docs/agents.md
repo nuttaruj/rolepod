@@ -1,6 +1,6 @@
 # Rolepod Agent Catalog
 
-Full 15-agent specialist roster. Lead never picks from this list directly — the `write-plan` skill maps path + concern + risk to the right agent when delegation helps.
+Full 15-agent specialist roster. Lead never picks from this list directly — the Lead picks the owner from the agent listing when delegation helps.
 
 This doc is the **reference**. No entry doc embeds the roster; each agent file's `description:` is what the CLI shows.
 
@@ -9,7 +9,7 @@ This doc is the **reference**. No entry doc embeds the roster; each agent file's
 ```
 User intent
   → using-rolepod router picks the phase (Define / Plan / Build / Verify / Review / Ship)
-  → write-plan picks the specialist agent by path + concern + risk
+  → the Lead picks the specialist agent from the agent listing
   → agent's own per-CLI frontmatter picks the model tier (cheap / balanced / strong)
 ```
 

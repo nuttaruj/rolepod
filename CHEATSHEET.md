@@ -106,7 +106,7 @@ Terse output is built in on every CLI: replies are shaped to cut output tokens b
 
 ## Evidence stats
 
-The `rolepod-stats` skill (`/rolepod-stats` on Claude, `$rolepod-stats` on Codex) — run inside any project: reads its `.rolepod/evidence/` and reports tier distribution, verify pass/fail, review verdicts, strong dispatches with/without explicit override (silent-downgrade audit), and unreasoned bypasses.
+The `rolepod-stats` skill (`/rolepod-stats` on Claude, `$rolepod-stats` on Codex) — run inside any project: reads its `.rolepod/evidence/` and reports tier distribution, verify pass/fail, review verdicts, strong dispatches with/without explicit override (silent-downgrade audit), unreasoned bypasses, commits on a risk path with no strong review (gate), write-scope denies per role, and external review verdicts.
 
 ## Optional sibling plugins
 

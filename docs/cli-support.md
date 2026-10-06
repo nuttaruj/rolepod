@@ -256,7 +256,7 @@ Gemini CLI is retired for individual accounts (2026-06-18) and never a pool memb
 candidates and the one question (review order) and `--setup review="…"` writes the file. List
 every CLI you use, the Lead's own included — it is skipped at run time, so
 one file serves every Lead. **Installed ≠ usable** is proven at invoke: exit ≠ 0, timeout
-(a member is killed when it goes SILENT — no new output for `stall` seconds: `--stall` > `stall=` in the config > 600 — not when it is slow; the wall-clock cap is runaway insurance only: `--timeout` > `timeout=` > kind default, review 7200 s detached / 600 s foreground, consult 300, critique 600 (v2.129.0; measured: codex reviews run 15-29 min and stream the whole way); the prompt carries a ≤30-min planning budget; `--detach` runs the chain as a job so the 600 s harness cap never kills a slow member),
+(a member is killed when it goes SILENT — no new output for `stall` seconds: config `stall=` → 600 — not when it is slow; the wall-clock cap is runaway insurance only: `--timeout` > kind default, review 7200 s detached / 600 s foreground, consult 300, critique 600 (v2.129.0; measured: codex reviews run 15-29 min and stream the whole way); the prompt carries a ≤30-min planning budget; `--detach` runs the chain as a job so the 600 s harness cap never kills a slow member),
 or an answer under the floor (review < 500 bytes, consult / critique < 200)
 → `external-fail` phase-log line, next member; every member failed → exit
 3; empty pool → exit 4 — then the Lead's own path (internal strong
@@ -267,7 +267,7 @@ phase-log line (`phase: review|consult|critique`, `reviewer: external`),
 Codex's `model:` banner, OpenCode's `> agent · model` header; the family
 follows what ran and is recorded for information — a member is never failed
 for its model family, cross-family means a different CLI). `rolepod-stats` shows external passes vs internal strong
-dispatches. Live-verified 2026-09-04 on this machine: agy 10 s, cursor
+dispatches, with the external verdict counts. Live-verified 2026-09-04 on this machine: agy 10 s, cursor
 28 s, opencode 8 s answered the probe; the now-removed Gemini CLI's probe
 had already failed with `IneligibleTierError` (measured 2026-09-04, after
 its 2026-06-18 retirement) — the historical case for dropping it as a
