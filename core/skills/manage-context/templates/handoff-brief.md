@@ -1,5 +1,7 @@
 <!-- Rolepod session handoff — default path: docs/rolepod/handoff.md. -->
 <!-- The next session re-anchors from disk and reads only required linked state. -->
+<!-- Point to artifacts by path (spec, plan, task files, receipts, commits); never copy their content. -->
+<!-- Redact secrets, tokens and PII. -->
 
 # Handoff Brief — <task>
 

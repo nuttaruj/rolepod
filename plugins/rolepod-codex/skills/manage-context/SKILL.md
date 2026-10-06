@@ -43,7 +43,7 @@ Heavy context → compact with your CLI's command (Claude `/compact <focus>`; ot
 
 **Compact at seams.** Good moments: research done before implementation starts · a milestone landed · a debug closed · a failed approach abandoned · the Lead waiting on background sub-agents (not mid-task for the Lead: the plan on disk holds its state).
 - Never compact mid-task: the summary drops exactly the state you need next (variable names, paths, half-applied edits), and the re-anchor cost lands on top.
-- Heavy mid-task → finish or park the task at a seam (a checkpoint commit only as the Lead with finish-work's Pre-merge gates passing — finish-work absent → the task Command green + `git diff` reviewed; a subagent never commits), then trim.
+- Heavy mid-task → finish or park the task at a seam (a checkpoint commit only as the Lead with finish-work's Pre-merge gate passing — finish-work absent → the task Command green + `git diff` reviewed; a subagent never commits), then trim.
 - A wait offers the compact only as the relay of a context-check line (context past the hook's line) that arrived since the last compact and is not yet relayed; none → no offer. The offer is ONE line of ~100 characters or fewer, never a question: your CLI's compact command (Claude `/compact <focus>`), the focus naming the plan path (or "inline checklist") and the next step. A longer one wraps in the terminal, and a multi-line paste reaches the CLI as text, not a command.
 
 Load only what the task needs: the Tier 1 skills + the touched files is usually enough.
@@ -81,12 +81,11 @@ Done when: every touched file maps to a plan task, or a new plan exists.
 
 ### 6. Escalate
 
-Four failed fixes for one unresolved repro or criterion → stop and ask; one Second opinion after two (`debug-issue` Second opinion); review rounds count separately.
+Four failed fixes for one unresolved repro or criterion → stop and ask; one Second opinion after two; read the advice from `debug-issue` step 9 (the Second opinion rule).
 - Capture the exact problem: the error, what was tried, what failed.
-- Change the model, not just the prompt: the one opinion, its ledger and attempts three and four → `debug-issue` Second opinion; no `debug-issue` → one opinion from a stronger model or another CLI reading the attempt log (a fresh session on the same model is not independent), never twice for the same issue, and attempts three and four retrace first; no usable advisor → stop before another fix.
-- A fresh-context read of your in-flight diff → `universal-reviewer`; an E2E flake or a user-visible (E2E) failure → `qa-tester` for the repro test or bug report (unit-test discipline belongs to the writer); a product failure it reports returns to the Lead, who briefs the path owner to fix against that test. Brief: the original request, what was tried, what failed, what you suspect. No subagents → the Lead does it.
-- The failed-fix ladder is exhausted at four failures, when no usable advisor exists, or when the advisor says stop and no informed attempt remains → STOP and hand the user a decision menu: the attempt log (each fix + result) and 2-3 concrete options with trade-offs (relax a constraint / split or defer scope / accept a documented limitation) — never a bare "stuck". A completed usable opinion alone does not exhaust the ladder; carry out the informed third and, if needed, fourth attempt.
-  - This stop is legitimate mid-plan: implement-plan's continuous execution yields to an exhausted ladder, never the other way around.
+- Change the model, not just the prompt: after two failed fixes, get one Second opinion; a fresh-context read of your in-flight diff → `universal-reviewer`; an E2E flake or a user-visible failure → `qa-tester` for the repro test or bug report (unit-test discipline belongs to the writer); a product failure it reports returns to the Lead, who briefs the path owner to fix against that test. Brief: the original request, what was tried, what failed, what you suspect. No subagents → the Lead does it.
+- The failed-fix ladder is exhausted at four failures, when no usable advisor exists, or when the advisor says stop and no informed attempt remains → STOP and hand the user a decision menu: the attempt log (each fix + result) and 2-3 concrete options with trade-offs (relax a constraint / split or defer scope / accept a documented limitation) — never a bare "stuck".
+  - This stop is legitimate mid-plan: when the escalate ladder is exhausted, work pauses until the user picks an option; then resume on that pick.
 - After the menu, nothing runs on this blocker — no attempt, consult or escalation — until the user picks an option; then resume on that pick.
 
 Done when: a stronger model or outside opinion has run, or the user holds the decision menu.
@@ -102,7 +101,7 @@ After a compaction, or to continue from a handoff — before acting, establish t
 
 Disk beats the summary on implementation state; a user correction that never touched disk still stands.
 
-Still yellow / red after the re-anchor → Context budget's handoff path, never a second compaction in a row.
+Still yellow / red after the re-anchor → Context budget's handoff path.
 
 Done when: the repository state, next task, and required predecessor state are read from disk.
 

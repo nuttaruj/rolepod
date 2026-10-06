@@ -42,9 +42,6 @@ the SAME CLI.
   evidence gates; reviewer and Ship limitations still apply. If skills are
   unavailable, the handoff remains readable markdown, but do not claim the
   workflow gates ran.
-- The sibling-session soft warn may fire for up to 30 min after an abrupt
-  switch (the dead session's lock is not yet stale). It is a warning, not
-  a block — `ROLEPOD_ALLOW_SHARED_WORKTREE=1` silences the intentional case.
 
 ## Parallel tracks across CLIs
 

@@ -23,12 +23,12 @@ setup path worth keeping) — then link it from the README.
    docker-compose, framework config, and `.github/workflows/*` — every
    `secrets.*` / `vars.*` reference is a value the wizard must produce. For
    a cutover: current state, target state, the irreversible actions between.
-   Show the user the ordered stage list + captured values; they reorder or
-   cut before you write a line.
+   List the stages in the script header and your return; the Lead shows
+   the user, who may reorder or cut them.
 2. **Trace each stage like a stranger will follow it.** Exact path:
    "Dashboard → Developers → API keys → Reveal → copy". A UI you have not
-   verified is a question for the user or the vendor docs — per
-   verify-first, never invent clicks that may not exist.
+   verified → check the vendor docs or flag it in your return; never
+   invent clicks.
 3. **Author from the template below.** One `stage` block per step in
    dependency order; set `TOTAL_STAGES`. The helper library is fixed — edit
    only below the `# ── STAGES` marker.
