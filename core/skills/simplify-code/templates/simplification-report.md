@@ -4,8 +4,7 @@
 # <File / Region> Simplification Report
 
 ## Baseline
-<The test suite, green BEFORE any cut. Simplifying on a red baseline is not
- allowed.>
+<The test suite, green BEFORE any cut.>
 - `<command>` — PASS: <proof line>
 
 ## Cuts made
@@ -26,9 +25,8 @@
 
 ## Behavior preserved
 <YES — the tests covering the affected inputs and failure modes are green
- with the same expected values; the only assertion change allowed is one moved
- off a private detail / mock call shape onto the same observable output.
+ with the same expected values.
  NO — an expected value changed, or the green tests do not cover the affected
- inputs / failure modes; this is a behavior change (or insufficient coverage).
- Route to write-spec / implement-plan; do not ship it as a simplification.>
+ inputs / failure modes; this is a behavior change (or insufficient coverage),
+ never shipped as a simplification.>
 YES | NO

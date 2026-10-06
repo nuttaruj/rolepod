@@ -1,6 +1,6 @@
 ---
 name: simplify-code
-description: Use when code looks bloated, over-engineered or rotted; a refactor or cleanup request lands; the same pattern shows up in 3+ places; a single-use helper or abstraction adds cost without payoff.
+description: The owner's cleanup procedure. Use when code looks bloated, over-engineered or rotted; a refactor or cleanup is asked; a pattern repeats in 3+ places; a helper or abstraction has one use.
 ---
 
 # Simplify Code
@@ -9,18 +9,17 @@ Turns code that does not earn its complexity into less code with the same behavi
 
 ## Skip when
 
-- No tests cover the touched code → write them first via `implement-plan` (baseline tests) or `debug-issue` (neither available → characterization tests at the public interface that pin today's output), then resume at step 1 with them as the Baseline; the cleanup is still owed, never dropped at their Next phase.
+- No tests cover the touched code → write characterization tests at the public interface that pin today's output, then resume at step 1 with them as the Baseline; the cleanup is still owed.
 - The complexity is load-bearing (a security boundary, a data invariant).
 - Mid-feature and the cut is not needed to unblock the change. A required prefactor is not a skip (step 6).
-- The behavior itself must change → `write-spec` or `write-plan`; neither available → ask the user to define the new behavior first.
-
-**Who runs the cuts.** The path owner runs these steps from the Lead's brief (region, its tests and suite command, cleanup-only or cleanup + behavior change), and the Lead spot-checks and commits; module-boundary or API cuts wait on a `system-architect` decision (the owner returns `BLOCKED:`), auth / secret / token / crypto cut diffs get a `security-engineer` review, every other cut diff `universal-reviewer`; no subagents → the Lead does it.
+- The behavior itself must change → return `BLOCKED` to your caller naming the behavior change.
+- A module-boundary or API cut → return `BLOCKED` to your caller naming the cut; never ask the user.
 
 ### 1. Green baseline
 
 Run the touched module's suite. Red → fix it or write tests first; without a green baseline nothing is provably behavior-preserving.
-An earlier green run counts only under `check-work`'s Evidence cache; no `check-work` → only when the command AND the pre-cut snapshot match (staged and unstaged changes and every input the tests read, not just the same HEAD), else run it again.
-Gather: the flagged region, its tests, the call sites of anything you plan to inline or remove, and the user's intent.
+An earlier green run counts only under `implement-plan`'s Prove rule (scope, relevant inputs, environment and provenance still match); no `implement-plan` → only when the command AND the pre-cut snapshot match (staged and unstaged changes and every input the tests read, not just the same HEAD), else run it again.
+Gather: the flagged region, its tests, the call sites of anything you plan to inline or remove, and the brief's intent.
 
 Done when: the suite is green and recorded as the Baseline.
 
@@ -76,24 +75,23 @@ Done when: every repeated rule has one home, recorded under Patterns centralized
 ### 6. Refactor before fix
 
 A planned change is hard because of the current shape → name the friction first: the `path:line` that forces the change to edit N places, copy a rule, or reach past a seam. Then cut that shape until the change is easy, and make the easy change.
-- Two commits: the cleanup commit is behavior-preserving (this skill); the change commit is the feature (`implement-plan`). Mixing them hides which line caused which regression; split them.
+- The cleanup diff holds no behavior change and returns apart from the feature change; the Lead commits.
 - No friction you can name at a `path:line`, or the change goes in directly → skip this step; never invent friction.
 
-Done when: the friction is named (or the step skipped), the cleanup commit holds no behavior change, and the feature change sits in its own commit.
+Done when: the friction is named (or the step skipped) and the cleanup diff holds no behavior change.
 
 ### 7. One cut at a time
 
-- After each cut, run the narrowest check that covers it (the touched file's tests). The Baseline suite runs once more, after the last cut, as Tests after.
+- Checks per cut follow `implement-plan`'s Prove; no `implement-plan` → the touched file's tests after each cut. The Baseline suite runs once more, after the last cut, as Tests after.
 - A red check right after a cut means that cut went too far: revert that one, not all.
 - An "unused" abstraction turns out to have callers you missed → restore it, verify, then retry once through step 3; callers remain → keep it, with the reason in the report.
-- A delegated subagent returns the diff + proof; the Lead commits the cleanup as one commit, apart from any feature commit (step 6, `implement-plan`).
 
 Done when: every cut passed its narrow check before the next began, and the Baseline suite is green once after the last cut.
 
 ### 8. Stop when behavior is at risk
 
 A cut that changes what a test ASSERTS → check what the assertion proved.
-- The expected VALUE changes → no longer behavior-preserving: ask the user, or move it to an `implement-plan` task with a spec.
+- The expected VALUE changes → no longer behavior-preserving: return `BLOCKED` to your caller naming the change.
 - An assertion moved off a private detail or a mock's call shape onto the same observable output, expected value unchanged, is still behavior-preserving.
 
 Artifact: `templates/simplification-report.md` — Baseline, Cuts made, Patterns centralized, Tests after, Behavior preserved; no template → those five headings in the report, a pre-existing red under Tests after as a limitation.
@@ -102,14 +100,12 @@ Done when: Tests after is green with the same expected values and Behavior prese
 
 ## Guardrails
 
-- Prove behavior with the same tests, green after the change with no expected value or contract changed; an assertion moved off a private detail onto the same observable output is allowed (step 8). Never simplify without that suite.
-- Verify on the Command verbatim or cite a matching passing run (`check-work` Evidence cache); a failure → run just those tests on the base tree (`check-work` Run the evidence): red there too = pre-existing, a limitation. Here the Command is the Baseline suite; no `check-work` → matching is step 1's rule, and the base tree is the tree without the cuts.
-- Keep an abstraction the codebase depends on. Never remove one before its call sites and the deletion test say it is safe.
-- Add an abstraction only for concrete users that exist today (3+ for a shared rule, 2 on the high-risk list). Never for "hypothetical future use"; one caller is not enough.
-
-Single-use-helper and defensive-check pairs → `examples/simplify-examples.md`; no file → the step 2 table is the guide.
+- Prove behavior with the same tests, green after the change with no expected value or contract changed. Never simplify without that suite.
+- A failure → run just those tests on the base tree, the tree without the cuts (`implement-plan`'s Prove): red there too = pre-existing, a limitation.
 
 ## Next phase
 
-- Part of a larger plan → `implement-plan`, next task. Uncovered a real bug → `debug-issue`. If neither is available, the runner (the Lead without sub-agents) fixes the bug at its root with a failing test first (→ `tdd-flow`), then re-runs this skill's suite.
-- Cleanup complete → `check-work`, then `finish-work`; if neither is available, attach the report and ask the user whether to ship.
+- Called from another skill → back to its next step with the Baseline and Tests after tails and the diff trimmed to the cuts. Uncovered a real bug → `debug-issue`.
+- Called alone → `convening-code-review` on the cleanup diff, with the report.
+- Not available → `review-code` on the diff.
+- No other skill → stop and tell the user what was cut, the Baseline and Tests after tails, and what is still unverified or unreviewed.

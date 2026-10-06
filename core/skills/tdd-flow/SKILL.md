@@ -1,25 +1,22 @@
 ---
 name: tdd-flow
-description: Use when the user asks to build test-first, do TDD or red-green, or write the failing test first; a bug must be reproduced as a test; a skill or brief calls for one failing test at an agreed seam.
+description: The owner's red-green procedure. Use when the user asks for test-first, TDD or a failing test first; a bug must be reproduced as a test; a skill or brief calls for one failing test at a seam.
 ---
 
 # TDD Flow
 
 Turns one logic slice into a test that was red before the change and is green after, at the seam a caller uses.
-The path owner runs it from the brief; the Lead runs it only for R1 (trivial edit) or with no subagents.
 
 ## Skip when
 
-- Prose, a rename, config or doc text: no test — step 1's evidence-after proof applies (config → smoke + restart, docs → render + link check, rename → the suite green after, no assertion weakened).
-- User-visible behaviour (a screen, a flow, an API contract end to end): that is `qa-tester`'s E2E work; name it in the task's test line and never fake it with a unit test; it is verified once at `check-work` Verify (no subagents → check-work's browser-observation fallback; no `check-work` → observe the flow in a browser and report it).
-- Checking tests that already exist, no change asked (a review, a spot-check): step 6 is the checklist — report its findings to the caller (to the user when called alone); edit no file, remove no fix, and hand nothing to `check-work`.
+- Prose, a rename, config or doc text → evidence-after (step 1); no test.
+- User-visible behaviour (a screen, a flow, an API contract end to end) → `qa-tester`'s E2E, named in the plan's Test line; never fake it with a unit test.
 
 ### 1. Pick the discipline by risk
 
 Test-first — the failing test comes BEFORE the code — for a bug fix, new business logic, auth / permission (the deny path before the allow path), billing / credits / payment (the money math), a migration or backfill (forward + rollback), and concurrency (the interleaving the bug needs).
 Evidence-after — make the change, then prove it — for UI copy or styling (a browser observation), config / infra (smoke + restart), docs (render + link check), a typecheck-safe rename (the suite green after, no assertion weakened), and wiring or CRUD pass-through with no rule of its own (the suite green plus one smoke through the path).
 In doubt on a risk surface → test-first.
-Why each row sits where it does, and the seam per dependency kind → `references/test-by-risk.md`; no reference → the rows above and step 2's dependency line decide.
 
 Done when: the slice is labelled test-first or evidence-after; evidence-after hands straight to the Next phase.
 
@@ -29,21 +26,23 @@ Tests go only at an agreed seam, taken in this order: the plan task's seam (the 
 Highest = closest to the caller while still reaching the behavior; the fewest seams; an existing seam over a new one.
 The seam is the public interface a caller uses; the test goes there, never at internals.
 A seam's interface is everything a caller must know: the signature plus its invariants, ordering, error modes and required config. The test asserts those, not the type alone.
-Match the seam to the dependency: pure logic → a unit test through the interface; clock / random / filesystem / env → inject it and fake it (a frozen `now`, a temp dir); your own DB or queue → an integration test against a real local instance; a third-party API → a contract test on a recorded response plus one live smoke.
+Match the seam to the dependency: pure logic → a unit test through the interface; clock / random / filesystem / env → inject it and fake it (a fixed clock, a temp dir); your own DB or queue → an integration test against a real local instance; a third-party API → a contract test on a recorded response plus one live smoke.
 A seam exists but none reaches the real behaviour (only a shallow single-caller test fits) → that is the finding: record it and stop; a test at a too-shallow seam is false confidence.
 
 Done when: the agreed seam is stated with the interface contents the test will assert, or the missing seam is recorded.
 
 ### 3. Write one failing test
 
+- Before the test body, name the production change that would turn it red; none you can name -> the test guards nothing: pick another assertion at the seam.
 - One behavior, one test, at the agreed seam — the next behavior gets its own test after this one is green. Never a test ahead of a behavior not yet built; never every test up front.
 - One logical assertion per test (several asserts on one outcome count as one).
 - Edge / error / race cases only with a reason: an acceptance criterion names the case, or it is an R4 (high-risk) floor from step 1. A bug fix starts from the test that reproduces it.
 - Changing an existing rule → the nearest inputs whose result must stay the same (the brief's Done when names them) get a pinning test first, green before and after, unless an existing test already holds them.
 - Expected values come from the spec, never from the code's current output or the shared seed.
-- Assert the contract — a value, code, structured field, state or side effect — never wording the requirement did not fix.
-- Dates and times derive from ONE frozen `now`; never a literal calendar date or the real clock.
+- Assert the contract — a value, code, structured field, state or side effect — never wording the requirement did not fix; machine-read tokens, public error codes and wording the spec quotes stay exact.
 - A real dependency over a fake, stub or mock; mock only external boundaries; an integration test never mocks the DB.
+
+{{INCLUDE: core/fragments/test-quality.md}}
 
 Done when: the test exists at the seam and asserts the exact expected value.
 
@@ -52,21 +51,21 @@ Done when: the test exists at the seam and asserts the exact expected value.
 Run the one test. Red = it runs and fails on its named assertion.
 A collection / import error, a skip or a 0-test run is not red: fix the harness and rerun.
 Green before the code exists → the assertion is weak or the test misses the code: tighten it.
+This run is the slice's red proof while no test file has changed since; a test file changed → remove the fix once, see the test red, restore it, and that run is the red proof.
 
 Done when: the run shows the named assertion failing.
 
 ### 5. Smallest change to green
 
 - The smallest change that turns the test green, at the root; no "while I'm here" edits.
-- After each edit run the narrowest check that covers it (one test, or one section of a large test file; a whole file only when it runs in under ~30 s); the task's Command runs once, last before returning; the whole suite runs once per release, by the Lead.
+- Checks per edit and the Command follow `implement-plan`'s Prove; no `implement-plan` → the narrowest covering check after each edit, the task's Command once before returning.
 
 Done when: the new test is green and the checks covering the edited files pass; back to step 3 for the next behavior; after the last one, the task's Command passes.
 
 ### 6. Self-check the tests
 
-The writer owns the unit tests; a reviewer reads this same list, plus steps 2-3 for every new test and each step 1 R4 floor with its test.
 - Weak assertion = still green after a one-character regression. High-risk logic: flip one operator in a throwaway worktree; nothing red → tighten.
-- Size the suite by rules: one test per rule at the rule's owner; a call site with wiring of its own gets at most one smoke; skip a test whose failure an existing test already catches.
+- Skip a test whose failure an existing test already catches.
 - A test at a seam nobody agreed, or an edge / error / race case with no reason → a finding: drop it, or record it under `## Follow-ups`.
 - Implementation-coupled (reaches past the interface or mocks an internal), tautological (asserts what it set up) or wording-pinned tests → rewrite at the seam.
 
@@ -76,10 +75,10 @@ Done when: every new test survives the flip, sits at the seam, and each rule has
 
 - Refactor at review, not in the loop.
 - The test's own file is part of the change; the shared fixture, helpers or seed is not — touching one to pass is a finding.
-- Modifying an existing test on the way to green (loosened assert, skip or focus marker, deleted case, re-recorded snapshot) is a finding until justified.
 
 ## Next phase
 
-- Called from another skill → back to that skill's next step with the slice's proof: test-first → the red and green runs; evidence-after → the step 1 proof (no red run to carry).
-- Called alone → `check-work` with that proof; test-first: the step 4 red run is its red proof while no test file has changed since, else `check-work` removes the fix and sees the test red again.
-- If `check-work` is not available, run the module suite and report it with the same proof (test-first: the step 4 red run; a test file changed since → remove the fix once, see the test red, restore it, and report that run instead).
+- Called from another skill → back to that skill's next step with the slice's proof: test-first → the red and green runs; evidence-after → the step 1 proof.
+- Called alone → `convening-code-review` on the diff, with the red and green runs.
+- Not available → `review-code` on the diff.
+- No other skill → stop and tell the user what changed, the red and green runs, and what is still unverified or unreviewed.
