@@ -158,7 +158,7 @@ def split_core_agent(text: str) -> tuple[dict[str, list[str]], str]:
 def resolve_includes(text: str) -> str:
     """Replace `{{INCLUDE: <path>}}` directive lines with the file's contents.
 
-    Lets an agent body pull a shared fragment (e.g. agent-protocol.md) instead
+    Lets an agent body pull a shared fragment (e.g. agent-core.md) instead
     of restating it. Mirrors render_template's directive in build/render.sh.
     """
     out: list[str] = []

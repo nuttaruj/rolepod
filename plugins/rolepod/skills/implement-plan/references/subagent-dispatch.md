@@ -20,7 +20,7 @@ An `isolation: 'worktree'` agent holds tracked files only: a gitignored test har
 
 ## Implementer status taxonomy
 
-The receipt declares `COMPLETED | PARTIAL | BLOCKED` (the enum every agent brief and `agent-protocol.md` teach) plus a **Concerns** section. A role's own Return carries its concerns as `Assuming:` lines, residuals and `NEEDS:` lines — read them as Concerns; `MISSING TARGET` / `SPEC CONFLICT` arrive under `BLOCKED`.
+The receipt declares `COMPLETED | PARTIAL | BLOCKED` (the enum every agent brief and `writer-core.md` teach) plus a **Concerns** section. A role's own Return carries its concerns as `Assuming:` lines, residuals and `NEEDS:` lines — read them as Concerns; `MISSING TARGET` / `SPEC CONFLICT` arrive under `BLOCKED`.
 
 ### `COMPLETED`, Concerns listed
 

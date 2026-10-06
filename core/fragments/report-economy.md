@@ -17,8 +17,6 @@ claim, not another review axis.
   storage, manifest or handoff layer.
 - With no file-writing tool, return the complete required receipt inline and
   name the limitation. Never claim an unwritten path or persisted proof.
-- Preserve exact failure words, counts with nouns, non-zero exit codes and
-  `path:line` evidence. A pointer cannot hide a failure; name the command
-  instead of pasting rerunnable logs.
+- Name the command instead of pasting rerunnable logs.
 - Answer directly without preamble, brief restatement, reading history or
   closing recap. Omit detail the canonical artifact already holds.
