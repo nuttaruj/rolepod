@@ -38,19 +38,12 @@ setup path worth keeping) — then link it from the README.
    scoped value is captured and lands where step 1 said (each `set_secret`
    name must match a `secrets.*` reference in CI exactly).
 
-Rules the template already encodes — keep them when authoring stages: open
-the URL **before** asking for its value; `ask_secret` for anything secret;
-`confirm` before every irreversible action; one focused task per stage.
-Re-running is cheap: `ask` / `ask_secret` take the `.env` key as their
-variable name and offer its current value (Enter keeps it); a stage that
-fills another file sets `ENV_FILE=<file>` first and back to `.env` after.
-Keys are UPPER_CASE `.env` names — the helpers refuse a shell or template
-name (`UID`, `PATH`, `ENV_FILE`) with a rename hint; asking for
-`GH_TOKEN` / `GITHUB_TOKEN` makes every later `gh` call run as the pasted
-token, so set GitHub secrets before that stage. Ctrl-D at an `ask` prompt
-aborts the run. A failed `gh` call (not installed, signed out, no access)
-becomes a warning with gh's reason under "still to do by hand"; a failing
-browser opener prints the URL to open by hand — neither kills the run.
+When authoring stages: open the URL **before** asking for its value;
+`ask_secret` for anything secret; `confirm` before every irreversible action;
+one focused task per stage. A stage that fills another file sets
+`ENV_FILE=<file>` first and back to `.env` after. Asking for `GH_TOKEN` /
+`GITHUB_TOKEN` makes every later `gh` call run as the pasted token, so set
+GitHub secrets before that stage.
 
 ## Template
 
