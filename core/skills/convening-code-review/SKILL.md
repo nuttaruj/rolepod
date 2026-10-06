@@ -1,9 +1,9 @@
 ---
-name: run-review
+name: convening-code-review
 description: Use when the user asks to review a diff, branch or PR, or a track ends; a built diff needs its review round ordered — freeze it, pick the reviewer set, dispatch, take the reports, run Fix-verify.
 ---
 
-# Run Review
+# Convening Code Review
 
 A built diff → its round-1 reviewer set run on one frozen snapshot, findings closed through Fix-verify.
 
@@ -20,7 +20,7 @@ A built diff → its round-1 reviewer set run on one frozen snapshot, findings c
 - No script → `git add -A -- <paths>`; the staged `--stat` + `-U10` diff of those paths, excluding `docs/rolepod`, lockfiles and each `.rolepod/review-exclude` line, into `.rolepod/evidence/review/<task>.diff`; H1 = `git write-tree`.
 - Committed (a track end: the lens diff `ticket.sh log` wrote; a branch / PR: `git diff <base>...<head>`, same excludes, into `<task>.diff`) → that file; H1 = `git rev-parse <head>^{tree}`.
 - Record the hash beside H1: `git hash-object <diff file>`. Preflight: refs resolve, diff non-empty; else re-derive, never dispatch.
-- Past ~15 files / ~800 lines → split, one review each: a track end by size slice (`run-tracks` step 4; none → by task in plan order), else by task or ship group.
+- Past ~15 files / ~800 lines → split, one review each: a track end by size slice (`coordinating-parallel-tracks` step 4; none → by task in plan order), else by task or ship group.
 - Gather spec / plan / acceptance, touched files and risk profile; a track end also: the `Track end:` and `Review:` lines from `ticket.sh log`.
 
 Done when: diff file, H1 and hash recorded; inputs in hand.
@@ -31,7 +31,7 @@ Done when: diff file, H1 and hash recorded; inputs in hand.
 - The brief's Reviewers or `Review:` line wins; none → `../write-plan/scripts/plan-lint.sh --review-set --tier <R2|R3|R4> [--match <perf,ui,arch>]`. A high-risk path (auth, money, secrets, tokens, crypto, permissions, migration, data deletion) in the unreviewed diff → R4 regardless.
 - No script → the Review set below at the carried mode, never re-read; none carried → `using-rolepod`'s `scripts/workflow-mode.sh` once.
 
-**Review set** (round 1; mode unknown → Lite). Lite, any tier: the two lenses only. Standard: R2 the two lenses, a matched row → that role instead · R3 the two lenses + each matched specialist · R4 the two lenses + `security-engineer` (`depth: checklist`). Full: as Standard, but R4 `depth: full` + one adversarial pass.
+{{INCLUDE: core/fragments/review-set.md}}
 
 - Matched rows: performance regression → `performance-engineer` · UI / interaction / a11y → `ui-ux-designer` · architecture / cross-module → `system-architect`.
 - Pool on + R3 / R4 → each lens external via `cross-family` kind review (`--lens <lens>`); internal: R2, comment / config / rename-only diffs, a wide-effort session, `security-engineer`, specialists. A failed, weak or refused external → `universal-reviewer`, same lens, same round; no `cross-family` → internal lenses.
@@ -57,7 +57,7 @@ Done when: every report complete at its path.
 - Aggregate and deduplicate only once every report is in; the receipt's `## Reviews` lists each path; never re-walk a traced report.
 - Full R4 Cross-model adversarial pass line: `ran on <cli>` · `NOT RUN — cross-family off (opt-in)` · `NOT RUN — wide-effort session` · `NOT RUN — <reason>` (the internal strong pass ran) · `vertical — same CLI, <reason>`.
 
-Evidence log: append the line to `<git-root>/.rolepod/evidence/phase-log.jsonl` chained onto the next command you run anyway (`<cmd> && printf '…' >> phase-log.jsonl`), never as a standalone turn; skip silently outside a git repo.
+{{INCLUDE: core/fragments/phase-log.md}}
 Review line: `{"ts":"<iso8601>","phase":"review","verdict":"<APPROVED|APPROVED-WITH-NITS|REJECTED>","blockers":<n>}`.
 
 Done when: reports listed in the receipt; review line appended.

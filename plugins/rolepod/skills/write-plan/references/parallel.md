@@ -20,4 +20,4 @@ Fill `templates/cohesion-contract-template.md` — Shared goal · Owners · File
 
 ## Session split
 
-Tracks as separate CLI sessions → the run-tracks skill (session split); no `run-tracks` → fill the contract's optional **Session split** section: per-track CLI + branch + kickoff prompt, one integration session that merges in the contract's order.
+Tracks as separate CLI sessions → the coordinating-parallel-tracks skill (session split); no `coordinating-parallel-tracks` → fill the contract's optional **Session split** section: per-track CLI + branch + kickoff prompt, one integration session that merges in the contract's order.

@@ -1,9 +1,9 @@
 ---
-name: run-review
+name: convening-code-review
 description: Use when the user asks to review a diff, branch or PR, or a track ends; a built diff needs its review round ordered — freeze it, pick the reviewer set, dispatch, take the reports, run Fix-verify.
 ---
 
-# Run Review
+# Convening Code Review
 
 A built diff → its round-1 reviewer set run on one frozen snapshot, findings closed through Fix-verify.
 
@@ -20,7 +20,7 @@ A built diff → its round-1 reviewer set run on one frozen snapshot, findings c
 - No script → `git add -A -- <paths>`; the staged `--stat` + `-U10` diff of those paths, excluding `docs/rolepod`, lockfiles and each `.rolepod/review-exclude` line, into `.rolepod/evidence/review/<task>.diff`; H1 = `git write-tree`.
 - Committed (a track end: the lens diff `ticket.sh log` wrote; a branch / PR: `git diff <base>...<head>`, same excludes, into `<task>.diff`) → that file; H1 = `git rev-parse <head>^{tree}`.
 - Record the hash beside H1: `git hash-object <diff file>`. Preflight: refs resolve, diff non-empty; else re-derive, never dispatch.
-- Past ~15 files / ~800 lines → split, one review each: a track end by size slice (`run-tracks` step 4; none → by task in plan order), else by task or ship group.
+- Past ~15 files / ~800 lines → split, one review each: a track end by size slice (`coordinating-parallel-tracks` step 4; none → by task in plan order), else by task or ship group.
 - Gather spec / plan / acceptance, touched files and risk profile; a track end also: the `Track end:` and `Review:` lines from `ticket.sh log`.
 
 Done when: diff file, H1 and hash recorded; inputs in hand.

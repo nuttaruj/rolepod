@@ -51,7 +51,7 @@ Handle the brief's status (its first word):
 - `BLOCKED` → change a variable (context, model, scope); never redispatch unchanged.
 - A question or any other first word → answer it or ask for the status, then redispatch.
 
-An owner returns its diff unreviewed (it could not dispatch its set) → `run-review` on that diff before you integrate; its findings go back to that owner as one fix brief, never fixed or merged by you.
+An owner returns its diff unreviewed (it could not dispatch its set) → `convening-code-review` on that diff before you integrate; its findings go back to that owner as one fix brief, never fixed or merged by you.
 
 The owner writes its decision brief to the absolute base receipt its brief names (docs/rolepod/tasks/<plan>/task-NN.md; Handoff at most ~15 lines — signatures, invariants); owners and reviewers never edit the plan file, and the Lead's own points go under ## Lead notes. Owner status (`COMPLETED | PARTIAL | BLOCKED`) and Verify status (`VERIFIED | PARTIAL | UNVERIFIED`) stay distinct; neither implies the other.
 A plan task's chat reply stays within 12 lines: status, receipt path, Command tail, reviewer verdicts + report paths, residuals.
@@ -69,19 +69,19 @@ Done when: the task is committed, its boxes flipped, its owner stopped or kept f
 - R4 task → per-task review: the owner's round-1 reports exist before its commit (the brief's Reviewers line; no brief → `plan-lint.sh --review-set --tier R4`).
 - R2/R3 tasks:
 
-> Track end: a track with two or more code tasks → its last code task's owner runs `run-review` with the `Review:` line `ticket.sh log` prints, on the track diff, and fixes each BLOCKER / MAJOR (owner gone → a fresh owner of the role owning most of its code; an owner that cannot dispatch returns the diff unreviewed and the Lead runs `run-review`); the Lead commits the fixes in the track worktree, then `ticket.sh finish <worktree>` merges the track. A track with one code task → its owner ordered its own review before returning, and the track takes no track-end review.
+> Track end: a track with two or more code tasks → its last code task's owner runs `convening-code-review` with the `Review:` line `ticket.sh log` prints, on the track diff, and fixes each BLOCKER / MAJOR (owner gone → a fresh owner of its role; an owner that cannot dispatch returns the diff unreviewed and the Lead runs `convening-code-review`); the Lead commits the fixes in the track worktree, then `ticket.sh finish <worktree>` merges the track. A track with one code task → its owner ordered its own review before returning, and the track takes no track-end review.
 
   No `ticket.sh` → the track diff is `git diff <base>...<track branch>`; the merge: fast-forward the track branch into the base, `git worktree remove`, `git worktree prune`, delete the branch.
 - A docs-only track takes no review. A track-end brief over a diff holding an R3 or R4 task carries the pool-on lens line when `cross-family.sh --pool-names` prints a member.
 - A required report missing, failed, empty or partial keeps that round open: its isolated reviewer completes its own report on the frozen diff. Never substitute a Lead review when agents are available; with no agents, the Lead records both axes and the independence limitation. Never accept a diff without its required reports.
-- The Lead runs no review loop of its own beyond step 3's `run-review`; it talks to owners. Findings → ONE fix task to the owning role; rounds and closure → `run-review` Fix-verify (no `run-review` → one fresh reviewer re-checks only each fix's delta, at most four rounds), closure in the receipt's Author fix closure with report pointers. Nothing pushes or releases before it.
+- The Lead runs no review loop of its own beyond step 3's `convening-code-review`; it talks to owners. Findings → ONE fix task to the owning role; rounds and closure → `convening-code-review` Fix-verify (no `convening-code-review` → one fresh reviewer re-checks only each fix's delta, at most four rounds), closure in the receipt's Author fix closure with report pointers. Nothing pushes or releases before it.
 
 Done when: every track's review is closed at the receipts.
 
 ### 5. Tracks
 
-- Two or more tracks, a ship group, a track over ~800 changed lines or ~15 files, or another session's live lock on the base checkout → call `run-tracks` (layout, worktrees, size slices, drift pass, session split).
-- No `run-tracks` → run the tracks one after another on the base checkout in plan order. Another session holds a live lock on the base → the whole plan runs in one worktree (`git worktree add .worktrees/<plan> -b <branch>`). A track over ~800 changed lines / ~15 files → split its review by task ranges.
+- Two or more tracks, a ship group, a track over ~800 changed lines or ~15 files, or another session's live lock on the base checkout → call `coordinating-parallel-tracks` (layout, worktrees, size slices, drift pass, session split).
+- No `coordinating-parallel-tracks` → run the tracks one after another on the base checkout in plan order. Another session holds a live lock on the base → the whole plan runs in one worktree (`git worktree add .worktrees/<plan> -b <branch>`). A track over ~800 changed lines / ~15 files → split its review by task ranges.
   A named ship group → after its tasks one seams-only drift pass by a fresh owner, never adversarial (when the group holds an R4 task: Standard / Full → `security-engineer`, Lite → the two `universal-reviewer` lenses, `review-code` step 2; no `review-code` → `lens: spec` + `lens: standards`).
 
 Done when: every track is merged.
@@ -118,7 +118,7 @@ Scope and receipt pairs, good and bad → `examples/execution-examples.md`; no e
 
 ## Next phase
 
-- A diff you built yourself, Command green → `run-review` with its brief's Reviewers line (a plan track's `none` → the track end; no brief → `plan-lint.sh --review-set`): a `universal-reviewer` role per lens; no custom role but sub-agents → a default sub-agent per lens given `review-code`; cannot dispatch → the last line.
+- A diff you built yourself, Command green → `convening-code-review` with its brief's Reviewers line (a plan track's `none` → the track end; no brief → `plan-lint.sh --review-set`): a `universal-reviewer` role per lens; no custom role but sub-agents → a default sub-agent per lens given `review-code`; cannot dispatch → the last line.
 - All tracks shipped and reviewed → `check-work` (step 6); then the merge and the branch's fate belong to `finish-work`.
 - `BLOCKED` survives context, model and scope changes and a re-plan → `manage-context` (escalate); if it is not available, stop and hand the user the attempt log and 2-3 options.
 - Not available → `review-code` on the diff.

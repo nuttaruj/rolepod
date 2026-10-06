@@ -1,6 +1,6 @@
 # Rolepod Skill Catalog (Core 10 + 4 helpers + 1 command + 2 on-demand)
 
-Rolepod ships **17 skills total**: Core 10 (1 router + 9 workflow phase skills) plus four helper skills — `cross-family` (another CLI's review / critique / consult), `tdd-flow` (red → green at a seam), `adversarial-review` (the R4 round-1 adversarial pass), and `run-tracks` (parallel task execution) — called by the phase skills that need them, plus one explicit-invoke command — `deepen-codebase` (architecture report → pick a card → write-spec) — and two on-demand skills: `write-prototype` (a throwaway layout or logic demo that answers one spec question; write-spec offers it) and `rolepod-stats` (the project's evidence report, when the user asks). There are no legacy compatibility shim skill files in the install tree. Old skill names are preserved only as documentation in [legacy-skill-map.md](legacy-skill-map.md).
+Rolepod ships **18 skills total**: Core 10 (1 router + 9 workflow phase skills) plus five helper skills — `cross-family` (another CLI's review / critique / consult), `tdd-flow` (red → green at a seam), `adversarial-review` (the R4 round-1 adversarial pass), `coordinating-parallel-tracks` (parallel task execution), and `convening-code-review` (orders a review round: freeze the diff, dispatch the reviewer set, Fix-verify) — called by the phase skills that need them, plus one explicit-invoke command — `deepen-codebase` (architecture report → pick a card → write-spec) — and two on-demand skills: `write-prototype` (a throwaway layout or logic demo that answers one spec question; write-spec offers it) and `rolepod-stats` (the project's evidence report, when the user asks). There are no legacy compatibility shim skill files in the install tree. Old skill names are preserved only as documentation in [legacy-skill-map.md](legacy-skill-map.md).
 
 No entry doc embeds a skill index. Each skill's `description:` is its routing surface, shown by the CLI; `using-rolepod` routes by its own table, so the Lead does not spend context choosing among dozens of tiny workflow fragments. Deep domain expertise lives in the 15 specialist agents.
 
@@ -39,7 +39,8 @@ No entry doc embeds a skill index. Each skill's `description:` is its routing su
 | `cross-family` | `review-code`, `write-spec`, `debug-issue`, `implement-plan` | Runs another CLI's review, critique, or consult end to end. |
 | `tdd-flow` | `implement-plan`, `debug-issue`, `simplify-code`, `check-work`, `write-plan` | Runs the failing-test-first red → green loop at a seam. |
 | `adversarial-review` | `review-code` | Runs the adversarial pass of an R4 round 1 — external via `cross-family` when the pool is usable, else internal strong. |
-| `run-tracks` | `implement-plan` | Orchestrates parallel task execution across plan tracks. |
+| `coordinating-parallel-tracks` | `implement-plan` | Orchestrates parallel task execution across plan tracks. |
+| `convening-code-review` | `implement-plan`, the Lead | Orders a review round: freezes the diff, dispatches the reviewer set, waits for every report, runs Fix-verify. |
 
 ## Domain expertise → specialist agents
 

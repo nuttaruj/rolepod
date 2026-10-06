@@ -1,9 +1,9 @@
 ---
-name: run-tracks
+name: coordinating-parallel-tracks
 description: Use when a plan's Parallel layout names two or more tracks, a plan names a ship group, a track's diff passes ~800 changed lines or ~15 files, or another session holds a live lock on the base checkout.
 ---
 
-# Run Tracks
+# Coordinating Parallel Tracks
 
 Turns a plan's tracks into merged branches — each built in its own worktree and reviewed at its end.
 No worktrees or no parallel agents → run the tracks one after another on the base checkout in plan order; a ship group still gets its drift pass (step 4) and a live lock still moves the plan into one plan worktree (step 1) — only time is lost.
@@ -61,16 +61,16 @@ The Lead integrates each returned task in its track's worktree (the ship line pe
 - Each task in the track commits once ready; no `finish` until the track ends.
 - A harness-made worktree, or a commit refused because the Lead's branch moved → `git cherry-pick <sha>` (a conflict ends with `git cherry-pick --continue`, never a new `git commit`), then (after all tasks integrate) remove the worktree, delete its branch, and run the `log` step (record each task: `ticket.sh log <plan> <N> --sha <sha> --note '<text>'` flips its boxes and appends the Changes line; no `ticket.sh` → flip the boxes by hand and add one `## Changes during build` line per task with the cherry-picked sha).
 - Integrated → stop the owner (TaskStop, or the CLI's close) in the same turn — keep a track's last code-task owner for its track end. Its return notes background work still running → stop that at once; leftover work runs for hours unwatched.
-- An owner returns its diff unreviewed → `implement-plan` step 3; no `implement-plan` → `run-review` on that diff before you integrate.
+- An owner returns its diff unreviewed → `implement-plan` step 3; no `implement-plan` → `convening-code-review` on that diff before you integrate.
 - Before any cleanup, preserve an older worktree receipt to the named base path first. A differing destination is a collision: stop cleanup and report it. Do not create another report or handoff.
 
 Done when: each returned task is committed in its track worktree and its owner is stopped or kept for its track end.
 
 ### 4. Review the track
 
-Track end → the `Track end:` and `Review:` lines `ticket.sh log` prints; no `ticket.sh` → the last code task's owner runs `run-review` on the track diff with the active mode's R3 set (`plan-lint.sh --review-set --tier R3`) and fixes each BLOCKER / MAJOR; a track with one code task → its owner ordered its own review before returning; a docs-only track → none.
+Track end → the `Track end:` and `Review:` lines `ticket.sh log` prints; no `ticket.sh` → the last code task's owner runs `convening-code-review` on the track diff with the active mode's R3 set (`plan-lint.sh --review-set --tier R3`) and fixes each BLOCKER / MAJOR; a track with one code task → its owner ordered its own review before returning; a docs-only track → none.
 No `ticket.sh` → the track diff is `git diff <base>...<track branch>`.
-The fix re-check → `run-review` Fix-verify (rounds and closure); no `run-review` → one fresh `universal-reviewer` re-checks only each fix's delta, at most four rounds in all.
+The fix re-check → `convening-code-review` Fix-verify (rounds and closure); no `convening-code-review` → one fresh `universal-reviewer` re-checks only each fix's delta, at most four rounds in all.
 The Lead commits the fixes in the track worktree.
 
 Over ~800 changed lines or ~15 files in one track → size slices:

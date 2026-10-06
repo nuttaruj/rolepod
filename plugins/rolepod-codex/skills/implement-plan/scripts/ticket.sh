@@ -52,7 +52,7 @@
 #     line ("; lens diff: <path>") so the review lenses get the diff as a
 #     file, not a shell. The next line is `Review:` — the R3 cell of
 #     `plan-lint.sh --review-set` for the session mode — then `Track end:`
-#     names who runs `run-review`. A write failure never fails log — the range still
+#     names who runs `convening-code-review`. A write failure never fails log — the range still
 #     prints, just without the path. Idempotent, same as the checkbox flip.
 #     Tracks: listed in `## Tracks`; without it a Parallel plan makes each
 #     task its own track (id = the task number) and a Sequential plan is one
@@ -1434,7 +1434,7 @@ EOF
         # call prints a pointer line and never fails log.
         ROLEPOD_BRIEF_NOREC=1 bash "$LINT" --review-set --tier R3 2>/dev/null \
           || echo "Review: unknown — run plan-lint.sh --review-set --tier R3"
-        echo "Track end: a track with two or more code tasks → its last code task's owner runs \`run-review\` with the \`Review:\` line \`ticket.sh log\` prints, on the track diff, and fixes each BLOCKER / MAJOR (owner gone → a fresh owner of the role owning most of its code; an owner that cannot dispatch returns the diff unreviewed and the Lead runs \`run-review\`); the Lead commits the fixes in the track worktree, then \`ticket.sh finish <worktree>\` merges the track. A track with one code task → its owner ordered its own review before returning, and the track takes no track-end review."
+        echo "Track end: a track with two or more code tasks → its last code task's owner runs \`convening-code-review\` with the \`Review:\` line \`ticket.sh log\` prints, on the track diff, and fixes each BLOCKER / MAJOR (owner gone → a fresh owner of its role; an owner that cannot dispatch returns the diff unreviewed and the Lead runs \`convening-code-review\`); the Lead commits the fixes in the track worktree, then \`ticket.sh finish <worktree>\` merges the track. A track with one code task → its owner ordered its own review before returning, and the track takes no track-end review."
       fi
     fi
   fi
@@ -1442,7 +1442,7 @@ EOF
 
 # ── review-diff (C67) ────────────────────────────────────────────────────
 # The one home of the frozen review diff, the H1 / H2 tree and the fix delta
-# `run-review` hands its reviewers. Stages the whole tree (`git add -A`, as
+# `convening-code-review` hands its reviewers. Stages the whole tree (`git add -A`, as
 # writer-loop always did) or, with `-- <path>...`, only those paths; never
 # commits, stashes, resets or checks out. The exclude list is review_excludes.
 RD_USAGE="usage: ticket.sh review-diff start <name> [-- <path>...] | ticket.sh review-diff delta <name> <H1-tree> <k: 2|3|4> [-- <path>...]"

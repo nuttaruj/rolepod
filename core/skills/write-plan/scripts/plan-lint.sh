@@ -21,7 +21,7 @@
 #   Reviewers prints one cell of the review set (C61; core/fragments/review-set.md)
 #   for the task's mode x tier: R1 none; R4 the mode's R4 set; an R2/R3 task
 #   `none` (its track's track-end review covers it) unless it is its track's only
-#   code task — then its own cell. Round mechanics live in run-review, never here.
+#   code task — then its own cell. Round mechanics live in convening-code-review, never here.
 #   `--plan-worktree`: the task runs in the plan worktree (branch
 #   <feature>/plan, path ../<repo>-wt-<feature>) — Worktree and Bounds
 #   follow from it.

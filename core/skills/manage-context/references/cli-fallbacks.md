@@ -48,7 +48,7 @@ the SAME CLI.
 
 ## Parallel tracks across CLIs
 
-Tracks as separate CLI sessions → the run-tracks skill; no run-tracks → one session runs the tracks in order.
+Tracks as separate CLI sessions → the coordinating-parallel-tracks skill; no coordinating-parallel-tracks → one session runs the tracks in order.
 
 ## Rule
 Never assume a `/command` exists on the CLI you are running on. If unsure,
