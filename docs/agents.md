@@ -1,6 +1,6 @@
 # Rolepod Agent Catalog
 
-Full 16-agent specialist roster. Lead never picks from this list directly — the `write-plan` skill maps path + concern + risk to the right agent when delegation helps.
+Full 15-agent specialist roster. Lead never picks from this list directly — the `write-plan` skill maps path + concern + risk to the right agent when delegation helps.
 
 This doc is the **reference**. No entry doc embeds the roster; each agent file's `description:` is what the CLI shows.
 
@@ -17,43 +17,21 @@ Lead is never the picker of last resort. Each step narrows the choice.
 
 ## Source of truth
 
-Source of truth: [`core/agents/*.md`](../core/agents/) — the domain map below picks the agent by path + concern; a role's own per-CLI frontmatter overlay picks the model tier.
-
-## Domain map (which path → which agent)
-
-| Path / concern | Agent |
-|---|---|
-| `**/backend/**`, API routes, business logic | `backend-developer` |
-| `**/frontend/**`, components, hooks, state | `frontend-developer` |
-| `**/mobile/**`, native iOS / Android | `mobile-developer` |
-| `**/billing/**`, `**/payments/**`, `**/credits/**` | `billing-engineer` |
-| `**/auth/**`, `**/security/**`, tokens, secrets | `security-engineer` |
-| Performance budgets, p95/p99, perf-sensitive code | `performance-engineer` |
-| User-visible tests (E2E / UI / browser / contract); a slice's unit tests belong to its writer | `qa-tester` |
-| AI / LLM features, RAG, prompt engineering | `ai-ml-engineer` |
-| Analytics, dashboards, data pipelines | `data-scientist` |
-| API design, module boundaries, data flow | `system-architect` |
-| Feature scope, priorities, pricing, ROI | the user — the product owner; `write-spec` Discovery gathers it, no agent stands in |
-| Wide read-only sweep — repo or online — before a plan or answer | `scout` |
-| Visual design, design system, a11y | `ui-ux-designer` |
-| `.github/workflows/**`, `Dockerfile` / `docker-compose*`, `vercel.json` / `wrangler.*` / `fly.toml` / `railway.*`, `deploy/**`, `infra/**`, `terraform/**`, release scripts, monitoring | `devops-sre` |
-| Any human-readable written output — docs / FAQ / marketing copy (caller specifies `audience: dev \| user \| prospect`) | `content-strategist` |
-| Final code-quality review (logic / DRY / structure) | `universal-reviewer` |
-| A cold attempt to break a high-risk diff (round 1, Full) | `adversarial-reviewer` |
+Source of truth: [`core/agents/*.md`](../core/agents/) — each role's own per-CLI frontmatter overlay picks the model tier; `Skill` and `skills:` are generated from the role's Skill Mapping by `build/merge-agent.py`.
 
 ## How to add a new agent
 
-1. Add `core/agents/<name>.md` with `name:` + `description:` + `color:` frontmatter — the single source for every CLI; no overlay repeats `name:` or `description:`.
-2. Add `adapters/claude/agent-frontmatter/<name>.yml` with `tier:` (cheap / balanced / strong) + `effort:` + no `memory:` on any role (a sub-agent starts from a fresh context; the Lead keeps project memory) + `tools:` including `Skill` (every role but `scout` and the roles that preload their manual through `skills:`); `universal-reviewer` lists `Write` for its report only (the write-scope hook keeps it to markdown; Cursor and opencode render it read-only), `scout` stays read-only. An explicit `tools:` list drops every MCP tool by default; `qa-tester` and `ui-ux-designer` allowlist the browser MCP servers only (`mcp__claude-in-chrome`, `mcp__playwright`, `mcp__chrome-devtools`, `mcp__plugin_rolepod-uiproof_rolepod-uiproof`) — never all MCP, which would also hand them Gmail / deploy / payment / WordPress-write servers. A pattern matches the server's registered name: a browser server installed under another name (a marketplace plugin registers `mcp__plugin_<plugin>_<server>`) needs its own pattern added here; until then the role reports "not observed" and the Lead observes. `skills:` (bare skill names, only on a reviewer role) preloads that role's manual through the harness: Claude injects it as `rolepod:<name>` and the role has no `Skill` tool; Codex has no preload field, so render inlines the skill body into the role TOML (`PRELOAD_MODE` in `build/merge-agent.py`); every other role calls `Skill` on demand. The concrete model comes from `TIER_MODELS` in `build/merge-agent.py` — do NOT put a model name in the overlay, and no `maxTurns`: the brief carries the turn budget, the role file none (v2.119.0 — a cap measured as 12 of 105 reviewer runs paid for the read and dropped the report).
-3. Add `adapters/codex/agent-frontmatter/<name>.yml` (`tier:` + `model_reasoning_effort` + `sandbox_mode`) and `adapters/antigravity/agent-frontmatter/<name>.yml` (`tier:`). Add the agent's row to the "Default agent → tier mapping" table in `model-tier-policy.md` so the static gate can verify it.
-4. Update the domain map above + `write-plan` agent-routing guidance.
+1. Add `core/agents/<name>.md` with `name:` + `description:` + `color:` frontmatter plus five sections (Role & Identity, Objective & Focus, Skill Mapping, Persona & Tone, Constraints & Guardrails) — the single source for every CLI; no overlay repeats `name:` or `description:`.
+2. Skill Mapping (in the role file) lists the skills that will be available to the agent. `build/merge-agent.py` generates `Skill` tool access and `skills:` from this mapping; the overlay holds neither.
+3. Add `adapters/claude/agent-frontmatter/<name>.yml` with `tier:` (cheap / balanced / strong) + `effort:` + no `memory:` on any role (a sub-agent starts from a fresh context; the Lead keeps project memory). The concrete model comes from `TIER_MODELS` — do NOT put a model name in the overlay.
+4. Add `adapters/codex/agent-frontmatter/<name>.yml` (`tier:` + `model_reasoning_effort` + `sandbox_mode`) and `adapters/antigravity/agent-frontmatter/<name>.yml` (`tier:`). Add the agent's row to the "Default agent → tier mapping" table in `model-tier-policy.md` so the static gate can verify it.
 5. `bash build/render.sh` — regenerates the per-CLI agent files (Codex `.toml` generated from the core body, no hand-maintained copy).
 
 ## Why not fewer agents?
 
 `product-manager` was retired in v2.115.0: over 90 days it was dispatched 0 times because the user IS the product owner — `write-spec` Discovery gathers scope, priorities and commercial framing from them directly, so an agent standing in between was a role with no work.
 
-The 16-specialist count comes from cost-aware role separation, not workflow stages. A senior backend developer model is cheap; a strongest model doing security review is expensive. Mixing them inside one agent collapses the cost-control dimension and forces the workflow to pay strongest-model rates for every task. Keeping them separate lets each agent carry its own tier-mapped model.
+The 15-specialist count comes from cost-aware role separation, not workflow stages. A senior backend developer model is cheap; a strongest model doing security review is expensive. Mixing them inside one agent collapses the cost-control dimension and forces the workflow to pay strongest-model rates for every task. Keeping them separate lets each agent carry its own tier-mapped model.
 
 One within-tier consolidation exists in the roster. `content-strategist` folds tech-writer + customer-success + growth-marketer (all cheap-tier writers) into a single agent that takes a mandatory `audience: dev | user | prospect` parameter. (A second consolidation, `product-manager` absorbing the former business-analyst, was retired whole in v2.115.0 — see above.) Each audience keeps its own scope, hard stops, and framework set, so specialist depth is preserved while selection overhead at the Lead shrinks.
 

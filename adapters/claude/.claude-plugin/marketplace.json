@@ -1,14 +1,14 @@
 {
   "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
   "name": "rolepod",
-  "description": "Coordinated software-house team for AI coding CLIs — 15 specialist agents, Core 10 phase skills, 6-phase lifecycle with pre-commit gates.",
+  "description": "Coordinated software-house team for AI coding CLIs — 15 specialist agents, Core 10 phase skills, five-phase spine (Define → Plan → Build → Review → Ship) with pre-commit gates.",
   "owner": {
     "name": "nuttaruj"
   },
   "plugins": [
     {
       "name": "rolepod",
-      "description": "15 specialist agents, Core 10 phase skills (1 router + 9 phase), 6-phase lifecycle. Pre-merge gate (check-work status, CI, review reports, R4 security + adversarial pass) catches integration issues before ship.",
+      "description": "15 specialist agents, Core 10 phase skills (1 router + 9 phase), five-phase spine (Define → Plan → Build → Review → Ship). Pre-merge gate (check-work status, CI, review reports, R4 security + adversarial pass) catches integration issues before ship.",
       "source": "./plugins/rolepod",
       "category": "productivity"
     }

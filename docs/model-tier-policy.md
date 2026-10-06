@@ -65,7 +65,6 @@ which rung was sent.
 | `frontend-developer` | balanced | Component + state + routing work |
 | `mobile-developer` | balanced | Native + cross-platform |
 | `ai-ml-engineer` | balanced | LLM/RAG features in production code |
-| `data-scientist` | balanced | Analytics + pipelines |
 | `qa-tester` | balanced | E2E / UI / contract test authoring, flake, spec-first test-case design |
 | `performance-engineer` | balanced | Profiling + optimization with measured evidence |
 | `ui-ux-designer` | balanced | Visual polish + a11y |

@@ -1,8 +1,8 @@
-# Rolepod Skill Catalog (Core 10 + 6 helpers + 1 command + 2 on-demand)
+# Rolepod Skill Catalog (Core 10 + 7 helpers + 1 command + 2 on-demand)
 
-Rolepod ships **19 skills total**: Core 10 (1 router + 9 workflow phase skills) plus six helper skills — `cross-family` (another CLI's review / critique / consult), `tdd-flow` (red → green at a seam), `adversarial-review` (the R4 round-1 adversarial pass), `coordinating-parallel-tracks` (parallel task execution), `convening-code-review` (orders a review round: freeze the diff, dispatch the reviewer set, Fix-verify), and `security-review` (the security engineer's threat-model method) — called by the phase skills that need them, plus one explicit-invoke command — `deepen-codebase` (architecture report → pick a card → write-spec) — and two on-demand skills: `write-prototype` (a throwaway layout or logic demo that answers one spec question; write-spec offers it) and `rolepod-stats` (the project's evidence report, when the user asks). There are no legacy compatibility shim skill files in the install tree. Old skill names are preserved only as documentation in [legacy-skill-map.md](legacy-skill-map.md).
+Rolepod ships **20 skills total**: Core 10 (1 router + 9 workflow phase skills) plus seven helper skills — `cross-family` (another CLI's review / critique / consult), `tdd-flow` (red → green at a seam), `adversarial-review` (the R4 round-1 adversarial pass), `coordinating-parallel-tracks` (parallel task execution), `convening-code-review` (orders a review round: freeze the diff, dispatch the reviewer set, Fix-verify), `security-review` (the security engineer's threat-model method), and `check-work` (the Verify-phase done-claim helper) — called by the phase skills that need them, plus one explicit-invoke command — `deepen-codebase` (architecture report → pick a card → write-spec) — and two on-demand skills: `write-prototype` (a throwaway layout or logic demo that answers one spec question; write-spec offers it) and `rolepod-stats` (the project's evidence report, when the user asks). There are no legacy compatibility shim skill files in the install tree. Old skill names are preserved only as documentation in [legacy-skill-map.md](legacy-skill-map.md).
 
-No entry doc embeds a skill index. Each skill's `description:` is its routing surface, shown by the CLI; `using-rolepod` routes by its own table, so the Lead does not spend context choosing among dozens of tiny workflow fragments. Deep domain expertise lives in the 16 specialist agents.
+No entry doc embeds a skill index. Each skill's `description:` is its routing surface, shown by the CLI; `using-rolepod` routes by its own table, so the Lead does not spend context choosing among dozens of tiny workflow fragments. Deep domain expertise lives in the 15 specialist agents.
 
 ## Tier model
 
@@ -40,12 +40,14 @@ No entry doc embeds a skill index. Each skill's `description:` is its routing su
 | `tdd-flow` | `implement-plan`, `debug-issue`, `simplify-code`, `check-work`, `write-plan` | Runs the failing-test-first red → green loop at a seam. |
 | `adversarial-review` | `adversarial-reviewer` | The adversarial reviewer's method (preloaded): stance, attack surface, report. The orderer picks the external `cross-family` run or the role in `convening-code-review`. |
 | `security-review` | `security-engineer` | The security reviewer's method (preloaded): depth, threat model, an exploit scenario per BLOCKER / MAJOR, closure proof. |
-| `coordinating-parallel-tracks` | `implement-plan` | Orchestrates parallel task execution across plan tracks. |
-| `convening-code-review` | `implement-plan`, the Lead | Orders a review round: freezes the diff, dispatches the reviewer set, waits for every report, runs Fix-verify. |
+| `coordinating-parallel-tracks` | `orchestrating-plans` | Orchestrates parallel task execution across plan tracks. |
+| `convening-code-review` | `orchestrating-plans`, the Lead | Orders a review round: freezes the diff, dispatches the reviewer set, waits for every report, runs Fix-verify. |
+| `check-work` | `finish-work` | Proves the done claim with evidence (tests / build / curl / browser / log / screenshot) and guards against false greens. The Pre-merge gate calls it on the plan's full diff. |
+| `orchestrating-plans` | The Lead | Orchestrates the Plan phase: task creation, agent ownership, parallel track execution, cohesion contracts. |
 
 ## Domain expertise → specialist agents
 
-Domain depth that used to live in standalone skills now lives in the 16 specialist agents (see [agents.md](agents.md)) and is routed from inside the Core 10 phase skills:
+Domain depth that used to live in standalone skills now lives in the 15 specialist agents (see [agents.md](agents.md)) and is routed from inside the Core 10 phase skills:
 
 | Domain | Phase skill that routes here | Specialist agent |
 |--------|------------------------------|------------------|

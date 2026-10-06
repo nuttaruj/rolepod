@@ -191,7 +191,7 @@ A bare Workflow `agent()` and a general-purpose Agent-tool sub-agent carry no ro
 
 ### `project-context-loader.sh` — SessionStart (Claude, Codex, Cursor)
 
-- **Effect** — repo name, branch, dirty count, the last 3 commits (each subject cut to one line), hot files (7 days; manifest churn such as `plugin.json` and lockfiles skipped), the last phase-log line, and an **Open plan** pointer: the newest `docs/rolepod/plans/*.md` that has at least one checked AND one unchecked box (a 0-done plan is never shown).
+- **Effect** — repo name, branch, dirty count, the last 3 commits (each subject cut to one line), hot files (7 days; manifest churn such as `plugin.json` and lockfiles skipped), the last phase-log line, and an **Open plan** pointer: the newest plan, showing each task's status as 'Task N/M done · running: ... · next: ...' by task.
 - **Context only** — the session lock, the sibling warning and `.rolepod/parent-active` belong to `session-lifecycle` on Claude and Codex (Codex launches SessionStart hooks concurrently, so a second lock writer here read as a phantom sibling and outlived Stop). Cursor ships its own loader, which keeps its `cursor-<conversation_id>` lock.
 - **Cross-family** — no pool file and a second CLI installed → one context line pointing at the `cross-family` skill's setup steps, never a question.
 - **Bypass** — none (context only).
@@ -259,8 +259,9 @@ One extended regex per line: bare or `+` adds, `-` excludes a path the built-in 
 - **The ship chain** — one Bash call after the owner returns; a red step stops it before the commit:
   1. `integrate <worktree> --brief <file> --gate '<cmd>'` — fast-forward to the base, stage everything except `docs/rolepod/`, run the brief's Proof, then the gate.
   2. `git -C <worktree> commit -m '<subject>'`.
-  3. `finish <worktree>` — fast-forward merge, remove the worktree and branch.
-  4. `log <plan> <N> --sha … --note …` — flip the checkboxes, note the change, name newly unblocked tasks; when a track's last task is logged, print `track <id> done — review: <base>...<head>` with the track-end review sentence and write its diff to `.rolepod/evidence/review/<feature>-<id>.diff` (a docs-only or one-code-task track prints `track <id> done` alone). `finish <worktree>` (once, at track end) merges the track and prints `ready now:` for each fan-in task it unblocked.
+  3. `status <plan>` — prints a `## Status` block showing each task (checked / running / blocked) and the track that owns it, for the Lead to read at a glance.
+  4. `finish <worktree>` — fast-forward merge, remove the worktree and branch.
+  5. `log <plan> <N> --sha … --note …` — flip the checkboxes, note the change, name newly unblocked tasks; when a track's last task is logged, print `track <id> done — review: <base>...<head>` with the track-end review sentence and write its diff to `.rolepod/evidence/review/<feature>-<id>.diff` (a docs-only or one-code-task track prints `track <id> done` alone). `finish <worktree>` (once, at track end) merges the track and prints `ready now:` for each fan-in task it unblocked.
 
 Test levels, printed in every brief: the task's Command runs after each edit and last before returning; the whole-repo suite runs once per release, by the Lead. A red `integrate` goes back to the task owner in a new dispatch — the Lead never repairs it.
 

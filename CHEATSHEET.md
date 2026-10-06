@@ -55,7 +55,6 @@ Can't verify  → state "Assuming X. Risk Y. Verify by Z" — never proceed sile
 | iOS / Android / React Native | `mobile-developer` |
 | Billing / payments / credits | `billing-engineer` |
 | LLM / RAG / prompts / agents | `ai-ml-engineer` |
-| Analytics / statistics / dashboards | `data-scientist` |
 | User-visible tests (E2E / UI / browser / contract) — a slice's unit tests belong to its writer | `qa-tester` |
 | Security / vulnerabilities / compliance | `security-engineer` |
 | Load / profiling / p95-p99 | `performance-engineer` |
