@@ -19,7 +19,7 @@ Reaching Verify or Ship → load `check-work` (a done claim, R2 and up) or
 `finish-work` (a PR, a merge, a push to the base, a deploy, any tier) first;
 memory of a skill is not its text.
 
-Executing an approved plan → load `implement-plan` first and run its tasks to the end without stopping between them; do not restart Define or Plan because of a skill invocation. A concrete bug, regression or failing test → `debug-issue` before any edit.
+Executing an approved plan → load `orchestrating-plans` first and run its tasks to the end without stopping between them; do not restart Define or Plan on a skill load. A concrete bug, regression or failing test → `debug-issue` before any edit.
 
 Workflow mode is selected once per session (the startup profile, else the first `using-rolepod` entry) and carried through briefs and compaction summaries; a tool call, config change or skill reload never reselects it or reroutes. After compaction or a skill reload, reload the skill text and reuse the carried mode. Report-only requests are read-only answers unless the user asked for a saved artifact.
 

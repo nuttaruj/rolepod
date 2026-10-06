@@ -38,7 +38,7 @@ before publishing**, and show the issue list you are about to create.
 4. Note in the plan file header that the issues backend is on, with the issue
    numbers per task — the builder's session reads the plan first.
 
-## Working a shared plan (implement-plan side)
+## Shared plan (orchestrating-plans side)
 
 - **Claim before work**: `gh issue edit <n> --add-assignee @me` — first write
   of the session. Someone else already assigned → pick the next frontier issue.

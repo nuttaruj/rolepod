@@ -42,8 +42,8 @@
       included; two full-depth layers → two slices joined by Blocked by. A
       high-risk write goes to the path's owner and the High-risk surfaces line
       names the task; security-engineer writes tests only. An E2E / UI flow the
-      spec names → no task; check-work verifies it once the feature is built (a
-      slice's unit tests belong to its owner).>
+      spec names → no task; the QA pass in finish-work checks it once per
+      branch (a slice's unit tests belong to its owner).>
 
 - **Done when:** <pass/fail condition; a changed rule also names the nearest inputs whose result stays the same>
 - **On fail:** <non-default recovery, if any. Omit to use the Failure policy below.>
@@ -56,7 +56,7 @@
 - <surface> → Task <N>
 
 ## Spec coverage (both directions)
-<Map each requirement to a task and each task to its source requirement. Move unrequested work to Follow-ups. Verify a named user-visible flow once at Verify.>
+<Map each requirement to a task and each task to its source requirement. Move unrequested work to Follow-ups. A named user-visible flow is checked once, at the QA pass before ship.>
 - <spec requirement> → Task <N>
 
 ## Parallel layout
@@ -72,8 +72,8 @@
 
 ## Ship groups
 <Optional — only when tasks share a seam (a contract or interface): one line
- per group; none → delete this section. implement-plan runs one drift pass
- per group; finish-work's Pre-merge gate (Review evidence) looks for its report.>
+ per group; none → delete this section. A seam list for the final branch
+ review, not a review.>
 - **Ship group:** <name> — Task <N>, Task <M> — seam: <the shared contract / interface>
 
 ## Done criteria
@@ -102,5 +102,5 @@ Changes during build holds one line per task (`- Task N (`sha`): <verdict> -> <t
 ## Follow-ups
 <Append-only. Ideas and scope that surfaced during planning or build and were
  NOT built — one line each: what, why parked, the spec line it would need.
- implement-plan writes here instead of expanding scope; finish-work carries
+ The Lead writes here instead of expanding scope; owners note it in the receipt; finish-work carries
  every line out with a destination (next spec / issue / dropped + why).>

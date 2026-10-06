@@ -35,7 +35,7 @@ Done when: every path is concrete and read.
 Size each task for one fresh context, as a verifiable vertical slice. Split when outcomes touch different files or cannot be verified together; keep same-file halves together.
 Every task states **Delivers** and **Blocked by**; the Blocked-by graph is the only statement of order, each edge naming what it consumes.
 Two edge-free tasks on one file → **prefactor first** (an extract task giving them disjoint files), or Sequential with a reason (edge-cases: Prefactor).
-A task builds and ships alone, never a batch. Tasks sharing a seam (a contract or interface) form one named ship group — the template's **Ship group** line, the unit that bounds its own review.
+A task builds and ships alone, never a batch. Tasks sharing a seam (a contract or interface) form one named ship group — the template's **Ship group** line, a seam list for the final branch review.
 Tracks: tasks sharing files or chained by **Blocked by** form one track (one worktree, in order); a task Blocked by tasks in two or more tracks starts after those tracks merge, as the first task of a new track. Write them as the template's `## Tracks` lines and tag each task `**Track:** A`.
 A task names a file you have not read → read it.
 
@@ -67,7 +67,7 @@ Done when: every path sits under exactly one owner.
 ### 6. Owners and briefs
 
 **Owner:** the role you pick for the task's files from the agent listing (each description names its scope); `Lead` only for R1-sized work or when the user said self-do. No listing → the closest writer role by path.
-Reviewer roles are never owners. Each high-risk surface names every task that touches it under **High-risk surfaces touched** (`- session-cookie validation (auth) → Task 2`): the brief tiers that task R4 and routes its reviewers (Standard / Full → `security-engineer`; Lite → the two `universal-reviewer` lenses, `review-code` step 2; no `review-code` → `lens: spec` + `lens: standards`), even when no file name looks risky (a docs-only task stays R1). A user-visible E2E flow the spec names gets no task owner and no reviewer role — `check-work` verifies it once the feature is built.
+Reviewer roles are never owners. Each high-risk surface names every task that touches it under **High-risk surfaces touched** (`- session-cookie validation (auth) → Task 2`): the brief tiers that task R4 and routes its reviewers (Standard / Full → `security-engineer`; Lite → the two `universal-reviewer` lenses, `review-code` step 2; no `review-code` → `lens: spec` + `lens: standards`), even when no file name looks risky (a docs-only task stays R1). A user-visible E2E flow the spec names gets no task owner and no reviewer role — `finish-work`'s QA pass checks it.
 `plan-lint.sh --brief <N> <plan> [contract]` (`scripts/plan-lint.sh` in this skill's folder) builds the owner's brief from the task block, Expected failing signal and On fail included; no `plan-lint.sh` → the task block verbatim is the brief. The brief is the owner's whole slice, so the block carries everything it needs.
 A task that builds or consumes the spec's agreed contract (Chosen approach: interface, data shape, compatibility rule, invariant) quotes the clause it must keep in its Change or Done when; its Blocked by edge names the symbol it consumes.
 **Read first:** the 2-3 files and the pattern to copy, named by the Lead who read them; the owner never re-surveys the repo.
@@ -108,5 +108,5 @@ Done when: every applicable section is filled, and a saved plan passes plan-lint
 
 ## Next phase
 
-- `implement-plan` with the plan artifact, or the inline checklist (R2, spec-as-plan R3), which is the owner's brief as written. A saved plan → show its task list first, one line each (title · Delivers · Blocked by), then start without waiting for a reply.
-- If `implement-plan` is not available, hand the plan to whoever will edit — file list, ordered tasks, per-task tests and done criteria are enough.
+- `orchestrating-plans` with the plan artifact, or the inline checklist (R2, spec-as-plan R3), which is the owner's brief as written. A saved plan → show its task list first, one line each (title · Delivers · Blocked by), then start without waiting for a reply.
+- If `orchestrating-plans` is not available, hand the plan to whoever will edit — file list, ordered tasks, per-task tests and done criteria are enough.
