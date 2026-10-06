@@ -2,7 +2,7 @@
 
 # Rolepod
 
-**Rolepod turns Claude Code, Codex CLI, Cursor IDE, Antigravity CLI (agy), and opencode into a disciplined software-house team — a workflow router, 15 specialist agents, and gates that catch bugs before they reach a commit.**
+**Rolepod turns Claude Code, Codex CLI, Cursor IDE, Antigravity CLI (agy), and opencode into a disciplined software-house team — a workflow router, 16 specialist agents, and gates that catch bugs before they reach a commit.**
 
 It is one source of truth rendered into a native plugin for each CLI. No CLI is the "default" — all five are first-class. Rolepod carries zero project-specific configuration, so it works in any repository from the first session.
 
@@ -97,7 +97,7 @@ Save it once; it stays. Each new session got the latest release without editing 
 ### Codex CLI
 
 ```bash
-# Install — the plugin carries skills + hooks + the 15 agents; on first launch a SessionStart
+# Install — the plugin carries skills + hooks + the 16 agents; on first launch a SessionStart
 # hook syncs the agents + the AGENTS.md block into ~/.codex (run /hooks once in Codex to trust them).
 # The bootstrap line stays the full path: project-scope AGENTS.md, doctor, uninstall.
 codex plugin marketplace add nuttaruj/rolepod
@@ -252,8 +252,8 @@ To set the pool, use `cross-family.sh --setup` from the `cross-family` skill, or
 
 ## What's inside
 
-- **15 specialist agents** — architecture, engineering, quality, ops, design, content, and review. Each owns a path or concern and runs on a cost-tiered model (~50-60% cheaper than all-strong). → [docs/agents.md](docs/agents.md), [docs/model-tier-policy.md](docs/model-tier-policy.md)
-- **Core 10 skills** — one router plus nine phase skills, the workflow spine. Plus 5 helper skills the phase skills call: `cross-family` (another CLI's review / critique / consult), `tdd-flow` (red → green at a seam), `adversarial-review` (the R4 round-1 adversarial pass), `coordinating-parallel-tracks` (parallel task execution), and `convening-code-review` (orders a review round: freeze the diff, dispatch the reviewer set, Fix-verify). → [docs/skills.md](docs/skills.md)
+- **16 specialist agents** — architecture, engineering, quality, ops, design, content, and review. Each owns a path or concern and runs on a cost-tiered model (~50-60% cheaper than all-strong). → [docs/agents.md](docs/agents.md), [docs/model-tier-policy.md](docs/model-tier-policy.md)
+- **Core 10 skills** — one router plus nine phase skills, the workflow spine. Plus 6 helper skills the phase skills call: `cross-family` (another CLI's review / critique / consult), `tdd-flow` (red → green at a seam), `adversarial-review` (the R4 round-1 adversarial pass), `coordinating-parallel-tracks` (parallel task execution), `convening-code-review` (orders a review round: freeze the diff, dispatch the reviewer set, Fix-verify), and `security-review` (the security engineer's threat-model method). → [docs/skills.md](docs/skills.md)
 - **Per-CLI hooks** — silent while you follow the workflow; they speak only on a real mistake: a high-risk commit with no `security-engineer` review, a sub-agent commit, a sub-agent writing outside its role, two sessions editing the same file, a private working doc staged. They run in every mode; `workflow.mode` only sets whether each gate warns or denies (the table of 14 gates by mode, plus the always-warn and silent-record groups, is in [docs/hooks.md](docs/hooks.md#gates-by-mode)). The full set runs on Claude; the other CLIs keep the private-docs commit deny, session safety and what their hook API allows (Antigravity can deny but not warn), and the rest is skill-enforced. → [docs/hooks.md](docs/hooks.md)
 - **Terse output (built in)** — every rolepod CLI shapes its replies to cut output tokens: result first, the reading language's politeness register dropped, numbered steps, flat error tone, a five-item display cap that never limits analysis or tool results. Security warnings, destructive-action confirmations and "explain" requests keep their full shape — the shape yields to the task, never the reverse. → [docs/hooks.md](docs/hooks.md) (`always-on-loader.sh`)
 - **Evidence stats** — the `rolepod-stats` skill reads any project's `.rolepod/evidence/`: tier distribution, verify pass/fail, review verdicts, strong-dispatch overrides, bypasses (available at `/rolepod-stats` on Claude and `$rolepod-stats` on Codex). `check-work` skill's `scripts/junit-summary.sh` counts JUnit XML. `scripts/ticket.sh` in `implement-plan` runs a plan task's mechanics in one call per step (`start` / `integrate` / `finish` / `log`) and never commits. Every plugin tree ships these scripts under their skill's `scripts/` folder.
@@ -283,7 +283,7 @@ See [docs/EXTENSION-PROTOCOL.md](docs/EXTENSION-PROTOCOL.md) for the full contra
 
 | Install | Standalone value | What it adds when combined |
 |---|---|---|
-| **rolepod** (this repo) | Workflow + 15 agents + judgment for any project | Routes by phase, aggregates evidence, suggests siblings by domain signal |
+| **rolepod** (this repo) | Workflow + 16 agents + judgment for any project | Routes by phase, aggregates evidence, suggests siblings by domain signal |
 | [**rolepod-uiproof**](https://github.com/nuttaruj/rolepod-uiproof) (v0.6+) | 5 browser skills — `/verify-ui`, `/audit-a11y`, `/visual-diff`, `/scaffold-e2e`, `/check-errors` + 26 MCP tools | Verify-phase provider for UI artifacts; evidence auto-routes to `check-work` |
 | [**rolepod-wplab**](https://github.com/nuttaruj/rolepod-wplab) (v1.9+) | 14 WordPress skills + 82 MCP tools — wp-cli + REST + scoped fs | Build/Verify/Review primitives for WP; phase-flavored skills narrow under parent |
 | [**rolepod-seo**](https://github.com/nuttaruj/rolepod-seo) (v0.3+) | 4 search skills — `/seo-audit` (SEO + GEO + AEO, Quick/Full, scored with evidence; chat summary + markdown + JSON sidecar + self-contained HTML report with score cards, published as an Artifact on Claude Code, Save-as-PDF via browser print), `/seo-fix-plan`, `/seo-schema`, `/seo-page-brief`; skills-only, stdlib collector + renderer, no MCP, no hooks | Audit → fix plan hands to uiproof (rendered DOM / CWV), wplab (WordPress meta), `content-strategist` (copy); `content-strategist` stops on technical SEO and routes here |

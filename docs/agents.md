@@ -1,6 +1,6 @@
 # Rolepod Agent Catalog
 
-Full 15-agent specialist roster. Lead never picks from this list directly — the `write-plan` skill maps path + concern + risk to the right agent when delegation helps.
+Full 16-agent specialist roster. Lead never picks from this list directly — the `write-plan` skill maps path + concern + risk to the right agent when delegation helps.
 
 This doc is the **reference**. No entry doc embeds the roster; each agent file's `description:` is what the CLI shows.
 
@@ -53,7 +53,7 @@ Source of truth: [`core/agents/*.md`](../core/agents/) — the domain map below 
 
 `product-manager` was retired in v2.115.0: over 90 days it was dispatched 0 times because the user IS the product owner — `write-spec` Discovery gathers scope, priorities and commercial framing from them directly, so an agent standing in between was a role with no work.
 
-The 15-specialist count comes from cost-aware role separation, not workflow stages. A senior backend developer model is cheap; a strongest model doing security review is expensive. Mixing them inside one agent collapses the cost-control dimension and forces the workflow to pay strongest-model rates for every task. Keeping them separate lets each agent carry its own tier-mapped model.
+The 16-specialist count comes from cost-aware role separation, not workflow stages. A senior backend developer model is cheap; a strongest model doing security review is expensive. Mixing them inside one agent collapses the cost-control dimension and forces the workflow to pay strongest-model rates for every task. Keeping them separate lets each agent carry its own tier-mapped model.
 
 One within-tier consolidation exists in the roster. `content-strategist` folds tech-writer + customer-success + growth-marketer (all cheap-tier writers) into a single agent that takes a mandatory `audience: dev | user | prospect` parameter. (A second consolidation, `product-manager` absorbing the former business-analyst, was retired whole in v2.115.0 — see above.) Each audience keeps its own scope, hard stops, and framework set, so specialist depth is preserved while selection overhead at the Lead shrinks.
 

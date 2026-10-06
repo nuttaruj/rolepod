@@ -1,8 +1,8 @@
-# Rolepod Skill Catalog (Core 10 + 4 helpers + 1 command + 2 on-demand)
+# Rolepod Skill Catalog (Core 10 + 6 helpers + 1 command + 2 on-demand)
 
-Rolepod ships **18 skills total**: Core 10 (1 router + 9 workflow phase skills) plus five helper skills — `cross-family` (another CLI's review / critique / consult), `tdd-flow` (red → green at a seam), `adversarial-review` (the R4 round-1 adversarial pass), `coordinating-parallel-tracks` (parallel task execution), and `convening-code-review` (orders a review round: freeze the diff, dispatch the reviewer set, Fix-verify) — called by the phase skills that need them, plus one explicit-invoke command — `deepen-codebase` (architecture report → pick a card → write-spec) — and two on-demand skills: `write-prototype` (a throwaway layout or logic demo that answers one spec question; write-spec offers it) and `rolepod-stats` (the project's evidence report, when the user asks). There are no legacy compatibility shim skill files in the install tree. Old skill names are preserved only as documentation in [legacy-skill-map.md](legacy-skill-map.md).
+Rolepod ships **19 skills total**: Core 10 (1 router + 9 workflow phase skills) plus six helper skills — `cross-family` (another CLI's review / critique / consult), `tdd-flow` (red → green at a seam), `adversarial-review` (the R4 round-1 adversarial pass), `coordinating-parallel-tracks` (parallel task execution), `convening-code-review` (orders a review round: freeze the diff, dispatch the reviewer set, Fix-verify), and `security-review` (the security engineer's threat-model method) — called by the phase skills that need them, plus one explicit-invoke command — `deepen-codebase` (architecture report → pick a card → write-spec) — and two on-demand skills: `write-prototype` (a throwaway layout or logic demo that answers one spec question; write-spec offers it) and `rolepod-stats` (the project's evidence report, when the user asks). There are no legacy compatibility shim skill files in the install tree. Old skill names are preserved only as documentation in [legacy-skill-map.md](legacy-skill-map.md).
 
-No entry doc embeds a skill index. Each skill's `description:` is its routing surface, shown by the CLI; `using-rolepod` routes by its own table, so the Lead does not spend context choosing among dozens of tiny workflow fragments. Deep domain expertise lives in the 15 specialist agents.
+No entry doc embeds a skill index. Each skill's `description:` is its routing surface, shown by the CLI; `using-rolepod` routes by its own table, so the Lead does not spend context choosing among dozens of tiny workflow fragments. Deep domain expertise lives in the 16 specialist agents.
 
 ## Tier model
 
@@ -45,7 +45,7 @@ No entry doc embeds a skill index. Each skill's `description:` is its routing su
 
 ## Domain expertise → specialist agents
 
-Domain depth that used to live in standalone skills now lives in the 15 specialist agents (see [agents.md](agents.md)) and is routed from inside the Core 10 phase skills:
+Domain depth that used to live in standalone skills now lives in the 16 specialist agents (see [agents.md](agents.md)) and is routed from inside the Core 10 phase skills:
 
 | Domain | Phase skill that routes here | Specialist agent |
 |--------|------------------------------|------------------|
@@ -53,7 +53,7 @@ Domain depth that used to live in standalone skills now lives in the 15 speciali
 | UI / interface / interaction / a11y / visual polish | `implement-plan` + `review-code` | `ui-ux-designer` |
 | API / interface contract / module boundaries | `write-plan` | `system-architect` |
 | Source-driven library / platform decisions | `write-plan` + `implement-plan` | `system-architect` + `ai-ml-engineer` |
-| Security review / hardening / token / crypto | `review-code` | `security-engineer` |
+| Security review / hardening / token / crypto | `security-review` | `security-engineer` |
 | Performance audit / Core Web Vitals / perf | `review-code` + `check-work` | `performance-engineer` |
 | Technical docs / ADRs / runbooks | `write-spec` + `implement-plan` | `content-strategist` (`audience: dev`) |
 | User-facing content / FAQ / onboarding / error msgs | `write-spec` + `implement-plan` | `content-strategist` (`audience: user`) |
