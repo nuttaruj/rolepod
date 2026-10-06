@@ -35,7 +35,8 @@ Done when: diff file, H1 and hash recorded; inputs in hand.
 
 - Matched rows: performance regression → `performance-engineer` · UI / interaction / a11y → `ui-ux-designer` · architecture / cross-module → `system-architect`.
 - Pool on + R3 / R4 → each lens external via `cross-family` kind review (`--lens <lens>`); internal: R2, comment / config / rename-only diffs, a wide-effort session, `security-engineer`, specialists. A failed, weak or refused external → `universal-reviewer`, same lens, same round; no `cross-family` → internal lenses.
-- Full R4 adversarial pass → `adversarial-review`; none → `universal-reviewer` `mode: adversarial`, strong-class model, writing `<task>-adversarial.md`.
+- Full R4 adversarial pass: pool on → the external `cross-family` run with `--adversarial`, which is then the only adversarial pass; else `adversarial-reviewer` (strong), writing `<task>-adversarial.md` — also when the external fails, is refused (exit 2) or comes back weak, as for a lens.
+- No `adversarial-reviewer` role → a default sub-agent on a strong-class model, given `adversarial-review` and its brief. An R4 diff of comments or blank lines only gets no adversarial pass and no external. The vertical fallback and an inline advisor only raise the Lead floor, recorded as a LIMITATION; those two, the author's own model and the Lead's own walk never count as this pass.
 
 Done when: each reviewer named with its lens or role.
 

@@ -13,13 +13,13 @@ A role defines responsibilities and instructions; an agent type is CLI transport
 | **cheap** | small / fast model | docs, PM, copy, read-only sweeps |
 | **balanced** | mid flagship | ALL implementation, high-risk paths included — the net is the strong review floor, never the writer's tier |
 | **strong** | top reasoning model | architecture, final-pass and adversarial review. A set whose top sits below frontier-class still gets the full review; the depth cap is a recorded LIMITATION |
-| **apex** | strongest tier the CLI exposes | only on the `adversarial-review` skill's apex escalation triggers (Pick the rung) |
+| **apex** | strongest tier the CLI exposes | the adversarial pass only: an irreversible change with no rollback (destructive migration, key rotation, live money movement), a novel design with no pattern to diff against, deep cross-system reasoning (races on financial invariants, distributed consistency), or a user ask; a CLI whose strong pin is its ceiling collapses apex into strong; a costlier rung is a cost decision, so surface it first; the dispatch line's `override` records the rung sent |
 
 Route rows by class:
 - cheap — vague build / doc / UI asks and repeat or legacy features (`write-spec`), prototypes, clear doc edits, `manage-context`, explain-only answers.
 - cheap to balanced — `write-plan` against an existing spec, `qa-tester` hand-offs.
 - balanced — executing a plan, multi-agent planning, `debug-issue`, `simplify-code`, perf, UI and infra builds, `check-work`, repo-wide sweeps, high-risk builds.
-- strong — high-risk review (`security-engineer`, and the `universal-reviewer` `mode: adversarial` pass), architecture, `review-code`, `finish-work` when `review-code` fires, `deepen-codebase` (its explorer inherits a strong Lead, else takes a one-call strong override).
+- strong — high-risk review (`security-engineer`, `adversarial-reviewer`), architecture, `review-code`, `finish-work` when `review-code` fires, `deepen-codebase` (its explorer inherits a strong Lead, else takes a one-call strong override).
 
 The Lead picks the class at dispatch; escalate only on a BLOCKED redispatch or a user ask.
 
@@ -27,7 +27,7 @@ The Lead picks the class at dispatch; escalate only on a BLOCKED redispatch or a
 
 - A strong row dispatches with a strong pin; rolepod role files carry it.
 - A spawn with no pin inherits the Lead. Under a balanced or cheap Lead that is a silent downgrade, so pass an explicit strong-class override on that ONE call, never on a fan-out.
-- A downgraded strong role is not the strong slot. `universal-reviewer` runs balanced on every CLI; only its `mode: adversarial` pass takes a strong-class model, so pass the explicit strong-class override on that ONE dispatch. The commit gate checks a `security-engineer` dispatch, any model, not the tier.
+- A downgraded strong role is not the strong slot. `universal-reviewer` runs balanced on every CLI; `security-engineer` and `adversarial-reviewer` carry a strong pin. The commit gate checks a `security-engineer` dispatch, any model, not the tier.
 
 ## Fleets
 
