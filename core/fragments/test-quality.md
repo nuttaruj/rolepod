@@ -1,0 +1,3 @@
+- Modifying an existing test on the way to green (a loosened assertion, a raised tolerance, a deleted case, skip / only, an absorbed snapshot) is a finding until justified.
+- One test per shared rule at the rule's owner, plus at most one smoke per call site that has wiring of its own.
+- Dates and times derive from one frozen `now`, never a literal calendar date or the real clock.
