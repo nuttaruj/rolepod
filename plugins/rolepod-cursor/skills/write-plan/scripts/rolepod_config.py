@@ -239,9 +239,6 @@ def main(argv):
             lines = pool(cfg)
             # configured: is there a `pool` key at all (a deliberately off pool is "yes")
             lines.insert(1, "configured=" + ("yes" if cfg.get("pool") is not None or BROKEN else "no"))
-        elif cmd == "review":
-            _, _, _, _, _, review_value, review_source = effective(project, cfg)
-            lines = [review_value, "source=" + review_source]
         elif cmd in ("shell", "mode"):
             mode, source, modern, gate_value, nudge_value, review_value, review_source = effective(project, cfg)
             lines = ["mode=" + mode, "source=" + source, "modern=" + ("yes" if modern else "no"), "gates=" + gate_value, "nudge=" + nudge_value, "review=" + review_value, "review-source=" + review_source]

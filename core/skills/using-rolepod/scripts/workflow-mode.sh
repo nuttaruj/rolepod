@@ -1,6 +1,6 @@
 #!/bin/bash
 # Public shell entry point; captured session profile wins, then workflow.mode resolver.
-# Usage: workflow-mode.sh [--source] [--project-root DIR]
+# Usage: workflow-mode.sh [--source]
 set -euo pipefail
 
 HERE=$(cd "$(dirname "$0")" && pwd)
@@ -12,7 +12,6 @@ source_flag=0
 while [ "$#" -gt 0 ]; do
   case "$1" in
     --source) source_flag=1; shift ;;
-    --project-root) [ "$#" -ge 2 ] || exit 2; export ROLEPOD_PROJECT_ROOT=$2; shift 2 ;;
     *) echo "workflow-mode: unknown argument: $1" >&2; exit 2 ;;
   esac
 done

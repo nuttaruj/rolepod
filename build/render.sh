@@ -129,8 +129,6 @@ render_skills() {
     [ "$name" = "cross-family" ] && cp "$REPO_DIR/hooks/lib/rolepod_config.py" "$skills_dst/$name/scripts/rolepod_config.py"
     [ "$name" = "using-rolepod" ] && cp "$REPO_DIR/hooks/lib/rolepod_config.py" "$skills_dst/$name/scripts/rolepod_config.py"
     [ "$name" = "using-rolepod" ] && cp "$REPO_DIR/hooks/lib/session-mode.sh" "$skills_dst/$name/scripts/session-mode.sh"
-    [ "$name" = "review-code" ] && cp "$REPO_DIR/hooks/lib/rolepod_config.py" "$skills_dst/$name/scripts/rolepod_config.py"
-    [ "$name" = "review-code" ] && cp "$REPO_DIR/hooks/lib/session-mode.sh" "$skills_dst/$name/scripts/session-mode.sh"
     # plan-lint --brief resolves the workflow mode beside itself; implement-plan
     # carries the same readers so a mode-aware helper there needs no repo checkout.
     case "$name" in write-plan|implement-plan)

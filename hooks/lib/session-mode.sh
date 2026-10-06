@@ -76,7 +76,7 @@ rolepod_session_profile_store() {
   return 0
 }
 
-# Shell entry points with no CLI named (workflow-mode, review-mode, plan-lint):
+# Shell entry points with no CLI named (workflow-mode, plan-lint):
 # when a captured profile exists for the native session id of Claude Code or
 # Codex, set ROLEPOD_SESSION_CLI / ROLEPOD_SESSION_ID (shell vars, not exported).
 rolepod_session_native_profile() {
