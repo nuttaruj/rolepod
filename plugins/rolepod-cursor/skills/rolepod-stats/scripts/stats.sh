@@ -143,7 +143,7 @@ if dispatches:
         # no model on the call: a rolepod role still runs its frontmatter model
         # (measured 2026-09-17: 0 fable subagents under a fable Lead); only a
         # generic agent type truly inherits the Lead's model
-        ROLEPOD_ROLES = {"ai-ml-engineer", "backend-developer", "billing-engineer", "content-strategist",
+        ROLEPOD_ROLES = {"adversarial-reviewer", "ai-ml-engineer", "backend-developer", "billing-engineer", "content-strategist",
                          "data-scientist", "devops-sre", "frontend-developer", "mobile-developer",
                          "performance-engineer", "qa-tester", "scout", "security-engineer",
                          "system-architect", "ui-ux-designer", "universal-reviewer"}
@@ -200,7 +200,7 @@ if dispatches:
 # grouped by time gap (≤ 90 s apart = one burst). Reviewer / scout / generic
 # rows are not tasks. Dispatch times only — no end time is logged — so a burst
 # shows tasks dispatched together, never proof that they ran concurrently.
-NON_TASK_ROLES = {"qa-tester", "security-engineer", "universal-reviewer", "code-reviewer",
+NON_TASK_ROLES = {"qa-tester", "security-engineer", "universal-reviewer", "adversarial-reviewer", "code-reviewer",
                   "scout", "general-purpose", "default", "claude", "workflow-subagent", ""}
 def _task_role(d):
     at = (d.get("agent_type") or "").strip().rsplit(":", 1)[-1]

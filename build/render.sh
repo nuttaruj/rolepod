@@ -260,7 +260,7 @@ render_claude() {
 #   plugins/rolepod-codex/skills/<name>/SKILL.md     (copied from core/skills)
 # Gitignored (build/rendered/codex/ — read by install.sh only):
 #   AGENTS.md                                        (~/.codex/AGENTS.md block)
-#   agents/*.toml                                    (15 agents → ~/.codex/agents/,
+#   agents/*.toml                                    (16 agents → ~/.codex/agents/,
 #                                                     NOT a plugin component)
 
 render_codex() {
@@ -476,7 +476,7 @@ render_cursor() {
 #   AGENTS.md                  (always-on core → agy customization root)
 #   plugin/plugin.json         (agy plugin manifest)
 #   plugin/skills/<name>/...    (copied from core/skills)
-#   plugin/agents/<name>.md     (15 agents, md + YAML frontmatter)
+#   plugin/agents/<name>.md     (16 agents, md + YAML frontmatter)
 #   plugin/hooks.json           (agy-native event wiring at PLUGIN ROOT: PreInvocation/PreToolUse/Stop)
 #   plugin/hooks/*.sh           (3 agy-native scripts + the shared precommit-gate.sh /
 #                                test-diff-lint.sh / route_check.py, copied verbatim)
@@ -553,7 +553,7 @@ render_antigravity() {
 #
 # Gitignored (build/rendered/opencode/ — read by install.sh only):
 #   AGENTS.md                  (always-on core → managed block)
-#   agents/<name>.md           (15 agents, description + mode: subagent)
+#   agents/<name>.md           (16 agents, description + mode: subagent)
 #   skills/<name>/...          (frontmatter stripped to name + description)
 #   plugin/rolepod.js          (plugin shim)
 #   opencode.json              (version stamp for install verification)

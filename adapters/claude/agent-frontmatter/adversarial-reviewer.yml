@@ -1,0 +1,12 @@
+# tools: review role — Write only, for its report (no Edit/Bash/Agent/Skill; the write-scope hook keeps it to markdown); the method is the preloaded adversarial-review skill. Cursor and opencode render it read-only (build/merge-agent.py); a CLI with no write tool returns the report inline (agent-core Report file).
+tier: strong
+effort: xhigh
+tools:
+  - Read
+  - Glob
+  - Grep
+  - Write
+  - WebFetch
+  - WebSearch
+skills:
+  - adversarial-review

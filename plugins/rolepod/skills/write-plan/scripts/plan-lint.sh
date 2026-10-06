@@ -373,7 +373,7 @@ function rsetcell(mode, tier, sel,   lens, spec, n, i, k, ids, roles, out) {
   if (mode != "standard" && mode != "full") return lens
   if (tier == "R4") {
     if (mode == "standard") return "`security-engineer` (depth: checklist) + " lens
-    return "`security-engineer` (depth: full) + " lens " + the adversarial pass (the `adversarial-review` skill): with a usable pool the `cross-family` skill runner (`bash <cross-family skill folder>/scripts/cross-family.sh --kind review --adversarial --brief <this brief> --attach <diff> --detach`) then `--collect <job> --timeout 540` in the foreground (exit 6 = still running: run it again), else `universal-reviewer` `mode: adversarial` (internal strong, only if the external fails) — the external --detach first, then the rest in ONE message"
+    return "`security-engineer` (depth: full) + " lens " + the adversarial pass: with a usable pool the `cross-family` skill runner (`bash <cross-family skill folder>/scripts/cross-family.sh --kind review --adversarial --brief <this brief> --attach <diff> --detach`) then `--collect <job> --timeout 540` in the foreground (exit 6 = still running: run it again), else `adversarial-reviewer` (internal, only if the external fails) — the external --detach first, then the rest in ONE message"
   }
   n = split("perf ui arch", ids, " ")
   roles["perf"] = "performance-engineer"; roles["ui"] = "ui-ux-designer"; roles["arch"] = "system-architect"

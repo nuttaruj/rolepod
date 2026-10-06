@@ -217,7 +217,7 @@ MODEL_CLASS = (
 # never lifted (cost). system-architect joined in v2.73.0: it writes the spec
 # + cohesion contract for parallel work — the judgment-heaviest role — and
 # was the one strong role left at nudge-only.
-STRONG_ROLE_AGENTS = {"security-engineer", "system-architect"}
+STRONG_ROLE_AGENTS = {"security-engineer", "system-architect", "adversarial-reviewer"}
 
 # Roles whose rendered Claude frontmatter carries a REAL `model:` pin
 # (merge-agent.py TIER_MODELS: cheap -> haiku, balanced -> sonnet). A Workflow

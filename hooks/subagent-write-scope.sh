@@ -23,7 +23,7 @@
 #             (test path = test dir segment or test-named file; `specs/` is a
 #             contract dir in rolepod's own convention and Python has no
 #             `_test.py` guarantee — both stay product; `spec/` = RSpec root)
-#   read-only universal-reviewer / scout          → markdown only
+#   read-only universal-reviewer / adversarial-reviewer / scout → markdown only
 # Every other role and every unknown type passes (fail-open). OS temp roots,
 # scratchpad, .rolepod/, agent memory and docs/rolepod/ are always free. The
 # denied agent returns the finding; the Lead dispatches the write to the
@@ -64,7 +64,7 @@ atype = (d.get("agent_type") or "").strip()
 bare = atype.split(":")[-1].lower()
 GENERIC   = ("general-purpose", "default", "claude", "workflow-subagent")
 TEST_ONLY = ("qa-tester", "security-engineer")
-READ_ONLY = ("universal-reviewer", "scout")
+READ_ONLY = ("universal-reviewer", "adversarial-reviewer", "scout")
 if bare in GENERIC:     cls = "generic"
 elif bare in TEST_ONLY: cls = "test-only"
 elif bare in READ_ONLY: cls = "read-only"
