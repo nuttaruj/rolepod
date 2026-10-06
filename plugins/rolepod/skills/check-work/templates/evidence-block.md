@@ -1,7 +1,5 @@
 <!-- Fill these fields in the named task receipt; do not create another report. -->
 <!-- Delete the <hints>. -->
-<!-- R1/R2, single file, no QA test-case table, nothing for Limitations → one line instead:
-     `<command> → PASS: <specific proof>. Status: VERIFIED` -->
 
 ## Decision brief
 ### Change manifest
@@ -9,7 +7,7 @@
 - `path` — <what changed>
 
 ### Evidence
-Verified tree `<id>` = `git rev-parse HEAD^{tree}` on a clean tree, else `git add -A && git write-tree` (stages the changes) — finish-work cites this block (the plan's `verify.md`, else this session's chat) while `git rev-parse HEAD^{tree}` equals this id and the tree is clean.
+Verified tree `<id>` = `git rev-parse HEAD^{tree}` on a clean tree, else `git add -A && git write-tree` (stages the changes) — finish-work's Pre-merge gate cites this block (the plan's `verify.md`, else this session's chat) while `git rev-parse HEAD^{tree}` equals this id and the tree is clean.
 <One line per check. State the exact command and the SPECIFIC proof line —
  not "tests pass" but the assertion / count / status that proves it.>
 - `<command>` — PASS: <specific proof, e.g. "12 examples, 0 failures" / "HTTP 200, body has id">

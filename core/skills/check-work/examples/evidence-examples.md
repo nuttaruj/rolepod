@@ -1,6 +1,6 @@
 <!-- Evidence examples for check-work. Two scenarios, each a strong/weak pair. -->
 <!-- Read the WHOLE file — the contrast between strong and false-green IS -->
-<!-- the lesson. Scenario 1 is a bug fix; scenario 2 is a UI change. -->
+<!-- the lesson. Scenario 1 is a bug fix; scenario 2 is a wrong-surface UI claim. -->
 
 # Evidence Examples
 
@@ -14,17 +14,19 @@ strongly. Compare the pair — do not read one half alone.
 ### Strong
 
 ```text
-## Change manifest
+## Decision brief
+### Change manifest
 - lib/pagination.rb — fixed off-by-one in the last-page offset
 
-## Decision brief
 ### Evidence
+Verified tree 4b1e9c0
 - bundle exec rspec spec/pagination_spec.rb — PASS: 8 examples, 0 failures;
   the new test "last page includes the final row" was RED before the fix
-- bundle exec rspec — PASS: 214 examples, 0 failures (full suite, no regression)
+- bundle exec rspec spec/requests/orders_spec.rb — PASS: 14 examples,
+  0 failures (the one consumer of the paginator)
 
-## Limitations
-None — logic change, fully covered by the suite.
+### Limitations
+None.
 
 ## Verify status
 VERIFIED
@@ -42,13 +44,13 @@ VERIFIED
 VERIFIED
 ```
 
-### Why good wins
+### Why strong wins
 
 | Area | Weak | Strong |
 |------|------|--------|
 | Command | "ran the tests" — not reproducible | Exact command quoted |
 | Proof | "looks good" | "8 examples, 0 failures" + the named new test |
-| Regression | Not checked | Full suite green — F3 cleared |
+| Consumers | Not checked | The paginator's caller re-run |
 | Assertion | `rows.present?` passes even with one wrong row | Test was RED before the fix, GREEN after |
 | Manifest | Missing | File + what changed |
 | Limitations | Omitted | "None" stated deliberately |
@@ -57,46 +59,45 @@ VERIFIED
 
 ## Scenario 2: UI change — empty-state message on the orders table
 
-### Strong
+### Strong (honest about the surface)
 
 ```text
-## Change manifest
+## Decision brief
+### Change manifest
 - app/javascript/components/OrdersTable.tsx — added empty-state message
 
-## Evidence
+### Evidence
 - npx tsc --noEmit — PASS: no type errors
-- Browser (Playwright) — loaded /orders with a zero-order filter; DOM read
-  shows <p data-testid="orders-empty">No orders match these filters</p>;
-  screenshot saved to tmp/orders-empty.png
 - npm test OrdersTable — PASS: 5 tests, incl. "renders empty state on []"
 
-## Limitations
-None.
+### Limitations
+- Cannot verify: the empty state on the rendered /orders page
+- Reason: no browser tool reachable in this session; typecheck and unit
+  test are the wrong surface for a UI claim
+- Risk if wrong: users with no orders see a blank table
+- Suggested check: open /orders with a zero-order filter and read
+  [data-testid="orders-empty"]
 
-## Status
-VERIFIED
+## Verify status
+UNVERIFIED
 ```
 
 ### Weak (false green)
 
 ```text
-## Evidence
+## Decision brief
+### Evidence
 - npx tsc --noEmit — PASS: no type errors. The component compiles, so the
   empty state works.
 
-## Status
+## Verify status
 VERIFIED
 ```
 
-### Why good wins
+### Why strong wins
 
 | Area | Weak | Strong |
 |------|------|--------|
-| UI proof | "it compiles" — typecheck is not UI proof | Browser DOM read + screenshot of the real empty state |
-| Evidence type | Typecheck only | Typecheck + browser observation + component test |
-| UI verification step | Violated — UI claimed with no browser | Satisfied — page loaded, DOM observed |
-| Status honesty | "VERIFIED" with no runtime proof | VERIFIED, backed by an observed render |
-
-> A passing typecheck proves the code is type-correct — never that the UI
-> renders, the flow works, or the user sees the right thing. UI claims need
-> a browser observation. "It compiled" is the most common false green.
+| Surface | Typecheck claimed as UI proof | Typecheck and unit test named as the wrong surface |
+| Limitations | Omitted | The unobserved page named, with risk and the check to run |
+| Status honesty | VERIFIED with no observation | UNVERIFIED with the reason |
