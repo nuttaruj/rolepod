@@ -39,6 +39,7 @@ Source of truth: [`core/agents/*.md`](../core/agents/) — the domain map below 
 | `.github/workflows/**`, `Dockerfile` / `docker-compose*`, `vercel.json` / `wrangler.*` / `fly.toml` / `railway.*`, `deploy/**`, `infra/**`, `terraform/**`, release scripts, monitoring | `devops-sre` |
 | Any human-readable written output — docs / FAQ / marketing copy (caller specifies `audience: dev \| user \| prospect`) | `content-strategist` |
 | Final code-quality review (logic / DRY / structure) | `universal-reviewer` |
+| A cold attempt to break a high-risk diff (round 1, Full) | `adversarial-reviewer` |
 
 ## How to add a new agent
 

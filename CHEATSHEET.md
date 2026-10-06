@@ -70,7 +70,7 @@ The writer's unit tests are the floor. One read-only `universal-reviewer` pass (
 | Tier / profile | Reviewers |
 |-----------|-----------|
 | R2 / R3 | `universal-reviewer` (read-only); with pool on, R3 lenses run external instead |
-| R4 code, round 1 | Pool off: lite two lenses (spec + standards). standard two lenses + `security-engineer` (checklist). full two lenses + `security-engineer` (full) + one adversarial pass (external via `cross-family` when usable, else `universal-reviewer` on a strong model). Pool on: spec and standards lenses external; Full R4 adds external adversarial; security-engineer stays internal. |
+| R4 code, round 1 | Pool off: lite two lenses (spec + standards). standard two lenses + `security-engineer` (checklist). full two lenses + `security-engineer` (full) + one adversarial pass (external via `cross-family` when usable, else the `adversarial-reviewer` role). Pool on: spec and standards lenses external; Full R4 adds external adversarial; security-engineer stays internal. |
 | Re-check, round 2+ (every mode and tier) | one fresh `universal-reviewer` checks the fix delta (H1→H2) of all BLOCKER / MAJOR findings in one pass; at most 4 rounds counting round 1, then stop and hand the findings and log to the user |
 | High-risk path (auth · billing · payments · credits · migration · deletion · secrets · tokens · crypto · permissions) | + `security-engineer` |
 | User-visible change (screen / flow / API contract) | + `qa-tester` (E2E / UI) |

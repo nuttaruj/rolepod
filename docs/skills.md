@@ -38,7 +38,8 @@ No entry doc embeds a skill index. Each skill's `description:` is its routing su
 |-------|-----------|---------------|
 | `cross-family` | `review-code`, `write-spec`, `debug-issue`, `implement-plan` | Runs another CLI's review, critique, or consult end to end. |
 | `tdd-flow` | `implement-plan`, `debug-issue`, `simplify-code`, `check-work`, `write-plan` | Runs the failing-test-first red → green loop at a seam. |
-| `adversarial-review` | `review-code` | Runs the adversarial pass of an R4 round 1 — external via `cross-family` when the pool is usable, else internal strong. |
+| `adversarial-review` | `adversarial-reviewer` | The adversarial reviewer's method (preloaded): stance, attack surface, report. The orderer picks the external `cross-family` run or the role in `convening-code-review`. |
+| `security-review` | `security-engineer` | The security reviewer's method (preloaded): depth, threat model, an exploit scenario per BLOCKER / MAJOR, closure proof. |
 | `coordinating-parallel-tracks` | `implement-plan` | Orchestrates parallel task execution across plan tracks. |
 | `convening-code-review` | `implement-plan`, the Lead | Orders a review round: freezes the diff, dispatches the reviewer set, waits for every report, runs Fix-verify. |
 

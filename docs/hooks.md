@@ -29,7 +29,7 @@ The session captures `workflow.mode` (`lite` / `standard` / `full`) once at star
 | 7 | Generic agent writes outside `docs/rolepod/`, `.rolepod/` and scratch paths | warn | deny | deny |
 | 8 | Role-less Workflow `agent()` writes a file | warn | deny | deny |
 | 9 | `qa-tester` or `security-engineer` writes a file that is neither a test nor markdown | warn | deny | deny |
-| 10 | `universal-reviewer` or `scout` writes a non-markdown file | warn | deny | deny |
+| 10 | `universal-reviewer`, `adversarial-reviewer` or `scout` writes a non-markdown file | warn | deny | deny |
 | 11 | Edit of a file another live session in the same worktree already holds | deny | deny | deny |
 | 12 | `bare-fanout` under a strong or unknown-class Lead | deny | deny | deny |
 | 13 | `strong-fanout` | deny | deny | deny |
@@ -121,7 +121,7 @@ A sub-agent writes only what its role owns.
 |---|---|---|
 | generic | `general-purpose`, `default`, `claude`, `workflow-subagent` (a bare Workflow `agent()`) | nothing in the product tree |
 | test-only | `qa-tester`, `security-engineer` | test paths (`tests/`, `__tests__/`, `fixtures/`, `e2e/`, RSpec `spec/`, `*.test.*`, `*.spec.*`, `test_*.py`, `conftest.py`, test-runner config …) + markdown |
-| read-only | `universal-reviewer`, `scout` | markdown only |
+| read-only | `universal-reviewer`, `adversarial-reviewer`, `scout` | markdown only |
 
 - **Effect** — gates 7 to 10 of the mode table: `lite` warns (`WARNING:` + fact → Fix → Exception), `standard` and `full` deny; a denied sub-agent returns the finding and the Lead dispatches the owning role. A `phase: write-scope` row lands in the phase-log. Owning roles, the Lead, an unknown `agent_type`, OS temp roots and scratch / evidence paths (`scratchpad/`, `.rolepod/`, `.claude/agent-memory/`, `docs/rolepod/`) pass.
 - **Doctrine pair** — the agent protocol says a nested dispatch goes only to the rolepod role the brief or the Writer loop names; this hook is the backstop when it does not.

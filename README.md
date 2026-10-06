@@ -34,7 +34,7 @@ You invoke nothing for this; it just happens.
 2. **Plan — `write-plan`.** Breaks the spec into tasks, assigns agent ownership, writes a cohesion contract before any parallel work.
 3. **Build — `implement-plan`.** Executes the plan test-first with bounded delegation. Bug fixes take the `debug-issue` path: reproduce → failing test → minimal fix.
 4. **Verify — `check-work`.** Proves the change with evidence — tests, build, curl, a screenshot — never just a "done".
-5. **Review — `review-code`.** Every logic diff gets two lenses (spec compliance + standards); an R4 (high-risk) diff adds `security-engineer` (Standard and Full) and, in Full, one adversarial pass (`adversarial-review`).
+5. **Review — `review-code`.** Every logic diff gets two lenses (spec compliance + standards); an R4 (high-risk) diff adds `security-engineer` (Standard and Full) and, in Full, one adversarial pass (the `adversarial-reviewer` role).
 6. **Ship — `finish-work`.** One pre-merge gate, CI lanes, and a 3-option finish menu (merge, PR, keep open; discard only when you ask).
 
 Two skills run across phases: **`simplify-code`** (behavior-preserving cleanup) and **`manage-context`** (recovery when a session is long, stuck, or in an unfamiliar repo).
