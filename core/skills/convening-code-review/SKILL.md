@@ -20,7 +20,7 @@ A built diff → its round-1 reviewer set run on one frozen snapshot, findings c
 - No script → `git add -A -- <paths>`; the staged `--stat` + `-U10` diff of those paths, excluding `docs/rolepod`, lockfiles and each `.rolepod/review-exclude` line, into `.rolepod/evidence/review/<task>.diff`; H1 = `git write-tree`.
 - Committed (a track end: the lens diff `ticket.sh log` wrote; a branch / PR: `git diff <base>...<head>`, same excludes, into `<task>.diff`) → that file; H1 = `git rev-parse <head>^{tree}`.
 - Record the hash beside H1: `git hash-object <diff file>`. Preflight: refs resolve, diff non-empty; else re-derive, never dispatch.
-- Past ~15 files / ~800 lines → split, one review each: a track end by size slice (`coordinating-parallel-tracks` step 4; none → by task in plan order), else by task or ship group.
+- Past ~15 files / ~800 lines → split, one review each: a track end by size slice (`coordinating-parallel-tracks` step 4; none → by task in plan order), else by task.
 - Gather spec / plan / acceptance, touched files and risk profile; a track end also: the `Track end:` and `Review:` lines from `ticket.sh log`.
 
 Done when: diff file, H1 and hash recorded; inputs in hand.
@@ -33,11 +33,11 @@ Done when: diff file, H1 and hash recorded; inputs in hand.
 
 {{INCLUDE: core/fragments/review-set.md}}
 
-- Matched rows: performance regression → `performance-engineer` · UI / interaction / a11y → `ui-ux-designer` · architecture / cross-module → `system-architect`; the writer's unit tests are the floor, and user-visible behaviour (a UI / E2E flow) is no review row — `check-work` observes it.
+- Matched rows: performance regression → `performance-engineer` · UI / interaction / a11y → `ui-ux-designer` · architecture / cross-module → `system-architect`; the writer's unit tests are the floor, and user-visible behaviour (a UI / E2E flow) is no review row — `qa-tester` observes it at Ship.
 - Pool on + R3 / R4 → each lens external via `cross-family` kind review (`--lens <lens>`); internal: R2, comment / config / rename-only diffs, a wide-effort session, `security-engineer`, specialists. A failed, weak or refused external (weak = an empty or PARTIAL return, a changed file missing from its Scope list, a bare verdict, or no claim walked) → `universal-reviewer`, same lens, same round; no `cross-family` → internal lenses.
 - Full R4 adversarial pass: pool on → the external `cross-family` run with `--adversarial`, which is then the only adversarial pass; else `adversarial-reviewer` (strong), writing `<task>-adversarial.md` — also when the external fails, is refused (exit 2) or comes back weak, as for a lens.
 - No `adversarial-reviewer` role → a default sub-agent on a strong-class model, given `adversarial-review` and its brief. An R4 diff of comments or blank lines only gets no adversarial pass and no external. The vertical fallback and an inline advisor only raise the Lead floor, recorded as a LIMITATION; those two, the author's own model and the Lead's own walk never count as this pass.
-- A Verify fix on a high-risk path → the R4 set of the active mode on that fix alone, before its commit.
+- A fix after verification on a high-risk path → the R4 set of the active mode on that fix alone, before its commit.
 
 Done when: each reviewer named with its lens or role.
 
@@ -71,7 +71,7 @@ Done when: reports listed in the receipt; review line appended.
 - Each aggregated MINOR → Act on / Consider / Noted / Dismissed, one-line reason; filters: nitpick weight (behavior or taste?) and assumed vs actual (does the code show it?); Act on → fixed, closed on author evidence; MINORs never open a re-check.
 - The delta: `ticket.sh review-diff delta <task> <H1> <k>` (`<k>` = round 2-4; H1 is a tree, committed or not); no script → `git add -A && git diff <H1> $(git write-tree) -U10`, same excludes, into `<task>-r<k>.diff`; that tree is H2. A change in H2 outside every finding's fix is uncovered: surface it and route it at its own tier.
 - Round 2+ runs in every mode and tier: ONE fresh `universal-reviewer` re-checks only the delta, ≤ 15 tool calls — never the original role, never a message to a finished reviewer. Its verdict per finding: each BLOCKER / MAJOR ADDRESSED or NOT ADDRESSED at file:line (an attempt that leaves the defect is NOT ADDRESSED); each pushback HELD (closes) or REOPENED (open again); a new break inside the delta joins the open list with its severity and file:line; one outside it goes to `## Follow-ups` and never adds a round.
-- At most four rounds, round 1 included; review rounds and failed fixes are counted apart; a new reviewer or owner resets neither count, and a review rejection is not a failed fix. Open after round 4 → rule once on each open finding, one `Ruling:` line each in the receipt, then go on without waiting for the user:
+- At most four rounds, round 1 included; failed fixes count apart under `debug-issue`'s rule (no `debug-issue` → a review rejection is not a failed fix, and a new reviewer or owner resets neither count). Open after round 4 → rule once on each open finding, one `Ruling:` line each in the receipt, then go on without waiting for the user:
   - wrong or arguable → `Ruling: <finding> — parked — <why>`;
   - real, nothing ahead depends on it → parked as real-deferred, plus one line under `## Follow-ups`;
   - real, later work depends on it → the smallest fix that unblocks it; `Ruling: <finding> — <decision + why>` in the decision brief.
@@ -84,7 +84,7 @@ Done when: each BLOCKER / MAJOR closed at the receipt, held, or ruled at the cap
 ## Next phase
 
 - A review-only ask (no fix, no ship) → stop after handing over the report: it is the deliverable, even with findings or unchecked plan tasks.
-- Every finding closed or ruled → back to the caller: a task owner returns its decision brief; a Lead review → `check-work` when fixes landed, else `implement-plan` while the plan has unchecked tasks (Ship asks once per plan), else `finish-work`.
+- Every finding closed or ruled → back to the caller: a task owner returns its decision brief; a Lead review ends back at the plan's next step (`orchestrating-plans`: the next task or the final branch review), else `finish-work`.
 - Not available → `review-code` on the diff.
 - No other skill → stop and tell the user what changed, what was verified and what is still unverified or unreviewed.
 
