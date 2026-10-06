@@ -5,7 +5,7 @@
 ## Architect dispatch
 
 The approach adds or changes a DB table / migration, a public API contract, or a module boundary → ONE `system-architect` dispatch (API / data-model / integration design) drafts the three lenses (minimal / clean / pragmatic), returned inline — no file.
-- Brief: the request, the answers so far, and the approval gate the user expects.
+- Brief: the request, the answers so far, the three lens names, and the approval gate the user expects.
 - The Lead judges the draft and presents it; the user still decides at Gate 1.
 - Anything else, or no subagents → the Lead drafts the lenses.
 

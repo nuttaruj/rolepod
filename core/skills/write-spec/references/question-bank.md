@@ -1,6 +1,4 @@
 <!-- Discovery question bank for write-spec. Load when unsure what to ask. -->
-<!-- Rule: ask ONLY questions whose answer changes the implementation. -->
-<!-- If the codebase can answer it, read the codebase — do not spend a question. -->
 
 Once the goal, user and scope are settled, ask every ready question in the round together, per the pacing and frontier-round policy in `write-spec` Discovery; within a round, resolve the question that gates the others first.
 
@@ -18,7 +16,7 @@ Moves that sharpen the model — each at the moment it applies, never batched at
 - Scenario: a relationship between concepts → invent the edge case that forces the boundary (a partial cancellation, a member of two accounts).
 - Cross-reference: the user states how it works → check the code; a contradiction is quoted back ("the code cancels whole orders; you said partial — which is right?"), never assumed away.
 
-Resolve the term in the round it comes up and propose ONE canonical word. Settled and used beyond this feature → write it into `CONTEXT.md` at that moment (create the file then, never at the end).
+Settled and used beyond this feature → write it into `CONTEXT.md` at that moment (create the file then, never at the end).
 
 Glossary entry in `CONTEXT.md` (repo root, or the mapped context; create the file when the first term is resolved):
 ```
@@ -26,7 +24,7 @@ Glossary entry in `CONTEXT.md` (repo root, or the mapped context; create the fil
 A customer's request to buy, from placement until fulfilment or cancellation.
 _Avoid_: purchase, transaction
 ```
-One or two sentences of what the term IS, not what it does; be opinionated — one word wins, the rest go under `_Avoid_`; only concepts specific to this project (a timeout or an error type is not a domain term); subheadings only when clusters emerge. The file is a glossary and nothing else — no specs, no implementation decisions: those are the spec, or an ADR (`docs/adr/NNNN-<slug>.md`, title + 1-3 sentences) when the three ADR tests in `write-spec` Approaches hold.
+One or two sentences of what the term IS, not what it does; be opinionated — one word wins, the rest go under `_Avoid_`; only concepts specific to this project (a timeout or an error type is not a domain term); subheadings only when clusters emerge. The file is a glossary and nothing else — no specs, no implementation decisions: those are the spec, or an ADR → `references/approaches.md`.
 
 ### User / actor
 Who triggers this? Who sees the result? Is it self-service or admin-only?
@@ -66,14 +64,11 @@ When several question types apply, ask in this order — each answer narrows the
 Stop early: if an answer makes a later question irrelevant, skip it.
 
 ## Skip a question when
-- The codebase or repo docs already answer it.
-- The answer does not change a single line of the implementation.
-- It is a styling / naming detail the user already delegated.
-- The user already answered it this session or in a prior spec revision —
-  re-ask only when new evidence changes it, and say what changed.
+
+- The user already answered it this session or in a prior spec revision — re-ask only when new evidence changes it, and say what changed.
 
 ## Prototype offer
 
 A layout or state-logic question that talking cannot settle → offer `write-prototype` in one line (yes / skip) and park that question.
-- Yes → it builds once the rest of the frontier is settled — a spec with open questions builds the wrong demo — and before Gate 1; its verdict settles the parked question.
+- Yes → it builds once the rest of the frontier is settled and before Gate 1; its verdict settles the parked question.
 - Skip → carry on; Gate 1 and `write-plan` as usual.

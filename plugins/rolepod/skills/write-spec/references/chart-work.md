@@ -1,7 +1,3 @@
-<!-- Load when a request is too big AND the slices cannot be listed yet -->
-<!-- because unresolved decisions block the view. If the slices ARE -->
-<!-- visible, this is the wrong file — use scope-splitting.md. -->
-
 Scope-splitting assumes you can list the shippable outcomes. Some requests
 arrive a level above that: the goal is real, but between here and any
 outcome sit open decisions — architecture picks, unknown constraints,
@@ -75,7 +71,7 @@ tools:
 |---|---|---|
 | `discuss` | with user | Discovery (`write-spec` Discovery) on the one question. Default kind. |
 | `investigate` | agent alone | Dispatch a `scout` — docs, APIs, prior art; report → resolution. |
-| `probe` | with user | A throwaway artifact to react to — `write-prototype` (layout variants or a clickable logic demo) on a `spike/` branch, fed the ticket's Question, Product mode and Paths; its verdict is the ticket's Resolution. Link it; never merge it. |
+| `probe` | with user | `write-prototype` on the question ticket (see write-prototype step 5). |
 | `unblock` | either | Real work a decision is waiting on (provision access, move data so its shape is visible). The only kind that *does* instead of decides. Human-only steps → generate a wizard (implement-plan `references/wizard.md`). |
 
 `discuss` and `probe` resolve **only through the user's own answers** — the
@@ -103,8 +99,7 @@ parallel via scouts). More than one `discuss` per session degrades both.
    a ticket now (and leaves the ledger). Any ticket it invalidated is
    edited or closed. Anything it revealed as beyond the Target moves to
    **Ruled out** — closed, not resolved.
-5. Save the map + ticket; commit them only under `.rolepod/docs-tracked` —
-   otherwise `docs/rolepod/` stays out of git.
+5. Save the map + ticket; both stay out of git unless `.rolepod/docs-tracked` is set.
 
 ## Entry and exit
 

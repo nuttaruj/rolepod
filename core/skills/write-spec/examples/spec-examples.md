@@ -1,7 +1,6 @@
 <!-- Spec examples for write-spec. Two scenarios, each a good/bad pair. -->
 <!-- Read the WHOLE file — the contrast between good and bad IS the lesson. -->
 <!-- Scenario 1 touches a high-risk surface (auth); scenario 2 touches none. -->
-<!-- A spec is NOT security-heavy by default — risk depth matches the surface. -->
 
 # Spec Examples
 
@@ -155,7 +154,7 @@ filters produce, with the same columns as the on-screen table.
 ## Success criteria
 - The CSV row set equals the filtered table row set — same filters, same
   count — proven by: export under an active filter, diff the CSV row count
-  against the table's rendered count
+  against the table's rendered count (assumed)
 - Column order and headers match the on-screen table — proven by: open the
   export, diff the header row against the rendered table header
 - While the file generates, the button shows a loading state and is not
@@ -225,27 +224,3 @@ scheduled-email option.
 | Success criteria | "fast" / "what they need" — not pass/fail | Row set == filtered table, header-only on empty — each pass/fail, each with a `proven by` command / observation |
 | Risk | Section omitted entirely | `None` stated deliberately, with the reason |
 | Approach | Client-side, unaudited against pagination | Server-side + rejected client-side with the pagination reason |
-
-> Scenario 2 has no high-risk surface — and the good spec still states
-> `High-risk surfaces: None` on purpose. Omitting the section is the bug;
-> a deliberate "None" is correct. Do not invent security depth that the
-> feature does not have.
-
----
-
-## Short path: user-approved change list
-
-When the user has already approved each target and its change, that list is
-the spec. Do not repeat discovery or ask for Gate 1 again. Keep the approved
-list as the source of truth and proceed to `write-plan`.
-
-```text
-Approved changes:
-- `app/orders/export.rb` — add CSV output using the existing filtered query.
-- `app/views/orders/index.html.erb` — add an export action for current filters.
-Check: export rows match the filtered report; run `bundle exec rspec spec/requests/orders_export_spec.rb`.
-```
-
-This shortcut does not apply to a vague goal or an unapproved proposal. If a
-decision still changes scope, behavior, acceptance, risk, or implementation,
-resolve it before approval.

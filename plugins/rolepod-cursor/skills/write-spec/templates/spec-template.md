@@ -1,9 +1,5 @@
 <!-- Rolepod spec template — the canonical Define-phase artifact. -->
 <!-- Fill every section. Replace every [[FILL: …]] marker. write-plan consumes this. -->
-<!-- Repeat feature: only Goal, User / actor, Non-goals, Constraints, Chosen
-     approach, and Rejected approaches may say `Unchanged — <prior> §<section>`.
-     Verify Current behavior; write behavior, acceptance, testing, risk, and
-     open decisions fresh. -->
 
 # [[FILL: feature name]] Spec
 
@@ -35,7 +31,7 @@
 
 ## High-risk surfaces
 [[FILL: Touched surfaces among auth / billing / payments / credits / migration / data deletion / secrets / tokens / crypto / permissions / security. State `None` deliberately when none apply.]]
-Cross-family critique: [[FILL only when applicable: cli — N items, K settled from repo, M asked | NO FURTHER QUESTIONS | not run — off | not run — not R4]]
+Cross-family critique: <status line, write-spec step 5>
 
 ## Chosen approach
 [[FILL: Chosen direction and rationale. If DB table / migration, public API contract, or module boundary changes, include accepted interface, data shape, compatibility rule, and invariants. No file order here.]]
