@@ -4,9 +4,12 @@
 #
 # Data sources (all fail-open, written by the doctrine since v2.12):
 #   <git-root>/.rolepod/evidence/phase-log.jsonl
-#     {"ts","phase":"route|verify|review|ship|dispatch|dispatch-proof|consult|critique|external-fail|external-refused", ...}
+#     {"ts","phase":"route|verify|review|ship|dispatch|gate|write-scope|consult|critique|external-fail|external-refused", ...}
 #     ship rows carry "commit":"<shipped head sha, or none>" (v2.87.0) — the anchor for
 #     the 14-day corrective-commit rate read from git history
+#     gate rows (hooks/precommit-gate.sh) carry decision/risk/strong/head (the parent head);
+#     write-scope rows (hooks/subagent-write-scope.sh) carry agent_type; external review rows
+#     (scripts/cross-family.sh) carry secs and verdict
 #   <git-root>/.rolepod/evidence/bypass.log
 #     {"ts","hook","var","reason"}
 #   $HOME/.rolepod/gate-bypass.log            (plain text, machine-global)
@@ -15,6 +18,8 @@
 #   $HOME/.claude/projects/<root with / as ->/*/subagents/**/agent-*.jsonl
 #     Claude Code subagent transcripts (v2.108.0): the model each fleet agent
 #     actually ran on + its usage — the only place the fan-out price is visible
+#   $HOME/.claude/projects/<same key>/*.jsonl
+#     main-session transcripts: the Lead's own turns (what /model was set to, not fleet proof)
 #
 # Usage: scripts/stats.sh [repo-root]   (default: current git root)
 # Run via `make stats`. Read-only; exit 0 even with no data.
@@ -83,11 +88,8 @@ except OSError:
 print("── rolepod stats ──")
 print(f"  evidence dir: {ev}")
 
-if not rows and not bypasses and not autopasses:
-    print("  no data yet — phase-log.jsonl / bypass.log start filling once")
-    print("  v2.12+ sessions run in this repo. Nothing to measure is itself")
-    print("  a finding: the loop has not closed here.")
-    sys.exit(0)
+# no evidence rows: the transcript layer (Lead turns, fleets) at the end may still have data
+nodata = not rows and not bypasses and not autopasses
 
 routes = [r for r in rows if r.get("phase") == "route"]
 verifies = [r for r in rows if r.get("phase") == "verify"]
@@ -151,7 +153,7 @@ if dispatches:
             return (d.get("agent_type") or "").rsplit(":", 1)[-1] not in ROLEPOD_ROLES
         role_pinned = sum(1 for d in inh if not generic(d))
         if role_pinned:
-            print(f"    · {role_pinned} with no model on the call ran the role's frontmatter model (see Model proof)")
+            print(f"    · {role_pinned} with no model on the call ran the role's frontmatter model")
         inh = [d for d in inh if generic(d)]
         if inh:
             low = sum(1 for d in inh if d.get("lead_class") in ("cheap", "balanced"))
@@ -248,21 +250,6 @@ if gated:
         print("    ⚠ strong-spread = a strong pin on a FAN-OUT under any Lead (v2.107.0), or on every stage / a non-judge stage under a low Lead — the mirror "
           "trap; the fix is ONE strong slot (v2.74.0), this deny never yields")
 
-proofs = [r for r in rows if r.get("phase") == "dispatch-proof"]
-if proofs:
-    combo = Counter(
-        (p.get("cli", "?"), p.get("model") or "?", p.get("agent_type") or "-")
-        for p in proofs
-    )
-    prov = Counter(p.get("provenance") or "hook-stdin" for p in proofs)
-    prov_s = ", ".join(f"{k} ×{n}" for k, n in sorted(prov.items()))
-    gloss = "hook-stdin = the CLI's own report, not independently verified"
-    if prov.get("cross-family"):
-        gloss += "; cross-family = older rows only (legacy external implementer), model = the member CLI's own banner ('default' when it prints none)"
-    print(f"\n  Model proof — as recorded ({len(proofs)}; provenance: {prov_s} — {gloss}):")
-    for (cli, model, agent), n in sorted(combo.items()):
-        print(f"    {cli:<12} {model:<28} {agent:<20} ×{n}")
-
 if verifies:
     v = Counter(r.get("verdict", "?") for r in verifies)
     total = sum(v.values())
@@ -305,7 +292,7 @@ if externals or xfails or strong_internal:
         print("    ran (model the CLI reported): " + ", ".join(f"{cli}={m} ×{n}" for (cli, m), n in sorted(ran.items())))
     partial = sum(1 for r in externals if r.get("partial"))
     if partial:
-        print(f"    partial answers (budget nearly spent): {partial} — raise `timeout=` for that CLI or --detach")
+        print(f"    partial answers (budget nearly spent): {partial} — raise the pool key `stall=` for that CLI, pass --timeout, or --detach")
     ext_reviews = sum(1 for r in externals if r.get("phase") == "review")
     if strong_internal or ext_reviews:
         print(f"    strong pass source: external {ext_reviews} vs internal strong dispatch {len(strong_internal)}")
@@ -314,6 +301,40 @@ if externals or xfails or strong_internal:
             adv = sum(1 for r in review_rows if r.get("mode") == "adversarial")
             std = ext_reviews - adv
             print(f"    external review mode: adversarial {adv} · standard {std}")
+
+# External review verdicts — the `verdict` field of review-kind external rows (consult / critique rows have none).
+vrows = [r for r in externals if r.get("phase") == "review" and r.get("verdict")]
+if vrows:
+    vc = Counter(r["verdict"] for r in vrows)
+    print(f"\n  External review verdicts ({len(vrows)}): " + " · ".join(f"{k} ×{n}" for k, n in sorted(vc.items())))
+    import statistics
+    secs = {}
+    for r in vrows:
+        if isinstance(r.get("secs"), (int, float)):
+            secs.setdefault(r.get("cli") or "?", []).append(r["secs"])
+    if secs:
+        def _med(xs):
+            m = statistics.median(xs)
+            return str(int(m)) if m == int(m) else f"{m:.1f}"
+        print("    median secs: " + " · ".join(f"{c} {_med(v)} (n={len(v)})" for c, v in sorted(secs.items())))
+
+# Gate rows (hooks/precommit-gate.sh): the commits that cleared with risky edits and no strong review.
+# A row stores the parent head (HEAD before the commit); a deny row never committed.
+grows = [r for r in rows if r.get("phase") == "gate"]
+if grows:
+    flagged = [g for g in grows if g.get("decision") in ("pass", "soft")
+               and (g.get("risk") or 0) > 0 and (g.get("strong") or 0) == 0]
+    shown = sorted(flagged, key=lambda g: g.get("ts") or "", reverse=True)[:5]
+    print(f"\n  Gate — risk > 0 and strong = 0 on a committed row ({len(flagged)}; newest {len(shown)} shown; deny rows excluded, they never committed):")
+    for g in shown:
+        print(f"    parent {(g.get('head') or '?')[:7]}  {g.get('decision'):<4} risk={g.get('risk')} tests={g.get('tests', 0)} "
+              f"reviewers={g.get('reviewers', 0)}  {(g.get('ts') or '')[:16].replace('T', ' ')}")
+
+# Write-scope denies (hooks/subagent-write-scope.sh) per agent_type; paths outside the repo root still count.
+wrows = [r for r in rows if r.get("phase") == "write-scope" and r.get("decision") == "deny"]
+if wrows:
+    wc = Counter((r.get("agent_type") or "?").split(":")[-1] for r in wrows)
+    print(f"\n  Write-scope denies ({len(wrows)}): " + " · ".join(f"{k} ×{n}" for k, n in wc.most_common()))
 
 if ships:
     a = Counter(r.get("action", "?") for r in ships)
@@ -372,6 +393,32 @@ def _short(m):
     for k in ("haiku", "sonnet", "opus", "fable", "mythos"):
         if k in m.lower(): return k
     return m[:12]
+def _read_calls(f):
+    """One transcript file → (calls, first timestamp, last effort), or None when unreadable.
+    One API call is written as several rows (thinking/text/tool_use) sharing message.id and usage —
+    keep the row with the highest output_tokens per id. Shared by the fleet loop and the Lead tally."""
+    calls, first, eff = {}, None, "-"
+    try:
+        with open(f, encoding="utf-8", errors="ignore") as fh:
+            for line in fh:
+                if '"type":"assistant"' not in line and '"type": "assistant"' not in line: continue
+                try: e = json.loads(line)
+                except Exception: continue
+                msg = e.get("message") or {}
+                m = msg.get("model")
+                if not m or m.startswith("<"):   # "<synthetic>" = harness placeholder, not a model
+                    continue
+                u = msg.get("usage") or {}
+                o = u.get("output_tokens", 0) or 0
+                key = msg.get("id") or ("row", len(calls))    # no id → its own call
+                if key not in calls or o >= calls[key][1]:
+                    calls[key] = (m, o, u.get("cache_read_input_tokens", 0) or 0,
+                                  u.get("input_tokens", 0) or 0, u.get("cache_creation_input_tokens", 0) or 0)
+                first = first or e.get("timestamp")
+                if e.get("effort"): eff = str(e.get("effort"))
+    except OSError:
+        return None
+    return calls, first, eff
 fleets = {}
 bases, cutoff = [], time.time() - 14 * 86400
 if root:
@@ -394,27 +441,10 @@ if root:
         sess = parts[si - 1] if si >= 0 else ""
         # one agent-tool bucket per session, so a fleet's ultracode tag reads its own session's turns
         grp = rel[1] if len(rel) > 2 and rel[0] == "workflows" else "agent-tool:" + sess[:8]
-        calls, first, eff = {}, None, "-"    # one API call is written as several rows (thinking/text/tool_use) sharing message.id and usage — keep the row with the highest output_tokens per id
-        try:
-            with open(f, encoding="utf-8", errors="ignore") as fh:
-                for line in fh:
-                    if '"type":"assistant"' not in line and '"type": "assistant"' not in line: continue
-                    try: e = json.loads(line)
-                    except Exception: continue
-                    msg = e.get("message") or {}
-                    m = msg.get("model")
-                    if not m or m.startswith("<"):   # "<synthetic>" = harness placeholder, not a model
-                        continue
-                    u = msg.get("usage") or {}
-                    o = u.get("output_tokens", 0) or 0
-                    key = msg.get("id") or ("row", len(calls))    # no id → its own call
-                    if key not in calls or o >= calls[key][1]:
-                        calls[key] = (m, o, u.get("cache_read_input_tokens", 0) or 0,
-                                      u.get("input_tokens", 0) or 0, u.get("cache_creation_input_tokens", 0) or 0)
-                    first = first or e.get("timestamp")
-                    if e.get("effort"): eff = str(e.get("effort"))
-        except OSError:
+        got = _read_calls(f)
+        if got is None:
             continue
+        calls, first, eff = got
         per = {}     # per model: [out, cache-read, input, cache-write] — a file may switch model mid-way (retry / fallback)
         for m, o, cr, i, cw in calls.values():
             p = per.setdefault(m, [0, 0, 0, 0])
@@ -467,6 +497,22 @@ if root:
                 if sw: wins[os.path.basename(f)[:-6]] = sw
             except OSError:
                 continue
+# Lead turns — main-session transcripts <base>/*.jsonl, one count per API call (message.id), 14 days.
+# The Lead's histogram is what /model was set to; it is never merged with the fleet table below.
+lead, lead_files = Counter(), 0
+for base in bases:
+    for f in sorted(glob.glob(os.path.join(base, "*.jsonl"))):
+        try:
+            if os.path.getmtime(f) < cutoff: continue
+        except OSError:
+            continue
+        got = _read_calls(f)
+        if not got or not got[0]: continue
+        lead_files += 1
+        for m, *_ in got[0].values(): lead[_short(m)] += 1
+if lead:
+    print(f"\n  Lead turns — main session transcripts (last 14d, {lead_files} session(s), {sum(lead.values())} turns; the /model choice, not fleet proof): "
+          + " · ".join(f"{m} ×{n}" for m, n in lead.most_common()))
 if marks or wins:
     print(f"\n  ultracode turns: {sum(len(v) for v in marks.values())} · ultracode sessions: {len(wins)} (last 14d; rows type=attachment attachment.type=workflow_keyword_request / ultra_effort_enter..ultra_effort_exit)")
 def _ultra(g):
@@ -500,5 +546,9 @@ if fleets:
         print("    ⚠ strong-class agents outnumber cheap/balanced ones — fan-outs ran at the Lead price; the tier follows the work: "
               "read/browse haiku or scout, per-item verify sonnet, ONE opus judge (the fleet-tier gate denies new ones)")
 
+if nodata and not lead and not fleets:
+    print("\n  no data yet — phase-log.jsonl / bypass.log start filling once")
+    print("  v2.12+ sessions run in this repo. Nothing to measure is itself")
+    print("  a finding: the loop has not closed here.")
 print()
 PY
