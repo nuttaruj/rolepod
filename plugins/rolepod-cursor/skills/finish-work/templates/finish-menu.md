@@ -13,6 +13,9 @@
 - User waivers this session: <none, or per waiver: which gate — the user's
   words, quoted. A waiver is recorded here, never silently applied.>
 
+## Rulings made
+<Every `Ruling:` line from this work's receipts, each with what it costs if the ruling is wrong; "none" when no ruling was made. A parked BLOCKER on a high-risk path is the user's call: ask it here, before the options.>
+
 ## Options
 <Detached HEAD (finish-work Detect the environment) → drop Merge to main, leaving 2 options: PR and Keep open. Discard available only on explicit user request — never presented as a standard option.>
 1. **Merge to main** — ready because <evidence the gates are green>

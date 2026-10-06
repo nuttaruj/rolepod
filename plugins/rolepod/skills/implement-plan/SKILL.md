@@ -112,7 +112,8 @@ Scope and receipt pairs, good and bad → `examples/execution-examples.md`; no e
 ## Guardrails
 
 - Finish the planned task as planned; a new idea is one line under the plan's `## Follow-ups`, never a mid-build redesign.
-- Run continuously between tasks: stop only on a BLOCKED after a variable change, or a spec / plan gap or scope ambiguity that survives a re-read. Never ask 'should I continue?'; an ended turn is a stop however it is worded. Every dispatch out and nothing unblocked → the turn ends as a wait on something whose end wakes you (CI → `finish-work` CI lanes; no `finish-work` → poll the lane). Forced to end → one line under `## Changes during build`: stopped after Task N · next Task M · how to start the env.
+- Run continuously between tasks: stop only on a BLOCKED after a variable change, or a spec / plan gap or scope ambiguity that survives a re-read. Never ask 'should I continue?'; an ended turn is a stop however it is worded. Every dispatch out and nothing unblocked → the turn ends as a wait on something whose end wakes you (CI → `finish-work` CI lanes; no `finish-work` → poll the lane). Opening a PR → load `finish-work` first; never end a turn on "ping me" or the like while a lane runs with nothing to wake you.
+  Forced to end → one line under `## Changes during build`: stopped after Task N · next Task M · how to start the env.
   A wait offers /compact only as the relay of a context-check line → manage-context Compact at seams; no manage-context → ONE line of ~100 characters naming the plan path and the next step, never a question.
 - Read the evidence, not the status: never accept `COMPLETED` without its Command tail.
 

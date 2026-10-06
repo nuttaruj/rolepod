@@ -128,8 +128,10 @@ When replying to an inline review comment on a PR, reply **in the thread** so th
 ```bash
 gh api repos/{owner}/{repo}/pulls/{pr}/comments/{id}/replies \
   --method POST \
-  -f body="<reply>"
+  -F body=@<reply file>
 ```
+
+Write the reply to a file first (a `mktemp` path): reviewer text quoted into an inline body argument would run any `$( )` or backtick it holds; a body file is data, never interpolated.
 
 A top-level PR comment fragments the conversation and the reviewer's context. Use top-level only for summary statements ("Addressed all findings — please re-review").
 
