@@ -144,7 +144,7 @@ if dispatches:
         # (measured 2026-09-17: 0 fable subagents under a fable Lead); only a
         # generic agent type truly inherits the Lead's model
         ROLEPOD_ROLES = {"adversarial-reviewer", "ai-ml-engineer", "backend-developer", "billing-engineer", "content-strategist",
-                         "data-scientist", "devops-sre", "frontend-developer", "mobile-developer",
+                         "devops-sre", "frontend-developer", "mobile-developer",
                          "performance-engineer", "qa-tester", "scout", "security-engineer",
                          "system-architect", "ui-ux-designer", "universal-reviewer"}
         def generic(d):   # anything that is not a shipped role has no frontmatter model

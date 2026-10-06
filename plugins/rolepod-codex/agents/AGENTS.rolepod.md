@@ -124,7 +124,7 @@ asked to keep running (a server to browse) stays up: say its port and how to sto
 ## Codex specifics
 
 - **Skills and agents** — the rolepod skills auto-trigger from their
-  `description:`; 16 specialists install at `~/.codex/agents/rolepod-*.toml`,
+  `description:`; 15 specialists install at `~/.codex/agents/rolepod-*.toml`,
   each carrying its own protocol. Codex never dispatches by description
   alone: when a skill names a specialist, spawn it yourself — this file is
   the sanctioned spawn channel.

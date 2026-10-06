@@ -228,17 +228,17 @@ STRONG_ROLE_AGENTS = {"security-engineer", "system-architect", "adversarial-revi
 TIER_PINNED_AGENTS = {
     "content-strategist", "scout",                               # cheap
     "ai-ml-engineer", "backend-developer", "billing-engineer",   # balanced
-    "data-scientist", "devops-sre", "frontend-developer",
+    "devops-sre", "frontend-developer",
     "mobile-developer", "performance-engineer", "qa-tester",
     "ui-ux-designer", "universal-reviewer",
 }
 
-# Roles that OWN product code in the plan-template domain map (write-plan
-# "Owners and briefs", v2.115.0). Reviewer / test-only / read-only roles are not
+# Roles that OWN product code in a plan's Owner lines (write-plan
+# "Owners and briefs"). Reviewer / test-only / read-only roles are not
 # owners; scout and system-architect are read-only at the moment of dispatch.
 WRITER_ROLE_AGENTS = {
     "ai-ml-engineer", "backend-developer", "billing-engineer",
-    "content-strategist", "data-scientist", "devops-sre",
+    "content-strategist", "devops-sre",
     "frontend-developer", "mobile-developer", "performance-engineer",
     "ui-ux-designer",
 }
@@ -259,7 +259,7 @@ _SELFDO_SKIP = re.compile(
 
 
 # Infra files are product code for the nudge too — the same paths the
-# plan-template Owner map assigns to devops-sre (no CODE_FILE extension, and
+# plan's Owner lines assign to devops-sre (no CODE_FILE extension, and
 # .github/ sits in the skip list, so they need their own positive rule).
 # Applied to the path RELATIVE to the repo root (is_product_code relativizes
 # with `root`): the directory rule is root-anchored so docs/deploy/guide.md
