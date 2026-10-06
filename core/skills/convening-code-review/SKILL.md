@@ -68,7 +68,7 @@ Done when: reports listed in the receipt; review line appended.
 - Each BLOCKER / MAJOR: fixed with its proof (repro or test and result) or pushed back with a one-line reason; both go to the re-check.
 - Each aggregated MINOR → Act on / Consider / Noted / Dismissed, one-line reason; filters: nitpick weight (behavior or taste?) and assumed vs actual (does the code show it?); Act on → fixed, closed on author evidence; MINORs never open a re-check.
 - The delta: `ticket.sh review-diff delta <task> <H1> <k>` (`<k>` = round 2-4; H1 is a tree, committed or not); no script → `git add -A && git diff <H1> $(git write-tree) -U10`, same excludes, into `<task>-r<k>.diff`; that tree is H2.
-- ONE fresh `universal-reviewer` re-checks only the delta and each pushback (held closes; reopened goes back open), ≤ 15 tool calls — never the original role, never a message to a finished reviewer.
+- ONE fresh `universal-reviewer` re-checks only the delta, ≤ 15 tool calls — never the original role, never a message to a finished reviewer. Its verdict per finding: each BLOCKER / MAJOR ADDRESSED or NOT ADDRESSED at file:line (an attempt that leaves the defect is NOT ADDRESSED); each pushback HELD (closes) or REOPENED (open again); a new break inside the delta joins the open list with its severity and file:line; one outside it goes to `## Follow-ups` and never adds a round.
 - At most four rounds, round 1 included; review rounds never reset the failed-fix count. Open after round 4 → rule once on each open finding, one `Ruling:` line each in the receipt, then go on without waiting for the user:
   - wrong or arguable → `Ruling: <finding> — parked — <why>`;
   - real, nothing ahead depends on it → parked as real-deferred, plus one line under `## Follow-ups`;
