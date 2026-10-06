@@ -13,7 +13,7 @@
 #   Prints Task N's brief to stdout, assembled from the plan (and the
 #   contract's File-ownership + Do-not-touch-list when one is given), in
 #   this order: Worktree or Checkout, Goal, Tier, Blocked by, Read first,
-#   Files allowed, Files forbidden, Change, Test / evidence, Expected
+#   Files allowed, Files forbidden (only when a cohesion contract exists), Change, Test / evidence, Expected
 #   failing signal (only when the task has one), Command, Proof, Done
 #   when, On fail (only when the task has one), Write, Reviewers, Bounds —
 #   ONE test field, the Command; an older plan's Check: line is read and
@@ -138,7 +138,7 @@ function cleanfiles(s, notekeep,    out, i, c, prevc, depth, inbt, notebt, bt, s
 }
 '
 
-# Fence rule (write-plan Contract): a line whose text, after at most 3
+# Fence rule (templates/cohesion-contract-template.md): a line whose text, after at most 3
 # leading spaces, opens with 3+ backticks or tildes opens a fence; it closes
 # at the first later line whose (likewise up-to-3-space-indented) run of the
 # SAME character is at least as long. Every line from the opening delimiter
@@ -1097,6 +1097,9 @@ if (planwt == 1) tpath = substr(tbranch, 1, length(tbranch) - 5)
     if (acnt == 0) print "(not in plan)"
     else for (i = 1; i <= acnt; i++) print "- " allowedord[i]
     printf "- Canonical task receipt %s/docs/rolepod/tasks/%s/task-%02d.md (base checkout only)\n", baseroot, tbase, want + 0
+    # Files forbidden prints only when a cohesion contract exists; without
+    # one the Also touched / NEEDS rules live in implement-plan.
+    if (hascontract) {
     print "## Files forbidden"
     for (i = 1; i <= tn; i++) { p = touchorder[i]; if (!(p in allowedset)) print "- " p }
     # Guarded against Files allowed the same way the touch-list loop above
@@ -1104,8 +1107,9 @@ if (planwt == 1) tpath = substr(tbranch, 1, length(tbranch) - 5)
     # print twice or contradict the allowed list), AND against touchseen —
     # a path already printed by the touch-list loop above must not print a
     # second time just because it is ALSO on the do-not-touch list.
-    if (hascontract) for (i = 1; i <= dn; i++) { p = dntord[i]; if (!(p in allowedset) && !(p in touchseen)) print "- " dntdisp[p] }
+    for (i = 1; i <= dn; i++) { p = dntord[i]; if (!(p in allowedset) && !(p in touchseen)) print "- " dntdisp[p] }
     print "- everything else (an unowned path: touch it and add an Also touched line; a path another owner holds: a NEEDS line, never an edit)"
+    }
     print "## Change"
     print (Ch == "" ? "(not in plan)" : Ch)
     # Canonical sentences: every contract Shared-interfaces id this task cites
@@ -1141,8 +1145,6 @@ if (planwt == 1) tpath = substr(tbranch, 1, length(tbranch) - 5)
     if (Ef != "" && Ef !~ /^</) { print "## Expected failing signal"; print Ef }
     print "## Command"
     print (Cmd == "" ? "(not in plan)" : Cmd)
-    print "Cadence: Check changed behavior and affected consumers only; use the narrowest covering check after each relevant edit. Matching passing evidence for planned Command scope after the final relevant edit satisfies Command; phase changes add no check. Reuse only matching scope, inputs, environment and provenance."
-    print "The whole-repo suite runs once per release, by the Lead."
     print "## Proof"
     # An undeleted template placeholder ("<the one claim...> :: `<the command
     # that proves it>`") is not a real Proof — same convention as the bare-path
