@@ -37,7 +37,7 @@ Done when: every boundary from step 2 has a traced result at file:line.
 - Write the report to the file the brief names, default `.rolepod/evidence/review/<task>-security-engineer.md`; its Read section names the threat model, the compliance regime and the depth:
 
 ```markdown
-{{INCLUDE: core/skills/review-code/templates/review-report.md}}
+{{INCLUDE: core/fragments/review-report.md}}
 ```
 
 - A clean report still names the changed files and behaviors covered, the paths traced and where each claim held, the risk surfaces and the limitations; keep the depth-required trace even when clean, never a bare `APPROVED`, and never treat missing coverage as clean.

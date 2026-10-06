@@ -90,45 +90,36 @@ Done when: every claimed behavior carries a traced outcome — held, or failed a
 - Write it to the file the brief names, default `.rolepod/evidence/review/<task>-adversarial.md`:
 
 ```markdown
-<!-- Canonical Review-phase artifact. Record each fact once; omit empty optional sections. -->
-
 # <Feature / PR> Review
 
 ## Scope
-<Diff/spec and every changed file: `read` or `skipped — reason`. A missing changed file makes this partial.>
-**Snapshot H1 (immutable):** `<base sha>..<head sha>` <+ `diff <git hash-object <diff file>>` for uncommitted work. Paired Lite reports use the same H1/hash and each names only its own lens. Never relabel H1; a re-check gets a separate report.
+<The diff and every changed file: `read` or `skipped — reason`; a skipped changed file makes the report partial.>
+**Snapshot H1 (immutable):** `<H1 tree id>` and `<diff hash>` from your brief (standalone: the range you took and its diff hash). Never relabel H1; a re-check writes its own report at H2.
 
 ## Read
-<Reviewer lens/role and coverage: files and behaviors read, paths traced, and where each claimed behavior held or failed. On a clean review, this is the evidence; security/full adversarial reports retain the depth-required trace.>
+<Your lens or role and what you covered: the files and behaviors read, the paths traced, and where each claimed behavior held or failed. On a clean review this is the evidence.>
 
 ## Risk surfaces touched
-<List touched risk surfaces, or `None`.>
-
-## Reviewers
-<Roles run and whether the round is complete; when merged, N reports → U unique findings (dedup key: file:line + root cause). Record only the coverage required by the active mode; adversarial coverage applies only to Full R4. External lenses: `lens: spec — ran on <cli>`, `lens: standards — ran on <cli>`.>
-
-**Lite isolation** (Lite only; omit otherwise): <lens: spec | lens: standards>; fresh context: yes; received only this lens: yes; other report/findings visible: no; paired H1/hash matches: yes.
+<Each touched risk surface, or `None`.>
 
 ## Findings
-<Omit this section when clean. Severity ordered. Each finding retains severity, file:line, axis, issue, impact, and fix direction; merged findings retain reviewer.>
-- `file:line` — BLOCKER|MAJOR|MINOR — <axis> — <issue> — <impact> — <fix direction> — <reviewer, when merged>
+<Omit when clean. Severity ordered; each keeps severity, file:line, axis, issue, impact and fix direction.>
+- `file:line` — BLOCKER|MAJOR|MINOR — <axis> — <issue> — <impact> — <fix direction>
 
 ## Questions
-<Omit when none. Questions need an author answer, not a fix.>
+<Omit when none. A question needs the author's answer, not a fix.>
 - `file:line` — <question>
 
 ## Follow-ups
-<Omit when none. Untouched pre-existing issues or issues outside a fix delta; each has axis and never drives verdict. Copy each to the plan.>
+<Omit when none. A pre-existing issue on an untouched path, or one outside a fix delta; each with its axis, never a verdict driver.>
 - `file:line` — <axis> — <issue>
 
 ## Tests reviewed
-<Omit when none. State yes/no and whether assertions, mock boundary, and relevant concurrency coverage are strong.>
-
-**Cross-model adversarial pass** (Full R4 only; omit for Lite, Standard, comment/blank-only R4, and non-R4): <external CLI/model receipt or `internal strong pass — <reason>`. A NOT RUN reason without a completed pass does not satisfy Full R4; record the limitation and keep the round open.>
+<Omit when none. Say whether the assertions, the mock boundary and the concurrency coverage are strong.>
 
 ## Recommendation
-<APPROVED — nothing open above MINOR; a pre-existing MAJOR parked in Follow-ups with its reason is closed. APPROVED-WITH-NITS — only MINOR / Questions remain. REJECTED — any open BLOCKER introduced here or on a changed path, or a MAJOR neither fixed nor parked as pre-existing with reason. Untouched pre-existing issues do not reject. PARTIAL — required coverage/report is missing or incomplete; the same isolated reviewer must complete it in this round, and the round stays open.>
-APPROVED | APPROVED-WITH-NITS | REJECTED | PARTIAL — <one-line reason>
+<APPROVED — nothing open above MINOR (a pre-existing MAJOR parked in Follow-ups with its reason counts as closed) · APPROVED-WITH-NITS — only MINOR or Questions remain · REJECTED — an open BLOCKER introduced here or on a changed path, or a MAJOR neither fixed nor parked as pre-existing with a reason; untouched pre-existing issues never reject · PARTIAL — required coverage or a report is missing or incomplete; the round stays open · BLOCKED — the brief cannot be reviewed: `BLOCKED: <the one question>`.>
+APPROVED | APPROVED-WITH-NITS | REJECTED | PARTIAL | BLOCKED — <one-line reason>
 ```
 
 Done when: the report is written with a Recommendation, and a weak or PARTIAL report is completed, never returned thin.

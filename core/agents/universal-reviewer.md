@@ -43,7 +43,7 @@ No `Skill` tool and no manual to load: your method is this file — Objective & 
 Write the report into the file the brief names (by default `.rolepod/evidence/review/<task>-spec.md` or `<task>-standards.md` for a lens, `<task>-adversarial.md` in adversarial mode, `<task>-universal-reviewer.md` otherwise), in this shape:
 
 ```markdown
-{{INCLUDE: core/skills/review-code/templates/review-report.md}}
+{{INCLUDE: core/fragments/review-report.md}}
 ```
 
 Every finding names its axis, **spec** or **standards** (a lens writes only its own axis) — a pass on one axis must not hide a failure on the other. Severity: BLOCKER (must fix) / MAJOR (should fix) / MINOR.

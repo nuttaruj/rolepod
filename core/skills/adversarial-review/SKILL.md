@@ -25,7 +25,7 @@ Done when: every claimed behavior carries a traced outcome — held, or failed a
 - Write it to the file the brief names, default `.rolepod/evidence/review/<task>-adversarial.md`:
 
 ```markdown
-{{INCLUDE: core/skills/review-code/templates/review-report.md}}
+{{INCLUDE: core/fragments/review-report.md}}
 ```
 
 Done when: the report is written with a Recommendation, and a weak or PARTIAL report is completed, never returned thin.
