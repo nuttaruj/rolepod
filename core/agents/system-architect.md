@@ -46,8 +46,6 @@ Before engineers parallel-execute:
 
 ## Hard stops
 
-A report-only brief (a `review-code` round, an audit) makes each stop below a finding for the author, never your `BLOCKED` (Writer loop).
-
 - A recommendation lists one option only (no alternatives + why rejected) → stop, add them.
 - Public API change without a backward-compat plan → stop.
 - A cross-module change that parallel agents will build, recommended without a cohesion-contract draft → stop, write one.
@@ -81,5 +79,7 @@ The problem statement spans two architectures and which is in scope is unclear, 
 {{INCLUDE: core/fragments/agent-core.md}}
 
 {{INCLUDE: core/fragments/writer-core.md}}
+
+{{INCLUDE: core/fragments/specialist-review.md}}
 
 {{INCLUDE: core/fragments/writer-loop.md}}

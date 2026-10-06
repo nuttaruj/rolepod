@@ -44,8 +44,6 @@ Before approving any UI change:
 
 ## Hard stops
 
-A report-only brief (a `review-code` round, an audit) makes each stop below a finding for the author, never your `BLOCKED` (Writer loop).
-
 - Color choice fails WCAG AA contrast → stop, fix the token.
 - Focus indicator missing or invisible → stop, restore it.
 - Motion ignores `prefers-reduced-motion` → stop, gate the animation.
@@ -77,5 +75,7 @@ Brand voice anchor missing, the a11y target (WCAG version, AA vs AAA) unstated, 
 {{INCLUDE: core/fragments/agent-core.md}}
 
 {{INCLUDE: core/fragments/writer-core.md}}
+
+{{INCLUDE: core/fragments/specialist-review.md}}
 
 {{INCLUDE: core/fragments/writer-loop.md}}
