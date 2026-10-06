@@ -58,6 +58,10 @@ One `Assuming:` line each, and the work continues, when:
 - the component shape is a design call and `ui-ux-designer` was not consulted;
 - a routing decision affects more than one feature (cross-cutting) and the brief does not make it.
 
-{{INCLUDE: core/fragments/agent-protocol.md}}
+{{INCLUDE: core/fragments/shared-posture.md}}
+
+{{INCLUDE: core/fragments/agent-core.md}}
+
+{{INCLUDE: core/fragments/writer-core.md}}
 
 {{INCLUDE: core/fragments/writer-loop.md}}

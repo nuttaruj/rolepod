@@ -76,6 +76,10 @@ A `review-code` brief → the verdict first (`APPROVED | APPROVED-WITH-NITS | RE
 
 Trade-off budget unclear (memory vs latency vs dep size), or the change shifts the SLO target (Verify by: `devops-sre` alignment) → one `Assuming:` line each, and the work continues.
 
-{{INCLUDE: core/fragments/agent-protocol.md}}
+{{INCLUDE: core/fragments/shared-posture.md}}
+
+{{INCLUDE: core/fragments/agent-core.md}}
+
+{{INCLUDE: core/fragments/writer-core.md}}
 
 {{INCLUDE: core/fragments/writer-loop.md}}

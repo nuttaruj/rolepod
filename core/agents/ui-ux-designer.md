@@ -72,6 +72,10 @@ A report-only brief (a `review-code` round, an audit) makes each stop below a fi
 
 Brand voice anchor missing, the a11y target (WCAG version, AA vs AAA) unstated, a new token that would conflict with the existing design system, or the motion budget unclear (which animations are acceptable, which are noise) → one `Assuming:` line each, and the work continues.
 
-{{INCLUDE: core/fragments/agent-protocol.md}}
+{{INCLUDE: core/fragments/shared-posture.md}}
+
+{{INCLUDE: core/fragments/agent-core.md}}
+
+{{INCLUDE: core/fragments/writer-core.md}}
 
 {{INCLUDE: core/fragments/writer-loop.md}}

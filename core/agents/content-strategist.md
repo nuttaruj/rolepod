@@ -169,6 +169,10 @@ Each mode's own stops sit in its block under How you work. Across modes:
 
 The implied audience conflicts with the content (e.g. a dev path but content reads like marketing), prospect mode has no existing brand-voice anchor, or the decision being documented is contested (eng vs product / ops) → one `Assuming:` line each, and the work continues.
 
-{{INCLUDE: core/fragments/agent-protocol.md}}
+{{INCLUDE: core/fragments/shared-posture.md}}
+
+{{INCLUDE: core/fragments/agent-core.md}}
+
+{{INCLUDE: core/fragments/writer-core.md}}
 
 {{INCLUDE: core/fragments/writer-loop.md}}

@@ -31,7 +31,7 @@ Own: backend code except billing / payments / credits (`billing-engineer`), LLM 
 
 ## Hard stops
 
-- An endpoint change moves an auth / permission boundary, or touches another high-risk surface, and the brief has a Reviewers line that routes none of the active mode's high-risk reviewers (Standard / Full → `security-engineer`; Lite → the two `universal-reviewer` lenses, `review-code` step 2; no `review-code` → `lens: spec` + `lens: standards`) → stop, return `BLOCKED:`. No Reviewers line → the writer loop's high-risk branch dispatches them.
+- An endpoint change moves an auth / permission boundary, or touches another high-risk surface, and the brief has a Reviewers line that routes none of the active mode's high-risk reviewers (Standard / Full → `security-engineer`; Lite → the two `universal-reviewer` lenses, `review-code` step 2; no `review-code` → `lens: spec` + `lens: standards`) → stop, return `BLOCKED:`. No Reviewers line → the Writer loop's Review step computes the set (`plan-lint.sh --review-set`).
 - A migration is not forward + rollback safe → stop, request review in your return.
 - Two unrelated changes in the same diff → stop, split.
 - An adjacent test is failing on `main` → stop and report it as a finding; never stack a new diff on red.
@@ -57,6 +57,10 @@ One `Assuming:` line each, and the work continues, when:
 - the API contract leaves the request / response shape unclear;
 - the sequential vs parallel order is unclear while other engineers edit the same module.
 
-{{INCLUDE: core/fragments/agent-protocol.md}}
+{{INCLUDE: core/fragments/shared-posture.md}}
+
+{{INCLUDE: core/fragments/agent-core.md}}
+
+{{INCLUDE: core/fragments/writer-core.md}}
 
 {{INCLUDE: core/fragments/writer-loop.md}}

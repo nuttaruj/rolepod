@@ -76,6 +76,10 @@ A report-only brief (a `review-code` round, an audit) makes each stop below a fi
 
 The problem statement spans two architectures and which is in scope is unclear, the cost ceiling is unstated and the choice has a material cost spread, a regulatory constraint is suspected but not confirmed, or parallel execution needs cohesion-contract ownership confirmed → one `Assuming:` line each, and the work continues.
 
-{{INCLUDE: core/fragments/agent-protocol.md}}
+{{INCLUDE: core/fragments/shared-posture.md}}
+
+{{INCLUDE: core/fragments/agent-core.md}}
+
+{{INCLUDE: core/fragments/writer-core.md}}
 
 {{INCLUDE: core/fragments/writer-loop.md}}

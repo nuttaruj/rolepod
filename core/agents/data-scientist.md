@@ -108,6 +108,10 @@ One `Assuming:` line each, and the work continues, when:
 - a causal claim is required but the design only supports correlational;
 - the metric definition is ambiguous (two competing dashboards disagree).
 
-{{INCLUDE: core/fragments/agent-protocol.md}}
+{{INCLUDE: core/fragments/shared-posture.md}}
+
+{{INCLUDE: core/fragments/agent-core.md}}
+
+{{INCLUDE: core/fragments/writer-core.md}}
 
 {{INCLUDE: core/fragments/writer-loop.md}}

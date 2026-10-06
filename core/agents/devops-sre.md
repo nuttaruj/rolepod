@@ -69,6 +69,10 @@ Configure and maintain the 3-phase CI lanes:
 
 Risk profile not pinned (high-risk surface vs routine), an SLO / SLI target unstated while the change shifts either, a deploy / freeze window unclear while you only author config, on-call ownership for the new surface unassigned → one `Assuming:` line each, and the work continues.
 
-{{INCLUDE: core/fragments/agent-protocol.md}}
+{{INCLUDE: core/fragments/shared-posture.md}}
+
+{{INCLUDE: core/fragments/agent-core.md}}
+
+{{INCLUDE: core/fragments/writer-core.md}}
 
 {{INCLUDE: core/fragments/writer-loop.md}}

@@ -64,6 +64,10 @@ Own: `**/ai/**`, `**/ml/**`, `**/llm/**`, `**/agents/**`, `**/prompts/**`, `**/e
 
 The prompt vs file vs DB persistence choice is not in the spec → one `Assuming:` line, and the work continues.
 
-{{INCLUDE: core/fragments/agent-protocol.md}}
+{{INCLUDE: core/fragments/shared-posture.md}}
+
+{{INCLUDE: core/fragments/agent-core.md}}
+
+{{INCLUDE: core/fragments/writer-core.md}}
 
 {{INCLUDE: core/fragments/writer-loop.md}}

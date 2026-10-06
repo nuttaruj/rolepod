@@ -70,6 +70,10 @@ One `Assuming:` line each, and the work continues, when:
 - the cross-platform vs native choice for a new module is not made in the brief;
 - app-store metadata (screenshots, copy) has no named owner.
 
-{{INCLUDE: core/fragments/agent-protocol.md}}
+{{INCLUDE: core/fragments/shared-posture.md}}
+
+{{INCLUDE: core/fragments/agent-core.md}}
+
+{{INCLUDE: core/fragments/writer-core.md}}
 
 {{INCLUDE: core/fragments/writer-loop.md}}
