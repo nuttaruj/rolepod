@@ -53,7 +53,7 @@ Done when: the test exists at the seam and asserts the exact expected value.
 Run the one test. Red = it runs and fails on its named assertion.
 A collection / import error, a skip or a 0-test run is not red: fix the harness and rerun.
 Green before the code exists → the assertion is weak or the test misses the code: tighten it.
-This run is the slice's red proof while no test file has changed since; a test file changed → remove the fix once, see the test red, restore it, and that run is the red proof.
+This run is the slice's red proof while no test file has changed since; a test file changed → remove the fix once, see the test red, restore it (`references/red-proof.md` runs it as one command; no file → in place), and that run is the red proof.
 
 Done when: the run shows the named assertion failing.
 
@@ -71,7 +71,7 @@ Done when: the new test is green and the checks covering the edited files pass; 
 - A test at a seam nobody agreed, or an edge / error / race case with no reason → a finding: drop it, or record it under `## Follow-ups`.
 - Implementation-coupled (reaches past the interface or mocks an internal), tautological (asserts what it set up) or wording-pinned tests → rewrite at the seam.
 
-Done when: every new test survives the flip, sits at the seam, and each rule has exactly one owner test.
+Done when: every new test survives the flip and sits at the seam.
 
 ## Guardrails
 

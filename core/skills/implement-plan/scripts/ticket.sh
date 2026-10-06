@@ -726,7 +726,7 @@ EOF
 
 # Writes `## Status` + body "$2" into plan "$1": replaces an existing block in
 # place, else goes before the first `## ` heading (end of file when none).
-# Fence-aware; fail-open (a failed pass leaves the plan untouched).
+# Fence-aware; a failed pass leaves the plan untouched and returns 1.
 status_write() { # $1 = plan, $2 = body
   local plan="$1" body="$2" has="" tmp
   awk "$FENCE_FN"'
@@ -734,7 +734,7 @@ status_write() { # $1 = plan, $2 = body
     /^## Status[[:space:]]*$/ { f = 1; exit }
     END { exit !f }
   ' "$plan" && has=1
-  tmp="$(mktemp "${TMPDIR:-/tmp}/rolepod-ticket-status.XXXXXX")" || return 0
+  tmp="$(mktemp "${TMPDIR:-/tmp}/rolepod-ticket-status.XXXXXX")" || return 1
   if TICKET_STATUS_BODY="$body" awk -v has="$has" "$FENCE_FN"'
     function emit() { printf "## Status\n%s\n\n", ENVIRON["TICKET_STATUS_BODY"]; done = 1 }
     { if (fenceline($0)) { if (!skip) print; next } }
@@ -749,8 +749,11 @@ status_write() { # $1 = plan, $2 = body
     END { if (!done) { print ""; emit() } }
   ' "$plan" > "$tmp" && [ -s "$tmp" ]; then
     cp "$tmp" "$plan"
+    rm -f "$tmp"
+    return 0
   fi
   rm -f "$tmp"
+  return 1
 }
 
 # True (rc 0) when Owner field "$1" is the Lead, not a role — log's role
@@ -1260,7 +1263,14 @@ cmd_log() {
       echo "ticket: log: no Task $n in $plan — refusing (fail-closed)" >&2
       exit 1
     fi
-    status_write "$plan" "$(status_body "$plan" "$n")"
+    if plan_task_rows "$plan" | awk -F "$ROW_FS" -v want="$n" '($1 "") == (want "") && $4 == "1" { f = 1 } END { exit !f }'; then
+      echo "ticket: log: Task $n already done in $plan"
+      return 0
+    fi
+    if ! status_write "$plan" "$(status_body "$plan" "$n")"; then
+      echo "ticket: log: could not write ## Status in $plan — Task $n not marked running" >&2
+      exit 1
+    fi
     echo "ticket: log: Task $n running in $plan"
     return 0
   fi

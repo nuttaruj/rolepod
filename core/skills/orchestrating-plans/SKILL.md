@@ -33,10 +33,12 @@ The plan's **Owner:** line wins:
 
 - The brief: `../implement-plan/scripts/ticket.sh start <plan> <N>`, or `plan-lint.sh --brief <N> <plan> [contract]` (`--main` for a task on the main checkout). No script → the task block verbatim, the spec path and the Bounds: never commit, stay in scope, run the Command, return a decision brief.
 - Add only **Read first** (2-3 files and the pattern to copy) and facts the brief lacks. Tier, Reviewers and Command stay as generated: no extra steps, runs or scope.
+- A brief you cannot summarize in one sentence is defective: fix it before dispatch.
 - Never point the owner at the plan file; the brief is its slice.
 - A Blocked-by task's brief carries each predecessor's Handoff (or its receipt path).
 - `NEEDS: <path>` from an owner → apply it at integration (R1-sized) or reassign it.
 - A write mandate goes to the path's owning role, never a reviewer: `qa-tester` / `security-engineer` write tests and markdown only.
+- A CLI without the named role → `using-rolepod` model tiers; none → a fresh default subagent given the role's text.
 - A `security-engineer` dispatch outside a review round binds to Standard / Full.
 - One fresh owner per task; a reused one carries Task N's naming into Task N+1.
 - A worktree holds tracked files only: a gitignored harness is missing there, so the brief says how the Command gets in, or the owner runs on main.
@@ -53,9 +55,10 @@ Read the status, the first word of the decision brief:
 - `BLOCKED` → change one variable: more context, a stronger tier, a smaller scope, or back to `write-plan`; never redispatch unchanged.
 - The same spec section tripping two tasks → the spec is the suspect: pause those tasks, amend it through `write-spec`, re-brief the slice.
 - An unreviewed diff → `convening-code-review` on it before you integrate; its findings go back to that owner as one fix brief.
+- Any other first word, or a question → answer it or ask for the status, then redispatch.
 
 Validate the receipt, then spot-check ONE claim (the Proof, or on R4 one finding); it fails → the exact discrepancy back to the owner, no commit.
-Integrate: the ship line (`ticket.sh integrate` → commit → `log`); no script → the commit check, `git commit`, one `## Changes during build` line (sha, verdict, receipt pointer), and every `- [ ]` under the task flipped. A cleanup from `simplify-code` gets its own commit, apart from the feature commit.
+Integrate: a **Test / evidence** proof the Command does not run (browser, manual) runs first; then the ship line (`ticket.sh integrate` → commit → `log`) as ONE Bash call, a red step stopping the chain; no script → the commit check, `git commit`, one `## Changes during build` line (sha, verdict, receipt pointer), and every `- [ ]` under the task flipped. A cleanup from `simplify-code` gets its own commit, apart from the feature commit.
 Integrated → stop the owner in the same turn, plus any background work it reports; keep a track's last code-task owner for its track end. One task per pass.
 
 Done when: the task is committed, its boxes flipped, its owner stopped or kept for its track end.
@@ -81,15 +84,15 @@ Done when: every track is merged.
 
 - Two or more tracks, or a size-sliced track → `convening-code-review` with one fresh strong `universal-reviewer`, both axes, on `git diff <plan base>...HEAD` after every merge.
 - One unsliced track → none; its track-end review is the branch review.
-- The plan's Ship group lines are the seams to check, not a review of their own; an R4 task → the R4 rows of `plan-lint.sh --review-set` join on its seam.
+- The plan's Ship group lines are the seams to check, not a review of their own; an R4 task → `plan-lint.sh --review-set --tier R4` joins on its seam.
 - ONE fix dispatch with every finding → ONE delta re-check → the rest ruled at the cap; the rulings go to `finish-work`.
 
 Done when: the final review is closed or ruled, or none is due.
 
 ## Guardrails
 
-- Run continuously between tasks: stop only on a `BLOCKED` after a variable change, or a spec / plan gap that survives a re-read. Never ask 'should I continue?'.
-- Every dispatch out and nothing unblocked → end the turn on something whose end wakes you, closing with the `ticket.sh status <plan>` output (no script → the same list, one line per task). Opening a PR → load `finish-work` first; never end on "ping me" in any language while a lane runs; no `finish-work` → one checks watch, no poll.
+- Run continuously between tasks: stop only on a `BLOCKED` after a variable change, or a spec / plan gap that survives a re-read. Never ask 'should I continue?'; an ended turn is a stop however it is worded.
+- Every dispatch out and nothing unblocked → end the turn on something whose end wakes you, closing with the `ticket.sh status <plan>` output (no script → the same list, one line per task). Opening a PR → load `finish-work` first; no `finish-work` → one checks watch, no poll.
 - Forced to end → one `## Changes during build` line: stopped after Task N · next Task M · how to start the env. A wait offers /compact only as a context-check relay (`manage-context`; none → one ~100-char line naming the plan and the next step).
 - Read the evidence, not the status: never accept `COMPLETED` without its Command tail.
 - A new idea → one `## Follow-ups` line, never a mid-build redesign; a follow-up inside the approved spec → a new task, tiered and dispatched.

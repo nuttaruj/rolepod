@@ -18,10 +18,10 @@ A verify-only ask (the user asked only to verify, prove or test) ends at the evi
 
 ### 1. Name the proof
 
-- Each acceptance criterion names its evidence: `<criterion> → <command + result line>`; none → unverified, whatever else passed.
+- Each acceptance criterion names its evidence: `<criterion> → <command + result line>`; none → `UNVERIFIED`, whatever else passed.
 - A QA test-case table in play → each P1 ID shows in a passing runner test, or in a manual run record when no tests were asked; a skipped or uncollected test counts as missing.
 
-Done when: every criterion and P1 ID has a named command or observation.
+Done when: every criterion and P1 ID has a named command or observation; else Status `PARTIAL` / `UNVERIFIED`, naming the missing IDs.
 
 ### 2. Run it
 
@@ -40,7 +40,7 @@ Done when: every claim has a command and proof line from this turn, or a matchin
 
 Done when: every assertion survives the flip and no claim rests on an equivalence.
 
-### 4. State limitations
+### 4. State limitations, check F1-F5
 
 Anything unproven (no test infra, no network, no browser) → four lines: Cannot verify / Reason / Risk if wrong / Suggested check. Never claim done over an unstated limitation.
 

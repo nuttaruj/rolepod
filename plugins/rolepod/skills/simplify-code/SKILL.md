@@ -6,6 +6,7 @@ description: The owner's cleanup procedure. Use when code looks bloated, over-en
 # Simplify Code
 
 Turns code that does not earn its complexity into less code with the same behavior, each cut proven by the existing tests. Phase = Build (refactor): runs mid-Build or standalone.
+Run alone (no caller) → stop and tell the user instead.
 
 ## Skip when
 

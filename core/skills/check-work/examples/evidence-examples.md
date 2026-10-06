@@ -67,6 +67,7 @@ VERIFIED
 - app/javascript/components/OrdersTable.tsx — added empty-state message
 
 ### Evidence
+Verified tree f3c5b2a
 - npx tsc --noEmit — PASS: no type errors
 - npm test OrdersTable — PASS: 5 tests, incl. "renders empty state on []"
 

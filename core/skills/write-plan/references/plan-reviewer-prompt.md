@@ -68,5 +68,5 @@ Advisory (do not block):
 
 ## What to do with the result
 
-- **APPROVED** → `orchestrating-plans`, or save the plan and proceed
+- **APPROVED** → hand off to `orchestrating-plans`, or save the plan and proceed
 - **ISSUES_FOUND** → patch the plan inline. Re-dispatch only if blocking issues touched the structure (file list, parallel layout, spec coverage). Single-task fixes do not need re-review

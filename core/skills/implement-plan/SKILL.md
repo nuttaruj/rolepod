@@ -31,7 +31,6 @@ Done when: you can name the files, the Test / evidence line and the Command.
 - Reuse first: codebase → stdlib → platform feature → installed dependency → minimal new code. A new dependency the brief does not name → `BLOCKED` naming it.
 - Changing a behavior, signature or return shape with callers → walk the callers first (code-intel or grep) and decide per caller: absorb, adapt or split.
 - Change files through the edit tool, never a shell heredoc, `sed -i` or `tee`. A comment only for a non-obvious why.
-- Scratch output (a captured run, a count) → a `mktemp` file or `.rolepod/evidence/`, never a path outside the repo: a write there can wait on a prompt nobody sees.
 - A sibling plugin covers the domain → `references/sibling-plugins.md`; no reference → its edit primitive when installed. A step only a human can perform → `references/wizard.md`; no reference → `BLOCKED` naming that step.
 
 Done when: the change matches the brief and its test or proof exists.
@@ -40,7 +39,7 @@ Done when: the change matches the brief and its test or proof exists.
 
 - Completion check: read each file you claim you changed; run test / lint / typecheck; no silent failure (a DB column needs its migration, an API field needs its schema and response). No shell tool → name each check as `RUN NEEDED: <command>`, never marked passed.
 - After each relevant edit, the narrowest check covering the changed behavior and its consumers: one test, or one section of a large test file through the repo's own filter (a whole file only under ~30 s).
-- Before returning: the brief's Command once, verbatim, or a cited passing run whose scope, relevant inputs, environment and provenance still match after the final relevant edit (HEAD equality alone is not enough); a phase change adds no check. Then the repo commit check once, never per fix round. The whole suite is the Lead's, once per release.
+- Before returning: the brief's Command once, verbatim, or a cited passing run whose scope, relevant inputs, environment and provenance still match after the final relevant edit (HEAD equality alone is not enough); a phase change adds no check. Then the repo commit check once, never per fix round.
 - A failure → run just those tests once on the base tree (a throwaway `git worktree` at the base sha; else set the diff aside in place, run, restore). Red there too → pre-existing: a limitation cited in Concerns, never a block on `COMPLETED` when the rest is green. Green there → yours to fix.
 - A failing command → the task's **On fail**, else the plan's **Failure policy**, else `debug-issue`; retry it at most twice, then return `BLOCKED` with the attempts.
 
@@ -66,6 +65,7 @@ Done when: every round-1 report is in and each BLOCKER / MAJOR is fixed or pushe
 - The receipt holds the diff stat, the Command tail and proof lines, reviewer verdicts + report paths, each pushed-back BLOCKER / MAJOR as `file:line` + one-line reason, `Assuming:` lines and actionable residuals. Handoff: at most ~15 lines, only what a Blocked-by task consumes (signatures, invariants).
 - Pointers resolve after integration and worktree removal: proof complete at base needs no export; keep required local-only proof at its named private path before cleanup. Name a command instead of pasting a rerunnable log.
 - The chat reply stays within 12 lines: owner status, receipt path, Command tail, reviewer verdicts + report paths, residuals; never copy findings from a report. No file-writing tool → the whole receipt inline, naming the limitation; never claim an unwritten path.
+- Answer directly: no preamble, restatement, reading history or closing recap; omit detail the receipt already holds.
 
 Done when: the receipt is written and the reply sent.
 

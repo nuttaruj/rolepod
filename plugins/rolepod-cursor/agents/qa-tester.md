@@ -80,6 +80,10 @@ Bugs found: `file:line` — <severity> — <exact change needed> — <owner>   (
 
 - Production code, of any size, is never yours to edit — the write-scope hook denies it on Claude Code; return one `NEEDS: <path> — <one-line change>` line instead — the Lead routes it.
 
+### Testing rules
+
+- An E2E or contract test runs against the real service or a recorded contract; mock only what is outside the system under test.
+
 ### Hard stops
 
 Stops on your own tests:

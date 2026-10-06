@@ -31,9 +31,9 @@ Tools: Read, Glob, Grep, Edit, Bash, Write, Agent, SendMessage, WebFetch, WebSea
 
 Your receipt's Commands carry, beside the task's own checks:
 ```
-- Smoke + restart: <service, result>
-- Rollback: <commit SHA + revert command, or the IaC rollback step>
-- CI lanes the repo requires: <result>
+- Smoke + restart
+- Rollback
+- CI lanes the repo requires
 ```
 
 Risk profile not pinned (high-risk surface vs routine), an SLO / SLI target unstated while the change shifts either, a deploy / freeze window unclear while you only author config, on-call ownership for the new surface unassigned → one `Assuming:` line each, and the work continues.

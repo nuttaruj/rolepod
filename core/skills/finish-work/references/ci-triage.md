@@ -17,7 +17,7 @@ triage WHY it is red — the response differs by cause.
 
 | First check | If yes | Action |
 |-------------|--------|--------|
-| Is the branch behind its base? | The failure is in code the diff does not touch | `git fetch`, then `git merge-base --is-ancestor origin/<base> HEAD`; not an ancestor → rebase (Merge conflicts below) and re-run, no regression trace |
+| Does the failure sit in code the diff does not touch? | The branch is not behind its base | `git fetch`, then `git merge-base --is-ancestor origin/<base> HEAD`; not an ancestor → rebase (Merge conflicts below) and re-run, no regression trace |
 | Did your diff cause it? | The failure is in a file / test your branch touched | Fix it on the branch, re-push |
 | Is it flaky or infra? | Passes on re-run with no code change, or runner timeout / network error / image-pull fail | Re-run once. The same failure on the second run is not a flake → trace it on your diff, or `devops-sre` when it is infra. A real flake → debug-issue's `flake-triage.md`; fix it or quarantine it with an issue |
 | Is it a real regression? | A test unrelated to your diff fails on a current base | Stop — your change has a wider blast radius than planned; trace it |

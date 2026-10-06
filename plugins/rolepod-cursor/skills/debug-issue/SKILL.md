@@ -8,7 +8,7 @@ description: The owner's debug loop (the Lead: report-only). Use when an error a
 The owner's debug loop: an unknown failure → a root-cause fix by narrowing, not guessing — reproduce → trace upstream to the root → failing test → minimal fix → regression-clean.
 You never stop to ask: a question only the user can answer → return `BLOCKED` to your caller with the attempts and evidence; run alone (no caller) → ask the user.
 
-Brief (the symptom, not a repro): the exact error and stack (or actual vs expected), where it shows, when it started, the diff since the last green, and — from `implement-plan` / `check-work` — `Attempts: <n> used` with each failed fix and why it stayed red.
+Brief (the symptom, not a repro): the exact error and stack (or actual vs expected), where it shows, when it started, the diff since the last green, and — from the brief — `Attempts: <n> used` with each failed fix and why it stayed red.
 Two repros come from another role first; each is your failing test:
 - auth / token / injection symptoms → `security-engineer` writes the exploit repro test;
 - a user-visible (E2E / UI) repro → `qa-tester` writes its red test or report.
@@ -83,8 +83,7 @@ Done when: the failing test is green.
 - Run the module suite (the full suite on high-risk surfaces). No new red → re-run the step 2 repro itself. A red the base tree also shows (just those tests, run at the base sha) is pre-existing: record it as a limitation, not this fix's.
 - The `[DBG-]` tags grep to zero; your return names the hypothesis that held.
 - The fix fails, or the test passes but the symptom returns → new evidence, not a prompt to adjust the patch: back to step 5 before another attempt; a re-fix without a re-trace is a blind retry.
-- A failed fix attempt = a change meant to turn the same unresolved repro or criterion green that left it red; a falsifier, diagnostic, review rejection, verification-only rerun or revert is not one. Log each in the ledger's Fix attempts, carrying the count from the brief's `Attempts:` line — carry that count across owners and phases. At most four failed fixes count toward that same issue; unrelated criteria have separate counts.
-- Review rounds and failed fixes count apart: a review rejection is no failed fix, and a new owner resets neither.
+- A failed fix attempt = a change meant to turn the same unresolved repro or criterion green that left it red; a falsifier, diagnostic, review rejection, verification-only rerun or revert is not one. Log each in the ledger's Fix attempts, carry that count across owners and phases. At most four failed fixes count toward that same issue; unrelated criteria have separate counts. Review rounds count apart: a review rejection is no failed fix.
 
 When the user requests a saved artifact: `templates/debug-report.md` — Error, Severity, Repro, Root cause, Failing test, Fix, Verification, Status; no `templates/debug-report.md` → a Markdown file with those eight headings.
 

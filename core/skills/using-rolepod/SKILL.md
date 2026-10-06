@@ -29,8 +29,8 @@ Done when: a conversation is answered in the user's register, or a commission go
 |---|---|---|
 | **R0** answer only | question, lookup, conversation — no file change | answer; verify facts, reason freely on opinions |
 | **R1** trivial edit | a docs-only diff, any size — or ≤5 lines in 1 file with zero logic lines (comment, blank, user-facing text in a string; never a URL, path, key, regex, query or a value code branches on), not high-risk, ≤3 tool calls | direct edit; the edit echo is the verify; no review |
-| **R2** one file + test | 1 source file + its own test, clear scope, logic, ≈≤30 lines, not high-risk | its step 3 skill still fires (bug → `debug-issue`, else `implement-plan`); a 3-5 line chat checklist (goal, done-when, verify command) replaces spec + plan; the test does not count toward the one-source-file limit; a task owner builds it on main (failing test first, verify, the commit check, the two review lenses); the Lead never pre-explores, then commits |
-| **R3** multi-file | several source files, vague scope, or sequencing / delegation | an approved spec/change list already enumerates ≤3 ordered tasks and each task's files, verify command, and dependencies; single owner, no parallel work or high-risk path, and no mid-plan compaction → Build → `implement-plan` with the inline checklist. Otherwise use the full spine |
+| **R2** one file + test | 1 source file + its own test, clear scope, logic, ≈≤30 lines, not high-risk | its step 3 skill still fires (bug → `debug-issue`, else `orchestrating-plans`); a 3-5 line chat checklist (goal, done-when, verify command) replaces spec + plan; the test does not count toward the one-source-file limit; a task owner builds it on main (failing test first, verify, the commit check, the two review lenses); the Lead never pre-explores, then commits |
+| **R3** multi-file | several source files, vague scope, or sequencing / delegation | an approved spec/change list already enumerates ≤3 ordered tasks and each task's files, verify command, and dependencies; single owner, no parallel work or high-risk path, and no mid-plan compaction → Build → `orchestrating-plans` with the inline checklist. Otherwise use the full spine |
 | **R4** high-risk | a high-risk path — auth, tokens, billing, credits, secrets, data deletion, … (the full list: Stop conditions) — any size, one constant included | the full spine; review intensity comes from `workflow.mode` and follows `review-code` (Lite has two universal-reviewer lenses only; Standard and Full follow their own contracts); never downgrade risk; 1 file, ≤5 lines, comment / blank only → R2 |
 
 - Unsure about risk or dependencies → the higher tier. Unsure about size → inspect affected regions and `git status` once work starts.
@@ -63,21 +63,21 @@ The FIRST matching row fires:
 | fix bug / failing test / regression | Build → `debug-issue` first at every tier; it decides after root cause whether `write-spec` or `write-plan` follows |
 | why does X fail / what causes this error, bug or metric / number change, no fix asked | Build → `debug-issue` report-only: answer from cause and evidence, read-only; save an artifact only when the user requested one |
 | build / add / design with a vague target (UI, product, doc, ADR included) | Define → `write-spec` |
-| build X to a spec whose Success criteria cover it | the R3 row's spec-as-plan eligibility met → Build → `implement-plan` with the inline checklist; otherwise Plan → `write-plan` |
-| add / change Y at R3+ where the spec does not cover Y, or no spec exists | Define → `write-spec` (a new dated delta spec); eligible R2 → `implement-plan` with the step 2 checklist; other R3 → `write-plan` |
-| execute an approved plan / use agents in parallel | Build → `implement-plan` |
+| build X to a spec whose Success criteria cover it | the R3 row's spec-as-plan eligibility met → Build → `orchestrating-plans` with the inline checklist; otherwise Plan → `write-plan` |
+| add / change Y at R3+ where the spec does not cover Y, or no spec exists | Define → `write-spec` (a new dated delta spec); eligible R2 → `orchestrating-plans` with the step 2 checklist; other R3 → `write-plan` |
+| execute an approved plan / use agents in parallel | Build → `orchestrating-plans` |
 | architecture (DB schema, API contract, module split) | Define → `write-spec` (Approaches: ONE `system-architect`) |
 | where to deepen / refactor for testability, whole repo | tell the user to type /deepen-codebase ($deepen-codebase on Codex) |
 | prototype / layout options / does this state model feel right | spec settled → `write-prototype`; else `write-spec` first |
-| do a clear change test-first / TDD / red-green | Build → `tdd-flow`, run by the path owner: R2+ → `implement-plan`, Owner <path role>, who loads `tdd-flow`; R1 or no sub-agents → the Lead runs it (no `tdd-flow` → `implement-plan`, failing test first at the seam) |
-| refactor / simplify / clean up | Build → `simplify-code`, run by the path owner (`implement-plan`, Owner <path role>; R1 or no sub-agents → the Lead runs it) → `check-work` |
-| slow / latency / bundle size / N+1 / p95 | Build → `implement-plan`, Owner `performance-engineer` in ONE brief (baseline number, change, re-measure) → `check-work` reads its before / after numbers (no sub-agents → the Lead runs it) |
-| clear UI edit (design, screenshot, exact acceptance) | Build → `implement-plan`, Owner `frontend-developer` (iOS / Android / React Native / Flutter → `mobile-developer`; design system / CSS / a11y → `ui-ux-designer`) |
+| do a clear change test-first / TDD / red-green | Build → `tdd-flow`, run by the path owner: R2+ → `orchestrating-plans`, Owner <path role>, who loads `tdd-flow`; R1 or no sub-agents → the Lead runs it (no `tdd-flow` → `implement-plan`, failing test first at the seam) |
+| refactor / simplify / clean up | Build → `simplify-code`, run by the path owner (`orchestrating-plans`, Owner <path role>; R1 or no sub-agents → the Lead runs it) → `check-work` |
+| slow / latency / bundle size / N+1 / p95 | Build → `orchestrating-plans`, Owner `performance-engineer` in ONE brief (baseline number, change, re-measure) → `check-work` reads its before / after numbers (no sub-agents → the Lead runs it) |
+| clear UI edit (design, screenshot, exact acceptance) | Build → `orchestrating-plans`, Owner `frontend-developer` (iOS / Android / React Native / Flutter → `mobile-developer`; design system / CSS / a11y → `ui-ux-designer`) |
 | write test cases / report a bug, no fix wanted | Verify → `qa-tester` agent (no agent → the Lead writes the case table); a found bug → `debug-issue` report-only, answer/read-only unless a saved artifact was requested |
 | is this done / does it (or the UI) work / verify | Verify → `check-work` |
-| audit UX / a11y of one page or flow | Verify → ONE `ui-ux-designer` brief: `check-work` UI verification + `review-code` `references/axes.md` (UI); no browser reachable → the Lead observes and the designer audits that observation (no sub-agents → the Lead runs both) |
-| edit / fix on a high-risk path | Define → `write-spec` → `write-plan` → `implement-plan` (per-task review) |
-| clear doc edit; CI, Docker, deploy, infra config | Build → `implement-plan`, Owner `content-strategist` (`audience:` set) / `devops-sre`; R1 → the Lead |
+| audit UX / a11y of one page or flow | Verify → ONE `ui-ux-designer` brief: a browser observation + `review-code` `references/axes.md` (UI); no browser reachable → the Lead observes and the designer audits that observation (no sub-agents → the Lead runs both) |
+| edit / fix on a high-risk path | Define → `write-spec` → `write-plan` → `orchestrating-plans` (per-task review) |
+| clear doc edit; CI, Docker, deploy, infra config | Build → `orchestrating-plans`, Owner `content-strategist` (`audience:` set) / `devops-sre`; R1 → the Lead |
 | review / look at the diff; audit / find all X across the repo | Review → `convening-code-review`; a whole-repo sweep scopes first (step 4) |
 | ship / merge / PR / done, or the work's natural end | Ship → `finish-work` (`review-code` first if a review is missing) |
 | rolepod stats / evidence report / which models ran | `rolepod-stats` |
@@ -100,7 +100,7 @@ Next step: <concrete action>
 
 - R0 / R1 — no line.
 - R2 — `Route: R2 (one source file + its own test) → <skill> · Owner <path role> · <reason>`, then the checklist as the owner's brief.
-- Eligible spec-as-plan R3 — `Route: R3 (spec-as-plan) → Build → implement-plan`; give the inline checklist as the owner's brief. Apply step 2's complete eligibility conditions; any missing condition, including mid-plan compaction, routes to the plan artifact. R4 always does.
+- Eligible spec-as-plan R3 — `Route: R3 (spec-as-plan) → Build → orchestrating-plans`; give the inline checklist as the owner's brief. Apply step 2's complete eligibility conditions; any missing condition, including mid-plan compaction, routes to the plan artifact. R4 always does.
 - Other R3 / R4 or a surprising route — the full block; `Next step:` names the owner (or `write-spec` / `write-plan`, which assign owners).
 - Each tier carries its gloss: R0 answer only · R1 trivial edit · R2 one file + test · R3 multi-file · R4 high-risk.
 - Dispatching the owner, picking a model class or running a fleet → `references/model-tiers.md` (class per role, portable role dispatch, Fleets; mechanics `references/fanout-<cli>.md`); no file → the native role, else a fresh isolated child given the role's text; implementation balanced, one strong slot for the judge; no child facility → the Lead runs the loop.

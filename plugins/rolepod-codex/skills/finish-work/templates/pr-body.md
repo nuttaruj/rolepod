@@ -10,7 +10,7 @@
 - [ ] <test / command / manual step> — before: <result> → after: <result>
 
 ## Risks
-<What could go wrong, the blast radius, the rollback. Door: one-way / two-way.
+<What could go wrong, the blast radius, the rollback. Door: one-way (a revert does not undo it) / two-way.
  "Low — <reason>" is valid if true.>
 
 ## Linked artifacts

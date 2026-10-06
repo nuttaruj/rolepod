@@ -31,7 +31,7 @@ Your receipt's Commands carry, beside the task's own checks:
 - Idempotency test result (replay event → same state)
 - Reconciliation dry-run if pricing / state machine changed
 ```
-and its Decision brief carries:
+and its receipt's Concerns carry:
 ```
 **Compliance:** PCI scope unchanged · no sensitive PII in logs · audit log present
 ```

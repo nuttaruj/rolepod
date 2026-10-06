@@ -41,9 +41,8 @@
       risk, else most files) builds the whole slice, thin ends in other layers
       included; two full-depth layers → two slices joined by Blocked by. A
       high-risk write goes to the path's owner and the High-risk surfaces line
-      names the task; security-engineer writes tests only. An E2E / UI flow the
-      spec names → no task; the QA pass in finish-work checks it once per
-      branch (a slice's unit tests belong to its owner).>
+      names the task; security-engineer writes tests only. A user-visible E2E flow
+      gets no task: `finish-work`'s QA pass checks it once per branch (a slice's unit tests belong to its owner).>
 
 - **Done when:** <pass/fail condition; a changed rule also names the nearest inputs whose result stays the same>
 - **On fail:** <non-default recovery, if any. Omit to use the Failure policy below.>
@@ -56,7 +55,7 @@
 - <surface> → Task <N>
 
 ## Spec coverage (both directions)
-<Map each requirement to a task and each task to its source requirement. Move unrequested work to Follow-ups. A named user-visible flow is checked once, at the QA pass before ship.>
+<Map each requirement to a task and each task to its source requirement. Move unrequested work to Follow-ups.>
 - <spec requirement> → Task <N>
 
 ## Parallel layout

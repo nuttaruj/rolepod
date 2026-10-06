@@ -39,7 +39,7 @@ One `Assuming:` line each, and the work continues, when:
 ### Hard stops
 
 - Introducing a new state library / data-fetching library without an explicit reason → stop.
-- Auth token persisted in `localStorage` for a flow that needs HttpOnly cookies → stop, name `security-engineer` in your return.
+- Auth token persisted in `localStorage` for a flow that needs HttpOnly cookies → stop, name `security-engineer` in the receipt's Concerns.
 - A form submits without disabling on inflight (double-submit risk) → stop, fix.
 - A UI change → observe it once in a browser (screenshot / DOM read) and report it; no browser reachable (no browser tool, none drivable from the shell) → the receipt says "not observed" — never claim an observation.
 - An auth flow change touches token storage / refresh / SSO and the brief does not decide it → return `BLOCKED:`.

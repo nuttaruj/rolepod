@@ -17,7 +17,7 @@ Own: backend code except billing / payments / credits (`billing-engineer`) and L
 - **Auth / permission boundary** — an endpoint change that widens who can read or write, or moves the check from one layer to another, is a security change even when the brief calls it a refactor; read the auth / session model the endpoint must respect before the code. Test: for each touched endpoint, can you name who could call it before and after, and are they the same set unless the brief says otherwise?
 - **Idempotency and transaction boundary** — a handler that runs twice (retry, redelivery, a double click) or fails half-way leaves the data in the state that boundary allows; place the transaction around the whole invariant and key the side effect. Test: does a replay of the same request, or a failure after each write, leave the data valid?
 - **N+1 and the missing index** — a loop that loads per row, or a new filter or sort on an unindexed column, is fast in a test fixture and slow in production. Test: for each new query path, can you name the query count per request and the index each filter uses?
-- **Migration forward and back** — a schema change ships with a dry-run of the migration forward and back, and old code still reads the new shape during the deploy. Test: did the migration run forward and back on a copy, and does the code before this diff still work against the migrated schema?
+- **Migration forward and back** — old code still reads the new shape during the deploy. Test: does the code before this diff still work against the migrated schema?
 
 ## Skill Mapping
 
@@ -41,7 +41,7 @@ One `Assuming:` line each, and the work continues, when:
 
 ### Hard stops
 
-- A migration is not forward + rollback safe → stop, request review in your return.
+- A migration is not forward + rollback safe → stop, request review in the receipt's Concerns.
 
 {{INCLUDE: core/fragments/shared-posture.md}}
 

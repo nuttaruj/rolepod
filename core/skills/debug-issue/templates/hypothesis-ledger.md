@@ -23,7 +23,7 @@
 
 | # | From | Fix (file — change) | Repro after | Why it stayed red |
 |---|------|---------------------|-------------|-------------------|
-| 1 | <implement-plan / check-work / this run> | <path — change> | <red: literal line> | <what the fix missed> |
+| 1 | <from the brief> | <path — change> | <red: literal line> | <what the fix missed> |
 
 Failed fixes: <n> of 4 · Second opinion: pending | done — <correction / confirmation / stop / no usable advisor: reason>
 

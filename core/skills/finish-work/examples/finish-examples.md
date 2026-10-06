@@ -81,8 +81,7 @@ Lead: "All gates passed, so I merged feat/csv-export to main and pushed."
 - [ ] Export an empty filter range — header-only CSV, no error
 
 ## Risks
-Low — read-only export, no schema or auth change. Door: two-way (revert the
-commit). Large exports verified against a 10k-order range within the 30s timeout.
+Low — read-only export, no schema or auth change. Door: two-way (a revert undoes it). Large exports verified against a 10k-order range within the 30s timeout.
 
 ## Linked artifacts
 Decision: server-side CSV built from the filtered scope (spec is local-only — summarized in Risks above).

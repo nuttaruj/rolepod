@@ -21,21 +21,21 @@ Next step: discovery dialogue in frontier rounds — every ready question togeth
 
 ---
 
-## 2. Clear one-file edit → Build / implement-plan
+## 2. Clear one-file edit → Build / orchestrating-plans
 
 User: "the footer copyright year is hardcoded to 2024 — make it dynamic"
 
-Route: R2 (one file + test) → implement-plan · Owner frontend-developer · exact target, one file, logic-bearing, no design choice
+Route: R2 (one file + test) → orchestrating-plans · Owner frontend-developer · exact target, one file, logic-bearing, no design choice
 Skipping: Define + Plan — the 3-5 line checklist is the plan. Its verify command still runs.
 Next step: write the checklist (goal, done-when, verify command); a task owner builds it on main.
 
 ---
 
-## 2a. Approved spec with a complete three-task sequence → Build / implement-plan
+## 2a. Approved spec with a complete three-task sequence → Build / orchestrating-plans
 
 User: "Implement the approved spec."
 
-Route: R3 spec-as-plan (3 ordered tasks; every task names files, verify command and dependencies; one owner; no parallel work or high-risk path) → implement-plan
+Route: R3 spec-as-plan (3 ordered tasks; every task names files, verify command and dependencies; one owner; no parallel work or high-risk path) → orchestrating-plans
 Skipping: Define + Plan — the approved spec already supplies the checklist's task boundaries and commands.
 Next step: use the spec's ordered tasks as the owner's inline checklist; no plan artifact. A fourth task, missing detail, parallel work, high-risk path, changed acceptance or compaction routes to the plan artifact.
 
@@ -106,7 +106,7 @@ User: "this OrdersService file is a mess, clean it up"
 Routing: Build (refactor) → simplify-code → check-work
 Reason: cleanup with no behavior change — behavior-preserving simplification.
 Skipping: Define + Plan.
-Next step: brief the path owner (`implement-plan`, Owner <path role>); it confirms the test suite is green first — no simplifying on red.
+Next step: brief the path owner (`orchestrating-plans`, Owner <path role>); it confirms the test suite is green first — no simplifying on red.
 
 ---
 
@@ -114,7 +114,7 @@ Next step: brief the path owner (`implement-plan`, Owner <path role>); it confir
 
 User: "add rate limiting"
 
-✗ Wrong: Build → implement-plan. "add" matched the Build verb, so start
+✗ Wrong: Build → orchestrating-plans. "add" matched the Build verb, so start
   coding. But rate limiting is unspecified — per-user or per-IP? what limit?
   what happens at the limit? Coding now drifts.
 

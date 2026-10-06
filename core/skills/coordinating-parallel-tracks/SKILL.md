@@ -56,7 +56,7 @@ Done when: every ready track is out, or the reason for running them serially is 
 
 ### 3. Integrate in the track worktree
 
-The Lead accepts and integrates each returned task in its track's worktree by `orchestrating-plans` step 3 (the ship line, the owner stopped, the track's last code-task owner kept for its track end, an unreviewed diff reviewed first); the commit gate finds the owner's reviewer evidence there. No `orchestrating-plans` → the commit check, `git commit` and one `## Changes during build` line per task.
+The Lead accepts and integrates each returned task in its track's worktree by `orchestrating-plans` step 3; the commit gate finds the owner's reviewer evidence there. No `orchestrating-plans` → the commit check, `git commit` and one `## Changes during build` line per task.
 - Each task in the track commits once ready; no `finish` until the track ends.
 - A harness-made worktree, or a commit refused because the Lead's branch moved → `git cherry-pick <sha>` (a conflict ends with `git cherry-pick --continue`, never a new `git commit`), then (after all tasks integrate) remove the worktree, delete its branch, and record each task: `ticket.sh log <plan> <N> --sha <sha> --note '<text>'` flips its boxes and appends the Changes line; no script → flip the boxes by hand and add one `## Changes during build` line per task with the cherry-picked sha.
 - Before any cleanup, preserve an older worktree receipt to the named base path first. A differing destination is a collision: stop cleanup and report it. Do not create another report or handoff.
@@ -75,7 +75,7 @@ Over ~800 changed lines or ~15 files in one track → size slices:
 - All slices back → the Lead runs the plan's Command and the commit check once, then commits.
 - The track-end review covers the R2/R3 tasks' deltas and any unreviewed fix after verification; an R4 task's commits are context, covered by their reports (listed in the Scope with their paths), never re-tiered.
 
-A plan's **Ship group** lines are no review here: they are the seam list for the final branch review (`orchestrating-plans` step 6).
+Ship group lines → `orchestrating-plans` step 6.
 
 Done when: every track and slice review is closed at its receipts.
 
