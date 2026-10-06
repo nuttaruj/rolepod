@@ -26,10 +26,11 @@ import re
 import sys
 from pathlib import Path
 
-# Field order for re-emission. Claude roles call `Skill` on demand (v2.173.0);
-# only a role whose Claude overlay names `skills:` carries that manual from its
-# first turn, preloaded through the harness (see PRELOAD_MODE). No overlay sets
-# `permissionMode` (v2.173.1) — a dead key `emit()` would otherwise carry silently.
+# Field order for re-emission. A role's `## Skill Mapping` (core/agents) is the
+# one home of its skills (see mapped_skills): a call skill gives the Claude role
+# the `Skill` tool, a preloaded one rides `skills:` from its first turn (see
+# PRELOAD_MODE). No overlay sets `permissionMode` (v2.173.1) — a dead key
+# `emit()` would otherwise carry silently.
 CLAUDE_KEY_ORDER = ["name", "description", "model", "effort", "memory",
                     "color", "tools", "skills"]
 ANTIGRAVITY_KEY_ORDER = ["name", "description", "model"]
@@ -46,9 +47,10 @@ OPENCODE_KEY_ORDER = ["description", "mode", "permission"]
 WRITE_TOOLS = ("Edit", "Write", "Bash")
 
 # ── Preload: how a target receives a role's manual ───────────────────────────
-# The Claude overlay's `skills:` list (bare skill names) is the one home of a
-# role's preload; every target derives from it. Three ways to receive it, chosen
-# per CLI by a live probe (docs/cli-support.md, "Role preload"):
+# A role's Skill Mapping names its preload ("the `x` skill, preloaded ..."); every
+# target derives from it, and no overlay may carry `skills:` or a `Skill` line
+# (the render fails). Three ways to receive it, chosen per CLI by a live probe
+# (docs/cli-support.md, "Role preload"):
 #   native — the harness injects the skill into the sub-agent's context: Claude
 #            `skills:` (a plugin skill is named `rolepod:<name>`); the role then
 #            needs no `Skill` tool and no skill listing.
@@ -58,6 +60,8 @@ WRITE_TOOLS = ("Edit", "Write", "Bash")
 #            or disables a skill, it never injects one).
 #   none   — nothing is emitted; the role's Skill Mapping line loads the skill
 #            at run time.
+# A call skill (any other skill the mapping names) is loaded at run time on every
+# CLI; on Claude it adds `Skill` to the role's tools. A role maps one kind only.
 PRELOAD_MODE = {"claude": "native", "codex": "inline", "antigravity": "none",
                 "cursor": "none", "opencode": "none"}
 CLAUDE_SKILL_PREFIX = "rolepod:"
@@ -75,7 +79,8 @@ NATIVE_SKILL_REF = {"claude": lambda n: CLAUDE_SKILL_PREFIX + n}
 #   strong (Claude)   → `opus` (v2.104.0; `inherit` before): the alias is the
 #                       paid ceiling of the tier and resolves to the newest opus,
 #                       so no model name goes stale. High-risk depth also rests
-#                       on review-code's cross-family adversarial pass.
+#                       on the R4 review round (convening-code-review), not on
+#                       this pin alone.
 #   Codex (all tiers) → no pin: rolepod is a workflow harness and never
 #                       tracks vendor model ids for Codex. A Codex sub-agent
 #                       with no `model` inherits the user's
@@ -240,32 +245,72 @@ def _overlay_tools(overlay_path: Path) -> set[str]:
     return tools
 
 
-def overlay_skills(name: str) -> list[str]:
-    """Bare skill names from the Claude overlay's `skills:` list ([] when none)."""
-    path = REPO_DIR / "adapters" / "claude" / "agent-frontmatter" / f"{name}.yml"
-    if not path.exists():
-        return []
-    ov = parse_yaml_block(path.read_text())
-    return [ln.strip().lstrip("- ").strip()
-            for ln in ov.get("skills", [])[1:] if ln.strip().startswith("-")]
+SKILL_MAPPING_RE = re.compile(r"^## Skill Mapping\n(.*?)(?=^## |\Z)", re.M | re.S)
+
+
+def mapped_skills(name: str) -> tuple[list[str], list[str]]:
+    """(preload, call) skill names from `## Skill Mapping` of core/agents/<name>.md.
+
+    A sentence naming "the `x` skill" with the word "preloaded" makes x a
+    preload; every other backticked name is a call skill, loaded at run time.
+    `Skill` is the tool, never a skill. Raises for a role with no Skill Mapping
+    (a renamed heading must not drop its grants silently; a role with no skill
+    says so in the section) and for one that maps both kinds: a preloaded role
+    has no `Skill` tool to load the rest with.
+    """
+    m = SKILL_MAPPING_RE.search((REPO_DIR / "core" / "agents" / f"{name}.md").read_text())
+    if not m:
+        raise ValueError(f"core/agents/{name}.md has no `## Skill Mapping` section")
+    preload: list[str] = []
+    call: list[str] = []
+    for sentence in re.split(r"(?<=[.;])\s+", m.group(1)):
+        for s in re.findall(r"`([^`]+)`", sentence):
+            if s == "Skill" or s in preload or s in call:
+                continue
+            pre = "preloaded" in sentence and f"the `{s}` skill" in sentence
+            (preload if pre else call).append(s)
+    if preload and call:
+        raise ValueError(f"{name}: Skill Mapping names a preload {preload} and call skills {call}; "
+                         "a role maps one kind")
+    return preload, call
+
+
+def check_overlays(name: str) -> None:
+    """Fail the render when an overlay still grants a skill: the Skill Mapping
+    is the one home, and a stale overlay grant (block or flow `skills:`, a
+    `Skill` tool line, comment or not) would otherwise drift from it silently.
+    A flow `tools: [...]` is rejected outright: the Skill insert and the
+    Cursor / opencode tool parse read the block form only."""
+    for cli in ("claude", "codex", "antigravity"):
+        path = REPO_DIR / "adapters" / cli / "agent-frontmatter" / f"{name}.yml"
+        if not path.exists():
+            continue
+        rel = path.relative_to(REPO_DIR)
+        ov = parse_yaml_block(path.read_text())
+        tools = ov.get("tools", [])
+        if tools and field_value(ov, "tools"):
+            raise ValueError(f"{rel}: a flow-style tools: value; use the block list form")
+        if "skills" in ov or any(ln.split("#", 1)[0].strip() == "- Skill" for ln in tools[1:]):
+            raise ValueError(f"{rel}: a skills: / Skill grant; the role's Skill Mapping is its one home")
 
 
 def skill_body(skill: str) -> str:
     """Body of core/skills/<skill>/SKILL.md, frontmatter off, INCLUDEs resolved.
 
-    Raises for a missing skill or a manual-invoke one: Claude cannot preload a
-    skill that sets `disable-model-invocation`, and a wrong name would load
-    nothing and warn only in a debug log, leaving the role without its method.
+    Raises for a missing skill or a manual-invoke one: a role can neither
+    preload nor call a skill that sets `disable-model-invocation`, and a wrong
+    name would load nothing and warn only in a debug log, leaving the role
+    without its method.
     """
     path = REPO_DIR / "core" / "skills" / skill / "SKILL.md"
     if not path.exists():
-        raise FileNotFoundError(f"preload names a missing skill: core/skills/{skill}/SKILL.md")
+        raise FileNotFoundError(f"Skill Mapping names a missing skill: core/skills/{skill}/SKILL.md")
     text = path.read_text()
     if not text.startswith("---\n") or "\n---\n" not in text[4:]:
         raise ValueError(f"core/skills/{skill}/SKILL.md has no frontmatter")
     fm, body = text[4:].split("\n---\n", 1)
-    if re.search(r"^disable-model-invocation:\s*true\s*$", fm, re.M):
-        raise ValueError(f"core/skills/{skill} sets disable-model-invocation: a role cannot preload it")
+    if re.search(r"""^disable-model-invocation:\s*(["']?)true\1\s*$""", fm, re.M):
+        raise ValueError(f"core/skills/{skill} sets disable-model-invocation: a role cannot load it")
     return resolve_includes(body).strip("\n")
 
 
@@ -314,10 +359,18 @@ def merge(target: str, name: str, preload: str | None = None) -> str:
     core_fields, body = split_core_agent(core_path.read_text())
     body = resolve_includes(body)
 
-    # Preload: the Claude overlay's `skills:` list, validated for every target
-    # (a bad name must fail the render, not load nothing at run time).
-    skills = overlay_skills(name)
+    # Skills: the role's Skill Mapping, validated for every target (a bad name
+    # must fail the render, not load nothing at run time).
+    check_overlays(name)
+    skills, call = mapped_skills(name)
+    for n in call:
+        skill_body(n)
     bodies = {n: skill_body(n) for n in skills}
+    claude_overlay = REPO_DIR / "adapters" / "claude" / "agent-frontmatter" / f"{name}.yml"
+    if (skills or call) and not (claude_overlay.exists()
+                                 and "tools" in parse_yaml_block(claude_overlay.read_text())):
+        # No tools: list = every tool on Claude: the grant would not follow the mapping.
+        raise ValueError(f"{name}: Skill Mapping names a skill but the Claude overlay has no tools: list")
     mode = preload or PRELOAD_MODE[target]
     if mode == "native" and skills and target not in NATIVE_SKILL_REF:
         raise ValueError(f"{target}: no native preload form (use inline or none)")
@@ -333,7 +386,12 @@ def merge(target: str, name: str, preload: str | None = None) -> str:
         overlay = parse_yaml_block(overlay_path.read_text())
         merged = {**core_fields, **overlay}
         resolve_model("claude", merged)
-        merged.pop("skills", None)
+        if call:
+            # Before the first mcp__ entry, else last: the order the overlays held.
+            tools = merged["tools"]
+            at = next((i for i, ln in enumerate(tools[1:], 1)
+                       if ln.strip().lstrip("- ").startswith("mcp__")), len(tools))
+            merged["tools"] = tools[:at] + ["  - Skill"] + tools[at:]
         if skills and mode == "native":
             merged["skills"] = ["skills:"] + [f"  - {NATIVE_SKILL_REF['claude'](n)}" for n in skills]
         # Re-order to match Claude original

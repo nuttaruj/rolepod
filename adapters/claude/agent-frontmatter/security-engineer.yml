@@ -1,4 +1,4 @@
-# tools: review role — the method is the preloaded security-review skill, so no Skill; no Agent / SendMessage (it never dispatches).
+# tools: review role — the method is the security-review skill, preloaded from its Skill Mapping (merge-agent emits `skills:`), so no Skill; no Agent / SendMessage (it never dispatches).
 tier: strong
 effort: xhigh
 tools:
@@ -10,5 +10,3 @@ tools:
   - Write
   - WebFetch
   - WebSearch
-skills:
-  - security-review

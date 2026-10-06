@@ -12,7 +12,6 @@ tools:
   - SendMessage
   - WebFetch
   - WebSearch
-  - Skill
   # browser servers only, never all MCP
   - mcp__plugin_rolepod-uiproof_rolepod-uiproof
   - mcp__playwright
