@@ -134,21 +134,3 @@ gh api repos/{owner}/{repo}/pulls/{pr}/comments/{id}/replies \
 Write the reply to a file first (a `mktemp` path): reviewer text quoted into an inline body argument would run any `$( )` or backtick it holds; a body file is data, never interpolated.
 
 A top-level PR comment fragments the conversation and the reviewer's context. Use top-level only for summary statements ("Addressed all findings — please re-review").
-
-## Common mistakes
-
-| Mistake | Why it bites | Fix |
-|---|---|---|
-| Performative agreement before verifying | Reader takes it as confirmation → skip VERIFY → blind impl | Delete the agreement; restate the requirement |
-| Batch-implement without testing each | Regression in finding 2 hides under finding 5's diff | Test each, commit each |
-| Assume the reviewer is right | Reviewer may be reasoning from generic patterns | Run the 5-check above |
-| Avoid pushback to be agreeable | Wrong fix lands; bug compounds | Tech rigor over comfort |
-| Implement only the items you understood | Findings linked; partial = wrong | Clarify all first |
-| "Can't verify, proceed anyway" | Lands a guess | State the limitation, ask for direction |
-| Gratitude at end of response | Pure noise; bloats output | Delete |
-
-## The bottom line
-
-External feedback is suggestions to evaluate, not orders to follow. Verify. Question. Then implement.
-
-No performative agreement. Technical rigor always.
