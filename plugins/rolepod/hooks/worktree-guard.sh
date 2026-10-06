@@ -196,23 +196,22 @@ EOF2
   exit 0
 fi
 
-BRANCH=$(git -C "$WORKTREE" branch --show-current 2>/dev/null || echo "HEAD")
 SUGGEST_PATH="${WORKTREE}-task-$(date +%s)"
 REL="${TARGET#"$WORKTREE"/}"
 
 # HARD deny — a live sibling owns this exact file. Point at native isolation
 # first (EnterWorktree), git worktree fallback second, override last.
 [ "$(rolepod_gate_action collision)" = deny ] || exit 0
-REL="$REL" SUGGEST_PATH="$SUGGEST_PATH" BRANCH="$BRANCH" python3 -I -c '
+REL="$REL" SUGGEST_PATH="$SUGGEST_PATH" python3 -I -c '
 import json, os
 rel = os.environ.get("REL", "")
 sug = os.environ.get("SUGGEST_PATH", "")
-br = os.environ.get("BRANCH", "")
+br = os.path.basename(sug)
 reason = (
     "BLOCKED: \"" + rel + "\" is being edited by a concurrent session in this "
     "shared worktree — writing now would stomp their changes. Isolate first, then retry:\n"
     "  • EnterWorktree tool (native), OR\n"
-    "  • git worktree add " + sug + " " + br + " && cd " + sug + "\n"
+    "  • git worktree add " + sug + " -b " + br + " && cd " + sug + "\n"
     "Exception: intentionally shared (read-only review / coordinated owner) → ask the user."
 )
 hook = {"hookEventName": "PreToolUse", "permissionDecision": "deny", "permissionDecisionReason": reason}

@@ -172,18 +172,17 @@ if [ "$ACTIVE_SIBLINGS" -eq 0 ] || [ "$SILENT" -eq 1 ]; then
   exit 0
 fi
 
-BRANCH=$(git -C "$WORKTREE" branch --show-current 2>/dev/null || echo "HEAD")
 SUGGEST_PATH="${WORKTREE}-task-$(date +%s)"
 
 # Emit additionalContext so Lead reads it on turn 1 and self-acts. Env-pass the
-# branch / path / count / names so a quote in a branch name cannot break the
+# path / count / names so a quote in a branch name cannot break the
 # emitter (which would fail open on the exact concurrency risk this hook flags).
-ROLEPOD_HOOK_SIBLINGS="$ACTIVE_SIBLINGS" ROLEPOD_HOOK_PATH="$SUGGEST_PATH" ROLEPOD_HOOK_BRANCH="$BRANCH" ROLEPOD_HOOK_NAMES="$SIBLING_NAMES" python3 -I -c "
+ROLEPOD_HOOK_SIBLINGS="$ACTIVE_SIBLINGS" ROLEPOD_HOOK_PATH="$SUGGEST_PATH" ROLEPOD_HOOK_NAMES="$SIBLING_NAMES" python3 -I -c "
 import json, os
 from collections import Counter
 n = os.environ.get('ROLEPOD_HOOK_SIBLINGS', '?')
 path = os.environ.get('ROLEPOD_HOOK_PATH', '')
-branch = os.environ.get('ROLEPOD_HOOK_BRANCH', 'HEAD')
+branch = os.path.basename(path)
 names = [x for x in os.environ.get('ROLEPOD_HOOK_NAMES', '').split(chr(10)) if x]
 counts = Counter(names)
 breakdown = ', '.join('%s ×%d' % (k, counts[k]) for k in sorted(counts))
@@ -191,7 +190,7 @@ detail = (': ' + breakdown) if breakdown else ''
 msg = ('Sibling rolepod session(s) detected in this worktree (%s active%s). '
        'Concurrent edits will stomp each other. '
        'Before any Edit/Write: spawn an isolated worktree FIRST:\n\n'
-       '  git worktree add %s %s\n'
+       '  git worktree add %s -b %s\n'
        '  cd %s\n\n'
        'Then continue work there. Override with ROLEPOD_ALLOW_SHARED_WORKTREE=1 '
        'if this session is intentionally shared (e.g. read-only review).') % (n, detail, path, branch, path)
