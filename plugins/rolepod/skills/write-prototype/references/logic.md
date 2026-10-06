@@ -6,24 +6,15 @@ A single, self-contained HTML file (a shareable demo) that lets anyone drive a s
 
 Because it is one file with nothing to install, hand it to a non-developer (a designer, a PM, a domain expert) and let them feel the model for themselves. So it speaks their language — `CONTEXT.md` terms for the domain — not the code's.
 
-## When this is the right shape
-
-- "I'm not sure if this state machine handles the edge case where X then Y."
-- "Does this data model actually let me represent the case where..."
-- "I want to feel out what the API should look like before writing it."
-- Anything where someone wants to press buttons and watch state change.
-
-If the question is "what should this look like," this is the wrong branch. Use `ui.md`.
-
 ## Process
 
 ### 1. State the question
 
-Before writing code, write down what state model and what question this prototypes. One paragraph, at the top of the demo (a visible intro, not just a comment). A logic prototype that answers the wrong question is pure waste, so make the question explicit so it can be checked later, whether the user is watching now or returning to it AFK.
+Before writing code, write down what state model and what question this prototypes. One paragraph, at the top of the demo. A logic prototype that answers the wrong question is pure waste, so make the question explicit so it can be checked later, whether the user is watching now or returning to it AFK.
 
 ### 2. Isolate the logic in a portable module
 
-Put the actual logic (the bit answering the question) in a single `<script>` block written as a small, pure module: the reference shape a later `implement-plan` rebuilds from, with tests, never code copied in directly (`write-prototype` Guardrails). The page around it is throwaway; this module is the validated design.
+Put the actual logic (the bit answering the question) in a single `<script>` block written as a small, pure module. The page around it is throwaway; this module is the validated design.
 
 The right shape depends on the question:
 
@@ -32,7 +23,7 @@ The right shape depends on the question:
 - A small set of pure functions over a plain data type. Good when there's no implicit current state, just transformations.
 - A class or module with a clear method surface when the logic genuinely owns ongoing internal state.
 
-Pick whichever shape best fits the question, not whichever is easiest to wire to a page. Keep it pure: no DOM, no `document`, no button handlers reaching inside it. The page calls into it; nothing flows the other direction. This is what makes the prototype useful past its own lifetime: once the question is answered, the validated reducer / machine / function set is the reference shape `write-plan` → `implement-plan` rebuilds from, with tests, on the project's normal branch — never copied in directly (`write-prototype` Guardrails).
+Pick whichever shape best fits the question, not whichever is easiest to wire to a page. Keep it pure: no DOM, no `document`, no button handlers reaching inside it. The page calls into it; nothing flows the other direction.
 
 ### 3. Build the shareable HTML file
 
@@ -50,20 +41,3 @@ Lay it out with a clean hierarchy, top to bottom:
 Choose scenarios that demonstrate the awkward cases, the ones hard to reason about on paper: the happy path, a tricky edge case, an attempt at something that should be illegal.
 
 Keep it beautiful but restrained: clean typography, generous spacing, one accent colour. No animations, no gimmicks: nothing that competes with the state and the buttons.
-
-### 4. Hand it over
-
-Send them the file, or open it for them. They'll click through the walkthroughs and free-play whenever they get to it; the interesting moments are when they say "wait, that shouldn't be possible" or "huh, I assumed X would be different" — those are the bugs in the idea, which is the whole point. If they want new actions or a new scenario, add them. Prototypes evolve.
-
-### 5. Capture the answer and the prototype
-
-Once the prototype has answered its question, capture the answer, then capture the prototype the way `write-prototype` Capture describes. The logic-specific mapping: the validated reducer / machine / function set is the reference shape for the real module, rebuilt with tests through `write-plan` → `implement-plan` (never copied in directly — `write-prototype` Guardrails); the HTML shell stays on the `spike/<name>` branch that keeps the prototype as a primary source, and being one self-contained file, it stays trivially re-runnable there.
-
-## Anti-patterns
-
-- Don't add tests. A prototype that needs tests is no longer a prototype.
-- Don't wire it to the real database. Use in-memory state unless the question is specifically about persistence.
-- Don't generalise. No "what if we wanted to support X later." The prototype answers one question.
-- Don't blur the logic and the page together. If the pure module references the DOM, `document`, or button handlers, it's no longer a clean reference for the rebuild. Keep the page as a thin shell over a pure module.
-- Don't reach for a framework, bundler, or server. One file the recipient double-clicks; a React app or a dev server defeats "shareable".
-- Don't ship the HTML shell into production. The page is optimised for being clicked through by hand; the validated logic behind it is the bit worth keeping — as the reference shape `implement-plan` rebuilds from, never as code copied in directly.

@@ -2,7 +2,7 @@
 
 # HTML Report Format
 
-The review is rendered as a single HTML file in the OS temp directory, named `deepen-codebase-<timestamp>.html`. It is not self-contained: Tailwind and Mermaid load from CDNs, so third-party scripts run in a page that holds repo paths and code. Mermaid handles graph-shaped diagrams reliably; hand-built divs and inline SVG handle the more editorial visuals (mass diagrams, cross-sections). Mix the two — leaning on Mermaid for everything starts to look generic.
+The review is rendered as a single HTML file in the OS temp directory, named `deepen-codebase-<timestamp>.html`. It is not self-contained: Tailwind and Mermaid load from CDNs, so third-party scripts run in a page that holds repo paths and code. Mermaid handles graph-shaped diagrams reliably; hand-built divs and inline SVG handle the more editorial visuals (mass diagrams, cross-sections). Leaning on Mermaid for everything starts to look generic.
 
 Offline, a locked-down network, or a user who wants no third-party script: skip the CDNs. Write inline CSS and hand-built SVG diagrams instead — the six fields must read without any script. Either way the fonts are the scaffold's stacks: sans body, serif `h1` / `h2`, mono for files and code — never another face.
 
@@ -25,8 +25,7 @@ Offline, a locked-down network, or a user who wants no third-party script: skip 
       .seam { stroke-dasharray: 4 4; }
       .leak { stroke: #dc2626; }
       .deep { background: linear-gradient(135deg, #0f172a, #1e293b); }
-      /* fonts — fixed: Tailwind's sans / serif / mono stacks, kept here so the
-         offline inline-CSS report reads the same */
+      /* fonts — fixed: Tailwind's sans / serif / mono stacks */
       body { font-family: ui-sans-serif, system-ui, sans-serif; font-size: 16px; line-height: 1.5; }
       h1, h2 { font-family: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif; }
       code, pre, .files { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
@@ -49,7 +48,7 @@ Repo name, date, and a compact legend: solid box = module, dashed line = seam, r
 
 ## Candidate card
 
-The diagrams carry the weight. Prose is sparse, plain, and uses the glossary terms below without ceremony.
+The diagrams carry the weight. Prose is sparse, plain, and uses the architectural terms from the explorer-lens Vocabulary.
 
 Each candidate is one `<article>`, with exactly these six fields:
 
@@ -119,20 +118,3 @@ A plain table after the cards: `path:line` (mono) · what breaks · reproduced /
 One larger card. Candidate name, one sentence on why, anchor link to its card. That's it.
 
 No `Strong` or `Worth exploring` card → this section is one line instead: `No deepening worth doing in <scope>`, then the areas walked and not reached.
-
-## Tone
-
-Plain English, concise, and the architectural nouns and verbs come from the glossary below.
-
-**Use exactly:** module, interface, implementation, depth, deep, shallow, seam, adapter, leverage, locality.
-
-**Never substitute:** component, service, unit (for module) · API, signature (for interface) · boundary (for seam) · layer, wrapper (for module, when the meaning is module).
-
-**Phrasings that fit the style:**
-
-- "Order intake module is shallow: interface nearly matches the implementation."
-- "Pricing leaks across the seam."
-- "Deepen: one interface, one place to test."
-- "Two adapters justify the seam: HTTP in prod, in-memory in tests."
-
-No hedging, no throat-clearing, no "it's worth noting that…". If a sentence could be a bullet, make it a bullet. If a bullet could be cut, cut it.

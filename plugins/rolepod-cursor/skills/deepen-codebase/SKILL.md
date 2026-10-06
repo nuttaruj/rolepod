@@ -33,7 +33,7 @@ Dispatch ONE general sub-agent at full strength — the CLI's general-purpose ag
 Its brief:
 - the scope from Scope;
 - the **deletion test**: imagine deleting the module and inlining it into its callers — complexity reappearing across N callers means it earns its keep; complexity that just vanishes marks a shallow pass-through; N hand-kept copies of one rule = a candidate, and a candidate that fails the test is dropped, not softened;
-- read `references/explorer-lens.md` first when present — vocabulary, friction signals, evidence bar (optional depth);
+- read `references/explorer-lens.md` first when present — vocabulary, friction signals, drift check (optional depth);
 - use the codebase's own words: `CONTEXT.md` terms for the domain, module / interface / seam / depth for the shape;
 - walk organically in ONE pass over the scope — hot spots first, the rest of the scope after — noting where IT struggles; never a second lap: an area it did not reach is named in the return;
 - any command that writes nothing in the repo (grep, `git log`, an existing test, a scratch script in the temp dir) may reproduce a claim;
@@ -92,3 +92,4 @@ Done when: the user picked a card, chose the report only, rejected with the ADR 
 
 - `write-spec` with the picked card as the Source spec: its Discovery settles the domain terms (into `CONTEXT.md` as they resolve) in frontier rounds, never one question at a time, and its Approaches presents the options with the one-shot `system-architect`; then `write-plan` → `implement-plan`. ONE card per session — a second card is a new spec in a fresh session.
 - If `write-spec` is not available, the report path and the picked card are the deliverable; the user takes it from there.
+- No other skill to move to → stop and give the user the report path, the cards by Strength (Strong, Worth exploring, Speculative), and the areas of the scope not reached.

@@ -3,9 +3,9 @@ name: write-prototype
 description: Use when write-spec offers a prototype and the user accepts; user asks for a prototype, demo, or layout options; user needs throwaway code to explore a design question
 ---
 
-# Write Prototype — throwaway code that answers one question
+# Write Prototype — the Lead builds throwaway code to answer one question
 
-Turns ONE question from a spec into throwaway code the user can react to, then writes the verdict back into the spec. A demo and a decision, never production code.
+**The Lead builds the prototype itself.** This skill is not dispatched to an owner; it is a self-do skill (OD10). When the user asks for a prototype or when `write-spec` proposes one and the user agrees, the Lead builds it in a spike worktree.
 
 ## Skip when
 
@@ -48,9 +48,9 @@ Done when: the branch is picked and its required elements are listed for the bui
 
 A new worktree starts from HEAD and never carries uncommitted changes. Change mode → first `git status --porcelain -- <the spec's paths>`: dirty → ask the user to commit them or build on HEAD; user away → HEAD. Built on HEAD over dirty paths → the top of the demo names the base SHA and says it excludes the uncommitted changes to those paths.
 Run `git worktree add <dir> -b spike/<name>`; everything happens there, and the user's working tree is never touched.
-Write the ONE question at the top of the demo.
-Name the files so a reader sees "prototype". One command runs it (the project's task runner), or a double-click.
-Keep it throwaway: no tests, no persistence (state in memory; a question about persistence gets a scratch store named PROTOTYPE), no abstractions, no error handling beyond what runs.
+Write the ONE question at the top of the demo, visible on the page (for a layout, may be in the header).
+Name the files so a reader sees "prototype".
+Keep it throwaway: no tests, in-memory state, no generalising, no error handling beyond what runs.
 
 Done when: the prototype runs with one command or a double-click.
 
@@ -63,13 +63,6 @@ Ask for the verdict; "the header from B with the sidebar from C" is a verdict. I
 
 Done when: the user gave a verdict.
 
-### 5. Capture
-
-Write into the spec (a `probe` ticket: its `## Resolution`, the line ending `rebuilt from the spec that cites this ticket`): the question, the verdict, and the line `Prototype: spike/<name> — reference only, never merged, rebuilt from this spec`.
-Commit the prototype on its spike branch (pushed only when the user asks), then remove the worktree; the branch keeps the evidence.
-
-Done when: the verdict is in the spec (or the probe ticket) and the worktree is removed.
-
 ## Guardrails
 
 - A prototype the user wants for real becomes a change: its decision goes into the spec → `write-plan` → `implement-plan` rebuilds it with tests. Never merge, cherry-pick or copy prototype code into a non-spike branch.
@@ -78,4 +71,4 @@ Done when: the verdict is in the spec (or the probe ticket) and the worktree is 
 
 - From a `probe` ticket → back to the map: `write-spec`'s `references/chart-work.md`, Working the map step 3 (Record) — the ticket flips resolved and its gist goes under Decided.
 - From a spec → `write-spec` for Gate 1 with the verdict. The spec was already approved and the verdict changed a decision → `write-spec` re-opens Gate 1 on the file.
-- If `write-spec` is not available, hand the user the question, the verdict and the spike branch name as the design decision to build from.
+- If `write-spec` is not available, hand the user the question, the verdict and the spike branch name as the design decision to build from. No other skill to move to — stop there.

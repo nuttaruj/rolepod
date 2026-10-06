@@ -2,7 +2,7 @@
 
 # Explorer lens
 
-The vocabulary every candidate uses and the evidence bar every claim meets.
+The vocabulary every candidate uses.
 
 ## Vocabulary — use these words exactly
 
@@ -19,7 +19,7 @@ The vocabulary every candidate uses and the evidence bar every claim meets.
 - **Deletion test** — imagine deleting the module and inlining it into its callers. Complexity reappears across N callers → it earns its keep (and N hand-kept copies of one rule elsewhere = a deepening candidate). Complexity just vanishes → a pass-through, shallow.
 - **The interface is the test surface** — tests should cross the seam callers use. A test that pins text instead of behaviour, reaches past the interface, or exercises a function no production caller uses = friction: the real path is untested.
 - **Drift check** — one concept computed in two or more places: compare the copies. Copies that already disagree are the strongest evidence a module is missing.
-- **Dependency kind** — in-process (unit test through the interface) · local-substitutable: clock, fs, env (inject at the seam) · remote-but-owned (thin adapter, real local instance) · true-external (adapter you own + contract test). A module that hard-wires a substitutable dependency cannot be tested through its interface.
+- **Dependency kind** — a hard-wired substitutable dependency cannot be tested through its interface.
 
 ## Friction signals — a lens, not a filter
 
@@ -30,10 +30,3 @@ The vocabulary every candidate uses and the evidence bar every claim meets.
 - a part untested, or untestable through its current interface
 
 Walk organically: hot spots first, then wherever the friction leads. Note where YOU struggle to understand — that struggle is the signal.
-
-## Evidence bar
-
-- Every claim carries `path:line`.
-- A claimed bug or drift is reproduced with a command that writes nothing in the repo (grep, `git log`, run an existing test, a scratch script in the temp dir) — or marked `read only, not reproduced`.
-- Never edit, create or delete a repo file. Never propose the new interface — name the friction and the direction only.
-- A candidate that fails the deletion test is dropped, not softened.

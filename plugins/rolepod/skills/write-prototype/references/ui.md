@@ -6,13 +6,6 @@ Generate several radically different UI variations on a single route, switchable
 
 If the question is about logic/state rather than what something looks like, this is the wrong branch. Use `logic.md`.
 
-## When this is the right shape
-
-- "What should this page look like?"
-- "I want to see a few options for this dashboard before committing."
-- "Try a different layout for the settings screen."
-- Any time the user would otherwise spend a day picking between three vague mockups in their head.
-
 ## Two sub-shapes: strongly prefer sub-shape A
 
 A UI prototype is much easier to judge when it's butting up against the rest of the app: real header, real sidebar, real data, real density. A throwaway route on its own is a vacuum: every variant looks fine in isolation. Default to sub-shape A whenever there's a plausible existing page to host the variants. Only reach for sub-shape B if the prototype genuinely has no nearby home.
@@ -37,7 +30,7 @@ In both sub-shapes the floating bottom bar is identical.
 
 Default to 3 variants; 2 for a two-way question; 1 when the user already named the layout to test (no switcher then). More than 5 stops being radically different and starts being noise, so cap there.
 
-Write down the plan in one line, in the prototype's location or a top-of-file comment, naming the spike branch:
+Write down the plan in one line, in the prototype's location, naming the spike branch:
 
 > "Three variants of the settings page, switchable via `?variant=`, on the existing `/settings` route, built on `spike/settings-layout`."
 
@@ -51,7 +44,7 @@ Draft each variant. Hold each one to:
 - The project's component library / styling system (whatever the project already uses).
 - A clear exported component name, e.g. `VariantA`, `VariantB`, `VariantC`.
 
-Variants must be structurally different: different layout, different information hierarchy, different primary affordance, not just different colours. Three slightly-tweaked card grids isn't a UI prototype, it's wallpaper. If two drafts come out too similar, redo one with explicit "do not use a card grid" guidance.
+Variants must be structurally different: different layout, different information hierarchy, different primary affordance.
 
 ### 3. Wire them together
 
@@ -91,19 +84,8 @@ Behaviour:
 
 Sub-shape A: write the switcher in the spike next to the variants, or reuse a prototype switcher the project already has — never a shared component built for future prototypes (the spike is throwaway). Sub-shape B: inline the same bar as plain markup and JS in the one HTML file — there is nothing to import from.
 
-### 5. Hand it over
+### 5. Capture the answer and clean up
 
-Hand over per `write-prototype` Hand over: sub-shape A gives both links — the original route and the prototype route with each `?variant=` key (one variant: the route alone) — side by side, same route; sub-shape B gives the file path. The user will flip through whenever they get to it. The interesting feedback is usually "I want the header from B with the sidebar from C," which is the actual design they want.
+Once a variant has won, capture the answer (which variant and why) in the spec. The whole variant set — winner and losers, the switcher when there is one — stays on `spike/<name>`, never merged, cherry-picked or copied into a non-spike branch. The winning variant is the reference shape: the decision goes into the spec, and a variant the user wants for real becomes a change — `write-plan` → `implement-plan` rebuilds it properly (tests, error handling) on the project's normal branch.
 
-### 6. Capture the answer and clean up
-
-Once a variant has won, capture the answer (which variant and why) the way `write-prototype` Capture describes. The whole variant set — winner and losers, the switcher when there is one — stays on `spike/<name>`, never merged, cherry-picked or copied into a non-spike branch (`write-prototype` Guardrails). The winning variant is the reference shape: the decision goes into the spec, and a variant the user wants for real becomes a change — `write-plan` → `implement-plan` rebuilds it properly (tests, error handling) on the project's normal branch.
-
-The full set of variants is the primary source, so it stays on the spike branch as evidence — code written under prototype constraints (no tests, minimal error handling) left in the main branch rots fast and confuses the next reader.
-
-## Anti-patterns
-
-- Variants that differ only in colour or copy. That's a tweak, not a prototype. Real variants disagree about structure.
-- Sharing too much code between variants. A shared header is fine; a shared layout defeats the point. Each variant should be free to throw out the layout.
-- Wiring variants to real mutations. Read-only prototypes are fine. If a variant needs to mutate, point it at a stub: the question is "what should this look like," not "does the backend work."
-- Promoting the prototype directly to production. The variant code was written under prototype constraints (no tests, minimal error handling); `implement-plan` rewrites it properly, from the spec, not by moving this code.
+The full set of variants is the primary source, so it stays on the spike branch as evidence.
