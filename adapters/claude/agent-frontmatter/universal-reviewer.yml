@@ -1,4 +1,4 @@
-# tools: review role — Write only, for its report (no Edit/Bash/Agent; the write-scope hook keeps it to markdown); no memory: and no Skill — the report shape and the adversarial stance come inline (a skill listing costs ~30k chars per dispatch). Cursor and opencode render it read-only (build/merge-agent.py); a CLI with no write tool returns the report inline (agent-core Report file).
+# tools: review role — Write only, for its report (no Edit/Bash/Agent; the write-scope hook keeps it to markdown); no memory: and no Skill tool — the review-code method is preloaded through `skills:` (a skill listing costs ~30k chars per dispatch). Cursor and opencode render it read-only (build/merge-agent.py); a CLI with no write tool returns the report inline (agent-core Report file).
 tier: balanced
 effort: high
 tools:
@@ -8,3 +8,5 @@ tools:
   - Write
   - WebFetch
   - WebSearch
+skills:
+  - review-code
