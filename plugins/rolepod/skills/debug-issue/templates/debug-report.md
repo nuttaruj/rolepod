@@ -3,10 +3,6 @@
 
 # <Bug> Debug Report
 
-<!-- Report-only mode (QA hand-off): fill Error / Repro / Severity, Root
-     cause only if cheap to trace; leave Failing test + Fix empty — the
-     owning dev continues from this artifact. -->
-
 ## Error
 <The literal error message / wrong output.>
 
