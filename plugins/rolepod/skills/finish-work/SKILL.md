@@ -5,53 +5,55 @@ description: Use when implementation, verification and review are done and the b
 
 # Finish Work
 
-Phase = Ship: turns a verified, reviewed branch into one authorized finish — merge, PR or keep open; discard only on explicit user request — after the pre-merge gate passes.
+Phase = Ship: turns a built, reviewed branch into one authorized finish — merge, PR or keep open; discard only on explicit user request — after the pre-merge gate passes.
 
 ## Skip when
 
-- The branch is not implementation-complete → `implement-plan`.
+- The branch is not implementation-complete → `orchestrating-plans` at the plan's next step.
 - The user said "don't ship, just experiment".
 
 ### 1. Pre-merge gate
 
-One gate, four checks below; required CI lanes are step 2.
+One gate, five checks below; required CI lanes are step 2. Workflow mode is the session's carried mode (`using-rolepod`), never re-read at Ship.
 
-Inputs: branch + base · diff summary (files, lines, risk surfaces) · CI per lane · review verdict · check-work's `Status:` · the user's intent.
+Inputs: branch + base · diff summary (files, lines, risk surfaces) · CI per lane · each receipt's Verify status and review reports · the rulings · the user's intent.
 
-A stale base or a conflict → rebase first (`references/ci-triage.md` Merge conflicts; no file → onto the PR's base, merging it in on a published branch, then re-run `check-work`). A failing gate → fix or report; never merge. A user waiver granted at an earlier phase carries forward: quote it in the finish menu's gate status (which gate, the user's words) instead of re-demanding the waived work or skipping silently.
+A stale base or a conflict → rebase first (`references/ci-triage.md` Merge conflicts; no file → onto the PR's base, merging it in on a published branch, then re-run the Evidence check). A failing gate → fix or report; never merge.
 
-- **Check-work Status** — `UNVERIFIED` or `PARTIAL` blocks merge unless the user explicitly waives it; green tests alone do not satisfy it. The block's `Verified tree` id equals `git rev-parse HEAD^{tree}` and the tree is clean → cite that block (the plan's `docs/rolepod/tasks/<plan file name without .md>/verify.md`, else this session's chat), no local re-run (an ignored input the check reads that changed since → re-run it); another tree → re-run only the checks covering the change; the post-deploy smoke always runs. Fails → `check-work`.
-- **Review evidence** — required `review-code` reports and provenance cover this tree. Each multi-code-task track needs its track-end report; a one-code-task track needs its owner's reports; a **Ship group** needs its drift-pass report (`implement-plan` step 5; no `implement-plan` → a fresh reviewer's seams-only pass over the group's range).
-  Use named canonical pointers. Before worktree cleanup, retain required local-only proof at its named private path. Evidence already complete on base needs no export or merged copy.
-- **Snapshot and floor** — a commit past the last Snapshot is a new delta for `review-code` at its own tier (an R1 delta needs none), never a full re-review.
-  Workflow mode = the active session mode carried from startup or the first `using-rolepod` entry; a helper call gets `ROLEPOD_SESSION_MODE` / `ROLEPOD_SESSION_SOURCE`. Never re-read the configured mode at Ship (an inspected one is reported apart); a config change applies in a new session.
-  - R4 floors — Lite: the two `universal-reviewer` lenses · Standard: + `security-engineer` (checklist) · Full: + `security-engineer` (full) + one adversarial pass; a missing required report keeps the round open.
-  - With agents, the same isolated reviewer completes a missing, failed, empty or partial report on the frozen H1 in that same round; never a Lead substitute. Lite without agents → the Lead's two-axis walkthrough, independence limitation recorded.
-  - Full's adversarial evidence = a `ran on <cli>` receipt or an internal strong pass with its reason, never `NOT RUN` or `vertical — same CLI` alone; a CLI that reports no model family is no limitation. A comment/blank-only R4 diff → `review-code`'s exception (no `review-code` → the mode's R4 set, no adversarial pass).
-  - H1 reports stay immutable; legacy merged reports stay readable, none newly required.
-  - H1 is reused at H2 only when every H1→H2 change is a verified finding fix closed at the receipt (review-code Fix-verify) and check-work names a clean H2 tree.
-  - Changes after H1 that are not finding fixes are uncovered: surface and route them at their current tier and mode; never relabel H1.
-  - A missing required report blocks merge; only the user's waiver naming this gate, quoted in the finish menu, clears it.
+Waiver: a failing check blocks merge unless the user waives that gate by name. A waiver granted at an earlier phase carries forward: quote it in the finish menu (which gate, the user's words), never re-demand the waived work or skip it silently.
+
+- **Evidence** — each receipt's Verify status, plus ONE full-suite run through `check-work` on the plan's full diff, whose block names the `Verified tree` id. `UNVERIFIED` or `PARTIAL` blocks merge; green tests alone do not satisfy it. Wrong-surface, flaky or skipped evidence is `UNVERIFIED` with its reason (`check-work` Run it). The `Verified tree` equals `git rev-parse HEAD^{tree}` on a clean tree → cite the block, no re-run (an ignored input the check reads changed since → re-run it).
+- **Review reports** — the required set per task is what `../write-plan/scripts/plan-lint.sh --review-set --tier <tier>` prints, and per track the `Review:` and `Track end:` lines `ticket.sh log` printed; no script → the set below. Every floor stays; a missing, empty or partial required report keeps its round open: its assigned isolated reviewer completes it in that round on the frozen H1, never a Lead substitute (`convening-code-review`).
+- Two or more tracks, or a size-sliced track → the final branch review report from `orchestrating-plans` Final branch review is required; its rulings reach the menu.
+- **Snapshot and floor** — a commit past the last Snapshot is a new delta reviewed at its own tier (an R1 delta needs none), never a full re-review.
+  - H1 reports stay immutable; never relabel H1.
+  - H1 is reused at H2 only when every H1→H2 change is a verified finding fix closed at the receipt (`convening-code-review` Fix-verify); any other change after H1 is uncovered: surface it and route it at its current tier and mode.
+- **QA pass** — once per branch, after the final-review fixes and before the menu: ONE `qa-tester` over `<base>...HEAD` on the flows you name in its brief. No subagents → the Lead does it.
+  - Flows = the spec's Testing decisions, else the flows behind the user-visible files the diff touches; none → no pass, one receipt line saying so.
+  - A QA finding → ONE fix dispatch with every finding, `qa-tester` reruns the failed flows only, the rest ruled at the cap under Rulings made. An open user-visible failure is the user's call at the menu.
+  - QA tests or fixes are commits past the last Snapshot: a new delta at its own tier.
 - **PR scope** — one concern per PR / merge. Mixed concerns → split first (`git add -p`, separate branches); a mixed diff is unreviewable.
+
+**Review set** (round 1; mode unknown → Lite). Lite, any tier: the two lenses only. Standard: R2 the two lenses, a matched row → that role instead · R3 the two lenses + each matched specialist · R4 the two lenses + `security-engineer` (`depth: checklist`). Full: as Standard, but R4 `depth: full` + one adversarial pass.
 
 Done when: the gate passes, or each failure is fixed, reported, or waived in the user's quoted words.
 
 ### 2. CI lanes
 
 Every required lane is green before merge. The required lanes come from the repo's branch protection / CI config (`references/ci-triage.md`); no file → read them and run those.
-- No CI configured (a direct deploy included; CI is a runner, not the requirement) and the tree changed since check-work's recorded pass → run locally, BEFORE the merge / deploy, the checks the repo defines (its lint / typecheck / test / build scripts or targets that exist) covering the change; unchanged → cite the block. Always a post-deploy smoke (curl the live endpoint / health probe) as deploy evidence. Never invent a check the repo does not have.
-- A red required lane → the Lead triages it by cause (`references/ci-triage.md`; no file → your diff, a flake, infra, a wider regression or a broken lane), then briefs the lane's owner: a diff-caused red → the path's owner, infra → `devops-sre`, an R1-sized fix or no subagents → the Lead. Never merge over a red required lane or auto-merge a PR with one; never delete or skip a failing test to go green.
-- Several red lanes → triage all first; owners with disjoint files go out in ONE message, each in its OWN worktree (`git worktree add .worktrees/<lane> -b <branch>`), a file two fixes share goes to one owner; no worktrees → one owner at a time. Once all return, the Lead cherry-picks each lane's commits onto the branch and re-pushes; lane worktrees are scratch, removed once their commits are on the branch. No per-iteration permission once merge intent is approved.
-- A required lane still running once the merge is authorized, and the repo allows auto-merge (`gh api repos/{owner}/{repo} --jq .allow_auto_merge` prints true; a free private repo cannot) → `gh pr merge <n> --auto --match-head-commit <the head sha the gate passed>` (the merge authorization covers it). Every `gh pr merge` carries `--match-head-commit`; a push after the gate → re-arm only once that delta is reviewed at its tier (Snapshot and floor).
-- A PR open with required lanes, merge authorized or not → in that same turn ONE `gh pr checks <n> --watch --fail-fast` ~10 s after the push (sooner it exits with "no checks reported"), as a background command whose exit wakes you; foreground only on a CLI with no background command. Never a poll loop, schedule or cron.
-  On wake: red → triage and fix on the PR branch; green and the merge authorized → merge (with the head guard above); green, not authorized → ask once, naming the PR. Never end a turn on "ping me", "I'll merge when CI passes" or the like, in any language, while a lane runs with nothing to wake you; never hand the wait to the user; no way to wait → tell the user the merge is not done.
-- CI / deploy / rollback / monitoring → `devops-sre`; E2E / UI proof missing from check-work's block → back to `check-work` (its one E2E dispatch), never a dispatch from here — unless its Limitations already name it, then the user's waiver (step 1). Brief: branch, diff summary, CI status, review verdict, launch plan. No subagents → the Lead does it.
+- No CI configured (a direct deploy included) and the tree changed since the Evidence block → run locally, BEFORE the merge / deploy, the checks the repo defines (lint / typecheck / test / build) covering the change; unchanged → cite the block. Never invent a check the repo does not have. A deploy always gets one post-deploy smoke (curl the live endpoint / health probe) as its evidence.
+- A red required lane → triage it by cause (`references/ci-triage.md`; no file → your diff, a flake, infra, a wider regression or a broken lane), then brief the lane's owner: diff-caused → the path's owner, infra → `devops-sre`, an R1-sized fix or no subagents → the Lead. Never merge over a red required lane or auto-merge a PR with one; never delete or skip a failing test to go green. Several red lanes → `coordinating-parallel-tracks` for disjoint owners; none → one owner at a time.
+- A required lane still running once the merge is authorized, and the repo allows auto-merge (`gh api repos/{owner}/{repo} --jq .allow_auto_merge` prints true) → `gh pr merge <n> --auto --match-head-commit <the head sha the gate passed>`. Every `gh pr merge` carries `--match-head-commit`; a push after the gate → re-arm only once that delta is reviewed at its tier (Snapshot and floor).
+- Armed auto-merge is not a merge: report "merge pending (auto)"; the ship line and cleanup wait until `gh pr view <n> --json state` prints `MERGED`.
+- A PR open with required lanes, merge authorized or not → in that same turn ONE `gh pr checks <n> --watch --fail-fast` ~10 s after the push, as a background command whose exit wakes you; foreground only on a CLI with no background command. Never a poll loop, schedule or cron.
+  On wake: red → triage and fix on the PR branch; green and the merge authorized → merge (with the head guard above); green, not authorized → ask once, naming the PR. Never end a turn on "ping me", "I'll merge when CI passes" or the like, in any language, while a lane runs with nothing to wake you; no way to wait → tell the user the merge is not done.
+- CI / deploy / rollback / monitoring → `devops-sre`. Brief: branch, diff summary, CI status, review verdict, launch plan. No subagents → the Lead does it.
 
-Done when: every required lane is green, or with no CI its local equivalents passed or check-work's block still covers this tree.
+Done when: every required lane is green, or with no CI its local equivalents passed or the Evidence block still covers this tree.
 
 ### 3. Detect the environment
 
-Compare `git rev-parse --git-dir` with `git rev-parse --git-common-dir`, each resolved by `cd` + `pwd -P` (`references/environment.md` has the line), and check `git symbolic-ref -q HEAD`: the same dir → a normal repo, 3 options (merge / PR / keep open) + discard on request, no worktree cleanup; different on a named branch → 3 options + discard on request + cleanup; detached HEAD → **2 options (PR / keep open) + discard on request**, externally managed cleanup.
+`GIT_DIR=$(cd "$(git rev-parse --git-dir)" 2>/dev/null && pwd -P); GIT_COMMON=$(cd "$(git rev-parse --git-common-dir)" 2>/dev/null && pwd -P)`, then `git symbolic-ref -q HEAD`: the same dir → a normal repo, 3 options (merge / PR / keep open) + discard on request, no worktree cleanup; different on a named branch → 3 options + discard on request + cleanup; detached HEAD → **2 options (PR / keep open) + discard on request**, externally managed cleanup.
 
 Done when: the menu size and the cleanup owner are known.
 
@@ -65,23 +67,25 @@ Done when: the menu size and the cleanup owner are known.
 
 Fill `templates/finish-menu.md` (no template → gate status, Rulings made, options, follow-ups carried, recommendation, awaiting authorization for).
 - Rulings made, shown before the menu: every `Ruling:` line in this work's receipts, each with what it costs if the ruling is wrong; a parked BLOCKER on a high-risk path is the user's call here, at ship, never mid-plan.
-- A follow-up the Lead can close now — a one-line fix, a command, or work inside the approved spec or context it already holds → closed before the menu (in-spec work: a new task, tiered, dispatched to an owner; a high-risk path → R4 with its workflow-mode review set), never carried; only a follow-up outside the spec or a user decision (money / auth / new scope) is carried, as a question. A leftover list without an action or a question is not a finish.
-- Each carried line lands in the project's one follow-up list — its issue tracker when it keeps one, else `docs/rolepod/backlog.md`, one line per item with a pointer to the plan or commit it came from. A line this branch closed leaves that list in the same pass; the list holds only what is still open.
-- State the recommendation and wait for the pick — unless the user's own message already named the action AND the target: that IS the pick; state the gate status plus the single action and act.
-- Authorization never widens: a PR is not a merge, one target is not another.
-- Keep open proceeds on the named ACTION alone (a checkpoint commit: no push, no merge, no cleanup, no new pick). Merge and Open PR need action AND target.
-- **Discard** — never offered; only when the user asks. List the branch, its commits and the worktree path that will be lost, suggest `git tag backup-<branch>` first, and proceed only when the user types the literal word `discard`; a generic yes / ok / sure is not enough.
-- Open PR → `templates/pr-body.md` (summary, test plan, risks, linked artifacts), a title under 70 chars, `gh pr create` with a HEREDOC body; report the PR URL. Leave the worktree in place; the user iterates on PR feedback there.
-- A genuine launch event (first traffic to a new surface, a staged rollout, a migration; `references/launch.md`) → `templates/release-checklist.md` before traffic (no `templates/release-checklist.md` → list rollback, success signal and operational safety, each checked); include infrastructure fields only when applicable, with a short omission reason otherwise. Required rollback, success signal, and operational safety remain; any applicable unchecked box → NO-GO. A routine merge on the existing deploy pipeline is no launch: its evidence is the CI lanes, no checklist.
+- A follow-up the Lead can close now (a one-line fix, a command, work inside the approved spec) → closed before the menu; in-spec work → a new task through `orchestrating-plans`. Only a follow-up outside the spec or a user decision (money / auth / new scope) is carried, as a question.
+- Each carried line lands in the project's one follow-up list — its issue tracker, else `docs/rolepod/backlog.md` — one line per item pointing at its plan or commit; a line this branch closed leaves that list in the same pass.
+- State the recommendation and wait for the pick — unless the user's own message already named the action AND the target: that IS the pick; state the gate status plus the single action and act. Merge and Open PR need action AND target.
+- **Keep open** — inspect the gate status first, then a checkpoint commit only: no push, no merge, no cleanup, no new pick.
+- **Discard** — never offered; only on the user's request, confirmed per `templates/finish-menu.md` (no template → list the branch, its commits and the worktree path, suggest `git tag backup-<branch>`, proceed only on the literal word `discard`).
+- **Merge to main** (local) — `cd` to the main root checkout, check out the base, pull, `git merge <branch>`, then compare `git rev-parse HEAD^{tree}` with the `Verified tree` id. Same tree → reuse the run; different → the full suite once on the merged result before push or cleanup; red → stop, the branch and worktree stay.
+- **Open PR** → `templates/pr-body.md`, a title under 70 chars, `gh pr create` with a HEREDOC body; report the PR URL. The worktree stays for PR feedback; review comments on it → `review-code`'s `references/receiving-findings.md`.
+- A genuine launch event (first traffic to a new surface, a staged rollout, a migration) → `templates/release-checklist.md` before traffic (no template → rollback, success signal and operational safety, each checked); infrastructure fields only when applicable, else a short omission reason. Any applicable unchecked box → NO-GO. A routine merge on the existing deploy pipeline is no launch: its evidence is the CI lanes, no checklist.
 - After any merge: update the spec / plan where reality drifted; document the non-obvious decisions.
 
-Before any push — **a push publishes the REF, not your commit.** Read `git log --oneline @{push}..HEAD` first; a branch you have not pushed has no `@{push}` (`fatal: no upstream configured`), so read `git log --oneline origin/<base>..HEAD` instead.
-- Every commit on that list is yours or cleared by its author for PUBLICATION — approved work is not a cleared push (another session may hold an approved commit unpushed on purpose; your push ends that hold). Cannot tell → ask that session, then the user.
-- Never force-push to unpublish one; that is a second unauthorized act on a shared ref.
-- About to `push --force` or `reset --hard` published history → stop and confirm with the user.
-- A 4th PR on the same surface → stop and ask the user. Four failed fixes for one unresolved repro or criterion → stop and ask; one Second opinion after two (`debug-issue` Second opinion); review rounds count separately.
+Before any merge or push from a worktree: no dispatched agent is still writing there (stop it or ask), then re-read `git status`.
 
-Worktree cleanup after a merge, in this order: merge → verify → `cd` to the main root → `git worktree remove` → `git worktree prune` → delete the branch; the reversed order leaves stuck refs. Remove only worktrees we created (under `.worktrees/` or `worktrees/`), never from inside one and never before the merge succeeded; never touch harness-owned workspaces.
+Before any push — **a push publishes the REF, not your commit.** Read `git log --oneline @{push}..HEAD` first; a branch you have not pushed has no `@{push}` (`fatal: no upstream configured`), so read `git log --oneline origin/<base>..HEAD` instead.
+- Every commit on that list is yours or cleared by its author for PUBLICATION — approved work is not a cleared push (another session may hold an approved commit unpushed on purpose). Cannot tell → ask that session, then the user.
+- Never force-push to unpublish one; that is a second unauthorized act on a shared ref. About to `push --force` or `reset --hard` published history → stop and confirm with the user.
+- A 4th PR on the same surface → stop and ask the user.
+
+Worktree cleanup after a merge, in this order: merge → verify → `cd` to the main root → `git worktree remove` → `git worktree prune` → delete the branch. Remove only worktrees we created (under `.worktrees/` or `worktrees/`), never from inside one and never before the merge succeeded; never touch harness-owned workspaces. Before cleanup, keep required local-only proof at its named private path.
+- `git worktree remove` fails → never add `--force`; show `git -C <wt> status --porcelain -uall` and ask: commit it, move it to the main root, or delete it.
 
 Evidence log: append the line to `<git-root>/.rolepod/evidence/phase-log.jsonl` chained onto the next command you run anyway (`<cmd> && printf '…' >> phase-log.jsonl`), never as a standalone turn; skip silently outside a git repo.
 Ship line, written only after the authorized action actually completed (a failed or pending command logs nothing — report that instead), chained onto the ship command itself (`gh pr create` included; `discard` logs unconditionally): `{"ts":"<iso8601>","phase":"ship","action":"<merge|pr|keep-open|discard>","commit":"<shipped head sha, or none>"}`.
@@ -90,12 +94,12 @@ Done when: the authorized action completed and its ship line is appended, or the
 
 ## Guardrails
 
-- Act on the user's explicit authorization for THIS specific action. Never push to main, force-push, merge a PR or stage a launch without it; approval for unrelated work does not count → stop and ask.
+- Act on the user's explicit authorization for THIS specific action. Never push to main, force-push, merge a PR or stage a launch without it; approval for unrelated work does not count, a PR is not a merge, one target is not another → stop and ask.
 
 Authorization and PR body, good vs bad → `examples/finish-examples.md`.
 
 ## Next phase
 
-- Branch closed (merged / PR / discarded) → return to `using-rolepod` for the next request.
-- Branch kept open → continue in `implement-plan` or `debug-issue`.
-- If the next skill is not available, report the branch state and the shipped action, and ask the user what comes next.
+- Branch closed (merged / PR / discarded) → `using-rolepod` for the next request, with the shipped action and its ship line.
+- Branch kept open → `orchestrating-plans` at the plan's next step, or `debug-issue` with the failing command tail quoted.
+- No other skill → stop and tell the user the shipped action, each open ruling, and what is still unverified or unreviewed, with the receipt and `verify.md` paths.

@@ -4,8 +4,8 @@
 
 # Finish Examples
 
-Each scenario shows the same situation handled badly and well, plus a table
-of why the good version wins. Compare the pair — do not read one half alone.
+Each scenario: the same situation handled badly and well, plus why the good
+version wins.
 
 ---
 
@@ -14,15 +14,21 @@ of why the good version wins. Compare the pair — do not read one half alone.
 ### Good — present, recommend, wait
 
 ```text
-Branch feat/csv-export — gates green, CI Phase 1 + 2 pass, review APPROVED.
-
 # feat/csv-export — Finish
 
 ## Gate status
-- Evidence: VERIFIED — check-work ran the 4 rspec specs, all green
+- Pre-merge gate: PASS
+- Verify status: tasks 1-3 VERIFIED; full suite via check-work —
+  docs/rolepod/tasks/csv-export/verify.md, Verified tree 4f2a9c1 = HEAD^{tree},
+  VERIFIED
+- QA pass: export flow (filter → Export → CSV matches table) → pass
+- CI: Phase 1 + 2 green
+- Review verdict: APPROVED
 - Cross-model adversarial pass (Full R4 only): internal strong pass — no
-  second-vendor CLI on PATH, so a strong-tier reviewer ran it. Surfaced here,
-  not hidden.
+  second-vendor CLI on PATH.
+
+## Rulings made
+none
 
 ## Options
 1. Merge to main — ready, all gates green
@@ -31,8 +37,7 @@ Branch feat/csv-export — gates green, CI Phase 1 + 2 pass, review APPROVED.
 
 ## Recommendation
 Merge to main — gates are green and review is APPROVED. The adversarial pass
-was internal only; call that out to the user so they can accept it or ask for
-a second-vendor review before merge.
+was internal only; the user can accept it or ask for a second-vendor review.
 
 ## Awaiting authorization for
 merge feat/csv-export to main.
@@ -53,9 +58,9 @@ Lead: "All gates passed, so I merged feat/csv-export to main and pushed."
 | Area | Bad | Good |
 |------|-----|------|
 | Authorization | Merged without the user choosing | Presented the menu, waited for explicit auth |
-| Authorization guardrail | Violated — "gates green" is not authorization | Satisfied — auth requested for the specific action |
+| Evidence | "gates green" — no tree id, no QA line | Verify status per receipt, the full-suite block's tree id, the QA pass |
 | User control | Branch fate decided for the user | User picks merge / PR / keep open; discard only on request |
-| Reversibility | The push already happened | Nothing irreversible done yet |
+| Reversibility | Already pushed | Nothing irreversible done yet |
 
 ---
 
@@ -67,15 +72,17 @@ Lead: "All gates passed, so I merged feat/csv-export to main and pushed."
 ## Summary
 - Add an Export CSV button to the orders report; downloads the current
   filtered rows, built server-side.
+- Scope: no XLSX export, no scheduled exports.
 
 ## Test plan
-- [ ] bundle exec rspec spec/services/orders_csv_spec.rb
+- [ ] bundle exec rspec spec/services/orders_csv_spec.rb — before: 0 examples
+      → after: 6 examples, 0 failures
 - [ ] Open /orders, apply a filter, click Export — CSV matches the table
 - [ ] Export an empty filter range — header-only CSV, no error
 
 ## Risks
-Low — read-only export, no schema or auth change. Large exports verified
-against a 10k-order range within the 30s timeout.
+Low — read-only export, no schema or auth change. Door: two-way (revert the
+commit). Large exports verified against a 10k-order range within the 30s timeout.
 
 ## Linked artifacts
 Decision: server-side CSV built from the filtered scope (spec is local-only — summarized in Risks above).
@@ -94,11 +101,7 @@ added tests
 
 | Area | Bad | Good |
 |------|-----|------|
-| Summary | "export stuff and some other things" | Concrete — what, where, how |
-| Test plan | "added tests" — a reviewer cannot run it | A runnable checklist |
-| Risks | Omitted | Blast radius + the 30s verification |
+| Summary | "export stuff and some other things" | Concrete — what, where, how, and what it leaves out |
+| Test plan | "added tests" — a reviewer cannot run it | A runnable checklist with before → after |
+| Risks | Omitted | Blast radius, door type, the 30s verification |
 | Artifacts | None | Decision summarized inline — no dead link to a private doc |
-
-> Finishing a branch is the one phase where the agent must not act alone.
-> Gates green means ready to merge — not merged. Present the menu, recommend,
-> and wait for the user to authorize the specific action.

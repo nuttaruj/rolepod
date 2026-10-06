@@ -1,13 +1,11 @@
-<!-- Rolepod release checklist — fill BEFORE production traffic. -->
-<!-- Use only for a genuine launch. Mark each infrastructure section applicable or omit it with a short reason. -->
-<!-- Every applicable box must be checked. An unchecked applicable box blocks traffic. -->
+<!-- Rolepod release checklist — fill BEFORE production traffic; mark each section applicable or omit it with a short reason. -->
 
 # <Release> — Launch Checklist
 
 ## Rollback
 - [ ] Last-good SHA recorded: `<sha>`
 - [ ] Revert command known and tested: `<command>`
-- [ ] Rollback trigger and owner named: <condition · owner>
+- [ ] Rollback trigger and owner named: <condition · owner — e.g. error rate > 2x baseline, P95 +50%, any data-integrity or security problem>
 
 ## Success signal
 - [ ] Launch success signal and threshold named: <metric · target · observation window>

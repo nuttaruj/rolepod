@@ -17,20 +17,11 @@ triage WHY it is red — the response differs by cause.
 
 | First check | If yes | Action |
 |-------------|--------|--------|
+| Is the branch behind its base? | The failure is in code the diff does not touch | `git fetch`, then `git merge-base --is-ancestor origin/<base> HEAD`; not an ancestor → rebase (Merge conflicts below) and re-run, no regression trace |
 | Did your diff cause it? | The failure is in a file / test your branch touched | Fix it on the branch, re-push |
-| Is it flaky? | The lane passes on re-run with no code change | Do not paper over it — see debug-issue's `flake-triage.md`; fix the flake or quarantine with an issue |
-| Is it infra? | Runner timeout, network error, image-pull fail — unrelated to code | Re-run once; if it persists, escalate to devops-sre |
-| Is it a real regression? | A test unrelated to your diff now fails | Stop — your change has a wider blast radius than planned; trace it |
+| Is it flaky or infra? | Passes on re-run with no code change, or runner timeout / network error / image-pull fail | Re-run once. The same failure on the second run is not a flake → trace it on your diff, or `devops-sre` when it is infra. A real flake → debug-issue's `flake-triage.md`; fix it or quarantine it with an issue |
+| Is it a real regression? | A test unrelated to your diff fails on a current base | Stop — your change has a wider blast radius than planned; trace it |
 | Is the lane itself broken? | Lane config / a dependency changed on the target branch | Coordinate a fix on the target branch; do not merge on top of a broken lane |
-
-## Rule
-Never merge with a required lane red, and never make a lane green by
-deleting or skipping the failing test. A red lane is information — find what
-it is telling you before you silence it.
-
-## Once the merge intent is approved
-Fix-and-rerun does not need per-iteration user permission. Iterate until the
-required lanes are green, then proceed with the authorized merge.
 
 ## Merge conflicts
 
@@ -53,10 +44,10 @@ the clash.
    author logic inside conflict markers.
 3. **Semantic conflict** (both sides changed the same behavior) — abort
    (`git merge --abort` / `git rebase --abort`), read the other side's
-   change end-to-end, return to `implement-plan` for a real reconciliation.
-4. **After ANY resolution, re-verify** — re-run `check-work` with the
-   commands recorded in its evidence block, plus the tests covering any
-   module the OTHER side of the conflict touched that those commands never
-   ran. A gate that passed pre-conflict has NOT passed on the resolved tree.
-5. High-risk surface in the conflict → the workflow-mode R4 review set
-   (`SKILL.md` step 1 floors) re-runs on the resolved diff before merge.
+   change end-to-end, return to `orchestrating-plans` for a real reconciliation.
+4. **After ANY resolution, re-verify** — re-run the commands recorded in the
+   Evidence block through `check-work`, plus the tests covering any module
+   the OTHER side of the conflict touched. A gate that passed pre-conflict
+   has NOT passed on the resolved tree.
+5. The resolution is a commit past the last Snapshot: a new delta reviewed at
+   its own tier (`SKILL.md` Snapshot and floor).

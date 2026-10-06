@@ -5,13 +5,13 @@
 
 ## Gate status
 - Pre-merge gate: <PASS / FAIL — name what failed>
-- Evidence status (from check-work's evidence block): <VERIFIED / PARTIAL /
-  UNVERIFIED — reason. PARTIAL / UNVERIFIED blocks merge unless waived.>
+- Verify status: <each receipt's VERIFIED / PARTIAL / UNVERIFIED, plus the
+  full-suite block: path, Verified tree id, Status — reason>
+- QA pass: <flows run → result, or "none — no user-visible flow" · open failures>
 - CI: <each required lane: status, or no CI — local checks / cited block>
-- Review verdict: <APPROVED / APPROVED-WITH-NITS / REJECTED>
+- Review verdict: <APPROVED / APPROVED-WITH-NITS / REJECTED / PARTIAL / BLOCKED>
 - Cross-model adversarial pass (Full R4 only): <receipt or internal strong pass — reason>
-- User waivers this session: <none, or per waiver: which gate — the user's
-  words, quoted. A waiver is recorded here, never silently applied.>
+- User waivers this session: <none, or per waiver: which gate — the user's words, quoted>
 
 ## Rulings made
 <Every `Ruling:` line from this work's receipts, each with what it costs if the ruling is wrong; "none" when no ruling was made. A parked BLOCKER on a high-risk path is the user's call: ask it here, before the options.>
@@ -31,9 +31,8 @@
 
 ## Follow-ups carried
 <Every line from the plan's `## Follow-ups` (no plan file → each review
- report's `## Follow-ups`), each with a destination: backlog line (issue tracker, else docs/rolepod/backlog.md) / next spec (repeat
- feature) / issue #n / dropped — why. "none" when nothing was parked. A
- parked idea never leaves the branch silently.>
+ report's `## Follow-ups`), each with its destination in the project's one
+ follow-up list, or dropped — why. "none" when nothing was parked.>
 
 ## Recommendation
 <The one option that fits, with a one-line why.>
