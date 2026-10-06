@@ -39,7 +39,7 @@
 #            default. The phase-log records model:"default".
 #   time     a member is killed when it goes SILENT, not when it is slow
 #            (v2.129.0): no new stdout / stderr bytes for `stall` seconds
-#            (--stall > `stall=` in the config > 600) = dead, rc 118. The
+#            (`stall=` in the config > 600) = dead, rc 118. The
 #            wall-clock cap is runaway insurance only (--timeout > `timeout=`
 #            > kind default: review 7200 s detached / 600 s foreground ·
 #            consult 300 · critique 600). Measured 2026-09-15:
@@ -62,7 +62,7 @@
 #            `git diff HEAD` or commit first; `--partial-ok` only when the
 #            user asked for the staged part.
 #   round 2+ is a normal internal two-axis review of the fix delta
-#            (review-code Fix-verify rounds) — never a second external pass.
+#            (convening-code-review Fix-verify rounds) — never a second external pass.
 #            One live job per slot (spec | standards | adversarial | review,
 #            the file `slot` in the job dir): a second `--kind review` in the
 #            same slot is refused (exit 8) until --collect / --kill; the two
@@ -82,7 +82,7 @@
 #
 # Usage:
 #   cross-family.sh --kind review|consult|critique --brief <file> [--attach <file>]...
-#                   [--lead <cli>] [--all] [--member <cli>] [--timeout <sec>] [--detach] [--partial-ok] [--adversarial] [--lens spec|standards]
+#                   [--lead <cli>] [--all] [--timeout <sec>] [--detach] [--partial-ok] [--adversarial] [--lens spec|standards]
 #   --lens         --kind review only: sends ONE axis (spec or standards) instead of the two-axis prompt, logs "lens" on the
 #                  review line and lens=<lens> on the receipt. Never with --adversarial or another --kind (exit 2). One live
 #                  job per slot: spec, standards, adversarial and a plain review stack independently.
@@ -97,11 +97,11 @@
 #   cross-family.sh --setup [review="<order>"]            # guided pool setup on request; no value = the question + candidates
 #   cross-family.sh --probe [--lead <cli>]                # live "reply OK" per member
 #   cross-family.sh --candidates                          # every installed CLI, the Lead's own included (opt-in question)
-# Exit: 0 ok · 2 usage · 3 every member failed · 4 configured pool empty · 5 off · 6 job still running · 7 partial slice refused · 8 a job is live · 9 the --member CLI is not usable (the usable pool is printed)
+# Exit: 0 ok · 2 usage · 3 every member failed · 4 configured pool empty · 5 off · 6 job still running · 7 partial slice refused · 8 a job is live
 set -uo pipefail
 
-KIND=""; BRIEF=""; LEAD="${ROLEPOD_LEAD_CLI:-}"; ALL=0; FLAG_TIMEOUT="${ROLEPOD_XFAM_TIMEOUT:-}"; FLAG_STALL="${ROLEPOD_XFAM_STALL:-}"
-MODE="run"; ATTACH=""; SETUP_REVIEW=""; DETACH=0; JOB_DIR=""; COLLECT_ID=""; ROOT_FLAG=""; CFG_FLAG=""; PARTIAL_OK=0; KILL_ID=""; MEMBER=""; ADV_MODE=0; LENS=""
+KIND=""; BRIEF=""; LEAD="${ROLEPOD_LEAD_CLI:-}"; ALL=0; FLAG_TIMEOUT="${ROLEPOD_XFAM_TIMEOUT:-}"
+MODE="run"; ATTACH=""; SETUP_REVIEW=""; DETACH=0; JOB_DIR=""; COLLECT_ID=""; ROOT_FLAG=""; CFG_FLAG=""; PARTIAL_OK=0; KILL_ID=""; ADV_MODE=0; LENS=""
 # A value flag given last: `shift 2` fails on 1 positional and the loop never advances.
 need_val() { [ "$1" -ge 2 ] || { echo "cross-family: $2 requires a value" >&2; exit 2; }; }
 while [ $# -gt 0 ]; do
@@ -113,9 +113,7 @@ while [ $# -gt 0 ]; do
     --lead) need_val $# --lead; LEAD="${2:-}"; shift 2 ;;
     --root) need_val $# --root; ROOT_FLAG="${2:-}"; shift 2 ;;
     --all) ALL=1; shift ;;
-    --member) need_val $# --member; MEMBER="${2:-}"; [ -n "$MEMBER" ] || { echo "cross-family: --member requires a CLI name" >&2; exit 2; }; shift 2 ;;   # run this ONE CLI alone, never a fall-through
     --timeout) need_val $# --timeout; FLAG_TIMEOUT="${2:-}"; shift 2 ;;
-    --stall) need_val $# --stall; FLAG_STALL="${2:-}"; shift 2 ;;        # seconds of silence (no new output) before a member counts as dead
     --detach) DETACH=1; shift ;;
     --partial-ok) PARTIAL_OK=1; shift ;;         # the user asked for the staged part only
     --adversarial) ADV_MODE=1; shift ;;       # --kind review only: the adversarial-review skill's stance replaces the standard two-axis prompt
@@ -131,7 +129,7 @@ while [ $# -gt 0 ]; do
     --candidates) MODE="candidates"; shift ;;
     --setup) MODE="setup"; shift ;;                  # guided pool setup: no values = print the question + candidates; review=… = write the file
     review=*) [ "$MODE" = "setup" ] || { echo "cross-family: $1 belongs to --setup" >&2; exit 2; }; SETUP_REVIEW="${1#review=}"; shift ;;
-    -h|--help) sed -n '2,/^set -/p' "$0" | sed '$d' | sed 's/^# \{0,1\}//'; exit 0 ;;
+    -h|--help) sed -n '/^# Usage:/,/^# Exit:/p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
     *) echo "cross-family: unknown argument: $1" >&2; exit 2 ;;
   esac
 done
@@ -142,12 +140,6 @@ if [ -n "$ROOT_FLAG" ]; then ROOT="$ROOT_FLAG"; else ROOT="$(git rev-parse --sho
 EV="$ROOT/.rolepod/evidence"
 JOBS="$EV/external/jobs"
 ALL_CLIS="codex claude agy cursor opencode"
-if [ -n "$MEMBER" ] && [ "$ALL" -eq 1 ]; then echo "cross-family: --member and --all exclude each other" >&2; exit 2; fi
-if [ -n "$MEMBER" ]; then
-  case "$MEMBER" in *[[:space:]]*) echo "cross-family: --member takes exactly one CLI name (no spaces): '$MEMBER'" >&2; exit 2 ;; esac
-  MEMBER=$(printf '%s' "$MEMBER" | tr 'A-Z' 'a-z')
-  case " $ALL_CLIS " in *" $MEMBER "*) ;; *) echo "cross-family: --member $MEMBER: not a CLI name ($ALL_CLIS)" >&2; exit 2 ;; esac
-fi
 iso_now() { date -u +%Y-%m-%dT%H:%M:%SZ; }
 TMPP=""
 # A detached child records its exit status whatever path it leaves by —
@@ -495,8 +487,7 @@ CONFIGURED="${KIND_LIST:-$DEFAULT_LIST}"
 [ "$STATE" = "none" ] && CFG_SRC="the pool lists no CLI for this kind (none)"
 ENABLE_HINT="enable: only when the user asks — run cross-family.sh --setup (guided: it lists the installed CLIs and records the pool; name EVERY CLI you want, this one included — the Lead's own CLI is skipped at run time; your order = preference)"
 
-stall_for() { # $1 cli → seconds of silence that count as dead (flag > config > 600)
-  [ -n "$FLAG_STALL" ] && { echo "$FLAG_STALL"; return; }
+stall_for() { # $1 cli → seconds of silence that count as dead (config > 600)
   _c=$(printf '%s' "$ST_LIST" | tr ' ' '\n' | grep "^$1=" | tail -1 | cut -d= -f2)
   [ -n "$_c" ] && { echo "$_c"; return; }
   echo 600
@@ -723,32 +714,8 @@ if [ "$KIND" = "review" ] && [ -z "$JOB_DIR" ] && [ -d "$JOBS" ]; then
 fi
 if [ "$STATE" != "on" ]; then
   print_pool >&2
-  echo "ROLEPOD-XFAM off — cross-family is opt-in and not enabled (lead=$LEAD; $CFG_SRC). Use the Lead's own path (internal strong reviewer / vertical consult). To enable, ASK the user which CLIs (candidates: ${CANDIDATES:-none}); $ENABLE_HINT"
+  echo "ROLEPOD-XFAM off — cross-family is opt-in and not enabled (lead=$LEAD; $CFG_SRC). Use the Lead's own path (internal strong reviewer / vertical consult). Candidates: ${CANDIDATES:-none}; $ENABLE_HINT"
   exit 5
-fi
-MEMBER_OTHERS=""
-if [ -n "$MEMBER" ]; then
-  for _mc in $USABLE; do [ "$_mc" = "$MEMBER" ] && continue; MEMBER_OTHERS="$MEMBER_OTHERS${MEMBER_OTHERS:+ }$_mc"; done
-  case " $USABLE " in
-    *" $MEMBER "*) USABLE="$MEMBER" ;;
-    *)
-      if [ "$MEMBER" = "$LEAD" ]; then
-        _mreason="is the Lead"
-      else
-        _mreason=$(printf '%s\n' "$POOL_ROWS" | awk -v m="$MEMBER" -F'  ' '$1==m{out=$4; for(i=5;i<=NF;i++) out=out"  "$i; print out; exit}')
-        if [ -z "$_mreason" ]; then
-          _mreason="not in the pool ($CFG_SRC)"
-          [ -n "$(bin_of "$MEMBER")" ] && _mreason="$_mreason — installed; --setup adds it"
-        fi
-      fi
-      if [ -n "$USABLE" ]; then
-        echo "ROLEPOD-XFAM member-unusable — $MEMBER: $_mreason. usable in pool order: $USABLE. Ask the user whether to run the first one (the same command without --member); never switch unasked."
-      else
-        echo "ROLEPOD-XFAM member-unusable — $MEMBER: $_mreason. Fall back to the internal strong reviewer / vertical consult and record the limitation."
-      fi
-      exit 9
-      ;;
-  esac
 fi
 if [ -z "$USABLE" ]; then
   print_pool >&2
@@ -798,7 +765,7 @@ fi
 # ── Oversized diff notice (v2.100.0) ───────────────────────────────────
 # Measured: one 40-file / 2.6k-line uncommitted tree went through 11 rounds;
 # every round found what the previous one had no capacity to read. Notice
-# only — the split belongs to the Lead (finish-work P gate: one concern).
+# only — the split belongs to the Lead (convening-code-review step 1: one concern).
 if [ "$KIND" = "review" ] && [ -z "$JOB_DIR" ] && [ -n "$ATTACH" ]; then
   _df=0; _dl=0
   while IFS= read -r a; do
@@ -809,7 +776,7 @@ if [ "$KIND" = "review" ] && [ -z "$JOB_DIR" ] && [ -n "$ATTACH" ]; then
 $ATTACH
 EOF
   if [ "$_df" -gt 15 ] || [ "$_dl" -gt 800 ]; then
-    echo "ROLEPOD-XFAM notice: diff = $_df files / $_dl changed lines — past reviewer capacity (~15 files / ~800 lines); each round reads what the last one could not. Fix: split by concern (finish-work P gate) and review each slice, or accept a partial read. Continuing."
+    echo "ROLEPOD-XFAM notice: diff = $_df files / $_dl changed lines — past reviewer capacity (~15 files / ~800 lines); each round reads what the last one could not. Fix: split by concern (convening-code-review step 1) and review each slice, or accept a partial read. Continuing."
   fi
 fi
 
@@ -830,7 +797,6 @@ if [ "$DETACH" -eq 1 ]; then
   # Child argv as an ARRAY — paths with spaces / globs survive the re-exec.
   CHILD_ARGS=(--kind "$KIND" --brief "$JD/brief.md" --lead "$LEAD" --root "$ROOT" --job "$JD" --config "$JD/cross-family")
   [ "$ALL" -eq 1 ] && CHILD_ARGS=("${CHILD_ARGS[@]}" --all)
-  [ -n "$MEMBER" ] && CHILD_ARGS=("${CHILD_ARGS[@]}" --member "$MEMBER")
   [ "$ADV_MODE" -eq 1 ] && CHILD_ARGS=("${CHILD_ARGS[@]}" --adversarial)
   [ -n "$LENS" ] && CHILD_ARGS=("${CHILD_ARGS[@]}" --lens "$LENS")
   [ "$KIND" = "review" ] && printf '%s\n' "$SLOT" > "$JD/slot"
@@ -937,9 +903,13 @@ one() { # $1 cli → 0 ok / 1 fail; writes $TMPP/$1.{out,err,line,jsonl} — the
       cat "$TMPP/$_c.out"; } > "$EV/$_raw" 2>/dev/null || true
     _modetag=""; [ "$KIND" = "review" ] && [ "$ADV_MODE" -eq 1 ] && _modetag=",\"mode\":\"adversarial\""
     [ "$KIND" = "review" ] && [ -n "$LENS" ] && _modetag="$_modetag,\"lens\":\"$LENS\""
+    if [ "$KIND" = "review" ]; then   # last field: the member's own VERDICT line, `none` when it names no verdict
+      _vtok=$(grep -i 'VERDICT' "$TMPP/$_c.out" 2>/dev/null | grep -oE 'APPROVED-WITH-NITS|APPROVED|REJECTED' | tail -1)
+      _modetag="$_modetag,\"verdict\":\"${_vtok:-none}\""
+    fi
     printf '%s\n' "{\"ts\":\"$(iso_now)\",\"phase\":\"$PHASE\",\"reviewer\":\"external\",\"kind\":\"$KIND\",\"cli\":\"$_c\",\"family\":\"$_f\",\"model\":\"default\",\"raw\":\"$_raw\",\"lead\":\"$LEAD\",\"secs\":$_secs,\"budget\":$TIMEOUT,\"brief_sha\":\"$BRIEF_SHA\"${JOB_ID_TAG:+,\"job\":\"$JOB_ID_TAG\"}${_partial:+,\"partial\":true}${_ran:+,\"ran\":\"$(jesc "$_ran")\"}$_modetag}" > "$TMPP/$_c.jsonl"
     : > "$TMPP/$_c.line"
-    [ "$KIND" = "review" ] && echo 'ROLEPOD-XFAM note: this pass is external and runs in round 1 only; round 2+ is ONE fresh internal universal-reviewer on the fix delta (review-code Fix-verify), never a new external run.' >> "$TMPP/$_c.line"
+    [ "$KIND" = "review" ] && echo 'ROLEPOD-XFAM note: this pass is external and runs in round 1 only; round 2+ is ONE fresh internal universal-reviewer on the fix delta (convening-code-review Fix-verify), never a new external run.' >> "$TMPP/$_c.line"
     printf 'ROLEPOD-XFAM ok kind=%s cli=%s family=%s raw=.rolepod/evidence/%s secs=%s budget=%ss%s%s%s\n' "$KIND" "$_c" "$_f" "$_raw" "$_secs" "$TIMEOUT" "$_partial" "${_ran:+ ran=$_ran}" "${LENS:+ lens=$LENS}" >> "$TMPP/$_c.line"
     return 0
   fi
@@ -984,9 +954,5 @@ for c in $USABLE; do
   if [ "$_ok" -eq 0 ]; then cat "$TMPP/$c.out"; echo; cat "$TMPP/$c.line"; exit 0; fi
   FAILS="$FAILS${FAILS:+; }$(cat "$TMPP/$c.line")"
 done
-if [ -n "$MEMBER" ] && [ -n "$MEMBER_OTHERS" ]; then
-  echo "ROLEPOD-XFAM none — $FAILS. The named member failed; usable in pool order: $MEMBER_OTHERS. Ask the user whether to run the first one; never switch unasked."
-else
-  echo "ROLEPOD-XFAM none — $FAILS. Fall back to the internal strong reviewer / vertical consult and record the limitation."
-fi
+echo "ROLEPOD-XFAM none — $FAILS. Fall back to the internal strong reviewer / vertical consult and record the limitation."
 exit 3
