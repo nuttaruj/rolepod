@@ -99,7 +99,8 @@ Default: a failing Command → debug-issue (reproduce → minimal fix → re-run
 the same Command). Count failed fixes for the same unresolved repro or criterion
 across owners and phases. After 2 failures, get one Second opinion; attempts 3
 and 4 require a fresh trace and use its advice. No usable advisor means stop
-before another fix; after 4 failed fixes, stop and ask the user. Review rounds
+before another fix; after 4 failed fixes, stop: an owner returns BLOCKED with the attempts; the Lead asks the user.
+Review rounds
 are separate and never reset fix attempts. Also stop if a fix reopens a
 previously green task.
 
@@ -210,11 +211,14 @@ Parallel — contract: `docs/rolepod/plans/notifications-cohesion-2026-05-20.md`
 Both task sets green; the live bell updates against the real API.
 
 ## Failure policy
-Default: a failing Command → debug-issue → re-run the same Command. After 2
-failed fixes for the same unresolved repro or criterion, get one Second opinion
-before attempts 3 and 4. Carry the count across owners and phases; no usable
-advisor means stop earlier. Retrace and use advice for each remaining attempt.
-Four failed fixes means stop and ask; review rounds count separately.
+Default: a failing **Command** → debug-issue (reproduce → minimal fix →
+re-run the same Command). Count failed fixes for the same unresolved repro or
+criterion across owners and phases. After 2 failures, get one Second opinion;
+attempts 3 and 4 require a fresh trace and use its advice. No usable advisor
+means stop before another fix; after 4 failed fixes, stop: an owner returns BLOCKED with the attempts; the Lead asks the user.
+Review rounds
+are separate and never reset fix attempts. Also stop on
+oscillation (a fix for one task reopens another).
 Contract drift found at integration → STOP both agents, fix the contract
 first (do not patch around it).
 
@@ -253,20 +257,3 @@ Run them in parallel to go faster.
 > disjoint ownership plus a contract. If files cannot be split cleanly, the
 > good answer is sequential, not a vague contract.
 
----
-
-## Short path: eligible R3 change list
-
-If the user approved this exact target list, it already supplies the small
-plan. Keep it inline as the owner checklist; no second plan artifact is needed.
-
-```text
-Goal: Add a CSV export for the currently filtered orders.
-1. `app/orders/export.rb` — build CSV from the existing query. Verify: request spec rows match the filtered report.
-2. `app/views/orders/index.html.erb` — add the export action. Verify: browser download retains current filters.
-Done when: both checks pass. Command: `bundle exec rspec spec/requests/orders_export_spec.rb`
-```
-
-This lane requires at most three ordered tasks, exact files and checks, one
-owner, and no parallel or high-risk work. If any condition is missing, write
-the full plan using the task contract above.

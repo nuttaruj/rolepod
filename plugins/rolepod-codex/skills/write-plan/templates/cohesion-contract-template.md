@@ -11,7 +11,7 @@
 - `<agent>` — <slice>
 
 ## File ownership
-<Exact paths each agent may edit. No path appears under two owners.>
+<Exact paths each agent may edit.>
 - `<agent>`: `path/a`, `path/b`
 
 ## Shared interfaces

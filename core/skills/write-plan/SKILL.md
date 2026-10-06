@@ -19,7 +19,6 @@ Each `edge-cases:` pointer below → `references/edge-cases.md`; no reference �
 ### 1. Resolve scope and files
 
 Read the approved spec or goal, concrete paths, constraints, relevant patterns, and any declared module boundary map.
-2+ modules and no map → offer a one-time bootstrap (edge-cases: No module boundary map).
 Name concrete paths — a directory or module when the slice's shape is still open (`hooks/lib/`; ownership then pins that directory), never a category (code-intel, else grep + read).
 
 Done when: every path is concrete and read.
@@ -28,13 +27,13 @@ Done when: every path is concrete and read.
 
 - Smallest reversible unit first. Tests first for bugs, features and high-risk surfaces.
 - Inside a slice, the migration and the public-API contract change land first; either becomes its own task only when several slices depend on it.
-- A wide refactor with no safe single-commit path → expand → migrate → contract (edge-cases: Wide refactor).
+- A wide refactor with no safe single-commit path → expand → migrate → contract.
 - Thin slices beat thick ones. A slice carrying a major unknown (new integration, unproven assumption) goes first — fail fast.
-- A task that guards, gates or restores (a security surface) → a **threat-model** task first: the attack list its reviewers verify against (edge-cases: Security-surface task).
+- A task that guards, gates or restores (a security surface) → a **threat-model** task first: the attack list its reviewers verify against.
 
 Size each task for one fresh context, as a verifiable vertical slice. Split when outcomes touch different files or cannot be verified together; keep same-file halves together.
 Every task states **Delivers** and **Blocked by**; the Blocked-by graph is the only statement of order, each edge naming what it consumes.
-Two edge-free tasks on one file → **prefactor first** (an extract task giving them disjoint files), or Sequential with a reason (edge-cases: Prefactor).
+Two edge-free tasks on one file → **prefactor first** (an extract task giving them disjoint files), or Sequential with a reason.
 A task builds and ships alone, never a batch. Tasks sharing a seam (a contract or interface) form one named ship group — the template's **Ship group** line, a seam list for the final branch review.
 Tracks: tasks sharing files or chained by **Blocked by** form one track (one worktree, in order); a task Blocked by tasks in two or more tracks starts after those tracks merge, as the first task of a new track. Write them as the template's `## Tracks` lines and tag each task `**Track:** A`.
 A task names a file you have not read → read it.
@@ -45,7 +44,7 @@ Done when: every task has Delivers and Blocked by with named edges, and every fi
 
 For each task: test or evidence type, assertion, seam, and an exact runnable **Command** (never the whole-repo suite). Use the spec's Testing decisions; no seam named → the highest existing seam, with why. The owner builds test-first at that seam (`tdd-flow`; no `tdd-flow` → one failing test, the smallest code that passes, then the next behavior).
 Edge / error / race tests need a criterion or the R4 floor. Docs, comments, config text and string-only changes take a mechanical check, not a behavior test.
-No test infrastructure → the first task bootstraps the minimal harness (edge-cases: No test infrastructure).
+No test infrastructure → the first task builds the minimal harness (edge-cases: No test infrastructure).
 
 Done when: every task names a test or evidence and a runnable Command; a task on a high-risk surface without a test plan gets one.
 
@@ -53,7 +52,7 @@ Done when: every task names a test or evidence and a runnable Command; a task on
 
 Order, split, owner and seam are the plan's own calls — never stop for the user to approve the task list.
 A task needs a choice the spec does not make and the user would weigh — a new dependency, a public API or schema change, a migration, anything irreversible → one question with the simplest option recommended, before writing the artifact.
-Parallel only with genuinely disjoint file ownership and no handoff between tracks; edge-free tasks are candidates, never a mandate, and Sequential needs only a reason. Deciding the layout → `references/parallel.md`; no reference → shared files mean one track, and a borderline shared interface → show both shapes and let the user pick.
+Deciding the layout → `references/parallel.md`; no reference → shared files mean one track, and a borderline shared interface → show both shapes and let the user pick.
 
 Done when: every open choice is the plan's own or answered by the user, and the Parallel layout is decided.
 
@@ -67,7 +66,7 @@ Done when: every path sits under exactly one owner.
 ### 6. Owners and briefs
 
 **Owner:** the role you pick for the task's files from the agent listing (each description names its scope); `Lead` only for R1-sized work or when the user said self-do. No listing → the closest writer role by path.
-Reviewer roles are never owners. Each high-risk surface names every task that touches it under **High-risk surfaces touched** (`- session-cookie validation (auth) → Task 2`): the brief tiers that task R4 and routes its reviewers (Standard / Full → `security-engineer`; Lite → the two `universal-reviewer` lenses, `review-code` step 2; no `review-code` → `lens: spec` + `lens: standards`), even when no file name looks risky (a docs-only task stays R1). A user-visible E2E flow gets no task: `finish-work`'s QA pass checks it once per branch.
+Reviewer roles are never owners. Each high-risk surface names every task that touches it under **High-risk surfaces touched** (`- session-cookie validation (auth) → Task 2`): the brief tiers that task R4, even when no file name looks risky (a docs-only task stays R1). A user-visible E2E flow gets no task: `finish-work`'s QA pass checks it once per branch.
 `plan-lint.sh --brief <N> <plan> [contract]` (`scripts/plan-lint.sh` in this skill's folder) builds the owner's brief from the task block, Expected failing signal and On fail included; no `plan-lint.sh` → the task block verbatim is the brief. The brief is the owner's whole slice, so the block carries everything it needs.
 A task that builds or consumes the spec's agreed contract (Chosen approach: interface, data shape, compatibility rule, invariant) quotes the clause it must keep in its Change or Done when; its Blocked by edge names the symbol it consumes.
 **Read first:** the 2-3 files and the pattern to copy, named by the Lead who read them; the owner never re-surveys the repo.
@@ -77,21 +76,17 @@ Done when: every task names its Owner and Read first.
 
 ### 7. Self-review
 
-- **Placeholders** — never `TBD` / `TODO` / "implement later" · "add appropriate error handling / validation / edge cases" unnamed · "write tests" without type, assertion and command · "similar to Task N" (repeat the shape; tasks are read out of order) · a step with no file path · a symbol defined in no task and absent from the codebase.
-- **Spec coverage, both directions** — each requirement names its task; each task names its spec line. No spec line = scope creep: cut it or move it to `## Follow-ups`.
-- **Symbol consistency** — `clearLayers()` in Task 3 vs `clearFullLayers()` in Task 7 is a bug; a missing symbol → verify or remove.
 - **Granularity and edges** — each task fits one fresh context and passes the split rule (step 2); each Blocked-by edge names what it consumes, and no task blocks one it does not gate.
-- **Missing tests**, **untouched high-risk surfaces**, **unowned or dual-owned files** in a parallel layout.
-- **Boundary violations** against a declared module map (edge-cases: Module boundary map).
-- **Loop-runnable** — `plan-lint.sh <plan> [contract]` checks the Failure policy, a Command per task, acyclic Blocked-by edges and parallel ownership. No plan-lint → check these four by eye (or the one-line check in edge-cases: No plan-lint).
+- **Boundary violations** against a declared module map.
+- **Loop-runnable** — `plan-lint.sh <plan> [contract]` checks the Failure policy, a Command per task, acyclic Blocked-by edges and parallel ownership. No plan-lint → check these four by eye.
 
-An independent plan review runs under write-spec's Cross-family critique trigger (Full, pool on, R4 — or the user asks) → `references/plan-reviewer-prompt.md` (the reviewer's prompt; no `references/plan-reviewer-prompt.md` → hand the reviewer step 7's checks). Otherwise self-review and the lint decide.
+A fresh `universal-reviewer` runs when the user asks for a plan review (no `cross-family` or any trigger condition false → skip and record why, matching write-spec step 5). Else self-review and the lint decide; → `references/plan-reviewer-prompt.md` with the shared checks (placeholders, spec coverage, symbol consistency, missing tests, high-risk surfaces, ownership — these are the author's responsibility too, one-line fallback: no placeholders, specs match, symbols consistent).
 
 Done when: every check passes on the draft; Loop-runnable runs on the saved file (step 8).
 
 ### 8. Write the artifact
 
-Fill `templates/plan-template.md` in its order: task blocks, dependencies, high-risk surfaces, parallel layout, failure policy, changes during build, follow-ups; a conditional section stays concise, or is omitted when it does not apply. Changes during build keeps one line per task and deviation; review rounds, findings and hand-offs belong in task records.
+Fill `templates/plan-template.md` in its order: task blocks, dependencies, high-risk surfaces, parallel layout, failure policy, changes during build, follow-ups; a conditional section stays concise, or is omitted when it does not apply.
 A task block, in order, one bold label per bullet: Delivers · Blocked by · Files · Read first · Change · Test / evidence · Proof · Expected failing signal · Command · Owner · Done when · On fail.
 Write the plan's prose in the user's language unless they ask for another; section headings, the field labels plan-lint reads, identifiers, paths, commands and quoted code stay verbatim.
 One-session work → inline in chat. Multi-session → a dated file under the private `docs/rolepod/plans/`, never overwritten (edge-cases: Saving the plan).

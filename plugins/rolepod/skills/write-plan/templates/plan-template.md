@@ -31,7 +31,7 @@
       inline in the bullet. A clause of the spec's agreed contract this task
       builds or consumes (interface, data shape, compatibility rule, invariant)
       is quoted here or in Done when — the owner sees only the brief.>
-- [ ] **Test / evidence:** <test or evidence type, assertion, and seam from Testing decisions; explain any new seam. Docs, comments, config-text, and string-only changes use a mechanical check. Edge / error / race cases need a criterion or R4 floor.>
+- [ ] **Test / evidence:** <test or evidence type, assertion, and seam from Testing decisions; explain any new seam. Docs, comments, config-text, and string-only changes use a mechanical check.>
 - **Proof:** <one reviewer-checkable claim> :: `<command that proves it>` (optional)
 - [ ] **Expected failing signal:** <failure observed before the fix; omit if not test-first>
 - [ ] **Command:** <exact, runnable check covering this task; not the whole-repo suite>
@@ -41,8 +41,7 @@
       risk, else most files) builds the whole slice, thin ends in other layers
       included; two full-depth layers → two slices joined by Blocked by. A
       high-risk write goes to the path's owner and the High-risk surfaces line
-      names the task; security-engineer writes tests only. A user-visible E2E flow
-      gets no task: `finish-work`'s QA pass checks it once per branch (a slice's unit tests belong to its owner).>
+      names the task.>
 
 - **Done when:** <pass/fail condition; a changed rule also names the nearest inputs whose result stays the same>
 - **On fail:** <non-default recovery, if any. Omit to use the Failure policy below.>
@@ -62,11 +61,7 @@
 <Sequential — one owner (reason optional), or Parallel — contract: <path>. Task order lives in Blocked by.>
 
 ## Tracks
-<Optional — only when the plan runs as tracks (a track = tasks that run in order
- in one worktree); none → delete this section. One line per track; every task
- names its track in `**Track:**`. Tasks that edit the same file share one track;
- Blocked by crosses tracks only at a track's first task. feature = this plan's
- file name without its date.>
+<Optional — only when the plan runs as tracks; none → delete this section. One line per track.>
 - <A> — <short name>: Task <N>, Task <M> · branch <feature>/<a>-<short-slug>
 
 ## Ship groups
@@ -83,7 +78,7 @@ Default: a failing **Command** → debug-issue (reproduce → minimal fix →
 re-run the same Command). Count failed fixes for the same unresolved repro or
 criterion across owners and phases. After 2 failures, get one Second opinion;
 attempts 3 and 4 require a fresh trace and use its advice. No usable advisor
-means stop before another fix; after 4 failed fixes, stop and ask the user.
+means stop before another fix; after 4 failed fixes, stop: an owner returns BLOCKED with the attempts; the Lead asks the user.
 Keep review rounds separate; they never reset fix attempts. Also stop on
 oscillation (a fix for one task reopens another). A task needing a
 different fallback states it in its **On fail:**.

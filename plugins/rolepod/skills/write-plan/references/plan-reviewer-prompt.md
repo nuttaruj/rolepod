@@ -4,8 +4,8 @@
 
 ## When to dispatch
 
-Only under write-plan step 7's trigger: workflow mode Full with the cross-family pool on and an R4 (high-risk) plan, or the user asks for a second opinion. Outside it, self-review and the lint decide — never dispatch on plan size alone.
-Runner: the `cross-family` skill's critique kind when the pool is usable; else (or no `cross-family`) a fresh `universal-reviewer` subagent with the brief below; no subagents → the Lead runs the seven checks on a fresh read.
+Only when the user asks for a plan review. Trigger is the same as write-spec step 5 critique (workflow mode Full with cross-family pool on and R4, or user asks). Outside it, self-review and the lint decide.
+Runner: the `cross-family` skill's critique kind; else (or no `cross-family`) a fresh `universal-reviewer` subagent with the brief below; no subagents → the Lead runs the seven checks on a fresh read.
 
 ## Dispatch
 
