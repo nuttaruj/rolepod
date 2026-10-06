@@ -1,4 +1,4 @@
-# tools: SendMessage requires agent-teams context (Claude accepts standalone, may silently ignore).
+# tools: review role — the method is the preloaded security-review skill, so no Skill; no Agent / SendMessage (it never dispatches).
 tier: strong
 effort: xhigh
 tools:
@@ -8,7 +8,7 @@ tools:
   - Edit
   - Bash
   - Write
-  - Agent
-  - SendMessage
   - WebFetch
   - WebSearch
+skills:
+  - security-review
