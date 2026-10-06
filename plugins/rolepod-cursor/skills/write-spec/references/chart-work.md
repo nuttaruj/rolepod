@@ -71,7 +71,7 @@ tools:
 |---|---|---|
 | `discuss` | with user | Discovery (`write-spec` Discovery) on the one question. Default kind. |
 | `investigate` | agent alone | Dispatch a `scout` — docs, APIs, prior art; report → resolution. |
-| `probe` | with user | `write-prototype` on the question ticket (see write-prototype step 5). |
+| `probe` | with user | `write-prototype` on the question ticket. |
 | `unblock` | either | Real work a decision is waiting on (provision access, move data so its shape is visible). The only kind that *does* instead of decides. Human-only steps → generate a wizard (implement-plan `references/wizard.md`). |
 
 `discuss` and `probe` resolve **only through the user's own answers** — the

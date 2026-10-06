@@ -30,4 +30,4 @@ The pool lives in `~/.rolepod/config.json` under the `pool` key (machine-wide on
 
 Example: `"review": "cursor agy codex stall=900"` binds `stall=900` to codex.
 
-**Precedence** — for any option: `--flag` (command-line) > config `stall=` → 600 s.
+**Precedence** — `stall=` in the config, else 600 s.

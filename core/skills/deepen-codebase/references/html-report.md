@@ -2,9 +2,9 @@
 
 # HTML Report Format
 
-The review is rendered as a single HTML file in the OS temp directory, named `deepen-codebase-<timestamp>.html`. It is not self-contained: Tailwind and Mermaid load from CDNs, so third-party scripts run in a page that holds repo paths and code. Mermaid handles graph-shaped diagrams reliably; hand-built divs and inline SVG handle the more editorial visuals (mass diagrams, cross-sections). Leaning on Mermaid for everything starts to look generic.
+The report is not self-contained: Tailwind and Mermaid load from CDNs, so third-party scripts run in a page that holds repo paths and code. Mermaid handles graph-shaped diagrams reliably; hand-built divs and inline SVG handle the more editorial visuals (mass diagrams, cross-sections). Leaning on Mermaid for everything starts to look generic.
 
-Offline, a locked-down network, or a user who wants no third-party script: skip the CDNs. Write inline CSS and hand-built SVG diagrams instead — the six fields must read without any script. Either way the fonts are the scaffold's stacks: sans body, serif `h1` / `h2`, mono for files and code — never another face.
+Offline, a locked-down network, or a user who wants no third-party script: skip the CDNs. Write inline CSS and hand-built SVG diagrams instead — the six fields must read without any script. Either way the fonts are the scaffold's CSS stacks, never another face.
 
 ## Scaffold
 
@@ -53,13 +53,13 @@ The diagrams carry the weight. Prose is sparse, plain, and uses the architectura
 Each candidate is one `<article>`, with exactly these six fields:
 
 - **Files** — monospaced list, `font-mono text-sm`.
-- **Problem** — one sentence. What hurts, in the domain's words.
-- **Solution** — one sentence. What changes, plain words, no interface yet.
+- **Problem** — one sentence.
+- **Solution** — one sentence.
 - **Benefits** — bullets, ≤6 words each, in locality and leverage terms, e.g. "tests hit one interface", "pricing logic stops leaking", "delete 4 shallow wrappers".
 - **Before / After** — the centrepiece. Two columns, side by side. See patterns below.
 - **Strength** — badge, one of `Strong` (emerald), `Worth exploring` (amber), `Speculative` (slate).
 
-An ADR conflict is one line in an amber-tinted callout box.
+Never substitute component / service / unit for module; API / signature for interface; boundary for seam; layer / wrapper for module.
 
 No paragraphs of explanation. If the diagram needs a paragraph to be understood, redraw the diagram.
 
@@ -102,7 +102,7 @@ Before: a tree of function calls rendered as nested boxes. After: the same tree 
 
 ## Style guidance
 
-- Lean editorial, not corporate-dashboard. Generous whitespace. Serif headings (`font-serif`), sans body.
+- Lean editorial, not corporate-dashboard. Generous whitespace.
 - Color sparingly: one accent (emerald or indigo) plus red for leakage and amber for warnings.
 - Keep diagrams ~320px tall so before/after sits comfortably side by side without scrolling.
 - Use `text-xs uppercase tracking-wider` for module labels inside diagrams, so they read as schematic, not as UI.
@@ -111,10 +111,8 @@ Before: a tree of function calls rendered as nested boxes. After: the same tree 
 
 ## Bugs found on the way
 
-A plain table after the cards: `path:line` (mono) · what breaks · reproduced / read only · → `debug-issue`. No diagrams. None found → omit the section.
+A plain table after the cards, `path:line` in mono. No diagrams. None found → omit the section.
 
 ## Top recommendation section
 
-One larger card. Candidate name, one sentence on why, anchor link to its card. That's it.
-
-No `Strong` or `Worth exploring` card → this section is one line instead: `No deepening worth doing in <scope>`, then the areas walked and not reached.
+One larger card, with an anchor link to the picked card.

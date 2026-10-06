@@ -123,7 +123,7 @@ render_skills() {
   for skill_dir in "$REPO_DIR"/core/skills/*/; do
     local name; name="$(basename "$skill_dir")"
     cp -R "$skill_dir" "$skills_dst/$name"
-    # Standalone workflow/review helpers resolve config from this bundled
+    # Standalone workflow helpers resolve config from this bundled
     # canonical reader; cross-family uses it for the independent pool setting.
     # Keep hooks/lib/rolepod_config.py the only parser.
     [ "$name" = "cross-family" ] && cp "$REPO_DIR/hooks/lib/rolepod_config.py" "$skills_dst/$name/scripts/rolepod_config.py"

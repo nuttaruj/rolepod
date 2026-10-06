@@ -5,7 +5,7 @@ description: Use when write-spec offers a prototype and the user accepts; user a
 
 # Write Prototype — the Lead builds throwaway code to answer one question
 
-**The Lead builds the prototype itself.** This skill is not dispatched to an owner; it is a self-do skill (OD10). When the user asks for a prototype or when `write-spec` proposes one and the user agrees, the Lead builds it in a spike worktree.
+**The Lead builds the prototype itself.** This skill is not dispatched to an owner; it is a self-do skill. When the user asks for a prototype or when `write-spec` proposes one and the user agrees, the Lead builds it in a spike worktree.
 
 ## Skip when
 
@@ -50,9 +50,9 @@ A new worktree starts from HEAD and never carries uncommitted changes. Change mo
 Run `git worktree add <dir> -b spike/<name>`; everything happens there, and the user's working tree is never touched.
 Write the ONE question at the top of the demo, visible on the page (for a layout, may be in the header).
 Name the files so a reader sees "prototype".
-Keep it throwaway: no tests, in-memory state, no generalising, no error handling beyond what runs.
+Keep it throwaway: no tests, in-memory state, no generalising, no error handling beyond what runs. A question about persistence gets a scratch store named PROTOTYPE.
 
-Done when: the prototype runs with one command or a double-click.
+Done when: the prototype runs.
 
 ### 4. Hand over
 
@@ -62,6 +62,12 @@ Logic, new mode, or change mode with no runnable app: give the file path, opened
 Ask for the verdict; "the header from B with the sidebar from C" is a verdict. Iterate on request.
 
 Done when: the user gave a verdict.
+
+### 5. Capture
+
+Write into the spec (a `probe` ticket: its `## Resolution`): the question, the verdict, and the line `Prototype: spike/<name> — reference only, never merged, rebuilt from this spec`; commit on the spike branch; remove the worktree.
+
+Done when: the verdict is in the spec (or the probe ticket) and the worktree is removed.
 
 ## Guardrails
 

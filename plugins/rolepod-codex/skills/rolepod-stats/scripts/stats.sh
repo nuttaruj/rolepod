@@ -31,6 +31,7 @@ EV="$ROOT/.rolepod/evidence"
 python3 -I - "$EV" "$ROOT" <<'PY'
 import json
 import os
+import statistics
 import sys
 from collections import Counter
 
@@ -307,16 +308,12 @@ vrows = [r for r in externals if r.get("phase") == "review" and r.get("verdict")
 if vrows:
     vc = Counter(r["verdict"] for r in vrows)
     print(f"\n  External review verdicts ({len(vrows)}): " + " · ".join(f"{k} ×{n}" for k, n in sorted(vc.items())))
-    import statistics
     secs = {}
     for r in vrows:
         if isinstance(r.get("secs"), (int, float)):
             secs.setdefault(r.get("cli") or "?", []).append(r["secs"])
     if secs:
-        def _med(xs):
-            m = statistics.median(xs)
-            return str(int(m)) if m == int(m) else f"{m:.1f}"
-        print("    median secs: " + " · ".join(f"{c} {_med(v)} (n={len(v)})" for c, v in sorted(secs.items())))
+        print("    median secs: " + " · ".join(f"{c} {statistics.median(v):g} (n={len(v)})" for c, v in sorted(secs.items())))
 
 # Gate rows (hooks/precommit-gate.sh): the commits that cleared with risky edits and no strong review.
 # A row stores the parent head (HEAD before the commit); a deny row never committed.
@@ -499,7 +496,7 @@ if root:
                 continue
 # Lead turns — main-session transcripts <base>/*.jsonl, one count per API call (message.id), 14 days.
 # The Lead's histogram is what /model was set to; it is never merged with the fleet table below.
-lead, lead_files = Counter(), 0
+lead, lead_files, seen = Counter(), 0, set()
 for base in bases:
     for f in sorted(glob.glob(os.path.join(base, "*.jsonl"))):
         try:
@@ -509,7 +506,10 @@ for base in bases:
         got = _read_calls(f)
         if not got or not got[0]: continue
         lead_files += 1
-        for m, *_ in got[0].values(): lead[_short(m)] += 1
+        for mid, (m, *_) in got[0].items():
+            if mid in seen: continue   # a resumed session copies history into a new file
+            seen.add(mid)
+            lead[_short(m)] += 1
 if lead:
     print(f"\n  Lead turns — main session transcripts (last 14d, {lead_files} session(s), {sum(lead.values())} turns; the /model choice, not fleet proof): "
           + " · ".join(f"{m} ×{n}" for m, n in lead.most_common()))

@@ -61,7 +61,7 @@
 <Sequential — one owner (reason optional), or Parallel — contract: <path>. Task order lives in Blocked by.>
 
 ## Tracks
-<Optional — only when the plan runs as tracks; none → delete this section. One line per track.>
+<Optional — only when the plan runs as tracks; none → delete this section. One line per track. `<feature>` = plan file name without date.>
 - <A> — <short name>: Task <N>, Task <M> · branch <feature>/<a>-<short-slug>
 
 ## Ship groups

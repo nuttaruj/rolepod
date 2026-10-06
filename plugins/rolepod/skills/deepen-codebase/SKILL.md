@@ -34,7 +34,7 @@ Its brief:
 - the scope from Scope;
 - the **deletion test**: imagine deleting the module and inlining it into its callers — complexity reappearing across N callers means it earns its keep; complexity that just vanishes marks a shallow pass-through; N hand-kept copies of one rule = a candidate, and a candidate that fails the test is dropped, not softened;
 - read `references/explorer-lens.md` first when present — vocabulary, friction signals, drift check (optional depth);
-- use the codebase's own words: `CONTEXT.md` terms for the domain, module / interface / seam / depth for the shape;
+- use the codebase's own words: `CONTEXT.md` terms for the domain, `references/explorer-lens.md` Vocabulary for the shape (no file → module, interface, depth, seam, adapter, leverage, locality);
 - walk organically in ONE pass over the scope — hot spots first, the rest of the scope after — noting where IT struggles; never a second lap: an area it did not reach is named in the return;
 - any command that writes nothing in the repo (grep, `git log`, an existing test, a scratch script in the temp dir) may reproduce a claim;
 - return candidates (files with `path:line`, the friction, the deletion-test result), every bug met on the way (`path:line` + the reproducing command, or `read only, not reproduced`) and the areas not reached — never an edit, never an interface.
@@ -79,7 +79,7 @@ Stop after the report and ask, in one message: which card, and whether to open a
 - No Top recommendation → no card question: give the path, and offer only the listed bugs (`debug-issue`), if any.
 - "Just the report" → stop; the path is the deliverable.
 - A listed bug → `debug-issue` on its own, or into the picked card's spec when it sits inside that card's files.
-- The user rejects a card for a load-bearing reason → offer the ADR under write-spec's three tests, so a later run does not re-suggest it.
+- Reject → offer the ADR per `write-spec/references/approaches.md`; no re-suggest.
 
 Done when: the user picked a card, chose the report only, rejected with the ADR offered, or the no-deepening report was handed over.
 

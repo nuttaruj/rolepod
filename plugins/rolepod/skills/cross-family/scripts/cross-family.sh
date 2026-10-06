@@ -889,7 +889,14 @@ one() { # $1 cli → 0 ok / 1 fail; writes $TMPP/$1.{out,err,line,jsonl} — the
   if [ -n "$_ran" ]; then _ranfam=$(classify_model "$_ran"); [ "$_ranfam" != "unknown" ] && _f="$_ranfam"; fi
   _floor=200; [ "$KIND" = "review" ] && _floor=500   # the commit gate's raw-file floor
   _partial=""; head -c 400 "$TMPP/$_c.out" 2>/dev/null | grep -q 'PARTIAL' && _partial=" partial=1"
-  _verdict=1; if [ "$KIND" = "review" ]; then grep -qi 'VERDICT' "$TMPP/$_c.out" 2>/dev/null || _verdict=0; fi
+  _verdict=1; _vtok=none
+  if [ "$KIND" = "review" ]; then
+    grep -qi 'VERDICT' "$TMPP/$_c.out" 2>/dev/null || _verdict=0
+    # the member's own verdict word: first token of the last line that starts with VERDICT; a line holding `|` echoes the enum → none
+    _vtok=$(grep -iE '^[[:space:]*#]*VERDICT[: ]' "$TMPP/$_c.out" 2>/dev/null | tail -1 \
+      | sed -E 's/^[[:space:]*#]*[Vv][Ee][Rr][Dd][Ii][Cc][Tt][: ]+//' | awk '/\|/ {print "none"; next} {print $1}' | tr -d '*.,' | tr 'a-z' 'A-Z')
+    case "$_vtok" in APPROVED|APPROVED-WITH-NITS|REJECTED) ;; *) _vtok=none ;; esac
+  fi
   # A review that ran out of budget (PARTIAL) or never reached its VERDICT line
   # is information for the Lead, never the strong pass: it is kept as
   # *.partial.txt, logged as external-fail, and the chain moves on.
@@ -904,8 +911,7 @@ one() { # $1 cli → 0 ok / 1 fail; writes $TMPP/$1.{out,err,line,jsonl} — the
     _modetag=""; [ "$KIND" = "review" ] && [ "$ADV_MODE" -eq 1 ] && _modetag=",\"mode\":\"adversarial\""
     [ "$KIND" = "review" ] && [ -n "$LENS" ] && _modetag="$_modetag,\"lens\":\"$LENS\""
     if [ "$KIND" = "review" ]; then   # last field: the member's own VERDICT line, `none` when it names no verdict
-      _vtok=$(grep -i 'VERDICT' "$TMPP/$_c.out" 2>/dev/null | grep -oE 'APPROVED-WITH-NITS|APPROVED|REJECTED' | tail -1)
-      _modetag="$_modetag,\"verdict\":\"${_vtok:-none}\""
+      _modetag="$_modetag,\"verdict\":\"$_vtok\""
     fi
     printf '%s\n' "{\"ts\":\"$(iso_now)\",\"phase\":\"$PHASE\",\"reviewer\":\"external\",\"kind\":\"$KIND\",\"cli\":\"$_c\",\"family\":\"$_f\",\"model\":\"default\",\"raw\":\"$_raw\",\"lead\":\"$LEAD\",\"secs\":$_secs,\"budget\":$TIMEOUT,\"brief_sha\":\"$BRIEF_SHA\"${JOB_ID_TAG:+,\"job\":\"$JOB_ID_TAG\"}${_partial:+,\"partial\":true}${_ran:+,\"ran\":\"$(jesc "$_ran")\"}$_modetag}" > "$TMPP/$_c.jsonl"
     : > "$TMPP/$_c.line"

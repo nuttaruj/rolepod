@@ -17,8 +17,7 @@ Done when: the tables are in hand, or the script printed "no data" with the path
 ## Guardrails
 
 - Answer what the user asked plus every ⚠ line; a plain "stats" ask gets three short tables (intent, Lead turns, subagent turns). Never paste raw output — summarize.
-- Flag any strong dispatch without an explicit override and any subagent model the tier policy would not predict; the Lead's own histogram is what `/model` was set to, never a tier-policy finding.
-- A dispatch burst is dispatch timing, not proof of parallel runs; the fleet token footprint is not a cost.
+- Flag any strong dispatch without an explicit override and any subagent model the tier policy would not predict.
 
 ## Next phase
 

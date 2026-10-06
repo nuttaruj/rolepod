@@ -16,7 +16,6 @@ The vocabulary every candidate uses.
 
 ## Tests to apply
 
-- **Deletion test** — imagine deleting the module and inlining it into its callers. Complexity reappears across N callers → it earns its keep (and N hand-kept copies of one rule elsewhere = a deepening candidate). Complexity just vanishes → a pass-through, shallow.
 - **The interface is the test surface** — tests should cross the seam callers use. A test that pins text instead of behaviour, reaches past the interface, or exercises a function no production caller uses = friction: the real path is untested.
 - **Drift check** — one concept computed in two or more places: compare the copies. Copies that already disagree are the strongest evidence a module is missing.
 - **Dependency kind** — a hard-wired substitutable dependency cannot be tested through its interface.
@@ -28,5 +27,3 @@ The vocabulary every candidate uses.
 - pure functions extracted for testability while the bugs hide in how they are called
 - modules leaking state or format knowledge across their seams (a file, a log line, an env var many modules parse)
 - a part untested, or untestable through its current interface
-
-Walk organically: hot spots first, then wherever the friction leads. Note where YOU struggle to understand — that struggle is the signal.

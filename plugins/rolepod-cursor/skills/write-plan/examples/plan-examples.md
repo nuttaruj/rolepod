@@ -95,14 +95,7 @@ Sequential — one owner per task, no parallel tracks.
 All 3 specs green; the exported CSV row set equals the filtered table.
 
 ## Failure policy
-Default: a failing Command → debug-issue (reproduce → minimal fix → re-run
-the same Command). Count failed fixes for the same unresolved repro or criterion
-across owners and phases. After 2 failures, get one Second opinion; attempts 3
-and 4 require a fresh trace and use its advice. No usable advisor means stop
-before another fix; after 4 failed fixes, stop: an owner returns BLOCKED with the attempts; the Lead asks the user.
-Review rounds
-are separate and never reset fix attempts. Also stop if a fix reopens a
-previously green task.
+Template default. Also stop if a fix reopens a green task.
 
 ## Risks
 Large exports near the 30s timeout — Task 2 verifies a 10k-order range; if it
@@ -211,16 +204,7 @@ Parallel — contract: `docs/rolepod/plans/notifications-cohesion-2026-05-20.md`
 Both task sets green; the live bell updates against the real API.
 
 ## Failure policy
-Default: a failing **Command** → debug-issue (reproduce → minimal fix →
-re-run the same Command). Count failed fixes for the same unresolved repro or
-criterion across owners and phases. After 2 failures, get one Second opinion;
-attempts 3 and 4 require a fresh trace and use its advice. No usable advisor
-means stop before another fix; after 4 failed fixes, stop: an owner returns BLOCKED with the attempts; the Lead asks the user.
-Review rounds
-are separate and never reset fix attempts. Also stop on
-oscillation (a fix for one task reopens another).
-Contract drift found at integration → STOP both agents, fix the contract
-first (do not patch around it).
+Template default. Also stop on contract drift — fix the contract first at integration.
 
 ## Risks
 Contract drift — the API shape is frozen in the cohesion contract; the

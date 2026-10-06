@@ -1100,15 +1100,15 @@ if (planwt == 1) tpath = substr(tbranch, 1, length(tbranch) - 5)
     # Files forbidden prints only when a cohesion contract exists; without
     # one the Also touched / NEEDS rules live in implement-plan.
     if (hascontract) {
-    print "## Files forbidden"
-    for (i = 1; i <= tn; i++) { p = touchorder[i]; if (!(p in allowedset)) print "- " p }
-    # Guarded against Files allowed the same way the touch-list loop above
-    # is (a do-not-touch path that also landed in Files allowed must not
-    # print twice or contradict the allowed list), AND against touchseen —
-    # a path already printed by the touch-list loop above must not print a
-    # second time just because it is ALSO on the do-not-touch list.
-    for (i = 1; i <= dn; i++) { p = dntord[i]; if (!(p in allowedset) && !(p in touchseen)) print "- " dntdisp[p] }
-    print "- everything else (an unowned path: touch it and add an Also touched line; a path another owner holds: a NEEDS line, never an edit)"
+      print "## Files forbidden"
+      for (i = 1; i <= tn; i++) { p = touchorder[i]; if (!(p in allowedset)) print "- " p }
+      # Guarded against Files allowed the same way the touch-list loop above
+      # is (a do-not-touch path that also landed in Files allowed must not
+      # print twice or contradict the allowed list), AND against touchseen —
+      # a path already printed by the touch-list loop above must not print a
+      # second time just because it is ALSO on the do-not-touch list.
+      for (i = 1; i <= dn; i++) { p = dntord[i]; if (!(p in allowedset) && !(p in touchseen)) print "- " dntdisp[p] }
+      print "- everything else (an unowned path: touch it and add an Also touched line; a path another owner holds: a NEEDS line, never an edit)"
     }
     print "## Change"
     print (Ch == "" ? "(not in plan)" : Ch)

@@ -4,8 +4,7 @@
 
 ## When to dispatch
 
-Only when the user asks for a plan review. Trigger is the same as write-spec step 5 critique (workflow mode Full with cross-family pool on and R4, or user asks). Outside it, self-review and the lint decide.
-Runner: the `cross-family` skill's critique kind; else (or no `cross-family`) a fresh `universal-reviewer` subagent with the brief below; no subagents → the Lead runs the seven checks on a fresh read.
+write-plan step 7 decides when this runs.
 
 ## Dispatch
 

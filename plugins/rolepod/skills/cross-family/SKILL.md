@@ -11,8 +11,7 @@ The runner is `scripts/cross-family.sh` in this skill's folder (`bash <this skil
 
 ## Skip when
 
-- The pool is off and the user did not ask to set it up — the caller runs its fallback (step 5). Off is the user's choice, never a limitation to nag about.
-- The ask is a review by the Lead's own CLI — skip and use the internal pass instead.
+- The pool is off and the user did not ask to set it up — the caller runs its fallback (step 5).
 
 ### 1. Resolve the pool
 
@@ -61,7 +60,7 @@ Done when: the brief file exists and a stranger could act on it alone.
 - Once per spec, and the triage of its items → `write-spec` step 5 (the caller's rules); no `write-spec` → hand the ranked items to the user, never re-run it on a revised draft, never block the spec.
 
 **consult**
-- FOREGROUND, short budget — a stuck loop needs the answer now. The pool's `reviewer.consult` order (e.g. `"consult": "agy codex"`; `references/pool.md` or unset → the `review` order) puts the fast member first and keeps the deep one as fallback.
+- FOREGROUND, short budget — a stuck loop needs the answer now. The pool's `reviewer.consult` order (`references/pool.md`; unset → the `review` order) puts the fast member first.
 - No usable member → the vertical fallback (`debug-issue` Second opinion item 2 holds the recipe); no `debug-issue` → the Lead's own CLI at its strongest model, valid only when it differs from the running one. It never counts as a cross-family pass.
 
 Done when: the kind ran in its mode, or the runner returned an exit for step 4.
@@ -72,7 +71,7 @@ The receipt is the last stdout line: `ROLEPOD-XFAM ok kind=<k> cli=<cli> family=
 The runner ran the member on its own default model — review / consult / critique read-only — in a clean room (`ROLEPOD_BRAIN_SILENT=1`), and anchored the output under `.rolepod/evidence/external/` with its phase-log line.
 - A review counts only with its `VERDICT:` line. PARTIAL or no verdict → kept as `*.partial.txt`; the chain moves to the next member.
 - Consult and critique answers marked PARTIAL still count.
-- A non-zero exit: `--help` lists exits; 2 = fix the command; 3, 4, 5 = step 5's named fallback.
+- A non-zero exit: `--help` lists exits; 2 = fix the command; 3, 4, 5 = step 5's fallback; 6 = `--collect` it later; 7 = send the whole diff, never a slice; 8 = `--collect` or `--kill` the live job first.
 
 Done when: the answer is in hand with its receipt, or the exit is mapped to step 5.
 
@@ -90,7 +89,7 @@ Done when: the caller or the user holds the answer or the named fallback.
 ### 6. Set up the pool — on request only
 
 The user asks to set up, enable or change cross-family, in any wording or language. `cross-family.sh --setup` lists the installed CLIs (one → nothing to set; say so); ask ONE question — which CLIs review, in order, the Lead's own CLI included (skipped at run time; no → `none`) — then `cross-family.sh --setup review="…"` and show `cross-family.sh --pool`.
-Hand-editing → `references/pool.md` (the `pool` JSON shape, per-kind order, `stall=`; precedence); no `references/pool.md` → change it only through `cross-family.sh --setup review="…"`, never by hand. The pool lives only in `~/.rolepod/config.json`, no project override.
+Hand-editing → `references/pool.md` (the `pool` JSON shape, per-kind order, `stall=`; precedence); no `references/pool.md` → change it only through `cross-family.sh --setup review="…"`, never by hand.
 
 Done when: the file is written and `--pool` is shown to the user.
 
@@ -98,6 +97,7 @@ Done when: the file is written and `--pool` is shown to the user.
 
 - Every external call goes through the runner so it is anchored. Never a hand-rolled CLI call, a hand-typed evidence line, or a model / effort flag on a member. Never pin a vendor model name in a skill or plan — the routing layer resolves them.
 - The user owns the pool. Never enable, widen or re-ask it unprompted.
+- Member order, `--all` → `references/review.md`.
 
 ## Next phase
 

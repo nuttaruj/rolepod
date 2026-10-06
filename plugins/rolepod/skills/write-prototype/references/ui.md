@@ -86,6 +86,8 @@ Sub-shape A: write the switcher in the spike next to the variants, or reuse a pr
 
 ### 5. Capture the answer and clean up
 
-Once a variant has won, capture the answer (which variant and why) in the spec. The whole variant set — winner and losers, the switcher when there is one — stays on `spike/<name>`, never merged, cherry-picked or copied into a non-spike branch. The winning variant is the reference shape: the decision goes into the spec, and a variant the user wants for real becomes a change — `write-plan` → `implement-plan` rebuilds it properly (tests, error handling) on the project's normal branch.
+Capture per `write-prototype` Capture; the variant set stays on `spike/<name>`.
 
-The full set of variants is the primary source, so it stays on the spike branch as evidence.
+## Anti-patterns
+
+- Sharing too much code between variants. A shared header is fine; a shared layout defeats the point. Each variant should be free to throw out the layout.

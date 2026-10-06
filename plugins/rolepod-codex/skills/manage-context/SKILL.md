@@ -48,7 +48,7 @@ Heavy context → compact with your CLI's command (Claude `/compact <focus>`; ot
 
 Load only what the task needs: the Tier 1 skills + the touched files is usually enough.
 
-**Handoff.** Context too heavy to trim safely, still heavy after compaction, starting fresh, or the user asks for a handoff → write `templates/handoff-brief.md` (the handoff fields) to the active repository's `docs/rolepod/handoff.md`; no template → a markdown file with the request and every correction, the disk state, the next task and command, the constraints and decisions, and the failed-attempt and Second opinion state.
+**Handoff.** Context too heavy to trim safely, still heavy after compaction, starting fresh, or the user asks for a handoff → write `templates/handoff-brief.md` (the handoff fields) to the active repository's `docs/rolepod/handoff.md`; no template → a markdown file with the request and every correction, the disk state, the next task and command, the constraints and decisions, and the failed-attempt and Second opinion state. Point to artifacts by path; redact secrets, tokens and PII.
 - This is the default session path; overwrite only that file. An explicit user path is authoritative, including a dated legacy handoff. Never select the newest file or overwrite a legacy path automatically; keep task-owner briefs at their generated paths.
 - **`docs/rolepod/` is private by default:** before the first save run `grep -qx 'docs/rolepod/' .gitignore || echo 'docs/rolepod/' >> .gitignore`; a repo that deliberately tracks its working docs creates `.rolepod/docs-tracked`.
 
@@ -81,12 +81,10 @@ Done when: every touched file maps to a plan task, or a new plan exists.
 
 ### 6. Escalate
 
-Four failed fixes for one unresolved repro or criterion → stop and ask; one Second opinion after two; read the advice from `debug-issue` step 9 (the Second opinion rule).
+Failed fixes → `debug-issue` step 9 holds the count, the Second opinion and the stop (no `debug-issue` → four failed fixes for one repro: stop and ask; one Second opinion after two).
 - Capture the exact problem: the error, what was tried, what failed.
-- Change the model, not just the prompt: after two failed fixes, get one Second opinion; a fresh-context read of your in-flight diff → `universal-reviewer`; an E2E flake or a user-visible failure → `qa-tester` for the repro test or bug report (unit-test discipline belongs to the writer); a product failure it reports returns to the Lead, who briefs the path owner to fix against that test. Brief: the original request, what was tried, what failed, what you suspect. No subagents → the Lead does it.
-- The failed-fix ladder is exhausted at four failures, when no usable advisor exists, or when the advisor says stop and no informed attempt remains → STOP and hand the user a decision menu: the attempt log (each fix + result) and 2-3 concrete options with trade-offs (relax a constraint / split or defer scope / accept a documented limitation) — never a bare "stuck".
-  - This stop is legitimate mid-plan: when the escalate ladder is exhausted, work pauses until the user picks an option; then resume on that pick.
-- After the menu, nothing runs on this blocker — no attempt, consult or escalation — until the user picks an option; then resume on that pick.
+- Change the model, not just the prompt: a fresh-context read of your in-flight diff → `universal-reviewer`; a product failure returns to the Lead, who briefs the path owner to fix against that test. Brief: the original request, what was tried, what failed, what you suspect. No subagents → the Lead does it.
+- The stop (the failed-fix count is spent, no usable advisor, or the advisor says stop) → hand the user a decision menu: the attempt log (each fix + result) and 2-3 concrete options with trade-offs (relax a constraint / split or defer scope / accept a documented limitation) — never a bare "stuck". Mid-plan this is a legitimate stop (`orchestrating-plans`): nothing runs on this blocker until the user picks, then resume on that pick.
 
 Done when: a stronger model or outside opinion has run, or the user holds the decision menu.
 
@@ -141,5 +139,5 @@ A zoom-out recovery and a session handoff, good vs bad → `examples/context-exa
 ## Next phase
 
 - Recovered → return to the phase you came from (`write-spec` … `finish-work`, or `simplify-code`) through `using-rolepod` or the current phase skill.
-- Still stuck after recovery → run Escalate once. Its ladder exhausted → the decision menu ends the run: work resumes only on the user's pick.
-- If the phase skill is not available, state the recovered state and the next concrete step, and continue as the Lead.
+- At the decision menu, stop.
+- No other skill → stop and tell the user the state, the next step and the evidence.

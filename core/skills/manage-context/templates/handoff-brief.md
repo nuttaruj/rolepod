@@ -10,11 +10,9 @@
  stated since; the latest instruction is authoritative.>
 
 ## Current branch / commit
-<Branch name + last commit SHA. Commit first if you are the Lead and the gates
- pass; a subagent never commits — otherwise paste `git status --short` here:
- an accurately described dirty tree is still resumable, and never green a
- test or bypass a gate just to get a commit. The next session resumes from
- disk, not from this session's memory.>
+<Branch name + last commit SHA. For gate rules, see manage-context SKILL,
+ Compact at seams. The next session resumes from disk: paste `git status --short` if
+ dirty.>
 
 ## Resume state
 <Repository root, worktree, branch, SHA, and dirty state; owning phase, next
@@ -22,11 +20,9 @@
 
 ## Required reads
 <Next task and only the predecessor handoff, contract clauses, unresolved
- debug state, or other artifact required for the next decision. Link receipts
- and evidence for files/tests already covered; do not repeat their details;
- without a receipt, keep the required facts here.
- Read the full plan/spec only if scope, acceptance, ownership, or position is
- unclear. `none` when there are no required predecessor artifacts.>
+ debug state, or other artifact required for the next decision. Read the
+ full plan/spec only if scope, acceptance, ownership, or position is unclear.
+ `none` when there are no required predecessor artifacts.>
 
 ## Files touched
 <Paths edited so far + a word on each.>

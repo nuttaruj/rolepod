@@ -31,7 +31,7 @@ Ask only decisions that change scope, behavior, success, risk, or implementation
 **Recommend a default per question** — the simplest viable answer; the user confirms or overrides.
 Native question UI when the CLI has one; else numbered questions with lettered options, the default marked, compact answers accepted (`1a 3c`, or `defaults`).
 A partial reply (`1a 3c`) closes only those questions; the rest stay open next round, never defaulted. `defaults` takes only the recommendations shown that round; silence is not an answer.
-"Don't know" → a fact becomes research; a decision stays open, or the user takes the default and Gate 1 lists it as an assumption (assumed). No option fits → the user's own words are the answer. The user asks for one question at a time → the same frontier, one question per message.
+"Don't know" → a fact becomes research; a decision stays open, or the user takes the default and the spec ends that line `(assumed)`. No option fits → the user's own words are the answer. The user asks for one question at a time → the same frontier, one question per message.
 
 Facts are researched, never asked: what the codebase or docs can answer, explore.
 While a round is out, scouts research the unknowns — one per independent unknown, all in ONE message; only questions downstream of a running scout wait. No subagents → the Lead researches between rounds.
@@ -49,7 +49,7 @@ Done when: the frontier is empty and no scout is still out.
 Present 2-3 approaches, one per **lens** so they differ for real: **minimal** (smallest diff, maximum reuse) · **clean** (the boundary a maintainer would want, more files) · **pragmatic** (the seam between).
 Each with trade-offs (complexity, blast radius, reversibility, cost); recommend one — simplest viable wins by default.
 The clean lens names what minimal costs later, so Rejected approaches records a real trade-off. If minimal is already the clean boundary, present one design and state what the clean lens checked; never invent an alternative.
-The approach adds or changes a DB table / migration, a public API contract, or a module boundary → ONE `system-architect` dispatch drafts the lenses; no file → the Lead drafts them. An ADR → `references/approaches.md`.
+The approach adds or changes a DB table / migration, a public API contract, or a module boundary → ONE `system-architect` dispatch drafts the lenses; no file → the Lead drafts them. An ADR → `references/approaches.md`; no file → only when it is hard to reverse, surprising without context and a real trade-off.
 The user declines every approach → stop; report the block.
 
 Done when: the user has 2-3 lensed approaches with one recommended, or one design with its converged-lens line.
@@ -57,13 +57,14 @@ Done when: the user has 2-3 lensed approaches with one recommended, or one desig
 ### 4. Self-review
 
 Fix in the draft:
-- placeholders (`[[FILL: …]]`, `TODO`, `tbd`), contradictions between sections, ambiguous wording ("maybe", "should", "if needed");
+- placeholders (the spec-lint's list, step 6), contradictions between sections, ambiguous wording ("maybe", "should", "if needed");
 - a Success criterion without "proven by", provable only at a seam the implementation alone reaches, or naming a not-yet-existing command unflagged — pair each with a real or explicitly-new command / observation a caller can reach;
 - a technical claim behind the approach with no verifiable pointer (file:line, commit, or URL + date);
 - a high-risk surface with no security / migration / audit plan — add it, or delegate to `security-engineer` / `system-architect`; no subagents → the Lead writes it;
 - untested assumptions about the user's intent, scope creep, over-engineering for hypothetical needs.
-- Testing decisions: `templates/spec-template.md` line 31 (apply the seam rule; `tdd-flow` owns edge / error / race criterion or R4 floor).
-- Chosen approach: `templates/spec-template.md` line 41 (capture interface, data shape, compatibility rule, invariants when a DB / API / boundary changes).
+- Testing decisions: the template's Testing decisions (apply the seam rule; `tdd-flow` owns edge / error / race criterion or R4 floor).
+- Chosen approach: the template's Chosen approach (capture interface, data shape, compatibility rule, invariants when a DB / API / boundary changes).
+- Each line the user did not answer in Discovery ends `(assumed)`.
 
 Done when: no item above remains.
 
@@ -71,7 +72,7 @@ Done when: no item above remains.
 
 Runs only when all hold: Full mode, the cross-family pool on (opt-in), the session not wide-effort, and an R4 spec — or the user asks for a second opinion; R3 stays internal. It runs after Self-review, once Discovery has converged with no open question of your own. The same trigger gates `write-plan`'s independent plan review.
 - Run → `cross-family` kind critique with the draft + Q&A ledger; no `cross-family`, or any condition false → skip and record why.
-- The status line: `Cross-family critique: <cli> — N items, K settled from repo, M asked` or `— NO FURTHER QUESTIONS` or `not run — off` / `— wide-effort session` / `— cross-family absent` / `— not R4` / `— <runner reason>`.
+- The status line, ran: `Cross-family critique: <cli> — N items, K settled from repo, M asked` (or `<cli> — NO FURTHER QUESTIONS`); not run: `Cross-family critique: not run — <reason>`, the reason one of off, wide-effort session, cross-family absent, not R4, or the runner's reason.
 - Triage before the user sees anything: an item the repo or the spec settles → answer it yourself and fold it in; user decisions → one extra Discovery round; new questions continue normally. Never forward the critic's list raw.
 - A fork the critique surfaces goes to Gate 1 as an option pair with a recommendation; the user decides.
 - Once per spec: a draft revised after it never re-runs it. The status line goes under **High-risk surfaces**. Never blocks a spec.
@@ -86,15 +87,17 @@ grep -qx 'docs/rolepod/' .gitignore || echo 'docs/rolepod/' >> .gitignore
 ```
 A repo that deliberately tracks its working docs skips the command and creates `.rolepod/docs-tracked`.
 
-After the approaches round, write the whole spec to `docs/rolepod/specs/<feature>-YYYY-MM-DD.md` (optional `-vN` / `-draft`). Run Self-review and the spec-lint on the file, then point the user to it and list the `assumption` items in chat. Accept → `write-plan`; edit → patch and ask again; reject → stop. One gate, on the file.
+After the approaches round, read back to the user: the goal, the scope, and each assumption (an `(assumed)` line) from the draft. Then write the whole spec to `docs/rolepod/specs/<feature>-YYYY-MM-DD.md` (optional `-vN` / `-draft`). Run Self-review and the spec-lint on the file, then point the user to it. Accept → `write-plan`; edit → patch and ask again; reject → stop. One gate, on the file.
 
 The user reads the file: it shows word drift, omitted edge cases, and second thoughts on the shape.
 
-**Spec-lint**: `grep -niE '\[\[FILL:|TODO|TBD' <spec>` must print nothing. A printed line is a lint failure.
+**Spec-lint**: `grep -niE '\[\[FILL:|TODO|TBD' <spec>` must print nothing; so must the anchor check `for h in 'Non-goals' 'Current behavior' 'Desired behavior' 'Success criteria'; do grep -q "^## $h" <spec> || echo "missing ## $h"; done` (the next repeat-feature spec seeds from these four headings). A printed line or a grep error is a lint failure.
 
-Fill `templates/spec-template.md` (12 headings: Goal, User / actor, Non-goals, Current behavior, Desired behavior, Success criteria, Testing decisions, Constraints, High-risk surfaces, Chosen approach, Rejected approaches, Open questions). Keep the decision contract: goal, desired behavior, acceptance, testing, risk, chosen contract, open decisions. For an existing change, record current behavior and affected consumers.
+Fill `templates/spec-template.md`. Keep the decision contract: goal, desired behavior, acceptance, testing, risk, chosen contract, open decisions. Write the spec in the user's language; headings, labels, file paths and commands stay verbatim. For an existing change, record current behavior and affected consumers.
 
 A new decision requires the user's answer before hand-off; never write it as approved while unresolved.
+
+Spec shapes, good and bad → `examples/spec-examples.md`; no file → the template and this step are enough.
 
 Done when: spec-lint prints nothing, spec is saved and confirmed.
 
