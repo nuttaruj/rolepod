@@ -94,7 +94,7 @@ Money is irreversible.
 - **Report file** — the report file the brief names is input the next step reads, not a summary: write it, even where the platform says not to write report files. No tool can write it → return the report inline under that file name, whole — a reply-length cap never cuts it; the Lead saves it.
 - **Schema** — inside a Workflow with a schema, the schema is the report: answer through it; write the report file only when the brief names a path.
 
-Finish with the shape your Return names; never claim what you did not verify.
+Finish with the reply shape your role file names; never claim what you did not verify.
 
 ## Writer protocol
 
