@@ -49,7 +49,10 @@ for p in plans:
     # Fence rule (2026-09-28-plan-fence contract): a fenced line (opening
     # delimiter through the closing one) is literal — it never counts as an
     # open/done box or a task heading, however many the line's text spells.
-    open_n = 0; done_n = 0; nxt = None; head = ""
+    # Per task (same rule as ticket.sh plan_task_rows): done = at least one
+    # box and none open; a `## ` heading closes the task block. Running ids
+    # come from the plan's `## Status` rows.
+    tasks = []; cur = None; running = []; insec = False
     fence_ch = None; fence_len = 0
     for line in text.splitlines():
         if fence_ch is None:
@@ -61,18 +64,36 @@ for p in plans:
             if re.match(r"^ {0,3}" + re.escape(fence_ch) + "{" + str(fence_len) + ",}[ \t]*$", line):
                 fence_ch = None; fence_len = 0
             continue
-        m = re.match(r"^### ((Task ?|T)\d+.*)", line)
+        m = re.match(r"^### (?:Task ?|T)(\d+)", line)
         if m:
-            head = m.group(1).strip()
+            cur = [m.group(1), 0, 0]; tasks.append(cur); insec = False
+            continue
+        if line.startswith("## "):
+            cur = None
+            insec = bool(re.match(r"^## Status\s*$", line))
+            continue
+        if insec:
+            sm = re.match(r"^- Task (\d+) — .*: running \([^)]*\)\s*$", line)
+            if sm:
+                running.append(sm.group(1))
+            continue
+        if cur is None:
+            continue
         if re.match(r"^\s*-\s*\[\s\]", line):
-            open_n += 1
-            if nxt is None:
-                nxt = head
+            cur[1] += 1; cur[2] += 1
         elif re.match(r"^\s*-\s*\[[xX]\]", line):
-            done_n += 1
-    if open_n == 0 or done_n == 0:
+            cur[2] += 1
+    done_ids = [t[0] for t in tasks if t[2] > 0 and t[1] == 0]
+    run_ids = [i for i in dict.fromkeys(running) if i not in done_ids]
+    if not tasks or len(done_ids) == len(tasks) or (not done_ids and not run_ids):
         continue
-    out.append("**Open plan:** `%s` — %d done / %d open · next: %s" % (os.path.relpath(p, repo), done_n, open_n, (nxt or "first unchecked step")[:80]))
+    nxt = [t[0] for t in tasks if t[0] not in done_ids and t[0] not in run_ids]
+    line = "**Open plan:** `%s` — Task %d/%d done" % (os.path.relpath(p, repo), len(done_ids), len(tasks))
+    if run_ids:
+        line += " · running: " + ", ".join(run_ids)
+    if nxt:
+        line += " · next: " + nxt[0]
+    out.append(line)
     break
 log = os.path.join(repo, ".rolepod", "evidence", "phase-log.jsonl")
 if os.path.isfile(log):
