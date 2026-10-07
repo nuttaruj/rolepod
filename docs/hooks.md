@@ -20,7 +20,7 @@ The session captures `workflow.mode` (`lite` / `standard` / `full`) once at star
 
 | # | Gate | lite | standard | full |
 |---|---|---|---|---|
-| 1 | Commit stages a path under `docs/rolepod/` (unless `.rolepod/docs-tracked` exists) | deny | deny | deny |
+| 1 | Commit stages a path under `docs/rolepod/` (unless the committed repo's docs mode is tracked) | deny | deny | deny |
 | 2 | R4 (high-risk) commit with no security lens report since the last commit (`lite`: not both the spec and standards lens reports) | warn | deny | deny |
 | 3 | Session edited a high-risk path and wrote no test | warn | warn | deny |
 | 4 | Ordinary code commit with no test and no reviewer | silent | silent | deny |
@@ -86,7 +86,7 @@ On in every mode, because the gates above read them: session lock and edit regis
 
 The one hard checkpoint, at `git commit`.
 
-- **Private docs (every CLI, every mode)** — a staged path under `docs/rolepod/` → deny. Details under Private working docs below.
+- **Private docs (every CLI, every mode)** — a staged path under `docs/rolepod/` → deny unless the repo tracks working docs. Details under Private working docs below.
 - **High-risk diff (Claude only)** — a staged path matching the high-risk regex or `.rolepod/risk-paths` and no security lens report (`<task>-security.md`) written since the last commit → `lite` warns, `standard` and `full` deny. In `standard` and `full` a high-risk commit needs a security lens report since the last commit, any model; an external pass never counts. Fix: run `security-engineer`, which writes it. In `lite` (which forbids that role) the evidence is the spec and standards lens reports (`<task>-spec.md`, `<task>-standards.md`) since the last commit: both pass silently, fewer warn naming the two reports.
 - **Session risk without a test (Claude only)** — the session edited high-risk code, wrote no test, and the staged diff is not high-risk → `full` denies until a failing test is written or a reviewer has run; `lite` and `standard` warn.
 - **Ordinary code without a test or reviewer (Claude only)** — `full` denies; `lite` and `standard` stay silent.
@@ -234,9 +234,9 @@ Opt-in and off by default. Machine-wide only; no project-level override. Set in 
 - **Rounds** — externals run in round 1 only: R3 / R4 diffs run the spec and standards lenses external, Full R4 adds external adversarial; round 2+ is internal: one fresh `universal-reviewer` re-checks the fix delta (H1→H2) of every BLOCKER / MAJOR finding in one pass, whichever reviewer or external raised it (`convening-code-review` Fix-verify; at most four rounds, round 1 included). A pre-existing issue on an untouched path is one note line and never drives the verdict.
 - **At commit (Claude)** — an external pass is not read by the gate (C4, see `precommit-gate.sh`). A docs-only diff passes the gate at any size (docs are written, not reviewed — owner rule).
 
-## Private working docs — `docs/rolepod/` never commits (v2.80.0)
+## Private working docs — `docs/rolepod/` per-project choice (v2.80.0)
 
-Specs, plans, contracts and hand-off briefs under `docs/rolepod/` describe what you are building before it exists, so they are private by default. The skills add `docs/rolepod/` to `.gitignore` on the first save, and the commit gate on every CLI denies a commit that stages a path under it (the classic leak is `git add -A`). A repository that deliberately tracks them creates `<git-root>/.rolepod/docs-tracked` and the gate steps aside. ADRs under `docs/adr/` are unaffected.
+Specs, plans, contracts, hand-off briefs and running notes under `docs/rolepod/` describe what you are building before it exists, kept local to avoid noise in shared code history. Each project decides once: on the first save (`docs-mode.sh status` prints `undecided`), the session runs `docs-mode.sh ignore`, which adds `docs/rolepod/` to `.gitignore`, and asks the user once whether to track them instead. Until the repo tracks them, the commit gate on every CLI denies a staged `docs/rolepod/` path. The user's yes runs `docs-mode.sh track`, which commits a marker `.rolepod/docs-tracked` + a `.gitignore` entry for `docs/rolepod/tasks/` (run scratch, always private in either mode), and future commits include spec, plan, map and hand-off changes. ADRs under `docs/adr/` are unaffected.
 
 ## Per-repo risk-path override — `.rolepod/risk-paths`
 

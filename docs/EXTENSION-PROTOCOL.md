@@ -63,8 +63,10 @@ Children and users **should** add `.rolepod/` to their repo's `.gitignore`.
 The marker is local, persisting state, and evidence written under
 `.rolepod/evidence/` is per-run output. Neither should be committed.
 
-The parent does not modify `.gitignore` automatically — that would be
-invasive. The recommendation lives in the README.
+The parent does not modify `.gitignore` for `.rolepod/` automatically — that would be
+invasive. For `docs/rolepod/`, the session runs `docs-mode.sh` (via skills) on the first
+save to set the repo's choice: ignore (default) or track. The recommendation for `.rolepod/`
+lives in the README.
 
 ---
 

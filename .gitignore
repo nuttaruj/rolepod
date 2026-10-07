@@ -45,8 +45,8 @@ __pycache__/
 __pycache__/
 
 # rolepod working docs — specs / plans / cohesion contracts / maps / hand-offs are
-# private by default (v2.80.0): never committed. A repo that wants them tracked
-# creates .rolepod/docs-tracked and removes this line.
+# local by default (v2.80.0). This repo chose to ignore them. To track them,
+# run docs-mode.sh track and commit the marker and this line's removal.
 docs/rolepod/
 
 # Planning docs of this repo's own past work (v2.89.0) — the repo ships product
