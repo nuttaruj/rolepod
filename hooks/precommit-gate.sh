@@ -744,7 +744,6 @@ TEST_EDITS=0
 HIGH_RISK_EDITS=0
 REVIEWERS=0
 STRONG_REVIEWERS=0
-LITE_LENSES=0   # never inherited from the environment: only gate-evidence sets it
 SINCE_EPOCH=$(gitd log -1 --format=%ct 2>/dev/null || true)
 SINCE_HUMAN=$(gitd log -1 --format=%cd --date=format:'%Y-%m-%d %H:%M' 2>/dev/null || true)
 # Linked worktree (v2.153.0, R4): "since the last commit" follows the
@@ -796,10 +795,9 @@ if [ -f "$SESSION_STATE" ] && command -v python3 >/dev/null 2>&1; then
   # check above already excluded every other CLI).
   GATE_EV=$(printf '%s' "$INPUT" | python3 "$SESSION_STATE" gate-evidence "$DIFF_DIR" 2>/dev/null || true)
   if [ -n "$GATE_EV" ]; then
-    read -r TEST_EDITS HIGH_RISK_EDITS REVIEWERS STRONG_REVIEWERS LITE_LENSES <<< "$GATE_EV"
+    read -r TEST_EDITS HIGH_RISK_EDITS REVIEWERS STRONG_REVIEWERS _ <<< "$GATE_EV"
   fi
 fi
-LITE_LENSES=${LITE_LENSES:-0}
 TEST_EDITS=${TEST_EDITS:-0}
 HIGH_RISK_EDITS=${HIGH_RISK_EDITS:-0}
 REVIEWERS=${REVIEWERS:-0}
@@ -849,8 +847,11 @@ except Exception:
 # Which gate judges this commit, then what the mode table does with it. A
 # a high-risk staged path, or session risk edits (even when the final diff is
 # small), with no test edit is risk-no-test; a plain commit with no evidence
-# is code-no-test. silent = no block and no warning. No review-report check.
-if { [ -n "$HIGH_RISK" ] || [ "$HIGH_RISK_EDITS" -gt 0 ]; } && [ "$TEST_EDITS" -eq 0 ]; then GATE_ID=risk-no-test
+# is code-no-test. silent = no block and no warning. A hard block on either
+# clears on a test edit or a lens report since the last commit (AUTO_PASS below).
+# A high-risk commit with a test edit is its own silent path (gate id none): never code-no-test.
+if [ -n "$HIGH_RISK" ] || [ "$HIGH_RISK_EDITS" -gt 0 ]; then
+  if [ "$TEST_EDITS" -eq 0 ]; then GATE_ID=risk-no-test; else GATE_ID=none; fi
 else GATE_ID=code-no-test; fi
 GATE_ACT=$(rolepod_gate_action "$GATE_ID")
 # deny reads "precommit-gate BLOCKED. … then retry"; warn follows C4:
@@ -866,12 +867,8 @@ REASON+="Evidence ($SINCE_HUMAN): $TEST_EDITS tests, $HIGH_RISK_EDITS risk edits
 # C4 (review-finish-lean, 2026-09-30): fact → Fix → Exception, the rule word
 # for word; no pool, no external anchor, no model check.
 #
-if [ "$GATE_ID" = risk-no-test ]; then
-  REASON+="Fix: write the failing test${FIX_TAIL}"
-elif [ -z "$HIGH_RISK" ]; then
-  # code-no-test (full only): TEST_EDITS==0 AND REVIEWERS==0 reached here.
-  REASON+="Fix: write the failing test, or run a lens (spec, standards, security) that writes its report. "
-fi
+# risk-no-test / code-no-test reach here with TEST_EDITS==0 AND REVIEWERS==0 in Full.
+REASON+="Fix: write the failing test, or run a lens (spec, standards, security) that writes its report${FIX_TAIL}"
 REASON+="Exception: auto-passes once evidence exists SINCE THE LAST COMMIT; worktree review → commit there, a patch carries no evidence."
 
 # Decide: HARD block vs SOFT warn
@@ -880,8 +877,7 @@ HARD_BLOCK=0
 
 # Evidence auto-pass — a would-block commit passes directly when the session
 # already shows gate evidence; the evidence check is the real guard.
-# risk-no-test has no auto-pass (a test edit makes it silent). code-no-test in
-# full → ≥1 test edit or ≥1 lens report file: delegated sessions route
+# risk-no-test / code-no-test in full → ≥1 test edit or ≥1 lens report file: delegated sessions route
 # test-writing into subagents whose edits land in the child transcript,
 # so a lens report is often the only evidence the Lead's own transcript
 # can show (a -perf / -ui / -arch report counts 0). Every
@@ -898,8 +894,7 @@ fi
 
 AUTO_PASS=0
 if [ "$HARD_BLOCK" -eq 1 ]; then
-  # risk-no-test already means 0 test edits: only code-no-test can auto-pass.
-  if [ "$GATE_ID" = code-no-test ] && { [ "$TEST_EDITS" -gt 0 ] || [ "$REVIEWERS" -gt 0 ]; }; then
+  if [ "$TEST_EDITS" -gt 0 ] || [ "$REVIEWERS" -gt 0 ]; then
     AUTO_PASS=1
   fi
 fi

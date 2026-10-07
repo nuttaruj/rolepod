@@ -92,8 +92,9 @@ Done when: the final review is closed or ruled, or none is due.
 ## Guardrails
 
 - Run continuously between tasks: stop only on a `BLOCKED` after a variable change, or a spec / plan gap that survives a re-read. Never ask 'should I continue?'; an ended turn is a stop however it is worded.
-- Every dispatch out and nothing unblocked → end the turn on something whose end wakes you, closing with the `ticket.sh status <plan>` output (no script → the same list, one line per task). Opening a PR → load `finish-work` first; no `finish-work` → one checks watch, no poll.
-- Forced to end → one `## Changes during build` line: stopped after Task N · next Task M · how to start the env. A wait offers /compact only as a context-check relay (`manage-context`; none → one ~100-char line naming the plan and the next step).
+- Every dispatch out and nothing unblocked → end the turn on something whose end wakes you, closing with the `ticket.sh status <plan>` output (no script → one line per task). Opening a PR → load `finish-work` first; no `finish-work` → one checks watch, no poll.
+- Forced to end → one `## Changes during build` line: stopped after Task N · next Task M · how to start the env. A wait offers /compact only as a context-check relay (`manage-context`; none → one ~100-char line: plan + next step).
+- Whole suite: once per release, by you.
 - A new idea → one `## Follow-ups` line, never a mid-build redesign; a follow-up inside the approved spec → a new task, tiered and dispatched.
 
 ## Next phase

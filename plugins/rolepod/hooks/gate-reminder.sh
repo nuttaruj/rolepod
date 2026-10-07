@@ -1,7 +1,6 @@
 #!/bin/bash
-# PreToolUse(Edit|Write|MultiEdit) — HARD-block edits that violate
-# discipline rules + soft-warn on high-risk path edits. Normal code edits
-# are silent here (the per-edit Q1-Q4 reminder was cut for cost).
+# PreToolUse(Edit|Write|MultiEdit) — the review-in-flight advisory only. Every
+# other edit, high-risk paths included, is silent here.
 #
 # Default tiering:
 #   Trivial path (docs/configs/lockfiles)             → silent
@@ -9,10 +8,9 @@
 #   Review in flight: live detached cross-family    → one advisory line, never a deny —
 #     job + edit to a file its diff touches (v2.93.0)   the job reads the tree live; an
 #                                                       early edit voids its verdict
-#   High-risk path                      → silent: the R4 review is the track-end
-#     review, so no commit-block or lens-report line (precommit-gate.sh only
-#     judges risk-no-test). Never a deny (v2.47.0): edit-time HARD blocks were
-#     the measured reason users turn the gates off for good.
+#   High-risk path → silent: the R4 review is the track-end review. Never a deny
+#     (v2.47.0): edit-time HARD blocks were the measured reason users turn the
+#     gates off for good.
 #
 # Every mode runs the hook.
 set -euo pipefail
@@ -31,30 +29,6 @@ xfam_runner() {
     [ -f "$d/cross-family.sh" ] && { (cd "$d" && printf '%s/cross-family.sh' "$(pwd)"); return 0; }
   done
   return 0
-}
-
-# Per-repo risk-path override: <git-root>/.rolepod/risk-paths — one ERE per
-# line; bare/+ lines ADD high-risk patterns, - lines EXCLUDE paths from the
-# built-in match, # comments. Absent file = built-ins only (fail-open).
-# stdin: candidate paths (one per line); $1: built-in ERE → stdout: hits.
-risk_filter() {
-  _rf_cfg="$(git rev-parse --show-toplevel 2>/dev/null)/.rolepod/risk-paths"
-  _rf_add=""; _rf_excl=""
-  if [ -f "$_rf_cfg" ]; then
-    _rf_add=$(sed -e 's/#.*//' -e '/^[[:space:]]*$/d' -e '/^-/d' -e 's/^+//' "$_rf_cfg" 2>/dev/null | paste -sd'|' - 2>/dev/null || true)
-    _rf_excl=$(sed -e 's/#.*//' -e '/^[[:space:]]*$/d' "$_rf_cfg" 2>/dev/null | grep '^-' 2>/dev/null | sed 's/^-//' | paste -sd'|' - 2>/dev/null || true)
-  fi
-  _rf_in=$(cat)
-  _rf_hits=$(printf '%s\n' "$_rf_in" | grep -iE "$1" 2>/dev/null || true)
-  if [ -n "$_rf_add" ]; then
-    _rf_hits="$_rf_hits
-$(printf '%s\n' "$_rf_in" | grep -iE "$_rf_add" 2>/dev/null || true)"
-  fi
-  _rf_hits=$(printf '%s\n' "$_rf_hits" | sed '/^$/d' | sort -u)
-  if [ -n "$_rf_excl" ]; then
-    _rf_hits=$(printf '%s\n' "$_rf_hits" | grep -ivE "$_rf_excl" 2>/dev/null || true)
-  fi
-  printf '%s\n' "$_rf_hits" | sed '/^$/d'
 }
 
 # Bypass accountability: a used bypass is recorded to .rolepod/evidence/bypass.log
@@ -118,8 +92,7 @@ EOF
 # on Codex: disjoint tool-name sets).
 echo "$TOOL" | grep -qE '^(Edit|Write|MultiEdit|NotebookEdit|apply_patch)$' || exit 0
 
-# Repo-relative normalization (breaker round 2, item 1): every classification
-# check below (COMMIT_TEST_EXEMPT / PROSE_EXEMPT / risk_filter) reads
+# Repo-relative normalization (breaker round 2, item 1): the in-flight check below reads
 # FILE_REL, not the raw FILE — a CLI's own absolute spelling must resolve
 # against the repo root the same realpath-aware way as the commit gate, or a
 # root-anchored `.rolepod/risk-paths` line (`^design_tokens/`) and an
@@ -136,49 +109,6 @@ if [ -n "$_gr2_root" ] && [ -n "$FILE" ]; then
   fi
   _gr2_rootp=$(cd "$_gr2_root" 2>/dev/null && pwd -P || printf '%s' "$_gr2_root")
   case "$_gr2_rel" in "$_gr2_rootp"/*) FILE_REL="${_gr2_rel#"$_gr2_rootp"/}" ;; "$_gr2_root"/*) FILE_REL="${_gr2_rel#"$_gr2_root"/}" ;; esac
-fi
-
-# Test files are exempt: writing the RED test on a high-risk path is the very
-# action the hard block demands, so flagging it would deadlock. Mirrors
-# session_state.py's TEST_FILE filename alternatives — byte-equivalent to the
-# commit gate's own test-name filter (precommit-gate.sh HIGH_RISK= line), so
-# a filename the gate exempts is never flagged risk here either (F4).
-COMMIT_TEST_EXEMPT=0
-if [[ "$FILE_REL" =~ \.(test|spec)\.(ts|tsx|js|jsx|mjs|cjs|py|go|rs|rb|java|kt|swift|cs|php)$ ]] \
-   || [[ "$FILE_REL" =~ (^|/)(test_[^/]*|[^/]*_test|[^/]*_spec)\.(py|go|rs|rb|php)$ ]] \
-   || [[ "$FILE_REL" =~ (^|/)[^/]*Tests?\.(java|kt|cs|swift|php|scala)$ ]]; then
-  COMMIT_TEST_EXEMPT=1
-fi
-
-# The WOULD_BLOCK line below keys off COMMIT_TEST_EXEMPT only — a bare test
-# DIRECTORY (tests/fixtures/seed_auth_users.py) is NOT filename-exempt, so it
-# still counts as high-risk: the commit gate calls a risk-term file under a
-# test directory high-risk by design (v2.85.2), and this must predict that
-# deny, not hide it (F5 / Desired 4). Strong-reviewer evidence comes from
-# session_state.py below, not from a variable here.
-
-# A prose file is never a risk path at commit either (precommit-gate.sh's
-# HIGH_RISK= line strips these by extension before risk_filter runs) — this
-# must agree, so `.cursor/rules/auth.mdc` never counts as HIGH-RISK.
-PROSE_EXEMPT=0
-if [[ "$FILE_REL" =~ \.(md|mdx|mdc|txt|rst|adoc)(\.tmpl)?$ ]] \
-   || [[ "$FILE_REL" =~ (^|/)(README|LICENSE|CHANGELOG)$ ]]; then
-  PROSE_EXEMPT=1
-fi
-
-# High-risk path flag — match on path segments only, not substrings.
-HIGH_RISK=""
-# Canonical high-risk regex — byte-for-byte the same segment/anchor set as
-# precommit-gate.sh's HIGH_RISK= line and session_state.py's HIGH_RISK_PATH, so a file cannot
-# pass at edit time and then block at commit time.
-_RISK_HIT=$(printf '%s\n' "$FILE_REL" | risk_filter '(^|/|_)(auth|authn|authz|authentication|authorization|billing|payment|payments|migration|migrations|credit|credits|permission|permissions|secret|secrets|crypto|cryptography|token|tokens|oauth|jwt|sso|saml|webhook|webhooks|stripe|paypal|charge|charges|invoice|invoices|deletion|deletions|erasure|gdpr|security)(/|\.|_|$)' | head -1 || true)
-MONEY_RISK=""
-if [ "$COMMIT_TEST_EXEMPT" -eq 0 ] && [ "$PROSE_EXEMPT" -eq 0 ] && [ -n "$_RISK_HIT" ]; then
-  HIGH_RISK=1
-  # money / auth subset — retained unused: C1 (2026-09-19) gives money / auth
-  # the same R4 floor as every high-risk path; the whole computation is a
-  # separate, out-of-scope cut.
-  MONEY_RISK=$(printf '%s\n' "$FILE_REL" | grep -iE '(^|/|_)(auth|authn|authz|authentication|authorization|billing|payment|payments|credit|credits|secret|secrets|crypto|cryptography|oauth|jwt|sso|saml|stripe|paypal|charge|charges|invoice|invoices|deletion|deletions|erasure|gdpr)(/|\.|_|$)' | head -1 || true)
 fi
 
 # Review in flight (v2.93.0): a detached cross-family job is still running

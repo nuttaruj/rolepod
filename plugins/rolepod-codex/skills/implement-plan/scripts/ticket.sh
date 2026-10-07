@@ -1235,7 +1235,11 @@ EOF
   if ! rm_out="$(git -C "$base_root" worktree remove $force_flag "$wt_root" 2>&1)"; then
     echo "ticket: finish: worktree remove failed for $wt_root (the merge into $base_branch already landed):" >&2
     printf '%s\n' "$rm_out" | tail -n 15 >&2
-    echo "ticket: finish: never --force; show \`git -C $wt_root status --porcelain -uall\`, then ask the user: commit, move or delete what it lists" >&2
+    if [ -n "$force_flag" ]; then
+      echo "ticket: finish: remove failed even with --force; show \`git -C $wt_root status --porcelain -uall\` and \`git -C $base_root worktree list\`, then ask the user" >&2
+    else
+      echo "ticket: finish: never --force; show \`git -C $wt_root status --porcelain -uall\`, then ask the user: commit, move or delete what it lists" >&2
+    fi
     exit 1
   fi
   git -C "$base_root" worktree prune >/dev/null 2>&1 || true

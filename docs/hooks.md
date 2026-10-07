@@ -21,8 +21,8 @@ The session captures `workflow.mode` (`lite` / `standard` / `full`) once at star
 | # | Gate | lite | standard | full |
 |---|---|---|---|---|
 | 1 | Commit stages a path under `docs/rolepod/` (unless the committed repo's docs mode is tracked) | deny | deny | deny |
-| 2 | Commit stages a high-risk path and the session wrote no test (no review-report check: the track-end review covers R4) | warn | warn | deny |
-| 3 | Session edited a high-risk path and wrote no test | warn | warn | deny |
+| 2 | Commit stages a high-risk path, or the session edited one, and wrote no test (a test edit, or in Full a lens report, clears it; the commit reads no other review report) | warn | warn | deny |
+| 3 | (merged into row 2) | — | — | — |
 | 4 | Ordinary code commit with no test and no reviewer | silent | silent | deny |
 | 5 | Sub-agent runs `git commit`, `git push` (incl. `--force`), `git reset --hard`, `gh pr create` or `gh pr merge` | deny | deny | deny |
 | 6 | Sub-agent cannot-wait rules, all five shapes (listed under `block-subagent-commit.sh`) | deny | deny | deny |
@@ -58,7 +58,7 @@ Every mode warns the way `standard` does; `lite` no longer skips them:
 
 ### Group C — silent records
 
-On in every mode, because the gates above read them: session lock and edit registry (gate 11), dispatch log (evidence for gate 2), route record, the `phase: gate` row, the captured session profile and the config bootstrap. At session start, profile files older than 14 days are deleted.
+On in every mode, because the gates above read them: session lock and edit registry (gate 11), dispatch log (stats feed), route record, the `phase: gate` row, the captured session profile and the config bootstrap. At session start, profile files older than 14 days are deleted.
 
 ## Event coverage (Claude)
 
@@ -87,7 +87,7 @@ On in every mode, because the gates above read them: session lock and edit regis
 The one hard checkpoint, at `git commit`.
 
 - **Private docs (every CLI, every mode)** — a staged path under `docs/rolepod/` → deny unless the repo tracks working docs. Details under Private working docs below.
-- **High-risk without a test (Claude only)** — a staged path matching the high-risk regex or `.rolepod/risk-paths`, or a session that edited high-risk code, and 0 test edits since the last commit → `full` denies until a failing test is written; `lite` and `standard` warn. The commit never checks a review report: R4 is reviewed once, at the track end (`implement-plan`, `convening-code-review`).
+- **High-risk without a test (Claude only)** — a staged path matching the high-risk regex or `.rolepod/risk-paths`, or a session that edited high-risk code, and 0 test edits since the last commit → `full` denies until a failing test is written or a reviewer has run (a lens report since the last commit); `lite` and `standard` warn. A test edit makes it silent with no log row. Beyond that the commit never checks a review report: R4 is reviewed once, at the track end (`implement-plan`, `convening-code-review`).
 - **Ordinary code without a test or reviewer (Claude only)** — `full` denies; `lite` and `standard` stay silent.
 - **Everything else** — silent. `test-diff-lint` findings, when present, print as one line in every mode. Each judged commit appends a `phase: gate` row that `scripts/ticket.sh log` in `implement-plan` copies into the plan.
 - **What counts as high-risk** — the path regex (auth / billing / payment / migration / secret / crypto / token / oauth / webhook … — canonical list in the script, parity-pinned by lean-surface) plus `.rolepod/risk-paths`. Test-named files (`*.test.*`, `test_*.py`, `*_test.go` …) and prose files never count. A bare directory name (`tests/`, `spec/`) is not an exemption.
