@@ -388,26 +388,30 @@ END {
 # sel = comma list of perf / ui / arch (Standard / Full R2 and R3 only).
 # shellcheck disable=SC2016
 RSET_AWK='
-function rsetcell(mode, tier, sel,   lens, spec, n, i, k, ids, roles, out) {
-  lens = "`universal-reviewer` `lens: spec` + `universal-reviewer` `lens: standards`"
+function rsetcell(mode, tier, sel,   lens, spec, n, i, k, ids, out, sk) {
+  lens = "`rolepod-reviewer` `lens: spec` + `rolepod-reviewer` `lens: standards`"
+  sk = ENVIRON["RP_SKILLS_DIR"]
   if (tier == "R1") return "`none`"
   if (mode != "standard" && mode != "full") return lens
   if (tier == "R4") {
-    if (mode == "standard") return "`security-engineer` (depth: checklist) + " lens
-    return "`security-engineer` (depth: full) + " lens " + the adversarial pass: with a usable pool the `cross-family` skill runner (`bash <cross-family skill folder>/scripts/cross-family.sh --kind review --adversarial --brief <this brief> --attach <diff> --detach`) then `--collect <job> --timeout 540` in the foreground (exit 6 = still running: run it again), else `adversarial-reviewer` (internal, only if the external fails) — the external --detach first, then the rest in ONE message"
+    if (mode == "standard") return "`rolepod-reviewer` `lens: security` (depth: checklist, model: strong, skill: `" sk "/security-review/SKILL.md`) + " lens
+    return "`rolepod-reviewer` `lens: security` (depth: full, model: strong, skill: `" sk "/security-review/SKILL.md`) + " lens " + the adversarial pass: with a usable pool the `cross-family` skill runner (`bash <cross-family skill folder>/scripts/cross-family.sh --kind review --adversarial --brief <this brief> --attach <diff> --detach`) then `--collect <job> --timeout 540` in the foreground (exit 6 = still running: run it again), else `rolepod-reviewer` `lens: adversarial` (model: strong, skill: `" sk "/adversarial-review/SKILL.md`; internal, only if the external fails) — the external --detach first, then the rest in ONE message"
   }
   n = split("perf ui arch", ids, " ")
-  roles["perf"] = "performance-engineer"; roles["ui"] = "ui-ux-designer"; roles["arch"] = "system-architect"
   out = ""
   for (i = 1; i <= n; i++) {
     k = ids[i]
-    if (index("," sel ",", "," k ",")) out = (out == "" ? "" : out " + ") "`" roles[k] "`"
+    if (index("," sel ",", "," k ",")) out = (out == "" ? "" : out " + ") "`rolepod-reviewer` `lens: " k "`"
   }
-  spec = "each matched specialist (`performance-engineer` · `ui-ux-designer` · `system-architect`, when its row matches)"
+  spec = "each matched specialist (`rolepod-reviewer` `lens: perf` · `lens: ui` · `lens: arch`, when its row matches)"
   if (tier == "R2") return (out == "" ? lens : lens " + " out)
   return lens " + " (out == "" ? spec : out)
 }
 '
+# The skills folder, resolved from where this script lives (repo core/skills,
+# a .worktrees checkout or the installed plugin copy); rsetcell prints paths under it.
+RP_SKILLS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+export RP_SKILLS_DIR
 
 # The task-tag grammar of a contract File-ownership label — one home, used by
 # --brief and by the L1 contract lint (prepended to each awk program).
@@ -1206,7 +1210,7 @@ if (planwt == 1) tpath = substr(tbranch, 1, length(tbranch) - 5)
       while ((pcmd | getline pl) > 0) if (pl == "enabled=on") { xpool = 1; break }
       close(pcmd)
     }
-    if (xpool == 1 && (tier == "R3" || tier == "R4")) c2 = "Pool on → each lens runs external instead: `bash <cross-family skill folder>/scripts/cross-family.sh --kind review --lens spec --brief <this brief> --attach <diff> --detach`, the same with `--lens standards`, then `--collect <job> --timeout 540` for each in the foreground (exit 6 = still running: run it again); a lens whose run fails, comes back weak or is refused → `universal-reviewer` with that lens, same round."
+    if (xpool == 1 && (tier == "R3" || tier == "R4")) c2 = "Pool on → each lens runs external instead: `bash <cross-family skill folder>/scripts/cross-family.sh --kind review --lens spec --brief <this brief> --attach <diff> --detach`, the same with `--lens standards`, then `--collect <job> --timeout 540` for each in the foreground (exit 6 = still running: run it again); a lens whose run fails, comes back weak or is refused → `rolepod-reviewer` with that lens, same round."
     print "## Reviewers"
     # One cell of the review set (rsetcell, C61) for the only code task
     # of its track; any other R2 / R3 / R4 task is covered by its track-end review.

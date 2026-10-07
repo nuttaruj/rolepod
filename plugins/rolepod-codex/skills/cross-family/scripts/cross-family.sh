@@ -910,7 +910,7 @@ one() { # $1 cli → 0 ok / 1 fail; writes $TMPP/$1.{out,err,line,jsonl} — the
     fi
     printf '%s\n' "{\"ts\":\"$(iso_now)\",\"phase\":\"$PHASE\",\"reviewer\":\"external\",\"kind\":\"$KIND\",\"cli\":\"$_c\",\"family\":\"$_f\",\"model\":\"default\",\"raw\":\"$_raw\",\"lead\":\"$LEAD\",\"secs\":$_secs,\"budget\":$TIMEOUT,\"brief_sha\":\"$BRIEF_SHA\"${JOB_ID_TAG:+,\"job\":\"$JOB_ID_TAG\"}${_partial:+,\"partial\":true}${_ran:+,\"ran\":\"$(jesc "$_ran")\"}$_modetag}" > "$TMPP/$_c.jsonl"
     : > "$TMPP/$_c.line"
-    [ "$KIND" = "review" ] && echo 'ROLEPOD-XFAM note: this pass is external and runs in round 1 only; round 2+ is ONE fresh internal universal-reviewer on the fix delta (convening-code-review Fix-verify), never a new external run.' >> "$TMPP/$_c.line"
+    [ "$KIND" = "review" ] && echo 'ROLEPOD-XFAM note: this pass is external and runs in round 1 only; round 2+ is ONE fresh internal rolepod-reviewer on the fix delta (convening-code-review Fix-verify), never a new external run.' >> "$TMPP/$_c.line"
     printf 'ROLEPOD-XFAM ok kind=%s cli=%s family=%s raw=.rolepod/evidence/%s secs=%s budget=%ss%s%s%s\n' "$KIND" "$_c" "$_f" "$_raw" "$_secs" "$TIMEOUT" "$_partial" "${_ran:+ ran=$_ran}" "${LENS:+ lens=$LENS}" >> "$TMPP/$_c.line"
     return 0
   fi
