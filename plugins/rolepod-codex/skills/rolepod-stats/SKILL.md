@@ -1,6 +1,7 @@
 ---
 name: rolepod-stats
 description: Use when user asks for rolepod stats; user wants evidence report; user seeks tier distributions; user asks for verify verdicts; user wants review outcomes; user asks which models ran
+disable-model-invocation: true
 ---
 
 # Rolepod Stats
@@ -10,7 +11,7 @@ One project's evidence log and transcripts → a few compact tables.
 ### 1. Run the script
 
 Run `bash <this skill's folder>/scripts/stats.sh` from the project root (`$1` overrides the git root); never `cd` into the skill folder.
-One run prints every table: tiers, verify and review verdicts, strong dispatches, the gate, write-scope and external-verdict tables, and on Claude Code the models that ran — the Lead's turns and the subagent turns, kept apart. Its header names each data source. On another CLI the transcript tables are skipped; external CLIs never appear in transcripts.
+One run prints every table: tiers, verify and review verdicts, strong dispatches, the gate, write-scope and external-verdict tables, and on Claude Code the models that ran — the Lead's turns and the subagent turns, kept apart. On another CLI the transcript tables are skipped; external CLIs never appear in transcripts.
 
 Done when: the tables are in hand, or the script printed "no data" with the paths it read.
 

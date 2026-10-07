@@ -1,6 +1,6 @@
 ---
 name: cross-family
-description: Use when a calling skill names a cross-family kind (review, critique, consult); the user asks another CLI for a second opinion or review of a diff, spec or bug; the user asks to set up or change the cross-family pool.
+description: Use when a skill names a cross-family kind (review, critique, consult), the user wants another CLI's opinion or review, or asks to set up or change the pool.
 ---
 
 # Cross-family — another CLI's opinion, one command

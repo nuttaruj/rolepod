@@ -1,6 +1,6 @@
 ---
 name: convening-code-review
-description: Use when the user asks to review a diff, branch or PR, or a track ends; a built diff needs its review round ordered — freeze it, pick the reviewer set, dispatch, take the reports, run Fix-verify.
+description: Use when the user asks to review a diff, branch or PR, or a track ends; a built diff needs its review round ordered.
 ---
 
 # Convening Code Review
