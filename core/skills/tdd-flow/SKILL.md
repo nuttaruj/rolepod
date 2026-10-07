@@ -9,13 +9,12 @@ Turns one logic slice into a test that was red before the change and is green af
 
 ## Skip when
 
-- Prose, a rename, config or doc text → evidence-after (step 1); no test.
 - User-visible behaviour (a screen, a flow, an API contract end to end) → `rolepod-qa`'s E2E, named in the plan's Test line; never fake it with a unit test.
 
 ### 1. Pick the discipline by risk
 
-Test-first — the failing test comes BEFORE the code — for a bug fix, new business logic, auth / permission (the deny path before the allow path), billing / credits / payment (the money math), a migration or backfill (forward + rollback), and concurrency (the interleaving the bug needs).
-Evidence-after — make the change, then prove it — for UI copy or styling (a browser observation), config / infra (smoke + restart), docs (render + link check), a typecheck-safe rename (the suite green after, no assertion weakened), and wiring or CRUD pass-through with no rule of its own (the suite green plus one smoke through the path).
+Test-first for a bug fix, new business logic, auth / permission (the deny path before the allow path), billing / credits / payment (the money math), a migration or backfill (forward + rollback), and concurrency (the interleaving the bug needs).
+Evidence-after for UI copy or styling (a browser observation), config / infra (smoke + restart), docs (render + link check), a typecheck-safe rename (the suite green after, no assertion weakened), and wiring or CRUD pass-through with no rule of its own (the suite green plus one smoke through the path).
 In doubt on a risk surface → test-first.
 
 Done when: the slice is labelled test-first or evidence-after; evidence-after hands straight to the Next phase.
@@ -24,12 +23,11 @@ Done when: the slice is labelled test-first or evidence-after; evidence-after ha
 
 Tests go only at an agreed seam, taken in this order: the plan task's seam (the spec's Testing decisions, or a planner-added one) → neither (no spec, no plan) → pick the highest existing seam that reaches the behavior and state it (`Seam: <interface>`) before any test; brand-new code with no existing seam → the new code's public interface, stated the same way.
 Highest = closest to the caller while still reaching the behavior; the fewest seams; an existing seam over a new one.
-The seam is the public interface a caller uses; the test goes there, never at internals.
 A seam's interface is everything a caller must know: the signature plus its invariants, ordering, error modes and required config. The test asserts those, not the type alone.
 Match the seam to the dependency: pure logic → a unit test through the interface; clock / random / filesystem / env → inject it and fake it (a fixed clock, a temp dir); your own DB or queue → an integration test against a real local instance; a third-party API → a contract test on a recorded response plus one live smoke.
-A seam exists but none reaches the real behaviour (only a shallow single-caller test fits) → that is the finding: record it and stop; a test at a too-shallow seam is false confidence.
+No seam reaches the real behaviour at a practical cost (only a shallow single-caller test fits, or it needs broad harness setup or production-only state) → no new test: prove it with the closest executable check (a repro command or script, a log assertion, a browser observation), red before the change and green after, and record the missing seam under `## Follow-ups`; a test at a too-shallow seam is false confidence. An R4 floor case stays a finding that stops the slice.
 
-Done when: the agreed seam is stated with the interface contents the test will assert, or the missing seam is recorded.
+Done when: the agreed seam is stated with the interface contents the test will assert, or the closest executable check is named and the missing seam recorded.
 
 ### 3. Write one failing test
 
@@ -50,7 +48,6 @@ Done when: the test exists at the seam and asserts the exact expected value.
 
 Run the one test. Red = it runs and fails on its named assertion.
 A collection / import error, a skip or a 0-test run is not red: fix the harness and rerun.
-Green before the code exists → the assertion is weak or the test misses the code: tighten it.
 This run is the slice's red proof while no test file has changed since; a test file changed → remove the fix once, see the test red, restore it (`references/red-proof.md` runs it as one command; no file → in place), and that run is the red proof.
 
 Done when: the run shows the named assertion failing.
@@ -58,7 +55,6 @@ Done when: the run shows the named assertion failing.
 ### 5. Smallest change to green
 
 - The smallest change that turns the test green, at the root; no "while I'm here" edits.
-- Checks per edit and the Command follow `implement-plan`'s Prove; no `implement-plan` → the narrowest covering check after each edit, the task's Command once before returning.
 
 Done when: the new test is green and the checks covering the edited files pass; back to step 3 for the next behavior; after the last one, the task's Command passes.
 
@@ -66,8 +62,7 @@ Done when: the new test is green and the checks covering the edited files pass; 
 
 - Weak assertion = still green after a one-character regression. High-risk logic: flip one operator in a throwaway worktree; nothing red → tighten.
 - Skip a test whose failure an existing test already catches.
-- A test at a seam nobody agreed, or an edge / error / race case with no reason → a finding: drop it, or record it under `## Follow-ups`.
-- Implementation-coupled (reaches past the interface or mocks an internal), tautological (asserts what it set up) or wording-pinned tests → rewrite at the seam.
+- Would it still pass if every function it imports returned `undefined`? Then it observes nothing. That covers an implementation-coupled test (reaches past the interface, or only checks that a mock was called), a tautological one (asserts what it set up, or the expected value comes from the code under test), a constant pin (restates a config value or table row) and a wording-pinned one → rewrite at the seam with a literal expected value, or delete it.
 
 Done when: every new test survives the flip and sits at the seam.
 
