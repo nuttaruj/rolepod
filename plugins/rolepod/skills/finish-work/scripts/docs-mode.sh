@@ -87,7 +87,7 @@ put_file() {
   if [ ! -f "$ROOT/$rel" ] || [ "$(cat "$ROOT/$rel")" != "$content" ]; then
     printf '%s\n' "$content" > "$ROOT/$rel"
   fi
-  g add -f -- "$rel"
+  g add -f -- "$rel" || { echo "docs-mode.sh: git add failed: $rel" >&2; exit 1; }
 }
 
 do_track() {
@@ -106,7 +106,7 @@ do_track() {
     exit 3
   fi
   [ -z "$bak" ] || rm -f "$bak"
-  [ "$had" = 0 ] || g add -- .gitignore
+  [ "$had" = 0 ] || g add -- .gitignore || { echo "docs-mode.sh: git add failed: .gitignore" >&2; exit 1; }
   put_file "$MARKER" tracked
   put_file "$TASKS_GI" "$(printf '*\n!.gitignore')"
   tasks_hint
@@ -114,8 +114,10 @@ do_track() {
 }
 
 do_ignore() {
-  local before gi="$ROOT/.gitignore" v src
+  local before gi="$ROOT/.gitignore" v src dirty=0
   before=$(do_status)
+  # .gitignore already differs from HEAD: the edit below joins that change in the printed commit.
+  if g rev-parse -q --verify HEAD >/dev/null && ! g diff --quiet HEAD -- .gitignore; then dirty=1; fi
   if g ls-files --error-unmatch -- "$MARKER" >/dev/null 2>&1; then g rm -q -f -- "$MARKER"
   else rm -f "$ROOT/$MARKER"; fi
   v=""
@@ -131,13 +133,17 @@ do_ignore() {
   if [ -z "$src" ]; then
     if [ -s "$gi" ] && [ -n "$(tail -c 1 "$gi")" ]; then printf '\n' >> "$gi"; fi   # no final newline: the append would corrupt the last rule
     printf '%s\n' "$RULE" >> "$gi"
-    g add -- .gitignore
+    g add -- .gitignore || { echo "docs-mode.sh: git add failed: .gitignore" >&2; exit 1; }
   fi
+  local pre=""
   if [ "$before" = undecided ]; then
-    print_commit "Tell the user: docs/rolepod/ stays out of git by default; answer track to commit it."
-  else
-    print_commit ""
+    pre="Tell the user: docs/rolepod/ stays out of git by default; answer track to commit it."
   fi
+  if [ "$dirty" = 1 ]; then
+    [ -z "$pre" ] || pre="$pre"$'\n'
+    pre="${pre}note: .gitignore already had uncommitted changes; they join the commit below."
+  fi
+  print_commit "$pre"
 }
 
 # Tree id of <rev> (default: the working tree as `git add -A` sees it) without

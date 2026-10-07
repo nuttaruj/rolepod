@@ -642,9 +642,21 @@ FILES_CHANGED=$(echo "$DIFF_STAT" | wc -l | tr -d ' ')
 # folded in — `git diff HEAD --name-only` alone does NOT list untracked
 # files, so a brand-new UNSTAGED docs/rolepod/x.md silently passed this
 # check (caught while wiring the opencode adapter onto this same script).
-PRIVATE_DOCS=$( { printf '%s\n' "$DIFF_STAT" | awk -F'\t' 'NF>=3{print $3}' | grep -E '^docs/rolepod/' || true; } | head -5 | tr '\n' ' ' | sed 's/ *$//')
+PRIVATE_DOCS_ALL=$( { printf '%s\n' "$DIFF_STAT" | awk -F'\t' 'NF>=3{print $3}' | grep -E '^docs/rolepod/' || true; })
+PRIVATE_DOCS=$(printf '%s' "$PRIVATE_DOCS_ALL" | head -5 | tr '\n' ' ' | sed 's/ *$//')
 if [ -n "$PRIVATE_DOCS" ] && [ "$DOCS_STATE" != tracked ] && [ "$(rolepod_gate_action private-docs)" = deny ]; then
-  ROLEPOD_HOOK_MSG="precommit-gate BLOCKED — working docs staged: $PRIVATE_DOCS, and this repo has not chosen to track them. Fix: git restore --staged docs/rolepod, then docs-mode.sh ignore and the commit it prints, unless the user chose track (docs-mode.sh track, which commits .rolepod/docs-tracked)." python3 -I -c "
+  # Deny text <= 600 chars for any staged list: list the first paths that fit, then "+N more".
+  if [ -f "$_pd_lib" ]; then _pd_cmd="bash $(cd "$(dirname "$_pd_lib")" && pwd)/docs-mode.sh"
+  else _pd_cmd="bash <implement-plan skill dir>/scripts/docs-mode.sh"; fi
+  _pd_total=$(printf '%s\n' "$PRIVATE_DOCS_ALL" | grep -c .)
+  _pd_msg=""
+  for _pd_show in 3 2 1 0; do
+    _pd_list=$(printf '%s\n' "$PRIVATE_DOCS_ALL" | head -n "$_pd_show" | tr '\n' ' ' | sed 's/ *$//')
+    [ "$_pd_total" -gt "$_pd_show" ] && _pd_list="${_pd_list:+$_pd_list }+$((_pd_total - _pd_show)) more"
+    _pd_msg="precommit-gate BLOCKED — working docs staged: $_pd_list, and this repo has not chosen to track them. Fix: git restore --staged docs/rolepod, then $_pd_cmd ignore and the commit it prints, unless the user chose track ($_pd_cmd track)."
+    [ "${#_pd_msg}" -le 600 ] && break
+  done
+  ROLEPOD_HOOK_MSG="$_pd_msg" python3 -I -c "
 import json, os
 print(json.dumps({'hookSpecificOutput': {'hookEventName': 'PreToolUse', 'permissionDecision': 'deny', 'permissionDecisionReason': os.environ.get('ROLEPOD_HOOK_MSG', '')}}))
 " 2>/dev/null || echo '{}'

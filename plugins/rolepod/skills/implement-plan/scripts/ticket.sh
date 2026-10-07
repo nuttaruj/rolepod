@@ -69,7 +69,8 @@
 #     writer puts `## Status` before the plan's first `## ` heading.
 #
 #   ticket.sh review-diff start <name> [-- <path>...]
-#     In the current git checkout: `git add -A` (with `-- <path>...`: only
+#     In the current git checkout: `git add -A` then `git reset -q -- docs/rolepod`
+#     (docs never stage; with `-- <path>...`: only
 #     those paths, new files under them included, nothing else staged; a path
 #     is literal and relative to the checkout root — a missing one is skipped
 #     with a stderr note, none left, or a ":"/"."/".."/absolute one -> exit 2,
@@ -83,7 +84,8 @@
 #     -> whole tree and a third line `limitation: whole-tree diff — ...`. An
 #     empty diff -> "ticket: review-diff: empty diff" on stderr, exit 1, no file.
 #   ticket.sh review-diff delta <name> <H1-tree> <k> [-- <path>...]
-#     <k> is 2, 3 or 4; `git add -A` (or `-- <path>...` only); H2 = `git
+#     <k> is 2, 3 or 4; `git add -A` then `git reset -q -- docs/rolepod` (or
+#     `-- <path>...` only, staged as named); H2 = `git
 #     write-tree`; writes
 #     .rolepod/evidence/review/<name>-r<k>.diff = `git diff <H1-tree> <H2> -U10`
 #     over the same pathspec; prints `diff: <absolute path>` then `H2: <tree>`.
@@ -1471,7 +1473,7 @@ EOF
   if [ -n "$DOCS_MODE" ] && [ -n "$log_root" ] \
     && ! plan_task_rows "$plan" | awk -F "$ROW_FS" 'NF && $4 != "1" { f = 1 } END { exit !f }' \
     && [ "$(bash "$DOCS_MODE" -C "$log_root" status 2>/dev/null)" = "tracked" ]; then
-    echo "phase end: git add -- docs/rolepod && git commit -m 'docs: $(basename "$plan")'"
+    echo "phase end: git add -- docs/rolepod && git commit -m 'docs: $(basename "$plan")' -- docs/rolepod"
   fi
 
   # Track end (spec worktree-track-2026-09-30, implement-plan Review): when
@@ -1609,7 +1611,8 @@ cmd_status() {
 # The one home of the frozen review diff, the H1 / H2 tree and the fix delta
 # `convening-code-review` hands its reviewers. Stages the whole tree (`git add -A`, as
 # every review round always did, then `git reset -q -- docs/rolepod`, the only reset:
-# docs never stage) or, with `-- <path>...`, only those paths; never commits,
+# docs never stage on the whole-tree path) or, with `-- <path>...`, only those
+# paths (a named docs/rolepod path stages like any other); never commits,
 # stashes or checks out. The exclude list is review_excludes.
 RD_USAGE="usage: ticket.sh review-diff start <name> [-- <path>...] | ticket.sh review-diff delta <name> <H1-tree> <k: 2|3|4> [-- <path>...]"
 

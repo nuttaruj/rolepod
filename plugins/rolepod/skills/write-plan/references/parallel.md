@@ -13,7 +13,7 @@ Tracks group tasks that share files or are linked by **Blocked by** edges within
 
 ## The contract
 
-Fill `templates/cohesion-contract-template.md` — Shared goal · Owners · File ownership · Shared interfaces · Merge order · Do-not-touch list · Verification per agent · Integration owner · Session split (optional). Save it to `docs/rolepod/plans/<feature>-cohesion-YYYY-MM-DD.md`.
+Fill `templates/cohesion-contract-template.md`. Save it to `docs/rolepod/plans/<feature>-cohesion-YYYY-MM-DD.md` (first save: `edge-cases.md` Saving the plan).
 
 - Two parallel tracks need the same file → sequential, or rewrite the contract, then re-run `plan-lint.sh <plan> <contract>`.
 - A role that owns files in two tasks → one File ownership line per task, each tagged `<role> (T<N>)`; plan-lint fails two untagged lines for one role.

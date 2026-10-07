@@ -10,7 +10,7 @@ spec.
 
 One markdown file per effort: `docs/rolepod/maps/<effort>.md`. Question
 tickets live beside it in `docs/rolepod/maps/<effort>/q-<slug>.md`. Both
-persist across sessions under `docs/rolepod/` (`write-spec` Gate 1); they enter git according to `docs-mode.sh status`.
+persist across sessions under `docs/rolepod/`; before the first save, run `write-spec` Gate 1's first-save line.
 
 ```markdown
 # Map: <effort>
