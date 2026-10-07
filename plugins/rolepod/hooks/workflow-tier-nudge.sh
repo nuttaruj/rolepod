@@ -62,11 +62,6 @@ ti = d.get("tool_input") or {}
 lead = ss.lead_model(d.get("transcript_path") or "")
 cls = ss.model_class(lead)
 
-def ctx(msg):
-    print(json.dumps({"hookSpecificOutput": {"hookEventName": "PreToolUse",
-                                              "additionalContext": msg}}, ensure_ascii=False))
-    sys.exit(0)
-
 def _git_root():
     try:
         import subprocess

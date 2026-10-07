@@ -13,10 +13,6 @@ CWD=$(printf '%s' "$INPUT" | python3 -I -c "import sys,json; d=json.load(sys.std
 export ROLEPOD_PROJECT_ROOT="$CWD"
 cd "$CWD" 2>/dev/null || exit 0
 
-# Machine config (written once): a plugin-manager update never runs install.sh,
-# so the first session start writes ~/.rolepod/config.json when it is absent.
-# The bash test comes first, so a normal start spawns nothing; silent, fail-open.
-
 REPO=$(git rev-parse --show-toplevel 2>/dev/null) || exit 0
 NAME=$(basename "$REPO")
 BRANCH=$(git -C "$REPO" branch --show-current 2>/dev/null || echo "?")
@@ -108,34 +104,6 @@ print("\\n".join(out))
 PY
 )
 [ -n "$STATE" ] && CTX="$CTX\n\n$STATE"
-
-# Cross-family pool nudge (v2.142.0: no opt-in question — rolepod never asks
-# unprompted). Pool not on (the shared reader says so) and a second CLI installed → ONE silent context
-# line says how to set it up when the user asks. Runner locator (v2.179.0:
-# inside the cross-family skill): a plugin tree's own skills/, else the
-# source repo's core/skills/ copy — canonicalized so --candidates below
-# runs a real, quotable path.
-xfam_runner() {
-  local d
-  for d in "$(dirname "${BASH_SOURCE[0]}")/../skills/cross-family/scripts" \
-           "$(dirname "${BASH_SOURCE[0]}")/../core/skills/cross-family/scripts"; do
-    [ -f "$d/cross-family.sh" ] && { (cd "$d" && printf '%s/cross-family.sh' "$(pwd)"); return 0; }
-  done
-  return 0
-}
-_xf="$(xfam_runner)"
-_xr="$(dirname "${BASH_SOURCE[0]}")/lib/rolepod_config.py"   # the one reader; missing = no nudge (never a guess)
-_xp=""   # the reader's `configured=` line: only "no" (no pool key at all) earns the one setup line; a pool that is on or deliberately off stays silent
-[ -f "$_xf" ] && [ -f "$_xr" ] && { _xp=$(python3 -I "$_xr" pool 2>/dev/null | grep '^configured=' || true); }
-if [ -f "$_xf" ] && [ "$_xp" = "configured=no" ]; then
-  _lead="${ROLEPOD_LEAD_CLI:-}"
-  if [ -z "$_lead" ] && [ -n "${CLAUDE_PROJECT_DIR:-}${CLAUDE_PLUGIN_ROOT:-}" ]; then _lead=claude; fi
-  _cand=""
-  if [ -n "$_lead" ]; then
-    _cand=$( { bash "$_xf" --candidates --lead "$_lead" 2>/dev/null || true; } | tr '\n' ' ' | sed 's/ *$//' || true)
-  fi
-  [ -n "$_cand" ] && CTX="$CTX\n\ncross-family pool: not set (opt-in, never asked for you). When the user asks to set it up: the cross-family skill's setup steps (installed: $_cand)."
-fi
 
 # Env-pass the context so a crafted commit message / branch name cannot escape
 # the Python string literal (RCE). CTX is built with literal `\n`; convert to

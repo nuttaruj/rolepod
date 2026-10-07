@@ -875,7 +875,7 @@ HARD_BLOCK=0
 #     so a universal-reviewer dispatch is often the only evidence the Lead's
 #     own transcript can show (qa-tester counts 0 since v2.148.4). Every
 #     auto-pass is logged and surfaced as context.
-# Test-tampering lint (warn-only) — grep-able half of the writer's test self-check.
+# Test-tampering lint (warn-only) — the grep-able signals of `core/fragments/test-quality.md` (hooks/test-diff-lint.sh).
 # Runs in a subshell cd-ed to DIFF_DIR (v2.153.0): the script reads
 # `git diff --cached` off its own cwd, so it must see the resolved commit
 # directory, not the hook's.

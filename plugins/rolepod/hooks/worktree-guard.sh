@@ -50,9 +50,6 @@ rolepod_log_bypass() {
 }
 
 _rcfg="${BASH_SOURCE[0]%/*}"; [ "$_rcfg" != "${BASH_SOURCE[0]}" ] || _rcfg=.
-if [ -f "$_rcfg/lib/rolepod-config.sh" ]; then . "$_rcfg/lib/rolepod-config.sh"
-elif [ -f "$_rcfg/rolepod-config.sh" ]; then . "$_rcfg/rolepod-config.sh"
-else rolepod_cfg_load() { ROLEPOD_CFG_GATES=soft; ROLEPOD_CFG_NUDGE=on; }; fi
 
 INPUT=$(cat 2>/dev/null || echo '{}')
 . "$_rcfg/lib/session-mode.sh"
@@ -173,9 +170,6 @@ EOF2
     fi
   fi
   [ -z "$SELFDO" ] && exit 0
-  # Only an edit that would draw the note pays the config read; nudge off → silent.
-  rolepod_cfg_load
-  [ "$ROLEPOD_CFG_NUDGE" = "off" ] && exit 0
 
   # JSON built here (no python spawn): the only variable text is the
   # self-do line, and it carries no untrusted content beyond the tier /
@@ -188,7 +182,7 @@ EOF2
     if [ "$S_T" = "R2" ]; then
       MSG_SELFDO="\\u27c2 self-do: route R2 and the Lead is editing product code (0 writer-role dispatch since the route). Fix: R2 goes to a task owner on main from the 3-5 line checklist (goal, done-when, Command) \\u2014 the owner builds, verifies and runs the two review lenses; the Lead commits. Exception: the user said self-do, or this is R1-sized."
     else
-      MSG_SELFDO="\\u27c2 self-do: route $S_T, $S_N Lead edits on product code, 0 writer-role dispatch since the route. Fix: the rest goes out as a task brief to the Owner the domain map names (plan-template Owner hint: frontend-developer / backend-developer / devops-sre / content-strategist \\u2026); the Lead reads the decision brief and spot-checks one claim. Exception: the user said self-do, or this is R1-sized."
+      MSG_SELFDO="\\u27c2 self-do: route $S_T, $S_N Lead edits on product code, 0 writer-role dispatch since the route. Fix: the rest goes out as a task brief to the owner you pick from the agent listing; the Lead reads the decision brief and spot-checks one claim. Exception: the user said self-do, or this is R1-sized."
     fi
     PARTS="${PARTS:+$PARTS }$MSG_SELFDO"
   fi

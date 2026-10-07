@@ -39,18 +39,9 @@
 # v2.128.0 — one python spawn for the prompt, the context size, the session
 # id, the route freshness and the auto-resume shape (lib/session_state.py
 # prompt-state; was five spawns ≈ 200 ms of the hook's 471 ms).
-#
-# Silenced by the user's nudge setting (hooks/lib/rolepod-config.sh), read
-# only when a note would be sent.
 set -euo pipefail
 
-_rcfg="${BASH_SOURCE[0]%/*}"; [ "$_rcfg" != "${BASH_SOURCE[0]}" ] || _rcfg=.
-if [ -f "$_rcfg/lib/rolepod-config.sh" ]; then . "$_rcfg/lib/rolepod-config.sh"
-elif [ -f "$_rcfg/rolepod-config.sh" ]; then . "$_rcfg/rolepod-config.sh"
-else rolepod_cfg_load() { ROLEPOD_CFG_GATES=soft; ROLEPOD_CFG_NUDGE=on; }; fi
-
 INPUT=$(cat 2>/dev/null || echo '{}')
-rolepod_cfg_load
 SESSION_STATE="$(dirname "$0")/lib/session_state.py"
 [ -f "$SESSION_STATE" ] || exit 0
 
@@ -64,12 +55,6 @@ EOF
 # A sub-agent's prompt (payload carries a non-empty agent_id) gets no nudge.
 [ "${CHILD:-0}" = "1" ] && exit 0
 CTX=${CTX:-0}; [ "$SID" = "-" ] && SID=""
-
-# Only a prompt that could draw a note pays the config read; nudge off → silent.
-if [ "$ROUTE" = "stale" ] || [ "$AUTO" = "1" ] || [ "$CTX" -ge 400000 ] 2>/dev/null; then
-  rolepod_cfg_load
-  [ "$ROLEPOD_CFG_NUDGE" = "off" ] && exit 0
-fi
 
 CTX_MSG=""
 CTX_LINE=400000

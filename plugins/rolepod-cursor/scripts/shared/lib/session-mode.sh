@@ -31,19 +31,7 @@ rolepod_session_profile_apply() {
   case "$source" in project|global|default|uncaptured) ;; *) source=uncaptured ;; esac
   ROLEPOD_SESSION_MODE=$mode
   ROLEPOD_SESSION_SOURCE=$source
-  ROLEPOD_CFG_MODE=$mode
-  ROLEPOD_CFG_SOURCE=$source
-  ROLEPOD_CFG_MODERN=unknown
-  ROLEPOD_CFG_GATES=soft
-  ROLEPOD_CFG_NUDGE=on
-  ROLEPOD_CFG_REVIEW=standard
-  ROLEPOD_CFG_REVIEW_SOURCE=$source
-  case "$mode" in
-    lite) ROLEPOD_CFG_GATES=off; ROLEPOD_CFG_NUDGE=on ;;
-    full) ROLEPOD_CFG_GATES=hard; ROLEPOD_CFG_REVIEW=full ;;
-  esac
-  export ROLEPOD_SESSION_MODE ROLEPOD_SESSION_SOURCE ROLEPOD_CFG_MODE ROLEPOD_CFG_SOURCE
-  export ROLEPOD_CFG_MODERN ROLEPOD_CFG_GATES ROLEPOD_CFG_NUDGE ROLEPOD_CFG_REVIEW ROLEPOD_CFG_REVIEW_SOURCE
+  export ROLEPOD_SESSION_MODE ROLEPOD_SESSION_SOURCE
 }
 
 # rolepod_gate_action <gate-id> -> deny|warn|silent for the session mode.
