@@ -23,7 +23,7 @@ Skills by class:
 - balanced — executing a plan, multi-agent planning, `debug-issue`, `simplify-code`, perf, UI and infra builds, `check-work`, repo-wide sweeps, high-risk builds, the lens review (`universal-reviewer`, effort high).
 - strong — high-risk review (`security-engineer`, `adversarial-reviewer`), architecture, the ONE final branch review of a multi-track plan (`orchestrating-plans` step 6), `deepen-codebase` (explorer tier: its step 2).
 
-The Lead picks the class at dispatch; escalate only on a BLOCKED redispatch or a user ask.
+The Lead picks the class at dispatch; escalate on a BLOCKED redispatch, a user ask, or the same agent failing its task twice (the next dispatch one tier up, strong at most).
 
 ## Keep a strong row strong
 

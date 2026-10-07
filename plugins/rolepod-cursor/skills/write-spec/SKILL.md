@@ -49,7 +49,7 @@ Done when: the frontier is empty and no scout is still out.
 Present 2-3 approaches, one per **lens** so they differ for real: **minimal** (smallest diff, maximum reuse) · **clean** (the boundary a maintainer would want, more files) · **pragmatic** (the seam between).
 Each with trade-offs (complexity, blast radius, reversibility, cost); recommend one — simplest viable wins by default.
 The clean lens names what minimal costs later, so Rejected approaches records a real trade-off. If minimal is already the clean boundary, present one design and state what the clean lens checked; never invent an alternative.
-The approach adds or changes a DB table / migration, a public API contract, or a module boundary → ONE `system-architect` dispatch drafts the lenses; no file → the Lead drafts them. An ADR → `references/approaches.md`; no file → only when it is hard to reverse, surprising without context and a real trade-off.
+The approach adds or changes a DB table / migration, a public API contract, or a module boundary → ONE `system-architect` dispatch drafts the lenses, its brief naming the absolute path of `references/approaches.md`; no file → the Lead drafts them. An ADR → `references/approaches.md`; no file → only when it is hard to reverse, surprising without context and a real trade-off.
 The user declines every approach → stop; report the block.
 
 Done when: the user has 2-3 lensed approaches with one recommended, or one design with its converged-lens line.

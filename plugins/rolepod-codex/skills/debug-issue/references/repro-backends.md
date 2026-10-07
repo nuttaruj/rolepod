@@ -5,7 +5,7 @@
 ## UI / browser bugs — backend order
 
 Take the first one available:
-1. `rolepod-uiproof` when installed: `/check-errors` returns console + network failures during the flow, `/verify-ui` returns minimized repro steps + artifacts — reuse those steps as the failing test.
+1. `rolepod-uiproof` when installed (no skill: `browser_console`/`browser_network`/`verify_ui_flow`): `/check-errors` returns console + network failures during the flow, `/verify-ui` returns minimized repro steps + artifacts — reuse those steps as the failing test.
 2. Playwright MCP when connected — atomic `browser_*` calls; minimize the sequence yourself.
 3. Chrome DevTools MCP when connected (Chromium only) for bugs whose cause sits below the rendered DOM.
 4. Manual — describe the candidate repro and ask the user to confirm it.
