@@ -51,7 +51,7 @@ docs/rolepod/specs/orders-csv-export-2026-05-20.md (approved)
   click exports the current filter, the button is disabled mid-generation
 - [ ] Expected failing signal: NameError: uninitialized constant OrdersCsv
 - [ ] Command: bundle exec rspec spec/services/orders_csv_spec.rb spec/requests/reports_spec.rb spec/system/reports_export_spec.rb
-- Owner: backend-developer (the button is a thin end)
+- Owner: rolepod-builder (the button is a thin end)
 - Done when: the three specs green; columns match spec Chosen approach: "id, name, total, status";
   30s timeout not exceeded on a 10k-order range
 - On fail: timeout on the 10k range → switch to the chunked streamed
@@ -150,7 +150,7 @@ docs/rolepod/specs/notifications-center-2026-05-20.md (approved)
 - [ ] Test / evidence: request spec at GET /api/notifications and
   POST /api/notifications/:id/read — list returns unread first; read marks read
 - [ ] Command: bundle exec rspec spec/requests/api/notifications_spec.rb
-- Owner: backend-developer
+- Owner: rolepod-builder
 - Done when: request spec green; the frozen contract holds — GET /api/notifications
   returns [{id, title, read_at, created_at}] unread first; POST .../:id/read returns 204
 
@@ -165,7 +165,7 @@ docs/rolepod/specs/notifications-center-2026-05-20.md (approved)
 - [ ] Test / evidence: component test at NotificationBell and NotificationDropdown —
   bell shows the count; click marks read
 - [ ] Command: yarn vitest run app/javascript/components/__tests__/notifications
-- Owner: frontend-developer
+- Owner: rolepod-builder
 - Done when: component tests green against the contract's mock
 
 ## High-risk surfaces touched
@@ -202,8 +202,8 @@ integration owner re-runs the full flow after merge.
 # Notifications Plan
 
 ## Tasks
-- backend-developer: build notifications.
-- frontend-developer: build the notification UI.
+- rolepod-builder: build notifications.
+- rolepod-builder: build the notification UI.
 - Both: wire it together.
 
 Run them in parallel to go faster.

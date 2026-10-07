@@ -34,22 +34,22 @@ A partial reply (`1a 3c`) closes only those questions; the rest stay open next r
 "Don't know" → a fact becomes research; a decision stays open, or the user takes the default and the spec ends that line `(assumed)`. No option fits → the user's own words are the answer. The user asks for one question at a time → the same frontier, one question per message.
 
 Facts are researched, never asked: what the codebase or docs can answer, explore.
-While a round is out, scouts research the unknowns — one per independent unknown, all in ONE message; only questions downstream of a running scout wait. No subagents → the Lead researches between rounds.
-A user answer naming a file, symbol, library or pattern is a claim: check it (the scout, else grep) before recording; a mismatch opens the next round with the code quoted.
+While a round is out, `rolepod-scout` researches the unknowns — one per independent unknown, all in ONE message; only questions downstream of a running `rolepod-scout` wait. No subagents → the Lead researches between rounds.
+A user answer naming a file, symbol, library or pattern is a claim: check it (`rolepod-scout`, else grep) before recording; a mismatch opens the next round with the code quoted.
 Scope, user stories, priorities and cost / ROI come from the user — the product owner.
 A domain term with more than one live reading → resolve it in the round (`CONTEXT.md` handling → `references/question-bank.md` Domain term; no file → read `CONTEXT.md` when present, propose one canonical word with a boundary example, ask only what the user must decide).
 A layout or state-logic question talking cannot settle → offer `write-prototype` and park it (`references/question-bank.md` Prototype offer); no `write-prototype` → describe the candidate layouts or state flows in words and ask which holds.
 
 A round's answers did not close the ambiguity → name the one unresolved thing and offer two concrete framings. Still unresolved → stop and record what is needed to resume. Never re-ask the same question in a new shape.
 
-Done when: the frontier is empty and no scout is still out.
+Done when: the frontier is empty and no `rolepod-scout` is still out.
 
 ### 3. Approaches
 
 A real design choice → 2-3 approaches, one per **lens** so they differ for real: **minimal** (smallest diff, maximum reuse) · **clean** (the boundary a maintainer would want, more files) · **pragmatic** (the seam between).
 Each with trade-offs (complexity, blast radius, reversibility, cost); recommend one.
 The clean lens names what minimal costs later (Rejected approaches records it); minimal already the clean boundary → one design and what the clean lens checked; never invent an alternative.
-The approach adds or changes a DB table / migration, a public API contract, or a module boundary → ONE `system-architect` dispatch drafts the lenses, its brief naming the absolute path of `references/approaches.md`; no file → the Lead drafts them. An ADR → `references/approaches.md`; no file → only when it is hard to reverse, surprising without context and a real trade-off.
+The approach adds or changes a DB table / migration, a public API contract, or a module boundary → ONE `rolepod-builder` dispatch with `domain: architecture`, on a strong-class model, drafts the lenses and returns them inline, no receipt; its brief names the absolute path of `references/approaches.md`; no file → the Lead drafts them. An ADR → `references/approaches.md`; no file → only when it is hard to reverse, surprising without context and a real trade-off.
 The user declines every approach → stop; report the block.
 
 Done when: the user has 2-3 lensed approaches with one recommended, or one design with what the clean lens checked.
@@ -61,7 +61,7 @@ Fix in the draft:
 - a Success criterion without "proven by", provable only at a seam the implementation alone reaches, or naming a not-yet-existing command unflagged — pair each with a real or explicitly-new command / observation a caller can reach;
 - a technical claim behind the approach that Discovery did not verify; cite only pointers that do not drift (commit, URL + date), never file:line or a code snippet (the plan names files), except a contract snippet the Chosen approach agrees;
 - a section longer than its complexity needs: a few sentences when plain; a spec several times the usual size is a transcript — cut to behavior and decisions;
-- a high-risk surface with no security / migration / audit plan — add it, or delegate to `security-engineer` / `system-architect`; no subagents → the Lead writes it;
+- a high-risk surface with no security / migration / audit plan — add it, or delegate to `rolepod-reviewer` `lens: security` / `rolepod-builder` `domain: architecture`; no subagents → the Lead writes it;
 - untested assumptions about the user's intent, scope creep, over-engineering for hypothetical needs.
 - Success criteria, Testing decisions or Chosen approach that miss what their template section asks.
 - Each line the user did not answer in Discovery ends `(assumed)`.

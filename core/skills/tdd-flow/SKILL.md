@@ -10,7 +10,7 @@ Turns one logic slice into a test that was red before the change and is green af
 ## Skip when
 
 - Prose, a rename, config or doc text → evidence-after (step 1); no test.
-- User-visible behaviour (a screen, a flow, an API contract end to end) → `qa-tester`'s E2E, named in the plan's Test line; never fake it with a unit test.
+- User-visible behaviour (a screen, a flow, an API contract end to end) → `rolepod-qa`'s E2E, named in the plan's Test line; never fake it with a unit test.
 
 ### 1. Pick the discipline by risk
 

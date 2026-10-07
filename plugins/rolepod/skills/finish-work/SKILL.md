@@ -28,9 +28,9 @@ Waiver: a failing check blocks merge unless the user waives that gate by name. A
 - **Snapshot and floor** — a commit past the last Snapshot is a new delta reviewed at its own tier (an R1 delta needs none), never a full re-review.
   - H1 reports stay immutable; never relabel H1.
   - H1 is reused at H2 only when every H1→H2 change is a verified finding fix closed at the receipt (`convening-code-review` Fix-verify); any other change after H1 is uncovered: surface it and route it at its current tier and mode.
-- **QA pass** — once per branch, after the final-review fixes and before the menu: ONE `qa-tester` over `<base>...HEAD` on the flows you name in its brief. No subagents → the Lead does it.
+- **QA pass** — once per branch, after the final-review fixes and before the menu: ONE `rolepod-qa` over `<base>...HEAD` on the flows you name in its brief. No subagents → the Lead does it.
   - Flows = the spec's Testing decisions, else the flows behind the user-visible files the diff touches; none → no pass, one receipt line saying so.
-  - A QA finding → `convening-code-review` Fix-verify, with `qa-tester` rerunning only the failed flows. An open user-visible failure is the user's call at the menu.
+  - A QA finding → `convening-code-review` Fix-verify, with `rolepod-qa` rerunning only the failed flows. An open user-visible failure is the user's call at the menu.
   - QA tests or fixes are commits past the last Snapshot: a new delta at its own tier.
 - **PR scope** — one concern per PR / merge. Mixed concerns → split first (`git add -p`, separate branches); a mixed diff is unreviewable.
 
@@ -42,13 +42,13 @@ Done when: the gate passes, or each failure is fixed, reported, or waived in the
 
 Every required lane is green before merge. The required lanes come from the repo's branch protection / CI config (`references/ci-triage.md`); no file → read them and run those.
 - No CI configured (a direct deploy included) and the tree changed since the Evidence block → run locally, BEFORE the merge / deploy, the checks the repo defines (lint / typecheck / test / build) covering the change; unchanged → cite the block. Never invent a check the repo does not have. A deploy always gets one post-deploy smoke (curl the live endpoint / health probe) as its evidence.
-- A red required lane → triage it by cause (`references/ci-triage.md`; no file → your diff, a flake, infra, a wider regression or a broken lane), then brief the lane's owner: diff-caused → the path's owner, infra → `devops-sre`, an R1-sized fix or no subagents → the Lead. Never merge over a red required lane or auto-merge a PR with one; never delete or skip a failing test to go green. Several red lanes → `coordinating-parallel-tracks` for disjoint owners; none → one owner at a time.
+- A red required lane → triage it by cause (`references/ci-triage.md`; no file → your diff, a flake, infra, a wider regression or a broken lane), then brief the lane's owner: diff-caused → the path's owner, infra → `rolepod-builder`, an R1-sized fix or no subagents → the Lead. Never merge over a red required lane or auto-merge a PR with one; never delete or skip a failing test to go green. Several red lanes → `coordinating-parallel-tracks` for disjoint owners; none → one owner at a time.
   - Merge intent approved → triage, fix and re-run until the required lanes are green, without asking again each round.
 - A required lane still running once the merge is authorized, and the repo allows auto-merge (`gh api repos/{owner}/{repo} --jq .allow_auto_merge` prints true) → `gh pr merge <n> --auto --match-head-commit <the head sha the gate passed>`. Every `gh pr merge` carries `--match-head-commit`; a push after the gate → re-arm only once that delta is reviewed at its tier (Snapshot and floor).
 - Armed auto-merge is not a merge: report "merge pending (auto)"; the ship line and cleanup wait until `gh pr view <n> --json state` prints `MERGED`.
 - A PR open with required lanes, merge authorized or not → in that same turn ONE `gh pr checks <n> --watch --fail-fast` ~10 s after the push, as a background command whose exit wakes you; foreground only on a CLI with no background command. Never a poll loop, schedule or cron.
   On wake: red → triage and fix on the PR branch; green and the merge authorized → merge (with the head guard above); green, not authorized → ask once, naming the PR. Never end a turn on "ping me", "I'll merge when CI passes" or the like, in any language, while a lane runs with nothing to wake you; no way to wait → tell the user the merge is not done.
-- CI / deploy / rollback / monitoring → `devops-sre`. Brief: branch, diff summary, CI status, review verdict, launch plan. No subagents → the Lead does it.
+- CI / deploy / rollback / monitoring → `rolepod-builder`. Brief: branch, diff summary, CI status, review verdict, launch plan. No subagents → the Lead does it.
 
 Done when: every required lane is green, or with no CI its local equivalents passed or the Evidence block still covers this tree.
 

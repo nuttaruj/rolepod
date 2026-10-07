@@ -69,7 +69,7 @@ tools:
 | Kind | Who | Resolve with |
 |---|---|---|
 | `discuss` | with user | Discovery (`write-spec` Discovery) on the one question. Default kind. |
-| `investigate` | agent alone | Dispatch a `scout` — docs, APIs, prior art; report → resolution. |
+| `investigate` | agent alone | Dispatch a `rolepod-scout` — docs, APIs, prior art; report → resolution. |
 | `probe` | with user | `write-prototype` on the question ticket. |
 | `unblock` | either | Real work a decision is waiting on (provision access, move data so its shape is visible). The only kind that *does* instead of decides. Human-only steps → generate a wizard (implement-plan `references/wizard.md`). |
 
@@ -84,7 +84,7 @@ parallel via scouts).
 1. Re-read the map (not every ticket). Pick the first open, unblocked
    ticket — or the one the user names. An `investigate` ticket's Resolution
    predates now — if the touched code or dependency has since changed,
-   re-run the scout before trusting it.
+   re-run the `rolepod-scout` before trusting it.
 2. Resolve per its kind. Zoom into related resolved tickets only as needed.
 3. Record: write `## Resolution` in the ticket (a `probe`: `write-prototype`
    already wrote it), flip `Status: resolved`,

@@ -19,17 +19,17 @@ A prompt role name is not native dispatch metadata or hook evidence. Keep review
 
 Skills by class:
 - cheap — vague build / doc / UI asks and repeat or legacy features (`write-spec`), prototypes, clear doc edits, `manage-context`, explain-only answers.
-- cheap to balanced — `write-plan` against an existing spec, `qa-tester` hand-offs.
-- balanced — executing a plan, multi-agent planning, `debug-issue`, `simplify-code`, perf, UI and infra builds, `check-work`, repo-wide sweeps, high-risk builds, the lens review (`universal-reviewer`, effort high).
-- strong — high-risk review (`security-engineer`, `adversarial-reviewer`), architecture, the ONE final branch review of a multi-track plan (`orchestrating-plans` step 6), `deepen-codebase` (explorer tier: its step 2).
+- cheap to balanced — `write-plan` against an existing spec, `rolepod-qa` hand-offs.
+- balanced — executing a plan, multi-agent planning, `debug-issue`, `simplify-code`, perf, UI and infra builds, `check-work`, repo-wide sweeps, high-risk builds, the lens review (`rolepod-reviewer`, effort high).
+- strong — high-risk review (`rolepod-reviewer` `lens: security` / `lens: adversarial`), architecture, the ONE final branch review of a multi-track plan (`orchestrating-plans` step 6), `deepen-codebase` (explorer tier: its step 2).
 
 The Lead picks the class at dispatch; escalate on a BLOCKED redispatch, a user ask, or the same agent failing its task twice (the next dispatch one tier up, strong at most).
 
 ## Keep a strong row strong
 
-- A strong row dispatches with a strong pin; rolepod role files carry it.
+- A strong row passes a strong-class model on the call; no rolepod type pins strong.
 - A spawn with no pin inherits the Lead. Under a balanced or cheap Lead that is a silent downgrade, so pass an explicit strong-class override on that ONE call, never on a fan-out.
-- A downgraded strong role is not the strong slot. `universal-reviewer` runs balanced on every CLI, except the ONE final branch review of a multi-track plan (`orchestrating-plans` step 6): one fresh strong `universal-reviewer` via the one-call strong override above. `security-engineer` and `adversarial-reviewer` carry a strong pin. The commit gate checks a `security-engineer` dispatch, any model, not the tier.
+- A downgraded strong role is not the strong slot. `rolepod-reviewer` runs balanced on every CLI, except the ONE final branch review of a multi-track plan (`orchestrating-plans` step 6): one fresh strong `rolepod-reviewer` via the one-call strong override above. A `rolepod-reviewer` with `lens: security` or `lens: adversarial` gets a strong-class model on the call. The commit gate checks a `rolepod-reviewer` `lens: security` dispatch, any model, not the tier.
 
 ## Fleets
 

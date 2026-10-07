@@ -25,7 +25,7 @@ Next step: discovery dialogue in frontier rounds — every ready question togeth
 
 User: "the footer copyright year is hardcoded to 2024 — make it dynamic"
 
-Route: R2 (one file + test) → orchestrating-plans · Owner frontend-developer · exact target, one file, logic-bearing, no design choice
+Route: R2 (one file + test) → orchestrating-plans · Owner rolepod-builder · exact target, one file, logic-bearing, no design choice
 Skipping: Define + Plan — the 3-5 line checklist is the plan. Its verify command still runs.
 Next step: write the checklist (goal, done-when, verify command); a task owner builds it on main.
 
@@ -63,13 +63,13 @@ Next step: check-work first — produce fresh evidence the feature works.
 
 ---
 
-## 5. Repo-wide sweep → ONE scout, then act on its report
+## 5. Repo-wide sweep → ONE rolepod-scout, then act on its report
 
 User: "find every place we build a SQL query by string concatenation"
 
-Routing: wide sweep → ONE read-only `scout` (the Code search rule; `references/scope-then-spawn.md`).
+Routing: wide sweep → ONE read-only `rolepod-scout` (the Code search rule; `references/scope-then-spawn.md`).
 
-The brief the Lead sends (the four inputs from the scout agent):
+The brief the Lead sends (the four inputs from the `rolepod-scout` agent):
 ```
 Question: where do we build SQL by string concatenation (injection risk)?
 Scope: whole repo, focus on db / models / queries / repositories.
@@ -77,7 +77,7 @@ Useful answer: a list of file:line sites + the concat pattern each uses.
 Budget: ~12 tool uses.
 ```
 
-Next step: the Lead reads only the files the scout points at and routes the fix by tier like any commission; a fix on a high-risk path is R4: the full spine and the review set the carried mode names.
+Next step: the Lead reads only the files the `rolepod-scout` points at and routes the fix by tier like any commission; a fix on a high-risk path is R4: the full spine and the review set the carried mode names.
 
 ---
 

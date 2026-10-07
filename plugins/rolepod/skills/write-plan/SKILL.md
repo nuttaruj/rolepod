@@ -67,7 +67,10 @@ Done when: every path sits under exactly one owner.
 ### 6. Owners and briefs
 
 **Owner:** the role you pick for the task's files from the agent listing (each description names its scope); `Lead` only for R1-sized work or when the user said self-do. No listing → the closest writer role by path.
-Reviewer roles are never owners. Each high-risk surface names every task that touches it under **High-risk surfaces touched** (`- session-cookie validation (auth) → Task 2`): the brief tiers that task R4, even when no file name looks risky (a docs-only task stays R1). A user-visible E2E flow gets no task: `finish-work`'s QA pass checks it once per branch.
+Reviewer roles are never owners. Each high-risk surface names every task that touches it under **High-risk surfaces touched** (`- session-cookie validation (auth) → Task 2`): the brief tiers that task R4, even when no file name looks risky (a docs-only task stays R1).
+A compliance-scope shift (a regulated data class, region or payment flow) → a security spec task before the build task.
+A paid provider, model or price the spec does not pin → Change says BLOCKED until the user pins it.
+A user-visible E2E flow gets no task: `finish-work`'s QA pass checks it once per branch.
 The task block is the owner's whole slice (`orchestrating-plans` step 2 builds the brief from it), so it carries everything the owner needs.
 A task that builds or consumes the spec's agreed contract (Chosen approach: interface, data shape, compatibility rule, invariant) quotes the clause it must keep in its Change or Done when; its Blocked by edge names the symbol it consumes.
 **Read first:** the 2-3 files and the pattern to copy, named by the Lead who read them; the owner never re-surveys the repo.
@@ -80,7 +83,7 @@ Done when: every task names its Owner and Read first.
 - **Boundary violations** against a declared module map (`edge-cases: Module boundary map`).
 - **Proportion** — a plan several times longer than its spec or chat design is a transcript.
 - **Loop-runnable** — on the saved file (step 8), `plan-lint.sh <plan> [contract]` checks the Failure policy, a Command per task, acyclic Blocked-by edges and parallel ownership. No plan-lint → check these four by eye (`edge-cases: No plan-lint`).
-- **Plan review** — write-spec step 5's critique trigger → `cross-family` kind critique with `references/plan-reviewer-prompt.md`; no `cross-family` → skip it. The user asks for a plan review → a fresh `universal-reviewer` on a model other than the Lead's, same prompt; no subagents → the Lead runs its checks on a fresh read. Otherwise self-review and the lint decide.
+- **Plan review** — write-spec step 5's critique trigger → `cross-family` kind critique with `references/plan-reviewer-prompt.md`; no `cross-family` → skip it. The user asks for a plan review → a fresh `rolepod-reviewer` on a model other than the Lead's, same prompt; no subagents → the Lead runs its checks on a fresh read. Otherwise self-review and the lint decide.
 
 Done when: every check passes.
 

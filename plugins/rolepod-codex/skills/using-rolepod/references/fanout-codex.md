@@ -6,11 +6,11 @@ A Codex Lead fans out with `spawn_agent` and collects with `wait_agent`. The tie
 
 ## Spawn a rolepod role
 
-Prefer the native Codex role — `agent_type` = its `name` (`scout`, not `rolepod-scout`) — with `fork_turns="none"` and a self-contained brief. If custom roles are unavailable but a default/general child exists, use the portable role dispatch contract in `model-tiers.md`; never infer hook evidence from prompt text. At `ultra`, keep the child brief explicit and bounded. A read-only sweep with no shell need → `agent_type` = `scout`.
+Prefer the native Codex role — `agent_type` = its `name` (`rolepod-scout`) — with `fork_turns="none"` and a self-contained brief. If custom roles are unavailable but a default/general child exists, use the portable role dispatch contract in `model-tiers.md`; never infer hook evidence from prompt text. At `ultra`, keep the child brief explicit and bounded. A read-only sweep with no shell need → `agent_type` = `rolepod-scout`.
 
 - A generic child uses `reasoning_effort` of `xhigh` or lower and `fork_turns="none"` where available; carry unsupported limits as instructions and report them.
 - `[agents] default_subagent_model` and `default_subagent_reasoning_effort` apply to every spawn, role spawns included; a rolepod role overrides only the effort, so its child runs `default_subagent_model` when set, else your model.
-- A role's pinned effort beats the parent's: a `scout` child under an `ultra` parent runs at its own `low` (live probe 2026-09-30).
+- A role's pinned effort beats the parent's: a `rolepod-scout` child under an `ultra` parent runs at its own `low` (live probe 2026-09-30).
 - Wait for children with `wait_agent`; their result comes back there.
 
 ## Ultra

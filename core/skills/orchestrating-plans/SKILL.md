@@ -38,9 +38,11 @@ The plan's **Owner:** line wins:
 - Never point the owner at the plan file; the brief is its slice.
 - A Blocked-by task's brief carries each predecessor's Handoff (or its receipt path).
 - `NEEDS: <path>` from an owner → apply it at integration (R1-sized) or reassign it.
-- A write mandate goes to the path's owning role, never a reviewer: `qa-tester` / `security-engineer` write tests and markdown only.
+- A write mandate goes to the path's owning type, never a reviewer: `rolepod-qa` / `rolepod-reviewer` write tests and markdown only.
+- A plan naming an old role → system-architect: `rolepod-builder` with `domain: architecture`; content-strategist: `rolepod-builder` with `domain: writing`; another writer: `rolepod-builder`; universal-reviewer, security-engineer or adversarial-reviewer: `rolepod-reviewer` with that lens; qa-tester: `rolepod-qa`; scout: `rolepod-scout`.
+- `domain: writing` → the brief names the absolute path of `implement-plan/references/writing.md`; pure copy runs on a cheap-class model.
 - A CLI without the named role → `using-rolepod` model tiers; none → a fresh default subagent given the role's text.
-- A `security-engineer` dispatch outside a review round binds to Standard / Full.
+- A `rolepod-reviewer` `lens: security` dispatch outside a review round binds to Standard / Full.
 - One fresh owner per task; a reused one carries Task N's naming into Task N+1.
 - A worktree holds tracked files only: a gitignored harness is missing there, so the brief says how the Command gets in, or the owner runs on main.
 - Dispatched → `ticket.sh log <plan> <N> --start` per task.
@@ -81,7 +83,7 @@ Done when: every track is merged.
 
 ### 6. Final branch review
 
-- Two or more tracks, or a size-sliced track → `convening-code-review` with one fresh strong `universal-reviewer`, both axes, on `git diff <plan base>...HEAD` after every merge.
+- Two or more tracks, or a size-sliced track → `convening-code-review` with one fresh strong `rolepod-reviewer`, both axes, on `git diff <plan base>...HEAD` after every merge.
 - One unsliced track → none; its track-end review is the branch review.
 - The plan's Ship group lines are the seams to check, not a review of their own; an R4 task → `plan-lint.sh --review-set --tier R4` joins on its seam.
 - ONE fix dispatch with every finding → ONE delta re-check → the rest ruled at the cap; the rulings go to `finish-work`.

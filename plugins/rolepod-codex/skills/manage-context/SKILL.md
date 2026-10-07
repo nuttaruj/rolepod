@@ -75,7 +75,7 @@ Done when: the next attempt is aimed at the user's goal in one sentence.
 List every file edited or planned, grouped by concern.
 Re-check the plan against the spec.
 The surface is wider than the plan → write a new plan; stop widening edits.
-A multi-file refactor scope decision → dispatch `system-architect`. No subagents → the Lead does it.
+A multi-file refactor scope decision → dispatch `rolepod-builder` with `domain: architecture`. No subagents → the Lead does it.
 
 Done when: every touched file maps to a plan task, or a new plan exists.
 
@@ -83,7 +83,7 @@ Done when: every touched file maps to a plan task, or a new plan exists.
 
 Failed fixes → `debug-issue` step 9 holds the count, the Second opinion and the stop (no `debug-issue` → four failed fixes for one repro: stop and ask; one Second opinion after two).
 - Capture the exact problem: the error, what was tried, what failed.
-- Change the model, not just the prompt: a fresh-context read of your in-flight diff → `universal-reviewer`; a product failure returns to the Lead, who briefs the path owner to fix against that test. Brief: the original request, what was tried, what failed, what you suspect. No subagents → the Lead does it.
+- Change the model, not just the prompt: a fresh-context read of your in-flight diff → `rolepod-reviewer`; a product failure returns to the Lead, who briefs the path owner to fix against that test. Brief: the original request, what was tried, what failed, what you suspect. No subagents → the Lead does it.
 - The stop (the failed-fix count is spent, no usable advisor, or the advisor says stop) → hand the user a decision menu: the attempt log (each fix + result) and 2-3 concrete options with trade-offs (relax a constraint / split or defer scope / accept a documented limitation) — never a bare "stuck". Mid-plan this is a legitimate stop (`orchestrating-plans`): nothing runs on this blocker until the user picks, then resume on that pick.
 
 Done when: a stronger model or outside opinion has run, or the user holds the decision menu.

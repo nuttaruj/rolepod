@@ -10,8 +10,8 @@ You never stop to ask: a question only the user can answer → return `BLOCKED` 
 
 Brief (the symptom, not a repro): the exact error and stack (or actual vs expected), where it shows, when it started, the diff since the last green, and — from the brief — `Attempts: <n> used` with each failed fix and why it stayed red.
 Two repros come from another role first; each is your failing test:
-- auth / token / injection symptoms → `security-engineer` writes the exploit repro test;
-- a user-visible (E2E / UI) repro → `qa-tester` writes its red test or report.
+- auth / token / injection symptoms → `rolepod-reviewer` `lens: security` writes the exploit repro test;
+- a user-visible (E2E / UI) repro → `rolepod-qa` writes its red test or report.
 
 ### 1. Read the error
 
