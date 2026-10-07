@@ -4,16 +4,17 @@ A spec covers ONE shippable change. A request that hides several is split before
 
 ## Signals the request is too big
 - The goal needs the word "and" to be stated ("import users AND sync them AND notify").
-- Cannot list the outcomes at all — open decisions block the view. That is not a splitting problem: see `chart-work.md` (chart the decisions, then split).
+- Open decisions block listing the outcomes → `chart-work.md` (chart the decisions, then split).
 - It touches more than one high-risk surface for unrelated reasons.
 - Success criteria split into clusters that could ship on different days.
 - Any single slice could be released alone and still deliver value.
+- The request arrives as phases (a phase table, a numbered rollout).
 
 ## How to split
 1. List each independently shippable outcome.
 2. Order them by dependency — what must exist before the next slice works.
-3. Write a spec for slice 1 only. Name the rest as Non-goals with a "covered by a later spec" note.
-4. Surface the slice list to the user and confirm the sequence before drafting.
+3. Write every slice the request commissions in this sitting, from one discovery, approved once as a set with its map (`chart-work.md` Phases); a slice that waits on what an earlier slice's build finds stays a Non-goal.
+4. Confirm the slice list and build order with the user in Discovery, before drafting.
 
 ## Bad vs good
 
@@ -27,7 +28,5 @@ One spec, five high-risk surfaces, nothing shippable until all five land.
 > Spec 2: Invoice generation. Non-goal of spec 1.
 > Spec 3: Dunning + refunds. Non-goal of specs 1-2.
 
-Each slice ships and earns alone; risk is reviewed one surface at a time.
-
 ## Do not over-split
-A change that is genuinely one outcome stays one spec. Splitting a cohesive change into fragments just adds merge overhead. Split by shippable value, not by file count.
+A change that is genuinely one outcome stays one spec. Split by shippable value, not by file count.

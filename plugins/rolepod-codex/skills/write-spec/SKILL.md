@@ -20,7 +20,7 @@ Turns an unclear, non-trivial request into an approved spec file — the contrac
 - Otherwise, quote the request and inspect relevant code and decisions, constraints, and the project's follow-up list (`docs/rolepod/backlog.md` or its issue tracker). Remove an adopted backlog item when the spec is approved.
 - Record one-sentence goal, actor, product mode (`change` or `new`), constraints, and the touched surfaces on the high-risk list (`using-rolepod` Stop conditions).
 - A repeat feature may inherit Goal, User / actor, Non-goals, Constraints, Chosen approach, or Rejected approaches as `Unchanged — <prior spec> §<section>`; verify current behavior from code and write behavior, criteria, testing, risk, and open questions fresh.
-- Goal spans independent outcomes → `references/scope-splitting.md` (split signals, slicing); no file → one spec per shippable outcome: write slice 1, list the rest as Non-goals, confirm the order with the user.
+- Goal spans independent outcomes → `references/scope-splitting.md` (split signals, slicing); no file → one spec per shippable outcome, every slice written now, approved as one set; one that waits on what an earlier slice's build finds stays a Non-goal; confirm the build order in Discovery.
 - Open decisions block listing the slices → `references/chart-work.md` (decision map, question tickets); no file → settle the blocking decisions one at a time in Discovery until the slices can be listed. A mapped, decided question is cited as `Decided — q-<slug>`, never asked again.
 
 Done when: goal, actor, product mode, constraints, risk surfaces, and any needed work split are recorded.
@@ -46,19 +46,20 @@ Done when: the frontier is empty and no scout is still out.
 
 ### 3. Approaches
 
-Present 2-3 approaches, one per **lens** so they differ for real: **minimal** (smallest diff, maximum reuse) · **clean** (the boundary a maintainer would want, more files) · **pragmatic** (the seam between).
-Each with trade-offs (complexity, blast radius, reversibility, cost); recommend one — simplest viable wins by default.
-The clean lens names what minimal costs later, so Rejected approaches records a real trade-off. If minimal is already the clean boundary, present one design and state what the clean lens checked; never invent an alternative.
+A real design choice → 2-3 approaches, one per **lens** so they differ for real: **minimal** (smallest diff, maximum reuse) · **clean** (the boundary a maintainer would want, more files) · **pragmatic** (the seam between).
+Each with trade-offs (complexity, blast radius, reversibility, cost); recommend one.
+The clean lens names what minimal costs later (Rejected approaches records it); minimal already the clean boundary → one design and what the clean lens checked; never invent an alternative.
 The approach adds or changes a DB table / migration, a public API contract, or a module boundary → ONE `system-architect` dispatch drafts the lenses, its brief naming the absolute path of `references/approaches.md`; no file → the Lead drafts them. An ADR → `references/approaches.md`; no file → only when it is hard to reverse, surprising without context and a real trade-off.
 The user declines every approach → stop; report the block.
 
-Done when: the user has 2-3 lensed approaches with one recommended, or one design with its converged-lens line.
+Done when: the user has 2-3 lensed approaches with one recommended, or one design with what the clean lens checked.
 
 ### 4. Self-review
 
 Fix in the draft:
 - placeholders (the spec-lint's list, step 6), contradictions between sections, ambiguous wording ("maybe", "should", "if needed");
 - a Success criterion without "proven by", provable only at a seam the implementation alone reaches, or naming a not-yet-existing command unflagged — pair each with a real or explicitly-new command / observation a caller can reach;
+- a Success criterion that is not behavior (the template's Success criteria);
 - a technical claim behind the approach with no verifiable pointer (file:line, commit, or URL + date);
 - a high-risk surface with no security / migration / audit plan — add it, or delegate to `security-engineer` / `system-architect`; no subagents → the Lead writes it;
 - untested assumptions about the user's intent, scope creep, over-engineering for hypothetical needs.
@@ -71,13 +72,13 @@ Done when: no item above remains.
 ### 5. Cross-family critique
 
 Runs only when all hold: Full mode, the cross-family pool on (opt-in), the session not wide-effort, and an R4 spec — or the user asks for a second opinion; R3 stays internal. It runs after Self-review, once Discovery has converged with no open question of your own. The same trigger gates `write-plan`'s independent plan review.
-- Run → `cross-family` kind critique with the draft + Q&A ledger; no `cross-family`, or any condition false → skip and record why.
-- The status line, ran: `Cross-family critique: <cli> — N items, K settled from repo, M asked` (or `<cli> — NO FURTHER QUESTIONS`); not run: `Cross-family critique: not run — <reason>`, the reason one of off, wide-effort session, cross-family absent, not R4, or the runner's reason.
+- Run → `cross-family` kind critique with the draft + Q&A ledger; no `cross-family`, or any condition false → skip; no status line.
+- The status line, ran: `Cross-family critique: <cli> — N items, K settled from repo, M asked` (or `<cli> — NO FURTHER QUESTIONS`).
 - Triage before the user sees anything: an item the repo or the spec settles → answer it yourself and fold it in; user decisions → one extra Discovery round; new questions continue normally. Never forward the critic's list raw.
 - A fork the critique surfaces goes to Gate 1 as an option pair with a recommendation; the user decides.
 - Once per spec: a draft revised after it never re-runs it. The status line goes under **High-risk surfaces**. Never blocks a spec.
 
-Done when: the critique status line is recorded.
+Done when: the critique ran with its status line recorded, or was skipped.
 
 ### 6. Gate 1 — file review and approval
 
@@ -87,15 +88,13 @@ grep -qx 'docs/rolepod/' .gitignore || echo 'docs/rolepod/' >> .gitignore
 ```
 A repo that deliberately tracks its working docs skips the command and creates `.rolepod/docs-tracked`.
 
-After the approaches round, read back to the user: the goal, the scope, and each assumption (an `(assumed)` line) from the draft. Then write the whole spec to `docs/rolepod/specs/<feature>-YYYY-MM-DD.md` (optional `-vN` / `-draft`). Run Self-review and the spec-lint on the file, then point the user to it. Accept → `write-plan`; edit → patch and ask again; reject → stop. One gate, on the file.
-
-The user reads the file: it shows word drift, omitted edge cases, and second thoughts on the shape.
+After the approaches round, read back to the user: the goal, the scope, and each assumption (an `(assumed)` line) from the draft. Then write the whole spec to `docs/rolepod/specs/<feature>-YYYY-MM-DD.md` (optional `-vN` / `-draft`). Run Self-review and the spec-lint on the file, then point the user to it. Accept → `write-plan`; edit → patch and ask again; reject → stop. One gate, on the file; a spec set: all files and its map at once.
 
 **Spec-lint**: `grep -niE '\[\[FILL:|TODO|TBD' <spec>` must print nothing; so must the anchor check `for h in 'Non-goals' 'Current behavior' 'Desired behavior' 'Success criteria'; do grep -q "^## $h" <spec> || echo "missing ## $h"; done` (the next repeat-feature spec seeds from these four headings). A printed line or a grep error is a lint failure.
 
-Fill `templates/spec-template.md`. Keep the decision contract: goal, desired behavior, acceptance, testing, risk, chosen contract, open decisions. Write the spec in the user's language; headings, labels, file paths and commands stay verbatim. For an existing change, record current behavior and affected consumers.
+Fill `templates/spec-template.md`. Keep the decision contract: goal, desired behavior, acceptance, testing, risk, chosen contract, open decisions. Write the spec in the user's language; headings, labels, file paths and commands stay verbatim.
 
-A new decision requires the user's answer before hand-off; never write it as approved while unresolved.
+A new decision requires the user's answer before hand-off; never write it as approved while unresolved. After Gate 1 a decision edits the section it changes, never an appended decision log; ask only where `write-plan` step 4 would, or when approved scope or criteria change.
 
 Spec shapes, good and bad → `examples/spec-examples.md`; no file → the template and this step are enough.
 
@@ -105,10 +104,9 @@ Done when: spec-lint prints nothing, spec is saved and confirmed.
 
 - An ambiguous goal, scope or success criterion, or a high-risk surface, gets a spec. Never skip it.
 - Implementation starts after Gate 1 approval. Never before.
-- The spec is always saved to a file and confirmed by the user on the file itself.
 
 ## Next phase
 
-- `write-plan` with the approved spec.
+- `write-plan` with the approved spec; a spec set → its first phase in the map's build order.
 - `write-plan` absent → keep the implementation outline (files to touch, ordered tasks, test plan, risks, done criteria).
 - No other skill → stop and give the spec path, Open questions and each `(assumed)` line.

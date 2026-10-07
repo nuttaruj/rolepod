@@ -18,7 +18,7 @@ Route each request on its intent, scope and tier. A tool call, config change or 
 | Tier | Signature | Path |
 |---|---|---|
 | **R1** trivial edit | a docs-only diff, any size — or ≤5 lines in 1 file with zero logic lines (comment, blank, user-facing text in a string; never a URL, path, key, regex, query or a value code branches on), not high-risk, ≤3 tool calls | direct edit; the edit echo is the verify; no review |
-| **R2** one file + test | 1 source file + its own test, clear scope, logic, ≈≤30 logic lines, not high-risk | its step 2 skill still fires (bug → `debug-issue`, else `orchestrating-plans`); a 3-5 line chat checklist (goal, done-when, verify command) replaces spec + plan; the test does not count toward the one-source-file limit; a task owner builds it on main (failing test first, verify, the commit check, the two review lenses); the Lead never pre-explores, then commits |
+| **R2** one file + test | 1 source file + its own test, clear scope, logic, ≈≤30 logic lines, not high-risk | its step 2 skill still fires (bug → `debug-issue`, else `orchestrating-plans`); a 3-5 line chat checklist (goal, done-when, verify command) replaces spec + plan; a task owner builds it on main, then the Lead commits |
 | **R3** multi-file | several source files, vague scope, or sequencing / delegation | an approved spec/change list already enumerates ≤3 ordered tasks and each task's files, verify command, and dependencies; single owner, no parallel work, high-risk path, changed acceptance, added source file or mid-plan compaction → Build → `orchestrating-plans` with the inline checklist. Otherwise use the full spine |
 | **R4** high-risk | a high-risk path — auth, tokens, billing, credits, secrets, data deletion, … (the full list: Stop conditions) — any size, one constant included | the full spine; review intensity comes from `workflow.mode` and follows `convening-code-review` (Lite has two universal-reviewer lenses only; Standard and Full follow their own contracts); never downgrade risk; 1 file, ≤5 lines, comment / blank only → R2 |
 
@@ -49,7 +49,7 @@ The FIRST matching row fires:
 | fix bug / failing test / regression | Build → `debug-issue` first at every tier; it decides after root cause whether `write-spec` or `write-plan` follows |
 | build / add / design with a vague target (UI, product, doc, ADR included) | Define → `write-spec` |
 | build X to a spec whose Success criteria cover it | the R3 row's spec-as-plan eligibility met → Build → `orchestrating-plans` with the inline checklist; otherwise Plan → `write-plan` |
-| add / change Y at R3+ where the spec does not cover Y, or no spec exists | Define → `write-spec` (a new dated delta spec); eligible R2 → `orchestrating-plans` with the R2 row's checklist; other R3 → `write-plan` |
+| add / change Y at R3+ where the spec does not cover Y, or no spec exists | eligible R2 → `orchestrating-plans` with the R2 checklist; clear R3 (inside an existing flow, nothing to ask) → a 3-5 line chat design (goal, approach, files, done-when, verify) + the user's yes → `write-plan`; unclear, R4 or doubt → Define → `write-spec` (a new dated delta spec) |
 | execute an approved plan / use agents in parallel | Build → `orchestrating-plans` |
 | architecture (DB schema, API contract, module split) | Define → `write-spec` (Approaches: ONE `system-architect`) |
 | where to deepen / refactor for testability, whole repo | tell the user to type /deepen-codebase ($deepen-codebase on Codex) |

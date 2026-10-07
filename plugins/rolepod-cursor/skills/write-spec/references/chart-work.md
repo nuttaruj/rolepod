@@ -10,8 +10,7 @@ spec.
 
 One markdown file per effort: `docs/rolepod/maps/<effort>.md`. Question
 tickets live beside it in `docs/rolepod/maps/<effort>/q-<slug>.md`. Both
-persist across sessions under the private `docs/rolepod/` (`write-spec` Gate 1) — the
-map is a durable record, not session scratch; they enter git only when the repo
+persist across sessions under the private `docs/rolepod/` (`write-spec` Gate 1); they enter git only when the repo
 tracks its working docs (`.rolepod/docs-tracked`).
 
 ```markdown
@@ -23,11 +22,14 @@ tracks its working docs (`.rolepod/docs-tracked`).
 
 ## Ground rules
 <standing constraints for the whole effort — the user's non-negotiables and
- doctrine that applies. A soft preference carries its own softness in the
- item's wording ("prefer X over Y"), so the binding section name stays honest.>
+ doctrine that applies. A soft preference says so in its wording.>
 
 ## Decided
 - [q-<slug>](./<effort>/q-<slug>.md) — <one-line gist of the resolution>
+- <decision> — <why> (settled in discovery, no ticket)
+
+## Phases
+<a spec set only: phase · outcome · depends on · build order · spec file>
 
 ## Still fuzzy
 <questions you can feel coming but cannot phrase precisely yet — prose,
@@ -38,8 +40,7 @@ tracks its working docs (`.rolepod/docs-tracked`).
 ```
 
 The map is an **index, not a store**. A resolution lives in exactly one
-place — its ticket. The map gists it in one line and links; restating detail
-on the map is how two copies drift.
+place — its ticket, or its one Decided line when discovery settled it. The map gists a ticket in one line and links it.
 
 ## Question tickets
 
@@ -61,8 +62,7 @@ Paths: <paths the question touches>   # probe in change mode only
 precisely now** — answerable or not. If it cannot be phrased that sharply,
 it stays in *Still fuzzy*. Do not pre-slice the unknown into ticket-sized
 pieces: one loose patch may become three tickets or zero once the decisions
-ahead of it fall. This is the anti-overengineering rule applied to planning
-— no tickets for hypothetical questions.
+ahead of it fall.
 
 **Kinds**, mapped to standard rolepod machinery — charting adds no new
 tools:
@@ -75,14 +75,12 @@ tools:
 | `unblock` | either | Real work a decision is waiting on (provision access, move data so its shape is visible). The only kind that *does* instead of decides. Human-only steps → generate a wizard (implement-plan `references/wizard.md`). |
 
 `discuss` and `probe` resolve **only through the user's own answers** — the
-agent never fills in the user's side of the exchange. A self-answered
-discussion ticket is a fabricated decision; treat it like any other
-unverified claim.
+agent never fills in the user's side of the exchange.
 
 ## Working the map
 
 Per session: **one decision** (`investigate` tickets exempt — fan them out in
-parallel via scouts). More than one `discuss` per session degrades both.
+parallel via scouts).
 
 1. Re-read the map (not every ticket). Pick the first open, unblocked
    ticket — or the one the user names. An `investigate` ticket's Resolution
@@ -105,14 +103,14 @@ parallel via scouts). More than one `discuss` per session degrades both.
 
 **Entry — chart only when charting is needed.** First map the ground with a
 breadth-first discovery pass (fan wide, not deep). If that pass surfaces no
-blocking decisions — the slices are already listable — stop: no map. Route
-to scope-splitting.md or a single spec. A map for a chartable-in-one-pass
-request is ceremony.
+blocking decisions — the slices are already listable — stop charting: no tickets.
+Route to scope-splitting.md or a single spec. A spec set still writes the
+map, with only **Phases** and **Decided**; for one spec a map is ceremony.
 
 **Exit — the map ends where specs begin.** The map is done when nothing is
 left to decide: *Still fuzzy* is empty and every ticket is resolved or
-ruled out. Then list the slices (they are now visible), confirm the sequence
-with the user, and run write-spec per slice — each spec citing the map's
+ruled out. Then list the slices (they are now visible) as Phases, confirm the build
+order with the user in Discovery, and write every slice's spec in one sitting — each spec citing the map's
 **Decided** entries instead of re-litigating them. The urge to start
 building mid-map is the signal a patch of the map is already clear enough
 to hand off — hand that slice to write-spec; do not build from the map.

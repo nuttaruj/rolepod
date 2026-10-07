@@ -176,7 +176,6 @@ filters produce, with the same columns as the on-screen table.
 ## High-risk surfaces
 None — read-only export of data the user can already see on screen. No
 credential, billing, or permission change.
-Cross-family critique: not run — not R4
 
 ## Chosen approach
 Server builds the CSV from the same query the report table uses, streamed
