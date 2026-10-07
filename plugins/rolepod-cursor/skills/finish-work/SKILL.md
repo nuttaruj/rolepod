@@ -34,7 +34,7 @@ Waiver: a failing check blocks merge unless the user waives that gate by name. A
   - QA tests or fixes are commits past the last Snapshot: a new delta at its own tier.
 - **PR scope** — one concern per PR / merge. Mixed concerns → split first (`git add -p`, separate branches); a mixed diff is unreviewable.
 
-**Review set** (round 1; mode unknown → Lite). Lite, any tier: the two lenses only. Standard: R2 the two lenses, a matched row → that role instead · R3 the two lenses + each matched specialist · R4 the two lenses + `security-engineer` (`depth: checklist`). Full: as Standard, but R4 `depth: full` + one adversarial pass.
+**Review set** (round 1; mode unknown → Lite). Lite, any tier: the two lenses only. Standard: R2 the two lenses, a matched row adds that role · R3 the two lenses + each matched specialist · R4 the two lenses + `security-engineer` (`depth: checklist`). Full: as Standard, but R4 `depth: full` + one adversarial pass.
 
 Done when: the gate passes, or each failure is fixed, reported, or waived in the user's quoted words.
 

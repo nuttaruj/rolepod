@@ -383,7 +383,7 @@ function rsetcell(mode, tier, sel,   lens, spec, n, i, k, ids, roles, out) {
     if (index("," sel ",", "," k ",")) out = (out == "" ? "" : out " + ") "`" roles[k] "`"
   }
   spec = "each matched specialist (`performance-engineer` · `ui-ux-designer` · `system-architect`, when its row matches)"
-  if (tier == "R2") return (out == "" ? lens : out)
+  if (tier == "R2") return (out == "" ? lens : lens " + " out)
   return lens " + " (out == "" ? spec : out)
 }
 '
@@ -1189,7 +1189,7 @@ if (planwt == 1) tpath = substr(tbranch, 1, length(tbranch) - 5)
     if (onmain) print "- Edit only Files allowed, in the main checkout; no backup copies (.bak / .orig). Never commit or push; leave the tree staged. Never `git stash`. One exception: a file the task needs that is in no Files list (not forbidden) - edit it and add an Also touched: line."
     else if (tbranch != "") printf "- Edit only Files allowed under ../%s-wt-%s, except update the canonical receipt at %s/docs/rolepod/tasks/%s/task-%02d.md in the base checkout; no other base-checkout path is allowed. No backup copies (.bak / .orig). Never commit or push; leave the tree staged. Never `git stash`. One exception: a file the task needs that is in no Files list (not forbidden) - edit it under the worktree and add an Also touched: line.\n", repo, tpath, baseroot, tbase, want + 0
     else printf "- Edit only Files allowed under ../%s-wt-%s-t%s-%s, except update the canonical receipt at %s/docs/rolepod/tasks/%s/task-%02d.md in the base checkout; no other base-checkout path is allowed. No backup copies (.bak / .orig). Never commit or push; leave the tree staged. Never `git stash`. One exception: a file the task needs that is in no Files list (not forbidden) - edit it under the worktree and add an Also touched: line.\n", repo, feat, want, tslug, baseroot, tbase, want + 0
-    print "- Return with passing scoped Command evidence; run the repo commit check once. Review reports: .rolepod/evidence/review/" rname "-<lens>.md or " rname "-<role>.md."
+    print "- Return with passing scoped Command evidence; run the repo commit check once. Review reports: .rolepod/evidence/review/" rname "-<lens>.md, <lens> one of spec · standards · security · adversarial · perf · ui · arch."
     printf "- Write your decision brief to %s/docs/rolepod/tasks/%s/task-%02d.md on the base checkout; its Handoff section is at most ~15 lines, only what a Blocked-by task consumes (signatures, invariants). Never edit the plan file.\n", baseroot, tbase, want + 0
     print "- Budget: build <= 40 tool calls, whole loop <= 120; past it return PARTIAL with what is done, never grind."
     print "- Return a decision brief: verdict, `git diff --cached --stat | tail -3`, Command last 3 lines verbatim, reviewer verdicts + report paths, `Assuming:` lines, residuals. Your chat reply stays within 12 lines: status, receipt path, Command tail, reviewer verdicts + report paths, residuals; the receipt holds the rest."
@@ -1650,6 +1650,36 @@ done <<EOF
 $FILES
 EOF
 [ "$OWN_OK" -eq 1 ] && [ -n "$FILES" ] && echo "  ✓ every touched file has exactly one owner"
+
+# L1: one role on two or more owner lines needs a task tag on each line.
+# Role = the agent token in the label's backticks, else the label text before ':'.
+DUPROLES=$(printf '%s\n' "$OWNERSHIP" | awk '
+  /^[[:space:]]*[-*][[:space:]]/ {
+    line = $0
+    sub(/^[[:space:]]*[-*][[:space:]]+/, "", line)
+    lbl = line
+    if (match(line, /^`[^`]+`/)) {
+      role = substr(line, RSTART + 1, RLENGTH - 2)
+      lbl = substr(line, RSTART + RLENGTH)
+      sub(/:.*/, "", lbl)
+    } else {
+      i = index(line, ":"); if (i == 0) next
+      role = substr(line, 1, i - 1); lbl = role
+    }
+    if (role ~ /\//) next
+    if ((" " lbl) ~ /[^0-9A-Za-z](T|[Tt]asks?[[:space:]]+)[0-9]+/) next
+    n[role]++
+  }
+  END { for (r in n) if (n[r] >= 2) print r }
+' | sort)
+if [ -n "$DUPROLES" ]; then
+  while IFS= read -r r; do
+    echo "  ✗ two owner lines for \`$r\` carry no task tag — tag each with its task: \`$r (T<N>)\`"
+  done <<EOF
+$DUPROLES
+EOF
+  fail=1
+fi
 
 echo "plan-lint: $([ "$fail" -eq 0 ] && echo PASS || echo FAIL)"
 exit "$fail"

@@ -11,7 +11,7 @@
 - `<agent>` — <slice>
 
 ## File ownership
-<Exact paths each agent may edit.>
+<Exact paths each agent may edit. A role owning two tasks' files → one line per task, tagged: `<agent> (T<N>)`.>
 - `<agent>`: `path/a`, `path/b`
 
 ## Shared interfaces
@@ -21,16 +21,16 @@
  the sentence on a `> ` line; tasks cite the id, the brief quotes it.>
 
 ## Merge order
-<Which slice merges first, and why. Usually the interface provider.>
+<Which slice merges first, and why.>
 
 ## Do-not-touch list
-<Files no agent edits this round — stable surfaces, other teams' code.>
+<Files no agent edits this round.>
 
 ## Verification per agent
 <What each owner must prove green before handing the slice back.>
 
 ## Integration owner
-<The single agent (usually Lead) who merges the slices and runs the
+<The single agent who merges the slices and runs the
  whole-feature verification.>
 
 ## Session split (optional — separate CLI sessions as track owners)
