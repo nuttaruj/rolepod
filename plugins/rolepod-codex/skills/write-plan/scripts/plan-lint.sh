@@ -57,6 +57,8 @@
 #      `--brief` then prints the track branch and worktree for a track task
 #      and Reviewers `none — the track-end review covers this task` for R2/R3
 #      (its own review-set cell when it is the track's only code task).
+#      A non-Sequential plan with no `## Tracks` fails when two tasks share a
+#      file or one is Blocked by another (each task would be its own track).
 #   5. Parallel plans only: every backticked path under "## Files to touch"
 #      appears under EXACTLY one owner in the contract's "## File ownership"
 #      — an unowned file is unplannable work; a dual-owned file is a merge
@@ -355,6 +357,25 @@ END {
       a = ids[i]; b = ids[j]
       if ((a in trk) && (b in trk) && (trk[a] in tk) && (trk[b] in tk) && trk[a] != trk[b]) {
         print "E `" p "` is edited by Task " a " (track " trk[a] ") and Task " b " (track " trk[b] ") — tasks that edit one file belong to one track"; bad++
+      }
+    }
+  }
+  if (ntk == 0 && !(seq + 0)) {
+    for (k = 1; k <= fn; k++) {
+      p = forder[k]; na = split(ftasks[p], ids, " ")
+      for (i = 1; i <= na; i++) for (j = i + 1; j <= na; j++) {
+        print "E non-Sequential layout with no ## Tracks, and Task " ids[i] " and Task " ids[j] " share " p " — add ## Tracks (write-plan step 2)"; bad++
+      }
+    }
+    for (k = 1; k <= n; k++) {
+      t = order[k]; nr = split(refs[t], rs, " "); delete rdone
+      for (j = 1; j <= nr; j++) {
+        r = rs[j]; if (r == t || (r in rdone)) continue
+        for (i = 1; i <= n; i++) if (order[i] == r) {
+          rdone[r] = 1
+          print "E non-Sequential layout with no ## Tracks, and Task " t " is Blocked by Task " r " — add ## Tracks (write-plan step 2)"; bad++
+          break
+        }
       }
     }
   }
@@ -816,7 +837,7 @@ if [ "${1:-}" = "--brief" ]; then
       # script does not track, or a typo) silently glues onto the last known
       # field instead of being dropped.
       # An INDENTED bullet is a sub-item of the current field (the template
-      # allows a Change block of up to 3 bullets); only an unindented one is new.
+      # Change block holds one indented `- [ ]` line per step); only an unindented one is new.
       if (!isf && field != "" && trim(line) != "" && line !~ /^[-*][[:space:]]/) {
         appendfield(field, trim(line))
       }
@@ -1538,10 +1559,11 @@ fi
 [ -n "$GRAPH_A" ] && printf '%s\n' "$GRAPH_A" | sed 's/^A /  · /'
 
 # ── 4. Tracks (worktree-track spec; runs before 5, which exits early on a
-# Sequential plan) — silent for a plan with no ## Tracks and
-# no Track field; else every task names a listed track, one file lives in
+# Sequential plan) — silent for a Sequential plan with no ## Tracks and
+# no Track field (a non-Sequential one fails when two tasks share a file or
+# one Blocked-by another); else every task names a listed track, one file lives in
 # one track, and Blocked by crosses tracks only at a track's first task.
-TRACKS_OUT=$(awk -v rx="$TASK_RX" -v mode=lint -v feature="" "$CLEANFILES_AWK$FENCE_AWK$FIELD_AWK$TRACKS_AWK" "$PLAN")
+TRACKS_OUT=$(awk -v rx="$TASK_RX" -v mode=lint -v feature="" -v seq="$SEQUENTIAL" "$CLEANFILES_AWK$FENCE_AWK$FIELD_AWK$TRACKS_AWK" "$PLAN")
 if printf '%s\n' "$TRACKS_OUT" | grep -q '^E '; then
   printf '%s\n' "$TRACKS_OUT" | grep '^E ' | sed 's/^E /  ✗ /'
   fail=1
