@@ -20,7 +20,7 @@ On a non-strong Lead the per-stage tier (`model-tiers.md` Fleets) is an EXPLICIT
 
 ## The fleet-tier gate
 
-The fleet-tier gate denies in every workflow mode.
+The fleet-tier gate denies in every workflow mode; a plan fleet (every agent() bare, each prompt naming docs/rolepod/plans/) passes.
 
 The gate reads each Workflow script at submit. A fan-out is a `.map` / `.flatMap` / `.forEach`, `pipeline(`, `Array.from`, a loop or a `${}` label; a hand-written `parallel([...])` is not one.
 - `bare-fanout` — a fan-out `agent()` with no tier pin (no `model:`, no rolepod `agentType:`; a platform agent type pins nothing) under a strong or unknown Lead.

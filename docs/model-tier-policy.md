@@ -72,7 +72,7 @@ which rung was sent.
 | `billing-engineer` | balanced | Money code WRITER — depth is guaranteed by the strong Lead at dispatch + the mandatory strong adversarial review on billing paths, not the writer's tier (2026-08 decision: fan-out strong across implementers measured wasteful; `effort: high` stays) |
 | `security-engineer` | **strong** | Auth + secrets + crypto; wrong code = breach |
 | `system-architect` | **strong** | Architecture decisions are load-bearing across the codebase |
-| `universal-reviewer` | balanced | Two-axis review (spec + standards); the adversarial pass is `adversarial-reviewer`'s |
+| `universal-reviewer` | balanced | Two-axis review (spec + standards); the adversarial pass is `adversarial-reviewer`'s; the one final branch review of a multi-track plan runs strong (`orchestrating-plans` step 6) |
 | `adversarial-reviewer` | **strong** | Adversarial review of a high-risk change — breaks it, never fixes; must match implementer's depth |
 | `scout` | cheap | Read-only wide sweeps — research report only, never edits |
 | `content-strategist` | cheap | All human-readable written output — internal docs / ADRs / READMEs (`audience: dev`), FAQ / onboarding / user-facing copy (`audience: user`), SEO / conversion copy (`audience: prospect`) |

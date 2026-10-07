@@ -31,6 +31,7 @@ Done when: diff file, H1 and hash recorded; inputs in hand.
 - The brief's Reviewers or `Review:` line wins; none → `../write-plan/scripts/plan-lint.sh --review-set --tier <R2|R3|R4> [--match <perf,ui,arch>]`. A high-risk path in the unreviewed diff → R4 regardless:
 
 {{INCLUDE: core/fragments/risk-paths.md}}
+
 - No script → the Review set below at the carried mode, never re-read; none carried → `using-rolepod`'s `scripts/workflow-mode.sh` once. Never re-read the configured mode (a config change takes effect in a new session); a helper or `plan-lint.sh` call without the native mode environment gets `ROLEPOD_SESSION_MODE` and `ROLEPOD_SESSION_SOURCE` from the carried profile.
 
 {{INCLUDE: core/fragments/review-set.md}}

@@ -31,6 +31,7 @@ Done when: diff file, H1 and hash recorded; inputs in hand.
 - The brief's Reviewers or `Review:` line wins; none → `../write-plan/scripts/plan-lint.sh --review-set --tier <R2|R3|R4> [--match <perf,ui,arch>]`. A high-risk path in the unreviewed diff → R4 regardless:
 
 High-risk paths — auth, billing, payments, credits, migration, data deletion, secrets, tokens, crypto, permissions, security (override: `.rolepod/risk-paths`). A high-risk path is code that handles one of these — reads, refreshes, stores, sends or logs it, a third-party credential included — not only code that changes its rules.
+
 - No script → the Review set below at the carried mode, never re-read; none carried → `using-rolepod`'s `scripts/workflow-mode.sh` once. Never re-read the configured mode (a config change takes effect in a new session); a helper or `plan-lint.sh` call without the native mode environment gets `ROLEPOD_SESSION_MODE` and `ROLEPOD_SESSION_SOURCE` from the carried profile.
 
 **Review set** (round 1; mode unknown → Lite). Lite, any tier: the two lenses only. Standard: R2 the two lenses, a matched row → that role instead · R3 the two lenses + each matched specialist · R4 the two lenses + `security-engineer` (`depth: checklist`). Full: as Standard, but R4 `depth: full` + one adversarial pass.

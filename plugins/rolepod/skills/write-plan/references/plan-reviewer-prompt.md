@@ -2,10 +2,6 @@
 
 # Plan reviewer prompt
 
-## When to dispatch
-
-write-plan step 7 decides when this runs.
-
 ## Dispatch
 
 Brief the reviewer with:
@@ -13,6 +9,7 @@ Brief the reviewer with:
 - Path to the plan file (or inline the plan content)
 - Path to the source spec (or inline the spec)
 - Any specific concern Lead wants pressure-tested
+- Pasted in full: the high-risk list (`using-rolepod` Stop conditions) — the reviewer cannot load it
 
 ## Reviewer brief — paste into the reviewer's prompt
 
@@ -24,6 +21,7 @@ the plan — give an outside read.
 Plan: <PLAN_PATH_OR_CONTENT>
 Spec: <SPEC_PATH_OR_CONTENT>
 Specific concern (optional): <WHAT_LEAD_WANTS_PRESSURED>
+High-risk list: <HIGH_RISK_LIST>
 
 Check, in order:
 
@@ -39,9 +37,8 @@ Check, in order:
    tasks (foo() in Task 3 vs fooBar() in Task 7 is a bug).
 4. Test discipline — every task names a test type and an assertion.
    "Adds tests" alone is a fail.
-5. High-risk surfaces — any surface on
-   the high-risk list (`using-rolepod` Stop conditions) that the plan
-   touches has a test plan and an owner.
+5. High-risk surfaces — any surface on the High-risk list above
+   that the plan touches has a test plan and an owner.
 6. Parallel layout — if Parallel, a cohesion contract is referenced with
    file ownership and merge order; Sequential says why when the Blocked-by
    graph would have allowed parallel.

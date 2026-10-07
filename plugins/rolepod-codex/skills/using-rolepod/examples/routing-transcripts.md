@@ -35,7 +35,7 @@ Next step: write the checklist (goal, done-when, verify command); a task owner b
 
 User: "Implement the approved spec."
 
-Route: R3 spec-as-plan (the R3 row's eligibility met) → orchestrating-plans
+Route: R3 (spec-as-plan) → Build → orchestrating-plans
 Skipping: Define + Plan — the approved spec already supplies the task boundaries and commands.
 Next step: the spec's ordered tasks become the owner's inline checklist; no plan artifact. Any eligibility condition missing → the plan artifact.
 
