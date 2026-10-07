@@ -26,7 +26,7 @@ tracks its working docs (`.rolepod/docs-tracked`).
 
 ## Decided
 - [q-<slug>](./<effort>/q-<slug>.md) — <one-line gist of the resolution>
-- <decision> — <why> (settled in discovery, no ticket)
+- <decision> — <why> (no ticket; a spec cites it as `Decided — <decision>`)
 
 ## Phases
 <a spec set only: phase · outcome · depends on · build order · spec file>
