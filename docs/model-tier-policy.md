@@ -41,7 +41,7 @@ the paid ceiling. A CLI with no strong pin below a ceiling (Codex, which pins
 nothing; Antigravity, whose balanced and strong resolve to the same id) collapses apex into strong. The dispatch-log `override` field records
 which rung was sent.
 
-**Effort** layers on top of the model. Claude uses `effort`, Codex uses `model_reasoning_effort` (documented levels `low` / `medium` / `high` / `xhigh` / `max` / `ultra`, per the official subagent docs, re-verified 2026-09-30 against Codex 0.159 — `max` = "especially demanding reasoning", `ultra` = the model's multi-agent effort (the catalog's value, e.g. `xhigh`, else `max`) **and** proactive delegation: the agent spawns its own sub-agents, how many is the model's call per task — rolepod never prescribes a count). `[agents] default_subagent_model` and `default_subagent_reasoning_effort` apply to every spawn, role spawns included; a rolepod role overrides only the effort, so its child runs `default_subagent_model` when set, else your model. `persistent` is a follow-up mode, not deeper thinking: follow-ups stay inside the scope the user asked for, a wait uses the sleep tool (never a watcher left running), and delegation is explicit-only (Codex sends it to the API as reasoning `disabled`; no catalog model lists it, so it is set only by config).
+**Effort** layers on top of the model. Claude uses `effort`, Codex uses `model_reasoning_effort` (documented levels `low` / `medium` / `high` / `xhigh` / `max` / `ultra`, per the official subagent docs, re-verified 2026-09-30 against Codex 0.159 — `max` = "especially demanding reasoning", `ultra` = the model's multi-agent effort (the catalog's value, e.g. `xhigh`, else `max`) **and** proactive delegation: the agent spawns its own sub-agents, how many is the model's call per task — rolepod never prescribes a count). `[agents] default_subagent_model` and `default_subagent_reasoning_effort` apply to every spawn, role spawns included; a rolepod role overrides only the effort, so its child runs `default_subagent_model` when set, else your model. `persistent` is a follow-up mode, not deeper thinking: follow-ups stay inside the scope the user asked for, and delegation is explicit-only (Codex sends it to the API as reasoning `disabled`; no catalog model lists it, so it is set only by config).
 
 - `xhigh` — the effort ceiling on every CLI (Claude `effort`, Codex `model_reasoning_effort`) — `security-engineer` and `adversarial-reviewer` only (breach blast radius; the cold attempt to break a high-risk change). **Never `max`, `ultra` or `persistent` on a role** (v2.75.0; `ultra` was pinned until v2.73, `max` in v2.74): a pinned role child runs explicit-only, so it never fans out on its own (live probe 2026-09-30: a `scout` child under an `ultra` parent ran at its own `low`); Ultra is a fan-out that would spawn children inheriting the role's model, strong × N per dispatch; `max` sits above the doctrine ceiling — depth past `xhigh` buys little on a review and bills the strong slot's full price.
 - `high` — strong tier (system-architect) and universal-reviewer + balanced-tier roles where reasoning depth pays off (billing-engineer, ai-ml-engineer, performance-engineer, qa-tester).
@@ -94,7 +94,7 @@ Auto-escalate to the **strong** tier for adversarial review (regardless of agent
 - 3rd agent attempt on same surface (per CLAUDE.md hard stops).
 - The user explicitly asks for a stronger review.
 
-On Claude, `precommit-gate.sh` blocks the commit of a high-risk diff without, since the last commit, a `security-engineer` dispatch (any model) in Standard / Full, or the two `universal-reviewer` lens dispatches (`review-code` step 2) in Lite (one hard checkpoint, at commit); `gate-reminder.sh` prints one line on a high-risk edit only when that commit would block now. The tier policy makes the *which* reviewer explicit.
+On Claude, `precommit-gate.sh` blocks the commit of a high-risk diff without, since the last commit, a `security-engineer` dispatch (any model) in Standard / Full, or the two `universal-reviewer` lens dispatches (`convening-code-review` step 2, Pick the set) in Lite (one hard checkpoint, at commit); `gate-reminder.sh` prints one line on a high-risk edit only when that commit would block now. The tier policy makes the *which* reviewer explicit.
 
 ## Cross-family externals run their own default model
 
@@ -106,8 +106,8 @@ never passes a model or effort flag (the phase-log records `model:
 default`). The only place a model flag is legitimate on an external call is
 the **vertical fallback** — the Lead consulting its own CLI at a stronger
 tier — because that CLI IS the Lead. The pool is **opt-in** and the user's
-choice: set `pool` in `~/.rolepod/config.json` (machine-wide only, no project override); space-separated CLI names per kind; `pool.cross-family: "off"` or unset key = off, and the SessionStart
-context asks once rather than enabling anything; the runner excludes the
+choice: set `pool` in `~/.rolepod/config.json` (machine-wide only, no project override); space-separated CLI names per kind; `pool.cross-family: "off"` or unset key = off, and nothing
+enables it but the user; the runner excludes the
 Lead's own CLI and drops members that fail at invoke.
 
 ## Advisor mode interplay (Claude Code)

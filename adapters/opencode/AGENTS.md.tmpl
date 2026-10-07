@@ -1,10 +1,5 @@
 # Rolepod — opencode always-on judgment
 
-Always-on guidance for the opencode Lead. opencode auto-loads this from
-`~/.config/opencode/AGENTS.md` (global) or `<repo>/AGENTS.md` (project)
-every session. This is judgment — the phase procedure (spec, plan, build,
-verify, review, ship) lives in the skills; invoke them.
-
 ## Rule priority
 
 1. User instruction this turn
@@ -41,7 +36,6 @@ A conflict that risks harm → ask before acting.
   models the user has opted into (configured providers), never the whole
   aggregator catalog; a rung costlier than anything configured is a cost
   decision to surface. Cheap = small / fast, balanced = mid flagship,
-  strong = the set's top reasoning model; the ONE judge or security
-  reviewer runs strong, never the whole fan-out. Cannot classify →
+  strong = the set's top reasoning model. Cannot classify →
   balanced, and say so.
-- **workflow.mode** — Lite / Standard / Full set review intensity (`using-rolepod`, `review-code`), never which gates hold. The private-docs deny runs on every CLI and the sub-agent commit ban on Codex and opencode; review / test evidence, cannot-wait, sibling-edit and fan-out gates are Claude-only. Nothing else is mechanically enforced here — never report it as such.
+- **workflow.mode** — Lite / Standard / Full never change which gates hold. The private-docs deny runs on every CLI and the sub-agent commit ban on Codex and opencode; review / test evidence, cannot-wait, sibling-edit and fan-out gates are Claude-only. Nothing else is mechanically enforced here — never report it as such.

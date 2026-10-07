@@ -21,7 +21,7 @@ A role child whose model has the collaboration tools (`spawn_agent`, `wait_agent
 
 ## Persistent
 
-`persistent` is a follow-up mode, not deeper thinking: follow-ups stay inside the scope the user asked for, a wait uses the sleep tool (never a watcher left running), and delegation is explicit-only. Carry the role's effort through controls the CLI exposes; never pin `persistent`, `ultra` or `max` on a role: the effort ceiling on every role is `xhigh`.
+`persistent` is a follow-up mode, not deeper thinking: follow-ups stay inside the scope the user asked for, and delegation is explicit-only. Carry the role's effort through controls the CLI exposes; never pin `persistent`, `ultra` or `max` on a role: the effort ceiling on every role is `xhigh`.
 
 ## What the hooks see
 
