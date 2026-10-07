@@ -91,7 +91,7 @@ Auto-escalate to the **strong** tier for adversarial review (regardless of agent
 
 - Touching auth / authn / authz / authentication / authorization / billing / payment / migration / credit / permission / secret / crypto / token / oauth / jwt / sso / saml / webhook / stripe / paypal / charge / invoice paths (illustrative — the canonical regex lives in `hooks/precommit-gate.sh` / `gate-reminder.sh`, parity-pinned by lean-surface).
 - About to ship to production (final `finish-work` review).
-- 3rd agent attempt on same surface (per CLAUDE.md hard stops).
+- The same agent failing its task twice (the next dispatch goes one tier up, strong at most).
 - The user explicitly asks for a stronger review.
 
 On Claude, `precommit-gate.sh` blocks the commit of a high-risk diff without, since the last commit, a `security-engineer` dispatch (any model) in Standard / Full, or the two `universal-reviewer` lens dispatches (`convening-code-review` step 2, Pick the set) in Lite (one hard checkpoint, at commit); `gate-reminder.sh` prints one line on a high-risk edit only when that commit would block now. The tier policy makes the *which* reviewer explicit.
