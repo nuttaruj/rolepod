@@ -13,11 +13,11 @@
 #   .claude-plugin/marketplace.json                    # committed — repo IS the Claude marketplace
 #   .cursor-plugin/marketplace.json                    # committed — repo IS the Cursor marketplace
 #   plugins/rolepod/                                   # committed — rendered Claude plugin tree
-#   plugins/rolepod/agents/<name>.md                   # 15 files (Claude frontmatter)
+#   plugins/rolepod/agents/<name>.md                   # 4 files (Claude frontmatter)
 #   plugins/rolepod-codex/                             # committed — rendered Codex plugin tree
 #   plugins/rolepod-cursor/                            # committed — rendered Cursor plugin tree
 #   build/rendered/codex/AGENTS.md                     # gitignored build output
-#   build/rendered/codex/agents/<name>.md              # 15 files (portable frontmatter)
+#   build/rendered/codex/agents/<name>.md              # 4 files (portable frontmatter)
 #   build/rendered/antigravity/AGENTS.md               # gitignored build output
 #
 # The Claude + Cursor targets render into committed repo-root paths so the
@@ -193,7 +193,7 @@ PY
 # guards against drift). Only the plugin tree is rebuilt — never the repo root.
 #   .claude-plugin/marketplace.json            (marketplace manifest — repo root)
 #   plugins/rolepod/.claude-plugin/plugin.json (plugin manifest)
-#   plugins/rolepod/agents/*.md                (15 rendered agents)
+#   plugins/rolepod/agents/*.md                (4 rendered agents)
 #   plugins/rolepod/skills/<name>/SKILL.md     (real dir, copied from core/skills;
 #                                                each skill's own scripts/ ships with it)
 #   plugins/rolepod/hooks/*.sh + *.md + lib/
@@ -264,7 +264,7 @@ render_claude() {
 #   plugins/rolepod-codex/skills/<name>/SKILL.md     (copied from core/skills)
 # Gitignored (build/rendered/codex/ — read by install.sh only):
 #   AGENTS.md                                        (~/.codex/AGENTS.md block)
-#   agents/*.toml                                    (15 agents → ~/.codex/agents/,
+#   agents/*.toml                                    (4 agents → ~/.codex/agents/,
 #                                                     NOT a plugin component)
 
 render_codex() {
@@ -389,7 +389,7 @@ EOF
 #   plugins/rolepod-cursor/.cursor-plugin/plugin.json
 #   plugins/rolepod-cursor/rules/always-on-core.mdc  (fully resolved)
 #   plugins/rolepod-cursor/skills/<name>/SKILL.md    (stripped to name+description)
-#   plugins/rolepod-cursor/agents/<name>.md          (15 files, minimal frontmatter)
+#   plugins/rolepod-cursor/agents/<name>.md          (4 files, minimal frontmatter)
 #   plugins/rolepod-cursor/hooks/hooks.json
 #   plugins/rolepod-cursor/scripts/*.sh              (6 hook scripts + scripts/shared/ cores)
 
@@ -484,7 +484,7 @@ render_cursor() {
 #   AGENTS.md                  (always-on core → agy customization root)
 #   plugin/plugin.json         (agy plugin manifest)
 #   plugin/skills/<name>/...    (copied from core/skills)
-#   plugin/agents/<name>.md     (15 agents, md + YAML frontmatter)
+#   plugin/agents/<name>.md     (4 agents, md + YAML frontmatter)
 #   plugin/hooks.json           (agy-native event wiring at PLUGIN ROOT: PreInvocation/PreToolUse/Stop)
 #   plugin/hooks/*.sh           (3 agy-native scripts + the shared precommit-gate.sh /
 #                                test-diff-lint.sh / route_check.py, copied verbatim)
@@ -561,7 +561,7 @@ render_antigravity() {
 #
 # Gitignored (build/rendered/opencode/ — read by install.sh only):
 #   AGENTS.md                  (always-on core → managed block)
-#   agents/<name>.md           (15 agents, description + mode: subagent)
+#   agents/<name>.md           (4 agents, description + mode: subagent)
 #   skills/<name>/...          (frontmatter stripped to name + description)
 #   plugin/rolepod.js          (plugin shim)
 #   opencode.json              (version stamp for install verification)

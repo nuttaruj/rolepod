@@ -196,38 +196,21 @@ MODEL_CLASS = (
     (re.compile(r"opus|fable|mythos", re.IGNORECASE), "strong"),
 )
 
-# Strong-tier roles render `model: opus` on Claude since v2.104.0 — their own
-# frontmatter pin, not a hook-side lift (that rewrite is gone, hook-layer-lean
-# 2026-09-25). opus is the paid CEILING of the strong tier by owner decision:
-# a fable-class Lead keeps its own model but its strong reviewers run opus —
-# never lifted (cost). system-architect joined in v2.73.0: it writes the spec
-# + cohesion contract for parallel work — the judgment-heaviest role — and
-# was the one strong role left at nudge-only.
-STRONG_ROLE_AGENTS = {"security-engineer", "system-architect", "adversarial-reviewer"}
-
-# Roles whose rendered Claude frontmatter carries a REAL `model:` pin
+# Types whose rendered Claude frontmatter carries a REAL `model:` pin
 # (merge-agent.py TIER_MODELS: cheap -> haiku, balanced -> sonnet). A Workflow
 # `agentType:` of one of these IS a tier choice; a platform agent
 # (general-purpose / Explore / claude / Plan) or another plugin's agent renders
-# no pin and silently inherits the Lead. tests/static/hook-agent-matching.sh
-# asserts this set against the tier overlays, so a new role cannot drift out.
+# no pin and silently inherits the Lead. Strength follows the work: the Lead
+# passes a strong model per call (no type is strong). tests/static/
+# hook-agent-matching.sh asserts this set against the tier overlays.
 TIER_PINNED_AGENTS = {
-    "content-strategist", "scout",                               # cheap
-    "ai-ml-engineer", "backend-developer", "billing-engineer",   # balanced
-    "devops-sre", "frontend-developer",
-    "mobile-developer", "performance-engineer", "qa-tester",
-    "ui-ux-designer", "universal-reviewer",
+    "rolepod-scout",                                       # cheap
+    "rolepod-builder", "rolepod-reviewer", "rolepod-qa",   # balanced
 }
 
-# Roles that OWN product code in a plan's Owner lines (write-plan
-# "Owners and briefs"). Reviewer / test-only / read-only roles are not
-# owners; scout and system-architect are read-only at the moment of dispatch.
-WRITER_ROLE_AGENTS = {
-    "ai-ml-engineer", "backend-developer", "billing-engineer",
-    "content-strategist", "devops-sre",
-    "frontend-developer", "mobile-developer", "performance-engineer",
-    "ui-ux-designer",
-}
+# The type that OWNS product code in a plan's Owner lines (write-plan
+# "Owners and briefs"). Reviewer / qa / the scout type are not owners.
+WRITER_ROLE_AGENTS = {"rolepod-builder"}
 
 # Product code for the self-do nudge: a CODE_FILE that is not a test by
 # TEST_FILE and not under a test / mock / fixture / docs / build tree, and
@@ -245,7 +228,7 @@ _SELFDO_SKIP = re.compile(
 
 
 # Infra files are product code for the nudge too — the same paths the
-# plan's Owner lines assign to devops-sre (no CODE_FILE extension, and
+# plan's Owner lines assign to the builder (no CODE_FILE extension, and
 # .github/ sits in the skip list, so they need their own positive rule).
 # Applied to the path RELATIVE to the repo root (is_product_code relativizes
 # with `root`): the directory rule is root-anchored so docs/deploy/guide.md
@@ -558,7 +541,7 @@ def count_test_edits(transcript_path: str, cwd: str | None = None) -> int:
 
 
 def _bare_agent_name(subagent_type: str | None) -> str:
-    """Strip the rolepod namespace — 'rolepod:qa-tester' -> 'qa-tester'.
+    """Strip the rolepod namespace — 'rolepod:rolepod-qa' -> 'rolepod-qa'.
 
     A bare name is returned unchanged. Another plugin's '<plugin>:<agent>'
     stays whole, so it matches no rolepod role set.
@@ -569,7 +552,7 @@ def _bare_agent_name(subagent_type: str | None) -> str:
 
 # Workflow scripts: agent() OPTIONS are code, prompts are string literals. A key
 # read off the raw script also matches prose — a prompt saying "give each sweep
-# agentType: 'rolepod:scout'" registered as a real tier choice and silenced the
+# agentType: 'rolepod:rolepod-scout'" registered as a real tier choice and silenced the
 # fleet-tier gate (the `model:` half of this was v2.62.1, the `agentType:` half
 # v2.88.0). strip_strings() blanks literal CONTENTS but keeps LENGTH and quotes,
 # so a key found in the stripped text reads its value from the original at the

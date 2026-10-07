@@ -1,0 +1,12 @@
+# tools: review type - Write for its report and a repro test, Edit/Bash for test files (the write-scope hook keeps it to test paths and markdown on Claude); no Skill tool - the review-code method is preloaded from its Skill Mapping (merge-agent emits `skills:`; a skill listing costs ~30k chars per dispatch). Cursor and opencode render it writable (no write-scope hook there).
+tier: balanced
+effort: medium
+tools:
+  - Read
+  - Glob
+  - Grep
+  - Write
+  - Edit
+  - Bash
+  - WebFetch
+  - WebSearch

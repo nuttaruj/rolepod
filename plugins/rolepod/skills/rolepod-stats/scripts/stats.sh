@@ -31,6 +31,7 @@ EV="$ROOT/.rolepod/evidence"
 python3 -I - "$EV" "$ROOT" <<'PY'
 import json
 import os
+import re
 import statistics
 import sys
 from collections import Counter
@@ -108,19 +109,32 @@ if routes:
 
 dispatches = [r for r in rows if r.get("phase") == "dispatch"]
 # A strong dispatch is either the Lead's class-labeled line (tier=strong) or a
-# hook-auto row whose agent_type is a strong-named role (v2.86.0: the manual
-# line is written only where the hook cannot see the tier). A subset of
-# session_state.STRONG_ROLE_AGENTS.
-STRONG_ROLES = {"security-engineer"}
+# hook-auto row whose logged model is opus-class (no type is strong by name;
+# the Lead passes the model per call).
+# The 4 types, and the legacy 15 role names mapped onto them (history before
+# the 4-type roster folds into 4 rows).
+TYPES = {"rolepod-builder", "rolepod-reviewer", "rolepod-qa", "rolepod-scout"}
+LEGACY_TYPE = {
+    "adversarial-reviewer": "rolepod-reviewer", "security-engineer": "rolepod-reviewer",
+    "universal-reviewer": "rolepod-reviewer", "qa-tester": "rolepod-qa", "scout": "rolepod-scout",
+    "ai-ml-engineer": "rolepod-builder", "backend-developer": "rolepod-builder",
+    "billing-engineer": "rolepod-builder", "content-strategist": "rolepod-builder",
+    "devops-sre": "rolepod-builder", "frontend-developer": "rolepod-builder",
+    "mobile-developer": "rolepod-builder", "performance-engineer": "rolepod-builder",
+    "system-architect": "rolepod-builder", "ui-ux-designer": "rolepod-builder",
+}
 # Same rule as session_state._bare_agent_name: a bare name or `rolepod:` only.
 def bare_agent(d):
     s = (d.get("agent_type") or "").strip()
     return s[len("rolepod:"):] if s.startswith("rolepod:") else s
+def type_of(d):
+    at = bare_agent(d)
+    return LEGACY_TYPE.get(at, at)
 def is_strong(d):
     if d.get("tier") == "strong":
         return True
-    at = bare_agent(d)
-    return d.get("provenance") == "hook-auto" and at in STRONG_ROLES
+    mdl = (d.get("model") or "") + " " + (d.get("override") or "")
+    return d.get("provenance") == "hook-auto" and bool(re.search(r"opus|fable|mythos", mdl, re.I))
 if dispatches:
     strong = [d for d in dispatches if is_strong(d)]
     if strong:
@@ -150,12 +164,8 @@ if dispatches:
         # no model on the call: a rolepod role still runs its frontmatter model
         # (measured 2026-09-17: 0 fable subagents under a fable Lead); only a
         # generic agent type truly inherits the Lead's model
-        ROLEPOD_ROLES = {"adversarial-reviewer", "ai-ml-engineer", "backend-developer", "billing-engineer", "content-strategist",
-                         "devops-sre", "frontend-developer", "mobile-developer",
-                         "performance-engineer", "qa-tester", "scout", "security-engineer",
-                         "system-architect", "ui-ux-designer", "universal-reviewer"}
-        def generic(d):   # anything that is not a shipped role has no frontmatter model
-            return bare_agent(d) not in ROLEPOD_ROLES
+        def generic(d):   # anything that is not a shipped type has no frontmatter model
+            return type_of(d) not in TYPES
         role_pinned = sum(1 for d in inh if not generic(d))
         if role_pinned:
             print(f"    · {role_pinned} with no model on the call ran the role's frontmatter model")
@@ -207,11 +217,10 @@ if dispatches:
 # grouped by time gap (≤ 90 s apart = one burst). Reviewer / scout / generic
 # rows are not tasks. Dispatch times only — no end time is logged — so a burst
 # shows tasks dispatched together, never proof that they ran concurrently.
-NON_TASK_ROLES = {"qa-tester", "security-engineer", "universal-reviewer", "adversarial-reviewer", "code-reviewer",
-                  "scout", "general-purpose", "default", "claude", "workflow-subagent", ""}
+NON_TASK_ROLES = {"rolepod-qa", "rolepod-reviewer", "rolepod-scout", "code-reviewer",
+                  "general-purpose", "default", "claude", "workflow-subagent", ""}
 def _task_role(d):
-    at = bare_agent(d)
-    return at[len("rolepod-"):] if at.startswith("rolepod-") else at
+    return type_of(d)
 def _epoch(d):
     import datetime as _dt
     try:

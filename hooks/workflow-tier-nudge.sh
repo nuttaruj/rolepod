@@ -4,12 +4,12 @@
 #
 #   bare-fanout: a fan-out agent() call with NO tier at all (no model:, no
 #     variable agentType, no agentType naming a role that renders a pin —
-#     TIER_PINNED_AGENTS | STRONG_ROLE_AGENTS; a platform agentType like
+#     TIER_PINNED_AGENTS; a platform agentType like
 #     general-purpose/Explore renders no pin) under a strong-class or
 #     unknown Lead — every item in the fan-out inherits the Lead's price.
 #     DENY, never yields.
-#   strong-fanout: a fan-out agent() call pinned strong (model: opus-class, or
-#     agentType a STRONG_ROLE_AGENTS role) — the top price × N. On any Lead.
+#   strong-fanout: a fan-out agent() call that passes a strong model (model:
+#     opus-class) — the top price × N. On any Lead. No type is strong by name.
 #     DENY, never yields; ONE strong call outside the fan-out (the judge) is fine.
 #   bare-writer: an agent() call on a writing stage (implement/build/fix/
 #     integrate/migrate/refactor/patch/scaffold/write) with no agentType:
@@ -155,7 +155,7 @@ def _in_fanout(code, pos):
 
 WRITE_RX = re.compile(r"(implement|build|fix|integrat|migrat|refactor|patch|scaffold|write)", re.I)
 bare_fanout = []    # stage of every fan-out agent() call with no pin at all
-strong_fanout = []  # stage of every fan-out agent() call pinned strong (model: or strong role)
+strong_fanout = []  # stage of every fan-out agent() call that passes a strong model:
 bare_writer = []    # stage of every agent() call with no agentType on a writing stage
 call_pos = [m.start() for m in re.finditer(r"\bagent\(", code)]
 plan_fleet = bool(call_pos)  # every agent() bare (no model:, no agentType) and tied to docs/rolepod/plans/
@@ -197,7 +197,7 @@ for i, pos in enumerate(call_pos):
     model_pinned = bool(re.search(r"[,{\s]model\s*:", win))
     at_has, at_lit = agenttype_of(pos, win)
     if at_has and at_lit is not None:
-        at_pinned = ss._bare_agent_name(at_lit) in (ss.TIER_PINNED_AGENTS | ss.STRONG_ROLE_AGENTS)
+        at_pinned = ss._bare_agent_name(at_lit) in ss.TIER_PINNED_AGENTS
     else:
         at_pinned = at_has
     pinned = model_pinned or at_pinned
@@ -212,8 +212,7 @@ for i, pos in enumerate(call_pos):
     if fanout:
         mv = literal_of("model", pos, win)
         strong_model = bool(mv) and ss.model_class(mv) == "strong"
-        strong_role = at_has and at_lit is not None and ss._bare_agent_name(at_lit) in ss.STRONG_ROLE_AGENTS
-        if strong_model or strong_role:
+        if strong_model:
             strong_fanout.append(stage or "(no phase)")
 
 if plan_fleet:
@@ -236,8 +235,8 @@ if costly and bare_fanout and strong_fanout:
     reason_txt = (
         "⛔ fleet-tier: bare fan-out stage(s) %s inherit the Lead %s (%s) × N, and stage(s) %s pin a "
         "strong model × N. "
-        "Fix: pin every fan-out non-strong — a stage that WRITES → a non-strong rolepod role "
-        "(agentType:\x27rolepod:<role>\x27); read-only sweep (no Bash/MCP) → agentType:\x27rolepod:scout\x27, else "
+        "Fix: pin every fan-out non-strong — a stage that WRITES → "
+        "agentType:\x27rolepod:rolepod-builder\x27; read-only sweep (no Bash/MCP) → \x27rolepod:rolepod-scout\x27, else "
         "model:\x27haiku\x27; per-item verify → model:\x27sonnet\x27, effort:\x27high\x27; ONE strong slot on the "
         "single review call. "
         "Exception: none — pin the fan-out."
@@ -248,9 +247,9 @@ elif costly and bare_fanout:
     stages = bare_fanout
     reason_txt = (
         "⛔ fleet-tier: bare fan-out call(s) — stage(s) %s — inherit the Lead %s (%s) × N. "
-        "Fix: pin the fan-out — a stage that WRITES → a non-strong rolepod role "
-        "(agentType:\x27rolepod:<role>\x27, which pins its tier); read-only sweep (no Bash/MCP) → "
-        "agentType:\x27rolepod:scout\x27 (~15k vs ~71k context), else model:\x27haiku\x27; per-item "
+        "Fix: pin the fan-out — a stage that WRITES → "
+        "agentType:\x27rolepod:rolepod-builder\x27; read-only sweep (no Bash/MCP) → "
+        "\x27rolepod:rolepod-scout\x27 (~15k vs ~71k context), else model:\x27haiku\x27; per-item "
         "verify → model:\x27sonnet\x27, effort:\x27high\x27; ONE strong slot on the single review call. "
         "Exception: none — pin the fan-out."
         % (", ".join(sorted(set(bare_fanout)))[:120], lead_s, why))
@@ -259,7 +258,7 @@ elif strong_fanout:
     stages = strong_fanout
     reason_txt = (
         "⛔ fleet-tier: strong model pinned on fan-out stage(s) %s — the top price × N. "
-        "Fix: a fan-out runs a non-strong rolepod role (agentType:\x27rolepod:<role>\x27, which pins its "
+        "Fix: a fan-out runs a non-strong rolepod type (agentType:\x27rolepod:rolepod-builder\x27 etc., which pins its "
         "tier and trims fixed context) or model:\x27haiku\x27 / model:\x27sonnet\x27; keep ONE strong call outside the fan-out "
         "for the judge."
         % ", ".join(sorted(set(strong_fanout)))[:120])
@@ -268,8 +267,8 @@ elif bare_writer:
     stages = bare_writer
     reason_txt = (
         "⛔ write-scope: bare agent() on writing stage(s) %s — a call that edits product files needs "
-        "agentType:\x27rolepod:<role>\x27 (backend-developer / frontend-developer / devops-sre; E2E tests → "
-        "qa-tester). model: alone pins the tier, not the write permission — its edits are blocked at the "
+        "agentType:\x27rolepod:rolepod-builder\x27 (E2E tests → "
+        "rolepod-qa). model: alone pins the tier, not the write permission — its edits are blocked at the "
         "first Write. Fix: add agentType to every call that edits files; read-only calls may stay bare. "
         "Exception: a stage that only reads → name it so (Research / Verify)." %", ".join(sorted(set(bare_writer)))[:120])
 

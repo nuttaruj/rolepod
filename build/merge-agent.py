@@ -6,10 +6,10 @@ Reassembles a target-flavored agent file from:
   - adapter-specific frontmatter overlay
 
 Usage:
-  merge-agent.py --target=claude      --name=qa-tester  (md — model/effort overlay)
-  merge-agent.py --target=codex       --name=qa-tester  (toml — effort/sandbox overlay)
-  merge-agent.py --target=antigravity --name=qa-tester  (md — model overlay; agy)
-  merge-agent.py --target=cursor      --name=qa-tester  (md — name/description + a derived readonly)
+  merge-agent.py --target=claude      --name=rolepod-qa  (md — model/effort overlay)
+  merge-agent.py --target=codex       --name=rolepod-qa  (toml — effort/sandbox overlay)
+  merge-agent.py --target=antigravity --name=rolepod-qa  (md — model overlay; agy)
+  merge-agent.py --target=cursor      --name=rolepod-qa  (md — name/description + a derived readonly)
   --preload=native|inline|none overrides PRELOAD_MODE for one render (tests and probes)
 
 Writes to stdout. Render driver pipes into the per-target rendered/ directory.

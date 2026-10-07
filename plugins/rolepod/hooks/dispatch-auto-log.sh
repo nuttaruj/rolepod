@@ -12,9 +12,7 @@
 # depth, not tier, and is counted separately). v2.47.0 adds the Lead's model
 # + FAMILY class as read from the transcript (family word only — haiku /
 # sonnet / opus… — never a version, so renames within a family change
-# nothing; an unknown family logs as "unknown"), and records the OUTCOME of
-# the strong-role floor: a strong role's own frontmatter pin (opus) held, or
-# an explicit low model on the call missed it (`floor: frontmatter|missed`).
+# nothing; an unknown family logs as "unknown"), and the model the call passed.
 #
 # Fail-open everywhere: no git root, no JSON, missing fields → exit 0.
 
@@ -97,7 +95,7 @@ if tool == "Workflow":
     # this a bare fleet carrying one agentType general-purpose logged as
     # tiered (v2.88.0 - same rule as the gate).
     names = set(ss._bare_agent_name(a) for a in atypes) if ss is not None else set()
-    if ss is not None and (names & (ss.TIER_PINNED_AGENTS | ss.STRONG_ROLE_AGENTS)):
+    if ss is not None and (names & ss.TIER_PINNED_AGENTS):
         mix.append("role-pin")
     line["tier_mix"] = mix
 else:
@@ -105,19 +103,9 @@ else:
     line["agent_type"] = atype
     line["name"] = ti.get("name") or "?"
     model = ti.get("model") or ""
-    is_strong_role = ss is not None and ss._bare_agent_name(atype) in ss.STRONG_ROLE_AGENTS
-    # A model-less strong role runs its frontmatter pin (opus, v2.104.0).
-    line["model"] = model or ("opus" if is_strong_role else "inherit")
+    # The model the call passed; no type is strong by itself, so no floor row.
+    line["model"] = model or "inherit"
     line["override"] = model or "none"
-    if is_strong_role:
-        # Strong-role floor outcome. The hook-side lift (updatedInput) is
-        # gone (hook-layer-lean-2026-09-25) — a strong role now reaches this
-        # floor only via its own frontmatter pin (opus) or an explicit
-        # model:. Nothing can tell "the hook lifted it" apart from "the
-        # caller passed opus itself", so the distinction (floor: applied) is
-        # dropped: no model, or an explicit strong model → frontmatter (the
-        # pin held); an explicit low model → missed. Observable in `make stats`.
-        line["floor"] = "missed" if (model and ss.model_class(model) != "strong") else "frontmatter"
     # These rows feed rolepod-stats; the commit gate no longer reads them.
 
 # The log line goes to the file directly. Same shape as before — consumers
