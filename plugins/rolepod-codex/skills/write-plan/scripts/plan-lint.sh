@@ -388,6 +388,49 @@ function rsetcell(mode, tier, sel,   lens, spec, n, i, k, ids, roles, out) {
 }
 '
 
+# The task-tag grammar of a contract File-ownership label — one home, used by
+# --brief and by the L1 contract lint (prepended to each awk program).
+# shellcheck disable=SC2016
+TAGSPAN_AWK='
+# Extracts the task-tag span from a contract File-ownership label: a
+# `T<N>` or `Task(s) <N>` reference, optionally chained by one or more
+# range/list connectors (hyphen family, en/em dash, comma, slash,
+# ampersand, plus, "and", "then", "or") to further `T?<N>` references,
+# each repeat matched in turn so a 3-or-more-way list or a range plus a
+# trailing entry (`T1, T3, T5`, `T1-T2, T5`) names every number, not
+# just the first two — boundary-anchored so it never matches inside a
+# longer word. A bare number (no `T` prefix) is read as a COUNT, not a
+# further task number, and the chain stops before consuming it, only
+# when all three hold: it follows a dash-family connector (hyphen, en
+# dash or em dash); whitespace separates that connector from the number;
+# and whitespace plus a letter follows the number — `T2 — 3 hooks` / `T2
+# - 3 files`. A dash immediately adjacent to its number (`T1-4`) is
+# always a range, and every other connector (comma, slash, ampersand,
+# plus, "and", "then", "or") always chains regardless of trailing text
+# (`Tasks 1 and 2 only`, `T2, 3 files`) — a `T`-prefixed number always
+# counts as a task too, regardless of what follows (`T2 — T3 hooks`).
+# Returns "" when the label carries no task tag at all; otherwise the
+# span, prefixed M when it chains to a further number (several tasks
+# named) or 1 when it names exactly one.
+function tagspan(lbl,    hay, span, rest, m, follow, chained) {
+  hay = " " lbl
+  if (!match(hay, /[^0-9A-Za-z](T|[Tt]asks?[[:space:]]+)[0-9]+/)) return ""
+  span = substr(hay, RSTART + 1, RLENGTH - 1)
+  rest = substr(hay, RSTART + RLENGTH)
+  chained = 0
+  while (match(rest, /^([[:space:]]*(-|–|—|,|\/|&|\+|and|then|or))+[[:space:]]*T?[0-9]+/)) {
+    m = substr(rest, RSTART, RLENGTH)
+    follow = substr(rest, RSTART + RLENGTH)
+    if (m !~ /T[0-9]+$/ && m ~ /(-|–|—)[[:space:]]+[0-9]+$/ && follow ~ /^[[:space:]]+[A-Za-z]/) break
+    span = span m
+    rest = follow
+    chained = 1
+  }
+  return (chained ? "M" : "1") span
+}
+function has_tasktag(lbl) { return tagspan(lbl) != "" }
+'
+
 # Workflow mode: env, then the session profile (native session id), then
 # workflow.mode from config, then lite. Readers sit beside this script when
 # installed, else under the repo's hooks/lib. Sets BRIEF_WMODE, BRIEF_WSRC and
@@ -511,43 +554,8 @@ if [ "${1:-}" = "--brief" ]; then
   }
   # cleanfiles() is shared with the plain lint path — defined once in
   # CLEANFILES_AWK, prepended to this program at invocation.
-  # Extracts the task-tag span from a contract File-ownership label: a
-  # `T<N>` or `Task(s) <N>` reference, optionally chained by one or more
-  # range/list connectors (hyphen family, en/em dash, comma, slash,
-  # ampersand, plus, "and", "then", "or") to further `T?<N>` references,
-  # each repeat matched in turn so a 3-or-more-way list or a range plus a
-  # trailing entry (`T1, T3, T5`, `T1-T2, T5`) names every number, not
-  # just the first two — boundary-anchored so it never matches inside a
-  # longer word. A bare number (no `T` prefix) is read as a COUNT, not a
-  # further task number, and the chain stops before consuming it, only
-  # when all three hold: it follows a dash-family connector (hyphen, en
-  # dash or em dash); whitespace separates that connector from the number;
-  # and whitespace plus a letter follows the number — `T2 — 3 hooks` / `T2
-  # - 3 files`. A dash immediately adjacent to its number (`T1-4`) is
-  # always a range, and every other connector (comma, slash, ampersand,
-  # plus, "and", "then", "or") always chains regardless of trailing text
-  # (`Tasks 1 and 2 only`, `T2, 3 files`) — a `T`-prefixed number always
-  # counts as a task too, regardless of what follows (`T2 — T3 hooks`).
-  # Returns "" when the label carries no task tag at all; otherwise the
-  # span, prefixed M when it chains to a further number (several tasks
-  # named) or 1 when it names exactly one.
-  function tagspan(lbl,    hay, span, rest, m, follow, chained) {
-    hay = " " lbl
-    if (!match(hay, /[^0-9A-Za-z](T|[Tt]asks?[[:space:]]+)[0-9]+/)) return ""
-    span = substr(hay, RSTART + 1, RLENGTH - 1)
-    rest = substr(hay, RSTART + RLENGTH)
-    chained = 0
-    while (match(rest, /^([[:space:]]*(-|–|—|,|\/|&|\+|and|then|or))+[[:space:]]*T?[0-9]+/)) {
-      m = substr(rest, RSTART, RLENGTH)
-      follow = substr(rest, RSTART + RLENGTH)
-      if (m !~ /T[0-9]+$/ && m ~ /(-|–|—)[[:space:]]+[0-9]+$/ && follow ~ /^[[:space:]]+[A-Za-z]/) break
-      span = span m
-      rest = follow
-      chained = 1
-    }
-    return (chained ? "M" : "1") span
-  }
-  function has_tasktag(lbl) { return tagspan(lbl) != "" }
+  # tagspan() / has_tasktag() are shared with the L1 contract lint — defined
+  # once in TAGSPAN_AWK, prepended to this program at invocation.
   # A label that chains to a further task number (a range like `Tasks
   # 1-4` / `T1-4` / `T1-T4`, or a list like `Tasks 1, 3` / `T1/T2` /
   # `T1, then T2`) is a tag for EACH task it names, never a scoped slice
@@ -1273,9 +1281,9 @@ EOF
     inside { print }
   ' "$PLAN")"
   if [ -n "$CONTRACT" ]; then
-    RP_BRIEF_PLAN="$PLAN" RP_BRIEF_REPO="$BRIEF_REPO" RP_BRIEF_BASE="$BRIEF_RECEIPT_ROOT" ROLEPOD_BRIEF_FAILURE_POLICY="$BRIEF_FAILURE_POLICY" awk -v rx="$TASK_RX" -v want="$BRIEF_N" -v hascontract=1 -v onmain="$BRIEF_MAIN" -v planwt="$BRIEF_PLANWT" -v tbranch="$BRIEF_TBRANCH" -v onlycode="$BRIEF_ONLYCODE" -v wmode="$BRIEF_WMODE" -v wsrc="$BRIEF_WSRC" "$CLEANFILES_AWK$FENCE_AWK$FIELD_AWK$RSET_AWK$BRIEF_AWK" "$PLAN" "$CONTRACT"
+    RP_BRIEF_PLAN="$PLAN" RP_BRIEF_REPO="$BRIEF_REPO" RP_BRIEF_BASE="$BRIEF_RECEIPT_ROOT" ROLEPOD_BRIEF_FAILURE_POLICY="$BRIEF_FAILURE_POLICY" awk -v rx="$TASK_RX" -v want="$BRIEF_N" -v hascontract=1 -v onmain="$BRIEF_MAIN" -v planwt="$BRIEF_PLANWT" -v tbranch="$BRIEF_TBRANCH" -v onlycode="$BRIEF_ONLYCODE" -v wmode="$BRIEF_WMODE" -v wsrc="$BRIEF_WSRC" "$CLEANFILES_AWK$FENCE_AWK$FIELD_AWK$RSET_AWK$TAGSPAN_AWK$BRIEF_AWK" "$PLAN" "$CONTRACT"
   else
-    RP_BRIEF_PLAN="$PLAN" RP_BRIEF_REPO="$BRIEF_REPO" RP_BRIEF_BASE="$BRIEF_RECEIPT_ROOT" ROLEPOD_BRIEF_FAILURE_POLICY="$BRIEF_FAILURE_POLICY" awk -v rx="$TASK_RX" -v want="$BRIEF_N" -v hascontract=0 -v onmain="$BRIEF_MAIN" -v planwt="$BRIEF_PLANWT" -v tbranch="$BRIEF_TBRANCH" -v onlycode="$BRIEF_ONLYCODE" -v wmode="$BRIEF_WMODE" -v wsrc="$BRIEF_WSRC" "$CLEANFILES_AWK$FENCE_AWK$FIELD_AWK$RSET_AWK$BRIEF_AWK" "$PLAN"
+    RP_BRIEF_PLAN="$PLAN" RP_BRIEF_REPO="$BRIEF_REPO" RP_BRIEF_BASE="$BRIEF_RECEIPT_ROOT" ROLEPOD_BRIEF_FAILURE_POLICY="$BRIEF_FAILURE_POLICY" awk -v rx="$TASK_RX" -v want="$BRIEF_N" -v hascontract=0 -v onmain="$BRIEF_MAIN" -v planwt="$BRIEF_PLANWT" -v tbranch="$BRIEF_TBRANCH" -v onlycode="$BRIEF_ONLYCODE" -v wmode="$BRIEF_WMODE" -v wsrc="$BRIEF_WSRC" "$CLEANFILES_AWK$FENCE_AWK$FIELD_AWK$RSET_AWK$TAGSPAN_AWK$BRIEF_AWK" "$PLAN"
   fi
   exit $?
 fi
@@ -1652,23 +1660,21 @@ EOF
 [ "$OWN_OK" -eq 1 ] && [ -n "$FILES" ] && echo "  ✓ every touched file has exactly one owner"
 
 # L1: one role on two or more owner lines needs a task tag on each line.
-# Role = the agent token in the label's backticks, else the label text before ':'.
-DUPROLES=$(printf '%s\n' "$OWNERSHIP" | awk '
-  /^[[:space:]]*[-*][[:space:]]/ {
-    line = $0
-    sub(/^[[:space:]]*[-*][[:space:]]+/, "", line)
-    lbl = line
-    if (match(line, /^`[^`]+`/)) {
-      role = substr(line, RSTART + 1, RLENGTH - 2)
-      lbl = substr(line, RSTART + RLENGTH)
-      sub(/:.*/, "", lbl)
-    } else {
-      i = index(line, ":"); if (i == 0) next
-      role = substr(line, 1, i - 1); lbl = role
+# Owner lines and labels are read exactly as --brief reads them: the first
+# backticked token is the label (a line with none is prose, ignored), a tag
+# between it and the colon is folded in, and the role is the label's first word.
+DUPROLES=$(printf '%s\n' "$OWNERSHIP" | awk "$TAGSPAN_AWK"'
+  match($0, /`[^`]+`/) {
+    label = substr($0, RSTART + 1, RLENGTH - 2)
+    rest = substr($0, RSTART + RLENGTH)
+    ci = index(rest, ":")
+    if (ci > 0) {
+      pretag = substr(rest, 1, ci - 1)
+      if (pretag !~ /`/ && has_tasktag(pretag)) label = label pretag
     }
-    if (role ~ /\//) next
-    if ((" " lbl) ~ /[^0-9A-Za-z](T|[Tt]asks?[[:space:]]+)[0-9]+/) next
-    n[role]++
+    if (has_tasktag(label)) next
+    split(label, w, /[[:space:]]+/)
+    n[w[1]]++
   }
   END { for (r in n) if (n[r] >= 2) print r }
 ' | sort)

@@ -308,13 +308,12 @@ render_codex() {
   # file is deliberately NOT named AGENTS.md (nothing may ever read it as
   # instructions from the plugin cache).
   mkdir -p "$plugin_dst/agents"
-  local t
+  local t n
   for t in "$out_dir/agents"/*.toml; do
     [ -f "$t" ] || continue
-    case "$(basename "$t")" in
-      rolepod-*) cp "$t" "$plugin_dst/agents/$(basename "$t")" ;;
-      *)         cp "$t" "$plugin_dst/agents/rolepod-$(basename "$t")" ;;
-    esac
+    n="$(basename "$t")"
+    case "$n" in rolepod-*) ;; *) n="rolepod-$n" ;; esac
+    cp "$t" "$plugin_dst/agents/$n"
   done
   cp "$output" "$plugin_dst/agents/AGENTS.rolepod.md"
 

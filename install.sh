@@ -323,13 +323,12 @@ install_codex_agents() {
   fi
   mkdir -p "$dest"
   rm -f "$dest"/rolepod-*.toml 2>/dev/null || true
-  local copied=0 f
+  local copied=0 f n
   for f in "$RENDERED_CODEX_DIR/agents"/*.toml; do
     [ -f "$f" ] || continue
-    case "$(basename "$f")" in
-      rolepod-*) cp "$f" "$dest/$(basename "$f")" 2>/dev/null && copied=$((copied+1)) ;;
-      *)         cp "$f" "$dest/rolepod-$(basename "$f")" 2>/dev/null && copied=$((copied+1)) ;;
-    esac
+    n="$(basename "$f")"
+    case "$n" in rolepod-*) ;; *) n="rolepod-$n" ;; esac
+    cp "$f" "$dest/$n" 2>/dev/null && copied=$((copied+1))
   done
   # Stamp the plugin version so the SessionStart agent-sync hook (v2.75.0,
   # plugins/rolepod-codex/hooks/agent-sync.sh) sees this install as current
