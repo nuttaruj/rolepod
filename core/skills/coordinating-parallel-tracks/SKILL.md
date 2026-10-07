@@ -25,7 +25,7 @@ A task Blocked by tasks in two or more tracks starts after those tracks merge, a
 
 A single-track plan runs on the base checkout unless another session holds a live lock on it when its first task starts; then the whole plan runs in one plan worktree.
 
-Backward compatibility: a plan without `## Tracks` + Parallel layout treats every task as its own track (worktree per task); + Sequential means one track named `plan`.
+A non-Sequential plan without `## Tracks` whose tasks share no file and no Blocked-by edge treats every task as its own track; Sequential means one track named `plan`.
 
 Done when: every task has its track, and every track has its worktree, or the base checkout by the single-track rule.
 

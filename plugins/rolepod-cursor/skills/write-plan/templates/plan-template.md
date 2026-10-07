@@ -18,7 +18,7 @@
 - `path/to/file` — <what changes>
 
 ## Tasks
-<Ordered, independently verifiable tasks. Keep the planned contract here; record status by checkbox and deviations under Changes during build.>
+<One task per review gate. Keep the planned contract here; record status by checkbox and deviations under Changes during build.>
 
 ### Task 1: <title>
 - **Delivers:** <observable outcome>
@@ -26,15 +26,16 @@
 - **Track:** <track id from ## Tracks — delete this line when the plan has no ## Tracks>
 - [ ] **Files:** <paths this task touches>
 - **Read first:** <2-3 files and the pattern to copy>
-- [ ] **Change:** <what to do, concretely — at most 3 bullets. An exact-string
+- [ ] **Change:** <ordered stages, one indented `- [ ] <step>` each (no timed micro-steps;
+      no bold label or field name first). An exact-string
       edit spec (old → new) goes in a fenced block under this task, never
       inline in the bullet. A clause of the spec's agreed contract this task
       builds or consumes (interface, data shape, compatibility rule, invariant)
       is quoted here or in Done when — the owner sees only the brief.>
-- [ ] **Test / evidence:** <test or evidence type, assertion, and seam from Testing decisions; explain any new seam. Docs, comments, config-text, and string-only changes use a mechanical check.>
+- [ ] **Test / evidence:** <test or evidence type, assertion, and seam from Testing decisions; explain any new seam.>
 - **Proof:** <one reviewer-checkable claim> :: `<command that proves it>` (optional)
 - [ ] **Expected failing signal:** <failure observed before the fix; omit if not test-first>
-- [ ] **Command:** <exact, runnable check covering this task; not the whole-repo suite>
+- [ ] **Command:** <exact, runnable check covering this task>
 - **Owner:** <The role you pick for this task's Files from the agent listing — each
       description names its scope. `Lead` for R1-sized work or when the user said
       self-do. A vertical slice has ONE owner: the role of its dominant layer (the
@@ -54,7 +55,7 @@
 - <surface> → Task <N>
 
 ## Spec coverage (both directions)
-<Map each requirement to a task and each task to its source requirement. Move unrequested work to Follow-ups.>
+<Each requirement → the task that proves it (one task may prove several); each task → its source requirement. Move unrequested work to Follow-ups.>
 - <spec requirement> → Task <N>
 
 ## Parallel layout

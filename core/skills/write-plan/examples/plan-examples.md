@@ -32,64 +32,47 @@ docs/rolepod/specs/orders-csv-export-2026-05-20.md (approved)
 
 ## Tasks
 
-### Task 1: OrdersCsv service
-- Delivers: the report's rows can be produced as a CSV with the on-screen columns
+### Task 1: Orders CSV export
+- Delivers: a user clicks Export CSV and gets the filtered table as a CSV file
 - Blocked by: none
-- [ ] Files: app/services/orders_csv.rb, spec/services/orders_csv_spec.rb
+- [ ] Files: app/services/orders_csv.rb, app/controllers/reports_controller.rb,
+  app/views/reports/_toolbar.html.erb, spec/services/orders_csv_spec.rb,
+  spec/requests/reports_spec.rb, spec/system/reports_export_spec.rb
 - Read first: app/services/orders_report.rb (the service-object shape to copy),
-  app/controllers/reports_controller.rb (the index scope)
-- [ ] Change: build CSV rows from the same scope ReportsController#index uses
-- [ ] Test / evidence: unit at OrdersCsv.call(scope) — a 3-order scope yields
-  1 header + 3 rows, columns in on-screen table order
+  app/controllers/reports_controller.rb#index (the filter scope),
+  app/views/reports/_print_button.html.erb (the disable + spinner pattern)
+- [ ] Change:
+  - [ ] OrdersCsv.call(scope) builds the rows from the scope ReportsController#index uses
+  - [ ] #export reuses the index filter scope and streams the CSV as an attachment
+  - [ ] the Export CSV button calls #export, disabled with a spinner while generating
+- [ ] Test / evidence: unit at OrdersCsv.call(scope) — a 3-order scope yields 1 header
+  + 3 rows in on-screen column order; request spec at GET /reports/export — row count
+  == table count, an empty range returns a header-only CSV; system spec at the button —
+  click exports the current filter, the button is disabled mid-generation
 - [ ] Expected failing signal: NameError: uninitialized constant OrdersCsv
-- [ ] Command: bundle exec rspec spec/services/orders_csv_spec.rb
-- Owner: backend-developer
-- Done when: spec green; columns match spec Chosen approach: "id, name, total, status"
-
-### Task 2: export action
-- Delivers: a filtered report can be downloaded as CSV from the API
-- Blocked by: Task 1 (OrdersCsv.call(scope))
-- [ ] Files: app/controllers/reports_controller.rb
-- Read first: app/services/orders_csv.rb (the service Task 1 builds),
-  app/controllers/reports_controller.rb#index (the filter scope)
-- [ ] Change: add #export, reuse the index filter scope, stream as attachment
-- [ ] Test / evidence: request spec at GET /reports/export — filtered export row count == table count;
-  an empty range returns a header-only CSV
-- [ ] Command: bundle exec rspec spec/requests/reports_spec.rb
-- Owner: backend-developer
-- Done when: request spec green; 30s timeout not exceeded on a 10k-order range
+- [ ] Command: bundle exec rspec spec/services/orders_csv_spec.rb spec/requests/reports_spec.rb spec/system/reports_export_spec.rb
+- Owner: backend-developer (the button is a thin end)
+- Done when: the three specs green; columns match spec Chosen approach: "id, name, total, status";
+  30s timeout not exceeded on a 10k-order range
 - On fail: timeout on the 10k range → switch to the chunked streamed
   response (Risks) instead of debugging the buffered path.
-
-### Task 3: Export CSV button
-- Delivers: a user clicks Export CSV and gets the filtered table as a file
-- Blocked by: Task 2 (GET /reports/export)
-- [ ] Files: app/views/reports/_toolbar.html.erb
-- Read first: app/views/reports/_print_button.html.erb (the disable + spinner
-  pattern to copy), spec/system/reports_filter_spec.rb (the system-spec setup)
-- [ ] Change: add the button wired to #export; disable + spinner while generating
-- [ ] Test / evidence: system spec at the Export CSV button — click exports the current filter; button
-  is disabled mid-generation
-- [ ] Command: bundle exec rspec spec/system/reports_export_spec.rb
-- Owner: frontend-developer
-- Done when: system spec green
 
 ## High-risk surfaces touched
 None — read-only export, no credential or billing change.
 
 ## Spec coverage (both directions)
-Forward — every spec criterion has an owning task:
-- row set == filtered table → Task 2
+Forward — each criterion names the task that proves it (one task may prove several):
+- row set == filtered table → Task 1
 - column order + headers match → Task 1
-- loading state, no double-click → Task 3
-- zero-match → header-only CSV → Task 2
+- loading state, no double-click → Task 1
+- zero-match → header-only CSV → Task 1
 Reverse — every task traces to a spec line; anything that does not is cut:
-- Task 1-3 each map to a criterion above.
+- Task 1 maps to every criterion above.
 - "add an Excel (.xlsx) export too" — no spec line asked for it, and Non-goals
   excludes it → cut to a follow-up, not built here.
 
 ## Parallel layout
-Sequential — one owner per task, no parallel tracks.
+Sequential — one task, one owner.
 
 ## Done criteria
 All 3 specs green; the exported CSV row set equals the filtered table.
@@ -98,9 +81,11 @@ All 3 specs green; the exported CSV row set equals the filtered table.
 Template default. Also stop if a fix reopens a green task.
 
 ## Risks
-Large exports near the 30s timeout — Task 2 verifies a 10k-order range; if it
+Large exports near the 30s timeout — Task 1 verifies a 10k-order range; if it
 fails, fall back to a chunked streamed response.
 ```
+
+A second full-depth layer (say, a public CSV API another team consumes) would be its own task: `Blocked by: Task 1 (OrdersCsv.call(scope))`.
 
 ### Bad
 
@@ -121,14 +106,14 @@ Touch the reports stuff and the frontend. Should be quick.
 | Area | Bad | Good |
 |------|-----|------|
 | Files | "the reports stuff" — no paths | Exact paths, one per line, with the change |
-| Tasks | "Build the export feature" — one giant vague task | Ordered, each independently verifiable |
+| Tasks | "Build the export feature" — one giant vague task | One reviewable task; its steps are ordered checkboxes |
 | Tests | "Add tests" — no assertion | Per task: test type + the assertion that proves done |
-| Order | Unstated | Blocked by on every task — the graph IS the order; Delivers gives a human the one-line why |
+| Order | Unstated | Blocked by on every task (here: none) — the graph IS the order; Delivers gives the one-line why |
 | Commands | None | Exact `rspec` command per task |
 | Loop | Not runnable — no checkboxes, no failure path | Checkbox state + Failure policy: the build loop executes, verifies, and recovers without re-asking |
-| Scope | "Touch the reports stuff and the frontend" — unbounded | Two-way spec trace: every criterion has a task, every task has a spec line, and the unasked Excel export is cut |
+| Scope | "Touch the reports stuff and the frontend" — unbounded | Two-way spec trace: every criterion names the task that proves it, every task has a spec line, and the unasked Excel export is cut |
 | Risk | "Should be quick" | Timeout risk named with a fallback + a per-task On fail |
-| Hand-off | Nothing | Blocked by names what each edge consumes; Read first per task; spec contract quoted in the task |
+| Hand-off | Nothing | Read first names the patterns to copy; spec contract quoted in the task |
 
 ---
 
@@ -187,7 +172,7 @@ docs/rolepod/specs/notifications-center-2026-05-20.md (approved)
 None.
 
 ## Spec coverage (both directions)
-Forward — every spec criterion has an owning task:
+Forward — each criterion names the task that proves it:
 - list endpoint, unread first → Task 1
 - read endpoint, marks read → Task 1
 - bell shows unread count → Task 2

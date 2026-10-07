@@ -10,7 +10,7 @@ A built diff → its round-1 reviewer set run on one frozen snapshot, findings c
 ## Skip when
 
 - R1: ≤ 5 lines, one file, zero logic, not high-risk.
-- Docs-only at any size.
+- Docs-only at any size, except a phase-end pass (`orchestrating-plans`).
 - The user accepts the change unreviewed.
 - You were dispatched to review → `review-code`.
 
@@ -50,7 +50,7 @@ Done when: each reviewer named with its lens or role.
 - Spec lens only: the writer's Command and the tail of its result, quoted — unverified claims; check them against the diff and the tests, never re-run them; the writer's reasons never lower a finding's severity.
 - ≤ 20 tool calls per lens, ≤ 40 for `security-engineer` and the adversarial pass; `security-engineer` also gets the result of the repo's own security scanner (audit, secret scan, security lint) on the changed files and the project's stated security rules, quoted as its checklist — none present → none added, never invent one.
 - `universal-reviewer` → one fresh context per lens; else a default sub-agent per lens, given its lens and `review-code` if present; portable dispatch → `using-rolepod/references/model-tiers.md`, no file → the native role or a fresh child given the role's text.
-- The fixes wait for every report: dispatch the whole set in ONE message, then take every report in before you fix anything.
+- The fixes wait for every report: dispatch the whole set in ONE message.
 - Cannot dispatch a reviewer → return the diff unreviewed to your caller, naming the set: `REVIEW NEEDED: <set>`.
 - A Lead with no agents: Lite → walk both axes yourself (`review-code` if present), noting the lost independence; Standard / Full → blocked unless the user waives it. The Lead's own walk is never an independent reviewer; strength routing never removes a required axis; the user forbids agents → surface the conflict.
 - Until the round ends: no diff-file edit, no `git stash / reset / checkout / add / commit` (a red-proof revert runs in a throwaway worktree). A missing, failed, empty or partial internal report keeps the round open: that same isolated reviewer completes it on the same frozen diff — never a Lead review, never a second round — and the recommendation stays PARTIAL until every report is complete.

@@ -19,6 +19,7 @@ A task in progress → resume Build at that task; never restart Define or Plan.
 
 - A plan file → `../write-plan/scripts/plan-lint.sh <plan>` (relative to this skill's folder) before the first task. FAIL → back to `write-plan`; never build on it. No script → check by eye: a **Command** and checkboxes per task, an acyclic Blocked-by graph, a **Failure policy**.
 - An inline chat checklist: no lint, no temp file; it is the owner's brief and every step names its verify command. It fits only R2 (one source file plus its own test) or spec-as-plan R3 (≤ 3 approved ordered tasks naming files, verify command and dependencies; one owner; no parallel work, no high-risk path). An added source file, a 4th task, parallel work, a high-risk path, changed acceptance or compaction → `write-plan` the real plan.
+- Phase 1 of an approved spec set → `git switch -c <set>` (the map's slug) before the plan base, unless the project's instructions keep work on the base branch; another live session on this checkout → ask the user first.
 - Before the first task commit, record the plan base (`git rev-parse HEAD`) under the plan's `## Changes during build`.
 - Shared plan (issue numbers in the header) → claim the task's issue before a file is touched (`write-plan` team issues; none → assign it to yourself).
 
@@ -86,6 +87,7 @@ Done when: every track is merged.
 - One unsliced track → none; its track-end review is the branch review.
 - The plan's Ship group lines are the seams to check, not a review of their own; an R4 task → `plan-lint.sh --review-set --tier R4` joins on its seam.
 - ONE fix dispatch with every finding → ONE delta re-check → the rest ruled at the cap; the rulings go to `finish-work`.
+- A spec's `**Phase-end review:**` line → at phase end, one spec-lens pass on `<plan base>...HEAD`, never size-split: its text joins the spec lens of a review on that range (the final branch review, or the only track's track-end review), else one `convening-code-review` pass, spec lens only.
 
 Done when: the final review is closed or ruled, or none is due.
 
@@ -94,13 +96,13 @@ Done when: the final review is closed or ruled, or none is due.
 - Run continuously between tasks: stop only on a `BLOCKED` after a variable change, or a spec / plan gap that survives a re-read. Never ask 'should I continue?'; an ended turn is a stop however it is worded.
 - Every dispatch out and nothing unblocked → end the turn on something whose end wakes you, closing with the `ticket.sh status <plan>` output (no script → the same list, one line per task). Opening a PR → load `finish-work` first; no `finish-work` → one checks watch, no poll.
 - Forced to end → one `## Changes during build` line: stopped after Task N · next Task M · how to start the env. A wait offers /compact only as a context-check relay (`manage-context`; none → one ~100-char line naming the plan and the next step).
-- Read the evidence, not the status: never accept `COMPLETED` without its Command tail.
 - A new idea → one `## Follow-ups` line, never a mid-build redesign; a follow-up inside the approved spec → a new task, tiered and dispatched.
 - The whole suite runs once per release, by you.
 
 ## Next phase
 
 - A ready task remains → step 2.
-- Plan done, final review closed or ruled → `finish-work` with the plan, the receipts and the rulings.
+- Plan done and reviewed, a phase of its spec set left → `write-plan` for the map's next phase, same turn, same branch, no menu or release; push, PR and merge happen once, at `finish-work` after the last phase.
+- Plan done, no phase left, final review closed or ruled → `finish-work` with the plan, the receipts and the rulings.
 - `BLOCKED` survives context, tier, scope and a re-plan → `manage-context`; none → stop with the attempt log and 2-3 options.
 - No other skill → stop and tell the user what changed, what was verified and what is still unverified or unreviewed, with the receipt paths and each failing Command tail quoted.

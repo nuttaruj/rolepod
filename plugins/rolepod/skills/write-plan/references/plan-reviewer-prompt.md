@@ -26,7 +26,7 @@ High-risk list: <HIGH_RISK_LIST>
 Check, in order:
 
 1. Spec coverage — for each spec requirement, name the task that
-   implements it. List any spec requirement with no task. List any
+   proves it (one may prove several). List any spec requirement with no task. List any
    task that implements something the spec did not ask for.
 2. Anti-placeholder — scan for the six failure patterns:
    TBD/TODO/"implement later"; "add appropriate X" without naming the
@@ -36,7 +36,6 @@ Check, in order:
 3. Symbol consistency — function/method/property names match across
    tasks (foo() in Task 3 vs fooBar() in Task 7 is a bug).
 4. Test discipline — every task names a test type and an assertion.
-   "Adds tests" alone is a fail.
 5. High-risk surfaces — any surface on the High-risk list above
    that the plan touches has a test plan and an owner.
 6. Parallel layout — if Parallel, a cohesion contract is referenced with
