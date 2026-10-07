@@ -19,12 +19,12 @@ Route each request on its intent, scope and tier. A tool call, config change or 
 |---|---|---|
 | **R1** trivial edit | a docs-only diff, any size — or ≤5 lines in 1 file with zero logic lines (comment, blank, user-facing text in a string; never a URL, path, key, regex, query or a value code branches on), not high-risk, ≤3 tool calls | direct edit; the edit echo is the verify; no review |
 | **R2** one file + test | 1 source file + its own test, clear scope, logic, ≈≤30 logic lines, not high-risk | its step 2 skill still fires (bug → `debug-issue`, else `orchestrating-plans`); a 3-5 line chat checklist (goal, done-when, verify command) replaces spec + plan; a task owner builds it on main, then the Lead commits |
-| **R3** multi-file | several source files, vague scope, or sequencing / delegation | an approved spec/change list already enumerates ≤3 ordered tasks and each task's files, verify command, and dependencies; single owner, no parallel work, high-risk path, changed acceptance, added source file or mid-plan compaction → Build → `orchestrating-plans` with the inline checklist. Otherwise use the full spine |
-| **R4** high-risk | a high-risk path — auth, tokens, billing, credits, secrets, data deletion, … (the full list: Stop conditions) — any size, one constant included | the full spine; review intensity comes from `workflow.mode` and follows `convening-code-review` (Lite has two universal-reviewer lenses only; Standard and Full follow their own contracts); never downgrade risk; 1 file, ≤5 lines, comment / blank only → R2 |
+| **R3** multi-file | several source files, vague scope, or sequencing / delegation | an approved spec/change list already enumerates ≤3 ordered tasks and each task's files, verify command, and dependencies; single owner, no parallel work, high-risk path, changed acceptance, added source file or mid-plan compaction → Build → `orchestrating-plans` with the inline checklist. Otherwise a clear R3 → step 2's chat design, else the full spine |
+| **R4** high-risk | a high-risk path — auth, tokens, billing, credits, secrets, data deletion, … (the full list: Stop conditions) — any size, one constant included | the full spine; review intensity comes from `workflow.mode` and follows `convening-code-review` (Lite has two universal-reviewer lenses only); never downgrade risk; 1 file, ≤5 lines, comment / blank only → R2 |
 
 - Unsure about risk or dependencies → the higher tier. Unsure about size → inspect affected regions and `git status` once work starts.
 - The task grows (a second source file, hidden logic, a risk path) → re-tier up at once, never down: print the new Route line before the next edit or dispatch; a risk path (credits, auth, …) → R4 and its review floor.
-- Tier is per task; the request's highest tier sets the spine (Define → Plan) only.
+- Tier is per task; the request's highest tier sets the spine only.
 - R1 / R2 never skip proof: they drop the full suite and browser drive, never the echo or the checklist command.
 - Blast radius sets the tier, not the feature's age; effort settings raise thinking, not the tier.
 

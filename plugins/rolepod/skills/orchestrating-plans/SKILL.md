@@ -102,7 +102,7 @@ Done when: the final review is closed or ruled, or none is due.
 ## Next phase
 
 - A ready task remains → step 2.
-- Plan done and reviewed, a phase of its spec set left → `write-plan` for the map's next phase, same turn, same branch, no menu or release; push, PR and merge happen once, at `finish-work` after the last phase.
-- Plan done, no phase left, final review closed or ruled → `finish-work` with the plan, the receipts and the rulings.
+- Plan done and reviewed, a phase of its spec set left → `write-plan` for the next phase, same turn, same branch, no menu, release, push, PR or merge.
+- Plan done, no phase left, final review closed or ruled → `finish-work` with the plan, the receipts and the rulings (a spec set: every phase's; full diff `<base>...<set>`).
 - `BLOCKED` survives context, tier, scope and a re-plan → `manage-context`; none → stop with the attempt log and 2-3 options.
 - No other skill → stop and tell the user what changed, what was verified and what is still unverified or unreviewed, with the receipt paths and each failing Command tail quoted.
