@@ -98,9 +98,9 @@ Return the report to the orderer; your role's reply carries the verdict, the rep
 
 ### 6. Specialist lenses
 
-A brief naming `lens: perf`, `lens: ui` or `lens: arch` is report-only: edit no file but the named report; each problem becomes a finding for the author — never a fix, a measurement of your own or a `BLOCKED`. Write the step 3 report; return the verdict first, then the report path.
+A brief naming `lens: perf`, `lens: ui` or `lens: arch` is report-only: edit no file but the named report; each problem becomes a finding for the author — never a fix, a measurement of your own or a `BLOCKED`. Write the step 3 report; return its verdict first (`APPROVED | APPROVED-WITH-NITS | REJECTED`), then the report path.
 - `perf` — a missing baseline is a finding; you measure nothing.
-- `ui` — observe the surface first, then the a11y checks; each finding is location, severity and fix direction. No browser tool → the Read section says "not observed".
+- `ui` — observe the surface first, then the a11y checks. No browser tool → the Read section says "not observed".
 - `arch` — dependency direction: feature → shared is good, shared → feature is bad, and a circular dependency is a finding.
 
 ## Guardrails
