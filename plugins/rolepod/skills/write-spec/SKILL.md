@@ -59,12 +59,11 @@ Done when: the user has 2-3 lensed approaches with one recommended, or one desig
 Fix in the draft:
 - placeholders (the spec-lint's list, step 6), contradictions between sections, ambiguous wording ("maybe", "should", "if needed");
 - a Success criterion without "proven by", provable only at a seam the implementation alone reaches, or naming a not-yet-existing command unflagged — pair each with a real or explicitly-new command / observation a caller can reach;
-- a Success criterion that is not behavior (the template's Success criteria);
-- a technical claim behind the approach with no verifiable pointer (file:line, commit, or URL + date);
+- a technical claim behind the approach that Discovery did not verify; cite only pointers that do not drift (commit, URL + date), never file:line or a code snippet (the plan names files), except a contract snippet the Chosen approach agrees;
+- a section longer than its complexity needs: a few sentences when plain; a spec several times the usual size is a transcript — cut to behavior and decisions;
 - a high-risk surface with no security / migration / audit plan — add it, or delegate to `security-engineer` / `system-architect`; no subagents → the Lead writes it;
 - untested assumptions about the user's intent, scope creep, over-engineering for hypothetical needs.
-- Testing decisions: the template's Testing decisions (apply the seam rule; `tdd-flow` owns edge / error / race criterion or R4 floor).
-- Chosen approach: the template's Chosen approach (capture interface, data shape, compatibility rule, invariants when a DB / API / boundary changes).
+- Success criteria, Testing decisions or Chosen approach that miss what their template section asks.
 - Each line the user did not answer in Discovery ends `(assumed)`.
 
 Done when: no item above remains.
@@ -88,7 +87,7 @@ After the approaches round, read back to the user: the goal, the scope, and each
 
 **Spec-lint**: `grep -niE '\[\[FILL:|TODO|TBD' <spec>` must print nothing; so must the anchor check `for h in 'Non-goals' 'Current behavior' 'Desired behavior' 'Success criteria'; do grep -q "^## $h" <spec> || echo "missing ## $h"; done` (the next repeat-feature spec seeds from these four headings). A printed line or a grep error is a lint failure.
 
-Fill `templates/spec-template.md`. Keep the decision contract: goal, desired behavior, acceptance, testing, risk, chosen contract, open decisions. Write the spec in the user's language; headings, labels, file paths and commands stay verbatim.
+Fill `templates/spec-template.md`. Write the spec in the user's language; headings, labels, file paths and commands stay verbatim.
 
 A new decision requires the user's answer before hand-off; never write it as approved while unresolved. After Gate 1 a decision edits the section it changes, never an appended decision log; ask only where `write-plan` step 4 would, or when approved scope or criteria change.
 
