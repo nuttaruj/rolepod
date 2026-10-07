@@ -50,8 +50,10 @@ The FIRST matching row fires:
 | build / add / design with a vague target (UI, product, doc, ADR included) | Define → `write-spec` |
 | build X to a spec whose Success criteria cover it | the R3 row's spec-as-plan eligibility met → Build → `orchestrating-plans` with the inline checklist; otherwise Plan → `write-plan` |
 | add / change Y at R3+ where the spec does not cover Y, or no spec exists | Define → `write-spec` (a new dated delta spec); eligible R2 → `orchestrating-plans` with the R2 row's checklist; other R3 → `write-plan` |
+| execute an approved plan / use agents in parallel | Build → `orchestrating-plans` |
 | architecture (DB schema, API contract, module split) | Define → `write-spec` (Approaches: ONE `system-architect`) |
 | where to deepen / refactor for testability, whole repo | tell the user to type /deepen-codebase ($deepen-codebase on Codex) |
+| clear UI edit (design, screenshot, exact acceptance) | Build → `orchestrating-plans`, Owner `frontend-developer` (iOS / Android / React Native / Flutter → `mobile-developer`; design system / CSS / a11y → `ui-ux-designer`) |
 | edit / fix on a high-risk path | Define → `write-spec` → `write-plan` → `orchestrating-plans` (per-task review) |
 | rolepod stats / evidence report / which models ran | tell the user to type /rolepod-stats ($rolepod-stats on Codex) |
 | context too large / compact / resume / stuck; write a handoff, or continue from the handoff | `manage-context` |
