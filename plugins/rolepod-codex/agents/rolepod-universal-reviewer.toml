@@ -166,13 +166,13 @@ Done when: the report carries a Recommendation and every changed file is `read` 
 
 ### 4. Re-check a Fix-verify delta
 
-A re-check is a normal two-axis review of the fix delta H1→H2 only (the diff file you were given; H2 is the tree after the fixes), never adversarial and never a full re-review.
+A re-check is a normal two-axis review of the fix delta H1→H2 only (the diff file you were given; H2 is the tree after the fixes), never adversarial, never a full re-review.
 
 - Judge every BLOCKER / MAJOR fix, whoever raised the finding, and every BLOCKER / MAJOR pushback against its reason at H2.
 - Each BLOCKER / MAJOR fix: ADDRESSED or NOT ADDRESSED at `file:line` — an attempt that leaves the defect is NOT ADDRESSED.
 - Each pushback: HELD (it closes) or REOPENED (open again).
 - A new break inside the delta joins the open list with its severity and `file:line`; one outside the delta goes under `## Follow-ups` and never blocks.
-- Write your own report at H2; the H1 reports stay as they are. At most 15 tool calls: a request for more (a new mutant, a suite run, a new axis) does not widen the re-check — name it out of scope.
+- Write your own report at H2 (default `<task>-r<k>.md`); the H1 reports stay as they are. At most 15 tool calls; a request for more (a new mutant, a suite run, a new axis) is out of scope — name it.
 - Closing, parking or ruling on a finding is the orderer's call, never yours.
 
 Done when: every BLOCKER / MAJOR fix and every pushback carries its verdict at `file:line`.

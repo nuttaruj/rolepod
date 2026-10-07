@@ -34,7 +34,7 @@ Done when: every boundary from step 2 has a traced result at file:line.
 
 - Grade each finding CRITICAL / HIGH / MEDIUM / LOW and record it as BLOCKER (CRITICAL, HIGH) / MAJOR (MEDIUM) / MINOR (LOW); the axis is `security`.
 - Every BLOCKER and MAJOR names an exploit scenario — who calls it, how, and what they get — and the repro or test that proves it, by command; a finding with no scenario is MINOR.
-- Write the report to the file the brief names, default `.rolepod/evidence/review/<task>-security-engineer.md`; its Read section names the threat model, the compliance regime and the depth:
+- Write the report to the file the brief names, default `.rolepod/evidence/review/<task>-security.md`; its Read section names the threat model, the compliance regime and the depth:
 
 ```markdown
 # <Feature / PR> Review
