@@ -109,13 +109,17 @@ if routes:
 dispatches = [r for r in rows if r.get("phase") == "dispatch"]
 # A strong dispatch is either the Lead's class-labeled line (tier=strong) or a
 # hook-auto row whose agent_type is a strong-named role (v2.86.0: the manual
-# line is written only where the hook cannot see the tier). Mirrors
-# session_state.STRONG_REVIEWER_AGENTS.
+# line is written only where the hook cannot see the tier). A subset of
+# session_state.STRONG_ROLE_AGENTS.
 STRONG_ROLES = {"security-engineer"}
+# Same rule as session_state._bare_agent_name: a bare name or `rolepod:` only.
+def bare_agent(d):
+    s = (d.get("agent_type") or "").strip()
+    return s[len("rolepod:"):] if s.startswith("rolepod:") else s
 def is_strong(d):
     if d.get("tier") == "strong":
         return True
-    at = (d.get("agent_type") or "").split(":")[-1]
+    at = bare_agent(d)
     return d.get("provenance") == "hook-auto" and at in STRONG_ROLES
 if dispatches:
     strong = [d for d in dispatches if is_strong(d)]
@@ -151,7 +155,7 @@ if dispatches:
                          "performance-engineer", "qa-tester", "scout", "security-engineer",
                          "system-architect", "ui-ux-designer", "universal-reviewer"}
         def generic(d):   # anything that is not a shipped role has no frontmatter model
-            return (d.get("agent_type") or "").rsplit(":", 1)[-1] not in ROLEPOD_ROLES
+            return bare_agent(d) not in ROLEPOD_ROLES
         role_pinned = sum(1 for d in inh if not generic(d))
         if role_pinned:
             print(f"    · {role_pinned} with no model on the call ran the role's frontmatter model")
@@ -162,8 +166,8 @@ if dispatches:
                   "wants an explicit per-stage choice or a stated reason")
             if low:
                 print(f"      {low} of them under a cheap/balanced Lead — the fleet ran "
-                      "low-class; the strong pass must come from an Agent-tool "
-                      "reviewer dispatch (hook-lifted) before commit")
+                      "low-class; the strong pass must come from a security "
+                      "lens report before commit")
         applied = sum(1 for d in auto if d.get("floor") == "applied")
         frontmatter = sum(1 for d in auto if d.get("floor") == "frontmatter")
         missed = sum(1 for d in auto if d.get("floor") == "missed")
@@ -206,7 +210,7 @@ if dispatches:
 NON_TASK_ROLES = {"qa-tester", "security-engineer", "universal-reviewer", "adversarial-reviewer", "code-reviewer",
                   "scout", "general-purpose", "default", "claude", "workflow-subagent", ""}
 def _task_role(d):
-    at = (d.get("agent_type") or "").strip().rsplit(":", 1)[-1]
+    at = bare_agent(d)
     return at[len("rolepod-"):] if at.startswith("rolepod-") else at
 def _epoch(d):
     import datetime as _dt
@@ -330,7 +334,7 @@ if grows:
 # Write-scope denies (hooks/subagent-write-scope.sh) per agent_type; out-of-root paths no longer reach the log; rows written before that change may include them.
 wrows = [r for r in rows if r.get("phase") == "write-scope" and r.get("decision") == "deny"]
 if wrows:
-    wc = Counter((r.get("agent_type") or "?").split(":")[-1] for r in wrows)
+    wc = Counter(bare_agent(r) or "?" for r in wrows)
     print(f"\n  Write-scope denies ({len(wrows)}): " + " · ".join(f"{k} ×{n}" for k, n in wc.most_common()))
 
 if ships:

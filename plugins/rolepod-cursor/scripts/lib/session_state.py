@@ -558,12 +558,13 @@ def count_test_edits(transcript_path: str, cwd: str | None = None) -> int:
 
 
 def _bare_agent_name(subagent_type: str | None) -> str:
-    """Strip a plugin namespace prefix — 'rolepod:qa-tester' -> 'qa-tester'.
+    """Strip the rolepod namespace — 'rolepod:qa-tester' -> 'qa-tester'.
 
-    Plugin-installed agents are addressed as '<plugin>:<agent>'. A bare name
-    with no colon is returned unchanged.
+    A bare name is returned unchanged. Another plugin's '<plugin>:<agent>'
+    stays whole, so it matches no rolepod role set.
     """
-    return (subagent_type or "").strip().rsplit(":", 1)[-1]
+    s = (subagent_type or "").strip()
+    return s[len("rolepod:"):] if s.startswith("rolepod:") else s
 
 
 # Workflow scripts: agent() OPTIONS are code, prompts are string literals. A key
