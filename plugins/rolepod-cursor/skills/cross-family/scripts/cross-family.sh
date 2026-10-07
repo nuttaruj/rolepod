@@ -76,9 +76,9 @@
 #            nothing usable → exit 4 (logged); OFF → exit 5 (not logged — the
 #            user's choice is not a failure). The Lead then runs its own path.
 #   evidence .rolepod/evidence/external/<utc>-<cli>.txt + one phase-log line
-#            ({"phase":"review","reviewer":"external",...} is what
-#            precommit-gate counts as the strong pass; consult lines
-#            feed `rolepod-stats`). Jobs live under external/jobs/<id>/.
+#            ({"phase":"review","reviewer":"external",...}; precommit-gate
+#            never counts it; consult lines feed `rolepod-stats`). Jobs live
+#            under external/jobs/<id>/.
 #
 # Usage:
 #   cross-family.sh --kind review|consult|critique --brief <file> [--attach <file>]...
