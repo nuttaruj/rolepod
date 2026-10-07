@@ -646,8 +646,7 @@ PRIVATE_DOCS_ALL=$( { printf '%s\n' "$DIFF_STAT" | awk -F'\t' 'NF>=3{print $3}' 
 PRIVATE_DOCS=$(printf '%s' "$PRIVATE_DOCS_ALL" | head -5 | tr '\n' ' ' | sed 's/ *$//')
 if [ -n "$PRIVATE_DOCS" ] && [ "$DOCS_STATE" != tracked ] && [ "$(rolepod_gate_action private-docs)" = deny ]; then
   # Deny text <= 600 chars for any staged list: list the first paths that fit, then "+N more".
-  if [ -f "$_pd_lib" ]; then _pd_cmd="bash $(cd "$(dirname "$_pd_lib")" && pwd)/docs-mode.sh"
-  else _pd_cmd="bash <implement-plan skill dir>/scripts/docs-mode.sh"; fi
+  _pd_cmd="bash <write-spec skill dir>/scripts/docs-mode.sh"
   _pd_total=$(printf '%s\n' "$PRIVATE_DOCS_ALL" | grep -c .)
   _pd_msg=""
   for _pd_show in 3 2 1 0; do
