@@ -82,13 +82,9 @@ Done when: the critique ran, or was skipped.
 
 ### 6. Gate 1 — file review and approval
 
-The spec lives under the private `docs/rolepod/` directory. Before the first save run:
-```bash
-grep -qx 'docs/rolepod/' .gitignore || echo 'docs/rolepod/' >> .gitignore
-```
-A repo that deliberately tracks its working docs skips the command and creates `.rolepod/docs-tracked`.
+The spec lives under `docs/rolepod/`. Before the first save: `scripts/docs-mode.sh status` prints `undecided` → run `scripts/docs-mode.sh ignore`, then the commit it prints, and pass its user line on; `track` only on the user's yes. No script → list `docs/rolepod/` in `.gitignore`, committed alone.
 
-After the approaches round, read back to the user: the goal, the scope, and each assumption (an `(assumed)` line) from the draft. Then write the whole spec to `docs/rolepod/specs/<feature>-YYYY-MM-DD.md` (optional `-vN` / `-draft`). Run Self-review and the spec-lint on the file, then point the user to it. Accept → `write-plan`; edit → patch and ask again; reject → stop. One gate, on the file; a spec set: all files and its map at once.
+After the approaches round, read back to the user: the goal, the scope, and each assumption (an `(assumed)` line) from the draft. Then write the whole spec to `docs/rolepod/specs/<feature>-YYYY-MM-DD.md` (optional `-vN` / `-draft`). Run spec-lint, then point the user to it. Accept → `write-plan`; edit → patch and ask again; reject → stop. One gate, on the file; a spec set: all files and its map at once.
 
 **Spec-lint**: `grep -niE '\[\[FILL:|TODO|TBD' <spec>` must print nothing; so must the anchor check `for h in 'Non-goals' 'Current behavior' 'Desired behavior' 'Success criteria'; do grep -q "^## $h" <spec> || echo "missing ## $h"; done` (the next repeat-feature spec seeds from these four headings). A printed line or a grep error is a lint failure.
 

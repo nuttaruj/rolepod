@@ -49,8 +49,8 @@ Heavy context → compact with your CLI's command (Claude `/compact <focus>`; ot
 Load only what the task needs: the Tier 1 skills + the touched files is usually enough.
 
 **Handoff.** Context too heavy to trim safely, still heavy after compaction, starting fresh, or the user asks for a handoff → write `templates/handoff-brief.md` (the handoff fields) to the active repository's `docs/rolepod/handoff.md`; no template → a markdown file with the request and every correction, the disk state, the next task and command, the constraints and decisions, and the failed-attempt and Second opinion state. Point to artifacts by path; redact secrets, tokens and PII.
-- This is the default session path; overwrite only that file. An explicit user path is authoritative, including a dated legacy handoff. Never select the newest file or overwrite a legacy path automatically; keep task-owner briefs at their generated paths.
-- **`docs/rolepod/` is private by default:** before the first save run `grep -qx 'docs/rolepod/' .gitignore || echo 'docs/rolepod/' >> .gitignore`; a repo that deliberately tracks its working docs creates `.rolepod/docs-tracked`.
+- Overwrite only that file; an explicit user path wins, including a dated legacy handoff; never overwrite a legacy path automatically; task-owner briefs stay at their generated paths.
+- **Before the first save:** `scripts/docs-mode.sh status` prints `undecided` → run `scripts/docs-mode.sh ignore`, then the commit it prints, and pass its user line on; `track` only on the user's yes. No script → list `docs/rolepod/` in `.gitignore`, committed alone.
 
 Done when: the context is trimmed at a seam, or a handoff brief is written for the fresh session.
 

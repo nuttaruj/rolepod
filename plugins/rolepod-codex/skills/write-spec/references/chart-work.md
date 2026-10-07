@@ -10,8 +10,7 @@ spec.
 
 One markdown file per effort: `docs/rolepod/maps/<effort>.md`. Question
 tickets live beside it in `docs/rolepod/maps/<effort>/q-<slug>.md`. Both
-persist across sessions under the private `docs/rolepod/` (`write-spec` Gate 1); they enter git only when the repo
-tracks its working docs (`.rolepod/docs-tracked`).
+persist across sessions under `docs/rolepod/` (`write-spec` Gate 1); they enter git according to `docs-mode.sh status`.
 
 ```markdown
 # Map: <effort>
@@ -97,7 +96,7 @@ parallel via scouts).
    a ticket now (and leaves the ledger). Any ticket it invalidated is
    edited or closed. Anything it revealed as beyond the Target moves to
    **Ruled out** — closed, not resolved.
-5. Save the map + ticket; both stay out of git unless `.rolepod/docs-tracked` is set.
+5. Save the map + ticket; both follow `docs-mode.sh status` for git tracking.
 
 ## Entry and exit
 

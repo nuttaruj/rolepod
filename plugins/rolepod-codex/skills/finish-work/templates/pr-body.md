@@ -14,4 +14,4 @@
  "Low — <reason>" is valid if true.>
 
 ## Linked artifacts
-<Spec / plan path the reviewer can open. `docs/rolepod/` is private by default — summarize its decision here instead of linking it. High-risk surfaces touched.>
+<Spec / plan path the reviewer can open; summarize its decision instead of linking `docs/rolepod/` artifacts. High-risk surfaces touched.>

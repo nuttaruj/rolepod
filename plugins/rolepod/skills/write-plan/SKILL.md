@@ -89,7 +89,7 @@ Done when: every check passes.
 Fill `templates/plan-template.md` in its order: task blocks, dependencies, high-risk surfaces, parallel layout, failure policy, changes during build, follow-ups; a conditional section stays concise, or is omitted when it does not apply.
 A task block, in order, one bold label per bullet: Delivers · Blocked by · Track · Files · Read first · Change · Test / evidence · Proof · Expected failing signal · Command · Owner · Done when · On fail.
 Write the plan's prose in the user's language unless they ask for another; section headings, the field labels plan-lint reads, identifiers, paths, commands and quoted code stay verbatim.
-One-session work → inline in chat. Multi-session, or a phase of a spec set → a dated file under the private `docs/rolepod/plans/`, never overwritten (edge-cases: Saving the plan).
+One-session work → inline in chat. Multi-session, or a phase of a spec set → a dated file under `docs/rolepod/plans/`, never overwritten (edge-cases: Saving the plan).
 Harness plan mode, team issues, several plans at once → references/edge-cases.md; no file → present the plan through the harness gate / solo / one plan at a time.
 Plan shapes, good and bad → `examples/plan-examples.md`; no examples → the template's own placeholders.
 

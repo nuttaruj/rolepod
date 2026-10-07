@@ -21,10 +21,10 @@ grep -q '^## Failure policy' <plan> && awk '/^### (Task ?|T)[0-9]/{t++;c[t]=0;i=
 ## Saving the plan (step 8)
 
 - Multi-session → `docs/rolepod/plans/<feature>-YYYY-MM-DD.md`. Re-planning never overwrites: a new dated file, `-v2` only when the date is the same.
-- `docs/rolepod/` is private by default: before the first save run `grep -qx 'docs/rolepod/' .gitignore || echo 'docs/rolepod/' >> .gitignore`; a repo that deliberately tracks its working docs creates `.rolepod/docs-tracked`.
+- Before the first save: `scripts/docs-mode.sh status` prints `undecided` → run `scripts/docs-mode.sh ignore`, then the commit it prints, and pass its user line on; `track` only on the user's yes. No script → list `docs/rolepod/` in `.gitignore`, committed alone.
 
 ## Harness plan mode, team issues, several plans at once (step 8)
 
 - **Harness plan mode** active (a read-only planning state with its own approval gate) → present the plan through that gate and defer every disk write until it approves. Do not fight the block; it is the same boundary as the first guardrail (no edit before the plan).
-- **Team issues** — several people or machines build the plan → `references/team-issues.md`; solo work never needs it.
+- **Team issues** (several builders) → `references/team-issues.md`.
 - **Several plans at once** (a phase each, for separate sessions) → one agent per plan on the CLI's default agent, no role and no `model`, so each runs on the model the user chose for the Lead; its brief names the spec, the phase, the output file under `docs/rolepod/plans/` and a `plan-lint.sh` run on it; the Lead reads each lint and spot-checks each plan. No default agent → the Lead writes them in turn.
