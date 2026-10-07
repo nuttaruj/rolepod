@@ -298,7 +298,7 @@ remove_old_rolepod_agents() {
   local dir="$1" n f
   for n in $OLD_ROLE_NAMES; do
     f="$dir/$n.md"
-    if [ -f "$f" ] && [ ! -L "$f" ] && /usr/bin/grep -qx '## Skill Mapping' "$f" 2>/dev/null; then
+    if [ -f "$f" ] && [ ! -L "$f" ] && grep -qx '## Skill Mapping' "$f" 2>/dev/null; then
       do_or_dry "rm -f $f (retired rolepod agent)" rm -f "$f"
     fi
   done

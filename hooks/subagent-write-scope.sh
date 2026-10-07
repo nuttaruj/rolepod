@@ -5,9 +5,9 @@
 # Rationale: measured across every product repo (30 days of subagent
 # transcripts). Generic agents: 16 of 31 `general-purpose` dispatches edited
 # product code with no role doctrine, no tool cap and no cohesion contract.
-# Reviewer roles (the retired qa-tester / security-engineer): qa-tester wrote 99
+# Reviewer roles (the retired qa and security roles): the qa role wrote 99
 # non-test product files (payments, account deletion, tenant erasure) and
-# security-engineer edited auth routes — the review floor then reads a diff its
+# the security role edited auth routes — the review floor then reads a diff its
 # own role wrote. Text works when it is a flat refusal; a "write-mode" that
 # includes "fix code" does not. The write itself is the line, checked by the
 # hook, not judged at dispatch. 41 of 59 deny rows (30 days) were agents

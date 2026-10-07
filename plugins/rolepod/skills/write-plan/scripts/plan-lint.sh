@@ -877,12 +877,12 @@ if [ "${1:-}" = "--brief" ]; then
         label = substr($0, RSTART + 1, RLENGTH - 2)
         rest = substr($0, RSTART + RLENGTH)
         # A task tag may sit between the backticked role and the colon that
-        # ends the label (`` `devops-sre` (Task 1): `path` ``) instead of
-        # inside the backticks (`` `devops-sre (Task 1)`: `path` ``) — fold
+        # ends the label (`` `rolepod-builder` (Task 1): `path` ``) instead of
+        # inside the backticks (`` `rolepod-builder (Task 1)`: `path` ``) — fold
         # it into label so tagspan()/has_tasktag() see it exactly the same
         # way (adversarial-review-split follow-up). Only a genuine task tag
         # qualifies — a plain parenthetical aside naming another role
-        # (`` `backend-developer` (pairs with frontend-developer): `x` ``)
+        # (`` `rolepod-builder` (pairs with rolepod-qa): `x` ``)
         # must never widen the role-fallback match at :664, so has_tasktag()
         # gates the append; a colon-free span, or one that itself carries a
         # backtick (a second owner label on the same line), is left alone.
@@ -1011,8 +1011,8 @@ if [ "${1:-}" = "--brief" ]; then
       # ranges over it (`Tasks 1-4`, `T1, T3`). When any label carries
       # one, that is the whole answer and the (weaker) role-name match
       # is not consulted at all — otherwise two labels for the same
-      # role but different tasks, e.g. `backend-developer (T1)` and
-      # `backend-developer (T4)`, would both match Task 1 by role name
+      # role but different tasks, e.g. `rolepod-builder (T1)` and
+      # `rolepod-builder (T4)`, would both match Task 1 by role name
       # and leak the T4 files into the T1 brief.
       tagfound = 0
       for (k = 1; k <= onum; k++) {
@@ -1028,7 +1028,7 @@ if [ "${1:-}" = "--brief" ]; then
           ml = named[k] && !is_multitask(ownlabel[k])
         } else if (role != "" && !has_tasktag(ownlabel[k])) {
           # Role match is boundary-anchored — a plain substring let
-          # "backend-developer" match a label naming a DIFFERENT task.
+          # "rolepod-builder" match a label naming a DIFFERENT task.
           # The boundary excludes hyphen (part of a kebab-case role
           # token). A label carrying ANY task tag (single or multi) is
           # reserved for the task(s) it names and never falls back to a

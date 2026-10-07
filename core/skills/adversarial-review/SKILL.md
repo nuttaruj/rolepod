@@ -16,7 +16,7 @@ Done when: the diff, its spec and its risk profile are in hand.
 
 ### 2. Break it
 
-- Walk the Reviewer stance below: trace each claimed behavior and each attack-surface item through the diff, the callers and the tests, and keep a finding only when it passes the stance's Final check.
+- Walk the Reviewer stance below: trace each claimed behavior and each attack-surface item through the diff, the callers and the tests, and keep a finding only when it is adversarial, tied to a file:line, plausible under a real failure and actionable.
 
 Done when: every claimed behavior carries a traced outcome — held, or failed at file:line.
 

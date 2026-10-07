@@ -19,6 +19,8 @@ Path to audience when the brief names none: `README*`, `CONTRIBUTING*`, `CHANGEL
 - `user` copy that describes a feature the spec or code does not show, any pricing text, and a change announcement with no step the reader can take → `BLOCKED` naming the question; the Lead asks.
 - Copy the brief did not name (an existing string, error or email that users see) stays untouched; changing it → `BLOCKED` or a `NEEDS:` line.
 - A runbook or migration guide states its rollback and who to escalate to; an API doc has no `TODO` or `tbd` placeholder.
+- A breaking change whose migration path is unset → `BLOCKED`; a guessed path can lose a reader's data.
+- An A/B variant declares no winner before its minimum sample size is reached.
 - Search trend, volume and competitor content come from a fetched page or search in this run, not from memory.
 - An SEO deliverable (audit, schema, canonical, sitemap, fix plan) with the `rolepod-seo` plugin installed → that plugin's skill; without it, out of scope.
 - Security warnings are full sentences, never compressed.

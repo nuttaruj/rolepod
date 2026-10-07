@@ -1384,7 +1384,7 @@ if best is not None:
             return int(best.get(k) or 0)
         except Exception:
             return 0
-    # security-engineer review (2026-09-24, gate-evidence-paths T9): the
+    # security-lens review (2026-09-24, gate-evidence-paths T9): the
     # decision field is untrusted (a stale/forged phase-log row) — this
     # line is a convenience note, not tamper-proof audit evidence, so it
     # is constrained to the three real decisions rather than echoed raw.

@@ -138,8 +138,9 @@ def is_strong(d):
 if dispatches:
     strong = [d for d in dispatches if is_strong(d)]
     if strong:
-        # Since v2.104.0 a strong role renders `model: opus`; only an EXPLICIT
-        # cheap/balanced pin on a strong-role row is the silent downgrade.
+        # A "strong role" row is a dispatch with a strong model passed on the call
+        # (the 4 types pin none); only an EXPLICIT cheap/balanced pin on it is the
+        # silent downgrade.
         LOW_MODELS = ("haiku", "sonnet")
         low_pin = sum(1 for d in strong
                       if any(m in (d.get("override") or "") for m in LOW_MODELS))
@@ -214,7 +215,7 @@ if dispatches:
                   "whole fleet ran at the Lead's price (pre-v2.48 or `fleet-inherit:` stated)")
 
 # Task-owner dispatch bursts (v2.146.0) — writer-role hook-auto dispatches
-# grouped by time gap (≤ 90 s apart = one burst). Reviewer / scout / generic
+# grouped by time gap (≤ 90 s apart = one burst). Reviewer / rolepod-scout / generic
 # rows are not tasks. Dispatch times only — no end time is logged — so a burst
 # shows tasks dispatched together, never proof that they ran concurrently.
 NON_TASK_ROLES = {"rolepod-qa", "rolepod-reviewer", "rolepod-scout", "code-reviewer",
@@ -557,7 +558,7 @@ if fleets:
     low = sum(v[0] for g in fleets.values() for m, v in g["models"].items() if _cls(m) in ("cheap", "balanced"))
     if n_agents >= 5 and strong > low:
         print("    ⚠ strong-class agents outnumber cheap/balanced ones — fan-outs ran at the Lead price; the tier follows the work: "
-              "read/browse haiku or scout, per-item verify sonnet, ONE opus judge (the fleet-tier gate denies new ones)")
+              "read/browse haiku or rolepod-scout, per-item verify sonnet, ONE opus judge (the fleet-tier gate denies new ones)")
 
 if nodata and not lead and not fleets:
     print("\n  no data yet — phase-log.jsonl / bypass.log start filling once")

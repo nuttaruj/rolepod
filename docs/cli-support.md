@@ -89,10 +89,10 @@ current procedures.
 | CLI | Plugin / extension destination | Always-on core destination |
 |---|---|---|
 | Claude Code | repo IS the marketplace — `.claude-plugin/marketplace.json` + committed `plugins/rolepod/` (agents/, hooks/, skills/, .claude-plugin/) at the repo root; `claude plugin marketplace add nuttaruj/rolepod` installs straight from GitHub | SessionStart hook emits `hooks/always-on-core.md` (no CLAUDE.md) |
-| Codex CLI | repo IS the marketplace — `.agents/plugins/marketplace.json` + committed `plugins/rolepod-codex/` (.codex-plugin/, hooks/, skills/) at the repo root; `codex plugin marketplace add nuttaruj/rolepod` installs straight from GitHub. The 15 agent TOMLs install to `~/.codex/agents/rolepod-*.toml` — Codex's plugin loader has no agents field, so they need `install.sh` | `~/.codex/AGENTS.md` |
+| Codex CLI | repo IS the marketplace — `.agents/plugins/marketplace.json` + committed `plugins/rolepod-codex/` (.codex-plugin/, hooks/, skills/) at the repo root; `codex plugin marketplace add nuttaruj/rolepod` installs straight from GitHub. The 4 agent TOMLs install to `~/.codex/agents/rolepod-*.toml` — Codex's plugin loader has no agents field, so they need `install.sh` | `~/.codex/AGENTS.md` |
 | Cursor IDE | repo IS the marketplace — `.cursor-plugin/marketplace.json` + committed `plugins/rolepod-cursor/` (.cursor-plugin/, rules/, agents/, skills/, hooks/, scripts/) at the repo root; `install.sh --target=cursor` copies that tree to `~/.cursor/plugins/local/rolepod/` for local install | `plugins/rolepod-cursor/rules/always-on-core.mdc` (`alwaysApply: true`) |
 | Antigravity CLI (agy) | rendered to `build/rendered/antigravity/plugin/` (gitignored); `install.sh --target=antigravity` installs it via `agy plugin install` — plugin.json + hooks.json at plugin root, skills/, agents/ | `AGENTS.md` at the agy customization root (`install.sh` places it) |
-| opencode | rendered to `build/rendered/opencode/` (gitignored); `install.sh --target=opencode` syncs skills/ (name-scoped), agents/ (15), `plugin/rolepod.js`, and `rolepod-version.json` into `~/.config/opencode/` (project scope: `$PWD/.opencode/`; override: `ROLEPOD_OPENCODE_TARGET`) | `~/.config/opencode/AGENTS.md` managed block (`<!-- rolepod:start/end -->`); project scope writes `$PWD/AGENTS.md` |
+| opencode | rendered to `build/rendered/opencode/` (gitignored); `install.sh --target=opencode` syncs skills/ (name-scoped), agents/ (4), `plugin/rolepod.js`, and `rolepod-version.json` into `~/.config/opencode/` (project scope: `$PWD/.opencode/`; override: `ROLEPOD_OPENCODE_TARGET`) | `~/.config/opencode/AGENTS.md` managed block (`<!-- rolepod:start/end -->`); project scope writes `$PWD/AGENTS.md` |
 
 For Codex the entry doc is intentionally written **outside** the plugin dir (`~/.codex/AGENTS.md`) — Codex auto-loads the global `AGENTS.md` regardless of which plugins are installed, so keeping it at the root makes rolepod's gates active on every session, not just when the plugin is enabled.
 
@@ -120,7 +120,7 @@ adapters/
 │   └── hooks.json                      (plugin hooks manifest)
 ├── codex/
 │   ├── AGENTS.md.tmpl
-│   ├── agent-frontmatter/*.yml          (15 overlays — model / effort / sandbox)
+│   ├── agent-frontmatter/*.yml          (4 overlays — model / effort / sandbox)
 │   ├── .agents/plugins/marketplace.json (Codex marketplace manifest)
 │   └── plugins/rolepod/
 │       ├── .codex-plugin/plugin.json
@@ -162,8 +162,8 @@ Per-CLI hook counts (distinct scripts, v2.176.0). The evidence gate and the edit
 
 | Item | Verified by |
 |---|---|
-| Claude snapshot | 15 agent files + plugin tree layout |
-| Codex plugin layout | install registers `[marketplaces.rolepod]` + `[plugins."rolepod@rolepod"] enabled = true` in `~/.codex/config.toml` and writes the `~/.codex/AGENTS.md` managed block; committed marketplace tree at the repo root (`.agents/plugins/marketplace.json` + `plugins/rolepod-codex/{.codex-plugin,agents,hooks,skills}/`) — the plugin bundles hooks + skills + the 15 agent TOMLs + the AGENTS.md block (`agents/AGENTS.rolepod.md`); the Codex manifest has no `agents` component, so the SessionStart `agent-sync.sh` hook copies them into `~/.codex/agents/` and refreshes only the rolepod block of `~/.codex/AGENTS.md` whenever the plugin version changes (v2.75.0) — `codex plugin marketplace upgrade rolepod` alone is a complete update (one-time: trust the new hook via `/hooks` — Codex skips untrusted plugin hooks by policy) |
+| Claude snapshot | 4 agent files + plugin tree layout |
+| Codex plugin layout | install registers `[marketplaces.rolepod]` + `[plugins."rolepod@rolepod"] enabled = true` in `~/.codex/config.toml` and writes the `~/.codex/AGENTS.md` managed block; committed marketplace tree at the repo root (`.agents/plugins/marketplace.json` + `plugins/rolepod-codex/{.codex-plugin,agents,hooks,skills}/`) — the plugin bundles hooks + skills + the 4 agent TOMLs + the AGENTS.md block (`agents/AGENTS.rolepod.md`); the Codex manifest has no `agents` component, so the SessionStart `agent-sync.sh` hook copies them into `~/.codex/agents/` and refreshes only the rolepod block of `~/.codex/AGENTS.md` whenever the plugin version changes (v2.75.0) — `codex plugin marketplace upgrade rolepod` alone is a complete update (one-time: trust the new hook via `/hooks` — Codex skips untrusted plugin hooks by policy) |
 | All shell scripts | `bash -n` clean (install.sh, bootstrap.sh, render.sh, 13 registered hook scripts, the codex adapter's agent-sync.sh, 3 cursor scripts) |
 | All JSON manifests | `python3 -m json.tool` clean (plugin.json x4 — claude/codex/cursor/antigravity, hooks.json x4 — claude/codex/cursor/antigravity, marketplace.json x2 — claude/cursor) |
 | All TOML files | `tomllib.load()` clean (15 codex agents) |
@@ -204,7 +204,7 @@ _Last live-verified: 2026-05-23 on macOS (Darwin 25.5.0), Codex 0.132.0, Gemini 
 - Not portable on Cursor: fix-loop-breaker (no exit code on `afterShellExecution`), push-ref-check (no informational channel before a shell command), claim-verify-nudge (`beforeSubmitPrompt` cannot inject context). Hook JSON I/O follows [cursor.com/docs/hooks](https://cursor.com/docs/hooks): stdin JSON with `hook_event_name`/`tool_name`/`tool_input`/`command`/`workspace_roots` (no `cwd`), stdout JSON with `permission`/`user_message`/`agent_message`/`additional_context`. Exit code 2 = deny. Hook commands run with cwd = plugin root (`./scripts/x.sh` resolves).
 - Skill frontmatter is intentionally stripped to `name` + `description` + `disable-model-invocation` — the fields Cursor documents (cursor.com/docs/context/skills, checked 2026-09-27). Other Claude-specific keys (`tier`, `phase`, `when_to_use`) are still dropped at render time to avoid gambling on tolerance for unknown fields. Because `disable-model-invocation` is kept, `deepen-codebase` and `rolepod-stats` stay user-invoked only on Cursor, same as on Claude. opencode strips the key at render and agy ships it with no vendor doc cited here that honours it (not verified), so on those two the model can still list both; the router rows for them tell the user to type the command.
 - Cursor also auto-imports the Claude Code plugin install from `~/.claude/plugins` and runs its Claude-format hooks; since v2.130.1 those commands self-disable under Cursor (`CURSOR_PROJECT_DIR` guard, see docs/hooks.md) so only the Cursor-native rule + 3 hooks run. A Cursor-marketplace install with the same name takes precedence over `~/.cursor/plugins/local/` — keep one source, never both.
-- Agent frontmatter likewise reduces to `name` + `description` only — no Cursor-specific overlay file exists. The same 15 agent bodies ship across all CLIs.
+- Agent frontmatter likewise reduces to `name` + `description` only — no Cursor-specific overlay file exists. The same 4 agent bodies ship across all CLIs.
 - Local install path: `~/.cursor/plugins/local/rolepod/` (per Cursor's local-plugin convention). The repo's committed `.cursor-plugin/marketplace.json` also makes the GitHub URL importable as a team marketplace.
 - Live model consumption of the `agent_message` warning is not claimed (fixture only); hook JSON I/O was exercised on a real session 2026-09-16 (see Runtime verification status).
 

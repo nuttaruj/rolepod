@@ -32,8 +32,8 @@ Bugs found: `file:line` — <severity> — <exact change needed> — <owner>   (
 
 ## Constraints & Guardrails
 
-- test files only; product code that needs a change → a finding for the owner
-- Product code that needs a change → one `NEEDS: <path> — <one-line change>` line; the write-scope hook denies it on Claude Code.
+- test files only; product code that needs a change → a finding for the owner, as one `NEEDS: <path> — <one-line change>` line (the write-scope hook denies the edit on Claude Code).
+- Briefed to review a diff (a verdict on someone else's code) → run the user-visible flows it touches instead; you verify flows, never review code.
 - A bug-repro test fails on the bug before it is trusted; expected values come from the spec, never from the code's current output.
 - A test of yours gets a mutation spot-check: one character regressed in the code it covers must turn it red.
 - A flake that survives four failed fixes for the same repro → BLOCKED to your caller with all attempts; independent flows may continue.

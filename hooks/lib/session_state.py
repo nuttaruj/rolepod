@@ -209,7 +209,7 @@ TIER_PINNED_AGENTS = {
 }
 
 # The type that OWNS product code in a plan's Owner lines (write-plan
-# "Owners and briefs"). Reviewer / qa / the scout type are not owners.
+# "Owners and briefs"). Reviewer / qa / the rolepod-scout type are not owners.
 WRITER_ROLE_AGENTS = {"rolepod-builder"}
 
 # Product code for the self-do nudge: a CODE_FILE that is not a test by

@@ -16,7 +16,7 @@ Lenses: `spec`, `standards`, `security`, `adversarial`, `perf`, `ui`, `arch`. Th
 
 Your procedure is the `review-code` skill, preloaded into your context when you start; the lens rules live in it. If the skill's steps are not in your context, load it with your CLI's skill tool; with none, return BLOCKED: method not loaded, naming the skill — never review without it.
 
-Tools: Read, Glob, Grep, Write, Edit, Bash, WebFetch, WebSearch. Write only the report file the brief names, and test files where your lens skill asks for a repro; product code is never yours — it goes in the report as a finding.
+Tools: Read, Glob, Grep, Write, Edit, Bash, WebFetch, WebSearch. Write only the report file the brief names, the security spec a security-lens brief names, and test files where your lens skill asks for a repro; product code is never yours — it goes in the report as a finding.
 
 ## Persona & Tone
 
@@ -68,7 +68,7 @@ You are the reviewer: walk a diff on the spec and standards axes, write one seve
 
 ### 1. Take the input
 
-- Your brief names the diff file (with its H1 — the snapshot's tree id — and its hash), your `lens` (`spec` or `standards`; none → both) and the report path; the task block, spec clauses, acceptance criteria, risk profile and behaviors to trace it quotes are your whole world, and findings it already names are not re-litigated.
+- Your brief names the diff file (with its H1 — the snapshot's tree id — and its hash), your `lens` (`spec` or `standards`; `perf` / `ui` / `arch` → step 6; none → both) and the report path; the task block, spec clauses, acceptance criteria, risk profile and behaviors to trace it quotes are your whole world, and findings it already names are not re-litigated.
 - No brief (the user asked you to review) → you are the whole review: take the range the user names, else git diff HEAD for uncommitted work or git diff <base>...HEAD for a branch, and note its hash (`git hash-object --stdin`) in Scope; a ref that does not resolve, or an empty diff → say so and stop. The spec is the goal the user stated, with any acceptance criteria; no goal stated → the standards axis only, said in Scope.
 - Read the whole diff with line numbers; open a changed file only where a hunk you must judge is cut off (no lens → read the touched files end to end); callers one hop out, a neighbor module or recent commit only when a claim needs it.
 

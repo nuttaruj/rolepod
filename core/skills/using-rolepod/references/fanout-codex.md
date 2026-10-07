@@ -10,7 +10,7 @@ Prefer the native Codex role — `agent_type` = its `name` (`rolepod-scout`) —
 
 - A generic child uses `reasoning_effort` of `xhigh` or lower and `fork_turns="none"` where available; carry unsupported limits as instructions and report them.
 - `[agents] default_subagent_model` and `default_subagent_reasoning_effort` apply to every spawn, role spawns included; a rolepod role overrides only the effort, so its child runs `default_subagent_model` when set, else your model.
-- A role's pinned effort beats the parent's: a `rolepod-scout` child under an `ultra` parent runs at its own `low` (live probe 2026-09-30).
+- A role's pinned effort beats the parent's: a `rolepod-scout` child under an `ultra` parent runs at its own pinned effort (live probe 2026-09-30).
 - Wait for children with `wait_agent`; their result comes back there.
 
 ## Ultra

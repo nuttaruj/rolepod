@@ -258,7 +258,7 @@ function qsplit(s) {
 // literal newline as its own boundary token) — round-1's TEXT-split fix
 // (splitting on &&/||/;/|/newline via a hand-rolled scanner) was itself
 // wrong on an escaped quote, a comment apostrophe, a bare `&`, and
-// `$(...)` (round-2 external + security-engineer review): a hand-rolled
+// `$(...)` (round-2 external + security-lens review): a hand-rolled
 // special case for each shell quirk keeps missing the next one. Segment
 // boundaries are any token made ENTIRELY of operator characters
 // (`;`, `&&`, `&`, `|`, `\n`, ...). Unbalanced quoting anywhere (top level
