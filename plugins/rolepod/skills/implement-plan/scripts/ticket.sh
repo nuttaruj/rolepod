@@ -1160,7 +1160,11 @@ cmd_finish() {
     exit 2
   fi
 
-  if [ -n "$(git -C "$wt_root" status --porcelain)" ]; then
+  # docs/rolepod is rescued below, never dirt; a failed status is not "clean".
+  local dirt
+  dirt="$(git -C "$wt_root" status --porcelain -- . ':(exclude)docs/rolepod' 2>&1)" \
+    || { echo "ticket: finish: git status failed in $wt_root: $dirt" >&2; exit 1; }
+  if [ -n "$dirt" ]; then
     echo "ticket: finish: worktree is dirty — commit or discard first: $wt_root" >&2
     exit 1
   fi
@@ -1187,8 +1191,8 @@ cmd_finish() {
     exit "$merge_rc"
   fi
 
-  # Canonical receipts written only inside a worktree must survive cleanup.
-  # Preserve them at the brief's base path; conflicting content stops cleanup.
+  # An unfilled skeleton receipt `start` wrote at base is replaced by the owner's filled one;
+  # every other docs/rolepod file is saved by docs-mode.sh rescue below.
   if [ -d "$wt_root/docs/rolepod/tasks" ]; then
     local receipt dest rel
     while IFS= read -r receipt; do
@@ -1196,20 +1200,24 @@ cmd_finish() {
       rel="${receipt#"$wt_root/"}"
       dest="$base_root/$rel"
       if [ -e "$dest" ] && grep -qxF 'COMPLETED | PARTIAL | BLOCKED' "$dest" 2>/dev/null; then
-        # The base copy is still the unfilled skeleton `start` wrote: the owner's receipt replaces it.
-        cp "$receipt" "$dest" || { echo "ticket: finish: cannot preserve receipt at $dest" >&2; exit 1; }
-      elif [ -e "$dest" ]; then
-        if ! cmp -s "$receipt" "$dest"; then
-          echo "ticket: finish: receipt collision at $dest — refusing cleanup" >&2
-          exit 1
-        fi
-      else
-        mkdir -p "$(dirname "$dest")" || { echo "ticket: finish: cannot create receipt directory for $dest" >&2; exit 1; }
         cp "$receipt" "$dest" || { echo "ticket: finish: cannot preserve receipt at $dest" >&2; exit 1; }
       fi
     done <<EOF
 $(find "$wt_root/docs/rolepod/tasks" -type f -name 'task-*.md' -print 2>/dev/null)
 EOF
+  fi
+
+  # Everything under docs/rolepod survives cleanup: rescue copies it to base, never overwriting
+  # (a differing file is kept as <name>.from-<branch>). Only rescue exit 0 allows --force.
+  local force_flag="" rescue_rc
+  if [ -n "$DOCS_MODE" ]; then
+    bash "$DOCS_MODE" rescue "$wt_root"; rescue_rc=$?
+    if [ "$rescue_rc" -ne 0 ]; then
+      echo "ticket: finish: docs rescue failed (exit $rescue_rc) for $wt_root (the merge into $base_branch already landed); worktree kept" >&2
+      echo "ticket: finish: never --force; show \`git -C $wt_root status --porcelain -uall\`, then ask the user: commit, move or delete what it lists" >&2
+      exit 1
+    fi
+    force_flag="--force"
   fi
 
   # Reviewer reports written only inside the worktree survive its removal:
@@ -1224,7 +1232,7 @@ EOF
   fi
 
   local rm_out
-  if ! rm_out="$(git -C "$base_root" worktree remove "$wt_root" 2>&1)"; then
+  if ! rm_out="$(git -C "$base_root" worktree remove $force_flag "$wt_root" 2>&1)"; then
     echo "ticket: finish: worktree remove failed for $wt_root (the merge into $base_branch already landed):" >&2
     printf '%s\n' "$rm_out" | tail -n 15 >&2
     echo "ticket: finish: never --force; show \`git -C $wt_root status --porcelain -uall\`, then ask the user: commit, move or delete what it lists" >&2
