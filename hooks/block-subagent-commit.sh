@@ -305,7 +305,7 @@ elif w.startswith('sendmessage:'):
     reason = (
       'BLOCKED: sub-agent %r messaged agent %r by its raw id - a finished child you '
       'spawned. The message resumes it in the background; its reply goes to the Lead and '
-      'nothing wakes you. Fix: a round-2 re-check is a fresh Agent dispatch of a universal-reviewer, not the same role, '
+      'nothing wakes you. Fix: a round-2 re-check is a fresh Agent dispatch of a rolepod-reviewer, not the same role, '
       'with its report and the fix delta in the brief. '
       'Exception: a named teammate or the Lead (main / team-lead) passes.'
     ) % (a, to)

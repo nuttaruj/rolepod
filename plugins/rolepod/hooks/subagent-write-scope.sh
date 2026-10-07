@@ -5,14 +5,13 @@
 # Rationale: measured across every product repo (30 days of subagent
 # transcripts). Generic agents: 16 of 31 `general-purpose` dispatches edited
 # product code with no role doctrine, no tool cap and no cohesion contract.
-# Reviewer roles: qa-tester wrote 99 non-test product files (payments,
-# account deletion, tenant erasure) and security-engineer edited auth routes —
-# both agent files already say "the respective agent fixes", and the review
-# floor then reads a diff its own role wrote. universal-reviewer, whose file
-# says REJECT a fix request, wrote 0 of 21. Text works when it is a flat
-# refusal; a "write-mode" that includes "fix code" does not. The write itself
-# is the line, checked by the hook, not judged at dispatch. 41 of 59 deny rows
-# (30 days) were agents writing their own memory files outside the repo.
+# Reviewer roles (the retired qa-tester / security-engineer): qa-tester wrote 99
+# non-test product files (payments, account deletion, tenant erasure) and
+# security-engineer edited auth routes — the review floor then reads a diff its
+# own role wrote. Text works when it is a flat refusal; a "write-mode" that
+# includes "fix code" does not. The write itself is the line, checked by the
+# hook, not judged at dispatch. 41 of 59 deny rows (30 days) were agents
+# writing their own memory files outside the repo.
 #
 # Mechanism: Claude Code PreToolUse hook input carries `agent_id` +
 # `agent_type` only for a sub-agent call (live-verified 2026-09-09: a spawn
@@ -20,12 +19,14 @@
 # agent_type='general-purpose'). Classes, namespace stripped:
 #   generic   general-purpose / default / claude / workflow-subagent (a bare
 #             Workflow agent(); live-verified 2026-09-09) → no product write at all
-#   test-only qa-tester / security-engineer       → test paths + markdown only
+#   test-only rolepod-reviewer / rolepod-qa       → test paths + markdown only
 #             (test path = test dir segment or test-named file; `specs/` is a
 #             contract dir in rolepod's own convention and Python has no
 #             `_test.py` guarantee — both stay product; `spec/` = RSpec root)
-#   read-only universal-reviewer / adversarial-reviewer / scout → markdown only
-# Every other role and every unknown type passes (fail-open). OS temp roots,
+#   read-only rolepod-scout                       → markdown only
+# The class keys on the bare name (a foreign namespace never gains rights).
+# rolepod-builder, every other name (old role names included, no alias) and
+# every unknown type passes (fail-open). OS temp roots,
 # scratchpad, .rolepod/, agent memory and docs/rolepod/ are always free. A path
 # outside the git toplevel of the payload cwd (plus the main checkout of a linked
 # worktree, which still counts as inside, so it stays guarded) is free too; no
@@ -66,8 +67,8 @@ if not (d.get("agent_id") or ""):
 atype = (d.get("agent_type") or "").strip()
 bare = atype.split(":")[-1].lower()
 GENERIC   = ("general-purpose", "default", "claude", "workflow-subagent")
-TEST_ONLY = ("qa-tester", "security-engineer")
-READ_ONLY = ("universal-reviewer", "adversarial-reviewer", "scout")
+TEST_ONLY = ("rolepod-reviewer", "rolepod-qa")
+READ_ONLY = ("rolepod-scout",)
 if bare in GENERIC:     cls = "generic"
 elif bare in TEST_ONLY: cls = "test-only"
 elif bare in READ_ONLY: cls = "read-only"
@@ -138,7 +139,7 @@ verb = tool or "a write"
 if bare == "workflow-subagent":
     gate = "scope-bare-workflow"
     body = ("a bare Workflow agent() attempted %s on %s. A writing stage needs a role. "
-            "Fix: set agentType: \x27rolepod:<role>\x27 (backend-developer / frontend-developer / ...) on "
+            "Fix: set agentType: \x27rolepod:<type>\x27 (rolepod-builder / rolepod-qa / ...) on "
             "this agent() call and resume the workflow (finished stages replay from cache); "
             "NAMEPATH; a repro script goes to $TMPDIR or the scratchpad. "
             "Exception: none for a bare agent().") % (verb, short)
@@ -146,20 +147,20 @@ elif cls == "generic":
     gate = "scope-generic"
     body = ("generic sub-agent %r attempted %s on %s. A platform agent "
             "(general-purpose / default) never writes product files. Fix: stop and return "
-            "the finding naming this path — the Lead re-dispatches the write to a rolepod role "
-            "(backend-developer / frontend-developer / qa-tester / ...). "
+            "the finding naming this path — the Lead re-dispatches the write to a rolepod type "
+            "(rolepod-builder / rolepod-qa). "
             "Exception: none for a platform agent.") % (atype, verb, short)
 elif cls == "test-only":
     gate = "scope-test-role"
     body = ("%r attempted %s on %s — not a test path. This role writes tests, "
-            "fixtures, test config and markdown only; production code belongs to the owning "
-            "role. Fix: return the finding (file:line + the exact change) — the Lead dispatches "
-            "the domain role. Exception: none outside test paths and markdown.") % (atype, verb, short)
+            "fixtures, test config and markdown only; production code belongs to "
+            "rolepod-builder. Fix: return the finding (file:line + the exact change) — the Lead dispatches "
+            "rolepod-builder. Exception: none outside test paths and markdown.") % (atype, verb, short)
 else:
     gate = "scope-readonly-role"
     body = ("%r attempted %s on %s. This role is read-only: report and point, "
             "never modify. Fix: put the change in the report (file:line + exact fix) — the "
-            "Lead applies it or dispatches the owning role. Exception: markdown files.") % (atype, verb, short)
+            "Lead applies it or dispatches rolepod-builder. Exception: markdown files.") % (atype, verb, short)
 def out(**kw):
     h = {"hookEventName": "PreToolUse"}; h.update(kw)
     return json.dumps({"hookSpecificOutput": h})

@@ -697,6 +697,22 @@ def agent_transcripts(
         return []
 
 
+def _is_reviewer_transcript(tp: str) -> bool:
+    """True when the sub-agent transcript `agent-<id>.jsonl` is rolepod's reviewer:
+    its sibling `agent-<id>.meta.json` carries agentType 'rolepod-reviewer' or
+    'rolepod:rolepod-reviewer' (Agent and Workflow routes alike). A test the
+    reviewer writes is not test evidence; another plugin's same-named type
+    stays whole in _bare_agent_name, so it is not matched. Unreadable → False."""
+    if not tp.endswith(".jsonl"):
+        return False
+    try:
+        with open(tp[:-6] + ".meta.json") as f:
+            meta = json.load(f)
+        return _bare_agent_name(str(meta.get("agentType") or "")) == "rolepod-reviewer"
+    except Exception:
+        return False
+
+
 def count_all(
     transcript_path: str, since_epoch: float | None = None, cwd: str | None = None
 ) -> tuple[int, int]:
@@ -713,12 +729,14 @@ def count_all(
     since = _since_iso(since_epoch)
     test_edits = high_risk_edits = 0
     for tp in [transcript_path] + agent_transcripts(transcript_path, since_epoch):
+        no_test_credit = _is_reviewer_transcript(tp)
         for tool, inp in _iter_tool_uses(tp, since):
             if tool in EDIT_TOOLS:
                 root = _git_root(cwd or "")
                 path = _repo_relative(root, _file_from_input(inp))
                 if is_test_file(path):
-                    test_edits += 1
+                    if not no_test_credit:
+                        test_edits += 1
                 elif is_high_risk_path(path) and is_code_file(path):
                     high_risk_edits += 1
     return test_edits, high_risk_edits
