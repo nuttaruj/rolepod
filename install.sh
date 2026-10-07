@@ -289,6 +289,21 @@ do_or_dry() {
   "$@"
 }
 
+# remove_old_rolepod_agents <agents_dir> — delete the retired pre-2.221 role
+# files (the fixed list below) from a SHARED agents folder. Only a regular
+# file (not a symlink) holding the line "## Skill Mapping" is removed, so a
+# user's own agent of the same name stays. Never a glob delete.
+OLD_ROLE_NAMES="backend-developer frontend-developer mobile-developer billing-engineer ai-ml-engineer devops-sre content-strategist ui-ux-designer performance-engineer system-architect universal-reviewer adversarial-reviewer security-engineer qa-tester scout product-manager data-scientist"
+remove_old_rolepod_agents() {
+  local dir="$1" n f
+  for n in $OLD_ROLE_NAMES; do
+    f="$dir/$n.md"
+    if [ -f "$f" ] && [ ! -L "$f" ] && /usr/bin/grep -qx '## Skill Mapping' "$f" 2>/dev/null; then
+      do_or_dry "rm -f $f (retired rolepod agent)" rm -f "$f"
+    fi
+  done
+}
+
 # Legacy (pre-v2.179.0) PATH launchers + their ~/.rolepod/bin payload —
 # rolepod no longer ships either; each script now lives inside its owner
 # skill's scripts/. Shared by the install path and --uninstall (was
@@ -308,7 +323,7 @@ remove_legacy_launchers() {
     rm -rf '$HOME/.rolepod/bin'"
 }
 
-# install_codex_agents <dest_dir> — copy the 15 rendered agent TOMLs with a
+# install_codex_agents <dest_dir> — copy the 4 rendered agent TOMLs with a
 # "rolepod-" filename prefix. Codex reads agents from ~/.codex/agents/
 # (global, SHARED with user-authored agents) — the plugin.json `agents`
 # field is not in the Codex schema and is silently ignored. Prefix-scoped
@@ -316,7 +331,7 @@ remove_legacy_launchers() {
 # don't persist forever; the prefix also gives uninstall a clean glob.
 install_codex_agents() {
   local dest="$1"
-  step "Installing 15 rolepod agents → $dest/rolepod-*.toml"
+  step "Installing 4 rolepod agents → $dest/rolepod-*.toml"
   if [ "$DRY_RUN" -eq 1 ]; then
     dry "mkdir -p $dest && rm -f rolepod-*.toml && copy *.toml from rendered agents/ with rolepod- prefix"
     return 0
@@ -765,6 +780,7 @@ if [ "$UNINSTALL" -eq 1 ]; then
     # 3. Legacy flat-file cleanup (pre-2.0 non-plugin installs). Doubles as
     #    cleanup for any leftover files the plugin install might have left.
     for n in "${AGENT_NAMES[@]}";   do do_or_dry "rm -f $C_TARGET/agents/$n"   rm -f "$C_TARGET/agents/$n"; done
+    remove_old_rolepod_agents "$C_TARGET/agents"
     # Rolepod no longer ships rules/ — strip the known rolepod rule paths a
     # pre-redesign install left behind, leaving any user-authored rules intact.
     do_or_dry "rm -rf rolepod rule dirs under $C_TARGET/rules" rm -rf "$C_TARGET/rules/always-on" "$C_TARGET/rules/code" "$C_TARGET/rules/test"
@@ -991,6 +1007,7 @@ PY
     # skills/agents in the same dirs are untouched.
     for n in "${SKILL_NAMES[@]}"; do do_or_dry "rm -rf $O_TARGET/skills/$n" rm -rf "$O_TARGET/skills/$n"; done
     for n in "${AGENT_NAMES[@]}"; do do_or_dry "rm -f $O_TARGET/agents/$n" rm -f "$O_TARGET/agents/$n"; done
+    remove_old_rolepod_agents "$O_TARGET/agents"
     do_or_dry "rm -f $O_TARGET/plugins/rolepod.js" rm -f "$O_TARGET/plugins/rolepod.js"
     do_or_dry "rm -rf $O_TARGET/plugins/rolepod-shared" rm -rf "$O_TARGET/plugins/rolepod-shared"
     do_or_dry "rm -f $O_TARGET/rolepod-version.json" rm -f "$O_TARGET/rolepod-version.json"
@@ -1388,7 +1405,7 @@ if codex_selected; then
         # The rolepod marketplace is already registered (e.g. a prior
         # `codex plugin marketplace add nuttaruj/rolepod`). Keep it untouched —
         # do not re-point or re-fetch it — and install only the pieces the
-        # marketplace cannot carry: the 15 agents + the AGENTS.md block.
+        # marketplace cannot carry: the 4 agents + the AGENTS.md block.
         # `--force` re-registers the marketplace from GitHub instead.
         step "rolepod marketplace already registered — keeping it; installing agents + AGENTS.md only"
         warn "  Marketplace left as-is. To re-register from GitHub: ./install.sh --target=codex --force"
@@ -1474,7 +1491,7 @@ if codex_selected; then
       # check is intentionally omitted: the list can lag right after
       # `plugin add` and produce a false negative.
       # No agents/ check here — Codex's plugin loader has no agents field; the
-      # 15 agent TOMLs install to ~/.codex/agents/ (verified separately).
+      # 4 agent TOMLs install to ~/.codex/agents/ (verified separately).
       ok "rolepod codex marketplace registered (GitHub) → $CODEX_CONFIG"
     else
       # Temp-target OR codex binary missing — verify filesystem artifacts only.
@@ -1552,7 +1569,7 @@ if cursor_selected; then
       hooks/hooks.json \
       skills/using-rolepod/SKILL.md \
       skills/debug-issue/SKILL.md \
-      agents/qa-tester.md \
+      agents/rolepod-qa.md \
       scripts/precommit-gate.sh
     do
       [ -e "$CURSOR_PLUGIN_DEST/$required" ] || fail "Cursor verification failed — $CURSOR_PLUGIN_DEST/$required missing"
@@ -1690,8 +1707,9 @@ if opencode_selected; then
     done"
 
   step "Copying agents → $OC_TARGET/agents/"
-  do_or_dry "copy 15 agents into $OC_TARGET/agents/" bash -c "
-    mkdir -p '$OC_TARGET/agents' && rm -f '$OC_TARGET/agents/data-scientist.md' && cp '$RENDERED_OC_DIR/agents/'*.md '$OC_TARGET/agents/'"
+  remove_old_rolepod_agents "$OC_TARGET/agents"
+  do_or_dry "copy 4 agents into $OC_TARGET/agents/" bash -c "
+    mkdir -p '$OC_TARGET/agents' && cp '$RENDERED_OC_DIR/agents/'*.md '$OC_TARGET/agents/'"
 
   step "Copying plugin shim → $OC_TARGET/plugins/rolepod.js"
   do_or_dry "copy rolepod.js into $OC_TARGET/plugins/" bash -c "
@@ -1720,7 +1738,7 @@ if opencode_selected; then
     step "Verifying opencode install"
     [ -f "$OC_TARGET/skills/using-rolepod/SKILL.md" ] || fail "opencode verification failed — skills missing"
     oc_agents=$(ls "$OC_TARGET/agents/"*.md 2>/dev/null | wc -l | tr -d ' ')
-    [ "$oc_agents" -ge 15 ] || fail "opencode verification failed — expected ≥15 agents, found $oc_agents"
+    [ "$oc_agents" -ge 4 ] || fail "opencode verification failed — expected ≥4 agents, found $oc_agents"
     [ -f "$OC_TARGET/plugins/rolepod.js" ] || fail "opencode verification failed — plugins/rolepod.js missing"
     [ -f "$OC_TARGET/plugins/rolepod-shared/fix-loop-breaker.sh" ] || fail "opencode verification failed — plugins/rolepod-shared/ missing"
     [ -e "$OC_AGENTS_MD" ] || fail "opencode verification failed — $OC_AGENTS_MD missing"
