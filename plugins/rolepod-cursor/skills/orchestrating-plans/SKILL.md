@@ -69,14 +69,13 @@ Done when: the task is committed, its boxes flipped, its owner stopped or kept f
 - Every code task → its track end (`ticket.sh log`'s `Track end:` / `Review:` lines); a track holding an R4 task takes the mode's R4 set, the threat list in the brief. No script → the last code task's owner runs `convening-code-review` on `git diff <base>...<track branch>` with `plan-lint.sh --review-set --tier <the track's highest tier>`. A docs-only track takes none.
 - Findings → ONE fix task to the owning role; rounds, rulings and closure live in `convening-code-review` Fix-verify.
 - A missing or partial report keeps its round open; never substitute your own review while agents exist.
-- A Lead review ends back here at the plan's next step, else `finish-work`.
 
 Done when: every review is closed at the receipts.
 
 ### 5. Tracks
 
 - Two or more tracks, a track over ~800 changed lines / ~15 files, or another session's live lock on the base → `coordinating-parallel-tracks`.
-- None → run the tracks one after another on the base in plan order; a live lock → the whole plan in one worktree (`git worktree add .worktrees/<plan> -b <branch>`).
+- None → run the tracks one after another on the base in plan order; a live lock → the whole plan in one worktree (`git check-ignore -q .worktrees/ || printf '\n.worktrees/\n' >> "$(git rev-parse --git-path info/exclude)"`, then `git worktree add .worktrees/<plan> -b <branch>`).
 
 Done when: every track is merged.
 
@@ -96,7 +95,6 @@ Done when: the final review is closed or ruled, or none is due.
 - Every dispatch out and nothing unblocked → end the turn on something whose end wakes you, closing with the `ticket.sh status <plan>` output (no script → the same list, one line per task). Opening a PR → load `finish-work` first; no `finish-work` → one checks watch, no poll.
 - Forced to end → one `## Changes during build` line: stopped after Task N · next Task M · how to start the env. A wait offers /compact only as a context-check relay (`manage-context`; none → one ~100-char line naming the plan and the next step).
 - A new idea → one `## Follow-ups` line, never a mid-build redesign; a follow-up inside the approved spec → a new task, tiered and dispatched.
-- The whole suite runs once per release, by you.
 
 ## Next phase
 

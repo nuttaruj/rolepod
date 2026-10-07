@@ -92,7 +92,7 @@ High-risk paths — auth, billing, payments, credits, migration, data deletion, 
 - A high-risk path with no reports from the active mode's R4 set at ship → STOP (`convening-code-review` Pick the set; Lite = the two lenses).
 - A merge authorized while a required CI lane runs → wait as `finish-work` CI lanes says; never end a turn on "ping me" or hand the wait to the user.
 - A diff mixing unrelated concerns at push → split the PRs (`finish-work` Pre-merge gate).
-- Concurrent sessions share the REF as well as the files: a sibling / concurrent session warning at session start → before editing a SHARED file, work in `git worktree add .worktrees/<task> -b <branch>` (disjoint edits flow free); work held for authorization stays on its own branch, never merged into a SHARED branch before the answer; push rules → `finish-work` Finish menu ("Before any push").
+- Concurrent sessions share the REF as well as the files: a sibling / concurrent session warning at session start → before editing a SHARED file, work in `git check-ignore -q .worktrees/ || printf '\n.worktrees/\n' >> "$(git rev-parse --git-path info/exclude)"` then `git worktree add .worktrees/<task> -b <branch>` (disjoint edits flow free); work held for authorization stays on its own branch, never merged into a SHARED branch before the answer.
 
 ## Next phase
 

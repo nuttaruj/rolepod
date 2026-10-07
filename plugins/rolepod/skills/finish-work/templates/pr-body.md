@@ -14,4 +14,4 @@
  "Low — <reason>" is valid if true.>
 
 ## Linked artifacts
-<Spec / plan path the reviewer can open; summarize its decision instead of linking `docs/rolepod/` artifacts. High-risk surfaces touched.>
+<`docs-mode.sh status` = `tracked` → link the spec / plan; else summarize. High-risk surfaces touched.>

@@ -7,7 +7,7 @@
 - `path` — <what changed>
 
 ### Evidence
-Verified tree `<id>` = `git rev-parse HEAD^{tree}` on a clean tree, else `git add -A && git write-tree` (stages the changes) — finish-work's Pre-merge gate cites this block (the plan's `verify.md`, else this session's chat) while `git rev-parse HEAD^{tree}` equals this id and the tree is clean.
+Verified tree `<id>` = `scripts/docs-mode.sh tree` (no script → `git add -A && git write-tree`) — finish-work's Pre-merge gate cites this block (the plan's `verify.md`, else this session's chat) while `scripts/docs-mode.sh tree HEAD` equals this id and the tree is clean.
 <One line per check. State the exact command and the SPECIFIC proof line —
  not "tests pass" but the assertion / count / status that proves it.>
 - `<command>` — PASS: <specific proof, e.g. "12 examples, 0 failures" / "HTTP 200, body has id">

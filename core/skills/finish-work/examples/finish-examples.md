@@ -84,7 +84,7 @@ Lead: "All gates passed, so I merged feat/csv-export to main and pushed."
 Low — read-only export, no schema or auth change. Door: two-way (a revert undoes it). Large exports verified against a 10k-order range within the 30s timeout.
 
 ## Linked artifacts
-Decision: server-side CSV built from the filtered scope (spec is local-only — summarized in Risks above).
+Decision: server-side CSV built from the filtered scope (docs untracked — summarized in Risks above).
 ```
 
 ### Bad
@@ -103,4 +103,4 @@ added tests
 | Summary | "export stuff and some other things" | Concrete — what, where, how, and what it leaves out |
 | Test plan | "added tests" — a reviewer cannot run it | A runnable checklist with before → after |
 | Risks | Omitted | Blast radius, door type, the 30s verification |
-| Artifacts | None | Decision summarized inline — no dead link to a private doc |
+| Artifacts | None | Decision summarized inline — no dead link to untracked docs |
