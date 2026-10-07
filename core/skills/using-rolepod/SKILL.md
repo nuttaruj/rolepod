@@ -7,7 +7,7 @@ description: Use before the first action that creates, edits or deletes a file o
 
 Dispatched as a sub-agent with a brief → stop here; the brief and your role name your skills.
 
-Turns a request that changes something into a tier and the first skill of `Define → Plan → Build → Review → Ship` (R4 also reviews each task inside Build); that skill owns what follows.
+Turns a request that changes something into a tier and the first skill of `Define → Plan → Build → Review → Ship`; that skill owns what follows.
 
 No `Active Rolepod workflow profile` line in your context → run `scripts/workflow-mode.sh` once and carry its mode (per CLI: `references/session-mode.md`).
 No script and no profile line → Lite.
@@ -54,7 +54,7 @@ The FIRST matching row fires:
 | architecture (DB schema, API contract, module split) | Define → `write-spec` (Approaches: ONE `system-architect`) |
 | where to deepen / refactor for testability, whole repo | tell the user to type /deepen-codebase ($deepen-codebase on Codex) |
 | clear UI edit (design, screenshot, exact acceptance) | Build → `orchestrating-plans`, Owner `frontend-developer` (iOS / Android / React Native / Flutter → `mobile-developer`; design system / CSS / a11y → `ui-ux-designer`) |
-| edit / fix on a high-risk path | Define → `write-spec` → `write-plan` → `orchestrating-plans` (per-task review) |
+| edit / fix on a high-risk path | Define → `write-spec` → `write-plan` → `orchestrating-plans` |
 | rolepod stats / evidence report / which models ran | tell the user to type /rolepod-stats ($rolepod-stats on Codex) |
 | context too large / compact / resume / stuck; write a handoff, or continue from the handoff | `manage-context` |
 
@@ -89,7 +89,7 @@ Done when: the route is stated (R2 and up), the named skill is loaded and its ow
 
 {{INCLUDE: core/fragments/risk-paths.md}}
 
-- A high-risk path with no reports from the active mode's R4 set at commit or ship → STOP (`convening-code-review` Pick the set; Lite = the two lenses).
+- A high-risk path with no reports from the active mode's R4 set at ship → STOP (`convening-code-review` Pick the set; Lite = the two lenses).
 - A merge authorized while a required CI lane runs → wait as `finish-work` CI lanes says; never end a turn on "ping me" or hand the wait to the user.
 - A diff mixing unrelated concerns at push → split the PRs (`finish-work` Pre-merge gate).
 - Concurrent sessions share the REF as well as the files: a sibling / concurrent session warning at session start → before editing a SHARED file, work in `git worktree add .worktrees/<task> -b <branch>` (disjoint edits flow free); work held for authorization stays on its own branch, never merged into a SHARED branch before the answer; push rules → `finish-work` Finish menu ("Before any push").

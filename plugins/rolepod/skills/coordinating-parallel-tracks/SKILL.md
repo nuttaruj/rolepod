@@ -46,7 +46,7 @@ Mid-flight conflicts:
 Parallel buys wall-clock, not tokens: dispatch it for speed, never to use more agents.
 
 Session split — the contract's optional **Session split** section assigns tracks to separate CLI sessions (an API track on one CLI, a UI track on another), each with its kickoff prompt:
-- Each session runs its own Lead: its track's tasks in one worktree, its own track-end review (step 4; R4 per task), and it COMMITS its own slice. The subagent commit ban binds subagents, not session Leads; branch isolation plus the contract's merge order keep the atomicity.
+- Each session runs its own Lead: its track's tasks in one worktree, its own track-end review (step 4), and it COMMITS its own slice. The subagent commit ban binds subagents, not session Leads; branch isolation plus the contract's merge order keep the atomicity.
 - Disk is the only shared truth: plan and contract are CLI-agnostic files; each session flips only its OWN tasks' checkboxes, so the union merges cleanly. A session that edits another track's tasks, files or checkboxes has broken the contract.
 - One branch or worktree per track whenever slices share filesystem state (generated files, build artifacts, lockfiles); two sessions in one worktree stomp each other.
 - The integration session named in the contract merges (step 5) and runs the final branch review (`orchestrating-plans` step 6). A per-track review never substitutes for it — cross-track drift is what no single track can see.
@@ -73,7 +73,7 @@ Over ~800 changed lines or ~15 files in one track → size slices:
 - A slice owner's Files allowed = its tasks' files only (a file two slices share goes to the earlier slice); it writes its slice's diff file for the lenses and runs only its own slice's checks.
 - A finding in a file it does not own goes back as `NEEDS:`.
 - All slices back → the Lead runs the plan's Command and the commit check once, then commits.
-- The track-end review covers the R2/R3 tasks' deltas and any unreviewed fix after verification; an R4 task's commits are context, covered by their reports (listed in the Scope with their paths), never re-tiered.
+- The track-end review covers every code task's delta, R4 included, and any unreviewed fix after verification.
 
 Ship group lines → `orchestrating-plans` step 6.
 

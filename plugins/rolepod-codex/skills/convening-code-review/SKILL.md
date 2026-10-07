@@ -32,7 +32,7 @@ Done when: diff file, H1 and hash recorded; inputs in hand.
 
 High-risk paths — auth, billing, payments, credits, migration, data deletion, secrets, tokens, crypto, permissions, security (override: `.rolepod/risk-paths`). A high-risk path is code that handles one of these — reads, refreshes, stores, sends or logs it, a third-party credential included — not only code that changes its rules.
 
-- No script → the Review set below at the carried mode, never re-read; none carried → `using-rolepod`'s `scripts/workflow-mode.sh` once. Never re-read the configured mode (a config change takes effect in a new session); a helper or `plan-lint.sh` call without the native mode environment gets `ROLEPOD_SESSION_MODE` and `ROLEPOD_SESSION_SOURCE` from the carried profile.
+- No script → the Review set below at the carried mode, never re-read (a config change takes effect in a new session); none carried → `using-rolepod`'s `scripts/workflow-mode.sh` once. A helper or `plan-lint.sh` call without the native mode environment gets `ROLEPOD_SESSION_MODE` and `ROLEPOD_SESSION_SOURCE` from the carried profile.
 
 **Review set** (round 1; mode unknown → Lite). Lite, any tier: the two lenses only. Standard: R2 the two lenses, a matched row adds that role · R3 the two lenses + each matched specialist · R4 the two lenses + `security-engineer` (`depth: checklist`). Full: as Standard, but R4 `depth: full` + one adversarial pass.
 
@@ -40,7 +40,7 @@ High-risk paths — auth, billing, payments, credits, migration, data deletion, 
 - Pool on + R3 / R4 → each lens external via `cross-family` kind review (`--lens <lens>`); internal: R2, comment / config / rename-only diffs, a wide-effort session, `security-engineer`, specialists. A failed, weak or refused external (weak = an empty or PARTIAL return, a changed file missing from its Scope list, a bare verdict, or no claim walked) → `universal-reviewer`, same lens, same round; no `cross-family` → internal lenses.
 - Full R4 adversarial pass: pool on → the external `cross-family` run with `--adversarial`, which is then the only adversarial pass; else `adversarial-reviewer` (strong), writing `<task>-adversarial.md` — also when the external fails, is refused (exit 2) or comes back weak, as for a lens.
 - No `adversarial-reviewer` role → a default sub-agent on a strong-class model, given `adversarial-review` and its brief. An R4 diff of comments or blank lines only gets no adversarial pass and no external. The vertical fallback and an inline advisor only raise the Lead floor, recorded as a LIMITATION; those two, the author's own model and the Lead's own walk never count as this pass.
-- A fix after verification on a high-risk path → the R4 set of the active mode on that fix alone, before its commit.
+- A high-risk fix after verification → the track-end review; after it, the Fix-verify re-check (Standard / Full: `security-engineer`).
 
 Done when: each reviewer named with its lens or role.
 

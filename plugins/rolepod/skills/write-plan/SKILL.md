@@ -32,7 +32,7 @@ Done when: every path is concrete and read.
 - A task that guards, gates or restores (a security surface) → a **threat-model** task first, whose attack list is what that surface's reviewers verify against.
 
 A task is the smallest unit worth its own review gate: split only where a reviewer could reject one part and approve the other, or at a second full-depth layer (template Owner); the setup, config, render, pin and docs steps it needs are its checkbox steps, and a whole change that fits one fresh context is one task.
-An R4 chain with one owner on one surface is one task: one R4 round on the combined diff.
+An R4 chain with one owner on one surface is one task.
 Every task states **Delivers** and **Blocked by**; the Blocked-by graph is the only statement of order, each edge naming what it consumes.
 Two edge-free tasks on one file → **prefactor first** (an extract task giving them disjoint files), or Sequential with a reason.
 A task builds and ships alone, never a batch; commit checks, the release and whole-suite runs belong to integrate (`orchestrating-plans` step 3) and the release, never to a task. Tasks sharing a seam (a contract or interface) form one named ship group — the template's **Ship group** line, a seam list for the final branch review.

@@ -58,7 +58,7 @@ Read the status, the first word of the decision brief:
 - An unreviewed diff → `convening-code-review` on it before you integrate; its findings go back to that owner as one fix brief.
 - Any other first word, or a question → answer it or ask for the status, then redispatch.
 
-Validate the receipt, then spot-check ONE claim (the Proof, or on R4 one finding); it fails → the exact discrepancy back to the owner, no commit.
+Validate the receipt, then spot-check ONE claim (the Proof); it fails → the exact discrepancy back to the owner, no commit.
 Integrate: a **Test / evidence** proof the Command does not run (browser, manual) runs first; then the ship line (`ticket.sh integrate` → commit → `log`) as ONE Bash call, a red step stopping the chain; no script → the commit check, `git commit`, one `## Changes during build` line (sha, verdict, receipt pointer), and every `- [ ]` under the task flipped. A cleanup from `simplify-code` gets its own commit, apart from the feature commit.
 Integrated → stop the owner in the same turn, plus any background work it reports; keep a track's last code-task owner for its track end. One task per pass.
 
@@ -66,8 +66,7 @@ Done when: the task is committed, its boxes flipped, its owner stopped or kept f
 
 ### 4. Review at its seam
 
-- R4 task → per-task review: the owner's round-1 reports exist before its commit.
-- R2/R3 → the track end: the `Track end:` and `Review:` lines `ticket.sh log` prints. No script → the last code task's owner runs `convening-code-review` on `git diff <base>...<track branch>` with `plan-lint.sh --review-set --tier R3`. A docs-only track takes none.
+- Every code task → its track end (`ticket.sh log`'s `Track end:` / `Review:` lines); a track holding an R4 task takes the mode's R4 set, the threat list in the brief. No script → the last code task's owner runs `convening-code-review` on `git diff <base>...<track branch>` with `plan-lint.sh --review-set --tier <the track's highest tier>`. A docs-only track takes none.
 - Findings → ONE fix task to the owning role; rounds, rulings and closure live in `convening-code-review` Fix-verify.
 - A missing or partial report keeps its round open; never substitute your own review while agents exist.
 - A Lead review ends back here at the plan's next step, else `finish-work`.
