@@ -21,7 +21,7 @@ The session captures `workflow.mode` (`lite` / `standard` / `full`) once at star
 | # | Gate | lite | standard | full |
 |---|---|---|---|---|
 | 1 | Commit stages a path under `docs/rolepod/` (unless the committed repo's docs mode is tracked) | deny | deny | deny |
-| 2 | R4 (high-risk) commit with no security lens report since the last commit (`lite`: not both the spec and standards lens reports) | warn | deny | deny |
+| 2 | Commit stages a high-risk path and the session wrote no test (no review-report check: the track-end review covers R4) | warn | warn | deny |
 | 3 | Session edited a high-risk path and wrote no test | warn | warn | deny |
 | 4 | Ordinary code commit with no test and no reviewer | silent | silent | deny |
 | 5 | Sub-agent runs `git commit`, `git push` (incl. `--force`), `git reset --hard`, `gh pr create` or `gh pr merge` | deny | deny | deny |
@@ -48,7 +48,7 @@ Every mode warns the way `standard` does; `lite` no longer skips them:
 - tree-rewrite advisory while a detached cross-family review runs
 - `test-diff-lint` findings L1 to L5
 - `push-ref-check`
-- `gate-reminder` (review in flight; "this R4 commit would block", once per path per session)
+- `gate-reminder` (review in flight only)
 - loop breaker at the 2nd failure and from the 4th on
 - route nudge, auto-resume note, context-check note
 - self-do nudge
@@ -87,12 +87,11 @@ On in every mode, because the gates above read them: session lock and edit regis
 The one hard checkpoint, at `git commit`.
 
 - **Private docs (every CLI, every mode)** — a staged path under `docs/rolepod/` → deny unless the repo tracks working docs. Details under Private working docs below.
-- **High-risk diff (Claude only)** — a staged path matching the high-risk regex or `.rolepod/risk-paths` and no security lens report (`<task>-security.md`) written since the last commit → `lite` warns, `standard` and `full` deny. In `standard` and `full` a high-risk commit needs a security lens report since the last commit, any model; an external pass never counts. Fix: run `security-engineer`, which writes it. In `lite` (which forbids that role) the evidence is the spec and standards lens reports (`<task>-spec.md`, `<task>-standards.md`) since the last commit: both pass silently, fewer warn naming the two reports.
-- **Session risk without a test (Claude only)** — the session edited high-risk code, wrote no test, and the staged diff is not high-risk → `full` denies until a failing test is written or a reviewer has run; `lite` and `standard` warn.
+- **High-risk without a test (Claude only)** — a staged path matching the high-risk regex or `.rolepod/risk-paths`, or a session that edited high-risk code, and 0 test edits since the last commit → `full` denies until a failing test is written; `lite` and `standard` warn. The commit never checks a review report: R4 is reviewed once, at the track end (`implement-plan`, `convening-code-review`).
 - **Ordinary code without a test or reviewer (Claude only)** — `full` denies; `lite` and `standard` stay silent.
 - **Everything else** — silent. `test-diff-lint` findings, when present, print as one line in every mode. Each judged commit appends a `phase: gate` row that `scripts/ticket.sh log` in `implement-plan` copies into the plan.
 - **What counts as high-risk** — the path regex (auth / billing / payment / migration / secret / crypto / token / oauth / webhook … — canonical list in the script, parity-pinned by lean-surface) plus `.rolepod/risk-paths`. Test-named files (`*.test.*`, `test_*.py`, `*_test.go` …) and prose files never count. A bare directory name (`tests/`, `spec/`) is not an exemption.
-- **Evidence (Claude)** — counted since the last commit (a linked worktree follows its own HEAD reflog). Tests and risk edits: the Lead transcript plus the session's sub-agent transcripts (60 newest). Reviews: the non-empty lens reports in `.rolepod/evidence/review/` of the checkout and its linked worktrees, named `<task>-<lens>.md`: `spec`, `standards`, `security` (legacy `security-engineer`) and `adversarial` count; a re-check `<task>-r<k>.md` counts as a reviewer only; `perf`, `ui`, `arch` and role-named reports count for nothing. A dispatch with no report counts for nothing; an external pass counts for nothing (the gate does not read the cross-family pool).
+- **Evidence (Claude)** — counted since the last commit (a linked worktree follows its own HEAD reflog). Tests and risk edits: the Lead transcript plus the session's sub-agent transcripts (60 newest). Reviews (read only by the ordinary-code gate): the non-empty lens reports in `.rolepod/evidence/review/` of the checkout and its linked worktrees, named `<task>-<lens>.md`: `spec`, `standards`, `security` (legacy `security-engineer`) and `adversarial` count; a re-check `<task>-r<k>.md` counts as a reviewer only; `perf`, `ui`, `arch` and role-named reports count for nothing. A dispatch with no report counts for nothing; an external pass counts for nothing (the gate does not read the cross-family pool).
 - **Which commit it judges** — `cd <dir> &&` and `git -C <dir>` move the diff directory; `bash -c`, `eval` and the common wrappers (`env`, `timeout`, `sudo` …) are unwrapped; `git add … && git commit` and `git commit -a` are judged on the working tree. Anything unresolvable falls back to the hook's cwd — never a new deny.
 - **Review in flight** — a tree-rewriting git command (`stash`, `reset --hard`, `checkout`, `rebase`, `merge` …) while a detached cross-family job runs → one advisory line naming `--collect`.
 - **Incidents** — a sub-agent-heavy day where high-risk commits cleared on stale day-1 evidence (window is now since the last commit); 672 green tests + an opus build still shipped 4 money bugs only the adversarial pass caught (high-risk needs a `security-engineer` review, not tests).
@@ -100,9 +99,9 @@ The one hard checkpoint, at `git commit`.
 
 ### `gate-reminder.sh` — PreToolUse `Edit|Write|MultiEdit` (Claude)
 
-- **Effect** — on a high-risk path, ONE line when the R4 commit gate would act on it now: fact (a high-risk commit needs a security lens report since the last commit, any model; an external pass never counts) → Fix (run `security-engineer` before commit; it writes the report) → Exception. In `standard` and `full` the line says the commit will block; in `lite` it is a `WARNING:` and asks for the spec and standards lens reports instead, silent once both exist. Every other edit → silent. A sub-agent edit (`agent_id` set) gets neither this line nor the evidence scan (the Lead dispatches), only the review-in-flight advisory.
+- **Effect** — silent on every edit, high-risk paths included (the R4 review is the track-end review, so no commit-block or lens-report line). A sub-agent edit (`agent_id` set) gets only the review-in-flight advisory.
 - **In-flight lines** — a live detached cross-family review whose diff holds the edited file → `⏸ REVIEW IN FLIGHT` (the job reads the tree live; editing now makes its verdict an artifact).
-- **Throttle** — the would-block line comes once per path per session (state: ~/.rolepod/gate-reminder/<session_id>, pruned after 14 days); a new path, a new session or a payload with no session id gets it again; the in-flight line repeats on every matching edit.
+- **Throttle** — none: the in-flight line repeats on every matching edit.
 - **Incident** — edit-time hard blocks once pushed a user to switch the whole gate layer off for good (33 high-risk edits in a day, 116 unreasoned bypasses), which silenced the commit gate too; this hook only informs.
 - **Bypass** — none (informational).
 

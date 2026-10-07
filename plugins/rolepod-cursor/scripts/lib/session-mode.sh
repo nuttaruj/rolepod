@@ -42,7 +42,7 @@ rolepod_gate_action() {
   case "$gate" in
     private-docs|subagent-ship|cannot-wait|collision|bare-fanout|strong-fanout|bare-writer)
       echo deny ;;
-    r4-security|scope-generic|scope-bare-workflow|scope-test-role|scope-readonly-role)
+    scope-generic|scope-bare-workflow|scope-test-role|scope-readonly-role)
       case "$mode" in lite) echo warn ;; *) echo deny ;; esac ;;
     risk-no-test)
       case "$mode" in full) echo deny ;; *) echo warn ;; esac ;;

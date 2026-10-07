@@ -19,7 +19,7 @@
 #   ONE test field, the Command; an older plan's Check: line is read and
 #   ignored, never printed (spec lean-loop-2026-09-23 Task 2).
 #   Reviewers prints one cell of the review set (C61; core/fragments/review-set.md)
-#   for the task's mode x tier: R1 none; R4 the mode's R4 set; an R2/R3 task
+#   for the task's mode x tier: R1 none; an R2/R3/R4 task
 #   `none` (its track's track-end review covers it) unless it is its track's only
 #   code task — then its own cell. Round mechanics live in convening-code-review, never here.
 #   `--plan-worktree`: the task runs in the plan worktree (branch
@@ -55,7 +55,7 @@
 #      every task names a track listed there; two tasks that edit one file
 #      share a track; Blocked by crosses tracks only at a track first task.
 #      `--brief` then prints the track branch and worktree for a track task
-#      and Reviewers `none — the track-end review covers this task` for R2/R3
+#      and Reviewers `none — the track-end review covers this task` for R2/R3/R4
 #      (its own review-set cell when it is the track's only code task).
 #      A non-Sequential plan with no `## Tracks` fails when two tasks share a
 #      file or one is Blocked by another (each task would be its own track).
@@ -1208,9 +1208,9 @@ if (planwt == 1) tpath = substr(tbranch, 1, length(tbranch) - 5)
     }
     if (xpool == 1 && (tier == "R3" || tier == "R4")) c2 = "Pool on → each lens runs external instead: `bash <cross-family skill folder>/scripts/cross-family.sh --kind review --lens spec --brief <this brief> --attach <diff> --detach`, the same with `--lens standards`, then `--collect <job> --timeout 540` for each in the foreground (exit 6 = still running: run it again); a lens whose run fails, comes back weak or is refused → `universal-reviewer` with that lens, same round."
     print "## Reviewers"
-    # One cell of the review set (rsetcell, C61) for R4 and for the only code task
-    # of its track; any other R2 / R3 task is covered by its track-end review.
-    if (tier == "R1" || tier == "R4" || onlycode == 1) {
+    # One cell of the review set (rsetcell, C61) for the only code task
+    # of its track; any other R2 / R3 / R4 task is covered by its track-end review.
+    if (tier == "R1" || onlycode == 1) {
       print rsetcell(wmode, tier, "")
       if (c2 != "") print c2
     } else print "`none` — the track-end review covers this task"

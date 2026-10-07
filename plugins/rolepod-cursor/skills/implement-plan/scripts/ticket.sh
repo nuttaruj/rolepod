@@ -1539,7 +1539,7 @@ EOF
       done
     fi
     if [ "$tt_total" -gt 0 ] && [ "$tt_total" -eq "$tt_done" ] && [ "$tt_role" -gt 0 ] && [ "$tt_tip" -eq 1 ]; then
-      local tbase tline tdir tpath first_sha="" tt_code=0 ctid cowner cblocked cdone ctier ctrack
+      local tbase tline tdir tpath first_sha="" tt_code=0 tt_top=R3 ctid cowner cblocked cdone ctier ctrack
       # A docs-only track (every role-owned task briefed R1) or a track with
       # one code task (its owner ran the lenses) takes no track-end review:
       # print just `track <id> done`.
@@ -1552,6 +1552,7 @@ EOF
         is_lead_owner "$cowner" && continue
         ctier="$(ROLEPOD_BRIEF_NOREC=1 bash "$LINT" --brief "$ctid" "$plan_abs_log" --main 2>/dev/null | awk '/^## Tier/ { getline; print substr($0, 1, 2); exit }')"
         [ "$ctier" = "R1" ] || tt_code=$((tt_code + 1))
+        case "$ctier" in R4) tt_top=R4 ;; R3) [ "$tt_top" = "R4" ] || tt_top=R3 ;; esac
       done <<EOF
 $rrows
 EOF
@@ -1599,8 +1600,8 @@ EOF
         printf '%s\n' "$tline"
         # The cell lives in plan-lint.sh --review-set (one home); a failing
         # call prints a pointer line and never fails log.
-        ROLEPOD_BRIEF_NOREC=1 bash "$LINT" --review-set --tier R3 2>/dev/null \
-          || echo "Review: unknown — run plan-lint.sh --review-set --tier R3"
+        ROLEPOD_BRIEF_NOREC=1 bash "$LINT" --review-set --tier "$tt_top" 2>/dev/null \
+          || echo "Review: unknown — run plan-lint.sh --review-set --tier $tt_top"
         echo "Track end: a track with two or more code tasks → its last code task's owner runs \`convening-code-review\` with the \`Review:\` line \`ticket.sh log\` prints, on the track diff, and fixes each BLOCKER / MAJOR (owner gone → a fresh owner of its role; an owner that cannot dispatch returns the diff unreviewed and the Lead runs \`convening-code-review\`); the Lead commits the fixes in the track worktree, then \`ticket.sh finish <worktree>\` merges the track. A track with one code task → its owner ordered its own review before returning, and the track takes no track-end review."
       fi
     fi

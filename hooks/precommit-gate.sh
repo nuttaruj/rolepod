@@ -10,10 +10,10 @@
 #                                    finding, when present, still prints.
 #   High-risk path matched (auth/billing/payment/migration/credit/permission/
 #                            secret/crypto/token)
-#                                  → session evidence (≥1 test edit or ≥1
-#                                    lens report file) → AUTO-PASS + log +
-#                                    additionalContext note. No evidence →
-#                                    HARD block (permissionDecision: deny).
+#                                  → no review-report check at commit (the
+#                                    track-end review covers R4). 0 test edits
+#                                    in the session → risk-no-test (its mode
+#                                    action); else silent.
 #                                  This branch is Claude-native only: a
 #                                    non-Claude ROLEPOD_LEAD_CLI gets only the
 #                                    private-docs deny above, then passes.
@@ -22,8 +22,7 @@
 # private session snapshot (or inherited profile environment):
 #   Every mode runs the gate; rolepod_gate_action (hooks/lib/session-mode.sh)
 #   returns deny|warn|silent per gate-id: private-docs denies in every mode,
-#   r4-security warns in lite and denies in standard/full, risk-no-test warns
-#   until full, code-no-test is silent until full. Group B advisories
+#   risk-no-test warns until full, code-no-test is silent until full. Group B advisories
 #   (tree-rewrite, test-diff-lint) speak in every mode.
 # Non-Claude adapters receive the private-doc gate; transcript evidence
 # checks remain Claude-native. Standard and Full never alter role tools or
@@ -848,11 +847,10 @@ except Exception:
 # Build deny reason — names only what clears the block (spec Desired 3,
 # 2026-09-25).
 # Which gate judges this commit, then what the mode table does with it. A
-# high-risk path is r4-security; session risk edits with no test (even when
-# the final diff is small) is risk-no-test; a plain commit with no evidence
-# is code-no-test. silent = no block and no warning.
-if [ -n "$HIGH_RISK" ]; then GATE_ID=r4-security
-elif [ "$HIGH_RISK_EDITS" -gt 0 ] && [ "$TEST_EDITS" -eq 0 ]; then GATE_ID=risk-no-test
+# a high-risk staged path, or session risk edits (even when the final diff is
+# small), with no test edit is risk-no-test; a plain commit with no evidence
+# is code-no-test. silent = no block and no warning. No review-report check.
+if { [ -n "$HIGH_RISK" ] || [ "$HIGH_RISK_EDITS" -gt 0 ]; } && [ "$TEST_EDITS" -eq 0 ]; then GATE_ID=risk-no-test
 else GATE_ID=code-no-test; fi
 GATE_ACT=$(rolepod_gate_action "$GATE_ID")
 # deny reads "precommit-gate BLOCKED. … then retry"; warn follows C4:
@@ -868,25 +866,10 @@ REASON+="Evidence ($SINCE_HUMAN): $TEST_EDITS tests, $HIGH_RISK_EDITS risk edits
 # C4 (review-finish-lean, 2026-09-30): fact → Fix → Exception, the rule word
 # for word; no pool, no external anchor, no model check.
 #
-# Lite (warn on r4-security) forbids `security-engineer`: its high-risk
-# evidence is the two lens reports (spec, standards) — LITE_LENSES, the
-# distinct count gate-evidence prints — since the last commit.
-LITE_R4=0
-if [ -n "$HIGH_RISK" ] && [ "$GATE_ID" = r4-security ] && [ "$GATE_ACT" = warn ]; then
-  LITE_R4=1
-fi
-if [ "$LITE_R4" -eq 1 ]; then
-  if [ "$LITE_LENSES" -lt 2 ]; then
-    REASON+="A high-risk commit needs the spec and standards lens reports (<task>-spec.md, <task>-standards.md in .rolepod/evidence/review/) since the last commit. Fix: run both lenses; each writes its report${FIX_TAIL}"
-  fi
-elif [ -n "$HIGH_RISK" ] && [ "$STRONG_REVIEWERS" -eq 0 ]; then
-  REASON+="A high-risk commit needs a security lens report (<task>-security.md in .rolepod/evidence/review/) since the last commit, any model; an external pass never counts. Fix: run security-engineer; it writes that report${FIX_TAIL}"
+if [ "$GATE_ID" = risk-no-test ]; then
+  REASON+="Fix: write the failing test${FIX_TAIL}"
 elif [ -z "$HIGH_RISK" ]; then
-  # Round-2 review (2026-09-25): a code-no-test deny alone
-  # (normal diff, 0 risk edits this session) used to get NO Fix sentence —
-  # the HIGH_RISK_EDITS>0 guard excluded exactly that case. Reaching this
-  # branch at all already means AUTO_PASS was 0 on a non-high-risk diff,
-  # i.e. TEST_EDITS==0 AND REVIEWERS==0 — the Fix applies unconditionally.
+  # code-no-test (full only): TEST_EDITS==0 AND REVIEWERS==0 reached here.
   REASON+="Fix: write the failing test, or run a lens (spec, standards, security) that writes its report. "
 fi
 REASON+="Exception: auto-passes once evidence exists SINCE THE LAST COMMIT; worktree review → commit there, a patch carries no evidence."
@@ -897,17 +880,12 @@ HARD_BLOCK=0
 
 # Evidence auto-pass — a would-block commit passes directly when the session
 # already shows gate evidence; the evidence check is the real guard.
-# Evidence is split by risk (v2.46.0):
-#   HIGH-RISK diff  → only a security lens report (any model, C4)
-#     clears it. Test edits are the floor, not the review — CourtBook
-#     proof: 672 green tests + opus impl still shipped 4 money bugs that
-#     only the adversarial pass caught.
-#   other HARD blocks (session risk edits w/o tests, code-no-test in full) → original OR
-#     (≥1 test edit or ≥1 lens report file): delegated sessions route
-#     test-writing into subagents whose edits land in the child transcript,
-#     so a lens report is often the only evidence the Lead's own transcript
-#     can show (a -perf / -ui / -arch report counts 0). Every
-#     auto-pass is logged and surfaced as context.
+# risk-no-test has no auto-pass (a test edit makes it silent). code-no-test in
+# full → ≥1 test edit or ≥1 lens report file: delegated sessions route
+# test-writing into subagents whose edits land in the child transcript,
+# so a lens report is often the only evidence the Lead's own transcript
+# can show (a -perf / -ui / -arch report counts 0). Every
+# auto-pass is logged and surfaced as context.
 # Test-tampering lint (warn-only) — the grep-able signals of `core/fragments/test-quality.md` (hooks/test-diff-lint.sh).
 # Runs in a subshell cd-ed to DIFF_DIR (v2.153.0): the script reads
 # `git diff --cached` off its own cwd, so it must see the resolved commit
@@ -920,13 +898,8 @@ fi
 
 AUTO_PASS=0
 if [ "$HARD_BLOCK" -eq 1 ]; then
-  if [ -n "$HIGH_RISK" ]; then
-    if [ "$LITE_R4" -eq 1 ]; then
-      [ "$LITE_LENSES" -ge 2 ] && AUTO_PASS=1
-    else
-      [ "$STRONG_REVIEWERS" -gt 0 ] && AUTO_PASS=1
-    fi
-  elif [ "$TEST_EDITS" -gt 0 ] || [ "$REVIEWERS" -gt 0 ]; then
+  # risk-no-test already means 0 test edits: only code-no-test can auto-pass.
+  if [ "$GATE_ID" = code-no-test ] && { [ "$TEST_EDITS" -gt 0 ] || [ "$REVIEWERS" -gt 0 ]; }; then
     AUTO_PASS=1
   fi
 fi
