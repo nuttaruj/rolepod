@@ -40,8 +40,8 @@
 #   time     a member is killed when it goes SILENT, not when it is slow
 #            (v2.129.0): no new stdout / stderr bytes for `stall` seconds
 #            (`stall=` in the config > 600) = dead, rc 118. The
-#            wall-clock cap is runaway insurance only (--timeout > `timeout=`
-#            > kind default: review 7200 s detached / 600 s foreground ·
+#            wall-clock cap is runaway insurance only (--timeout or ROLEPOD_XFAM_TIMEOUT, else the
+#            kind default: review 7200 s detached / 600 s foreground ·
 #            consult 300 · critique 600). Measured 2026-09-15:
 #            codex reviews run 15-29 min and stream the whole way (p90 28 min
 #            sat on the old 1800 s cap); cursor stream-json and opencode
@@ -419,10 +419,10 @@ fi
 # broken or silent means OFF: a diff leaves the machine only when the setting
 # clearly says so. A detached child reads the snapshot its parent wrote (--config).
 # review = the default order every kind falls back to; consult / critique =
-# that kind only; `key=value` tokens (timeout= stall=) attach to
-# the CLI named just before them.
+# that kind only; `key=value` tokens (stall=) attach to
+# the CLI named just before them; any other key is ignored.
 CFG_SRC="no pool is set"; STATE="off"; POOL_TXT=""
-DEFAULT_LIST=""; KIND_LIST=""; TO_LIST=""; ST_LIST=""
+DEFAULT_LIST=""; KIND_LIST=""; ST_LIST=""
 # The reader sits beside this script in every rendered tree; only the source layout (core/skills/cross-family/scripts)
 # may fall back to its own hooks/lib — never a path inside the repo under review.
 _rdr=""; _rdd="$(cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null && pwd)"
@@ -464,13 +464,10 @@ if [ "$(printf '%s\n' "$POOL_TXT" | head -1)" = "enabled=on" ]; then
     for _t in $_ln; do
       case "$_t" in
         *=*) _okey="${_t%%=*}"; _val="${_t#*=}"
-             if [ "$_okey" = "timeout" ] && [ -n "$_last" ]; then
-               if ! is_num "$_val"; then echo "cross-family: ignoring timeout='$_val' for $_last (whole seconds only)" >&2
-               elif [ -z "$_k" ] || [ "$_k" = "$KIND" ]; then TO_LIST="$TO_LIST $_last=$_val"; fi   # a kind line's options bind to that kind only
-             elif [ "$_okey" = "stall" ] && [ -n "$_last" ]; then
+             if [ "$_okey" = "stall" ] && [ -n "$_last" ]; then
                if ! is_num "$_val"; then echo "cross-family: ignoring stall='$_val' for $_last (whole seconds only)" >&2
                elif [ -z "$_k" ] || [ "$_k" = "$KIND" ]; then ST_LIST="$ST_LIST $_last=$_val"; fi
-             fi ;;
+             fi ;;   # any other key=value token (a stale timeout key) is ignored
         *) _last="$_t"; _acc="$_acc${_acc:+ }$_t" ;;
       esac
     done
@@ -492,10 +489,8 @@ stall_for() { # $1 cli → seconds of silence that count as dead (config > 600)
   [ -n "$_c" ] && { echo "$_c"; return; }
   echo 600
 }
-timeout_for() { # $1 cli → seconds (flag > config > kind default) — the runaway cap, not the working budget
+timeout_for() { # $1 cli → seconds (--timeout / ROLEPOD_XFAM_TIMEOUT, else the kind default) — the runaway cap, not the working budget
   [ -n "$FLAG_TIMEOUT" ] && { echo "$FLAG_TIMEOUT"; return; }
-  _c=$(printf '%s' "$TO_LIST" | tr ' ' '\n' | grep "^$1=" | tail -1 | cut -d= -f2)
-  [ -n "$_c" ] && { echo "$_c"; return; }
   case "$KIND" in
     review) if [ -n "$JOB_DIR" ]; then echo 7200; else echo 600; fi ;;
     consult) echo 300 ;;
