@@ -21,6 +21,7 @@
 #     one day, 116 unreasoned bypasses) — which then silenced the commit gate
 #     too. One hard checkpoint, at commit (precommit-gate.sh); this hook
 #     informs.
+#     Once per path per session (T6 C1): a repeat edit of the same path is silent; a new path, a new session or a payload with no session id warns again. The in-flight line is never throttled.
 #
 # workflow.mode controls the R4 wording: Standard/Full predict a commit block;
 # Lite gives an advisory warning. Every mode runs the hook.
@@ -294,8 +295,7 @@ fi
 STRONG_REVIEWERS=${STRONG_REVIEWERS:-0}
 GR_REVIEWERS=${GR_REVIEWERS:-0}
 
-SOFT_MODE=0
-[ "$(rolepod_gate_action r4-security)" = deny ] || SOFT_MODE=1
+_gr_act=$(rolepod_gate_action r4-security)
 
 # ONE line, only when the commit would block now (spec Desired 2, 2026-09-25):
 # fact → Fix → Exception. No always-on careful-mode banner, no per-CLI
@@ -307,15 +307,23 @@ WOULD_BLOCK=""
 # Lite forbids `security-engineer`: its evidence is the two `universal-reviewer`
 # lenses (reviewers minus security-engineer dispatches). Same rule as the gate.
 LITE_LENSES=$((GR_REVIEWERS - STRONG_REVIEWERS))
-if [ -n "$HIGH_RISK" ] && [ "$IS_SUBAGENT" -eq 0 ] && [ "$SOFT_MODE" -eq 1 ] && [ "$(rolepod_gate_action r4-security)" = warn ]; then
+if [ -n "$HIGH_RISK" ] && [ "$IS_SUBAGENT" -eq 0 ] && [ "$_gr_act" = warn ]; then
   if [ "$LITE_LENSES" -lt 2 ]; then
     WOULD_BLOCK="WARNING: HIGH-RISK edit: a high-risk commit should have the two \`universal-reviewer\` lenses (spec, standards) since the last commit. Fix: dispatch both (FINISHED dispatches) before the next commit. Exception: only the user can waive it. "
   fi
 elif [ -n "$HIGH_RISK" ] && [ "$IS_SUBAGENT" -eq 0 ] && [ "$STRONG_REVIEWERS" -eq 0 ]; then
-  if [ "$SOFT_MODE" -eq 1 ]; then
-    WOULD_BLOCK="WARNING: HIGH-RISK edit: a high-risk commit should have at least one \`security-engineer\` dispatch since the last commit. Fix: dispatch \`security-engineer\` (a FINISHED dispatch) before the next commit. Exception: only the user can waive it. "
-  else
-    WOULD_BLOCK="COMMIT WILL BLOCK — HIGH-RISK edit: a high-risk commit needs at least one \`security-engineer\` dispatch since the last commit, any model; an external pass never counts. Fix: dispatch \`security-engineer\` (a FINISHED dispatch before commit). Exception: only the user, never the model, can lower this gate. "
+  WOULD_BLOCK="COMMIT WILL BLOCK — HIGH-RISK edit: a high-risk commit needs at least one \`security-engineer\` dispatch since the last commit, any model; an external pass never counts. Fix: dispatch \`security-engineer\` (a FINISHED dispatch before commit). Exception: only the user, never the model, can lower this gate. "
+fi
+
+# C1 (T6): the would-block line comes once per path per session; the commit gate is the checkpoint. Session id from the payload only; no id = no throttle. The in-flight line is never throttled.
+if [ -n "$WOULD_BLOCK" ]; then
+  rolepod_session_id_from_input "$INPUT"
+  _gr_thr="${HOME:-/nonexistent}/.rolepod/gate-reminder"; _gr_key="$_gr2_root|$FILE_REL"
+  if [ -n "$ROLEPOD_SESSION_ID" ] && grep -qxF -- "$_gr_key" "$_gr_thr/$ROLEPOD_SESSION_ID" 2>/dev/null; then
+    WOULD_BLOCK=""
+  elif [ -n "$ROLEPOD_SESSION_ID" ] && mkdir -p "$_gr_thr" 2>/dev/null; then
+    printf '%s\n' "$_gr_key" >> "$_gr_thr/$ROLEPOD_SESSION_ID" 2>/dev/null || true
+    find "$_gr_thr" -type f -mtime +14 -delete 2>/dev/null || true
   fi
 fi
 

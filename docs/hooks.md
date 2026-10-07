@@ -48,7 +48,7 @@ Every mode warns the way `standard` does; `lite` no longer skips them:
 - tree-rewrite advisory while a detached cross-family review runs
 - `test-diff-lint` findings L1 to L5
 - `push-ref-check`
-- `gate-reminder` (review in flight, implement in flight, "this R4 commit would block")
+- `gate-reminder` (review in flight; "this R4 commit would block", once per path per session)
 - loop breaker at the 2nd failure and from the 4th on
 - route nudge, auto-resume note, context-check note
 - self-do nudge
@@ -102,6 +102,7 @@ The one hard checkpoint, at `git commit`.
 
 - **Effect** — on a high-risk path, ONE line when the R4 commit gate would act on it now: fact (a high-risk commit needs at least one `security-engineer` dispatch since the last commit, any model; an external pass never counts) → Fix (dispatch `security-engineer`, finished before commit) → Exception. In `standard` and `full` the line says the commit will block; in `lite` it is a `WARNING:` and asks for the two `universal-reviewer` lenses (spec, standards) instead of `security-engineer`, silent once two are finished. Every other edit → silent. A sub-agent edit (`agent_id` set) gets neither this line nor the evidence scan (the Lead dispatches), only the review-in-flight advisory.
 - **In-flight lines** — a live detached cross-family review whose diff holds the edited file → `⏸ REVIEW IN FLIGHT` (the job reads the tree live; editing now makes its verdict an artifact).
+- **Throttle** — the would-block line comes once per path per session (state: ~/.rolepod/gate-reminder/<session_id>, pruned after 14 days); a new path, a new session or a payload with no session id gets it again; the in-flight line repeats on every matching edit.
 - **Incident** — edit-time hard blocks once pushed a user to switch the whole gate layer off for good (33 high-risk edits in a day, 116 unreasoned bypasses), which silenced the commit gate too; this hook only informs.
 - **Bypass** — none (informational).
 
@@ -109,7 +110,7 @@ The one hard checkpoint, at `git commit`.
 
 - **Commit ban** — a sub-agent (`agent_id` set) running `git commit` / `git push` / `gh pr create` / `gh pr merge` / `git reset --hard` / `git push --force` → deny. The Lead owns version-control state. Wrapped forms (`timeout 300 git commit`, `xargs git commit`) are caught; a pure-output head (`echo`, `printf`) and a data heredoc are not.
 - **Codex** — the commit ban runs there too: a sub-agent's `git commit` / `git push` is denied — a child's PreToolUse carries `agent_id` (live probe 2026-09-30, Codex 0.159). The cannot-wait rule below is Claude-only.
-- **Cannot-wait rule (Claude)** — a sub-agent Bash call with `run_in_background: true`, or a cross-family gate (`--kind …` without `--detach`, or `--collect`) with no `timeout` → deny. A sub-agent `Agent` call with an explicit `run_in_background: true` → deny; an unset flag passes (live probe 2026-09-29, Claude Code 2.1.284: the Agent tool has no `run_in_background` parameter and a child's end wakes the sub-agent that ended its turn to wait for it — in the terminal CLI only; the desktop app sends it to the Lead, which relays it to the owner whose return ends `WAITING: <report paths>`, live probe 2026-09-29). A `name`, a `fork` or `isolation: remote` → deny — those always run as a background teammate whose report goes to the Lead (a named child with `run_in_background: false` still spawned as a mailbox teammate). A sub-agent `SendMessage` to a raw agent id (`a` + hex — how an owner addresses the unnamed reviewer it spawned) → deny: the message resumes that agent in the background; a named target (`main`, `team-lead`, another owner) passes. A resumed or teammate child reports to the Lead, and nothing wakes the sub-agent. In-process teammates carry `agent_id` too (live probe, 2026-09-29).
+- **Cannot-wait rule (Claude)** — a sub-agent Bash call with `run_in_background: true`, or a cross-family gate (`--kind …` without `--detach`, or `--collect`) with no `timeout` → deny. A sub-agent `Agent` call with an explicit `run_in_background: true` → deny; an unset flag passes (live probe 2026-09-29, Claude Code 2.1.284: the Agent tool has no `run_in_background` parameter and a child's end wakes the sub-agent that ended its turn to wait for it — in the terminal CLI only; the desktop app sends it to the Lead, which relays it to the owner whose return ends `WAITING: <report paths>`, live probe 2026-09-29). A `name`, a `fork` or `isolation: remote` → deny — those always run as a background teammate whose report goes to the Lead (a named child with `run_in_background: false` still spawned as a mailbox teammate). A sub-agent `SendMessage` to a raw agent id (`a` + hex — how an owner addresses the unnamed reviewer it spawned) → deny: the message resumes that agent in the background; a named target (`main`, `team-lead`, another owner) passes. The deny's Fix: a round-2 re-check is a fresh `Agent` dispatch of a `universal-reviewer`, not the same role, with its report and the fix delta in the brief. A resumed or teammate child reports to the Lead, and nothing wakes the sub-agent. In-process teammates carry `agent_id` too (live probe, 2026-09-29).
 - **Incidents** — a `backend-developer` committed past the QA floor after marking COMPLETED; a task owner idled its whole budget waiting on a backgrounded gate; an R4 task owner dispatched its four reviewers in the background, ended its turn "waiting for their notifications", and idled 6.6 h while the reports sat with the Lead (2026-09-28).
 - **Bypass** — none.
 
@@ -202,7 +203,7 @@ Emits `hooks/always-on-core.md` (identity, precedence, verify-first, simplest-vi
 
 ### `test-diff-lint.sh` — helper (called by `precommit-gate.sh`)
 
-Warn-only grep of the staged diff: focus / skip markers added, deleted test cases, snapshots refreshed with no test-logic change, DB mocks under integration / e2e paths, a literal calendar date under a test path. Findings print as one line at commit. A clean lint never means the tests are good: whether expected values came from the spec or from current output is a human judgment.
+Warn-only grep of the staged diff: focus / skip markers added, deleted test cases, snapshots refreshed with no test-logic change, DB mocks under integration / e2e paths, a literal calendar date under a test path. Findings print as one line at commit. Each finding states the fact and count, then Fix (the date finding adds an Exception); no trailing caveat.
 
 ## Removed in v2.176.0
 
