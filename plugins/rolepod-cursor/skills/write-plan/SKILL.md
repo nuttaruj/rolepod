@@ -35,7 +35,7 @@ Size each task for one fresh context, as a verifiable vertical slice. Split when
 Every task states **Delivers** and **Blocked by**; the Blocked-by graph is the only statement of order, each edge naming what it consumes.
 Two edge-free tasks on one file → **prefactor first** (an extract task giving them disjoint files), or Sequential with a reason.
 A task builds and ships alone, never a batch. Tasks sharing a seam (a contract or interface) form one named ship group — the template's **Ship group** line, a seam list for the final branch review.
-Tracks: tasks sharing files or chained by **Blocked by** form one track (one worktree, in order); a task Blocked by tasks in two or more tracks starts after those tracks merge, as the first task of a new track. Write them as the template's `## Tracks` lines and tag each task `**Track:** A`.
+Tracks: tasks sharing files or chained by **Blocked by** form one track (one worktree, in order); a task Blocked by tasks in two or more tracks starts after those tracks merge, as the first task of a new track. Write them as the template's `## Tracks` lines.
 A task names a file you have not read → read it.
 
 Done when: every task has Delivers and Blocked by with named edges, and every file it names is read.
@@ -85,7 +85,7 @@ Done when: every check passes.
 ### 8. Write the artifact
 
 Fill `templates/plan-template.md` in its order: task blocks, dependencies, high-risk surfaces, parallel layout, failure policy, changes during build, follow-ups; a conditional section stays concise, or is omitted when it does not apply.
-A task block, in order, one bold label per bullet: Delivers · Blocked by · Files · Read first · Change · Test / evidence · Proof · Expected failing signal · Command · Owner · Done when · On fail.
+A task block, in order, one bold label per bullet: Delivers · Blocked by · Track · Files · Read first · Change · Test / evidence · Proof · Expected failing signal · Command · Owner · Done when · On fail.
 Write the plan's prose in the user's language unless they ask for another; section headings, the field labels plan-lint reads, identifiers, paths, commands and quoted code stay verbatim.
 One-session work → inline in chat. Multi-session → a dated file under the private `docs/rolepod/plans/`, never overwritten (edge-cases: Saving the plan).
 Harness plan mode, team issues, several plans at once → references/edge-cases.md; no file → present the plan through the harness gate / solo / one plan at a time.

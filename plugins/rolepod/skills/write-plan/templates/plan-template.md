@@ -50,7 +50,7 @@
 <same shape — checkbox each step>
 
 ## High-risk surfaces touched
-<Name each touched auth / billing / payments / credits / migration / data deletion / secrets / tokens / crypto / permissions / security surface and every task that touches it. State None when applicable.>
+<Name each touched surface on the high-risk list (`using-rolepod` Stop conditions) and every task that touches it. State None when applicable.>
 - <surface> → Task <N>
 
 ## Spec coverage (both directions)

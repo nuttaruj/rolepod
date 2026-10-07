@@ -30,7 +30,7 @@
 [[FILL: Stated stack, deadline, no-touch zones, compatibility, and settled rollout / rollback constraints. Repeat feature may cite `Unchanged — <prior> §Constraints`. Omit unstated details.]]
 
 ## High-risk surfaces
-[[FILL: Touched surfaces among auth / billing / payments / credits / migration / data deletion / secrets / tokens / crypto / permissions / security. State `None` deliberately when none apply.]]
+[[FILL: Touched surfaces on the high-risk list (`using-rolepod` Stop conditions). State `None` deliberately when none apply.]]
 Cross-family critique: <status line, write-spec step 5>
 
 ## Chosen approach

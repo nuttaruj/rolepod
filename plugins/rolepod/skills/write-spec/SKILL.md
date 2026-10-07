@@ -18,7 +18,7 @@ Turns an unclear, non-trivial request into an approved spec file — the contrac
 
 - User-supplied spec or exact approved change list naming each target → use it as the spec; do not interview again.
 - Otherwise, quote the request and inspect relevant code and decisions, constraints, and the project's follow-up list (`docs/rolepod/backlog.md` or its issue tracker). Remove an adopted backlog item when the spec is approved.
-- Record one-sentence goal, actor, product mode (`change` or `new`), constraints, and touched high-risk surfaces: auth, billing, payments, credits, migration, data deletion, secrets, tokens, crypto, permissions, security.
+- Record one-sentence goal, actor, product mode (`change` or `new`), constraints, and the touched surfaces on the high-risk list (`using-rolepod` Stop conditions).
 - A repeat feature may inherit Goal, User / actor, Non-goals, Constraints, Chosen approach, or Rejected approaches as `Unchanged — <prior spec> §<section>`; verify current behavior from code and write behavior, criteria, testing, risk, and open questions fresh.
 - Goal spans independent outcomes → `references/scope-splitting.md` (split signals, slicing); no file → one spec per shippable outcome: write slice 1, list the rest as Non-goals, confirm the order with the user.
 - Open decisions block listing the slices → `references/chart-work.md` (decision map, question tickets); no file → settle the blocking decisions one at a time in Discovery until the slices can be listed. A mapped, decided question is cited as `Decided — q-<slug>`, never asked again.
