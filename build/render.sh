@@ -311,7 +311,10 @@ render_codex() {
   local t
   for t in "$out_dir/agents"/*.toml; do
     [ -f "$t" ] || continue
-    cp "$t" "$plugin_dst/agents/rolepod-$(basename "$t")"
+    case "$(basename "$t")" in
+      rolepod-*) cp "$t" "$plugin_dst/agents/$(basename "$t")" ;;
+      *)         cp "$t" "$plugin_dst/agents/rolepod-$(basename "$t")" ;;
+    esac
   done
   cp "$output" "$plugin_dst/agents/AGENTS.rolepod.md"
 
