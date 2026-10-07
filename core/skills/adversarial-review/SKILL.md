@@ -1,6 +1,6 @@
 ---
 name: adversarial-review
-description: The adversarial-reviewer's method — try to break a high-risk change and report where it fails. The role carries it already; use it directly only when the user asks for an adversarial review.
+description: The adversarial lens's method — try to break a high-risk change and report where it fails. Use it directly only when the user asks for an adversarial review.
 ---
 
 # Adversarial Review
@@ -38,10 +38,10 @@ You are the adversarial reviewer of an R4 (high-risk) diff, round 1. Break confi
 - **Approach** — challenge the design, not only the lines: is this the right approach, which assumptions does it rest on, where does it break under real conditions?
 - **Attack surface** — first: auth, permissions, trust boundaries; data loss, corruption, duplication, irreversible state; rollback, retries, partial failure, idempotency; races, ordering, stale state, re-entrancy; empty, null, timeout, a degraded dependency; version skew, schema drift, migration; an observability gap that hides a failure.
 - **Method** — try to disprove the change: trace bad input, retries, concurrent actions and half-finished operations through the code; look for violated invariants, missing guards and unhandled failure paths; hunt for what is missing as hard as for what is present. The brief's risk focus weighs most; still report any other material issue you can defend.
+- **Severity under doubt** — BLOCKER only for a failure you walked through the code that loses data, breaks security, moves money wrong or cannot be rolled back; a recoverable user-visible failure is MAJOR; a worry resting on something you could not check is a Question that states the assumption — never a BLOCKER by volume.
 - **Finding bar** — material findings only; no style, naming or cleanup (the standards lens owns them). Each finding answers: what goes wrong, why this path is vulnerable, the likely impact, the concrete change that reduces the risk.
 - **Grounding** — every finding is defensible from the diff, the repository or a tool output; never invent a file, line, code path or behavior. A conclusion that rests on an inference says so.
 - **Calibration** — one strong finding beats several weak ones. A change that looks safe → say so and return no findings.
-- **Final check** — each finding is adversarial, not stylistic; tied to a file:line; plausible under a real failure; actionable.
 
 ## Next phase
 

@@ -1,6 +1,6 @@
 ---
 name: security-review
-description: The security-engineer's method — model the threat, walk the diff at the depth the brief names, report each BLOCKER / MAJOR with an exploit scenario. The role carries it already; use it directly only when the user asks for a security audit.
+description: The security lens's method — model the threat, walk the diff at the depth the brief names, report each BLOCKER / MAJOR with an exploit scenario. Use it directly only when the user asks for a security audit.
 ---
 
 # Security Review
@@ -32,8 +32,20 @@ Done when: every boundary from step 2 has a traced result at file:line.
 
 ### 4. Grade and report
 
+- Hard stops, each a REJECT:
+  - A secret would land in code / log / response → REJECT.
+  - An auth check is missing on a new endpoint → REJECT.
+  - A user-controlled URL hits the internal network without an allowlist (SSRF) → REJECT.
+  - Crypto rolled by hand → REJECT, use a library.
+  - A token / cookie without `HttpOnly` / `Secure` / `SameSite` where required → REJECT.
+  - The compliance regime is unstated and the change crosses regulatory scope → return `BLOCKED:` naming the regimes in play — a wrong guess can ship a breach.
+
+{{INCLUDE: core/fragments/risk-paths.md}}
+
 - Grade each finding CRITICAL / HIGH / MEDIUM / LOW and record it as BLOCKER (CRITICAL, HIGH) / MAJOR (MEDIUM) / MINOR (LOW); the axis is `security`.
 - Every BLOCKER and MAJOR names an exploit scenario — who calls it, how, and what they get — and the repro or test that proves it, by command; a finding with no scenario is MINOR.
+- Repro, the one exception to "trace, never run": `git worktree add --detach .worktrees/<task>-repro <head>`, write and run the repro test there, then `git worktree remove --force .worktrees/<task>-repro` before you return; never touch the reviewed tree (H1 unchanged) and never install a dependency there. It cannot run → attach the repro test text and mark the finding "repro not run".
+- Your writes: the report, the security spec a billing / payments brief names (`security-spec: <path>`) before build, and test files only; product code that needs a change → a finding for the owner.
 - Write the report to the file the brief names, default `.rolepod/evidence/review/<task>-security.md`; its Read section names the threat model, the compliance regime and the depth:
 
 ```markdown
