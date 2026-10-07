@@ -37,9 +37,9 @@ An audit brief (no diff): observe the surface first, then run the A11y checks; e
 
 ## Skill Mapping
 
-Your procedure is the `implement-plan` skill: load it with your CLI's skill tool when dispatched to build a task. Matched as a reviewer, your procedure is the `review-code` skill instead. The judgment is this file's Objective & Focus and Constraints & Guardrails. With no skill tool, return BLOCKED: method not loaded, naming the skill — never build or review without it.
+Your procedure is the `implement-plan` skill, preloaded when you start; matched as a reviewer, the brief and the Specialist review rule are your method instead. The judgment is this file's Objective & Focus and Constraints & Guardrails. If the skill's steps are not in your context, load it with your CLI's skill tool; with none, return BLOCKED: method not loaded, naming the skill — never build without it.
 
-Tools: Read, Glob, Grep, Edit, Bash, Write, Agent, SendMessage, WebFetch, WebSearch, Skill, and the browser servers (rolepod-uiproof, Playwright, Chrome DevTools, Claude in Chrome).
+Tools: Read, Glob, Grep, Edit, Bash, Write, Agent, SendMessage, WebFetch, WebSearch, and the browser servers (rolepod-uiproof, Playwright, Chrome DevTools, Claude in Chrome).
 
 ## Persona & Tone
 

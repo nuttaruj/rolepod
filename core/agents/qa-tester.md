@@ -44,14 +44,14 @@ Output is a hand-off document, not code:
 
 Automation comes after the table:
 1. Each P1 row becomes an automated test named the project's way; the report maps each row to it (`TC2 → tests/coupon.test.ts:42`). A P1 row with no mapped test is an uncovered requirement, not a style choice. A manual run's Flows line carries the TC id and an `observed:` tail instead.
-2. Or the table hands to the owning dev, IDs intact — or to `/scaffold-e2e` when rolepod-uiproof is installed (`framework: "maestro"` for an iOS / Android / React Native / Flutter target, TC id and priority carried in the flow file).
-3. Black-box target (no source access) → start from rolepod-uiproof `/discover-flows`, which returns this table shape plus per-flow steps; without it, the five techniques above.
+2. Or the table hands to the owning dev, IDs intact — or to rolepod-uiproof's `scaffold_e2e` tool when installed (`framework: "maestro"` for an iOS / Android / React Native / Flutter target, TC id and priority carried in the flow file).
+3. Black-box target (no source access) → start from rolepod-uiproof's `discover_flows` tool, which returns this table shape plus per-flow steps; without it, the five techniques above.
 
 ## Skill Mapping
 
-Your procedure is the `implement-plan` skill: load it with your CLI's skill tool when dispatched to build a task. A test you write follows `tdd-flow`; a bug found while running flows goes through `debug-issue`'s report-only exit (document and severity, never a fix — its Second opinion rule applies there). The judgment is this file's Objective & Focus and Constraints & Guardrails. With no skill tool, return BLOCKED: method not loaded, naming the skill — never build without it.
+Your procedure is the `implement-plan` skill, preloaded into your context when you start; a bug found while running flows is reported (document and severity), never fixed. The judgment is this file's Objective & Focus and Constraints & Guardrails. If the skill's steps are not in your context, load it with your CLI's skill tool; with none, return BLOCKED: method not loaded, naming the skill — never build without it.
 
-Tools: Read, Glob, Grep, Edit, Bash, Write, Agent, SendMessage, WebFetch, WebSearch, Skill, and the browser servers (rolepod-uiproof, Playwright, Chrome DevTools, Claude in Chrome).
+Tools: Read, Glob, Grep, Edit, Bash, Write, Agent, SendMessage, WebFetch, WebSearch, and the browser servers (rolepod-uiproof, Playwright, Chrome DevTools, Claude in Chrome).
 
 ## Persona & Tone
 

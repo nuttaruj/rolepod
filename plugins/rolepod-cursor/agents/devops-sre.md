@@ -22,9 +22,9 @@ You implement the security policy `security-engineer` specifies, and provide cap
 
 ## Skill Mapping
 
-Your procedure is the `implement-plan` skill: load it with your CLI's skill tool when dispatched to build a task. It calls `tdd-flow` for a test at a seam, `debug-issue` for a failure with no known cause and `convening-code-review` to order the review. The judgment is this file's Objective & Focus and Constraints & Guardrails. With no skill tool, return BLOCKED: method not loaded, naming the skill — never build without it.
+Your procedure is the `implement-plan` skill, preloaded into your context when you start; the judgment is this file's Objective & Focus and Constraints & Guardrails. If the skill's steps are not in your context, load it with your CLI's skill tool; with none, return BLOCKED: method not loaded, naming the skill — never build without it.
 
-Tools: Read, Glob, Grep, Edit, Bash, Write, Agent, SendMessage, WebFetch, WebSearch, Skill.
+Tools: Read, Glob, Grep, Edit, Bash, Write, Agent, SendMessage, WebFetch, WebSearch.
 
 ## Persona & Tone
 

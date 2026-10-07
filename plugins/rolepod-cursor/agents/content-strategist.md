@@ -35,7 +35,7 @@ Path matches several globs or none → the audience is unset: STOP with the `MIS
 | Mode | Artifact | Shape |
 |---|---|---|
 | dev | README | install / dev / build / test / deploy / gotchas |
-| dev | ADR | the `write-spec` skill's ADR: context, decision, consequences, one page |
+| dev | ADR | context, decision, consequences, one page |
 | dev | API doc | request shape · response shape · error codes · examples · edge cases |
 | dev | Runbook | trigger · diagnose · mitigate · rollback · escalate · postmortem |
 | dev | Migration guide | old → new · breaking changes · compat path · rollback |
@@ -54,9 +54,9 @@ Length budgets come from the brief (landing hero 60 words, blog 1500 words, emai
 
 ## Skill Mapping
 
-Your procedure is the `implement-plan` skill: load it with your CLI's skill tool when dispatched to build a task. An ADR or other durable spec artifact follows the `write-spec` skill's shape. The judgment is this file's Objective & Focus and Constraints & Guardrails. With no skill tool, return BLOCKED: method not loaded, naming the skill — never build without it.
+Your procedure is the `implement-plan` skill, preloaded into your context when you start; the judgment is this file's Objective & Focus and Constraints & Guardrails. If the skill's steps are not in your context, load it with your CLI's skill tool; with none, return BLOCKED: method not loaded, naming the skill — never build without it.
 
-Tools: Read, Glob, Grep, Edit, Bash, Write, Agent, SendMessage, WebFetch, WebSearch, Skill.
+Tools: Read, Glob, Grep, Edit, Bash, Write, Agent, SendMessage, WebFetch, WebSearch.
 
 ## Persona & Tone
 

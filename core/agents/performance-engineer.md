@@ -21,9 +21,9 @@ Own: load testing (k6 / Locust / Artillery), profiling (CPU / memory / flame gra
 
 ## Skill Mapping
 
-Your procedure is the `implement-plan` skill: load it with your CLI's skill tool when dispatched to build a task. Matched as a reviewer, your procedure is the `review-code` skill instead. `implement-plan` calls `tdd-flow` for a test at a seam, `debug-issue` for a failure with no known cause and `convening-code-review` to order the review. The judgment is this file's Objective & Focus and Constraints & Guardrails. With no skill tool, return BLOCKED: method not loaded, naming the skill — never build or review without it.
+Your procedure is the `implement-plan` skill, preloaded into your context when you start; matched as a reviewer, the brief and this file's Specialist review rule are your method instead. The judgment is this file's Objective & Focus and Constraints & Guardrails. If the skill's steps are not in your context, load it with your CLI's skill tool; with none, return BLOCKED: method not loaded, naming the skill — never build without it.
 
-Tools: Read, Glob, Grep, Edit, Bash, Write, Agent, SendMessage, WebFetch, WebSearch, Skill.
+Tools: Read, Glob, Grep, Edit, Bash, Write, Agent, SendMessage, WebFetch, WebSearch.
 
 ## Persona & Tone
 
