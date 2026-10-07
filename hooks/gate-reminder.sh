@@ -9,12 +9,12 @@
 #   Review in flight: live detached cross-family    → one advisory line, never a deny —
 #     job + edit to a file its diff touches (v2.93.0)   the job reads the tree live; an
 #                                                       early edit voids its verdict
-#   High-risk path, a security-engineer → silent — same evidence the commit
-#     dispatch already finished           gate reads at commit time (C4).
-#     Lite instead: the two universal-reviewer lenses (spec, standards) → silent;
-#     fewer → the one line names the lenses (Lite forbids security-engineer).
-#   High-risk path, 0 security-engineer → ONE line, only now: fact (C4) → Fix
-#     dispatches since the last commit    (dispatch security-engineer) →
+#   High-risk path, a security lens     → silent — same evidence the commit
+#     report since the last commit        gate reads at commit time (C4).
+#     Lite instead: the spec and standards lens reports → silent;
+#     fewer → the one line names the reports (Lite forbids security-engineer).
+#   High-risk path, 0 security reports  → ONE line, only now: fact (C4) → Fix
+#     since the last commit               (run security-engineer) →
 #                                         Exception (user-set bypass only).
 #     Never a deny (v2.47.0): edit-time HARD blocks were the measured reason
 #     users turn the gates off for good (CourtBook: 33 high-risk edits in
@@ -265,16 +265,17 @@ fi
 
 # Session-state inspection — the same tally the commit gate reads (spec
 # Desired 2, 2026-09-25): one session_state.py call computes the window at
-# the EDITED FILE's directory and returns strong reviewers since the last
-# commit — transcript scan + hook-auto phase-log "dispatch" backstop.
+# the EDITED FILE's directory and returns the lens report counts since the last
+# commit (.rolepod/evidence/review/ — never a dispatch).
 # This canonical script ships to Claude only (build/render.sh) — Codex has
 # no Edit/Write/MultiEdit/NotebookEdit tools to gate; Cursor's own
 # gate-reminder is a separate hand-written adapter script under
 # adapters/cursor/scripts/.
 SESSION_STATE="$(dirname "$0")/lib/session_state.py"
 STRONG_REVIEWERS=0
+GR_LITE=0   # never inherited from the environment: only gate-evidence sets it
 # A sub-agent (agent_id set — same test as worktree-guard.sh) never dispatches
-# a reviewer: the Lead does. Skip the transcript scan and the dispatch line;
+# a reviewer: the Lead does. Skip the evidence scan and the would-block line;
 # the review-in-flight advisory above still reaches it.
 [ -n "$AGENT_ID" ] && IS_SUBAGENT=1 || IS_SUBAGENT=0
 # Walk up to the nearest EXISTING ancestor (LOW-8, round-1 review): a Write
@@ -290,10 +291,9 @@ done
 [ -d "$FILE_DIR" ] || FILE_DIR="."
 if [ "$IS_SUBAGENT" -eq 0 ] && [ -f "$SESSION_STATE" ] && command -v python3 >/dev/null 2>&1; then
   GR_EV=$(printf '%s' "$INPUT" | python3 "$SESSION_STATE" gate-evidence "$FILE_DIR" 2>/dev/null || true)
-  [ -n "$GR_EV" ] && read -r _ _ GR_REVIEWERS STRONG_REVIEWERS <<< "$GR_EV"
+  [ -n "$GR_EV" ] && read -r _ _ _ STRONG_REVIEWERS GR_LITE <<< "$GR_EV"
 fi
 STRONG_REVIEWERS=${STRONG_REVIEWERS:-0}
-GR_REVIEWERS=${GR_REVIEWERS:-0}
 
 _gr_act=$(rolepod_gate_action r4-security)
 
@@ -304,15 +304,15 @@ _gr_act=$(rolepod_gate_action r4-security)
 # prediction of it where the gate denies (deny → COMMIT WILL BLOCK; warn, i.e.
 # Lite → advisory WARNING without claiming enforcement). C4 wording (review-finish-lean, 2026-09-30).
 WOULD_BLOCK=""
-# Lite forbids `security-engineer`: its evidence is the two `universal-reviewer`
-# lenses (reviewers minus security-engineer dispatches). Same rule as the gate.
-LITE_LENSES=$((GR_REVIEWERS - STRONG_REVIEWERS))
+# Lite forbids `security-engineer`: its evidence is the spec and standards lens
+# reports (the distinct count gate-evidence prints). Same rule as the gate.
+LITE_LENSES=${GR_LITE:-0}
 if [ -n "$HIGH_RISK" ] && [ "$IS_SUBAGENT" -eq 0 ] && [ "$_gr_act" = warn ]; then
   if [ "$LITE_LENSES" -lt 2 ]; then
-    WOULD_BLOCK="WARNING: HIGH-RISK edit: a high-risk commit should have the two \`universal-reviewer\` lenses (spec, standards) since the last commit. Fix: dispatch both (FINISHED dispatches) before the next commit. Exception: only the user can waive it. "
+    WOULD_BLOCK="WARNING: HIGH-RISK edit: a high-risk commit should have the spec and standards lens reports (<task>-spec.md, <task>-standards.md in .rolepod/evidence/review/) since the last commit. Fix: run both lenses before the next commit; each writes its report. Exception: only the user can waive it. "
   fi
 elif [ -n "$HIGH_RISK" ] && [ "$IS_SUBAGENT" -eq 0 ] && [ "$STRONG_REVIEWERS" -eq 0 ]; then
-  WOULD_BLOCK="COMMIT WILL BLOCK — HIGH-RISK edit: a high-risk commit needs at least one \`security-engineer\` dispatch since the last commit, any model; an external pass never counts. Fix: dispatch \`security-engineer\` (a FINISHED dispatch before commit). Exception: only the user, never the model, can lower this gate. "
+  WOULD_BLOCK="COMMIT WILL BLOCK — HIGH-RISK edit: a high-risk commit needs a security lens report (<task>-security.md in .rolepod/evidence/review/) since the last commit, any model; an external pass never counts. Fix: run security-engineer before commit; it writes that report. Exception: only the user, never the model, can lower this gate. "
 fi
 
 # C1 (T6): the would-block line comes once per path per session; the commit gate is the checkpoint. Session id from the payload only; no id = no throttle. The in-flight line is never throttled.

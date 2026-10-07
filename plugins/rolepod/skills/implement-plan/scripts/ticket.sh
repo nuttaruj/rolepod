@@ -1365,7 +1365,7 @@ if best is not None:
     _decision = best.get("decision")
     if _decision not in ("pass", "deny", "soft"):
         _decision = "?"
-    print("gate: %s · tests %d · risk %d · reviewers %d (security-engineer %d)" % (
+    print("gate: %s · tests %d · risk %d · reviewers %d (security %d)" % (
         _decision, _int("tests"), _int("risk"),
         _int("reviewers"), _int("strong")))
 ' "$gate_phase_log" 2>/dev/null)"
@@ -1419,7 +1419,7 @@ if best is not None:
   status_write "$plan" "$(status_body "$plan" "")"
   echo "ticket: log: Task $n updated in $plan"
 
-  # Reviews: a report is named <plan-slug>-task<N>-<lens|role>.md (the brief's
+  # Reviews: a report is named <plan-slug>-task<N>-<lens>.md (the brief's
   # Bounds), so none is copied — pointers to this task's .md reports go under
   # ## Reviews; only a legacy name without that prefix falls back to "written
   # since this task's brief" (never .diff / .log).

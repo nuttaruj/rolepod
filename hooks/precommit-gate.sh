@@ -11,7 +11,7 @@
 #   High-risk path matched (auth/billing/payment/migration/credit/permission/
 #                            secret/crypto/token)
 #                                  → session evidence (≥1 test edit or ≥1
-#                                    reviewer dispatch) → AUTO-PASS + log +
+#                                    lens report file) → AUTO-PASS + log +
 #                                    additionalContext note. No evidence →
 #                                    HARD block (permissionDecision: deny).
 #                                  This branch is Claude-native only: a
@@ -630,9 +630,9 @@ print(json.dumps({'hookSpecificOutput': {'hookEventName': 'PreToolUse', 'permiss
 fi
 
 # The HARD evidence path (high-risk reviewer + session-risk-without-test) is
-# native only to Claude: its own transcript is Claude-JSONL and its hook-auto
-# phase-log "dispatch" rows are the trustworthy backstop (spec Desired 10,
-# 2026-09-25). A rendered CLI other than Claude gets only the private-docs
+# native only to Claude: its own transcript is Claude-JSONL (the test-edit
+# count) and the lens report files in .rolepod/evidence/review/ are the
+# review evidence. A rendered CLI other than Claude gets only the private-docs
 # deny above, then passes — no evidence tally, no high-risk deny, no SOFT
 # reminder. ROLEPOD_LEAD_CLI unset (real Claude Code never sets it) or
 # "claude" (adapters that emulate it) keeps the full path below.
@@ -712,12 +712,13 @@ TEST_EDITS=0
 HIGH_RISK_EDITS=0
 REVIEWERS=0
 STRONG_REVIEWERS=0
+LITE_LENSES=0   # never inherited from the environment: only gate-evidence sets it
 SINCE_EPOCH=$(gitd log -1 --format=%ct 2>/dev/null || true)
 SINCE_HUMAN=$(gitd log -1 --format=%cd --date=format:'%Y-%m-%d %H:%M' 2>/dev/null || true)
 # Linked worktree (v2.153.0, R4): "since the last commit" follows the
 # WORKTREE's own HEAD reflog, not its last commit — a `git merge --ff-only
 # main` in the worktree shares main's commit clock but is not itself a
-# commit, and must not slide the window past a reviewer dispatched before
+# commit, and must not slide the window past a lens report written before
 # it. Newest reflog line whose subject starts with "commit" wins; none → the
 # oldest line (the worktree's creation). Outside a linked worktree
 # (git-dir == git-common-dir), unchanged.
@@ -753,18 +754,20 @@ fi
 if [ -f "$SESSION_STATE" ] && command -v python3 >/dev/null 2>&1; then
   # One session_state.py call computes the window at DIFF_DIR itself (same
   # algorithm as SINCE_EPOCH above, kept in bash for SINCE_HUMAN) and returns
-  # all four numbers in one pass: test edits, high-risk edits, reviewers and
-  # strong reviewers (= `security-engineer` dispatches, any model; an external
-  # pass never counts). It folds in the transcript scan and the hook-auto
-  # phase-log "dispatch" backstop — Claude-native evidence only (spec
-  # Desired 10, 2026-09-25): no bash-write scope tracker, no cross-CLI proof
-  # rows, no lib-less fallback — this branch runs only on Claude (the ROLEPOD_LEAD_CLI
+  # all five numbers in one pass: test edits, high-risk edits, reviewers,
+  # strong (= security lens reports, any model; an external pass never counts)
+  # and lite lenses (distinct spec / standards reports, 0-2). Review evidence
+  # is the lens report files in .rolepod/evidence/review/ since the window,
+  # never a dispatch; test edits come from the transcript scan. Claude-native
+  # evidence only: no bash-write scope tracker, no cross-CLI proof rows, no
+  # lib-less fallback — this branch runs only on Claude (the ROLEPOD_LEAD_CLI
   # check above already excluded every other CLI).
   GATE_EV=$(printf '%s' "$INPUT" | python3 "$SESSION_STATE" gate-evidence "$DIFF_DIR" 2>/dev/null || true)
   if [ -n "$GATE_EV" ]; then
-    read -r TEST_EDITS HIGH_RISK_EDITS REVIEWERS STRONG_REVIEWERS <<< "$GATE_EV"
+    read -r TEST_EDITS HIGH_RISK_EDITS REVIEWERS STRONG_REVIEWERS LITE_LENSES <<< "$GATE_EV"
   fi
 fi
+LITE_LENSES=${LITE_LENSES:-0}
 TEST_EDITS=${TEST_EDITS:-0}
 HIGH_RISK_EDITS=${HIGH_RISK_EDITS:-0}
 REVIEWERS=${REVIEWERS:-0}
@@ -827,34 +830,31 @@ else REASON="WARNING: "; FIX_TAIL=" before the next commit. "; fi
 # the 600 cap — shortened here (drop "Lead + subagent transcripts") and the
 # HIGH-RISK line below no longer repeats the Fix clause verbatim.
 # Diff: clause dropped 2026-09-29 — Evidence carries the numbers; 600-char literal cap (the runner path is outside it).
-REASON+="Evidence ($SINCE_HUMAN): $TEST_EDITS tests, $HIGH_RISK_EDITS risk edits, $REVIEWERS reviewers ($STRONG_REVIEWERS security-engineer). "
+REASON+="Evidence ($SINCE_HUMAN): $TEST_EDITS tests, $HIGH_RISK_EDITS risk edits, $REVIEWERS reviewers (security $STRONG_REVIEWERS). "
 [ -n "$HIGH_RISK" ] && REASON+="HIGH-RISK path: $HIGH_RISK. "
 # C4 (review-finish-lean, 2026-09-30): fact → Fix → Exception, the rule word
 # for word; no pool, no external anchor, no model check.
 #
 # Lite (warn on r4-security) forbids `security-engineer`: its high-risk
-# evidence is the two isolated `universal-reviewer` lenses (spec, standards).
-# REVIEWERS minus STRONG_REVIEWERS (security-engineer) = universal-reviewer
-# dispatches (code-reviewer legacy included) since the last commit.
+# evidence is the two lens reports (spec, standards) — LITE_LENSES, the
+# distinct count gate-evidence prints — since the last commit.
 LITE_R4=0
-LITE_LENSES=0
 if [ -n "$HIGH_RISK" ] && [ "$GATE_ID" = r4-security ] && [ "$GATE_ACT" = warn ]; then
   LITE_R4=1
-  LITE_LENSES=$((REVIEWERS - STRONG_REVIEWERS))
 fi
 if [ "$LITE_R4" -eq 1 ]; then
   if [ "$LITE_LENSES" -lt 2 ]; then
-    REASON+="A high-risk commit needs the two \`universal-reviewer\` lenses (spec, standards) since the last commit. Fix: dispatch both (FINISHED Agent calls)${FIX_TAIL}"
+    REASON+="A high-risk commit needs the spec and standards lens reports (<task>-spec.md, <task>-standards.md in .rolepod/evidence/review/) since the last commit. Fix: run both lenses; each writes its report${FIX_TAIL}"
   fi
 elif [ -n "$HIGH_RISK" ] && [ "$STRONG_REVIEWERS" -eq 0 ]; then
-  REASON+="A high-risk commit needs at least one \`security-engineer\` dispatch since the last commit, any model; an external pass never counts. Fix: dispatch \`security-engineer\` (a FINISHED Agent or Workflow call)${FIX_TAIL}"
+  REASON+="A high-risk commit needs a security lens report (<task>-security.md in .rolepod/evidence/review/) since the last commit, any model; an external pass never counts. Fix: run security-engineer; it writes that report${FIX_TAIL}"
 elif [ -z "$HIGH_RISK" ]; then
   # Round-2 review (2026-09-25): a code-no-test deny alone
   # (normal diff, 0 risk edits this session) used to get NO Fix sentence —
   # the HIGH_RISK_EDITS>0 guard excluded exactly that case. Reaching this
   # branch at all already means AUTO_PASS was 0 on a non-high-risk diff,
   # i.e. TEST_EDITS==0 AND REVIEWERS==0 — the Fix applies unconditionally.
-  REASON+="Fix: write the failing test, or dispatch a reviewer. "
+  REASON+="Fix: write the failing test, or run a lens (spec, standards, security) that writes its report. "
 fi
 REASON+="Exception: auto-passes once evidence exists SINCE THE LAST COMMIT; worktree review → commit there, a patch carries no evidence."
 
@@ -865,15 +865,15 @@ HARD_BLOCK=0
 # Evidence auto-pass — a would-block commit passes directly when the session
 # already shows gate evidence; the evidence check is the real guard.
 # Evidence is split by risk (v2.46.0):
-#   HIGH-RISK diff  → only a `security-engineer` dispatch (any model, C4)
+#   HIGH-RISK diff  → only a security lens report (any model, C4)
 #     clears it. Test edits are the floor, not the review — CourtBook
 #     proof: 672 green tests + opus impl still shipped 4 money bugs that
 #     only the adversarial pass caught.
 #   other HARD blocks (session risk edits w/o tests, code-no-test in full) → original OR
-#     (≥1 test edit or ≥1 reviewer dispatch): delegated sessions route
+#     (≥1 test edit or ≥1 lens report file): delegated sessions route
 #     test-writing into subagents whose edits land in the child transcript,
-#     so a universal-reviewer dispatch is often the only evidence the Lead's
-#     own transcript can show (qa-tester counts 0 since v2.148.4). Every
+#     so a lens report is often the only evidence the Lead's own transcript
+#     can show (a -perf / -ui / -arch report counts 0). Every
 #     auto-pass is logged and surfaced as context.
 # Test-tampering lint (warn-only) — the grep-able signals of `core/fragments/test-quality.md` (hooks/test-diff-lint.sh).
 # Runs in a subshell cd-ed to DIFF_DIR (v2.153.0): the script reads

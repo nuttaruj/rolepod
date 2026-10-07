@@ -8,7 +8,7 @@ This script parses it to answer questions hooks need to enforce gates:
 
   - How many test files has Lead edited this session?
   - How many high-risk code files (auth/billing/etc.) has Lead edited?
-  - Has Lead dispatched security-engineer / universal-reviewer (the review floor)?
+  - Do the lens report files (`.rolepod/evidence/review/`) clear the review floor?
 
 CLI: pass a hook-input JSON on stdin, request a query as argv[1]. Output is
 plain stdout (a number or one space-separated line), exit 0 on success,
@@ -70,24 +70,10 @@ CODE_FILE = re.compile(
     re.IGNORECASE,
 )
 
-REVIEWER_AGENTS = {
-    "security-engineer",
-    "universal-reviewer",
-    "code-reviewer",
-}
-
-# The HIGH-RISK commit floor: a `security-engineer` dispatch since the last
-# commit, any model (C4). universal-reviewer / code-reviewer count as
-# reviewers only; qa-tester is user-visible verification (E2E) and counts at
-# neither gate (v2.148.4).
-STRONG_REVIEWER_AGENTS = {
-    "security-engineer",
-}
-
 EDIT_TOOLS = {"Edit", "Write", "MultiEdit", "NotebookEdit"}
 
 # Subagent-spawn tools. Claude Code has used both names across versions;
-# match either so reviewer counting does not depend on the CLI version.
+# match either so writer-dispatch counting does not depend on the CLI version.
 AGENT_TOOLS = {"Agent", "Task"}
 
 # ── Shell-command tokenizer ────────────────────────────────────────────
@@ -631,9 +617,9 @@ def strip_strings(script: str) -> str:
     second review round found more shapes it still mis-tokenized (`if (x)
     /'/g`, `{} / 'x / y'`, a CRLF line continuation). The lesson (two rounds,
     two new escapes each time): a script-text lexer guarding a security
-    surface can always be fooled by a crafted shape — a Workflow reviewer is
-    no longer counted from script text at all (see `count_all`'s Workflow
-    handling, which now reads `agent-<id>.meta.json` run evidence instead).
+    surface can always be fooled by a crafted shape — review evidence is
+    no longer read from a dispatch at all (see `_lens_report_counts`, which
+    counts lens report files).
     This function still guards the tier/model-spread nudges
     (workflow-tier-nudge.sh) and the dispatch-auto-log stats line, where a
     misread only skews advisory numbers, not a commit-gate decision — no
@@ -672,19 +658,6 @@ def _workflow_script(inp: dict) -> str:
     return script
 
 
-_WRITE_MODE_RE = re.compile(r"\bwrite[- ]mode\b", re.IGNORECASE)
-_REVIEW_MODE_RE = re.compile(r"\breview[- ]mode\b", re.IGNORECASE)
-
-
-def is_write_mode_brief(prompt) -> bool:
-    """True when a dispatch brief declares write-mode (the qa-tester mode
-    contract). Such a dispatch authors tests; it is never the review.
-    A brief that also says review-mode ("review-mode, not write-mode" — the
-    agent file's own vocabulary) is a review: fail-open toward counting."""
-    return bool(isinstance(prompt, str) and _WRITE_MODE_RE.search(prompt)
-                and not _REVIEW_MODE_RE.search(prompt))
-
-
 def _since_iso(since_epoch: float | None) -> str | None:
     if not since_epoch:
         return None
@@ -697,8 +670,7 @@ def _since_iso(since_epoch: float | None) -> str | None:
         return None
 
 
-# Newest-first cap on subagent transcripts CONTENT-scanned per gate call (the
-# workflow meta.json reviewer read is uncapped, bounded by the commit window) — a
+# Newest-first cap on subagent transcripts CONTENT-scanned per gate call — a
 # never-committed repo has no window, and a long session can hold hundreds
 # of agent files (CourtBook: 293 / 127 MB). 60 newest covers any real fleet
 # (Workflow concurrency caps at 16 per run).
@@ -706,14 +678,13 @@ AGENT_TRANSCRIPT_CAP = 60
 
 
 def agent_transcripts(
-    transcript_path: str, since_epoch: float | None = None, cap: int | None = AGENT_TRANSCRIPT_CAP
+    transcript_path: str, since_epoch: float | None = None
 ) -> list[str]:
     """Subagent transcripts of the same session — Claude Code stores them
     next to the main file: `<session-id>/subagents/agent-*.jsonl` (Agent
     tool) and `<session-id>/subagents/workflows/<run>/agent-*.jsonl`
     (Workflow tool fleets). Walked recursively; only files modified at/after
-    `since_epoch` (when given), newest first, capped at `cap` (None = uncapped;
-    count_all's jsonl scan takes the default, its meta loop takes None). Delegated sessions put
+    `since_epoch` (when given), newest first, capped at AGENT_TRANSCRIPT_CAP. Delegated sessions put
     test-writing INSIDE subagents: without this the Lead's own transcript
     shows 0 test edits and the gate false-blocks — the documented reason
     users turn the gates off."""
@@ -737,75 +708,27 @@ def agent_transcripts(
                     continue
                 cands.append((mt, fp))
         cands.sort(reverse=True)
-        return [fp for _, fp in (cands if cap is None else cands[:cap])]
+        return [fp for _, fp in cands[:AGENT_TRANSCRIPT_CAP]]
     except Exception:
         return []
 
 
-def _workflow_meta_reviewer(meta_path: str, since_epoch: float | None = None) -> tuple[int, int]:
-    """(reviewer, strong) for ONE Workflow sub-agent, read from its
-    `agent-<id>.meta.json` — Claude Code writes it beside the sub-agent's own
-    transcript, under `subagents/workflows/<run>/` (`{"agentType": "...",
-    "model": "...", ...}`). Never from the Workflow tool_use's script text:
-    a script-level lexer guarding this same decision was tried twice
-    (c75a324c, 417c7f9e) and beaten twice, by a `/'/g`-shaped regex literal
-    and then by an `if (x) /'/g`-shaped one and a CRLF line continuation —
-    two rounds proved a script-text lexer on a security surface can always
-    be fooled by one more crafted shape (spec 6b, S12). Missing / unreadable
-    / malformed meta → (0, 0), fail-closed — a reviewer this file cannot
-    positively identify does not count. `since_epoch`, when given, is also
-    checked against the META FILE'S OWN mtime, never just its paired
-    `.jsonl`'s: the caller (`count_all`) already windowed the jsonl through
-    `agent_transcripts()`, but a `.meta.json` `touch`ed after the fact (to
-    resurrect an old Workflow reviewer into a NEW commit's window) has a
-    fresher jsonl mtime and a stale meta mtime — checking only the jsonl
-    let that forged evidence back in (security review 2026-09-24, MINOR-5,
-    external cross-family pass)."""
-    try:
-        if since_epoch and os.path.getmtime(meta_path) < float(since_epoch):
-            return 0, 0
-    except OSError:
-        return 0, 0
-    try:
-        with open(meta_path) as f:
-            meta = json.load(f)
-    except Exception:
-        return 0, 0
-    if not isinstance(meta, dict):
-        return 0, 0
-    name = _bare_agent_name(meta.get("agentType"))
-    reviewer = 1 if name in REVIEWER_AGENTS else 0
-    strong = 1 if name in STRONG_REVIEWER_AGENTS else 0
-    return reviewer, strong
-
-
 def count_all(
     transcript_path: str, since_epoch: float | None = None, cwd: str | None = None
-) -> tuple[int, int, int, int]:
-    """Single-pass tally of the four gate counts — one transcript scan instead
-    of four. Returns (test_edits, high_risk_edits, reviewers, strong_reviewers);
-    test / high-risk are mutually exclusive per edit: a test-file edit counts
-    as a test edit, never as a high-risk edit.
+) -> tuple[int, int]:
+    """Single-pass tally of the two edit counts — one transcript scan.
+    Returns (test_edits, high_risk_edits); test / high-risk are mutually
+    exclusive per edit: a test-file edit counts as a test edit, never as a
+    high-risk edit. Review evidence is not read here: it is the lens report
+    files `_lens_report_counts` scans, never a dispatch.
 
     v2.47.0 — evidence is WINDOWED to `since_epoch` (the gate passes the last
     commit's timestamp): a 12-day session must not clear today's commit with
-    a reviewer dispatched ten days ago. Subagent transcripts of the same
-    session (mtime inside the window) are tallied too — see agent_transcripts.
-    The strong count is `security-engineer` dispatches, any model (C4).
-
-    A Workflow tool_use itself is never scanned for reviewers (spec 6b,
-    2026-09-24): only its SPAWNED sub-agent transcripts, discovered by
-    `agent_transcripts()` under `subagents/workflows/<run>/`, each read from
-    its own `agent-<id>.meta.json` run evidence — see
-    `_workflow_meta_reviewer`. An Agent/Task dispatch keeps the transcript
-    rule above (write-mode included); its own subagent file sits directly
-    under `subagents/`, never under `subagents/workflows/`, so it is never
-    double-counted through this path."""
+    a test edit made ten days ago. Subagent transcripts of the same session
+    (mtime inside the window) are tallied too — see agent_transcripts."""
     since = _since_iso(since_epoch)
-    test_edits = high_risk_edits = reviewers = strong_reviewers = 0
-    subs = agent_transcripts(transcript_path, since_epoch)
-    paths = [transcript_path] + subs
-    for tp in paths:
+    test_edits = high_risk_edits = 0
+    for tp in [transcript_path] + agent_transcripts(transcript_path, since_epoch):
         for tool, inp in _iter_tool_uses(tp, since):
             if tool in EDIT_TOOLS:
                 root = _git_root(cwd or "")
@@ -814,85 +737,7 @@ def count_all(
                     test_edits += 1
                 elif is_high_risk_path(path) and is_code_file(path):
                     high_risk_edits += 1
-            elif tool in AGENT_TOOLS:
-                name = _bare_agent_name(inp.get("subagent_type"))
-                # A brief that declares write-mode is a writer, not a
-                # reviewer (v2.113.0 rule, folded into count_all so it no
-                # longer needs a separate caller — F1): it counts toward
-                # neither reviewers nor strong_reviewers.
-                if is_write_mode_brief(inp.get("prompt")):
-                    continue
-                if name in REVIEWER_AGENTS:
-                    reviewers += 1
-                if name in STRONG_REVIEWER_AGENTS:
-                    strong_reviewers += 1
-    # Meta reads are cheap (mtime + one small json) and a reviewer must not
-    # fall off the 60-newest jsonl cap behind a large later fleet: walk every
-    # windowed transcript here, cap only the jsonl scan above.
-    sub_root = os.path.join(transcript_path[:-6], "subagents") if transcript_path.endswith(".jsonl") else ""
-    for tp in agent_transcripts(transcript_path, since_epoch, cap=None):
-        if not tp.endswith(".jsonl"):
-            continue
-        # Relative to <session>/subagents/, so a `workflows` directory anywhere
-        # above the session never makes a plain Agent transcript a Workflow one.
-        parts = os.path.relpath(tp, sub_root).split(os.sep)
-        if len(parts) > 1 and parts[0] == "workflows":
-            r, s = _workflow_meta_reviewer(tp[:-len(".jsonl")] + ".meta.json", since_epoch)
-            reviewers += r
-            strong_reviewers += s
-    return test_edits, high_risk_edits, reviewers, strong_reviewers
-
-
-def _phase_log_reviewer_counts(phase, since_epoch, path, provenance=""):
-    """(reviewers, strong) tally from phase-log.jsonl rows of one `phase`
-    value. `provenance` "" = no requirement; the one caller in this file
-    (the hook-auto dispatch backstop) passes `"hook-auto"`."""
-    r = s = 0
-    cut = None
-    if since_epoch:
-        import datetime
-        try:
-            cut = datetime.datetime.fromtimestamp(float(since_epoch), datetime.timezone.utc)
-        except Exception:
-            cut = None
-    try:
-        with open(path, encoding="utf-8", errors="replace") as f:
-            for line in f:
-                try:
-                    d = json.loads(line)
-                    if not isinstance(d, dict) or d.get("phase") != phase:
-                        continue
-                    if provenance and d.get("provenance") != provenance:
-                        continue
-                    if d.get("write_mode"):
-                        continue
-                    if cut is not None:
-                        import datetime
-                        ts_raw = d.get("ts") or ""
-                        if not isinstance(ts_raw, str):
-                            continue
-                        ts = datetime.datetime.fromisoformat(ts_raw.replace("Z", "+00:00"))
-                        # A naive ts (no offset) is dropped, not assumed UTC —
-                        # a hand-written row without a timezone must never
-                        # buy reviewer credit across a commit boundary.
-                        if ts.tzinfo is None or ts < cut:
-                            continue
-                    name = _bare_agent_name(d.get("agent_type"))
-                    if name.startswith("rolepod-"):
-                        # Codex/Cursor/Antigravity dispatch rows may carry
-                        # the plugin-prefixed bare name (no ':').
-                        name = name[len("rolepod-"):]
-                    if name in REVIEWER_AGENTS:
-                        r += 1
-                    if name in STRONG_REVIEWER_AGENTS:
-                        s += 1
-                except Exception:
-                    # One malformed row (a non-string agent_type/model/ts)
-                    # must never zero every OTHER row in the window.
-                    continue
-    except OSError:
-        pass
-    return r, s
+    return test_edits, high_risk_edits
 
 
 def _window_since_epoch(diff_dir):
@@ -983,9 +828,8 @@ def _evidence_dirs(diff_dir):
     ordinary non-worktree case — every writer hook already puts its state
     there, so this stays a no-op there). A commit made from a session's own
     checkout into a linked worktree (`cd <wt> && git commit`, `git -C <wt>
-    commit`) otherwise loses every hook-auto dispatch row written to the
-    WORKTREE's own `.rolepod/evidence/` — reading only the session root
-    missed it. "" entries (no git root either way) dropped."""
+    commit`) otherwise loses every lens report written to the WORKTREE's own
+    `.rolepod/evidence/review/` — reading only the session root missed it. "" entries (no git root either way) dropped."""
     roots = []
     seen = set()
     for r in (_evidence_root(diff_dir), _git_root(diff_dir)):
@@ -1004,41 +848,82 @@ def _evidence_dirs(diff_dir):
     return roots
 
 
-def gate_evidence(hook_input: dict, diff_dir: str) -> tuple[int, int, int, int]:
+_LENS_SUFFIXES = ("spec", "standards", "security", "adversarial")
+
+
+def _lens_kind(name: str) -> str | None:
+    """The review kind a report file name carries, by its exact, case-sensitive
+    suffix before `.md`: -spec -standards -security -adversarial → that lens;
+    -security-engineer → security (legacy name, kept one release); -r<digits>
+    → "recheck"; anything else (-perf, -ui, -arch, a role name) → None."""
+    if not name.endswith(".md"):
+        return None
+    stem = name[:-3]
+    for lens in _LENS_SUFFIXES:
+        if stem.endswith("-" + lens):
+            return lens
+    if stem.endswith("-security-engineer"):
+        return "security"
+    if re.search(r"-r[0-9]+\Z", stem):
+        return "recheck"
+    return None
+
+
+def _lens_report_counts(diff_dir: str, since_epoch: float | None) -> tuple[int, int, int]:
+    """(reviewers, strong, lite_lenses) from the lens report files in
+    `<root>/.rolepod/evidence/review/` of every `_evidence_dirs(diff_dir)`
+    root. Non-recursive; regular files only (a symlink is not one), size > 0,
+    mtime at/after `since_epoch` (None → no floor); one file reached through
+    two roots counts once (realpath). reviewers = counting files (lens +
+    re-check); strong = security files; lite_lenses = distinct of spec /
+    standards present (0-2). A missing review dir is no evidence; any other
+    scan error zeroes every review count — never an exception."""
+    try:
+        seen = set()
+        kinds = []
+        for root in _evidence_dirs(diff_dir):
+            d = os.path.join(root, ".rolepod", "evidence", "review")
+            try:
+                entries = list(os.scandir(d))
+            except (FileNotFoundError, NotADirectoryError):
+                continue
+            for e in entries:
+                kind = _lens_kind(e.name)
+                if kind is None or not e.is_file(follow_symlinks=False):
+                    continue
+                st = e.stat(follow_symlinks=False)
+                if st.st_size <= 0:
+                    continue
+                if since_epoch and st.st_mtime < float(since_epoch):
+                    continue
+                real = os.path.realpath(e.path)
+                if real in seen:
+                    continue
+                seen.add(real)
+                kinds.append(kind)
+        lite = len({k for k in kinds if k in ("spec", "standards")})
+        return len(kinds), sum(1 for k in kinds if k == "security"), lite
+    except Exception:
+        return 0, 0, 0
+
+
+def gate_evidence(hook_input: dict, diff_dir: str) -> tuple[int, int, int, int, int]:
     """One evidence tally for both the commit gate and the edit-time
-    reminder (spec Desired 10, 2026-09-25): the window computed once at
-    `diff_dir` (the commit's resolved directory for the gate, the edited
-    file's directory for the reminder) — returns (test_edits,
-    high_risk_edits, reviewers, strong_reviewers), where strong_reviewers
-    is the `security-engineer` dispatch count, any model (C4); an external
-    cross-family pass never counts. MAX per source, never summed: the
-    transcript scan (count_all) and the hook-auto phase-log "dispatch"
-    backstop (nested Agent dispatches the transcript walk's cap dropped).
-    Claude-native only: no cross-CLI provenance rows, no bash-write scope
-    tracker — this function runs only on Claude (precommit-gate.sh's
-    ROLEPOD_LEAD_CLI check excludes every other CLI before calling it).
-
-    Evidence is read from every `_evidence_dirs(diff_dir)` root (D6,
-    2026-09-25), not `_evidence_root(diff_dir)` alone; the hook-auto
-    dispatch counts combine by MAX across dirs — never summed. The window
-    stays one `_window_since_epoch(diff_dir)` call for every dir."""
+    reminder: the window computed once at `diff_dir` (the commit's resolved
+    directory for the gate, the edited file's directory for the reminder) —
+    returns (test_edits, high_risk_edits, reviewers, strong, lite_lenses).
+    Edits come from the transcript scan (`count_all`); review evidence is the
+    lens report files (`_lens_report_counts`), so a dispatch with no report
+    counts nothing and an external cross-family pass never counts. Invariants:
+    strong <= reviewers, lite_lenses <= 2. Claude-native only: this runs only
+    on Claude (precommit-gate.sh's ROLEPOD_LEAD_CLI check excludes every other
+    CLI before calling it)."""
     diff_dir = diff_dir or "."
-    transcript_path = hook_input.get("transcript_path") or ""
     since_epoch = _window_since_epoch(diff_dir)
-
-    test_edits, high_risk_edits, reviewers, strong = count_all(
-        transcript_path, since_epoch, hook_input.get("cwd"))
-
-    for root in _evidence_dirs(diff_dir):
-        phase_log = os.path.join(root, ".rolepod", "evidence", "phase-log.jsonl")
-        if not os.path.isfile(phase_log):
-            continue
-        r1, s1 = _phase_log_reviewer_counts(
-            "dispatch", since_epoch, phase_log, "hook-auto")
-        reviewers = max(reviewers, r1)
-        strong = max(strong, s1)
-
-    return test_edits, high_risk_edits, reviewers, strong
+    test_edits, high_risk_edits = count_all(
+        hook_input.get("transcript_path") or "", since_epoch, hook_input.get("cwd"))
+    reviewers, strong, lite = _lens_report_counts(diff_dir, since_epoch)
+    return test_edits, high_risk_edits, reviewers, strong, lite
 
 
 def selfdo_state(transcript_path: str, target: str | None = None, root: str | None = None) -> str:
@@ -1208,25 +1093,24 @@ def main() -> int:
     transcript_path = hook_input.get("transcript_path") or ""
 
     if query == "count-all":
-        # test_edits high_risk_edits reviewers strong_reviewers — one line,
-        # one transcript scan. Optional argv[2] = epoch floor (last commit).
+        # test_edits high_risk_edits — one line, one transcript scan. Optional argv[2] = epoch floor (last commit).
         since_epoch = None
         if len(sys.argv) > 2 and sys.argv[2].strip():
             try:
                 since_epoch = float(sys.argv[2])
             except ValueError:
                 since_epoch = None
-        print("%d %d %d %d" % count_all(transcript_path, since_epoch, hook_input.get("cwd")))
+        print("%d %d" % count_all(transcript_path, since_epoch, hook_input.get("cwd")))
     elif query == "context-tokens":
         # Context size (tokens) the last assistant turn carried — 0 unknown.
         print(last_context_tokens(transcript_path))
     elif query == "gate-evidence":
-        # test_edits high_risk_edits reviewers strong_reviewers — one tally
-        # shared by precommit-gate.sh and gate-reminder.sh (spec Desired 2).
+        # test_edits high_risk_edits reviewers strong lite_lenses — one tally
+        # shared by precommit-gate.sh and gate-reminder.sh.
         # argv[2] = the directory the window is computed at (DIFF_DIR for the
         # gate, the edited file's dir for the reminder).
         diff_dir = sys.argv[2] if len(sys.argv) > 2 else "."
-        print("%d %d %d %d" % gate_evidence(hook_input, diff_dir))
+        print("%d %d %d %d %d" % gate_evidence(hook_input, diff_dir))
     elif query == "count-test-edits":
         print(count_test_edits(transcript_path, hook_input.get("cwd")))
     elif query == "selfdo-state":
