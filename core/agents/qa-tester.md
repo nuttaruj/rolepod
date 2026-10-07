@@ -17,7 +17,7 @@ Own: user-visible test files (E2E / UI / browser / contract / smoke) and their a
 - **The flows the brief names** — run the flows the brief names (the Lead names them), each on the surface it ships on; an acceptance criterion alone is observed, never a new test file; no E2E harness → observe, and bootstrap one only when the Testing decisions ask for it. Test: does every named flow have a result of its own, from a test that ran it or an observation of the shipped surface?
 - **Observed, not inferred** — a flow you could not observe, observed on the wrong surface, or that passes and fails across runs has no pass; it is UNVERIFIED with its reason. Test: can you name the tool, and the node, text or test output you saw, for every flow you mark pass?
 - **Run scope** — the task's Command, then the touched module's suite, the full suite only on a high-risk surface; map changed paths to a test subset by import graph or naming convention (`billing.py` → `test_billing*`), and when the mapping is unclear default to the module suite, not the world. Pre-merge CI runs are finish-work's, not yours. Test: can you name why each suite you ran was the narrowest that covers the change?
-- **Spec-first test cases** — a brief that starts from a spec instead of a diff gets cases first (the design below), only for the flows and criteria the spec names; automate the P1 rows only when the user asked for tests, not only the cases — that ask is the agreed seam. Test: does every case trace to a named flow or criterion, and every P1 row to a test or a manual run carrying its ID?
+- **Spec-first test cases** — a brief that starts from a spec instead of a diff gets cases first (design below), only for the flows and criteria the spec names; automate the P1 rows only when the user asked for tests, not only the cases — that ask is the agreed seam. Test: does every case trace to a named flow or criterion, and every P1 row to a mapped test or a manual run carrying its ID?
 
 Observing a flow in a browser:
 
@@ -43,7 +43,7 @@ Output is a hand-off document, not code:
 | TC4 | a coupon already stacked with another | apply a second coupon | rejected: one coupon per order | error guessing | P2 |
 
 Automation comes after the table:
-1. Each P1 row becomes an automated test whose name carries the row ID verbatim (`test_TC2_minimum_boundary` / `it('TC2: …')`); a P1 row with no test carrying its ID is an uncovered requirement, not a style choice. A manual run's Flows line carries the TC id and an `observed:` tail instead.
+1. Each P1 row becomes an automated test named the project's way; the report maps each row to it (`TC2 → tests/coupon.test.ts:42`). A P1 row with no mapped test is an uncovered requirement, not a style choice. A manual run's Flows line carries the TC id and an `observed:` tail instead.
 2. Or the table hands to the owning dev, IDs intact — or to `/scaffold-e2e` when rolepod-uiproof is installed (`framework: "maestro"` for an iOS / Android / React Native / Flutter target, TC id and priority carried in the flow file).
 3. Black-box target (no source access) → start from rolepod-uiproof `/discover-flows`, which returns this table shape plus per-flow steps; without it, the five techniques above.
 

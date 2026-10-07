@@ -19,14 +19,14 @@ A verify-only ask (the user asked only to verify, prove or test) ends at the evi
 ### 1. Name the proof
 
 - Each acceptance criterion names its evidence: `<criterion> → <command + result line>`; none → `UNVERIFIED`, whatever else passed.
-- A QA test-case table in play → each P1 ID shows in a passing runner test, or in a manual run record when no tests were asked; a skipped or uncollected test counts as missing.
+- A QA test-case table in play → each P1 ID maps, in the QA report, to a passing runner test, or to a manual run record when no tests were asked; a skipped or uncollected test counts as missing.
 
 Done when: every criterion and P1 ID has a named command or observation; else Status `PARTIAL` / `UNVERIFIED`, naming the missing IDs.
 
 ### 2. Run it
 
-- Run each named command; read the full output, the exit code and the failure count. Zero cases, or every case skipped → no test ran, never green.
-- Evidence from the wrong surface or an inconclusive run is not a pass: mark it UNVERIFIED with the reason. Examples: a unit test for a UI claim, a local run for a staging claim, a flaky or skipped result.
+- Run each named command; read the full output, exit code and failure count. Zero cases or all skipped → no test ran, never green.
+- Evidence from the wrong surface or an inconclusive run is not a pass: mark it UNVERIFIED with the reason (a unit test for a UI claim, a local run for a staging claim, a flaky or skipped result).
 - A `manifest.json` under `.rolepod/evidence/` (a sibling plugin ran) → `references/child-plugin-evidence.md`; no reference → keep only runs newer than your last relevant edit that name this target. Any kept `fail` fails the block.
 
 Done when: every claim has a command and proof line from this turn, or a matching prior run cited.
