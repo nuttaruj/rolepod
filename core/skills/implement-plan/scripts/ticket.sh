@@ -119,6 +119,18 @@ SELF_DIR="$(cd "$(dirname "$0")" && pwd)"
 SELF_PATH="$SELF_DIR/$(basename "$0")"
 LINT="$SELF_DIR/../../write-plan/scripts/plan-lint.sh"
 
+# docs-mode.sh sits beside this script in a rendered tree; only the source layout
+# (core/skills/implement-plan/scripts) falls back to hooks/lib.
+DOCS_MODE=""
+if [ -f "$SELF_DIR/docs-mode.sh" ]; then DOCS_MODE="$SELF_DIR/docs-mode.sh"
+else case "$SELF_DIR" in */core/skills/implement-plan/scripts) [ -f "$SELF_DIR/../../../../hooks/lib/docs-mode.sh" ] && DOCS_MODE="$SELF_DIR/../../../../hooks/lib/docs-mode.sh" ;; esac; fi
+
+# The stage that never drags docs: stage the tree, then unstage docs/rolepod only.
+# Never `git rm --cached` on the real index.
+stage_no_docs() { # $1 = checkout root
+  git -C "$1" add -A && git -C "$1" reset -q -- docs/rolepod
+}
+
 # plan_task_rows' internal field separator — never a tab: `read` treats tab
 # as "IFS whitespace" regardless of what IFS is set to, so it COLLAPSES
 # adjacent tabs instead of yielding an empty field for a task with no
@@ -941,7 +953,7 @@ cmd_start() {
   if [ "$wt_mode" = "main" ]; then
     printf '%s %s\n' "$handoff" "$repo_root"
     printf 'agent: %s\n' "$agent_name"
-    echo "on the base checkout: the Lead commits with the commit check, then ticket.sh log <plan> <N> --sha <sha>"
+    echo "on the base checkout: stage with git add -A && git reset -q -- docs/rolepod, the Lead commits with the commit check, then ticket.sh log <plan> <N> --sha <sha>"
     printf 'task file: %s\n' "$task_file"
     return 0
   fi
@@ -1086,7 +1098,7 @@ EOF
   fi
 
   local stage_out stage_rc
-  stage_out="$(git -C "$wt_root" add -A -- . ':(exclude)docs/rolepod' 2>&1)"
+  stage_out="$(stage_no_docs "$wt_root" 2>&1)"
   stage_rc=$?
   if [ "$stage_rc" -eq 0 ]; then
     echo "stage: ok"
@@ -1455,6 +1467,13 @@ EOF
     echo "ready now: $list"
   fi
 
+  # Every task done in a repo that tracks docs: name the one docs commit.
+  if [ -n "$DOCS_MODE" ] && [ -n "$log_root" ] \
+    && ! plan_task_rows "$plan" | awk -F "$ROW_FS" 'NF && $4 != "1" { f = 1 } END { exit !f }' \
+    && [ "$(bash "$DOCS_MODE" -C "$log_root" status 2>/dev/null)" = "tracked" ]; then
+    echo "phase end: git add -- docs/rolepod && git commit -m 'docs: $(basename "$plan")'"
+  fi
+
   # Track end (spec worktree-track-2026-09-30, implement-plan Review): when
   # the last task of a track just logged is done, name the track's range and
   # write its diff, once per track. A plan with `## Tracks` uses the listed
@@ -1589,8 +1608,9 @@ cmd_status() {
 # ── review-diff (C67) ────────────────────────────────────────────────────
 # The one home of the frozen review diff, the H1 / H2 tree and the fix delta
 # `convening-code-review` hands its reviewers. Stages the whole tree (`git add -A`, as
-# every review round always did) or, with `-- <path>...`, only those paths; never
-# commits, stashes, resets or checks out. The exclude list is review_excludes.
+# every review round always did, then `git reset -q -- docs/rolepod`, the only reset:
+# docs never stage) or, with `-- <path>...`, only those paths; never commits,
+# stashes or checks out. The exclude list is review_excludes.
 RD_USAGE="usage: ticket.sh review-diff start <name> [-- <path>...] | ticket.sh review-diff delta <name> <H1-tree> <k: 2|3|4> [-- <path>...]"
 
 cmd_review_diff() {
@@ -1660,7 +1680,7 @@ cmd_review_diff() {
     done
     spec=("${live[@]}")
   else
-    git -C "$top" add -A || { echo "ticket: review-diff: git add -A failed" >&2; exit 1; }
+    stage_no_docs "$top" || { echo "ticket: review-diff: git add -A failed" >&2; exit 1; }
     spec=(.)
   fi
   while IFS= read -r want; do ex+=("$want"); done < <(review_excludes "$top")
