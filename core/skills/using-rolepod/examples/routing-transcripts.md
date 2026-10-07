@@ -1,5 +1,5 @@
 <!-- Worked routing transcripts for using-rolepod. -->
-<!-- Load when a request does not obviously match a Quick-router row. -->
+<!-- Load when no router row matches the request. -->
 <!-- Each transcript: user message → routing decision → next step. -->
 
 # Routing Transcripts
@@ -35,9 +35,9 @@ Next step: write the checklist (goal, done-when, verify command); a task owner b
 
 User: "Implement the approved spec."
 
-Route: R3 spec-as-plan (3 ordered tasks; every task names files, verify command and dependencies; one owner; no parallel work or high-risk path) → orchestrating-plans
-Skipping: Define + Plan — the approved spec already supplies the checklist's task boundaries and commands.
-Next step: use the spec's ordered tasks as the owner's inline checklist; no plan artifact. A fourth task, missing detail, parallel work, high-risk path, changed acceptance or compaction routes to the plan artifact.
+Route: R3 spec-as-plan (the R3 row's eligibility met) → orchestrating-plans
+Skipping: Define + Plan — the approved spec already supplies the task boundaries and commands.
+Next step: the spec's ordered tasks become the owner's inline checklist; no plan artifact. Any eligibility condition missing → the plan artifact.
 
 ---
 
@@ -52,13 +52,13 @@ Next step: brief the path owner from the symptom (the red test, its error, the d
 
 ---
 
-## 4. "Is this done?" → Ship finish ritual
+## 4. "Is this done?" → check-work, then Review and Ship
 
 User: "ok I think the export feature is finished"
 
-Routing: Ship → finish ritual (check-work → review-code → finish-work)
-Reason: a completion claim — needs evidence, review, then a branch decision.
-Skipping: none — the ritual runs in order.
+Routing: check-work (done-claim helper) → Review: `convening-code-review` if no review covers the diff → Ship: `finish-work`
+Reason: a completion claim needs fresh evidence; review and the branch decision follow in their own phases, and `finish-work` runs the QA pass.
+Skipping: none.
 Next step: check-work first — produce fresh evidence the feature works.
 
 ---
@@ -67,9 +67,7 @@ Next step: check-work first — produce fresh evidence the feature works.
 
 User: "find every place we build a SQL query by string concatenation"
 
-Routing: wide sweep (unknown locations, several naming conventions) →
-dispatch ONE read-only `scout` (always-on Code search rule). Do not sweep
-yourself and do not fan one agent per file.
+Routing: wide sweep → ONE read-only `scout` (the Code search rule; `references/scope-then-spawn.md`).
 
 The brief the Lead sends (the four inputs from the scout agent):
 ```
@@ -79,34 +77,18 @@ Useful answer: a list of file:line sites + the concat pattern each uses.
 Budget: ~12 tool uses.
 ```
 
-The report the scout returns (conclusion → pointers → gaps):
-```
-Conclusion: 3 concat sites, all in the legacy reporting module; the ORM is
-used everywhere else.
-Findings:
-- f-string SQL in the CSV export — `app/reports/export.py:88`
-- % -formatted WHERE clause — `app/reports/filters.py:41`
-- string-concat ORDER BY — `app/reports/sort.py:23`
-Gaps: raw SQL behind the `LEGACY_SQL` flag not exercised — flag was off.
-```
-Next step: the Lead reads only those three files and routes the fix to the
-path owner (`backend-developer`), with `security-engineer` on the R4
-reviewer line — it never re-swept the repo itself.
-
-✗ Anti-pattern: spawn one agent per file across 300 files, or sweep all 300
-  yourself and dump the matches.
-✓ Correct: ONE scout returns a short report; the Lead acts on its pointers.
+Next step: the Lead reads only the files the scout points at and routes the fix by tier like any commission; a fix on a high-risk path is R4: the full spine and the review set the carried mode names.
 
 ---
 
-## 6. Refactor request → Build / simplify-code
+## 6. Refactor request → Build / orchestrating-plans
 
 User: "this OrdersService file is a mess, clean it up"
 
-Routing: Build (refactor) → simplify-code → check-work
+Routing: Build (refactor) → `orchestrating-plans`, Owner <path role>; the owner loads `simplify-code`
 Reason: cleanup with no behavior change — behavior-preserving simplification.
 Skipping: Define + Plan.
-Next step: brief the path owner (`orchestrating-plans`, Owner <path role>); it confirms the test suite is green first — no simplifying on red.
+Next step: the owner confirms the suite is green first; no simplifying on red.
 
 ---
 

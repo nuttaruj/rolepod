@@ -6,7 +6,9 @@ Tiers are classes, never model names. Map them once onto the models the user has
 
 ### Portable role dispatch
 
-A role defines responsibilities and instructions; an agent type is CLI transport. Prefer the CLI's native named role when available. If custom roles are unavailable but a default/general subagent exists, dispatch a fresh isolated child with the same rendered role instructions and bounded task brief. Read only the needed role from an accessible rendered or installed file, including its shared protocol and writer loop when present; never forward unresolved `INCLUDE` directives. If role instructions are unavailable, report the missing role and use a fallback explicitly defined for that condition; otherwise report BLOCKED. Missing role text does not mean custom roles are unavailable. Carry model, effort, tool limits, read/write scope and no-commit rule through controls the CLI exposes. Unsupported controls remain instruction-level limits, reported as limitations; never invent tool fields or claim mechanical enforcement. A prompt role name is not native dispatch metadata or hook evidence. Keep reviewer floors and report provenance; if a mechanical gate cannot recognize the fallback, report that limitation and keep the gate blocked without a user waiver. With no subagent facility, the Lead follows the existing skill loop. Reviewer independence, mode-specific floors and no-agent limitations still follow `review-code`.
+A role defines responsibilities and instructions; an agent type is CLI transport. Prefer the CLI's native named role when available. If custom roles are unavailable but a default/general subagent exists, dispatch a fresh isolated child with the same rendered role instructions and bounded task brief. Read only the needed role from an accessible rendered or installed file, including its shared protocol when present; never forward unresolved `INCLUDE` directives.
+If role instructions are unavailable, report the missing role and use a fallback explicitly defined for that condition; otherwise report BLOCKED. Missing role text does not mean custom roles are unavailable. Carry model, effort, tool limits, read/write scope and no-commit rule through controls the CLI exposes. Unsupported controls remain instruction-level limits, reported as limitations; never invent tool fields or claim mechanical enforcement.
+A prompt role name is not native dispatch metadata or hook evidence. Keep reviewer floors and report provenance; if a mechanical gate cannot recognize the fallback, report that limitation and keep the gate blocked without a user waiver. With no subagent facility, the Lead follows the existing skill loop. Reviewer independence, mode-specific floors and no-agent limitations still follow `convening-code-review`.
 
 | Class | The set's… | Work |
 |---|---|---|
@@ -15,11 +17,11 @@ A role defines responsibilities and instructions; an agent type is CLI transport
 | **strong** | top reasoning model | architecture, final-pass and adversarial review. A set whose top sits below frontier-class still gets the full review; the depth cap is a recorded LIMITATION |
 | **apex** | strongest tier the CLI exposes | the adversarial pass only: an irreversible change with no rollback (destructive migration, key rotation, live money movement), a novel design with no pattern to diff against, deep cross-system reasoning (races on financial invariants, distributed consistency), or a user ask; a CLI whose strong pin is its ceiling collapses apex into strong; a costlier rung is a cost decision, so surface it first; the dispatch line's `override` records the rung sent |
 
-Route rows by class:
+Skills by class:
 - cheap — vague build / doc / UI asks and repeat or legacy features (`write-spec`), prototypes, clear doc edits, `manage-context`, explain-only answers.
 - cheap to balanced — `write-plan` against an existing spec, `qa-tester` hand-offs.
-- balanced — executing a plan, multi-agent planning, `debug-issue`, `simplify-code`, perf, UI and infra builds, `check-work`, repo-wide sweeps, high-risk builds.
-- strong — high-risk review (`security-engineer`, `adversarial-reviewer`), architecture, `review-code`, `finish-work` when `review-code` fires, `deepen-codebase` (its explorer inherits a strong Lead, else takes a one-call strong override).
+- balanced — executing a plan, multi-agent planning, `debug-issue`, `simplify-code`, perf, UI and infra builds, `check-work`, repo-wide sweeps, high-risk builds, the lens review (`universal-reviewer`, effort high).
+- strong — high-risk review (`security-engineer`, `adversarial-reviewer`), architecture, the ONE final branch review of a multi-track plan (`orchestrating-plans` step 6), `deepen-codebase` (explorer tier: its step 2).
 
 The Lead picks the class at dispatch; escalate only on a BLOCKED redispatch or a user ask.
 
@@ -27,12 +29,12 @@ The Lead picks the class at dispatch; escalate only on a BLOCKED redispatch or a
 
 - A strong row dispatches with a strong pin; rolepod role files carry it.
 - A spawn with no pin inherits the Lead. Under a balanced or cheap Lead that is a silent downgrade, so pass an explicit strong-class override on that ONE call, never on a fan-out.
-- A downgraded strong role is not the strong slot. `universal-reviewer` runs balanced on every CLI; `security-engineer` and `adversarial-reviewer` carry a strong pin. The commit gate checks a `security-engineer` dispatch, any model, not the tier.
+- A downgraded strong role is not the strong slot. `universal-reviewer` runs balanced on every CLI, except the ONE final branch review of a multi-track plan (`orchestrating-plans` step 6): one fresh strong `universal-reviewer` via the one-call strong override above. `security-engineer` and `adversarial-reviewer` carry a strong pin. The commit gate checks a `security-engineer` dispatch, any model, not the tier.
 
 ## Fleets
 
 - One strong slot per fleet: sweep = cheap · build = balanced · per-item verify = balanced at high effort · the ONE judge or security reviewer = strong.
-- Never inherit the Lead's model across a fleet (a plan fleet, `write-plan` step 8, is the one exception: the user's model choice for plans); never pin strong on a fan-out (price × N).
+- Never inherit the Lead's model across a fleet (one exception: several plans at once → `write-plan` `references/edge-cases.md`); never pin strong on a fan-out (price × N).
 - A stage that writes uses the role's instructions. Prefer the CLI's native named role; portable transport and Lead fallback are defined above. A fan-out uses the role's model tier where the CLI exposes that control.
 - Mechanics live in your CLI's `references/fanout-<cli>.md` (Claude: `fanout-claude.md`, Codex: `fanout-codex.md`); no file for your CLI → dispatch roles one at a time.
 
@@ -53,18 +55,16 @@ ladder is for depth gaps — try the cheaper rung first.
 
 A wide-effort setting widens breadth inside the tier; it never adds a tier, a round or a strong slot.
 
-- A wide-effort session runs no external member (cross-family): each kind takes its pool-off path; an explicit user ask still runs.
-- R1/R2 get at most one fleet: the one review round `review-code` names for the tier, with a command or balanced refuter per MAJOR finding.
-- R2 verify stays the checklist command (+ a browser observation for UI), never the full suite.
+- A wide-effort session runs no cross-family member (`cross-family` step 1).
+- R1/R2 get at most one fleet: the one `convening-code-review` round for the tier, with a command or balanced refuter per MAJOR finding.
 
 | Phase | Shape |
 |---|---|
-| R0 research | a cheap fact pack → balanced readers, one facet each → verify only findings that change the answer → ONE strong critic on a digest |
+| Read-only research | a cheap fact pack → balanced readers, one facet each → verify only findings that change the answer → ONE strong critic on a digest |
 | Define (R3+) | cheap scouts map code and past decisions; an open approach adds 2-3 balanced lens drafts + ONE strong judge |
 | Plan | one author |
 | Build | one role per disjoint slice, on main |
 | Debug | the first repro does not point at the cause → 2-3 read-only balanced hypothesis testers, then ONE role fixer |
-| Verify | the checklist + the suite as one stage |
 | Review | the tier's review set in one round + a command or balanced refuter per MAJOR finding |
 
 Never fan out: user dialogue, plan authoring (one plan; several asked at once → `write-plan` step 8), the strong slot, writers on shared files, the fix for one failure, a review round 2, commit.
