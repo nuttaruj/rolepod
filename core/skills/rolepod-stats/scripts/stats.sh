@@ -327,7 +327,7 @@ if grows:
         print(f"    parent {(g.get('head') or '?')[:7]}  {g.get('decision'):<4} risk={g.get('risk')} tests={g.get('tests', 0)} "
               f"reviewers={g.get('reviewers', 0)}  {(g.get('ts') or '')[:16].replace('T', ' ')}")
 
-# Write-scope denies (hooks/subagent-write-scope.sh) per agent_type; paths outside the repo root still count.
+# Write-scope denies (hooks/subagent-write-scope.sh) per agent_type; out-of-root paths no longer reach the log; rows written before that change may include them.
 wrows = [r for r in rows if r.get("phase") == "write-scope" and r.get("decision") == "deny"]
 if wrows:
     wc = Counter((r.get("agent_type") or "?").split(":")[-1] for r in wrows)

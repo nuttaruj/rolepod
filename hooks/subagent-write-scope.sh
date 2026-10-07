@@ -11,7 +11,8 @@
 # floor then reads a diff its own role wrote. universal-reviewer, whose file
 # says REJECT a fix request, wrote 0 of 21. Text works when it is a flat
 # refusal; a "write-mode" that includes "fix code" does not. The write itself
-# is the line, checked by the hook, not judged at dispatch.
+# is the line, checked by the hook, not judged at dispatch. 41 of 59 deny rows
+# (30 days) were agents writing their own memory files outside the repo.
 #
 # Mechanism: Claude Code PreToolUse hook input carries `agent_id` +
 # `agent_type` only for a sub-agent call (live-verified 2026-09-09: a spawn
@@ -25,9 +26,11 @@
 #             `_test.py` guarantee — both stay product; `spec/` = RSpec root)
 #   read-only universal-reviewer / adversarial-reviewer / scout → markdown only
 # Every other role and every unknown type passes (fail-open). OS temp roots,
-# scratchpad, .rolepod/, agent memory and docs/rolepod/ are always free. The
-# denied agent returns the finding; the Lead dispatches the write to the
-# owning role — nothing is lost but one spawn.
+# scratchpad, .rolepod/, agent memory and docs/rolepod/ are always free. A path
+# outside the git toplevel of the payload cwd (plus the main checkout of a linked
+# worktree, which still counts as inside, so it stays guarded) is free too; no
+# resolvable root, no skip. The denied agent returns the finding; the Lead
+# dispatches the write to the owning role — nothing is lost but one spawn.
 #
 # Bypass: ROLEPOD_ALLOW_OUT_OF_SCOPE_WRITE=1 (user-set, logged to bypass.log).
 set -euo pipefail
@@ -53,7 +56,7 @@ command -v python3 >/dev/null 2>&1 || exit 0
 # One pass: parse, classify, decide. Prints nothing (pass), BYPASS, or three
 # lines: the gate id (scope-*), the deny JSON, the warn JSON (C4 shape).
 DECISION=$(printf '%s' "$INPUT" | python3 -I -c '
-import sys, json, os, re, datetime, tempfile
+import sys, json, os, re, datetime, tempfile, subprocess
 try:
     d = json.load(sys.stdin)
 except Exception:
@@ -70,6 +73,7 @@ elif bare in TEST_ONLY: cls = "test-only"
 elif bare in READ_ONLY: cls = "read-only"
 else:                   sys.exit(0)               # an owning role, or unknown → pass
 tool = d.get("tool_name") or ""
+cwd = d.get("cwd") or os.getcwd()
 ti = d.get("tool_input") or {}
 path = ti.get("file_path") or ti.get("notebook_path") or ""
 if not path:
@@ -90,9 +94,36 @@ if cls == "test-only" and (is_test or is_md): sys.exit(0)
 if cls == "read-only" and is_md:              sys.exit(0)
 if os.environ.get("ROLEPOD_ALLOW_OUT_OF_SCOPE_WRITE", "0") == "1":
     print("BYPASS"); sys.exit(0)
+def outside_repo(p, cwd):
+    # True only when a root resolved and p is outside every root (no root → no skip)
+    try:   # timeout=1: the hook budget is 3 s
+        r = subprocess.run(["git", "-C", cwd, "rev-parse", "--show-toplevel", "--git-common-dir"],
+                           capture_output=True, text=True, timeout=1)
+        top, cdir = r.stdout.splitlines()[:2]
+        ids = set()                                # (st_dev, st_ino) of each root: identity, not spelling
+        for x in (top, os.path.dirname(os.path.realpath(cdir if os.path.isabs(cdir) else os.path.join(cwd, cdir)))):
+            s = os.stat(x); ids.add((s.st_dev, s.st_ino))
+        p = os.path.realpath(p if os.path.isabs(p) else os.path.join(cwd, p))
+        while True:                                # nearest existing ancestor (a new file does not exist yet)
+            try:
+                os.stat(p); break
+            except (FileNotFoundError, NotADirectoryError):
+                p = os.path.dirname(p)
+        while True:                                # walk up: inside when any ancestor is a root
+            s = os.stat(p)
+            if (s.st_dev, s.st_ino) in ids:
+                return False
+            q = os.path.dirname(p)
+            if q == p:
+                return True
+            p = q
+    except Exception:
+        return False                               # any error → inside (no skip)
+if outside_repo(path, cwd):
+    sys.exit(0)                                   # outside this repo (e.g. agent memory): not guarded here
 # evidence row (fail-open): stats can count out-of-scope denies per session
 try:
-    root = d.get("cwd") or os.getcwd()
+    root = cwd
     ev = os.path.join(root, ".rolepod", "evidence")
     if os.path.isdir(os.path.join(root, ".git")) or os.path.isdir(ev):
         os.makedirs(ev, exist_ok=True)
