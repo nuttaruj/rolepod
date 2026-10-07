@@ -4,6 +4,7 @@ description: Read-only wide sweep of many files, unknown locations or naming con
 model: haiku
 effort: low
 color: cyan
+omitClaudeMd: true
 tools:
   - Read
   - Glob

@@ -1,6 +1,7 @@
 # tools: READ-ONLY ROLE — Read/Glob/Grep/WebFetch/WebSearch only (no Edit/Write/Bash/Agent). The report contract, not tool access, is the deliverable; restriction enforces "point, never touch" physically.
 tier: cheap
 effort: low
+omitClaudeMd: true
 tools:
   - Read
   - Glob

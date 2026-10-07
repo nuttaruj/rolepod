@@ -32,7 +32,7 @@ from pathlib import Path
 # PRELOAD_MODE). No overlay sets `permissionMode` (v2.173.1) — a dead key
 # `emit()` would otherwise carry silently.
 CLAUDE_KEY_ORDER = ["name", "description", "model", "effort", "memory",
-                    "color", "tools", "skills"]
+                    "color", "omitClaudeMd", "tools", "skills"]
 ANTIGRAVITY_KEY_ORDER = ["name", "description", "model"]
 CURSOR_KEY_ORDER = ["name", "description", "readonly"]
 OPENCODE_KEY_ORDER = ["description", "mode", "permission"]
