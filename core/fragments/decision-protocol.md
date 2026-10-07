@@ -8,8 +8,3 @@ without a measured problem. Complex needs the user's approval and a reason.
 
 A guard against a failure the domain is known for (duplicate delivery, retry,
 race, bad input at a boundary) is not a hypothetical need.
-
-Red flags: interface w/1 impl · config w/1 value · plugin w/0 plugins ·
-generic wrapper · retry w/o observed failure · refactor "while I'm here" ·
-pre-split <500 lines · "might need later" · "best practice" · "already
-started". Details: skill `simplify-code`.

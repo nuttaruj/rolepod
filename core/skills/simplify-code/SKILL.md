@@ -39,6 +39,8 @@ Done when: the suite is green and recorded as the Baseline.
 | Comment that restates what the code does | Delete the comment |
 | Wrapper that only forwards calls (delete it → complexity vanishes) | Inline; a pure pass-through earns nothing |
 
+Other red flags: a plugin point with no plugin · a split of a file under 500 lines · "might need later" · "best practice" · "already started". None proves the code is needed → propose the cut; step 3 decides.
+
 **Debt markers.** A deliberate simplification with a KNOWN ceiling (global lock, O(n²) scan, naive heuristic) leaves one greppable comment: `rolepod-debt: <what>. ceiling: <limit>. upgrade when: <trigger>`.
 - `grep 'rolepod-debt:'` lists the ledger.
 - A marker naming no upgrade trigger is rot: fix the marker or do the upgrade.
