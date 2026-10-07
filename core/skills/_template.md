@@ -61,7 +61,7 @@ A template is the single source of an artifact's shape: the step names every sec
 ## The writing levers
 
 - **Positive target first.** Write the behaviour you want ("write one-line comments"). A prohibition earns a line only as a hard guardrail, and it sits beside its positive target.
-- **Pretrained leading words.** Reach for a word the model already knows (_red_, _tight_, _seam_, _tracer bullet_) over a coined code. R0–R4 stay, each with its short gloss at first sight; other codes stay only where a hook or script prints or parses them.
+- **Pretrained leading words.** Reach for a word the model already knows (_red_, _tight_, _seam_, _tracer bullet_) over a coined code. R1–R4 stay, each with its short gloss at first sight (the core's no-change test carries no R0 label); other codes stay only where a hook or script prints or parses them.
 - **One directive per line.** Split a sentence that chains clauses into separate lines.
 - **Sharp done-when.** A checkable, exhaustive condition ("every caller accounted for") pulls the legwork; a vague one ("understood") invites premature completion.
 - **Rule over mechanism.** State the rule and the command that does it. Hooks print their own message when they bite, so the skill leaves out which hook fires, exit codes, windows, version history and measurements.

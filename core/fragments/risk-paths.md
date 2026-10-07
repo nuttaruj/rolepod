@@ -1,0 +1,1 @@
+High-risk paths — auth, billing, payments, credits, migration, data deletion, secrets, tokens, crypto, permissions, security (override: `.rolepod/risk-paths`). A high-risk path is code that handles one of these — reads, refreshes, stores, sends or logs it, a third-party credential included — not only code that changes its rules.
