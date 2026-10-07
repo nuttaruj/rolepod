@@ -31,7 +31,7 @@ The always-on core asks one question first — will this change anything? No →
 |------|------|--------|
 | **Q1-Q4** | before edit | files >1 / must run-verify / design judgment / tools >3 → delegate |
 | **F1-F5** | before done | hallucinated / scope creep / cascading error / context loss / tool misuse |
-| **Pre-merge** | merge | check-work status matches tree / CI lanes green / review reports + Snapshot at head / R4 has security-engineer + adversarial-pass / one concern per PR |
+| **Pre-merge** | merge | check-work status matches tree / CI lanes green / review reports + Snapshot at head / R4 has security lens + adversarial-pass / one concern per PR |
 | **CI 3-phase** | merge | Phase 1 always (<5 min) / Phase 2 path-triggered / Phase 3 nightly |
 | **Hard stops** | escalate | one Second opinion after 2 failed fixes; the 4th failed fix for one repro or criterion stops — the owner returns `BLOCKED`, the Lead hands you the attempt log and 2-3 options / file vs claim / destructive cmd / no convergence → summarize and ask |
 | **Hook gates** | commit / edit / dispatch | 14 gates that can block, set per `workflow.mode` (lite / standard / full): table in [docs/hooks.md](docs/hooks.md#gates-by-mode) |
@@ -48,31 +48,22 @@ Can't verify  → state "Assuming X. Risk Y. Verify by Z" — never proceed sile
 
 | Need | Agent |
 |------|-------|
-| Architecture / API contract / data model | `system-architect` |
-| Visual / Tailwind / a11y / interaction | `ui-ux-designer` |
-| Backend (general) | `backend-developer` |
-| Frontend logic / components / state | `frontend-developer` |
-| iOS / Android / React Native | `mobile-developer` |
-| Billing / payments / credits | `billing-engineer` |
-| LLM / RAG / prompts / agents | `ai-ml-engineer` |
-| User-visible tests (E2E / UI / browser / contract) — a slice's unit tests belong to its writer | `qa-tester` |
-| Security / vulnerabilities / compliance | `security-engineer` |
-| Load / profiling / p95-p99 | `performance-engineer` |
-| Infra / CI-CD / deploy / release | `devops-sre` |
-| Any human-readable written output (caller picks `audience: dev \| user \| prospect`) — code docs / ADRs / runbooks, FAQ / onboarding / in-app copy, SEO / marketing / conversion copy | `content-strategist` |
-| Code quality / DRY / structure | `universal-reviewer` |
+| Every build, in any domain (backend, frontend, mobile, billing, AI / ML, infra / CI-CD, tests of a slice); the brief's `domain:` tag adds `architecture` (design returned inline, strong model per call) or `writing` (reads `implement-plan/references/writing.md`; the caller picks `audience: dev \| user \| prospect`) | `rolepod-builder` |
+| One review lens per dispatch: spec · standards · security · adversarial · perf · ui · arch (edits only its report and test files; strong model per call for security and adversarial) | `rolepod-reviewer` |
+| User-visible tests (E2E / UI / browser / contract) — a slice's unit tests belong to its writer | `rolepod-qa` |
+| Read-only wide sweep, online research; pointers only | `rolepod-scout` |
 
 ## Reviewer routing
 
-The writer's unit tests are the floor. Two read-only `universal-reviewer` lenses (spec, standards; each ≤400 words, no execution) review every diff from R2 up; `qa-tester` joins when a slice changes what a user sees (E2E / UI). An external reviewer = a CLI from the user's **opt-in** cross-family pool — a **different CLI** than the Lead, on its own default model. Pool on: round 1 of an R3 or R4 diff runs the spec and standards lenses as two separate externals in every mode; R2 keeps internal lenses, R1 has no review; Full R4 adds external adversarial; security-engineer and specialists stay internal; a failed or weak lens falls back to the internal lens; round 2+ is internal.
+The writer's unit tests are the floor. Two read-only `rolepod-reviewer` lenses (spec, standards; each ≤400 words, no execution) review every diff from R2 up; `rolepod-qa` joins when a slice changes what a user sees (E2E / UI). An external reviewer = a CLI from the user's **opt-in** cross-family pool — a **different CLI** than the Lead, on its own default model. Pool on: round 1 of an R3 or R4 diff runs the spec and standards lenses as two separate externals in every mode; R2 keeps internal lenses, R1 has no review; Full R4 adds external adversarial; the security lens and specialists stay internal; a failed or weak lens falls back to the internal lens; round 2+ is internal.
 
 | Tier / profile | Reviewers |
 |-----------|-----------|
-| R2 / R3 | the two `universal-reviewer` lenses (R3 adds each matched specialist); with pool on, R3 lenses run external instead |
-| R4 code, round 1 | Pool off: lite two lenses (spec + standards). standard two lenses + `security-engineer` (checklist). full two lenses + `security-engineer` (full) + one adversarial pass (external via `cross-family` when usable, else the `adversarial-reviewer` role). Pool on: spec and standards lenses external; Full R4 adds external adversarial; security-engineer stays internal. |
-| Re-check, round 2+ (every mode and tier) | one fresh `universal-reviewer` checks the fix delta (H1→H2) of all BLOCKER / MAJOR findings in one pass; at most 4 rounds counting round 1, then rule once on each open finding and go on |
-| High-risk path (auth · billing · payments · credits · migration · deletion · secrets · tokens · crypto · permissions) | + `security-engineer` |
-| User-visible change (screen / flow / API contract) | + `qa-tester` (E2E / UI) |
+| R2 / R3 | the two `rolepod-reviewer` lenses (R3 adds each matched specialist); with pool on, R3 lenses run external instead |
+| R4 code, round 1 | Pool off: lite two lenses (spec + standards). standard two lenses + `rolepod-reviewer` `lens: security` (checklist). full two lenses + `lens: security` (full) + one adversarial pass (external via `cross-family` when usable, else `rolepod-reviewer` `lens: adversarial`). Pool on: spec and standards lenses external; Full R4 adds external adversarial; the security lens stays internal. |
+| Re-check, round 2+ (every mode and tier) | one fresh `rolepod-reviewer` checks the fix delta (H1→H2) of all BLOCKER / MAJOR findings in one pass; at most 4 rounds counting round 1, then rule once on each open finding and go on |
+| High-risk path (auth · billing · payments · credits · migration · deletion · secrets · tokens · crypto · permissions) | + `rolepod-reviewer` `lens: security` |
+| User-visible change (screen / flow / API contract) | + `rolepod-qa` (E2E / UI) |
 
 Tier and reviewers are per task; the plan's max tier only decides spec / plan ceremony.
 
@@ -113,7 +104,7 @@ Children plug in via **Extension Protocol v1** — parent writes `<git-root>/.ro
 |--------|------|---------|
 | [rolepod-uiproof](https://github.com/nuttaruj/rolepod-uiproof) (v0.6+) | `/verify-ui`, `/audit-a11y`, `/visual-diff`, `/scaffold-e2e`, `/check-errors` — browser automation + UI evidence MCP (26 tools). | `check-work` (UI verify + a11y + visual), `debug-issue` (browser repro / console errors), `review-code` (a11y + visual regression). Falls back through [Playwright MCP](https://github.com/microsoft/playwright-mcp) → [Chrome DevTools MCP](https://github.com/ChromeDevTools/chrome-devtools-mcp) → manual when absent. |
 | [rolepod-wplab](https://github.com/nuttaruj/rolepod-wplab) (v1.9+) | 14 WordPress skills + 82 MCP tools — wp-cli + REST + scoped fs. | `check-work` (`/wp-health-check`), `debug-issue` (`/wp-diagnose`), `implement-plan` (`/wp-edit-*`, `/wp-scaffold`), `review-code` (`/wp-changes`). Skills narrow to tool-only role when parent is active; full flow when standalone. |
-| [rolepod-seo](https://github.com/nuttaruj/rolepod-seo) (v0.3+) | `/seo-audit`, `/seo-fix-plan`, `/seo-schema`, `/seo-page-brief` — SEO / GEO / AEO site audit → scored report (chat + markdown + JSON sidecar + HTML, Artifact on Claude, Save-as-PDF via browser print) → fix plan. Skills only, no MCP, no hooks. | `content-strategist` (stops on technical SEO → `/seo-audit` / `/seo-schema`; `/seo-page-brief` feeds prospect copy); `/seo-fix-plan` routes fixes to wplab (WordPress meta), uiproof (rendered DOM / CWV), `frontend-developer` (code). |
+| [rolepod-seo](https://github.com/nuttaruj/rolepod-seo) (v0.3+) | `/seo-audit`, `/seo-fix-plan`, `/seo-schema`, `/seo-page-brief` — SEO / GEO / AEO site audit → scored report (chat + markdown + JSON sidecar + HTML, Artifact on Claude, Save-as-PDF via browser print) → fix plan. Skills only, no MCP, no hooks. | `rolepod-builder` with `domain: writing` (stops on technical SEO → `/seo-audit` / `/seo-schema`; `/seo-page-brief` feeds prospect copy); `/seo-fix-plan` routes fixes to wplab (WordPress meta), uiproof (rendered DOM / CWV), `rolepod-builder` (code). |
 
 ## Rule priority on conflict
 

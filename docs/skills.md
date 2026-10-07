@@ -2,7 +2,7 @@
 
 Rolepod ships **20 skills total**: Core 10 (1 router + 9 workflow phase skills) plus seven helper skills — `cross-family` (another CLI's review / critique / consult), `tdd-flow` (red → green at a seam), `adversarial-review` (the R4 round-1 adversarial pass), `coordinating-parallel-tracks` (parallel task execution), `convening-code-review` (orders a review round: freeze the diff, dispatch the reviewer set, Fix-verify), `security-review` (the security engineer's threat-model method), and `check-work` (the done-claim helper; not a phase) — called by the phase skills that need them, plus two explicit-invoke commands — `deepen-codebase` (architecture report → pick a card → write-spec) and `rolepod-stats` (the project's evidence report) — and one on-demand skill: `write-prototype` (a throwaway layout or logic demo that answers one spec question; write-spec offers it). There are no legacy compatibility shim skill files in the install tree. Old skill names are preserved only as documentation in [legacy-skill-map.md](legacy-skill-map.md).
 
-No entry doc embeds a skill index. Each skill's `description:` is its routing surface, shown by the CLI; `using-rolepod` routes by its own table, so the Lead does not spend context choosing among dozens of tiny workflow fragments. Deep domain expertise lives in the 15 specialist agents.
+No entry doc embeds a skill index. Each skill's `description:` is its routing surface, shown by the CLI; `using-rolepod` routes by its own table, so the Lead does not spend context choosing among dozens of tiny workflow fragments. Deep domain expertise lives in the 4 agent types.
 
 ## Tier model
 
@@ -37,31 +37,31 @@ No entry doc embeds a skill index. Each skill's `description:` is its routing su
 |-------|-----------|---------------|
 | `cross-family` | `convening-code-review`, `write-spec`, `debug-issue` | Runs another CLI's review, critique, or consult end to end. |
 | `tdd-flow` | `implement-plan`, `debug-issue`, `simplify-code`, `check-work`, `write-plan` | Runs the failing-test-first red → green loop at a seam. |
-| `adversarial-review` | `adversarial-reviewer` | The adversarial reviewer's method (preloaded): stance, attack surface, report. The orderer picks the external `cross-family` run or the role in `convening-code-review`. |
-| `security-review` | `security-engineer` | The security reviewer's method (preloaded): depth, threat model, an exploit scenario per BLOCKER / MAJOR, closure proof. |
+| `adversarial-review` | `rolepod-reviewer` `lens: adversarial` | The adversarial reviewer's method (preloaded): stance, attack surface, report. The orderer picks the external `cross-family` run or the role in `convening-code-review`. |
+| `security-review` | `rolepod-reviewer` `lens: security` | The security reviewer's method (preloaded): depth, threat model, an exploit scenario per BLOCKER / MAJOR, closure proof. |
 | `coordinating-parallel-tracks` | `orchestrating-plans` | Orchestrates parallel task execution across plan tracks. |
 | `convening-code-review` | `orchestrating-plans`, the Lead | Orders a review round: freezes the diff, dispatches the reviewer set, waits for every report, runs Fix-verify. |
 | `check-work` | the Lead (a done claim past a trivial edit), `finish-work` | Proves the done claim with evidence (tests / build / curl / browser / log / screenshot) and guards against false greens. The Pre-merge gate calls it on the plan's full diff. |
 
-## Domain expertise → specialist agents
+## Domain expertise → the 4 agent types
 
-Domain depth that used to live in standalone skills now lives in the 15 specialist agents (see [agents.md](agents.md)) and is routed from inside the Core 10 phase skills:
+Domain depth that used to live in standalone skills is carried by the 4 agent types (see [agents.md](agents.md)): `rolepod-builder` (every writer; the brief's `domain:` tag adds `architecture` or `writing`), `rolepod-reviewer` (one lens per dispatch: spec · standards · security · adversarial · perf · ui · arch), `rolepod-qa` and `rolepod-scout`. The domain hint goes into the brief, not a separate agent. Phase skills route to them:
 
-| Domain | Phase skill that routes here | Specialist agent |
+| Domain | Phase skill that routes here | Agent type |
 |--------|------------------------------|------------------|
-| Frontend implementation / components / state | `orchestrating-plans` | `frontend-developer` |
-| UI / interface / interaction / a11y / visual polish | `orchestrating-plans` + `convening-code-review` | `ui-ux-designer` |
-| API / interface contract / module boundaries | `write-plan` | `system-architect` |
-| Source-driven library / platform decisions | `write-plan` + `orchestrating-plans` | `system-architect` + `ai-ml-engineer` |
-| Security review / hardening / token / crypto | `security-review` | `security-engineer` |
-| Performance audit / Core Web Vitals / perf | `convening-code-review` + `check-work` | `performance-engineer` |
-| Technical docs / ADRs / runbooks | `write-spec` + `orchestrating-plans` | `content-strategist` (`audience: dev`) |
-| User-facing content / FAQ / onboarding / error msgs | `write-spec` + `orchestrating-plans` | `content-strategist` (`audience: user`) |
-| Marketing / conversion copy / SEO | `write-spec` + `orchestrating-plans` + `convening-code-review` | `content-strategist` (`audience: prospect`) |
-| CI/CD / deploy / monitoring / release | `finish-work` | `devops-sre` |
-| User-visible tests (E2E / UI / contract) | `write-plan` + `check-work` | `qa-tester` |
-| Unit tests for a slice (failing test first at the plan's seam) | `implement-plan` + `check-work` | the slice's owning role |
-| LLM / RAG / Anthropic SDK / prompt cache | `orchestrating-plans` | `ai-ml-engineer` |
+| Implementation (frontend / backend / mobile / billing / AI / ML / infra, any domain) | `orchestrating-plans` | `rolepod-builder` |
+| UI / interface / interaction / a11y / visual polish (review) | `convening-code-review` | `rolepod-reviewer` `lens: ui` |
+| API / interface contract / module boundaries | `write-plan` | `rolepod-builder` with `domain: architecture` |
+| Source-driven library / platform decisions | `write-plan` + `orchestrating-plans` | `rolepod-builder` with `domain: architecture` |
+| Security review / hardening / token / crypto | `security-review` | `rolepod-reviewer` `lens: security` |
+| Performance audit / Core Web Vitals / perf | `convening-code-review` + `check-work` | `rolepod-reviewer` `lens: perf` |
+| Technical docs / ADRs / runbooks | `write-spec` + `orchestrating-plans` | `rolepod-builder` with `domain: writing` (`audience: dev`) |
+| User-facing content / FAQ / onboarding / error msgs | `write-spec` + `orchestrating-plans` | `rolepod-builder` with `domain: writing` (`audience: user`) |
+| Marketing / conversion copy / SEO | `write-spec` + `orchestrating-plans` + `convening-code-review` | `rolepod-builder` with `domain: writing` (`audience: prospect`) |
+| CI/CD / deploy / monitoring / release | `finish-work` | `rolepod-builder` |
+| User-visible tests (E2E / UI / contract) | `write-plan` + `check-work` | `rolepod-qa` |
+| Unit tests for a slice (failing test first at the plan's seam) | `implement-plan` + `check-work` | the slice's owning `rolepod-builder` |
+| LLM / RAG / Anthropic SDK / prompt cache | `orchestrating-plans` | `rolepod-builder` |
 
 ## Skill table
 
