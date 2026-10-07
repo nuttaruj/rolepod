@@ -8,7 +8,7 @@ This doc is the **reference**. No entry doc embeds the roster; each agent file's
 
 ```
 User intent
-  → using-rolepod router picks the phase (Define / Plan / Build / Verify / Review / Ship)
+  → using-rolepod router picks the phase (Define / Plan / Build / Review / Ship)
   → the Lead picks the specialist agent from the agent listing
   → agent's own per-CLI frontmatter picks the model tier (cheap / balanced / strong)
 ```
@@ -35,6 +35,6 @@ The 15-specialist count comes from cost-aware role separation, not workflow stag
 
 One within-tier consolidation exists in the roster. `content-strategist` folds tech-writer + customer-success + growth-marketer (all cheap-tier writers) into a single agent that takes a mandatory `audience: dev | user | prospect` parameter. (A second consolidation, `product-manager` absorbing the former business-analyst, was retired whole in v2.115.0 — see above.) Each audience keeps its own scope, hard stops, and framework set, so specialist depth is preserved while selection overhead at the Lead shrinks.
 
-The one addition outside the specialist pattern is `scout` — a read-only, cheapest-tier researcher backing the always-on "Scout for wide sweeps" rule. It exists so every CLI has a dispatchable, tool-restricted scout with the research-report contract built in, instead of the Lead improvising a brief each time.
+The one addition outside the specialist pattern is `scout` — a read-only, cheapest-tier researcher backing the always-on core's Code search rule (a wide sweep → a read-only `scout`). It exists so every CLI has a dispatchable, tool-restricted scout with the research-report contract built in, instead of the Lead improvising a brief each time.
 
 Model tiering per agent: Claude pins the model, Codex pins `reasoning_effort`, Antigravity writes an advisory `model:` that agy does not enforce — see [model-tier-policy.md](model-tier-policy.md). Cursor agent files ship with `name` + `description` frontmatter, plus a derived `readonly: true` on the two roles whose Claude overlay holds no Edit / Bash and no Write beyond a report-only grant (`scout`, `universal-reviewer`, whose lone `Write` is its report) — Cursor users pick the model in-IDE, so per-agent tiering is not enforced there.

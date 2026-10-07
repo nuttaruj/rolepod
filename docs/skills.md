@@ -1,6 +1,6 @@
-# Rolepod Skill Catalog (Core 10 + 7 helpers + 1 command + 2 on-demand)
+# Rolepod Skill Catalog (Core 10 + 7 helpers + 2 commands + 1 on-demand)
 
-Rolepod ships **20 skills total**: Core 10 (1 router + 9 workflow phase skills) plus seven helper skills — `cross-family` (another CLI's review / critique / consult), `tdd-flow` (red → green at a seam), `adversarial-review` (the R4 round-1 adversarial pass), `coordinating-parallel-tracks` (parallel task execution), `convening-code-review` (orders a review round: freeze the diff, dispatch the reviewer set, Fix-verify), `security-review` (the security engineer's threat-model method), and `check-work` (the Verify-phase done-claim helper) — called by the phase skills that need them, plus one explicit-invoke command — `deepen-codebase` (architecture report → pick a card → write-spec) — and two on-demand skills: `write-prototype` (a throwaway layout or logic demo that answers one spec question; write-spec offers it) and `rolepod-stats` (the project's evidence report, when the user asks). There are no legacy compatibility shim skill files in the install tree. Old skill names are preserved only as documentation in [legacy-skill-map.md](legacy-skill-map.md).
+Rolepod ships **20 skills total**: Core 10 (1 router + 9 workflow phase skills) plus seven helper skills — `cross-family` (another CLI's review / critique / consult), `tdd-flow` (red → green at a seam), `adversarial-review` (the R4 round-1 adversarial pass), `coordinating-parallel-tracks` (parallel task execution), `convening-code-review` (orders a review round: freeze the diff, dispatch the reviewer set, Fix-verify), `security-review` (the security engineer's threat-model method), and `check-work` (the done-claim helper; not a phase) — called by the phase skills that need them, plus two explicit-invoke commands — `deepen-codebase` (architecture report → pick a card → write-spec) and `rolepod-stats` (the project's evidence report) — and one on-demand skill: `write-prototype` (a throwaway layout or logic demo that answers one spec question; write-spec offers it). There are no legacy compatibility shim skill files in the install tree. Old skill names are preserved only as documentation in [legacy-skill-map.md](legacy-skill-map.md).
 
 No entry doc embeds a skill index. Each skill's `description:` is its routing surface, shown by the CLI; `using-rolepod` routes by its own table, so the Lead does not spend context choosing among dozens of tiny workflow fragments. Deep domain expertise lives in the 15 specialist agents.
 
@@ -8,12 +8,12 @@ No entry doc embeds a skill index. Each skill's `description:` is its routing su
 
 | Tier | Purpose | Count | Fire on |
 |---|---|---:|---|
-| **0** | Workflow router | 1 | First read of every request |
+| **0** | Workflow router | 1 | Before the first action that creates, edits or deletes a file or runs a state-changing command |
 | **1** | Core workflow skills | 9 | Phase match |
-| — | Helpers (`cross-family`, `tdd-flow`) | 2 | Model-invoked by the phase skill that names them; allowed, never required |
+| — | Helpers (7 total) | 7 | Called by the phase skill or role that names them; allowed, never required. `cross-family`, `tdd-flow`, `adversarial-review`, `security-review`, `coordinating-parallel-tracks`, `convening-code-review`, `check-work` |
 | — | Command (`deepen-codebase`) | 1 | Explicit `/deepen-codebase` invocation only (`disable-model-invocation: true`): scope → one full-strength sub-agent (the Lead's model, shell access) walks the codebase and reproduces its claims → the Lead verifies → HTML report of deepening candidates (six fields per card, Strength badge, bugs found on the way, Top recommendation) → the user picks a card and is offered a `write-spec` on it |
+| — | Command (`rolepod-stats`) | 1 | User-invoked only (`disable-model-invocation: true`): type `/rolepod-stats` on Claude, `$rolepod-stats` on Codex; asked in words, the Lead tells you the command; runs its own `scripts/stats.sh` over `.rolepod/evidence/` — tier distribution, verify / review verdicts, strong-dispatch overrides, bypasses, gate, write-scope and external-verdict tables; the Lead and subagent tallies (which models ran) read Claude Code transcripts only |
 | — | On demand (`write-prototype`) | 1 | write-spec offers it for a layout / state-logic question, or the user types /write-prototype; needs a settled spec (Product mode + one question); builds layout variants or a clickable logic demo in a spike worktree, never merged |
-| — | On demand (`rolepod-stats`) | 1 | The user asks for the evidence report (`/rolepod-stats` on Claude, `$rolepod-stats` on Codex, or in words); runs its own `scripts/stats.sh` over `.rolepod/evidence/` — tier distribution, verify / review verdicts, strong-dispatch overrides, bypasses, gate, write-scope and external-verdict tables; the Lead and subagent tallies (which models ran) read Claude Code transcripts only |
 | **2** | Specialist public skills | 0 default | Domain depth lives in agents |
 | **3** | Legacy compatibility shims | 0 | Removed; see migration map |
 
@@ -21,13 +21,12 @@ No entry doc embeds a skill index. Each skill's `description:` is its routing su
 
 | Phase | Skill | When it fires |
 |-------|-------|---------------|
-| Router | `using-rolepod` | Every request — picks the phase |
+| Router | `using-rolepod` | Before the first action that creates, edits or deletes a file or runs a state-changing command — picks the tier and the first skill |
 | Define | `write-spec` | Vague feature / scope unclear / high-risk surface — discovery dialogue + approval gate |
 | Plan | `write-plan` | Approved spec or multi-file work — task list, test plan, agent routing, cohesion contracts |
-| Build | `implement-plan` | Approved plan — TDD, bounded delegation, worktrees, all artifact-producing work |
+| Build | `orchestrating-plans` (Lead) → `implement-plan` (owner) | Approved plan, inline R2 checklist or spec-as-plan list — one owner per task, TDD, worktrees, returns accepted, reviews at the seams |
 | Build (bug) | `debug-issue` | Error / failing test / regression — reproduce → trace → failing test → minimal fix |
-| Verify | `check-work` | Done claim before report — evidence (tests / build / curl / browser / log / screenshot) |
-| Review | `review-code` | Before merge — multi-axis review, adversarial for high-risk diffs, reviewer routing |
+| Review | `convening-code-review` (Lead) → `review-code` (reviewers) | A diff, branch or PR, or a track end — freeze, pick the reviewer set, dispatch, Fix-verify; spec and standards axes; adversarial for high-risk |
 | Ship | `finish-work` | "Ship / merge / push" — pre-merge gate, CI lanes, 3-option finish menu, launch ritual |
 | Simplify | `simplify-code` | Over-engineered / duplicated / single-use abstraction — behavior-preserving cut |
 | Recovery | `manage-context` | Stuck / context heavy / unfamiliar repo / advisor escalation / onboarding |
@@ -42,8 +41,7 @@ No entry doc embeds a skill index. Each skill's `description:` is its routing su
 | `security-review` | `security-engineer` | The security reviewer's method (preloaded): depth, threat model, an exploit scenario per BLOCKER / MAJOR, closure proof. |
 | `coordinating-parallel-tracks` | `orchestrating-plans` | Orchestrates parallel task execution across plan tracks. |
 | `convening-code-review` | `orchestrating-plans`, the Lead | Orders a review round: freezes the diff, dispatches the reviewer set, waits for every report, runs Fix-verify. |
-| `check-work` | `finish-work` | Proves the done claim with evidence (tests / build / curl / browser / log / screenshot) and guards against false greens. The Pre-merge gate calls it on the plan's full diff. |
-| `orchestrating-plans` | The Lead | Orchestrates the Plan phase: task creation, agent ownership, parallel track execution, cohesion contracts. |
+| `check-work` | the Lead (a done claim past a trivial edit), `finish-work` | Proves the done claim with evidence (tests / build / curl / browser / log / screenshot) and guards against false greens. The Pre-merge gate calls it on the plan's full diff. |
 
 ## Domain expertise → specialist agents
 
@@ -51,19 +49,19 @@ Domain depth that used to live in standalone skills now lives in the 15 speciali
 
 | Domain | Phase skill that routes here | Specialist agent |
 |--------|------------------------------|------------------|
-| Frontend implementation / components / state | `implement-plan` | `frontend-developer` |
-| UI / interface / interaction / a11y / visual polish | `implement-plan` + `review-code` | `ui-ux-designer` |
+| Frontend implementation / components / state | `orchestrating-plans` | `frontend-developer` |
+| UI / interface / interaction / a11y / visual polish | `orchestrating-plans` + `convening-code-review` | `ui-ux-designer` |
 | API / interface contract / module boundaries | `write-plan` | `system-architect` |
-| Source-driven library / platform decisions | `write-plan` + `implement-plan` | `system-architect` + `ai-ml-engineer` |
+| Source-driven library / platform decisions | `write-plan` + `orchestrating-plans` | `system-architect` + `ai-ml-engineer` |
 | Security review / hardening / token / crypto | `security-review` | `security-engineer` |
-| Performance audit / Core Web Vitals / perf | `review-code` + `check-work` | `performance-engineer` |
-| Technical docs / ADRs / runbooks | `write-spec` + `implement-plan` | `content-strategist` (`audience: dev`) |
-| User-facing content / FAQ / onboarding / error msgs | `write-spec` + `implement-plan` | `content-strategist` (`audience: user`) |
-| Marketing / conversion copy / SEO | `write-spec` + `implement-plan` + `review-code` | `content-strategist` (`audience: prospect`) |
+| Performance audit / Core Web Vitals / perf | `convening-code-review` + `check-work` | `performance-engineer` |
+| Technical docs / ADRs / runbooks | `write-spec` + `orchestrating-plans` | `content-strategist` (`audience: dev`) |
+| User-facing content / FAQ / onboarding / error msgs | `write-spec` + `orchestrating-plans` | `content-strategist` (`audience: user`) |
+| Marketing / conversion copy / SEO | `write-spec` + `orchestrating-plans` + `convening-code-review` | `content-strategist` (`audience: prospect`) |
 | CI/CD / deploy / monitoring / release | `finish-work` | `devops-sre` |
 | User-visible tests (E2E / UI / contract) | `write-plan` + `check-work` | `qa-tester` |
 | Unit tests for a slice (failing test first at the plan's seam) | `implement-plan` + `check-work` | the slice's owning role |
-| LLM / RAG / Anthropic SDK / prompt cache | `implement-plan` | `ai-ml-engineer` |
+| LLM / RAG / Anthropic SDK / prompt cache | `orchestrating-plans` | `ai-ml-engineer` |
 
 ## Skill table
 

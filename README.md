@@ -1,4 +1,4 @@
-![Rolepod — Define · Plan · Build · Verify · Review · Ship](assets/readme-hero.png)
+![Rolepod](assets/readme-hero.png)
 
 # Rolepod
 
@@ -16,15 +16,15 @@ It is one source of truth rendered into a native plugin for each CLI. No CLI is 
 
 ## How it works
 
-Rolepod starts the moment you give your CLI a task — you don't run a command or pick a mode. A router skill reads the request and places it in the workflow: a one-line typo fix goes straight to the edit; a vague "build me X" gets pulled back into a spec conversation first.
+Rolepod starts the moment you give your CLI a task — you don't run a command or pick a mode. Before the first action that creates, edits or deletes a file or runs a state-changing command, a router skill (`using-rolepod`) places the work in the workflow; a question, an opinion or a read-only look is simply answered: a one-line typo fix goes straight to the edit; a vague "build me X" gets pulled back into a spec conversation first.
 
-Every real change then moves through six phases:
+Every real change then moves through five phases:
 
 ```
-Define → Plan → Build → Verify → Review → Ship
+Define → Plan → Build → Review → Ship
 ```
 
-Each phase has one skill that runs it, and each skill pulls in specialist agents when the work needs depth. A commit that follows the workflow passes silently; on Claude, a high-risk diff (auth, billing, migrations and similar paths) is blocked until a `security-engineer` review has run.
+Each phase has one lead skill, and each skill pulls in specialist agents when the work needs depth. A commit that follows the workflow passes silently; on Claude, a high-risk diff (auth, billing, migrations and similar paths) is blocked until a `security-engineer` review has run.
 
 You invoke nothing for this; it just happens.
 
@@ -32,26 +32,24 @@ You invoke nothing for this; it just happens.
 
 1. **Define — `write-spec`.** Turns a fuzzy request into a spec, shown back in chunks short enough to actually read and approve.
 2. **Plan — `write-plan`.** Breaks the spec into tasks, assigns agent ownership, writes a cohesion contract before any parallel work.
-3. **Build — `implement-plan`.** Executes the plan test-first with bounded delegation. Bug fixes take the `debug-issue` path: reproduce → failing test → minimal fix.
-4. **Verify — `check-work`.** Proves the change with evidence — tests, build, curl, a screenshot — never just a "done".
-5. **Review — `review-code`.** Every logic diff gets two lenses (spec compliance + standards); an R4 (high-risk) diff adds `security-engineer` (Standard and Full) and, in Full, one adversarial pass (the `adversarial-reviewer` role).
-6. **Ship — `finish-work`.** One pre-merge gate, CI lanes, and a 3-option finish menu (merge, PR, keep open; discard only when you ask).
+3. **Build — `orchestrating-plans`.** The Lead runs the approved plan one task at a time; each task goes to an owner that builds it test-first (`implement-plan`) and returns a receipt. Bug fixes take the `debug-issue` path: reproduce → failing test → minimal fix.
+4. **Review — `convening-code-review`.** The Lead orders the round: freeze the diff, pick the reviewers, dispatch, run Fix-verify. Every logic diff gets two lenses (spec compliance + standards, run by `review-code`); an R4 (high-risk) diff adds `security-engineer` (Standard and Full) and, in Full, one adversarial pass (the `adversarial-reviewer` role).
+5. **Ship — `finish-work`.** One pre-merge gate (it runs `check-work` once on the full diff), CI lanes, and a 3-option finish menu (merge, PR, keep open; discard only when you ask).
 
-Two skills run across phases: **`simplify-code`** (behavior-preserving cleanup) and **`manage-context`** (recovery when a session is long, stuck, or in an unfamiliar repo).
+Three skills run across phases: **`check-work`** (proves a done claim with evidence — tests, build, curl, a screenshot — never just "done"; not a phase), **`simplify-code`** (behavior-preserving cleanup) and **`manage-context`** (recovery when a session is long, stuck, or in an unfamiliar repo).
 
-Every request is tiered before the first edit, and the tier sets how much of the workflow runs. The routing line always carries the tier with its meaning — `Route: R2 (one file + test) → implement-plan · reason` — so nobody has to look the code up:
+A request that changes nothing is answered directly, with no tier. Every change is tiered before its first edit, and the tier sets how much of the workflow runs. The routing line carries the tier with its meaning — `Route: R2 (one source file + its own test) → orchestrating-plans · Owner <path role> · <reason>` — so nobody has to look the code up:
 
 | Tier | Meaning | What runs |
 |---|---|---|
-| **R0** | answer only — no file changes | reply directly |
-| **R1** | trivial edit — ≤5 lines, one file, no logic | edit; the tool's echo is the proof |
-| **R2** | one file + its test, a small logic change | inline checklist → build → verify → one read-only reviewer pass |
-| **R3** | multi-file, vague scope, or needs sequencing | the full six-phase spine |
+| **R1** | trivial edit — docs only, or ≤5 lines in one file with no logic | edit; the tool's echo is the proof |
+| **R2** | one file + its test, a small logic change | owner builds on main → verify → the two review lenses |
+| **R3** | multi-file, vague scope, or needs sequencing | the full five-phase spine |
 | **R4** | high-risk path (auth, billing, migrations, secrets…) | full spine + adversarial review floor, never downgraded |
 
 ## Works with Claude Code Ultracode
 
-Rolepod composes with Claude Code's **Ultracode** mode out of the box — no setup. Ultracode is the harness orchestration layer (parallel multi-agent workflows, adversarial verification); Rolepod is the structure it runs — phases, specialist agents, cohesion contracts, and gates. Ultracode supplies the horsepower; Rolepod keeps it targeted and safe. The two principles are orthogonal, not opposed: Rolepod's *simplest-viable* governs the solution, Ultracode's *exhaustiveness* governs the process — so an exhaustive run still converges on a simple result. Effort governs how hard each stage thinks; the rigor tier governs how many stages there are — an R1/R2 change stays one review pass even under Ultracode, because an effort setting never lifts the tier.
+Rolepod composes with Claude Code's **Ultracode** mode out of the box — no setup. Ultracode is the harness orchestration layer (parallel multi-agent workflows, adversarial verification); Rolepod is the structure it runs — phases, specialist agents, cohesion contracts, and gates. Ultracode supplies the horsepower; Rolepod keeps it targeted and safe. The two principles are orthogonal, not opposed: Rolepod's *simplest-viable* governs the solution, Ultracode's *exhaustiveness* governs the process — so an exhaustive run still converges on a simple result. Effort governs how hard each stage thinks; the rigor tier governs how many stages there are — an R1/R2 change keeps its tier's review (none at R1, the two lenses at R2) even under Ultracode, because an effort setting never lifts the tier.
 
 ## Install
 
@@ -253,12 +251,12 @@ To set the pool, use `cross-family.sh --setup` from the `cross-family` skill, or
 ## What's inside
 
 - **15 specialist agents** — architecture, engineering, quality, ops, design, content, and review. Each owns a path or concern and runs on a cost-tiered model (~50-60% cheaper than all-strong). → [docs/agents.md](docs/agents.md), [docs/model-tier-policy.md](docs/model-tier-policy.md)
-- **Core 10 skills** — one router plus nine phase skills, the workflow spine. Plus 7 helper skills the phase skills call: `cross-family` (another CLI's review / critique / consult), `tdd-flow` (red → green at a seam), `adversarial-review` (the R4 round-1 adversarial pass), `coordinating-parallel-tracks` (parallel task execution), `convening-code-review` (orders a review round: freeze the diff, dispatch the reviewer set, Fix-verify), `security-review` (the security engineer's threat-model method), and `check-work` (the Verify-phase done-claim helper). → [docs/skills.md](docs/skills.md)
+- **Core 10 skills** — one router plus nine phase skills, the workflow spine. Plus 7 helper skills the phase skills call: `cross-family` (another CLI's review / critique / consult), `tdd-flow` (red → green at a seam), `adversarial-review` (the R4 round-1 adversarial pass), `coordinating-parallel-tracks` (parallel task execution), `convening-code-review` (orders a review round: freeze the diff, dispatch the reviewer set, Fix-verify), `security-review` (the security engineer's threat-model method), and `check-work` (the done-claim helper — proves a claim with evidence; not a phase). Three more: `/deepen-codebase` and `rolepod-stats` (both user-invoked) and `write-prototype` (offered by `write-spec`) — 20 skills in all. → [docs/skills.md](docs/skills.md)
 - **Per-CLI hooks** — silent while you follow the workflow; they speak only on a real mistake: a high-risk commit with no `security-engineer` review, a sub-agent commit, a sub-agent writing outside its role, two sessions editing the same file, a private working doc staged. They run in every mode; `workflow.mode` only sets whether each gate warns or denies (the table of 14 gates by mode, plus the always-warn and silent-record groups, is in [docs/hooks.md](docs/hooks.md#gates-by-mode)). The full set runs on Claude; the other CLIs keep the private-docs commit deny, session safety and what their hook API allows (Antigravity can deny but not warn), and the rest is skill-enforced. → [docs/hooks.md](docs/hooks.md)
 - **Terse output (built in)** — every rolepod CLI shapes its replies to cut output tokens: result first, the reading language's politeness register dropped, numbered steps, flat error tone, a five-item display cap that never limits analysis or tool results. Security warnings, destructive-action confirmations and "explain" requests keep their full shape — the shape yields to the task, never the reverse. → [docs/hooks.md](docs/hooks.md) (`always-on-loader.sh`)
-- **Evidence stats** — the `rolepod-stats` skill reads any project's `.rolepod/evidence/`: tier distribution, verify pass/fail, review verdicts, strong-dispatch overrides, bypasses, commits on a risk path with no strong review, write-scope denies per role, external review verdicts (available at `/rolepod-stats` on Claude and `$rolepod-stats` on Codex). `scripts/ticket.sh` in `implement-plan` runs a plan task's mechanics in one call per step (`start` / `integrate` / `status` / `finish` / `log`) and never commits. Every plugin tree ships these scripts under their skill's `scripts/` folder.
+- **Evidence stats** — the `rolepod-stats` skill reads any project's `.rolepod/evidence/`: tier distribution, verify pass/fail, review verdicts, strong-dispatch overrides, bypasses, commits on a risk path with no strong review, write-scope denies per role, external review verdicts (user-invoked only: type `/rolepod-stats` on Claude, `$rolepod-stats` on Codex; on Claude, Codex and Cursor the model never loads it). `scripts/ticket.sh` in `implement-plan` runs a plan task's mechanics in one call per step (`start` / `integrate` / `status` / `finish` / `log`) and never commits. Every plugin tree ships these scripts under their skill's `scripts/` folder.
 - **Discipline checklists** — Q1-Q4 delegation, S1-S5 simplicity, T1-T6 tests, F1-F5 failure-mode — live in the skills that run each phase. Rolepod's own working docs (`docs/rolepod/` — specs, plans, contracts, hand-offs) are private by default: gitignored on first save and refused at commit unless the repo opts in with `.rolepod/docs-tracked`.
-- **Cross-family reviewer (opt-in)** — `scripts/cross-family.sh` in the `cross-family` skill sends review / debug consult / spec critique to a *different CLI* (on its own default model) in one command. Review: round 1 on R3 / R4 diffs runs the spec and standards lenses separately in every mode; R2 keeps internal lenses, R1 has no review; Full R4 adds external adversarial; security-engineer and specialists stay internal; a failed or weak lens falls back to the internal lens; round 2+ is internal. Off by default (set `pool.cross-family: "on"` in `~/.rolepod/config.json` to enable); rolepod asks once, never enables it for you; list every CLI you use in `pool.reviewer.review` / `pool.reviewer.consult` / `pool.reviewer.critique`, this one included — the Lead's own CLI is skipped at run time, so one file serves every Lead. First usable member, read-only on **its own default model**, with a per-member silence budget (`codex stall=900`, per-kind order `pool.reviewer.consult`); `--detach` runs the chain as a job so a slow member never hits the harness cap; evidence anchored; a member that fails is logged and skipped, all fail → the Lead's own path. The commit gate on Claude does not read an external pass. `write-spec` hands the draft to the same pool for one round of questions before approval. → [docs/cli-support.md](docs/cli-support.md#cross-family-externals--one-runner-any-lead)
+- **Cross-family reviewer (opt-in)** — `scripts/cross-family.sh` in the `cross-family` skill sends review / debug consult / spec critique to a *different CLI* (on its own default model) in one command. Review: round 1 on R3 / R4 diffs runs the spec and standards lenses separately in every mode; R2 keeps internal lenses, R1 has no review; Full R4 adds external adversarial; security-engineer and specialists stay internal; a failed or weak lens falls back to the internal lens; round 2+ is internal. Off by default (set `pool.cross-family: "on"` in `~/.rolepod/config.json` to enable); rolepod never asks unprompted and never enables it for you (ask for the setup in words and the `cross-family` skill runs `--setup`); list every CLI you use in `pool.reviewer.review` / `pool.reviewer.consult` / `pool.reviewer.critique`, this one included — the Lead's own CLI is skipped at run time, so one file serves every Lead. First usable member, read-only on **its own default model**, with a per-member silence budget (`codex stall=900`, per-kind order `pool.reviewer.consult`); `--detach` runs the chain as a job so a slow member never hits the harness cap; evidence anchored; a member that fails is logged and skipped, all fail → the Lead's own path. The commit gate on Claude does not read an external pass. `write-spec` hands the draft to the same pool for one round of questions before approval. → [docs/cli-support.md](docs/cli-support.md#cross-family-externals--one-runner-any-lead)
 
 The source lives in `core/`; per-CLI adapters render it into a native plugin for each CLI.
 
@@ -270,7 +268,7 @@ Hooks are the product, so this is stated plainly. Everything stays on your disk;
 |---|---|---|
 | Phase evidence — route tier, dispatch tier, verify / review verdicts, gate denies and bypasses | `<repo>/.rolepod/evidence/phase-log.jsonl`, `bypass.log` (per project, plain JSONL) | delete the dir; the `rolepod-stats` skill reads it |
 | Session liveness + the files each session edits (the stomp guard) | `~/.rolepod/session-locks/<sha256(worktree)>/<session>.lock` / `.files`, removed at Stop | delete the files (the stomp guard then has nothing to read) |
-| Per-session counters — fix-loop fails, raw-read bytes, context-nudge state | `$TMPDIR/rolepod-*.json`, `~/.rolepod/ctx-nudge/` | delete the files |
+| Per-session counters — fix-loop fails, raw-read bytes, context-nudge state, high-risk edit warnings, route nudges | `$TMPDIR/rolepod-*.json`, `~/.rolepod/ctx-nudge/`, `~/.rolepod/gate-reminder/<session>` (repo root + path of each warned high-risk edit, pruned after 14 days), `~/.rolepod/route-nudge/` (empty markers) | delete the files |
 | Cross-family reviewer output (opt-in) | `<repo>/.rolepod/evidence/external/` | `pool.cross-family: "off"` in config, or unset `pool` key = off |
 
 Hooks read the prompt, the tool input and the transcript tail to decide, then discard them: prompt text and file contents are never written anywhere. Nothing reads keychains, `~/.aws`, SSH keys, browser stores or the clipboard.
@@ -284,8 +282,8 @@ See [docs/EXTENSION-PROTOCOL.md](docs/EXTENSION-PROTOCOL.md) for the full contra
 | Install | Standalone value | What it adds when combined |
 |---|---|---|
 | **rolepod** (this repo) | Workflow + 15 agents + judgment for any project | Routes by phase, aggregates evidence, suggests siblings by domain signal |
-| [**rolepod-uiproof**](https://github.com/nuttaruj/rolepod-uiproof) (v0.6+) | 5 browser skills — `/verify-ui`, `/audit-a11y`, `/visual-diff`, `/scaffold-e2e`, `/check-errors` + 26 MCP tools | Verify-phase provider for UI artifacts; evidence auto-routes to `check-work` |
-| [**rolepod-wplab**](https://github.com/nuttaruj/rolepod-wplab) (v1.9+) | 14 WordPress skills + 82 MCP tools — wp-cli + REST + scoped fs | Build/Verify/Review primitives for WP; phase-flavored skills narrow under parent |
+| [**rolepod-uiproof**](https://github.com/nuttaruj/rolepod-uiproof) (v0.6+) | 5 browser skills — `/verify-ui`, `/audit-a11y`, `/visual-diff`, `/scaffold-e2e`, `/check-errors` + 26 MCP tools | Proof provider for UI artifacts (Extension Protocol `phase: verify` evidence); evidence auto-routes to `check-work` |
+| [**rolepod-wplab**](https://github.com/nuttaruj/rolepod-wplab) (v1.9+) | 14 WordPress skills + 82 MCP tools — wp-cli + REST + scoped fs | Build / proof / Review primitives for WP; phase-flavored skills narrow under parent |
 | [**rolepod-seo**](https://github.com/nuttaruj/rolepod-seo) (v0.3+) | 4 search skills — `/seo-audit` (SEO + GEO + AEO, Quick/Full, scored with evidence; chat summary + markdown + JSON sidecar + self-contained HTML report with score cards, published as an Artifact on Claude Code, Save-as-PDF via browser print), `/seo-fix-plan`, `/seo-schema`, `/seo-page-brief`; skills-only, stdlib collector + renderer, no MCP, no hooks | Audit → fix plan hands to uiproof (rendered DOM / CWV), wplab (WordPress meta), `content-strategist` (copy); `content-strategist` stops on technical SEO and routes here |
 | [**rolepod-dblab**](https://github.com/nuttaruj/rolepod-dblab) (v0.1+) | 5 Postgres skills — `/db-introspect`, `/db-query`, `/db-explain`, `/db-migrate-verify`, `/db-write` + 5 MCP tools | Data-layer provider; `check-work` gains DB evidence, `finish-work` gates on schema drift |
 | [**rolepod-brain**](https://github.com/nuttaruj/rolepod-brain) (v0.38+) | Cross-session memory — 3 skills (`/using-brain`, `/brain-report`, `/brain-doctor`) + 11 MCP tools over a local SQLite index and a git-versioned markdown wiki. One binary, no cloud, no account, nothing resident between events | Every session opens with pointers to what earlier ones decided, fixed, and found — so `verify-first` has a record to read instead of re-deriving it |
@@ -294,7 +292,7 @@ See [docs/EXTENSION-PROTOCOL.md](docs/EXTENSION-PROTOCOL.md) for the full contra
 
 | Combo | Flows unlocked |
 |---|---|
-| rolepod + uiproof | Verify reads browser evidence automatically; UI regressions blocked at pre-commit |
+| rolepod + uiproof | `check-work` reads browser evidence automatically; UI regressions blocked at pre-commit |
 | rolepod + wplab | `implement-plan` knows `/wp-edit-*`; `debug-issue` routes to `/wp-diagnose`; `check-work` reads `/wp-health-check` |
 | rolepod + dblab | `check-work` reads DB state as PASS/FAIL evidence; `review-code` / `finish-work` call `/db-migrate-verify` on migration/auth/billing paths; `debug-issue` inspects live data state. Seam rule: WordPress DB → wplab, any other DB → dblab |
 | rolepod + brain | Prior decisions and their reasons land in the SessionStart context, so `write-plan` stops re-litigating settled calls and `debug-issue` starts from the last fix rather than from scratch. Cuts across every phase — no evidence routing, no parent-active detection |

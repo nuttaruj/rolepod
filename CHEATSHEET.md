@@ -5,25 +5,25 @@ Quick reference for all 5 CLIs (Claude / Codex / Cursor / Antigravity / opencode
 ## Workflow — phase → skill
 
 ```
-Define → Plan → Build → Verify → Review → Ship
+Define → Plan → Build → Review → Ship
 ```
 
-The `using-rolepod` router fires first on every request and picks the phase.
+The always-on core asks one question first — will this change anything? No → answer. Yes or unsure → load `using-rolepod`, which picks the tier and the first skill.
 
 | Phase | Skill | Fires when |
 |-------|-------|-----------|
-| Router | `using-rolepod` | every request — picks the phase |
+| Router | `using-rolepod` | before the first action that creates, edits or deletes a file or runs a state-changing command — picks the tier and the first skill |
 | Define | `write-spec` | vague feature, scope unclear, high-risk surface |
 | Plan | `write-plan` | spec approved, or work spans multiple files |
-| Build | `implement-plan` | approved plan or a clear code task |
+| Build | `orchestrating-plans` (Lead) → `implement-plan` (owner) | approved plan, inline R2 checklist or a clear code task |
 | Build (bug) | `debug-issue` | error / failing test / regression |
-| Verify | `check-work` | a "done / fixed / works" claim, before reporting |
-| Review | `review-code` | before merge / multi-file / high-risk diff |
+| Review | `convening-code-review` (Lead) → `review-code` (reviewers) | a diff, branch or PR to review; a track ends |
 | Ship | `finish-work` | "ship / merge / push / PR" |
+| Any | `check-work` | a "done / fixed / works" claim past a trivial edit, before reporting |
 | Simplify | `simplify-code` | over-engineered / duplicated / single-use abstraction |
 | Recovery | `manage-context` | stuck / context heavy / unfamiliar repo / onboarding |
 
-**Skip the spine** only for trivial answer-only work, a ≤5-line / single-file / zero-logic / non-high-risk diff, or an explicit user "skip" — and state the skip.
+**Skip the spine** when nothing changes (answer it), for an R1 edit (docs only, or ≤5 lines in one file with no logic, not high-risk), or on an explicit user "skip" — and state the skip.
 
 ## Active gates
 
@@ -33,7 +33,7 @@ The `using-rolepod` router fires first on every request and picks the phase.
 | **F1-F5** | before done | hallucinated / scope creep / cascading error / context loss / tool misuse |
 | **Pre-merge** | merge | check-work status matches tree / CI lanes green / review reports + Snapshot at head / R4 has security-engineer + adversarial-pass / one concern per PR |
 | **CI 3-phase** | merge | Phase 1 always (<5 min) / Phase 2 path-triggered / Phase 3 nightly |
-| **Hard stops** | escalate | consult once after 2 failed fixes, stop and ask the user at 4 / file vs claim / destructive cmd / 50k+ no convergence |
+| **Hard stops** | escalate | one Second opinion after 2 failed fixes; the 4th failed fix for one repro or criterion stops — the owner returns `BLOCKED`, the Lead hands you the attempt log and 2-3 options / file vs claim / destructive cmd / no convergence → summarize and ask |
 | **Hook gates** | commit / edit / dispatch | 14 gates that can block, set per `workflow.mode` (lite / standard / full): table in [docs/hooks.md](docs/hooks.md#gates-by-mode) |
 
 ## Verify-first
@@ -64,13 +64,13 @@ Can't verify  → state "Assuming X. Risk Y. Verify by Z" — never proceed sile
 
 ## Reviewer routing
 
-The writer's unit tests are the floor. One read-only `universal-reviewer` pass (spec + standards, ≤400 words, no execution) reviews every diff from R2 up; `qa-tester` joins when a slice changes what a user sees (E2E / UI). An external reviewer = a CLI from the user's **opt-in** cross-family pool — a **different CLI** than the Lead, on its own default model. Pool on: round 1 of an R3 or R4 diff runs the spec and standards lenses as two separate externals in every mode; R2 keeps internal lenses, R1 has no review; Full R4 adds external adversarial; security-engineer and specialists stay internal; a failed or weak lens falls back to the internal lens; round 2+ is internal.
+The writer's unit tests are the floor. Two read-only `universal-reviewer` lenses (spec, standards; each ≤400 words, no execution) review every diff from R2 up; `qa-tester` joins when a slice changes what a user sees (E2E / UI). An external reviewer = a CLI from the user's **opt-in** cross-family pool — a **different CLI** than the Lead, on its own default model. Pool on: round 1 of an R3 or R4 diff runs the spec and standards lenses as two separate externals in every mode; R2 keeps internal lenses, R1 has no review; Full R4 adds external adversarial; security-engineer and specialists stay internal; a failed or weak lens falls back to the internal lens; round 2+ is internal.
 
 | Tier / profile | Reviewers |
 |-----------|-----------|
-| R2 / R3 | `universal-reviewer` (read-only); with pool on, R3 lenses run external instead |
+| R2 / R3 | the two `universal-reviewer` lenses (R3 adds each matched specialist); with pool on, R3 lenses run external instead |
 | R4 code, round 1 | Pool off: lite two lenses (spec + standards). standard two lenses + `security-engineer` (checklist). full two lenses + `security-engineer` (full) + one adversarial pass (external via `cross-family` when usable, else the `adversarial-reviewer` role). Pool on: spec and standards lenses external; Full R4 adds external adversarial; security-engineer stays internal. |
-| Re-check, round 2+ (every mode and tier) | one fresh `universal-reviewer` checks the fix delta (H1→H2) of all BLOCKER / MAJOR findings in one pass; at most 4 rounds counting round 1, then stop and hand the findings and log to the user |
+| Re-check, round 2+ (every mode and tier) | one fresh `universal-reviewer` checks the fix delta (H1→H2) of all BLOCKER / MAJOR findings in one pass; at most 4 rounds counting round 1, then rule once on each open finding and go on |
 | High-risk path (auth · billing · payments · credits · migration · deletion · secrets · tokens · crypto · permissions) | + `security-engineer` |
 | User-visible change (screen / flow / API contract) | + `qa-tester` (E2E / UI) |
 
@@ -79,11 +79,8 @@ Tier and reviewers are per task; the plan's max tier only decides spec / plan ce
 ## Stuck escalation
 
 ```
-1. Re-frame — try a fresh angle
-2. Re-check decision records / git log
-3. Hand to a specialist subagent
-4. Advisor (Opus)        ← skip if the Lead is already Opus
-5. Hard stop — ask the user
+1. Two failed fixes for one repro or criterion → one Second opinion (`debug-issue` step 9).
+2. 4th failed fix → stop: the owner returns `BLOCKED` with the attempts; the Lead hands you the attempt log and 2-3 options.
 ```
 
 ## Key commands — per CLI
@@ -100,13 +97,13 @@ Tier and reviewers are per task; the plan's max tier only decides spec / plan ce
 
 ## Hooks
 
-14 Claude / 7 Codex / 3 Cursor / 3 Antigravity core hook scripts (opencode: plugin-event bridge, best-effort) — self-guarded, auto-fire, no add-on hooks. All CLIs fire hooks by default (Codex: `[features] hooks = true`, default-enabled). Full reference: [docs/hooks.md](docs/hooks.md).
+13 Claude / 7 Codex / 3 Cursor / 3 Antigravity core hook scripts (opencode: plugin-event bridge, best-effort) — self-guarded, auto-fire, no add-on hooks. All CLIs fire hooks by default (Codex: `[features] hooks = true`, default-enabled). Full reference: [docs/hooks.md](docs/hooks.md).
 
 Terse output is built in on every CLI: replies are shaped to cut output tokens by default. Security warnings, destructive confirmations and "explain" requests keep their full shape.
 
 ## Evidence stats
 
-The `rolepod-stats` skill (`/rolepod-stats` on Claude, `$rolepod-stats` on Codex) — run inside any project: reads its `.rolepod/evidence/` and reports tier distribution, verify pass/fail, review verdicts, strong dispatches with/without explicit override (silent-downgrade audit), unreasoned bypasses, commits on a risk path with no strong review (gate), write-scope denies per role, and external review verdicts.
+The `rolepod-stats` skill (`/rolepod-stats` on Claude, `$rolepod-stats` on Codex) — user-invoked only; on Claude, Codex and Cursor the model never loads it — run inside any project: reads its `.rolepod/evidence/` and reports tier distribution, verify pass/fail, review verdicts, strong dispatches with/without explicit override (silent-downgrade audit), unreasoned bypasses, commits on a risk path with no strong review (gate), write-scope denies per role, and external review verdicts.
 
 ## Optional sibling plugins
 
