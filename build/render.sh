@@ -135,6 +135,12 @@ render_skills() {
       cp "$REPO_DIR/hooks/lib/rolepod_config.py" "$skills_dst/$name/scripts/rolepod_config.py"
       cp "$REPO_DIR/hooks/lib/session-mode.sh" "$skills_dst/$name/scripts/session-mode.sh" ;;
     esac
+    # The working-docs mode helper (status / track / ignore) rides with every
+    # skill that writes or finishes docs, so none needs a repo checkout.
+    case "$name" in write-spec|write-plan|manage-context|check-work|finish-work|implement-plan)
+      mkdir -p "$skills_dst/$name/scripts"
+      cp "$REPO_DIR/hooks/lib/docs-mode.sh" "$skills_dst/$name/scripts/docs-mode.sh" ;;
+    esac
     [ -f "$skill_dir/SKILL.md" ] && \
       render_template "$skill_dir/SKILL.md" "$skills_dst/$name/SKILL.md"
   done
@@ -457,6 +463,8 @@ render_cursor() {
   cp "$REPO_DIR/hooks/lib/session-mode.sh" "$plugin_dst/scripts/shared/session-mode.sh"
   mkdir -p "$plugin_dst/scripts/shared/lib"
   cp "$REPO_DIR/hooks/lib/session-mode.sh" "$plugin_dst/scripts/shared/lib/session-mode.sh"
+  cp "$REPO_DIR/hooks/lib/docs-mode.sh" "$plugin_dst/scripts/shared/docs-mode.sh"
+  cp "$REPO_DIR/hooks/lib/docs-mode.sh" "$plugin_dst/scripts/shared/lib/docs-mode.sh"
   cp "$REPO_DIR/hooks/session-start.sh" "$plugin_dst/scripts/"
   mkdir -p "$plugin_dst/scripts/lib"
   cp -R "$REPO_DIR/hooks/lib/." "$plugin_dst/scripts/lib/"
@@ -605,6 +613,8 @@ render_opencode() {
     cp "$REPO_DIR/hooks/lib/session-mode.sh" "$out_dir/plugin/rolepod-shared/session-mode.sh"
     mkdir -p "$out_dir/plugin/rolepod-shared/lib"
     cp "$REPO_DIR/hooks/lib/session-mode.sh" "$out_dir/plugin/rolepod-shared/lib/session-mode.sh"
+    cp "$REPO_DIR/hooks/lib/docs-mode.sh" "$out_dir/plugin/rolepod-shared/docs-mode.sh"
+    cp "$REPO_DIR/hooks/lib/docs-mode.sh" "$out_dir/plugin/rolepod-shared/lib/docs-mode.sh"
     chmod +x "$out_dir/plugin/rolepod-shared/"*.sh 2>/dev/null || true
   else
     echo "render: missing $adapter_dir/plugin/rolepod.js" >&2; exit 1

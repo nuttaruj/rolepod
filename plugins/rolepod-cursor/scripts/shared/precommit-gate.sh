@@ -600,13 +600,15 @@ if [ -z "$DIFF_STAT" ]; then
   exit 0
 fi
 
-FILES_CHANGED=$(echo "$DIFF_STAT" | wc -l | tr -d ' ')
-
-# Private working docs (v2.80.0): everything rolepod writes under
-# docs/rolepod/ — specs, plans, cohesion contracts, maps, hand-offs — is
-# confidential by default and never enters a commit. `git add -A` sweeps it
-# in silently; this is the mechanical stop. A repo that WANTS them tracked
-# creates <git-root>/.rolepod/docs-tracked (an explicit, reviewable choice).
+# Working docs (docs/rolepod/: specs, plans, contracts, hand-offs) have three
+# states per repo, read by docs-mode.sh status from the repo being COMMITTED
+# (-C "$DIFF_DIR", never the hook cwd): tracked (the user's committed choice:
+# docs may commit and do not count toward size), ignored and undecided
+# (staged docs are denied until the user chooses; a force-added doc in an
+# ignored repo is denied too). No docs-mode.sh beside the gate, or any error /
+# unknown word from it → the old marker-only check, which denies with no
+# marker: an error never allows.
+#
 # _pd_root is the config/evidence root for the REST of this file (R3): pinned
 # to the hook's own cwd — every writer hook (phase-log, bypass.log, session
 # locks) put its state there — and only when the hook
@@ -614,6 +616,26 @@ FILES_CHANGED=$(echo "$DIFF_STAT" | wc -l | tr -d ' ')
 # directory's toplevel.
 _pd_root="$(git rev-parse --show-toplevel 2>/dev/null)" || true
 [ -n "$_pd_root" ] || _pd_root="$(gitd rev-parse --show-toplevel 2>/dev/null)" || true
+DOCS_STATE=""
+_pd_lib="$(dirname "${BASH_SOURCE[0]}")/lib/docs-mode.sh"
+if [ -f "$_pd_lib" ]; then
+  DOCS_STATE=$(bash "$_pd_lib" status -C "$DIFF_DIR" 2>/dev/null) || DOCS_STATE=""
+  case "$DOCS_STATE" in tracked|ignored|undecided) ;; *) DOCS_STATE="" ;; esac
+fi
+if [ -z "$DOCS_STATE" ]; then
+  [ -f "$_pd_root/.rolepod/docs-tracked" ] && DOCS_STATE=tracked || DOCS_STATE=undecided
+fi
+# A tracked repo's docs are not code: drop them before any size count.
+DOCS_EXCL=()
+if [ "$DOCS_STATE" = tracked ]; then
+  DIFF_STAT=$(printf '%s\n' "$DIFF_STAT" | awk -F'\t' '!(NF>=3 && $3 ~ /^docs\/rolepod\//)')
+  DOCS_EXCL=(-- ':(top)' ':(top,exclude)docs/rolepod')   # repo-root relative: the hook cwd may be a subdirectory
+  if [ -z "$(printf '%s' "$DIFF_STAT" | tr -d '[:space:]')" ]; then
+    exit 0
+  fi
+fi
+
+FILES_CHANGED=$(echo "$DIFF_STAT" | wc -l | tr -d ' ')
 # Read off DIFF_STAT, not a fresh `gitd diff --name-only` (fix round,
 # 2026-09-25): on a compound `git add … && git commit` / `git commit -a`,
 # GIT_DIFF_BASE is HEAD and DIFF_STAT already has the UNTRACKED merge above
@@ -621,8 +643,8 @@ _pd_root="$(git rev-parse --show-toplevel 2>/dev/null)" || true
 # files, so a brand-new UNSTAGED docs/rolepod/x.md silently passed this
 # check (caught while wiring the opencode adapter onto this same script).
 PRIVATE_DOCS=$( { printf '%s\n' "$DIFF_STAT" | awk -F'\t' 'NF>=3{print $3}' | grep -E '^docs/rolepod/' || true; } | head -5 | tr '\n' ' ' | sed 's/ *$//')
-if [ -n "$PRIVATE_DOCS" ] && [ ! -f "$_pd_root/.rolepod/docs-tracked" ] && [ "$(rolepod_gate_action private-docs)" = deny ]; then
-  ROLEPOD_HOOK_MSG="precommit-gate BLOCKED — private working docs staged: $PRIVATE_DOCS. docs/rolepod/ is never committed. Fix: git restore --staged docs/rolepod; make sure .gitignore lists docs/rolepod/. Repo tracks them on purpose → create .rolepod/docs-tracked, commit again." python3 -I -c "
+if [ -n "$PRIVATE_DOCS" ] && [ "$DOCS_STATE" != tracked ] && [ "$(rolepod_gate_action private-docs)" = deny ]; then
+  ROLEPOD_HOOK_MSG="precommit-gate BLOCKED — working docs staged: $PRIVATE_DOCS, and this repo has not chosen to track them. Fix: git restore --staged docs/rolepod, then docs-mode.sh ignore and the commit it prints, unless the user chose track (docs-mode.sh track, which commits .rolepod/docs-tracked)." python3 -I -c "
 import json, os
 print(json.dumps({'hookSpecificOutput': {'hookEventName': 'PreToolUse', 'permissionDecision': 'deny', 'permissionDecisionReason': os.environ.get('ROLEPOD_HOOK_MSG', '')}}))
 " 2>/dev/null || echo '{}'
@@ -672,7 +694,7 @@ HIGH_RISK=$(echo "$DIFF_STAT" | awk -F'\t' '{print $3}' | grep -vE '\.(test|spec
 # a deleted file (`+++ /dev/null`) keeps its `---` path; git quotes a path
 # with non-ASCII bytes (`+++ "b/\340…md"`), so the closing quote is dropped
 # before the suffix test.
-LOGIC_LINES=$(gitd diff $GIT_DIFF_BASE -U0 2>/dev/null \
+LOGIC_LINES=$(gitd diff $GIT_DIFF_BASE -U0 ${DOCS_EXCL[@]+"${DOCS_EXCL[@]}"} 2>/dev/null \
   | awk '/^diff --git /{hdr=1; next}
          hdr && /^--- /{g=substr($0,5); sub(/[ \t]+$/,"",g); sub(/"$/,"",g); next}
          hdr && /^\+\+\+ /{f=substr($0,5); sub(/[ \t]+$/,"",f); sub(/"$/,"",f); if (f=="/dev/null") f=g; next}
