@@ -78,9 +78,9 @@ Done when: every task names its Owner and Read first.
 
 - **Granularity and edges** — each task passes the unit rule (step 2); each Blocked-by edge names what it consumes, and no task blocks one it does not gate.
 - **Boundary violations** against a declared module map (`edge-cases: Module boundary map`).
-- **Proportion** — a plan several times longer than its spec or chat design is a transcript, not a plan.
+- **Proportion** — a plan several times longer than its spec or chat design is a transcript.
 - **Loop-runnable** — on the saved file (step 8), `plan-lint.sh <plan> [contract]` checks the Failure policy, a Command per task, acyclic Blocked-by edges and parallel ownership. No plan-lint → check these four by eye (`edge-cases: No plan-lint`).
-- **Plan review** — write-spec step 5's critique trigger → `cross-family` kind critique with `references/plan-reviewer-prompt.md`; no `cross-family` → skip it. The user asks for a plan review → a fresh `universal-reviewer` with the same prompt; no subagents → the Lead runs its checks on a fresh read. Otherwise self-review and the lint decide.
+- **Plan review** — write-spec step 5's critique trigger → `cross-family` kind critique with `references/plan-reviewer-prompt.md`; no `cross-family` → skip it. The user asks for a plan review → a fresh `universal-reviewer` on a model other than the Lead's, same prompt; no subagents → the Lead runs its checks on a fresh read. Otherwise self-review and the lint decide.
 
 Done when: every check passes.
 

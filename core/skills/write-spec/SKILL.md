@@ -72,13 +72,13 @@ Done when: no item above remains.
 ### 5. Cross-family critique
 
 Runs only when all hold: Full mode, the cross-family pool on (opt-in), the session not wide-effort, and an R4 spec — or the user asks for a second opinion; R3 stays internal. It runs after Self-review, once Discovery has converged with no open question of your own. The same trigger gates `write-plan`'s independent plan review.
-- Run → `cross-family` kind critique with the draft + Q&A ledger; no `cross-family`, or any condition false → skip; no status line.
-- The status line, ran: `Cross-family critique: <cli> — N items, K settled from repo, M asked` (or `<cli> — NO FURTHER QUESTIONS`).
+- Run → `cross-family` kind critique with the draft + Q&A ledger; no member runs and the user asked → the same brief to a model other than the Lead's; else skip.
+- The status line, a member ran: `Cross-family critique: <cli> — N items, K settled from repo, M asked` (or `<cli> — NO FURTHER QUESTIONS`).
 - Triage before the user sees anything: an item the repo or the spec settles → answer it yourself and fold it in; user decisions → one extra Discovery round; new questions continue normally. Never forward the critic's list raw.
 - A fork the critique surfaces goes to Gate 1 as an option pair with a recommendation; the user decides.
-- Once per spec: a draft revised after it never re-runs it. The status line goes under **High-risk surfaces**. Never blocks a spec.
+- Once per spec: never re-run on a revised draft. The status line goes under **High-risk surfaces**. Never blocks a spec.
 
-Done when: the critique ran with its status line recorded, or was skipped.
+Done when: the critique ran, or was skipped.
 
 ### 6. Gate 1 — file review and approval
 

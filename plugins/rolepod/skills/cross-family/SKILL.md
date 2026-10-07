@@ -20,7 +20,7 @@ The runner is `scripts/cross-family.sh` in this skill's folder (`bash <this skil
 - A wide-effort session (Claude ultracode — a keyword turn or the session setting; Codex `ultra` — proactive delegation active) runs no cross-family member: every kind takes its pool-off path. An explicit user ask for another CLI's opinion still runs.
 - Only the Lead's own CLI is excluded. The model family is recorded as information, never a filter: a member on the Lead's vendor still counts, and a member reporting no family is a FULL external pass.
 - The user asked to set up or change the pool → step 6 first.
-- The user asked for another CLI's opinion and the pool is off → say so and offer step 6 once; write no file without their yes.
+- The user asked for another CLI's opinion and the pool is off → say so, answer via step 5's fallback, offer step 6 once; write no file without their yes.
 
 Done when: at least one usable member is listed, or the pool is off / empty and step 5's fallback is named.
 
@@ -44,7 +44,7 @@ Done when: the brief file exists and a stranger could act on it alone.
 | critique | `write-spec` step 5 owns the trigger; no `write-spec` → only when the user asks | `--kind critique --brief <draft+ledger>` | foreground, 10 min |
 | consult | `debug-issue` after 2 failed attempts | `--kind consult --brief <ledger>` | foreground, short budget |
 
-**The user named a CLI** ("a second opinion from codex") → run the pool in its order and say which member answered. When the named CLI is not first, say so and offer to reorder the pool on request (step 6).
+**The user named a CLI** ("a second opinion from codex") → run the pool in its order and say which member answered. When the named CLI is not first, say so and offer to reorder the pool (step 6).
 
 **review**
 - Attach `git diff HEAD` for uncommitted work (staged + unstaged) or `git diff <base>...HEAD` for a committed branch.
@@ -61,7 +61,7 @@ Done when: the brief file exists and a stranger could act on it alone.
 
 **consult**
 - FOREGROUND, short budget — a stuck loop needs the answer now. The pool's `reviewer.consult` order (`references/pool.md`; unset → the `review` order) puts the fast member first.
-- No usable member → the vertical fallback (`debug-issue` Second opinion item 2 holds the recipe); no `debug-issue` → the Lead's own CLI at its strongest model, valid only when it differs from the running one. It never counts as a cross-family pass.
+- No usable member → the vertical fallback (`debug-issue` Second opinion item 2 holds the recipe); no `debug-issue` → the Lead's own CLI on a model other than the running one, strongest first. It never counts as a cross-family pass.
 
 Done when: the kind ran in its mode, or the runner returned an exit for step 4.
 
@@ -80,8 +80,8 @@ Done when: the answer is in hand with its receipt, or the exit is mapped to step
 - Called by a skill → return to that step: review → the report path and verdict; critique → the ranked items; consult → the opinion.
 - Pool off, empty or failed → the caller's fallback, with the reason for its record:
   - review → the internal strong reviewer;
-  - critique → skip;
-  - consult → the vertical fallback (`debug-issue` Second opinion item 2; no `debug-issue` → step 3's consult line), else stop and ask the user before another fix (`debug-issue` Second opinion item 4).
+  - critique → skip, or a model other than the Lead's when the user asked;
+  - consult → the vertical fallback (step 3's consult line), else stop and ask the user before another fix (`debug-issue` Second opinion item 4).
 - Called alone → report to the user: the member, its verdict or answer, the raw path, and the next move you recommend.
 
 Done when: the caller or the user holds the answer or the named fallback.

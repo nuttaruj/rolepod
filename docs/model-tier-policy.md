@@ -104,8 +104,10 @@ On Claude, `precommit-gate.sh` blocks the commit of a high-risk diff without, si
 CLI: it runs whatever that CLI's config sets as default, and the runner
 never passes a model or effort flag (the phase-log records `model:
 default`). The only place a model flag is legitimate on an external call is
-the **vertical fallback** — the Lead consulting its own CLI at a stronger
-tier — because that CLI IS the Lead. The pool is **opt-in** and the user's
+the **vertical fallback** — the Lead consulting its own CLI on a model
+other than the one running (strongest first; a lower tier counts, since a
+different model gives a different view; a user-asked spec or plan second
+opinion with no member uses it too) — because that CLI IS the Lead. The pool is **opt-in** and the user's
 choice: set `pool` in `~/.rolepod/config.json` (machine-wide only, no project override); space-separated CLI names per kind; `pool.cross-family: "off"` or unset key = off, and nothing
 enables it but the user; the runner excludes the
 Lead's own CLI and drops members that fail at invoke.
@@ -121,7 +123,7 @@ rules keep it from fighting rolepod's own consult machinery:
 
 1. **Advisor IS the vertical-consult channel when configured.** debug-issue
    §9's vertical fallback uses
-   the inline advisor instead of shelling out to the CLI's strongest model.
+   the inline advisor instead of shelling out to another model of the CLI.
    The discipline is unchanged: ONE consult, one advisor-informed round,
    never a second parallel consult for the same event — advisor on does not
    mean consult twice.
