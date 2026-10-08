@@ -19,7 +19,7 @@ lead	skills/convening-code-review/SKILL.md	11720
 lead	skills/cross-family/SKILL.md	9010
 lead	skills/cross-family/references/pool.md	1757
 lead	skills/cross-family/references/review.md	1631
-lead	skills/debug-issue/SKILL.md	10730
+lead	skills/debug-issue/SKILL.md	10827
 lead	skills/debug-issue/references/flake-triage.md	1190
 lead	skills/debug-issue/references/repro-backends.md	1304
 lead	skills/debug-issue/references/root-cause-tracing.md	906
@@ -30,7 +30,7 @@ lead	skills/deepen-codebase/references/explorer-lens.md	2014
 lead	skills/deepen-codebase/references/html-report.md	5959
 lead	skills/finish-work/SKILL.md	13261
 lead	skills/finish-work/examples/finish-examples.md	3265
-lead	skills/finish-work/references/ci-triage.md	3953
+lead	skills/finish-work/references/ci-triage.md	4051
 lead	skills/finish-work/templates/finish-menu.md	2363
 lead	skills/finish-work/templates/pr-body.md	689
 lead	skills/finish-work/templates/release-checklist.md	1459
@@ -53,7 +53,7 @@ lead	skills/using-rolepod/SKILL.md	8954
 lead	skills/using-rolepod/examples/routing-transcripts.md	4316
 lead	skills/using-rolepod/references/fanout-claude.md	2663
 lead	skills/using-rolepod/references/fanout-codex.md	2534
-lead	skills/using-rolepod/references/model-tiers.md	8713
+lead	skills/using-rolepod/references/model-tiers.md	8756
 lead	skills/using-rolepod/references/plugins-and-mcp.md	952
 lead	skills/using-rolepod/references/scope-then-spawn.md	3542
 lead	skills/using-rolepod/references/session-mode.md	796
@@ -77,7 +77,7 @@ lead	skills/write-spec/references/scope-splitting.md	1607
 lead	skills/write-spec/templates/spec-template.md	2705
 lead	standing	18849
 owner	code-writer-own	22121
-owner	skills/debug-issue/SKILL.md	10730
+owner	skills/debug-issue/SKILL.md	10827
 owner	skills/debug-issue/references/flake-triage.md	1190
 owner	skills/debug-issue/references/repro-backends.md	1304
 owner	skills/debug-issue/references/root-cause-tracing.md	906

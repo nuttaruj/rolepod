@@ -21,7 +21,7 @@ Skills by class:
 - cheap — vague build / doc / UI asks and repeat or legacy features (`write-spec`), prototypes, `manage-context` and its handoff briefs, explain-only answers, release notes and changelogs.
 - cheap — every `domain: writing` task, not only pure copy.
 - cheap — a mechanical build task: a rename, config, wiring, a render or pin update, a change that copies an existing pattern; no new logic and no new test.
-- cheap — gathering before a fix: logs, CI output, a repro environment's state → one `rolepod-scout` digest the balanced owner works from (`debug-issue`, `finish-work` CI triage).
+- cheap — gathering before a fix: logs and CI output saved to files (the scout has no shell; the owner runs the commands) → one `rolepod-scout` digest the balanced owner works from (`debug-issue`, `finish-work` CI triage).
 - cheap — the flow run of the QA pass (open, click, observe, report); a new E2E test stays balanced.
 - cheap — a per-item verify a command or grep settles, at high effort; a judgment call stays balanced.
 - A cheap row never builds or verifies a high-risk path, and a cheap task returned rejected or `BLOCKED` twice goes balanced.

@@ -14,8 +14,9 @@ The repo's required checks (branch protection, CI config) decide what is require
 
 A red required lane blocks the merge. Before re-running or escalating,
 triage WHY it is red — the response differs by cause. A long or multi-lane log →
-one cheap `rolepod-scout` digest (failing step, first error line, files named)
-before the table; the fix stays with the owner below.
+save it (`gh run view <id> --log-failed > <file>`), then one cheap `rolepod-scout`
+digest of that file (failing step, first error line, files named) before the
+table; the scout has no shell, and the fix stays with the owner below.
 
 | First check | If yes | Action |
 |-------------|--------|--------|
