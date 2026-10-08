@@ -219,8 +219,10 @@ function task_title(s,    t) {
 # `(Task|Tasks|T)N`, then items `N`, `(Task ?|T)N` or a range `N-M`, joined by
 # `,`, `and`, `&`, `+` or the Thai "and" (octal bytes, portable to BSD awk).
 # Stops at the first token outside that shape. Returns the ids, space-joined.
-function blocked_ids(v,    out, first, item, s0, lo, hi, k, th) {
+function blocked_ids(v,    out, first, item, s0, lo, hi, dash, j, th, rangecap) {
   th = "\340\271\201\340\270\245\340\270\260"
+  # a reversed or absurdly wide range (a typo such as 1-99999) is one ref, not a flood
+  rangecap = 999
   gsub(/\([^)]*\)/, "", v)
   sub(/[[:space:]]+(—|–)[[:space:]]+.*$/, "", v)
   sub(/;.*$/, "", v)
@@ -231,12 +233,12 @@ function blocked_ids(v,    out, first, item, s0, lo, hi, k, th) {
     else if (!match(v, /^(Tasks? ?|T)?[0-9]+(-[0-9]+)?/)) break
     item = substr(v, RSTART, RLENGTH); v = substr(v, RSTART + RLENGTH)
     sub(/^(Tasks? ?|T)/, "", item)
-    k = index(item, "-")
-    if (k == 0) out = out (out == "" ? "" : " ") item
+    dash = index(item, "-")
+    if (dash == 0) out = out (out == "" ? "" : " ") item
     else {
-      lo = substr(item, 1, k - 1) + 0; hi = substr(item, k + 1) + 0
-      if (hi < lo || hi - lo > 999) hi = lo
-      for (k = lo; k <= hi; k++) out = out (out == "" ? "" : " ") k
+      lo = substr(item, 1, dash - 1) + 0; hi = substr(item, dash + 1) + 0
+      if (hi < lo || hi - lo > rangecap) hi = lo
+      for (j = lo; j <= hi; j++) out = out (out == "" ? "" : " ") j
     }
     first = 0
     s0 = v
@@ -633,10 +635,7 @@ plan_task_rows() { # $1 = plan (absolute)
     function flush() {
       if (id == "") return
       blist = ""
-      low = tolower(trim(B))
-      if (low != "" && low !~ /^(none|—|-|–)/) {
-        blist = blocked_ids(B); gsub(/ /, ",", blist)
-      }
+      blist = blocked_ids(B); gsub(/ /, ",", blist)   # none / a dash / empty parse to no refs
       # A task with NO checkbox at all (every field a bare "- **Label:**"
       # bullet, a shape the Command check above also accepts) is not
       # vacuously "done": total_boxes guards against reading it as an

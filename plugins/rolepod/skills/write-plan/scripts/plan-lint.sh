@@ -59,8 +59,9 @@
 #      (its own review-set cell when it is the track's only code task).
 #      A non-Sequential plan with no `## Tracks` fails when two tasks share a
 #      file or one is Blocked by another (each task would be its own track).
-#   5. Parallel plans only: every backticked path in any task's Files field
-#      appears under EXACTLY one owner in the contract's "## File ownership"
+#   5. Parallel plans only: every path in the leading list of any task's Files
+#      field (Files forbidden reads the same list; Files allowed alone also keeps
+#      a note companion) appears under EXACTLY one owner in the contract's "## File ownership"
 #      — an unowned file is unplannable work; a dual-owned file is a merge
 #      conflict on schedule.
 #   3c. Plain lint only: a task that is R4 by a risk path (the --brief tier rule:
@@ -138,15 +139,26 @@ function cleanfiles(s, notekeep,    out, i, c, prevc, depth, inbt, notebt, bt, s
   if (inbt) out = out bt
   return out
 }
-# The paths one Files-field text names, newline-joined: cleanfiles() first,
-# then FIELD_AWK filepaths() (backticked spans and bare path-like tokens), then
-# the path filter: a slash, an extension, a Capitalised-then-lowercase bare name
-# (Makefile, Dockerfile) or a well-known all-caps root file; a backticked flag /
-# symbol / identifier (`--all`, `PHASE=x`, `KIND`) is commentary. The one reader
-# of "which files does this task name" for check 5 and Files forbidden; runs
-# with FIELD_AWK prepended too.
-function taskpaths(s, notekeep,    fp, n, i, p, out) {
-  n = filepaths(cleanfiles(s, notekeep), fp); out = ""
+# The paths one Files-field line names, newline-joined: only its leading path
+# list counts. cleanfiles(s, 0) drops every `( ... )` note, then a dash aside
+# (` — ` / ` – ` to the end of the line, or a line opening with one) is cut, so
+# commentary such as "— bumps `v2.147.0`, reads `KIND`" never adds a path. In
+# what is left every backticked span is a path (a dotless `Makefile` or
+# `CODEOWNERS` too); a bare token takes the path filter: a slash, an extension,
+# a Capitalised-then-lowercase name (Makefile, Dockerfile) or a well-known
+# all-caps root file. The one reader of "which files does this task name" for
+# check 5 and --brief Files forbidden, so the two always agree.
+# NEEDS FIELD_AWK loaded too: it calls filepaths(), and awk rejects an undefined
+# function at parse time.
+function taskpaths(s,    fp, n, i, p, out, m, c) {
+  c = cleanfiles(s, 0); out = ""
+  # tpaside (global): this line opened an aside, so the caller ends the field
+  # there and later continuation lines add no paths.
+  tpaside = sub(/(^|[[:space:]])(—|–)([[:space:]].*)?$/, "", c)
+  m = c
+  while (match(m, /`[^`]+`/)) { out = out substr(m, RSTART + 1, RLENGTH - 2) "\n"; m = substr(m, RSTART + RLENGTH) }
+  gsub(/`[^`]+`/, " ", c)
+  n = filepaths(c, fp)
   for (i = 1; i <= n; i++) {
     p = fp[i]
     if (p ~ /\// || p ~ /\.[A-Za-z][A-Za-z0-9]*$/ || p ~ /^[A-Z][a-z][A-Za-z0-9_-]*$/ || p ~ /^(README|LICENSE|CHANGELOG|CONTRIBUTING|AUTHORS|NOTICE|COPYING)$/) out = out p "\n"
@@ -251,8 +263,10 @@ function fieldbody(line, name) {
 # `,`, `and`, `&`, `+` or the Thai "and" (octal bytes, portable to BSD awk).
 # Stops at the first token outside that shape. Returns the ids, space-joined;
 # callers pull the integers out of the result.
-function blockedrefs(v,    out, first, item, s0, lo, hi, k, th) {
+function blockedrefs(v,    out, first, item, s0, lo, hi, dash, j, th, rangecap) {
   th = "\340\271\201\340\270\245\340\270\260"
+  # a reversed or absurdly wide range (a typo such as 1-99999) is one ref, not a flood
+  rangecap = 999
   gsub(/\([^)]*\)/, "", v)
   sub(/[[:space:]]+(—|–)[[:space:]]+.*$/, "", v)
   sub(/;.*$/, "", v)
@@ -263,12 +277,12 @@ function blockedrefs(v,    out, first, item, s0, lo, hi, k, th) {
     else if (!match(v, /^(Tasks? ?|T)?[0-9]+(-[0-9]+)?/)) break
     item = substr(v, RSTART, RLENGTH); v = substr(v, RSTART + RLENGTH)
     sub(/^(Tasks? ?|T)/, "", item)
-    k = index(item, "-")
-    if (k == 0) out = out (out == "" ? "" : " ") item
+    dash = index(item, "-")
+    if (dash == 0) out = out (out == "" ? "" : " ") item
     else {
-      lo = substr(item, 1, k - 1) + 0; hi = substr(item, k + 1) + 0
-      if (hi < lo || hi - lo > 999) hi = lo
-      for (k = lo; k <= hi; k++) out = out (out == "" ? "" : " ") k
+      lo = substr(item, 1, dash - 1) + 0; hi = substr(item, dash + 1) + 0
+      if (hi < lo || hi - lo > rangecap) hi = lo
+      for (j = lo; j <= hi; j++) out = out (out == "" ? "" : " ") j
     }
     first = 0
     s0 = v
@@ -355,7 +369,6 @@ cur != "" {
   if (fieldgate($0, "Track") && !(cur in trk)) { v = fieldval($0, "Track"); sub(/[[:space:]].*$/, "", v); gsub(/`/, "", v); trk[cur] = v; bcont = ""; next }
   if (fieldgate($0, "Blocked by") && !(cur in bdone)) {
     bdone[cur] = 1; v = fieldval($0, "Blocked by"); bcont = cur
-    if (tolower(v) ~ /^(none|—|-|–)/) { bcont = ""; next }
     addrefs(cur, v)
     next
   }
@@ -735,7 +748,7 @@ if [ "${1:-}" = "--brief" ]; then
   }
   # Add the paths of one Files-field text to the forbidden pool.
   function addtouch(s,    n, ps, i, p) {
-    n = split(taskpaths(s, 1), ps, "\n")
+    n = split(taskpaths(s), ps, "\n")
     for (i = 1; i <= n; i++) {
       p = ps[i]
       if (p != "" && !(p in touchseen)) { touchseen[p] = 1; touchorder[++tn] = p }
@@ -823,9 +836,9 @@ if [ "${1:-}" = "--brief" ]; then
     # The forbidden pool is the union of every task Files field (this task
     # included; its own paths are dropped against Files allowed at print time).
     if (anytask) {
-      if (fieldline($0, "Files")) { allf = 1; addtouch(fieldbody($0, "Files")) }
-      else if ($0 ~ /^[-*][[:space:]]/) allf = 0
-      else if (allf && trim($0) != "") addtouch(trim($0))
+      if (fieldline($0, "Files")) { allf = 1; addtouch(fieldbody($0, "Files")); if (tpaside) allf = 0 }
+      else if (trim($0) == "" || $0 ~ /^[-*][[:space:]]/) allf = 0
+      else if (allf) { addtouch(trim($0)); if (tpaside) allf = 0 }
     }
     if (intask) {
       line = $0
@@ -1165,7 +1178,7 @@ if (planwt == 1) tpath = substr(tbranch, 1, length(tbranch) - 5)
     # consumes); the plan file stays one line per task, never the handoff board.
     tbase = planpath; sub(/^.*\//, "", tbase); sub(/\.md$/, "", tbase)
     rname = tbase; sub(/-[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]$/, "", rname); rname = rname "-task" (want + 0)
-    if (B != "" && tolower(B) !~ /^(none|—|-|–)/) {
+    if (B != "") {
       bm = blockedrefs(B)
       while (match(bm, /[0-9]+/)) {
         br = substr(bm, RSTART, RLENGTH) + 0; bm = substr(bm, RSTART + RLENGTH)
@@ -1482,7 +1495,7 @@ GRAPH=$(awk -v rx="$TASK_RX" -v seq="$SEQUENTIAL" "$FENCE_AWK$FIELD_AWK"'
   $0 ~ rx {
     id = $0; sub(/^### (Task ?|T)/, "", id); sub(/[^0-9].*$/, "", id)
     if (id in seen) dup[id] = 1
-    cur = id; n++; order[n] = id; seen[id] = 1; next
+    cur = id; bcont = ""; n++; order[n] = id; seen[id] = 1; next
   }
   /^## / { cur = "" ; next }
   cur != "" && /Blocked by:/ && !(cur in has) {
@@ -1491,21 +1504,16 @@ GRAPH=$(awk -v rx="$TASK_RX" -v seq="$SEQUENTIAL" "$FENCE_AWK$FIELD_AWK"'
     # a prose sentence elsewhere on the line that merely quotes the
     # label text is never the field.
     if (!fieldgate($0, "Blocked by")) next
-    has[cur] = 1; v = fieldval($0, "Blocked by")
-    # lowercased before the check — the same tolower() approach ticket.sh
-    # uses, so "NONE" (any casing) means no blockers on both parsers, not
-    # just "None"/"none".
-    if (tolower(v) ~ /^(none|—|-|–)/) next
-    # every parenthesised aside and a trailing em/en-dash aside come off
-    # (blockedrefs): "Task 1 (why), Task 3 (why)" resolves to {1,3}, and
-    # "Task 3 — landed in v2.90.0" to {3}, not 2/90/0 out of the prose.
-    m = blockedrefs(v)
-    while (match(m, /[0-9]+/)) {
-      r = substr(m, RSTART, RLENGTH); m = substr(m, RSTART + RLENGTH)
-      if (!(cur SUBSEP r in edge)) { edge[cur, r] = 1; refs[cur] = refs[cur] " " r }
-    }
+    # The raw value is kept whole (wrapped lines join below) and parsed in
+    # END by blockedrefs: "none" or a dash parse to no refs, asides come off
+    # ("Task 1 (why), Task 3 (why)" is {1,3}; "Task 3 — landed in v2.90.0" is {3}).
+    has[cur] = 1; braw[cur] = fieldval($0, "Blocked by"); bcont = cur
     next
   }
+  # A wrapped Blocked-by value: unbulleted continuation lines, the same
+  # lines ticket.sh and addrefs read.
+  bcont != "" && bcont == cur && trim($0) != "" && $0 !~ /^[[:space:]]*[-*][[:space:]]/ && $0 !~ /^#/ { braw[cur] = braw[cur] " " trim($0); next }
+  /^[[:space:]]*[-*][[:space:]]/ || /^#/ { bcont = "" }
   # Advisory (v2.144.0) inputs, gathered off the SAME task blocks: every
   # path on a task first "Files:" line (bold or not — a prefactor-smell
   # candidate needs no more than the path and the task ids), backticked OR
@@ -1530,6 +1538,13 @@ GRAPH=$(awk -v rx="$TASK_RX" -v seq="$SEQUENTIAL" "$FENCE_AWK$FIELD_AWK"'
   }
   END {
     if (n == 0) exit 0
+    for (k = 1; k <= n; k++) {
+      t = order[k]; m = blockedrefs(braw[t])
+      while (match(m, /[0-9]+/)) {
+        r = substr(m, RSTART, RLENGTH); m = substr(m, RSTART + RLENGTH)
+        if (!(t SUBSEP r in edge)) { edge[t, r] = 1; refs[t] = refs[t] " " r }
+      }
+    }
     for (d in dup) print "E duplicate task id " d " — two blocks carry the same number; Blocked by cannot name either"
     withf = 0; for (k = 1; k <= n; k++) if (order[k] in has) withf++
     if (withf == 0) print "A no Blocked by fields — order is prose only; add one per task"
@@ -1692,23 +1707,28 @@ if [ -z "$OWNERSHIP" ]; then
   exit 1
 fi
 
-# Every backticked path in any task's Files field must appear under
-# exactly one owner line. Each line is run through the shared cleanfiles()
-# with notekeep=0 — a backticked token inside a `( … )` note (an
+# Every path in any task's Files field must appear under exactly one
+# owner line. Each line is read by the shared taskpaths() (the same reader
+# as --brief Files forbidden): only its leading path list, a dash aside
+# cut, every note dropped — a backticked token inside a `( … )` note (an
 # explanatory aside, e.g. "moved from the old `agent-frontmatter/` dir")
 # is commentary here, never a second file to own; contract ownership is
 # compared by exact string, so a leaked note token always reads unowned.
 # This also means a genuine companion path written as a note (the `--brief`
 # per-task Files field allows "`x.py` (+ `tests/static/x.sh`)" to add a
-# real companion) is NOT ownership-checked when written in this top-level
-# section — write it as its own bullet instead.
+# real companion) is NOT ownership-checked when written in a note — list it
+# as its own path instead (Files allowed keeps a note companion; Files
+# forbidden and check 5 read the leading path list only, so neither sees it).
+# A Files continuation ends at a blank line, the next bullet or the line that
+# opens a dash aside. Every backticked token in the list counts (a dotless
+# `CODEOWNERS` too).
 FILES=$(awk -v rx="$TASK_RX" "$CLEANFILES_AWK$FENCE_AWK$FIELD_AWK"'
   fenceline($0) { next }
   /^## / { t = 0; f = 0; next }
   $0 ~ rx { t = 1; f = 0; next }
-  t && fieldgate($0, "Files") { f = 1; printf "%s", taskpaths(fieldbody($0, "Files"), 0); next }
-  t && f && $0 ~ /^[-*][[:space:]]/ { f = 0 }
-  t && f { printf "%s", taskpaths($0, 0) }
+  t && fieldgate($0, "Files") { f = 1; printf "%s", taskpaths(fieldbody($0, "Files")); if (tpaside) f = 0; next }
+  t && f && (trim($0) == "" || $0 ~ /^[-*][[:space:]]/) { f = 0 }
+  t && f { printf "%s", taskpaths(trim($0)); if (tpaside) f = 0 }
 ' "$PLAN" | sort -u)
 if [ -z "$FILES" ]; then
   echo "  ✗ parallel plan has no paths in any task Files field"

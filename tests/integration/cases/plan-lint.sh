@@ -126,15 +126,13 @@ else
 fi
 
 # ── lint path (not --brief): a backticked token inside a `( … )` note on a
-# Files-to-touch bullet is commentary, never a second file — reuses the
+# task Files line is commentary, never a second file — reuses the
 # same cleanfiles() rule --brief already applies (always-on-core-lean
 # follow-up: `agent-frontmatter/` inside the note was flagged unowned).
 cat > "$TMP/note-plan.md" <<'EOF'
 # Note Plan
-## Files to touch
-- `adapters/antigravity/agent-frontmatter/` (moved from the old `agent-frontmatter/` dir)
 ### Task 1: move dir
-- [ ] Files: adapters/antigravity/agent-frontmatter/
+- [ ] Files: `adapters/antigravity/agent-frontmatter/` (moved from the old `agent-frontmatter/` dir)
 - [ ] Command: true
 ## Parallel layout
 One track per `note-contract.md`.
@@ -147,7 +145,7 @@ cat > "$TMP/note-contract.md" <<'EOF'
 - `devops-sre`: `adapters/antigravity/agent-frontmatter/`
 EOF
 if bash "$LINT" "$TMP/note-plan.md" "$TMP/note-contract.md" >/dev/null; then
-  echo "  ✓ plan-lint.sh drops a backticked note token from Files to touch, not just --brief"
+  echo "  ✓ plan-lint.sh drops a backticked note token from a task Files line, not just --brief"
 else
   echo "  ✗ plan-lint.sh flagged the note's backticked token as an unowned file"; fail=$((fail+1))
 fi
@@ -4257,8 +4255,8 @@ cat > "$NS/plan.md" <<'PLAN'
 ### Task 2: second
 - **Delivers:** d
 - **Blocked by:** none
-- [ ] **Files:** `hooks/b.sh`, `Makefile` — reads `KIND`
-  and `tests/b.sh`
+- [ ] **Files:** `hooks/b.sh`, `Makefile`
+  and `tests/b.sh` — reads `KIND`
 - [ ] **Change:** c
 - [ ] **Command:** true
 - **Owner:** backend-developer
@@ -4299,6 +4297,162 @@ if printf '%s\n' "$NSF" | grep -qxF -- '- hooks/b.sh' && printf '%s\n' "$NSF" | 
   echo "  ✓ --brief Files forbidden is the other tasks' Files when the plan has no Files to touch section"
 else
   echo "  ✗ --brief Files forbidden without the section: $NSF"; fail=$((fail+1))
+fi
+
+# A "## Files to touch" section naming other paths changes nothing: lint and
+# --brief Files forbidden match the same plan without the section.
+mkdir -p "$NS/with" "$NS/without"
+cp "$NS/plan.md" "$NS/without/plan.md"; cp "$NS/contract.md" "$NS/without/contract.md"
+awk '/^## Tasks/ { print "## Files to touch"; print "- `zzz/ghost.sh` — not in any task"; print "- `hooks/a.sh` — listed here too"; print "" } { print }' "$NS/plan.md" > "$NS/with/plan.md"
+cp "$NS/contract.md" "$NS/with/contract.md"
+IGN_W=$(cd "$NS/with" && bash "$LINT" plan.md contract.md 2>&1; echo "rc=$?")
+IGN_WO=$(cd "$NS/without" && bash "$LINT" plan.md contract.md 2>&1; echo "rc=$?")
+IGN_BW=$(cd "$NS/with" && bash "$LINT" --brief 1 plan.md contract.md 2>/dev/null | awk '/^## Files forbidden/{f=1;next} /^## /{f=0} f')
+IGN_BWO=$(cd "$NS/without" && bash "$LINT" --brief 1 plan.md contract.md 2>/dev/null | awk '/^## Files forbidden/{f=1;next} /^## /{f=0} f')
+if [ "$IGN_W" = "$IGN_WO" ] && [ -n "$IGN_BW" ] && [ "$IGN_BW" = "$IGN_BWO" ] \
+  && ! printf '%s\n' "$IGN_W$IGN_BW" | grep -qF 'ghost'; then
+  echo "  ✓ a leftover Files to touch section is ignored (check 5 and --brief Files forbidden unchanged)"
+else
+  echo "  ✗ the Files to touch section changed the result: with=[$IGN_W] without=[$IGN_WO] brief=[$IGN_BW] vs [$IGN_BWO]"; fail=$((fail+1))
+fi
+
+# A Files continuation ends at a blank line: prose after it is not a path.
+cat > "$NS/blank-plan.md" <<'PLAN'
+# Blank Stop Plan
+
+### Task 1: first
+- **Delivers:** d
+- **Blocked by:** none
+- [ ] **Files:** `hooks/a.sh`,
+
+  see `docs/prose-only.md` for background
+- [ ] **Command:** true
+- **Owner:** devops-sre
+
+### Task 2: second
+- **Delivers:** d
+- **Blocked by:** none
+- [ ] **Files:** `hooks/b.sh`
+- [ ] **Command:** true
+- **Owner:** backend-developer
+
+## Parallel layout
+Parallel — contract: `contract.md`
+
+## Failure policy
+Default: stop.
+PLAN
+printf '# C\n\n## File ownership\n- `devops-sre`: `hooks/a.sh`\n- `backend-developer`: `hooks/b.sh`\n' > "$NS/blank-contract.md"
+BLK=$(bash "$LINT" "$NS/blank-plan.md" "$NS/blank-contract.md" 2>&1) && BLKRC=0 || BLKRC=$?
+BLKF=$(bash "$LINT" --brief 2 "$NS/blank-plan.md" "$NS/blank-contract.md" 2>/dev/null | awk '/^## Files forbidden/{f=1;next} /^## /{f=0} f')
+if [ "$BLKRC" -eq 0 ] && ! printf '%s\n' "$BLK$BLKF" | grep -qF 'prose-only'; then
+  echo "  ✓ a Files continuation stops at a blank line (check 5 and Files forbidden ignore the prose after it)"
+else
+  echo "  ✗ Files continuation ran past a blank line rc=$BLKRC: $BLK / $BLKF"; fail=$((fail+1))
+fi
+
+# Check 5 keeps a backticked dotless name (CODEOWNERS) as a path, like the old section reader.
+sed 's|`hooks/b.sh`$|`hooks/b.sh`, `CODEOWNERS`|' "$NS/blank-plan.md" > "$NS/dotless-plan.md"
+DOT=$(bash "$LINT" "$NS/dotless-plan.md" "$NS/blank-contract.md" 2>&1) && DOTRC=0 || DOTRC=$?
+if [ "$DOTRC" -ne 0 ] && printf '%s\n' "$DOT" | grep -qF 'unowned file: `CODEOWNERS`'; then
+  echo "  ✓ check 5 counts a backticked dotless name as a path (unowned CODEOWNERS flagged)"
+else
+  echo "  ✗ check 5 dropped a backticked dotless name rc=$DOTRC: $DOT"; fail=$((fail+1))
+fi
+
+# Check 5 and --brief Files forbidden read the same tokens: the leading path
+# list counts (a backticked dotless name too); a dash aside never adds a path.
+cat > "$NS/aside-plan.md" <<'PLAN'
+# Aside Plan
+
+### Task 1: first
+- **Delivers:** d
+- **Blocked by:** none
+- [ ] **Files:** `src/a.sh`, `CODEOWNERS`
+- [ ] **Command:** true
+- **Owner:** devops-sre
+
+### Task 2: second
+- **Delivers:** d
+- **Blocked by:** none
+- [ ] **Files:** `src/b.sh`, `Makefile` — bumps `v2.147.0`, reads `KIND`, flips `FLAG=1`, drops `--all`
+- [ ] **Command:** true
+- **Owner:** backend-developer
+
+## Parallel layout
+Parallel — contract: `contract.md`
+
+## Failure policy
+Default: stop.
+PLAN
+printf '# C\n\n## File ownership\n- `devops-sre`: `src/a.sh`, `CODEOWNERS`\n- `backend-developer`: `src/b.sh`, `Makefile`\n' > "$NS/aside-contract.md"
+ASD=$(bash "$LINT" "$NS/aside-plan.md" "$NS/aside-contract.md" 2>&1) && ASDRC=0 || ASDRC=$?
+ASF1=$(bash "$LINT" --brief 1 "$NS/aside-plan.md" "$NS/aside-contract.md" 2>/dev/null | awk '/^## Files forbidden/{f=1;next} /^## /{f=0} f')
+ASF2=$(bash "$LINT" --brief 2 "$NS/aside-plan.md" "$NS/aside-contract.md" 2>/dev/null | awk '/^## Files forbidden/{f=1;next} /^## /{f=0} f')
+if [ "$ASDRC" -eq 0 ] && ! printf '%s\n' "$ASD" | grep -q 'unowned' \
+  && printf '%s\n' "$ASF1" | grep -qxF -- '- src/b.sh' && printf '%s\n' "$ASF1" | grep -qxF -- '- Makefile' \
+  && ! printf '%s\n' "$ASF1" | grep -q 'v2\.147\.0\|KIND\|FLAG=1\|--all' \
+  && printf '%s\n' "$ASF2" | grep -qxF -- '- CODEOWNERS' && printf '%s\n' "$ASF2" | grep -qxF -- '- src/a.sh'; then
+  echo "  ✓ check 5 and Files forbidden agree: a dash aside adds no path, a backticked dotless name in the list does"
+else
+  echo "  ✗ check 5 / Files forbidden read a dash aside or dropped a dotless path rc=$ASDRC: $ASD / [$ASF1] / [$ASF2]"; fail=$((fail+1))
+fi
+
+# The aside cut on every line: an en dash, a value opening with a dash, a
+# continuation line (the field ends there: a later line adds no path), an aside
+# wrapped onto the next line; a ( ... ) note companion is not in Files forbidden.
+cat > "$NS/wrap-plan.md" <<'PLAN'
+# Wrap Aside Plan
+
+### Task 1: first
+- **Delivers:** d
+- **Blocked by:** none
+- [ ] **Files:** `src/a.sh`, `CODEOWNERS` – en aside `docs/en.md`
+- [ ] **Command:** true
+- **Owner:** devops-sre
+
+### Task 2: second
+- **Delivers:** d
+- **Blocked by:** none
+- [ ] **Files:** `src/b.sh` (+ `docs/note-only.md`),
+  `c.sh` — reads `KIND`
+  `docs/after-aside.md`
+- [ ] **Command:** true
+- **Owner:** backend-developer
+
+### Task 3: third
+- **Delivers:** d
+- **Blocked by:** none
+- [ ] **Files:** — see `docs/open.md`
+- [ ] **Command:** true
+- **Owner:** devops-sre
+
+### Task 4: fourth
+- **Delivers:** d
+- **Blocked by:** none
+- [ ] **Files:** `d.sh` — reads
+  the `KIND` flag
+- [ ] **Command:** true
+- **Owner:** frontend-developer
+
+## Parallel layout
+Parallel — contract: `contract.md`
+
+## Failure policy
+Default: stop.
+PLAN
+printf '# C\n\n## File ownership\n- `devops-sre`: `src/a.sh`, `CODEOWNERS`\n- `backend-developer`: `src/b.sh`, `c.sh`\n- `frontend-developer`: `d.sh`\n' > "$NS/wrap-contract.md"
+WRP=$(bash "$LINT" "$NS/wrap-plan.md" "$NS/wrap-contract.md" 2>&1) && WRPRC=0 || WRPRC=$?
+WRF1=$(bash "$LINT" --brief 1 "$NS/wrap-plan.md" "$NS/wrap-contract.md" 2>/dev/null | awk '/^## Files forbidden/{f=1;next} /^## /{f=0} f')
+WRF2=$(bash "$LINT" --brief 2 "$NS/wrap-plan.md" "$NS/wrap-contract.md" 2>/dev/null | awk '/^## Files forbidden/{f=1;next} /^## /{f=0} f')
+if [ "$WRPRC" -eq 0 ] && ! printf '%s\n' "$WRP" | grep -q 'unowned' \
+  && printf '%s\n' "$WRF1" | grep -qxF -- '- src/b.sh' && printf '%s\n' "$WRF1" | grep -qxF -- '- c.sh' \
+  && printf '%s\n' "$WRF1" | grep -qxF -- '- d.sh' \
+  && printf '%s\n' "$WRF2" | grep -qxF -- '- src/a.sh' && printf '%s\n' "$WRF2" | grep -qxF -- '- CODEOWNERS' \
+  && ! printf '%s\n' "$WRP$WRF1$WRF2" | grep -q 'KIND\|docs/en\.md\|docs/open\.md\|docs/note-only\.md\|docs/after-aside\.md'; then
+  echo "  ✓ every line cuts its aside (en dash, opening dash, continuation, wrapped) and a note companion is not forbidden"
+else
+  echo "  ✗ an aside or a note leaked a path rc=$WRPRC: $WRP / [$WRF1] / [$WRF2]"; fail=$((fail+1))
 fi
 rm -rf "$NS"
 

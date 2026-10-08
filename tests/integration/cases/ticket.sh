@@ -504,6 +504,12 @@ Task 4 and 5 & 6 + 7
 none — reason 55
 EOF
   printf '### Task 10: t10\n- **Blocked by:** Task 1,\n  Task 2\n- [ ] **Files:** `f10.txt`\n- [ ] **Command:** `true`\n\n'
+  # 11: a ref after the Thai joiner. 12/13: a wrapped ref that closes a cycle
+  # (only seen when the continuation line is read). 14: Task 98 does not exist.
+  printf '### Task 11: t11\n- **Blocked by:** Task 2 \340\271\201\340\270\245\340\270\260 3\n- [ ] **Files:** `f11.txt`\n- [ ] **Command:** `true`\n\n'
+  printf '### Task 12: t12\n- **Blocked by:** Task 11,\n  Task 13\n- [ ] **Files:** `f12.txt`\n- [ ] **Command:** `true`\n\n'
+  printf '### Task 13: t13\n- **Blocked by:** Task 12\n- [ ] **Files:** `f13.txt`\n- [ ] **Command:** `true`\n\n'
+  printf '### Task 14: t14\n- **Blocked by:** Task 11 \340\271\201\340\270\245\340\270\260 Task 98\n- [ ] **Files:** `f14.txt`\n- [ ] **Command:** `true`\n\n'
   printf '## Parallel layout\nSequential — one owner.\n\n## Failure policy\nDefault: stop.\n'
 } > "$BPLAN"
 BP_OUT=$(bash "$TICKET" status "$BPLAN" 2>&1)
@@ -516,11 +522,19 @@ BP_WANT="- Task 1 — t1: todo
 - Task 7 — t7: waits on 1, 3
 - Task 8 — t8: waits on 4, 5, 6, 7
 - Task 9 — t9: todo
-- Task 10 — t10: waits on 1, 2"
+- Task 10 — t10: waits on 1, 2
+- Task 11 — t11: waits on 2, 3
+- Task 12 — t12: waits on 11, 13
+- Task 13 — t13: waits on 12
+- Task 14 — t14: waits on 11, 98"
 BP_LINT=$(bash "$REPO_DIR/core/skills/write-plan/scripts/plan-lint.sh" "$BPLAN" 2>&1)
+# the graph errors are exactly the two the shape plants: a dropped Thai-joined
+# ref (98) or a lost wrapped ref (the 12/13 cycle) changes this set
+BP_ERRS=$(printf '%s\n' "$BP_LINT" | grep -E 'no such task|cycle|blocks itself' | sed 's/^ *//')
+BP_ERRS_WANT="✗ Task 14 is blocked by Task 98 — no such task in this plan
+✗ Blocked-by cycle among Tasks 12, 13 — nothing can start"
 if [ "$(printf '%s\n' "$BP_OUT" | sed -n '2,$p')" = "$BP_WANT" ] \
-  && printf '%s\n' "$BP_LINT" | grep -q 'graph resolves, no cycle (10 tasks)' \
-  && ! printf '%s\n' "$BP_LINT" | grep -q 'no such task'; then
+  && [ "$BP_ERRS" = "$BP_ERRS_WANT" ]; then
   echo "  ✓ Blocked by: the leading task list only (ranges, and/&/+/Thai-and joins, bare numbers) — status and plan-lint agree"
 else
   echo "  ✗ Blocked-by parse wrong: status=[$BP_OUT] lint=[$BP_LINT]"; fail=$((fail+1))
