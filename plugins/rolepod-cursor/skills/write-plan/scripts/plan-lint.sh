@@ -859,17 +859,25 @@ if [ "${1:-}" = "--brief" ]; then
       ownsec = ($0 ~ /^## File ownership/) ? 1 : 0
       dnsec = ($0 ~ /^## Do-not-touch list/) ? 1 : 0
       sisec = ($0 ~ /^## Shared interfaces/) ? 1 : 0
+      sicont = 0
       next
     }
-    # Shared interfaces: a label line opening with an id C<n> starts an entry,
-    # each following `> ` line is one quoted sentence of it, kept verbatim.
+    # Shared interfaces: a label line opening with an id C<n> starts an entry
+    # (a new label or a heading closes it). Any later `> ` line is kept
+    # verbatim; an indented line is kept only right after the label, a `>`
+    # line or a kept indented line (a top-level plain line only stops that
+    # run). A bare `>` is not kept.
     if (sisec) {
       cl = $0; sub(/\r$/, "", cl)
       if (match(cl, /^C[0-9]+([^A-Za-z0-9]|$)/)) {
         cid = substr(cl, 1, RLENGTH); sub(/[^0-9]+$/, "", cid)
         if (!(cid in sitext)) sids[++nsi] = cid
         sitext[cid] = ""
-      } else if (cid != "" && cl ~ /^> /) sitext[cid] = (sitext[cid] == "" ? cl : sitext[cid] "\n" cl)
+        sicont = 1
+      } else if (cid != "" && cl ~ /^> /) { sitext[cid] = (sitext[cid] == "" ? cl : sitext[cid] "\n" cl); sicont = 1 }
+      else if (cid != "" && cl ~ /^>/) sicont = 1
+      else if (cid != "" && sicont && cl ~ /^[ \t]+[^ \t]/) sitext[cid] = (sitext[cid] == "" ? cl : sitext[cid] "\n" cl)
+      else if (cl !~ /^[ \t]*$/) sicont = 0
       next
     }
     if (ownsec) {
