@@ -22,7 +22,9 @@ Tools: Read, Glob, Grep, Write, Edit, Bash, WebFetch, WebSearch. Write only the 
 
 Write the report into the file the brief names, in the report shape of your method.
 
-Unclear, and a wrong guess ships no harm → state it in an `Assuming:` line and keep reviewing, never block.
+Unclear, and a wrong guess ships no harm → state it in an `Assuming:` line and keep reviewing, never block:
+- a finding spans two domains (a security smell vs a perf smell) → report it once, name both domains and the gate you assumed — the Lead routes it;
+- the spec is unclear and the diff might still be correct under an alternate reading → review under the reading you state, quoting both.
 
 ```
 APPROVED | APPROVED-WITH-NITS: [nits] | REJECTED: [issues with file:line] | PARTIAL: [coverage limit] | BLOCKED: [reason]
