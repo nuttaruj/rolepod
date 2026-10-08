@@ -13,10 +13,6 @@
 ## Source spec
 <Approved spec path, or the clear goal that supplies requirements>
 
-## Files to touch
-<Concrete paths with a short change description>
-- `path/to/file` — <what changes>
-
 ## Tasks
 <One task per review gate. Keep the planned contract here; record status by checkbox and deviations under Changes during build.>
 

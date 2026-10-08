@@ -93,6 +93,9 @@ cat > "$TMP/par-plan.md" <<'EOF'
 ### Task 1: api
 - [ ] Files: api/users.py
 - [ ] Command: pytest api/
+### Task 2: ui
+- [ ] Files: ui/form.tsx
+- [ ] Command: pytest ui/
 ## Parallel layout
 Two tracks per `par-contract.md`; merge order: api → ui.
 ## Failure policy
@@ -2077,7 +2080,7 @@ cat > "$BF/plan.md" <<'PLAN'
 ### Task 2: second
 - **Delivers:** d
 - **Blocked by:** none
-- [ ] **Files:** `src/b.sh`
+- [ ] **Files:** `src/b.sh`, `Makefile`, `README` — bumps `v2.147.0`, reads `KIND`, flips `FLAG=1`, drops `--all`
 - [ ] **Change:** c
 - [ ] **Test / evidence:** end-to-end browser flow through the login page
 - [ ] **Command:** `make test`
@@ -4234,6 +4237,70 @@ rc=0; B3=$(cd "$TMP" && bash "$LINT" --brief 1 "$TMP/h1.md") || rc=$?
 if [ "$rc" -eq 0 ] && printf '%s\n' "$B3" | grep -A1 '^## Tier' | grep -qF 'R4'; then
   echo "  ✓ --brief prints an R4 task without a high-risk line (exit 0)"
 else echo "  ✗ --brief on an unnamed R4 task wrong rc=$rc"; fail=$((fail+1)); fi
+
+# ── F2: no "## Files to touch" section — check 5 and Files forbidden read the union of every task's Files ──
+NS=$(mktemp -d)
+cat > "$NS/plan.md" <<'PLAN'
+# No Section Plan
+
+## Tasks
+
+### Task 1: first
+- **Delivers:** d
+- **Blocked by:** none
+- [ ] **Files:** `hooks/a.sh`
+- [ ] **Change:** c
+- [ ] **Command:** true
+- **Owner:** devops-sre
+- **Done when:** done
+
+### Task 2: second
+- **Delivers:** d
+- **Blocked by:** none
+- [ ] **Files:** `hooks/b.sh`, `Makefile` — reads `KIND`
+  and `tests/b.sh`
+- [ ] **Change:** c
+- [ ] **Command:** true
+- **Owner:** backend-developer
+- **Done when:** done
+
+## Parallel layout
+Parallel — contract: `contract.md`
+
+## Failure policy
+Default: stop.
+PLAN
+cat > "$NS/contract.md" <<'CONTRACT'
+# No Section Contract
+
+## File ownership
+- `devops-sre`: `hooks/a.sh`
+- `backend-developer`: `hooks/b.sh`, `Makefile`, `tests/b.sh`
+CONTRACT
+NSOUT=$(cd "$NS" && bash "$LINT" plan.md contract.md 2>&1) && NSRC=0 || NSRC=$?
+if [ "$NSRC" -eq 0 ] && ! printf '%s\n' "$NSOUT" | grep -q 'no backticked paths'; then
+  echo "  ✓ plan-lint.sh check 5 passes a parallel plan with no Files to touch section"
+else
+  echo "  ✗ plan-lint.sh check 5 rc=$NSRC without the section: $NSOUT"; fail=$((fail+1))
+fi
+printf '# No Section Contract\n\n## File ownership\n- `devops-sre`: `hooks/a.sh`\n- `backend-developer`: `hooks/b.sh`, `Makefile`\n' > "$NS/contract-gap.md"
+NSGAP=$(cd "$NS" && bash "$LINT" plan.md contract-gap.md 2>&1) && NSGRC=0 || NSGRC=$?
+if [ "$NSGRC" -ne 0 ] && printf '%s\n' "$NSGAP" | grep -qF 'unowned file: `tests/b.sh`' \
+  && ! printf '%s\n' "$NSGAP" | grep -qF 'KIND'; then
+  echo "  ✓ plan-lint.sh check 5 flags a task Files path with no owner (no section needed)"
+else
+  echo "  ✗ plan-lint.sh check 5 missed an unowned task Files path rc=$NSGRC: $NSGAP"; fail=$((fail+1))
+fi
+NSB=$(cd "$NS" && bash "$LINT" --brief 1 plan.md contract.md 2>/dev/null)
+NSF=$(printf '%s\n' "$NSB" | awk '/^## Files forbidden/{f=1;next} /^## /{f=0} f')
+if printf '%s\n' "$NSF" | grep -qxF -- '- hooks/b.sh' && printf '%s\n' "$NSF" | grep -qxF -- '- Makefile' \
+  && printf '%s\n' "$NSF" | grep -qxF -- '- tests/b.sh' && ! printf '%s\n' "$NSF" | grep -qF 'KIND' \
+  && ! printf '%s\n' "$NSF" | grep -qxF -- '- hooks/a.sh'; then
+  echo "  ✓ --brief Files forbidden is the other tasks' Files when the plan has no Files to touch section"
+else
+  echo "  ✗ --brief Files forbidden without the section: $NSF"; fail=$((fail+1))
+fi
+rm -rf "$NS"
 
 if [ "$fail" -eq 0 ]; then
   echo "  ✓ pass"

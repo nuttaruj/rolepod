@@ -59,7 +59,7 @@
 #      (its own review-set cell when it is the track's only code task).
 #      A non-Sequential plan with no `## Tracks` fails when two tasks share a
 #      file or one is Blocked by another (each task would be its own track).
-#   5. Parallel plans only: every backticked path under "## Files to touch"
+#   5. Parallel plans only: every backticked path in any task's Files field
 #      appears under EXACTLY one owner in the contract's "## File ownership"
 #      — an unowned file is unplannable work; a dual-owned file is a merge
 #      conflict on schedule.
@@ -96,7 +96,7 @@ TASK_RX='^### (Task ?|T)[0-9]+'
 # only)" drops `helper()`, but "(+ `tests/static/x.sh`)" keeps
 # `tests/static/x.sh` when notekeep=1). `--brief`'s per-task Files value
 # passes notekeep=1 (a note may legitimately add a companion path); the
-# plain lint path's "## Files to touch" section passes notekeep=0 — a
+# plain lint path's check 5 (every task Files field) passes notekeep=0 — a
 # note there is read against the contract's exact ownership strings, so
 # an explanatory aside ("moved from the old `agent-frontmatter/` dir")
 # must never masquerade as a second file to own (always-on-core-lean
@@ -136,6 +136,21 @@ function cleanfiles(s, notekeep,    out, i, c, prevc, depth, inbt, notebt, bt, s
     out = out c
   }
   if (inbt) out = out bt
+  return out
+}
+# The paths one Files-field text names, newline-joined: cleanfiles() first,
+# then FIELD_AWK filepaths() (backticked spans and bare path-like tokens), then
+# the path filter: a slash, an extension, a Capitalised-then-lowercase bare name
+# (Makefile, Dockerfile) or a well-known all-caps root file; a backticked flag /
+# symbol / identifier (`--all`, `PHASE=x`, `KIND`) is commentary. The one reader
+# of "which files does this task name" for check 5 and Files forbidden; runs
+# with FIELD_AWK prepended too.
+function taskpaths(s, notekeep,    fp, n, i, p, out) {
+  n = filepaths(cleanfiles(s, notekeep), fp); out = ""
+  for (i = 1; i <= n; i++) {
+    p = fp[i]
+    if (p ~ /\// || p ~ /\.[A-Za-z][A-Za-z0-9]*$/ || p ~ /^[A-Z][a-z][A-Za-z0-9_-]*$/ || p ~ /^(README|LICENSE|CHANGELOG|CONTRIBUTING|AUTHORS|NOTICE|COPYING)$/) out = out p "\n"
+  }
   return out
 }
 '
@@ -718,6 +733,14 @@ if [ "${1:-}" = "--brief" ]; then
     if (lp ~ /_(test|spec)\.(go|rs|rb|ex|exs)$/) return 1
     return 0
   }
+  # Add the paths of one Files-field text to the forbidden pool.
+  function addtouch(s,    n, ps, i, p) {
+    n = split(taskpaths(s, 1), ps, "\n")
+    for (i = 1; i <= n; i++) {
+      p = ps[i]
+      if (p != "" && !(p in touchseen)) { touchseen[p] = 1; touchorder[++tn] = p }
+    }
+  }
   # A field is only a line whose trimmed, asterisk-stripped start is a
   # bullet (dash OR asterisk — the same bullet grammar the Blocked-by /
   # Files / Owner graph scan below accepts), an optional checkbox
@@ -774,16 +797,14 @@ if [ "${1:-}" = "--brief" ]; then
     if ($0 ~ /^## /) {
       intask = 0; field = ""
       specsec = ($0 ~ /^## Source spec/) ? 1 : 0
-      filessec = ($0 ~ /^## Files to touch/) ? 1 : 0
       hrsec = (tolower($0) ~ /^## high-risk surfaces touched/) ? 1 : 0
+      anytask = 0; allf = 0
       next
     }
-    # A task heading also closes Source spec / Files to touch — some real
-    # plans (e.g. the par-plan.md test fixture in this repo) go straight
-    # from "## Files to touch" into "### Task 1" with no "## Tasks" line
-    # between, so filessec must not still be open when the heading arrives.
+    # A task heading also closes Source spec — some real plans go straight
+    # from it into "### Task 1" with no "## Tasks" line between.
     if ($0 ~ rx) {
-      specsec = 0; filessec = 0; hrsec = 0
+      specsec = 0; hrsec = 0; anytask = 1; allf = 0
       id = $0; sub(/^### (Task ?|T)/, "", id); sub(/[^0-9].*$/, "", id)
       if (id == want) {
         intask = 1; found = 1
@@ -798,20 +819,14 @@ if [ "${1:-}" = "--brief" ]; then
     }
     if (h1 == "" && $0 ~ /^# /) { h1 = $0; sub(/^# +/, "", h1) }
     if (specsec) { if (spec == "" && trim($0) != "") spec = trim($0); next }
-    if (filessec) {
-      m = $0
-      while (match(m, /`[^`]+`/)) {
-        p = substr(m, RSTART + 1, RLENGTH - 2)
-        # a path has a slash, an extension, a Capitalised-then-lowercase bare
-        # name (Makefile, Dockerfile) or is a well-known all-caps root file;
-        # a backticked flag / symbol / identifier on the same line (`--all`,
-        # `PHASE=x`, `KIND`) is commentary, never a forbidden path
-        if ((p ~ /\// || p ~ /\.[A-Za-z][A-Za-z0-9]*$/ || p ~ /^[A-Z][a-z][A-Za-z0-9_-]*$/ || p ~ /^(README|LICENSE|CHANGELOG|CONTRIBUTING|AUTHORS|NOTICE|COPYING)$/) && !(p in touchseen)) { touchseen[p] = 1; touchorder[++tn] = p }
-        m = substr(m, RSTART + RLENGTH)
-      }
-      next
-    }
     if (hrsec) { if (trim($0) != "") hrline[++hrn] = $0; next }
+    # The forbidden pool is the union of every task Files field (this task
+    # included; its own paths are dropped against Files allowed at print time).
+    if (anytask) {
+      if (fieldline($0, "Files")) { allf = 1; addtouch(fieldbody($0, "Files")) }
+      else if ($0 ~ /^[-*][[:space:]]/) allf = 0
+      else if (allf && trim($0) != "") addtouch(trim($0))
+    }
     if (intask) {
       line = $0
       isf = 1
@@ -1677,7 +1692,7 @@ if [ -z "$OWNERSHIP" ]; then
   exit 1
 fi
 
-# Every backticked path in the plan's Files-to-touch must appear under
+# Every backticked path in any task's Files field must appear under
 # exactly one owner line. Each line is run through the shared cleanfiles()
 # with notekeep=0 — a backticked token inside a `( … )` note (an
 # explanatory aside, e.g. "moved from the old `agent-frontmatter/` dir")
@@ -1687,21 +1702,16 @@ fi
 # per-task Files field allows "`x.py` (+ `tests/static/x.sh`)" to add a
 # real companion) is NOT ownership-checked when written in this top-level
 # section — write it as its own bullet instead.
-FILES=$(awk "$CLEANFILES_AWK$FENCE_AWK"'
+FILES=$(awk -v rx="$TASK_RX" "$CLEANFILES_AWK$FENCE_AWK$FIELD_AWK"'
   fenceline($0) { next }
-  /^## Files to touch/ { f = 1; next }
-  /^## / { f = 0 }
-  f {
-    cl = cleanfiles($0, 0)
-    m = cl
-    while (match(m, /`[^`]+`/)) {
-      print substr(m, RSTART + 1, RLENGTH - 2)
-      m = substr(m, RSTART + RLENGTH)
-    }
-  }
+  /^## / { t = 0; f = 0; next }
+  $0 ~ rx { t = 1; f = 0; next }
+  t && fieldgate($0, "Files") { f = 1; printf "%s", taskpaths(fieldbody($0, "Files"), 0); next }
+  t && f && $0 ~ /^[-*][[:space:]]/ { f = 0 }
+  t && f { printf "%s", taskpaths($0, 0) }
 ' "$PLAN" | sort -u)
 if [ -z "$FILES" ]; then
-  echo "  ✗ parallel plan has no backticked paths under '## Files to touch'"
+  echo "  ✗ parallel plan has no paths in any task Files field"
   fail=1
 fi
 
@@ -1711,7 +1721,7 @@ while IFS= read -r f; do
   # Count OWNER LINES that mention the exact backticked path.
   N=$(printf '%s\n' "$OWNERSHIP" | grep -cF "\`$f\`" || true)
   if [ "${N:-0}" -eq 0 ]; then
-    echo "  ✗ unowned file: \`$f\` — in Files-to-touch but under no owner in the contract"
+    echo "  ✗ unowned file: \`$f\` — in a task Files field but under no owner in the contract"
     OWN_OK=0; fail=1
   elif [ "${N:-0}" -gt 1 ]; then
     echo "  ✗ dual-owned file: \`$f\` — appears under $N owner lines; a path belongs to exactly one owner"

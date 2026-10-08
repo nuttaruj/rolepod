@@ -25,11 +25,6 @@ Stack: Ruby + ERB + RSpec (units and requests).
 ## Source spec
 docs/rolepod/specs/orders-csv-export-2026-05-20.md (approved)
 
-## Files to touch
-- app/services/orders_csv.rb — new — builds the CSV from the report query
-- app/controllers/reports_controller.rb — add the export action
-- app/views/reports/_toolbar.html.erb — add the Export CSV button
-
 ## Tasks
 
 ### Task 1: Orders CSV export
@@ -130,13 +125,6 @@ Stack: Ruby + PostgreSQL (backend), TypeScript + React (frontend), frozen API co
 
 ## Source spec
 docs/rolepod/specs/notifications-center-2026-05-20.md (approved)
-
-## Files to touch
-- app/models/notification.rb — new — backend
-- app/controllers/api/notifications_controller.rb — new — backend
-- app/javascript/api/notifications.ts — new — frontend API client
-- app/javascript/components/NotificationBell.tsx — new — frontend
-- app/javascript/components/NotificationDropdown.tsx — new — frontend
 
 ## Tasks
 
