@@ -8,7 +8,7 @@ cli-cursor	rules/always-on-core.mdc	6823
 cli-opencode	AGENTS.md	7085
 lead	agent-listing	1602
 lead	hooks/always-on-core.md	6044
-lead	session-path	71127
+lead	session-path	71187
 lead	session-start	6283
 lead	skill-listing	3612
 lead	skills/check-work/SKILL.md	5647
@@ -49,14 +49,14 @@ lead	skills/review-code/references/axes.md	1492
 lead	skills/review-code/references/receiving-findings.md	7446
 lead	skills/rolepod-stats/SKILL.md	1303
 lead	skills/coordinating-parallel-tracks/SKILL.md	8780
-lead	skills/using-rolepod/SKILL.md	8954
+lead	skills/using-rolepod/SKILL.md	9014
 lead	skills/using-rolepod/examples/routing-transcripts.md	4316
 lead	skills/using-rolepod/references/fanout-claude.md	2663
 lead	skills/using-rolepod/references/fanout-codex.md	2534
 lead	skills/using-rolepod/references/model-tiers.md	8521
 lead	skills/using-rolepod/references/plugins-and-mcp.md	952
 lead	skills/using-rolepod/references/scope-then-spawn.md	3542
-lead	skills/using-rolepod/references/session-mode.md	796
+lead	skills/using-rolepod/references/session-mode.md	1300
 lead	skills/write-plan/SKILL.md	10544
 lead	skills/write-plan/examples/plan-examples.md	9572
 lead	skills/write-plan/references/edge-cases.md	2236
@@ -75,7 +75,7 @@ lead	skills/write-spec/references/chart-work.md	5414
 lead	skills/write-spec/references/question-bank.md	4294
 lead	skills/write-spec/references/scope-splitting.md	1607
 lead	skills/write-spec/templates/spec-template.md	2705
-lead	standing	18849
+lead	standing	18909
 owner	code-writer-own	22121
 owner	skills/debug-issue/SKILL.md	10565
 owner	skills/debug-issue/references/flake-triage.md	1190

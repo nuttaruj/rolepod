@@ -11,6 +11,7 @@ Turns a request that changes something into a tier and the first skill of `Defin
 
 No `Active Rolepod workflow profile` line in your context → run `scripts/workflow-mode.sh` once and carry its mode (per CLI: `references/session-mode.md`).
 No script and no profile line → Lite.
+The user asks to set a mode → `references/session-mode.md`.
 Route each request on its intent, scope and tier. A tool call, config change or skill reload never reselects mode or reroutes; re-evaluate routing only when intent, scope or tier changes. A manual or mid-task entry inspects current intent and visible artifacts and resumes the owning phase when they still match; a compacted session resumes from verified disk state and the user's latest corrections — it never restarts Define or replaces an approved plan.
 
 ### 1. Tier it — the rigor ladder
