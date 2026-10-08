@@ -856,16 +856,13 @@ _LENS_SUFFIXES = ("spec", "standards", "security", "adversarial")
 def _lens_kind(name: str) -> str | None:
     """The review kind a report file name carries, by its exact, case-sensitive
     suffix before `.md`: -spec -standards -security -adversarial → that lens;
-    -security-engineer → security (legacy name, kept one release); -r<digits>
-    → "recheck"; anything else (-perf, -ui, -arch, a role name) → None."""
+    -r<digits> → "recheck"; anything else (-perf, -ui, -arch, a role name) → None."""
     if not name.endswith(".md"):
         return None
     stem = name[:-3]
     for lens in _LENS_SUFFIXES:
         if stem.endswith("-" + lens):
             return lens
-    if stem.endswith("-security-engineer"):
-        return "security"
     if re.search(r"-r[0-9]+\Z", stem):
         return "recheck"
     return None
