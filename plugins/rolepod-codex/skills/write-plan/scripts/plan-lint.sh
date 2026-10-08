@@ -51,6 +51,9 @@
 #      than one root gets an advisory naming the parallel candidates.
 #      A plan with NO Blocked-by fields at all (pre-v2.90.0) is advised, not
 #      failed — order was prose there.
+#      A Blocked by value that is not none-ish yet names no task (prose such
+#      as `after Task 3 lands`, a leftover placeholder, an empty value) gets an
+#      advisory, since that task would look unblocked.
 #   4. Tracks (only when the plan has `## Tracks` or a `**Track:**` field):
 #      every task names a track listed there; two tasks that edit one file
 #      share a track; Blocked by crosses tracks only at a track first task.
@@ -1478,9 +1481,10 @@ printf '%s' "$LAYOUT" | grep -qiE '^[[:space:]]*([-*][[:space:]]*)?sequential' &
 
 # ── 3. Blocked-by graph ──────────────────────────────────────────────────
 # One awk pass: task id from the heading, refs from the `Blocked by:` line
-# (integers after the colon; "none" / "—" / "-" = no blockers). Then resolve
-# every ref, count fields, and run Kahn's algorithm for a cycle. Output lines
-# are prefixed so the shell can route them: E = fail, A = advisory.
+# (the leading task list, via blockedrefs; "none" / "—" / "-" = no
+# blockers). Then resolve every ref, count fields, and run Kahn's algorithm
+# for a cycle. Output lines are prefixed so the shell can route them:
+# E = fail, A = advisory.
 GRAPH=$(awk -v rx="$TASK_RX" -v seq="$SEQUENTIAL" "$FENCE_AWK$FIELD_AWK"'
   function addpath(p, c) {
     if (!((p, c) in pathseen)) {
@@ -1540,6 +1544,25 @@ GRAPH=$(awk -v rx="$TASK_RX" -v seq="$SEQUENTIAL" "$FENCE_AWK$FIELD_AWK"'
     if (n == 0) exit 0
     for (k = 1; k <= n; k++) {
       t = order[k]; m = blockedrefs(braw[t])
+      # A field that is not none-ish yet parses to no ref leaves the task
+      # looking unblocked (prose such as "after Task 3 lands", a leftover
+      # placeholder, an empty value). Tested before the loop consumes m.
+      # None-ish: "none" as a word, or a dash whose reason names no task.
+      if ((t in has) && m == "") {
+        bval = trim(braw[t]); blow = tolower(bval)
+        nonish = (blow ~ /^none([^a-z0-9]|$)/)
+        if (bval ~ /^(-|—|–)([[:space:]]|$)/ && blow !~ /task ?[0-9]/) nonish = 1
+        if (!nonish) {
+          # The value is cut to showcap bytes without splitting a UTF-8
+          # sequence (an awk that slices bytes would print half a character).
+          showcap = 40; shown = substr(bval, 1, showcap)
+          if (substr(bval, showcap + 1, 1) ~ /^[\200-\277]$/) {
+            while (shown != "" && substr(shown, length(shown), 1) ~ /^[\200-\277]$/) shown = substr(shown, 1, length(shown) - 1)
+            shown = substr(shown, 1, length(shown) - 1)
+          }
+          print "A Task " t " Blocked by \"" shown "\" names no task — start it with Task N, or write none"
+        }
+      }
       while (match(m, /[0-9]+/)) {
         r = substr(m, RSTART, RLENGTH); m = substr(m, RSTART + RLENGTH)
         if (!(t SUBSEP r in edge)) { edge[t, r] = 1; refs[t] = refs[t] " " r }

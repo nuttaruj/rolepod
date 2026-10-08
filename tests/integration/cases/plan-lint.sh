@@ -280,6 +280,7 @@ mk() { # $1 = file, $2.. = task blocks (heading + Blocked by), one arg each
 mk "$TMP/g-good.md" $'### Task 1: a\n- **Blocked by:** none' $'### Task 2: b\n- **Blocked by:** Task 1' \
    $'### Task 3: c\n- **Blocked by:** none — builds against the mock (T2 does not gate it)' $'### Task 4: d\n- **Blocked by:** Task 2, Task 3'
 RC=0; OUT=$(bash "$LINT" "$TMP/g-good.md" 2>&1) || RC=$?
+GOOD_OUT="$OUT"
 [ "$RC" -eq 0 ] && echo "$OUT" | grep -q 'graph resolves, no cycle (4 tasks)' \
   && echo "  ✓ plan-lint.sh resolves a Blocked-by graph" \
   || { echo "  ✗ plan-lint.sh rejected a valid Blocked-by graph: $OUT"; fail=$((fail+1)); }
@@ -399,6 +400,54 @@ RC=0; OUT=$(bash "$LINT" "$TMP/none-uppercase.md" 2>&1) || RC=$?
 [ "$RC" -eq 0 ] && echo "$OUT" | grep -q 'graph resolves, no cycle (1 tasks)' \
   && echo "  ✓ plan-lint.sh treats Blocked by: NONE as no blockers" \
   || { echo "  ✗ plan-lint.sh did not treat NONE as no blockers: $OUT"; fail=$((fail+1)); }
+echo "$OUT" | grep -q 'names no task' \
+  && { echo "  ✗ plan-lint.sh flagged 'NONE - flagged' as naming no task: $OUT"; fail=$((fail+1)); } \
+  || echo "  ✓ plan-lint.sh does not flag a none-ish Blocked by"
+
+# A Blocked by value that is not none yet names no task (prose, an empty
+# value) leaves the task looking unblocked: advisory only, exit stays 0. A
+# none-ish value (none + reason, a bare dash) is silent.
+mk "$TMP/g-notask.md" $'### Task 1: a\n- **Blocked by:** none' $'### Task 2: b\n- **Blocked by:** after Task 1 lands'
+RC=0; OUT=$(bash "$LINT" "$TMP/g-notask.md" 2>&1) || RC=$?
+[ "$RC" -eq 0 ] && echo "$OUT" | grep -q 'Task 2 Blocked by "after Task 1 lands" names no task — start it with Task N, or write none' \
+  && echo "$OUT" | grep -q 'graph resolves, no cycle' \
+  && echo "  ✓ plan-lint.sh advises a Blocked by that names no task" \
+  || { echo "  ✗ plan-lint.sh missed the names-no-task advisory: $OUT"; fail=$((fail+1)); }
+mk "$TMP/g-empty.md" $'### Task 1: a\n- **Blocked by:** none' $'### Task 2: b\n- **Blocked by:**'
+RC=0; OUT=$(bash "$LINT" "$TMP/g-empty.md" 2>&1) || RC=$?
+[ "$RC" -eq 0 ] && echo "$OUT" | grep -q 'Task 2 Blocked by "" names no task' \
+  && echo "  ✓ plan-lint.sh advises an empty Blocked by" \
+  || { echo "  ✗ plan-lint.sh missed the empty-value advisory: $OUT"; fail=$((fail+1)); }
+mk "$TMP/g-dash.md" $'### Task 1: a\n- **Blocked by:** —' $'### Task 2: b\n- **Blocked by:** - nothing gates it' \
+   $'### Task 3: c\n- **Blocked by:** –' $'### Task 4: d\n- **Blocked by:** – nothing gates it'
+RC=0; OUT=$(bash "$LINT" "$TMP/g-dash.md" 2>&1) || RC=$?
+[ "$RC" -eq 0 ] && ! echo "$OUT" | grep -q 'names no task' \
+  && echo "  ✓ plan-lint.sh treats a bare dash (hyphen, em, en) Blocked by as none" \
+  || { echo "  ✗ plan-lint.sh flagged a dash Blocked by: $OUT"; fail=$((fail+1)); }
+echo "$GOOD_OUT" | grep -q 'names no task' \
+  && { echo "  ✗ plan-lint.sh flagged the g-good plan"; fail=$((fail+1)); } \
+  || echo "  ✓ plan-lint.sh keeps 'none — reason' silent"
+# A dash whose reason names a task is a prose blocker, not none; "none" is a word.
+mk "$TMP/g-dashtask.md" $'### Task 1: a\n- **Blocked by:** none' $'### Task 2: b\n- **Blocked by:** — Task 1' \
+   $'### Task 3: c\n- **Blocked by:** - after Task 1' $'### Task 4: d\n- **Blocked by:** nonetheless Task 2'
+RC=0; OUT=$(bash "$LINT" "$TMP/g-dashtask.md" 2>&1) || RC=$?
+[ "$RC" -eq 0 ] && [ "$(echo "$OUT" | grep -c 'names no task')" -eq 3 ] \
+  && echo "  ✓ plan-lint.sh flags a dash reason naming a task and 'nonetheless'" \
+  || { echo "  ✗ plan-lint.sh dash-task / none-boundary advisories wrong: $OUT"; fail=$((fail+1)); }
+# The shown value is cut to 40 bytes: exact for ASCII, and never mid-UTF-8.
+LONG="pending the upstream review of the schema then go"
+mk "$TMP/g-long.md" $'### Task 1: a\n- **Blocked by:** none' "### Task 2: b"$'\n- **Blocked by:** '"$LONG"
+RC=0; OUT=$(bash "$LINT" "$TMP/g-long.md" 2>&1) || RC=$?
+echo "$OUT" | grep -qF "Blocked by \"${LONG:0:40}\" names no task" \
+  && echo "  ✓ plan-lint.sh cuts a long Blocked by value to 40 chars" \
+  || { echo "  ✗ plan-lint.sh 40-char cut wrong: $OUT"; fail=$((fail+1)); }
+THAI=$'\340\271\201\340\270\245\340\270\260'
+mk "$TMP/g-thai.md" $'### Task 1: a\n- **Blocked by:** none' "### Task 2: b"$'\n- **Blocked by:** '"$(printf 'a%.0s' $(seq 38))$THAI$THAI"
+RC=0; OUT=$(bash "$LINT" "$TMP/g-thai.md" 2>&1) || RC=$?
+SHOWN=$(echo "$OUT" | grep 'names no task' | sed 's/^[^"]*"//; s/".*$//')
+[ -n "$SHOWN" ] && [ "${#SHOWN}" -le 40 ] && printf '%s' "$SHOWN" | iconv -f UTF-8 -t UTF-8 >/dev/null 2>&1 \
+  && echo "  ✓ plan-lint.sh never cuts a Blocked by value mid-UTF-8" \
+  || { echo "  ✗ plan-lint.sh split a UTF-8 sequence at the 40 cut: $OUT"; fail=$((fail+1)); }
 
 # A task whose Test / evidence prose quotes the LITERAL field labels
 # `- **Blocked by:**` / `- **Owner:**` (as the t2 handoff plan itself did,
